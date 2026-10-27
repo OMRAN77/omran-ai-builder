@@ -37,14 +37,15 @@ function fakeDeps() {
 test('١. التذكرة تُسجَّل لمن خُصم منه وحده، والمالك (بلا خصم) بلا تذكرة', async () => {
   const kv = fakeKv();
   assert.equal(await job.rememberVideoJob('op/123', { username: 'sara', cost: 275, locked: true }, { kv }), true);
-  assert.equal(kv.m.size, 1);
-  const stored = JSON.parse([...kv.m.values()][0]);
+  const tickets = () => [...kv.m.keys()].filter((k) => !k.startsWith('vidjob:open:')); // v-video-sweep: وفهرس التذاكر المفتوحة بجانبها
+  assert.equal(tickets().length, 1);
+  const stored = JSON.parse(kv.m.get(tickets()[0]));
   assert.deepEqual(stored, { u: 'sara', c: 275, l: true, q: false });
   // المالك: chargedUser = null ⇒ لا تذكرة. وكذلك تكلفة صفر أو معرّف فارغ.
   assert.equal(await job.rememberVideoJob('op/9', { username: null, cost: 275 }, { kv }), false);
   assert.equal(await job.rememberVideoJob('op/9', { username: 'sara', cost: 0 }, { kv }), false);
   assert.equal(await job.rememberVideoJob('', { username: 'sara', cost: 275 }, { kv }), false);
-  assert.equal(kv.m.size, 1, 'لا مفتاح زائد');
+  assert.equal(tickets().length, 1, 'لا تذكرة زائدة');
 });
 
 test('٢. الفشل يردّ الخصم ويفكّ القفل ويعيد حصّة اليوم — والنجاح لا يردّ شيئًا', async () => {
@@ -92,12 +93,12 @@ test('٤. تخزين معطّل = لا تسوية ولا انفجار (سلوك 
 
 test('٥. التوصيل: المحرّكات الثلاثة تسجّل التذكرة عند القبول', () => {
   const veo = read('api/_lib/veo-create.js');
-  assert.match(veo, /rememberVideoJob\(data\.name, \{ username: chargedUser, cost: pointsLib\.COSTS\.veo_video, locked: !!videoLocked \}\)/);
+  assert.match(veo, /rememberVideoJob\(data\.name, \{ username: chargedUser, cost: pointsLib\.COSTS\.veo_video, locked: !!videoLocked, pay: chargedPay \}\)/);
   assert.ok(veo.indexOf('rememberVideoJob') < veo.indexOf("res.status(200).json({ op: data.name })"), 'قبل الردّ');
   const mm = read('api/_lib/minimax-create.js');
-  assert.match(mm, /rememberVideoJob\(data\.task_id, \{ username: chargedUser, cost: pointsLib\.COSTS\.minimax_video, locked: !!videoLocked \}\)/);
+  assert.match(mm, /rememberVideoJob\(data\.task_id, \{ username: chargedUser, cost: pointsLib\.COSTS\.minimax_video, locked: !!videoLocked, pay: chargedPay \}\)/);
   const rw = read('api/_lib/video-create.js');
-  assert.match(rw, /rememberVideoJob\(clientTaskId, \{ username: chargedUser, cost: pointsLib\.COSTS\.runway_video, locked: !!videoLocked, quota: longMode !== true \}\)/);
+  assert.match(rw, /rememberVideoJob\(clientTaskId, \{ username: chargedUser, cost: pointsLib\.COSTS\.runway_video, locked: !!videoLocked, quota: longMode !== true, pay: chargedPay \}\)/);
   assert.match(rw, /res\.status\(200\)\.json\(\{ id: clientTaskId, remaining \}\)/);
 });
 
@@ -110,8 +111,8 @@ test('٦. التوصيل: نقاط الحالة الثلاث تسوّي عند �
   assert.match(mm, /settleVideoJob\(taskId, false\)/);
   assert.match(mm, /settleVideoJob\(taskId, true\)/);
   const rw = read('api/_lib/video-status.js');
-  assert.match(rw, /if \(st === 'FAILED' \|\| st === 'CANCELLED'\) await require\('\.\/video-job\.js'\)\.settleVideoJob\(id, false\);/);
-  assert.match(rw, /else if \(st === 'SUCCEEDED'\) await require\('\.\/video-job\.js'\)\.settleVideoJob\(id, true\);/);
+  assert.match(rw, /if \(st === 'FAILED' \|\| st === 'CANCELLED'\) await require\('\.\/video-job\.js'\)\.settleVideoJob\(canonId, false\);/);
+  assert.match(rw, /else if \(st === 'SUCCEEDED'\) await require\('\.\/video-job\.js'\)\.settleVideoJob\(canonId, true\);/);
 
   // نقطة حالة Veo فعليًّا: اكتمال بلا فيديو = FAILED (المسار الذي كان يحرق فيديو المشترك).
   process.env.GEMINI_API_KEY = 'test-key';
@@ -122,7 +123,9 @@ test('٦. التوصيل: نقاط الحالة الثلاث تسوّي عند �
   await handler({ method: 'GET', query: { op: 'models/veo/operations/X' } }, res);
   global.fetch = realFetch;
   assert.equal(res.body.status, 'FAILED');
-  assert.match(res.body.failure, /filtered: blocked/);
+  // v-video-names (مراجعة): سبب الرقابة يصل عربيًّا ثابتًا مع رمزه، ونصّ المزوّد للسجلّ وحده.
+  assert.equal(res.body.failureCode, 'safety');
+  assert.doesNotMatch(res.body.failure, /filtered|blocked/);
 });
 
 test('٧. حصّة اليوم تُعاد لليوم نفسه فقط ولا تنزل تحت الصفر', () => {
@@ -152,12 +155,14 @@ test('٨. الواجهة: رمز video_cooldown الخام لا يظهر — ر�
   const i = src.indexOf('function errText(e){');
   const j = src.indexOf('async function make(t){', i);
   assert.ok(i > 0 && j > i);
-  const sandbox = { ui: (k) => (k === 'cooldown' ? ui.cooldown.ar : ui.fail.ar) };
+  const sandbox = { ui: (k) => (k === 'cooldown' ? ui.cooldown.ar : ui.fail.ar), lg: () => 'ar' /* v-trend-codes: errText تقرأ لغة الواجهة */ };
   vm.runInNewContext(src.slice(i, j) + '\nthis.errText = errText;', sandbox);
   assert.equal(sandbox.errText({ code: 'video_cooldown', retryAfter: 180 }), ui.cooldown.ar.replace('{m}', '3'));
   assert.equal(sandbox.errText({ code: 'video_cooldown', retryAfter: 40 }), ui.cooldown.ar.replace('{m}', '1'));
   assert.equal(sandbox.errText({ code: 'video_cooldown' }), ui.cooldown.ar.replace('{m}', '3'), 'بلا retryAfter = المهلة الكاملة');
-  assert.equal(sandbox.errText(new Error('boom')), ui.fail.ar + ': boom');
+  /* v-trend-points: رسالة مقروءة تبقى كما كانت، والرمز الخامّ وحده («boom»، «timeout») يصير «تعذّر» بلا الرمز — tests/trend-err-text */
+  assert.equal(sandbox.errText(new Error('Boom happened.')), ui.fail.ar + ': Boom happened.');
+  assert.equal(sandbox.errText(new Error('boom')), ui.fail.ar);
   assert.match(src, /code: \(j && j\.error\) \|\| '', retryAfter: \(j && j\.retryAfter\) \|\| 0/, 'الرمز والمهلة يصلان من الخادم');
 
   // صانع الفيديو الرئيسيّ: رسالة مفهومة، وبلا إعادة محاولة عمياء على مهلة الثلاث دقائق.

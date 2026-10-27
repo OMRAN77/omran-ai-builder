@@ -22,7 +22,7 @@ const README_MAX = 2500;        // حروف README المعروضة في نظر�
    (أسطر أكثر بالدفعة الواحدة، شجرة أوسع، README أطول، ملفّات أكبر).
    v-github-all-providers (٢٩ سبتمبر): لم تبقَ حصرًا على كلود — `opts.deep` يُرسل الآن لكلّ
    مزوّد في المحادثة والوكيل، والحصر صار على الطالب لا على المزوّد: المالك وحده. */
-const DEEP_CHUNK = 24000;
+const DEEP_CHUNK = 48000; // v-deep-read (المالك ١٥ أكتوبر «أوصلهم لمستوى كودي»): كان ٢٤ ألفًا فيقرأ المزوّد نصف الملفّ ويحكم؛ الآن ~٨٠٠ سطر في النداء (سقف ناتج الأداة ٦٠ ألفًا في chat.js وagent.js)
 const DEEP_TREE_MAX = 900;
 const DEEP_FILE_MAX = 4000000;
 const DEEP_README_MAX = 7000;
@@ -134,6 +134,30 @@ function formatFile(name, ref, content, from, deep) {
     + (end < total ? '… يتبع من السطر ' + (end + 1) + ' — استدعِ الأداة نفسها مع from=' + (end + 1) + ' لقراءة التتمّة.' : '[نهاية الملفّ]');
 }
 
+/* v-read-panel (المالك ١٣ أكتوبر: «لوحة الكود + الأرقام»): ناتج formatFile مقطعًا منظّمًا للوحة «الكود المقروء» في الواجهة.
+   formatFile يكتب اسم الملفّ وحده، فالمسار من المُدخل نفسه (parseTarget)، والأسطر كما قُرئت بأرقامها المتتالية.
+   غير الملفّ (مجلّد، بحث، فشل، ثنائيّ) = null. السقف حروف الدفعة العميقة نفسها فلا يتجاوز ما قرأه المزوّد. */
+const EXCERPT_HEAD_RE = /^📄 (.+?)(?: \(([^)\n]*)\))? · (\d+) سطر · الأسطر (\d+)–(\d+)\n/;
+const EXCERPT_LINE_RE = /^(\d+)\| (.*)$/;
+function fileExcerpt(input, result) {
+  const r = String(result == null ? '' : result);
+  const h = EXCERPT_HEAD_RE.exec(r);
+  if (!h) return null;
+  const t = parseTarget(input);
+  const a = Number(h[4]);
+  const l = [];
+  let used = 0;
+  const body = r.slice(h[0].length).split('\n');
+  for (let i = 0; i < body.length; i++) {
+    const m = EXCERPT_LINE_RE.exec(body[i]);
+    if (!m || Number(m[1]) !== a + l.length || used + m[2].length > DEEP_CHUNK) break;
+    used += m[2].length + 1;
+    l.push(m[2]);
+  }
+  if (!l.length) return null;
+  return { p: String((t && t.path) || h[1]).slice(0, 300), r: String(h[2] || '').slice(0, 80), a, b: a + l.length - 1, n: Number(h[3]), l };
+}
+
 /* ---------- المحتويات (ملفّ أو مجلّد) ---------- */
 async function getContents(t, o) {
   const q = t.ref ? '?ref=' + encodeURIComponent(t.ref) : '';
@@ -237,10 +261,35 @@ async function readIssue(t, o) {
    المسار المطلوب فقط** بنداءات متوازية محدودة (لا حدّ جسم كنزول المستودع، فقط عدد ملفّات المسار —
    api/_lib مثلًا ١٦٢ ملفًّا، tests ١٩٨ — كلاهما دون السقف). مطابقة حرفيّة حسّاسة لحالة الأحرف، تمامًا
    كـGrep — موثوقة بلا فهرسة خارجيّة قد تتخلّف. */
+/* v-deep-search (المالك ١٥ أكتوبر «يتعمّقون في تحليل الأكواد»): سطر المطابقة وحده لا يكفي للحكم — مع كلّ مطابقة في ملفّ JS
+   رأس الدالّة الحاوية (بمطابقة الأقواس من الرأس حتّى يعود العمق صفرًا؛ ٣٠٠ سطر رجوعًا)، ولمعرّفٍ عدّ المستدعين في كلّ ملفّ معروض.
+   من النصّ المجلوب نفسه — بلا نداء شبكة إضافيّ. */
+const JS_FILE_RE = /\.(?:c|m)?js$|\.ts$/i;
+const IDENT_RE = /^[A-Za-z_$][\w$]*$/;
+const FN_HEAD_RE = /^\s*(?:export\s+)?(?:async\s+)?function\s*\*?\s*[\w$]+\s*\(|^\s*(?:const|let|var)\s+[\w$]+\s*=\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>|[\w$]+\s*=>)|^\s*(?:async\s+)?(?:static\s+)?(?!(?:if|for|while|switch|catch|with|return|else|do|try|function)\b)[\w$]+\s*\([^)]*\)\s*\{\s*$|^\s*[\w$'"]+\s*:\s*(?:async\s*)?(?:function\b|\([^)]*\)\s*=>)/;
+const ENCLOSE_LOOKBACK = 300;
+const STR_RE = /(["'`])(?:\\.|(?!\1).)*\1/g;
+function enclosingHead(lines, li) {
+  for (let h = li - 1, back = 0; h >= 0 && back < ENCLOSE_LOOKBACK; h--, back++) {
+    if (!FN_HEAD_RE.test(lines[h])) continue;
+    let depth = 0, opened = false, closedAt = -1;
+    for (let k = h; k < lines.length && k - h < 6000; k++) {
+      const t = lines[k].replace(STR_RE, '""').replace(/\/\/.*$/, '');
+      for (const ch of t) { if (ch === '{') { depth++; opened = true; } else if (ch === '}') depth--; }
+      if (k === h && !opened) break; // سطر رأس بلا قوس فتح (سهم بتعبير واحد) ليس جسمًا يحوي شيئًا
+      if (opened && depth <= 0) { closedAt = k; break; }
+    }
+    if (closedAt >= li) return { n: h + 1, text: lines[h] };
+  }
+  return null;
+}
 const SEARCH_MAX_FILES = 400;   // أكثر من api/_lib (١٦٢) وtests (١٩٨) بمريح؛ أكبر يُطلب تضييق المسار
 const SEARCH_MAX_FILES_DEEP = 700;
 const SEARCH_CONCURRENCY = 15;  // نداءات متوازية — لا تُغرق GitHub ولا الدالّة
-const SEARCH_FILE_BYTES_MAX = 800000; // فوقه ليس كودًا منطقيًّا (صورة/بيانات) — يُتخطّى بلا تنزيله
+const SEARCH_FILE_BYTES_MAX = 1000000; // فوقه ليس كودًا منطقيًّا (صورة/بيانات) — يُتخطّى بلا تنزيله
+/* v-audit-attach: app-09-attach.js تجاوز ٨٠٠ ألف بايت (إصلاحات المرفقات) فكان سيسقط من البحث مجدّدًا. مليون: ما بين ٨٠٠ ألف ومليون
+   من الملفّات المتتبَّعة غيره صورٌ (نحو ١٢ في assets/ وsplash.png في store/) والبحث لا يصفّي بالامتداد — فالكلفة الجديدة تنزيل بضع
+   صور حين يقع مسار البحث عليها، صغيرة. */
 /* v-claude-code-level (A2): كان ٤٠٠ ألف بايت فسقط js/app-09-attach.js (~٦٨٠ ألفًا، قلب الإرسال) من كلّ بحث —
    «__sendPromptCore» يرجع «لا نتائج» وهو موجود. ٨٠٠ ألف لا ١٫٥ مليون: المكتبات المصغّرة تأكل مهلة البحث،
    فالمولَّد والمصغَّر (js/vendor، *.min.js، الحزمة) يُتخطّى إلّا إن كان مسار البحث نفسه داخله. */
@@ -278,6 +327,9 @@ async function readContentSearch(t, o, query, limit) {
   const deadline = Date.now() + SEARCH_BUDGET_MS;
   const hits = [];
   let cursor = 0;
+  const ident = IDENT_RE.test(query); // v-deep-search: معرّف ← عدّ المستدعين في كلّ ملفّ معروض
+  const callRe = ident ? new RegExp('(?<![\\w$])' + query.replace(/\$/g, '\\$') + '\\s*\\(') : null;
+  const defRe = ident ? new RegExp('function\\s*\\*?\\s*' + query.replace(/\$/g, '\\$') + '\\s*\\(|(?:const|let|var)\\s+' + query.replace(/\$/g, '\\$') + '\\s*=|^\\s*' + query.replace(/\$/g, '\\$') + '\\s*[:=](?!=)') : null; // تعريف: function q( · const q = · q: / q = — لا نداء q( في أوّل السطر
   async function worker() {
     while (cursor < candidates.length && hits.length < n && Date.now() < deadline) {
       const e = candidates[cursor++];
@@ -291,8 +343,11 @@ async function readContentSearch(t, o, query, limit) {
       if (text.indexOf(String.fromCharCode(0)) !== -1 || text.indexOf(query) === -1) continue;
       const lines = text.split('\n');
       const matchLines = [];
-      for (let li = 0; li < lines.length && matchLines.length < 3; li++) if (lines[li].indexOf(query) !== -1) matchLines.push({ n: li + 1, text: lines[li] });
-      hits.push({ path: e.path, lines: matchLines });
+      const isJs = JS_FILE_RE.test(e.path);
+      for (let li = 0; li < lines.length && matchLines.length < 3; li++) if (lines[li].indexOf(query) !== -1) matchLines.push({ n: li + 1, text: lines[li], fn: isJs ? enclosingHead(lines, li) : null }); // v-deep-search: رأس الدالّة الحاوية
+      let calls = 0;
+      if (callRe && isJs) for (const ln of lines) if (callRe.test(ln) && !defRe.test(ln)) calls++;
+      hits.push({ path: e.path, lines: matchLines, calls });
     }
   }
   await Promise.all(Array.from({ length: Math.min(SEARCH_CONCURRENCY, candidates.length) }, worker));
@@ -302,9 +357,17 @@ async function readContentSearch(t, o, query, limit) {
   const out = ['🔎 «' + query + '» في ' + repoOf(t) + '/' + t.path + ' — ' + shown.length + (hits.length > shown.length ? '+' : '') + ' ملفّ (بحث فعليّ في محتوى ' + candidates.length + ' ملفًّا):'];
   for (const h of shown) {
     out.push('\n📄 ' + h.path);
-    for (const l of h.lines) out.push('  ' + l.n + '| ' + l.text.trim().slice(0, 200));
+    const seenFn = new Set();
+    for (const l of h.lines) {
+      out.push('  ' + l.n + '| ' + l.text.trim().slice(0, 200));
+      if (l.fn && l.fn.n !== l.n && !seenFn.has(l.fn.n)) { seenFn.add(l.fn.n); out.push('     ↳ داخل ' + l.fn.n + '| ' + l.fn.text.trim().slice(0, 160)); } // v-deep-search
+    }
   }
-  out.push('\nلقراءة ملفّ كاملًا: read_github بمساره.' + skipNote);
+  if (ident) { // v-deep-search: المستدعون من الملفّات المعروضة (المقروءة فعلًا) — قاعدة «الدالّة ومن يستدعيها واختبارها» بنداء واحد
+    const callers = shown.filter((h) => h.calls).map((h) => h.path + ' (' + h.calls + ')');
+    out.push(callers.length ? '\nالمستدعون لـ' + query + '( في الملفّات المعروضة: ' + callers.join('، ') : '\nلا مستدعين لـ' + query + '( في الملفّات المعروضة — تعريف أو ذكر فقط.');
+  }
+  out.push('\nلقراءة ملفّ كاملًا: read_github بمساره (from= للبقيّة).' + skipNote);
   return out.join('\n');
 }
 
@@ -401,10 +464,106 @@ async function readCommits(t, o, limit) {
   return out.join('\n');
 }
 
+/* v-owner-see-repo-img (المالك ١٣ أكتوبر، ردّ GPT-6 Astra على بطاقات الأزياء: «الصور البديلة الموجودة بالمستودع ما قدرت أعاينها»): مسار
+   صورة في المستودع كان يعود «ملفّ ثنائيّ، لا يُقرأ نصًّا». الآن بايتاتها (حتّى ٣٫٥ م.ب، بترويسة raw) لتُرفق للمزوّد الذي يرى — chat.js يقرّر. */
+const IMG_FILE_RE = /\.(png|jpe?g|webp|gif)$/i;
+const IMG_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
+const IMG_SEE_MAX = 3500000;
+function imagePathOf(input) {
+  if (input && typeof input === 'object' && String(input.query || '').trim()) return null;
+  const t = parseTarget(input);
+  return (t && t.path && IMG_FILE_RE.test(t.path) && ['file', 'path'].indexOf(t.kind) !== -1) ? t : null;
+}
+async function readImageFile(input, opts) {
+  const t = imagePathOf(input);
+  if (!t) return { error: 'ليس مسار صورة في مستودع' };
+  const o = Object.assign({}, opts || {}, { raw: true, timeoutMs: 30000 });
+  try {
+    const r = await ghFetch('/repos/' + repoOf(t) + '/contents/' + encPath(t.path) + (t.ref ? '?ref=' + encodeURIComponent(t.ref) : ''), o);
+    if (!r.ok) return { error: ghError(r, repoOf(t) + '/' + t.path, o.env) };
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length) return { error: 'الصورة ' + t.path + ' فارغة' };
+    if (buf.length > IMG_SEE_MAX) return { error: 'الصورة ' + t.path + ' ' + b(buf.length) + ' أكبر من حدّ الرؤية (' + b(IMG_SEE_MAX) + ')' };
+    return { path: t.path, mime: IMG_MIME[t.path.split('.').pop().toLowerCase()] || 'image/png', b64: buf.toString('base64'), bytes: buf.length };
+  } catch (e) { return { error: 'تعذّر جلب الصورة: ' + String((e && e.message) || e).slice(0, 120) }; }
+}
+
+/* ---------- خريطة الكود (v-codemap) ----------
+   طلب المالك ١٠ أكتوبر: «المزوّدون يكون عندهم كافّة المعلومات… معلومات الكود من الصفر». الخريطة api/_lib/codemap.json
+   يولّدها scripts/codemap.mjs من الملفّات نفسها ويعيد توليدها codemap.yml بعد كلّ دمج: لكلّ ملفّ غرضه وحجمه ودوالّه
+   وصادراته وأدواته. what=map: بلا path = كلّ المجلّدات بملفّاتها · path=مجلّد = ملفّاته بأغراضها · path=ملفّ = دوالّه
+   · query = بحث في الخريطة. محلّيّة بلا نداء GitHub — فلا حدّ معدّل ولا مفتاح. */
+const MAP_MAX = 28000;
+const MAP_REPO_RE = /^omran-ai-builder$/i;
+let __codemap = null;
+function loadCodemap() {
+  if (__codemap) return __codemap;
+  try { __codemap = require('./codemap.json'); } catch (e) { __codemap = { files: [] }; }
+  return __codemap;
+}
+const mapGroup = (p) => { const s = p.split('/'); return s.length === 1 ? '(الجذر)' : (s[0] === 'api' && s[1] === '_lib' && s.length > 2) ? 'api/_lib' : s[0] === '.github' ? '.github/workflows' : s[0]; };
+const mapLine = (e) => e.p + ' (~' + e.n + ' سطر)' + (e.d ? ' — ' + e.d : '') + (e.t && e.t.length ? ' · أدوات: ' + e.t.join(', ') : '');
+function mapEntry(e) {
+  const out = ['### ' + e.p, 'الحجم: ~' + e.n + ' سطر', 'الغرض: ' + (e.d || '(بلا تعليق رأس — اقرأ الملفّ)')];
+  if (e.t && e.t.length) out.push('أدوات معرّفة فيه: ' + e.t.join(', '));
+  if (e.x && e.x.length) out.push('الصادرات: ' + e.x.join(', '));
+  if (e.f && e.f.length) out.push('الدوالّ (' + e.f.length + '): ' + e.f.join(', '));
+  if (e.u && e.u.length) out.push('عناصر الواجهة (' + e.u.length + ' — id«نصّه»): ' + e.u.join(' · '));
+  out.push('', 'الموضع الدقيق: read_github مع path=' + e.p + ' وquery=اسم الدالّة، ثمّ from= السطر.');
+  return out.join('\n');
+}
+function codeMap(t, input) {
+  const m = loadCodemap();
+  if (!t || !MAP_REPO_RE.test(t.repo || '')) return 'خريطة الكود لمستودع التطبيق وحده (OMRAN77/omran-ai-builder) — لغيره اقرأ الشجرة بلا what.';
+  if (!m.files || !m.files.length) return 'خريطة الكود غير موجودة في هذا النشر — اقرأ الشجرة بلا what=map.';
+  const files = m.files;
+  const p = String(t.path || '').replace(/^\/+|\/+$/g, '');
+  const q = String((input && input.query) || '').trim().toLowerCase();
+  const head = 'خريطة الكود — ' + files.length + ' ملفًّا' + (m.tests ? ' + ' + m.tests + ' اختبارًا في tests/' : '') + ' (مولَّدة آليًّا من main بعد كلّ دمج؛ الأحجام تقريبيّة).';
+  let list = p ? files.filter((e) => e.p === p || e.p.indexOf(p + '/') === 0) : files;
+  if (p && !list.length) return head + '\nلا شيء في الخريطة تحت «' + p + '» — ملفّ جديد لم تُعِد الخريطة توليده بعد، أو المسار خطأ: اقرأه بلا what.';
+  if (q) {
+    const all = q.split(/\s+/).filter(Boolean).slice(0, 8);
+    const long = all.filter((w) => w.length >= 3); // «عن» و«في» تطابق كلّ شيء
+    const words = long.length ? long : all;
+    const scored = list.map((e) => {
+      const hay = (e.p + ' ' + (e.d || '') + ' ' + (e.t || []).join(' ') + ' ' + (e.x || []).join(' ') + ' ' + (e.f || []).join(' ') + ' ' + (e.u || []).join(' ')).toLowerCase();
+      return { e, s: (all.length > 1 && hay.indexOf(q) !== -1 ? 10 : 0) + words.filter((w) => hay.indexOf(w) !== -1).length };
+    }).filter((r) => r.s > 0).sort((a, b) => b.s - a.s);
+    if (!scored.length) return head + '\nلا تطابق في الخريطة لـ«' + q + '» — ابحث في محتوى الملفّات: read_github مع query بلا what.';
+    const out = [head, 'نتائج «' + q + '» (' + scored.length + '):'];
+    for (const r of scored.slice(0, 30)) {
+      const e = r.e;
+      const names = [].concat(e.t || [], e.x || [], e.f || [], e.u || []);
+      const exact = names.filter((n) => n.toLowerCase().indexOf(q) !== -1);
+      const hits = exact.length ? exact : names.filter((n) => words.some((w) => n.toLowerCase().indexOf(w) !== -1));
+      out.push('- ' + mapLine(e) + (hits.length ? ' · يطابق: ' + Array.from(new Set(hits)).slice(0, 12).join(', ') : ''));
+    }
+    return out.join('\n').slice(0, MAP_MAX);
+  }
+  if (list.length === 1 && list[0].p === p) return head + '\n\n' + mapEntry(list[0]);
+  const groups = new Map();
+  for (const e of list) { const g = mapGroup(e.p); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(e); }
+  const full = [head];
+  for (const [g, es] of groups) { full.push('', '## ' + g + ' (' + es.length + ')'); for (const e of es) full.push('- ' + mapLine(e)); }
+  const text = full.join('\n');
+  if (text.length <= MAP_MAX) return text;
+  // كبيرة على ردّ واحد: الملفّات المحوريّة بأغراضها، والبقيّة بأسمائها — والتفصيل بـpath=المجلّد.
+  const short = [head, 'كبيرة على ردّ واحد: المحوريّة بأغراضها والبقيّة بأسمائها — path=المجلّد يعطي أغراض ملفّاته، وpath=الملفّ دوالّه.'];
+  for (const [g, es] of groups) {
+    short.push('', '## ' + g + ' (' + es.length + ')');
+    for (const e of es.filter((x) => x.k)) short.push('- ' + mapLine(e));
+    const rest = es.filter((x) => !x.k).map((x) => x.p.split('/').pop());
+    if (rest.length) short.push('  ' + rest.join(' · '));
+  }
+  return short.join('\n').slice(0, MAP_MAX);
+}
+
 async function readGithub(input, opts) {
   const t = parseTarget(input);
   if (!t) return 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ أو pull أو issue أو commits، أو owner/repo مع path (وwhat=commits لآخر الدفعات)، أو مع query للبحث.';
   const query = input && typeof input === 'object' ? String(input.query || '').trim() : '';
+  if (input && typeof input === 'object' && String(input.what || '').toLowerCase() === 'map') return codeMap(t, input); // v-codemap
   try {
     if (query) return await readSearch(t, opts, query, input && input.limit);
     if (t.kind === 'pr') return await readPR(t, opts);
@@ -451,4 +610,6 @@ async function fetchRepoZip(target, opts) {
   return { ref, entries, total: all.length };
 }
 
-module.exports = { parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP, SEARCH_FILE_BYTES_MAX, SEARCH_SKIP_RE };
+module.exports = { imagePathOf, readImageFile, // v-owner-see-repo-img
+  codeMap, loadCodemap, // v-codemap
+  parseTarget, readGithub, readSearch, readCommits, readCommit, formatPatches, getContents, fetchRepoZip, formatFile, fileExcerpt, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX, DEEP_CHUNK, DEEP_TREE_MAX, DEEP_FILE_MAX, DEEP_README_MAX, readContentSearch, enclosingHead, SEARCH_MAX_FILES, SEARCH_MAX_FILES_DEEP, SEARCH_FILE_BYTES_MAX, SEARCH_SKIP_RE };

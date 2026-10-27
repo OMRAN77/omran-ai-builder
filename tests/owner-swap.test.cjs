@@ -9,6 +9,8 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
+process.env.OWNER_AGENT_CLAUDE = 'on'; // v-agent-claude-off: الاختبار يفحص الوكيل وهو شغّال
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'owner-swap-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-direct';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
@@ -112,4 +114,21 @@ test('٤. الوكيل: كلود المباشر بلا رصيد → كلود ع�
   assert.ok(!calls.some((c) => /deepseek|groq|mistral/.test(c.url)), 'لا هبوط بلا أدوات');
   assert.match(text, /فحصتُ\./);
   assert.match(text, /🔧 للمالك فقط — Anthropic مباشر · [^\n]* فشل: لا رصيد كافٍ [^\n]*· أجاب بدله: كلود عبر الوسيط · anthropic\/claude-/);
+});
+
+/* v-or-display (المالك ١٤ أكتوبر «صلّح الثلاثة الباقية»): بعد الهبوط إلى الوسيط كان الوكيل بلا عرض — كتل تفكيره فارغة فيبدو صامتًا.
+   الآن العرض الملخّص على الوسيط للمالك على الجيل الخامس؛ ورفضه (400 بأيّ نصّ) = إعادة واحدة بلاه لبقيّة التشغيل. */
+test('٥. الوكيل على الوسيط: العرض الملخّص يُطلب للمالك، ورفضه بنصّ المزوّد = إعادة واحدة بلاه والجواب يصل', async () => {
+  const ok = await run(agent, 'omran', { messages: [{ role: 'user', content: 'افحص مها في المستودع' }] },
+    (u) => (viaClaudeDirect(u) ? credit() : viaOR(u) ? sse('فحصتُ.') : new Response('{}', { status: 500 })));
+  const or = ok.calls.find((c) => viaOR(c.url));
+  assert.ok(/^anthropic\/claude-(?:opus-5|sonnet-5|fable)/.test(or.body.model), or.body.model);
+  assert.deepEqual(or.body.thinking, { type: 'adaptive', display: 'summarized' });
+
+  const no = await run(agent, 'omran', { messages: [{ role: 'user', content: 'افحص مها في المستودع' }] },
+    (u, b) => (viaClaudeDirect(u) ? credit() : viaOR(u) ? ((b.thinking && b.thinking.display) ? new Response(JSON.stringify({ error: { message: 'Provider returned error' } }), { status: 400 }) : sse('فحصتُ بلا عرض.')) : new Response('{}', { status: 500 })));
+  const ors = no.calls.filter((c) => viaOR(c.url));
+  assert.equal(ors.length, 2, 'إعادة واحدة');
+  assert.equal(ors[1].body.thinking, undefined, 'الإعادة بلا عرض');
+  assert.match(no.text, /فحصتُ بلا عرض\./);
 });

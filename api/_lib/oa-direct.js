@@ -19,7 +19,40 @@ const DIRECT = {
   /* v-kimi (أمر المالك ٣ أكتوبر «اريد إضافة kimi مزود جديد المفتاح موجود»): Moonshot بصيغة OpenAI (chat/completions + أدوات).
      اسم المتغيّر غير معروف لنا فيُقبل الشائعان: KIMI_API_KEY ثمّ MOONSHOT_API_KEY. */
   kimi: { url: 'https://api.moonshot.ai/v1/chat/completions', keyVar: 'KIMI_API_KEY', altKeyVars: ['MOONSHOT_API_KEY'], label: 'Kimi' },
+  /* v-pplx-agent (المالك ١٥ أكتوبر «ابدا في Perplexity» بعد «اريدهم كل المزودين»): Sonar chat/completions تقاعد ٢٧ سبتمبر ٢٠٢٦،
+     وبديله Agent API بصيغة OpenAI Responses (/v1/responses) بأدوات دوالّ أصليّة (function_call ↔ function_call_output بـcall_id) —
+     المسار نفسه الذي يمرّ به GPT هنا، بلا بروتوكول نصّيّ. للمالك وحده (chat.js). لا احتياط chat/completions (تقاعد). */
+  perplexity: { url: 'https://api.perplexity.ai/v1/responses', responses: 'https://api.perplexity.ai/v1/responses', keyVar: 'PERPLEXITY_API_KEY', label: 'Perplexity', noFallback: true },
 };
+const PPLX_NO_TOOLS = '[هذا الدور بلا أدوات: الموديل على واجهة Perplexity لم يقبل أدوات الدوالّ. أجب ممّا تعرفه، ولا تدّعِ قراءة ملفّ ولا تعديلًا ولا رفعًا؛ وإن طلب المالك تعديلًا على تطبيقه فقل له في سطر إنّ أدوات التعديل لم تُقبل على هذا الموديل.]'; // v-pplx-agent
+/* v-pplx-names (لقطة المالك ١٥ أكتوبر، Perplexity Sonar: «أدوات قراءة المستودع وتعديله غير متاحة في هذه المحادثة»): واجهة Perplexity تحجز
+   أسماء أدواتها المدمجة فترفض الطلب كلّه بـ400 «invalid tools in request: custom function name "web_search" is reserved»، وv-pplx-agent يعيده
+   بلا أدوات — فلا قراءة ولا تعديل. على السلك وحده: الاسم المحجوز ← app_<الاسم> في الأدوات وفي نداءات التاريخ، ويعود إلى أصله في البثّ
+   قبل أن تراه الحلقة. باقي الأسماء كما هي. */
+// من دليل Perplexity الرسميّ للترحيل (api-platform-developers: integration-styles.md «RESERVED NAMES») ومن رفض حيّ موثَّق (search_files).
+// «وقد تُحجز أسماء أخرى» — فاسم يرفضه لاحقًا يُضاف هنا تلقائيًّا (pplxReservedIn) ويُعاد الطلب بأدواته مرّة.
+const PPLX_RESERVED = new Set(['web_search', 'search_web', 'people_search', 'search_people', 'fetch_url', 'finance_search', 'sandbox', 'image_search', 'search_files']);
+const PPLX_PREFIX = 'app_';
+const pplxOut = (n) => (PPLX_RESERVED.has(n) ? PPLX_PREFIX + n : n);
+const pplxBack = (n) => (n.indexOf(PPLX_PREFIX) === 0 && PPLX_RESERVED.has(n.slice(PPLX_PREFIX.length)) ? n.slice(PPLX_PREFIX.length) : n);
+// اسم أداة من رفض «custom function name "X" is reserved» (رسالة JSON أو نصّ خام بعلامات مهرَّبة)، إن كان من أدوات هذا الطلب.
+function pplxReservedIn(text, rb) {
+  let m = '';
+  try { const j = JSON.parse(text); m = String((j && j.error && (j.error.message || j.error)) || (j && j.message) || ''); } catch (e) { m = String(text || '').replace(/\\"/g, '"'); }
+  const hit = /custom function name "([^"]+)" is reserved/i.exec(m);
+  const n = hit ? hit[1] : '';
+  return n && Array.isArray(rb.tools) && rb.tools.some((t) => t && t.name === n) && !PPLX_RESERVED.has(n) ? n : '';
+}
+function pplxWire(rb) {
+  if (Array.isArray(rb.tools)) rb.tools = rb.tools.map((t) => (t && t.type === 'function' ? Object.assign({}, t, { name: pplxOut(String(t.name || '')) }) : t));
+  if (Array.isArray(rb.input)) rb.input = rb.input.map((it) => (it && it.type === 'function_call' ? Object.assign({}, it, { name: pplxOut(String(it.name || '')) }) : it));
+  if (rb.tool_choice && rb.tool_choice.type === 'function' && rb.tool_choice.name) rb.tool_choice = Object.assign({}, rb.tool_choice, { name: pplxOut(String(rb.tool_choice.name)) });
+  // التعليمات تسمّي الأداة باسمها الأصليّ (web_search…) — سطر واحد يربطه باسم السلك فلا ينادي الموديل اسمًا غير معلَن
+  const ren = (rb.tools || []).map((t) => String((t && t.name) || '')).filter((n) => pplxBack(n) !== n).map((n) => pplxBack(n) + ' ← ' + n);
+  const note = ren.length ? '[أسماء الأدوات على هذه الواجهة: ' + ren.join('، ') + ']' : '';
+  if (note && String(rb.instructions || '').indexOf(note) === -1) rb.instructions = (rb.instructions ? rb.instructions + '\n\n' : '') + note;
+  return rb;
+}
 
 // مسار مباشر لهذا المزوّد إن كان مفتاحه في البيئة، وإلّا null (يبقى على الوسيط كما كان).
 function directRoute(prov, env) {
@@ -30,6 +63,7 @@ function directRoute(prov, env) {
   if (!key) return null;
   const r = { prov: String(prov).toLowerCase(), url: d.url, key, label: d.label };
   if (d.responses) r.responsesUrl = d.responses;
+  if (d.noFallback) r.noFallback = true; // v-pplx-agent
   return r;
 }
 
@@ -44,9 +78,15 @@ function directModel(prov, requested, env) {
     const def = String(e.CHAT_OPENAI_MODEL || '').trim() || 'gpt-6-sol';
     return (id && DIRECT_ID_RE.test(id) && id.indexOf('/') === -1) ? { model: id, picked: true, def } : { model: def, picked: false, def };
   }
-  if (prov === 'gemini') {
+  if (prov === 'gemini') { // v-gemini-direct: اختيار المالك google/gemini-… → معرّف Google؛ بلا اختيار = flash-latest
+    if (/^google\//i.test(id)) id = id.slice(7);
+    if (/^models\//i.test(id)) id = id.slice(7);
     const def = String(e.CHAT_GEMINI_MODEL || '').trim() || 'gemini-flash-latest';
-    return { model: def, picked: false, def };
+    return (id && /^gemini-[a-z0-9._-]{1,80}$/i.test(id)) ? { model: id, picked: true, def } : { model: def, picked: false, def };
+  }
+  if (prov === 'perplexity') { // v-pplx-agent: معرّفات الـAgent API (perplexity/sonar)؛ معرّفات Sonar القديمة (sonar، sonar-pro…) يرفضها فتُترك للافتراضيّ
+    const def = String(e.CHAT_PERPLEXITY_MODEL || '').trim() || 'perplexity/sonar';
+    return (id && /^perplexity\/[a-z0-9._-]{1,60}$/i.test(id)) ? { model: id, picked: true, def } : { model: def, picked: false, def };
   }
   if (prov === 'kimi') { // v-kimi: معرّفات Moonshot نفسها (kimi-k3، kimi-k2.6…)؛ بادئة الوسيط moonshotai/ تُقصّ
     if (/^moonshotai\//i.test(id)) id = id.slice(11);
@@ -72,8 +112,28 @@ function textOf(content) {
   return content.map((b) => (b && b.type === 'text') ? String(b.text || '') : '').filter(Boolean).join('\n');
 }
 
+/* v-pro-lanes (لقطة مشترك Pro ٧٥ ١٦ أكتوبر: «أسعار السياكل» ← «ما قدرت أجيب أسعار» بلا بحث): Gemini 3 على عنوان Google المتوافق
+   يُلحق بأوّل نداء أداة في الخطوة توقيع تفكير (tool_calls[i].extra_content.google.thought_signature) ويرفض الخطوة التالية بـ400
+   «Function call is missing a thought_signature» إن لم يعد كما وصل — كان يُسقط فيفشل كلّ دور بحث عند الخطوة الثانية. التوقيعات
+   تُحفظ لكلّ دور في sigs (من chat.js) بمعرّف النداء وموديله، وتعود كما هي؛ نداء بلا توقيع منه (موديل آخر في الدور نفسه أو موديل
+   Gemini غيره) يأخذ القيمة البديلة الموثّقة لنداءات لم يولّدها Gemini 3. وGemini يقبل enum نصوصًا فقط (enum أرقام = 400 قبل أوّل حرف):
+   القيم تنتقل إلى الوصف. */
+const GEM_SKIP_SIG = 'skip_thought_signature_validator';
+function gemSigOf(tc) { const g = tc && tc.extra_content && tc.extra_content.google; return (g && typeof g.thought_signature === 'string') ? g.thought_signature : ''; }
+function gemSchema(s) {
+  if (Array.isArray(s)) return s.map(gemSchema);
+  if (!s || typeof s !== 'object') return s;
+  const out = {};
+  for (const k of Object.keys(s)) out[k] = (k === 'enum' || k === 'required') ? s[k] : gemSchema(s[k]);
+  if (Array.isArray(out.enum) && out.enum.some((v) => typeof v !== 'string')) {
+    out.description = (out.description ? out.description + ' ' : '') + '(' + out.enum.join(', ') + ')';
+    delete out.enum;
+  }
+  return out;
+}
+
 // جسم أنثروبيك ← جسم chat/completions. الكاش والتفكير وإعدادات الجهد لا مقابل لها فتُسقط.
-function toOpenAIBody(ab, prov) {
+function toOpenAIBody(ab, prov, sigs) {
   const messages = [];
   const sys = textOf(ab.system);
   if (sys) messages.push({ role: 'system', content: sys });
@@ -86,6 +146,10 @@ function toOpenAIBody(ab, prov) {
       const calls = m.content.filter((b) => b && b.type === 'tool_use').map((b) => ({
         id: b.id, type: 'function', function: { name: b.name, arguments: JSON.stringify(b.input || {}) },
       }));
+      if (prov === 'gemini' && calls.length) { // v-pro-lanes: التوقيع كما وصل من الموديل نفسه، وإلّا البديل على أوّل نداء
+        for (const c of calls) { const g = sigs && sigs.get(c.id); if (g && g.sig && g.model === ab.model) c.extra_content = { google: { thought_signature: g.sig } }; }
+        if (!calls[0].extra_content) calls[0].extra_content = { google: { thought_signature: GEM_SKIP_SIG } };
+      }
       const out = { role: 'assistant', content: text || null };
       if (calls.length) out.tool_calls = calls;
       if (text || calls.length) messages.push(out);
@@ -115,7 +179,8 @@ function toOpenAIBody(ab, prov) {
   if (prov === 'openai' || prov === 'kimi') body.stream_options = { include_usage: true };
   if (Array.isArray(ab.tools) && ab.tools.length) {
     body.tools = ab.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description || '', parameters: t.input_schema || { type: 'object', properties: {} } } }));
-    if (ab.tool_choice && ab.tool_choice.type === 'none') body.tool_choice = 'none'; // v-claude-code-level C1: الجواب الختاميّ بلا أدوات، والقائمة كما هي
+    if (prov === 'gemini') for (const t of body.tools) t.function.parameters = gemSchema(t.function.parameters); // v-pro-lanes
+    if (ab.tool_choice && ab.tool_choice.type === 'none' && prov !== 'groq') body.tool_choice = 'none'; // v-claude-code-level C1: الجواب الختاميّ بلا أدوات، والقائمة كما هي · v-groq-final: Groq يفرض none برفض التوليد (tool_use_failed) وgpt-oss يستدعي رغمه — يكفيه FINAL_NOTE
   }
   return body;
 }
@@ -160,7 +225,11 @@ function toResponsesBody(ab) {
      الموديل. الأسماء تختلف بين أجيال GPT فالسلّم none → minimal → low، وما رفضه الموديل يُذكَر (quickEffortFor). */
   const qe = (ab.thinking && ab.thinking.type === 'disabled') ? quickEffortFor(ab.model) : '';
   const oe = ab.output_config && ab.output_config.effort; // v-owner-gpt-all: جهد المالك المختار (owner-think.gptEffortFields) يغلب السلّم
-  if (oe) body.reasoning = { effort: String(oe) }; else if (qe) body.reasoning = { effort: qe };
+  // v-think-talk-all: الملخّص لا يُبثّ إلّا بطلبه. الجهد يبقى كما هو (الافتراضيّ بلا effort). التحيّة (disabled) بلا ملخّص.
+  const sum = summaryWanted(ab.model) ? { summary: 'auto' } : null;
+  if (oe) body.reasoning = Object.assign({ effort: String(oe) }, sum);
+  else if (qe) body.reasoning = { effort: qe };
+  else if (sum && !(ab.thinking && ab.thinking.type === 'disabled')) body.reasoning = sum;
   const sys = textOf(ab.system);
   if (sys) body.instructions = sys;
   if (ab.max_tokens) body.max_output_tokens = ab.max_tokens;
@@ -172,7 +241,8 @@ function toResponsesBody(ab) {
 }
 
 // v-oa-responses: بثّ /v1/responses (أحداث response.*) ← أحداث أنثروبيك بالأسطر نفسها التي تقرؤها الحلقة.
-// عناصر التفكير لا تُمرَّر (لا يُبثّ منها شيء للمستخدم)؛ وسائط النداء تصل دلتا أو كاملةً عند done — مرّة واحدة.
+// ملخّص التفكير (reasoning_summary) يُترجم كتلة thinking كي يظهر كلام المزوّد مع نفسه في الفقاعة (v-think-talk-all).
+// نصّ التفكير الخام لا يُمرَّر (ليس الملخّص المعروض). وسائط النداء تصل دلتا أو كاملةً عند done — مرّة واحدة.
 // رفض البثّ عبر reader.read() يصل إلى catch المحادثة كـ chat error؛ لا تُنهِ رسالةً ناجحةً عند سقوط المزوّد.
 function streamProtocolError(reason, detail) {
   const err = new Error('OA_STREAM_PROTOCOL_ERROR: ' + reason + (detail ? ' — ' + String(detail).slice(0, 240) : ''));
@@ -189,7 +259,7 @@ function validToolArguments(args) {
     return !!input && typeof input === 'object' && !Array.isArray(input);
   } catch (e) { return false; }
 }
-function responsesToAnthropicStream(upstreamBody, fallbackModel) {
+function responsesToAnthropicStream(upstreamBody, fallbackModel, nameBack) { // nameBack: أسماء السلك ← أسماء الحلقة (v-pplx-names)
   const enc = new TextEncoder();
   const dec = new TextDecoder();
   return new ReadableStream({
@@ -208,13 +278,27 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
       let usage = null;
       let terminal = false;
       const begin = (model) => { if (!started) { started = true; emit({ type: 'message_start', message: { model: model || fallbackModel, usage: { input_tokens: 0, output_tokens: 0 } } }); } };
+      let thinkIdx = -1, thinkHad = false;
+      const closeThink = () => { if (thinkIdx >= 0) { emit({ type: 'content_block_stop', index: thinkIdx }); thinkIdx = -1; } };
+      const pushThink = (text) => {
+        const s = typeof text === 'string' ? text : '';
+        if (!s) return;
+        if (thinkIdx < 0) {
+          if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; }
+          thinkIdx = next++;
+          emit({ type: 'content_block_start', index: thinkIdx, content_block: { type: 'thinking', thinking: '', signature: '' } });
+        }
+        emit({ type: 'content_block_delta', index: thinkIdx, delta: { type: 'thinking_delta', thinking: s } });
+        thinkHad = true;
+      };
       const closeText = () => { if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; } };
       const openCall = (oi, item) => {
+        closeThink();
         closeText();
         const idx = next++;
         const c = { idx, sent: false, args: '', done: false };
         calls.set(oi, c);
-        emit({ type: 'content_block_start', index: idx, content_block: { type: 'tool_use', id: String(item.call_id || item.id || ('call_' + idx)), name: String(item.name || ''), input: {} } });
+        emit({ type: 'content_block_start', index: idx, content_block: { type: 'tool_use', id: String(item.call_id || item.id || ('call_' + idx)), name: nameBack ? nameBack(String(item.name || '')) : String(item.name || ''), input: {} } });
         return c;
       };
       try {
@@ -237,7 +321,13 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
             if (terminal) continue;
             if (t === 'response.created' || t === 'response.in_progress') { begin(ev.response && ev.response.model); continue; }
             begin('');
-            if (t === 'response.output_text.delta' && typeof ev.delta === 'string' && ev.delta) {
+            if (t === 'response.reasoning_summary_text.delta' && typeof ev.delta === 'string') { pushThink(ev.delta); }
+            else if (t === 'response.reasoning_summary_text.done' && !thinkHad && typeof ev.text === 'string') { pushThink(ev.text); }
+            else if (t === 'response.output_item.done' && ev.item && ev.item.type === 'reasoning') {
+              if (!thinkHad && Array.isArray(ev.item.summary)) for (const p of ev.item.summary) if (p && typeof p.text === 'string') pushThink(p.text);
+              closeThink();
+            } else if (t === 'response.output_text.delta' && typeof ev.delta === 'string' && ev.delta) {
+              closeThink();
               if (textIdx < 0) { textIdx = next++; emit({ type: 'content_block_start', index: textIdx, content_block: { type: 'text', text: '' } }); }
               emit({ type: 'content_block_delta', index: textIdx, delta: { type: 'text_delta', text: ev.delta } });
             } else if (t === 'response.output_item.added' && ev.item && ev.item.type === 'function_call') {
@@ -269,6 +359,7 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
           if (!c.done || !validToolArguments(c.args)) throw streamProtocolError('incomplete function_call arguments');
         }
         begin('');
+        closeThink();
         closeText();
         for (const c of calls.values()) emit({ type: 'content_block_stop', index: c.idx });
         if (usage) {
@@ -289,10 +380,10 @@ function responsesToAnthropicStream(upstreamBody, fallbackModel) {
 // v-oa-responses: موديل غير موجود أو لا يملكه المفتاح (نصّ OpenAI المعتاد) — غير ذلك من 404/400 رفضٌ للطلب لا للموديل.
 const OA_MODEL_MISSING_RE = /model_not_found|does not exist|do not have access|not have access to (?:the )?model/i;
 
-const STOP = { tool_calls: 'tool_use', function_call: 'tool_use', length: 'max_tokens' };
+const STOP = { tool_calls: 'tool_use', function_call: 'tool_use', length: 'max_tokens', content_filter: 'refusal' }; // مراجعة v-pro-lanes: حجب الرقابة رفض لا «ختام فارغ» يُعاد على مسار آخر
 
 // بثّ chat/completions ← بثّ أحداث أنثروبيك بالأسطر نفسها التي تقرؤها الحلقة (data: {...}).
-function toAnthropicStream(upstreamBody, fallbackModel) {
+function toAnthropicStream(upstreamBody, fallbackModel, sigs) { // sigs: v-pro-lanes — توقيعات Gemini 3 لهذا الدور (معرّف النداء ← {sig, model})
   const enc = new TextEncoder();
   const dec = new TextDecoder();
   return new ReadableStream({
@@ -308,11 +399,38 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
       let textIdx = -1;      // كتلة النصّ المفتوحة
       const toolIdx = new Map(); // فهرس نداء OpenAI ← فهرس كتلة أنثروبيك
       const toolArgs = new Map();
+      const toolIds = new Map(); // v-pro-lanes: معرّف كلّ نداء كما بُثّ (مفتاح التوقيع)
       let stop = null;
       let usage = null;
       let doneMarker = false;
       const begin = (model) => { if (!started) { started = true; emit({ type: 'message_start', message: { model: model || fallbackModel, usage: { input_tokens: 0, output_tokens: 0 } } }); } };
-      const closeText = () => { if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; } };
+      let thinkIdx = -1;
+      const closeThink = () => { if (thinkIdx >= 0) { emit({ type: 'content_block_stop', index: thinkIdx }); thinkIdx = -1; } };
+      const pushThink = (text) => {
+        const s = typeof text === 'string' ? text : '';
+        if (!s) return;
+        if (thinkIdx < 0) {
+          if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; }
+          thinkIdx = next++;
+          emit({ type: 'content_block_start', index: thinkIdx, content_block: { type: 'thinking', thinking: '', signature: '' } });
+        }
+        emit({ type: 'content_block_delta', index: thinkIdx, delta: { type: 'thinking_delta', thinking: s } });
+      };
+      const reasonPiece = (d) => {
+        if (!d || typeof d !== 'object') return '';
+        if (Array.isArray(d.reasoning_details) && d.reasoning_details.length) {
+          return d.reasoning_details.map((p) => {
+            if (!p || p.type === 'reasoning.encrypted') return '';
+            if (typeof p.summary === 'string') return p.summary;
+            if (typeof p.text === 'string' && p.text !== '[REDACTED]') return p.text;
+            return '';
+          }).join('');
+        }
+        if (typeof d.reasoning_content === 'string') return d.reasoning_content;
+        if (typeof d.reasoning === 'string') return d.reasoning;
+        return '';
+      };
+      const closeText = () => { closeThink(); if (textIdx >= 0) { emit({ type: 'content_block_stop', index: textIdx }); textIdx = -1; } };
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -337,7 +455,10 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
             const c = ch.choices && ch.choices[0];
             if (!c) continue;
             const d = c.delta || {};
+            const rt = reasonPiece(d) || ((d.reasoning_content == null && d.reasoning == null && !d.reasoning_details && c.message) ? reasonPiece(c.message) : '');
+            if (rt) pushThink(rt);
             if (typeof d.content === 'string' && d.content) {
+              closeThink();
               if (textIdx < 0) { textIdx = next++; emit({ type: 'content_block_start', index: textIdx, content_block: { type: 'text', text: '' } }); }
               emit({ type: 'content_block_delta', index: textIdx, delta: { type: 'text_delta', text: d.content } });
             }
@@ -348,8 +469,12 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
                 const idx = next++;
                 toolIdx.set(k, idx);
                 toolArgs.set(k, '');
-                emit({ type: 'content_block_start', index: idx, content_block: { type: 'tool_use', id: tc.id || ('call_' + idx), name: (tc.function && tc.function.name) || '', input: {} } });
+                let id = tc.id || ('call_' + idx);
+                if (sigs) { const b = id; for (let n = 2; sigs.has(id); n++) id = b + '_' + n; sigs.set(id, { sig: '', model: fallbackModel }); } // v-pro-lanes: معرّف مكرّر بين الخطوات لا يأخذ توقيع غيره
+                toolIds.set(k, id);
+                emit({ type: 'content_block_start', index: idx, content_block: { type: 'tool_use', id, name: (tc.function && tc.function.name) || '', input: {} } });
               }
+              if (sigs) { const g = gemSigOf(tc); if (g) sigs.get(toolIds.get(k)).sig = g; }
               const args = tc.function && tc.function.arguments;
               if (args) {
                 toolArgs.set(k, toolArgs.get(k) + String(args));
@@ -360,6 +485,7 @@ function toAnthropicStream(upstreamBody, fallbackModel) {
           }
         }
         if (!doneMarker || !stop) throw streamProtocolError('stream ended without [DONE] and finish_reason');
+        if (stop === 'end_turn' && toolIdx.size) stop = 'tool_use'; // v-pro-lanes: نداءات كاملة مع finish_reason «stop» (عنوان Google المتوافق) نداءات لا جواب فارغ
         if (stop === 'tool_use') {
           for (const args of toolArgs.values()) {
             if (!validToolArguments(args)) throw streamProtocolError('incomplete tool arguments JSON');
@@ -395,9 +521,14 @@ const TPM_NOTE = '[هذا الدور بلا أدوات: حدّ مفتاح Groq �
 /* v-prov-self (٣): «ما أريد كلمة ما أقدر» — في الجسم المقصوص تبقى الأدوات الصغيرة ذات الصلة بالرسالة الأخيرة إن اتّسعت: صورة مرفقة أو رسم ←
    أداتا الصور (نتيجتهما رمز قصير)، وسؤال معلومة ← البحث. أدوات GitHub نتائجها عشرات الآلاف من الحروف فلا تتّسع لحدّ الدقيقة أصلًا. */
 const LEAN_IMG_RE = /(?:ارسم|أرسم|ارسمي|رسمة|صور[ةه]|لوحة|شعار|لوجو|بوستر|image|draw|picture|logo|poster)/i;
+const LEAN_VID_RE = /(?:فيديو|ڤيديو|مقطع|كليب|حرّ?ك|video|animate)/i; // v-owner-solo-all: طلب فيديو يُبقي أداته إن اتّسعت (كانت تُسقط فيقول «ما أقدر»)
 const LEAN_Q_RE = /[؟?]|(?:^|[\s،,])(?:كم|متى|وين|فين|من هو|من هي|ما هو|ما هي|ايش|إيش|شو|وش|أخبار|اخبار|سعر|أسعار|اسعار|طقس|نتيجة|مباراة|who|what|when|where|price|news|weather)(?=$|[\s،,؟?])/i;
 const TPM_NOTE_TOOLS = (names) => '[هذا الدور بأدوات محدودة لضيق حدّ مفتاح Groq في الدقيقة: ' + names.join('، ') + ' فقط. استعملها بنفسك حين تلزم؛ وما ليس معك في هذا الدور فلا تدّعِه — قل في سطر إنّه يحتاج رسالة أقصر أو مفتاح Groq بحدّ أعلى.]';
-function fitGroqTpm(body, errText) {
+/* v-plan-models (خريطة الباقات ١٥ أكتوبر): الملاحظتان أعلاه للمالك — تسمّيان المزوّد و«عمران» وتأمران الموديل بأن يقول «مفتاح Groq»، وكانتا تُحقنان
+   في إعادة المشترك المقصوصة أيضًا (قاعدة المالك: لا اسم مزوّد في نصّ يراه المستخدم). لغير المالك صيغة محايدة بلا اسم ولا وعد. */
+const TPM_NOTE_USER = '[هذا الدور بلا أدوات لضيق السياق المتاح الآن. أجب ممّا تعرفه، ولا تدّعِ بحثًا ولا قراءة ملفّ ولا تعديلًا؛ وإن طُلب شيء منها فقل في سطر إنّه غير متاح في هذه اللحظة ويمكن إعادة المحاولة بعد قليل.]';
+const TPM_NOTE_TOOLS_USER = (names) => '[هذا الدور بأدوات محدودة لضيق السياق المتاح الآن: ' + names.join('، ') + ' فقط. استعملها حين تلزم؛ وما ليس معك فلا تدّعِه — قل في سطر إنّه غير متاح في هذه اللحظة.]';
+function fitGroqTpm(body, errText, owner) {
   const t = String(errText || '');
   const m = /Limit\s+(\d+)\s*,\s*Requested\s+(\d+)/i.exec(t);
   if (!m || !/tokens per minute|\bTPM\b/i.test(t)) return null;
@@ -431,7 +562,7 @@ function fitGroqTpm(body, errText) {
   const TAIL_HEAD = '\n\n[سياق هذا الدور من النظام', tailAt = luRaw.indexOf(TAIL_HEAD);
   const luText = tailAt >= 0 ? luRaw.slice(0, tailAt) : luRaw, mediaLocked = tailAt >= 0 && /لا تستدعِ generate_image/.test(luRaw.slice(tailAt));
   const luImg = !!(lastUser && Array.isArray(lastUser.content) && lastUser.content.some((x) => x && x.type === 'image_url'));
-  const want = (!mediaLocked && (luImg || LEAN_IMG_RE.test(luText)) ? ['edit_image', 'generate_image'] : []).concat(LEAN_Q_RE.test(luText) ? ['web_search'] : []);
+  const want = (!mediaLocked && LEAN_VID_RE.test(luText) ? ['generate_video'] : []).concat(!mediaLocked && (luImg || LEAN_IMG_RE.test(luText)) ? ['edit_image', 'generate_image'] : []).concat(LEAN_Q_RE.test(luText) ? ['web_search'] : []);
   const wantTools = (body.tools || []).filter((x) => x && x.function && want.indexOf(x.function.name) !== -1);
   /* (٢) بلا أدوات، والنظام: الفقرة الأولى (الهويّة والأسلوب) و[هويّتك] إن كانت آخرها، ثمّ الباقي بترتيبه ما اتّسع لـ٤٠٪ من الحدّ —
      الحدّ للدقيقة كلّها لا للطلب: جسم بستّة آلاف من ثمانية يردّ «مرحبا» ثمّ يرفض الرسالة التالية 429 (لقطة المالك الثانية). */
@@ -441,7 +572,7 @@ function fitGroqTpm(body, errText) {
   const idLast = paras.length > 1 && /^\[هويّتك\]/.test(paras[paras.length - 1]);
   const mid = paras.slice(1, idLast ? -1 : undefined);
   let tools = wantTools.slice();
-  const build = (k) => lean([paras[0] || ''].concat(mid.slice(0, k), idLast ? [paras[paras.length - 1]] : [], [tools.length ? TPM_NOTE_TOOLS(tools.map((x) => x.function.name)) : TPM_NOTE]).filter(Boolean).join('\n\n'), tools);
+  const build = (k) => lean([paras[0] || ''].concat(mid.slice(0, k), idLast ? [paras[paras.length - 1]] : [], [tools.length ? (owner ? TPM_NOTE_TOOLS : TPM_NOTE_TOOLS_USER)(tools.map((x) => x.function.name)) : (owner ? TPM_NOTE : TPM_NOTE_USER)]).filter(Boolean).join('\n\n'), tools);
   while (tools.length && est(build(0)) > budget) tools = tools.slice(0, -1); // الأدوات ذات الصلة ما اتّسعت لأقصر نظام، من الآخر
   if (!fitsAll(build(0))) return null;
   let k = 0;
@@ -460,6 +591,34 @@ function groqRetryAfter(text) {
   return sec > 0 ? sec : null;
 }
 const GROQ_WAIT_MAX = 40;
+/* v-direct-429 (لقطة المالك ١٥ أكتوبر: Perplexity «ما قدرت أردّ الحين — خطأ 429» على طلب الكود، وطلبه «أريد أن أنسى هذه الأخطاء»):
+   انتظار الحدّ كان لـGroq وحده وبنصّ «try again in». الآن كلّ مزوّد مباشر وعلى المسارين (responses وchat): إن حدّد المزوّد موعدًا
+   (Retry-After ثوانٍ أو تاريخ، أو نصّ الجسم) لا يتجاوز CFG.waitMax (= GROQ_WAIT_MAX، تحت حارس الصمت) نُنتظره مرّة واحدة ونعيد النداء
+   نفسه. بلا موعد = لا انتظار هنا: طبقة C4 في owner-loop تعيد مرّتين بانتظار قصير متدرّج. موعد أبعد من الحدّ = لا نوم (كما كان لـGPT
+   وGroq اليوميّ) فيصل الموعد للمالك سطرًا. نصّ عن الرصيد أو الحصّة (quota/credit) لا يُنتظر عليه — ليس عابرًا. */
+const CFG = { waitMax: GROQ_WAIT_MAX };
+const NOT_TRANSIENT_RE = /quota|credit|balance|insufficient|billing|payment/i;
+function retryAfterOf(headers, text) {
+  let h = '';
+  try { h = (headers && typeof headers.get === 'function') ? String(headers.get('retry-after') || '') : ''; } catch (e) { h = ''; }
+  if (h) {
+    const n = Number(h);
+    if (Number.isFinite(n) && n > 0) return n;
+    const d = Date.parse(h);
+    if (Number.isFinite(d) && d - Date.now() > 0) return (d - Date.now()) / 1000;
+  }
+  const g = groqRetryAfter(text);
+  if (g) return g;
+  const m = /retry[_ -]?after["':\s]+([\d.]+)|retry (?:in|after)\s+([\d.]+)\s*s/i.exec(String(text || ''));
+  const n = m ? Number(m[1] || m[2]) : 0;
+  return n > 0 ? n : null;
+}
+/** الانتظار بالملّي ثانية قبل إعادة الـ429 رقم nth (الأولى فقط)، أو 0 = لا انتظار (بلا موعد، أو موعد أبعد من الحدّ، أو رصيد). */
+function wait429Ms(headers, text, nth) {
+  if (nth >= 1 || NOT_TRANSIENT_RE.test(String(text || ''))) return 0;
+  const hint = retryAfterOf(headers, text);
+  return (hint && hint <= CFG.waitMax) ? Math.ceil(hint * 1000) + 300 : 0;
+}
 const pause = (ms, signal) => new Promise((res) => { const id = setTimeout(res, ms); if (signal) signal.addEventListener('abort', () => { clearTimeout(id); res(); }, { once: true }); });
 
 // يرسل جسم أنثروبيك إلى المزوّد مباشرةً ويرجع كائنًا بشكل Response تقرؤه الحلقة (ok · status · text · body).
@@ -470,17 +629,27 @@ async function directFetch(route, anthropicBody, opts) {
   const sig = o.signal ? { signal: o.signal } : {}; // v-claude-code-level C5: حارس صمت المالك يقطع النداء المباشر أيضًا
   if (route.responsesUrl) {
     let rb = toResponsesBody(anthropicBody);
+    if (route.prov === 'perplexity') { delete rb.store; delete rb.reasoning; pplxWire(rb); } // v-pplx-agent: حقلا OpenAI وحده · v-pplx-names: الأسماء المحجوزة
     let rl = null;
-    let capDropped = false;
+    let capDropped = false, waits = 0; // v-direct-429
     let ownerEff = !!(anthropicBody.output_config && anthropicBody.output_config.effort); // v-owner-gpt-all
-    for (let attempt = 0; attempt < 2 + QUICK_EFFORTS.length; attempt++) {
+    for (let attempt = 0; attempt < 4 + QUICK_EFFORTS.length; attempt++) {
       const r = await f(route.responsesUrl, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(rb) }, sig));
-      if (r.ok && r.body) return { ok: true, status: r.status, model: rb.model, api: 'responses', text: async () => '', body: responsesToAnthropicStream(r.body, rb.model) };
+      if (r.ok && r.body) return { ok: true, status: r.status, model: rb.model, api: 'responses', text: async () => '', body: responsesToAnthropicStream(r.body, rb.model, route.prov === 'perplexity' ? pplxBack : null) };
       const t = await r.text().catch(() => '');
       rl = { ok: false, status: r.status, model: rb.model, api: 'responses', text: async () => t, headers: r.headers || null }; // v-groq-tpm: retry-after يصل إعادة C4 (GPT كان يعيد 429 ثلاثًا بلا انتظار)
+      if (r.status === 429) { const w = wait429Ms(r.headers, t, waits); if (w) { waits++; await pause(w, o.signal); if (o.signal && o.signal.aborted) break; continue; } break; } // v-direct-429
       // v-owner-auto: جهد مرفوض = الدرجة التالية من السلّم، وبعد آخرها بلا reasoning (سلوك ما قبل الإصلاح).
       /* v-owner-gpt-all: جهد اختاره المالك ورُفض = إعادة واحدة بلا reasoning (افتراضيّ الموديل) ويُذكر — لا يُحسب درجة من
          سلّم «بلا تفكير» (كان max المرفوض يقفز إلى none، عكس ما اختاره). */
+      if (r.status === 400 && rb.reasoning && rb.reasoning.summary && /summary/i.test(t)) {
+        summaryDrop(rb.model);
+        rb = Object.assign({}, rb);
+        const rest = Object.assign({}, rb.reasoning);
+        delete rest.summary;
+        if (Object.keys(rest).length) rb.reasoning = rest; else delete rb.reasoning;
+        continue;
+      }
       if (r.status === 400 && rb.reasoning && ownerEff && /reasoning|effort/i.test(t)) {
         ownerEff = false;
         try { require('./owner-think.js').forgetEffort(anthropicBody.model); } catch (e) { /* guard-ok — الذاكرة تحسين */ }
@@ -495,15 +664,21 @@ async function directFetch(route, anthropicBody, opts) {
         continue;
       }
       if (!capDropped && r.status === 400 && rb.max_output_tokens && /max_output_tokens/i.test(t)) { capDropped = true; rb = Object.assign({}, rb); delete rb.max_output_tokens; continue; }
+      /* v-pplx-names: اسم محجوز جديد لم نعرفه = يُضاف للمجموعة ويُعاد الطلب بأدواته (مرّة لكلّ اسم) — لا إسقاط الأدوات كلّها */
+      if (route.prov === 'perplexity' && r.status === 400 && rb.tools) { const nr = pplxReservedIn(t, rb); if (nr) { PPLX_RESERVED.add(nr); rb = pplxWire(Object.assign({}, rb)); continue; } }
+      /* v-pplx-agent: موديل Perplexity رفض أدوات الدوالّ = إعادة واحدة بلاها وبسطر يقول ذلك للموديل — جواب صادق لا «ما قدرت أردّ» */
+      if (route.prov === 'perplexity' && r.status === 400 && rb.tools && /tool|function/i.test(t)) { rb = Object.assign({}, rb, { instructions: (rb.instructions ? rb.instructions + '\n\n' : '') + PPLX_NO_TOOLS }); delete rb.tools; delete rb.tool_choice; continue; }
       break;
     }
+    if (route.noFallback) return rl; // v-pplx-agent: لا chat/completions بعدها (تقاعد) — الفشل وسببه للمالك (v-owner-solo)
     // موديل مرفوض = يُعاد كما هو فيرجع chat.js للافتراضيّ بسطر حالة؛ مفتاح/رصيد/حدّ (401/402/403/429/5xx) = كذلك
     // (المسار القديم بالمفتاح نفسه سيرفض مثله). غير ذلك (400/404 على شكل الطلب) = المسار القديم أدناه، ويُسجَّل السبب.
     const rt = await rl.text();
     if (OA_MODEL_MISSING_RE.test(rt) || (rl.status !== 400 && rl.status !== 404)) return rl;
     try { require('./log-error.js').logError('oa-direct/responses-' + rl.status, new Error(rt.slice(0, 280) || ('responses ' + rl.status)), { action: 'responses-fallback', model: rb.model }); } catch (e) { /* التسجيل تحسين */ }
   }
-  const base = toOpenAIBody(anthropicBody, route.prov);
+  const gSigs = route.prov === 'gemini' ? (o.sigs || null) : null; // v-pro-lanes
+  const base = toOpenAIBody(anthropicBody, route.prov, gSigs);
   let models = [base.model];
   if (route.prov === 'groq' && o.fallbackModels) {
     // موديل رفضه Groq في هذه الدالّة الدافئة لا يُعاد تجريبه أوّلًا في كلّ رسالة.
@@ -514,28 +689,33 @@ async function directFetch(route, anthropicBody, opts) {
   let last = null;
   for (const model of models) {
     let body = Object.assign({}, base, { model });
-    let capDropped = false, tpmFitted = false, waited = false;
-    for (let attempt = 0; attempt < 4; attempt++) {
+    let capDropped = false, tpmFitted = false, waits = 0; // v-direct-429
+    for (let attempt = 0; attempt < 6; attempt++) {
       const r = await f(route.url, Object.assign({ method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + route.key }, body: JSON.stringify(body) }, sig));
       if (r.ok && r.body) {
-        if (route.prov === 'groq') rememberWorking('groq', model);
-        return { ok: true, status: r.status, model, text: async () => '', body: toAnthropicStream(r.body, model) };
+        if (route.prov === 'groq') rememberWorking('groq-direct', model); // v-plan-models: لا يغيّر ترتيب المجّانيّ (20b أوّلًا) — كان المباشر (120b) يقدّم موديله ستّ ساعات
+        return { ok: true, status: r.status, model, text: async () => '', body: toAnthropicStream(r.body, model, gSigs) };
       }
       const t = await r.text().catch(() => '');
       last = { ok: false, status: r.status, model, text: async () => t, headers: r.headers || null }; // v-groq-tpm: retry-after يصل إعادة C4 (owner-loop) فلا تعيد بعد ٠٫٨ ث ما قال Groq إنّه بعد ٣٠
       if (!capDropped && r.status === 400 && body.max_completion_tokens && /max_(?:completion_)?tokens/i.test(t)) { capDropped = true; body = Object.assign({}, body); delete body.max_completion_tokens; continue; }
-      if (!tpmFitted && route.prov === 'groq' && r.status === 413) { const fit = fitGroqTpm(body, t); if (fit) { tpmFitted = true; body = fit; continue; } }
-      if (!waited && route.prov === 'groq' && r.status === 429 && /per minute|\bTPM\b|\bRPM\b/i.test(t)) { const w = groqRetryAfter(t); if (w && w <= GROQ_WAIT_MAX) { waited = true; await pause(Math.ceil(w * 1000) + 300, o.signal); if (o.signal && o.signal.aborted) break; continue; } }
+      if (!tpmFitted && route.prov === 'groq' && r.status === 413) { const fit = fitGroqTpm(body, t, !!o.owner); if (fit) { tpmFitted = true; body = fit; continue; } }
+      if (r.status === 429) { const w = wait429Ms(r.headers, t, waits); if (w) { waits++; await pause(w, o.signal); if (o.signal && o.signal.aborted) break; continue; } } // v-direct-429: كلّ مزوّد لا Groq وحده
       break;
     }
-    if (!isModelErrorStatus(last.status, await last.text())) break;
-    if (route.prov === 'groq' && o.fallbackModels) deadModels.add(model);
+    /* v-plan-models: حدود Groq لكلّ موديل — 429/413 على موديل (حدّ دقيقة أو يوم) يجرّب التالي في القائمة قبل أن يخرج من Groq، ولا يُعدّ ميّتًا */
+    const busy = route.prov === 'groq' && o.fallbackModels && (last.status === 429 || last.status === 413);
+    { const lt = await last.text(); if ((!busy && !isModelErrorStatus(last.status, lt)) || /tool_use_failed/.test(lt)) break; } // v-groq-final: «model called a tool» رفضٌ للتوليد لا موديل ميّت
+    if (route.prov === 'groq' && o.fallbackModels && !busy) deadModels.add(model);
   }
   return last;
 }
 const deadModels = new Set();
 
 // v-owner-auto: سلّم «بلا تفكير» لكلّ موديل في هذه الدالّة الدافئة: أوّل درجة لم يرفضها. '' = الموديل رفضها كلّها.
+const summaryOff = new Set();
+function summaryWanted(model) { return !summaryOff.has(String(model || '')); }
+function summaryDrop(model) { if (model) summaryOff.add(String(model)); }
 const QUICK_EFFORTS = ['none', 'minimal', 'low'];
 const quickRejected = new Map();
 function quickEffortFor(model) {
@@ -550,4 +730,4 @@ function quickEffortRejected(model, effort) {
   quickRejected.set(k, bad);
 }
 
-module.exports = { directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected };
+module.exports = { PPLX_NO_TOOLS, PPLX_RESERVED, pplxWire, pplxBack, pplxReservedIn, directRoute, directModel, directFetch, fitGroqTpm, groqRetryAfter, retryAfterOf, wait429Ms, __cfg: CFG, GROQ_WAIT_MAX, toOpenAIBody, toAnthropicStream, toResponsesBody, gemSchema, GEM_SKIP_SIG, responsesToAnthropicStream, DIRECT, GROQ_ALIAS, __deadModels: deadModels, __quickRejected: quickRejected, __summaryOff: summaryOff };

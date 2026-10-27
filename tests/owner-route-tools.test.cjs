@@ -32,6 +32,7 @@ const S = {
   sys: cut(A9, '    const __bldRe = /(ابني', '    // v469: Q&A = بروم خفيف'),
   prov: cut(A9, '      const isBuildTask = __routeFix && !__gateNoBuild;', '      if(__gateApprovedText && __toolsWillRun){'),
   notes: cut(A9, '      if(__gateApprovedText && __toolsWillRun){', '      // v469: Q&A system prompt'),
+  repoNote: cut(A9, 'function omranOwnerRepoNote(', '\nasync function __sendPromptCore'),
 };
 const H6 = [
   cut(A6, 'const OMRAN_EDIT_BIG = 24000;', '\n'),
@@ -54,6 +55,7 @@ function makeCtx(owner, toolsOn) {
   window.window = window;
   vm.createContext(ctx);
   vm.runInContext(H6, ctx);
+  vm.runInContext(S.repoNote, ctx); /* v-prov-app-edit: الدالّة خارج __sendPromptCore */
   return ctx;
 }
 
@@ -78,7 +80,7 @@ const TURN = `(async function __turn(INPUT, CUR){
   const chatStatus = { isReleased: () => true, note(){}, phase(){}, release(){} };
   ${S.prov}
   ${S.notes}
-  return { __gateNoBuild, __routeFix, __editIntent, __ownerFree, __effProv, __toolsWillRun,
+  return { text, __gateNoBuild, __routeFix, __editIntent, __ownerFree, __effProv, __toolsWillRun,
     __ownerBuildAsk: typeof __ownerBuildAsk === 'undefined' ? null : __ownerBuildAsk,
     notes: apiMessages.slice(apiMessages.findIndex(m => m.role === 'user') + 1).filter(m => m.role === 'system').map(m => String(m.content)) };
 })`;
@@ -91,7 +93,7 @@ async function turn(owner, text, cur, toolsOn) {
   return JSON.parse(JSON.stringify(await vm.runInContext(TURN, ctx)(text, cur))); // مصفوفات vm من عالم آخر — تُنسخ للمقارنة
 }
 const GATE = 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن';
-const OPEN = 'المشروع المفتوح = عدّله في الردّ (رقعة أو ملفّ كامل)؛ مستودع التطبيق فقط إن ذكره صراحةً (مستودع/GitHub/التطبيق الحيّ)';
+const OPEN = 'المشروع المفتوح = عدّله في الردّ (رقعة أو ملفّ كامل)؛ مستودع التطبيق فقط إن ذكره صراحةً (مستودع/GitHub/التطبيق/الواجهة)';
 const FIX = 'صلّح الخطأ في زر الإرسال';
 const BUILD = 'ابني لي لعبة ثعبان';
 const EDIT = 'عدّل لون الزر في الصفحة اللي سويتها';
@@ -145,14 +147,18 @@ test('٥. غير المالك على طلب بناء: لا ReferenceError (إع�
   assert.ok(gateBranch.indexOf('omranOwnerUi()') < gateBranch.indexOf('&& !omranEditBigOpen(getCurrent())){'), 'قبل المرساة المثبّتة في chat-edit');
 });
 
-test('٦. المالك بلا كود مفتوح: الأسئلة كما كانت (أدوات بلا تعليمات إضافيّة)، وموافقة «نعم» على عرض بناء ما زالت تبني', async () => {
+test('٦. المالك بلا كود مفتوح: الأسئلة كما كانت (أدوات بلا تعليمات إضافيّة)، و«نعم» على عرض مزوّده تصله كما كتبها — غير المالك كما كان', async () => {
   const q = await turn(true, 'وش أخبار الذهب اليوم', fresh());
   assert.equal(q.__toolsWillRun, true); assert.deepEqual(q.notes, []);
-  const offered = fresh();
-  offered.messages.push({ role: 'user', content: 'عندي فكرة لعبة' }, { role: 'assistant', content: 'أقدر أبنيلك لعبة ثعبان بسيطة، تبيني أبدأ البناء؟' });
-  const yes = await turn(true, 'نعم', offered);
+  const offered = () => { const c = fresh(); c.messages.push({ role: 'user', content: 'عندي فكرة لعبة' }, { role: 'assistant', content: 'أقدر أبنيلك لعبة ثعبان بسيطة، تبيني أبدأ البناء؟' }); return c; };
+  /* v-owner-solo-all: كانت «نعم» تُستبدل بأمر «ابنِ ملفّ html واحدًا» — فـ«نعم» على «أسوي لك طلب سحب؟» تبني صفحة محادثة،
+     و«نعم ادمج» بعد «أدمج وأنشر؟» تصل الخادم طلبًا قديمًا فترفض بوّابة «ادمج». مزوّد المالك يرى عرضه في السجلّ ويكمله بنفسه. */
+  const yes = await turn(true, 'نعم', offered());
+  assert.equal(yes.text, 'نعم', 'كلام المالك نفسه');
   assert.equal(yes.__toolsWillRun, true);
-  assert.equal(yes.notes.length, 1); assert.match(yes.notes[0], /^وافق المستخدم على البناء/);
+  assert.deepEqual(yes.notes, [], 'لا أمر «ملفّ html واحد» يُفرض على مزوّده');
+  const other = await turn(false, 'نعم', offered());
+  assert.match(other.text, /^نعم، ابدأ الآن ببناء/, 'غير المالك: الموافقة على العرض تبني كما كانت');
 });
 
 test('٧. المالك ومفتاح الأدوات مطفأ: «صلّح…» يذهب للمسار بلا أدوات، فلا تُرسَل تعليمة المشروع المفتوح (كلامها عن المستودع للأدوات وحدها)', async () => {
@@ -172,4 +178,16 @@ test('٨. نيّة بناء المالك تُحفظ من شرط البوّابة
   }
   const other = await turn(false, 'أبي لعبة ثعبان', fresh());
   assert.equal(other.__ownerBuildAsk, false, 'غير المالك: لا شيء'); assert.equal(other.__gateNoBuild, true, 'وبوّابته كما كانت');
+});
+
+const REPO = 'طلب على التطبيق الحيّ = اقرأ بـread_github ثمّ عدّل بـedit_github';
+test('٩. طلب على التطبيق نفسه والمشروع مفتوح: المزوّد يعدّل المستودع لا المعاينة — «عدّل التطبيق» كانت تُمنَع من GitHub', async () => {
+  for (const q of ['عدّل التطبيق: رجّع صور لمسات الديكور', 'غيّر الواجهة', 'صلّح الإعدادات', 'ارفع تعديل على المستودع', 'أفكارك تعديلات على التطبيق المزودين لين الحين مش قادرين']) {
+    const r = await turn(true, q, withCode());
+    assert.equal(r.__toolsWillRun, true, q);
+    assert.ok(r.notes.some((n) => n.includes(REPO)), q + ': تعليمة المستودع — ' + JSON.stringify(r.notes));
+    assert.ok(!r.notes.some((n) => n.includes('مستودع التطبيق فقط إن ذكره صراحةً')), q + ': لا منع GitHub');
+  }
+  const page = await turn(true, EDIT, withCode());
+  assert.deepEqual(page.notes, [OPEN], 'تعديل الصفحة المبنية يبقى على المعاينة');
 });

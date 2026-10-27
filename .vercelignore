@@ -24,7 +24,6 @@ js/app-15-floorplan.js
 js/app-17-agent-tools.js
 # v-vercelignore-parts: الأجزاء التي أُضيفت بعد القائمة الأولى (كانت تُنشر مفردةً بجانب الحزمة).
 # tests/vercelignore-parts.test.cjs يفشل إن وُلد جزء بلا سطره هنا.
-js/app-00-intro.js
 js/app-05-img-save.js
 js/app-05-save-media.js
 js/app-05-share-text.js
@@ -56,6 +55,13 @@ js/app-33-plans-gate.js
 js/app-34-gen-wait.js
 js/app-35-inspire.js
 js/app-36-clean-ui.js
+js/app-37-cards.js
+js/app-38-read-panel.js
+js/app-39-work-log.js
+js/app-40-chat-follow.js
+js/app-41-three-colors.js
+js/app-42-call-agent.js
+js/app-43-maha-app.js
 js/app-99-boot-ok.js
 
 # Change specs — internal notes, not part of the product.
@@ -69,6 +75,10 @@ source-code.zip
 
 # Scratch output from the in-browser ffmpeg pipeline.
 videos_tmp/
+
+# v-root-tidy: ملفّات قديمة نُقلت من الجذر (لقطات تشخيص، أرشيف مصدر، مقاطع ffmpeg مؤقّتة) —
+# محفوظة في المستودع ولا تُنشر.
+archive/
 
 # Marketing renders and demo clips. Nothing in the app links to these paths —
 # the two demo videos the UI actually plays are served from Vercel Blob
@@ -104,6 +114,9 @@ knowledge/
 
 # v-cc-bridge: جسر Claude Code يعمل على خادم المالك لا على Vercel.
 cc-bridge/
+
+# v-call-agent: خدمة الاتّصال (Twilio ↔ الصوت) تعمل على Railway لا على Vercel، ومصدرها لا يُنشر على الـCDN.
+call-relay/
 
 # v-cc-playbook: مهارات المشروع لـClaude Code تعيش في المستودع لا على الـCDN.
 .claude/

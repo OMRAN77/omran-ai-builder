@@ -55,8 +55,9 @@
       b.onclick = function(){ if(a.copy){ if(copyText(text)) toast(tt('msgShareCopied', 'نُسخ الردّ — الصقه في التطبيق الذي تريده', 'Reply copied — paste it in the app you want')); close(); return; } openExternal(a.u); close(); };
       gr.appendChild(b);
     });
-    /* طابع الإصدار (رمادي صغير) — للتشخيص من لقطة الشاشة */
-    try{
+    /* طابع الإصدار (رمادي صغير) — للتشخيص من لقطة الشاشة. v-nav-cards-menus: للمالك وحده كأدوات التشخيص الأخرى (v-owner-solo) —
+       كان يظهر لكلّ مستخدم نصًّا لاتينيًّا تقنيًّا «v e77f4e30 · share:no» */
+    if(typeof omranOwnerUi === 'function' && omranOwnerUi()) try{
       var sc = document.querySelector('script[src*="app.bundle.js"]');
       var vv = sc ? (String(sc.getAttribute('src') || '').split('v=')[1] || '') : '';
       var vd = document.createElement('div'); vd.style.cssText = 'margin-top:8px;font-size:10px;opacity:.45;text-align:center;direction:ltr;';
@@ -96,7 +97,7 @@
     x.textBaseline = 'alphabetic';
     x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left';
     var ax = rtl ? W - pad : pad;
-    x.fillText('عمران AI', ax, 92);
+    x.fillText('om ai', ax, 92);
     x.fillStyle = 'rgba(212,175,55,.45)'; x.fillRect(pad, 118, W - pad * 2, 2);
     x.fillStyle = '#f3efe4'; x.font = font;
     lines.forEach(function(l, i){ x.fillText(l, ax, head + (i + 1) * lh - Math.round(lh * 0.3)); });

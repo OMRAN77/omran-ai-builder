@@ -57,8 +57,9 @@ function boot(opts) {
     const r = responses[url] || { ok: true, json: async () => ({}) };
     return Promise.resolve({ ok: r.ok !== false, clone: () => ({ json: async () => (r.json ? r.json() : {}) }) });
   };
-  const win = { __swallow() {}, fetch: origFetch, focus() { win._focused = true; }, __i18nDict: () => ({}) };
-  const MutationObserverFake = function (fn) { this.observe = () => {}; };
+  const win = Object.assign({ __swallow() {}, fetch: origFetch, focus() { win._focused = true; }, __i18nDict: () => ({}) }, o.win || {});
+  const MutationObserverFake = o.MO || function (fn) { this.observe = () => {}; };
+  if (o.section) els.notifSection = o.section;
   new Function('window', 'document', 'localStorage', 'sessionStorage', 'Notification', 'MutationObserver', src)
     (win, document, localStorage, localStorage, o.supported ? NotificationFake : undefined, MutationObserverFake);
   return { win, document, els, body, mem, ls, made, perms, listeners, setPerm: (p) => { o.perm = p; } };
@@ -190,7 +191,7 @@ test('٤. المفتاح: تفعيله يطلب الإذن، وإطفاؤه يح
 // ── ٥. الربط والبنية: محمّل في design-gen (يُحمَّل قبل الحزمة)، وindex.html والحزمة لم تُمسّ ──
 test('٥. الربط: محمّل في js/design-gen.js قبل الحزمة، ولا تعديل على index.html ولا أجزائها', () => {
   const host = read('js/design-gen.js');
-  assert.ok(host.includes("/js/media-notify.js?v=1"), 'المحمّل يجلب الوحدة المستقلّة');
+  assert.ok(host.includes("/js/media-notify.js?v=5"), 'المحمّل يجلب الوحدة المستقلّة');
   assert.ok(host.includes('data-media-notify'), 'حراسة من التحميل المكرّر');
   const html = read('index.html');
   assert.ok(!html.includes('media-notify'), 'index.html لم يُمسّ — التحقّق من الحزمة يمنع تعديله عن بُعد');
@@ -213,4 +214,91 @@ test('٦. متصفّح بلا Notification: لا إشعار ولا شريط ول
   assert.match(b.els.mediaNotifStatus.textContent, /رافض الإشعارات/, 'سبب التعطيل ظاهر');
   await b.win.fetch('/api/maha-image', { method: 'POST' }); // الالتفاف لا يرمي بلا Notification
   await tick();
+});
+
+// ── ٧. موضع شريط السؤال (تدقيق ١٨–١٩ أكتوبر، g05 media-notify-ask): فوق الصندوق المقيس، بعرض محدود ومتوسّط ──────────
+function barCss(b) {
+  const bar = b.body.children.find((c) => c.id === 'mediaNotifAskBar');
+  const o = {};
+  String(bar.style.cssText).split(';').forEach((d) => { const i = d.indexOf(':'); if (i > 0) o[d.slice(0, i).trim()] = d.slice(i + 1).trim(); });
+  return o;
+}
+test('٧. الجوّال: الشريط فوق صندوق الكتابة (أعلاه 719 من 844) لا فوقه، وبعرض الصندوق', () => {
+  const b = boot({ perm: 'default', win: { innerWidth: 390, innerHeight: 844, __omranAboveComposer: (gap) => ({ bottom: 844 - 719 + gap, left: 16, width: 358, cx: 195 }) } });
+  b.win.mediaNotifyMaybeAsk();
+  const c = barCss(b);
+  const bottom = parseFloat(c.bottom);
+  assert.ok(bottom >= 844 - 719 + 1, 'أسفل الشريط فوق أعلى الصندوق: bottom=' + c.bottom);
+  assert.ok(!('inset-inline' in c), 'لا امتداد من طرف لطرف');
+  assert.equal(c.left, '195px', 'متوسّط على الصندوق');
+  assert.equal(c.transform, 'translateX(-50%)');
+  assert.equal(c.width, '358px', 'بعرض الصندوق');
+});
+test('٧ب. الحاسوب: عرض الشريط ≤ 640px ومتوسّط على الصندوق، وبلا صندوق مقيس احتياط متوسّط', () => {
+  const d = boot({ perm: 'default', win: { innerWidth: 1440, innerHeight: 900, __omranAboveComposer: (gap) => ({ bottom: 900 - 799 + gap, left: 448, width: 674, cx: 785 }) } });
+  d.win.mediaNotifyMaybeAsk();
+  const c = barCss(d);
+  assert.equal(c.width, '640px');
+  assert.equal(c.left, '785px');
+  assert.ok(parseFloat(c.bottom) > 900 - 799, 'فوق أعلى الصندوق');
+  const f = boot({ perm: 'default', win: { innerWidth: 1440, innerHeight: 900 } });
+  f.win.mediaNotifyMaybeAsk();
+  const g = barCss(f);
+  assert.equal(g.bottom, '76px', 'الاحتياط القديم');
+  assert.equal(g.left, '50%');
+  assert.equal(g.width, '640px');
+  const p = boot({ perm: 'default', win: { innerWidth: 360, innerHeight: 800 } });
+  p.win.mediaNotifyMaybeAsk();
+  assert.equal(barCss(p).width, '336px', 'شاشة ضيّقة بلا صندوق: العرض − 24');
+});
+
+
+// ── ٨. تبديل اللغة يعيد كتابة قسم «التنبيهات» وسطر الحالة (g13 settings-notifications) ─────────────────────────────
+function sectionWithNodes() {
+  const nodes = ['notifSectionLabel', 'mediaNotifLabel', 'mediaNotifHint'].map((k) => { const n = fakeEl('span'); n.attrs['data-media-notif-i18n'] = k; return n; });
+  const sec = fakeEl('div'); sec.id = 'notifSection';
+  sec.querySelectorAll = (q) => (q === '[data-media-notif-i18n]' ? nodes : []);
+  return { sec, nodes };
+}
+test('٨. مراقب سمة lang: بعد التحويل en ← ar تصير العناوين وسطر الحالة (رافض) عربيّة', () => {
+  const observers = [];
+  const MO = function (fn) { const me = { fn, opts: null, target: null }; observers.push(me); this.observe = (t, opts) => { me.target = t; me.opts = opts; }; this.disconnect = () => {}; };
+  const { sec, nodes } = sectionWithNodes();
+  const b = boot({ lang: 'en', perm: 'denied', MO, section: sec });
+  b.win.mediaNotifySyncToggle();
+  assert.match(b.els.mediaNotifStatus.textContent, /blocked by the browser/, 'بالإنجليزيّ أوّلًا');
+  const langObs = observers.find((x) => x.opts && x.opts.attributes && Array.isArray(x.opts.attributeFilter) && x.opts.attributeFilter.includes('lang'));
+  assert.ok(langObs, 'مراقب على سمة lang في documentElement');
+  assert.equal(langObs.target, b.document.documentElement);
+  b.document.documentElement.lang = 'ar';
+  langObs.fn([{ type: 'attributes', attributeName: 'lang' }]);
+  assert.match(b.els.mediaNotifStatus.textContent, /رافض الإشعارات/, 'سطر الحالة تعرّب');
+  assert.equal(nodes[0].textContent, '🔔 التنبيهات');
+  assert.equal(nodes[1].textContent, 'تنبيه اكتمال الصور والفيديو');
+  assert.match(nodes[2].textContent, /إذا طلعت من التطبيق/);
+  // عنوان صفحة الإعدادات العلويّ تنسخه applyLanguage من h3 القسم قبل أن يعمل المراقب — فالعنوان يحمل مفتاح الحزمة أيضًا
+  const h3 = (read('js/media-notify.js').match(/<h3 [^>]*data-media-notif-i18n="notifSectionLabel"[^>]*>/) || [''])[0];
+  assert.match(h3, /data-i18n="notifSectionLabel"/, 'applyLanguage تترجم العنوان بمفتاح موجود بالـ١٤ لغة');
+});
+
+// ── ٩. القاموس المحلّيّ بالـ١٤ لغة، و«fil» لا يسقط إلى الإنجليزيّ ───────────────────────────────────────────────────
+test('٩. STR: كلّ مفتاح بالـ١٤ لغة بنصّ غير فارغ، وtr تحلّ fil كاملة', () => {
+  const src = read('js/media-notify.js');
+  const lit = (src.match(/var STR = (\{[\s\S]*?\n  \});/) || [])[1];
+  assert.ok(lit, 'القاموس المحلّيّ');
+  const STR = new Function('return ' + lit)();
+  const LANGS = ['ar', 'en', 'fr', 'hi', 'ur', 'bn', 'ne', 'id', 'fil', 'tr', 'zh', 'ru', 'es', 'ml'];
+  const keys = Object.keys(STR.ar);
+  assert.equal(keys.length, 10);
+  for (const l of LANGS) {
+    assert.ok(STR[l], 'لغة ' + l);
+    for (const k of keys) assert.ok(typeof STR[l][k] === 'string' && STR[l][k].trim(), l + '.' + k);
+    assert.deepEqual(Object.keys(STR[l]).sort(), keys.slice().sort(), l + ': المفاتيح نفسها');
+  }
+  const fil = boot({ lang: 'fil', perm: 'denied' });
+  fil.win.mediaNotifySyncToggle();
+  assert.equal(fil.els.mediaNotifStatus.textContent, STR.fil.mediaNotifDenied, 'fil (ثلاثة أحرف) لا يُقصّ إلى fi');
+  const ur = boot({ lang: 'ur', perm: 'granted', hidden: true });
+  ur.win.mediaReadyNotify('video', true);
+  assert.equal(ur.made[0].opts.body, STR.ur.mediaNotifReadyVideo, 'الأردو بقاموسها');
 });

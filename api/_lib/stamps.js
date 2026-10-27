@@ -1,4 +1,6 @@
 // «طوابع المدرسة» — ورقة طوابع/ملصقات قابلة للطباعة والقص عبر OpenAI.
+// v-hw-resubmit-2: ثيمات شخصيّات العلامات التجاريّة — تُستثنى من «فاجئني» حين يرسل تطبيق هواوي noBrands
+const STAMP_BRAND_RE = /SANRIO|CHROMIE|WE BARE BEARS|SPONGEBOB|TOM AND JERRY|MICKEY|FROZEN|SPIDER HERO|PAW PATROL|PEPPA PIG|POKEMON|SUPER MARIO|MINIONS|BARBIE|RACING CARS cartoon/;
 // يأخذ صورة الطفل + اسمه ويعيد ورقة كاملة فيها طوابع صغيرة كثيرة بأشكال جميلة.
 // نفس حرّاس adimage.js: هويّة مُتحقَّقة ثم سقف يومي، وsignal خاص يتخطى حارس الـ٣٠ ثانية.
 // v-ad-suite: عدّاد مستقلّ ('stamps') — كان يشارك عدّاد 'adimage' فتأكل الطوابع رصيد الإعلانات.
@@ -10,6 +12,7 @@ const DAILY = 8;
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   if (req.method !== 'POST') { res.status(405).end('{"error":"POST only"}'); return; }
+  let giveQuota = async () => {}; // v-quota-giveback
   try {
     let b = req.body;
     if (typeof b === 'string') b = JSON.parse(b);
@@ -84,6 +87,8 @@ module.exports = async (req, res) => {
       else if (girlHint) pool = THEMES.filter((t) => t.girlx || /أميرة|يونيكورن|ورد|فراشة|فراش|ميلودي|كيتي|حلوى/.test(String(t.k)));
       else pool = THEMES.filter((t) => !t.teen && !t.girlx);
       if (!pool.length) pool = THEMES;
+      /* v-hw-resubmit-2: تطبيق هواوي (noBrands) — العشوائيّ بلا شخصيّات علامات تجاريّة (القاعدة 1.15) */
+      if (b.noBrands === true) { const nb = pool.filter((t) => !STAMP_BRAND_RE.test(t.d)); pool = nb.length ? nb : THEMES.filter((t) => !STAMP_BRAND_RE.test(t.d)); }
       theme = pool[Math.floor(Math.random() * pool.length)];
     }
     /* v-stamps-plus (طلب عمران ٢٥ سبتمبر «مافيها مميزات — صورة وحدة ولا صورتين…»): خيارات الورقة —
@@ -114,6 +119,9 @@ module.exports = async (req, res) => {
       res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' صور). جرّب غدًا.' }));
       return;
     }
+    /* v-quota-giveback (أمر المالك ٢١ أكتوبر: «الطوابع والإعلان: المحاولة الفاشلة ما تنحسب من الحصة المجانية»): الحصّة تُحجز قبل النداء
+       (طلبان متزامنان لا يتجاوزان السقف)، وكلّ فشل بعدها يردّها — refundCustom بالمدخلات نفسها (v-refund-custom). مرّة واحدة. */
+    giveQuota = async () => { giveQuota = async () => {}; await require('./_usage.js').refundCustom(b.token, null, null, 'stamps'); };
 
     const audience = theme.teen
       ? 'A printable sticker/stamp sheet for a TEENAGER (age 12+), vertical portrait page on a clean WHITE background, designed for home printing and scissor cutting. Art direction: bold modern cool style — absolutely NO babyish or childish elements.\n'
@@ -165,17 +173,24 @@ module.exports = async (req, res) => {
     const data = await upstream.json().catch(() => null);
     if (!upstream.ok) {
       const m = (data && data.error && data.error.message) || ('HTTP ' + upstream.status);
-      res.status(upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الطوابع: ' + m }));
+      /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد المزوّد نفد أو مفتاحه — رمز unavailable («الخدمة متوقّفة مؤقّتًا» بلغة الواجهة)، لا نصّ فوترة المزوّد بالإنجليزيّة داخل message_ar */
+      await giveQuota();
+      if (require('./_videoFail.js').isOutage(upstream.status, m)) { console.error('[stamps] upstream ' + upstream.status + ': ' + String(m).slice(0, 200)); res.status(503).end(JSON.stringify({ error: 'unavailable' })); return; }
+      console.error('[stamps] upstream ' + upstream.status + ': ' + String(m).slice(0, 300)); // v-rest-fixes: نصّ المزوّد للسجلّ لا للمستخدم
+      res.status(upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الطوابع الآن — حاول مرّة أخرى.' }));
       return;
     }
     const out = ((data && data.data) || [])[0];
     if (!out || !out.b64_json) {
+      await giveQuota();
       res.status(502).end(JSON.stringify({ error: 'empty', message_ar: 'لم يرجع النموذج صورة. جرّب مرّة أخرى.' }));
       return;
     }
     res.status(200).end(JSON.stringify({ imageBase64: out.b64_json, mimeType: 'image/webp', dailyLimit: gate.limit || DAILY, options: { count: COUNT, shape: SHAPE, style: STYLE, photos: photos.length } }));
   } catch (e) {
-    const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : (e && e.message ? e.message : String(e));
+    await giveQuota();
+    console.error('[stamps] ' + (e && e.message ? e.message : String(e)));
+    const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : 'تعذّر توليد الطوابع الآن — حاول مرّة أخرى.'; // v-rest-fixes: لا نصّ تقنيّ للمستخدم
     res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg }));
   }
 };

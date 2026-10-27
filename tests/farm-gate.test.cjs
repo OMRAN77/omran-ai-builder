@@ -70,13 +70,13 @@ const SRC = fs.readFileSync(path.join(root, 'tests/fixtures/styles-grid-source.j
 let calls = 0; // كلّ نداء خارجيّ — كلّها على مفاتيح المالك
 let failImg = false;
 let failRt = false;
-global.fetch = async (url) => {
+global.fetch = async (url, init) => {
   calls++;
   const u = String(url);
   if (/images\/(generations|edits)/.test(u)) return failImg ? Response.json({ error: { message: 'x' } }, { status: 500 }) : Response.json({ data: [{ b64_json: PNG }] });
   if (/realtime\/client_secrets/.test(u)) return failRt ? Response.json({ error: { message: 'x' } }, { status: 500 }) : Response.json({ value: 'ek_test' });
-  if (/gemini-3-pro-image/.test(u) && failImg) return Response.json({ error: { message: 'x' } }, { status: 503 });
-  if (u.includes('gemini-flash-latest')) return Response.json({ error: 'offline judge' }, { status: 503 });
+  if (/gemini-3-pro-image|flash-image/.test(u) && failImg) /* v-decor-fallback: «فشل المولّد» يشمل نانو ٢ البديل */ return Response.json({ error: { message: 'x' } }, { status: 503 });
+  if (u.includes('gemini-flash-latest') && !String((init && init.body) || '').includes('<<<BOQ>>>')) return Response.json({ error: 'offline judge' }, { status: 503 }); // v-dead-models-2: نصّ دراسة الإنشاء صار على Flash نفسه — الحَكَم وحده غائب
   return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: SRC } }, { text: 'A' }] } }] });
 };
 
@@ -174,8 +174,9 @@ test('١. المزرعة: حساب فوق سقف شبكته — كلّ أداة 
   assert.equal((await auth.getUser('giftedone')).giftCapped, false);
 });
 
-test('٢. المكتب: عشرون تسجيلًا من IPv4 واحد بالافتراضيّ — هديّة كلّها، لا سقف، ٣ ديكور ثمّ ٤٠٢، وتجربة مها لكلّ واحد', async () => {
-  reset();
+// v-sec-gift-cap: هديّة الترحيب الافتراضيّة صارت ٣/شبكة؛ نضبط السقف صراحةً ٥٠ لنثبت «هديّة كلّها» تحت سقف عالٍ.
+test('٢. المكتب: عشرون تسجيلًا من IPv4 واحد تحت سقف هديّة ٥٠ — هديّة كلّها، لا سقف، ٣ ديكور ثمّ ٤٠٢، وتجربة مها لكلّ واحد', async () => {
+  reset({ WELCOME_GIFT_PER_IP_DAILY: '50' });
   const names = Array.from({ length: 20 }, (_, i) => 'office' + i);
   const tokens = await Promise.all(names.map((n) => signup(n, '198.51.100.20')));
   for (let i = 0; i < names.length; i++) {

@@ -98,7 +98,10 @@ function checkSyntax(before, after) {
 function validateEdits(input) {
   const i = input && typeof input === 'object' ? input : {};
   const edits = Array.isArray(i.edits) ? i.edits : [];
-  if (!edits.length) return { error: 'لا تعديلات: أعطِ edits [{path, old, new}].' };
+  /* v-agent-img: صور تُستبدل مع التعديل في الالتزام نفسه — {path, image} (رمز الرسمة __IMG_N__ أو رابط /i/)؛ يتحقّق منها write_github */
+  const images = (Array.isArray(i.images) ? i.images : []).filter((x) => x && typeof x === 'object').map((x) => ({ path: String(x.path || ''), image: String(x.image || '') }));
+  if (images.length > 10) return { error: 'الحدّ ١٠ صور في الرفعة الواحدة.' };
+  if (!edits.length && !images.length) return { error: 'لا تعديلات: أعطِ edits [{path, old, new}] أو images [{path, image}].' };
   if (edits.length > EDIT_LIMITS.edits) return { error: 'الحدّ ' + EDIT_LIMITS.edits + ' تعديلًا في الرفعة الواحدة.' };
   const out = [];
   for (const e of edits) {
@@ -110,7 +113,8 @@ function validateEdits(input) {
     out.push({ path: String(e.path), old: e.old, new: e.new, all: e.all === true });
   }
   if (new Set(out.map((e) => e.path)).size > EDIT_LIMITS.files) return { error: 'الحدّ ' + EDIT_LIMITS.files + ' ملفّات في الرفعة الواحدة.' };
-  return { edits: out };
+  for (const im of images) if (out.some((e) => e.path === im.path)) return { error: 'المسار في التعديل والصور معًا: ' + im.path };
+  return images.length ? { edits: out, images } : { edits: out };
 }
 
 async function editFiles(input, opts) {
@@ -120,7 +124,7 @@ async function editFiles(input, opts) {
   const t = parseTarget({ url: i.repo || i.url || '' });
   if (!t) return { error: 'حدّد المستودع بصيغة owner/repo أو برابطه.' };
   const v = validateEdits(i);
-  if (v.error) return v;
+  if (v.error) return Object.assign(v, { local: true }); // v-edit-refund: لم يُكتب شيء — لا يُعدّ من سقف الرفعات
   const R = '/repos/' + t.owner + '/' + t.repo;
   const { r: rr, j: repo } = await ghJson(R, o);
   if (!rr.ok) return { error: 'تعذّر الوصول إلى ' + t.owner + '/' + t.repo + ' (GitHub HTTP ' + rr.status + ')' };
@@ -131,14 +135,14 @@ async function editFiles(input, opts) {
   const texts = {};
   for (const p of new Set(v.edits.map((e) => e.path))) {
     const got = await readText(R, p, ref, o);
-    if (got.error) return got;
+    if (got.error) return Object.assign(got, { local: true });
     texts[p] = got.text;
   }
   const applied = applyEdits(texts, v.edits);
-  if (applied.error) return applied;
+  if (applied.error) return Object.assign(applied, { local: true });
   const broken = checkSyntax(texts, applied.texts); // v-claude-code-level (A3)
-  if (broken) return broken;
-  const files = Object.keys(applied.texts).map((p) => ({ path: p, content: applied.texts[p] }));
+  if (broken) return Object.assign(broken, { local: true });
+  const files = Object.keys(applied.texts).map((p) => ({ path: p, content: applied.texts[p] })).concat(v.images || []); // v-agent-img
   // v-claude-code-level (F1): fromEdit = سقف الملفّ ١٫٥ مليون حرف لمسار التعديل وحده (write_github يبقى ٢٠٠ ألف)
   const res = await githubWrite.pushFiles({ repo: t.owner + '/' + t.repo, files, message: i.message, title: i.title, body: i.body, branch: i.branch, base }, Object.assign({}, o, { fromEdit: true }));
   if (res && res.ok) res.edits = v.edits.length;
@@ -146,10 +150,39 @@ async function editFiles(input, opts) {
 }
 
 /* «ادمج» في آخر رسالة من المالك — الإذن الوحيد للدمج. نفي صريح («لا تدمج») يُسقطه. */
+/* v-owner-like-me (المالك ١٣ أكتوبر «اريد كل المزودين نفسك»): «أدمج وأنشر» بالهمزة كانت تُرفض، و«لا مااريد ان ادمج» و«ما ابي ادمج»
+   كانت تُقبل إذنًا لأنّ النفي ليس ملاصقًا للفعل. الآن الهمزات الثلاث، والنفي قبل الفعل بثلاث كلمات أو أقلّ (ومنه «مااريد/مابي» الملصوقة) يمنع. */
+const MERGE_NEG_TOK = '(?:لا|ما|مو|مب|مش|بدون|بلا|ماا?(?:ريد|بي|بغى|بغي))';
+const MERGE_NEG_RE = new RegExp('(?:^|[\\s،.,!؟?])' + MERGE_NEG_TOK + '(?:\\s+\\S+){0,3}?\\s*(?:ت|ن|ي)?[اأإ]?دمج|don\'?t\\s+merge|do\\s+not\\s+merge', 'i');
+/* v-audit-agent (تدقيق ٢٦ أكتوبر، srv-agent-5): «متى ادمج؟» و«نشوف ادمج او لا» و«فيه merge conflict… صلحه» كانت تُقبل إذنًا بالدمج والنشر.
+   «ادمج» حرفيّة وأمر صريح: «merge conflict» ليست فعلًا، والجملة التي فيها الفعل لا تكون سؤالًا (تنتهي بـ؟) ولا يسبقه فيها شرط أو تأجيل
+   أو سؤال (متى، إذا، لو، نشوف، بعدين، ليش…)، ولا يتلوه «او لا». الجمل بالنقطة والسطر والاستفهام، والفاصلة داخل الجملة. */
+const MERGE_VERB_RE = /[اأإ]دمج|\bmerge\b/i;
+const MERGE_ASK_RE = /(?:^|[\s،,!«(])(?:و|ف)?(?:متى|متي|وقت\s+ما|إذا|اذا|لو|هل|نشوف|بنشوف|بعدين|بعد\s+ما|عقب\s+ما|لين|لما|يمكن|ليش|ليه|لماذا)(?=$|[\s،,!»)])|\b(?:when|if|whether|should|shall|maybe|later|why)\b/i;
+const MERGE_OR_NOT_RE = /(?:^|\s)(?:[اأ]و|ولا)\s+(?:لا|ما)(?=$|[\s،,.!؟?])|\bor\s+not\b/i;
 function ownerSaidMerge(text) {
-  const s = String(text || '');
-  if (/(?:^|[\s،.,!؟?])(?:لا|ما|مو|بدون)\s*(?:ت|ن|ا|أ|إ)?دمج|don'?t\s+merge|do\s+not\s+merge/i.test(s)) return false;
-  return /ادمج|إدمج|ادمجه|ادمجها|\bmerge\b/i.test(s);
+  const s = String(text || '').replace(/\n*\[[^\[\]\n]*\]\s*$/, '').replace(/\bmerge[\s_-]*conflicts?\b/gi, ' ').replace(/لو\s+سمحت|لو\s+تكرّ?مت/g, ' ');
+  if (MERGE_NEG_RE.test(s)) return false;
+  const parts = s.split(/([.!؟?\n؛;]+)/);
+  for (let k = 0; k < parts.length; k += 2) {
+    const c = parts[k] || '', at = c.search(MERGE_VERB_RE);
+    if (at === -1 || /[؟?]/.test(parts[k + 1] || '')) continue; // بلا فعل، أو سؤال
+    if (MERGE_ASK_RE.test(c.slice(0, at)) || MERGE_OR_NOT_RE.test(c.slice(at))) continue; // شرط أو تأجيل قبله، أو «ادمج او لا»
+    return true;
+  }
+  return false;
+}
+
+/* v-img-with-edit (المالك ١٣ أكتوبر «ويختبر قبل ما يدمج»): الدمج بلا فحص أخضر كان يمرّ حتى والفحوص حمراء أو ما بدأت. صرف بلا شبكة. */
+function ciBlock(runs, repo) {
+  const list = Array.isArray(runs) ? runs : [];
+  const pending = list.filter((c) => c && String(c.status || '') !== 'completed');
+  const failed = list.filter((c) => c && c.status === 'completed' && !/^(success|skipped|neutral)$/.test(String(c.conclusion || '')));
+  const ok = list.filter((c) => c && c.status === 'completed' && c.conclusion === 'success');
+  if (pending.length) return 'الفحوص لسه ما خلصت (' + pending.map((c) => c.name || 'فحص').join('، ') + ') — ما يندمج قبل ما تخضر.';
+  if (failed.length) return 'فحص فشل: ' + failed.map((c) => (c.name || 'فحص') + ' ' + c.conclusion).join(' · ') + ' — أصلحه قبل الدمج.';
+  if (/omran-ai-builder/i.test(String(repo || '')) && !ok.length) return 'ما بدأت الفحوص بعد أو ما نجح منها شي — ما يندمج قبل اختبار أخضر.';
+  return '';
 }
 
 async function mergePr(input, opts) {
@@ -166,6 +199,12 @@ async function mergePr(input, opts) {
   if (pj.merged) return { ok: true, already: true, number: n, url: pj.html_url };
   if (pj.state !== 'open') return { error: 'طلب السحب #' + n + ' مغلق.' };
   if (pj.mergeable === false) return { error: 'طلب السحب #' + n + ' فيه تعارض مع الفرع الرئيسيّ — يحتاج حلّ التعارض قبل الدمج.' };
+  const sha = pj.head && pj.head.sha;
+  if (sha) {
+    const { r: cr, j: cj } = await ghJson(R + '/commits/' + sha + '/check-runs?per_page=30', o);
+    const blocked = ciBlock((cr && cr.ok && cj && cj.check_runs) || [], t.owner + '/' + t.repo);
+    if (blocked) return { error: blocked };
+  } else if (/omran-ai-builder/i.test(t.repo)) return { error: 'ما بدأت الفحوص بعد أو ما نجح منها شي — ما يندمج قبل اختبار أخضر.' };
   const method = ['merge', 'squash', 'rebase'].includes(i.method) ? i.method : 'squash';
   const { r: mr, j: mj } = await ghJson(R + '/pulls/' + n + '/merge', Object.assign({}, o, { method: 'PUT', body: { merge_method: method, sha: pj.head && pj.head.sha } }));
   if (!mr.ok || !mj || !mj.merged) return { error: 'GitHub رفض الدمج (HTTP ' + mr.status + ')' + (mj && mj.message ? ': ' + String(mj.message).slice(0, 160) : '') };
@@ -175,7 +214,7 @@ async function mergePr(input, opts) {
 function formatMerge(res) {
   if (!res || res.error) return '✗ لم يُدمج: ' + ((res && res.error) || 'سبب غير معروف');
   if (res.already) return '✅ طلب السحب #' + res.number + ' مدموج من قبل: ' + res.url;
-  return '✅ دُمج طلب السحب #' + res.number + ' في ' + (res.base || 'main') + ' (' + String(res.sha || '').slice(0, 7) + '): ' + res.url + '\nالنشر التلقائيّ يبدأ من الفرع الرئيسيّ؛ قل للمالك إنّك لم تتحقّق من الموقع المنشور بنفسك.';
+  return '✅ دُمج طلب السحب #' + res.number + ' في ' + (res.base || 'main') + ' (' + String(res.sha || '').slice(0, 7) + '): ' + res.url + '\nالنشر التلقائيّ يبدأ من الفرع الرئيسيّ — تحقّق منه الآن: manage_github action=deploy number=' + res.number + ' مع path (ملفّ تغيّر) وfind (نصّ جديد فيه)، وقل للمالك ما رأيت بالضبط؛ لا تقل «نُشر» قبل أن تراه.'; // v-owner-like-me
 }
 
 const EDIT_TOOL = {
@@ -194,6 +233,7 @@ const EDIT_TOOL = {
       message: { type: 'string', description: 'رسالة الالتزام بالعربيّة: ما تغيّر ولماذا' },
       title: { type: 'string', description: 'عنوان طلب السحب (اختياريّ)' },
       body: { type: 'string', description: 'وصف طلب السحب (اختياريّ)' },
+      images: { type: 'array', description: 'صور تُستبدل في الالتزام نفسه (اختياريّ): {path, image} — image رمز رسمتك __IMG_1__ أو رابطها /i/…؛ تُحوَّل لصيغة امتداد المسار', items: { type: 'object', properties: { path: { type: 'string' }, image: { type: 'string' } }, required: ['path', 'image'] } },
       branch: { type: 'string', description: 'فرع رفعتَ إليه سابقًا في هذا الحوار لإضافة التزام (اختياريّ)' },
       base: { type: 'string', description: 'الفرع الأساس (اختياريّ)' },
     },
@@ -203,7 +243,7 @@ const EDIT_TOOL = {
 
 const MERGE_TOOL = {
   name: 'merge_github',
-  description: 'ادمج طلب سحب في مستودع المالك (والنشر التلقائيّ يتبعه). لا تستدعها إلّا إذا كتب المالك في رسالته الأخيرة «ادمج» صراحةً — وإلّا تُرفض. يرفض الطلب المغلق أو المتعارض.',
+  description: 'ادمج طلب سحب في مستودع المالك (والنشر التلقائيّ يتبعه). لا تستدعها إلّا إذا كتب المالك في رسالته الأخيرة «ادمج» صراحةً — وإلّا تُرفض. يرفض الطلب المغلق أو المتعارض، وترفض إن كانت الفحوص قيد العمل أو حمراء — لا دمج قبل اختبار أخضر.',
   input_schema: {
     type: 'object',
     properties: {
@@ -222,16 +262,25 @@ const WORK_NOTE = '\n\n[طريقة العمل على كود المالك]:\n' +
   '- فكّر في كلّ الحالات قبل الرفع: الأسود والعاجيّ والخلفيّات وكلّ الثيمات (html.skin و skin-wood)، وسطح المكتب دون الجوّال إلّا بطلب. إن تغيّر ملفّ يُحمَّل بوسم ?v= فارفع الرقم في index.html.\n' +
   '- أعطِ المالك معاينة صادقة لما سيراه إن أمكن (test_html بنموذج مصغّر بالألوان الحقيقيّة) وقل إنّها معاينة لا التطبيق نفسه.\n' +
   '- إن رفض المالك شكلًا («بدون دائرة») فأزله تمامًا وابحث عن طريق آخر يحقّق الهدف نفسه. وإن قال «لا تدمج» فالعمل على فرع وطلب سحب فقط.\n' +
-  '- الدمج بـmerge_github فقط حين يكتب «ادمج». بعد الدمج: قل إنّ النشر تلقائيّ وإنّك لم تتحقّق من الموقع بنفسك، واقترح تحديثًا قويًّا.\n' +
+  /* v-owner-like-me (المالك ١٣ أكتوبر «كيف انته تجيني في النهاية تقولي ادمج وانشر — اريد كل المزودين نفسك»): نهاية الشغل كـClaude Code. */
+  '- قبل طلب السحب: manage_github action=ci branch=فرعك حتّى أخضر (أحمر يرجع لك سطور الفشل فأصلحها) — لا طلب سحب بفحص أحمر.\n' +
+  '- أثناء الشغل: manage_github action=test file=tests/x.test.cjs branch=فرعك يشغّل اختبارًا واحدًا في نحو دقيقة ويرجع نتيجته — جرّب به كلّ خطوة قبل ci الكامل، كما يشغّل Claude Code اختبارًا واحدًا بعد كلّ تعديل.\n' +
+  '- نهاية كلّ شغل على الكود: بعد طلب السحب افحص فحوصه بـmanage_github status (وللتغيير المرئيّ لقطة فرعك بـaction=shots وانظر إليها)، ثمّ التقرير — ما تغيّر في سطر، كيف تحقّقت (الفحوص كما ظهرت)، ما لم تتحقّق منه، رابط الطلب — واختم بسؤال واحد فقط: «أدمج وأنشر؟». لا تسأل أدمج قبل أن تخضر الفحوص، ولا تدمج قبل أن يقولها — merge_github ترفض إن كانت قيد العمل أو حمراء.\n' +
+  '- «أدمج وأنشر» أو «ادمج»: merge_github على الطلب نفسه، ثمّ manage_github action=deploy number=رقمه مع path (ملفّ تغيّر) وfind (نصّ جديد فيه) — ينتظر بنفسه حتّى دقيقة ونصف — حتّى ترى «نجح» والتغيير في الموقع المنشور، وقل ما رأيت بالضبط؛ ما زال قيد البناء = قلها وأعده في ردّك التالي ولا تقل «نُشر». و«انشر» وحدها بعد دمج = التحقّق نفسه. و«لا تدمج» أو «ما أبي أدمج» = فرع وطلب سحب فقط.\n' +
   '- لا تكرار: لا تعِد في ردّك ما قلته في ردودك السابقة (أين هو المالك، شرح الشاشة، تحذير سبق مثل «لا تدمج #…»). كلّ ردّ يبدأ بالجديد فقط، والمالك يرى ما فوقه.\n' +
-  '- لا تقسّم العمل عليه خطوة خطوة («ابحث في السجلّ وأرسل لقطة»): ما يمكن قراءته اقرأه بنفسك (read_github للكود والاختبارات، read_app_errors، check_code_task لسجلّ المهمّة)، وأصلح كلّ الأعطال المعروفة معًا في تشغيل واحد وطلب سحب واحد. اسأله فقط عمّا لا تصل إليه أدواتك، سؤالًا واحدًا.\n' +
+  '- لا تقسّم العمل عليه خطوة خطوة («ابحث في السجلّ وأرسل لقطة»): ما يمكن قراءته اقرأه بنفسك (read_github للكود والاختبارات، read_app_errors، manage_github run_log لسطور فشل CI)، وأصلح كلّ الأعطال المعروفة معًا في تشغيل واحد وطلب سحب واحد. اسأله فقط عمّا لا تصل إليه أدواتك، سؤالًا واحدًا.\n' +
   '- لا تخترع ولا تربط بلا دليل: كلّ ملفّ أو سطر أو دالّة أو متغيّر تذكره يجب أن تكون قرأته بأداة في هذا الحوار (لا user.role ولا is_admin من الخيال). لا تربط مشكلتين إلّا إن أراك الكود الصلة. وإن لم تعرف مصدر نصّ ملصوق أو لم تصلك لقطة فقل ذلك صراحةً بدل الافتراض.\n' +
   '- الحالة تُفحص لا تُفترض: «مفتوح/مدموج/فشل/نجح» لطلب سحب أو مسألة أو تشغيل CI = manage_github (status · runs · run_jobs) أوّلًا. «سكّر» = manage_github close، «احذف التشغيلات الفاشلة» = delete_runs — نفّذها بنفسك ولا تعطِ المالك أوامر PowerShell ما دامت أداتك تفعلها. ولا «تمّ» قبل أن ترى نتيجة الأداة.\n' +
   '- الصور: لا generate_image ولا edit_image في طلب عن الكود أو GitHub أو الإعدادات؛ لقطة من التطبيق مع «احذف/غيّر/صلّح» طلبُ كود (read_github ثمّ edit_github) لا تعديل صورة — فقط إن طلب صورة أو تعديل الصورة نفسها صراحةً.\n' +
   /* v-prov-self (المالك ١١ أكتوبر «كلّ واحد ونفسه… ما أريد كلمة ما أقدر»): طلبات الصور تصل المزوّد المختار نفسه لا محرّكًا بالخفاء */
   '- أنت من يرسم ويعدّل الصور حين تُطلب: بأداتَي generate_image وedit_image بنفسك، بلا «ما أقدر» ولا تحويل لغيرك؛ واذكر في سطر المحرّك الذي نفّذها كما جاء في نتيجة الأداة (engine: …).\n' +
-  '- أنت من ينفّذ مهما كبرت المهمّة: اقرأ ثمّ عدّل بـedit_github على الفرع نفسه (حتّى ثلاث رفعات في الردّ، وأكمل في الردّ التالي إن لزم) — الحزمة تُبنى تلقائيًّا. Claude Code (delegate_code_task) ليس طريقك: يرفضه الخادم إلّا إذا طلبه المالك بالاسم؛ وما لا تقدر عليه بأدواتك (متصفّح، تشغيل اختبارات) قله له في سطر وهو يقرّر.\n' +
+  '- أنت من ينفّذ مهما كبرت المهمّة: اقرأ ثمّ عدّل بـedit_github على الفرع نفسه (حتّى ثلاث رفعات في الردّ، وأكمل في الردّ التالي إن لزم) — الحزمة تُبنى تلقائيًّا. التفويض (delegate_code_task) ليس طريقك: يرفضه الخادم إلّا إذا طلبه المالك بالاسم، ولا يقبله إلّا لنسختك أنت — لا لمزوّد آخر (v-self-only)؛ الاختبارات يشغّلها CI على طلبك (run_log لسطور فشلها)، والشاشة تصوّرها بنفسك بـmanage_github action=shots (v-branch-shots)، وما لا تقدر عليه بعدها قله له في سطر وهو يقرّر.\n' +
+  /* v-owner-self-drive (المالك ١٤ أكتوبر: «اريد التطبيق يتحكم في نفسه نفس ما انا اكلمك — ارفع وارسم وعدل… مااريد اي خطأ… هذا رصيدي يخلص») */
+  '- الرسم والفيديو من رصيد المالك (v-owner-paid-gate): لا ترسم ولا تعدّل صورة ولا تنشئ فيديو إلّا إذا طلبه في رسالته الأخيرة نفسها — لا تكمل طلبًا قديمًا من السجلّ، ولا ترسم لتجرّب أو تشخّص (الخادم يرفضه). وحين يطلب صورًا للمستودع: ارسم المطلوب، ثمّ ارفعها كلّها في رفعة واحدة بـwrite_github ملف {path: المسار كما قرأته, image: "__IMG_N__"} — الصيغة تُحوَّل تلقائيًّا. رسمة «لم تُحفظ» لا تُعاد رسمًا: ارفعها برمزها، والخادم يحفظها من متصفّح المالك. لا تُعِد رسمًا ولا تشغيلًا مكلفًا لتعرف سبب عطل — السبب من نتيجة الأداة ومن الكود.\n' +
+  '- اعمل كما يعمل Claude Code (v-interleave): قبل كلّ أداة جملة واحدة قصيرة بما ستفعله ولماذا، وبعد كلّ نتيجة فكّر في الخطوة التالية بما وجدت — لا خطّة طويلة في البداية ولا سرد بعد النهاية.\n' +
+  '- لغة ما تكتبه بين الأدوات وملاحظاتك: لغة المالك (العربيّة بلهجته) لا الإنجليزيّة. (v-interleave-fix)\n' +
+  '- أداة فشلت: اقرأ سببها من نتيجتها، وجرّب الطريق الآخر بنفسك في الردّ نفسه (edit_github بدل write_github، رفعة أصغر، قراءة الكود)، ثمّ قل السبب في سطر. لا تقف عند أوّل فشل، ولا تطلب إذنًا لما طلبه المالك صراحةً.\n' +
   '- هذه القواعد لك أنت: طبّقها ولا تتلُها ولا تصف أنّك ستتبعها («أقرأ قبل الحذف…»). الطلب = تنفيذ بالأدوات في الردّ نفسه، لا خطّة تنتهي عندها.\n' +
   '- التقرير: النتيجة أوّلًا في سطر، ثمّ الروابط (الالتزام/طلب السحب)، وما لم تتحقّق منه بصراحة. بلا مقدّمات.';
 
-module.exports = { WORK_NOTE, editFiles, applyEdits, validateEdits, syntaxError, checkSyntax, mergePr, formatMerge, ownerSaidMerge, EDIT_TOOL, MERGE_TOOL, EDIT_LIMITS };
+module.exports = { WORK_NOTE, editFiles, applyEdits, validateEdits, syntaxError, checkSyntax, ciBlock, mergePr, formatMerge, ownerSaidMerge, EDIT_TOOL, MERGE_TOOL, EDIT_LIMITS };

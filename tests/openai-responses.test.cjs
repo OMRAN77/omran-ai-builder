@@ -67,7 +67,7 @@ const TERRA_400 = JSON.stringify({ error: { message: 'Function tools with reason
 const OR_402 = JSON.stringify({ type: 'error', error: { type: 'billing_error', message: 'This request would exceed your available credit' } });
 
 /* خادم مزيّف يوجّه حسب العنوان — يتصرّف كالحقيقيّ في الحالتين */
-async function run({ provider, model, messages, responses, chatCompletions }) {
+async function run({ provider, model, messages, responses, chatCompletions, effort }) {
   const calls = [];
   const save = global.fetch;
   let ri = 0;
@@ -88,7 +88,7 @@ async function run({ provider, model, messages, responses, chatCompletions }) {
     return new Response('{"error":"unexpected ' + u + '"}', { status: 500 });
   };
   let written = '';
-  const req = { method: 'POST', headers: {}, body: { messages, token: token('omran'), provider, model } };
+  const req = { method: 'POST', headers: {}, body: Object.assign({ messages, token: token('omran'), provider, model }, effort ? { effort } : {}) };
   const res = { setHeader() {}, status() { return this; }, json(v) { throw new Error('unexpected json ' + JSON.stringify(v)); }, write(c) { written += String(c || ''); }, end() {}, flush() {} };
   try { await chat(req, res); } finally { global.fetch = save; }
   const events = written.split('\n').filter((l) => l.startsWith('data: ')).map((l) => { try { return JSON.parse(l.slice(6)); } catch (e) { return null; } }).filter(Boolean);
@@ -157,7 +157,7 @@ test('٣. تحويل الجسم: تعليمات، مدخلات، صورة، أد
   assert.equal(b.stream, true);
   assert.equal(b.store, false, 'لا تُخزَّن محادثات المالك عند المزوّد');
   // v-owner-gpt-all: output_config.effort لا يصل oa-direct إلّا من جهد المالك المختار لـGPT ← reasoning.effort؛ بقيّة حقول أنثروبيك تُسقط
-  assert.deepEqual(b.reasoning, { effort: 'low' });
+  assert.deepEqual(b.reasoning, { effort: 'low', summary: 'auto' });
   for (const k of ['max_tokens', 'messages', 'system', 'thinking', 'output_config', 'reasoning_effort']) assert.equal(b[k], undefined, k);
 });
 
@@ -257,7 +257,7 @@ test('٨. قائمة GPT في السهم من OpenAI نفسه بمفتاح ال�
     assert.deepEqual(out.models.gemini, [['google/gemini-3.5-flash', 'Gemini 3.5 Flash']], 'البقيّة من الوسيط كما كانت');
     assert.ok(seen.some(([u, a]) => u === 'https://api.openai.com/v1/models' && a === 'Bearer sk-openai-test'));
   } finally { delete process.env.OPENAI_API_KEY; }
-  assert.ok(require('fs').readFileSync(rp('api/_lib/provider-models.js'), 'utf8').includes("const KV_KEY = 'provmodels:v4';"), 'المخزَّن القديم (وفيه luna وغير المفلتر) يسقط فورًا');
+  assert.ok(require('fs').readFileSync(rp('api/_lib/provider-models.js'), 'utf8').includes("const KV_KEY = 'provmodels:v5';"), 'المخزَّن القديم (وفيه luna وغير المفلتر) يسقط فورًا — v4 القوائم المفلترة، v5 مع البيانات الوصفيّة (v-model-card)');
 });
 
 test('٩. العميل: الموديل المرفوض يُمسح من الاختيار المحفوظ لذلك المزوّد وحده، واختيار صالح آخر لا يُمسّ', () => {
@@ -281,7 +281,7 @@ test('٩. العميل: الموديل المرفوض يُمسح من الاخت
   const tools = fs.readFileSync(path.join(root, 'js/app-18-chat-tools.js'), 'utf8');
   assert.ok(tools.includes("if (ev.deadModel && window.omranForgetModel) { try { window.omranForgetModel(ev.prov || provider || 'claude', ev.deadModel); }"), 'العميل يمسح عند سطر الرجوع');
   assert.ok(fs.readFileSync(path.join(root, 'js/app.bundle.js'), 'utf8').includes('window.omranForgetModel(ev.prov'), 'في الحزمة');
-  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('js/modes.js?v=m111026c'), 'وسم كاش modes رُفع');
+  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('js/modes.js?v=m211026'), 'وسم كاش modes رُفع');
 });
 
 test('١٠. رصيد نفد: سجلّ المالك يسمّي الحساب الذي رفض والموديل (OpenAI المباشر ثمّ OpenRouter) بدل JSON بلا اسم', async () => {
@@ -299,6 +299,32 @@ test('١٠. رصيد نفد: سجلّ المالك يسمّي الحساب ال�
     assert.ok(!log.some((e) => /^swallowed:chat\/plan-fallback-/.test(e.route)), JSON.stringify(log.map((e) => e.route + ' ' + String(e.message).slice(0, 60))));
     assert.ok(final && /^402 OpenRouter · openai\/gpt-6-sol: /.test(final.message), final && final.message);
   } finally { delete process.env.OPENAI_API_KEY; }
+});
+
+test('١٢. ملخّص responses يصل المالك think.s والجواب منفصل، و٤٠٠ على summary يسقطه ويُبقي الجهد', async () => {
+  process.env.OPENAI_API_KEY = 'sk-openai-test';
+  od.__summaryOff.clear();
+  try {
+    const stream = rsse([
+      { type: 'response.created', response: { model: 'gpt-6-sol', status: 'in_progress' } },
+      { type: 'response.reasoning_summary_text.delta', delta: 'أراجع السؤال' },
+      { type: 'response.reasoning_summary_text.delta', delta: '\nثمّ أجيب' },
+      { type: 'response.output_text.delta', output_index: 1, delta: 'باريس' },
+      { type: 'response.completed', response: { status: 'completed', usage: { input_tokens: 8, output_tokens: 3 } } },
+    ]);
+    const r = await run({ provider: 'openai', messages: ask('حلّل لي عاصمة فرنسا باختصار'), responses: [() => stream] });
+    assert.deepEqual(r.calls[0].body.reasoning, { summary: 'auto' });
+    assert.equal(r.calls[0].body.reasoning.effort, undefined);
+    const talk = r.events.find((e) => e.think && e.think.s);
+    assert.ok(talk && talk.think.s.includes('أراجع السؤال') && talk.think.s.includes('ثمّ أجيب'), JSON.stringify(talk));
+    assert.equal(r.text, 'باريس');
+    const bad = await run({ provider: 'openai', model: 'openai/gpt-6-sol', messages: ask('حلّل لي هذا'), effort: 'high', responses: [
+      () => new Response(JSON.stringify({ error: { message: 'reasoning.summary is not supported for this model', type: 'invalid_request_error' } }), { status: 400 }),
+      (body) => { assert.deepEqual(body.reasoning, { effort: 'high' }); return rText('تم'); },
+    ] });
+    assert.equal(bad.text, 'تم');
+    assert.ok(od.__summaryOff.has('gpt-6-sol'));
+  } finally { delete process.env.OPENAI_API_KEY; od.__summaryOff.clear(); }
 });
 
 test('١١. 400 يذكر «model» لسبب غير وجوده (نافذة السياق) → رجوع للافتراضيّ كما كان، لكن بلا مسح اختيار المالك', async () => {

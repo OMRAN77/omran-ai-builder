@@ -201,7 +201,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   /* تبديل الحرف بالقناع يعمل على 1280px كأي تعديل */
   assert.match(attach, /const __sc = Math\.min\(1, 1280 \/ Math\.max\(img\.naturalWidth \|\| 1, img\.naturalHeight \|\| 1\)\);/);
   /* الترقية تذهب إلى برو دائمًا — لا تُختطف إلى gpt-image المحافظ حين يبدو المصدر «شاشة تطبيق» */
-  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent \|\| /);
+  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && __optForceEngine !== 'nano' \/\* v-owner-solo-all: Gemini المختار يرسم بـGoogle وحده \*\/ && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent \|\| /);
   /* قرار المزدوج مرة واحدة: مسار النصّ الكثيف لا يترك نداء gpt-image معلّقًا حين تكون الترقية مستثناة من الحكم */
   assert.ok(!/__duoWouldRun|duoEnabled|duoP\b/.test(maha), 'v-lanes: لا محرّك موازٍ');
   // v-text-gpt-oneshot: مسار النصّ ضربة واحدة بلا مزدوج (v-img-honest: يُقاس، وبرو مرّة فقط إن لم يُنفّذ GPT)
@@ -246,7 +246,8 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   for (const t of ['شيل الاسم وحط عمران', 'غير حرف م حط ع', 'بدل التاريخ بدل 28 حط 12', 'شيل حرف م وحط ع']) assert.equal(__textSwapIntent(t), true, t);
   for (const t of ['كيف أطبع هذي الشاشة', 'وش هذا الخطأ', 'ترجم الصورة']) assert.ok(!creativeRe.test(t), t);
   assert.match(chatTools, /window\.__chatLastUserText = String\(ut \|\| ''\)\.slice\(0, 800\)\.replace\(.*\)\.trim\(\)\.slice\(0, 600\)/);
-  assert.match(tools, /userText: String\(\(args && args\.userText\) \|\| window\.__chatLastUserText \|\| ''\)\.replace\(.*\)\.slice\(0, 600\)/);
+  assert.match(tools, /userText: String\(\(args && args\.userText\) \|\| UTXT \|\| ''\)\.replace\(.*\)\.slice\(0, 600\)/); // v-img-run-bind: كلمات مستخدم طلب التشغيل
+  assert.ok(tools.includes("var UTXT = RC ? String(RC.userText || '') : String(window.__chatLastUserText || '');"), 'بلا سياق: العامّ كما كان');
   assert.match(tools, /cur\.lastEditedImage\.b64\) \{ srcB64 = cur\.lastEditedImage\.b64/);
   assert.match(chat, /engine:\\s\*nano-pro/);
   /* الخادم يمرّر كلمات المستخدم مع أمر الأداة (يعمل حتى مع حزمة عميل قديمة)، ويعرّف النموذج بـedit_image في دور فيه صورة */
@@ -257,9 +258,9 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   assert.match(chat, /ownerKnowledge \+ SEARCH_RULE_NOTE \+ IMAGE_TURN_NOTE/);
   assert.match(chat, /edit_image لأي تغيير أو ترقية أو نسخة أقوى/);
   /* generate_image على صورة مرفوعة + طلب إبداعي من كلمات المستخدم = يبني على المصدر لا من الوصف وحده */
-  assert.match(tools, /if \(gCreative\) return await window\.omranAgentTools\.run\('edit_image', \{ instruction: prompt, userText: gUserText \}\)/);
+  assert.match(tools, /if \(gCreative\) return await window\.omranAgentTools\.run\('edit_image', \{ instruction: prompt, userText: gUserText \}(?:, RC)?\)/);
   assert.match(tools, /var gCreative = !!\(gFirst && gRefB64 && gUserText && gUserText\.length <= 120 && !gNewImage && !gNotEdit/);
-  assert.match(chat, /runInClient\(send, 'generate_image', input, lastUserHasImage \? 150000 : 75000\)/);
+  assert.match(chat, /runInClient\(send, 'generate_image', input, \(lastUserHasImage \|\| __ownerReq\) \? 150000 : 75000\)/ /* v-owner-paid-gate: رسم المالك + حفظه ١٥٠ث */);
   /* v-img-engine-tag-owner (باب مقفل: لا اسم مزوّد لأيّ مستخدم): بصمة المحرّك للمالك وحده، بالاسم الحرفيّ لا حزمة عامّة */
   assert.match(attach, /if\(window\.__chatStatus && String\(authGet\('aiapp_username'\) \|\| ''\)\.trim\(\)\.toLowerCase\(\) === 'omran'\) window\.__chatStatus\.note\('🎨', String\(__data\.engine \|\| '\?'\)\); \}catch\(e\)\{ __swallow\(e, 'ui:img-engine-again'\)/);
   /* زر «نسخة ثانية» لا يُبنى فوق الصورة (كان يغطّي نصّها) — الدالة تبقى بلا زرّ */

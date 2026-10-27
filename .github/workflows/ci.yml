@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch: # v-branch-ci: الخادم يبدؤه على فرع المزوّد (manage_github action=ci) — الأوامر نفسها، بلا مدخلات
 
 permissions:
   contents: read

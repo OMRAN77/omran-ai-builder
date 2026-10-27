@@ -89,6 +89,8 @@
          المفتوحة والسريعة، ثمّ البحث والوسيط — وكلّ اسم بصيغة واحدة «الاسم · الشركة» (كانت «كلود» و«جوجل جيميني» بين
          أسماء لاتينيّة). Kimi جديد (v-kimi): مسار Moonshot المباشر بمفتاح المالك، ومعرّفاته بلا بادئة كـGroq. */
       var PROVS = [
+        /* v-grok-first (المالك ١٣ أكتوبر «نفسك انته لي كل المزودين واهم واحد كروك»): كروك أوّل المجموعة الأساسيّة. */
+        { grp:1, key:'openrouter', name:'OpenRouter',               or:true, store:'aiapp_openrouter_model', def:'x-ai/grok-4.6',            models:[['x-ai/grok-4.6','Grok 4.6'],['x-ai/grok-4.20','Grok 4.20'],['qwen/qwen3.6-27b','Qwen 3.6 27B']] },
         /* v-owner-claude-all (أمر عمران ١٠ أكتوبر، لقطة منتقي تطبيق Claude): كلّ نماذج Claude — الأربعة الرئيسيّة ثمّ «نماذج أخرى»
            (العنصر الثالث 1)، وصفّ «الجهد» بينهما (effort). الافتراضيّ للمالك Opus 5.5 (الخادم يطبّقه حين لا اختيار). */
         { grp:1, key:'claude',     name:'Claude · Anthropic',      store:'aiapp_claude_model',     def:'claude-opus-5-5',     effort:true, models:[['claude-opus-5-5','Opus 5.5'],['claude-fable-5-1','Fable 5.1'],['claude-sonnet-5-5','Sonnet 5.5'],['claude-haiku-5-5','Haiku 5.5'],['claude-haiku-4-5','Haiku 4.5',1],['claude-sonnet-5','Sonnet 5',1],['claude-opus-5','Opus 5',1],['claude-fable-5','Fable 5',1],['claude-opus-4-8','Opus 4.8',1],['claude-opus-4-7','Opus 4.7',1],['claude-opus-4-6','Opus 4.6',1],['claude-sonnet-4-6','Sonnet 4.6',1]] },
@@ -104,17 +106,13 @@
         /* v-owner-solo: Groq أوقف Llama 4 Maverick (٩ مارس) والذي يجيب فعلًا عند Groq هو GPT-OSS 120B (GROQ_ALIAS في oa-direct) — القائمة تسمّيه */
         { grp:2, key:'groq',       name:'Groq',                     or:true, direct:true, store:'aiapp_groq_model',       def:'openai/gpt-oss-120b',         models:[['openai/gpt-oss-120b','GPT-OSS 120B']] },
         { grp:3, key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning Pro']] },
-        { grp:3, key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] },
-        /* v-openrouter-tools: or:true كي يصل اختيار المالك إلى الخادم (omranModelFor) كبقيّة مزوّدي الوسيط.
-           v-prov-or-unique (المالك ٣ أكتوبر «متكررين فوق وتحت» ثمّ «في واحد ناقص»): الصفّ باقٍ، لكن بشركات ليس لها صفّ
-           فوق (xAI وQwen) — موديلاته السبعة القديمة كانت كلّها تحت شركاتها. المعرّفات من كتالوج OpenRouter. */
-        { grp:3, key:'openrouter', name:'OpenRouter',               or:true, store:'aiapp_openrouter_model', def:'x-ai/grok-4.6',            models:[['x-ai/grok-4.6','Grok 4.6'],['x-ai/grok-4.20','Grok 4.20'],['qwen/qwen3.6-27b','Qwen 3.6 27B']] }
+        { grp:3, key:'cohere',     name:'Cohere',                   or:true, store:'aiapp_cohere_model',     def:'cohere/command-a',            models:[['cohere/command-a','Command A']] }
       ];
       /* v-owner-gpt-all (مراجعة): اختيار GPT محفوظ من القائمة الحيّة القديمة وليس في المنسّقة يُضاف لـ«نماذج أخرى» باسمه —
          كان يُرسل ولا يظهر في الشريحة ولا يُعلَّم ولا يُعاد اختياره. */
       try{ for(var pi=0;pi<PROVS.length;pi++){ var pp = PROVS[pi], psv = pp.or && pp.effort ? (localStorage.getItem(pp.store) || '') : '';
         if(psv && psv.indexOf('/') > 0 && !pp.models.some(function(m){ return m[0] === psv; })) pp.models.push([psv, psv.split('/')[1], 1]); } }catch(e){ /* guard-ok: تخزين محجوب */ }
-      function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ return 'openai'; } }
+      function curProv(){ try{ return localStorage.getItem('aiapp_provider') || (isOwner() ? 'openrouter' : 'openai'); }catch(e){ return isOwner() ? 'openrouter' : 'openai'; } } /* v-grok-first: المالك بلا اختيار = كروك */
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
       /* v-owner-gpt-all (أمر المالك ١١ أكتوبر «Astra»): odef = افتراضيّ المالك وحده (GPT-6 Astra)؛ غير المالك على def كما كان (طلبه لا يتغيّر). */
       function ownDef(){ try{ return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); }catch(e){ return false; } }
@@ -193,7 +191,7 @@
       // وعشرات الأزرار غير مستخدَم أصلًا. الآن تُبنى فقط للمالك؛ لا فرق مرئيّ لغير المالك (كان مخفيًّا دومًا).
       /* v-owner-gpt-all: مرّة واحدة على جهاز المالك — اختيار GPT المحفوظ قبل اليوم يُمسح فيسري Astra (أمره ١١ أكتوبر)، وما يختاره بعدها يبقى */
       if(isOwner()){ try{ if(!localStorage.getItem('aiapp_owner_astra_v1')){ localStorage.removeItem('aiapp_model'); localStorage.setItem('aiapp_owner_astra_v1', '1'); } }catch(e){ /* guard-ok: تخزين محجوب */ } }
-      if(isOwner()) renderPop();
+      if(isOwner()) renderPop(); /* v-claude-back (المالك ١٧ أكتوبر «خلهم مكانهم… رجعهم نفس ماكانو»): صفوف Claude رجعت للمنتقي؛ الإيقاف في الخادم وحده (OWNER_CLAUDE_CHAT) */
       /* v-provider-models: القائمة الحيّة من الخادم تُلحق بالافتراضيّ الثابت؛ OpenAI يرتّب الثلاثة العامّة أولًا. */
       if(isOwner()){
         try{
@@ -220,14 +218,28 @@
       if(__row && __row.parentNode === host && __row.nextSibling){ host.insertBefore(bar, __row.nextSibling); }
       else { host.appendChild(bar); }
 
-      var ACCENT = 'var(--accent,#f0c040)', INK = 'var(--text,#eee)';
+      var INK = 'var(--text,#eee)';
+      /* v-chip-selected (تدقيق ١٨–١٩ أكتوبر): المختار كان بلون var(--accent) وحده — #6b7280 في الأسود، أبهت من النصّ فبدا معطّلًا.
+         صار بلون النصّ نفسه وخطّ عريض وخلفيّة رماديّة خفيفة (تُرى في الأسود والعاجيّ) وaria-current وعلامة ✓. */
+      function mark(el, on, w0){
+        el.style.color = INK; el.style.fontWeight = on ? '700' : w0; el.style.background = on ? 'rgba(127,127,127,.18)' : 'none';
+        if(on) el.setAttribute('aria-current', 'true'); else el.removeAttribute('aria-current');
+        var host = el.classList.contains('omProvHead') ? (el.firstElementChild || el) : el; /* الرأس: بجانب الاسم لا بعد السهم */
+        var ck = el.querySelector('.omSelCk');
+        if(on && !ck){ ck = document.createElement('span'); ck.className = 'omSelCk'; ck.setAttribute('aria-hidden', 'true'); ck.style.cssText = 'margin-inline-start:8px; font-weight:700;'; ck.textContent = '✓'; host.appendChild(ck); }
+        else if(!on && ck) ck.remove();
+      }
       function refresh(){
         var nm = wrap.querySelector('.omModelName');
         if(nm) nm.textContent = (window.__omMode === 'cc') ? 'Claude Code' : (window.__agentModeOn === true && curProv() === 'claude') /* v-prov-self: الوكيل يعمل مع Claude وحده؛ غيره يردّ بنفسه فاسمه هو */ ? agentLabel() : curProvName();
         try{
           var pk = curProv(); var pv = provOf(pk); var mid = pv ? curModelId(pv) : '';
-          var heads = pop.querySelectorAll('.omProvHead'); for(var i=0;i<heads.length;i++){ heads[i].style.color = (heads[i].getAttribute('data-prov') === pk) ? ACCENT : INK; }
-          var ms = pop.querySelectorAll('.omProvModel'); for(i=0;i<ms.length;i++){ var on = ms[i].getAttribute('data-prov') === pk && ms[i].getAttribute('data-model') === mid; ms[i].style.color = on ? ACCENT : INK; }
+          var heads = pop.querySelectorAll('.omProvHead'); for(var i=0;i<heads.length;i++){ mark(heads[i], heads[i].getAttribute('data-prov') === pk, '600'); }
+          var ms = pop.querySelectorAll('.omProvModel'); for(i=0;i<ms.length;i++){ mark(ms[i], ms[i].getAttribute('data-prov') === pk && ms[i].getAttribute('data-model') === mid, '500'); }
+          /* v-prov-self (١): «الوكيل مع Claude وحده» — صفّه يظهر معه وحده ويُعلَّم حين يعمل؛ مع غيره كان نقره يُطلق «الوكيل شغّال» بلا وكيل */
+          var ag = pop.querySelector('.omModelOpt[data-act="agent"]');
+          if(ag){ var agOk = pk === 'claude'; ag.style.display = agOk ? 'block' : 'none'; mark(ag, agOk && window.__agentModeOn === true, '600');
+            var agDiv = ag.nextElementSibling; if(agDiv && !agDiv.className) agDiv.style.display = agOk ? '' : 'none'; }
         }catch(e){ /* guard-ok */ }
         /* v-owner-claude-all + v-owner-gpt-all: صفّ الجهد لكلّ مزوّد يتبع موديله المحفوظ — موديل بلا جهد يُخفي الصفّ، ومستوى ينزل عند
            الموديل (Extra على Opus/Sonnet 4.6، Max على GPT-5.5/5.4/5.2) يُخفى؛ والقيمة المعروضة هي المرسَلة فعلًا. */
@@ -242,18 +254,19 @@
             eh.style.display = ok ? 'flex' : 'none'; if(!ok && eb){ eb.hidden = true; var ec3 = eh.querySelector('.omEffortChev'); if(ec3) ec3.textContent = '▸'; }
             var ev = forFn ? forFn(cm, sv) : '';
             var vl = eh.querySelector('.omEffortVal'); if(vl) vl.textContent = effortLabel(ev);
-            var eo = eb ? eb.querySelectorAll('.omEffortOpt') : []; for(var q=0;q<eo.length;q++){ var v = eo[q].getAttribute('data-effort'); eo[q].style.color = (v === ev) ? ACCENT : INK; eo[q].style.display = (v && forFn && forFn(cm, v) !== v) ? 'none' : 'block'; }
+            var eo = eb ? eb.querySelectorAll('.omEffortOpt') : []; for(var q=0;q<eo.length;q++){ var v = eo[q].getAttribute('data-effort'); mark(eo[q], v === ev, '500'); eo[q].style.display = (v && forFn && forFn(cm, v) !== v) ? 'none' : 'block'; }
           }
         }catch(e){ /* guard-ok: صفّ الجهد تحسينيّ */ }
       }
       function setAgent(on){ if((window.__agentModeOn === true) !== on){ var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); } }
       function collapseAll(){ var g = pop.querySelectorAll('.omProvModels, .omProvMore, .omEffortBox'); for(var i=0;i<g.length;i++) g[i].hidden = true; var c = pop.querySelectorAll('.omProvChev, .omMoreChev, .omEffortChev'); for(i=0;i<c.length;i++) c[i].textContent = '▸'; }
 
-      chip.addEventListener('click', function(e){ e.stopPropagation(); var showing = pop.style.display !== 'none'; pop.style.display = showing ? 'none' : 'block'; if(!showing){ collapseAll(); refresh(); } });
+      chip.addEventListener('click', function(e){ e.stopPropagation(); var showing = pop.style.display !== 'none'; if(!showing && !pop.firstChild && isOwner()) renderPop(); /* v-pop-after-login: الدخول بعد التحميل كان يترك القائمة فارغة حتّى التحديث */ pop.style.display = showing ? 'none' : 'block'; if(!showing){ collapseAll(); refresh(); } });
       pop.addEventListener('click', function(e){
         var mo = e.target.closest('.omModelOpt');
         if(mo){ e.stopPropagation(); var act = mo.getAttribute('data-act');
-          if(act === 'agent'){ var willOn = !(window.__agentModeOn === true); if(willOn && window.__omMode === 'cc') pick(null); setAgent(willOn); }
+          if(act === 'agent'){ if(curProv() !== 'claude'){ pop.style.display = 'none'; return; } /* v-prov-self: لا وكيل مع غير Claude */
+            var willOn = !(window.__agentModeOn === true); if(willOn && window.__omMode === 'cc') pick(null); setAgent(willOn); }
           else if(act === 'cc'){ if(window.__omMode === 'cc') pick(null); else { setAgent(false); pick('cc'); } }
           refresh(); pop.style.display = 'none'; return;
         }

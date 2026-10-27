@@ -25,8 +25,9 @@ test('completeFreeChain: بترتيب السلسلة، والفاشل يُتخط
   };
   const r = await fc.completeFreeChain({ messages: [{ role: 'user', content: 'علّمني' }], max_tokens: 500, env, fetchImpl, now: 1000 });
   assert.equal(r.ok, true); assert.equal(r.provider, 'groq'); assert.equal(r.text, 'درس عن السوق');
-  assert.equal(r.model, 'openai/gpt-oss-120b');
+  assert.equal(r.model, 'openai/gpt-oss-20b'); // v-plan-models: أوّل مرشّحي Groq
   assert.match(calls[0], /googleapis/); assert.match(calls[1], /groq/);
+  assert.equal(calls.length, 2, 'الفاشل يُتخطّى بنداء واحد، والناجح يُوقف السلسلة فلا يُنادى Mistral');
   assert.ok(!calls.some((u) => /anthropic/.test(u)), 'لا نداء للمحرّك الاحترافيّ');
   assert.match(r.errors[0], /^gemini: http 429/);
   fc.__workingModel.clear();

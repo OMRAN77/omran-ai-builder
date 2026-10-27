@@ -95,7 +95,7 @@
     '|مبروك[ةه]?|مبارك|[أا]لف|كل\\s+عام|كل\\s+سن[ةه]|عيد\\S*|(?:الله|ربي)\\s+ي\\S{2,}|عساك|عساه|عساها|تستاهل\\S*|يستاهل|تهاني(?:نا)?|شكر[اًا]*|مشكور[ةه]?|يعطيك|صباح|مساء|تصبح\\S*|سلامات|سلامتك|الحمد\\s+لله\\s+على|حمد\\s+لله|يا\\s+\\S+|[أا]هلا|هلا|مرحبا|حياك\\S*|نورت\\S*|منور[ةه]?|[أا]حبك|بحبك|وحشتني|happy|congrat\\S*|thank\\S*|welcome|good\\s+(?:morning|night|luck)';
   const TABLES = [
     { name:'filler', L:'لي|لنا|(?:له|لها|لهم|لك|لكم)(?=[\\s:：]+(?:' + FOR_FRAME + ')(?![' + AL + ']))|تكفى|تكفا|بس|كذا|بال(?:عربي|انجليزي|إنجليزي|انقليزي|إنقليزي)|in\\s+(?:english|arabic)|[وف]?(?:عليها|عليه|فيها|فوقها|فوقه)|(?:على|فوق|في)\\s+(?:هذه\\s+|هذي\\s+)?(?:ال|هال)صور[ةه](?:\\s+نفسها)?|on\\s+(?:it|(?:the|this)\\s+(?:image|photo|picture))|بدال(?:ها|ه)|مكان(?:ها|ه)|لو\\s+سمحت|من\\s+فضلك|please',
-      R:'(?:على|فوق|في)\\s+(?:هذه\\s+|هذي\\s+)?(?:ال|هال)صور[ةه](?:\\s+نفسها)?|عليها|فيها|لو\\s+سمحت|لو\\s+تكرمت|من\\s+فضلك|تكفى|تكفا|تكفين|تكفون|و\\s*بس|و?\\s*خلاص|(?:مثل|زي)\\s+ما\\s+قلت(?:\\s+لك)?|please|pls|plz|' +
+      R:'(?:على|فوق|في)\\s+(?:هذه\\s+|هذي\\s+)?(?:ال|هال)(?:صور[ةه]|فيديو|مقطع|لقط[ةه])(?:\\s+نفسها)?|(?:بال|عال|بهال)(?:فيديو|مقطع|لقط[ةه])|عليها|فيها|لو\\s+سمحت|لو\\s+تكرمت|من\\s+فضلك|تكفى|تكفا|تكفين|تكفون|و\\s*بس|و?\\s*خلاص|(?:مثل|زي)\\s+ما\\s+قلت(?:\\s+لك)?|please|pls|plz|' +
         '(?:و\\s*)?(?:(?:ال)?صور[ةه]\\s+)?(?:لا|ما)\\s+(?:تغير|تغيّر|تعدل|تعدّل|تلمس|تمس|تخرب)(?:ها|ين|ون)(?:\\s+(?:ابد[اًا]?|أبد[اًا]?))?|(?:on|to)\\s+(?:it|(?:the|this)\\s+(?:image|photo|picture))|(?:بدون|بلا|دون|من\\s+غير)\\s*(?:أي\\s*)?(?:تغيير|تغير|تعديل|مساس|لمس)(?:\\s*(?:في|على|ل)?\\s*(?:ال)?صور[ةه])?' +
         '|(?:و\\s*)?(?:(?:لا|ما)\\s+|بدون\\s+ما\\s+)(?:تغير|تغيّر|تعدل|تعدّل|تلمس|تمس|تخرب)(?:\\s+(?:شي|شيء|أي\\s+شي|اي\\s+شي))?(?:\\s+(?:في|على|ب))?\\s*(?:ال)?صور[ةه](?:\\s+(?:ابد[اًا]?|أبد[اًا]?))?' },
     { name:'position', L:POS_RUN, R:POS_RUN },
@@ -489,6 +489,48 @@
     const v = cleanVisual(scene).replace(GLUED_EDIT_RE, '$1$2 $3'), visualEdit = v && !isGenericVisual(v) ? v : null;
     return { visualPrompt:!visualEdit ? fallbackVisual(kind, exact) : (isCondolence(exact) && !isCondolence(v) ? 'مشهد تعزية بلا وجوه: ' + v : v), visualEdit };
   }
+  /* v-text-emoji (مشتركة Max ١٦ أكتوبر: صورة + «اكتب اشتقتلج و حط هذيل الإموجي 🤍🌷» كُتب «اشتقتلج و حط هذيل الإموجي» بلا الإيموجي):
+     جملةٌ تسمّي الإيموجي («وحط هذيل الإيموجي»، «ضيف الايموجي»، «مع الإيموجي») أو قلبًا بعد النصّ («وحط قلب ابيض»، «و قلب لون ابيض»)
+     تعليمةٌ تُقرأ ولا تُطبع، ورموز الإيموجي خارج التنصيص تُلحق بالنصّ. بلا تسميةٍ يبقى قرار v-parser-review («اكتب مشكور اخوي 🙏» بلا 🙏). */
+  const EMO_RUN_RE = new RegExp(EMO + '+', 'g');
+  const EMO_NOUN = '[اإأآ]ي?مو?ج[يى](?:ات|ز)?|[اإأ]يموشن(?:ات)?|سمايل(?:ي|ات|ز)?|emojis?';
+  const EMO_VERB = 'حط(?:ي|لي|يلي|ها|ه)?|ضيف(?:ي|لي|ها|ه)?|[أا]ضف|[أا]ضيف|زيد(?:ي)?|خل|خلي|خلّي|ارسم(?:ي|لي)?';
+  const EMO_WITH = 'مع|معاها|معاه|معها|معه|وياها|وياه';
+  /* مراجعة النقض: «وحط ايموجي ورد» كان يطبع «ورد» — الكلمة التي تسمّي الإيموجي تصير رمزه (رموز يونيكود ≤١٢)، وغيرها يبقى نصًّا */
+  const EMO_NAMED = [[/^(?:ورد|ورده|وردة|ورود)$/, '\uD83C\uDF39'], [/^شمس$/, '\u2600\uFE0F'], [/^(?:نجم|نجمه|نجمة|نجوم)$/, '\u2B50'], [/^قمر$/, '\uD83C\uDF19'],
+    [/^(?:كيك|كيكه|كيكة|كعكه|كعكة)$/, '\uD83C\uDF82'], [/^(?:هديه|هدية)$/, '\uD83C\uDF81'], [/^(?:بالون|بالونات)$/, '\uD83C\uDF88'], [/^تاج$/, '\uD83D\uDC51'], [/^نار$/, '\uD83D\uDD25'],
+    [/^(?:ضحك|ضحكه|ضحكة)$/, '\uD83D\uDE02'], [/^(?:فراشه|فراشة)$/, '\uD83E\uDD8B'], [/^(?:فرح|فرحان|ابتسامه|ابتسامة)$/, '\uD83D\uDE0A']];
+  const EMO_NAMED_W = 'ورد|ورده|وردة|ورود|شمس|نجم|نجمه|نجمة|نجوم|قمر|كيك|كيكه|كيكة|كعكه|كعكة|هديه|هدية|بالون|بالونات|تاج|نار|ضحك|ضحكه|ضحكة|فراشه|فراشة|فرح|فرحان|ابتسامه|ابتسامة';
+  const emoNamed = (w) => { const x = w && EMO_NAMED.find((p) => p[0].test(w)); return x ? x[1] : ''; };
+  /* «بدون ايموجي/ولا تحط ايموجي/شيل الايموجي/without emoji» = لا إيموجي: الجملة تُقرأ وتُحذف ورموزها لا تُضاف */
+  const EMO_NEG_RE = new RegExp('(?:^|[\\s،,])(?:بدون|بلا|من\\s*غير|و?\\s*لا\\s*ت?حط(?:ين|ي)?|ما\\s*[اأ]بي|شيل(?:ي)?|[اأ]حذف|without|no)\\s+(?:ال|هال|the\\s+|any\\s+)?(?:' + '[اإأآ]ي?مو?ج[يى](?:ات|ز)?|[اإأ]يموشن(?:ات)?|سمايل(?:ي|ات|ز)?|emojis?|قلوب|قلب|hearts?' + ')(?:\\s+(?:هذيل|هذول|هذي|هذا|هذه|ذي|ذول))?(?=[\\s،,.!؟?]|$)', 'gi');
+  const EMO_ASK_RE = new RegExp('(?:^|[\\s،,])(?:و\\s*)?(?:(?:' + EMO_VERB + '|ابي|أبي|ابغى|أبغى|ابغي|ودي|بدي|نبي|(?:and\\s+)?(?:add|put|include))\\s+)?(?:(?:' + EMO_WITH + '|لي|لها|له|عليها|عليه|فيها|جنبها|جنبه|بعدها|بعده|بعد|كمان|with|and)\\s+){0,2}(?:(?:هذيل|هاذيل|هذول|هاذول|هذولا|هدول|هذي|هاذي|هذا|هاذا|هذه|ذي|ذول|هاي|the|this|these|an?)\\s+)?(?:[وبف]|وب)?(?:ال|هال)?(?:' + EMO_NOUN + ')(?:\\s+(?:هذيل|هذول|هذي|هذا|هذه|ذي|ذول))?(?:\\s+(?:ال)?(' + EMO_NAMED_W + '))?(?=[\\s،,.!؟?]|$)', 'gi');
+  const HEART_SIZE = 'صغير|صغيره|صغيرة|كبير|كبيره|كبيرة|جنب\\s+(?:ال)?كلم[ةه]|جنبها|جنبه|بجنبها|بجانبها|بجانب\\s+(?:ال)?كلم[ةه]|بعد\\s+(?:ال)?كلم[ةه]';
+  const HEART_RE = new RegExp('(?:^|[\\s،,])((?:و\\s*)?(?:' + EMO_VERB + ')(?:\\s+(?:لي|لها|كمان|' + EMO_WITH + '))?|(?:و\\s*)?(?:' + EMO_WITH + ')|و)\\s*(?:(?:ال)?(?:' + EMO_NOUN + ')\\s+)?(?:قلوب|قلب)(?:\\s+(?:' + HEART_SIZE + '))?(?:\\s+(?:ب?لون\\s+|بال|ب)?(?:ال)?(' + COLOR + '))?(?:\\s+(?:' + HEART_SIZE + '))?(?=[\\s،,.!؟?]|$)', 'gi');
+  const HEART_OF = { '#ffd400':'\uD83D\uDC9B', '#f4cf65':'\uD83D\uDC9B', '#111111':'\uD83D\uDDA4', '#2e8b57':'\uD83D\uDC9A', '#18b6a4':'\uD83D\uDC9A', '#5ec8ff':'\uD83D\uDC99', '#1c2f66':'\uD83D\uDC99', '#2979ff':'\uD83D\uDC99',
+    '#ffb3d1':'\uD83D\uDC97', '#ff4f9a':'\uD83D\uDC97', '#a05ad6':'\uD83D\uDC9C', '#ff8a1f':'\uD83E\uDDE1', '#8b5a2b':'\uD83E\uDD0E', '#fdfdfd':'\uD83E\uDD0D', '#d7dbe0':'\uD83E\uDD0D', '#9aa0a6':'\uD83E\uDD0D', '#ead9bd':'\uD83E\uDD0D' };
+  const heartOf = (w) => { const c = w && COLOR_RES.find((x) => x[0].test(w)); return (c && HEART_OF[c[1]]) || '\u2764\uFE0F'; };
+  function emojiAsk(src, marker){
+    const s = String(src || '');
+    if(!marker || !/[اإأآ]ي?مو?ج|يموشن|سمايل|emoji|قلب|قلوب|heart/i.test(s)) return null;
+    const qs = findQuotes(s), cut = [], hearts = [], emo = [];
+    let neg = false;
+    const free = (a, b) => !qs.some((q) => a < q.end && b > q.index) && !cut.some((c) => a < c[1] && b > c[0]);
+    const scan = (re, ok) => { re.lastIndex = 0; let m; while((m = re.exec(s))){ const a = m.index + m[0].length - m[0].replace(/^[\s،,]+/, '').length, b = m.index + m[0].length; if(free(a, b) && ok(m, a)) cut.push([a, b]); } };
+    /* القلب بعد النصّ فقط («ارسم قلب واكتب…» تعديلُ مشهد كما قرّرت الجولة ٣)، و«وقلب» المجرّدة بلا لون نصٌّ («عقل وقلب») */
+    const heartOk = (m, a) => { if(a < marker.end || !/\S/.test(s.slice(marker.end, a)) || (/^و\s*$/.test(m[1]) && !m[2])) return false; hearts.push(heartOf(m[2])); return true; };
+    scan(EMO_NEG_RE, () => { neg = true; return true; });
+    if(!neg) scan(HEART_RE, heartOk);
+    scan(EMO_ASK_RE, (m) => { const n = emoNamed(m[1]); if(n) hearts.push(n); return true; });
+    if(!cut.length) return null;
+    /* الرموز بعد أوّل جملة أو ملاصقة لها قبلها تُلحق (أو تُحذف مع النفي)؛ رمز وسط نصّ المستخدم يبقى في مكانه */
+    const first = Math.min.apply(null, cut.map((c) => c[0]));
+    scan(EMO_RUN_RE, (m) => { if(m.index < first && /\S/.test(s.slice(m.index + m[0].length, first))) return false; if(!neg) emo.push(m[0]); return true; });
+    cut.sort((x, y) => x[0] - y[0]);
+    let rest = '', at = 0;
+    cut.forEach((c) => { rest += s.slice(at, c[0]) + ' '; at = c[1]; });
+    return { rest:(rest + s.slice(at)).replace(/[ \t]{2,}/g, ' ').trim(), emoji:neg ? '' : emo.concat(hearts.filter((h) => emo.join('').indexOf(h) < 0)).join('') }; /* «ورد 🌹» لا يُكرَّر */
+  }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
     const none = (extra) => Object.assign({ wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', positionFlex:false, styleEditLoose:null }, extra);
@@ -510,6 +552,11 @@
     if(!marker){
       const loose = textStyleEditLoose(source);                                         /* «خله يمين»: الجانب وحده مرن كصيغة «خل الكتابة يمين» */
       return none({ styleEditLoose:loose, positionFlex:!!(loose && loose.position && (positionOf(bare) || {}).flex) });
+    }
+    const ea = emojiAsk(source, marker), em = ea && findMarker(ea.rest);
+    if(em){
+      const w = writeSpec(ea.rest, em);
+      if(w.wantsText && (w.exactText || !w.kind)) return Object.assign(w, { exactText:[w.exactText, ea.emoji].filter(Boolean).join(' ') || null });
     }
     return writeSpec(source, marker);
   }

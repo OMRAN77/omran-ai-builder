@@ -31,12 +31,12 @@
   }
 
   /** ينفّذ أداة طلبها الخادم داخل متصفّح المستخدم ويعيد ناتجها عبر نقطة منفصلة. */
-  function serveClientTool(ct) {
+  function serveClientTool(ct, rc) {
     (async function () {
       var out;
       try {
         out = window.omranAgentTools
-          ? await window.omranAgentTools.run(ct.name, ct.input)
+          ? await window.omranAgentTools.run(ct.name, ct.input, rc)
           : 'أداة التنفيذ غير متاحة في هذا المتصفّح.';
       } catch (err) { out = 'تعذّر التنفيذ: ' + ((err && err.message) || err); }
       try {
@@ -63,14 +63,86 @@
   // والحارس الصلب (٥ دقائق) يبقى شبكة الأمان النهائيّة ضدّ التعليق الحقيقيّ.
   var __CHAT_IDLE_MS = 90000;   // لا بايت من الخادم هذه المدة (خارج الأدوات) = تعثّر
   var __CHAT_TOOL_MS = 295000;  // أثناء تشغيل أداة محلّيّة نترك القطع للحارس الصلب
+  /* v-stall-resume (لقطة المالك ١٢ أكتوبر ١٠:٠٠: «تقدر تسويه كلهم» ← «ما وصل شي من الخادم»، والخادم في اللحظة نفسها أنجز وفتح
+     طلب السحب #1012): الجوّال يجمّد التطبيق في الخلفيّة، ومؤقّت ٩٠ ث الذي حلّ موعده أثناء التجميد كان يطلق فور الرجوع قبل أن تُقرأ
+     البايتات المنتظرة في المقبس. الآن الصمت يُعدّ وقتًا ظاهرًا حيًّا فقط: نبضة كلّ ثانية، والصفحة المخفيّة أو فجوة أكبر من ٥ ث بين
+     نبضتين (تجميد) لا تُحسبان. صمتٌ ظاهر ٩٠ ث يبقى تعثّرًا كما كان (درس #527). */
   function __raceIdle(p, ms, tag) {
-    var to;
-    var timer = new Promise(function (_res, rej) { to = setTimeout(function () { rej(new Error(tag)); }, ms); });
-    return Promise.race([p, timer]).finally(function () { try { clearTimeout(to); } catch (e) { /* guard-ok — تنظيف المؤقّت */ } });
+    return new Promise(function (resolve, reject) {
+      var idle = 0, last = Date.now(), done = false, to = null;
+      function finish(fn, v) { if (done) return; done = true; try { clearTimeout(to); } catch (e) { /* guard-ok — تنظيف المؤقّت */ } fn(v); }
+      function tick() {
+        var now = Date.now(), dt = now - last;
+        last = now;
+        var shown = (typeof document === 'undefined') || !document.visibilityState || document.visibilityState === 'visible';
+        if (shown && dt < 5000) idle += dt;
+        if (idle >= ms) { finish(reject, new Error(tag)); return; }
+        to = setTimeout(tick, 1000);
+      }
+      to = setTimeout(tick, 1000);
+      p.then(function (v) { finish(resolve, v); }, function (e) { finish(reject, e); });
+    });
   }
 
+  /* v-gen-image (أمر المالك ١٣ أكتوبر «اذا شفت الصورة عند مزوّد اقوله عمّم… كل شي موجود في التطبيق نفسه»): «عمّم» من المالك ومعها
+     صورة قريبة — مرفقة مع الكلمة، أو في الردّ الذي قبلها، أو مرفقة في السؤال قبله — تُرسل JPEG مضغوطة (دون ٦٤٠ ك.ب) مع الطلب في
+     genImage، فيحفظها الخادم برابط من التطبيق يصل المزوّدين العشرة. بلا الكلمة أو مع نفيها أو لغير المالك: لا شيء يُرسل. */
+  var __GEN_WORD_RE = /(?:^|[\s،,.!؟?«»"'()-])(?:عمّم|عمم|عمّمه|عممه|عمّمها|عممها|عمّموه)(?=$|[\s،,.!؟?«»"'()-])/i;
+  var __GEN_NEG_RE = /(?:لا|ما|مب|مو|مش|بدون)\s+(?:ت|ن|ي)?(?:عمّم|عمم)/;
+  function __msgImage(m) {
+    var att = (m && Array.isArray(m.attachments)) ? m.attachments : [];
+    for (var a = att.length - 1; a >= 0; a--) { var x = att[a]; if (x && x.isImage && typeof x.dataUrl === 'string' && x.dataUrl.indexOf('data:image') === 0) return x.dataUrl; }
+    var c = (m && m._imgCache && typeof m._imgCache === 'object') ? m._imgCache : null;
+    if (c) { var ks = Object.keys(c); for (var k = ks.length - 1; k >= 0; k--) { var u = c[ks[k]]; if (typeof u === 'string' && u.indexOf('data:image') === 0) return u; } }
+    return '';
+  }
+  function __smallJpeg(du) {
+    return new Promise(function (resolve) {
+      try {
+        var im = new Image();
+        im.onload = function () {
+          try {
+            var steps = [1600, 1400, 1200, 1024, 800, 640], q = [0.88, 0.86, 0.84, 0.8, 0.75, 0.7];
+            for (var s = 0; s < steps.length; s++) {
+              var r = Math.min(1, steps[s] / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
+              var cv = document.createElement('canvas');
+              cv.width = Math.max(1, Math.round((im.naturalWidth || 1) * r)); cv.height = Math.max(1, Math.round((im.naturalHeight || 1) * r));
+              var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(im, 0, 0, cv.width, cv.height);
+              var b64 = cv.toDataURL('image/jpeg', q[s]).split(',')[1] || '';
+              if (b64 && b64.length <= 640 * 1024) { resolve({ data: b64, mime: 'image/jpeg', w: cv.width, h: cv.height }); return; }
+            }
+          } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:genImage'); }
+          resolve(null);
+        };
+        im.onerror = function () { resolve(null); };
+        im.src = du;
+      } catch (e) { resolve(null); }
+    });
+  }
+  async function __genImageFor(text, proj) {
+    if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return null;
+    var s = String(text || '');
+    if (!__GEN_WORD_RE.test(s) || __GEN_NEG_RE.test(s)) return null;
+    var cur = proj || ((typeof getCurrent === 'function') ? getCurrent() : null);
+    var ms = (cur && Array.isArray(cur.messages)) ? cur.messages : [];
+    for (var i = ms.length - 1, seen = 0; i >= 0 && seen < 3; i--) {
+      var m = ms[i];
+      if (!m || m._loading) continue;
+      seen++;
+      var du = __msgImage(m);
+      if (!du) continue;
+      var sm = await __smallJpeg(du);
+      if (sm) sm.note = String((m.apiText !== undefined ? m.apiText : m.content) || '').replace(/__IMG_\d+__/g, '').replace(/\s+/g, ' ').trim().slice(0, 300);
+      return sm;
+    }
+    return null;
+  }
+
+  window.omranGenImageFor = __genImageFor; /* v-gen-image-agent: الوكيل (app-09 runOmranAgent) يرسل الصورة نفسها بالقاعدة نفسها */
+
   window.callChatWithTools = async function (messages, onDelta, provider, opts) {
-    window.__chatVideoResult = null;
+    var __rcChat = (onDelta && onDelta.__chat) || ((typeof getCurrent === 'function') ? getCurrent() : null); /* v-img-run-bind: محادثة هذا الطلب (app-09 __sigFn) */
+    window.__chatVideoResult = null; /* v-audit-chatcli: فيديو أداة المحادثة صار لمحادثته (__chatVideoByChat في app-17)، والبطاقات في ناتج هذه الدالّة وحده */
     window.__chatVideoReference = null;
     window.__chatLastUserText = '';
     try {
@@ -97,6 +169,9 @@
     // الذاكرة، وحدّ الأربع يبقى حدَّ ردٍّ لا حدَّ جلسة. الكود المبنيّ يُستبدل فيه
     // الرمز فور وصوله، فلا يضرّه المسح لاحقًا.
     window.__genImages = {};
+    /* v-img-run-bind: سياق تشغيل هذا الطلب لأدوات الصور (app-17) — طلب محادثة أخرى يصفّر العامّ ولا يمسّ هذه */
+    var __rc = { chat: __rcChat, imgs: window.__genImages, ref: window.__chatVideoReference, userText: window.__chatLastUserText };
+    try { if (__rcChat && __rcChat.id != null) (window.__genImagesByChat = window.__genImagesByChat || {})[__rcChat.id] = __rc.imgs; } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:img-bind'); }
     // v-chat-vision: الصور المرفقة كانت تُقصى من هذا المسار فتسقط لمسار قديم
     // أضعف — الآن تُحوَّل لكتل رؤية بصيغة Anthropic وتمر بنفس الخط المباشر
     // القوي (نفس النموذج ونفس قواعد العمق والأدوات).
@@ -109,15 +184,20 @@
       });
       return { role: m.role, content: content };
     });
+    var __genImg = null;
+    try { __genImg = await __genImageFor(window.__chatLastUserText, __rcChat); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:genImage'); } /* v-gen-image */
+    var __sig = (onDelta && onDelta.__signal) || ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined); /* v-parallel-chats */
     var res = await __raceIdle(fetch('/api/ai?action=chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: (onDelta && onDelta.__signal) || ((typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined), /* v-parallel-chats */
+      signal: __sig,
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
         ownerUiShot: (typeof window.__ownerUiShotTurn === 'boolean') ? window.__ownerUiShotTurn : undefined, /* v-owner-ui-shot-client: قرار الواجهة لهذا الدور (لقطة المالك يطلب تعديلها) — الخادم يتبعه بدل إعادة التخمين من النصّ */
         noTools: (opts && opts.noTools) ? true : undefined, /* v-owner-solo: المسار القديم للمالك (استئذان/إصلاح) بلا أدوات كما كان — الخادم يقبله للمالك وحده */
+        genImage: __genImg || undefined, /* v-gen-image: صورة «عمّم» للمالك وحده؛ undefined لغيرها فيسقط الحقل من JSON */
+        imgIds: (function () { try { var c = (typeof omranOwnerUi === 'function' && omranOwnerUi()) ? __rcChat : null; return (c && c.agentImgIds && Object.keys(c.agentImgIds).length) ? c.agentImgIds : undefined; } catch (e) { return undefined; } })(), /* v-agent-img: رمز رسمة المحادثة ← معرّفها في المخزن، للمالك وحده */
         histOffset: (opts && Number.isInteger(opts.histOffset) && opts.histOffset >= 0) ? opts.histOffset : undefined, /* v-tokens-window: موضع أوّل رسالة مرسلة في المحادثة — الخادم يثبّت به بداية نافذة التاريخ (كاش)؛ undefined = السلوك القديم */
         /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود قائمته حصرًا؛ v-provider-models: ولبقيّة
            المزوّدين معرّف OpenRouter من شريط السهم (الخادم يقبله للمالك بالبادئة الصحيحة). */
@@ -143,25 +223,54 @@
     var __planLimit = false; /* v-plans-gate: الخادم علّم الخطأ «حدّ الباقة» (limit) — المستدعي يفتح الباقات ولا يجرّب غيره */
     var __ownerStop = false; /* v-owner-solo: مزوّد المالك المختار فشل والخادم كتب السبب — المستدعي يعرضه ولا يجرّب غيره */
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
+    var __cards = null; /* v-cards: حدث البطاقات (آخر واحد في الردّ) */
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
     var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
     var __model = ''; /* v-claude-models: اسم النموذج الذي أجاب فعلًا (من الخادم) */
     var __served = ''; /* v-owner-identity: الموديل كما أعلنه المزوّد نفسه في ردّه (للمالك) */
     /* v-read-all (المالك: «الوكيل يقرأ ويحلّل كلّ شي — أريد نفس الشي في المزوّدين كلّهم»): كلّ سطر أثر «↳» خطوةٌ في
        سجلّ بصيغة سجلّ الوكيل (m._agParts)، يسبقها «فكّر N ث» حتّى أوّل حرف — يُحفظ في الرسالة فيبقى بعد الردّ. */
-    var __t0 = Date.now(), __tFirst = 0, __steps = [];
+    var __t0 = Date.now(), __tFirst = 0, __steps = [], __thinks = [];
+    /* v-work-log (المالك ١٣ أكتوبر: «الحينه هذا منظم بي ذمتك» ثمّ لقطة واجهة Claude «سولي نفس هذي بالضبط»): التفكير والخطوات سجلّ
+       واحد بترتيب وصولها (__seq)، وكلّ واحد يصل صندوق العمل حيًّا (__omranThinkNote) مع بداية الدور (t0) لعدّاد الوقت.
+       مدّة كلّ تفكير منذ آخر حدث لا منذ بداية الدور. */
+    var __seq = [], __tLast = __t0;
+    /* v-interleave-fix (تدقيق ١٤ أكتوبر): الجملة القصيرة قبل الأداة كانت تتراكم في فقاعة الردّ ملتصقة («أقرأ app-17 أوّلًا.الآن أرفع…»).
+       الآن ما كُتب منذ آخر خطوة يصير سطرًا في السجلّ قبلها (كـClaude Code)، والردّ ما بعد آخر خطوة. النصّ الطويل أو الكود يبقى في الردّ
+       ويُفصل بسطر فارغ — لا يُقصّ جواب كتبه النموذج قبل أداة. */
+    var __segFrom = 0, __moved = [];
+    function __moveSeg() {
+      if (full.length <= __segFrom) { __segFrom = full.length; return; }
+      var seg = full.slice(__segFrom), st = seg.trim();
+      if (st && st.length <= 320 && st.indexOf('```') === -1) {
+        full = full.slice(0, __segFrom); __moved.push(seg);
+        var tp = { t: 'text', s: st }; __seq.push(tp);
+        if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ step: tp, t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:seg'); } }
+        if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:seg-delta'); } }
+      } else if (st && !/\n\s*$/.test(full)) full += '\n\n';
+      __segFrom = full.length;
+    }
+    function __logNow() { return __seq.length ? [{ t: 'meta', ms: Date.now() - __t0 }].concat(__seq) : undefined; }
+    var __rp = window.omranReadPanel || null; /* v-read-panel: لوحة «الكود المقروء» — ما يُقرأ من GitHub يظهر فيها أثناء البثّ */
+    if (__rp) __rp.begin();
 
     while (true) {
       var chunk;
       try { chunk = await __raceIdle(reader.read(), __toolBusy ? __CHAT_TOOL_MS : __CHAT_IDLE_MS, '__chat_idle__'); }
       catch (e) {
-        if (e && e.name === 'AbortError') throw e; /* إيقاف المستخدم أو الحارس الصلب — يمرّ كما هو */
-        try { reader.cancel(); } catch (_e) { /* guard-ok — تحرير المجرى */ }
+        if (e && e.name === 'AbortError') { try { e.log = __logNow(); } catch (_l) { /* guard-ok — السجلّ ترف */ } throw e; } /* إيقاف المستخدم أو الحارس الصلب — يمرّ كما هو، ومعه سجلّ العمل (v-interleave-fix) */
+        try { var __cp = reader.cancel(); if (__cp && __cp.catch) __cp.catch(function () { /* guard-ok — المجرى انقطع أصلًا: إلغاؤه يرفض، وبلا هذا رفضٌ غير معالَج (v-turn-close) */ }); } catch (_e) { /* guard-ok — تحرير المجرى */ }
         if (full.trim()) break; /* عندنا نصّ جزئيّ — نعرضه بدل تضييعه */
-        throw new Error(serverErr || 'chat: stalled — no response');
+        /* v-turn-close (لقطة المالك ١٥ أكتوبر: طلب السحب انفتح والفقاعة «ما وصل شي من الخادم» بلا شيء): انقطاع المقبس كان يُقرأ «صمتًا»،
+           ويضيع معه سجلّ العمل (الخطوات والجمل المنقولة إليه) وعلامة سبب الخادم. الآن: الصمت الظاهر ٩٠ ث «stalled» كما كان (#527)، والانقطاع
+           «cut» بسببه، والسجلّ وownerStop يبقيان مع الخطأ كما في نهاية المجرى الفارغة. */
+        var __se = new Error(serverErr || ((e && e.message === '__chat_idle__') ? 'chat: stalled — no response' : 'chat: cut — ' + String((e && e.message) || e).slice(0, 80)));
+        if (__rp) { try { __rp.pack(__steps, full); } catch (_p) { if (window.__swallow) window.__swallow(_p, 'chatTools:cut-pack'); } } /* سقف المقاطع المحفوظة كالنهاية الناجحة — السجلّ يُحفظ في الرسالة */
+        if (__ownerStop) __se.ownerStop = true; __se.log = __logNow(); throw __se;
       }
       if (chunk.done) break;
       __toolBusy = false; /* وصلت بايتات جديدة من الخادم → لم نعد بانتظار أداة */
+      if (__sig) { try { __sig.__omLastByte = Date.now(); } catch (e) { /* guard-ok — إشارة مجمّدة: حارس الرجوع يقطع كما كان */ } } /* v-stall-resume: آخر بايت على إشارة الطلب — حارس الرجوع (app-09) لا يقطع بثًّا حيًّا */
       buf += dec.decode(chunk.value, { stream: true });
       var lines = buf.split('\n');
       buf = lines.pop();
@@ -173,11 +282,23 @@
         /* v-img-box (المالك: «احذف كلمة يرسم الصورة مع أيقونة الرسم»): حالة رسم/تعديل صورة تُظهر مربّع الإنشاء بدل السطر */
         if (ev.status && ev.k === 'stGenImage' && typeof window.__omranImgBox === 'function' && window.__omranImgBox()) { /* المربّع ظهر */ }
         else if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status, onDelta && onDelta.__status);  /* v656 */
-        if (ev.status && /^↳/.test(String(ev.status)) && __steps.length < 24) {
-          var __tt = String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^↳\s*/, '');
-          __steps.push({ t: 'tool', name: String(ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: /Fail|Err/.test(String(ev.k || '')) ? 1 : 0, g: 0 });
+        if (ev.status && !/^↳/.test(String(ev.status)) && typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ head: String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/, '').trim(), t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:head'); } } /* v-work-log: رأس صندوق العمل = ما يجري الآن */
+        if (ev.think && ev.think.s && __thinks.length < 24) { __moveSeg(); /* v-interleave-fix */ /* v-interleave (المالك ١٤ أكتوبر «نفس فكرة كلاود كودي»): التفكير بين الأدوات يظهر سطرًا مطويًّا كما يفكّر — كان v-edit-no-talk يحجبه بعد أوّل أداة */
+          var __ts = String(ev.think.s).slice(0, 1200);
+          var __tm = Date.now() - __tLast; __tLast = Date.now();
+          __thinks.push({ t: 'think', ms: __tm, s: __ts }); __seq.push(__thinks[__thinks.length - 1]); /* محفوظًا مطويًّا: «فكّر N ث ›» يُفتح بالضغط */
+          if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ s: __ts, ms: __tm, t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:think'); } }
         }
-        if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
+        if (ev.status && /^↳/.test(String(ev.status)) && !/^↳\s*💭/.test(String(ev.status)) && __steps.length < 24) {
+          var __tt = String((typeof tStatus === 'function') ? tStatus(ev) : ev.status).replace(/^↳\s*/, '');
+          __moveSeg(); /* v-interleave-fix: ما كُتب قبل الخطوة سطر قبلها في السجلّ */
+          __steps.push({ t: 'tool', name: String(ev.tool || ev.k || ''), title: __tt, cmd: String(ev.cmd || ''), out: String(ev.out || ''), err: (ev.err || /Fail|Err/.test(String(ev.k || ''))) ? 1 : 0, g: 0 }); /* v-interleave-fix: التجميع باسم الأداة لا بمفتاح الترجمة، والفشل أحمر بحكم الخادم */
+          var __st = __steps[__steps.length - 1]; __seq.push(__st); __tLast = Date.now();
+          if (ev.code && typeof ev.code === 'object') { __st.code = ev.code; __st.g = 1; __st.title = String(ev.code.p || __tt) + '  ' + ev.code.a + '–' + ev.code.b; } /* v-read-panel: يُحفظ مع الخطوة فتعمل الأرقام بعد إعادة التحميل · v-work-log: عنوان قراءة الملفّ مساره وأسطره */
+          if (typeof window.__omranThinkNote === 'function') { try { window.__omranThinkNote({ step: __st, t0: __t0 }); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:step'); } }
+        }
+        if (ev.code && typeof ev.code === 'object' && __rp) { try { __rp.live(ev.code); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-live'); } }
+        if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool, __rc); }
         if (ev.delta) {
           if (!__tFirst) __tFirst = Date.now();
           noteEnd(onDelta && onDelta.__status);
@@ -188,6 +309,8 @@
         // العرض النهائي). كان يُهمَل هنا فتبقى الروابط المحذوفة ظاهرة للمستخدم.
         if (typeof ev.patch === 'string' && ev.patch.trim()) {
           full = ev.patch;
+          __moved.forEach(function (m) { var mi = full.indexOf(m); if (mi !== -1) full = full.slice(0, mi) + full.slice(mi + m.length); }); /* v-interleave-fix: الردّ المنقّى بلا ما نُقل للسجلّ */
+          full = full.replace(/^\s+/, ''); __segFrom = full.length;
           if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:patch'); } }
         }
         if (Array.isArray(ev.sources)) {
@@ -195,6 +318,7 @@
             if (s && s.url && !__srcAcc.some(function (x) { return x.url === s.url; })) __srcAcc.push(s);
           });
         }
+        if (ev.cards && typeof ev.cards === 'object') __cards = ev.cards; /* v-cards */
         if (ev.error) serverErr = ev.error;
         if (ev.error && ev.limit === true) __planLimit = true;
         if (ev.error && ev.ownerStop === true) __ownerStop = true;
@@ -208,15 +332,18 @@
     noteEnd(onDelta && onDelta.__status);
 
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم — إلّا حدّ الباقة: لا مسار آخر يتجاوزه.
-    if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; throw __er; }
+    if (!full.trim() && __moved.length) full = __moved[__moved.length - 1].trim(); /* v-interleave-fix: انتهى بأداة بلا كلام بعدها — آخر جملة هي الردّ */
+    if (!full.trim()) { var __er = new Error(serverErr || 'chat: empty reply'); if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; __er.log = __logNow(); throw __er; } /* v-interleave-fix: السجلّ يبقى مع الخطأ */
     /* v-claude-code-level C3 (المالك: «ما يعطيني شي»): سبب توقّف المالك بعد نصّ (خطأ بعد التمهيد، قطع لطوله، مهلة، رفض) كان يضيع —
        يُلحق تحت الردّ. ownerStop لا يرسله الخادم إلّا للمالك، فغيره كما كان. ردّ قُطع داخل كتلة كود (سياج لم يُغلق) يُغلَق سياجه
        قبل السطر — وإلّا صار السبب جزءًا من الكود المستخرَج (extractReplyRaw) — ويُعلَّم fenceCut ليعرف المستدعي أنّه مقطوع. */
     var __fenceCut = false;
     if (__ownerStop && serverErr) { __fenceCut = ((full.match(/```/g) || []).length % 2) === 1; full = full + (__fenceCut ? '\n```' : '') + '\n\n⚠️ ' + serverErr; if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:owner-note'); } } }
     var __p = provider || 'claude';
-    var __log = __steps.length ? [{ t: 'think', ms: (__tFirst || Date.now()) - __t0, s: '' }].concat(__steps) : undefined;
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined };
+    if (__rp) { try { __rp.pack(__steps, full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:read-pack'); } } /* v-read-panel: سقف حجم المقاطع المحفوظة */
+    window.__genImages = __rc.imgs; /* v-img-run-bind: المستدعي يستبدل رموز الكود (substUserImage) بصور هذا الطلب لا طلب محادثة أخرى */
+    var __log = __logNow(); /* v-work-log: بترتيب الوصول، وأوّله مدّة العمل كلّه (v-interleave-fix: كانت حتّى أوّل حرف فـ«عمل ٣ث» لشغل ٣ دقائق) */
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, served: __served || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined, log: __log, fenceCut: __fenceCut || undefined, cards: __cards || undefined };
   };
 })();
 

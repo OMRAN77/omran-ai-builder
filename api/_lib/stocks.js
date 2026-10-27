@@ -124,6 +124,23 @@ async function anySeries(symbol, outputsize, apiKey) {
   return s;
 }
 
+// v-stocks-fail: رسالة مزوّد الأسعار الخامّة (اسمه ورابط توثيقه، «**symbol** or **figi** … missing or invalid») لا تصل الواجهة:
+// رمز تعرضه بلغتها — symbol_not_found للرمز الخاطئ، وunavailable لما سواه (حصّة، زحام، مفتاح غائب) — والنصّ الخامّ للسجلّ.
+function stocksFailCode(err) {
+  return /missing or invalid|not found|invalid symbol/i.test(String((err && err.message) || err || '')) ? 'symbol_not_found' : 'unavailable';
+}
+
+// v-audit-search (srv-search-1): اسم سطر لوحة الترتيب — لا بريد (g_<البريد> أو اسم قديم فيه @) ولا رقم هاتف.
+function pfBoardName(key) {
+  const s = String(key || '');
+  const k = /^g_.*@/.test(s) ? s.slice(2) : s;
+  return (k.includes('@') || /\d{6,}/.test(k)) ? k.slice(0, 2) + '***' : k;
+}
+
+// v-audit-search (srv-search-8): لغات الواجهة الأربع عشرة — كان الجدول سبعًا، فالإسبانيّة والتركيّة والروسيّة… تسقط إلى العربيّة.
+const STOCK_LANGS = { ar: 'Arabic', en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali', id: 'Indonesian', fil: 'Filipino', tr: 'Turkish', zh: 'Chinese', ru: 'Russian', es: 'Spanish', ml: 'Malayalam' };
+const stockReplyLang = (l) => STOCK_LANGS[String(l || '').toLowerCase()] || 'Arabic';
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -132,7 +149,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   const apiKey = process.env.TWELVEDATA_API_KEY;
-  if (!apiKey) { res.status(500).json({ error: 'Server is missing TWELVEDATA_API_KEY' }); return; }
+  if (!apiKey) { logError('stocks/config', new Error('missing price-data key')); res.status(503).json({ error: 'unavailable' }); return; }
 
   try {
     const body = req.body || {};
@@ -283,9 +300,8 @@ module.exports = async (req, res) => {
       }
 
       const aKey = process.env.ANTHROPIC_API_KEY;
-      if (!aKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
-      const langNames = { ar: 'Arabic', en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali' };
-      const prompt = `You are a friendly, expert trading TEACHER for complete beginners.\n\n${topic ? `LESSON TOPIC: ${topic}\n` : ''}${userQ ? `STUDENT QUESTION: ${userQ}\n` : ''}\nLIVE MARKET DATA RIGHT NOW for ${exSym} (use it as the real example throughout the lesson):\n${JSON.stringify(live)}\n\nRules:\n- Reply in ${langNames[lang] || 'Arabic'} with simple, clear language for beginners.\n- ALWAYS teach using the live numbers above (real price, real RSI, real MACD, real SMA) — say "الآن سعر ... فعليًا" style so the student learns on the real market.\n- Structure: short intro → explanation with the live example → 💡 practical tip → ❓ one quick self-check question for the student.\n- Keep it focused (~250-400 words). No investment advice, education only.\n- End with exactly: "⚠️ بيانات تقريبية وقد تتأخر — ليست نصيحة استثمارية." (translated to the reply language).`;
+      if (!aKey) { logError('stocks/config', new Error('missing lesson key')); res.status(503).json({ error: 'unavailable' }); return; }
+      const prompt = `You are a friendly, expert trading TEACHER for complete beginners.\n\n${topic ? `LESSON TOPIC: ${topic}\n` : ''}${userQ ? `STUDENT QUESTION: ${userQ}\n` : ''}\nLIVE MARKET DATA RIGHT NOW for ${exSym} (use it as the real example throughout the lesson):\n${JSON.stringify(live)}\n\nRules:\n- Reply in ${stockReplyLang(lang)} with simple, clear language for beginners.\n- ALWAYS teach using the live numbers above (real price, real RSI, real MACD, real SMA) — say "the price right now is …" (in the reply language) so the student learns on the real market.\n- Structure: short intro → explanation with the live example → 💡 practical tip → ❓ one quick self-check question for the student.\n- Keep it focused (~250-400 words). No investment advice, education only.\n- End with exactly: "⚠️ بيانات تقريبية وقد تتأخر — ليست نصيحة استثمارية." (translated to the reply language).`;
       const callClaude = (m) => fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'x-api-key': aKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
@@ -330,7 +346,7 @@ module.exports = async (req, res) => {
         if (fq && fq.price) return fq.price;
         const j = await td('quote', { symbol: sym }, apiKey);
         const p = +j.close;
-        if (!p || !isFinite(p)) throw new Error('لا يوجد سعر حي لهذا الرمز');
+        if (!p || !isFinite(p)) throw new Error('symbol not found: ' + sym); // v-stocks-fail: يصنَّف symbol_not_found
         return p;
       };
 
@@ -341,15 +357,16 @@ module.exports = async (req, res) => {
 
       if (mode === 'pf-trade') {
         const gate = await checkAndConsumePlanCustom(body.token, body.guestId, clientIp(req), 'stocks-pf', 40);
-        if (!gate.allowed) { res.status(402).json({ error: 'وصلت لحد الصفقات اليومي (' + gate.limit + ') — عد غدًا 🌙' }); return; }
+        /* v-audit-search (srv-search-8): أخطاء الصفقة رموز وأرقامها حقول — كانت جملًا عربيّة يعرضها العميل كما هي في كلّ اللغات */
+        if (!gate.allowed) { res.status(402).json({ error: 'trade_limit', limit: gate.limit }); return; }
         const sym = String(body.tradeSymbol || '').trim().toUpperCase().slice(0, 12).replace(/[^A-Z0-9.\-]/g, '');
         const qty = Math.floor(Number(body.qty));
         const side = body.side === 'sell' ? 'sell' : 'buy';
-        if (!sym || !isFinite(qty) || qty <= 0 || qty > 1000000) { res.status(400).json({ error: 'اكتب رمز السهم وكمية صحيحة' }); return; }
+        if (!sym || !isFinite(qty) || qty <= 0 || qty > 1000000) { res.status(400).json({ error: 'bad_trade' }); return; }
         const price = await livePrice(sym);
         const cost = price * qty;
         if (side === 'buy') {
-          if (cost > pf.cash + 0.01) { res.status(400).json({ error: 'رصيدك الافتراضي لا يكفي: عندك ' + Math.floor(pf.cash).toLocaleString('en-US') + '$ والصفقة تحتاج ' + Math.ceil(cost).toLocaleString('en-US') + '$' }); return; }
+          if (cost > pf.cash + 0.01) { res.status(400).json({ error: 'insufficient_cash', cash: Math.floor(pf.cash), cost: Math.ceil(cost) }); return; }
           const pos = pf.positions[sym] || { qty: 0, avgCost: 0 };
           pos.avgCost = (pos.avgCost * pos.qty + cost) / (pos.qty + qty);
           pos.qty += qty;
@@ -357,7 +374,7 @@ module.exports = async (req, res) => {
           pf.cash -= cost;
         } else {
           const pos = pf.positions[sym];
-          if (!pos || pos.qty < qty) { res.status(400).json({ error: 'ما تملك هذه الكمية — عندك ' + ((pos && pos.qty) || 0) + ' سهم من ' + sym }); return; }
+          if (!pos || pos.qty < qty) { res.status(400).json({ error: 'not_enough_shares', have: (pos && pos.qty) || 0, symbol: sym }); return; }
           pos.qty -= qty;
           pf.cash += cost;
           if (pos.qty <= 0) delete pf.positions[sym];
@@ -395,7 +412,9 @@ module.exports = async (req, res) => {
         if (ks.length > 400) ks.sort((a, c) => (b[a].t || 0) - (b[c].t || 0)).slice(0, ks.length - 400).forEach((k) => delete b[k]);
         await kvPutJSON(boardKey, b);
         const rows = Object.keys(b).map((k) => ({ user: k, plPct: b[k].plPct })).sort((x, y) => y.plPct - x.plPct);
-        bd = { top: rows.slice(0, 10).map((r, i) => ({ rank: i + 1, user: r.user, plPct: r.plPct })), rank: rows.findIndex((r) => r.user === user) + 1 || null, total: rows.length };
+        /* v-audit-search (srv-search-1): مفتاح الحساب لا يخرج للعميل — حساب جوجل مفتاحه g_<البريد> فكان البريد يظهر لكلّ المستخدمين.
+           اسم عرض مقنَّع (بريد أو رقم هاتف = أوّل حرفين ونجوم) وعلم me لسطر صاحب الطلب. */
+        bd = { top: rows.slice(0, 10).map((r, i) => Object.assign({ rank: i + 1, name: pfBoardName(r.user), plPct: r.plPct }, r.user === user ? { me: true } : {})), rank: rows.findIndex((r) => r.user === user) + 1 || null, total: rows.length };
       } catch (e) { logError('stocks/pf-board', e); }
       res.status(200).json({ ok: true, portfolio: view, board: bd, startCash: PF_START_CASH });
       return;
@@ -481,8 +500,7 @@ module.exports = async (req, res) => {
       const aKey = process.env.ANTHROPIC_API_KEY;
       if (!aKey) { res.status(200).json({ facts, analysis: null }); return; }
       const userQ = String(body.question || '').slice(0, 500);
-      const langNames = { ar: 'Arabic', en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali' };
-      const prompt = `You are an expert stock market analyst. Analyze this stock using ONLY the real data below.\n\nDATA:\n${JSON.stringify(facts)}\n\n${userQ ? `USER QUESTION: ${userQ}\n\n` : ''}Reply in ${langNames[lang] || 'Arabic'}. Structure (use these exact section emojis):\n📊 نظرة عامة — trend direction (up/down/sideways) in 1-2 sentences\n📈 التحليل الفني — interpret RSI, MACD, SMA20/50, 60-day high/low; give support & resistance levels with numbers\n📰 الأخبار — link recent news to price action (skip if no news)\n⚖️ نقاط القوة والضعف — 2-3 bullets each\n👁️ مستويات للمراقبة — key numeric levels\n\nBe concise, numeric, professional. End with exactly: "⚠️ تحليل تقريبي — ليس نصيحة استثمارية" (translated to the reply language).`;
+      const prompt = `You are an expert stock market analyst. Analyze this stock using ONLY the real data below.\n\nDATA:\n${JSON.stringify(facts)}\n\n${userQ ? `USER QUESTION: ${userQ}\n\n` : ''}Reply in ${stockReplyLang(lang)}. Structure (use these exact section emojis; write the section titles in the reply language):\n📊 نظرة عامة — trend direction (up/down/sideways) in 1-2 sentences\n📈 التحليل الفني — interpret RSI, MACD, SMA20/50, 60-day high/low; give support & resistance levels with numbers\n📰 الأخبار — link recent news to price action (skip if no news)\n⚖️ نقاط القوة والضعف — 2-3 bullets each\n👁️ مستويات للمراقبة — key numeric levels\n\nBe concise, numeric, professional. End with exactly: "⚠️ تحليل تقريبي — ليس نصيحة استثمارية" (translated to the reply language).`;
       const callClaude = (m) => fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'x-api-key': aKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
@@ -537,6 +555,8 @@ module.exports = async (req, res) => {
       volume: +j.volume, isOpen: !!j.is_market_open, datetime: j.datetime,
     });
   } catch (err) {
-    res.status(502).json({ error: String((err && err.message) || err) });
+    const code = stocksFailCode(err);
+    if (code === 'unavailable') logError('stocks/unavailable', err);
+    res.status(code === 'symbol_not_found' ? 404 : 503).json({ error: code });
   }
 };

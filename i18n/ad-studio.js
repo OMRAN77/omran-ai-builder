@@ -3,7 +3,8 @@
  * اللغة تُقرأ من localStorage.aiapp_lang، والارتداد إلى الإنجليزيّة. */
 window.ADI18N = {
 ar: {
-  dir: "rtl", pageTitle: "استوديو الإعلانات — عمران AI", h1: "استوديو الإعلانات — تحدّث، ثمّ اختر تصميمك", sub: "تكتب ما تريد الإعلان عنه بكلامك، تُجيب عن سؤالين، ترفع صورتك — فتخرج عشرة تصاميم جاهزة تختار منها.",
+  axStud2AdPaused: "الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.", axStud2AdLimit: "بلغتَ حدّ اليوم ({n} صور) لتوليد الإعلانات. جرّب غدًا.", axStud2AdFailed: "تعذّر توليد الإعلان الآن — حاول مرّة أخرى.",
+  dir: "rtl", pageTitle: "استوديو الإعلانات — om ai", h1: "استوديو الإعلانات — تحدّث، ثمّ اختر تصميمك", sub: "تكتب ما تريد الإعلان عنه بكلامك، تُجيب عن سؤالين، ترفع صورتك — فتخرج عشرة تصاميم جاهزة تختار منها.",
   back: "← رجوع إلى التطبيق", asstName: "مساعد الإعلانات", stepStart: "ابدأ", inpPh: "اكتب هنا…", gTitle: "عشرة تصاميم — اختر واحدًا", dragHint: "اسحب أيّ نصّ — والمسه ثمّ كبّره أو صغّره",
   ratioTitle: "نسبة الصورة المولَّدة", rSquare: "◻ مربّع", rTall: "▯ طولي", rWide: "▭ عرضي", genBtn: "ولّد الإعلان صورةً", bgLight: "خلفيّة فاتحة", bgDark: "خلفيّة داكنة", resetAll: "أعِد الكلّ لأصله",
   zoomHint: "اضغط في أي مكان للإغلاق", stepOf: "{n} من {m}", stepReady: "جاهز", nm0: "سينمائيّ", nm1: "طبقات", nm2: "ملصق حرّ", nm3: "أنيق", nm4: "جريء", nm5: "فخم", nm6: "بسيط", nm7: "مجلّة", nm8: "نيون",
@@ -28,7 +29,7 @@ ar: {
   q1_clinic: "ما التخصّص أو الخدمة؟", q2_clinic: "كم سعر الاستشارة ورقم الحجز؟", intro_salon: "الصالون يبيع النتيجة لا الخدمة: صورة «بعد» واحدة قويّة، وباقة بسعر واحد أفضل من قائمة أسعار طويلة.",
   q1_salon: "ما الباقة أو الخدمة؟", q2_salon: "كم سعرها ورقم الحجز؟", intro_service: "إعلان الخدمة يُحسم بثلاثة: كم تستغرق، كم تكلّف، وهل فيها ضمان. اكتبها في الإعلان نفسه ولا تتركها للاتّصال.",
   q1_service: "ما الخدمة التي تقدّمها؟", q2_service: "كم سعرها ورقم التواصل؟", intro_other: "أيّ إعلان ناجح يقوم على ثلاثة: صورة واحدة قويّة، جملة واحدة تُفهم في ثانيتين، وسعر ورقم ظاهران.",
-  q1_other: "ما الذي تريد الإعلان عنه بالضبط؟", q2_other: "كم السعر ورقم التواصل؟", kick_car: "للبيع · دبي", chip_car_1: "فحص كامل", chip_car_2: "مالك واحد", chip_car_3: "صبغ وكالة", title_car: "لاندكروزر GXR",
+  q1_other: "ما الذي تريد الإعلان عنه بالضبط؟", q2_other: "كم السعر ورقم التواصل؟", kick_car: "للبيع · دبي", chip_car_1: "فحص كامل", chip_car_2: "مالك واحد", chip_car_3: "صبغ وكالة", title_car: "دفع رباعي فاخر",
   spec_car: "موديل ٢٠٠٩ · خليجي · ٢١٠٬٠٠٠ كم · مالك واحد", kick_flat: "للإيجار · الخليج التجاري", chip_flat_1: "غرفتان", chip_flat_2: "١٬٢٤٠ قدم", chip_flat_3: "تشطيب فاخر", title_flat: "شقّة بإطلالة برج",
   spec_flat: "غرفتان · ١٬٢٤٠ قدم · تشطيب فاخر · مواقف مجّانيّة", kick_food: "جديد · اليوم", chip_food_1: "طازج يوميًّا", chip_food_2: "توصيل مجّانيّ", chip_food_3: "من ١٢ ظهرًا", title_food: "الطبق المميّز",
   spec_food: "يوميًّا من ١٢ ظهرًا حتّى منتصف الليل · توصيل مجّانيّ", kick_shop: "تشكيلة جديدة", chip_shop_1: "كلّ المقاسات", chip_shop_2: "شحن ٢٤ ساعة", chip_shop_3: "استبدال مجّانيّ", title_shop: "تشكيلة الموسم",
@@ -43,7 +44,8 @@ ar: {
   edHint: "اضغط على أيّ نصّ لتكتبه، وعلى أيّ صورة لترفعها، و× يمسح العنصر.", addBox: "مربّع نصّ", zoomB: "تكبير", resetBoard: "رجّع اللوحة", newBoxTxt: "اكتب هنا"
 },
 en: {
-  dir: "ltr", pageTitle: "Ad Studio — Omran AI", h1: "Ad Studio — talk to it, then pick your design",
+  axStud2AdPaused: "This service is temporarily unavailable — please try again shortly.", axStud2AdLimit: "You have reached today's limit ({n} images) for ad images. Try again tomorrow.", axStud2AdFailed: "Could not generate the ad right now — please try again.",
+  dir: "ltr", pageTitle: "Ad Studio — om ai", h1: "Ad Studio — talk to it, then pick your design",
   sub: "Describe what you want to advertise in your own words, answer two questions, upload your photo — and ten finished designs come out for you to choose from.", back: "← Back to the app", asstName: "Ad assistant",
   stepStart: "Start", inpPh: "Type here…", gTitle: "Ten designs — pick one", dragHint: "Drag any text — tap it, then make it bigger or smaller", ratioTitle: "Generated image ratio", rSquare: "◻ Square", rTall: "▯ Portrait",
   rWide: "▭ Landscape", genBtn: "Generate the ad as an image", bgLight: "Light background", bgDark: "Dark background", resetAll: "Reset everything", zoomHint: "Tap anywhere to close", stepOf: "{n} of {m}",
@@ -78,7 +80,7 @@ en: {
   intro_service: "A service ad is decided by three things: how long it takes, how much it costs, and whether it is guaranteed. Put them in the ad itself and do not leave them to the call.",
   q1_service: "What service do you provide?", q2_service: "What does it cost and what is the contact number?",
   intro_other: "Every ad that works rests on three things: one strong photo, one sentence understood in two seconds, and a visible price and number.", q1_other: "What exactly do you want to advertise?",
-  q2_other: "What is the price and the contact number?", kick_car: "For sale · Dubai", chip_car_1: "Full inspection", chip_car_2: "One owner", chip_car_3: "Agency paint", title_car: "Land Cruiser GXR",
+  q2_other: "What is the price and the contact number?", kick_car: "For sale · Dubai", chip_car_1: "Full inspection", chip_car_2: "One owner", chip_car_3: "Agency paint", title_car: "Luxury 4x4 SUV",
   spec_car: "2009 model · GCC spec · 210,000 km · one owner", kick_flat: "For rent · Business Bay", chip_flat_1: "2 bedrooms", chip_flat_2: "1,240 sqft", chip_flat_3: "Premium finish",
   title_flat: "Apartment with tower view", spec_flat: "2 bedrooms · 1,240 sqft · premium finish · free parking", kick_food: "New · today", chip_food_1: "Fresh daily", chip_food_2: "Free delivery",
   chip_food_3: "From 12 noon", title_food: "The signature dish", spec_food: "Daily from 12 noon until midnight · free delivery", kick_shop: "New collection", chip_shop_1: "All sizes", chip_shop_2: "24-hour shipping",
@@ -93,7 +95,8 @@ en: {
   edHint: "Tap any text to type it, any image to upload it, and × removes the element.", addBox: "Text box", zoomB: "Zoom", resetBoard: "Reset board", newBoxTxt: "Type here"
 },
 fr: {
-  dir: "ltr", pageTitle: "Studio Pub — Omran AI", h1: "Studio Pub — parlez-lui, puis choisissez votre design",
+  axStud2AdPaused: "Ce service est temporairement indisponible — réessayez dans un instant.", axStud2AdLimit: "Vous avez atteint la limite du jour ({n} images) pour les visuels publicitaires. Réessayez demain.", axStud2AdFailed: "Impossible de générer la publicité pour le moment — réessayez.",
+  dir: "ltr", pageTitle: "Studio Pub — om ai", h1: "Studio Pub — parlez-lui, puis choisissez votre design",
   sub: "Décrivez ce que vous voulez annoncer avec vos mots, répondez à deux questions, envoyez votre photo — puis choisissez parmi dix designs finis.", back: "← Retour à l’application", asstName: "Assistant publicitaire",
   stepStart: "Commencer", inpPh: "Écrivez ici…", gTitle: "Dix designs — choisissez-en un", dragHint: "Faites glisser un texte — touchez-le, puis agrandissez-le ou réduisez-le", ratioTitle: "Format de l’image générée",
   rSquare: "◻ Carré", rTall: "▯ Portrait", rWide: "▭ Paysage", genBtn: "Générer la pub en image", bgLight: "Fond clair", bgDark: "Fond sombre", resetAll: "Tout réinitialiser", zoomHint: "Touchez n’importe où pour fermer",
@@ -128,7 +131,7 @@ fr: {
   q2_salon: "Quel est son prix et le numéro de réservation ?", intro_service: "Une pub de service se décide sur trois choses : durée, prix et garantie. Mettez-les dans la pub, ne les laissez pas à l’appel.",
   q1_service: "Quel service proposez-vous ?", q2_service: "Quel est son prix et le numéro de contact ?",
   intro_other: "Toute pub efficace repose sur trois choses : une photo forte, une phrase comprise en deux secondes, et un prix et un numéro visibles.", q1_other: "Que voulez-vous annoncer exactement ?",
-  q2_other: "Quel est le prix et le numéro de contact ?", kick_car: "À vendre · Dubai", chip_car_1: "Inspection complète", chip_car_2: "Un propriétaire", chip_car_3: "Peinture agence", title_car: "SUV Land Cruiser GXR",
+  q2_other: "Quel est le prix et le numéro de contact ?", kick_car: "À vendre · Dubai", chip_car_1: "Inspection complète", chip_car_2: "Un propriétaire", chip_car_3: "Peinture agence", title_car: "SUV 4x4 de luxe",
   spec_car: "Modèle 2009 · spécification GCC · 210,000 km · un propriétaire", kick_flat: "À louer · Business Bay", chip_flat_1: "2 chambres", chip_flat_2: "1,240 pi²", chip_flat_3: "Finition premium",
   title_flat: "Appartement avec vue sur tour", spec_flat: "2 chambres · 1,240 pi² · finition premium · parking gratuit", kick_food: "Nouveau · aujourd’hui", chip_food_1: "Frais chaque jour",
   chip_food_2: "Livraison offerte", chip_food_3: "Dès 12 h", title_food: "Le plat signature", spec_food: "Chaque jour de 12 h à minuit · livraison offerte", kick_shop: "Nouvelle collection", chip_shop_1: "Toutes tailles",
@@ -144,7 +147,8 @@ fr: {
   edHint: "Touchez un texte pour l’écrire, une image pour l’envoyer ; × supprime l’élément.", addBox: "Zone de texte", zoomB: "Agrandir", resetBoard: "Réinitialiser", newBoxTxt: "Écrivez ici"
 },
 hi: {
-  dir: "ltr", pageTitle: "विज्ञापन स्टूडियो — Omran AI", h1: "विज्ञापन स्टूडियो — बात करें, फिर डिज़ाइन चुनें",
+  axStud2AdPaused: "यह सेवा अस्थायी रूप से उपलब्ध नहीं है — थोड़ी देर बाद फिर कोशिश करें।", axStud2AdLimit: "विज्ञापन चित्रों की आज की सीमा ({n} चित्र) पूरी हो गई है। कल फिर कोशिश करें।", axStud2AdFailed: "अभी विज्ञापन नहीं बन सका — फिर से कोशिश करें।",
+  dir: "ltr", pageTitle: "विज्ञापन स्टूडियो — om ai", h1: "विज्ञापन स्टूडियो — बात करें, फिर डिज़ाइन चुनें",
   sub: "जिसका विज्ञापन चाहिए उसे अपने शब्दों में लिखें, दो सवालों के जवाब दें, फोटो अपलोड करें — चुनने के लिए दस तैयार डिज़ाइन मिलेंगे।", back: "← ऐप पर वापस", asstName: "विज्ञापन सहायक", stepStart: "शुरू करें",
   inpPh: "यहाँ लिखें…", gTitle: "दस डिज़ाइन — एक चुनें", dragHint: "किसी भी पाठ को खींचें — टैप करें, फिर बड़ा या छोटा करें", ratioTitle: "बनी हुई छवि का अनुपात", rSquare: "◻ वर्गाकार", rTall: "▯ पोर्ट्रेट",
   rWide: "▭ लैंडस्केप", genBtn: "विज्ञापन को छवि के रूप में बनाएँ", bgLight: "हल्की पृष्ठभूमि", bgDark: "गहरी पृष्ठभूमि", resetAll: "सब रीसेट करें", zoomHint: "बंद करने के लिए कहीं भी टैप करें", stepOf: "{n} में से {m}",
@@ -174,7 +178,7 @@ hi: {
   q2_salon: "इसकी कीमत और बुकिंग नंबर क्या है?", intro_service: "सेवा विज्ञापन तीन बातों से तय होता है: समय, कीमत और गारंटी। इन्हें विज्ञापन में लिखें, कॉल के लिए न छोड़ें।", q1_service: "आप कौन-सी सेवा देते हैं?",
   q2_service: "इसकी कीमत और संपर्क नंबर क्या है?", intro_other: "हर सफल विज्ञापन तीन बातों पर टिका है: एक मजबूत फोटो, दो सेकंड में समझ आने वाला वाक्य, और दिखती कीमत व नंबर।",
   q1_other: "आप ठीक-ठीक किसका विज्ञापन करना चाहते हैं?", q2_other: "कीमत और संपर्क नंबर क्या है?", kick_car: "बिक्री के लिए · Dubai", chip_car_1: "पूर्ण जाँच", chip_car_2: "एक मालिक", chip_car_3: "एजेंसी पेंट",
-  title_car: "लैंड क्रूज़र GXR", spec_car: "2009 मॉडल · GCC स्पेक · 210,000 किमी · एक मालिक", kick_flat: "किराए के लिए · Business Bay", chip_flat_1: "2 बेडरूम", chip_flat_2: "1,240 वर्ग फुट", chip_flat_3: "प्रीमियम फ़िनिश",
+  title_car: "लग्ज़री 4x4 एसयूवी", spec_car: "2009 मॉडल · GCC स्पेक · 210,000 किमी · एक मालिक", kick_flat: "किराए के लिए · Business Bay", chip_flat_1: "2 बेडरूम", chip_flat_2: "1,240 वर्ग फुट", chip_flat_3: "प्रीमियम फ़िनिश",
   title_flat: "टावर दृश्य वाला अपार्टमेंट", spec_flat: "2 बेडरूम · 1,240 वर्ग फुट · प्रीमियम फ़िनिश · मुफ़्त पार्किंग", kick_food: "नया · आज", chip_food_1: "रोज़ ताज़ा", chip_food_2: "मुफ़्त डिलीवरी",
   chip_food_3: "दोपहर 12 से", title_food: "खास व्यंजन", spec_food: "रोज़ दोपहर 12 से आधी रात तक · मुफ़्त डिलीवरी", kick_shop: "नया संग्रह", chip_shop_1: "सभी साइज़", chip_shop_2: "24-घंटे शिपिंग",
   chip_shop_3: "मुफ़्त एक्सचेंज", title_shop: "सीज़न संग्रह", spec_shop: "पूरी साइज़ रेंज · 24 घंटे में शिपिंग · मुफ़्त एक्सचेंज", kick_clinic: "आज बुक करें", chip_clinic_1: "तुरंत बुकिंग", chip_clinic_2: "बीमा स्वीकृत",
@@ -188,7 +192,8 @@ hi: {
   edHint: "किसी भी टेक्स्ट पर टैप करके लिखें, किसी भी तस्वीर पर टैप करके अपलोड करें, × से हटाएँ।", addBox: "टेक्स्ट बॉक्स", zoomB: "बड़ा करें", resetBoard: "बोर्ड रीसेट", newBoxTxt: "यहाँ लिखें"
 },
 ur: {
-  dir: "rtl", pageTitle: "اشتہار اسٹوڈیو — Omran AI", h1: "اشتہار اسٹوڈیو — بات کریں، پھر ڈیزائن چنیں",
+  axStud2AdPaused: "یہ سروس عارضی طور پر دستیاب نہیں — تھوڑی دیر بعد دوبارہ کوشش کریں۔", axStud2AdLimit: "اشتہاری تصاویر کی آج کی حد ({n} تصاویر) پوری ہو گئی ہے۔ کل دوبارہ کوشش کریں۔", axStud2AdFailed: "ابھی اشتہار نہیں بن سکا — دوبارہ کوشش کریں۔",
+  dir: "rtl", pageTitle: "اشتہار اسٹوڈیو — om ai", h1: "اشتہار اسٹوڈیو — بات کریں، پھر ڈیزائن چنیں",
   sub: "اپنے الفاظ میں بتائیں کیا اشتہار دینا ہے، دو سوالوں کے جواب دیں، تصویر اپ لوڈ کریں — انتخاب کے لیے دس تیار ڈیزائن ملیں گے۔", back: "← ایپ پر واپس", asstName: "اشتہار معاون", stepStart: "شروع کریں",
   inpPh: "یہاں لکھیں…", gTitle: "دس ڈیزائن — ایک چنیں", dragHint: "کوئی بھی متن کھینچیں — اسے چھوئیں، پھر بڑا یا چھوٹا کریں", ratioTitle: "بنائی گئی تصویر کا تناسب", rSquare: "◻ مربع", rTall: "▯ پورٹریٹ",
   rWide: "▭ لینڈاسکیپ", genBtn: "اشتہار کو تصویر بنائیں", bgLight: "ہلکا پس منظر", bgDark: "گہرا پس منظر", resetAll: "سب کچھ ری سیٹ کریں", zoomHint: "بند کرنے کے لیے کہیں بھی چھوئیں", stepOf: "{n} از {m}",
@@ -217,7 +222,7 @@ ur: {
   q2_salon: "اس کی قیمت اور بکنگ نمبر کیا ہے؟", intro_service: "خدمت اشتہار تین چیزوں سے طے ہوتا ہے: وقت، قیمت اور ضمانت۔ انہیں اشتہار میں لکھیں، کال پر نہ چھوڑیں۔", q1_service: "آپ کون سی خدمت دیتے ہیں؟",
   q2_service: "اس کی قیمت اور رابطہ نمبر کیا ہے؟", intro_other: "ہر کامیاب اشتہار تین چیزوں پر قائم ہے: مضبوط تصویر، دو سیکنڈ میں سمجھ آنے والا جملہ، اور نمایاں قیمت و نمبر۔",
   q1_other: "آپ ٹھیک کس چیز کا اشتہار دینا چاہتے ہیں؟", q2_other: "قیمت اور رابطہ نمبر کیا ہے؟", kick_car: "برائے فروخت · Dubai", chip_car_1: "مکمل معائنہ", chip_car_2: "ایک مالک", chip_car_3: "ایجنسی پینٹ",
-  title_car: "لینڈ کروزر GXR", spec_car: "٢٠٠٩ ماڈل · GCC اسپیک · ٢١٠٬٠٠٠ کلومیٹر · ایک مالک", kick_flat: "کرائے کے لیے · Business Bay", chip_flat_1: "٢ بیڈروم", chip_flat_2: "١٬٢٤٠ مربع فٹ", chip_flat_3: "پریمیم فنش",
+  title_car: "لگژری 4x4 ایس یو وی", spec_car: "٢٠٠٩ ماڈل · GCC اسپیک · ٢١٠٬٠٠٠ کلومیٹر · ایک مالک", kick_flat: "کرائے کے لیے · Business Bay", chip_flat_1: "٢ بیڈروم", chip_flat_2: "١٬٢٤٠ مربع فٹ", chip_flat_3: "پریمیم فنش",
   title_flat: "ٹاور منظر والا اپارٹمنٹ", spec_flat: "٢ بیڈروم · ١٬٢٤٠ مربع فٹ · پریمیم فنش · مفت پارکنگ", kick_food: "نیا · آج", chip_food_1: "روز تازہ", chip_food_2: "مفت ڈیلیوری", chip_food_3: "دوپہر ١٢ سے",
   title_food: "خصوصی ڈش", spec_food: "روز دوپہر ١٢ سے آدھی رات تک · مفت ڈیلیوری", kick_shop: "نیا کلیکشن", chip_shop_1: "تمام سائز", chip_shop_2: "٢٤ گھنٹے ترسیل", chip_shop_3: "مفت تبادلہ", title_shop: "موسم کلیکشن",
   spec_shop: "مکمل سائز رینج · ٢٤ گھنٹے میں ترسیل · مفت تبادلہ", kick_clinic: "آج بک کریں", chip_clinic_1: "فوری بکنگ", chip_clinic_2: "انشورنس منظور", chip_clinic_3: "لائسنس یافتہ ڈاکٹر", title_clinic: "ماہر مشورہ",
@@ -231,7 +236,8 @@ ur: {
   edHint: "کسی بھی متن پر ٹیپ کر کے لکھیں، کسی بھی تصویر پر ٹیپ کر کے اپ لوڈ کریں، × سے ہٹائیں۔", addBox: "ٹیکسٹ باکس", zoomB: "بڑا کریں", resetBoard: "بورڈ ری سیٹ", newBoxTxt: "یہاں لکھیں"
 },
 bn: {
-  dir: "ltr", pageTitle: "বিজ্ঞাপন স্টুডিও — Omran AI", h1: "বিজ্ঞাপন স্টুডিও — কথা বলুন, তারপর ডিজাইন নিন",
+  axStud2AdPaused: "এই সেবাটি সাময়িকভাবে বন্ধ আছে — একটু পরে আবার চেষ্টা করুন।", axStud2AdLimit: "বিজ্ঞাপনের ছবির আজকের সীমা ({n}টি ছবি) পূর্ণ হয়েছে। আগামীকাল আবার চেষ্টা করুন।", axStud2AdFailed: "এখন বিজ্ঞাপন তৈরি করা যায়নি — আবার চেষ্টা করুন।",
+  dir: "ltr", pageTitle: "বিজ্ঞাপন স্টুডিও — om ai", h1: "বিজ্ঞাপন স্টুডিও — কথা বলুন, তারপর ডিজাইন নিন",
   sub: "নিজের ভাষায় কী বিজ্ঞাপন চান বলুন, দুটি প্রশ্নের উত্তর দিন, ছবি আপলোড করুন — বাছাইয়ের জন্য দশটি তৈরি ডিজাইন পাবেন।", back: "← অ্যাপে ফিরুন", asstName: "বিজ্ঞাপন সহকারী", stepStart: "শুরু", inpPh: "এখানে লিখুন…",
   gTitle: "দশ ডিজাইন — একটি বাছুন", dragHint: "যেকোনো লেখা টানুন — ট্যাপ করে বড় বা ছোট করুন", ratioTitle: "তৈরি ছবির অনুপাত", rSquare: "◻ বর্গাকার", rTall: "▯ পোর্ট্রেট", rWide: "▭ ল্যান্ডস্কেপ",
   genBtn: "বিজ্ঞাপনটি ছবি হিসেবে তৈরি করুন", bgLight: "হালকা পটভূমি", bgDark: "গাঢ় পটভূমি", resetAll: "সব রিসেট করুন", zoomHint: "বন্ধ করতে যেকোনো জায়গায় ট্যাপ করুন", stepOf: "{n} এর {m}", stepReady: "প্রস্তুত",
@@ -259,7 +265,7 @@ bn: {
   intro_salon: "সেলুন সেবা নয়, ফল বিক্রি করে: একটি শক্তিশালী “পরে” ছবি এবং এক-দামের প্যাকেজ দীর্ঘ দামের তালিকার চেয়ে ভালো।", q1_salon: "প্যাকেজ বা সেবা কী?", q2_salon: "এর দাম এবং বুকিং নম্বর কী?",
   intro_service: "সেবা বিজ্ঞাপন তিন বিষয়ে ঠিক হয়: সময়, খরচ ও গ্যারান্টি। বিজ্ঞাপনেই লিখুন, কলের জন্য রাখবেন না।", q1_service: "আপনি কোন সেবা দেন?", q2_service: "এর খরচ এবং যোগাযোগ নম্বর কী?",
   intro_other: "প্রতিটি সফল বিজ্ঞাপন তিন বিষয়ে দাঁড়ায়: একটি শক্তিশালী ছবি, দুই সেকেন্ডে বোঝা বাক্য, এবং দৃশ্যমান দাম ও নম্বর।", q1_other: "ঠিক কীসের বিজ্ঞাপন দিতে চান?", q2_other: "দাম ও যোগাযোগ নম্বর কী?",
-  kick_car: "বিক্রয়ের জন্য · Dubai", chip_car_1: "সম্পূর্ণ পরীক্ষা", chip_car_2: "এক মালিক", chip_car_3: "এজেন্সি পেইন্ট", title_car: "ল্যান্ড ক্রুজার GXR", spec_car: "2009 মডেল · GCC স্পেক · 210,000 কিমি · এক মালিক",
+  kick_car: "বিক্রয়ের জন্য · Dubai", chip_car_1: "সম্পূর্ণ পরীক্ষা", chip_car_2: "এক মালিক", chip_car_3: "এজেন্সি পেইন্ট", title_car: "বিলাসবহুল 4x4 এসইউভি", spec_car: "2009 মডেল · GCC স্পেক · 210,000 কিমি · এক মালিক",
   kick_flat: "ভাড়ার জন্য · Business Bay", chip_flat_1: "2 বেডরুম", chip_flat_2: "1,240 বর্গফুট", chip_flat_3: "প্রিমিয়াম ফিনিশ", title_flat: "টাওয়ার দৃশ্যের অ্যাপার্টমেন্ট",
   spec_flat: "2 বেডরুম · 1,240 বর্গফুট · প্রিমিয়াম ফিনিশ · ফ্রি পার্কিং", kick_food: "নতুন · আজ", chip_food_1: "প্রতিদিন টাটকা", chip_food_2: "ফ্রি ডেলিভারি", chip_food_3: "দুপুর 12 থেকে", title_food: "স্বাক্ষর পদ",
   spec_food: "প্রতিদিন দুপুর 12 থেকে মধ্যরাত · ফ্রি ডেলিভারি", kick_shop: "নতুন সংগ্রহ", chip_shop_1: "সব মাপ", chip_shop_2: "24-ঘণ্টা শিপিং", chip_shop_3: "ফ্রি বদল", title_shop: "মৌসুম সংগ্রহ",
@@ -274,7 +280,8 @@ bn: {
   edHint: "যেকোনো লেখায় ট্যাপ করে লিখুন, যেকোনো ছবিতে ট্যাপ করে আপলোড করুন, × দিয়ে সরান।", addBox: "টেক্সট বক্স", zoomB: "বড় করুন", resetBoard: "বোর্ড রিসেট", newBoxTxt: "এখানে লিখুন"
 },
 ml: {
-  dir: "ltr", pageTitle: "പരസ്യ സ്റ്റുഡിയോ — Omran AI", h1: "പരസ്യ സ്റ്റുഡിയോ — സംസാരിക്കൂ, എന്നിട്ട് ഡിസൈൻ തിരഞ്ഞെടുക്കൂ",
+  axStud2AdPaused: "ഈ സേവനം താൽക്കാലികമായി ലഭ്യമല്ല — അൽപ്പസമയം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കൂ.", axStud2AdLimit: "പരസ്യ ചിത്രങ്ങളുടെ ഇന്നത്തെ പരിധി ({n} ചിത്രങ്ങൾ) എത്തി. നാളെ വീണ്ടും ശ്രമിക്കുക.", axStud2AdFailed: "ഇപ്പോൾ പരസ്യം സൃഷ്ടിക്കാനായില്ല — വീണ്ടും ശ്രമിക്കുക.",
+  dir: "ltr", pageTitle: "പരസ്യ സ്റ്റുഡിയോ — om ai", h1: "പരസ്യ സ്റ്റുഡിയോ — സംസാരിക്കൂ, എന്നിട്ട് ഡിസൈൻ തിരഞ്ഞെടുക്കൂ",
   sub: "നിങ്ങൾ പരസ്യപ്പെടുത്താൻ ആഗ്രഹിക്കുന്നത് സ്വന്തം വാക്കുകളിൽ പറയൂ, രണ്ട് ചോദ്യങ്ങൾക്ക് ഉത്തരം നൽകൂ, ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യൂ — തിരഞ്ഞെടുക്കാൻ പത്ത് പൂർത്തിയായ ഡിസൈനുകൾ ലഭിക്കും.", back: "← ആപ്പിലേക്ക് മടങ്ങുക",
   asstName: "പരസ്യ സഹായി", stepStart: "ആരംഭിക്കുക", inpPh: "ഇവിടെ ടൈപ്പ് ചെയ്യൂ…", gTitle: "പത്ത് ഡിസൈനുകൾ — ഒന്ന് തിരഞ്ഞെടുക്കൂ", dragHint: "ഏതെങ്കിലും ടെക്സ്റ്റ് വലിച്ചിടൂ — ടാപ്പ് ചെയ്ത് വലുതോ ചെറുതോ ആക്കൂ",
   ratioTitle: "ജനറേറ്റ് ചെയ്ത ചിത്രത്തിന്റെ അനുപാതം", rSquare: "◻ ചതുരം", rTall: "▯ പോർട്രെയ്റ്റ്", rWide: "▭ ലാൻഡ്‌സ്കേപ്പ്", genBtn: "പരസ്യം ചിത്രമായി സൃഷ്ടിക്കുക", bgLight: "ഇളം പശ്ചാത്തലം", bgDark: "ഇരുണ്ട പശ്ചാത്തലം",
@@ -315,7 +322,7 @@ ml: {
   q1_service: "നിങ്ങൾ ഏത് സേവനമാണ് നൽകുന്നത്?", q2_service: "അതിന്റെ വിലയും ബന്ധപ്പെടേണ്ട നമ്പറും എന്താണ്?",
   intro_other: "വിജയിക്കുന്ന എല്ലാ പരസ്യങ്ങളും മൂന്ന് കാര്യങ്ങളിൽ നിലനിൽക്കുന്നു: ശക്തമായ ഒരു ഫോട്ടോ, രണ്ട് സെക്കൻഡിൽ മനസ്സിലാകുന്ന ഒരു വാചകം, കാണാവുന്ന വിലയും നമ്പറും.",
   q1_other: "കൃത്യമായി എന്താണ് നിങ്ങൾ പരസ്യപ്പെടുത്താൻ ആഗ്രഹിക്കുന്നത്?", q2_other: "വിലയും ബന്ധപ്പെടേണ്ട നമ്പറും എന്താണ്?", kick_car: "വിൽപ്പനയ്ക്ക് · Dubai", chip_car_1: "പൂർണ്ണ പരിശോധന", chip_car_2: "ഒരു ഉടമ",
-  chip_car_3: "ഏജൻസി പെയിന്റ്", title_car: "Land Cruiser GXR കാർ", spec_car: "2009 മോഡൽ · GCC സ്പെക് · 210,000 km · ഒരു ഉടമ", kick_flat: "വാടകയ്ക്ക് · Business Bay", chip_flat_1: "2 ബെഡ്‌റൂം", chip_flat_2: "1,240 sqft",
+  chip_car_3: "ഏജൻസി പെയിന്റ്", title_car: "ആഡംബര 4x4 എസ്‌യുവി", spec_car: "2009 മോഡൽ · GCC സ്പെക് · 210,000 km · ഒരു ഉടമ", kick_flat: "വാടകയ്ക്ക് · Business Bay", chip_flat_1: "2 ബെഡ്‌റൂം", chip_flat_2: "1,240 sqft",
   chip_flat_3: "പ്രീമിയം ഫിനിഷ്", title_flat: "ടവർ കാഴ്ചയുള്ള അപ്പാർട്ട്മെന്റ്", spec_flat: "2 ബെഡ്‌റൂം · 1,240 sqft · പ്രീമിയം ഫിനിഷ് · സൗജന്യ പാർക്കിംഗ്", kick_food: "പുതിയത് · ഇന്ന്", chip_food_1: "ദിവസവും പുതിയത്",
   chip_food_2: "സൗജന്യ ഡെലിവറി", chip_food_3: "ഉച്ചയ്ക്ക് 12 മുതൽ", title_food: "പ്രത്യേക വിഭവം", spec_food: "ദിവസവും ഉച്ചയ്ക്ക് 12 മുതൽ അർദ്ധരാത്രി വരെ · സൗജന്യ ഡെലിവറി", kick_shop: "പുതിയ ശേഖരം",
   chip_shop_1: "എല്ലാ സൈസുകളും", chip_shop_2: "24 മണിക്കൂർ ഷിപ്പിംഗ്", chip_shop_3: "സൗജന്യ എക്സ്ചേഞ്ച്", title_shop: "സീസൺ ശേഖരം", spec_shop: "പൂർണ്ണ സൈസ് ശ്രേണി · 24 മണിക്കൂറിനുള്ളിൽ ഷിപ്പിംഗ് · സൗജന്യ എക്സ്ചേഞ്ച്",
@@ -330,7 +337,8 @@ ml: {
   edHint: "ഏതു വാചകത്തിലും ടാപ്പ് ചെയ്ത് എഴുതുക, ഏതു ചിത്രത്തിലും ടാപ്പ് ചെയ്ത് അപ്‌ലോഡ് ചെയ്യുക, × നീക്കും.", addBox: "ടെക്സ്റ്റ് ബോക്സ്", zoomB: "വലുതാക്കുക", resetBoard: "ബോർഡ് പുനഃസജ്ജം", newBoxTxt: "ഇവിടെ എഴുതുക"
 },
 ne: {
-  dir: "ltr", pageTitle: "विज्ञापन स्टुडियो — Omran AI", h1: "विज्ञापन स्टुडियो — कुरा गर्नुहोस्, अनि आफ्नो डिजाइन छान्नुहोस्",
+  axStud2AdPaused: "यो सेवा अस्थायी रूपमा उपलब्ध छैन — केही बेरपछि फेरि प्रयास गर्नुहोस्।", axStud2AdLimit: "विज्ञापन तस्बिरको आजको सीमा ({n} तस्बिर) पुगिसक्यो। भोलि फेरि प्रयास गर्नुहोस्।", axStud2AdFailed: "अहिले विज्ञापन बनाउन सकिएन — फेरि प्रयास गर्नुहोस्।",
+  dir: "ltr", pageTitle: "विज्ञापन स्टुडियो — om ai", h1: "विज्ञापन स्टुडियो — कुरा गर्नुहोस्, अनि आफ्नो डिजाइन छान्नुहोस्",
   sub: "आफ्नो शब्दमा के विज्ञापन गर्न चाहनुहुन्छ भन्नुहोस्, दुई प्रश्नको जवाफ दिनुहोस्, आफ्नो फोटो अपलोड गर्नुहोस् — अनि छान्नका लागि दस तयार डिजाइन तयार हुनेछन्।", back: "← एपमा फर्कनुहोस्", asstName: "विज्ञापन सहायक",
   stepStart: "सुरु गर्नुहोस्", inpPh: "यहाँ टाइप गर्नुहोस्…", gTitle: "दस डिजाइन — एउटा छान्नुहोस्", dragHint: "कुनै पनि लेखलाई तान्नुहोस् — छोइनुहोस्, अनि ठूलो वा सानो बनाउनुहोस्", ratioTitle: "तयार हुने तस्बिरको अनुपात",
   rSquare: "◻ वर्गाकार", rTall: "▯ अग्लो", rWide: "▭ फराकिलो", genBtn: "विज्ञापनलाई तस्बिरको रूपमा बनाउनुहोस्", bgLight: "उज्यालो पृष्ठभूमि", bgDark: "अँध्यारो पृष्ठभूमि", resetAll: "सबै रिसेट गर्नुहोस्",
@@ -364,7 +372,7 @@ ne: {
   intro_service: "सेवाको विज्ञापन तीन कुराले निर्धारित हुन्छ: कति समय लाग्छ, कति खर्च लाग्छ, र ग्यारेन्टी छ कि छैन। यी कुरा विज्ञापनमै राख्नुहोस्, कलमा छोड्नुहोस्।", q1_service: "तपाईंले कस्तो सेवा प्रदान गर्नुहुन्छ?",
   q2_service: "यसको मूल्य कति हो र सम्पर्क नम्बर के हो?", intro_other: "काम गर्ने हरेक विज्ञापन तीन कुरामा टिकेको हुन्छ: एउटा बलियो फोटो, दुई सेकेन्डमा बुझिने एउटा वाक्य, र देखिने मूल्य र नम्बर।",
   q1_other: "तपाईं ठ्याक्कै के विज्ञापन गर्न चाहनुहुन्छ?", q2_other: "मूल्य र सम्पर्क नम्बर के हो?", kick_car: "बिक्रीमा · दुबई", chip_car_1: "पूर्ण निरीक्षण", chip_car_2: "एक मालिक", chip_car_3: "एजेन्सी रङ",
-  title_car: "ल्यान्ड क्रुजर GXR", spec_car: "2009 मोडेल · GCC स्पेक · 210,000 km · एक मालिक", kick_flat: "भाडामा · Business Bay", chip_flat_1: "2 बेडरूम", chip_flat_2: "1,240 sqft", chip_flat_3: "प्रिमियम फिनिस",
+  title_car: "विलासी 4x4 एसयूभी", spec_car: "2009 मोडेल · GCC स्पेक · 210,000 km · एक मालिक", kick_flat: "भाडामा · Business Bay", chip_flat_1: "2 बेडरूम", chip_flat_2: "1,240 sqft", chip_flat_3: "प्रिमियम फिनिस",
   title_flat: "टावर दृश्य भएको अपार्टमेन्ट", spec_flat: "2 बेडरूम · 1,240 sqft · प्रिमियम फिनिस · निःशुल्क पार्किङ", kick_food: "नयाँ · आज", chip_food_1: "दैनिक ताजा", chip_food_2: "निःशुल्क डेलिभरी",
   chip_food_3: "दिउँसो 12 बजेदेखि", title_food: "विशेष परिकार", spec_food: "दिनहुँ दिउँसो 12 देखि मध्यरातसम्म · निःशुल्क डेलिभरी", kick_shop: "नयाँ संग्रह", chip_shop_1: "सबै साइज", chip_shop_2: "24-घण्टा ढुवानी",
   chip_shop_3: "निःशुल्क साटासाट", title_shop: "सिजनको संग्रह", spec_shop: "पूरा साइज दायरा · 24 घण्टाभित्र ढुवानी · निःशुल्क साटासाट", kick_clinic: "आज बुक गर्नुहोस्", chip_clinic_1: "तुरुन्त बुकिङ",
@@ -378,7 +386,8 @@ ne: {
   edHint: "कुनै पनि पाठमा ट्याप गरेर लेख्नुहोस्, कुनै पनि तस्बिरमा ट्याप गरेर अपलोड गर्नुहोस्, × ले हटाउँछ।", addBox: "पाठ बाकस", zoomB: "ठूलो पार्नुहोस्", resetBoard: "बोर्ड रिसेट", newBoxTxt: "यहाँ लेख्नुहोस्"
 },
 fil: {
-  dir: "ltr", pageTitle: "Ad Studio ng Omran AI", h1: "Ad Studio — makipag-usap, pagkatapos piliin ang disenyo mo",
+  axStud2AdPaused: "Pansamantalang hindi available ang serbisyong ito — subukan ulit mamaya.", axStud2AdLimit: "Naabot mo na ang limit ngayong araw ({n} larawan) para sa mga larawan ng ad. Subukan ulit bukas.", axStud2AdFailed: "Hindi magawa ang ad ngayon — pakisubukan ulit.",
+  dir: "ltr", pageTitle: "Ad Studio ng om ai", h1: "Ad Studio — makipag-usap, pagkatapos piliin ang disenyo mo",
   sub: "Ilarawan mo sa sarili mong pananalita kung ano ang ia-advertise mo, sagutin ang dalawang tanong, i-upload ang larawan mo — at may sampung tapos na disenyo na lalabas para pili-pilihin mo.", back: "← Bumalik sa app",
   asstName: "Ad assistant", stepStart: "Simulan", inpPh: "I-type dito…", gTitle: "Sampung disenyo — pumili ng isa", dragHint: "I-drag ang kahit anong teksto — i-tap ito, pagkatapos palakihin o paliitin",
   ratioTitle: "Ratio ng nabuong larawan", rSquare: "◻ Parisukat", rTall: "▯ Patayo", rWide: "▭ Pahalang", genBtn: "Buuin ang ad bilang larawan", bgLight: "Maliwanag na background", bgDark: "Madilim na background",
@@ -418,7 +427,7 @@ fil: {
   q1_service: "Anong serbisyo ang ibinibigay mo?", q2_service: "Magkano ito at ano ang numero ng contact?",
   intro_other: "Bawat ad na gumagana ay nakasalalay sa tatlong bagay: isang malakas na larawan, isang pangungusap na naiintindihan sa dalawang segundo, at makikitang presyo at numero.",
   q1_other: "Ano mismo ang gusto mong i-advertise?", q2_other: "Ano ang presyo at numero ng contact?", kick_car: "Ibinebenta · Dubai", chip_car_1: "Kumpletong inspeksyon", chip_car_2: "Iisang may-ari",
-  chip_car_3: "Orihinal na pintura", title_car: "Toyota Land Cruiser GXR", spec_car: "Modelong 2009 · GCC spec · 210,000 km · iisang may-ari", kick_flat: "Paupahan · Business Bay", chip_flat_1: "2 kuwarto",
+  chip_car_3: "Orihinal na pintura", title_car: "Marangyang 4x4 SUV", spec_car: "Modelong 2009 · GCC spec · 210,000 km · iisang may-ari", kick_flat: "Paupahan · Business Bay", chip_flat_1: "2 kuwarto",
   chip_flat_2: "1,240 sqft", chip_flat_3: "Premium na tapos", title_flat: "Apartment na may tanaw sa tower", spec_flat: "2 kuwarto · 1,240 sqft · premium na tapos · libreng parking", kick_food: "Bago · ngayon",
   chip_food_1: "Sariwa araw-araw", chip_food_2: "Libreng delivery", chip_food_3: "Mula 12 ng tanghali", title_food: "Ang signature na putahe",
   spec_food: "Araw-araw mula 12 ng tanghali hanggang hatinggabi · libreng delivery", kick_shop: "Bagong koleksyon", chip_shop_1: "Lahat ng sukat", chip_shop_2: "24-oras na padala", chip_shop_3: "Libreng palit",
@@ -434,7 +443,8 @@ fil: {
   edHint: "Pindutin ang alinmang teksto para isulat, alinmang larawan para i-upload, at × ang nagtatanggal.", addBox: "Text box", zoomB: "Palakihin", resetBoard: "I-reset ang board", newBoxTxt: "Isulat dito"
 },
 id: {
-  dir: "ltr", pageTitle: "Studio Iklan — Omran AI", h1: "Studio Iklan — ceritakan, lalu pilih desain",
+  axStud2AdPaused: "Layanan ini sementara tidak tersedia — coba lagi sebentar lagi.", axStud2AdLimit: "Anda telah mencapai batas hari ini ({n} gambar) untuk gambar iklan. Coba lagi besok.", axStud2AdFailed: "Iklan tidak dapat dibuat saat ini — silakan coba lagi.",
+  dir: "ltr", pageTitle: "Studio Iklan — om ai", h1: "Studio Iklan — ceritakan, lalu pilih desain",
   sub: "Jelaskan iklan Anda dengan kata sendiri, jawab dua pertanyaan, unggah foto — lalu pilih dari sepuluh desain jadi.", back: "← Kembali ke aplikasi", asstName: "Asisten iklan", stepStart: "Mulai",
   inpPh: "Ketik di sini…", gTitle: "Sepuluh desain — pilih satu", dragHint: "Seret teks apa pun — ketuk lalu besarkan atau kecilkan", ratioTitle: "Rasio gambar yang dibuat", rSquare: "◻ Persegi", rTall: "▯ Potret",
   rWide: "▭ Lanskap", genBtn: "Buat iklan sebagai gambar", bgLight: "Latar terang", bgDark: "Latar gelap", resetAll: "Atur ulang semuanya", zoomHint: "Ketuk di mana saja untuk menutup", stepOf: "{n} dari {m}",
@@ -468,7 +478,7 @@ id: {
   q2_salon: "Berapa biayanya dan nomor pemesanan?", intro_service: "Iklan jasa ditentukan tiga hal: berapa lama, berapa biaya, dan apakah bergaransi. Cantumkan dalam iklan, jangan sisakan untuk panggilan.",
   q1_service: "Jasa apa yang Anda sediakan?", q2_service: "Berapa biayanya dan nomor kontak?",
   intro_other: "Setiap iklan yang berhasil bertumpu pada tiga hal: satu foto kuat, satu kalimat yang dipahami dalam dua detik, serta harga dan nomor yang terlihat.", q1_other: "Apa tepatnya yang ingin Anda iklankan?",
-  q2_other: "Berapa harga dan nomor kontaknya?", kick_car: "Dijual · Dubai", chip_car_1: "Inspeksi lengkap", chip_car_2: "Satu pemilik", chip_car_3: "Cat dealer", title_car: "Land Cruiser GXR SUV",
+  q2_other: "Berapa harga dan nomor kontaknya?", kick_car: "Dijual · Dubai", chip_car_1: "Inspeksi lengkap", chip_car_2: "Satu pemilik", chip_car_3: "Cat dealer", title_car: "SUV 4x4 mewah",
   spec_car: "Model 2009 · spesifikasi GCC · 210,000 km · satu pemilik", kick_flat: "Disewakan · Business Bay", chip_flat_1: "2 kamar tidur", chip_flat_2: "1,240 kaki persegi", chip_flat_3: "Finishing premium",
   title_flat: "Apartemen dengan pemandangan menara", spec_flat: "2 kamar tidur · 1,240 kaki persegi · finishing premium · parkir gratis", kick_food: "Baru · hari ini", chip_food_1: "Segar setiap hari",
   chip_food_2: "Pengiriman gratis", chip_food_3: "Mulai 12 siang", title_food: "Hidangan andalan", spec_food: "Setiap hari dari 12 siang hingga tengah malam · pengiriman gratis", kick_shop: "Koleksi baru",
@@ -484,7 +494,8 @@ id: {
   edHint: "Ketuk teks mana pun untuk menulisnya, gambar mana pun untuk mengunggahnya, × menghapus elemen.", addBox: "Kotak teks", zoomB: "Perbesar", resetBoard: "Atur ulang papan", newBoxTxt: "Tulis di sini"
 },
 zh: {
-  dir: "ltr", pageTitle: "广告工作室 — Omran AI", h1: "广告工作室 — 说出需求，再选设计", sub: "用自己的话描述要宣传什么，回答两个问题，上传照片 — 即可从十个成品设计中选择。", back: "← 返回应用", asstName: "广告助手", stepStart: "开始", inpPh: "在此输入…", gTitle: "十个设计 — 选一个",
+  axStud2AdPaused: "该服务暂时不可用 — 请稍后再试。", axStud2AdLimit: "您已达到今日广告图片上限（{n} 张）。请明天再试。", axStud2AdFailed: "暂时无法生成广告 — 请重试。",
+  dir: "ltr", pageTitle: "广告工作室 — om ai", h1: "广告工作室 — 说出需求，再选设计", sub: "用自己的话描述要宣传什么，回答两个问题，上传照片 — 即可从十个成品设计中选择。", back: "← 返回应用", asstName: "广告助手", stepStart: "开始", inpPh: "在此输入…", gTitle: "十个设计 — 选一个",
   dragHint: "拖动任意文字 — 点按后可放大或缩小", ratioTitle: "生成图片比例", rSquare: "◻ 方形", rTall: "▯ 竖版", rWide: "▭ 横版", genBtn: "将广告生成为图片", bgLight: "浅色背景", bgDark: "深色背景", resetAll: "全部重置", zoomHint: "点按任意处关闭", stepOf: "{n} / {m}",
   stepReady: "准备好了", nm0: "电影感", nm1: "层次", nm2: "自由海报", nm3: "优雅", nm4: "大胆", nm5: "奢华", nm6: "极简", nm7: "杂志", nm8: "霓虹", nm9: "参数卡", cp0: "满版照片，文字融入底部。", cp1: "照片悬浮于拱门内，巨幅文字在后方。", cp2: "倾斜文字与圆形印章 — 街头海报感。",
   cp3: "细边框和宽留白 — 从容自信。", cp4: "斜条与大标题 — 让人停下手指。", cp5: "双边框与单个首字母 — 奢华感。", cp6: "让照片呼吸，只留一行文字。", cp7: "上方照片，下方文字面板 — 杂志感。", cp8: "发光竖版故事 — 适用于 WhatsApp 和 Instagram。", cp9: "所有细节整齐列于表格 — 经典出售广告风格。", pickBtn: "选择此设计",
@@ -499,7 +510,7 @@ zh: {
   q1_food: "菜品或优惠叫什么？", q2_food: "价格和订餐号码是多少？", intro_shop: "商店靠照片和优惠一起销售：一件突出的商品，加上今天购买的明确理由 — 折扣、免运费或限量库存。", q1_shop: "产品或系列是什么？", q2_shop: "价格和联系电话或账号是多少？", intro_clinic: "医疗广告靠信任而非喧闹取胜：明确专科、标明咨询价，以及一种简单预约方式。",
   q1_clinic: "专科或服务是什么？", q2_clinic: "咨询费和预约号码是多少？", intro_salon: "沙龙卖的是效果，不是服务：一张强有力的“后”照片，单价套餐胜过长长的价目表。", q1_salon: "套餐或服务是什么？", q2_salon: "费用是多少，预约号码是什么？", intro_service: "服务广告由三点决定：需要多久、多少钱、是否有保障。把它们写在广告里，不要留给电话解释。",
   q1_service: "您提供什么服务？", q2_service: "费用和联系电话是多少？", intro_other: "每则有效广告都依靠三件事：一张强有力的照片、一句两秒内能懂的话，以及清晰可见的价格和号码。", q1_other: "您具体想宣传什么？", q2_other: "价格和联系电话是多少？", kick_car: "出售 · Dubai", chip_car_1: "全面检测",
-  chip_car_2: "一手车主", chip_car_3: "原厂喷漆", title_car: "陆地巡洋舰 GXR", spec_car: "2009 款 · GCC 规格 · 210,000 km · 一手车主", kick_flat: "出租 · Business Bay", chip_flat_1: "2 间卧室", chip_flat_2: "1,240 平方英尺", chip_flat_3: "高档装修",
+  chip_car_2: "一手车主", chip_car_3: "原厂喷漆", title_car: "豪华四驱 SUV", spec_car: "2009 款 · GCC 规格 · 210,000 km · 一手车主", kick_flat: "出租 · Business Bay", chip_flat_1: "2 间卧室", chip_flat_2: "1,240 平方英尺", chip_flat_3: "高档装修",
   title_flat: "塔景公寓", spec_flat: "2 间卧室 · 1,240 平方英尺 · 高档装修 · 免费停车", kick_food: "新品 · 今日", chip_food_1: "每日新鲜", chip_food_2: "免费配送", chip_food_3: "中午 12 点起", title_food: "招牌菜", spec_food: "每日中午 12 点至午夜 · 免费配送",
   kick_shop: "新系列", chip_shop_1: "全尺码", chip_shop_2: "24 小时发货", chip_shop_3: "免费换货", title_shop: "当季系列", spec_shop: "尺码齐全 · 24 小时内发货 · 免费换货", kick_clinic: "今日预约", chip_clinic_1: "即时预约", chip_clinic_2: "接受保险",
   chip_clinic_3: "持证医生", title_clinic: "专科咨询", spec_clinic: "持证医生 · 即时预约 · 接受保险", kick_salon: "本周优惠", chip_salon_1: "提前预约", chip_salon_2: "免费停车", chip_salon_3: "本周优惠", title_salon: "护理套餐", spec_salon: "提前预约 · 免费停车 · 女性团队",
@@ -511,7 +522,8 @@ zh: {
   edHint: "点任意文字即可编辑，点任意图片即可上传，× 删除元素。", addBox: "文字框", zoomB: "放大", resetBoard: "重置版面", newBoxTxt: "在此输入"
 },
 ru: {
-  dir: "ltr", pageTitle: "Студия рекламы — Omran AI", h1: "Студия рекламы — расскажите, затем выберите дизайн",
+  axStud2AdPaused: "Сервис временно недоступен — попробуйте чуть позже.", axStud2AdLimit: "Вы достигли дневного лимита рекламных изображений ({n}). Попробуйте завтра.", axStud2AdFailed: "Не удалось создать рекламу сейчас — попробуйте ещё раз.",
+  dir: "ltr", pageTitle: "Студия рекламы — om ai", h1: "Студия рекламы — расскажите, затем выберите дизайн",
   sub: "Опишите, что хотите рекламировать, ответьте на два вопроса, загрузите фото — и выберите один из десяти готовых дизайнов.", back: "← Назад в приложение", asstName: "Помощник по рекламе", stepStart: "Начать",
   inpPh: "Введите здесь…", gTitle: "Десять дизайнов — выберите один", dragHint: "Перетаскивайте любой текст — коснитесь его и увеличьте или уменьшите", ratioTitle: "Соотношение сторон изображения", rSquare: "◻ Квадрат",
   rTall: "▯ Портрет", rWide: "▭ Альбом", genBtn: "Создать рекламу как изображение", bgLight: "Светлый фон", bgDark: "Тёмный фон", resetAll: "Сбросить всё", zoomHint: "Коснитесь любого места, чтобы закрыть",
@@ -545,7 +557,7 @@ ru: {
   intro_service: "Рекламу услуги решают три вещи: сколько времени, сколько стоит и есть ли гарантия. Укажите их в рекламе, не оставляйте для звонка.", q1_service: "Какую услугу вы предоставляете?",
   q2_service: "Сколько стоит и какой номер для связи?", intro_other: "Любая успешная реклама строится на трёх вещах: сильное фото, фраза, понятная за две секунды, и заметные цена с номером.",
   q1_other: "Что именно вы хотите рекламировать?", q2_other: "Какова цена и номер для связи?", kick_car: "Продаётся · Dubai", chip_car_1: "Полная проверка", chip_car_2: "Один владелец", chip_car_3: "Заводская краска",
-  title_car: "Ленд Крузер GXR", spec_car: "Модель 2009 · спецификация GCC · 210,000 km · один владелец", kick_flat: "Аренда · Business Bay", chip_flat_1: "2 спальни", chip_flat_2: "1,240 кв. футов",
+  title_car: "Роскошный внедорожник 4x4", spec_car: "Модель 2009 · спецификация GCC · 210,000 km · один владелец", kick_flat: "Аренда · Business Bay", chip_flat_1: "2 спальни", chip_flat_2: "1,240 кв. футов",
   chip_flat_3: "Премиум-отделка", title_flat: "Квартира с видом на башню", spec_flat: "2 спальни · 1,240 кв. футов · премиум-отделка · бесплатная парковка", kick_food: "Новинка · сегодня",
   chip_food_1: "Свежесть каждый день", chip_food_2: "Бесплатная доставка", chip_food_3: "С 12 дня", title_food: "Фирменное блюдо", spec_food: "Ежедневно с 12 дня до полуночи · бесплатная доставка",
   kick_shop: "Новая коллекция", chip_shop_1: "Все размеры", chip_shop_2: "Отправка за 24 часа", chip_shop_3: "Бесплатный обмен", title_shop: "Сезонная коллекция",
@@ -561,7 +573,8 @@ ru: {
   edHint: "Нажмите на любой текст, чтобы ввести его, на изображение — чтобы загрузить; × удаляет элемент.", addBox: "Текстовый блок", zoomB: "Увеличить", resetBoard: "Сбросить макет", newBoxTxt: "Введите здесь"
 },
 tr: {
-  dir: "ltr", pageTitle: "Reklam Stüdyosu — Omran AI", h1: "Reklam Stüdyosu — onunla konuşun, sonra tasarımınızı seçin",
+  axStud2AdPaused: "Bu hizmet geçici olarak kullanılamıyor — birazdan tekrar deneyin.", axStud2AdLimit: "Reklam görselleri için bugünkü sınıra ({n} görsel) ulaştınız. Yarın tekrar deneyin.", axStud2AdFailed: "Reklam şu anda oluşturulamadı — lütfen tekrar deneyin.",
+  dir: "ltr", pageTitle: "Reklam Stüdyosu — om ai", h1: "Reklam Stüdyosu — onunla konuşun, sonra tasarımınızı seçin",
   sub: "Neyi tanıtmak istediğinizi kendi sözlerinizle anlatın, iki soruyu yanıtlayın, fotoğrafınızı yükleyin — seçmeniz için on tamamlanmış tasarım hazır olsun.", back: "← Uygulamaya dön", asstName: "Reklam asistanı",
   stepStart: "Başla", inpPh: "Buraya yazın…", gTitle: "On tasarım — birini seçin", dragHint: "Herhangi bir metni sürükleyin — dokunun, sonra büyütün veya küçültün", ratioTitle: "Oluşturulan görsel oranı", rSquare: "◻ Kare",
   rTall: "▯ Dikey", rWide: "▭ Yatay", genBtn: "Reklamı görsel olarak oluştur", bgLight: "Açık arka plan", bgDark: "Koyu arka plan", resetAll: "Her şeyi sıfırla", zoomHint: "Kapatmak için herhangi bir yere dokunun",
@@ -595,7 +608,7 @@ tr: {
   intro_service: "Hizmet reklamını üç şey belirler: ne kadar sürer, ne kadar tutar ve garantili mi. Bunları reklama koyun, aramaya bırakmayın.", q1_service: "Hangi hizmeti sunuyorsunuz?",
   q2_service: "Fiyatı ve iletişim numarası nedir?", intro_other: "İşe yarayan her reklam üç şeye dayanır: güçlü bir fotoğraf, iki saniyede anlaşılan bir cümle ve görünür fiyat ile numara.",
   q1_other: "Tam olarak neyi tanıtmak istiyorsunuz?", q2_other: "Fiyat ve iletişim numarası nedir?", kick_car: "Satılık · Dubai", chip_car_1: "Tam ekspertiz", chip_car_2: "Tek sahip", chip_car_3: "Acente boyası",
-  title_car: "Land Cruiser GXR SUV", spec_car: "2009 model · GCC özellikli · 210,000 km · tek sahip", kick_flat: "Kiralık · Business Bay", chip_flat_1: "2 yatak odası", chip_flat_2: "1,240 ft²",
+  title_car: "Lüks 4x4 SUV", spec_car: "2009 model · GCC özellikli · 210,000 km · tek sahip", kick_flat: "Kiralık · Business Bay", chip_flat_1: "2 yatak odası", chip_flat_2: "1,240 ft²",
   chip_flat_3: "Premium işçilik", title_flat: "Kule manzaralı daire", spec_flat: "2 yatak odası · 1,240 ft² · premium işçilik · ücretsiz otopark", kick_food: "Yeni · bugün", chip_food_1: "Her gün taze",
   chip_food_2: "Ücretsiz teslimat", chip_food_3: "12:00’den itibaren", title_food: "İmza yemek", spec_food: "Her gün 12:00’den gece yarısına kadar · ücretsiz teslimat", kick_shop: "Yeni koleksiyon",
   chip_shop_1: "Tüm bedenler", chip_shop_2: "24 saatte kargo", chip_shop_3: "Ücretsiz değişim", title_shop: "Sezon koleksiyonu", spec_shop: "Tüm bedenler · 24 saat içinde kargo · ücretsiz değişim",
@@ -610,7 +623,8 @@ tr: {
   edHint: "Yazmak için herhangi bir metne, yüklemek için herhangi bir görsele dokunun; × öğeyi siler.", addBox: "Metin kutusu", zoomB: "Büyüt", resetBoard: "Panoyu sıfırla", newBoxTxt: "Buraya yazın"
 },
 es: {
-  dir: "ltr", pageTitle: "Estudio de anuncios — Omran AI", h1: "Estudio de anuncios — habla con él y elige tu diseño",
+  axStud2AdPaused: "Este servicio no está disponible temporalmente — inténtalo de nuevo en un momento.", axStud2AdLimit: "Alcanzaste el límite de hoy ({n} imágenes) para imágenes de anuncios. Inténtalo de nuevo mañana.", axStud2AdFailed: "No se pudo generar el anuncio ahora — inténtalo de nuevo.",
+  dir: "ltr", pageTitle: "Estudio de anuncios — om ai", h1: "Estudio de anuncios — habla con él y elige tu diseño",
   sub: "Describe lo que quieres anunciar con tus palabras, responde dos preguntas, sube tu foto y tendrás diez diseños listos para elegir.", back: "← Volver a la aplicación", asstName: "Asistente de anuncios",
   stepStart: "Empezar", inpPh: "Escribe aquí…", gTitle: "Diez diseños — elige uno", dragHint: "Arrastra cualquier texto — tócalo y hazlo más grande o pequeño", ratioTitle: "Proporción de imagen generada",
   rSquare: "◻ Cuadrado", rTall: "▯ Vertical", rWide: "▭ Horizontal", genBtn: "Generar el anuncio como imagen", bgLight: "Fondo claro", bgDark: "Fondo oscuro", resetAll: "Restablecer todo",
@@ -645,7 +659,7 @@ es: {
   intro_service: "Un anuncio de servicio se decide por tres cosas: cuánto tarda, cuánto cuesta y si tiene garantía. Ponlas en el anuncio, no las dejes para la llamada.", q1_service: "¿Qué servicio ofreces?",
   q2_service: "¿Cuánto cuesta y cuál es el número de contacto?", intro_other: "Todo anuncio que funciona se apoya en tres cosas: una foto fuerte, una frase entendida en dos segundos y un precio y número visibles.",
   q1_other: "¿Qué quieres anunciar exactamente?", q2_other: "¿Cuál es el precio y el número de contacto?", kick_car: "En venta · Dubai", chip_car_1: "Inspección completa", chip_car_2: "Un propietario",
-  chip_car_3: "Pintura de agencia", title_car: "SUV Land Cruiser GXR", spec_car: "Modelo 2009 · especificación GCC · 210,000 km · un propietario", kick_flat: "En alquiler · Business Bay", chip_flat_1: "2 dormitorios",
+  chip_car_3: "Pintura de agencia", title_car: "SUV 4x4 de lujo", spec_car: "Modelo 2009 · especificación GCC · 210,000 km · un propietario", kick_flat: "En alquiler · Business Bay", chip_flat_1: "2 dormitorios",
   chip_flat_2: "1,240 pies²", chip_flat_3: "Acabado premium", title_flat: "Apartamento con vista a torre", spec_flat: "2 dormitorios · 1,240 pies² · acabado premium · aparcamiento gratis", kick_food: "Nuevo · hoy",
   chip_food_1: "Fresco a diario", chip_food_2: "Envío gratis", chip_food_3: "Desde las 12", title_food: "El plato estrella", spec_food: "Cada día de 12 a medianoche · envío gratis", kick_shop: "Nueva colección",
   chip_shop_1: "Todas las tallas", chip_shop_2: "Envío en 24 h", chip_shop_3: "Cambio gratis", title_shop: "Colección de temporada", spec_shop: "Todas las tallas · envío en 24 horas · cambio gratis",

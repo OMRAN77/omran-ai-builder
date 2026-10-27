@@ -42,15 +42,22 @@ async function openaiStudioEdit(promptText, images) {
 }
 const { sourceStylePreservationRule } = require('./image-prompt');
 /* v-studio-lock: الإنقاذ بـgpt-image-1 يمرّ بحارس الهوية أيضًا — إن تغيّر الشخص نعيد مرة بقفل أشدّ */
-async function rescueGuarded(promptText, images, apiKey, feature) {
+/* v-audit-studeng (srv-studios-1-2): المحاولة الثانية تُفحص كالأولى، ورفض المحاولتين { rejected } يصير ٤٢٢ عند المتّصل —
+   كان `second || first` يسلّم الثانية بلا فحص أو الأولى المرفوضة نفسها (وجه شخص آخر) ويُخصم. verdictOf = حارس runEdit نفسه
+   (طلبه بسطر المجمّع وrequireChange)؛ بدونه (الدمج) الحارس القديم. */
+async function rescueGuarded(promptText, images, apiKey, feature, verdictOf) {
   const first = await openaiStudioEdit(promptText, images);
   if (!first || feature === 'anime' || feature === 'merge' || !apiKey) return first;
+  const judge = verdictOf || ((b64) => verifyLocalizedImageEdit({ apiKey, sourceBase64: images[0][0], sourceMime: images[0][1] || 'image/jpeg', resultBase64: b64, resultMime: 'image/png', userPrompt: promptText.slice(0, 600) }));
+  const passed = (g) => !!(g && (g.ok || g.reason === 'validation_unavailable'));
   try {
-    const g = await verifyLocalizedImageEdit({ apiKey, sourceBase64: images[0][0], sourceMime: images[0][1] || 'image/jpeg', resultBase64: first, resultMime: 'image/png', userPrompt: promptText.slice(0, 600) });
-    if (g.ok || g.reason === 'validation_unavailable') return first;
-    const second = await openaiStudioEdit(promptText + STRONGER_LOCK, images);
-    return second || first;
-  } catch (e) { return first; }
+    const g = await judge(first, 'image/png');
+    if (passed(g)) return first;
+    const second = await openaiStudioEdit(promptText + (g.reason === 'no_change' ? NO_CHANGE_RETRY : STRONGER_LOCK), images);
+    if (!second) return { rejected: g };
+    const g2 = await judge(second, 'image/png');
+    return passed(g2) ? second : { rejected: g2 };
+  } catch (e) { return first; /* الحارس لا يرمي؛ عطب غير متوقّع لا يُسقط صورة مدفوعة (v-guard-fail-open) */ }
 }
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const faceLock = require('./face-lock.js');
@@ -115,7 +122,8 @@ const VARIETY_NOTE = {
    فوق الجلد نفسه لا على يد بديلة. */
 const SKIN_LOCK = '\nSKIN LOCK (highest priority): the pigment is added ON TOP of the exact skin already in the photo. ' +
   'Keep the same hands/limbs pixel-for-pixel apart from the added design: same skin tone and shade, same body hair, same veins, knuckles and wrinkles, ' +
-  'same nail shape and length, same size, same pose and same background. ' +
+  /* v-style-match: «same nail shape and length» كان يمنع خيارات الشكل نفسها (ستيليتو، كوفن، طويلة…) — الشكل المطلوب يغلب */
+  'same nail shape and length unless the requested style itself names a nail shape or length, same size, same pose and same background. ' +
   'Never replace them with someone else\'s hands or feet, never make them look younger, smoother, slimmer, lighter or more feminine, ' +
   'and never add jewellery, rings, bracelets, sleeves or clothing that is not already there.';
 
@@ -127,11 +135,12 @@ const SKIN_LOCK = '\nSKIN LOCK (highest priority): the pigment is added ON TOP o
    اليسرى» للعيون، «عدسة شفّافة» لنظّارة شمسيّة، «مطفي» لخيار لامع. الآن: الخيار المختار هو المرجع،
    والتنويع لا يمسّ إلّا ما تركه الخيار مفتوحًا، والتغيير يجب أن يكون ظاهرًا. والتعديلات الدقيقة
    المطلوبة بعينها (العمر، الجسم، تبييض الأسنان…) بلا تنويع أصلًا. */
-function varietyLine(feature, variant, style) {
-  if (!variants.hasVariation(feature, style)) return '';
-  const total = variants.variantCount(feature, style);
+/* v-style-match: وصف الخيار يصل المحاور — ما سمّاه الخيار (لونه، طوله، مكانه، خامته…) لا يُنوَّع */
+function varietyLine(feature, variant, style, text) {
+  if (!variants.hasVariation(feature, style, text)) return '';
+  const total = variants.variantCount(feature, style, text);
   const n = Number.isFinite(variant) ? Math.abs(Math.floor(variant)) : Math.floor(Math.random() * total);
-  const directive = variants.variantDirective(feature, n, style);
+  const directive = variants.variantDirective(feature, n, style, text);
   const note = VARIETY_NOTE[feature] || 'Produce a fresh original execution of this exact style; do not repeat an earlier one.';
   return '\nVARIATION #' + (n % total) + ' — a fresh execution of the chosen style. The chosen style described above is the authority: ' +
     'keep every colour, finish, shape, size and placement it names exactly. Use the following ideas only for details the style leaves open, ' +
@@ -144,14 +153,24 @@ function varietyLine(feature, variant, style) {
 const COLLAGE_FEATURES = ['hair', 'heritage', 'beard'];
 const COLLAGE_CLAUSE = 'Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
 
+/* وصف الخيار كما هو في البيانات (الأوّل احتياطًا لمفتاح مجهول) — يقرؤه الأمر وقفل الوجه وسطر التنويع */
+function styleTextOf(feature, style) {
+  const styleMap = STYLE_TEXT[feature] || {};
+  if (styleMap[style]) return styleMap[style];
+  const firstKey = Object.keys(styleMap)[0];
+  return firstKey ? styleMap[firstKey] : 'a stylish new look';
+}
+/* v-style-match: الصورة الرسميّة — القفل كان يقول «غيّر الخلفية والتأطير فقط» و١٠٣ من ١٠٤ خيارات تغيّر اللبس أيضًا */
+const IDPHOTO_OUTFIT = /suit|shirt|\btie\b|blazer|kandora|kandura|thobe|abaya|uniform|coat|scrubs|polo|sweater|gown|dress|jacket|hijab|ghutra|shemagh|sheila|shayla|outfit|clothing|robe/;
+function lockWhatOf(feature, text) {
+  if (feature === 'idphoto' && IDPHOTO_OUTFIT.test(String(text || '').toLowerCase())) return 'the background, framing and the outfit named in the request';
+  return LOCK_WHAT[feature] || 'the requested detail';
+}
+
 /* ───── بناء أمر ميزة واحدة (كان داخل المعالج) ───── */
 function buildSinglePrompt(feature, style, description, multiAngle, variant) {
-  const styleMap = STYLE_TEXT[feature] || {};
-  let styleDesc = styleMap[style];
-  if (!styleDesc) {
-    const firstKey = Object.keys(styleMap)[0];
-    styleDesc = firstKey ? styleMap[firstKey] : 'a stylish new look';
-  }
+  const baseDesc = styleTextOf(feature, style);
+  let styleDesc = baseDesc;
   if (feature === 'tattoo' && style === 'custom' && description) {
     styleDesc = 'a tattoo design of ' + String(description).slice(0, 300);
   } else if (description) {
@@ -160,12 +179,12 @@ function buildSinglePrompt(feature, style, description, multiAngle, variant) {
   const buildFn = FEATURE_INSTRUCTIONS[feature];
   if (!buildFn) return null;
   let promptText = buildFn(styleDesc);
-  if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule() + EDIT_LOCK(LOCK_WHAT[feature] || 'the requested detail');
+  if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule() + EDIT_LOCK(lockWhatOf(feature, baseDesc));
   if (multiAngle && COLLAGE_FEATURES.indexOf(feature) !== -1) {
     promptText += ' ' + COLLAGE_CLAUSE;
   }
   if (DESIGN_FEATURES.indexOf(feature) !== -1) promptText += SKIN_LOCK;
-  promptText += varietyLine(feature, variant, style);
+  promptText += varietyLine(feature, variant, style, baseDesc);
   return promptText;
 }
 
@@ -183,15 +202,21 @@ async function geminiImage(apiKey, parts, feature, aspectRatio, tempOverride) {
   });
   const data = await upstream.json();
   if (!upstream.ok) {
-    const detail = String((data && data.error && data.error.message) || 'unknown').replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
+    const tech = String((data && data.error && data.error.message) || 'unknown');
+    const detail = tech.replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
     console.error('[studio-create] upstream failed status=' + upstream.status + ' detail=' + detail);
-    return { error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', status: 502, upstream: upstream.status, detail };
+    /* v-audit-studeng (srv-studios-1-3): رمز لا نصّ — كان «تعذّر إنشاء الصورة الآن…» عربيًّا لكلّ اللغات ومعه نصّ المزوّد الخامّ (detail).
+       نفاد الرصيد أو عطب المفتاح = unavailable بـ503 («الخدمة متوقّفة مؤقّتًا»، v-credit-out)؛ الزحام busy؛ والباقي failed. السبب في السجلّ وحده. */
+    if (require('./_videoFail.js').isOutage(upstream.status, tech)) return { error: 'unavailable', status: 503 };
+    const busy = upstream.status === 429 || upstream.status >= 500;
+    return { error: busy ? 'image_generation_busy' : 'image_generation_failed', status: 502 };
   }
   const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
   const imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
   if (!imgPart) {
     const why = String((((data.candidates || [])[0] || {}).finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || '').slice(0, 40);
-    return { error: 'لم يرجع الموديل صورة. حاول بصورة أو خيار آخر.' + (why ? ' (' + why + ')' : ''), status: 500, why };
+    console.warn('[studio-create] no image from upstream (' + (why || 'none') + ')'); /* v-audit-studeng: رمز المزوّد (IMAGE_SAFETY…) للسجلّ لا للمستخدم */
+    return { error: 'image_generation_failed', status: 500, why };
   }
   return { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' };
 }
@@ -211,26 +236,42 @@ async function runEdit(o) {
   /* v-image-duo: مع قفل الوجه يعمل Gemini بالتوازي مع تعديل gpt-image بالقناع، والحكم يختار */
   const duo = duoEnabled() && !!o.openaiKey;
   let gemP = null;
-  const guardOf = async (b64, mime) => {
-    if (o.skipGuard) return true;
-    const g = await verifyLocalizedImageEdit({ apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg', resultBase64: b64, resultMime: mime, userPrompt: (o.guard && o.guard.userPrompt) || o.feature, allowStyleChange: !!(o.guard && o.guard.allowStyleChange), requireChange: !!(o.guard && o.guard.requireChange) });
-    return !!(g && (g.ok || g.reason === 'validation_unavailable'));
+  /* v-audit-studeng: الحكم نفسه (لا نعم/لا فقط) — سبب الرفض يختار سطر المحاولة الثانية ورمز ٤٢٢ في مسارَي القناع والإنقاذ أيضًا */
+  const verdictOf = async (b64, mime) => {
+    if (o.skipGuard) return { ok: true, reason: 'skipped' };
+    return verifyLocalizedImageEdit({ apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg', resultBase64: b64, resultMime: mime, userPrompt: (o.guard && o.guard.userPrompt) || o.feature, allowStyleChange: !!(o.guard && o.guard.allowStyleChange), requireChange: !!(o.guard && o.guard.requireChange) });
+  };
+  const passes = (g) => !!(g && (g.ok || g.reason === 'validation_unavailable'));
+  const guardOf = async (b64, mime) => passes(await verdictOf(b64, mime));
+  /* v-studio-guard-retry (شكوى المالك: «image_edit_identity_mismatch» على صورة كفّ):
+     رسمةٌ واحدة شاردة كانت تُسقط الطلب كلّه بخطأ أحمر. محاولة ثانية واحدة بقفل
+     أشدّ وحرارة ٠٫١٥ قبل الإبلاغ — الفشل يبقى فشلًا إن تكرّر (٤٢٢ ← keepGuardCharge في المعالج). */
+  const retryOrReject = async (guard) => {
+    console.warn('[studio-create] guard rejected ' + o.feature + ' (' + guard.reason + ') — second attempt with a stronger lock');
+    const retryNote = guard.reason === 'no_change' ? NO_CHANGE_RETRY : STRONGER_LOCK;
+    const retryParts = [{ text: o.promptText + retryNote }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
+    const again = await geminiImage(o.apiKey, retryParts, o.feature, null, 0.15);
+    if (again.b64 && await guardOf(again.b64, again.mime)) return finish(again.b64, again.mime, 'gemini+retry');
+    throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
   };
   if (prep) {
     if (duo) gemP = geminiImage(o.apiKey, parts, o.feature).catch(function () { return {}; });
     const masked = await faceLock.maskedEdit(prep, o.openaiKey, o.promptText);
     if (masked) {
-      if (gemP) {
+      /* v-audit-studeng (srv-studios-1-1): نتيجة القناع تمرّ على الحارس نفسه (requireChange) — كانت تُسلَّم بلا سؤال في ١٦ ميزة،
+         فصورة «لم يتغيّر فيها شيء» تُخصم (v-edit-no-change لا يعمل). يُرفض القناع ومرشّح Gemini معًا ⇒ المحاولة الثانية ثمّ ٤٢٢. */
+      const g = gemP ? await gemP : null;
+      const [mv, gv] = await Promise.all([verdictOf(masked, 'image/png'), (g && g.b64) ? verdictOf(g.b64, g.mime) : null]);
+      const maskOk = passes(mv), gemOk = !!(g && g.b64) && passes(gv);
+      if (maskOk && gemOk) {
         try {
-          const g = await gemP;
-          if (g && g.b64 && await guardOf(g.b64, g.mime)) {
-            const pick = await judgeBest({ apiKey: o.apiKey, prompt: o.promptText, source: { b64: o.imageBase64, mime: o.mimeType || 'image/jpeg' }, a: { b64: masked, mime: 'image/png' }, b: { b64: g.b64, mime: g.mime } });
-            if (pick === 'b') return finish(g.b64, g.mime, 'gemini+judge');
-          }
+          const pick = await judgeBest({ apiKey: o.apiKey, prompt: o.promptText, source: { b64: o.imageBase64, mime: o.mimeType || 'image/jpeg' }, a: { b64: masked, mime: 'image/png' }, b: { b64: g.b64, mime: g.mime } });
+          if (pick === 'b') return finish(g.b64, g.mime, 'gemini+judge');
         } catch (e) { console.warn('[studio-create] duo judge skipped: ' + (e && e.message)); }
-        return finish(masked, 'image/png', 'openai-lock+judge');
       }
-      return finish(masked, 'image/png', 'openai-lock');
+      if (maskOk) return finish(masked, 'image/png', gemP ? 'openai-lock+judge' : 'openai-lock');
+      if (gemOk) return finish(g.b64, g.mime, 'gemini+judge');
+      return retryOrReject(mv);
     }
     console.warn('[studio-create] masked edit unavailable for ' + o.feature + ' — falling back to gemini');
   } else if (o.lockLevel && o.lockLevel !== 'none') {
@@ -239,11 +280,12 @@ async function runEdit(o) {
   const out = gemP ? await gemP : await geminiImage(o.apiKey, parts, o.feature);
   if (!out.b64) {
     /* v-studio-rescue / v-studio-noimg-rescue: gpt-image-1 قبل إبلاغ الفشل */
-    const rescue = await rescueGuarded(o.promptText, [[o.imageBase64, o.mimeType]], o.apiKey, o.feature);
+    const rescue = await rescueGuarded(o.promptText, [[o.imageBase64, o.mimeType]], o.apiKey, o.feature, verdictOf);
+    /* v-audit-studeng (srv-studios-1-2): رفض الحارس للمحاولتين = ٤٢٢ كمسار Gemini (لا تسليم صورة مرفوضة) */
+    if (rescue && rescue.rejected) throw { status: 422, payload: { error: publicGuardError(rescue.rejected), retryable: false } };
     if (rescue) return finish(rescue, 'image/png', 'openai');
-    const payload = { error: out.error };
-    if (out.upstream) { payload.upstream = out.upstream; payload.detail = out.detail; }
-    throw { status: out.status || 502, payload };
+    /* v-audit-studeng (srv-studios-1-3): الرمز وحده — upstream/detail (نصّ المزوّد) بقيا في السجلّ */
+    throw { status: out.status || 502, payload: { error: out.error || 'image_generation_failed' } };
   }
   if (!o.skipGuard) {
     const guard = await verifyLocalizedImageEdit({
@@ -255,17 +297,7 @@ async function runEdit(o) {
     });
     /* v-guard-fail-open: تعطّل الحارس نفسه لا يُسقط صورةً جاهزة */
     if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[studio-create] guard unavailable — passing result through');
-    else if (!guard.ok) {
-      /* v-studio-guard-retry (شكوى المالك: «image_edit_identity_mismatch» على صورة كفّ):
-         رسمةٌ واحدة شاردة كانت تُسقط الطلب كلّه بخطأ أحمر. محاولة ثانية واحدة بقفل
-         أشدّ وحرارة ٠٫١٥ قبل الإبلاغ — الفشل يبقى فشلًا إن تكرّر. */
-      console.warn('[studio-create] guard rejected ' + o.feature + ' (' + guard.reason + ') — second attempt with a stronger lock');
-      const retryNote = guard.reason === 'no_change' ? NO_CHANGE_RETRY : STRONGER_LOCK;
-      const retryParts = [{ text: o.promptText + retryNote }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
-      const again = await geminiImage(o.apiKey, retryParts, o.feature, null, 0.15);
-      if (again.b64 && await guardOf(again.b64, again.mime)) return finish(again.b64, again.mime, 'gemini+retry');
-      throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
-    }
+    else if (!guard.ok) return retryOrReject(guard);
   }
   return finish(out.b64, out.mime, 'gemini');
 }
@@ -288,7 +320,7 @@ module.exports = async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.error('[studio-create] image provider is not configured');
-      res.status(503).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+      res.status(503).json({ error: 'unavailable' }); /* v-audit-studeng (srv-studios-1-3): رمز «الخدمة متوقّفة مؤقّتًا» بلغة الواجهة */
       return;
     }
 
@@ -351,7 +383,7 @@ module.exports = async (req, res) => {
         res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
         return;
       }
-      res.status(out.status || 502).json({ error: out.error || 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+      res.status(out.status || 502).json({ error: out.error || 'image_generation_failed' }); /* v-audit-studeng: رمز لا نصّ */
       return;
     }
 
@@ -369,7 +401,7 @@ module.exports = async (req, res) => {
     try {
       const r = await runEdit({
         apiKey, openaiKey, feature, promptText, imageBase64, mimeType,
-        lockLevel: faceLock.protectLevel(feature),
+        lockLevel: faceLock.protectLevel(feature, null, styleTextOf(feature, style)), /* v-style-match: غطاء الرأس المسمّى في الخيار لا يُقفل */
         collage,
         guard: guardOpts, skipGuard: !guardOpts,
       });
@@ -403,10 +435,11 @@ module.exports = async (req, res) => {
     }
   } catch (e) {
     console.error('[studio-create] exception: ' + (e && e.stack ? e.stack : e));
-    res.status(500).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+    res.status(500).json({ error: 'image_generation_failed' }); /* v-audit-studeng: رمز يترجمه imgErrFriendly */
   }
 };
 module.exports.STYLE_TEXT = STYLE_TEXT;
 module.exports.FEATURE_INSTRUCTIONS = FEATURE_INSTRUCTIONS;
 module.exports.buildSinglePrompt = buildSinglePrompt; /* v-studio-variety: للاختبار */
+module.exports.styleTextOf = styleTextOf; /* v-style-match: للاختبار */
 module.exports.DESIGN_FEATURES = DESIGN_FEATURES;

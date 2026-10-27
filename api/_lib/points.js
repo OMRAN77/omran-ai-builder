@@ -154,6 +154,14 @@ async function spendPoints(username, amount, reason, opts) {
   if (await isVip(username)) return { ok: true, points: Infinity, owner: true, vip: true };
   // Suspended account: never let a live token drain the points balance.
   if (await isBanned(username)) return { ok: false, reason: 'auth', banned: true, points: 0 };
+  // v-sec-rename-spend: تغيير الاسم ينقل الرصيد (نسخ ثمّ حذف) تحت قفل خاصّ به. خصمٌ بالاسم القديم
+  // أثناء النقل كان يُخصم ثمّ يُمحى مع المفتاح القديم فيضيع — فنرفض الخصم ما دام القفل قائمًا (أقلّ
+  // من ثانية، والواجهة تعيد المحاولة برمزها الجديد). القفل أفضل جهد: عطب قراءته لا يوقف خصمًا.
+  try {
+    if (await require('./kv.js').kvGetRaw('db/rename-lock/' + encodeURIComponent(username))) {
+      return { ok: false, reason: 'renaming', points: 0 };
+    }
+  } catch (e) { /* guard-ok — تعذّر قراءة القفل لا يوقف الخصم */ }
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (amt === 0) return { ok: true, points: 0 };
 
@@ -209,15 +217,23 @@ async function meterOp(username, reason) {
 }
 
 // يعيد نقاطًا للمستخدم (استرجاع عند فشل توليد بعد الخصم).
-async function refundPoints(username, amount) {
+// v-refund-kind (مراجعة باب المال ١٦ أكتوبر): how اختياريّ = نتيجة spendPoints نفسها، فيعود الردّ بنوع الخصم: صلاحيّة الباقة لها
+// (ضياع تذكرتها = نقاطًا كي لا يخرج بلا شيء)، ورصيد الاشتراك له ثمّ النقاط، والنقاط للنقاط وحدها. بلا how يُطابَق بالمبلغ كما كان —
+// وهناك كانت تذكرة صلاحيّة قديمة بالمبلغ نفسه (فيديو ترند نجح قبل ساعة) تبتلع ردّ فيديو دُفع نقاطًا، فتبقى النقاط مخصومة.
+async function refundPoints(username, amount, how) {
   if (!username || isOwner(username)) return;
   if (await isVip(username)) return; // لم يُخصم منه شيء، فلا شيء يُعاد.
   let amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (!amt) return;
-  try { amt = await planVideos.refundPlanVideo(username, amt); } catch (e) { console.warn('[points] plan video refund skipped:', e && e.message); } // v-plan-videos
-  if (!amt) return;
-  try { amt = await media.refundMedia(username, amt); } catch (e) { console.warn('[points] media refund skipped:', e && e.message); }
-  if (!amt) return;
+  const kind = (how && typeof how === 'object') ? (how.planVideo ? 'plan' : (how.media ? 'media' : 'points')) : '';
+  if (!kind || kind === 'plan') {
+    try { amt = await planVideos.refundPlanVideo(username, amt); } catch (e) { console.warn('[points] plan video refund skipped:', e && e.message); } // v-plan-videos
+    if (!amt) return;
+  }
+  if (!kind || kind === 'media') {
+    try { amt = await media.refundMedia(username, amt, kind === 'media' ? (how.pool || '') : ''); } catch (e) { console.warn('[points] media refund skipped:', e && e.message); } // بالخانة نفسها حين تُعرف
+    if (!amt) return;
+  }
   // Must go through the same atomic counter as the deduction. A read-modify-
   // write refund running next to a concurrent spend would overwrite it and
   // silently hand back points that were legitimately taken.
@@ -228,6 +244,24 @@ async function refundPoints(username, amount) {
   } catch (e) {
     console.error('[points] refund failed for ' + username + ':', e && e.message);
   }
+}
+
+/* v-talkchar-confirm (مراجعة باب المال): هل يكفي ما عنده لسلسلة خصوم؟ steps = [[السبب، النقاط]…] بترتيب خصمها. قراءة فقط — لا خصم
+   ولا تذكرة؛ الحكم عند السباق لـspendPoints. المالك وVIP نعم، والموقوف لا. كلّ خطوة يغطّيها رصيد اشتراك ساري (media.coverage، كما
+   يصرفه trySpendMedia بالفلس) لا تُحسب نقاطًا، والباقي يُقارن برصيد النقاط. يُسأل قبل خطوة مدفوعة تسبق الفيديو (كرتنة الشخصيّة
+   الناطقة) كي لا تُخصم ثمّ يرجع points_insufficient. عطب القراءة لا يمنع — الخصم يحكم. */
+async function canAfford(username, steps) {
+  if (!username) return false;
+  if (isOwner(username) || (await isVip(username))) return true;
+  if (await isBanned(username)) return false;
+  const list = Array.isArray(steps) ? steps : [];
+  let need = 0;
+  try {
+    const covered = await media.coverage(username, list.map((s) => s[0]));
+    list.forEach((s, i) => { if (!covered[i]) need += Math.max(0, Math.floor(Number(s[1]) || 0)); });
+  } catch (e) { return true; }
+  if (!need) return true;
+  try { return (await ensureBalance(username)) >= need; } catch (e) { return true; }
 }
 
 /* v-video-enhance-pro: ردّ بالنقاط وحدها — لخدمة سببها خارج جدول الوسائط (UNIT_COST) فخُصمت من النقاط لا من رصيد اشتراك.
@@ -307,13 +341,17 @@ module.exports = async (req, res) => {
     const username = verifyToken(token);
 
     if (action === 'balance') {
-      if (!username) { res.status(200).json({ ok: true, authed: false, points: 0 }); return; }
+      // v-vmk-price-src: الأسعار عامّة — الزائر يرى في صانع الفيديو الرقم الذي يُخصم نفسه (COSTS) لا رقمًا مكتوبًا في الواجهة.
+      if (!username) { res.status(200).json({ ok: true, authed: false, points: 0, costs: COSTS }); return; }
       if (isOwner(username)) { res.status(200).json({ ok: true, authed: true, owner: true, points: null, unlimited: true, costs: COSTS, tier: 'owner', plan: null }); return; }
       // VIP: الواجهة تقرأ unlimited وحده (∞ بدل الرقم)، وowner يبقى false
       // لأنّه ليس مالكًا — لوحة التحكّم لا تُفتح له، الحدّ وحده يسقط.
       if (await isVip(username)) { res.status(200).json({ ok: true, authed: true, owner: false, vip: true, points: null, unlimited: true, costs: COSTS, tier: 'vip', plan: null }); return; }
+      // v-maha-img-hold: صورة مها لم يؤكَّد حفظها خلال دقائق = لم تصل — تُردّ نقاطها قبل قراءة الرصيد فيظهر الرقم بعد الردّ.
+      try { await require('./image-hold.js').settleStale(username); } catch (e) { /* guard-ok — التسوية أفضل جهد ولا توقف قراءة الرصيد */ }
+      try { await require('./video-job.js').sweepStaleVideoJobs(username); } catch (e) { /* guard-ok — v-video-sweep: فيديو لم يُسلَّم تُردّ نقاطه هنا، وعطبه لا يوقف قراءة الرصيد */ }
       const rec = await readPoints(username);
-      if (!rec) { res.status(200).json({ ok: true, authed: false, points: 0 }); return; }
+      if (!rec) { res.status(200).json({ ok: true, authed: false, points: 0, costs: COSTS }); return; }
       // v-plan-routing: الباقة السارية مع الرصيد (الواجهة تقفل منتقي المزوّد لغير Max). عطب القراءة = مجّاني.
       let __t = null;
       try { __t = await require('./tier.js').resolveTier(username); } catch (e) { __t = null; }
@@ -341,6 +379,14 @@ module.exports = async (req, res) => {
       if (!allowed.includes(amt)) { res.status(400).json({ ok: false, reason: 'bad_amount' }); return; }
       const result = await spendPoints(username, amt, String(reason || 'client'));
       res.status(200).json(result);
+      return;
+    }
+
+    // v-maha-img-hold: العميل حفظ صورة مكالمة مها في المحادثة ← يثبت خصمها (بلا هذا تُردّ تلقائيًّا بعد دقائق).
+    if (action === 'image-ack') {
+      if (!username) { res.status(401).json({ ok: false, reason: 'auth' }); return; }
+      const r = await require('./image-hold.js').ackImage(username, body.hold);
+      res.status(200).json({ ok: true, committed: !!(r && r.committed) });
       return;
     }
 
@@ -382,6 +428,7 @@ module.exports.ensureBalance = ensureBalance; // v-pay-seed: الشحن يبذر
 module.exports.spendByToken = spendByToken;
 module.exports.refundPoints = refundPoints;
 module.exports.refundPointsOnly = refundPointsOnly; // v-video-enhance-pro: ردّ لا يمرّ بتذاكر الباقات
+module.exports.canAfford = canAfford; // v-talkchar-confirm: قراءة فقط قبل خطوة مدفوعة تسبق الفيديو
 module.exports.readPoints = readPoints;
 module.exports.isOwnerUsername = isOwner;
 module.exports.verifyPointsToken = verifyToken;

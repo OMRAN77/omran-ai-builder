@@ -161,3 +161,37 @@ test('٨. ستّة خطوط قراءة حديثة في «نوع الخطّ»، �
   assert.equal(new Set(ids).size, ids.length, 'لا معرّف مكرّر');
   assert.equal(ids.length, 16);
 });
+
+/* v-full-links (المالك ١٥ أكتوبر، لقطة ردّ مزوّد: «الرابط: github.com … Vercel: vercel.com»): «الموقع يعطيني الرئيس فقط أريده أن يكون
+   كاملًا لي كلّ المزودين». v-clean-links كان يعرض كلّ رابط باسم نطاقه. العارض واحد لكلّ المزوّدين (buildSpokenWordSpans). */
+test('٩. v-full-links: الرابط العاري يُعرض كاملًا مفكوك الترميز، ونصّ ماركداون هو اسم النطاق يُعرض رابطه كاملًا، والنصّ الآخر يبقى', () => {
+  const build = load();
+  const links = (txt) => { const box = new El('div'); build(box, txt); const out = []; const walk = (n) => { (n.childNodes || []).forEach((c) => { if(c.tagName === 'a') out.push([c.textContent, c.href]); walk(c); }); }; walk(box); return out; };
+  const pr = 'https://github.com/OMRAN77/omran-ai-builder/pull/1075';
+  assert.deepEqual(links('الرابط: ' + pr + ' .'), [[pr, pr]], 'الرابط العاري كاملًا لا github.com');
+  assert.deepEqual(links('[github.com](' + pr + ')'), [[pr, pr]], 'نصّ ماركداون هو اسم النطاق ← الرابط كاملًا');
+  assert.deepEqual(links('[www.github.com](' + pr + ')'), [[pr, pr]]);
+  assert.deepEqual(links('[طلب السحب](' + pr + ')'), [['طلب السحب', pr]], 'نصّ المزوّد الآخر يبقى كما كتبه');
+  assert.deepEqual(links('https://vercel.com/omran/deployments/abc'), [['https://vercel.com/omran/deployments/abc', 'https://vercel.com/omran/deployments/abc']]);
+  assert.deepEqual(links('https://ar.wikipedia.org/wiki/%D8%AF%D8%A8%D9%8A'), [['https://ar.wikipedia.org/wiki/دبي', 'https://ar.wikipedia.org/wiki/%D8%AF%D8%A8%D9%8A']], 'الترميز مفكوك (ما كان v-clean-links يعالجه) والضغط على الأصل');
+  assert.deepEqual(links('zuma.com/dubai'), [['zuma.com/dubai', 'https://zuma.com/dubai']], 'النطاق العاري بمساره كما كُتب');
+  assert.ok(read('js/app.bundle.js').includes('v-full-links'), 'الحزمة مطابقة');
+});
+
+
+/* v-link-wrap (لقطتا المالك من آيفون ١٦ أكتوبر: روابط متاجر السياكل «https://www.d» ثمّ «ecathlon.ae» في سطر تالٍ): العارض كان يضع
+   word-break:break-all على الرابط نفسه فيغلب قاعدة v569 في tokens.css (.msg a{word-break:normal}) — ظهر بعد v-full-links لأنّ الرابط
+   صار كاملًا. لقطة ui-shot بعرض آيفون (368px): الروابط الأربعة كانت سطرين كلّ واحد، وصارت سطرًا واحدًا. */
+test('١٠. v-link-wrap: الرابط بلا break-all (لا يُكسر في منتصفه)، وقاعدة v569 هي من تلفّه', () => {
+  const build = load();
+  const box = new El('div');
+  build(box, 'تقدر تدور على السياكل في هالمواقع داخل الإمارات:\n\n- ديكاتلون الإمارات (Decathlon UAE): https://www.decathlon.ae\n- نون الإمارات (noon): https://www.noon.com/uae-en/\n- أمازون الإمارات (Amazon.ae): https://www.amazon.ae\n\nشيّك المقاس قبل الشراء.');
+  const as = []; const walk = (n) => { (n.childNodes || []).forEach((c) => { if(c.tagName === 'a') as.push(c); walk(c); }); }; walk(box);
+  assert.deepEqual(as.map((a) => a.textContent), ['https://www.decathlon.ae', 'https://www.noon.com/uae-en/', 'https://www.amazon.ae']);
+  for (const a of as) {
+    assert.ok(!/break-all/.test(String(a.style.cssText || '')), a.textContent + ': break-all يكسره عند أيّ حرف');
+    assert.match(String(a.style.cssText), /unicode-bidi:isolate/, 'العزل كما كان');
+  }
+  assert.ok(read('css/tokens.css').includes('.msg a, .msg-text a{overflow-wrap:break-word; word-break:normal; hyphens:none;}'), 'قاعدة v569: ينتقل كاملًا ويُكسر فقط إن كان أطول من السطر');
+  assert.ok(!read('js/app.bundle.js').includes("text-decoration:underline; word-break:break-all; unicode-bidi:isolate;"), 'الحزمة مطابقة');
+});

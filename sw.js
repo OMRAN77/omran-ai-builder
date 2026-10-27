@@ -37,10 +37,10 @@ const ASSET_FILES = [
   './assets/tool-cards/sections/docs.png',
   './assets/tool-cards/sections/feedback.png',
   './assets/tool-cards/sections/email.png',
-  './icons/icon-192-v2.png?icon=gold-20260819',
-  './icons/icon-512-v2.png?icon=gold-20260819',
-  './icons/apple-touch-icon-v2.png?icon=gold-20260819',
-  './icons/favicon-32-v2.png?icon=gold-20260819',
+  './icons/icon-192-v2.png?icon=black-20261022',
+  './icons/icon-512-v2.png?icon=black-20261022',
+  './icons/apple-touch-icon-v2.png?icon=black-20261022',
+  './icons/favicon-32-v2.png?icon=black-20261022',
 ];
 
 // هل هذا تنصيب أول أم تحديث فوق عامل قديم؟ التحديث وحده يعيد تحميل الصفحات.
@@ -87,8 +87,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'مها', {
       body: data.body || 'تذكير',
-      icon: './icons/icon-192-v2.png?icon=gold-20260819',
-      badge: './icons/icon-192-v2.png?icon=gold-20260819',
+      icon: './icons/icon-192-v2.png?icon=black-20261022',
+      badge: './icons/icon-192-v2.png?icon=black-20261022',
       tag: 'maha-reminder-' + Date.now(),
       silent: false,
       vibrate: [300, 150, 300, 150, 300],
@@ -122,6 +122,24 @@ self.addEventListener('activate', (event) => {
         .map((k) => caches.delete(k))
     );
     await self.clients.claim();
+
+    /* v-audit-sw: BUILD_ID لا يتغيّر مع النشر (build.mjs يختم CACHE_NAME)، فالقشرة الحاليّة لا تُمسح أعلاه.
+       يُكنس منها ما خبّأه المسار القديم بلا سقف: مقاطع بثّ من أصول أخرى، ffmpeg-core.wasm، وسائط، روابط برمز،
+       ونسخ ‎?v=‎ سابقة (تبقى الأحدث لكلّ مسار). ما يقبله المسار الجديد يبقى. */
+    try {
+      const shell = await caches.open(SHELL_CACHE);
+      const last = new Map(), drop = [];
+      for (const k of await shell.keys()) { // بترتيب الإضافة: الأخير لكلّ مسار هو الأحدث
+        let u = null;
+        try { u = new URL(k.url); } catch (e) { u = null; /* مفتاح تالف يُحذف */ }
+        const nav = !!u && !/\.(?!html$)[A-Za-z0-9]+$/i.test(u.pathname); // صفحة: بلا امتداد أو ‎.html‎
+        if (!u || !isShellUrl(u, nav) || !shellKeyOk(u, nav)) { drop.push(k); continue; }
+        const p = u.origin + u.pathname;
+        if (last.has(p)) drop.push(last.get(p));
+        last.set(p, k);
+      }
+      await Promise.all(drop.map((k) => shell.delete(k))); // متوازٍ: آلاف المقاطع لا تؤخّر التولّي
+    } catch (e) { /* الكنس تنظيف لا شرط للتولّي */ }
 
     // جوهر «التحديث يوصل كل الأجهزة»: الصفحات العالقة على نسخة قديمة لا
     // تملك كود إعادة التحميل، فالعامل الجديد يعيد تحميلها بنفسه لحظة
@@ -169,6 +187,22 @@ function cacheable(res) {
   return res && res.ok && res.status === 200 && res.type !== 'opaque';
 }
 
+/* v-audit-sw: مسار القشرة لملفّات القشرة من الأصل نفسه وحدها: صفحة تنقّل، أو js/css/html/json.
+   كان يمسك كلّ GET: مقاطع ‎.ts‎ من قنوات «تلفزيون» (كلّ ٦ ثوانٍ) وffmpeg-core.wasm (٣٢ م.ب) والفيديو تُكتب
+   في القشرة بلا سقف. ما سواها لا يلمسه العامل فيذهب للشبكة وكاش المتصفّح. ‎/ffmpeg/‎ immutable سنة في كاش المتصفّح. */
+function isShellUrl(url, nav) {
+  if (url.origin !== self.location.origin) return false;
+  if (url.pathname.startsWith('/ffmpeg/')) return false;
+  return nav || url.pathname === '/' || /\.(js|mjs|css|html|json)$/i.test(url.pathname);
+}
+
+/* v-sec-sw-token: تنقّل باستعلام (?gtoken=/?resetToken=/?token=) لا يُخبّأ — كان الرمز يبقى في مفتاح الكاش بعد الخروج.
+   v-audit-sw: الملفّ الفرعيّ يُخبّأ بلا استعلام أو بوسم ‎?v=‎ وحده (البصمة تمنع القِدم)؛ أيّ استعلام آخر لا يُخبّأ. */
+function shellKeyOk(url, nav) {
+  if (!url.search) return true;
+  return !nav && /^\?v=[\w.-]{1,64}$/.test(url.search);
+}
+
 // v-vg-removed: مُعالج Share Target للمرشد البصري حُذف مع حذف الميزة نهائيًا.
 
 self.addEventListener('fetch', (event) => {
@@ -211,22 +245,39 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const nav = req.mode === 'navigate';
+  if (!isShellUrl(url, nav)) return; // v-audit-sw: أصل آخر، وسائط، wasm، ‎/ffmpeg/‎ — للمتصفّح وحده
+
   // App shell / navigation: network-first so updates land immediately,
   // falling back to the cached shell whenever there's no connection.
   // v669: الجوال كان يعلق على نسخة قديمة — القشرة (index/البندل) تُجلب دائماً
   // من الشبكة متجاوزةً كاش المتصفح، والكاش يبقى فقط احتياط انقطاع النت.
+  // v-audit-sw: no-store للتنقّل وindex.html وحدهما (وسم الحزمة فيه)؛ الحزمة والأجزاء ذات ‎?v=‎ تحترم
+  // Cache-Control، وإلّا نُزّلت الحزمة (٤٫٥ م.ب) كاملة في كلّ فتح.
+  const fresh = nav || url.pathname === '/' || url.pathname === '/index.html';
   event.respondWith((async () => {
     try {
-      const res = await fetch(req, { cache: 'no-store' });
-      if (cacheable(res)) {
+      const res = await (fresh ? fetch(req, { cache: 'no-store' }) : fetch(req));
+      if (cacheable(res) && shellKeyOk(url, nav)) {
         const cache = await caches.open(SHELL_CACHE);
-        cache.put(req, res.clone()).catch(() => {});
+        const copy = res.clone();
+        // v-audit-sw: نسخة واحدة لكلّ مسار — وسم ‎?v=‎ الجديد يحلّ محلّ القديم فلا تتكدّس حزم الإصدارات.
+        event.waitUntil((async () => {
+          await cache.put(req, copy);
+          const old = await cache.keys(req, { ignoreSearch: true });
+          await Promise.all(old.filter((k) => k.url !== req.url).map((k) => cache.delete(k)));
+        })().catch((e2) => console.warn('[sw] shell put skipped:', url.pathname, e2 && e2.message)));
       }
       return res;
     } catch (e) {
       const cache = await caches.open(SHELL_CACHE);
-      return (await cache.match(req))
-          || (await cache.match('./index.html'))
+      const hit = (await cache.match(req))
+          // v-audit-sw: التخزين المسبق يحفظ ‎./js/app.bundle.js‎ بلا وسم والصفحة تطلبه ‎?v=…‎ — بلا اتّصال تكفي أيّ نسخة.
+          || (!nav && await cache.match(req, { ignoreSearch: true }));
+      if (hit) return hit;
+      // v-audit-sw: index.html للتنقّل وحده؛ لسكربت أو CSS كان يُرفض (text/html + nosniff) فتموت الصفحة كلّها.
+      if (!nav) return Response.error();
+      return (await cache.match('./index.html'))
           || new Response(
                '<!doctype html><meta charset=utf-8><body style="font:16px system-ui;padding:2rem;text-align:center">'
                + 'تعذّر تحميل التطبيق ولا يوجد اتصال. أعد المحاولة.',

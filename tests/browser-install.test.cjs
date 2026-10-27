@@ -15,13 +15,14 @@ const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur'
 const HOW = ['installHowIOS', 'installHowIOSOther', 'installHowAndroid', 'installHowDesktop', 'installHowMacSafari', 'installHowFirefox'];
 const PROVIDERS = /claude|gemini|openai|gpt|groq|anthropic|openrouter/i;
 
-test('زرّ التثبيت خرج من قاعدة الإخفاء والخمسة الباقية مخفيّة', () => {
+test('v-no-install: زرّ التثبيت محذوف نهائيًّا (المالك ١٨ أكتوبر) والخمسة الباقية مخفيّة، والبيان باقٍ', () => {
   const html = read('index.html');
   const rule = /\n(#btnTemplates[^{]*)\{ display: none !important; \}/.exec(html);
   assert.ok(rule, 'قاعدة v473 موجودة');
   assert.doesNotMatch(rule[1], /#btnInstall\b(?!Header)/);
   for (const id of ['btnTemplates', 'btnAgentMode', 'btnInstallHeader', 'btnShareApp', 'btnGov']) assert.match(rule[1], new RegExp('#' + id + '\\b'));
-  assert.match(html, /<button class="btn" id="btnInstall">/);
+  assert.doesNotMatch(html, /id="btnInstall"/, 'لا زرّ تثبيت في الصفحة');
+  assert.doesNotMatch(read('css/tokens.css'), /#btnInstall\{display:inline-flex;\}/, 'ولا قاعدة تُظهره');
   assert.match(html, /rel="manifest" href="\/manifest\.json\?v=516-browser-install"/);
 });
 
@@ -66,7 +67,7 @@ test('خطوات التثبيت في ١٤ لغة بلا اسم مزوّد، وو
       assert.doesNotMatch(d[k], PROVIDERS, k + ' في ' + lg);
     }
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=740'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=776'"));
 });
 
 function runQ(href) {

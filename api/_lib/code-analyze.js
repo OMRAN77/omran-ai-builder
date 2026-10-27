@@ -574,14 +574,26 @@ async function streamStep(fetchImpl, url, headers, body, o) {
   return { text, stopReason, refusalCategory, toolUses, assistant };
 }
 
+/* v-owner-solo-all (المالك: «كل واحد بروحه»): تقييم الكود كان على كلود (Opus) دائمًا مهما اختار المالك. للمالك وحده الآن مزوّده
+   المختار عبر الوسيط بمعرّفه هو (إن كان من شركة المزوّد) وإلّا افتراضيّه — مرآة OR_MODELS في chat.js (اختبار owner-solo-all يثبّت التطابق).
+   بلا مفتاح الوسيط: خطأ صريح، لا كلود مكانه (v-owner-solo). كلود المختار وغير المالك كما كانا. */
+const OWNER_OR_DEFAULTS = { openai: 'openai/gpt-6-sol', gemini: 'google/gemini-3.8-flash', deepseek: 'deepseek/deepseek-v4-pro', mistral: 'mistralai/mistral-medium-3-5', groq: 'meta-llama/llama-4-maverick', cohere: 'cohere/command-a', openrouter: 'x-ai/grok-4.6', kimi: 'moonshotai/kimi-k3' };
+function ownerOrModel(prov, requested) {
+  const def = OWNER_OR_DEFAULTS[prov];
+  if (!def) return '';
+  return require('./provider-models.js').pickProviderModel(prov, requested, def).model;
+}
+
 async function callPro(prompt, opts) {
   const o = opts || {};
   const env = o.env || process.env;
-  const viaOR = !env.ANTHROPIC_API_KEY && !!env.OPENROUTER_API_KEY;
+  const ownProv = Object.prototype.hasOwnProperty.call(OWNER_OR_DEFAULTS, String(o.ownerProv || '')) ? String(o.ownerProv) : '';
+  if (ownProv && !env.OPENROUTER_API_KEY) throw new Error('لا طريق لهذا المزوّد على الخادم (مفتاح الوسيط غير موجود)');
+  const viaOR = ownProv ? true : (!env.ANTHROPIC_API_KEY && !!env.OPENROUTER_API_KEY);
   const apiKey = viaOR ? env.OPENROUTER_API_KEY : env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY');
   const url = viaOR ? 'https://openrouter.ai/api/v1/messages' : 'https://api.anthropic.com/v1/messages';
-  const base = (env.CODE_ANALYZE_MODEL && String(env.CODE_ANALYZE_MODEL).trim()) || DEFAULT_MODEL;
+  const base = ownProv ? ownerOrModel(ownProv, o.ownerModel) : ((env.CODE_ANALYZE_MODEL && String(env.CODE_ANALYZE_MODEL).trim()) || DEFAULT_MODEL);
   // الوسيط يكتب الإصدار الفرعيّ بنقطة (claude-opus-5-5 ← anthropic/claude-opus-5.5) — v-models-latest.
   const model = viaOR && base.indexOf('/') === -1 ? 'anthropic/' + base.replace(/-(\d+)-(\d+)$/, '-$1.$2') : base;
   const headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
@@ -702,16 +714,20 @@ module.exports = async function handler(req, res) {
       const t = gh.parseTarget({ url: body.githubUrl, ref: body.githubRef });
       if (!t) { send({ error: 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ.' }); finish(); return; }
       if (t.kind === 'pr' || t.kind === 'issue') { send({ error: 'أعطِ رابط مستودع أو مجلّد أو ملفّ على GitHub — لا طلب سحب أو مسألة.' }); finish(); return; }
-      send({ status: '🐙 يحمّل من GitHub: ' + t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') + '…', k: 'stGithub' });
+      /* v-audit-chatcli (x-i18n-2): أرقام الحالة وأسماؤها بارامترات (p) فيترجم العميل السطر كاملًا بـtStatus بالـ١٤ لغة */
+      send({ status: '🐙 يحمّل من GitHub: ' + t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') + '…', k: 'stGithub', p: { repo: t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') } });
       try {
         let asFile = null;
+        // v-sec-gh-token: مفتاح المالك (GITHUB_TOKEN/الخزنة) يُرسَل فقط حين يكون المنادي المالكَ نفسه.
+        // كان {} يُرسله لكلّ منادٍ، فيقرأ أيّ زائرٍ أيَّ مستودعٍ خاصّ يصل إليه المفتاح. غير المالك: anonymous.
+        const ghOpt = { anonymous: !owner };
         if (t.kind === 'file' || t.kind === 'path') {
-          const c = await gh.getContents(t, {});
+          const c = await gh.getContents(t, ghOpt);
           if (c.error && t.kind === 'file') { send({ error: c.error }); finish(); return; }
           if (c.type === 'file') asFile = c;
         }
         if (asFile) { body.files = (Array.isArray(body.files) ? body.files : []).concat([{ name: asFile.name || t.path, content: asFile.content }]); }
-        else { const z = await gh.fetchRepoZip(t, {}); body._zipEntries = z.entries; }
+        else { const z = await gh.fetchRepoZip(t, ghOpt); body._zipEntries = z.entries; }
       } catch (e) {
         logError('code-analyze/github', e);
         send({ error: 'تعذّر جلب GitHub: ' + String((e && e.message) || e).slice(0, 200) }); finish(); return;
@@ -729,7 +745,7 @@ module.exports = async function handler(req, res) {
       finish(); return;
     }
     const metrics = metricsOf(col.files);
-    send({ status: '🔎 يقرأ ' + col.files.length + ' ملفًّا · ' + metrics.totals.lines + ' سطرًا ويفكّر…', k: 'stAnalyze', tier: usage.tier });
+    send({ status: '🔎 يقرأ ' + col.files.length + ' ملفًّا · ' + metrics.totals.lines + ' سطرًا ويفكّر…', k: 'stAnalyze', p: { n: col.files.length, lines: metrics.totals.lines }, tier: usage.tier });
     /* v-provider-errors: للمالك وحده — أخطاء الإنتاج الحيّة ترافق الكود، فيفحص بما وقع فعلًا لا بما قد يقع. */
     let live = '';
     if (owner) {
@@ -742,7 +758,7 @@ module.exports = async function handler(req, res) {
     const prompt = buildPrompt(col.files, metrics, body.ask, body.lang, live,
       reader ? { index: deepIndex(col.pool, col.files) } : null);
     let lastSent = 0;
-    const onProgress = (n) => { if (n - lastSent >= 1500) { lastSent = n; send({ status: '✍️ يكتب التحليل… ' + n + ' حرفًا', k: 'stWriting' }); } };
+    const onProgress = (n) => { if (n - lastSent >= 1500) { lastSent = n; send({ status: '✍️ يكتب التحليل… ' + n + ' حرفًا', k: 'axChatcliStAnalyzeWriting', p: { n } }); } }; // v-audit-chatcli: مفتاحه — stWriting نصّ المحادثة بلا عدد
     let text = '';
     let readStats = null;
     try {
@@ -759,7 +775,7 @@ module.exports = async function handler(req, res) {
         }),
         onDone: (s) => { readStats = s; },
       } : {};
-      text = pro ? await callPro(prompt, Object.assign({ onProgress }, deepOpts)) : await callFree(prompt, { onProgress });
+      text = pro ? await callPro(prompt, Object.assign({ onProgress }, deepOpts, owner ? { ownerProv: String(body.provider || ''), ownerModel: String(body.model || '') } : {})) : await callFree(prompt, { onProgress }); // v-owner-solo-all
     } catch (e) {
       logError('code-analyze/engine', e);
       const msg = e && e.refusal ? 'رفض النموذج تحليل هذا الكود (تصنيف أمان). جرّب ملفًّا آخر أو أزل الجزء الحسّاس.'
@@ -788,4 +804,4 @@ module.exports = async function handler(req, res) {
   }
 };
 
-module.exports.__test = { LIMITS, DEEP, DEEP_TOOLS, DEFAULT_MODEL, FLAG_DEFS, collectFiles, metricsOf, fileMetrics, buildPrompt, splitOutput, extractJson, normalizeReport, gradeOf, langOf, callPro, callFree, numbered, pickEffort, poolReader, deepIndex };
+module.exports.__test = { OWNER_OR_DEFAULTS, ownerOrModel, LIMITS, DEEP, DEEP_TOOLS, DEFAULT_MODEL, FLAG_DEFS, collectFiles, metricsOf, fileMetrics, buildPrompt, splitOutput, extractJson, normalizeReport, gradeOf, langOf, callPro, callFree, numbered, pickEffort, poolReader, deepIndex };

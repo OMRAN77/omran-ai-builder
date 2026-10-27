@@ -17,7 +17,7 @@ const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const KEY = 'db/knowledge/global.json';
-const MAX_FACTS = 60;          // سقف البنك كلّه
+const MAX_FACTS = 60;          // سقف المرشّحين (المعتمد سقفه MAX_APPROVED — v-audit-chatsrv)
 const MAX_FACT_CHARS = 160;
 const MIN_FACT_CHARS = 12;
 const NEEDED_VOUCHES = 2;      // مستخدمان مختلفان قبل النشر للجميع
@@ -75,13 +75,17 @@ async function readBank() {
   return { facts: [] };
 }
 
+/* v-audit-chatsrv (srv-chat-6): السقف كان واحدًا للبنك كلّه ولا ينظر إلى approved — فبعد ٦٠ مرشّحًا أحدث تخرج الحقيقة التي وافق عليها
+   المالك من الحقن ومن لوحته. الآن سقفان: المرشّحون (MAX_FACTS) يخرج أضعفهم تزكيةً ثمّ أقدمهم كما كان، والمعتمد لا يزاحمه مرشّح
+   (سقفه MAX_APPROVED، يخرج الأقدم اعتمادًا — بفعل المالك وحده). */
+const MAX_APPROVED = 60;
 function evict(facts) {
-  if (facts.length <= MAX_FACTS) return facts;
+  const ok = (f) => !!(f && f.approved === true);
+  const approved = facts.filter(ok), pending = facts.filter((f) => f && !ok(f));
+  if (pending.length <= MAX_FACTS && approved.length <= MAX_APPROVED) return facts;
   // الأضعف تزكيةً ثمّ الأقدم يخرج أوّلًا
-  return facts
-    .slice()
-    .sort((a, b) => ((b.v || []).length - (a.v || []).length) || (b.at - a.at))
-    .slice(0, MAX_FACTS);
+  return approved.slice().sort((a, b) => (b.approvedAt || 0) - (a.approvedAt || 0)).slice(0, MAX_APPROVED)
+    .concat(pending.slice().sort((a, b) => ((b.v || []).length - (a.v || []).length) || (b.at - a.at)).slice(0, MAX_FACTS));
 }
 
 async function addFact(username, text) {
@@ -147,8 +151,12 @@ async function learn(username, userText, aiText) {
 /* ————— الحقن ————— */
 
 function render(bank) {
+  // v-sec-knowledge-approve (قرار المالك ٢٥ أكتوبر، «بموافقتي»): لا تُحقَن حقيقة في تعليمات
+  // النظام عند المستخدمين الآخرين وعند الوكيل إلّا بعد موافقة المالك عليها (approved === true).
+  // التزكية بحسابين لم تعد كافية: التسجيل بلا حدّ، فحسابان يصنعهما مهاجم واحد كانا يزرعان أمرًا
+  // في تعليمات الجميع. المرشّحات تبقى تُجمَع لتظهر للمالك في لوحته، ولا تخرج للناس قبل موافقته.
   const pub = (bank.facts || [])
-    .filter((f) => f && f.t && (f.v || []).length >= NEEDED_VOUCHES)
+    .filter((f) => f && f.t && f.approved === true)
     .sort((a, b) => ((b.v || []).length - (a.v || []).length) || (b.at - a.at));
   let out = '';
   for (const f of pub) {
@@ -185,4 +193,56 @@ async function blockAsync() {
   } catch (e) { return _cache.txt || ''; }
 }
 
-module.exports = { learn, block, blockAsync, readBank, addFact, mechanicalOk, norm, NEEDED_VOUCHES };
+/* ————— إدارة المالك: عرض/موافقة/رفض ————— */
+function invalidateCache() { _cache = { txt: '', at: 0, busy: false }; }
+
+async function listFacts() {
+  const bank = await readBank();
+  const facts = Array.isArray(bank.facts) ? bank.facts : [];
+  const map = (f) => ({ k: f.k, t: f.t, v: (f.v || []).length, at: f.at || 0, approved: f.approved === true });
+  return {
+    pending: facts.filter((f) => f && f.t && f.approved !== true).map(map).sort((a, b) => b.at - a.at),
+    approved: facts.filter((f) => f && f.t && f.approved === true).map(map).sort((a, b) => b.at - a.at),
+  };
+}
+
+async function approveFact(k) {
+  const bank = await readBank();
+  const f = (bank.facts || []).find((x) => x && x.k === k);
+  if (!f) return false;
+  f.approved = true; f.approvedAt = Date.now();
+  bank.updatedAt = Date.now();
+  await kvPutJSON(KEY, bank);
+  invalidateCache();
+  return true;
+}
+
+async function rejectFact(k) {
+  const bank = await readBank();
+  const before = (bank.facts || []).length;
+  bank.facts = (bank.facts || []).filter((x) => !(x && x.k === k));
+  if (bank.facts.length === before) return false;
+  bank.updatedAt = Date.now();
+  await kvPutJSON(KEY, bank);
+  invalidateCache();
+  return true;
+}
+
+/** نقطة المالك: /api/system?action=knowledge — list · approve · reject. محميّة بـisOwner في الخادم. */
+async function handle(req, res) {
+  if (!require('./_owner.js').isOwnerSession(req)) { res.status(403).json({ error: 'owner_only' }); return; } // v-audit-agent (srv-agent-3): اعتماد حقيقة تصل نظام كلّ مستخدم — جلسة المالك وحدها لا MONITOR_KEY
+  const body = (req.body && typeof req.body === 'object') ? req.body : {};
+  const op = String((req.query && req.query.op) || body.op || 'list');
+  try {
+    if (op === 'list') { res.status(200).json(await listFacts()); return; }
+    if (op === 'approve') { const ok = await approveFact(String(body.k || '')); res.status(ok ? 200 : 404).json({ ok }); return; }
+    if (op === 'reject') { const ok = await rejectFact(String(body.k || '')); res.status(ok ? 200 : 404).json({ ok }); return; }
+    res.status(400).json({ error: 'unknown op' });
+  } catch (e) {
+    res.status(500).json({ error: String((e && e.message) || e) });
+  }
+}
+
+module.exports = { learn, block, blockAsync, readBank, addFact, mechanicalOk, norm, NEEDED_VOUCHES,
+  listFacts, approveFact, rejectFact, handle };
+module.exports.__render = render; // v-sec-knowledge-approve: للاختبار — يثبت أنّ غير المعتمَد لا يُحقَن.

@@ -89,6 +89,20 @@ const LIGHTING_PROMPTS = {
   cool: 'cool, crisp lighting (white/blue tones)',
   bright: 'bright, well-lit daylight-style lighting',
   dim: 'dim, relaxing night-time mood lighting',
+  /* v-decor-light-sheet (طلب المالك ١٤ أكتوبر ٢٠٢٦): الستة الجديدة من لوحة الإضاءة */
+  natural: 'natural, balanced daylight coming through the windows',
+  neutral: 'neutral white lighting (about 4000K), clean and balanced',
+  golden: 'golden-hour glow lighting with rich amber tones',
+  purple: 'night-time mood lighting with soft purple/violet ambient tones',
+  sunset: 'warm pink-orange sunset light streaming through the windows',
+  moon: 'cool blue moonlight night-time lighting, calm and dim',
+  emerald: 'calm emerald-green indirect ambient lighting, elegant soft wall washes, keep furniture colors and material detail recognizable',
+  turquoise: 'coastal turquoise ambient lighting with cyan indirect wall washes and fresh airy atmosphere',
+  rose: 'soft powder-rose pink ambient lighting, delicate and refined, not saturated magenta',
+  burgundy: 'cinematic deep burgundy-red evening lighting, rich wine-red ambient wall washes with readable room details',
+  neon: 'dual-tone neon lighting: cyan from the left and fuchsia from the right, neutral soft key light on furniture, clearly two distinct colors',
+  cinematic: 'balanced cinematic split lighting: cool steel-blue from the left and warm amber from the right, realistic indirect light falloff',
+  aurora: 'aurora-inspired two-tone ambient lighting: emerald-green on the left blending into muted violet on the right, no literal aurora or sky indoors',
 };
 
 const FURNITURE_PROMPTS = {
@@ -97,6 +111,19 @@ const FURNITURE_PROMPTS = {
   simple: 'simple, minimal furniture pieces',
   luxury: 'luxurious, high-end furniture pieces',
   bohemian: 'bohemian-style furniture pieces',
+  // v-decor-18 (المالك ١٦ أكتوبر: «تضيف لكلّ واحد ١٨»): سبعة عشر خيارًا + «بدون تغيير» كالإضاءة.
+  scandinavian: 'Scandinavian furniture pieces: light oak wood, clean lines, soft wool textiles',
+  japandi: 'Japandi furniture pieces: low natural-wood frames, linen upholstery, calm minimal forms',
+  industrial: 'industrial furniture pieces: black metal frames, reclaimed wood, distressed leather',
+  midcentury: 'mid-century modern furniture pieces: walnut wood, tapered legs, retro silhouettes',
+  artdeco: 'Art Deco furniture pieces: curved velvet seating, brass and gold geometric details, lacquered surfaces',
+  rattan: 'rattan and woven cane furniture pieces with natural linen cushions',
+  velvet: 'plush velvet upholstered furniture pieces with rounded cushions',
+  leather: 'rich brown leather furniture pieces with a Chesterfield-style tufted sofa',
+  majlis: 'traditional Arabic majlis floor seating: low cushions along the walls with back bolsters and patterned fabric',
+  modular: 'a large modular L-shaped sectional sofa with deep comfortable seats',
+  curved: 'a curved crescent-shaped sofa and rounded organic furniture pieces',
+  rustic: 'rustic solid wood furniture pieces with natural grain and linen cushions',
 };
 
 const FLOORING_PROMPTS = {
@@ -104,6 +131,20 @@ const FLOORING_PROMPTS = {
   marble: 'polished marble flooring',
   ceramic: 'ceramic tile flooring',
   carpet: 'soft carpet flooring',
+  // v-decor-18 (المالك ١٦ أكتوبر: «تضيف لكلّ واحد ١٨»): سبعة عشر خيارًا + «بدون تغيير» كالإضاءة.
+  herringbone: 'herringbone oak parquet flooring',
+  darkwood: 'dark walnut wide-plank hardwood flooring',
+  lightwood: 'light natural oak wide-plank hardwood flooring',
+  blackmarble: 'polished black marble flooring with subtle gold veins',
+  travertine: 'honed beige travertine stone tile flooring',
+  terrazzo: 'polished terrazzo flooring with multicolored stone chips',
+  concrete: 'seamless polished gray concrete flooring',
+  porcelain: 'large-format glossy light porcelain tile flooring',
+  moroccan: 'patterned Moroccan encaustic cement tile flooring',
+  hexagon: 'matte hexagon tile flooring',
+  checker: 'classic black-and-white checkerboard marble tile flooring',
+  stone: 'natural slate stone flooring in earthy tones',
+  persianrug: 'a large ornate Persian rug covering wooden flooring',
 };
 
 const FABRIC_PROMPTS = {
@@ -111,6 +152,20 @@ const FABRIC_PROMPTS = {
   dark: 'dark-colored fabrics for sofas/cushions/curtains',
   neutral: 'neutral-toned fabrics for sofas/cushions/curtains',
   bold: 'bold, vibrant-colored fabrics for sofas/cushions/curtains',
+  // v-decor-18 (المالك ١٦ أكتوبر: «تضيف لكلّ واحد ١٨»): سبعة عشر خيارًا + «بدون تغيير» كالإضاءة.
+  cream: 'soft cream and ivory fabrics for sofas/cushions/curtains',
+  navy: 'deep navy blue fabrics for sofas/cushions/curtains',
+  emerald: 'rich emerald green fabrics for sofas/cushions/curtains',
+  mustard: 'warm mustard yellow fabrics for sofas/cushions/curtains',
+  terracotta: 'earthy terracotta orange fabrics for sofas/cushions/curtains',
+  blush: 'soft blush pink fabrics for sofas/cushions/curtains',
+  sage: 'muted sage green fabrics for sofas/cushions/curtains',
+  charcoal: 'charcoal gray fabrics for sofas/cushions/curtains',
+  burgundy: 'deep burgundy wine-red fabrics for sofas/cushions/curtains',
+  teal: 'deep teal fabrics for sofas/cushions/curtains',
+  camel: 'warm camel tan fabrics for sofas/cushions/curtains',
+  lavender: 'soft lavender fabrics for sofas/cushions/curtains',
+  skyblue: 'light sky blue fabrics for sofas/cushions/curtains',
 };
 
 const WALLCOLOR_PROMPTS = {
@@ -118,12 +173,41 @@ const WALLCOLOR_PROMPTS = {
   beige: 'beige wall paint',
   gray: 'gray wall paint',
   bold: 'a bold accent wall color',
+  // v-decor-18 (المالك ١٦ أكتوبر: «تضيف لكلّ واحد ١٨»): سبعة عشر خيارًا + «بدون تغيير» كالإضاءة.
+  ivory: 'warm ivory off-white wall paint',
+  greige: 'greige (warm gray-beige) wall paint',
+  taupe: 'soft taupe wall paint',
+  sage: 'muted sage green wall paint',
+  olive: 'olive green wall paint',
+  navy: 'deep navy blue wall paint',
+  forest: 'deep forest green wall paint',
+  terracotta: 'terracotta clay wall paint',
+  blush: 'soft blush pink wall paint',
+  lightblue: 'pale light blue wall paint',
+  charcoal: 'charcoal gray wall paint',
+  mocha: 'warm mocha brown wall paint',
+  black: 'matte black wall paint',
 };
 
 const CURTAIN_PROMPTS = {
   simple: 'simple curtains',
   luxury: 'luxurious, elegant curtains',
   remove: 'no curtains at all (remove existing curtains)',
+  // v-decor-18 (المالك ١٦ أكتوبر: «تضيف لكلّ واحد ١٨»): سبعة عشر خيارًا + «بدون تغيير» كالإضاءة.
+  sheer: 'sheer white chiffon curtains letting soft light through',
+  linen: 'natural linen curtains',
+  velvet: 'heavy velvet floor-length curtains',
+  blackout: 'thick blackout curtains',
+  roman: 'fabric Roman shades with neat horizontal folds',
+  roller: 'minimal fabric roller blinds',
+  wooden: 'horizontal wooden slat blinds',
+  vertical: 'vertical fabric blinds',
+  wave: 'modern wave-fold (S-fold) curtains on a ceiling track',
+  double: 'double-layer curtains: a sheer inner layer with heavy outer drapes',
+  embroidered: 'curtains with traditional Arabic embroidery and gold trim',
+  motorized: 'sleek motorized curtains on a hidden ceiling track',
+  bamboo: 'woven bamboo shades',
+  pelmet: 'elegant drapes with an upholstered pelmet box above the window',
 };
 
 // أنواع الأماكن — مسار «بلا صورة»: يبني المشهد من الصفر بدل تعديل صورة.
@@ -140,6 +224,13 @@ const PLACE_PROMPTS = {
   kids: "a children's bedroom interior",
   entrance: 'a home entrance / foyer interior',
   garden: 'an outdoor garden terrace seating area',
+  /* v-decor-outdoor (طلب المالك ١٥ أكتوبر ٢٠٢٦): أفكار وتصاميم الديكور الخارجي */
+  facade: 'an exterior house/villa front facade and architectural elevation with landscape lighting',
+  pool: 'an outdoor luxury swimming pool and poolside lounge patio area',
+  pergola: 'an outdoor wooden pergola shaded seating area in a landscaped garden',
+  bbq: 'an outdoor barbecue kitchen and cozy firepit seating area',
+  rooftop: 'an outdoor rooftop terrace lounge with ambient lighting and planters',
+  pathway: 'an outdoor landscaped stone walkway and villa entrance garden path',
 };
 
 const DECOR_PROMPTS = {
@@ -147,6 +238,78 @@ const DECOR_PROMPTS = {
   art: 'add wall art/paintings',
   accessories: 'add luxury decorative accessories',
 };
+
+/* v-decor-fallback (لقطة المالك ١٣ أكتوبر: «خطأ: لم يرجع النموذج أي شكل» على «٣ كراسي فخمة»):
+   مسار «بلا صورة» كان على gpt-image-2.5-flare وحده — رفض موديل أو سلامة أو زحام أو رصيد = صفر أشكال،
+   والسبب في detail لا يعرضه أحد. الآن كلّ لقطة تتدرّج Flare ← gpt-image-2 (مثل maha-image)، وإن لم يرجع
+   أيّ شكل من OpenAI تُرسم بنانو برو ← نانو ٢ بمفتاح GEMINI_API_KEY نفسه، كلّه داخل حدّ الدالّة (٣٠٠ث). */
+const PLACE_OA_MODELS = ['gpt-image-2.5-flare', 'gpt-image-2'];
+const PLACE_GEMINI_MODELS = ['gemini-3-pro-image', 'gemini-3.1-flash-image'];
+const PLACE_BUDGET_MS = 285000;
+const PLACE_GEMINI_RESERVE_MS = 70000;
+
+// خطأ يخصّ موديلًا واحدًا (غير متاح، رفض سلامته، زحامه، عطل مؤقّت) يُجرَّب بعده التالي؛ الرصيد والمفتاح للحساب كلّه.
+function oaNextModel(status, msg) {
+  if (/insufficient_quota|billing|exceeded your current quota|invalid api key|incorrect api key/i.test(msg)) return false;
+  if ((status === 400 || status === 404) && /model/i.test(msg)) return true;
+  if (status === 400 && /safety system|content policy|rejected by the safety|moderation/i.test(msg)) return true;
+  return status === 429 || status >= 500;
+}
+
+async function placeShotOpenAI(key, prompt, deadline, noteErr) {
+  for (let i = 0; i < PLACE_OA_MODELS.length; i++) {
+    const m = PLACE_OA_MODELS[i];
+    const left = deadline - Date.now() - PLACE_GEMINI_RESERVE_MS;
+    if (left < 15000) return null;
+    try {
+      const r = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: m,
+          prompt,
+          size: '1536x1024',
+          /* v-decor-hq (المالك: «الصور لم تعجبني»): أعلى جودة بدل medium وضغط أخفّ */
+          quality: 'high',
+          n: 1,
+          output_format: 'webp',
+          output_compression: 92,
+        }),
+        signal: AbortSignal.timeout(Math.min(240000, left)),
+      });
+      const d = await r.json().catch(() => null);
+      const b = (((d && d.data) || [])[0] || {}).b64_json;
+      if (b) return b;
+      const msg = String((d && d.error && (d.error.message || d.error.code)) || 'empty response');
+      noteErr(m + ' ' + r.status + ': ' + msg);
+      if (!oaNextModel(r.status, msg)) return null;
+    } catch (e) { noteErr(m + ': ' + ((e && e.message) || e)); return null; }
+  }
+  return null;
+}
+
+async function placeShotGemini(apiKey, prompt, deadline, noteErr) {
+  for (const m of PLACE_GEMINI_MODELS) {
+    const left = deadline - Date.now();
+    if (left < 10000) return null;
+    try {
+      /* برو يقبل imageSize/aspectRatio؛ نانو ٢ بالصيغة النظيفة responseModalities وحدها (درس v-nano-banana) */
+      const gc = /pro-image/.test(m) ? { imageConfig: { imageSize: '2K', aspectRatio: '16:9' } } : { responseModalities: ['IMAGE'] };
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m + ':generateContent?key=' + apiKey, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: gc }),
+        signal: AbortSignal.timeout(Math.min(150000, left)),
+      });
+      const d = await r.json().catch(() => null);
+      const c = ((d && d.candidates) || [])[0] || {};
+      const part = ((c.content || {}).parts || []).find((x) => x && x.inlineData && x.inlineData.data);
+      if (part) return { b64: part.inlineData.data, mime: part.inlineData.mimeType || 'image/png' };
+      noteErr(m + ' ' + r.status + ': ' + ((d && d.error && d.error.message) || c.finishReason || (d && d.promptFeedback && d.promptFeedback.blockReason) || 'no image'));
+    } catch (e) { noteErr(m + ': ' + ((e && e.message) || e)); }
+  }
+  return null;
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -196,7 +359,9 @@ module.exports = async (req, res) => {
     if (LIGHTING_PROMPTS[lighting]) extras.push(LIGHTING_PROMPTS[lighting]);
     if (FURNITURE_PROMPTS[furniture]) extras.push(FURNITURE_PROMPTS[furniture]);
     if (FLOORING_PROMPTS[flooring]) extras.push(FLOORING_PROMPTS[flooring]);
-    if (FABRIC_PROMPTS[fabric]) extras.push(FABRIC_PROMPTS[fabric]);
+    /* v-decor-18 (مراجعة نقض): لون القماش يقول «للكنب والمخدّات والستائر»؛ إن اختار المستخدم ستارة بعينها (شيفون أبيض، بلا ستائر…)
+       فاللون للكنب والمخدّات فقط — وإلّا تناقض الأمر نفسه وضاع أحد الاختيارين. */
+    if (FABRIC_PROMPTS[fabric]) extras.push(CURTAIN_PROMPTS[curtains] ? FABRIC_PROMPTS[fabric].replace('sofas/cushions/curtains', 'sofas and cushions') : FABRIC_PROMPTS[fabric]);
     if (WALLCOLOR_PROMPTS[wallColor]) extras.push(WALLCOLOR_PROMPTS[wallColor]);
     if (CURTAIN_PROMPTS[curtains]) extras.push(CURTAIN_PROMPTS[curtains]);
     if (rearrange) extras.push('rearrange the furniture layout for better flow while keeping the room structure');
@@ -207,6 +372,7 @@ module.exports = async (req, res) => {
 
     // ── مسار «بلا صورة»: أشكال جاهزة من نوع المكان. يعمل على OpenAI لا على نموذج جوجل. ──
     if (!imageBase64) {
+      const deadline = Date.now() + PLACE_BUDGET_MS; /* v-decor-fallback: الميزانيّة من بداية المسار (يشمل محاولة «نسخة ثانية») */
       const oaKey = process.env.OPENAI_API_KEY;
       if (!oaKey) {
         res.status(500).json({ error: 'Server is missing OPENAI_API_KEY' });
@@ -262,32 +428,20 @@ module.exports = async (req, res) => {
       }
       // v-decor-detail: لا نبتلع خطأ المزوّد — نكشفه منظّفًا في detail ليُشخَّص
       // (رصيد؟ اسم نموذج؟) بدل 502 صامتة. المفاتيح تُشطب دائمًا.
-      let upstreamErr = '';
-      const noteErr = (m) => { if (!upstreamErr && m) upstreamErr = String(m).slice(0, 300); };
-      const shots = await Promise.all(Array.from({ length: n }, (_, i) => fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gpt-image-2.5-flare',
-          prompt: base + ' Camera: ' + VIEWS[i % VIEWS.length] + '.',
-          size: '1536x1024',
-          /* v-decor-hq (المالك: «الصور لم تعجبني»): أعلى جودة بدل medium وضغط أخفّ */
-          quality: 'high',
-          n: 1,
-          output_format: 'webp',
-          output_compression: 92,
-        }),
-        signal: AbortSignal.timeout(240000),
-      }).then((r) => r.json()).then((d) => {
-        const b = (((d && d.data) || [])[0] || {}).b64_json || null;
-        if (!b) noteErr(d && d.error && d.error.message);
-        return b;
-      }).catch((e) => { noteErr((e && e.message) || e); return null; })));
-      const images = shots.filter(Boolean).map((b64) => ({ imageBase64: b64, mimeType: 'image/webp' }));
+      // v-decor-fallback: كلّ لقطة تتدرّج بين موديلات OpenAI، وإن لم يرجع أيّ شكل تُرسم بنانو.
+      const errs = [];
+      const noteErr = (m) => { const t = String(m || '').slice(0, 160); if (t && errs.length < 3 && errs.indexOf(t) < 0) errs.push(t); };
+      const prompts = Array.from({ length: n }, (_, i) => base + ' Camera: ' + VIEWS[i % VIEWS.length] + '.');
+      let images = (await Promise.all(prompts.map((pr) => placeShotOpenAI(oaKey, pr, deadline, noteErr))))
+        .filter(Boolean).map((b64) => ({ imageBase64: b64, mimeType: 'image/webp' }));
+      if (!images.length) {
+        images = (await Promise.all(prompts.map((pr) => placeShotGemini(apiKey, pr, deadline, noteErr))))
+          .filter(Boolean).map((g) => ({ imageBase64: g.b64, mimeType: g.mime }));
+      }
       if (!images.length) {
         res.status(502).json({
           error: 'لم يرجع النموذج أي شكل. جرّب نمطًا أو نوع مكان آخر.',
-          detail: upstreamErr.replace(/key=[^&\s"']+/g, 'key=***'),
+          detail: errs.join(' | ').slice(0, 300).replace(/key=[^&\s"']+/g, 'key=***'),
         });
         return;
       }
@@ -334,7 +488,10 @@ module.exports = async (req, res) => {
         return;
       }
       const gmsg = String((data && data.error && data.error.message) || 'Upstream error');
-      res.status(upstream.status).json({ error: gmsg.replace(/key=[^&\s"']+/g, 'key=***') });
+      /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد المزوّد نفد — «الخدمة متوقّفة مؤقّتًا» (الواجهة تعرف unavailable)، لا نصّ فوترة المزوّد */
+      if (require('./_videoFail.js').isOutage(upstream.status, gmsg)) { console.error('[design-create] upstream ' + upstream.status + ': ' + gmsg.slice(0, 200)); res.status(503).json({ error: 'unavailable' }); return; }
+      /* v-rest-fixes: كان نصّ المزوّد نفسه (بالإنجليزيّة) يصل المستخدم؛ الآن رسالة عامّة، والسبب في detail يراه المالك وحده (v-decor-fallback) */
+      res.status(upstream.status).json({ error: 'تعذّر تصميم الصورة الآن — حاول مرّة أخرى.', detail: gmsg.replace(/key=[^&\s"']+/g, 'key=***').slice(0, 300) });
       return;
     }
 

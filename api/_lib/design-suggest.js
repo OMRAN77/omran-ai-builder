@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
+      res.status(503).json({ error: 'unavailable' }); /* v-provider-fail: لا اسم مفتاح ولا مزوّد في ردّ المستخدم */
       return;
     }
 
@@ -57,9 +57,10 @@ module.exports = async (req, res) => {
     }
     refund = () => refundCustom(token, null, clientIp(req), 'design-suggest');
 
-    const isArabic = lang !== 'en' && lang !== 'fr' && lang !== 'hi' && lang !== 'ur' && lang !== 'bn' && lang !== 'ne';
-    const langNames = { en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali' };
-    const targetLang = langNames[lang] || 'Arabic';
+    /* v-audit-stud2 (srv-studios-2-7): الجدول كان ستّ لغات فصار «Respond in Arabic» للإسبانيّة والتركيّة والروسيّة والصينيّة
+       والإندونيسيّة والفلبينيّة والمليالم — جدول الـ١٤ لغة كما في adchat (LANGN)، والعربيّة للعربيّة وحدها (وللطلب بلا لغة كما كان) */
+    const langNames = { ar: 'Arabic', en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ml: 'Malayalam', ne: 'Nepali', fil: 'Filipino', id: 'Indonesian', zh: 'Chinese (Simplified)', ru: 'Russian', tr: 'Turkish', es: 'Spanish' };
+    const targetLang = langNames[lang] || (lang ? 'English' : 'Arabic');
 
     const promptText =
       'Look at this photo of a real room. Suggest exactly 3 short, specific, practical interior design ' +
@@ -90,7 +91,10 @@ module.exports = async (req, res) => {
     const data = await upstream.json();
     if (!upstream.ok) {
       await refund();
-      res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
+      const tech = String((data && data.error && data.error.message) || '');
+      console.error('[design-suggest] upstream ' + upstream.status + ': ' + tech.slice(0, 200));
+      const fail = require('./_videoFail.js').toolFail(upstream.status, tech); /* v-provider-fail: 402 كان يُمرَّر بنصّ المزوّد */
+      res.status(fail.code).json(fail.body);
       return;
     }
 
@@ -112,6 +116,7 @@ module.exports = async (req, res) => {
     res.status(200).json({ suggestions });
   } catch (e) {
     if (refund) await refund();
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[design-suggest] ' + (e && e.message ? e.message : String(e)));
+    res.status(503).json({ error: 'unavailable' }); /* v-provider-fail: كان «Proxy error: <نصّ تقنيّ>» */
   }
 };

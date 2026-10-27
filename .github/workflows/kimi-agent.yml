@@ -21,14 +21,15 @@ on:
         default: 'main'
         type: string
       model:
-        description: 'نموذج Kimi (الافتراضيّ kimi-k2.5؛ للكود الثقيل kimi-for-coding)'
+        description: 'نموذج Kimi (الافتراضيّ kimi-k3؛ للكود الأرخص kimi-k2.7-code)'
         required: false
-        default: 'kimi-k2.5'
+        default: 'kimi-k3'
         type: string
       merge:
-        description: 'دمج طلب السحب تلقائيًّا عند نجاح npm run ci — "true" افتراضيًّا، "false" لترك المراجعة للمالك'
+        # v-sec-automerge: الافتراضيّ صار "false" — المالك يدمج بعد المراجعة (كان ينشر بلا مراجعة).
+        description: 'دمج طلب السحب تلقائيًّا عند نجاح npm run ci — "false" افتراضيًّا (مراجعة المالك)، "true" للدمج التلقائيّ'
         required: false
-        default: 'true'
+        default: 'false'
         type: string
 
 permissions:

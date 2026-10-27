@@ -26,7 +26,7 @@ test('المكوّن موجود ويعرّف window.omranGenWait بلا تصاد
   assert.match(src, /الصور تاخذ ~٣٠ ثانية/, 'توقّع صريح للوقت');
 });
 
-test('ذاتيّ بالكامل: يرصد أسطر التوليد الحقيقيّة بلا لمس العارض ولا المسارات', () => {
+test('نصوص انتظار صور المحادثة باقية في مسارات التوليد بلا تغيير', () => {
   const src = read('js/app-34-gen-wait.js');
   assert.match(src, /MutationObserver/, 'رصد تلقائيّ');
   assert.match(src, /🎨 أرسم لك الصورة…/);
@@ -35,8 +35,37 @@ test('ذاتيّ بالكامل: يرصد أسطر التوليد الحقيقي
   assert.match(src, /🎨 Creating another version…/);
   // الأسطر نفسها ما زالت في مسارات التوليد كما هي — الرصد يعتمد عليها
   const attach = read('js/app-09-attach.js');
-  assert.equal((attach.match(/🎨 أرسم لك الصورة…/g) || []).length, 2, 'سطرا التوليد العاديّ والخام');
-  assert.match(attach, /🎨 أرسم لك نسخة ثانية…/, 'سطر النسخة الثانية');
+  // v-audit-attach: السطران بمفتاح الـ١٤ لغة (العربيّة والإنجليزيّة احتياطه كما كانتا)
+  assert.equal((attach.match(/'🎨 ' \+ omranAttachT\('axAttachDrawingImage', 'أرسم لك الصورة…', 'Generating your image…'\)/g) || []).length, 2, 'سطرا التوليد العاديّ والخام');
+  assert.match(attach, /'🎨 ' \+ omranAttachT\('axAttachAnotherVersion', 'أرسم لك نسخة ثانية…', 'Creating another version…'\)/, 'سطر النسخة الثانية');
+});
+
+test('الرجوع للنص السابق: صور المحادثة لا تركّب بطاقة، ورصد الفيديو واللوحات باقٍ', () => {
+  let created = 0;
+  const selectors = [];
+  const host = { querySelector: () => null, appendChild() {} };
+  const text = { textContent: '🎨 أرسم لك الصورة…', parentNode: host };
+  const sandbox = {
+    window: {},
+    document: {
+      body: {}, documentElement: {},
+      querySelectorAll(sel) { selectors.push(sel); return sel === '.msg-text' ? [text] : []; },
+      querySelector(sel) { selectors.push(sel); return null; },
+      getElementById: () => null,
+      createElement() { created++; throw new Error('unexpected image waiting card'); }
+    },
+    MutationObserver: function() { return { observe() {} }; },
+    setTimeout: () => 0
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(read('js/app-34-gen-wait.js'), sandbox);
+  sandbox.window.omranGenWait.scan();
+  assert.equal(created, 0, 'لا بطاقة أو CSS إضافي لرسالة انتظار الصورة');
+  assert.equal(text.textContent, '🎨 أرسم لك الصورة…', 'الرسالة القديمة كما هي');
+  assert.ok(selectors.includes('.chat-status-text'), 'رصد فيديو المحادثة باقٍ');
+  for (const panel of sandbox.window.omranGenWait.PANELS) {
+    assert.ok(selectors.includes(panel.sel), 'رصد اللوحة باقٍ: ' + panel.id);
+  }
 });
 
 test('لوحات الأدوات: الفيديو والأنماط والأزياء ببادئات تطابق نصوصها الحقيقيّة', () => {
@@ -120,8 +149,8 @@ test('فيديو المحادثة (v-gen-wait-chatvideo): سطر «🎬 جاري
   assert.match(src, /'💳'/, 'فحص الرصيد 💳 ضمن بادئات انشغال الفيديو');
   // النصّان اللذان يكتبهما مسار الفيديو في المحادثة فعلًا (app-09) — لو تغيّرا يصرخ الاختبار
   const attach = read('js/app-09-attach.js');
-  assert.match(attach, /chatPhase\('🎬', lang === 'ar' \? 'جاري إنشاء الفيديو…/, 'سطر بدء الفيديو');
-  assert.match(attach, /chatPhase\('🎬', \(lang === 'ar' \? 'جاري إنشاء الفيديو… '/, 'سطر الاستطلاع');
+  assert.match(attach, /chatPhase\('🎬', omranAttachT\('axAttachVidCreating', 'جاري إنشاء الفيديو…/, 'سطر بدء الفيديو'); // v-audit-attach: بمفتاح الـ١٤ لغة
+  assert.match(attach, /chatPhase\('🎬', omranAttachT\('axAttachVidCreatingShort', 'جاري إنشاء الفيديو…'/, 'سطر الاستطلاع');
   assert.match(attach, /'Creating video… this can take 1–3 minutes'/, 'الإنجليزيّ');
   assert.match(read('js/app-11-video.js'), /💳 جاري التأكد من رصيد الفيديو/, 'سطر فحص الرصيد في صانع الفيديو');
 });

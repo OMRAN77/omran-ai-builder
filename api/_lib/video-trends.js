@@ -7,7 +7,7 @@ const TRENDS = {
   "ratio": "1280:720",
   "photo": "opt",
   "kind": "name",
-  "prompt": "Pixar-style 3D animated scene {i} of 3: {scene}. Main character: a cheerful child named {name}{look}, the SAME character design in every scene. Warm cinematic lighting, expressive faces, gentle camera movement, soft family music, short Arabic narration voice-over.",
+  "prompt": "Pixar-style 3D animated scene {i} of {n}: {scene}. Main character: a cheerful child named {name}{look}, the SAME character design in every scene. Warm cinematic lighting, expressive faces, gentle camera movement, soft family music, short Arabic narration voice-over.",
   "scenes": [
    "{name} wakes up smiling to the alarm clock, gets dressed quickly and eats breakfast with the family in a sunny kitchen",
    "{name} arrives at school, greets friends in a bright classroom, raises a hand happily and plays at recess",
@@ -666,23 +666,305 @@ const TRENDS = {
      "frame": "photorealistic still of a person smiling before a decorated birthday cake with lit candles, balloons and warm confetti drifting, cheerful party light",
      "gender": "w"
    }
+ },
+ "tears": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Close-up emotional portrait starting exactly from the reference photo of the person: at first a calm, soft smile, then their eyes slowly fill and glisten, the eyelids redden, and a few tears roll gently down their cheeks as the expression turns quietly sad; tiny natural movements of breathing and blinking, the camera almost still with a very slow push-in, the face, hair, makeup, clothing and background exactly as in the photo, soft emotional piano music, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic close-up portrait of a young woman with a single tear rolling down her cheek, soft window light, quiet emotional mood",
+     "gender": "w"
+   }
+ },
+ "saveyourself": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Cinematic rescue on a sea cliff at sunset: the person from the reference image hangs from the crumbling edge of a high rocky cliff above crashing waves, fingers slipping; a second figure who is the very same person, standing strong and calm on the edge in different, darker clothes, kneels, grabs their wrist and pulls them up to safety; both share the same face; wind, dust and sea spray, dramatic orchestral music, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic cinematic still of a man hanging from a rocky cliff edge above the sea at sunset while a strong hand reaches down and grabs his wrist",
+     "gender": "m"
+   }
+ },
+ "flyingcar": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Starting exactly from the reference photo of the car: white cold-gas thruster jets hiss out from under its body in sharp puffs, the car lifts straight up off the road, hovers for a beat, then rolls one slow full barrel turn in mid-air as it soars over the vehicles ahead, a big semi-truck among them, and lands smoothly back on its wheels on the open road beyond and drives on; the camera follows from the side; the car's exact shape, colour and details stay unchanged, no readable licence plate, hiss of the thrusters and gasps of onlookers, cinematic, photorealistic, clearly a fun fantasy effect.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a white sports car hovering in a mid-air barrel roll above a semi-truck on a desert highway, white thruster jets puffing beneath it, golden hour",
+     "gender": "m"
+   }
+ },
+ "jetflyover": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Selfie-style view from inside a parked car with an open panoramic sunroof: the person from the reference image sits in the driver's seat and looks up through the sunroof as a fighter jet roars low directly overhead against a clear blue sky, trailing long coloured smoke; the car shakes gently, the camera tilts up to follow the jet, thunderous engine rumble, proud and thrilling mood, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic selfie from inside a car with an open panoramic sunroof as a fighter jet flies low overhead trailing coloured smoke against a blue sky",
+     "gender": "m"
+   }
+ },
+ "lostfilm80s": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Grainy, warm footage from a lost 1980s fantasy film shot on 35mm with practical effects: in a candle-lit medieval barn strewn with straw beside an old spinning wheel, the person from the reference image, dressed as a mischievous trickster in a ragged velvet tunic and a pointed felt hat, does a sly, gleeful tiptoe dance in a little circle, grinning, while a frightened young princess in a flowing gown backs away clutching her skirts; dust and straw float in the shafts of light; soft film grain, slight gate weave, faded colours, eerie playful harpsichord-and-synth score.",
+   "scenes": null,
+   "preview": {
+     "frame": "grainy 1980s 35mm fantasy film still: a grinning trickster in a ragged velvet tunic and pointed felt hat tiptoe-dancing in a candle-lit straw barn beside a spinning wheel while a frightened princess in a gown backs away",
+     "gender": "w"
+   }
+ },
+ "zombielove": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "A short post-apocalyptic love story in an abandoned, dusty city street at dusk: the person from the reference image walks toward someone they love — the second person in the reference photos, if one is given — who has turned into a zombie: pale grey-tinted skin, dark circles and torn clothes, but their own face still clearly recognizable, with no blood or gore. They hesitate with tears in their eyes, then embrace them tenderly, and as they hug a flicker of recognition softens the zombie's eyes and they gently hug back; emotional piano music, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic cinematic still of a woman embracing a pale zombie-like man in torn clothes on an abandoned dusty city street at dusk, emotional, no blood",
+     "gender": "w"
+   }
+ },
+ "standstill": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image stands perfectly still at the front of a vast dark hall, staring calmly into the lens, while hundreds of adult dancers in identical dark uniforms behind them move in sharp robotic sync under cold white spotlights; the camera slowly pulls back to reveal the scale of the crowd; deep electronic beat, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a young man standing still at the front of a dark hall while a huge crowd of dancers in identical dark uniforms dance in sync behind him under white spotlights",
+     "gender": "m"
+   }
+ },
+ "sorryreveal": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Epic glow-up reveal: the clip opens on a legendary, heroic version of the person from the reference image — a desert knight in ornate golden armour and a flowing cape on a cliff at golden hour, wind in their hair, an epic orchestral swell — then in the final second it cuts to the plain, ordinary reference photo itself, as a funny self-mocking reveal; photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic epic still of a heroic desert knight in ornate golden armour with a flowing cape standing on a cliff at golden hour",
+     "gender": "m"
+   }
+ },
+ "spanishrap": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Vertical night phone clip at a red-lit restaurant entrance, filmed handheld by a street freestyler whose hand holds a small portable speaker in the foreground, blasting a dembow beat; people in the doorway film on their phones. The person from the reference image, in an open pale-pink mesh short-sleeve shirt, has stopped on the way in and faces the lens. The freestyler raps a playful line at them first; they grin and answer with an improvised Spanish-language rap freestyle into the phone, lips synced, with the signature nonstop shoulder bounce: right shoulder up, then left, on every beat, loose hands rolling at chest height. At the end the freestyler takes the vocals back while they lean in laughing, then point straight at the lens. Shaky handheld, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical night still at a red-lit restaurant entrance: a grinning young man in an open pale-pink mesh short-sleeve shirt rapping into the lens with a shoulder bounce, a street freestyler's hand holding a small portable speaker in the foreground, people in the doorway filming on their phones",
+     "gender": "m"
+   }
+ },
+ "orangebooth": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person (or people) from the reference image stand in a bare, bright-orange recording booth under a single hanging microphone and trade short rap verses into it over an original trap beat, stepping up in turn (taking turns if there are several of them), lips synced, while whoever is not rapping bobs to the beat and hypes with ad-libs and playful reactions; locked-off, centred camera framed from the knees up, even studio light, fun and cool mood, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of two young men standing in a bare bright orange recording booth under a single hanging microphone, framed from the knees up, centred",
+     "gender": "m"
+   }
+ },
+ "petclap": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Starting exactly from the reference photo of the pet: it suddenly stands up on its hind legs, gives a big uncanny human-like grin, and claps a pair of small human hands together in time with a cheerful beat, then freezes and blinks innocently; same fur, colours and markings as in the photo, natural home setting, funny and charming, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic still of a black cat standing on its hind legs clapping small human hands with a big grin in a cosy living room",
+     "gender": "w"
+   }
+ },
+ "gamechar": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "The person from the reference image reimagined as the hero of an open-world action video game, in the painted illustration art style of a game loading screen: they stand confidently in a sun-bleached coastal city street with palm trees and sports cars, the camera sweeps around them in a slow cinematic arc as the painted scene gains parallax depth, ending on a heroic character pose; no game name, no logos, no text, energetic synth music.",
+   "scenes": null,
+   "preview": {
+     "frame": "painted illustration in the style of a video game loading screen of a confident young man standing in a sunny coastal city street with palm trees and sports cars",
+     "gender": "m"
+   }
+ },
+ "bbywow": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Vertical handheld phone clip filmed by a guest at a party in a banquet hall, purple, pink and green party lights, formally dressed guests around the dance floor. The person from the reference image, in a plain black polo, holds a round sugar-topped sweet bun and starts a few steps back on the dance floor, dancing toward the phone, rolling their shoulders and swaying. Reaching the lens in close-up, they take one bite of the bun on the beat, then hold a deadpan stare straight into the lens while chewing, cheeks puffed, head still. Then they turn and dance back into the crowd. Fast sped-up dancehall beat with party chatter, one continuous shot, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical phone still in a banquet hall with purple, pink and green party lights: a young man in a plain black polo close to the lens, cheeks full mid-chew, holding a round sugar-topped sweet bun, deadpan stare straight into the camera, formally dressed guests blurred behind him",
+     "gender": "m"
+   }
+ },
+ "invisiblebike": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "One continuous vertical tracking shot on a concrete highway overpass by day: the camera rolls backward at chest height in front of the person from the reference image, in their own clothes, riding toward it in a deep squat in mid-air, both fists forward on invisible handlebars, nothing at all beneath them, grinning at the lens as the road streams past. Close behind, a helmeted officer with no insignia chases on a white futuristic hover-bike with round red lights. The rider glances back, kicks off into a mid-air flip, lands in the same squat and speeds away as the camera drops to road level. High-energy instrumental Eurodance synth beat, hover-bike whine, wind, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical still on a concrete highway overpass by day: a grinning young man in a hoodie squatting in mid-air with both fists forward on invisible handlebars and nothing beneath him, a helmeted rider on a white futuristic hover-bike with round red lights chasing close behind, motion blur on the road",
+     "gender": "m"
+   }
+ },
+ "ceilingfan": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Locked overhead camera pointing straight down past a slowly turning wooden ceiling fan, its blades in the foreground and its hub just outside a top corner. Below, the person from the reference image lies still on their back, face up, on a patterned rug in warm afternoon light, in their own outfit. The camera never moves. Each time a blade sweeps fully across the lens their outfit changes instantly behind it, no dissolve or morph: first to an all-black modest look, then to a modest shimmering gold one. Face, hair, any headscarf, pose, spot, rug and light stay identical. Upbeat beat with each blade pass landing on a drop, one continuous shot, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic overhead still looking straight down past the soft-blurred blades of a wooden ceiling fan at a young woman in a modest long shimmering gold outfit and headscarf lying on her back on a patterned rug in warm afternoon light",
+     "gender": "w"
+   }
+ },
+ "slowmoentry": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Static wide vertical shot from a phone on a tripod in an ordinary open-air parking lot by day; the camera never moves. The person from the reference image, in casual streetwear, makes an exaggerated cinematic slow-motion entrance: starting at the left edge of the frame, they stride across the lot toward the lens, every step slow, heavy and deliberate, with a dramatically serious, intense face, each step landing on a big hit of the music, until they reach the foreground. True slow-motion movement throughout, an ordinary place played like a blockbuster opening. Dark, dramatic cinematic hip-hop instrumental with heavy drums, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical still from a fixed camera in an ordinary open-air parking lot by day: a young man in casual streetwear striding in from the left in slow motion, mid-step, with a dramatically serious, intense face",
+     "gender": "m"
+   }
  }
 };
 /* v-trend-extra: الحدّ ٢٤٠ ← ٤٠٠ — المالك يكتب أكثر من جملة («دمج الكلمات») */
 function clean(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 400); }
 const BACKDROPS = require('./video-backdrops.js');
-/** يبني أمر الفيديو لترند معيّن. params: {name, text, sceneIndex, hasImage} */
-function buildTrendPrompt(key, params) {
+/* v-trend-scenes (المالك: «كتبت مشهدين عن البحر وطلع الفيديو عن المدرسة»): مشاهد بيكسار الثلاثة كانت ثابتة
+   (صباح، مدرسة، مساء) وما يُكتب في «اكتب اللي تبيه» يُلحق بعدها توجيهًا فقط، فيغلب المشهدُ المكتوب كلامَه.
+   الآن مشاهد المستخدم تحلّ محلّ الافتراضيّة وعدد المقاطع بعددها: «المشهد الأول: … المشهد الثاني: …» داخل
+   «اكتب اللي تبيه» أوّلًا، ثمّ خانات المشاهد في العميل (params.scenes)، ثمّ الافتراضيّ. العلامة تُقبل بفاصل
+   (: دائمًا، أو شرطة/نقطة بعدها فراغ، أو سطر جديد)، وبلا فاصل إن تكرّرت (قائمة مشاهد) — «زي المشهد الأول بس
+   بالليل» لا تُقسَم، ولا «scene one-shot».
+   الدالّة منسوخة حرفيًّا في js/app-11-video-trends.js (العميل يعرض بها الخانات ويعدّ المقاطع) وtrend-scenes يطابق
+   النسختين؛ بلا lookbehind ولا \p (الحزمة تُحلَّل على المحرّكات القديمة — v-es-floor).
+   بعد المراجعة: «المشهد الأول، …» و«الـ1» و«١)» و«(1):» و«؛» و«اللقطة/المقطع» وعلامات الاتّجاه الخفيّة من اللصق وإيموجي
+   قبلها تُقبل؛ رقم القائمة («1- المشهد…») وروابط «ثم/and» لا تبقى في المشهد؛ ونصّ المدخل يُقصّ ١٠٠٠ قبل أيّ تعبير. */
+function splitScenes(text){
+  var s = String(text == null ? '' : text).slice(0, 1000); /* الخانة ٤٠٠ — والحدّ يمنع كلفة التعابير على نصّ ضخم من خارج الواجهة */
+  var MAX = 5;
+  var SP = '[ \\t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*';
+  var NUM = '[0-9\u0660-\u0669\u06F0-\u06F9\u0966-\u096F\u09E6-\u09EF]+';
+  var ORD = '(?:ال)?(?:[أاإ]و[\u064B-\u0652]*لى?|ثان[يى]ة?|ثالثة?|رابعة?|خامسة?|سادسة?|سابعة?|ثامنة?|تاسعة?|عاشرة?|[أا]خيرة?)[\u064B-\u0652]*';
+  var MARK = new RegExp('[وف]?(?:المشهد|مشهد|اللقطة|لقطة|المقطع|مقطع)' + SP + '(?:رقم' + SP + ')?(\\()?' + SP + '(?:(?:ال\u0640*)?' + NUM + '|' + ORD + ')'
+    + '|(?:scene|scène|escena|sahne|сцена|eksena|adegan|दृश्य|منظر|দৃশ্য|രംഗം)' + SP + '(?:#|no\\.?' + SP + ')?(\\()?' + SP + '(?:' + NUM + '|one|two|three|four|five|six|seven|eight|nine|ten)'
+    + '|(?:first|second|third|fourth|fifth|last)' + SP + 'scene'
+    + '|第' + SP + '[0-9一二三四五六七八九十]+' + SP + '幕|场景' + SP + '[0-9一二三四五六七八九十]+', 'gi');
+  var WORD = /[A-Za-z0-9_\u00C0-\u024F\u0400-\u04FF\u0621-\u063A\u0641-\u065F\u0660-\u0669\u0670-\u06D3\u06FA-\u06FF\u0900-\u097F\u0980-\u09FF\u0D00-\u0D7F]/;
+  var cands = [], m;
+  while((m = MARK.exec(s))){
+    var at = m.index, end = at + m[0].length, cjk = /^[第场]/.test(m[0]);
+    if(!cjk && at > 0 && WORD.test(s.charAt(at - 1))) continue; /* «بالمشهد» و«obscene 1» ليستا علامة */
+    var close = /^[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*\)/.exec(s.slice(end));
+    if(close) end += close[0].length;
+    var sep = /^[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*(?:[:：;؛]|[\-–—.](?!\S)|\r?\n)/.exec(s.slice(end));
+    var strong = !!sep || (!!close && !(m[1] || m[2])); /* «المشهد ١)» فاصل؛ «المشهد (١)» قوس فقط */
+    if(!strong && !cjk && end < s.length && !/[\s,،\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/.test(s.charAt(end))) continue; /* «one-shot» */
+    cands.push({ at: at, body: end + (sep ? sep[0].length : 0), strong: strong });
+  }
+  if(!cands.length) return { scenes: [], rest: s.trim() };
+  var LISTNUM = /(?:(?:^|\s)[0-9\u0660-\u0669\u06F0-\u06F9]{1,2}[ \t]*[\-–—.)]|(?:^|\n)[ \t]*[0-9\u0660-\u0669\u06F0-\u06F9]{1,2})[ \t]*$/;
+  var tidy = function(x){
+    var y = x.replace(LISTNUM, '').replace(/^[\s,،؛;:.\-–—\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+/, '');
+    for(var r = 0; r < 3; r++){
+      y = y.replace(/[\s,،؛;\-–—\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+$/, '').replace(/(^|[\s,،])(?:و?ثم[\u064B-\u0652]*|و?بعدين|و?بعدها|and then|and|then|و)$/i, '');
+    }
+    return y;
+  };
+  /* بلا فاصل («المشهد الأول سالم… المشهد الثاني…») تُعدّ العلامات فقط إن بدأ بها النصّ (أو بعد نهاية جملة):
+     «غيّر المشهد الثاني والمشهد الثالث…» و«زي المشهد الأول بس بالليل» إشارة إلى المشاهد لا قائمة مشاهد */
+  var head = s.slice(0, cands[0].at).replace(LISTNUM, '').replace(/[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+$/, '');
+  var weakOK = !head.trim() || /[.!?؟:：;؛\n]$/.test(head);
+  var marks = (weakOK && cands.length > 1) ? cands : cands.filter(function(c){ return c.strong; });
+  if(!marks.length) return { scenes: [], rest: s.trim() };
+  var scenes = [];
+  for(var k = 0; k < marks.length; k++){
+    var body = tidy(s.slice(marks[k].body, k + 1 < marks.length ? marks[k + 1].at : s.length));
+    if(body) scenes.push(body);
+  }
+  if(scenes.length > MAX) scenes = scenes.slice(0, MAX - 1).concat([scenes.slice(MAX - 1).join(' ')]);
+  var rest = tidy(s.slice(0, marks[0].at));
+  return { scenes: scenes, rest: /^[\s\uD800-\uDFFF\u2600-\u27BF\uFE0F\u200D]*$/.test(rest) ? '' : rest }; /* «🌊» وحدها ليست توجيهًا */
+}
+const MAX_SCENES = 5;
+/** مشاهد «اكتب اللي تبيه» ← params.scenes والباقي توجيهًا. مرّة واحدة قبل البناء — veo-create يقصّ extra إن طال الأمر،
+ *  وقصّ نصّ فيه العلامات قد يُسقط مشهدًا. تُعاد بلا أثر: بعدها لا علامة في extra. */
+function sceneParams(key, params) {
+  const t = TRENDS[key];
+  const p = Object.assign({}, params || {});
+  if (!t || !t.scenes || !t.scenes.length) return p;
+  const sp = splitScenes(p.extra);
+  if (sp.scenes.length) { p.scenes = sp.scenes; p.extra = sp.rest; }
+  /* v-chat-trend-scenes: مقطع المحادثة الواحد — قصّة بلا علامات ولا مشاهد هي المشهد نفسه، لا توجيهًا على مشهد الصباح */
+  else if (p.oneClip && !(Array.isArray(p.scenes) && p.scenes.length) && clean(p.extra)) { p.scenes = [p.extra]; p.extra = ''; }
+  return p;
+}
+/** يبني أمر الفيديو لترند معيّن. params: {name, text, sceneIndex, scenes, oneClip, extra, hasImage, people, bg}
+ *  scenes (ترند المشاهد): نصّ المستخدم لكلّ مشهد، أو رقم مشهد افتراضيّ لم يُعدَّل (فيبقى أمره الإنجليزيّ).
+ *  oneClip (المحادثة): مشاهد المستخدم كلّها لقطات في مقطع واحد (sceneCount ١) — بلاها المشهد الأوّل الافتراضيّ.
+ *  opts.cap (من الخادم وحده): سقف الأمر الذي تُحسب منه مساحة «اكتب اللي تبيه» — veo-create يمرّر حدّه الحقيقيّ. */
+function buildTrendPrompt(key, params, opts) {
   const t = TRENDS[key];
   if (!t) return null;
-  const p = params || {};
+  const p = sceneParams(key, params);
   const name = clean(p.name) || clean(p.text) || '';
   const text = clean(p.text) || clean(p.name) || '';
   let prompt = t.prompt;
+  let n = 1;
   if (t.scenes && t.scenes.length) {
-    const i = Math.max(0, Math.min(t.scenes.length - 1, parseInt(p.sceneIndex, 10) || 0));
-    const scene = t.scenes[i].replace(/\{name\}/g, name || 'the child');
-    prompt = prompt.replace('{i}', String(i + 1)).replace('{scene}', scene)
+    const list = Array.isArray(p.scenes) ? p.scenes.slice(0, 50).map((e) => (Number.isInteger(e) && e >= 0 && e < t.scenes.length) ? t.scenes[e]
+      : clean(typeof e === 'string' ? e : '')).filter(Boolean).slice(0, MAX_SCENES) : [];
+    const scenes = list.length ? list : t.scenes;
+    n = scenes.length;
+    const i = Math.max(0, Math.min(n - 1, parseInt(p.sceneIndex, 10) || 0));
+    const fill = (s) => s.replace(/\{name\}/g, name || 'the child').replace(/[\s.。]+$/, ''); /* القالب يضع النقطة بعده */
+    let scene = fill(scenes[i]);
+    /* v-chat-trend-scenes (المالك، الخيار «أ»): المحادثة تصنع مقطعًا واحدًا ٨ ثوانٍ — مشاهد المستخدم كلّها لقطات فيه بالترتيب
+       بدل «scene 1 of n» الذي يصنع أوّلها وحده. حصّة كلّ مشهد من ١٠٠٠ حرف فلا يُقصّ آخرها ولا قفل الذيل. بلا مشاهد مستخدم
+       = المشهد الأوّل الافتراضيّ كما كان. */
+    if (p.oneClip && list.length) {
+      const share = Math.min(400, Math.floor(1000 / n));
+      const shots = list.map((s) => fill(s.slice(0, share)));
+      scene = n > 1 ? 'one short story told in ' + n + ' consecutive shots within this single clip, in this exact order — '
+        + shots.map((s, k) => 'shot ' + (k + 1) + ': ' + s).join('; ') : shots[0];
+      n = 1;
+    }
+    /* مشهد واحد: «scene 1 of 1» لا معنى لها؛ وبلا اسم: «child named ,» تصير «child» */
+    prompt = prompt.replace(n > 1 ? '{i}' : ' {i} of {n}', n > 1 ? String(i + 1) : '').replace('{n}', String(n))
+      .replace('{scene}', () => scene).replace(' named {name}', name ? ' named {name}' : '')
       .replace('{look}', p.hasImage ? ' whose look is based on the reference image, rendered in Pixar 3D style' : '');
   }
   prompt = prompt.replace(/\{name\}/g, name).replace(/\{text\}/g, text || 'a joyful moment');
@@ -730,7 +1012,7 @@ function buildTrendPrompt(key, params) {
   if (bd) addons += ' SETTING (replaces the default location, same action and style): ' + bd + '.';
   /* v-trend-extra (المالك: «ليش ما أقدر أكتب اللي أريده؟»): ٤٦ من ٥٥ ترندًا بلا خانة كتابة أصلًا.
      الآن لكلّ ترند خانة «اكتب اللي تبيه» اختياريّة تُدمج هنا توجيهًا يعدّل الترند ولا يلغيه. */
-  const extra = clean(p.extra);
+  const extra = clean(p.extra); /* v-trend-scenes: بعد sceneParams — بلا المشاهد التي قُسِّمت منه */
   if (extra) addons += ' USER DIRECTION (follow it; it wins over the setting if it names a place): ' + extra + '.';
   const base = prompt;
   prompt = '';
@@ -765,9 +1047,13 @@ function buildTrendPrompt(key, params) {
      فقط، فتُقصّ هي ولا يُقصّ الذيل أبدًا. */
   const tail = prompt;
   /* شخص واحد: حدّ المحرّك ١٥٠٠؛ أكثر: يُلحق بعد البناء سطر الإطار الأوّل (≈٣٣٠ حرفًا) فيُحجز له */
-  const room = Math.max(0, (people > 1 ? 1170 : 1480) - base.length - tail.length);
+  /* v-trend-scenes (قياس أثناء المراجعة): مع صورة شخصين كان «اكتب اللي تبيه» يسقط كلّه في الـ٥٥ ترندًا، ومع شخص واحد يُقصّ في ١٦
+     — السقفان ١٤٨٠/١١٧٠ من زمن حدّ ١٥٠٠، وحدّ Veo للترندات ٢٦٠٠ (v-video-photo-identity). veo-create يمرّر سقفه بعد حجز
+     FRAME_LOCK؛ بقيّة المسارات (١٥٠٠) كما كانت حرفيًّا. */
+  const cap = (opts && opts.cap > 0) ? opts.cap : (people > 1 ? 1170 : 1480);
+  const room = Math.max(0, cap - base.length - tail.length);
   prompt = base + (addons.length > room ? addons.slice(0, room) : addons) + tail;
-  return { prompt, engine: t.engine, ratio: t.ratio, people, sceneCount: (t.scenes && t.scenes.length) || 1 };
+  return { prompt, engine: t.engine, ratio: t.ratio, people, sceneCount: n };
 }
 /* v-video-identity (المالك بفيديو «سفينة حربيّة» وصورته: «يغيّر الشخصيّة، مش نفس الشخصيّة»): صانع الفيديو
    الحرّ (Omni وVeo) كان يرسل الصورة مع وصف المستخدم **بلا أيّ أمر يحفظ الوجه** — الترندات وحدها كان لها
@@ -789,4 +1075,4 @@ function withIdentityLock(promptText, max, subject, people) {
   const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
   return pre + body + post;
 }
-module.exports = { TRENDS, buildTrendPrompt, withIdentityLock };
+module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, splitScenes, sceneParams, MAX_SCENES };

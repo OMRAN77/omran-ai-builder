@@ -69,7 +69,7 @@ const TOOLS = [
         path: { type: 'string', description: 'مسار ملفّ أو مجلّد داخل المستودع (اختياريّ مع owner/repo)' },
         ref: { type: 'string', description: 'فرع أو وسم أو commit (اختياريّ؛ الافتراضيّ الفرع الرئيسيّ)' },
         from: { type: 'integer', description: 'رقم السطر الذي تبدأ منه قراءة ملفّ طويل (اختياريّ)' },
-        what: { type: 'string', enum: ['auto', 'commits', 'commit'], description: 'commits = آخر الدفعات (الالتزامات) على المستودع/الفرع بدل محتواه؛ commit = التزام واحد بفرقه (ref = sha) (اختياريّ)' },
+        what: { type: 'string', enum: ['auto', 'commits', 'commit', 'map'], description: 'commits = آخر الدفعات (الالتزامات) على المستودع/الفرع بدل محتواه؛ commit = التزام واحد بفرقه (ref = sha)؛ map = خريطة كود التطبيق كلّه (OMRAN77/omran-ai-builder: كلّ ملفّ بغرضه ودوالّه وعناصر واجهته؛ path=مجلّد/ملفّ أو query للبحث فيها) (اختياريّ)' },
         limit: { type: 'integer', description: 'عدد الالتزامات المطلوب مع what=commits، أو عدد نتائج query (الافتراضيّ ١٥، الأقصى ٤٠)' },
         query: { type: 'string', description: 'بحث نصّي داخل المستودع (اسم دالّة، ثابت، رسالة خطأ…) — يرجع كلّ الملفّات المطابقة مع مقتطف من كلّ واحد بدل تخمين مكانها. يُحصر بـpath إن ذُكر.' },
       },
@@ -96,7 +96,7 @@ function isOwner(user) { return !!user && ownerList().includes(String(user).trim
    القصير — يظهر سطرًا في سجلّ العمل كما يظهر وصف الأمر في Claude Code. أوّل الخصائص كي يُكتب قبل غيره. */
 const STEP_TITLE = { type: 'string', description: 'عنوان قصير لهذه الخطوة يراه المستخدم سطرًا في سجلّ العمل: ٣–٧ كلمات بلغته، مثل «البحث عن مستهلكي code-analyze» أو «قراءة api/_lib/chat.js كاملًا».' };
 function withStepTitle(t) { return Object.assign({}, t, { input_schema: Object.assign({}, t.input_schema, { properties: Object.assign({ step_title: STEP_TITLE }, (t.input_schema || {}).properties) }) }); }
-function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL, appErrors.TOOL]).concat([githubEdit.EDIT_TOOL, githubEdit.MERGE_TOOL, githubManage.MANAGE_TOOL, require('./prov-self.js').SELF_TOOL, require('./prov-self.js').TEACH_TOOL]) : TOOLS).map(withStepTitle); } // v-prov-self: ملفّ Claude والدروس العامّة
+function toolsFor(user) { return (isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL, appErrors.TOOL]).concat([githubEdit.EDIT_TOOL, githubEdit.MERGE_TOOL, githubManage.MANAGE_TOOL, require('./prov-self.js').SELF_TOOL, require('./prov-self.js').TEACH_TOOL]).concat(require('./agent-img.js').DRAW_TOOLS) : TOOLS).map(withStepTitle); } // v-prov-self: ملفّ Claude والدروس العامّة · v-agent-img-mode: الرسم للمالك
 // الأمر كما يُعرض تحت عنوان الخطوة: اسم الأداة ومدخلها بلا العنوان، والنصوص الطويلة (كود، ملفّات) مختصرة.
 function stepCmd(name, input) {
   const o = {};
@@ -164,6 +164,8 @@ function trailDid(name, input) {
   if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
   if (name === 'test_html') return 'اختبرتُ صفحة (' + String(input.html || '').length + ' حرفًا)';
   if (name === 'publish') return 'نشرتُ «' + (s(input.title, 40) || 'مشروعًا') + '»';
+  if (name === 'generate_image') return 'رسمتُ صورة: «' + (s(input.prompt, 60) || '؟') + '»'; // v-agent-img-mode
+  if (name === 'edit_image') return 'عدّلتُ الصورة: «' + (s(input.instruction, 60) || '؟') + '»';
   return 'استخدمتُ ' + name;
 }
 function trailGot(name, result) {
@@ -199,7 +201,7 @@ function trailGot(name, result) {
   return 'فحصلتُ ' + r.length + ' حرفًا';
 }
 
-const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطناعي مستقل داخل تطبيق Omran AI Builder.
+const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطناعي مستقل داخل تطبيق om ai.
 
 ═══ ذكاء الردود ═══
 1. آخر رسالة من المستخدم هي مهمتك الوحيدة الآن — إذا غيّر الموضوع اتبع الموضوع الجديد فورًا وانسَ القديم تمامًا؛ السجل خلفية فقط وليس قائمة مهام. التزم بآخر موضوع فقط. ممنوع منعًا باتًا ذكر أي مشروع أو محادثة سابقة (لعبة، تطبيق، أي شي) في التحية أو من نفسك — فقط إذا المستخدم سأل عنها بنفسه.
@@ -236,20 +238,20 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 23. في المحادثة اكتب فقط 2-3 جمل: ماذا أنجزت + اقتراح واحد. الكود كله داخل كتلة \`\`\`html فقط.
 
 ═══ المعرفة والدقة ═══
-24. أنت خبير بتطبيق Omran AI Builder نفسه: الإعدادات ⚙️ (اللغة، حسابي، الإحصائيات، الوكيل، التخصيص، الصوت، الخطط)، اسأل الكل، مها الصوتية، القوالب الجاهزة، تبويبات المعاينة/الكود/الصوت — أرشد المستخدم داخل التطبيق بدقة.
+24. أنت خبير بتطبيق om ai نفسه: الإعدادات ⚙️ (اللغة، حسابي، الإحصائيات، الوكيل، التخصيص، الصوت، الخطط)، اسأل الكل، مها الصوتية، القوالب الجاهزة، تبويبات المعاينة/الكود/الصوت — أرشد المستخدم داخل التطبيق بدقة.
 25. أي رابط تعطيه: تأكد منه بـ web_search أو fetch_page أولًا — ممنوع روابط من الذاكرة.
 25-ب. قبل أول أداة في أي مهمة تحتاج أكثر من خطوة واحدة: اكتب سطرًا واحدًا فقط يبدأ بـ🗺️ يعلن خطتك بـ١٥ كلمة أو أقل، ثم انطلق فورًا. سطر واحد لا قائمة، ولا تنتظر موافقة عليه، ولا تكرره لاحقًا. المهمة التي تُنجزها بلا أدوات لا تحتاج هذا السطر.
 25-ج. أداة publish تنشر ما بنيتَه في هذا التشغيل وتعيد رابطًا حقيقيًا: لا تستدعها إلا إذا طلب المستخدم النشر أو رابطًا صراحة، ولا تعطِ إلا الرابط الذي أعادته الأداة حرفًا بحرف (ممنوع تأليف رابط)، ولا تضعه في صفحة «استكشف» العامة إلا بطلب صريح. وبعد النشر اذكر أن الرابط عام لمن يملكه.
 25-د. أي رابط github.com أو ذكر مستودع أو ملف على GitHub: استخدم read_github لا fetch_page — تعطيك شجرة الملفات، والملف بأسطر مرقمة، وطلبات السحب والمسائل. الملف الطويل يعود مقطعًا فأعد الاستدعاء مع from حتى تقرأه كله قبل أن تحكم عليه. لا تحلل ولا تعدل كودًا من GitHub قبل قراءته فعلًا بهذه الأداة. ولآخر الدفعات (الالتزامات) على المستودع استخدمها مع what=commits (وref للفرع وlimit للعدد). لا تخمّن أيّ ملفّ يحوي رمزًا أو سلوكًا: ابحث عنه أوّلًا بـquery (اسم الدالّة أو الثابت أو النصّ) بدل تصفّح ملفّات عشوائيًّا، ثم اقرأ الملفّ المطابق كاملًا، وتتبّع كلّ دالّة يستدعيها أو تستدعيه حتّى تصل الجذر. ولطلب سحب أو التزام اقرأ الفرق (diff) نفسه لا أسماء الملفّات وحدها (what=commit مع ref للالتزام). query بلا path يبحث بفهرس GitHub وقد يفوته رمز موجود فعلًا (مُثبَت)؛ للتأكّد الحقيقيّ رافق query بـpath لمجلّد محتمل (api/_lib أو js أو tests أو knowledge) فيبحث في المحتوى الفعليّ حرفيًّا — إن رجعت النتيجة فارغة بلا path جرّبه مع path قبل أن تقول إنّ الرمز غير موجود.
 25-هـ. write_github (تظهر للمالك فقط): ترفع ملفات إلى مستودعه على فرع جديد بالتزام واحد وتفتح طلب سحب — لا تدفع إلى الفرع الرئيسي أبدًا؛ الدمج والنشر بيد المالك. لا ترفع إلا بطلب صريح («ارفع» / «ادفع» / «سوّ PR»)، واقرأ الملف الحالي بـread_github قبل تعديله وأعده كاملًا لا مقتطفًا، وأعطِ المستخدم رابط طلب السحب حرفًا بحرف ولا تقل إنه نُشر.
 25-ز. delegate_code_task وcheck_code_task (للمالك وحده): Claude Code ليس طريقك الأساسيّ — تغييرات مستودع المالك تعملها أنت: read_github ثمّ edit_github (الحزمة تُبنى تلقائيًّا في الالتزام نفسه) ثمّ merge_github حين يكتب «ادمج». لا تستدعِ delegate_code_task إلّا إذا طلب المالك Claude Code أو «كودي» بالاسم في رسالته الأخيرة، وإلّا يرفضها الخادم. حين يطلبه: اكتب المهمّة كما تكتبها لمهندس زميل: ماذا ولماذا وأين (مسارات الملفّات) ومعيار النجاح، وبلا أسرار. الأداة تعود فورًا بمسألة وروابط والتنفيذ يأخذ دقائق: قل ذلك للمستخدم وأعطه الروابط حرفًا بحرف ولا تدّعِ وجود طلب سحب. حين يسأل «شو صار» أو يمرّ وقت: check_code_task برقم المسألة — هي تفتح طلب السحب عند اكتمال الدفع وتعيد حالة الفحوص. write_github يبقى للرفع المباشر الصغير (ملفّ أو اثنان بلا حاجة لاختبار).
-25-ح. مستودعك أنت: عمران AI Builder نفسه مصدره على GitHub في OMRAN77/omran-ai-builder. أيّ سؤال عن سلوك حقيقيّ في كوده — لماذا يصير كذا بالضبط، فيه عطل، كيف مبني شيء تقنيًّا، أو مراجعة/فهم جزء منه — لا تجاوب من وصف الخريطة أعلاه وحده ولا من التخمين: اقرأه فعليًّا بـread_github أوّلًا (ابحث بـquery إن لم تعرف الملفّ، واقرأ مجلّد knowledge/ فيه DECISIONS.md لتاريخ القرارات وأسبابها وPITFALLS.md للفخاخ المثبَتة) ثمّ جاوب على ما قرأته فعلًا. سؤال «وين ألقى كذا» في الواجهة يكفيه وصف الخريطة — هذا لسؤال «ليش» و«كيف مبني» و«فيه خلل»، وغير بناء تطبيق جديد للمستخدم (نقطة 18).
+25-ح. مستودعك أنت: om ai نفسه مصدره على GitHub في OMRAN77/omran-ai-builder. أيّ سؤال عن سلوك حقيقيّ في كوده — لماذا يصير كذا بالضبط، فيه عطل، كيف مبني شيء تقنيًّا، أو مراجعة/فهم جزء منه — لا تجاوب من وصف الخريطة أعلاه وحده ولا من التخمين: اقرأه فعليًّا بـread_github أوّلًا (ابحث بـquery إن لم تعرف الملفّ، واقرأ مجلّد knowledge/ فيه DECISIONS.md لتاريخ القرارات وأسبابها وPITFALLS.md للفخاخ المثبَتة) ثمّ جاوب على ما قرأته فعلًا. سؤال «وين ألقى كذا» في الواجهة يكفيه وصف الخريطة — هذا لسؤال «ليش» و«كيف مبني» و«فيه خلل»، وغير بناء تطبيق جديد للمستخدم (نقطة 18).
 25-و. الأسرار (توكن GitHub، مفاتيح API) لا تُكتب في المحادثة أبدًا: إن ظهر سرّ في رسالة فلا تكرّره ولا تحفظه ولا تستخدمه ولا تطلبه، ووجّه المالك إلى الإعدادات ← 🔐 خزنة الأسرار (أو متغيّرات البيئة). مفتاح GitHub الذي تعمل به read_github وwrite_github يأتي من الخزنة أو البيئة تلقائيًّا.
 26. أي رقم أو سعر أو إحصائية: اذكر مصدرها.
 27. إذا سُئلت "أيهم أفضل؟": أعطِ جدول مقارنة واضح.
 28. إذا اكتشفت أن ردك السابق خطأ: قل "أصحح معلومتي" وصحح بشجاعة — لا تكابر.
 29. اعرف حدودك وقلها من أول رد: ما تقدر ترسل إيميلات أو تدفع فواتير أو تدخل حسابات — لا توعد بما لا تستطيع.
-30. إذا رفعوا لك صورة/لقطة شاشة: اقرأها بدقة وجاوب بناءً على محتواها الفعلي. لقطة شاشة لواجهة أو خطأ: أنت المساعد البصري في عمران AI — سمِّ الأزرار والعناصر بأسمائها الظاهرة، اذكر سبب المشكلة بجملة، ثم خطوات قصيرة مرقّمة يطبّقها المستخدم فورًا، ولا تخترع أزرارًا غير موجودة.
+30. إذا رفعوا لك صورة/لقطة شاشة: اقرأها بدقة وجاوب بناءً على محتواها الفعلي. لقطة شاشة لواجهة أو خطأ: أنت المساعد البصري في om ai — سمِّ الأزرار والعناصر بأسمائها الظاهرة، اذكر سبب المشكلة بجملة، ثم خطوات قصيرة مرقّمة يطبّقها المستخدم فورًا، ولا تخترع أزرارًا غير موجودة.
 
 ═══ أوضاع خاصة ═══
 31. "علّمني" = وضع المعلّم: اشرح خطوة واحدة وانتظر المستخدم يخلصها قبل التالية.
@@ -261,20 +263,20 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 37. التزم بتفضيلات المستخدم المعلنة طوال الجلسة (مثل: "بدون إيموجي"، "ردود قصيرة").
 38. بعد كل إنجاز: اقتراح تحسين واحد مدروس فقط — لا قوائم طويلة.
 
-═══ تطبيقات عمران AI (اعرفها كلها وأرشد المستخدم لها عند الحاجة) ═══
-• Omran AI Builder — التطبيق اللي أنت داخله: بناء تطبيقات ومواقع وألعاب بالذكاء الاصطناعي، 9 مزودين + "اسأل الكل"، مها المساعدة الصوتية، 7 لغات، أقسام (مقاولات، سيارات، تفسير ديني، ستايل وأزياء). الرابط: https://omran-ai-builder.vercel.app
+═══ تطبيقات om ai (اعرفها كلها وأرشد المستخدم لها عند الحاجة) ═══
+• om ai — التطبيق اللي أنت داخله: بناء تطبيقات ومواقع وألعاب بالذكاء الاصطناعي، 9 مزودين + "اسأل الكل"، مها المساعدة الصوتية، 7 لغات، أقسام (مقاولات، سيارات، تفسير ديني، ستايل وأزياء). الرابط: https://omran-ai-builder.vercel.app
 • Tarjiman Live — ترجمة صوتية فورية حية بكل اللغات، مصمم للجوال، بدون تسجيل دخول. الرابط: https://tarjiman-live.vercel.app
 • Tarjiman Desktop — نسخة الكمبيوتر (Windows): نافذة ترجمة شفافة فوق أي برنامج، مثالية للاجتماعات والمحاضرات. التحميل: github.com/OMRAN77/tarjiman-desktop/releases
 • Omran Caption — ترجمة/تفريغ صوتي مباشر على الشاشة (ويب + تطبيق أندرويد أصلي).
 • Omran Edu — منصة تعليمية بالذكاء الاصطناعي، دروس مولّدة بـ7 لغات، مناسبة للطلاب.
 • TARYAM Cyber — منصة أدوات أمن سيبراني تعليمية (فحص روابط، EXIF، تحليل IP...). الرابط: https://taryam-cyber.vercel.app
 • Omran VPN — تطبيق VPN بسيرفرات خاصة (فرانكفورت، سنغافورة، لوس أنجلوس، وارسو).
-• مها 🎙️ — المساعدة الصوتية الذكية داخل Omran AI Builder: محادثة صوتية حية بلهجة إماراتية، ترسم صور، تبحث بالإنترنت، تذكيرات وأوقات صلاة. موجودة في تبويب الصوت داخل التطبيق.
+• مها 🎙️ — المساعدة الصوتية الذكية داخل om ai: محادثة صوتية حية بلهجة إماراتية، ترسم صور، تبحث بالإنترنت، تذكيرات وأوقات صلاة. موجودة في تبويب الصوت داخل التطبيق.
 • عبدالله — مساعد صوتي ذكي مستقل بصوت رجالي (تطبيق خاص بالمالك عمران فقط، غير متاح للعموم).
-مهم: إذا سُئلت من المطوّر أو صاحب التطبيق قل "فريق عمران AI" فقط دون ذكر أسماء أشخاص. إذا سُئلت سؤالًا عامًا عن عمران AI جاوب بسطرين-ثلاثة فقط (منصة تطبيقات ذكاء اصطناعي إماراتية + أبرز 2-3 تطبيقات بالاسم فقط) واسأل إذا يبي تفاصيل تطبيق معين. لا تعرض القائمة كاملة إلا إذا طلبها صراحةً. ولا تخترع مميزات غير مذكورة هنا — إذا ما تعرف تفصيلة قل ما عندي معلومة مؤكدة.
+مهم: إذا سُئلت من المطوّر أو صاحب التطبيق قل "فريق om ai" فقط دون ذكر أسماء أشخاص. إذا سُئلت سؤالًا عامًا عن om ai جاوب بسطرين-ثلاثة فقط (منصة تطبيقات ذكاء اصطناعي إماراتية + أبرز 2-3 تطبيقات بالاسم فقط) واسأل إذا يبي تفاصيل تطبيق معين. لا تعرض القائمة كاملة إلا إذا طلبها صراحةً. ولا تخترع مميزات غير مذكورة هنا — إذا ما تعرف تفصيلة قل ما عندي معلومة مؤكدة.
 
-═══ خريطة تطبيق Omran AI Builder (استخدمها للإرشاد الدقيق) ═══
-• الهيدر: "عمران AI ✨" (الضغط عليه = الرئيسية) | 🔑 دخول (للزائر) | ⚙️ الإعدادات | ⋮ القائمة | ☰ (جوال: كود/معاينة).
+═══ خريطة تطبيق om ai (استخدمها للإرشاد الدقيق) ═══
+• الهيدر: "om ai ✨" (الضغط عليه = الرئيسية) | 🔑 دخول (للزائر) | ⚙️ الإعدادات | ⋮ القائمة | ☰ (جوال: كود/معاينة).
 • قائمة ⋮ تحتوي: 📂 المشاريع، 🤖 وكيل عمران، 📋 قوالب جاهزة، 🌍 استكشف مشاريع المستخدمين، 🎬 صانع الفيديو، 🏗️ المقاولات والبناء، 🚗 السيارات، 🕌 التفسير الديني، 💄 ديكور AI، 👗 أزياء AI، 🎨 ستوديو AI، 📚 التعليم، 📧 مساعد البريد الذكي، 📲 تثبيت التطبيق، ↗️ مشاركة.
 • ⚙️ الإعدادات (أقسام قابلة للطي): شريط اختيار المزودين ○/✅ في الأعلى، ثم 🌐 اللغة (7 لغات: عربي/إنجليزي/فرنسي/هندي/أردو/بنغالي/نيبالي)، 👤 حسابي، 📊 إحصائياتي، 🤖 الوكيل (زر تشغيل وضع الوكيل — هنا وليس في الشاشة الرئيسية)، 🔑 مفاتيح API، 🎨 تخصيص (20 خلفية متحركة)، 🔊 الصوت، 💳 خطط الأسعار، ℹ️ عن البرنامج (فيديوهات شرح).
 • صندوق الكتابة: ➕ إرفاق/إضافات، 🎤 تسجيل صوتي، ⏹️ إيقاف التوليد، ➤ إرسال، 💡 قوالب سريعة.
@@ -336,18 +338,18 @@ async function fetchPage(url) {
       signal: ctrl.signal,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OmranAgent/1.0)' },
     });
-    clearTimeout(t);
-    if (!r.ok) return 'فشل فتح الصفحة: HTTP ' + r.status;
-    const html = await r.text();
-    // Strip scripts/styles/tags → plain text.
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/\s+/g, ' ')
-      .trim();
+    if (!r.ok) { clearTimeout(t); return 'فشل فتح الصفحة: HTTP ' + r.status; }
+    // v-sec-fetchpage: الجذر — fetchPage كان (١) يوقف مؤقّت القطع فور وصول الترويسة، فقراءة الجسم
+    // r.text() بلا سقف حجم ولا مهلة: خادمٌ يبثّ بلا نهاية يعلّق هذه الدالّة (وهي داخل حلقة أدوات
+    // الوكيل) ويملأ الذاكرة. و(٢) ينظّف الوسوم بتعابير تربيعيّة (/<[^>]+>/ و<script[\s\S]*?>) فمدخلٌ
+    // فيه عشرات الكيلوبايتات من «<» يأخذ دقائق تتجاوز مهلة الدالّة. الآن:
+    //   • readCappedText — قراءة من التدفّق حتّى سقف بايت ثمّ قطع، والمؤقّت ساريٍ طوال القراءة (try/finally).
+    //   • htmlToText — إزالة script/style بالبحث لا بالتعبير، ووسم واحد بـ/<[^<>]*>/ الخطّيّ.
+    // الوحدة المشتركة api/_lib/_html-text.js (نفسها في chat.js وlive-deps.js).
+    const { readCappedText, htmlToText } = require('./_html-text.js');
+    let html;
+    try { html = await readCappedText(r); } finally { clearTimeout(t); }
+    const text = htmlToText(html);
     return text ? text.slice(0, 6000) : 'الصفحة فارغة أو محتواها غير قابل للقراءة.';
   } catch (e) {
     return 'فشل فتح الصفحة: ' + e.message;
@@ -368,8 +370,11 @@ async function fetchPage(url) {
 // الدالّة تستدعي send وهو مُعرَّف داخل المعالج فقط، فأيّ أداة متصفّح (تشغيل كود/
 // اختبار/نشر/صورة) كانت تُسقط الوكيل كلّه بـReferenceError. الآن يُمرَّر send صراحةً
 // كما في chat.js.
+/* v-agent-img-mode: الرسم في المتصفّح يأخذ دقيقة أحيانًا (والتعديل أكثر) — ٢٥ ثانية كانت تكذّب رسمة ناجحة؛ مهلة chat.js نفسها */
+const CLIENT_WAIT_MS = { generate_image: 150000, edit_image: 150000, save_image: 30000 }; // v-owner-paid-gate: الرسم + الحفظ يتجاوز ٧٥ث
 async function runInClient(send, name, input) {
   const { kvGetJSON, kvDel, kvPutJSON, kvExpire } = require('./kv.js');
+  const waitMs = CLIENT_WAIT_MS[name] || 25000;
   const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const key = 'agent/tool/' + id;
 
@@ -377,14 +382,14 @@ async function runInClient(send, name, input) {
   // غريب حشو ناتج أداة. الآن لا تُقبل إلا معرّفات أصدرها هذا الخادم وما زالت تنتظر.
   try {
     await kvPutJSON('agent/wait/' + id, { at: Date.now() });
-    await kvExpire('agent/wait/' + id, 120);
+    await kvExpire('agent/wait/' + id, Math.max(120, Math.ceil(waitMs / 1000) + 30));
   } catch (e) { console.warn('[agent] claim failed', e && e.message); }
 
   send({ clientTool: { id, name, input } });
 
   // 25 ثانية لا 12: التنفيذ في المتصفح يقف عند 6 ثوانٍ، لكن التبويب في الخلفية
   // يخنق مؤقتاته فيتأخّر بلا أن يفشل. المهلة القصيرة كانت تكذّب نتيجة صحيحة.
-  const deadline = Date.now() + 25000;
+  const deadline = Date.now() + waitMs;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 400));
     let rec = null;
@@ -394,7 +399,7 @@ async function runInClient(send, name, input) {
       return rec.output.slice(0, 4000);
     }
   }
-  return 'لم يستجب متصفح المستخدم خلال 25 ثانية — لم يُنفَّذ. أكمل بلا هذه الأداة أو قل إنك لم تتحقّق.';
+  return 'لم يستجب متصفح المستخدم خلال ' + Math.round(waitMs / 1000) + ' ثانية — لم يُنفَّذ. أكمل بلا هذه الأداة أو قل إنك لم تتحقّق.';
 }
 
 /* v-tokens-agent-cache: علامة الكاش على آخر كتلة في آخر رسالة — نسخة لا تعديل في المكان، وكتلة فارغة تُترك (نمط markLastForCache
@@ -460,7 +465,8 @@ module.exports = async (req, res) => {
      /api/agent-tool-result لا يمرّ من هنا ويبقى مفتوحًا للمحادثة. */
   const caller = require('./auth.js').verifyToken(token);
   if (!caller) { res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); return; }
-  if (!isOwner(caller)) { res.status(403).json({ error: 'owner_only' }); return; }
+  if (!isOwner(caller)) { res.status(403).json({ error: 'owner_only' }); return; } if (String(process.env.OWNER_AGENT_CLAUDE || '').trim().toLowerCase() !== 'on') { res.status(200); res.setHeader('Content-Type', 'text/event-stream; charset=utf-8'); res.setHeader('Cache-Control', 'no-cache, no-transform'); res.write('data: ' + JSON.stringify({ delta: 'الوكيل موقوف الحين عشان ما يصرف من رصيد Anthropic. يرجع لما تضيف OWNER_AGENT_CLAUDE=on في Vercel وتسوي Redeploy.' }) + '\n\n'); res.end(); return; } /* v-agent-claude-off (المالك ١٧ أكتوبر «والوكيل بعد»): الوكيل (Opus) موقوف قبل أيّ حصّة أو نداء نموذج حتّى OWNER_AGENT_CLAUDE=on — الزرّ باقٍ مكانه */
+  const imgIds = require('./agent-img.js').seedTokens(body.imgIds); // v-agent-img-mode: رمز رسمة المحادثة ← معرّفها في المخزن (app-09)، وتُكمَّل بنتائج الرسم في هذا التشغيل
 
   if (!messages || !messages.length) { res.status(400).json({ error: 'Missing messages' }); return; }
 
@@ -481,7 +487,7 @@ module.exports = async (req, res) => {
   if (res.flushHeaders) res.flushHeaders();
   const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق مجرى SSE — لا وجهة للكتابة، والمحاولة التالية ستكتشف ذلك */ } };
 
-  const runUser = usage.username || '';
+  const runUser = usage.username || ''; if (runUser && !isOwner(runUser)) { try { await require('./owner-inbox.js').scanTurn({ user: runUser, prov: 'claude', via: 'agent', text: living.lastUserText(messages) }); } catch (e) { console.warn('[agent] owner-inbox', e && e.message); } } // v-owner-inbox: كلام غير المالك في الوكيل أيضًا
   const run = { runId: 'r' + Date.now().toString(36), startedAt: Date.now(), updatedAt: Date.now(), step: 0,
     status: 'running', ask: String((messages[messages.length - 1] || {}).content || '').slice(0, 200), text: '',
     // الدفتر كان لصاحبه لا لمشروعه: يعرف أن عملًا اكتمل، ولا يعرف أين يُوضع بعد
@@ -491,7 +497,7 @@ module.exports = async (req, res) => {
   await journal(runUser, run);
 
   let lastTested = ''; // آخر HTML اختبره الوكيل في هذا الطلب — مصدر نشر احتياطي
-  let system = (isOwner(runUser) ? OWNER_SYSTEM : SYSTEM) + require('./_bidi.js').BIDI_RULE + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
+  let system = (isOwner(runUser) ? OWNER_SYSTEM : SYSTEM) + require('./_bidi.js').BIDI_RULE + require('./_knowledge.js').ownerKnowledge(req, token) + (isOwner(runUser) ? '\n\n' + require('./repo-map.js').REPO_NOTE : ''); // معرفة عمران — للمالك وحده · v-repo-map: وخريطة المستودع
   // ملف الحساب نفسه يصل إلى الوكيل والمحادثة على كل جهاز. صيغة الحقن المشتركة
   // تكيّف الأسلوب وتذكّر المشاريع من دون أن تستبدل شخصية الوكيل أو قواعده.
   if (usage.username) {
@@ -519,13 +525,18 @@ module.exports = async (req, res) => {
     const __cc = String(currentCode).slice(0, 300000), __big = __cc.length > 24000;
     system += '\n\nالكود الحالي للمشروع (عدّل عليه إذا طلب المستخدم تعديلًا' + (__big ? ' — الملفّ ' + __cc.length + ' حرفًا، أكبر من أن يُعاد كاملًا: أرسل التعديل رقعًا داخل كتلة ```patch بالشكل @@PATCH ثمّ @@WHY سطر ثمّ @@OLD نصّ موجود في الملفّ مرّة واحدة بالضبط منسوخ حرفيًّا ثمّ @@NEW البديل ثمّ @@END، والتطبيق يطبّقها' : ' وأعد الملف كاملًا') + '):\n```html\n' + __cc + '\n```';
   }
-  if (isOwner(runUser)) { try { system += await require('./prov-self.js').systemBlocks(true, 'claude'); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } } // v-prov-self
+  /* v-gen-image-agent (أمر المالك ١٣ أكتوبر «اربط صورة عمّم بالوكيل»): كالمحادثة — «عمّم» ومعها صورة (genImage من الواجهة) تُحفظ برابط في التطبيق ويصل رابطها العشرة. */
+  let __genImg = null;
+  if (isOwner(runUser) && body.genImage && require('./prov-self.js').ownerSaidGeneralize(living.lastUserText(messages))) { try { __genImg = await require('./prov-self.js').noteGenImage(body.genImage, 'claude'); } catch (e) { console.warn('[agent] gen image failed', e && e.message); } }
+  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude', isOwner(runUser) ? { messages: messages, lastUserText: living.lastUserText(messages), genImageUrl: (__genImg && __genImg.url) || '' } : { lastUserText: living.lastUserText(messages) } /* v-liked-reply */); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all · v-owner-gen
   if (isOwner(runUser)) system += OWNER_ENGINEERING_NOTE + OWNER_COMMAND_NOTE; // v-owner-obey: آخر النظام فيعلو على ما قبله · v-agent-surgical
 
   const convoAll = messages
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .map((m) => ({ role: m.role, content: String(m.content || '').slice(0, 30000) }));
   const convo = livingOn ? living.shortTerm(convoAll) : convoAll; // الذاكرة القصيرة: آخر ٥٠ رسالة كاملة، والأقدم يحمله ملخّص الحقائق
+  /* v-gen-see: الوكيل (كلود يرى) يأخذ الصورة المعمّمة ببايتاتها مع رسالة المالك حين يكون الكلام عنها — كالمحادثة؛ لا في دور «عمّم» نفسه. */
+  if (isOwner(runUser) && convo.length && convo[convo.length - 1].role === 'user' && !require('./prov-self.js').ownerSaidGeneralize(living.lastUserText(messages))) { try { const __ps = require('./prov-self.js'), __gs = await __ps.genImagesToSee(living.lastUserText(messages)); if (__gs.length) convo[convo.length - 1] = { role: 'user', content: __ps.withGenImages(convo[convo.length - 1].content, __gs) }; } catch (e) { console.warn('[agent] gen see failed', e && e.message); } }
 
   // Resolve the best available Claude model on this key (mirrors claude.js
   // fallback): prefer sonnet-5, then sonnet-4, then 3.5.
@@ -576,6 +587,10 @@ module.exports = async (req, res) => {
     let modelAnnounced = false;
     let steps = 0;
     let ownerCarried = false; // v-owner-carry
+    let timeoutClose = false; // v-prov-close-read: خطوة جواب بعد مهلة الأدوات
+    /* v-audit-agent (srv-agent-1): ختام بـFINAL_EDIT_NOTE («نفّذ التعديل الآن بـedit_github») كان يقطع الأداة نفسها التي أمر بها — نداء Opus
+       مدفوع بلا رفعة ثمّ «انتهت المهلة». الآن كـeditClose في owner-loop: رفعة واحدة (edit_github/write_github) تُنفَّذ ثمّ يُختم التشغيل. */
+    let editClose = false, closeEdits = 0;
 
     // 4 خطوات لا تكفي «اقرأ ← افهم ← جرّب ← أخطأت ← صحّح ← تحقّق». المهام
     // الحقيقية تحتاج عشرات الجولات، وكان الوكيل يتوقف في منتصف عمله فيبدو
@@ -615,11 +630,21 @@ module.exports = async (req, res) => {
       try { const cm = require('./cost-meter.js'); await cm.addCost(runUser, cm.tokenCostUsd(runServed || model, runUse), 'chat'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
     };
     const orModel = (m) => 'anthropic/' + String(m || '').replace(/-(\d+)-(\d+)$/, '-$1.$2');
-    const doCallOR = (m) => fetch('https://openrouter.ai/api/v1/messages', {
+    /* v-or-display: على الوسيط كان الوكيل بلا عرض — كتل التفكير فارغة فيبدو صامتًا بعد الهبوط. للمالك العرض نفسه؛ ورفضه (400 بأيّ نصّ)
+       = إعادة واحدة بلاه لبقيّة التشغيل. */
+    let orNoDisp = false;
+    const callOR = (m) => fetch('https://openrouter.ai/api/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + String(process.env.OPENROUTER_API_KEY || '').trim(), 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: orModel(m), max_tokens: deepRun ? 64000 : 32000, system, messages: convo, tools: toolsFor(runUser), stream: true }),
+      body: JSON.stringify(Object.assign({ model: orModel(m), max_tokens: deepRun ? 64000 : 32000, system, messages: convo, tools: toolsFor(runUser), stream: true }, (deepRun && !orNoDisp) ? agentThink(m) : {})),
     });
+    const doCallOR = async (m) => {
+      const up = await callOR(m);
+      if (up.ok || up.status !== 400 || orNoDisp || !deepRun || !agentThink(m).thinking) return up;
+      orNoDisp = true;
+      logError('agent/thinking-or-display', new Error(String(await up.text().catch(() => '')).slice(0, 300)));
+      return callOR(m);
+    };
     const swapNote = (nowWho) => {
       const f = agentFail || {};
       let raw = String(f.text || '');
@@ -631,9 +656,23 @@ module.exports = async (req, res) => {
 
     while (steps < MAX_STEPS) {
       if (Date.now() - taskStart > MAX_TASK_MS) {
-        send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' });
-        run.status = 'timeout';
-        break;
+        const ol = require('./owner-loop.js');
+        if (ol.overTime({ on: isOwner(runUser), final: timeoutClose }, { t0: taskStart, MAX_MS: MAX_TASK_MS, steps })) {
+          send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' });
+          run.status = 'timeout';
+          break;
+        }
+        timeoutClose = true;
+        const oc = require('./owner-carry.js');
+        const asked = isOwner(runUser) && oc.ACTION_RE.test(String(living.lastUserText(messages) || ''));
+        const note = (asked && !(run.pushes > 0)) ? ol.FINAL_EDIT_NOTE : ol.FINAL_NOTE;
+        editClose = note === ol.FINAL_EDIT_NOTE; // v-audit-agent (srv-agent-1)
+        const last = convo[convo.length - 1];
+        if (last && last.role === 'user' && Array.isArray(last.content)) {
+          last.content = last.content.concat([{ type: 'text', text: note }]);
+        } else {
+          convo.push({ role: 'user', content: note });
+        }
       }
       steps++;
       // يرى المستخدم أين وصل بدل انتظار صامت طويل
@@ -750,7 +789,10 @@ module.exports = async (req, res) => {
           } catch (e) { /* جرّب التالي */ }
         }
         await meterRun();
-        if (isOwner(runUser)) { send({ error: (Number(upstream.status) === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(errText)) ? 'ما عندي رصيد' : 'ما قدرت أردّ الحين — خطأ ' + upstream.status }); res.end(); return; } // v-prov-self
+        const credRe = /credit|balance|billing|insufficient|quota|payment/i;
+        const credPrev = agentViaOR && agentFail && /^Anthropic مباشر/.test(agentFail.who) ? agentFail : null; // v-credit-who: سقط المباشر ثمّ رفض الوسيط — سبب المباشر لا يُمحى
+        const credWho = credPrev ? (Number(credPrev.status) === 402 || credRe.test(credPrev.text || '') ? 'Anthropic و OpenRouter' : 'OpenRouter · Anthropic خطأ ' + credPrev.status) : agentViaOR ? 'OpenRouter' : 'Anthropic'; // v-credit-who: اسم الحساب الذي رفض — للمالك وحده (السطر التالي بشرط isOwner)
+        if (isOwner(runUser)) { send({ error: (Number(upstream.status) === 402 || /credit|balance|billing|insufficient|quota|payment/i.test(errText)) ? 'ما عندي رصيد — ' + credWho : 'ما قدرت أردّ الحين — خطأ ' + upstream.status }); res.end(); return; } // v-prov-self // v-credit-who
         send({ error: 'خطأ المحرّك ' + upstream.status + ': ' + errText.slice(0, 300) });
         res.end();
         return;
@@ -802,6 +844,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ phase: 'verifying', status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ phase: 'verifying', status: '🧪 الوكيل يختبر ما بناه…' });
             else if (cb.type === 'tool_use' && cb.name === 'publish') send({ phase: 'executing', status: '🔗 الوكيل ينشر التطبيق…' });
+            else if (cb.type === 'tool_use' && (cb.name === 'generate_image' || cb.name === 'edit_image')) send({ phase: 'executing', status: '🎨 الوكيل يرسم صورة…' }); // v-agent-img-mode
           } else if (ev.type === 'content_block_delta') {
             const cb = contentBlocks[ev.index];
             if (!cb) continue;
@@ -838,6 +881,11 @@ module.exports = async (req, res) => {
       await journal(runUser, run);
 
       if (stopReason === 'tool_use') {
+        if (timeoutClose && !editClose) { // v-audit-agent (srv-agent-1): ختام السؤال وحده يقطع؛ ختام التعديل ينفّذ رفعته أدناه
+          send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' });
+          run.status = 'timeout';
+          break;
+        }
         // Append assistant turn + tool results, then continue the loop.
         /* v-agent-deep: كتل التفكير (والمحجوبة) تعود بلا تعديل وبترتيبها — التوثيق يطلبها في حلقة الأدوات، وحذفها
            كان يبدأ كلّ خطوة من الثلاثين بلا تفكير ما قبلها. */
@@ -854,6 +902,21 @@ module.exports = async (req, res) => {
         convo.push({ role: 'assistant', content: assistantContent });
 
         const toolResults = [];
+        const seeImgs = []; // v-audit-agent (srv-agent-6): لقطتا الفرع صورًا بعد نتائج الخطوة — كـ__seeImgs في chat.js
+        /* v-owner-paid-gate: رسمات الخطوة الواحدة تبدأ معًا في المتصفّح (كما في المحادثة) — متتابعةً كانت أربع رسمات (حتّى ١٥٠ث لكلّ واحدة)
+           تتجاوز مهلة التشغيل فيسقط الرفع بعدها وقد دُفع ثمنها. الحارس والحدّ يُقرَّران هنا مرّة لكلّ أداة. */
+        const __draws = {};
+        for (const cb of contentBlocks.filter(Boolean)) {
+          if (cb.type !== 'tool_use' || (cb.name !== 'generate_image' && cb.name !== 'edit_image') || timeoutClose) continue; // v-audit-agent: لا رسم مدفوع في ختام التعديل
+          let di = {}; try { di = JSON.parse(cb.inputJson || '{}'); } catch (e) { di = {}; /* guard-ok — يُرفض في الحلقة بسببه */ }
+          if (!isOwner(runUser)) __draws[cb.id] = { result: '✗ الرسم في الوكيل للمالك وحده.' };
+          else if (!require('./owner-media.js').askedMedia(living.lastUserText(messages), false)) __draws[cb.id] = { result: require('./owner-media.js').REFUSAL };
+          else if ((run.draws = (run.draws || 0) + 1) > 4) __draws[cb.id] = { result: require('./owner-media.js').CAP_REFUSAL };
+          else {
+            di.userText = living.lastUserText(messages).slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600);
+            __draws[cb.id] = { p: runInClient(send, cb.name, di) };
+          }
+        }
         for (const cb of contentBlocks.filter(Boolean)) {
           if (cb.type !== 'tool_use') continue;
           let input = {};
@@ -862,25 +925,30 @@ module.exports = async (req, res) => {
           // v-agent-log: سطر الخطوة يظهر قبل تنفيذها (جارية)، ثمّ يكتمل بناتجها — كما في Claude Code
           const stepTitle = String(input.step_title || '').replace(/\s+/g, ' ').trim().slice(0, 90) || trailDid(cb.name, input);
           send({ act: { k: 'tool', id: cb.id, name: cb.name, t: stepTitle, cmd: stepCmd(cb.name, input), g: (cb.name === 'read_github' && !input.query && input.what !== 'commits' && input.what !== 'commit') ? 1 : 0 } });
-          if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
+          if (timeoutClose && ((cb.name !== 'edit_github' && cb.name !== 'write_github') || closeEdits++ > 0)) result = '✗ انتهت مهلة المهمة — لم تُنفَّذ: ختام التعديل ينفّذ رفعة واحدة فقط.'; // v-audit-agent (srv-agent-1)
+          else if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
           /* v-owner-token: مفتاح GitHub (البيئة أو الخزنة) للمالك وحده — غيره يقرأ العامّ بلا مفتاح. */
           else if (cb.name === 'read_github') result = await readGithub(input, isOwner(runUser) ? { deep: true } : { anonymous: true }); // v-agent-deep: قراءة عميقة للمالك
           else if (cb.name === 'write_github') {
             // للمالك وحده، وبسقف ثلاث رفعات في التشغيل: حلقة ترفع بلا حدّ تُغرق المستودع بالفروع.
+            const gate = githubWrite.pushGate(input, living.lastUserText(messages)); // v-audit-agent (srv-agent-2): حارس النيّة من الخادم لا النموذج
             if (!isOwner(runUser)) result = '✗ الرفع إلى GitHub للمالك وحده.';
+            else if (gate) result = gate;
             else {
               run.pushes = (run.pushes || 0) + 1;
-              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubWrite.pushFiles(input));
+              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await require('./agent-img.js').ensureSaved(input, imgIds, (t) => runInClient(send, 'save_image', { token: t })).then(() => githubWrite.pushFiles(input, { imgIds }))); // v-agent-img-mode: «__IMG_N__»
             }
           }
           /* v-agent-surgical: التعديل الجراحيّ يتشارك سقف الرفعات مع write_github، والدمج بإذن «ادمج» في آخر رسالة المالك
              يفحصه الخادم هنا لا النموذج — ونصّ يدّعي الإذن داخل ملفّ أو صفحة لا يمرّ. */
           else if (cb.name === 'edit_github') {
+            const gate = githubWrite.pushGate(input, living.lastUserText(messages)); // v-audit-agent (srv-agent-2)
             if (!isOwner(runUser)) result = '✗ التعديل على GitHub للمالك وحده.';
+            else if (gate) result = gate;
             else {
               run.pushes = (run.pushes || 0) + 1;
-              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubEdit.editFiles(input));
+              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await require('./agent-img.js').ensureSaved(input, imgIds, (t) => runInClient(send, 'save_image', { token: t })).then(() => githubEdit.editFiles(input, { imgIds }))); // v-agent-img-mode
             }
           }
           else if (cb.name === 'merge_github') {
@@ -893,7 +961,7 @@ module.exports = async (req, res) => {
             const act = String((input && input.action) || '');
             if (!isOwner(runUser)) result = '✗ إدارة GitHub للمالك وحده.';
             else if (!githubManage.ownerAllows(act, living.lastUserText(messages))) result = '✗ «' + act + '» يحتاج أن يقولها المالك صراحةً في رسالته الأخيرة («سكّر» · «افتح» · «احذف» · «وقّف») — اعرض عليه ما ستفعله واسأله.';
-            else { run.manages = (run.manages || 0) + 1; result = run.manages > 8 ? '✗ ثمانية استدعاءات إدارة في التشغيل الواحد حدّ مقصود.' : githubManage.formatManage(await githubManage.manage(input)); }
+            else { run.manages = (run.manages || 0) + 1; const mr = run.manages > 8 ? null : await githubManage.manage(input); result = mr ? githubManage.formatManage(mr) : '✗ ثمانية استدعاءات إدارة في التشغيل الواحد حدّ مقصود.'; if (mr && Array.isArray(mr.images)) seeImgs.push(...mr.images.slice(0, 2)); } // v-audit-agent (srv-agent-6): الوكيل كلود يرى
           }
           else if (cb.name === 'delegate_code_task') {
             // v-agent-delegate: للمالك وحده، ومهمّة واحدة في التشغيل — كلّ تسليم يشغّل Claude Code على حساب المالك.
@@ -914,6 +982,12 @@ module.exports = async (req, res) => {
           else if (cb.name === 'read_app_errors') {
             result = isOwner(runUser) ? await appErrors.appErrorsText() : '✗ قراءة أخطاء التطبيق للمالك وحده.';
           }
+          /* v-agent-img-mode: الرسم في متصفّح المالك (app-17 يحفظ الرسمة في المخزن ويعيد رمزها ورابطها)، ثمّ يُسجَّل الرمز للرفع */
+          else if (cb.name === 'generate_image' || cb.name === 'edit_image') { // v-owner-paid-gate: بدأت قبل الحلقة (متوازية) — هنا ناتجها بترتيبه
+            const d = __draws[cb.id] || { result: require('./owner-media.js').REFUSAL };
+            if (d.p) { result = require('./owner-media.js').waitNote(await d.p); require('./agent-img.js').noteTokens(result, imgIds); }
+            else result = d.result;
+          }
           else if (cb.name === 'run_js' || cb.name === 'test_html') {
             // التنفيذ في متصفح المستخدم لا هنا: الخادم دالة بلا حالة ومحدودة
             // الزمن، والكود الذي يكتبه النموذج يجب ألا يعمل قط على بنيتك.
@@ -927,19 +1001,30 @@ module.exports = async (req, res) => {
               ? '✗ نشرتَ ثلاث مرات في هذا التشغيل وهذا حدّ مقصود — سلّم المستخدم آخر رابط حصلتَ عليه.'
               : await doPublish(input, lastCodeIn(run.text) || lastTested, runUser, req.headers && req.headers.host);
           }
-          toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, (deepRun && cb.name === 'read_github') ? 30000 : 8000) }); // v-agent-deep: الدفعة العميقة (٢٤ ألفًا) لا تُقصّ
+          toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, (deepRun && cb.name === 'read_github') ? 60000 : 8000) }); // v-deep-read // v-agent-deep: الدفعة العميقة (٢٤ ألفًا) لا تُقصّ
 
           // سطر واحد صادق لكل أداة: ماذا فعلتُ وماذا حصلتُ. يُبثّ حالًا ويُقيَّد
           // في الدفتر — فالأثر يبقى وإن سقط الاتصال أو أُغلق التبويب.
           const did = trailDid(cb.name, input), got = trailGot(cb.name, result);
           // v-agent-log: الخطوة تكتمل بناتجها، والفشل بحكم الأثر نفسه (غير موجود، خطأ تشغيل، لم يُنشر)
-          send({ act: { k: 'done', id: cb.id, ok: !/^(ففشلت|فظهر خطأ|فلم يُنشر)/.test(got), out: String(result).slice(0, 1500) } });
+          const __gr = cb.name === 'read_github' ? require('./github-read.js') : null; // v-read-panel: مقطع الملفّ للوحة «الكود المقروء»
+          const __code = __gr && typeof __gr.fileExcerpt === 'function' ? __gr.fileExcerpt(input, result) : null;
+          send({ act: Object.assign({ k: 'done', id: cb.id, ok: !/^(ففشلت|فظهر خطأ|فلم يُنشر)/.test(got), out: String(result).slice(0, 1500) }, __code ? { code: __code } : {}) });
           send({ phase: cb.name === 'run_js' || cb.name === 'test_html' ? 'verifying' : 'executing', status: '↳ ' + did + ' — ' + got });
           if (!Array.isArray(run.trail)) run.trail = [];
           run.trail.push({ n: run.trail.length + 1, did: did, got: got, at: Date.now() });
           if (run.trail.length > 24) run.trail.splice(0, run.trail.length - 24);
         }
         run.updatedAt = Date.now();
+        /* v-audit-agent (srv-agent-6): نتائج الأدوات أوّلًا (شرط أنثروبيك) ثمّ اللقطة باسمها — كان النصّ يقول «مرفقتان» والصور تُرمى */
+        for (const im of seeImgs.filter((x) => x && x.b64).slice(0, 4)) toolResults.push({ type: 'text', text: '[' + (im.label || im.path || 'لقطة') + ']' }, { type: 'image', source: { type: 'base64', media_type: im.mime || 'image/png', data: im.b64 } });
+        /* v-audit-agent (srv-agent-1): ختام التعديل نفّذ رفعته — يُختم هنا برابطها (لا خطوة بعده)، وبلا رفعة = المهلة كما كانت */
+        if (timeoutClose) {
+          const ref = toolResults.map((t) => (t.type === 'tool_result' && /^✅ رُفع/.test(String(t.content)) ? require('./owner-loop.js').pushRef(t.content) : '')).filter(Boolean).pop() || '';
+          if (ref) { send({ phase: 'reporting', delta: '\n\n' + ref }); run.text = (run.text + '\n\n' + ref).slice(-60000); run.status = 'done'; }
+          else { send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' }); run.status = 'timeout'; }
+          break;
+        }
         await journal(runUser, run);
         convo.push({ role: 'user', content: toolResults });
         send({ phase: 'planning', status: '🧠 الوكيل يراجع النتائج ويكمل العمل…' });
@@ -967,7 +1052,7 @@ module.exports = async (req, res) => {
       }
 
       /* v-owner-carry: كما في المحادثة — خطّة بلا تنفيذ للمالك تُعاد للحلقة مرّة واحدة. */
-      if (isOwner(runUser) && !ownerCarried && steps < MAX_STEPS && Date.now() - taskStart < MAX_TASK_MS - 45000) {
+      if (isOwner(runUser) && !ownerCarried && steps < MAX_STEPS && Date.now() - taskStart < require('./owner-loop.js').FN_BUDGET_MS - 20000) {
         const oc = require('./owner-carry.js');
         const said = contentBlocks.filter(Boolean).map((cb) => cb.text || '').join('');
         if (oc.stalledPlan(said, { usedTools: steps > 1, pushed: (run.pushes || 0) > 0, ownerText: living.lastUserText(messages) })) {
@@ -979,6 +1064,7 @@ module.exports = async (req, res) => {
         }
       }
       // Finished normally.
+      if (isOwner(runUser)) { try { const __ps = require('./prov-self.js'); await __ps.captureOwnerTurn(messages, run.text, 'claude', living.lastUserText(messages)); } catch (e) { /* guard-ok — فشل حفظ المحادثة المشتركة لا يوقف الردّ */ } } // v-prov-one
       run.status = 'done'; await journal(runUser, run); await meterRun(); // v-tokens-agent-cache: التكلفة الفعليّة قبل إغلاق المجرى (بعده قد تتجمّد الدالّة)
       if (agentFail && isOwner(runUser)) send({ phase: 'reporting', delta: swapNote('كلود عبر الوسيط · ' + orModel(model)) }); // v-owner-swap: للمالك وحده، تحت الردّ
       send({ phase: 'reporting', done: true });
@@ -997,4 +1083,4 @@ module.exports = async (req, res) => {
   }
 };
 
-module.exports.__test = { runInClient, toolsFor, isOwner, doPublish }; // v-agent-send-scope · v-agent-github-push — للاختبار
+module.exports.__test = { runInClient, toolsFor, isOwner, doPublish, CLIENT_WAIT_MS }; // v-agent-send-scope · v-agent-github-push · v-agent-img-mode — للاختبار

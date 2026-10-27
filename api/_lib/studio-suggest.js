@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
+      res.status(503).json({ error: 'unavailable' }); /* v-provider-fail: لا اسم مفتاح ولا مزوّد في ردّ المستخدم */
       return;
     }
 
@@ -70,9 +70,10 @@ module.exports = async (req, res) => {
     }
     refund = () => refundCustom(token, null, clientIp(req), 'studio-suggest');
 
-    const isArabic = lang !== 'en' && lang !== 'fr' && lang !== 'hi' && lang !== 'ur' && lang !== 'bn' && lang !== 'ne';
-    const langNames = { en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali' };
-    const targetLang = langNames[lang] || 'Arabic';
+    /* v-audit-studeng (srv-studios-1-4): اللغات الأربع عشرة (كما في construction-create) — كانت ستًّا، فالإسبانيّة والتركيّة والروسيّة
+       والصينيّة والإندونيسيّة والفلبينيّة والمالايالاميّة تصلها البطاقات بالعربيّة. العربيّة لـar (وللطلب بلا لغة كما كان). */
+    const langNames = { ar: 'Arabic', en: 'English', fr: 'French', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali', id: 'Indonesian', fil: 'Filipino', tr: 'Turkish', zh: 'Simplified Chinese', ru: 'Russian', es: 'Spanish', ml: 'Malayalam' };
+    const targetLang = langNames[String(lang || 'ar').toLowerCase()] || 'Arabic';
 
     const featureName = FEATURE_NAMES[feature] || 'overall style';
 
@@ -111,7 +112,10 @@ module.exports = async (req, res) => {
     const data = await upstream.json();
     if (!upstream.ok) {
       await refund();
-      res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
+      const tech = String((data && data.error && data.error.message) || '');
+      console.error('[studio-suggest] upstream ' + upstream.status + ': ' + tech.slice(0, 200));
+      const fail = require('./_videoFail.js').toolFail(upstream.status, tech); /* v-provider-fail: رمز لا نصّ المزوّد */
+      res.status(fail.code).json(fail.body);
       return;
     }
 
@@ -139,6 +143,7 @@ module.exports = async (req, res) => {
     res.status(200).json({ suggestions });
   } catch (e) {
     if (refund) await refund();
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[studio-suggest] ' + (e && e.message ? e.message : String(e)));
+    res.status(503).json({ error: 'unavailable' }); /* v-provider-fail: كان «Proxy error: <نصّ تقنيّ>» */
   }
 };

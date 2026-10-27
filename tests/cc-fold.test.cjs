@@ -50,6 +50,27 @@ const read = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
   const r = read('js/app-04-i18n-state.js');
   assert.match(r, /if\(m\._cc && window\.omranCC && typeof window\.omranCC\.decorate === 'function'\)\{/);
   assert.ok(r.indexOf('window.omranCC.decorate(textDiv, m)') > r.indexOf('msgWordEls = buildSpokenWordSpans(textDiv'), 'بعد الرسم العاديّ');
+  assert.match(cc, /foldCode: foldCode/);
+  assert.match(r, /window\.omranCC\.foldCode\(textDiv\)/, 'v-read-fold: الكود الطويل يُطوى لكلّ المزوّدين لا وضع Claude Code وحده');
+
+  // ٥. v-read-fold-in-reply: أدوات المزود من _agParts تُرسم سطرًا مطويًّا داخل الردّ لكلّ غير _cc
+  assert.match(cc, /toolsEl: toolsEl/);
+  assert.match(cc, /toolsFromParts: toolsFromParts/);
+  assert.match(r, /window\.omranCC\.toolsFromParts\(m\._agParts\)/);
+  assert.match(r, /window\.omranCC\.toolsEl\(__ccItems\)/, 'v-read-fold-in-reply: سطر الأدوات داخل الردّ لا صندوق العمل وحده');
+  const items = win.omranCC.toolsFromParts([
+    { t: 'meta', ms: 1200 },
+    { t: 'think', s: 'أقرأ الصفحة.' },
+    { t: 'tool', name: 'trFetch', title: 'example.com', cmd: 'https://example.com', out: '<html>…', err: 0 },
+    { t: 'tool', name: 'read_github', title: 'a.js  1–40', cmd: 'a.js', out: '📄', err: 0 },
+    { t: 'text', s: 'الجواب' },
+  ]);
+  assert.strictEqual(items.length, 2, 'التفكير والنصّ لا يدخلان سطر الأدوات');
+  assert.strictEqual(items[0].name, 'trFetch');
+  assert.strictEqual(items[0].brief, 'example.com');
+  assert.strictEqual(items[1].name, 'read_github');
+  assert.strictEqual(items[1].brief, 'a.js 1–40');
+  assert.deepStrictEqual(win.omranCC.toolsFromParts([{ t: 'think', s: 'فقط' }]), [], 'بلا أدوات = بلا سطر');
 
   console.log('cc-fold: ok');
 })().catch((e) => { console.error(e); process.exit(1); });

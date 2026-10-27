@@ -332,5 +332,5 @@ test('لقطة المالك «غيرالخلفيه واكتب دعاء الاو�
   eq('اكتب دعاء للأولاد', { visualEdit: 'FALSY' });
   const a9 = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'js/app-09-attach.js'), 'utf8');
   assert.match(a9, /__visEdit = 'غيّر الخلفية بالكامل وراء الأشخاص إلى ' \+ \(__planVisual \|\| /, '«غير الخلفية» بلا هدف = أمر صريح بهدف من المخطّط');
-  assert.match(a9, /content: __visFailed \? \(lang === 'ar' \? 'كتبت على صورتك، بس تغيير الخلفية ما نجح هالمرة/, 'فشل تعديل الخلفيّة يُقال ولا يُسكَت عنه');
+  assert.match(a9, /content: __visFailed \? omranAttachT\('axAttachBgChangeFail', 'كتبت على صورتك، بس تغيير الخلفية ما نجح هالمرة/, 'فشل تعديل الخلفيّة يُقال ولا يُسكَت عنه'); // v-audit-attach: النصّ نفسه بمفتاح الـ١٤ لغة
 });

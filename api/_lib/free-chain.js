@@ -15,7 +15,7 @@
 const { freeChain } = require('./tier.js');
 
 // ملاحظة النظام للطبقة المجانية — بلا اسم أي مزوّد (قرار المالك: «بدون اسم كلاود»).
-const FREE_NOTE = '\n\n[الوضع المجاني — إلزامي]: أنت «عمران» مساعد التطبيق. في هذا الوضع تردّ نصًّا فقط: لا تملك بحثًا حيًّا ولا توليد صور ولا تشغيل كود، فلا تدّعِ أنك بحثت أو رسمت. ما يأتي في رسالة المستخدم تحت «[قرأ التطبيق هذا المحتوى الآن من …]» قُرئ فعلًا: اقرأه كاملًا وحلّله قبل أن تجيب، واستشهد بما فيه (اسم الملفّ أو السطر أو العبارة) دليلًا على كلامك، ولا تقل إنك لا تستطيع فتح الروابط. إن طلب المستخدم بحثًا حيًّا أو صورة أو بناء تطبيق فأجب بما تعرفه باختصار ثم قل بلطف إن هذه الميزة في النسخة الاحترافية. لا تذكر اسم النموذج أو الشركة المزوّدة أبدًا. أجب بلغة المستخدم ولهجته.';
+const FREE_NOTE = '\n\n[الوضع المجاني — إلزامي]: أنت «عمران» مساعد التطبيق. في هذا الوضع تردّ نصًّا فقط: لا تملك بحثًا حيًّا ولا توليد صور ولا تشغيل كود، فلا تدّعِ أنك بحثت أو رسمت. ما يأتي في رسالة المستخدم تحت «[قرأ التطبيق هذا المحتوى الآن من …]» قُرئ فعلًا: اقرأه كاملًا وحلّله قبل أن تجيب، واستشهد بما فيه (اسم الملفّ أو السطر أو العبارة) دليلًا على كلامك، ولا تقل إنك لا تستطيع فتح الروابط. إن طلب المستخدم بحثًا حيًّا أو صورة أو بناء تطبيق فأجب بما تعرفه باختصار ثم قل بلطف إن هذه الميزة في النسخة الاحترافية. لا تذكر اسم النموذج أو الشركة المزوّدة أبدًا. أجب بلغة المستخدم ولهجته.'; /* v-plan-models (خريطة الباقات ١٥ أكتوبر، أُعيد إنتاجه محلّيًّا): هذه السلسلة احتياط المشترك وVIP أيضًا حين تسقط مسارات باقته قبل أوّل حرف (chat.js)،    فكانت FREE_NOTE تقول لمن يدفع إنّ البحث والصور «في النسخة الاحترافيّة». له صيغة محايدة: نصّ فقط مؤقّتًا، بلا ترقية ولا ادّعاء. */ const PAID_NOTE = '\n\n[تنبيه — إلزامي]: أنت «عمران» مساعد التطبيق. هذا الردّ نصّيّ فقط لتعذّر الأدوات مؤقّتًا: لا بحث حيّ ولا توليد صور ولا تشغيل كود في هذا الردّ، فلا تدّعِ أنك بحثت أو رسمت. ما يأتي في رسالة المستخدم تحت «[قرأ التطبيق هذا المحتوى الآن من …]» قُرئ فعلًا فحلّله واستشهد به. إن طلب المستخدم بحثًا أو صورة أو بناء فأجب بما تعرفه باختصار ثم قل بلطف إنّ هذه الميزة متعذّرة في هذه اللحظة وإنّه يستطيع إعادة المحاولة بعد قليل.';
 
 function blockText(b) {
   if (!b) return '';
@@ -92,12 +92,16 @@ async function streamOne(spec, model, messages, send, opts) {
   const fetchImpl = opts.fetchImpl || fetch;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs || 60000);
+  /* v-free-vision-next (تجربة المعاينة ٢٢ أكتوبر: Nemotron بلا حرف ٦٠ ثانية ثمّ «aborted»، والمستخدم ينتظر دقيقة ليرى «ما قدرت أقرأ الصورة»):
+     firstTextMs = مهلة أوّل حرف — إن لم يصل نصّ قبلها يُقطع النداء بخطأ slow فيُجرَّب النموذج التالي؛ وreqExtra حقول إضافيّة للطلب. */
+  let slow = false;
+  const firstTimer = spec.firstTextMs ? setTimeout(() => { slow = true; ctrl.abort(); }, spec.firstTextMs) : null;
   let text = '';
   try {
     const r = await fetchImpl(spec.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + spec.key },
-      body: JSON.stringify({ model, messages, max_tokens: opts.maxTokens || 4000, temperature: 0.7, stream: true }),
+      body: JSON.stringify(Object.assign({ model, messages, max_tokens: opts.maxTokens || 4000, temperature: 0.7, stream: true }, spec.reqExtra || {})),
       signal: ctrl.signal,
     });
     if (!r.ok || !r.body) {
@@ -118,12 +122,16 @@ async function streamOne(spec, model, messages, send, opts) {
         let ev;
         try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
         const d = ev.choices && ev.choices[0] && ev.choices[0].delta && ev.choices[0].delta.content;
-        if (d) { text += d; send({ delta: d }); }
+        if (d) { if (firstTimer) clearTimeout(firstTimer); text += d; send({ delta: d }); }
       }
     }
     return text;
+  } catch (e) {
+    if (slow && !text) { const er = new Error('free-chain ' + spec.id + ' no text in ' + spec.firstTextMs + 'ms'); er.slow = true; er.model = model; throw er; }
+    throw e;
   } finally {
     clearTimeout(timer);
+    if (firstTimer) clearTimeout(firstTimer);
   }
 }
 
@@ -174,20 +182,24 @@ async function streamFreeChain(args) {
   // العمياء كلّها؛ ولا مزوّد يرى = فشل صريح (no-vision-provider) يقوله المستدعي بصدق.
   const needVision = convoHasImage(args.convo);
   /* v-img-why: مزوّد أعمى له نماذج ترى (visionModels) يدخل دور الصورة بها وحدها، بعد من يرى أصلًا، وبلا استكشاف /models
-     (قد يلتقط نموذجًا أعمى). */
+     (قد يلتقط نموذجًا أعمى). v-free-vision-next: بلا «تفكير» قبل الردّ (reasoning.enabled=false في توثيق الوسيط)، ومهلة أوّل حرف
+     FREE_VISION_FIRST_MS (١٥ ثانية) لكلّ نموذج — البطيء يُترك للتالي. Gemini لم يُمسّ. */
+  const visionFirstMs = Number((args.env || process.env).FREE_VISION_FIRST_MS) > 0 ? Number((args.env || process.env).FREE_VISION_FIRST_MS) : 15000;
   const chain = needVision
     ? all.filter((s) => s.vision).concat(all.filter((s) => !s.vision && Array.isArray(s.visionModels) && s.visionModels.length)
-      .map((s) => Object.assign({}, s, { vision: true, visionOnly: true, models: s.visionModels.slice(), model: s.visionModels[0], cacheId: s.id + ':vision' })))
+      .map((s) => Object.assign({}, s, { vision: true, visionOnly: true, models: s.visionModels.slice(), model: s.visionModels[0], cacheId: s.id + ':vision', reqExtra: { reasoning: { enabled: false } }, firstTextMs: visionFirstMs })))
     : all;
   const log = args.log || ((m) => { try { console.warn('[free-chain] ' + m); } catch (e) { /* لا شيء */ } });
   const now = typeof args.now === 'number' ? args.now : Date.now();
-  const system = args.raw ? '' : String(args.system || '') + FREE_NOTE; // v-owner-free: raw للمالك المتحقَّق منه فقط (chat.js)
+  const system = args.raw ? '' : String(args.system || '') + (args.paid ? PAID_NOTE : FREE_NOTE); // v-owner-free: raw للمالك المتحقَّق منه فقط (chat.js)؛ v-plan-models: paid = مشترك/VIP
   let attempts = 0;
   // أسباب الفشل (بلا مفاتيح) — تُعاد للمستدعي ليسجّلها ويبثّها كتشخيص للمالك.
   const errors = [];
   if (!all.length) errors.push('no-provider-keys');
   else if (!chain.length) errors.push('no-vision-provider');
   const scrub = (s) => String(s || '').replace(/[A-Za-z0-9_-]{24,}/g, '…').replace(/\s+/g, ' ').slice(0, 160);
+  // v-free-vision-next: سبب الفشل كاملًا لسجلّ الخادم (المقصوص عند ١٦٠ حرفًا أخفى سبب Gemma 26B) — جسم الردّ بلا مفاتيح.
+  const detail = (e) => String(e && e.status ? 'http ' + e.status + ' ' + (e.body || '') : (e && e.message) || e).replace(/[A-Za-z0-9_-]{24,}/g, '…').replace(/\s+/g, ' ').slice(0, 800);
   for (const spec of chain) {
     attempts++;
     const messages = toOpenAIMessages(system, args.convo, spec.vision);
@@ -198,12 +210,13 @@ async function streamFreeChain(args) {
       const text = await streamOne(spec, model, messages, send, args);
       if (text && text.trim()) {
         workingModel.set(spec.cacheId || spec.id, { model, at: now });
+        if (needVision) log('vision ' + spec.id + '/' + model + (errors.length ? ' after ' + errors.join(' | ') : '')); // v-free-vision-next: النجاح كان صامتًا — من قرأ الصورة ومن زحم قبله، في سجلّ الخادم وحده
         return { ok: true, provider: spec.id, model, text, attempts, errors };
       }
       errors.push(spec.id + '/' + model + ': empty');
       return null;
     };
-    let providerDead = false;
+    let providerDead = false, busyN = 0;
     const models = candidateModels(spec, now);
     const tried = [];
     for (const model of models) {
@@ -212,14 +225,15 @@ async function streamFreeChain(args) {
         if (res) return res;
       } catch (e) {
         if (partial.trim()) return { ok: true, provider: spec.id, model, text: partial, attempts, truncated: true, errors };
-        if (isModelError(e)) { tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; }
-        log(spec.id + ' failed: ' + scrub(e.message));
+        if (needVision) log(spec.id + '/' + model + ' ' + detail(e)); // v-free-vision-next: كلّ محاولة فاشلة في دور الصورة بسببها كاملًا
+        if (isModelError(e)) { tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } if ((spec.id === 'groq' && (e.status === 429 || e.status === 413)) || (spec.visionOnly && ((e.status === 429 && !/free-models-per-/i.test(e.body || '')) || e.slow))) { busyN++; tried.push(model); errors.push(spec.id + '/' + model + ': ' + scrub(e.message)); continue; } // v-plan-models: حدود Groq لكلّ موديل — المزدحم يجرّب التالي قبل الخروج من Groq؛ v-free-vision-next: ونماذج الرؤية المجّانيّة في الوسيط كذلك (429 «rate-limited upstream» زحمة نموذج واحد)، إلّا حدّ الحساب نفسه (free-models-per-day/min) فلا فائدة من التالي
+        if (!needVision) log(spec.id + ' failed: ' + scrub(e.message)); // دور الصورة سجّله كاملًا أعلاه
         errors.push(spec.id + ': ' + scrub(e.message));
         providerDead = true;
         break;
       }
     }
-    if (providerDead) continue;
+    if (providerDead || (busyN && busyN === tried.length)) continue; // v-plan-models: كلّها مزدحمة — لا استكشاف
     if (spec.visionOnly) { errors.push(spec.id + ': no vision model answered'); continue; } // v-img-why: لا استكشاف قد يلتقط أعمى
     // كل المرشّحين «غير موجود» → اسأل المزوّد نفسه عن نماذجه.
     const found = await discoverModel(spec, args);
@@ -299,11 +313,14 @@ async function completeJson(id, opts) {
       return { ok: false, status: r.status, body, model };
     } finally { clearTimeout(timer); }
   };
+  let busy = 0;
   for (const model of models) {
     last = await tryOne(model);
     if (last.ok) return last;
+    if (id === 'groq' && (last.status === 429 || last.status === 413)) { busy++; continue; } // v-plan-models: حدود Groq لكلّ موديل (الذاكرة وتيليجرام والأسهم)
     if (!isModelErrorStatus(last.status, last.body)) return last;
   }
+  if (busy) return last; // مزدحمة — لا استكشاف /models
   const found = await discoverModel(spec, o);
   if (found && !models.includes(found)) last = await tryOne(found);
   return last;
@@ -323,7 +340,10 @@ async function completeFreeChain(opts) {
     try { r = await completeJson(spec.id, { env, messages: o.messages, max_tokens: o.max_tokens || 1500, temperature: typeof o.temperature === 'number' ? o.temperature : 0.5, timeoutMs: o.timeoutMs, fetchImpl: o.fetchImpl, now: o.now }); }
     catch (e) { errors.push(spec.id + ': ' + String((e && e.message) || e).slice(0, 120)); continue; }
     const text = r && r.ok && r.json && r.json.choices && r.json.choices[0] && r.json.choices[0].message && String(r.json.choices[0].message.content || '').trim();
-    if (text) return { ok: true, text, provider: spec.id, model: r.model, errors };
+    /* v-write-fix: «accept» اختياريّ — نصّ لا يقبله المستدعي (JSON مقطوع لأنّ موديلًا مفكّرًا صرف ميزانيّته في التفكير)
+       لا يوقف السلسلة؛ يُسجَّل «rejected» ويُجرَّب المزوّد التالي بدل أن يرجع للمستخدم «تعذّرت الكتابة». */
+    if (text && (typeof o.accept !== 'function' || o.accept(text))) return { ok: true, text, provider: spec.id, model: r.model, errors };
+    if (text) { errors.push(spec.id + ': rejected (' + String((r.json.choices[0].finish_reason) || '?') + ', ' + text.length + ' chars)'); continue; }
     errors.push(spec.id + ': ' + (r && r.ok ? 'empty' : ('http ' + (r && r.status) + ' ' + String((r && r.body) || '').replace(/[A-Za-z0-9_-]{24,}/g, '…').slice(0, 120))));
   }
   return { ok: false, text: '', provider: null, model: null, errors };

@@ -67,11 +67,14 @@ test('١. VIP اختياره القديم المحفوظ (DeepSeek) لا يسر�
   assert.match(b[0].body.model, /^openai\//, 'GPT لا DeepSeek: ' + b[0].body.model);
 });
 
-test('٢. مشترك Max: الدردشة بجدول باقته (Haiku) لا باختياره المحفوظ', async () => {
+test('٢. مشترك Max: الدردشة بجدول باقته (GPT-6 Sol — v-plan-models) لا باختياره المحفوظ', async () => {
   users.set('maxuser', { username: 'maxuser', plan: 'max', planUpdatedAt: Date.now() - 86400000 });
   const b = await ask('maxuser', 'deepseek');
   assert.ok(b.length >= 1);
-  assert.match(b[0].body.model, /claude-haiku-4[.-]5/, 'Haiku لا DeepSeek: ' + b[0].body.model);
+  // دردشة Max: ‏Sol أوّلًا؛ بلا مفتاح OpenAI المباشر (هذا الاختبار) يمرّ الموديل نفسه عبر الوسيط.
+  assert.match(b[0].url, /openrouter\.ai/);
+  assert.equal(b[0].body.model, 'openai/gpt-6-sol', 'Sol لا DeepSeek: ' + b[0].body.model);
+  assert.ok(b.every((x) => !/deepseek/i.test(String(x.body && x.body.model))), 'الاختيار المحفوظ لا يصل أيّ نداء: ' + b.map((x) => x.body && x.body.model).join(', '));
 });
 
 test('٣. العميل: المنتقي يُفتح للمالك وحده — VIP وMax وبقيّة الباقات مقفولون', () => {

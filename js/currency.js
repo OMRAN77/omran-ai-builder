@@ -212,7 +212,18 @@ NC|كاليدونيا الجديدة|🇳🇨|USD|$|1|أوقيانوسيا
       // العملة الأساس: يُعرض السعر كما هو، بلا تقريب.
       e.textContent = fnum(C.r === 1 ? u : pretty(u * C.r));
     });
-    r.querySelectorAll('.cursym').forEach(function (e) { e.textContent = C.sy; });
+    r.querySelectorAll('.cursym').forEach(function (e) {
+      var sy = shownSym(C);
+      e.textContent = sy;
+      if (e.classList) e.classList.toggle('curCode', /^[A-Z]{2,4}$/.test(sy));
+    });
+  }
+  /* v-cur-display (تدقيق ١٨ أكتوبر، pricing-section وcurrency-select؛ موافقة المالك ٢١ أكتوبر «عرض فقط بدون تغيير الأسعار»): الرمز العربيّ
+     (د.إ، ر.س، د.ك…) كان يظهر في الواجهة الإنجليزيّة وبقيّة اللغات — خارج العربيّة يُعرض رمز ISO (AED، SAR…) بدله، والرموز اللاتينيّة
+     ($، A$، €…) كما هي. ترتيب «$10» في الإنجليزيّة بالـCSS (partials-settings). لا سعر ولا سعر صرف ولا تقريب تغيّر. */
+  function shownSym(x) {
+    var sy = String((x && x.sy) || '');
+    return (curLang() !== 'ar' && /[\u0600-\u06FF]/.test(sy)) ? (x.cc || sy) : sy;
   }
 
   /* v658: اسم الدولة بلغة المستخدم عبر Intl.DisplayNames (بلا جدول ترجمة)،
@@ -244,6 +255,7 @@ NC|كاليدونيا الجديدة|🇳🇨|USD|$|1|أوقيانوسيا
   }
   window.__curRelabel = function(){
     Array.prototype.forEach.call(document.querySelectorAll('select[data-cur-filled="1"]'), relabelCur);
+    if (document.querySelector('.cursym')) render(document); // v-cur-display: الرمز يتبع تبديل اللغة
   };
 
   function fillSelect(sel) {

@@ -34,6 +34,14 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'Missing contents' });
       return;
     }
+    // v-sec-gemini-cap: سقف حجم المدخل قبل عدّ الحصّة — المدخل كان يُمرَّر خامًا بلا حدّ، فحساب
+    // مجّانيّ (٢٠/يوم) يرسل ~٤٫٥ م.ب لكلّ نداء على مفتاح مدفوع. ١٫٥ م.ب تكفي لأطول نصّ معقول.
+    let inputBytes = 0;
+    try { inputBytes = Buffer.byteLength(JSON.stringify(contents) + (systemInstruction ? JSON.stringify(systemInstruction) : ''), 'utf8'); } catch (e) { inputBytes = 0; }
+    if (inputBytes > 1536 * 1024) {
+      res.status(413).json({ error: 'النصّ المُرسَل كبير جدًّا. اختصره وحاول من جديد.' });
+      return;
+    }
 
     let premiumRefund = null;
     // v-free-20-daily: سلّة 'chat' المشتركة لغير المشترك — لا يضاعف سقفه بتبديل المزوّد.
@@ -42,7 +50,7 @@ module.exports = async (req, res) => {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
       } else {
-        res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.'), subscribeOnly: !!usage.subscribeOnly }); /* v-tiers */
+        res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.'), subscribeOnly: !!usage.subscribeOnly, tier: usage.tier }); /* v-tiers · v-limit-chain-stop: الطبقة تميّز حدّ المجّانيّ عن حدّ الباقة في العميل */
       }
       return;
     }
@@ -55,6 +63,8 @@ module.exports = async (req, res) => {
       : `https://generativelanguage.googleapis.com/v1beta/models/${useModel}:generateContent?key=${apiKey}`;
     const reqBody = { contents };
     if (systemInstruction) reqBody.systemInstruction = systemInstruction;
+    // v-sec-gemini-cap: سقف مخرجات من الخادم لغير المميّز (المالك/VIP بلا سقف) — العميل لا يملك رفعه.
+    if (!mg.isPrivileged(usage)) reqBody.generationConfig = { maxOutputTokens: 8192 };
 
     const upstream = await fetch(endpoint, {
       method: 'POST',
@@ -66,11 +76,13 @@ module.exports = async (req, res) => {
     // it here rather than letting it fall through as an empty stream.
     if (wantStream && !upstream.ok) {
       let detail = '';
+      const rawErr = await upstream.text().catch(() => '');
       try {
-        const parsed = JSON.parse(await upstream.text());
+        const parsed = JSON.parse(rawErr);
         detail = (parsed && parsed.error && parsed.error.message) || '';
       } catch (e2) { /* non-JSON error body */ }
       console.error('[gemini] stream ' + upstream.status + ' (' + useModel + '): ' + detail);
+      if (usage.tier !== 'owner') { require('./_videoFail.js').chatFail(res, 'gemini', upstream.status, rawErr, false); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
       res.status(upstream.status).json({
         error: 'Gemini (' + upstream.status + '): ' + (detail || 'خطأ غير معروف'),
         provider: 'gemini',
@@ -113,6 +125,7 @@ module.exports = async (req, res) => {
         detail = String(data || '').slice(0, 300);
       }
       console.error('[gemini] upstream ' + upstream.status + ' (' + useModel + '): ' + detail);
+      if (usage.tier !== 'owner') { require('./_videoFail.js').chatFail(res, 'gemini', upstream.status, data, false); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
       res.status(upstream.status).json({
         error: 'Gemini (' + upstream.status + '): ' + (detail || 'خطأ غير معروف'),
         provider: 'gemini',

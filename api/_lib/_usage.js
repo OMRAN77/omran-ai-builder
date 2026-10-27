@@ -8,6 +8,12 @@ const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
 const { kvIncr, kvIncrBy, kvExpire, kvGetJSON, kvDecrBy, kvSetIfAbsent, kvDel } = require('./kv.js');
 const { isVip } = require('./_vip.js');
+// v-sec-ip-net: عدّادات الزوّار على عنوان IP تُطبَّع إلى الشبكة (/64 لـIPv6) حتّى لا يمنح تدوير
+// عنوانٍ داخل /64 حصّةً جديدة. الحجز والاسترجاع يستعملان المفتاح نفسه عبر هذه الدالّة.
+function netOf(ip) {
+  try { const n = require('./welcome-gift.js').giftNet(ip); if (n) return n; } catch (e) { /* يسقط إلى القصّ */ }
+  return (ip && String(ip).trim()) ? String(ip).trim().slice(0, 64) : null;
+}
 // v-tiers: السقف اليومي صار بحسب الطبقة (ضيف/مجاني/مشترك بباقته) لا رقمًا واحدًا،
 // والمزوّدات المدفوعة للمشتركين فقط. انظر tier.js.
 const tierLib = require('./tier.js');
@@ -231,7 +237,7 @@ async function checkAndConsume(token, guestId, provider, ip, opts) {
     return { allowed: false, reason: 'limit', subscribeOnly: true, username: null, tier: 'guest', subscriber: false, message: tierLib.FREE_TEXT.subscribeOnly };
   }
   const guestLimit = tierLib.caps().guest;
-  const addr = ip && String(ip).trim() ? String(ip).trim() : null;
+  const addr = netOf(ip); // v-sec-ip-net: الشبكة لا العنوان الكامل
   if (addr) {
     const key = 'guestip_' + addr + '_' + (chatBucket ? 'chat' : providerKey);
     const taken = await takeTally(key, guestLimit); // سقف صفر يُرفض قبل أيّ عدّ
@@ -308,7 +314,7 @@ async function checkAndConsumeCustom(token, guestId, ip, provider, dailyLimit) {
   // Guests: meter by network address first, so rotating the client-supplied
   // guestId (trivially reset from localStorage) can no longer mint fresh
   // per-endpoint quota. This mirrors checkAndConsume()'s guestip_ approach.
-  const cleanIp = (typeof ip === 'string' && ip.trim()) ? ip.trim().slice(0, 64) : null;
+  const cleanIp = netOf(ip); // v-sec-ip-net
   if (cleanIp) {
     const key = 'ip_' + cleanIp + '_' + todayStr() + '_' + providerKey;
     const taken = await takeTally(key, dailyLimit); // v-atomic-quota
@@ -345,7 +351,7 @@ async function refundCustom(token, guestId, ip, provider) {
       await giveTally(username + '_' + todayStr() + '_' + providerKey);
       return;
     }
-    const cleanIp = (typeof ip === 'string' && ip.trim()) ? ip.trim().slice(0, 64) : null;
+    const cleanIp = netOf(ip); // v-sec-ip-net
     if (cleanIp) { await giveTally('ip_' + cleanIp + '_' + todayStr() + '_' + providerKey); return; }
     if (isValidGuestId(guestId)) await giveTally('guest_' + guestId + '_' + todayStr() + '_' + providerKey);
   } catch (e) { /* أفضل جهد — الردّ لا يُسقط ردّ المستخدم */ }
@@ -389,11 +395,12 @@ async function giveMeter(username, bucket) {
 // v-rename-move: تغيير الاسم لا يصفّر حدّ اليوم — حصص اليوم تنتقل مع الحساب (طلبان مجمّعان، أفضل جهد).
 // v-move-buckets (المراجعة المعاكسة): وكلّ سلال checkAndConsumeCustom المستعملة — كانت سقوف الأدوات (البحث، المشاركة،
 // التنزيل، الاقتراحات، الفيديو…) تتصفّر بتغيير الاسم بلا حدّ. tests/rename-move.test.cjs يستخرج السلال من الكود ويقارن.
-const MOVE_BUCKETS = ['plan', 'chat', 'plan-haiku', 'plan-sonnet', 'maha-realtime', 'agent', 'claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'gemini', 'groq', 'mistral', 'openrouter', 'stt', 'general',
+const MOVE_BUCKETS = ['plan', 'chat', 'plan-haiku', 'plan-sonnet', 'plan-gemini', 'plan-premium' /* v-plan-models: مقياسا Pro وMax — تغيير الاسم لا يصفّرهما */, 'maha-realtime', 'agent', 'claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'gemini', 'groq', 'mistral', 'openrouter', 'stt', 'general',
   'prayer-plan', 'text-layout',
   'search', 'search-classify', 'chat-search', 'translate', 'tts', 'media-intent', 'adchat', 'adimage', 'stamps', 'cx-brief', 'video-write', 'stocks-ai', 'stocks-pf',
   'design-ideas', 'design-suggest', 'fashion-suggest', 'studio-suggest',
-  'video-prompt', 'video-upscale', 'video-download', 'video-enhance',
+  'video-prompt', 'video-upscale', 'video-download', 'video-enhance', 'analyze-zip', /* v-sec-zip-gate: حصّة تحليل الأرشيف تنتقل مع تغيير الاسم */
+  'video-watch', /* v-audit-video (srv-video-4): حدّ فتح رفع «شاهد الفيديو» اليوميّ لا يتصفّر بتغيير الاسم */
   'share', 'share-img', 'share-pdf', 'share-file', 'media-save-img', 'media-save-pdf', 'media-save-file'];
 async function moveTodayTallies(oldUser, newUser) {
   if (!oldUser || !newUser) return;

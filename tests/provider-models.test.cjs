@@ -50,7 +50,7 @@ test('٢ب. v-prov-tools-filter: القائمة الحيّة تعرض فقط م�
   const out = pm.parseModels({ data });
   assert.deepEqual(out.cohere, [['cohere/command-a-plus', 'Command A+']], 'بلا tools = خارج القائمة (والمفقود الحقل كذلك)');
   assert.deepEqual(out.perplexity, [['perplexity/sonar', 'Sonar'], ['perplexity/sonar-pro', 'Sonar Pro']], 'Perplexity بلا فلترة — مساره بلا أدوات أصلًا');
-  assert.match(read('api/_lib/provider-models.js'), /provmodels:v4/, 'مفتاح الكاش رُفع ليُسقط القوائم غير المفلترة');
+  assert.match(read('api/_lib/provider-models.js'), /provmodels:v5/, 'مفتاح الكاش رُفع (v4 القوائم المفلترة، v5 مع البيانات الوصفيّة)');
 });
 
 test('٣. loadModels: الشبكة مرّة ثمّ الذاكرة؛ والمعالج يرفض غير المالك', async () => {
@@ -102,7 +102,7 @@ test('٥. الواجهة: افتراضيّات السهم = ثوابت الخا�
   for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) {
     assert.ok(read(f).includes("window.claudeModelGet() : (window.omranModelFor ? window.omranModelFor(provider || 'claude') : '');"), f);
   }
-  assert.ok(read('index.html').includes('js/modes.js?v=m111026c'), 'وسم كاش modes رُفع');
+  assert.ok(read('index.html').includes('js/modes.js?v=m211026'), 'وسم كاش modes رُفع');
 });
 
 test('٦. v-cohere-prefix (الخادم): تجريد بادئة الوسيط + قائمة مسحوبات مصحّحة رسميًّا + شبكة أمان', () => {

@@ -39,6 +39,7 @@ module.exports = async (req, res) => {
      بلا استرجاع نقاط ولا فكّ قفل، خلافًا لمسارات الفشل الثلاثة الأخرى. */
   let chargedUser = null;
   let videoLocked = null;
+  let chargedPay = null; // v-refund-kind: نتيجة الخصم نفسها — الردّ يعود إلى نوعه
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
@@ -71,6 +72,7 @@ module.exports = async (req, res) => {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
       if (!username) { res.status(401).json({ error: 'auth_required' }); return; }
+      if (await require('./_videoSubs.js').denyFree(res, username)) return; // v-video-subs: الفيديو للمشتركين — قبل سؤال الخصم
       quality = await require('./_qualityGate.js').gateQuality(username, quality); // v-quality-gate: الجودة العالية للمشتركين والمالك
       const gateOm = pointsLib.requireConfirmation(body, pointsLib.COSTS.omni_video, 'فيديو المحرّك السينمائيّ');
       if (gateOm) { res.status(gateOm.status).json(gateOm.payload); return; }
@@ -79,11 +81,11 @@ module.exports = async (req, res) => {
         res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.omni_video, points: pay.points || 0 });
         return;
       }
-      chargedUser = username;
+      chargedUser = username; chargedPay = pay;
       if (!pay.owner) {
         const __vl = await require('./abuse-guard.js').videoLock(username);
         if (!__vl.ok) {
-          await pointsLib.refundPoints(username, pointsLib.COSTS.omni_video);
+          await pointsLib.refundPoints(username, pointsLib.COSTS.omni_video, pay); chargedUser = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
           res.status(429).json({ error: 'video_cooldown', retryAfter: __vl.retryAfter });
           return;
         }
@@ -93,7 +95,7 @@ module.exports = async (req, res) => {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.omni_video);
+      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.omni_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       console.error('[omni-create] missing provider key');
       res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.' });
@@ -151,10 +153,12 @@ module.exports = async (req, res) => {
     });
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
-      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.omni_video);
+      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.omni_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
-      res.status(upstream.status).json({ error: 'تعذّر توليد الفيديو — أعد المحاولة. (' + String(msg).slice(0, 200) + ')', retryable: true });
+      console.error('[omni-create] upstream ' + upstream.status + ': ' + String(msg).slice(0, 300));
+      const fail = require('./_videoFail.js').startFail(upstream.status, msg); /* v-credit-out: كان «أعد المحاولة» لكلّ رفض — نفاد رصيد المزوّد يُعاد ويُخصم ويُردّ بلا نهاية */
+      res.status(fail.code).json(fail.body);
       return;
     }
 
@@ -168,7 +172,7 @@ module.exports = async (req, res) => {
     }
     if (!uri && !b64) {
       // اكتمل بلا فيديو (غالبًا حجبته فلاتر الأمان) — لا يُخصم شيء.
-      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.omni_video);
+      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.omni_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       res.status(502).json({ error: 'لم يُنتَج فيديو (قد يكون الطلب محجوبًا بفلاتر الأمان). جرّب وصفًا آخر.' });
       return;
@@ -184,7 +188,7 @@ module.exports = async (req, res) => {
     /* v-omni-refund: الاسترجاع أفضل جهد ولا يحجب الردّ — بلا هذا تحترق نقاط المستخدم عند كلّ انقطاع */
     try {
       const pl = require('./points.js');
-      if (chargedUser) await pl.refundPoints(chargedUser, pl.COSTS.omni_video);
+      if (chargedUser) await pl.refundPoints(chargedUser, pl.COSTS.omni_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
     } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
     console.error('[omni-create] ' + (e && e.stack ? e.stack : e));

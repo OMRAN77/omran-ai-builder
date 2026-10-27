@@ -16,6 +16,7 @@
    v-live-fresh: نافذة زمنيّة لكلّ بحث (live-fresh.js) وتاريخ كلّ منشور بجانبه متى أعطاه المزوّد؛ والمسارات المخصّصة
    (الأرقام، عقار الإمارات، الفنادق، بطاقات الأماكن) تأخذ القسم الاجتماعيّ بعد قائمتها لا مكانها (طلب المالك «نعم ضيفها»). */
 const { GOOGLE_RESTRICT } = require('./live-fresh.js');
+const serp = require('./serp-search.js'); // v-serp-modules
 
 const SOCIAL_DOMAINS = [
   'youtube.com', 'reddit.com', 'instagram.com', 'tiktok.com', 'x.com',
@@ -107,10 +108,16 @@ async function viaPerplexity(query, f, win) {
 }
 
 async function viaGoogle(query, f, win) {
+  const sites = ' (' + SOCIAL_DOMAINS.map((d) => 'site:' + d).join(' OR ') + ')';
+  const q = String(query || '').slice(0, 240) + sites;
+  /* v-serp-modules: Custom Search يتوقّف ١ يناير ٢٠٢٧ — البديل بمفتاحه أوّلًا بالاستعلام نفسه (site:) والنافذة نفسها (week/month/year)؛
+     بلا مفتاح أو بلا منشور اجتماعيّ منه فـCustom Search كما كان. سقف البديل ٣٠٠ حرف وقيد المنصّات ١٩٤: يُقصّ السؤال لا القيد */
+  const alt = await serp.organic(String(query || '').slice(0, Math.min(240, 300 - sites.length)) + sites, { fetch: f, win });
+  const got = alt && alt.length ? lines(alt.map((x) => ({ url: x.link, title: x.title, text: x.snippet, date: x.date }))) : null;
+  if (got) return got;
   const k = (process.env.GOOGLE_SEARCH_API_KEY || '').trim();
   const cx = (process.env.GOOGLE_SEARCH_CX || '').trim();
   if (!k || !cx) return null;
-  const q = String(query || '').slice(0, 240) + ' (' + SOCIAL_DOMAINS.map((d) => 'site:' + d).join(' OR ') + ')';
   const r = await timed(f, 'https://www.googleapis.com/customsearch/v1?key=' + encodeURIComponent(k) + '&cx=' + encodeURIComponent(cx) + '&num=8&q=' + encodeURIComponent(q) + (win && GOOGLE_RESTRICT[win] ? '&dateRestrict=' + GOOGLE_RESTRICT[win] : ''), {}, 12000);
   if (!r.ok) { console.warn('[social] google HTTP ' + r.status); return null; }
   const d = asJSON(r.body) || {};

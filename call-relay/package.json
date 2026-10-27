@@ -1,0 +1,14 @@
+{
+  "name": "call-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "مرحّل المكالمات الهاتفيّة لوكيل الاتّصال في تطبيق عمران: يصل خطّ الهاتف بجلسة الصوت الحيّ، بلا تسجيل.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "ws": "8.21.3"
+  }
+}

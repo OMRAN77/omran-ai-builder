@@ -68,11 +68,19 @@
   var PANELS = [
     /* v-scene-kinds: صانع الفيديو — المشهد مكان شاشة المعاينة (.vmk-stage) وتُخفى ما دام؛ النتيجة تعود فيها نفسها */
     { id: 'video', sel: '#videoMakerStatus', kind: 'vmaker',
-      busy: ['🚀', '⏳', '🎬', '🎥', '🎨', '🎙️', '🎚️', '🔗', '✍️', '💳'],
+      /* v-ai-video-speed: ⬇️ (تحميل الناتج) جزء من الانتظار — كان يُسقط البطاقة فيبدأ العدّاد من الصفر. ✅/✨ (الترقية في الخلفية) ليست انتظارًا */
+      busy: ['🚀', '⏳', '🎬', '🎥', '🎨', '🎙️', '🎚️', '🔗', '✍️', '💳', '⬇️'],
       scope: '#videoMakerModal', topSel: '#videoMakerModal .vmk-stage', hideSel: '.vmk-stage',
-      top: ['🚀', '⏳', '🎬', '🎥', '🎨', '🎙️', '🎚️', '🔗', '✍️', '💳'] },
+      top: ['🚀', '⏳', '🎬', '🎥', '🎨', '🎙️', '🎚️', '🔗', '✍️', '💳', '⬇️'] },
+    /* v-pstyle-scene (المالك ١٥ أكتوبر بصورة «معرض البطاقات الزجاجيّ» وعدّاد «12» في وسطه: «ادخل ستايل، شوف كيف توليد الصورة ووين مكانه —
+       نفس الفكرة في أنماط الصور»): المشهد مكان صورة النتيجة (قبل شريط «قبل/بعد» #portraitCompareWrap في لوحة العمل) وتُخفى النتيجة
+       السابقة وزرّا التحميل والمشاركة ما دام؛ النتيجة الجديدة تعود في المكان نفسه. الحالة «⏳ جارٍ التحويل…» (ومسار GIF 🎞️) */
     { id: 'styles', sel: '#portraitStyleStatus', kind: 'styles',
-      busy: ['⏳', '🎞️'] },
+      busy: ['⏳', '🎞️'],
+      /* النطاق الصفحة كلّها: لوحة العمل (#portraitWork بالحالة والشريط) تُنقل مع ورقة الأنماط خارج #portraitStyleModal
+         (تحت #omranWelcome)، فنطاق النافذة كان لا يجد البطاقة ويركّب نسخة في كلّ مسح (٥٣ نسخة في المسبار) */
+      scope: 'body', topSel: '#portraitCompareWrap', top: ['⏳', '🎞️'],
+      hideSel: '#portraitCompareWrap, #portraitStyleDownloadLink, #portraitShareBtn' },
     { id: 'fashion', sel: '#fashionAiStatus', kind: 'fashion',
       busy: ['🎨', 'جاري تطبيق', 'Applying'],
       /* v-gen-scene-exact: البطاقة تُركَّب مكان مربّع الرفع — قبل لوح الصورة، والمربّع يُخفى ما دامت البطاقة؛
@@ -86,58 +94,65 @@
       busy: ['🎨'],
       scope: '#studioAiModal', topSel: '#studioAiModal .stStep[data-i18n="studioStepPhoto"]', top: ['🎨'],
       hideSel: '.stStep[data-i18n="studioStepPhoto"], #studioAiSlots, #studioAiResultWrap, #studioMultiResults, #studioAiDownloadLink, #studioAiFavoriteSaveBtn' },
-    /* v-scene-kinds: الترندات — سطر حالتها يُبنى مع لوحة كلّ ترند، والمشهد تحته حيث تظهر النتيجة (#vtOut). حالة الترند
-       المتعدّد المشاهد تبدأ بـ«المشهد ١ من ٣…» ثمّ ⏳ — فتُعرف بوجود ⏳ لا ببدايته (busyHas). وسطر الحالة تحت زرّ «اصنع» في آخر
+    /* v-scene-kinds: الترندات — سطر حالتها يُبنى مع لوحة كلّ ترند، والمشهد تحته حيث تظهر النتيجة (#vtOut). وسطر الحالة تحت زرّ «اصنع» في آخر
        اللوحة، فالمشهد يُركَّب عند حافّة الشاشة السفلى — يُمرَّر إليه (scroll) */
-    { id: 'vtrend', sel: '#vtStatus', kind: 'vtrend', busy: ['⏳'], busyHas: ['⏳'], scroll: true },
-    /* v-scene-kinds: الديكور — المشهد مكان صندوق الأفكار والرفع (#designAiIdeas) ويُخفى ما دام هو والنتيجة السابقة */
+    /* v-trend-scene-live: نصوص الترندات تُكتب بلا إيموجي أصلًا (ui ← noEmoji) فلم تُعرف «مشغولة» قطّ بالمسار الحقيقيّ — «مشغول» سمة
+       صريحة تضبطها اللوحة نفسها (busyAttr)، تصمد لكلّ لغة ولتبدّل النصّ («المشهد ٢ من ٣…»، العدّ التنازليّ بين المشاهد). */
+    { id: 'vtrend', sel: '#vtStatus', kind: 'vtrend', busyAttr: 'data-genw-busy', scroll: true },
+    /* v-scene-kinds: الديكور — المشهد مكان صندوق الأفكار (#designAiIdeas، تحت الرفع منذ v-decor-upload-top) ويُخفى ما دام هو والنتيجة السابقة؛ الرفع لا يُخفى */
     { id: 'decor', sel: '#designAiStatus', kind: 'decor',
       busy: ['🎨'],
       scope: '#designAiModal', topSel: '#designAiIdeas', top: ['🎨'],
       hideSel: '#designAiIdeas, #designBAWrap, #designAiResult, #designAiGrid, #designAiDownloadLink' }
   ];
 
-  /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء */
+  /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء.
+     v-audit-chatcli (cli-chat-rest-7): لكلّ نصّ مفتاح (k) يُقرأ بلغة الواجهة من t() بالـ١٤ لغة، وar/en احتياطه — كان isAr() وحدها، فيرى
+     الأرديّ والفرنسيّ وأخواتهما الإنجليزيّة. نصوص الرسمة نفسها (COMPLETE وكاملة) كما هي بقرار المالك. */
   var KINDS = {
     image: {
       est: 30,
-      hint: { ar: 'جاري توليد الصورة', en: 'Generating image' },
-      expect: { ar: 'الصور تاخذ ~٣٠ ثانية', en: 'images usually take ~30s' },
+      hint: { k: 'axChatcliGenwImageHint', ar: 'جاري توليد الصورة', en: 'Generating image' },
+      expect: { k: 'axChatcliGenwImageExpect', ar: 'الصور تاخذ ~٣٠ ثانية', en: 'images usually take ~30s' },
       stages: {
+        k: ['axChatcliGenwImageS1', 'axChatcliGenwImageS2', 'axChatcliGenwImageS3', 'axChatcliGenwFinal'],
         ar: ['نفهم طلبك…', 'نرسم التفاصيل…', 'نلوّن المشهد…', 'اللمسات الأخيرة ✨'],
         en: ['Understanding your request…', 'Drawing the details…', 'Coloring the scene…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     video: {
       est: 120, wide: true, film: true,
-      hint: { ar: 'جاري توليد الفيديو', en: 'Generating video' },
-      expect: { ar: 'الفيديو ياخذ ١-٣ دقائق', en: 'video usually takes 1-3 min' },
+      hint: { k: 'axChatcliGenwVideoHint', ar: 'جاري توليد الفيديو', en: 'Generating video' },
+      expect: { k: 'axChatcliGenwVideoExpect', ar: 'الفيديو ياخذ ١-٣ دقائق', en: 'video usually takes 1-3 min' },
       stages: {
+        k: ['axChatcliGenwVideoS1', 'axChatcliGenwVideoS2', 'axChatcliGenwVideoS3', 'axChatcliGenwFinal'],
         ar: ['نبني المشاهد…', 'نحرّك الإطارات…', 'نركّب الحركة…', 'اللمسات الأخيرة ✨'],
         en: ['Building the scenes…', 'Animating the frames…', 'Compositing the motion…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — المشاهد السينمائيّة تاخذ وقتًا…', en: 'Still rendering — cinematic scenes take time…' }
+      slow: { k: 'axChatcliGenwVideoSlow', ar: 'ما زال يتولّد — المشاهد السينمائيّة تاخذ وقتًا…', en: 'Still rendering — cinematic scenes take time…' }
     },
     styles: {
       est: 45,
-      hint: { ar: 'جاري توليد الأنماط', en: 'Generating styles' },
-      expect: { ar: 'الأنماط تاخذ ~٤٥ ثانية', en: 'styles usually take ~45s' },
+      hint: { k: 'axChatcliGenwStylesHint', ar: 'جاري توليد الأنماط', en: 'Generating styles' },
+      expect: { k: 'axChatcliGenwStylesExpect', ar: 'الأنماط تاخذ ~٤٥ ثانية', en: 'styles usually take ~45s' },
       stages: {
+        k: ['axChatcliGenwStylesS1', 'axChatcliGenwStylesS2', 'axChatcliGenwStylesS3', 'axChatcliGenwFinal'],
         ar: ['نحلّل ملامح الصورة…', 'نطبّق الأنماط…', 'نضبط الإضاءة…', 'اللمسات الأخيرة ✨'],
         en: ['Reading your features…', 'Applying the styles…', 'Tuning the light…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     fashion: {
       est: 40, /* v-gen-scene-exact: scenes تُربط أدناه بعد تعريف SCENES */
-      hint: { ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
-      expect: { ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
+      hint: { k: 'axChatcliGenwFashionHint', ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
+      expect: { k: 'axChatcliGenwFashionExpect', ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
       stages: {
+        k: ['axChatcliGenwFashionS1', 'axChatcliGenwFashionS2', 'axChatcliGenwFashionS3', 'axChatcliGenwFinal'],
         ar: ['نفهم ذوقك…', 'نرسم القطع…', 'ننسّق الإطلالة…', 'اللمسات الأخيرة ✨'],
         en: ['Reading your taste…', 'Sketching the pieces…', 'Styling the look…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     }
   };
   /* v-style-scene: الستايل — بلا نصّ جديد: مراحله وتوقّعه مركّبة من نصوص الأنواع القائمة (scenes تُربط أدناه) */
@@ -146,6 +161,7 @@
     hint: KINDS.image.hint,
     expect: KINDS.image.expect,
     stages: {
+      k: [KINDS.styles.stages.k[0], KINDS.image.stages.k[1], KINDS.styles.stages.k[2], KINDS.image.stages.k[3]],
       ar: [KINDS.styles.stages.ar[0], KINDS.image.stages.ar[1], KINDS.styles.stages.ar[2], KINDS.image.stages.ar[3]],
       en: [KINDS.styles.stages.en[0], KINDS.image.stages.en[1], KINDS.styles.stages.en[2], KINDS.image.stages.en[3]]
     },
@@ -217,7 +233,7 @@
      («75%» و«75% COMPLETE»)؛ bar = تعبئة الشريط؛ refl = انعكاس النصّ على الأرضيّة؛ tube = عمود الضوء الذي تجري فيه
      الحركة — ينتهي فوق الشريط فلا يمسّه ولا النصّ؛ rip = بركة قاعدته. داخل الحلقة قرص الصورة نفسه (مُنظَّف من أرقامه). */
   var SCENES = [
-    { id: 'neon', src: '/assets/fashion/gen-scene.webp?v=3', w: 1024, h: 559,
+    { id: 'neon', src: '/assets/fashion/gen-scene.webp?v=4', w: 1024, h: 559,
       ring: { cx: 512, cy: 297, r: 39.3, sw: 4.2, hole: 43.4 },
       num: { y: 310.6, size: 37, dw: 13.5, pw: 19 },
       bar: { x: 424.6, y: 357.3, w: 175, h: 7.8 },
@@ -226,7 +242,7 @@
       tube: { x: 366, y: 0, w: 293, h: 350, blend: 'screen' },
       rip: { x: 322, y: 405, w: 380, h: 85, color: 'rgba(190,236,255,.75)' },
       ink: '#aee8f9', arc: '#e6f8ff', glow: 'rgba(190,235,255,.3)', barFill: '#dbe9ff', capInk: '#a5e1f6', flow: '#d6f2ff' },
-    { id: 'gold', src: '/assets/fashion/gen-scene-gold.webp?v=1', w: 1280, h: 699,
+    { id: 'gold', src: '/assets/fashion/gen-scene-gold.webp?v=2', w: 1280, h: 699,
       ring: { cx: 640, cy: 372, r: 49.6, sw: 6.7, hole: 57.5 },
       num: { y: 388.2, size: 45, dw: 16.6, pw: 23.5 },
       bar: { x: 530, y: 446.4, w: 229, h: 10.4 },
@@ -278,6 +294,79 @@
   ];
   KINDS.studio.scenes = STYLE_SCENES;
   KINDS.studio.sceneKey = 'aiapp_st_scene';
+  /* v-pstyle-scene: مشهد «أنماط الصور» — صورة المالك (قاعة رخام عاكس، أسطوانة زجاجيّة ببطاقات بورتريه حولها، وعدّاد في وسطها).
+     موضَّحة ×٤ (١٦٠٠×٨٠٤) ومُحي منها ما يُرسم حيًّا: رقم العدّاد (ملء قرصه من بكسلاته الداكنة) وقوسه الساطع (بلون مجراه الخافت).
+     v-pstyle-mix: ١٢ مشهدًا من شبكات المالك الثلاث (٢×٢ لكلّ منها) — ثلاث ألوان (ثلجيّ، ذهبيّ، نيون بأربعة ألوان) × أربعة أشكال
+     (حلزون، مكعّبات، كرة، قوس)، مقصوصة وموضَّحة ×٢ (١٦٠٠ عرضًا). الدور ممزوج: لا لون ولا شكل يتكرّر في مشهدين متتاليين (دائريًّا).
+     v-pstyle-counter (المالك: «وين العدّاد؟ شيل الكود من ستايل، الفكرة كاملة، وطبّقها في الأنماط — فقط غيّر الأشكال»): عدّاد الستايل
+     نفسه (stScene: حلقة ورقم وشريط بتدرّجه ونصّ «NN% COMPLETE» وحزام الأنبوب) على الـ١٣ كلّها، مكبَّرًا بنسبة ١٦٠٠/١٢٨٠ وما فوق، في
+     وسط هيكل كلّ شكل (الأسطوانة، الكتلة، لوح الكرة، فتحة القوس). الصور بلا عدّاد مرسوم فيُرسم معه قرصه الداكن ومجرى حلقته
+     ومجرى شريطه الخافتان (disc/track/trough) — فيُقرأ كما يُقرأ في الستايل. */
+  /* الأنبوب (الجريان) = المنطقة الداكنة وسط الهيكل بنِسَب الصورة [x0, y0, x1, y1]٪ — من قياس بكسلات الشبكات: عمود الحلزون يمين
+     المنتصف (٤٩٫٥–٥٩٫٥٪)، كتلة المكعّبات، لوح الكرة (٤٤٫٥–٦٢٪)، فتحة القوس. العدّاد في مركز تلك المنطقة (PS_CX/PS_CY) وبمعامل
+     يناسب عرضها (PS_K: عمود الحلزون ضيّق ١٦٠ بكسل فمعامله ١٫١ وشريطه ١٤٠؛ الباقي ١٫٣٦٦). الهياكل كلّها داخل قصّ الجوّال ٥:٤. */
+  var PS_TUBE = { spiral: [49.5, 18, 59.5, 62], cubes: [39.5, 57, 60.5, 82], sphere: [44.5, 18.5, 62, 51], arch: [40.7, 37, 58.1, 68] };
+  var PS_CX = { spiral: 872, cubes: 800, sphere: 852, arch: 790 };
+  var PS_CY = { spiral: 36, cubes: 65, sphere: 31, arch: 49 };
+  var PS_K = { spiral: 1.1, cubes: 1.366, sphere: 1.366, arch: 1.366 };
+  var PS_HUE = {
+    ice: { bg: '#2b3a49', flow: '#d9ecff', ink: '#f0fefe', arc: '#f8ffff', glow: 'rgba(214,244,255,.34)', grad: ['#cfcce9', '#c2f0fa'], capInk: '#edfcfd' },
+    gold: { bg: '#3d2d22', flow: '#f1dcb0', ink: '#fffcd4', arc: '#fffbd8', glow: 'rgba(255,240,190,.38)', grad: ['#f8e0b0', '#fff6cf'], capInk: '#fff7c8' },
+    blue: { bg: '#172a52', flow: '#9fd4ff', ink: '#caf3fb', arc: '#dafeff', glow: 'rgba(150,232,255,.38)', grad: ['#a99fe0', '#8fdcf2'], capInk: '#bbe7f4' },
+    green: { bg: '#1c3a24', flow: '#b9ffc8', ink: '#e3ffe9', arc: '#f0fff3', glow: 'rgba(170,255,200,.38)', grad: ['#8fe3a5', '#c9ffd6'], capInk: '#d4ffdf' },
+    purple: { bg: '#331e45', flow: '#e0b8ff', ink: '#f3e4ff', arc: '#f8efff', glow: 'rgba(220,180,255,.4)', grad: ['#c79bff', '#efd9ff'], capInk: '#ead6ff' },
+    amber: { bg: '#3d2d1a', flow: '#ffe49a', ink: '#fff3cf', arc: '#fff8e6', glow: 'rgba(255,236,190,.35)', grad: ['#f5c96a', '#ffeab0'], capInk: '#ffeeb8' },
+    gallery: { bg: '#2a221b', flow: '#f1dcb0', ink: '#fff3d6', arc: '#ffe6a8', glow: 'rgba(255,220,150,.35)', grad: ['#f8e0b0', '#fff6cf'], capInk: '#fff7c8' }
+  };
+  var PS_DISC = 'rgba(6,9,18,.5)', PS_TRACK = 'rgba(255,255,255,.2)', PS_TROUGH = 'rgba(255,255,255,.16)';
+  /* عدّاد الستايل (stScene على ١٢٨٠) مكبَّرًا بمعامل k حول مركز (cx, cy): مقاديره نِسَب من قياسات صور الستايل نفسها */
+  function psCounter(cx, cy, k){
+    var m = function(v){ return Math.round(v * k * 10) / 10; }, at = function(d){ return Math.round((cy + d * k) * 10) / 10; };
+    return {
+      ring: { cx: cx, cy: cy, r: m(36.6), sw: m(3.8), hole: m(47.5), disc: PS_DISC, track: PS_TRACK },
+      num: { x: cx, y: at(11.6), size: m(30), dw: m(12.5), pw: m(17.6) },
+      bar: { x: Math.round((cx - 63.75 * k) * 2) / 2, y: at(60.3), w: Math.round(127.5 * k * 2) / 2, h: m(8), trough: PS_TROUGH }, /* أنصاف — فجمع x+w في تدرّج الشريط بلا كسور عائمة */
+      cap: { x: cx, y: at(86.1), size: m(12.8), dw: m(4.8), rest: m(56.6) },
+      gap: [at(51.8), at(91.8)]
+    };
+  }
+  function psScene(id, file, h, hue, shape){
+    var t = PS_TUBE[shape], c = PS_HUE[hue], k = psCounter(PS_CX[shape], Math.round(PS_CY[shape] * h / 100), PS_K[shape]);
+    k.bar.grad = c.grad;
+    return { id: id, src: '/assets/portrait/gen-scene-' + file + '.webp?v=2', w: 1600, h: h, hue: hue, shape: shape, bg: c.bg, flow: c.flow,
+      ring: k.ring, num: k.num, bar: k.bar, cap: k.cap,
+      tube: { x: Math.round(t[0] * 16), y: Math.round(t[1] * h / 100), w: Math.round((t[2] - t[0]) * 16), h: Math.round((t[3] - t[1]) * h / 100), blend: 'screen', gap: k.gap },
+      refl: null, rip: null, ink: c.ink, arc: c.arc, glow: c.glow, capInk: c.capInk };
+  }
+  /* معرض البطاقات: عدّاده مرسوم في صورة المالك (حلقة ٧٢ ورقم، وتحتهما شريط أبيض ٤٥٨–٤٧٨ ونصّ ٤٩٠–٥٠٨) — مُحي كلّه ويُرسم حيًّا
+     في مواضعه بقياساته (الشريط والنصّ في منتصف الحلقة؛ كانا أيسر منها ببضع بكسلات في الرسم) */
+  var PS_GALLERY = (function(){
+    var c = PS_HUE.gallery;
+    return { id: 'psGallery', src: '/assets/portrait/gen-scene-gallery.webp?v=4', w: 1600, h: 804, hue: 'gallery', shape: 'cylinder', bg: c.bg, flow: c.flow,
+      ring: { cx: 802, cy: 346, r: 72, sw: 9, hole: 86, disc: PS_DISC, track: PS_TRACK },
+      num: { x: 802, y: 366, size: 50, dw: 20, pw: 28 },
+      bar: { x: 692, y: 459, w: 220, h: 18, trough: 'rgba(30,22,14,.4)', grad: c.grad }, /* مجرى داكن — زجاج المعرض فاتح فالمجرى الأبيض الخافت لا يُرى */
+      cap: { x: 802, y: 507, size: 19, dw: 7.1, rest: 84 },
+      tube: { x: 560, y: 30, w: 480, h: 650, blend: 'screen', gap: [449, 517] },
+      refl: null, rip: null, ink: c.ink, arc: c.arc, glow: c.glow, capInk: c.capInk };
+  })();
+  var PORTRAIT_SCENES = [
+    PS_GALLERY,
+    psScene('psNeonSpiral', 'neon-spiral', 796, 'blue', 'spiral'),
+    psScene('psGoldCubes', 'gold-cubes', 797, 'gold', 'cubes'),
+    psScene('psIceSphere', 'ice-sphere', 797, 'ice', 'sphere'),
+    psScene('psNeonArch', 'neon-arch', 790, 'amber', 'arch'),
+    psScene('psIceSpiral', 'ice-spiral', 792, 'ice', 'spiral'),
+    psScene('psGoldSphere', 'gold-sphere', 798, 'gold', 'sphere'),
+    psScene('psNeonCubes', 'neon-cubes', 782, 'green', 'cubes'),
+    psScene('psGoldArch', 'gold-arch', 801, 'gold', 'arch'),
+    psScene('psIceCubes', 'ice-cubes', 796, 'ice', 'cubes'),
+    psScene('psGoldSpiral', 'gold-spiral', 793, 'gold', 'spiral'),
+    psScene('psNeonSphere', 'neon-sphere', 804, 'purple', 'sphere'),
+    psScene('psIceArch', 'ice-arch', 801, 'ice', 'arch')
+  ];
+  KINDS.styles.scenes = PORTRAIT_SCENES;
+  KINDS.styles.sceneKey = 'aiapp_ps_scene';
   /* @vd-scenes:start — مولَّد من قياسات الصور (لا يُحرَّر يدويًّا: يُعاد توليده مع أيّ صورة جديدة) */
   var VD_FONT = { family: "'Bahnschrift','Segoe UI','Helvetica Neue','Roboto',Arial,sans-serif", weight: 300 };
   var VIDEO_SCENES = [
@@ -364,9 +453,13 @@
       h += '<defs><linearGradient id="genwBarG-' + sc.id + '" gradientUnits="userSpaceOnUse" x1="' + sc.bar.x + '" y1="0" x2="' + (sc.bar.x + sc.bar.w) + '" y2="0">'
         + '<stop offset="0" stop-color="' + sc.bar.grad[0] + '"/><stop offset="1" stop-color="' + sc.bar.grad[1] + '"/></linearGradient></defs>';
     }
+    /* v-pstyle-counter: صورة بلا عدّاد مرسوم — قرصه الداكن ومجرى حلقته يُرسمان قبل القوس (المشاهد الأخرى: في صورها) */
+    if(r && r.disc) h += '<circle class="genw-disc" cx="' + r.cx + '" cy="' + r.cy + '" r="' + (Math.round((r.r + r.sw * 1.2) * 10) / 10) + '" fill="' + r.disc + '"></circle>';
+    if(r && r.track) h += '<circle class="genw-track" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '" stroke="' + r.track + '" stroke-width="' + r.sw + '"></circle>';
     if(r && !r.img) h += '<circle class="genw-arcg" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.glow + '" stroke-width="' + (Math.round(r.sw * 19) / 10) + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>'
       + '<circle class="genw-arc" cx="' + r.cx + '" cy="' + r.cy + '" r="' + r.r + '"' + rot + ' stroke="' + sc.arc + '" stroke-width="' + r.sw + '" stroke-dasharray="' + L + '" stroke-dashoffset="' + L + '"></circle>';
     if(sc.num) h += '<text class="genw-num" x="' + (sc.num.x || r.cx) + '" y="' + sc.num.y + '" text-anchor="middle" lengthAdjust="spacingAndGlyphs" font-size="' + sc.num.size + '" fill="' + sc.ink + '"' + fst + '>' + zero + '%</text>';
+    if(sc.bar && sc.bar.trough) h += '<rect class="genw-trough" x="' + sc.bar.x + '" y="' + sc.bar.y + '" width="' + sc.bar.w + '" height="' + sc.bar.h + '" rx="' + (sc.bar.h / 2) + '" fill="' + sc.bar.trough + '"></rect>';
     if(sc.bar) h += '<rect class="genw-bar" x="' + sc.bar.x + '" y="' + sc.bar.y + '" width="0" height="' + sc.bar.h + '" rx="' + (sc.bar.h / 2) + '" fill="' + barFill + '"></rect>';
     if(sc.cap) h += '<text class="genw-cap" x="' + (sc.cap.x || r.cx) + '" y="' + sc.cap.y + '" text-anchor="' + (sc.cap.anchor || 'middle') + '" lengthAdjust="spacingAndGlyphs" font-size="' + sc.cap.size + '" fill="' + sc.capInk + '">' + zero + '%' + capSfx + '</text>';
     /* حلقات إضافيّة (لوحة جانبيّة ثانية بعدّادها): قوس ووهج ورقم لكلّ واحدة، تمشي مع الرئيسيّة */
@@ -420,6 +513,7 @@
     /* عدّاد الصورة: SVG يملأ إطار التأثيرات وإحداثيّاته إحداثيّات الصورة */
     + '.genw-live{position:absolute;top:0;left:0;width:100%;height:100%;z-index:3;overflow:visible;direction:ltr}'
     + '.genw-live circle{fill:none}'
+    + '.genw-live circle.genw-disc{fill:var(--genw-disc,rgba(6,9,18,.5))}'
     + '.genw-arc,.genw-arcg,.genw-xarc,.genw-xarcg{transition:stroke-dashoffset .25s linear}'
     /* قوس الصورة: فوق الجريان وتحت الأرقام، مخفيّ حتى أوّل رسم */
     + '.genw-arcimg{position:absolute;z-index:2;background:center/100% 100% no-repeat;-webkit-mask-image:conic-gradient(#000 0,transparent 0);mask-image:conic-gradient(#000 0,transparent 0)}'
@@ -462,6 +556,13 @@
   /* أعرض رقم مقيس بخطّ سطر الوقت: ٠٫٥٧٤em عربيًّا و٠٫٦em لاتينيًّا (مسبار الأرقام، ١٢ بكسل) */
   var SEC_DIGIT_EM = 0.62;
   function isAr(){ try{ return (typeof lang !== 'undefined' ? lang : 'ar') === 'ar'; }catch(e){ return true; } }
+  /* v-audit-chatcli: نصّ بلغة الواجهة من t() بمفتاحه، وإلّا احتياطه العربيّ للعربيّ والإنجليزيّ لغيره كما كان */
+  function genwTx(k, ar, en){
+    try{ if(k && typeof t === 'function'){ var v = t(k); if(typeof v === 'string' && v && v !== k) return v; } }catch(e){ /* guard-ok — بلا قاموس يبقى الاحتياط */ }
+    return isAr() ? ar : en;
+  }
+  function genwOne(o){ return genwTx(o.k, o.ar, o.en); }
+  function genwList(o){ return o.en.map(function(en, i){ return genwTx(o.k && o.k[i], o.ar[i], en); }); }
 
   /* منحنى التقدّم: يتسارع ثمّ يهدأ — لا يتجاوز ٩٢٪ مهما طال الانتظار (النتيجة تستبدل البطاقة) */
   function eased(p){ return p >= 1 ? 0.92 : (1 - Math.pow(1 - Math.min(p, 1), 2.2)) * 0.92; }
@@ -480,10 +581,11 @@
     var t0 = (opts && Number(opts.t0)) || Date.now();
     var kind = (opts && opts.kind && KINDS[opts.kind]) ? opts.kind : 'image';
     var cfg = KINDS[kind];
-    var stages = cfg.stages[isAr() ? 'ar' : 'en'];
-    var hint = cfg.hint[isAr() ? 'ar' : 'en'];
-    var expect = cfg.expect[isAr() ? 'ar' : 'en'];
-    var slowTxt = cfg.slow[isAr() ? 'ar' : 'en'];
+    var stages = genwList(cfg.stages);
+    var hint = genwOne(cfg.hint);
+    var expect = genwOne(cfg.expect);
+    var slowTxt = genwOne(cfg.slow);
+    var secUnit = genwTx('axChatcliGenwSec', 'ث', 's');
 
     var sc = cfg.scenes ? nextScene(cfg) : null; /* v-gen-scene-exact: مشهد هذا التوليد (بالدور) — v-style-scene: بدور نوعه */
     var root = document.createElement('div');
@@ -573,13 +675,13 @@
         timerEl.textContent = uiText('⏱ ');
         secEl = document.createElement('b');
         timerEl.appendChild(secEl);
-        timerEl.appendChild(document.createTextNode((isAr() ? 'ث' : 's') + ' — ' + expect));
+        timerEl.appendChild(document.createTextNode(secUnit + ' — ' + expect));
       }
       secEl.style.minWidth = (num.length * SEC_DIGIT_EM) + 'em';
       secEl.textContent = num;
     }
     /* قبل أوّل نبضة موصولة (≤١٥٠ مث) السطر نصّ عاديّ يحفظ ارتفاعه؛ بعدها يبنيه paintTimer بخانته */
-    timerEl.textContent = '⏱ ' + fmt(0) + (isAr() ? 'ث' : 's') + ' — ' + expect;
+    timerEl.textContent = '⏱ ' + fmt(0) + secUnit + ' — ' + expect;
     /* الساعة تبدأ بعد ما تُركّب البطاقة: أول نبضة قد تأتي والعنصر لم يُلحق بعد
        (render يُستدعى ثمّ يُلحق الناتج) فلا نطفئها إلا بعد اتصالٍ سابق. */
     var wasConnected = false;
@@ -618,10 +720,23 @@
      فقاعة التفكير («🎬 جاري إنشاء الفيديو…») فبقي بلا بطاقة. نرصد السطر الجاري ونركّب
      بطاقة الفيديو العريضة في الفقاعة نفسها؛ تُرفع معها عند وصول النتيجة. */
   var CHAT_VIDEO_RE = /🎬 (?:جاري إنشاء الفيديو|Creating video)/;
+  /* v-audit-attach (x-i18n-6): سطرا فيديو المحادثة صارا بمفتاح الـ١٤ لغة في app-09 (axAttachVidCreating/axAttachVidCreatingShort) —
+     التعبير الحرفيّ وحده يُسقط البطاقة عن الفرنسيّة والهنديّة وغيرهما، فيُطابَق نصّ اللغة الحاليّة أيضًا (بلا نقاط الختام). */
+  function chatVideoLine(s){
+    if(CHAT_VIDEO_RE.test(s)) return true;
+    if(s.indexOf('🎬') < 0 || typeof t !== 'function') return false;
+    var ks = ['axAttachVidCreating', 'axAttachVidCreatingShort'];
+    for(var i = 0; i < ks.length; i++){
+      var v = '';
+      try{ v = String(t(ks[i]) || ''); }catch(e){ v = ''; }
+      v = v.replace(/[\s….]+$/, '');
+      if(v && v !== ks[i] && s.indexOf(v) !== -1) return true;
+    }
+    return false;
+  }
 
-  /* الرصد: فقاعة نصّها أحد أسطر «أرسم لك…» ولا بطاقة فيها ← نركّب بطاقة.
-     زمن البداية لكلّ نصّ يُحفظ فلا يصفّره renderAll، ويُنسى حين تختفي الفقاعة. */
-  var t0ByText = Object.create(null);
+  /* ١٥ أكتوبر ٢٠٢٦ — طلب المالك إرجاع انتظار صور المحادثة لما قبل البطاقة:
+     تبقى رسالة «أرسم لك الصورة…» من العارض، بلا عدّاد إضافي. بقية اللوحات كما هي. */
   /* زمن بداية كلّ لوحة: يبقى طول التوليد الواحد (الفيديو يبدّل نصّ حالته 🚀→⏳→🎬)
      ولا يُصفَّر إلا حين ينتهي الاشتغال أو تُزال البطاقة. */
   var t0ByPanel = Object.create(null);
@@ -653,6 +768,8 @@
     delete rawBusy[p.id]; delete cleanBusy[p.id];
     return false;
   }
+  /* v-trend-scene-live: لوحة تعلن انشغالها بسمة على سطر حالتها — لا نصّ يُفسَّر */
+  function attrBusy(p, pel){ try{ return !!pel && pel.getAttribute(p.busyAttr) === '1'; }catch(e){ return false; } }
   /* تُستدعى مع كلّ دفعة تغيّرات — ثلاث قراءات بالمعرّف فقط */
   function sample(){
     for(var i = 0; i < PANELS.length; i++){
@@ -664,21 +781,6 @@
 
   function scan(){
     if(!document.body) return;
-    var active = Object.create(null);
-    var els = document.querySelectorAll('.msg-text');
-    for(var i = 0; i < els.length; i++){
-      var el = els[i];
-      var txt = '';
-      try{ txt = String(el.textContent || '').trim(); }catch(e){ continue; }
-      if(PHRASES.indexOf(txt) === -1) continue;
-      var host = el.parentNode;
-      if(!host || host.querySelector('.genw')) { active[txt] = 1; continue; }
-      active[txt] = 1;
-      if(!t0ByText[txt]) t0ByText[txt] = Date.now();
-      try{ host.appendChild(render({ t0: t0ByText[txt] })); }catch(e){ try{ __swallow(e, 'gen-wait:scan'); }catch(_){ /* لا سجلّ هنا — العرض تجميليّ */ } }
-    }
-    for(var k in t0ByText){ if(!active[k]) delete t0ByText[k]; }
-
     /* فيديو المحادثة: سطر «🎬 جاري إنشاء الفيديو…» الجاري داخل فقاعة التفكير
        (.chat-status-text) ← بطاقة عريضة في الفقاعة؛ اختفى السطر ← تُرفع البطاقة. */
     var cvFound = false;
@@ -686,7 +788,7 @@
     for(var ci = 0; ci < cvEls.length; ci++){
       var ctxt = '';
       try{ ctxt = String(cvEls[ci].textContent || ''); }catch(e){ continue; }
-      if(!CHAT_VIDEO_RE.test(ctxt)) continue;
+      if(!chatVideoLine(ctxt)) continue;
       var chost = cvEls[ci].closest ? cvEls[ci].closest('.msg.assistant') : null;
       if(!chost) continue;
       cvFound = true;
@@ -714,7 +816,7 @@
       if(!pel || !pel.parentNode) continue;
       var ptxt = '';
       try{ ptxt = String(pel.textContent || '').trim(); }catch(e){ ptxt = ''; }
-      var busy = panelBusy(p, ptxt); /* v-gen-scene: يصمد لحذف الإيموجي من سطر الحالة */
+      var busy = p.busyAttr ? attrBusy(p, pel) : panelBusy(p, ptxt); /* v-gen-scene: يصمد لحذف الإيموجي من سطر الحالة */
       var card = null;
       var scopeEl = pel.parentNode; /* v-gen-scene: بطاقة تُركَّب أعلى الاستوديو ليست ابنة حاوية سطر الحالة بالضرورة */
       if(p.scope){ try{ scopeEl = document.querySelector(p.scope) || pel.parentNode; }catch(e){ scopeEl = pel.parentNode; } }
@@ -796,6 +898,7 @@
       if(tg && tg.closest && tg.closest('#btnFashionAI')) preloadScenes();
       /* v-style-scene: خمسة مشاهد — يُحمَّل القادم وحده عند فتح الاستوديو وعند كلّ «ولّد» (لا الخمسة) */
       if(tg && tg.closest && tg.closest('#btnStudioAI, #studioAiGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.studio, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      if(tg && tg.closest && tg.closest('#btnPortraitStyle, #portraitStyleGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.styles, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
       /* v-scene-kinds: القادم وحده لكلّ مجموعة — عند فتح الأداة وعند زرّ التوليد */
       var pre = !tg || !tg.closest ? null : (tg.closest('#btnVideoMaker, #videoMakerGenerateBtn') ? KINDS.vmaker : (tg.closest('#vtGrid, #vtGo') ? KINDS.vtrend : (tg.closest('#btnDesignAI, #designAiGenerateBtn, #designAiIdeaAI') ? KINDS.decor : null)));
       if(pre && pre.scenes && pre.scenes.length){ try{ (new Image()).src = nextScene(pre, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
@@ -808,6 +911,7 @@
   window.omranGenWait._sample = sample;
   window.omranGenWait._scenes = SCENES; window.omranGenWait._nextScene = nextScene; window.omranGenWait._sceneHtml = sceneHtml; /* v-gen-scene-exact: للاختبار */
   window.omranGenWait._secDigitEm = SEC_DIGIT_EM; window.omranGenWait._applyHide = applyHide; /* v-gen-steady: للاختبار */
-  window.omranGenWait._styleScenes = STYLE_SCENES; /* v-style-scene: للاختبار */
+  window.omranGenWait._styleScenes = STYLE_SCENES; window.omranGenWait._portraitScenes = PORTRAIT_SCENES; /* v-pstyle-scene: للاختبار */ /* v-style-scene: للاختبار */
+  window.omranGenWait._attrBusy = attrBusy; /* v-trend-scene-live: للاختبار */
   window.omranGenWait._videoScenes = VIDEO_SCENES; window.omranGenWait._trendScenes = TREND_SCENES; window.omranGenWait._decorScenes = DECOR_SCENES; /* v-scene-kinds: للاختبار */
 })();

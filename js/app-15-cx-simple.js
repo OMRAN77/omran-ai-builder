@@ -58,21 +58,32 @@
     setVal('constructionFloors', p.floors);
     setVal('constructionArea', p.area);
     applyAnnexes(p.annexes);
-    var bits = [optText('constructionType', p.type), optText('constructionStyle', p.style), p.floors + '×', p.area + ' m²'];
+    /* v-cx-bidi (تدقيق ١٨–١٩ أكتوبر: «2× وm² إنجليزيّة وترتيب مقلوب»): الأدوار بتسمية حقلها والمساحة بوحدة تسمية حقلها
+       («المساحة (م²)» ← «م²»، مترجمتين بالـ14 لغة)، وكلّ جزء معزول ⁨…⁩ فلا ينقلب ترتيبه في السطر العربيّ */
+    var lab = function(id){ var e = $(id); return (e && e.previousElementSibling) ? e.previousElementSibling.textContent.trim() : ''; };
+    var areaLab = lab('constructionArea'), unit = (areaLab.match(/\(([^)]+)\)/) || [])[1];
+    var bits = [optText('constructionType', p.type), optText('constructionStyle', p.style), (lab('constructionFloors') + ' ' + p.floors).trim(), unit ? p.area + ' ' + unit : (areaLab + ' ' + p.area).trim()];
     if(p.annexes.length) bits.push('+' + p.annexes.length);
-    st.textContent = T(TX.ready).replace('{s}', bits.filter(Boolean).join(' · '));
+    st.textContent = T(TX.ready).replace('{s}', bits.filter(Boolean).map(function(s){ return '⁨' + s + '⁩'; }).join(' · '));
     st.style.display = 'block';
   }
 
+  /* اسم البطاقة من خيار النوع نفسه: [الرمز، الاسم، وُجد رمز؟]. v-hw-resubmit-2: render يعيد الاسم — البطاقات تُبنى مرّة عند الإقلاع
+     قبل وصول قاموس اللغة الكسول (zh وبقيّة الـ١٢)، فكانت تبقى بالإنجليزيّة في لقطة المتجر الصينيّة. والرمز لا يُعاد إلّا إن وُجد:
+     app-36-clean-ui ينزع الرموز من نصوص الخيارات بعد الإقلاع، فكان أوّل نقر يحوّل الستّ إلى 🏗️ (المراجعة العدائيّة). */
+  function cardLabel(type){
+    var txt = optText('constructionType', type) || type;
+    var emRe; try{ emRe = new RegExp('^(\\p{Extended_Pictographic}\\uFE0F?)\\s*(.*)$', 'u'); }catch(e){ emRe = /^((?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF])\uFE0F?)\s*(.*)$/; /* v-es-floor: محرّك قديم — تقريب */ }
+    var m = txt.match(emRe);
+    return m ? [m[1], m[2], true] : ['🏗️', txt, false];
+  }
   function card(p, st, all){
     var b = document.createElement('button'); b.type = 'button';
     b.setAttribute('data-cx-preset', p.type);
     b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 6px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.14));background:rgba(255,255,255,.03);color:inherit;font-family:inherit;font-size:11.5px;font-weight:700;line-height:1.35;cursor:pointer;text-align:center;';
-    var txt = optText('constructionType', p.type) || p.type;
-    var emRe; try{ emRe = new RegExp('^(\\p{Extended_Pictographic}\\uFE0F?)\\s*(.*)$', 'u'); }catch(e){ emRe = /^((?:[\uD83C-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF])\uFE0F?)\s*(.*)$/; /* v-es-floor: محرّك قديم — تقريب */ }
-    var m = txt.match(emRe);
-    var em = document.createElement('span'); em.textContent = m ? m[1] : '🏗️'; em.style.cssText = 'font-size:22px;';
-    var nm = document.createElement('span'); nm.textContent = m ? m[2] : txt;
+    var lb = cardLabel(p.type);
+    var em = document.createElement('span'); em.textContent = lb[0]; em.style.cssText = 'font-size:22px;';
+    var nm = document.createElement('span'); nm.textContent = lb[1];
     b.appendChild(em); b.appendChild(nm);
     b.onclick = function(){
       all.forEach(function(x){ x.style.borderColor = 'var(--border,rgba(255,255,255,.14))'; x.style.background = 'rgba(255,255,255,.03)'; });
@@ -101,6 +112,10 @@
     var m = $('cxMoreBtn');
     if(m) m.textContent = ($('cxMore') && $('cxMore').style.display !== 'none') ? ('▴ ' + T(TX.less)) : (T(TX.more) + ' ▾');
     var p = $('cxMorePeek'); if(p) p.textContent = peek();
+    Array.prototype.forEach.call(document.querySelectorAll('#cxStartCards [data-cx-preset]'), function(b){
+      var lb = cardLabel(b.getAttribute('data-cx-preset')), sp = b.querySelectorAll('span');
+      if(sp.length >= 2){ if(lb[2] && sp[0].textContent !== lb[0]) sp[0].textContent = lb[0]; if(sp[1].textContent !== lb[1]) sp[1].textContent = lb[1]; }
+    });
   }
 
   function boot(){

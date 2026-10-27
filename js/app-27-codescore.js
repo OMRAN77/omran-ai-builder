@@ -52,6 +52,7 @@
       upgrade: 'اشترك للنسخة الاحترافية', signup: 'سجّل مجانًا', commentRatio: 'نسبة التعليقات', truncated: 'مقتطع',
       deep: 'التحليل التفصيليّ — ملفًّا ملفًّا ودالّةً دالّة', freeNote: 'هذا تقرير الوضع المجانيّ. النسخة الاحترافيّة تحلّل بعمق أكبر وبملفّات أكبر.',
       readNote: 'قرأ بنفسه: {n} فتحًا وتفتيشًا في {r} جولة · {f} ملفًّا متاحًا للقراءة',
+      fixAsk: 'أصلح هذه المشاكل التي كشفها التحليل:',
       sev: { critical: 'حرِج', high: 'عالٍ', medium: 'متوسّط', low: 'منخفض', info: 'ملاحظة' },
       cat: { correctness: 'الصحّة', security: 'الأمان', performance: 'الأداء', readability: 'الوضوح', maintainability: 'الصيانة', best_practices: 'أفضل الممارسات' },
     },
@@ -72,13 +73,23 @@
       upgrade: 'Upgrade to Pro', signup: 'Sign up free', commentRatio: 'comment ratio', truncated: 'truncated',
       deep: 'Detailed analysis — file by file, function by function', freeNote: 'This is the free-tier report. The Pro engine analyzes deeper and accepts larger files.',
       readNote: 'Read on its own: {n} opens & searches across {r} rounds · {f} files available to read',
+      fixAsk: 'Fix these issues found by the analysis:',
       sev: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Info' },
       cat: { correctness: 'Correctness', security: 'Security', performance: 'Performance', readability: 'Readability', maintainability: 'Maintainability', best_practices: 'Best practices' },
     },
   };
-  function t(k) { var d = ar() ? TXT.ar : TXT.en; return d[k] != null ? d[k] : (TXT.ar[k] != null ? TXT.ar[k] : k); }
-  function sevName(s) { return t('sev')[s] || s; }
-  function catName(c) { return t('cat')[c] || c; }
+  /* v-audit-chatcli (x-i18n-4): كلّ نصّ من قاموس الواجهة بالـ١٤ لغة (axChatcliCs + اسم المفتاح، والخطورة والفئة axChatcliCsSev… وaxChatcliCsCat…)
+     — كان TXT بالعربيّة والإنجليزيّة وحدهما، فيرى الأرديّ العربيّة والفرنسيّ وأخواته الإنجليزيّة. TXT احتياطٌ إن غاب المفتاح.
+     t هنا تحجب t العامّة، فالقاموس من window.t. */
+  function gt(key) {
+    try { var v = (typeof window.t === 'function') ? window.t(key) : null; if (typeof v === 'string' && v && v !== key) return v; }
+    catch (e) { if (window.__swallow) window.__swallow(e, 'codescore:t'); }
+    return null;
+  }
+  function csKey(k) { return 'axChatcliCs' + String(k).replace(/(^|_)([a-z])/g, function (m, a, c) { return c.toUpperCase(); }); }
+  function t(k) { var g = gt(csKey(k)); if (g != null) return g; var d = ar() ? TXT.ar : TXT.en; return d[k] != null ? d[k] : (TXT.ar[k] != null ? TXT.ar[k] : k); }
+  function sevName(s) { var g = gt(csKey('sev_' + s)); return g != null ? g : (t('sev')[s] || s); }
+  function catName(c) { var g = gt(csKey('cat_' + c)); return g != null ? g : (t('cat')[c] || c); }
 
   var SEV_COLOR = { critical: '#ff5f5f', high: '#e88', medium: '#e8b45a', low: '#b5d16a', info: '#8ab4f8' };
   function scoreColor(n) { return n == null ? '#98a0b3' : (n >= 85 ? '#7ac07a' : (n >= 70 ? '#b5d16a' : (n >= 55 ? '#e8b45a' : '#e88'))); }
@@ -127,7 +138,7 @@
       '<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);">'
       + '<span style="font-weight:700;font-size:14px;">' + esc(t('title')) + '</span>'
       + '<span id="csStatus" style="flex:1;font-size:12px;' + MUTED + 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>'
-      + '<button type="button" id="csX" aria-label="close" style="background:none;border:0;' + MUTED + 'cursor:pointer;font-size:16px;padding:4px 8px;">✕</button>'
+      + '<button type="button" id="csX" aria-label="' + esc(gt('closeTitle') || 'close') + '" style="background:none;border:0;' + MUTED + 'cursor:pointer;font-size:16px;padding:4px 8px;">✕</button>'
       + '</div><div id="csBody" style="padding:14px 16px;overflow:auto;flex:1;font-size:13px;"></div>';
     ov.appendChild(box);
     document.body.appendChild(ov);
@@ -253,7 +264,7 @@
             if (lines[i].indexOf('data: ') !== 0) continue;
             var ev;
             try { ev = JSON.parse(lines[i].slice(6)); } catch (e) { continue; }
-            if (ev.status) onStatus(ev.status);
+            if (ev.status) onStatus((typeof tStatus === 'function') ? tStatus(ev) : ev.status); /* v-audit-chatcli (x-i18n-2): مفتاح k وبارامتراته بلغة الواجهة */
             if (typeof ev.tier === 'string') out.tier = ev.tier;
             if (ev.error) out.error = ev.error;
             if (ev.report) out.report = ev.report;
@@ -275,6 +286,15 @@
       ask: ask, lang: L(), token: authTok(), guestId: guestId(), githubUrl: S.github || undefined,
       tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return ''; } })(),
     };
+    /* v-owner-solo-all (المالك: «كل واحد بروحه»): للمالك مزوّده المختار وموديله — الخادم يقبلهما له وحده (code-analyze callPro) */
+    try {
+      if (typeof omranOwnerUi === 'function' && omranOwnerUi()) {
+        var sel = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai');
+        payload.provider = sel;
+        var mdl = sel === 'claude' ? (window.claudeModelGet ? window.claudeModelGet() : '') : (window.omranModelFor ? window.omranModelFor(sel) : '');
+        if (mdl) payload.model = mdl;
+      }
+    } catch (e) { if (window.__swallow) window.__swallow(e, 'codescore:owner-prov'); }
     var prep = S.zip ? readB64(S.zip.file).then(function (b64) { payload.fileBase64 = b64; payload.filename = S.zip.name; }) : Promise.resolve();
     prep.then(function () {
       return callApi(payload, function (st) { var p = $id('csProg'); if (p) p.textContent = st; });
@@ -292,7 +312,9 @@
 
   function viewError(msg, tier) {
     var limit = tier === 'free-limit' || tier === 'guest-limit';
-    var h = '<div style="line-height:1.9;"><div style="color:#e88;">' + (limit ? '' : esc(t('fail'))) + esc(msg) + '</div>';
+    /* v-audit-chatcli: الحدّ بسطر المحادثة المترجَم نفسه (app-24 viewLimit) لا نصّ الخادم العربيّ */
+    var limMsg = limit ? gt(tier === 'guest-limit' ? 'chatGuestLimitMsg' : 'chatFreeLimitMsg') : null;
+    var h = '<div style="line-height:1.9;"><div style="color:#e88;">' + (limit ? '' : esc(t('fail'))) + esc(limMsg || msg) + '</div>';
     if (limit) {
       h += '<button type="button" id="csTier" class="btn" style="' + BTN + 'margin-top:10px;font-weight:700;">' + esc(tier === 'guest-limit' ? t('signup') : t('upgrade')) + '</button>';
     }
@@ -477,7 +499,7 @@
     var fx = $id('csFix');
     if (fx) fx.onclick = function () {
       var top = issues.filter(function (x) { return x.severity !== 'info'; }).slice(0, 8);
-      var ask = (ar() ? 'أصلح هذه المشاكل التي كشفها التحليل:\n' : 'Fix these issues found by the analysis:\n')
+      var ask = t('fixAsk') + '\n'
         + top.map(function (x, i) { return (i + 1) + ') ' + (x.title || catName(x.category)) + (x.line ? ' (L' + x.line + ')' : '') + (x.fix ? ' — ' + x.fix.slice(0, 300) : ''); }).join('\n');
       var f0 = S.files[0];
       close();
@@ -513,6 +535,16 @@
     return o.join('\n') + '\n';
   }
 
+  /* v-review-menu-close (تدقيق ١٨ أكتوبر): الزرّ يوقف انتشار النقرة فلا يصل مستمع إغلاق ⋮ (app-10)، فتبقى القائمة فوق النافذة
+     في الجوّال وخلفها في الحاسوب. نغلقها قبل الفتح بإغلاق app-10 نفسه، واحتياطًا بإزالة show. */
+  function closeTabsMenu() {
+    try {
+      if (typeof window.omranCloseTabsMenu === 'function') { window.omranCloseTabsMenu(); return; }
+      var d = $id('tabsMenuDropdown');
+      if (d) d.classList.remove('show');
+    } catch (e) { if (window.__swallow) window.__swallow(e, 'codescore:menu-close'); }
+  }
+
   /* ---------- الزرّ: قائمة ⋮ في شريط التبويبات ---------- */
   function mount() {
     var dd = document.getElementById('tabsMenuDropdown');
@@ -522,9 +554,10 @@
     b.id = 'btnCodeScore';
     b.type = 'button';
     b.title = t('menuTitle');
+    b.setAttribute('data-i18n-title', csKey('menuTitle')); /* v-audit-chatcli: الوسم وتلميحه يتبعان تبديل اللغة (applyLanguage) كزرّ «مراجعة» */
     b.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-      + '<path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg> <span class="btnLabel">' + esc(t('menu')) + '</span>';
-    b.onclick = function (e) { e.stopPropagation(); open(); };
+      + '<path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg> <span class="btnLabel" data-i18n="' + csKey('menu') + '">' + esc(t('menu')) + '</span>';
+    b.onclick = function (e) { e.stopPropagation(); closeTabsMenu(); open(); };
     dd.appendChild(b);
     return true;
   }

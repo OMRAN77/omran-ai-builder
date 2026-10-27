@@ -98,11 +98,15 @@ async function detectFaces(apiKey, img, opts) {
       generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', required: ['faces'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: ['box_2d'], properties: { box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } } } } } } },
     }),
   });
-  if (!r.ok) return [];
+  if (!r.ok) return []; // عطب الكشف: stats.faces يبقى بلا قيمة — لا يُقرأ «لا وجوه»
   const d = await r.json().catch(() => null);
   const txt = ((((d && d.candidates) || [])[0] || {}).content || {}).parts || [];
   const s = txt.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join('').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  const faces = (JSON.parse(s || '{}').faces || []);
+  const parsed = JSON.parse(s || 'null');
+  const faces = (parsed && Array.isArray(parsed.faces)) ? parsed.faces : [];
+  /* v-ai-video-speed (مراجعة): ٢٠٠ بلا جواب (حجب، SAFETY بلا محتوى، أفكار فقط، جسم لا يُقرأ) = عطب لا «صفر وجوه» — العدد من مصفوفة
+     faces التي أرجعها الموديل فعلًا (الخامّ قبل تنقية الصناديق: صندوق معيب لا يُسقط شخصًا موجودًا) */
+  if (o.stats && typeof o.stats === 'object' && o.stats.faces === undefined && parsed && Array.isArray(parsed.faces)) o.stats.faces = faces.length;
   const boxes = faces.map((f) => {
     const b = Array.isArray(f && f.box_2d) ? f.box_2d.map(Number) : null;
     if (!b || b.length !== 4 || b.some((v) => !Number.isFinite(v))) return null;
@@ -111,6 +115,7 @@ async function detectFaces(apiKey, img, opts) {
     return box[2] > box[0] && box[3] > box[1] ? { box } : null;
   }).filter(Boolean).sort((a, b) => area(b.box) - area(a.box));
   /* صندوق مكرّر للوجه نفسه (تقاطع > ٥٠٪) يُسقط */
+  /* v-ai-video-speed: stats.faces (أعلاه) يُكتب حين أجاب الكشف فعلًا — faceCrops يرجع [] أيضًا لوجه يملأ الصورة ولجماعة ولعطب، فلا يكفي ليقول «لا شخص» */
   return boxes.filter((f, i) => !boxes.slice(0, i).some((g) => iou(f.box, g.box) > 0.5)).slice(0, 12);
 }
 function area(b) { return (b[2] - b[0]) * (b[3] - b[1]); }
@@ -243,4 +248,5 @@ function mergeAspect(photo, text) {
   return d && d.w && d.h ? nearestRatio(d.w, d.h) : '3:4';
 }
 
-module.exports = { faceCrops, detectFaces, mergeParts, mergeInstruction, mergeTemperature, mergeAspect, headRect, whereIn, orient, sniffMime, MAX_HUMAN_REFS };
+module.exports = { faceCrops, detectFaces, mergeParts, mergeInstruction, mergeTemperature, mergeAspect, headRect, whereIn, orient, sniffMime, MAX_HUMAN_REFS,
+  decodeWork, shrinkTo, DETECT_URL /* v-trend-face-swap: نفس الفكّ والتصغير ونقطة الكشف في face-swap.js */ };

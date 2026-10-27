@@ -2,7 +2,12 @@
 // يمنع خطأ «Request Entity Too Large» (413) في كل مودالات الاستوديو.
 function __compressImg(file, onDone, MAX){
   MAX = MAX || 1024;
+  if(file && !file.__omranNorm && (/hei[cf]/i.test(file.type || '') || /\.hei[cf]$/i.test(file.name || '')) && typeof omranNormalizeImageFile === 'function'){
+    omranNormalizeImageFile(file).then(function(f){ try{ f.__omranNorm = true; }catch(e){ /* guard-ok */ } __compressImg(f, onDone, MAX); }, function(){ onDone(''); });
+    return;
+  }
   const reader = new FileReader();
+  reader.onerror = function(){ onDone(''); };
   reader.onload = function(){
     const img = new Image();
     img.onload = function(){
@@ -13,15 +18,71 @@ function __compressImg(file, onDone, MAX){
       c.getContext('2d').drawImage(img,0,0,w,h);
       onDone(c.toDataURL('image/jpeg',0.85));
     };
+    img.onerror = function(){ onDone(''); };
     img.src = String(reader.result||'');
   };
   reader.readAsDataURL(file);
+}
+/* v-fav-quota (تدقيق ١٨ أكتوبر: الحفظ الثالث في مفضّلة «ستايل AI» والثاني في الأزياء يفشلان بصمت؛ أمر المالك ٢٠ أكتوبر، الدفعة ٣:
+   «إما ينحفظ، أو تطلع رسالة واضحة»؛ من حزمة a11 في ten-a): المفضّلة كانت تخزّن النتيجة كاملة (~٢٫٤ م.ب dataURL) في localStorage بلا
+   حارس، فيرمي setItem عند الحدّ ولا يقول الزرّ شيئًا — واللوحة تعرض مصغّرة ٥٠×٥٠ فقط. __omranFavThumb تصغّرها JPEG بضلع ٧٦٨ (نحو ١٠٠ ك.ب)
+   قبل الحفظ فتتّسع لعشرات، و__omranLsPut تحفظ داخل try وترجع نجح/فشل. لا حذف تلقائيّ لمفضّلة قائمة عند الامتلاء (بيانات المستخدم) —
+   الفشل يظهر على الزرّ (memorySaveError) وstorageFullWarning في سطر الحالة. */
+function __omranFavThumb(src, onDone){
+  let done = false;
+  const fin = function(v){ if(done) return; done = true; onDone(v); };
+  try{
+    const img = new Image();
+    img.onload = function(){
+      try{
+        let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        if(!w || !h){ fin(src); return; }
+        if(Math.max(w, h) > 768){ const k = 768 / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        fin(c.toDataURL('image/jpeg', 0.85));
+      }catch(e){ __swallow(e, 'fav:thumb'); fin(src); }
+    };
+    img.onerror = function(){ fin(src); };
+    img.src = src;
+  }catch(e){ __swallow(e, 'fav:thumb'); fin(src); }
+}
+function __omranLsPut(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); return true; }
+  catch(e){ __swallow(e, 'fav:quota'); return false; }
 }
 // v530: آمن res.json() — يُرجع كائن خطأ بدل رمي استثناء JSON حين يردّ السيرفر نصًّا (مثل 413)
 async function __safeJson(res){
   const txt = await res.text().catch(()=>'');
   try{ return JSON.parse(txt); }
   catch(e){ return { error: txt.slice(0,200) || ('HTTP '+res.status) }; }
+}
+/* v-audit-studcli (cli-studios-4): كتل catch في الاستوديوهات كانت تلصق e.message بعد «❌ خطأ:» — فيرى المستخدم بأيّ لغة جملة الخادم
+   العربيّة («تعذّر إنشاء الصورة الآن…»)، أو نصًّا تقنيًّا فيه اسم مزوّد ومتغيّر («Server is missing <المفتاح>»، «Proxy error: …»)، أو
+   نصّ ٤١٣ الخامّ من __safeJson. الرموز المعروفة تُحوَّل إلى مفاتيحها بالـ١٤ لغة، وما سواها رسالة عامّة مترجمة (fbKey وإلّا «تعذّر إنشاء
+   الصورة»)، والنصّ الخامّ للمالك وحده بين قوسين للتشخيص. الاحتياط العربيّ/الإنجليزيّ لا يُستعمل إلّا قبل جاهزيّة المترجم. */
+const __STUDIO_ERR_FB = {
+  voiceImageFailed: ['ما قدرت أسوي الصورة، حاول مرة ثانية.', "Couldn't create the image, please try again."],
+  designAiSuggestError: ['تعذر توليد أفكار، حاول مرة أخرى.', 'Could not generate ideas, try again.'],
+  svcPaused: ['الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.', 'This service is temporarily unavailable — please try again shortly.'],
+  portraitLimitReached: ['وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا', 'You reached the daily limit for this feature, try again tomorrow'],
+  portraitNeedLogin: ['يرجى تسجيل الدخول لاستخدام هذه الميزة', 'Please log in to use this feature'],
+  acctAvatarTooBig: ['الصورة كبيرة جدًا، اختر صورة أصغر', 'The image is too large, choose a smaller one'],
+};
+function __studioErrMsg(e, fbKey){
+  const raw = String((e && e.message) || e || '').trim();
+  let key = fbKey || 'voiceImageFailed';
+  if(raw === 'unavailable') key = 'svcPaused';
+  else if(raw === 'daily_limit_reached') key = 'portraitLimitReached';
+  else if(raw === 'auth_required') key = 'portraitNeedLogin';
+  else if(/\b413\b|Entity Too Large|PAYLOAD_TOO_LARGE/i.test(raw)) key = 'acctAvatarTooBig';
+  let msg = '';
+  try{ if(typeof window.t === 'function'){ const v = window.t(key); if(v && v !== key) msg = String(v); } }catch(_){ /* guard-ok — المترجم لم يجهز: الاحتياط أدناه */ }
+  if(!msg){ const fb = __STUDIO_ERR_FB[key] || __STUDIO_ERR_FB.voiceImageFailed; msg = (typeof window.__bT === 'function') ? window.__bT(fb[0], fb[1]) : fb[0]; }
+  msg = '❌ ' + String(msg).replace(/^\s*❌\s*/, '');
+  if(raw && !/^[a-z_]+$/.test(raw) && typeof omranOwnerUi === 'function' && omranOwnerUi()) msg += ' (' + raw.slice(0, 300) + ')';
+  return msg;
 }
 
 /* ---------- 🏠 AI Interior Design (Gemini image, server-side owner key) ---------- */
@@ -39,14 +100,25 @@ async function __safeJson(res){
   const sourcePreview = $('#designAiSourcePreview');
   const placeEl = $('#designAiPlace');
   const gridEl = $('#designAiGrid');
+  /* v-decor-upload-top (المالك ٢٤ أكتوبر: «اذا فتحت الأفكار خاصية التحميل ماتسكر»): مربّع الرفع أوّل النافذة ولا يُخفى أبدًا — كان syncPlace
+     (v-decor-place-sync) يخفيه مع أيّ مكان: من المعرض، أو عند إعادة فتح النافذة بعد نقطة في البوستر (تكتب المكان بلا change).
+     «نوع المكان» يبقى صادقًا: مكان مختار = تصميم بلا صورة، فتُخفى المعاينة وحدها ويقول المربّع «لم يتم اختيار ملف» (الصورة لا تُرسل —
+     لا إسقاط بلا تنبيه)، و«من صورتي» يعيدهما. وصندوق الأفكار لا يكتب المكان ما دامت صورة مرفوعة (ideaPlace) — تصفّح الأفكار لا يمسّ الرفع. */
   function syncPlace(){
     const on = !!(placeEl && placeEl.value);
-    const dz = modal.querySelector('.dzArea');
-    if(dz) dz.style.display = on ? 'none' : '';
-    if(on && sourcePreview) sourcePreview.style.display = 'none';
+    if(sourcePreview) sourcePreview.style.display = (!on && selectedBase64) ? 'block' : 'none';
+    if(selectedFile) fileLabel(on ? '' : selectedFile.name);
   }
+  /* v-decor-file-lang: السطر يحمل data-i18n="fileNoneChosen" فكان تبديل اللغة (applyLanguage يكتب كلّ [data-i18n]) يعيده «لم يتم اختيار ملف»
+     وصورتك مرفوعة. اسم الملفّ يُكتب بلا المفتاح، و«لا ملفّ» يعيده فيُترجم مع اللغة كما كان. */
+  function fileLabel(name){
+    if(!fileNameEl) return;
+    if(name){ fileNameEl.removeAttribute('data-i18n'); fileNameEl.textContent = name; }
+    else { fileNameEl.setAttribute('data-i18n', 'fileNoneChosen'); fileNameEl.textContent = t('fileNoneChosen'); }
+  }
+  /* بطاقة «نوع المكان» (selTrigger في design-sels) تتبع ما يكتبه صندوق الأفكار بلا change، والمعاينة معها */
+  function placeCard(){ try{ if(placeEl && placeEl.__tr) placeEl.__tr.refresh(); }catch(e){ __swallow(e, 'decor:place-card'); } syncPlace(); }
   if(placeEl) placeEl.addEventListener('change', syncPlace);
-  if(btnOpen) btnOpen.addEventListener('click', () => setTimeout(syncPlace, 0));
   const styleEl = $('#designAiStyle');
   const lightingEl = $('#designAiLighting');
   const furnitureEl = $('#designAiFurniture');
@@ -95,10 +167,14 @@ async function __safeJson(res){
   fileInput.onchange = () => {
     const file = fileInput.files && fileInput.files[0];
     if(!file) return;
+    if(suggestStatusEl) suggestStatus(''); /* v-decor-suggest-msg: «ارفع صورة الغرفة أولًا» تحت الزرّ لا يبقى بعد رفعها */
     selectedFile = file;
+    /* v-decor-place-sync: صورة جديدة ترجع «نوع المكان» إلى «من صورتي» (بحدث change فتتبعه البطاقة) — كان المكان يُسقطها بلا تنبيه */
+    if(placeEl && placeEl.value){ placeEl.value = ''; placeEl.dispatchEvent(new Event('change', { bubbles: true })); }
     selectedMime = 'image/jpeg';
-    if(fileNameEl) fileNameEl.textContent = file.name;
+    fileLabel(file.name);
     __compressImg(file, function(dataUrl){
+      if(!dataUrl){ selectedBase64 = ''; sourcePreview.style.display = 'none'; return; }
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
@@ -112,26 +188,26 @@ async function __safeJson(res){
   const ideaGo = document.getElementById('designAiIdeaGo');
   const ideaTitle = document.getElementById('designAiIdeasTitle');
   /* v-decor-poster: البوستر نفسه هو الأزرار — كل غرفة نقطة نقر، والمخ = أعطني أفكارًا */
-  const POSTER_SRC = 'assets/decor/chips/001.jpg';
+  /* v-poster-notext (أمر المالك ١٧ أكتوبر «أولّده»): بوستر مولَّد بمولّد الموقع المدفوع بلا أيّ نصّ، 1640×1230 (ضعفا عرض العرض ٨٢٠)،
+     الغرف الـ١٢ شبكة ٤×٣ والمواضع مقيسة بالشبكة المئويّة من الصورة نفسها (scratchpad grid.mjs). الأسماء HTML فوقه لكلّ اللغات. */
+  const POSTER_SRC = 'assets/decor/chips/poster.webp';
   const POSTER_HOT = {
-    restaurant: [4.3, 20.5, 21.0, 24.0],
-    cafe:       [22.5, 15.5, 19.0, 24.0],
-    bedroom:    [40.7, 12.0, 20.0, 24.0],
-    majlis:     [60.5, 14.0, 18.5, 25.0],
-    living:     [76.5, 22.0, 21.0, 23.0],
-    kitchen:    [20.0, 38.5, 18.5, 21.5],
-    office:     [63.7, 39.0, 18.0, 22.0],
-    kids:       [80.5, 42.5, 19.0, 21.5],
-    shop:       [6.0, 58.0, 17.5, 24.0],
-    bath:       [23.8, 59.8, 17.5, 22.5],
-    entrance:   [60.4, 58.8, 18.5, 23.5],
-    garden:     [78.5, 60.0, 19.5, 22.0]
+    restaurant: [4.5, 5.0, 21.5, 29.0],
+    cafe:       [27.3, 5.0, 21.5, 29.0],
+    bedroom:    [50.3, 5.0, 22.5, 29.0],
+    majlis:     [74.0, 5.0, 22.5, 29.0],
+    living:     [4.5, 36.0, 21.5, 29.0],
+    kitchen:    [27.3, 36.0, 21.5, 29.0],
+    office:     [50.3, 36.0, 22.5, 29.0],
+    kids:       [74.0, 36.0, 22.5, 29.0],
+    shop:       [4.5, 66.5, 21.5, 29.0],
+    bath:       [27.3, 66.5, 21.5, 29.0],
+    entrance:   [50.3, 66.5, 22.5, 29.0],
+    garden:     [74.0, 66.5, 22.5, 29.0]
   };
-  const POSTER_BRAIN = [41.5, 35.8, 19.0, 22.5];
   function buildIdeaChips(){
     if(!ideaChips || !placeEl) return;
     ideaChips.innerHTML = '';
-    const isAr = ((document.documentElement.lang || 'ar') + '').indexOf('ar') === 0;
 
     function optName(o){ return (window.__optT ? window.__optT(o) : o.textContent).trim(); }
 
@@ -143,13 +219,14 @@ async function __safeJson(res){
         c.type = 'button'; c.className = 'btn'; c.dataset.place = o.value;
         c.style.cssText = 'width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
         c.textContent = optName(o);
-        c.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+        c.onclick = function(){ ideaPlace(o.value); };
         ideaChips.appendChild(c);
       });
     }
 
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'position:relative; width:100%; max-width:820px; margin:0 auto; line-height:0;';
+    wrap.style.cssText = 'position:relative; width:100%; max-width:820px; margin:0 auto; line-height:0; container-type:inline-size;';
+    wrap.className = 'om3-skip'; /* v-three-colors: أزرار المواقع شفّافة فوق الصورة — لا تعبئة ولا حدّ (لقطة المالك ١٧ أكتوبر) */
     const poster = document.createElement('img');
     poster.src = POSTER_SRC;
     poster.alt = ''; poster.loading = 'lazy';
@@ -176,22 +253,20 @@ async function __safeJson(res){
       const name = optName(o);
       const b = hotBtn(box, name, false);
       b.dataset.place = o.value;
-      if(!isAr){
+      /* v-poster-notext: البوستر الجديد بلا أيّ نصّ مطبوع (قواعد الصور) — الاسم HTML لكلّ اللغات والعربيّة معها */
+      {
         const cap = document.createElement('span');
         cap.textContent = name;
-        cap.style.cssText = 'position:absolute; left:50%; bottom:5%; transform:translateX(-50%); white-space:nowrap;' +
-          ' font-size:11px; font-weight:700; color:#fff; background:rgba(0,0,0,.75); padding:2px 9px; border-radius:999px;';
+        /* تدقيق ١٨ أكتوبر (الدفعة ٥، من b8 في ten-a): سطر واحد بقصّ كان يقطع «Living ro…» في خانة ~٦١px على جوّال ٣٩٠ — يلتفّ سطرين (الحاسوب سطر واحد كما كان) */
+        cap.style.cssText = 'position:absolute; left:50%; bottom:3%; transform:translateX(-50%); width:96%; white-space:normal; overflow-wrap:anywhere; line-height:1.1; text-align:center;' +
+          ' font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
         b.appendChild(cap);
       }
-      b.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+      b.onclick = function(){ ideaPlace(o.value); };
       wrap.appendChild(b);
     });
 
-    const brainName = bT('أعطني أفكارًا', 'Give me ideas');
-    const brain = hotBtn(POSTER_BRAIN, brainName, true);
-    brain.onclick = function(){ if(ideaGo && typeof ideaGo.onclick === 'function') ideaGo.onclick(); };
-    wrap.appendChild(brain);
-
+    /* لا «مخ» في البوستر الجديد — زرّ «أعطني أفكارًا» الحقيقيّ (designAiIdeaGo) يبقى تحت البوستر */
     ideaChips.appendChild(wrap);
 
      if(ideaTitle){
@@ -199,18 +274,25 @@ async function __safeJson(res){
     try{ if(typeof window.t === 'function'){ var __v = window.t(__k); if(__v && __v !== __k) __g = __v; } }catch(e){ /* guard-ok */ }
       ideaTitle.textContent = '💡 ' + (__g || bT('أفكار بلا صورة — اضغط على المكان في الصورة أو اكتب ما تريد', 'Ideas without a photo — tap a place in the image or describe what you want'));
     }
-    if(ideaText) ideaText.placeholder = bT('مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
-    if(ideaGo){ ideaGo.textContent = '✨ ' + brainName; ideaGo.style.display = 'none'; }
+    /* v-hw-resubmit-2: مفتاح أوّلًا (decorIdeaPh/decorIdeaGo بالـ١٤ لغة)، والثنائيّ احتياطًا */
+    var __tk = function(k, ar, en){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return bT(ar, en); };
+    if(ideaText) ideaText.placeholder = __tk('decorIdeaPh', 'مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
+    if(ideaGo){ ideaGo.textContent = '✨ ' + __tk('decorIdeaGo', 'أعطني أفكارًا', 'Give me ideas'); ideaGo.style.display = ''; } /* v-poster-notext: الزرّ ظاهر — لا مخ في البوستر */
   }
   buildIdeaChips();
+  /* v-poster-notext: الأسماء فوق البوستر HTML فتُعاد عند تبديل اللغة (applyLanguage يكتب html.lang) */
+  try{ new MutationObserver(function(){ buildIdeaChips(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); }catch(e){ /* guard-ok — المتصفّحات القديمة: تبقى لغة التحميل */ }
   /* v-decor-gallery: معرض صور حقيقية (عشرات) من الويب — يفتح فورًا، والتوليد بالذكاء زرّ منفصل */
   const ideaStatusEl = document.getElementById('designAiIdeaStatus');
   const ideaGallery = document.getElementById('designAiIdeaGallery');
   const ideaAI = document.getElementById('designAiIdeaAI');
   function ideaStatus(txt){ if(!ideaStatusEl) return; ideaStatusEl.textContent = txt || ''; ideaStatusEl.style.display = txt ? 'block' : 'none'; }
+  function noPhotos(){ return '😕 ' + bT('ما حصلت صورًا لهذا الطلب — جرّب وصفًا آخر، أو ولّد تصاميم بالذكاء.', 'No photos found for this — try another description, or generate AI designs.'); }
   let ideaReq = 0;
+  let lastIdea = null; /* v-decor-ideas-ai: آخر ما فُتح في صندوق الأفكار (مكان أو وصف) — «ولّد ٤ تصاميم» يولّده هو */
   async function loadIdeas(opts){
     const my = ++ideaReq;
+    lastIdea = { place: opts.place || '', q: opts.q || '' };
     if(ideaGallery){ ideaGallery.style.display = 'none'; ideaGallery.innerHTML = ''; }
     if(ideaAI) ideaAI.style.display = 'none';
     ideaStatus('⏳ ' + bT('أجمع لك صورًا وتصاميم…', 'Collecting photos and designs…'));
@@ -225,40 +307,64 @@ async function __safeJson(res){
       if(!imgs.length){
         /* v-ideas-resilient: مصدر الصور متوقف (حصّة) ≠ لا نتائج — نقول الحقيقة */
         if(d && d.error === 'provider'){
-          var __dt = ''; try{ __dt = d.detail ? (' (' + Object.keys(d.detail).map(function(k){ return k + ':' + d.detail[k]; }).join(' · ') + ')') : ''; }catch(e){ __dt = ''; }
+          /* v-audit-studcli (cli-studios-3): حالة المصادر (أسماء المزوّدين، off للمفتاح الناقص، عدد المدفوع) للمالك وحده — كـv-decor-fallback في designRun */
+          var __dt = ''; try{ __dt = (d.detail && typeof omranOwnerUi === 'function' && omranOwnerUi()) ? (' (' +Object.keys(d.detail).map(function(k){ return k + ':' + d.detail[k]; }).join(' · ') + ')') : ''; }catch(e){ __dt = ''; }
           ideaStatus('⚠️ ' + bT('مصدر الصور متوقف مؤقتًا — جرّب بعد قليل، أو ولّد تصاميم بالذكاء.', 'The photo source is temporarily unavailable — try again shortly, or generate AI designs.') + __dt);
         }
-        else ideaStatus('😕 ' + bT('ما حصلت صورًا لهذا الطلب — جرّب وصفًا آخر، أو ولّد تصاميم بالذكاء.', 'No photos found for this — try another description, or generate AI designs.'));
+        else ideaStatus(noPhotos());
         if(ideaAI) ideaAI.style.display = ''; return;
       }
+      /* v-ideas-hosts (تدقيق ١٨ أكتوبر: «٢٩ صورة» والمعروض ١٨): العدد كان يُكتب قبل سقوط المكسورة — يتبع الظاهر، وصفر = «ما حصلت صورًا» */
+      let shown = imgs.length;
+      const galleryLine = () => '🖼️ ' + shown + ' ' + bT('صورة وتصميم من الويب — اضغط أي صورة لعرضها كبيرة', 'photos and designs from the web — tap any to open it');
       imgs.forEach(function(u){
         const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener';
         a.onclick = function(e){ if(window.omranLightbox){ e.preventDefault(); window.omranLightbox(u); } }; /* v-cx-ideas: معرض داخل التطبيق */
         a.style.cssText = 'display:block; break-inside:avoid; margin-bottom:6px; border-radius:12px; overflow:hidden; background:rgba(255,255,255,.04);';
-        const im = document.createElement('img'); im.src = u; im.loading = 'lazy'; im.alt = '';
+        const im = document.createElement('img'); im.referrerPolicy = 'no-referrer'; im.src = u; im.loading = 'lazy'; im.alt = ''; /* مواقع تمنع الربط بالمُحيل */
         im.style.cssText = 'display:block; width:100%; height:auto;';
-        im.onerror = function(){ a.remove(); };
+        im.onerror = function(){
+          a.remove();
+          shown--;
+          if(my !== ideaReq) return;
+          if(shown > 0){ ideaStatus(galleryLine()); return; }
+          ideaGallery.style.display = 'none';
+          ideaStatus(noPhotos());
+          if(ideaAI) ideaAI.style.display = '';
+        };
         a.appendChild(im); ideaGallery.appendChild(a);
       });
       ideaGallery.style.display = 'block';
-      ideaStatus('🖼️ ' + imgs.length + ' ' + bT('صورة وتصميم من الويب — اضغط أي صورة لعرضها كبيرة', 'photos and designs from the web — tap any to open it'));
+      ideaStatus(galleryLine());
       if(ideaAI) ideaAI.style.display = '';
       try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
   }
   if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button[data-place]'), function(c){
-    c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
+    c.onclick = function(){ ideaPlace(c.dataset.place); };
   });
+  /* v-decor-upload-top: مكان من صندوق الأفكار يُكتب في «نوع المكان» ما لم تكن صورتك المرفوعة قيد الاستعمال («من صورتي») — حينها تبقى
+     هي ما يُصمَّم والبطاقة «من صورتي» والمعاينة ظاهرة؛ وفي وضع المكان (اختير من المعرض) تبدّله النقطة كما بلا صورة */
+  function ideaPlace(v){
+    if(placeEl && !(selectedBase64 && !placeEl.value)){ placeEl.value = v; placeCard(); }
+    if(ideaText) ideaText.value = '';
+    loadIdeas({ place: v });
+  }
   if(ideaGo) ideaGo.onclick = function(){
     const v = ideaText ? ideaText.value.trim() : '';
     if(!v){ ideaStatus(bT('اكتب ما تريد أو اختر نوع المكان.', 'Describe what you want or pick a place.')); return; }
-    if(placeEl) placeEl.value = '';
+    if(placeEl && !selectedBase64){ placeEl.value = ''; placeCard(); }
     loadIdeas({ q: v });
   };
   if(ideaAI) ideaAI.onclick = async function(){
     ideaAI.disabled = true;
     ideaStatus('⏳ ' + bT('يولّد ٤ تصاميم بالذكاء… نحو دقيقة', 'Generating 4 AI designs… about a minute'));
-    try{ await btnGenerate.onclick(); }finally{ ideaAI.disabled = false; }
+    /* v-decor-ideas-ai: كان ينادي «صمم الغرفة» نفسه فيصمّم صورتك المرفوعة (تصميمًا واحدًا) والزرّ يقول ٤ تصاميم بلا صورة. الآن بلا صورتك دائمًا:
+       النصّ الظاهر في السطر (وإلّا آخر وصف فُتح)، والمكان من «نوع المكان» كما كان — إلّا وصورتك قيد الاستعمال فالأفكار لا تكتبه، فمن آخر نقطة. */
+    const q = (ideaText ? ideaText.value.trim() : '') || (lastIdea ? lastIdea.q : '');
+    const photoInUse = !!(selectedBase64 && !(placeEl && placeEl.value));
+    const pl = (photoInUse ? (lastIdea ? lastIdea.place : '') : (placeEl ? placeEl.value : '')) || (q ? 'custom' : '');
+    try{ await designRun(pl ? { place: pl, idea: q } : null); }finally{ ideaAI.disabled = false; }
     ideaStatus('');
     try{
       const target = (gridEl && gridEl.style.display !== 'none') ? gridEl : ((resultEl && resultEl.style.display !== 'none') ? resultEl : statusEl);
@@ -268,11 +374,18 @@ async function __safeJson(res){
   if(ideaAI) ideaAI.textContent = '🎨 ' + bT('ولّد ٤ تصاميم بالذكاء الاصطناعي', 'Generate 4 AI designs');
   if(ideaText) ideaText.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); if(ideaGo) ideaGo.onclick(); } });
 
-  btnGenerate.onclick = async () => {
-    const idea = ideaText ? ideaText.value.trim() : '';
-    const placeVal = (placeEl ? placeEl.value : '') || (idea && !selectedBase64 ? 'custom' : '');
+  /* run: null = «صمم الغرفة» (صورتك الظاهرة، وإلّا «نوع المكان»)؛ {place, idea} = تشغيل بلا صورة — من صندوق الأفكار (v-decor-ideas-ai)،
+     أو «زوّدني مثله» على شبكة بمكانها نفسه. */
+  async function designRun(run){
+    const idea = run ? (run.idea || '') : (ideaText ? ideaText.value.trim() : '');
+    const photoOn = !run && !!(selectedBase64 && sourcePreview && sourcePreview.style.display !== 'none'); // v-tool-drop: صورة المستخدم الظاهرة تُرسل — مكان من الملصق قبلها كان يُسقطها بصمت
+    const placeVal = run ? (run.place || '') : (photoOn ? '' : ((placeEl ? placeEl.value : '') || (idea && !selectedBase64 ? 'custom' : '')));
+    /* v-decor-before-pin: الصورة تُلتقط عند البدء — صورة ثانية تُرفع أثناء التوليد كانت تصير «قبل» في السحّاب لنتيجة الأولى */
+    const srcB64 = placeVal ? '' : selectedBase64;
+    const srcMime = selectedMime;
+    const again = run || (placeVal ? { place: placeVal, idea } : null); /* «زوّدني مثله» يعيد مكان شبكته ولو رُفعت صورة بعدها (كان يقرأ الحالة الحاليّة) */
     const notesEl = document.getElementById('designAiNotes');
-    if(!selectedBase64 && !placeVal){
+    if(!srcB64 && !placeVal){
       setStatus(t('designAiNeedPick'));
       return;
     }
@@ -297,10 +410,10 @@ async function __safeJson(res){
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageBase64: placeVal ? '' : selectedBase64,
-          mimeType: selectedMime,
+          imageBase64: srcB64,
+          mimeType: srcMime,
           place: placeVal,
-          count: selectedBase64 ? 1 : 4,
+          count: srcB64 ? 1 : 4, /* المكان ٤ تصاميم ولو بقيت صورتك في الذاكرة (كان selectedBase64 ? 1 : 4) */
           notes: ((placeVal && idea ? idea + '. ' : '') + (notesEl ? String(notesEl.value || '') : '')).slice(0, 400),
           variantOf: variantSrc || '',
           style: styleEl.value,
@@ -325,7 +438,10 @@ async function __safeJson(res){
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; }
-        throw new Error(data.error || 'unknown');
+        if(data.error === 'unavailable'){ setStatus(t('svcPaused')); return; } // v-credit-out: رصيد مزوّد الصور نفد
+        /* v-decor-fallback: سبب المزوّد (detail) للمالك وحده — مثل v-img-diag-owner؛ غيره يرى الرسالة الودّيّة فقط */
+        const __why = (data.detail && typeof omranOwnerUi === 'function' && omranOwnerUi()) ? ' (' + String(data.detail).slice(0, 300) + ')' : '';
+        throw new Error((data.error || 'unknown') + __why);
       }
       if(Array.isArray(data.images) && data.images.length && gridEl){
         gridEl.innerHTML = '';
@@ -347,7 +463,7 @@ async function __safeJson(res){
           vb.className = 'btn';
           vb.textContent = bT('\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647','\u2728 More like this');
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
-          vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; btnGenerate.onclick(); };
+          vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; designRun(again); };
           cell.appendChild(vb);
           gridEl.appendChild(cell);
         });
@@ -357,7 +473,7 @@ async function __safeJson(res){
       }
       const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
       // v-decor-ba: مع صورة مرفوعة السحّاب يعرض قبل/بعد؛ وبدونها صورة عادية.
-      if(selectedBase64 && !placeVal && showBeforeAfter('data:' + selectedMime + ';base64,' + selectedBase64, dataUrl)){
+      if(srcB64 && showBeforeAfter('data:' + srcMime + ';base64,' + srcB64, dataUrl)){
         resultEl.style.display = 'none';
       } else {
         resultEl.src = dataUrl;
@@ -368,13 +484,30 @@ async function __safeJson(res){
       dsReveal((baWrap && baWrap.style.display !== 'none') ? baWrap : resultEl); /* v-scene-kinds */
       setStatus(t('designAiDone'));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(__studioErrMsg(e));
     } finally {
       btnGenerate.disabled = false;
     }
-  };
+  }
+  btnGenerate.onclick = () => designRun(null);
 
+  /* v-decor-suggest-msg (تدقيق ١٨ أكتوبر): رسائل «اقترح لي أفكار» كانت في #designAiStatus تحت «صمم الغرفة» — حاسوب top 1047 من 900،
+     جوّال أبعد من الشاشة بـ650px — فلا يرى المستخدم شيئًا جنب الزرّ. سطرها تحت زرّها يُنشأ مرّة (بلا لمس partials-core).
+     المعالج يظلّل setStatus باسمه فرسائله كلّها (والمثبّتة بنصّها في open-tools-cap) تذهب إليه. */
+  let suggestStatusEl = null;
+  function suggestStatus(text){
+    if(!suggestStatusEl){
+      suggestStatusEl = document.createElement('div');
+      suggestStatusEl.id = 'designAiSuggestStatus';
+      suggestStatusEl.setAttribute('role', 'status');
+      suggestStatusEl.style.cssText = 'display:none; margin-top:8px; text-align:center; font-size:var(--fs-3); color:var(--muted);';
+      btnSuggest.insertAdjacentElement('afterend', suggestStatusEl);
+    }
+    suggestStatusEl.style.display = text ? 'block' : 'none';
+    suggestStatusEl.textContent = text || '';
+  }
   if(btnSuggest) btnSuggest.onclick = async () => {
+    const setStatus = suggestStatus; /* v-decor-suggest-msg */
     if(!selectedBase64){
       setStatus(t('designAiNeedImage'));
       return;
@@ -397,6 +530,7 @@ async function __safeJson(res){
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; } /* v-open-tools-cap */
+        if(data.error === 'unavailable'){ setStatus(t('svcPaused')); return; } /* v-provider-fail: رصيد المزوّد أو زحامه — لا «حاول مرة أخرى» */
         throw new Error(data.error || 'unknown');
       }
       const ideas = Array.isArray(data.suggestions) ? data.suggestions : [];
@@ -458,8 +592,8 @@ async function __safeJson(res){
   window.__designBAHide = baHide;
   window.__designSourceUrl = function(){ return selectedBase64 ? ('data:' + selectedMime + ';base64,' + selectedBase64) : ''; };
 
-  /* v-scene-kinds (المالك ١١ أكتوبر بصورة مشاهد الديكور: «والثانية للديكور… وكلّهم نفس الأفكار»): مشهد التوليد يُركَّب أعلى الاستوديو
-     مكان صندوق الأفكار والرفع (app-34-gen-wait، اللوحة decor). والنتيجة — سحّاب قبل/بعد أو الصورة المفردة أو شبكة التصاميم الأربعة —
+  /* v-scene-kinds (المالك ١١ أكتوبر بصورة مشاهد الديكور: «والثانية للديكور… وكلّهم نفس الأفكار»): مشهد التوليد يُركَّب مكان صندوق
+     الأفكار تحت الرفع (app-34-gen-wait، اللوحة decor؛ الرفع فوقه منذ v-decor-upload-top ولا يُخفى). والنتيجة — سحّاب قبل/بعد أو الصورة المفردة أو شبكة التصاميم الأربعة —
      وزرّ التحميل كانت تحت زرّ «صمم الغرفة» بلا تمرير إليها؛ تُنقل (العقد نفسها بمستمعيها) إلى قبل صندوق الأفكار، حيث كان المشهد،
      وبعرضه (٧٦٠ موسَّطة). */
   const DS_RESULT_STYLE = { maxWidth: '760px', marginInline: 'auto' };
@@ -517,6 +651,13 @@ async function __safeJson(res){
     if(!cmpStatusEl) return;
     cmpStatusEl.style.display = txt ? 'block' : 'none';
     cmpStatusEl.textContent = txt || '';
+    /* السطر تحت زرّ «صمّمها» آخر النافذة: «الحد ٣ أنماط» و«ارفع صورة غرفتك أولًا» ظهرتا على حافّة الشاشة أو تحتها — يُمرَّر إلى
+       المرئيّ (nearest: لا حركة إن كان ظاهرًا) وتحته مسافة (scroll-margin لتمرير الزرّ، وmargin لأقصى تمرير يدويّ). */
+    if(txt){
+      cmpStatusEl.style.marginBottom = '12px';
+      cmpStatusEl.style.scrollMarginBottom = '12px';
+      try{ if(typeof cmpStatusEl.scrollIntoView === 'function') cmpStatusEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }catch(e){ __swallow(e, 'decor:cmp-status-scroll'); }
+    }
   }
   function styleTitle(v){
     const o = styleEl && Array.prototype.find.call(styleEl.options, function(x){ return x.value === v; });
@@ -546,7 +687,7 @@ async function __safeJson(res){
       const pal = (typeof window.__decorPal === 'function') ? window.__decorPal('designAiStyle', v) : '';
       if(pal) card.style.background = pal;
       const img = document.createElement('img');
-      img.src = 'assets/design/styles/' + v + '.webp';
+      img.src = 'assets/design/styles/' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
       img.onerror = function(){ img.remove(); };
@@ -574,8 +715,8 @@ async function __safeJson(res){
   }
   buildCompareStyleRow();
   if(cmpBtn) cmpBtn.onclick = async () => {
-    if(!selectedBase64){ cmpStatus(bT('ارفعي صورة غرفتك أولًا','Upload your room photo first')); return; }
-    if(cmpPicks.length < 2){ cmpStatus(bT('اختاري نمطين أو ثلاثة','Pick 2-3 styles')); return; }
+    if(!selectedBase64){ cmpStatus(bT('ارفع صورة غرفتك أولًا','Upload your room photo first')); return; }
+    if(cmpPicks.length < 2){ cmpStatus(bT('اختر نمطين أو ثلاثة','Pick 2-3 styles')); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){ cmpStatus(t('designAiNeedLogin')); return; }
     cmpBtn.disabled = true;
@@ -595,6 +736,7 @@ async function __safeJson(res){
         if(!res.ok || data.error){
           if(data.error === 'daily_limit_reached'){ cmpStatus(t('designAiLimitReached')); break; }
           if(data.error === 'auth_required'){ cmpStatus(t('designAiNeedLogin')); break; }
+          if(data.error === 'unavailable'){ cmpStatus(t('svcPaused')); break; } // v-credit-out: لا يُكمل بقيّة الأساليب على مزوّد متوقّف
           cmpStatus((bT('❌ تعثّر عند ','❌ Failed at ')) + styleTitle(v));
           continue;
         }
@@ -609,7 +751,7 @@ async function __safeJson(res){
         cap.style.cssText = 'font-size:12px; font-weight:700; text-align:center; margin-top:4px;';
         const pick = document.createElement('button');
         pick.type = 'button'; pick.className = 'btn';
-        pick.textContent = bT('👍 اعتمدي هذا','👍 Pick this');
+        pick.textContent = bT('👍 اعتمد هذا','👍 Pick this');
         pick.style.cssText = 'width:100%; margin-top:4px; font-size:11.5px; padding:5px 4px;';
         pick.onclick = function(){
           styleEl.value = v;
@@ -621,10 +763,10 @@ async function __safeJson(res){
         cell.appendChild(im); cell.appendChild(cap); cell.appendChild(pick);
         cmpResultsEl.appendChild(cell);
         cmpResultsEl.style.display = 'flex';
-        if(i === picks.length - 1) cmpStatus(bT('✓ تم — اسحبي وقارني واختاري','✓ Done — swipe and pick'));
+        if(i === picks.length - 1) cmpStatus(bT('✓ تم — اسحب وقارن واختر','✓ Done — swipe and pick'));
       }
     } catch(e){
-      cmpStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      cmpStatus(__studioErrMsg(e));
     } finally {
       cmpBtn.disabled = false;
     }
@@ -740,8 +882,22 @@ function stuL(ar, en){
 
 /* v-pstyle-img: وسم إصدار صور الأنماط — /assets/ مخبّأة يومًا كاملًا (وأسبوعًا stale)،
    فاستبدال الملفّ وحده يُبقي الصورة القديمة عند من فتح التطبيق أمس. ارفع الرقم مع كلّ استبدال. */
-const PSTYLE_IMG_V = '15';
+const PSTYLE_IMG_V = '16'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
 function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYLE_IMG_V; }
+
+/* v-audit-stud2 (srv-studios-2-8): رمز الخادم (حارس الهويّة/الأسلوب، image_generation_failed، unavailable…) بنصّ الواجهة عبر
+   imgErrFriendly كما في studioErrText (app-13) — كان «❌ خطأ: image_edit_identity_mismatch» خامًا في الأنماط والأزياء. العربيّة
+   للعربيّة وحدها (الأردو وغيرها تأخذ الإنجليزيّة لا العربيّة)، وما لا ترجمة له يبقى كما كان بالبادئة. */
+function stud2ErrText(e, prefix, fbKey){
+  const code = (e && e.message) ? String(e.message) : String(e);
+  try{
+    const lg = (typeof lang !== 'undefined' && lang) ? String(lang) : (localStorage.getItem('aiapp_lang') || 'ar');
+    const friendly = (typeof imgErrFriendly === 'function') ? imgErrFriendly(code, lg === 'ar') : null;
+    if(friendly) return '⚠️ ' + friendly;
+  }catch(err){ __swallow(err, 'stud2:err-text'); }
+  /* v-audit-studcli (cli-studios-4): ما لا ترجمة له لا يُعرض خامًّا — رسالة الاستوديو المترجمة (والخامّ للمالك وحده) */
+  return (typeof __studioErrMsg === 'function') ? __studioErrMsg(e, fbKey) : prefix + code;
+}
 
 /* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
 (function(){
@@ -844,10 +1000,26 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     }
     return o.textContent;
   }
+  /* v-no-flag (تدقيق ١٨ أكتوبر): ويندوز بلا رموز أعلام ملوّنة فيرسم 🇦🇪 حرفين «AE» — «AE إطار وطني» في البطاقة والشريط السفليّ.
+     الأسماء المعروضة بلا أزواج علامات المناطق (النصّ في القاموس كما هو، وبقيّة الإيموجي تبقى). */
+  function noFlag(s){ return String(s || '').replace(/[\u{1F1E6}-\u{1F1FF}]{2}\s*/gu, '').trim(); }
+  /* v-ring-i18n (تدقيق ١٨ أكتوبر): أسماء الحلقة كانت قاموسًا إنجليزيًّا ثابتًا بلا t() وتبقى بعد تبديل اللغة لأنّ الحلقة تُبنى مرّة —
+     الاسم الآن من خيار القائمة المترجَم بلا إيموجي، ويُحدَّث في كلّ فتحة للمعرض. */
+  function ringLabel(v){
+    const o = styleEl.querySelector('option[value="' + v + '"]');
+    /* «Comic/Manga» كلمة واحدة بلا فاصل فتفيض عن الدائرة — فاصل صفريّ بعد الشرطة المائلة يسمح بالسطر الثاني */
+    return o ? noFlag(optLabel(o)).replace(/^[^\p{L}\p{N}]+/u, '').trim().replace(/\//g, '/​') : '';
+  }
+  function refreshRingLabels(hero){
+    Array.from(hero.querySelectorAll('[data-pstyle-ring] > i')).forEach((lb) => {
+      lb.textContent = ringLabel(lb.parentNode.getAttribute('data-pstyle-ring'));
+    });
+  }
   function pstyleOpts(){
     const favs = getFavs();
     const opts = Array.from(styleEl.querySelectorAll('option'))
-      .filter((o) => !(o.parentElement && o.parentElement.id === 'portraitFavGroup'));
+      .filter((o) => !(o.parentElement && o.parentElement.id === 'portraitFavGroup'))
+      .filter((o) => !(typeof omranHwHidden === 'function' && omranHwHidden('portrait', o.value))); // v-hw-resubmit-2
     opts.sort((a, b) => (favs.includes(b.value) ? 1 : 0) - (favs.includes(a.value) ? 1 : 0));
     return opts;
   }
@@ -856,7 +1028,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const opt = styleEl.querySelector('option[value="' + styleEl.value + '"]');
     const img = $('#portraitStyleTriggerImg');
     if(img){ img.src = pstyleImg(styleEl.value); img.onerror = function(){ img.style.visibility = 'hidden'; }; img.style.visibility = 'visible'; }
-    const nameEl = $('#portraitStyleTriggerName'); if(nameEl) nameEl.textContent = opt ? opt.textContent : '';
+    const nameEl = $('#portraitStyleTriggerName'); if(nameEl) nameEl.textContent = opt ? noFlag(opt.textContent) : '';
     const subEl = $('#portraitStyleTriggerSub'); if(subEl) subEl.textContent = pstyleSub(styleEl.value);
   }
   /* v-psheet-oneface (فكرة المالك ٥ سبتمبر: نفس الوجه عبر كل الأنماط، فلتر فئات، بطاقة «قبل»،
@@ -867,16 +1039,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const g = opt.parentElement;
     if(!g || g.tagName !== 'OPTGROUP' || g.id === 'portraitFavGroup') return 'art';
     return (g.getAttribute('data-i18n') || g.getAttribute('label') || 'art').replace(/^\[label\]/, '');
-  }
-  /* الاسم الإنجليزي للنمط (يضيف مصداقية الأداة تحت كل بطاقة) — من قاموس en أو data-en */
-  function pstyleEn(v){
-    try{
-      const o = styleEl.querySelector('option[value="' + v + '"]'); if(!o) return '';
-      const k = o.getAttribute('data-i18n'); let en = '';
-      if(k && window.I18N && window.I18N.en && window.I18N.en[k]) en = window.I18N.en[k];
-      if(!en) en = o.getAttribute('data-en') || '';
-      return String(en).replace(/^[^\p{L}\p{N}]+/u, '').trim();
-    }catch(e){ return ''; }
   }
   function pstyleGroups(){
     const out = [{ k: 'all', label: gt('psheetAll', 'الكل', 'All') }, { k: 'art', label: gt('psheetGrpArt', '🎨 فنية', '🎨 Artistic') }];
@@ -891,6 +1053,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function ensurePsheetCss(){
     if(document.getElementById('psheetCss')) return;
     const st = document.createElement('style'); st.id = 'psheetCss';
+    const B = 'html:not([data-mode="light"]):not(.skin) '; /* الوضع الأسود وحده — لا الفاتح ولا الثيمات */
     st.textContent = '.pstyleCard{transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; position:relative;}'
       + '.pstyleCard:hover,.pstyleCard:focus-visible{transform:scale(1.035); border-color:#d4af37 !important; box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 12px 30px rgba(0,0,0,.45), 0 0 26px rgba(212,175,55,.35) !important; outline:none; z-index:1;}'
       + '.pstyleCard::after{content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg,transparent 40%,rgba(255,238,180,.22) 50%,transparent 60%); background-size:250% 100%; background-position:160% 0; opacity:0; transition:opacity .18s;}'
@@ -924,14 +1087,38 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       + '.pstyleHero .pstyleHeroT{position:absolute; width:19%; aspect-ratio:1; border-radius:50%; overflow:hidden; border:2px solid rgba(212,175,55,.75); background:#17171b; box-shadow:0 6px 18px rgba(0,0,0,.45); cursor:pointer; transform:translate(-50%,-50%); transition:transform .18s, box-shadow .18s;}'
       + '.pstyleHero .pstyleHeroT:hover{transform:translate(-50%,-50%) scale(1.12); box-shadow:0 0 22px rgba(212,175,55,.6);}'
       + '.pstyleHero .pstyleHeroT img{width:100%; height:100%; object-fit:cover; object-position:50% 12%;}'
-      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}'
+      /* v-ring-i18n: الاسم كان في أسفل الدائرة (bottom:0، nowrap) حيث الوتر أضيق من الكلمة فتُقصّ «yberpun» و«Watercolo» —
+         رُفع إلى الشريط العريض (bottom:25%: وتر أسفل السطر هناك ≈ ٠٫٨٧ من القطر، والسطر الثاني أعرض) بسطرين، والتدرّج على نصف الدائرة السفليّ خلفه. */
+      + '.pstyleHero .pstyleHeroT::after{content:""; position:absolute; left:0; right:0; bottom:0; height:62%; background:linear-gradient(transparent, rgba(0,0,0,.82)); pointer-events:none;}'
+      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:25%; z-index:1; font-style:normal; font-size:8px; font-weight:700; line-height:1.05; padding:0 3px; text-align:center; white-space:normal; overflow-wrap:anywhere; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.9); unicode-bidi:plaintext;}'
       /* v-psheet-header-collapse (طلب المالك: الرأس يرفع كتابته ويصغر عند تمرير المعرض لأسفل، بدل مساحة ثابتة كبيرة) */
       + '#portraitStyleSheetHeader{transition:padding .22s ease;}'
       + '#portraitStyleSheetTitle{transition:font-size .22s ease;}'
       + '#portraitStyleSheetCount{transition:opacity .18s ease, max-height .22s ease, margin-top .22s ease; overflow:hidden; max-height:16px;}'
       + '#portraitStyleSheetHeader.pstyleHeaderSmall{padding-top:calc(6px + max(env(safe-area-inset-top,0px), 30px)) !important; padding-bottom:8px !important;}'
       + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetTitle{font-size:14.5px !important;}'
-      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetCount{opacity:0; max-height:0; margin-top:-2px;}';
+      + '#portraitStyleSheetHeader.pstyleHeaderSmall #portraitStyleSheetCount{opacity:0; max-height:0; margin-top:-2px;}'
+      /* v-psheet-nogold (المالك ١٧ أكتوبر، أنماط الصور أوّلًا): «بدون خطوط… ما أريد الذهبي، الذهبي فقط عند التمرير على الصور،
+         واحذف الخيط الذهبي». الوضع الأسود وحده: لا حدّ ولا ذهبيّ في السكون؛ الرقائق والأزرار كـ«صمم الغرفة» (أسود، نصّ أبيض)
+         والإنارة بالنصّ الأبيض عند التمرير وللمختارة («سوّ الكتابة فقط» — كلّهم بلا حدود)؛ البطاقات والحلقة بلا حدّ، وتوهّج ذهبيّ عند التمرير على الصورة فقط. */
+      + B + '.pstyleChip{border:1px solid transparent !important; background:transparent !important; color:#bdbdbd !important;}'
+      + B + '.pstyleChip:hover,' + B + '.pstyleChip.on{color:#fff !important; text-shadow:0 0 10px rgba(255,255,255,.45); background:transparent !important;}' /* «سوّ الكتابة فقط»: الإنارة بالنصّ لا بالحدّ */
+      + B + '.pstyleCard{border:1px solid transparent !important; box-shadow:none !important;}'
+            + B + '.pstyleCard:hover,' + B + '.pstyleCard:focus-visible{border-color:#d4af37 !important; box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 12px 30px rgba(0,0,0,.45), 0 0 26px rgba(212,175,55,.35) !important;}'
+      + B + '.pstyleCard [data-pstyle-name]{color:#fff !important;}'
+      + B + '.pstyleCard .pstyleEn{color:#9a9a9e !important;}'
+      + B + '.pstyleCard [data-pstyle-tick]{background:#fff !important; color:#000 !important;}'
+      + B + '.pstyleBefore [data-pstyle-before-tag], ' + B + '.pstyleHero .pstyleHeroC span{background:#000 !important; color:#fff !important; border:1px solid rgba(255,255,255,.45) !important;}'
+      + B + '.pstyleBefore > div:last-child > div:first-child{color:#fff !important;}'
+      + B + '.pstyleCard > div:first-child > div:first-child{border-color:rgba(255,255,255,.25) !important; background:transparent !important;}'
+      + B + '.pstyleHero{background:none !important;}'
+      + B + '.pstyleHero .pstyleHeroC{border-color:transparent !important; box-shadow:none !important;}'
+      + B + '.pstyleHero .pstyleHeroT{border-color:transparent !important;}'
+      + B + '.pstyleHero .pstyleHeroT:hover{box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 0 22px rgba(212,175,55,.6) !important;}'
+      + B + '.pstyleFoot{border-top:0 !important;}'
+      + B + '.pstyleCta, ' + B + '.pstyleFoot #portraitFootPhoto{background:#000 !important; color:#fff !important; border:1px solid transparent !important; box-shadow:0 4px 18px rgba(255,255,255,.35) !important;}' /* نفس درجة «صمم الغرفة» (.btn.primary في الأسود) — «خلّها نفس الديكور» */
+      + B + '.pstyleCta:hover, ' + B + '.pstyleFoot #portraitFootPhoto:hover{box-shadow:0 6px 24px rgba(255,255,255,.5) !important;}'
+      + B + '.pstyleFoot #portraitFavStarBtn{color:#fff !important;}';
     document.head.appendChild(st);
   }
   /* الرأس (العنوان + العدّاد) يصغر ويرتفع فور بدء تمرير المعرض، ويعود لحجمه عند القمّة */
@@ -951,23 +1138,25 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(!hero){
       hero = document.createElement('div'); hero.id = 'portraitStyleHero'; hero.className = 'pstyleHero';
       const c = document.createElement('div'); c.className = 'pstyleHeroC';
-      const ci = document.createElement('img'); ci.src = 'assets/portrait/before.webp'; ci.alt = ''; ci.onerror = function(){ ci.remove(); };
+      const ci = document.createElement('img'); ci.src = 'assets/portrait/before.webp?v=2'; ci.alt = ''; ci.onerror = function(){ ci.remove(); };
       const cl = document.createElement('span'); cl.textContent = gt('psheetBefore', 'قبل', 'Before');
       c.appendChild(ci); c.appendChild(cl); hero.appendChild(c);
-      const RING = ['anime', 'pixel', 'sketch', 'mosaic', 'oil', 'comic', 'watercolor', 'cyberpunk', 'lego', 'statue', 'pop', 'ghibli'];
-      const RING_EN = { anime: 'Anime', pixel: 'Pixel Art', sketch: 'Sketch', mosaic: 'Mosaic', oil: 'Oil Paint', comic: 'Comic', watercolor: 'Watercolor', cyberpunk: 'Cyberpunk', lego: 'LEGO', statue: 'Statue', pop: 'Pop Art', ghibli: 'Ghibli' };
+      /* v-hw-resubmit-2: في نسخة هواوي تسقط أنماط العلامات من الحلقة (لا ثقب — الزوايا تُحسب من العدد الباقي) */
+      const RING = ['anime', 'pixel', 'sketch', 'mosaic', 'oil', 'comic', 'watercolor', 'cyberpunk', 'lego', 'statue', 'pop', 'ghibli']
+        .filter((v) => !(typeof omranHwHidden === 'function' && omranHwHidden('portrait', v)));
       RING.forEach((v, i) => {
         const a = (-90 + i * (360 / RING.length)) * Math.PI / 180, r = 40.5;
         const tdiv = document.createElement('div'); tdiv.className = 'pstyleHeroT'; tdiv.setAttribute('data-pstyle-ring', v);
         tdiv.style.left = (50 + r * Math.cos(a)) + '%'; tdiv.style.top = (50 + r * Math.sin(a)) + '%';
         const im = document.createElement('img'); im.src = pstyleImg(v); im.alt = ''; im.loading = 'eager'; im.onerror = function(){ tdiv.remove(); };
-        const lb = document.createElement('i'); lb.textContent = RING_EN[v] || pstyleEn(v);
+        const lb = document.createElement('i');
         tdiv.appendChild(im); tdiv.appendChild(lb);
         tdiv.onclick = function(){ selectPortraitStyle(v); };
         hero.appendChild(tdiv);
       });
       scroller.insertBefore(hero, styleCardsGrid);
     }
+    refreshRingLabels(hero); /* v-ring-i18n: بلغة الواجهة الحاليّة في كلّ فتحة */
     let chips = document.getElementById('portraitStyleChips');
     if(!chips){ chips = document.createElement('div'); chips.id = 'portraitStyleChips'; chips.className = 'pstyleChips'; scroller.insertBefore(chips, styleCardsGrid); }
     chips.innerHTML = '';
@@ -1011,7 +1200,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function refreshPortraitFoot(){
     const o = styleEl && styleEl.querySelector('option[value="' + styleEl.value + '"]');
     const pi = document.getElementById('portraitFootImg'); if(pi){ pi.src = pstyleImg(styleEl.value); pi.style.visibility = 'visible'; }
-    const pt = document.getElementById('portraitFootName'); if(pt) pt.textContent = o ? optLabel(o).trim() : '';
+    const pt = document.getElementById('portraitFootName'); if(pt) pt.textContent = o ? noFlag(optLabel(o)) : '';
     const cta = document.getElementById('portraitStyleCta');
     if(cta) cta.textContent = window.__portraitHasPhoto ? gt('portraitGenerateBtn', '✨ حوّلها', '✨ Convert') : gt('psheetTry', '✨ جرّب على صورتك', '✨ Try it on your photo');
   }
@@ -1028,6 +1217,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(!styleCardsGrid) return;
     styleCardsGrid.querySelectorAll('[data-pstyle-card]').forEach((c) => {
       const on = c.getAttribute('data-pstyle-card') === v;
+      c.classList.toggle('on', on); /* v-psheet-nogold: الوضع الأسود يميّز المختارة بالصنف لا بالذهبيّ */
       c.style.border = on ? '2px solid #d4af37' : '1px solid var(--border,#2a2a30)';
       c.style.boxShadow = on ? '0 0 14px rgba(212,175,55,.3)' : '';
       const tk = c.querySelector('[data-pstyle-tick]'); if(tk) tk.style.display = on ? 'flex' : 'none';
@@ -1067,15 +1257,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const bc = document.createElement('div'); bc.className = 'pstyleCard pstyleBefore'; bc.setAttribute('data-pstyle-before', '1');
       bc.style.cssText = 'border-radius:14px; overflow:hidden; background:#17171b; border:1px solid var(--border,#2a2a30);';
       const w = document.createElement('div'); w.style.cssText = 'position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#23232a,#101014);';
-      const im = document.createElement('img'); im.src = window.__portraitPhotoUrl || 'assets/portrait/before.webp'; im.alt = ''; im.loading = 'eager';
+      const im = document.createElement('img'); im.src = window.__portraitPhotoUrl || 'assets/portrait/before.webp?v=2'; im.alt = ''; im.loading = 'eager';
       im.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;'; im.onerror = function(){ im.remove(); };
-      const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before');
+      const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before'); tag.setAttribute('data-pstyle-before-tag', '1');
       tag.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; padding:3px 9px; border-radius:999px; background:#d4af37; color:#141414; font-weight:800; font-size:11.5px;';
-      w.appendChild(im); w.appendChild(tag);
-      const info = document.createElement('div'); info.style.cssText = 'padding:9px 10px 11px; text-align:center;';
-      const n = document.createElement('div'); n.textContent = gt('psheetBefore', 'قبل', 'Before'); n.style.cssText = 'font-size:12.5px; font-weight:700; color:#d4af37;';
-      const sb = document.createElement('div'); sb.textContent = gt('psheetBeforeSub', 'صورة واحدة → كل الستايلات', 'One photo → every style'); sb.style.cssText = 'font-size:10.5px; color:#9a9a9e; margin-top:3px; min-height:13px;';
-      info.appendChild(n); info.appendChild(sb); bc.appendChild(w); bc.appendChild(info);
+      /* v-photo-only (المالك ١٧ أكتوبر: «انماط الصور والاستايل والازياء… اي صوره تحتها احذفها نهائي»): البطاقة صورتها وحدها —
+         شارة «قبل» فوق الصورة تكفي، فلا شريط عنوان ووصف تحتها. */
+      w.appendChild(im); w.appendChild(tag); bc.appendChild(w);
       styleCardsGrid.appendChild(bc);
     })();
     opts.forEach((opt) => {
@@ -1083,7 +1271,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const active = v === styleEl.value;
       const title = optLabel(opt).trim();
       const card = document.createElement('div');
-      card.setAttribute('data-pstyle-card', v); card.className = 'pstyleCard'; card.tabIndex = 0;
+      card.setAttribute('data-pstyle-card', v); card.className = 'pstyleCard' + (active ? ' on' : ''); card.tabIndex = 0;
       card.style.cssText = 'border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;' +
         (active ? ' border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);' : ' border:1px solid var(--border,#2a2a30);');
       const imgWrap = document.createElement('div');
@@ -1108,17 +1296,14 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         tick.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:' + (active ? 'flex' : 'none') + '; align-items:center; justify-content:center;';
         imgWrap.appendChild(tick);
       }
+      /* v-photo-only: اسم النمط نصّ فوق أسفل الصورة بتدرّج — لا شريط تحتها ولا وصف ولا اسم إنجليزيّ. */
       const info = document.createElement('div');
-      info.style.cssText = 'padding:9px 10px 11px; text-align:center;';
+      info.style.cssText = 'position:absolute; inset:auto 0 0 0; padding:22px 8px 8px; text-align:center; pointer-events:none; background:linear-gradient(0deg,rgba(0,0,0,.85),rgba(0,0,0,0));';
       const nameEl = document.createElement('div');
-      nameEl.textContent = title; nameEl.setAttribute('data-pstyle-name', '1');
-      nameEl.style.cssText = 'font-size:12.5px; font-weight:700; color:' + (active ? '#d4af37' : '#eef0f6') + ';';
-      const subEl = document.createElement('div');
-      subEl.textContent = pstyleSub(v);
-      subEl.style.cssText = 'font-size:10.5px; color:#9a9a9e; margin-top:3px; min-height:13px;';
-      info.appendChild(nameEl); info.appendChild(subEl);
-      if(pstyleLang().indexOf('en') !== 0){ const en = pstyleEn(v); if(en && en !== title){ const enEl = document.createElement('div'); enEl.className = 'pstyleEn'; enEl.textContent = en; info.appendChild(enEl); } }
-      card.appendChild(imgWrap); card.appendChild(info);
+      nameEl.textContent = noFlag(title); nameEl.setAttribute('data-pstyle-name', '1'); /* v-no-flag */
+      nameEl.style.cssText = 'font-size:12.5px; font-weight:700; line-height:1.3; text-shadow:0 1px 3px rgba(0,0,0,.9); color:' + (active ? '#d4af37' : '#eef0f6') + ';';
+      info.appendChild(nameEl); imgWrap.appendChild(info);
+      card.appendChild(imgWrap);
       card.onclick = function(){ selectPortraitStyle(v); };
       styleCardsGrid.appendChild(card);
     });
@@ -1202,6 +1387,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     /* التحميل على الجوال/الأغلفة يمرّ بالمسار الموحّد؛ الكمبيوتر يبقى تنزيلًا مباشرًا */
     downloadEl.addEventListener('click', (ev) => {
       try{
+        /* v-audit-shell (cli-ui-shell-2): الحافظ الموحّد (app-05-save-media، التقاط على document) سبقنا بنقرة المستخدم ونادى omranSaveMedia —
+           كان هذا ينادي omranSaveImage فوقه: رفعتان وورقتان للنقرة الواحدة على متصفّح الجوّال. */
+        if(ev.defaultPrevented) return;
         const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp());
         if(!mobile || typeof window.omranSaveImage !== 'function') return;
         ev.preventDefault(); ev.stopPropagation();
@@ -1217,16 +1405,14 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
      (نفس عطب v-slider-touch القديم لكن بجذر مختلف — الحاوية لا عنصر input). النقر في أيّ نقطة من
      الصورة يقفز الفاصل إليها فورًا (نمط مقارنة الصور المعتاد)، لا يقتصر على سحب المقبض فقط. */
   let comparePct = 100;
+  /* v-pcompare-box (تدقيق ١٨ أكتوبر + أمر المالك ٢٠ أكتوبر، الدفعة ٤: «قبل» و«بعد» معكوسة وصورة «بعد» مزاحة عن الأصل): عرض الطبقة كان يتغيّر
+     وعرض النتيجة يُقاس بالبكسل من عرض الإطار — والإطار مخفيّ تحت مشهد الانتظار لحظة القياس فيرجع ٠، فتأخذ النتيجة عرضها الطبيعيّ يسارًا والأصل موسَّط.
+     الطبقة الآن بملء الإطار وتُقصّ بـclip-path، والصورتان contain في الصندوق نفسه (partials-core) — لا قياس ولا مستمع resize. */
   function setComparePct(pct){
     comparePct = Math.max(0, Math.min(100, pct));
-    if(compareAfterWrap) compareAfterWrap.style.width = comparePct + '%';
+    if(compareAfterWrap) compareAfterWrap.style.clipPath = 'inset(0 ' + (100 - comparePct) + '% 0 0)';
     const divider = $('#portraitCompareDivider');
     if(divider) divider.style.left = comparePct + '%';
-  }
-  function layoutCompareAfter(){
-    if(!compareWrap || !resultEl) return;
-    const w = compareWrap.offsetWidth;
-    if(w) resultEl.style.width = w + 'px';
   }
   let __compareDragging = false;
   function comparePctFromEvent(ev){
@@ -1246,7 +1432,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     compareWrap.addEventListener('pointermove', (ev) => { if(__compareDragging) setComparePct(comparePctFromEvent(ev)); });
     ['pointerup', 'pointercancel'].forEach((evt) => compareWrap.addEventListener(evt, () => { __compareDragging = false; }));
   }
-  window.addEventListener('resize', layoutCompareAfter);
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
@@ -1285,6 +1470,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
     __compressImg(file, function(dataUrl){
+      if(!dataUrl){ selectedBase64 = ''; sourcePreview.style.display = 'none'; return; }
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
@@ -1305,6 +1491,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
      #portraitMulti* تخصّ أنماط الصور فقط؛ styleEl هنا هو portraitStyleSelect الصحيح (كان في
      مكانها القديم styleEl الأزياء الداخلية، فمقارنة 'merge2' لا تتحقّق أبدًا هناك). */
   let extraImagesB64 = [];
+  /* v-audit-studcli (cli-studios-2) + v-audit-stud2 (srv-studios-2-5): الصور الإضافيّة كانت تُقرأ بـreadAsDataURL بحجمها الأصليّ
+     (صورة كاميرا ٣ م.ب تكفي لتجاوز حدّ الاستضافة ٤٫٥ م.ب فيُرفض الطلب بـ٤١٣) وبلا تحويل HEIC، والقراءة غير متزامنة فكان «حوّلها»
+     قبل اكتمالها يرسل extraImages: [] فيخترع النموذج الشخص الثاني. الآن تمرّ كلّ واحدة بـ__compressImg(…, 1024) كالصورة الرئيسيّة،
+     بترتيبها، و«حوّلها» ينتظر اكتمال الدفعة (extraReady) ثمّ يرفض الإرسال بلا صورة إضافيّة؛ ودفعة أحدث تُلغي ما لم يكتمل من سابقتها. */
+  let extraReady = Promise.resolve();
+  let extraBatch = 0;
   const multiFileInput = $('#portraitMultiFileInput');
   const multiFileBtn = $('#portraitMultiFileBtn');
   const multiPreviewWrap = $('#portraitMultiPreviewWrap');
@@ -1313,22 +1505,24 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     multiFileInput.onchange = () => {
       const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
       const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
+      const batch = ++extraBatch;
+      const slots = [];
       extraImagesB64 = [];
       if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = String(reader.result || '');
-          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
-          if(multiPreviewWrap){
-            const img = document.createElement('img');
-            img.src = dataUrl;
-            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
-            multiPreviewWrap.appendChild(img);
+      extraReady = Promise.all(files.map((file, i) => new Promise((done) => {
+        __compressImg(file, (dataUrl) => {
+          if(batch === extraBatch && dataUrl){
+            slots[i] = { base64: dataUrl.split(',')[1] || '', mime: 'image/jpeg' };
+            if(multiPreviewWrap){
+              const img = document.createElement('img');
+              img.src = dataUrl;
+              img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
+              multiPreviewWrap.appendChild(img);
+            }
           }
-        };
-        reader.readAsDataURL(file);
-      });
+          done();
+        }, 1024);
+      }))).then(() => { if(batch === extraBatch) extraImagesB64 = slots.filter(Boolean); });
     };
   }
 
@@ -1340,6 +1534,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){
       setStatus(t('portraitNeedLogin'));
+      return;
+    }
+    /* v-audit-stud2 (srv-studios-2-5): الدمج والعائلي بلا صورة إضافيّة مقروءة = نصّ خانة الرفع نفسه، بلا طلب */
+    const multiStyle = styleEl.value === 'merge2' || styleEl.value === 'familystyle';
+    if(multiStyle) await extraReady; /* v-audit-studcli: الصور الإضافيّة مصغّرة وكاملة قبل الفحص والإرسال */
+    if(multiStyle && !extraImagesB64.length){
+      setStatus(t(styleEl.value === 'merge2' ? 'portraitMultiLabelMerge' : 'portraitMultiLabelFamily'));
       return;
     }
 
@@ -1360,6 +1561,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('portraitNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('portraitLimitReached')); return; }
+        if(data.error === 'missing_extra_images'){ setStatus(t(styleEl.value === 'merge2' ? 'portraitMultiLabelMerge' : 'portraitMultiLabelFamily')); return; } /* v-audit-stud2 */
         throw new Error(data.error || 'unknown');
       }
       if(styleEl.value === 'avatargif' && Array.isArray(data.frames) && data.frames.length){
@@ -1397,7 +1599,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           compareBefore.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
           compareWrap.style.display = 'block';
           setComparePct(100);
-          layoutCompareAfter();
         }
         downloadEl.href = dataUrl;
         downloadEl.setAttribute('download', 'omran-portrait-style.png');
@@ -1406,7 +1607,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         setStatus(t('portraitDone'));
       }
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       btnGenerate.disabled = false;
     }
@@ -1540,7 +1741,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   // looks/<الفئة>/، وما لم يُولَّد بعد يسقط لصور النساء ثم للتدرّج الأنيق.
   // v-fashion-78: نسائي 36 · رجالي 24 · أطفال 18 — «٣٠-٥٠ كلام آخر».
   const GENDER_STYLES = {
-    women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional', 'kaftan', 'jalabiya', 'hijabchic', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'cocktail', 'ballgown', 'boho', 'vintage', 'y2k', 'minimal', 'glam', 'leather', 'denim', 'pastel', 'monochrome', 'floral', 'velvet', 'silk', 'suitf', 'turkish', 'indian', 'princess', 'safari', 'preppy', 'artgown'],
+    women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional', 'kaftan', 'jalabiya', 'mukhawara', 'hijabchic', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'cocktail', 'ballgown', 'boho', 'vintage', 'y2k', 'minimal', 'glam', 'leather', 'denim', 'pastel', 'monochrome', 'floral', 'velvet', 'silk', 'suitf', 'turkish', 'indian', 'princess', 'safari', 'preppy', 'artgown'],
     men: ['evening', 'formal', 'casual', 'wedding', 'traditional', 'bisht', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'leather', 'denim', 'minimal', 'monochrome', 'vintage', 'smartcasual', 'threepiece', 'safari', 'preppy', 'athleisure', 'rockstar', 'moroccan'],
     kids: ['evening', 'formal', 'casual', 'wedding', 'traditional', 'sporty', 'winterlux', 'summer', 'school', 'denim', 'pastel', 'floral', 'streetwear', 'minimal', 'vintage', 'preppy', 'eidkids', 'princess'],
   };
@@ -1577,11 +1778,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
        فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
        التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
-    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=4'; /* الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) — v=4: v-fx-dedupe أعاد توليد ستّ صور بالمسار نفسه */
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
     else img.src = __src;
     img.onerror = function(){
-      if(!img.__flat){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; }
+      if(!img.__flat && gender === 'women'){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; } /* v-fx-gender-pics: الاحتياط صورة امرأة — لا لرجل أو طفل */
       else img.remove();
     };
     return img;
@@ -1600,8 +1801,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const opt = fashionOptFor(v);
         return opt && {
           v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
-          img: 'assets/fashion/looks/' + g + '/' + v + '.webp',
-          img2: 'assets/fashion/looks/' + v + '.webp',
+          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=4',
+          img2: g === 'women' ? 'assets/fashion/looks/' + v + '.webp' : '',
         };
       }).filter(Boolean),
       onPick: function(v){ styleEl.value = v; fxStyleManual = v; renderStyleCards(); },
@@ -1621,7 +1822,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     trig.id = 'fashionStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
     const img = lookImg(g, styleEl.value, opt ? optLabel(opt) : '');
-    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    /* v-fx-mukhawara: الصورة في صندوق ثابت يحمل التدرّج — نمط بلا صورة بعد (المخورة حتّى تُعتمد صورتها) كان يُزيل الصورة فتنكمش البطاقة ~٢٠ بكسل */
+    const thumb = document.createElement('div');
+    thumb.style.cssText = 'width:44px; height:58px; border-radius:8px; overflow:hidden; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    img.style.cssText = 'display:block; width:100%; height:100%; object-fit:cover;';
+    thumb.appendChild(img);
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
@@ -1636,7 +1841,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const all = document.createElement('span');
     all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (bT('عرض الكل ›','Browse all ›'));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
-    trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
+    trig.appendChild(thumb); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openFashionPicker;
     styleCardsEl.appendChild(trig);
   }
@@ -1647,15 +1852,17 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-fx-simple (تبسيط الأزياء): الخادم يبني التصميم من النمط («SPECIFIC DESIGN» من ≥١٠٠ للنمط) ثمّ يقول
      «مخصّص لـ{المناسبة}». فلمّا طُوي منتقي النمط تحت «خصّصها» صار افتراضه («سهرة» أوّل القائمة) يُطبَّق بصمت:
      مناسبة «كاجوال» + نمط «سهرة» = فستان سهرة لطلعة كاجوال. الآن المناسبة الظاهرة تختار النمط المطابق لها
-     في الفئة الحاليّة، والنمط الذي يختاره المستخدم بيده من المعرض يغلب (آخر فعل يغلب). */
+     في الفئة الحاليّة، والنمط الذي يختاره المستخدم بيده من المعرض يغلب (آخر فعل يغلب).
+     v-fx-occ-look (المالك ٢٥ أكتوبر: «الصور لي ماتطابق الشي الي اخترته»): للرجال والأطفال النمط هو ما في صورة بطاقة المناسبة
+     (KIND_LOOK في design-gen.js) — كان تخرّج الرجل يعرض ثلاث قطع ويولّد رسميًّا، وسفر الطفل دنيم ← كاجوال، وتخرّجه بريبي ← رسمي. */
   const FX_OCC_STYLE = {
     wedding:    { women:'wedding', men:'wedding',     kids:'wedding' },
     work:       { women:'office',  men:'office',      kids:'school' },
     casual:     { women:'casual',  men:'casual',      kids:'casual' },
     sport:      { women:'sporty',  men:'sporty',      kids:'sporty' },
-    travel:     { women:'casual',  men:'smartcasual', kids:'casual' },
+    travel:     { women:'casual',  men:'smartcasual', kids:'denim' },
     formal:     { women:'formal',  men:'formal',      kids:'formal' },
-    graduation: { women:'formal',  men:'formal',      kids:'formal' },
+    graduation: { women:'formal',  men:'threepiece',  kids:'preppy' },
     religious:  { women:'abaya',   men:'traditional', kids:'eidkids' },
   };
   function fxStyleForOccasion(){
@@ -1697,8 +1904,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       skin: profileSkinEl.value.trim(),
       hair: profileHairEl.value.trim(),
     };
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
-    setStatus(t('fashionProfileSaved'));
+    /* v-fav-near (تدقيق ١٨ أكتوبر): «تم حفظ ملفك» كانت تُكتب في سطر الحالة عند زرّ «صمم» تحت الشاشة فلا يراها من ضغط —
+       النتيجة على الزرّ نفسه ١٫٨ ث ثمّ يعود نصّه، والحفظ بحارس (v-fav-quota). */
+    const ok = __omranLsPut(PROFILE_KEY, p);
+    profileSaveBtn.textContent = t(ok ? 'fashionProfileSaved' : 'memorySaveError');
+    setTimeout(() => { profileSaveBtn.textContent = t('fashionProfileSave'); }, 1800);
   };
 
   /* ---- ❤️ favorites ---- */
@@ -1706,10 +1916,17 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function loadFavorites(){
     try{ return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }catch(e){ return []; }
   }
-  function saveFavorite(dataUrl, styleLabel){
-    const favs = loadFavorites();
-    favs.unshift({ img: dataUrl, style: styleLabel || '', ts: Date.now() });
-    localStorage.setItem(FAV_KEY, JSON.stringify(favs.slice(0, 30)));
+  /* v-fav-quota: مصغّرة JPEG وحفظ بحارس يرجع نجح/فشل — لا حذف تلقائيّ لمفضّلة قائمة */
+  function saveFavorite(dataUrl, styleLabel, onDone){
+    __omranFavThumb(dataUrl, (img) => {
+      const favs = loadFavorites();
+      favs.unshift({ img: img, style: styleLabel || '', ts: Date.now() });
+      onDone(__omranLsPut(FAV_KEY, favs.slice(0, 30)));
+    });
+  }
+  /* v-fav-near: اللوحة كانت آخر النافذة بعد شبكة المقارنة ونتائجها وزرّها في رأس القسم — تُنقل تحت صفّ الرأس مباشرة */
+  if(favoritesBtn && favoritesPanel && favoritesBtn.parentElement){
+    try{ favoritesBtn.parentElement.insertAdjacentElement('afterend', favoritesPanel); }catch(e){ __swallow(e, 'fashion:fav-near'); }
   }
   function renderFavorites(){
     const favs = loadFavorites();
@@ -1722,12 +1939,15 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const card = document.createElement('div');
       card.style.cssText = 'display:flex; align-items:center; gap:8px; border:1px solid var(--border,#333); border-radius:8px; padding:6px;';
       card.innerHTML = '<img src="' + f.img + '" style="width:50px; height:50px; object-fit:cover; border-radius:6px;">' +
-        '<span style="flex:1; font-size:11.5px; color:var(--muted,#999);">' + (f.style || '') + '</span>' +
+        '<span style="flex:1; font-size:11.5px; color:var(--muted,#999);"></span>' +
         '<button type="button" class="btn iconBtn" data-idx=' + idx + '" style="padding:2px 8px; font-size:12px;">✕</button>';
+      /* v-fav-near: المحفوظ قيمة النمط الخامّ («casual») — يُعرض باسم خياره بلغة الواجهة، وغير المعروف كما هو */
+      const o = f.style ? fashionOptFor(f.style) : null;
+      card.querySelector('span').textContent = o ? optLabel(o).trim() : (f.style || '');
       card.querySelector('button').onclick = () => {
         const arr = loadFavorites();
         arr.splice(idx, 1);
-        localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+        __omranLsPut(FAV_KEY, arr);
         renderFavorites();
       };
       favoritesPanel.appendChild(card);
@@ -1738,12 +1958,16 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(showing){ favoritesPanel.style.display = 'none'; return; }
     renderFavorites();
     favoritesPanel.style.display = 'flex';
+    try{ favoritesPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(e){ __swallow(e, 'fashion:fav-scroll'); }
   };
   if(favSaveBtn) favSaveBtn.onclick = () => {
     if(!resultEl.src) return;
-    saveFavorite(resultEl.src, styleEl.value);
-    favSaveBtn.textContent = t('fashionFavoriteSaved');
-    setTimeout(() => { favSaveBtn.textContent = t('fashionFavoriteSaveBtn'); }, 1800);
+    saveFavorite(resultEl.src, styleEl.value, (ok) => {
+      /* v-fav-quota: النتيجة على الزرّ نفسه، وسبب الفشل في سطر الحالة */
+      favSaveBtn.textContent = t(ok ? 'fashionFavoriteSaved' : 'memorySaveError');
+      if(!ok) setStatus(t('storageFullWarning'));
+      setTimeout(() => { favSaveBtn.textContent = t('fashionFavoriteSaveBtn'); }, ok ? 1800 : 2500);
+    });
   };
 
   /* ---- 🔄 before/after slider ----
@@ -1816,8 +2040,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         wrap.style.boxShadow = cb.checked ? '0 0 12px rgba(212,175,55,.35)' : 'none';
       }
       wrap.onclick = function(){
-        if(!cb.checked && compareChecksEl.querySelectorAll('.fashionCompareCheck:checked').length >= 3) return; // الحد ٣
+        /* تدقيق ١٨ أكتوبر: الرابعة كانت ترجع بصمت و«اختر إطلالتين» باقية وأنت مختار ٣ — رسالة الحدّ كمقارنة الديكور، والتبديل يمسح القديمة */
+        if(!cb.checked && compareChecksEl.querySelectorAll('.fashionCompareCheck:checked').length >= 3){
+          if(compareStatusEl){ compareStatusEl.style.display = 'block'; compareStatusEl.textContent = bT('الحد ٣ أنماط', 'Max 3 styles'); }
+          return;
+        }
         cb.checked = !cb.checked; paint();
+        if(compareStatusEl && !(compareBtn && compareBtn.disabled)) compareStatusEl.style.display = 'none';
       };
       wrap.appendChild(lookImg(g, v, opt.textContent));
       wrap.appendChild(tick); wrap.appendChild(label); wrap.appendChild(cb);
@@ -1875,6 +2104,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
     __compressImg(file, function(dataUrl){
+      if(!dataUrl){ selectedBase64 = ''; sourcePreview.style.display = 'none'; return; }
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
@@ -1946,7 +2176,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const __dl = fxDesignLine(data.design);
       setStatus(t('fashionAiDone') + (__dl ? ' ' + __dl : ''));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       btnGenerate.disabled = false;
     }
@@ -1960,45 +2190,74 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* المترجم لم يجهز */ }
     return isEn() ? enFb : arFb;
   };
-  let refineRow = null, refineInput = null, refineBtn = null;
+  let refineRow = null, refineInput = null, refineBtn = null, refineStatusEl = null;
   function __buildRefineRow(){
     if(refineRow || !resultWrap) return;
     refineRow = document.createElement('div');
     refineRow.id = 'fashionRefineRow';
-    refineRow.style.cssText = 'display:none; gap:8px; margin-top:10px; align-items:stretch;';
+    /* تدقيق ١٨ أكتوبر: صفّ بلا التفاف والزرّ بعرضه كاملًا كان يقصّ المثال («…the dress colour t») — يلتفّ الزرّ تحت الخانة حين لا يتّسع */
+    refineRow.style.cssText = 'display:none; flex-wrap:wrap; gap:8px; margin-top:10px; align-items:stretch;';
     refineInput = document.createElement('input');
     refineInput.id = 'fashionRefineInput';
     refineInput.type = 'text';
     refineInput.maxLength = 300;
-    refineInput.style.cssText = 'flex:1 1 auto; min-width:0; padding:10px 12px; border-radius:12px; border:1px solid var(--border,#333); background:var(--panel2,#1b1b22); color:var(--text,#eee); font-family:inherit; font-size:13px;';
+    refineInput.style.cssText = 'flex:1 1 280px; min-width:0; padding:10px 12px; border-radius:12px; border:1px solid var(--border,#333); background:var(--panel2,#1b1b22); color:var(--text,#eee); font-family:inherit; font-size:13px;';
     refineBtn = document.createElement('button');
     refineBtn.id = 'fashionRefineBtn';
     refineBtn.type = 'button';
     refineBtn.className = 'btn';
     refineBtn.style.cssText = 'flex:0 0 auto; white-space:nowrap;';
+    /* ورسالتا التحقّق كانتا في #fashionAiStatus عند «صمم» أسفل النافذة (خارج الشاشة) — سطرهما داخل الصفّ تحت الخانة والزرّ */
+    refineStatusEl = document.createElement('div');
+    refineStatusEl.id = 'fashionRefineStatus';
+    refineStatusEl.setAttribute('role', 'status');
+    refineStatusEl.style.cssText = 'display:none; flex:1 1 100%; text-align:center; font-size:var(--fs-3); color:var(--muted);';
     refineRow.appendChild(refineInput);
     refineRow.appendChild(refineBtn);
+    refineRow.appendChild(refineStatusEl);
     resultWrap.appendChild(refineRow);
     refineBtn.onclick = __doRefine;
     refineInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); __doRefine(); } });
+    refineInput.addEventListener('input', () => __refineStatus(''));
+  }
+  function __refineStatus(text){
+    if(!refineStatusEl) return;
+    refineStatusEl.style.display = text ? 'block' : 'none';
+    refineStatusEl.textContent = text || '';
+  }
+  /* v-fx-gender-pics: سطر التعديل تحت نتيجة رجل أو طفل كان «غيّري لون الفستان» و«عدّلي» — لغير النساء نصّ الفئة
+     (لغة بلا مدخل = المفتاح الأصليّ، وهو محايد فيها؛ العربيّة وحدها تؤنّث الفعل، و«الفستان» في كلّ اللغات) */
+  const FX_REFINE_G = {
+    ph: { ar:'مثال: غيّر لون القميص إلى أزرق فقط', en:'e.g. change only the shirt colour to blue', fr:'ex. : changez seulement la couleur de la chemise en bleu', es:'ej.: cambia solo el color de la camisa a azul', tr:'örn. sadece gömleğin rengini maviye çevir', ru:'напр.: измени только цвет рубашки на синий', hi:'जैसे: केवल शर्ट का रंग नीला करें', ur:'مثلاً: صرف قمیص کا رنگ نیلا کریں', bn:'যেমন: শুধু শার্টের রং নীল করুন', ne:'जस्तै: सर्टको रङ मात्र नीलो बनाउनुहोस्', fil:'hal.: palitan lang ang kulay ng polo sa asul', id:'mis.: ubah hanya warna kemeja menjadi biru', zh:'例如：只把衬衫颜色改成蓝色', ml:'ഉദാ: ഷർട്ടിന്റെ നിറം മാത്രം നീലയാക്കൂ' },
+    btn: { ar:'✏️ عدّل شيئًا محددًا' },
+    need: { ar:'اكتب التعديل المطلوب أولًا' },
+  };
+  function __refineG(k, key, ar, en){
+    const o = currentGender() !== 'women' ? FX_REFINE_G[k] : null;
+    return (o && o[lang7()]) || __gt2(key, ar, en);
   }
   function __refineTexts(){
     if(!refineInput) return;
-    refineInput.placeholder = __gt2('fashionRefinePh', 'مثال: غيّري لون الفستان إلى أزرق فقط', 'e.g. change only the dress colour to blue');
-    refineBtn.textContent = __gt2('fashionRefineBtn', '✏️ عدّلي شيئًا محددًا', '✏️ Edit one specific thing');
+    refineInput.placeholder = __refineG('ph', 'fashionRefinePh', 'مثال: غيّري لون الفستان إلى أزرق فقط', 'e.g. change only the dress colour to blue');
+    refineBtn.textContent = __refineG('btn', 'fashionRefineBtn', '✏️ عدّلي شيئًا محددًا', '✏️ Edit one specific thing');
   }
+  window.addEventListener('fashion-gender-change', __refineTexts); /* سطر ظاهر يتبع الفئة فورًا */
   function __refineRemember(b64, mime){
     __lastFxB64 = b64; __lastFxMime = mime;
     __buildRefineRow();
     __refineTexts();
-    if(refineRow){ refineRow.style.display = 'flex'; refineInput.value = ''; }
+    if(refineRow){ refineRow.style.display = 'flex'; refineInput.value = ''; __refineStatus(''); }
   }
   async function __doRefine(){
     if(!__lastFxB64) return;
     const reqTxt = (refineInput.value || '').trim();
-    if(!reqTxt){ setStatus(__gt2('fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
-    if(!token){ setStatus(t('fashionAiNeedLogin')); return; }
+    if(!reqTxt || !token){
+      const setStatus = __refineStatus; /* رسالتا التحقّق تحت الصفّ (كمقترحات الديكور v-decor-suggest-msg)؛ الانتظار والنتيجة في #fashionAiStatus كما كانا */
+      if(!reqTxt){ setStatus(__refineG('need', 'fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
+      setStatus(t('fashionAiNeedLogin')); return;
+    }
+    __refineStatus('');
     refineBtn.disabled = true; btnGenerate.disabled = true;
     setStatus(__gt2('fashionRefining', 'جاري تطبيق التعديل…', 'Applying your edit…'));
     try{
@@ -2023,7 +2282,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       refineInput.value = '';
       setStatus(t('fashionAiDone'));
     }catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     }finally{
       refineBtn.disabled = false; btnGenerate.disabled = false;
     }
@@ -2050,6 +2309,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const payload = {
         occasion: occasionEl.value, season: seasonEl.value,
         profile: loadProfile(), lang: lang7(), token,
+        gender: currentGender(), /* v-fx-gender-pics: بلاها تقترح إطلالات نسائيّة لرجل أو طفل */
       };
       if(mode === 'image' && selectedBase64){
         payload.imageBase64 = selectedBase64;
@@ -2066,25 +2326,40 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; } /* v-open-tools-cap */
+        if(data.error === 'unavailable'){ setStatus(t('svcPaused')); return; } /* v-provider-fail-rest */
+        if(data.error === 'failed'){ setStatus(t('designAiSuggestError')); return; } /* الخادم يرسل رمزًا لا نصّ المزوّد — كان «❌ خطأ: <النصّ>» */
         throw new Error(data.error || 'unknown');
       }
       const list = data.suggestions || [];
       list.forEach(s => {
         const card = document.createElement('div');
         card.style.cssText = 'border:1px solid var(--border,#333); border-radius:10px; padding:10px;';
-        card.innerHTML =
-          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<strong style="font-size:13px;">' + (s.title || '') + '</strong>' +
-            '<span style="font-size:11.5px; color:#4ade80;">' + t('fashionMatchLabel') + ': ' + s.matchPercent + '%</span>' +
-          '</div>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.clothing || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0;">🎨 ' + (s.colors || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">👜 ' + (s.accessories || '') + '</p>' +
-          '<button type="button" class="btn primary useLookBtn" style="width:100%; font-size:12px; padding:5px;">' + t('fashionUseThisLook') + '</button>';
-        card.querySelector('.useLookBtn').onclick = () => {
+        /* v-sec-card-xss: حقول النموذج تُبنى بـtextContent لا بـinnerHTML — صورةٌ نصُّها المضمَّن كانت
+           تجعل النموذج يعيد «<img onerror=…>» في title/clothing فيُنفَّذ في الصفحة الأمّ. */
+        const head = document.createElement('div');
+        head.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+        const titleEl = document.createElement('strong');
+        titleEl.style.cssText = 'font-size:13px;'; titleEl.textContent = String(s.title || '');
+        const matchEl = document.createElement('span');
+        matchEl.style.cssText = 'font-size:11.5px; color:#4ade80;'; matchEl.textContent = t('fashionMatchLabel') + ': ' + String(s.matchPercent == null ? '' : s.matchPercent) + '%';
+        head.appendChild(titleEl); head.appendChild(matchEl);
+        const pClothing = document.createElement('p');
+        pClothing.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:6px 0 2px;'; pClothing.textContent = String(s.clothing || '');
+        const pColors = document.createElement('p');
+        pColors.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:2px 0;'; pColors.textContent = '🎨 ' + String(s.colors || '');
+        const pAcc = document.createElement('p');
+        pAcc.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:2px 0 8px;'; pAcc.textContent = (currentGender() === 'men' ? '💼 ' : '👜 ') + String(s.accessories || ''); /* v-fx-gender-pics: كبطاقة الحقيبة */
+        const useBtn = document.createElement('button');
+        useBtn.type = 'button'; useBtn.className = 'btn primary useLookBtn';
+        useBtn.style.cssText = 'width:100%; font-size:12px; padding:5px;'; useBtn.textContent = t('fashionUseThisLook');
+        card.appendChild(head); card.appendChild(pClothing); card.appendChild(pColors); card.appendChild(pAcc); card.appendChild(useBtn);
+        useBtn.onclick = () => {
+          /* تدقيق ١٨ أكتوبر: الوصف كان «… . Colors: … Accessories: …» بتسميات إنجليزيّة و«..» — الأجزاء الثلاثة بلا نقطتها الختاميّة مربوطة بـ«. » */
+          const look = [s.clothing, s.colors, s.accessories].map((x) => String(x || '').trim().replace(/[.。।]+$/, '').trim()).filter(Boolean).join('. ');
+          /* مع صورة مرفوعة يبقى الزرّ كما كان: لبس الإطلالة على صورتك (v-fashion-use-look) يحتاج أمر الخادم — مع طلب الأزياء المنفصل */
           if(mode === 'text' || !selectedBase64){
             setMode('text');
-            descriptionEl.value = (s.clothing || '') + '. ' + (s.colors ? ('Colors: ' + s.colors + '. ') : '') + (s.accessories ? ('Accessories: ' + s.accessories) : '');
+            descriptionEl.value = look;
           }
         };
         suggestionsEl.appendChild(card);
@@ -2092,7 +2367,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('fashionSuggestNeedImage'));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '), 'designAiSuggestError')); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       suggestBtn.disabled = false;
     }
@@ -2146,36 +2421,44 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       }));
       // v-fashion-cards: بطاقات المقارنة بشكل التصميم المعتمد — تسمية أ/ب/ج،
       // اختيار بإطار ذهبي، والمختارة تصير النتيجة الرئيسية القابلة للتحميل.
-      const AR_LABELS = ['أ', 'ب', 'ج'];
+      /* تدقيق ١٨ أكتوبر: التسميات والتلميح و«✓ اختيارك» كانت عربيّة في كلّ اللغات — أ/ب/ج للعربيّة والأردو وA/B/C لغيرهما،
+         والتلميح من __BI (موجود بالـ١٢ لغة)، والمختار علامة ✓ مع الإطار الذهبيّ */
+      const LABELS = /^(ar|ur)/.test(lang7()) ? ['أ', 'ب', 'ج'] : ['A', 'B', 'C'];
+      const PICK_HINT = bT('اضغطي للاختيار ✓', '👍 Pick this');
       results.forEach((r, ri) => {
         const cell = document.createElement('div');
         cell.style.cssText = 'position:relative; border:1.5px solid var(--border,#333); border-radius:14px; padding:6px; text-align:center; cursor:pointer; transition:border-color .15s, box-shadow .15s;';
         if(r.dataUrl){
           const label = (styleEl.querySelector('option[value="' + r.styleVal + '"]') || {}).textContent || r.styleVal;
-          cell.innerHTML = '<span style="position:absolute; top:12px; inset-inline-end:12px; z-index:2; background:rgba(0,0,0,.65); color:#eef0f6; font-weight:700; font-size:12.5px; border-radius:6px; padding:2px 8px;">' + AR_LABELS[ri] + '</span>'
+          cell.innerHTML = '<span style="position:absolute; top:12px; inset-inline-end:12px; z-index:2; background:rgba(0,0,0,.65); color:#eef0f6; font-weight:700; font-size:12.5px; border-radius:6px; padding:2px 8px;">' + LABELS[ri] + '</span>'
             + '<img src="' + r.dataUrl + '" style="width:100%; border-radius:10px; background:#000;">'
             + '<p style="font-size:11.5px; color:var(--muted,#999); margin:6px 0 2px;">' + label + '</p>'
-            + '<p class="fashionPickHint" style="font-size:11.5px; color:#d4af37; margin:0 0 4px;">اضغطي للاختيار ✓</p>';
+            + '<p class="fashionPickHint" style="font-size:11.5px; color:#d4af37; margin:0 0 4px;">' + PICK_HINT + '</p>';
           cell.onclick = () => {
-            compareResultsEl.querySelectorAll(':scope > div').forEach(c => { c.style.borderColor = 'var(--border,#333)'; c.style.boxShadow = 'none'; const h = c.querySelector('.fashionPickHint'); if(h) h.textContent = 'اضغطي للاختيار ✓'; });
+            compareResultsEl.querySelectorAll(':scope > div').forEach(c => { c.style.borderColor = 'var(--border,#333)'; c.style.boxShadow = 'none'; const h = c.querySelector('.fashionPickHint'); if(h) h.textContent = PICK_HINT; });
             cell.style.borderColor = '#d4af37';
             cell.style.boxShadow = '0 8px 22px -12px rgba(212,175,55,.55)';
-            const h = cell.querySelector('.fashionPickHint'); if(h) h.textContent = '✓ اختيارك';
+            const h = cell.querySelector('.fashionPickHint'); if(h) h.textContent = '✓';
             resultEl.src = r.dataUrl; if(resultWrap) resultWrap.style.display = 'block'; resultEl.style.display = 'block'; /* v-fashion-show */
             downloadEl.href = r.dataUrl; downloadEl.style.display = 'block';
             favSaveBtn.style.display = 'block';
+            /* v-audit-studcli (cli-studios-6): المختارة تصير مصدر «عدّل شيئًا محددًا» — كان __lastFxB64 يبقى على التوليد السابق فيُعدَّل
+               التصميم القديم ويحلّ محلّ المختارة. __refineRemember يبني الصفّ إن لم يُبنَ ويفرّغ خانته */
+            const __pm = /^data:([^;,]+);base64,(.*)$/.exec(r.dataUrl);
+            if(__pm) __refineRemember(__pm[2], __pm[1]);
             /* v-fashion-result-inplace: النتيجة وزرّ التحميل صارا أعلى النافذة — نصعد إليهما ليرى الاختيار */
             fxRevealResult();
           };
         } else {
-          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+          /* رمز الخادم الخامّ (tmp_unavailable…) كان يظهر للمستخدم — نصّ مفهوم بالـ١٤ لغة (والحدّ اليوميّ باسمه) */
+          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">' + (r.error === 'daily_limit_reached' ? t('fashionAiLimitReached') : t('designAiSuggestError')) + '</p>';
         }
         compareResultsEl.appendChild(cell);
       });
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = __studioErrMsg(e);
     } finally {
       compareBtn.disabled = false;
     }
@@ -2209,9 +2492,35 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     statusEl.textContent = text || '';
   }
 
+  /* v-religion-paint (لقطة المالك ١٧ أكتوبر: «##» و«**» ظاهرة في النتيجة): الردّ كان textContent خامًا — يُرسم الآن بعارض
+     المحادثة نفسه (عناوين وخطّ عريض وقوائم)، حيًّا أثناء البثّ ثمّ رسمًا نهائيًّا. */
+  function paint(text, final){
+    try{
+      if(!final && typeof renderStreamingAssistant === 'function'){ renderStreamingAssistant(resultEl, text); return; }
+      resultEl.classList.remove('msg-streaming');
+      resultEl._omStreamHead = null; resultEl._omStreamHeadEl = null; resultEl._omStreamTailEl = null;
+      if(typeof buildSpokenWordSpans === 'function') buildSpokenWordSpans(resultEl, text);
+      else resultEl.textContent = text;
+    }catch(e){ __swallow(e, 'religion:paint'); resultEl.textContent = text; }
+  }
+
+  /* v-religion-race (فحص ١٧ أكتوبر): تغيير التبويب أثناء الكتابة كان يُكمل الطلب القديم في صندوق مخفيّ، فيكتب التبويب الجديد
+     «تم التفسير» بلا شيء وزرّ «فسّر» معطّل حتّى ينتهي. لكلّ طلب رقم: تغيير التبويب أو الإغلاق يلغيه (إشارة إيقاف خاصّة به،
+     لا إشارة المحادثة) ويتجاهل ما يصل منه. */
+  let run = 0, ctl = null;
+  function stopRun(){
+    run++;
+    if(ctl){ try{ ctl.abort(); }catch(e){ __swallow(e, 'religion:abort'); } ctl = null; }
+    btnGenerate.disabled = false;
+  }
+  function closeModal(){ stopRun(); modal.style.display = 'none'; }
+
   function setTool(next){
+    stopRun();
     tool = next;
-    tabsWrap.querySelectorAll('.religionTabBtn').forEach(b => b.classList.toggle('active', b.dataset.tool === next));
+    /* v-religion-tabs («التبويبات… نفس فسّر بالضبط»، بلا فرق للمختار): علامة المختار relOn لا active — مصنّف الألوان الثلاثة
+       يستثني .active من تعبئة الأسود فيبقى المختار بخلفيّة أفتح من «فسّر» */
+    tabsWrap.querySelectorAll('.religionTabBtn').forEach(b => b.classList.toggle('relOn', b.dataset.tool === next));
     const labelKey = 'religionInputLabel' + next.charAt(0).toUpperCase() + next.slice(1);
     const placeholderKey = 'religionInputPlaceholder' + next.charAt(0).toUpperCase() + next.slice(1);
     if(inputLabelEl) inputLabelEl.textContent = t(labelKey);
@@ -2219,6 +2528,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     resultEl.style.display = 'none';
     resultEl.textContent = '';
     setStatus('');
+    fitInput(); /* تدقيق ١٨ أكتوبر: مثال التبويب الجديد (الأحلام سطران على الجوّال) كان يُقصّ — المقاس يتبع المثال */
   }
 
   tabsWrap.addEventListener('click', (e) => {
@@ -2227,37 +2537,73 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     setTool(b.dataset.tool);
   });
 
+  /* v-religion-field (المالك ١٧ أكتوبر: مكان الكتابة «مايكون مربع… ويكون علو نفس المستوى»): الحقل سطر واحد بارتفاع «فسّر» والتبويبات،
+     ويطول مع النصّ الطويل حتّى ١٥٠px (كصندوق المحادثة)؛ والميكروفون دائرة بالارتفاع نفسه. */
+  const micBtn = modal.querySelector('.mini-mic-btn');
+  function fitInput(){
+    try{
+      const min = btnGenerate.offsetHeight || 33;
+      inputEl.style.height = min + 'px';
+      if(inputEl.scrollHeight > inputEl.clientHeight + 1){
+        const frame = inputEl.offsetHeight - inputEl.clientHeight; // الحدّ — الارتفاع border-box
+        inputEl.style.height = Math.min(inputEl.scrollHeight + frame, 150) + 'px';
+      }
+      if(micBtn){ micBtn.style.width = min + 'px'; micBtn.style.height = min + 'px'; }
+    }catch(e){ __swallow(e, 'religion:fit'); }
+  }
+  inputEl.addEventListener('input', fitInput);
+
   btnOpen.addEventListener('click', () => {
     modal.style.display = 'flex';
     setTool(tool);
+    fitInput();
     if(typeof closeHeaderMenu === 'function') closeHeaderMenu();
   });
-  btnClose.addEventListener('click', () => { modal.style.display = 'none'; });
-  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+  btnClose.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
 
   btnGenerate.addEventListener('click', async () => {
     const query = (inputEl.value || '').trim();
     if(!query){ setStatus(t('religionNeedInput')); return; }
+    stopRun();
+    const my = run;
+    ctl = (typeof AbortController === 'function') ? new AbortController() : null;
     btnGenerate.disabled = true;
     setStatus(t('religionGenerating'));
     resultEl.style.display = 'block';
     resultEl.textContent = '';
+    let done = false; // مزوّد تجاوزه حارس الخمول قد يكمل البثّ بعد الجواب أو الخطأ — لا يُرسم فوقهما
     try{
       const messages = [
         { role: 'system', content: SYSTEM_PROMPTS[tool] },
         { role: 'user', content: query },
       ];
-      const onDelta = (partial) => { resultEl.textContent = partial; };
+      const onDelta = (partial) => { if(my === run && !done) paint(partial); };
+      if(ctl) onDelta.__signal = ctl.signal;
       /* v-religion-rescue: كانت مربوطة بمزوّد واحد (Gemini) — أول 429 يميت
          الأداة كلها (لقطة المالك). الآن سلسلة الاحتياط الكاملة: أي مزوّد
-         مشحون واحد يبقيها حيّة. */
-      const res = await callAIWithFallback(messages, onDelta);
-      resultEl.textContent = (res && res.reply) || '';
+         مشحون واحد يبقيها حيّة.
+         v-religion-chain (المالك ١٧ أكتوبر: «اريده نفس قبل… الديانات كلها نفس قبل ومااريد ازرار زياده»): taskPrompt = موجّه
+         التبويب هو التعليمات كلّها — السلسلة القديمة نفسها حتّى للمالك، ولا يُحذف الموجّه في أيّ مسار (Kimi). */
+      const res = await callAIWithFallback(messages, onDelta, null, { taskPrompt: true });
+      if(my !== run) return;
+      done = true;
+      paint((res && res.reply) || '', true);
       setStatus(t('religionDone'));
     }catch(e){
-      setStatus(t('religionError') + (e && e.message ? (': ' + e.message) : ''));
+      if(my !== run) return;
+      /* تدقيق ١٨ أكتوبر: كان «حدث خطأ، حاول مرة أخرى: … (الاحتياط فشل أيضًا — …)» تحته صندوق فارغ. حدّ الباقة نصّه ويفتح الباقات
+         (v-plans-gate)، وغيره «حدث خطأ» وحده والتفاصيل للكونسول، والصندوق يُخفى إن لم يُكتب فيه شيء. */
+      if(e && e.planLimit){
+        setStatus(t('plansWhyLimit'));
+        try{ if(typeof window.omranOpenPlans === 'function') window.omranOpenPlans('limit', 'chat'); }catch(err){ __swallow(err, 'religion:plans'); }
+      } else {
+        setStatus(t('religionError'));
+        console.warn('[religion]', e && e.message ? e.message : e);
+      }
+      if(!String(resultEl.textContent || '').trim()) resultEl.style.display = 'none';
     }finally{
-      btnGenerate.disabled = false;
+      if(my === run){ done = true; btnGenerate.disabled = false; ctl = null; }
     }
   });
 })();
@@ -2284,7 +2630,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     connectText: t('emailAsst_connectText'),
     connectBtn: t('emailAsst_connectBtn'),
     disclaimer: t('emailAsst_disclaimer'),
-    title: t('emailAsst_title'),
+    title: t('emailAssistTitle'), /* تدقيق ١٨ أكتوبر: البطاقة «Smart Email Assistant» والنافذة «AI Email Assistant» في ١٣ لغة — مفتاح البطاقة نفسه */
     refresh: t('emailAsst_refresh'),
     loading: t('emailAsst_loading'),
     empty: t('emailAsst_empty'),
@@ -2305,6 +2651,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     urgent: t('emailAsst_urgent'),
     normal: t('emailAsst_normal'),
     low: t('emailAsst_low'),
+    regen: t('emailAsst_regen'), // v-email-cache
+    more: t('emailAsst_more'),
+    drafting: t('emailAsst_drafting'),
+    translation: t('emailAsst_translation'), // v-email-thread
+    draftMeaning: t('emailAsst_draftMeaning'),
   });
 
   function setStatus(text){
@@ -2322,139 +2673,323 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     return m ? m[1] : String(fromHeader || '').trim();
   }
 
-  function renderEmails(emails){
+  /* v-email-safe: (١) المسوّدة كانت تُلصق داخل <textarea> في innerHTML بلا تهريب — ردّ فيه </textarea> (إيميل يحقن
+     الموديل) يصير HTML وسكربتًا في صفحتنا. الآن كلّ نصّ من البريد أو الموديل يُكتب بـtextContent/value، والقالب ثابت.
+     (٢) المسوّدة الإنجليزيّة كانت تُعرض من اليمين («,Hi Sarah») — الاتّجاه من لغة الرسالة، وإلّا auto؛ والخطّ خطّ
+     الواجهة لا خطّ الكود. (٣) المرسل اسمًا وعنوانًا معزولَين (bdi) فلا تنقلب الأقواس. */
+  const EM_RTL = /^(ar|fa|ur|he|ps|yi|dv|ckb|sd|ug)$/i;
+  function emDir(lang2){ return lang2 ? (EM_RTL.test(lang2) ? 'rtl' : 'ltr') : 'auto'; }
+  // اتّجاه سطر المرسل من أوّل حرف في اسمه — dir="auto" لا يرى ما داخل <bdi> فيرجع ltr للاسم العربيّ أيضًا
+  function emTextDir(s){
+    for(const ch of String(s || '')){
+      if(/[֐-ࣿיִ-﷿ﹰ-﻿]/.test(ch)) return 'rtl';
+      if(/[A-Za-zÀ-ɏͰ-῿぀-鿿가-힯]/.test(ch)) return 'ltr';
+    }
+    return 'ltr';
+  }
+  function emSender(fromHeader){
+    const s = String(fromHeader || '').trim();
+    const m = s.match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+    return m ? { name: m[1].trim(), addr: m[2].trim() } : { name: '', addr: s };
+  }
+  function emTz(){ // منطقة جهاز المستخدم للبرومبت والتقويم — الخادم يتحقّق منها ويرجع لدبي إن لم تصحّ
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }catch(e){ __swallow(e, "misc:app-12-studios#5"); return ''; }
+  }
+  function emAiMsg(code){
+    return (code === 'nokey' || code === 'badkey') ? t('emailAsst_draftNoKey') : (code === 'busy' ? t('emailAsst_draftBusy') : t('emailAsst_draftFailed'));
+  }
+  /* v-audit-search (srv-search-6/7): خطأ الخادم رمز يُترجم هنا بلغة الواجهة — كان جملة عربيّة ثابتة («الجلسة منتهية…»، «لم يتم ربط
+     Gmail بعد»، «صيغة الوقت غير صحيحة») أو نصّ Gmail الخامّ بالإنجليزيّة لكلّ اللغات. صلاحيّة ناقصة/مسحوبة = «أعد الربط» وزرّ الربط ظاهر. */
+  const EM_SCOPE = { wide30: 'axSearchEmScope30', latest: 'axSearchEmScopeLatest', empty: 'axSearchEmScopeEmpty' };
+  function emErrText(d){
+    const c = String((d && (d.code || d.error)) || '');
+    if((d && (d.needsReauth || d.notConnected)) || c === 'needs_reauth' || c === 'not_connected') return T().notConnected;
+    if(c === 'session_expired') return t('axSearchSessionExpired');
+    if(c === 'bad_event') return t('axSearchEmBadEvent');
+    return t('svcPaused');
+  }
+  function emReconnect(){ connectBox.style.display = 'block'; emPrefetchTicket(); }
+
+  /* v-email-cache (البندان ١ و٩): القائمة تُرسم فورًا بلا انتظار ذكاء، والمسوّدات الناقصة تُطلب رسالةً رسالة (ثلاث معًا)
+     فتملأ بطاقاتها، والمحفوظ يأتي جاهزًا من الخادم. «إعادة توليد» وحدها تكتب المسوّدة من جديد، و«المزيد» يُلحق الصفحة
+     التالية. حين تكتمل كلّها تُرتَّب البطاقات بالأولويّة — إلّا إن كان المستخدم داخل إحداها (لا تقفز البطاقة من تحته). */
+  const EM_ORDER = { urgent: 0, normal: 1, low: 2 };
+  const moreBtn = $('#emailAssistMoreBtn');
+  let emRun = 0;
+  let emQueue = [];
+  let emActive = 0;
+  let emNext = '';
+  let emKeyShown = false;
+
+  function emRank(p){ return Object.prototype.hasOwnProperty.call(EM_ORDER, p) ? EM_ORDER[p] : 1; }
+  function emBody(extra){
+    return JSON.stringify(Object.assign({ token: localStorage.getItem('aiapp_auth_token'), lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar', tz: emTz() }, extra || {}));
+  }
+  function emKeyLine(code, detail){ // سطر المفتاح مرّة واحدة فوق القائمة، لا في كلّ بطاقة
+    if(emKeyShown) return;
+    emKeyShown = true;
+    const line = (code === 'fallback' ? t('emailAsst_draftFallback') : emAiMsg(code)) + (detail ? ' (' + detail + ')' : '');
+    setStatus([statusEl.style.display === 'none' ? '' : statusEl.textContent, line].filter(Boolean).join('\n'));
+  }
+
+  function fillCard(card, mail){
     const tr = T();
-    listEl.innerHTML = '';
-    if(!emails || !emails.length){
+    const dir = emDir(mail.lang);
+    const draftEl = card.querySelector('.emailDraftInput');
+    const st = card.querySelector('.emailCardStatus');
+    const meet = card.querySelector('.emailMeet');
+    card.querySelector('.emailSnip').setAttribute('dir', dir);
+    draftEl.setAttribute('dir', dir);
+    draftEl.value = mail.draft || '';
+    draftEl.disabled = !!mail.pending;
+    draftEl.placeholder = mail.pending ? tr.drafting : '';
+    card.querySelector('.emailPrio').textContent = mail.priority ? priorityLabel(mail.priority) : '';
+    card.querySelector('.emailSendBtn').disabled = !!mail.pending;
+    card.querySelector('.emailRegenBtn').disabled = !!mail.pending;
+    card.querySelector('.emailCalBtn').style.display = mail.meeting ? '' : 'none';
+    meet.style.display = mail.meeting ? '' : 'none';
+    meet.textContent = mail.meeting ? '📅 ' + String(mail.meeting.title || '') + ' — ' + String(mail.meeting.start || '').replace('T', ' ') : '';
+    const trans = card.querySelector('.emailTrans');
+    const gloss = card.querySelector('.emailGloss');
+    trans.style.display = mail.translation ? '' : 'none';
+    card.querySelector('.emailTransTxt').textContent = mail.translation || '';
+    gloss.style.display = mail.draftGloss && !mail.pending ? '' : 'none';
+    card.querySelector('.emailGlossTxt').textContent = mail.draftGloss || '';
+    const keyErr = mail.draftError === 'nokey' || mail.draftError === 'badkey';
+    const msg = mail.draftError && !(keyErr && emKeyShown) ? emAiMsg(mail.draftError) : '';
+    st.style.display = msg ? 'block' : 'none';
+    st.textContent = msg;
+  }
+
+  function buildCard(mail){
+    const tr = T();
+    const card = document.createElement('div');
+    card.__emMail = mail;
+    card.style.cssText = 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;';
+    card.innerHTML =
+      '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
+        '<div style="min-width:0;">' +
+          '<div class="emailSubj" dir="auto" style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>' +
+          '<div class="emailFrom" style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><bdi class="emailFromName"></bdi> <bdi class="emailFromAddr" dir="ltr"></bdi></div>' +
+        '</div>' +
+        '<span class="emailPrio" style="font-size:11.5px; white-space:nowrap;"></span>' +
+      '</div>' +
+      '<div class="emailSnip" style="font-size:12px; color:var(--muted,#999); margin-top:6px;"></div>' +
+      '<div class="emailTrans" dir="auto" style="display:none; font-size:12px; margin-top:6px; padding:8px 10px; border-radius:8px; background:var(--panel,#1a1a1a); border:1px solid var(--border,#333); line-height:1.7;"><b class="emailTransLbl"></b> <span class="emailTransTxt"></span></div>' +
+      '<textarea class="emailDraftInput" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px; font-family:inherit; line-height:1.6;"></textarea>' +
+      '<div class="emailGloss" dir="auto" style="display:none; font-size:11.5px; color:var(--muted,#999); margin-top:4px; line-height:1.7;"><b class="emailGlossLbl"></b> <span class="emailGlossTxt"></span></div>' +
+      '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
+        '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailRegenBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;"></button>' +
+        '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px; display:none;"></button>' +
+      '</div>' +
+      '<div class="emailMeet" dir="auto" style="font-size:11.5px; color:var(--muted,#999); margin-top:6px; display:none;"></div>' +
+      '<div class="emailCardStatus" style="display:none; font-size:12px; margin-top:6px; text-align:center;"></div>';
+
+    const sendBtn = card.querySelector('.emailSendBtn');
+    const regenBtn = card.querySelector('.emailRegenBtn');
+    const ignoreBtn = card.querySelector('.emailIgnoreBtn');
+    const draftEl = card.querySelector('.emailDraftInput');
+    const cardStatus = card.querySelector('.emailCardStatus');
+    const calBtn = card.querySelector('.emailCalBtn');
+    const who = emSender(mail.from);
+    card.querySelector('.emailSubj').textContent = mail.subject || '';
+    card.querySelector('.emailFrom').setAttribute('dir', emTextDir(who.name || who.addr));
+    card.querySelector('.emailFromName').textContent = who.name;
+    card.querySelector('.emailFromAddr').textContent = who.name ? '<' + who.addr + '>' : who.addr;
+    card.querySelector('.emailSnip').textContent = mail.snippet || '';
+    card.querySelector('.emailTransLbl').textContent = tr.translation;
+    card.querySelector('.emailGlossLbl').textContent = tr.draftMeaning;
+    sendBtn.textContent = tr.send;
+    regenBtn.textContent = tr.regen;
+    ignoreBtn.textContent = tr.ignore;
+    calBtn.textContent = tr.addToCalendar;
+    fillCard(card, mail);
+
+    regenBtn.addEventListener('click', () => { emQueueDraft(card, mail, true); });
+
+    calBtn.addEventListener('click', async () => {
+      if(!mail.meeting) return;
+      calBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      cardStatus.textContent = tr.addingEvent;
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const r = await fetch('/api/email-calendar', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, tz: mail.meeting.tz || emTz(), description: (mail.subject || '') + '\n' + (mail.from || '') }),
+        });
+        const d = await r.json();
+        if(!r.ok){
+          if(d && d.needsReauth){ emReconnect(); throw new Error(tr.calReauth); } // v-audit-search: «أعد الربط» ومعه زرّ الربط
+          throw new Error(emErrText(d)); // v-audit-search
+        }
+        cardStatus.textContent = tr.eventAdded;
+        calBtn.textContent = tr.eventAdded;
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        calBtn.disabled = false;
+      }
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      const text = (draftEl.value || '').trim();
+      if(!text) return;
+      sendBtn.disabled = true; ignoreBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      cardStatus.textContent = tr.sending;
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const r = await fetch('/api/email-send', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
+        });
+        const d = await r.json();
+        if(!r.ok){ if(d && d.needsReauth) emReconnect(); throw new Error(emErrText(d)); } // v-audit-search: صلاحيّة الإرسال ناقصة = زرّ الربط
+        cardStatus.textContent = tr.sent;
+        setTimeout(() => { card.remove(); }, 1200);
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        sendBtn.disabled = false; ignoreBtn.disabled = false;
+      }
+    });
+
+    ignoreBtn.addEventListener('click', async () => {
+      sendBtn.disabled = true; ignoreBtn.disabled = true;
+      cardStatus.style.display = 'block';
+      try{
+        const token = localStorage.getItem('aiapp_auth_token');
+        const pattern = extractEmailAddress(mail.from);
+        const r = await fetch('/api/email-ignore', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, pattern }),
+        });
+        const d = await r.json();
+        if(!r.ok) throw new Error(emErrText(d)); // v-audit-search
+        cardStatus.textContent = tr.ignored;
+        setTimeout(() => { card.remove(); }, 1000);
+      }catch(e){
+        cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+        sendBtn.disabled = false; ignoreBtn.disabled = false;
+      }
+    });
+    return card;
+  }
+
+  function emQueueDraft(card, mail, regen){
+    mail.pending = true;
+    mail.draftError = undefined;
+    fillCard(card, mail);
+    emQueue.push({ card, mail, regen: !!regen, run: emRun });
+    emPump();
+  }
+  function emPump(){
+    while(emActive < 3 && emQueue.length){
+      const job = emQueue.shift();
+      emActive++;
+      emDraft(job).finally(() => {
+        emActive--;
+        emPump();
+        if(!emActive && !emQueue.length && job.run === emRun) emSortCards();
+      });
+    }
+  }
+  async function emDraft(job){
+    const mail = job.mail;
+    try{
+      const r = await fetch('/api/email-list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: emBody({ draftFor: mail.id, threadId: mail.threadId || '', regen: job.regen }) });
+      const d = await r.json();
+      if(job.run !== emRun) return;
+      if(!r.ok || (d && d.notConnected)) throw new Error((d && d.error) || 'draft failed'); /* «غير مربوط» صار ٢٠٠ — يبقى فشل مسوّدة */
+      if(d.draft){ // فشل «إعادة توليد» لا يمسح المسوّدة القائمة
+        mail.draft = d.draft;
+        mail.priority = d.priority || 'normal';
+        mail.lang = d.lang || '';
+        mail.meeting = d.meeting || null;
+        mail.translation = d.translation || '';
+        mail.draftGloss = d.draftGloss || '';
+      }
+      mail.draftError = d.draftError || undefined;
+      if(d.draftError === 'nokey' || d.draftError === 'badkey') emKeyLine(d.draftError, d.aiErrorDetail || '');
+      else if(d.ownerNote) emKeyLine('fallback', d.ownerNote);
+    }catch(e){
+      if(job.run !== emRun) return;
+      __swallow(e, "misc:app-12-studios#6");
+      mail.draftError = 'failed';
+    }
+    mail.pending = false;
+    fillCard(job.card, mail);
+  }
+  function emSortCards(){
+    const ae = document.activeElement;
+    if(ae && listEl.contains(ae)) return;
+    const cards = Array.prototype.slice.call(listEl.children).filter((c) => c.__emMail);
+    const sorted = cards.map((c, i) => ({ c, i })).sort((a, b) => (emRank(a.c.__emMail.priority) - emRank(b.c.__emMail.priority)) || (a.i - b.i));
+    if(sorted.every((x, k) => x.i === k)) return;
+    sorted.forEach((x) => listEl.appendChild(x.c));
+  }
+
+  function renderEmails(emails, append){
+    const tr = T();
+    if(!append) listEl.innerHTML = '';
+    if(!append && (!emails || !emails.length)){
       listEl.innerHTML = '<div style="text-align:center; font-size:13px; color:var(--muted,#999); padding:20px 0;">' + tr.empty + '</div>';
       return;
     }
-    emails.forEach((mail) => {
-      const card = document.createElement('div');
-      card.style.cssText = 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;';
-      card.innerHTML =
-        '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
-          '<div style="min-width:0;">' +
-            '<div style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.subject || '').replace(/</g,'&lt;') + '</div>' +
-            '<div style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.from || '').replace(/</g,'&lt;') + '</div>' +
-          '</div>' +
-          '<span style="font-size:11.5px; white-space:nowrap;">' + priorityLabel(mail.priority) + '</span>' +
-        '</div>' +
-        '<div style="font-size:12px; color:var(--muted,#999); margin-top:6px;">' + (mail.snippet || '').replace(/</g,'&lt;') + '</div>' +
-        '<textarea class="emailDraftInput" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px;">' + (mail.draft || '') + '</textarea>' +
-        '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
-          '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;">' + tr.send + '</button>' +
-          '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;">' + tr.ignore + '</button>' +
-          (mail.meeting ? '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px;">' + tr.addToCalendar + '</button>' : '') +
-        '</div>' +
-        (mail.meeting ? '<div style="font-size:11.5px; color:var(--muted,#999); margin-top:6px;">📅 ' + String(mail.meeting.title || '').replace(/</g,'&lt;') + ' — ' + String(mail.meeting.start || '').replace('T', ' ') + '</div>' : '') +
-        '<div class="emailCardStatus" style="display:none; font-size:12px; margin-top:6px; text-align:center;"></div>';
-
-      const sendBtn = card.querySelector('.emailSendBtn');
-      const ignoreBtn = card.querySelector('.emailIgnoreBtn');
-      const draftEl = card.querySelector('.emailDraftInput');
-      const cardStatus = card.querySelector('.emailCardStatus');
-      const calBtn = card.querySelector('.emailCalBtn');
-
-      if(calBtn) calBtn.addEventListener('click', async () => {
-        calBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        cardStatus.textContent = tr.addingEvent;
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const r = await fetch('/api/email-calendar', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, description: (mail.subject || '') + '\n' + (mail.from || '') }),
-          });
-          const d = await r.json();
-          if(!r.ok){
-            if(d && d.needsReauth) throw new Error(tr.calReauth);
-            throw new Error((d && d.error) || 'calendar failed');
-          }
-          cardStatus.textContent = tr.eventAdded;
-          calBtn.textContent = tr.eventAdded;
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          calBtn.disabled = false;
-        }
-      });
-
-      sendBtn.addEventListener('click', async () => {
-        const text = (draftEl.value || '').trim();
-        if(!text) return;
-        sendBtn.disabled = true; ignoreBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        cardStatus.textContent = tr.sending;
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const r = await fetch('/api/email-send', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
-          });
-          const d = await r.json();
-          if(!r.ok) throw new Error(d.error || 'send failed');
-          cardStatus.textContent = tr.sent;
-          setTimeout(() => { card.remove(); }, 1200);
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          sendBtn.disabled = false; ignoreBtn.disabled = false;
-        }
-      });
-
-      ignoreBtn.addEventListener('click', async () => {
-        sendBtn.disabled = true; ignoreBtn.disabled = true;
-        cardStatus.style.display = 'block';
-        try{
-          const token = localStorage.getItem('aiapp_auth_token');
-          const pattern = extractEmailAddress(mail.from);
-          const r = await fetch('/api/email-ignore', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, pattern }),
-          });
-          const d = await r.json();
-          if(!r.ok) throw new Error(d.error || 'ignore failed');
-          cardStatus.textContent = tr.ignored;
-          setTimeout(() => { card.remove(); }, 1000);
-        }catch(e){
-          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
-          sendBtn.disabled = false; ignoreBtn.disabled = false;
-        }
-      });
-
+    const shown = {};
+    if(append) Array.prototype.slice.call(listEl.children).forEach((c) => { if(c.__emMail && c.__emMail.threadId) shown[c.__emMail.threadId] = 1; });
+    (emails || []).forEach((mail) => {
+      if(mail.threadId && shown[mail.threadId]) return; // v-email-thread: المحادثة بطاقة واحدة حتّى عبر الصفحات
+      if(mail.threadId) shown[mail.threadId] = 1;
+      const card = buildCard(mail);
       listEl.appendChild(card);
+      if(mail.pending) emQueueDraft(card, mail, false);
     });
   }
 
-  async function loadEmails(){
+  async function loadEmails(append){
     const tr = T();
-    setStatus(tr.loading);
-    listEl.innerHTML = '';
+    const more = append === true; // نقرة «تحديث» تمرّر حدثًا لا true
+    if(!more){ emRun++; emQueue = []; emNext = ''; emKeyShown = false; lastLoadedEmails = []; listEl.innerHTML = ''; setStatus(tr.loading); }
+    if(moreBtn) moreBtn.style.display = 'none';
+    const run = emRun;
     try{
-      const token = localStorage.getItem('aiapp_auth_token');
       const r = await fetch('/api/email-list', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
+        body: emBody(more && emNext ? { page: emNext } : {}),
       });
       const d = await r.json();
-      if(!r.ok){
-        if(d.notConnected || /invalid_grant/i.test(String(d.error || ''))){
-          connectBox.style.display = 'block';
-          connectedBox.style.display = 'none';
-          setStatus(d.notConnected ? '' : T().notConnected);
-          emPrefetchTicket(); // v-oauth-bind
-          return;
-        }
-        throw new Error(d.error || 'load failed');
+      if(run !== emRun) return;
+      /* «غير مربوط» يصل ٢٠٠ (حالة طبيعيّة لا خطأ — كان ٤٠٠ يطبع طلبًا فاشلًا عند كلّ فتح) فيُفحص قبل r.ok */
+      if(d.notConnected || d.needsReauth || (!r.ok && /invalid_grant/i.test(String(d.error || '')))){ /* v-audit-search: needsReauth = صلاحيّة ناقصة */
+        connectBox.style.display = 'block';
+        connectedBox.style.display = 'none';
+        setStatus(d.notConnected ? '' : T().notConnected);
+        emPrefetchTicket(); // v-oauth-bind
+        return;
       }
+      if(!r.ok) throw new Error(emErrText(d) + (d && d.aiErrorDetail ? ' (' + d.aiErrorDetail + ')' : '')); // v-audit-search: التفصيل للمالك وحده من الخادم
       gmailLabel.textContent = d.gmailAddress || '';
-      // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
-      setStatus(d.note || '');
-      lastLoadedEmails = d.emails || [];
-      renderEmails(d.emails);
+      if(!more){
+        // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
+        // v-email-safe: ومفتاح الكتابة الناقص سطرٌ واضح فوق القائمة؛ v-email-claude: والاحتياط للمالك (اسم المتغيّر للمالك وحده من الخادم).
+        const detail = d.aiErrorDetail ? ' (' + d.aiErrorDetail + ')' : '';
+        const aiLine = d.aiError ? emAiMsg(d.aiError) + detail : (d.aiNote ? t('emailAsst_draftFallback') + detail : '');
+        if(aiLine) emKeyShown = true;
+        const scopeLine = EM_SCOPE[d.scope] ? t(EM_SCOPE[d.scope]) : (d.note || ''); // v-audit-search (srv-search-7): رمز النطاق بلغة الواجهة
+        setStatus([scopeLine, aiLine].filter(Boolean).join('\n'));
+      }
+      const emails = d.emails || [];
+      lastLoadedEmails = lastLoadedEmails.concat(emails);
+      renderEmails(emails, more);
+      emNext = d.next || '';
+      if(moreBtn){ moreBtn.style.display = emNext ? '' : 'none'; moreBtn.disabled = false; }
     }catch(e){
       setStatus(tr.error + (e && e.message ? e.message : String(e)));
     }
   }
+  if(moreBtn) moreBtn.addEventListener('click', () => { moreBtn.disabled = true; loadEmails(true); });
 
   function applyStaticText(){
     const tr = T();
@@ -2465,6 +3000,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     if(connectBtn) connectBtn.textContent = tr.connectBtn;
     setTxt('#emailAssistRefreshLabel', tr.refresh);
     setTxt('#emailAssistVoiceLabel', tr.voiceBtn);
+    setTxt('#emailAssistMoreBtn', tr.more);
   }
 
   function buildEmailSummaryText(){
@@ -2540,7 +3076,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-oauth-bind: state كان رمز الجلسة نفسه (٣٠ يومًا) — يمرّ في روابط جوجل وسجلّاتها، ومن أكمل رابطًا يحمل رمز
      غيره رُبطت Gmail الخاصّة به بحساب ذلك الغير. الآن تذكرة ربط من الخادم (استعمال واحد، عشر دقائق) تُسكّ مسبقًا
      حين يظهر زرّ الربط، فيبقى فتح سفاري في غلاف الآيفون داخل لمسة المستخدم بلا انتظار شبكة قبله. */
-  const emLinkError = (err) => alert('⚠️ خطأ ربط Gmail: ' + err);
+  /* v-audit-search (srv-search-7): التنبيه كان عربيًّا دائمًا ويعرض الرمز الخامّ (session_expired، access_denied…) — الآن نصّ بلغة
+     الواجهة: الإلغاء في صفحة جوجل، والصلاحيّات الناقصة، وما سواهما «حاول مرّة ثانية» (التذكرة والشبكة والخادم علاجها واحد). */
+  const emLinkError = (err) => alert('⚠️ ' + t(err === 'access_denied' ? 'axSearchEmLinkDenied' : (err === 'missing_scopes' ? 'axSearchEmLinkScopes' : 'axSearchEmLinkFailed')));
   let emTicket = null; // { t: التذكرة، at: وقت سكّها، tok: الجلسة التي سكّتها — حساب آخر على الجهاز نفسه لا يستعملها }
   async function emMintTicket(token){
     const r = await fetch('/api/system?action=email-link-ticket', {

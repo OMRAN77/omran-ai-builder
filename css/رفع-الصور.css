@@ -1,0 +1,53 @@
+/* v-upload-art (المالك ١٦ أكتوبر بستّ صور: «حطّهم كلّهم في الأزياء والديكور ستايل رتّبهم مع ١٤ لغة» ثمّ «الأُوَل خلّها بالعربي وهذي بالـ١٤ لغة»):
+   مربّع رفع الصورة في الديكور والأزياء والستايل صورة المالك النظيفة (assets/upload-art، أصله ~1280 عرضًا قصّ 2:1 بلا تكبير، WebP q90).
+   قواعد الصور (CLAUDE.md ١٧ أكتوبر): لا نصّ داخل الصورة ولا تكبير — النصّ بالـ١٤ لغة (والعربيّة معها) فوقها بـHTML حادًّا بأيّ مقاس.
+   مواضع النصّ (--t العنوان، --b الزرّ) نسبٌ من الإطار 2:1 فتثبت على كلّ عرض. كلّ الأوضاع والثيمات (صورة لا لون). */
+.omUpArt{position:relative !important;display:block !important;aspect-ratio:2/1;height:auto !important;min-height:0 !important;padding:0 !important;margin-top:12px;
+  border:1px solid rgba(212,175,55,.6) !important;border-radius:14px !important;overflow:hidden;cursor:pointer;
+  background:#000 center/cover no-repeat !important;text-align:center;}
+.omUpDecor{background-image:url(/assets/upload-art/decor.webp?v=4) !important;}
+.omUpFashion{background-image:url(/assets/upload-art/fashion.webp?v=4) !important;}
+.omUpStyle{background-image:url(/assets/upload-art/style.webp?v=4) !important;}
+.omUpArt .omUpIco,.omUpArt > svg{display:none !important;}
+.omUpArt .stSlotEmpty,.omUpArt .dzT{position:static !important;padding:0 !important;margin:0 !important;}
+.omUpArt .omUpT,.omUpArt .omUpH,.omUpArt .omUpB,.omUpArt .omUpL,.omUpArt .omUpN{position:absolute !important;left:6% !important;right:6% !important;margin:0 !important;text-align:center;line-height:1.15;transform:translateY(-50%);}
+/* v-upload-art ٢ («دقّق، ما أريد شغل عشوائيّ… كلّهم مش بس الفلبّين»): النصّ المترجم يقع حيث يقع العربيّ في صورة المالك حرفيًّا —
+   المواضع مقيسة بالشبكة من الصور العربيّة (مركز السطر نسبةً من الارتفاع)، والحجم نسبةً من عرض المربّع (cqw) فيكبر ويصغر مع الصورة،
+   والعنوان والتلميح ذهبيّان متدرّجان كالعربيّ، وزرّ الملفّ بلون نقش لوحته (ذهبيّ على اللوحة الداكنة، داكن على الذهبيّة). */
+.omUpArt{container-type:inline-size;}
+.omUpArt .omUpGold,.omUpArt .omUpT,.omUpArt .omUpH{background:linear-gradient(180deg,#fff6cf 0%,#f3d77f 42%,#c9a12e 68%,#8a6612 100%) !important;-webkit-background-clip:text !important;background-clip:text !important;
+  color:transparent !important;text-shadow:none !important;filter:drop-shadow(0 2px 1px rgba(0,0,0,.9)) drop-shadow(0 0 8px rgba(0,0,0,.55));}
+.omUpArt .omUpT{top:var(--t);font-weight:900;font-size:clamp(14px,2.6vw,26px) !important;font-size:max(14px,var(--ts,3.8cqw)) !important;letter-spacing:.01em;}
+.omUpArt .omUpH{top:var(--h);font-weight:700;font-size:clamp(11px,1.5vw,14px) !important;font-size:max(11px,2cqw) !important;}
+.omUpArt .omUpB,.omUpArt .omUpL{top:var(--b);left:36% !important;right:36% !important;display:block !important;transform:translateY(-50%) !important;background:none !important;border:0 !important;box-shadow:none !important;
+  padding:0 !important;width:auto !important;height:auto !important;min-height:0 !important;font-weight:800 !important;line-height:1.15 !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.omUpArt .omUpL{top:var(--l);}
+.omUpArt .omUpB{font-size:clamp(12px,1.6vw,17px) !important;font-size:max(12px,var(--bs,1.7cqw)) !important;color:#2a1d00 !important;text-shadow:0 1px 0 rgba(255,235,170,.6);}
+.omUpArt .omUpN{top:auto;bottom:3%;transform:none;font-size:11px !important;color:#e6d9b3 !important;text-shadow:0 1px 3px #000;max-width:none !important;}
+/* الصور المولَّدة ١٧ أكتوبر (gpt-image/Gemini 4K، بلا نصّ): المواضع مقيسة بالشبكة من كلّ صورة — الديكور: جدار رخاميّ صافٍ ١٥–٥٧٪ للعنوان والتلميح،
+   لوحة ذهبيّة على الكونسول ٦٢–٧٨٪ (الأعمدة ٣٣–٦٧٪) للزرّ بنقش داكن */
+.omUpDecor{--t:32%;--h:45%;--b:70%;--ts:3.6cqw;--bs:2cqw;}
+.omUpDecor .omUpB{left:34% !important;right:34% !important;}
+/* الأزياء: الجدار الرخاميّ ١٠–٧٢٪ (رأس المانيكان عند ٤٠٪ يسار الوسط) → العنوان ٢٦٪ والتلميح ٣٦٪؛ الصحن الذهبيّ ٧٦–٨٣٪ (٣٦–٦٤٪) للزرّ */
+.omUpFashion{--t:26%;--h:36%;--b:79.5%;--ts:3.6cqw;--bs:1.7cqw;}
+/* الستايل: لوحة المنصّة الذهبيّة ٦٩–٨٠٪ (٤٢–٥٨٪) لزرّ الملفّ، واللوحة الصغيرة على الأرض ٨٨–٩٣٪ (٤١–٥٩٪) لكلمة «ستايل»، ولا عنوان (كتصميم المالك) */
+.omUpStyle{--b:74.5%;--l:90.5%;--bs:2.2cqw;}
+.omUpStyle .omUpB{left:42% !important;right:42% !important;font-weight:900 !important;}
+.omUpStyle .omUpL{left:42% !important;right:42% !important;font-size:clamp(11px,1.4vw,14px) !important;font-size:max(11px,1.4cqw) !important;color:#2a1d00 !important;text-shadow:0 1px 0 rgba(255,235,170,.6);}
+.omUpStyle :is(.omUpT,.omUpH){opacity:0;}
+.omUpArt:hover,.omUpArt.over{border-color:#c9c9c9 !important;}
+.stSlot.omUpArt.has{background-image:none !important;}
+.stSlot.omUpArt.has :is(.omUpB,.omUpL){display:none !important;}
+.stSlot.omUpArt .stSlotX{z-index:2;}
+/* v-style-plate-fit (تدقيق ١٨ أكتوبر، g08/style-open): في المربّع الضيّق (الجوّال ٣٠٢–٣٤٨px، ومربّعا الدمج ~١٦٩px) كان نصّ اللوحة ١٦٪ من
+   العرض (~٥٥px، و٢٧px في الدمج) بسطر واحد مقصوص — «اختيار الـ…». واجهة اللوحة الذهبيّة في style.webp ٣٨–٦٢٪ عرضًا و٦٧–٨٣٪ ارتفاعًا،
+   فالنصّ يأخذ عرضها ويلتفّ سطرين عند الحاجة، والخطّ ١٢px (١١px لكلمة «ستايل») كما كان حتّى يضيق المربّع فينزل إلى ٩px. العريض كما هو. */
+@container (max-width:560px){
+  .omUpStyle .omUpB{left:38.5% !important; right:38.5% !important; font-size:max(9px,min(12px,4.2cqw)) !important;}
+  .omUpStyle .omUpL{left:40% !important; right:40% !important; font-size:max(9px,min(11px,3.8cqw)) !important;}
+  .omUpStyle :is(.omUpB,.omUpL){white-space:normal; overflow:visible; text-overflow:clip; line-height:1.05 !important;}
+}
+/* v-decor-file-name (فحص الديكور من الصفر، المالك ٢٤ أكتوبر): سطر اسم الملفّ أسفل لوحة الديكور («لم يتم اختيار ملف» ثمّ اسم الصورة) رماديّ
+   (--muted مضمَّن في #designAiFileName) بظلّ أسود على رخام أبيض — لا يُقرأ. لوحة الديكور وحدها فاتحة: بنّيّ داكن بظلّ فاتح. */
+.omUpDecor .omUpN{text-shadow:0 1px 2px rgba(255,255,255,.85) !important;}
+.omUpDecor .omUpN > *{color:#3d2f14 !important;}

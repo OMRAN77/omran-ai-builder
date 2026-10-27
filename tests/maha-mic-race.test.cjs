@@ -67,11 +67,15 @@ test('mahaGetUserMediaRetry: يعيد المحاولة مرّة واحدة فق�
 
 test('الاستدعاء: كلا مساري مها (الفائق والاحتياطيّ) يستعملان mahaGetUserMediaRetry بدل النداء المباشر', () => {
   const rtStart = src.indexOf('async function mahaStartRealtimeCall(');
-  const rtBody = src.slice(rtStart, rtStart + 1500); // v-maha-subs: سطر تمييز الضيف في ٤٠٢ أطال الرأس
+  // الدالّة كاملة حتّى التعريف الأعلى التالي — نافذة ١٥٠٠ حرف ثابتة كانت تنكسر بكلّ سطر يُضاف لرأسها (v-maha-subs ثمّ v-maha-app)
+  const rtNext = src.slice(rtStart + 1).search(/\n(?:async )?function /);
+  const rtBody = src.slice(rtStart, rtNext < 0 ? undefined : rtStart + 1 + rtNext);
   assert.match(rtBody, /mahaRtStream = await mahaGetUserMediaRetry\(/, 'الفائق');
   const classicStart = src.indexOf('async function mahaRecordUntilSilence(');
-  const classicBody = src.slice(classicStart, classicStart + 260);
-  assert.match(classicBody, /mahaStream = await mahaGetUserMediaRetry\(/, 'الاحتياطيّ');
+  // v-audit-voice (cli-voice-5): المايك محلّيّ للدور (const stream) ثمّ يُنسب إلى mahaStream — والنافذة الدالّة كاملة لا ٢٦٠ حرفًا
+  const classicNext = src.slice(classicStart + 1).search(/\n(?:async )?function /);
+  const classicBody = src.slice(classicStart, classicNext < 0 ? undefined : classicStart + 1 + classicNext);
+  assert.match(classicBody, /const stream = await mahaGetUserMediaRetry\(/, 'الاحتياطيّ');
 });
 
 console.log('✓ maha-mic-race: تخطّي الفتح المزدوج للمايك عند إذن ممنوح مسبقًا + محاولة ثانية لأخطاء "مشغول" المؤقّتة');

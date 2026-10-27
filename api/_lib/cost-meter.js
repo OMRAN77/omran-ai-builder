@@ -19,7 +19,7 @@ const PRICES = [
   [/fable-5[-.]1/i, 10, 50, 0.025], [/fable/i, 10, 50] /* v-owner-claude-all: Fable 5 قراءة كاشه ١$ (١٠٪) لا ربع Fable 5.1 */, [/opus-5[-.]5/i, 4, 20, 0.05], [/opus/i, 5, 25],
   [/sonnet-5(?:[-.]5)?(?!\d)/i, 2, 10], [/sonnet/i, 3, 15],
   [/haiku-5[-.]5/i, 0.1, 0.5], [/haiku/i, 1, 5],
-  [/deepseek/i, 0.58, 1.16], [/gpt-oss/i, 0.15, 0.6], [/gemini|flash/i, 0.75, 3.75],
+  [/deepseek.*(?:v4[-_.]?pro|reasoner|r1\b)/i, 0.66, 1.98, 0.033], [/deepseek/i, 0.15, 0.6, 0.02], [/gpt-oss/i, 0.15, 0.6], [/gemini|flash/i, 0.75, 3.75], /* v-deepseek-2026: أسعار DeepSeek الرسمية off-peak — flash 0.15/0.6 (قراءة كاش 2%)، pro 0.66/1.98 (3.3%) */
   [/command|cohere/i, 2.5, 10], [/sonar|perplexity/i, 1, 1], [/mistral|ministral/i, 0.4, 2], [/gpt|openai/i, 1.25, 10],
 ];
 const FALLBACK = [null, 1, 5];

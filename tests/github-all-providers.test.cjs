@@ -126,13 +126,13 @@ test('٤. السقف الجديد ٣٠ ألف حرف — ما زاد يُقصّ 
   ghSize = 40000;
   try {
     const bodies = await ask('mistral', 'gh-owner', { url: 'OMRAN77/omran-ai-builder' });
-    assert.equal(toolResultOf(bodies).length, 30000);
+    assert.equal(toolResultOf(bodies).length, 40000, 'v-deep-read: السقف ٦٠ ألفًا فتمرّ ٤٠ ألفًا كاملة');
   } finally { ghSize = save; }
 }));
 
 test('٥. الاتّساع لقراءة GitHub وللمالك وحده — بقيّة الأدوات وبقيّة المستخدمين على ٨ آلاف كما كانوا', () => {
   const s = read('api/_lib/chat.js');
-  assert.ok(s.includes("const __outMax = (__ownerReq && st.cb.name === 'read_github') ? 30000 : 8000;"),
+  assert.ok(s.includes("const __outMax = (__ownerReq && st.cb.name === 'read_github') ? 60000 : 8000;"),
     'الشرطان معًا: المالك + أداة GitHub؛ وإلّا ٨ آلاف');
   assert.ok(s.includes("content: String(st.result).slice(0, __outMax)"), 'السقف يُطبَّق على نتيجة الأداة');
   assert.ok(s.includes("toolCorpus += ' ' + String(st.result).slice(0, 8000); // v608"),
@@ -156,7 +156,7 @@ test('٦. الثوابت العميقة أوسع من العاديّة، وال�
 test('٧. الوكيل على القاعدة نفسها (لا يتفرّق السلوك بين المحادثة والوكيل)', () => {
   const a = read('api/_lib/agent.js');
   assert.ok(a.includes("readGithub(input, isOwner(runUser) ? { deep: true } : { anonymous: true })"), 'الوكيل: العمق للمالك');
-  assert.match(a, /cb\.name === 'read_github'\) \? 30000 : 8000/, 'الوكيل: السقف الواسع لقراءة GitHub');
+  assert.match(a, /cb\.name === 'read_github'\) \? 60000 : 8000/, 'الوكيل: السقف الواسع لقراءة GitHub');
 });
 
 test('٨. القائمة تسعة في العميل والحزمة (v-kimi أضاف Kimi)، وOR_MODELS يخدمهم كلّهم؛ Perplexity وحده خارجها (Sonar لا يقبل أدوات)', () => {
@@ -177,7 +177,7 @@ test('٩. OpenRouter: موديل المالك يصل كما اختاره (أيّ
   ghCalls.length = 0;
   const bodies = await ask('openrouter', 'gh-owner', { url: 'OMRAN77/omran-ai-builder', path: 'README.md' });
   assert.match(bodies[0].url, /openrouter\.ai\/api\/v1\/messages/, 'العنوان هو الوسيط نفسه');
-  assert.equal(bodies[0].body.model, 'anthropic/claude-sonnet-5', 'الافتراضيّ = افتراضيّ المنتقي');
+  assert.equal(bodies[0].body.model, 'x-ai/grok-4.6', 'الافتراضيّ = افتراضيّ المنتقي (كروك)');
   assert.ok(bodies[0].body.tools.some((t) => t.name === 'read_github'), 'الأداة تصله');
   assert.deepEqual(ghCalls[0].opts, { deep: true }, 'وبالعمق نفسه');
 

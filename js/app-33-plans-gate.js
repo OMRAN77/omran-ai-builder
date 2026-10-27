@@ -9,11 +9,12 @@
    ٣) ردّ الرصيد (/api/points) يحمل subs: تنبيه مرّة قبل انتهاء الاشتراك بثلاثة أيّام ومرّة بعد انتهائه، بزرّ «جدّد». */
 (function(){
   var GUARD_MS = 8000, NOTICE_DAYS = 3, DAY_MS = 86400000, lastOpen = 0, noticeShown = false;
-  var WHY = { points: 'plansWhyPoints', limit: 'plansWhyLimit', expired: 'plansWhyExpired', expiring: 'plansWhyExpiring' };
+  var WHY = { points: 'plansWhyPoints', limit: 'plansWhyLimit', expired: 'plansWhyExpired', expiring: 'plansWhyExpiring', subs: 'plansWhyVideoSubs' };
   /* رموز الوسائط والاستوديوهات وحدها: طلب واحد ونتيجته نهائيّة. حدّ المحادثة (subscribeOnly · engine_limit ·
      insufficient_points) لا يُلتقط هنا — مسارها يجرّب مزوّدًا بعد مزوّد وقد يجيب التالي، فتفتح الباقات من نهايتها
      (err.planLimit · free-limit · premiumNoPoints) لا من أوّل 402. */
-  var CODES = { points_insufficient: 'points', daily_limit_reached: 'limit' };
+  /* v-video-subs (قرار المالك ٢٤ أكتوبر: الفيديو للمشتركين): ٤٠٣ video_subscribers من خوادم الفيديو ← «صور وفيديو» (tabFor) بسطر السبب */
+  var CODES = { points_insufficient: 'points', daily_limit_reached: 'limit', video_subscribers: 'subs' };
   // v-media-merge: الصور والفيديو قسم واحد «صور وفيديو» — باقتهما القديمة والمدموجة (mix) تفتحانه.
   var TAB_OF_KIND = { chat: 'chat', mix: 'media', image: 'media', video: 'media', maha: 'maha' };
   var PLAN_NAME = { basic: 'Plus', pro: 'Pro', max: 'Max' };
@@ -25,7 +26,22 @@
     Object.keys(vars || {}).forEach(function(k){ out = out.split('{' + k + '}').join(String(vars[k])); });
     return out;
   }
-  function whyText(reason, vars){ return fill(t(WHY[reason] || WHY.points), vars); }
+  function whyText(reason, vars){
+    if(reason === 'points') return pointsWhy(vars);
+    /* v-limit-msg-i18n (الدفعة ٥): المجّانيّ لا باقة له — سطر الحدّ هو نصّ ردّ المحادثة نفسه لا «وصلت حدّ باقتك» */
+    if(reason === 'limit' && String(window.__omranPlan || '') === 'free') return fill(t('chatFreeLimitMsg'), vars);
+    return fill(t(WHY[reason] || WHY.points), vars);
+  }
+  /* v-plans-real-balance (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١: «صفحة الباقات تقول نقاطك خلصت والرصيد ١٠ — خلها تقرا الرصيد الحقيقي»):
+     السطر كان «نقاطك خلصت» لكلّ جدار نقاط. الآن من الرصيد نفسه الذي يكتبه صفّ «رصيدك من النقاط» فوقه (refreshPointsWallet ←
+     window.__pointsBalance) ومن «تحتاج» في ردّ الخادم (402 needed): صفر = «خلصت»، وغيره «رصيدك X وتحتاج Y»، وبلا Y «رصيدك X وما يكفي». */
+  function pointsWhy(vars){
+    var v = vars || {}, have = Number(v.have), need = Number(v.need);
+    if(v.have == null || v.have === '' || !isFinite(have)) return t(WHY.points);
+    if(have <= 0) return t(WHY.points);
+    if(isFinite(need) && need > have) return fill(t('plansWhyPointsNeed'), { have: have, need: need });
+    return fill(t('plansWhyPointsLow'), { have: have });
+  }
 
   // سطر السبب فوق أقسام الباقات — يُنشأ عند أوّل حاجة، فلا يلمس الجزء المحمّل partials-settings.js.
   function showWhy(text){
@@ -58,18 +74,36 @@
       var sb = document.getElementById('btnSettings');
       if(sb) sb.click();
       if(typeof showSettingsPage === 'function') showSettingsPage('pricingSection');
+      // v-plans-deeplink: فُتحت الباقات من هنا لا من الإعدادات — سهم الرجوع و✕ (app-05) يغلقانها إلى ما كان فيه المستخدم
+      var dl = document.getElementById('settingsDialog');
+      if(dl && dl.dataset) dl.dataset.deepLink = '1';
       if(tab && typeof showPriceTab === 'function') showPriceTab(tab);
       showWhy(whyText(reason, vars));
+      if(reason === 'points') syncPointsWhy(vars);
     }catch(e){ __swallow(e, 'plans-gate:open'); }
     return true;
   }
+  // v-plans-real-balance: بعد أن يقرأ صفّ الرصيد رقمه من الخادم يُعاد السطر بالرقم نفسه (فلا يختلفان أبدًا).
+  function syncPointsWhy(vars){
+    var need = vars && vars.need;
+    try{
+      Promise.resolve(typeof window.refreshPointsWallet === 'function' ? window.refreshPointsWallet() : null).then(function(){
+        var el = document.getElementById('plansWhy');
+        if(!el || el.style.display === 'none') return; // أُغلقت الإعدادات أو فُتحت باليد قبل الردّ
+        var b = window.__pointsBalance;
+        if(typeof b === 'number' && isFinite(b)) showWhy(pointsWhy({ have: b, need: need }));
+      }).catch(function(e){ __swallow(e, 'plans-gate:balance'); });
+    }catch(e){ __swallow(e, 'plans-gate:balance'); }
+  }
 
   // السطر يخصّ هذا الفتح وحده: فتح الإعدادات باليد (الزرّ يُنقر قبل أن نكتب السطر) أو إغلاقها يمسحه، فلا يظهر قديمًا.
+  // وكذلك علم v-plans-deeplink: الفتح باليد سهمه إلى رئيسيّة الإعدادات كما كان.
   try{
-    var sbtn = document.getElementById('btnSettings');
-    if(sbtn) sbtn.addEventListener('click', function(){ showWhy(''); }, true);
     var dlg = document.getElementById('settingsDialog');
-    if(dlg) dlg.addEventListener('close', function(){ showWhy(''); });
+    var clearDeep = function(){ if(dlg && dlg.dataset) delete dlg.dataset.deepLink; };
+    var sbtn = document.getElementById('btnSettings');
+    if(sbtn) sbtn.addEventListener('click', function(){ showWhy(''); clearDeep(); }, true);
+    if(dlg) dlg.addEventListener('close', function(){ showWhy(''); clearDeep(); });
   }catch(e){ __swallow(e, 'plans-gate:wire'); }
 
   function tabFor(url, reason){
@@ -82,7 +116,10 @@
   function classify(url, status, d){
     if(!(status === 402 || status === 403) || !d || typeof d !== 'object') return null;
     var reason = CODES[String(d.error || '')] || '';
-    return reason ? { reason: reason, tab: tabFor(url, reason) } : null;
+    if(!reason) return null;
+    var g = { reason: reason, tab: tabFor(url, reason) };
+    if(reason === 'points') g.vars = { have: d.points, need: d.needed }; // v-plans-real-balance: رصيده وسعر العمليّة من ردّ الخادم نفسه
+    return g;
   }
   function ourApi(url){
     try{ var u = new URL(url, location.href); return u.origin === location.origin && u.pathname.indexOf('/api/') === 0; }
@@ -174,7 +211,7 @@
               if(res.status === 402 || res.status === 403){
                 res.clone().json().then(function(d){
                   var g = classify(url, res.status, d);
-                  if(g) openPlans(g.reason, g.tab);
+                  if(g) openPlans(g.reason, g.tab, g.vars);
                 }).catch(function(){ /* guard-ok — جسم غير JSON ليس جدارًا من خادمنا */ });
               } else if(res.ok && /\/api\/points(?:[?#]|$)/.test(url)){
                 res.clone().json().then(function(d){ if(d && Array.isArray(d.subs)) checkSubs(d.subs); })
@@ -189,5 +226,5 @@
   }catch(e){ __swallow(e, 'plans-gate:fetch'); }
 
   window.omranOpenPlans = openPlans;
-  window.__omranPlansGate = { classify: classify, tabFor: tabFor, pickNotice: pickNotice, checkSubs: checkSubs, showWhy: showWhy };
+  window.__omranPlansGate = { classify: classify, tabFor: tabFor, pickNotice: pickNotice, checkSubs: checkSubs, showWhy: showWhy, pointsWhy: pointsWhy };
 })();

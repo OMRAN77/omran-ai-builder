@@ -268,6 +268,14 @@ module.exports = async (req, res) => {
         res.status(200).json({ ok: false, skipped: 'model_unavailable', memory: cur.memory });
         return;
       }
+      /* v-audit-chatsrv (srv-chat-5): الدمج مبنيّ على نسخة قُرئت قبل نداء النموذج (ثوانٍ). «مسح الذاكرة» أو تعديلها في هذه الثواني كان
+         يُلغى بصمت بكتابة الدمج فوقه. قراءة ثانية قبل الكتابة: تغيّر النصّ، أو مُسح السجلّ كلّه (مسح يفرّغ المواضيع والمعلّق معًا) = لا
+         كتابة ولا معرفة جماعيّة من هذا الدور. كتابة موضوع متزامنة (op:topic) لا تغيّر النصّ فلا تلغي الدمج. */
+      const __now = await readMemory(username);
+      if (__now.memory !== cur.memory || (__now.updatedAt !== cur.updatedAt && !__now.memory && !__now.topics.length && !__now.pending.length)) {
+        res.status(200).json({ ok: true, skipped: 'changed', memory: __now.memory });
+        return;
+      }
       if (merged !== cur.memory || cur.pending.length) await writeMemory(username, merged, undefined, []); // v475
       // v545 — المعرفة الجماعيّة: تُستخرج من نفس المقتطف، وتفشل بصمت دائمًا.
       try { await require('./collective.js').learn(username, __userText, body.aiText); } catch (e) { /* guard-ok: collective learning is optional; personal memory still succeeds. */ }

@@ -28,7 +28,7 @@ test('٣. القائمة بلا وسائط (تحليل وثيقة · لقطة ا
   assert.deepEqual(names(TOOLS_NO_MEDIA), names(TOOLS).filter((n) => !['generate_image', 'edit_image', 'generate_video'].includes(n)));
   assert.ok(TOOLS_NO_MEDIA.length >= 3);
   const src = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'utf8');
-  assert.ok(src.includes('tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined')); // v-tokens-tools: القائمة ثابتة في دور الاستيضاح (بادئة الكاش)، والمنع بالذيل والحارس — tokens-cache ٦ و٧ · v-tokens-owner-tools: ولقطة المالك ورسالته الطويلة كذلك (TOOLS_NO_MEDIA باقية للمساعد toolsFor)
+  assert.ok(src.includes('tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia, __callPaid) : undefined')); // v-tokens-tools: القائمة ثابتة في دور الاستيضاح (بادئة الكاش)، والمنع بالذيل والحارس — tokens-cache ٦ و٧ · v-tokens-owner-tools: ولقطة المالك ورسالته الطويلة كذلك (TOOLS_NO_MEDIA باقية للمساعد toolsFor)
 });
 
 test('٤. وصف edit_image: الاستيضاح ليس طلبًا، والوثيقة الرسميّة لا تُعدَّل', () => {
@@ -45,4 +45,15 @@ test('٥. v-img-question: سؤال عامّ بعد صورة = كلام («بخص
   for (const t of ['هل تقدر ترسم قطة؟', 'كيف تصير الصورة 3D', 'شو رايك بالصورة', 'كم سعر الصورة؟ عدلها', 'ممكن تسوي فيديو؟', 'حلو', 'خل الخلفية زرقاء']) {
     assert.equal(isClarifyTurn(t), false, t);
   }
+});
+
+test('٦. v-recipe-img: سؤال الطبخ ليس دور كلام مقفلًا (صورة الطبق)، والسؤال العامّ يبقى مقفلًا', () => {
+  for (const t of ['كيف أطبخ مجبوس؟', 'وصفة كبسة دجاج؟', 'ايش طريقة عمل اللقيمات', 'وش مكونات الهريس؟', 'how to cook biryani?', 'كم مقادير الكيكة؟']) {
+    assert.equal(isClarifyTurn(t), false, t);
+  }
+  for (const t of ['بخصوص الشخير ماهي الاسباب', 'هل الشخير خطير؟', 'كم عدد سكان الإمارات', 'في الصوره نفسها قصدك']) {
+    assert.equal(isClarifyTurn(t), true, t);
+  }
+  const src = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'utf8');
+  assert.ok(src.includes('(ج) سؤال طبخ أو وصفة في الرسالة الحاليّة: صورة الطبق نفسه حسب قاعدة الطبخ'), 'قاعدة الصور تستثني الطبخ');
 });

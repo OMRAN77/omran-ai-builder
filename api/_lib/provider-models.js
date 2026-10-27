@@ -5,14 +5,14 @@
    الذاكرة وKV؛ (٢) الاختيار يصل chat.js في body.model ويُقبل للمالك إن كان معرّف OpenRouter
    بالبادئة الصحيحة لذلك المزوّد؛ رفضه الوسيط = رجوع للافتراضيّ مع سطر حالة (آليّة v-claude-models
    نفسها). كلود يبقى على قائمته الثابتة (المسار المباشر). للمالك وحده كالمنتقي نفسه. */
-const { isOwner } = require('./_owner.js');
+const { isOwnerSession: isOwner } = require('./_owner.js'); // v-audit-agent (srv-agent-3): جلسة المالك وحدها — لا MONITOR_KEY
 
 // مفتاح المزوّد في التطبيق ← بادئة الشركة عند OpenRouter.
 const OR_VENDOR = { openai: 'openai', gemini: 'google', deepseek: 'deepseek', mistral: 'mistralai', cohere: 'cohere', groq: 'meta-llama', perplexity: 'perplexity', kimi: 'moonshotai' };
 const OR_ID_RE = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i;
 const PER_PROVIDER = 8;
 const TTL_MS = 6 * 60 * 60 * 1000;
-const KV_KEY = 'provmodels:v4'; // v-owner-direct: v2 = قائمة Groq من Groq نفسه؛ v-oa-models: v3 = قائمة GPT من OpenAI نفسه (يُسقط المخزَّن وفيه gpt-6-luna-pro)؛ v-prov-tools-filter: v4 = فلترة الأدوات (يُسقط المخزَّن غير المفلتر)
+const KV_KEY = 'provmodels:v5'; // v-model-card: v5 = مع بيانات الموديل الوصفيّة (meta) // v-owner-direct: v2 = قائمة Groq من Groq نفسه؛ v-oa-models: v3 = قائمة GPT من OpenAI نفسه (يُسقط المخزَّن وفيه gpt-6-luna-pro)؛ v-prov-tools-filter: v4 = فلترة الأدوات (يُسقط المخزَّن غير المفلتر)
 const OR_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 
 function pickProviderModel(prov, requested, fallback) {
@@ -54,6 +54,29 @@ function parseModels(payload) {
   }
   return out;
 }
+
+/* v-model-card (المالك ١٥ أكتوبر «أوصلهم بمعلوماتهم»): البيانات الوصفيّة التي كان parseModels يُسقطها — نافذة السياق وأقصى خرج
+   والرؤية والأدوات — تُحفظ لكلّ موديل (شركات التطبيق وكلود وxAI وQwen) بمفتاح مطبَّع يطابق المعرّف المباشر والوسيط معًا
+   (بلا بادئة الشركة، والنقطة شرطة)، وتُقرأ متزامنةً من الذاكرة الدافئة (metaOf) لبطاقة الموديل في provider-level. */
+const META_VENDOR_RE = /^(?:anthropic|openai|google|deepseek|mistralai|cohere|meta-llama|perplexity|moonshotai|x-ai|qwen)\//;
+function metaKey(id) { return String(id || '').trim().toLowerCase().replace(/^[a-z0-9._-]+\//, '').replace(/\./g, '-'); }
+function parseMeta(payload) {
+  const rows = (payload && Array.isArray(payload.data)) ? payload.data : [];
+  const out = {};
+  for (const m of rows) {
+    if (!m || typeof m.id !== 'string' || !META_VENDOR_RE.test(m.id) || m.id.indexOf(':') !== -1) continue;
+    const a = m.architecture || {}, tp = m.top_provider || {};
+    const e = {};
+    if (Number(m.context_length) > 0) e.ctx = Number(m.context_length);
+    if (Number(tp.max_completion_tokens) > 0) e.out = Number(tp.max_completion_tokens);
+    if (Array.isArray(a.input_modalities)) e.vision = a.input_modalities.indexOf('image') !== -1;
+    if (Array.isArray(m.supported_parameters)) e.tools = m.supported_parameters.indexOf('tools') !== -1;
+    const k = metaKey(m.id);
+    if (!out[k]) out[k] = e; // الأوّل يفوز (الوسيط يرتّب الأساسيّ قبل المتغيّرات)
+  }
+  return out;
+}
+function metaOf(id) { return (__mem.meta && __mem.meta[metaKey(id)]) || null; }
 
 // قائمة Groq: موديلات المحادثة النشطة (بلا صوت/تفريغ/حرّاس/أنظمة مركّبة)، الأحدث أوّلًا، ثمانية كحدّ، والاسم هو المعرّف.
 const GROQ_MODELS_URL = 'https://api.groq.com/openai/v1/models';
@@ -100,7 +123,7 @@ async function loadModels(opts) {
   if (kv) {
     try {
       const c = await kv.kvGetJSON(KV_KEY);
-      if (c && c.models && now - (Number(c.at) || 0) < TTL_MS) { __mem = { at: c.at, models: c.models }; return { models: c.models, source: 'kv', at: c.at }; }
+      if (c && c.models && now - (Number(c.at) || 0) < TTL_MS) { __mem = { at: c.at, models: c.models, meta: c.meta || null }; return { models: c.models, source: 'kv', at: c.at }; }
     } catch (e) { /* KV غائب أو متعثّر — نكمل من الشبكة */ }
   }
   const f = o.fetch || fetch;
@@ -108,7 +131,9 @@ async function loadModels(opts) {
   if (process.env.OPENROUTER_API_KEY) headers.Authorization = 'Bearer ' + process.env.OPENROUTER_API_KEY;
   const r = await f(OR_MODELS_URL, { headers });
   if (!r.ok) throw new Error('openrouter models ' + r.status);
-  const models = parseModels(await r.json());
+  const __raw = await r.json();
+  const models = parseModels(__raw);
+  const meta = parseMeta(__raw); // v-model-card
   if (!Object.keys(models).length) throw new Error('openrouter models: empty');
   /* v-owner-direct: بمفتاح Groq تتّصل المحادثة بـGroq مباشرةً (oa-direct.js)، فقائمة السهم لـGroq تأتي من Groq
      نفسه لا من موديلات Meta عند الوسيط. تعثّرها يبقي قائمة الوسيط. */
@@ -129,10 +154,25 @@ async function loadModels(opts) {
       if (ol.length) models.openai = ol;
     } catch (e) { /* قائمة الوسيط تبقى */ }
   }
-  __mem = { at: now, models };
-  if (kv) { try { await kv.kvPutJSON(KV_KEY, { at: now, models }); } catch (e) { /* التخزين تحسينيّ */ } }
+  __mem = { at: now, models, meta };
+  if (kv) { try { await kv.kvPutJSON(KV_KEY, { at: now, models, meta }); } catch (e) { /* التخزين تحسينيّ */ } }
   return { models, source: 'network', at: now };
 }
+
+/* v-live-default (لقطة المالك ١٥ أكتوبر: Cohere «خطأ 404» — cohere/command-a لم يعد عند الوسيط): الافتراضيّ الثابت في OR_MODELS يموت
+   مع الزمن (v-models-latest رفعه مرّات بيد). رفض الوسيط له = أحدث موديل بأدوات لشركته من القائمة الحيّة نفسها التي يعرضها المنتقي
+   (الأحدث أوّلًا، بفلترة الأدوات)، ويُحفظ في الذاكرة الدافئة فتبدأ به الرسائل التالية بلا جولة 404. */
+const __live = {};
+async function liveDefault(prov, dead, opts) {
+  const key = String(prov || '').toLowerCase();
+  if (!OR_VENDOR[key]) return '';
+  let list = [];
+  try { list = ((await loadModels(opts)).models || {})[key] || []; } catch (e) { list = []; } // guard-ok — بلا قائمة = بلا بديل، والفشل الأصليّ يصل المالك
+  const alt = list.map((x) => x && x[0]).find((id) => id && id !== dead) || '';
+  if (alt) __live[key] = alt;
+  return alt;
+}
+function liveDefaultOf(prov) { return __live[String(prov || '').toLowerCase()] || ''; }
 
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
@@ -153,3 +193,10 @@ module.exports.parseGroqModels = parseGroqModels;
 module.exports.parseOpenAIModels = parseOpenAIModels;
 module.exports.loadModels = loadModels;
 module.exports.OR_VENDOR = OR_VENDOR;
+module.exports.liveDefault = liveDefault; // v-live-default
+module.exports.liveDefaultOf = liveDefaultOf;
+module.exports.__live = __live; // للاختبار
+module.exports.__resetCache = () => { __mem = { at: 0, models: null, meta: null }; }; // للاختبار
+module.exports.parseMeta = parseMeta; // v-model-card
+module.exports.metaOf = metaOf;
+module.exports.metaKey = metaKey;

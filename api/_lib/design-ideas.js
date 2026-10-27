@@ -11,6 +11,7 @@ const TAVILY = 'https://api.tavily.com/search';
 const crypto = require('crypto');
 const { checkAndConsumeCustom, refundCustom, clientIp } = require('./_usage.js');
 const { verifyToken } = require('./auth.js');
+const serp = require('./serp-search.js'); // v-serp-modules: بديل Google صور بمفتاحه (Custom Search يتوقّف ١ يناير ٢٠٢٧)
 
 /* v-open-tools-cap (المالك: «مفتوحة على مفاتيحك بلا حدّ»): المعرض كان بلا رمز ولا عدّاد ولا IP — كلّ نصّ جديد يطلق
    حتّى ١٦ استعلام Tavily و٤ Google (مفاتيح البحث في المحادثة نفسها). الآن: جلسة شرط (التسجيل أوّلًا)، وسقف ثابت
@@ -38,19 +39,40 @@ const PLACE_EN = {
   restaurant: 'restaurant', cafe: 'cafe coffee shop', bedroom: 'bedroom', majlis: 'arabic majlis',
   living: 'living room', kitchen: 'kitchen', office: 'office', shop: 'retail shop', bath: 'bathroom',
   kids: 'kids room', entrance: 'home entrance foyer', garden: 'garden terrace',
+  facade: 'modern villa exterior facade landscape', pool: 'outdoor swimming pool patio design',
+  pergola: 'outdoor pergola garden seating', bbq: 'outdoor bbq kitchen firepit seating',
+  rooftop: 'rooftop terrace lounge design', pathway: 'outdoor garden pathway entrance landscape',
 };
 const PLACE_AR = {
   restaurant: 'مطعم', cafe: 'كافيه', bedroom: 'غرفة نوم', majlis: 'مجلس عربي', living: 'صالة', kitchen: 'مطبخ',
   office: 'مكتب', shop: 'محل', bath: 'حمام', kids: 'غرفة أطفال', entrance: 'مدخل', garden: 'حديقة',
+  facade: 'واجهة فيلا خارجية', pool: 'مسبح وجلسة خارجية', pergola: 'برجولا وجلسة حديقة',
+  bbq: 'ركن شواء وجلسة نار خارجية', rooftop: 'جلسة سطح روف خارجية', pathway: 'ممر ومدخل حديقة خارجي',
 };
 
 function cleanQ(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 120); }
 const ADULT = /nude|naked|nsfw|porn|xxx|sex|erotic|adult|bikini|lingerie|escort|onlyfans|xvideos|xnxx|redtube|pornhub/i;
+/* v-ideas-hosts (تدقيق ١٨ أكتوبر): مضيفات تمنع الربط المباشر (tiktok.com/api/img، cdninstagram، fbcdn…) تعود 403 في المتصفّح —
+   أخطاء كونسول وصور تُعدّ ولا تظهر. تُرفض بمضيفها. */
+const HOTLINK_BLOCKED = ['tiktok.com', 'tiktokcdn.com', 'tiktokcdn-us.com', 'tiktokv.com', 'instagram.com', 'cdninstagram.com', 'facebook.com', 'fbcdn.net', 'fbsbx.com'];
+function blockedHost(u) {
+  let h = '';
+  try { h = new URL(u).hostname.toLowerCase(); } catch (e) { return true; }
+  return HOTLINK_BLOCKED.some((d) => h === d || h.endsWith('.' + d));
+}
 function looksLikePhoto(u) {
   if (!/^https?:\/\//i.test(u)) return false;
   if (ADULT.test(u)) return false;
   if (/\.svg(\?|$)|\/logo|favicon|sprite|icon|avatar|\.gif(\?|$)|pixel|tracking|1x1/i.test(u)) return false;
+  if (blockedHost(u)) return false;
   return true;
+}
+/* المخبوء قبل v-ideas-hosts قد يحمل تلك الروابط — يُصفّى عند القراءة بلا رفع ideas:v3 (لا حصص بحث جديدة)، وما لا يبقى منه شيء يُجمع من جديد */
+function cleanCached(c) {
+  if (!c || !Array.isArray(c.images)) return null;
+  const images = c.images.filter((u) => typeof u === 'string' && looksLikePhoto(u));
+  if (!images.length) return null;
+  return images.length === c.images.length ? c : Object.assign({}, c, { images, count: images.length });
 }
 function norm(q) { return String(q || '').replace(/\s+/g, ' ').trim(); }
 
@@ -79,7 +101,20 @@ async function tavilyImages(queries, apiKey, state) {
   });
   return out;
 }
+/* v-serp-modules: Custom Search يتوقّف ١ يناير ٢٠٢٧ — بديل الصور بمفتاحه أوّلًا (serp-search.images، SafeSearch مفروض)، ردّه الناجح
+   مدفوع فيُعدّ (v-ideas-paid-count) وفشله في googleFail/googleErr نفسيهما؛ وإن لم يُعطِ صورة فـCustom Search كما كان. بلا مفتاح لا نداء. */
+async function serpImages(queries, state) {
+  const onFail = (s) => { if (s === 'net') state.googleErr = true; else state.googleFail = s; };
+  const runs = await Promise.all(queries.map(norm).filter(Boolean).map((q) => serp.images(q, { num: 10, onFail }).then((l) => {
+    if (l) state.paid = (state.paid || 0) + 1;
+    return l || [];
+  })));
+  const out = [];
+  runs.forEach((l) => l.forEach((it) => out.push(it.image)));
+  return out;
+}
 async function googleImages(queries, state) {
+  if (serp.imagesProviderOf()) { const alt = await serpImages(queries, state); if (alt.length) return alt; }
   const gKey = (process.env.GOOGLE_SEARCH_API_KEY || '').trim();
   const gCx = (process.env.GOOGLE_SEARCH_CX || '').trim();
   if (!gKey || !gCx) return [];
@@ -221,7 +256,7 @@ async function gather(apiKey, wave1, wave2, gq) {
   const out = { images: images.slice(0, 80), count: Math.min(images.length, 80), source };
   const detail = {
     tavily: state.tavilyFail || (state.tavilyErr ? 'net' : (apiKey ? 'ok' : 'off')),
-    google: state.googleFail || (state.googleErr ? 'net' : ((process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX) ? 'ok' : 'off')),
+    google: state.googleFail || (state.googleErr ? 'net' : (((process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX) || serp.imagesProviderOf()) ? 'ok' : 'off')),
     pexels: state.pexelsFail || (state.pexelsErr ? 'net' : (process.env.PEXELS_API_KEY ? 'ok' : 'off')),
     unsplash: state.unsplashFail || (state.unsplashErr ? 'net' : (process.env.UNSPLASH_ACCESS_KEY ? 'ok' : 'off')),
     openverse: state.ovFail || (state.ovErr ? 'net' : 'ok'),
@@ -238,7 +273,7 @@ async function gather(apiKey, wave1, wave2, gq) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
   const apiKey = (process.env.TAVILY_API_KEY || '').trim();
-  const hasGoogle = !!((process.env.GOOGLE_SEARCH_API_KEY || '').trim() && (process.env.GOOGLE_SEARCH_CX || '').trim());
+  const hasGoogle = !!((process.env.GOOGLE_SEARCH_API_KEY || '').trim() && (process.env.GOOGLE_SEARCH_CX || '').trim()) || !!serp.imagesProviderOf(); // v-serp-modules
   if (!apiKey && !hasGoogle) { res.status(500).json({ error: 'Server is missing TAVILY_API_KEY' }); return; }
   let body = req.body;
   if (!body || typeof body === 'string') { try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; } }
@@ -253,7 +288,7 @@ module.exports = async (req, res) => {
   if (!subjectEn) { res.status(400).json({ error: 'Missing q or place' }); return; }
 
   const key = cacheKey(['decor', subjectEn, subjectAr, style]);
-  const cached = await cacheGet(key);
+  const cached = cleanCached(await cacheGet(key));
   if (cached && cached.images && cached.images.length) { res.setHeader('Cache-Control', 'private, max-age=600'); res.status(200).json(cached); return; }
   if (!(await meterFresh(req, res, body))) return;
 
@@ -315,7 +350,7 @@ async function constructionIdeas(req, res, body, apiKey) {
   const en = (extra) => [st[0], f[0], t[0], v[0], free, extra].filter(Boolean).join(' ');
   const ar = (extra) => [free, 'تصميم', v[1], t[1], f[1], st[1], extra].filter(Boolean).join(' ');
   const key = cacheKey(['cx', t[0], f[0], v[0], st[0], free]);
-  const cached = await cacheGet(key);
+  const cached = cleanCached(await cacheGet(key));
   if (cached && cached.images && cached.images.length) { res.setHeader('Cache-Control', 'private, max-age=600'); res.status(200).json(cached); return; }
   if (!(await meterFresh(req, res, body))) return;
   const wave1 = [en('design ideas'), en('photos'), ar(''), en('architecture'), ar('صور'), en('3d render'), ar('حديث'), en('inspiration')];

@@ -96,22 +96,48 @@ let recordedChunks = [];
 let micStream = null;
 
 let activeMicBtn = null;
+/* v-audit-voice (cli-voice-4): isListening لا تصير true إلّا بعد وصول إذن المايك، فالنقرة الثانية من نقرة مزدوجة (أو نقرة
+   أثناء فتح بطيء لسمّاعة بلوتوث) كانت تفتح مسارًا ثانيًا يستبدل micStream وmediaRecorder، فيبقى الأوّل مضاءً حتّى إعادة التحميل
+   ويدفع مسجّله اليتيم مقاطعه في التسجيلات التالية. الآن علم «يبدأ» قبل الانتظار، ولكلّ مسجّل مصفوفته. */
+let micStarting = false;
 async function startMicRecording(targetBtn){
-  activeMicBtn = targetBtn || btnMic;
-  micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  let mimeType = '';
-  for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
-    if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
-  }
-  mediaRecorder = mimeType ? new MediaRecorder(micStream, { mimeType }) : new MediaRecorder(micStream);
-  recordedChunks = [];
-  mediaRecorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) recordedChunks.push(e.data); };
-  // timeslice=1000ms: collect audio progressively. On some Android/Chrome builds a
-  // single final chunk gets truncated on stop(), so only the first 1-2 words survive.
-  mediaRecorder.start(1000);
-  isListening = true;
-  activeMicBtn.classList.remove('maha-orb-idle');
-  activeMicBtn.classList.add('recording');
+  if(micStarting || isListening) return;
+  micStarting = true;
+  let stream = null;
+  try{
+    activeMicBtn = targetBtn || btnMic;
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let mimeType = '';
+    for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
+    }
+    const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const chunks = [];
+    rec.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
+    // timeslice=1000ms: collect audio progressively. On some Android/Chrome builds a
+    // single final chunk gets truncated on stop(), so only the first 1-2 words survive.
+    rec.start(1000);
+    micStream = stream; mediaRecorder = rec; recordedChunks = chunks;
+    isListening = true;
+    activeMicBtn.classList.remove('maha-orb-idle');
+    activeMicBtn.classList.add('recording');
+  }catch(e){
+    if(stream){ try{ stream.getTracks().forEach(tr => tr.stop()); }catch(_){ __swallow(_, 'voice:mic-start-cleanup'); } } // مسجّل تعذّر = لا مايك مفتوح
+    throw e;
+  }finally{ micStarting = false; }
+}
+/* v-audit-voice (cli-voice-8): نصّ فشل التفريغ من الحالة والرمز وحدهما — كان نصّ الخادم يُعرض كما هو: عربيّ لكلّ اللغات،
+   ويذكر «المزوّد» و«مفتاحك الخاص»، و500 باسم مزوّد؛ وعطل الشبكة أو المهلة كان «المتصفّح لا يدعم إدخال الصوت». */
+function voiceTr(key, en, ar){
+  const v = t(key);
+  return (v && v !== key) ? v : ((typeof lang === 'string' && lang === 'ar') ? ar : en);
+}
+function voiceSttErrorText(status, data){
+  const code = (data && typeof data.error === 'string') ? data.error : '';
+  if(code === 'unavailable') return t('svcPaused');
+  if(status === 402 || code === 'daily_limit') return t('portraitLimitReached');
+  if(status === 401 || code === 'auth_required') return voiceTr('axVoiceSessionEnded', 'Your session has ended — please sign in again.', 'انتهت جلستك — سجّل الدخول من جديد.');
+  return t('mahaSttError');
 }
 
 function blobToBase64(blob){
@@ -151,7 +177,7 @@ async function handleVoiceImageIntent(promptText){
     });
     const data = await res.json();
     if(!res.ok){
-      await voiceTabSpeak(t('voiceImageFailed'));
+      await voiceTabSpeak(t(data && data.error === 'unavailable' ? 'svcPaused' : 'voiceImageFailed')); // v-credit-out
       return;
     }
     const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -257,16 +283,19 @@ function handleVoiceVideoIntent(promptText){
 async function stopMicRecordingAndTranscribe(autoRoute){
   if(!mediaRecorder) return;
   const btn = activeMicBtn || btnMic;
-  const mimeType = mediaRecorder.mimeType || 'audio/webm';
-  const finished = new Promise((resolve) => { mediaRecorder.onstop = resolve; });
-  mediaRecorder.stop();
+  // v-audit-voice (cli-voice-4): هذا المسجّل ومساره ومقاطعه وحدها — ونقرة إيقاف ثانية أثناء الانتظار لا تكرّر
+  const rec = mediaRecorder, stream = micStream, chunks = recordedChunks;
+  mediaRecorder = null; micStream = null;
+  const mimeType = rec.mimeType || 'audio/webm';
+  const finished = new Promise((resolve) => { rec.onstop = resolve; });
+  rec.stop();
   await finished;
-  if(micStream){ micStream.getTracks().forEach(tr => tr.stop()); micStream = null; }
+  if(stream){ stream.getTracks().forEach(tr => tr.stop()); }
   isListening = false;
   btn.classList.remove('recording');
   btn.classList.add('transcribing');
   try{
-    const blob = new Blob(recordedChunks, { type: mimeType });
+    const blob = new Blob(chunks, { type: mimeType });
     if(blob.size < 500){ btn.classList.remove('transcribing'); return; } // too short / no audio
     const audioBase64 = await blobToBase64(blob);
     const res = await fetch('/api/stt', {
@@ -275,10 +304,10 @@ async function stopMicRecordingAndTranscribe(autoRoute){
       signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
       body: JSON.stringify({ audioBase64, mimeType, lang, langHint: (autoRoute ? undefined : lang), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
     btn.classList.remove('transcribing');
     if(!res.ok){
-      alert(data && data.error ? data.error : t('micNotSupported'));
+      alert(voiceSttErrorText(res.status, data)); // v-audit-voice (cli-voice-8): لا نصّ الخادم الخامّ — v-maha-paused: ولا [object Object]
       return;
     }
     const transcript = (data && data.text ? data.text : '').trim();
@@ -312,7 +341,7 @@ async function stopMicRecordingAndTranscribe(autoRoute){
     }
   } catch(e){
     btn.classList.remove('transcribing');
-    alert(t('micNotSupported'));
+    alert(voiceSttErrorText(0, null)); // v-audit-voice (cli-voice-8): عطل الشبكة أو المهلة ليس «المتصفّح لا يدعم»
   }
 }
 
@@ -349,24 +378,34 @@ if(btnVoiceTabMic){
 // MediaRecorder and transcribes via the same server-side /api/stt endpoint,
 // then appends the transcript directly into its target field's value. ----
 const miniMicStates = {};
+const miniMicPending = {}; // v-audit-voice (cli-voice-4): هدف ينتظر إذن المايك — النقرة الثانية لا تفتح مسارًا ثانيًا
 
 async function miniMicStart(btn, targetId){
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  let mimeType = '';
-  for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
-    if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
-  }
-  const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-  const chunks = [];
-  recorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
-  recorder.start();
-  miniMicStates[targetId] = { stream, recorder, chunks, mimeType };
-  btn.classList.add('recording');
+  if(miniMicPending[targetId] || miniMicStates[targetId]) return;
+  miniMicPending[targetId] = true;
+  let stream = null;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let mimeType = '';
+    for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
+    }
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
+    recorder.start();
+    miniMicStates[targetId] = { stream, recorder, chunks, mimeType };
+    btn.classList.add('recording');
+  }catch(e){
+    if(stream){ try{ stream.getTracks().forEach(tr => tr.stop()); }catch(_){ __swallow(_, 'voice:mini-start-cleanup'); } }
+    throw e;
+  }finally{ delete miniMicPending[targetId]; }
 }
 
 async function miniMicStop(btn, targetId){
   const st = miniMicStates[targetId];
   if(!st) return;
+  delete miniMicStates[targetId]; // v-audit-voice: نقرة إيقاف ثانية أثناء الانتظار لا تكرّر
   const finished = new Promise((resolve) => { st.recorder.onstop = resolve; });
   st.recorder.stop();
   await finished;
@@ -375,7 +414,6 @@ async function miniMicStop(btn, targetId){
   btn.classList.add('transcribing');
   try{
     const blob = new Blob(st.chunks, { type: st.recorder.mimeType || st.mimeType || 'audio/webm' });
-    delete miniMicStates[targetId];
     if(blob.size < 500){ btn.classList.remove('transcribing'); return; }
     const audioBase64 = await blobToBase64(blob);
     const res = await fetch('/api/stt', {
@@ -384,10 +422,10 @@ async function miniMicStop(btn, targetId){
       signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
       body: JSON.stringify({ audioBase64, mimeType: st.mimeType, lang, langHint: lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
     btn.classList.remove('transcribing');
     if(!res.ok){
-      alert(data && data.error ? data.error : t('micNotSupported'));
+      alert(voiceSttErrorText(res.status, data)); // v-audit-voice (cli-voice-8): لا نصّ الخادم الخامّ — v-maha-paused: ولا [object Object]
       return;
     }
     const transcript = (data && data.text ? data.text : '').trim();
@@ -399,7 +437,7 @@ async function miniMicStop(btn, targetId){
     }
   } catch(e){
     btn.classList.remove('transcribing');
-    alert(t('micNotSupported'));
+    alert(voiceSttErrorText(0, null)); // v-audit-voice (cli-voice-8)
   }
 }
 

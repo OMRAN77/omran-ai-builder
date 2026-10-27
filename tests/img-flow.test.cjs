@@ -28,7 +28,9 @@ test('١. مربّع الإنشاء: نجوم ذهبيّة (والفاتح أغ�
     assert.ok(s.includes('html[data-mode=\\"light\\"] .omGenTxt{color:#8a6500;text-shadow:none}'), 'عنوان الفاتح يبقى مقروءًا على أبيض');
     assert.ok(!s.includes("'rgba(255,255,255,.35)'"), 'لا أبيض');
     /* v-parallel-chats: يعود للصفحة إن كانت محادثة الطلب هي المعروضة — لا يُلصق مربّع طلبٍ في الخلفيّة داخل محادثة أخرى */
-    assert.ok(s.includes("if(!el.isConnected && __mine() && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el);"), 'بعد هبوط بحث الصور');
+    /* v-img-dots-plus: الرسم خرج إلى __omranImgDots(el, mine) المشتركة؛ __showImgLoading يمرّر __mine() نفسه */
+    assert.ok(s.includes("if(!el.isConnected && mine && typeof messagesEl !== 'undefined' && messagesEl) messagesEl.appendChild(el);"), 'بعد هبوط بحث الصور');
+    assert.ok(s.includes('__omranImgDots(el, __mine(), '), 'المسار العاديّ يمرّر محادثة طلبه');
   }
 });
 
@@ -114,7 +116,7 @@ test('٩. صور الإنترنت فقط بطلب صريح أو بالجمع —
   const cue = (x) => r1.test(x) || r2.test(x);
   for (const x of ['عطني صور ليوبارد 8', 'أبي صور حقيقية لبرج خليفة', 'عطني صورة من النت لسيارة كامري', 'show me photos of Paris']) assert.ok(cue(x), x);
   for (const x of ['أبي صورة قطة', 'عطني صورة غروب في دبي', 'صور لي قطة']) assert.ok(!cue(x), x);
-  assert.ok(a.includes('const __isPhotoFetch = !__isLogoFetch && __realPhotoCue && __photoFetchRe.test(text) &&'));
+  assert.ok(a.includes('const __isPhotoFetch = !__isLogoFetch && !__ownerAppPlace && __realPhotoCue && __photoFetchRe.test(text) &&')); // v-photo-honest: طلب المالك على تطبيقه لا يُخطف
 });
 
 test('١٠. مؤشّر الصورة بلا إطار، والوضعان سواء، والشبكة ١٥×١٠ بقوس الزاوية العليا اليسرى', () => {

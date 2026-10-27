@@ -93,7 +93,7 @@ test('٣. الحمولة: الأولى تبقى imageBase64 (توافق)، وا�
   assert.match(SRC, /payload\.params = Object\.assign\(\{\}, params, \{ people: raw\.length \}\)/, 'عدد الأشخاص يصل للخادم');
   assert.match(SRC, /if\(t\.photo === 'req' && !photos\.length\)\{ status\(ui\('photoReq'\)\); return; \}/, 'الترند الذي يلزمه صورة يفحص المصفوفة');
   assert.ok(!/\bphoto\s*=\s*null\b/.test(SRC), 'لا بقايا من المتغيّر المفرد');
-  assert.match(SRC, /fi\.multiple = true/, 'اختيار عدّة صور دفعة واحدة');
+  assert.match(SRC, /fi\.multiple = cap > 1;/, 'اختيار عدّة صور دفعة واحدة (إلّا ترند الشخص الواحد — v-trends-oct-12)');
 });
 
 test('٤. النصّان الجديدان في الـ14 لغة، و«شخصية {n}» فيها المتغيّر، وبلا اسم مزوّد', () => {
@@ -259,8 +259,8 @@ test('١٢. تناقض النصّ على الإطار انحلّ: أربعة ص�
    وdl.onclick كان يعترض النقرة بـpreventDefault ثمّ يستدعي autoSaveVideo — دالّة فارغة عمدًا
    في app-11-video.js (v526: الزرّ يعمل بنفسه عبر href/download، لا نقر برمجيّ). */
 function trendResultBody() {
-  const i = SRC.indexOf('      var finalUrl = urls[0];');
-  const j = SRC.indexOf('      var again = document.createElement', i);
+  const i = SRC.indexOf('    var finalUrl = urls[0];'); // v-trend-one-confirm: صار في show(t, urls) — للنجاح وللمشاهد المكتملة قبل عطل
+  const j = SRC.indexOf('    var again = document.createElement', i);
   assert.ok(i > 0 && j > i, 'مقطع عرض نتيجة الترند موجود في المصدر');
   return SRC.slice(i, j);
 }

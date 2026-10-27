@@ -160,7 +160,7 @@ test('٦. v2: failed/cancelled وخطأ نهائيّ (٤٠٤ بجسم error) = F
 test('٧. حلقات الاستطلاع (خمس منذ v-actor-lipsync) محروسة بعمر وبأخطاء متتالية، ولا ابتلاع صامت', () => {
   const src = read('js/app-11-video.js');
   assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 5, 'حلقة استطلاع بلا حارس');
-  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 5, 'خطأ شبكة ما زال يُبتلع بصمت');
+  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 5, 'خطأ شبكة ما زال يُبتلع بصمت'); // v-ai-video-speed: وpollTaskOnce يعدّ خطأ الخادم ٥xx عابرًا بنصّه guard.fail(iv, data.error)
   assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 5, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
   assert.doesNotMatch(src, /catch\(e\)\{ \/\* keep polling \*\/ \}/, 'بقي ابتلاع صامت');
   assert.equal((src.match(/setInterval\(async \(\) => \{/g) || []).length, 5, /* v-actor-lipsync: حلقة الممثّل */ 'عدد الحلقات تغيّر — راجع الحراسة');
@@ -168,7 +168,7 @@ test('٧. حلقات الاستطلاع (خمس منذ v-actor-lipsync) محرو
   assert.ok(read('js/app.bundle.js').includes('function makePollGuard('), 'الحارس ليس في الحزمة — شغّل npm run bundle');
   // سلوك الحارس نفسه: العمر ينتهي، والأخطاء المتتالية تُنهي، والنجاح يصفّرها
   const vm = require('node:vm');
-  const body = src.slice(src.indexOf('function makePollGuard('), src.indexOf('\n  }', src.indexOf('fail(iv){')) + 4);
+  const body = src.slice(src.indexOf('function makePollGuard('), src.indexOf('\n  }', src.indexOf('fail(iv, msg){')) + 4);
   const ctx = { bT: (a) => a, clearInterval: () => { ctx.cleared++; }, cleared: 0 };
   vm.runInNewContext(body + '\nglobalThis.__g = makePollGuard;', ctx);
   let err = null;
@@ -267,16 +267,25 @@ test('١٠. الإنشاء (v2): المسار والترويسة والجسم �
   assert.equal(c.body.model, 'MiniMax-H3-Max');
 });
 
-test('١١. الإنشاء (v2): خطأ المزوّد يُقرأ من error.message بحالته (بلا مفتاح ولا اسم مزوّد)، و٢٠٠ بلا task_id = 502', async () => {
+test('١١. الإنشاء (v2): خطأ المزوّد يُقرأ من error.message ويُصنَّف برموز _videoFail (بلا نصّ مزوّد ولا اسمه)، و٢٠٠ بلا task_id = زحام 502', async () => {
+  /* دمج main (v-credit-out + v-vid-codes): رصيد المزوّد ليس رصيد المستخدم — ٤٠٢ = unavailable بـ503 لا يُمرَّر نصّه ولا حالته */
   let res = await create({ promptText: 'x', token: 't' }, async () => ({ ok: false, status: 402, json: async () => ({ type: 'error', error: { type: 'insufficient_balance', message: 'insufficient balance, please top up', http_code: 402 }, request_id: 'r' }) }));
-  assert.equal(res.code, 402);
-  assert.match(String(res.body.error), /insufficient balance/);
-  assert.doesNotMatch(String(res.body.error), /test-key|MiniMax|Hailuo|H3/);
-  assert.equal(res.body.retryable, true);
+  assert.equal(res.code, 503);
+  assert.deepEqual(res.body, { error: 'unavailable', retryable: false });
+  // ٤٠٠ وحدها رفضٌ للطلب — فنصّ error.message هو الذي يحوّلها إلى «عطب عندنا» (يُقرأ من جسم v2)
+  res = await create({ promptText: 'x', token: 't' }, async () => ({ ok: false, status: 400, json: async () => ({ type: 'error', error: { type: 'auth', message: 'invalid api key' } }) }));
+  assert.equal(res.code, 503);
+  assert.equal(res.body.error, 'unavailable');
+  res = await create({ promptText: 'x', token: 't' }, async () => ({ ok: false, status: 400, json: async () => ({ type: 'error', error: { type: 'invalid_request', message: 'prompt rejected by content policy' } }) }));
+  assert.equal(res.code, 400);
+  assert.equal(res.body.error, 'video_rejected');
+  assert.equal(res.body.retryable, false);
+  assert.doesNotMatch(JSON.stringify(res.body), /test-key|MiniMax|Hailuo|H3|content policy/);
   res = await create({ promptText: 'x', token: 't' }, async () => ({ ok: true, status: 200, json: async () => ({}) }));
   assert.equal(res.code, 502);
-  assert.match(String(res.body.error), /HTTP 200/);
+  assert.equal(res.body.error, 'video_busy');
+  assert.equal(res.body.retryable, true);
   res = await create({ promptText: 'x', token: 't' }, async () => ({ ok: false, status: 500, json: async () => { throw new Error('not json'); } }));
   assert.equal(res.code, 500);
-  assert.match(String(res.body.error), /HTTP 500/);
+  assert.equal(res.body.error, 'video_busy');
 });

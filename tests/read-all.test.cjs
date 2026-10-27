@@ -65,7 +65,11 @@ test('سطر الأثر في حلقة الأدوات يحمل المُدخل و�
   assert.strictEqual(trailDetail('fetch_page', { url: 'https://a.com' }, 'x'.repeat(2000)).out.length, 400);
   assert.deepStrictEqual(trailDetail('generate_image', { prompt: 'قطّة' }, '__IMG_1__'), {});
   const src = read('api/_lib/chat.js');
-  assert.ok(src.includes("send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p }, trailDetail(cb.name, input, result)));"));
+  assert.ok(src.includes("send(Object.assign({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p, tool: cb.name, err:"), 'v-interleave-fix: ومعه اسم الأداة وحكم الفشل');
+  assert.ok(src.includes('trailDetail(cb.name, input, result)));'));
+  /* v-interleave-fix: الرفع والتعديل والدمج ونتيجة الرسم المرفوض تظهر في السجلّ؛ الرسم الناجح بلا ناتج نصّيّ كما كان */
+  assert.deepStrictEqual(trailDetail('write_github', { repo: 'O/r', files: [{ path: 'a.webp' }] }, '✅ رُفع'), { cmd: 'O/r a.webp', out: '✅ رُفع' });
+  assert.strictEqual(trailDetail('generate_image', { prompt: 'قطّة' }, '✗ لم يُنفَّذ').out, '✗ لم يُنفَّذ');
 });
 
 test('الطبقة المجانية تقرأ قبل البثّ وتمرّر المحادثة المقروءة، والملاحظة تأمرها بالتحليل والاستشهاد', () => {
@@ -95,7 +99,7 @@ function loadChatTools(events) {
   return window.callChatWithTools;
 }
 
-test('العميل يبني السجلّ: «فكّر» ثمّ خطوة لكلّ سطر أثر بمُدخلها وناتجها؛ وبلا أثر لا سجلّ', async () => {
+test('العميل يبني السجلّ: مدّة العمل ثمّ خطوة لكلّ سطر أثر بمُدخلها وناتجها؛ وبلا أثر لا سجلّ', async () => {
   const call = loadChatTools([
     { status: '💭 يقرأ سؤالك…', k: 'stReading' },
     { status: '🌐 يقرأ صفحة…', k: 'stFetchPage' },
@@ -107,7 +111,7 @@ test('العميل يبني السجلّ: «فكّر» ثمّ خطوة لكلّ 
   const r = await call([{ role: 'user', content: 'x' }], null, 'gemini');
   assert.strictEqual(r.reply, 'الجواب');
   assert.strictEqual(r.log.length, 3);
-  assert.strictEqual(r.log[0].t, 'think');
+  assert.strictEqual(r.log[0].t, 'meta', 'v-work-log: أوّل السجلّ مدّة العمل حتّى أوّل حرف (كان «فكّر N ث» بلا ملخّص)');
   assert.ok(r.log[0].ms >= 0);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(r.log.slice(1))), [
     { t: 'tool', name: 'trFetch', title: 'قرأتُ a.com — حصلتُ 3 حرفًا', cmd: 'https://a.com', out: 'abc', err: 0, g: 0 },

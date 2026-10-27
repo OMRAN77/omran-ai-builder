@@ -8,26 +8,36 @@ const { logError } = require('./log-error.js');
 // v-session-shape (الدفعة A، أمان): نسخة التحقّق اليدويّة هنا (rtVerifyToken) كانت تقبل حمولة موقّعة بلا exp جلسةً لا تنتهي،
 // وتقرأ السرّ في نطاق الوحدة. الهويّة هنا لتحميل الذاكرة وحده — الحصّة والفوترة كما هي (checkAndConsume).
 const { sessionUser: rtVerifyToken } = require('./_session.js');
+// v-maha-app: معرفة التطبيق الحيّة (لكلّ مستخدمي مها) والتحكّم فيه (للمشترك وحده) — api/_lib/maha-app.js
+const mahaApp = require('./maha-app.js');
 
 const BUILDER_REALTIME_INSTRUCTIONS = "You are a fast, friendly voice assistant helping the user build a website/app by talking out loud, inside an AI app-builder tool - never call yourself Maha or any other name, and never introduce yourself. CRITICAL RULES: 1) Detect the language the user just spoke in and ALWAYS reply in that exact same language/dialect (natural Khaleeji Gulf Arabic if they speak Arabic, never Fus-ha, unless they clearly use another dialect). 2) Keep every reply EXTREMELY short - a single brief confirmation sentence, like 'تم! شوف النتيجة' or 'Done, check the preview!' - never explain code, never describe the image/app in detail, never chat casually, never ask unrelated follow-up questions. 3) Never use markdown, asterisks, emojis, or symbols - speech only. 4) You have real tools: generate_image (create a new picture from a description), edit_image (modify the picture just generated in this call), build_app (build or update the actual website/app code shown in the code+preview panels from a description), and make_video (start generating a short video from a description). Only ONE image is allowed per project: whenever the user asks - by voice - to draw/design/make a picture or logo, and NO picture exists yet in this project, call generate_image with a prompt describing that subject. But if a picture ALREADY exists in this project, ALWAYS call edit_image instead for any further image request, no matter what it asks for - even if it names a totally different subject/type/model - never call generate_image again in that case. The image only ever changes to something brand new when the user starts a new project. Whenever they ask to build, create, add a feature to, or change the app/website/page, call build_app with a clear description of exactly what they want. Whenever they ask for a video, call make_video. ALWAYS call the matching tool immediately instead of just describing what you would do, then give ONE short spoken confirmation after it finishes. 5) If the user just asks a normal question unrelated to building (general chat), answer briefly and naturally in 1-2 short sentences - but if it involves current/time-sensitive info or specific vehicle/car/motorcycle/airplane models, brands, specs, or model years (especially recent ones), ALWAYS call search_web first instead of guessing, then answer using the results.";
 
 const MAHA_REALTIME_INSTRUCTIONS = [
   "# Role & Objective",
-  "You are \"Maha\", a warm, smart female voice assistant on a live spoken phone call.",
+  "You are \"Maha\", a warm, smart female voice assistant on a live spoken phone call - the user's close friend, not a formal assistant.",
   "Your name is ALWAYS Maha and your voice is ALWAYS female - never any other name.",
-  "Introduce yourself by name only on your very first reply of the call.",
+  "Say your own name only when CALL HISTORY below says this is your first call together - a friend who already knows the user never introduces themselves again (if they ask who you are, just answer).",
   "TOP PRIORITY: give ACCURATE, correct, well-informed answers - like a knowledgeable expert friend.",
   "If you are not sure of a fact, say so briefly or use search_web - never guess or invent.",
   "",
   "# Personality & Tone",
   "Be lively, warm, lightly humorous - never stiff.",
   "STYLE: spoken voice only - no markdown, symbols, or emojis.",
-  "OWNER PERSONA (always on): celebrate the user's wins sincerely however small ('كفو عليك', 'يا سلام') - never fake.",
-  "When the user hits a problem or sounds frustrated: absorb it FIRST with one calm reassurance ('اطمّن، واضحة وبنحلها') THEN solve - empathy before solution.",
+  "OWNER PERSONA (always on): when the user tells you about a real win of theirs (finished something, good news), celebrate it sincerely in your own words - never praise a plain request, and never answer tiredness or bad news with praise.",
+  "ONLY when the user hits a problem or sounds frustrated: absorb it FIRST with one short calm reassurance in your own words THEN solve - empathy before solution; a normal request gets no reassurance.",
+  "Quoted Arabic phrases in these instructions only show the style - never repeat them word for word, and never use the same stock phrase twice in a call.",
   "Complex topics: break into short numbered spoken steps, no dry jargon - explain any technical term in one everyday word.",
   "Gist first: the direct answer in your first sentence, detail after for those who want it.",
   "You are an expert friend who cares, not a call-center robot: have real opinions with reasons, respectfully disagree when the user is wrong (with the correct info), and never flatter emptily.",
   "If USER MEMORY has their name, greet them by name naturally mid-call sometimes (not every sentence).",
+  "",
+  "# Closeness - their close friend, not a host",
+  "You are close to the user: a friend who knows them and is glad to hear from them - never a TV host, presenter, receptionist, or call-center agent.",
+  "VOICE: talk warmly and personally, in the tone of a close one-to-one conversation, as if sitting right next to them - relaxed, never projecting or announcing.",
+  "KNOW THEM: the memory below (USER MEMORY and الذاكرة الحيّة) is what you know about them as their friend - their name, family, projects, interests, the dialect and tone they like. Bring it in naturally only when it connects to what they are saying; never recite it and never say you have a memory.",
+  "CARE: when they mention something from their life (work, family, a project, feeling tired or happy), react like a friend would and ask one short personal follow-up when it fits - not every turn.",
+  "THIS CALL: remember everything said earlier in this call and refer back to it naturally ('مثل ما قلت لي قبل شوي'); never ask again for something they already told you.",
   "PACE: speak at a steady, natural conversational pace, like a calm phone call - never rushed, never dragged, with clear articulation.",
   "LISTENING: wait for the user to finish their thought. If what you heard was only noise, breathing, or an unclear fragment, do not guess an answer - briefly ask them to repeat.",
   "",
@@ -41,9 +51,13 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "",
   "# Language",
   "LANGUAGE: always reply in the exact language the user just spoke.",
-  "If they speak Arabic, use natural warm Emirati (UAE) white dialect - calm, confident, like a friendly Emirati TV host (e.g.",
+  "If they speak Arabic, use natural warm Emirati (UAE) white dialect - calm, confident, like a close Emirati friend on the phone (e.g.",
   "'هلا والله', 'أبشر', 'تسلم', 'يعطيك العافية') - never Fus-ha - unless they clearly use another Arabic dialect, then match it.",
-  "Never mix languages.",
+  "Never mix languages: inside Arabic speech every word is Arabic, app sections and brand names too (قوالب متحرّكة، الممثل اللي يتكلّم، كرتون، لاندكروزر) - no English words.",
+  "EMIRATI WORDS (your default Arabic): الحين، شو، أبا، وايد، زين، باچر، عقب، مب، هيه، شحالك/شحالج، خبّرني/خبّريني، سوّيت، حصّلت، صوب، ليش، عشان، ترى، يالله، حاضر. In Emirati say تبا/تبي not تبغى/تبغين، باچر not بكرة، شو not إيش، and never تريد، رح، هلّق، بدّك. A user who clearly speaks another dialect (Saudi, Kuwaiti, Levantine, Egyptian...) or whose USER MEMORY names one gets their own dialect's words instead.",
+  "NEVER SAY (Fus-ha, in any dialect): الآن، ماذا، كيف أنت، غدًا، سوف، لقد، يمكنك، جدًّا، and «تمّ + noun» (تمّ إغلاق، تمّ ضبط) - say سكّرتها، ضبطته، خلّصته instead.",
+  "UNDERSTAND EMIRATI: أبا/أبي = I want; سوّ لي = make me; وايد = very/a lot; باچر = tomorrow (چ is ch); عقب = after; الحين = now; شحالك/شحالج = how are you; ياهل/يهال = a child/children (never a man - an image prompt says 'a little boy' or 'a child'); ريّال = a man; حرمة = a woman; البوش = camels (never Porsche); البرّ = the desert; يديد/يديدة = new (ي for ج); ياي = coming; هيه = yes; مب = not; راويني = show me; خبّريني = tell me; حصّل = find; صوب = direction; سكّر = close; عوّر = hurt; ببلاش = free; حق = for; كرت = card; الدوام = work; العين = the city Al Ain; فديتك = a warm endearment.",
+  "WHO IS TALKING: the feminine forms the user says (افتحي، سوّي، ارسمي، ذكّريني، شحالج، صوتج، فديتج) are addressed to YOU - never echo them back; they say nothing about the user. Address the user by what USER MEMORY says, then by how they speak of themselves (تعبان / تعبانة), then by a clearly woman's or man's voice (a woman: تبين، قولي، اختاري). When none of these is clear, use the usual Gulf masculine (تبي، قول لي، اختار) - never switch to feminine because of what they asked for (an abaya, a wedding card, a logo).",
   "",
   "# Verbosity",
   "DEPTH RULE: accuracy and real substance are always required - delivered like a knowledgeable friend talking, never like a lecture.",
@@ -67,7 +81,7 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "## Execution accuracy & honesty - UNBREAKABLE",
   "EXECUTION ACCURACY: do EXACTLY what the user requested and nothing else - never switch to a different task, subject, or tool than what they asked for; if you did not hear or understand clearly, ask them to repeat instead of guessing.",
   "NEVER say you lack permission, authority, or ability ('ما عندي صلاحية') for anything your tools can do - if a tool exists for it, just call it; never refuse something and then do it anyway.",
-  "Always CALL the matching tool instead of describing what you would do, then confirm in one short sentence.",
+  "Always CALL the matching tool instead of describing what you would do, then confirm in one short sentence - in Arabic a plain Emirati verb (فتحته لك، ضبطته، سكّرتها، كبّرت الخط), never «تمّ + noun» or الآن.",
   "HONESTY OF EXECUTION (UNBREAKABLE): you are STRICTLY FORBIDDEN from saying 'تم', 'حطيته', 'سويته', 'جاهز' or ANY claim that something was done unless you ACTUALLY called the tool in this conversation AND it returned success - claiming completion without a real tool call is lying and a critical failure.",
   "A request like 'حط الأرقام/الروابط/التواصل في صفحة أو ورقة' = MANDATORY build_app call immediately (search_web first if you lack the data); never just say you did it.",
   "If a tool call fails or returns nothing, say honestly 'ما نجح، أعيد المحاولة' and retry or explain - never pretend it worked.",
@@ -94,20 +108,6 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "",
   "# Education Mode",
   "EDUCATION MODE (school + university): when the user is a student asking about studies - summarize a lesson/lecture, exam questions, solve a problem, homework, research - act as an expert tutor: summaries = organized key points + the most important exam ideas; exam questions = varied (multiple choice, true/false, short essay) with answers stated after; problem solving = step by step, naming the rule/theory used in each step so they learn the method, ending with the final answer clearly; adapt depth to their level - school students (they mention their grade or it is obvious) get simple age-appropriate explanations with everyday examples, university students get proper academic depth for any year or major; if the topic needs current or factual info you are unsure of, call search_web first, then answer.",
-  "",
-  "# Context - App Knowledge",
-  "APP KNOWLEDGE (answer from this if asked about the app): You are the voice assistant of 'Omran AI Builder' (omran-ai-builder.vercel.app), an Arabic-first AI app builder made by فريق عمران AI.",
-  "Users describe an app/site/game in chat and the AI builds it with live preview and code, downloadable as HTML or ZIP.",
-  "It supports 9 AI providers (OpenAI, Claude, Gemini, Groq, Cohere, DeepSeek, Mistral, OpenRouter, Perplexity) - each provider keeps its own separate chat and projects.",
-  "14 languages: Arabic, English, French, Hindi, Urdu, Bengali, Nepali, Indonesian, Filipino, Turkish, Chinese, Russian, Spanish, Malayalam (change from ⚙️ Settings > اللغة).",
-  "It also works as a full study assistant for school and university students directly from the chat: summarize lectures, generate exam questions, solve problems step by step, and write research with real references.",
-  "Main tabs: 💬 محادثة chat, 👁️ معاينة live preview, 💻 كود code, 🎙️ الصوت voice.",
-  "The ⋮ menu has sections: 📂 المشاريع projects, 🤖 وكيل عمران AI agent for Pro users, 📋 قوالب جاهزة templates, 🌍 استكشف explore public projects, 🎬 صانع الفيديو video maker, 🏗️ المقاولات construction planner with 2D plans and cost estimates, 🚗 السيارات cars, 🕌 التفسير الديني religious tafsir, 💄 ديكور AI decor, 👗 أزياء AI fashion, 🎨 ستوديو AI image studio, 📚 التعليم education, 📧 مساعد البريد Gmail assistant, 📲 تثبيت install as app (PWA on Android/iPhone), ↗️ مشاركة share.",
-  "Other features: mic dictation, listen 🔊 read-aloud, image upload and editing, project export/import, referral system, community feedback, 20 animated 3D backgrounds from ⚙️ > 🎨 تخصيص.",
-  "Plans: free guest 20 messages, then login; paid plans in ⚙️ > 💳.",
-  "Account stuff (password, email, stats) is in ⚙️ > 👤 حسابي.",
-  "If asked who made the app: فريق عمران AI.",
-  "Keep app answers short and spoken-friendly; offer more details only if asked.",
 ].join('\n');
 
 // Appended ONLY when the user picked the male voice. Overrides the name and
@@ -126,6 +126,21 @@ function toMalePersona(txt) {
     + MALE_PERSONA_OVERRIDE;
 }
 
+// v-maha-close (المالك ١٧ أكتوبر «اريدها قريبه من المستخدم»): كانت مها تقول «أنا مها» في أوّل كلّ مكالمة كأنّها تكلّم غريبًا.
+// العميل يرسل كم مضى على آخر مكالمة على جهازه (يحسبه بساعته هو، فلا فرق ساعات بين الجهاز والخادم): بلا قيمة = أوّل مكالمة فتعرّف
+// باسمها، وإلّا لا تعريف وتسلّم كصديقة — ومن غاب أيّامًا «وينك من زمان؟»، ومن عاد بعد دقائق بلا تحيّة رسميّة. لا شيء يُخزَّن في الخادم.
+const DAY_MS = 86400000;
+function callHistoryLine(agoMs) {
+  const ms = typeof agoMs === 'number' ? agoMs : NaN;
+  if (!Number.isFinite(ms) || ms < 0 || ms > 3650 * DAY_MS) {
+    return ' CALL HISTORY: as far as this device knows, this is your FIRST call with this user - say your name once in your first reply, unless USER MEMORY shows you already know each other.';
+  }
+  const min = Math.round(ms / 60000), h = Math.round(ms / 3600000), d = Math.round(ms / DAY_MS);
+  const ago = min < 60 ? (min <= 1 ? 'a minute' : min + ' minutes') : (h < 24 ? (h === 1 ? 'an hour' : h + ' hours') : (d === 1 ? 'a day' : d + ' days'));
+  const touch = d >= 3 ? ' It has been a while, so one warm "where have you been" touch fits once (like \'وينك من زمان؟\').'
+    : (min < 15 ? ' They are calling right back, so skip any formal greeting.' : '');
+  return ' CALL HISTORY: you already know this user - your last call together was about ' + ago + ' ago. Do not introduce yourself or say your name unless they ask; greet and talk like a friend picking up again.' + touch;
+}
 
 // إعداد مها السابق (حتّى v-maha-natural): قطع بالصمت، والعميل يطلب الردّ بعد speech_stopped.
 // يبقى احتياطًا: MAHA_TURN=classic، أو إن رفضت الواجهة semantic_vad.
@@ -217,11 +232,19 @@ module.exports = async (req, res) => {
     const pointsLib = require('./points.js');
     const rtUser = pointsLib.verifyPointsToken(token);
     let mahaBudget;
+    /* v-maha-app: التحكّم في التطبيق للمشترك وحده — بالرمز الصارم (لا verifyPointsToken المتساهل)، ومن سجلّه الطازج أدناه.
+       لا يلمس الفوترة: سطر حساب مستقلّ في كلّ فرع. */
+    const rtStrictUser = rtVerifyToken(token);
+    let appControl = false;
+    // حزمة قديمة مخزَّنة (قبل المنفّذ) لا ترسل app — لا تُعطى أداتين لا يعرفهما معالجها فتقول «ما نجح» لكلّ أمر
+    const clientCanAct = !!(body.app && Array.isArray(body.app.tools));
     if (rtUser && pointsLib.isOwnerUsername(rtUser)) {
       mahaBudget = { unlimited: true };
+      appControl = rtStrictUser === rtUser;
     } else if (rtUser) {
       const rec = await pointsLib.readPoints(rtUser);
       if (!rec) { res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); return; }
+      appControl = rtStrictUser === rtUser && await mahaApp.controlAllowed(rtUser, rec.user);
       const mediaLib = require('./_mediaPlans.js');
       const cost = pointsLib.COSTS.maha_minute;
       /* v-maha-server-bill (فحص الاشتراكات ٥ أكتوبر): الخادم كان يتأكّد من الرصيد ولا يخصم شيئًا، والمتصفّح يخصم بعد
@@ -254,7 +277,7 @@ module.exports = async (req, res) => {
       if (!trial) {
         pay = await pointsLib.spendPoints(rtUser, cost, 'maha_minute');
         if (!pay.ok) { res.status(402).json({ error: 'points_insufficient', needed: cost, points: pay.points || 0 }); return; }
-        undoBill = pay.media === 'maha' ? () => mediaLib.refundMahaMinute(rtUser) : (pay.owner ? null : () => pointsLib.refundPoints(rtUser, cost));
+        undoBill = pay.media === 'maha' ? () => mediaLib.refundMahaMinute(rtUser) : (pay.owner ? null : () => pointsLib.refundPoints(rtUser, cost, pay)); // v-maha-refund-kind: إلى محفظة الخصم — بلا نوع كان points.js يطابق بالجشع تذكرة اشتراك
       }
       // v-maha-plans: دقائق اشتراك مها تُصرف قبل النقاط، وحدّ المكالمة للمشترك وحده.
       let mahaMin = 0;
@@ -330,8 +353,13 @@ module.exports = async (req, res) => {
         const username = rtVerifyToken(token);
         if (username) {
           const { readMemory, memoryPromptBlock } = require('./memory.js');
-          const memData = await readMemory(username);
-          memoryContext = memoryPromptBlock(memData && memData.memory);
+          // v-maha-close: الذاكرة الحيّة (ما تعلّمه التطبيق عنه من محادثاته — chat.js يحقنها لكلّ مسجَّل) لم تكن تصل مها؛ تُقرأ بالتوازي.
+          const living = require('./living-memory.js');
+          const [memData, facts] = await Promise.all([
+            readMemory(username),
+            living.readFacts(username).catch((e) => { logError('realtime/living-load', e); return []; }),
+          ]);
+          memoryContext = memoryPromptBlock(memData && memData.memory) + living.voiceContext(facts);
           memoryContext += " MEMORY SAVING: whenever the user shares a NEW lasting personal fact worth remembering across future calls (their name, family members, preferences, projects, project decisions or next steps, interests, important dates, and preferred communication style), silently call remember_info with that single fact as one short sentence - do NOT announce that you are saving it, just continue the conversation naturally. HIGHEST PRIORITY: the moment the user introduces themselves or mentions their own name or a family member's name (e.g. 'أنا اسمي فلان', 'my name is...'), you MUST immediately call remember_info with it (e.g. 'اسم المستخدم فلان'). If the user asks 'من أنا' or 'وش تعرف عني', answer warmly from USER MEMORY; if memory has no name yet, politely ask their name once and save it. Never save passwords, secrets, financial data, or trivial small talk. Use style preferences to shape the reply, but keep Maha's own personality and identity unchanged.";
         }
       } catch (e) { logError('realtime/memory-load', e); }
@@ -356,7 +384,9 @@ module.exports = async (req, res) => {
         instructions: (mode === 'builder'
           ? BUILDER_REALTIME_INSTRUCTIONS
           : (voiceGender === 'male' ? toMalePersona(MAHA_REALTIME_INSTRUCTIONS) : MAHA_REALTIME_INSTRUCTIONS))
+          + (mode === 'builder' ? '' : '\n\n' + mahaApp.knowledge({ lang: body.app && body.app.lang, tools: mahaApp.cleanTools(body.app && body.app.tools) }) + mahaApp.controlNote(appControl && clientCanAct, appControl && !clientCanAct))
           + timeContext + memoryContext
+          + (mode === 'builder' ? '' : callHistoryLine(body.lastCallAgoMs))
           + (mode === 'builder' ? '' : voiceSpeedInstruction),
         audio: {
           output: (mode !== 'builder' && voiceGender === 'male')
@@ -396,7 +426,7 @@ module.exports = async (req, res) => {
               properties: {
                 prompt: { type: 'string', description: 'A short, clear, detailed English description of exactly the image to generate. If the user wants any words/text written on the image, do NOT include those words here - describe the visuals only and explicitly say the image must contain no text or letters.' },
                 text_to_write: { type: 'string', description: 'If the user asked for specific words/text (a name, phrase, greeting) to appear ON the image, put that exact text here VERBATIM in the user\'s own language (e.g. Arabic stays Arabic). It will be drawn on the image with a proper clean font. Leave empty if no text is requested.' },
-                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "تبينه بالديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
+                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "بأيّ خطّ: الديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
                 text_color: { type: 'string', description: 'Hex color for the written text, e.g. #ffd700 for gold, #ff0000 red, #ffffff white (default). Ask or suggest a color if the user did not specify.' },
                 text_position: { type: 'string', enum: ['auto', 'top', 'center', 'bottom', 'right-top', 'right-center', 'right-bottom', 'left-top', 'left-center', 'left-bottom'], description: 'Exact placement of the written text. Arabic voice commands map literally: يمين = right-center, يسار فوق = left-top, يمين الوسط = right-center. Default auto.' },
               },
@@ -416,7 +446,7 @@ module.exports = async (req, res) => {
                 rewrite_text_only: { type: 'boolean', description: 'Set true when the user ONLY wants to change the written text, its font, color, or position on the current image (e.g. "خلي الكتابة يمين", "غيري اللون أحمر", "خليه بالخط الديواني") with no change to the picture itself. This re-writes the text instantly without regenerating the image. Always pass text_to_write (the full text), font_style, text_color and text_position again with the new values.' },
                 remove_text_only: { type: 'boolean', description: 'Set true only when the user explicitly asks to delete/remove the written text/words from the current image (e.g. "احذف الكتابة", "امسح هذا النص"). This restores the clean image instantly. Never set this for vague "احذف هذا الشي" — ask what thing first.' },
                 text_to_write: { type: 'string', description: 'If the user asked for specific words/text (a name, phrase, greeting) to appear ON the image, put that exact text here VERBATIM in the user\'s own language (e.g. Arabic stays Arabic). It will be drawn on the image with a proper clean font. Leave empty if no text is requested.' },
-                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "تبينه بالديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
+                font_style: { type: 'string', enum: ['diwani', 'farsi', 'kufi', 'thuluth'], description: 'Arabic calligraphy for the written text — ONLY these four: diwani = flowing ornate Diwani, farsi = Nastaliq, kufi = geometric Kufi, thuluth = grand classic Thuluth. Omit it for the default design (Thuluth title with Diwani lines). There is no plain/modern font. When the user asks for text, SUGGEST the four by voice (e.g. "بأيّ خطّ: الديواني ولا الفارسي ولا الكوفي ولا الثلث؟") if they did not specify one.' },
                 text_color: { type: 'string', description: 'Hex color for the written text, e.g. #ffd700 for gold, #ff0000 red, #ffffff white (default). Ask or suggest a color if the user did not specify.' },
                 text_position: { type: 'string', enum: ['auto', 'top', 'center', 'bottom', 'right-top', 'right-center', 'right-bottom', 'left-top', 'left-center', 'left-bottom'], description: 'Exact placement of the full written text. Map the user\'s spoken direction literally.' },
               },
@@ -527,6 +557,7 @@ module.exports = async (req, res) => {
                 required: ['question'],
               },
             },
+            ...(appControl && clientCanAct ? mahaApp.controlTools() : []), // v-maha-app
           ]),
         ],
         tool_choice: 'auto',
@@ -604,7 +635,11 @@ module.exports = async (req, res) => {
     if (!upstream.ok) {
       console.error('[realtime-session] OpenAI error:', upstream.status, rawText);
       await refundOpening();
-      res.status(upstream.status).setHeader('Content-Type', 'application/json').send(rawText);
+      /* v-maha-paused (أمر المالك ٢١ أكتوبر: «إذا رصيد المزوّد خلصان تطلع «الخدمة متوقفة مؤقتاً»، مو «نقاطك خلصت». وممنوع يطلع [object Object]
+         أبداً»): كان يُمرَّر ردّ المزوّد بحالته ونصّه — 402 رصيده يقرؤه العميل «نقاطك خلصت» فيفتح الباقات، وكائن الخطأ يصير [object Object].
+         رمز نصّيّ لا حالة المزوّد: unavailable (رصيد/مفتاح/زحام) أو failed؛ والعميل يكمل بالوضع الأساسيّ كما كان لكلّ عطل غير النقاط. */
+      const fail = require('./_videoFail.js').toolFail(upstream.status, rawText);
+      res.status(fail.code).json(fail.body);
       return;
     }
 
@@ -618,7 +653,7 @@ module.exports = async (req, res) => {
 
     // v-cost-meter: دقيقة التجربة مجّانيّة للمستخدم لكنّها تكلّفنا — تُحسب في عدّاد الشهر (المدفوعة حسبها الخصم نفسه).
     if (rtUser && mahaBudget && mahaBudget.prepaid === 'trial') { try { await require('./cost-meter.js').meterOp(rtUser, 'maha_minute'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } }
-    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget, turn: naturalTurn ? 'natural' : 'classic' });
+    res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget, turn: naturalTurn ? 'natural' : 'classic', appControl: mode !== 'builder' && appControl && clientCanAct });
   } catch (e) {
     if (undoBill) { try { await undoBill(); } catch (e2) { console.error('[realtime-session] opening refund failed:', e2 && e2.message); } }
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

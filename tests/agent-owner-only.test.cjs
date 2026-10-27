@@ -10,6 +10,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
+process.env.OWNER_AGENT_CLAUDE = 'on'; // v-agent-claude-off: الاختبار يفحص الوكيل وهو شغّال
 process.env.AUTH_SECRET = 'agent-owner-only-test-secret-' + 'q'.repeat(24);
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 process.env.TAVILY_API_KEY = 'test-tavily-key';

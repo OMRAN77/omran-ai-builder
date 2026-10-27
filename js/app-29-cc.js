@@ -10,6 +10,17 @@
   'use strict';
   function owner(){ try{ return String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; } }
   function token(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
+  /* v-audit-bridge: نصوص الجسر الجديدة بمفاتيح الترجمة (رمز ثابت من الخادم ← مفتاح هنا)، والعربيّة/الإنجليزيّة احتياط. */
+  function ccT(k, ar, en){
+    try{ var v = (typeof window.t === 'function') ? window.t(k) : ''; if(v && v !== k) return v; }catch(e){ /* guard-ok — الترجمة ترف والاحتياط تحتها */ }
+    var lg = (typeof document !== 'undefined' && document.documentElement && document.documentElement.lang) || 'ar';
+    return lg === 'ar' ? ar : en;
+  }
+  function ccErr(j){
+    if(j && j.code === 'git_busy') return ccT('axBridgeGitBusy', 'عمليّة git جارية في الجسر (نشر أو دمج أو تراجع) — انتظر انتهاءها ثمّ أعد المحاولة.', 'A git operation (publish, merge or reset) is running on the bridge — wait for it to finish, then try again.');
+    return j && j.error;
+  }
+  function keptLine(){ return '\nℹ️ ' + ccT('axBridgeMergeKept', 'نسخة العمل بقيت كما هي: فيها تعديلات أو التزامات لم تُنشر، فلم تُعَد إلى الفرع الرئيسيّ.', 'The working copy was left as is: it has unpublished changes or commits, so it was not reset to the main branch.'); }
   /* الجلسة (sessionId) تعيش في محادثة التطبيق نفسها (cur.ccSessionId) لا هنا — v-cc-session-per-chat. */
   var S = { runId: '', since: 0, prNumber: 0, prUrl: '', lastTask: '', busy: false, retries: 0 };
   try{
@@ -49,7 +60,7 @@
   function api(op, extra){
     var payload = Object.assign({ op: op, token: token() }, extra || {});
     return fetch('/api/system?action=cc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      .then(function(r){ return r.json().then(function(j){ if(!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j; }); });
+      .then(function(r){ return r.json().then(function(j){ if(!r.ok || j.error) throw new Error(ccErr(j) || ('HTTP ' + r.status)); return j; }); });
   }
 
   function signal(){ try{ return (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined; }catch(e){ return undefined; } }
@@ -59,7 +70,7 @@
     var gotDone = false;
     return fetch('/api/system?action=cc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ token: token() }, body)), signal: signal() })
       .then(function(r){
-        if(!r.ok || !r.body){ return r.text().then(function(t){ var j = null; try{ j = JSON.parse(t); }catch(e){ j = null; } throw new Error((j && j.error) || ('HTTP ' + r.status)); }); }
+        if(!r.ok || !r.body){ return r.text().then(function(t){ var j = null; try{ j = JSON.parse(t); }catch(e){ j = null; } throw new Error(ccErr(j) || ('HTTP ' + r.status)); }); }
         var reader = r.body.getReader(), dec = new TextDecoder(), buf = '';
         function pump(){ return reader.read().then(function(x){
           if(x.done) return;
@@ -110,6 +121,7 @@
     var out = '🔔 [' + n.id + '] ' + n.title + ' · ' + noteTime(n.at);
     if(n.url) out += '\n' + n.url;
     if(n.body) out += '\n\n' + n.body;
+    if(n.kept) out += '\n' + keptLine();
     if(n.wake) out += '\n\n🤖 ردّ الوكيل:\n' + (n.reply || (n.runId ? '⏳ يشتغل عليه الحين — اكتب أيّ رسالة لتلتحق بالتشغيل.' : '⏳ ينتظر دوره.'));
     return out;
   }
@@ -173,6 +185,22 @@
     });
     return d;
   }
+  /* v-read-fold-in-reply: سجلّ المزود (_agParts) → عناصر toolsEl. التفكير يبقى في صندوق العمل؛ الأدوات سطر مطوي داخل الرد كـClaude Code. */
+  function toolsFromParts(parts){
+    if(!Array.isArray(parts)) return [];
+    var out = [];
+    parts.forEach(function(p){
+      if(!p || p.t !== 'tool') return;
+      out.push({
+        name: String(p.name || ''),
+        brief: String(p.title || p.name || 'أداة').replace(/\s+/g, ' ').trim() || 'أداة',
+        detail: String(p.cmd || ''),
+        result: String(p.out || ''),
+        err: !!p.err,
+      });
+    });
+    return out;
+  }
   function foldCode(root){
     Array.prototype.slice.call(root.querySelectorAll('.chat-codeblock')).forEach(function(b){
       var pre = b.querySelector('pre');
@@ -232,7 +260,7 @@
       return api('merge', { prNumber: n, force: force }).then(function(j){
         if(j.queued) return done('⏳ الفحوص ما خلصت (' + (j.pending || []).join('، ') + ') — بدمج #' + n + ' تلقائيًّا أوّل ما تخضرّ، وإذا احمرّت ألغيه. تابع من «الإشعارات».');
         S.prNumber = 0; S.prUrl = ''; save();
-        done(j.already ? 'كان #' + n + ' مدموجًا من قبل.' : ('✅ دُمج #' + n + ' (' + String(j.sha || '').slice(0, 7) + ') — Vercel ينشر الآن.'));
+        done((j.already ? 'كان #' + n + ' مدموجًا من قبل.' : ('✅ دُمج #' + n + ' (' + String(j.sha || '').slice(0, 7) + ') — Vercel ينشر الآن.')) + (j.kept ? keptLine() : ''));
       }).catch(function(e){ done('✗ ' + e.message + (force ? '' : '\nللتجاوز اكتب «ادمج بالقوّة».')); });
     }
     if(c.cmd === 'reset'){
@@ -305,7 +333,7 @@
           thinkingDiv._omLastRender = now;
           renderStreamingAssistant(thinkingDiv, '🧑‍💻 ' + full);
         }
-        try{ if(typeof chatIsNearBottom !== 'function' || chatIsNearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ /* guard-ok */ }
+        try{ smartScrollBottom(); }catch(e){ /* guard-ok — v-scroll-free: قرار الملاحقة الموحّد */ }
       }
       if(ev.result){ result = ev.result; if(!full && ev.result.text) full = ev.result.text; }
       if(ev.error) err = ev.error;
@@ -388,5 +416,5 @@
     return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status, atts);
   }
 
-  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, _fold: { push: push, capParts: capParts } };
+  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages, decorate: decorate, foldCode: foldCode, toolsEl: toolsEl, toolsFromParts: toolsFromParts, _fold: { push: push, capParts: capParts } };
 })();

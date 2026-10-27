@@ -9,11 +9,17 @@ const { withErrorCapture } = require('./_lib/_errors.js');
 
 const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv');
 const { logError } = require('./_lib/log-error.js');
+const crypto = require('crypto');
+// v-sec-timing: مقارنة ثابتة الزمن لسرّ طوله غير سرّيّ — طولان مختلفان = لا تطابق بلا تسريب.
+function tsEqual(a, b) {
+  const x = Buffer.from(String(a == null ? '' : a)); const y = Buffer.from(String(b == null ? '' : b));
+  return x.length > 0 && x.length === y.length && crypto.timingSafeEqual(x, y);
+}
 
 const APP_URL = 'https://omran-ai-builder.vercel.app';
 const DAILY_LIMIT = 10;
 
-const SYSTEM = 'أنت «Omran AI» — المساعد الذكي الرسمي لتطبيق «Omran AI Builder» من فريق عمران AI. '
+const SYSTEM = 'أنت «om ai» — المساعد الذكي الرسمي لتطبيق «om ai» من فريق om ai. '
   + 'شخصيتك — فنان خفيف الدم: '
   + '① أسلوبك مرح وجذاب وفيه روح، بعربية طبيعية بلمسة إماراتية (أو بلغة المستخدم إذا كتب بلغة أخرى). '
   + '② تمزح مزحة خفيفة بمكانها بدون مبالغة، وتستخدم تشبيهات حلوة تخلي الشرح ممتع. '
@@ -50,7 +56,8 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
     res.status(503).json({ error: 'webhook not configured' });
     return;
   }
-  if (req.headers['x-telegram-bot-api-secret-token'] !== secret) {
+  // v-sec-timing: مقارنة ثابتة الزمن للسرّ (كانت !== تُفشي الفرق زمنيًّا).
+  if (!tsEqual(req.headers['x-telegram-bot-api-secret-token'], secret)) {
     res.status(401).json({ ok: false }); return;
   }
 
@@ -76,7 +83,7 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
       try { await kvExpire(pk, __pl.CODE_TTL_SEC); } catch (e) { /* guard-ok — الرمز نفسه يسقط بعد ١٠ دقائق */ }
       await tg(token, 'sendMessage', {
         chat_id: chatId,
-        text: 'لتأكيد رقمك في Omran AI اضغط الزرّ بالأسفل «📱 شارك رقمي».\n\nلا تضغطه إن لم تطلب الربط أو الاسترجاع بنفسك من التطبيق.',
+        text: 'لتأكيد رقمك في om ai اضغط الزرّ بالأسفل «📱 شارك رقمي».\n\nلا تضغطه إن لم تطلب الربط أو الاسترجاع بنفسك من التطبيق.',
         reply_markup: { keyboard: [[{ text: '📱 شارك رقمي', request_contact: true }]], one_time_keyboard: true, resize_keyboard: true },
       });
       ack(); return;
@@ -96,7 +103,7 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
     if (text === '/start' || text.indexOf('/start ') === 0) {
       await tg(token, 'sendMessage', {
         chat_id: chatId,
-        text: 'حياك الله في Omran AI 🤖\n\nأنا المساعد الذكي الرسمي لتطبيق Omran AI Builder.\nاسألني أي شي: معلومات، ترجمة، أفكار، نصائح — وأرد عليك فورًا.\n\nعندك ' + DAILY_LIMIT + ' رسائل مجانية يوميًا.\nللمميزات الكاملة (صور، فيديو، بناء مواقع، مساعد صوتي):\n' + APP_URL,
+        text: 'حياك الله في om ai 🤖\n\nأنا المساعد الذكي الرسمي لتطبيق om ai.\nاسألني أي شي: معلومات، ترجمة، أفكار، نصائح — وأرد عليك فورًا.\n\nعندك ' + DAILY_LIMIT + ' رسائل مجانية يوميًا.\nللمميزات الكاملة (صور، فيديو، بناء مواقع، مساعد صوتي):\n' + APP_URL,
       });
       ack(); return;
     }

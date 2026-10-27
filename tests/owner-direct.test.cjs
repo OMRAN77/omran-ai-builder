@@ -142,6 +142,9 @@ test('٣. الموديل المباشر: GPT يقصّ بادئة الوسيط، 
   assert.equal(od.directRoute('claude', { GROQ_API_KEY: 'k' }), null);
   assert.equal(od.directRoute('groq', { GROQ_API_KEY: 'k' }).url, 'https://api.groq.com/openai/v1/chat/completions');
   assert.equal(od.directRoute('openai', { OPENAI_API_KEY: 'k' }).url, 'https://api.openai.com/v1/chat/completions');
+  assert.deepEqual(od.directModel('gemini', 'google/gemini-3.8-flash', {}), { model: 'gemini-3.8-flash', picked: true, def: 'gemini-flash-latest' });
+  assert.equal(od.directModel('gemini', '', {}).model, 'gemini-flash-latest');
+  assert.equal(od.directRoute('gemini', { GEMINI_API_KEY: 'k' }).url, 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions');
 });
 
 test('٤. المالك + مفتاح Groq: الطلب إلى Groq نفسه بمفتاحه، وجولة أداة كاملة عبر الجسر، والردّ يصل', async () => {
@@ -184,7 +187,7 @@ test('٥. المالك + مفتاح Groq مرفوض (401) → سبب الفشل�
     ] });
     assert.equal(r.calls[0].url, 'https://api.groq.com/openai/v1/chat/completions');
     assert.ok(!r.calls.some((c) => /openrouter\.ai/.test(c.url)), 'لا وسيط');
-    assert.ok(r.events.some((e) => e.ownerStop === true && e.error === 'ما قدرت أردّ الحين — خطأ 401'));
+    assert.ok(r.events.some((e) => e.ownerStop === true && String(e.error).startsWith('ما قدرت أردّ الحين — خطأ 401') /* v-why: وبعده سبب المزوّد */));
     assert.equal(r.text, '');
   } finally { delete process.env.GROQ_API_KEY; }
 });
@@ -230,10 +233,11 @@ test('٧. المالك + مفتاح OpenAI: GPT مباشر بمعرّفه عند
 test('٨. تفكير الموديل: سؤال المالك بلا حقول إطفاء، والمجاملة بها (v-owner-think-all)، وغير المالك عليها كما كان (v-chat-fast)', async () => {
   chat.__orQuick.level = 2;
   let r = await run({ user: 'omran', provider: 'deepseek', messages: ask('حلّل لي هذا التقرير'), script: [() => anthropicText('تم')] });
-  assert.equal(r.calls[0].body.thinking, undefined);
+  assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive' });
+  assert.equal(r.calls[0].body.thinking.display, undefined);
   assert.equal(r.calls[0].body.reasoning, undefined);
   r = await run({ user: 'omran', provider: 'deepseek', messages: ask('اشرح'), script: [() => anthropicText('تم')] });
-  assert.equal(r.calls[0].body.thinking, undefined, 'v-owner-think-all: كلّ سؤال للمالك يفكّر');
+  assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive' }, 'v-owner-think-all: كلّ سؤال للمالك يفكّر، والملخّص يُطلب');
   r = await run({ user: 'omran', provider: 'deepseek', messages: ask('شكرًا'), script: [() => anthropicText('تم')] });
   assert.deepEqual(r.calls[0].body.thinking, { type: 'disabled' }, 'v-owner-auto: المجاملة للمالك فوريّة');
   assert.deepEqual(r.calls[0].body.reasoning, { enabled: false });
@@ -259,7 +263,7 @@ test('٩. الذاكرة: المالك يرسل المحادثة كلّها؛ غ
   const shortChat = [{ role: 'user', content: 'اكتب لي خطّة' }, { role: 'assistant', content: 'الخطّة: ...' }, { role: 'user', content: 'زين' }];
   r = await run({ user: 'omran', provider: 'claude', messages: shortChat, script: [() => anthropicText('تم')] });
   assert.equal(r.calls[0].body.messages.length, 3);
-  assert.equal(r.calls[0].body.max_tokens, 16000);
+  assert.equal(r.calls[0].body.max_tokens, 128000); // v-owner-cap-open: سقف المالك ١٢٨ ألفًا
   r = await run({ user: 'someone', provider: 'claude', messages: shortChat, script: [() => anthropicText('تم')] });
   assert.equal(r.calls[0].body.messages.length, 1, 'غير المالك: التحية معزولة كما كانت');
 });
@@ -307,4 +311,71 @@ test('١٢. العميل: المالك يرسل المحادثة كاملة بر
   assert.ok(!ctx.f('assistant', long, 'text').includes('```'), 'والكود مستبدل (كوده يُرسل منفصلًا)');
   assert.equal(ctx.f('assistant', long, '').length, 3000, 'غير المالك كما كان');
   assert.equal(ctx.f('user', long, ''), long);
+});
+
+test('١٣. بثّ chat/completions: reasoning وreasoning_content والملخّص يصيرون كتلة تفكير، والجواب منفصل، والمشفّر لا يمرّ', async () => {
+  const read = async (chunks) => (await new Response(od.toAnthropicStream(new ReadableStream({ start(c) {
+    const enc = new TextEncoder();
+    for (const x of chunks) c.enqueue(enc.encode('data: ' + (typeof x === 'string' ? x : JSON.stringify(x)) + '\n\n'));
+    c.close();
+  } }), 'fb')).text()).split('\n').filter((l) => l.startsWith('data: ')).map((l) => JSON.parse(l.slice(6)));
+  const done = { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] };
+  let evs = await read([
+    { choices: [{ index: 0, delta: { reasoning: 'أراجع' } }] },
+    { choices: [{ index: 0, delta: { reasoning: ' الأرقام' } }] },
+    { choices: [{ index: 0, delta: { content: '١٢' } }] },
+    done, '[DONE]',
+  ]);
+  assert.equal(evs.filter((e) => e.delta && e.delta.type === 'thinking_delta').map((e) => e.delta.thinking).join(''), 'أراجع الأرقام');
+  assert.equal(evs.filter((e) => e.delta && e.delta.type === 'text_delta').map((e) => e.delta.text).join(''), '١٢');
+  const thinkStop = evs.findIndex((e) => e.type === 'content_block_stop');
+  const textStart = evs.findIndex((e) => e.type === 'content_block_start' && e.content_block && e.content_block.type === 'text');
+  assert.ok(thinkStop !== -1 && thinkStop < textStart, 'كتلة التفكير تُغلق قبل النصّ');
+  evs = await read([
+    { choices: [{ index: 0, delta: { reasoning_content: 'أفكّر' } }] },
+    { choices: [{ index: 0, delta: { content: 'تم' } }] },
+    done, '[DONE]',
+  ]);
+  assert.equal(evs.filter((e) => e.delta && e.delta.type === 'thinking_delta').map((e) => e.delta.thinking).join(''), 'أفكّر');
+  assert.equal(evs.filter((e) => e.delta && e.delta.text).map((e) => e.delta.text).join(''), 'تم');
+  evs = await read([
+    { choices: [{ index: 0, delta: { reasoning_details: [{ type: 'reasoning.summary', summary: 'ملخّص' }, { type: 'reasoning.encrypted', data: 'x' }, { type: 'reasoning.text', text: '[REDACTED]' }] } }] },
+    { choices: [{ index: 0, delta: { content: 'جواب' } }] },
+    done, '[DONE]',
+  ]);
+  assert.equal(evs.filter((e) => e.delta && e.delta.type === 'thinking_delta').map((e) => e.delta.thinking).join(''), 'ملخّص');
+  assert.equal(evs.filter((e) => e.delta && e.delta.text).map((e) => e.delta.text).join(''), 'جواب');
+});
+
+test('١٤. Groq المباشر: reasoning في البثّ يصل المالك think.s والجواب لا يحوي كلام التفكير', async () => {
+  process.env.GROQ_API_KEY = 'gsk-test';
+  try {
+    const chunks = [
+      { model: 'openai/gpt-oss-120b', choices: [{ index: 0, delta: { reasoning: 'أراجع الأرقام' } }] },
+      { model: 'openai/gpt-oss-120b', choices: [{ index: 0, delta: { reasoning: '\nثمّ أجمع' } }] },
+      { model: 'openai/gpt-oss-120b', choices: [{ index: 0, delta: { content: 'الناتج ١٢' } }] },
+      { model: 'openai/gpt-oss-120b', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+      '[DONE]',
+    ];
+    const r = await run({ user: 'omran', provider: 'groq', messages: ask('حلّل لي هذا التقرير'), script: [() => sse(chunks)] });
+    const talk = r.events.find((e) => e.think && e.think.s);
+    assert.ok(talk && talk.think.s.includes('أراجع الأرقام') && talk.think.s.includes('ثمّ أجمع'), JSON.stringify(talk));
+    assert.equal(r.text, 'الناتج ١٢');
+    assert.ok(!r.text.includes('أراجع'));
+  } finally { delete process.env.GROQ_API_KEY; }
+});
+
+test('١٤. المالك + مفتاح Gemini: الطلب إلى Google مباشرة بموديله، لا الوسيط — رصيد AI Studio يصل المحادثة', async () => {
+  process.env.GEMINI_API_KEY = 'g-test';
+  try {
+    const r = await run({ user: 'omran', provider: 'gemini', model: 'google/gemini-3.8-flash', messages: ask('هلا'), script: [
+      () => oaText('من جيمناي', 'gemini-3.8-flash'),
+    ] });
+    assert.equal(r.calls.length, 1);
+    assert.equal(r.calls[0].url, 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions');
+    assert.equal(r.calls[0].headers.Authorization, 'Bearer g-test');
+    assert.equal(r.calls[0].body.model, 'gemini-3.8-flash');
+    assert.ok(!r.calls.some((c) => /openrouter/.test(c.url)), 'لا وسيط');
+    assert.equal(r.text, 'من جيمناي');
+  } finally { delete process.env.GEMINI_API_KEY; }
 });

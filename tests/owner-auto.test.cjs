@@ -9,6 +9,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'owner-auto-test-secret';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
@@ -103,7 +104,7 @@ test('٣. الوسيط (DeepSeek): «السلام» بلا تفكير وشارة
   assert.deepEqual(r.calls[0].body.reasoning, { enabled: false });
   assert.match(badge(r), / · ⚡$/);
   r = await run({ user: 'omran', provider: 'deepseek', messages: ask('قارن بين الخطّتين بالتفصيل'), script: [() => anthropicText('تم')] });
-  assert.equal(r.calls[0].body.thinking, undefined);
+  assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive' }, 'التحليل يفكّر، والملخّص يُطلب بلا display');
   assert.equal(r.calls[0].body.reasoning, undefined);
   assert.match(badge(r), / · 🧠$/);
   r = await run({ user: 'someone', provider: 'deepseek', messages: ask('قارن بين الخطّتين بالتفصيل'), script: [() => anthropicText('تم')] });
@@ -178,7 +179,8 @@ test('٧. GPT المباشر: «السلام» بأدنى جهد تفكير، و
     r = await run({ user: 'omran', provider: 'openai', model: 'openai/gpt-5', messages: ask('هلا'), script: [() => oaResp('هلا', 'gpt-5')] });
     assert.deepEqual(r.calls[0].body.reasoning, { effort: 'minimal' }, 'الدرجة المقبولة محفوظة');
     r = await run({ user: 'omran', provider: 'openai', messages: ask('اكتب لي خطة مشروع كاملة'), script: [() => oaResp('تم', 'gpt-6-sol')] });
-    assert.equal(r.calls[0].body.reasoning, undefined, 'الصعب يفكّر بإعداده الافتراضيّ');
+    assert.deepEqual(r.calls[0].body.reasoning, { summary: 'auto' }, 'الصعب يفكّر بإعداده الافتراضيّ، والملخّص يُطلب للعرض');
+    assert.equal(r.calls[0].body.reasoning.effort, undefined);
   } finally { delete process.env.OPENAI_API_KEY; od.__quickRejected.clear(); }
 });
 
@@ -198,7 +200,9 @@ test('٩. v-owner-think-all: سؤال عاديّ للمالك («ليش…») ي
   chat.__orQuick.level = 2;
   let r = await run({ user: 'omran', provider: 'deepseek', messages: ask('ليش أسعار الذهب ترتفع هالأيام؟'), script: [() => anthropicText('تم')] });
   let b = r.calls[0].body;
-  assert.ok(!b.thinking && !b.reasoning, 'بلا thinking:disabled ولا reasoning.enabled=false');
+  assert.deepEqual(b.thinking, { type: 'adaptive' }, 'تفكير المزوّد نفسه، بلا display');
+  assert.equal(b.thinking.display, undefined);
+  assert.equal(b.reasoning, undefined, 'بلا reasoning.enabled=false');
   assert.match(badge(r), /🧠/);
   r = await run({ user: 'omran', provider: 'deepseek', messages: ask('شكرًا'), script: [() => anthropicText('العفو')] });
   b = r.calls[0].body;

@@ -10,6 +10,7 @@
 // account unlimited.
 const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
 const { checkAndConsumePlanCustom } = require('./_planCap.js'); // v-plan-caps: البحث (والعميق) بنسبة سقف الباقة؛ المصنّف ثابت
+const serp = require('./serp-search.js'); // v-serp-modules: بديل Custom Search (يتوقّف ١ يناير ٢٠٢٧) بمفتاحه، وبلاه لا نداء
 const SEARCH_DAILY_LIMIT = 40;
 const CLASSIFY_DAILY_LIMIT = 200; // v-open-tools-cap: مصنّف «هل يحتاج بحثًا؟» — سقف ثابت لكلّ حساب أو IP
 
@@ -278,10 +279,13 @@ async function fetchSocial(apiKey, query) {
     } catch (e) { /* نكمل للبديل */ }
     // بديل Google CSE
     try {
+      const q = socialQuery(query) + ' site:instagram.com OR site:tiktok.com';
+      // v-serp-modules: البديل بمفتاحه أوّلًا بالاستعلام نفسه؛ بلا مفتاح أو بلا نتيجة فـCSE كما كان
+      const alt = await serp.organic(q);
+      if (alt && alt.length) return pickSocial(alt.map(it => ({ url: it.link, title: it.title, score: null })), true);
       const gKey = process.env.GOOGLE_SEARCH_API_KEY;
       const gCx = process.env.GOOGLE_SEARCH_CX;
       if (!gKey || !gCx) return [];
-      const q = socialQuery(query) + ' site:instagram.com OR site:tiktok.com';
       const gr = await fetch('https://www.googleapis.com/customsearch/v1?key=' + gKey + '&cx=' + gCx + '&q=' + encodeURIComponent(q) + '&num=8');
       if (!gr.ok) return [];
       const gj = await gr.json();
@@ -303,9 +307,20 @@ function mergeSocial(a, b) {
   return out.slice(0, 4);
 }
 
+// v-serp-modules — نتائج Google للبحث العادي: البديل بمفتاحه أوّلًا (latestNews = نافذة يوم كـdateRestrict=d1؛ لا ترتيب بالتاريخ عنده)،
+// وإن لم يُعطِ شيئًا فـCustom Search كما كان. بلا مفتاح: النداء القديم نفسه في اللحظة نفسها (لا await قبله).
+function webAltOrGoogle(query, latestNews, googleUrl) {
+  const old = () => (googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null));
+  if (!serp.providerOf()) return old();
+  return serp.organic(query, { win: latestNews ? 'day' : '' }).then((alt) => (alt && alt.length ? { serpItems: alt } : old()));
+}
+
 // 📍 v617 — كاشف أسئلة الأماكن ورمز الدولة: رُفِعا إلى مستوى الوحدة لتستعملهما
 // الدردشة أيضًا. قبلها كان سؤال أماكن خارج الإمارات لا يستدعي الخرائط أصلًا.
-const PLACES_RE = /مطعم|مطاعم|مطاعمه|مقهى|مقاهي|كافيه|كافيهات|كوفي|بوفيه|مخبز|مخابز|حلويات|صيدلي(ة|ات)|مستشفى|مستشفيات|عياد(ة|ات)|طبيب|أطباء|دكتور|أسنان|صالون|حلاق|مشغل|سبا|جيم|نادي رياضي|صالة رياضية|مول|مولات|أسواق|متجر|بقالة|سوبرماركت|هايبر|محطة وقود|بنزين|حديق(ة|ات)|متحف|متاحف|شاطئ|شواطئ|ملاهي|معلم سياحي|معالم|أماكن سياحية|وين أروح|وين اروح|أماكن|مسجد|مساجد|كنيسة|مدرسة|مدارس|حضانة|مغسلة|كراج|ورشة|restaurant|cafe|coffee shop|bakery|pharmacy|hospital|clinic|dentist|salon|barber|spa|gym|mall|supermarket|grocery|gas station|park|museum|beach|attraction|things to do|near me|قريب مني|قريبة مني|بالقرب/i;
+// v-audit-search (srv-search-3): كلمات كاملة لا أجزاء كلمات — «سبا» كانت تطابق أسباب وسباق وإسبانيا، و«مول» مولود ومحمول، و«دكتور» دكتوراه،
+// وspa/mall/park تطابق space/small/parking، فيُنادى Places المدفوع وتُدفن نتائج الويب. السوابق (و/ف، ب/ك/ل، ال، لل) واللواحق
+// الشائعة (ات/ة/ه/ها/ي/ك/كم/نا/ين) مسموحة، وما سواها من حروف عربيّة حولها = كلمة أخرى؛ و«ورشة عمل/تدريب» ليست ورشة سيارات.
+const PLACES_RE = /(?<![\u0621-\u064A\u066E-\u06D3])(?:[وف]?(?:لل|[بكل]?ال|[بكل])?)(?:مطعم|مطاعم|مطاعمه|مقهى|مقاهي|كافيه|كافيهات|كوفي|بوفيه|مخبز|مخابز|حلويات|صيدلي(?:ة|ات)|مستشفى|مستشفيات|عياد(?:ة|ات)|طبيب|أطباء|دكتور|أسنان|صالون|حلاق|مشغل|سبا|جيم|نادي رياضي|صالة رياضية|مول|مولات|أسواق|متجر|بقالة|سوبرماركت|هايبر|محطة وقود|بنزين|حديق(?:ة|ات)|متحف|متاحف|شاطئ|شواطئ|ملاهي|معلم سياحي|معالم|أماكن سياحية|وين أروح|وين اروح|أماكن|مسجد|مساجد|كنيسة|مدرسة|مدارس|حضانة|مغسلة|كراج|ورشة(?!\s*(?:عمل|تدريب))|قريب مني|قريبة مني|بالقرب)(?:ات|ة|ه|ها|هم|ي|ك|كم|نا|ين)?(?![\u0621-\u064A\u066E-\u06D3])|\b(?:restaurants?|cafes?|coffee shops?|bakery|bakeries|pharmacy|pharmacies|hospitals?|clinics?|dentists?|salons?|barbers?|barbershops?|spas?|gyms?|malls?|supermarkets?|grocery|groceries|gas stations?|parks?|museums?|beach|beaches|attractions?|things to do|near me)\b/i;
 const HOTEL_RE = /فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i;
 function isPlacesAsk(q) { const t = String(q || ''); return !!t && (PLACES_RE.test(t) || HOTEL_RE.test(t)); }
 
@@ -379,6 +394,10 @@ function regionOf(text) {
   for (let i = 0; i < keys.length; i++) if (REGION_RE[keys[i]].test(t2)) return keys[i];
   for (let i = 0; i < keys.length; i++) if (REGION_RE[keys[i]].test(t)) return keys[i];
   return '';
+}
+function hasRegion(text, cc) {
+  const re = REGION_RE[String(cc || '').toUpperCase()];
+  return !!(re && re.test(String(text || '')));
 }
 
 // 📍 v542: Google Places API (New) — Text Search. سؤال «وين أحسن مطعم؟» جوابه
@@ -734,7 +753,7 @@ module.exports = async (req, res) => {
           ...(__techAsk ? { exclude_domains: ['dubizzle.com', 'dubicars.com', 'yallamotor.com', 'cars24.ae', 'ae.opensooq.com', 'opensooq.com', 'mourjan.com', 'barbahar.com'] } : {}),
         }),
       }),
-      googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null),
+      webAltOrGoogle(query, latestNews, googleUrl),
       latestNews ? Promise.resolve([]) : fetchSocial(apiKey, (wantsLocalGeo(query) ? (query + ' ' + (geoCity ? geoCity + ' ' : '') + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE')) : query)),
       latestNews ? Promise.resolve([]) : (isPlaces ? fetchPlaces(placesKey, query, lang, (regionOf(query) || geoCode)) : Promise.resolve([])),
     ]);
@@ -830,9 +849,12 @@ module.exports = async (req, res) => {
     let images = wantImages && Array.isArray(data.images) ? data.images.slice(0, 4) : [];
     // v610 — صور الشريط كانت من Tavily وحده، وهو ساقط حيًّا، فيخرج الشريط فارغًا.
     // احتياطيّ: صور Google Custom Search بالمفتاح الموجود نفسه (بلا شراء جديد).
-    if (wantImages && !images.length && gKey && gCx) {
+    // v-serp-modules: بديل الصور بمفتاحه أوّلًا (SafeSearch مفروض فيه)، وإن لم يُعطِ صورة https فـCustom Search كما كان.
+    if (wantImages && !images.length && ((gKey && gCx) || serp.imagesProviderOf())) {
       try {
-        const giRes = await fetch(`https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(imgQuery)}&searchType=image&num=4&safe=active`);
+        const alt = await serp.images(imgQuery); // عشر صور في النداء نفسه، فيبقى أربع بعد ترشيح https
+        if (alt && alt.length) images = alt.map((it) => it.image).filter((u) => typeof u === 'string' && /^https:\/\//.test(u)).slice(0, 4);
+        const giRes = (!images.length && gKey && gCx) ? await fetch(`https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(imgQuery)}&searchType=image&num=4&safe=active`) : null;
         if (giRes && giRes.ok) {
           const gi = await giRes.json();
           images = (Array.isArray(gi.items) ? gi.items : [])
@@ -845,7 +867,13 @@ module.exports = async (req, res) => {
 
     let googleItems = [];
     try {
-      if (googleResp && googleResp.ok) {
+      if (googleResp && googleResp.serpItems) { // v-serp-modules: نتائج البديل بالشكل نفسه
+        googleItems = withoutRemovedSearchSources(googleResp.serpItems.slice(0, 3).map(it => ({
+          title: withoutRemovedSourceMentions(it.title),
+          url: it.link,
+          content: withoutRemovedSourceMentions((it.snippet || '').slice(0, 350)),
+        })));
+      } else if (googleResp && googleResp.ok) {
         const gData = await googleResp.json();
         googleItems = withoutRemovedSearchSources(Array.isArray(gData.items) ? gData.items.slice(0, 3).map(it => ({
           title: withoutRemovedSourceMentions(it.title),
@@ -970,3 +998,4 @@ module.exports = async (req, res) => {
 module.exports.fetchPlaces = fetchPlaces;
 module.exports.isPlacesAsk = isPlacesAsk;
 module.exports.regionOf = regionOf;
+module.exports.hasRegion = hasRegion;

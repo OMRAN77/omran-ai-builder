@@ -32,13 +32,15 @@ test('١. الطبقات المحذوفة لا أثر لها في maha-image: ح
   // (settleCandidates) وأوامر التلميع في image-prompt — لا هنا.
   // v-img-cards (٢٤ سبتمبر ٢٠٢٦): السقف من 875 إلى 900 — توصيل مسار لوحة البطاقات للمالك (محوّلا المحرّكين للقصاصة ونداء runCards
   // وتسليم الناتج بلا مكبّر). الكشف والضبط والتركيب والحكم لكلّ بطاقة ونيّة الطلب في image-cards.js — لا هنا.
-  assert.ok(mi.split('\n').length < 900, 'الملفّ قريب من الأصل (كان ٨٨٧) رغم القياس ووضع الدمج ولوحة البطاقات');
+  // v-img-no-rebill (١٤ أكتوبر ٢٠٢٦): السقف من 900 إلى 905 — علم «قد يكون حُسب» (__billRisk) ومُعيد زحام GPT وحده (__busyOnly):
+  // سطران حقيقيّان يمنعان العميل من إعادة سلسلة المحرّكات المدفوعة بعد مهلة أو ردّ بلا صورة — لا حشو.
+  assert.ok(mi.split('\n').length < 905, 'الملفّ قريب من الأصل (كان ٨٨٧) رغم القياس ووضع الدمج ولوحة البطاقات');
 });
 
 test('٢. المسارات الثلاثة: نصّ → GPT ضربة واحدة؛ أمين → برو 2K بحرارة 0.15؛ إبداعيّ → برو بحرارته الافتراضيّة', () => {
   // نصّ
   assert.match(mi, /const __textIntent = !!editImageBase64 && !__pureRaw && \(isTextRemove \|\| isTextSwap \|\| __textCueRe\.test\(cleanPrompt\)/);
-  assert.match(mi, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent \|\| \(editImageBase64 \? __optTextFaithful : /);
+  assert.match(mi, /const __textRoute = !!process\.env\.OPENAI_API_KEY && __optForceEngine !== 'nano' \/\* v-owner-solo-all: Gemini المختار يرسم بـGoogle وحده \*\/ && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length\n\s+&& \(__textIntent \|\| \(editImageBase64 \? __optTextFaithful : /);
   assert.match(mi, /if \(__textRoute && !__engineMix\) \{\n\s+const denseB64 = await openaiRescueImage\(\);\n\s+if \(denseB64\) \{\n\s+await deliver\(\{ b64: denseB64, mime: 'image\/png', engine: 'openai' \}, function \(\) \{ return proCandidate\(__extraBudget\(\)\); \}\);[^\n]*\n\s+return;/, 'GPT أوّلًا ضربة واحدة؛ برو فقط إن لم يُنفّذ');
   // أمين
   assert.match(mi, /const editModel = \(process\.env\.IMAGE_EDIT_MODEL \|\| 'gemini-3-pro-image'\)\.trim\(\);/);
@@ -77,8 +79,8 @@ test('٣. الخام خام: المحرّك المختار وحده، Sunburst �
   assert.match(mi, /if \(__gptB64\) \{ await deliver\(\{ b64: __gptB64, mime: 'image\/png', engine: 'openai' \}, null\); return; \}/);
   // خطّ الإنقاذ كما هو: برو → نانو ٢٫٥ → GPT → المجّانيّ (توليد فقط)
   assert.match(mi, /const nanoB64 = await geminiNanoBananaImage\(\);/);
-  assert.match(mi, /const rescuedB64 = __gptTried \? null : await openaiRescueImage\(\);/); // v-img-mix: الدمج جرّب GPT وفشل = لا نداء ثانٍ
-  assert.match(mi, /const freeImg = await freeFallbackImage\(\);/);
+  assert.match(mi, /const rescuedB64 = \(__gptTried \|\| __optForceEngine === 'nano'\) \? null : await openaiRescueImage\(\);/); // v-img-mix: الدمج جرّب GPT وفشل = لا نداء ثانٍ · v-owner-solo-all: ولا GPT لـGemini المختار
+  assert.match(mi, /const freeImg = __optForceEngine === 'nano' \? null : await freeFallbackImage\(\);/); // v-owner-solo-all
   assert.match(mi, /String\(process\.env\.IMAGE_FREE_FALLBACK \|\| 'off'\)\.toLowerCase\(\) !== 'on'/, 'النتيجة المجانيّة الضعيفة لا تعمل افتراضيًّا');
 });
 

@@ -125,11 +125,14 @@ const INSPIRE_LIVE_TXT = {
 #inspireScreen .insCard{position:relative; display:flex; flex-direction:column; text-align:start; background:rgba(255,255,255,.03); border:1px solid var(--border, #262b36); border-radius:14px; overflow:hidden; padding:0; color:inherit; font:inherit; cursor:pointer; transition:border-color .15s, transform .15s;}
 #inspireScreen .insCard:hover{border-color:var(--accent, #c9a45c); transform:translateY(-2px);}
 #inspireScreen .insCard img{display:block; width:100%; height:auto; aspect-ratio:5/3; object-fit:cover; background:#0b0d12;}
-#inspireScreen .insCard .insTxt{padding:10px 12px 12px;}
-#inspireScreen .insCard .insCT{font-size:14.5px; font-weight:800; margin-bottom:4px; line-height:1.4;}
-#inspireScreen .insCard .insCD{font-size:12.5px; opacity:.74; line-height:1.55;}
+/* v-photo-only (المالك ١٧ أكتوبر: «اي صوره تحتها احذفها نهائي»): البطاقة صورتها وحدها — العنوان فوق أسفلها بتدرّج، والوصف تلميح (title) لا شريط تحتها */
+#inspireScreen .insCard .insTxt{position:absolute; inset:auto 0 0 0; padding:26px 12px 10px; color:#fff; pointer-events:none; background:linear-gradient(0deg, rgba(0,0,0,.85), rgba(0,0,0,0));}
+#inspireScreen .insCard .insCT{font-size:14.5px; font-weight:800; line-height:1.4; text-shadow:0 1px 3px rgba(0,0,0,.9);}
+#inspireScreen .insCard .insCD{display:none;}
 #inspireScreen .insCard .insBusy{position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.55); font-size:13px; font-weight:700;}
 #inspireScreen .insCard.busy .insBusy, #inspireScreen .insCard.fail .insBusy{display:flex;}
+#inspireScreen .insCard .insBusy{color:#fff;}
+#inspireScreen .insCard.busy .insTxt, #inspireScreen .insCard.fail .insTxt{visibility:hidden;} /* v-photo-only: الرسالة وحدها لا فوق العنوان */
 #inspireScreen .insCard.fail .insBusy{background:rgba(120,20,20,.72); padding:10px; text-align:center;}
 #inspireScreen .insGrid.loading .insCard:not(.busy){opacity:.55; pointer-events:none;}
 #inspireScreen .insErr{margin:0 0 12px; font-size:13px; color:var(--danger, #e88);}
@@ -182,13 +185,13 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
       return;
     }
     body.innerHTML = '<h3 class="insSecT">' + esc(L(INSPIRE_LIVE_TXT.t)) + '</h3>'
-      + '<div class="insGrid insLive">' + INSPIRE_LIVE.filter((c) => !c.owner || liveOwner()).map((c) => '<button type="button" class="insCard" data-live="' + c.id + '">'
+      + '<div class="insGrid insLive">' + INSPIRE_LIVE.filter((c) => !c.owner || liveOwner()).map((c) => '<button type="button" class="insCard" data-live="' + c.id + '" title="' + esc(L(c.d)) + '">'
         + '<img src="/assets/inspire/live/' + c.id + '.jpg?v=1" alt="" loading="lazy" decoding="async" width="600" height="360">'
         + '<div class="insTxt"><div class="insCT">' + esc(L(c.t)) + '</div><div class="insCD">' + esc(L(c.d)) + '</div></div></button>').join('') + '</div>'
       + '<h3 class="insSecT">' + esc(tx('inspCityTitle', 'مدينتك الحقيقيّة')) + '</h3>'
       + '<p class="insSecS">' + esc(tx('inspCitySub', '')) + '</p>'
       + '<p class="insErr" role="alert" hidden></p>'
-      + '<div class="insGrid">' + INSPIRE_CITY.map((c) => '<button type="button" class="insCard" data-id="' + c.id + '">'
+      + '<div class="insGrid">' + INSPIRE_CITY.map((c) => '<button type="button" class="insCard" data-id="' + c.id + '" title="' + esc(L(c.d)) + '">'
         + '<img src="/assets/inspire/city/' + c.id + '.jpg?v=1" alt="" loading="lazy" decoding="async" width="600" height="360">'
         + '<div class="insTxt"><div class="insCT">' + esc(L(c.t)) + '</div><div class="insCD">' + esc(L(c.d)) + '</div></div>'
         + '<div class="insBusy">' + esc(tx('inspLoading', 'يجهّز…')) + '</div></button>').join('') + '</div>';

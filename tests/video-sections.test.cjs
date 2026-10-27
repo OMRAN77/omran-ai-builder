@@ -16,7 +16,8 @@ const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur'
 
 test('الأقسام: الترندات أوّلًا ثمّ كلّ وضع، والتبويب يبدّل الوضع ويخفي الاستوديو في الترندات', () => {
   assert.ok(js.includes("var TABS=['trend','minimax','runway','veo','actor','canvas','clean']"));
-  assert.ok(js.includes("var tab='trend'") && js.includes("if(open&&!wasOpen){ tab='trend'; }"));
+  /* v-vmk-chat-tab: الفتح على الترندات كلّ مرّة، إلّا فتحًا من المحادثة بنصّ أو صورة (علامة data-vmk-tab تُقرأ مرّة) — tests/vmk-stale-status ٨ */
+  assert.ok(js.includes("var tab='trend'") && js.includes("if(open&&!wasOpen){ tab=(want&&tabsFor().indexOf(want)>=0)?want:'trend'; }"));
   assert.ok(js.includes("sel.value=v; sel.dispatchEvent(new Event('change'))"));
   const css = read('css/modules.css');
   assert.ok(css.includes('.vmk-studio.vmk-tab-trend>.vmk-side'));
@@ -25,7 +26,7 @@ test('الأقسام: الترندات أوّلًا ثمّ كلّ وضع، وا�
 });
 
 test('النماذج: ثلاث بطاقات لكلّ وضع (فيديو تعليميّ + مثالان) من مفاتيح اللغة، والفيديو يُقرأ من الجدول بلا طلب شبكة، وبلا عنوان «نماذج جاهزة»', () => {
-  assert.ok(js.includes("keys=['videoIdea'+c,'videoIdea'+c+'2']"));
+  assert.ok(js.includes("keys=['videoIdea'+c]"));
   assert.ok(js.includes("var VIDEOS={}") && js.includes("/media/samples/"));
   assert.ok(!/نماذج جاهزة/.test(js) && !/نماذج جاهزة/.test(read('js/app-03-i18n-data.js')));
 });
@@ -93,7 +94,7 @@ test('نماذج الجودة (طلب المالك «سوّ الفيديوهات
 test('نماذج الكانفا (مجّانيّة، مولَّدة من الصانع نفسه): ملفّان مسجَّلان في القائمة وبحجم معقول', () => {
   const idx = JSON.parse(read('media/samples/index.json'));
   ['canvas-1', 'canvas-2'].forEach((k) => {
-    assert.equal(idx[k], true, k + ' في القائمة');
+    assert.ok(idx[k] === true || (idx[k] && typeof idx[k].title === 'string' && idx[k].title.length > 0) || (idx[k] && idx[k].lang === 'ar'), k + ' في القائمة'); // v-sample-url: الرفع بعنوان يسجّل { title } (samples-ingest: index[key] = title ? { title } : true)؛ v-vmk-sample-lang: نصّ محروق عربيّ = "lang":"ar"
     ['mp4', 'jpg'].forEach((x) => assert.ok(fs.existsSync(path.join(root, 'media/samples/' + k + '.' + x)), k + '.' + x));
     assert.ok(fs.statSync(path.join(root, 'media/samples/' + k + '.mp4')).size < 4 * 1024 * 1024, 'حجم معقول');
   });
@@ -107,7 +108,11 @@ test('رفع فيديوهات المالك (طلبه: «كيف أرفع الفي
   const wf = read('.github/workflows/samples-ingest.yml');
   assert.ok(wf.includes("paths: ['media/samples/raw/**']") && wf.includes('git push origin HEAD:main'));
   assert.ok(fs.existsSync(path.join(root, 'media/samples/raw/README.md')));
-  assert.ok(js.includes('tx=(vm&&vm.title)||L(k)'), 'عنوان الفيديو المرفوع يغلب المثال');
+  assert.ok(js.includes("tx=(vm&&vm.title&&ul==='ar')?vm.title:L(k)"), 'عنوان الفيديو المرفوع يغلب المثال (بالعربيّة وحدها — v-vmk-sample-lang، tests/vmk-polish ج)');
+  // v-tab-tut + v-sample-url (المالك ١٧ أكتوبر «حط الفيديوين»): تعليميّ لكلّ قسم، وفيديو يُجلب برابط من نطاق التطبيق ببصمة مطابقة
+  assert.ok(ing.includes("-([12]|tut)\\\\.(mp4|mov|webm|m4v)$") && ing.includes("-([12]|tut)\\\\.url$") && ing.includes("const URL_HOSTS = ['omran-ai-builder.vercel.app']"));
+  assert.ok(ing.includes("createHash('sha256')") && ing.includes('if (got !== want) throw') && ing.includes('!urls.every(hostOk)'), 'بصمة لا تطابق أو نطاق آخر = فشل');
+  assert.ok(js.includes("VIDEOS[m+'-tut']&&ar()") && js.includes('openPlayer(tutUrl(md))'), 'تعليميّ القسم يغلب العامّ بالعربيّ');
   const tut = read('scripts/video-tutorial.mjs');
   assert.ok(tut.includes('deviceScaleFactor: 2') && tut.includes('window.R = function (t)') && tut.includes("viewport: { width: 1920, height: 1080 }"), 'التعليميّ مُمنتَج: لقطات بدقّة مضاعفة وتركيب يُرسم إطارًا إطارًا ١٠٨٠');
   const sm = read('scripts/video-samples.mjs');

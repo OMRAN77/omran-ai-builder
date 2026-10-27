@@ -9,7 +9,7 @@
 'use strict';
 
 const INTENT_RE = /(?:^|[\s.،,:؛\n(«-])(?:سأ|سوف\s|راح\s|رح\s|بـ?أ(?:قرأ|حذف|عدّ?ل|شيل|بحث|تتبّ?ع|فحص|رفع|نفّ?ذ)|خلّ?ني\s|دعني\s|الحين\s+(?:أ|ب)|الآن\s+(?:أ|س)|أ(?:قرأ|حدّ?د|تتبّ?ع|بحث|عدّ?ل|حذف|رفع|فحص|شيل|نفّ?ذ|راجع|تأكّ?د|بدأ|كمّ?ل|طبّ?ق)\s|let me\s|i(?:'ll| will| am going to)\s|next,? i\s)/i;
-const ACTION_RE = /(?:احذف|حذف|شيل|امسح|عدّ?ل|غيّ?ر|صلّ?ح|أصلح|اصلح|ضيف|أضف|اضف|سوّ?ي?\s|نفّ?ذ|ارفع|حطّ?|انقل|كبّ?ر|صغّ?ر|خفّ?ف|بدّ?ل|ابن|اكتب\s+(?:كود|ملف)|fix|delete|remove|add|change|update|implement)/i;
+const ACTION_RE = /(?:احذف|حذف|شيل|امسح|عدّ?ل|غيّ?ر|صلّ?ح|أصلح|اصلح|ضيف|أضف|اضف|(?<![\u0600-\u06FF])سوّ?ي?\s|نفّ?ذ|ارفع|حطّ?|انقل|كبّ?ر|صغّ?ر|خفّ?ف|بدّ?ل|ابن|اكتب\s+(?:كود|ملف)|fix|delete|remove|add|change|update|implement)/i;
 const DONE_RE = /github\.com\/[^\s)]+\/(?:pull|commit)\/|✅|تمّ?\s+(?:الرفع|الحذف|التعديل|الدمج)/i;
 
 /** هل توقّف النموذج عند خطّة بلا تنفيذ؟ صرف بلا شبكة (يُختبر وحده). */
@@ -19,13 +19,21 @@ function stalledPlan(text, opts) {
   if (!t || t.length > 1800) return false;
   if (/[?؟]/.test(t.slice(-220))) return false; // يسأل المالك — توقّف مشروع
   if (DONE_RE.test(t) || o.pushed) return false;
-  if (!INTENT_RE.test(t)) return false;
-  return !!(o.usedTools || ACTION_RE.test(String(o.ownerText || '')) || ACTION_RE.test(String(o.prevOwnerText || '')));
+  /* v-owner-paid-gate: شكوى/سؤال/نفي من المالك لا يُحمَل تنفيذًا، وخطّة رسم لا تُحمَل بلا طلب رسم في رسالته الأخيرة (كلّ رسمة من رصيده) */
+  const __om = require('./owner-media.js');
+  if (o.ownerText != null && __om.notACommand(o.ownerText)) return false;
+  if (__om.PLAN_DRAW_RE.test(t) && !__om.askedMedia(o.ownerText, false)) return false;
+  const asked = ACTION_RE.test(String(o.ownerText || '')) || ACTION_RE.test(String(o.prevOwnerText || ''));
+  if (INTENT_RE.test(t)) return !!(o.usedTools || asked);
+  /* v-prov-finish-edit (المالك ١٣ أكتوبر، ثلاث محاولات بلا رفعة): قرأ ثمّ وصف بلا صيغة «سأ…»، فالحمل السابق ما اشتغل. طلب تعديل + قراءة بلا رفع = نفّذ الآن. */
+  return !!(o.usedTools && asked);
 }
 
 const CARRY_NOTE = '[تنبيه النظام — ليس من المالك]: ردّك السابق وصف ما ستفعله ثمّ توقّف بلا تنفيذ. نفّذ الآن بأدواتك في هذا الردّ نفسه '
   + '(اقرأ ما تحتاجه بـread_github ثمّ عدّل بـedit_github) — لا تُعِد الخطّة ولا تعتذر ولا تكرّر القواعد. '
   + 'إن كان ينقصك شيء لا تقدر عليه بأداة فقله في سطر واحد بالتحديد.';
+/* v-img-with-edit (المالك ١٣ أكتوبر «نفس الفكره الصوره مع التعديل ويختبر قبل ما يدمج»): رسم البديل ثمّ انتظار «عمّم» يوقف الصورة عن الرفعة. */
+const PICS_CARRY_NOTE = '[تنبيه النظام — ليس من المالك]: رسمتَ البديل ولم ترفعه. ارفع الصورة الآن بـwrite_github ملف {path: مسارها في المستودع كما قرأته, image: "رابط /i/… من نتيجة الرسم"} في هذا الردّ نفسه — الصورة مع التعديل، لا تنتظر «عمّم». ثم افحص الفحوص بـmanage_github status ولا تسأل أدمج قبل أن تخضر.';
 
 /* v-owner-ui-shot (لقطة المالك ١٠ أكتوبر: «احذف هذا المكان» مع لقطة من التطبيق ← «جارٍ إنشاء الصورة»): المزوّد فهمها
    «امسح هذه المنطقة من الصورة» فاستدعى أداة الصور. لقطة المالك مع فعل تعديل وإشارة لعنصر، بلا كلمة صورة صريحة،
@@ -45,4 +53,4 @@ const UI_SHOT_NOTE = '\n\n[لقطة من التطبيق — هذا الدور]: 
   + 'حدّد العنصر في المستودع بـread_github (ابحث بنصّه الظاهر أو معرّفه) ثمّ نفّذ التغيير بـedit_github وأعطِه رابط طلب السحب. إن لم تتعرّف على العنصر في اللقطة فصِف ما تراه واسأله سؤالًا واحدًا. '
   + 'وإن كانت صورةً حقيقيّةً لا واجهة التطبيق (سيّارة، شخص، مكان) فقل له في سطر واحد أن يعيد طلبه بكلمة «الصورة» (مثل: «غيّر لون السيّارة في الصورة») فتُعدَّل.';
 
-module.exports = { stalledPlan, CARRY_NOTE, INTENT_RE, ACTION_RE, uiEditTurn, UI_SHOT_NOTE, UI_VERB_RE, UI_REF_RE, IMG_WORD_RE }; // الثلاثة الأخيرة: نسختها في العميل (js/app-09-attach.js) تُطابَق في الاختبار
+module.exports = { stalledPlan, CARRY_NOTE, PICS_CARRY_NOTE, INTENT_RE, ACTION_RE, uiEditTurn, UI_SHOT_NOTE, UI_VERB_RE, UI_REF_RE, IMG_WORD_RE }; // الثلاثة الأخيرة: نسختها في العميل (js/app-09-attach.js) تُطابَق في الاختبار

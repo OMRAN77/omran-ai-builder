@@ -67,7 +67,30 @@
     if(c === 'format') return t('vwFormat');
     if(c === 'points_insufficient') return t('vwNoPoints').replace('{p}', String(d.points || 0)).replace('{n}', String(d.needed || ''));
     if(c === 'unavailable') return t('vwUnavailable'); // v-plans-gate: رصيد المزوّد عندنا — لا ذنب للمستخدم ولا تحويل للباقات
+    if(c === 'limit') return t('portraitLimitReached'); // v-audit-video (srv-video-4): حدّ فتح الرفع لليوم — النصّ العامّ القائم بالـ١٤ لغة
     return t('vwFailed');
+  }
+  var lastWatch = null;
+  /* v-owner-solo-all (المالك: «كل واحد بروحه»): الفيديو المرفق كان يجيب عنه محرّك المشاهدة وحده فلا يرى مزوّد المالك سؤاله. للمالك
+     ومزوّده ذي الأدوات: المحرّك يشاهد (المشاهدة تحتاج محرّك فيديو — والخصم كما هو)، ومزوّده يجيب سؤاله من نتيجتها وسياق المحادثة. */
+  function ownerProv(){
+    try{
+      if(!(typeof omranOwnerUi === 'function' && omranOwnerUi()) || typeof window.callChatWithTools !== 'function') return '';
+      var sel = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai');
+      return (typeof TOOL_PROVIDERS !== 'undefined' && TOOL_PROVIDERS.indexOf(sel) !== -1) ? sel : '';
+    }catch(e){ __swallow(e, 'vwatch:owner-sel'); return ''; }
+  }
+  async function ownerAnswer(cur, text, w){
+    var prov = ownerProv();
+    if(!prov || !w || !w.result) return '';
+    var hist = cur.messages.slice(-9, -1).filter(function(m){ return m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content; })
+      .map(function(m){ return { role: m.role, content: m.content }; });
+    var r = await window.callChatWithTools(hist.concat([
+      { role: 'system', content: 'نتيجة مشاهدة الفيديو المرفق (من محرّك المشاهدة — أنت لا ترى الفيديو نفسه، فاعتمد عليها ولا تدّعِ ما ليس فيها):\n' + w.result },
+      { role: 'user', content: text || t('vwDefaultQ') },
+    ]), null, prov, { noTools: true });
+    var out = String((r && r.reply) || '').trim();
+    return out ? out + w.tail : '';
   }
   async function watch(text, att, status){
     var s = await api('start', { size: att.size, mime: att.mime, name: att.name, durationSec: att.durationSec });
@@ -93,7 +116,9 @@
       var q = null;
       try{ q = await api('run', { id: id, prompt: text, lang: lang }); }catch(e){ q = null; }
       if(q && q.d.ok && !q.d.pending){
-        return String(q.d.result || '') + (q.d.cost ? '\n\n' + t('vwCharged').replace('{n}', String(q.d.cost)).replace('{d}', fmtDur(q.d.sec)) : '') + diag(q.d);
+        var __tail = (q.d.cost ? '\n\n' + t('vwCharged').replace('{n}', String(q.d.cost)).replace('{d}', fmtDur(q.d.sec)) : '') + diag(q.d);
+        lastWatch = { result: String(q.d.result || ''), tail: __tail }; // v-owner-solo-all: نتيجة المشاهدة منفصلة عن سطر الخصم لمزوّد المالك
+        return String(q.d.result || '') + __tail;
       }
       if(q && !q.d.ok && q.d.error !== 'busy') return '⚠️ ' + errText(q.d) + diag(q.d, 'run ' + q.status);
       await sleep(3000);
@@ -129,7 +154,11 @@
     messagesEl.appendChild(box);
     try{ box.scrollIntoView({ block: 'end', behavior: 'smooth' }); }catch(e){ __swallow(e, 'vwatch:scroll'); }
     var reply = '';
-    try{ reply = await watch(text, att, function(msg){ box.textContent = msg; }); }
+    lastWatch = null;
+    try{
+      reply = await watch(text, att, function(msg){ box.textContent = msg; });
+      if(lastWatch){ try{ reply = (await ownerAnswer(cur, text, lastWatch)) || reply; }catch(e){ __swallow(e, 'vwatch:owner-answer'); } } // v-owner-solo-all: فشل مزوّده = نتيجة المشاهدة كما كانت
+    }
     catch(e){ __swallow(e, 'vwatch:run'); reply = '⚠️ ' + t('vwFailed') + diag(null, 'client: ' + ((e && e.message) || e)); }
     finally{
       try{ box.remove(); }catch(e){ __swallow(e, 'vwatch:box'); }
@@ -139,6 +168,24 @@
     renderAll(); saveState();
     try{ if(typeof window.refreshPointsWallet === 'function') window.refreshPointsWallet(); }catch(e){ __swallow(e, 'vwatch:wallet'); }
   }
+  /* v-video-write-ask: «اكتب … على/في الفيديو» = جواب صادق محلّيّ — لا رفع ولا تحليل ولا توليد ولا خصم */
+  async function writeSend(text, att){
+    var cur = getCurrent();
+    if(!cur){ var id = 'p_' + Date.now(); cur = { id: id, title: '', messages: [], code: '', codeType: 'html' }; state.projects.push(cur); state.currentId = id; }
+    if(cur.messages.length === 0) cur.title = String(text || '').slice(0, 30);
+    var um = { role: 'user', content: text };
+    if(att) um.attachments = [{ name: att.name, isImage: false, isVideoWatch: true, label: att.label, durationSec: Math.round(att.durationSec || 0) }];
+    cur.messages.push(um); cur.updatedAt = Date.now();
+    window.__chatEditRequest = null;
+    try{ if(typeof setChatEditNotice === 'function') setChatEditNotice(false); }catch(e){ __swallow(e, 'vwrite:edit'); }
+    var promptEl = $('#prompt'); if(promptEl) promptEl.value = '';
+    try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){ __swallow(e, 'vwrite:grow'); }
+    if(att){ pendingAttachments = pendingAttachments.filter(function(a){ return a !== att; }); renderAttachStrip(); }
+    document.body.classList.remove('omranWelcome');
+    cur.messages.push({ role: 'assistant', content: t('vwWriteNo') });
+    renderAll(); saveState();
+  }
+  window.omranVideoWriteSend = writeSend;
   window.omranIsVideoFile = isVideoFile;
   window.omranVideoAttachment = makeAttachment;
   window.omranVideoWatchSend = send;

@@ -91,12 +91,15 @@ module.exports = async (req, res) => {
     if (!privileged) {
       const tierLib = require('./tier.js');
       const meters = require('./_usage');
-      const used = { haiku: await meters.todayCount(usage.username, 'plan-haiku'), sonnet: await meters.todayCount(usage.username, 'plan-sonnet') };
+      const used = await tierLib.planUsedCounts(usage.username, usage.plan, meters.todayCount); // v-plan-models: مقاييس الباقة أيًّا كانت
       /* v-meter-atomic (المراجعة المعاكسة): كان فحصًا (todayCount) ثمّ زيادة (bumpCount) فتعبر المتزامنة الحدّ — الآن حجز ذرّيّ
          للمسار المختار قبل النداء؛ رفضه = امتلأ للتوّ فيُجرَّب التالي (Sonnet ثمّ Haiku)، وبعدها 402 كما كان. */
       let route;
       for (;;) {
         route = tierLib.planRoute({ tier: 'sub', plan: usage.plan, subscriber: true }, 'claude', 'اكتب كود', used, process.env);
+        /* v-plan-models: هذا الرابط يجيب بكلود وحده — كود Pro على Mistral Large 3 وكود Max بعد حدّه على Gemini، فيُؤخذ أوّل كلود في قائمة الوظيفة
+           (Haiku 5.5، بلا مقياس). لا كلود في القائمة = 402 كما كان. */
+        if (route && route.prov !== 'claude') { const c = (route.fallback || []).find((f) => f.prov === 'claude' && f.model); route = c ? Object.assign({}, route, { prov: 'claude', model: c.model, meter: '', meterCap: 0 }) : route; }
         if (!route || route.prov !== 'claude' || !route.model) {
           res.status(402).json({ error: tierLib.FREE_TEXT.engineLimit, reason: 'engine_limit' });
           return;
@@ -159,17 +162,17 @@ module.exports = async (req, res) => {
             upstream = await doRequest(preferred, wantStream);
           } else {
             await giveBack(); // v-meter-atomic: لا نموذج يخدم — الحجز يُردّ
-            res.status(404).setHeader('Content-Type', 'application/json').send(errTextFirst);
+            require('./_videoFail.js').chatFail(res, 'claude', 404, errTextFirst, usage.tier === 'owner'); // v-audit-prov
             return;
           }
         } else {
           await giveBack();
-          res.status(404).setHeader('Content-Type', 'application/json').send(errTextFirst);
+          require('./_videoFail.js').chatFail(res, 'claude', 404, errTextFirst, usage.tier === 'owner'); // v-audit-prov
           return;
         }
       } else {
         await giveBack();
-        res.status(404).setHeader('Content-Type', 'application/json').send(errTextFirst);
+        require('./_videoFail.js').chatFail(res, 'claude', 404, errTextFirst, usage.tier === 'owner'); // v-audit-prov
         return;
       }
     }
@@ -210,6 +213,7 @@ module.exports = async (req, res) => {
       } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
     }
     if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
+    if (!upstream.ok) { require('./_videoFail.js').chatFail(res, 'claude', upstream.status, data, usage.tier === 'owner'); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {
     await giveBack();

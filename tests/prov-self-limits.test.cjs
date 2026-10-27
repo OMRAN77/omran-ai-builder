@@ -30,9 +30,12 @@ const chat = require(rp('api/_lib/chat.js'));
 const OD = require(rp('api/_lib/oa-direct.js'));
 const tok = () => { const p = Buffer.from(JSON.stringify({ u: 'omran', exp: Date.now() + 6e5 })).toString('base64url'); return p + '.' + crypto.createHmac('sha256', process.env.AUTH_SECRET).update(p).digest('base64url'); };
 
-test('GPT 429 with retry-after 25 s: the direct call is not retried at 0.8 s and 2 s (was three calls), and no other provider answers', async () => {
+test('GPT 429 with retry-after 25 s: the direct call is not retried at 0.8 s and 2 s (was three calls), and no other provider answers; a short retry-after is honored once in-call (v-direct-429)', async () => {
+  const OD = require('../api/_lib/oa-direct.js');
   const calls = [];
   const save = global.fetch;
+  const saveMax = OD.__cfg.waitMax;
+  OD.__cfg.waitMax = 10; // موعد ٢٥ ث أبعد من حدّ النوم داخل النداء — كما لو كان ٤٠ ث على ٦٠ ث
   global.fetch = async (url) => {
     const u = String(url);
     calls.push(u);
@@ -41,9 +44,16 @@ test('GPT 429 with retry-after 25 s: the direct call is not retried at 0.8 s and
   };
   const req = { method: 'POST', headers: {}, body: { token: tok(), provider: 'openai', model: 'openai/gpt-6-astra', messages: [{ role: 'user', content: 'مرحبا' }] } };
   const res = { setHeader() {}, status() { return this; }, json() { return this; }, write() { return true; }, end() {}, flushHeaders() {} };
-  try { await chat(req, res); } finally { global.fetch = save; }
+  try { await chat(req, res); } finally { global.fetch = save; OD.__cfg.waitMax = saveMax; }
   assert.equal(calls.filter((u) => /api\.openai\.com\/v1\/responses/.test(u)).length, 1, 'نداء مباشر واحد: ' + calls.join(' '));
   assert.ok(calls.every((u) => /openai\.com|openrouter\.ai\/api\/v1\/messages/.test(u)), 'GPT نفسه (مباشر ثمّ عبر الوسيط بالموديل نفسه) لا غيره');
+  // v-direct-429: موعد قصير (٠٫٢ ث) يُنتظر مرّة داخل النداء ويُعاد النداء نفسه — لا ٠٫٨ ث ولا ٢ ث
+  const route = OD.directRoute('openai', { OPENAI_API_KEY: 'ok' });
+  let n = 0; const t0 = Date.now();
+  const r = await OD.directFetch(route, { model: 'gpt-6-astra', max_tokens: 50, system: 's', messages: [{ role: 'user', content: 'x' }] }, { fetchImpl: async () => (++n === 1
+    ? new Response(JSON.stringify({ error: { type: 'rate_limit_error', message: 'Rate limit reached.' } }), { status: 429, headers: { 'retry-after': '0.2' } })
+    : new Response('data: ' + JSON.stringify({ type: 'response.created', response: { model: 'gpt-6-astra' } }) + '\n\ndata: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } })) });
+  assert.equal(r.ok, true); assert.equal(n, 2); assert.ok(Date.now() - t0 >= 200, 'انتظر الموعد نفسه');
   assert.match(read('api/_lib/oa-direct.js'), /rl = \{ ok: false, status: r\.status, model: rb\.model, api: 'responses', text: async \(\) => t, headers: r\.headers \|\| null \};/);
 });
 
@@ -54,11 +64,17 @@ test('free Groq: the reduced body keeps the image tools for a drawing/image turn
   const tools = [fn('web_search', 900), fn('read_github', 1700), fn('generate_image', 600), fn('edit_image', 1300), fn('edit_github', 1500)];
   const body = (text) => ({ model: 'qwen/qwen3.8-27b', stream: true, max_completion_tokens: 16000, tools, messages: [{ role: 'system', content: sys }, { role: 'user', content: text }] });
   const T = (b) => Math.ceil((JSON.stringify(b.messages).length + (b.tools ? JSON.stringify(b.tools).length : 0)) / 3);
-  const fit = (text, limit) => { const b = body(text); return OD.fitGroqTpm(b, 'on tokens per minute (TPM): Limit ' + limit + ', Requested ' + (T(b) + 16000) + ', please reduce'); };
+  const fit = (text, limit, owner) => { const b = body(text); return OD.fitGroqTpm(b, 'on tokens per minute (TPM): Limit ' + limit + ', Requested ' + (T(b) + 16000) + ', please reduce', owner); };
   const names = (b) => (b.tools || []).map((x) => x.function.name).sort();
-  const draw = fit('ارسم قطة على البحر', 8000);
+  const draw = fit('ارسم قطة على البحر', 8000, true);
   assert.deepEqual(names(draw), ['edit_image', 'generate_image'], 'أداتا الصور فقط');
-  assert.match(draw.messages[0].content, /بأدوات محدودة لضيق حدّ مفتاح Groq في الدقيقة: generate_image، edit_image فقط/);
+  assert.match(draw.messages[0].content, /بأدوات محدودة لضيق حدّ مفتاح Groq في الدقيقة: generate_image، edit_image فقط/, 'المالك: السبب باسمه');
+  // v-plan-models: لغير المالك الأدوات نفسها، والملاحظة محايدة بلا اسم مزوّد (قاعدة المالك)
+  const drawUser = fit('ارسم قطة على البحر', 8000);
+  assert.deepEqual(names(drawUser), ['edit_image', 'generate_image'], 'غير المالك: الأداتان نفسهما');
+  const noteUser = drawUser.messages[0].content.slice(drawUser.messages[0].content.lastIndexOf('[هذا الدور'));
+  assert.match(noteUser, /^\[هذا الدور بأدوات محدودة لضيق السياق المتاح الآن: generate_image، edit_image فقط/);
+  assert.ok(!/Groq|عمران/.test(noteUser), 'لا اسم مزوّد ولا «عمران» في ملاحظة غير المالك');
   assert.deepEqual(names(fit('كم سعر الذهب اليوم؟', 8000)), ['web_search']);
   const hi = fit('مرحبا', 8000);
   assert.equal(hi.tools, undefined, 'التحيّة بلا أدوات');

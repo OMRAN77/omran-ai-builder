@@ -85,6 +85,7 @@ module.exports = async (req, res) => {
     }
 
     const data = await upstream.text();
+    if (!upstream.ok) { require('./_videoFail.js').chatFail(res, 'perplexity', upstream.status, data, usage.tier === 'owner'); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

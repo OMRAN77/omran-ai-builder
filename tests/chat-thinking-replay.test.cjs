@@ -9,6 +9,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'chat-thinking-replay-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-direct';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
@@ -99,12 +100,14 @@ async function run(user, body, route) {
   return { calls: calls.filter((c) => isUp(c.url)), events, text: events.map((e) => e.delta || '').join('') };
 }
 const Q = [{ role: 'user', content: 'وين الخلل في دالّة foo في مستودعي؟' }];
-// غير المالك الذي يصل كلود فعلًا: مشترك Max — دور الكود على Sonnet 5 المباشر، والدردشة على Haiku 4.5 (tier.js PLAN_ROUTING).
-async function asMax(fn) {
+// غير المالك الذي يصل كلود فعلًا (v-plan-models، tier.js PLAN_ROUTING): مشترك Max — دور الكود على Sonnet 5.5 المباشر (مقياس premium)،
+// والدردشة على GPT-6 Sol؛ ومشترك Plus (basic) — دور الكود على Haiku 5.5 المباشر. لا باقة تضع Haiku 4.5 في أيّ وظيفة بعد الآن.
+async function asPlan(plan, fn) {
   const real = tierLib.resolveTier;
-  tierLib.resolveTier = async () => ({ tier: 'sub', plan: 'max', cap: 250, subscriber: true });
+  tierLib.resolveTier = async () => ({ tier: 'sub', plan, cap: 250, subscriber: true });
   try { return await fn(); } finally { tierLib.resolveTier = real; }
 }
+const asMax = (fn) => asPlan('max', fn);
 const READ = { url: 'OMRAN77/omran-ai-builder', query: 'foo' };
 
 test('١. الجولة الثانية تعيد التفكير كما وصل: الملخّص وتوقيعه SIG-1 والمحجوب وبترتيبها، والنظام والأدوات ثابتان والعرض ملخّص', async () => {
@@ -122,20 +125,22 @@ test('١. الجولة الثانية تعيد التفكير كما وصل: ا�
   assert.equal(JSON.stringify(r.calls[0].body.system), JSON.stringify(r.calls[1].body.system), 'system ثابت بين الجولتين');
   assert.equal(JSON.stringify(r.calls[0].body.tools), JSON.stringify(r.calls[1].body.tools), 'tools ثابتة بين الجولتين');
   assert.ok(r.events.some((e) => e.status === '↳ 💭 أبحث عن foo'), 'ملخّص التفكير سطر ↳ في سجلّ الردّ');
+  const talk = r.events.find((e) => e.think && e.think.s);
+  assert.ok(talk && talk.think.s.includes('أبحث عن foo') && talk.think.s.includes('ثمّ أقرأ الملفّ'), 'الملخّص كاملًا يبقى في الفقاعة');
   assert.equal(r.text, 'الخلل في x.js:1');
 });
 
-test('٢. المالك وحده: مشترك Max في دور كود (Sonnet 5 المباشر) لا يعيد التفكير — جولته الثانية كما كانت، بلا حقل thinking ولا سطر ↳ 💭', async () => {
+test('٢. المالك وحده: مشترك Max في دور كود (Sonnet 5.5 المباشر) لا يعيد التفكير — جولته الثانية كما كانت، بلا حقل thinking ولا سطر ↳ 💭', async () => {
   await asMax(async () => {
     const r = await run('maxuser', { provider: 'claude', messages: [{ role: 'user', content: 'اكتب كود بايثون يحسب المتوسّط، وابحث عن تطبيق عمران' }] }, (u, b, n) => (!isUp(u) ? new Response('{}', { status: 404 })
-      : n === 1 ? thinkTool('SIG-V', 'web_search', { query: 'omran app' }, { model: 'claude-sonnet-5', summary: 'ملخّص' }) : text('أقدر أساعدك.', 'claude-sonnet-5')));
+      : n === 1 ? thinkTool('SIG-V', 'web_search', { query: 'omran app' }, { model: 'claude-sonnet-5-5', summary: 'ملخّص' }) : text('أقدر أساعدك.', 'claude-sonnet-5-5')));
     assert.equal(r.calls.length, 2);
-    assert.ok(r.calls.every((c) => isAnth(c.url) && c.body.model === 'claude-sonnet-5'));
+    assert.ok(r.calls.every((c) => isAnth(c.url) && c.body.model === 'claude-sonnet-5-5'), 'v-plan-models: كود Max على Sonnet 5.5 المباشر في الجولتين');
     assert.deepEqual(thinkBlocks(r.calls[1].body), [], 'غير المالك: لا كتلة تفكير معادة (لا إدخال مُفوتَر جديد)');
     const msgs = r.calls[1].body.messages;
     assert.deepEqual(msgs[msgs.length - 2].content.map((x) => x.type), ['tool_use'], 'ردّ الجولة كما كان قبل D1: الأداة وحدها');
     assert.ok(r.calls.every((c) => c.body.thinking === undefined), 'غير المالك: لا حقل thinking');
-    assert.ok(!r.events.some((e) => /^↳ 💭/.test(e.status || '')));
+    assert.ok(!r.events.some((e) => /^↳ 💭/.test(e.status || '')) && !r.events.some((e) => e.think), 'غير المالك بلا تفكير ظاهر');
   });
 });
 
@@ -148,7 +153,7 @@ test('٣. التبديل إلى الوسيط (401 على المفتاح المب
   assert.equal(or.body.model, 'anthropic/claude-opus-5.5');
   assert.equal(thinkBlocks(r.calls[1].body).length, 2, 'المباشر حملها');
   assert.deepEqual(thinkBlocks(or.body), [], 'توقيعات المباشر لا تصل الوسيط');
-  assert.equal(or.body.thinking, undefined, 'لا عرض ملخّص على الوسيط');
+  assert.deepEqual(or.body.thinking, { type: 'adaptive', display: 'summarized' }, 'v-or-display: العرض الملخّص على الوسيط أيضًا — الهبوط وسط الدور لا يمحو التفكير');
   assert.deepEqual(blocksOf(or.body, 'tool_use').map((x) => x.id), ['tu1']);
   assert.deepEqual(blocksOf(or.body, 'tool_result').map((x) => x.tool_use_id), ['tu1']);
   assert.equal(r.text, 'أكملت عبر الوسيط.');
@@ -225,16 +230,17 @@ test('٨. Grok (الوسيط): كتل تفكيره لا تُعاد، ولا حق
   assert.ok(r.calls.every((c) => isOR(c.url) && c.body.model === 'x-ai/grok-4.6'));
   assert.deepEqual(thinkBlocks(r.calls[1].body), []);
   assert.deepEqual(blocksOf(r.calls[1].body, 'tool_use').map((x) => x.id), ['tu1']);
-  assert.ok(r.calls.every((c) => !c.body.thinking || c.body.thinking.type !== 'adaptive'), 'لا adaptive ولا display على Grok');
+  assert.ok(r.calls.every((c) => c.body.thinking && c.body.thinking.type === 'adaptive' && !c.body.thinking.display), 'الوسيط: تكيّفيّ بلا عرض أنثروبيك');
   assert.ok(r.events.some((e) => e.status === '↳ 💭 reasoning'), 'ما يصل من تفكير المزوّد نفسه يظهر للمالك سطرًا (v-owner-think-all)');
+  assert.ok(r.events.some((e) => e.think && e.think.s === 'reasoning'), 'الملخّص يبقى في الفقاعة');
 });
 
-test('٩. Haiku 4.5 لا يصله adaptive ولا effort أبدًا (المالك سؤالًا وتحيّةً، واختيارًا صريحًا، وغير المالك)، ولا عرض في المجاملة الفوريّة', async () => {
+test('٩. Haiku 4.5 لا يصله adaptive ولا effort أبدًا (المالك سؤالًا وتحيّةً، واختيارًا صريحًا)، وغير المالك لا يصله من أيّ باقة وHaiku 5.5 الذي يصله بلاهما، ولا عرض في المجاملة الفوريّة', async () => {
   // v-owner-claude-all: المالك بلا اختيار صار Opus 5.5 — Haiku 4.5 للمالك اختيارًا صريحًا (سؤالًا وتحيّةً وبجهد مختار يُتجاهَل)
-  const cases = [['omran', { model: 'claude-haiku-4-5', effort: 'max' }, Q], ['omran', { model: 'claude-haiku-4-5' }, [{ role: 'user', content: 'السلام' }]], ['omran', { model: 'claude-haiku-4-5' }, Q], ['maxuser', {}, [{ role: 'user', content: 'وش أفضل وقت للمشي؟' }]]];
+  const cases = [['omran', { model: 'claude-haiku-4-5', effort: 'max' }, Q], ['omran', { model: 'claude-haiku-4-5' }, [{ role: 'user', content: 'السلام' }]], ['omran', { model: 'claude-haiku-4-5' }, Q]];
   for (const [user, extra, messages] of cases) {
-    const r = await (user === 'maxuser' ? asMax : (f) => f())(() => run(user, Object.assign({ provider: 'claude', messages }, extra), (u, b, n) => (!isAnth(u) ? new Response('{}', { status: 404 })
-      : n === 1 ? thinkTool('SIG-H', user === 'omran' ? 'read_github' : 'web_search', user === 'omran' ? READ : { query: 'omran app' }, { id: 'tu1', model: 'claude-haiku-4-5' }) : text('تم', 'claude-haiku-4-5'))));
+    const r = await run(user, Object.assign({ provider: 'claude', messages }, extra), (u, b, n) => (!isAnth(u) ? new Response('{}', { status: 404 })
+      : n === 1 ? thinkTool('SIG-H', 'read_github', READ, { id: 'tu1', model: 'claude-haiku-4-5' }) : text('تم', 'claude-haiku-4-5')));
     assert.ok(r.calls.length >= 1, user);
     for (const c of r.calls) {
       assert.equal(c.body.model, 'claude-haiku-4-5');
@@ -242,6 +248,37 @@ test('٩. Haiku 4.5 لا يصله adaptive ولا effort أبدًا (المال�
       assert.equal(c.body.output_config, undefined, user + ': لا effort');
     }
   }
+  /* v-plan-models: غير المالك كان يصل Haiku 4.5 في دردشة Max؛ الجدول الجديد لا يضعه في أيّ وظيفة لأيّ باقة — لا رأسًا ولا احتياطًا،
+     والمقاييس مفتوحة أو ممتلئة. */
+  const JOBS = { chat: ['وش أفضل وقت للمشي؟', false], code: ['اكتب كود بايثون يحسب المتوسّط', false], math: ['احسب معادلة x+1=2 وحلّها', false], image: ['شوف الصورة', true] };
+  for (const plan of Object.keys(tierLib.PLAN_ROUTING)) {
+    for (const [job, [said, img]] of Object.entries(JOBS)) {
+      for (const used of [{}, { premium: 999, gemini: 999, haiku: 999, sonnet: 999 }]) {
+        const pr = tierLib.planRoute({ tier: 'sub', plan }, 'claude', said, used, {}, img);
+        assert.equal(pr.job, job, plan + '/' + job);
+        for (const l of [pr].concat(pr.fallback)) assert.notEqual(l.model, 'claude-haiku-4-5', plan + '/' + job + ': لا Haiku 4.5 لغير المالك');
+      }
+    }
+  }
+  // دردشة Max (السؤال نفسه الذي كان على Haiku 4.5) صارت GPT-6 Sol — عبر الوسيط بلا OPENAI_API_KEY — بلا تكيّفيّ ولا جهد
+  const sol = await asMax(() => run('maxuser', { provider: 'claude', messages: [{ role: 'user', content: 'وش أفضل وقت للمشي؟' }] }, (u) => (!isOR(u) ? new Response('{}', { status: 404 }) : text('الفجر', 'openai/gpt-6-sol'))));
+  assert.ok(sol.calls.length >= 1 && sol.calls.every((c) => isOR(c.url) && c.body.model === 'openai/gpt-6-sol'), JSON.stringify(sol.calls.map((c) => c.url + ' ' + c.body.model)));
+  for (const c of sol.calls) {
+    assert.ok(!(c.body.thinking && c.body.thinking.type === 'adaptive'), 'maxuser: لا adaptive');
+    assert.equal(c.body.output_config, undefined, 'maxuser: لا effort');
+  }
+  assert.equal(sol.text, 'الفجر');
+  // Haiku الذي يصله غير المالك الآن: Haiku 5.5 المباشر في كود Plus — يقبل الجهد للمالك، لكنّ غير المالك بلا thinking ولا effort في الجولتين
+  const h55 = await asPlan('basic', () => run('plususer', { provider: 'claude', messages: [{ role: 'user', content: 'اكتب كود بايثون يحسب المتوسّط، وابحث عن تطبيق عمران' }] }, (u, b, n) => (!isAnth(u) ? new Response('{}', { status: 404 })
+    : n === 1 ? thinkTool('SIG-H5', 'web_search', { query: 'omran app' }, { id: 'tu1', model: 'claude-haiku-5-5' }) : text('تم', 'claude-haiku-5-5'))));
+  assert.equal(h55.calls.length, 2, 'جولة الأداة ثمّ الجواب');
+  for (const c of h55.calls) {
+    assert.ok(isAnth(c.url) && c.body.model === 'claude-haiku-5-5', c.url + ' ' + c.body.model);
+    assert.equal(c.body.thinking, undefined, 'plususer: لا thinking');
+    assert.equal(c.body.output_config, undefined, 'plususer: لا effort');
+  }
+  assert.deepEqual(thinkBlocks(h55.calls[1].body), [], 'غير المالك: لا كتلة تفكير معادة');
+  assert.equal(h55.text, 'تم');
   const q = await run('omran', { provider: 'claude', model: 'claude-opus-5-5', messages: [{ role: 'user', content: 'السلام' }] }, () => text('وعليكم السلام'));
   assert.equal(q.calls[0].body.thinking, undefined, 'المجاملة الفوريّة (v-owner-auto) بلا عرض');
   assert.deepEqual(q.calls[0].body.output_config, { effort: 'low' });
@@ -318,4 +355,103 @@ test('١٣. 400 عن حقول الجهد/التفكير بلا عرض (المج�
   assert.equal(await OL.think400(raw, guest, convo, async () => { again++; return null; }), raw, 'غير المالك: الاستجابة نفسها');
   assert.equal(again, 1); assert.equal(OL.hasThink(convo), true);
   assert.equal(OL.thinkOut(guest, { type: 'thinking', thinking: '', signature: 'S' }), null, 'غير المالك: لا إعادة');
+});
+
+test('١٤. كلام المزوّد مع نفسه للمالك على كل مزوّد وسيط غير كلود: تكيّفيّ بلا display، والملخّص في think.s، والتحيّة بلاه', async () => {
+  for (const prov of ['openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'kimi']) {
+    const r = await run('omran', { provider: prov, messages: Q }, (u, b, n) => (!isOR(u) ? new Response('{}', { status: 404 })
+      : n === 1 ? thinkTool('S', 'read_github', READ, { id: 'tu1', model: b.model, summary: 'أراجع المسألة' }) : text('تم', b.model)));
+    assert.ok(r.calls.length >= 1 && r.calls.every((c) => isOR(c.url) && c.body.thinking && c.body.thinking.type === 'adaptive' && !c.body.thinking.display), prov + ' ' + JSON.stringify(r.calls[0] && r.calls[0].body.thinking));
+    assert.ok(r.events.some((e) => e.think && e.think.s.includes('أراجع المسألة')), prov);
+    assert.equal(r.text, 'تم');
+  }
+  const grok = await run('omran', { provider: 'openrouter', model: 'x-ai/grok-4.6', messages: Q }, (u, b, n) => (!isOR(u) ? new Response('{}', { status: 404 })
+    : n === 1 ? thinkTool('S', 'read_github', READ, { id: 'tu1', model: 'x-ai/grok-4.6', summary: 'أراجع المسألة' }) : text('تم', 'x-ai/grok-4.6')));
+  assert.ok(grok.calls.every((c) => c.body.model === 'x-ai/grok-4.6' && c.body.thinking.type === 'adaptive' && !c.body.thinking.display));
+  const hi = await run('omran', { provider: 'deepseek', messages: [{ role: 'user', content: 'السلام' }] }, (u) => (!isOR(u) ? new Response('{}', { status: 404 }) : text('وعليكم')));
+  assert.deepEqual(hi.calls[0].body.thinking, { type: 'disabled' }, 'التحيّة فوريّة');
+  assert.ok(!hi.events.some((e) => e.think));
+  const coHi = await run('omran', { provider: 'cohere', messages: [{ role: 'user', content: 'السلام' }] }, (u) => (!isOR(u) ? new Response('{}', { status: 404 }) : text('وعليكم')));
+  assert.equal(coHi.calls[0].body.thinking, undefined, 'Cohere في التحيّة بلا حقل إطفاء ولا تكيّفيّ');
+  assert.equal(coHi.calls[0].body.reasoning, undefined);
+});
+
+test('١٥. وسيط يرفض thinking التكيّفيّ ← إعادة واحدة بلا الحقل والجواب يصل، بلا سطر إطفاء العرض', async () => {
+  const r = await run('omran', { provider: 'mistral', messages: Q }, (u, b) => {
+    if (!isOR(u)) return new Response('{}', { status: 404 });
+    if (b.thinking) return err(400, 'thinking is not supported for this model');
+    return text('تم');
+  });
+  assert.equal(r.calls.length, 2);
+  assert.equal(r.calls[0].body.thinking.type, 'adaptive');
+  assert.equal(r.calls[1].body.thinking, undefined);
+  assert.equal(r.text, 'تم');
+  assert.ok(!r.events.some((e) => /ملخّص التفكير غير متاح/.test(e.status || '')));
+});
+
+/* v-talk-400 (لقطة المالك ١٣ أكتوبر: «افحص انماط الصور» ← «⚠️ ما قدرت أردّ الحين — خطأ 400»، «كل مره تطلع في المزودين تتكرر كثير جدا»):
+   الوسيط يترجم thinking التكيّفيّ إلى reasoning المزوّد، فرفضه يصل بنصّ المزوّد («reasoning…» أو «Provider returned error») بلا كلمة
+   thinking — والإعادة بلا الحقل كانت مشروطة بالكلمة، فيصل المالك 400. الحقل إضافتنا نحن: أيّ 400 عليه = إعادة واحدة بلاه، والموديل
+   الرافض لا يُرسل له الحقل ثانيةً (فلا يدفع كلّ دور طلبًا فاشلًا). 400 الثاني بعده يصل بسببه كما كان. */
+test('١٦. وسيط يرفض الحقل بنصّ بلا كلمة thinking ← إعادة واحدة بلاه والجواب يصل، والدور التالي بلا الحقل من البداية', async () => {
+  for (const why of ['Provider returned error', 'reasoning is not supported for this model', 'Unrecognized request argument supplied: reasoning_effort']) {
+    OL.__resetTalk();
+    let n = 0;
+    const r = await run('omran', { provider: 'deepseek', messages: Q }, (u, b) => {
+      if (!isOR(u)) return new Response('{}', { status: 404 });
+      n++;
+      if (b.thinking) return err(400, why);
+      return text('تم');
+    });
+    assert.equal(r.text, 'تم', why);
+    assert.equal(r.calls.length, 2, why);
+    assert.equal(r.calls[0].body.thinking.type, 'adaptive');
+    assert.equal(r.calls[1].body.thinking, undefined);
+    const next = await run('omran', { provider: 'deepseek', messages: Q }, (u, b) => (!isOR(u) ? new Response('{}', { status: 404 }) : b.thinking ? err(400, why) : text('تم ثانيةً')));
+    assert.equal(next.calls.length, 1, 'الدور التالي طلب واحد: ' + why);
+    assert.equal(next.calls[0].body.thinking, undefined);
+    assert.equal(next.text, 'تم ثانيةً');
+  }
+  OL.__resetTalk();
+  const other = await run('omran', { provider: 'mistral', messages: Q }, (u, b) => (!isOR(u) ? new Response('{}', { status: 404 }) : err(400, 'prompt is too long')));
+  assert.equal(other.calls.length, 1, 'v-owner-cap-live: رفض النافذة ليس عن حقل التفكير — بلا إعادة مهدرة ولا إطفاء تفكير الموديل');
+  assert.ok(other.events.some((e) => e.ownerStop && /خطأ 400: prompt is too long/.test(e.error || '')), '400 لا علاقة له بالحقل يصل بسببه (v-why)');
+  OL.__resetTalk();
+});
+
+/* v-or-display (فحص سجلّ العمل، المالك ١٤ أكتوبر «صلّح الثلاثة الباقية»): كلود عبر الوسيط كان بلا display فتصل كتل تفكيره فارغة ولا
+   «↳ 💭» أبدًا. الآن العرض الملخّص على الوسيط بشرط المباشر نفسه؛ ورفضه بأيّ نصّ = إعادة واحدة بلاه، والدور التالي بلاه من البداية. */
+test('١٧. كلود عبر الوسيط: العرض الملخّص يُطلب وملخّصه يصل «↳ 💭»؛ ورفضه بنصّ المزوّد = إعادة واحدة بلاه والدور التالي بلاه', async () => {
+  const key = process.env.ANTHROPIC_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
+  try {
+    OL.__resetTalk();
+    const r = await run('omran', { provider: 'claude', model: 'claude-opus-5-5', messages: Q }, (u, b, n) => (!isOR(u) ? new Response('{}', { status: 404 })
+      : n === 1 ? thinkTool('SIG-OR', 'read_github', READ, { model: 'anthropic/claude-opus-5.5', summary: 'أقرأ foo أوّلًا\nثمّ أقارن' }) : text('وجدت الخلل.', 'anthropic/claude-opus-5.5')));
+    assert.ok(r.calls.length >= 2 && r.calls.every((c) => isOR(c.url) && c.body.model === 'anthropic/claude-opus-5.5'));
+    assert.ok(r.calls.every((c) => c.body.thinking && c.body.thinking.display === 'summarized'), JSON.stringify(r.calls.map((c) => c.body.thinking)));
+    const talk = r.events.find((e) => e.think && e.think.s);
+    assert.ok(talk && /^↳ 💭 أقرأ foo أوّلًا/.test(talk.status) && talk.think.s.includes('ثمّ أقارن'), 'الملخّص يصل سجلّ العمل');
+    assert.deepEqual(thinkBlocks(r.calls[1].body), [], 'توقيعات الوسيط لا تُعاد');
+
+    OL.__resetTalk();
+    const no = await run('omran', { provider: 'claude', model: 'claude-opus-5-5', messages: Q }, (u, b) => (!isOR(u) ? new Response('{}', { status: 404 })
+      : (b.thinking && b.thinking.display) ? err(400, 'Provider returned error') : text('تم', 'anthropic/claude-opus-5.5')));
+    assert.equal(no.text, 'تم');
+    assert.equal(no.calls.length, 2, 'إعادة واحدة');
+    assert.equal(no.calls[1].body.thinking, undefined, 'الإعادة بلا عرض');
+    assert.ok(logged.includes('chat/thinking-or-display'));
+    const next = await run('omran', { provider: 'claude', model: 'claude-opus-5-5', messages: Q }, (u, b) => (!isOR(u) ? new Response('{}', { status: 404 })
+      : (b.thinking && b.thinking.display) ? err(400, 'Provider returned error') : text('تم ثانيةً', 'anthropic/claude-opus-5.5')));
+    assert.equal(next.calls.length, 1, 'الدور التالي طلب واحد بلا عرض');
+    assert.equal(next.text, 'تم ثانيةً');
+
+    OL.__resetTalk();
+    const other = await run('omran', { provider: 'claude', model: 'claude-opus-5-5', messages: Q }, (u) => (!isOR(u) ? new Response('{}', { status: 404 }) : err(400, 'prompt is too long')));
+    assert.ok(!logged.includes('chat/thinking-or-display'), '400 النافذة/السقف/الرصيد لمعالجه كما كان — لا يُحسب رفضًا للعرض');
+    assert.ok(other.calls[0].body.thinking && other.calls[0].body.thinking.display === 'summarized', 'والعرض لا يُطفأ بسببه');
+  } finally {
+    process.env.ANTHROPIC_API_KEY = key;
+    OL.__resetTalk();
+  }
 });

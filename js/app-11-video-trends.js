@@ -65,7 +65,10 @@
   function renderGrid(){
     if(!grid) return;
     grid.innerHTML = '';
-    D.trends.forEach(function(t){ grid.appendChild(card(t)); });
+    D.trends.forEach(function(t){
+      if(typeof omranHwHidden === 'function' && omranHwHidden('trend', t.key)) return; // v-hw-resubmit-2: ترندات بأسماء علامات تُخفى في هواوي
+      grid.appendChild(card(t));
+    });
     $('vtTitle').textContent = ui('title');
     $('vtSub').textContent = ui('sub');
   }
@@ -94,7 +97,8 @@
       s.appendChild(im); s.appendChild(tag(i)); s.appendChild(x);
       strip.appendChild(s);
     });
-    if(photos.length >= MAX_PEOPLE) return;
+    var cap = t.maxPeople || MAX_PEOPLE; /* v-trends-oct-12: ترند بصورة واحدة («سامحوني»، «من ينقذك؟») */
+    if(photos.length >= cap) return;
     var add = slot();
     add.style.cssText += 'border:1px dashed rgba(255,255,255,.28);background:rgba(255,255,255,.03);cursor:pointer;display:flex;align-items:center;justify-content:center;';
     /* صورة شخصيّة (ظلّ رأس وكتفين) + ＋ صغيرة — يُفهم من المربّع أنّه مكان إنسان لا ملفّ */
@@ -106,9 +110,9 @@
     var plus = document.createElement('div'); plus.textContent = '＋'; plus.style.cssText = 'font-size:15px;line-height:1;color:var(--omGold,#d4af37);margin-top:-2px;';
     ghost.appendChild(plus);
     add.appendChild(ghost); add.appendChild(tag(photos.length));
-    var fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = true; fi.style.display = 'none';
+    var fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = cap > 1; fi.style.display = 'none';
     fi.onchange = function(){
-      var files = Array.prototype.slice.call(fi.files || []).slice(0, MAX_PEOPLE - photos.length);
+      var files = Array.prototype.slice.call(fi.files || []).slice(0, cap - photos.length);
       var left = files.length; if(!left) return;
       files.forEach(function(f){
         shrink(f, function(dataUrl){
@@ -119,6 +123,106 @@
     };
     add.onclick = function(){ if(!busy) fi.click(); };
     strip.appendChild(add); strip.appendChild(fi);
+  }
+
+  /* v-trend-scenes (المالك: «كتبت مشهدين عن البحر وطلع الفيديو عن المدرسة»): مشاهد الترند (بيكسار: صباح، مدرسة،
+     مساء) كانت مخفيّة وثابتة على الخادم، وما يُكتب في «اكتب اللي تبيه» يُلحق بعدها فقط. الآن تظهر في خانات تتعدّل
+     بنصّها الافتراضيّ بلغة المستخدم؛ المكتوب يحلّ محلّ المشهد، والخانة الفاضية تنشال، و«المشهد الأول: … المشهد
+     الثاني: …» في «اكتب اللي تبيه» تنقسم إلى الخانات وعدد المقاطع بعددها. الخانة الباقية على نصّها الافتراضيّ تُرسَل
+     برقمها فيبقى أمرها الإنجليزيّ على الخادم كما كان، وبلا أيّ تعديل لا تُرسَل المشاهد أصلًا (السلوك القديم حرفيًّا).
+     splitScenes نسخة حرفيّة من api/_lib/video-trends.js — اختبار trend-scenes يطابقهما. */
+  function splitScenes(text){
+    var s = String(text == null ? '' : text).slice(0, 1000); /* الخانة ٤٠٠ — والحدّ يمنع كلفة التعابير على نصّ ضخم من خارج الواجهة */
+    var MAX = 5;
+    var SP = '[ \\t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*';
+    var NUM = '[0-9\u0660-\u0669\u06F0-\u06F9\u0966-\u096F\u09E6-\u09EF]+';
+    var ORD = '(?:ال)?(?:[أاإ]و[\u064B-\u0652]*لى?|ثان[يى]ة?|ثالثة?|رابعة?|خامسة?|سادسة?|سابعة?|ثامنة?|تاسعة?|عاشرة?|[أا]خيرة?)[\u064B-\u0652]*';
+    var MARK = new RegExp('[وف]?(?:المشهد|مشهد|اللقطة|لقطة|المقطع|مقطع)' + SP + '(?:رقم' + SP + ')?(\\()?' + SP + '(?:(?:ال\u0640*)?' + NUM + '|' + ORD + ')'
+      + '|(?:scene|scène|escena|sahne|сцена|eksena|adegan|दृश्य|منظر|দৃশ্য|രംഗം)' + SP + '(?:#|no\\.?' + SP + ')?(\\()?' + SP + '(?:' + NUM + '|one|two|three|four|five|six|seven|eight|nine|ten)'
+      + '|(?:first|second|third|fourth|fifth|last)' + SP + 'scene'
+      + '|第' + SP + '[0-9一二三四五六七八九十]+' + SP + '幕|场景' + SP + '[0-9一二三四五六七八九十]+', 'gi');
+    var WORD = /[A-Za-z0-9_\u00C0-\u024F\u0400-\u04FF\u0621-\u063A\u0641-\u065F\u0660-\u0669\u0670-\u06D3\u06FA-\u06FF\u0900-\u097F\u0980-\u09FF\u0D00-\u0D7F]/;
+    var cands = [], m;
+    while((m = MARK.exec(s))){
+      var at = m.index, end = at + m[0].length, cjk = /^[第场]/.test(m[0]);
+      if(!cjk && at > 0 && WORD.test(s.charAt(at - 1))) continue; /* «بالمشهد» و«obscene 1» ليستا علامة */
+      var close = /^[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*\)/.exec(s.slice(end));
+      if(close) end += close[0].length;
+      var sep = /^[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]*(?:[:：;؛]|[\-–—.](?!\S)|\r?\n)/.exec(s.slice(end));
+      var strong = !!sep || (!!close && !(m[1] || m[2])); /* «المشهد ١)» فاصل؛ «المشهد (١)» قوس فقط */
+      if(!strong && !cjk && end < s.length && !/[\s,،\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/.test(s.charAt(end))) continue; /* «one-shot» */
+      cands.push({ at: at, body: end + (sep ? sep[0].length : 0), strong: strong });
+    }
+    if(!cands.length) return { scenes: [], rest: s.trim() };
+    var LISTNUM = /(?:(?:^|\s)[0-9\u0660-\u0669\u06F0-\u06F9]{1,2}[ \t]*[\-–—.)]|(?:^|\n)[ \t]*[0-9\u0660-\u0669\u06F0-\u06F9]{1,2})[ \t]*$/;
+    var tidy = function(x){
+      var y = x.replace(LISTNUM, '').replace(/^[\s,،؛;:.\-–—\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+/, '');
+      for(var r = 0; r < 3; r++){
+        y = y.replace(/[\s,،؛;\-–—\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+$/, '').replace(/(^|[\s,،])(?:و?ثم[\u064B-\u0652]*|و?بعدين|و?بعدها|and then|and|then|و)$/i, '');
+      }
+      return y;
+    };
+    /* بلا فاصل («المشهد الأول سالم… المشهد الثاني…») تُعدّ العلامات فقط إن بدأ بها النصّ (أو بعد نهاية جملة):
+       «غيّر المشهد الثاني والمشهد الثالث…» و«زي المشهد الأول بس بالليل» إشارة إلى المشاهد لا قائمة مشاهد */
+    var head = s.slice(0, cands[0].at).replace(LISTNUM, '').replace(/[ \t\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]+$/, '');
+    var weakOK = !head.trim() || /[.!?؟:：;؛\n]$/.test(head);
+    var marks = (weakOK && cands.length > 1) ? cands : cands.filter(function(c){ return c.strong; });
+    if(!marks.length) return { scenes: [], rest: s.trim() };
+    var scenes = [];
+    for(var k = 0; k < marks.length; k++){
+      var body = tidy(s.slice(marks[k].body, k + 1 < marks.length ? marks[k + 1].at : s.length));
+      if(body) scenes.push(body);
+    }
+    if(scenes.length > MAX) scenes = scenes.slice(0, MAX - 1).concat([scenes.slice(MAX - 1).join(' ')]);
+    var rest = tidy(s.slice(0, marks[0].at));
+    return { scenes: scenes, rest: /^[\s\uD800-\uDFFF\u2600-\u27BF\uFE0F\u200D]*$/.test(rest) ? '' : rest }; /* «🌊» وحدها ليست توجيهًا */
+  }
+  var MAX_SCENES = 5;
+  function sceneTrend(t){ return !!(t && t.scenes > 1 && t.sceneText && t.sceneText.length); }
+  function sceneBoxes(){ var w = $('vtScenes'); return w ? Array.prototype.slice.call(w.querySelectorAll('textarea')) : []; }
+  function readScenes(){
+    return sceneBoxes().map(function(ta){
+      var v = ta.value.trim(), d = ta.getAttribute('data-def');
+      return { text: v, def: (d !== null && v === String(ta.getAttribute('data-orig') || '').trim()) ? parseInt(d, 10) : null };
+    }).filter(function(x){ return x.text.replace(/["`\\<>\s]/g, ''); }); /* ما يمحوه تنظيف الخادم = خانة فاضية، فيتّفق العدّان */
+  }
+  function goLabel(t){
+    var go = $('vtGo'); if(!go) return;
+    var n = sceneTrend(t) ? (readScenes().length || t.scenes) : (t.scenes || 1);
+    go.textContent = ui('make') + (n > 1 ? ' (' + n + ')' : '');
+  }
+  function setScenes(t, list){
+    var w = $('vtScenes'); if(!w) return;
+    var box = w.querySelector('[data-boxes]'); box.innerHTML = '';
+    list.slice(0, MAX_SCENES).forEach(function(it, i){
+      var lab = document.createElement('label'); lab.style.cssText = 'display:block;font-size:12px;color:#9a9a9e;margin:10px 0 4px;';
+      lab.textContent = ui('sceneN').replace('{i}', String(i + 1));
+      var ta = document.createElement('textarea'); ta.rows = 2; ta.maxLength = 400; ta.id = 'vtScene' + (i + 1); lab.htmlFor = ta.id;
+      ta.value = String(it.text || '').slice(0, 400);
+      if(it.def != null){ ta.setAttribute('data-def', String(it.def)); ta.setAttribute('data-orig', ta.value); }
+      ta.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:inherit;font-family:inherit;resize:vertical;';
+      ta.oninput = function(){ fitBox(ta); goLabel(t); };
+      box.appendChild(lab); box.appendChild(ta); fitBox(ta);
+    });
+    goLabel(t);
+  }
+  /* الخانة بطول نصّها (سطران على الأقلّ): المشهد الافتراضيّ ثلاثة أسطر في الجوّال وكان يُقصّ داخل خانة بسطرين */
+  function fitBox(ta){
+    try{
+      ta.style.height = 'auto';
+      var cs = getComputedStyle(ta);
+      var adj = cs.boxSizing === 'border-box' ? (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0) : -((parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0));
+      if(ta.scrollHeight) ta.style.height = (ta.scrollHeight + adj) + 'px';
+    }catch(e){ /* guard-ok — بلا قياس: ارتفاع الخانة الافتراضيّ */ }
+  }
+  function defaultScenes(t){ return t.sceneText.map(function(x, i){ return { text: noEmoji(T(x)), def: i }; }); }
+  /* «المشهد الأول: …» في «اكتب اللي تبيه» ← الخانات، وما قبل أوّل علامة يبقى توجيهًا عامًّا لكلّ المشاهد */
+  function pullScenes(t){
+    var x = $('vtExtra'); if(!sceneTrend(t) || !x) return false;
+    var sp = splitScenes(x.value); if(!sp.scenes.length) return false;
+    setScenes(t, sp.scenes.map(function(v){ return { text: v, def: null }; }));
+    x.value = sp.rest;
+    return true;
   }
 
   /* مساعد الكتابة داخل نموذج الترند (المالك: «في الترندات المحادثة غير موجودة»): نفس إجراء video-write، ويضع الناتج في خانتَي الترند */
@@ -141,7 +245,7 @@
       var q = inp.value.trim(); if(!q || busyA) return; busyA = true; btn.disabled = true; inp.value = '';
       bubble(q, true); var wait = bubble(W('vwBusy'), false);
       var kind = /إعلان|اعلان|\bad\b|advert/i.test(q) ? 'ad' : /حوار|dialog/i.test(q) ? 'dialogue' : 'story';
-      fetch('/api/tools?action=video-write', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ request:q, kind:kind, duration:'8', token:tokenOf(), characters:[] }) })
+      fetch('/api/tools?action=video-write', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ request:q, kind:kind, duration:'8', scenes: sceneTrend(t) ? (readScenes().length || t.scenes) : undefined, token:tokenOf(), characters:[] }) })
         .then(function(r){ return r.json(); }).then(function(r){
           wait.remove();
           var x = r && r.result;
@@ -150,8 +254,13 @@
           var all = [x.scene].concat((x.lines || []).map(function(l){ return (l.who ? l.who + ': ' : '') + l.text; }), x.narration ? [x.narration] : []).filter(Boolean).join('\n');
           var b = bubble(all, false);
           var main = $('vtText'), extra = $('vtExtra');
-          if(main) b.appendChild(chip(W('vwToScene'), function(){ put(main, t.kind === 'sentence' ? (speech || x.scene) : (x.scene || speech)); }));
-          if(extra) b.appendChild(chip(W('vcToExtra'), function(){ put(extra, all); }));
+          if(sceneTrend(t)) b.appendChild(chip(W('vwToScene'), function(){
+            var arr = (x.scenes && x.scenes.length) ? x.scenes : splitScenes(x.scene || '').scenes;
+            if(!arr.length && x.scene) arr = [x.scene];
+            if(arr.length) setScenes(t, arr.map(function(v){ return { text: v, def: null }; }));
+          }));
+          else if(main) b.appendChild(chip(W('vwToScene'), function(){ put(main, t.kind === 'sentence' ? (speech || x.scene) : (x.scene || speech)); }));
+          if(extra) b.appendChild(chip(W('vcToExtra'), function(){ put(extra, all); pullScenes(t); }));
         }).catch(function(){ wait.remove(); bubble(W('vwErr'), false); })
         .then(function(){ busyA = false; btn.disabled = false; });
     };
@@ -172,7 +281,7 @@
     head.appendChild(im); head.appendChild(ht); panel.appendChild(head);
     if(t.photo !== 'none'){
       var plab = document.createElement('div'); plab.style.cssText = 'font-size:12px;color:#9a9a9e;margin:2px 0 7px;line-height:1.6;';
-      plab.textContent = ui('people') + (t.photo === 'opt' ? '' : ' *');
+      plab.textContent = (t.maxPeople === 1 ? ui('photo') : ui('people')) + (t.photo === 'opt' ? '' : ' *');
       var strip = document.createElement('div'); strip.id = 'vtPeople'; strip.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
       panel.appendChild(plab); panel.appendChild(strip);
       renderPeople(strip, t);
@@ -185,18 +294,25 @@
       inp.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:inherit;font-family:inherit;';
       panel.appendChild(lab); panel.appendChild(inp);
     }
+    if(sceneTrend(t)){
+      var sw = document.createElement('div'); sw.id = 'vtScenes';
+      var boxes = document.createElement('div'); boxes.setAttribute('data-boxes', '');
+      var sh = document.createElement('div'); sh.style.cssText = 'font-size:11.5px;color:#9a9a9e;margin:8px 0 0;line-height:1.7;'; sh.textContent = ui('scenesHint');
+      sw.appendChild(boxes); sw.appendChild(sh); panel.appendChild(sw);
+    }
     /* v-trend-extra (المالك: «ليش ما أقدر أكتب اللي أريده؟»): ٤٦ من ٥٥ ترندًا كانت بلا خانة كتابة —
        الآن لكلّ ترند «اكتب اللي تبيه» اختياريّة تُدمج في الأمر توجيهًا يعدّل الترند. */
     var xlab = document.createElement('label'); xlab.style.cssText = 'display:block;font-size:12px;color:#9a9a9e;margin:10px 0 4px;';
     xlab.textContent = ui('extra');
     var xinp = document.createElement('textarea'); xinp.rows = 2; xinp.id = 'vtExtra'; xinp.maxLength = 400; xinp.placeholder = ui('extraPh');
     xinp.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:inherit;font-family:inherit;resize:vertical;';
+    xinp.onchange = function(){ pullScenes(t); };
     panel.appendChild(xlab); panel.appendChild(xinp);
     panel.appendChild(assistant(t));
     var go = document.createElement('button'); go.type = 'button'; go.className = 'btn primary'; go.id = 'vtGo'; go.style.cssText = 'width:100%;margin-top:12px;font-weight:800;';
-    go.textContent = ui('make') + (t.scenes > 1 ? ' (' + t.scenes + ')' : '');
     go.onclick = function(){ make(t); };
     panel.appendChild(go);
+    if(sceneTrend(t)) setScenes(t, defaultScenes(t)); else goLabel(t);
     var st = document.createElement('div'); st.id = 'vtStatus'; st.style.cssText = 'display:none;margin-top:10px;font-size:13px;line-height:1.7;';
     /* v-scene-kinds: مشهد التوليد يُركَّب تحت سطر الحالة — حيث تظهر النتيجة — فالنتيجة بعرضه (٧٦٠ موسَّطة) */
     var out = document.createElement('div'); out.id = 'vtOut'; out.style.cssText = 'margin-top:10px;max-width:760px;margin-inline:auto;';
@@ -205,13 +321,30 @@
   }
 
   function status(txt){ var s = $('vtStatus'); if(!s) return; s.textContent = txt || ''; s.style.display = txt ? 'block' : 'none'; }
+  /* v-trend-scene-live (المالك بصورة مشاهد الترندات: «هذيل ما يشتغلون»): نصوص هذه اللوحة تمرّ بـnoEmoji (ui) فيُكتب «يصنع الفيديو…»
+     بلا ⏳ — ومشهد التوليد (app-34-gen-wait) كان يعرف «مشغول» بذلك الرمز، فلم يظهر قطّ بالمسار الحقيقيّ. الانشغال يُعلَن بسمة صريحة
+     على سطر الحالة تُضبط قبل كتابة النصّ (كتابته هي التي توقظ الرصد) وتُرفع قبل نصّ النهاية أو الخطأ. */
+  function setBusyFlag(on){ var s = $('vtStatus'); if(!s) return; if(on) s.setAttribute('data-genw-busy', '1'); else s.removeAttribute('data-genw-busy'); }
   function post(url, payload){
     return window.postWithConfirm ? window.postWithConfirm(url, payload) : fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
   }
   var sleep = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
+  /* v-trend-one-confirm (المالك ٢٤ أكتوبر «سويه»): قصّة بعدّة مشاهد كانت تسأل «تخصم ١٧٥» عند كلّ مشهد بلا المجموع، وإلغاء الثاني يُضيع
+     الأوّل المدفوع. السؤال مرّة واحدة بالمجموع قبل الأوّل (veo-price: لا خصم ولا قفل ولا مزوّد)، ثمّ المشاهد كلّها confirmed — والخصم نفسه
+     لكلّ مشهد عند إنشائه كما كان. */
+  var preConfirmed = false;
+  async function priceOnce(t, n, token){
+    var r = await post('/api/video?action=veo-price', { trend: t.key, scenes: n, params: {}, token: token });
+    var j = null; try{ j = await r.json(); }catch(e){ j = null; }
+    if(r.status === 428) throw new Error('cancelled');
+    if(r.status === 401 || (j && j.error === 'auth_required')) throw new Error(ui('login'));
+    if(!r.ok || !j || j.priceOk !== true) throw Object.assign(new Error((j && j.error) || ('HTTP ' + r.status)), { code: (j && j.error) || '', retryAfter: (j && j.retryAfter) || 0 });
+    preConfirmed = true;
+  }
 
   async function oneClip(t, params, token){
     var payload = { trend: t.key, params: params, ratio: t.ratio, token: token };
+    if(preConfirmed) payload.confirmed = true; // v-trend-one-confirm: وافق على مجموع القصّة مرّة واحدة
     /* v-trend-people: الأولى في imageBase64 كما كانت (توافق)، وما زاد عنها في imagesBase64 للخادم. */
     if(photos.length){
       var raw = photos.map(function(p){ return { b64: p.dataUrl.slice(p.dataUrl.indexOf(',') + 1), mime: p.mime }; });
@@ -232,7 +365,8 @@
       var sr = await fetch(t.engine === 'veo' ? ('/api/video?action=veo-status&op=' + encodeURIComponent(j.op || '')) : ('/api/video-status?id=' + encodeURIComponent(j.id || '')));
       var sj = null; try{ sj = await sr.json(); }catch(e){ sj = null; }
       if(sj && sj.status === 'SUCCEEDED') return Array.isArray(sj.output) ? sj.output[0] : sj.output;
-      if(sj && sj.status === 'FAILED') throw new Error(sj.failure || sj.error || 'failed');
+      if(sj && sj.status === 'FAILED') throw Object.assign(new Error(sj.failure || sj.error || 'failed'), { failureCode: sj.failureCode || '' }); // v-trend-codes: سبب الرفض رمزًا لغير العربيّة
+      if(sj && sj.error === 'unavailable') throw Object.assign(new Error('unavailable'), { code: 'unavailable' }); // v-credit-out: سُوّيت التذكرة ورُدّت النقاط — لا ٤٥ استطلاعًا
     }
     throw new Error('timeout');
   }
@@ -243,9 +377,24 @@
       var m = Math.max(1, Math.ceil((Number(e.retryAfter) || 180) / 60));
       return ui('cooldown').replace('{m}', String(m));
     }
+    /* v-trend-points (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٢٠: «تعذّر: points_insufficient»): رمزا النقاط والحدّ بنصّي الباقات القائمين (١٤ لغة)
+       — الصياغة وحدها، لا تغيير في الخصم ولا ترتيبه */
+    if(e && e.code === 'points_insufficient' && W('plansWhyPoints')) return W('plansWhyPoints');
+    if(e && e.code === 'daily_limit_reached' && W('plansWhyLimit')) return W('plansWhyLimit');
+    if(e && e.code === 'unavailable' && W('svcPaused')) return W('svcPaused');
+    if(e && e.code === 'video_subscribers' && W('plansWhyVideoSubs')) return W('plansWhyVideoSubs'); // v-video-subs: الفيديو للمشتركين (والباقات تُفتح من app-33)
+    if(e && (e.code === 'video_busy' || e.code === 'video_rejected') && W(e.code === 'video_busy' ? 'vidBusy' : 'vidRejected')) return W(e.code === 'video_busy' ? 'vidBusy' : 'vidRejected'); // v-vid-codes // v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الفيديو نفد — «الخدمة متوقّفة مؤقّتًا»
     /* v-trend-413: «HTTP 413» رمز حافّة لا رسالة — الصور أثقل من أن تُرسَل */
     if(/\b413\b/.test(String((e && e.message) || ''))) return ui('tooBig');
-    return ui('fail') + ': ' + String((e && e.message) || e).slice(0, 160);
+    var msg = String((e && e.message) || e);
+    /* v-trend-codes (فحص الترندات ٢٤ أكتوبر: الواجهة الإنجليزيّة عرضت «Failed: الرقابة رفضت المحتوى…»): نصّ الخادم العربيّ (سبب رفض الفيديو،
+       وأعطاب الإنشاء) لا يُعرض في اللغات الـ١٣ — سبب الرفض بنصّه القائم (vidRejected للرقابة، vidBusy لغيرها، ١٤ لغة) وإلّا «تعذّر». العربيّة كما كانت. */
+    if(lg() !== 'ar' && /[؀-ۿ]/.test(msg)){
+      var fc = e && e.failureCode;
+      return (fc === 'safety' && W('vidRejected')) || (fc === 'failed' && W('vidBusy')) || ui('fail');
+    }
+    if(/^[a-z][a-z0-9_]*$/.test(msg)) return ui('fail'); /* رمز خادم خامّ آخر («timeout»، «failed»…) لا يُعرض للمستخدم */
+    return ui('fail') + ': ' + msg.slice(0, 160);
   }
 
   /* v-video-seq-cooldown: ترند بأكثر من مشهد (قصّة بيكسار: ٣) كان يموت عند المشهد الثاني بـvideo_cooldown
@@ -273,51 +422,84 @@
     if(t.photo === 'req' && !photos.length){ status(ui('photoReq')); return; }
     var txt = ($('vtText') ? $('vtText').value.trim() : '');
     var params = { name: txt, text: txt };
+    pullScenes(t); /* v-trend-scenes: مشاهد مكتوبة في «اكتب اللي تبيه» ← الخانات قبل قراءتها */
     /* v-trend-extra + v-trend-backdrops: ما كتبه المستخدم، ورقم خلفيّة جديد لكلّ فيديو من هذا الترند */
     var extra = ($('vtExtra') ? $('vtExtra').value.trim() : '');
     if(extra) params.extra = extra;
+    /* v-trend-scenes: خانات معدّلة ← params.scenes وعدد المقاطع بعددها؛ بلا تعديل لا يُرسَل شيء (الأمر القديم حرفيًّا).
+       كلّ الخانات فاضية: «اكتب اللي تبيه» هو المشهد الوحيد (يُنقل لخانة ليُرى) — لا ترجع المشاهد الافتراضيّة بصمت؛
+       وبلا أيّ نصّ: تنبيه بلا توليد. */
+    var n = t.scenes || 1;
+    if(sceneTrend(t)){
+      var list = readScenes();
+      if(!list.length){
+        if(!extra){ status(ui('scenesNone')); return; }
+        setScenes(t, [{ text: extra, def: null }]); $('vtExtra').value = ''; delete params.extra;
+        list = readScenes();
+      }
+      var same = list.length === t.scenes && list.every(function(x, k){ return x.def === k; });
+      if(!same){ params.scenes = list.map(function(x){ return x.def != null ? x.def : x.text; }); n = list.length; }
+    }
     try{
       var bk = 'aiapp_trend_bg_' + t.key;
       params.bg = (parseInt(localStorage.getItem(bk) || '0', 10) || 0) + 1;
       localStorage.setItem(bk, String(params.bg));
     }catch(e){ params.bg = Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
+    /* v-audit-video (cli-video-4): «أعد المحاولة» كانت تمحو الفيديو المدفوع السابق قبل سؤال السعر — فإلغاء نافذة الخصم أو المهلة
+       أو نفاد النقاط يُضيّعه بلا تحميل ولا سجلّ. الناتج السابق يُحفظ ويعود مكانه ما لم يصل ناتج جديد. */
+    var outEl = $('vtOut'), prevOut = outEl ? Array.prototype.slice.call(outEl.childNodes) : [];
     busy = true; $('vtGo').disabled = true; $('vtOut').innerHTML = '';
+    setBusyFlag(true);
     status(ui('working'));
+    var urls = [];
     try{
-      var urls = [];
-      var n = t.scenes || 1;
+      if(n > 1 && t.engine === 'veo') await priceOnce(t, n, token);
       for(var i = 0; i < n; i++){
         if(n > 1) status(ui('scene').replace('{i}', i + 1).replace('{n}', n) + ' ' + ui('working'));
         urls.push(await clipInSequence(t, Object.assign({ sceneIndex: i }, params), token, i + 1, n));
       }
-      /* v-trend-dl-fix (بلاغ: تحميل الترند لا يعمل، ومشهد الدمج يظهر [object Blob]):
-         __omranConcatScenes يرجّع Blob لا رابطًا — يلزمه URL.createObjectURL قبل أي src/href.
-         ورابط خارجيّ خام (Runway/Veo) لا يُحمَّل بوسم download عبر أصل مختلف؛ يمرّ ببروكسي الخادم
-         (نفس ما يفعله app-11-video.js دائمًا)، والزرّ يعمل افتراضيًّا بلا اعتراض نقرة. */
-      var finalUrl = urls[0];
-      var finalIsBlob = false;
-      if(urls.length > 1 && window.__omranConcatScenes){
-        try{ finalUrl = URL.createObjectURL(await window.__omranConcatScenes(urls)); finalIsBlob = true; }catch(e){ finalUrl = null; finalIsBlob = false; }
-      }
-      var out = $('vtOut');
-      (finalUrl ? [finalUrl] : urls).forEach(function(u){
-        var isBlobUrl = finalUrl ? finalIsBlob : false;
-        var v = document.createElement('video'); v.src = u; v.controls = true; v.playsInline = true; v.style.cssText = 'width:100%;border-radius:12px;background:#000;margin-top:6px;';
-        out.appendChild(v);
-        var dl = document.createElement('a');
-        dl.href = isBlobUrl ? u : (window.__omranProxyVideoUrl ? window.__omranProxyVideoUrl(u) : u);
-        dl.download = 'omran-trend-' + t.key + '.mp4'; dl.className = 'btn'; dl.style.cssText = 'display:block;text-align:center;margin-top:6px;';
-        dl.textContent = ui('download');
-        out.appendChild(dl);
-      });
-      var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };
-      out.appendChild(again);
+      await show(t, urls);
+      setBusyFlag(false);
       status(ui('done'));
-      try{ window.__chatVideoResult = { url: finalUrl || urls[0] }; }catch(e){ /* guard-ok */ }
     }catch(e){
-      if(String(e && e.message) !== 'cancelled') status(errText(e));
+      setBusyFlag(false);
+      /* v-audit-video (cli-video-4): لا ناتج جديد — الناتج السابق يعود مكانه */
+      if(!urls.length && outEl && $('vtOut') === outEl && !outEl.childNodes.length) prevOut.forEach(function(nd){ outEl.appendChild(nd); });
+      /* v-trend-one-confirm: المشاهد التي اكتملت (ودُفعت) قبل العطب تُعرض ولا تضيع — مع سبب التوقّف وعدد ما اكتمل */
+      if(urls.length){
+        try{ await show(t, urls); }catch(e2){ /* guard-ok — العرض أفضل جهد، والسطر يقول ما حدث */ }
+        status((String(e && e.message) !== 'cancelled' ? errText(e) + ' ' : '') + ui('partial').replace('{k}', String(urls.length)).replace('{n}', String(n)));
+      }
+      else if(String(e && e.message) !== 'cancelled') status(errText(e));
       else status('');
-    }finally{ busy = false; if($('vtGo')) $('vtGo').disabled = false; }
+    }finally{ busy = false; setBusyFlag(false); preConfirmed = false; if($('vtGo')) $('vtGo').disabled = false; }
+  }
+
+  /* عرض النتيجة: المقاطع مدموجة في فيديو واحد (أو كلّ مقطع وحده إن تعذّر الدمج)، مع التحميل و«أعد المحاولة» */
+  async function show(t, urls){
+    /* v-trend-dl-fix (بلاغ: تحميل الترند لا يعمل، ومشهد الدمج يظهر [object Blob]):
+       __omranConcatScenes يرجّع Blob لا رابطًا — يلزمه URL.createObjectURL قبل أي src/href.
+       ورابط خارجيّ خام (Runway/Veo) لا يُحمَّل بوسم download عبر أصل مختلف؛ يمرّ ببروكسي الخادم
+       (نفس ما يفعله app-11-video.js دائمًا)، والزرّ يعمل افتراضيًّا بلا اعتراض نقرة. */
+    var finalUrl = urls[0];
+    var finalIsBlob = false;
+    if(urls.length > 1 && window.__omranConcatScenes){
+      try{ finalUrl = URL.createObjectURL(await window.__omranConcatScenes(urls)); finalIsBlob = true; }catch(e){ finalUrl = null; finalIsBlob = false; }
+    }
+    var out = $('vtOut');
+    (finalUrl ? [finalUrl] : urls).forEach(function(u){
+      var isBlobUrl = finalUrl ? finalIsBlob : false;
+      var v = document.createElement('video'); v.src = u; v.controls = true; v.playsInline = true; v.style.cssText = 'width:100%;border-radius:12px;background:#000;margin-top:6px;';
+      out.appendChild(v);
+      var dl = document.createElement('a');
+      dl.href = isBlobUrl ? u : (window.__omranProxyVideoUrl ? window.__omranProxyVideoUrl(u) : u);
+      dl.download = 'omran-trend-' + t.key + '.mp4'; dl.className = 'btn'; dl.style.cssText = 'display:block;text-align:center;margin-top:6px;';
+      dl.textContent = ui('download');
+      out.appendChild(dl);
+    });
+    var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };
+    out.appendChild(again);
+    try{ window.__chatVideoResult = { url: finalUrl || urls[0] }; }catch(e){ /* guard-ok */ }
   }
 
   function boot(){
@@ -332,7 +514,9 @@
     grid = $('vtGrid'); panel = $('vtPanel');
     renderGrid();
     try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
-    window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key; })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } } };
+    window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key && !(typeof omranHwHidden === 'function' && omranHwHidden('trend', x.key)); })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } },
+      /* v-audit-boot (cli-video-1): الخروج (app-04) يفرّغ صور الأشخاص ويغلق اللوحة المفتوحة — لا تُرسل صور الحساب السابق مع ترند من يدخل بعده */
+      reset: function(){ photos = []; cur = null; if(panel){ panel.innerHTML = ''; panel.style.display = 'none'; } if(grid) grid.style.display = 'grid'; } };
   }
   // v-perf-idle-timers: boot() كانت تُستدعى عند DOMContentLoaded (مرّتين: فورًا و٩٠٠مل ثانية لاحقًا) فتبني
   // شبكة ٤٥ بطاقة (٤٥ صورة معاينة) داخل نافذة صانع الفيديو حتّى لو لم يفتحها المستخدم إطلاقًا في تلك

@@ -57,7 +57,10 @@
   TX.pushDenied = { ar:'⚠️ الإشعارات مرفوضة على هذا الجهاز. اسمح بها من إعدادات التطبيق؛ وحتى ذلك يصلك التنبيه فقط والتطبيق مفتوح.', en:'⚠️ Notifications are blocked on this device. Allow them in the app settings; until then the alert only fires while the app is open.' };
   TX.pushUnavail = { ar:'⚠️ هذا الجهاز لا يدعم إشعارات الدفع (مثل أجهزة هواوي بلا خدمات جوجل). سيصلك التنبيه والتطبيق مفتوح أو في الخلفية فقط.', en:'⚠️ Push notifications are not available on this device (e.g. Huawei without Google services). The alert fires only while the app is open or in the background.' };
   TX.localTitle = { ar:'عمران — مواقيت الصلاة', en:'Omran — Prayer times' };
+  /* v-qibla-dir-hijri (تدقيق ١٨–١٩ أكتوبر): «5 دقيقة قبل» — العربيّ من ٣ إلى ١٠ بالجمع، وبقيّة اللغات كما هي */
+  TX.minUnitFew = { ar:'دقائق قبل' };
   function tx(key){ var m = TX[key]; return (m && (m[qLang()] || m.en)) || (m && m.ar) || key; }
+  function minLabel(v){ return v + ' ' + ((qLang() === 'ar' && v >= 3 && v <= 10) ? TX.minUnitFew.ar : tx('minUnit')); }
   function qt(ar, en){ return qIsRtl() ? ar : en; } // للنصوص المركّبة القليلة المتبقية
 
   // طرق الحساب بالـ14 لغة (أسماء الهيئات — تُترجم وصفيًا)
@@ -85,10 +88,14 @@
     if(!l) return 4;
     var la = l.lat, lo = l.lng;
     var inBox = function(a, b, c, d){ return la >= a && la <= b && lo >= c && lo <= d; };
-    if(inBox(22.4, 26.6, 51.0, 56.6)) return 16;      /* الإمارات */
-    if(inBox(24.4, 26.3, 50.6, 51.8)) return 10;      /* قطر */
-    if(inBox(28.4, 30.2, 46.4, 48.6)) return 9;       /* الكويت */
+    /* v-audit-tools: البحرين ثمّ قطر قبل الإمارات — مربّع الإمارات (من خطّ ٥١) يغطّي أغلب قطر فكانت الدوحة والخور
+       تأخذان طريقة دبي، ومربّع قطر (من ٥٠٫٦) يغطّي شرق البحرين (المحرّق). وعُمان شرق خطّ ٥٦ كانت تسقط إلى
+       رابطة العالم الإسلاميّ؛ مربّعها جنوب ٢٤٫٩٥ فلا يدخله ساحل إيران */
     if(inBox(25.5, 26.4, 50.3, 50.9)) return 8;       /* البحرين — الخليج */
+    if(inBox(24.4, 26.3, 50.6, 51.8)) return 10;      /* قطر */
+    if(inBox(16.6, 24.95, 56.2, 59.9)) return 4;      /* عُمان: الباطنة ومسقط والشرقيّة — أم القرى */
+    if(inBox(22.4, 26.6, 51.0, 56.6)) return 16;      /* الإمارات */
+    if(inBox(28.4, 30.2, 46.4, 48.6)) return 9;       /* الكويت */
     if(inBox(16.0, 32.5, 34.4, 56.0)) return 4;       /* السعودية وعُمان واليمن — أم القرى */
     if(inBox(29.1, 33.5, 34.8, 39.4)) return 23;      /* الأردن */
     if(inBox(21.9, 31.8, 24.6, 36.9)) return 5;       /* مصر */
@@ -155,7 +162,9 @@
     return loc().then(function(l){
       if(!l) return Promise.reject(new Error('no-location'));
       var d = new Date();
-      var ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      /* v-qibla-dir-hijri (تدقيق ١٨–١٩ أكتوبر): aladhan يقرأ DD-MM-YYYY — YYYY-MM-DD كان يجيب عن ٢٠١٩ (الهجريّ «صفر 1441»
+         واليوم في 1448؛ جُرّب حيًّا). المواقيت تكاد تتطابق في اليوم نفسه من كلّ سنة فلم يظهر إلّا السطر الهجريّ */
+      var ds = String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + d.getFullYear();
       return fetch('https://api.aladhan.com/v1/timings/' + ds
         + '?latitude=' + l.lat + '&longitude=' + l.lng + '&method=' + getMethod())
         .then(function(r){ return r.json(); })
@@ -206,7 +215,10 @@
     if(el) return el;
     el = document.createElement('div');
     el.id = 'omranQiblaShell';
-    el.dir = 'rtl';
+    /* v-qibla-dir-hijri (تدقيق ١٨–١٩ أكتوبر): كان RTL ثابتًا فالإنجليزيّ مقلوب («?How many minutes»، «min before 30»).
+       اللغة تُحفظ مع الغلاف، وopenQibla يعيد بناءه إن تغيّرت (العنوان والتبويبات تُكتب مرّة عند البناء) */
+    el.dir = qIsRtl() ? 'rtl' : 'ltr';
+    el.__lang = qLang();
     el.style.cssText = 'position:fixed;inset:0;z-index:9500;background:var(--bg,#0a0b10);display:none;flex-direction:column;overflow:hidden;';
     el.innerHTML =
       '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border,rgba(255,255,255,.08));">' +
@@ -240,6 +252,9 @@
   function renderTimes(){
     var el = shell();
     var body = el.querySelector('#qBody');
+    /* v-audit-tools: مؤقّت عدّ واحد فقط — كلّ رسم يوقف السابق (كان حلول الوقت ينشئ مؤقّتًا فوق آخر لا يوقف نفسه
+       فيُجلب aladhan كلّ ثانية بلا نهاية، حتّى بعد إغلاق الشاشة) */
+    if(S.ticker){ clearInterval(S.ticker); S.ticker = null; }
     if(!S.timings){
       body.innerHTML = '<div style="text-align:center;color:var(--muted,#98a0b3);padding:30px 0;">⏳ ' + tx('locating') + '</div>';
       fetchTimings().then(function(){ renderTimes(); }).catch(function(e){
@@ -253,7 +268,8 @@
     var mOpts = METHODS.map(function(m){ return '<option value="' + m.v + '"' + (String(m.v) === String(storedMethod()) ? ' selected' : '') + ' style="background:#141420;color:#fff;">' + methodName(m) + (m.v === 'auto' ? ' — ' + (METHODS.filter(function(x){ return x.v === getMethod(); })[0] ? methodName(METHODS.filter(function(x){ return x.v === getMethod(); })[0]) : getMethod()) : '') + '</option>'; }).join('');
     var rows = PRAYERS.map(function(k){
       var isNext = np && np.key === k;
-      return '<div style="display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:12px;margin-bottom:7px;' +
+      /* v-three-colors: الصلاة القادمة «مختارة» (sel) — حدّها رماديّ فاتح في الوضع الأسود حين يُوحَّد بقيّة الصفّ أسود بحدّ ذهبيّ */
+      return '<div' + (isNext ? ' class="sel"' : '') + ' style="display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:12px;margin-bottom:7px;' +
         (isNext ? 'background:rgba(212,175,55,.14);border:1px solid var(--omGoldSoft,rgba(212,175,55,.4));' : 'background:rgba(255,255,255,.03);border:1px solid var(--border,rgba(255,255,255,.07));') + '">' +
         '<span style="font-size:15px;font-weight:' + (isNext ? '800' : '600') + ';flex:1;">' + prName(k) + (isNext ? ' •' : '') + '</span>' +
         '<span style="font-size:16px;font-weight:700;letter-spacing:.5px;">' + (S.timings[k] || '--') + '</span>' +
@@ -284,11 +300,13 @@
       b.onclick = function(){ toggleAlert(b.getAttribute('data-p'), b); };
     });
     if(np){
-      S.ticker = setInterval(function(){
+      var tk = S.ticker = setInterval(function(){
         var cd = document.getElementById('qCountdown');
-        if(!cd){ clearInterval(S.ticker); S.ticker = null; return; }
+        /* v-audit-tools: المؤقّت يوقف نفسه هو (لا S.ticker أيًّا كان) إن غاب العدّاد أو أُغلقت الشاشة — مواقيت رجعت
+           بعد الإغلاق كانت ترسم مؤقّتًا يعمل والشاشة مخفيّة، والعدّاد باقٍ في DOM المخفيّ */
+        if(!cd || el.style.display === 'none'){ clearInterval(tk); if(S.ticker === tk) S.ticker = null; return; }
         var left = np.at - new Date();
-        if(left <= 0){ S.timings = null; renderTimes(); return; }
+        if(left <= 0){ clearInterval(tk); if(S.ticker === tk) S.ticker = null; S.timings = null; renderTimes(); return; }
         cd.textContent = fmtDur(left);
       }, 1000);
     }
@@ -371,7 +389,7 @@
     try{ if(navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]); }catch(e){ /* guard-ok */ }
     try{
       if(!('Notification' in window) || Notification.permission !== 'granted'){ localToast('🕌 ' + body); return; }
-      var opts = { body: body, icon: './icons/icon-192-v2.png?icon=gold-20260819', badge: './icons/icon-192-v2.png?icon=gold-20260819', tag: 'prayer-local-' + x.k, vibrate: [300, 150, 300, 150, 300], requireInteraction: true };
+      var opts = { body: body, icon: './icons/icon-192-v2.png?icon=black-20261022', badge: './icons/icon-192-v2.png?icon=black-20261022', tag: 'prayer-local-' + x.k, vibrate: [300, 150, 300, 150, 300], requireInteraction: true };
       if('serviceWorker' in navigator){
         navigator.serviceWorker.ready.then(function(reg){ return reg.showNotification(title, opts); }).catch(function(){ try{ new Notification(title, opts); }catch(e){ localToast('🕌 ' + body); } });
       } else { new Notification(title, opts); }
@@ -436,7 +454,7 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.style.cssText = 'padding:8px 12px;border-radius:999px;border:1px solid var(--omGoldSoft,rgba(212,175,55,.5));background:' + (v === 10 ? 'rgba(212,175,55,.25)' : 'rgba(255,255,255,.04)') + ';color:inherit;font:inherit;font-size:13px;cursor:pointer;';
-      b.textContent = v === 0 ? tx('atAdhan') : (v + ' ' + tx('minUnit'));
+      b.textContent = v === 0 ? tx('atAdhan') : minLabel(v);
       b.onclick = function(){ box.remove(); cb(v); };
       row.appendChild(b);
     });
@@ -581,6 +599,8 @@
     });
   }
   function openQibla(){
+    var prev = document.getElementById('omranQiblaShell');
+    if(prev && prev.__lang !== qLang()) prev.remove(); /* v-qibla-dir-hijri: لغة جديدة ← غلاف جديد باتّجاهها ونصوصها */
     var el = shell();
     el.style.display = 'flex';
     S.loc = null;
@@ -623,7 +643,7 @@
       return { key: n && n.key, name: nm, time: n ? (String(n.at.getHours()).padStart(2, '0') + ':' + String(n.at.getMinutes()).padStart(2, '0')) : '', bearing: l ? Math.round(qiblaBearing(l)) : null };
     });
   }
-  window.omranQibla = { open: openQibla, close: closeQibla, checkLocal: checkLocal, live: live, _S: S };
+  window.omranQibla = { open: openQibla, close: closeQibla, checkLocal: checkLocal, live: live, _S: S, _minLabel: minLabel };
   /* v-prayer-local: إن كان للمستخدم تنبيهات محفوظة نراقبها محليًا منذ فتح التطبيق */
   try{ if(Object.keys(alertsMap()).length) bootLocalAlerts(); }catch(e){ __swallow(e, 'qibla:boot-local'); }
 })();

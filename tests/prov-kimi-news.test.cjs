@@ -96,14 +96,14 @@ test('٤. القائمة: ثلاث مجموعات مرتّبة بخطّ بينه
   const i = m.indexOf('var PROVS = ['); const block = m.slice(i, m.indexOf('\n      ];', i));
   const rows = [...block.matchAll(/\{ grp:(\d), key:'(\w+)',\s+name:'([^']+)'/g)].map((x) => [Number(x[1]), x[2], x[3]]);
   // v-prov-or-unique: صفّ OpenRouter عاد بشركات ليس لها صفّ (اختبار ٧)
-  assert.deepEqual(rows.map((r) => r[1]), ['claude', 'openai', 'gemini', 'kimi', 'deepseek', 'mistral', 'groq', 'perplexity', 'cohere', 'openrouter']);
-  assert.deepEqual(rows.map((r) => r[0]), [1, 1, 1, 2, 2, 2, 2, 3, 3, 3]);
-  assert.deepEqual(rows.slice(0, 4).map((r) => r[2]), ['Claude · Anthropic', 'GPT · OpenAI', 'Gemini · Google', 'Kimi · Moonshot']);
+  assert.deepEqual(rows.map((r) => r[1]), ['openrouter', 'claude', 'openai', 'gemini', 'kimi', 'deepseek', 'mistral', 'groq', 'perplexity', 'cohere']);
+  assert.deepEqual(rows.map((r) => r[0]), [1, 1, 1, 1, 2, 2, 2, 2, 3, 3]);
+  assert.deepEqual(rows.slice(0, 4).map((r) => r[2]), ['OpenRouter', 'Claude · Anthropic', 'GPT · OpenAI', 'Gemini · Google']); // v-grok-first: كروك أوّل المجموعة الأساسيّة
   assert.ok(!/كلود|جوجل جيميني/.test(block), 'لا أسماء معرّبة بين اللاتينيّة');
   assert.match(block, /key:'kimi',\s+name:'Kimi · Moonshot',\s+or:true, direct:true, store:'aiapp_kimi_model',\s+def:'moonshotai\/kimi-k3',\s+models:\[\['moonshotai\/kimi-k3','Kimi K3'\],\['moonshotai\/kimi-k2\.6','Kimi K2\.6'\]\]/);
   assert.match(m, /if\(i && p\.grp !== PROVS\[i-1\]\.grp\) out \+= divider;/);
   assert.match(m, /kimi:'provNickDeep'/);
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m111026c/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m211026/);
 });
 
 test('٥. العميل: Kimi على مسار الأدوات وحده، باسمه للمالك، وإغلاق الإعدادات لا يمسح الاختيار', () => {
@@ -128,7 +128,7 @@ test('٦. الأخبار أُزيلت كلّها: لا ملفّات ولا نا�
   assert.ok(!st.includes('id="notifSection"') && !st.includes('chkNewsAlerts'));
   assert.ok(!read('js/app-05-ui.js').match(/SETTINGS_NAV_IDS = \[[^\]]*notifSection/));
   const html = read('index.html');
-  assert.ok(html.includes('/js/partials-core.js?v=657') && html.includes('/js/partials-settings.js?v=695'));
+  assert.ok(html.includes('/js/partials-core.js?v=677') && html.includes('/js/partials-settings.js?v=707'));
   const cr = read('api/_lib/check-reminders.js');
   assert.ok(!cr.includes('newsItems') && !cr.includes('breaking-news'));
   assert.match(cr, /if \(r\.type === 'news'\) \{\n[^\n]*\n\s+nextList\.push\(r\);\n\s+continue;\n\s+\}/, 'سجلّ الأخبار القديم يبقى كما هو بلا دفع');
@@ -172,5 +172,5 @@ test('٨. شريط المزوّد للمالك وحده: لا قاعدة CSS ت�
   const m = read('js/modes.js');
   assert.match(m, /bar\.style\.cssText = 'align-self:flex-end; margin-top:-2px; display:' \+ \(isOwner\(\) \? 'inline-flex' : 'none'\)/);
   assert.match(m, /if\(bar\) bar\.style\.display = on \? 'flex' : 'none';/);
-  assert.match(read('index.html'), /css\/redesign\.css\?v=690/);
+  assert.match(read('index.html'), /css\/redesign\.css\?v=697/);
 });

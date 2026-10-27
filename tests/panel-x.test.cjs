@@ -31,7 +31,8 @@ function loadPanel() {
   vm.runInContext(a5.slice(start, end), ctx);
   return ctx;
 }
-const shows = (c) => ({ frame: c.previewFrame.style.display, empty: c.emptyState.style.display, img: !!c.previewFrame._imageView, doc: c.previewFrame.srcdoc });
+// v-sec-sandbox: المعاينة تُحقن فيها طبقة تخزين (shim) أوّل srcdoc — نجرّدها لنوازن محتوى التطبيق وحده.
+const shows = (c) => ({ frame: c.previewFrame.style.display, empty: c.emptyState.style.display, img: !!c.previewFrame._imageView, doc: String(c.previewFrame.srcdoc || '').replace(/^<script>[\s\S]*?<\/script>/, '') });
 
 test('١. صورة محادثة لا تبقى في معاينة محادثة أخرى', () => {
   const c = loadPanel();
@@ -67,11 +68,13 @@ test('٢. الإكس يقفل الصورة ثمّ معاينة التطبيق د
   assert.equal(shows(c).doc, '<h1>v2</h1>', 'كود جديد في المحادثة يرجع تلقائيًّا');
 });
 
-test('٢ب. الأسلاك: الإكس لا يطوي اللوحة على الكمبيوتر، والجوّال كما كان، والرجوع موصول', () => {
+test('٢ب. الأسلاك: الإكس لا يطوي اللوحة على الكمبيوتر، والجوّال يغلق الدرج (v-code-x-mobile)، والرجوع موصول', () => {
   const i = a5.indexOf('  cls.onclick = function(){');
   const h = a5.slice(i, a5.indexOf('\n  };', i));
-  assert.match(h, /if\(document\.getElementById\('omranCodeViewer'\)\)\{ omranCloseCodeViewer\(\); return; \}/);
-  assert.match(h, /if\(document\.documentElement\.classList\.contains\('mobile-ui'\)\)\{\n\s+try\{ var cb = document\.getElementById\('waCollapseBtn'\)/);
+  assert.match(h, /var drawer = document\.documentElement\.classList\.contains\('mobile-ui'\) \|\| window\.innerWidth <= 860;/);
+  assert.match(h, /if\(document\.getElementById\('omranCodeViewer'\)\)\{\n\s+omranCloseCodeViewer\(\);[^\n]*\n\s+if\(!drawer\) return;/);
+  assert.match(h, /if\(drawer\)\{\n\s+try\{ if\(typeof closeDrawers === 'function'\) closeDrawers\(\);/, 'الجوّال: ✕ يغلق الدرج (السلوك في code-viewer-close-mobile)');
+  assert.ok(!/waCollapseBtn/.test(h), 'لا نقر لزرّ الطيّ المخفيّ في الجوّال');
   assert.match(h, /\n    omranPanelCloseShown\(\);$/);
   assert.match(a5, /if\(tab\.dataset\.tab === 'preview'\) omranPanelReopen\(\);/);
   assert.match(a4, /if\(window\.__omranPanelHidden\) delete window\.__omranPanelHidden\[cur\.id\];/, '«استخدم هذا الإصدار»');

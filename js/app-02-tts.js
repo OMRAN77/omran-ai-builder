@@ -1,6 +1,6 @@
 // 🎁 v343: رسائل ودّية بدل أكواد الأخطاء عند توليد/تعديل الصور — مع فتح
 // نافذة إنشاء حساب تلقائيًا للضيف الذي استهلك صوره المجانية.
-function imgErrFriendly(err, isAr){
+function imgErrFriendly(err, isAr, info){
   if(err === 'guest_image_used'){
     setTimeout(() => { try{ window.requireLogin && window.requireLogin('guestImage'); }catch(e){ __swallow(e, "auth:app-02-tts#1"); } }, 1500);
     return isAr
@@ -8,15 +8,35 @@ function imgErrFriendly(err, isAr){
       : '🎁 You have used your 3 free guest images! Create a free account in seconds and get 70 gift points to keep generating and editing images.';
   }
   if(err === 'points_insufficient'){
+    /* v-plans-real-balance (تدقيق ١٨ أكتوبر: «تقول تحتاج 10 نقاط والرصيد 10 والصورة أصلًا بـ20»): الرقم كان مكتوبًا هنا من سعر قديم.
+       الآن رصيده وسعر الصورة من ردّ الخادم نفسه (402: points · needed)، وبلاهما بلا رقم. */
+    const have = info && Number(info.points), need = info && Number(info.needed);
+    if(info && isFinite(have) && isFinite(need) && need > 0){
+      return isAr
+        ? '⚡ رصيدك ' + have + ' نقطة، وهذه الصورة تحتاج ' + need + ' نقطة. افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
+        : '⚡ You have ' + have + ' points; this image needs ' + need + '. Open Settings → Plans to top up and continue.';
+    }
     return isAr
-      ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة (تحتاج 10 نقاط). افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
-      : '⚡ Not enough points for this image (needs 10). Open Settings → Plans to top up and continue.';
+      ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة. افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
+      : '⚡ Not enough points for this image. Open Settings → Plans to top up and continue.';
+  }
+  /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الصور نفد أو عطب عندنا — «الخدمة متوقّفة مؤقّتًا» بلغة الواجهة، والخادم ردّ النقاط
+     (كان «مشغولة الآن، أعد المحاولة» فيعيد المستخدم ويُخصم ويُردّ مرّة بعد مرّة) */
+  if(err === 'unavailable') return t('svcPaused');
+  /* v-rest-fixes: سقف الصور في الساعة كان يصل رمزًا خامًّا «image_hourly_limit» — النصّ بالـ14 لغة بالحدّ والدقائق الباقية من ردّ الخادم */
+  if(err === 'image_hourly_limit'){
+    const m = Math.max(1, Math.ceil((Number(info && info.retryAfter) || 3600) / 60));
+    return t('imgHourlyLimit').replace('{max}', String((info && info.max) || 20)).replace('{m}', String(m));
   }
   if(err === 'image_generation_timeout'){
     return isAr
       ? 'تأخر إنشاء الصورة هذه المرة. أعد المحاولة بعد لحظة.'
       : 'Image generation took too long this time. Please try again in a moment.';
   }
+  /* v-audit-studeng (srv-studios-1-3): الاستوديو صار يرسل الرمزين بدل «تعذّر إنشاء الصورة الآن…» العربيّ لكلّ اللغات — بالـ١٤ لغة،
+     والعربيّ/الإنجليزيّ أدناه احتياطًا ما لم يُعرف المفتاح (t يعيد اسمه) */
+  if(err === 'image_generation_busy' && t('axStudengImgBusy') !== 'axStudengImgBusy') return t('axStudengImgBusy');
+  if(err === 'image_generation_failed' && t('axStudengImgFailed') !== 'axStudengImgFailed') return t('axStudengImgFailed');
   if(err === 'image_generation_busy'){
     return isAr
       ? 'خدمة الصور مشغولة الآن. أعد المحاولة بعد لحظة.'
@@ -72,6 +92,17 @@ function detectSpeechLang(text){
     if(/[\u0679\u0688\u0691\u06BA\u06BE\u06C1\u06C2\u06D2]/.test(t)) return 'ur';
     return 'ar';
   }
+  /* v-audit-voice (cli-voice-7): الخادم له لهجة لكلّ لغة من الأربع عشرة، والكشف كان يعرف سبعًا — الروسيّ والصينيّ
+     والمالايالاميّ تُكشف بكتابتها، واللاتينيّ بلغة الواجهة إن كانت إسبانيّة أو تركيّة أو إندونيسيّة أو فلبينيّة، وإلّا فالتركيّ
+     والإسبانيّ بحروفهما الخاصّة (كانت «la» تجعل الإسبانيّ فرنسيًّا و«ç» التركيّ فرنسيًّا، والإندونيسيّ والفلبينيّ إنجليزيًّا).
+     الفرنسيّة والإنجليزيّة على تخمينهما القديم كما كانتا. */
+  if(/[\u0D00-\u0D7F]/.test(t)) return 'ml';
+  if(/[\u0400-\u04FF]/.test(t)) return 'ru';
+  if(/[\u4E00-\u9FFF\u3400-\u4DBF]/.test(t)) return 'zh';
+  const uiLang = (typeof lang === 'string') ? lang : '';
+  if(['es', 'tr', 'id', 'fil'].indexOf(uiLang) !== -1) return uiLang;
+  if(/[ğışİĞŞ]/.test(t)) return 'tr';
+  if(/[ñÑ¿¡]/.test(t)) return 'es';
   const frenchHints = /[àâäæçéèêëîïôœùûüÿ]/i;
   const frenchWords = /\b(le|la|les|des|une|est|et|vous|nous|bonjour|merci|s'il|être|avec|pour|dans)\b/i;
   if(frenchHints.test(t) || frenchWords.test(t)) return 'fr';
@@ -516,8 +547,354 @@ function omranMathIsoTok(span){
   span.appendChild(iso);
   if(tail) span.appendChild(document.createTextNode(tail));
 }
+/* v-gpt-format (المالك ١٣ أكتوبر: «المحادثة العاديه قلت اريدها مرتبه» ثمّ «نفس gpt» بلقطتي ChatGPT: جدول حقيقيّ بعنوانه وخطوط
+   صفوفه، وكود مضمّن بلا علامات ` ظاهرة): (١) جدول الماركداون الكامل (رأس + سطر فاصل) يُستبدل قبل التقطيع برمز حارس (E002 n E003)
+   ويُرسم <table> حقيقيًّا كتلةً كصندوق الكود؛ خلاياه بعريضها وكودها وروابطها، وكلمات سطوره القديمة (mdTablesToLines) عناصر tts-word
+   مخفيّة داخله فلا تنزاح القراءة الصوتيّة عمّا كانت. الجداول داخل سياج كود لا تُمسّ، وما بلا سطر فاصل يبقى سطورًا كما كان.
+   (٢) `كود` مضمّن يُرسم رقاقة <code class="md-ic"> داخل عنصر كلمته نفسه — عنصر لكلّ كلمة كما كان — والكود الممتدّ على كلمات يصل
+   بين رقائقه بفراغ ملوّن (md-ic-gap ليس tts-word). سطر جديد يغلقه. */
+function omranMdTableMark(text){
+  const lines = String(text || '').split('\n'), out = [], list = [];
+  const row = (l) => /^\s*\|.*\|\s*$/.test(l || '');
+  const isSep = (l) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l || '');
+  const cells = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  let fence = false;
+  for(let i = 0; i < lines.length; i++){
+    const l = lines[i];
+    if(/^\s*```/.test(l)) fence = !fence;
+    if(!fence && row(l) && !isSep(l) && isSep(lines[i + 1])){
+      let j = i + 2;
+      while(j < lines.length && row(lines[j]) && !isSep(lines[j])) j++;
+      const block = lines.slice(i, j);
+      list.push({ head: cells(block[0]), rows: block.slice(2).map(cells), extra: (mdTablesToLines(block.join('\n')).match(/\S+/g) || []).length });
+      out.push('\uE002' + (list.length - 1) + '\uE003');
+      i = j - 1;
+      continue;
+    }
+    out.push(l);
+  }
+  return { text: out.join('\n'), list: list };
+}
+const OMRAN_IC_AR = /[\u0600-\u06FF]/; // كود مضمّن بحروف عربيّة: رقاقة <span> بخطّ النصّ — الخطّ الثابت يفكّك الحروف
+/** خليّة جدول: **عريض** و`كود` و[نصّ](رابط) — عُقدًا لا HTML. v-reply-blocks: الرابط شارة مصدر (أيقونة الموقع + اسمه، ولو
+    كان **[نصّ](رابط)**)، وأرقام الهواتف في النصّ معزولة LTR فلا تنقلب مجموعاتها. */
+function omranMdInline(el, s){
+  const re = /\*{0,2}\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)\*{0,2}|\*\*([^*]+)\*\*|`([^`]+)`/g;
+  let m, last = 0;
+  s = String(s || '');
+  while((m = re.exec(s))){
+    if(m.index > last) omranMdText(el, s.slice(last, m.index));
+    let k;
+    if(m[1] !== undefined) k = omranSrcChip(m[2], m[1]);
+    else if(m[3] !== undefined){ k = document.createElement('strong'); omranMdText(k, m[3]); }
+    else { const ar = OMRAN_IC_AR.test(m[4]); k = document.createElement(ar ? 'span' : 'code'); k.className = 'md-ic' + (ar ? ' md-ic-ar' : ''); k.textContent = m[4]; }
+    el.appendChild(k);
+    last = m.index + m[0].length;
+  }
+  if(last < s.length) omranMdText(el, s.slice(last));
+}
+/** نصّ خليّة: رقم هاتف (٧ خانات فأكثر بمسافاته وشرطاته) عنصر LTR معزول، والباقي نصّ كما هو. الرقم الملاصق لـ«: , . /»
+    أو لرقم آخر (وقت «9:00 - 17:00»، سعر «1,000 - 2,000»، كسر) ليس هاتفًا فيبقى نصًّا. بلا lookbehind (سفاري القديم): السابق يُلتقط. */
+function omranMdText(el, s){
+  const re = /(^|[^0-9٠-٩۰-۹:,.\/])((?:\+|00)?[0-9٠-٩۰-۹](?:[0-9٠-٩۰-۹]|[ \-](?=[0-9٠-٩۰-۹])){5,}[0-9٠-٩۰-۹])(?![0-9٠-٩۰-۹:,.\/])/g;
+  let m, last = 0;
+  s = String(s || '');
+  while((m = re.exec(s))){
+    if((m[2].match(/[0-9٠-٩۰-۹]/g) || []).length < 7) continue;
+    const at = m.index + m[1].length;
+    if(at > last) el.appendChild(document.createTextNode(s.slice(last, at)));
+    const sp = document.createElement('span'); sp.className = 'md-ltr'; sp.setAttribute('dir', 'ltr'); sp.textContent = m[2];
+    el.appendChild(sp);
+    last = at + m[2].length;
+  }
+  if(last < s.length) el.appendChild(document.createTextNode(s.slice(last)));
+}
+/* v-shot-reply (المالك ٢٢ أكتوبر: «إذا كان الجدول أعرض من الشاشة يتمرّر بالعرض ويبين إنّ فيه أعمدة ثانية»): data-fade على الغلاف
+   بالطرف الفعليّ (l/r) الذي خلفه أعمدة، ويزول عند آخر التمرير. scrollLeft في RTL سالب نحو النهاية (المواصفة) فالموضع بقيمته المطلقة.
+   سمة data لا className: سطر التقطيع يقارن className الغلاف بالمساواة. */
+function omranMdTableEdges(w){
+  const max = w.scrollWidth - w.clientWidth, pos = Math.abs(w.scrollLeft), rtl = w.getAttribute('dir') === 'rtl';
+  const end = max > 2 && pos < max - 2, start = max > 2 && pos > 2;
+  const v = [(rtl ? end : start) ? 'l' : '', (rtl ? start : end) ? 'r' : ''].filter(Boolean).join(' ');
+  if(v) w.setAttribute('data-fade', v); else w.removeAttribute('data-fade');
+}
+function omranMdTableEl(tb){
+  const wrap = document.createElement('div'); wrap.className = 'md-table-wrap';
+  const all = tb.head.concat.apply(tb.head, tb.rows).join(' ');
+  wrap.setAttribute('dir', /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/.test(all) ? 'rtl' : 'ltr');
+  const table = document.createElement('table'); table.className = 'md-table';
+  const n = Math.max(tb.head.length, ...tb.rows.map((r) => r.length));
+  const tr = (cells, tag) => { const r = document.createElement('tr'); for(let i = 0; i < n; i++){ const c = document.createElement(tag); omranMdInline(c, cells[i] || ''); r.appendChild(c); } return r; };
+  const thead = document.createElement('thead'); thead.appendChild(tr(tb.head, 'th')); table.appendChild(thead);
+  const tbody = document.createElement('tbody'); tb.rows.forEach((r) => tbody.appendChild(tr(r, 'td'))); table.appendChild(tbody);
+  wrap.appendChild(table);
+  wrap.addEventListener('scroll', () => omranMdTableEdges(wrap), { passive: true }); // v-shot-reply: الطرف الذي خلفه أعمدة يبهت
+  if(typeof ResizeObserver === 'function'){ const ro = new ResizeObserver(() => omranMdTableEdges(wrap)); ro.observe(wrap); ro.observe(table); } // أوّل رسم وتغيّر العرض
+  return wrap;
+}
+/** كلمة فيها ` (أو داخل كود مفتوح): تُملأ رقائق md-ic؛ st.open يحمل الكود المفتوح إلى الكلمة التالية. false = ليست كودًا. */
+function omranIcTok(span, s, st){
+  s = String(s);
+  if((s.indexOf('`') === -1 && !st.open) || /^```/.test(s)) return false;
+  const parts = s.split('`');
+  let inside = st.open;
+  parts.forEach(function(p, i){
+    if(i > 0) inside = !inside;
+    if(!p) return;
+    if(!inside){ span.appendChild(document.createTextNode(p)); return; }
+    const ar = OMRAN_IC_AR.test(p);
+    const c = document.createElement(ar ? 'span' : 'code'); // خطّ المحادثة يفرض الخطّ الثابت على كلّ <code> بـ!important
+    c.className = 'md-ic' + (i === 0 && st.open ? ' md-ic-ps' : '') + (i === parts.length - 1 ? ' md-ic-pe' : '') + (ar ? ' md-ic-ar' : '');
+    c.textContent = p;
+    span.appendChild(c);
+  });
+  st.open = inside;
+  return true;
+}
+/* v-rich-reply (لقطة المالك ١٣ أكتوبر، ChatGPT: صور حقيقيّة تحت كلّ دولة — «اريد الردود… وفيها صور»): سطر المزوّد
+   [[IMG: اسم / English | اسم٢ …]] يُرسم معرضًا كتلةً كالجدول (صورة كبيرة وصغيرتان و«+N»)، والصور الحقيقيّة من ويكيبيديا
+   مباشرة من المتصفّح (مجّانيّة بلا مفتاح؛ CORS بـorigin=*) بعد ظهور النصّ فلا تبطّئ الردّ. كلّ اسم يُطلب مرّة في الجلسة (الوعد
+   محفوظ) فإعادة الرسم أثناء البثّ لا تعيد الطلب. اسم بلا صورة يسقط، ومعرض بلا صورة يختفي. كلمات السطر عناصر tts-word مخفيّة
+   كالجدول فلا تنزاح القراءة الصوتيّة، وسطر لم يُغلق بعد أثناء البثّ لا يظهر خامًا. */
+const OMRAN_IMG_LINE = /^\s*\[\[IMG:\s*([^\]\n]*)\]\]\s*$/i;
+function omranImgItems(body){
+  return String(body || '').split('|').map(function(x){ return x.replace(/\s+/g, ' ').trim(); }).filter(Boolean).slice(0, 6);
+}
+/** آخر سطر أثناء البثّ بداية سطر صور لم يُغلق («[»، «[[IM»، «[[IMG: برج خ…») */
+function omranImgPartial(l){
+  const t = String(l || '').trim();
+  if(!t || /\]\]$/.test(t)) return false;
+  return /^\[\[(?:IMG|CONTACT):/i.test(t) || '[[IMG:'.indexOf(t.toUpperCase()) === 0 || '[[CONTACT:'.indexOf(t.toUpperCase()) === 0; // v-reply-blocks: وسطر بطاقة التواصل
+}
+function omranMdImgMark(text){
+  const lines = String(text || '').split('\n'), out = [], list = [];
+  let fence = false;
+  for(let i = 0; i < lines.length; i++){
+    const l = lines[i];
+    if(/^\s*```/.test(l)) fence = !fence;
+    const __c = !fence && OMRAN_CT_LINE.exec(l), __ci = __c && omranCtItem(__c[1]);
+    if(__ci){ // v-reply-blocks: أسطر التواصل المتتالية (ولو بينها سطر فارغ) شبكة بطاقات واحدة
+      const g = { kind: 'contact', items: [__ci], extra: (l.match(/\S+/g) || []).length };
+      for(let j = i + 1; j < lines.length; j++){
+        if(!lines[j].trim()) continue;
+        const c2 = OMRAN_CT_LINE.exec(lines[j]), ci2 = c2 && omranCtItem(c2[1]);
+        if(!ci2) break;
+        g.items.push(ci2); g.extra += (lines[j].match(/\S+/g) || []).length; i = j;
+      }
+      list.push(g); out.push(String.fromCharCode(0xE004) + (list.length - 1) + String.fromCharCode(0xE005)); continue;
+    }
+    const m = !fence && OMRAN_IMG_LINE.exec(l);
+    if(m){
+      const items = omranImgItems(m[1]);
+      if(items.length){ list.push({ items: items, extra: (l.match(/\S+/g) || []).length }); out.push('\uE004' + (list.length - 1) + '\uE005'); continue; }
+    }
+    out.push(l);
+  }
+  return { text: out.join('\n'), list: list };
+}
+const __omImgSeen = new Map(); // الاسم ← وعد {src, title} أو null
+const __omImgDone = new Map(); // الاسم ← النتيجة بعد وصولها (رسم فوريّ بلا هيكل عند إعادة الرسم)
+function omranImgLookup(name){
+  const key = String(name || '').trim().toLowerCase();
+  if(__omImgSeen.has(key)) return __omImgSeen.get(key);
+  const parts = String(name || '').split('/').map(function(x){ return x.trim(); }).filter(Boolean);
+  const ar = parts.filter(function(x){ return /[؀-ۿ]/.test(x); })[0] || '';
+  const lat = parts.filter(function(x){ return !/[؀-ۿ]/.test(x); })[0] || '';
+  const tries = [];
+  if(lat) tries.push(['en', lat]);
+  if(ar) tries.push(['ar', ar]);
+  const p = (async function(){
+    for(const tr of tries){
+      try{
+        const u = 'https://' + tr[0] + '.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&generator=search&gsrlimit=1'
+          + '&prop=pageimages&piprop=thumbnail&pithumbsize=800&gsrsearch=' + encodeURIComponent(tr[1]);
+        const r = await fetch(u);
+        if(!r.ok) continue;
+        const j = await r.json();
+        const pages = (j && j.query && j.query.pages) ? Object.keys(j.query.pages).map(function(k){ return j.query.pages[k]; }) : [];
+        const pg = pages.filter(function(x){ return x && x.thumbnail && /^https:\/\/upload\.wikimedia\.org\//.test(x.thumbnail.source || ''); })[0];
+        if(pg && !/\.svg\.png(?:$|\?)/i.test(pg.thumbnail.source)) return { src: pg.thumbnail.source, title: ar || pg.title || tr[1] }; // الأعلام والشعارات والخرائط (svg) ليست صورًا
+      }catch(e){ __swallow(e, 'gallery:wiki'); }
+    }
+    return null;
+  })();
+  __omImgSeen.set(key, p);
+  p.then(function(v){ __omImgDone.set(key, v); });
+  return p;
+}
+function omranGalleryCss(){
+  if(document.getElementById('omranGalleryCss')) return;
+  const st = document.createElement('style');
+  st.id = 'omranGalleryCss';
+  st.textContent = '.md-gallery{display:grid;gap:4px;margin:10px 0 12px;width:100%;align-self:stretch;box-sizing:border-box;border-radius:16px;overflow:hidden;height:300px;grid-template-columns:1fr;grid-template-rows:1fr;}'
+    + '.md-gallery[data-n="2"]{grid-template-columns:1fr 1fr;}'
+    + '.md-gallery[data-n="3"]{grid-template-columns:1.45fr 1fr;grid-template-rows:1fr 1fr;}'
+    + '.md-gallery[data-n="3"] .md-gal-cell:first-child{grid-row:1 / span 2;}'
+    + '.md-gal-cell{position:relative;border:0;padding:0;margin:0;cursor:zoom-in;overflow:hidden;background:rgba(127,127,127,.16);min-height:0;}'
+    + '.md-gal-cell img{width:100%;height:100%;object-fit:cover;display:block;}'
+    + '.md-gal-cell.skel{animation:mdGalPulse 1.2s ease-in-out infinite;cursor:default;}'
+    + '.md-gal-more{position:absolute;bottom:8px;inset-inline-start:8px;padding:2px 9px;border-radius:12px;background:rgba(0,0,0,.6);color:#fff;font-size:12.5px;font-weight:700;}'
+    + '@keyframes mdGalPulse{50%{opacity:.55}}'
+    + '@media (max-width:640px){.md-gallery{height:220px;}}';
+  document.head.appendChild(st);
+}
+function omranGalleryLayout(g){
+  const cells = Array.prototype.slice.call(g.querySelectorAll('.md-gal-cell'));
+  if(!cells.length){ g.remove(); return; }
+  const shown = Math.min(cells.length, 3);
+  cells.forEach(function(c, i){ c.style.display = i < shown ? '' : 'none'; });
+  g.setAttribute('data-n', String(shown));
+  const old = g.querySelector('.md-gal-more'); if(old) old.remove();
+  if(cells.length > shown){ const b = document.createElement('span'); b.className = 'md-gal-more'; b.textContent = '+' + (cells.length - shown); cells[shown - 1].appendChild(b); }
+}
+function omranGalleryEl(it){
+  omranGalleryCss();
+  const g = document.createElement('div');
+  g.className = 'md-gallery';
+  g.setAttribute('contenteditable', 'false');
+  let pending = 0;
+  const fill = function(cell, v){
+    if(!v){ cell.remove(); return; }
+    cell.classList.remove('skel');
+    const img = document.createElement('img');
+    img.src = v.src; img.alt = v.title || ''; img.title = v.title || ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+    img.onerror = function(){ cell.remove(); omranGalleryLayout(g); };
+    cell.onclick = function(e){ e.stopPropagation(); if(window.omranLightbox) window.omranLightbox(v.src.replace(/\/\d+px-/, '/1280px-')); else window.open(v.src, '_blank', 'noopener'); };
+    cell.appendChild(img);
+  };
+  it.items.forEach(function(name){
+    const cell = document.createElement('button');
+    cell.type = 'button'; cell.className = 'md-gal-cell';
+    g.appendChild(cell);
+    const key = String(name).trim().toLowerCase();
+    if(__omImgDone.has(key)){ fill(cell, __omImgDone.get(key)); return; }
+    cell.classList.add('skel');
+    pending++;
+    omranImgLookup(name).then(function(v){ fill(cell, v); }, function(){ cell.remove(); }).then(function(){ if(--pending === 0) omranGalleryLayout(g); });
+  });
+  omranGalleryLayout(g);
+  if(!g.querySelector('.md-gal-cell')) g.style.display = 'none';
+  return g;
+}
+/** القراءة الصوتيّة: كلمات سطر الصور تبقى بعددها (محاذاة tts-word) لكنّها لا تُنطق. */
+function omranSpeechNoImg(text){
+  text = omranSpeechNoCt(text); // v-reply-blocks: وأسطر بطاقات التواصل كذلك
+  const s = String(text || '');
+  if(s.indexOf('[[IMG') < 0 && s.indexOf('[[img') < 0) return s;
+  return s.split('\n').map(function(l){ return OMRAN_IMG_LINE.test(l) ? l.replace(/\S+/g, '\u2060') : l; }).join('\n');
+}
+/* v-reply-blocks (\u0644\u0642\u0637\u0627\u062a \u0627\u0644\u0645\u0627\u0644\u0643 \u0661\u0667 \u0623\u0643\u062a\u0648\u0628\u0631\u060c ChatGPT: \u00ab\u0623\u0631\u0642\u0627\u0645 \u0645\u0643\u0627\u062a\u0628 \u0639\u0642\u0627\u0631\u064a\u0651\u0629 \u0641\u064a \u0627\u0644\u0634\u0627\u0631\u0642\u0629\u00bb \u0628\u0637\u0627\u0642\u0627\u062a \u0628\u0627\u0644\u0627\u0633\u0645 \u0648\u0627\u0644\u0631\u0642\u0645 \u0627\u0644\u0643\u0628\u064a\u0631 \u0648\u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u0648\u00ab\u0646\u0633\u062e \u0627\u0644\u0631\u0642\u0645\u00bb\u060c
+   \u0648\u062c\u062f\u0648\u0644 \u0628\u0627\u0626\u0639\u064a\u0646 \u0628\u0634\u0627\u0631\u0629 \u0627\u0644\u0645\u0635\u062f\u0631 \u062c\u0646\u0628 \u0643\u0644\u0651 \u0631\u0642\u0645): \u0633\u0637\u0631 \u0627\u0644\u0645\u0632\u0648\u0651\u062f [[CONTACT: \u0627\u0644\u0627\u0633\u0645 | \u0627\u0644\u0631\u0642\u0645 | \u0627\u0644\u0645\u0646\u0637\u0642\u0629 | [\u0627\u0644\u0645\u0648\u0642\u0639](\u0627\u0644\u0631\u0627\u0628\u0637)]] \u0628\u0637\u0627\u0642\u0629\u060c \u0648\u0627\u0644\u0623\u0633\u0637\u0631
+   \u0627\u0644\u0645\u062a\u062a\u0627\u0644\u064a\u0629 \u0634\u0628\u0643\u0629 \u0648\u0627\u062d\u062f\u0629 \u0643\u062a\u0644\u0629\u064b \u0643\u0627\u0644\u0645\u0639\u0631\u0636 (\u0643\u0644\u0645\u0627\u062a\u0647\u0627 tts-word \u0645\u062e\u0641\u064a\u0651\u0629 \u0641\u0644\u0627 \u062a\u0646\u0632\u0627\u062d \u0627\u0644\u0642\u0631\u0627\u0621\u0629\u060c \u0648\u0644\u0627 \u062a\u064f\u0646\u0637\u0642). \u0627\u0644\u0631\u0642\u0645 LTR \u0645\u0639\u0632\u0648\u0644: \u0628\u0644\u0627 \u0639\u0632\u0644 \u062a\u0646\u0642\u0644\u0628
+   \u0645\u062c\u0645\u0648\u0639\u0627\u062a\u0647 \u0641\u064a \u0627\u0644\u0633\u064a\u0627\u0642 \u0627\u0644\u0639\u0631\u0628\u064a\u0651 (\u00ab7465 171 050\u00bb \u0639\u0646\u062f ChatGPT \u0646\u0641\u0633\u0647). \u0627\u0644\u062e\u0627\u062f\u0645 \u064a\u062d\u0630\u0641 \u0631\u0642\u0645\u064b\u0627 \u0644\u0645 \u064a\u0638\u0647\u0631 \u0641\u064a \u0646\u062a\u0627\u0626\u062c \u0627\u0644\u0628\u062d\u062b (keepSourcedContacts).
+   \u0627\u0644\u0628\u0637\u0627\u0642\u0629 \u0628\u0644\u0627 \u062d\u062f\u0651 (\u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u062f\u0627\u0643\u0646 \u064a\u062d\u0648\u0651\u0644 \u0643\u0644\u0651 \u062d\u062f\u0651 \u0625\u0644\u0649 \u0634\u0628\u062d \u0628\u062a\u0648\u0647\u0651\u062c \u0623\u0628\u064a\u0636)\u060c \u0648\u0627\u0644\u0631\u0642\u0645 \u0628\u0644\u0648\u0646 \u0627\u0644\u0646\u0635\u0651 \u0644\u0627 \u0627\u0644\u0630\u0647\u0628\u064a\u0651 (\u0627\u0644\u0630\u0647\u0628\u064a\u0651 \u0644\u0644\u0631\u0648\u0627\u0628\u0637 \u0648\u062d\u062f\u0647\u0627). */
+const OMRAN_CT_LINE = /^\s*\[\[CONTACT:\s*(.*)\]\]\s*$/i;
+function omranCtItem(body){
+  const f = String(body || '').split('|').map(function(x){ return x.replace(/\s+/g, ' ').trim(); });
+  const name = f[0] || '', phone = f[1] || '';
+  if(!name || (phone.match(/[0-9\u0660-\u0669\u06f0-\u06f9]/g) || []).length < 3) return null;
+  const rest = f.slice(3).join('|').trim();
+  const ml = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/.exec(rest);
+  const mu = !ml && /https?:\/\/[^\s)\]]+/.exec(rest);
+  const src = ml ? { label: ml[1].trim(), url: ml[2] } : (mu ? { label: '', url: mu[0] } : (rest ? { label: rest, url: '' } : null));
+  return { name: name, phone: phone, area: f[2] || '', src: src };
+}
+/** حقل الرقم قد يحمل رقمين («04 555 4321 / 800 2384»): كلّ رقم وحده (لا يُقسم الرقم نفسه). */
+function omranCtNums(phone){
+  const parts = String(phone || '').split(/\s*(?:\/|,|،|;|؛|\s(?:أو|او|or)\s)\s*/).map(function(x){ return x.trim(); }).filter(function(x){ return (x.match(/[0-9٠-٩۰-۹]/g) || []).length >= 3; });
+  return parts.length ? parts : [String(phone || '').trim()];
+}
+function omranSpeechNoCt(text){
+  const s = String(text || '');
+  if(!/\[\[CONTACT:/i.test(s)) return text;
+  const z = String.fromCharCode(0x2060);
+  return s.split('\n').map(function(l){ return OMRAN_CT_LINE.test(l) ? l.replace(/\S+/g, z) : l; }).join('\n');
+}
+function omranBlocksCss(){
+  if(document.getElementById('omranBlocksCss')) return;
+  const st = document.createElement('style');
+  st.id = 'omranBlocksCss';
+  st.textContent = '.md-contacts{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:8px 0 12px;width:100%;align-self:stretch;box-sizing:border-box;}'
+    + 'html.mobile-ui .md-contacts{grid-template-columns:1fr;}'
+    + '.md-ct{display:flex;flex-direction:column;gap:3px;min-width:0;padding:12px 14px;border-radius:var(--r-3,14px);background:rgba(127,127,127,.10);box-sizing:border-box;text-align:start;}'
+    + '.msg-text .md-contacts,.msg-text .md-contacts div{unicode-bidi:isolate;}' /* plaintext الموروث (.msg-text div) يحاذي الاسم اللاتينيّ يسارًا والمنطقة يمينًا — البطاقة تتبع dir الكتلة */
+    + 'html body .msg .md-table a.md-src.md-src,.md-table .md-src{max-width:8.5em;min-width:0;padding:2px 7px;font-size:11.5px;}' /* أعلى من قاعدة الشارة العامّة وإلّا عرّض الجدول خارج الفقاعة */
+    + 'html[data-mode="light"] .md-ct{background:#f3f4f8;}'
+    + '.md-ct-name{font-size:14.5px;font-weight:800;line-height:1.35;color:var(--text,#eee);overflow-wrap:anywhere;}'
+    + '.md-ct-num{display:flex;flex-wrap:wrap;column-gap:12px;font-size:22px;font-weight:800;line-height:1.35;color:var(--text,#eee);font-variant-numeric:tabular-nums;}'
+    + '.md-ct-num bdi,.md-ltr{unicode-bidi:isolate;white-space:nowrap;}'
+    + '.md-ct-area{font-size:12.5px;color:var(--muted,#9aa3b2);}'
+    + '.md-ct-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px;}'
+    + '.md-ct-copy{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border:0;border-radius:999px;background:rgba(127,127,127,.18);color:var(--text,#eee);font:inherit;font-size:12.5px;font-weight:700;line-height:1.4;cursor:pointer;}'
+    + '.md-ct-copy::before{content:"";width:9px;height:10px;border:1.6px solid currentColor;border-radius:2px;box-shadow:-3px 3px 0 -1.6px currentColor;}'
+    + '.md-ct-copy.ok{background:rgba(127,127,127,.34);}'
+    + 'html body .msg a.md-src.md-src,.md-src{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:3px 9px;border-radius:999px;background:rgba(127,127,127,.16);color:var(--muted,#9aa3b2) !important;font-size:12px;font-weight:600 !important;line-height:1.5;text-decoration:none !important;vertical-align:middle;white-space:nowrap;overflow:hidden;}'
+    + 'html body .msg a.md-src.md-src:hover{color:var(--text,#eee) !important;}'
+    + '.md-src img{width:14px;height:14px;border-radius:3px;flex:0 0 auto;}'
+    + '.md-src span{overflow:hidden;text-overflow:ellipsis;min-width:0;}';
+  document.head.appendChild(st);
+}
+/** \u0634\u0627\u0631\u0629 \u0627\u0644\u0645\u0635\u062f\u0631: \u0623\u064a\u0642\u0648\u0646\u0629 \u0627\u0644\u0645\u0648\u0642\u0639 + \u0627\u0633\u0645\u0647 (\u0623\u0648 \u0646\u0637\u0627\u0642\u0647)\u060c \u0631\u0627\u0628\u0637 \u064a\u0641\u062a\u062d \u0641\u064a \u0635\u0641\u062d\u0629 \u062c\u062f\u064a\u062f\u0629\u061b \u0628\u0644\u0627 \u0631\u0627\u0628\u0637 = \u0627\u0633\u0645 \u0641\u0642\u0637. */
+function omranSrcChip(url, label){
+  omranBlocksCss();
+  let host = '';
+  if(/^https?:\/\//i.test(String(url || ''))){ try{ host = new URL(url).hostname.replace(/^www\./, ''); }catch(e){ host = ''; } }
+  const c = document.createElement(host ? 'a' : 'span');
+  c.className = 'md-src';
+  if(host){
+    c.href = url; c.target = '_blank'; c.rel = 'noopener noreferrer'; c.title = host;
+    const fav = document.createElement('img');
+    fav.src = 'https://www.google.com/s2/favicons?sz=64&domain=' + encodeURIComponent(host); fav.alt = ''; fav.loading = 'lazy'; fav.referrerPolicy = 'no-referrer';
+    fav.onerror = function(){ fav.style.display = 'none'; };
+    c.appendChild(fav);
+  }
+  const tx = document.createElement('span'); tx.textContent = String(label || host || ''); c.appendChild(tx);
+  return c;
+}
+function omranCopyNum(num, btn){
+  const v = String(num || '').trim();
+  const flash = function(ok){
+    try{ if(typeof settingsToast === 'function') settingsToast(t(ok ? 'copiedToast' : 'msgCopyFailed')); }catch(e){ __swallow(e, 'ct:toast'); }
+    if(ok && btn){ btn.classList.add('ok'); setTimeout(function(){ btn.classList.remove('ok'); }, 1400); }
+  };
+  const legacy = function(){
+    try{
+      const ta = document.createElement('textarea'); ta.value = v; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); document.body.removeChild(ta); flash(ok);
+    }catch(e){ __swallow(e, 'ct:copy'); flash(false); }
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(function(){ flash(true); }, legacy);
+  else legacy();
+}
+function omranContactsEl(it){
+  omranBlocksCss();
+  const g = document.createElement('div');
+  g.className = 'md-contacts';
+  g.setAttribute('contenteditable', 'false');
+  g.setAttribute('dir', /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/.test(it.items.map(function(c){ return c.name + ' ' + c.area; }).join(' ')) ? 'rtl' : 'ltr');
+  it.items.forEach(function(c){
+    const card = document.createElement('div'); card.className = 'md-ct';
+    const nm = document.createElement('div'); nm.className = 'md-ct-name'; nm.textContent = c.name; card.appendChild(nm);
+    const num = document.createElement('div'); num.className = 'md-ct-num';
+    omranCtNums(c.phone).forEach(function(p){ const b = document.createElement('bdi'); b.setAttribute('dir', 'ltr'); b.textContent = p; num.appendChild(b); }); // رقمان في الحقل سطران لا خروج من البطاقة
+    card.appendChild(num);
+    if(c.area){ const ar = document.createElement('div'); ar.className = 'md-ct-area'; ar.textContent = c.area; card.appendChild(ar); }
+    const acts = document.createElement('div'); acts.className = 'md-ct-acts';
+    const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'md-ct-copy'; cp.textContent = t('copyCode');
+    cp.onclick = function(e){ if(e && e.stopPropagation) e.stopPropagation(); omranCopyNum(c.phone, cp); };
+    acts.appendChild(cp);
+    if(c.src && (c.src.url || c.src.label)) acts.appendChild(omranSrcChip(c.src.url, c.src.label));
+    card.appendChild(acts);
+    g.appendChild(card);
+  });
+  return g;
+}
 function buildSpokenWordSpans(container, text){
-  text = mdTablesToLines(text); // v-md-table
+  let __im = { text: text, list: [] };
+  try{ __im = omranMdImgMark(text); text = __im.text; }catch(e){ __swallow(e, 'md:img-mark'); } // v-rich-reply: سطر الصور معرض
+  let __tb = { text: text, list: [] };
+  try{ __tb = omranMdTableMark(text); }catch(e){ __swallow(e, 'md:table-mark'); } // v-gpt-format: الجدول الكامل يُرسم جدولًا
+  text = mdTablesToLines(__tb.text); // v-md-table: جدول بلا سطر فاصل يبقى سطورًا كما كان
   // بعض الردود تفصل عنوان المصدر عن رابطه بسطر جديد:
   // [عنوان المصدر]\nhttps://example.com — نعيده إلى ماركداون صالح
   // قبل التقسيم كي يصير رابطًا نظيفًا ويُجمع تحت زر «المصادر».
@@ -538,6 +915,7 @@ function buildSpokenWordSpans(container, text){
   const re = /[^\s\[!\x60]*(?:\*\*)?\[[^\]]*\]\(https?:\/\/[^\s)]+\)(?:\*\*)?[.,،؛!؟)]*|\S+/g;
   let m, lastIndex = 0;
   let boldOpen = false;
+  const __ic = { open: false }; // v-gpt-format: كود مضمّن مفتوح بين الكلمات
   let headerLevel = 0; // >0 while inside a "## ..." heading line
   let lineStart = true; // v-md-list: هل التوكن الحالي أول توكن في سطره؟
   let parent = container;    // where tokens/text currently get appended
@@ -600,8 +978,31 @@ function buildSpokenWordSpans(container, text){
   while((m = re.exec(text))){
     if(m.index > lastIndex){
       const between = text.slice(lastIndex, m.index);
-      parent.appendChild(document.createTextNode(between));
+      if(__ic.open && !codePre && between.indexOf('\n') === -1){ const __g = document.createElement('span'); __g.className = 'md-ic md-ic-gap'; __g.textContent = between; parent.appendChild(__g); } // v-gpt-format
+      else { if(between.indexOf('\n') !== -1) __ic.open = false; parent.appendChild(document.createTextNode(between)); }
       if(between.indexOf('\n') !== -1){ headerLevel = 0; lineStart = true; }
+    }
+    const __imm = !codePre && /^\uE004(\d+)\uE005$/.exec(m[0]);
+    if(__imm){ // v-rich-reply: المعرض كتلة، وكلمات سطره عناصر مخفيّة داخله
+      const __g = __im.list[+__imm[1]];
+      if(__g){
+        const __w = __g.kind === 'contact' ? omranContactsEl(__g) : omranGalleryEl(__g); // v-reply-blocks
+        for(let __k = 0; __k < __g.extra; __k++){ const __h = document.createElement('span'); __h.className = 'tts-word'; __h.style.display = 'none'; __w.appendChild(__h); wordEls.push(__h); }
+        container.appendChild(__w);
+      }
+      lastIndex = m.index + m[0].length; lineStart = true;
+      continue;
+    }
+    const __tbm = !codePre && /^\uE002(\d+)\uE003$/.exec(m[0]);
+    if(__tbm){ // v-gpt-format: الجدول كتلة، وكلماته القديمة عناصر مخفيّة داخله
+      const __t = __tb.list[+__tbm[1]];
+      if(__t){
+        const __w = omranMdTableEl(__t);
+        for(let __k = 0; __k < __t.extra; __k++){ const __h = document.createElement('span'); __h.className = 'tts-word'; __h.style.display = 'none'; __w.appendChild(__h); wordEls.push(__h); }
+        container.appendChild(__w);
+      }
+      lastIndex = m.index + m[0].length; lineStart = true;
+      continue;
     }
     if(/^```/.test(m[0])){
       // fence token: hide it, toggle code mode (span kept so TTS word mapping stays aligned)
@@ -663,6 +1064,7 @@ function buildSpokenWordSpans(container, text){
       // v467: الرابط المسبوق بقوس أو علامة اقتباس — (https://…) أو «https://…» —
       // كان يسقط من الالتقاط فيخرج نصًّا يُنسخ باليد. نفصل البادئة، ونوسّع
       // اللاحقة لتشمل : » " ' ] التي تلتصق بنهايات الروابط في النصّ العربي.
+      const __icDone = omranIcTok(span, display, __ic); // v-gpt-format: `كود` رقاقة لا علامات خامّة
       let __lead = '';
       // v476: «[نص](رابط)» كان يبدأ بـ"[" فتقتطعه بادئةُ v467 فينكسر الماركداون
       // ويظهر «النص](الرابط)» ملتصقًا. نتخطّى الاقتطاع متى كان التوكن رابطَ ماركداون.
@@ -687,25 +1089,29 @@ function buildSpokenWordSpans(container, text){
           if(!bareM[2] && __fileExt.test(__tld)) bareM = null;
         }
       }
-      if(linkM || urlM || bareM){
+      if(__icDone){ /* v-gpt-format: الكلمة رُسمت كودًا مضمّنًا — لا رابط داخلها */ }
+      else if(linkM || urlM || bareM){
         if(__lead) __appendMath(span, __lead);
         const rawUrl = linkM ? linkM[2] : (urlM ? urlM[1] : bareM[1] + bareM[2]);
         const href = (rawUrl.indexOf('www.') === 0 || bareM) ? 'https://' + rawUrl : rawUrl;
         const a = document.createElement('a');
         a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
-        // v-clean-links: الرابط العاري كان يُعرض بنصّه الكامل المرمّز
-        // (%D8%A3…) فيملأ الشاشة — يُعرض باسم نطاقه فقط ويبقى الضغط
-        // على الرابط الكامل. ونصّ ماركداون هو نفسه رابط يُعامل كذلك.
+        // v-full-links (المالك ١٥ أكتوبر «الموقع يعطيني الرئيس فقط — أريده كاملًا لكلّ المزوّدين»): كان v-clean-links
+        // يعرض الرابط باسم نطاقه فقط (github.com) فلا يُعرف أيّ طلب أو صفحة. الآن الرابط كاملًا كما كُتب، مفكوك الترميز
+        // (%D8%A3… ← عربيّ مقروء، وهو ما كان v-clean-links يعالجه) وword-break يلفّه. ونصّ ماركداون هو اسم نطاق رابطه
+        // ([github.com](https://github.com/…)) يُعرض رابطه كاملًا؛ وغيره من النصوص يبقى كما كتبه المزوّد.
+        const __decode = function(u){ try { return decodeURIComponent(u); } catch(e){ return u; } };
+        const __hostOf = function(u){ try { return new URL(u).hostname.replace(/^www\./, ''); } catch(e){ return ''; } };
         let __disp = linkM ? linkM[1] : rawUrl;
-        if(bareM){ __disp = bareM[1].replace(/^www\./, ''); } // اسم النطاق فقط
-        else if(/^(https?:\/\/|www\.)/i.test(__disp)){
-          try { __disp = new URL(__disp.indexOf('www.') === 0 ? 'https://' + __disp : __disp).hostname.replace(/^www\./, ''); }
-          catch(e){ try { __disp = decodeURIComponent(__disp).slice(0, 50); } catch(e2){ __disp = __disp.slice(0, 50); } }
-        }
+        if(bareM){ __disp = rawUrl; } // النطاق ومساره كما كُتبا
+        else if(!linkM || __disp.replace(/^www\./, '').toLowerCase() === __hostOf(href).toLowerCase()) __disp = __decode(rawUrl);
         a.textContent = __disp;
         a.title = href;
         a.setAttribute('dir', 'auto'); // v476 bidi
-        a.style.cssText = 'color:var(--om-hl,#e3b341); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;'; /* v-hl-yellow: الروابط صفراء (طلب المالك) */
+        /* v-link-wrap (لقطتا المالك من آيفون ١٦ أكتوبر: «https://www.d» ثمّ «ecathlon.ae» في السطر التالي): break-all هنا كان يغلب قاعدة v569
+           في tokens.css (.msg a{word-break:normal; overflow-wrap:break-word}) فيُكسر الرابط عند أيّ حرف. لم يظهر قبل v-full-links لأنّ
+           الرابط كان اسم نطاقه القصير؛ صار كاملًا فانكسر في منتصفه. الآن ينتقل كاملًا للسطر التالي، ويُكسر فقط إن كان أطول من السطر. */
+        a.style.cssText = 'color:var(--om-hl,#e3b341); text-decoration:underline; unicode-bidi:isolate;'; /* v-hl-yellow: الروابط صفراء (طلب المالك) */
         span.appendChild(a);
         const trail = linkM ? linkM[3] : (urlM ? urlM[2] : bareM[3]);
         if(trail) span.appendChild(document.createTextNode(trail));
@@ -787,7 +1193,8 @@ function omranMdBlocks(container, text){
   const newLine = function(){ cur = document.createElement('div'); cur.className = 'md-line'; out.push(cur); };
   newLine();
   nodes.forEach(function(n){
-    if(n.nodeType === 1 && n.className === 'chat-codeblock'){ out.push(n); newLine(); return; }
+    if(n.nodeType === 1 && n.className === 'md-contacts'){ out.push(n); newLine(); return; } // v-reply-blocks: بطاقات التواصل كتلة كالمعرض
+    if(n.nodeType === 1 && (n.className === 'chat-codeblock' || n.className === 'md-table-wrap' || n.className === 'md-gallery')){ out.push(n); newLine(); return; } // v-gpt-format: الجدول كتلة · v-rich-reply: والمعرض
     if(n.nodeType === 3){
       const parts = String(n.textContent).split('\n');
       parts.forEach(function(p, i){
@@ -870,7 +1277,8 @@ async function fetchCloudSpeech(text){
   const resp = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ voice: 'maha', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
+    // v-om-voices-chat: src 'reply' = «استمع» على ردّ المحادثة؛ للمالك يقرأ الخادم بأصوات om (api/_lib/om-voices.js)
+    body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -1013,6 +1421,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   if(!text) return;
   unlockCloudAudio(); // يجب أن يحدث قبل أي await حتى يبقى ضمن ضغطة المستخدم
   text = await applyDialectForSpeech(text);
+  text = omranSpeechNoImg(text); // v-rich-reply: سطر الصور لا يُنطق وعدد كلماته باقٍ
   stopAllSpeaking();
   ttsHighlightWordEls = wordEls || null;
   // v248: صوت السحابة (Azure) دائمًا — الخيار القديم المحفوظ 'false' في أجهزة
@@ -1035,7 +1444,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
     if(base === undefined){ if(onEnd) onEnd(); return; }
     const sayText = base ? text.slice(base) : text;
     const detectedLang = detectSpeechLang(sayText);
-    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US' };
+    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US', bn: 'bn-BD', ne: 'ne-NP', es: 'es-ES', tr: 'tr-TR', ru: 'ru-RU', zh: 'zh-CN', id: 'id-ID', fil: 'fil-PH', ml: 'ml-IN' }; // v-audit-voice (cli-voice-7): الأربع عشرة كخادم القراءة
     const utter = new SpeechSynthesisUtterance(sayText);
     utter.lang = langTags[detectedLang] || 'en-US';
     const v = pickVoice(detectedLang);
@@ -1089,6 +1498,14 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
         try{ url = await ensureFetched(i); }
         catch(e){
           if(currentCloudToken !== token) return;
+          /* v-om-voices-chat (المالك: «ليش تتدخل مها… الأصوات بس»): خلص حدّ أصوات om اليوميّ ⇐ رسالة الحدّ
+             المترجمة نفسها (portraitLimitReached) ويقف الصوت — لا مها ولا صوت الجهاز بدلها. */
+          if(e && e.message === 'om-quota'){
+            currentCloudToken = null; currentCloudAudio = null; clearWordHighlight();
+            try{ if(typeof settingsToast === 'function') settingsToast(t('portraitLimitReached')); }catch(err){ __swallow(err, 'tts:om-quota-toast'); }
+            if(onEnd) onEnd();
+            return;
+          }
           if('speechSynthesis' in window){
             currentCloudToken = null; currentCloudAudio = null;
             speakOnDevice(chunks[i].wordStart, started);
@@ -1206,7 +1623,7 @@ const messagesEl = $('#messages');
 
 // v463: سكرول طبيعي — المحادثة تتحرك كلها مع بعض
 function anchorLastUserMsgTop(){
-  try{ messagesEl.scrollTop = messagesEl.scrollHeight; syncChatJumpButton(); }catch(e){ window.__swallow && window.__swallow(e,'ui.scrollAnchor'); }
+  try{ if(window.omranChatFollow) window.omranChatFollow.stickNow(); messagesEl.scrollTop = messagesEl.scrollHeight; syncChatJumpButton(); }catch(e){ window.__swallow && window.__swallow(e,'ui.scrollAnchor'); }
 }
 // رتم البث: نأخذ قرار المتابعة قبل أن يكبر الرد. القياس بعد إضافة النص
 // كان يظن أن المستخدم صعد للأعلى، فيتوقف التمرير وحده وسط الرد الطويل.
@@ -1225,7 +1642,9 @@ function syncChatJumpButton(){
 }
 function smartScrollBottom(wasNearBottom){
   try{
-    const follow = (typeof wasNearBottom === 'boolean') ? wasNearBottom : chatIsNearBottom();
+    /* v-scroll-free: الملاحقة يقرّرها omranChatFollow (app-40) من حركة المستخدم — لا فرق ١٦٠px يشدّ إصبعه أثناء السحب */
+    const __F = window.omranChatFollow;
+    const follow = (typeof wasNearBottom === 'boolean') ? wasNearBottom : (__F ? __F.follow() : chatIsNearBottom());
     if(follow) messagesEl.scrollTop = messagesEl.scrollHeight;
     syncChatJumpButton();
   }catch(e){ __swallow(e, "misc:app-02-tts#8"); }
@@ -1236,6 +1655,7 @@ if(messagesEl){
 }
 if(chatJumpBottomBtn){
   chatJumpBottomBtn.onclick = () => {
+    if(window.omranChatFollow) window.omranChatFollow.stickNow();
     messagesEl.scrollTo ? messagesEl.scrollTo({top:messagesEl.scrollHeight, behavior:'smooth'}) : (messagesEl.scrollTop = messagesEl.scrollHeight);
     setTimeout(syncChatJumpButton, 220);
   };
@@ -1315,8 +1735,10 @@ function omranMathOpenBlock(h){
 function renderStreamingAssistant(el, text){
   if(!el) return;
   el.classList.add('msg-streaming');
+  { const __raw = String(text || ''), __rl = __raw.lastIndexOf('\n'); if(omranImgPartial(__raw.slice(__rl + 1))) text = __raw.slice(0, __rl + 1).trimEnd(); } // v-reply-blocks: سطر [[…]] الناقص يُخفى قبل أن يقصّ العرض أوّل «[» منه
   let __st = streamingMarkdownDisplayText(text);
   if(__st && __st.indexOf('[[') >= 0) __st = __st.replace(/\[\[(?:OPT|MULTI)\]\][\s\S]*$/, '').trimEnd();
+  if(__st){ const __nl = __st.lastIndexOf('\n'); if(omranImgPartial(__st.slice(__nl + 1))) __st = __st.slice(0, __nl + 1).trimEnd(); } // v-rich-reply
   var cut = omranStreamSplitPoint(__st);
   if(cut < 0){
     el._omStreamHead = null; el._omStreamHeadEl = null; el._omStreamTailEl = null;

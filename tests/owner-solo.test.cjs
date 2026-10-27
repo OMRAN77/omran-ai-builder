@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'owner-solo-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-direct';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
@@ -80,7 +81,7 @@ test('١. المالك على Gemini بلا رصيد عند الوسيط → ر�
   assert.equal(r.text, '', 'لا ردّ من مزوّد آخر');
   const stop = r.events.find((e) => e.ownerStop === true);
   assert.ok(stop, 'حدث التوقّف للمالك');
-  assert.equal(stop.error, 'ما عندي رصيد', 'الرسالة وحدها بلا نصّ تقنيّ');
+  assert.equal(stop.error, 'ما عندي رصيد — OpenRouter', 'الرسالة وحدها بلا نصّ تقنيّ');
 });
 
 test('٢. المالك على كلود: المباشر بلا رصيد ← كلود عبر الوسيط (المزوّد نفسه) بلا رصيد ← السببان، ولا مزوّد آخر', async () => {
@@ -91,7 +92,7 @@ test('٢. المالك على كلود: المباشر بلا رصيد ← كل�
   assert.match(models[0], /^anthropic\/claude/, 'كلود نفسه');
   const stop = r.events.find((e) => e.ownerStop === true);
   assert.ok(stop);
-  assert.equal(stop.error, 'ما عندي رصيد');
+  assert.equal(stop.error, 'ما عندي رصيد — Anthropic و OpenRouter');
   assert.equal(r.text, '');
 });
 
@@ -113,7 +114,7 @@ test('٤. المالك على Kimi: مفتاح Moonshot المباشر 402 ← K
     assert.ok(!r.calls.some((c) => isAnth(c.url)));
     const stop = r.events.find((e) => e.ownerStop === true);
     assert.ok(stop);
-    assert.equal(stop.error, 'ما عندي رصيد');
+    assert.equal(stop.error, 'ما عندي رصيد — Kimi مباشر و OpenRouter');
   } finally { delete process.env.KIMI_API_KEY; }
 });
 
@@ -208,7 +209,7 @@ test('٨. الأسلاك: العميل يرمي فشل المالك فورًا،
   for (const f of ['js/app-18-chat-tools.js', 'js/app.bundle.js']) {
     const s = read(f);
     assert.ok(s.includes('if (ev.error && ev.ownerStop === true) __ownerStop = true;'), f);
-    assert.ok(s.includes('if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; throw __er;'), f);
+    assert.ok(s.includes('if (__ownerStop) __er.ownerStop = true; if (__planLimit) __er.planLimit = true; __er.log = __logNow(); throw __er;'), f);
   }
 });
 
@@ -239,7 +240,7 @@ test('١١. Groq: رفض Groq نفسه (402) يتوقّف بـ«ما عندي ر
       (u) => (/api\.groq\.com/.test(u) ? new Response(JSON.stringify({ error: { message: 'Insufficient balance' } }), { status: 402 }) : isOR(u) ? sse('من الوسيط') : isAnth(u) ? sse('من كلود') : new Response('{}', { status: 404 })));
     assert.ok(r.calls.some((c) => /api\.groq\.com/.test(c.url)));
     assert.ok(!r.calls.some((c) => isOR(c.url) || isAnth(c.url)), 'لا وسيط ولا كلود');
-    assert.equal(r.events.find((e) => e.ownerStop).error, 'ما عندي رصيد');
+    assert.equal(r.events.find((e) => e.ownerStop).error, 'ما عندي رصيد — Groq مباشر');
   } finally { delete process.env.GROQ_API_KEY; }
 });
 
@@ -254,16 +255,21 @@ test('١٢. GPT: سقوط المفتاح المباشر يكمل عند الوس
     // المباشر بلا رصيد ثمّ الوسيط بخطأ غير الرصيد: السبب الأوّل (الرصيد) يبقى
     const r2 = await run('omran', { provider: 'openai', model: 'openai/gpt-6-astra', messages: ask('سؤال') },
       (u) => (/api\.openai\.com/.test(u) ? quota() : isOR(u) ? new Response('{"error":{"message":"upstream down"}}', { status: 503 }) : isAnth(u) ? sse('من كلود') : new Response('{}', { status: 404 })));
-    assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما عندي رصيد');
+    assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما عندي رصيد — OpenAI مباشر · OpenRouter خطأ 503');
     assert.ok(!r2.calls.some((c) => isAnth(c.url)));
   } finally { delete process.env.OPENAI_API_KEY; }
 });
 
-test('١٣. صفّ الوسيط العامّ: Grok المرفوض (404 نصّ) لا يجيب عنه كلود — يتوقّف بسببه', async () => {
+test('١٣. صفّ الوسيط العامّ: Grok المرفوض (404 نصّ) لا يجيب عنه كلود — يرجع لكروك الافتراضيّ', async () => {
   const r = await run('omran', { provider: 'openrouter', model: 'x-ai/grok-4.20', messages: ask('سؤال') },
     (u, b) => (isOR(u) ? (b.model === 'x-ai/grok-4.20' ? new Response('{"error":{"message":"No endpoints found for x-ai/grok-4.20"}}', { status: 404 }) : sse('من ' + b.model)) : new Response('{}', { status: 404 })));
-  assert.deepEqual(orModels(r.calls), ['x-ai/grok-4.20'], 'لا anthropic/claude-sonnet-5 بعده');
-  assert.equal(r.events.find((e) => e.ownerStop).error, 'ما قدرت أردّ الحين — خطأ 404');
+  assert.deepEqual(orModels(r.calls), ['x-ai/grok-4.20', 'x-ai/grok-4.6'], 'نفس شركة xAI لا كلود');
+  assert.ok(!r.calls.some((c) => isAnth(c.url) || (c.body && /^anthropic\//.test(c.body.model))), 'لا كلود');
+  assert.match(r.text, /من x-ai\/grok-4\.6/);
+  const r2 = await run('omran', { provider: 'openrouter', model: 'x-ai/grok-4.20', messages: ask('سؤال') },
+    (u) => (isOR(u) ? new Response('{"error":{"message":"No endpoints found"}}', { status: 404 }) : new Response('{}', { status: 404 })));
+  assert.deepEqual(orModels(r2.calls), ['x-ai/grok-4.20', 'x-ai/grok-4.6'], 'الافتراضيّ إن سقط يتوقّف — لا شركة أخرى');
+  assert.equal(r2.events.find((e) => e.ownerStop).error, 'ما قدرت أردّ الحين — خطأ 404: No endpoints found'); // v-why: سبب المزوّد بعد الرقم
 });
 
 test('١٤. مزوّد بلا طريق له أو غير معروف للخادم: لا يجيب كلود صامتًا عنه — للمالك وحده', async () => {
@@ -311,7 +317,7 @@ test('١٦. القائمة تسمّي ما يجيب فعلًا: Groq = GPT-OSS 1
     vm.runInNewContext('var model = this.model;\n' + line + '\nthis.out = model;', ctx);
     assert.equal(ctx.out, want, id);
   }
-  assert.match(read('index.html'), /\/js\/modes\.js\?v=m111026c/);
+  assert.match(read('index.html'), /\/js\/modes\.js\?v=m211026/);
 });
 
 // ── مراجعة مستقلّة (١٦ وكيلًا) على التعديل نفسه: أخطاء أكّدها مشكّك ثانٍ ──
@@ -414,4 +420,99 @@ test('٢٣. «انت من» بعد ردود سابقة قالت «أنا مها�
   const v = await run('vipuser', { provider: 'openai', messages: history }, (u) => (isOR(u) ? sse('هلا.') : new Response('{}', { status: 404 })));
   const vt = sysText(v.calls.find((c) => isOR(c.url)).body);
   assert.match(vt, /أنت وهي مساعد واحد باسمين/); assert.ok(!/\[هويّتك\]/.test(vt), 'غير المالك كما كان');
+});
+
+// ── v-owner-solo-all (المالك: «كل واحد بروحه»): الوسيط مشغول = إعادة كالمباشر، وبحث المالك عن تطبيقه بحثٌ ──
+const orBusy = () => new Response(JSON.stringify({ error: { message: 'Provider returned error', code: 503 } }), { status: 503 });
+test('١٢. v-owner-solo-all: مزوّد المالك عبر الوسيط ٥٠٣ ثمّ ٢٠٠ → يعيد المحاولة على نفسه ويجيب (كان يتوقّف من أوّل خطأ)', async () => {
+  let n = 0;
+  const r = await run('omran', { provider: 'gemini', messages: ask('اشرح لي الفرق بين الضريبة والرسوم') },
+    (u) => (isOR(u) ? (++n === 1 ? orBusy() : sse('من Gemini.')) : isAnth(u) ? sse('من كلود') : new Response('{}', { status: 404 })));
+  assert.equal(r.text, 'من Gemini.');
+  assert.deepEqual(orModels(r.calls), ['google/gemini-3.8-flash', 'google/gemini-3.8-flash'], 'Gemini نفسه مرّتين');
+  assert.ok(!r.calls.some((c) => isAnth(c.url)), 'لا كلود');
+});
+
+test('١٣. v-owner-solo-all: بحث المالك عن خطأ في تطبيقه («omran-ai-builder vercel build error») يُبحث فعلًا — لا «سؤال عن التطبيق نفسه»', async () => {
+  const toolTurn = () => new Response([
+    { type: 'message_start', message: { model: 'x', usage: { input_tokens: 1, output_tokens: 0 } } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tu1', name: 'web_search', input: {} } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify({ query: 'omran-ai-builder vercel build error' }) } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 3 } },
+  ].map((e) => 'event: ' + e.type + '\ndata: ' + JSON.stringify(e) + '\n\n').join(''), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  for (const [user, refused] of [['omran', false], ['vipuser', true]]) {
+    let k = 0;
+    const r = await run(user, { provider: 'claude', messages: ask('ابحث عن سبب فشل بناء omran-ai-builder على vercel') },
+      (u) => ((isAnth(u) || isOR(u)) ? (++k === 1 ? toolTurn() : sse('تمام.')) : new Response('{"results":[]}', { status: 200 })));
+    const back = JSON.stringify(r.calls.filter((c) => isAnth(c.url) || isOR(c.url)).slice(1).map((c) => c.body));
+    assert.equal(/هذا سؤال عن التطبيق نفسه/.test(back), refused, user);
+  }
+});
+
+test('١٤. v-owner-solo-all: الخطوة الأخيرة بلا أدوات (tool_choice none) لغير أنثروبيك على الوسيط أيضًا، وأنثروبيك بلاها (كاشه)', () => {
+  const OL = require(rp('api/_lib/owner-loop.js'));
+  const s = { on: true, final: true };
+  const tools = [{ name: 'x' }];
+  assert.deepEqual(OL.shape({ tools }, Object.assign({}, s), true).tool_choice, { type: 'none' });
+  assert.equal(OL.shape({ tools }, Object.assign({}, s), false).tool_choice, undefined);
+  assert.ok(read('api/_lib/chat.js').includes("__olS, !!__direct || (viaOR && !/^anthropic\\//.test(CHAT_MODEL))"), 'المسار المباشر أو الوسيط لغير أنثروبيك');
+});
+
+test('١٥. v-branch-shots: لقطتا الفرع من manage_github تصلان المزوّد صورًا بعد نتائج خطوته؛ ومن لا يرى يُقال له ذلك بلا صور', async () => {
+  const gmPath = rp('api/_lib/github-manage.js');
+  const real = require(gmPath);
+  require.cache[gmPath] = { id: gmPath, filename: gmPath, loaded: true, exports: Object.assign({}, real, { manage: async () => ({ ok: true, text: '📸 لقطتا الفرع x', runUrl: 'https://github.com/o/r/actions/runs/5', images: [{ label: 'لقطة الحاسوب من الفرع x', path: 'لقطة الحاسوب', mime: 'image/png', b64: 'QUJD', bytes: 3 }, { label: 'لقطة الجوّال من الفرع x', path: 'لقطة الجوّال', mime: 'image/png', b64: 'REVG', bytes: 3 }] }) }) };
+  const toolTurn = () => new Response([
+    { type: 'message_start', message: { model: 'x', usage: { input_tokens: 1, output_tokens: 0 } } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tu9', name: 'manage_github', input: {} } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify({ repo: 'o/r', action: 'shots', branch: 'x' }) } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 3 } },
+  ].map((e) => 'event: ' + e.type + '\ndata: ' + JSON.stringify(e) + '\n\n').join(''), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  try {
+    for (const [prov, sees] of [['claude', true], ['deepseek', false]]) {
+      let k = 0;
+      const r = await run('omran', { provider: prov, messages: ask('صوّر فرعي x وشوف الواجهة') },
+        (u) => ((isAnth(u) || isOR(u)) ? (++k === 1 ? toolTurn() : sse('شفتها.')) : new Response('{}', { status: 404 })));
+      const second = r.calls.filter((c) => isAnth(c.url) || isOR(c.url))[1];
+      const last = second.body.messages[second.body.messages.length - 1];
+      const imgs = (Array.isArray(last.content) ? last.content : []).filter((b) => b.type === 'image');
+      if (sees) {
+        assert.deepEqual(imgs.map((b) => b.source.data), ['QUJD', 'REVG'], prov + ': اللقطتان صورًا');
+        assert.ok(last.content.some((b) => b.type === 'text' && b.text === '[لقطة الحاسوب من الفرع x]'), 'باسمها لا «من المستودع»');
+      } else {
+        assert.equal(imgs.length, 0, prov + ': نصّيّ — بلا صور');
+        assert.match(JSON.stringify(last.content), /موديلك الحاليّ لا يرى الصور/);
+      }
+    }
+  } finally { require.cache[gmPath] = { id: gmPath, filename: gmPath, loaded: true, exports: real }; }
+});
+
+test('١٦. v-pplx-agent: المالك على Perplexity → Agent API بأدوات التطبيق ويجيب؛ بلا مفتاحه «لا طريق» لا كلود؛ وغير المالك كما كان', async () => {
+  const isPplx = (u) => /api\.perplexity\.ai\/v1\/responses/.test(u);
+  const rsse = (text) => new Response([
+    { type: 'response.created', response: { model: 'perplexity/sonar' } },
+    { type: 'response.output_text.delta', delta: text },
+    { type: 'response.completed', response: { usage: { input_tokens: 3, output_tokens: 2 } } },
+  ].map((e) => 'data: ' + JSON.stringify(e) + '\n\n').join('') + 'data: [DONE]\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  process.env.PERPLEXITY_API_KEY = 'test-pplx-key';
+  try {
+    const r = await run('omran', { provider: 'perplexity', messages: ask('اقرأ ملفّ chat.js وقل لي كم سطر') },
+      (u) => (isPplx(u) ? rsse('من Perplexity.') : (isAnth(u) || isOR(u)) ? sse('من غيره') : new Response('{}', { status: 404 })));
+    assert.equal(r.text, 'من Perplexity.');
+    const c = r.calls.find((x) => isPplx(x.url));
+    assert.ok(c, 'نداء Agent API');
+    assert.equal(c.body.model, 'perplexity/sonar');
+    assert.ok(c.body.tools.some((t) => t.type === 'function' && t.name === 'read_github'), 'أدوات التطبيق دوالّ أصليّة');
+    assert.ok(!r.calls.some((x) => isAnth(x.url) || isOR(x.url)), 'لا مزوّد آخر');
+
+    const v = await run('vipuser', { provider: 'perplexity', messages: ask('سؤال') },
+      (u) => (isPplx(u) ? rsse('x') : (isAnth(u) || isOR(u)) ? sse('كما كان') : new Response('{}', { status: 404 })));
+    assert.ok(!v.calls.some((x) => isPplx(x.url)), 'غير المالك: لا Agent API');
+  } finally { delete process.env.PERPLEXITY_API_KEY; }
+  const none = await run('omran', { provider: 'perplexity', messages: ask('سؤال') },
+    (u) => ((isAnth(u) || isOR(u)) ? sse('من كلود') : new Response('{}', { status: 404 })));
+  assert.equal(none.text, '', 'لا كلود مكانه');
+  assert.match(String((none.events.find((e) => e.ownerStop) || {}).error), /لا طريق لهذا المزوّد/);
 });

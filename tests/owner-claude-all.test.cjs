@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'owner-claude-all-secret';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
@@ -86,7 +87,7 @@ test('١. المالك بلا اختيار = Opus 5.5 على المفتاح ال
   r = await withoutAnth(() => run('omran', { messages: ask(HARD) }));
   assert.equal(r.calls[0].url, 'https://openrouter.ai/api/v1/messages');
   assert.equal(r.calls[0].body.model, 'anthropic/claude-opus-5.5');
-  assert.equal(r.calls[0].body.max_tokens, 16000, 'بلا جهد مختار: السقف كما كان');
+  assert.equal(r.calls[0].body.max_tokens, 128000, 'بلا جهد مختار: سقف المالك المفتوح (v-owner-cap-open)');
 });
 
 test('٢. النماذج الاثنا عشر كلّها للمالك بمعرّفاتها الرسميّة على المسارين، وOpus 5 مستقلّ', async () => {
@@ -148,7 +149,7 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   let r = await run('omran', { messages: ask('السلام'), effort: 'xhigh' });
   assert.equal(r.calls[0].body.model, 'claude-opus-5-5');
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'xhigh' });
-  assert.equal(r.calls[0].body.max_tokens, 64000);
+  assert.equal(r.calls[0].body.max_tokens, 128000); // v-owner-cap-open
   assert.equal(r.calls[0].body.thinking, undefined);
   // سؤال صعب: الجهد + عرض التفكير الملخّص على المسار المباشر
   r = await run('omran', { messages: ask(HARD), effort: 'max' });
@@ -158,7 +159,7 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   r = await run('omran', { model: 'claude-opus-4-8', messages: ask('السلام'), effort: 'high' });
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'high' });
   assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive' });
-  assert.equal(r.calls[0].body.max_tokens, 16000);
+  assert.equal(r.calls[0].body.max_tokens, 128000); // v-owner-cap-open: سقف المالك في كلّ جهد
   r = await run('omran', { model: 'claude-opus-4-8', messages: ask(HARD), effort: 'high' });
   assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive', display: 'summarized' });
   // Opus 4.6: Extra → high
@@ -168,18 +169,18 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   r = await run('omran', { model: 'claude-haiku-4-5', messages: ask(HARD), effort: 'max' });
   assert.equal(r.calls[0].body.output_config, undefined);
   assert.equal(r.calls[0].body.thinking, undefined);
-  assert.equal(r.calls[0].body.max_tokens, 16000);
-  // الوسيط: الجهد يصل بالحقل نفسه، بلا عرض (العرض لأنثروبيك المباشر)
+  assert.equal(r.calls[0].body.max_tokens, 128000); // v-owner-cap-open
+  // الوسيط: الجهد يصل بالحقل نفسه، والعرض الملخّص كالمباشر (v-or-display — كان بلا عرض فلا «↳ 💭» على الوسيط)
   r = await withoutAnth(() => run('omran', { model: 'claude-sonnet-5-5', messages: ask(HARD), effort: 'medium' }));
   assert.equal(r.calls[0].body.model, 'anthropic/claude-sonnet-5.5');
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'medium' });
-  assert.equal(r.calls[0].body.thinking, undefined);
+  assert.deepEqual(r.calls[0].body.thinking, { type: 'adaptive', display: 'summarized' });
   // مراجعة GPT: السقف الكبير على الوسيط أيضًا (بدونه يأكل التفكير الردّ)، و402 «can only afford» = إعادة واحدة بالسقف العاديّ وسطر السبب
   r = await withoutAnth(() => run('omran', { messages: ask(HARD), effort: 'max' }));
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'max' });
-  assert.equal(r.calls[0].body.max_tokens, 64000);
+  assert.equal(r.calls[0].body.max_tokens, 128000); // v-owner-cap-open
   r = await withoutAnth(() => run('omran', { messages: ask(HARD), effort: 'max' }, [() => new Response(JSON.stringify({ error: { message: 'This request requires more credits, or fewer max_tokens. You requested up to 64000 tokens, but can only afford 9000.', code: 402 } }), { status: 402 }), () => text('تم')]));
-  assert.deepEqual(r.calls.map((c) => c.body.max_tokens), [64000, 16000]);
+  assert.deepEqual(r.calls.map((c) => c.body.max_tokens), [128000, 9000]); // v-cap-not-credit: حدّ الرصيد من الرسالة لا ١٦ ألفًا
   assert.deepEqual(r.calls[1].body.output_config, { effort: 'max' }, 'الجهد نفسه');
   assert.ok(r.events.some((e) => /رصيد الوسيط لا يكفي/.test(e.status || '')));
   // مراجعة: دور صورة بموديل CHAT_IMAGE_MODEL آخر لا يأخذ جهدًا حُسب لموديل المحادثة (Haiku 4.5 يرفضه = 400)
@@ -193,7 +194,7 @@ test('٥. الجهد المختار يصل الطلب ويغلب التلقائ�
   // قيمة غير معروفة = التلقائيّ كما كان (التحيّة low)
   r = await run('omran', { messages: ask('السلام'), effort: 'ultra' });
   assert.deepEqual(r.calls[0].body.output_config, { effort: 'low' });
-  assert.equal(r.calls[0].body.max_tokens, 16000);
+  assert.equal(r.calls[0].body.max_tokens, 128000); // v-owner-cap-open
 });
 
 test('٦. 400 على الجهد = إعادة فوريّة بالموديل نفسه بلا الجهد، بلا رجوع للافتراضيّ، ويُذكر الرفض', async () => {
@@ -325,8 +326,8 @@ test('١٠. الإعدادات لا تكتب فوق اختيار المالك، 
     const f = read('i18n/' + lg + '.js');
     for (const k of K) assert.ok(f.includes('"' + k + '":'), lg + ' ' + k);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=740';"));
-  assert.ok(read('index.html').includes('/js/modes.js?v=m111026c'));
+  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=776';"));
+  assert.ok(read('index.html').includes('/js/modes.js?v=m211026'));
   const bundle = read('js/app.bundle.js');
   assert.ok(bundle.includes('window.claudeEffortGet = effortGet;') && bundle.includes("return (__p === 'claude' && window.claudeEffortGet) ? (window.claudeEffortGet() || undefined)"), 'الحزمة أُعيد بناؤها');
 });

@@ -16,9 +16,82 @@
   function provEngine() {
     try {
       if (!(typeof omranOwnerUi === 'function' && omranOwnerUi())) return undefined;
-      var p = localStorage.getItem('aiapp_provider') || 'openai';
+      var p = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); // v-owner-solo-all: افتراضيّ المالك الحقيقيّ (كروك) لا GPT Image الخام على جهاز جديد
       return p === 'openai' ? 'gpt' : (p === 'gemini' ? 'nano' : undefined);
     } catch (e) { return undefined; } // guard-ok — بلا تخزين = السلسلة المعتادة
+  }
+
+  /* v-owner-img-why (لقطة المالك ١٣ أكتوبر: GPT-6 Astra حاول رسم بدائل بطاقات الأزياء فرجع «image_generation_busy» مرّتين وقال «العائق توليد
+     الصور» بلا سبب): السبب الحقيقيّ في __diag من الخادم (رسالة المحرّك: رصيد، صلاحيّة، موديل…) كان يُرمى هنا. للمالك وحده يصل نتيجةَ الأداة —
+     بلا مفاتيح — فيقوله المزوّد كما هو ولا يسمّيه «مشغول». غير المالك كما كان (لا أسماء محرّكات تصل ردّه). */
+  /* v-agent-img: رسمة المزوّد للمالك تُحفظ في مخزن التطبيق يومًا (purpose:'agent' — الخادم يتحقّق أنّه المالك) ويُسجَّل رمزها ←
+     معرّفها في المحادثة (agentImgIds) فيرسله app-18 مع كلّ طلب، ويقبل write_github الرمز في دور لاحق أيضًا. يرجع الرابط أو ''. */
+  /* v-img-tok-unique: الرموز كانت تبدأ من __IMG_1__ في كلّ طلب (app-18 يصفّر __genImages)، فرسمة الدور الثاني تأخذ رمز الأولى وتحلّ محلّها
+     في خريطة المحادثة — «ارفع صورة العماني» يرفع آخر رسمة لا العماني. للمالك: العدّ مستمرّ في المحادثة (cur.imgSeq)، وغيره كما كان. */
+  function omranNextTok(imgs, chat) {
+    var n = Object.keys(imgs || window.__genImages || {}).length + 1;
+    try {
+      var cur = omranAgentOwner() ? (chat || ((typeof getCurrent === 'function') ? getCurrent() : null)) : null;
+      if (cur) { var base = Number(cur.imgSeq) || 0; Object.keys(cur.agentImgIds || {}).forEach(function (k) { var m = /^__IMG_(\d+)__$/.exec(k); if (m && +m[1] > base) base = +m[1]; }); n = Math.max(n, base + 1); cur.imgSeq = n; }
+    } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:img-seq'); }
+    return '__IMG_' + n + '__';
+  }
+  function omranAgentOwner() { try { return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); } catch (e) { return false; } }
+  /* v-agent-img-size (وضع الوكيل ١٤ أكتوبر: من أربع رسمات حُفظت واحدة — JPEG — والثلاث PNG فوق حدّ المخزن ٣ م.ب فرُدّت 413 بصمت):
+     الكبيرة تُعاد JPEG بجودة متدرّجة وأبعاد ≤ ١٦٠٠ قبل الحفظ؛ الرفع يحوّلها لصيغة المسار بعدها. */
+  function omranAgentShrink(b64, mime) {
+    return new Promise(function (resolve) {
+      try {
+        var im = new Image();
+        im.onload = function () {
+          try {
+            var k = Math.min(1, 1600 / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
+            var c = document.createElement('canvas');
+            c.width = Math.max(1, Math.round((im.naturalWidth || 1) * k)); c.height = Math.max(1, Math.round((im.naturalHeight || 1) * k));
+            var cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(im, 0, 0, c.width, c.height);
+            var q = 0.92, d = '';
+            do { d = c.toDataURL('image/jpeg', q).split(',')[1] || ''; q -= 0.08; } while (d.length > 2500000 && q > 0.5);
+            resolve(d ? { b64: d, mime: 'image/jpeg' } : null);
+          } catch (e) { resolve(null); }
+        };
+        im.onerror = function () { resolve(null); };
+        im.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
+      } catch (e) { resolve(null); }
+    });
+  }
+  /* v-agent-img-keep (المالك ١٤ أكتوبر: «لا ترفعلي الضغط… هذا رصيدي يخلص»): الحفظ الفاشل لا يكلّف رسمة ثانية — يُعاد مرّة مصغّرًا JPEG
+     مهما كان السبب، والرسمة تبقى في المتصفّح فيطلب الخادم حفظها (save_image) عند الرفع بدل إعادة الرسم. */
+  async function omranAgentSave(tok, b64, mime, again, chat) {
+    var u = await omranAgentSave1(tok, b64, mime, chat);
+    if (u || again) return u;
+    var sh = await omranAgentShrink(b64, mime);
+    return sh ? omranAgentSave1(tok, sh.b64, sh.mime, chat) : '';
+  }
+  async function omranAgentSave1(tok, b64, mime, chat) {
+    try {
+      if (String(b64 || '').length > 2500000) { var sh = await omranAgentShrink(b64, mime); if (sh) { b64 = sh.b64; mime = sh.mime; } }
+      var up = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64, mime: mime || 'image/png', purpose: 'agent', token: (window.authGet && window.authGet('aiapp_auth_token')) || '' }) });
+      var uj = null; try { uj = await up.json(); } catch (e2) { uj = null; }
+      if (!up.ok || !uj || !uj.url || !uj.id) { window.__agentSaveWhy = 'HTTP ' + up.status + ((uj && uj.error) ? ' ' + uj.error : ''); return ''; }
+      try {
+        var cur = chat || ((typeof getCurrent === 'function') ? getCurrent() : null); // v-img-run-bind: محادثة التشغيل لا المعروضة
+        if (cur) {
+          var m = Object.assign({}, cur.agentImgIds || {});
+          m[tok] = String(uj.id);
+          var keys = Object.keys(m); if (keys.length > 30) keys.slice(0, keys.length - 30).forEach(function (k) { delete m[k]; });
+          cur.agentImgIds = m;
+        }
+      } catch (e3) { if (window.__swallow) window.__swallow(e3, 'chatTools:agent-img-map'); }
+      return String(uj.url);
+    } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:pics-share'); return ''; }
+  }
+  function engineWhy(j) {
+    try {
+      if (!(typeof omranOwnerUi === 'function' && omranOwnerUi()) || !j || !j.__diag) return '';
+      var d = j.__diag;
+      var w = String(d.openai && d.openai !== 'no-rescue' ? d.openai : (d.gErr || d.nano || d.openai || d.free || '')).replace(/sk-[A-Za-z0-9_*\-]{6,}/g, 'sk-…').replace(/\s+/g, ' ').trim().slice(0, 220);
+      return w ? ' — السبب من المحرّك: ' + w + ' — قله للمالك كما هو؛ إن كان رصيدًا أو صلاحيّة أو موديلًا غير متاح فلا تسمّه «مشغول» ولا تعِد المحاولة' : '';
+    } catch (e) { return ''; } // guard-ok — السبب إضافة؛ بلاه الرسالة كما كانت
   }
 
   function runInSandbox(html, timeoutMs) {
@@ -75,7 +148,16 @@
 
   /** ينفّذ أداة واحدة ويعيد نصًّا يفهمه النموذج. */
   window.omranAgentTools = {
-    run: async function (name, args) {
+    run: async function (name, args, rc) {
+      /* v-img-run-bind (فحص سجلّ العمل، المالك ١٤ أكتوبر «صلّح الثلاثة الباقية»): مع المحادثات المتوازية كانت حالة الصور كلّها عامّة —
+         رسمة المحادثة أ تُكتب في المحادثة المعروضة ب (agentImgIds وlastEditedImage)، وedit_image في أ يعدّل صورة ب (تعديل مدفوع للصورة
+         الخطأ)، وطلب ب يصفّر __genImages فتضيع رسمات أ ويُعاد رمزها. rc = سياق تشغيل الطلب (app-18 وapp-09): محادثته وخريطة صوره
+         ومرجع صورته وكلمات مستخدمه، تُقرأ هنا بدل العامّ. بلا rc (مستدعٍ قديم) كما كان. */
+      var RC = (rc && typeof rc === 'object') ? rc : null;
+      var IMGS = (RC && RC.imgs) ? RC.imgs : (window.__genImages = window.__genImages || {});
+      var CHAT = function () { if (RC && RC.chat) return RC.chat; try { return (typeof getCurrent === 'function') ? getCurrent() : null; } catch (e) { return null; } };
+      var REF = RC ? RC.ref : window.__chatVideoReference;
+      var UTXT = RC ? String(RC.userText || '') : String(window.__chatLastUserText || '');
       try {
         if (name === 'run_js') {
           var code = String((args && args.code) || '');
@@ -95,16 +177,19 @@
         }
         // 🎬 إنشاء فيديو من داخل المحادثة — يستخدم نفس محركات صانع الفيديو الحالي.
         if (name === 'generate_video') {
+          var vT0 = Date.now(); /* v-audit-chatcli: مهلة الخادم (runInClient ٢٩٠ ث) تبدأ من طلب الأداة، وتأكيد النقاط منها */
           var va = args || {};
           var vp = String(va.prompt || '').trim();
           if (!vp) return 'وصف الفيديو فارغ — لم يبدأ التوليد.';
+          if (typeof omranVideoWriteAsk === 'function' && omranVideoWriteAsk(UTXT, false)) return 'لم يبدأ أيّ توليد: المستخدم يطلب الكتابة على فيديو قائم، والتطبيق لا يكتب على الفيديو بعد. قل له ذلك بجملة واحدة ولا تدّعِ التنفيذ، واعرض كتابته على لقطة من الفيديو أو صورة يرسلها.'; // v-video-write-ask
           /* v-video-trends: الترند يحدد المحرك والنسبة ويُبنى أمره على الخادم */
+          if (va.trend && typeof omranHwHidden === 'function' && omranHwHidden('trend', String(va.trend))) va.trend = ''; // v-hw-resubmit-2
           var trendMeta = null;
           try { trendMeta = (window.__VIDEO_TRENDS && va.trend) ? (window.__VIDEO_TRENDS.trends || []).filter(function (t) { return t.key === va.trend; })[0] : null; } catch (e) { trendMeta = null; }
           var engine = trendMeta ? trendMeta.engine : (String(va.provider || 'runway').toLowerCase() === 'veo' ? 'veo' : 'runway');
           var vr = String(va.ratio || '').toLowerCase();
           var ratio = trendMeta ? trendMeta.ratio : (vr === 'portrait' || vr === '9:16' ? '720:1280' : '1280:720');
-          var ref = va.use_reference_image === false ? null : window.__chatVideoReference;
+          var ref = va.use_reference_image === false ? null : REF;
           /* v-video-photo-identity: بلا نسبة صريحة من النموذج كانت عرضيّة دائمًا، فتُقصّ صورة الجوّال الطوليّة
              من وسطها ويضيع الرأس — النسبة تتبع اتّجاه الصورة المرجعيّة (طوليّة/مربّعة ⇒ ٩:١٦). */
           if (!trendMeta && !vr && ref && ref.dataUrl) {
@@ -131,6 +216,17 @@
             payload = { promptText: vp, ratio: ratio, token: token, duration: parseInt(va.durationSeconds, 10) >= 8 ? 10 : 5, style: va.style === 'anime' ? 'anime' : 'realistic', longMode: false };
           }
           if (trendMeta) { payload.trend = va.trend; payload.params = { name: va.trend_name || '', text: va.trend_text || '' }; if (engine === 'veo') payload.durationSeconds = 8; }
+          /* v-chat-trend-scenes (المالك، الخيار «أ»): ترند المشاهد (قصّة بيكسار) كان يصل باسم ونصّ فقط فتُرمى قصّة المستخدم ويخرج
+             مشهد الصباح الافتراضيّ. الآن مقطع واحد يجمع مشاهده بالترتيب (oneClip): trend_scenes، أو trend_text يقسمه الخادم
+             («المشهد الأول: …») أو يصير هو المشهد. والنصّ لا يصير اسم الطفل؛ كلمة واحدة بلا اسم = اسم. بلا قصّة = الافتراضيّ كما كان. */
+          if (trendMeta && trendMeta.scenes > 1) {
+            var tName = String(va.trend_name || '').trim(), tStory = String(va.trend_text || '').trim();
+            var tScenes = (Array.isArray(va.trend_scenes) ? va.trend_scenes : []).filter(function (s) { return typeof s === 'string' && s.trim(); }).slice(0, 5);
+            if (!tName && !tScenes.length && tStory && !/\s/.test(tStory)) { tName = tStory; tStory = ''; }
+            payload.params = { name: tName, text: tName, oneClip: true };
+            if (tScenes.length) payload.params.scenes = tScenes;
+            else if (tStory && tStory !== tName) payload.params.extra = tStory;
+          }
           if (ref && ref.dataUrl) {
             var comma = String(ref.dataUrl).indexOf(',');
             if (comma > 0) { payload.imageBase64 = String(ref.dataUrl).slice(comma + 1); payload.imageMime = ref.mime || String(ref.dataUrl).slice(5, comma).split(';')[0] || 'image/png'; }
@@ -138,45 +234,66 @@
           var vrsp = window.postWithConfirm ? await window.postWithConfirm(endpoint, payload) : await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
           var vjson = null; try { vjson = await vrsp.json(); } catch (e) { vjson = null; }
           if (vrsp.status === 428) return 'لم يتم تشغيل الفيديو لأن المستخدم لم يؤكد خصم النقاط.';
-          if (!vrsp.ok || !vjson) return 'تعذّر بدء الفيديو: ' + String((vjson && vjson.error) || ('HTTP ' + vrsp.status)).slice(0, 160);
+          if (!vrsp.ok || !vjson) return 'تعذّر بدء الفيديو: ' + String((vjson && typeof omranVideoCodeText === 'function' && omranVideoCodeText(vjson.error, vjson.retryAfter)) || (vjson && vjson.error) || ('HTTP ' + vrsp.status)).slice(0, 160); // v-chat-video-cooldown: النموذج يرى المهلة بالدقائق لا الرمز
           var videoUrl = null;
-          var maxPoll = engine === 'veo' ? 34 : 36;
-          for (var pi = 0; pi < maxPoll; pi++) {
-            await new Promise(function (resolve) { setTimeout(resolve, engine === 'veo' ? 8000 : 5000); });
-            var sr = engine === 'veo'
-              ? await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(vjson.op || ''))
-              : await fetch('/api/video-status?id=' + encodeURIComponent(vjson.id || ''));
-            var sj = null; try { sj = await sr.json(); } catch (e2) { sj = null; }
+          /* v-audit-chatcli (cli-chat-rest-5): عثرة شبكة في استطلاع واحد كانت ترمي إلى catch العامّ («تعذّر التنفيذ: Failed to fetch») فيُترك
+             فيديو مدفوع يكتمل عند المزوّد ولا يراه أحد، وسقف Runway ‏٣٦×٥ ث = ١٨٠ ث والخادم ينتظر الأداة ٢٩٠ ث. الآن كلّ استطلاع في try يُعاد
+             بعد مهلته، والانتظار للمحرّكين حتّى ٢٨٠ ث من طلب الأداة (قبل مهلة الخادم)، ولا خروج إلّا بنتيجة أو فشل أو انتهاء الوقت. */
+          var vStep = engine === 'veo' ? 8000 : 5000;
+          while (Date.now() + vStep <= vT0 + 280000) {
+            await new Promise(function (resolve) { setTimeout(resolve, vStep); });
+            var sj = null;
+            try {
+              var sr = engine === 'veo'
+                ? await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(vjson.op || ''))
+                : await fetch('/api/video-status?id=' + encodeURIComponent(vjson.id || ''));
+              try { sj = await sr.json(); } catch (e2) { sj = null; }
+            } catch (e3) { sj = null; /* guard-ok — عثرة شبكة عابرة: المهمّة قائمة عند المزوّد، نستطلعها ثانية */ }
             if (sj && sj.status === 'SUCCEEDED') { videoUrl = Array.isArray(sj.output) ? sj.output[0] : sj.output; break; }
             if (sj && sj.status === 'FAILED') return 'فشل إنشاء الفيديو: ' + String(sj.failure || sj.error || 'سبب غير معروف').slice(0, 180);
+            if (sj && sj.error === 'unavailable') return 'تعذّر إكمال الفيديو: ' + t('svcPaused') + ' (رُدّت نقاط المستخدم).'; // v-credit-out: الخادم سوّى التذكرة — لا انتظار ٤٫٥ دقيقة
           }
-          if (!videoUrl) return 'انتهت مهلة انتظار الفيديو قبل وصول النتيجة. حاول مرة أخرى إذا لم يظهر خلال دقائق.';
-          window.__chatVideoResult = { url: videoUrl, name: 'chat-video.mp4', provider: engine };
+          if (!videoUrl) return 'لم يصل الفيديو خلال مهلة الانتظار هنا (نحو ٤ دقائق ونصف) والمهمّة ما زالت عند المزوّد (المعرّف: ' + String(vjson.id || vjson.op || '') + '). لا تقل إنّه فشل، ولا تستدعِ generate_video من جديد الآن — طلب جديد يُخصم مرّة ثانية ويصطدم بقفل الفيديو الجاري. قل للمستخدم بجملة واحدة إنّ الفيديو أخذ أطول من المعتاد ولم يصل إلى المحادثة.';
+          /* v-audit-chatcli (cli-chat-rest-4): الفيديو لمحادثة طلبه — كان في window.__chatVideoResult العامّ، يصفّره طلب محادثة أخرى (app-18)
+             أو يلتقطه ردّها (app-09) مع المحادثات المتوازية، كما رُبطت الصور بمحادثتها (v-img-run-bind). بلا محادثة معروفة كما كان. */
+          var vRes = { url: videoUrl, name: 'chat-video.mp4', provider: engine }, vChat = CHAT();
+          if (vChat && vChat.id != null) (window.__chatVideoByChat = window.__chatVideoByChat || {})[vChat.id] = vRes;
+          else window.__chatVideoResult = vRes;
           return '✅ تم إنشاء الفيديو بنجاح. سيظهر الآن داخل المحادثة مع زر التنزيل.';
         }
         // 🎨 صورة حقيقية بدل رابط عشوائي. تُخزَّن محليًّا ويُعاد للنموذج رمز قصير
         // (__IMG_n__) يضعه في src؛ العميل يستبدله بـdata URI قبل العرض — فلا
         // تدخل مئات الكيلوبايت في سياق النموذج ولا في سجلّ المحادثة.
+        /* v-agent-img-keep: حفظ رسمة موجودة في المتصفّح برمزها — بلا رسم جديد ولا رصيد */
+        if (name === 'save_image') {
+          var stok = String((args && args.token) || '');
+          var ssrc = IMGS[stok] || '';
+          if (!ssrc) { try { var scur = CHAT(); var sms = (scur && scur.messages) || []; for (var si = sms.length - 1; si >= 0 && !ssrc; si--) if (sms[si] && sms[si]._imgCache && sms[si]._imgCache[stok]) ssrc = sms[si]._imgCache[stok]; } catch (e) { ssrc = ''; } }
+          var sm = String(ssrc).match(/^data:([^;,]+);base64,(.+)$/);
+          if (!sm) return 'تعذّر: لا صورة للرمز ' + stok + ' في هذا المتصفّح (أُغلقت الصفحة أو ليست هذه المحادثة) — لا تُعِد رسمها من نفسك: قل للمالك السبب، والرسم من جديد بطلبه وحده.'; // v-owner-paid-gate
+          var surl = await omranAgentSave(stok, sm[2], sm[1], false, CHAT());
+          return surl ? ('✅ حُفظت ' + stok + ': ' + surl) : ('تعذّر حفظ ' + stok + ' (' + (window.__agentSaveWhy || 'سبب غير معروف') + ')');
+        }
         if (name === 'generate_image') {
           var prompt = String((args && args.prompt) || '').trim();
           if (!prompt) return 'وصف الصورة فارغ — لم تُرسم.';
-          window.__genImages = window.__genImages || {};
-          if (Object.keys(window.__genImages).length >= 4) {
+          if (Object.keys(IMGS).length >= 4) {
             return 'بلغتَ حدّ أربع صور في هذا الردّ. أكمل الصفحة بخلفيات CSS بدل صور إضافية.';
           }
           /* v-nano-pro-edit (تتبّع المالك: صورة مرفقة + «أقوى» → النموذج اختار generate_image فرسم مسجدًا آخر
              بلا علاقة): إن كانت كلمات المستخدم نفسها طلبًا إبداعيًا على صورته المرفقة في هذا الدور، فالصورة
              الجديدة تُبنى على المصدر (تعديل) لا من الوصف وحده. */
-          var gUserText = String((args && args.userText) || window.__chatLastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600);
-          var gRef = window.__chatVideoReference;
+          var gUserText = String((args && args.userText) || UTXT || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600);
+          var gRef = REF;
           var gRefB64 = gRef && gRef.dataUrl ? String(gRef.dataUrl).split(',')[1] : '';
           var gNewImage = /(?:صور[ةه]|كرت|بطاق[ةه]|تصميم|لوجو|شعار|بوستر|بنر|غلاف)\s*(?:جديد[ةه]?|ثاني[ةه]?|أخرى|اخرى|غير)|(?:^|[\s،,])(?:ارسم|أرسم|اصنع|انشئ|أنشئ|صمم|صمّم|ولّد|ولد|draw|create|generate|design)\s*(?:لي\s*)?(?:صور[ةه]|كرت|بطاق[ةه]|لوجو|شعار|بوستر|بنر|image|picture|card|logo|poster|banner)|\b(?:new|another|different)\s+(?:image|picture|photo|card|design|logo|poster|banner)\b/i.test(gUserText);
           /* الحواجز نفسها التي تطبّقها بوابة المحادثة: لا سؤال، لا كود/بناء، لا قراءة/مواصفات/وصفة/دعم — وأول صورة في الردّ فقط،
              كي لا تُختطف صور الصفحة كلها في طلب بناء يذكر صفة جودة مع شعار مرفق. */
           var gNotEdit = /^\s*(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|لماذا|ماذا|why|how|what|where|when|who|which)(?=$|[\s،,])|(?:كود|تطبيق|موقع|صفحة|زر\s|لعبة|سكربت|بوت|code|app|website|page|button|game|script|bot|html|css)|(?:ترجم|اقرأ|اقري|وصف|اوصف|حلل|حلّل|قارن|مواصفات|سعر|بكم|موديل|وصفة|وصفه|طبق|طبخ|مشكل|خطأ|ما\s*يشتغل|translate|read|describe|analy|compare|specs|price|recipe|dish|cook|problem|error|issue)/i.test(gUserText);
-          var gFirst = Object.keys(window.__genImages).length === 0;
-          var gCreative = !!(gFirst && gRefB64 && gUserText && gUserText.length <= 120 && !gNewImage && !gNotEdit && typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE.test(gUserText) && !/[؟?]\s*$/.test(gUserText));
-          if (gCreative) return await window.omranAgentTools.run('edit_image', { instruction: prompt, userText: gUserText });
+          var gFirst = Object.keys(IMGS).length === 0;
+          /* v-owner-like-me: noRef من الخادم = صورة جديدة يحتاجها التطبيق في دور لقطة المالك — اللقطة المرفقة لا تُعدَّل بدلها */
+          var gCreative = !!(gFirst && gRefB64 && gUserText && gUserText.length <= 120 && !gNewImage && !gNotEdit && typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE.test(gUserText) && !/[؟?]\s*$/.test(gUserText) && !(args && args.noRef));
+          if (gCreative) return await window.omranAgentTools.run('edit_image', { instruction: prompt, userText: gUserText }, RC);
           // v-maha-image-rescue: زحام عابر (retryable) يستحق محاولة ثانية بعد
           // مهلة قصيرة قبل إعلان الفشل — المستخدم لا يعيد طلبه بنفسه.
           var resp = null, j = null;
@@ -195,42 +312,51 @@
             j = null;
             try { j = await resp.json(); } catch (e) { j = null; }
             if (resp.ok && j && j.imageBase64) break;
-            if (!(j && j.retryable) || __att === 2) break;
+            if (!(j && j.retryable) || j.billed === true || __att === 2) break; // v-img-no-rebill: قد تكون حُسبت — لا رسمة ثانية
             await new Promise(function (r3) { setTimeout(r3, 2500); });
           }
           if (!resp.ok || !j || !j.imageBase64) {
-            return 'تعذّر رسم الصورة: ' + (((j && j.error) || ('HTTP ' + resp.status)) + '').slice(0, 120) +
+            return 'تعذّر رسم الصورة: ' + (((j && j.error) || ('HTTP ' + resp.status)) + '').slice(0, 120) + engineWhy(j) +
                    '. لا تخترع رابط صورة — استعمل خلفية CSS بدلها.';
           }
-          var tok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
-          window.__genImages[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
+          var tok = omranNextTok(IMGS, CHAT());
+          IMGS[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
           /* v-tool-chain (لقطة المالك «غير الشخصيات الي 3d» بعد صورة من الأدوات → سؤال نصي): صورة الأدوات لم تكن تدخل سلسلة
              التعديل، فالرسالة التالية تذهب للنموذج النصي. الآن هي آخر صورة وسلسلة جديدة، فتعمل عليها «3d/أقوى/غيّر…» مباشرة. */
-          try { var gcur = (typeof getCurrent === 'function') ? getCurrent() : null; if (gcur) { gcur.lastEditedImage = { b64: j.imageBase64, mime: j.mimeType || 'image/png' }; gcur.lastMsgWasImageEdit = true; gcur.imageTurns = []; } } catch (e) { /* guard-ok — السلسلة اختيارية */ }
+          try { var gcur = CHAT(); if (gcur) { gcur.lastEditedImage = { b64: j.imageBase64, mime: j.mimeType || 'image/png' }; gcur.lastMsgWasImageEdit = true; gcur.imageTurns = []; } } catch (e) { /* guard-ok — السلسلة اختيارية */ }
           // v-img-engine-tag: اسم المحرك يظهر في سطر الأثر — يحسم «أي محرك نفّذ» فورًا.
-          return '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
+          var gLine = '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
+          /* v-img-with-edit: دور لقطة + صور = احفظ رابط /i/ فورًا كي تُرفع مع التعديل بلا انتظار «عمّم» */
+          /* v-agent-img (المالك ١٣ أكتوبر: «الوكيل يرسم صورة ويرفعها للمستودع مباشرة»): كلّ رسمة للمالك تُحفظ في المخزن يومًا
+             (purpose:'agent') ويصل النموذجَ رابطها مع رمزها، فيرفعها write_github بـimage:"__IMG_N__" أو بالرابط. */
+          if ((args && args.noRef) || omranAgentOwner()) {
+            var gUrl = await omranAgentSave(tok, j.imageBase64, j.mimeType || 'image/png', false, CHAT());
+            if (gUrl && args && args.noRef) gLine += ' رابطها في التطبيق: ' + gUrl + ' — ارفعها الآن بـwrite_github ملف {path: مسار الصورة في المستودع كما قرأته, image: "' + gUrl + '"} في هذا الردّ نفسه. لا تنتظر «عمّم».';
+            else if (gUrl) gLine += ' رابطها في التطبيق: ' + gUrl + ' — لرفعها إلى المستودع: write_github ملف {path, image: "' + tok + '"}.';
+            else if (omranAgentOwner()) gLine += ' ⚠️ لم تُحفظ بعد في مخزن التطبيق (' + (window.__agentSaveWhy || 'سبب غير معروف') + ') — الرسمة في المتصفّح: ارفعها برمزها كما هو (image: "' + tok + '") والخادم يحفظها عند الرفع. لا تُعِد رسمها.'; // v-owner-paid-gate: «أعد رسمها» كانت تكلّف رسمة لكلّ فشل
+          }
+          return gLine;
         }
         /* v-edit-image-tool: تعديل الصورة المرفقة في هذا الدور بنفس محرك التطبيق
            (المصدر: آخر صورة أرفقها المستخدم — app-18 يحفظها في __chatVideoReference). */
         if (name === 'edit_image') {
           var instr = String((args && args.instruction) || '').trim();
           if (!instr) return 'تعليمة التعديل فارغة — لم يُعدَّل شيء.';
-          var ref = window.__chatVideoReference;
+          var ref = REF;
           var srcB64 = ref && ref.dataUrl ? String(ref.dataUrl).split(',')[1] : '';
           /* v-nano-pro-edit: بلا مرفق في هذا الدور نعود لآخر صورة في المحادثة (المرفوعة أو المولّدة)
              بدل الاعتذار — فكان النموذج يهرب إلى generate_image ويرسم صورة جديدة بلا علاقة بالمصدر. */
           if (!srcB64) {
             try {
-              var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+              var cur = CHAT();
               if (cur && cur.lastEditedImage && cur.lastEditedImage.b64) { srcB64 = cur.lastEditedImage.b64; ref = { mime: cur.lastEditedImage.mime || 'image/png' }; }
             } catch (e) { /* guard-ok — المحادثة الحالية اختيارية هنا */ }
           }
           if (!srcB64) return 'لا توجد صورة مرفقة في هذه الرسالة لتعديلها — اطلب من المستخدم إرفاقها.';
           /* v-image-memory: متابعة على آخر نتيجة = نرسل أدوار السلسلة السابقة كسياق */
-          var tcur = null; try { tcur = (typeof getCurrent === 'function') ? getCurrent() : null; } catch (e) { tcur = null; }
+          var tcur = null; try { tcur = CHAT(); } catch (e) { tcur = null; }
           var tFollow = !!(tcur && tcur.lastEditedImage && tcur.lastEditedImage.b64 === srcB64);
           var tHist = (tFollow && Array.isArray(tcur.imageTurns) && tcur.imageTurns.length) ? tcur.imageTurns.slice(-3) : undefined;
-          window.__genImages = window.__genImages || {};
           var er = null, ej = null;
           try {
             er = await fetch('/api/media?action=maha-image', {
@@ -238,7 +364,7 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 prompt: instr,
-                userText: String((args && args.userText) || window.__chatLastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600),
+                userText: String((args && args.userText) || UTXT || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600),
                 editImageBase64: srcB64,
                 editMimeType: ref.mime || 'image/png',
                 history: tHist,
@@ -252,10 +378,11 @@
           if (!er.ok || !ej || !ej.imageBase64) {
             /* v-img-honest: الخادم قاس الناتج فوجده الصورة نفسها — النموذج يعرف ذلك فلا يروي «تمّ» */
             if (ej && ej.error === 'image_unchanged') return 'لم يُنفَّذ التعديل: رجعت الصورة نفسها بلا تغيير (مقيسة بالبكسل)، فلم تُعرض ولم تُحسب على المستخدم. قل له ذلك بصراحة، لا تدّعِ أنّ شيئًا تغيّر، واقترح صياغة أوضح.';
-            return 'تعذّر تعديل الصورة: ' + (((ej && ej.error) || ('HTTP ' + er.status)) + '').slice(0, 120);
+            return 'تعذّر تعديل الصورة: ' + (((ej && ej.error) || ('HTTP ' + er.status)) + '').slice(0, 120) + engineWhy(ej);
           }
-          var etok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
-          window.__genImages[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
+          var etok = omranNextTok(IMGS, CHAT());
+          IMGS[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
+          var eUrl = omranAgentOwner() ? await omranAgentSave(etok, ej.imageBase64, ej.mimeType || 'image/png', false, CHAT()) : ''; // v-agent-img
           /* v-tool-chain: نتيجة أداة التعديل تصير آخر صورة في السلسلة كي تعمل عليها الرسالة التالية مباشرة */
           try { if (tcur) { tcur.lastEditedImage = { b64: ej.imageBase64, mime: ej.mimeType || 'image/png' }; tcur.lastMsgWasImageEdit = true; } } catch (e) { /* guard-ok */ }
           /* v-image-memory: نسجّل الدور هنا أيضًا (كلمات المستخدم + مصغّر النتيجة) */
@@ -263,7 +390,7 @@
             if (tcur && typeof omranShrinkForEdit === 'function') {
               if (!tFollow || !Array.isArray(tcur.imageTurns)) tcur.imageTurns = [];
               var tRes = await omranShrinkForEdit(ej.imageBase64, ej.mimeType || 'image/png', 768, true);
-              var tTurn = { text: String((args && args.userText) || window.__chatLastUserText || instr || '').slice(0, 400), resultBase64: tRes.b64, resultMime: tRes.mime };
+              var tTurn = { text: String((args && args.userText) || UTXT || instr || '').slice(0, 400), resultBase64: tRes.b64, resultMime: tRes.mime };
               if (!tcur.imageTurns.length) { var tSrc = await omranShrinkForEdit(srcB64, ref.mime || 'image/png', 768, true); tTurn.sourceBase64 = tSrc.b64; tTurn.sourceMime = tSrc.mime; }
               tcur.imageTurns = tcur.imageTurns.concat([tTurn]).slice(-4);
             }
@@ -271,7 +398,7 @@
           /* v-img-honest (المالك: «يقولي شي والتنفيذ صفر»): النموذج كان يرى «✅» وحدها فيروي «تمّ تغيير كلّ شيء» مهما خرج.
              الآن يصله حكم التنفيذ (ej.verdict) وتقرير ما يُرى فعلًا، ويُطلب منه ألّا يدّعي أكثر منه. */
           var ev = ej.verdict === 'not_done' ? ' — الفحص: الطلب لم يظهر في الصورة' : (ej.verdict === 'partial' ? ' — الفحص: نُفّذ جزء فقط' : (ej.verdict === 'done' ? ' — الفحص: نُفّذ' : ''));
-          return (ej.verdict === 'not_done' ? '⚠️' : '✅') + ' عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + ')' + ev + (ej.caption ? '. ما يُرى فعلًا: «' + String(ej.caption).slice(0, 400) + '» — صِف للمستخدم هذا وحده ولا تدّعِ أكثر منه' : '') + '. ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
+          return (ej.verdict === 'not_done' ? '⚠️' : '✅') + ' عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + ')' + ev + (ej.caption ? '. ما يُرى فعلًا: «' + String(ej.caption).slice(0, 400) + '» — صِف للمستخدم هذا وحده ولا تدّعِ أكثر منه' : '') + '. ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok + (eUrl ? ' — رابطها في التطبيق: ' + eUrl + ' — لرفعها إلى المستودع: write_github ملف {path, image: "' + etok + '"}.' : ''); // v-agent-img
         }
         // 📍 موقع المستخدم الحالي — يُطلب إذن المتصفح هنا فقط، عند استدعاء
         // الأداة فعلًا، لا عند فتح الصفحة. الإحداثيات تُستهلك في نداء التحويل

@@ -194,22 +194,31 @@ window.__omranWhenSeen = (function () {
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Omran AI Builder">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<meta name="apple-mobile-web-app-title" content="om ai"><meta name="application-name" content="om ai">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=black-20261022">
+<!-- v-favicon-gold (المالك ٢٢ أكتوبر): Search Console يعرض الأيقونة البنفسجيّة القديمة — الصفحة بلا rel="icon" منذ v468
+     و/favicon.ico كان 404. favicon.ico الذهبيّ (١٦/٣٢/٤٨، على أسود الدردشة) يولّده scripts/make-favicon.mjs من icons/favicon-src.png. -->
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192-v2.png?icon=black-20261022">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- v-perf-fonts-async: خطّ جوجل كان <link rel=stylesheet> عاديًّا يحجب الرسم الأوّل كاملًا حتى يستقرّ الاتصال
      بجوجل (لا مهلة)؛ الآن غير حاجب (نمط loadCSS: media=print يحمّله بأولويّة منخفضة، onload يفعّله) مع
-     noscript احتياطيّ لمن عطّل JS. Tajawal تبقى fallback لأيّ فشل (v-fonts في tokens.css). -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap"></noscript>
-<link rel="stylesheet" href="css/tokens.css?v=729">
-<link rel="stylesheet" href="css/redesign.css?v=690">
-<link rel="stylesheet" href="css/modules.css?v=681">
-<link rel="stylesheet" href="css/خلفيات.css?v=3">
-<link rel="stylesheet" href="css/إطارات.css?v=5"><!-- v-frame-design: التصميم الجديد للكمبيوتر -->
-<link rel="stylesheet" href="css/ثيم-خشبي.css?v=3"><!-- v-skin-wood: كلّه تحت html.skin-wood -->
-<link rel="stylesheet" href="css/ثيمات.css?v=8"><!-- v-themes: الثيمات الثلاثة عشر، كلّها تحت html.skin -->
+     noscript احتياطيّ لمن عطّل JS. Tajawal تبقى fallback لأيّ فشل (v-fonts في tokens.css).
+     v-gfonts-cors (تدقيق ١٨ أكتوبر): crossorigin="anonymous" — بلا CORS ترمي قراءة cssRules SecurityError فيكتب html-to-image خطأين
+     في الكونسول عند كلّ تحويل إلى PDF؛ جوجل يردّ Access-Control-Allow-Origin:* فالناتج نفسه. والاتّصال المسبق بالوضع نفسه. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" crossorigin="anonymous" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" crossorigin="anonymous"></noscript>
+<link rel="stylesheet" href="css/tokens.css?v=739">
+<link rel="stylesheet" href="css/redesign.css?v=697">
+<link rel="stylesheet" href="css/modules.css?v=692">
+<link rel="stylesheet" href="css/خلفيات.css?v=5">
+<link rel="stylesheet" href="css/إطارات.css?v=9"><!-- v-frame-design: التصميم الجديد للكمبيوتر -->
+<link rel="stylesheet" href="css/إطارات-الجوال.css?v=3"><!-- v-frame-gold-mobile: تصميم الكمبيوتر الجديد على الجوال -->
+<link rel="stylesheet" href="css/ثيم-خشبي.css?v=5"><!-- v-skin-wood: كلّه تحت html.skin-wood -->
+<link rel="stylesheet" href="css/ثيمات.css?v=10"><!-- v-themes: الثيمات الثلاثة عشر، كلّها تحت html.skin -->
+<link rel="stylesheet" href="css/أدوات-أسود.css?v=7">
+<link rel="stylesheet" href="css/رفع-الصور.css?v=6"><link rel="stylesheet" href="css/بلا-خطوط.css?v=12"><!-- v-no-lines-2: بلا إطارات ذهبيّة، الذهبيّ عند المرور فقط --><!-- v-upload-art: صور المالك خلفيّات مربّعات الرفع (الديكور، الأزياء، الستايل) --><!-- v-tools-black: خلفيّات الأدوات بلون المحادثة في الوضع الأسود -->
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -240,11 +249,13 @@ window.__omranWhenSeen = (function () {
 
 <style>
 /* v473 — إخفاء ٥ عناصر بأمر عمران (٨ أغسطس ٢٠٢٦). الرجوع: احذف هذه الكتلة كاملةً. */
-/* v-browser-install (طلب المالك ٢٦ سبتمبر «أريد التطبيق في المتصفّحات»): #btnInstall عاد للقائمة؛ يخفيه الكود حين يعمل التطبيق مثبّتًا. */
+/* v-browser-install (طلب المالك ٢٦ سبتمبر «أريد التطبيق في المتصفّحات»): #btnInstall عاد للقائمة؛ يخفيه الكود حين يعمل التطبيق مثبّتًا.
+   v-no-install (المالك ١٨ أكتوبر، بعد معاينة مكانه على الكمبيوتر: «احذفها نهائي»): الزرّ حُذف من الصفحة نهائيًّا. manifest باقٍ (المتجر وتطبيق أندرويد
+   وتثبيت المتصفّح من شريط عنوانه)، وكود التثبيت في app-10 بلا زرّ يربطه. */
 #btnTemplates, #btnAgentMode, #btnInstallHeader, #btnShareApp, #btnGov { display: none !important; }
 /* v474 — لون روابط الردّ. v-hl-gold (طلب المالك ١٩ سبتمبر): ذهبيّ بدل الفيروزيّ. الرجوع: احذف هذه الكتلة. */
 .msg-text a{ color:#d4af37 !important; }
-html[data-mode="light"] .msg-text a{ color:#b8860b !important; }
+html[data-mode="light"] .msg-text a{ color:#835f08 !important; } /* v-theme-contrast: ذهبيّ أغمق — #b8860b كان ٢٫٩:١ على العاجيّ */
 </style>
 <style>
 /* v-chat-width: تخطيط المحادثة — كمبيوتر فقط.
@@ -608,26 +619,9 @@ body #btnMode{ display: none !important; }
   }
 }
 </style>
-<style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
-#omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
-#omranIntro.oiOut{opacity:0;transform:scale(1.04);pointer-events:none}
-#omranIntro .oiBg{position:absolute;inset:-48px;background:#07070B url(/assets/intro/splash.jpg?v=3) center/cover no-repeat;filter:blur(30px) brightness(.5);transform:scale(1.12)}
-#omranIntro .oiImg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:oiBreathe 4.5s ease-in-out infinite alternate}
-#omranIntro .oiSheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 38%,rgba(255,238,180,.26) 50%,transparent 62%);background-size:260% 100%;mix-blend-mode:screen;animation:oiSheen 2.6s ease-in-out .4s infinite}
-#omranIntro .oiSkip{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;font:500 12px/1 system-ui,sans-serif;color:rgba(212,175,55,.75);letter-spacing:.4px;opacity:0;animation:oiUp 1s ease 1.4s forwards}
-@keyframes oiSheen{0%{background-position:160% 0}100%{background-position:-70% 0}}
-@keyframes oiBreathe{from{transform:scale(1)}to{transform:scale(1.025)}}
-@keyframes oiUp{to{opacity:1}}
-@media (prefers-reduced-motion:reduce){#omranIntro .oiImg,#omranIntro .oiSheen{animation:none}}
-/* v-intro-gpu (المالك ٢٤ سبتمبر «وميض»): المقدّمة تظهر مع كلّ تشغيل، وهي أوّل ما يراه — وفيها
-   أغلى تأثيرين على معالج رسوم أندرويد في أثقل لحظة (الإقلاع): oiBg يمرّر blur(30px) على طبقة
-   892×970 (أكبر من الشاشة، مكبّرة 1.12)، وoiSheen يفرض عزل طبقة بـmix-blend-mode:screen.
-   قياس بمقاس جهاز المالك: ثماني طبقات بحجم الشاشة الكاملة أثناء المقدّمة. على أندرويد وحده:
-   الخلفيّة المغبّشة تُحذف (الحاوية أصلًا ‎#07070B‎ فيبقى الإطار داكنًا نظيفًا) والوميض يبقى
-   متحرّكًا بلا مزج. الآيفون والكمبيوتر بلا تغيير. */
-html.omAndroid #omranIntro .oiBg{display:none}
-html.omAndroid #omranIntro .oiSheen{mix-blend-mode:normal;opacity:.5}
-html.oiOn body{overflow:hidden}
+<style>/* v-banner-pill (تدقيق ١٨–١٩ أكتوبر): على الحاسوب كان شريطا الانقطاع والتجمّد بعرض الشاشة كلّها فوق أيقونات الرأس
+   (✦ ولوحة المعاينة). هنا كبسولة متوسّطة أعلى عمود المحادثة الفارغ؛ !important لأنّ موضعهما مضمّن في الوسم. الجوّال كما هو. */
+html:not(.mobile-ui) #offlineBanner, html:not(.mobile-ui) #freezeBanner{top:8px !important; left:50% !important; right:auto !important; transform:translateX(-50%) !important; width:max-content !important; max-width:40vw; border-radius:12px; box-sizing:border-box;}
 </style>
 <style>
 /* v-plan-routing (قرار المالك ٢٠ سبتمبر): منتقي المزوّد (القائمة المنسدلة في الجانبيّ وشريط الجوّال) يختفي لمن
@@ -640,20 +634,8 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 </head>
 <body>
 
-<div id="omranIntro" role="button" tabindex="0" aria-label="اضغط للمتابعة">
-  <div class="oiBg"></div>
-  <img class="oiImg" src="/assets/intro/splash.jpg?v=3" alt="" decoding="async" fetchpriority="high">
-  <div class="oiSheen"></div>
-  <div class="oiSkip" data-i18n="introSkip">اضغط للمتابعة</div>
-</div>
-<script>/* v-intro-splash: القرار قبل أول رسمة — تظهر مرة لكل فتح، ويمكن إيقافها من الإعدادات */
-(function(){try{
-  var d=document.getElementById('omranIntro'); if(!d) return;
-  var off=false; try{ off = localStorage.getItem('aiapp_intro')==='0' || sessionStorage.getItem('omran_intro_seen')==='1'; }catch(e){}
-  if(off){ d.parentNode.removeChild(d); return; }
-  try{ sessionStorage.setItem('omran_intro_seen','1'); }catch(e){}
-  document.documentElement.classList.add('oiOn');
-}catch(e){ window.__swallow && window.__swallow(e,'intro:boot'); }})();</script>
+<!-- v-no-intro (المالك ٢٦ أكتوبر: «شاشة الافتتاح احذفها نهائي»): شاشة الافتتاح حُذفت من كلّ النسخ —
+     كانت صورة ثابتة لتصميم قديم (تحيّة باسم المالك وسعر الذهب) أوّل ما يراه مراجع هواوي. الصورة assets/intro/splash.jpg باقية (قرار مالك). -->
 
 <div id="vantaBg"></div>
 <div id="offlineBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:10000; background:#b45309; color:#fff; font-size: var(--fs-3); text-align:center; padding:7px 10px;">
@@ -667,12 +649,12 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script defer src="/js/partials-core.js?v=657"></script>
+<script defer src="/js/partials-core.js?v=677"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
-<script defer src="/js/design-sels.js?v=560"></script>
+<script defer src="/js/design-sels.js?v=576"></script>
 <!-- v417 · أزياء AI: فئة + بطاقات نمط/موسم/مناسبة + دائرات ألوان + رقاقات إضافات. الحقول الجديدة تصل إلى /api/fashion-create عبر window.omranFashionExtras. القوائم الأصلية باقية مخفيّة. -->
-<script defer src="/js/design-gen.js?v=610"></script>
+<script defer src="/js/design-gen.js?v=620"></script>
 
 
 <header>
@@ -716,7 +698,7 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
         <button class="btn" id="btnVideoMaker" title="صانع الفيديو بالذكاء الاصطناعي" data-i18n-title="videoMakerTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg> <span class="btnLabel" data-i18n="videoMakerTitle">صانع الفيديو</span></button>
         <button class="btn" id="btnDesignAI" title="ديكور بالذكاء الاصطناعي" data-i18n-title="designAiTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> <span class="btnLabel" data-i18n="designAiTitle">ديكور AI</span></button>
         <button class="btn" id="btnFashionAI" title="تصميم أزياء بالذكاء الاصطناعي" data-i18n-title="fashionAiTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg> <span class="btnLabel" data-i18n="fashionAiTitle">أزياء AI</span></button>
-        <button class="btn" id="btnStudioAI" title="ستوديو الذكاء الاصطناعي" data-i18n-title="studioAiTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg> <span class="btnLabel" data-i18n="studioAiTitle">ستوديو AI</span></button>
+        <button class="btn" id="btnStudioAI" title="ستايل AI" data-i18n-title="studioAiTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg> <span class="btnLabel" data-i18n="studioAiTitle">ستايل AI</span></button>
         <button class="btn" id="btnAdStudio" title="استوديو الإعلانات — اصنع إعلانك بالمحادثة" data-i18n-title="adStudioHint"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"></path><path d="M16 8.5a4 4 0 0 1 0 7"></path><path d="M19 6a7 7 0 0 1 0 12"></path></svg> <span class="btnLabel" data-i18n="adStudioTitle">استوديو الإعلانات</span></button>
         <button class="btn" id="btnOmranEdu" title="التعليم" data-i18n-title="omranEduTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg> <span class="btnLabel" data-i18n="omranEduTitle">التعليم</span></button>
 
@@ -730,7 +712,6 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
         <button class="btn" id="btnStocks" title="سوق الأسهم العالمي" data-i18n-title="stocksTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg> <span class="btnLabel" data-i18n="stocksTitle">سوق الأسهم العالمي</span></button>
         <button class="btn" id="btnConstruction" title="تصاميم المقاولات والبناء" data-i18n-title="constructionTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg> <span class="btnLabel" data-i18n="constructionTitle">تصاميم المقاولات والبناء</span></button>
         <button class="btn" id="btnEmailAssist" title="مساعد البريد الذكي" data-i18n-title="emailAssistTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> <span class="btnLabel" data-i18n="emailAssistTitle">مساعد البريد الذكي</span></button>
-        <button class="btn" id="btnInstall"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> <span class="btnLabel" data-i18n="install">تثبيت التطبيق</span></button>
         <button class="btn" id="btnShareApp" title="مشاركة التطبيق" data-i18n-title="shareAppBtn"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg> <span class="btnLabel" data-i18n="shareAppBtn">مشاركة التطبيق</span></button>
       </div>
     </div>
@@ -855,7 +836,8 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
       </div>
     </div>
     <div id="messages"></div>
-    <button type="button" id="chatJumpBottom" title="أحدث رسالة" data-i18n-title="jumpLatestTitle" aria-label="الانتقال إلى أحدث رسالة">↓</button>
+    <!-- v-jump-aria (تدقيق ١٨ أكتوبر، chat-jump-bottom؛ الدفعة ٥): وصف قارئ الشاشة كان عربيًّا ثابتًا — بمفتاح التلميح نفسه بلغة الواجهة -->
+    <button type="button" id="chatJumpBottom" title="أحدث رسالة" data-i18n-title="jumpLatestTitle" aria-label="الانتقال إلى أحدث رسالة" data-i18n="[aria-label]jumpLatestTitle">↓</button>
     
     <div id="chatQuickChipsWrap" style="display:none; position:absolute; bottom:64px; inset-inline-end:14px; z-index:2100; background:var(--panel); backdrop-filter:blur(14px); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 34px rgba(0,0,0,.55); color:var(--text); padding:8px; max-height:60vh; overflow-y:auto;">
       <div id="quickChips" style="display:flex; flex-direction:column; gap:2px; align-items:stretch;"></div>
@@ -870,7 +852,7 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
       <!-- v-maha-outside: «م» خارج المستطيل جنبه (طلب المالك ٢٩ أغسطس) — الصف يضم الصندوق + م -->
       <div id="composerRow">
       <div id="composerBox">
-      <div id="chatEditNotice" hidden><span data-i18n="editMsgNotice">تعديل الرسالة</span><button type="button" aria-label="إلغاء التعديل" data-i18n="cancel">إلغاء</button></div>
+      <div id="chatEditNotice" hidden><span data-i18n="editMsgNotice">تعديل الرسالة</span><button type="button" data-i18n="cancel">إلغاء</button></div>
       <!-- v587 — المرفقات داخل صندوق الكتابة نفسه -->
       <div id="attachStrip"></div>
       <textarea id="prompt" rows="1" data-i18n-placeholder="promptPlaceholder" placeholder="اكتب رسالتك هنا ..."></textarea>
@@ -935,6 +917,9 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
            استُعمل data-i18n-title بدل data-i18n كي لا تمسح الترجمة الأيقونة داخلها. -->
       <div class="tab active" data-tab="preview" data-i18n-title="preview" data-i18n="[aria-label]preview" title="المعاينة" aria-label="المعاينة"><svg class="tabIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg></div>
       <div class="tab" data-tab="code" data-i18n-title="code" data-i18n="[aria-label]code" title="الكود" aria-label="الكود"><svg class="tabIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></div>
+      <!-- v-read-panel (المالك ١٣ أكتوبر: «لوحة الكود + الأرقام»): «الكود المقروء» — ما قرأه المزوّد أو الوكيل من GitHub بأسطره المرقّمة،
+           والأرقام في الردّ تفتح السطر نفسه هنا. مخفيّ حتّى يُقرأ ملفّ (js/app-38-read-panel.js). -->
+      <div class="tab" id="tabRead" data-tab="read" data-i18n-title="readTab" data-i18n="[aria-label]readTab" title="الكود المقروء" aria-label="الكود المقروء" style="display:none;"><svg class="tabIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h5"></path><polyline points="14 2 14 8 20 8"></polyline><circle cx="16.5" cy="16.5" r="2.5"></circle><line x1="18.3" y1="18.3" x2="21" y2="21"></line></svg></div>
       <div id="tabDownloadWrap">
         <input type="file" id="codeUploadInput" accept=".html,.htm,.py,.txt" style="display:none;">
         <button class="tab" id="btnTabsMenu" data-i18n-title="tabsMenuTitle" type="button" title="خيارات الملف" style="border:none; padding:12px 14px;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
@@ -952,7 +937,8 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
           <h2 id="emptyTitleEl" data-i18n="emptyTitle" style="display:none;">ابدأ ببناء أول تطبيق لك</h2>
           <p id="emptyDescEl" data-i18n="emptyDesc" style="display:none;">اكتب وصفًا في المربع على اليسار، مثال:<br>"لعبة كسر الطوب"، "موقع لمطعم بيتزا"، "قائمة مهام يومية"</p>
         </div>
-        <iframe id="previewFrame" style="display:none;"></iframe>
+        <!-- v-sec-sandbox: معاينة كود النموذج معزولة عن أصل التطبيق — بلا allow-same-origin فلا تصل إلى localStorage/الكوكي/التوكن في النافذة الأمّ. تطبيقات المستخدم لا تنكسر: طبقة تخزين بديلة تُحقن في srcdoc (omranPreviewInject). -->
+        <iframe id="previewFrame" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-presentation allow-pointer-lock" allow="autoplay; fullscreen" allowfullscreen style="display:none;"></iframe>
         <div id="pyConsole" style="display:none;">
           <div id="pyConsoleToolbar">
             <button class="btn" id="btnRunPython" type="button" data-i18n="runPythonBtn">▶️ تشغيل</button>
@@ -967,6 +953,7 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
         <button id="btnTimeMachine" title="آلة الزمن — إصدارات سابقة" data-i18n-title="timeMachineTitle" style="position:absolute; top:10px; right:160px; margin-top:8px; padding:6px 10px; background:transparent; border:none; cursor:pointer; opacity:.8; line-height:1; border-radius:var(--r-2); display:inline-flex; align-items:center; justify-content:center; color:#fff; z-index:5; font-size:16px; display:none !important;">🕰️</button>
         <button id="btnCopyCode" title="نسخ الكود" data-i18n-title="copyCodeTitle" style="position:absolute; top:10px; right:14px; margin-top:8px; padding:6px; background:transparent; border:none; cursor:pointer; opacity:0.75; line-height:1; border-radius:var(--r-1); display:none !important; align-items:center; justify-content:center; color:#fff; z-index:5;"></button>
       </div>
+      <div class="panel" id="panel-read"></div><!-- v-read-panel -->
       <div class="panel" id="panel-voice" style="flex-direction:column; align-items:center; justify-content:center; height:100%;"></div>
     </div>
   </div>
@@ -1000,13 +987,14 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script defer src="/js/partials-settings.js?v=695"></script>
+<script defer src="/js/partials-settings.js?v=707"></script>
 
-<script src="/js/selfdiag.js?v=hw-twa-8"></script>
-<script defer src="/templates-data.js?v=589"></script>
+<script src="/js/selfdiag.js?v=hw-twa-10"></script>
+<script defer src="/templates-data.js?v=590"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=5a43bc36"></script>
-    <script defer src="/js/modes.js?v=m111026c"></script>
+    <script defer src="/js/app.bundle.js?v=f0d75b01"></script>
+    <script defer src="/js/frame-touch.js?v=4"></script><!-- v-frame-gold: لمسة الضغط للكمبيوتر والجوال (v-touch-mobile: وفراغ المحادثة في الجوال) -->
+    <script defer src="/js/modes.js?v=m211026"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
   <div class="eduWrap">
@@ -1027,8 +1015,8 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
   </div>
 </div>
 <div id="eduChatHint"><span id="eduChatHintTxt" style="flex:1;"></span><button class="eduPrimary" id="eduChatHintBtn" style="margin-top:0;padding:7px 12px;font-size:12px;border:none;border-radius:var(--r-2);cursor:pointer;color:var(--accent-on-surface);background:linear-gradient(90deg,var(--accent-surface),var(--accent-surface));">التعليم</button></div>
-<script defer src="/js/edu.js?v=668"></script>
-<script defer src="/js/edu-plus.js?v=2"></script>
+<script defer src="/js/edu.js?v=674"></script>
+<script defer src="/js/edu-plus.js?v=6"></script>
 
 <!-- 👑 الرد الاحترافي (Premium Reply) — client-side wiring only. Server enforces real deduction. -->
 <script defer src="/js/premium.js?v=624"></script>
@@ -1053,16 +1041,18 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 <div class="xm" id="govModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="govTitleH" data-i18n="govServicesTitle">🧾 المعاملات الحكومية</h2><button class="xmX" id="govX">✕</button></div><div class="xmBody" id="govBody"></div></div></div>
 <div class="xm" id="cvModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="cvTitleH" data-i18n="cvGenTitle">💼 مولّد السيرة الذاتية</h2><button class="xmX" id="cvX">✕</button></div><div class="xmBody" id="cvBody"></div></div></div>
 
-<script defer src="/js/ui-docs.js?v=476"></script>
+<script defer src="/js/ui-docs.js?v=479"></script>
 <nav id="omranBottomNav" aria-label="التنقل">
-  <button type="button" class="omNavBtn active" data-omnav="tools"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg><span data-i18n="omNavTools">الأدوات</span></button>
+  <button type="button" class="omNavBtn" data-omnav="tools"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg><span data-i18n="omNavTools">الأدوات</span></button>
   <button type="button" class="omNavBtn" data-omnav="chats"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span data-i18n="omNavChats">المحادثات</span></button>
   <button type="button" class="omNavBtn" data-omnav="files"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg><span data-i18n="omNavFiles">الملفات</span></button>
   <button type="button" class="omNavBtn" data-omnav="settings"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span data-i18n="omNavSettings">الإعدادات</span></button>
 </nav>
-<script defer src="/js/ui-wiring.js?v=661"></script>
+<script defer src="/js/ui-wiring.js?v=668"></script>
 <!-- v412 — استوديو صانع الفيديو (كمبيوتر فقط، لا يلمس الجوّال) -->
-<script defer src="/js/video.js?v=447"></script>
+<script defer src="/js/video.js?v=459"></script>
+<!-- v-video-edit: «كتابة وصوت على الفيديو» — زرّ في قائمة + بالمحادثة وقسم في صانع الفيديو -->
+<script defer src="/js/video-edit.js?v=8"></script>
 
 <!-- v413 ديكور: إطار البطاقات · ذوبان حرفَي الشريط · مقبض اللوحة · زرّ المحادثة · الفواصل — كمبيوتر وجوّال -->
 

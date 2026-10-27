@@ -148,3 +148,54 @@ test('client: an owner-solo error without a status keeps a short reason instead 
   assert.equal(await msg(new Error('chat 500: boom')), 'ما قدرت أردّ الحين — خطأ 500', 'الرقم كما كان');
   assert.equal(await msg(Object.assign(new Error('انقطع ردّ المزوّد في منتصفه (server_error)'), { ownerStop: true })), 'انقطع ردّ المزوّد في منتصفه (server_error)', 'سبب الخادم كما هو');
 });
+
+/* v-mid-credit (لقطة المالك ١٢ أكتوبر: GPT-6.1 Sol و«السلام عليكم» ← «⚠️ انقطع ردّ المزوّد في منتصفه (insufficient_quota)» مرّتين):
+   OpenAI يفتح البثّ (200) ثمّ يرسل حدث خطأ بكود الحصّة. ليس انقطاعًا ولا يُعاد النداء نفسه — يُعاد إلى سلسلة ما قبل البثّ بحالة 402:
+   الوسيط للمزوّد نفسه بالموديل نفسه (كما في 429 قبل البثّ)، وإن فشل فـ«ما عندي رصيد» (أمر المالك ٨ أكتوبر). */
+const QUOTA = { type: 'response.failed', response: { status: 'failed', error: { code: 'insufficient_quota', message: 'You exceeded your current quota, please check your plan and billing details.' } } };
+const quotaNow = (m) => sse([{ type: 'response.created', response: { model: m } }, QUOTA]);
+const anthOk = (text) => new Response(['message_start', 'content_block_start', 'content_block_delta', 'content_block_stop', 'message_delta', 'message_stop'].map((t) => 'data: ' + JSON.stringify(
+  t === 'message_start' ? { type: t, message: { model: 'openai/gpt-6.1-sol', usage: { input_tokens: 1, output_tokens: 0 } } } : t === 'content_block_start' ? { type: t, index: 0, content_block: { type: 'text', text: '' } }
+    : t === 'content_block_delta' ? { type: t, index: 0, delta: { type: 'text_delta', text } } : t === 'content_block_stop' ? { type: t, index: 0 } : t === 'message_delta' ? { type: t, delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 1 } } : { type: t })).join('\n\n') + '\n\n', { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+async function runQuota(replies, or) {
+  const calls = []; const out = []; logged.length = 0;
+  const save = global.fetch;
+  global.fetch = async (url, init) => {
+    const u = String(url); calls.push(u);
+    let b = {}; try { b = JSON.parse(init.body); } catch (e) { b = {}; }
+    if (/api\.openai\.com\/v1\/responses/.test(u)) return (replies.shift() || quotaNow)(b.model || 'gpt');
+    if (/openrouter\.ai\/api\/v1\/messages/.test(u)) return or ? or(b) : new Response(JSON.stringify({ error: { message: 'Insufficient credits', code: 402 } }), { status: 402 });
+    return new Response(JSON.stringify({ error: { message: 'not this one' } }), { status: 500 });
+  };
+  const req = { method: 'POST', headers: {}, body: { token: tok(), provider: 'openai', model: 'openai/gpt-6.1-sol', messages: [{ role: 'user', content: 'السلام عليكم ورحمة الله' }] } };
+  const res = { setHeader() {}, status() { return this; }, json(v) { out.push('data: ' + JSON.stringify(v) + '\n'); return this; }, write(c) { out.push(String(c)); return true; }, end() {}, flushHeaders() {} };
+  try { await chat(req, res); } finally { global.fetch = save; }
+  const events = out.join('').split('\n').filter((l) => l.startsWith('data: ')).map((l) => { try { return JSON.parse(l.slice(6)); } catch (e) { return {}; } });
+  return { oai: calls.filter((u) => /api\.openai\.com/.test(u)).length, or: calls.filter((u) => /openrouter\.ai/.test(u)).length, events, text: events.map((e) => e.delta || '').join(''), stop: events.find((e) => e.error) || null, status: events.filter((e) => e.status).map((e) => e.status) };
+}
+
+test('insufficient_quota inside the GPT stream: no retry and no «انقطع» — the gateway continues with the same model, as after a 429 before the stream', async () => {
+  const r = await runQuota([quotaNow], () => anthOk('وعليكم السلام'));
+  assert.equal(r.oai, 1, 'لا إعادة للنداء نفسه: ' + r.oai);
+  assert.equal(r.or, 1, 'الوسيط مرّة');
+  assert.equal(r.text, 'وعليكم السلام');
+  assert.equal(r.stop, null, 'لا خطأ بعد نجاح الوسيط');
+  assert.ok(r.status.some((s) => /^⚠️ نموذج OpenAI · 402 غير متاح على المفتاح الحاليّ — أكمل عبر الوسيط بالموديل نفسه\.$/.test(s)), r.status.join(' | '));
+  assert.ok(!r.status.some((s) => /انقطع/.test(s)), 'لا سطر «انقطع»: ' + r.status.join(' | '));
+  assert.ok(logged.some((l) => /^chat\/mid-stream .*insufficient_quota/.test(l)) && logged.some((l) => /^chat\/direct-fail-402 /.test(l)), logged.join(' | '));
+});
+
+test('insufficient_quota inside the stream and the gateway has no credit either: «ما عندي رصيد» only (owner order of 8 Oct) — not «انقطع ردّ المزوّد في منتصفه (insufficient_quota)»', async () => {
+  const r = await runQuota([quotaNow]);
+  assert.equal(r.oai, 1);
+  assert.equal(r.or, 1);
+  assert.deepEqual({ error: r.stop.error, ownerStop: r.stop.ownerStop }, { error: 'ما عندي رصيد — OpenAI مباشر و OpenRouter', ownerStop: true });
+  assert.ok(!r.events.some((e) => /انقطع/.test(String(e.error || e.status || ''))), 'لا «انقطع» لا حالةً ولا خطأً');
+  // الوحدة: الرصيد داخل البثّ = إعادة إلى السلسلة بحالة 402 مرّة في الدور، وبعدها الرسالة القصيرة
+  const e = (m) => Object.assign(new Error('OA_STREAM_PROTOCOL_ERROR: ' + m), { code: 'OA_STREAM_PROTOCOL_ERROR' });
+  const s = OL.state(true);
+  const q = OL.midStream(s, e('provider error — error: insufficient_quota: You exceeded your current quota, please check your plan and billing details.'), { sawText: false });
+  assert.deepEqual({ kind: q.kind, status: q.status }, { kind: 'fail', status: 402 }, JSON.stringify(q));
+  assert.deepEqual(OL.midStream(s, e('provider error — insufficient_quota: no credit'), { sawText: true }), { kind: 'stop', msg: 'ما عندي رصيد' }, 'مرّة واحدة في الدور');
+  assert.equal(OL.midStream(OL.state(true), e('provider error — server_error: x'), { sawText: false }).kind, 'retry', 'غير الرصيد كما كان');
+});

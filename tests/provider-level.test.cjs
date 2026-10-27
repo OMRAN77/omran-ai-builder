@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+process.env.OWNER_CLAUDE_CHAT = 'on'; // v-claude-chat-off: ردّ Claude للمالك موقوف افتراضيًّا — هذا الاختبار يفحص مساره حين يُعاد تشغيله
 process.env.AUTH_SECRET = 'provider-level-test-secret';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-direct';
 process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
@@ -78,7 +79,7 @@ test('١. العائلة من معرّف الموديل لا من اسم الم�
     ['groq', 'openai/gpt-oss-120b', 'gpt-oss'], ['groq', 'meta-llama/llama-4-maverick', 'llama'], ['gemini', 'google/gemini-3.8-flash', 'gemini'],
     ['deepseek', 'deepseek/deepseek-v4-pro', 'deepseek'], ['mistral', 'mistralai/ministral-14b-2512', 'mistral'], ['cohere', 'cohere/command-a', 'cohere'],
     ['kimi', 'kimi-k3', 'kimi'], ['openrouter', 'x-ai/grok-4.6', 'grok'], ['openrouter', 'qwen/qwen3-max', 'qwen'], ['openrouter', 'anthropic/claude-sonnet-5', 'claude'],
-    ['deepseek', '', 'deepseek'],
+    ['deepseek', '', 'deepseek'], ['openrouter', '', 'grok'],
   ];
   for (const [p, m, k] of cases) assert.equal((familyOf(p, m) || {}).key, k, p + ' ' + m);
   assert.equal(levelNote('openrouter', 'unknown/xyz'), '', 'عائلة مجهولة: المنهج العامّ وحده');
@@ -94,7 +95,7 @@ test('٢. الموديل الصغير يأخذ قواعد التعويض وال�
 
 test('٣. المالك: كلّ مزوّد يصله ملفّ مستواه بعد هويّته داخل الكتلة الثابتة المخزَّنة — وغير المالك كما كان', async () => {
   const cases = [['claude', '', /قوّتك: التحليل العميق/], ['deepseek', '', /هذه ساحتك: في أيّ مسألة منطق/], ['mistral', 'mistralai/ministral-14b-2512', /أنت موديل خفيف وسريع/],
-    ['cohere', '', /هذه ساحتك: ابحث، اقرأ أقوى مصدر/], ['gemini', '', /سياق طويل جدًّا/], ['openai', '', /تميل إلى الإطالة/], ['openrouter', 'x-ai/grok-4.6', /صراحة ومباشرة/]];
+    ['cohere', '', /هذه ساحتك: ابحث، اقرأ أقوى مصدر/], ['gemini', '', /سياق طويل جدًّا/], ['openai', '', /تميل إلى الإطالة/], ['openrouter', 'x-ai/grok-4.6', /صراحة ومباشرة/], ['openrouter', '', /أكمل المهمّة في نفس الردّ/]];
   for (const [prov, model, re] of cases) {
     const r = await run('omran', { provider: prov, model, messages: ask('حلّل لي هذا') }, (u) => (isOR(u) || isAnth(u) ? sse('تمام.') : new Response('{}', { status: 404 })));
     const b = r.calls.find((c) => isOR(c.url) || isAnth(c.url)).body;
@@ -139,14 +140,16 @@ test('٤. E2: المالك بلا احتفال ولا طمأنة ولا «اقت
   assert.ok(!/بلا مجاملة ولا طمأنة|زميل خبير مباشر/.test(v));
 });
 
-test('٥. E3: منهج Claude Code للمالك داخل الكتلة الثابتة المخزَّنة (cache_control) لكلّ مزوّد — والقاعدة الأولى والدمج التلقائيّ باقيان', async () => {
+test('٥. E3: منهج Claude Code للمالك داخل الكتلة الثابتة المخزَّنة (cache_control) لكلّ مزوّد — والقاعدة الأولى باقية، والدمج بـ«ادمج» وحده', async () => {
   assert.ok(PL.OWNER_METHOD.length > 1500 && PL.OWNER_METHOD.length < 3200, 'حجم معقول: ' + PL.OWNER_METHOD.length);
-  for (const re of [/DECISIONS\.md[^\n]*PITFALLS\.md[^\n]*read_github/, /from= متوازية في دور واحد/, /read_app_errors[^\n]*test_html[^\n]*فقله للمالك في سطر \(Claude Code بطلبه وحده\)/, /أصغر تغيير يحلّ الجذر/,
+  for (const re of [/DECISIONS\.md[^\n]*PITFALLS\.md[^\n]*read_github/, /from= متوازية في دور واحد/, /read_app_errors[^\n]*test_html[^\n]*فقله للمالك في سطر\. ما لم تره/, /أصغر تغيير يحلّ الجذر/,
     /manage_github \(runs ثمّ run_jobs\)[^\n]*لا «تمّ»/, /مفصولًا صراحةً عمّا لم تتحقّق منه/, /طلب عمران الصريح في رسالته الأخيرة = أمر صريح؛ نفّذه الآن/,
     /افحص CI مرّة واحدة[^\n]*قيد العمل فقل ذلك مع الرابط وأنهِ الردّ — لا تكرّر الفحص في الردّ نفسه/, // لا استطلاع لـCI داخل ردّ واحد (MAX_STEPS/MAX_MS)
     /٤\) الحزمة: js\/app-NN-\*\.js تُبنى[^\n]*js\/partials-\*\.js لا تُحزَم: يكفي رفع رقم \?v=/, /للّغات الأربع عشرة \(js\/app-03-i18n-data\.js وi18n\/\*\.js\)/,
-    /لا تستأذن ثانيةً — عدا الأبواب الخمسة المقفلة: موافقة صريحة على البند نفسه/]) assert.match(PL.OWNER_METHOD, re);
+    /لا تستأذن ثانيةً — عدا الأبواب الخمسة المقفلة: موافقة صريحة على البند نفسه/,
+    /ولا تُنهَ الردّ بعد القراءة وحدها: الجواب أو التعديل في نفس الدور/]) assert.match(PL.OWNER_METHOD, re);
   assert.ok(!/js\/app-\*\.js وjs\/partials-\*\.js تُبنى/.test(PL.OWNER_METHOD), 'partials لا تُبنى في الحزمة');
+  assert.ok(!/Claude Code بطلبه|check_code_task/.test(PL.OWNER_METHOD), 'v-self-only: المنهج لا يدلّ أيّ مزوّد على كودي');
   await withRealBrief(async () => {
     for (const [prov, model] of [['claude', 'claude-opus-5-5'], ['claude', ''], ['openrouter', 'x-ai/grok-4.6']]) {
       const b = upBody(await run('omran', { provider: prov, model, messages: ask('صلّح زر الإرسال') }, okText));
@@ -155,7 +158,8 @@ test('٥. E3: منهج Claude Code للمالك داخل الكتلة الثاب
       if (prov === 'claude') assert.ok(Array.isArray(b.system), 'كلود المباشر: النظام كتل كاش');
       if (Array.isArray(b.system)) { assert.ok(b.system[0].cache_control, prov); assert.ok(b.system[0].text.includes(METHOD_HEAD), prov + ': في الثابت المخزَّن'); }
       assert.match(t, /القاعدة الأولى — تعلو على كلّ ما تحتها: لا فعل قبل أمر مكتوب صريح من عمران/, 'القاعدة الأولى باقية');
-      assert.match(t, /يدمج طلبه تلقائيًّا عند نجاح npm run ci فينشر/, 'سطر الدمج التلقائيّ باقٍ');
+      assert.doesNotMatch(t, /يدمج طلبه تلقائيًّا/, 'v-self-only: سطر «كودي يدمج تلقائيًّا» القديم زال (موقوف منذ v-cc-off)');
+      assert.match(t, /ولا يُدمج طلب إلّا بـ«ادمج» من عمران/, 'الدمج بأمره وحده');
     }
   });
   const v = upBody(await run('vipuser', { provider: 'claude', messages: ask('صلّح زر الإرسال') }, okText));
@@ -261,7 +265,9 @@ test('٨. E5: وصف read_github للمالك يذكر from= المتوازية�
   const o = upBody(await run('omran', { provider: 'claude', messages: ask('اقرأ chat.js كامل') }, okText));
   const ro = o.tools.find((t) => t.name === 'read_github');
   assert.ok(ro.description.startsWith(base.description) && /يجوز طلب عدّة from= متوازية في دور واحد/.test(ro.description), 'وصف المالك');
-  assert.deepEqual(ro.input_schema, base.input_schema, 'المخطّط نفسه');
+  // v-owner-solo-all: المخطّط نفسه + «commit» (التزام واحد بفرقه) في نسخة المالك وحده
+  assert.deepEqual(ro.input_schema.properties.what.enum, base.input_schema.properties.what.enum.concat(['commit', 'map']), 'commit للمالك (وmap — v-codemap)');
+  assert.deepEqual(Object.assign({}, ro.input_schema, { properties: Object.assign({}, ro.input_schema.properties, { what: base.input_schema.properties.what }) }), base.input_schema, 'وبقيّة المخطّط نفسه');
   const names = o.tools.map((t) => t.name);
   assert.deepEqual(names.slice(0, TOOLS.length), TOOLS.map((t) => t.name), 'الترتيب نفسه (الكاش)');
   const v = upBody(await run('vipuser', { provider: 'claude', messages: ask('اقرأ chat.js كامل') }, okText));

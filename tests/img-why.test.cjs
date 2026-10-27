@@ -54,7 +54,7 @@ test('١. المالك على الكينج: «ما عندي رصيد» وحده 
   assert.equal(text, '', 'لا ردّ من مزوّد آخر');
   const stop = lastEvents.find((e) => e.ownerStop === true);
   assert.ok(stop, 'حدث التوقّف');
-  assert.equal(stop.error, 'ما عندي رصيد');
+  assert.equal(stop.error, 'ما عندي رصيد — Anthropic');
   assert.equal(alerts.length, 1, 'إشعار نفاد الرصيد يصل في دور الصورة أيضًا');
   assert.equal(alerts[0].status, 400);
   assert.match(alerts[0].text, /credit balance is too low/);
@@ -93,8 +93,11 @@ test('٤. Gemini معطّل (429) في دور الصورة: نموذج OpenRoute
   const sent = [];
   const r = await fc.streamFreeChain({ system: 'SYS', convo: IMG_CONVO, send: (e) => sent.push(e), env: { GEMINI_API_KEY: 'g', OPENROUTER_API_KEY: 'o', GROQ_API_KEY: 'q' }, fetchImpl, log: () => {}, requireVision: true });
   assert.equal(r.ok, true, r.errors.join('|'));
-  assert.equal(r.provider, 'openrouter'); assert.equal(r.model, 'google/gemma-3-27b-it:free');
+  // v-plan-models: Gemma 4 أوّل نماذج الرؤية في الوسيط
+  assert.equal(r.provider, 'openrouter'); assert.equal(r.model, 'google/gemma-4-31b-it:free');
   const orCall = calls.find((c) => /openrouter/.test(c.url));
+  assert.equal(orCall.b.model, 'google/gemma-4-31b-it:free', 'النموذج المُرسَل إليه نموذج يرى');
+  assert.ok(require('../api/_lib/tier.js').FREE_PROVIDER_SPECS.openrouter.visionModels.includes(orCall.b.model));
   const last = orCall.b.messages[orCall.b.messages.length - 1];
   assert.equal(last.content[1].type, 'image_url', 'الصورة نفسها تصل');
   assert.ok(!calls.some((c) => /groq/.test(c.url)), 'Groq الأعمى لا يُنادى');
@@ -105,13 +108,20 @@ test('٤. Gemini معطّل (429) في دور الصورة: نموذج OpenRoute
 test('٥. نموذج OpenRouter النصّيّ الناجح لا يُقدَّم لدور صورة، وكلّ نماذج الرؤية «غير موجودة» = فشل صريح بلا استكشاف', async () => {
   fc.__workingModel.clear();
   const env = { OPENROUTER_API_KEY: 'o' };
-  // دور نصّيّ ينجح بنموذج نصّيّ فيُحفظ
-  await fc.streamFreeChain({ system: 'S', convo: [{ role: 'user', content: 'هلا' }], send: () => {}, env, fetchImpl: async () => new Response(sse(['هلا']), { status: 200 }), log: () => {} });
+  // دور نصّيّ ينجح بنموذج نصّيّ أعمى فيُحفظ — v-plan-models: أوّل النصّيّة (Gemma 4) يرى أيضًا، فنجعله «غير موجود» هنا
+  // لينجح Nemotron الأعمى ويُحفظ، وإلّا لا يُميَّز «لا يُقدَّم» من «صادف أنّه أوّل نماذج الرؤية».
+  const textR = await fc.streamFreeChain({ system: 'S', convo: [{ role: 'user', content: 'هلا' }], send: () => {}, env, log: () => {},
+    fetchImpl: async (url, init) => JSON.parse(init.body).model === 'google/gemma-4-31b-it:free'
+      ? new Response(JSON.stringify({ error: { message: 'No endpoints found for model' } }), { status: 404 })
+      : new Response(sse(['هلا']), { status: 200 }) });
+  assert.equal(textR.ok, true); assert.equal(textR.model, 'nvidia/nemotron-3-ultra-550b-a55b:free', 'الناجح المحفوظ نموذج نصّيّ');
+  assert.ok(!require('../api/_lib/tier.js').FREE_PROVIDER_SPECS.openrouter.visionModels.includes(textR.model), 'والمحفوظ أعمى');
   const models = [];
   const r = await fc.streamFreeChain({ system: 'S', convo: IMG_CONVO, send: () => {}, env, log: () => {}, requireVision: true,
     fetchImpl: async (url, init) => { if (/\/models/.test(url)) { models.push('DISCOVERY'); return new Response('{"data":[]}', { status: 200 }); } models.push(JSON.parse(init.body).model); return new Response(JSON.stringify({ error: { message: 'No endpoints found for model' } }), { status: 404 }); } });
   assert.equal(r.ok, false);
-  assert.deepEqual(models, ['google/gemma-3-27b-it:free', 'meta-llama/llama-4-maverick:free', 'mistralai/mistral-small-3.2-24b-instruct:free', 'qwen/qwen2.5-vl-72b-instruct:free'], 'نماذج الرؤية وحدها وبترتيبها، بلا استكشاف');
+  assert.deepEqual(models, require('../api/_lib/tier.js').FREE_PROVIDER_SPECS.openrouter.visionModels, 'نماذج الرؤية وحدها وبترتيبها، بلا استكشاف'); // v-free-vision-next: صارت ثلاثة
+  assert.ok(!models.includes(textR.model), 'الناجح النصّيّ الأعمى لا يُجرَّب في دور الصورة');
   assert.ok(r.errors.includes('openrouter: no vision model answered'), r.errors.join('|'));
   fc.__workingModel.clear();
 });

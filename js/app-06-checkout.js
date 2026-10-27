@@ -113,6 +113,7 @@ async function refreshPointsWallet(){
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
+    if(d && d.costs) window.__omranCosts = d.costs; // v-vmk-price-src
     if(d && d.ok && d.authed){
       row.style.display = 'flex';
       val.textContent = d.unlimited ? '∞' : (d.points + ' ' + t('pricingPointsUnit'));
@@ -123,6 +124,22 @@ async function refreshPointsWallet(){
   }catch(e){ /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
+
+/* v-vmk-price-src (تدقيق ١٨ أكتوبر + أمر المالك، الدفعة ١: «الرقم اللي على الزر لازم يطلع من نفس المصدر اللي يخصم، ويطابقه بالضبط»):
+   أسعار الخدمات تصل من COSTS في الخادم نفسه (/api/points balance، للزائر أيضًا) — الواجهة لا تكتب رقمًا. نداء واحد يُشارك. */
+let __costsLoading = null;
+function omranLoadCosts(){
+  if(window.__omranCosts) return Promise.resolve(window.__omranCosts);
+  if(__costsLoading) return __costsLoading;
+  const token = authGet('aiapp_auth_token') || '';
+  __costsLoading = fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) })
+    .then(r => r.json())
+    .then(d => { if(d && d.costs) window.__omranCosts = d.costs; return window.__omranCosts || null; })
+    .catch(e => { __swallow(e, 'costs:load'); return null; })
+    .then(v => { __costsLoading = null; return v; });
+  return __costsLoading;
+}
+window.omranLoadCosts = omranLoadCosts;
 
 /* v-points-acct (طلب المالك): رصيد النقاط في قائمة الحساب فقط، مع تحذير
    تلقائي قبل النفاد (≤ 20 نقطة) ورسالة نفاد + زر شحن يفتح باقات النقاط.
@@ -153,6 +170,7 @@ async function refreshAcctPoints(){
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
     const d = await r.json();
+    if(d && d.costs) window.__omranCosts = d.costs; // v-vmk-price-src
     if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; renderAcctMedia(null); return; }
     box.style.display = 'flex';
     renderAcctMedia(d.media);
@@ -222,6 +240,8 @@ function openCheckout(plan){
     // If the settings dialog is open via showModal(), it sits in the browser
     // top layer and makes the rest of the page inert — close it first.
     const sd = document.getElementById('settingsDialog');
+    // v-checkout-back: من أين فُتح الدفع — ✕ وحده يعيد الإعدادات على الباقات (ومن البوّابة يبقى سهم رجوعها إلى المحادثة)
+    window.__ckFromSettings = (sd && sd.open) ? ((sd.dataset && sd.dataset.deepLink === '1') ? 'deep' : 'page') : '';
     if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
     overlay.style.display = 'flex';
     // v-ios-nogpay (طلب عمران): زر Google Pay منتج أندرويد ولا معنى له على
@@ -238,9 +258,23 @@ function openCheckout(plan){
 }
 window.openCheckout = openCheckout;
 
-function closeCheckout(){
+/* v-checkout-back (تدقيق ١٨ أكتوبر: «إغلاق الدفع يرجعك للرئيسيّة لا إلى الباقات»): openCheckout يُغلق الإعدادات قبل النافذة
+   (طبقة showModal تجعل الصفحة خامدة)، فـ✕ كان يترك المستخدم في الرئيسيّة. closeCheckout(true) — من ✕ وحده — يعيد فتحها على
+   «الباقات والنقاط» كما يفعل omranOpenPlans. النجاح وiOS والمهلات تنادي بلا وسيط (setTimeout قد يمرّر رقمًا: === true فقط).
+   تنقّل وحده: لا سعر ولا خطّة ولا نداء دفع يتغيّر. */
+function closeCheckout(back){
   const overlay = document.getElementById('checkoutModalOverlay');
   if (overlay) overlay.style.display = 'none';
+  const from = window.__ckFromSettings;
+  window.__ckFromSettings = '';
+  if (back !== true || !from) return;
+  try {
+    const sb = document.getElementById('btnSettings');
+    if (sb) sb.click();
+    if (typeof showSettingsPage === 'function') showSettingsPage('pricingSection');
+    const sd = document.getElementById('settingsDialog');
+    if (from === 'deep' && sd && sd.dataset) sd.dataset.deepLink = '1';
+  } catch (e) { __swallow(e, 'checkout:back'); }
 }
 window.closeCheckout = closeCheckout;
 
@@ -317,7 +351,7 @@ async function setupWalletPaymentRequest(plan){
     const pr = stripe.paymentRequest({
       country: 'AE',
       currency: cur,
-      total: { label: 'Omran AI Builder', amount },
+      total: { label: 'om ai', amount },
       requestPayerName: true,
       requestPayerEmail: true,
     });
@@ -620,7 +654,7 @@ $('#btnSettings').onclick = () => {
   collapseAllSettingsSections();
   renderStats();
   renderReferral();
-  $('#provider').value = localStorage.getItem('aiapp_provider') || 'openai';
+  $('#provider').value = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
   $('#apiKey').value = localStorage.getItem('aiapp_apikey') || '';
   $('#modelName').value = localStorage.getItem('aiapp_model') || 'gpt-4o-mini';
   $('#geminiApiKey').value = localStorage.getItem('aiapp_gemini_apikey') || '';
@@ -636,7 +670,7 @@ $('#btnSettings').onclick = () => {
   $('#mistralApiKey').value = localStorage.getItem('aiapp_mistral_apikey') || '';
   $('#mistralModel').value = localStorage.getItem('aiapp_mistral_model') || 'mistral-small-latest';
   $('#deepseekApiKey').value = localStorage.getItem('aiapp_deepseek_apikey') || '';
-  $('#deepseekModel').value = localStorage.getItem('aiapp_deepseek_model') || 'deepseek-chat';
+  $('#deepseekModel').value = localStorage.getItem('aiapp_deepseek_model') || 'deepseek-flash';
   $('#cohereApiKey').value = localStorage.getItem('aiapp_cohere_apikey') || '';
   // 'command-r-plus' was retired by Cohere on 2025-09-15; if a visitor's
   // browser still has it saved from before, silently upgrade it so requests
@@ -894,7 +928,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_mistral_apikey', $('#mistralApiKey').value.trim());
   localStorage.setItem('aiapp_mistral_model', $('#mistralModel').value.trim() || 'mistral-small-latest');
   localStorage.setItem('aiapp_deepseek_apikey', $('#deepseekApiKey').value.trim());
-  localStorage.setItem('aiapp_deepseek_model', $('#deepseekModel').value.trim() || 'deepseek-chat');
+  localStorage.setItem('aiapp_deepseek_model', $('#deepseekModel').value.trim() || 'deepseek-flash');
   localStorage.setItem('aiapp_cohere_apikey', $('#cohereApiKey').value.trim());
   { const __cs = localStorage.getItem('aiapp_cohere_model') || '', __cv = normalizeCohereModel($('#cohereModel').value); if(__cv !== normalizeCohereModel(__cs)) localStorage.setItem('aiapp_cohere_model', __cv); } // v-cohere-prefix: حقل لم يُغيَّر لا يمحو بادئة اختيار القائمة
   localStorage.setItem('aiapp_include_openai', $('#chkIncludeOpenAI').checked ? 'true' : 'false');
@@ -992,7 +1026,7 @@ codeEl.addEventListener('input', () => {
       runPythonCode(cur.code);
     } else {
       previewFrame._lastSrc = cur.code; previewFrame._imageView = false;
-      previewFrame.srcdoc = cur.code;
+      omranSetPreview(previewFrame, cur.code);
     }
   }, 500);
 });
@@ -1019,7 +1053,7 @@ $('#btnRunCode').onclick = () => {
     runPythonCode(cur.code);
   } else {
     previewFrame._lastSrc = cur.code; previewFrame._imageView = false;
-    previewFrame.srcdoc = cur.code;
+    omranSetPreview(previewFrame, cur.code);
   }
   switchWorkTab('preview');
 };
@@ -1124,7 +1158,7 @@ $('#btnExportZip').onclick = async () => {
     const zip = new JSZip();
     const isPy = cur.codeType === 'python';
     zip.file(isPy ? 'main.py' : 'index.html', cur.code);
-    zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with Omran AI Builder — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
+    zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with om ai — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
     const blob = await zip.generateAsync({ type: 'blob' });
     await omranSaveOrShareFile(blob, (cur.title || 'app') + '.zip');
   }catch(e){
@@ -1165,7 +1199,7 @@ function formatTaskPlan(steps, done){
   return taskTxt('title') + ':\n' + steps.map((s, i) => ((done && done[i]) ? '✅ ' : '⬜ ') + s).join('\n');
 }
 // هوية التطبيق — نسخة مختصرة: الأساسيات فقط لتوفير التوكنز.
-const APP_IDENTITY_NOTE = '\n(APP IDENTITY: You are inside "Omran AI Builder" by فريق عمران AI. "عمران/Omran" = THIS app only. Features: AI app builder, 3 public providers (Claude/GPT/Gemini), مها voice assistant, image+video generation, live web search, memory, education, stocks. Creator: فريق عمران AI.)'
+const APP_IDENTITY_NOTE = '\n(APP IDENTITY: You are inside "om ai" by فريق om ai. "عمران/Omran" = THIS app only. Features: AI app builder, 3 public providers (Claude/GPT/Gemini), مها voice assistant, image+video generation, live web search, memory, education, stocks. Creator: فريق om ai.)'
 // ست قواعد عامة فقط؛ الدليل والتصحيح والخطوة التالية تعمل عند الحاجة لا آليًّا.
 const CONVERSATION_QUALITY_RULE = '\n[أسلوب المحادثة — ست قواعد عامة ملزمة]:\n' +
 '(١) ابدأ بالجواب أو المعلومة الأهم مباشرة، وقدّم الخطر أو الخطأ أولًا إن وُجد.\n' +
@@ -1310,6 +1344,9 @@ async function selfHealCode(code, codeType, onStatus){
   /* v-chat-edit: الإصلاح الذاتيّ يطلب الملفّ كاملًا — فوق ما يسعه ردّ واحد (≈٤٥ ألف حرف) لا يُطلب أصلًا، ودونه يُقرأ ردّه
      بحارس التصميم (base) فلا يحلّ محلّه ملفّ انقطع. */
   if(code.length > OMRAN_HEAL_MAX) return code;
+  /* v-owner-solo-all (المالك: «كل واحد بروحه»): للمالك كان خطأ تشغيل في صفحة بناها مزوّده يُرسل بالخفاء لسلسلة غير منفردة
+     (كلود أوّلها بعد مجموعة المزوّد) ويحلّ إصلاحها محلّ كوده. مزوّده عنده test_html ويصلح بنفسه — لا إصلاح من غيره. */
+  if(typeof omranOwnerUi === 'function' && omranOwnerUi()) return code;
   let current = code;
   for(let attempt = 1; attempt <= 2; attempt++){
     let errors;
@@ -1623,6 +1660,10 @@ function throwProviderError(status, errText){
   // (429) or daily-quota (402) failure apart from a hard failure worth surfacing
   // immediately (auth, bad request, etc.).
   let err;
+  /* v-audit-prov (srv-providers-5): رمز الخادم الثابت لخطأ المزوّد ({error:'provider_failed', code}) يُعرض بنصّ الواجهة (providerError)
+     لا بجسمه — لا JSON في الفقاعة ولا في سطر الحالة. نصّ المزوّد الخامّ يصل المالك وحده من الخادم. */
+  let __pf = null;
+  try{ const __j = JSON.parse(errText); if(__j && __j.error === 'provider_failed') __pf = __j; }catch(_){ /* guard-ok — جسم غير JSON يُعامَل كما كان */ }
   if(status === 402){
     // 👑 الرد الاحترافي: 402 مع reason:'points' يعني نفاد النقاط (وليس حد يومي).
     let __pointsErr = false;
@@ -1631,12 +1672,19 @@ function throwProviderError(status, errText){
       if(__p && (__p.reason === 'points' || __p.error === 'insufficient_points')) __pointsErr = true;
     }catch(_){ if(/insufficient_points|"reason"\s*:\s*"points"/.test(errText || '')) __pointsErr = true; }
     /* v-plans-gate: حدّ باقتنا (ردّ خوادمنا يحمل subscribeOnly أو engine_limit) غير رصيد مزوّد خارجيّ — له سطره، وتنفتح الباقات. */
-    let __planLimit = false;
-    try{ const __p2 = JSON.parse(errText); __planLimit = !__pointsErr && !!__p2 && (__p2.reason === 'engine_limit' || Object.prototype.hasOwnProperty.call(__p2, 'subscribeOnly')); }
+    let __planLimit = false, __p2 = null;
+    try{ __p2 = JSON.parse(errText); __planLimit = !__pointsErr && !!__p2 && (__p2.reason === 'engine_limit' || Object.prototype.hasOwnProperty.call(__p2, 'subscribeOnly')); }
     catch(_){ __planLimit = false; }
     err = new Error(__planLimit ? t('plansWhyLimit') : t('dailyLimitError'));
     if(__pointsErr) err.premiumNoPoints = true;
-    if(__planLimit) err.planLimit = true;
+    if(__planLimit){
+      err.planLimit = true;
+      /* v-limit-chain-stop: نوع الحدّ — مزوّد مدفوع أمام غير مشترك (subscribeOnly)، أو حدّ محرّك الكود في الباقة (engine_limit)،
+         وإلّا السلّة اليوميّة المشتركة امتلأت فلا يجيب غيره. والطبقة (free/guest/sub) لنصّ الفقاعة. */
+      err.subscribeOnly = !!__p2.subscribeOnly;
+      err.engineLimit = __p2.reason === 'engine_limit';
+      if(typeof __p2.tier === 'string') err.limitTier = __p2.tier;
+    }
   } else if(status === 429){
     err = new Error(t('quotaError'));
   } else if(status === 401 || status === 403){
@@ -1650,12 +1698,13 @@ function throwProviderError(status, errText){
     }catch(e){ __swallow(e, "auth:app-06-checkout#10"); }
     err = sessionMsg ? new Error('🔒 ' + sessionMsg) : new Error(t('authError'));
   } else {
-    err = new Error(t('providerError') + status + ' - ' + (errText || '').slice(0, 200));
+    err = new Error(t('providerError') + status + (__pf ? '' : ' - ' + (errText || '').slice(0, 200)));
   }
   err.status = status;
   // v-claude-shape: مقتطف خطأ المزود الأصلي يظهر في سطر الحالة — «HTTP 400»
   // وحدها كانت تخفي السبب الحقيقي (شكل رسائل مرفوض، مفتاح، نموذج...).
   err.upstreamText = String(errText || '').replace(/\s+/g, ' ').slice(0, 160);
+  if(__pf) err.upstreamText = __pf.code === 'model_not_found' ? 'model_not_found' : ''; // v-audit-prov: model_not_found يُهبط callGroq إلى «الوصف ثمّ النصّ»
   throw err;
 }
 
@@ -1673,7 +1722,7 @@ function toOpenAIVisionMessages(messages){
 // Vision-capable model overrides used ONLY when an image is attached, so "Ask All"
 // still gets every one of the 9 providers to weigh in on an attached image, even
 // though each provider's normal default chat model is text-only.
-const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+const GROQ_VISION_MODEL = 'qwen/qwen3.8-27b'; // v-dead-models: Llama 4 Scout أُوقف عند Groq ١٧ يوليو ٢٠٢٦ — Qwen3.8 27B نموذج الرؤية الوحيد الحيّ
 const MISTRAL_VISION_MODEL = 'pixtral-12b-2409';
 const OPENROUTER_VISION_MODEL = 'meta-llama/llama-4-scout';
 
@@ -2138,7 +2187,10 @@ async function callMistral(messages, onDelta){
 
 async function callDeepSeek(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_deepseek_apikey');
-  const model = localStorage.getItem('aiapp_deepseek_model') || 'deepseek-chat';
+  /* v-dead-models: DeepSeek أوقف deepseek-chat وdeepseek-reasoner (٢٤ يوليو ٢٠٢٦) — المفتاح الخاصّ كان يرسل المحفوظ حرفيًّا فيسقط.
+     نفس ترجمة الخادم (api/_lib/deepseek.js): pro/reasoner/r1 ← deepseek-v4-pro، وغيرها ← deepseek-flash. */
+  const __dsSaved = String(localStorage.getItem('aiapp_deepseek_model') || '').toLowerCase();
+  const model = /v4[-_.]?pro|reasoner|\br1\b/.test(__dsSaved) ? 'deepseek-v4-pro' : 'deepseek-flash';
   const plainMessages = await stripImagesWithDescription(messages);
   // If the visitor hasn't entered their own DeepSeek key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
@@ -2361,11 +2413,14 @@ async function callClaude(messages, onDelta){
 // 🛠️ v528 — المزوّدون الذين تعمل معهم حلقة الأدوات (مُتحقَّق حيًّا).
 // Perplexity وحده خارجها عمدًا: موديلات Sonar لا تقبل الأدوات أصلًا (بحثها مدمج).
 const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq', 'cohere', 'openrouter', 'kimi']; /* v-cohere-tools: Cohere عبر مسار الأدوات (OR_MODELS في chat.js) فيقرأ GitHub ويبحث كالبقيّة · v-openrouter-tools: والمزوّد العامّ كذلك، بالمفتاح نفسه */
+/* v-pplx-agent (المالك ١٥ أكتوبر «ابدا في Perplexity»): للمالك Perplexity صار على مسار الأدوات (Agent API بأدوات دوالّ أصليّة — oa-direct)،
+   ولغيره يبقى على مساره القديم. كلّ بوّابة تسأل TOOL_PROVIDERS.indexOf(…) فيجيبها هذا وحده بلا لمس مواضعها. */
+TOOL_PROVIDERS.indexOf = function(p){ const i = Array.prototype.indexOf.call(this, p); return (i === -1 && p === 'perplexity' && typeof omranOwnerUi === 'function' && omranOwnerUi()) ? this.length : i; };
 
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;
   if(providerKey === 'default'){
-    effective = localStorage.getItem('aiapp_provider') || 'openai';
+    effective = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
   }
   if(effective === 'gemini') return await callGemini(messages, onDelta);
   if(effective === 'groq') return await callGroq(messages, onDelta);
@@ -2474,7 +2529,15 @@ function __idleGuard(promise, idleMs, getLast){
 async function callAIWithFallback(messages, onDelta, preferredList, opts){
   /* v-owner-solo (المالك ٨ أكتوبر «أيّ واحد أختاره يكون نفسه، وإذا ما فيه رصيد يكتبلي»): solo = المزوّد الأوّل وحده — لا
      احتياط ولا تحويل بعد ردّ رفض، وفشله يُرمى باسمه وسببه فيظهر في الفقاعة. */
-  const __solo = !!(opts && opts.solo);
+  /* v-owner-solo-all (المالك: «كل واحد بروحه»): المستدعون بلا solo (البناء بالصوت، فاحص التطبيق، أدوات الاستوديوهات…) كانوا للمالك
+     على سلسلة مجموعة المزوّد ثمّ كلود/Gemini/GPT/Groq مع تحويل صامت بعد الرفض. للمالك الآن مزوّده المختار وحده، ورسالة النظام
+     الأولى عندهم تعليمات المهمّة نفسها (لا نظام التطبيق الثابت) فتبقى. غير المالك كما كان. */
+  /* v-religion-chain (المالك ١٧ أكتوبر عن «التفسير الديني»: «اريده نفس قبل… الديانات كلها نفس قبل»): taskPrompt = رسالة النظام
+     الأولى موجّه الأداة وهو تعليماتها كلّها. المالك يأخذ فيها السلسلة القديمة نفسها (قبل v-owner-solo-all) — كان مساره الجديد مسار
+     المحادثة بمنهج المستودع وخريطته فوق الموجّه — ولا يُحذف الموجّه في مسار Kimi (كان يُنزع ظنًّا أنّه نظام التطبيق الثابت). */
+  const __task = !!(opts && opts.taskPrompt);
+  const __ownAuto = !(opts && opts.solo) && !__task && typeof omranOwnerUi === 'function' && omranOwnerUi();
+  const __solo = !!(opts && opts.solo) || __ownAuto;
   // 🧹 v308: تعقيم نهائي — أي base64 عملاق داخل نص أي رسالة يُستبدل بعلامة
   // قصيرة قبل الإرسال (الصور المرفقة الحقيقية تبقى في حقل images المنفصل).
   try{
@@ -2488,7 +2551,7 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
   }catch(e){ __swallow(e, "misc:app-06-checkout#11"); }
   // v358 — التوجيه بالمجموعات الوظيفية: المزود المختار يوسَّع لسلسلة مجموعته
   // (الاحتياط الصامت يبقى داخل نفس المجموعة أولًا)، ثم بقية المزودين كشبكة أمان أخيرة.
-  const __sel = localStorage.getItem('aiapp_provider') || 'openai';
+  const __sel = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
   const __grp = (typeof FUNCTIONAL_GROUPS !== 'undefined' && FUNCTIONAL_GROUPS[__sel]) ? FUNCTIONAL_GROUPS[__sel] : [__sel];
   const head = (preferredList && preferredList.length) ? preferredList : __grp;
   const order = __solo ? head.slice(0, 1) : [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
@@ -2498,7 +2561,11 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
   let firstRefusal = null; // أول رد رفض (نرجعه فقط إذا رفض الجميع)
   let refusalTries = 0;    // حد أقصى محاولتين إضافيتين بعد الرفض
   let errSwitched = false; // التبديل بسبب عطل/ضغط فقط هو اللي يظهر للمستخدم
+  /* v-limit-chain-stop: مرآة PAID_PROVIDERS في tier.js — بعد 402 subscribeOnly (المدفوع مقفل أمام غير المشترك) لا يُسأل مدفوع آخر */
+  const __paidProv = ['claude', 'openai', 'deepseek', 'cohere', 'perplexity'];
+  let __skipPaid = false;
   for(const providerKey of order){
+    if(__skipPaid && __paidProv.indexOf(providerKey) !== -1) continue;
     try{
       // Shown for every provider — the silent spinner was the reason Gemini
       // and GPT felt "dead" next to Claude, which had its own thinking output.
@@ -2519,8 +2586,10 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
       const __viaChat = __solo && TOOL_PROVIDERS.indexOf(providerKey) !== -1 && typeof window.callChatWithTools === 'function';
       if(__viaChat && opts && opts.toolsErr) throw opts.toolsErr; // v-owner-solo: مسار الأدوات لهذا المزوّد فشل للتوّ — لا طلب ثانٍ يكرّر أدواته (تفويض/رفع/صورة)
       const reply = __viaChat
-        ? (await window.callChatWithTools(messages.filter((m, i) => !(i === 0 && m && m.role === 'system')), __od, providerKey, { noTools: true })).reply
-        : await __idleGuard(callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
+        ? (await window.callChatWithTools(messages.filter((m, i) => __ownAuto || !(i === 0 && m && m.role === 'system')), __od, providerKey, { noTools: true })).reply
+        : await __idleGuard((__task && providerKey === 'kimi' && typeof window.callChatWithTools === 'function')
+            ? window.callChatWithTools(messages, __od, 'kimi', { noTools: true }).then(function(r){ return r && r.reply; }) // v-religion-chain: الموجّه يصل Kimi، بلا أدوات المستودع (كمسار المالك القديم)
+            : callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
       // 🛡️ v309: رد فارغ = فشل → جرّب المزود التالي (يمنع الفقاعة الخفية)
       if(!String(reply || '').trim()){ lastErr = new Error(t('providerError')); continue; }
       if(!__solo && isRefusalReply(reply) && refusalTries < 2){
@@ -2552,12 +2621,17 @@ async function callAIWithFallback(messages, onDelta, preferredList, opts){
           try{
             const __st = err.status || Number((String(err.message || '').match(/^chat (\d{3})\b/) || [])[1]) || 0;
             /* v-claude-code-level C9 (لقطة المالك ١١ أكتوبر: «⚠️ ما قدرت أردّ الحين» ×٣ بلا شيء): خطأ بلا رقم كان يُمحى سببه — الآن سطره القصير */
-            const __m = String((err && err.message) || ''), __why = __st ? '' : /stalled|__chat_idle__|__chat_no_headers__/.test(__m) ? 'ما وصل شي من الخادم' : /empty reply/.test(__m) ? 'رجع الردّ فارغًا' : /^chat error: /.test(__m) ? 'عطل في الخادم: ' + __m.slice(12, 140) : /Failed to fetch|NetworkError|network|Load failed/i.test(__m) ? 'انقطع الاتّصال' : '';
+            const __m = String((err && err.message) || ''), __why = __st ? '' : /stalled|__chat_idle__|__chat_no_headers__/.test(__m) ? 'ما وصل شي من الخادم' : /empty reply/.test(__m) ? 'رجع الردّ فارغًا' : /^chat error: /.test(__m) ? 'عطل في الخادم: ' + __m.slice(12, 140) : /Failed to fetch|NetworkError|network|Load failed|^chat: cut/i.test(__m) ? 'انقطع الاتّصال' : ''; /* v-turn-close: انقطاع المجرى بعد بدئه */
             err.message = (__st === 402 || /credit|balance|billing|insufficient_quota|payment/i.test(String(err.upstreamText || ''))) ? 'ما عندي رصيد' : ('ما قدرت أردّ الحين' + (__st ? ' — خطأ ' + __st : (__why ? ' — ' + __why : '')));
           }catch(e){ __swallow(e, 'fallback:solo-msg'); }
         }
         throw err;
       }
+      /* v-limit-chain-stop (تدقيق ١٨–١٩ أكتوبر: طلب بناء بعد الحدّ = ٤ طلبات كلّها 402، و«التفسير الديني» ٥): حدّنا اليوميّ في سلّة
+         مشتركة لكلّ المزوّدين — لا يجيب غيره، فتقف السلسلة هنا بلا «الاحتياط فشل أيضًا». حدّ محرّك الكود (engine_limit) يكمل كما كان
+         (v-model-lock)، و402 subscribeOnly يتخطّى بقيّة المدفوعين فيصل غير المشترك إلى المجّانيّين. */
+      if(err && err.planLimit && !err.subscribeOnly && !err.engineLimit){ if(firstRefusal) break; throw err; } // ردّ رفض سابق يبقى جوابًا كما كان
+      if(err && err.planLimit && err.subscribeOnly) __skipPaid = true;
       try{
         if(((onDelta && onDelta.__status) || window.__chatStatus)){
           const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);

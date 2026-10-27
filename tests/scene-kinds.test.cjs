@@ -212,12 +212,9 @@ test('٧. اللوحات: الصانع مكان شاشة المعاينة، ال
   const vt = read('js/app-11-video-trends.js');
   assert.ok(vt.indexOf("st.id = 'vtStatus'") < vt.indexOf("out.id = 'vtOut'") && vt.includes('panel.appendChild(st); panel.appendChild(out);'), 'النتيجة بعد سطر الحالة مباشرة');
   assert.ok(vt.includes("out.style.cssText = 'margin-top:10px;max-width:760px;margin-inline:auto;';"), 'والنتيجة بعرض المشهد');
-  const w2 = load(), t2 = w2.PANELS.find((p) => p.id === 'vtrend');
-  assert.equal(w2._panelBusy(t2, '⏳ يصنع الفيديو… نحو دقيقتين'), true);
-  assert.equal(w2._panelBusy(t2, 'المشهد 2 من 3… ⏳ يصنع الفيديو… نحو دقيقتين'), true, 'الترند المتعدّد المشاهد: ⏳ داخل النصّ لا في أوّله');
-  assert.equal(w2._panelBusy(t2, '⏳ المشهد 2 من 3: مهلة بين الفيديوهات — يبدأ تلقائيًا بعد 40 ثانية'), true, 'والعدّ التنازليّ بين المشاهد');
-  assert.equal(w2._panelBusy(t2, '✅ جاهز'), false);
-  assert.equal(w2._panelBusy(t2, 'سجّل الدخول أولًا'), false);
+  // v-trend-scene-live: «مشغول» سمة تضبطها اللوحة — نصوصها تُكتب بلا إيموجي (ui ← noEmoji) فلم يُرَ الانشغال بالرمز قطّ؛
+  // كان هذا الاختبار يمرّ بنصوص كُتبت باليد بـ⏳. التفصيل والمسار كاملًا في trend-scene-live.test.cjs
+  assert.equal(tr.busyAttr, 'data-genw-busy'); assert.equal(tr.busyHas, undefined);
   // الديكور
   assert.equal(d.sel, '#designAiStatus'); assert.equal(d.kind, 'decor'); assert.equal(d.scope, '#designAiModal'); assert.equal(d.topSel, '#designAiIdeas');
   assert.equal(d.hideSel, '#designAiIdeas, #designBAWrap, #designAiResult, #designAiGrid, #designAiDownloadLink');

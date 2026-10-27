@@ -31,7 +31,9 @@ test('صورة لكلّ قسم من السبعة بمقاس واحد ٣٢٠×٣�
 
 test('التبويب صورة ثمّ اسم مترجم، والصفّ لا يُعصر في الشبكة ولا في عمود الجوّال', () => {
   const js = read('js/video.js');
-  assert.match(js, /im\.src='\/assets\/videos\/tabs\/'\+v\+'\.jpg\?v=2'/);
+  /* v-vmk-tab-warm: الرابط من دالّة واحدة يرسم بها التبويب ويسخّن بها الذاكرة */
+  assert.match(js, /function tabArt\(v\)\{ return TAB_ART\[v\]\|\|'\/assets\/videos\/tabs\/'\+v\+'\.jpg\?v=2'; \}/);
+  assert.match(js, /im\.src=tabArt\(v\)/);
   assert.match(js, /lb\.className='vmk-tab-lbl'; lb\.textContent=tabLabel\(v\)/);
   assert.match(js, /b\.appendChild\(im\); b\.appendChild\(lb\); tb\.appendChild\(b\);/);
   const css = read('css/modules.css');
@@ -42,5 +44,25 @@ test('التبويب صورة ثمّ اسم مترجم، والصفّ لا يُ�
   assert.ok(!/overflow-x:auto/.test(desktop), 'لا تمرير أفقيّ على الحاسوب');
   assert.ok(css.includes('@media (max-width:640px){#videoMakerModal .vmk-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-height:max-content;flex-shrink:0;width:100%}}'));
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=447"') && h.includes('modules.css?v=681'));
+  assert.ok(h.includes('src="/js/video.js?v=459"') && h.includes('modules.css?v=692'));
+});
+
+/* v-vmk-tab-warm (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٠١): صور التبويبات فارغة ٢–٣ ثوانٍ عند الفتح — كانت loading='lazy' وتُنشأ عند الفتح فقط،
+   بينما تبدأ شبكة الترندات ٤٥ صورة في اللحظة نفسها. الآن eager بأولويّة عالية، وتُسخَّن الذاكرة عند مرور المؤشّر أو التركيز أو اللمس
+   على زرّ الصانع بالروابط نفسها التي تُرسم. */
+test('صور التبويبات لا تنتظر التحميل الكسول، وتُسخَّن بالروابط نفسها المرسومة', () => {
+  const vm = require('node:vm');
+  const js = read('js/video.js');
+  const bt = js.slice(js.indexOf('  function buildTabs(){'), js.indexOf('  function setTab(v){'));
+  assert.ok(!/im\.loading='lazy'/.test(bt), 'صورة التبويب كسولة');
+  assert.ok(/im\.loading='eager'; im\.fetchPriority='high';/.test(bt), 'تُطلب فور إنشاء التبويب وقبل صور الترندات');
+  const src = (n) => { const a = js.indexOf('  function ' + n + '('); assert.ok(a > 0, n); return js.slice(a, js.indexOf('\n  }\n', a) + 4); };
+  const got = [];
+  const tabs = ['trend', 'canvas', 'runway', 'veo', 'actor', 'clean'];
+  const ctx = { TAB_ART: { actor: '/assets/studio/options/heritage-emirati.webp' }, tabsFor: () => tabs, Image: function () { const o = {}; Object.defineProperty(o, 'src', { set(v) { got.push(v); } }); return o; } };
+  vm.createContext(ctx);
+  vm.runInContext('var tabsWarm=false;\n' + src('tabArt') + '\n' + src('warmTabs'), ctx);
+  ctx.warmTabs(); ctx.warmTabs();
+  assert.deepStrictEqual(got, tabs.map((v) => ctx.TAB_ART[v] || '/assets/videos/tabs/' + v + '.jpg?v=2'), 'مرّة واحدة، وبالروابط نفسها');
+  assert.match(js, /\['pointerenter','pointerdown','focus'\]\.forEach\(function\(ev\)\{ bvm\.addEventListener\(ev,warmTabs\); \}\);/);
 });

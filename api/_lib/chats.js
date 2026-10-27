@@ -143,6 +143,7 @@ module.exports = async (req, res) => {
       // Merge: server + client, respecting deletions
       const merged = slimProjects(mergeProjects(serverProjects, incoming, deletedSet));
       await kvPutJSON(chatsKey(username), { projects: merged, updatedAt: Date.now() });
+      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').absorbProjects(merged); } catch (e) { /* guard-ok — فشل ربط المحادثات بالمخزن المشترك لا يوقف الحفظ */ } } // v-prov-one
       res.status(200).json({ ok: true, count: merged.length, merged: true });
       return;
     }
@@ -167,9 +168,17 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'chats_wipe') {
+      /* v-audit-chatsrv (srv-chat-4): المسح الكامل كان يفرّغ سجلّ المحذوفات أيضًا، فالجهاز الآخر (chats_load بلا deletedIds) يرفع نسخته
+         المحلّيّة في مزامنته التالية وتقبلها mergeProjects كلّها — فتعود المحادثات «المحذوفة نهائيًّا». الآن كلّ مشروع مخزَّن يُضاف إلى
+         السجلّ (مع القديم) فيحذفه كلّ جهاز عند مزامنته ولا يُقبل رفعه ثانية؛ والسقف ٥٠٠ كحذف المحادثة لا يُسقط أيّ معرّف من هذا المسح. */
+      const rec = await kvGetJSON(chatsKey(username));
+      const wipedIds = ((rec && Array.isArray(rec.projects)) ? rec.projects : []).map((p) => p && p.id).filter(Boolean);
+      const delRec = await kvGetJSON(deletedKey(username));
+      const wipedSet = new Set(wipedIds);
+      const tomb = ((delRec && Array.isArray(delRec.ids)) ? delRec.ids : []).filter((id) => !wipedSet.has(id)).concat(Array.from(wipedSet)); // معرّفات المسح آخرًا فلا يقصّها السقف
       await kvPutJSON(chatsKey(username), { projects: [], updatedAt: Date.now(), wiped: true });
-      // Clear tombstones too
-      await kvPutJSON(deletedKey(username), { ids: [], updatedAt: Date.now() });
+      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').clearGen(); } catch (e) { /* guard-ok — فشل مسح المخزن المشترك لا يوقف المسح */ } } // v-prov-one
+      await kvPutJSON(deletedKey(username), { ids: tomb.slice(-Math.max(500, wipedSet.size)), updatedAt: Date.now() });
       res.status(200).json({ ok: true, wiped: true });
       return;
     }

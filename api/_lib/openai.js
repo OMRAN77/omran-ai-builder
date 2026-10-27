@@ -45,12 +45,14 @@ module.exports = async (req, res) => {
     // 👑 الرد الاحترافي: موديل بريميوم مقابل نقاط (المالك بلا حدود).
     let premiumRefund = null;
     let isPremium = false;
+    let ownerView = false; // v-audit-prov: المالك وحده يرى نصّ خطأ المزوّد
     if (body.premium) {
       const pUser = verifyPointsToken(token);
       if (!pUser) { res.status(401).json({ error: 'سجّل الدخول لاستخدام الرد الاحترافي 👑' }); return; }
       const spend = await spendPoints(pUser, PREMIUM_COST.openai, 'premium_openai');
       if (!spend.ok) { res.status(402).json({ error: 'insufficient_points', reason: 'points', needed: PREMIUM_COST.openai, points: spend.points || 0 }); return; }
       if (!spend.owner) premiumRefund = { user: pUser, amt: PREMIUM_COST.openai };
+      ownerView = !!spend.owner;
       useModel = PREMIUM_MODELS.openai;
       isPremium = true;
     } else {
@@ -60,10 +62,11 @@ module.exports = async (req, res) => {
         if (usage.reason === 'auth') {
           res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
         } else {
-          res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.'), subscribeOnly: !!usage.subscribeOnly }); /* v-tiers */
+          res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.'), subscribeOnly: !!usage.subscribeOnly, tier: usage.tier }); /* v-tiers · v-limit-chain-stop: الطبقة تميّز حدّ المجّانيّ عن حدّ الباقة في العميل */
         }
         return;
       }
+      ownerView = usage.tier === 'owner';
       // v-model-lock: بلا 👑 (نقاط) النموذج الخفيف الافتراضيّ لغير المالك وVIP — كان اسم الاحترافيّ في model يتخطّى خصم ١٥ نقطة.
       if (!require('./_model-guard.js').isPrivileged(usage)) { useDefault = true; useModel = 'gpt-4.1'; }
     }
@@ -102,6 +105,7 @@ module.exports = async (req, res) => {
 
     const data = await upstream.text();
     if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
+    if (!upstream.ok) { require('./_videoFail.js').chatFail(res, 'openai', upstream.status, data, ownerView); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

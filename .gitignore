@@ -14,6 +14,8 @@
 !.env.example
 *.pem
 *.key
+# مفتاح الختم العامّ لمسبار مها (عامّ بطبيعته — الخاصّ عند المالك وحده، لا في المستودع)
+!scripts/maha-probe-seal.pub.pem
 
 # ناتج آليّ ومؤقّت.
 node_modules/
@@ -46,3 +48,8 @@ eval/out/
 
 # ملفّات الكتابة المؤقّتة لأدوات التحرير (اسم.tmp.<رقم>.<بصمة>)
 *.tmp.*
+
+# v-branch-shots: لقطات ui-shot وbranch-shots المحلّيّة (المخرج الافتراضيّ)
+.shots/
+# v-social-bot: مخرجات بوت التسويق المحلّيّة
+social-out/

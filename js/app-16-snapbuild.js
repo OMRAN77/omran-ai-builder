@@ -70,18 +70,30 @@
     try { return JSON.parse(raw.slice(a, b + 1)); } catch (e) { return null; }
   }
 
-  /** ملخّص عربي لما قُرئ — يراه المستخدم قبل البناء ليصحّحه. */
+  /* v-audit-chatcli (x-i18n-5): نصوص «ورّني وأبنيه» الظاهرة (الحالات، اسم المشروع، رسالة المحادثة، الملخّص) من قاموس الواجهة بالـ١٤
+     لغة (axChatcliSnap*)، والعربيّة احتياطها إن غاب المفتاح — كانت عربيّة ثابتة لكلّ اللغات. تعليمات النموذج تبقى عربيّة (ليست واجهة). */
+  function sbT(k, fb, vars) {
+    var v = '';
+    try { v = (typeof t === 'function') ? t(k) : ''; } catch (e) { v = ''; } // guard-ok — بلا قاموس يبقى الاحتياط العربيّ
+    var s = String((v && v !== k) ? v : fb);
+    if (vars) Object.keys(vars).forEach(function (n) { s = s.split('{' + n + '}').join(String(vars[n])); });
+    return s;
+  }
+
+  /** ملخّص ما قُرئ بلغة الواجهة — يراه المستخدم قبل البناء ليصحّحه. */
   function summarize(d) {
     if (!d) return '';
     var out = [];
     var kinds = { menu: 'قائمة طعام', app: 'واجهة تطبيق', design: 'تصميم', form: 'نموذج', list: 'قائمة' };
-    out.push('📸 قرأتُ من الصورة: **' + (kinds[d.kind] || 'محتوى') + '**' + (d.title ? ' — ' + d.title : ''));
+    var kk = kinds[d.kind] ? String(d.kind) : 'other';
+    var kind = sbT('axChatcliSnapKind' + kk.charAt(0).toUpperCase() + kk.slice(1), kinds[d.kind] || 'محتوى');
+    out.push(sbT('axChatcliSnapRead', '📸 قرأتُ من الصورة: **{kind}**', { kind: kind }) + (d.title ? ' — ' + d.title : ''));
     var n = 0;
     (d.sections || []).forEach(function (s) { n += (s.items || []).length; });
-    if (n) out.push('• ' + (d.sections || []).length + ' قسم · ' + n + ' صنف');
-    if ((d.screens || []).length) out.push('• ' + d.screens.length + ' شاشة');
+    if (n) out.push(sbT('axChatcliSnapCounts', '• {s} قسم · {n} صنف', { s: (d.sections || []).length, n: n }));
+    if ((d.screens || []).length) out.push(sbT('axChatcliSnapScreens', '• {n} شاشة', { n: d.screens.length }));
     var unsure = JSON.stringify(d).split('?"').length - 1;
-    if (unsure) out.push('⚠️ ' + unsure + ' عنصر غير واضح في الصورة — راجعه بعد البناء.');
+    if (unsure) out.push(sbT('axChatcliSnapUnsure', '⚠️ {n} عنصر غير واضح في الصورة — راجعه بعد البناء.', { n: unsure }));
     return out.join('\n');
   }
 
@@ -92,6 +104,7 @@
     buildPrompt: buildPrompt,
     extract: extract,
     summarize: summarize,
+    tx: sbT, /* v-audit-chatcli: ترجمة نصوص الواجهة بالاحتياط العربيّ للتكامل أدناه */
     looksLikeSnapBuild: function (text, hasImages) {
       if (!hasImages) return false;
       var t = String(text || '').trim();
@@ -136,15 +149,38 @@
       input.click();
     });
 
+    /* v-audit-chatcli (x-i18n-5): خطأ نصّه للمستخدم بلغة الواجهة؛ وغيره (نصّ مزوّد أو خادم خامّ) سطر عامّ مترجَم ويُسجَّل في الطرفيّة */
+    function uiErr(k, fb) { var e = new Error(S.tx(k, fb)); e.snapUi = true; return e; }
+    /* v-audit-chatcli-r (x-i18n-5): ردّ الوسيط المرفوض سببه للمستخدم لا «صوّرها بإضاءة أوضح» — 401 جلسة منتهية و402 حدّ يوميّ:
+       العربيّ يرى نصّ الخادم العربيّ كما كان (كأرشيف المرفقات في app-09)، وغيره مفتاحه القائم بالـ١٤ لغة (الضيف والمجّانيّ بسطري
+       المحادثة كـomranPlanLimitMsg، والمشترك حدّ الميزة). وغيرهما (429 زحام المزوّد بعد إعادتين في الخادم، 5xx) سطر عامّ مترجَم،
+       ونصّ الخادم أو المزوّد للطرفيّة. ردّ ناجح لا يُقرأ وحده «صوّرها بإضاءة أوضح». */
+    function httpErr(rd) {
+      var st = (rd && rd.status) || 0, data = (rd && rd.data) || {};
+      if (st < 400) return null;
+      if (data.error) console.warn('[snap] proxy ' + st + ':', data.error.message || data.error);
+      if ((st === 401 || st === 402) && typeof data.error === 'string' && data.error && (typeof lang === 'undefined' || lang === 'ar')) {
+        var e = new Error(data.error); e.snapUi = true; return e;
+      }
+      if (st === 401) return uiErr('portraitNeedLogin', 'يرجى تسجيل الدخول لاستخدام هذه الميزة');
+      if (st === 402) {
+        var pl = window.__omranPlan;
+        if (pl === 'guest') return uiErr('chatGuestLimitMsg', 'سجّل حسابًا مجانيًّا لتبدأ الدردشة.');
+        if (pl === 'free') return uiErr('chatFreeLimitMsg', 'انتهت رسائلك المجانية لليوم. اشترك لترفع حدّك اليوميّ.');
+        return uiErr('portraitLimitReached', 'وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا');
+      }
+      return uiErr('axChatcliSnapFail', 'تعذّر البناء من الصورة — حاول مرّة ثانية');
+    }
+
     function fileToBlock(f) {
       return new Promise(function (resolve, reject) {
         var r = new FileReader();
         r.onload = function () {
           var m = String(r.result || '').match(/^data:([^;]+);base64,(.*)$/);
-          if (!m) return reject(new Error('صورة غير مقروءة'));
+          if (!m) return reject(uiErr('axChatcliSnapBadImage', 'صورة غير مقروءة'));
           resolve({ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } });
         };
-        r.onerror = function () { reject(new Error('فشل قراءة الصورة')); };
+        r.onerror = function () { reject(uiErr('axChatcliSnapBadImage', 'فشل قراءة الصورة')); };
         r.readAsDataURL(f);
       });
     }
@@ -164,30 +200,56 @@
       return null;
     }
 
+    /* v-owner-solo-all (المالك: «كل واحد بروحه»): القراءة والبناء كانا على كلود دائمًا مهما اختار. للمالك الآن مزوّده المختار (ذو الأدوات)
+       عبر الخادم بلا أدوات — الصور تصله كتل رؤية وowner-vision يعطيه موديل رؤيته. غيره على وسيط كلود كما كان. */
+    function ownerProv() {
+      try {
+        if (!(typeof omranOwnerUi === 'function' && omranOwnerUi()) || typeof window.callChatWithTools !== 'function') return '';
+        var sel = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai');
+        return (typeof TOOL_PROVIDERS !== 'undefined' && TOOL_PROVIDERS.indexOf(sel) !== -1) ? sel : '';
+      } catch (e) { return ''; } // guard-ok — بلا تخزين = المسار القديم
+    }
+    function askText(system, userText, blocks) {
+      var prov = ownerProv();
+      if (prov) {
+        var um = { role: 'user', content: userText };
+        if (blocks && blocks.length) um.images = blocks.map(function (b) { return { dataUrl: 'data:' + b.source.media_type + ';base64,' + b.source.data, mime: b.source.media_type }; });
+        return window.callChatWithTools((system ? [{ role: 'system', content: system }] : []).concat([um]), null, prov, { noTools: true })
+          .then(function (r) { return { text: String((r && r.reply) || ''), data: null }; });
+      }
+      var content = (blocks && blocks.length) ? blocks.concat([{ type: 'text', text: userText }]) : userText;
+      return claudeProxyRequest('claude-sonnet-5', system ? { content: system } : null, [{ role: 'user', content: content }], false)
+        .then(function (res) {
+          return res.json().catch(function () { return {}; })
+            .then(function (data) { return { text: textFrom(data), data: data, status: res.status }; }); /* v-audit-chatcli-r: الحالة لـhttpErr */
+        });
+    }
+
     input.addEventListener('change', function () {
       var files = Array.prototype.slice.call(input.files || []).slice(0, 4);
       if (!files.length) return;
-      statusMsg('📸 يقرأ الصورة بدقة (الأسعار والنصوص حرفيًا)…');
+      statusMsg(S.tx('axChatcliSnapReading', '📸 يقرأ الصورة بدقة (الأسعار والنصوص حرفيًا)…'));
 
       Promise.all(files.map(fileToBlock)).then(function (blocks) {
-        var content = blocks.concat([{ type: 'text', text: 'اقرأ الصورة/الصور حسب تعليمات النظام وأعد JSON فقط.' }]);
-        return claudeProxyRequest('claude-sonnet-4-20250514', { content: S.READ_PROMPT }, [{ role: 'user', content: content }], false)
-          .then(function (res) { return res.json().catch(function () { return {}; }); });
-      }).then(function (data) {
-        var parsed = S.extract(textFrom(data));
-        if (!parsed) throw new Error((data && data.error && (data.error.message || data.error)) || 'لم أستطع قراءة الصورة — صوّرها بإضاءة أوضح وحاول ثانية');
+        return askText(S.READ_PROMPT, 'اقرأ الصورة/الصور حسب تعليمات النظام وأعد JSON فقط.', blocks);
+      }).then(function (rd) {
+        var he = httpErr(rd); /* v-audit-chatcli-r: الرفض (دخول/حدّ) بسببه قبل الحكم على الصورة */
+        if (he) throw he;
+        var parsed = S.extract(rd.text);
+        if (!parsed) throw uiErr('axChatcliSnapReadFail', 'لم أستطع قراءة الصورة — صوّرها بإضاءة أوضح وحاول ثانية');
         var summary = S.summarize(parsed);
-        statusMsg('🏗️ يبني من المقروء…');
-        return claudeProxyRequest('claude-sonnet-4-20250514', null, [{ role: 'user', content: S.buildPrompt(parsed) }], false)
-          .then(function (res) { return res.json().catch(function () { return {}; }); })
+        statusMsg(S.tx('axChatcliSnapBuilding', '🏗️ يبني من المقروء…'));
+        return askText(null, S.buildPrompt(parsed), null)
           .then(function (b) {
-            var code = extractHtml(textFrom(b));
-            if (!code) throw new Error('لم يصل كود صالح — حاول مرة ثانية');
+            var he2 = httpErr(b); /* v-audit-chatcli-r: البناء طلب ثانٍ يُحسب — حدّه بسببه لا «لم يصل كود صالح» */
+            if (he2) throw he2;
+            var code = extractHtml(b.text);
+            if (!code) throw uiErr('axChatcliSnapNoCode', 'لم يصل كود صالح — حاول مرة ثانية');
             var cur = {
               id: Date.now().toString(),
-              title: String((parsed && parsed.title) || 'من الصورة 📸'),
+              title: String((parsed && parsed.title) || S.tx('axChatcliSnapTitle', 'من الصورة 📸')),
               code: code, codeType: 'html',
-              messages: [{ role: 'assistant', content: summary + '\n\n✅ بنيته لك — افتح المعاينة، وراجع الأسعار والنصوص، وقل لي أي تعديل.' }],
+              messages: [{ role: 'assistant', content: summary + '\n\n' + S.tx('axChatcliSnapDone', '✅ بنيته لك — افتح المعاينة، وراجع الأسعار والنصوص، وقل لي أي تعديل.') }],
             };
             state.projects.push(cur);
             state.currentId = cur.id;
@@ -203,7 +265,8 @@
             statusMsg('');
           });
       }).catch(function (err) {
-        statusMsg('⚠️ ' + String((err && err.message) || err));
+        if (!(err && err.snapUi)) console.warn('[snap] failed:', err); /* v-audit-chatcli */
+        statusMsg('⚠️ ' + ((err && err.snapUi) ? err.message : S.tx('axChatcliSnapFail', 'تعذّر البناء من الصورة — حاول مرّة ثانية')));
         setTimeout(function () { statusMsg(''); }, 6000);
       });
     });

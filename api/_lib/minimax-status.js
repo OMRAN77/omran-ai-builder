@@ -22,8 +22,15 @@ module.exports = async (req, res) => {
     const errBody = !!(qd && qd.type === 'error');
     if (!q.ok || errBody) {
       console.error('[minimax-status] query HTTP ' + q.status + ' ' + JSON.stringify(qd).slice(0, 300));
+      /* v-credit-out (أمر المالك ٢١ أكتوبر «ما تنخصم منه ولا نقطة»): المزوّد يرفض الاستطلاع نفسه لعطب عندنا (رصيده نفد، المفتاح، الصلاحيّة) — المهمّة لن
+         تُتابَع أبدًا، وكانت تذكرتها تنتهي بعد ساعتين بلا ردّ. تُسوّى فشلًا الآن (مرّة واحدة) وunavailable يعرضه العميل «الخدمة متوقّفة مؤقّتًا». */
+      if (require('./_videoFail.js').isOutage(q.status, JSON.stringify(qd))) {
+        await require('./video-job.js').settleVideoJob(taskId, false);
+        res.status(503).json({ error: 'unavailable', retryable: false });
+        return;
+      }
       /* v-minimax-h3: v2 يردّ الخطأ بحالة HTTP غير ٢٠٠ وجسم { type:'error' }. ٤٢٩ و٥xx عابرة (المزوّد مشغول) فتبقى خطأً
-         يحتمله حارس الاستطلاع في العميل؛ وما عداها (٤٠٠/٤٠١/٤٠٢/٤٠٤/٤٢٢) نهائيّ لهذه المهمّة — المستخدم دفع ولن يستلم،
+         يحتمله حارس الاستطلاع في العميل؛ وما عداها (٤٠٠/٤٠٤/٤٢٢) نهائيّ لهذه المهمّة — المستخدم دفع ولن يستلم،
          فتُسوّى التذكرة فشلًا وتُردّ النقاط (روح v-video-retrieve-refund). */
       const transient = q.status === 429 || q.status >= 500;
       if (!transient) {

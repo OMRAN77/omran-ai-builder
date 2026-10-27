@@ -69,14 +69,16 @@ test('١. الخادم: دور فيه صورة لا يُرسَل بمصفوفت�
   const { res, calls } = await run(IMG_HISTORY, SCOUT);
   assert.deepEqual(calls, [SCOUT], 'نموذج الرؤية المطلوب وحده — لا gpt-oss بصورة');
   assert.equal(res.code, 404);
-  assert.match(res.body, /does not exist/);
+  assert.match(res.body, /model_not_found/); // v-audit-prov: لغير المالك رمز الخادم الثابت لا نصّ المزوّد («does not exist»)
   assert.doesNotMatch(res.body, /must be a string/);
 });
 
 test('٢. الخادم: الدور النصّيّ كما كان — اسم متقاعد يُستبدل بالمرشّحين وينجح', async () => {
   const { res, calls } = await run([{ role: 'user', content: 'هلا' }], 'llama-3.3-70b-versatile');
   assert.equal(res.code, 200);
-  assert.equal(calls[0], 'openai/gpt-oss-120b');
+  // v-plan-models (قرار المالك ١٦ أكتوبر): المجّانيّ على gpt-oss-20b أوّلًا — أوّل المرشّحين وحده ينجح، والاسم المتقاعد لا يُرسَل أبدًا
+  assert.deepEqual(calls, ['openai/gpt-oss-20b'], 'أوّل مرشّحي Groq بدل الاسم المتقاعد');
+  assert.equal(calls[0], require(path.join(root, 'api/_lib/tier.js')).FREE_PROVIDER_SPECS.groq.models[0], 'الترتيب من السلسلة نفسها');
 });
 
 test('٣. العميل: «content must be a string» من Groq يُعامَل كغياب الرؤية فيهبط إلى «وصف الصورة ثمّ النصّيّ»', () => {

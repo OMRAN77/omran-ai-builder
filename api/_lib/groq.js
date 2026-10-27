@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
       } else {
-        res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.'), subscribeOnly: !!usage.subscribeOnly }); /* v-tiers */
+        res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.'), subscribeOnly: !!usage.subscribeOnly, tier: usage.tier }); /* v-tiers · v-limit-chain-stop: الطبقة تميّز حدّ المجّانيّ عن حدّ الباقة في العميل */
       }
       return;
     }
@@ -66,11 +66,18 @@ module.exports = async (req, res) => {
     const imageTurn = Array.isArray(messages) && messages.some((x) => x && Array.isArray(x.content));
     const mg = require('./_model-guard.js'); // v-model-lock: لغير المالك وVIP نموذج من قائمة Groq المعروفة وحدها
     const reqModel = mg.guardModel('groq', typeof model === 'string' ? model : '', mg.isPrivileged(usage));
+    /* v-audit-prov (srv-providers-1): نموذج الرؤية الحيّ (qwen/qwen3.8-27b) في المرشّحين أصلًا فلا يتقدّمهم — كان tried[0] نصّيًّا
+       يستلم الصورة فيردّ 400 لا يُعدّ خطأ نموذج، فلا تُقرأ الصورة أبدًا. دور الصورة = النموذج المطلوب وحده أيًّا كان موضعه،
+       وبلا نموذج مسموح لا نصّيّ يستلم المصفوفة: خطأ نموذج (404) فيهبط العميل إلى «الوصف ثمّ النصّ» (رفض النصّيّ صار رمزًا بلا نصّه). */
     const tried = fc.modelsToTry(spec, reqModel);
-    if (imageTurn && reqModel && tried[0] === reqModel) tried.length = 1;
+    if (imageTurn) tried.splice(0, tried.length, ...(reqModel ? [reqModel] : []));
+    if (imageTurn && !reqModel) lastFail = { status: 404, txt: '{"error":{"message":"no vision model","code":"model_not_found"}}' };
+    /* v-audit-prov: ذاكرة 'groq' مشتركة مع السلسلة المجّانيّة (chat.js) — لا يُحفظ فيها إلّا مرشّح تجرّبه السلسلة نفسها في دور نصّيّ؛
+       نموذج الرؤية أو موديل يختاره العميل (kimi-k2…) كان يصير أوّل المجّانيّ لكلّ المستخدمين ستّ ساعات (قرار «المجّانيّ على 20b»). */
+    const chainOwn = imageTurn ? [] : fc.modelsToTry(spec, '');
     for (const m of tried) {
       const r = await callGroq(m);
-      if (r.ok) { upstream = r; fc.rememberWorking('groq', m); break; }
+      if (r.ok) { upstream = r; if (chainOwn.includes(m)) fc.rememberWorking('groq', m); break; }
       const txt = await r.text().catch(() => '');
       lastFail = { status: r.status, txt };
       if (!fc.isModelErrorStatus(r.status, txt)) break; // خطأ غير النموذج (401/429/5xx) يُعاد للعميل كما هو
@@ -84,7 +91,7 @@ module.exports = async (req, res) => {
       }
     }
     if (!upstream) {
-      res.status((lastFail && lastFail.status) || 502).setHeader('Content-Type', 'application/json').send((lastFail && lastFail.txt) || '{"error":"groq unavailable"}');
+      require('./_videoFail.js').chatFail(res, 'groq', (lastFail && lastFail.status) || 502, (lastFail && lastFail.txt) || '{"error":"groq unavailable"}', usage.tier === 'owner'); // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
       return;
     }
 

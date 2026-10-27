@@ -43,9 +43,39 @@
   try{ window.__vmkPro={estimate:proEstimate,check:proCheck,errKey:proErrKey}; }catch(e){ /* guard-ok — بيئة بلا window */ }
   var M=document.getElementById('videoMakerModal'); if(!M) return;
   var G=[['videoMakerMode','card'],['videoMakerStyle','pill'],['videoMakerDuration','pill'],['videoMakerRatio','pill']];
-  var PTS={canvas:0,runway:60,hybrid:60,veo:400,actor:400};
+  /* v-vmk-price-src (تدقيق ١٨ أكتوبر، الدفعة ١ «الفلوس»: «الرقم اللي على الزر لازم يطلع من نفس المصدر اللي يخصم، ويطابقه بالضبط»):
+     كان هنا جدول ثابت (فيديو AI ٦٠، السينمائيّ والممثّل ٤٠٠) والخادم يخصم من COSTS (٥٥ و١٧٥) — الزرّ ٦٠ والتأكيد ٥٥. الآن سعر المشهد
+     من COSTS نفسه (window.__omranCosts من /api/points) × عدد المشاهد التي يطلبها هذا الاختيار فعلًا (app-11-video.js): «20 (مشهدين)»
+     مشهدان، و«فيلم متكامل» ٣ (والمالك ٥)، وغيرها مشهد واحد — وكلّ مشهد يسأل تأكيد سعره هو. قبل وصول الأسعار لا رقم أبدًا (لا تخمين). */
+  var PTS_KEY={runway:'runway_video',hybrid:'runway_video',veo:'veo_video',actor:'veo_video',minimax:'minimax_video',omni:'omni_video'};
+  var costsAskedAt=0;
+  function ownerNow(){ try{ return String((typeof authGet==='function'&&authGet('aiapp_username'))||'').trim().toLowerCase()==='omran'; }catch(e){ return false; } }
+  function scenesFor(mode){
+    var d=(document.getElementById('videoMakerDuration')||{}).value;
+    if(d==='film') return (mode==='runway'||mode==='veo')?(ownerNow()?5:3):0;
+    if(d==='longMinutes') return 0; /* عدد مشاهده من السكربت — لا يُعرف قبله (والمالك وحده) */
+    return (d==='long20'&&mode==='runway')?2:1;
+  }
+  /* {total, per, n} أو null حين لا سعر معروفًا؛ القوالب مجّانيّة (total=0) */
+  function priceOf(mode){
+    if(mode==='canvas') return {total:0,per:0,n:1};
+    var c=window.__omranCosts, k=PTS_KEY[mode], n=scenesFor(mode);
+    if(!c||!k||typeof c[k]!=='number'||!n) return null;
+    return {total:c[k]*n,per:c[k],n:n};
+  }
+  function priceLabel(p){
+    if(!p) return '';
+    if(!p.total) return ar()?'مجاني':'Free';
+    return p.total+(ar()?' نقطة':' pts')+(p.n>1?(' · '+p.n+'×'+p.per):'');
+  }
+  function ensureCosts(){
+    if(window.__omranCosts||typeof window.omranLoadCosts!=='function'||Date.now()-costsAskedAt<30000) return;
+    costsAskedAt=Date.now();
+    window.omranLoadCosts().then(function(c){ if(c) sync(); });
+  }
   var ICO=/^([\u200d\ufe0f\u2190-\u21ff\u2300-\u27bf\ud800-\udfff]+)\s*/;
   function ar(){var h=document.documentElement;return (h.lang||'ar').indexOf('ar')===0||h.dir==='rtl';}
+  function uiLang(){ return String(document.documentElement.lang||'ar').split('-')[0].toLowerCase(); } /* لغة الواجهة بالضبط: ar() صادقة للأردو أيضًا (rtl) — v-vmk-sample-lang */
   function on(){return true;} /* v-vmk-mobile: نفس استوديو الكمبيوتر على الهاتف */
   function id(x){return document.getElementById(x);}
   /* v-vmk-clean (المالك: «شيل الأيقونات… اسم رسميّ بلا إيموجي»): تنظيف نصوص النافذة من الإيموجي عند العرض بدل تعديل ١٤ قاموسًا */
@@ -73,7 +103,13 @@
     card.classList.add('vmk-studio'); card.appendChild(side); card.appendChild(main);
     kids.slice(1).forEach(function(k){ if(k!==vt) main.appendChild(k); });
     var stage=side.querySelector('.vmk-stage');
-    if(id('videoMakerResult')) stage.appendChild(id('videoMakerResult'));
+    var rs=id('videoMakerResult');
+    if(rs){
+      stage.appendChild(rs);
+      /* v-vmk-res-mode: وسم الوضع يُكتب عند «إنشاء» (app-11) فيُعاد الحساب فورًا — لا صنف قديم يخفي النتيجة الجديدة في وضعها؛ وautoplay في قسم آخر يتوقّف */
+      try{ new MutationObserver(syncResult).observe(rs,{attributes:true,attributeFilter:['data-mode']}); }catch(e){ /* guard-ok — بلا مراقب يُحسب عند كلّ تبديل */ }
+      rs.addEventListener('play',syncResult);
+    }
     /* عارض قسم «تحسين فيديو» عنصر مستقلّ: لا يكتب فوق نتيجة المولّد ولا يظهر خارج قسمه */
     var clv=document.createElement('video'); clv.id='vmkClView'; clv.controls=true; clv.playsInline=true; clv.style.display='none'; stage.appendChild(clv);
     [id('videoMakerStatus'),id('videoMakerDownloadLink'),desc].forEach(function(e){ if(e) side.appendChild(e); });
@@ -105,6 +141,27 @@
   /* ═══ v-vmk-sections: شريط الأقسام (الترندات + الأوضاع) ═══ */
   var TABS=['trend','minimax','runway','veo','actor','canvas','clean']; /* v-video-modes-by-result: بترتيب القائمة؛ omni وhybrid خرجا منها */
   var tab='trend';
+  /* v-owner-modes (المالك ١٧ أكتوبر: «أخفي الثلاثة وخلها لي المالك فقط»): «فيديو اقتصادي» و«فيديو سينمائي» (Omni) و«دمج الاثنين»
+     تكرّر غيرها وتلخبط الزبون — تختفي لغير المالك (تبويب وبطاقة وخيار)، ويرجع وضعه إلى «فيديو AI» لو كان عليها */
+  var OWNER_MODES={minimax:1,omni:1,hybrid:1};
+  /* v-owner-modes: «ممثل يتكلم — لهجة إماراتية» كانت صورته وجوهًا لا تشبه أهل الإمارات — رجل بالغترة من صور التطبيق (أعلى الصورة) */
+  var TAB_ART={actor:'/assets/studio/options/heritage-emirati.webp'};
+  function tabsFor(){ var own=drOwner(); return TABS.filter(function(v){ return own||!OWNER_MODES[v]; }); }
+  function guardModes(){
+    var sel=id('videoMakerMode'), own=drOwner(); if(!sel) return;
+    [].slice.call(sel.options).forEach(function(o){ o.hidden=o.disabled=!own&&!!OWNER_MODES[o.value]; });
+    if(!own&&OWNER_MODES[sel.value]){ sel.value='runway'; sel.dispatchEvent(new Event('change')); }
+  }
+  /* v-vmk-tab-warm (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٠١): صور التبويبات كانت فارغة ٢–٣ ثوانٍ عند الفتح — كسولة وتُنشأ لحظة الفتح بينما تبدأ
+     شبكة الترندات ٤٥ صورة معها. رابط واحد يرسم به التبويب ويسخّن به الذاكرة عند مرور المؤشّر أو اللمس أو التركيز على زرّ الصانع
+     (مرّة؛ لا تحميل لمن لا يقترب من الصانع) */
+  function tabArt(v){ return TAB_ART[v]||'/assets/videos/tabs/'+v+'.jpg?v=2'; }
+  var tabsWarm=false;
+  function warmTabs(){
+    if(tabsWarm) return; tabsWarm=true;
+    tabsFor().forEach(function(v){ try{ var im=new Image(); im.src=tabArt(v); }catch(e){ /* guard-ok — التسخين تحسين، والتبويب يطلب صورته بنفسه */ } });
+  }
+  var bvm=id('btnVideoMaker'); if(bvm) ['pointerenter','pointerdown','focus'].forEach(function(ev){ bvm.addEventListener(ev,warmTabs); });
   /* ملفّات النماذج الجاهزة: '<الوضع>-<١..٣>': true حين يُرفع /media/samples/<الوضع>-<رقم>.mp4 — بلا ملفّ تظهر البطاقة بنصّ المثال فقط */
   var VIDEOS={};
   /* فيديو تعليميّ حقيقيّ مسجَّل من شاشة الصانع نفسه (scripts/video-tutorial.mjs) — عربيّ، والباقي بالإنجليزيّة */
@@ -116,15 +173,19 @@
       if(j&&typeof j==='object'&&Object.keys(j).length){ VIDEOS=j; sync(); }
     }).catch(function(){ /* guard-ok — لا قائمة = لا فيديوهات نماذج */ });
   }
-  function tutUrl(){ return '/media/samples/tutorial-'+(ar()?'ar':'en')+'.mp4'; }
+  /* v-tab-tut (المالك ١٧ أكتوبر «حط الفيديوين»): «كيف تسوي فيديو» من محرّك القسم نفسه بصوت الراوي — '<الوضع>-tut' في index.json
+     يغلب التعليميّ العامّ لذلك القسم (بالعربيّ فقط، فالراوي عربيّ)؛ بلا ملفّ أو بالإنجليزيّ يبقى العامّ */
+  function tutUrl(m){ return (m&&VIDEOS[m+'-tut']&&ar())?'/media/samples/'+m+'-tut.mp4':'/media/samples/tutorial-'+(ar()?'ar':'en')+'.mp4'; }
   function openPlayer(src){
     var lb=document.createElement('div'); lb.className='vmk-lb';
     var vd=document.createElement('video'); vd.src=src; vd.controls=true; vd.autoplay=true; vd.playsInline=true;
     var x=document.createElement('button'); x.type='button'; x.className='vmk-lb-x'; x.textContent='×'; x.setAttribute('aria-label',L('vcRemove'));
-    function close(){ try{ vd.pause(); }catch(e){ /* guard-ok — العنصر يُزال */ } document.removeEventListener('keydown',esc); lb.remove(); }
-    function esc(e){ if(e.key==='Escape') close(); }
+    /* v-back-layers (تدقيق ١٨–١٩ أكتوبر: «Esc يسكّر فيديو المثال ويسكّر الصانع كلّه معاه»): مستمع الفقاعة هنا كان يأتي بعد
+       معالج Esc العامّ (app-05-swipe-back) فيُغلق الصانع أوّلًا. الالتقاط + إيقاف الانتشار: Esc يغلق المشغّل وحده. */
+    function close(){ try{ vd.pause(); }catch(e){ /* guard-ok — العنصر يُزال */ } document.removeEventListener('keydown',esc,true); lb.remove(); }
+    function esc(e){ if(e.key==='Escape'){ e.preventDefault(); e.stopImmediatePropagation(); close(); } }
     lb.addEventListener('click',function(e){ if(e.target!==vd) close(); }); x.addEventListener('click',close);
-    document.addEventListener('keydown',esc);
+    document.addEventListener('keydown',esc,true);
     lb.appendChild(vd); lb.appendChild(x); document.body.appendChild(lb);
   }
   var HUE={canvas:205,runway:28,minimax:165,omni:42,hybrid:262,veo:8,actor:335};
@@ -152,13 +213,13 @@
     if(tb.previousElementSibling!==card.firstElementChild) card.insertBefore(tb,card.firstElementChild.nextSibling);
     tb.innerHTML='';
     /* v-app-director: قسم «مخرج التطبيق» آخر الشريط للمالك وحده — لغير المالك لا زرّ ولا لوحة في DOM */
-    TABS.concat(drOwner()?['director']:[]).forEach(function(v){
+    tabsFor().concat(drOwner()?['director']:[]).forEach(function(v){
       var b=document.createElement('button'); b.type='button'; b.className='vmk-tab'; b.dataset.tab=v;
       b.setAttribute('role','tab'); b.setAttribute('aria-selected',String(v===tab));
       /* v-vmk-tab-art (المالك ١١ أكتوبر بلوحة التبويبات: «شوف الصور مقاس واحد كلهم»): صورة مربّعة واحدة المقاس فوق اسم كلّ قسم */
       /* v-app-director: قسم المخرج بلا صورة (طلب المالك «بدون أيقونات») — لا <img> فلا أيقونة مكسورة بجانب صور الأقسام */
       if(v==='director'){ var dlb=document.createElement('span'); dlb.className='vmk-tab-lbl'; dlb.textContent=tabLabel(v); b.classList.add('vmk-tab-noimg'); b.appendChild(dlb); tb.appendChild(b); return; }
-      var im=document.createElement('img'); im.className='vmk-tab-img'; im.alt=''; im.loading='lazy'; im.src='/assets/videos/tabs/'+v+'.jpg?v=2';
+      var im=document.createElement('img'); im.className='vmk-tab-img'; im.alt=''; im.loading='eager'; im.fetchPriority='high'; im.src=tabArt(v); if(TAB_ART[v]) im.style.objectPosition='50% 0';; /* v-vmk-tab-warm: ظاهرة دائمًا عند الفتح — لا كسل */
       var lb=document.createElement('span'); lb.className='vmk-tab-lbl'; lb.textContent=tabLabel(v);
       b.appendChild(im); b.appendChild(lb); tb.appendChild(b);
     });
@@ -167,7 +228,11 @@
     card.classList.toggle('vmk-tab-director',tab==='director');
   }
   function setTab(v){
-    if(TABS.indexOf(v)<0&&!(v==='director'&&drOwner())) return; tab=v;
+    if(tabsFor().indexOf(v)<0&&!(v==='director'&&drOwner())) return; tab=v;
+    /* v-vmk-stale-status (تدقيق ١٨–١٩ أكتوبر): خطأ «سينمائي» («تعذّر توليد الفيديو الآن») كان يبقى تحت المعاينة بعد التبديل إلى قسم آخر.
+       يُمسح سطر الحالة ما لم يكن توليد جاريًا — الزرّ معطَّل طواله، وسطر التقدّم تقرؤه بطاقة الانتظار (app-34) */
+    var gb=id('videoMakerGenerateBtn'), st=id('videoMakerStatus');
+    if(st&&!(gb&&gb.disabled)){ st.textContent=''; st.style.display='none'; }
     var sel=(v==='director')?null:id('videoMakerMode'); /* v-app-director: المخرج لا يمسّ الوضع */
     if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change')); } /* «تحسين فيديو» لا يمسّ الوضع: زرّ الإنشاء المدفوع مخفيّ فيه */
     buildTabs(); sync(); scrub();
@@ -175,34 +240,42 @@
   function syncSamples(){
     var box=id('vmkSamples'); if(!box) return;
     var md=(id('videoMakerMode')||{}).value||''; box.innerHTML='';
+    box.dataset.mode=md; /* v-vmk-sample-play: ملصقات «القوالب» نصّها في وسط الإطار — الدائرة تنزل تحته (modules.css) */
     if(tab==='trend'||!md) return;
-    var c=Cap(md), keys=['videoIdea'+c,'videoIdea'+c+'2'];
+    var c=Cap(md), keys=['videoIdea'+c] /* v-vmk-light: بطاقتان — «كيف تسوي فيديو» ثمّ فيديو الجودة */;
     var tt0=L('vcTutorial');
     if(tt0){
       var te=document.createElement('div'); te.className='vmk-sm vmk-sm-tut'; te.setAttribute('role','button'); te.tabIndex=0;
-      var tp=document.createElement('div'); tp.className='vmk-sm-p'; tp.style.backgroundImage='url('+tutUrl().replace('.mp4','.jpg')+')';
+      var tp=document.createElement('div'); tp.className='vmk-sm-p'; tp.style.backgroundImage='url('+tutUrl(md).replace('.mp4','.jpg')+')';
       var tpl=document.createElement('span'); tpl.className='vmk-sm-play'; tp.appendChild(tpl);
       var tb=document.createElement('b'); tb.textContent=tt0; te.classList.add('has-vid'); te.appendChild(tp); te.appendChild(tb);
-      var tgo=function(){ openPlayer(tutUrl()); };
+      te.setAttribute('aria-label',tt0); te.title=tt0; /* v-photo-only: الشريط تحت الصورة مخفيّ — العنوان تلميح */
+      var tgo=function(){ openPlayer(tutUrl(md)); };
       te.addEventListener('click',tgo); te.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); tgo(); } });
       box.appendChild(te);
     }
     box.style.setProperty('--h',String(HUE[md]==null?35:HUE[md]));
+    /* v-vmk-sample-lang (تدقيق ١٨–١٩ أكتوبر، لقطة ٠١٨): مثال «القوالب» بالإنجليزيّ أظهر عنوانًا وملصقًا عربيّين — عنوان index.json يغلب
+       L(k) والنصّ محروق في الفيديو. العنوان المرفوع عربيّ فيُعرض بالعربيّة وحدها، وفيديو بلغة غير لغة الواجهة ("lang" في index.json)
+       تحلّ محلّه بطاقة المثال النصّيّة بلغة الواجهة. فيديو بلا نصّ (الصقر) يبقى لكلّ اللغات. */
+    var ul=uiLang();
     keys.forEach(function(k,i){
-      var vm=VIDEOS[md+'-'+(i+1)], tx=(vm&&vm.title)||L(k); if(!tx) return; /* عنوان الفيديو المرفوع (من <الاسم>.txt) يغلب المثال */
+      var vm=VIDEOS[md+'-'+(i+1)]; if(vm&&vm.lang&&vm.lang!==ul) vm=null;
+      var tx=(vm&&vm.title&&ul==='ar')?vm.title:L(k); if(!tx) return; /* عنوان الفيديو المرفوع (من <الاسم>.txt) يغلب المثال بالعربيّة */
       var el=document.createElement('div'); el.className='vmk-sm'; el.setAttribute('role','button'); el.tabIndex=0;
       var pv=document.createElement('div'); pv.className='vmk-sm-p'; pv.style.setProperty('--i',String(i));
       var vsrc='';
-      if(VIDEOS[md+'-'+(i+1)]){
+      if(vm){
         vsrc='/media/samples/'+md+'-'+(i+1)+'.mp4';
         var vd=document.createElement('video'); vd.muted=true; vd.loop=true; vd.playsInline=true; vd.preload='none'; vd.poster='/media/samples/'+md+'-'+(i+1)+'.jpg'; vd.src=vsrc;
-        el.addEventListener('mouseenter',function(){ try{ vd.play(); }catch(e){ /* guard-ok — المتصفّح قد يمنع التشغيل التلقائي */ } });
+        /* v-vmk-play-catch (تدقيق ١٨–١٩ أكتوبر): مغادرة البطاقة أثناء التحميل ترفض وعد play() — كان بلا معالج فصار خطأ صفحة */
+        el.addEventListener('mouseenter',function(){ try{ var pp=vd.play(); if(pp&&typeof pp.catch==='function') pp.catch(function(){ /* guard-ok — الإيقاف قبل بدء التشغيل ليس خطأ */ }); }catch(e){ /* guard-ok — المتصفّح قد يمنع التشغيل التلقائي */ } });
         el.addEventListener('mouseleave',function(){ try{ vd.pause(); }catch(e){ /* guard-ok — لا أثر */ } });
         pv.appendChild(vd);
       }
-      if(VIDEOS[md+'-'+(i+1)]){ var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl); }
+      if(vm){ var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl); }
       var tt=document.createElement('b'); tt.textContent=tx;
-      if(vsrc){ el.classList.add('has-vid'); el.appendChild(pv); el.appendChild(tt); } else { pv.appendChild(tt); el.appendChild(pv); }
+      if(vsrc){ el.classList.add('has-vid'); el.appendChild(pv); el.appendChild(tt); el.setAttribute('aria-label',tx); el.title=tx; } else { pv.appendChild(tt); el.appendChild(pv); }
       var pick=function(){ var pe=id('videoMakerPrompt'); setVal(pe,tx); if(pe) pe.focus(); if(vsrc) openPlayer(vsrc); };
       el.addEventListener('click',pick);
       el.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pick(); } });
@@ -256,8 +329,14 @@
     if(!more){
       more=document.createElement('details'); more.id='vmkMore'; more.className='vmk-more';
       more.innerHTML='<summary></summary><div class="vmk-more-b"></div>';
-      var go=id('videoMakerGenerateBtn'); main.insertBefore(more,go||null);
+      main.appendChild(more);
     }
+    /* v-vmk-light (المالك ١٧ أكتوبر: «اريد ترتيب ثاني خفيف… اريد شي سهل»): الوصف ← مساعد الكتابة مفتوح ← المدّة والشكل ←
+       زرّ الإنشاء ← «خيارات إضافية» مطويّة. والأمثلة («كيف تسوي فيديو» ثمّ فيديو الجودة) تحت المعاينة على الحاسوب
+       (المالك: «خلها تحت الفيديوات توليد الفيديو») — وعلى الجوّال المعاينة فوق فتنزل الأمثلة آخر النموذج */
+    var gob=id('videoMakerGenerateBtn'); if(gob&&gob.parentNode===main&&more.previousElementSibling!==gob) main.insertBefore(more,gob.nextSibling);
+    var smp=id('vmkSamples'), sdx=M.querySelector('.vmk-side'), nrw=!!(window.matchMedia&&window.matchMedia('(max-width:860px)').matches), hst=nrw?main:sdx;
+    if(smp&&hst&&hst.lastElementChild!==smp) hst.appendChild(smp);
     var body=more.querySelector('.vmk-more-b');
     more.querySelector('summary').textContent=L('vcMore');
     var st=id('videoMakerStyle'), stBox=st&&st.parentElement;
@@ -266,6 +345,8 @@
      ntLab,id('videoMakerVoiceGenderRow'),id('videoMakerNarrationRow'),M.querySelector('details.vmk-adv')].forEach(function(e){
       if(e&&e.parentNode!==body) body.appendChild(e);
     });
+    /* v-vmk-light: «خيارات متقدّمة» صارت فارغة بعد نقل محتواها (وكانت تُظهر نصّ لغة أخرى) — تختفي ما دامت فارغة */
+    var adv=M.querySelector('details.vmk-adv'); if(adv) adv.hidden=adv.children.length<=1;
     /* صورة البطل ظاهرة تحت الوصف مباشرة (أمر المالك): بطاقة كبيرة بزرّ رفع واضح، لا مدفونة في «خيارات إضافية» */
     var hr=id('videoMakerHeroRow'), pw=id('videoMakerPrompt'), prw=pw&&pw.parentElement;
     if(hr&&prw&&hr.previousElementSibling!==prw){
@@ -289,8 +370,14 @@
         ex.innerHTML='<label></label><div class="vmk-g vmk-pills"></div>'; body.insertBefore(ex,body.firstChild);
       }
       ex.querySelector('label').textContent=L('videoMakerDurationLabel')||'';
-      var box=ex.querySelector('.vmk-g'); box.innerHTML='';
-      [].slice.call(g.children).forEach(function(c){ if(!BASIC_DUR[c.dataset.v]) box.appendChild(c); });
+      /* v-vmk-more-dur (فحص الإنتاج ١٨ أكتوبر: بقيّة المدد و«طويل (دقائق)» للمالك لا تظهر أبدًا): sync() تنادي simplify() بعد كلّ تغيير
+         (منذ v-vmk-quality)، وكان الصندوق يُفرَّغ في كلّ نداء بعد أن نُقلت إليه الحبّات فلا يبقى في المجموعة ما يُنقل — يُفرَّغ ويُملأ فقط
+         حين أعادت group() بناء المجموعة (فتح النافذة)، وإلّا تبقى حبّاته كما هي */
+      var box=ex.querySelector('.vmk-g');
+      if([].some.call(g.children,function(c){ return !BASIC_DUR[c.dataset.v]; })){
+        box.innerHTML='';
+        [].slice.call(g.children).forEach(function(c){ if(!BASIC_DUR[c.dataset.v]) box.appendChild(c); });
+      }
       ex.style.display=box.children.length?'':'none';
     }
   }
@@ -315,7 +402,7 @@
       +'<button type="button" id="vdGo"></button>'
       +'<div class="vmk-dir-stage" id="vdStage" hidden><div class="vmk-dir-stage-bg"></div><img id="vdStageImg" alt=""><div class="vmk-dir-stage-reel"></div>'
         +'<div class="vmk-dir-stage-cap" id="vdStageCap"></div><div class="vmk-dir-stage-hud"><span id="vdStageStep"></span><b id="vdStageTime">0:00</b></div><div class="vmk-dir-stage-bar"><i id="vdStageBar"></i></div></div>'
-      +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','voice','samples','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small></li>'; }).join('')+'</ol>'
+      +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','voice','samples','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small><i class="vmk-dir-log" dir="ltr"></i></li>'; }).join('')+'</ol>'
       +'<p class="vmk-dir-msg" id="vdMsg"></p>'
       +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a></div>';
     var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
@@ -365,9 +452,13 @@
     clearInterval(ST.iv); ST.iv=setInterval(drStageTick,1000); drStageTick();
   }
   function drStageStop(hide){ clearInterval(ST.iv); ST.iv=0; ST.creep=null; if(hide) drStageShow(false); }
-  function drStep(k,state,note,frac){
+  /* v-app-director-watchdog (لقطة المالك ١٢ أكتوبر: «المشهد ١ من ٤» ربع ساعة بلا أيّ جديد): الخطوة الجارية على الجسر تعرض منقضيها
+     (mm:ss بساعة الخادم) وآخر سطر من سجلّ مهمّتها تحت اسمها — فيرى المالك أهو يصوّر أم يعلّق أم أعاد مقطعًا، لا عدّادًا جامدًا */
+  function drMmss(ms){ var s=Math.max(0,Math.floor((Number(ms)||0)/1000)); return ('0'+Math.floor(s/60)).slice(-2)+':'+('0'+(s%60)).slice(-2); }
+  function drStep(k,state,note,frac,log){
     var li=M.querySelector('#vdSteps li[data-step="'+k+'"]'); if(!li) return;
     li.classList.remove('on','ok','err'); if(state) li.classList.add(state); li.querySelector('small').textContent=note||'';
+    var lg=li.querySelector('.vmk-dir-log'); if(lg){ lg.textContent=(state==='on'&&log)?String(log):''; lg.title=lg.textContent; } /* السطر كاملًا تلميحًا إن قُصّ */
     var sp=DR_SPAN[k]; if(!sp) return;
     if(state==='on'){
       var lb=id('vdStageStep'); if(lb) lb.textContent=li.querySelector('b').textContent+(note?' · '+note:'');
@@ -507,6 +598,9 @@
          ومع الصوت، صوت مها/عبدالله العاجز (مرفوض نهائيًّا، أو صامت فوق خُمس المشاهد بعد كلّ الإعادات) يُستبدل للفيديو كلّه بالصوت
          الاحتياطيّ (لا خلط صوتين) ويُعلَن ذلك في الخطوة. */
       var voiced=voiceOn?scenes.filter(function(s){ return !!s.narration; }):[], vLimit=Math.max(1,Math.floor(voiced.length*0.2));
+      /* v-video-voice-speed: speed وتنظيف النصّ من app-11-video.js (window.__vmkVoice)؛ لو غاب: «fast» والنصّ كما هو */
+      var vvSpeed=function(){ try{ var V=window.__vmkVoice; return (V&&V.speed&&V.speed())||'fast'; }catch(e){ return 'fast'; /* guard-ok — الافتراضيّ سريع */ } };
+      var vvClean=function(t){ try{ var V=window.__vmkVoice; return (V&&V.clean)?V.clean(t):t; }catch(e){ return t; /* guard-ok — النصّ كما هو */ } };
       var voiceRun=async function(backup){
         var done=0, miss=0, got=0, last='', cool=0, dead=false, vModel='';
         await drPool(voiced,2,async function(s){
@@ -516,7 +610,7 @@
             if(dead) break;
             try{
               if(backup){
-                var br=await drJson('/api/ai?action=app-director-voice',{text:s.narration,lang:lang,speaker:speaker,model:vModel||undefined,token:tk});
+                var br=await drJson('/api/ai?action=app-director-voice',{text:vvClean(s.narration),lang:lang,speaker:speaker,model:vModel||undefined,token:tk});
                 if(br.ok&&br.json&&br.json.audio){ s.audio=br.json.audio; vModel=br.json.model||vModel; }
                 else {
                   last=br.status+' '+((br.json&&(br.json.why||br.json.error))||'')+(br.json&&br.json.diag?' · '+br.json.diag:'');
@@ -524,7 +618,7 @@
                 }
               } else {
                 var ctl=new AbortController(); var tm=setTimeout(function(){ ctl.abort(); },60000);
-                var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:s.narration,voice:'maha',lang:lang,gender:speaker,token:tk}),signal:ctl.signal});
+                var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:vvClean(s.narration),voice:'maha',lang:lang,gender:speaker,speed:vvSpeed(),token:tk}),signal:ctl.signal});
                 clearTimeout(tm);
                 if(r.ok){ var b=await r.blob(); if(b.size>200) s.audio=await drB64(b); else last='empty'; }
                 else {
@@ -597,10 +691,13 @@
         if(!sr||!sr.ok||!sj||typeof sj!=='object'){ if(++lost>=20){ drStep('shots','err'); throw drFail('bridge offline'); } continue; }
         lost=0; st=sj;
         if(st.state==='queued'){ drStep('shots','on',L('vdQueued'),0.02); continue; }
-        if(st.step==='assets'||st.step==='capture'){ drStep('shots','on',st.total?drT('vdScene',{i:st.done||0,n:st.total}):'',st.step==='capture'&&st.total?(st.done||0)/st.total:0.03); }
-        if(st.step==='segments'||st.step==='join'){ drStep('shots','ok',''); drStep('join','on',st.step==='segments'&&st.total?drT('vdScene',{i:st.done||0,n:st.total}):'',st.step==='segments'&&st.total?0.8*(st.done||0)/st.total:0.9); }
-        if(st.state==='error'){ drStep(st.step==='capture'||st.step==='assets'?'shots':'join','err'); throw drFail('render '+(st.step||'')+' '+(st.message||'')); }
-        if(st.state==='done'){ drStep('shots','ok',''); drStep('join','ok',''); url=bridge+st.url; break; }
+        /* v-app-director-watchdog: المنقضي من الخطوة وآخر سطر من سجلّ الجسر؛ وما صار بطاقة عنوان أو مقطعًا ثابتًا يُعلَن لا يُخفى */
+        var stLog=(st.lastLog&&st.lastLog.length)?String(st.lastLog[st.lastLog.length-1]||''):'', stT=drMmss(st.stepMs);
+        var shotsNote=st.fallbacks?drT('vdWarnShots',{n:st.fallbacks}):'', joinNote=st.stills?drT('vdWarnStills',{n:st.stills}):'';
+        if(st.step==='assets'||st.step==='capture'){ drStep('shots','on',(st.total?drT('vdScene',{i:st.done||0,n:st.total})+' · ':'')+stT,st.step==='capture'&&st.total?(st.done||0)/st.total:0.03,stLog); }
+        if(st.step==='segments'||st.step==='join'){ drStep('shots','ok',shotsNote); drStep('join','on',(st.step==='segments'&&st.total?drT('vdScene',{i:st.done||0,n:st.total})+' · ':'')+stT,st.step==='segments'&&st.total?0.8*(st.done||0)/st.total:0.9,stLog); }
+        if(st.state==='error'){ drStep(st.step==='capture'||st.step==='assets'?'shots':'join','err'); throw drFail('render '+(st.step||'')+' '+(st.message||'')+(stLog?' · '+stLog:'')); }
+        if(st.state==='done'){ drStep('shots','ok',shotsNote); drStep('join','ok',joinNote); url=bridge+st.url; break; }
       }
       if(my!==DR.run||!url) return;
       /* ٦) الفيديو: معاينة وتحميل وحفظ */
@@ -673,6 +770,17 @@
   }
   function clMsg(text,err){ CL.msg=text?{text:text,err:!!err}:null; var m=id('vmkClMsg'); if(m){ m.textContent=text||''; m.className='vmk-cl-msg'+(err?' err':''); } }
   function clProgress(p){ var b=id('vmkClBar'), n=id('vmkClPct'); var v=Math.max(0,Math.min(100,Math.round(p*100))); if(b) b.style.width=v+'%'; if(n) n.textContent=v+'%'; }
+  /* v-vmk-clean-prog (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٢٣): WebM بلا مدّة مقروءة وقف على 0% نحو ثلاث دقائق ثمّ قفز إلى 100% — الأداة لا تحسب
+     نسبة بلا مدّة، لكنّ الحدث نفسه يحمل الزمن المعالَج (time بالميكروثانية). بمدّة معروفة ونسبة موجبة: النسبة كما كانت؛ وغير ذلك
+     (مدّة غير مقروءة، أو ملفّ يعرف المتصفّح مدّته ولا تعرفها الأداة فتبقى نسبتها صفرًا): الزمن المعالَج مكان النسبة والشريط بلمعة
+     غير محدّدة (vmk-cl-ind) حتّى تصل نسبة حقيقيّة. بلا نصّ جديد. */
+  function clProg(meta,ev){
+    var p=+(ev&&ev.progress);
+    if(meta&&meta.sec>0&&isFinite(p)&&p>0) return {pct:Math.max(0,Math.min(100,Math.round(p*100)))};
+    var s=Math.floor((+(ev&&ev.time)||0)/1e6); if(!(s>0)) s=0;
+    return {clock:Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60)};
+  }
+  try{ window.__vmkClProg=clProg; }catch(e){ /* guard-ok — بيئة بلا window */ }
   function clRender(){
     var box=id('vmkClean'); if(!box) return;
     var has=!!CL.file, done=!!CL.out;
@@ -765,7 +873,12 @@
     try{
       ff=await clFF(); if(my!==CL.run) return;
       clMsg('');
-      onProg=function(e){ if(my===CL.run&&e&&typeof e.progress==='number') clProgress(e.progress); };
+      onProg=function(e){
+        if(my!==CL.run||!e) return;
+        var r=clProg(CL.meta,e), tr=M.querySelector('#vmkClean .vmk-cl-track'), n=id('vmkClPct');
+        if(tr) tr.classList.toggle('vmk-cl-ind',r.pct==null);
+        if(r.pct!=null) clProgress(r.pct/100); else if(n) n.textContent=r.clock;
+      };
       ff.on('progress',onProg);
       try{ await ff.createDir('/clin'); }catch(e){ /* guard-ok — المجلّد موجود من مرّة سابقة */ }
       /* اسم ثابت داخل نظام ملفّات العامل: أسماء الملفّات العربيّة أو بمسافات قد تكسر المسار — ffmpeg يقرأ الصيغة من المحتوى */
@@ -1087,15 +1200,15 @@
     }
     g.innerHTML='';
     [].slice.call(sel.options).forEach(function(o){
+      if(o.hidden&&sel.id==='videoMakerMode') return; /* v-owner-modes */
       var t=(o.textContent||'').trim(), m=t.match(ICO), ic=m?m[1]:'', tx=short(t.slice(ic.length))||o.value;
       var el=document.createElement('div'); el.className=(kind==='card'?'vmk-card':'vmk-pill');
       el.setAttribute('role','radio'); el.dataset.v=o.value;
       if(kind==='card'){
-        var p=PTS[o.value];
         el.innerHTML='<i></i><b></b><s></s>';
         el.querySelector('i').textContent=ic||'🎬';
         el.querySelector('b').textContent=tx;
-        el.querySelector('s').textContent=(p==null?'':p?p+(ar()?' نقطة':' pts'):(ar()?'مجاني':'Free'));
+        el.querySelector('s').textContent=priceLabel(priceOf(o.value)); /* v-vmk-price-src — ويُحدَّث في sync() */
       } else { el.textContent=tx; }
       el.addEventListener('click',function(){
         if(sel.value===o.value) return;
@@ -1103,6 +1216,16 @@
       });
       g.appendChild(el);
     });
+  }
+  /* v-vmk-res-mode (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٠٥): فيديو القوالب المجّانيّ و«تحميل الفيديو» بقيا ظاهرين ويشتغلان في تبويب «فيديو AI» المدفوع —
+     runCanvasOnly يُظهر النتيجة ولا يخفيها إلّا «تحسين فيديو». النتيجة موسومة بالوضع الذي أنتجها: في غيره وفي الترندات والتحسين والمخرج
+     تُخفى (modules.css) وتتوقّف، وترجع كما هي عند العودة إلى وضعها. بلا وسم (لم يُولَّد شيء) لا تُخفى في الأوضاع. */
+  function syncResult(){
+    var card=M.firstElementChild, rs=id('videoMakerResult'); if(!card||!rs) return;
+    var md=(id('videoMakerMode')||{}).value||'', rm=(rs.dataset&&rs.dataset.mode)||'';
+    var other=tab==='trend'||tab==='clean'||tab==='director'||!!(rm&&rm!==md);
+    card.classList.toggle('vmk-res-other',other);
+    if(other&&!rs.paused){ try{ rs.pause(); }catch(e){ /* guard-ok — مشغّل بلا مصدر */ } }
   }
   function sync(){
     var chips=M.querySelector('.vmk-chips'); if(chips) chips.innerHTML='';
@@ -1117,14 +1240,17 @@
         var t=noEmoji(short(o.textContent||'')); c.textContent=t.length>24?t.slice(0,24)+'…':t; chips.appendChild(c);
       }
     });
-    var gbn=id('videoMakerGenerateBtn'), pc=PTS[(id('videoMakerMode')||{}).value];
-    if(gbn){ if(pc!=null) gbn.setAttribute('data-cost',pc?(pc+(ar()?' نقطة':' pts')):(ar()?'مجاني':'Free')); else gbn.removeAttribute('data-cost'); }
-    var p=PTS[(id('videoMakerMode')||{}).value];
-    if(chips&&p!=null){
+    /* v-vmk-price-src: الزرّ والشريحة وأسعار البطاقات من priceOf وحده (COSTS × مشاهد المدّة المختارة) */
+    ensureCosts();
+    var mg=id('videoMakerMode'), mg2=mg&&mg.nextElementSibling;
+    if(mg2&&mg2.classList.contains('vmk-g')) [].forEach.call(mg2.children,function(c){ var s=c.querySelector('s'); if(s){ var l=priceLabel(priceOf(c.dataset.v)); if(s.textContent!==l) s.textContent=l; } });
+    var gbn=id('videoMakerGenerateBtn'), pc=priceOf((mg||{}).value), pl=priceLabel(pc);
+    if(gbn){ if(pl) gbn.setAttribute('data-cost',pl); else gbn.removeAttribute('data-cost'); }
+    if(chips&&pl){
       var b=document.createElement('span'); b.className='vmk-chip gold pts';
-      b.textContent=p?(p+(ar()?' نقطة':' pts')):(ar()?'مجاني':'Free'); chips.appendChild(b);
+      b.textContent=pl; chips.appendChild(b);
     }
-    syncWrite(); syncChars(); syncSamples(); simplify(); syncClean(); syncDirector();
+    syncWrite(); syncChars(); syncSamples(); simplify(); syncClean(); syncDirector(); syncResult();
     var tbx=id('vmkTabs'); if(tbx) [].forEach.call(tbx.children,function(bt){ bt.setAttribute('aria-selected',String(bt.dataset.tab===tab)); });
     stageDims();
   }
@@ -1142,11 +1268,14 @@
     card.classList.add('vmk-trends-top');
     if(vt.parentElement!==card||vt.nextElementSibling!==side) card.insertBefore(vt,side);
   }
-  function enhance(){ if(!on()) return; loadManifest(); build(); buildTabs(); buildDirector(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
+  function enhance(){ if(!on()) return; loadManifest(); guardModes(); build(); buildTabs(); buildDirector(); trendsTop(); syncTutLink(); G.forEach(function(d){ var s=id(d[0]); if(s) group(s,d[1]); }); simplify(); sync(); scrub(); }
   var wasOpen=false;
   new MutationObserver(function(){
     var open=!!(M.style.display&&M.style.display!=='none');
-    if(open&&!wasOpen){ tab='trend'; }
+    /* v-vmk-chat-tab (تدقيق ١٨–١٩ أكتوبر، g05 لقطة ٠٣٢): طلب فيديو من المحادثة يملأ الوصف، والفتح على «الترندات» كان يخفيه في قسم آخر.
+       omranOpenVideoMaker (app-11) يضع data-vmk-tab بالوضع حين يأتيه نصّ أو صورة: يُفتح عليه مرّة وتُمحى العلامة. الفتح العاديّ على الترندات كلّ مرّة (v-vmk-sections) */
+    var want=M.getAttribute('data-vmk-tab'); if(want!=null) M.removeAttribute('data-vmk-tab');
+    if(open&&!wasOpen){ tab=(want&&tabsFor().indexOf(want)>=0)?want:'trend'; }
     wasOpen=open;
     if(open) enhance();
   }).observe(M,{attributes:true,attributeFilter:['style']});

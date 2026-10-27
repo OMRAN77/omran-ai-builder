@@ -40,6 +40,34 @@ function ownerThinks(text, opts) {
   return true;
 }
 
+/* v-owner-light (المالك ١٣ أكتوبر: «اريد سرعة التفكير في الردود العاديه» — والبحث يبقى في كلّ سؤال باختياره): ثلاث درجات لدور المالك.
+   quick: المجاملة القصيرة فوريّة (v-owner-auto). deep: الشغل الثقيل بتفكير الموديل الكامل — صورة، كود وبناء ورياضيّات ونصّ طويل
+   (isStrongTurn)، تحليل ومقارنة، متابعة محادثة كود، وطلب شغل على التطبيق (صلّح، عدّل، ارفع، ادمج، كمّل…). light: الباقي — الردّ
+   العاديّ يفكّر ويظهر تفكيره كما أراد في v-owner-think-all، لكن بالجهد الأدنى (low) فيبدأ الردّ في ثوانٍ. كروك/`x-ai/` high لا low
+   (v-grok-high-feed: أمر المالك أن يطابق وكيل كروك هنا — low كان يتجاهل المنهج ويجيب كطفل بلا معلومات). جهد المنتقي يغلب الكلّ. */
+const WORK_RE = /(?:^|[\s،,.:؛()"'«»-])(?:و|ف)?(?:صلّ?ح|صلّ?حه|صلّ?حها|صلّ?حهم|عدّ?ل|عدّ?له|عدّ?لها|غيّ?ر|غيّ?ره|غيّ?رها|بدّ?ل|أضف|اضف|ضيف|احذف|شيل|امسح|ارفع|ادمج|أدمج|انشر|نفّ?ذ|كمّ?ل|اكمل|أكمل|تابع|واصل|المستودع|مستودع|الجيت|جيت\s*هب|github|commit|التطبيق|الكود|الملفّ?|ملفّ?ات|الواجهة|الزرّ?|الصفحة|البطاقة|البطاقات)(?=$|[\s،,.:؛()"'«»?؟!-])/i;
+/** درجة تفكير دور المالك: 'quick' | 'light' | 'deep'. opts كما في ownerThinks. */
+function ownerThinkLevel(text, opts) {
+  const o = opts || {};
+  if (!ownerThinks(text, o)) return 'quick';
+  const s = String(text || '');
+  if (o.image || isStrongTurn(s) || ANALYSIS_RE.test(s) || s.split('\n').length >= 8) return 'deep';
+  if (lastReplyHasCode(o.history) || WORK_RE.test(s)) return 'deep';
+  return 'light';
+}
+/* حقول الجهد الأدنى لدور light: GPT وكلود بدوالّهما (المساران)، وبقيّة الوسيط (Gemini، DeepSeek، Qwen…) output_config.effort
+   يترجمه الوسيط لتفكير المزوّد. كروك/`x-ai/` high لا low (v-grok-high-feed). موديل رفضه (400 ← forgetEffort في chat.js) لا يُرسل
+   له ثانيةً. Cohere خارجها (v-cohere-reasoning)، والمسار المباشر لغير GPT (Groq/Kimi) كما كان. null = لا حقول (يبقى الافتراضيّ). */
+function lightEffortFields(prov, model, viaOR, direct, noCap) {
+  const raw = String(model || '');
+  if (!raw || deadEffort.has(raw)) return null;
+  if (prov === 'openai') return gptEffortFields(raw, 'low', noCap);
+  if (prov === 'claude') return claudeEffortFields(raw, 'low', noCap);
+  if (direct || !viaOR || prov === 'cohere' || /^(?:anthropic\/|claude-|openai\/)/.test(raw)) return null;
+  if (/grok|^x-ai\//i.test(raw)) return { output_config: { effort: 'high' } }; // v-grok-high-feed: جهد وكيل كروك هنا؛ Qwen على الصفّ نفسه يبقى low
+  return { output_config: { effort: 'low' } };
+}
+
 /* كلود المباشر: Sonnet 5 وOpus 5.x وFable يفكّرون تكيّفيًّا بلا حقل thinking، وOpus 5.5 وFable 5.1 يرفضان
    {type:'disabled'} (400) — فالتحكّم الوحيد الصالح للكلّ هو الجهد. Haiku 4.5 لا يفكّر أصلًا ويرفض effort. */
 const EFFORT_MODEL_RE = /^claude-(?:sonnet-5|opus-5|opus-4-[678]|sonnet-4-6|fable|haiku-5-5)/; // v-owner-claude-all: Haiku 5.5 يقبل الجهد (low→max)
@@ -100,4 +128,4 @@ function gptEffortFields(model, effort, noCap) {
   return out;
 }
 
-module.exports = { ownerThinks, lastReplyHasCode, claudeQuickFields, claudeEffortFields, gptEffortFields, gptEfforts, forgetEffort, ANALYSIS_RE, EFFORT_LEVELS, GPT_EFFORTS, __deadEffort: deadEffort };
+module.exports = { ownerThinks, ownerThinkLevel, lightEffortFields, WORK_RE, lastReplyHasCode, claudeQuickFields, claudeEffortFields, gptEffortFields, gptEfforts, forgetEffort, ANALYSIS_RE, EFFORT_LEVELS, GPT_EFFORTS, __deadEffort: deadEffort };

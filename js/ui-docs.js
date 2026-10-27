@@ -25,9 +25,16 @@
   async function api(action, payload){
     var r=await fetch('/api/edu',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({action:action,token:TK(),lang:AL()},payload))});
     var d=await r.json().catch(function(){return{};});
+    /* v-audit-tools: 413 تأتي من حافّة Vercel (٤٫٥ م.ب) قبل الخادم بجسم ليس JSON — كانت تظهر «HTTP 413» خامًّا */
+    if(r.status===413) throw new Error(docTooBig());
     if(!r.ok) throw new Error(d.error||('HTTP '+r.status));
     return d;
   }
+  /* v-audit-tools: سقف الملفّ قبل الإرسال — base64 يكبّر الملفّ الثلث، و٣ م.ب ← ~٤٫٢ م.ب تحت حدّ جسم الطلب في Vercel
+     (٤٫٥ م.ب؛ PITFALLS). رسالة الخادم «حوالي 10 ميغابايت» لا تصل أبدًا لأنّ الحافّة ترفض قبله. */
+  var DOC_MAX_MB=3, DOC_MAX_BYTES=DOC_MAX_MB*1024*1024;
+  function docK(k, ar, en){ try{ if(typeof window.t==='function'){ var v=window.t(k); if(v && v!==k) return String(v); } }catch(e){ /* guard-ok — الاحتياط العربيّ/الإنجليزيّ أدناه */ } return T(ar,en); }
+  function docTooBig(){ return docK('axToolsDocTooBig','الملفّ أكبر من {n} ميغابايت — صغّره أو قسّمه ثمّ ارفعه من جديد.','The file is larger than {n} MB — compress or split it, then upload it again.').split('{n}').join(String(DOC_MAX_MB)); }
   /* v-tools-i18n-full: ترجمات لكل اللغات — المفتاح النص العربي الأصلي حرفيًا */
   var DOC_XL = {
     '📄 مساعد المستندات': {
@@ -711,8 +718,10 @@
   (function(){
     var modal=document.getElementById('docModal'), body=document.getElementById('docBody');
     var curFile=null, curImgs=[], docText='', history=[];
-    function open(){ modal.classList.add('open'); document.getElementById('docTitleH').textContent=T('📄 مساعد المستندات','📄 Document Assistant'); intro(); }
+    /* v-nav-cards-menus: dir="rtl" ثابت في index.html كان يقلب الواجهة الإنجليزيّة — الاتّجاه من لغة الواجهة عند كلّ فتح */
+    function open(){ modal.dir=/^(ar|ur)/i.test(AL())?'rtl':'ltr'; modal.classList.add('open'); document.getElementById('docTitleH').textContent=T('📄 مساعد المستندات','📄 Document Assistant'); intro(); }
     function close(){ modal.classList.remove('open'); }
+    function clearErr(){ var er=document.getElementById('docErr'); if(er) er.innerHTML=''; }
     function intro(){
       curFile=null; curImgs=[]; docText=''; history=[];
       body.innerHTML=''+
@@ -725,13 +734,16 @@
         '<div id="docErr"></div>';
       var drop=document.getElementById('docDrop'), fi=document.getElementById('docFile');
       drop.onclick=function(){ fi.click(); };
-      fi.onchange=function(){ if(fi.files&&fi.files[0]){ curFile=fi.files[0]; curImgs=[]; document.getElementById('docPick').textContent='✅ '+curFile.name; } };
+      fi.onchange=function(){ if(fi.files&&fi.files[0]){ curFile=fi.files[0]; curImgs=[]; document.getElementById('docPick').textContent='✅ '+curFile.name; clearErr(); } };
       document.getElementById('docPasteT').onclick=function(){ var w=document.getElementById('docPasteW'); w.style.display=w.style.display==='block'?'none':'block'; };
+      /* v-nav-cards-menus: «ارفع ملفًّا أو الصق نصًّا أوّلًا» كان يبقى بعد اللصق */
+      var dp=document.getElementById('docPaste'); dp.addEventListener('input',function(){ if(dp.value.trim()) clearErr(); });
       document.getElementById('docGo').onclick=run;
     }
     async function run(){
       var txt=(document.getElementById('docPaste')||{}).value||'';
       if(!curFile && !txt.trim()){ document.getElementById('docErr').innerHTML='<div class="xmErr">'+T('ارفع ملفًا أو الصق نصًا أولًا.','Upload a file or paste text first.')+'</div>'; return; }
+      if(curFile && curFile.size > DOC_MAX_BYTES){ document.getElementById('docErr').innerHTML='<div class="xmErr">'+E(docTooBig())+'</div>'; return; } /* v-audit-tools */
       body.innerHTML='<div class="xmBusy"><div class="xmSpin"></div><div>'+T('يقرأ مستندك…','Reading your document…')+'</div></div>';
       try{
         var payload={text:txt};

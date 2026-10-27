@@ -105,7 +105,7 @@ for (const app of [false, true]) {
     const r2 = await googleLogin({ state: S, app, ip: VICTIM });
     assert.equal(r2.code, 302);
     if (app) assert.equal(r2.headers.Location, 'https://example.test/login-done.html');
-    else assert.match(r2.headers.Location, /[?&]gtoken=/, 'الضحيّة تستلم جلستها في متصفّحها كما كانت');
+    else assert.match(r2.headers.Location, /[?&]gclaim=[0-9a-f]{32}/, 'الضحيّة تستلم جلستها في متصفّحها برمز الاستلام'); // v-audit-auth (srv-auth-10): الويب يعود برمز استلام لا بالرمز نفسه
     const dep = JSON.parse(store.get('db/oauth-claim/' + S));
     assert.ok(dep.token, 'الإيداع باقٍ (تطبيق الشاشة الرئيسيّة والمعاينات يحتاجانه)');
     assert.equal(dep.net, VICTIM, 'الإيداع يحمل شبكة من أكمل الدخول');
@@ -331,11 +331,13 @@ test('١٢. العميل يعرض network_changed بلا تعديل ولا نص�
     assert.ok(i > 0, f);
     const poll = s.slice(i, i + 1400);
     assert.ok(/if\(r\.ok\)\{/.test(poll) && poll.includes('} else if(d && d.error) claimFail(d.error);'), f + ': ٢٠٠ بخطأ يصل claimFail');
-    assert.ok(s.includes("'تعذر تسجيل الدخول بجوجل (' + gerror + ')'"), f + ': القالب العامّ يعرض الرمز');
+    // v-audit-boot (cli-boot-6): القالب العامّ صار مفتاحًا بالـ١٤ لغة (كان عربيًّا/إنجليزيًّا) — وما زال يعرض الرمز
+    assert.ok(s.includes("authMsg('axBootGoogleFailed'") && s.includes("{ code: '\\u2066' + code + '\\u2069' }"), f + ': القالب العامّ يعرض الرمز');
     assert.ok(!s.includes('network_changed'), f + ': لا مفتاح ولا نصّ خاصّ');
   }
+  // v-audit-search (srv-search-7): تنبيه ربط Gmail صار نصًّا بلغة الواجهة لا الرمز الخامّ — network_changed وغيره «حاول مرّة ثانية» (بلا مفتاح خاصّ)
   for (const f of ['js/app-12-studios.js', 'js/app.bundle.js']) {
-    assert.ok(fs.readFileSync(path.join(root, f), 'utf8').includes("const emLinkError = (err) => alert('⚠️ خطأ ربط Gmail: ' + err);"), f);
+    assert.ok(fs.readFileSync(path.join(root, f), 'utf8').includes("const emLinkError = (err) => alert('⚠️ ' + t(err === 'access_denied' ? 'axSearchEmLinkDenied' : (err === 'missing_scopes' ? 'axSearchEmLinkScopes' : 'axSearchEmLinkFailed')));"), f);
   }
 });
 

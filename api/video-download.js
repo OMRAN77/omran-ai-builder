@@ -28,6 +28,29 @@ const { fetchPublicUrl } = require('./_lib/safe-url.js');
 
 const MAX_BYTES = 400 * 1024 * 1024; // أطول فيلم دقائق يبقى دونه بكثير
 const DOWNLOAD_DAILY = 20;
+// v-sec-dl-bytes: ميزانيّة بايت يوميّة لكلّ حساب. العدّ اليوميّ (٢٠) يعدّ الروابط المميَّزة، وتكرار
+// رابطٍ عُدّ من قبل كان مجّانيًّا بلا حدّ — فحلقةٌ على ملفّ ٤٠٠ م.ب تكلّف المالك نقلًا بلا سقف.
+// الآن سقف إجماليّ لما يُبثّ في اليوم (٣ غ.ب افتراضيًّا، يُضبط بالبيئة)، والمالك معفى.
+const DOWNLOAD_BYTES_DAILY = () => Math.max(1, Number(process.env.DOWNLOAD_BYTES_DAILY) || 3 * 1024 * 1024 * 1024);
+function dlBytesKey(username) { return 'dl:bytes:' + encodeURIComponent(String(username || '').toLowerCase()) + ':' + new Date().toISOString().slice(0, 10); }
+async function dlBytesUsed(username) {
+  try { return Number(await require('./_lib/kv.js').kvGetRaw(dlBytesKey(username))) || 0; } catch (e) { return 0; }
+}
+/* v-audit-video (srv-video-3): يضيف n (أو يطرح إن كان سالبًا: ردّ حجز لم يُبثّ) ويرجع المجموع بعده، أو null إن تعذّر KV. */
+async function dlBytesAdd(username, n) {
+  const amt = Math.trunc(Number(n) || 0);
+  if (!amt) return null;
+  try {
+    const kv = require('./_lib/kv.js');
+    const total = Number(await kv.kvIncrBy(dlBytesKey(username), amt));
+    if (total === amt) { try { await kv.kvExpire(dlBytesKey(username), 2 * 86400); } catch (e) { /* مؤرَّخ أصلًا */ } }
+    return Number.isFinite(total) ? total : null;
+  } catch (e) { return null; } // أفضل جهد — عطب KV لا يوقف البثّ
+}
+/* v-audit-video (srv-video-3): كان السقف يُفحص عند البدء وحده والمبثوث يُضاف عند الاكتمال وحده — فالطلبات المتوازية تمرّ كلّها والعدّاد
+   صفر، وقطع العميل يعلّق الحلقة فلا يُضاف شيء. الآن: حجز ذرّيّ بالحجم المعلن (أو خطوة لمجرى بلا طول) يُرفض إن كان ما قبله بلغ السقف
+   (كالتتابع تمامًا)، والمبثوث يُعدّ على خطوات أثناء البثّ، والحجز يُسوّى بالمبثوث فعلًا في النهاية. */
+const DL_STEP = 4 * 1024 * 1024;
 const TICKET_TTL_MS = 60 * 60 * 1000; // v-dl-ticket: ساعة — ورقة الجوّال تُغلق بعد دقيقتين، ومنزّل النظام يعيد خلال ثوانٍ
 const EXT_TYPE = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };
 const TYPE_EXT = { 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm', 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif' };
@@ -132,6 +155,15 @@ module.exports = async (req, res) => {
     res.status(200).json({ ticket: mintTicket(admitted.username, url), ttl: TICKET_TTL_MS / 1000 });
     return;
   }
+  // v-sec-dl-bytes: سقف البايت اليوميّ — يمسك تكرار رابطٍ عُدّ من قبل. المالك معفى.
+  const dlUser = admitted.username;
+  const capped = !!dlUser && !require('./_lib/_owner.js').isOwnerName(dlUser);
+  if (capped) {
+    if ((await dlBytesUsed(dlUser)) >= DOWNLOAD_BYTES_DAILY()) {
+      res.status(429).json({ error: 'daily_limit_reached' });
+      return;
+    }
+  }
   // v-dl-refund-scope: يُردّ العدّ ما دام لم يخرج طلب إلى المضيف (reached)
   let reached = false;
   const fetchFn = deps.fetchFn || fetch;
@@ -159,6 +191,19 @@ module.exports = async (req, res) => {
       res.status(ct ? 413 : 415).json({ error: ct ? 'too large' : 'not a video or image' });
       return;
     }
+    // v-audit-video (srv-video-3): الحجز الذرّيّ قبل أوّل بايت
+    let counted = 0;
+    if (capped) {
+      const est = cl || DL_STEP;
+      const after = await dlBytesAdd(dlUser, est);
+      counted = est;
+      if (after !== null && after - est >= DOWNLOAD_BYTES_DAILY()) {
+        await dlBytesAdd(dlUser, -est);
+        try { await upstream.body?.cancel(); } catch (e) { /* guard-ok — تحرير المجرى فقط */ }
+        res.status(429).json({ error: 'daily_limit_reached' });
+        return;
+      }
+    }
     res.setHeader('Content-Type', ct);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'no-store');
@@ -167,19 +212,17 @@ module.exports = async (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename="omran-ai-' + (ct.startsWith('video/') ? 'video' : 'image') + '.' + (TYPE_EXT[ct] || (ct.startsWith('video/') ? 'mp4' : 'png')) + '"');
     if (cl) res.setHeader('Content-Length', String(cl));
 
-    // Stream chunk-by-chunk — لا نضع الفيديو كله في الذاكرة دفعة واحدة
-    const reader = upstream.body.getReader();
-    let sent = 0;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      sent += value.length;
-      if (sent > MAX_BYTES) { try { await reader.cancel(); } catch (e) { /* guard-ok — قطع الزائد */ } break; }
-      const written = res.write(Buffer.from(value));
-      if (!written) {
-        // backpressure — انتظر حتى يُفرَّغ البافر
-        await new Promise(r => res.once('drain', r));
-      }
+    // Stream chunk-by-chunk — لا نضع الفيديو كله في الذاكرة دفعة واحدة. v-audit-video: الضغط العكسيّ يعرف رحيل العميل (pipeBody)
+    const meter = { sent: 0 };
+    try {
+      await require('./_lib/veo-download.js').pipeBody(upstream.body, res, { meter, max: MAX_BYTES, step: DL_STEP, onStep: capped ? async (n) => {
+        if (n <= counted) return true;
+        const total = await dlBytesAdd(dlUser, n - counted); counted = n;
+        return !(total !== null && total > DOWNLOAD_BYTES_DAILY() + MAX_BYTES); // مجرى بلا طول معلن: يُكمل ملفًّا واحدًا ولا يتجاوز بلا حدّ
+      } : null });
+    } finally {
+      // v-sec-dl-bytes: خصم المبثوث فعلًا — والحجز الزائد (قطع العميل) يُردّ
+      if (dlUser && meter.sent !== counted) await dlBytesAdd(dlUser, meter.sent - counted);
     }
     res.end();
   } catch (e) {

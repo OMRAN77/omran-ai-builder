@@ -11,9 +11,10 @@ const VISION = {
   mistral: { or: '' }, // Mistral Medium 3.5: نصّ + صورة
   openrouter: { or: '' }, // اختيار المالك نفسه؛ الافتراضيّ Sonnet 5 يرى
   kimi: { direct: '', or: 'moonshotai/kimi-k3' }, // K3 وK2.6 يريان عند Moonshot؛ K2 عند الوسيط نصّيّ
-  groq: { direct: 'qwen/qwen3.6-27b', or: '' }, // gpt-oss نصّيّ؛ Qwen3.6 27B رؤية + أدوات على Groq، وLlama 4 Maverick يرى عند الوسيط
+  groq: { direct: 'qwen/qwen3.8-27b', or: '' }, // gpt-oss نصّيّ؛ Qwen3.8 27B رؤية + أدوات على Groq (v-dead-models: Qwen3.6 أُوقف ١٤ سبتمبر)، وLlama 4 Maverick يرى عند الوسيط
   deepseek: { or: 'deepseek/deepseek-v4-flash-vision-exp' }, // V4 Pro نصّيّ؛ V4 Flash Vision أوّل موديل رؤية في V4، بأدوات
   cohere: { or: 'cohere/command-a-plus' }, // Command A نصّيّ؛ Command A+ نصّ + صورة + أدوات
+  perplexity: { direct: '' }, // v-pplx-agent: صورة المالك تصل Perplexity نفسه على Agent API (input_image) — رفضه يظهر سببه، لا محرّك آخر مكانه
 };
 
 // خطّة دور الصورة على المسار الحاليّ ('direct' | 'or'): { model, def, forced } — forced = موديل الرؤية حلّ محلّ الاختيار.
@@ -23,7 +24,7 @@ function visionPlan(prov, route, cur, def) {
   if (!v || !route || !Object.prototype.hasOwnProperty.call(v, route)) return null;
   const m = v[route];
   if (String(prov).toLowerCase() === 'kimi' && route === 'or' && /^moonshotai\/kimi-k(?:3|2\.6)\b/.test(String(cur || ''))) return { model: cur, def, forced: false }; // v-owner-solo: K3 وK2.6 يريان — الاختيار يبقى
-  return m ? { model: m, def: m, forced: true } : { model: cur, def, forced: false };
+  return m ? (m === cur ? { model: cur, def, forced: false } /* v-owner-solo-all: على موديل رؤيته أصلًا (Groq qwen3.8) = يرى بلا تبديل */ : { model: m, def: m, forced: true }) : { model: cur, def, forced: false };
 }
 
 module.exports = { VISION, visionPlan };

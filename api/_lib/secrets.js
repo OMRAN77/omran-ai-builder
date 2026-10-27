@@ -117,16 +117,18 @@ async function vaultStatus(o) {
 }
 
 /* ---------- فحص مفتاح GitHub بلا كشفه ---------- */
+// v-owner-i18n (تدقيق ١٨ أكتوبر): الأخطاء رموز في error تترجمها الواجهة بلغة المالك (كانت جملة عربيّة يطبعها العميل خامًا
+// في الواجهة الإنجليزيّة)، والجملة العربيّة باقية في message. وحدّ الطلبات رقم بلا «/ساعة» — الوحدة نصّ الواجهة.
 async function testGithub(repo, o) {
   const tok = await getSecret('github_token', o);
-  if (!tok) return { ok: false, error: 'لا مفتاح GitHub محفوظ في الخزنة.' };
+  if (!tok) return { ok: false, error: 'no_github_token', message: 'لا مفتاح GitHub محفوظ في الخزنة.' };
   const gh = require('./github-read.js');
   const t = gh.parseTarget({ url: String(repo || '').trim() || 'OMRAN77/omran-ai-builder' });
-  if (!t) return { ok: false, error: 'صيغة المستودع: owner/repo' };
+  if (!t) return { ok: false, error: 'bad_repo', message: 'صيغة المستودع: owner/repo' };
   const env = { GITHUB_TOKEN: tok };
   const net = Object.assign({ env }, o && o.net ? o.net : {});
   const u = await gh.ghFetch('/user', net);
-  if (u.status === 401) return { ok: false, error: 'المفتاح مرفوض من GitHub (401) — غير صالح أو منتهٍ.' };
+  if (u.status === 401) return { ok: false, error: 'token_rejected', message: 'المفتاح مرفوض من GitHub (401) — غير صالح أو منتهٍ.' };
   let login = '';
   try { const uj = await u.json(); login = (uj && uj.login) || ''; } catch (e) { login = ''; }
   const r = await gh.ghFetch('/repos/' + t.owner + '/' + t.repo, net);
@@ -137,7 +139,7 @@ async function testGithub(repo, o) {
     ok: true, login, repo: t.owner + '/' + t.repo,
     readable: !!r.ok,
     writable: !!(r.ok && perms && (perms.push || perms.admin || perms.maintain)),
-    rateLimit: rate ? (rate + '/ساعة') : '',
+    rateLimit: rate || '',
   };
 }
 
@@ -146,8 +148,8 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'method' }); return; }
-  const { isOwner } = require('./_owner.js');
-  if (!isOwner(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
+  const { isOwnerSession } = require('./_owner.js'); // v-audit-agent (srv-core-3): الخزنة لجلسة المالك وحدها — لا MONITOR_KEY
+  if (!isOwnerSession(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
   let body = req.body;
   if (!body || typeof body === 'string') { try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; } }
   const op = String((body && body.op) || 'status');

@@ -16,7 +16,7 @@ const REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 // (POST body = ["CMD", "arg1", "arg2", ...]). This form is used everywhere
 // (rather than the path-style shortcuts) so keys/values with special
 // characters never need extra escaping.
-async function command(args) {
+async function command(args, strict) {
   if (!REST_URL || !REST_TOKEN) {
     throw new Error('Server is missing UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN');
   }
@@ -33,20 +33,28 @@ async function command(args) {
     const msg = (data && (data.error || JSON.stringify(data))) || ('HTTP ' + res.status);
     throw new Error('Upstash error: ' + msg);
   }
+  // v-audit-mahakv: ردّ 200 لا يُقرأ (صفحة وسيط، جسم مبتور) كان يُقرأ «المفتاح غير موجود»؛ القراءة الصارمة ترميه.
+  if (strict && !(data && typeof data === 'object' && 'result' in data)) throw new Error('Upstash error: unreadable reply');
   return data ? data.result : null;
 }
 
 // GET key -> parsed JSON, or null if missing/invalid.
-async function kvGetJSON(key) {
+// v-audit-mahakv: `{ strict: true }` لمسارات «اقرأ القائمة ثمّ اكتبها كاملة» (التذكيرات، الدروس): null يعني أنّ المفتاح
+// غير موجود فعلًا، وأيّ عطل (مهلة، 5xx، ردّ لا يُقرأ، قيمة ليست JSON) يرمي — فلا يكتب المسار فوق ما لم يقرأه.
+// بلا الخيار كما كان: يبتلع الخطأ ويرجع null (للقراءة وحدها).
+async function kvGetJSON(key, opts) {
+  const strict = !!(opts && opts.strict);
   try {
-    const raw = await command(['GET', key]);
+    const raw = await command(['GET', key], strict);
     if (raw == null) return null;
     try {
       return JSON.parse(raw);
     } catch (e) {
+      if (strict) throw e;
       return null;
     }
   } catch (e) {
+    if (strict) throw e;
     return null;
   }
 }
@@ -65,9 +73,16 @@ async function kvDel(key) {
   }
 }
 
+/* v-sec-scan-escape: محارف أنماط Redis (* ? [ ] \ ^) في البادئة كانت تُفسَّر في SCAN MATCH، فحذف
+   حساب اسمه «***» يصير `planvid:***:*` فيطابق مفاتيح كلّ المستخدمين. نهرّب البادئة (لا الـ* المُذيَّل
+   المقصود) فتُطابَق حرفيًّا. البادئات العاديّة بلا هذه المحارف لا تتغيّر. */
+function escapeGlob(s) {
+  return String(s == null ? '' : s).replace(/[\\*?[\]^]/g, (c) => '\\' + c);
+}
+
 // SCAN-based prefix listing: returns every key matching `${prefix}*`.
 async function kvList(prefix) {
-  const match = prefix + '*';
+  const match = escapeGlob(prefix) + '*';
   const keys = [];
   let cursor = '0';
   do {

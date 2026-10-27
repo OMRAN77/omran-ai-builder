@@ -405,8 +405,8 @@ module.exports = async (req, res) => {
       'املأه بـ 14-18 بندًا يغطي: الحفر والردم، الأساسات، الخرسانة، حديد التسليح، الطابوق، اللياسة، العزل، البلاط والرخام، الأبواب والشبابيك، الدهانات، الكهرباء، السباكة، التكييف، المطبخ، الأدوات الصحية، الأعمال الخارجية، والملاحق المطلوبة. الكميات والأسعار أرقام مجردة بلا فواصل أو رموز، وآخر سطر للإجمالي.'
       + (replyLangName ? ('\n\nCRITICAL LANGUAGE RULE: write the ENTIRE report — every heading, bullet and BOQ item name — in ' + replyLangName + ' instead of Arabic. Keep all numbers in Western digits, keep amounts in AED, and keep the <<<BOQ>>> / <<<END>>> markers and the pipe-separated BOQ format exactly as specified.') : '');
 
-    const textEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
-    const textReqBody = { contents: [{ parts: [{ text: textPrompt }] }] };
+    const textModel = 'gemini-flash-latest'; const textEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + textModel + ':generateContent?key=' + apiKey; // v-dead-models-2: gemini-2.0-flash ميّت في فحص ١٦ أكتوبر الحيّ (كان داخل الرابط فيتخطّاه الفحص) فكان النصّ يسقط كلّ مرّة إلى إنقاذ OpenAI المدفوع
+    const textReqBody = { contents: [{ parts: [{ text: textPrompt }] }], generationConfig: { thinkingConfig: { thinkingBudget: 0 } } }; // بلا تفكير كـ2.0 Flash الذي حلّ محلّه — سرعته ضمن مهلة TEXT_TIMEOUT_MS
 
     const requestImage = (requestBody) => fetchImageWithRetry({
       url: imgEndpoint,
@@ -558,15 +558,18 @@ module.exports = async (req, res) => {
 
     // Best-effort: save this generated design into the shared library so
     // future users with similar requirements can browse it before generating
-    // a brand-new one. Fire-and-forget — never blocks or fails the response.
+    // a brand-new one. Never fails the response.
+    /* v-audit-stud2 (srv-studios-2-1): الحفظ صار يصغّر المخطّط WebP قبل الكتابة (أقلّ من ثانية) — يُنتظر قبل الردّ، فالدالّة قد
+       تُجمَّد بعد الردّ فيضيع الحفظ؛ saveDesign لا يرمي أبدًا */
     if (planImageBase64) {
-      saveDesign({
+      await saveDesign({
         buildingType,
         floors,
         area,
         style,
         budget,
         annexes: annexList,
+        lang: uiLang, // v-cx-lib: لغة تسميات المخطّط (ar/ur عربيّ) — المكتبة تعرض لكلّ مستخدم لغته
         planImageBase64,
         planMimeType,
       }).catch(() => {});

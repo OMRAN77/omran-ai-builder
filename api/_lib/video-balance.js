@@ -3,7 +3,7 @@
 // This prevents charging the owner for partial films that fail midway.
 //
 // v-video-open-lock: كان يكشف رصيد المالك عند المزوّد وعدد مفاتيحه لأيّ زائر، والواجهة تعرض لكلّ مستخدم سطرًا باسم
-// المزوّد وموقعه للشحن. الآن للمالك وحده (رمز جلسته أو مفتاح المراقبة — _owner.js)، وغيره 403 بلا أيّ نداء للمزوّد.
+// المزوّد وموقعه للشحن. الآن للمالك وحده (رمز جلسته — _owner.isOwnerSession)، وغيره 403 بلا أيّ نداء للمزوّد.
 //
 // v-balance-enough (المراجعة المعاكسة): فصار الفحص المسبق لغير المالك «يكفي دائمًا» في الواجهة — فيبدأ فيلمًا ينكسر في منتصفه.
 // الآن جلسة حقيقيّة مع ?needed= تسأل «هل يكفي؟» فقط: الجواب { enough } وحده بلا رصيد ولا عدد مفاتيح ولا اسم مزوّد،
@@ -17,7 +17,7 @@ const UNKNOWN_CACHE_MS = 30 * 1000;
 let cached = null; // { at, best, keys }
 
 module.exports = async (req, res) => {
-  const owner = require('./_owner.js').isOwner(req);
+  const owner = require('./_owner.js').isOwnerSession(req); // v-audit-agent (srv-agent-3): رصيد المالك وعدد مفاتيحه لجلسته وحدها — لا MONITOR_KEY
   const needed = Number((req.query && req.query.needed) || 0);
   if (!owner) {
     const session = require('./_session.js');
@@ -32,7 +32,8 @@ module.exports = async (req, res) => {
     if (!keys.length) { cached = { at: Date.now(), best: 0, keys: 0 }; return owner ? res.status(200).json({ credits: 0, keys: 0 }) : res.status(200).json({ enough: false }); }
     let best = 0;
     let answered = false; // v-balance-unknown: هل أجاب أيّ مفتاح ok؟
-    for (const key of keys) {
+    /* v-ai-video-speed: المفاتيح معًا لا واحدًا بعد واحد — الفحص يسبق كلّ فيديو للمالك، وثلاثة مفاتيح بطيئة كانت ثلاثة انتظارات متتالية */
+    await Promise.all(keys.map(async (key) => {
       try {
         const r = await fetch(RUNWAY_API_BASE + '/v1/organization', {
           headers: {
@@ -40,13 +41,13 @@ module.exports = async (req, res) => {
             'X-Runway-Version': '2024-11-06',
           },
         });
-        if (!r.ok) continue;
+        if (!r.ok) return;
         const data = await r.json();
         answered = true;
         const c = Number(data && data.creditBalance) || 0;
         if (c > best) best = c;
-      } catch (e) { /* try next key */ }
-    }
+      } catch (e) { /* guard-ok — مفتاح لا يجيب لا يوقف الباقين */ }
+    }));
     // v-balance-unknown (المراجعة الثانية): لم يُجب أيّ مفتاح (429/5xx/شبكة) — الصفر هنا جهل لا رصيد: كان يُخزَّن رصيدًا ستّين ثانية
     // فيأخذ كلّ غير مالك {enough:false} ويفشل كلّ فيلم. الآن يُخزَّن «مجهولًا» ٣٠ ثانية، وغير المالك يمرّ (أفضل جهد)، والمالك credits:-1.
     if (!answered) {

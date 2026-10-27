@@ -125,7 +125,7 @@
             var vb = /^data:/i.test(url) ? dataUrlToBlob(url) : await (await fetch(url)).blob();
             var vf = new File([vb], nm, { type: vb.type || 'video/mp4' });
             if(navigator.canShare && navigator.canShare({ files: [vf] })){
-              try{ await navigator.share({ files: [vf], title: 'Omran AI' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
+              try{ await navigator.share({ files: [vf], title: 'om ai' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
             }
             if(showSheet(URL.createObjectURL(vb), vf, nm, 'video')) return true;
           } else {
@@ -139,7 +139,7 @@
           if(link && showSheet(link.dl, ifile, link.name, 'image', link.open)) return true;
           /* تعذّر الرفع: المشاركة بالملف ثم الفتح */
           if(ifile && navigator.canShare && navigator.canShare({ files: [ifile] })){
-            try{ await navigator.share({ files: [ifile], title: 'Omran AI' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
+            try{ await navigator.share({ files: [ifile], title: 'om ai' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
           }
           if(showSheet(URL.createObjectURL(ib), ifile, nm, 'image')) return true;
         }
@@ -153,7 +153,7 @@
       try{
         var file = new File([blob], nm, { type: blob.type || 'application/octet-stream' });
         if(isMobile() && navigator.canShare && navigator.canShare({ files: [file] })){
-          try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }
+          try{ await navigator.share({ files: [file], title: 'om ai' }); return true; }
           catch(err){ if(err && err.name === 'AbortError') return true; }
         }
       }catch(e){ /* guard-ok — نكمل بالرابط */ }
@@ -169,8 +169,11 @@
   };
   /* كل روابط التحميل في التطبيق تمرّ من الحافظ الموحّد — نقرة المستخدم فقط
      (v-pdf-loop: النقرات البرمجية من مصدّر الـPDF ومن هذا الحافظ لا تُلتقط) */
+  /* v-audit-shell (cli-ui-shell-2): مصيدة app-05-img-save تُسجَّل قبل هذه على document نفسه وتملك صور data:/blob: داخل الأغلفة —
+     stopPropagation فيها لا يوقف مستمعًا آخر على العقدة نفسها، فكانت النقرة الواحدة ترفع الصورة مرّتين (سلّة media-save-img) وتفتح ورقتين.
+     نقرة منعها مستمع قبلنا = لها مالك: لا نلمسها. */
   document.addEventListener('click', function(e){
-    if(!e.isTrusted) return;
+    if(!e.isTrusted || e.defaultPrevented) return;
     var a = e.target && e.target.closest ? e.target.closest('a[download]') : null;
     if(!a || a.dataset.nativeDownload === '1') return;
     var href = a.getAttribute('href') || '';

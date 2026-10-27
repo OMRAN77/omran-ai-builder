@@ -103,8 +103,10 @@ async function google(email, ip) {
 const rec = (key) => auth.getUser(key, 1);
 const balance = async (key) => (await points.readPoints(key)).points;
 
-test('١. حالة العرض: عشرون تسجيلًا من عنوان المكتب بالقيم الافتراضيّة — كلّهم ٧٠', async () => {
-  reset();
+// v-sec-gift-cap: الافتراضيّ صار ٣/شبكة/يوم (كان ٥٠). هذا الاختبار يثبت «الكلّ ٧٠ تحت سقف عالٍ»
+// بضبط السقف صراحةً إلى ٥٠، وحالة السقف الافتراضيّ المنخفض يغطّيها الاختبار التالي (٢+٣).
+test('١. عشرون تسجيلًا من عنوان المكتب تحت سقف ٥٠ — كلّهم ٧٠', async () => {
+  reset({ WELCOME_GIFT_PER_IP_DAILY: '50' });
   const res = await Promise.all(Array.from({ length: 20 }, (_, i) => signup('office' + i, '94.200.1.1')));
   for (const r of res) assert.equal(r.code, 200, JSON.stringify(r.body));
   for (let i = 0; i < 20; i++) {
@@ -155,17 +157,19 @@ test('٤. عشرة تسجيلات متزامنة من عنوان واحد على
   assert.equal(counter(allKey()), 3, 'الرفض عند العنوان لا يأكل من القاطع العامّ');
 });
 
-test('٥. تسجيل مرفوض (اسم مأخوذ، محجوز، إيميل مكرّر أو خاطئ، كلمة مرور قصيرة) لا يأكل حصّة', async () => {
+test('٥. تسجيل مرفوض (اسم مأخوذ، محجوز، كلمة مرور قصيرة) لا يأكل حصّة — والإيميل في التسجيل يُتجاهل (v-signup-no-email)', async () => {
   reset({ WELCOME_GIFT_PER_IP_DAILY: '3' });
   assert.equal((await signup('first', '203.0.113.8', { email: 'first@example.com' })).code, 200);
   const before = JSON.stringify(counters());
   assert.equal((await signup('first', '203.0.113.8')).code, 409, 'اسم مأخوذ');
   assert.equal((await signup('admin', '203.0.113.8')).code, 409, 'اسم محجوز');
-  assert.equal((await signup('second', '203.0.113.8', { email: 'first@example.com' })).code, 409, 'إيميل مكرّر');
-  assert.equal((await signup('third', '203.0.113.8', { email: 'not-an-email' })).code, 400, 'إيميل خاطئ');
   assert.equal((await signup('fourth', '203.0.113.8', { password: 'short' })).code, 400, 'كلمة مرور قصيرة');
   assert.equal(JSON.stringify(counters()), before, 'العدّادات كما هي');
   assert.equal(counter(ipKey('203.0.113.8')), 1);
+  // الإيميل في التسجيل لا يُرفض (مكرّرًا أو خاطئًا) ولا يُحفظ: حساب عاديّ يأخذ حصّته كأيّ تسجيل
+  assert.equal((await signup('second', '203.0.113.8', { email: 'first@example.com' })).code, 200, 'إيميل غيره يُتجاهل');
+  assert.equal((await signup('third', '203.0.113.8', { email: 'not-an-email' })).code, 200, 'إيميل خاطئ يُتجاهل');
+  for (const k of ['first', 'second', 'third']) assert.equal((await auth.getUser(k)).email, null, k + ' بلا إيميل');
 });
 
 test('٦. القاطع العامّ ٤ بعناوين مختلفة: أربع هدايا بالضبط، والتجاوز يُبقي عدّاد عنوانه (يعدّ التسجيلات — farm-2)؛ وبلا عنوان القاطع وحده', async () => {
@@ -215,26 +219,26 @@ test('٧. IPv6: عناوين تدور داخل /64 واحدة شبكة واحد�
 test('٨. Google: الحساب الجديد رصيد رقميّ (٧٠ تحت السقف، 0 فوقه) وreadPoints يطابقه، ودخول قائم لا يمسّ العدّادات', async () => {
   reset({ WELCOME_GIFT_PER_IP_DAILY: '1' });
   const r1 = await google('one@gmail.com', '94.200.9.9');
-  assert.equal(r1.code, 302); assert.match(r1.headers.Location, /gtoken=/);
+  assert.equal(r1.code, 302); assert.match(r1.headers.Location, /gclaim=/); // v-audit-auth (srv-auth-10): الويب يعود برمز استلام لا بالرمز نفسه
   const u1 = await rec('g_one@gmail.com');
   assert.equal(u1.points, 70); assert.equal(u1.welcomeGift, true);
   assert.equal(await balance('g_one@gmail.com'), 70);
 
   const r2 = await google('two@gmail.com', '94.200.9.9');
-  assert.equal(r2.code, 302); assert.match(r2.headers.Location, /gtoken=/, 'الحساب يُنشأ فوق السقف');
+  assert.equal(r2.code, 302); assert.match(r2.headers.Location, /gclaim=/, 'الحساب يُنشأ فوق السقف');
   const u2 = await rec('g_two@gmail.com');
   assert.equal(typeof u2.points, 'number'); assert.equal(u2.points, 0); assert.equal(u2.welcomeGift, false);
   assert.equal(await balance('g_two@gmail.com'), 0, 'لا ٧٠ كسولة لحساب Google فوق السقف');
 
   const before = JSON.stringify(counters());
   const again = await google('one@gmail.com', '94.200.9.9');
-  assert.equal(again.code, 302); assert.match(again.headers.Location, /gtoken=/);
+  assert.equal(again.code, 302); assert.match(again.headers.Location, /gclaim=/);
   assert.equal(JSON.stringify(counters()), before, 'دخول حساب قائم لا يحجز هديّة');
   assert.equal((await rec('g_one@gmail.com')).points, 70);
 
   // نداء بلا headers (كما في اختبارات الكولباك القائمة) لا ينهار — القاطع العامّ وحده
   const r3 = await google('three@gmail.com');
-  assert.equal(r3.code, 302); assert.match(r3.headers.Location, /gtoken=/);
+  assert.equal(r3.code, 302); assert.match(r3.headers.Location, /gclaim=/);
   assert.equal((await rec('g_three@gmail.com')).points, 70);
 });
 
@@ -279,7 +283,7 @@ test('١٠. عطب KV في العدّادات: التسجيل ينجح (200 لا
   reset();
   failCounter = () => true;
   const g = await google('down@gmail.com', '203.0.113.32');
-  assert.equal(g.code, 302); assert.match(g.headers.Location, /gtoken=/);
+  assert.equal(g.code, 302); assert.match(g.headers.Location, /gclaim=/); // v-audit-auth (srv-auth-10): الويب يعود برمز استلام لا بالرمز نفسه
   assert.equal((await rec('g_down@gmail.com')).points, 0);
 });
 

@@ -14,6 +14,14 @@ test('ردّ Grok في اللقطة = خطّة بلا تنفيذ', () => {
   assert.equal(C.stalledPlan(GROK, { ownerText: 'هذا (المشاريع / بحث عن مشروع / حذف الكل)', prevOwnerText: 'احذف هذي القائمة' }), true);
 });
 
+test('v-prov-finish-edit: وصف بعد قراءة على طلب تعديل = نفّذ الآن، ولو بلا صيغة «سأ…»', () => {
+  const described = 'هذي بطاقات الأزياء… تحقّقت من اللقطة فقط؛ ما تغيّر شي في التطبيق.';
+  assert.equal(C.stalledPlan(described, { usedTools: true, ownerText: 'صلّح الصور وخلّ الأسماء' }), true);
+  assert.equal(C.stalledPlan(described, { usedTools: true, prevOwnerText: 'عدّل الزر' }), true);
+  assert.equal(C.stalledPlan(described, { usedTools: true }), false, 'بلا طلب تعديل لا يُحمَل وصف عاديّ');
+  assert.equal(C.stalledPlan(described, { ownerText: 'صلّحها' }), false, 'بلا أدوات لا يُحمَل');
+});
+
 test('لا تنبيه: سؤال للمالك، أو تنفيذ تمّ، أو جواب عاديّ، أو دردشة', () => {
   assert.equal(C.stalledPlan('أقرأ الملف. تبيني أحذف القائمة كلها؟', { usedTools: true }), false);
   assert.equal(C.stalledPlan('أحذف القائمة: https://github.com/o/r/pull/5', { usedTools: true }), false);
@@ -25,16 +33,20 @@ test('لا تنبيه: سؤال للمالك، أو تنفيذ تمّ، أو ج�
 
 test('الربط: المحادثة والوكيل للمالك وحده، مرّة واحدة، وبمهلة كافية', () => {
   const chat = read('api/_lib/chat.js');
-  assert.match(chat, /if \(stopReason !== 'tool_use' && __ownerReq && toolTurn && !__ownerCarried && steps < MAX_STEPS && Date\.now\(\) - t0 < MAX_MS - 45000\)/);
-  assert.match(chat, /__ownerCarried = true;[\s\S]{0,300}__oc\.CARRY_NOTE[\s\S]{0,200}continue;/);
+  assert.match(chat, /if \(stopReason !== 'tool_use' && __ownerReq && toolTurn && !__ownerCarried && steps < MAX_STEPS && Date\.now\(\) - t0 < __ol\.FN_BUDGET_MS - 20000\)/);
+  assert.match(chat, /__ownerCarried = \+\+__carryN >= 2;[\s\S]{0,500}__oc\.CARRY_NOTE[\s\S]{0,200}continue;/); // v-carry-fail: حمل ثانٍ للوعد وحده
   const agent = read('api/_lib/agent.js');
-  assert.match(agent, /if \(isOwner\(runUser\) && !ownerCarried && steps < MAX_STEPS && Date\.now\(\) - taskStart < MAX_TASK_MS - 45000\)/);
+  assert.match(agent, /if \(isOwner\(runUser\) && !ownerCarried && steps < MAX_STEPS && Date\.now\(\) - taskStart < require\('\.\/owner-loop\.js'\)\.FN_BUDGET_MS - 20000\)/);
   assert.match(agent, /ownerCarried = true;[\s\S]{0,200}oc\.CARRY_NOTE[\s\S]{0,200}continue;/);
   assert.match(C.CARRY_NOTE, /ليس من المالك/);
+  assert.match(C.PICS_CARRY_NOTE, /write_github/);
+  assert.match(C.PICS_CARRY_NOTE, /لا تنتظر «عمّم»/);
+  assert.match(chat, /PICS_CARRY_NOTE : __oc\.CARRY_NOTE/);
 });
 
 test('v-owner-ui-shot: «احذف هذا المكان» مع لقطة = تعديل التطبيق لا الصورة، وأدوات الصور تُرفع', () => {
   assert.equal(C.uiEditTurn('احذف هذا المكان'), true);
+  assert.equal(C.uiEditTurn('الستائر في الديكور تقدر تعدل التطبيق'), true, 'v-shot-not-draw: لقطة المالك على الستائر = تعديل التطبيق');
   assert.equal(C.uiEditTurn('شيل الزر هذا'), true);
   assert.equal(C.uiEditTurn('كبّر الخط في القائمة'), true);
   assert.equal(C.uiEditTurn('احذف الخلفية من الصورة'), false);
@@ -43,7 +55,7 @@ test('v-owner-ui-shot: «احذف هذا المكان» مع لقطة = تعدي
   const chat = read('api/_lib/chat.js');
   // v-owner-ui-shot-client: قرار العميل (body.ownerUiShot) أوّلًا، والتعابير حين يغيب الحقل
   assert.ok(chat.includes("const __ownerUiShot = __ownerReq && lastUserHasImage && (typeof (body && body.ownerUiShot) === 'boolean' ? body.ownerUiShot : require('./owner-carry.js').uiEditTurn(lastUserText));"));
-  assert.ok(chat.includes("tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia) : undefined")); // v-tokens-owner-tools: القائمة كاملة، وأدوات الصور تُرفض عند التنفيذ في دور اللقطة (__ownerNoMedia)
+  assert.ok(chat.includes("tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia, __callPaid) : undefined")); // v-tokens-owner-tools: القائمة كاملة، وأدوات الصور تُرفض عند التنفيذ في دور اللقطة (__ownerNoMedia)
   assert.ok(chat.includes("+ (__ownerUiShot ? require('./owner-carry.js').UI_SHOT_NOTE : '')"));
   assert.match(C.UI_SHOT_NOTE, /ليس تعديل الصورة/);
 });

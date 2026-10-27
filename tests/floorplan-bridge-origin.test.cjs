@@ -16,7 +16,7 @@ function harness(frameWin) {
   let handler = null; const fetches = []; const replies = [];
   const ctx = {
     window: { location: { origin: 'https://app.example' }, omranFloorplan: { facadePrompt: () => 'facade prompt' }, addEventListener: (t, f) => { if (t === 'message') handler = f; }, getGuestId: () => 'g' },
-    document: { getElementsByTagName: () => [{ contentWindow: frameWin }], getElementById: () => null, querySelectorAll: () => [] },
+    document: { getElementsByTagName: () => [{ contentWindow: frameWin }], getElementById: (id) => id === 'previewFrame' ? { contentWindow: frameWin } : null, querySelectorAll: () => [] },
     fetch: (url, init) => { fetches.push({ url, init }); return Promise.resolve({ ok: true, json: () => Promise.resolve({ imageBase64: 'AAAA', mimeType: 'image/png' }) }); },
     authGet: () => 'tok', __swallow: () => {}, console,
   };
@@ -42,9 +42,19 @@ test('رسالة المحرّر من إطار المعاينة نفسه تعمل
   assert.equal(h.fetches[0].url, '/api/maha-image');
 });
 
-test('المراجعة العدائيّة: إطار معزول داخل الصفحة (جرّبه لي، run_js — أصله «null») لا يولّد صورة مدفوعة', () => {
-  const sandboxed = { postMessage() {} };
-  const h = harness(sandboxed);
-  h.handler({ data: { __omranView: 1, id: 3, view: 'front', spec: {} }, source: sandboxed, origin: 'null' });
-  assert.equal(h.fetches.length, 0, 'كود النموذج في الإطار المعزول لا ينفق نقاط المستخدم');
+test('المراجعة العدائيّة: إطار معزول آخر (جرّبه لي، run_js — أصله «null» وليس إطار المعاينة) لا يولّد صورة مدفوعة', () => {
+  // v-sec-sandbox: المعاينة نفسها صارت معزولة (أصلها null)، فالتمييز صار بهويّة الإطار لا بالأصل:
+  // إطار المعاينة (#previewFrame) مسموح، وأيّ إطار معزول آخر (run_js/test_html) مرفوض ولو كان أصله null أيضًا.
+  const previewWin = { postMessage() {} };   // إطار المعاينة (يحمله المحرّر)
+  const sandboxedRunJs = { postMessage() {} }; // إطار «جرّبه لي» — نافذة أخرى
+  const h = harness(previewWin);
+  h.handler({ data: { __omranView: 1, id: 3, view: 'front', spec: {} }, source: sandboxedRunJs, origin: 'null' });
+  assert.equal(h.fetches.length, 0, 'كود النموذج في إطار معزول غير المعاينة لا ينفق نقاط المستخدم');
+});
+
+test('إطار المعاينة المعزول (أصله «null» بعد sandbox) يعمل بهويّته', () => {
+  const previewWin = { postMessage() {} };
+  const h = harness(previewWin);
+  h.handler({ data: { __omranView: 1, id: 4, view: 'front', spec: {} }, source: previewWin, origin: 'null' });
+  assert.equal(h.fetches.length, 1, 'المحرّر في إطار المعاينة يولّد كما كان ولو صار أصله null');
 });

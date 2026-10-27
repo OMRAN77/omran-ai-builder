@@ -7,6 +7,22 @@
 
 var SESS_KEY = 'omran_sess_v1';
 
+/* v-float-above-composer (تدقيق ١٨–١٩ أكتوبر): التوست وتلميح التعليم وشريط سؤال التنبيه كانت على bottom ثابت فتقع فوق
+   صندوق الكتابة (والإرسال على الجوّال). مساعد واحد يقيس أعلى #composerBox (أو #inputbar): bottom يضع العنصر فوقه بفجوة،
+   ومنتصف الصندوق وعرضه. null إن لم يكن الصندوق ظاهرًا (مكالمة مها مثلًا) فيبقى للمستدعي احتياطه. معرَّض قبل حارس
+   الجلسة الجديدة لأنّ edu.js وmedia-notify.js يستعملانه في كلّ جلسة. */
+window.__omranAboveComposer = function(gap){
+  try{
+    var box = document.getElementById('composerBox') || document.getElementById('inputbar');
+    if(!box) return null;
+    var r = box.getBoundingClientRect();
+    var ih = window.innerHeight || 0;
+    if(!r || !r.width || !r.height || !ih || r.top <= 0 || r.top >= ih) return null;
+    var g = (typeof gap === 'number') ? gap : 10;
+    return { bottom: Math.round(ih - r.top + g), left: Math.round(r.left), width: Math.round(r.width), cx: Math.round(r.left + r.width / 2) };
+  }catch(e){ __swallow(e, 'float:above-composer'); return null; }
+};
+
 // ── اكتشاف الزيارة الجديدة ─────────────────────────────────────────────────
 var isNewSession = false;
 try{
@@ -45,7 +61,7 @@ function onHistoryReady(){
     // ── أنشئ محادثة جديدة ──────────────────────────────────────────────────
     var newId = 'p_' + Date.now();
     var provKey = '';
-    try{ provKey = localStorage.getItem('aiapp_provider') || 'openai'; }catch(e){ /* guard-ok */ provKey = 'openai'; }
+    try{ provKey = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); }catch(e){ /* guard-ok */ provKey = (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); } /* v-grok-first */
     var title = '';
     try{ title = (typeof t === 'function') ? (t('defaultProjectTitle') || 'محادثة جديدة') : 'محادثة جديدة'; }catch(e){ title = 'محادثة جديدة'; }
 
@@ -95,12 +111,14 @@ function showSessionToast(){
     var el = document.createElement('div');
     el.id = 'sessToast';
     el.textContent = msg;
+    /* v-float-above-composer: فوق الصندوق المقيس وفي منتصفه وبعرضه (يلتفّ بدل أن يفيض)؛ الاحتياط القديم بلا صندوق ظاهر. */
+    var pos = window.__omranAboveComposer(10);
     el.style.cssText = [
-      'position:fixed','bottom:80px','left:50%','transform:translateX(-50%)',
+      'position:fixed','bottom:' + (pos ? pos.bottom + 'px' : '80px'),'left:' + (pos ? pos.cx + 'px' : '50%'),'transform:translateX(-50%)',
       'background:rgba(212,175,55,.95)','color:#000','font-weight:700','font-size:13px',
       'padding:10px 20px','border-radius:30px','box-shadow:0 4px 24px rgba(0,0,0,.4)',
       'z-index:99999','opacity:0','transition:opacity .35s','pointer-events:none',
-      'white-space:nowrap','max-width:90vw','text-align:center',
+      'width:max-content','box-sizing:border-box','max-width:' + (pos ? pos.width + 'px' : '90vw'),'text-align:center',
     ].join(';');
     document.body.appendChild(el);
     requestAnimationFrame(function(){ el.style.opacity = '1'; });
