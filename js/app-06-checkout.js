@@ -20,6 +20,8 @@ function sanitizeGeminiContents(list){
 // Stripe Payment Request Button API + PayPal) =====
 let checkoutCurrentPlan = null;
 let paypalSdkLoaded = false;
+let paypalLoadState = ''; // v-lock-ckui (cli-money-11): '' مفعّل أو غير مفعّل · 'loading' تحميل جارٍ · 'fail' تعثّر تحميله
+let paypalLoadSeq = 0; // v-lock-ckui (cli-money-11): رقم آخر تحميل — نتيجة تحميل أقدم تُرمى فلا تُرسم أزرار PayPal مرّتين
 let stripeJsLoaded = false;
 let stripeInstance = null;
 let currentPaymentRequest = null;
@@ -229,7 +231,9 @@ function omranIOSStoreApp(){
     if(!/iPad|iPhone|iPod/.test(navigator.userAgent || '')) return false;
     if(window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()))) return true;
     if(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)) return true;
-    if((localStorage.getItem('aiapp_store') || '') === 'apple') return true;
+    /* v-lock-ckui (cli-money-8): selfdiag.js (قبل الحزمة) ينقل علم ?store= إلى sessionStorage ويمسح localStorage (v-store-flag-session)،
+       فقراءة localStorage هنا كانت ميّتة: غلاف ?store=apple بلا جسر يرى Google Pay والبطاقة داخله. القراءة من حيث يُحفظ العلم. */
+    if((sessionStorage.getItem('aiapp_store') || '') === 'apple') return true;
   }catch(e){ /* guard-ok — بلا كشف تبقى النافذة الداخلية المعتادة */ }
   return false;
 }
@@ -306,8 +310,18 @@ window.closeCheckout = closeCheckout;
 // "بطاقة" — opens the Stripe-hosted Checkout page (redirect). Creates a real
 // recurring Stripe subscription; see the KNOWN LIMITATION note in
 // api/_lib/create-checkout-session.js about renewal re-crediting.
+/* v-lock-ckui (cli-money-4): نقرة «اشترك» واحدة = جلسة دفع واحدة. النقرة المكرّرة أثناء الطلب (أو أثناء انتظار خروج التطبيق لسفاري)
+   كانت تنشئ جلسة Stripe ثانية وتفتح سفاري مرّتين، ويبقى رقم الأخيرة وحده في aiapp_ck_pending فلا يتحقّق جسر العودة من الأولى. */
+let stripeCheckoutBusy = false;
 async function startStripeCheckout(){
+  if (stripeCheckoutBusy) return;
+  stripeCheckoutBusy = true;
   const statusMsg = document.getElementById('checkoutStatusMsg');
+  /* v-lock-ckui (cli-money-4): في غلاف آبل لا تظهر نافذة الدفع (openCheckout يتخطّاها، v-ios-external-pay)، فما يُكتب في statusMsg
+     لا يراه أحد — «اشترك» كان يصمت عند 401 (رمز منتهٍ) و500 وانقطاع الشبكة. هناك يصل الخطأ بتنبيه النظام (alert، كما يبشّر جسر
+     العودة بالنجاح) بمفتاح مترجم لا بنصّ الخادم الخامّ. خارج الغلاف كما كان. */
+  const ext = omranIOSStoreApp();
+  const fail = (txt, key) => { if (statusMsg) statusMsg.textContent = txt; if (ext) alert(t(key)); };
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t('checkoutRedirecting'); }
   try {
     const r = await fetch('/api/account?action=create-checkout-session', {
@@ -317,7 +331,7 @@ async function startStripeCheckout(){
     });
     const data = await r.json();
     if (!r.ok || !data.url) {
-      if (statusMsg) statusMsg.textContent = data.error || t('checkoutNotConfigured');
+      fail(data.error || t('checkoutNotConfigured'), r.status === 401 ? 'checkoutLoginFirst' : 'checkoutError');
       return;
     }
     // v-ios-bridge: على آيفون المثبَّت يهبط نجاح الدفع في ورقة متصفح منفصلة
@@ -328,14 +342,28 @@ async function startStripeCheckout(){
        النظام (Apple Pay خارجي) — والعودة للتطبيق تُكمل التحقق عبر
        aiapp_ck_pending (v-ios-bridge، آمن التكرار). لو منع الغلاف
        window.open نهبط للتحويل المعتاد فلا يضيع الدفع بأي حال. */
-    if (omranIOSStoreApp()){
+    if (ext){
+      /* v-lock-ckui (cli-money-3): 'noopener' يجعل window.open يعيد null دائمًا (المواصفة) ولو فُتحت النافذة، فكان التحويل الاحتياطيّ
+         يجري بعد كلّ فتح ناجح: صفحة الدفع مرّتين، أو داخل الغلاف نفسه. الآن بلا noopener، والصلة تُقطع يدويًّا (opener = null).
+         وغلاف كاباسيتور يسلّم window.open لسفاري ويعيد null عمدًا (createWebViewWith ← nil): دليل الفتح هناك خروج التطبيق للخلفيّة
+         (visibilitychange). لا نافذة ولا خروج خلال ٣ ثوانٍ = مُنعت فعلًا، فالتحويل المعتاد مرّة واحدة. */
       let w = null;
-      try{ w = window.open(data.url, '_blank', 'noopener'); }catch(e){ __swallow(e, 'checkout:extopen'); }
+      try{ w = window.open(data.url, '_blank'); if (w) w.opener = null; }catch(e){ __swallow(e, 'checkout:extopen'); }
+      if (!w) w = await new Promise((resolve) => {
+        const done = (v) => { document.removeEventListener('visibilitychange', onVis); window.removeEventListener('pagehide', onHide); resolve(v); };
+        const onVis = () => { if (document.visibilityState === 'hidden') done(true); };
+        const onHide = () => done(true);
+        document.addEventListener('visibilitychange', onVis);
+        window.addEventListener('pagehide', onHide);
+        setTimeout(() => done(document.visibilityState === 'hidden'), 3000);
+      });
       if (w){ closeCheckout(); return; }
     }
     window.location.href = data.url;
   } catch (e) {
-    if (statusMsg) statusMsg.textContent = t('checkoutError');
+    fail(t('checkoutError'), 'checkoutError');
+  } finally {
+    stripeCheckoutBusy = false;
   }
 }
 window.startStripeCheckout = startStripeCheckout;
@@ -549,11 +577,21 @@ async function loadPaypalButtons(){
   const container = document.getElementById('paypalButtonContainer');
   const fallbackBtn = document.getElementById('paypalFallbackBtn');
   if (!container) return;
+  /* v-lock-ckui (cli-money-11): تحميلان متداخلان (فتح الدفع ثانيةً أثناء إعادة المحاولة، أو نقرة على احتياطيّ قديم أثناء الفتح)
+     كانا يرسمان أزرار PayPal مرّتين ويُظهران الاحتياطيّ ورسالة التعثّر فوقها. كلّ تحميل يأخذ رقمًا، وبعد كلّ انتظار يتوقّف إن جاء
+     بعده أحدث؛ والاحتياطيّ يُخفى لحظة البدء (الحالة 'loading') فلا يُنقر احتياطيّ قديم أثناءه. */
+  const seq = ++paypalLoadSeq;
+  paypalLoadState = 'loading';
+  if (fallbackBtn) fallbackBtn.style.display = 'none';
   container.innerHTML = '';
   try {
     const r = await fetch('/api/account?action=paypal-client-id');
+    if (seq !== paypalLoadSeq) return;
+    if (!r.ok) throw new Error('paypal-client-id ' + r.status); // v-lock-ckui (cli-money-11): عطل الخادم تعثّر تحميل، لا «غير مفعّل»
     const data = await r.json();
+    if (seq !== paypalLoadSeq) return;
     if (!data.configured) {
+      paypalLoadState = '';
       if (fallbackBtn) fallbackBtn.style.display = 'flex';
       return;
     }
@@ -566,8 +604,11 @@ async function loadPaypalButtons(){
         s.onerror = reject;
         document.head.appendChild(s);
       });
-      paypalSdkLoaded = true;
+      paypalSdkLoaded = !!window.paypal; // v-lock-ckui (cli-money-11): سكربت فارغ (حاجب) لا يُحسب محمّلًا، فتعيده المحاولة
     }
+    if (seq !== paypalLoadSeq) return;
+    if (!window.paypal) throw new Error('paypal-sdk-empty'); // v-lock-ckui (cli-money-11): كان لا يُرسم شيء ولا يظهر الاحتياطيّ
+    paypalLoadState = '';
     if (window.paypal) {
       window.paypal.Buttons({
         style: { color: 'blue', shape: 'rect', label: 'paypal', height: 45 },
@@ -643,12 +684,26 @@ async function loadPaypalButtons(){
       }).render('#paypalButtonContainer');
     }
   } catch (e) {
+    if (seq !== paypalLoadSeq) return; // v-lock-ckui (cli-money-11): تعثّر تحميل قديم لا يُظهر الاحتياطيّ فوق أزرار رسمها الأحدث
+    paypalLoadState = 'fail';
     if (fallbackBtn) fallbackBtn.style.display = 'flex';
   }
 }
 
+/* v-lock-ckui (cli-money-11): الزرّ الاحتياطيّ يظهر لسببين — PayPal غير مفعّل فعلًا (configured:false)، أو مفعّل وتعثّر تحميله على
+   الجهاز (شبكة، حاجب إعلانات، عطل الخادم). الثاني كان يقول «الدفع غير مفعّل من الإدارة بعد» فيظنّ المستخدم أنّ الموقع لا يقبل PayPal.
+   الآن يقول «تعذّر التحميل» ويعيد المحاولة مرّة لكلّ نقرة (الزرّ يختفي أثناءها، وأيّ نقرة أثناء تحميل جارٍ — إعادةً كان أو فتحًا — تُتجاهل). */
 async function startPaypalCheckout(){
   const statusMsg = document.getElementById('checkoutStatusMsg');
+  if (paypalLoadState === 'loading') return;
+  if (paypalLoadState === 'fail') {
+    const k = 'axLkCkuiPaypalLoadFail', m = t(k);
+    const msg = m && m !== k ? m : t('checkoutError');
+    if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = msg; }
+    await loadPaypalButtons(); // تُخفي الاحتياطيّ وتضع 'loading' فورًا، ثمّ '' إن نجحت أو 'fail' إن تعثّرت ثانيةً
+    if (paypalLoadState === '' && statusMsg && statusMsg.textContent === msg) statusMsg.textContent = '';
+    return;
+  }
   if (statusMsg) statusMsg.textContent = t('checkoutNotConfigured');
 }
 window.startPaypalCheckout = startPaypalCheckout;
@@ -1370,14 +1425,12 @@ const TOPIC_FOLLOW_RULE = '\nTOPIC FOLLOW RULE (mandatory, highest priority): th
 const CHAT_STYLE_RULE = '\nCHAT STYLE RULE (mandatory): outside the single fenced code block, use 1 to 3 short natural sentences in the user\'s language to state what was built or changed. Add a question or next step only when a real choice, blocker or unfinished action remains; never append suggestions automatically. NEVER put code, HTML tags, CSS, function names in backticks, or technical snippets in the conversational text. All code goes ONLY inside one fenced ``` block. The chat must read like a discussion between two people, never like documentation.'
 // ✅ v303: ممنوع «أنا موديل نصي لا أرسم» + ممنوع سلسلة الاستيضاحات + الرد القصير الموافق = تنفيذ فوري.
 const APP_CAPABILITY_RULE = '\nAPP CAPABILITY RULE (mandatory): This app AUTOMATICALLY generates real images (floor plans, facades, posters, photos) around your text replies. NEVER say you are a text-only model, that you cannot draw, or tell the user to type a different command to get an image — the app already handles image generation. FORBIDDEN: asking more than ONE clarifying question in a conversation thread. If the user replies with a short affirmative (نعم / ابدأ / يلا / تمام / ok / yes) or names a part of your own previous proposal (المخطط / الواجهة / الشكل الخارجي...), that IS full approval of your last proposal — execute it completely and immediately, never ask what they mean.';
-+ '\nADDRESSING RULE (mandatory): NEVER call the user by any name (like عبدالله or أحمد) unless the user explicitly told you their name in THIS conversation. If you do not know the name, use no name at all.'
-+ '\nGREETING RULE (mandatory): greet AT MOST ONCE per conversation — only if the user greeted you in their CURRENT message AND you have not greeted before in this conversation. NEVER open a reply with هلا/أهلاً/مرحبا/وعليكم السلام otherwise. Go straight to the answer.'
-+ '\nPERSONA RULE (mandatory): you are a warm, sharp Gulf-Arabic assistant. Never call the user "كابتن" or any nickname. Keep replies SHORT (2-4 sentences), human and direct. Add ONE concrete next-step suggestion or question only when a real choice, blocker or unfinished action remains; otherwise end after the answer. No generic filler, no lecture-style advice, no bullet lists in casual chat.'
-+ '\nTOPIC RULE (mandatory): each user message may be a completely NEW topic. Detect topic switches instantly and answer the NEW topic only — never drag the previous topic into the reply or re-answer it.'
-+ '\nQUESTION RULE (mandatory): if the user asks a question or wants a discussion, ONLY answer it. Do NOT offer to build an app, do NOT produce code, and do NOT list app screens unless the user explicitly commanded you to build something.'
-+ '\nCONSULTATION RULE (mandatory): when the user explicitly asks for your opinion, advice or a discussion (شو رايك، وش تنصح، ناقشني، عطني رايك، أيهما أفضل، استشارة), switch to a thoughtful consultant style: give a clear honest opinion, 2-3 concrete reasons, mention one trade-off, and end with a short conclusion (خلاصة). This is the ONLY case where a longer structured reply is allowed — still no code and no offering to build.'
-+ '\nLANGUAGE PURITY RULE (mandatory): reply ENTIRELY in the user\'s language. If the user writes Arabic, the whole reply must be Arabic — never mix English sentences or phrases into an Arabic reply (technical proper nouns like HTML are fine).'
-+ '\nNO VISIBLE THINKING RULE (mandatory, highest priority): NEVER print your internal reasoning, chain-of-thought, self-analysis, rule-checking or planning process in the reply (e.g. "Okay, let me unpack this", "First, checking the system rules", "Final check"). All thinking stays silent and internal — output ONLY the final polished answer itself, nothing else.';
+/* v-lock-ckui (cli-money-7): كانت بعد الفاصلة المنقوطة أعلاه ثمانية أسطر «+ '…RULE…'» (ADDRESSING · GREETING · PERSONA · TOPIC · QUESTION ·
+   CONSULTATION · LANGUAGE PURITY · NO VISIBLE THINKING) — عبارة مستقلّة تُحسب وتُرمى، فلم تصل أيّ رسالة نظام قطّ (والحزمة المنشورة مثلها).
+   حُذفت ولم تُفعَّل: تفعيلها يغيّر ما يصل النموذج في كلّ طلب بناء (أسلوب مختبَر على حاله، وقيد المالك في v-openai-pick «لا تغيير لأسلوب
+   المحادثة»)، وبعضها يناقض قواعد البناء هنا (QUESTION «لا كود» مقابل NO_FAKE_EDIT «الملفّ كاملًا»). ونيّاتها قائمة في مواضعها:
+   CONVERSATION_QUALITY_RULE (٢ التحية · ٤ الطول · ٥ اللغة · ٦ بلا تفكير ظاهر)، TOPIC_FOLLOW_RULE، REPLY LANGUAGE RULE، وقاعدة الاسم
+   في بروم المحادثة العاديّة (app-09-attach.js). */
 
 // تنظيف نص المحادثة: يشيل أي كود متبقي (مسيّج أو خام) حتى لا يظهر في الدردشة.
 // 🔒 أثناء البث الحي: أول ما يبدأ المزود يكتب كودًا (سياج ``` أو HTML خام)
