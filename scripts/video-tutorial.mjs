@@ -5,6 +5,7 @@
 //      على العنصر مع حلقة ذهبيّة، رقم الخطوة وعنوانها وشرحها بخطّ كبير على الجانب، انتقالات متلاشية، وخاتمة.
 //   بلا توليد مدفوع: ردّ مساعد الكتابة وحده مُزيَّف ليظهر عمله. المخرج: media/samples/tutorial-<ar|en>.mp4 + .jpg
 // الاستعمال: node scripts/video-tutorial.mjs [--lang ar|en|both] [--out media/samples]
+//   v-tab-tut-gen: --mode veo ← فيديو قسم واحد بخطواته ونصّه (<الوضع>-tut.mp4 + .jpg، بالعربيّ وحده كما يعرضه tutUrl في js/video.js)
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,7 +17,8 @@ import { createRequire } from 'node:module';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
-const LANGS = opt('lang', 'both') === 'both' ? ['ar', 'en'] : [opt('lang', 'ar')];
+const MODE = opt('mode', ''); // v-tab-tut-gen
+const LANGS = MODE ? ['ar'] : (opt('lang', 'both') === 'both' ? ['ar', 'en'] : [opt('lang', 'ar')]);
 const OUT = path.resolve(ROOT, opt('out', 'media/samples'));
 const FPS = 30;
 
@@ -71,6 +73,27 @@ const MOCK = {
   en: { result: { scene: 'Close-up of a coffee pot pouring into a cup in a warm shop', narration: '', lines: [{ who: 'Khalid', text: 'Welcome to our new branch!' }], onScreen: 'Grand opening' }, seconds: 8, words: 18 },
 };
 
+/* v-tab-tut-gen: نصّ قسم واحد يحلّ محلّ نصّ الفيديو العامّ (العربيّ)، ومثال مساعد الكتابة على قدّ القسم — بلا سعر في النصّ (يتغيّر) */
+const MODES = {
+  veo: {
+    intro: 'كيف تصنع فيديو سينمائي بصوت وكلام', outro: 'جاهز؟ اصنع فيديوك السينمائي',
+    ask: 'اكتب لي حوار بائع تمر في سوق شعبي ينادي على الزبائن',
+    steps: [
+      ['اختر «سينمائي»', 'فيديو بصوت حقيقي: كلام الشخصيّات وأصوات المكان، بأعلى جودة'],
+      ['اختر فكرة أو اكتب وصفك', 'اكتب المشهد، ومن يتكلّم، وماذا يقول'],
+      ['أضف صورة البطل', 'اختياريّ: صورتك أو صورة أيّ شخص ليظهر ويتكلّم في الفيديو'],
+      ['اطلب من المساعد', 'يكتب لك الحوار على قدّ مدّة الفيديو'],
+      ['اختر المدّة والشكل', 'عرضيّ لليوتيوب، أو طوليّ للستوري والريلز'],
+      ['اضغط «إنشاء الفيديو»', 'وانتظر دقائق قليلة حتّى يجهز فيديوك بصوته'],
+    ],
+    mock: { result: { scene: 'سوق شعبي مزدحم وقت العصر، بائع تمر مبتسم يقف خلف صناديق التمر وينادي على المارّة', narration: '', lines: [{ who: 'البائع', text: 'تفضّلوا يا جماعة، تمر خلاص طازج من المزرعة!' }], onScreen: '' }, seconds: 8, words: 16 },
+  },
+};
+if (MODE) {
+  const m = MODES[MODE]; if (!m) throw new Error('لا نصّ لهذا القسم: ' + MODE);
+  Object.assign(TXT.ar, { intro: m.intro, outro: m.outro, ask: m.ask, steps: m.steps }); MOCK.ar = m.mock;
+}
+
 // ١) اللقطات: حالة الصانع عند كلّ خطوة + مستطيل العنصر نسبةً إلى بطاقة الصانع
 async function capture(browser, lang, dir) {
   const t = TXT[lang];
@@ -86,7 +109,7 @@ async function capture(browser, lang, dir) {
   await page.evaluate(() => { ['omranIntro', 'privacyConsent'].forEach((id) => { const el = document.getElementById(id); if (el) el.remove(); }); });
   await page.evaluate(() => document.getElementById('btnVideoMaker').click());
   await page.waitForSelector('#vmkTabs'); await page.waitForTimeout(600);
-  await page.click('#vmkTabs [data-tab=omni]'); await page.waitForTimeout(500);
+  await page.click('#vmkTabs [data-tab=' + (MODE || 'omni') + ']'); await page.waitForTimeout(500);
   const shots = [];
   const shoot = async (sel, prep) => {
     if (prep) await prep();
@@ -215,9 +238,10 @@ try {
       await page.screenshot({ path: path.join(framesDir, String(f).padStart(5, '0') + '.jpg'), type: 'jpeg', quality: 93 });
     }
     await ctx.close();
-    const mp4 = path.join(OUT, 'tutorial-' + lang + '.mp4');
+    const name = MODE ? MODE + '-tut' : 'tutorial-' + lang; // v-tab-tut-gen
+    const mp4 = path.join(OUT, name + '.mp4');
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(framesDir, '%05d.jpg'), '-c:v', 'libx264', '-crf', '19', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', mp4]);
-    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', '5.5', '-i', mp4, '-frames:v', '1', '-vf', 'scale=1280:-2', '-q:v', '3', path.join(OUT, 'tutorial-' + lang + '.jpg')]);
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', '5.5', '-i', mp4, '-frames:v', '1', '-vf', 'scale=1280:-2', '-q:v', '3', path.join(OUT, name + '.jpg')]);
     console.log(lang, mp4, (fs.statSync(mp4).size / 1048576).toFixed(1) + 'MB', total.toFixed(1) + 's');
   }
 } finally { await browser.close(); srv.close(); }
