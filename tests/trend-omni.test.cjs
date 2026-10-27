@@ -227,7 +227,7 @@ test('٧. ناتج مفقود من التخزين: FAILED ويُردّ الخص�
   kv.set(key, saved);
 });
 
-test('٨. TREND_ENGINE=veo يعيد المسار القديم، والسينمائيّ بلا ترند لم يُمسّ (Veo) — قراره منفصل', async () => {
+test('٨. TREND_ENGINE=veo يعيد مسار الترند القديم؛ والسينمائيّ بلا ترند على Omni افتراضيًّا ومفتاحه وحده CINEMA_ENGINE (v-cinema-omni)', async () => {
   process.env.TREND_ENGINE = 'veo';
   calls = [];
   const a = await create({ token: ownerTok, trend: 'pixarsketch', params: { text: 'x', sceneIndex: 0 }, ratio: '720:1280' });
@@ -236,8 +236,8 @@ test('٨. TREND_ENGINE=veo يعيد المسار القديم، والسينما
   delete process.env.TREND_ENGINE;
   calls = [];
   const b = await create({ token: ownerTok, promptText: 'صقر فوق الكثبان', ratio: '1280:720' });
-  assert.equal(b.body.op, 'operations/veo-1');
-  assert.ok(!calls.some((c) => /\/interactions$/.test(c.url)), 'السينمائيّ على مساره');
+  assert.match(String(b.body.op), /^omni\//);
+  assert.ok(calls.some((c) => /\/interactions$/.test(c.url)) && !calls.some((c) => /predictLongRunning/.test(c.url)), 'السينمائيّ على Omni');
 });
 
 /* ── v-trend-omni-face ── */

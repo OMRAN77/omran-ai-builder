@@ -95,19 +95,24 @@ test('٤. مربّع «مقدّمة وخاتمة بتوقيعك»: يظهر لأ
   assert.ok(a > 0 && b > a);
   assert.ok(VIDEO.includes('  if(wrapToggle) wrapToggle.onchange = updateModeUI;'));
   const els = { videoMakerWrapRow: { style: {} }, videoMakerWrapToggle: { checked: false } };
-  const ctx = { document: { getElementById: (id) => els[id] || null }, modeEl: { value: 'minimax' }, signatureRow: { style: {} }, syncFilmHeroRow: () => {} };
+  const narrLab = { style: {} }; /* v-video-durations: التعليق الصوتيّ يظهر حيث يُدمج وحده */
+  const narrationToggle = { checked: true, closest: () => narrLab, onchange: null };
+  const ctx = { document: { getElementById: (id) => els[id] || null }, modeEl: { value: 'minimax' }, signatureRow: { style: {} }, syncFilmHeroRow: () => {}, narrationToggle };
   vm.runInNewContext(VIDEO.slice(a, b) + '\nthis.update = updateModeUI; this.want = wantCanvasWrap;', ctx);
   for (const [mode, row, sig] of [['minimax', 'flex', 'none'], ['runway', 'flex', 'none'], ['veo', 'flex', 'none'], ['actor', 'none', 'none'], ['canvas', 'none', 'flex']]) {
     ctx.modeEl.value = mode; ctx.update();
     assert.equal(els.videoMakerWrapRow.style.display, row, mode + ': المربّع');
     assert.equal(ctx.signatureRow.style.display, sig, mode + ': التوقيع بلا تفعيل');
     assert.equal(ctx.want(), false, mode + ': بلا تفعيل لا التفاف');
+    assert.equal(narrLab.style.display, { runway: '', canvas: '' }[mode] === '' ? '' : 'none', mode + ': التعليق الصوتيّ بلا التفاف');
   }
+  assert.equal(narrationToggle.checked, false, 'وضع لا يُدمج فيه التعليق يُطفئه');
   els.videoMakerWrapToggle.checked = true;
   for (const [mode, sig, want] of [['minimax', 'flex', true], ['runway', 'flex', true], ['veo', 'flex', true], ['actor', 'none', false], ['canvas', 'flex', false]]) {
     ctx.modeEl.value = mode; ctx.update();
     assert.equal(ctx.signatureRow.style.display, sig, mode + ': التوقيع مع التفعيل');
     assert.equal(ctx.want(), want, mode + ': الالتفاف مع التفعيل');
+    assert.equal(narrLab.style.display, (want || mode === 'canvas') ? '' : 'none', mode + ': التعليق الصوتيّ مع الالتفاف');
   }
 });
 
@@ -132,18 +137,18 @@ test('٥. الالتفاف بعد نجاح كلّ محرّك ذكاء (الاق�
   assert.ok(wrapAt < useAt, 'الدالّة معرّفة قبل أوّل استعمال في التوزيع');
 });
 
-test('٦. الفيلم: «سريع» (الافتراضيّ) يسلك مسلك المحرّك الأساسيّ كما كان الافتراضيّ السابق؛ «بدون ذكاء» و«ممثّل» يُوقَفان برسالة', () => {
-  const needle = "        if(creationMode !== 'runway' && creationMode !== 'minimax' && !filmUseVeo){";
+test('٦. الفيلم: «جودة عالية» و«سينمائي» وحدهما؛ «سريع» (كان يصنع مشاهده بمحرّك «جودة عالية» صامتًا — v-video-durations) و«بدون ذكاء» و«ممثّل» يُوقَفون برسالة', () => {
+  const needle = "        if(creationMode !== 'runway' && !filmUseVeo){";
   const block = extractBlock(VIDEO, needle);
   assert.ok(VIDEO.includes("const filmUseVeo = (creationMode === 'veo');"), 'الاقتصاديّ ليس مسلك السينمائيّ');
-  for (const [mode, pass] of [['minimax', true], ['runway', true], ['veo', true], ['canvas', false], ['actor', false]]) {
+  for (const [mode, pass] of [['minimax', false], ['runway', true], ['veo', true], ['canvas', false], ['actor', false]]) {
     const statuses = [];
     const ctx = { creationMode: mode, filmUseVeo: mode === 'veo', setStatus: (s) => statuses.push(s), btnGenerate: { disabled: true }, window: {}, bT: (a) => a };
     const r = vm.runInNewContext('(function(){ ' + block + ' return "passed"; })()', ctx);
     assert.equal(r, pass ? 'passed' : undefined, mode);
     if (!pass) assert.match(statuses[0], /لم يُخصم شيء/, mode);
   }
-  assert.match(block, /أوضاع الذكاء فقط \(سريع \/ جودة عالية \/ سينمائيّ\)/, 'رسالة البوّابة بأسماء القائمة الجديدة');
+  assert.match(block, /أوضاع الذكاء فقط \(جودة عالية \/ سينمائيّ\)/, 'رسالة البوّابة بأسماء القائمة الجديدة (بلا «سريع» — خرج من الفيلم)');
 });
 
 test('٧. لا اسم مزوّد في رسائل صانع الفيديو التي لُمست (قاعدة المالك)، والوسوم مرفوعة، والحزمة مبنيّة', () => {
@@ -154,7 +159,7 @@ test('٧. لا اسم مزوّد في رسائل صانع الفيديو الت�
   const vTag = (re) => Number((html.match(re) || [])[1]);
   assert.ok(vTag(/partials-core\.js\?v=(\d+)/) >= 657 && vTag(/\/js\/video\.js\?v=(\d+)/) >= 440, 'وسوم partials-core ≥ ٦٥٧ وvideo.js ≥ ٤٤٠');
   const bundle = read('js/app.bundle.js');
-  assert.ok(bundle.includes('async function wrapWithCanvas(') && bundle.includes("creationMode !== 'minimax' && !filmUseVeo"), 'شغّل npm run bundle');
+  assert.ok(bundle.includes('async function wrapWithCanvas(') && bundle.includes("if(creationMode !== 'runway' && !filmUseVeo){"), 'شغّل npm run bundle');
 });
 
 console.log('✓ video-modes-by-result: القائمة بالنتيجة — سريع بصوت (افتراضيّ) · جودة عالية · سينمائيّ · ممثّل · بدون ذكاء، ومربّع المقدّمة والخاتمة');

@@ -55,7 +55,9 @@
       tick(iv){
         if(++ticks * step < life) return true;
         clearInterval(iv);
-        reject(new Error(bT('طال انتظار الفيديو بلا نتيجة — أعد المحاولة.','The video took too long with no result — please try again.')));
+        /* v-video-poll-transient: المهمّة قُبلت ودُفعت ولم تُسوَّ — لا تُعاد بطلب جديد مدفوع (createSceneWithRetry كان يعيدها فيُخصم مرّتين) */
+        const te = new Error(bT('طال انتظار الفيديو بلا نتيجة — أعد المحاولة.','The video took too long with no result — please try again.'));
+        te.code = 'poll_timeout'; te.noRetry = true; reject(te);
         return false;
       },
       ok(){ errors = 0; },
@@ -63,9 +65,49 @@
       fail(iv, msg){
         if(++errors < 6) return;
         clearInterval(iv);
-        reject(new Error(msg || bT('انقطع الاتّصال بخدمة الفيديو — تحقّق من الشبكة وأعد المحاولة.','Lost connection to the video service — check your connection and try again.'))); /* v-ai-video-speed: نصّ الخادم إن جاء خطؤه منه */
+        const fe = new Error(msg || bT('انقطع الاتّصال بخدمة الفيديو — تحقّق من الشبكة وأعد المحاولة.','Lost connection to the video service — check your connection and try again.')); /* v-ai-video-speed: نصّ الخادم إن جاء خطؤه منه */
+        fe.noRetry = true; reject(fe); /* v-video-poll-transient: المهمّة المدفوعة ما زالت عند المزوّد — لا طلب جديد مدفوع فوقها */
       },
     };
+  }
+
+  /* v-video-partial (فحص ٢٧ أكتوبر): «فيلم متكامل» أو «٢٠ ثانية» يتوقّف في مشهد لاحق (حدّ اليوم، رصيد، إلغاء خصم، عطل) كان يرمي
+     المشاهد المكتملة المدفوعة ويعرض الخطأ وحده — تُعرض الآن ورا بعض بروابط تحميلها مع سبب التوقّف ونصّ «اكتمل {k} من {n} مشاهد»
+     (نصّ الترندات نفسه بالـ١٤ لغة — ui.partial). */
+  function partialScenesNote(k, n){
+    try{
+      const P = window.__VIDEO_TRENDS && window.__VIDEO_TRENDS.ui && window.__VIDEO_TRENDS.ui.partial;
+      const lg = (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar';
+      const t = P && (P[lg] || P.en || P.ar);
+      if(t) return String(t).replace('{k}', String(k)).replace('{n}', String(n));
+    }catch(e){ __swallow(e, 'video:partial-note'); }
+    return bT('اكتمل ' + k + ' من ' + n + ' مشاهد — الجاهز تحت.', 'Finished ' + k + ' of ' + n + ' scenes — the ready part is below.');
+  }
+  function showPartialScenes(urls, n, why){
+    let idx = 0;
+    resultEl.onended = () => { idx++; if(idx < urls.length){ resultEl.src = urls[idx]; resultEl.play().catch(() => {}); } };
+    resultEl.src = urls[0];
+    resultEl.style.display = 'block';
+    downloadEl.href = proxyVideoUrl(urls[0]);
+    downloadEl.download = 'scene-1.mp4';
+    downloadEl.style.display = urls.length === 1 ? 'block' : 'none';
+    let linksEl = document.getElementById('filmSceneLinks');
+    if(!linksEl){
+      linksEl = document.createElement('div');
+      linksEl.id = 'filmSceneLinks';
+      linksEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;justify-content:center;';
+      resultEl.parentNode.insertBefore(linksEl, resultEl.nextSibling);
+    }
+    linksEl.innerHTML = '';
+    if(urls.length > 1) urls.forEach((u, i) => {
+      const a = document.createElement('a');
+      a.href = proxyVideoUrl(u);
+      a.download = 'scene-' + (i + 1) + '.mp4';
+      a.textContent = (bT('⬇️ مشهد ','⬇️ Scene ')) + (i + 1);
+      a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
+      linksEl.appendChild(a);
+    });
+    setStatus(why + ' ' + partialScenesNote(urls.length, n));
   }
 
   // v526: autoSaveVideo — النقر البرمجي محظور على هواوي/أندرويد
@@ -419,7 +461,8 @@
       }
       /* v-vmk-chat-tab (تدقيق ١٨–١٩ أكتوبر): نصّ أو صورة من المحادثة مكانهما قسم الوضع (الوصف وصورة البطل) — كان يُفتح على «الترندات» وهما
          مخفيّان. video.js يقرأ العلامة عند الفتح مرّة ويمحوها؛ بلا نصّ ولا صورة (ترندات المحادثة، مها) يبقى على الترندات */
-      if((prompt && String(prompt).trim()) || heroDataUrl){ if(modal.style.display !== 'flex') modal.dataset.vmkTab = (modeEl && modeEl.value) || 'runway'; }
+      /* v-video-durations: الافتراضيّ في القائمة «سريع» (للمالك وحده) — غير المالك كان يُفتح على الترندات والوصف مخفيّ؛ قسمه «جودة عالية» */
+      if((prompt && String(prompt).trim()) || heroDataUrl){ if(modal.style.display !== 'flex'){ const om = (modeEl && modeEl.value) || 'runway'; modal.dataset.vmkTab = (!isOwnerAccount() && { minimax:1, omni:1, hybrid:1, actor:1 }[om]) ? 'runway' : om; } }
       modal.style.display = 'flex';
       try{ closeHeaderMenu(); }catch(e){ /* guard-ok — closeHeaderMenu اختيارية */ }
       const owner = isOwnerAccount();
@@ -516,6 +559,12 @@
   function updateModeUI(){
     const m = modeEl.value;
     if(wrapRow) wrapRow.style.display = isAiMode(m) ? 'flex' : 'none';
+    /* v-video-durations: التعليق الصوتيّ يُدمج في «جودة عالية» و«بدون ذكاء»، وفي غيرهما مع «مقدّمة وخاتمة» وحدها — كان ظاهرًا
+       في «سريع» و«سينمائي» و«ممثل» ولا يُطبَّق (والسينمائيّ والممثّل بصوتهما) */
+    const narrOk = m === 'runway' || m === 'canvas' || m === 'hybrid' || wantCanvasWrap();
+    const narrLab = narrationToggle && narrationToggle.closest('label');
+    if(narrLab) narrLab.style.display = narrOk ? '' : 'none';
+    if(!narrOk && narrationToggle && narrationToggle.checked){ narrationToggle.checked = false; if(typeof narrationToggle.onchange === 'function') narrationToggle.onchange(); }
     signatureRow.style.display = (m === 'canvas' || m === 'hybrid' || wantCanvasWrap()) ? 'flex' : 'none';
     const actorRowEl = document.getElementById('videoMakerActorRow');
     if(actorRowEl) actorRowEl.style.display = (m === 'actor') ? 'flex' : 'none';
@@ -636,7 +685,8 @@
     try{
       await ffmpeg.writeFile(v, await fetchFile(videoSrc));
       await ffmpeg.writeFile(a, await fetchFile(audioBlob));
-      await ffmpeg.exec(['-i', v, '-i', a, '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', o]);
+      /* v-video-partial: apad + shortest كـmuxNarrationAny — تعليق أطول من المقطع كان يمدّ الملفّ بإطار متجمّد */
+      await ffmpeg.exec(['-i', v, '-i', a, '-c:v', 'copy', '-af', 'apad', '-map', '0:v:0', '-map', '1:a:0', '-shortest', o]);
       const data = await ffmpeg.readFile(o);
       return new Blob([data.buffer], { type: 'video/mp4' });
     } finally {
@@ -660,7 +710,7 @@
       const hasAudio = scenes[i].audioBlob && scenes[i].audioBlob.size > 0;
       if(hasAudio){
         await ffmpeg.writeFile('a' + i + '.mp3', await fetchFile(scenes[i].audioBlob));
-        await ffmpeg.exec(['-i', 'v' + i + '.mp4', '-i', 'a' + i + '.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', 'm' + i + '.mp4']);
+        await ffmpeg.exec(['-i', 'v' + i + '.mp4', '-i', 'a' + i + '.mp3', '-c:v', 'copy', '-af', 'apad', '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'm' + i + '.mp4']); /* v-video-partial: مدد المشاهد لا تنحرف قبل الدمج */
         await rm('a' + i + '.mp3');
       } else {
         await ffmpeg.exec(['-i', 'v' + i + '.mp4', '-c', 'copy', 'm' + i + '.mp4']);
@@ -1249,10 +1299,12 @@
     const style = styleEl.value;
     const ratio = ratioEl.value;
     // adspot=5ث، reels=10ث — ضبط مدة فعلية لـ Runway
+    /* v-video-durations: المدّة الفعليّة في متغيّر — كانت تُكتب فوق القائمة نفسها فيضيع «إعلان سريع» أو «ريلز» بعد أوّل فيديو
+       (الحبّة تبقى عليه والقيمة ٥) */
     const _dv = durationEl.value;
-    if(_dv === 'adspot') durationEl.value = '5';
-    else if(_dv === 'reels') durationEl.value = '10';
-    const isLong = durationEl.value === 'long20';
+    const durVal = (_dv === 'adspot') ? '5' : (_dv === 'reels') ? '10' : _dv;
+    const durSecs = parseInt(durVal, 10) || 0; /* v-video-durations: الثواني المختارة تصل كلّ محرّك (كانت لا تصل الاقتصاديّ والسينمائيّ) */
+    const isLong = durVal === 'long20';
     const wantNarration = narrationToggle.checked;
     const wantQuality = qualityToggle.checked && !isLong;
 
@@ -1262,6 +1314,9 @@
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
     downloadEl.download = 'omran-ai-video.mp4'; // v-vmk-dl-ext: الافتراضيّ قبل كلّ توليد
+    /* v-video-partial (مراجعة ٢٧ أكتوبر): قائمة مشاهد فيلم سابق (روابطها ومشغّل «التالي») لا تتسرّب إلى الفيديو الجديد */
+    resultEl.onended = null;
+    { const oldSceneLinks = document.getElementById('filmSceneLinks'); if(oldSceneLinks) oldSceneLinks.innerHTML = ''; }
     /* v-vmk-res-mode: النتيجة تُوسَم بالوضع الذي ينتجها — video.js يخفيها ويوقفها في غيره (كان فيديو القوالب المجّانيّ يظهر في «فيديو AI»). */
     resultEl.dataset.mode = modeEl.value;
 
@@ -1318,7 +1373,7 @@
 
     /* Helper: generate ONE scene via Google Veo 3 (create + poll) and return its video URL. */
     async function createVeoScene(prompt, sceneRatio, sceneToken, hq, heroB64, heroMime){
-      const payload = { promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast', style: styleEl.value }; /* v-video-first-frame: الأسلوب يصل كلّ محرّك */
+      const payload = { promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast', style: styleEl.value, durationSeconds: 8 }; /* v-video-first-frame: الأسلوب يصل كلّ محرّك · v-video-durations: مشهد الفيلم ٨ ثوانٍ */
       if(heroB64){ payload.imageBase64 = heroB64; payload.imageMime = heroMime || 'image/jpeg'; } /* v-video-photo-identity */
       const cr = await fetch('/api/video?action=veo-create', {
         method: 'POST',
@@ -1335,6 +1390,8 @@
           try{
             const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(crData.op));
             const d = await st.json();
+            /* v-video-poll-transient: زحام المزوّد العابر (٤٢٩/٥xx — الخادم يُبقي التذكرة مفتوحة) يُتسامح معه كـRunway؛ «unavailable» نهائيّ */
+            if(d.error && (st.status === 429 || st.status >= 500) && d.error !== 'unavailable'){ guard.fail(iv, d.error); return; }
             guard.ok();
             if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
             if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
@@ -1344,7 +1401,8 @@
       });
     }
 
-    if(durationEl.value === 'film'){
+    if(durVal === 'film'){
+      let filmPartial = null, filmTotal = 0; /* v-video-partial */
       try{
         const filmUseVeo = (creationMode === 'veo');
         /* v-film-mode-gate (بلاغ مُثبَت: فحص «فيلم متكامل» يسبق فحص الوضع كلّه، فكانفا المجّانيّ والاقتصاديّ
@@ -1352,10 +1410,11 @@
            محرّكين فقط — غيرهما يُوقَف هنا قبل أيّ نداء أو خصم، برسالة واضحة لا تحويل صامت. */
         /* v-video-modes-by-result: «سريع» صار الافتراضيّ — في الفيلم يسلك مسلك المحرّك الأساسيّ كما كان الافتراضيّ السابق (الفيلم
            مبنيّ على محرّكين: الأساسيّ والسينمائيّ)؛ «بدون ذكاء» و«ممثّل» يبقيان موقوفين برسالة. */
-        if(creationMode !== 'runway' && creationMode !== 'minimax' && !filmUseVeo){
+        /* v-video-durations: «سريع» خرج من الفيلم — كان يصنع مشاهده بمحرّك «جودة عالية» صامتًا وبلا سعر على الزرّ */
+        if(creationMode !== 'runway' && !filmUseVeo){
           setStatus((typeof window.t === 'function' && window.t('videoFilmModeOnly') !== 'videoFilmModeOnly') ? window.t('videoFilmModeOnly')
-            : bT('🎬 «فيلم متكامل» يعمل مع أوضاع الذكاء فقط (سريع / جودة عالية / سينمائيّ) — غيّر الوضع أو اختر مدّة أخرى. لم يُخصم شيء.',
-                 '🎬 "Full mini-film" works with the AI modes only (Fast / High quality / Cinematic) — change the mode or pick another length. Nothing was charged.'));
+            : bT('🎬 «فيلم متكامل» يعمل مع أوضاع الذكاء فقط (جودة عالية / سينمائيّ) — غيّر الوضع أو اختر مدّة أخرى. لم يُخصم شيء.',
+                 '🎬 "Full mini-film" works with the AI modes only (High quality / Cinematic) — change the mode or pick another length. Nothing was charged.'));
           btnGenerate.disabled = false;
           return;
         }
@@ -1392,6 +1451,7 @@
           if(!ok){ btnGenerate.disabled = false; return; }
         }
         const builtScenes = [];
+        filmPartial = builtScenes; filmTotal = scenes.length; /* v-video-partial */
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
           setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? bT(' (سينمائي)',' (cinematic)') : '') + /* v-no-provider-names */ '...');
@@ -1488,8 +1548,10 @@
           // آخر ملاذ: عرض المشاهد ورا بعض مع روابط تحميل منفصلة
           showScenesPlaylist();
         }
+        filmPartial = null; /* v-video-partial: اكتمل الفيلم — ما بعده (الدمج) له مسلكه */
       } catch(e){
-        setStatus(friendlyError(e));
+        if(filmPartial && filmPartial.length) showPartialScenes(filmPartial.map((sc) => sc.videoUrl), filmTotal, friendlyError(e));
+        else setStatus(friendlyError(e));
       } finally {
         btnGenerate.disabled = false;
       }
@@ -1538,7 +1600,7 @@
     if(creationMode === 'minimax'){
       try{
         setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو...','🚀 Sending the request to the video engine...'));
-        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame: الأسلوب كان لا يصل */
+        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: durSecs || undefined }; /* v-video-first-frame: الأسلوب كان لا يصل · v-video-durations: والمدّة */
         if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=minimax-create', payload)
@@ -1553,6 +1615,8 @@
             try{
               const st = await fetch('/api/video?action=minimax-status&task_id=' + encodeURIComponent(crData.task_id));
               const d = await st.json();
+              /* v-video-poll-transient: زحام المزوّد العابر (٤٢٩/٥xx — الخادم يُبقي التذكرة مفتوحة) يُتسامح معه كـRunway؛ «unavailable» نهائيّ */
+              if(d.error && (st.status === 429 || st.status >= 500) && d.error !== 'unavailable'){ guard.fail(iv, d.error); return; }
               guard.ok();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED' && d.output && d.output[0]){ clearInterval(iv); resolve(d.output[0]); }
@@ -1583,7 +1647,9 @@
 
     if(creationMode === 'veo' || creationMode === 'actor'){
       try{
-        if(!isOwnerAccount()){
+        /* v-cinema-omni (المالك ٢٧ أكتوبر): «سينمائي» صار على محرّك شغّال فيُفتح للجميع بسعره (١٧٥ وحارس المشتركين على الخادم)؛
+           «ممثل يتكلم» يبقى للمالك حتّى تنجح تجربته (وتبويبه مخفيّ لغيره — OWNER_MODES في video.js) */
+        if(creationMode === 'actor' && !isOwnerAccount()){
           showNotice(bT('🔒 المحرّك السينمائيّ مقتصر على حساب المالك حاليًا.','🔒 The cinematic engine is limited to the owner account for now.')); // v-actor-notice
           return;
         }
@@ -1614,6 +1680,8 @@
                 try{
                   const st = await fetch('/api/video?action=actor-status&id=' + encodeURIComponent(acData.id));
                   const d = await st.json();
+                  /* v-video-poll-transient: زحام المزوّد العابر (٤٢٩/٥xx — الخادم يُبقي التذكرة مفتوحة) يُتسامح معه كـRunway؛ «unavailable» نهائيّ */
+                  if(d.error && (st.status === 429 || st.status >= 500) && d.error !== 'unavailable'){ guard.fail(iv, d.error); return; }
                   guard.ok();
                   if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
                   if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
@@ -1633,20 +1701,22 @@
           }
           if(!acData.fallback) throw new Error(acData.error || ('actor ' + ac.status));
           console.warn('[actor] lipsync path unavailable — Veo fallback:', acData.error);
-          veoPrompt = (text || (filmHeroBase64 ? 'The real person in the reference photo' : 'An Emirati man in traditional white kandura and ghutra, warm friendly face'))
+          /* v-photo-as-is: مع صورة لا «الشخص الحقيقيّ» ولا «realistic» — الأفاتار والكرتون يتكلّمان كما هما */
+          veoPrompt = (text || (filmHeroBase64 ? 'The person in the opening image' : 'An Emirati man in traditional white kandura and ghutra, warm friendly face'))
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
-            + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
+            + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting' + (filmHeroBase64 ? '' : ', realistic') + '. No subtitles, no captions, no text on screen.';
         }
         setStatus(bT('🚀 جاري الإرسال إلى المحرّك السينمائيّ...','🚀 Sending to the cinematic engine...')); /* v-no-provider-names */
-        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style }; /* v-video-first-frame */
+        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: (creationMode === 'veo' && durSecs) || undefined }; /* v-video-first-frame · v-video-durations: مدّة «سينمائي» المختارة (الممثّل على قدّ كلامه) */
         if(filmHeroBase64){ veoPayload.imageBase64 = filmHeroBase64; veoPayload.imageMime = filmHeroMime || 'image/jpeg'; } /* v-video-photo-identity */
-        const cr = await fetch('/api/video?action=veo-create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(veoPayload),
-        });
+        /* v-cinema-omni (مراجعة ٢٧ أكتوبر): «سينمائي» صار للزبون — الطلب يمرّ بنافذة الخصم (١٧٥) كالاقتصاديّ؛ كان fetch خامًا بلا confirmed
+           فيقف كلّ غير المالك عند ٤٢٨ «confirm_required». والرموز تُحفظ (المهلة، النقاط، المشتركون) لرسائلها. */
+        const cr = await (window.postWithConfirm
+          ? window.postWithConfirm('/api/video?action=veo-create', veoPayload)
+          : fetch('/api/video?action=veo-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(veoPayload) }));
+        throwIfDeclined(cr);
         const crData = await cr.json();
-        if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
+        if(!cr.ok || crData.error || !crData.op) throw Object.assign(new Error(crData.error || 'veo create failed'), { code: crData.error, retryAfter: crData.retryAfter || 0 });
         const videoUrl = await new Promise((resolve, reject) => {
           const guard = makePollGuard(reject, 8000);
           const iv = setInterval(async () => {
@@ -1654,6 +1724,8 @@
             try{
               const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(crData.op));
               const d = await st.json();
+              /* v-video-poll-transient: زحام المزوّد العابر (٤٢٩/٥xx — الخادم يُبقي التذكرة مفتوحة) يُتسامح معه كـRunway؛ «unavailable» نهائيّ */
+              if(d.error && (st.status === 429 || st.status >= 500) && d.error !== 'unavailable'){ guard.fail(iv, d.error); return; }
               guard.ok();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
@@ -1663,8 +1735,21 @@
           }, 8000);
         });
         setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
-        const vres = await fetch(proxyVideoUrl(videoUrl));
-        if(!vres.ok) throw new Error('download failed ' + vres.status);
+        /* v-cinema-omni (مراجعة ٢٧ أكتوبر): الاستطلاع سوّى المهمّة «سُلّمت» — فشل التحميل العابر كان يرمي خطأً فيضيع فيديو مدفوع (١٧٥) بلا ردّ.
+           ثلاث محاولات، ثمّ المشغّل ورابط التحميل على رابط الخادم نفسه كبقيّة الأوضاع (v-dl-ours) */
+        let vres = null;
+        for(let k = 0; k < 3 && !(vres && vres.ok); k++){
+          if(k) await new Promise((r) => setTimeout(r, 2000 * k));
+          try{ vres = await fetch(proxyVideoUrl(videoUrl)); }catch(de){ vres = null; __swallow(de, 'video:veo-dl'); }
+        }
+        if(!vres || !vres.ok){
+          setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
+          resultEl.src = proxyVideoUrl(videoUrl);
+          resultEl.style.display = 'block';
+          downloadEl.href = proxyVideoUrl(videoUrl);
+          downloadEl.style.display = 'block';
+          return;
+        }
         const vblob = await vres.blob();
         if(creationMode === 'veo' && wantCanvasWrap()){ await wrapWithCanvas(vblob, text, ratio, signature, wantNarration, (narrationText.value || '').trim()); return; } /* v-video-modes-by-result */
         const vurl = URL.createObjectURL(vblob);
@@ -1684,7 +1769,7 @@
 
     if(creationMode === 'canvas'){
       try{
-        const secs = (durationEl.value === 'long20') ? 20 : (durationEl.value === 'longMinutes' ? 30 : (parseInt(durationEl.value, 10) || 5));
+        const secs = (durVal === 'long20') ? 20 : (durVal === 'longMinutes' ? 30 : (parseInt(durVal, 10) || 5));
         await runCanvasOnly(text, ratio, secs, signature, wantNarration, (narrationText.value || '').trim());
       } catch(e){
         setStatus(friendlyError(e));
@@ -1696,7 +1781,7 @@
 
     if(creationMode === 'hybrid'){
       try{
-        await runHybrid(text, style, ratio, durationEl.value, signature, token, wantNarration, (narrationText.value || '').trim());
+        await runHybrid(text, style, ratio, durVal, signature, token, wantNarration, (narrationText.value || '').trim());
       } catch(e){
         setStatus(friendlyError(e));
       } finally {
@@ -1705,7 +1790,7 @@
       return;
     }
 
-    if(durationEl.value === 'longMinutes'){
+    if(durVal === 'longMinutes'){
       try{
         if(!isOwnerAccount()){
           setStatus(bT('🔒 هذه الميزة مقتصرة على حساب المالك.','🔒 This feature is limited to the owner account.'));
@@ -1730,8 +1815,8 @@
         const estLow = (scenes.length * 2).toFixed(0);
         const estHigh = (scenes.length * 5).toFixed(0);
         const confirmMsg = isEn()
-          ? `This video will generate ${scenes.length} scenes (~${(scenes.length * SCENE_SECONDS_CONST) / 60 | 0} min). Estimated real cost: about $${estLow}-$${estHigh} charged to your Runway account. Continue?`
-          : `هذا الفيديو راح يولّد ${scenes.length} مشهد (~${(scenes.length * SCENE_SECONDS_CONST / 60) | 0} دقيقة). التكلفة التقديرية الحقيقية: حوالي ${estLow}$-${estHigh}$ تُخصم من حساب Runway. تكمل؟`;
+          ? `This video will generate ${scenes.length} scenes (~${(scenes.length * SCENE_SECONDS_CONST) / 60 | 0} min). Estimated real cost: about $${estLow}-$${estHigh} charged to the video engine account. Continue?` /* v-no-provider-names */
+          : `هذا الفيديو راح يولّد ${scenes.length} مشهد (~${(scenes.length * SCENE_SECONDS_CONST / 60) | 0} دقيقة). التكلفة التقديرية الحقيقية: حوالي ${estLow}$-${estHigh}$ تُخصم من حساب محرّك الفيديو. تكمل؟`; /* v-no-provider-names */
         if(!window.confirm(confirmMsg)){
           setStatus(bT('❌ تم الإلغاء.','❌ Cancelled.'));
           btnGenerate.disabled = false;
@@ -1774,15 +1859,17 @@
         downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
         downloadEl.style.display = 'block';
       } catch(e){
-        setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+        setStatus(friendlyError(e)); /* v-video-partial: الرسالة المترجمة كبقيّة الأوضاع لا نصّ الخطأ الخام */
       } finally {
         btnGenerate.disabled = false;
       }
       return;
     }
 
+    let longPartial = null; /* v-video-partial: مشاهد «٢٠ ثانية» المكتملة إن توقّف الثاني */
     try{
       let sceneUrls = [];
+      longPartial = isLong ? sceneUrls : null;
       /* v-ai-video-speed: التعليق الصوتيّ يتجهّز مع الفيديو لا بعده (كان يبدأ بعد اكتماله)، ومحرّك الدمج (٣١ ميغا) يُحمَّل بالتوازي —
          من لحظة قبول المزوّد (onAccepted) لا من الضغطة: إلغاء نافذة الخصم أو الرصيد أو المهلة لا يستهلك نداء صوت من السقف اليوميّ. */
       let ttsEarly = null;
@@ -1811,12 +1898,13 @@
         }
       } else {
         setStatus(bT('🚀 جاري إرسال الطلب...','🚀 Sending request...'));
-        const url = await createSceneWithRetry(text, style, durationEl.value, ratio, token, false, (attempt, max) => {
+        const url = await createSceneWithRetry(text, style, durVal, ratio, token, false, (attempt, max) => {
           setStatus(busyRetryText(attempt, max)); // v-audit-video (cli-video-6)
         }, filmHeroBase64, filmHeroMime, startNarration);
         sceneUrls.push(url);
       }
 
+      longPartial = null; /* v-video-partial: المشاهد كلّها جاهزة */
       let finalSrc = sceneUrls[0];
       let finalIsBlob = false;
 
@@ -1879,7 +1967,8 @@
       /* v-ai-video-speed: الترقية بعد ظهور الفيديو لا قبله (مشهد واحد؛ الطويل بلا ترقية أصلًا) */
       if(wantQuality && sceneUrls.length === 1) upgradeInBackground(sceneUrls[0], token, narrationBlob, runSeq);
     } catch(e){
-      setStatus(friendlyError(e));
+      if(longPartial && longPartial.length) showPartialScenes(longPartial.slice(), 2, friendlyError(e));
+      else setStatus(friendlyError(e));
     } finally {
       btnGenerate.disabled = false;
     }

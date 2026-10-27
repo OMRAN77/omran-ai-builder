@@ -118,7 +118,7 @@ test('٤. التوصيل: حلقتا الفيلم والـ٢٠ ثانية تمر
 
 /* ينفّذ بوّابة «فيلم متكامل» الحقيقيّة: يخرج قبل السيناريو لكلّ وضع غير مدعوم، ويمرّ للمدعومين. */
 function gateSandbox(creationMode) {
-  const needle = "        if(creationMode !== 'runway' && creationMode !== 'minimax' && !filmUseVeo){";
+  const needle = "        if(creationMode !== 'runway' && !filmUseVeo){"; // v-video-durations: «سريع» خرج من الفيلم
   const block = extractBlock(VIDEO, needle);
   const statuses = [];
   const ctx = { creationMode, filmUseVeo: creationMode === 'veo', setStatus: (s) => statuses.push(s), btnGenerate: { disabled: true }, window: {}, bT: (a) => a };
@@ -126,18 +126,18 @@ function gateSandbox(creationMode) {
   return { returned, statuses, btn: ctx.btnGenerate };
 }
 
-test('٥. بوّابة «فيلم متكامل»: كانفا/السينمائيّ القديم/الدمج/الممثّل تُوقَف برسالة «لم يُخصم شيء» قبل أيّ نداء، والأساسيّ والاحترافيّ و«سريع» (مسلك الأساسيّ) يمرّون', () => {
-  /* v-video-modes-by-result: «سريع» (minimax) صار الافتراضيّ ويسلك في الفيلم مسلك الأساسيّ كما كان الافتراضيّ السابق */
-  for (const mode of ['canvas', 'omni', 'hybrid', 'actor']) {
+test('٥. بوّابة «فيلم متكامل»: كانفا/السينمائيّ القديم/الدمج/الممثّل و«سريع» تُوقَف برسالة «لم يُخصم شيء» قبل أيّ نداء، والأساسيّ و«سينمائي» يمرّان', () => {
+  /* v-video-durations (٢٧ أكتوبر): «سريع» (minimax) كان يمرّ فيصنع المشاهد بمحرّك «جودة عالية» صامتًا وبلا سعر على الزرّ — يُوقَف الآن */
+  for (const mode of ['canvas', 'omni', 'hybrid', 'actor', 'minimax']) {
     const r = gateSandbox(mode);
     assert.equal(r.returned, undefined, mode + ': يخرج قبل السيناريو');
     assert.equal(r.statuses.length, 1, mode);
     assert.match(r.statuses[0], /لم يُخصم شيء/, mode);
     assert.equal(r.btn.disabled, false, mode + ': الزرّ يعود');
   }
-  for (const mode of ['runway', 'veo', 'minimax']) assert.equal(gateSandbox(mode).returned, 'passed', mode + ': يمرّ');
-  const gateAt = VIDEO.indexOf("if(creationMode !== 'runway' && creationMode !== 'minimax' && !filmUseVeo){");
-  const filmAt = VIDEO.indexOf("if(durationEl.value === 'film'){");
+  for (const mode of ['runway', 'veo']) assert.equal(gateSandbox(mode).returned, 'passed', mode + ': يمرّ');
+  const gateAt = VIDEO.indexOf("if(creationMode !== 'runway' && !filmUseVeo){");
+  const filmAt = VIDEO.indexOf("if(durVal === 'film'){"); // v-video-durations: المدّة الفعليّة في متغيّر
   const scriptAt = VIDEO.indexOf("fetch('/api/video-script'");
   assert.ok(filmAt < gateAt && gateAt < scriptAt, 'البوّابة داخل فرع الفيلم وقبل أوّل نداء شبكة فيه');
   // قيم القائمة الحقيقيّة: minimax «سريع» المختار افتراضيًّا (v-video-modes-by-result)، وrunway الأساسيّ، وveo الاحترافيّ
@@ -190,7 +190,7 @@ test('٧. المفتاحان الجديدان في الـ١٤ لغة (app-03 + i
     assert.doesNotMatch(w + g, /veo|runway|minimax|gemini|claude/i, l + ': اسم مزوّد في نصّ المستخدم');
     assert.ok(![...(w + g)].some((ch) => /\p{Cf}|\p{Co}|\p{Cc}/u.test(ch)), l + ': حرف خفيّ');
   }
-  assert.match(read('js/app-04-i18n-state.js'), /sc\.src = 'i18n\/' \+ lg \+ '\.js\?v=776'/, 'الوسم مرفوع لملفّات اللغات المحمّلة منفصلة');
+  assert.match(read('js/app-04-i18n-state.js'), /sc\.src = 'i18n\/' \+ lg \+ '\.js\?v=777'/, 'الوسم مرفوع لملفّات اللغات المحمّلة منفصلة');
   // الواجهة تقرأ المفتاحين عبر t() مع احتياط ثنائيّ اللغة (نمط videoNeedDesc نفسه)
   assert.match(VIDEO, /window\.t\('videoSceneWait'\) !== 'videoSceneWait'/);
   assert.match(VIDEO, /window\.t\('videoFilmModeOnly'\) !== 'videoFilmModeOnly'/);

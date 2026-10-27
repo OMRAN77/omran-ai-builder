@@ -1075,4 +1075,15 @@ function withIdentityLock(promptText, max, subject, people) {
   const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
   return pre + body + post;
 }
-module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, splitScenes, sceneParams, MAX_SCENES };
+/* v-photo-as-is: الصورة نفسها أوّل إطار — قفل محايد بلا «شخص حقيقيّ» ولا «واقعيّ» (كانا يحوّلان الكرتون والأفاتار إنسانًا):
+   الصورة تبقى صورة، والرسم يبقى رسمًا، والمنتج يبقى منتجًا؛ والوصف يحدّد الحركة والمكان والكاميرا وحدها لا الشكل. */
+function withPhotoLock(promptText, max, subject) {
+  const cap = max || 1500;
+  /* مراجعة ٢٧ أكتوبر: بطول قفل الهويّة أو أقصر (حدود VEO_FREE_IMAGE_MAX قيست عليه — كلام الممثّل و«بلا ترجمة» لا يُقصّان)، وبلا «وجه» ولا
+     «IDENTITY» (صورة منتج لا يُخترع لها شخص — v-ai-video-speed) */
+  const pre = 'MAIN SUBJECT: whoever or whatever is in ' + (subject || 'the attached image') + ' — keep it exactly as shown (same look, colours, clothes and art style; a photo stays a photo, a drawing stays a drawing) in every shot; the description sets only action, place, camera. ';
+  const post = ' SUBJECT (mandatory): the same subject from the image throughout — never redrawn more realistic, more cartoonish or generic.';
+  const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
+  return pre + body + post;
+}
+module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, withPhotoLock, splitScenes, sceneParams, MAX_SCENES };

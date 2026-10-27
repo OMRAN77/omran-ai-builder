@@ -53,6 +53,7 @@ const OMNI_OP_TTL_SEC = 2 * 86400; // كتذكرة المهمّة: يومان
 function omniOpKey(op) { return 'omni:op:' + String(op); }
 const OMNI_FRAME_MS = 120000; // إطار المجموعة قبل Omni: يترك للمحرّك وقته داخل حدّ الدالّة (٣٠٠ث)
 function trendEngine() { return String(process.env.TREND_ENGINE || 'omni').toLowerCase() === 'veo' ? 'veo' : 'omni'; }
+function cinemaEngine() { return String(process.env.CINEMA_ENGINE || 'omni').toLowerCase() === 'veo' ? 'veo' : 'omni'; }
 const TREND_NO_CUTS = ' In a single continuous shot, no scene cuts.';
 const TREND_REVEAL_DECL = '[# Sources <FIRST_FRAME>@Image1 <LAST_FRAME>@Image2] ';
 const TREND_REVEAL_GUIDE = ' Use Image1 as the starting frame and Image2 as the final frame: the clip ends exactly on Image2, the plain real photo.';
@@ -113,7 +114,7 @@ async function trendOmni(o) {
     body: JSON.stringify({
       model: process.env.OMNI_VIDEO_MODEL || 'gemini-omni-1.1-flash',
       input,
-      response_format: { type: 'video', resolution: o.quality === 'high' ? '1080p' : '720p', aspect_ratio: o.ratio === '720:1280' ? '9:16' : '16:9', delivery: 'uri' },
+      response_format: Object.assign({ type: 'video', resolution: o.quality === 'high' ? '1080p' : '720p', aspect_ratio: o.ratio === '720:1280' ? '9:16' : '16:9', delivery: 'uri' }, o.durationSec ? { duration: o.durationSec + 's' } : {}),
       background: false, store: true, stream: false, // v-omni-store: الرابط يشترط store:true
     }),
     signal: AbortSignal.timeout(omni.omniTimeoutFor(Date.now() - o.t0, Number(process.env.OMNI_TIMEOUT_MS || 270000))),
@@ -159,11 +160,12 @@ module.exports = async (req, res) => {
        الفيديو بلحظته الأولى (OMNI_MORPH_TRENDS) — صورته الخام أوّل إطار كانت تظهر ثمّ يقطع المحرّك ويرسم وجهًا آخر. Veo كما كان. */
     const trendId = String(body.trend || '');
     const omniTrend = !!body.trend && trendEngine() === 'omni';
+    const cinemaOmni = !body.trend && cinemaEngine() === 'omni';
     const morph = omniTrend && tp.OMNI_MORPH_TRENDS.has(trendId);
     const reveal = omniTrend && tp.OMNI_REVEAL_TRENDS.has(trendId); // v-trends-oct-12: إطار أسطوريّ أوّلًا وصورته نفسها آخرًا
     const soloWanted = hasImage && !body.keepPhoto && tp.firstFrameOn() && (body.trend
       ? (trendPeople.length <= 1 && (tp.SOLO_FRAME_TRENDS.has(trendId) || (omniTrend && (tp.OMNI_FRAME_TRENDS.has(trendId) || morph || reveal))))
-      : !!(rawDesc && String(rawDesc).trim()));
+      : !!(rawDesc && String(rawDesc).trim()) && tp.freeFrameOn(body)); // v-photo-as-is: الوصف الحرّ بلا رسم إلّا الأنمي المختار
     /* أنمي/كرتون الواجهة: سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا) */
     if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = tp.STYLE_ANIME_VIDEO + String(promptText).trim();
     let trendParams = null; /* v-two-people: لإعادة بناء أمر الترند بصيغة الجمع إن كشف الإطار شخصين في صورة واحدة */
@@ -181,10 +183,13 @@ module.exports = async (req, res) => {
       }
       promptText = built.prompt; ratio = ratio || built.ratio; if (!durationSeconds) durationSeconds = 8;
     } else if (hasImage && promptText) {
-      /* v-video-identity: الوصف الحرّ مع صورة — قفل الهويّة نفسه كالترندات */
-      promptText = require('./video-trends.js').withIdentityLock(promptText, VEO_FREE_IMAGE_MAX);
+      /* v-video-identity: الوصف الحرّ مع صورة — قفل الهويّة نفسه كالترندات.
+         v-photo-as-is: الصورة نفسها أوّل إطار (لا رسم) — قفل محايد بلا «الشخص الحقيقيّ» (الأفاتار والكرتون يبقيان كما هما) */
+      promptText = soloWanted ? require('./video-trends.js').withIdentityLock(promptText, VEO_FREE_IMAGE_MAX)
+        : require('./video-trends.js').withPhotoLock(promptText, VEO_FREE_IMAGE_MAX);
     }
     let durSec = parseInt(durationSeconds, 10);
+    const omniDur = durSec >= 3 && durSec <= 10 ? durSec : 8;
     if (![4, 6, 8].includes(durSec)) durSec = 0; // 0 = default (leave to Veo)
     if (!promptText || !String(promptText).trim()) {
       res.status(400).json({ error: 'Missing promptText' });
@@ -314,7 +319,7 @@ module.exports = async (req, res) => {
         Object.assign({ style: body.trend ? '' : body.style, artHint: !!body.trend && tp.SOLO_FRAME_ART_TRENDS.has(String(body.trend)), budgetMs: 90000,
           start: morph, ageShift: omniTrend && tp.AGE_SHIFT_TRENDS.has(trendId),
           /* v-trend-frame-face: Omni يحفظ وجه الإطار طوال المقطع — فالإطار 2K بوجه كبير؛ الدمية والليغو 2K وحده (لعبة صغيرة في عبوتها) */
-          detail: omniTrend && !tp.SOLO_FRAME_TOY_TRENDS.has(trendId), hiRes: omniTrend }, swapOpt ? { swap: swapOpt } : {}));
+          detail: (omniTrend && !tp.SOLO_FRAME_TOY_TRENDS.has(trendId)) || cinemaOmni, hiRes: omniTrend || cinemaOmni }, swapOpt ? { swap: swapOpt } : {}));
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
         /* v-two-people: الإطار كشف شخصين في الصورة الواحدة — الأمر بصيغة الجمع (كلّ واحد بوجهه) قبل القفل */
@@ -335,8 +340,11 @@ module.exports = async (req, res) => {
       } else console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
     }
 
-    if (body.trend && trendEngine() === 'omni') {
-      const r = await trendOmni({ apiKey, prompt: String(promptText).trim().slice(0, VEO_PROMPT_MAX), imageBase64: imageBase64 && String(imageBase64).trim(),
+    if (omniTrend || cinemaOmni) {
+      let oPrompt = String(promptText).trim();
+      if (cinemaOmni && framed) oPrompt = require('./video-trends.js').withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, 'the reference image <IMAGE_REF_0>', soloPeople > 1 ? soloPeople : undefined) + FRAME_LOCK;
+      const oCap = body.trend ? VEO_PROMPT_MAX : (framed ? VEO_FREE_IMAGE_MAX + FRAME_LOCK.length : (hasImage ? VEO_FREE_IMAGE_MAX : VEO_FREE_MAX));
+      const r = await trendOmni({ apiKey, prompt: oPrompt.slice(0, oCap), durationSec: body.trend ? 0 : omniDur, imageBase64: imageBase64 && String(imageBase64).trim(),
         imageMime, framed: framed || groupFramed, ratio, quality, t0, person: tp.omniPersonTrend(trendId),
         /* v-trend-omni-refs (المالك بعد v-trend-omni-face: «بعده يغيّر شكل الشخصيّة في الملامح»): مرجع الملامح مع كلّ إطار مبنيّ —
            لقطة الوجه، وإلّا الصورة نفسها كما في omni-create (السيلفي: وجه يملأ الصورة لا تُقصّ له لقطة، فكان الإطار وحده)، وصور
@@ -368,7 +376,7 @@ module.exports = async (req, res) => {
       // v-video-refund: التذكرة كـVeo — veo-status يسوّيها عند التسليم، والكنس يردّها إن لم يُسلَّم
       await require('./video-job.js').rememberVideoJob(op, { username: chargedUser, cost: pointsLib.COSTS.veo_video, locked: !!videoLocked, pay: chargedPay });
       chargedUser = null; videoLocked = null;
-      console.log('[veo-create] trend ' + String(body.trend).slice(0, 20) + ' ready on omni in ' + Math.round((Date.now() - t0) / 1000) + 's');
+      console.log('[veo-create] ' + (body.trend ? 'trend ' + String(body.trend).slice(0, 20) : 'cinematic') + ' ready on omni in ' + Math.round((Date.now() - t0) / 1000) + 's');
       res.status(200).json({ op });
       return;
     }
@@ -427,6 +435,7 @@ module.exports.VEO_PROMPT_MAX = VEO_PROMPT_MAX;
 module.exports.OMNI_OP_PREFIX = OMNI_OP_PREFIX;
 module.exports.omniOpKey = omniOpKey;
 module.exports.trendEngine = trendEngine;
+module.exports.cinemaEngine = cinemaEngine;
 module.exports.TREND_NO_CUTS = TREND_NO_CUTS;
 module.exports.TREND_REF_GUIDE = TREND_REF_GUIDE;
 module.exports.bindTrendRef = bindTrendRef;

@@ -72,6 +72,7 @@ global.fetch = async (url) => {
   sent.push(u);
   if (/\/v1\/(text|image)_to_video$/.test(u)) { if (mode.runway === 'throw') boom(); return Response.json({ id: 'rw-task-' + sent.length }); }
   if (u.includes(':predictLongRunning')) { if (mode.veo === 'throw') boom(); return Response.json({ name: 'operations/veo-' + sent.length }); }
+  if (u.endsWith('/interactions')) { if (mode.veo === 'throw') boom(); return Response.json({ steps: [{ type: 'model_output', content: [{ type: 'video', uri: 'https://generativelanguage.googleapis.com/v1beta/files/g' + sent.length + ':download?alt=media' }] }] }); }
   if (u.includes('/v2/video_generation')) { if (mode.minimax === 'throw') boom(); return Response.json({ task_id: 'mm-' + sent.length }); } // v-minimax-h3: واجهة v2 بلا base_resp
   if (u.includes('gemini-3-pro-image')) { if (mode.image === 'throw') { const e = new Error('The operation was aborted due to timeout'); e.name = 'TimeoutError'; throw e; } return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: 'R1JPVVA=' } }] } }] }); }
   return Response.json({}, { status: 404 });

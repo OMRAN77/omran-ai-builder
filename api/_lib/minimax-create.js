@@ -42,16 +42,20 @@ module.exports = async (req, res) => {
       promptText = built.prompt; ratio = ratio || built.ratio;
     } else if (imageBase64 && String(imageBase64).trim() && promptText) {
       /* v-video-photo-identity: الإطار الأوّل يثبّت الوجه في اللحظة الأولى وحدها — وبلا أيّ أمر نصّيّ
-         يعيد المحرّك رسمه مع الحركة. نفس قفل Omni وVeo (مرساة أوّلًا وقفل أخيرًا). */
-      promptText = require('./video-trends.js').withIdentityLock(promptText, 1500);
+         يعيد المحرّك رسمه مع الحركة. نفس قفل Omni وVeo (مرساة أوّلًا وقفل أخيرًا).
+         v-photo-as-is: الصورة نفسها أوّل إطار — قفل محايد (لا «الشخص الحقيقيّ»: الأفاتار يبقى أفاتارًا) */
+      const vt = require('./video-trends.js');
+      promptText = (tp.freeFrameOn(body) && !body.keepPhoto) ? vt.withIdentityLock(promptText, 1500) : vt.withPhotoLock(promptText, 1500);
     }
     if (!promptText || !String(promptText).trim()) {
       res.status(400).json({ error: 'Missing promptText' });
       return;
     }
-    // المدّة تبقى مثبّتة على 6 أو 10 ثوانٍ (ضمن ٤–١٥ التي تقبلها v2) — نُثبّت أي قيمة أخرى على الأقرب.
+    /* v-video-durations (المالك ٢٧ أكتوبر): العميل لم يكن يرسل المدّة فكان كلّ فيديو ٦ ثوانٍ. H3 على v2 يقبل ٤–١٥ ثانية عددًا
+       صحيحًا بالدقّتين (مستودع MiniMax-H3 الرسميّ: "duration":8) — المختارة كما هي، وبلا قيمة ٦ كما كانت. السقف ١٠ = أطول زرّ في الواجهة
+       (مراجعة ٢٧ أكتوبر: ١٥ ثانية بسعر ٥٥ الثابت ≈ ٤ أضعاف تكلفة الجدول لمن ينادي الخادم مباشرة — باب المال). */
     let durSec = parseInt(durationSeconds, 10);
-    durSec = (durSec >= 8) ? 10 : 6;
+    durSec = Number.isFinite(durSec) ? Math.min(10, Math.max(4, durSec)) : 6;
 
     /* v-video-giveback: فحص المفتاح قبل أيّ خصم (كـveo-create) — كان بعد الخصم والقفل ويردّ اسم المفتاح للمستخدم */
     const apiKey = process.env.MINIMAX_API_KEY;
@@ -94,7 +98,7 @@ module.exports = async (req, res) => {
 
     /* v-video-first-frame (المالك: «كل الفيديوات»): مع صورة ووصف يُبنى أوّل إطار بوجهه في مشهد الوصف وأسلوبه، ثمّ
        قفل «الإطار جاهز — حرّكه كما هو». keepPhoto = الصورة نفسها. أيّ عطب = الصورة نفسها والأمر السابق حرفيًّا. */
-    if (!body.trend && imageBase64 && String(imageBase64).trim() && !body.keepPhoto && rawDesc && String(rawDesc).trim() && tp.firstFrameOn() && process.env.GEMINI_API_KEY) {
+    if (!body.trend && imageBase64 && String(imageBase64).trim() && !body.keepPhoto && rawDesc && String(rawDesc).trim() && tp.freeFrameOn(body) && process.env.GEMINI_API_KEY) { // v-photo-as-is: الرسم للأنمي المختار وحده
       const solo = await tp.soloFirstFrame(process.env.GEMINI_API_KEY, { data: String(imageBase64).trim(), mime: imageMime }, String(rawDesc), ratio, { style: body.style, budgetMs: 90000 });
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;

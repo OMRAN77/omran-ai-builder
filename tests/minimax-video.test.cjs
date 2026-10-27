@@ -160,6 +160,8 @@ test('٦. v2: failed/cancelled وخطأ نهائيّ (٤٠٤ بجسم error) = F
 test('٧. حلقات الاستطلاع (خمس منذ v-actor-lipsync) محروسة بعمر وبأخطاء متتالية، ولا ابتلاع صامت', () => {
   const src = read('js/app-11-video.js');
   assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 5, 'حلقة استطلاع بلا حارس');
+  /* v-video-poll-transient: والزحام العابر (٤٢٩/٥xx) في حلقات الاقتصاديّ والسينمائيّ (اثنتان) والممثّل يمرّ بالحارس بنصّ الخادم
+     guard.fail(iv, d.error) — مختبَر في video-durations ٥ */
   assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 5, 'خطأ شبكة ما زال يُبتلع بصمت'); // v-ai-video-speed: وpollTaskOnce يعدّ خطأ الخادم ٥xx عابرًا بنصّه guard.fail(iv, data.error)
   assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 5, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
   assert.doesNotMatch(src, /catch\(e\)\{ \/\* keep polling \*\/ \}/, 'بقي ابتلاع صامت');
@@ -231,7 +233,7 @@ async function create(body, fetchImpl) {
 const capture = (reply) => { const out = {}; out.fetch = async (url, init) => { out.url = String(url); out.init = init; out.body = JSON.parse(init.body); return reply || { ok: true, status: 200, json: async () => ({ task_id: 'mm-1' }) }; }; return out; };
 const PHOTO = Buffer.from('fake-jpeg-bytes-'.repeat(8)).toString('base64');
 
-test('١٠. الإنشاء (v2): المسار والترويسة والجسم — content نصّ، النسبة 16:9/9:16 (وغيرها 16:9)، ومع صورة adaptive + first_frame، والدقّة 768P/2K، والمدّة ٦/١٠', async () => {
+test('١٠. الإنشاء (v2): المسار والترويسة والجسم — content نصّ، النسبة 16:9/9:16 (وغيرها 16:9)، ومع صورة adaptive + first_frame، والدقّة 768P/2K، والمدّة المختارة ٤–١٠', async () => {
   let c = capture();
   let res = await create({ promptText: 'قطّة تلعب في حديقة', ratio: '720:1280', token: 't' }, c.fetch);
   assert.equal(res.code, 200, JSON.stringify(res.body));
@@ -246,18 +248,24 @@ test('١٠. الإنشاء (v2): المسار والترويسة والجسم �
     await create({ promptText: 'x', ratio, token: 't' }, c.fetch);
     assert.equal(c.body.ratio, want, 'ratio ' + ratio);
   }
-  // الجودة العالية 2K (لا 1080P)، والمدّة ≥٨ ⇒ ١٠
+  // الجودة العالية 2K (لا 1080P)، والمدّة المختارة كما هي ضمن ٤–١٠ (v-video-durations: كانت تُقرَّب إلى ٦/١٠)
   c = capture();
   await create({ promptText: 'x', ratio: '1280:720', token: 't', quality: 'high', durationSeconds: 10 }, c.fetch);
   assert.equal(c.body.resolution, '2K');
   assert.equal(c.body.duration, 10);
+  for (const [d, want] of [[5, 5], [8, 8], ['10', 10], [2, 4], [30, 10], [undefined, 6]]) { // السقف ١٠ = أطول زرّ (باب المال)
+    c = capture();
+    await create({ promptText: 'x', token: 't', durationSeconds: d }, c.fetch);
+    assert.equal(c.body.duration, want, 'المدّة ' + d);
+  }
   // صورة أوّل إطار: عنصر image_url بدور first_frame، والنسبة adaptive تتبع الصورة
   c = capture();
   await create({ promptText: 'يلوّح للكاميرا', ratio: '720:1280', token: 't', imageBase64: PHOTO, imageMime: 'image/jpeg' }, c.fetch);
   assert.equal(c.body.ratio, 'adaptive');
   assert.equal(c.body.content.length, 2);
   assert.deepEqual(c.body.content[1], { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,' + PHOTO }, role: 'first_frame' });
-  assert.match(c.body.content[0].text, /^MAIN CHARACTER: the real person in the attached reference photo/, 'قفل الهويّة كما كان (v-video-photo-identity)');
+  assert.match(c.body.content[0].text, /^MAIN SUBJECT: whoever or whatever is in the attached image/, 'v-photo-as-is: الصورة نفسها بقفل محايد');
+  assert.doesNotMatch(c.body.content[0].text, /real person|photorealistic|ultra-realistic/i, 'لا «شخص حقيقيّ» يحوّل الأفاتار إنسانًا');
   for (const k of ['prompt', 'first_frame_image']) assert.ok(!(k in c.body), 'حقل v1 في الجسم: ' + k);
   // النموذج قابل للضبط من البيئة
   process.env.MINIMAX_VIDEO_MODEL = 'MiniMax-H3-Max';

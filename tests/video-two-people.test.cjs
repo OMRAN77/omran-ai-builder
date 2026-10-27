@@ -8,7 +8,9 @@ process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'synthetic-test-secret-' + 
 const test = require('node:test');
 /* v-trend-omni: هذا الاختبار يفحص بناء أمر الترند وإطاره الأوّل وخصمه — المشترك بين المحرّكين — على طلب Veo المصطنع؛
    مسار Omni نفسه (الأمر والصور ذاتهما حرفيًّا، والتذكرة والاسترجاع) في trend-omni.test.cjs */
-process.env.TREND_ENGINE = 'veo';
+process.env.TREND_ENGINE = 'veo'; process.env.CINEMA_ENGINE = 'veo';
+/* v-photo-as-is: الوصف الحرّ صار يحرّك الصورة نفسها افتراضيًّا (video-photo-as-is.test.cjs) — هنا مسار الإطار المرسوم خلف مفتاحه */
+process.env.VIDEO_FREE_FRAME = 'on';
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const jpeg = require('jpeg-js');

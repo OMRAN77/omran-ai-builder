@@ -29,12 +29,23 @@ const RW_ID_PRE_FRAME_ANIME = 'The opening frame already shows the real person f
 const RW_OBJ_PRE = 'The opening frame is the user\'s own photo of this subject. Keep the subject exactly as it is in the photo — same shape, colors, materials, label and any text on it — in every frame; animate it as described, never swap it for a different one. ';
 const RW_OBJ_TAIL = '. SUBJECT (mandatory): the same subject from the photo throughout, unchanged.';
 
+/* v-photo-as-is (المالك ٢٧ أكتوبر: «مطابقه لي الصوره مش تغير الملامح»): الصورة نفسها أوّل إطار بلا رسم — فلا «صورة حقيقيّة لشخص
+   حقيقيّ» ولا لاحقة «ultra-realistic… absolutely no cartoon» (كانت تحوّل الأفاتار والكرتون إنسانًا آخر). مرساة محايدة لشخص أو
+   شخصيّة أو منتج: ما في الصورة يبقى كما هو بأسلوبه، والوصف يحرّك ما حوله. */
+const RW_PHOTO_PRE = 'The opening frame is the user\'s own image. Keep exactly what it shows — same look, colours, clothing and art style (a photo stays a photo; a drawing, cartoon or avatar stays that drawing; a product keeps its shape and text) — in every frame; animate it as described, never redraw, restyle or replace it. ';
+const RW_PHOTO_TAIL = '. SUBJECT (mandatory): the same subject from the image throughout, unchanged — never redrawn more realistic, more cartoonish or generic.';
+
 /* v-two-people: الإطار المرسوم فيه شخصان (من صورة واحدة) — المرساة والقفل بصيغة الجمع، كلّ واحد بوجهه */
 const RW_ID_PRE_FRAME_TWO = 'The opening frame already shows the real people from the user\'s photo in this scene. Keep each of them exactly — their own face shape, eyes, nose, lips, jawline, beard, skin tone, hair and body — in every frame; animate that frame as it is, never redraw, swap or replace anyone. ';
 const RW_ID_TAIL_TWO = '. IDENTITY (mandatory): they are these same people from the photo throughout, each with their own face, never different or generic faces.';
 
-function buildRunwayPrompt(promptText, style, useImage, framed, people, noPerson) {
+function buildRunwayPrompt(promptText, style, useImage, framed, people, noPerson, asIs) {
   const anime = style === 'anime';
+  if (useImage && asIs && !framed) { // v-photo-as-is
+    const sfx = anime ? RW_STYLE_ANIME : '';
+    const r = Math.max(0, RUNWAY_PROMPT_MAX - RW_PHOTO_PRE.length - sfx.length - RW_PHOTO_TAIL.length);
+    return RW_PHOTO_PRE + String(promptText || '').trim().slice(0, r) + sfx + RW_PHOTO_TAIL;
+  }
   const suffix = anime ? RW_STYLE_ANIME : RW_STYLE_REAL;
   const two = !!(useImage && framed && people > 1);
   const obj = !!(useImage && !framed && noPerson); // v-ai-video-speed: كشفنا صفر وجوه
@@ -143,8 +154,9 @@ module.exports = async (req, res) => {
     const finalRatio = allowedRatios.includes(ratio) ? ratio : '1280:720';
     let finalDuration = parseInt(duration, 10);
     if (!Number.isFinite(finalDuration)) finalDuration = 5;
-    // Runway only accepts 5 or 10 seconds — snap anything else
-    finalDuration = finalDuration <= 7 ? 5 : 10;
+    /* v-video-durations (المالك ٢٧ أكتوبر: «شيل الازرار الي مافيها التوقيت»): gen4.5 يقبل أيّ عدد صحيح من ٢ إلى ١٠ ثوانٍ
+       (Runway SDK 4.24: «Must be an integer from 2 to 10») — كان يُقرَّب إلى ٥ أو ١٠ فيصير زرّ «٨» عشر ثوانٍ. */
+    finalDuration = Math.min(10, Math.max(2, finalDuration));
 
     // Auto-cancel any previous stuck task on this key so it doesn't hog the
     // account's single concurrency slot forever (see runway-keys.js).
@@ -157,7 +169,8 @@ module.exports = async (req, res) => {
        من المحادثة) = الصورة نفسها كما كانت. أيّ عطب = الصورة نفسها، فلا يفشل فيديو بسبب الإطار. */
     let framed = false, framePeople = 0, noPerson = false;
     const tp = require('./trend-people.js');
-    if (useImage && !body.trend && !body.keepPhoto && tp.firstFrameOn() && process.env.GEMINI_API_KEY) {
+    const asIs = useImage && !body.trend && (!!body.keepPhoto || !tp.freeFrameOn(body)); // v-photo-as-is: الصورة نفسها أوّل إطار
+    if (useImage && !body.trend && !body.keepPhoto && tp.freeFrameOn(body) && process.env.GEMINI_API_KEY) {
       /* v-ai-video-speed: needPerson — صورة بلا وجه (عطر، منتج) تبدأ الفيديو كما هي بلا إطار مرسوم (كان ١٥–٤٠ ث، حتّى ٩٠، قبل المحرّك) */
       const solo = await tp.soloFirstFrame(process.env.GEMINI_API_KEY, { data: String(imageBase64), mime: imageMime }, String(promptText), finalRatio, { style, budgetMs: 90000, needPerson: true });
       if (solo && solo.b64) {
@@ -174,7 +187,7 @@ module.exports = async (req, res) => {
       ? RUNWAY_API_BASE + '/v1/image_to_video'
       : RUNWAY_API_BASE + '/v1/text_to_video';
     // Runway hard limit: promptText <= 1000 chars TOTAL — مع صورة: مرساة هويّة أوّلًا وقفل أخيرًا (v-video-photo-identity)
-    const finalPrompt = buildRunwayPrompt(promptText, style, useImage, framed, framePeople, noPerson);
+    const finalPrompt = buildRunwayPrompt(promptText, style, useImage, framed, framePeople, noPerson, asIs);
 
     /* v-runway-model (لقطات المالك: «Validation of body failed … expected one of
        gen4.5 | kling3.0_pro | veo3.1 …»): Runway أوقف اسم gen4_turbo فصار كل

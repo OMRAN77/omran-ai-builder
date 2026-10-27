@@ -8,7 +8,9 @@ process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'synthetic-test-secret-' + 
 const test = require('node:test');
 /* v-trend-omni: هذا الاختبار يفحص بناء أمر الترند وإطاره الأوّل وخصمه — المشترك بين المحرّكين — على طلب Veo المصطنع؛
    مسار Omni نفسه (الأمر والصور ذاتهما حرفيًّا، والتذكرة والاسترجاع) في trend-omni.test.cjs */
-process.env.TREND_ENGINE = 'veo';
+process.env.TREND_ENGINE = 'veo'; process.env.CINEMA_ENGINE = 'veo';
+/* v-photo-as-is: الوصف الحرّ صار يحرّك الصورة نفسها افتراضيًّا (video-photo-as-is.test.cjs) — هنا مسار الإطار المرسوم خلف مفتاحه */
+process.env.VIDEO_FREE_FRAME = 'on';
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
@@ -249,7 +251,7 @@ test('٨. الصورة تصل كلّ محرّك في صانع الفيديو: ا
   assert.match(VIDEO, /if\(heroB64\)\{ payload\.imageBase64 = heroB64;/);
   assert.match(VIDEO, /createVeoScene\(scenePromptWithHero, ratio, token, wantQuality, filmHeroBase64, filmHeroMime\)/, 'فيلم المحترف بلا صورة');
   assert.match(VIDEO, /if\(filmHeroBase64\)\{ veoPayload\.imageBase64 = filmHeroBase64;/, 'وضع المحترف/الممثّل بلا صورة');
-  assert.match(VIDEO, /\(text \|\| \(filmHeroBase64 \? 'The real person in the reference photo' :/, 'الممثّل يخترع رجلًا رغم الصورة');
+  assert.match(VIDEO, /\(text \|\| \(filmHeroBase64 \? 'The person in the opening image' :/, 'الممثّل يخترع رجلًا رغم الصورة'); // v-photo-as-is: بلا «الشخص الحقيقيّ»
   assert.doesNotMatch(VIDEO, /Hero centered in frame/, 'أمر إعادة التأطير باقٍ');
   assert.doesNotMatch(VIDEO, /مدعومة مع Runway فقط/);
   // فشل حفظ صورة جديدة يمحو القديمة (وإلّا عاد شخص سابق بعد إعادة التحميل)

@@ -116,6 +116,6 @@ test('النصوص بالـ١٤ لغة والوسوم مرفوعة', () => {
     assert.ok(/\{n\}/.test(s.match(/vclTooBig: "([^"]+)"/)[1]), lg + ' vclTooBig {n}');
   });
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=459"') && h.includes('modules.css?v=692'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=776'"));
+  assert.ok(h.includes('src="/js/video.js?v=460"') && h.includes('modules.css?v=692'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=777'"));
 });

@@ -8,7 +8,9 @@ process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'synthetic-test-secret-' + 
 const test = require('node:test');
 /* v-trend-omni: هذا الاختبار يفحص بناء أمر الترند وإطاره الأوّل وخصمه — المشترك بين المحرّكين — على طلب Veo المصطنع؛
    مسار Omni نفسه (الأمر والصور ذاتهما حرفيًّا، والتذكرة والاسترجاع) في trend-omni.test.cjs */
-process.env.TREND_ENGINE = 'veo';
+process.env.TREND_ENGINE = 'veo'; process.env.CINEMA_ENGINE = 'veo';
+/* v-photo-as-is: الوصف الحرّ صار يحرّك الصورة نفسها افتراضيًّا (video-photo-as-is.test.cjs) — هنا مسار الإطار المرسوم خلف مفتاحه */
+process.env.VIDEO_FREE_FRAME = 'on';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -120,15 +122,17 @@ test('٣. Runway: «حرّكها» وحدها (keepPhoto)، والإطفاء، �
   const V = require(rp('api/_lib/video-create.js'));
   const body = { promptText: DESC, ratio: '720:1280', style: 'realistic', token: 't', imageBase64: PHOTO, imageMime: 'image/jpeg' };
   const old = V.buildRunwayPrompt(DESC, 'realistic', true);
-  for (const [name, b, o] of [
-    ['keepPhoto', Object.assign({}, body, { keepPhoto: true }), {}],
-    ['off', body, { env: { VIDEO_FIRST_FRAME: 'off' } }],
-    ['no key', body, { env: { GEMINI_API_KEY: undefined } }],
+  /* v-photo-as-is: الصورة نفسها بلا إطار مقصود (keepPhoto، أو الإطار مطفأ) = المرساة المحايدة؛ تعذّر الإطار وهو مطلوب = القديم حرفيًّا */
+  const asIs = V.buildRunwayPrompt(DESC, 'realistic', true, false, 0, false, true);
+  for (const [name, b, o, want] of [
+    ['keepPhoto', Object.assign({}, body, { keepPhoto: true }), {}, asIs],
+    ['off', body, { env: { VIDEO_FIRST_FRAME: 'off' } }, asIs],
+    ['no key', body, { env: { GEMINI_API_KEY: undefined } }, old],
   ]) {
     const r = await run('api/_lib/video-create.js', b, o);
     assert.deepEqual(r.kinds, ['runway'], name + ': لا كشف ولا توليد');
     assert.equal(r.of('runway')[0].body.promptImage, 'data:image/jpeg;base64,' + PHOTO, name);
-    assert.equal(r.of('runway')[0].body.promptText, old, name);
+    assert.equal(r.of('runway')[0].body.promptText, want, name);
   }
   const fail = await run('api/_lib/video-create.js', body, { image: 'fail' });
   assert.deepEqual(fail.kinds, ['detect', 'image', 'runway']);
@@ -254,9 +258,10 @@ test('١٠. الواجهة: التوقيع لا يقصّ الفيديو، وال
   assert.match(V, /'-filter_complex', 'overlay=0:H-h', '-c:a', 'copy', 'main_wm\.mp4'/, 'أمر التوقيع بلا shortest');
   assert.doesNotMatch(V, /'overlay=[^']*shortest=1/, 'shortest=1 مع صورة ثابتة يقصّ الفيديو إلى إطار واحد (قيس: ١٢٠ ← ١)');
   assert.match(V, /quality: wantQuality \? 'high' : 'fast', style \}; \/\* v-video-first-frame: الأسلوب كان لا يصل \*\/\n\s+if\(filmHeroBase64\)[^\n]*\n\s+const cr = await \(window\.postWithConfirm\n\s+\? window\.postWithConfirm\('\/api\/video\?action=omni-create'/);
-  assert.match(V, /quality: wantQuality \? 'high' : 'fast', style \}; \/\* v-video-first-frame: الأسلوب كان لا يصل \*\/\n\s+if\(filmHeroBase64\)[^\n]*\n\s+const cr = await \(window\.postWithConfirm\n\s+\? window\.postWithConfirm\('\/api\/video\?action=minimax-create'/);
-  assert.match(V, /const veoPayload = \{ promptText: veoPrompt, ratio, token, quality: wantQuality \? 'high' : 'fast', style \};/);
-  assert.match(V, /async function createVeoScene\([^)]*\)\{\n\s+const payload = \{[^}]*style: styleEl\.value \};/);
+  assert.match(V, /quality: wantQuality \? 'high' : 'fast', style, durationSeconds: durSecs \|\| undefined \}; \/\* v-video-first-frame: الأسلوب كان لا يصل · v-video-durations: والمدّة \*\/\n\s+if\(filmHeroBase64\)[^\n]*\n\s+const cr = await \(window\.postWithConfirm\n\s+\? window\.postWithConfirm\('\/api\/video\?action=minimax-create'/);
+  /* v-video-durations: والمدّة المختارة تصل الاقتصاديّ و«سينمائي» (مشهد الفيلم ٨ ثوانٍ) */
+  assert.match(V, /const veoPayload = \{ promptText: veoPrompt, ratio, token, quality: wantQuality \? 'high' : 'fast', style, durationSeconds: \(creationMode === 'veo' && durSecs\) \|\| undefined \};/);
+  assert.match(V, /async function createVeoScene\([^)]*\)\{\n\s+const payload = \{[^}]*style: styleEl\.value, durationSeconds: 8 \};/);
   const A = read('js/app-09-attach.js');
   assert.match(A, /imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true, confirmed: true \};/); // v-talkchar-confirm: الموافقة سبقت (priceCheck)
   const m = /const __ANIM_ONLY_RE = (\/[^\n]+\/i);/.exec(A);
@@ -281,7 +286,7 @@ test('١١. الترندات فوق والصانع تحتها: الوصف بوس
   assert.match(C, /#videoMakerModal \.vmk-studio\.vmk-trends-top\{overflow-y:auto;/);
   assert.match(C, /#videoMakerModal \.vmk-studio\.vmk-trends-top \.vmk-main\{max-height:none;overflow:visible\}/);
   const H = read('index.html');
-  assert.ok(H.includes('src="/js/video.js?v=459"'), 'وسم video.js رُفع');
+  assert.ok(H.includes('src="/js/video.js?v=460"'), 'وسم video.js رُفع');
   assert.ok(Number((H.match(/css\/modules\.css\?v=(\d+)/) || [])[1]) >= 663, 'وسم modules رُفع');
   // تشغيل build الحقيقيّ على بطاقة مصغّرة: الترندات بُنيت قبل الاستوديو (الترتيب الذي أنزلها للأسفل)
   const el = (id, cls) => ({ id: id || '', className: cls || '', classList: { _s: new Set((cls || '').split(' ').filter(Boolean)), add(c) { this._s.add(c); }, contains(c) { return this._s.has(c); }, toggle(c, on) { if (on === false || (on === undefined && this._s.has(c))) this._s.delete(c); else this._s.add(c); } }, children: [], parentElement: null, dataset: {}, style: { setProperty() {} }, attrs: {}, getAttribute(k) { return this.attrs[k]; }, setAttribute(k, v) { this.attrs[k] = v; }, addEventListener() {} });

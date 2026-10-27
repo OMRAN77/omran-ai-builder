@@ -178,7 +178,7 @@ test('٧. العميل: المسار الجديد أوّلًا وVeo احتيا�
   const v = read('js/app-11-video.js');
   const i = v.indexOf("fetch('/api/video?action=actor-create'");
   const j = v.indexOf("if(!acData.fallback) throw new Error(acData.error || ('actor ' + ac.status));");
-  const k = v.indexOf("veoPrompt = (text || (filmHeroBase64 ? 'The real person in the reference photo'");
+  const k = v.indexOf("veoPrompt = (text || (filmHeroBase64 ? 'The person in the opening image'"); // v-photo-as-is: لا «الشخص الحقيقيّ» مع صورة
   assert.ok(i > 0 && j > i && k > j, 'actor-create ← (فشل غير احتياطيّ يُرمى) ← Veo');
   assert.match(v, /fetch\('\/api\/video\?action=actor-status&id=' \+ encodeURIComponent\(acData\.id\)\)/);
   assert.match(v, /const actorGender = \(actorVoiceEl && actorVoiceEl\.value === 'female'\) \? 'female' : 'male';/);
@@ -205,5 +205,5 @@ test('٨. النصوص الجديدة بالـ١٤ لغة، واسم الوضع 
     assert.ok(!/videoModeActor"?\s*:\s*"[^"]*Veo/.test(s), lg);
   }
   assert.ok(!/videoModeActor:\s*"[^"]*Veo/.test(data));
-  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=776'/);
+  assert.match(read('js/app-04-i18n-state.js'), /i18n\/' \+ lg \+ '\.js\?v=777'/);
 });

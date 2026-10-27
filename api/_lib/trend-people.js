@@ -234,6 +234,15 @@ function trendScene(prompt) {
 
 /** VIDEO_FIRST_FRAME=off يوقف أوّل الإطار في كلّ المحرّكات بلا نشر (يُقرأ عند النداء لا عند التحميل). */
 function firstFrameOn() { return String(process.env.VIDEO_FIRST_FRAME || 'on').toLowerCase() !== 'off'; }
+/* v-photo-as-is (المالك ٢٧ أكتوبر: «الصور الي احطها… مطابقه لي الصوره مش تغير الملامح»): مع صورة ووصف حرّ لا تُعاد رسم الصورة
+   إطارًا أوّل — الإطار المرسوم يغيّر الوجه (v-trend-frame-face) ومهمّته «Photorealistic» تحوّل الكرتون إنسانًا آخر. الصورة نفسها
+   أوّل إطار في كلّ محرّك، إلّا «أنمي» المختار صراحةً (تحويل أسلوب مقصود). VIDEO_FREE_FRAME=on يعيد الرسم كما كان بلا نشر.
+   الترندات خارج هذا (firstFrameOn وحده). */
+function freeFrameOn(body) {
+  if (!firstFrameOn()) return false;
+  if (String(process.env.VIDEO_FREE_FRAME || 'off').toLowerCase() === 'on') return true;
+  return !!body && body.style === 'anime';
+}
 
 /* إعادة المحاولة (Runway المزدحم يُعاد ٣ مرّات، والمحادثة مرّتين) لا تدفع الإطار نفسه مرّة ثانية ما دامت النسخة دافئة:
    ذاكرة صغيرة بعمر ١٠ دقائق وأربعة مداخل، مفتاحها بصمة الصورة والوصف والأسلوب والنسبة. لا يُخزَّن شيء خارج الذاكرة. */
@@ -320,6 +329,6 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
 
 module.exports = {
   MAX_PEOPLE, aspectOf, callImage /* v-actor-lipsync: بورتريه الممثّل */, frameTask, groupFirstFrame, ART_STYLE_RE, SOLO_CLOSEUP_LABEL, soloFrameTask, soloFirstFrame,
-  ANIME_FRAME_STYLE, STYLE_ANIME_VIDEO, FRAME_LOCK, frameLookLock, SOLO_FRAME_TRENDS, SOLO_FRAME_ART_TRENDS, SOLO_FRAME_TOY_TRENDS, SINGLE_SUBJECT_TRENDS, trendScene, firstFrameOn, FRAME_CACHE,
+  ANIME_FRAME_STYLE, STYLE_ANIME_VIDEO, FRAME_LOCK, frameLookLock, SOLO_FRAME_TRENDS, SOLO_FRAME_ART_TRENDS, SOLO_FRAME_TOY_TRENDS, SINGLE_SUBJECT_TRENDS, trendScene, firstFrameOn, freeFrameOn, FRAME_CACHE,
   OMNI_FRAME_TRENDS, OMNI_MORPH_TRENDS, OMNI_REF_TRENDS, OMNI_REVEAL_TRENDS, AGE_SHIFT_TRENDS, MULTI_SHOT_TRENDS, omniPersonTrend, FRAME_FACE_DETAIL,
 };
