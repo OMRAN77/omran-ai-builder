@@ -34,20 +34,20 @@ test('٢. minimax-status: Success → SUCCEEDED مع رابط، Processing → R
     return { ok: false, json: async () => ({}) };
   };
   let res = fakeRes();
-  await handler({ method: 'GET', query: { task_id: 'T1' } }, res);
+  await handler({ method: 'GET', query: { task_id: '1001' } }, res);
   assert.equal(res.body.status, 'SUCCEEDED');
   assert.equal(res.body.output[0], 'https://cdn/x.mp4');
 
   // جارٍ
   global.fetch = async () => ({ ok: true, json: async () => ({ status: 'Processing' }) });
   res = fakeRes();
-  await handler({ method: 'GET', query: { task_id: 'T1' } }, res);
+  await handler({ method: 'GET', query: { task_id: '1001' } }, res);
   assert.equal(res.body.status, 'RUNNING');
 
   // فشل
   global.fetch = async () => ({ ok: true, json: async () => ({ status: 'Fail' }) });
   res = fakeRes();
-  await handler({ method: 'GET', query: { task_id: 'T1' } }, res);
+  await handler({ method: 'GET', query: { task_id: '1001' } }, res);
   assert.equal(res.body.status, 'FAILED');
 
   global.fetch = realFetch;
@@ -60,7 +60,7 @@ test('٣. minimax-status بلا task_id = 400، وبلا مفتاح = 500', asyn
   assert.equal(res.code, 400);
   const saved = process.env.MINIMAX_API_KEY; delete process.env.MINIMAX_API_KEY;
   res = fakeRes();
-  await handler({ method: 'GET', query: { task_id: 'T' } }, res);
+  await handler({ method: 'GET', query: { task_id: '1000' } }, res);
   assert.equal(res.code, 500);
   if (saved) process.env.MINIMAX_API_KEY = saved;
 });
@@ -111,9 +111,9 @@ test('٦. الرفض المنطقيّ (٢٠٠ بلا status وبـbase_resp) = F
     // رفض منطقيّ: ٢٠٠، لا حقل status إطلاقًا، وbase_resp.status_code ≠ 0
     global.fetch = async () => ({ ok: true, json: async () => ({ base_resp: { status_code: 1002, status_msg: 'rate limit' } }) });
     let res = fakeRes();
-    await handler({ method: 'GET', query: { task_id: 'T9' } }, res);
+    await handler({ method: 'GET', query: { task_id: '1009' } }, res);
     assert.equal(res.body.status, 'FAILED', 'الرفض المنطقيّ ما زال يُقرأ «لسّا شغّال»');
-    assert.deepEqual(settled, [['T9', false]], 'التذكرة لم تُسوَّ فلا تُردّ النقاط');
+    assert.deepEqual(settled, [['1009', false]], 'التذكرة لم تُسوَّ فلا تُردّ النقاط');
 
     // نجاح فعليّ مع base_resp سليم لا يتأثّر
     settled.length = 0;
@@ -121,15 +121,15 @@ test('٦. الرفض المنطقيّ (٢٠٠ بلا status وبـbase_resp) = F
       ? { ok: true, json: async () => ({ file: { download_url: 'https://cdn/ok.mp4' } }) }
       : { ok: true, json: async () => ({ status: 'Success', file_id: 'F2', base_resp: { status_code: 0 } }) });
     res = fakeRes();
-    await handler({ method: 'GET', query: { task_id: 'T8' } }, res);
+    await handler({ method: 'GET', query: { task_id: '1008' } }, res);
     assert.equal(res.body.status, 'SUCCEEDED');
-    assert.deepEqual(settled, [['T8', true]]);
+    assert.deepEqual(settled, [['1008', true]]);
 
     // حالة وسط سليمة تبقى RUNNING
     settled.length = 0;
     global.fetch = async () => ({ ok: true, json: async () => ({ status: 'Queueing', base_resp: { status_code: 0 } }) });
     res = fakeRes();
-    await handler({ method: 'GET', query: { task_id: 'T7' } }, res);
+    await handler({ method: 'GET', query: { task_id: '1007' } }, res);
     assert.equal(res.body.status, 'RUNNING');
     assert.deepEqual(settled, []);
   } finally {
@@ -200,9 +200,9 @@ test('٩. فشل جلب الملفّ بعد نجاح التوليد يردّ ا�
       ? { ok: false, status: 502, json: async () => ({ base_resp: { status_code: 2013 } }) }
       : { ok: true, json: async () => ({ status: 'Success', file_id: 'F9', base_resp: { status_code: 0 } }) });
     let res = fakeRes();
-    await handler({ method: 'GET', query: { task_id: 'T5' } }, res);
+    await handler({ method: 'GET', query: { task_id: '1005' } }, res);
     assert.equal(res.code, 502);
-    assert.deepEqual(settled, [['T5', false]], 'لم تُسوَّ التذكرة فشلًا فلا تُردّ النقاط');
+    assert.deepEqual(settled, [['1005', false]], 'لم تُسوَّ التذكرة فشلًا فلا تُردّ النقاط');
     assert.doesNotMatch(String(res.body.error), /MiniMax|2013|HTTP/, 'رمز تقنيّ في رسالة المستخدم');
 
     // ردّ ٢٠٠ بلا رابط تنزيل = نفس المعاملة
@@ -211,9 +211,9 @@ test('٩. فشل جلب الملفّ بعد نجاح التوليد يردّ ا�
       ? { ok: true, json: async () => ({ file: {} }) }
       : { ok: true, json: async () => ({ status: 'Success', file_id: 'F9' }) });
     res = fakeRes();
-    await handler({ method: 'GET', query: { task_id: 'T6' } }, res);
+    await handler({ method: 'GET', query: { task_id: '1006' } }, res);
     assert.equal(res.code, 502);
-    assert.deepEqual(settled, [['T6', false]]);
+    assert.deepEqual(settled, [['1006', false]]);
 
     // والنجاح الكامل ما زال يسوّي بـtrue (لا استرجاع)
     settled.length = 0;
@@ -221,9 +221,9 @@ test('٩. فشل جلب الملفّ بعد نجاح التوليد يردّ ا�
       ? { ok: true, json: async () => ({ file: { download_url: 'https://cdn/ok.mp4' } }) }
       : { ok: true, json: async () => ({ status: 'Success', file_id: 'F9' }) });
     res = fakeRes();
-    await handler({ method: 'GET', query: { task_id: 'T7' } }, res);
+    await handler({ method: 'GET', query: { task_id: '1007' } }, res);
     assert.equal(res.body.status, 'SUCCEEDED');
-    assert.deepEqual(settled, [['T7', true]]);
+    assert.deepEqual(settled, [['1007', true]]);
   } finally {
     global.fetch = realFetch;
     if (realJob) require.cache[jobPath] = realJob; else delete require.cache[jobPath];

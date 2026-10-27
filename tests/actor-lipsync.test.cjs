@@ -157,17 +157,17 @@ async function poll(id, net) {
 
 test('٦. الاستطلاع: قيد العمل، ثمّ الرابط ويسوّي التذكرة نجاحًا، والفشل يردّ الخصم', async () => {
   env(); reset();
-  db.set('actor/req/req-12345678', { s: 'https://queue.fal.run/fal-ai/bytedance/requests/req-12345678/status', r: 'https://queue.fal.run/fal-ai/bytedance/requests/req-12345678' });
-  let p = await poll('req-12345678', () => new Response(JSON.stringify({ status: 'IN_PROGRESS' }), { status: 200 }));
+  db.set('actor/req/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d', { s: 'https://queue.fal.run/fal-ai/bytedance/requests/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d/status', r: 'https://queue.fal.run/fal-ai/bytedance/requests/a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' });
+  let p = await poll('a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d', () => new Response(JSON.stringify({ status: 'IN_PROGRESS' }), { status: 200 }));
   assert.equal(p.res.body.status, 'RUNNING');
   assert.equal(p.seen[0].init.headers.Authorization, 'Key fal-test');
-  p = await poll('req-12345678', (u) => new Response(JSON.stringify(/\/status$/.test(u) ? { status: 'COMPLETED' } : { video: { url: 'https://v3.fal.media/files/x/actor.mp4' }, duration: 8 }), { status: 200 }));
+  p = await poll('a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d', (u) => new Response(JSON.stringify(/\/status$/.test(u) ? { status: 'COMPLETED' } : { video: { url: 'https://v3.fal.media/files/x/actor.mp4' }, duration: 8 }), { status: 200 }));
   assert.deepEqual(p.res.body, { status: 'SUCCEEDED', output: ['https://v3.fal.media/files/x/actor.mp4'] });
-  assert.deepEqual(jobs.settled, [['actor:req-12345678', true]]);
+  assert.deepEqual(jobs.settled, [['actor:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d', true]]);
   jobs.settled.length = 0;
-  p = await poll('req-12345678', (u) => (/\/status$/.test(u) ? new Response(JSON.stringify({ status: 'COMPLETED' }), { status: 200 }) : new Response(JSON.stringify({ detail: [{ msg: 'face not detected' }] }), { status: 422 })));
+  p = await poll('a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d', (u) => (/\/status$/.test(u) ? new Response(JSON.stringify({ status: 'COMPLETED' }), { status: 200 }) : new Response(JSON.stringify({ detail: [{ msg: 'face not detected' }] }), { status: 422 })));
   assert.equal(p.res.body.status, 'FAILED'); assert.match(p.res.body.failure, /face not detected/);
-  assert.deepEqual(jobs.settled, [['actor:req-12345678', false]]);
+  assert.deepEqual(jobs.settled, [['actor:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d', false]]);
   p = await poll('../etc', () => new Response('{}'));
   assert.equal(p.res.code, 400, 'معرّف غير صالح');
 });

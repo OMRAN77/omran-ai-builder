@@ -9,7 +9,9 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   try {
     const id = String((req.query && req.query.id) || '');
-    if (!/^[\w-]{8,80}$/.test(id)) { res.status(400).json({ error: 'Missing id' }); return; }
+    /* v-lock-vid-r (srv-video-1): المحرّك يصدر UUID بحروف صغيرة، وقد يقرأ الكبيرة وبلا شَرطات المهمّةَ نفسها — بلا تذكرة ولا علامة فتسلّم
+       بعد الردّ. الشكل القانونيّ وحده. */
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)) { res.status(400).json({ error: 'Missing id' }); return; }
     const key = String(process.env.FAL_KEY || '').trim();
     if (!key) { res.status(500).json({ error: 'lipsync_unavailable' }); return; }
     const saved = await require('./kv.js').kvGetJSON('actor/req/' + id);

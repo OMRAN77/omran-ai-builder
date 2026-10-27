@@ -22,7 +22,9 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   try {
     const op = (req.query && req.query.op) || '';
-    if (!op || !/^[\w./-]+$/.test(op)) { res.status(400).json({ error: 'Missing op' }); return; }
+    /* v-lock-vid-r (srv-video-1): fetch يطبّع «.» و«..» في المسار (والمزوّد قد يتسامح في «//» و«/» الطرفيّة)، فتصل التهجئة البديلة
+       المهمّةَ نفسها بلا تذكرة ولا علامة: تسليم بعد الردّ، أو تسليم لا يسوّي التذكرة فيردّها الكنس بعده. الشكل القانونيّ وحده (كـcanonicalId لـRunway). */
+    if (!op || !/^[\w./-]+$/.test(op) || op.split('/').some((seg) => seg === '' || seg === '.' || seg === '..')) { res.status(400).json({ error: 'Missing op' }); return; }
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) { console.error('[veo-status] missing provider key'); res.status(500).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' }); return; }
 

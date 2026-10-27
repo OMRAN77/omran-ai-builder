@@ -5,6 +5,9 @@
    الآن «لا تسليم فوق ردّ»: علامة التسوية '0' تمنع الرابط في نقاط الاستطلاع الأربع.
    srv-video-5: المحرّك السينمائيّ المباشر (omni-create) كان يخصم ١٢٠ ويرسل الرابط في ردّ متزامن بلا تذكرة — من أغلق التطبيق أثناء
    الانتظار يخسر نقاطه. الآن يحفظ الناتج بمعرّف omni/… مع تذكرة كترند Omni، ويسلّمه veo-status فيُسوّى، والكنس يردّ ما لم يُسلَّم.
+   الجولة الثانية (مراجعة معاكسة): تهجئة بديلة للمعرّف («./» و«../» في op، رقم MiniMax بصفر أو مسافة، UUID الممثّل بحروف كبيرة) تصل
+   المزوّد المهمّةَ نفسها ولا تجد تذكرة ولا علامة — فتسلّم بعد الردّ أو يُردّ بعد التسليم؛ وأعطال قراءة التخزين تُقرأ «لا تذكرة» فتسلّم
+   والتذكرة مفتوحة؛ وعلامة «رُدّت» كانت تسقط بعد ٣٠ يومًا والمزوّد ما زال يحفظ الناتج.
    المعالجات الحقيقيّة (video-job وpoints والاستطلاعات الأربعة وveo-create وomni-create) بتخزين مزيّف في الذاكرة وfetch مزيّف — بلا شبكة. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,16 +33,29 @@ const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(
 /* ── التخزين المزيّف: Map + مدد الصلاحيّة المطلوبة + حقن أعطال وتأخير عشوائيّ (للسباق) ── */
 const kv = new Map();
 const ttls = new Map();
-const fail = { setIfAbsent: 0, rawPrefix: '' };
+/* أعطال kv.js الحقيقيّة: ticketRead/doneRead = ردّ لا يُقرأ (المرن يرجع null، والصارم strict يرمي)، claimLost = SET NX بردّ ٢٠٠ لا يُقرأ
+   (kvSetIfAbsent يرجع false ولم يُكتب شيء) */
+const fail = { setIfAbsent: 0, rawPrefix: '', ticketRead: 0, doneRead: 0, claimLost: 0 };
+const isTicket = (k) => /^vidjob:[0-9a-f]{40}$/.test(String(k));
+const isDone = (k) => /^vidjob:[0-9a-f]{40}:done$/.test(String(k));
 let jitter = null; // دالّة تأخير أو null
 const pause = async () => { if (jitter) await jitter(); };
 mock('api/_lib/kv.js', {
-  kvGetRaw: async (k) => { await pause(); return kv.has(k) ? String(kv.get(k)) : null; },
+  kvGetRaw: async (k) => { await pause(); if (fail.doneRead > 0 && isDone(k)) { fail.doneRead--; return null; } return kv.has(k) ? String(kv.get(k)) : null; },
   kvSetRaw: async (k, v, ttl) => { await pause(); if (fail.rawPrefix && String(k).indexOf(fail.rawPrefix) === 0) throw new Error('redis down'); kv.set(k, String(v)); if (ttl) ttls.set(k, ttl); },
-  kvSetIfAbsent: async (k, v, ttl) => { await pause(); if (fail.setIfAbsent > 0) { fail.setIfAbsent--; throw new Error('redis timeout'); } if (kv.has(k)) return false; kv.set(k, String(v)); ttls.set(k, ttl); return true; },
+  kvSetIfAbsent: async (k, v, ttl) => { await pause(); if (fail.setIfAbsent > 0) { fail.setIfAbsent--; throw new Error('redis timeout'); } if (fail.claimLost > 0 && isDone(k)) { fail.claimLost--; return false; } if (kv.has(k)) return false; kv.set(k, String(v)); ttls.set(k, ttl); return true; },
   kvIncrBy: async (k, n) => { await pause(); const v = Number(kv.get(k) || 0) + Number(n); kv.set(k, String(v)); return v; },
   kvDecrBy: async (k, n) => { await pause(); const v = Number(kv.get(k) || 0) - Number(n); kv.set(k, String(v)); return v; },
-  kvGetJSON: async (k) => { await pause(); try { return kv.has(k) ? JSON.parse(kv.get(k)) : null; } catch (e) { return null; } },
+  kvGetJSON: async (k, o) => {
+    await pause();
+    const strict = !!(o && o.strict);
+    if ((fail.ticketRead > 0 && isTicket(k)) || (fail.doneRead > 0 && isDone(k))) {
+      if (isTicket(k)) fail.ticketRead--; else fail.doneRead--;
+      if (strict) throw new Error('Upstash error: unreadable reply');
+      return null;
+    }
+    try { return kv.has(k) ? JSON.parse(kv.get(k)) : null; } catch (e) { if (strict) throw e; return null; }
+  },
   kvPutJSON: async (k, v) => { kv.set(k, JSON.stringify(v)); }, kvDel: async (k) => { await pause(); kv.delete(k); }, kvExpire: async () => {},
   kvIncr: async (k) => { const v = Number(kv.get(k) || 0) + 1; kv.set(k, String(v)); return v; }, kvList: async () => [],
   kvPipeline: async (cmds) => cmds.map(([op, k, v]) => { if (op === 'INCRBY') { const x = Number(kv.get(k) || 0) + Number(v); kv.set(k, String(x)); return x; } kv.set(k, String(v)); return 'OK'; }),
@@ -81,7 +97,12 @@ const token = (u) => { const p = Buffer.from(JSON.stringify({ u, exp: NOW + DAY 
 /* حساب Max استهلك صلاحيّة فيديوهات باقته — فالخصم نقاط (نمط trend-omni ٦) */
 function account(u, p) { users.set(u, { username: u, plan: 'max', planUpdatedAt: NOW - DAY, points: p }); kv.set('points:' + u, String(p)); kv.set('planvid:' + encodeURIComponent(u) + ':' + Math.floor(NOW - DAY), '3'); }
 const pts = (u) => Number(kv.get('points:' + u));
-function reset() { kv.clear(); ttls.clear(); users.clear(); locks.clear(); media.length = 0; fail.setIfAbsent = 0; fail.rawPrefix = ''; jitter = null; }
+function reset() { kv.clear(); ttls.clear(); users.clear(); locks.clear(); media.length = 0; Object.assign(fail, { setIfAbsent: 0, rawPrefix: '', ticketRead: 0, doneRead: 0, claimLost: 0 }); jitter = null; }
+/* الزمن يمضي «days» يومًا: يسقط كلّ مفتاح مدّته أقصر (كلّ الكتابات هنا عند الزمن صفر)، والمفتاح بلا مدّة يبقى */
+function after(days) { for (const [k, t] of [...ttls]) if (t && t <= days * 86400) { kv.delete(k); ttls.delete(k); } }
+/* معرّفات بشكل المزوّد الحقيقيّ: MiniMax رقم، والممثّل UUID بحروف صغيرة */
+const mmId = (n) => String(106916112212000 + n);
+const uuid = (n) => '5f3c2a10-7b4e-4c1d-9e8f-' + String(n).padStart(12, '0');
 
 /* ── المزوّدون: كلّ واحد ينجح ما لم يُقل غير ذلك؛ كلّ نداء يُسجَّل ── */
 const OMNI_URI = 'https://generativelanguage.googleapis.com/v1beta/files/omni1:download?alt=media';
@@ -102,16 +123,16 @@ function providersOk() {
 }
 providersOk();
 global.fetch = async (url, init) => {
-  const u = String(url);
+  const u = new URL(String(url)).href; // كـfetch الحقيقيّ (WHATWG URL): «.» و«..» في المسار تُطبَّع قبل أن يصل المزوّد
   calls.push(u);
   let r;
-  if (/\/interactions$/.test(u)) r = P.omni();
-  else if (/generativelanguage\.googleapis\.com\/v1beta\/.*operations\//.test(u)) r = P.veoOp();
-  else if (/\/v1\/query\/video_generation/.test(u)) r = P.mmQuery();
-  else if (/\/v1\/files\/retrieve/.test(u)) r = P.mmFile();
-  else if (/queue\.fal\.run\/.*\/status$/.test(u)) r = P.falStatus();
-  else if (/queue\.fal\.run\//.test(u)) r = P.falResult();
-  else if (/\/v1\/tasks\//.test(u)) r = P.rw();
+  if (/\/interactions$/.test(u)) r = P.omni(u);
+  else if (/generativelanguage\.googleapis\.com\/v1beta\/.*operations\//.test(u)) r = P.veoOp(u);
+  else if (/\/v1\/query\/video_generation/.test(u)) r = P.mmQuery(u);
+  else if (/\/v1\/files\/retrieve/.test(u)) r = P.mmFile(u);
+  else if (/queue\.fal\.run\/.*\/status$/.test(u)) r = P.falStatus(u);
+  else if (/queue\.fal\.run\//.test(u)) r = P.falResult(u);
+  else if (/\/v1\/tasks\//.test(u)) r = P.rw(u);
   else return new Response('{}', { status: 404 });
   if (r.throw) throw r.throw;
   return new Response(JSON.stringify(r.body), { status: r.status });
@@ -167,7 +188,7 @@ test('srv-video-1 أ: ترند Omni — الكنس بعد ٣١ دقيقة يرد
 });
 
 test('srv-video-1 ب: Veo والاقتصاديّ والممثّل — ردّ الكنس يمنع التسليم في نقاط الاستطلاع، والمزوّد ناجح', async () => {
-  for (const [kind, id, cost] of [['veo', 'models/veo-3.1/operations/op1', COSTS.veo_video], ['mm', 'mm-task-1', COSTS.minimax_video], ['actor', 'actor:req-actor-001', 175]]) {
+  for (const [kind, id, cost] of [['veo', 'models/veo-3.1/operations/op1', COSTS.veo_video], ['mm', mmId(1), COSTS.minimax_video], ['actor', 'actor:' + uuid(1), 175]]) {
     reset(); account('nora', 1000); providersOk();
     await charged('nora', id, cost);
     const s = await sweep('nora');
@@ -185,9 +206,9 @@ test('srv-video-1 ب: Veo والاقتصاديّ والممثّل — ردّ ا�
 test('srv-video-1 ج: ردّ الاستطلاع نفسه (عطل المزوّد أو تعذّر الرابط) ثمّ نجاحه لاحقًا لا يسلّم — Runway والاقتصاديّ وVeo والممثّل', async () => {
   const cases = [
     ['rw', '0:rwtask-1', COSTS.runway_video, () => { P.rw = () => ({ status: 402, body: { error: 'You do not have enough credits to run this task.' } }); }],
-    ['mm', 'mm-task-2', COSTS.minimax_video, () => { P.mmFile = () => ({ status: 500, body: {} }); }],
+    ['mm', mmId(2), COSTS.minimax_video, () => { P.mmFile = () => ({ status: 500, body: {} }); }],
     ['veo', 'models/veo-3.1/operations/op2', COSTS.veo_video, () => { P.veoOp = () => ({ status: 402, body: { error: { message: 'billing account disabled' } } }); }],
-    ['actor', 'actor:req-actor-002', 175, () => { P.falStatus = () => ({ status: 403, body: { detail: 'User is locked. Reason: Exhausted balance.' } }); }],
+    ['actor', 'actor:' + uuid(2), 175, () => { P.falStatus = () => ({ status: 403, body: { detail: 'User is locked. Reason: Exhausted balance.' } }); }],
   ];
   for (const [kind, id, cost, breakIt] of cases) {
     reset(); account('omar', 1000); providersOk();
@@ -205,7 +226,7 @@ test('srv-video-1 ج: ردّ الاستطلاع نفسه (عطل المزوّد 
 });
 
 test('srv-video-1 د: المسلَّم أوّلًا لا يُردّ، والاستطلاع المكرّر يسلّم (إعادة تشغيل آمنة)، والمالك بلا تذكرة يُسلَّم كما كان', async () => {
-  for (const [kind, id, cost] of [['veo', 'models/veo-3.1/operations/op3', COSTS.veo_video], ['mm', 'mm-task-3', COSTS.minimax_video], ['actor', 'actor:req-actor-003', 175], ['rw', '0:rwtask-3', COSTS.runway_video]]) {
+  for (const [kind, id, cost] of [['veo', 'models/veo-3.1/operations/op3', COSTS.veo_video], ['mm', mmId(3), COSTS.minimax_video], ['actor', 'actor:' + uuid(3), 175], ['rw', '0:rwtask-3', COSTS.runway_video]]) {
     reset(); account('lina', 1000); providersOk();
     await charged('lina', id, cost);
     assert.ok(delivered(await poll(kind, id)), kind + ': سُلِّم');
@@ -215,7 +236,7 @@ test('srv-video-1 د: المسلَّم أوّلًا لا يُردّ، والاس
     assert.equal(pts('lina'), 1000 - cost, kind);
     assert.ok(delivered(await poll(kind, id)), kind + ': بعد الكنس يسلّم أيضًا');
     // المالك (أو مهمّة بلا خصم): لا تذكرة ولا علامة = يُسلَّم
-    assert.ok(delivered(await poll(kind, kind === 'actor' ? 'actor:req-owner-0001' : kind === 'rw' ? '0:owner-task' : kind === 'veo' ? 'models/veo-3.1/operations/owner' : 'mm-owner')), kind + ': المالك يُسلَّم');
+    assert.ok(delivered(await poll(kind, kind === 'actor' ? 'actor:' + uuid(999) : kind === 'rw' ? '0:owner-task' : kind === 'veo' ? 'models/veo-3.1/operations/owner' : mmId(999))), kind + ': المالك يُسلَّم');
   }
 });
 
@@ -225,7 +246,7 @@ test('srv-video-1 هـ: السباق — كنس واستطلاع متزامنا�
   let refundedRuns = 0, deliveredRuns = 0;
   for (let i = 0; i < 60; i++) {
     const kind = ['veo', 'mm', 'actor'][i % 3];
-    const id = kind === 'veo' ? 'models/veo-3.1/operations/race' + i : kind === 'mm' ? 'mm-race-' + i : 'actor:req-race-' + String(i).padStart(4, '0');
+    const id = kind === 'veo' ? 'models/veo-3.1/operations/race' + i : kind === 'mm' ? mmId(100 + i) : 'actor:' + uuid(100 + i);
     reset(); account('race', 1000); providersOk();
     await charged('race', id, 100);
     jitter = () => new Promise((r) => setTimeout(r, Math.floor(rnd() * 3)));
@@ -243,38 +264,174 @@ test('srv-video-1 هـ: السباق — كنس واستطلاع متزامنا�
 
 test('srv-video-1 و: عطب حجز التسوية والتذكرة مفتوحة = RUNNING لا تسليم (وإلّا ردّها الكنس بعد التسليم)، ثمّ يسلّم ولا يُردّ', async () => {
   reset(); account('huda', 1000); providersOk();
-  await charged('huda', 'mm-claim-1', COSTS.minimax_video);
+  await charged('huda', mmId(201), COSTS.minimax_video);
   fail.setIfAbsent = 1;
-  const a = await poll('mm', 'mm-claim-1');
+  const a = await poll('mm', mmId(201));
   assert.equal(a.body && a.body.status, 'RUNNING', 'لم يُحسم = يعيد العميل: ' + JSON.stringify(a.body));
   assert.ok(!leaks(a));
-  const b = await poll('mm', 'mm-claim-1');
+  const b = await poll('mm', mmId(201));
   assert.ok(delivered(b), 'التالي يسلّم');
   assert.equal((await sweep('huda')).refunded, 0, 'المسلَّم لا يُردّ');
   assert.equal(pts('huda'), 1000 - COSTS.minimax_video);
 });
 
-test('srv-video-1 ز: علامة «رُدّت» تعيش أطول من التذكرة ومن ناتج المزوّد المحفوظ (يومان)، وعلامة التسليم كما كانت', async () => {
-  reset(); account('reem', 1000);
-  await charged('reem', 'mm-ttl-1', COSTS.minimax_video);
-  await sweep('reem');
-  const refundedTtl = ttls.get(job.ticketKey('mm-ttl-1') + ':done');
-  assert.ok(refundedTtl > job.TICKET_TTL_SEC, 'علامة الردّ ' + refundedTtl + ' ثانية — كانت بمدّة التذكرة فيسلّم الاستطلاع بعد سقوطها');
-  assert.ok(refundedTtl >= 30 * 86400);
-  await charged('reem', 'mm-ttl-2', COSTS.minimax_video);
-  await poll('mm', 'mm-ttl-2');
-  assert.equal(ttls.get(job.ticketKey('mm-ttl-2') + ':done'), job.TICKET_TTL_SEC, 'علامة التسليم بمدّتها');
+test('srv-video-1 ز: علامة «رُدّت» بلا انتهاء — بعد ٣ أيّام و٣١ يومًا وسنة، والمزوّد ما زال يحفظ الناتج: لا تسليم؛ وعلامة التسليم كما كانت', async () => {
+  for (const [kind, id, cost] of [['mm', mmId(401), COSTS.minimax_video], ['actor', 'actor:' + uuid(401), 175], ['veo', 'models/veo-3.1/operations/ttl1', COSTS.veo_video]]) {
+    reset(); account('reem', 1000); providersOk();
+    await charged('reem', id, cost);
+    assert.equal((await sweep('reem')).refunded, 1, kind);
+    const k = job.ticketKey(id) + ':done';
+    assert.equal(kv.get(k), '0', kind + ': علامة الردّ');
+    const ttl = ttls.get(k);
+    for (const d of [3, 31, 400]) {
+      after(d); // التذكرة (يومان) سقطت، والمزوّد ما زال يسلّم الناتج
+      const p = await poll(kind, id);
+      assert.ok(!delivered(p) && !leaks(p), kind + ' بعد ' + d + ' يومًا: لا تسليم فوق ردّ (مدّة العلامة ' + ttl + ' ثانية) — ' + JSON.stringify(p.body));
+    }
+    assert.ok(!ttl, kind + ': علامة الردّ بلا مدّة');
+    assert.equal(kv.get(k), '0', kind + ': ما زالت بعد سنة');
+    assert.equal(pts('reem'), 1000, kind + ': ردّ واحد');
+  }
+  reset(); account('reem', 1000); providersOk();
+  await charged('reem', mmId(402), COSTS.minimax_video);
+  assert.ok(delivered(await poll('mm', mmId(402))));
+  assert.equal(ttls.get(job.ticketKey(mmId(402)) + ':done'), job.TICKET_TTL_SEC, 'علامة التسليم بمدّتها');
 });
 
 test('srv-video-1 ح: الردّ مرّة واحدة تحت التكرار — ثلاثة كنوس متزامنة واستطلاع فاشل معها', async () => {
   reset(); account('dana', 1000); providersOk();
-  await charged('dana', 'mm-many-1', COSTS.minimax_video);
+  await charged('dana', mmId(301), COSTS.minimax_video);
   P.mmQuery = () => ({ status: 200, body: { status: 'Fail', base_resp: { status_code: 0 } } });
-  const out = await Promise.all([sweep('dana'), sweep('dana'), sweep('dana'), poll('mm', 'mm-many-1')]);
+  const out = await Promise.all([sweep('dana'), sweep('dana'), sweep('dana'), poll('mm', mmId(301))]);
   assert.equal(out[3].body.status, 'FAILED');
   assert.equal(pts('dana'), 1000, 'ردّ واحد بالضبط');
   providersOk();
-  assert.equal((await poll('mm', 'mm-many-1')).body.status, 'FAILED', 'ولا تسليم بعده');
+  assert.equal((await poll('mm', mmId(301))).body.status, 'FAILED', 'ولا تسليم بعده');
+});
+
+/* ── الجولة الثانية (مراجعة معاكسة): تهجئة بديلة لمعرّف المهمّة، وأعطال قراءة التخزين ── */
+const VEO_OP = 'models/veo-3.1-fast-generate-preview/operations/op1';
+const MM_ID = '106916112212032';
+const ACT_ID = '764cabcf-b745-4b3e-ae38-1200304cf45b';
+const CANON = { veo: VEO_OP, mm: MM_ID, actor: 'actor:' + ACT_ID };
+const COST_OF = { veo: COSTS.veo_video, mm: COSTS.minimax_video, actor: 175 };
+/* مزوّدون متسامحون في قراءة المعرّف: كلّ تهجئة تعني المهمّة نفسها تعيدها ناجحة، وغيرها «غير موجودة» */
+function lenientProviders() {
+  providersOk();
+  const veoOk = P.veoOp, mmOk = P.mmQuery, stOk = P.falStatus, resOk = P.falResult;
+  P.veoOp = (u) => (new URL(u).pathname.replace(/\/{2,}/g, '/').replace(/\/$/, '') === '/v1beta/' + VEO_OP ? veoOk() : { status: 404, body: { error: { code: 404, message: 'Operation not found' } } });
+  P.mmQuery = (u) => {
+    let n = null;
+    try { n = String(BigInt(String(new URL(u).searchParams.get('task_id')).trim())); } catch (e) { n = null; }
+    return n === MM_ID ? mmOk() : { status: 200, body: { base_resp: { status_code: 2013, status_msg: 'task not found' } } };
+  };
+  const sameFal = (u) => { const m = /\/requests\/([^/]+)/.exec(u); return !!m && m[1].toLowerCase().replace(/-/g, '') === ACT_ID.replace(/-/g, ''); };
+  P.falStatus = (u) => (sameFal(u) ? stOk() : { status: 404, body: { detail: 'Request not found' } });
+  P.falResult = (u) => (sameFal(u) ? resOk() : { status: 404, body: { detail: 'Request not found' } });
+}
+const VARIANTS = {
+  veo: ['models/veo-3.1-fast-generate-preview/./operations/op1', 'models/veo-3.1-fast-generate-preview/operations/x/../op1', './' + VEO_OP,
+    'models/x/../veo-3.1-fast-generate-preview/operations/op1', 'models//veo-3.1-fast-generate-preview/operations/op1', VEO_OP + '/', '/' + VEO_OP, 'omni/../' + VEO_OP],
+  mm: ['0' + MM_ID, '00' + MM_ID, ' ' + MM_ID, MM_ID + ' ', '+' + MM_ID, '0x' + BigInt(MM_ID).toString(16)],
+  actor: [ACT_ID.toUpperCase(), ACT_ID.slice(0, 9).toUpperCase() + ACT_ID.slice(9), ACT_ID.replace(/-/g, ''), ACT_ID.replace(/-/g, '').toUpperCase()],
+};
+const asPolled = (kind, v) => (kind === 'actor' ? 'actor:' + v : v);
+
+test('srv-video-1 ط: تهجئة بديلة بعد ردّ الكنس («./» و«../» في op، رقم بصفر أو مسافة أو +، UUID بحروف كبيرة) لا تسلّم — كانت SUCCEEDED بالرابط الموقّع', async () => {
+  for (const kind of ['veo', 'mm', 'actor']) {
+    for (const v of VARIANTS[kind]) {
+      reset(); account('nora', 1000); lenientProviders();
+      await charged('nora', CANON[kind], COST_OF[kind]);
+      assert.equal((await sweep('nora')).refunded, 1, kind);
+      assert.equal(pts('nora'), 1000, kind + ': رُدّت');
+      assert.equal((await poll(kind, CANON[kind])).body.status, 'FAILED', kind + ': القانونيّ لا يسلّم بعد الردّ');
+      const p = await poll(kind, asPolled(kind, v));
+      assert.ok(!delivered(p) && !leaks(p), kind + ' «' + v + '»: لا تسليم فوق ردّ — ' + JSON.stringify(p.body));
+      assert.deepEqual(media, [], kind + ' «' + v + '»: لا ناتج مسلَّم');
+      assert.equal(pts('nora'), 1000, kind + ': لا خصم ولا ردّ آخر');
+    }
+  }
+});
+
+test('srv-video-1 ي: التسليم بتهجئة بديلة ثمّ الكنس — كان يسلّم الرابط ثمّ يردّ النقاط؛ الآن البديلة بلا رابط، فإمّا ردّ بلا رابط وإمّا رابط بلا ردّ', async () => {
+  for (const kind of ['veo', 'mm', 'actor']) {
+    for (const v of VARIANTS[kind]) {
+      reset(); account('lina', 1000); lenientProviders();
+      await charged('lina', CANON[kind], COST_OF[kind]);
+      const a = await poll(kind, asPolled(kind, v));
+      const s = await sweep('lina');
+      assert.ok(!(delivered(a) && s.refunded), kind + ' «' + v + '»: سُلِّم بالبديلة ثمّ رُدّت نقاطه — فيديو مجّانيّ');
+      assert.ok(!delivered(a) && !leaks(a), kind + ' «' + v + '»: البديلة لا تسلّم — ' + JSON.stringify(a.body));
+      assert.equal(s.refunded, 1, kind + ': لم يُسلَّم شيء فيُردّ');
+      assert.equal((await poll(kind, CANON[kind])).body.status, 'FAILED', kind + ': ولا تسليم بعده');
+      assert.equal(pts('lina'), 1000, kind);
+    }
+    // القانونيّ قبل الكنس يسلّم ولا يُردّ (المسار الحيّ كما هو)
+    reset(); account('lina', 1000); lenientProviders();
+    await charged('lina', CANON[kind], COST_OF[kind]);
+    assert.ok(delivered(await poll(kind, CANON[kind])), kind + ': القانونيّ يسلّم');
+    assert.equal((await sweep('lina')).refunded, 0, kind);
+  }
+});
+
+/* حالات التخزين المتعطّل: كلّ نقاط الاستطلاع الأربع تمرّ بـsettleVideoJob */
+const GLITCH_CASES = (n) => [['mm', mmId(n), COSTS.minimax_video], ['actor', 'actor:' + uuid(n), 175], ['veo', 'models/veo-3.1/operations/glitch' + n, COSTS.veo_video], ['rw', '0:rwtask-' + n, COSTS.runway_video]];
+
+test('srv-video-1 ك: قراءة التذكرة تتعطّل عند التسليم (المرنة ترجع null) = RUNNING لا تسليم — كان يسلّم والتذكرة مفتوحة فيردّها الكنس بعده', async () => {
+  for (const [kind, id, cost] of GLITCH_CASES(501)) {
+    reset(); account('huda', 1000); providersOk();
+    await charged('huda', id, cost);
+    fail.ticketRead = 1;
+    const a = await poll(kind, id);
+    assert.equal(a.body && a.body.status, 'RUNNING', kind + ': لم يُحسم = يعيد العميل — ' + JSON.stringify(a.body));
+    assert.ok(!leaks(a), kind);
+    assert.ok(delivered(await poll(kind, id)), kind + ': التالي يسلّم');
+    assert.equal((await sweep('huda')).refunded, 0, kind + ': المسلَّم لا يُردّ');
+    assert.equal(pts('huda'), 1000 - cost, kind + ': دفع مرّة واستلم');
+  }
+  // عطل عابر في القراءة (5xx) = لم يُحسم؛ والتخزين غير المهيّأ أصلًا (kv.js الحقيقيّ بلا متغيّراته: لا تذاكر ولا علامات) = يُسلَّم كما كان
+  const throwing = (e) => ({ kvGetJSON: async () => { throw e; }, kvGetRaw: async () => { throw e; }, kvSetIfAbsent: async () => { throw e; }, kvDel: async () => {} });
+  assert.deepEqual(await quiet(() => job.settleVideoJob(mmId(502), true, { kv: throwing(new Error('Upstash error: HTTP 503')) })), { settled: false, refunded: false, pending: true });
+  const kvPath = rp('api/_lib/kv.js');
+  const fake = require.cache[kvPath];
+  delete process.env.UPSTASH_REDIS_REST_URL; delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  delete require.cache[kvPath];
+  let realKv;
+  try { realKv = require(kvPath); } finally { require.cache[kvPath] = fake; }
+  assert.equal(await quiet(() => job.settleVideoJob(mmId(503), true, { kv: realKv })), null, 'بلا تخزين: يُسلَّم كما كان');
+});
+
+test('srv-video-1 ل: حجز التسوية بردّ ٢٠٠ لا يُقرأ (kvSetIfAbsent يرجع false ولم يكتب) والتذكرة مفتوحة = RUNNING لا تسليم، ثمّ يسلّم ولا يُردّ', async () => {
+  for (const [kind, id, cost] of GLITCH_CASES(601)) {
+    reset(); account('huda', 1000); providersOk();
+    await charged('huda', id, cost);
+    fail.claimLost = 1;
+    const a = await poll(kind, id);
+    assert.equal(a.body && a.body.status, 'RUNNING', kind + ': لم يُحسم = يعيد العميل — ' + JSON.stringify(a.body));
+    assert.ok(!leaks(a), kind);
+    assert.ok(delivered(await poll(kind, id)), kind + ': التالي يسلّم');
+    assert.equal((await sweep('huda')).refunded, 0, kind + ': المسلَّم لا يُردّ');
+    assert.equal(pts('huda'), 1000 - cost, kind);
+  }
+});
+
+test('srv-video-1 م: بعد الردّ تتعطّل قراءة علامة التسوية (المرنة ترجع null) = لا تسليم — كانت تُقرأ «لا تذكرة ولا علامة» فيُسلَّم', async () => {
+  for (const [kind, id, cost] of GLITCH_CASES(701)) {
+    reset(); account('dana', 1000); providersOk();
+    await charged('dana', id, cost);
+    if (kind === 'rw') { // Runway لا يردّه الكنس ما دام المزوّد ناجحًا — الردّ من عطل المزوّد عند الاستطلاع
+      P.rw = () => ({ status: 402, body: { error: 'You do not have enough credits to run this task.' } });
+      await poll('rw', id);
+      providersOk();
+    } else assert.equal((await sweep('dana')).refunded, 1, kind);
+    assert.equal(pts('dana'), 1000, kind + ': رُدّت');
+    fail.doneRead = 1;
+    const a = await poll(kind, id);
+    assert.ok(!delivered(a) && !leaks(a), kind + ': لا تسليم فوق ردّ — ' + JSON.stringify(a.body));
+    assert.equal(a.body && a.body.status, 'RUNNING', kind + ': لم يُعرف = يعيد العميل');
+    assert.equal((await poll(kind, id)).body.status, 'FAILED', kind + ': التالي يرى الردّ');
+    assert.equal(pts('dana'), 1000, kind);
+  }
 });
 
 // ─────────────────────────────── srv-video-5 ───────────────────────────────

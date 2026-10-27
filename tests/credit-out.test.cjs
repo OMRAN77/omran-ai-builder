@@ -144,8 +144,8 @@ test('٥. الاستطلاع: المزوّد يرفضه لنفاد الرصيد 
   const outage = [
     ['video-status.js', GET({ id: 'task-1' }), reply(402, { error: 'You do not have enough credits to run this task.' }), 'task-1'],
     ['veo-status.js', GET({ op: 'models/veo/operations/9' }), reply(429, { error: { code: 429, message: DEPLETED } }), 'models/veo/operations/9'],
-    ['minimax-status.js', GET({ task_id: 'mm-1' }), reply(403, { base_resp: { status_code: 1004, status_msg: 'authorization failed' } }), 'mm-1'],
-    ['actor-status.js', GET({ id: 'actor-req-1' }), reply(403, { detail: 'User is locked. Reason: Exhausted balance.' }), 'actor:actor-req-1'],
+    ['minimax-status.js', GET({ task_id: '1001' }), reply(403, { base_resp: { status_code: 1004, status_msg: 'authorization failed' } }), '1001'],
+    ['actor-status.js', GET({ id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' }), reply(403, { detail: 'User is locked. Reason: Exhausted balance.' }), 'actor:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'],
   ];
   for (const [f, req, net, id] of outage) {
     const r = await call(f, req, net);

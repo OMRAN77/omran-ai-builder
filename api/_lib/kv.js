@@ -18,7 +18,8 @@ const REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 // characters never need extra escaping.
 async function command(args, strict) {
   if (!REST_URL || !REST_TOKEN) {
-    throw new Error('Server is missing UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN');
+    // v-lock-vid-r: رمز ثابت يميّز «لا تخزين أصلًا» (لا تذاكر فيديو ولا علامات تُحمى) عن عطل عابر — الرسالة كما هي
+    throw Object.assign(new Error('Server is missing UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN'), { code: 'kv_unconfigured' });
   }
   const res = await fetch(REST_URL, {
     method: 'POST',
