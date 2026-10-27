@@ -978,14 +978,26 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
 // Used only by the classic (fallback) text pipeline, which has no real
 // function-calling - the Realtime voice-to-voice mode below detects this
 // itself via OpenAI's built-in tool calling instead.
-const MAHA_IMAGE_KEYWORDS = [
-  'ارسم','ارسمي','رسم','رسمة','صورة','سوي صورة','اعطني صورة','اعطيني صورة','ولد صورة','صمم','عدّلها','عدلها','غيّرها','غيرها',
-  'draw','generate an image','create an image','make an image','make a picture','draw me','picture of','image of','design a logo','edit it','change it',
+/* v-lock-maha (cli-voice-2، باب المال بموافقة المالك ٢٧ أكتوبر): كانت includes على أجزاء الكلمات — «الرسمي» فيها «رسم»، و«بصورة مبسطة»
+   فيها «صورة»، و«وغيرها» فيها «غيرها»، و«withdraw» فيها «draw» — فسؤال عاديّ يولّد صورة مدفوعة (٢٠ نقطة أو صورة ضيف مجّانيّة). الآن كلمات
+   كاملة لأفعال طلب صريحة (ارسم، صمّم، سوّ/ابي/اعطني + صورة، draw، generate an image) لا الأسماء المفردة، و«غيّرها/change it» تعديلٌ فقط
+   حين في المكالمة صورة (mahaLastImageBase64)، وبلا «و» قبلها («وغيرها» = «وما شابه»). */
+const MAHA_IMG_AL = '\\u0621-\\u064A';
+const mahaImgWord = (alt) => new RegExp('(?:^|[^' + MAHA_IMG_AL + 'a-z])(?:' + alt + ')(?![' + MAHA_IMG_AL + 'a-z])', 'i');
+const MAHA_IMAGE_ASK = [
+  mahaImgWord('[وف]?[اأإ]رسم(?:ي)?(?:لي|ها|ه|يها|يلي)?'),
+  mahaImgWord('[وف]?صمّ?م(?:ي)?(?:لي|ها|ه|يها|يلي)?'),
+  mahaImgWord('[وف]?(?:[اأ]?عط(?:ي)?ني|هات|[اأ]ب[اي]|[اأ]بغ[اىي]|[اأ]ريد|سوّ?(?:ي|ى)?(?:لي)?|[اأ]عمل(?:ي)?(?:لي)?|[اأ]صنع(?:ي)?(?:لي)?|ولّ?د(?:ي)?(?:لي)?)(?:\\s+(?:لي|لنا|منك|منج|منچ))?\\s+(?:ال)?(?:صور[ةه]|رسم[ةه]|شعار|لوجو|تصميم)'),
+  /(?:^|[,،.!?;:]\s*|\b(?:please|pls|can you|could you|would you|will you|you|to|and|now|just|then)\s+)draw\b/i,
+  /\b(?:generate|create|make|design|draw)\s+(?:me\s+|us\s+)?(?:an?\s+|the\s+|some\s+|one\s+)?(?:image|picture|photo|drawing|logo|poster)s?\b/i,
+  /\b(?:give\s+me|i\s+(?:want|need|would\s+like))\s+(?:an?\s+|the\s+|some\s+)?(?:image|picture|drawing|logo)s?\b/i,
 ];
+const MAHA_IMAGE_EDIT = [mahaImgWord('غيّ?رها|عدّ?لها'), /\b(?:edit|change)\s+it\b/i];
 function mahaNeedsImage(text){
   if(!text) return false;
-  const lower = text.toLowerCase();
-  return MAHA_IMAGE_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
+  const s = String(text);
+  if(MAHA_IMAGE_ASK.some(re => re.test(s))) return true;
+  return !!mahaLastImageBase64 && MAHA_IMAGE_EDIT.some(re => re.test(s));
 }
 
 // Stores the most recently generated image in the current call (base64 +
@@ -1737,11 +1749,24 @@ function mahaPlayReadyBeep(){
 }
 
 let mahaRtCancelled = false;
+/* v-lock-maha (cli-voice-3): معرّف فتح لطلب الجلسة الجاري — من أنهى المكالمة والطلب في الطريق يرسل إلغاءه، فإن لم يسلّم الخادم المفتاح
+   بعدُ ردّ دقيقة الافتتاح أو التجربة (realtime-session: حجز ذرّيّ واحد «سُلِّم» أو «أُلغي»). بعد وصول الردّ لا إلغاء: المفتاح قد يُستعمل. */
+let mahaRtOpenId = '';
+function mahaRtCancelOpen(){
+  const id = mahaRtOpenId;
+  if(!id) return;
+  mahaRtOpenId = '';
+  try{
+    fetch('/api/realtime-session', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cancel', openId: id }) })
+      .catch((e) => __swallow(e, 'maha:open-cancel'));
+  }catch(e){ __swallow(e, 'maha:open-cancel'); }
+}
 async function mahaStartRealtimeCall(){
     mahaRtReady = false;
     mahaClearRtResponseWatchdog();
       mahaRtCancelled = false;
   mahaRtResponded = false; // v-maha-first-audio
+  const myGen = mahaCallGen, rc = mahaRtReconnecting, openId = mahaRtOpenId = mahaNewHoldId();
   const tokenRes = await fetch('/api/realtime-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1755,8 +1780,10 @@ async function mahaStartRealtimeCall(){
       lastCallAgoMs: mahaPrevCallAgoMs, // v-maha-close
       app: mahaAppHello(), // v-maha-app: أدوات الشاشة الظاهرة له بأسمائها في لغته
       desktop: !document.documentElement.classList.contains('mobile-ui'),
+      openId, // v-lock-maha (cli-voice-3)
     }),
   });
+  if(mahaRtOpenId === openId) mahaRtOpenId = ''; // الخادم حسم: سلّم المفتاح أو ردّ الخصم — لا إلغاء بعد الردّ
   const tokenData = await tokenRes.json().catch(() => ({}));
   if(tokenRes.status === 402){
     // رصيد النقاط غير كافٍ أو انتهت التجربة المجانية — لا fallback هنا (v-maha-subs)
@@ -1765,12 +1792,16 @@ async function mahaStartRealtimeCall(){
   if(!tokenRes.ok || !tokenData.clientSecret){
     throw new Error((tokenData && typeof tokenData.error === 'string') ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status)); // v-maha-paused: كائن خطأ المزوّد كان يصير [object Object]
   }
-  mahaStartPointsMeter(tokenData.mahaBudget);
+  /* v-lock-maha (cli-voice-3): فحص الإلغاء قبل العدّاد — كان العدّاد يبدأ لمكالمة انتهت أثناء التجهيز ثمّ تُرمى 'cancelled'.
+     ومحاولة مكالمة سابقة (بدأت بعدها غيرها) ملغاة كذلك. (cli-voice-1): إعادة الاتّصال تُكمل على عدّاد المكالمة نفسه — دقيقة افتتاحها
+     تُحسب دقيقة المكالمة التالية، وحدّ المكالمة لا يُصفَّر؛ عدّاد جديد كان يدفع دقيقة فوق الجارية ويصفّر الحدّ. */
+  if(mahaRtCancelled || myGen !== mahaCallGen) throw new Error('cancelled');
+  if(rc){ if(mahaMeter) mahaMeter.reconnected(tokenData.mahaBudget); }
+  else mahaStartPointsMeter(tokenData.mahaBudget);
   mahaAppControl = tokenData.appControl === true; // v-maha-app: الخادم وحده يقرّر
   mahaRtNatural = tokenData.turn === 'natural';
   const EPHEMERAL_KEY = tokenData.clientSecret;
   mahaRtTrace('session ' + (tokenData.turn || 'classic'));
-  if(mahaRtCancelled) throw new Error('cancelled');
 
   mahaRtStream = await mahaGetUserMediaRetry({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
@@ -1933,6 +1964,7 @@ async function mahaStartRealtimeCall(){
       await new Promise(resolve => setTimeout(resolve, 250));
       if(mahaRtCancelled) throw new Error('cancelled'); // ولا بعد هذه المهلة: لا مراقبة ولا طلب معلّق يبقى لمكالمة تالية
       mahaRtReady = true;
+      mahaCallSetup = false; // v-lock-maha (cli-voice-3): انتهى التجهيز — اللمسة تُنهي المكالمة من الآن (v-maha-band)
       mahaRtTrace('ready' + (preBufSent ? ' prebuf-sent' : '') + (mahaRtAudioOk ? ' audio-ok' : ' audio-pending'));
       // v-maha-first-heard: أوّل ردّ يُراقَب حتّى يُسمع (مكالمة مها الجديدة وحدها؛ لا البنّاء ولا إعادة الاتّصال). كلام التجهيز = كلام حقيقيّ.
       if(!mahaRtReconnecting && mahaCallMode !== 'builder') mahaRtFirstStart(dc, preBufSent);
@@ -1975,16 +2007,7 @@ async function mahaStartRealtimeCall(){
     if(pc.connectionState === 'failed' && mahaCallActive && !mahaRtReconnecting){
       // Truly dead - reconnect immediately.
       if(mahaRtDisconnectTimer){ clearTimeout(mahaRtDisconnectTimer); mahaRtDisconnectTimer = null; }
-      mahaRtReconnecting = true;
-      mahaSetState('thinking');
-      mahaEndRealtimeCall();
-      mahaStartRealtimeCall()
-        .then(() => { mahaRtReconnecting = false; })
-        .catch((e) => {
-          mahaRtReconnecting = false;
-          console.error('[maha] auto-reconnect failed:', e);
-          mahaSetState('error', t('mahaConnectionLost') || 'تعذر إعادة الاتصال');
-        });
+      mahaRtReconnect();
     } else if(pc.connectionState === 'disconnected' && mahaCallActive && !mahaRtReconnecting){
       // Brief network hiccup - WebRTC often self-recovers within a few
       // seconds. Wait before tearing down the whole call so we don't cut
@@ -1994,19 +2017,39 @@ async function mahaStartRealtimeCall(){
         mahaRtDisconnectTimer = null;
         if(pc !== mahaRtPc || !mahaCallActive || mahaRtReconnecting) return;
         if(pc.connectionState !== 'disconnected' && pc.connectionState !== 'failed') return; // already recovered
-        mahaRtReconnecting = true;
-        mahaSetState('thinking');
-        mahaEndRealtimeCall();
-        mahaStartRealtimeCall()
-          .then(() => { mahaRtReconnecting = false; })
-          .catch((e) => {
-            mahaRtReconnecting = false;
-            console.error('[maha] auto-reconnect failed:', e);
-            mahaSetState('error', t('mahaConnectionLost') || 'تعذر إعادة الاتصال');
-          });
+        mahaRtReconnect();
       }, 1500);
     }
   });
+}
+
+/* v-lock-maha (cli-voice-1، باب المال بموافقة المالك ٢٧ أكتوبر): إعادة الاتّصال الفاشلة كانت تكتفي بحالة «تعذّر إعادة الاتصال» —
+   mahaCallActive يبقى true فيخصم العدّاد ١٥ نقطة كلّ دقيقة بلا جلسة حتّى ينفد الرصيد (مهلة السكوت تشترط «أستمع» فلا تعمل)، والمايك
+   والاتّصال الجديد مفتوحان إن فشلت بعد getUserMedia. الآن: الفشل يُنهي المكالمة كلّها (ورفض الرصيد يفتح الباقات كبداية المكالمة)،
+   والمحاولة بمهلة ١٢ث كالتجهيز الأوّل (طلب جلسة معلّق لا يُبقي المكالمة حيّة بلا نهاية — وإنهاؤها يُلغي الطلب فيردّ الخادم خصمه)،
+   ومكالمة في آخر دقيقة من حدّها تنتهي بحدّها لا تشتري دقيقة افتتاح بعده. */
+const MAHA_RT_RECONNECT_MS = 12000;
+function mahaRtReconnect(){
+  if(mahaMeter && mahaMeter.capHit()){ mahaMeter.endCap(); return; }
+  const gen = mahaCallGen;
+  mahaRtReconnecting = true;
+  mahaSetState('thinking');
+  mahaEndRealtimeCall();
+  let timer = 0;
+  const attempt = mahaStartRealtimeCall();
+  attempt.catch(() => {}); // رفضها بعد خسارة سباق المهلة لا يبقى يتيمًا
+  Promise.race([attempt, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Realtime reconnect timed out')), MAHA_RT_RECONNECT_MS); })])
+    .then(() => { clearTimeout(timer); mahaRtReconnecting = false; })
+    .catch((e) => {
+      clearTimeout(timer);
+      mahaRtReconnecting = false;
+      if(gen !== mahaCallGen || !mahaCallActive) return; // انتهت المكالمة (أو بدأت غيرها) أثناء المحاولة
+      console.error('[maha] auto-reconnect failed:', e);
+      const plans = !!e && (e.message === '__points__' || e.message === '__guest__');
+      mahaEndCall();
+      if(plans) mahaOpenPlans(e.message === '__guest__');
+      else { try{ settingsToast(t('mahaConnectionLost')); }catch(e2){ __swallow(e2, 'maha:reconnect-lost'); } }
+    });
 }
 
 // Handles a completed function call requested by the model over the Realtime
@@ -2296,6 +2339,7 @@ function urlBase64ToUint8Array(base64String){
 
 function mahaEndRealtimeCall(){
     mahaRtCancelled = true;
+    mahaRtCancelOpen(); // v-lock-maha (cli-voice-3): طلب جلسة ما زال في الطريق يُلغى — لا دقيقة افتتاح ولا تجربة لجلسة متروكة
     mahaRtActive = false;
     mahaRtReady = false;
     mahaRtPlaying = false; // v-maha-long-reply
@@ -2314,9 +2358,13 @@ function mahaEndRealtimeCall(){
   try{ if(window.mahaGoldWave) window.mahaGoldWave.detachStream(); }catch(e){ __swallow(e, 'maha:goldwave-rt-end'); } // v-maha-goldwave
 }
 
+/* v-lock-maha (cli-voice-1): رقم جيل المكالمة التي تعمل فيها الحلقة الأساسيّة — العدّاد يخصم حين يكون للمكالمة مسار صوت حيّ
+   (جلسة فائقة مفتوحة أو هذه الحلقة)، لا لمكالمة ميتة. الحلقة لا تخرج والمكالمة قائمة بجيلها نفسه، فلا حاجة لتصفيره عند الخروج. */
+let mahaBasicGen = -1;
 async function mahaCallLoop(){
   // v-audit-voice (cli-voice-5): حلقة هذه المكالمة وحدها — تخرج إن انتهت أو بدأت غيرها أثناء أيّ انتظار
   const gen = mahaCallGen;
+  mahaBasicGen = gen;
   const live = () => mahaCallActive && gen === mahaCallGen;
   while(live()){
     mahaSetState('listening');
@@ -2500,8 +2548,14 @@ async function mahaCallLoop(){
 
 // 💰 عداد نقاط مها داخل المكالمة: يظهر تحت الاسم وينقص كل دقيقة (10 نقاط).
 let mahaPointsTimer = null;
+let mahaMeter = null; // v-lock-maha (cli-voice-1): مقبض عدّاد المكالمة الجارية — إعادة الاتّصال تُكمل عليه (reconnected) ولا تبدأ غيره
+// v-lock-maha (cli-voice-1): للمكالمة مسار صوت حيّ — جلسة فائقة قناتها مفتوحة، أو الحلقة الأساسيّة لهذه المكالمة
+function mahaVoiceLive(){
+  return (mahaRtActive && !!mahaRtDc && mahaRtDc.readyState === 'open') || mahaBasicGen === mahaCallGen;
+}
 function mahaStopPointsMeter(){
   if(mahaPointsTimer){ clearInterval(mahaPointsTimer); mahaPointsTimer = null; }
+  mahaMeter = null;
   const el = document.getElementById('mahaPointsMeter');
   if(el) el.style.display = 'none';
 }
@@ -2537,8 +2591,26 @@ function mahaStartPointsMeter(budget){
         }catch(e){ __swallow(e, "points:app-08-maha#23"); }
       }, 400);
     };
+    /* v-lock-maha (cli-voice-1): إعادة الاتّصال دفعت في الخادم دقيقة افتتاح — هي دقيقة النبضة التالية (أو نبضة أُجّلت أثناءها)،
+       فلا تُدفع دقيقتان عن وقت واحد، وعدّاد حدّ المكالمة (callMin) يبقى للمكالمة كلّها. */
+    let owed = false, skipNext = false, rcMedia = false;
+    mahaMeter = {
+      capHit: () => !!(capMin && callMin >= capMin),
+      endCap: () => endGently(true),
+      reconnected: (b) => {
+        if(!b || b.unlimited) return;
+        const media = b.prepaid === 'media';
+        if(!media && typeof b.points === 'number' && isFinite(b.points)) pts = b.points;
+        mahaMin = Math.max(0, Math.floor(Number(b.mahaMin) || 0));
+        if(owed){ owed = false; trial = false; if(media) callMin++; } // دفعت النبضة المؤجَّلة
+        else { skipNext = true; rcMedia = media; }
+        if(!trial) show();
+      },
+    };
     mahaPointsTimer = setInterval(async ()=>{
       if(!mahaCallActive){ mahaStopPointsMeter(); return; }
+      if(mahaRtReconnecting){ owed = true; return; } // تُدفع بافتتاح إعادة الاتّصال، أو تنتهي المكالمة بلا خصم
+      if(!mahaVoiceLive()){ mahaStopPointsMeter(); try{ mahaEndCall(); }catch(e){ __swallow(e, 'points:maha-dead-call'); } return; } // مكالمة بلا صوت لا تُخصم
       try{
         /* v-maha-server-bill: الدقيقة الأولى (أو التجربة) دُفعت في الخادم عند فتح الجلسة، والتجربة عُلِّمت هناك. كلّ نبضة
            هنا تخصم الدقيقة التي تبدأ الآن (لا التي انتهت) — فالمكالمة تُحسب بالدقيقة المبدوءة، ولا تمرّ أقلّ من دقيقة مجّانًا. */
@@ -2547,6 +2619,7 @@ function mahaStartPointsMeter(budget){
           if(isGuest){ endGently(); return; } // ضيف: دقيقة تجريبية وحدة فقط
         }
         if(capMin && callMin >= capMin){ endGently(true); return; } // حدّ مكالمة مشترك مها: لا تُفتح دقيقة بعده
+        if(skipNext){ skipNext = false; if(rcMedia){ callMin++; rcMedia = false; } return; } // v-lock-maha: دفعها افتتاح إعادة الاتّصال
         const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ action:'consume', amount:cost, reason:'maha_minute', token: authGet('aiapp_auth_token') }) });
         const d = await r.json().catch(()=>({}));
@@ -2601,6 +2674,10 @@ let mahaCloseWatch = null;
    نقرات المستخدم الحقيقيّة (ومنها نقرات آيفون التي يعيد التطبيق إطلاقها برمجيًّا) تُنهيها كما كانت (v-maha-band). */
 let mahaActing = 0;
 let mahaImgPending = 0; // v-maha-img-wait: طلبات صورة جارية — نشاطٌ لا سكوت
+/* v-lock-maha (cli-voice-3، باب المال بموافقة المالك ٢٧ أكتوبر): من بدء المكالمة حتّى جاهزيّة الجلسة (أو السقوط للأساسيّ). لمسة عرضيّة
+   في «أجهّز الجلسة» كانت تُنهي المكالمة بعد أن خصم الخادم دقيقة الافتتاح أو علّم التجربة — الآن لا تُنهيها (ولا تصل الصفحة)، و«م» وحده يُنهي. */
+let mahaCallSetup = false;
+const MAHA_END_BTNS = '#btnMahaDock, #mahaDockMirror, #btnMahaEndCall';
 function mahaStartCloseWatch(){
   mahaStopCloseWatch();
   mahaLastActivity = Date.now();
@@ -2612,6 +2689,7 @@ function mahaStartCloseWatch(){
     if(tgt && tgt.closest && tgt.closest('#btnMahaCamera, #mahaCamPreview, #mahaGenImage, #mahaImageLightbox')) return;
     e.preventDefault();
     e.stopPropagation();
+    if(mahaCallSetup && !(tgt && tgt.closest && tgt.closest(MAHA_END_BTNS))) return; // v-lock-maha (cli-voice-3)
     mahaEndCall();
   };
   const armT = setTimeout(() => { document.addEventListener('click', onTap, true); }, 0);
@@ -2636,6 +2714,7 @@ function mahaEndCall(){
   document.body.classList.remove('maha-band-on'); // v-maha-band-under
   mahaShowComposer();
   mahaStopPointsMeter();
+  mahaCallSetup = false; mahaRtReconnecting = false; // v-lock-maha: مكالمة تالية لا تُعامَل تجهيزًا قديمًا ولا إعادة اتّصال معلّقة
   mahaLowMicStreak = 0;
   try{ mahaCameraOff(); }catch(e){ __swallow(e, "points:app-08-maha#26"); }
   if(mahaOrbEl) mahaOrbEl.style.transform = '';
@@ -2759,6 +2838,7 @@ async function mahaStartCallInner(mode){
   if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
   mahaCallGen++; // v-audit-voice (cli-voice-5): حلقة مكالمة سابقة لم تخرج بعد تخرج عند أوّل فحص
   mahaCallActive = true;
+  mahaCallSetup = true; // v-lock-maha (cli-voice-3): طور التجهيز حتّى الجاهزيّة أو السقوط للأساسيّ
   if(mahaCallScreenEl){
     mahaCallScreenEl.style.display = 'flex';
     mahaCallScreenEl.classList.toggle('maha-builder-mode', mahaCallMode === 'builder');
@@ -2806,6 +2886,7 @@ async function mahaStartCallInner(mode){
     // v-audit-voice (cli-voice-9): بلغة الواجهة — كان عربيًّا ثابتًا لكلّ اللغات (والاحتياط حتّى يصل المفتاح بالـ١٤ لغة)
     try{ mahaSetState('thinking', voiceTr('axVoiceBasicFallback', "HD voice isn't available right now — continuing in basic mode 🎙️", 'الصوت الفائق غير متاح الآن — أكمل معك بالوضع الأساسي 🎙️')); }catch(e2){ __swallow(e2, 'maha:fallback-note'); }
   }
+  mahaCallSetup = false; // v-lock-maha (cli-voice-3): الوضع الأساسيّ يبدأ الآن — اللمسة تُنهيه كما كانت
   if(!mahaCallActive) return;
   if(!window.MediaRecorder){
     mahaSetState('error', t('micNotSupported'));
