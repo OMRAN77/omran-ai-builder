@@ -67,11 +67,23 @@ function planSlot(plan) { const p = PLANS[plan]; return !p || p.pack ? null : (p
 
 /* v-lock-subs (srv-money-4): المنح كان يكتب user.plan بلا مقارنة — دفعة Plus فوق Max سارية تُنزل السقف ٢٥٠ ← ٥٠ فورًا وتُضيع بقيّة أيّام Max
    المدفوعة، وتجديد اشتراك Pro قديم بعد شراء Max يقلب المشترك إلى Pro وهو يدفع Max (srv-money-3). باقة محادثة أعلى سارية لا تُستبدل بأدنى:
-   دفعة الأدنى (جلسة قديمة، طلب PayPal أُنشئ في المتصفّح، تجديد اشتراك قديم) تمنح نقاطها وحدها كالرزمة، والفترة والسقف للأعلى. */
+   دفعة الأدنى (جلسة قديمة، طلب PayPal أُنشئ في المتصفّح، تجديد اشتراك قديم) تمنح نقاطها، والسقف للأعلى ما دامت سارية.
+   v-lock-subs (srv-money-4، المراجعة المعاكسة): وفترة الأدنى لا تُرمى — تُحفظ في user.planNext فتسري حين تنتهي الأعلى (tier.chatPeriod).
+   المقارنة بالفترة الفعليّة (الرئيسيّة أو planNext). يرجع تلك الفترة الأعلى أو null. */
 function keepsHigherChat(user, plan) {
   const p = PLANS[plan];
-  if (!user || !p || p.pack || p.media) return false;
-  return require('./tier.js').planActive(user) && rankOf(user.plan) > rankOf(plan);
+  if (!user || !p || p.pack || p.media) return null;
+  const cp = require('./tier.js').chatPeriod(user);
+  return cp && rankOf(cp.plan) > rankOf(plan) ? cp : null;
+}
+// فترات planNext بعد هذا المنح: المنتهية تسقط، وفترة الأدنى المحفوظة (add) تُضاف، والفترة التي حلّ محلّها هذا المنح (drop) تخرج — هي prev في سجلّه.
+function nextPeriods(user, add, drop) {
+  const t = Date.now();
+  const win = require('./tier.js').SUB_WINDOW_DAYS * 86400000;
+  const list = (Array.isArray(user.planNext) ? user.planNext : [])
+    .filter((n) => n && Number(n.at) > 0 && t - Number(n.at) <= win && !(drop && Number(n.at) === drop.at && String(n.plan || '').toLowerCase() === drop.plan));
+  if (add) list.push(add);
+  return list.slice(-6);
 }
 /* v-lock-subs (srv-money-4): قبل أيّ دفع — شراء أدنى في خانة فيها أعلى سارية: المحادثة (يُسقط سقفها وتوجيهها وبقيّة أيّامها)، والوسائط ما دام
    في رصيد الأعلى شيء (grantMedia يعيد الملء بالأدنى فيُمحى المتبقّي؛ الفارغة لا يُخسر منها شيء). ⇒ 409 lower_plan بلا جلسة دفع.
@@ -82,7 +94,7 @@ async function lowerPlanBlock(username, plan) {
     if (!p || p.pack) return null;
     const user = await getUser(username);
     if (!user || user.deleted) return null;
-    if (!p.media) return keepsHigherChat(user, plan) ? { until: Number(user.planUpdatedAt) + require('./tier.js').SUB_WINDOW_DAYS * 86400000 } : null;
+    if (!p.media) { const hc = keepsHigherChat(user, plan); return hc ? { until: hc.at + require('./tier.js').SUB_WINDOW_DAYS * 86400000 } : null; }
     const m = user.media && user.media[p.media];
     if (!m || !mediaActive(user, p.media) || !(rankOf(m.plan) > rankOf(plan))) return null;
     const left = Number(await kvGetRaw('media:' + p.media + ':' + encodeURIComponent(String(username).trim().toLowerCase()))) || 0;
@@ -144,12 +156,12 @@ async function wasNamed(username, oldName) {
 
 /* v-pay-refund: سجلّ ما منحته الدفعة برقمها وأرقامها الأخرى (meta.refs: payment_intent/invoice/charge) ومبلغها — يقرؤه
    الاسترداد والاعتراض البنكيّ (pay-refund.js) ليسحب ما منحته هي بالضبط. بعد نجاح المنح وأفضل جهد: لا يرمي، فلا يُفشل منحًا تمّ. */
-async function noteGrant(username, plan, sourceField, sourceId, meta, user, prev, kept) {
+async function noteGrant(username, plan, sourceField, sourceId, meta, user, prev, keptAt) {
   if (!sourceId) return;
   const p = PLANS[plan];
   const m = meta || {};
-  // kept (v-lock-subs، srv-money-4): أدنى مُنح نقاطًا تحت أعلى سارية — لا فترة له، فاسترداده يسحب نقاطه وحدها ولا يمسّ الأعلى
-  const at = p.media ? (user.media && user.media[p.media] && user.media[p.media].at) : ((p.pack || kept) ? null : user.planUpdatedAt);
+  // keptAt (v-lock-subs، srv-money-4): أدنى تحت أعلى سارية — فترته في planNext بوقتها، فاسترداده الكامل يسحبها هي (pay-refund.js) ولا يمسّ الأعلى
+  const at = p.media ? (user.media && user.media[p.media] && user.media[p.media].at) : (p.pack ? null : (keptAt || user.planUpdatedAt));
   await require('./pay-refund.js').recordGrant({
     id: String(sourceId), field: sourceField || null, username, plan, points: p.points, media: p.media || null, at: Number(at) || null,
     amount: Number(m.amount) > 0 ? Math.round(Number(m.amount)) : null, currency: m.currency ? String(m.currency).toLowerCase() : null,
@@ -178,7 +190,8 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
   if (claim && !(await kvSetIfAbsent(claim, username, CLAIM_TTL_SEC))) return already; // v-pay-once
 
   try {
-    const kept = keepsHigherChat(user, plan); // v-lock-subs (srv-money-4): الأعلى السارية تبقى، والأدنى نقاطه وحدها (داخل try: رميٌ يفكّ الحجز)
+    const kept = !!keepsHigherChat(user, plan); // v-lock-subs (srv-money-4): الأعلى السارية تبقى، وفترة الأدنى في planNext (داخل try: رميٌ يفكّ الحجز)
+    const cp = (PLANS[plan].pack || PLANS[plan].media) ? null : require('./tier.js').chatPeriod(user); // الفترة الفعليّة قبل المنح
     const prev = kept ? null : await require('./pay-refund.js').priorOf(user, username, PLANS[plan]); // v-pay-refund: قبل أن تُستبدل الفترة. لا يرمي
     if (PLANS[plan].media) {
       if (sourceField) user[sourceField] = sourceId;
@@ -192,6 +205,12 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها — النقاط فقط.
     if (!PLANS[plan].pack && !kept) { user.plan = plan; user.planUpdatedAt = Date.now(); }
     if (!PLANS[plan].pack && !kept) user.planPayId = sourceId ? String(sourceId) : undefined; // v-pay-refund: كالسطر أعلاه للوسائط
+    // v-lock-subs (srv-money-4): فترة الأدنى تُحفظ في planNext (kept)، وفترة planNext التي حلّ محلّها هذا المنح تخرج منها (هي prev في سجلّه)
+    const keptAt = kept ? Date.now() : 0;
+    if (!PLANS[plan].pack) {
+      const list = nextPeriods(user, kept ? { plan, at: keptAt, payId: sourceId ? String(sourceId) : null } : null, !kept && cp && cp.next ? cp : null);
+      if (list.length) user.planNext = list; else delete user.planNext;
+    }
     if (sourceField) user[sourceField] = sourceId;
 
     // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في points.js
@@ -205,7 +224,7 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     user.points = Number(newBalance);
 
     await putUser(username, user);
-    await noteGrant(username, plan, sourceField, sourceId, meta, user, prev, kept); // v-pay-refund
+    await noteGrant(username, plan, sourceField, sourceId, meta, user, prev, keptAt); // v-pay-refund
     return Object.assign({ ok: true, plan: (PLANS[plan].pack || kept) ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) }, kept ? { kept: true } : {});
   } catch (e) {
     if (claim) await kvDel(claim); // لم يكتمل الشحن — يُفكّ الحجز فتنجح المحاولة التالية
@@ -523,18 +542,29 @@ function subIdOf(obj) {
 /* v-lock-subs (srv-money-3): «اشترك الآن» على باقة أخرى والتجديد مفعّل كان ينشئ اشتراكًا ثانيًا ولا شيء يلغي الأوّل — خصمان كلّ شهر (Pro ٢٠$
    وMax ١٠٠$)، وتجديد القديم يقلب الباقة. بعد منح اشتراك جديد: كلّ اشتراك حيّ آخر للحساب (واسميه السابقين) في الخانة نفسها يُلغى فورًا —
    فترته على حسابنا حلّت محلّها الجديدة، ولا استرجاع. الفوريّ لا cancel_at_period_end: زرّ «أعد التجديد» كان سيحييه. خانة أخرى (مها،
-   باقة صور قديمة) واشتراك بلا خطّة معروفة لا يُمسّان. يرمي عند عطل Stripe: الويب هوك يردّ 500 فيعيده (المنح محجوز فلا يتكرّر). */
+   باقة صور قديمة) واشتراك بلا خطّة معروفة لا يُمسّان. يرمي عند عطل Stripe: الويب هوك يردّ 500 فيعيده (المنح محجوز فلا يتكرّر).
+   v-lock-subs (srv-money-3، المراجعة المعاكسة): يُلغى الأقدم وحده. كان يلغي كلّ حيّ آخر في الخانة، والمسار يجري أيضًا على حدث معاد أو متأخّر
+   (Stripe يعيد بعد 500/BUSY أو يسلّم بغير ترتيب) وعلى العودة لجلسة قديمة خلال ٧٢ ساعة — فجلسة Pro القديمة تلغي Max الذي رُقّي إليه بعدها،
+   وتبويبان (Pro وMax) يلغي كلٌّ منهما الآخر: لا اشتراك يتجدّد. الآن الاشتراك المحفوظ يُقرأ بنفسه (البحث يتأخّر عن الكتابة فقد لا يراه أو يرى
+   حالته القديمة): ملغًى أو غير موجود ⇒ لا شيء يُلغى؛ وإلّا يُلغى من خانته ما أُنشئ قبله وحده (created، والتعادل برقمه)، فيبقى الأحدث في كلّ
+   ترتيب وصول. */
 async function supersedeSubs(username, plan, keepId, fetchImpl) {
   const slot = planSlot(plan);
   if (!slot || !keepId || !process.env.STRIPE_SECRET_KEY) return 0;
   const f = fetchImpl || fetch;
   const auth = stripeAuth();
+  const kr = await f('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(String(keepId)), { headers: auth });
+  if (kr.status === 404) return 0; // لا اشتراك يُحفظ — لا شيء يُلغى باسمه
+  const keep = await kr.json().catch(() => ({}));
+  if (!kr.ok) throw new Error((keep.error && keep.error.message) || 'stripe read failed');
+  if (!LIVE_SUB.includes(keep.status)) return 0; // أُلغي قبلنا (أحدثُ منه ألغاه، أو حُذف الحساب): حدثه المتأخّر لا يلغي غيره
+  const older = (x) => Number(x.created) < Number(keep.created) || (Number(x.created) === Number(keep.created) && String(x.id) < String(keep.id));
   const acct = await liveAccount(username);
   const prev = (acct.user && Array.isArray(acct.user.prevUsernames)) ? acct.user.prevUsernames.slice(-3) : [];
   const names = [...new Set([acct.name, String(username)].concat(prev).filter(Boolean))];
   let n = 0;
   for (const x of await liveSubs(names, f, auth)) {
-    if (x.id === String(keepId) || planSlot(x.metadata && x.metadata.plan) !== slot) continue;
+    if (x.id === String(keepId) || planSlot(x.metadata && x.metadata.plan) !== slot || !older(x)) continue;
     await cancelSubNow(x.id, f, auth);
     n++;
   }

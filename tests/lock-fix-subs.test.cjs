@@ -61,7 +61,7 @@ const alerts = [];
 mock('api/_lib/_owner-alert.js', { pushToOwners: async (p) => { alerts.push(p); return { sent: 1 }; }, alertOwnerError: async () => ({}), alertOwnerCredit: async () => ({}), isCreditFailure: () => false });
 
 // ── شبكة مزيّفة واحدة: Stripe (الجلسات، العمليّات، الاشتراكات وبحثها كما يبحث Stripe) وPayPal ──
-const net = { subs: {}, sessions: {}, orders: {}, calls: [], seq: 0, failDelete: 0, failSearch: 0 };
+const net = { subs: {}, sessions: {}, orders: {}, pis: {}, calls: [], seq: 0, failDelete: 0, failSearch: 0, searchLag: new Set() };
 const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 const unq = (s) => s.replace(/\\'/g, "'").replace(/\\\\/g, '\\');
 global.fetch = async (url, init) => {
@@ -77,7 +77,8 @@ global.fetch = async (url, init) => {
       const q = u.searchParams.get('query') || '';
       const nm = q.match(/metadata\['username'\]:'((?:[^'\\]|\\.)*)'/);
       const st = q.match(/status:'(\w+)'/); // Stripe يطابق الحالة إن ذُكرت — كما يفعل البحث الحقيقيّ
-      const data = Object.values(net.subs).filter((s) => nm && s.metadata.username === unq(nm[1]) && (!st || s.status === st[1]));
+      // searchLag: البحث يتأخّر عن الكتابة (اشتراك أُنشئ للتوّ لا يظهر بعد) — القراءة بالرقم تراه
+      const data = Object.values(net.subs).filter((s) => nm && s.metadata.username === unq(nm[1]) && (!st || s.status === st[1]) && !net.searchLag.has(s.id));
       return reply(200, { object: 'search_result', data: data.slice(0, Number(u.searchParams.get('limit')) || 10).map((s) => structuredClone(s)), has_more: false, next_page: null });
     }
     if ((m = p.match(/^subscriptions\/([^/]+)$/))) {
@@ -98,6 +99,7 @@ global.fetch = async (url, init) => {
     }
     if (method === 'POST' && p === 'checkout/sessions') return reply(200, { id: 'cs_new_' + (++net.seq), url: 'https://checkout.stripe.test/x' });
     if (method === 'POST' && p === 'payment_intents') return reply(200, { id: 'pi_new_' + (++net.seq), client_secret: 's' });
+    if ((m = p.match(/^payment_intents\/(.+)$/))) return net.pis[m[1]] ? reply(200, net.pis[m[1]]) : reply(404, { error: { message: 'No such payment_intent' } });
     if ((m = p.match(/^checkout\/sessions\/(.+)$/))) return net.sessions[m[1]] ? reply(200, net.sessions[m[1]]) : reply(404, { error: { message: 'No such session' } });
     return reply(404, { error: { message: 'unknown' } });
   }
@@ -116,6 +118,9 @@ const checkout = require(rp('api/_lib/create-checkout-session.js'));
 const paypal = require(rp('api/_lib/paypal-order.js'));
 const webhook = require(rp('api/webhook.js'));
 const { deleteAccount } = require(rp('api/_lib/account-delete.js'));
+const tier = require(rp('api/_lib/tier.js'));
+const points = require(rp('api/_lib/points.js'));
+const planVideos = require(rp('api/_lib/_planVideos.js'));
 
 const DAY = 86400000;
 const nowSec = () => Math.floor(Date.now() / 1000);
@@ -127,7 +132,9 @@ const tok = (u) => auth.makeToken(u);
 async function fresh(u, rec) { await auth.putUser(u, Object.assign({ username: u, points: 70, createdAt: Date.now() - 90 * DAY }, rec || {})); store.set('points:' + u, String((rec && rec.points) || 70)); }
 const user = (u) => auth.getUser(u);
 const pts = (u) => Number(store.get('points:' + u));
-const sub = (id, username, plan, status, extra) => { net.subs[id] = Object.assign({ id, object: 'subscription', status, cancel_at_period_end: false, metadata: { username, plan }, items: { data: [{ current_period_end: nowSec() + 20 * 86400 }] } }, extra || {}); return net.subs[id]; };
+// created بترتيب الإنشاء (كما في Stripe): الأحدث يبقى (v-lock-subs، srv-money-3)
+let subSeq = 0;
+const sub = (id, username, plan, status, extra) => { net.subs[id] = Object.assign({ id, object: 'subscription', status, created: nowSec() - 100000 + (++subSeq), cancel_at_period_end: false, metadata: { username, plan }, items: { data: [{ current_period_end: nowSec() + 20 * 86400 }] } }, extra || {}); return net.subs[id]; };
 const callsTo = (re, method) => net.calls.filter((c) => re.test(c.url) && (!method || c.method === method));
 let evSeq = 0;
 const evt = (type, object) => ({ id: 'evt_ls_' + (++evSeq), type, data: { object } });
@@ -208,15 +215,19 @@ test('srv-money-3 ٣. تعذّر الإلغاء = 500 فيعيد Stripe الحد
   // العودة من الدفع (verify-checkout) بعطل بحث: المنح يصل، والإلغاء يتركه للويب هوك
   await fresh('hind', { plan: 'pro', planUpdatedAt: Date.now() - 2 * DAY });
   sub('sub_hind_pro', 'hind', 'pro', 'active');
+  sub('sub_hind_max', 'hind', 'max', 'active');
   net.sessions.cs_hind_max = { id: 'cs_hind_max', payment_status: 'paid', mode: 'subscription', subscription: 'sub_hind_max', amount_total: 10000, currency: 'usd', created: nowSec(), metadata: { username: 'hind', plan: 'max' } };
   net.failSearch = 1;
   const v = await stripe('verify-checkout', { session_id: 'cs_hind_max', token: tok('hind') });
   assert.equal(v.code, 200, JSON.stringify(v.body));
   assert.equal(v.body.ok, true);
   assert.equal((await user('hind')).plan, 'max');
+  assert.equal(net.failSearch, 0, 'البحث جُرّب فعلًا وتعطّل');
+  assert.equal(net.subs.sub_hind_pro.status, 'active', 'يبقى للويب هوك');
   // بلا عطل: العودة نفسها تلغي القديم
   await fresh('hiba', { plan: 'pro', planUpdatedAt: Date.now() - 2 * DAY });
   sub('sub_hiba_pro', 'hiba', 'pro', 'active');
+  sub('sub_hiba_max', 'hiba', 'max', 'active');
   net.sessions.cs_hiba_max = { id: 'cs_hiba_max', payment_status: 'paid', mode: 'subscription', subscription: 'sub_hiba_max', amount_total: 10000, currency: 'usd', created: nowSec(), metadata: { username: 'hiba', plan: 'max' } };
   assert.equal((await stripe('verify-checkout', { session_id: 'cs_hiba_max', token: tok('hiba') })).code, 200);
   assert.equal(net.subs.sub_hiba_pro.status, 'canceled');
@@ -235,6 +246,77 @@ test('srv-money-3 ٤. خانة الوسائط وحدها: اشتراك «صور 
   sub('sub_nada_pro', 'nada', 'pro', 'active');
   assert.equal((await hook(paidSession('cs_nada_max1', 'nada', 'max', 10000))).code, 200);
   assert.equal(net.subs.sub_nada_pro.status, 'active', 'شراء لمرّة واحدة لا يغيّر اشتراكًا قائمًا');
+});
+
+// المراجعة المعاكسة: المسار يجري أيضًا على حدث معاد أو متأخّر وعلى العودة لجلسة قديمة — الأحدث وحده يبقى في كلّ ترتيب وصول
+test('srv-money-3 ٥. حدث جلسة Pro القديمة يُعاد أو يصل متأخّرًا بعد الترقية (ATK1): لا يلغي Max الأحدث، ولا منح ثانٍ، وMax وحده يتجدّد', async () => {
+  await fresh('omar');
+  sub('sub_omar_pro', 'omar', 'pro', 'active');
+  const proEv = subSession('cs_omar_pro', 'omar', 'pro', 2000, 'sub_omar_pro');
+  assert.equal((await hook(proEv)).code, 200);
+  sub('sub_omar_max', 'omar', 'max', 'active');
+  assert.equal((await hook(subSession('cs_omar_max', 'omar', 'max', 10000, 'sub_omar_max'))).code, 200);
+  assert.equal(net.subs.sub_omar_pro.status, 'canceled', 'الترقية تلغي القديم');
+  // Stripe يعيد حدث جلسة Pro (إعادة بعد 500/BUSY سابق، أو تسليم بغير ترتيب)
+  const again = await hook(proEv);
+  assert.equal(again.code, 200, JSON.stringify(again.body));
+  assert.equal(net.subs.sub_omar_max.status, 'active', 'كان: الإعادة تلغي Max فلا اشتراك يتجدّد');
+  assert.equal(callsTo(/\/v1\/subscriptions\/sub_omar_max$/, 'DELETE').length, 0, 'لا محاولة إلغاء للأحدث');
+  assert.equal(pts('omar'), 70 + 920 + 3200, 'ولا منح ثانٍ');
+  let u = await user('omar');
+  assert.deepEqual([u.plan, u.planPayId], ['max', 'cs_omar_max']);
+  // أوّل وصول لحدث Pro بعد حدث Max: يُمنح مرّة (نقاطه، وMax باقية) ولا يلغي Max
+  await fresh('omar2');
+  sub('sub_omar2_pro', 'omar2', 'pro', 'active');
+  sub('sub_omar2_max', 'omar2', 'max', 'active');
+  assert.equal((await hook(subSession('cs_omar2_max', 'omar2', 'max', 10000, 'sub_omar2_max'))).code, 200);
+  assert.equal(net.subs.sub_omar2_pro.status, 'canceled');
+  assert.equal((await hook(subSession('cs_omar2_pro', 'omar2', 'pro', 2000, 'sub_omar2_pro'))).code, 200);
+  assert.equal(net.subs.sub_omar2_max.status, 'active', 'كان: حدث Pro المتأخّر يلغي Max');
+  u = await user('omar2');
+  assert.deepEqual([u.plan, u.planPayId], ['max', 'cs_omar2_max']);
+  assert.equal(pts('omar2'), 70 + 3200 + 920);
+});
+
+test('srv-money-3 ٦. العودة لجلسة Pro القديمة خلال ٧٢ ساعة بعد الترقية (ATK1b): 200 «سبق المنح» وMax لا يُلغى', async () => {
+  await fresh('lina');
+  sub('sub_lina_pro', 'lina', 'pro', 'active');
+  net.sessions.cs_lina_pro = { id: 'cs_lina_pro', payment_status: 'paid', mode: 'subscription', subscription: 'sub_lina_pro', invoice: 'in_cs_lina_pro', amount_total: 2000, currency: 'usd', created: nowSec() - 3600, metadata: { username: 'lina', plan: 'pro' } };
+  assert.equal((await stripe('verify-checkout', { session_id: 'cs_lina_pro', token: tok('lina') })).code, 200);
+  sub('sub_lina_max', 'lina', 'max', 'active');
+  assert.equal((await hook(subSession('cs_lina_max', 'lina', 'max', 10000, 'sub_lina_max'))).code, 200);
+  assert.equal(net.subs.sub_lina_pro.status, 'canceled', 'الترقية تلغي القديم');
+  const v = await stripe('verify-checkout', { session_id: 'cs_lina_pro', token: tok('lina') });
+  assert.equal(v.code, 200, JSON.stringify(v.body));
+  assert.equal(v.body.alreadyGranted, true);
+  assert.equal(net.subs.sub_lina_max.status, 'active', 'كان: العودة للجلسة القديمة تلغي Max');
+  assert.equal(pts('lina'), 70 + 920 + 3200);
+  assert.equal((await user('lina')).plan, 'max');
+});
+
+test('srv-money-3 ٧. تبويبان دفعا Pro ثمّ Max (ATK2): الأحدث وحده يبقى في كلّ ترتيب وصول وفي التزامن — لا يلغي كلٌّ منهما الآخر؛ والبحث المتأخّر عن الكتابة لا يمنع إلغاء الأقدم', async () => {
+  const run = async (u, order) => {
+    await fresh(u);
+    sub('sub_' + u + '_pro', u, 'pro', 'active');
+    sub('sub_' + u + '_max', u, 'max', 'active'); // دُفع ثانيًا فأُنشئ بعده
+    const evs = { pro: subSession('cs_' + u + '_pro', u, 'pro', 2000, 'sub_' + u + '_pro'), max: subSession('cs_' + u + '_max', u, 'max', 10000, 'sub_' + u + '_max') };
+    if (order === 'both') assert.deepEqual((await Promise.all([hook(evs.pro), hook(evs.max), hook(evs.pro)])).map((r) => r.code), [200, 200, 200]);
+    else for (const k of order) assert.equal((await hook(evs[k])).code, 200, u + ' ' + k);
+    assert.deepEqual([net.subs['sub_' + u + '_pro'].status, net.subs['sub_' + u + '_max'].status], ['canceled', 'active'], u + ': كان الاثنان يُلغيان فلا اشتراك يتجدّد');
+    assert.equal(pts(u), 70 + 920 + 3200, u + ': كلّ دفعة مرّة');
+    assert.equal((await user(u)).plan, 'max', u);
+  };
+  await run('tabs1', ['pro', 'max']);
+  await run('tabs2', ['max', 'pro']);
+  await run('tabs3', 'both');
+  // البحث لا يرى الاشتراك الجديد بعد: يُقرأ برقمه فيُلغى الأقدم كما يجب (لا يُترك خصمان شهريّان)
+  await fresh('lag');
+  sub('sub_lag_pro', 'lag', 'pro', 'active');
+  sub('sub_lag_max', 'lag', 'max', 'active');
+  net.searchLag.add('sub_lag_max');
+  assert.equal((await hook(subSession('cs_lag_max', 'lag', 'max', 10000, 'sub_lag_max'))).code, 200);
+  net.searchLag.delete('sub_lag_max');
+  assert.deepEqual([net.subs.sub_lag_pro.status, net.subs.sub_lag_max.status], ['canceled', 'active']);
 });
 
 // ───────────────────────── srv-money-4: الأدنى لا يُسقط الأعلى السارية ─────────────────────────
@@ -263,7 +345,7 @@ test('srv-money-4 ١. قبل الدفع: Plus/Pro فوق Max سارية ← 409 
   assert.equal((await pp({ action: 'create', plan: 'max', token: tok('plus1') })).code, 200);
 });
 
-test('srv-money-4 ٢. دفعة أدنى وصلت والأعلى سارية (جلسة قديمة، طلب PayPal من المتصفّح، تجديد اشتراك قديم): Max تبقى بتاريخها ودفعتها، ونقاط الأدنى تُضاف مرّة، واستردادها يسحب نقاطها وحدها', async () => {
+test('srv-money-4 ٢. دفعة أدنى وصلت والأعلى سارية (جلسة قديمة، طلب PayPal من المتصفّح، تجديد اشتراك قديم): Max تبقى بتاريخها ودفعتها، ونقاط الأدنى تُضاف مرّة وفترتها تُحفظ بعد Max، واستردادها يسحب نقاطها وفترتها', async () => {
   const at = Date.now() - 4 * DAY;
   await fresh('salem', { plan: 'max', planUpdatedAt: at, planPayId: 'cs_salem_max' });
   const r = await hook(paidSession('cs_salem_plus', 'salem', 'basic', 1000));
@@ -273,14 +355,19 @@ test('srv-money-4 ٢. دفعة أدنى وصلت والأعلى سارية (جل
   assert.equal(pts('salem'), 70 + 360);
   assert.equal((await hook(paidSession('cs_salem_plus', 'salem', 'basic', 1000))).code, 200);
   assert.equal(pts('salem'), 70 + 360, 'إعادة الحدث لا تضاعف');
+  assert.equal((u.planNext || []).length, 1, 'فترة Plus محفوظة بعد Max (كانت تُرمى)');
+  assert.deepEqual([u.planNext[0].plan, u.planNext[0].payId], ['basic', 'cs_salem_plus']);
+  assert.equal(((await user('salem')).planNext || []).length, 1, 'إعادة الحدث لا تضيف فترة ثانية');
   const rec = JSON.parse(store.get('payrec:cs_salem_plus'));
-  assert.deepEqual([rec.plan, rec.points, rec.at, rec.prev], ['basic', 360, null, null], 'سجلّ المنح: نقاط بلا فترة');
+  assert.deepEqual([rec.plan, rec.points, rec.at, rec.prev], ['basic', 360, u.planNext[0].at, null], 'سجلّ المنح: نقاطها وفترتها في planNext');
   // الاسترداد الكامل لدفعة Plus: نقاطها وحدها، وMax باقية
   const refund = await hook(evt('charge.refunded', { id: 'ch_salem_plus', object: 'charge', payment_intent: 'pi_cs_salem_plus', amount: 1000, amount_refunded: 1000, refunded: true, currency: 'usd', created: nowSec() }));
   assert.equal(refund.code, 200, JSON.stringify(refund.body));
   u = await user('salem');
   assert.deepEqual([u.plan, u.planPayId], ['max', 'cs_salem_max']);
   assert.equal(pts('salem'), 70, 'لا منتج بعد استرداد ثمنه');
+  assert.equal(u.planNext, undefined, 'فترة Plus المستردّة لا تسري بعد Max');
+  assert.equal(tier.chatPeriod(u, at + 36 * DAY), null);
   // PayPal يُلتقط في المتصفّح بطلب لم يمرّ بـcreate
   await fresh('sama', { plan: 'max', planUpdatedAt: at, planPayId: 'cs_sama_max' });
   net.orders.PP_sama = { id: 'PP_sama', status: 'COMPLETED', purchase_units: [{ reference_id: 'sama', custom_id: 'pro', payments: { captures: [{ id: 'CAP_sama', status: 'COMPLETED', amount: { value: '20.00', currency_code: 'USD' }, custom_id: 'pro' }] } }] };
@@ -337,6 +424,83 @@ test('srv-money-4 ٦. ثوابت المال للمنح تحت الأعلى: دف
   assert.equal((await hook(ref)).code, 200);
   assert.equal(pts('kareem'), 70 + 360, 'سحب نقاط Pro مرّة واحدة');
   assert.equal((await user('kareem')).plan, 'max');
+});
+
+// المراجعة المعاكسة: فترة الأدنى «المحفوظة» كانت تُرمى — فحين تنتهي الأعلى يسقط إلى المجّانيّ وهو يدفع الأدنى
+const tierAt = async (u, now) => { const x = await tier.resolveTier(u, { now, noCache: true }); return [x.tier, x.plan, x.cap]; };
+
+test('srv-money-4 ٧. جلسة اشتراك Plus قديمة دُفعت وMax سارية باشتراكها (ATK3): Plus الأحدث وحده يتجدّد، وMax تكمل أيّامها ثمّ تسري فترة Plus المدفوعة بلا يوم مجّانيّ', async () => {
+  const at = Date.now() - 3 * DAY;
+  await fresh('yara', { plan: 'max', planUpdatedAt: at, planPayId: 'cs_yara_max' });
+  sub('sub_yara_max', 'yara', 'max', 'active');
+  sub('sub_yara_plus', 'yara', 'basic', 'active'); // جلسة فُتحت قبل Max ودُفعت الآن
+  assert.equal((await hook(subSession('cs_yara_plus', 'yara', 'basic', 1000, 'sub_yara_plus'))).code, 200);
+  const u = await user('yara');
+  assert.deepEqual([u.plan, u.planUpdatedAt, u.planPayId], ['max', at, 'cs_yara_max'], 'Max لا تسقط');
+  assert.deepEqual([net.subs.sub_yara_max.status, net.subs.sub_yara_plus.status], ['canceled', 'active'], 'لا خصمان شهريّان: الأحدث يبقى');
+  assert.equal(pts('yara'), 70 + 360);
+  assert.deepEqual(await tierAt('yara', at + 34 * DAY), ['sub', 'max', 250]);
+  assert.deepEqual(await tierAt('yara', at + 36 * DAY), ['sub', 'basic', 50], 'كان: مجّانيّ حتّى تجديد Plus وهو يدفعه');
+});
+
+test('srv-money-4 ٨. مشترك Plus بالبطاقة يرقّي لمرّة إلى Max بـApple/Google Pay أو PayPal ثمّ يصل تجديد Plus وMax سارية (ATK10): Max تكمل أيّامها ثمّ يبقى مشتركًا Plus بفترة ذلك التجديد لا مجّانيًّا وهو يدفع؛ والتجديد التالي واسترداده وتغيير الاسم كالمعتاد', async () => {
+  for (const via of ['wallet', 'paypal']) {
+    const u0 = 'pl' + via;
+    await fresh(u0, { plan: 'basic', planUpdatedAt: Date.now() - 20 * DAY, planPayId: 'in_' + u0 + '_0' });
+    sub('sub_' + u0, u0, 'basic', 'active');
+    if (via === 'wallet') {
+      net.pis['pi_' + u0] = { id: 'pi_' + u0, object: 'payment_intent', status: 'succeeded', amount: 10000, amount_received: 10000, currency: 'usd', created: nowSec(), latest_charge: 'ch_' + u0, metadata: { username: u0, plan: 'max' } };
+      const v = await stripe('verify-payment-intent', { payment_intent_id: 'pi_' + u0, token: tok(u0) });
+      assert.equal(v.code, 200, JSON.stringify(v.body));
+    } else {
+      net.orders['PP_' + u0] = { id: 'PP_' + u0, status: 'COMPLETED', create_time: new Date().toISOString(), purchase_units: [{ reference_id: u0, custom_id: 'max', payments: { captures: [{ id: 'CAP_' + u0, status: 'COMPLETED', amount: { value: '100.00', currency_code: 'USD' }, custom_id: 'max' }] } }] };
+      const c = await pp({ action: 'capture', orderId: 'PP_' + u0, token: tok(u0) });
+      assert.equal(c.body.credited, true, JSON.stringify(c.body));
+    }
+    let u = await user(u0);
+    assert.equal(u.plan, 'max', via);
+    assert.equal(net.subs['sub_' + u0].status, 'active', 'الشراء لمرّة لا يلغي اشتراك Plus');
+    // Max اشتُريت قبل ١٠ أيّام، وتجديد Plus الشهريّ يصل اليوم وهي سارية (ويُعاد)
+    const maxAt = Date.now() - 10 * DAY;
+    u.planUpdatedAt = maxAt;
+    await auth.putUser(u0, u);
+    const ren = renewal('in_' + u0 + '_1', u0, 'basic', 1000, 'sub_' + u0);
+    assert.deepEqual((await Promise.all([hook(ren), hook(ren)])).map((r) => r.code), [200, 200]);
+    u = await user(u0);
+    assert.deepEqual([u.plan, u.planUpdatedAt], ['max', maxAt], 'Max تكمل أيّامها المدفوعة');
+    assert.equal(pts(u0), 70 + 3200 + 360, 'نقاط التجديد مرّة');
+    const maxEnds = maxAt + 35 * DAY;
+    assert.deepEqual(await tierAt(u0, maxEnds - DAY), ['sub', 'max', 250]);
+    assert.deepEqual(await tierAt(u0, maxEnds + DAY), ['sub', 'basic', 50], 'كان: مجّانيّ حتّى تجديد Plus التالي (~٣٠ يومًا) وهو يدفع Plus');
+    assert.deepEqual(await tierAt(u0, Date.now() + 36 * DAY), ['free', null, 20], 'فترة التجديد ٣٥ يومًا من وصوله لا أكثر');
+    assert.deepEqual(points.subsOf(await user(u0), maxEnds + DAY).filter((s) => s.kind === 'chat').map((s) => [s.plan, s.active]), [['basic', true]], 'لا «انتهى اشتراكك» وهو مشترك');
+    assert.equal((await planVideos.planVideoStatus(u0, { now: maxEnds + DAY })).total, 1, 'فيديو Plus لفترة التجديد');
+
+    if (via === 'paypal') {
+      // تغيير الاسم ينقل عدّاد فيديوهات فترة التجديد المحفوظة أيضًا (كان يبدأ صفرًا بالاسم الجديد)
+      const at1 = u.planNext[0].at;
+      store.set('planvid:' + u0 + ':' + at1, '1');
+      const r = await call(auth, { body: { action: 'changeUsername', token: tok(u0), newUsername: u0 + 'x' } });
+      assert.equal(r.code, 200, JSON.stringify(r.body));
+      assert.equal(store.get('planvid:' + u0 + 'x:' + at1), '1', 'لا فيديو باقة جديد بالاسم الجديد');
+      assert.equal(store.has('planvid:' + u0 + ':' + at1), false);
+      continue;
+    }
+    // التجديد التالي بعد انتهاء Max يفتح فترة Plus رئيسيّة، وفترة التجديد السابق (المدفوعة) هي ما يعود إن استُردّ الجديد
+    const nextAt = Date.now() - 30 * DAY;
+    u.planUpdatedAt = Date.now() - 36 * DAY;
+    u.planNext[0].at = nextAt;
+    await auth.putUser(u0, u);
+    assert.equal((await hook(renewal('in_' + u0 + '_2', u0, 'basic', 1000, 'sub_' + u0))).code, 200);
+    u = await user(u0);
+    assert.deepEqual([u.plan, u.planPayId, u.planNext], ['basic', 'in_' + u0 + '_2', undefined], 'الفترة المحفوظة صارت سابقة الجديدة');
+    const ref = evt('charge.refunded', { id: 'ch_' + u0 + '_2', object: 'charge', payment_intent: 'pi_in_' + u0 + '_2', amount: 1000, amount_refunded: 1000, refunded: true, currency: 'usd', created: nowSec() });
+    assert.equal((await hook(ref)).code, 200);
+    assert.equal((await hook(ref)).code, 200, 'إعادة حدث الاسترداد');
+    u = await user(u0);
+    assert.deepEqual([u.plan, u.planUpdatedAt, u.planPayId], ['basic', nextAt, 'in_' + u0 + '_1'], 'تعود فترة التجديد السابق المدفوعة');
+    assert.equal(pts(u0), 70 + 3200 + 360, 'نقاط التجديد المستردّ سُحبت مرّة');
+  }
 });
 
 test('srv-money-5 ٤. حدث الحساب المحذوف يصل مرّتين معًا: تنبيه واحد وإلغاء فعّال واحد، وكلاهما 200', async () => {
