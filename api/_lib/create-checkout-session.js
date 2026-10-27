@@ -175,12 +175,16 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
   } catch (e) {
     /* v-lock-gpay: فشلٌ بعد أن أُضيفت النقاط (حفظ الحساب) — فكّ الحجز وحده كان يجعل الإعادة (الويب هوك، أو تحقّق Apple/Google Pay
        المعلّق في المتصفّح) تضيفها مرّة ثانية. يُقرأ الحساب: الحفظ وصل ⇒ الشحنة تمّت، يبقى الحجز؛ لم يصل ⇒ تُردّ النقاط ثمّ يُفكّ؛
-       ولا يُعرف أو تعذّر الردّ ⇒ يبقى الحجز: شحنة واحدة قد تنقصها الباقة خيرٌ من اثنتين. */
+       ولا يُعرف أو تعذّر الردّ ⇒ يبقى الحجز: شحنة واحدة قد تنقصها الباقة خيرٌ من اثنتين.
+       v-lock-gpay (srv-money-1، المراجعة المعاكسة): getUser لا يرمي عند عطل القراءة — يبتلعه getUserOnce ويعيد null بعد أربع
+       محاولات (auth.js). فـnull «لا يُعرف» لا «لم يصل»: كان الحفظ الواصل ثمّ المهلة ثمّ قراءة متعثّرة يردّ النقاط ويفكّ الحجز،
+       والإعادة تقف عند user[sourceField] === sourceId فتبقى الباقة بلا نقاطها. الردّ والفكّ لسجلّ مقروء يخلو من الرقم وحده. */
     let release = !added;
     if (added && claim) {
       try {
         const now = await getUser(username);
-        if (!(now && now[sourceField] === sourceId)) { await kvIncrBy(added.key, -added.n); release = true; }
+        if (now && now[sourceField] !== sourceId) { await kvIncrBy(added.key, -added.n); release = true; }
+        else if (!now) console.error('[grant] after-credit failure — account unreadable, claim kept', String(sourceId).slice(0, 40));
       } catch (e2) { console.error('[grant] after-credit failure — claim kept', String(sourceId).slice(0, 40), e2 && e2.message); }
     }
     if (claim && release) await kvDel(claim); // لم يكتمل الشحن ولا أثر باقٍ — يُفكّ الحجز فتنجح المحاولة التالية

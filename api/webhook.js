@@ -151,6 +151,9 @@ module.exports = async (req, res) => {
         const g = await grantPlanToUser(md.username, md.plan, 'lastStripePaymentIntentId', obj.id,
           { refs: [obj.latest_charge], amount: obj.amount_received || obj.amount, currency: obj.currency }); // كما في verifyPaymentIntent
         console.log('[webhook] wallet ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
+        /* v-lock-gpay (المراجعة المعاكسة): عطل قراءة الحساب لا يرمي — getUser يعيد null فيعود المنح {error, 404}، وكان 200 هنا
+           يوقف إعادة Stripe فيبقى المبلغ مسحوبًا بلا شحن. 2xx بعد أثرٍ تمّ أو سبق فقط؛ والحجز لم يُؤخذ فالإعادة تشحن مرّة. */
+        if (g.error) { res.status(500).json({ error: 'grant failed, retry' }); return; }
       }
     } else if (event.type === 'charge.refunded' || event.type === 'charge.dispute.created') {
       // v-pay-refund: الاسترداد (بنسبة المسترد) والاعتراض البنكيّ (مع تنبيه المالك) يسحبان ما منحته الدفعة، مرّة واحدة لكلّ حدث.

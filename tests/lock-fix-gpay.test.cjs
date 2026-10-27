@@ -19,6 +19,7 @@ const { Readable } = require('node:stream');
 process.env.AUTH_SECRET = 'lock-gpay-test-secret';
 process.env.STRIPE_WEBHOOK_SECRET = 'whsec_lock_gpay_test';
 process.env.STRIPE_SECRET_KEY = 'sk_test_lock_gpay';
+process.env.OMRAN_TEST_FAST_SLEEP = '1'; // getUser الحقيقيّ (مسار عطل القراءة أدناه) بلا انتظار ١٫٨ ثانية
 
 const root = path.resolve(__dirname, '..');
 const rp = (f) => require.resolve(path.join(root, f));
@@ -27,8 +28,10 @@ const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(
 // ── KV وسجلّات الحسابات في الذاكرة، مع حقن أعطال ──
 const kv = new Map();
 const users = new Map();
-// get: فشل قراءة الحساب التالية · put: فشل كتابته (لم تصل) · putLanded: وصلت ثمّ رمت (مهلة بعد الكتابة) · getAfterPut: تفشل القراءة التي تلي فشل الكتابة
+// get: فشل قراءة الحساب التالية (عطل KV يدوم أطول من محاولات getUser الأربع) · put: فشل كتابته (لم تصل) · putLanded: وصلت ثمّ رمت
+// (مهلة بعد الكتابة) · getAfterPut: تفشل القراءة التي تلي فشل الكتابة (وصلت أو لم تصل)
 const fail = { get: 0, put: 0, putLanded: 0, getAfterPut: 0 };
+let userReadOutage = false; // عطل قراءة سجلّات الحسابات في KV — يراه getUser الحقيقيّ
 const imm = () => new Promise((r) => setImmediate(r));
 const kvApi = {
   kvGetRaw: async (k) => { await imm(); return kv.has(k) ? String(kv.get(k)) : null; },
@@ -37,25 +40,34 @@ const kvApi = {
   kvIncrBy: async (k, n) => { await imm(); const v = Number(kv.get(k) || 0) + Number(n); kv.set(k, String(v)); return v; },
   kvDecrBy: async (k, n) => { await imm(); const v = Number(kv.get(k) || 0) - Number(n); kv.set(k, String(v)); return v; },
   kvDel: async (k) => { kv.delete(k); },
-  kvGetJSON: async (k) => (kv.has(k) ? JSON.parse(kv.get(k)) : null),
+  kvGetJSON: async (k) => { if (userReadOutage && String(k).startsWith('db/users/')) throw new Error('ERR DB read failed'); return kv.has(k) ? JSON.parse(kv.get(k)) : null; },
   kvPutJSON: async (k, v) => { kv.set(k, JSON.stringify(v)); },
   kvExpire: async () => {}, kvIncr: async (k) => kvApi.kvIncrBy(k, 1), kvList: async () => [], kvPipeline: async () => [],
 };
 mock('api/_lib/kv.js', kvApi);
+mock('api/_lib/log-error.js', { logError: () => {}, logErrorAndFlush: async () => {} });
+/* v-lock-gpay (المراجعة المعاكسة): عطل القراءة يمرّ بـgetUser الحقيقيّ من auth.js — getUserOnce يبتلع عطل KV ويعيد null بعد أربع
+   محاولات، لا يرمي. المحاكاة السابقة كانت ترمي فأخفت أنّ grantLocked يعامل «لا يُعرف» معاملة «لم يُحفظ». */
+const realAuth = require(rp('api/_lib/auth.js'));
+delete require.cache[rp('api/_lib/auth.js')];
+async function realGetUserDuringOutage(u) {
+  userReadOutage = true;
+  try { return await realAuth.getUser(u); } finally { userReadOutage = false; }
+}
 const writes = []; // كلّ كتابة سجلّ حساب وصلت
+const armGetAfterPut = () => { if (fail.getAfterPut > 0) { fail.get = fail.getAfterPut; fail.getAfterPut = 0; } };
 mock('api/_lib/auth.js', {
-  getUser: async (u) => { await imm(); if (fail.get > 0) { fail.get--; throw new Error('ERR DB read failed'); } return users.has(u) ? structuredClone(users.get(u)) : null; },
+  getUser: async (u) => { await imm(); if (fail.get > 0) { fail.get--; return realGetUserDuringOutage(u); } return users.has(u) ? structuredClone(users.get(u)) : null; },
   putUser: async (u, rec) => {
     await imm();
-    if (fail.putLanded > 0) { fail.putLanded--; users.set(u, structuredClone(rec)); writes.push(u); throw new Error('ETIMEDOUT after write'); }
-    if (fail.put > 0) { fail.put--; if (fail.getAfterPut > 0) { fail.get = fail.getAfterPut; fail.getAfterPut = 0; } throw new Error('ERR DB capacity quota exceeded'); }
+    if (fail.putLanded > 0) { fail.putLanded--; users.set(u, structuredClone(rec)); writes.push(u); armGetAfterPut(); throw new Error('ETIMEDOUT after write'); }
+    if (fail.put > 0) { fail.put--; armGetAfterPut(); throw new Error('ERR DB capacity quota exceeded'); }
     users.set(u, structuredClone(rec)); writes.push(u);
   },
   isBanned: async () => false,
   verifyToken: (t) => (typeof t === 'string' && t.startsWith('T:') ? t.slice(2) : null),
 });
 mock('api/_lib/_vip.js', { isVip: async () => false });
-mock('api/_lib/log-error.js', { logError: () => {}, logErrorAndFlush: async () => {} });
 const alertsToOwner = [];
 mock('api/_lib/_owner-alert.js', { pushToOwners: async (p) => { alertsToOwner.push(p); return { sent: 1 }; }, alertOwnerError: async () => ({}), alertOwnerCredit: async () => ({}), isCreditFailure: () => false });
 
@@ -189,17 +201,29 @@ test('srv-money-1: عمليّة بلا metadata (صفحة Stripe/التجديد)
   assert.equal(await bal('omar'), 70 + 920, 'غير المكتملة والخطّة المجهولة لا تُشحن');
 });
 
-test('srv-money-1: عطل قبل الأثر ⇒ 500 فيعيد Stripe، والحجز مفكوك، والإعادة تشحن مرّة', async () => {
+test('srv-money-1: عطل قراءة الحساب قبل الأثر (getUser الحقيقيّ يعيد null فيصير المنح 404) ⇒ 500 فيعيد Stripe، لا 200 بلا شحن', async () => {
+  // المقدّمة التي تبني عليها المحاكاة: getUser في الإنتاج لا يرمي عند عطل KV — يعيد null بعد محاولاته الأربع
+  fail.get = 1;
+  assert.equal(await require(rp('api/_lib/auth.js')).getUser('nobody-outage'), null, 'auth.js: عطل القراءة = null لا رمي');
   fresh('lama');
   const pi = paidPi('lama', 'pro', 2000);
-  fail.get = 1;
+  fail.get = 2; // القراءة قبل قفل الحساب وبعده (liveAccount مرّتين)
   const r1 = await hook(piEvent(pi));
-  assert.equal(r1.code, 500, 'non-2xx: الأثر لم يتمّ');
-  assert.equal(kv.has('paid:lastStripePaymentIntentId:' + pi.id), false);
+  assert.equal(r1.code, 500, 'non-2xx: الأثر لم يتمّ — كان 200 {received:true} فلا يعيد Stripe أبدًا');
+  assert.equal(kv.has('paid:lastStripePaymentIntentId:' + pi.id), false, 'لا حجز قبل الأثر');
   assert.equal(await bal('lama'), 70);
+  assert.equal(users.get('lama').plan, undefined);
+  assert.equal((await hook(piEvent(pi))).code, 200, 'إعادة Stripe تشحن');
   assert.equal((await hook(piEvent(pi))).code, 200);
-  assert.equal((await hook(piEvent(pi))).code, 200);
-  assert.equal(await bal('lama'), 70 + 920);
+  assert.equal(await bal('lama'), 70 + 920, 'مرّة واحدة');
+  assert.equal(users.get('lama').plan, 'pro');
+  // عطل عابر قبل القفل وحده: القراءة داخل القفل تنجح فيُشحن من أوّل مرّة
+  fresh('lama2');
+  const p2 = paidPi('lama2', 'pack100', 499);
+  fail.get = 1;
+  assert.equal((await hook(piEvent(p2))).code, 200);
+  assert.equal((await hook(piEvent(p2))).code, 200);
+  assert.equal(await bal('lama2'), 70 + 100);
 });
 
 test('srv-money-1: فشل حفظ الحساب بعد إضافة النقاط — الإعادة (تحقّق معلّق أو ويب هوك) لا تضاعفها', async () => {
@@ -239,6 +263,36 @@ test('srv-money-1: فشل حفظ الحساب بعد إضافة النقاط —
   assert.equal(kv.get('paid:lastStripePaymentIntentId:' + c.id), 'reem', 'الحجز باقٍ');
   for (let i = 0; i < 3; i++) { await hook(piEvent(c)); await verifyPi('reem', c.id); }
   assert.equal(await bal('reem'), 70 + 920, 'أُضيفت مرّة ولم تتكرّر');
+});
+
+test('srv-money-1: الحفظ وصل ثمّ رمى، والقراءة بعده تعثّرت (null) ⇒ لا ردّ للنقاط ولا فكّ للحجز — الباقة ونقاطها معًا', async () => {
+  /* المراجعة المعاكسة: «لا يُعرف» كان يُعامَل «لم يُحفظ» — تُردّ النقاط ويُفكّ الحجز، ثمّ كلّ إعادة تقف عند
+     user.lastStripePaymentIntentId === الرقم («سبق الشحن») فيبقى Pro بـ٧٠ نقطة وقد دفع ثمن ٩٢٠. */
+  // (أ) الويب هوك أوّلًا
+  fresh('aziz');
+  const a = paidPi('aziz', 'pro', 2000);
+  fail.putLanded = 1; fail.getAfterPut = 1;
+  assert.equal((await hook(piEvent(a))).code, 500, 'الرمي بعد الأثر يبقى non-2xx — والإعادة آمنة لأنّ الحجز باقٍ');
+  assert.equal(await bal('aziz'), 70 + 920, 'النقاط لم تُردّ');
+  assert.equal(kv.get('paid:lastStripePaymentIntentId:' + a.id), 'aziz', 'الحجز باقٍ');
+  assert.equal(users.get('aziz').plan, 'pro');
+  assert.equal((await hook(piEvent(a))).code, 200);
+  const va = await verifyPi('aziz', a.id);
+  assert.equal(va.body.alreadyGranted, true);
+  assert.equal(va.body.balance, await bal('aziz'), '«سبق الشحن» برصيدٍ يطابق الحقيقيّ');
+  assert.equal(await bal('aziz'), 70 + 920);
+  // (ب) تحقّق المحفظة المعلّق أوّلًا (سيناريو المراجعة نفسه)، ثمّ إعادة الويب هوك والتحقّق مرارًا
+  fresh('basma');
+  const b = paidPi('basma', 'pro', 2000);
+  fail.putLanded = 1; fail.getAfterPut = 1;
+  assert.equal((await verifyPi('basma', b.id)).code, 500);
+  for (let i = 0; i < 3; i++) { assert.equal((await hook(piEvent(b))).code, 200); await verifyPi('basma', b.id); }
+  const vb = await verifyPi('basma', b.id);
+  assert.equal(vb.body.alreadyGranted, true);
+  assert.equal(await bal('basma'), 70 + 920, 'كان ٧٠ بعد الردّ الخاطئ');
+  assert.equal(vb.body.balance, 70 + 920);
+  assert.equal(users.get('basma').plan, 'pro');
+  assert.equal(users.get('basma').lastStripePaymentIntentId, b.id);
 });
 
 // ───────────────────────── العميل: أجزاء app-06 الحقيقيّة في vm ─────────────────────────
@@ -323,7 +377,7 @@ const verifies = (env) => env.calls.filter((c) => c === 'verify-payment-intent')
 test('cli-money-1: «تمّ» في الورقة ثمّ فشل التحقّق (500): الرقم محفوظ، والرسالة «وصلنا دفعك» لا «حاول مرة أخرى»، ثمّ العودة تشحنه مرّة', async () => {
   fresh('rana');
   const env = client({ user: 'rana' });
-  fail.get = 4; // التحقّق الأوّل وإعاداته الثلاث داخل النافذة: KV الخادم معطوب (500)
+  fail.put = 4; // التحقّق الأوّل وإعاداته الثلاث داخل النافذة: كتابة KV الخادم معطوبة (500، والنقاط تُردّ والحجز يُفكّ)
   await env.pay('pro');
   const id = lastPi();
   assert.deepEqual(env.completes, ['success'], 'الورقة قالت «تمّ» — المبلغ مسحوب');
@@ -368,9 +422,10 @@ test('cli-money-1: انقطاع الشبكة بعد «تمّ»: «وصلنا د�
 test('cli-money-1: التحقّق ينجح في الإعادة الثانية داخل النافذة: «تمّ» والرقم يُمسح والنافذة تُغلق، شحنة واحدة', async () => {
   fresh('noor');
   const env = client({ user: 'noor' });
-  fail.get = 1;
+  fail.get = 2; // قراءة الحساب معطوبة في التحقّق الأوّل (getUser الحقيقيّ null ⇒ 404) — 404 لا يُسقط الرقم المعلّق
   await env.pay('pro');
   assert.equal(env.status(), 'T:checkoutSuccessMsg');
+  assert.equal(verifies(env), 2, 'الأوّل 404 والإعادة الثانية شحنت');
   assert.deepEqual(env.pending(), []);
   await drain();
   assert.equal(env.closed, 1);
