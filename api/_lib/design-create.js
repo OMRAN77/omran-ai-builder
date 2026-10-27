@@ -311,6 +311,35 @@ async function placeShotGemini(apiKey, prompt, deadline, noteErr) {
   return null;
 }
 
+/* v-lock-quotab (srv-studios-2-3): إنقاذ «بلا صورة» على برو يرجع أربع لقطات 2K ‏16:9 بصيغة PNG (~١٠ م.ب لكلّ واحدة بعد base64) في ردّ
+   واحد — المنصّة ترفض ما فوق ٤٫٥ م.ب فلا يصل المستخدم شيء والحصّة محسوبة. لقطة PNG تُكتب WebP ‏٩٠ مرّة واحدة (من أصل بلا فقد) بعرض لقطات
+   OpenAI نفسها (١٥٣٦) وبنسبتها، وما لا يتّسع بعدها للردّ يُسقط قبل consumeDesign؛ بلا شيء يتّسع = ٥٠٢ بلا حساب. */
+const PLACE_RESCUE_W = 1536;
+const PLACE_RESP_B64_MAX = 4000000; // مجموع base64 للصور — تحت حدّ ردّ الدالّة (٤٫٥ م.ب) بهامش للـJSON
+async function placeRescueWebp(images, deadline) {
+  const out = [];
+  for (const im of images) {
+    if (/png/i.test(im.mimeType || '') && Date.now() < deadline + 8000) { // ما بعده يقترب من حدّ الدالّة (٣٠٠ث): تبقى كما هي ويحكم السقف
+      try {
+        const w = await require('./img-convert.js').toCardWebp(im.imageBase64, PLACE_RESCUE_W, 90);
+        out.push({ imageBase64: w.b64, mimeType: 'image/webp' });
+        continue;
+      } catch (e) { console.warn('[design-create] rescue webp skipped: ' + (e && e.message)); }
+    }
+    out.push(im);
+  }
+  return out;
+}
+function fitPlaceImages(images, noteErr) {
+  let total = 0;
+  return images.filter((im) => {
+    const n = String(im.imageBase64 || '').length;
+    if (total + n > PLACE_RESP_B64_MAX) { noteErr('response size: shot dropped (' + n + ' b64)'); return false; }
+    total += n;
+    return true;
+  });
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -437,7 +466,9 @@ module.exports = async (req, res) => {
       if (!images.length) {
         images = (await Promise.all(prompts.map((pr) => placeShotGemini(apiKey, pr, deadline, noteErr))))
           .filter(Boolean).map((g) => ({ imageBase64: g.b64, mimeType: g.mime }));
+        images = await placeRescueWebp(images, deadline); // v-lock-quotab (srv-studios-2-3)
       }
+      images = fitPlaceImages(images, noteErr); // v-lock-quotab (srv-studios-2-3): الردّ يتّسع قبل احتساب الحصّة
       if (!images.length) {
         res.status(502).json({
           error: 'لم يرجع النموذج أي شكل. جرّب نمطًا أو نوع مكان آخر.',

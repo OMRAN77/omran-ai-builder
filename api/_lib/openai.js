@@ -20,6 +20,13 @@ module.exports = async (req, res) => {
     return;
   }
 
+  /* v-lock-quotab (srv-providers-2): ردّ الاحترافيّ 👑 خارج try كي يراه catch — نداء يرمي (مهلة أوّل بايت ٣٠ث، ECONNRESET، DNS) أو جسم
+     لم يُقرأ كان يقفز إلى catch فيثبت خصم ١٥ نقطة بلا ردّ. مرّة واحدة (يُصفَّر قبل القيد)، وبنتيجة الخصم نفسها (v-refund-kind). */
+  let premiumRefund = null;
+  const refundPremium = async () => {
+    const p = premiumRefund; premiumRefund = null;
+    if (p) { try { await refundPoints(p.user, p.amt, p.how); } catch (e2) { /* best-effort */ } }
+  };
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -43,7 +50,6 @@ module.exports = async (req, res) => {
     let useModel = useDefault ? 'gpt-4.1' : String(model);
     if (useModel.indexOf('/') !== -1) useModel = useModel.split('/').pop(); // v-provider-models: معرّف OpenRouter (openai/…) على المسار المباشر
     // 👑 الرد الاحترافي: موديل بريميوم مقابل نقاط (المالك بلا حدود).
-    let premiumRefund = null;
     let isPremium = false;
     let ownerView = false; // v-audit-prov: المالك وحده يرى نصّ خطأ المزوّد
     if (body.premium) {
@@ -51,7 +57,7 @@ module.exports = async (req, res) => {
       if (!pUser) { res.status(401).json({ error: 'سجّل الدخول لاستخدام الرد الاحترافي 👑' }); return; }
       const spend = await spendPoints(pUser, PREMIUM_COST.openai, 'premium_openai');
       if (!spend.ok) { res.status(402).json({ error: 'insufficient_points', reason: 'points', needed: PREMIUM_COST.openai, points: spend.points || 0 }); return; }
-      if (!spend.owner) premiumRefund = { user: pUser, amt: PREMIUM_COST.openai };
+      if (!spend.owner) premiumRefund = { user: pUser, amt: PREMIUM_COST.openai, how: spend };
       ownerView = !!spend.owner;
       useModel = PREMIUM_MODELS.openai;
       isPremium = true;
@@ -104,10 +110,11 @@ module.exports = async (req, res) => {
     }
 
     const data = await upstream.text();
-    if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
+    if (!upstream.ok) await refundPremium();
     if (!upstream.ok) { require('./_videoFail.js').chatFail(res, 'openai', upstream.status, data, ownerView); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {
+    if (!res.headersSent) await refundPremium(); // v-lock-quotab (srv-providers-2): لم يصل المستخدم شيء — البثّ الذي بدأ وصل فيثبت خصمه
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }
 };
