@@ -21,6 +21,24 @@ const TICKET_TTL_SEC = 2 * 86400;
    وأطول انتظار في الواجهة ١٥ دقيقة، فنصف ساعة بلا تسليم = لم يُسلَّم. «مرّة واحدة» هي نفسها (مفتاح التسوية): استطلاع متأخّر لا يردّ ثانية. */
 const STALE_MS = 30 * 60 * 1000;
 const OPEN_MAX = 30;
+/* v-lock-vid (srv-video-1، باب المال بموافقة المالك ٢٧ أكتوبر «صلح الخطير»): الكنس يردّ تذاكر غير Runway بلا سؤال المزوّد، ثمّ كان
+   الاستطلاع يسلّم الفيديو نفسه — settleVideoJob(…, true) يرجع null ولا يفحصه أحد — فيصير الفيديو مجّانيًّا ويتكرّر بسكربت. وكذلك ردّ
+   الاستطلاع عند عطل المزوّد أو تعذّر الرابط ثمّ نجاحه لاحقًا. الآن «لا تسليم فوق ردّ» (كـvideo-enhance): مفتاح التسوية '0' يرجع
+   {refunded} فتردّ نقاط الاستطلاع الأربع FAILED بلا رابط، ويبقى ٣٠ يومًا — أطول من التذكرة ومن ناتج المزوّد (Omni يومان) — وإلّا سلّم
+   الاستطلاع بعد سقوطه. التسليم الذي لا يُحسم (حجزٌ تعطّل والتذكرة مفتوحة) {pending} = RUNNING ويعيد العميل: تسليمه الآن يترك التذكرة
+   للكنس فيردّها بعد التسليم. */
+const REFUNDED_TTL_SEC = 30 * 86400;
+const DELIVERY_PENDING = Object.freeze({ settled: false, refunded: false, pending: true });
+/** v-lock-vid: حكم التسليم لمهمّة لم يحجز هذا النداء تسويتها — '0' = رُدّت (لا رابط)، وغيرها يسلَّم كما كان. */
+async function deliveryVerdict(kv, key, hadTicket) {
+  let done;
+  try { done = await kv.kvGetRaw(key + ':done'); } catch (e) {
+    // بلا تذكرة مقروءة: سلوك ما قبل الملفّ (المالك ومهمّة بلا خصم). وبتذكرة حجزها غيرنا: لا نعرف أسُلّمت أم رُدّت.
+    return hadTicket ? DELIVERY_PENDING : null;
+  }
+  if (String(done) === '0') return { settled: false, refunded: true, blocked: true };
+  return null;
+}
 function openKey(username) {
   return 'vidjob:open:' + encodeURIComponent(String(username || '').trim().toLowerCase());
 }
@@ -58,6 +76,7 @@ async function rememberVideoJob(taskId, job, o) {
 /**
  * يسوّي مهمّة انتهت: ok=false يردّ النقاط/رصيد الاشتراك ويفكّ قفل الثلاث دقائق ويعيد حصّة
  * اليوم، وok=true يمحو التذكرة وحدها. يرجع null إن لا تذكرة أو سوّاها نداءٌ آخر قبله.
+ * v-lock-vid: مع ok=true يرجع {refunded:true} إن رُدّت المهمّة قبله (لا تسليم)، و{pending:true} إن لم يُحسم (RUNNING).
  */
 async function settleVideoJob(taskId, ok, o) {
   const opt = o || {};
@@ -67,16 +86,16 @@ async function settleVideoJob(taskId, ok, o) {
   // kvGetJSON عقده «لا شيء عند العطب»: تخزين معطّل أو مفقود = لا تذكرة = لا تسوية،
   // وهو سلوك ما قبل هذا الملفّ بالضبط. لا تُقرأ الأسرار ولا تُنادى Redis في نطاق الوحدة.
   const job = await kv.kvGetJSON(key);
-  if (!job || !job.u) return null;
+  if (!job || !job.u) return ok ? deliveryVerdict(kv, key, false) : null; // v-lock-vid: رُدّت ومُحيت تذكرتها = لا تسليم
   // حارس «مرّة واحدة»: من ينشئ مفتاح التسوية هو وحده من يردّ؛ الباقي يخرج بلا أثر.
   let mine = false;
   try {
-    mine = await kv.kvSetIfAbsent(key + ':done', ok ? '1' : '0', TICKET_TTL_SEC);
+    mine = await kv.kvSetIfAbsent(key + ':done', ok ? '1' : '0', ok ? TICKET_TTL_SEC : REFUNDED_TTL_SEC);
   } catch (e) {
     console.error('[video-job] settle claim failed: ' + (e && e.message));
-    return null;
+    return ok ? DELIVERY_PENDING : null;
   }
-  if (!mine) return null;
+  if (!mine) return ok ? deliveryVerdict(kv, key, true) : null;
   try { await kv.kvDel(key); } catch (e) { /* أفضل جهد — التذكرة تسقط بعد ساعتين */ }
   if (ok) return { settled: true, refunded: false, username: job.u };
 
@@ -147,4 +166,4 @@ async function sweepStaleVideoJobs(username, o) {
   return out;
 }
 
-module.exports = { TICKET_TTL_SEC, STALE_MS, ticketKey, rememberVideoJob, settleVideoJob, sweepStaleVideoJobs };
+module.exports = { TICKET_TTL_SEC, STALE_MS, REFUNDED_TTL_SEC, ticketKey, rememberVideoJob, settleVideoJob, sweepStaleVideoJobs };

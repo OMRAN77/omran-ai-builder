@@ -68,7 +68,10 @@ module.exports = async (req, res) => {
       return;
     }
 
-    await require('./video-job.js').settleVideoJob(taskId, true);
+    /* v-lock-vid (srv-video-1): لا تسليم فوق ردّ — رُدّت نقاطها (كنسٌ أو تعذّر الرابط قبلُ) = FAILED بلا رابط، ولم تُحسم = RUNNING */
+    const held = await require('./video-job.js').settleVideoJob(taskId, true);
+    if (held && held.pending) { res.status(200).json({ status: 'RUNNING' }); return; }
+    if (held && held.refunded) { console.warn('[minimax-status] delivery refused after refund'); res.status(200).json({ status: 'FAILED' }); return; }
     await require('./our-media.js').rememberOurMedia([url]); // v-dl-ours: ناتج مدفوع — حفظه لا يُعدّ على سقف التنزيل
     res.status(200).json({ status: 'SUCCEEDED', output: [url] });
   } catch (e) {

@@ -11,6 +11,12 @@ function failed(res, why) {
   const safety = SAFETY_RE.test(String(why || ''));
   res.status(200).json({ status: 'FAILED', failure: safety ? FAIL_SAFETY : FAIL_OTHER, failureCode: safety ? 'safety' : 'failed' });
 }
+/* v-lock-vid (srv-video-1): حكم التسوية قبل الرابط — رُدّت نقاطها (كنسٌ أو عطل سابق) = FAILED بلا رابط، ولم تُحسم = RUNNING يعيد العميل. */
+function refusedDelivery(s, res, op) {
+  if (s && s.pending) { res.status(200).json({ status: 'RUNNING' }); return true; }
+  if (s && s.refunded) { console.warn('[veo-status] delivery refused after refund: ' + String(op).slice(0, 80)); failed(res, 'refunded before delivery'); return true; }
+  return false;
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -28,7 +34,7 @@ module.exports = async (req, res) => {
       try { rec = JSON.parse((await require('./kv.js').kvGetRaw(vc.omniOpKey(op))) || 'null'); }
       catch (e) { console.error('[veo-status] omni result read failed: ' + (e && e.message)); res.status(200).json({ status: 'RUNNING' }); return; }
       if (!rec || !rec.uri) { await require('./video-job.js').settleVideoJob(op, false); failed(res, 'omni result missing'); return; }
-      await require('./video-job.js').settleVideoJob(op, true);
+      if (refusedDelivery(await require('./video-job.js').settleVideoJob(op, true), res, op)) return; // v-lock-vid: لا تسليم فوق ردّ
       res.status(200).json({ status: 'SUCCEEDED', output: [require('./veo-download.js').downloadUrl(rec.uri)] });
       return;
     }
@@ -75,7 +81,7 @@ module.exports = async (req, res) => {
       failed(res, why);
       return;
     }
-    await settle(true);
+    if (refusedDelivery(await settle(true), res, op)) return; // v-lock-vid: لا تسليم فوق ردّ
     res.status(200).json({
       status: 'SUCCEEDED',
       output: [require('./veo-download.js').downloadUrl(uri)], // v-video-open-lock: موقّع على الملفّ — التنزيل لا يقبل غيره بلا جلسة

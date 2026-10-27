@@ -45,7 +45,10 @@ module.exports = async (req, res) => {
       res.status(200).json({ status: 'FAILED', failure: why.slice(0, 300) });
       return;
     }
-    await settle(true);
+    /* v-lock-vid (srv-video-1): لا تسليم فوق ردّ — رُدّت نقاطها (كنسٌ أو عطل سابق) = FAILED بلا رابط، ولم تُحسم = RUNNING */
+    const held = await settle(true);
+    if (held && held.pending) { res.status(200).json({ status: 'RUNNING' }); return; }
+    if (held && held.refunded) { console.warn('[actor-status] delivery refused after refund'); res.status(200).json({ status: 'FAILED' }); return; }
     await require('./our-media.js').rememberOurMedia([url]); // v-dl-ours: ناتج مدفوع — حفظه لا يُعدّ على سقف التنزيل
     res.status(200).json({ status: 'SUCCEEDED', output: [url] });
   } catch (e) {
