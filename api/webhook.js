@@ -14,7 +14,22 @@
 // والمنح عبر grantPlanToUser نفسه: أمان التكرار مضمون (نفس الجلسة/الفاتورة
 // لا تضيف النقاط مرتين حتى لو وصل الحدث والتحقق اليدوي معًا).
 const crypto = require('crypto');
-const { grantPlanToUser, PLANS } = require('./_lib/create-checkout-session.js');
+const { grantPlanToUser, PLANS, supersedeSubs, cancelSub, subIdOf } = require('./_lib/create-checkout-session.js');
+
+/* v-lock-subs (srv-money-5، موافقة المالك ٢٧ أكتوبر): منحٌ يرجع خطأً (الحساب محذوف) كان سطرًا في السجلّ و200 — المال مأخوذ بلا خدمة
+   ولا يعرف أحد. الآن: تنبيه للمالك مرّة واحدة لكلّ دفعة (ليردّ المبلغ يدويًّا)، واشتراكها يُلغى فورًا فلا يتكرّر الخصم. تعذّر
+   الإلغاء يرمي ⇒ 500 فيعيد Stripe الحدث (والتنبيه لا يتكرّر بحجزه). */
+async function orphanPaid(obj, md, kind) {
+  const { kvSetIfAbsent } = require('./_lib/kv.js');
+  if (await kvSetIfAbsent('payorphan:' + String(obj.id).slice(0, 200), '1', 400 * 86400)) {
+    const amount = Number(obj.amount_total || obj.amount_paid) || 0;
+    await require('./_lib/pay-refund.js').alertOwner('⚠️ دفعة لحساب محذوف — ردّ المبلغ',
+      String(md.username || '?') + ' · ' + String(md.plan || '?') + ' · ' + (amount > 0 ? (amount / 100).toFixed(2) + ' ' + String(obj.currency || '').toUpperCase() : '?')
+      + ' · ' + kind + ' ' + String(obj.id).slice(0, 60) + (obj.payment_intent ? ' · ' + String(obj.payment_intent).slice(0, 40) : ''));
+  }
+  const sub = subIdOf(obj);
+  if (sub) await cancelSub(sub);
+}
 
 // جسم خام — بدونه يتغير النص بعد التحليل ويفشل توقيع سترايب دائمًا.
 module.exports.config = { api: { bodyParser: false } };
@@ -129,6 +144,9 @@ module.exports = async (req, res) => {
         const g = await grantPlanToUser(md.username, md.plan, 'lastStripeSessionId', obj.id,
           { refs: [obj.payment_intent, obj.invoice], amount: obj.amount_total, currency: obj.currency }); // v-pay-refund: سجلّ المنح
         console.log('[webhook] checkout ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
+        if (g.error) await orphanPaid(obj, md, 'جلسة'); // v-lock-subs (srv-money-5)
+        // v-lock-subs (srv-money-3): اشتراك جديد يلغي القديم من خانته — بعد المنح وبعد «سبق المنح» أيضًا (إعادة بعد إلغاء تعذّر). يرمي ⇒ 500 فيُعاد.
+        else if (obj.mode === 'subscription' && subIdOf(obj)) await supersedeSubs(md.username, md.plan, subIdOf(obj));
       }
     } else if (event.type === 'invoice.paid') {
       // تجديد شهري فقط — فاتورة الإنشاء الأولى غطّاها حدث الجلسة أعلاه.
@@ -139,6 +157,7 @@ module.exports = async (req, res) => {
         const g = await grantPlanToUser(md.username, md.plan, 'lastStripeInvoiceId', obj.id, { // v-pay-refund: سجلّ المنح بأرقام دفعته
           refs: [obj.payment_intent, obj.charge].concat(pays.map((x) => x.payment_intent), pays.map((x) => x.charge)), amount: obj.amount_paid, currency: obj.currency });
         console.log('[webhook] renewal ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
+        if (g.error) await orphanPaid(obj, md, 'تجديد'); // v-lock-subs (srv-money-5)
       }
     } else if (event.type === 'charge.refunded' || event.type === 'charge.dispute.created') {
       // v-pay-refund: الاسترداد (بنسبة المسترد) والاعتراض البنكيّ (مع تنبيه المالك) يسحبان ما منحته الدفعة، مرّة واحدة لكلّ حدث.

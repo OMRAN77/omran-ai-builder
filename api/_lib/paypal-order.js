@@ -134,6 +134,10 @@ module.exports = async (req, res) => {
       // v-checkout-login: طلب بلا حساب يُلتقط ولا يُنسب لأحد — لا طلب دفع بلا دخول.
       const buyer = verifyToken(body.token);
       if (!buyer) { res.status(401).json({ error: 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe' }); return; }
+      // v-lock-subs (srv-money-4): الأدنى لا يُشترى فوق أعلى سارية (كالبطاقة وApple/Google Pay). طلب يُنشأ في المتصفّح لا يمرّ هنا — المنح نفسه لا يُنزل المحادثة.
+      const ck = require('./create-checkout-session.js');
+      const lower = await ck.lowerPlanBlock(buyer, body.plan);
+      if (lower) { res.status(409).json({ error: ck.LOWER_PLAN, code: 'lower_plan', until: lower.until }); return; }
 
       const r = await fetch(`${baseUrl()}/v2/checkout/orders`, {
         method: 'POST',

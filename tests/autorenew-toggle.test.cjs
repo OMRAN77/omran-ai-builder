@@ -19,8 +19,8 @@ function token(u) {
   return payload + '.' + crypto.createHmac('sha256', process.env.AUTH_SECRET).update(payload).digest('base64url');
 }
 const SUBS = [
-  { id: 'sub_a', metadata: { username: 'sara' }, cancel_at_period_end: false, items: { data: [{ current_period_end: 1790000000 }] } },
-  { id: 'sub_x', metadata: { username: 'sara2' }, cancel_at_period_end: false, current_period_end: 1800000000 },
+  { id: 'sub_a', status: 'active', metadata: { username: 'sara' }, cancel_at_period_end: false, items: { data: [{ current_period_end: 1790000000 }] } },
+  { id: 'sub_x', status: 'active', metadata: { username: 'sara2' }, cancel_at_period_end: false, current_period_end: 1800000000 },
 ];
 async function call(body, stripe) {
   const calls = [];
@@ -44,7 +44,7 @@ test('١. بلا دخول = 401 بلا نداء لسترايب', async () => {
 test('٢. الحالة: اشتراكات الحساب نفسه وحده (لا sara2)، ونهاية الشهر المدفوع من البند', async () => {
   const r = await call({ token: token('sara') });
   assert.deepEqual(r.json, { ok: true, subs: 1, on: true, periodEnd: 1790000000 });
-  assert.match(decodeURIComponent(r.calls[0].url), /metadata\['username'\]:'sara' AND status:'active'/);
+  assert.match(decodeURIComponent(r.calls[0].url), /metadata\['username'\]:'sara'(&|$)/); // v-lock-subs (srv-money-5): بالاسم وحده والحالة تُصفّى في الخادم (past_due يُرى)
   assert.equal(r.calls.length, 1, 'الحالة لا تعدّل شيئًا');
 });
 

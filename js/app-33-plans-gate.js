@@ -142,7 +142,11 @@
   function markSeen(k){ try{ localStorage.setItem(k, '1'); }catch(e){ __swallow(e, 'plans-gate:seen'); } }
 
   // انتهى (خسر مزاياه الآن) قبل «قارب»؛ وباقة المحادثة قبل الوسائط. كلّ حالة لكلّ فترة اشتراك مرّة واحدة.
-  function pickNotice(subs, now){
+  /* v-lock-subs (cli-money-6، موافقة المالك ٢٧ أكتوبر): «قارب الانتهاء — جدّد» لمها و«صور وفيديو» كان يبيع تجديدًا مبكّرًا يعيد ملء الرصيد
+     فوق المتبقّي (grantMedia يكتب الرصيد لا يضيفه) فتضيع الدقائق أو الفلوس الباقية. ما دام في رصيد الخانة شيء (media من ردّ الرصيد نفسه)
+     لا يُعرض «قارب»؛ يُعرض حين يفرغ، و«انتهى» كما كان. المحادثة كما هي: نقاطها تُضاف لا تُستبدل. */
+  function mediaLeft(media, kind){ var m = media && media[kind]; return !!(m && Number(m.left) > 0); }
+  function pickNotice(subs, now, media){
     /* v-media-merge: المدموجة السارية تغطّي الصور والفيديو — انتهاء باقتهما القديمة ليس خسارة مزايا، و«جدّد» كان يبيعه
        المدموجة التي يملكها فيصفّر رصيدها (الشراء يعيد الملء ولا يُرحَّل). */
     var arr = Array.isArray(subs) ? subs : [];
@@ -153,7 +157,7 @@
     for(i = 0; i < list.length; i++) if(!list[i].active && !seen(seenKey(list[i], 'expired'))) return { s: list[i], state: 'expired' };
     for(i = 0; i < list.length; i++){
       var s = list[i];
-      if(s.active && s.endsAt - now <= NOTICE_DAYS * DAY_MS && !seen(seenKey(s, 'expiring'))) return { s: s, state: 'expiring' };
+      if(s.active && s.endsAt - now <= NOTICE_DAYS * DAY_MS && !(s.kind !== 'chat' && mediaLeft(media, s.kind)) && !seen(seenKey(s, 'expiring'))) return { s: s, state: 'expiring' };
     }
     return null;
   }
@@ -187,9 +191,9 @@
     bar.appendChild(txt); bar.appendChild(go); bar.appendChild(later);
     document.body.appendChild(bar);
   }
-  function checkSubs(subs){
+  function checkSubs(subs, media){
     if(noticeShown || !loggedIn()) return;
-    var n = pickNotice(subs, Date.now());
+    var n = pickNotice(subs, Date.now(), media);
     if(!n) return;
     noticeShown = true;
     showNotice(n);
@@ -214,7 +218,7 @@
                   if(g) openPlans(g.reason, g.tab, g.vars);
                 }).catch(function(){ /* guard-ok — جسم غير JSON ليس جدارًا من خادمنا */ });
               } else if(res.ok && /\/api\/points(?:[?#]|$)/.test(url)){
-                res.clone().json().then(function(d){ if(d && Array.isArray(d.subs)) checkSubs(d.subs); })
+                res.clone().json().then(function(d){ if(d && Array.isArray(d.subs)) checkSubs(d.subs, d.media); })
                   .catch(function(){ /* guard-ok — ردّ رصيد بلا JSON لا تنبيه فيه */ });
               }
             }catch(e){ __swallow(e, 'plans-gate:watch'); }

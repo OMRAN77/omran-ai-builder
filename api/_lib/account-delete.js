@@ -3,8 +3,8 @@
 //
 // صاحب الحساب يحذفه بنفسه من «حسابي»: يكتب اسمه تأكيدًا، وكلمة مروره إن كان حسابه بكلمة مرور (حساب Google بلا كلمة مرور).
 // الترتيب:
-//   ١) إيقاف التجديد التلقائيّ في Stripe بالمسار نفسه الذي يوقفه به زرّه (autoRenewToggle on:false — نهاية الشهر المدفوع، بلا
-//      خصم جديد). تعذّر الوصول لـStripe = لا حذف (لا نترك بطاقة تُخصم لحساب لا يملكه أحد).
+//   ١) إيقاف التجديد التلقائيّ في Stripe بالمسار نفسه الذي يوقفه به زرّه (autoRenewToggle on:false)، لكن إلغاءً فوريًّا لكلّ اشتراك
+//      حيّ بما فيه past_due (v-lock-subs، srv-money-5)، بلا خصم جديد. تعذّر الوصول لـStripe = لا حذف (لا نترك بطاقة تُخصم لحساب لا يملكه أحد).
 //   ٢) محو بياناته: المحادثات وسجلّ حذفها، الذاكرة والذاكرة الحيّة، التذكيرات واشتراك الإشعارات، المحفظة التعليميّة، سجلّ الوكيل،
 //      رصيد النقاط ورصيد اشتراكات الوسائط وفيديوهات الباقة، حجوزات صور مها، مسوّدات البريد، روابط المشاركة العامّة باسمه،
 //      وفهارس بريده وهاتفه وربط Google إن كانت تشير إليه وحده.
@@ -47,7 +47,9 @@ async function stopAutoRenew(token, o) {
   const toggle = (o && o.autoRenewToggle) || require('./create-checkout-session.js').autoRenewToggle;
   return new Promise((resolve) => {
     const res = { code: 200, status(c) { this.code = c; return this; }, json(j) { resolve({ code: this.code, body: j }); return this; } };
-    Promise.resolve(toggle({ body: { token, on: false } }, res, o && o.fetch)).catch((e) => resolve({ code: 500, body: { error: String(e && e.message || e) } }));
+    // v-lock-subs (srv-money-5): immediate — الحساب يُحذف فلا فترة تُكمَّل: كلّ اشتراك (نشط وpast_due وunpaid) يُلغى فورًا، وكان past_due
+    // يبقى يُعاد سحبه بعد الحذف بلا منح. الحقل على الطلب نفسه لا في جسمه: لا يصل من العميل.
+    Promise.resolve(toggle({ body: { token, on: false }, immediate: true }, res, o && o.fetch)).catch((e) => resolve({ code: 500, body: { error: String(e && e.message || e) } }));
   });
 }
 

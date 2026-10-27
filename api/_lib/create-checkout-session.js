@@ -17,8 +17,8 @@
 // التجديد: «بطاقة» دفعة لشهر افتراضيًّا (mode=payment)، واشتراك متجدّد لمن فعّل autoRenew؛ فواتير التجديد يشحنها
 // الويب هوك (api/webhook.js، invoice.paid) بـgrantPlanToUser نفسها. Apple Pay / Google Pay دفعة واحدة (PaymentIntent).
 const { verifyToken, getUser, putUser } = require('./auth.js');
-const { kvIncrBy, kvSetIfAbsent, kvDel } = require('./kv.js');
-const { MEDIA_PLANS, grantMedia } = require('./_mediaPlans.js');
+const { kvIncrBy, kvSetIfAbsent, kvDel, kvGetRaw } = require('./kv.js');
+const { MEDIA_PLANS, MEDIA_WINDOW_DAYS, grantMedia, mediaActive } = require('./_mediaPlans.js');
 
 const PLANS = {
   // v-plans-2026-09 (قرار المالك ١٢ سبتمبر): الباقات الأكبر تأخذ سعر نقطة أفضل
@@ -57,6 +57,41 @@ function priceFor(plan, currency) { // plan معروف في PLANS (يتحقّق 
 
 const LOGIN_FIRST = 'سجّل دخولك أوّلًا ثمّ اشترك / Please sign in first, then subscribe';
 const RETIRED = 'هذه الباقة توقّف بيعها — الصور والفيديو صارا باقة واحدة «صور وفيديو» / This plan is no longer sold — images and video are now one «Images & video» plan';
+const LOWER_PLAN = 'عندك باقة أعلى سارية — الأدنى تُشترى بعد انتهائها / You have a higher plan active — buy the lower one after it ends';
+
+/* v-lock-subs (موافقة المالك ٢٧ أكتوبر «صلح الخطير وابدا فيهم كلهم» على بنود الأبواب المقفلة): خانة كلّ خطّة ودرجتها.
+   المحادثة خانة واحدة، وكلّ نوع وسائط خانته (mix · maha · image · video)، والدرجات basic < pro < max؛ رزم النقاط بلا خانة. */
+const PLAN_RANK = { basic: 1, pro: 2, max: 3 };
+const rankOf = (plan) => PLAN_RANK[String(plan || '').split('_').pop()] || 0;
+function planSlot(plan) { const p = PLANS[plan]; return !p || p.pack ? null : (p.media ? 'media:' + p.media : 'chat'); }
+
+/* v-lock-subs (srv-money-4): المنح كان يكتب user.plan بلا مقارنة — دفعة Plus فوق Max سارية تُنزل السقف ٢٥٠ ← ٥٠ فورًا وتُضيع بقيّة أيّام Max
+   المدفوعة، وتجديد اشتراك Pro قديم بعد شراء Max يقلب المشترك إلى Pro وهو يدفع Max (srv-money-3). باقة محادثة أعلى سارية لا تُستبدل بأدنى:
+   دفعة الأدنى (جلسة قديمة، طلب PayPal أُنشئ في المتصفّح، تجديد اشتراك قديم) تمنح نقاطها وحدها كالرزمة، والفترة والسقف للأعلى. */
+function keepsHigherChat(user, plan) {
+  const p = PLANS[plan];
+  if (!user || !p || p.pack || p.media) return false;
+  return require('./tier.js').planActive(user) && rankOf(user.plan) > rankOf(plan);
+}
+/* v-lock-subs (srv-money-4): قبل أيّ دفع — شراء أدنى في خانة فيها أعلى سارية: المحادثة (يُسقط سقفها وتوجيهها وبقيّة أيّامها)، والوسائط ما دام
+   في رصيد الأعلى شيء (grantMedia يعيد الملء بالأدنى فيُمحى المتبقّي؛ الفارغة لا يُخسر منها شيء). ⇒ 409 lower_plan بلا جلسة دفع.
+   عطب القراءة لا يمنع شراءً: المنح نفسه لا يُنزل باقة المحادثة (keepsHigherChat). */
+async function lowerPlanBlock(username, plan) {
+  try {
+    const p = PLANS[plan];
+    if (!p || p.pack) return null;
+    const user = await getUser(username);
+    if (!user || user.deleted) return null;
+    if (!p.media) return keepsHigherChat(user, plan) ? { until: Number(user.planUpdatedAt) + require('./tier.js').SUB_WINDOW_DAYS * 86400000 } : null;
+    const m = user.media && user.media[p.media];
+    if (!m || !mediaActive(user, p.media) || !(rankOf(m.plan) > rankOf(plan))) return null;
+    const left = Number(await kvGetRaw('media:' + p.media + ':' + encodeURIComponent(String(username).trim().toLowerCase()))) || 0;
+    return left > 0 ? { until: Number(m.at) + MEDIA_WINDOW_DAYS * 86400000 } : null;
+  } catch (e) {
+    console.warn('[checkout] lower-plan check skipped:', e && e.message); // الفحص تحسين؛ المنح يحمي المحادثة
+    return null;
+  }
+}
 
 /* v-pay-once (فحص الاشتراكات ٥ أكتوبر): «أمان التكرار» كان يتذكّر آخر دفعة وحدها وبلا قفل — دفعتان حقيقيّتان
    تُعادان بالتناوب (A، B، A…) تُشحنان بلا نهاية، وعشرة طلبات تحقّق متزامنة لدفعة واحدة تُشحن عشر مرّات (أُثبت محلّيًّا).
@@ -109,11 +144,12 @@ async function wasNamed(username, oldName) {
 
 /* v-pay-refund: سجلّ ما منحته الدفعة برقمها وأرقامها الأخرى (meta.refs: payment_intent/invoice/charge) ومبلغها — يقرؤه
    الاسترداد والاعتراض البنكيّ (pay-refund.js) ليسحب ما منحته هي بالضبط. بعد نجاح المنح وأفضل جهد: لا يرمي، فلا يُفشل منحًا تمّ. */
-async function noteGrant(username, plan, sourceField, sourceId, meta, user, prev) {
+async function noteGrant(username, plan, sourceField, sourceId, meta, user, prev, kept) {
   if (!sourceId) return;
   const p = PLANS[plan];
   const m = meta || {};
-  const at = p.media ? (user.media && user.media[p.media] && user.media[p.media].at) : (p.pack ? null : user.planUpdatedAt);
+  // kept (v-lock-subs، srv-money-4): أدنى مُنح نقاطًا تحت أعلى سارية — لا فترة له، فاسترداده يسحب نقاطه وحدها ولا يمسّ الأعلى
+  const at = p.media ? (user.media && user.media[p.media] && user.media[p.media].at) : ((p.pack || kept) ? null : user.planUpdatedAt);
   await require('./pay-refund.js').recordGrant({
     id: String(sourceId), field: sourceField || null, username, plan, points: p.points, media: p.media || null, at: Number(at) || null,
     amount: Number(m.amount) > 0 ? Math.round(Number(m.amount)) : null, currency: m.currency ? String(m.currency).toLowerCase() : null,
@@ -142,7 +178,8 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
   if (claim && !(await kvSetIfAbsent(claim, username, CLAIM_TTL_SEC))) return already; // v-pay-once
 
   try {
-    const prev = await require('./pay-refund.js').priorOf(user, username, PLANS[plan]); // v-pay-refund: قبل أن تُستبدل الفترة. لا يرمي
+    const kept = keepsHigherChat(user, plan); // v-lock-subs (srv-money-4): الأعلى السارية تبقى، والأدنى نقاطه وحدها (داخل try: رميٌ يفكّ الحجز)
+    const prev = kept ? null : await require('./pay-refund.js').priorOf(user, username, PLANS[plan]); // v-pay-refund: قبل أن تُستبدل الفترة. لا يرمي
     if (PLANS[plan].media) {
       if (sourceField) user[sourceField] = sourceId;
       const g = await grantMedia(user, username, plan);
@@ -153,8 +190,8 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     }
 
     // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها — النقاط فقط.
-    if (!PLANS[plan].pack) { user.plan = plan; user.planUpdatedAt = Date.now(); }
-    if (!PLANS[plan].pack) user.planPayId = sourceId ? String(sourceId) : undefined; // v-pay-refund: كالسطر أعلاه للوسائط
+    if (!PLANS[plan].pack && !kept) { user.plan = plan; user.planUpdatedAt = Date.now(); }
+    if (!PLANS[plan].pack && !kept) user.planPayId = sourceId ? String(sourceId) : undefined; // v-pay-refund: كالسطر أعلاه للوسائط
     if (sourceField) user[sourceField] = sourceId;
 
     // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في points.js
@@ -168,8 +205,8 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     user.points = Number(newBalance);
 
     await putUser(username, user);
-    await noteGrant(username, plan, sourceField, sourceId, meta, user, prev); // v-pay-refund
-    return { ok: true, plan: PLANS[plan].pack ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) };
+    await noteGrant(username, plan, sourceField, sourceId, meta, user, prev, kept); // v-pay-refund
+    return Object.assign({ ok: true, plan: (PLANS[plan].pack || kept) ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) }, kept ? { kept: true } : {});
   } catch (e) {
     if (claim) await kvDel(claim); // لم يكتمل الشحن — يُفكّ الحجز فتنجح المحاولة التالية
     throw e;
@@ -194,6 +231,8 @@ async function createCheckoutSession(req, res) {
     // v-checkout-login: دفعة بلا حساب تُخصم ولا تُنسب لأحد (الويب هوك يتجاهلها) — لا جلسة دفع بلا دخول.
     const username = verifyToken(token);
     if (!username) { res.status(401).json({ error: LOGIN_FIRST }); return; }
+    const lower = await lowerPlanBlock(username, plan); // v-lock-subs (srv-money-4)
+    if (lower) { res.status(409).json({ error: LOWER_PLAN, code: 'lower_plan', until: lower.until }); return; }
 
     // v-checkout-autorenew: يدويّ (payment) لشهر واحد افتراضيًّا — الباقة تسقط بعد ٣٥ يومًا (tier.js)؛
     // الاشتراك الشهريّ المتجدّد لمن فعّل autoRenew صراحةً. رزمة النقاط دفعة واحدة دائمًا.
@@ -297,6 +336,13 @@ async function verifyCheckout(req, res) {
     const grant = await grantPlanToUser(username, plan, 'lastStripeSessionId', session_id,
       { refs: [data.payment_intent, data.invoice], amount: data.amount_total, currency: data.currency }); // v-pay-refund
     if (grant.error) { res.status(grant.status || 500).json({ error: grant.error }); return; }
+    // v-lock-subs (srv-money-3): اشتراك جديد يلغي القديم من خانته — هنا أفضل جهد (المنح تمّ ولا يُفشله)، والويب هوك يعيده حتّى يتمّ.
+    if (data.mode === 'subscription' && subIdOf(data)) {
+      try { await supersedeSubs(username, plan, subIdOf(data)); } catch (e) {
+        console.error('[checkout] supersede after verify failed:', e && e.message);
+        try { require('./log-error.js').logError('checkout:supersede', e, { session: String(session_id).slice(0, 60) }); } catch (e2) { /* guard-ok — التسجيل تحسين لا شرط */ }
+      }
+    }
     res.status(200).json(grant);
   } catch (e) {
     res.status(500).json({ error: e.message || 'Server error' });
@@ -325,6 +371,8 @@ async function createPaymentIntent(req, res) {
 
     const username = verifyToken(token);
     if (!username) { res.status(401).json({ error: LOGIN_FIRST }); return; }
+    const lower = await lowerPlanBlock(username, plan); // v-lock-subs (srv-money-4)
+    if (lower) { res.status(409).json({ error: LOWER_PLAN, code: 'lower_plan', until: lower.until }); return; }
 
     const price = priceFor(plan, currency); // v-aed-checkout — نفس مبلغ ورقة Apple/Google Pay في العميل
     const params = new URLSearchParams();
@@ -423,6 +471,76 @@ function subPeriodEnd(sub) {
   const items = (sub && sub.items && Array.isArray(sub.items.data)) ? sub.items.data : [];
   return items.reduce((m, it) => Math.max(m, Number(it && it.current_period_end) || 0), top); // الإصدارات الأحدث تضعه على البند
 }
+
+/* v-lock-subs (srv-money-5): البحث كان «AND status:'active'» وحده — اشتراك past_due (تجديد فشل ويعيد Stripe سحبه أيّامًا) لا يُرى، فيُطفأ
+   زرّ التجديد ويمرّ حذف الحساب وأوّل إعادة ناجحة تسحب المبلغ (للمحذوف بلا منح). كلّ حالة ما زالت تُسحب أو ستُسحب: active · trialing ·
+   past_due · unpaid. بحث Stripe لا يجمع AND مع OR ولا أقواس، فالبحث بالاسم وحده والحالة تُصفّى هنا (حتّى ١٠٠ لكلّ صفحة، خمس صفحات). */
+const LIVE_SUB = ['active', 'trialing', 'past_due', 'unpaid'];
+const DUE_SUB = ['past_due', 'unpaid']; // فترتها الحاليّة لم تُدفع: لا «حتّى نهاية الشهر المدفوع» — الإلغاء فوريّ
+const stripeAuth = () => ({ Authorization: 'Bearer ' + process.env.STRIPE_SECRET_KEY }); // داخل النداء: الويب هوك يُحمَّل في بيئة عارية
+async function liveSubs(names, f, auth) {
+  const seen = new Set();
+  const subs = [];
+  for (const name of names) {
+    const q = "metadata['username']:'" + String(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+    let page = '';
+    for (let i = 0; i < 5; i++) {
+      const sr = await f('https://api.stripe.com/v1/subscriptions/search?limit=100&query=' + encodeURIComponent(q) + (page ? '&page=' + encodeURIComponent(page) : ''), { headers: auth });
+      const sd = await sr.json().catch(() => ({}));
+      if (!sr.ok) throw new Error((sd.error && sd.error.message) || 'stripe search failed');
+      for (const x of (Array.isArray(sd.data) ? sd.data : [])) {
+        if (x && x.metadata && x.metadata.username === name && LIVE_SUB.includes(x.status) && !seen.has(x.id)) { seen.add(x.id); subs.push(x); }
+      }
+      if (!sd.has_more || !sd.next_page) break;
+      page = String(sd.next_page);
+    }
+  }
+  return subs;
+}
+// إلغاء فوريّ (DELETE): Stripe يوقف معه تحصيل الفواتير المفتوحة. ملغًى قبلنا (ويب هوك معاد، أو مساران معًا) = تمّ — بقراءته لا بنصّ الخطأ.
+async function cancelSubNow(id, f, auth) {
+  const url = 'https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(String(id));
+  const r = await f(url, { method: 'DELETE', headers: auth });
+  if (r.ok) return true;
+  const g = await f(url, { headers: auth });
+  if (g.status === 404) return true; // لا وجود له عند Stripe: لا يُسحب منه شيء — لا إعادة للحدث أيّامًا
+  const gd = await g.json().catch(() => ({}));
+  if (g.ok && (gd.status === 'canceled' || gd.status === 'incomplete_expired')) return true;
+  const rd = await r.json().catch(() => ({}));
+  throw new Error((rd.error && rd.error.message) || 'stripe cancel failed');
+}
+async function cancelSub(id, fetchImpl) { // للويب هوك (srv-money-5): اشتراك دفع لحساب محذوف
+  if (!id || !process.env.STRIPE_SECRET_KEY) return false;
+  return cancelSubNow(id, fetchImpl || fetch, stripeAuth());
+}
+const idOfRef = (x) => (typeof x === 'string' ? x : (x && typeof x.id === 'string' ? x.id : ''));
+// رقم الاشتراك من جلسة أو فاتورة (الإصدارات الأحدث تضعه في parent.subscription_details)
+function subIdOf(obj) {
+  const o = obj || {};
+  return idOfRef(o.subscription) || idOfRef(o.parent && o.parent.subscription_details && o.parent.subscription_details.subscription)
+    || idOfRef(o.subscription_details && o.subscription_details.subscription) || '';
+}
+/* v-lock-subs (srv-money-3): «اشترك الآن» على باقة أخرى والتجديد مفعّل كان ينشئ اشتراكًا ثانيًا ولا شيء يلغي الأوّل — خصمان كلّ شهر (Pro ٢٠$
+   وMax ١٠٠$)، وتجديد القديم يقلب الباقة. بعد منح اشتراك جديد: كلّ اشتراك حيّ آخر للحساب (واسميه السابقين) في الخانة نفسها يُلغى فورًا —
+   فترته على حسابنا حلّت محلّها الجديدة، ولا استرجاع. الفوريّ لا cancel_at_period_end: زرّ «أعد التجديد» كان سيحييه. خانة أخرى (مها،
+   باقة صور قديمة) واشتراك بلا خطّة معروفة لا يُمسّان. يرمي عند عطل Stripe: الويب هوك يردّ 500 فيعيده (المنح محجوز فلا يتكرّر). */
+async function supersedeSubs(username, plan, keepId, fetchImpl) {
+  const slot = planSlot(plan);
+  if (!slot || !keepId || !process.env.STRIPE_SECRET_KEY) return 0;
+  const f = fetchImpl || fetch;
+  const auth = stripeAuth();
+  const acct = await liveAccount(username);
+  const prev = (acct.user && Array.isArray(acct.user.prevUsernames)) ? acct.user.prevUsernames.slice(-3) : [];
+  const names = [...new Set([acct.name, String(username)].concat(prev).filter(Boolean))];
+  let n = 0;
+  for (const x of await liveSubs(names, f, auth)) {
+    if (x.id === String(keepId) || planSlot(x.metadata && x.metadata.plan) !== slot) continue;
+    await cancelSubNow(x.id, f, auth);
+    n++;
+  }
+  return n;
+}
+
 async function autoRenewToggle(req, res, fetchImpl) {
   const f = fetchImpl || fetch;
   try {
@@ -438,23 +556,21 @@ async function autoRenewToggle(req, res, fetchImpl) {
     let prev = [];
     try { const u = await getUser(username); prev = (u && Array.isArray(u.prevUsernames)) ? u.prevUsernames.slice(-3) : []; } catch (e) { prev = []; }
     const names = [username].concat(prev.filter((n) => n && n !== username));
-    const seen = new Set();
-    const subs = [];
-    for (const name of names) {
-      const q = "metadata['username']:'" + String(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "' AND status:'active'";
-      const sr = await f('https://api.stripe.com/v1/subscriptions/search?limit=10&query=' + encodeURIComponent(q), { headers: auth });
-      const sd = await sr.json().catch(() => ({}));
-      if (!sr.ok) { res.status(502).json({ error: (sd.error && sd.error.message) || 'stripe search failed' }); return; }
-      for (const x of (Array.isArray(sd.data) ? sd.data : [])) {
-        if (x && x.metadata && x.metadata.username === name && !seen.has(x.id)) { seen.add(x.id); subs.push(x); }
-      }
-    }
-    let periodEnd = subs.reduce((m, x) => Math.max(m, subPeriodEnd(x)), 0);
+    let subs;
+    try { subs = await liveSubs(names, f, auth); } catch (e) { res.status(502).json({ error: e.message || 'stripe search failed' }); return; }
+    // نهاية الشهر المدفوع: من الفترات المدفوعة وحدها (past_due/unpaid لم تُدفع فترتها)
+    let periodEnd = subs.filter((x) => !DUE_SUB.includes(x.status)).reduce((m, x) => Math.max(m, subPeriodEnd(x)), 0);
     if (typeof body.on !== 'boolean') {
       res.status(200).json({ ok: true, subs: subs.length, on: subs.some((x) => !x.cancel_at_period_end), periodEnd });
       return;
     }
+    // v-lock-subs (srv-money-5): req.immediate من حذف الحساب وحده (account-delete.js، لا من جسم الطلب): كلّ اشتراك يُلغى فورًا — لا حساب يخدمه.
+    const now = req.immediate === true;
     for (const x of subs) {
+      if (!body.on && (now || DUE_SUB.includes(x.status))) {
+        try { await cancelSubNow(x.id, f, auth); } catch (e) { res.status(502).json({ error: e.message || 'stripe cancel failed' }); return; }
+        continue;
+      }
       const ur = await f('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(x.id), {
         method: 'POST',
         headers: Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded' }, auth),
@@ -496,3 +612,9 @@ module.exports.autoRenewToggle = autoRenewToggle; // v-autorenew-toggle — لل
 module.exports.liveAccount = liveAccount;
 module.exports.claimKey = claimKey;
 module.exports.withAccount = withAccount; // v-acct-lock — السحب يأخذ قفل الحساب نفسه
+// v-lock-subs: الويب هوك يلغي الاشتراك القديم من خانته (srv-money-3) واشتراك الحساب المحذوف (srv-money-5)، وPayPal يرفض الأدنى (srv-money-4)
+module.exports.supersedeSubs = supersedeSubs;
+module.exports.cancelSub = cancelSub;
+module.exports.subIdOf = subIdOf;
+module.exports.lowerPlanBlock = lowerPlanBlock;
+module.exports.LOWER_PLAN = LOWER_PLAN;
