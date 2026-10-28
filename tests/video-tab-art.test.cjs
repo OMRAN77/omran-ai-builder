@@ -44,7 +44,7 @@ test('التبويب صورة ثمّ اسم مترجم، والصفّ لا يُ�
   assert.ok(!/overflow-x:auto/.test(desktop), 'لا تمرير أفقيّ على الحاسوب');
   assert.ok(css.includes('@media (max-width:640px){#videoMakerModal .vmk-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-height:max-content;flex-shrink:0;width:100%}}'));
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=460"') && h.includes('modules.css?v=692'));
+  assert.ok(h.includes('src="/js/video.js?v=461"') && h.includes('modules.css?v=692'));
 });
 
 /* v-vmk-tab-warm (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٠١): صور التبويبات فارغة ٢–٣ ثوانٍ عند الفتح — كانت loading='lazy' وتُنشأ عند الفتح فقط،
@@ -86,7 +86,7 @@ test('٤. مربّع القسم: فيديو صامت متكرّر بغلاف ا�
   const v = run({ 'tab-veo': true }, false);
   assert.equal(v.tagName, 'video');
   assert.equal(v.src, '/media/samples/tab-veo.mp4');
-  assert.equal(v.poster, '/assets/videos/tabs/veo.jpg?v=2', 'الصورة غلاف حتّى يبدأ');
+  assert.equal(v.poster, '/media/samples/tab-veo.jpg', 'غلافه لقطة من المقطع نفسه حتّى يبدأ');
   assert.ok(v.muted && v.loop && v.autoplay && v.playsInline && v.attrs.playsinline === '' && v.attrs.muted === '', 'صامت متكرّر يعمل على الجوّال');
   assert.equal(v.className, 'vmk-tab-img', 'مقاس المربّع وحوافه نفسها');
   assert.ok(v.played);

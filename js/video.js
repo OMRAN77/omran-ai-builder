@@ -164,6 +164,7 @@
   function tabVid(k){ return VIDEOS['tab-'+k] ? '/media/samples/tab-'+k+'.mp4' : ''; }
   function tabMedia(k,poster){
     var src=tabVid(k), rm=false, el;
+    if(src) poster='/media/samples/tab-'+k+'.jpg'; /* غلاف من المقطع نفسه (لقطته الأولى) — ومع «تقليل الحركة» هو الصورة */
     try{ rm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches); }catch(e){ /* guard-ok — بلا matchMedia = حركة عاديّة */ }
     if(src&&!rm){
       el=document.createElement('video'); el.muted=true; el.defaultMuted=true; el.loop=true; el.autoplay=true; el.playsInline=true;
