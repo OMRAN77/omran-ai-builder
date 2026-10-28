@@ -320,7 +320,7 @@ test('٨. النصوص الستّة والعشرون بالـ١٤ لغة بلا 
     seen[lg] = obj.vdTab;
   }
   assert.ok(new Set(Object.values(seen)).size >= 10, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=461'));
+  assert.ok(read('index.html').includes('/js/video.js?v=462'));
   assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=777';"));
   assert.ok(read('css/modules.css').includes('.vmk-studio.vmk-tab-director>.vmk-side') && read('css/modules.css').includes('#vmkDirector'));
 });
@@ -546,5 +546,5 @@ test('١٣. الجسر يُفحص قبل أيّ صرف: جسر بنسخة قدي
     assert.ok(t && t.length > 20, lg); assert.doesNotMatch(t, BANNED, lg); seenT.add(t);
   }
   assert.equal(seenT.size, LANGS.length, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=461'));
+  assert.ok(read('index.html').includes('/js/video.js?v=462'));
 });

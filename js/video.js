@@ -148,9 +148,13 @@
   var OWNER_MODES={runway:1,canvas:1,omni:1,hybrid:1,actor:1}; /* v-video-durations: «ممثل يتكلم» للمالك حتّى تنجح تجربته · v-five-sections: «جودة عالية» (بلا صوت وبلا ربح بعشر ثوانٍ) و«بدون ذكاء» للمالك، و«فيديو سريع» للجميع */
   /* v-owner-modes: «ممثل يتكلم — لهجة إماراتية» كانت صورته وجوهًا لا تشبه أهل الإمارات — رجل بالغترة من صور التطبيق (أعلى الصورة) */
   var TAB_ART={actor:'/assets/studio/options/heritage-emirati.webp'};
-  function tabsFor(){ var own=drOwner(); return TABS.filter(function(v){ return own||!OWNER_MODES[v]; }); }
+  /* v-owner-five (المالك ٢٨ أكتوبر: «خل لي انا مخرج التطبيق 5 بس الحينه مؤقت»): المالك مؤقّتًا يرى ما يراه الزبون — الخمسة و«مخرج التطبيق» وحده؛
+     الأوضاع الثلاثة مخفيّة عنه أيضًا (تبويب وخيار) وكودها باقٍ. OWNER_EXTRA=true يعيدها له */
+  var OWNER_EXTRA=false;
+  function ownExtra(){ return OWNER_EXTRA&&drOwner(); }
+  function tabsFor(){ var own=ownExtra(); return TABS.filter(function(v){ return own||!OWNER_MODES[v]; }); }
   function guardModes(){
-    var sel=id('videoMakerMode'), own=drOwner(); if(!sel) return;
+    var sel=id('videoMakerMode'), own=ownExtra(); if(!sel) return;
     [].slice.call(sel.options).forEach(function(o){ o.hidden=o.disabled=!own&&!!OWNER_MODES[o.value]; });
     if(!own&&OWNER_MODES[sel.value]){ sel.value='minimax'; sel.dispatchEvent(new Event('change')); } /* v-five-sections: افتراضيّ الزبون «فيديو سريع» */
   }
