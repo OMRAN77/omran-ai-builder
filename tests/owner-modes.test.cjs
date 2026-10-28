@@ -44,7 +44,7 @@ test('المالك الآن: أقسام الزبون نفسها، والخيار
   assert.ok(js.includes("tabsFor().concat(drOwner()?['director']:[])"), '«مخرج التطبيق» للمالك كما هو');
 });
 
-test('OWNER_EXTRA=true يعيد للمالك كلّ الأقسام التسعة ووضعه لا يتغيّر', () => {
+test('OWNER_EXTRA=true يعيد للمالك كلّ أقسام TABS ووضعه لا يتغيّر', () => {
   const { api, sel, opts } = load(true, 'hybrid', true);
   assert.strictEqual(api.tabsFor().length, 9);
   api.guardModes();
