@@ -8,14 +8,16 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const js = fs.readFileSync(path.join(root, 'js/video.js'), 'utf8');
 
-function load(owner, mode) {
+function load(owner, mode, extra) {
   const start = js.indexOf('  var OWNER_MODES=');
   const end = js.indexOf('\n  }\n', js.indexOf('function guardModes(')) + 4;
   assert.ok(start > 0 && end > start);
   const opts = ['canvas', 'runway', 'minimax', 'omni', 'hybrid', 'veo', 'actor'].map((v) => ({ value: v, hidden: false, disabled: false }));
   const sel = { value: mode, options: opts, changes: 0, dispatchEvent() { this.changes++; } };
   const TABS = ['trend', 'canvas', 'runway', 'minimax', 'omni', 'hybrid', 'veo', 'actor', 'clean'];
-  const f = new Function('TABS', 'drOwner', 'id', 'Event', js.slice(start, end) + '\nreturn {tabsFor:tabsFor,guardModes:guardModes};');
+  let body = js.slice(start, end);
+  if (extra) { assert.ok(body.includes('var OWNER_EXTRA=false;')); body = body.replace('var OWNER_EXTRA=false;', 'var OWNER_EXTRA=true;'); }
+  const f = new Function('TABS', 'drOwner', 'id', 'Event', body + '\nreturn {tabsFor:tabsFor,guardModes:guardModes};');
   const api = f(TABS, () => owner, () => sel, function Event() {});
   return { api, sel, opts };
 }
@@ -31,8 +33,19 @@ test('غير المالك: الترندات و«فيديو سريع» و«سين
   assert.deepStrictEqual(opts.filter((o) => o.hidden && o.disabled).map((o) => o.value), ['canvas', 'runway', 'omni', 'hybrid', 'actor']);
 });
 
-test('المالك: كلّ الأقسام التسعة ووضعه لا يتغيّر', () => {
-  const { api, sel, opts } = load(true, 'hybrid');
+/* v-owner-five (٢٨ أكتوبر: «خل لي انا مخرج التطبيق 5 بس الحينه مؤقت»): المالك مؤقّتًا مثل الزبون، و«مخرج التطبيق» يبقى له (drOwner لا ownExtra) */
+test('المالك الآن: أقسام الزبون نفسها، والخيارات الثلاثة مخفيّة عنه، ووضعه يرجع إلى «فيديو سريع»', () => {
+  const { api, sel, opts } = load(true, 'runway');
+  assert.deepStrictEqual(api.tabsFor(), ['trend', 'minimax', 'veo', 'clean']);
+  api.guardModes();
+  assert.strictEqual(sel.value, 'minimax');
+  assert.strictEqual(sel.changes, 1);
+  assert.deepStrictEqual(opts.filter((o) => o.hidden && o.disabled).map((o) => o.value), ['canvas', 'runway', 'omni', 'hybrid', 'actor']);
+  assert.ok(js.includes("tabsFor().concat(drOwner()?['director']:[])"), '«مخرج التطبيق» للمالك كما هو');
+});
+
+test('OWNER_EXTRA=true يعيد للمالك كلّ أقسام TABS ووضعه لا يتغيّر', () => {
+  const { api, sel, opts } = load(true, 'hybrid', true);
   assert.strictEqual(api.tabsFor().length, 9);
   api.guardModes();
   assert.strictEqual(sel.value, 'hybrid');
