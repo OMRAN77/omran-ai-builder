@@ -9,6 +9,16 @@
 #   curl -fsSL https://raw.githubusercontent.com/OMRAN77/omran-ai-builder/claude/video-modes-h3-d8d435/scripts/runpod/setup-comfy.sh | bash
 set -uo pipefail
 W=/workspace
+# سطر واحد يكفي المالك: يوقف أيّ تنزيل سابق عالق، ويسأل عن مفتاح القراءة المجّانيّ بنفسه (مخفيًّا) إن لم يُمرَّر.
+pkill -f "^python3 -$" 2>/dev/null || true
+pkill -x wget 2>/dev/null || true
+if [ -z "${HF_TOKEN:-}" ] && [ -r /dev/tty ]; then
+  printf "الصق مفتاح Hugging Face (hf_…) ثمّ Enter — لن يظهر على الشاشة: " > /dev/tty
+  read -rs HF_TOKEN < /dev/tty || true
+  echo > /dev/tty
+  export HF_TOKEN
+fi
+[ -n "${HF_TOKEN:-}" ] && echo "✓ المفتاح موجود" || echo "⚠ بلا مفتاح — التنزيل سيكون بطيئًا"
 cd "$W"
 [ -d ComfyUI ] || git clone --depth 1 https://github.com/comfyanonymous/ComfyUI
 cd ComfyUI
