@@ -1,7 +1,7 @@
-# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.13)
+# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.14)
 
-> **إعادة التقديم الثالثة لـ1.3.13 نفسها بلا بناء** (المالك: «رقم الإصدار 1.3.13، ما يريد إصدار جديد»). رُفضت ٢٢ ثمّ ٢٦ أكتوبر ٢٠٢٦
-> بالخطأين نفسيهما (1.14 اللقطات، 4.1 نوع محتوى واحد). ما تغيّر هذه المرّة (v-hw-resubmit-2):
+> **إصدار جديد 1.3.14 (versionCode 20261028) بأمر المالك ٢٨ أكتوبر («1.3.14 سو جديد» — v-hw-1314):** الحزمة نفسها والمفتاح نفسه واسم
+> الهاتف نفسه، الرقم وحده تغيّر. 1.3.13 رُفضت ٢٢ و٢٦ و٢٨ أكتوبر ٢٠٢٦ بالخطأين نفسيهما (1.14 اللقطات، 4.1 نوع محتوى واحد). ما تغيّر هذه المرّة (v-hw-resubmit-2):
 > - **اللقطات بثلاث لغات:** التطبيق يتبع لغة الهاتف، والمراجع على هاتف صينيّ أو إنجليزيّ فيرى واجهة غير اللقطات العربيّة. ارفع
 >   `screenshots/*.png` تحت **العربيّة**، و`screenshots/en/` تحت **English**، و`screenshots/zh/` تحت **简体中文** — أضف اللغة الصينيّة
 >   للتطبيق في AGC والصق وصفها من أسفل. احذف كلّ لقطة قديمة في كلّ لغة.
@@ -20,7 +20,7 @@ Resubmission: screenshots from this build in Arabic, English and Chinese (UI fol
 
 ## Notes for review (English — full text, for a reply to the reviewer or an attachment)
 ```
-Omran AI (om ai), version 1.3.13: resubmission after the review reports of 2026-10-22, 2026-10-26 and 2026-10-28 (rules 1.14, 1.15 and 4.1).
+Omran AI (om ai), version 1.3.14: resubmission after the review reports of 2026-10-22, 2026-10-26 and 2026-10-28 on 1.3.13 (rules 1.14, 1.15 and 4.1).
 
 Rules 1.14 and 1.15 (app information):
 - All screenshots were retaken on 2026-10-26 from this build (Huawei package, phone size, a normal user account),
@@ -33,7 +33,7 @@ Rules 1.14 and 1.15 (app information):
 - The listing does not use words such as "official", "trusted", "preferred" or "featured", and it does not mention
   government services. om ai is an independent app. It is not affiliated with or endorsed by any government body,
   broadcaster or other brand. Options named after third-party brands are not shown in this package.
-- Same package, version 1.3.13. Its launcher label stays "عمران AI" (Omran AI Builder); inside the app the same
+- Same package (com.omran.aibuilder.twa), new version 1.3.14. Its launcher label stays "عمران AI" (Omran AI Builder); inside the app the same
   product now uses its short name "om ai". The description names both.
 
 Rule 4.1 (the app offers several types of content):
@@ -64,13 +64,13 @@ Test account: (username) / (password)
 
 ## ملاحظات المراجع (عربيّ — للمراجعة العربيّة إن وُجدت)
 ```
-عمران AI (om ai)، الإصدار 1.3.13 — إعادة تقديم بعد تقارير ٢٢ و٢٦ و٢٨ أكتوبر ٢٠٢٦ (القواعد 1.14 و1.15 و4.1).
+عمران AI (om ai)، الإصدار 1.3.14 — إعادة تقديم بعد تقارير ٢٢ و٢٦ و٢٨ أكتوبر ٢٠٢٦ على 1.3.13 (القواعد 1.14 و1.15 و4.1).
 1.14 و1.15: اللقطات أُخذت ٢٦ أكتوبر من هذا البناء نفسه بحساب مستخدم عاديّ وبثلاث لغات (العربيّة والإنجليزيّة والصينيّة) لأنّ
 التطبيق يعرض واجهته بلغة الهاتف، وفيها فقط ما يفتحه المستخدم في هذا الإصدار (مربّع الأدوات وستّ أدوات) بلا أيّ رسم فوقها.
 حُذفت صورة الافتتاح، فبعد إشعار الخصوصيّة يفتح التطبيق على مربّع الأدوات. حُذفت لقطة التلفزيون (أسماء قنوات لجهات أخرى) وكلّ أداة
 غير متاحة في هذا الإصدار، والوصف يعدّ الأدوات الموجودة فقط. لا كلمات مثل «رسمي» أو «موثوق» أو «مفضّل» أو «مميّز»، ولا خدمات حكوميّة،
 ولا خيارات بأسماء علامات تجاريّة في هذه الحزمة. om ai تطبيق مستقلّ لا يتبع أيّ جهة حكوميّة أو قناة أو علامة تجاريّة.
-الحزمة نفسها 1.3.13: اسمها على الهاتف «عمران AI» كاسم المتجر، و«om ai» اسمها المختصر داخل التطبيق.
+الحزمة نفسها، الإصدار 1.3.14: اسمها على الهاتف «عمران AI» كاسم المتجر، و«om ai» اسمها المختصر داخل التطبيق.
 4.1: في كلّ تشغيل للتطبيق يفتح على مربّع الأدوات: ١٣ أداة في ثلاث مجموعات
 (إبداع: أنماط الصور، صانع الفيديو، ديكور AI، أزياء AI، ستايل AI · أعمال: استوديو الإعلانات، مساعد المستندات، مساعد البريد الذكي،
 تصاميم المقاولات والبناء · حياة يوميّة: القبلة والمواقيت، التعليم، التفسير الدينيّ، رأيك يهمّنا)، ومعها محادثة بالصوت والكتابة.
@@ -79,7 +79,7 @@ Test account: (username) / (password)
 ```
 
 ## وصف المتجر (عربيّ)
-**اسم التطبيق:** كما هو في AGC (لا يتغيّر — يطابق اسم الهاتف «عمران AI» في 1.3.13)
+**اسم التطبيق:** كما هو في AGC (لا يتغيّر — يطابق اسم الهاتف «عمران AI» في 1.3.14)
 
 **عنوان قصير:** أدوات ذكاء اصطناعيّ في تطبيق واحد
 
@@ -93,7 +93,7 @@ Test account: (username) / (password)
 كلّ الأدوات تعمل داخل التطبيق، على الجوّال والحاسوب.
 
 ## Store description (English)
-**App name:** unchanged in AGC (matches the launcher label of 1.3.13)
+**App name:** unchanged in AGC (matches the launcher label of 1.3.14)
 
 **Short:** AI tools in one app
 
@@ -107,7 +107,7 @@ Omran AI (om ai) brings AI tools and an AI chat together in one app, in Arabic a
 Every tool runs inside the app, on phone and desktop.
 
 ## 商店描述（简体中文）
-**应用名称：** 保持 AGC 中的现有名称不变（与 1.3.13 安装后显示的名称一致）
+**应用名称：** 保持 AGC 中的现有名称不变（与 1.3.14 安装后显示的名称一致）
 
 **简短介绍：** 一个应用中的多种 AI 工具
 
