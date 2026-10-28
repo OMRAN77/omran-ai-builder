@@ -45,5 +45,5 @@ test('٣. لا نداء أسعار تحت الإخفاء، والملاحظات 
   assert.ok(s13.includes("if(document.documentElement.classList.contains('store-nomarkets')) return;"));
   assert.ok(s13.indexOf("contains('store-nomarkets')") < s13.indexOf("fetch('/api/tools?action=stocks'"));
   assert.match(fs.readFileSync(path.join(root, 'store/huawei/REVIEW-NOTES.md'), 'utf8'), /all market screens \(stock ticker, stock market, currency\/forex rates\) are removed from this package/);
-  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('/js/selfdiag.js?v=hw-twa-10'));
+  assert.ok(fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('/js/selfdiag.js?v=hw-twa-11'));
 });

@@ -48,18 +48,29 @@
       var __ml = document.querySelector('link[rel="manifest"]');
       if(__ml) __ml.setAttribute('href', '/manifest-huawei.json');
       /* v-store-showcase (رفض هواوي 4.1 «ميزة واحدة»): المراجع فتح التطبيق فرأى
-         شاشة محادثة فقط. في أول تشغيل لحزمة المتجر يُفتح مربع الأدوات تلقائيًّا
-         فيرى الـ٢٠ أداة (صور، فيديو، تلفزيون، تعليم، قبلة…) من أول ثانية.
-         مرة واحدة فقط — ثم يُترك للمستخدم. */
-      if(!localStorage.getItem('aiapp_store_tour')){
+         شاشة محادثة فقط. في تشغيل حزمة المتجر يُفتح مربع الأدوات تلقائيًّا
+         فيرى الأدوات (صور، فيديو، تعليم، قبلة…) من أول ثانية.
+         v-hw-tools-home (رفض هواوي الثالث ٢٨ أكتوبر؛ المالك «ابدأ»): مربّع الأدوات شاشة البداية في كلّ فتح للتطبيق، لا مرّة
+         في عمر الجهاز — المراجع يعيد الحزمة نفسها على الهاتف نفسه فكان يفتح على محادثة فارغة («نوع محتوى واحد»). مرّة لكلّ فتح
+         (sessionStorage يبقى مع التحديث داخل الفتح نفسه)، وإن كانت المحادثة الحاليّة بعد القديمة ينتظر المحادثة الجديدة الفارغة
+         التي يفتحها app-22 مع كلّ فتح (حتّى ١٢ ث، بعد شبكة أمان التحميل ١٠ ث) بدل أن يتركه. ومن بدأ يكتب لا يُغطّى. */
+      if(!sessionStorage.getItem('aiapp_store_tour_s')){
+        var __tourTries = 0;
         var __openTour = function(){
           try{
+            /* بدأ يكتب في المحادثة (تركيز أو نصّ في الصندوق — قاعدة app-22 نفسها): لا يُغطّى ولا يعود في هذا الفتح */
+            var pr = document.getElementById('prompt');
+            if(pr && (document.activeElement === pr || String(pr.value || '').trim())){ sessionStorage.setItem('aiapp_store_tour_s', '1'); return; }
             var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
-            if(cur && Array.isArray(cur.messages) && cur.messages.length > 0) return;
             var o = document.getElementById('sectionsToolsOverlay');
-            if(!o) return setTimeout(__openTour, 400);
+            /* بلا محادثة حاليّة قبل تحميل المحفوظة = لم يُعرف بعد (إقلاع IndexedDB يغلق المربّع لو فُتح الآن) */
+            var busy = cur ? (Array.isArray(cur.messages) && cur.messages.length > 0) : !window.__localChatsLoaded;
+            if(!o || busy){ if(++__tourTries < 30) setTimeout(__openTour, 400); return; }
+            /* إشعار «جلسة جديدة» من app-22 (عربيّ/إنجليزيّ فقط) لا يبقى فوق شاشة الأدوات */
+            var __toast = document.getElementById('sessToast');
+            if(__toast) __toast.remove();
             o.classList.add('show');
-            localStorage.setItem('aiapp_store_tour', '1');
+            sessionStorage.setItem('aiapp_store_tour_s', '1');
           }catch(e){ /* guard-ok */ }
         };
         if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(__openTour, 1800); });
