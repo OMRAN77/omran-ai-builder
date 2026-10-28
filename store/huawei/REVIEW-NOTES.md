@@ -15,12 +15,12 @@
 
 ## خانة Remarks في AGC (حدّها ٣٠٠ حرف — الصق هذا كما هو)
 ```
-Resubmission: screenshots retaken from this build in Arabic, English and Chinese (UI follows phone language). 13 tools (photo styles, video, decor, fashion, style, ads, documents, email, construction, education, Qibla, religion, feedback) plus AI chat. Open them: bottom bar > Tools (grid icon).
+Resubmission: screenshots from this build in Arabic, English and Chinese (UI follows phone language). The Tools panel opens on every launch: 13 tools (photo styles, video, decor, fashion, style, ads, documents, email, construction, education, Qibla, religion, feedback). Also: bottom bar > Tools.
 ```
 
 ## Notes for review (English — full text, for a reply to the reviewer or an attachment)
 ```
-Omran AI (om ai), version 1.3.13: resubmission after the review reports of 2026-10-22 and 2026-10-26 (rules 1.14, 1.15 and 4.1).
+Omran AI (om ai), version 1.3.13: resubmission after the review reports of 2026-10-22, 2026-10-26 and 2026-10-28 (rules 1.14, 1.15 and 4.1).
 
 Rules 1.14 and 1.15 (app information):
 - All screenshots were retaken on 2026-10-26 from this build (Huawei package, phone size, a normal user account),
@@ -37,20 +37,20 @@ Rules 1.14 and 1.15 (app information):
   product now uses its short name "om ai". The description names both.
 
 Rule 4.1 (the app offers several types of content):
-On the first launch the app opens the Tools panel by itself. It has 13 tools in three groups:
+Every time the app is launched it opens on the Tools panel (no setting needed). It has 13 tools in three groups:
   Creativity: Photo styles, Video Maker, Design AI (interior and exterior decor), Fashion AI, Style AI.
   Business: Ad Studio, Document Assistant, Smart Email Assistant, Construction & Contracting Design.
   Daily life: Qibla & Prayer (prayer times and Qibla compass), Education (curriculum lessons, lecture summaries,
   homework help), Religious Insights (verse explanation and hadith search), We value your feedback.
 The home screen also has an AI chat by text or voice, with image and document attachments.
 Every tool runs inside the app, full screen, without a browser.
-If this phone already ran the app in an earlier review, the Tools panel does not open by itself again.
-Tap "Tools" (the grid icon in the bottom bar) to open it.
+This also holds on a phone that ran the app in an earlier review. After closing the panel,
+tap "Tools" (the grid icon in the bottom bar) to open it again.
 
 Rule 11.4 (report of 2026-09-29, still true): all market screens (stock ticker, stock market, currency/forex rates) are removed from this package for every user. No cryptocurrency, foreign-exchange or stock-market content is shown, and the app offers no trading, exchange or crypto payment service.
 
 How to test each feature quickly:
-- Tools panel: opens on first launch, or tap "Tools" in the bottom bar, then tap any card.
+- Tools panel: opens on every launch, or tap "Tools" in the bottom bar, then tap any card.
 - Chat: type a request on the home screen; "+" attaches images or files; the microphone records voice.
 - Fashion AI: Tools > Fashion AI > choose a photo, a category and an occasion.
 - Design AI: Tools > Design AI > tap a room type, or upload a photo of your space.
@@ -64,17 +64,17 @@ Test account: (username) / (password)
 
 ## ملاحظات المراجع (عربيّ — للمراجعة العربيّة إن وُجدت)
 ```
-عمران AI (om ai)، الإصدار 1.3.13 — إعادة تقديم بعد تقريري ٢٢ و٢٦ أكتوبر ٢٠٢٦ (القواعد 1.14 و1.15 و4.1).
+عمران AI (om ai)، الإصدار 1.3.13 — إعادة تقديم بعد تقارير ٢٢ و٢٦ و٢٨ أكتوبر ٢٠٢٦ (القواعد 1.14 و1.15 و4.1).
 1.14 و1.15: اللقطات أُخذت ٢٦ أكتوبر من هذا البناء نفسه بحساب مستخدم عاديّ وبثلاث لغات (العربيّة والإنجليزيّة والصينيّة) لأنّ
 التطبيق يعرض واجهته بلغة الهاتف، وفيها فقط ما يفتحه المستخدم في هذا الإصدار (مربّع الأدوات وستّ أدوات) بلا أيّ رسم فوقها.
 حُذفت صورة الافتتاح، فبعد إشعار الخصوصيّة يفتح التطبيق على مربّع الأدوات. حُذفت لقطة التلفزيون (أسماء قنوات لجهات أخرى) وكلّ أداة
 غير متاحة في هذا الإصدار، والوصف يعدّ الأدوات الموجودة فقط. لا كلمات مثل «رسمي» أو «موثوق» أو «مفضّل» أو «مميّز»، ولا خدمات حكوميّة،
 ولا خيارات بأسماء علامات تجاريّة في هذه الحزمة. om ai تطبيق مستقلّ لا يتبع أيّ جهة حكوميّة أو قناة أو علامة تجاريّة.
 الحزمة نفسها 1.3.13: اسمها على الهاتف «عمران AI» كاسم المتجر، و«om ai» اسمها المختصر داخل التطبيق.
-4.1: عند أوّل تشغيل يفتح مربّع الأدوات تلقائيًّا: ١٣ أداة في ثلاث مجموعات
+4.1: في كلّ تشغيل للتطبيق يفتح على مربّع الأدوات: ١٣ أداة في ثلاث مجموعات
 (إبداع: أنماط الصور، صانع الفيديو، ديكور AI، أزياء AI، ستايل AI · أعمال: استوديو الإعلانات، مساعد المستندات، مساعد البريد الذكي،
 تصاميم المقاولات والبناء · حياة يوميّة: القبلة والمواقيت، التعليم، التفسير الدينيّ، رأيك يهمّنا)، ومعها محادثة بالصوت والكتابة.
-إن شُغّل التطبيق على الهاتف نفسه في مراجعة سابقة فلن يفتح المربّع وحده مرّة ثانية: زرّ «الأدوات» (أيقونة المربّعات في الشريط السفليّ).
+وكذلك على هاتف شغّله في مراجعة سابقة. بعد إغلاق المربّع يعيده زرّ «الأدوات» (أيقونة المربّعات في الشريط السفليّ).
 11.4: لا عملات رقميّة ولا صرف ولا أسواق أسهم في هذه الحزمة.
 ```
 

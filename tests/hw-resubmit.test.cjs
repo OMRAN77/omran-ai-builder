@@ -39,7 +39,7 @@ const BANNED = /official|trusted|preferred|featured|\bbest\b|\btop\b|#1|number o
 const notes = read('store/huawei/REVIEW-NOTES.md');
 const descriptions = notes.slice(notes.indexOf('## وصف المتجر (عربيّ)'));
 const enToolList = notes.slice(notes.indexOf('It has '), notes.indexOf('The home screen also has'));
-const arToolList = notes.slice(notes.indexOf('4.1: عند أوّل تشغيل'), notes.indexOf('إن شُغّل التطبيق'));
+const arToolList = notes.slice(notes.indexOf('4.1: في كلّ تشغيل'), notes.indexOf('وكذلك على هاتف شغّله'));
 
 test('١. الملاحظات تعدّ الأدوات الظاهرة في حزمة هواوي بعددها وأسمائها، ولا أداة مخفيّة', () => {
   const { visible, hidden } = visibleHuaweiTools();
@@ -199,10 +199,60 @@ test('٧. المراجعة العدائيّة: أوّل شاشة صينيّة ب
   assert.ok(edu.includes("zh:'按教材学习——选择国家、年级和科目'") && !edu.includes('课程中的课程'));
   assert.match(read('index.html'), /\/js\/edu\.js\?v=(\d+)"/);
   assert.ok(Number(read('index.html').match(/\/js\/edu\.js\?v=(\d+)"/)[1]) >= 673, 'وسم edu.js مرفوع');
-  // خانة Remarks: ٣٠٠ حرف على الأكثر، الأدوات الـ١٣ بأسمائها، وأين زرّ الأدوات (العرض التلقائيّ مرّة لكلّ جهاز)
+  // خانة Remarks: ٣٠٠ حرف على الأكثر، الأدوات الـ١٣ بأسمائها، وأين زرّ الأدوات، وأنّ المربّع يُفتح في كلّ تشغيل (v-hw-tools-home)
   const r = (notes.match(/## خانة Remarks[^\n]*\n```\n([^\n]+)\n```/) || [])[1] || '';
   assert.ok(r.length > 200 && r.length <= 300, 'Remarks ≤ ٣٠٠: ' + r.length);
   const list = (r.match(/13 tools \(([^)]*)\)/) || [])[1] || '';
   assert.equal(list.split(',').length, 13, 'الأدوات الـ١٣ في القوس');
   assert.ok(r.includes('bottom bar > Tools'), 'مكان زرّ الأدوات');
+  assert.ok(r.includes('opens on every launch'), 'العرض في كلّ تشغيل لا مرّة لكلّ جهاز');
+  assert.doesNotMatch(notes, /does not open by itself again|فلن يفتح المربّع وحده/, 'لا ملاحظة قديمة تقول إنّه لا يعود');
+});
+
+test('٨. v-hw-tools-home: مربّع الأدوات شاشة البداية في كلّ فتح لحزمة هواوي — ينتظر المحادثة الجديدة الفارغة، ولا يعود مع التحديث داخل الفتح نفسه', () => {
+  const sd = read('js/selfdiag.js');
+  const a = sd.indexOf("if(!sessionStorage.getItem('aiapp_store_tour_s')){");
+  const b = sd.indexOf('else setTimeout(__openTour, 1800);', a);
+  assert.ok(a > sd.indexOf("=== 'huawei'){") && b > a, 'داخل فرع حزمة هواوي وحده');
+  const src = sd.slice(a, sd.indexOf('}', b) + 1);
+  assert.doesNotMatch(src, /localStorage\./, 'لا علم دائم: كلّ فتح جديد يعرضها');
+  // فتح واحد: sessionStorage الفتح، ومحادثة حاليّة فيها رسائل لعدد من الدورات (قبل أن يبدّلها app-22)
+  // o.typing: الصندوق مركّز/فيه نصّ · o.loadedAfter: لا محادثة حاليّة ولا تحميل حتّى الدورة n · o.toast: إشعار app-22 ظاهر
+  const launch = (ss, busyTicks, o = {}) => {
+    const timers = [], dcl = []; let calls = 0; const shown = [];
+    const overlay = { classList: { add: (c) => shown.push(c) } };
+    const prompt = { value: o.typing === 'text' ? 'ابغي' : '' };
+    const toast = { removed: false, remove() { this.removed = true; } };
+    const win = { __localChatsLoaded: !o.loadedAfter };
+    const ids = { sectionsToolsOverlay: overlay, prompt, sessToast: o.toast ? toast : null };
+    const env = {
+      sessionStorage: { getItem: (k) => (k in ss ? ss[k] : null), setItem: (k, v) => { ss[k] = String(v); } },
+      document: { readyState: o.ready || 'loading', activeElement: o.typing === 'focus' ? prompt : null,
+        getElementById: (id) => ids[id] || null, addEventListener: (ev, fn) => { if (ev === 'DOMContentLoaded') dcl.push(fn); } },
+      setTimeout: (fn) => { timers.push(fn); },
+      getCurrent: () => { const i = calls++; if (o.loadedAfter) { if (i < o.loadedAfter) return undefined; win.__localChatsLoaded = true; } return { messages: i < busyTicks ? [{ role: 'user' }] : [] }; },
+    };
+    new Function('sessionStorage', 'document', 'setTimeout', 'getCurrent', 'window', src)(env.sessionStorage, env.document, env.setTimeout, env.getCurrent, win);
+    dcl.forEach((f) => f()); // المسار الفعليّ: selfdiag يُحمَّل قبل اكتمال الصفحة
+    let n = 0; while (timers.length && n++ < 100) timers.shift()();
+    return Object.defineProperties(shown, { toastRemoved: { value: toast.removed }, calls: { value: calls } }); // غير قابلة للعدّ: deepEqual يقارن العرض وحده
+  };
+  const ss1 = {};
+  assert.deepEqual(launch(ss1, 3), ['show'], 'الفتح الأوّل: تنفتح بعد أن تصير المحادثة فارغة');
+  assert.equal(ss1.aiapp_store_tour_s, '1');
+  assert.deepEqual(launch(ss1, 0), [], 'تحديث داخل الفتح نفسه: لا تُفتح فوق ما يعمل عليه');
+  assert.deepEqual(launch({}, 5), ['show'], 'الفتح الثاني (جلسة جديدة) على الجهاز نفسه: تنفتح من جديد');
+  assert.deepEqual(launch({}, 1000), [], 'محادثة لا تفرغ: يتوقّف بعد عدد محدود من المحاولات بلا حلقة لا تنتهي');
+  assert.deepEqual(launch({}, 0, { ready: 'complete' }), ['show'], 'الصفحة مكتملة قبل selfdiag: يعمل أيضًا');
+  // مراجعة عدائيّة: من بدأ يكتب لا يُغطّى، ولا تعود في الفتح نفسه
+  for (const typing of ['focus', 'text']) {
+    const ss = {};
+    assert.deepEqual([...launch(ss, 0, { typing })], [], 'بدأ يكتب (' + typing + '): لا يغطّي الصندوق');
+    assert.equal(ss.aiapp_store_tour_s, '1', 'ولا تعود في هذا الفتح');
+  }
+  // قبل تحميل المحادثات المحفوظة: ينتظر بدل أن يفتح فيغلقه الإقلاع
+  const late = launch({}, 0, { loadedAfter: 4 });
+  assert.deepEqual([...late], ['show']); assert.ok(late.calls > 4, 'انتظر التحميل');
+  // إشعار «جلسة جديدة» لا يبقى فوق شاشة الأدوات (عربيّ/إنجليزيّ فقط — الصينيّ يرى الإنجليزيّ)
+  assert.equal(launch({}, 2, { toast: true }).toastRemoved, true);
 });
