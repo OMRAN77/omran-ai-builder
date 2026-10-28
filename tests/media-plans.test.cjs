@@ -52,7 +52,7 @@ test('١. الباقات الستّ: المبالغ بالدرهم، ومميّ�
   const n = (plan, r) => Math.floor(P[plan].budget / media.UNIT_COST[r]);
   assert.deepEqual(['img_basic', 'img_pro', 'img_max'].map((p) => [n(p, 'image_normal'), n(p, 'image')]), [[61, 30], [122, 61], [812, 406]], 'العالية = صورتان'); // v-fair-video: الوسطى ضعف الأساسيّة
   assert.deepEqual(['vid_basic', 'vid_pro', 'vid_max'].map((p) => [n(p, 'minimax_video'), n(p, 'omni_video'), n(p, 'veo_video')]),
-    [[11, 4, 2], [23, 8, 5], [158, 55, 37]]); // v-fair-video: الأساسيّ يغلب Plus في الاقتصاديّ (١١ مقابل ٩)
+    [[6, 4, 2], [13, 8, 5], [92, 55, 37]]); // v-fair-video: كان ١١/٢٣/١٥٨ بتكلفة ١٠٣؛ v-minimax-h3: ١٧٦ فلسًا (باقات متوقّفة عن البيع)
   // الربح بعد رسوم Stripe (٢٫٩٪ + ٠٫٣٠$): صور ٢٠ · ٤١ · ١٦٠ درهم؛ فيديو ٢٣ · ٤٨ · ١٨٠–٢٢٠؛ مها ١٠ · ٢١ · ١٠٠ (v-fair-video)
   const profit = (k) => { const aedPrice = P[k].amount / 100 * 3.6725; return aedPrice - (aedPrice * 0.029 + 0.3 * 3.6725) - P[k].budget / 100; };
   for (const [k, lo, hi] of [['img_basic', 19.5, 20.5], ['img_pro', 40.5, 41.5], ['img_max', 159.5, 160.5], ['vid_basic', 23, 24], ['vid_pro', 47, 48.5], ['vid_max', 180, 220], ['maha_basic', 9.5, 10.5], ['maha_pro', 20.5, 21.5], ['maha_max', 99.5, 100.5]]) {
@@ -89,7 +89,7 @@ test('٣. الخصم: الصورة من رصيد الصور لا النقاط، 
   const vid = await points.spendPoints('sara', points.COSTS.minimax_video, 'minimax_video');
   assert.equal(vid.ok, true);
   assert.equal(vid.media, undefined, 'الفيديو على النقاط');
-  assert.equal(kv.get('points:sara'), '30');
+  assert.equal(kv.get('points:sara'), String(70 - points.COSTS.minimax_video)); // v-minimax-h3: ٥٥ نقطة ⇒ ١٥
   const noVid = await points.spendPoints('sara', points.COSTS.omni_video, 'omni_video');
   assert.equal(noVid.ok, false, 'لا فيديو سينمائيّ من رصيد الصور');
 });
@@ -106,7 +106,7 @@ test('٤. النفاد يرجع للنقاط، والاسترجاع يعود ل�
   kv.set('media:video:omar', '50');
   const b = await points.spendPoints('omar', points.COSTS.minimax_video, 'minimax_video');
   assert.equal(b.media, undefined, 'الرصيد لا يكفي ← النقاط');
-  assert.equal(kv.get('points:omar'), '30');
+  assert.equal(kv.get('points:omar'), String(70 - points.COSTS.minimax_video)); // v-minimax-h3: ٥٥ نقطة ⇒ ١٥
 
   reset('noor');
   await checkout.grantPlanToUser('noor', 'img_pro', 'lastStripeSessionId', 'cs_4');
@@ -128,7 +128,7 @@ test('٥. الانتهاء بعد ٣٥ يومًا، والحالة للواجه�
   await checkout.grantPlanToUser('huda', 'vid_pro', 'lastStripeSessionId', 'cs_5');
   const st = await media.mediaStatus('huda');
   assert.deepEqual(Object.keys(st), ['video']);
-  assert.deepEqual(st.video.counts, { minimax_video: 23, runway_video: 13, omni_video: 8, veo_video: 5 }); // v-fair-video: ٢٤٠٠ فلس
+  assert.deepEqual(st.video.counts, { minimax_video: 13, runway_video: 13, omni_video: 8, veo_video: 5 }); // v-fair-video: ٢٤٠٠ فلس؛ v-minimax-h3: الاقتصاديّ ١٧٦ (كان ٢٣)
 });
 
 test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_id، والبطاقات بلا اسم مزوّد وبالـ١٤ لغة', () => {
@@ -152,7 +152,7 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
     assert.ok(keys.every((k) => s.includes('"' + k + '"')), l);
   }
   assert.ok(read('index.html').includes('/js/partials-settings.js?v=707'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=775'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=777'"));
 });
 
 test('٧. الجودة: «عاديّة» افتراضيًّا بنصف الرصيد على المحرّك السريع، و«جودة عالية» في الطلب أو الإعداد = عالية', async () => {

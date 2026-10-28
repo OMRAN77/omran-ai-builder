@@ -1,10 +1,19 @@
-// Vercel Serverless Function: starts an AI video generation task on MiniMax
-// (Hailuo) — the "economy" engine added alongside Runway and Veo. Uses the
-// site owner's own server-side key (MINIMAX_API_KEY env var). Async: returns a
-// task_id that /api/video?action=minimax-status polls until the clip is ready.
+// Vercel Serverless Function: starts an AI video generation task on MiniMax —
+// the "economy" engine added alongside Runway and Veo. Uses the site owner's
+// own server-side key (MINIMAX_API_KEY env var). Async: returns a task_id that
+// /api/video?action=minimax-status polls until the clip is ready.
 // Points/quota mirror the Veo path (owner bypass, per-account cooldown, refund
 // on upstream failure), at the cheaper minimax_video cost.
+// v-minimax-h3 (قرار المالك ١٠ أكتوبر ٢٠٢٦: «رفع الاقتصاديّ لإصداره الجديد بصوت بضعف التكلفة»): واجهة v2
+// (POST /v2/video_generation) بنموذج MiniMax-H3 — الجسم بصيغة content، والدقّة 768P/2K، والنسبة بصيغة 16:9.
 const { checkOwnerBypass } = require('./_videoUsage');
+
+/* v-minimax-h3: نسبة العميل (عرض:ارتفاع بالبكسل) → نسبة v2؛ مع صورة أوّل إطار 'adaptive' (تتبع الصورة). */
+const RATIO_V2 = { '1280:720': '16:9', '720:1280': '9:16' };
+function toV2Ratio(ratio, hasImage) {
+  if (hasImage) return 'adaptive';
+  return RATIO_V2[String(ratio || '').trim()] || '16:9';
+}
 
 // api.minimax.io هو مضيف المنصّة الدوليّة. اسم المضيف قابل للضبط من البيئة إن غيّروه.
 const MM_BASE = (process.env.MINIMAX_API_BASE || 'https://api.minimax.io').replace(/\/+$/, '');
@@ -33,16 +42,20 @@ module.exports = async (req, res) => {
       promptText = built.prompt; ratio = ratio || built.ratio;
     } else if (imageBase64 && String(imageBase64).trim() && promptText) {
       /* v-video-photo-identity: الإطار الأوّل يثبّت الوجه في اللحظة الأولى وحدها — وبلا أيّ أمر نصّيّ
-         يعيد المحرّك رسمه مع الحركة. نفس قفل Omni وVeo (مرساة أوّلًا وقفل أخيرًا). */
-      promptText = require('./video-trends.js').withIdentityLock(promptText, 1500);
+         يعيد المحرّك رسمه مع الحركة. نفس قفل Omni وVeo (مرساة أوّلًا وقفل أخيرًا).
+         v-photo-as-is: الصورة نفسها أوّل إطار — قفل محايد (لا «الشخص الحقيقيّ»: الأفاتار يبقى أفاتارًا) */
+      const vt = require('./video-trends.js');
+      promptText = (tp.freeFrameOn(body) && !body.keepPhoto) ? vt.withIdentityLock(promptText, 1500) : vt.withPhotoLock(promptText, 1500);
     }
     if (!promptText || !String(promptText).trim()) {
       res.status(400).json({ error: 'Missing promptText' });
       return;
     }
-    // Hailuo تقبل 6 أو 10 ثوانٍ — نُثبّت أي قيمة أخرى على الأقرب.
+    /* v-video-durations (المالك ٢٧ أكتوبر): العميل لم يكن يرسل المدّة فكان كلّ فيديو ٦ ثوانٍ. H3 على v2 يقبل ٤–١٥ ثانية عددًا
+       صحيحًا بالدقّتين (مستودع MiniMax-H3 الرسميّ: "duration":8) — المختارة كما هي، وبلا قيمة ٦ كما كانت. السقف ١٠ = أطول زرّ في الواجهة
+       (مراجعة ٢٧ أكتوبر: ١٥ ثانية بسعر ٥٥ الثابت ≈ ٤ أضعاف تكلفة الجدول لمن ينادي الخادم مباشرة — باب المال). */
     let durSec = parseInt(durationSeconds, 10);
-    durSec = (durSec >= 8) ? 10 : 6;
+    durSec = Number.isFinite(durSec) ? Math.min(10, Math.max(4, durSec)) : 6;
 
     /* v-video-giveback: فحص المفتاح قبل أيّ خصم (كـveo-create) — كان بعد الخصم والقفل ويردّ اسم المفتاح للمستخدم */
     const apiKey = process.env.MINIMAX_API_KEY;
@@ -85,7 +98,7 @@ module.exports = async (req, res) => {
 
     /* v-video-first-frame (المالك: «كل الفيديوات»): مع صورة ووصف يُبنى أوّل إطار بوجهه في مشهد الوصف وأسلوبه، ثمّ
        قفل «الإطار جاهز — حرّكه كما هو». keepPhoto = الصورة نفسها. أيّ عطب = الصورة نفسها والأمر السابق حرفيًّا. */
-    if (!body.trend && imageBase64 && String(imageBase64).trim() && !body.keepPhoto && rawDesc && String(rawDesc).trim() && tp.firstFrameOn() && process.env.GEMINI_API_KEY) {
+    if (!body.trend && imageBase64 && String(imageBase64).trim() && !body.keepPhoto && rawDesc && String(rawDesc).trim() && tp.freeFrameOn(body) && process.env.GEMINI_API_KEY) { // v-photo-as-is: الرسم للأنمي المختار وحده
       const solo = await tp.soloFirstFrame(process.env.GEMINI_API_KEY, { data: String(imageBase64).trim(), mime: imageMime }, String(rawDesc), ratio, { style: body.style, budgetMs: 90000 });
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
@@ -94,31 +107,33 @@ module.exports = async (req, res) => {
       } else console.warn('[minimax-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
     }
 
-    const model = process.env.MINIMAX_VIDEO_MODEL || 'MiniMax-Hailuo-02';
-    const resolution = quality === 'high' ? '1080P' : '768P';
+    const model = process.env.MINIMAX_VIDEO_MODEL || 'MiniMax-H3';
+    const resolution = quality === 'high' ? '2K' : '768P'; // v-minimax-h3: H3 بلا دقّة وسطى — العالية 2K (مشتركو الجودة العالية وحدهم)
     const prompt = String(promptText).trim().slice(0, 1500);
+    const hasImage = !!(imageBase64 && String(imageBase64).trim());
 
-    const payload = { model, prompt, duration: durSec, resolution };
-    // صورة مرفقة → تحريك الصورة نفسها (image-to-video) عبر first_frame_image.
-    if (imageBase64 && String(imageBase64).trim()) {
-      payload.first_frame_image = 'data:' + (imageMime || 'image/png') + ';base64,' + String(imageBase64).trim();
+    /* v-minimax-h3: جسم v2 — content[] نصّ (+ صورة أوّل إطار كرابط data مع role first_frame)، والنسبة بصيغة 16:9. */
+    const content = [{ type: 'text', text: prompt }];
+    // صورة مرفقة → تحريك الصورة نفسها (image-to-video) عبر first_frame.
+    if (hasImage) {
+      content.push({ type: 'image_url', image_url: { url: 'data:' + (imageMime || 'image/png') + ';base64,' + String(imageBase64).trim() }, role: 'first_frame' });
     }
+    const payload = { model, content, duration: durSec, resolution, ratio: toV2Ratio(ratio, hasImage) };
 
-    const upstream = await fetch(MM_BASE + '/v1/video_generation', {
+    const upstream = await fetch(MM_BASE + '/v2/video_generation', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const data = await upstream.json().catch(() => ({}));
-    // MiniMax يعيد 200 مع base_resp.status_code≠0 عند الرفض المنطقيّ — نعامله كفشل.
-    const okCode = data && data.base_resp && Number(data.base_resp.status_code) === 0;
-    if (!upstream.ok || !data.task_id || !okCode) {
+    // v2: النجاح ٢٠٠ مع task_id وحده؛ الخطأ بحالة HTTP غير ٢٠٠ وجسم { type:'error', error:{ message } } (لا حقل حالة داخليّ كما في v1).
+    if (!upstream.ok || !data || !data.task_id) {
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.minimax_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
-      const tech = String((data && data.base_resp && data.base_resp.status_msg) || ('HTTP ' + upstream.status)).slice(0, 160);
+      const tech = String((data && data.error && data.error.message) || ('HTTP ' + upstream.status)).slice(0, 160);
       console.error('[minimax-create] upstream ' + upstream.status + ': ' + tech);
-      const fail = require('./_videoFail.js').startFail(upstream.ok ? 502 : upstream.status, tech); /* v-video-names: مؤقّت · عطب عندنا · رفض للطلب (_videoFail.js) */ /* ٢٠٠ برفض منطقيّ = مؤقّت كما كان */
+      const fail = require('./_videoFail.js').startFail(upstream.ok ? 502 : upstream.status, tech); /* v-video-names: مؤقّت · عطب عندنا · رفض للطلب (_videoFail.js) */ /* ٢٠٠ بلا task_id = مؤقّت كما كان */
       res.status(fail.code).json(fail.body);
       return;
     }

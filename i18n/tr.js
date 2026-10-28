@@ -502,12 +502,12 @@ I18N['tr'] = {
     "videoMakerRatioLandscape": "🖥️ Yatay 16:9",
     "videoMakerRatioPortrait": "📱 Dikey 9:16",
     "videoModeLabel": "Oluşturma modu",
-    "videoModeCanvasOnly": "🎨 Yalnızca Canvas (AI yok)",
-    "videoModeRunwayOnly": "🤖 Yalnızca AI video",
-    "videoModeMinimax": "💸 Ekonomik video — daha ucuz ve hızlı",
-    "videoModeOmni": "🎬 Sinematik video — en yüksek kalite (daha pahalı)",
-    "videoModeHybrid": "🔗 İkisini birleştir (en iyisi)",
-    "videoModeVeo": "🚀 Sinematik (en üst kalite + ses)",
+    "videoModeCanvasOnly": "🎨 Yapay zekâsız (ücretsiz)",
+    "videoModeRunwayOnly": "🎬 Yüksek kalite",
+    "videoModeMinimax": "⚡ Hızlı video",
+    "videoModeOmni": "🎬 Sinematik (daha pahalı)",
+    "videoWrapSignature": "🔗 İmzanızla giriş ve kapanış",
+    "videoModeVeo": "🎬 Sinematik",
     "videoModeActor": "🗣️ Konuşan aktör — Emirati lehçesi",
     "videoActorSpeechLabel": "🗣️ Aktör tam olarak ne söylüyor?",
     "videoActorSpeechPlaceholder": "Örnek: om ai'a hoş geldiniz, en iyi AI platformu!",
@@ -526,7 +526,7 @@ I18N['tr'] = {
     "videoMakerHeroNote": "Fotoğrafınızı (veya başka birinin fotoğrafını) yükleyin — filmin her sahnesinde onlar başrol oynayacak.",
     "videoMakerDurationLongMinutes": "🎥 Uzun (dakika) - yalnızca sahip",
     "videoMakerLongMinutesLabel": "Tam video uzunluğu (dakika, 1-10)",
-    "videoMakerLongMinutesNote": "⚠️ Yalnızca sahip hesabı. Her dakika, otomatik olarak oluşturulup birleştirilen yaklaşık 7-8 ayrı sahne anlamına gelir; gerçek maliyet Runway bakiyenizden düşülür ve uzunlukla birlikte hızla artar. İşlem başlamadan önce bir maliyet tahmini göreceksiniz.",
+    "videoMakerLongMinutesNote": "⚠️ Yalnızca sahip hesabı. Her dakika, otomatik olarak oluşturulup birleştirilen yaklaşık 7-8 ayrı sahne anlamına gelir; gerçek maliyet video motoru bakiyenizden düşülür ve uzunlukla birlikte hızla artar. İşlem başlamadan önce bir maliyet tahmini göreceksiniz.",
     "videoMakerNarrationToggleLabel": "🎙️ Sesli anlatım ekle (AI tarafından oluşturulur)",
     "videoMakerNarrationPlaceholder": "Video üzerinde okunacak anlatım metnini yazın (isteğe bağlı — boş bırakılırsa video açıklaması kullanılır)",
     "videoMakerQualityToggleLabel": "🔎 Daha yüksek kalite (çözünürlük yükseltme, yalnızca kısa videolar)",
@@ -1208,7 +1208,7 @@ Object.assign(I18N['tr'], {
   vcMore: "Daha fazla seçenek",
   vcTutorial: "İzle: nasıl video yapılır",
   vcToExtra: "Eklere koy",
-  videoTabClean: "Videoyu iyileştir",
+  videoTabClean: "Kaliteyi artır",
   vclTitle: "Cihazındaki bir videoyu iyileştir",
   vclSub: "Bulanık ya da karıncalı bir video yükle: gürültüyü azaltır, netleştirir ve renkleri iyileştiririz — cihazında, ücretsiz",
   vclPick: "Video seç veya buraya bırak",
@@ -1331,7 +1331,7 @@ Object.assign(I18N["tr"], {"priceTabChat": "Sohbet", "priceTabImg": "🖼️ Gö
 Object.assign(I18N["tr"], {"priceTabMaha": "Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Maha sesli aramaları için. Aylık dakikalarınız yalnızca Maha içindir; bitince aramalar puanlarınızla devam eder.", "mahaMinPlain": "arama dakikası", "mahaMinUnit": "dk", "mahaCapNote": "Arama başına en fazla 10 dakika", "mahaNoChat": "Sohbet, görsel ve video yok", "mahaLeft": "Kalan Maha dakikası", "mahaCapEnd": "Arama 10 dakika sınırında bitti — devam etmek için tekrar arayın", "mahaToPoints": "Dakikalarınız bitti — puanlarla devam ediliyor"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["tr"], {"install":"Uygulamayı Yükle","installHowIOS":"iPhone veya iPad'e yüklemek için:\n1) Bu siteyi Safari'de açın\n2) Paylaş düğmesine dokunun (yukarı oklu kare)\n3) \"Ana Ekrana Ekle\"yi, ardından \"Ekle\"yi seçin","installHowIOSOther":"Bu tarayıcıdan iPhone'a yüklemek için:\n1) Adres çubuğunun yanındaki Paylaş düğmesine (yukarı oklu kare) dokunun\n2) \"Ana Ekrana Ekle\"yi seçin\nSeçenek yoksa bu siteyi Safari'de açın.","installHowAndroid":"Android'e yüklemek için:\n1) Tarayıcı menüsünü (⋮) açın\n2) \"Uygulamayı yükle\" veya \"Ana ekrana ekle\"yi seçin\n3) Yüklemeyi onaylayın","installHowDesktop":"Bilgisayara yüklemek için (Chrome veya Edge):\nAdres çubuğundaki yükleme simgesine (⊕ veya küçük ekran) tıklayın ya da tarayıcı menüsünü (⋮ veya …) açıp \"Yükle\" veya \"Uygulamalar → Bu siteyi uygulama olarak yükle\"yi seçin.","installHowMacSafari":"Mac'e Safari'den yüklemek için:\nÜstteki \"Dosya\" menüsünü açın, \"Dock'a Ekle\"yi, ardından \"Ekle\"yi seçin.","installHowFirefox":"Bilgisayardaki Firefox web uygulaması yükleyemez.\nBu siteyi Chrome veya Edge'de açıp \"Uygulamayı Yükle\"ye tıklayın ya da telefonunuzdan yükleyin."});
-Object.assign(I18N["tr"], {"videoSceneWait":"⏳ Sahne {i}/{n}: videolar arası bekleme — {s} sn sonra otomatik başlar.","videoFilmModeOnly":"🎬 «Tam film» yalnızca «Yapay zekâ videosu» moduyla çalışır — modu değiştirin veya başka bir süre seçin. Hiçbir ücret alınmadı."}); // v-video-seq-cooldown + v-film-mode-gate
+Object.assign(I18N["tr"], {"videoSceneWait":"⏳ Sahne {i}/{n}: videolar arası bekleme — {s} sn sonra otomatik başlar.","videoFilmModeOnly":"🎬 «Tam film» yalnızca yapay zekâ modlarıyla çalışır (Yüksek kalite / Sinematik) — modu değiştirin veya başka bir süre seçin. Hiçbir ücret alınmadı."}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
 Object.assign(I18N["tr"], {"acctPhoneLabel": "Telefon numarası (kurtarma için)", "phoneNotLinked": "Bağlı değil", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Hazır mesajı gönderin veya numaranızı paylaşın, sonra buraya dönün…", "phoneLinkedOk": "✓ Numara bağlandı", "phoneTaken": "Bu numara başka bir hesaba bağlı", "phoneNoUser": "Bu numaraya bağlı bir hesap yok", "phoneExpired": "Bağlantının süresi doldu — tekrar deneyin", "phoneRecoverTitle": "Ya da hesabınızı telefonunuzla kurtarın:", "phoneRecoverSent": "✓ Oradaki sohbetinize yeni şifre bağlantısı gönderdik"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */

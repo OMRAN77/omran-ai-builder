@@ -20,13 +20,15 @@ function load(owner, mode) {
   return { api, sel, opts };
 }
 
-test('غير المالك: ستّة أقسام بلا الثلاثة، والخيارات مخفيّة، ووضعه يرجع إلى «فيديو AI»', () => {
+/* v-video-durations (٢٧ أكتوبر): «ممثل يتكلم» للمالك حتّى تنجح تجربته — كان ظاهرًا للزبون بسعره ثمّ «🔒 مقتصر على المالك».
+   v-five-sections (٢٨ أكتوبر): «جودة عالية» و«بدون ذكاء» للمالك، و«فيديو سريع» للجميع وافتراضيّ الزبون */
+test('غير المالك: الترندات و«فيديو سريع» و«سينمائي» و«تحسين الجودة» (و«تعديل الفيديو» يُدخله video-edit)، والخيارات مخفيّة، ووضعه يرجع إلى «فيديو سريع»', () => {
   const { api, sel, opts } = load(false, 'omni');
-  assert.deepStrictEqual(api.tabsFor(), ['trend', 'canvas', 'runway', 'veo', 'actor', 'clean']);
+  assert.deepStrictEqual(api.tabsFor(), ['trend', 'minimax', 'veo', 'clean']);
   api.guardModes();
-  assert.strictEqual(sel.value, 'runway');
+  assert.strictEqual(sel.value, 'minimax');
   assert.strictEqual(sel.changes, 1);
-  assert.deepStrictEqual(opts.filter((o) => o.hidden && o.disabled).map((o) => o.value), ['minimax', 'omni', 'hybrid']);
+  assert.deepStrictEqual(opts.filter((o) => o.hidden && o.disabled).map((o) => o.value), ['canvas', 'runway', 'omni', 'hybrid', 'actor']);
 });
 
 test('المالك: كلّ الأقسام التسعة ووضعه لا يتغيّر', () => {

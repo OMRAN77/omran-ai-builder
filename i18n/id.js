@@ -502,12 +502,12 @@ I18N['id'] = {
     "videoMakerRatioLandscape": "🖥️ Lanskap 16:9",
     "videoMakerRatioPortrait": "📱 Potret 9:16",
     "videoModeLabel": "Mode pembuatan",
-    "videoModeCanvasOnly": "🎨 Hanya kanvas (tanpa AI)",
-    "videoModeRunwayOnly": "🤖 Hanya video AI",
-    "videoModeMinimax": "💸 Video hemat — lebih murah & cepat",
-    "videoModeOmni": "🎬 Video sinematik — kualitas tertinggi (lebih mahal)",
-    "videoModeHybrid": "🔗 Gabungkan keduanya (terbaik)",
-    "videoModeVeo": "🚀 Sinematik (kualitas terbaik + suara)",
+    "videoModeCanvasOnly": "🎨 Tanpa AI (gratis)",
+    "videoModeRunwayOnly": "🎬 Kualitas tinggi",
+    "videoModeMinimax": "⚡ Video cepat",
+    "videoModeOmni": "🎬 Sinematik (lebih mahal)",
+    "videoWrapSignature": "🔗 Intro dan outro dengan tanda tangan Anda",
+    "videoModeVeo": "🎬 Sinematik",
     "videoModeActor": "🗣️ Aktor berbicara — dialek Emirat",
     "videoActorSpeechLabel": "🗣️ Apa yang dikatakan aktor? (tepat)",
     "videoActorSpeechPlaceholder": "Contoh: Selamat datang di om ai, platform AI terbaik!",
@@ -526,7 +526,7 @@ I18N['id'] = {
     "videoMakerHeroNote": "Unggah foto Anda (atau siapa pun) — mereka akan menjadi tokoh utama di setiap adegan film.",
     "videoMakerDurationLongMinutes": "🎥 Panjang (menit) - khusus pemilik",
     "videoMakerLongMinutesLabel": "Durasi video lengkap (menit, 1-10)",
-    "videoMakerLongMinutesNote": "⚠️ Hanya untuk akun pemilik. Setiap menit berarti kira-kira 7-8 adegan terpisah dihasilkan dan digabungkan secara otomatis; biaya sebenarnya dibebankan ke saldo Runway Anda dan meningkat cepat seiring durasi. Anda akan melihat perkiraan biaya sebelum proses benar-benar dimulai.",
+    "videoMakerLongMinutesNote": "⚠️ Hanya untuk akun pemilik. Setiap menit berarti kira-kira 7-8 adegan terpisah dihasilkan dan digabungkan secara otomatis; biaya sebenarnya dibebankan ke saldo mesin video Anda dan meningkat cepat seiring durasi. Anda akan melihat perkiraan biaya sebelum proses benar-benar dimulai.",
     "videoMakerNarrationToggleLabel": "🎙️ Tambahkan narasi suara (dihasilkan AI)",
     "videoMakerNarrationPlaceholder": "Ketik teks narasi untuk dibacakan selama video (opsional — deskripsi video digunakan jika dikosongkan)",
     "videoMakerQualityToggleLabel": "🔎 Kualitas lebih tinggi (tingkatkan resolusi, hanya video pendek)",
@@ -1209,7 +1209,7 @@ Object.assign(I18N['id'], {
   vcMore: "Opsi lainnya",
   vcTutorial: "Tonton: cara membuat video",
   vcToExtra: "Pakai sebagai tambahan",
-  videoTabClean: "Tingkatkan video",
+  videoTabClean: "Tingkatkan kualitas",
   vclTitle: "Tingkatkan video dari perangkatmu",
   vclSub: "Unggah video buram atau berderau: kami kurangi derau, pertajam, dan perbaiki warna — di perangkatmu, gratis",
   vclPick: "Pilih video atau letakkan di sini",
@@ -1332,7 +1332,7 @@ Object.assign(I18N["id"], {"priceTabChat": "Chat", "priceTabImg": "🖼️ Gamba
 Object.assign(I18N["id"], {"priceTabMaha": "Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Untuk panggilan suara dengan Maha. Menit bulanan hanya untuk Maha; jika habis, panggilan berlanjut dengan poin Anda.", "mahaMinPlain": "menit panggilan", "mahaMinUnit": "mnt", "mahaCapNote": "Hingga 10 menit per panggilan", "mahaNoChat": "Tanpa chat, gambar, atau video", "mahaLeft": "Sisa menit Maha", "mahaCapEnd": "Panggilan berakhir di batas 10 menit — hubungi lagi untuk melanjutkan", "mahaToPoints": "Menit habis — lanjut dengan poin"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["id"], {"install":"Pasang Aplikasi","installHowIOS":"Untuk memasang di iPhone atau iPad:\n1) Buka situs ini di Safari\n2) Ketuk tombol Bagikan (kotak dengan panah ke atas)\n3) Pilih \"Tambah ke Layar Utama\", lalu \"Tambah\"","installHowIOSOther":"Untuk memasang di iPhone dari browser ini:\n1) Ketuk tombol Bagikan (kotak dengan panah ke atas) di dekat bilah alamat\n2) Pilih \"Tambah ke Layar Utama\"\nJika opsinya tidak ada, buka situs ini di Safari.","installHowAndroid":"Untuk memasang di Android:\n1) Buka menu browser (⋮)\n2) Pilih \"Instal aplikasi\" atau \"Tambahkan ke Layar utama\"\n3) Konfirmasi pemasangan","installHowDesktop":"Untuk memasang di komputer (Chrome atau Edge):\nKlik ikon instal (⊕ atau layar kecil) di bilah alamat, atau buka menu browser (⋮ atau …) lalu pilih \"Instal\" atau \"Aplikasi → Instal situs ini sebagai aplikasi\".","installHowMacSafari":"Untuk memasang di Mac dari Safari:\nBuka menu \"File\" di atas, pilih \"Add to Dock\", lalu \"Add\".","installHowFirefox":"Firefox di komputer tidak dapat memasang aplikasi web.\nBuka situs ini di Chrome atau Edge lalu klik \"Pasang Aplikasi\", atau pasang dari ponsel Anda."});
-Object.assign(I18N["id"], {"videoSceneWait":"⏳ Adegan {i}/{n}: jeda antar video — mulai otomatis dalam {s} detik.","videoFilmModeOnly":"🎬 «Film utuh» hanya bekerja dengan mode «Video AI» — ubah mode atau pilih durasi lain. Tidak ada yang dipotong."}); // v-video-seq-cooldown + v-film-mode-gate
+Object.assign(I18N["id"], {"videoSceneWait":"⏳ Adegan {i}/{n}: jeda antar video — mulai otomatis dalam {s} detik.","videoFilmModeOnly":"🎬 «Film utuh» hanya bekerja dengan mode AI (Kualitas tinggi / Sinematik) — ubah mode atau pilih durasi lain. Tidak ada yang dipotong."}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
 Object.assign(I18N["id"], {"acctPhoneLabel": "Nomor telepon (untuk pemulihan)", "phoneNotLinked": "Belum ditautkan", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Kirim pesan yang sudah disiapkan atau bagikan nomormu, lalu kembali ke sini…", "phoneLinkedOk": "✓ Nomor ditautkan", "phoneTaken": "Nomor ini tertaut ke akun lain", "phoneNoUser": "Tidak ada akun yang tertaut ke nomor ini", "phoneExpired": "Tautan kedaluwarsa — coba lagi", "phoneRecoverTitle": "Atau pulihkan akunmu dengan telepon:", "phoneRecoverSent": "✓ Kami mengirim tautan kata sandi baru ke obrolanmu di sana"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */

@@ -8,7 +8,9 @@ process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'synthetic-test-secret-' + 
 const test = require('node:test');
 /* v-trend-omni: هذا الاختبار يفحص بناء أمر الترند وإطاره الأوّل وخصمه — المشترك بين المحرّكين — على طلب Veo المصطنع؛
    مسار Omni نفسه (الأمر والصور ذاتهما حرفيًّا، والتذكرة والاسترجاع) في trend-omni.test.cjs */
-process.env.TREND_ENGINE = 'veo';
+process.env.TREND_ENGINE = 'veo'; process.env.CINEMA_ENGINE = 'veo';
+/* v-photo-as-is: الوصف الحرّ صار يحرّك الصورة نفسها افتراضيًّا (video-photo-as-is.test.cjs) — هنا مسار الإطار المرسوم خلف مفتاحه */
+process.env.VIDEO_FREE_FRAME = 'on';
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const jpeg = require('jpeg-js');
@@ -54,7 +56,7 @@ async function run(modRel, body, faces) {
     if (u.includes('gemini-flash-latest')) { calls.push({ kind: 'detect' }); return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ faces: (faces || BOXES).map((box) => ({ box_2d: box })) }) }] } }] }); }
     if (u.includes('gemini-3-pro-image')) { calls.push({ kind: 'image', body: b }); return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: FRAME } }] } }] }); }
     if (u.startsWith('https://runway.test/')) { calls.push({ kind: 'runway', body: b }); return Response.json({ id: 't1' }); }
-    if (u.includes('/v1/video_generation')) { calls.push({ kind: 'minimax', body: b }); return Response.json({ task_id: 'm1', base_resp: { status_code: 0 } }); }
+    if (u.includes('/v2/video_generation')) { calls.push({ kind: 'minimax', body: b }); return Response.json({ task_id: 'm1' }); }
     if (u.includes(':predictLongRunning')) { calls.push({ kind: 'veo', body: b }); return Response.json({ name: 'op/1' }); }
     throw new Error('unexpected fetch: ' + u);
   };
@@ -119,7 +121,7 @@ test('٣. صورة واحدة فيها شخصان (صانع الفيديو): ل�
   assert.equal(tx.filter((t) => /^Close-up [12] — the face of the person on the (left|right) in Photo 1/.test(t)).length, 2, 'لقطة لكلّ وجه بعنوان موضعه');
   assert.match(tx.slice(-1)[0], /Photo 1 shows 2 different real people and ALL of them appear/);
   assert.match(tx.slice(-1)[0], /and from the close-up of their own face/);
-  const mp = mm.of('minimax')[0].body.prompt;
+  const mp = mm.of('minimax')[0].body.content[0].text; /* v-minimax-h3: جسم v2 */
   assert.match(mp, /^MAIN CHARACTERS: the 2 real people in the attached reference photo/);
   assert.ok(mp.endsWith(FRAME_LOCK.trim()) && mp.length <= 1500);
   // Runway
@@ -146,10 +148,10 @@ test('٤. شخص واحد كما كان، ولقطة لأحد الوجهين و�
   const one = await run('api/_lib/minimax-create.js', { promptText: DESC, token: 't', imageBase64: COUPLE, imageMime: 'image/jpeg' }, [BOXES[0]]);
   const t1 = textsOf(one.image);
   assert.equal(t1[1], TP.SOLO_CLOSEUP_LABEL);
-  assert.match(one.of('minimax')[0].body.prompt, /^MAIN CHARACTER: the real person/);
+  assert.match(one.of('minimax')[0].body.content[0].text, /^MAIN CHARACTER: the real person/);
   // وجهان بارزان أحدهما أصغر من أن يُقصّ (< ٣٢ بكسل): لا لقطة لأيٍّ منهما
   const small = await run('api/_lib/minimax-create.js', { promptText: DESC, token: 't', imageBase64: COUPLE, imageMime: 'image/jpeg' }, [[120, 150, 180, 300], [500, 650, 531, 800]]);
   const ts = textsOf(small.image);
   assert.ok(!ts.some((t) => /^Close-up/.test(t)), 'لا لقطة لوجه واحد من اثنين');
-  assert.match(small.of('minimax')[0].body.prompt, /^MAIN CHARACTER: the real person/, 'العدد غير مؤكَّد = المفرد كما كان');
+  assert.match(small.of('minimax')[0].body.content[0].text, /^MAIN CHARACTER: the real person/, 'العدد غير مؤكَّد = المفرد كما كان');
 });

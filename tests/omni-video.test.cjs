@@ -168,7 +168,9 @@ test('٨. فحص المفتاح قبل خصم النقاط في مسار Veo', (
 
 test('٤. الكلفة والواجهة والترجمات', () => {
   assert.ok(/omni_video:\s*\d+/.test(read('api/_lib/points.js')), 'كلفة omni_video');
-  assert.ok(read('js/partials-core.js').includes('value="omni"'), 'خيار omni في القائمة');
+  /* v-video-modes-by-result (١٠ أكتوبر): Omni خرج من القائمة فقط — الكود والمسار والترجمة باقية، وإرجاعه سطر <option> واحد. */
+  assert.ok(!read('js/partials-core.js').includes('value="omni"'), 'خيار omni عاد إلى القائمة بلا قرار');
+  assert.ok(fs.existsSync(path.join(root, 'api/_lib/omni-create.js')), 'كود Omni محفوظ');
   const client = read('js/app-11-video.js');
   assert.ok(client.includes("creationMode === 'omni'") && client.includes('action=omni-create'), 'فرع العميل');
   const i18n = read('js/app-03-i18n-data.js');

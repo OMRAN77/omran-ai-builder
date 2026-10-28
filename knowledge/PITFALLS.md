@@ -1452,3 +1452,12 @@
 - **نفاد رصيد المزوّد يأتي ٤٢٩ لا ٤٠٢:** «Your prepayment credits are depleted» بحالة ٤٢٩ RESOURCE_EXHAUSTED، و«You exceeded your current quota» كذلك — فاحص الحالة وحدها يقرؤه زحامًا ويعيد ويخصم. افحص النصّ أوّلًا (`_videoFail.isOutage`)، و«quota» وحدها زحام عابر لا نفاد (v-credit-out).
 - **تمرير ردّ المزوّد بحالته ونصّه (`res.status(upstream.status).send(rawText)`):** 402 رصيد المزوّد يقرؤه العميل «نقاطك خلصت»، و`error` فيه كائن يصير «[object Object]» عند `String()`/`new Error()`/`alert`. رمز نصّيّ بـ`_videoFail.toolFail` والنصّ للسجلّ (v-maha-paused).
 - **نداء داخل try يبتلع الخطأ يخفي دالّة غير مصدَّرة:** `imageHourlyGiveBack is not a function` ابتُلع في «user refund failed» فبدا الإصلاح سليمًا. اختبر السلوك (القيمة في التخزين) لا وجود السطر (v-img-hour-giveback).
+
+## فخّ ١٠ أكتوبر ٢٠٢٦ — شجرة عمل ويندوز بـCRLF تُسقط عشرات الاختبارات بلا علاقة بالتغيير (v-minimax-h3)
+- `core.autocrlf=true` على جهاز المالك يسحب الملفّات CRLF، وعشرات الاختبارات تطابق المصدر بتعابير فيها `\n` حرفيًّا (`no-recovery-code`، `plan-routing`، `studio-slots`، `video-seq-cooldown`…) فتفشل كلّها محلّيًّا وتمرّ في CI (لينكس). قبل اتّهام تغييرك: حوّل شجرة العمل إلى LF (سكربت يقرأ `git -c core.quotepath=false ls-files --eol -z` ويستبدل `\r\n`) — git يخزّن LF أصلًا فلا يرى فرقًا في المحتوى (`git diff --stat` يبقى على ملفّاتك وحدها وإن عدّ `git status` ألف ملفّ)، والتحذير «LF will be replaced by CRLF» تنبيه لا خطأ. ولا تلمس إعداد git للمالك.
+- و`node_modules` غير موجود في شجرة عمل جديدة: اختبارات الفيديو كلّها تحتاج `jpeg-js` (`trend-people.js`) فيردّ المعالج ٥٠٠ ويبدو التغيير مكسورًا — `npm ci` أوّلًا، و`npm i --no-save playwright` + `npx playwright install chromium` للقطات `ui-shot`.
+
+## فخّ ٢٧ أكتوبر ٢٠٢٦ — «الملامح تغيّرت» ليست من محرّك الفيديو، و«بلا رصيد» قد يكون مفتاح فريق آخر (v-photo-as-is)
+- مهمّة رسم الإطار الأوّل (soloFrameTask) كانت تفترض أنّ كلّ صورة فوتوغرافيّة («Photorealistic… the real person») فتحوّل الأفاتار والكرتون إنسانًا آخر قبل أن يصل المحرّك. افحص كلّ ما يُرسل قبل نداء المحرّك (الصورة والأمر) قبل اتّهامه.
+- MiniMax يفصل الرصيد والمفاتيح لكلّ فريق: مفتاح Vercel من فريق «OmranAi» الفارغ ورصيد ٥٠$ في «Default» = «الخدمة متوقّفة» مع رصيد ظاهر. اطلب صفحة «Access» للفريق نفسه قبل «اشحن».
+- حبّات المدّة تُبنى من خيارات القائمة لكلّ الأوضاع؛ قيمة تُكتب فوق القائمة بلا change (إعلان/ريلز) تفصل الحبّة عن القيمة — اقرأ المدّة الفعليّة في متغيّر.

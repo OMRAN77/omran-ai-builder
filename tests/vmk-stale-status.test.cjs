@@ -160,7 +160,9 @@ function bootOpen() {
   vm.createContext(ctx);
   const bt = fnSource('buildTabs').replace("tb=document.createElement('div');", "tb=document.createElement('div'); __keepTb(tb);");
   const art = SRC.indexOf('  function tabArt(') > 0 ? fnSource('tabArt') : '';
-  vm.runInContext(art + '\n' + bt + '\n' + observerSource(), ctx);
+  /* v-tab-video: المربّع يُبنى بـtabMedia (صورة بلا فيديو مرفوع) */
+  const media = SRC.indexOf('  function tabMedia(') > 0 ? 'var VIDEOS={};\n' + fnSource('tabVid') + '\n' + fnSource('tabMedia') : '';
+  vm.runInContext(art + '\n' + media + '\n' + bt + '\n' + observerSource(), ctx);
   const open = (attr) => { if (attr) M.attrs['data-vmk-tab'] = attr; M.style.display = 'flex'; ctx.__obs(); };
   const close = () => { M.style.display = 'none'; ctx.__obs(); };
   return { ctx, M, card, open, close };

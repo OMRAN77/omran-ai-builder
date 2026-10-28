@@ -144,7 +144,7 @@ test('١. الباقات الثلاث: بالأسعار نفسها، ورصيد�
   }
   assert.deepEqual(keys.map((k) => [P[k].amount, P[k].paypal, P[k].budget]), [[1021, '10.21', 1250], [2042, '20.42', 2500], [10211, '102.11', 12500]]);
   assert.deepEqual(keys.map((k) => checkout.priceFor(k, 'aed').amount), [3750, 7500, 37500]);
-  assert.deepEqual(keys.map((k) => [Math.floor(P[k].budget / media.UNIT_COST.image_normal), Math.floor(P[k].budget / media.UNIT_COST.minimax_video)]), [[50, 12], [100, 24], [500, 121]]);
+  assert.deepEqual(keys.map((k) => [Math.floor(P[k].budget / media.UNIT_COST.image_normal), Math.floor(P[k].budget / media.UNIT_COST.minimax_video)]), [[50, 7], [100, 14], [500, 71]]); // v-minimax-h3: ١٧٦ فلسًا (كان ١٠٣ ⇒ ١٢/٢٤/١٢١)
   for (const k of ['img_basic', 'img_pro', 'img_max', 'vid_basic', 'vid_pro', 'vid_max']) { assert.equal(P[k].retired, true, k + ' متوقّفة'); assert.equal(checkout.PLANS[k].retired, true, k); }
   for (const k of ['maha_basic', 'maha_pro', 'maha_max']) assert.ok(!P[k].retired, 'مها لا تُمسّ: ' + k);
   assert.ok(media.MEDIA_KINDS.includes('mix'));
@@ -200,12 +200,12 @@ test('٣. الصرف: الصورة والفيديو من الرصيد نفسه �
   assert.equal(mixLeft('lama'), 1175, 'العالية ٥٠');
   pay = await points.spendPoints('lama', points.COSTS.minimax_video, 'minimax_video');
   assert.deepEqual([pay.media, pay.pool], ['video', 'mix']);
-  assert.equal(mixLeft('lama'), 1072);
+  assert.equal(mixLeft('lama'), 999); // v-minimax-h3: ١١٧٥ − ١٧٦ (كان ١٠٧٢ بتكلفة ١٠٣)
   pay = await points.spendPoints('lama', points.COSTS.veo_video, 'veo_video');
-  assert.equal(mixLeft('lama'), 632);
+  assert.equal(mixLeft('lama'), 559);
   assert.equal(store.get('points:lama'), '500', 'النقاط لم تُمسّ');
   await points.refundPoints('lama', points.COSTS.veo_video);
-  assert.equal(mixLeft('lama'), 1072, 'فشل الفيديو يعيده للرصيد المدموج');
+  assert.equal(mixLeft('lama'), 999, 'فشل الفيديو يعيده للرصيد المدموج');
   assert.equal(store.get('points:lama'), '500');
   store.set('media:mix:lama', '100');
   pay = await points.spendPoints('lama', points.COSTS.omni_video, 'omni_video');
@@ -228,16 +228,16 @@ test('٤. مشترك img_ القائم: يُصرف من باقته أوّلًا 
   assert.equal(mixLeft('huda'), 1250, 'المدموجة لم تُمسّ ما دامت القديمة تكفي');
   pay = await points.spendPoints('huda', points.COSTS.minimax_video, 'minimax_video');
   assert.deepEqual([pay.media, pay.pool], ['video', 'mix'], 'لا باقة فيديو قديمة ← المدموجة');
-  assert.equal(mixLeft('huda'), 1147);
+  assert.equal(mixLeft('huda'), 1074); // v-minimax-h3: ١٢٥٠ − ١٧٦ (كان ١١٤٧)
   store.set('media:image:huda', '30');
   pay = await points.spendPoints('huda', points.COSTS.image, 'image');
-  assert.deepEqual([pay.pool, pay.mediaLeft], ['mix', 1097], 'القديمة لا تكفي الصورة العالية ← المدموجة');
+  assert.deepEqual([pay.pool, pay.mediaLeft], ['mix', 1024], 'القديمة لا تكفي الصورة العالية ← المدموجة');
   await points.refundPoints('huda', points.COSTS.image);
-  assert.equal(mixLeft('huda'), 1147, 'الاسترجاع يعود للخانة التي صُرف منها');
+  assert.equal(mixLeft('huda'), 1074, 'الاسترجاع يعود للخانة التي صُرف منها');
   assert.equal(store.get('media:image:huda'), '30');
   const st = await media.mediaStatus('huda');
   assert.deepEqual(Object.keys(st), ['image', 'mix']);
-  assert.deepEqual(st.mix.counts, { image_normal: 45, image: 22, image_4k: 13, image_upscale: 114, minimax_video: 11, runway_video: 6, omni_video: 3, veo_video: 2 });
+  assert.deepEqual(st.mix.counts, { image_normal: 42, image: 21, image_4k: 12, image_upscale: 107, minimax_video: 6, runway_video: 5, omni_video: 3, veo_video: 2 }); // من ١٠٧٤ فلسًا
   const u = await user('huda');
   u.media.image.at = Date.now() - 36 * DAY; // نافذة الصور القديمة انتهت
   await auth.putUser('huda', u);
@@ -292,12 +292,12 @@ test('٦. الاسترداد والاعتراض على المدموجة: الج�
   await fresh('jana');
   await buy('jana', 'media_basic', 'j1', 1021);
   await points.spendPoints('jana', points.COSTS.minimax_video, 'minimax_video');
-  assert.equal(mixLeft('jana'), 1147);
+  assert.equal(mixLeft('jana'), 1074);
   await buy('jana', 'media_pro', 'j2', 2042);
   assert.equal(mixLeft('jana'), 2500);
   await hook(refundOf('ch_j2', 'pi_j2', 2042, 2042));
   const st = await media.mediaStatus('jana');
-  assert.deepEqual([st.mix.plan, st.mix.left], ['media_basic', 1147], 'السابقة تعود برصيدها وقت الترقية');
+  assert.deepEqual([st.mix.plan, st.mix.left], ['media_basic', 1074], 'السابقة تعود برصيدها وقت الترقية');
 
   await fresh('ziad');
   await buy('ziad', 'media_max', 'z1', 10211);
@@ -364,7 +364,7 @@ test('١٠. ردّ الرصيد: subs يحمل المدموجة بنهايتها
   assert.ok(s, JSON.stringify(r.body.subs));
   assert.deepEqual([s.plan, s.active], ['media_basic', true]);
   assert.ok(Math.abs(s.endsAt - (Date.now() + 35 * DAY)) < 60000);
-  assert.deepEqual([r.body.media.mix.left, r.body.media.mix.counts.image_normal, r.body.media.mix.counts.minimax_video], [1250, 50, 12]);
+  assert.deepEqual([r.body.media.mix.left, r.body.media.mix.counts.image_normal, r.body.media.mix.counts.minimax_video], [1250, 50, 7]); // v-minimax-h3
   const now = Date.now();
   assert.deepEqual(points.subsOf({ media: { mix: { plan: 'media_pro', at: now - 36 * DAY } } }, now).map((x) => [x.kind, x.active]), [['mix', false]], 'المنتهية تُرسل للتنبيه');
 });
@@ -452,7 +452,7 @@ test('١٢. قسم «صور وفيديو»: ثلاث بطاقات بالسعر �
     assert.doesNotMatch(line, /img_|vid_/, t + ': img_/vid_ خرجت من مرآة البيع');
   }
   assert.ok(read('index.html').includes('/js/partials-settings.js?v=707'));
-  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=775'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=777'"));
 });
 
 test('١٣. الواجهة في vm: showPriceTab يفتح المدموج من img/vid/image/video، والحالة تعرض رصيد المدموجة ومتبقّي القديمة، والجودة لمشترك المدموجة', () => {

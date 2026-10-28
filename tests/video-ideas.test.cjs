@@ -15,7 +15,8 @@ const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur'
 test('كلّ وضع في القائمة له مفتاح مثال، وكلّه بالـ١٤ لغة', () => {
   const html = read('js/partials-core.js');
   const modes = [...html.matchAll(/<option value="(\w+)"[^>]*data-i18n="videoMode/g)].map((m) => m[1]);
-  assert.equal(modes.length, MODES.length);
+  /* v-video-modes-by-result: القائمة بالنتيجة — خمسة أوضاع؛ مفاتيح أمثلة omni/hybrid باقية (كودهما محفوظ) */
+  assert.deepEqual(modes, ['minimax', 'runway', 'veo', 'actor', 'canvas']);
   modes.forEach((v) => assert.ok(MODES.includes(v[0].toUpperCase() + v.slice(1)), 'وضع بلا مثال: ' + v));
   const base = read('js/app-03-i18n-data.js');
   KEYS.forEach((k) => assert.equal((base.match(new RegExp(k + ': "', 'g')) || []).length, 2, k + ' (ar+en)'));
@@ -30,6 +31,6 @@ test('الواجهة: مثال الوضع الأوّل نموذجٌ في قسم�
   assert.ok(js.includes("keys=['videoIdea'+c]"));
   assert.ok(js.includes('setVal(pe,tx)'));
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=458"') && h.includes('modules.css?v=692'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=775'"));
+  assert.ok(h.includes('src="/js/video.js?v=461"') && h.includes('modules.css?v=692'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=777'"));
 });

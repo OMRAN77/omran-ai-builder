@@ -8,7 +8,9 @@ process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'synthetic-test-secret-' + 
 const test = require('node:test');
 /* v-trend-omni: هذا الاختبار يفحص بناء أمر الترند وإطاره الأوّل وخصمه — المشترك بين المحرّكين — على طلب Veo المصطنع؛
    مسار Omni نفسه (الأمر والصور ذاتهما حرفيًّا، والتذكرة والاسترجاع) في trend-omni.test.cjs */
-process.env.TREND_ENGINE = 'veo';
+process.env.TREND_ENGINE = 'veo'; process.env.CINEMA_ENGINE = 'veo';
+/* v-photo-as-is: الوصف الحرّ صار يحرّك الصورة نفسها افتراضيًّا (video-photo-as-is.test.cjs) — هنا مسار الإطار المرسوم خلف مفتاحه */
+process.env.VIDEO_FREE_FRAME = 'on';
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
@@ -102,18 +104,21 @@ test('٣. الاقتصاديّ مع صورة: قفل الهويّة يصل في 
   const res = await runHandler('api/_lib/minimax-create.js', {
     'api/_lib/_videoUsage.js': ownerUsage, 'api/_lib/video-job.js': noJob,
   }, { promptText: 'يركض على الشاطئ', token: 't', imageBase64: PHOTO, imageMime: 'image/jpeg' },
-  async (u, o) => { sent = JSON.parse(o.body); return { ok: true, json: async () => ({ task_id: 'm1', base_resp: { status_code: 0 } }) }; });
+  async (u, o) => { sent = JSON.parse(o.body); return { ok: true, json: async () => ({ task_id: 'm1' }) }; });
   assert.equal(res.code, 200, JSON.stringify(res.body));
-  assert.equal(sent.first_frame_image, 'data:image/jpeg;base64,' + PHOTO);
-  assert.match(sent.prompt, /^MAIN CHARACTER: the real person in the attached reference photo/);
-  assert.match(sent.prompt, /يركض على الشاطئ/);
-  assert.match(sent.prompt, /IDENTITY \(mandatory\)[^]*recognize them instantly\.$/);
+  /* v-minimax-h3: جسم v2 — content[0] النصّ وcontent[1] صورة أوّل الإطار */
+  assert.equal(sent.content[1].image_url.url, 'data:image/jpeg;base64,' + PHOTO);
+  assert.equal(sent.content[1].role, 'first_frame');
+  assert.match(sent.content[0].text, /^MAIN CHARACTER: the real person in the attached reference photo/);
+  assert.match(sent.content[0].text, /يركض على الشاطئ/);
+  assert.match(sent.content[0].text, /IDENTITY \(mandatory\)[^]*recognize them instantly\.$/);
   // بلا صورة: الوصف كما هو
   let plain = null;
   await runHandler('api/_lib/minimax-create.js', { 'api/_lib/_videoUsage.js': ownerUsage, 'api/_lib/video-job.js': noJob },
     { promptText: 'غروب فوق البحر', token: 't' },
-    async (u, o) => { plain = JSON.parse(o.body); return { ok: true, json: async () => ({ task_id: 'm2', base_resp: { status_code: 0 } }) }; });
-  assert.equal(plain.prompt, 'غروب فوق البحر');
+    async (u, o) => { plain = JSON.parse(o.body); return { ok: true, json: async () => ({ task_id: 'm2' }) }; });
+  assert.equal(plain.content[0].text, 'غروب فوق البحر');
+  assert.equal(plain.content.length, 1, 'بلا صورة لا عنصر صورة');
 });
 
 /* v-omni-first-frame: هذا صار المسار الاحتياطيّ (إطفاء أوّل الإطار أو عطبه) — المسار الأساسيّ بأوّل إطار بوجهه
@@ -246,7 +251,7 @@ test('٨. الصورة تصل كلّ محرّك في صانع الفيديو: ا
   assert.match(VIDEO, /if\(heroB64\)\{ payload\.imageBase64 = heroB64;/);
   assert.match(VIDEO, /createVeoScene\(scenePromptWithHero, ratio, token, wantQuality, filmHeroBase64, filmHeroMime\)/, 'فيلم المحترف بلا صورة');
   assert.match(VIDEO, /if\(filmHeroBase64\)\{ veoPayload\.imageBase64 = filmHeroBase64;/, 'وضع المحترف/الممثّل بلا صورة');
-  assert.match(VIDEO, /\(text \|\| \(filmHeroBase64 \? 'The real person in the reference photo' :/, 'الممثّل يخترع رجلًا رغم الصورة');
+  assert.match(VIDEO, /\(text \|\| \(filmHeroBase64 \? 'The person in the opening image' :/, 'الممثّل يخترع رجلًا رغم الصورة'); // v-photo-as-is: بلا «الشخص الحقيقيّ»
   assert.doesNotMatch(VIDEO, /Hero centered in frame/, 'أمر إعادة التأطير باقٍ');
   assert.doesNotMatch(VIDEO, /مدعومة مع Runway فقط/);
   // فشل حفظ صورة جديدة يمحو القديمة (وإلّا عاد شخص سابق بعد إعادة التحميل)

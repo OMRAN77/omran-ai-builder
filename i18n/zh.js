@@ -497,12 +497,12 @@ I18N['zh'] = {
     "videoMakerRatioLandscape": "🖥️ 横屏 16:9",
     "videoMakerRatioPortrait": "📱 竖屏 9:16",
     "videoModeLabel": "创作模式",
-    "videoModeCanvasOnly": "🎨 仅画布(无 AI)",
-    "videoModeRunwayOnly": "🤖 仅 AI 视频",
-    "videoModeMinimax": "💸 经济视频 — 更便宜更快",
-    "videoModeOmni": "🎬 电影级视频 — 最高画质（更贵）",
-    "videoModeHybrid": "🔗 结合两者(推荐)",
-    "videoModeVeo": "🚀 电影级(顶级画质 + 音频)",
+    "videoModeCanvasOnly": "🎨 无 AI (免费)",
+    "videoModeRunwayOnly": "🎬 高画质",
+    "videoModeMinimax": "⚡ 快速视频",
+    "videoModeOmni": "🎬 电影级 (更贵)",
+    "videoWrapSignature": "🔗 带你签名的片头与片尾",
+    "videoModeVeo": "🎬 电影级",
     "videoModeActor": "🗣️ 说话的演员 — 阿联酋方言",
     "videoActorSpeechLabel": "🗣️ 演员说什么?(具体内容)",
     "videoActorSpeechPlaceholder": "示例:欢迎来到 om ai，这是最棒的 AI 平台!",
@@ -521,7 +521,7 @@ I18N['zh'] = {
     "videoMakerHeroNote": "上传您(或他人)的照片——该人物将出现在影片的每个场景中。",
     "videoMakerDurationLongMinutes": "🎥 长视频(按分钟计)- 仅限所有者",
     "videoMakerLongMinutesLabel": "完整视频时长(分钟，1-10)",
-    "videoMakerLongMinutesNote": "⚠️ 仅限所有者账户。每一分钟意味着自动生成并拼接约 7-8 个独立场景；实际费用将从您的 Runway 余额中扣除，并随时长增加而迅速增长。在正式开始前，您将看到费用估算。",
+    "videoMakerLongMinutesNote": "⚠️ 仅限所有者账户。每一分钟意味着自动生成并拼接约 7-8 个独立场景；实际费用将从您的 视频引擎余额中扣除，并随时长增加而迅速增长。在正式开始前，您将看到费用估算。",
     "videoMakerNarrationToggleLabel": "🎙️ 添加语音解说(AI 生成)",
     "videoMakerNarrationPlaceholder": "输入要在视频中朗读的解说文本(可选——若留空，将使用视频描述)",
     "videoMakerQualityToggleLabel": "🔎 更高画质(提升分辨率，仅限短视频)",
@@ -1200,7 +1200,7 @@ Object.assign(I18N['zh'], {
   vcMore: "更多选项",
   vcTutorial: "观看：如何制作视频",
   vcToExtra: "用作补充说明",
-  videoTabClean: "增强视频",
+  videoTabClean: "提升画质",
   vclTitle: "增强你设备上的视频",
   vclSub: "上传模糊或有噪点的视频：降噪、锐化并改善色彩——在你的设备上完成，免费",
   vclPick: "选择视频或拖放到这里",
@@ -1323,7 +1323,7 @@ Object.assign(I18N["zh"], {"priceTabChat": "聊天", "priceTabImg": "🖼️ 图
 Object.assign(I18N["zh"], {"priceTabMaha": "玛哈", "mahaPlanName": "玛哈", "mahaPlansDesc": "用于与玛哈语音通话。每月分钟数仅限玛哈使用；用完后通话将使用你的积分继续。", "mahaMinPlain": "分钟通话", "mahaMinUnit": "分钟", "mahaCapNote": "每次通话最多 10 分钟", "mahaNoChat": "不含聊天、图片或视频", "mahaLeft": "玛哈剩余分钟", "mahaCapEnd": "通话已在 10 分钟上限结束 — 请重新拨打继续", "mahaToPoints": "分钟已用完 — 改用积分继续"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["zh"], {"install":"安装应用","installHowIOS":"在 iPhone 或 iPad 上安装：\n1) 用 Safari 打开本网站\n2) 点按“分享”按钮（带向上箭头的方框）\n3) 选择“添加到主屏幕”，再点“添加”","installHowIOSOther":"在此浏览器中安装到 iPhone：\n1) 点按地址栏旁的“分享”按钮（带向上箭头的方框）\n2) 选择“添加到主屏幕”\n如果没有该选项，请用 Safari 打开本网站。","installHowAndroid":"在 Android 上安装：\n1) 打开浏览器菜单（⋮）\n2) 选择“安装应用”或“添加到主屏幕”\n3) 确认安装","installHowDesktop":"在电脑上安装（Chrome 或 Edge）：\n点击地址栏中的安装图标（⊕ 或小屏幕），或打开浏览器菜单（⋮ 或 …）选择“安装”或“应用 → 将此网站作为应用安装”。","installHowMacSafari":"在 Mac 的 Safari 中安装：\n打开顶部的“文件”菜单，选择“添加到程序坞”，再点“添加”。","installHowFirefox":"电脑版 Firefox 无法安装网页应用。\n请用 Chrome 或 Edge 打开本网站并点击“安装应用”，或在手机上安装。"});
-Object.assign(I18N["zh"], {"videoSceneWait":"⏳ 第{i}/{n}幕：视频之间需等待 — {s} 秒后自动继续。","videoFilmModeOnly":"🎬 «完整影片»仅支持«AI 视频»模式 — 请更换模式或选择其他时长。未扣除任何点数。"}); // v-video-seq-cooldown + v-film-mode-gate
+Object.assign(I18N["zh"], {"videoSceneWait":"⏳ 第{i}/{n}幕：视频之间需等待 — {s} 秒后自动继续。","videoFilmModeOnly":"🎬 «完整影片»仅支持 AI 模式（高画质 / 电影级）— 请更换模式或选择其他时长。未扣除任何点数。"}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
 Object.assign(I18N["zh"], {"acctPhoneLabel": "手机号（用于找回账号）", "phoneNotLinked": "未绑定", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "发送预设消息或分享你的号码，然后回到这里…", "phoneLinkedOk": "✓ 号码已绑定", "phoneTaken": "该号码已绑定其他账号", "phoneNoUser": "没有账号绑定此号码", "phoneExpired": "链接已过期 — 请重试", "phoneRecoverTitle": "或用手机号找回账号：", "phoneRecoverSent": "✓ 我们已在那边的聊天中发送了设置新密码的链接"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */

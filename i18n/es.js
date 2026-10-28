@@ -503,12 +503,12 @@ I18N['es'] = {
     "videoMakerRatioLandscape": "🖥️ Horizontal 16:9",
     "videoMakerRatioPortrait": "📱 Vertical 9:16",
     "videoModeLabel": "Modo de creación",
-    "videoModeCanvasOnly": "🎨 Solo lienzo (sin IA)",
-    "videoModeRunwayOnly": "🤖 Solo video con IA",
-    "videoModeMinimax": "💸 Video económico — más barato y rápido",
-    "videoModeOmni": "🎬 Video cinematográfico — máxima calidad (más caro)",
-    "videoModeHybrid": "🔗 Combinar ambos (lo mejor)",
-    "videoModeVeo": "🚀 Cinematográfico (máxima calidad + sonido)",
+    "videoModeCanvasOnly": "🎨 Sin IA (gratis)",
+    "videoModeRunwayOnly": "🎬 Alta calidad",
+    "videoModeMinimax": "⚡ Vídeo rápido",
+    "videoModeOmni": "🎬 Cinematográfico (más caro)",
+    "videoWrapSignature": "🔗 Intro y cierre con tu firma",
+    "videoModeVeo": "🎬 Cinematográfico",
     "videoModeActor": "🗣️ Actor que habla — dialecto emiratí",
     "videoActorSpeechLabel": "🗣️ ¿Qué dice el actor? (exactamente)",
     "videoActorSpeechPlaceholder": "Ejemplo: ¡Bienvenido a om ai, la mejor plataforma de IA!",
@@ -527,7 +527,7 @@ I18N['es'] = {
     "videoMakerHeroNote": "Sube tu foto (o la de cualquier persona) — será el protagonista en todas las escenas de la película.",
     "videoMakerDurationLongMinutes": "🎥 Larga (minutos) - solo propietario",
     "videoMakerLongMinutesLabel": "Duración total del video (minutos, 1-10)",
-    "videoMakerLongMinutesNote": "⚠️ Solo cuenta del propietario. Cada minuto implica aproximadamente 7-8 escenas separadas generadas y unidas automáticamente; el costo real se carga a tu saldo de Runway y crece rápidamente con la duración. Verás una estimación de costo antes de que comience realmente.",
+    "videoMakerLongMinutesNote": "⚠️ Solo cuenta del propietario. Cada minuto implica aproximadamente 7-8 escenas separadas generadas y unidas automáticamente; el costo real se carga a tu saldo del motor de video y crece rápidamente con la duración. Verás una estimación de costo antes de que comience realmente.",
     "videoMakerNarrationToggleLabel": "🎙️ Añadir narración de voz (generada por IA)",
     "videoMakerNarrationPlaceholder": "Escribe el texto de narración para leer sobre el video (opcional — si se deja vacío se usa la descripción del video)",
     "videoMakerQualityToggleLabel": "🔎 Mayor calidad (mejora de resolución, solo videos cortos)",
@@ -1210,7 +1210,7 @@ Object.assign(I18N['es'], {
   vcMore: "Más opciones",
   vcTutorial: "Ver: cómo hacer un vídeo",
   vcToExtra: "Usar como extras",
-  videoTabClean: "Mejorar vídeo",
+  videoTabClean: "Mejorar calidad",
   vclTitle: "Mejora un vídeo de tu dispositivo",
   vclSub: "Sube un vídeo borroso o con ruido: reducimos el ruido, aumentamos la nitidez y mejoramos los colores — en tu dispositivo, gratis",
   vclPick: "Elige un vídeo o suéltalo aquí",
@@ -1333,7 +1333,7 @@ Object.assign(I18N["es"], {"priceTabChat": "Chat", "priceTabImg": "🖼️ Imág
 Object.assign(I18N["es"], {"priceTabMaha": "Maha", "mahaPlanName": "Maha", "mahaPlansDesc": "Para llamadas de voz con Maha. Tus minutos mensuales son solo para Maha; cuando se acaban, las llamadas siguen con tus puntos.", "mahaMinPlain": "minutos de llamada", "mahaMinUnit": "min", "mahaCapNote": "Hasta 10 minutos por llamada", "mahaNoChat": "Sin chat, imágenes ni video", "mahaLeft": "Minutos de Maha restantes", "mahaCapEnd": "La llamada terminó en el límite de 10 minutos — vuelve a llamar para continuar", "mahaToPoints": "Minutos agotados — continúa con tus puntos"});
 /* v-browser-install: خطوات التثبيت لكلّ متصفّح */
 Object.assign(I18N["es"], {"install":"Instalar la app","installHowIOS":"Para instalar en iPhone o iPad:\n1) Abre este sitio en Safari\n2) Toca el botón Compartir (cuadro con una flecha hacia arriba)\n3) Elige \"Añadir a pantalla de inicio\" y luego \"Añadir\"","installHowIOSOther":"Para instalar en iPhone desde este navegador:\n1) Toca el botón Compartir (cuadro con una flecha hacia arriba) junto a la barra de direcciones\n2) Elige \"Añadir a pantalla de inicio\"\nSi no aparece la opción, abre este sitio en Safari.","installHowAndroid":"Para instalar en Android:\n1) Abre el menú del navegador (⋮)\n2) Elige \"Instalar aplicación\" o \"Añadir a pantalla de inicio\"\n3) Confirma la instalación","installHowDesktop":"Para instalar en el ordenador (Chrome o Edge):\nHaz clic en el icono de instalar (⊕ o pantalla pequeña) de la barra de direcciones, o abre el menú del navegador (⋮ o …) y elige \"Instalar\" o \"Aplicaciones → Instalar este sitio como aplicación\".","installHowMacSafari":"Para instalar en Mac desde Safari:\nAbre el menú \"Archivo\" arriba, elige \"Añadir al Dock\" y luego \"Añadir\".","installHowFirefox":"Firefox en el ordenador no puede instalar aplicaciones web.\nAbre este sitio en Chrome o Edge y pulsa \"Instalar la app\", o instálala desde tu teléfono."});
-Object.assign(I18N["es"], {"videoSceneWait":"⏳ Escena {i}/{n}: pausa entre videos — continúa automáticamente en {s} s.","videoFilmModeOnly":"🎬 «Película completa» solo funciona con el modo «Video IA» — cambia el modo o elige otra duración. No se cobró nada."}); // v-video-seq-cooldown + v-film-mode-gate
+Object.assign(I18N["es"], {"videoSceneWait":"⏳ Escena {i}/{n}: pausa entre videos — continúa automáticamente en {s} s.","videoFilmModeOnly":"🎬 «Película completa» solo funciona con los modos de IA (Alta calidad / Cinematográfico) — cambia el modo o elige otra duración. No se cobró nada."}); // v-video-seq-cooldown + v-film-mode-gate
 /* v-phone-link: ربط الهاتف والاسترجاع به عبر واتساب أو تيليجرام */
 Object.assign(I18N["es"], {"acctPhoneLabel": "Número de teléfono (para recuperar)", "phoneNotLinked": "No vinculado", "phoneViaWa": "WhatsApp", "phoneViaTg": "Telegram", "phoneWaiting": "Envía el mensaje preparado o comparte tu número, y luego vuelve aquí…", "phoneLinkedOk": "✓ Número vinculado", "phoneTaken": "Este número está vinculado a otra cuenta", "phoneNoUser": "No hay ninguna cuenta vinculada a este número", "phoneExpired": "El enlace caducó — inténtalo de nuevo", "phoneRecoverTitle": "O recupera tu cuenta con tu teléfono:", "phoneRecoverSent": "✓ Enviamos un enlace de nueva contraseña a tu chat allí"});
 /* v-skin-wood: ثيم «خشبي» في الخلفيّات */

@@ -18,10 +18,10 @@ function jpegSize(file) {
   throw new Error('no SOF ' + file);
 }
 
-test('صورة لكلّ قسم من التسعة بمقاس واحد ٣٢٠×٣٢٠', () => {
+test('صورة لكلّ قسم من السبعة بمقاس واحد ٣٢٠×٣٢٠ (v-video-modes-by-result: omni وhybrid خرجا من القائمة وصورتاهما تبقيان)', () => {
   const js = read('js/video.js');
   const tabs = JSON.parse(js.match(/var TABS=(\[[^\]]+\]);/)[1].replace(/'/g, '"'));
-  assert.strictEqual(tabs.length, 9);
+  assert.strictEqual(tabs.length, 7); // كانت ٩ قبل v-video-modes-by-result
   for (const t of tabs) {
     const f = path.join(root, 'assets/videos/tabs', t + '.jpg');
     assert.ok(fs.existsSync(f), t + '.jpg');
@@ -44,7 +44,7 @@ test('التبويب صورة ثمّ اسم مترجم، والصفّ لا يُ�
   assert.ok(!/overflow-x:auto/.test(desktop), 'لا تمرير أفقيّ على الحاسوب');
   assert.ok(css.includes('@media (max-width:640px){#videoMakerModal .vmk-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;min-height:max-content;flex-shrink:0;width:100%}}'));
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=458"') && h.includes('modules.css?v=692'));
+  assert.ok(h.includes('src="/js/video.js?v=461"') && h.includes('modules.css?v=692'));
 });
 
 /* v-vmk-tab-warm (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٠١): صور التبويبات فارغة ٢–٣ ثوانٍ عند الفتح — كانت loading='lazy' وتُنشأ عند الفتح فقط،
@@ -55,7 +55,10 @@ test('صور التبويبات لا تنتظر التحميل الكسول، و
   const js = read('js/video.js');
   const bt = js.slice(js.indexOf('  function buildTabs(){'), js.indexOf('  function setTab(v){'));
   assert.ok(!/im\.loading='lazy'/.test(bt), 'صورة التبويب كسولة');
-  assert.ok(/im\.loading='eager'; im\.fetchPriority='high';/.test(bt), 'تُطلب فور إنشاء التبويب وقبل صور الترندات');
+  /* v-tab-video: المربّع من tabMedia (فيديو القسم إن رُفع، وإلّا الصورة) — الصورة نفسها eager بأولويّة عالية */
+  assert.ok(/var im=tabMedia\(v,tabArt\(v\)\);/.test(bt), 'المربّع من tabMedia');
+  const tm = js.slice(js.indexOf('  function tabMedia('), js.indexOf('\n  }\n', js.indexOf('  function tabMedia(')) + 4);
+  assert.ok(/el\.loading='eager'; el\.fetchPriority='high';/.test(tm), 'تُطلب فور إنشاء التبويب وقبل صور الترندات');
   const src = (n) => { const a = js.indexOf('  function ' + n + '('); assert.ok(a > 0, n); return js.slice(a, js.indexOf('\n  }\n', a) + 4); };
   const got = [];
   const tabs = ['trend', 'canvas', 'runway', 'veo', 'actor', 'clean'];
@@ -65,4 +68,32 @@ test('صور التبويبات لا تنتظر التحميل الكسول، و
   ctx.warmTabs(); ctx.warmTabs();
   assert.deepStrictEqual(got, tabs.map((v) => ctx.TAB_ART[v] || '/assets/videos/tabs/' + v + '.jpg?v=2'), 'مرّة واحدة، وبالروابط نفسها');
   assert.match(js, /\['pointerenter','pointerdown','focus'\]\.forEach\(function\(ev\)\{ bvm\.addEventListener\(ev,warmTabs\); \}\);/);
+});
+
+/* v-tab-video (المالك ٢٨ أكتوبر: «الي اريده فيديو مصغر نفس المكان بجوده عاليه مش كانفا»): مربّع القسم فيديو قصير صامت يتكرّر
+   حين يُرفع media/samples/tab-<القسم>.mp4 (index.json)، وصورته غلافه؛ بلا ملفّ أو مع «تقليل الحركة» تبقى الصورة. */
+test('٤. مربّع القسم: فيديو صامت متكرّر بغلاف الصورة حين يُرفع، وإلّا الصورة؛ و«تعديل الفيديو» بالمربّع نفسه', () => {
+  const vm = require('node:vm');
+  const js = read('js/video.js');
+  const src = (n) => { const a = js.indexOf('  function ' + n + '('); assert.ok(a > 0, n); return js.slice(a, js.indexOf('\n  }\n', a) + 4); };
+  const mk = (tag) => ({ tagName: tag, attrs: {}, style: {}, setAttribute(k, v) { this.attrs[k] = v; }, play() { this.played = true; return Promise.resolve(); } });
+  const run = (videos, reduce) => {
+    const ctx = { VIDEOS: videos, document: { createElement: mk }, window: { matchMedia: () => ({ matches: !!reduce }) } };
+    vm.createContext(ctx);
+    vm.runInContext(src('tabVid') + '\n' + src('tabMedia'), ctx);
+    return ctx.tabMedia('veo', '/assets/videos/tabs/veo.jpg?v=2');
+  };
+  const v = run({ 'tab-veo': true }, false);
+  assert.equal(v.tagName, 'video');
+  assert.equal(v.src, '/media/samples/tab-veo.mp4');
+  assert.equal(v.poster, '/media/samples/tab-veo.jpg', 'غلافه لقطة من المقطع نفسه حتّى يبدأ');
+  assert.ok(v.muted && v.loop && v.autoplay && v.playsInline && v.attrs.playsinline === '' && v.attrs.muted === '', 'صامت متكرّر يعمل على الجوّال');
+  assert.equal(v.className, 'vmk-tab-img', 'مقاس المربّع وحوافه نفسها');
+  assert.ok(v.played);
+  const img = run({}, false);
+  assert.equal(img.tagName, 'img', 'بلا فيديو مرفوع: الصورة كما كانت');
+  assert.equal(img.src, '/assets/videos/tabs/veo.jpg?v=2');
+  assert.equal(run({ 'tab-veo': true }, true).tagName, 'img', '«تقليل الحركة»: الصورة وحدها');
+  assert.match(js, /if\(Object\.keys\(j\)\.some\(function\(k\)\{ return k\.indexOf\('tab-'\)===0; \}\)\) buildTabs\(\);/, 'المربّعات تُبنى ثانيةً بعد وصول القائمة');
+  assert.match(read('js/video-edit.js'), /window\.__vmkTabMedia \? window\.__vmkTabMedia\('edit', TAB_ART\)/, '«تعديل الفيديو» بالمربّع نفسه');
 });
