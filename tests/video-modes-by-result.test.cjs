@@ -36,7 +36,7 @@ const OPTS = [...CORE.matchAll(/<option value="(\w+)"( selected)? data-i18n="(vi
 test('١. القائمة: خمسة أوضاع بالنتيجة بهذا الترتيب، «سريع» الافتراضيّ، والقيم الداخليّة كما هي؛ Omni والدمج خارجها وكودهما باقٍ', () => {
   assert.deepEqual(OPTS.map((o) => o.v), ['minimax', 'runway', 'veo', 'actor', 'canvas']);
   assert.deepEqual(OPTS.filter((o) => o.sel).map((o) => o.v), ['minimax'], 'الافتراضيّ الجديد هو الاقتصاديّ (كان runway)');
-  assert.deepEqual(OPTS.map((o) => o.text), ['⚡ سريع بصوت', '🎬 جودة عالية', '🔊 سينمائيّ بصوت وكلام', '🗣️ ممثل يتكلم — لهجة إماراتية', '🎨 بدون ذكاء (مجّانيّ)']);
+  assert.deepEqual(OPTS.map((o) => o.text), ['⚡ فيديو سريع', '🎬 جودة عالية', '🎬 سينمائي', '🗣️ ممثل يتكلم — لهجة إماراتية', '🎨 بدون ذكاء (مجّانيّ)']);
   for (const o of OPTS) assert.doesNotMatch(o.text, PROVIDER, o.v + ': اسم مزوّد في القائمة');
   // Omni محفوظ لا محذوف: المسار والخادم وفرع العميل والترجمة — إرجاعه سطر <option> واحد
   assert.ok(!CORE.includes('value="omni"') && !CORE.includes('value="hybrid"'));
@@ -74,14 +74,14 @@ test('٢. الـ١٤ لغة: المفاتيح موجودة، videoModeHybrid ص�
 });
 
 test('٣. شريط الأقسام (js/video.js): ترتيب القائمة نفسه بلا omni/hybrid، وأسماء التبويبات من نصوص الخيارات كاملة', () => {
-  assert.ok(STUDIO.includes("var TABS=['trend','minimax','runway','veo','actor','canvas','clean'];"));
+  assert.ok(STUDIO.includes("var TABS=['trend','veo','minimax','runway','actor','canvas','clean'];")); // v-five-sections: سينمائي ثمّ فيديو سريع أوّل الأوضاع
   const ico = STUDIO.match(/var ICO=.*?;/)[0];
   const short = STUDIO.match(/function short\(t\)\{.*?\}/)[0];
   const tabLabel = extractBlock(STUDIO, 'function tabLabel(v){');
   const sel = { options: OPTS.map((o) => ({ value: o.v, textContent: o.text })) };
   const ctx = { id: (x) => (x === 'videoMakerMode' ? sel : null), L: (k) => k };
   vm.runInNewContext(ico + '\n' + short + '\n' + tabLabel + '\nthis.tabLabel = tabLabel;', ctx);
-  assert.deepEqual(['minimax', 'runway', 'veo', 'actor', 'canvas'].map(ctx.tabLabel), ['سريع بصوت', 'جودة عالية', 'سينمائيّ بصوت وكلام', 'ممثل يتكلم', 'بدون ذكاء']);
+  assert.deepEqual(['minimax', 'runway', 'veo', 'actor', 'canvas'].map(ctx.tabLabel), ['فيديو سريع', 'جودة عالية', 'سينمائي', 'ممثل يتكلم', 'بدون ذكاء']); // v-five-sections: الأسماء الجديدة
   // مربّع «مقدّمة وخاتمة بتوقيعك» يُطوى مع التوقيع في «خيارات إضافية»
   assert.ok(STUDIO.includes("id('videoMakerWrapRow'),id('videoMakerSignatureRow')"));
 });

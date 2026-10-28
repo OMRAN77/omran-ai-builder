@@ -461,8 +461,8 @@
       }
       /* v-vmk-chat-tab (تدقيق ١٨–١٩ أكتوبر): نصّ أو صورة من المحادثة مكانهما قسم الوضع (الوصف وصورة البطل) — كان يُفتح على «الترندات» وهما
          مخفيّان. video.js يقرأ العلامة عند الفتح مرّة ويمحوها؛ بلا نصّ ولا صورة (ترندات المحادثة، مها) يبقى على الترندات */
-      /* v-video-durations: الافتراضيّ في القائمة «سريع» (للمالك وحده) — غير المالك كان يُفتح على الترندات والوصف مخفيّ؛ قسمه «جودة عالية» */
-      if((prompt && String(prompt).trim()) || heroDataUrl){ if(modal.style.display !== 'flex'){ const om = (modeEl && modeEl.value) || 'runway'; modal.dataset.vmkTab = (!isOwnerAccount() && { minimax:1, omni:1, hybrid:1, actor:1 }[om]) ? 'runway' : om; } }
+      /* v-video-durations: وضع للمالك وحده كان يفتح غير المالك على الترندات والوصف مخفيّ — قسمه الافتراضيّ «فيديو سريع» (v-five-sections) */
+      if((prompt && String(prompt).trim()) || heroDataUrl){ if(modal.style.display !== 'flex'){ const om = (modeEl && modeEl.value) || 'minimax'; modal.dataset.vmkTab = (!isOwnerAccount() && { runway:1, canvas:1, omni:1, hybrid:1, actor:1 }[om]) ? 'minimax' : om; } }
       modal.style.display = 'flex';
       try{ closeHeaderMenu(); }catch(e){ /* guard-ok — closeHeaderMenu اختيارية */ }
       const owner = isOwnerAccount();

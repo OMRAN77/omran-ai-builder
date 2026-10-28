@@ -103,9 +103,9 @@
            وإرجاعه سطر option واحد بقيمة omni ومفتاح videoModeOmni. hybrid صار مربّع «مقدّمة وخاتمة بتوقيعك» تحت.
            شريط الأقسام (js/video.js) يأخذ اسم القسم من نصّ الخيار قبل أوّل « — »، فلا شرطة في الأسماء القصيرة. -->
       <select id="videoMakerMode" style="width:100%;">
-        <option value="minimax" selected data-i18n="videoModeMinimax">⚡ سريع بصوت</option>
+        <option value="minimax" selected data-i18n="videoModeMinimax">⚡ فيديو سريع</option>
         <option value="runway" data-i18n="videoModeRunwayOnly">🎬 جودة عالية</option>
-        <option value="veo" data-i18n="videoModeVeo">🔊 سينمائيّ بصوت وكلام</option>
+        <option value="veo" data-i18n="videoModeVeo">🎬 سينمائي</option>
         <option value="actor" data-i18n="videoModeActor">🗣️ ممثل يتكلم — لهجة إماراتية</option>
         <option value="canvas" data-i18n="videoModeCanvasOnly">🎨 بدون ذكاء (مجّانيّ)</option>
       </select>

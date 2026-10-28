@@ -475,7 +475,7 @@ test('x-runtime-ui-2: بند قائمة + وتبويب صانع الفيديو �
   assert.equal(d.title(), S.ur.menu);
   assert.equal(d.tab(), S.ur.tab);
   d.setLang('en');
-  assert.deepEqual([d.label(), d.tab()], ['Text & sound on video', 'Text & sound']);
+  assert.deepEqual([d.label(), d.tab()], ['Text & sound on video', 'Edit video']); // v-five-sections: اسم التبويب «تعديل الفيديو»
 });
 
 // ─────────────────────────────── cli-video-6 ───────────────────────────────

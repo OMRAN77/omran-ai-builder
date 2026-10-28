@@ -84,7 +84,7 @@ test('عارض مستقلّ: نتيجة المولّد لا تُمسّ، ولا 
 });
 
 test('القسم: تبويب «تحسين فيديو» لا يغيّر الوضع ولا يُظهر زرّ الإنشاء المدفوع، والمسار المجّانيّ بلا خادم ولا مزوّد', () => {
-  assert.ok(js.includes("var TABS=['trend','minimax','runway','veo','actor','canvas','clean'];"));
+  assert.ok(js.includes("var TABS=['trend','veo','minimax','runway','actor','canvas','clean'];")); // v-five-sections
   assert.ok(js.includes("if(v!=='trend'&&v!=='clean'&&sel&&sel.value!==v)"), 'لا يضبط الـselect');
   const css = read('css/modules.css');
   assert.ok(css.includes('.vmk-studio.vmk-tab-clean .vmk-main>:not(#vmkClean){display:none!important}'), 'كلّ ما عدا القسم مخفيّ، ومنه زرّ الإنشاء');

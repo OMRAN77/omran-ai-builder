@@ -112,11 +112,11 @@ test('٦. فيلم أو «٢٠ ثانية» يتوقّف: المشاهد الم�
   assert.equal(Object.keys(tr.ui.partial).length, 14, 'النصّ بالـ١٤ لغة');
 });
 
-test('٧. الفتح من المحادثة لغير المالك على «جودة عالية» لا الترندات (الافتراضيّ «سريع» للمالك وحده)، و«سينمائي» للجميع', () => {
-  assert.match(V, /modal\.dataset\.vmkTab = \(!isOwnerAccount\(\) && \{ minimax:1, omni:1, hybrid:1, actor:1 \}\[om\]\) \? 'runway' : om;/);
+test('٧. الفتح من المحادثة لغير المالك على قسم يراه («فيديو سريع» — v-five-sections) لا الترندات، و«سينمائي» للجميع', () => {
+  assert.match(V, /modal\.dataset\.vmkTab = \(!isOwnerAccount\(\) && \{ runway:1, canvas:1, omni:1, hybrid:1, actor:1 \}\[om\]\) \? 'minimax' : om;/);
   assert.match(V, /if\(creationMode === 'actor' && !isOwnerAccount\(\)\)\{/);
   assert.doesNotMatch(V, /if\(creationMode === 'veo' \|\| creationMode === 'actor'\)\{\n\s+try\{\n\s+if\(!isOwnerAccount\(\)\)\{/, '«سينمائي» لم يعد للمالك وحده');
-  assert.match(VJS, /var OWNER_MODES=\{minimax:1,omni:1,hybrid:1,actor:1\};/);
+  assert.match(VJS, /var OWNER_MODES=\{runway:1,canvas:1,omni:1,hybrid:1,actor:1\};/);
 });
 
 test('٨. لا اسم مزوّد في نافذة الوضع الطويل للمالك، والحزمة مبنيّة', () => {

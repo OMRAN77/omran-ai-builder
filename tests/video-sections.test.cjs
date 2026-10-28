@@ -15,7 +15,7 @@ const KEYS = ['vcTutorial', 'vcToExtra', 'vcMore', 'videoTabTrends', 'vcTitle', 
 const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'];
 
 test('الأقسام: الترندات أوّلًا ثمّ كلّ وضع، والتبويب يبدّل الوضع ويخفي الاستوديو في الترندات', () => {
-  assert.ok(js.includes("var TABS=['trend','minimax','runway','veo','actor','canvas','clean']"));
+  assert.ok(js.includes("var TABS=['trend','veo','minimax','runway','actor','canvas','clean']")); // v-five-sections
   /* v-vmk-chat-tab: الفتح على الترندات كلّ مرّة، إلّا فتحًا من المحادثة بنصّ أو صورة (علامة data-vmk-tab تُقرأ مرّة) — tests/vmk-stale-status ٨ */
   assert.ok(js.includes("var tab='trend'") && js.includes("if(open&&!wasOpen){ tab=(want&&tabsFor().indexOf(want)>=0)?want:'trend'; }"));
   assert.ok(js.includes("sel.value=v; sel.dispatchEvent(new Event('change'))"));

@@ -253,7 +253,7 @@
   /* ───────── النصوص ───────── */
   var S = {
     ar: {
-      title: 'كتابة وصوت على الفيديو', menu: 'كتابة وصوت على فيديو', tab: 'كتابة وصوت', close: 'إغلاق',
+      title: 'كتابة وصوت على الفيديو', menu: 'كتابة وصوت على فيديو', tab: 'تعديل الفيديو', close: 'إغلاق',
       pick: 'اختر فيديو من جهازك', pickHint: 'حتى {n} ميغا. التعديل يصير داخل جهازك.', change: 'غيّر الفيديو',
       longNote: 'الفيديو أطول من ٣ دقائق — التعديل على أول ٣ دقائق.', tooBig: 'الفيديو كبير — الحد {n} ميغا.',
       notVideo: 'هذا الملف مو فيديو.', texts: 'الكتابة', addText: 'أضف كتابة', autoCap: 'اكتب الكلام تلقائيًا',
@@ -278,7 +278,7 @@
       needAudio: 'اختر ملف الصوت أو جهّز الصوت أولًا.', sec: 'ث'
     },
     en: {
-      title: 'Text & sound on video', menu: 'Text & sound on video', tab: 'Text & sound', close: 'Close',
+      title: 'Text & sound on video', menu: 'Text & sound on video', tab: 'Edit video', close: 'Close',
       pick: 'Choose a video', pickHint: 'Up to {n} MB. Editing happens on your device.', change: 'Change video',
       longNote: 'Video is longer than 3 minutes — editing the first 3 minutes.', tooBig: 'Video too large — limit {n} MB.',
       notVideo: 'This file is not a video.', texts: 'Text', addText: 'Add text', autoCap: 'Auto-write the speech',
@@ -306,7 +306,7 @@
        بالإنجليزيّة (والأرديّة إنجليزيّة داخل إطار RTL)، ومربّع PICK وحده مترجم. الآن الـ١٤ لغة هنا كـPICK (تُقرأ متزامنة بلا انتظار
        ملفّ اللغة الكسول)، واختبار يثبت أنّ كلّ مفتاح في كلّ لغة بالعناصر النائبة نفسها. */
     fr: {
-      title: 'Texte et son sur la vidéo', menu: 'Texte et son sur la vidéo', tab: 'Texte et son', close: 'Fermer',
+      title: 'Texte et son sur la vidéo', menu: 'Texte et son sur la vidéo', tab: 'Montage vidéo', close: 'Fermer',
       pick: 'Choisir une vidéo', pickHint: 'Jusqu’à {n} Mo. La modification se fait sur votre appareil.', change: 'Changer de vidéo',
       longNote: 'La vidéo dépasse 3 minutes — seules les 3 premières minutes sont modifiées.', tooBig: 'Vidéo trop volumineuse — limite {n} Mo.',
       notVideo: 'Ce fichier n’est pas une vidéo.', texts: 'Texte', addText: 'Ajouter du texte', autoCap: 'Écrire la parole automatiquement',
@@ -331,7 +331,7 @@
       needAudio: 'Choisissez un fichier audio ou générez d’abord la voix.', sec: 's'
     },
     es: {
-      title: 'Texto y sonido en el vídeo', menu: 'Texto y sonido en el vídeo', tab: 'Texto y sonido', close: 'Cerrar',
+      title: 'Texto y sonido en el vídeo', menu: 'Texto y sonido en el vídeo', tab: 'Editar vídeo', close: 'Cerrar',
       pick: 'Elige un vídeo', pickHint: 'Hasta {n} MB. La edición se hace en tu dispositivo.', change: 'Cambiar vídeo',
       longNote: 'El vídeo dura más de 3 minutos — se editan los 3 primeros minutos.', tooBig: 'Vídeo demasiado grande — límite {n} MB.',
       notVideo: 'Este archivo no es un vídeo.', texts: 'Texto', addText: 'Añadir texto', autoCap: 'Escribir el habla automáticamente',
@@ -356,7 +356,7 @@
       needAudio: 'Elige un archivo de audio o crea la voz primero.', sec: 's'
     },
     tr: {
-      title: 'Videoya yazı ve ses', menu: 'Videoya yazı ve ses', tab: 'Yazı ve ses', close: 'Kapat',
+      title: 'Videoya yazı ve ses', menu: 'Videoya yazı ve ses', tab: 'Video düzenle', close: 'Kapat',
       pick: 'Bir video seç', pickHint: 'En fazla {n} MB. Düzenleme cihazında yapılır.', change: 'Videoyu değiştir',
       longNote: 'Video 3 dakikadan uzun — ilk 3 dakika düzenleniyor.', tooBig: 'Video çok büyük — sınır {n} MB.',
       notVideo: 'Bu dosya bir video değil.', texts: 'Yazı', addText: 'Yazı ekle', autoCap: 'Konuşmayı otomatik yaz',
@@ -381,7 +381,7 @@
       needAudio: 'Önce bir ses dosyası seç veya sesi hazırla.', sec: 'sn'
     },
     ru: {
-      title: 'Текст и звук на видео', menu: 'Текст и звук на видео', tab: 'Текст и звук', close: 'Закрыть',
+      title: 'Текст и звук на видео', menu: 'Текст и звук на видео', tab: 'Монтаж видео', close: 'Закрыть',
       pick: 'Выберите видео', pickHint: 'До {n} МБ. Редактирование идёт на вашем устройстве.', change: 'Сменить видео',
       longNote: 'Видео длиннее 3 минут — редактируются первые 3 минуты.', tooBig: 'Видео слишком большое — предел {n} МБ.',
       notVideo: 'Этот файл не является видео.', texts: 'Текст', addText: 'Добавить текст', autoCap: 'Записать речь автоматически',
@@ -406,7 +406,7 @@
       needAudio: 'Сначала выберите аудиофайл или создайте озвучку.', sec: 'с'
     },
     hi: {
-      title: 'वीडियो पर टेक्स्ट और आवाज़', menu: 'वीडियो पर टेक्स्ट और आवाज़', tab: 'टेक्स्ट और आवाज़', close: 'बंद करें',
+      title: 'वीडियो पर टेक्स्ट और आवाज़', menu: 'वीडियो पर टेक्स्ट और आवाज़', tab: 'वीडियो एडिट', close: 'बंद करें',
       pick: 'वीडियो चुनें', pickHint: '{n} MB तक। एडिटिंग आपके डिवाइस पर ही होती है।', change: 'वीडियो बदलें',
       longNote: 'वीडियो 3 मिनट से लंबा है — पहले 3 मिनट एडिट होंगे।', tooBig: 'वीडियो बहुत बड़ा है — सीमा {n} MB।',
       notVideo: 'यह फ़ाइल वीडियो नहीं है।', texts: 'टेक्स्ट', addText: 'टेक्स्ट जोड़ें', autoCap: 'बोली अपने-आप लिखें',
@@ -431,7 +431,7 @@
       needAudio: 'पहले ऑडियो फ़ाइल चुनें या आवाज़ तैयार करें।', sec: 'सेकंड'
     },
     ur: {
-      title: 'ویڈیو پر تحریر اور آواز', menu: 'ویڈیو پر تحریر اور آواز', tab: 'تحریر اور آواز', close: 'بند کریں',
+      title: 'ویڈیو پر تحریر اور آواز', menu: 'ویڈیو پر تحریر اور آواز', tab: 'ویڈیو ایڈٹ', close: 'بند کریں',
       pick: 'ویڈیو منتخب کریں', pickHint: '{n} MB تک۔ ترمیم آپ کے آلے پر ہی ہوتی ہے۔', change: 'ویڈیو بدلیں',
       longNote: 'ویڈیو 3 منٹ سے لمبی ہے — پہلے 3 منٹ میں ترمیم ہوگی۔', tooBig: 'ویڈیو بہت بڑی ہے — حد {n} MB۔',
       notVideo: 'یہ فائل ویڈیو نہیں ہے۔', texts: 'تحریر', addText: 'تحریر شامل کریں', autoCap: 'بات خودکار طور پر لکھیں',
@@ -456,7 +456,7 @@
       needAudio: 'پہلے آڈیو فائل منتخب کریں یا آواز تیار کریں۔', sec: 'سیکنڈ'
     },
     bn: {
-      title: 'ভিডিওতে লেখা ও শব্দ', menu: 'ভিডিওতে লেখা ও শব্দ', tab: 'লেখা ও শব্দ', close: 'বন্ধ করুন',
+      title: 'ভিডিওতে লেখা ও শব্দ', menu: 'ভিডিওতে লেখা ও শব্দ', tab: 'ভিডিও এডিট', close: 'বন্ধ করুন',
       pick: 'একটি ভিডিও বেছে নিন', pickHint: '{n} MB পর্যন্ত। এডিটিং আপনার ডিভাইসেই হয়।', change: 'ভিডিও বদলান',
       longNote: 'ভিডিওটি 3 মিনিটের বেশি — প্রথম 3 মিনিট এডিট হবে।', tooBig: 'ভিডিও খুব বড় — সীমা {n} MB।',
       notVideo: 'এই ফাইলটি ভিডিও নয়।', texts: 'লেখা', addText: 'লেখা যোগ করুন', autoCap: 'কথা স্বয়ংক্রিয়ভাবে লিখুন',
@@ -481,7 +481,7 @@
       needAudio: 'আগে অডিও ফাইল বেছে নিন বা কণ্ঠ তৈরি করুন।', sec: 'সে.'
     },
     ne: {
-      title: 'भिडियोमा लेख र आवाज', menu: 'भिडियोमा लेख र आवाज', tab: 'लेख र आवाज', close: 'बन्द गर्नुहोस्',
+      title: 'भिडियोमा लेख र आवाज', menu: 'भिडियोमा लेख र आवाज', tab: 'भिडियो सम्पादन', close: 'बन्द गर्नुहोस्',
       pick: 'भिडियो छान्नुहोस्', pickHint: '{n} MB सम्म। सम्पादन तपाईंकै डिभाइसमा हुन्छ।', change: 'भिडियो बदल्नुहोस्',
       longNote: 'भिडियो 3 मिनेटभन्दा लामो छ — पहिलो 3 मिनेट सम्पादन हुन्छ।', tooBig: 'भिडियो धेरै ठूलो छ — सीमा {n} MB।',
       notVideo: 'यो फाइल भिडियो होइन।', texts: 'लेख', addText: 'लेख थप्नुहोस्', autoCap: 'बोली आफैं लेख्नुहोस्',
@@ -506,7 +506,7 @@
       needAudio: 'पहिले अडियो फाइल छान्नुहोस् वा आवाज तयार गर्नुहोस्।', sec: 'से.'
     },
     fil: {
-      title: 'Teksto at tunog sa video', menu: 'Teksto at tunog sa video', tab: 'Teksto at tunog', close: 'Isara',
+      title: 'Teksto at tunog sa video', menu: 'Teksto at tunog sa video', tab: 'I-edit ang video', close: 'Isara',
       pick: 'Pumili ng video', pickHint: 'Hanggang {n} MB. Sa device mo mismo ginagawa ang pag-edit.', change: 'Palitan ang video',
       longNote: 'Lampas 3 minuto ang video — ang unang 3 minuto ang ie-edit.', tooBig: 'Masyadong malaki ang video — limit {n} MB.',
       notVideo: 'Hindi video ang file na ito.', texts: 'Teksto', addText: 'Magdagdag ng teksto', autoCap: 'Awtomatikong isulat ang salita',
@@ -531,7 +531,7 @@
       needAudio: 'Pumili muna ng audio file o gawin ang boses.', sec: 's'
     },
     id: {
-      title: 'Teks & suara di video', menu: 'Teks & suara di video', tab: 'Teks & suara', close: 'Tutup',
+      title: 'Teks & suara di video', menu: 'Teks & suara di video', tab: 'Sunting video', close: 'Tutup',
       pick: 'Pilih video', pickHint: 'Hingga {n} MB. Pengeditan berlangsung di perangkatmu.', change: 'Ganti video',
       longNote: 'Video lebih dari 3 menit — yang diedit 3 menit pertama.', tooBig: 'Video terlalu besar — batas {n} MB.',
       notVideo: 'File ini bukan video.', texts: 'Teks', addText: 'Tambah teks', autoCap: 'Tulis ucapan otomatis',
@@ -556,7 +556,7 @@
       needAudio: 'Pilih file audio atau buat suaranya dulu.', sec: 'd'
     },
     zh: {
-      title: '在视频上加文字和声音', menu: '在视频上加文字和声音', tab: '文字和声音', close: '关闭',
+      title: '在视频上加文字和声音', menu: '在视频上加文字和声音', tab: '编辑视频', close: '关闭',
       pick: '选择视频', pickHint: '最大 {n} MB。编辑在你的设备上完成。', change: '更换视频',
       longNote: '视频超过 3 分钟——只编辑前 3 分钟。', tooBig: '视频太大——上限 {n} MB。',
       notVideo: '这个文件不是视频。', texts: '文字', addText: '添加文字', autoCap: '自动写出语音内容',
@@ -581,7 +581,7 @@
       needAudio: '请先选择音频文件或生成语音。', sec: '秒'
     },
     ml: {
-      title: 'വീഡിയോയിൽ എഴുത്തും ശബ്ദവും', menu: 'വീഡിയോയിൽ എഴുത്തും ശബ്ദവും', tab: 'എഴുത്തും ശബ്ദവും', close: 'അടയ്ക്കുക',
+      title: 'വീഡിയോയിൽ എഴുത്തും ശബ്ദവും', menu: 'വീഡിയോയിൽ എഴുത്തും ശബ്ദവും', tab: 'വീഡിയോ എഡിറ്റ്', close: 'അടയ്ക്കുക',
       pick: 'ഒരു വീഡിയോ തിരഞ്ഞെടുക്കുക', pickHint: '{n} MB വരെ. എഡിറ്റിംഗ് നിങ്ങളുടെ ഉപകരണത്തിൽ തന്നെ നടക്കുന്നു.', change: 'വീഡിയോ മാറ്റുക',
       longNote: 'വീഡിയോ 3 മിനിറ്റിൽ കൂടുതലാണ് — ആദ്യ 3 മിനിറ്റ് എഡിറ്റ് ചെയ്യുന്നു.', tooBig: 'വീഡിയോ വളരെ വലുതാണ് — പരിധി {n} MB.',
       notVideo: 'ഈ ഫയൽ ഒരു വീഡിയോ അല്ല.', texts: 'എഴുത്ത്', addText: 'എഴുത്ത് ചേർക്കുക', autoCap: 'സംസാരം സ്വയം എഴുതുക',
@@ -1511,7 +1511,9 @@
     if(!tb || tb.querySelector('#vedTabBtn')) return;
     var b = document.createElement('button');
     b.type = 'button'; b.className = 'vmk-tab'; b.id = 'vedTabBtn'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', 'false');
-    var im = document.createElement('img'); im.className = 'vmk-tab-img'; im.alt = ''; im.src = TAB_ART;
+    /* v-tab-video: فيديو القسم المصغّر إن رُفع (tab-edit)، وإلّا الصورة كما كانت */
+    var im = window.__vmkTabMedia ? window.__vmkTabMedia('edit', TAB_ART) : document.createElement('img');
+    if(!window.__vmkTabMedia){ im.className = 'vmk-tab-img'; im.alt = ''; im.src = TAB_ART; }
     var lb = document.createElement('span'); lb.className = 'vmk-tab-lbl'; lb.textContent = T_('tab');
     b.appendChild(im); b.appendChild(lb);
     b.addEventListener('click', function(e){ e.stopPropagation(); open(); });
