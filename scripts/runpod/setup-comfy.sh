@@ -3,7 +3,7 @@
 #   FastH3 (صورة ← فيديو بصوت) وWan 2.2 14B (صورة ← فيديو بلا صوت).
 # الملفّات منقولة حرفيًّا من قوالب ComfyUI الرسميّة (comfyui-workflow-templates-json 0.1.124:
 #   video_fastvideo_fasth3_i2v.json و video_wan2_2_14B_i2v.json) — لا مفتاح ولا حساب.
-# التنزيل بـhf_hub_download (يستأنف ويعيد المحاولة ويعيد طلب الرابط الموقَّع) لا wget المتوازي: أوّل تجربة
+# التنزيل بـhf_hub_download عبر HTTP (يستأنف ويعيد المحاولة ويعيد طلب الرابط الموقَّع) لا wget المتوازي: أوّل تجربة
 #   سقط فيها ٣ ملفّات كبيرة من ٥ (روابط CDN الموقَّعة لا تُستأنف بـwget). يُعاد تشغيله بأمان: ما اكتمل حجمه يُتخطّى.
 # الاستعمال من طرفيّة Jupyter في الجهاز:
 #   curl -fsSL https://raw.githubusercontent.com/OMRAN77/omran-ai-builder/claude/video-modes-h3-d8d435/scripts/runpod/setup-comfy.sh | bash
@@ -15,7 +15,11 @@ cd ComfyUI
 df -h "$W" | tail -1
 echo "▶ تنصيب ComfyUI…"
 python3 -m pip install -q -r requirements.txt
-python3 -m pip install -q "huggingface_hub>=0.34,<1.0" hf_xet
+# transformers 5.x في ComfyUI يطلب huggingface-hub ‏>=1.31,<3.0 — تثبيت ‎<1.0 كسره في التجربة الثانية
+python3 -m pip install -q "huggingface_hub>=1.31,<3.0"
+# بروتوكول xet نزل إلى ٤٣٤ ك.ب/ث (عشر ساعات للملفّ) بينما HTTP العاديّ بلغ ~٥ ج.ب/دقيقة — HTTP مع الاستئناف.
+# إن بقي بطيئًا فالحدّ على التنزيل المجهول: رمز قراءة مجّانيّ من Hugging Face يُمرَّر هكذا: HF_TOKEN=hf_… قبل bash
+export HF_HUB_DISABLE_XET=1
 
 echo "▶ تنزيل الموديلات واحدًا واحدًا (يستأنف ويتخطّى المكتمل)…"
 python3 - <<'PY'
