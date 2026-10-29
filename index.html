@@ -2118,8 +2118,8 @@ $('#acctUsernameSaveBtn').onclick = async () => {
 };
 $('#acctPasswordSaveBtn').onclick = async () => {
   const cur = $('#acctCurrentPassword').value, nw = $('#acctNewPassword').value; const msg = $('#acctPasswordMsg');
-  if(!cur || !nw || nw.length < 4){ msg.textContent = 'كلمة مرور قصيرة'; msg.style.color = 'var(--red)'; return; }
-  try { const res = await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'changePassword', token:authGet('aiapp_auth_token'), currentPassword:cur, newPassword:nw})}); const data = await res.json(); if(!res.ok||data.error){ msg.textContent = data.error||'خطأ'; msg.style.color = 'var(--red)'; return; } $('#acctCurrentPassword').value = ''; $('#acctNewPassword').value = ''; msg.textContent = '✓ تم الحفظ'; msg.style.color = 'var(--green)'; } catch(e){ msg.textContent = 'خطأ'; msg.style.color = 'var(--red)'; }
+  if(!cur || !nw || nw.length < 8){ msg.textContent = 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل'; msg.style.color = 'var(--red)'; return; }
+  try { const res = await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'changePassword', token:authGet('aiapp_auth_token'), currentPassword:cur, newPassword:nw})}); const data = await res.json(); if(!res.ok||data.error){ msg.textContent = data.error||'خطأ'; msg.style.color = 'var(--red)'; return; } if(data.token) authSet('aiapp_auth_token', data.token); $('#acctCurrentPassword').value = ''; $('#acctNewPassword').value = ''; msg.textContent = '✓ تم الحفظ'; msg.style.color = 'var(--green)'; } catch(e){ msg.textContent = 'خطأ'; msg.style.color = 'var(--red)'; }
 };
 
 function openDialogSafe(d){ if(d.hasAttribute('open')) return; if(typeof d.showModal === 'function'){ try { d.showModal(); return; } catch(e){} } d.setAttribute('open',''); }

@@ -8,6 +8,8 @@ const crypto = require('crypto');
 const { deriveKey } = require('./_secrets');
 
 const BLOB_BASE = 'https://blob.vercel-storage.com';
+// Base backoff between read retries; tests lower it.
+const config = { retryDelayMs: 300 };
 
 function publicBase() {
   return 'https://' + (process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu') + '.public.blob.vercel-storage.com/';
@@ -53,7 +55,7 @@ async function readPublicJson(path, attempts = 1) {
     } catch (e) {
       // network hiccup: treat like a miss and retry
     }
-    if (i < attempts - 1) await sleep(300 * (i + 1));
+    if (i < attempts - 1) await sleep(config.retryDelayMs * (i + 1));
   }
   return null;
 }
@@ -83,4 +85,4 @@ async function writeSecret(path, obj) {
   await writePublicJson(path, encrypt(obj, path));
 }
 
-module.exports = { secretPath, readSecret, writeSecret, readPublicJson, writePublicJson };
+module.exports = { secretPath, readSecret, writeSecret, readPublicJson, writePublicJson, config };
