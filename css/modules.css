@@ -797,10 +797,12 @@ html[data-mode="light"] #videoMakerModal .vmk-cl-drop:focus-within{outline-color
 #videoMakerModal .vmk-dir-head b{display:block;font-size:17px;color:var(--text,#eceef4)}
 #videoMakerModal .vmk-dir-head p{margin:6px 0 0;font-size:12.5px;line-height:1.7;color:var(--muted,#9a9a9e)}
 #videoMakerModal #vdReq{width:100%;resize:vertical;min-height:72px;font:inherit}
-#videoMakerModal .vmk-dir-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#videoMakerModal .vmk-dir-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+#videoMakerModal .vmk-dir-row .vmk-dir-kind{order:-1} /* v-director-story: «النوع» أوّل الصفّ بصريًّا وآخره في DOM (فهارس الحقول كما هي) */
 #videoMakerModal .vmk-dir-row label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted,#9a9a9e)}
 #videoMakerModal .vmk-dir-row select{width:100%;font:inherit}
 #videoMakerModal .vmk-dir-ref{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted,#9a9a9e);cursor:pointer}
+#videoMakerModal .vmk-dir-ref[hidden]{display:none} /* v-director-story: القصّة بلا صورة مرجع — display:flex كان يغلب hidden */
 #videoMakerModal .vmk-dir-ref input{max-width:220px;font:inherit;font-size:12px}
 #videoMakerModal .vmk-dir-ref img{width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid rgba(232,194,122,.5)}
 #videoMakerModal #vdGo{align-self:flex-start;font:inherit;font-weight:800;font-size:15px;padding:12px 26px;border-radius:14px;border:0;cursor:pointer;color:#1a1408;background:linear-gradient(135deg,#f6dca2,#c9964a);box-shadow:0 14px 34px -14px rgba(232,194,122,.8)}

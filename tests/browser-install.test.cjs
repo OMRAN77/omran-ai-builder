@@ -67,7 +67,7 @@ test('خطوات التثبيت في ١٤ لغة بلا اسم مزوّد، وو
       assert.doesNotMatch(d[k], PROVIDERS, k + ' في ' + lg);
     }
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=777'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=778'"));
 });
 
 function runQ(href) {

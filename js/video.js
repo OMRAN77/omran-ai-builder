@@ -445,7 +445,7 @@
     var box=document.createElement('div'); box.id='vmkDirector'; box.className='vmk-dir';
     box.innerHTML='<div class="vmk-dir-head"><b></b><p></p></div>'
       +'<textarea id="vdReq" rows="3" maxlength="600"></textarea>'
-      +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label><label><span></span><select id="vdVoice"><option value="on"></option><option value="off"></option></select></label></div>'
+      +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label><label><span></span><select id="vdVoice"><option value="on"></option><option value="off"></option></select></label><label class="vmk-dir-kind"><span></span><select id="vdKind"><option value="app"></option><option value="story"></option></select></label></div>'
       +'<label class="vmk-dir-ref"><input type="file" accept="image/*" id="vdRef"><img id="vdRefImg" alt="" hidden><span></span></label>'
       +'<button type="button" id="vdGo"></button>'
       +'<div class="vmk-dir-stage" id="vdStage" hidden><div class="vmk-dir-stage-bg"></div><img id="vdStageImg" alt=""><div class="vmk-dir-stage-reel"></div>'
@@ -461,17 +461,22 @@
     box.querySelector('#vdGo').addEventListener('click',drRun);
     box.querySelector('#vdReq').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); drRun(); } });
     box.querySelector('#vdVoice').addEventListener('change',syncDirector); /* بدون صوت: اختيار المتحدّث بلا معنى فيُعطَّل */
+    box.querySelector('#vdKind').addEventListener('change',syncDirector); /* v-director-story: القصّة حدّها ٣٠٠٠ حرف وبلا مدّة ولا صورة مرجع */
   }
+  function drStory(){ return ((id('vdKind')||{}).value==='story'); }
   function syncDirector(){
     var box=id('vmkDirector'); if(!box) return;
-    box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=L('vdSub');
-    box.querySelector('#vdReq').placeholder=L('vdPh');
+    box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=drStory()?L('vdSubStory'):L('vdSub'); /* v-director-story: وصف القصّة لا «يصوّر شاشات التطبيق» */
+    var story=drStory(), rq=box.querySelector('#vdReq');
+    rq.placeholder=story?L('vdPhStory'):L('vdPh'); rq.maxLength=story?3000:600; /* v-director-story: ٦٠٠ قصّت قصّة المالك (١٢٣٠ حرفًا) */
     var labs=box.querySelectorAll('.vmk-dir-row label>span'); labs[0].textContent=L('vdLang'); labs[1].textContent=L('vdSpeaker'); labs[2].textContent=L('vdMinutes'); labs[3].textContent=L('vdVoiceLabel');
     var vo=box.querySelector('#vdVoice'); vo.options[0].textContent=L('vdVoiceOn'); vo.options[1].textContent=L('vdVoiceOff'); box.querySelector('#vdSpeaker').disabled=(vo.value==='off');
     var sp=box.querySelector('#vdSpeaker'); sp.options[0].textContent=L('vdMaha')||'مها'; sp.options[1].textContent=L('vdAbdullah')||'عبدالله';
     box.querySelector('.vmk-dir-ref span').textContent=L('vdRef');
+    var kd=box.querySelector('#vdKind'); box.querySelector('.vmk-dir-kind>span').textContent=L('vdKind'); kd.options[0].textContent=L('vdKindApp'); kd.options[1].textContent=L('vdKindStory');
+    box.querySelector('#vdMin').disabled=story; box.querySelector('.vmk-dir-ref').hidden=story; /* القصّة: مدّتها من طولها، ونماذج الأنماط لا تدخلها */
     box.querySelector('#vdGo').textContent=L('vdGo'); box.querySelector('#vdGo').disabled=DR.busy;
-    var names={plan:'vdStepPlan',shots:'vdStepShots',samples:'vdStepSamples',voice:'vdStepVoice',join:'vdStepJoin'};
+    var names={plan:'vdStepPlan',shots:story?'vdStepFrames':'vdStepShots',samples:story?'vdStepDraw':'vdStepSamples',voice:'vdStepVoice',join:'vdStepJoin'};
     [].forEach.call(box.querySelectorAll('#vdSteps li'),function(li){ li.querySelector('b').textContent=L(names[li.dataset.step]); });
     box.querySelector('#vdDl').textContent=L('vdDownload');
   }
@@ -590,13 +595,44 @@
       img.src='data:'+(mime||'image/png')+';base64,'+b64;
     });
   }
+  /* v-director-story: مشهد القصّة لوحة كاملة 1920×1080 (الصورة 16:9 تُقصّ قصًّا لا تُمطّ)، وسطر الراوي ترجمةً على تدرّج داكن أسفلها —
+     لا خلفيّة مموّهة ولا كبسولة ذهبيّة (شكل «كانفا» الذي رفضه المالك). النصّ يُرسم فوق الصورة لا داخل التوليد. */
+  function drStoryFrame(b64,mime,text,dir){
+    return new Promise(function(res){
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var W=1920,H=1080,c=document.createElement('canvas'); c.width=W; c.height=H; var x=c.getContext('2d');
+          var k=Math.max(W/img.width,H/img.height), bw=img.width*k, bh=img.height*k;
+          x.drawImage(img,(W-bw)/2,(H-bh)/2,bw,bh);
+          if(text){
+            var g=x.createLinearGradient(0,H*0.56,0,H); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.78)'); x.fillStyle=g; x.fillRect(0,H*0.56,W,H*0.44);
+            var fam='system-ui,sans-serif'; try{ fam=getComputedStyle(document.body).fontFamily||fam; }catch(e){ /* guard-ok — خطّ النظام */ }
+            x.font='700 46px '+fam; x.direction=dir==='rtl'?'rtl':'ltr'; x.textAlign='center'; x.textBaseline='middle';
+            var lines=drWrap(x,text,W*0.8).slice(0,3), lh=64, y0=H-70-lh*(lines.length-1);
+            x.shadowColor='rgba(0,0,0,.85)'; x.shadowBlur=14; x.fillStyle='#ffffff';
+            lines.forEach(function(ln,i){ x.fillText(ln,W/2,y0+lh*i); });
+          }
+          res({b64:c.toDataURL('image/jpeg',0.92).split(',')[1],mime:'image/jpeg'});
+        }catch(e){ try{ __swallow(e,'director:story-frame'); }catch(z){ /* guard-ok — لا مسجّل */ } res(null); }
+      };
+      img.onerror=function(){ res(null); };
+      img.src='data:'+(mime||'image/png')+';base64,'+b64;
+    });
+  }
+  /* أمر صورة المشهد: الأسلوب الواحد + ورقة الشخصيّات + لقطة المشهد — 16:9 وبلا كتابة (قاعدة المالك: لا نصّ داخل صورة مولّدة) */
+  function drStoryPrompt(plan,visual){
+    var cast=(plan.characters||[]).map(function(c){ return c.name+': '+c.look; }).join('; ');
+    return 'Cinematic widescreen 16:9 film still. '+(plan.style?plan.style+'. ':'')+(cast?'Characters (keep exactly the same faces, ages and clothes in every shot): '+cast+'. ':'')
+      +'Shot: '+visual+' No text, no letters, no captions, no signs with writing, no watermark.';
+  }
   function drFail(code){ return Object.assign(new Error(code),{code:code}); }
   function drPlanCall(body){ return drJson('/api/ai?action=app-director-plan',body); }
   async function drRun(){
     if(DR.busy||!drOwner()) return;
     var req=(id('vdReq').value||'').trim(); if(!req){ drMsg(L('vdEmpty'),true); return; }
     var lang=id('vdLang').value||'ar', speaker=id('vdSpeaker').value||'female', minutes=parseInt(id('vdMin').value,10)||2;
-    var voiceOn=((id('vdVoice')||{}).value!=='off'), capDir=(lang==='ar'||lang==='ur')?'rtl':'ltr';
+    var voiceOn=((id('vdVoice')||{}).value!=='off'), capDir=(lang==='ar'||lang==='ur')?'rtl':'ltr', story=drStory();
     var my=++DR.run, tk=drTok();
     DR.busy=true; DR.lang=lang; syncDirector(); drReset(); drStageStart();
     try{
@@ -610,6 +646,7 @@
       /* ١) الفكرة والسيناريو — الفيديو الطويل يُكتب أجزاءً، كلّ جزء نداء مستقلّ على مخطّط الجزء الأوّل */
       var labels=await drLabels(lang); if(my!==DR.run) return;
       var base={request:req,lang:lang,speaker:speaker,minutes:minutes,voice:voiceOn,token:tk,labels:labels};
+      if(story) base.kind='story'; /* v-director-story: القصّة كاملة بكلام المالك، والخادم يقسّمها حرفيًّا */
       var pr=await drPlanCall(base); if(my!==DR.run) return;
       if(!pr.ok||!pr.json||!pr.json.plan){ drStep('plan','err'); throw drFail('plan '+pr.status+(pr.json&&pr.json.error?' '+pr.json.error:'')+(pr.json&&pr.json.diag?' · '+pr.json.diag:'')); }
       var plan=pr.json.plan, parts=pr.json.parts||1, cat=pr.json.catalog||{screens:[],styles:{}}, screens={}; (cat.screens||[]).forEach(function(s){ screens[s.id]=s; });
@@ -634,6 +671,7 @@
         o.cap=voiceOn?o.text:(o.narration||o.text); /* مع الصوت: الاسم القصير؛ بدونه: جملة المشهد كاملة */
         if(o.type==='screen'){ var scr=screens[o.target]||screens.home||{steps:[]}; o.steps=scr.steps||[]; }
         if(o.type==='style_sample'){ var st=(cat.styles||{})[o.target]; o.prompt=st?st.prompt:''; }
+        if(story){ if(o.type==='title') o.sub=''; if(o.type==='story'){ o.prompt=drStoryPrompt(plan,sc.visual||sc.narration); o.cap=o.narration; } } /* لا عنوان فرعيّ ولا ملاحظات على الشاشة؛ سطر الراوي ترجمةً */
         o.board={text:o.text||o.narration.slice(0,110),img:''}; ST.board.push(o.board);
         return o;
       });
@@ -647,8 +685,8 @@
          الاحتياطيّ (لا خلط صوتين) ويُعلَن ذلك في الخطوة. */
       var voiced=voiceOn?scenes.filter(function(s){ return !!s.narration; }):[], vLimit=Math.max(1,Math.floor(voiced.length*0.2));
       /* v-video-voice-speed: speed وتنظيف النصّ من app-11-video.js (window.__vmkVoice)؛ لو غاب: «fast» والنصّ كما هو */
-      var vvSpeed=function(){ try{ var V=window.__vmkVoice; return (V&&V.speed&&V.speed())||'fast'; }catch(e){ return 'fast'; /* guard-ok — الافتراضيّ سريع */ } };
-      var vvClean=function(t){ try{ var V=window.__vmkVoice; return (V&&V.clean)?V.clean(t):t; }catch(e){ return t; /* guard-ok — النصّ كما هو */ } };
+      var vvSpeed=function(){ if(story) return 'normal'; try{ var V=window.__vmkVoice; return (V&&V.speed&&V.speed())||'fast'; }catch(e){ return 'fast'; /* guard-ok — الافتراضيّ سريع */ } };
+      var vvClean=function(t){ if(story) t=String(t).replace(/\s*(?:\.{2,}|…)\s*/g,'، '); try{ var V=window.__vmkVoice; return (V&&V.clean)?V.clean(t):t; }catch(e){ return t; /* guard-ok — النصّ كما هو */ } }; /* v-director-story: «عمّي.. ما عندي» وقفة الراوي — كانت تُحذف */
       var voiceRun=async function(backup){
         var done=0, miss=0, got=0, last='', cool=0, dead=false, vModel='';
         await drPool(voiced,2,async function(s){
@@ -699,7 +737,7 @@
         drStep('voice','ok',backupVoice?L('vdVoiceBackup'):(vres.miss?('−'+vres.miss):''));
       }
       /* ٣) نماذج الأنماط بمسار الصور القائم (صورة المالك مرجعًا إن أرفقها) — المالك بلا نقاط */
-      var samples=scenes.filter(function(s){ return s.type==='style_sample'; });
+      var samples=scenes.filter(function(s){ return s.type==='style_sample'||s.type==='story'; });
       var failed=0;
       if(samples.length){
         drStep('samples','on',drT('vdScene',{i:0,n:samples.length}),0);
@@ -708,23 +746,26 @@
           if(my!==DR.run) return;
           var r=null;
           try{
-            r=DR.ref?await drJson('/api/portrait-style',{imageBase64:DR.ref,mimeType:DR.refMime,style:s.target,token:tk})
+            r=s.type==='story'?await drJson('/api/media?action=maha-image',{prompt:s.prompt,userText:'',token:tk,guestId:(window.getGuestId?window.getGuestId():'')})
+             :DR.ref?await drJson('/api/portrait-style',{imageBase64:DR.ref,mimeType:DR.refMime,style:s.target,token:tk})
                     :await drJson('/api/media?action=maha-image',{prompt:s.prompt||('portrait in the '+s.target+' style'),userText:'',token:tk,guestId:(window.getGuestId?window.getGuestId():'')});
           }catch(e){ r=null; try{ __swallow(e,'director:sample'); }catch(z){ /* guard-ok — لا مسجّل */ } }
           if(my!==DR.run) return;
           if(r&&r.ok&&r.json&&r.json.imageBase64){
             s.image=r.json.imageBase64; s.mime=r.json.mimeType||'image/png';
-            if(s.cap){ var cc=await drCaptionSample(s.image,s.mime,s.cap,capDir); if(my!==DR.run) return; if(cc){ s.image=cc.b64; s.mime=cc.mime; } }
+            if(s.type==='story'){ var sf=await drStoryFrame(s.image,s.mime,s.cap,capDir); if(my!==DR.run) return; if(sf){ s.image=sf.b64; s.mime=sf.mime; } }
+            else if(s.cap){ var cc=await drCaptionSample(s.image,s.mime,s.cap,capDir); if(my!==DR.run) return; if(cc){ s.image=cc.b64; s.mime=cc.mime; } }
             s.board.img='data:'+s.mime+';base64,'+s.image; ST.bi=ST.board.indexOf(s.board); drStageNext(); /* النموذج يظهر في الشاشة الحيّة فور توليده */
-          } else { failed++; s.type='screen'; s.target='portrait'; s.steps=(screens.portrait||{steps:[]}).steps; s.image=''; }
+          } else if(s.type==='story'){ failed++; s.type='title'; s.text=plan.title; s.sub=s.narration; s.image=''; } /* مشهد قصّة لم يُرسم: بطاقة بسطره لا شاشة من التطبيق */
+          else { failed++; s.type='screen'; s.target='portrait'; s.steps=(screens.portrait||{steps:[]}).steps; s.image=''; }
           doneS++; drStep('samples','on',drT('vdScene',{i:doneS,n:samples.length}),doneS/samples.length);
         });
         if(my!==DR.run) return;
-        drStep('samples','ok',failed?drT('vdWarnSamples',{n:failed}):'');
+        drStep('samples','ok',failed?drT(story?'vdWarnDraw':'vdWarnSamples',{n:failed}):'');
       } else drStep('samples','ok','');
       /* ٤) المانيفست إلى الجسر مباشرة (رمز المهمّة وعنوان الجسر أُخذا في الخطوة ٠) */
       drStep('shots','on');
-      var manifest={lang:lang,title:plan.title,scenes:scenes.map(function(s){ return {type:s.type,target:s.target,text:(s.type==='screen'?s.cap:s.text),sub:s.sub,steps:s.steps||undefined,image:s.image||undefined,mime:s.mime||undefined,audio:s.audio||undefined,seconds:s.seconds}; })};
+      var manifest={lang:lang,title:plan.title,scenes:scenes.map(function(s){ return {type:(s.type==='story'?'style_sample':s.type),target:s.target,text:(s.type==='screen'?s.cap:s.text),sub:s.sub,steps:s.steps||undefined,image:s.image||undefined,mime:s.mime||undefined,audio:s.audio||undefined,seconds:s.seconds}; })};
       var post;
       try{ post=await fetch(bridge+'/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},auth),body:JSON.stringify(manifest)}); }
       catch(e){ drStep('shots','err'); throw drFail('bridge offline (browser)'); } /* الخادم وصله قبل قليل: المتصفّح هو من مُنع (أصل الصفحة أو الشبكة) */
