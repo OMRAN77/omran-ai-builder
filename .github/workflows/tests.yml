@@ -1,0 +1,20 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: API tests
+        run: node --test "test/api/**/*.test.js"
+      - name: Install Playwright and Chromium
+        run: npm install --no-save --no-package-lock playwright@1.63.0 && npx playwright install --with-deps chromium
+      - name: Browser tests
+        run: node --test "test/ui/**/*.test.js"
