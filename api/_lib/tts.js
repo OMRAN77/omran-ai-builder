@@ -60,6 +60,28 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // v-el-voices: «استمع» (src reply) وتعليق الفيديو (src video) للمالك بالصوتين اللذين اختارهما من ElevenLabs (api/_lib/el-voices.js)
+    // متى وُجد مفتاحه. نفاد الرصيد في «استمع» ⇐ om-quota (رسالة الحدّ ويقف، لا مها)؛ وفي الفيديو يكمل بمها تحت فلا يطلع المقطع صامتًا.
+    if (voice === 'maha' && (body.src === 'reply' || body.src === 'video')) {
+      const el = require('./el-voices.js');
+      if (el.enabledFor(usage.username)) {
+        try {
+          const mp3 = await el.speak({ text, gender, speed: ttsSpeed.openaiSpeed });
+          res.setHeader('Content-Type', 'audio/mpeg');
+          res.setHeader('Cache-Control', 'no-store');
+          res.status(200).send(mp3);
+          return;
+        } catch (e) {
+          console.error('el voices failed:', e && e.code, String(e && e.message || '').slice(0, 200));
+          if (body.src === 'reply') {
+            const quota = e && e.code === 'el_quota';
+            res.status(quota ? 429 : 502).json({ error: quota ? 'om-quota' : 'om-failed', code: quota ? 'om_quota' : 'om_failed' });
+            return;
+          }
+        }
+      }
+    }
+
     // v-om-voices-chat: «استمع» على ردود المحادثة (src: 'reply') للمالك وحده بأصوات «أصوات om» بدل مها
     // (api/_lib/om-voices.js). عند حدّها اليوميّ ⇐ om-quota فيُظهر العميل رسالة الحدّ ولا يقرأ بصوت آخر.
     // مكالمة مها وبقيّة الأدوات لا ترسل src فلا تتغيّر، ولغة لا ينطقها المحرّك تبقى بمها.

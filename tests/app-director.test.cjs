@@ -262,7 +262,7 @@ test('٧. القسم في شريط صانع الفيديو للمالك وحده
   assert.ok(js.includes("if(tabsFor().indexOf(v)<0&&!(v==='director'&&drOwner())) return;"));
   assert.ok(js.includes("if(v==='director') return L('vdTab')||'مخرج التطبيق';"));
   for (const k of ['action=app-director-plan', 'action=app-director-token', 'action=app-director-voice', "'/api/media?action=tts'", "'/api/media?action=maha-image'", "'/api/portrait-style'", "bridge+'/render'", "bridge+'/render/'+encodeURIComponent(jobId)", 'setTimeout(x,3000)', 'window.autoSaveVideo(DR.out']) assert.ok(js.includes(k), k);
-  assert.ok(js.includes("voice:'maha',lang:lang,gender:speaker"), 'التعليق بصوت مها/عبدالله باللغة المختارة');
+  assert.ok(js.includes("voice:'maha',src:'video',lang:lang,gender:speaker"), 'التعليق بصوت مها/عبدالله باللغة المختارة');
   assert.ok(!/CC_BRIDGE_SECRET|CC_BRIDGE_URL|railway\.app|vercel\.app/.test(js), 'لا سرّ ولا عنوان جسر في العميل');
   const block = js.slice(js.indexOf('v-app-director (المالك:'), js.indexOf('v-vmk-clean-video: قسم'));
   assert.ok(block.length > 5000 && block.includes('async function drRun()'), 'كتلة القسم كاملة');
@@ -320,7 +320,7 @@ test('٨. النصوص الستّة والعشرون بالـ١٤ لغة بلا 
     seen[lg] = obj.vdTab;
   }
   assert.ok(new Set(Object.values(seen)).size >= 10, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=463'));
+  assert.ok(read('index.html').includes('/js/video.js?v=464'));
   assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=778';"));
   assert.ok(read('css/modules.css').includes('.vmk-studio.vmk-tab-director>.vmk-side') && read('css/modules.css').includes('#vmkDirector'));
 });
@@ -546,5 +546,5 @@ test('١٣. الجسر يُفحص قبل أيّ صرف: جسر بنسخة قدي
     assert.ok(t && t.length > 20, lg); assert.doesNotMatch(t, BANNED, lg); seenT.add(t);
   }
   assert.equal(seenT.size, LANGS.length, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=463'));
+  assert.ok(read('index.html').includes('/js/video.js?v=464'));
 });

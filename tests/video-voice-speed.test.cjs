@@ -37,7 +37,7 @@ test('٣. كلّ نداء /api/tts في صانع الفيديو يرسل speed �
 
 test('٤. المخرج (video.js) والمحرّر (video-edit.js): speed ونصّ منظَّف أيضًا، والمحرّر فيه اختيار سرعة بالتفضيل المشترك', () => {
   const vj = read('js/video.js');
-  assert.ok(/'\/api\/media\?action=tts'[\s\S]{0,200}text:vvClean\(s\.narration\),voice:'maha',lang:lang,gender:speaker,speed:vvSpeed\(\),token:tk/.test(vj));
+  assert.ok(/'\/api\/media\?action=tts'[\s\S]{0,200}text:vvClean\(s\.narration\),voice:'maha',src:'video',lang:lang,gender:speaker,speed:vvSpeed\(\),token:tk/.test(vj));
   assert.ok(vj.includes("var br=await drJson('/api/ai?action=app-director-voice',{text:vvClean(s.narration)"));
   assert.ok(vj.includes("return (V&&V.speed&&V.speed())||'fast';"));
   const ve = read('js/video-edit.js');

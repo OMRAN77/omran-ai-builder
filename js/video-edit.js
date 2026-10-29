@@ -1403,7 +1403,7 @@
     K('ttsMake').disabled = true; setStatus(T_('ttsBusy'));
     try{
       var r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', gender: K('ttsGender').value, lang: isRtl(text) ? 'ar' : 'en', text: vvClean(text).slice(0, 4000), speed: K('ttsSpeed').value || 'fast', token: tok(), guestId: gid() }) });
+        body: JSON.stringify({ voice: 'maha', src: 'video', gender: K('ttsGender').value, lang: isRtl(text) ? 'ar' : 'en', text: vvClean(text).slice(0, 4000), speed: K('ttsSpeed').value || 'fast', token: tok(), guestId: gid() }) });
       if(!r.ok){ var j = null; try{ j = await r.json(); }catch(e){ j = null; } throw new Error((j && j.error) || ('tts ' + r.status)); }
       var b = await r.blob();
       if(!b || b.size < 200) throw new Error('tts empty');
