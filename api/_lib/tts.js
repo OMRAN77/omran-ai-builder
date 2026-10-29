@@ -73,6 +73,8 @@ module.exports = async (req, res) => {
           res.status(200).send(wav);
         } catch (e) {
           const quota = e && e.code === 'om_quota';
+          // v-om-voices-piper: سيرفر الصوتين الخفيفين نائم ⇐ om-waking (العميل: «حاول مرة ثانية»، بلا صوت بديل)
+          if (e && e.code === 'om_waking') { res.status(503).json({ error: 'om-waking', code: 'om_waking' }); return; }
           res.status(quota ? 429 : 502).json({ error: quota ? 'om-quota' : (e && e.message) || 'om-failed', code: quota ? 'om_quota' : 'om_failed' });
         }
         return;

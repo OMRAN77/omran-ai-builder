@@ -96,3 +96,39 @@ test('العميل: «استمع» وحده يرسل src reply، وom-quota = ر
   // الرسالة المستعملة موجودة بكلّ لغات الواجهة
   for (const f of fs.readdirSync(path.join(root, 'i18n')).filter((x) => x !== 'ad-studio.js')) assert.match(read('i18n/' + f), /portraitLimitReached/, f);
 });
+
+/* v-om-voices-piper (المالك ٢٩ أكتوبر «نكمل موضوعنا»، بعد «تحسّن عن قبل»): v5 وv4 تدرّبا صوتين خفيفين بالفصحى على سيرفر
+   مجّانيّ يرسل له موقع الأصوات. صوت المرأة الافتراضيّ v4، وسيرفرهما النائم (٥٠٣) = «حاول مرة ثانية» لا صوت بديل. */
+test('الصوتان الافتراضيّان v5 للرجل وv4 للمرأة (المدرَّبان)', () =>
+  withEnv({ OM_VOICES_KEY: 'k', OM_VOICES_MALE: undefined, OM_VOICES_FEMALE: undefined }, async () => {
+    const om = fresh();
+    const real = global.fetch;
+    const donors = [];
+    global.fetch = async (url, opts) => { donors.push(JSON.parse(opts.body).voice.donor); return new Response(wav(100)); };
+    try {
+      await om.speak({ text: 'مرحبا', lang: 'ar', gender: 'male' });
+      await om.speak({ text: 'مرحبا', lang: 'ar', gender: 'female' });
+      assert.deepEqual(donors, ['v5', 'v4']);
+    } finally { global.fetch = real; }
+  }));
+
+test('موقع الأصوات يردّ ٥٠٣ (السيرفر نائم) ⇐ om_waking، والخادم يرجّع 503 om-waking', () =>
+  withEnv({ OM_VOICES_KEY: 'k' }, async () => {
+    const om = fresh();
+    const real = global.fetch;
+    global.fetch = async () => new Response('{"code":"piper_down"}', { status: 503 });
+    try { await assert.rejects(om.speak({ text: 'هلا', lang: 'ar' }), (e) => e.code === 'om_waking' && e.message === 'om-waking'); }
+    finally { global.fetch = real; }
+    const src = read('api/_lib/tts.js');
+    assert.match(src, /e\.code === 'om_waking'\) \{ res\.status\(503\)\.json\(\{ error: 'om-waking', code: 'om_waking' \}\)/);
+  }));
+
+test('العميل: om-waking = «حاول مرة ثانية» المترجمة ويقف قبل صوت الجهاز', () => {
+  const app02 = read('js/app-02-tts.js');
+  const w = app02.indexOf("if(e && e.message === 'om-waking')");
+  const dev = app02.indexOf("if('speechSynthesis' in window){\n            currentCloudToken = null; currentCloudAudio = null;\n            speakOnDevice(chunks[i].wordStart, started);");
+  assert.ok(w > 0 && dev > w, 'الرسالة قبل صوت الجهاز');
+  assert.match(app02.slice(w, dev), /settingsToast\(t\('mahaTryAgain'\)\)[\s\S]*return;/);
+  assert.match(read('js/app-03-i18n-data.js'), /mahaTryAgain: "حاول مرة ثانية"/);
+  for (const f of fs.readdirSync(path.join(root, 'i18n')).filter((x) => x !== 'ad-studio.js')) assert.match(read('i18n/' + f), /mahaTryAgain/, f);
+});

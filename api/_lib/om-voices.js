@@ -2,6 +2,9 @@
 // وحده يقرأ بأصوات «أصوات om» (المتبرعين، موقع omran-voices) بدل مها. باقي المستخدمين كما هم.
 // الموقع نفسه يقرأ الأصوات من مستودعه الخاصّ ويركّب اللهجة؛ هنا نرسل له النصّ ونستلم WAV.
 // المحرّك هناك مجّانيّ بحدّ يوميّ صغير (≈٧ مقاطع لحساب المالك في Hugging Face) — عند الحدّ ⇐ رسالة لا صوت آخر.
+// v-om-voices-piper (المالك ٢٩ أكتوبر «نكمل»): v5 (رجل) وv4 (امرأة) تدرّبا صوتين خفيفين بالفصحى، والموقع يرسل طلبهما العربيّ
+// لدالّتهما داخل الموقع نفسه (api/piper.py على Vercel المجّانيّ، ثوانٍ للقطعة، بلا حدّ يوميّ). الصوت الافتراضيّ للمرأة صار v4
+// بدل v1 لذلك. الدالّة ما ردّت أو تبدأ (٥٠٣ من الموقع) ⇐ om-waking: «حاول مرة ثانية»، لا صوت آخر.
 // البيئة: OM_VOICES_KEY (كلمة سرّ موقع الأصوات — بدونها لا يعمل شيء)، OM_VOICES_URL، OM_VOICES_FEMALE/OM_VOICES_MALE (رقم الصوت).
 
 // لغات محرّك الأصوات؛ غيرها (الأورديّة، البنغاليّة…) يبقى بصوت مها لأنّ المحرّك لا ينطقها.
@@ -16,7 +19,7 @@ function settings() {
   return {
     key: String(process.env.OM_VOICES_KEY || '').trim(),
     url: String(process.env.OM_VOICES_URL || 'https://omran-voices.vercel.app').trim().replace(/\/+$/, ''),
-    female: String(process.env.OM_VOICES_FEMALE || 'v1').trim(),
+    female: String(process.env.OM_VOICES_FEMALE || 'v4').trim(),
     male: String(process.env.OM_VOICES_MALE || 'v5').trim(),
   };
 }
@@ -86,6 +89,7 @@ async function speak({ text, lang, gender }) {
       throw new OmVoicesError('om-down', 'om_down', 502);
     }
     if (r.status === 429) throw new OmVoicesError('om-quota', 'om_quota', 429);
+    if (r.status === 503) throw new OmVoicesError('om-waking', 'om_waking', 503); // دالّة الصوتين ما ردّت أو تبدأ
     if (!r.ok) {
       let code = '';
       try { code = (await r.json()).code || ''; } catch (e) { code = ''; } // ليس JSON: يكفي الرقم
