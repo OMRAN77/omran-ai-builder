@@ -3,7 +3,8 @@
 // into the encrypted, unguessable layout used by api/_store.js, then overwrite the
 // public copies with {migrated:true}. Covers user accounts and DeHashed audit logs.
 // Accounts are also migrated lazily on their next login; this script covers the
-// ones that never log in again.
+// ones that never log in again. Old per-username quota counters are only wiped
+// (namespace null): counting now happens elsewhere, but their paths name accounts.
 //
 // Dry run by default. Run with the production values of these variables:
 //   AUTH_SECRET=... BLOB_READ_WRITE_TOKEN=... BLOB_STORE_ID=... node scripts/migrate-legacy-blobs.js
@@ -14,6 +15,7 @@ const { getAuthSecret } = require('../api/_secrets');
 const LEGACY = [
   { prefix: 'taryam/db/users/', namespace: 'users' },
   { prefix: 'taryam/db/dehashed_audit/', namespace: 'dehashed-audit' },
+  { prefix: 'taryam/db/usage/', namespace: null },
 ];
 
 async function listBlobs(prefix) {
@@ -43,11 +45,11 @@ async function migrate({ apply = false, log = console.log } = {}) {
       const data = await store.readPublicJson(pathname);
       if (!data) { summary.unreadable++; log('unreadable, left as is: ' + pathname); continue; }
       if (data.migrated) { summary.alreadyMigrated++; continue; }
-      const target = store.secretPath(namespace, id);
-      log((apply ? 'migrating ' : 'would migrate ') + pathname + ' -> ' + target);
+      const target = namespace ? store.secretPath(namespace, id) : null;
+      log((apply ? 'migrating ' : 'would migrate ') + pathname + ' -> ' + (target || '(wiped)'));
       if (apply) {
         // Never overwrite an encrypted record that is already there (it is newer).
-        if (!(await store.readSecret(target))) await store.writeSecret(target, data);
+        if (target && !(await store.readSecret(target))) await store.writeSecret(target, data);
         await store.writePublicJson(pathname, { migrated: true });
       }
       summary.migrated++;

@@ -2,6 +2,11 @@
 // using the site owner's own server-side API key (OPENAI_API_KEY env var), so
 // visitors can use cloud voice without entering their own key. Falls back to
 // a client-supplied apiKey only if one is explicitly sent (legacy support).
+// Requests on the owner's key count against the 'tts' quota (see _usage.js).
+const { checkAndConsume, rejectUsage } = require('./_usage');
+
+const VOICES = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -21,8 +26,9 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { text, voice } = body;
-    const apiKey = body.apiKey || process.env.OPENAI_API_KEY;
+    const { text, voice, token } = body;
+    const ownKey = typeof body.apiKey === 'string' && body.apiKey ? body.apiKey : null;
+    const apiKey = ownKey || process.env.OPENAI_API_KEY;
 
     if (!apiKey) {
       res.status(500).json({ error: 'Server is missing OPENAI_API_KEY' });
@@ -31,6 +37,13 @@ module.exports = async (req, res) => {
     if (!text) {
       res.status(400).json({ error: 'Missing text' });
       return;
+    }
+    if (!ownKey) {
+      const usage = await checkAndConsume(token, req, 'tts');
+      if (!usage.allowed) {
+        rejectUsage(res, usage);
+        return;
+      }
     }
 
     const upstream = await fetch('https://api.openai.com/v1/audio/speech', {
@@ -41,7 +54,7 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify({
         model: 'tts-1',
-        voice: voice || 'onyx',
+        voice: VOICES.includes(voice) ? voice : 'onyx',
         input: String(text).slice(0, 4000),
       }),
     });

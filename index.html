@@ -1751,7 +1751,7 @@ async function speakSmart(text, onStart, onEnd){
   if(cloudOn || noDev){
     try {
       const voice = localStorage.getItem('aiapp_cloud_voice_name') || 'onyx';
-      const res = await fetch('/api/tts', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice,text:text.slice(0,4000)})});
+      const res = await fetch('/api/tts', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice,text:text.slice(0,4000),token:authGet('aiapp_auth_token')})});
       if(!res.ok) throw new Error('TTS fail');
       const blob = await res.blob(); const audio = new Audio(URL.createObjectURL(blob));
       currentCloudAudio = audio; if(onStart) onStart(); audio.onended = () => onEnd && onEnd();

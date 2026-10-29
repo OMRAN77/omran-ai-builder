@@ -1,7 +1,7 @@
 // Vercel Serverless Function: proxies chat requests to Cohere using the site
 // owner's own server-side API key (COHERE_API_KEY env var), so visitors can try
 // the app without entering their own key. This key is NEVER exposed to the client.
-const { checkAndConsume, DAILY_LIMIT } = require('./_usage');
+const { checkAndConsume, rejectUsage } = require('./_usage');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    let { messages, model, token, guestId } = body;
+    let { messages, model, token } = body;
     // Deprecated/retired Cohere model names get silently upgraded server-side,
     // so stale client caches (old JS, old localStorage) never hit a hard error.
     const DEPRECATED_MODELS = new Set(['command-r-plus', 'command-r', 'command-r-plus-08-2024', 'command-r-08-2024', 'command']);
@@ -40,13 +40,9 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const usage = await checkAndConsume(token, guestId);
+    const usage = await checkAndConsume(token, req);
     if (!usage.allowed) {
-      if (usage.reason === 'auth') {
-        res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
-      } else {
-        res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.' });
-      }
+      rejectUsage(res, usage);
       return;
     }
 

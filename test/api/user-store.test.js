@@ -111,16 +111,18 @@ test('migration script: dry run writes nothing, --apply migrates users and audit
     blob.files.set('taryam/db/users/gina.json', JSON.stringify(legacyRecord('Gina', 'ginas-password')));
     blob.files.set('taryam/db/users/hank.json', JSON.stringify({ migrated: true }));
     blob.files.set('taryam/db/dehashed_audit/gina.json', JSON.stringify([{ ts: 't', field: 'email', value: 'x@example.com' }]));
+    blob.files.set('taryam/db/usage/gina.json', JSON.stringify({ date: '2026-10-01', count: 3 }));
     const before = new Map(blob.files);
 
     const dry = await migrate({ apply: false, log: () => {} });
-    assert.deepStrictEqual(dry, { migrated: 2, alreadyMigrated: 1, unreadable: 0 });
+    assert.deepStrictEqual(dry, { migrated: 3, alreadyMigrated: 1, unreadable: 0 });
     assert.deepStrictEqual(blob.files, before);
 
     const done = await migrate({ apply: true, log: () => {} });
-    assert.deepStrictEqual(done, { migrated: 2, alreadyMigrated: 1, unreadable: 0 });
+    assert.deepStrictEqual(done, { migrated: 3, alreadyMigrated: 1, unreadable: 0 });
     assert.deepStrictEqual(JSON.parse(blob.files.get('taryam/db/users/gina.json')), { migrated: true });
     assert.deepStrictEqual(JSON.parse(blob.files.get('taryam/db/dehashed_audit/gina.json')), { migrated: true });
+    assert.deepStrictEqual(JSON.parse(blob.files.get('taryam/db/usage/gina.json')), { migrated: true });
     const store = require('../../api/_store');
     assert.strictEqual((await store.readSecret(store.secretPath('users', 'gina'))).username, 'Gina');
     assert.strictEqual((await store.readSecret(store.secretPath('dehashed-audit', 'gina')))[0].value, 'x@example.com');
@@ -130,6 +132,6 @@ test('migration script: dry run writes nothing, --apply migrates users and audit
     assert.strictEqual(login.status, 200);
 
     const rerun = await migrate({ apply: true, log: () => {} });
-    assert.deepStrictEqual(rerun, { migrated: 0, alreadyMigrated: 3, unreadable: 0 });
+    assert.deepStrictEqual(rerun, { migrated: 0, alreadyMigrated: 4, unreadable: 0 });
   } finally { restore(); }
 });
