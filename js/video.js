@@ -444,7 +444,7 @@
     var card=M.firstElementChild; if(!card||!drOwner()||id('vmkDirector')) return;
     var box=document.createElement('div'); box.id='vmkDirector'; box.className='vmk-dir';
     box.innerHTML='<div class="vmk-dir-head"><b></b><p></p></div>'
-      +'<textarea id="vdReq" rows="3" maxlength="600"></textarea>'
+      +'<textarea id="vdReq" rows="3" maxlength="3000"></textarea>'
       +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label><label><span></span><select id="vdVoice"><option value="on"></option><option value="off"></option></select></label><label class="vmk-dir-kind"><span></span><select id="vdKind"><option value="app"></option><option value="story"></option></select></label></div>'
       +'<label class="vmk-dir-ref"><input type="file" accept="image/*" id="vdRef"><img id="vdRefImg" alt="" hidden><span></span></label>'
       +'<button type="button" id="vdGo"></button>'
@@ -468,7 +468,7 @@
     var box=id('vmkDirector'); if(!box) return;
     box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=drStory()?L('vdSubStory'):L('vdSub'); /* v-director-story: وصف القصّة لا «يصوّر شاشات التطبيق» */
     var story=drStory(), rq=box.querySelector('#vdReq');
-    rq.placeholder=story?L('vdPhStory'):L('vdPh'); rq.maxLength=story?3000:600; /* v-director-story: ٦٠٠ قصّت قصّة المالك (١٢٣٠ حرفًا) */
+    rq.placeholder=story?L('vdPhStory'):L('vdPh'); /* v-director-story: الحقل ٣٠٠٠ في النوعين — لصق قصّة قبل اختيار «قصة» كان يُقصّ عند ٦٠٠ ولا يرجع */
     var labs=box.querySelectorAll('.vmk-dir-row label>span'); labs[0].textContent=L('vdLang'); labs[1].textContent=L('vdSpeaker'); labs[2].textContent=L('vdMinutes'); labs[3].textContent=L('vdVoiceLabel');
     var vo=box.querySelector('#vdVoice'); vo.options[0].textContent=L('vdVoiceOn'); vo.options[1].textContent=L('vdVoiceOff'); box.querySelector('#vdSpeaker').disabled=(vo.value==='off');
     var sp=box.querySelector('#vdSpeaker'); sp.options[0].textContent=L('vdMaha')||'مها'; sp.options[1].textContent=L('vdAbdullah')||'عبدالله';
@@ -563,7 +563,11 @@
      في الفيديو بلا صوت هذا هو ما يشرح المشهد. يعيد null إن تعذّر الرسم فتُرسل الصورة كما هي. */
   function drWrap(ctx,text,maxW){
     var words=String(text||'').split(/\s+/).filter(Boolean), lines=[], cur='';
-    words.forEach(function(w){ var t=cur?cur+' '+w:w; if(cur&&ctx.measureText(t).width>maxW){ lines.push(cur); cur=w; } else cur=t; });
+    words.forEach(function(w){
+      if(/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/.test(w)&&ctx.measureText(w).width>maxW){ /* مراجعة v-director-story: الصينيّة/اليابانيّة بلا مسافات كانت سطرًا يخرج عن الإطار — تُكسر بالحروف؛ والكلمة العربيّة الطويلة تبقى كاملة (لا تُقطع حروفها المتّصلة) */
+        Array.from(w).forEach(function(g){ var t=cur+g; if(cur&&ctx.measureText(t).width>maxW){ lines.push(cur); cur=g; } else cur=t; }); return;
+      }
+      var t=cur?cur+' '+w:w; if(cur&&ctx.measureText(t).width>maxW){ lines.push(cur); cur=w; } else cur=t; });
     if(cur) lines.push(cur);
     return lines;
   }
@@ -606,10 +610,12 @@
           var k=Math.max(W/img.width,H/img.height), bw=img.width*k, bh=img.height*k;
           x.drawImage(img,(W-bw)/2,(H-bh)/2,bw,bh);
           if(text){
-            var g=x.createLinearGradient(0,H*0.56,0,H); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.78)'); x.fillStyle=g; x.fillRect(0,H*0.56,W,H*0.44);
             var fam='system-ui,sans-serif'; try{ fam=getComputedStyle(document.body).fontFamily||fam; }catch(e){ /* guard-ok — خطّ النظام */ }
-            x.font='700 46px '+fam; x.direction=dir==='rtl'?'rtl':'ltr'; x.textAlign='center'; x.textBaseline='middle';
-            var lines=drWrap(x,text,W*0.8).slice(0,3), lh=64, y0=H-70-lh*(lines.length-1);
+            x.direction=dir==='rtl'?'rtl':'ltr'; x.textAlign='center'; x.textBaseline='middle';
+            /* مراجعة: قصّ الأسطر عند الثالث كان يُسقط آخر الجملة — الخطّ يصغر حتّى ٣٠ لتكفي ثلاثة أسطر، وما زاد بعدها يبقى ولا يُحذف */
+            var fs=46, lines; for(;;){ x.font='700 '+fs+'px '+fam; lines=drWrap(x,text,W*0.8); if(lines.length<=3||fs<=30) break; fs-=2; }
+            var lh=Math.round(fs*1.39), y0=H-70-lh*(lines.length-1), gy=Math.max(0,Math.min(H*0.56,y0-lh*1.6));
+            var g=x.createLinearGradient(0,gy,0,H); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.78)'); x.fillStyle=g; x.fillRect(0,gy,W,H-gy);
             x.shadowColor='rgba(0,0,0,.85)'; x.shadowBlur=14; x.fillStyle='#ffffff';
             lines.forEach(function(ln,i){ x.fillText(ln,W/2,y0+lh*i); });
           }
@@ -621,16 +627,23 @@
     });
   }
   /* أمر صورة المشهد: الأسلوب الواحد + ورقة الشخصيّات + لقطة المشهد — 16:9 وبلا كتابة (قاعدة المالك: لا نصّ داخل صورة مولّدة) */
+  /* مراجعة: مسار الصور يقصّ الأمر عند ١٨٠٠ حرف (فاللقطة في آخره تسقط)، وكلمات مثل screen/text/caption/menu/label/icon/app تحوّله
+     لمسار الكتابة بمقاس 3:2 — اللقطة أوّلًا، والكلمات المحوِّلة تُستبدل، والشخصيّات المذكورة في اللقطة قبل غيرها حتّى الحدّ */
+  function drStoryNeutral(t){ return String(t||'').replace(/\bscreens?\b/gi,'display').replace(/\binterfaces?\b/gi,'panel').replace(/\bmenus?\b/gi,'board').replace(/\blabels?\b/gi,'tag').replace(/\bicons?\b/gi,'symbol').replace(/\bapps?\b/gi,'').replace(/\btexts?\b/gi,'').replace(/captions?|lettering|typograph\w*/gi,'').replace(/\s{2,}/g,' ').trim(); }
   function drStoryPrompt(plan,visual){
-    var cast=(plan.characters||[]).map(function(c){ return c.name+': '+c.look; }).join('; ');
-    return 'Cinematic widescreen 16:9 film still. '+(plan.style?plan.style+'. ':'')+(cast?'Characters (keep exactly the same faces, ages and clothes in every shot): '+cast+'. ':'')
-      +'Shot: '+visual+' No text, no letters, no captions, no signs with writing, no watermark.';
+    var p='Cinematic 16:9 film still. Shot: '+drStoryNeutral(visual)+' Clean frame with no writing, no signage and no watermark.'+(plan.style?' Style: '+drStoryNeutral(plan.style)+'.':'');
+    var cs=(plan.characters||[]).slice(), low=String(visual||'').toLowerCase();
+    cs.sort(function(a,b){ var na=String(a.name||'').split(' (')[0].toLowerCase(), nb=String(b.name||'').split(' (')[0].toLowerCase(); return (low.indexOf(nb)>=0)-(low.indexOf(na)>=0); });
+    var head=' Characters (same faces, ages and clothes in every shot): ', cast='';
+    cs.forEach(function(c){ var it=drStoryNeutral(c.name+': '+c.look)+'; '; if((p+head+cast+it).length<=1750) cast+=it; });
+    return (cast?p+head+cast.replace(/;\s*$/,'.'):p).slice(0,1750);
   }
   function drFail(code){ return Object.assign(new Error(code),{code:code}); }
   function drPlanCall(body){ return drJson('/api/ai?action=app-director-plan',body); }
   async function drRun(){
     if(DR.busy||!drOwner()) return;
     var req=(id('vdReq').value||'').trim(); if(!req){ drMsg(L('vdEmpty'),true); return; }
+    if(!drStory()&&req.length>600){ drMsg(L('vdTooLong'),true); return; } /* «عرض التطبيق» طلب قصير — الطويل قصّة، لا قصّ صامت عند ٦٠٠ */
     var lang=id('vdLang').value||'ar', speaker=id('vdSpeaker').value||'female', minutes=parseInt(id('vdMin').value,10)||2;
     var voiceOn=((id('vdVoice')||{}).value!=='off'), capDir=(lang==='ar'||lang==='ur')?'rtl':'ltr', story=drStory();
     var my=++DR.run, tk=drTok();

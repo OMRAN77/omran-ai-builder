@@ -171,48 +171,74 @@ function storyText(s) {
   return String(s == null ? '' : s).replace(/\r\n?/g, '\n').replace(/[ \t\f\v\u00a0]+/g, ' ').replace(/ *\n */g, '\n')
     .replace(/\n{2,}/g, '\n').trim().slice(0, MAX_STORY).trim();
 }
-function wordsOf(s) { return String(s || '').split(/\s+/).filter(Boolean).length; }
-/** جمل الفقرة: النقطة والتعجّب والاستفهام تُنهي الجملة (مع علامة التنصيص التي تليها) — «..» وقفة لا نهاية */
+/* الطول بالكلمات بحسب الكتابة: الصينيّة واليابانيّة بلا مسافات — كلّ حرفين كلمة (≈ ٤٫٦ حرف/ث كلامًا) — مراجعة v-director-story */
+const CJK_RE = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/g;
+function wordsOf(s) {
+  const t = String(s || '');
+  const cjk = (t.match(CJK_RE) || []).length;
+  return t.replace(CJK_RE, ' ').split(/\s+/).filter(Boolean).length + Math.ceil(cjk / 2);
+}
+/* نهايات الجمل باللغات الأربع عشرة: . ! ? ؟ والصينيّة 。！？ (بلا مسافة بعدها) والأورديّة ۔ والهنديّة/النيباليّة/البنغاليّة । ॥ */
+const STORY_END = /[.!؟?。！？۔।॥]/;
+const CJK_END = /[。！？]/;
+const STORY_CLOSE = /[»"”'’)」』）]/;
+/** جمل الفقرة: علامة النهاية (مع ما يليها من علامات التنصيص) تُنهي الجملة إن تلتها مسافة أو آخر الفقرة — «..» وقفة لا نهاية،
+ *  و3.5 وU.S. لا تُقطعان. التنصيص يُضاف مرّة واحدة (مراجعة: «وين رايح؟»، كانت تُكرّر «»») */
 function storySentences(par) {
   const ch = Array.from(par), out = [];
   let cur = '';
   for (let i = 0; i < ch.length; i++) {
     cur += ch[i];
-    if (!/[.!؟?]/.test(ch[i])) continue;
+    if (!STORY_END.test(ch[i])) continue;
     if (ch[i] === '.' && (ch[i - 1] === '.' || ch[i + 1] === '.')) continue;
+    const term = ch[i];
     let j = i + 1;
-    while (j < ch.length && /[»"”'’)]/.test(ch[j])) { cur += ch[j]; j++; }
-    if (j >= ch.length || /\s/.test(ch[j])) { if (cur.trim()) out.push(cur.trim()); cur = ''; i = j - 1; }
+    while (j < ch.length && STORY_CLOSE.test(ch[j])) { cur += ch[j]; j++; }
+    i = j - 1;
+    if (j >= ch.length || /\s/.test(ch[j]) || CJK_END.test(term)) { if (cur.trim()) out.push(cur.trim()); cur = ''; }
   }
   if (cur.trim()) out.push(cur.trim());
   return out;
 }
-/** جملة أطول من STORY_MAX_WORDS: عند الفواصل أوّلًا ثمّ بالكلمات — الربط بمسافة واحدة يعيد النصّ نفسه */
+/** جملة أطول من STORY_MAX_WORDS: عند الفواصل أوّلًا (بمسافاتها كما هي) ثمّ بالكلمات، والنصّ بلا مسافات (الصينيّة) بالحروف */
 function splitLong(s) {
   if (wordsOf(s) <= STORY_MAX_WORDS) return [s];
+  const pieces = s.match(/[^،,؛;:，、；：]*[،,؛;:，、；：]?\s*/g).filter(Boolean);
   const out = [];
   let cur = '';
-  for (const p of s.split(/(?<=[،,؛;:])\s+/)) {
-    const t = cur ? cur + ' ' + p : p;
-    if (cur && wordsOf(t) > STORY_MAX_WORDS) { out.push(cur); cur = p; } else cur = t;
+  for (const p of pieces) {
+    if (cur && wordsOf(cur + p) > STORY_MAX_WORDS) { out.push(cur.trim()); cur = p; } else cur += p;
   }
-  if (cur) out.push(cur);
+  if (cur.trim()) out.push(cur.trim());
   const fin = [];
-  for (const x of out) { const w = x.split(' '); for (let i = 0; i < w.length; i += STORY_MAX_WORDS) fin.push(w.slice(i, i + STORY_MAX_WORDS).join(' ')); }
+  for (const x of out) {
+    if (wordsOf(x) <= STORY_MAX_WORDS) { fin.push(x); continue; }
+    if (/\s/.test(x)) { const w = x.split(' '); for (let i = 0; i < w.length; i += STORY_MAX_WORDS) fin.push(w.slice(i, i + STORY_MAX_WORDS).join(' ')); }
+    else { const c = Array.from(x), n = STORY_MAX_WORDS * 2; for (let i = 0; i < c.length; i += n) fin.push(c.slice(i, i + n).join('')); }
+  }
   return fin;
 }
-/** مقاطع القصّة بالترتيب: كلّ مقطع جمل كاملة من فقرة واحدة نحو STORY_WORDS كلمة — ضمانٌ أنّ مقاطعها مربوطةً بمسافة = النصّ نفسه */
+/** مقاطع القصّة بالترتيب: جمل كاملة نحو STORY_WORDS كلمة. بداية الفقرة قطعٌ مفضَّل لا إجباريّ (السطر القصير يُضمّ لما بعده — حوار من
+ *  ١٢٠ سطرًا كان يصير ١٢٠ مشهدًا فيُقصّ ما بعد ٨٩). وفوق MAX_SCENES−1 يُدمج أصغر مقطعين متجاورين — لا يسقط حرف أبدًا. */
 function splitStory(text) {
+  const units = [];
+  storyText(text).split('\n').forEach((par, p) => { for (const sen of storySentences(par).flatMap(splitLong)) units.push({ s: sen, p }); });
   const chunks = [];
-  for (const par of storyText(text).split('\n')) {
-    let cur = '';
-    for (const sen of storySentences(par).flatMap(splitLong)) {
-      const t = cur ? cur + ' ' + sen : sen;
-      if (cur && (wordsOf(cur) >= STORY_WORDS || wordsOf(t) > STORY_MAX_WORDS)) { chunks.push(cur); cur = sen; } else cur = t;
-    }
-    if (cur) chunks.push(cur);
+  let cur = '', curP = -1;
+  for (const u of units) {
+    if (!cur) { cur = u.s; curP = u.p; continue; }
+    const t = cur + ' ' + u.s, w = wordsOf(cur);
+    if (w >= STORY_WORDS || wordsOf(t) > STORY_MAX_WORDS || (u.p !== curP && w >= Math.round(STORY_WORDS / 2))) { chunks.push(cur); cur = u.s; }
+    else cur = t;
+    curP = u.p;
   }
-  return chunks.slice(0, MAX_SCENES - 1);
+  if (cur) chunks.push(cur);
+  while (chunks.length > MAX_SCENES - 1) {
+    let best = 0, bw = Infinity;
+    for (let k = 0; k < chunks.length - 1; k++) { const w = wordsOf(chunks[k]) + wordsOf(chunks[k + 1]); if (w < bw) { bw = w; best = k; } }
+    chunks.splice(best, 2, chunks[best] + ' ' + chunks[best + 1]);
+  }
+  return chunks;
 }
 function buildStoryPrompt(o) {
   return [
@@ -228,9 +254,11 @@ function buildStoryPrompt(o) {
 function normalizeStory(obj, chunks) {
   if (!obj || typeof obj !== 'object' || !Array.isArray(obj.shots) || !chunks.length) return null;
   const byI = {};
+  const num = (x) => (x && x.i !== '' && x.i != null && Number.isFinite(Number(x.i))) ? Math.round(Number(x.i)) : NaN;
+  const base = obj.shots.some((x) => num(x) === 0) ? 1 : 0; /* نموذج رقّم من الصفر: لا تُزاح كلّ لقطة مقطعًا */
   obj.shots.forEach((x, k) => {
     if (!x || typeof x !== 'object') return;
-    const i = Math.round(Number(x.i)) || (k + 1), v = clip(x.visual, 500);
+    const n = num(x), i = Number.isFinite(n) ? n + base : (k + 1), v = clip(x.visual, 500);
     if (v && i >= 1 && i <= chunks.length && !byI[i]) byI[i] = v;
   });
   if (Object.keys(byI).length < Math.ceil(chunks.length * 0.6)) return null;

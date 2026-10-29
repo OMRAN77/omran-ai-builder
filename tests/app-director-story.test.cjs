@@ -131,7 +131,8 @@ test('٥. الإجراء: kind=story يمرّ بموجّه القصّة وتعل
 test('٦. الواجهة: خيار «النوع» (عرض التطبيق/قصة) بحدّ ٣٠٠٠ للقصّة، وبلا مدّة ولا صورة مرجع، وخطوتا الرسم والتجهيز', () => {
   const js = read('js/video.js');
   assert.ok(js.includes('<label class="vmk-dir-kind"><span></span><select id="vdKind"><option value="app"></option><option value="story"></option></select></label>'));
-  assert.ok(js.includes("rq.placeholder=story?L('vdPhStory'):L('vdPh'); rq.maxLength=story?3000:600;"));
+  assert.ok(js.includes("rq.placeholder=story?L('vdPhStory'):L('vdPh');") && js.includes('<textarea id="vdReq" rows="3" maxlength="3000"></textarea>'), 'الحقل ٣٠٠٠ في النوعين — لصق قصّة قبل اختيار «قصة» لا يُقصّ');
+  assert.ok(js.includes("if(!drStory()&&req.length>600){ drMsg(L('vdTooLong'),true); return; }"), '«عرض التطبيق» الطويل تنبيه لا قصّ صامت');
   assert.ok(js.includes("box.querySelector('#vdMin').disabled=story; box.querySelector('.vmk-dir-ref').hidden=story;"));
   assert.ok(js.includes("shots:story?'vdStepFrames':'vdStepShots',samples:story?'vdStepDraw':'vdStepSamples'"));
   assert.ok(js.includes("if(story) base.kind='story';"));
@@ -144,12 +145,18 @@ test('٦. الواجهة: خيار «النوع» (عرض التطبيق/قصة)
 test('٧. مشاهد القصّة: صورة من لقطتها بمسار الصور (16:9، بلا كتابة، بالشخصيّات الثابتة) لا أنماط ولا صورة مرجع، وتُملأ الإطار بسطر الراوي، والفاشل بطاقة لا شاشة', () => {
   const js = read('js/video.js');
   assert.ok(js.includes("if(story){ if(o.type==='title') o.sub=''; if(o.type==='story'){ o.prompt=drStoryPrompt(plan,sc.visual||sc.narration); o.cap=o.narration; } }"));
-  assert.ok(js.includes("'Cinematic widescreen 16:9 film still. '") && js.includes('No text, no letters, no captions, no signs with writing, no watermark.'));
-  assert.ok(js.includes("Characters (keep exactly the same faces, ages and clothes in every shot): "));
+  assert.ok(js.includes("'Cinematic 16:9 film still. Shot: '") && js.includes('Clean frame with no writing, no signage and no watermark.'));
+  assert.ok(js.includes("' Characters (same faces, ages and clothes in every shot): '"));
   assert.ok(js.includes("r=s.type==='story'?await drJson('/api/media?action=maha-image',{prompt:s.prompt,"), 'القصّة لا تمرّ بالأنماط ولا بصورة المرجع');
   assert.ok(js.includes("if(s.type==='story'){ var sf=await drStoryFrame(s.image,s.mime,s.cap,capDir);"));
   const frame = js.slice(js.indexOf('function drStoryFrame('), js.indexOf('function drStoryPrompt('));
   assert.ok(frame.includes('var k=Math.max(W/img.width,H/img.height)'), 'قصّ يملأ الإطار لا تمطيط');
+  assert.ok(!frame.includes('slice(0,3)') && frame.includes("if(lines.length<=3||fs<=30) break; fs-=2;"), 'الخطّ يصغر ولا يسقط سطر');
+  const wrapSrc = js.slice(js.indexOf('function drWrap('), js.indexOf('function drCaptionSample('));
+  const drWrap = new Function(wrapSrc + '\nreturn drWrap;')();
+  const ctx = { measureText: (t) => ({ width: Array.from(t).length * 10 }) };
+  assert.ok(drWrap(ctx, '从前有一个小男孩他每天早上都去学校他在路上会经过一个小摊', 100).length >= 3, 'الصينيّة تلتفّ بالحروف');
+  assert.equal(drWrap(ctx, 'كلمةطويلةجداجداجدا', 50).length, 1, 'الكلمة العربيّة الطويلة تبقى كاملة');
   assert.doesNotMatch(frame, /blur|arcTo|strokeStyle/, 'بلا خلفيّة مموّهة ولا كبسولة ذهبيّة');
   assert.ok(js.includes("} else if(s.type==='story'){ failed++; s.type='title'; s.text=plan.title; s.sub=s.narration; s.image=''; }"));
   assert.ok(js.includes("drT(story?'vdWarnDraw':'vdWarnSamples',{n:failed})"));
@@ -171,8 +178,8 @@ test('٩. «عرض التطبيق»: highlight عنوان فرعيّ للمشا�
   assert.doesNotMatch(p, /ما يُبرَز في هذا المشهد/);
 });
 
-test('١٠. النصوص الثمانية بالـ١٤ لغة، والوسوم مرفوعة', () => {
-  const KEYS = ['vdKind', 'vdKindApp', 'vdKindStory', 'vdSubStory', 'vdPhStory', 'vdStepDraw', 'vdStepFrames', 'vdWarnDraw'];
+test('١٠. النصوص التسعة بالـ١٤ لغة، والوسوم مرفوعة', () => {
+  const KEYS = ['vdKind', 'vdKindApp', 'vdKindStory', 'vdSubStory', 'vdTooLong', 'vdPhStory', 'vdStepDraw', 'vdStepFrames', 'vdWarnDraw'];
   const base = read('js/app-03-i18n-data.js');
   for (const k of KEYS) assert.equal((base.match(new RegExp('\\b' + k + ': "', 'g')) || []).length, 2, k + ' بالعربيّة والإنجليزيّة');
   for (const lg of ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil']) {
@@ -188,6 +195,46 @@ test('١٠. النصوص الثمانية بالـ١٤ لغة، والوسوم �
   const h = read('index.html');
   const vv = Number((h.match(/\/js\/video\.js\?v=(\d+)/) || [])[1]);
   assert.ok(vv >= 463, 'وسم video.js مرفوع');
+});
+
+test('١١. مراجعة: التنصيص لا يتكرّر، و3.5 وU.S. لا تُقطعان، والحوار القصير لا يُقصّ بعد ٨٩ مشهدًا، والصينيّة والهنديّة تُقسمان عند نهايات جملها', () => {
+  for (const c of ['سألته: «وين رايح؟»، فما رد.', 'قال: «ليش؟». ثم سكت.', 'قال لها: «تعال بسرعة.»، ثمّ مشى', "the U.S.'s envoy", '(wow!), really', 'السعر 3.5 درهم. تمام.']) {
+    assert.equal(D.splitStory(c).join(' '), D.storyText(c), c);
+  }
+  const dlg = Array.from({ length: 120 }, (_, i) => (i % 2 ? '«نعم.»' : 'قال: «هل أنت بخير؟»')).join('\n');
+  const c2 = D.splitStory(dlg);
+  assert.ok(c2.length <= 89);
+  assert.equal(c2.join(' '), D.storyText(dlg).replace(/\n/g, ' '), 'لا يسقط سطر من الحوار');
+  const lines = Array.from({ length: 200 }, (_, i) => 'سطر ' + i + '.').join('\n');
+  const c3 = D.splitStory(lines);
+  assert.ok(c3.length <= 89 && c3[c3.length - 1].endsWith('سطر 199.'));
+  const zh = '从前有一个小男孩，他每天早上都去学校。他在路上会经过一个小摊。摊主是一位和蔼的老人！老人总是笑着给他一杯茶。'.repeat(8);
+  const c4 = D.splitStory(zh);
+  assert.ok(c4.length >= 6 && c4.every((x) => Array.from(x).length <= 70), 'الصينيّة مشاهد قصيرة لا مشهد واحد');
+  assert.equal(c4.join('').replace(/\s/g, ''), zh);
+  const hi = 'एक समय की बात है, एक छोटा लड़का रोज़ स्कूल जाता था। रास्ते में एक छोटी दुकान थी। '.repeat(10);
+  const c5 = D.splitStory(hi);
+  assert.ok(c5.every((x) => x.endsWith('।')), 'الهنديّة تُقطع عند ।');
+  assert.ok(D.splitStory('وصل۔ پھر چلا گیا۔ '.repeat(20)).every((x) => x.endsWith('۔')), 'الأورديّة عند ۔');
+});
+
+test('١٢. مراجعة: لقطات مرقّمة من الصفر لا تُزاح مقطعًا، وأمر الصورة تحت ١٨٠٠ حرف واللقطة أوّله، وبلا كلمات تحوّله لمسار الكتابة، و16:9', () => {
+  const chunks = D.splitStory(STORY);
+  const plan = D.normalizeStory({ title: 't', shots: chunks.map((c, i) => ({ i, visual: 'v' + (i + 1) })) }, chunks);
+  assert.ok(plan.scenes.slice(1).every((s, i) => s.visual === 'v' + (i + 1)));
+  const js = read('js/video.js');
+  const grab = (name) => { const i = js.indexOf('function ' + name + '('); let d = 0; for (let k = js.indexOf('{', i); k < js.length; k++) { if (js[k] === '{') d++; else if (js[k] === '}' && --d === 0) return js.slice(i, k + 1); } return ''; };
+  const build = new Function(grab('drStoryNeutral') + '\n' + grab('drStoryPrompt') + '\nreturn drStoryPrompt;')();
+  const cast = Array.from({ length: 8 }, (_, i) => ({ name: 'Person' + i + ' (30)', look: 'x'.repeat(300) }));
+  const visual = 'Person7 hands one coin to the old man at the kiosk, phone screen glowing, menu board behind, early morning light, close-up.';
+  const p = build({ style: 'cinematic photoreal, app-like clean text', characters: cast }, visual);
+  assert.ok(p.length <= 1800, 'تحت حدّ مسار الصور');
+  assert.ok(p.startsWith('Cinematic 16:9 film still. Shot: Person7 hands one coin'), 'اللقطة أوّل الأمر');
+  assert.ok(p.includes('Person7 (30)'), 'الشخصيّة المذكورة في اللقطة قبل غيرها');
+  const maha = read('api/_lib/maha-image.js');
+  const cue = new RegExp(maha.match(/const __textCueRe = \/(.+)\/i;/)[1], 'i');
+  assert.doesNotMatch(p, cue, 'لا يذهب لمسار الكتابة بمقاس آخر');
+  assert.match(p, /16\s*[:x]\s*9/, 'مسار الصور يختار 16:9');
 });
 
 console.log('✓ app-director-story: القصّة حرفيّة كاملة، بلا إعلان ولا ملاحظات، صور مشاهدها من لقطاتها، ووقفات الراوي باقية');
