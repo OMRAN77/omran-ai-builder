@@ -30,6 +30,12 @@ const ATTEMPT_MS = 150000;       // مهلة المحاولة الواحدة (ا
 const PART_MINUTES = 2.5;        // فيديو أطول من ٣ دقائق يُكتب أجزاءً: كلّ جزء نداء مستقلّ قصير
 const TOKEN_TTL_MS = 2 * 3600 * 1000;
 const MAX_REQUEST = 600;
+/* v-director-story (المالك ٢٨ أكتوبر بفيديو «قصة سعيد وعمّي بلال»: «انا طالب قصة… سوالي كانفا يعني التصميم زفت»): القصّة تُقرأ
+   كاملةً بكلام المالك — ٦٠٠ حرف قصّت قصّته (١٢٣٠) عند «ويوم تخرّجه» فلم تصل الورقة ولا النهاية. التقسيم في الكود لا في النموذج
+   (النصّ حرفيّ مضمون)، والنموذج يكتب الصورة وحدها: عنوان وشخصيّات ثابتة وأسلوب واحد ولقطة لكلّ مقطع. */
+const MAX_STORY = 3000;
+const STORY_WORDS = 18;       // ≈ ٨ ثوانٍ كلامًا (WORDS_PER_SEC) — يُغلق المقطع عند بلوغه
+const STORY_MAX_WORDS = 30;   // جملة أطول تُقسم عند الفواصل ثمّ بالكلمات
 const MIN_MINUTES = 1, MAX_MINUTES = 10;
 const SCENE_SECONDS = 8;      // متوسّط المشهد — الفعليّ على الجسر = مدّة الصوت + نصف ثانية
 const WORDS_PER_SEC = 2.3;    // كلام مريح (كما في video-write)
@@ -52,6 +58,14 @@ const SYSTEM = [
   'تكتب التعليق الصوتيّ باللغة المطلوبة وحدها، وبصيغة من يخاطب المشاهد مباشرة، وبأسماء الميزات والشاشات كما وردت في الكتالوج حرفيًّا.',
   'ممنوع ذكر اسم أيّ مزوّد أو نموذج ذكاء اصطناعيّ أو شركة تقنيّة (لا كلود ولا جيمناي ولا GPT ولا جوجل ولا غيرها) — الأسماء الوظيفيّة فقط.',
   'لا تَعِد بشيء ليس في الكتالوج. المساعد الصوتيّ اسمه مها، وصوت الرجل اسمه عبدالله.',
+  'تعيد JSON واحدًا صالحًا فقط بلا أيّ نصّ خارجه ولا أسوار كود.',
+].join('\n');
+
+const STORY_SYSTEM = [
+  'أنت مخرج أفلام قصيرة ورسّام لوحات قصصيّة. تستلم قصّة مقسّمة مقاطع مرقّمة يقرؤها الراوي كما هي حرفيًّا — لا تغيّر منها شيئًا ولا تُعِد كتابتها.',
+  'مهمّتك الصورة وحدها: عنوان قصير، وشخصيّات ثابتة الملامح، وأسلوب بصريّ واحد للفيلم كلّه، ولكلّ مقطع لقطة واحدة تصوّر لحظته بدقّة.',
+  'الأوصاف البصريّة بالإنجليزيّة وملموسة: من في اللقطة (باسم الشخصيّة وعمرها في تلك اللحظة)، والمكان، والوقت والإضاءة، وتعبير الوجه، وزاوية الكاميرا. الملابس والأماكن خليجيّة إماراتيّة حين تقتضي القصّة.',
+  'لا كتابة ولا حروف ولا لافتات داخل اللقطة. لا إعلان ولا تطبيق ولا دعوة لتحميل شيء. ممنوع ذكر اسم أيّ مزوّد أو نموذج ذكاء اصطناعيّ.',
   'تعيد JSON واحدًا صالحًا فقط بلا أيّ نصّ خارجه ولا أسوار كود.',
 ].join('\n');
 
@@ -104,7 +118,7 @@ function buildPrompt(o) {
       (part === parts ? ' هذا الجزء الأخير: اختم بدعوة واضحة للتجربة وبطاقة عنوان ختاميّة.' : ' لا تختم الفيديو؛ بعده جزء آخر.'));
   }
   L.push('أنواع المشاهد: "title" بطاقة عنوان (text ≤ ٦ كلمات، للافتتاح والفواصل والختام)، "screen" لقطة شاشة حقيقيّة (target = معرّف شاشة من الكتالوج)، "style_sample" صورة حقيقيّة تُولَّد بنمط صور (target = مفتاح نمط من PORTRAIT STYLES). نوّع بينها: افتح ببطاقة عنوان، ولا تضع أكثر من ثلاث لقطات متتالية للشاشة نفسها.');
-  L.push('الصيغة المطلوبة: ' + shape + '{"type":"title|screen|style_sample","target":"screen id or style key","text":"نصّ قصير على الشاشة (اختياريّ لغير title)","highlight":"ما يُبرَز في هذا المشهد (كلمات قليلة)","narration":"التعليق الصوتيّ لهذا المشهد","seconds":8}]}');
+  L.push('الصيغة المطلوبة: ' + shape + '{"type":"title|screen|style_sample","target":"screen id or style key","text":"نصّ قصير على الشاشة (اختياريّ لغير title)","highlight":"عنوان فرعيّ قصير يراه المشاهد تحت بطاقة العنوان — جملة للمشاهد لا ملاحظة إخراج","narration":"التعليق الصوتيّ لهذا المشهد","seconds":8}]}');
   L.push('كتالوج التطبيق:');
   L.push(o.catalogText);
   return L.join('\n');
@@ -151,12 +165,120 @@ function normalizePlan(obj, catalog, opts) {
   return out;
 }
 
-function geminiBody(prompt, nudge, thinking) {
+/* ───── v-director-story: التقسيم الحرفيّ ───── */
+/** نصّ القصّة كما كتبه المالك: فواصل الأسطر تبقى (حدود الفقرات)، والمسافات تُوحَّد، والحدّ ٣٠٠٠ حرف */
+function storyText(s) {
+  return String(s == null ? '' : s).replace(/\r\n?/g, '\n').replace(/[ \t\f\v\u00a0]+/g, ' ').replace(/ *\n */g, '\n')
+    .replace(/\n{2,}/g, '\n').trim().slice(0, MAX_STORY).trim();
+}
+/* الطول بالكلمات بحسب الكتابة: الصينيّة واليابانيّة بلا مسافات — كلّ حرفين كلمة (≈ ٤٫٦ حرف/ث كلامًا) — مراجعة v-director-story */
+const CJK_RE = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/g;
+function wordsOf(s) {
+  const t = String(s || '');
+  const cjk = (t.match(CJK_RE) || []).length;
+  return t.replace(CJK_RE, ' ').split(/\s+/).filter(Boolean).length + Math.ceil(cjk / 2);
+}
+/* نهايات الجمل باللغات الأربع عشرة: . ! ? ؟ والصينيّة 。！？ (بلا مسافة بعدها) والأورديّة ۔ والهنديّة/النيباليّة/البنغاليّة । ॥ */
+const STORY_END = /[.!؟?。！？۔।॥]/;
+const CJK_END = /[。！？]/;
+const STORY_CLOSE = /[»"”'’)」』）]/;
+/** جمل الفقرة: علامة النهاية (مع ما يليها من علامات التنصيص) تُنهي الجملة إن تلتها مسافة أو آخر الفقرة — «..» وقفة لا نهاية،
+ *  و3.5 وU.S. لا تُقطعان. التنصيص يُضاف مرّة واحدة (مراجعة: «وين رايح؟»، كانت تُكرّر «»») */
+function storySentences(par) {
+  const ch = Array.from(par), out = [];
+  let cur = '';
+  for (let i = 0; i < ch.length; i++) {
+    cur += ch[i];
+    if (!STORY_END.test(ch[i])) continue;
+    if (ch[i] === '.' && (ch[i - 1] === '.' || ch[i + 1] === '.')) continue;
+    const term = ch[i];
+    let j = i + 1;
+    while (j < ch.length && STORY_CLOSE.test(ch[j])) { cur += ch[j]; j++; }
+    i = j - 1;
+    if (j >= ch.length || /\s/.test(ch[j]) || CJK_END.test(term)) { if (cur.trim()) out.push(cur.trim()); cur = ''; }
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+/** جملة أطول من STORY_MAX_WORDS: عند الفواصل أوّلًا (بمسافاتها كما هي) ثمّ بالكلمات، والنصّ بلا مسافات (الصينيّة) بالحروف */
+function splitLong(s) {
+  if (wordsOf(s) <= STORY_MAX_WORDS) return [s];
+  const pieces = s.match(/[^،,؛;:，、；：]*[،,؛;:，、；：]?\s*/g).filter(Boolean);
+  const out = [];
+  let cur = '';
+  for (const p of pieces) {
+    if (cur && wordsOf(cur + p) > STORY_MAX_WORDS) { out.push(cur.trim()); cur = p; } else cur += p;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  const fin = [];
+  for (const x of out) {
+    if (wordsOf(x) <= STORY_MAX_WORDS) { fin.push(x); continue; }
+    if (/\s/.test(x)) { const w = x.split(' '); for (let i = 0; i < w.length; i += STORY_MAX_WORDS) fin.push(w.slice(i, i + STORY_MAX_WORDS).join(' ')); }
+    else { const c = Array.from(x), n = STORY_MAX_WORDS * 2; for (let i = 0; i < c.length; i += n) fin.push(c.slice(i, i + n).join('')); }
+  }
+  return fin;
+}
+/** مقاطع القصّة بالترتيب: جمل كاملة نحو STORY_WORDS كلمة. بداية الفقرة قطعٌ مفضَّل لا إجباريّ (السطر القصير يُضمّ لما بعده — حوار من
+ *  ١٢٠ سطرًا كان يصير ١٢٠ مشهدًا فيُقصّ ما بعد ٨٩). وفوق MAX_SCENES−1 يُدمج أصغر مقطعين متجاورين — لا يسقط حرف أبدًا. */
+function splitStory(text) {
+  const units = [];
+  storyText(text).split('\n').forEach((par, p) => { for (const sen of storySentences(par).flatMap(splitLong)) units.push({ s: sen, p }); });
+  const chunks = [];
+  let cur = '', curP = -1;
+  for (const u of units) {
+    if (!cur) { cur = u.s; curP = u.p; continue; }
+    const t = cur + ' ' + u.s, w = wordsOf(cur);
+    if (w >= STORY_WORDS || wordsOf(t) > STORY_MAX_WORDS || (u.p !== curP && w >= Math.round(STORY_WORDS / 2))) { chunks.push(cur); cur = u.s; }
+    else cur = t;
+    curP = u.p;
+  }
+  if (cur) chunks.push(cur);
+  while (chunks.length > MAX_SCENES - 1) {
+    let best = 0, bw = Infinity;
+    for (let k = 0; k < chunks.length - 1; k++) { const w = wordsOf(chunks[k]) + wordsOf(chunks[k + 1]); if (w < bw) { bw = w; best = k; } }
+    chunks.splice(best, 2, chunks[best] + ' ' + chunks[best + 1]);
+  }
+  return chunks;
+}
+function buildStoryPrompt(o) {
+  return [
+    'القصّة (' + o.chunks.length + ' مقطعًا مرقّمًا — يُقرأ نصّها كما هو):',
+    o.chunks.map((c, i) => (i + 1) + ') ' + c).join('\n'),
+    'لغة القصّة: ' + (LANG_NAMES[o.lang] || o.lang) + ' — العنوان بها، والأوصاف البصريّة بالإنجليزيّة.',
+    'إن ظهرت شخصيّة في عمرين (طفلًا ثمّ كبيرًا) فاكتب لها في "characters" وصفين منفصلين بالملامح نفسها، وسمِّ في كلّ لقطة نسخة عمرها في تلك اللحظة.',
+    'الصيغة: {"title":"عنوان قصير (٦ كلمات على الأكثر)","style":"one English line: the single visual style of every shot","characters":[{"name":"name (age)","look":"English: age, face, hair, skin tone, clothing — fixed details"}],"shots":[{"i":1,"visual":"English, 25-60 words: who is in frame by character name, action, place, time of day, lighting, expression, camera angle"}]}',
+    'أعد "shots" بعدد المقاطع بالضبط (' + o.chunks.length + ') وبترتيبها، كلّ عنصر برقم مقطعه.',
+  ].join('\n');
+}
+/** خطّة القصّة: المقاطع نفسها (لا ما قد يعيد النموذج صياغته) + لقطة كلّ مقطع؛ نموذج أسقط أغلب اللقطات = null فيُعاد */
+function normalizeStory(obj, chunks) {
+  if (!obj || typeof obj !== 'object' || !Array.isArray(obj.shots) || !chunks.length) return null;
+  const byI = {};
+  const num = (x) => (x && x.i !== '' && x.i != null && Number.isFinite(Number(x.i))) ? Math.round(Number(x.i)) : NaN;
+  const base = obj.shots.some((x) => num(x) === 0) ? 1 : 0; /* نموذج رقّم من الصفر: لا تُزاح كلّ لقطة مقطعًا */
+  obj.shots.forEach((x, k) => {
+    if (!x || typeof x !== 'object') return;
+    const n = num(x), i = Number.isFinite(n) ? n + base : (k + 1), v = clip(x.visual, 500);
+    if (v && i >= 1 && i <= chunks.length && !byI[i]) byI[i] = v;
+  });
+  if (Object.keys(byI).length < Math.ceil(chunks.length * 0.6)) return null;
+  const characters = (Array.isArray(obj.characters) ? obj.characters : []).slice(0, 8)
+    .map((c) => ({ name: clip(c && c.name, 60), look: clip(c && c.look, 300) })).filter((c) => c.name && c.look);
+  const title = clip(obj.title, 80) || clip(chunks[0], 40);
+  const scenes = [{ type: 'title', target: '', text: title, highlight: '', narration: '', seconds: 3 }];
+  chunks.forEach((c, k) => scenes.push({
+    type: 'story', target: '', text: '', highlight: '', narration: c, visual: byI[k + 1] || '',
+    seconds: Math.max(3, Math.min(25, Math.round(wordsOf(c) / WORDS_PER_SEC) + 1)),
+  }));
+  return { kind: 'story', title, idea: '', style: clip(obj.style, 300), characters, scenes };
+}
+
+function geminiBody(prompt, nudge, thinking, system) {
   const parts = [{ text: prompt }];
   if (nudge) parts.push({ text: nudge });
   const generationConfig = { temperature: 0.9, maxOutputTokens: 32768, responseMimeType: 'application/json' };
   if (thinking) generationConfig.thinkingConfig = { thinkingLevel: thinking };
-  return { systemInstruction: { parts: [{ text: SYSTEM }] }, contents: [{ role: 'user', parts }], generationConfig };
+  return { systemInstruction: { parts: [{ text: system || SYSTEM }] }, contents: [{ role: 'user', parts }], generationConfig };
 }
 function partsText(d) { return String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join('')); }
 
@@ -168,7 +290,7 @@ async function callModel(o) {
     r = await o.fetchImpl(ENDPOINT + o.model + ':generateContent?key=' + o.apiKey, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(Math.max(5000, o.timeoutMs)), /* إشارة صريحة: مهلة أوّل بايت العامّة (٣٠ ث) لا تكفي نموذجًا يفكّر */
-      body: JSON.stringify(geminiBody(o.prompt, o.nudge, o.thinking)),
+      body: JSON.stringify(geminiBody(o.prompt, o.nudge, o.thinking, o.system)),
     });
     d = await r.json().catch(() => null);
   } catch (e) {
@@ -227,7 +349,10 @@ async function requestPlan(opts) {
   const sleep = o.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
   const catalog = o.catalog;
   const parts = o.parts || 1, part = o.part || 1;
-  const prompt = buildPrompt({ request: o.request, lang: o.lang, speaker: o.speaker, minutes: o.minutes, silent: !!o.silent, part, parts, outline: o.outline, title: o.title, idea: o.idea, catalog, catalogText: CAT.catalogText(catalog) });
+  const story = o.kind === 'story';
+  const prompt = story ? buildStoryPrompt({ chunks: o.chunks, lang: o.lang })
+    : buildPrompt({ request: o.request, lang: o.lang, speaker: o.speaker, minutes: o.minutes, silent: !!o.silent, part, parts, outline: o.outline, title: o.title, idea: o.idea, catalog, catalogText: CAT.catalogText(catalog) });
+  const system = story ? STORY_SYSTEM : SYSTEM;
   const deadline = Date.now() + (o.budgetMs || PLAN_BUDGET_MS);
   const left = () => deadline - Date.now();
   const attempts = [], tried = new Set();
@@ -246,7 +371,7 @@ async function requestPlan(opts) {
     let nudge = '', thinking = '', transient = 0, jsonTries = 0, timeouts = 0;
     for (let i = 0; i < 4; i++) {
       if (left() < 20000) return { ok: false, why: why === 'unavailable' ? 'budget' : why, attempts };
-      const r = await callModel({ model, prompt, nudge, thinking, apiKey: o.apiKey, fetchImpl, timeoutMs: Math.min(o.timeoutMs || ATTEMPT_MS, left() - 5000) });
+      const r = await callModel({ model, prompt, nudge, thinking, system, apiKey: o.apiKey, fetchImpl, timeoutMs: Math.min(o.timeoutMs || ATTEMPT_MS, left() - 5000) });
       const rec = { model, thinking, why: r.ok ? 'ok' : r.why, ms: r.ms, msg: r.msg || '' };
       attempts.push(rec);
       if (!r.ok) {
@@ -260,7 +385,7 @@ async function requestPlan(opts) {
         if (r.status === 400 && thinking && /thinking/i.test(r.msg || '')) { thinking = ''; timeouts = 2; continue; } /* النموذج لا يقبل مستوى التفكير */
         break; /* 400/401/403/404…: النموذج التالي */
       }
-      const plan = normalizePlan(extractJson(r.text), catalog, { parts, part, outline: o.outline });
+      const plan = story ? normalizeStory(extractJson(r.text), o.chunks) : normalizePlan(extractJson(r.text), catalog, { parts, part, outline: o.outline });
       if (plan) return { ok: true, plan, model, fallback: !(model === pinned || /(^|-)pro(-|$)/i.test(model)), attempts };
       why = rec.why = 'bad_json' + (r.finish && r.finish !== 'STOP' ? ':' + r.finish : '') + (r.block ? ':' + r.block : '');
       if (++jsonTries >= 2) break;
@@ -451,10 +576,25 @@ async function handler(req, res) {
   if (action === 'app-director-plan') {
     const apiKey = String(process.env.GEMINI_API_KEY || '').trim();
     if (!apiKey) { res.status(503).json({ error: 'director_unconfigured' }); return; }
-    const request = clip(body.request, MAX_REQUEST);
+    const kind = body.kind === 'story' ? 'story' : 'app';
+    const request = kind === 'story' ? storyText(body.request) : clip(body.request, MAX_REQUEST);
     if (!request) { res.status(400).json({ error: 'request_required' }); return; }
     const lang = CAT.LANGS.includes(body.lang) ? body.lang : 'ar';
     const speaker = body.speaker === 'male' ? 'male' : 'female';
+    if (kind === 'story') {
+      const chunks = splitStory(request);
+      let rs;
+      try { rs = await requestPlan({ kind, chunks, lang, apiKey, env: process.env }); }
+      catch (e) { rs = { ok: false, why: 'exception', attempts: [{ model: '-', why: 'exception', ms: 0, msg: clip(e && e.message, 100) }] }; }
+      if (!rs.ok) {
+        const diag = diagOf(rs.attempts);
+        try { require('./log-error.js').logError('app-director/story', new Error(rs.why), { diag: diag.slice(0, 160) }); } catch (e) { console.error('[app-director] story failed: ' + rs.why); }
+        res.status(502).json({ error: 'plan_failed', why: rs.why, diag });
+        return;
+      }
+      res.status(200).json({ plan: rs.plan, kind, lang, speaker, part: 1, parts: 1, model: rs.model, fallback: !!rs.fallback, attempts: rs.attempts.length });
+      return;
+    }
     const minutes = Math.max(MIN_MINUTES, Math.min(MAX_MINUTES, Math.round(Number(body.minutes) || 2)));
     const catalog = CAT.buildCatalog({ lang, labels: cleanLabels(body.labels) });
     const parts = partsFor(minutes);
@@ -504,4 +644,4 @@ async function handler(req, res) {
 }
 
 module.exports = handler;
-module.exports.__test = { probeBridge, directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, LAST_RESORT, cleanLabels, partsFor, cleanOutline, discoverPro, diagOf, callModel, requestVoice, voiceBody, voiceModels, voiceName, pickAudio, toWav, VOICE_MODELS };
+module.exports.__test = { storyText, splitStory, buildStoryPrompt, normalizeStory, STORY_SYSTEM, MAX_STORY, probeBridge, directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, LAST_RESORT, cleanLabels, partsFor, cleanOutline, discoverPro, diagOf, callModel, requestVoice, voiceBody, voiceModels, voiceName, pickAudio, toWav, VOICE_MODELS };
