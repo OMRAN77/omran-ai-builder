@@ -16,6 +16,7 @@ const BLOB_BASE = 'https://blob.vercel-storage.com';
 const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
 const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
+const DEHASHED_ENABLED = false;
 const SEARCH_URL = 'https://api.dehashed.com/v2/search';
 const DAILY_LIMIT = 5; // per logged-in account
 const MAX_SIZE = 20;   // max records returned per search (cost control)
@@ -71,6 +72,14 @@ module.exports = async (req, res) => {
   }
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+  // Disabled: it returns other people's leaked records with no check that the
+  // caller owns the email/domain searched, and its audit log was written to a
+  // public path. Re-enable only with ownership verification and the audit log
+  // moved to _store.js.
+  if (!DEHASHED_ENABLED) {
+    res.status(503).json({ error: 'disabled', disabled: true, message: 'أداة البحث في البيانات المسرّبة معطّلة مؤقتًا: تُرجع بيانات أشخاص آخرين ولا يمكنها التحقق من أنك تملك الإيميل أو النطاق.' });
     return;
   }
 
