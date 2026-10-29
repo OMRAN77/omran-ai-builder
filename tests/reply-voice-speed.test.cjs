@@ -66,7 +66,7 @@ test('٣. صوت الجهاز الاحتياطيّ بالسرعة نفسها، �
   for (const f of ['js/app-02-tts.js', 'js/app.bundle.js']) {
     const s = read(f);
     assert.ok(s.includes("utter.rate = ({ slow: 0.9, normal: 1, fast: 1.1, xfast: 1.2 })[ttsSpeedSetting()] || 1;"), f);
-    assert.ok(s.includes('text: String(text).slice(0, 4000), speed: ttsSpeedSetting(), dialect: ttsDialectSetting() })'), f);
+    assert.ok(s.includes('text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })'), f);
   }
 });
 

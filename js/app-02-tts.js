@@ -1263,15 +1263,6 @@ function ttsSpeedSetting(){
 /* v-tts-account (المالك: «ابدا فيهم كلهم»): صوت القراءة كان يطلب /api/tts بلا حساب فيُعدّ على عنوان IP —
    المالك نفسه يُحدّ بستّين طلبًا في اليوم، ومن يتشاركون شبكة يتشاركونها. الحساب يُرسل الآن: المالك وVIP بلا حدّ،
    وكلّ حساب حصّته، والضيف على عنوانه كما كان. مها الأساسيّ وتأكيد تبويب الصوت يستعملان المساعدين نفسيهما. */
-/* v-reply-dialect (المالك ٢٩ أكتوبر «التطبيقات عندهم بلهجتهم العماني والإماراتي والسعودي»، ثمّ «سوّيها»): لهجة صوت الردود
-   العربيّ من «الصوت» في الإعدادات — إماراتيّ (الافتراضيّ، كما كان) وعمانيّ وسعوديّ وكويتيّ وقطريّ وبحرينيّ. قيمة تالفة = إماراتيّ. */
-const TTS_DIALECTS = ['ae', 'om', 'sa', 'kw', 'qa', 'bh'];
-function ttsDialectSetting(){
-  try{
-    const v = localStorage.getItem('aiapp_voice_dialect');
-    return TTS_DIALECTS.indexOf(v) >= 0 ? v : 'ae';
-  }catch(e){ return 'ae'; }
-}
 function ttsAuthToken(){
   try{ return (typeof authGet === 'function' ? authGet('aiapp_auth_token') : '') || ''; }catch(e){ return ''; }
 }
@@ -1287,7 +1278,7 @@ async function fetchCloudSpeech(text){
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     // v-om-voices-chat: src 'reply' = «استمع» على ردّ المحادثة؛ للمالك يقرأ الخادم بأصوات om (api/_lib/om-voices.js)
-    body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting(), dialect: ttsDialectSetting() })
+    body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;

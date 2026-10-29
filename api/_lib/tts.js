@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { text, voice, gender, lang, token, guestId, speed, dialect } = body;
+    const { text, voice, gender, lang, token, guestId, speed } = body;
     // v-maha-voice-speed (طلب المالك): درجات سرعة كلام مها الأربع — تُترجَم إلى معامل
     // native حقيقي لكل مزوّد (Azure SSML prosody rate% أو معامل speed الرقمي لـOpenAI
     // TTS)، لا playbackRate على العميل (ذاك يغيّر طبقة الصوت أيضًا). قيمة غير معروفة/غائبة
@@ -65,9 +65,7 @@ module.exports = async (req, res) => {
     // مكالمة مها وبقيّة الأدوات لا ترسل src فلا تتغيّر، ولغة لا ينطقها المحرّك تبقى بمها.
     if (voice === 'maha' && body.src === 'reply') {
       const om = require('./om-voices.js');
-      // v-reply-dialect (المالك ٢٩ أكتوبر «٦ من ١٠ فضيحة… التطبيقات عندهم بلهجتهم»، ثمّ «سوّيها»): الصوتان المدرَّبان بالفصحى
-      // خرجا من «استمع»؛ يقرأ مها باللهجة المختارة (تحت). OM_VOICES_REPLY=1 يعيدهما (لصوت خليجيّ مدرَّب لاحقًا).
-      if (String(process.env.OM_VOICES_REPLY || '').trim() === '1' && om.enabledFor(usage.username, lang)) {
+      if (om.enabledFor(usage.username, lang)) {
         try {
           const wav = await om.speak({ text, lang, gender });
           res.setHeader('Content-Type', 'audio/wav');
@@ -137,19 +135,7 @@ module.exports = async (req, res) => {
         urdu: 'ur', bengali: 'bn', bangla: 'bn', nepali: 'ne',
       };
       const langKey = langAliases[rawLang] || (MAHA_VOICE_MAP[rawLang] ? rawLang : rawLang.slice(0, 2));
-      // v-reply-dialect: النصّ العربيّ بلهجة يختارها المستخدم في «الصوت» (العميل يرسلها لـ«استمع» وتجربة الصوت) — أصوات
-      // Azure الأصيلة لكلّ بلد، رجل وامرأة، بالمفتاح والحساب نفسيهما. غير معروفة أو غائبة = الإماراتيّ كما كان.
-      const AR_DIALECT_VOICES = {
-        ae: ['ar-AE', 'ar-AE-FatimaNeural', 'ar-AE-HamdanNeural'],
-        om: ['ar-OM', 'ar-OM-AyshaNeural', 'ar-OM-AbdullahNeural'],
-        sa: ['ar-SA', 'ar-SA-ZariyahNeural', 'ar-SA-HamedNeural'],
-        kw: ['ar-KW', 'ar-KW-NouraNeural', 'ar-KW-FahedNeural'],
-        qa: ['ar-QA', 'ar-QA-AmalNeural', 'ar-QA-MoazNeural'],
-        bh: ['ar-BH', 'ar-BH-LailaNeural', 'ar-BH-AliNeural'],
-      };
-      const baseSet = MAHA_VOICE_MAP[langKey] || MAHA_VOICE_MAP.ar;
-      const voiceSet = (baseSet === MAHA_VOICE_MAP.ar && Object.prototype.hasOwnProperty.call(AR_DIALECT_VOICES, dialect)
-        && AR_DIALECT_VOICES[dialect]) || baseSet;
+      const voiceSet = MAHA_VOICE_MAP[langKey] || MAHA_VOICE_MAP.ar;
       // The multilingual neural voices read xml:lang to pick which
       // language/accent to speak the text in, so we still pass the actual
       // detected locale (e.g. ar-SA) even though the voice name itself is

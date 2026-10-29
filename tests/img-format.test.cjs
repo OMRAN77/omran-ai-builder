@@ -83,5 +83,5 @@ test('five new messages in all 14 languages with their placeholders, and the lan
     const o = JSON.parse(m[1]);
     assert.ok(o.imgConvertDone.includes('{fmt}') && o.imgConvertSame.includes('{fmt}') && o.imgConvertGuess.includes('{fmt}') && o.imgConvertGuess.includes('{word}'), l + ': العلامات');
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=779';"));
+  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=778';"));
 });
