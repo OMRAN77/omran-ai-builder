@@ -65,7 +65,9 @@ module.exports = async (req, res) => {
     // مكالمة مها وبقيّة الأدوات لا ترسل src فلا تتغيّر، ولغة لا ينطقها المحرّك تبقى بمها.
     if (voice === 'maha' && body.src === 'reply') {
       const om = require('./om-voices.js');
-      if (om.enabledFor(usage.username, lang)) {
+      // v-maha-ae-lexicon (المالك: «ليش ما تطوّرهم باللهجة الإماراتية… الصوت الجميل»): «استمع» للمالك بمها وعبدالله (تحت) بقاموس
+      // النطق الإماراتيّ؛ الصوتان المدرَّبان بالفصحى (٦ من ١٠) لا يعودان إلّا بـOM_VOICES_REPLY=1.
+      if (String(process.env.OM_VOICES_REPLY || '').trim() === '1' && om.enabledFor(usage.username, lang)) {
         try {
           const wav = await om.speak({ text, lang, gender });
           res.setHeader('Content-Type', 'audio/wav');
@@ -141,6 +143,8 @@ module.exports = async (req, res) => {
       // detected locale (e.g. ar-SA) even though the voice name itself is
       // shared across all languages.
       const locale = voiceSet[0];
+      // v-maha-ae-lexicon: العربيّ بقاموس النطق الإماراتيّ (api/_lib/ae-lexicon.js) — كلمات مشكّلة تثبّت نطقها؛ النصّ المعروض كما هو
+      const spoken = locale.startsWith('ar-') ? require('./ae-lexicon.js').apply(String(text)) : String(text);
       const voiceName = gender === 'male' ? voiceSet[2] : voiceSet[1];
       const escapeXml = (s) => String(s)
         .replace(/&/g, '&amp;')
@@ -150,7 +154,7 @@ module.exports = async (req, res) => {
         .replace(/'/g, '&apos;');
       const ssml = '<speak version="1.0" xml:lang="' + locale + '">' +
         '<voice name="' + voiceName + '">' +
-        '<prosody rate="' + ttsSpeed.azureRate + '" pitch="0%">' + escapeXml(String(text).slice(0, 4000)) + '</prosody>' +
+        '<prosody rate="' + ttsSpeed.azureRate + '" pitch="0%">' + escapeXml(spoken.slice(0, 4000)) + '</prosody>' +
         '</voice></speak>';
       let azResp = null;
       for (const acct of azAccounts) {
