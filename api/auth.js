@@ -1,20 +1,18 @@
 // Vercel Serverless Function: full signup/login account system.
-// Each user is stored as its OWN blob file (db/users/{username}.json) in Vercel Blob
-// storage. This avoids any read-modify-write race across concurrent signups/logins
+// Each user is stored as its OWN encrypted blob at an unguessable path (see
+// _store.js). This avoids any read-modify-write race across concurrent signups/logins
 // that a single shared JSON file would have (lost updates when two requests land
 // close together). Passwords are NEVER stored in plain text — scrypt hash + random
 // salt per user. Sessions are signed tokens (HMAC-SHA256) — no plaintext secrets
 // ever reach the client.
 const crypto = require('crypto');
 const { getAuthSecret, makeToken, verifyToken } = require('./_secrets');
+const store = require('./_store');
 
 const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
-function userPath(key) {
-  // key must already be the normalized (lowercased, trimmed) username.
+// Records written before encryption sat at this public, guessable path.
+function legacyUserPath(key) {
   return 'taryam/db/users/' + encodeURIComponent(key) + '.json';
 }
 
@@ -34,42 +32,24 @@ function genRecoveryCode() {
   return bytes.match(/.{1,4}/g).join('-'); // XXXX-XXXX-XXXX-XXXX-XXXX
 }
 
-function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
-
-async function getUserOnce(key) {
-  try {
-    const res = await fetch(PUBLIC_BASE + userPath(key) + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) {
-    return null;
-  }
-}
-
-// Vercel Blob's public read URL is eventually consistent — a blob written a
-// moment ago (e.g. right after signup/reset) can briefly 404 on read. Retry a
-// few times with short backoff to smooth over that window before giving up.
-async function getUser(key, attempts) {
-  attempts = attempts || 4;
-  for (let i = 0; i < attempts; i++) {
-    const user = await getUserOnce(key);
-    if (user) return user;
-    if (i < attempts - 1) await sleep(300 * (i + 1));
-  }
-  return null;
+// key must already be the normalized (lowercased, trimmed) username.
+// Reads retry a few times because a record written a moment ago (e.g. right after
+// signup/reset) can briefly 404. A record still at the legacy path is moved to the
+// encrypted path on first read and its public copy overwritten, so its hashes stop
+// being downloadable.
+async function getUser(key) {
+  const path = store.secretPath('users', key);
+  const user = await store.readSecret(path, 4);
+  if (user) return user;
+  const legacy = await store.readPublicJson(legacyUserPath(key));
+  if (!legacy || legacy.migrated) return null;
+  await store.writeSecret(path, legacy);
+  await store.writePublicJson(legacyUserPath(key), { migrated: true });
+  return legacy;
 }
 
 async function putUser(key, user) {
-  await fetch(BLOB_BASE + '/' + userPath(key), {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer ' + BLOB_TOKEN,
-      'x-content-type': 'application/json',
-      'x-add-random-suffix': '0',
-      'x-cache-control-max-age': '0',
-    },
-    body: JSON.stringify(user),
-  });
+  await store.writeSecret(store.secretPath('users', key), user);
 }
 
 module.exports = async (req, res) => {
