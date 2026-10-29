@@ -21,7 +21,7 @@ test('١. الاسمان وجملة التعريف في اللغات الـ١٤�
     assert.match(s, /"?voiceSampleIntro"?: "[^"]*\{name\}[^"]*"/, lg);
     assert.doesNotMatch(s, /"?voiceGenderMale"?: "(?:Male voice|Voz masculina|Мужской голос)"/, lg);
   }
-  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=778'"), 'وسم الكاش ارتفع');
+  assert.ok(read('js/app-04-i18n-state.js').includes("'i18n/' + lg + '.js?v=779'"), 'وسم الكاش ارتفع');
 });
 
 test('٢. الضغط يختار ويُسمع تعريف الشخصيّة؛ والتجربة تُسمع المختار', () => {
@@ -122,5 +122,5 @@ test('٥. v-voice-calligraphy: اسم الشخصيّة صورة خطّ — عر�
   for (const f of ['maha-ar', 'maha-en', 'abdullah-ar', 'abdullah-en']) assert.ok(fs.statSync(path.join(root, 'icons/name-' + f + '.png')).size < 40000, f);
   const part = read('js/partials-settings.js');
   assert.ok(part.includes('<img class="vgName" data-persona="abdullah"') && part.includes('<img class="vgName" data-persona="maha"'));
-  assert.match(part, /#voiceSection \.voiceGenderBtn, #voiceSection \.voiceSpeedBtn, #voiceSection #btnTestVoice\{border:2px solid rgba\(201,162,39/, 'البراويز ذهبيّة');
+  assert.match(part, /#voiceSection \.voiceGenderBtn, #voiceSection \.voiceSpeedBtn, #voiceSection \.voiceDialectBtn, #voiceSection #btnTestVoice\{border:2px solid rgba\(201,162,39/, 'البراويز ذهبيّة');
 });

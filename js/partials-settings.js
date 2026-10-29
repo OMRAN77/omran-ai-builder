@@ -387,9 +387,12 @@
   <!-- v-voice-calligraphy (المالك ٢ أكتوبر، صورتان «عبدالله/Abdullah» و«مها/Maha» بالذهب: «عطِ كلّ اسم بالعربي عربي والإنجليزي
        بالإنجليزي والباقين بالإنجليزي… في الإعدادات فقط، والبراويز الموجودة خلّها باللون الذهبيّ») -->
   <style>
-  #voiceSection .voiceGenderBtn, #voiceSection .voiceSpeedBtn, #voiceSection #btnTestVoice{border:2px solid rgba(201,162,39,.38) !important;}
-  #voiceSection .voiceGenderBtn.active, #voiceSection .voiceSpeedBtn.active{border-color:#c9a227 !important; box-shadow:0 0 14px rgba(201,162,39,.28);}
+  #voiceSection .voiceGenderBtn, #voiceSection .voiceSpeedBtn, #voiceSection .voiceDialectBtn, #voiceSection #btnTestVoice{border:2px solid rgba(201,162,39,.38) !important;}
+  #voiceSection .voiceGenderBtn.active, #voiceSection .voiceSpeedBtn.active, #voiceSection .voiceDialectBtn.active{border-color:#c9a227 !important; box-shadow:0 0 14px rgba(201,162,39,.28);}
   #voiceSection .voiceGenderBtn svg{color:#c9a227;}
+  /* v-reply-dialect: أزرار اللهجة بشكل أزرار السرعة نفسه (.voiceSpeedBtn في tokens.css) */
+  #voiceSection .voiceDialectBtn{flex:1 1 0; padding:10px 8px; background:var(--panel2); border-radius:var(--r-3); cursor:pointer; color:var(--muted); font-size:var(--fs-4); transition:border-color .15s, color .15s; white-space:nowrap;}
+  #voiceSection .voiceDialectBtn.active{color:var(--text);}
   /* v-voice-calligraphy2 (المالك: «شيل الأيقونة الشخصيّة، خلّهم في الوسط»): الاسم وحده في منتصف البطاقة */
   #voiceGenderBtns .voiceGenderBtn:has(.vgName.on) svg{display:none;}
   #voiceGenderBtns .voiceGenderBtn:has(.vgName.on){justify-content:center; min-height:120px;}
@@ -411,6 +414,17 @@
     <button type="button" class="voiceSpeedBtn" data-speed="normal"><span data-i18n="voiceSpeedNormal">عادي</span></button>
     <button type="button" class="voiceSpeedBtn" data-speed="fast"><span data-i18n="voiceSpeedFast">سريع</span></button>
     <button type="button" class="voiceSpeedBtn" data-speed="xfast"><span data-i18n="voiceSpeedXFast">سريع جدًا</span></button>
+  </div>
+  <!-- v-reply-dialect (المالك ٢٩ أكتوبر «التطبيقات عندهم بلهجتهم العماني والإماراتي والسعودي»): لهجة الصوت العربيّ لـ«استمع»
+       وتجربة الصوت — الضغط يحفظ ويُسمعك المختار فورًا. -->
+  <label style="display:block; margin-top:18px;" data-i18n="voiceDialectLabel">لهجة الصوت العربي</label>
+  <div id="voiceDialectBtns" style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+    <button type="button" class="voiceDialectBtn" data-dialect="ae"><span data-i18n="voiceDialectAE">إماراتي</span></button>
+    <button type="button" class="voiceDialectBtn" data-dialect="om"><span data-i18n="voiceDialectOM">عماني</span></button>
+    <button type="button" class="voiceDialectBtn" data-dialect="sa"><span data-i18n="voiceDialectSA">سعودي</span></button>
+    <button type="button" class="voiceDialectBtn" data-dialect="kw"><span data-i18n="voiceDialectKW">كويتي</span></button>
+    <button type="button" class="voiceDialectBtn" data-dialect="qa"><span data-i18n="voiceDialectQA">قطري</span></button>
+    <button type="button" class="voiceDialectBtn" data-dialect="bh"><span data-i18n="voiceDialectBH">بحريني</span></button>
   </div>
   <button type="button" class="btn" id="btnTestVoice" style="margin-top:16px; display:inline-flex; align-items:center; gap:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg><span data-i18n="testVoiceBtn">تجربة الصوت</span></button>
   </div></div>

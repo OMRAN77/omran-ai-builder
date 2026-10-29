@@ -692,6 +692,7 @@ $('#btnSettings').onclick = () => {
   try { syncAutoRenewUI(); } catch(e) { console.error(e); }
   try { if (window.omranApplyFontTuner) window.omranApplyFontTuner(); } catch(e) { console.error(e); } // v-font-tuner: الأسماء بلغة الواجهة
   try { setVoiceSpeedUI(typeof mahaReadVoiceSpeed === 'function' ? mahaReadVoiceSpeed() : 'normal'); } catch(e) { console.error(e); }
+  try { setVoiceDialectUI(ttsDialectSetting()); } catch(e) { console.error(e); } // v-reply-dialect
   try { loadThemeToForm(); } catch(e) { console.error(e); }
   try { populateVoicePicker(); } catch(e) { console.error(e); }
   } catch(e) { console.error('settings populate error', e); }
