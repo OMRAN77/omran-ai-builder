@@ -1506,6 +1506,14 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
             if(onEnd) onEnd();
             return;
           }
+          /* v-om-voices-piper: سيرفر الصوتين الخفيفين نائم (المجّانيّ ينام بعد ٤٨ ساعة ويصحى في دقيقة) ⇐ «حاول مرة ثانية»
+             المترجمة نفسها (mahaTryAgain) ويقف — لا مها ولا صوت الجهاز بدل أصواته. */
+          if(e && e.message === 'om-waking'){
+            currentCloudToken = null; currentCloudAudio = null; clearWordHighlight();
+            try{ if(typeof settingsToast === 'function') settingsToast(t('mahaTryAgain')); }catch(err){ __swallow(err, 'tts:om-waking-toast'); }
+            if(onEnd) onEnd();
+            return;
+          }
           if('speechSynthesis' in window){
             currentCloudToken = null; currentCloudAudio = null;
             speakOnDevice(chunks[i].wordStart, started);
