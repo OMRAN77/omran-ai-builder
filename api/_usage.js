@@ -3,9 +3,8 @@
 // logged-in account so a single account can't run up the owner's bill. Usage is
 // stored as one small JSON blob per user (db/usage/<username>.json), separate
 // from the account record in db/users/, and resets automatically each day (UTC).
-const crypto = require('crypto');
+const { verifyToken } = require('./_secrets');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
 const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const BLOB_BASE = 'https://blob.vercel-storage.com';
 const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
@@ -14,19 +13,6 @@ const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 // Combined daily limit shared across all three free server-proxied providers
 // (Groq + OpenAI + Claude), per logged-in account.
 const DAILY_LIMIT = 20;
-
-function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
-}
 
 function usagePath(key) {
   return 'taryam/db/usage/' + encodeURIComponent(key) + '.json';
@@ -82,7 +68,7 @@ function isValidGuestId(id) {
 // lifetime free-trial allowance for that anonymous browser instead of hard
 // requiring an account (guest mode UX promise: N free messages, no login).
 async function checkAndConsume(token, guestId) {
-  const username = verifyToken(token);
+  const username = (verifyToken(token) || {}).u;
   if (username) {
     const today = todayStr();
     let usage = await getUsage(username);

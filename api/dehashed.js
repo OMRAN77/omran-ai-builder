@@ -9,9 +9,8 @@
 //     so usage can be reviewed if a report/complaint ever comes in.
 // The user explicitly acknowledged responsibility for how this tool's results
 // are used before this endpoint was enabled.
-const crypto = require('crypto');
+const { verifyToken } = require('./_secrets');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
 const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const BLOB_BASE = 'https://blob.vercel-storage.com';
 const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
@@ -22,19 +21,6 @@ const DAILY_LIMIT = 5; // per logged-in account
 const MAX_SIZE = 20;   // max records returned per search (cost control)
 
 const ALLOWED_FIELDS = ['email', 'username', 'password', 'hashed_password', 'ip_address', 'name', 'phone', 'domain', 'address', 'vin'];
-
-function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
-}
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
@@ -100,7 +86,7 @@ module.exports = async (req, res) => {
 
     // Sensitive leak-data lookups require a real, logged-in account — no
     // anonymous guest access, unlike the AI chat and the basic HIBP check.
-    const username = verifyToken(token);
+    const username = (verifyToken(token) || {}).u;
     if (!username) {
       res.status(401).json({ error: 'auth', message: 'يجب تسجيل الدخول لاستخدام أداة البحث المتقدم عن التسريبات.' });
       return;

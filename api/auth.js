@@ -6,9 +6,9 @@
 // salt per user. Sessions are signed tokens (HMAC-SHA256) — no plaintext secrets
 // ever reach the client.
 const crypto = require('crypto');
+const { getAuthSecret, makeToken, verifyToken } = require('./_secrets');
 
 const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
 const BLOB_BASE = 'https://blob.vercel-storage.com';
 const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
 const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
@@ -32,25 +32,6 @@ function verifyPassword(password, salt, hash) {
 function genRecoveryCode() {
   const bytes = crypto.randomBytes(10).toString('hex').toUpperCase(); // 20 hex chars
   return bytes.match(/.{1,4}/g).join('-'); // XXXX-XXXX-XXXX-XXXX-XXXX
-}
-
-function makeToken(username) {
-  const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 1000 * 60 * 60 * 24 * 30 })).toString('base64url');
-  const sig = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-  return payload + '.' + sig;
-}
-
-function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
@@ -108,6 +89,10 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: 'Server is missing BLOB_READ_WRITE_TOKEN' });
     return;
   }
+  if (!getAuthSecret()) {
+    res.status(503).json({ error: 'Server is missing AUTH_SECRET (at least 32 characters)' });
+    return;
+  }
 
   try {
     let body = req.body;
@@ -144,7 +129,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'changeUsername') {
-      const u = verifyToken(token);
+      const u = (verifyToken(token) || {}).u;
       if (!u) {
         res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
         return;
@@ -178,7 +163,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'changePassword') {
-      const u = verifyToken(token);
+      const u = (verifyToken(token) || {}).u;
       if (!u) {
         res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
         return;
@@ -201,7 +186,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'setAvatar') {
-      const u = verifyToken(token);
+      const u = (verifyToken(token) || {}).u;
       if (!u) {
         res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
         return;
@@ -260,7 +245,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'verify') {
-      const u = verifyToken(token);
+      const u = (verifyToken(token) || {}).u;
       if (!u) {
         res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
         return;
