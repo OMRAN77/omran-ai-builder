@@ -28,6 +28,7 @@
     hosts: new Map(),   // host → { kind, count }
     events: [],         // last raw captured payloads (for display)
     raw: [],            // last raw bodies (newest-first) for re-parsing on remap
+    seenRounds: new Set(), // round ids already counted, so re-sent history is not double-counted
     fieldMap: { result: '', balance: '' },
     startedAt: new Date(),
     min: false,
@@ -38,8 +39,8 @@
   function noteHost(url) {
     const c = T.classifyHost(url, location.hostname);
     if (!c.host) return;
-    const cur = state.hosts.get(c.host) || { kind: c.kind, count: 0 };
-    cur.count++; cur.kind = c.kind;
+    const cur = state.hosts.get(c.host) || { kind: c.kind, count: 0, hint: c.hint || '' };
+    cur.count++; cur.kind = c.kind; cur.hint = c.hint || cur.hint || '';
     state.hosts.set(c.host, cur);
   }
   // Extract the round numbers and the balance from one captured body, using the
@@ -55,13 +56,18 @@
     } else {
       const r = T.scanText(body, state.fieldMap.result);
       const b = T.scanText(body, state.fieldMap.balance);
-      out.numbers = r.numbers;
+      out.numbers = r.numbers.map((n) => ({ n, id: null }));
       out.balance = b.balance;
     }
     return out;
   }
   function applyParsed(p) {
-    for (const n of p.numbers) state.spins.push(n);
+    for (const item of p.numbers) {
+      const n = (item && typeof item === 'object') ? item.n : item;
+      const id = (item && typeof item === 'object') ? item.id : null;
+      if (id) { if (state.seenRounds.has(id)) continue; state.seenRounds.add(id); }
+      state.spins.push(n);
+    }
     if (p.balance !== null && Number.isFinite(p.balance)) {
       if (state.startBalance === null) state.startBalance = p.balance;
       state.balance = p.balance;
@@ -69,7 +75,7 @@
   }
   // Rebuild everything from the raw buffer — used when the field mapping changes.
   function reparseAll() {
-    state.spins = []; state.startBalance = null; state.balance = null;
+    state.spins = []; state.startBalance = null; state.balance = null; state.seenRounds = new Set();
     for (let i = state.raw.length - 1; i >= 0; i--) applyParsed(parseBody(state.raw[i].body));
     render();
   }
@@ -144,8 +150,9 @@
     const a = T.analyze(state.spins, state.wheel);
     const net = (state.balance !== null && state.startBalance !== null) ? state.balance - state.startBalance : null;
     const hosts = [...state.hosts.entries()].sort((x, y) => y[1].count - x[1].count);
-    const providerSeen = hosts.some(([, v]) => v.kind === 'provider');
-    const casinoServes = hosts.some(([, v]) => v.kind === 'casino');
+    const providerSeen = hosts.some(([, v]) => v.kind === 'provider' || v.kind === 'proxied');
+    const proxied = hosts.some(([, v]) => v.kind === 'proxied');
+    const casinoServes = hosts.some(([, v]) => v.kind === 'casino') && !providerSeen;
     const last = state.spins.slice(-16);
 
     body.innerHTML = `
@@ -182,11 +189,11 @@
       </div>` : ''}
 
       <div class="tp-sec">من أين تُحمَّل اللعبة</div>
-      <div class="tp-origin ${providerSeen ? 'good' : casinoServes ? 'bad' : 'warn'}">
-        ${providerSeen ? '✓ يظهر خادم مزوّد مرخّص' : casinoServes ? '⚠ تُخدَم من خادم الموقع نفسه — الموقع يتحكم بالنتيجة' : 'جارٍ جمع المصادر…'}
+      <div class="tp-origin ${providerSeen ? (proxied ? 'warn' : 'good') : casinoServes ? 'bad' : 'warn'}">
+        ${providerSeen ? (proxied ? '◐ مزوّد مرخّص لكن مُمرَّر عبر نطاق الموقع — تأكّد أنّ النتيجة تأتي من المزوّد لا من الموقع' : '✓ يظهر خادم مزوّد مرخّص') : casinoServes ? '⚠ تُخدَم من خادم الموقع نفسه — الموقع يتحكم بالنتيجة' : 'جارٍ جمع المصادر…'}
       </div>
       <div class="tp-hosts">
-        ${hosts.slice(0, 8).map(([h, v]) => `<div class="hrow ${v.kind}"><span>${esc(h)}</span><span class="tag">${v.kind === 'provider' ? 'مزوّد' : v.kind === 'casino' ? 'الموقع' : 'مجهول'} ·${v.count}</span></div>`).join('') || '<span class="tp-muted">—</span>'}
+        ${hosts.slice(0, 8).map(([h, v]) => `<div class="hrow ${v.kind}"><span>${esc(h)}</span><span class="tag">${v.kind === 'provider' ? 'مزوّد' : v.kind === 'proxied' ? 'مزوّد (عبر الموقع' + (v.hint ? ' · ' + esc(v.hint) : '') + ')' : v.kind === 'casino' ? 'الموقع' : 'مجهول'} ·${v.count}</span></div>`).join('') || '<span class="tp-muted">—</span>'}
       </div>
 
       <div class="tp-sec">آخر ما التُقط (دليل خام)</div>
@@ -196,7 +203,7 @@
       <div class="tp-foot">يقرأ جلستك فقط — لا يعدّل أي طلب أو نتيجة أو رصيد.</div>`;
 
     root.getElementById('tp-wheel').addEventListener('change', (e) => { state.wheel = e.target.value; render(); });
-    root.getElementById('tp-clear').addEventListener('click', () => { state.spins = []; state.events = []; state.raw = []; state.hosts.clear(); state.startBalance = null; state.balance = null; state.startedAt = new Date(); render(); });
+    root.getElementById('tp-clear').addEventListener('click', () => { state.spins = []; state.events = []; state.raw = []; state.hosts.clear(); state.seenRounds = new Set(); state.startBalance = null; state.balance = null; state.startedAt = new Date(); render(); });
     root.getElementById('tp-report').addEventListener('click', exportReport);
     root.getElementById('tp-fields-toggle').addEventListener('click', () => { state.showFields = !state.showFields; render(); });
     const fr = root.getElementById('tp-fr'), fb = root.getElementById('tp-fb');
@@ -213,16 +220,21 @@
     const a = T.analyze(state.spins, state.wheel);
     const net = (state.balance !== null && state.startBalance !== null) ? state.balance - state.startBalance : null;
     const hosts = [...state.hosts.entries()].sort((x, y) => y[1].count - x[1].count);
-    const providerSeen = hosts.some(([, v]) => v.kind === 'provider');
-    const casinoServes = hosts.some(([, v]) => v.kind === 'casino');
+    const providerSeen = hosts.some(([, v]) => v.kind === 'provider' || v.kind === 'proxied');
+    const proxied = hosts.some(([, v]) => v.kind === 'proxied');
+    const casinoServes = hosts.some(([, v]) => v.kind === 'casino') && !providerSeen;
     const rawJson = JSON.stringify(state.raw);
     let hash = '—';
     try { hash = await T.sha256Hex(rawJson); } catch (e) { hash = 'تعذّر الحساب'; }
     const now = new Date();
     const rowsHtml = state.spins.map((n, k) => `<tr><td>${k + 1}</td><td class="c-${T.colorOf(n)}">${esc(n)} (${colorWord(T.colorOf(n))})</td></tr>`).join('');
-    const hostsHtml = hosts.map(([h, v]) => `<tr><td dir="ltr">${esc(h)}</td><td>${v.kind === 'provider' ? 'مزوّد مرخّص' : v.kind === 'casino' ? 'خادم الموقع' : 'مجهول'}</td><td>${v.count}</td></tr>`).join('');
+    const hostsHtml = hosts.map(([h, v]) => `<tr><td dir="ltr">${esc(h)}</td><td>${v.kind === 'provider' ? 'مزوّد مرخّص' : v.kind === 'proxied' ? 'مزوّد مُمرَّر عبر نطاق الموقع' + (v.hint ? ' (' + esc(v.hint) + ')' : '') : v.kind === 'casino' ? 'خادم الموقع' : 'مجهول'}</td><td>${v.count}</td></tr>`).join('');
     const rawHtml = state.raw.slice(0, 120).map((r) => `<div class="raw"><span>${esc(r.kind)}</span> <span dir="ltr">${esc((r.url || '').replace(/^https?:\/\//, ''))}</span><pre dir="ltr">${esc(String(r.body).slice(0, 500))}</pre></div>`).join('');
-    const originVerdict = providerSeen ? 'ظهر خادم مزوّد مرخّص ضمن المصادر.' : casinoServes ? 'اللعبة تُخدَم من خادم الموقع نفسه — الموقع يتحكّم بتوليد النتيجة؛ ليست من بنية مزوّد مرخّص.' : 'لم تُجمع مصادر كافية بعد.';
+    const originVerdict = providerSeen
+      ? (proxied
+        ? 'ظهرت خوادم بأسماء مزوّدين مرخّصين لكنها مُمرَّرة عبر نطاق الموقع نفسه. يجب التأكّد أنّ النتيجة تصدر فعلًا من المزوّد لا من الموقع (راجع الأدلّة الخام).'
+        : 'ظهر خادم مزوّد مرخّص مستقل ضمن المصادر.')
+      : casinoServes ? 'اللعبة تُخدَم من خادم الموقع نفسه — الموقع يتحكّم بتوليد النتيجة؛ ليست من بنية مزوّد مرخّص.' : 'لم تُجمع مصادر كافية بعد.';
     const verdictText = a.verdict === 'anomaly' ? 'شذوذ إحصائي: الأرقام لا تتصرّف كعجلة عادلة — انظر الأرقام المميّزة.' : a.verdict === 'fair' ? 'ضمن العادل: لا نمط يُستغل؛ ما يأكل الرصيد هو أجر البيت في كل دورة.' : `أرقام غير كافية للحكم الكامل (${a.n}).`;
     const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقرير TARYAM للّجنة</title>
 <style>body{font:14px/1.6 system-ui,'Segoe UI',sans-serif;color:#111;max-width:820px;margin:24px auto;padding:0 18px}h1{color:#0b3}h2{border-bottom:2px solid #eee;padding-bottom:6px;margin-top:28px}table{border-collapse:collapse;width:100%;margin:8px 0}td,th{border:1px solid #ddd;padding:6px 8px;text-align:right}.k{color:#666}.big{font-size:22px;font-weight:700}.good{color:#0a7}.bad{color:#c33}.c-red{color:#c33}.c-black{color:#111}.c-green{color:#0a7}.seal{background:#f6f8fa;border:1px solid #ddd;border-radius:8px;padding:12px;word-break:break-all;font-family:ui-monospace,monospace}.raw{border-bottom:1px solid #eee;padding:6px 0;font-size:12px}.raw pre{background:#f6f8fa;padding:6px;border-radius:6px;overflow:auto;white-space:pre-wrap}.muted{color:#777;font-size:12px}@media print{.noprint{display:none}}</style></head>
@@ -302,7 +314,7 @@ ${rawHtml || '<p class="muted">لا شيء.</p>'}
   .tp-origin.warn{background:rgba(251,191,36,.06);border-color:rgba(251,191,36,.3);color:#fbbf24}
   .hrow{display:flex;justify-content:space-between;gap:8px;padding:4px 8px;border-radius:7px;background:#0b1120;margin-bottom:4px;direction:ltr}
   .hrow .tag{font-size:10.5px;color:#8ea0bd;white-space:nowrap}
-  .hrow.casino{border:1px solid rgba(248,113,113,.4)}.hrow.provider{border:1px solid rgba(52,211,153,.4)}
+  .hrow.casino{border:1px solid rgba(248,113,113,.4)}.hrow.provider{border:1px solid rgba(52,211,153,.4)}.hrow.proxied{border:1px solid rgba(251,191,36,.4)}
   .tp-events{max-height:150px;overflow:auto}
   .erow{padding:5px 7px;background:#0b1120;border-radius:7px;margin-bottom:4px;direction:ltr;font-size:11px}
   .erow .ek{color:#60a5fa;font-weight:700}.erow .eu{color:#9fb0cc}.erow .eb{color:#6b7a95;margin-top:3px;word-break:break-all;font-family:ui-monospace,monospace;font-size:10px}

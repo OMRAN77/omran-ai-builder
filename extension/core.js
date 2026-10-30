@@ -83,26 +83,65 @@
   ];
   function hostOf(url) { try { return new URL(url, location.href).hostname.toLowerCase(); } catch (e) { return ''; } }
   function registrable(host) { const p = host.split('.'); return p.slice(-2).join('.'); }
+
+  // Many casinos proxy a licensed provider's feed through their own domain, so the
+  // registrable domain reads as the casino while a subdomain label still names the
+  // provider (pg = Pragmatic, swarm/evo = Evolution, …). Catch that hint.
+  const PROVIDER_HINTS = ['pragmatic', 'pg', 'evolution', 'evo', 'swarm', 'netent', 'playtech', 'ptlive', 'ezugi', 'vivo', 'hacksaw', 'nolimit', 'redtiger', 'relax', 'playngo', 'authentic'];
+  function providerHint(host) {
+    for (const label of host.split('.')) {
+      for (const h of PROVIDER_HINTS) {
+        if (label === h || label.startsWith(h + '-') || label.endsWith('-' + h) || label.includes('-' + h + '-')) return h;
+      }
+    }
+    return '';
+  }
   function classifyHost(url, casinoHost) {
     const host = hostOf(url);
-    if (!host) return { host: '', kind: 'unknown' };
-    if (PROVIDERS.some((p) => host.includes(p))) return { host, kind: 'provider' };
+    if (!host) return { host: '', kind: 'unknown', hint: '' };
+    if (PROVIDERS.some((p) => host.includes(p))) return { host, kind: 'provider', hint: '' };
     const casinoReg = registrable(casinoHost || hostOf(location.href));
-    if (casinoReg && (host === casinoReg || host.endsWith('.' + casinoReg) || registrable(host) === casinoReg)) return { host, kind: 'casino' };
-    return { host, kind: 'unknown' };
+    const onCasino = casinoReg && (host === casinoReg || host.endsWith('.' + casinoReg) || registrable(host) === casinoReg);
+    if (onCasino) {
+      const hint = providerHint(host);
+      // A provider-named subdomain on the casino's own domain: the feed is a
+      // licensed provider's, but served (proxied) through the casino's domain.
+      if (hint) return { host, kind: 'proxied', hint };
+      return { host, kind: 'casino', hint: '' };
+    }
+    return { host, kind: 'unknown', hint: '' };
   }
 
   // Heuristics over a captured JSON/text payload: pull plausible roulette results
   // (0..36) and a balance-like number, so the panel can work before it is tuned to
   // the exact field names of a given casino.
+  // A roulette pocket is an integer 0..36; a boolean is never one, even though
+  // Number(true) === 1 — that is exactly what produced spurious 0/1 "results".
+  function asPocket(v) {
+    if (typeof v === 'boolean') return null;
+    const n = Number(v);
+    return (Number.isInteger(n) && n >= 0 && n <= 36) ? n : null;
+  }
+  // The winning number lives inside a round record alongside color/gameId/time
+  // (Pragmatic's last20Results[].result). Strong whole-key names are trusted too.
+  const RESULT_KEYS = /^(result|winningnumber|winning_number|winnumber|winnum|number|outcome|pocket|lucky|luckynumber|resultnumber|slot)$/;
+  function isRoundObj(o) {
+    return o && typeof o === 'object' && !Array.isArray(o) &&
+      ('color' in o || 'gameId' in o || 'gameid' in o || 'roundId' in o || 'roundid' in o || 'time' in o);
+  }
+  function roundId(o) { return String(o.gameId ?? o.gameid ?? o.roundId ?? o.roundid ?? o.id ?? o.time ?? '') || null; }
+  // Returns round records { n, id }; id lets the caller drop re-sent history.
   function guessNumbers(obj) {
     const out = [];
+    const takeRound = (o) => {
+      const r = asPocket(o.result ?? o.number ?? o.outcome ?? o.winningNumber ?? o.winningnumber);
+      if (r !== null) out.push({ n: r, id: roundId(o) });
+    };
     const walk = (v, key) => {
-      if (v === null || v === undefined) return;
-      if (Array.isArray(v)) { for (const x of v) walk(x, key); return; }
-      if (typeof v === 'object') { for (const k of Object.keys(v)) walk(v[k], k.toLowerCase()); return; }
-      const n = Number(v);
-      if (Number.isInteger(n) && n >= 0 && n <= 36 && /result|number|winning|outcome|pocket|spin|num|draw/.test(key || '')) out.push(n);
+      if (v === null || v === undefined || typeof v === 'boolean') return;
+      if (Array.isArray(v)) { for (const x of v) { if (isRoundObj(x)) takeRound(x); else walk(x, key); } return; }
+      if (typeof v === 'object') { if (isRoundObj(v)) takeRound(v); for (const k of Object.keys(v)) walk(v[k], k.toLowerCase()); return; }
+      if (RESULT_KEYS.test(key || '')) { const n = asPocket(v); if (n !== null) out.push({ n, id: null }); }
     };
     walk(obj, '');
     return out;
@@ -110,11 +149,12 @@
   function guessBalance(obj) {
     let best = null;
     const walk = (v, key) => {
-      if (v === null || v === undefined) return;
+      if (v === null || v === undefined || typeof v === 'boolean') return;
       if (Array.isArray(v)) { for (const x of v) walk(x, key); return; }
       if (typeof v === 'object') { for (const k of Object.keys(v)) walk(v[k], k.toLowerCase()); return; }
       const n = Number(v);
-      if (Number.isFinite(n) && /balance|wallet|cash|credit|amount|funds|bal/.test(key || '')) best = n;
+      // Balance-named fields only (not bet "amount"); keep the most recent.
+      if (Number.isFinite(n) && n > 0 && /balance|wallet|cash|credit|funds/.test(key || '')) best = n;
     };
     walk(obj, '');
     return best;
@@ -125,11 +165,11 @@
   function byKeyNumbers(obj, name) {
     const out = []; const key = String(name || '').toLowerCase();
     const walk = (v, k) => {
-      if (v === null || v === undefined) return;
+      if (v === null || v === undefined || typeof v === 'boolean') return;
       if (Array.isArray(v)) { for (const x of v) walk(x, k); return; }
       if (typeof v === 'object') { for (const kk of Object.keys(v)) walk(v[kk], kk.toLowerCase()); return; }
-      const n = Number(v);
-      if (k === key && Number.isInteger(n) && n >= 0 && n <= 36) out.push(n);
+      const n = asPocket(v);
+      if (k === key && n !== null) out.push({ n, id: null });
     };
     walk(obj, '');
     return out;
