@@ -29,7 +29,10 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { text, voice, gender, lang, token, guestId, speed, dialect } = body;
+    const { text: rawText, voice, gender, lang, token, guestId, speed, dialect } = body;
+    // v-tts-no-markdown (المالك: «يقول كل مرّة نجمة نجمة»): صوت مها وكلّ ما يمرّ به (الردود والفيديو والمكالمة) يقرأ الكلام وحده —
+    // بلا علامات التنسيق والروابط والرموز التعبيريّة (api/_lib/speech-text.js). الأصوات الأخرى تُرسل كما هي.
+    const text = voice === 'maha' ? require('./speech-text.js').speechText(rawText) : rawText;
     // v-maha-voice-speed (طلب المالك): درجات سرعة كلام مها الأربع — تُترجَم إلى معامل
     // native حقيقي لكل مزوّد (Azure SSML prosody rate% أو معامل speed الرقمي لـOpenAI
     // TTS)، لا playbackRate على العميل (ذاك يغيّر طبقة الصوت أيضًا). قيمة غير معروفة/غائبة
