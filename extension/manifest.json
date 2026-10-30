@@ -5,11 +5,7 @@
   "description": "يقرأ جلستك داخل الكازينو مباشرة: جولات الروليت، الرصيد قبل/بعد، ومن أين تُحمَّل اللعبة — لعرض اللجنة. يقرأ فقط، لا يعدّل شيئًا.",
   "content_scripts": [
     {
-      "matches": [
-        "*://*.dubibet999.com/*",
-        "*://*.dubibet.com/*",
-        "*://*.dubibet888.com/*"
-      ],
+      "matches": ["<all_urls>"],
       "js": ["core.js", "content.js"],
       "run_at": "document_start",
       "all_frames": true

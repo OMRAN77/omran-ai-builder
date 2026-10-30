@@ -5,6 +5,11 @@
 (function () {
   const T = window.TARYAM;
   const isExt = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL;
+  // The casino shell loads the live game in an iframe on another host. Every frame
+  // captures its own traffic; child frames forward it up, and only the top frame
+  // shows one aggregating panel.
+  const isTop = (function () { try { return window.top === window; } catch (e) { return false; } })();
+  const onCasinoShell = /dubibet/i.test(location.hostname);
 
   // 1. Inject the page-world hook (skipped when a test injected it already).
   if (isExt && !window.__taryamHooked) {
@@ -83,7 +88,15 @@
   }
   window.addEventListener('message', (e) => {
     const d = e.data;
-    if (d && d.__taryam && d.ev) ingest(d.ev);
+    if (!d) return;
+    if (d.__taryam && d.ev) {
+      // Captured here in the page world. Top frame consumes it; a child frame
+      // relays it up to the top so the one panel sees every frame's traffic.
+      if (isTop) ingest(d.ev);
+      else { try { window.top.postMessage({ __taryamFwd: true, ev: d.ev }, '*'); } catch (x) { /* guard-ok — cross-origin top may reject */ } }
+    } else if (d.__taryamFwd && d.ev && isTop) {
+      ingest(d.ev);
+    }
   });
 
   // 3. Panel UI, isolated in a shadow root so the casino's CSS cannot touch it.
@@ -296,6 +309,9 @@ ${rawHtml || '<p class="muted">لا شيء.</p>'}
   .tp-muted{color:#6b7a95}
   .tp-foot{margin-top:10px;color:#6b7a95;font-size:10.5px;text-align:center}`;
 
-  // 4. Go.
-  if (document.body) render(); else window.addEventListener('DOMContentLoaded', render);
+  // 4. Go — only the casino shell's top frame shows the panel; child frames just
+  // capture their traffic and forward it up.
+  if (isTop && onCasinoShell) {
+    if (document.body) render(); else window.addEventListener('DOMContentLoaded', render);
+  }
 })();
