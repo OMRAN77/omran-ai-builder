@@ -31,6 +31,6 @@ test('الواجهة: مثال الوضع الأوّل نموذجٌ في قسم�
   assert.ok(js.includes("keys=['videoIdea'+c]"));
   assert.ok(js.includes('setVal(pe,tx)'));
   const h = read('index.html');
-  assert.ok(h.includes('src="/js/video.js?v=463"') && h.includes('modules.css?v=693'));
+  assert.ok(h.includes('src="/js/video.js?v=464"') && h.includes('modules.css?v=693'));
   assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=779'"));
 });

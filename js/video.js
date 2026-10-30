@@ -717,7 +717,7 @@
                 }
               } else {
                 var ctl=new AbortController(); var tm=setTimeout(function(){ ctl.abort(); },60000);
-                var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:vvClean(s.narration),voice:'maha',lang:lang,gender:speaker,speed:vvSpeed(),token:tk}),signal:ctl.signal});
+                var r=await fetch('/api/media?action=tts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:vvClean(s.narration),voice:'maha',src:'video',lang:lang,gender:speaker,speed:vvSpeed(),token:tk}),signal:ctl.signal});
                 clearTimeout(tm);
                 if(r.ok){ var b=await r.blob(); if(b.size>200) s.audio=await drB64(b); else last='empty'; }
                 else {

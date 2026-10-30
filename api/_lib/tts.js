@@ -63,6 +63,30 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // v-el-voices (المالك: «أصوات ElevenLabs… تنطق صح، بس مدفوعة» — اختارها بعد أن أخطأ صوتا Azure «والله» و«الله»): «استمع»
+    // (src reply) وتعليق الفيديو (src video) للمالك بالصوتين اللذين اختارهما (api/_lib/el-voices.js) متى وُجد ELEVENLABS_API_KEY،
+    // بالنصّ منظّفًا بلا تبديلات نطق Azure («هلا والله» تبقى). نفاد الرصيد في «استمع» ⇐ om-quota (رسالة الحدّ ويقف، لا مها)؛
+    // وفي الفيديو يكمل بمها تحت فلا يطلع المقطع صامتًا.
+    if (voice === 'maha' && (body.src === 'reply' || body.src === 'video')) {
+      const el = require('./el-voices.js');
+      if (el.enabledFor(usage.username)) {
+        try {
+          const mp3 = await el.speak({ text: require('./speech-text.js').speechText(rawText, { azure: false }), gender, speed: ttsSpeed.openaiSpeed });
+          res.setHeader('Content-Type', 'audio/mpeg');
+          res.setHeader('Cache-Control', 'no-store');
+          res.status(200).send(mp3);
+          return;
+        } catch (e) {
+          console.error('el voices failed:', e && e.code, String(e && e.message || '').slice(0, 200));
+          if (body.src === 'reply') {
+            const quota = e && e.code === 'el_quota';
+            res.status(quota ? 429 : 502).json({ error: quota ? 'om-quota' : 'om-failed', code: quota ? 'om_quota' : 'om_failed' });
+            return;
+          }
+        }
+      }
+    }
+
     // v-om-voices-chat: «استمع» على ردود المحادثة (src: 'reply') للمالك وحده بأصوات «أصوات om» بدل مها
     // (api/_lib/om-voices.js). عند حدّها اليوميّ ⇐ om-quota فيُظهر العميل رسالة الحدّ ولا يقرأ بصوت آخر.
     // مكالمة مها وبقيّة الأدوات لا ترسل src فلا تتغيّر، ولغة لا ينطقها المحرّك تبقى بمها.
