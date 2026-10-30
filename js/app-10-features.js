@@ -275,6 +275,117 @@ window.addEventListener('appinstalled', () => {
   } catch(e){ __swallow(e, "misc:app-10-features#install-pill"); }
 })();
 
+/* v-play-invite (المالك ٣٠ أكتوبر: «ماعندي احد… حطّ الدعوة في التطبيق»): Google Play يشترط ١٢ مختبِرًا ١٤ يومًا متواصلة قبل
+   النشر للعموم، والاختبار المغلق لا يقبل إلّا من في قائمته. بطاقة فوق صندوق الكتابة لمن يفتح الموقع في متصفّح أندرويد عاديّ:
+   ١) الانضمام لمجموعة Google المضافة للاختبار ٢) رابط الاشتراك في بلي ثمّ التثبيت. لا تظهر داخل أيّ تطبيق (هواوي، TWA، PWA مثبّت،
+   WebView)، ولا على آيفون أو الحاسوب أو متصفّح هواوي، ولا ما دام أحد الرابطين فارغًا. تنتظر ٨ ثوانٍ وتتأخّر ما دامت نافذة أخرى
+   ظاهرة؛ مرّة في الجلسة على الأكثر. ✕ أو الخطوة الثانية = لا تعود على هذا الجهاز؛ التركيز على الكتابة يخفيها بلا حفظ.
+   ألوانها من الثيم (--panel2 و--text و--muted)، وفي الوضع الأسود لون صندوق الكتابة #101013: --panel2 هناك أسود صافٍ والحدّ يُمسح
+   (v-no-lines-2) فكانت البطاقة أسود على أسود. قاعدة الوضع في <style> واحد لا inline، كي يتبع تبديل الوضع وهي ظاهرة.
+   والخطوتان زرّان أساسيّان — .btn العاديّ في الوضع الأسود نصّ بلا صندوق. */
+(function(){
+  const PLAY_TEST = { group: '', optIn: '' };
+  const SEEN = 'aiapp_play_invite_x', SESSION = 'aiapp_play_invite_s';
+  try {
+    if(!PLAY_TEST.group || !PLAY_TEST.optIn) return;
+    const ua = navigator.userAgent || '';
+    if(!/Android/i.test(ua) || /HUAWEI|HarmonyOS|HONOR|HuaweiBrowser|HMSCore/i.test(ua) || /;\s*wv\)/.test(ua)) return;
+    if(localStorage.getItem(SEEN) === '1' || sessionStorage.getItem(SESSION) === '1') return;
+  } catch(e){ __swallow(e, 'play-invite:gate'); return; }
+  // يُعاد عند العرض: store-safe من ui-wiring (مؤجَّل) وomranLikelyApp من الجزء ٠٥
+  const inApp = () => {
+    const root = document.documentElement;
+    if(root && root.classList.contains('store-safe')) return true;
+    if(isStandalone() || (typeof omranLikelyApp === 'function' && omranLikelyApp())) return true;
+    return !!(window.matchMedia && (window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: minimal-ui)').matches));
+  };
+  const blocked = () => {
+    if(document.visibilityState && document.visibilityState !== 'visible') return true;
+    if(['privacyConsent', 'introTourOverlay', 'installPill', 'mediaNotifAskBar', 'sessToast'].some(id => document.getElementById(id))) return true;
+    if(document.querySelector('#sectionsToolsOverlay.show, #sidebar.open, #workarea.open')) return true;
+    const p = document.getElementById('prompt');
+    return !!(p && document.activeElement === p);
+  };
+  const mount = () => {
+    if(document.getElementById('playInvite')) return;
+    const d = (typeof window.curT === 'function') ? window.curT() : {};
+    const tx = (k) => d[k] || (I18N.en || {})[k] || '';
+    let pos = null;
+    try { pos = (typeof window.__omranAboveComposer === 'function') ? window.__omranAboveComposer(10) : null; } catch(e){ __swallow(e, 'play-invite:pos'); }
+    if(!document.getElementById('playInviteCss')){
+      const st = document.createElement('style');
+      st.id = 'playInviteCss';
+      st.textContent = '#playInvite{background:var(--panel2, #1c2230); color:var(--text, #eee); border:1px solid rgba(201,162,39,.45); box-shadow:var(--sh-2, 0 8px 24px rgba(0,0,0,.45));}'
+        + '#playInvite .omPiMuted{color:var(--muted, #999);}'
+        + 'html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #playInvite{background:#101013;}';
+      document.head.appendChild(st);
+    }
+    const card = document.createElement('div');
+    card.id = 'playInvite';
+    card.style.cssText = 'position:fixed; bottom:' + (pos ? pos.bottom + 'px' : 'calc(76px + env(safe-area-inset-bottom, 0px))') + '; left:' + (pos ? pos.cx + 'px' : '50%') + '; transform:translateX(-50%);'
+      + ' width:' + (pos ? Math.min(440, pos.width) + 'px' : 'calc(100% - 24px)') + '; max-width:440px; box-sizing:border-box; z-index:50; padding:12px 14px; border-radius:var(--r-3, 14px); line-height:1.5;';
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex; align-items:flex-start; gap:8px;';
+    const title = document.createElement('div');
+    title.style.cssText = 'flex:1; min-width:0; font-weight:700;';
+    title.setAttribute('data-i18n', 'playTestTitle');
+    title.textContent = tx('playTestTitle');
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '✕';
+    x.setAttribute('data-i18n', '[aria-label]closeTitle');
+    x.setAttribute('aria-label', tx('closeTitle') || '✕');
+    x.className = 'omPiMuted';
+    x.style.cssText = 'flex:none; background:none; border:none; font-size:16px; line-height:1; cursor:pointer; padding:4px;';
+    head.append(title, x);
+    const hint = document.createElement('div');
+    hint.className = 'omPiMuted';
+    hint.style.cssText = 'margin:4px 0 10px; font-size:var(--fs-4, 12.5px);';
+    hint.setAttribute('data-i18n', 'playTestHint');
+    hint.textContent = tx('playTestHint');
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px;';
+    const step = (key, href) => {
+      const a = document.createElement('a');
+      a.className = 'btn primary';
+      a.href = href;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.style.cssText = 'flex:1 1 140px; display:inline-flex; align-items:center; justify-content:center; text-align:center; text-decoration:none; white-space:normal;';
+      const s = document.createElement('span');
+      s.setAttribute('data-i18n', key);
+      s.textContent = tx(key);
+      a.appendChild(s);
+      return a;
+    };
+    const join = step('playTestStep1', PLAY_TEST.group);
+    const install = step('playTestStep2', PLAY_TEST.optIn);
+    row.append(join, install);
+    card.append(head, hint, row);
+    const close = (forever) => {
+      card.remove();
+      if(forever){ try { localStorage.setItem(SEEN, '1'); } catch(e){ __swallow(e, 'play-invite:dismiss'); } }
+    };
+    x.onclick = () => close(true);
+    install.addEventListener('click', () => close(true));
+    const p = document.getElementById('prompt');
+    if(p) p.addEventListener('focus', () => close(false), { once: true });
+    document.body.appendChild(card);
+    try { sessionStorage.setItem(SESSION, '1'); } catch(e){ __swallow(e, 'play-invite:session'); }
+  };
+  let tries = 0;
+  const arm = () => {
+    try {
+      if(inApp()) return;
+      if(blocked()){ if(++tries < 300) setTimeout(arm, 1000); return; }
+      mount();
+    } catch(e){ __swallow(e, 'play-invite:arm'); }
+  };
+  const start = () => setTimeout(arm, 8000);
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
+})();
+
 /* v-browser-install: /?q=نصّ (بحث المتصفّح عبر opensearch.xml، وقائمة إضافة المتصفّح) يعبّئ صندوق
    المحادثة ولا يرسل — الإرسال بيد المستخدم. يُحذف q من الرابط كي لا يعود مع التحديث. */
 (function(){
