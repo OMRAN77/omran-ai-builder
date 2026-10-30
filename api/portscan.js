@@ -4,6 +4,12 @@
 // no banner-grabbing exploitation) — informational use only.
 const net = require('net');
 
+// Disabled: the private-address blocklist is a regex on the hostname, so decimal
+// IPs (2130706433), 169.254.x.x and names that resolve to private addresses get
+// through, and the "I own this" checkbox exists only in the browser. Re-enable
+// once targets are resolved and checked server-side and ownership is verified.
+const PORTSCAN_ENABLED = false;
+
 const COMMON_PORTS = [
   { port: 21, service: 'FTP' },
   { port: 22, service: 'SSH' },
@@ -60,6 +66,10 @@ module.exports = async (req, res) => {
   }
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+  if (!PORTSCAN_ENABLED) {
+    res.status(503).json({ disabled: true, error: 'أداة فحص المنافذ معطّلة مؤقتًا: لا يمكنها حاليًا التحقق من أنك تملك الهدف، ويمكن تجاوز حظر العناوين الداخلية.' });
     return;
   }
 

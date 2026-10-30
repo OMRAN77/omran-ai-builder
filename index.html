@@ -962,6 +962,7 @@ html.mobile-ui .resizer{display:none}
       <button class="hdr-btn icon" id="btnHeaderMenu" style="padding:8px"><svg><use href="#i-more-v"/></svg></button>
       <div id="headerMenuDropdown">
         <button class="btn" id="btnToggleProjects"><svg><use href="#i-folder"/></svg> <span data-i18n="projectsListTitle">المشاريع</span></button>
+        <button class="btn" id="btnToggleHistory"><svg><use href="#i-code"/></svg> <span data-i18n="code">الكود</span></button>
         <button class="btn" id="btnSecTools"><svg><use href="#i-tools"/></svg> <span data-i18n="secToolsTitle">أدوات الأمن</span></button>
         <button class="btn" id="btnInstall"><svg><use href="#i-install"/></svg> <span data-i18n="install">تثبيت التطبيق</span></button>
         <button class="btn" id="btnLogout" style="display:none;color:var(--red)"><svg><use href="#i-logout"/></svg> <span data-i18n="logout">خروج</span></button>
@@ -1751,7 +1752,7 @@ async function speakSmart(text, onStart, onEnd){
   if(cloudOn || noDev){
     try {
       const voice = localStorage.getItem('aiapp_cloud_voice_name') || 'onyx';
-      const res = await fetch('/api/tts', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice,text:text.slice(0,4000)})});
+      const res = await fetch('/api/tts', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({voice,text:text.slice(0,4000),token:authGet('aiapp_auth_token')})});
       if(!res.ok) throw new Error('TTS fail');
       const blob = await res.blob(); const audio = new Audio(URL.createObjectURL(blob));
       currentCloudAudio = audio; if(onStart) onStart(); audio.onended = () => onEnd && onEnd();
@@ -2118,8 +2119,8 @@ $('#acctUsernameSaveBtn').onclick = async () => {
 };
 $('#acctPasswordSaveBtn').onclick = async () => {
   const cur = $('#acctCurrentPassword').value, nw = $('#acctNewPassword').value; const msg = $('#acctPasswordMsg');
-  if(!cur || !nw || nw.length < 4){ msg.textContent = 'كلمة مرور قصيرة'; msg.style.color = 'var(--red)'; return; }
-  try { const res = await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'changePassword', token:authGet('aiapp_auth_token'), currentPassword:cur, newPassword:nw})}); const data = await res.json(); if(!res.ok||data.error){ msg.textContent = data.error||'خطأ'; msg.style.color = 'var(--red)'; return; } $('#acctCurrentPassword').value = ''; $('#acctNewPassword').value = ''; msg.textContent = '✓ تم الحفظ'; msg.style.color = 'var(--green)'; } catch(e){ msg.textContent = 'خطأ'; msg.style.color = 'var(--red)'; }
+  if(!cur || !nw || nw.length < 8){ msg.textContent = 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل'; msg.style.color = 'var(--red)'; return; }
+  try { const res = await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'changePassword', token:authGet('aiapp_auth_token'), currentPassword:cur, newPassword:nw})}); const data = await res.json(); if(!res.ok||data.error){ msg.textContent = data.error||'خطأ'; msg.style.color = 'var(--red)'; return; } if(data.token) authSet('aiapp_auth_token', data.token); $('#acctCurrentPassword').value = ''; $('#acctNewPassword').value = ''; msg.textContent = '✓ تم الحفظ'; msg.style.color = 'var(--green)'; } catch(e){ msg.textContent = 'خطأ'; msg.style.color = 'var(--red)'; }
 };
 
 function openDialogSafe(d){ if(d.hasAttribute('open')) return; if(typeof d.showModal === 'function'){ try { d.showModal(); return; } catch(e){} } d.setAttribute('open',''); }
@@ -2439,12 +2440,12 @@ const SEC_TOOLS = [
   {id:'exif', name:'EXIF', desc:'ارفع صورة لعرض بيانات EXIF المخفية (الجهاز، التاريخ، الإحداثيات).'},
   {id:'crypto', name:'تشفير', desc:'أداة تعليمية للتشفير/فك التشفير الكلاسيكي.'},
   {id:'motion', name:'كشف حركة', desc:'كشف حركة عبر كاميرا جهازك — لا يُرسل أي فيديو لأي خادم.'},
-  {id:'portscan', name:'منافذ', desc:'فحص منافذ شائعة لدومين/IP تملكه.'},
+  {id:'portscan', name:'منافذ', desc:'(معطّلة مؤقتًا) فحص منافذ شائعة لدومين/IP تملكه.'},
   {id:'kali', name:'Kali', desc:'صف هدفك الأمني وسيقترح DeepSeek الأمر المناسب.'},
   {id:'phishing', name:'تصيّد', desc:'الصق رابطًا أو نص إيميل مشبوه، وسيحلله DeepSeek.'},
   {id:'log', name:'Log', desc:'الصق محتوى log وسيحلله DeepSeek بحثًا عن أنشطة مشبوهة.'},
   {id:'breach', name:'تسريبات', desc:'تحقق إذا ظهر إيميلك في تسريبات بيانات معروفة (HIBP).'},
-  {id:'darkgpt', name:'بحث متقدم', desc:'بحث في قواعد بيانات مسربة (DeHashed). يتطلب تسجيل دخول.'},
+  {id:'darkgpt', name:'بحث متقدم', desc:'(معطّلة مؤقتًا) بحث في قواعد بيانات مسربة (DeHashed).'},
   {id:'vt', name:'VirusTotal', desc:'حلّل ملفًا محليًا (SHA-256) أو افحص Hash/رابط عبر 70+ محرك.'},
   {id:'recon', name:'Recon', desc:'استطلاع نطاق: Subdomains + DNS records كاملة.'},
   {id:'webscan', name:'WebScan', desc:'افحص رؤوس الأمان لموقع (A-F) أو تحقق من شهادة SSL.'},

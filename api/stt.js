@@ -3,7 +3,7 @@
 // button work reliably on ALL devices (Android + iPhone + desktop), since it just
 // records audio (getUserMedia, supported everywhere) instead of relying on the
 // inconsistent/unsupported browser SpeechRecognition API.
-const { checkAndConsume, DAILY_LIMIT } = require('./_usage');
+const { checkAndConsume, rejectUsage } = require('./_usage');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -30,19 +30,15 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { audioBase64, mimeType, lang, token, guestId } = body;
+    const { audioBase64, mimeType, lang, token } = body;
     if (!audioBase64) {
       res.status(400).json({ error: 'Missing audioBase64' });
       return;
     }
 
-    const usage = await checkAndConsume(token, guestId);
+    const usage = await checkAndConsume(token, req);
     if (!usage.allowed) {
-      if (usage.reason === 'auth') {
-        res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
-      } else {
-        res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.' });
-      }
+      rejectUsage(res, usage);
       return;
     }
 
