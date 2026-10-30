@@ -120,5 +120,51 @@
     return best;
   }
 
-  window.TARYAM = { RED, colorOf, erfc, pFromZ, houseEdge, analyze, bias, classifyHost, hostOf, registrable, guessNumbers, guessBalance, PROVIDERS };
+  // When the user maps an exact field name (for a casino whose keys we do not guess,
+  // e.g. a WebSocket protocol), pull numbers / balance from that key by name.
+  function byKeyNumbers(obj, name) {
+    const out = []; const key = String(name || '').toLowerCase();
+    const walk = (v, k) => {
+      if (v === null || v === undefined) return;
+      if (Array.isArray(v)) { for (const x of v) walk(x, k); return; }
+      if (typeof v === 'object') { for (const kk of Object.keys(v)) walk(v[kk], kk.toLowerCase()); return; }
+      const n = Number(v);
+      if (k === key && Number.isInteger(n) && n >= 0 && n <= 36) out.push(n);
+    };
+    walk(obj, '');
+    return out;
+  }
+  function byKeyBalance(obj, name) {
+    let best = null; const key = String(name || '').toLowerCase();
+    const walk = (v, k) => {
+      if (v === null || v === undefined) return;
+      if (Array.isArray(v)) { for (const x of v) walk(x, k); return; }
+      if (typeof v === 'object') { for (const kk of Object.keys(v)) walk(v[kk], kk.toLowerCase()); return; }
+      const n = Number(v);
+      if (k === key && Number.isFinite(n)) best = n;
+    };
+    walk(obj, '');
+    return best;
+  }
+
+  // Non-JSON frames (many live protocols): scan the text for "name": value.
+  function scanText(body, name) {
+    const out = { numbers: [], balance: null };
+    if (!name) return out;
+    const re = new RegExp('"?' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '"?\\s*[:=]\\s*"?(-?\\d+(?:\\.\\d+)?)', 'gi');
+    let m;
+    while ((m = re.exec(body))) {
+      const n = Number(m[1]);
+      if (Number.isInteger(n) && n >= 0 && n <= 36) out.numbers.push(n);
+      if (Number.isFinite(n)) out.balance = n;
+    }
+    return out;
+  }
+
+  async function sha256Hex(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  window.TARYAM = { RED, colorOf, erfc, pFromZ, houseEdge, analyze, bias, classifyHost, hostOf, registrable, guessNumbers, guessBalance, byKeyNumbers, byKeyBalance, scanText, sha256Hex, PROVIDERS };
 })();

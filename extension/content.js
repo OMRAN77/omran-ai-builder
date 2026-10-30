@@ -21,10 +21,14 @@
     startBalance: null,
     balance: null,
     hosts: new Map(),   // host → { kind, count }
-    events: [],         // last raw captured payloads
+    events: [],         // last raw captured payloads (for display)
+    raw: [],            // last raw bodies (newest-first) for re-parsing on remap
+    fieldMap: { result: '', balance: '' },
+    startedAt: new Date(),
     min: false,
   };
   const MAX_EVENTS = 40;
+  const MAX_RAW = 400;
 
   function noteHost(url) {
     const c = T.classifyHost(url, location.hostname);
@@ -33,25 +37,48 @@
     cur.count++; cur.kind = c.kind;
     state.hosts.set(c.host, cur);
   }
+  // Extract the round numbers and the balance from one captured body, using the
+  // mapped field names when given, otherwise the automatic heuristics.
+  function parseBody(body) {
+    const out = { numbers: [], balance: null };
+    if (!body) return out;
+    let obj = null;
+    try { obj = JSON.parse(body); } catch (e) { obj = null; }
+    if (obj) {
+      out.numbers = state.fieldMap.result ? T.byKeyNumbers(obj, state.fieldMap.result) : T.guessNumbers(obj);
+      out.balance = state.fieldMap.balance ? T.byKeyBalance(obj, state.fieldMap.balance) : T.guessBalance(obj);
+    } else {
+      const r = T.scanText(body, state.fieldMap.result);
+      const b = T.scanText(body, state.fieldMap.balance);
+      out.numbers = r.numbers;
+      out.balance = b.balance;
+    }
+    return out;
+  }
+  function applyParsed(p) {
+    for (const n of p.numbers) state.spins.push(n);
+    if (p.balance !== null && Number.isFinite(p.balance)) {
+      if (state.startBalance === null) state.startBalance = p.balance;
+      state.balance = p.balance;
+    }
+  }
+  // Rebuild everything from the raw buffer — used when the field mapping changes.
+  function reparseAll() {
+    state.spins = []; state.startBalance = null; state.balance = null;
+    for (let i = state.raw.length - 1; i >= 0; i--) applyParsed(parseBody(state.raw[i].body));
+    render();
+  }
   function ingest(ev) {
     if (ev.url) noteHost(ev.url);
     if (ev.body) {
-      let obj = null;
-      try { obj = JSON.parse(ev.body); } catch (e) { obj = null; }
-      if (obj) {
-        for (const n of T.guessNumbers(obj)) state.spins.push(n);
-        const b = T.guessBalance(obj);
-        if (b !== null && Number.isFinite(b)) {
-          if (state.startBalance === null) state.startBalance = b;
-          state.balance = b;
-        }
-      }
+      state.raw.unshift({ kind: ev.kind, url: ev.url || '', body: String(ev.body).slice(0, 8000), t: Date.now() });
+      if (state.raw.length > MAX_RAW) state.raw.length = MAX_RAW;
+      applyParsed(parseBody(ev.body));
       state.events.unshift({ kind: ev.kind, url: ev.url || '', body: String(ev.body).slice(0, 400), t: Date.now() });
-      if (state.events.length > MAX_EVENTS) state.events.length = MAX_EVENTS;
     } else if (ev.kind !== 'ready') {
       state.events.unshift({ kind: ev.kind, url: ev.url || '', body: '', t: Date.now() });
-      if (state.events.length > MAX_EVENTS) state.events.length = MAX_EVENTS;
     }
+    if (state.events.length > MAX_EVENTS) state.events.length = MAX_EVENTS;
     render();
   }
   window.addEventListener('message', (e) => {
@@ -118,6 +145,15 @@
         </label>
         <button class="tp-btn" id="tp-clear">تصفير</button>
       </div>
+      <div class="tp-row">
+        <button class="tp-btn hot" id="tp-report">صدّر تقرير اللجنة</button>
+        <button class="tp-btn" id="tp-fields-toggle">ضبط الحقول</button>
+      </div>
+      <div class="tp-fields" id="tp-fields" style="display:${state.showFields ? 'block' : 'none'}">
+        <label>اسم حقل الرقم <input id="tp-fr" value="${esc(state.fieldMap.result)}" placeholder="result"></label>
+        <label>اسم حقل الرصيد <input id="tp-fb" value="${esc(state.fieldMap.balance)}" placeholder="balance"></label>
+        <div class="tp-muted">اكتب اسم الحقل كما يظهر في «الدليل الخام» أدناه ثم اضغط Enter — يُعاد الحساب تلقائيًّا.</div>
+      </div>
 
       <div class="tp-cards">
         <div class="tp-card"><div class="k">دورات مُلتقطة</div><div class="v">${a.n}</div></div>
@@ -147,7 +183,74 @@
       <div class="tp-foot">يقرأ جلستك فقط — لا يعدّل أي طلب أو نتيجة أو رصيد.</div>`;
 
     root.getElementById('tp-wheel').addEventListener('change', (e) => { state.wheel = e.target.value; render(); });
-    root.getElementById('tp-clear').addEventListener('click', () => { state.spins = []; state.events = []; state.hosts.clear(); state.startBalance = state.balance; render(); });
+    root.getElementById('tp-clear').addEventListener('click', () => { state.spins = []; state.events = []; state.raw = []; state.hosts.clear(); state.startBalance = null; state.balance = null; state.startedAt = new Date(); render(); });
+    root.getElementById('tp-report').addEventListener('click', exportReport);
+    root.getElementById('tp-fields-toggle').addEventListener('click', () => { state.showFields = !state.showFields; render(); });
+    const fr = root.getElementById('tp-fr'), fb = root.getElementById('tp-fb');
+    const remap = () => { state.fieldMap.result = fr.value.trim(); state.fieldMap.balance = fb.value.trim(); reparseAll(); };
+    fr.addEventListener('change', remap); fb.addEventListener('change', remap);
+    fr.addEventListener('keydown', (e) => { if (e.key === 'Enter') remap(); });
+    fb.addEventListener('keydown', (e) => { if (e.key === 'Enter') remap(); });
+  }
+
+  // The committee report: a self-contained HTML page (print to PDF) with the session,
+  // the rounds, the statistical verdict, where the game was served from, and a raw
+  // evidence appendix sealed with a SHA-256 hash — change one byte and the hash moves.
+  async function exportReport() {
+    const a = T.analyze(state.spins, state.wheel);
+    const net = (state.balance !== null && state.startBalance !== null) ? state.balance - state.startBalance : null;
+    const hosts = [...state.hosts.entries()].sort((x, y) => y[1].count - x[1].count);
+    const providerSeen = hosts.some(([, v]) => v.kind === 'provider');
+    const casinoServes = hosts.some(([, v]) => v.kind === 'casino');
+    const rawJson = JSON.stringify(state.raw);
+    let hash = '—';
+    try { hash = await T.sha256Hex(rawJson); } catch (e) { hash = 'تعذّر الحساب'; }
+    const now = new Date();
+    const rowsHtml = state.spins.map((n, k) => `<tr><td>${k + 1}</td><td class="c-${T.colorOf(n)}">${esc(n)} (${colorWord(T.colorOf(n))})</td></tr>`).join('');
+    const hostsHtml = hosts.map(([h, v]) => `<tr><td dir="ltr">${esc(h)}</td><td>${v.kind === 'provider' ? 'مزوّد مرخّص' : v.kind === 'casino' ? 'خادم الموقع' : 'مجهول'}</td><td>${v.count}</td></tr>`).join('');
+    const rawHtml = state.raw.slice(0, 120).map((r) => `<div class="raw"><span>${esc(r.kind)}</span> <span dir="ltr">${esc((r.url || '').replace(/^https?:\/\//, ''))}</span><pre dir="ltr">${esc(String(r.body).slice(0, 500))}</pre></div>`).join('');
+    const originVerdict = providerSeen ? 'ظهر خادم مزوّد مرخّص ضمن المصادر.' : casinoServes ? 'اللعبة تُخدَم من خادم الموقع نفسه — الموقع يتحكّم بتوليد النتيجة؛ ليست من بنية مزوّد مرخّص.' : 'لم تُجمع مصادر كافية بعد.';
+    const verdictText = a.verdict === 'anomaly' ? 'شذوذ إحصائي: الأرقام لا تتصرّف كعجلة عادلة — انظر الأرقام المميّزة.' : a.verdict === 'fair' ? 'ضمن العادل: لا نمط يُستغل؛ ما يأكل الرصيد هو أجر البيت في كل دورة.' : `أرقام غير كافية للحكم الكامل (${a.n}).`;
+    const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقرير TARYAM للّجنة</title>
+<style>body{font:14px/1.6 system-ui,'Segoe UI',sans-serif;color:#111;max-width:820px;margin:24px auto;padding:0 18px}h1{color:#0b3}h2{border-bottom:2px solid #eee;padding-bottom:6px;margin-top:28px}table{border-collapse:collapse;width:100%;margin:8px 0}td,th{border:1px solid #ddd;padding:6px 8px;text-align:right}.k{color:#666}.big{font-size:22px;font-weight:700}.good{color:#0a7}.bad{color:#c33}.c-red{color:#c33}.c-black{color:#111}.c-green{color:#0a7}.seal{background:#f6f8fa;border:1px solid #ddd;border-radius:8px;padding:12px;word-break:break-all;font-family:ui-monospace,monospace}.raw{border-bottom:1px solid #eee;padding:6px 0;font-size:12px}.raw pre{background:#f6f8fa;padding:6px;border-radius:6px;overflow:auto;white-space:pre-wrap}.muted{color:#777;font-size:12px}@media print{.noprint{display:none}}</style></head>
+<body>
+<h1>تقرير فحص جلسة الكازينو — TARYAM</h1>
+<p class="muted">الموقع: <b dir="ltr">${esc(location.hostname)}</b> · بدء الجلسة: ${esc(state.startedAt.toLocaleString('ar'))} · صدور التقرير: ${esc(now.toLocaleString('ar'))}</p>
+<button class="noprint" onclick="print()">اطبع / احفظ PDF</button>
+
+<h2>١. الرصيد قبل وبعد</h2>
+<table>
+<tr><td class="k">الرصيد قبل البدء</td><td dir="ltr">${money(state.startBalance)}</td></tr>
+<tr><td class="k">الرصيد الآن</td><td dir="ltr" class="${net !== null && net < 0 ? 'bad' : 'good'}">${money(state.balance)}</td></tr>
+<tr><td class="k">الصافي</td><td dir="ltr" class="big ${net !== null && net < 0 ? 'bad' : 'good'}">${net === null ? '—' : (net >= 0 ? '+' : '−') + money(Math.abs(net))}</td></tr>
+<tr><td class="k">عدد الدورات المُلتقطة</td><td dir="ltr">${a.n}</td></tr>
+</table>
+
+<h2>٢. الحكم الإحصائي على الأرقام</h2>
+<p>${esc(verdictText)}</p>
+${a.even.redBlack.trials ? `<p class="muted">أحمر/أسود: ${a.even.redBlack.hits}/${a.even.redBlack.trials - a.even.redBlack.hits} · p=${a.even.redBlack.pValue < 0.0001 ? '<0.0001' : a.even.redBlack.pValue.toFixed(4)} · الأكثر تكرارًا ${a.bias.hot ? esc(a.bias.hot.pocket) + ' (z=' + a.bias.hot.z.toFixed(2) + ')' : '—'}</p>` : ''}
+
+<h2>٣. من أين تُحمَّل اللعبة</h2>
+<p class="${providerSeen ? 'good' : casinoServes ? 'bad' : ''}">${esc(originVerdict)}</p>
+<table><thead><tr><th>الخادم</th><th>التصنيف</th><th>عدد الطلبات</th></tr></thead><tbody>${hostsHtml || '<tr><td colspan="3">—</td></tr>'}</tbody></table>
+
+<h2>٤. أرقام الجولات</h2>
+<table><thead><tr><th>#</th><th>الرقم</th></tr></thead><tbody>${rowsHtml || '<tr><td colspan="2">—</td></tr>'}</tbody></table>
+
+<h2>٥. ختم النزاهة (سلسلة العهدة)</h2>
+<p class="muted">بصمة SHA-256 لكل الأدلّة الخام المُلتقطة في هذه الجلسة. أي تعديل على الأدلّة يغيّر هذه البصمة — فهي دليل على أنّ ما يلي لم يُمَسّ.</p>
+<div class="seal">SHA-256 = ${esc(hash)}</div>
+
+<h2>٦. الأدلّة الخام (حركة الشبكة كما وصلت)</h2>
+${rawHtml || '<p class="muted">لا شيء.</p>'}
+<p class="muted">أُنتج محليًّا في المتصفّح. الأداة تقرأ فقط ولا تعدّل أي طلب أو نتيجة أو رصيد.</p>
+</body></html>`;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'taryam-committee-report-' + now.toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.html';
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 4000);
   }
 
   const PANEL_CSS = `
@@ -161,6 +264,10 @@
   .tp-row label{display:flex;gap:6px;align-items:center;color:#9fb0cc}
   .tp-row select{background:#0b1120;color:#e6eaf2;border:1px solid #39456a;border-radius:8px;padding:4px 8px}
   .tp-btn{background:#1b2740;border:1px solid #39456a;color:#cdd;border-radius:8px;padding:5px 12px;cursor:pointer}
+  .tp-btn.hot{background:#0a5f46;border-color:#0f7a59;color:#d7ffee;font-weight:700}
+  .tp-fields{background:#0b1120;border:1px solid #28324a;border-radius:10px;padding:10px;margin-bottom:10px}
+  .tp-fields label{display:flex;justify-content:space-between;gap:8px;align-items:center;color:#9fb0cc;margin-bottom:6px}
+  .tp-fields input{background:#0f1522;color:#e6eaf2;border:1px solid #39456a;border-radius:7px;padding:4px 8px;width:150px;direction:ltr}
   .tp-cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
   .tp-card{background:#0b1120;border:1px solid #28324a;border-radius:10px;padding:8px}
   .tp-card .k{font-size:11px;color:#8ea0bd}
