@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- connect-src 'none': the page cannot send anything anywhere (no fetch, XHR, WebSocket or beacon). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="dark">
+<title>كيف يكسب الكازينو — TARYAM</title>
+<link rel="icon" href="../icons/favicon-32.png">
+<link rel="stylesheet" href="lab.css">
+<script type="module" src="casino.js"></script>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="../index.html" data-t="back"></a>
+  <div class="brand">
+    <h1 data-t="pageTitle"></h1>
+    <p data-t="subtitle"></p>
+  </div>
+  <a class="back" href="index.html" data-t="labLink"></a>
+  <button id="langToggle" type="button" class="ghost" data-t="language"></button>
+</header>
+<div class="wrap stack">
+  <p class="privacy" data-t="privacy"></p>
+
+  <section class="panel" id="rules">
+    <h2 data-t="rulesTitle"></h2>
+    <div class="rules">
+      <div class="rule"><h3 data-t="rule1Title"></h3><p data-t="rule1"></p></div>
+      <div class="rule"><h3 data-t="rule2Title"></h3><p data-t="rule2"></p></div>
+      <div class="rule"><h3 data-t="rule3Title"></h3><p data-t="rule3"></p></div>
+      <div class="rule"><h3 data-t="rule4Title"></h3><p data-t="rule4"></p></div>
+    </div>
+  </section>
+
+  <section class="panel" id="games">
+    <h2 data-t="gamesTitle"></h2>
+    <div class="game-grid" id="gameCards"></div>
+  </section>
+
+  <section class="panel" id="calc">
+    <h2 data-t="calcTitle"></h2>
+    <p class="muted" data-t="calcIntro"></p>
+    <div class="grid three">
+      <label><span data-t="game"></span><select id="c-game"></select></label>
+      <label data-for="crash"><span data-t="cashoutIn"></span><input id="c-cashout" value="2" dir="ltr" inputmode="decimal" autocomplete="off"></label>
+      <label data-for="mines"><span data-t="minesIn"></span><input id="c-mines" value="3" dir="ltr" inputmode="numeric" autocomplete="off"></label>
+      <label data-for="mines"><span data-t="picksIn"></span><input id="c-picks" value="5" dir="ltr" inputmode="numeric" autocomplete="off"></label>
+      <label data-for="roulette"><span data-t="rouletteBetIn"></span>
+        <select id="c-roulette"><option value="rouletteEuRed" data-t="rEuRed"></option><option value="rouletteEuNumber" data-t="rEuNum"></option><option value="rouletteUsRed" data-t="rUsRed"></option></select>
+      </label>
+      <label data-for="custom"><span data-t="rtpIn"></span><input id="c-rtp" value="96" dir="ltr" inputmode="decimal" autocomplete="off"></label>
+      <label data-for="custom"><span data-t="winChanceIn"></span><input id="c-winChance" value="45" dir="ltr" inputmode="decimal" autocomplete="off"></label>
+    </div>
+    <div class="grid four">
+      <label><span data-t="balanceIn"></span><input id="c-balance" value="100" dir="ltr" inputmode="decimal" autocomplete="off"></label>
+      <label><span data-t="betIn"></span><input id="c-bet" value="5" dir="ltr" inputmode="decimal" autocomplete="off"></label>
+      <label><span data-t="rphIn"></span><input id="c-rph" value="600" dir="ltr" inputmode="numeric" autocomplete="off"></label>
+      <label><span data-t="hoursIn"></span><input id="c-hours" value="1" dir="ltr" inputmode="decimal" autocomplete="off"></label>
+    </div>
+    <label><span data-t="targetIn"></span><input id="c-target" dir="ltr" inputmode="decimal" autocomplete="off"></label>
+    <div class="actions"><button type="button" class="primary" id="run-calc" data-t="run"></button><progress id="prog-calc" max="1" value="0" hidden></progress></div>
+    <div class="error" id="err-calc" hidden></div>
+    <div class="results" id="res-calc"></div>
+    <div class="notes muted small">
+      <p data-t="noteSlot"></p>
+      <p data-t="noteTypical"></p>
+      <p data-t="noteSim"></p>
+    </div>
+  </section>
+
+  <section class="panel" id="session">
+    <h2 data-t="sessionTitle"></h2>
+    <p class="muted" data-t="sessionIntro"></p>
+    <div class="grid three">
+      <label><span data-t="startIn"></span><input id="s-start" dir="ltr" inputmode="decimal" autocomplete="off"></label>
+      <label><span data-t="betsIn"></span><input id="s-bets" dir="ltr" inputmode="decimal" autocomplete="off"></label>
+      <label><span data-t="winsIn"></span><input id="s-wins" dir="ltr" inputmode="decimal" autocomplete="off"></label>
+    </div>
+    <div class="actions"><button type="button" class="primary" id="run-session" data-t="run"></button><button type="button" id="example-session" data-t="example"></button></div>
+    <div class="error" id="err-session" hidden></div>
+    <div class="results" id="res-session"></div>
+  </section>
+
+  <section class="panel help" id="help">
+    <h2 data-t="helpTitle"></h2>
+    <ul>
+      <li data-t="help1"></li>
+      <li data-t="help2"></li>
+      <li data-t="help3"></li>
+    </ul>
+  </section>
+</div>
+</body>
+</html>

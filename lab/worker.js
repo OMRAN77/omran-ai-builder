@@ -8,6 +8,7 @@ import { runNist } from './core/nist.js';
 import { parseFairCsv, verifyHmacRounds, verifyHashChain, sha256Hex, hmacSha256, floatFromBytes, mapOutcome, toHex } from './core/fair.js';
 import { prngFromSeed, PRNG_DESCRIPTION } from './core/prng.js';
 import { simulate } from './core/montecarlo.js';
+import { sampler, slotSampler, simulatePlayers } from './core/casino.js';
 
 const decode = (bytes) => new TextDecoder().decode(bytes);
 const encode = (text) => new TextEncoder().encode(text);
@@ -52,6 +53,12 @@ const TASKS = {
     const sim = simulate(normalizeModel(raw), await prngFromSeed(seed), spins, { onProgress: progress });
     const run = { modelSha256, seed, spins, generator: PRNG_DESCRIPTION, result: sim };
     return { ...run, resultSha256: await sha256Hex(canonicalJson(run)) };
+  },
+
+  // Many players through one session of a casino game (casino.html).
+  players: async ({ kind, dist, raw, seed, options }, progress) => {
+    const draw = kind === 'slot' ? slotSampler(normalizeModel(raw)) : sampler(dist);
+    return simulatePlayers(draw, await prngFromSeed(seed), { ...options, onProgress: progress });
   },
 
   // Example inputs, generated locally.
