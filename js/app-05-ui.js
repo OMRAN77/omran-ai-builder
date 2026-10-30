@@ -28,11 +28,22 @@ function omranNativeBridge(name){
 /* v-pdf-link: هل نعمل داخل غلاف تطبيق (TWA/متجر/PWA مثبّت)؟ الأغلفة لا
    تنفّذ تنزيل blob المحلي — نرفع الملف للسيرفر ونفتح رابط تنزيل حقيقي
    يمرّ عبر منزّل النظام نفسه فيعمل في كل غلاف. */
+/* v-hw-webview (رفض هواوي ٣٠ أكتوبر): غلاف WebView الاحتياطيّ لحزمة هواوي (MahaWebViewFallbackActivity —
+   أجهزة بلا متصفّح يدعم TWA) وحده يحقن جسر OmranRender؛ في Chrome/TWA والموقع لا يوجد. */
+function omranHwWebView(){
+  try{ return !!(window.OmranRender && typeof window.OmranRender.mode === 'function'); }
+  catch(e){ __swallow(e, 'hw:webview-detect'); return false; }
+}
 function omranLikelyApp(){
   try{
     if(document.referrer && document.referrer.indexOf('android-app://') === 0) localStorage.setItem('aiapp_twa', '1');
     if(localStorage.getItem('aiapp_twa') === '1') return true;
     if(localStorage.getItem('aiapp_store')) return true;
+    /* v-hw-webview: علم المتجر انتقل إلى sessionStorage (v-store-flag-session) فلم يعد السطر أعلاه يراه، وWebView
+       الاحتياطيّ لا يرسل android-app:// في document.referrer — فكانت حزمة هواوي تُعامَل موقعًا: تقرير المقاولات
+       وجدول الكمّيّات وحفظ الملفّات تنزّل blob محلّيًّا يسقط صامتًا بدل رابط الخادم الذي ينزّله النظام. */
+    if(sessionStorage.getItem('aiapp_store')) return true;
+    if(omranHwWebView()) return true;
     if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
     if(navigator.standalone === true) return true;
     /* v-cap-detect (شكوى عمران «PDF عند + ما يشتغل» على TestFlight): غلاف

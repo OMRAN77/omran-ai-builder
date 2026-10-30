@@ -62,10 +62,10 @@ test('٢. وصف المتجر بلا «رسمي/موثوق/مفضّل/مميّز
   assert.ok(descriptions.length > 500, 'قسما الوصف موجودان');
   assert.doesNotMatch(descriptions, BANNED);
   assert.doesNotMatch(enToolList + arToolList, BANNED);
-  // 1.3.14 (الحزمة نفسها برقم أكبر): اسم AGC كما هو (يطابق اسم الهاتف «عمران AI»)، والوصف يجمع اسم الهاتف واسم الواجهة «om ai» في أوّل سطر
+  // 1.3.15 (الحزمة نفسها برقم أكبر): اسم AGC كما هو (يطابق اسم الهاتف «عمران AI»)، والوصف يجمع اسم الهاتف واسم الواجهة «om ai» في أوّل سطر
   assert.ok(descriptions.includes('**اسم التطبيق:** كما هو في AGC') && descriptions.includes('**App name:** unchanged in AGC'));
   assert.ok(descriptions.includes('عمران AI (om ai) تطبيق واحد') && descriptions.includes('Omran AI (om ai) brings'));
-  assert.ok(notes.startsWith('# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.14)'));
+  assert.ok(notes.startsWith('# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.15)'));
   // 11.4 باقية صادقة (hw-nomarkets)، وحساب التجربة بلا كلمة مرور في المستودع
   assert.match(notes, /all market screens \(stock ticker, stock market, currency\/forex rates\) are removed from this package/);
   assert.ok(notes.includes('Test account: (username) / (password)'));
@@ -97,16 +97,16 @@ test('٣. اللقطات الثماني بثلاث لغات من store/huawei/sh
   for (const id of [...sh.matchAll(/open\('(\w+)'\)/g)].map((m) => m[1])) assert.ok(visible.includes(id), 'لقطة لأداة ظاهرة فقط: ' + id);
 });
 
-test('٤. v-hw-1314: 1.3.14 بأمر المالك («1.3.14 سو جديد») — الحزمة نفسها واسم الهاتف نفسه، والنصوص كلّها على الرقم الجديد', () => {
+test('٤. v-hw-1315 (بعد v-hw-1314): 1.3.15 — الحزمة نفسها واسم الهاتف نفسه، والنصوص كلّها على الرقم الجديد', () => {
   const g = read('store/huawei/twa/app/build.gradle');
   assert.match(g, /name: 'Omran AI Builder',/); assert.match(g, /launcherName: 'عمران AI',/);
-  assert.match(g, /versionName "1\.3\.14"/);
-  assert.ok(notes.includes('new version 1.3.14') && notes.includes('launcher label stays "عمران AI"'), 'الملاحظات تقول الرقم واسم الهاتف الفعليّ');
+  assert.match(g, /versionName "1\.3\.15"/);
+  assert.ok(notes.includes('new version 1.3.15') && notes.includes('launcher label stays "عمران AI"'), 'الملاحظات تقول الرقم واسم الهاتف الفعليّ');
   const readme = read('store/huawei/README.md');
-  assert.ok(readme.includes('**1.3.14 (٢٨ أكتوبر): بناء جديد بأمر المالك**') && readme.includes('version_code=20261028') && readme.includes('v-hw-resubmit-1313'));
-  // كلّ ما يقرؤه المراجع على 1.3.14: لا «version 1.3.13» ولا اسم AGC «في 1.3.13» باقٍ
-  assert.doesNotMatch(notes, /version 1\.3\.13\b|الإصدار 1\.3\.13 |launcher label of 1\.3\.13|与 1\.3\.13/);
-  assert.ok(!(readme + notes).includes('1.3.15'), 'لا رقم بعد 1.3.14');
+  assert.ok(readme.includes('version_code=20261030') && readme.includes('v-hw-1315') && readme.includes('v-hw-resubmit-1313'));
+  // كلّ ما يقرؤه المراجع على 1.3.15: لا «version 1.3.14/1.3.13» ولا اسم AGC «في 1.3.14» باقٍ
+  assert.doesNotMatch(notes, /version 1\.3\.1[34]\b|الإصدار 1\.3\.1[34] |launcher label of 1\.3\.1[34]|与 1\.3\.1[34]/);
+  assert.ok(!(readme + notes).includes('1.3.16'), 'لا رقم بعد 1.3.15');
 });
 
 test('٥. نسخة هواوي وحدها تخفي خيارات العلامات التجاريّة (1.15) ووصف «موثوقة»، والموقع كما هو', () => {
@@ -209,6 +209,7 @@ test('٧. المراجعة العدائيّة: أوّل شاشة صينيّة ب
   assert.equal(list.split(',').length, 13, 'الأدوات الـ١٣ في القوس');
   assert.ok(r.includes('bottom bar > Tools'), 'مكان زرّ الأدوات');
   assert.ok(r.includes('opens on every launch'), 'العرض في كلّ تشغيل لا مرّة لكلّ جهاز');
+  assert.ok(r.startsWith('1.3.15 fixes file upload'), 'v-hw-1315: Remarks تبدأ بإصلاح رفض 3.1');
   assert.doesNotMatch(notes, /does not open by itself again|فلن يفتح المربّع وحده/, 'لا ملاحظة قديمة تقول إنّه لا يعود');
 });
 

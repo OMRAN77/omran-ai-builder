@@ -2941,7 +2941,9 @@
     let coarse = false; try{ coarse = window.matchMedia('(pointer:coarse)').matches; }catch(e){ coarse = false; }
     /* v-upload-art (لقطة المالك «ما يحوّلك تطلع كلمة المعرض»): على الحاسوب لا كاميرا، فالقائمة كانت زرًّا واحدًا «المعرض» يطفو
        فوق الخانة — تُفتح الملفّات مباشرةً بلا قائمة؛ اللمس يبقى بورقة الكاميرا/المعرض. */
-    if(!coarse){ (which === 'A' ? fileInputA : fileInputB).click(); return; }
+    /* v-hw-webview: داخل WebView حزمة هواوي «📷 الكاميرا» كان يفتح المنتقي نفسه لا الكاميرا (capture بلا تطبيق
+       كاميرا يُستدعى) — زرّان بنتيجة واحدة. هناك يُفتح المنتقي مباشرةً كالحاسوب. */
+    if(!coarse || (typeof omranHwWebView === 'function' && omranHwWebView())){ (which === 'A' ? fileInputA : fileInputB).click(); return; }
     if(coarse) add(t('studioSrcCamera'), () => studioCamera(which));
     add(t('studioSrcGallery'), () => (which === 'A' ? fileInputA : fileInputB).click());
     /* v-studio-sheet (لقطة المالك «شوف وين تتحرك عند الإضافة»): القائمة كانت تطفو وسط الشاشة فوق الميزات بعيدًا
