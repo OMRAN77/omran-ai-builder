@@ -6,6 +6,7 @@ const S = {
   labLink: ['مختبر RTP', 'RTP Lab'],
   checkLink: ['فحص الكازينو', 'Casino check'],
   minesLink: ['Mines من أ إلى ي', 'Mines from A to Z'],
+  rouletteLink: ['الروليت بالأرقام', 'Roulette in numbers'],
   language: ['English', 'العربية'],
   privacy: ['كل الحسابات تتم في هذا المتصفح. لا يُرسل أي رقم لأي خادم.', 'Every calculation runs in this browser. No number is sent to any server.'],
 

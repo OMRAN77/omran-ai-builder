@@ -29,6 +29,7 @@ const S = {
   copyReport: ['نسخ التقرير', 'Copy the report'],
   copied: ['تم النسخ', 'Copied'],
   minesLink: ['Mines من أ إلى ي', 'Mines from A to Z'],
+  rouletteLink: ['الروليت بالأرقام', 'Roulette in numbers'],
   pasteTitle: ['الموقع حجب الفاحص؟ الصق مصدر الصفحة من متصفحك', 'Did the site block the checker? Paste the page source from your browser'],
   pasteIntro: ['افتح الموقع في متصفحك، اضغط Ctrl+U (مصدر الصفحة)، ثم Ctrl+A وCtrl+C، والصق هنا. يُحلَّل في متصفحك ولا يُرسل لأحد. يكفي أيضًا نسخ نص الصفحة نفسها.', 'Open the site in your browser, press Ctrl+U (page source), then Ctrl+A and Ctrl+C, and paste here. It is analysed in your browser and sent nowhere. Copying the page text itself also works.'],
   pasteIn: ['مصدر الصفحة أو نصّها', 'Page source or text'],

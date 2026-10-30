@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- connect-src 'none': this page computes everything locally and cannot send anything. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="dark">
+<title>الروليت: الحقيقة بالأرقام — TARYAM</title>
+<link rel="icon" href="../icons/favicon-32.png">
+<link rel="stylesheet" href="lab.css">
+<script type="module" src="roulette.js"></script>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="../index.html" data-t="back"></a>
+  <div class="brand">
+    <h1 data-t="pageTitle"></h1>
+    <p data-t="subtitle"></p>
+  </div>
+  <a class="back" href="casino-check.html" data-t="checkLink"></a>
+  <a class="back" href="mines.html" data-t="minesLink"></a>
+  <button id="langToggle" type="button" class="ghost" data-t="language"></button>
+</header>
+<div class="wrap stack">
+  <p class="privacy" data-t="privacy"></p>
+
+  <section class="panel" id="story">
+    <h2 data-t="storyTitle"></h2>
+    <ol class="story">
+      <li data-t="story1"></li>
+      <li data-t="story2"></li>
+      <li data-t="story3"></li>
+      <li data-t="story4"></li>
+    </ol>
+  </section>
+
+  <section class="panel" id="edge">
+    <h2 data-t="edgeTitle"></h2>
+    <p class="muted" data-t="edgeIntro"></p>
+    <div class="grid two">
+      <label><span data-t="wheelLabel"></span>
+        <select id="e-wheel">
+          <option value="european" data-t="wheelEU"></option>
+          <option value="american" data-t="wheelUS"></option>
+        </select>
+      </label>
+    </div>
+    <div class="results" id="res-edge"></div>
+    <p class="small muted" data-t="edgeNote"></p>
+  </section>
+
+  <section class="panel" id="seq">
+    <h2 data-t="seqTitle"></h2>
+    <p class="muted" data-t="seqIntro"></p>
+    <label><span data-t="seqIn"></span><textarea id="s-nums" rows="4" dir="ltr" spellcheck="false" placeholder="29 27 6 20 2 11 26 36 13 21 21 1 22 8"></textarea></label>
+    <p class="small muted" data-t="seqHint"></p>
+    <div class="actions"><button type="button" class="primary" id="run-seq" data-t="analyse"></button><button type="button" id="example-seq" data-t="example"></button></div>
+    <div class="error" id="err-seq" hidden></div>
+    <div class="results" id="res-seq"></div>
+  </section>
+
+  <section class="panel" id="replay">
+    <h2 data-t="replayTitle"></h2>
+    <p class="muted" data-t="replayIntro"></p>
+    <ol class="story">
+      <li data-t="replay1"></li>
+      <li data-t="replay2"></li>
+      <li data-t="replay3"></li>
+      <li data-t="replay4"></li>
+    </ol>
+  </section>
+
+  <section class="panel" id="operator">
+    <h2 data-t="siteTitle"></h2>
+    <p data-t="siteText"></p>
+    <a class="download" id="site-link" href="casino-check.html" data-t="siteBtn"></a>
+  </section>
+</div>
+</body>
+</html>

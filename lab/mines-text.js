@@ -5,6 +5,7 @@ const T = {
   back: ['العودة للتطبيق', 'Back to the app'],
   checkLink: ['فحص الكازينو', 'Casino check'],
   casinoLink: ['كيف يكسب الكازينو', 'How the casino wins'],
+  rouletteLink: ['الروليت بالأرقام', 'Roulette in numbers'],
   language: ['English', 'العربية'],
   privacy: ['كل شيء هنا يُحسب في متصفحك ولا يُرسل شيء. سياسة الصفحة تمنع أي اتصال.', 'Everything here is computed in your browser and nothing is sent. The page policy blocks every connection.'],
 
