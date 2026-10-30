@@ -3,6 +3,10 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **بطاقة عائمة بـ--panel2 في الوضع الأسود = أسود على أسود:** هناك `--panel2` و`--panel` و`--bg` كلّها #000، وv-no-lines-2 يمسح الحدّ
+  (js/app-41-three-colors.js يصنّفه om3-line)، فلا يبقى إلّا النصّ طافيًا. «الأسود الثاني» هو #101013 لون صندوق الكتابة. ومع صورة خلفيّة
+  (bgimg) لون الكتابة على html يتبع الصورة لا السطح (١٫١:١) — السطح المعتم يعلن --text/--muted على نفسه. لا تثق بلقطة بلا قياس: اقرأ
+  getComputedStyle للخلفيّة والنصّ واحسب التباين في الأسود والفاتح ومع bgimg-dark/light. (v-play-invite)
 - **غلاف WebView ليس متصفّحًا:** `MahaWebViewFallbackActivity` (هواتف هواوي بلا Chrome — منها جهاز مراجع AppGallery) لا يفعل
   إلّا ما نُفِّذ فيه: بلا `onShowFileChooser` كلّ `<input type=file>` ميت صامتًا (رفض 1.3.14 بالقاعدة 3.1)، بلا
   `onGeolocationPermissionsShowPrompt` لا موقع، وتنزيل blob:/data: يسقط. ولا SpeechRecognition ولا navigator.share ولا Notification ولا

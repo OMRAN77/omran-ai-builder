@@ -30787,7 +30787,8 @@ window.addEventListener('appinstalled', () => {
    WebView)، ولا على آيفون أو الحاسوب أو متصفّح هواوي، ولا ما دام أحد الرابطين فارغًا. تنتظر ٨ ثوانٍ وتتأخّر ما دامت نافذة أخرى
    ظاهرة؛ مرّة في الجلسة على الأكثر. ✕ أو الخطوة الثانية = لا تعود على هذا الجهاز؛ التركيز على الكتابة يخفيها بلا حفظ.
    ألوانها من الثيم (--panel2 و--text و--muted)، وفي الوضع الأسود لون صندوق الكتابة #101013: --panel2 هناك أسود صافٍ والحدّ يُمسح
-   (v-no-lines-2) فكانت البطاقة أسود على أسود. قاعدة الوضع في <style> واحد لا inline، كي يتبع تبديل الوضع وهي ظاهرة.
+   (v-no-lines-2) فكانت البطاقة أسود على أسود. مع صورة خلفيّة (bgimg) لون الكتابة على html يتبع الصورة لا البطاقة (كان ١٫١:١) —
+   فالبطاقة سطح معتم بألوان وضعها (كـ v-bgimg-surface-text). القواعد في <style> واحد لا inline، كي تتبع تبديل الوضع وهي ظاهرة.
    والخطوتان زرّان أساسيّان — .btn العاديّ في الوضع الأسود نصّ بلا صندوق. */
 (function(){
   const PLAY_TEST = { group: '', optIn: '' };
@@ -30805,10 +30806,14 @@ window.addEventListener('appinstalled', () => {
     if(isStandalone() || (typeof omranLikelyApp === 'function' && omranLikelyApp())) return true;
     return !!(window.matchMedia && (window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: minimal-ui)').matches));
   };
+  const inCall = () => {
+    const c = document.getElementById('mahaCallScreen');
+    return !!(c && c.style.display === 'flex') || !!(document.body && document.body.classList.contains('maha-band-on'));
+  };
   const blocked = () => {
     if(document.visibilityState && document.visibilityState !== 'visible') return true;
-    if(['privacyConsent', 'introTourOverlay', 'installPill', 'mediaNotifAskBar', 'sessToast'].some(id => document.getElementById(id))) return true;
-    if(document.querySelector('#sectionsToolsOverlay.show, #sidebar.open, #workarea.open')) return true;
+    if(['privacyConsent', 'introTourOverlay', 'installPill', 'mediaNotifAskBar', 'sessToast', 'askAllHintTip'].some(id => document.getElementById(id))) return true;
+    if(inCall() || document.querySelector('#sectionsToolsOverlay.show, #sidebar.open, #workarea.open')) return true;
     const p = document.getElementById('prompt');
     return !!(p && document.activeElement === p);
   };
@@ -30816,20 +30821,18 @@ window.addEventListener('appinstalled', () => {
     if(document.getElementById('playInvite')) return;
     const d = (typeof window.curT === 'function') ? window.curT() : {};
     const tx = (k) => d[k] || (I18N.en || {})[k] || '';
-    let pos = null;
-    try { pos = (typeof window.__omranAboveComposer === 'function') ? window.__omranAboveComposer(10) : null; } catch(e){ __swallow(e, 'play-invite:pos'); }
     if(!document.getElementById('playInviteCss')){
       const st = document.createElement('style');
       st.id = 'playInviteCss';
       st.textContent = '#playInvite{background:var(--panel2, #1c2230); color:var(--text, #eee); border:1px solid rgba(201,162,39,.45); box-shadow:var(--sh-2, 0 8px 24px rgba(0,0,0,.45));}'
         + '#playInvite .omPiMuted{color:var(--muted, #999);}'
-        + 'html:not([data-mode="light"]):not(.skin):not(.skin-wood):not(.bgimg) #playInvite{background:#101013;}';
+        + 'html:not([data-mode="light"]):not(.skin):not(.skin-wood) #playInvite, html.bgimg:not([data-mode="light"]) #playInvite{background:#101013; --text:#eef0f6; --muted:#9a9a9e;}'
+        + 'html.bgimg[data-mode="light"] #playInvite{background:#fbf5e9; --text:#1d1a16; --muted:#5f574c;}';
       document.head.appendChild(st);
     }
     const card = document.createElement('div');
     card.id = 'playInvite';
-    card.style.cssText = 'position:fixed; bottom:' + (pos ? pos.bottom + 'px' : 'calc(76px + env(safe-area-inset-bottom, 0px))') + '; left:' + (pos ? pos.cx + 'px' : '50%') + '; transform:translateX(-50%);'
-      + ' width:' + (pos ? Math.min(440, pos.width) + 'px' : 'calc(100% - 24px)') + '; max-width:440px; box-sizing:border-box; z-index:50; padding:12px 14px; border-radius:var(--r-3, 14px); line-height:1.5;';
+    card.style.cssText = 'position:fixed; transform:translateX(-50%); max-width:440px; box-sizing:border-box; z-index:50; padding:12px 14px; border-radius:var(--r-3, 14px); line-height:1.5;';
     const head = document.createElement('div');
     head.style.cssText = 'display:flex; align-items:flex-start; gap:8px;';
     const title = document.createElement('div');
@@ -30868,9 +30871,29 @@ window.addEventListener('appinstalled', () => {
     const install = step('playTestStep2', PLAY_TEST.optIn);
     row.append(join, install);
     card.append(head, hint, row);
+    const offs = [];
     const close = (forever) => {
       card.remove();
+      offs.splice(0).forEach(off => { try { off(); } catch(e){ __swallow(e, 'play-invite:unwatch'); } });
       if(forever){ try { localStorage.setItem(SEEN, '1'); } catch(e){ __swallow(e, 'play-invite:dismiss'); } }
+    };
+    /* فوق الصندوق المقيس، وفوق شريط ملاحظات المالك إن ظهر؛ يُعاد مع كبر الصندوق (مرفقات) والتدوير وفتح الجوّال المطويّ.
+       مكالمة مها أو شريط الإشعارات (نفس الموضع، z أعلى) = تُخفى بلا حفظ، وكذا إن لم يبقَ لها مكان في الشاشة. */
+    const place = () => {
+      if(inCall() || document.getElementById('mediaNotifAskBar')){ close(false); return; }
+      let pos = null, bottom = 0;
+      try { pos = (typeof window.__omranAboveComposer === 'function') ? window.__omranAboveComposer(10) : null; } catch(e){ __swallow(e, 'play-invite:pos'); }
+      if(pos) bottom = pos.bottom;
+      try {
+        const hb = document.getElementById('ownerHealthBar'), ih = window.innerHeight || 0;
+        const r = hb && hb.getBoundingClientRect();
+        if(r && r.height > 0 && r.top > 0 && r.top < ih) bottom = Math.max(bottom, Math.round(ih - r.top + 10));
+      } catch(e){ __swallow(e, 'play-invite:health'); }
+      card.style.bottom = bottom ? bottom + 'px' : 'calc(76px + env(safe-area-inset-bottom, 0px))';
+      card.style.left = pos ? pos.cx + 'px' : '50%';
+      card.style.width = pos ? Math.min(440, pos.width) + 'px' : 'calc(100% - 24px)';
+      const r = card.getBoundingClientRect();
+      if(r && r.height > 0 && r.top < 0) close(false);
     };
     x.onclick = () => close(true);
     install.addEventListener('click', () => close(true));
@@ -30878,6 +30901,19 @@ window.addEventListener('appinstalled', () => {
     if(p) p.addEventListener('focus', () => close(false), { once: true });
     document.body.appendChild(card);
     try { sessionStorage.setItem(SESSION, '1'); } catch(e){ __swallow(e, 'play-invite:session'); }
+    place();
+    if(!card.isConnected) return;
+    window.addEventListener('resize', place);
+    offs.push(() => window.removeEventListener('resize', place));
+    const box = document.getElementById('composerBox') || document.getElementById('inputbar');
+    if(box && typeof window.ResizeObserver === 'function'){ const ro = new window.ResizeObserver(place); ro.observe(box); offs.push(() => ro.disconnect()); }
+    if(typeof window.MutationObserver === 'function'){
+      const mo = new window.MutationObserver(place);
+      mo.observe(document.body, { childList: true, attributes: true, attributeFilter: ['class'] });
+      const call = document.getElementById('mahaCallScreen');
+      if(call) mo.observe(call, { attributes: true, attributeFilter: ['style'] });
+      offs.push(() => mo.disconnect());
+    }
   };
   let tries = 0;
   const arm = () => {
