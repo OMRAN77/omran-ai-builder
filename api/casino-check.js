@@ -4,39 +4,23 @@
 //     terms, responsible-gaming tools, game providers and where content loads from;
 //   - the domain's registration date (RDAP) and TLS certificate;
 //   - the server's location and network (ipwho.is), and the security headers.
-// Private and local addresses are refused, so the function cannot be pointed at
-// internal services. Lightweight per-IP daily throttling, as the other scanners.
+// Every host the function connects to, including each redirect hop, is resolved
+// and refused first if it points at a private or local address, so the function
+// cannot be steered at internal services. The daily per-IP counter lives in the
+// encrypted, unguessable store (_store.js), keyed by the platform-seen IP only.
 const dns = require('dns').promises;
 const net = require('net');
 const tls = require('tls');
 const C = require('./_casino');
+const store = require('./_store');
+const { clientIp } = require('./_client');
 
-const BLOB_BASE = 'https://blob.vercel-storage.com';
 const DAILY_LIMIT = 20;
 const MAX_HTML = 1.5 * 1024 * 1024;
+const MAX_REDIRECTS = 5;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) TaryamCyber-CasinoCheck/1.0';
 
-function publicBase() {
-  return 'https://' + (process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu') + '.public.blob.vercel-storage.com/';
-}
 function todayStr() { return new Date().toISOString().slice(0, 10); }
-function usagePath(id) { return 'taryam/db/casino_check_usage/' + encodeURIComponent(id) + '.json'; }
-async function readBlobJson(path, fallback) {
-  try {
-    const res = await fetch(publicBase() + path + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return fallback;
-    return await res.json();
-  } catch (e) { return fallback; }
-}
-async function writeBlobJson(path, data) {
-  try {
-    await fetch(BLOB_BASE + '/' + path, {
-      method: 'PUT',
-      headers: { Authorization: 'Bearer ' + process.env.BLOB_READ_WRITE_TOKEN, 'x-content-type': 'application/json', 'x-add-random-suffix': '0', 'x-cache-control-max-age': '0' },
-      body: JSON.stringify(data),
-    });
-  } catch (e) { /* best effort */ }
-}
 
 function normalizeUrl(input) {
   let u = String(input || '').trim();
@@ -77,26 +61,51 @@ function withTimeout(ms) {
   return { signal: controller.signal, done: () => clearTimeout(t) };
 }
 
+// Resolves a host and refuses it when any address is private or local.
+async function publicIps(host) {
+  const ips = await resolveHost(host);
+  if (!ips.length) return { error: 'unresolvable', message: 'تعذّر العثور على عنوان لهذا النطاق' };
+  if (ips.some(isPrivateIp)) return { error: 'private', message: 'العنوان داخلي أو محلي؛ لا يُفحص' };
+  return { ips };
+}
+
+// Follows redirects by hand so every hop's host passes publicIps() before it is
+// fetched; fetch's own 'follow' mode would connect to a private target first.
 async function fetchPage(url) {
   const { signal, done } = withTimeout(9000);
   try {
-    const res = await fetch(url.toString(), { redirect: 'follow', signal, headers: { 'User-Agent': UA, 'Accept-Language': 'ar,en;q=0.8', Accept: 'text/html,*/*' } });
-    const headers = {};
-    res.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; });
-    const reader = res.body && res.body.getReader ? res.body.getReader() : null;
-    let html = '';
-    if (reader) {
-      const dec = new TextDecoder();
-      let size = 0;
-      while (size < MAX_HTML) {
-        const { value, done: end } = await reader.read();
-        if (end) break;
-        size += value.length;
-        html += dec.decode(value, { stream: true });
+    let current = new URL(url.toString());
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      if (hop > 0) {
+        if (!/^https?:$/.test(current.protocol)) return { ok: false, error: 'redirect to ' + current.protocol };
+        const gate = await publicIps(current.hostname.toLowerCase());
+        if (gate.error) return { ok: false, error: 'redirect-' + gate.error, refused: gate };
       }
-      try { await reader.cancel(); } catch (e) { /* stream already closed */ }
-    } else html = await res.text();
-    return { ok: true, status: res.status, finalUrl: res.url || url.toString(), headers, html };
+      const res = await fetch(current.toString(), { redirect: 'manual', signal, headers: { 'User-Agent': UA, 'Accept-Language': 'ar,en;q=0.8', Accept: 'text/html,*/*' } });
+      const location = res.headers.get('location');
+      if (res.status >= 300 && res.status < 400 && location) {
+        try { await res.body?.cancel(); } catch (e) { /* nothing to drain */ }
+        current = new URL(location, current);
+        continue;
+      }
+      const headers = {};
+      res.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; });
+      const reader = res.body && res.body.getReader ? res.body.getReader() : null;
+      let html = '';
+      if (reader) {
+        const dec = new TextDecoder();
+        let size = 0;
+        while (size < MAX_HTML) {
+          const { value, done: end } = await reader.read();
+          if (end) break;
+          size += value.length;
+          html += dec.decode(value, { stream: true });
+        }
+        try { await reader.cancel(); } catch (e) { /* stream already closed */ }
+      } else html = await res.text();
+      return { ok: true, status: res.status, finalUrl: current.toString(), headers, html };
+    }
+    return { ok: false, error: 'too many redirects' };
   } catch (e) {
     return { ok: false, error: e && e.name === 'AbortError' ? 'timeout' : String(e && e.message || e) };
   } finally { done(); }
@@ -181,16 +190,12 @@ function headerGrade(headers) {
 
 async function check(url) {
   const host = url.hostname.toLowerCase();
-  const ips = await resolveHost(host);
-  if (!ips.length) return { error: 'unresolvable', message: 'تعذّر العثور على عنوان لهذا النطاق' };
-  if (ips.some(isPrivateIp)) return { error: 'private', message: 'العنوان داخلي أو محلي؛ لا يُفحص' };
+  const gate = await publicIps(host);
+  if (gate.error) return gate;
+  const ips = gate.ips;
   const domain = C.registrable(host);
   const [page, cert, reg, where] = await Promise.all([fetchPage(url), certInfo(host), rdap(domain), geo(ips[0])]);
-  if (page.ok) {
-    const finalHost = (() => { try { return new URL(page.finalUrl).hostname; } catch (e) { return host; } })();
-    const finalIps = finalHost === host ? ips : await resolveHost(finalHost);
-    if (finalIps.some(isPrivateIp)) return { error: 'private', message: 'الموقع يعيد التوجيه إلى عنوان داخلي؛ لا يُفحص' };
-  }
+  if (page.refused) return { error: 'private', message: 'الموقع يعيد التوجيه إلى عنوان داخلي؛ لا يُفحص' };
   const analysis = page.ok ? C.analyzeHtml(page.html, page.finalUrl) : null;
   const findings = [];
   if (!page.ok) findings.push({ id: 'unreachable', severity: 'low', ar: `تعذّر تحميل الصفحة (${page.error}). قد يكون الموقع محجوبًا أو يرفض الزوار الآليين؛ باقي الفحوص من النطاق والشهادة.`, en: `The page could not be loaded (${page.error}). The site may be blocked or refuse automated visitors; the other checks come from the domain and certificate.`, evidence: null });
@@ -219,16 +224,25 @@ module.exports = async (req, res) => {
     const body = req.body || {};
     const url = normalizeUrl(body.url);
     if (!url) { res.status(400).json({ error: 'invalid', message: 'أدخل رابط الموقع، مثل example.com' }); return; }
-    const id = String(body.guestId || req.headers['x-forwarded-for'] || 'anon').slice(0, 100);
+    // The browser's guestId is not used: anyone can change it. The platform-seen IP is.
+    const ip = clientIp(req);
+    if (!ip || !process.env.BLOB_READ_WRITE_TOKEN) { res.status(503).json({ error: 'config', message: 'الخادم غير مهيأ بعد (AUTH_SECRET / BLOB_READ_WRITE_TOKEN)' }); return; }
+    let path, usage;
+    try {
+      path = store.secretPath('usage-casino-check', 'ip:' + ip);
+      usage = await store.readSecret(path);
+    } catch (e) {
+      res.status(503).json({ error: 'config', message: 'الخادم غير مهيأ بعد (AUTH_SECRET / BLOB_READ_WRITE_TOKEN)' });
+      return;
+    }
     const today = todayStr();
-    let usage = await readBlobJson(usagePath(id), null);
     if (!usage || usage.date !== today) usage = { date: today, count: 0 };
     if (usage.count >= DAILY_LIMIT) {
       res.status(429).json({ error: 'limit', message: 'وصلت للحد اليومي المسموح لهذه الأداة (' + DAILY_LIMIT + ' فحوصات/يوم). حاول غدًا.' });
       return;
     }
     usage.count += 1;
-    await writeBlobJson(usagePath(id), usage);
+    try { await store.writeSecret(path, usage); } catch (e) { /* best effort: one extra check slips through today */ }
     const result = await check(url);
     if (result.error) { res.status(400).json(result); return; }
     res.status(200).json({ ...result, remaining: DAILY_LIMIT - usage.count });
@@ -237,4 +251,4 @@ module.exports = async (req, res) => {
   }
 };
 
-module.exports._internal = { normalizeUrl, isPrivateIp, check };
+module.exports._internal = { normalizeUrl, isPrivateIp, check, fetchPage };

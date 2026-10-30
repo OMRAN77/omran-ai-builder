@@ -37,9 +37,6 @@ function num(id) {
   const s = $(id).value.trim().replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660)).replace(/٫/g, '.').replace(/[٬,\s]/g, '');
   return s === '' ? null : Number(s);
 }
-function guestId() {
-  try { return localStorage.getItem('aiapp_guest_id') || localStorage.getItem('guestId') || null; } catch (e) { return null; }
-}
 
 // ---------- 1. site ----------
 let site = null;
@@ -53,7 +50,7 @@ async function runSite() {
   btn.disabled = true; btn.textContent = tr('checking');
   $('#res-site').replaceChildren();
   try {
-    const res = await fetch('/api/casino-check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url, guestId: guestId() }) });
+    const res = await fetch('/api/casino-check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
     const data = await res.json();
     if (!res.ok || data.error) throw { ar: data.message || data.error || 'فشل الفحص', en: data.message || data.error || 'The check failed' };
     site = data;

@@ -1,13 +1,13 @@
 // api/casino-check.js offline: the page, RDAP, geo and certificate are faked, so the
 // test checks what the analysis says about a typical illegal site and a regulated
-// one, that private and local addresses are refused before anything is fetched,
-// and the daily throttle.
+// one, that private and local addresses are refused before anything is fetched
+// (including behind a redirect), and the per-IP daily throttle in the encrypted store.
 const test = require('node:test');
 const assert = require('node:assert');
 const dns = require('dns');
 const tls = require('tls');
 const { EventEmitter } = require('events');
-const { loadApi, callApi, installFetch, createBlobFake } = require('../helpers/harness');
+const { loadApi, callApi, installFetch, createBlobFake, STRONG_SECRET } = require('../helpers/harness');
 const C = require('../../api/_casino');
 
 const SCAM_HTML = `<!doctype html><html lang="ar"><head><title>كازينو الإمارات — بونص 200%</title></head><body>
@@ -49,6 +49,7 @@ function upstream({ html, registered, country = 'Curacao', code = 'CW', org = 'S
     if (u.hostname === 'rdap.org') return new Response(JSON.stringify({ events: registered ? [{ eventAction: 'registration', eventDate: registered }] : [], entities: [{ roles: ['registrar'], vcardArray: ['vcard', [['fn', {}, 'text', 'Test Registrar']]] }], status: ['active'] }), { headers: { 'content-type': 'application/rdap+json' } });
     if (u.hostname === 'ipwho.is') return new Response(JSON.stringify({ success: true, country, country_code: code, city: 'City', connection: { isp: org, org, asn: 64500 } }));
     if (u.hostname === 'data.iana.org') return new Response(JSON.stringify({ services: [] }));
+    if (u.hostname === 'redirector.test') return new Response('', { status: 302, headers: { location: u.pathname === '/inside' ? 'http://local.test/admin' : u.pathname === '/loop' ? 'https://redirector.test/loop' : 'https://landing.test/home' } });
     return new Response(html, { status: 200, headers: { 'content-type': 'text/html', 'strict-transport-security': 'max-age=1' } });
   };
 }
@@ -64,11 +65,14 @@ function withNetwork(t, { html, registered, cert, ...geo }) {
   return blob;
 }
 
+const ENV = (blob) => ({ AUTH_SECRET: STRONG_SECRET, BLOB_READ_WRITE_TOKEN: blob.token });
+const from = (ip, url) => ({ body: { url }, headers: { 'x-real-ip': ip } });
+
 test('a typical illegal site aimed at the UAE: evidence-backed findings and a high risk', async (t) => {
   const recent = new Date(Date.now() - 40 * 86400000).toISOString();
   const blob = withNetwork(t, { html: SCAM_HTML, registered: recent });
-  const api = loadApi('casino-check', { BLOB_READ_WRITE_TOKEN: blob.token });
-  const r = await callApi(api, { body: { url: 'casino-uae-win.test/ar', guestId: 'g1' } });
+  const api = loadApi('casino-check', ENV(blob));
+  const r = await callApi(api, from('198.51.100.1', 'casino-uae-win.test/ar'));
   assert.strictEqual(r.status, 200, JSON.stringify(r.body));
   const ids = r.body.findings.map((f) => f.id);
   for (const id of ['no-uae-licence', 'licence-vague', 'crypto-only', 'agents', 'messenger', 'mirror', 'bonus', 'demo', 'no-responsible', 'providers-unverified', 'targets-uae', 'domain-new', 'host-abroad']) {
@@ -95,8 +99,8 @@ test('a typical illegal site aimed at the UAE: evidence-backed findings and a hi
 
 test('a regulated, long-established site still fails the UAE test but scores lower', async (t) => {
   const blob = withNetwork(t, { html: REGULATED_HTML, registered: '2002-05-13T19:38:40Z', country: 'Malta', code: 'MT', org: 'Example Hosting' });
-  const api = loadApi('casino-check', { BLOB_READ_WRITE_TOKEN: blob.token });
-  const r = await callApi(api, { body: { url: 'https://www.example-casino.test/', guestId: 'g2' } });
+  const api = loadApi('casino-check', ENV(blob));
+  const r = await callApi(api, from('198.51.100.2', 'https://www.example-casino.test/'));
   assert.strictEqual(r.status, 200, JSON.stringify(r.body));
   const ids = r.body.findings.map((f) => f.id);
   assert.ok(ids.includes('no-uae-licence'));
@@ -126,7 +130,7 @@ test('private, local and unresolvable targets are refused before any page is fet
   const inner = global.fetch;
   global.fetch = async (url, opts) => { fetched.push(String(url)); return inner(url, opts); };
   t.after(() => { global.fetch = inner; });
-  const api = loadApi('casino-check', { BLOB_READ_WRITE_TOKEN: blob.token });
+  const api = loadApi('casino-check', ENV(blob));
   const { normalizeUrl, isPrivateIp } = api._internal;
 
   for (const bad of ['', 'localhost', 'ftp://x.test', 'not a url', 'javascript:alert(1)']) assert.strictEqual(normalizeUrl(bad), null, bad);
@@ -134,28 +138,67 @@ test('private, local and unresolvable targets are refused before any page is fet
   for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '172.31.255.255', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:10.0.0.1']) assert.strictEqual(isPrivateIp(ip), true, ip);
   for (const ip of ['8.8.8.8', '172.32.0.1', '203.0.113.10', '2606:4700::1111']) assert.strictEqual(isPrivateIp(ip), false, ip);
 
-  let r = await callApi(api, { body: { url: 'local.test', guestId: 'g3' } });
+  let r = await callApi(api, from('198.51.100.3', 'local.test'));
   assert.strictEqual(r.status, 400); assert.strictEqual(r.body.error, 'private');
-  r = await callApi(api, { body: { url: 'http://127.0.0.1:8080/admin', guestId: 'g3' } });
+  r = await callApi(api, from('198.51.100.3', 'http://127.0.0.1:8080/admin'));
   assert.strictEqual(r.status, 400); assert.strictEqual(r.body.error, 'private');
-  r = await callApi(api, { body: { url: 'http://[::1]/', guestId: 'g3' } });
+  r = await callApi(api, from('198.51.100.3', 'http://[::1]/'));
   assert.strictEqual(r.status, 400); assert.ok(['private', 'invalid'].includes(r.body.error));
-  r = await callApi(api, { body: { url: 'nowhere.test', guestId: 'g3' } });
+  r = await callApi(api, from('198.51.100.3', 'nowhere.test'));
   assert.strictEqual(r.status, 400); assert.strictEqual(r.body.error, 'unresolvable');
-  r = await callApi(api, { body: { url: 'localhost', guestId: 'g3' } });
+  r = await callApi(api, from('198.51.100.3', 'localhost'));
   assert.strictEqual(r.status, 400); assert.strictEqual(r.body.error, 'invalid');
-  assert.ok(fetched.every((u) => /blob\.vercel-storage\.com/.test(u)), 'only the usage counter was touched: ' + fetched.join(' '));
+  // A public site that redirects to a private address: the hop is refused and never fetched.
+  r = await callApi(api, from('198.51.100.3', 'https://redirector.test/inside'));
+  assert.strictEqual(r.status, 400); assert.strictEqual(r.body.error, 'private');
+  assert.ok(!fetched.some((u) => /local\.test/.test(u)), 'private redirect target was fetched: ' + fetched.join(' '));
+  // Redirect loops end instead of hanging.
+  r = await callApi(api, from('198.51.100.3', 'https://redirector.test/loop'));
+  assert.strictEqual(r.status, 200);
+  assert.ok(r.body.findings.some((f) => f.id === 'unreachable' && /too many redirects/.test(f.en)));
+  // A redirect to another public domain is followed and reported as a mirror.
+  r = await callApi(api, from('198.51.100.3', 'https://redirector.test/go'));
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.body.finalUrl, 'https://landing.test/home');
+  assert.ok(r.body.findings.some((f) => f.id === 'redirected'));
+  const nonUsage = fetched.filter((u) => !/blob\.vercel-storage\.com/.test(u));
+  assert.ok(nonUsage.every((u) => /redirector\.test|landing\.test|rdap\.org|ipwho\.is/.test(u)), 'unexpected fetch: ' + nonUsage.join(' '));
   assert.strictEqual((await callApi(api, { method: 'GET' })).status, 405);
 });
 
-test('daily throttle: the 21st check of a day is refused', async (t) => {
+test('daily throttle is per platform-seen IP, in the encrypted store, and the browser\'s guestId is ignored', async (t) => {
   const blob = withNetwork(t, { html: REGULATED_HTML, registered: '2010-01-01T00:00:00Z' });
-  const api = loadApi('casino-check', { BLOB_READ_WRITE_TOKEN: blob.token });
-  blob.files.set('taryam/db/casino_check_usage/g4.json', JSON.stringify({ date: new Date().toISOString().slice(0, 10), count: 19 }));
-  let r = await callApi(api, { body: { url: 'example-casino.test', guestId: 'g4' } });
+  const api = loadApi('casino-check', ENV(blob));
+  const store = require('../../api/_store');
+  const path = store.secretPath('usage-casino-check', 'ip:198.51.100.4');
+  await store.writeSecret(path, { date: new Date().toISOString().slice(0, 10), count: 19 });
+  let r = await callApi(api, { body: { url: 'example-casino.test', guestId: 'fresh-id-1' }, headers: { 'x-real-ip': '198.51.100.4' } });
   assert.strictEqual(r.status, 200);
   assert.strictEqual(r.body.remaining, 0);
-  r = await callApi(api, { body: { url: 'example-casino.test', guestId: 'g4' } });
+  r = await callApi(api, { body: { url: 'example-casino.test', guestId: 'fresh-id-2' }, headers: { 'x-real-ip': '198.51.100.4' } });
   assert.strictEqual(r.status, 429);
   assert.strictEqual(r.body.error, 'limit');
+  // Another IP is unaffected.
+  r = await callApi(api, from('198.51.100.5', 'example-casino.test'));
+  assert.strictEqual(r.status, 200);
+  // Nothing stored names an IP or is readable without the key.
+  for (const [p, v] of blob.files) {
+    assert.match(p, /^taryam\/s\/usage-casino-check\/[0-9a-f]{64}\.json$/);
+    assert.ok(!p.includes('198.51') && !v.includes('198.51') && !v.includes('count'), p);
+  }
+});
+
+test('without AUTH_SECRET or the Blob token the tool fails closed and visits nothing', async (t) => {
+  const blob = withNetwork(t, { html: REGULATED_HTML, registered: '2010-01-01T00:00:00Z' });
+  const fetched = [];
+  const inner = global.fetch;
+  global.fetch = async (url, opts) => { fetched.push(String(url)); return inner(url, opts); };
+  t.after(() => { global.fetch = inner; });
+  for (const env of [{ AUTH_SECRET: undefined, BLOB_READ_WRITE_TOKEN: blob.token }, { AUTH_SECRET: STRONG_SECRET, BLOB_READ_WRITE_TOKEN: undefined }]) {
+    const api = loadApi('casino-check', env);
+    const r = await callApi(api, from('198.51.100.6', 'example-casino.test'));
+    assert.strictEqual(r.status, 503);
+    assert.strictEqual(r.body.error, 'config');
+  }
+  assert.deepStrictEqual(fetched, []);
 });
