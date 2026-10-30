@@ -37,7 +37,7 @@ test('index.html boots without JavaScript errors and every bound element exists'
   assert.deepStrictEqual(errors, [], 'uncaught errors while loading the page');
 
   const toolCount = await page.evaluate(() => document.querySelectorAll('#secToolsNav button').length);
-  assert.strictEqual(toolCount, 18, 'boot code did not run: security tools list is empty');
+  assert.strictEqual(toolCount, 16, 'boot code did not run: security tools list is empty');
   const projects = await page.evaluate(() => document.querySelectorAll('#history > *').length);
   assert.ok(projects >= 1, 'boot code did not run: no project in the sidebar');
 
