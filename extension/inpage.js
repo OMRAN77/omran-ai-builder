@@ -5,6 +5,9 @@
 (function () {
   if (window.__taryamHooked) return;
   window.__taryamHooked = true;
+  // Shared DOM flag: the isolated content script cannot see page JS globals, so it
+  // reads this to skip the fallback <script> injection when the manifest already ran us.
+  try { document.documentElement.setAttribute('data-taryam-hooked', '1'); } catch (e) { /* ignore */ }
 
   const MAX = 20000; // cap copied bodies so a huge frame cannot freeze the panel
   function send(ev) {
@@ -39,6 +42,42 @@
     return origSend.apply(this, arguments);
   };
 
+  // Binary frames: readable UTF-8 (JSON/XML sent as bytes) becomes text; anything
+  // else is passed on as base64 so the analyser can try a protobuf decode.
+  const MAXB = 12000;
+  function bytesOf(data) {
+    if (data instanceof ArrayBuffer) return Promise.resolve(new Uint8Array(data));
+    if (ArrayBuffer.isView(data)) return Promise.resolve(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+    if (typeof Blob !== 'undefined' && data instanceof Blob) return data.arrayBuffer().then((b) => new Uint8Array(b));
+    return Promise.reject(new Error('unknown'));
+  }
+  function binaryToText(data) {
+    return bytesOf(data).then((u) => {
+      const n = u.byteLength;
+      let text = '';
+      try { text = new TextDecoder('utf-8').decode(u.subarray(0, MAX)); } catch (e) { text = ''; }
+      let bad = 0;
+      for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); if ((c < 32 && c !== 9 && c !== 10 && c !== 13 && c !== 30) || c === 0xfffd) bad++; }
+      if (text && bad / text.length < 0.05) return text;
+      let bin = ''; const m = Math.min(n, MAXB);
+      for (let i = 0; i < m; i++) bin += String.fromCharCode(u[i]);
+      return '[binary ' + n + '] b64:' + btoa(bin);
+    });
+  }
+
+  // Server-sent events (some lobbies stream results this way).
+  const OrigES = window.EventSource;
+  if (OrigES) {
+    const ES = function (url, cfg) {
+      const es = new OrigES(url, cfg);
+      es.addEventListener('message', (e) => send({ kind: 'sse', url: String(url), body: clip(String(e.data)) }));
+      return es;
+    };
+    ES.prototype = OrigES.prototype;
+    ES.CONNECTING = OrigES.CONNECTING; ES.OPEN = OrigES.OPEN; ES.CLOSED = OrigES.CLOSED;
+    try { window.EventSource = ES; } catch (e) { /* ignore */ }
+  }
+
   // WebSocket (where live roulette results usually flow)
   const OrigWS = window.WebSocket;
   if (OrigWS) {
@@ -46,9 +85,9 @@
       const ws = protocols === undefined ? new OrigWS(url) : new OrigWS(url, protocols);
       send({ kind: 'ws-open', url: String(url) });
       ws.addEventListener('message', (e) => {
-        let data = e.data;
-        if (typeof data !== 'string') { try { data = '[binary ' + (data.byteLength || data.size || '') + ']'; } catch (x) { data = '[binary]'; } }
-        send({ kind: 'ws', url: String(url), body: clip(data) });
+        const data = e.data;
+        if (typeof data === 'string') { send({ kind: 'ws', url: String(url), body: clip(data) }); return; }
+        binaryToText(data).then((body) => send({ kind: 'ws', url: String(url), body: clip(body) })).catch(() => {});
       });
       return ws;
     };
