@@ -44,33 +44,45 @@ function makeEvaluator(model) {
   return spin;
 }
 
-export function simulate(model, rng, spins, { onProgress = () => {}, progressEvery = 100000 } = {}) {
+// One paid round including any free spins it triggers. play(rng) returns the win
+// in model units; stats keeps feature counters across rounds.
+export function makeRoundPlayer(model) {
   const spin = makeEvaluator(model);
   const fs = model.freeSpins;
   const mult = fs ? fs.multiplier.toNumber() : 1;
-  let total = 0, sumSq = 0, hits = 0, maxWin = 0, triggers = 0, fsPlayed = 0, capped = 0;
-  const buckets = new Array(BUCKETS.length + 1).fill(0);
-  for (let i = 0; i < spins; i++) {
+  const stats = { triggered: false, triggers: 0, fsPlayed: 0, capped: 0 };
+  const play = (rng) => {
     const base = spin(rng, model.reels);
     let win = base.win;
-    let triggered = false;
+    stats.triggered = false;
     if (fs && base.scatters >= fs.trigger) {
-      triggered = true;
-      triggers++;
+      stats.triggered = true;
+      stats.triggers++;
       let pending = fs.spins, played = 0, fsWin = 0;
       while (pending > 0) {
         pending--; played++;
         const r = spin(rng, fs.reels);
         fsWin += r.win;
         if (fs.retrigger && r.scatters >= fs.trigger) pending += fs.spins;
-        if (played >= FS_CAP) { capped++; break; }
+        if (played >= FS_CAP) { stats.capped++; break; }
       }
-      fsPlayed += played;
+      stats.fsPlayed += played;
       win += fsWin * mult;
     }
+    return win;
+  };
+  return { play, stats };
+}
+
+export function simulate(model, rng, spins, { onProgress = () => {}, progressEvery = 100000 } = {}) {
+  const { play, stats } = makeRoundPlayer(model);
+  let total = 0, sumSq = 0, hits = 0, maxWin = 0;
+  const buckets = new Array(BUCKETS.length + 1).fill(0);
+  for (let i = 0; i < spins; i++) {
+    const win = play(rng);
     total += win;
     sumSq += win * win;
-    if (win > 0 || triggered) hits++;
+    if (win > 0 || stats.triggered) hits++;
     if (win > maxWin) maxWin = win;
     const x = win / model.totalBetUnits;
     let b = 0;
@@ -87,7 +99,7 @@ export function simulate(model, rng, spins, { onProgress = () => {}, progressEve
   const rtp = mean / tb;
   return {
     spins, totalWinUnits: total, rtp, sd, standardError: se, ci95: [rtp - 1.959964 * se, rtp + 1.959964 * se],
-    hitFrequency: hits / spins, maxWin: maxWin / tb, triggers, freeSpinsPlayed: fsPlayed, cappedFeatures: capped,
+    hitFrequency: hits / spins, maxWin: maxWin / tb, triggers: stats.triggers, freeSpinsPlayed: stats.fsPlayed, cappedFeatures: stats.capped,
     buckets: buckets.map((c, i) => ({ from: i === 0 ? 0 : BUCKETS[i - 1], to: i === 0 ? 0 : i < BUCKETS.length ? BUCKETS[i] : null, probability: c / spins })),
   };
 }
