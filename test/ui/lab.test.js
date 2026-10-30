@@ -136,16 +136,40 @@ test('RTP lab: every tab works offline and nothing leaves the page', async (t) =
   assert.deepStrictEqual(outside, [], 'requests other than the lab\'s own static files');
 });
 
-test('main app links to the lab and no longer has the old RTP / Kelly tools', async (t) => {
+test('main app links to the lab and keeps its RTP and probability tools', async (t) => {
   const server = await startServer();
   const browser = await chromium.launch();
   t.after(async () => { await browser.close(); await server.close(); });
-  const page = await browser.newPage();
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  page.setDefaultTimeout(5000);
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(server.url + '/');
-  await page.waitForTimeout(800);
-  const tools = await page.$$eval('#secToolsNav button', (b) => b.map((x) => x.dataset.tool));
-  assert.ok(!tools.includes('probmath') && !tools.includes('rtpcalc'), tools.join(','));
+  await page.click('#btnGuestMode');
   assert.strictEqual(await page.getAttribute('#linkRtpLab', 'href'), 'lab/index.html');
-  const html = await page.content();
-  for (const gone of ['HKS_GAMES', 'Kelly', 'btnRtpSuggest', 'Gates of Olympus']) assert.ok(!html.includes(gone), gone + ' still present');
+  const tools = await page.$$eval('#secToolsNav button', (b) => b.map((x) => x.dataset.tool));
+  assert.ok(tools.includes('probmath') && tools.includes('rtpcalc'), tools.join(','));
+
+  await page.click('#btnHeaderMenu');
+  await page.click('#btnSecTools');
+  // RTP tool: the game list, picking a game, and the calculators.
+  await page.click('#secToolsNav [data-tool="rtpcalc"]');
+  assert.strictEqual(await page.$$eval('#rtpGameList .hks-row', (r) => r.length), 22);
+  await page.click('#rtpGameList .hks-row >> nth=0');
+  assert.match(await page.inputValue('#rtpSelectedRtp'), /^9\d\.\d+$/);
+  await page.fill('#rtpBetSize', '5');
+  await page.fill('#rtpNumSpins', '1000');
+  await page.click('#btnRtpCalc');
+  assert.ok((await page.textContent('#rtpCalcResult')).trim().length > 0, 'RTP calculator result');
+  await page.fill('#rtpSuggestBankroll', '100');
+  await page.click('#btnRtpSuggest');
+  assert.ok((await page.textContent('#rtpSuggestResult')).trim().length > 0, 'RTP suggestion');
+  // Probability tool: house edge and Kelly.
+  await page.click('#secToolsNav [data-tool="probmath"]');
+  await page.fill('#pmBankroll', '1000');
+  await page.fill('#pmKellyProb', '55');
+  await page.fill('#pmKellyOdds', '2');
+  await page.click('#btnPmKellyCalc');
+  assert.ok((await page.textContent('#pmKellyResult')).trim().length > 0, 'Kelly result');
+  assert.deepStrictEqual(errors, []);
 });
