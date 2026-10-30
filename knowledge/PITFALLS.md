@@ -3,6 +3,10 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **غلاف WebView ليس متصفّحًا:** `MahaWebViewFallbackActivity` (هواتف هواوي بلا Chrome — منها جهاز مراجع AppGallery) لا يفعل
+  إلّا ما نُفِّذ فيه: بلا `onShowFileChooser` كلّ `<input type=file>` ميت صامتًا (رفض 1.3.14 بالقاعدة 3.1)، بلا
+  `onGeolocationPermissionsShowPrompt` لا موقع، وتنزيل blob:/data: يسقط. ولا SpeechRecognition ولا navigator.share ولا Notification ولا
+  تفويض جوجل. ميزة ويب جديدة على مسار المراجع = اسأل «هل ينفّذها الغلاف؟» قبل «تعمل في Chrome». الكشف: `omranHwWebView()`. (v-hw-1315)
 - **Space مجّانيّ في Hugging Face بسيرفر = ٤٠٢:** منذ ٢٠٢٦ Gradio وDocker على cpu-basic تحتاج اشتراك PRO، عامّة أو خاصّة؛ المجّانيّ
   الثابت (Static) وحده. نصّ الخطأ الكامل يقولها بعد الـtraceback؛ شخّصناها «الخاصّ يطلب دفعًا» من سطر ٤٠٢ وحده وضاعت محاولة. البديل
   المجّانيّ هنا: دالّة Python في مشروع Vercel نفسه (حدّ حزمة Python ٥٠٠ م.ب). (v-om-voices-piper)

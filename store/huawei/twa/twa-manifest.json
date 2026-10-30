@@ -20,8 +20,8 @@
     "path": "release.keystore",
     "alias": "omran"
   },
-  "appVersionName": "1.3.14",
-  "appVersionCode": 20261028,
+  "appVersionName": "1.3.15",
+  "appVersionCode": 20261030,
   "shortcuts": [],
   "generatorApp": "omran-ai-builder/scripts/twa-generate.mjs",
   "fallbackType": "webview",
@@ -38,6 +38,6 @@
   "additionalTrustedOrigins": [],
   "retainedBundles": [],
   "displayOverride": [],
-  "appVersion": "1.3.14",
+  "appVersion": "1.3.15",
   "webManifestUrl": "https://omran-ai-builder.vercel.app/manifest-huawei.json"
 }
