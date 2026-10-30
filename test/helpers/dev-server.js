@@ -8,6 +8,7 @@ const ROOT = path.join(__dirname, '..', '..');
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json',
   '.png': 'image/png', '.mp4': 'video/mp4', '.xml': 'application/xml', '.txt': 'text/plain',
+  '.css': 'text/css', '.csv': 'text/csv', '.svg': 'image/svg+xml', '.pdf': 'application/pdf',
 };
 
 function startServer() {
