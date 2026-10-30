@@ -123,8 +123,10 @@
     return (Number.isInteger(n) && n >= 0 && n <= 36) ? n : null;
   }
   // The winning number lives inside a round record alongside color/gameId/time
-  // (Pragmatic's last20Results[].result). Strong whole-key names are trusted too.
-  const RESULT_KEYS = /^(result|winningnumber|winning_number|winnumber|winnum|number|outcome|pocket|lucky|luckynumber|resultnumber|slot)$/;
+  // (Pragmatic's last20Results[].result). A bare scalar is trusted ONLY for an
+  // unambiguous winning-number key — never bare "result"/"outcome", which are
+  // routinely status codes (result:0 = OK) and produced the all-zero readout.
+  const SCALAR_RESULT_KEYS = /^(winningnumber|winning_number|winnumber|winnum|luckynumber|resultnumber|pocket|slotresult)$/;
   function isRoundObj(o) {
     return o && typeof o === 'object' && !Array.isArray(o) &&
       ('color' in o || 'gameId' in o || 'gameid' in o || 'roundId' in o || 'roundid' in o || 'time' in o);
@@ -141,7 +143,7 @@
       if (v === null || v === undefined || typeof v === 'boolean') return;
       if (Array.isArray(v)) { for (const x of v) { if (isRoundObj(x)) takeRound(x); else walk(x, key); } return; }
       if (typeof v === 'object') { if (isRoundObj(v)) takeRound(v); for (const k of Object.keys(v)) walk(v[k], k.toLowerCase()); return; }
-      if (RESULT_KEYS.test(key || '')) { const n = asPocket(v); if (n !== null) out.push({ n, id: null }); }
+      if (SCALAR_RESULT_KEYS.test(key || '')) { const n = asPocket(v); if (n !== null) out.push({ n, id: null }); }
     };
     walk(obj, '');
     return out;

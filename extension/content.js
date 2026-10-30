@@ -141,6 +141,16 @@
   const money = (v) => (v === null ? '—' : Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }));
   const colorWord = (c) => (c === 'red' ? 'أحمر' : c === 'black' ? 'أسود' : 'أخضر');
 
+  // The walk-forward backtest is O(n²); cache it by spin count so frequent renders
+  // do not recompute it every captured message.
+  let _btCache = { len: -1, val: null };
+  function getBacktest(spins) {
+    if (!T.predict || spins.length < 25) return null;
+    if (_btCache.len === spins.length) return _btCache.val;
+    _btCache = { len: spins.length, val: T.predict.backtest(spins, { k: 5 }) };
+    return _btCache.val;
+  }
+
   function render() {
     if (!root) build();
     const minBtn = root.getElementById('tp-min');
@@ -187,6 +197,20 @@
         ${a.verdict === 'anomaly' ? 'شذوذ: الأرقام لا تتصرف كعجلة عادلة — راجع الأرقام المميّزة' : a.verdict === 'fair' ? 'ضمن العادل حتى الآن: لا نمط يُتوقّع؛ ما يأكل الرصيد هو أجر البيت' : `أرقام قليلة للحكم (${a.n})`}
         ${a.even.redBlack.trials ? `<div class="s">أحمر/أسود ${a.even.redBlack.hits}/${a.even.redBlack.trials - a.even.redBlack.hits} · p=${a.even.redBlack.pValue < 0.0001 ? '<0.0001' : a.even.redBlack.pValue.toFixed(3)}${a.bias.hot ? ` · الأكثر ${esc(a.bias.hot.pocket)} (z=${a.bias.hot.z.toFixed(2)})` : ''}</div>` : ''}
       </div>` : ''}
+
+      ${(() => {
+        const pred = (T.predict && state.spins.length >= 10) ? T.predict.predictNext(state.spins, 5) : null;
+        const bt = getBacktest(state.spins);
+        if (!pred && !bt) return '';
+        return `<div class="tp-sec">توقّع الجولة الجاية (اختبار — ليس للرهان)</div>
+        ${pred ? `<div class="tp-strip">${pred.top.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('')}</div>
+          <div class="tp-muted" style="margin-bottom:6px">القطاع حول ${esc(pred.top[0])} · اللون ${colorWord(pred.color)} · دستة ${esc(pred.dozen)} · عمود ${esc(pred.column)}</div>` : '<div class="tp-muted">يحتاج جولات أكثر للتوقّع…</div>'}
+        ${bt ? `<div class="tp-verdict ${bt.predictable ? 'bad' : bt.enough ? 'good' : 'warn'}">
+            ${bt.predictable ? 'اللعبة متوقّعة — الإصابة أعلى من الصدفة بفرق مؤكّد (خلل في المولّد)' : bt.enough ? 'غير متوقّعة — الإصابة = الصدفة؛ لا يمكن التنبؤ (مولّد سليم)' : 'جارٍ القياس — جولات غير كافية للحكم'}
+            <div class="s">إصابة ${(bt.rate * 100).toFixed(1)}٪ مقابل صدفة ${(bt.chance * 100).toFixed(1)}٪ · ${bt.hits}/${bt.trials} · p=${bt.pValue < 0.0001 ? '<0.0001' : bt.pValue.toFixed(3)}</div>
+          </div>` : ''}
+        <div class="tp-foot">اختبار قابلية التنبؤ فقط. على عجلة سليمة لا يتفوّق على الصدفة — لا تراهن عليه.</div>`;
+      })()}
 
       <div class="tp-sec">من أين تُحمَّل اللعبة</div>
       <div class="tp-origin ${providerSeen ? (proxied ? 'warn' : 'good') : casinoServes ? 'bad' : 'warn'}">
@@ -254,6 +278,16 @@
 <h2>٢. الحكم الإحصائي على الأرقام</h2>
 <p>${esc(verdictText)}</p>
 ${a.even.redBlack.trials ? `<p class="muted">أحمر/أسود: ${a.even.redBlack.hits}/${a.even.redBlack.trials - a.even.redBlack.hits} · p=${a.even.redBlack.pValue < 0.0001 ? '<0.0001' : a.even.redBlack.pValue.toFixed(4)} · الأكثر تكرارًا ${a.bias.hot ? esc(a.bias.hot.pocket) + ' (z=' + a.bias.hot.z.toFixed(2) + ')' : '—'}</p>` : ''}
+
+<h2>٢-ب. اختبار قابلية التنبؤ (نماذج ذكاء اصطناعي)</h2>
+${(() => {
+  const bt = (T.predict && state.spins.length >= 25) ? T.predict.backtest(state.spins, { k: 5 }) : null;
+  const ss = T.predict ? T.predict.sampleSizeFor(5) : null;
+  const method = '<p class="muted">دُرّبت أربعة نماذج (الأسخن، الانتقال، قطاع العجلة، اللون/الدستة/العمود) باختبار سيري أمامي (كل توقّع يُدرَّب على الجولات السابقة له فقط) وقِيست إصابة أقوى ٥ أرقام مقابل الصدفة (٥ من ٣٧ = 13.5٪) باختبار ذي الحدّين أحادي الجانب. القاعدة: النتيجة الصادقة على مولّد سليم هي «غير متوقّعة».</p>';
+  if (!bt) return method + '<p>الجولات غير كافية بعد لإصدار حكم (الحدّ الأدنى ٢٥، والحكم الموثوق يبدأ من ~١٥٠).</p>';
+  const v = bt.predictable ? 'اللعبة متوقّعة: إصابة النماذج أعلى من الصدفة بفرق مؤكّد — مؤشّر خلل في المولّد يستحق التوثيق.' : bt.enough ? 'غير متوقّعة: إصابة النماذج = الصدفة؛ لا يمكن التنبؤ بالجولة القادمة — المولّد سليم، وأي ادّعاء ببوت توقّع باطل.' : 'القياس جارٍ: الجولات دون العتبة الموثوقة (~١٥٠).';
+  return method + `<p class="${bt.predictable ? 'bad' : 'good'}">${v}</p><p class="muted">الإصابة ${(bt.rate * 100).toFixed(1)}٪ مقابل صدفة ${(bt.chance * 100).toFixed(1)}٪ · ${bt.hits}/${bt.trials} · p=${bt.pValue < 0.0001 ? '<0.0001' : bt.pValue.toFixed(4)}${ss ? ` · لحكم موثوق: ~${ss.detectSmallEdge} جولة لكشف ميل صغير، ~${ss.confirmSound} لتأكيد السلامة` : ''}</p>`;
+})()}
 
 <h2>٣. من أين تُحمَّل اللعبة</h2>
 <p class="${providerSeen ? 'good' : casinoServes ? 'bad' : ''}">${esc(originVerdict)}</p>
