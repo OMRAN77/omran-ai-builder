@@ -122,11 +122,13 @@ test('٦. مساعد المستندات: صورة الكاميرا الكبير�
   const run = block(d, 'async function run()');
   const shrinkAt = run.indexOf('await docShrinkImage(curFile)'), capAt = run.indexOf('curFile.size > DOC_MAX_BYTES');
   assert.ok(shrinkAt > 0 && shrinkAt < capAt, 'التصغير قبل فحص السقف');
+  const offAt = run.indexOf("var go=document.getElementById('docGo'); if(go) go.disabled=true;"), onAt = run.indexOf('if(go) go.disabled=false;');
+  assert.ok(offAt > 0 && offAt < shrinkAt && onAt > shrinkAt && onAt < capAt, 'الزرّ معطَّل طوال التصغير — لا إرسال مزدوج');
   assert.match(run, /if\(curFile && !shrunk && curFile\.size > DOC_MAX_BYTES\)/, 'السقف للأصل غير المصغَّر وحده');
   assert.match(run, /!\/pdf\/i\.test\(curFile\.type\) && curFile\.size > DOC_SHRINK_FROM/, 'PDF لا يُمسّ');
   assert.match(run, /if\(shrunk\)\{ payload\.fileBase64=shrunk\.base64; payload\.mime=shrunk\.mime; \}/);
   assert.match(d, /var DOC_SHRINK_FROM=1\.5\*1024\*1024;/);
   assert.match(block(d, 'function docShrinkImage(f)'), /1600\/Math\.max[\s\S]*toDataURL\('image\/jpeg',0\.82\)/);
   const tag = read('index.html').match(/\/js\/ui-docs\.js\?v=(\d+)"/);
-  assert.ok(tag && Number(tag[1]) >= 480, 'وسم ui-docs.js مرفوع بعد v-hw-doc-shrink');
+  assert.ok(tag && Number(tag[1]) >= 481, 'وسم ui-docs.js مرفوع بعد v-hw-doc-shrink');
 });

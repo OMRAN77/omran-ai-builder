@@ -766,7 +766,10 @@
     async function run(){
       var txt=(document.getElementById('docPaste')||{}).value||'';
       if(!curFile && !txt.trim()){ document.getElementById('docErr').innerHTML='<div class="xmErr">'+T('ارفع ملفًا أو الصق نصًا أولًا.','Upload a file or paste text first.')+'</div>'; return; }
+      /* v-hw-doc-shrink: الزرّ يبقى ظاهرًا أثناء التصغير — بلا تعطيله كانت ضغطة ثانية ترسل الصورة مرّتين (Bugbot) */
+      var go=document.getElementById('docGo'); if(go) go.disabled=true;
       var shrunk=(curFile && !/pdf/i.test(curFile.type) && curFile.size > DOC_SHRINK_FROM) ? await docShrinkImage(curFile) : null; /* v-hw-doc-shrink */
+      if(go) go.disabled=false;
       if(curFile && !shrunk && curFile.size > DOC_MAX_BYTES){ document.getElementById('docErr').innerHTML='<div class="xmErr">'+E(docTooBig())+'</div>'; return; } /* v-audit-tools */
       body.innerHTML='<div class="xmBusy"><div class="xmSpin"></div><div>'+T('يقرأ مستندك…','Reading your document…')+'</div></div>';
       try{
