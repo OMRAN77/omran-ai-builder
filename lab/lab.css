@@ -245,3 +245,33 @@ table.ladder .tag[data-color="black"] { color: var(--muted); border-color: var(-
 table.ladder .tag[data-color="green"] { color: var(--green); border-color: rgba(52, 211, 153, 0.5); }
 table.ladder tr.flagged .tag { color: var(--red); border-color: rgba(248, 113, 113, 0.45); }
 #operator .download { margin-top: 6px; }
+
+/* Committee report */
+#report-out .seal {
+  font-family: ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  font-size: 13px;
+  word-break: break-all;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+@media print {
+  .top, #story, #edge, #seq, #live, #replay, #operator, .privacy { display: none !important; }
+  .rep-noprint { display: none !important; }
+  body { background: #fff; }
+  #report-out.ready {
+    display: block !important;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    background: #fff;
+    color: #000;
+  }
+  #report-out.ready h2, #report-out.ready h3, #report-out.ready p, #report-out.ready td, #report-out.ready th,
+  #report-out.ready .card .k, #report-out.ready .card .v, #report-out.ready .card .s { color: #000 !important; }
+  #report-out.ready .seal { background: #f3f3f3; border-color: #999; }
+  #report-out.ready .card, #report-out.ready table.ladder, #report-out.ready table.ladder th, #report-out.ready table.ladder td { border-color: #999 !important; }
+  #report-out.ready .verdict { border: 1px solid #999; }
+}

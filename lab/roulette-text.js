@@ -96,6 +96,21 @@ const T = {
   lvNarrateAnomaly: ['للّجنة: الأرقام حتى الآن لا تتصرف كعجلة عادلة — راجع الأرقام المميّزة في القسم أعلاه. هذا ما يُوثّق كدليل.', 'For the committee: the numbers so far do not behave like a fair wheel — see the flagged numbers in the section above. This is what gets documented as evidence.'],
   lvNarrateGrow: ['للّجنة: مع كل دورة، لاحظوا الفرق بين الرصيد الذي بدأت به والرصيد الآن — هذا هو «قبل وبعد» بالدرهم، لا رقمًا على شاشة اللعبة.', 'For the committee: with each spin, watch the gap between the balance I started with and the balance now — this is "before and after" in dirhams, not a number on the game screen.'],
 
+  // Committee report (sealed, printable)
+  lvReport: ['احفظ تقرير اللجنة (PDF)', 'Save committee report (PDF)'],
+  repNeed: ['سجّل دورة واحدة على الأقل في الجلسة قبل إنشاء التقرير.', 'Record at least one spin in the session before creating the report.'],
+  repTitle: ['تقرير جنائي — جلسة روليت مباشرة', 'Forensic report — live roulette session'],
+  repGenerated: ['أُنشئ في', 'Generated'],
+  repWheel: ['نوع العجلة', 'Wheel'],
+  repMethodTitle: ['المنهجية', 'Methodology'],
+  repMethod: ['حُسب كل شيء محلّيًّا في المتصفح بلا أي اتصال بالخادم. أجر البيت مشتقّ من قواعد الدفع مقابل الاحتمال الحقيقي للعجلة. اختُبرت عشوائية الأرقام بثلاثة اختبارات مستقلّة: توزّع الأرقام (كاي-تربيع)، ميل كل خانة (درجة z بعتبة بونفيروني)، والارتباط المتسلسل بين الدورات. الرصيد والعائد من أرقام اللاعب الفعلية، لا من محاكاة. ختم SHA-256 أدناه محسوب على بيانات هذا التقرير كاملة؛ أي تعديل عليها يغيّر الختم.', 'Everything was computed locally in the browser with no server connection. The house edge is derived from the payout rules against the wheel\'s true odds. Randomness was tested with three independent tests: number spread (chi-square), per-pocket bias (z-score at a Bonferroni threshold), and serial correlation between spins. Balance and return come from the player\'s actual numbers, not a simulation. The SHA-256 seal below is computed over the full data of this report; any change to it changes the seal.'],
+  repEvidence: ['الأدلّة الخام (الدورات)', 'Raw evidence (spins)'],
+  repSeal: ['ختم النزاهة (SHA-256)', 'Integrity seal (SHA-256)'],
+  repSealNote: ['للتحقّق لاحقًا: أعد حساب SHA-256 على بيانات التقرير — لو تطابق الختم فالبيانات لم تُمسّ.', 'To verify later: recompute SHA-256 over the report data — if the seal matches, the data was not altered.'],
+  repBy: ['أُعدّ بأداة TARYAM — تحليل محلّي، قراءة فقط، بلا اتصال بالخادم.', 'Prepared with the TARYAM tool — local, read-only analysis, no server connection.'],
+  repPrint: ['اطبع / احفظ PDF', 'Print / save PDF'],
+  repClose: ['إغلاق', 'Close'],
+
   // Replay checklist
   replayTitle: ['٣. اختبار ثغرة «سكّرها وفتحها» (إعادة الحالة)', '3. Testing the "close and reopen" flaw (state replay)'],
   replayIntro: ['إن قيل إنّ أحدهم ربح بإغلاق اللعبة وإعادة فتحها، فهذه طريقة فحصها جنائيًّا — بلا تخمين:', 'If someone is said to have won by closing and reopening the game, this is how to check it forensically — without guessing:'],

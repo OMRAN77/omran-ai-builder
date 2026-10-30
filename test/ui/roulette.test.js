@@ -83,6 +83,20 @@ test('roulette page: house edge, sequence analysis and language work offline', a
   // Balance now = 1000 − 100 + 3500 = 4400; net since start = +3400.
   assert.match(await page.textContent('#res-live .card:nth-child(2) .v'), /4,?400/);
   assert.match(await page.textContent('#res-live .card:nth-child(3) .v'), /\+3,?400/);
+
+  // Committee report: sealed (64-hex SHA-256), with an evidence row per spin,
+  // and the seal is deterministic across a language switch (same data, same seal).
+  await page.click('#lv-report');
+  await page.waitForSelector('#report-out.ready .seal');
+  assert.strictEqual(await page.$$eval('#report-out table.ladder tbody tr', (r) => r.length), 2);
+  const seal = (await page.textContent('#report-out .seal')).trim();
+  assert.match(seal, /^[0-9a-f]{64}$/);
+  await page.click('#langToggle');
+  assert.strictEqual((await page.textContent('#report-out .seal')).trim(), seal);
+  await page.click('#langToggle'); // back to Arabic for the rest of the flow
+  await page.click('#rep-close');
+  await page.waitForFunction(() => document.querySelector('#report-out').hidden);
+
   // Undo removes the last spin; reset clears the ledger.
   await page.click('#lv-undo');
   await page.waitForFunction(() => document.querySelectorAll('#live-table tbody tr').length === 1);

@@ -4,6 +4,7 @@
 import { getLang, setLang } from './i18n.js';
 import { text, fmt } from './roulette-text.js';
 import { houseEdge, analyze, parseSpins, colorOf } from './core/roulette.js';
+import { sha256Hex } from './core/fair.js';
 
 const $ = (s) => document.querySelector(s);
 let lang = getLang();
@@ -180,6 +181,90 @@ function renderLive() {
 function undoLive() { live.rows.pop(); renderLive(); }
 function resetLive() { live = { start: live.start, rows: [] }; $('#res-live').replaceChildren(); showError('live', null); }
 
+// ---------- committee report: sealed, printable ----------
+let lastReport = null;
+async function reportCommittee() {
+  showError('live', null);
+  if (!live.rows.length) { showError('live', tr('repNeed')); return; }
+  const wheel = $('#e-wheel').value;
+  const start = live.start || 0;
+  const sumNet = live.rows.reduce((s, r) => s + r.net, 0);
+  const wagered = live.rows.reduce((s, r) => s + r.stake, 0);
+  const balNow = start + sumNet;
+  const rtp = wagered > 0 ? (wagered + sumNet) / wagered : 0;
+  const a = analyze(live.rows.map((r) => r.num), wheel);
+  const evidence = {
+    tool: 'TARYAM roulette forensic',
+    generated: new Date().toISOString(),
+    wheel,
+    startBalance: start,
+    spins: live.rows.length,
+    wagered,
+    netTotal: sumNet,
+    balanceNow: balNow,
+    actualReturn: rtp,
+    verdict: a.verdict,
+    rounds: live.rows.map((r) => ({ number: r.num, color: colorOf(r.num), stake: r.stake, net: r.net })),
+    stats: {
+      uniformityP: a.enoughForPocket ? a.uniformity.pValue : null,
+      redBlackP: a.even.redBlack.trials ? a.even.redBlack.pValue : null,
+      serialP: a.serial.n >= 3 ? a.serial.pValue : null,
+      hottest: a.bias.hot ? { pocket: a.bias.hot.pocket, z: a.bias.hot.z } : null,
+    },
+  };
+  const seal = await sha256Hex(JSON.stringify(evidence));
+  lastReport = { ev: evidence, seal, a };
+  renderReport();
+}
+function renderReport() {
+  if (!lastReport) return;
+  const { ev, seal, a } = lastReport;
+  const box = $('#report-out');
+  box.hidden = false;
+  box.classList.add('ready');
+  const vmsg = a.verdict === 'insufficient'
+    ? fmt(tr('vInsufficient'), { need: a.spinsNeededForPocket })
+    : tr(a.verdict === 'anomaly' ? 'vAnomaly' : 'vFair');
+  const vcls = a.verdict === 'anomaly' ? 'suspicious' : a.verdict === 'insufficient' ? 'review' : 'normal';
+  let running = ev.startBalance;
+  box.replaceChildren(
+    el('div', { class: 'actions rep-noprint' },
+      el('button', { type: 'button', class: 'primary', id: 'rep-print' }, tr('repPrint')),
+      el('button', { type: 'button', id: 'rep-close' }, tr('repClose'))),
+    el('h2', {}, tr('repTitle')),
+    el('p', { class: 'small muted' }, tr('repGenerated') + ': ', ltr(new Date(ev.generated).toLocaleString(lang === 'en' ? 'en-GB' : 'ar-AE'))),
+    el('p', { class: 'small' }, tr('repWheel') + ': ' + (ev.wheel === 'american' ? tr('wheelUS') : tr('wheelEU'))),
+    cards([
+      { k: tr('lvSpins'), v: num(ev.spins, 0) },
+      { k: tr('lvBalNow'), v: ltr(num(ev.balanceNow, 2)), cls: ev.balanceNow >= ev.startBalance ? 'good' : 'bad', s: ltr(tr('startBal') + ': ' + num(ev.startBalance, 2)) },
+      { k: tr('lvNetTotal'), v: ltr((ev.netTotal >= 0 ? '+' : '−') + num(Math.abs(ev.netTotal), 2)), cls: ev.netTotal >= 0 ? 'good' : 'bad' },
+      { k: tr('lvWagered'), v: ltr(num(ev.wagered, 2)) },
+      { k: tr('lvReturn'), v: ltr(pct(ev.actualReturn)), cls: ev.actualReturn < 1 ? 'bad' : 'good' },
+    ]),
+    el('div', { class: 'verdict ' + vcls }, vmsg),
+    el('h3', { class: 'sub' }, tr('repMethodTitle')),
+    el('p', {}, tr('repMethod')),
+    el('h3', { class: 'sub' }, tr('repEvidence')),
+    el('div', { class: 'table-wrap' }, el('table', { class: 'ladder' },
+      el('thead', {}, el('tr', {}, [tr('lvColNum'), tr('lvColStake'), tr('lvColNet'), tr('lvColBal')].map((h) => el('th', {}, h)))),
+      el('tbody', {}, ev.rounds.map((r) => {
+        running += r.net;
+        return el('tr', {},
+          el('td', { class: 'num' }, ltr(String(r.number)), el('span', { class: 'tag', 'data-color': r.color }, lang === 'en' ? r.color : (r.color === 'red' ? 'أحمر' : r.color === 'black' ? 'أسود' : 'أخضر'))),
+          el('td', { class: 'num' }, ltr(num(r.stake, 2))),
+          el('td', { class: 'num ' + (r.net >= 0 ? '' : 'fail') }, ltr((r.net >= 0 ? '+' : '−') + num(Math.abs(r.net), 2))),
+          el('td', { class: 'num' }, ltr(num(running, 2))));
+      })))),
+    el('h3', { class: 'sub' }, tr('repSeal')),
+    el('p', { class: 'seal' }, ltr(seal)),
+    el('p', { class: 'small muted' }, tr('repSealNote')),
+    el('p', { class: 'small muted' }, tr('repBy')),
+  );
+  $('#rep-print').addEventListener('click', () => window.print());
+  $('#rep-close').addEventListener('click', () => { box.hidden = true; box.classList.remove('ready'); });
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // ---------- language and wiring ----------
 function applyLang() {
   document.documentElement.lang = lang;
@@ -192,6 +277,7 @@ function applyLang() {
   renderEdge();
   renderSeq();
   renderLive();
+  if (lastReport && !$('#report-out').hidden) renderReport();
 }
 
 function init() {
@@ -203,6 +289,7 @@ function init() {
   $('#lv-add').addEventListener('click', addLive);
   $('#lv-undo').addEventListener('click', undoLive);
   $('#lv-reset').addEventListener('click', resetLive);
+  $('#lv-report').addEventListener('click', reportCommittee);
   for (const id of ['#lv-num', '#lv-stake', '#lv-net']) $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') addLive(); });
   applyLang();
 }
