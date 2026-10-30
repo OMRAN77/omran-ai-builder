@@ -67,6 +67,32 @@ test('roulette page: house edge, sequence analysis and language work offline', a
   await page.click('#run-seq');
   assert.match(await page.textContent('#err-seq'), /out of range|المدى|range/);
 
+  // 3. Live committee session: balance before/after tracks real play.
+  await page.fill('#lv-start', '1000');
+  await page.fill('#lv-num', '17');
+  await page.fill('#lv-stake', '100');
+  await page.fill('#lv-net', '-100'); // lost
+  await page.click('#lv-add');
+  await page.waitForSelector('#live-table');
+  assert.strictEqual(await page.$$eval('#live-table tbody tr', (r) => r.length), 1);
+  await page.fill('#lv-num', '0');
+  await page.fill('#lv-stake', '100');
+  await page.fill('#lv-net', '3500'); // a big win
+  await page.click('#lv-add');
+  await page.waitForFunction(() => document.querySelectorAll('#live-table tbody tr').length === 2);
+  // Balance now = 1000 − 100 + 3500 = 4400; net since start = +3400.
+  assert.match(await page.textContent('#res-live .card:nth-child(2) .v'), /4,?400/);
+  assert.match(await page.textContent('#res-live .card:nth-child(3) .v'), /\+3,?400/);
+  // Undo removes the last spin; reset clears the ledger.
+  await page.click('#lv-undo');
+  await page.waitForFunction(() => document.querySelectorAll('#live-table tbody tr').length === 1);
+  await page.click('#lv-reset');
+  await page.waitForFunction(() => !document.querySelector('#live-table'));
+  // A spin without a stake is rejected.
+  await page.fill('#lv-num', '5');
+  await page.click('#lv-add');
+  assert.match(await page.textContent('#err-live'), /الرقم الفائز|bet amount/);
+
   // Language switch re-renders everything.
   await page.click('#langToggle');
   assert.strictEqual(await page.getAttribute('html', 'dir'), 'ltr');

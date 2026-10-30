@@ -3,7 +3,7 @@
 // leaves the page; everything is computed locally.
 import { getLang, setLang } from './i18n.js';
 import { text, fmt } from './roulette-text.js';
-import { houseEdge, analyze, parseSpins } from './core/roulette.js';
+import { houseEdge, analyze, parseSpins, colorOf } from './core/roulette.js';
 
 const $ = (s) => document.querySelector(s);
 let lang = getLang();
@@ -118,6 +118,68 @@ function exampleSeq() {
   runSeq();
 }
 
+// ---------- 3. live session for the committee ----------
+let live = { start: null, rows: [] };
+function liveNum(id) {
+  const s = $(id).value.trim().replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660)).replace(/٫/g, '.').replace(/[٬,\s]/g, '');
+  return s === '' ? null : Number(s);
+}
+function addLive() {
+  showError('live', null);
+  const wheel = $('#e-wheel').value;
+  const start = liveNum('#lv-start');
+  if (start === null || !Number.isFinite(start)) { showError('live', tr('lvStartNeed')); return; }
+  const stake = liveNum('#lv-stake');
+  const numRaw = $('#lv-num').value.trim();
+  let spins;
+  try { spins = parseSpins(numRaw, wheel); } catch (e) { showError('live', e.message); return; }
+  if (spins.length !== 1 || !(stake > 0)) { showError('live', tr('lvNeed')); return; }
+  let net = liveNum('#lv-net');
+  if (net === null || !Number.isFinite(net)) net = -stake; // blank = the bet was lost
+  live.start = start;
+  live.rows.push({ num: spins[0], stake, net });
+  $('#lv-num').value = ''; $('#lv-stake').value = ''; $('#lv-net').value = '';
+  $('#lv-num').focus();
+  renderLive();
+}
+function renderLive() {
+  const box = $('#res-live');
+  box.replaceChildren();
+  if (!live.rows.length) return;
+  const start = live.start || 0;
+  const sumNet = live.rows.reduce((s, r) => s + r.net, 0);
+  const wagered = live.rows.reduce((s, r) => s + r.stake, 0);
+  const balNow = start + sumNet;
+  const rtp = wagered > 0 ? (wagered + sumNet) / wagered : 0;
+  const a = analyze(live.rows.map((r) => r.num), $('#e-wheel').value);
+  box.append(cards([
+    { k: tr('lvSpins'), v: num(live.rows.length, 0) },
+    { k: tr('lvBalNow'), v: ltr(num(balNow, 2)), cls: balNow >= start ? 'good' : 'bad', s: ltr(tr('startBal') + ': ' + num(start, 2)) },
+    { k: tr('lvNetTotal'), v: ltr((sumNet >= 0 ? '+' : '−') + num(Math.abs(sumNet), 2)), cls: sumNet >= 0 ? 'good' : 'bad' },
+    { k: tr('lvWagered'), v: ltr(num(wagered, 2)) },
+    { k: tr('lvReturn'), v: ltr(pct(rtp)), cls: rtp < 1 ? 'bad' : 'good' },
+  ]));
+  const grow = el('p', { class: 'headline', id: 'live-narrate' }, tr('lvNarrateGrow'));
+  box.append(grow);
+  if (a.verdict !== 'insufficient') {
+    box.append(el('div', { class: 'verdict ' + (a.verdict === 'anomaly' ? 'suspicious' : 'normal'), id: 'live-verdict' }, tr(a.verdict === 'anomaly' ? 'lvNarrateAnomaly' : 'lvNarrateFair')));
+  }
+  let running = start;
+  box.append(el('div', { class: 'table-wrap' }, el('table', { class: 'ladder', id: 'live-table' },
+    el('thead', {}, el('tr', {}, [tr('lvColNum'), tr('lvColStake'), tr('lvColNet'), tr('lvColBal')].map((h) => el('th', {}, h)))),
+    el('tbody', {}, live.rows.map((r) => {
+      running += r.net;
+      const color = colorOf(r.num);
+      return el('tr', {},
+        el('td', { class: 'num' }, ltr(String(r.num)), el('span', { class: 'tag', 'data-color': color }, lang === 'en' ? color : (color === 'red' ? 'أحمر' : color === 'black' ? 'أسود' : 'أخضر'))),
+        el('td', { class: 'num' }, ltr(num(r.stake, 2))),
+        el('td', { class: 'num ' + (r.net >= 0 ? '' : 'fail') }, ltr((r.net >= 0 ? '+' : '−') + num(Math.abs(r.net), 2))),
+        el('td', { class: 'num' }, ltr(num(running, 2))));
+    })))));
+}
+function undoLive() { live.rows.pop(); renderLive(); }
+function resetLive() { live = { start: live.start, rows: [] }; $('#res-live').replaceChildren(); showError('live', null); }
+
 // ---------- language and wiring ----------
 function applyLang() {
   document.documentElement.lang = lang;
@@ -129,14 +191,19 @@ function applyLang() {
   });
   renderEdge();
   renderSeq();
+  renderLive();
 }
 
 function init() {
   $('#langToggle').addEventListener('click', () => { lang = lang === 'ar' ? 'en' : 'ar'; setLang(lang); applyLang(); });
-  $('#e-wheel').addEventListener('change', () => { renderEdge(); if (result) runSeq(); });
+  $('#e-wheel').addEventListener('change', () => { renderEdge(); if (result) runSeq(); renderLive(); });
   $('#run-seq').addEventListener('click', runSeq);
   $('#example-seq').addEventListener('click', exampleSeq);
   $('#s-nums').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runSeq(); });
+  $('#lv-add').addEventListener('click', addLive);
+  $('#lv-undo').addEventListener('click', undoLive);
+  $('#lv-reset').addEventListener('click', resetLive);
+  for (const id of ['#lv-num', '#lv-stake', '#lv-net']) $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') addLive(); });
   applyLang();
 }
 

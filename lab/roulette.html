@@ -60,6 +60,22 @@
     <div class="results" id="res-seq"></div>
   </section>
 
+  <section class="panel" id="live">
+    <h2 data-t="liveTitle"></h2>
+    <p class="muted" data-t="liveIntro"></p>
+    <div class="grid two">
+      <label><span data-t="startBal"></span><input id="lv-start" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="1000"></label>
+    </div>
+    <div class="grid three">
+      <label><span data-t="lvNum"></span><input id="lv-num" dir="ltr" inputmode="numeric" autocomplete="off" placeholder="0–36"></label>
+      <label><span data-t="lvStake"></span><input id="lv-stake" dir="ltr" inputmode="decimal" autocomplete="off"></label>
+      <label><span data-t="lvNet"></span><input id="lv-net" dir="ltr" inputmode="decimal" autocomplete="off" placeholder="+ / −"></label>
+    </div>
+    <div class="actions"><button type="button" class="primary" id="lv-add" data-t="lvAdd"></button><button type="button" id="lv-undo" data-t="lvUndo"></button><button type="button" id="lv-reset" data-t="lvReset"></button></div>
+    <div class="error" id="err-live" hidden></div>
+    <div class="results" id="res-live"></div>
+  </section>
+
   <section class="panel" id="replay">
     <h2 data-t="replayTitle"></h2>
     <p class="muted" data-t="replayIntro"></p>
