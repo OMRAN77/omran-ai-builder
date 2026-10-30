@@ -8,6 +8,7 @@ import { text } from './casino-check-text.js';
 import { recompute, FairError, PREDICTION_NOTE } from './core/stake-fair.js';
 import { parseHistory } from './core/history.js';
 import { analyzePlayLog } from './core/actual.js';
+import { analyzeHtml, score } from './core/site.js';
 
 const $ = (s) => document.querySelector(s);
 let lang = getLang();
@@ -55,6 +56,8 @@ async function runSite() {
     if (!res.ok || data.error) throw { ar: data.message || data.error || 'فشل الفحص', en: data.message || data.error || 'The check failed' };
     site = data;
     renderSite();
+    // Blocked or empty: invite the user's own browser to supply the page.
+    if (data.findings.some((f) => ['bot-challenge', 'thin-page', 'unreachable', 'http-error'].includes(f.id))) $('#paste-box').open = true;
   } catch (e) {
     showError('site', e.ar ? e : { ar: 'تعذّر الاتصال بالخادم: ' + (e.message || e), en: 'Could not reach the server: ' + (e.message || e) });
   } finally {
@@ -62,11 +65,35 @@ async function runSite() {
   }
 }
 
+// Analyses a page source the user pasted from their own browser (the site may block
+// our server) and merges it with the link check's domain, certificate and server
+// findings when one has run for the same host.
+function runPaste() {
+  showError('site', null);
+  const html = $('#s-html').value;
+  if (html.trim().length < 50) { showError('site', { ar: tr('pasteShort'), en: tr('pasteShort') }); return; }
+  let host = '';
+  try { const u = $('#s-url').value.trim(); host = u ? new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u).hostname.toLowerCase() : ''; } catch (e) { host = ''; }
+  const base = site && (!host || site.host === host) ? site : null;
+  const a = analyzeHtml(html, 'https://' + (host || (base && base.host) || 'unknown.invalid') + '/');
+  const fromServer = base ? base.findings.filter((f) => /^(domain-|cert-|host-|redirected)/.test(f.id)) : [];
+  const findings = [...a.findings.filter((f) => f.id !== 'bot-challenge' && f.id !== 'thin-page'), ...fromServer];
+  const { risk, level } = score(findings);
+  site = {
+    ...(base || { url: host ? 'https://' + host + '/' : '', host, domain: host, ips: [], registration: null, cert: null, geo: null, headers: null }),
+    page: { title: a.title, lang: a.lang, isGambling: a.isGambling, targetsUae: a.targetsUae, licences: a.licences, providers: a.providers, providerHosts: a.providerHosts, externalHosts: a.externalHosts, payments: a.payments },
+    findings, risk, level, pasted: true, pastedWithServer: !!base, checkedAt: new Date().toISOString(),
+  };
+  renderSite();
+  $('#res-site').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function renderSite() {
   const box = $('#res-site');
   box.replaceChildren();
   if (!site) return;
   const d = site;
+  if (d.pasted) box.append(el('p', { class: 'muted small', id: 'pasted-note' }, tr(d.pastedWithServer ? 'pastedNote' : 'pastedOnly')));
   const level = d.level === 'danger' ? 'suspicious' : d.level === 'warning' ? 'review' : 'normal';
   box.append(el('div', { class: 'risk' },
     el('div', { class: 'risk-head' }, el('span', {}, tr('riskLabel')), el('strong', { id: 'risk-value' }, ltr(String(d.risk) + ' / 100'))),
@@ -80,8 +107,8 @@ function renderSite() {
     el('div', {}, el('div', {}, lang === 'en' ? f.en : f.ar), f.evidence ? el('div', { class: 'ev' }, tr('evidence') + ': ', ltr(String(f.evidence).slice(0, 200))) : null)))));
 
   const facts = [];
-  facts.push([tr('fDomain'), ltr(d.domain + (d.ips && d.ips.length ? ' · ' + d.ips[0] : ''))]);
-  if (d.finalUrl && new URL(d.finalUrl).hostname !== d.host) facts.push([tr('fFinal'), ltr(new URL(d.finalUrl).hostname)]);
+  if (d.domain) facts.push([tr('fDomain'), ltr(d.domain + (d.ips && d.ips.length ? ' · ' + d.ips[0] : ''))]);
+  if (d.finalUrl && d.host && new URL(d.finalUrl).hostname !== d.host) facts.push([tr('fFinal'), ltr(new URL(d.finalUrl).hostname)]);
   if (d.page && d.page.title) facts.push([tr('fTitle'), ltr(d.page.title)]);
   if (d.registration && d.registration.registered) facts.push([tr('fRegistered'), ltr(d.registration.registered.slice(0, 10))]);
   if (d.registration && d.registration.registrar) facts.push([tr('fRegistrar'), ltr(d.registration.registrar)]);
@@ -247,6 +274,7 @@ function applyLang() {
 function init() {
   $('#langToggle').addEventListener('click', () => { lang = lang === 'ar' ? 'en' : 'ar'; setLang(lang); applyLang(); });
   $('#run-site').addEventListener('click', runSite);
+  $('#run-paste').addEventListener('click', runPaste);
   $('#s-url').addEventListener('keydown', (e) => { if (e.key === 'Enter') runSite(); });
   $('#f-game').addEventListener('change', fairFields);
   $('#run-fair').addEventListener('click', runFair);

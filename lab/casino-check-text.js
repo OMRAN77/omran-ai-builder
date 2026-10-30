@@ -28,6 +28,13 @@ const S = {
   remaining: ['فحوص متبقية اليوم', 'Checks left today'],
   copyReport: ['نسخ التقرير', 'Copy the report'],
   copied: ['تم النسخ', 'Copied'],
+  pasteTitle: ['الموقع حجب الفاحص؟ الصق مصدر الصفحة من متصفحك', 'Did the site block the checker? Paste the page source from your browser'],
+  pasteIntro: ['افتح الموقع في متصفحك، اضغط Ctrl+U (مصدر الصفحة)، ثم Ctrl+A وCtrl+C، والصق هنا. يُحلَّل في متصفحك ولا يُرسل لأحد. يكفي أيضًا نسخ نص الصفحة نفسها.', 'Open the site in your browser, press Ctrl+U (page source), then Ctrl+A and Ctrl+C, and paste here. It is analysed in your browser and sent nowhere. Copying the page text itself also works.'],
+  pasteIn: ['مصدر الصفحة أو نصّها', 'Page source or text'],
+  pasteRun: ['حلّل ما لصقته', 'Analyse the paste'],
+  pasteShort: ['النص قصير جدًا؛ الصق مصدر الصفحة كاملًا.', 'The text is too short; paste the whole page source.'],
+  pastedNote: ['المحتوى من مصدر لصقته أنت؛ النطاق والشهادة والخادم من فحص الرابط.', 'Content from the source you pasted; domain, certificate and server from the link check.'],
+  pastedOnly: ['المحتوى من مصدر لصقته أنت. افحص الرابط أيضًا لتُضاف معلومات النطاق والشهادة والخادم.', 'Content from the source you pasted. Check the link too to add the domain, certificate and server.'],
 
   fairTitle: ['٢. إثبات جولة لعبتها فعلًا', '2. Prove a round you actually played'],
   fairIntro: ['من صفحة «العدالة» (Fairness / Provably fair) في الموقع: انسخ بذرة الخادم المكشوفة، وبصمتها التي عُرضت قبل الجولة، وبذرة اللاعب، ورقم الجولة (nonce). نعيد حساب النتيجة بالخوارزمية نفسها التي تستخدمها Stake والمواقع المقلدة لها.', 'From the site\'s Fairness / Provably fair page: copy the revealed server seed, the hash shown before the round, your client seed and the round number (nonce). We recompute the outcome with the same algorithm Stake and the sites copying it use.'],

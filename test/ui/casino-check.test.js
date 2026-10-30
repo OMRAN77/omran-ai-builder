@@ -30,6 +30,24 @@ const STUB = {
   risk: 87, level: 'danger', remaining: 19,
 };
 
+// What the API returns when Cloudflare blocks it: only the name, domain and server speak.
+const BLOCKED = {
+  ...STUB, url: 'https://www.playdubibet.test/', finalUrl: 'https://www.playdubibet.test/', host: 'www.playdubibet.test', domain: 'playdubibet.test', status: 403,
+  page: { ...STUB.page, title: 'Attention Required! | Cloudflare', isGambling: true, targetsUae: true, providers: [], externalHosts: [] },
+  findings: [
+    { id: 'bot-challenge', severity: 'info', ar: 'الموقع يعرض صفحة تحقّق من الروبوتات.', en: 'The site shows a bot challenge page.', evidence: 'Attention Required! | Cloudflare' },
+    { id: 'no-uae-licence', severity: 'high', ar: 'اسم النطاق نفسه يعلن القمار.', en: 'The domain name itself announces gambling.', evidence: 'www.playdubibet.test' },
+    { id: 'domain-new', severity: 'high', ar: 'النطاق مسجّل منذ 30 يومًا فقط.', en: 'The domain is only 30 days old.', evidence: '2026-09-30T07:42:40Z' },
+    { id: 'host-abroad', severity: 'info', ar: 'الخادم خارج الإمارات.', en: 'Server outside the UAE.', evidence: '185.162.229.2' },
+  ],
+  risk: 50, level: 'warning',
+};
+
+const PASTED = `<!doctype html><html lang="ar"><head><title>PlayDubiBet — كازينو ومراهنات</title></head><body>
+<h1>أفضل كازينو للاعبين في الإمارات ودبي</h1><p>سلوتس وروليت وAviator من Pragmatic Play. موقع مرخّص وآمن.</p>
+<p>الإيداع: USDT TRC20 وبيتكوين فقط. الدعم عبر <a href="https://t.me/playdubibet">تلغرام</a>. بونص ترحيبي 150% بشرط رهان x35. في حال الحجب استخدم VPN.</p>
+${'<p>تنطبق الشروط والأحكام على جميع العروض والمكافآت المقدمة في الموقع. </p>'.repeat(8)}</body></html>`;
+
 test('casino check: site findings, provably-fair recomputation, history analysis, language', async (t) => {
   const server = await startServer();
   const browser = await chromium.launch();
@@ -44,6 +62,7 @@ test('casino check: site findings, provably-fair recomputation, history analysis
     const body = route.request().postDataJSON();
     apiBodies.push(body);
     if (body.url === 'limit.test') return route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ error: 'limit', message: 'وصلت للحد اليومي' }) });
+    if (body.url === 'www.playdubibet.test') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(BLOCKED) });
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(STUB) });
   });
   await page.goto(server.url + '/lab/casino-check.html');
@@ -64,6 +83,29 @@ test('casino check: site findings, provably-fair recomputation, history analysis
   assert.ok(await page.$$eval('#res-site .risk-fill.danger', (n) => n.length === 1));
   const facts = await page.textContent('#res-site dl.kv');
   for (const v of ['casino-uae-win.test', 'Test Registrar', '2026-09-20', 'Curacao', "Let's Encrypt", 'Pragmatic Play']) assert.ok(facts.includes(v), v);
+  // A site that blocks our server: the API's thin result opens the paste box; the pasted
+  // source is analysed in the page and merged with the domain/server findings.
+  assert.strictEqual(await page.$eval('#paste-box', (d) => d.open), false);
+  await page.fill('#s-url', 'www.playdubibet.test');
+  await page.click('#run-site');
+  await page.waitForFunction(() => document.querySelector('#site-findings li[data-id="bot-challenge"]'));
+  assert.strictEqual(await page.$eval('#paste-box', (d) => d.open), true);
+  assert.strictEqual(await page.textContent('#risk-value'), '50 / 100');
+  await page.fill('#s-html', 'short');
+  await page.click('#run-paste');
+  await page.waitForFunction(() => !document.querySelector('#err-site').hidden);
+  await page.fill('#s-html', PASTED);
+  await page.click('#run-paste');
+  await page.waitForSelector('#pasted-note');
+  const pastedIds = await page.$$eval('#site-findings li', (l) => l.map((x) => x.dataset.id));
+  for (const id of ['no-uae-licence', 'licence-vague', 'crypto-only', 'messenger', 'mirror', 'bonus', 'targets-uae', 'providers-unverified', 'domain-new', 'host-abroad']) assert.ok(pastedIds.includes(id), id + ' in ' + pastedIds.join(','));
+  assert.ok(!pastedIds.includes('bot-challenge'));
+  assert.strictEqual(await page.textContent('#risk-value'), '100 / 100');
+  assert.match(await page.getAttribute('#site-verdict', 'class'), /suspicious/);
+  assert.match(await page.textContent('#res-site dl.kv'), /Pragmatic Play/);
+  assert.match(await page.textContent('#res-site dl.kv'), /2026-09-20/); // registration kept from the link check
+  assert.strictEqual(apiBodies.length, 2, 'the paste is analysed without calling the API');
+
   // Throttled: a readable error, no crash.
   await page.fill('#s-url', 'limit.test');
   await page.click('#run-site');

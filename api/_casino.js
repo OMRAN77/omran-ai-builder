@@ -43,6 +43,7 @@ const RESPONSIBLE = /responsible (gaming|gambling)|self.?exclusion|gamcare|begam
 const MIRROR = /mirror|alternative (link|domain)|new domain|رابط بديل|موقع بديل|النطاق الجديد|use (a )?vpn|استخدم vpn|في حال (حجب|الحظر)/i;
 const UAE = /\b(UAE|U\.A\.E|United Arab Emirates|Dubai|Abu Dhabi|AED|dirham)\b|الإمارات|الامارات|دبي|أبوظبي|ابوظبي|درهم/i;
 const GAMBLING = /casino|slots?|roulette|blackjack|baccarat|poker|bet(ting)?|sportsbook|jackpot|aviator|crash|كازينو|سلوتس|روليت|بلاك ?جاك|باكاراه|بوكر|مراهنات|رهان|جاكبوت/i;
+const HOST_UAE = /uae|emirat|dubai|dubi|abudhabi|sharjah|khaleej|gulf|arab/i;
 const DEMO = /demo|free play|play for fun|نسخة تجريبية|العب مجان|وضع تجريبي|تجريبي/i;
 const SUPPORT_HOURS = /24\s*\/\s*7|24h|على مدار الساعة/i;
 
@@ -99,8 +100,13 @@ function analyzeHtml(html, finalUrl) {
 
   const challenge = /just a moment|checking your browser|cf-challenge|_cf_chl|attention required|enable javascript and cookies|ddos-guard|access denied/i.test(title + ' ' + lower.slice(0, 4000));
   if (challenge) {
-    findings.push({ id: 'bot-challenge', severity: 'info', ar: 'الموقع يعرض صفحة تحقّق من الروبوتات (مثل Cloudflare) ولم يُظهر محتواه للفاحص. الفحوص التالية من النطاق والشهادة والخادم فقط.', en: 'The site shows a bot challenge page (such as Cloudflare) and did not reveal its content to the checker. The remaining checks come from the domain, certificate and server only.', evidence: title });
-    return { title, lang, host, isGambling: null, targetsUae: false, licences: [], providers: [], providerHosts: [], externalHosts: [], payments: { crypto: false, cards: false, agents: false }, textLength: text.length, findings, challenge: true };
+    findings.push({ id: 'bot-challenge', severity: 'info', ar: 'الموقع يعرض صفحة تحقّق من الروبوتات (مثل Cloudflare) ولم يُظهر محتواه للفاحص. الصق مصدر الصفحة من متصفحك في الخانة أدناه ليُفحص المحتوى الحقيقي؛ الباقي من النطاق والشهادة والخادم.', en: 'The site shows a bot challenge page (such as Cloudflare) and did not reveal its content to the checker. Paste the page source from your browser below to check the real content; the rest comes from the domain, certificate and server.', evidence: title });
+    // The name still tells: "bet", "casino", "dubai" in the host are the site's own words.
+    const hostGambling = GAMBLING.test(host);
+    const hostUae = HOST_UAE.test(host);
+    if (hostGambling) findings.push({ id: 'no-uae-licence', severity: 'high', ar: 'اسم النطاق نفسه يعلن القمار، ولا ترخيص إماراتيًا (GCGRA) معروفًا له: القمار عبر الإنترنت في الإمارات غير قانوني بدونه، وأي خسارة أو نزاع بلا حماية قانونية.', en: 'The domain name itself announces gambling, and no UAE (GCGRA) licence is known for it: online gambling in the UAE is illegal without one, and any loss or dispute has no legal protection.', evidence: host });
+    if (hostGambling && hostUae) findings.push({ id: 'targets-uae', severity: 'high', ar: 'اسم النطاق يستهدف الإمارات بالاسم مع أنه غير مرخص فيها.', en: 'The domain name targets the UAE by name while unlicensed there.', evidence: host });
+    return { title, lang, host, isGambling: hostGambling || null, targetsUae: hostGambling && hostUae, licences: [], providers: [], providerHosts: [], externalHosts: [], payments: { crypto: false, cards: false, agents: false }, textLength: text.length, findings, challenge: true };
   }
   if (text.length < 400) findings.push({ id: 'thin-page', severity: 'info', ar: 'الصفحة شبه فارغة بلا جافاسكربت (تطبيق أحادي الصفحة): فحص المحتوى محدود، وباقي الفحوص من النطاق والشهادة والخادم.', en: 'The page is almost empty without JavaScript (a single-page app): content checks are limited; the rest come from the domain, certificate and server.', evidence: title || null });
   const isGambling = GAMBLING.test(text) || GAMBLING.test(title) || GAMBLING.test(host);
@@ -211,4 +217,6 @@ function score(findings) {
   return { risk, level };
 }
 
+// Also copied into lab/core/site.js by scripts/make-site-core.mjs so the page can
+// analyse a source the user pasted from their own browser, offline.
 module.exports = { analyzeHtml, ageFindings, hostingFindings, score, strip, externalHosts, registrable, SEVERITY_WEIGHT };
