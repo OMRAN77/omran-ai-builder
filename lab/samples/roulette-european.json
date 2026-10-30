@@ -1,0 +1,55 @@
+{
+  "name": "European roulette – bet on red",
+  "rows": 1,
+  "reels": [
+    [
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "RED",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "BLACK",
+      "ZERO"
+    ]
+  ],
+  "lines": [
+    [
+      1
+    ]
+  ],
+  "paytable": {
+    "RED": [
+      2
+    ]
+  }
+}
