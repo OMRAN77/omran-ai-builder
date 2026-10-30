@@ -11016,11 +11016,22 @@ function omranNativeBridge(name){
 /* v-pdf-link: هل نعمل داخل غلاف تطبيق (TWA/متجر/PWA مثبّت)؟ الأغلفة لا
    تنفّذ تنزيل blob المحلي — نرفع الملف للسيرفر ونفتح رابط تنزيل حقيقي
    يمرّ عبر منزّل النظام نفسه فيعمل في كل غلاف. */
+/* v-hw-webview (رفض هواوي ٣٠ أكتوبر): غلاف WebView الاحتياطيّ لحزمة هواوي (MahaWebViewFallbackActivity —
+   أجهزة بلا متصفّح يدعم TWA) وحده يحقن جسر OmranRender؛ في Chrome/TWA والموقع لا يوجد. */
+function omranHwWebView(){
+  try{ return !!(window.OmranRender && typeof window.OmranRender.mode === 'function'); }
+  catch(e){ __swallow(e, 'hw:webview-detect'); return false; }
+}
 function omranLikelyApp(){
   try{
     if(document.referrer && document.referrer.indexOf('android-app://') === 0) localStorage.setItem('aiapp_twa', '1');
     if(localStorage.getItem('aiapp_twa') === '1') return true;
     if(localStorage.getItem('aiapp_store')) return true;
+    /* v-hw-webview: علم المتجر انتقل إلى sessionStorage (v-store-flag-session) فلم يعد السطر أعلاه يراه، وWebView
+       الاحتياطيّ لا يرسل android-app:// في document.referrer — فكانت حزمة هواوي تُعامَل موقعًا: تقرير المقاولات
+       وجدول الكمّيّات وحفظ الملفّات تنزّل blob محلّيًّا يسقط صامتًا بدل رابط الخادم الذي ينزّله النظام. */
+    if(sessionStorage.getItem('aiapp_store')) return true;
+    if(omranHwWebView()) return true;
     if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
     if(navigator.standalone === true) return true;
     /* v-cap-detect (شكوى عمران «PDF عند + ما يشتغل» على TestFlight): غلاف
@@ -21491,6 +21502,8 @@ async function mahaCaptureCamFrame(){
   return c.toDataURL('image/jpeg', 0.85);
 }
 async function mahaLookCamera(question){
+  /* v-hw-webview: WebView حزمة هواوي يرفض الكاميرا دائمًا (الغلاف يمنح المايك وحده) — جواب صادق بدل «اسمح بالكاميرا» */
+  if(typeof omranHwWebView === 'function' && omranHwWebView()) return { ok: false, message: 'The camera is not available in this version of the app. Tell the user briefly and offer another way (they can attach a photo in the chat); do not ask them to allow camera access.' };
   const on = await mahaCameraOn();
   if(!on) return { ok: false, message: 'Camera could not be opened (permission denied or unavailable). Tell the user to allow camera access.' };
   await new Promise(r => setTimeout(r, 600));
@@ -21510,6 +21523,8 @@ async function mahaLookCamera(question){
 }
 (function(){
   const b = document.getElementById('btnMahaCamera');
+  /* v-hw-webview: زرّ «عين مها» لا يعمل في WebView حزمة هواوي — يُخفى هناك بدل زرّ ميت */
+  if(b && typeof omranHwWebView === 'function' && omranHwWebView()){ b.style.display = 'none'; return; }
   if(b) b.onclick = () => { if(mahaCamStream) mahaCameraOff(); else mahaCameraOn(); };
 })();
 
@@ -38048,6 +38063,12 @@ function stud2ErrText(e, prefix, fbKey){
   });
 
   refreshBtn.addEventListener('click', loadEmails);
+  /* v-hw-webview: في WebView حزمة هواوي تفويض جوجل يُفتح في المتصفّح (WebView يحوّل النطاقات الأخرى إليه) والربط
+     يُحفظ في الخادم، لكنّ التطبيق حين يعود يبقى على «اربط Gmail» — عند الرجوع للتطبيق يُعاد فتح الأداة فتظهر الرسائل. */
+  if(typeof document.addEventListener === 'function') document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState !== 'visible' || typeof omranHwWebView !== 'function' || !omranHwWebView()) return;
+    if(modal.style.display === 'flex' && connectBox.style.display !== 'none' && localStorage.getItem('aiapp_auth_token')) btnOpen.click();
+  });
 
   // Handle the redirect back from /api/email-callback (?emailconnected=1 or ?emailerror=...)
   (function(){
@@ -41011,7 +41032,9 @@ function stud2ErrText(e, prefix, fbKey){
     let coarse = false; try{ coarse = window.matchMedia('(pointer:coarse)').matches; }catch(e){ coarse = false; }
     /* v-upload-art (لقطة المالك «ما يحوّلك تطلع كلمة المعرض»): على الحاسوب لا كاميرا، فالقائمة كانت زرًّا واحدًا «المعرض» يطفو
        فوق الخانة — تُفتح الملفّات مباشرةً بلا قائمة؛ اللمس يبقى بورقة الكاميرا/المعرض. */
-    if(!coarse){ (which === 'A' ? fileInputA : fileInputB).click(); return; }
+    /* v-hw-webview: داخل WebView حزمة هواوي «📷 الكاميرا» كان يفتح المنتقي نفسه لا الكاميرا (capture بلا تطبيق
+       كاميرا يُستدعى) — زرّان بنتيجة واحدة. هناك يُفتح المنتقي مباشرةً كالحاسوب. */
+    if(!coarse || (typeof omranHwWebView === 'function' && omranHwWebView())){ (which === 'A' ? fileInputA : fileInputB).click(); return; }
     if(coarse) add(t('studioSrcCamera'), () => studioCamera(which));
     add(t('studioSrcGallery'), () => (which === 'A' ? fileInputA : fileInputB).click());
     /* v-studio-sheet (لقطة المالك «شوف وين تتحرك عند الإضافة»): القائمة كانت تطفو وسط الشاشة فوق الميزات بعيدًا

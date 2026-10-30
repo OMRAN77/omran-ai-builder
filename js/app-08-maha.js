@@ -2047,6 +2047,8 @@ async function mahaCaptureCamFrame(){
   return c.toDataURL('image/jpeg', 0.85);
 }
 async function mahaLookCamera(question){
+  /* v-hw-webview: WebView حزمة هواوي يرفض الكاميرا دائمًا (الغلاف يمنح المايك وحده) — جواب صادق بدل «اسمح بالكاميرا» */
+  if(typeof omranHwWebView === 'function' && omranHwWebView()) return { ok: false, message: 'The camera is not available in this version of the app. Tell the user briefly and offer another way (they can attach a photo in the chat); do not ask them to allow camera access.' };
   const on = await mahaCameraOn();
   if(!on) return { ok: false, message: 'Camera could not be opened (permission denied or unavailable). Tell the user to allow camera access.' };
   await new Promise(r => setTimeout(r, 600));
@@ -2066,6 +2068,8 @@ async function mahaLookCamera(question){
 }
 (function(){
   const b = document.getElementById('btnMahaCamera');
+  /* v-hw-webview: زرّ «عين مها» لا يعمل في WebView حزمة هواوي — يُخفى هناك بدل زرّ ميت */
+  if(b && typeof omranHwWebView === 'function' && omranHwWebView()){ b.style.display = 'none'; return; }
   if(b) b.onclick = () => { if(mahaCamStream) mahaCameraOff(); else mahaCameraOn(); };
 })();
 

@@ -59,7 +59,7 @@ const twa = 'store/huawei/twa/';
 const bg = fs.readFileSync(R(twa + 'app/build.gradle'), 'utf8');
 assert.ok(bg.includes("applicationId: 'com.omran.aibuilder.twa'") && bg.includes("hostName: 'omran-ai-builder.vercel.app'"), 'الحزمة والنطاق');
 assert.ok(bg.includes("launchUrl: '/?store=huawei'"), 'رابط التشغيل يحمل علم المتجر');
-assert.ok(/versionName "1\.3\.14"/.test(bg) && Number((bg.match(/versionCode (2026\d{4})/) || [])[1]) > 20261010, 'v-hw-1314: الإصدار 1.3.14 ورمزه بصيغة تاريخ أكبر من 1.3.13 (20261010)');
+assert.ok(/versionName "1\.3\.15"/.test(bg) && Number((bg.match(/versionCode (2026\d{4})/) || [])[1]) > 20261028, 'v-hw-1315: الإصدار 1.3.15 ورمزه بصيغة تاريخ أكبر من 1.3.14 (20261028)');
 assert.ok(bg.includes("fallbackType: 'webview'"), 'بلا متصفّح TWA يفتح WebView ملء الشاشة لا تبويبًا');
 assert.ok(bg.includes('com.google.androidbrowserhelper:androidbrowserhelper'), 'مكتبة TWA الرسميّة');
 const rootBg = fs.readFileSync(R(twa + 'build.gradle'), 'utf8');
@@ -69,7 +69,7 @@ assert.ok(am.includes('package="com.omran.aibuilder.twa"') && am.includes('andro
 const strs = fs.readFileSync(R(twa + 'app/src/main/res/values/strings.xml'), 'utf8');
 assert.ok(strs.includes('https://omran-ai-builder.vercel.app') && strs.includes('delegate_permission/common.handle_all_urls'), 'asset statements في الحزمة');
 const tm = JSON.parse(fs.readFileSync(R(twa + 'twa-manifest.json'), 'utf8'));
-assert.strictEqual(tm.packageId, 'com.omran.aibuilder.twa'); assert.strictEqual(tm.startUrl, '/?store=huawei'); assert.ok(tm.appVersion === '1.3.14' && tm.appVersionName === '1.3.14' && tm.appVersionCode === 20261028);
+assert.strictEqual(tm.packageId, 'com.omran.aibuilder.twa'); assert.strictEqual(tm.startUrl, '/?store=huawei'); assert.ok(tm.appVersion === '1.3.15' && tm.appVersionName === '1.3.15' && tm.appVersionCode === 20261030);
 assert.strictEqual(tm.webManifestUrl, 'https://omran-ai-builder.vercel.app/manifest-huawei.json');
 for (const f of ['gradlew', 'gradle/wrapper/gradle-wrapper.jar', 'gradle/wrapper/gradle-wrapper.properties', 'settings.gradle', 'app/src/main/java/com/omran/aibuilder/twa/LauncherActivity.java', 'app/src/main/res/mipmap-xxxhdpi/ic_launcher.png', 'store_icon.png']) assert.ok(fs.existsSync(R(twa + f)), 'ملفّ المشروع: ' + f);
 assert.ok(fs.statSync(R(twa + 'gradlew')).mode & 0o111, 'gradlew قابل للتنفيذ');

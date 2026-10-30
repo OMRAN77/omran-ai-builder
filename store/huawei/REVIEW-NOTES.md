@@ -1,6 +1,10 @@
-# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.14)
+# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.15)
 
-> **إصدار جديد 1.3.14 (versionCode 20261028) بأمر المالك ٢٨ أكتوبر («1.3.14 سو جديد» — v-hw-1314):** الحزمة نفسها والمفتاح نفسه واسم
+> **1.3.15 (versionCode 20261030، v-hw-1315):** 1.3.14 رُفضت ٣٠ أكتوبر بالقاعدة 3.1 («مساعد المستندات ← حلّل المستند ← لا يمكن
+> تحميل ملف») و1.14 (اللقطات «لا تطابق الوظائف الفعليّة»). السبب: على هاتف هواوي بلا Chrome يعمل التطبيق في WebView
+> احتياطيّ لم يكن يفتح منتقي الملفّات أبدًا — فكلّ «اختيار ملف» في اللقطات ميت عنده. 1.3.15 يصلحه ومعه الموقع للقبلة
+> وحفظ التنزيلات. الحزمة والمفتاح واسم الهاتف كما هي.
+> **1.3.14 (versionCode 20261028) بأمر المالك ٢٨ أكتوبر («1.3.14 سو جديد» — v-hw-1314):** الحزمة نفسها والمفتاح نفسه واسم
 > الهاتف نفسه، الرقم وحده تغيّر. 1.3.13 رُفضت ٢٢ و٢٦ و٢٨ أكتوبر ٢٠٢٦ بالخطأين نفسيهما (1.14 اللقطات، 4.1 نوع محتوى واحد). ما تغيّر هذه المرّة (v-hw-resubmit-2):
 > - **اللقطات بثلاث لغات:** التطبيق يتبع لغة الهاتف، والمراجع على هاتف صينيّ أو إنجليزيّ فيرى واجهة غير اللقطات العربيّة. ارفع
 >   `screenshots/*.png` تحت **العربيّة**، و`screenshots/en/` تحت **English**، و`screenshots/zh/` تحت **简体中文** — أضف اللغة الصينيّة
@@ -15,12 +19,22 @@
 
 ## خانة Remarks في AGC (حدّها ٣٠٠ حرف — الصق هذا كما هو)
 ```
-Resubmission: screenshots from this build in Arabic, English and Chinese (UI follows phone language). The Tools panel opens on every launch: 13 tools (photo styles, video, decor, fashion, style, ads, documents, email, construction, education, Qibla, religion, feedback). Also: bottom bar > Tools.
+1.3.15 fixes file upload on Huawei phones (Document Assistant, photo tools) and location for Qibla. The Tools panel opens on every launch: 13 tools (photo styles, video, decor, fashion, style, ads, documents, email, construction, education, Qibla, religion, feedback). Also: bottom bar > Tools.
 ```
 
 ## Notes for review (English — full text, for a reply to the reviewer or an attachment)
 ```
-Omran AI (om ai), version 1.3.14: resubmission after the review reports of 2026-10-22, 2026-10-26 and 2026-10-28 on 1.3.13 (rules 1.14, 1.15 and 4.1).
+Omran AI (om ai), version 1.3.15: resubmission after the review report of 2026-10-30 on 1.3.14 (rules 3.1 and 1.14),
+and the reports of 2026-10-22, 2026-10-26 and 2026-10-28 on 1.3.13 (rules 1.14, 1.15 and 4.1).
+
+Rule 3.1 (Document Assistant > Analyze document > cannot upload a file) — fixed in 1.3.15:
+- On phones without a browser that supports Trusted Web Activities, the app runs in its own built-in web view.
+  That web view did not open the phone's file picker, so "choose file" did nothing in any tool.
+  1.3.15 opens the system file picker in every tool: Document Assistant (PDF or image), Fashion AI, Design AI,
+  Style AI, Photo styles, Education (lecture upload) and the chat attachments. Large phone photos are reduced
+  on the phone before they are sent, so a camera photo is accepted by the Document Assistant.
+- Also fixed in the same web view: Qibla & Prayer asks for location permission and uses the phone's location,
+  and saved files (ad images, the construction report and bill of quantities, videos) go to the Downloads folder.
 
 Rules 1.14 and 1.15 (app information):
 - All screenshots were retaken on 2026-10-26 from this build (Huawei package, phone size, a normal user account),
@@ -33,7 +47,7 @@ Rules 1.14 and 1.15 (app information):
 - The listing does not use words such as "official", "trusted", "preferred" or "featured", and it does not mention
   government services. om ai is an independent app. It is not affiliated with or endorsed by any government body,
   broadcaster or other brand. Options named after third-party brands are not shown in this package.
-- Same package (com.omran.aibuilder.twa), new version 1.3.14. Its launcher label stays "عمران AI" (Omran AI Builder); inside the app the same
+- Same package (com.omran.aibuilder.twa), new version 1.3.15. Its launcher label stays "عمران AI" (Omran AI Builder); inside the app the same
   product now uses its short name "om ai". The description names both.
 
 Rule 4.1 (the app offers several types of content):
@@ -64,13 +78,16 @@ Test account: (username) / (password)
 
 ## ملاحظات المراجع (عربيّ — للمراجعة العربيّة إن وُجدت)
 ```
-عمران AI (om ai)، الإصدار 1.3.14 — إعادة تقديم بعد تقارير ٢٢ و٢٦ و٢٨ أكتوبر ٢٠٢٦ على 1.3.13 (القواعد 1.14 و1.15 و4.1).
+عمران AI (om ai)، الإصدار 1.3.15 — إعادة تقديم بعد تقرير ٣٠ أكتوبر ٢٠٢٦ على 1.3.14 (القاعدتان 3.1 و1.14) وتقارير ٢٢ و٢٦ و٢٨ أكتوبر على 1.3.13 (القواعد 1.14 و1.15 و4.1).
 1.14 و1.15: اللقطات أُخذت ٢٦ أكتوبر من هذا البناء نفسه بحساب مستخدم عاديّ وبثلاث لغات (العربيّة والإنجليزيّة والصينيّة) لأنّ
 التطبيق يعرض واجهته بلغة الهاتف، وفيها فقط ما يفتحه المستخدم في هذا الإصدار (مربّع الأدوات وستّ أدوات) بلا أيّ رسم فوقها.
 حُذفت صورة الافتتاح، فبعد إشعار الخصوصيّة يفتح التطبيق على مربّع الأدوات. حُذفت لقطة التلفزيون (أسماء قنوات لجهات أخرى) وكلّ أداة
 غير متاحة في هذا الإصدار، والوصف يعدّ الأدوات الموجودة فقط. لا كلمات مثل «رسمي» أو «موثوق» أو «مفضّل» أو «مميّز»، ولا خدمات حكوميّة،
 ولا خيارات بأسماء علامات تجاريّة في هذه الحزمة. om ai تطبيق مستقلّ لا يتبع أيّ جهة حكوميّة أو قناة أو علامة تجاريّة.
-الحزمة نفسها، الإصدار 1.3.14: اسمها على الهاتف «عمران AI» كاسم المتجر، و«om ai» اسمها المختصر داخل التطبيق.
+3.1: على الهواتف بلا متصفّح يدعم TWA يعمل التطبيق في عارض ويب داخليّ لم يكن يفتح منتقي الملفّات، فكان «اختيار ملف» لا يفعل شيئًا.
+1.3.15 يفتح منتقي الملفّات في كلّ الأدوات (مساعد المستندات، الأزياء، الديكور، الستايل، أنماط الصور، التعليم، مرفقات المحادثة)،
+ويصغّر صور الكاميرا الكبيرة قبل إرسالها، ويطلب الموقع للقبلة والمواقيت، ويحفظ الملفّات في «التنزيلات».
+الحزمة نفسها، الإصدار 1.3.15: اسمها على الهاتف «عمران AI» كاسم المتجر، و«om ai» اسمها المختصر داخل التطبيق.
 4.1: في كلّ تشغيل للتطبيق يفتح على مربّع الأدوات: ١٣ أداة في ثلاث مجموعات
 (إبداع: أنماط الصور، صانع الفيديو، ديكور AI، أزياء AI، ستايل AI · أعمال: استوديو الإعلانات، مساعد المستندات، مساعد البريد الذكي،
 تصاميم المقاولات والبناء · حياة يوميّة: القبلة والمواقيت، التعليم، التفسير الدينيّ، رأيك يهمّنا)، ومعها محادثة بالصوت والكتابة.
@@ -79,7 +96,7 @@ Test account: (username) / (password)
 ```
 
 ## وصف المتجر (عربيّ)
-**اسم التطبيق:** كما هو في AGC (لا يتغيّر — يطابق اسم الهاتف «عمران AI» في 1.3.14)
+**اسم التطبيق:** كما هو في AGC (لا يتغيّر — يطابق اسم الهاتف «عمران AI» في 1.3.15)
 
 **عنوان قصير:** أدوات ذكاء اصطناعيّ في تطبيق واحد
 
@@ -93,7 +110,7 @@ Test account: (username) / (password)
 كلّ الأدوات تعمل داخل التطبيق، على الجوّال والحاسوب.
 
 ## Store description (English)
-**App name:** unchanged in AGC (matches the launcher label of 1.3.14)
+**App name:** unchanged in AGC (matches the launcher label of 1.3.15)
 
 **Short:** AI tools in one app
 
@@ -107,7 +124,7 @@ Omran AI (om ai) brings AI tools and an AI chat together in one app, in Arabic a
 Every tool runs inside the app, on phone and desktop.
 
 ## 商店描述（简体中文）
-**应用名称：** 保持 AGC 中的现有名称不变（与 1.3.14 安装后显示的名称一致）
+**应用名称：** 保持 AGC 中的现有名称不变（与 1.3.15 安装后显示的名称一致）
 
 **简短介绍：** 一个应用中的多种 AI 工具
 

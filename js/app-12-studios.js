@@ -3129,6 +3129,12 @@ function stud2ErrText(e, prefix, fbKey){
   });
 
   refreshBtn.addEventListener('click', loadEmails);
+  /* v-hw-webview: في WebView حزمة هواوي تفويض جوجل يُفتح في المتصفّح (WebView يحوّل النطاقات الأخرى إليه) والربط
+     يُحفظ في الخادم، لكنّ التطبيق حين يعود يبقى على «اربط Gmail» — عند الرجوع للتطبيق يُعاد فتح الأداة فتظهر الرسائل. */
+  if(typeof document.addEventListener === 'function') document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState !== 'visible' || typeof omranHwWebView !== 'function' || !omranHwWebView()) return;
+    if(modal.style.display === 'flex' && connectBox.style.display !== 'none' && localStorage.getItem('aiapp_auth_token')) btnOpen.click();
+  });
 
   // Handle the redirect back from /api/email-callback (?emailconnected=1 or ?emailerror=...)
   (function(){
