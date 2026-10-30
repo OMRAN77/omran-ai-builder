@@ -206,3 +206,11 @@ test('Desert Gold sample: JSON and the three CSV files give the same exact RTP',
   assert.strictEqual(a.rtp.percent, '95.517500');
   assert.strictEqual(b.distribution.variance.fraction, a.distribution.variance.fraction);
 });
+
+test('lab/samples.js matches the sample JSON files (regenerate with scripts/make-lab-samples.mjs)', async () => {
+  const samples = await import('../../lab/samples.js');
+  const read = (f) => JSON.parse(fs.readFileSync(new URL(f, SAMPLES), 'utf8'));
+  assert.deepStrictEqual(samples.desertGold, read('desert-gold.json'));
+  assert.deepStrictEqual(samples.rouletteEuropean, read('roulette-european.json'));
+  assert.deepStrictEqual(samples.rouletteAmerican, read('roulette-american.json'));
+});

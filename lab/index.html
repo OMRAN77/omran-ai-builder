@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- connect-src 'none': the page cannot send anything anywhere (no fetch, XHR, WebSocket or beacon). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="dark">
+<title>مختبر RTP — TARYAM</title>
+<link rel="icon" href="../icons/favicon-32.png">
+<link rel="stylesheet" href="lab.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="../index.html" data-t="back"></a>
+  <div class="brand">
+    <h1 data-t="pageTitle"></h1>
+    <p data-t="subtitle"></p>
+  </div>
+  <button id="langToggle" type="button" class="ghost" data-t="language"></button>
+</header>
+<div class="wrap">
+  <p class="privacy" id="privacy" data-t="privacy"></p>
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-theory" aria-controls="panel-theory" aria-selected="true" data-t="tabTheory"></button>
+    <button role="tab" id="tab-actual" aria-controls="panel-actual" aria-selected="false" data-t="tabActual"></button>
+    <button role="tab" id="tab-rng" aria-controls="panel-rng" aria-selected="false" data-t="tabRng"></button>
+    <button role="tab" id="tab-fair" aria-controls="panel-fair" aria-selected="false" data-t="tabFair"></button>
+    <button role="tab" id="tab-mc" aria-controls="panel-mc" aria-selected="false" data-t="tabMc"></button>
+    <button role="tab" id="tab-report" aria-controls="panel-report" aria-selected="false" data-t="tabReport"></button>
+  </nav>
+
+  <main>
+    <section class="panel" id="panel-theory" role="tabpanel">
+      <div class="toolbar">
+        <span class="muted" data-t="loadSample"></span>
+        <button type="button" data-sample="desertGold" data-t="sampleDesert"></button>
+        <button type="button" data-sample="rouletteEuropean" data-t="sampleEU"></button>
+        <button type="button" data-sample="rouletteAmerican" data-t="sampleUS"></button>
+        <label class="file-btn"><input type="file" id="modelFile" accept=".json,.csv,application/json,text/csv" multiple><span data-t="uploadModel"></span></label>
+        <button type="button" id="exportModel" data-t="exportJson"></button>
+      </div>
+      <div class="grid two">
+        <label><span data-t="name"></span><input id="f-name" autocomplete="off"></label>
+        <label><span data-t="rows"></span><input id="f-rows" type="number" min="1" max="8" value="3" dir="ltr"></label>
+      </div>
+      <label><span data-t="reels"></span><textarea id="f-reels" rows="6" dir="ltr" spellcheck="false"></textarea></label>
+      <label><span data-t="paytable"></span><textarea id="f-paytable" rows="6" dir="ltr" spellcheck="false"></textarea></label>
+      <div class="grid two">
+        <label><span data-t="wild"></span><input id="f-wild" dir="ltr" autocomplete="off"></label>
+        <label><span data-t="scatter"></span><input id="f-scatter" dir="ltr" autocomplete="off"></label>
+      </div>
+      <label><span data-t="lines"></span>
+        <select id="f-linePreset">
+          <option value="middle" data-t="presetMiddle"></option>
+          <option value="rows" data-t="presetRows"></option>
+          <option value="standard20" data-t="presetStandard20"></option>
+          <option value="custom" data-t="linesCustom"></option>
+        </select>
+      </label>
+      <textarea id="f-lines" rows="4" dir="ltr" spellcheck="false" hidden></textarea>
+      <fieldset class="box">
+        <label class="check"><input type="checkbox" id="f-fsEnabled"><span data-t="fsEnabled"></span></label>
+        <div class="grid four" id="fsFields">
+          <label><span data-t="fsTrigger"></span><input id="f-fsTrigger" type="number" min="1" value="3" dir="ltr"></label>
+          <label><span data-t="fsSpins"></span><input id="f-fsSpins" type="number" min="1" value="10" dir="ltr"></label>
+          <label><span data-t="fsMultiplier"></span><input id="f-fsMultiplier" value="1" dir="ltr"></label>
+          <label class="check"><input type="checkbox" id="f-fsRetrigger"><span data-t="fsRetrigger"></span></label>
+        </div>
+        <label><span data-t="fsReels"></span><textarea id="f-fsReels" rows="3" dir="ltr" spellcheck="false"></textarea></label>
+      </fieldset>
+      <div class="actions"><button type="button" class="primary" id="run-theory" data-t="run"></button><progress id="prog-theory" max="1" value="0" hidden></progress></div>
+      <div class="error" id="err-theory" hidden></div>
+      <div class="results" id="res-theory"></div>
+    </section>
+
+    <section class="panel" id="panel-actual" role="tabpanel" hidden>
+      <div class="toolbar">
+        <label class="file-btn"><input type="file" id="actualFile" accept=".csv,text/csv"><span data-t="playLog"></span></label>
+        <button type="button" id="sample-actual" data-t="samplePlayLog"></button>
+        <span class="muted file-name" id="name-actual" data-t="noFile"></span>
+      </div>
+      <div class="grid three">
+        <label><span data-t="declaredRtp"></span><input id="a-declared" value="95.5175" dir="ltr" inputmode="decimal"></label>
+        <label><span data-t="declaredSigma"></span><input id="a-sigma" dir="ltr" inputmode="decimal"></label>
+        <label><span data-t="confidence"></span>
+          <select id="a-confidence"><option value="0.9">90%</option><option value="0.95" selected>95%</option><option value="0.99">99%</option><option value="0.999">99.9%</option></select>
+        </label>
+      </div>
+      <label class="check"><input type="checkbox" id="a-useTheory"><span data-t="useTheorySigma"></span></label>
+      <p class="muted small" data-t="confidenceNote"></p>
+      <div class="actions"><button type="button" class="primary" id="run-actual" data-t="run"></button><progress id="prog-actual" max="1" value="0" hidden></progress></div>
+      <div class="error" id="err-actual" hidden></div>
+      <div class="results" id="res-actual"></div>
+    </section>
+
+    <section class="panel" id="panel-rng" role="tabpanel" hidden>
+      <div class="toolbar">
+        <label class="file-btn"><input type="file" id="rngFile"><span data-t="rngFile"></span></label>
+        <button type="button" id="sample-rng" data-t="generateSample"></button>
+        <span class="muted file-name" id="name-rng" data-t="noFile"></span>
+      </div>
+      <div class="grid three">
+        <label><span data-t="rngMode"></span>
+          <select id="r-mode"><option value="auto" data-t="modeAuto"></option><option value="bits" data-t="modeBits"></option><option value="integers" data-t="modeIntegers"></option><option value="binary" data-t="modeBinary"></option></select>
+        </label>
+        <label><span data-t="rangeMin"></span><input id="r-min" dir="ltr" inputmode="numeric"></label>
+        <label><span data-t="rangeMax"></span><input id="r-max" dir="ltr" inputmode="numeric"></label>
+      </div>
+      <p class="muted small" data-t="rngNote"></p>
+      <div class="actions"><button type="button" class="primary" id="run-rng" data-t="run"></button><progress id="prog-rng" max="1" value="0" hidden></progress></div>
+      <div class="error" id="err-rng" hidden></div>
+      <div class="results" id="res-rng"></div>
+    </section>
+
+    <section class="panel" id="panel-fair" role="tabpanel" hidden>
+      <div class="grid two">
+        <label><span data-t="fairScheme"></span>
+          <select id="p-scheme"><option value="hmac" data-t="schemeHmac"></option><option value="chain" data-t="schemeChain"></option></select>
+        </label>
+      </div>
+      <div id="hmacFields">
+        <div class="grid three">
+          <label><span data-t="template"></span><input id="p-template" value="{client}:{nonce}" dir="ltr" spellcheck="false"></label>
+          <label><span data-t="keyFrom"></span><select id="p-key"><option value="server" data-t="keyServer"></option><option value="client" data-t="keyClient"></option></select></label>
+          <label><span data-t="outcomeType"></span><select id="p-outcome"><option value="dice" data-t="outDice"></option><option value="float" data-t="outFloat"></option><option value="int" data-t="outInt"></option></select></label>
+          <label><span>N</span><input id="p-range" type="number" value="100" min="1" dir="ltr"></label>
+          <label><span>+</span><input id="p-offset" type="number" value="0" dir="ltr"></label>
+          <label><span data-t="tolerance"></span><input id="p-tolerance" value="0.000000001" dir="ltr"></label>
+        </div>
+        <p class="muted small formula" data-t="fairFormula"></p>
+      </div>
+      <div id="chainFields" class="grid two" hidden>
+        <label><span data-t="chainOrder"></span><select id="p-order"><option value="newest" data-t="newestFirst"></option><option value="oldest" data-t="oldestFirst"></option></select></label>
+        <label><span data-t="chainInput"></span><select id="p-input"><option value="hex" data-t="hexText"></option><option value="bytes" data-t="rawBytes"></option></select></label>
+      </div>
+      <div class="toolbar">
+        <label class="file-btn"><input type="file" id="fairFile" accept=".csv,.txt,text/csv,text/plain"><span data-t="fairFile"></span></label>
+        <button type="button" id="sample-fair" data-t="sampleFair"></button>
+        <span class="muted file-name" id="name-fair" data-t="noFile"></span>
+      </div>
+      <div class="actions"><button type="button" class="primary" id="run-fair" data-t="run"></button><progress id="prog-fair" max="1" value="0" hidden></progress></div>
+      <div class="error" id="err-fair" hidden></div>
+      <div class="results" id="res-fair"></div>
+    </section>
+
+    <section class="panel" id="panel-mc" role="tabpanel" hidden>
+      <p class="muted" id="mc-model" data-t="needModel"></p>
+      <div class="grid three">
+        <label><span data-t="spins"></span>
+          <select id="m-spins"><option value="100000">100,000</option><option value="1000000" selected>1,000,000</option><option value="5000000">5,000,000</option><option value="10000000">10,000,000</option></select>
+        </label>
+        <label><span data-t="seed"></span><input id="m-seed" value="taryam-audit" dir="ltr" spellcheck="false"></label>
+      </div>
+      <div class="actions">
+        <button type="button" class="primary" id="run-mc" data-t="run"></button>
+        <button type="button" id="stop-mc" data-t="cancel" hidden></button>
+        <progress id="prog-mc" max="1" value="0" hidden></progress>
+      </div>
+      <div class="error" id="err-mc" hidden></div>
+      <div class="results" id="res-mc"></div>
+    </section>
+
+    <section class="panel" id="panel-report" role="tabpanel" hidden>
+      <div class="grid two">
+        <label><span data-t="reportTitle"></span><input id="rep-title" autocomplete="off"></label>
+        <label><span data-t="auditor"></span><input id="rep-auditor" autocomplete="off"></label>
+      </div>
+      <label><span data-t="notes"></span><textarea id="rep-notes" rows="3"></textarea></label>
+      <div class="box"><span data-t="include"></span>: <span id="rep-sections"></span></div>
+      <div class="actions"><button type="button" class="primary" id="run-report" data-t="makePdf"></button><progress id="prog-report" max="1" value="0" hidden></progress></div>
+      <div class="error" id="err-report" hidden></div>
+      <div class="results" id="res-report"></div>
+    </section>
+  </main>
+</div>
+</body>
+</html>
