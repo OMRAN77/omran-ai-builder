@@ -187,7 +187,7 @@
     const E = experts.length;
     let w = new Float64Array(E).fill(1 / E);
     const hist = [];
-    const st = { n: 0, hits: 0, G: 0, maxG: 0, expLoss: new Float64Array(E), expHits: new Float64Array(E), ctxHits: 0, hits3: 0 };
+    const st = { n: 0, hits: 0, G: 0, maxG: 0, expLoss: new Float64Array(E), expHits: new Float64Array(E), ctxHits: 0, pickHits: { 3: 0, 5: 0 }, prevPick: { 3: null, 5: null } };
     // "Per-round" view: what the context models (transitions, wheel sector, neural
     // net) expect AFTER THE LAST NUMBER beyond plain frequency — the lift over the
     // hot-numbers baseline. It changes every round; its hit rate is tracked the same
@@ -219,10 +219,11 @@
     // (what is expected after the last number), and never repeats the previous
     // round's set — every set of 3 has the same chance, so this costs nothing.
     const setKey = (a) => a.slice().sort((x, y) => x - y).join();
-    function pickOf(p, parts) {
-      if (!hist.length) return topOf(p, 3);
-      const r = ctxRank(parts); let pk = r.slice(0, 3);
-      if (st.prevPick && setKey(pk) === setKey(st.prevPick)) pk = [r[0], r[1], r[3]];
+    function pickOf(p, parts, kk = 3) {
+      if (!hist.length) return topOf(p, kk);
+      const r = ctxRank(parts); let pk = r.slice(0, kk);
+      const prev = st.prevPick[kk];
+      if (prev && setKey(pk) === setKey(prev)) pk = r.slice(0, kk - 1).concat(r[kk]);
       return pk;
     }
 
@@ -232,8 +233,10 @@
       if (!Number.isInteger(x) || x < 0 || x >= N) return;
       const { p, parts } = mixture();
       if (topOf(p, k).includes(x)) st.hits++;
-      const pk = pickOf(p, parts); if (pk.includes(x)) st.hits3++; // the 3-number pick, scored before the spin
-      st.prevPick = pk;
+      for (const kk of [3, 5]) { // the 3- and 5-number picks, scored before the spin
+        const pk = pickOf(p, parts, kk); if (pk.includes(x)) st.pickHits[kk]++;
+        st.prevPick[kk] = pk;
+      }
       if (hist.length && ctxTop(parts).includes(x)) st.ctxHits++;
       st.G += Math.log(Math.max(p[x], 1e-300) * N);
       if (st.G > st.maxG) st.maxG = st.G;
@@ -267,7 +270,7 @@
         hits: st.hits, rate: st.n ? st.hits / st.n : 0, pTop,
         G: st.G, bitsPerSpin: st.n ? st.G / st.n / Math.LN2 : 0, pAnytime,
         enough, predictable, minTrials, leader: rank[0], experts: rank,
-        pick: pickOf(p, parts), pickHits: st.hits3,
+        pick: pickOf(p, parts, 3), pickHits: st.pickHits[3], pick5: pickOf(p, parts, 5), pickHits5: st.pickHits[5],
         ctxTop: ctx, ctxHits: st.ctxHits, ctxN, ctxRate: ctxN ? st.ctxHits / ctxN : 0, ctxP: binomUpper(st.ctxHits, ctxN, chance),
       };
     }

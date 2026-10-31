@@ -54,6 +54,8 @@
     claim: { cur: null, rows: [] }, // «اختبار تطبيق توقّع»: numbers locked before a round, scored on its result
     claimDraft: '',
     claimErr: '',
+    pickK: 3,           // how many numbers the AI picks (3 or 5)
+    showDetails: false, // «📊 التفاصيل والفحوص» folded by default: one clear place to pick from
     stake: 0,           // amount per number for the AI's 3-number pick (what-if only; nothing is bet)
   };
   const MAX_EVENTS = 40;
@@ -243,7 +245,7 @@
       store.set({ [SKEY]: {
         v: 1, spins: state.spins.slice(-6000), seen: [...state.seenRounds].slice(-6000), snaps: state.snaps,
         idSource: state.idSource, idlessSrc: state.idlessSrc, forcedSrc: state.forcedSrc, fieldResult: state.fieldMap.result,
-        fieldMap: state.fieldMap, wheel: state.wheel, stake: state.stake, claim: state.claim, startBalance: state.startBalance, balance: state.balance,
+        fieldMap: state.fieldMap, wheel: state.wheel, stake: state.stake, pickK: state.pickK, claim: state.claim, startBalance: state.startBalance, balance: state.balance,
         startedAt: state.startedAt.toISOString(),
       } });
     } catch (e) { /* storage full or context gone — keep running */ }
@@ -264,6 +266,7 @@
         if (saved.fieldMap) state.fieldMap = { result: saved.fieldMap.result || '', balance: saved.fieldMap.balance || '' };
         if (saved.wheel) state.wheel = saved.wheel;
         if (Number(saved.stake) > 0) state.stake = Number(saved.stake);
+        if (saved.pickK === 5) state.pickK = 5;
         if (saved.claim && Array.isArray(saved.claim.rows)) state.claim = { cur: saved.claim.cur && Array.isArray(saved.claim.cur.nums) ? saved.claim.cur : null, rows: saved.claim.rows.filter((r) => r && Array.isArray(r.nums)) };
         state.forcedSrc = saved.forcedSrc || null;
         if (saved.startedAt) { const d = new Date(saved.startedAt); if (!isNaN(d)) state.startedAt = d; }
@@ -396,7 +399,7 @@
       state.raw[0].seq = seq;
       if (state.loaded) { // before load, reparseAll replays it
         const before = state.spins.length;
-        const pre = state.ai && !state.aiPending && state.ai.n ? (aiReport() || {}).pick : null;
+        const pre = state.ai && !state.aiPending && state.ai.n ? (() => { const r = aiReport() || {}; return state.pickK === 5 ? r.pick5 : r.pick; })() : null;
         const p = parseBody(ev.body, ev.url); p.seq = seq; applyParsed(p);
         const fresh = noteLive(ev, before, pre ? pre.slice() : null);
         if (fresh) scoreClaim(live.last.n, live.last.t);
@@ -526,41 +529,43 @@
     return `<div class="tp-sec">🔐 فحص «العدالة المُثبتة» (Provably Fair)</div>
       <div class="tp-verdict ${v.cls}">${v.text}<div class="s">SHA-512 ${f.hashOk}/${f.n} · resultKey ${f.n - f.keyBad}/${f.n} · before bet ${f.pre}/${f.n}</div></div>`;
   }
-  function aiSection() {
+  function pickBox() {
     if (!T.ai) return '';
-    const head = '<div class="tp-sec">🧠 الذكاء الاصطناعي — توقّع الجولة الجاية</div>';
-    if (state.aiPending || !state.ai) return head + '<div class="tp-muted">يجهّز النموذج من الجولات المحفوظة…</div>';
+    const hd = '<div class="hd">🎲 اختيار الذكاء لك — جديد كل جولة</div>';
+    if (state.aiPending || !state.ai) return `<div class="tp-pick">${hd}<div class="s">يجهّز النموذج من الجولات المحفوظة…</div></div>`;
     const r = aiReport();
-    if (!r || !r.n) return head + '<div class="tp-verdict warn">التوقّع يطلع هنا بعد ١٠ جولات مُلتقطة — للحين ما وصلت نتائج من الطاولة (٠).</div>';
-    if (r.n < 10) return head + `<div class="tp-muted">يتعلّم… يحتاج ١٠ جولات على الأقل (${r.n}).</div>`;
+    if (!r || r.n < 10) return `<div class="tp-pick">${hd}<div class="s">الاختيار يطلع بعد ١٠ جولات مُلتقطة (${r ? r.n : 0}/10).</div></div>`;
+    const k = state.pickK === 5 ? 5 : 3;
+    const nums = k === 5 ? r.pick5 : r.pick; const hits = k === 5 ? r.pickHits5 : r.pickHits;
+    const K = state.wheel === 'american' ? 38 : 37;
+    const s = state.stake > 0 ? state.stake : 0;
+    const pnl = s * (36 * hits - k * r.n);
+    return `<div class="tp-pick">${hd}
+      <div class="tp-strip">${[3, 5].map((x) => `<button class="tp-sbtn${x === k ? ' on' : ''}" data-pk="${x}">${x === 3 ? '٣ أرقام' : '٥ أرقام'}</button>`).join('')}</div>
+      <div class="tp-strip">${nums.map((n) => `<span class="chip big ${T.colorOf(n)}">${esc(n)}</span>`).join('')}</div>
+      <label>مبلغك على كل رقم <input id="tp-stake" type="number" min="0" step="0.5" inputmode="decimal" value="${s || ''}" placeholder="مثلًا 1"></label>
+      ${s ? `<div class="s">الرهان ${money(k * s)} · لو طلع واحد منها: +${money((36 - k) * s)} · لو لا: −${money(k * s)}</div>` : ''}
+      <div class="s">أصاب ${hits} من ${r.n} (${pct(hits / r.n)}) — الصدفة ${pct(k / K)}${s ? ` · صافيك لو راهنت كذا كل جولة: <b class="${pnl < 0 ? 'bad' : 'good'}">${pnl >= 0 ? '+' : '−'}${money(Math.abs(pnl))}</b>` : ''}</div>
+      <div class="s">أنت تراهن بيدك؛ الإضافة ما تراهن عنك.</div></div>`;
+  }
+  function aiDetails() {
+    if (!T.ai || state.aiPending || !state.ai) return '';
+    const r = aiReport(); if (!r || r.n < 10) return '';
+    const head = '<div class="tp-sec">🧠 الذكاء الاصطناعي — التفاصيل</div>';
     const cls = r.predictable ? 'bad' : r.enough ? 'good' : 'warn';
     const verdict = r.predictable
       ? '⚠ نمط حقيقي: الذكاء الاصطناعي يتوقّع أفضل من الصدفة بفرق مؤكّد — خلل في المولّد أو العجلة'
       : r.enough ? 'لا نمط: الذكاء الاصطناعي ما يتفوّق على الصدفة — الجولة الجاية غير قابلة للتوقّع'
         : `يتعلّم ويقيس — ${r.n}/${r.minTrials} جولة قبل الحكم`;
-    const s = state.stake > 0 ? state.stake : 0;
-    const pc = r.pick ? r.pick.length / (state.wheel === 'american' ? 38 : 37) : 0;
-    const pnl = s * (36 * r.pickHits - 3 * r.n);
-    const pick = r.pick ? `<div class="tp-pick"><div class="hd">🎲 اختيار الذكاء لك — ٣ أرقام (جديدة كل جولة)</div>
-      <div class="tp-strip">${r.pick.map((n) => `<span class="chip big ${T.colorOf(n)}">${esc(n)}</span>`).join('')}</div>
-      <label>مبلغك على كل رقم <input id="tp-stake" type="number" min="0" step="0.5" inputmode="decimal" value="${s || ''}" placeholder="مثلًا 1"></label>
-      ${s ? `<div class="s">الرهان ${money(3 * s)} · لو طلع واحد منها: +${money(33 * s)} · لو لا: −${money(3 * s)}</div>
-      <div class="s">لو راهنت كذا على كل جولة من ${r.n}: أصاب ${r.pickHits} (${pct(r.pickHits / r.n)}) مقابل صدفة ${pct(pc)} ← <b class="${pnl < 0 ? 'bad' : 'good'}">${pnl >= 0 ? '+' : '−'}${money(Math.abs(pnl))}</b></div>` : `<div class="s">إصابته ${r.pickHits}/${r.n} (${pct(r.pickHits / r.n)}) مقابل صدفة ${pct(pc)} — حدّد المبلغ تشوف الربح/الخسارة.</div>`}
-      <div class="s">أنت تراهن بيدك؛ الإضافة ما تراهن عنك.</div></div>` : '';
     const bars = r.experts.map((e) => `<div class="tp-exp${e.id === r.leader.id ? ' lead' : ''}"><span class="nm">${esc(e.name)}</span><span class="bar"><i style="width:${Math.max(2, Math.round(e.weight * 100))}%"></i></span><span class="vv">${Math.round(e.weight * 100)}٪ · إصابة ${pct(e.hitRate)}</span></div>`).join('');
-    return head + pick + `
-      <div class="tp-muted">أقوى ٥:</div>
-      <div class="tp-strip">${r.top.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('')}</div>
-      <div class="tp-muted" style="margin-bottom:6px">ثقة النموذج في الخمسة ${pct(r.mass)} مقابل صدفة ${pct(r.chance)} · القائد: ${esc(r.leader.name)}</div>
-      ${r.ctxTop && r.ctxTop.length ? `<div class="tp-muted">حسب آخر رقم (يتغيّر كل جولة):</div>
-      <div class="tp-strip">${r.ctxTop.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('')}</div>
-      <div class="tp-muted" style="margin-bottom:6px">إصابة ${pct(r.ctxRate)} (${r.ctxHits}/${r.ctxN}) مقابل ${pct(r.chance)} · p=${pFmt(r.ctxP)}</div>` : ''}
+    return head + `
       <div class="tp-verdict ${cls}">${verdict}
         <div class="s">hit ${pct(r.rate)} (${r.hits}/${r.n}) vs ${pct(r.chance)} · p(live)=${pFmt(r.pAnytime)} · ${r.bitsPerSpin >= 0 ? '+' : ''}${r.bitsPerSpin.toFixed(3)} bit/spin</div>
       </div>
       <div class="tp-exps">${bars}</div>
       <div class="tp-foot">سبعة نماذج (منها شبكة عصبية) تتعلّم مباشرة، وكل توقّع يُسجَّل قبل ظهور نتيجته. الأوزان تتبع أداءها الفعلي؛ على عجلة سليمة تفوز «الصدفة». لا تراهن عليه.</div>`;
   }
+
 
   // No round counted yet: say why, and offer the detected fields right here.
   function noSpinsHint() {
@@ -642,16 +647,20 @@
       </div>
 
       ${liveSection()}
+      ${pickBox()}
       ${claimSection()}
+      <div class="tp-muted">آخر الأرقام اللي طلعت:</div>
       <div class="tp-strip">${last.length ? last.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('') : '<span class="tp-muted">بانتظار أول دورة…</span>'}</div>
       ${!state.spins.length ? noSpinsHint() : ''}
 
+      <div class="tp-row"><button class="tp-btn wide" id="tp-details">📊 التفاصيل والفحوص ${state.showDetails ? '▴' : '▾'}</button></div>
+      ${state.showDetails ? `<div class="tp-details">
       ${a.n ? `<div class="tp-verdict ${a.verdict === 'anomaly' ? 'bad' : a.verdict === 'fair' ? 'good' : 'warn'}">
         ${a.verdict === 'anomaly' ? 'شذوذ: الأرقام لا تتصرف كعجلة عادلة — راجع الأرقام المميّزة' : a.verdict === 'fair' ? 'ضمن العادل حتى الآن: لا نمط يُتوقّع؛ ما يأكل الرصيد هو أجر البيت' : `أرقام قليلة للحكم (${a.n})`}
         ${a.even.redBlack.trials ? `<div class="s">أحمر/أسود ${a.even.redBlack.hits}/${a.even.redBlack.trials - a.even.redBlack.hits} · p=${a.even.redBlack.pValue < 0.0001 ? '<0.0001' : a.even.redBlack.pValue.toFixed(3)}${a.bias.hot ? ` · الأكثر ${esc(a.bias.hot.pocket)} (z=${a.bias.hot.z.toFixed(2)})` : ''}</div>` : ''}
       </div>` : ''}
 
-      ${aiSection()}
+      ${aiDetails()}
       ${fairSection()}
 
       ${(() => {
@@ -680,6 +689,7 @@
       <div class="tp-events">
         ${state.events.slice(0, 6).map((ev) => `<div class="erow"><span class="ek">${esc(ev.kind)}</span> <span class="eu">${esc((ev.url || '').replace(/^https?:\/\//, '').slice(0, 42))}</span>${ev.body ? `<div class="eb">${esc(ev.body.slice(0, 160))}</div>` : ''}</div>`).join('') || '<span class="tp-muted">لا شيء بعد</span>'}
       </div>
+      </div>` : ''}
       <div class="tp-foot">يقرأ جلستك فقط — لا يعدّل أي طلب أو نتيجة أو رصيد.</div>`;
 
     const ci = root.getElementById('tp-claim');
@@ -691,6 +701,9 @@
     if (cl) cl.addEventListener('click', () => { if (ci) state.claimDraft = ci.value; lockClaim(); });
     const cc = root.getElementById('tp-claim-cancel');
     if (cc) cc.addEventListener('click', () => { state.claim.cur = null; schedulePersist(); render(); });
+    root.querySelectorAll('[data-pk]').forEach((b) => b.addEventListener('click', () => { state.pickK = Number(b.getAttribute('data-pk')) === 5 ? 5 : 3; schedulePersist(); render(); }));
+    const det = root.getElementById('tp-details');
+    if (det) det.addEventListener('click', () => { state.showDetails = !state.showDetails; render(); });
     const stk = root.getElementById('tp-stake');
     if (stk) {
       const setStake = () => { const v = Number(String(stk.value).replace(',', '.')); state.stake = Number.isFinite(v) && v > 0 ? v : 0; schedulePersist(); stk.blur(); render(); };
@@ -889,6 +902,8 @@ ${rawHtml || '<p class="muted">لا شيء.</p>'}
   .tp-cbtn,.tp-sbtn{background:#1b2740;border:1px solid #39456a;color:#cdd;border-radius:7px;padding:2px 8px;cursor:pointer;font-size:11px;direction:ltr}
   .tp-cbtn.on,.tp-sbtn.on{background:#0a5f46;border-color:#0f7a59;color:#d7ffee}
   .tp-srcs{display:flex;flex-direction:column;gap:4px}.tp-sbtn{text-align:left;word-break:break-all}
+  .tp-pick .tp-sbtn{font-size:13px;padding:4px 14px;direction:rtl;text-align:center}
+  .tp-pick .tp-strip{flex-wrap:nowrap}.tp-pick .chip.big{flex:1 1 0;min-width:0;padding:4px 0}
   .tp-exps{display:flex;flex-direction:column;gap:3px;margin-bottom:6px}
   .tp-exp{display:grid;grid-template-columns:118px 1fr 92px;gap:6px;align-items:center;font-size:11px;color:#9fb0cc}
   .tp-exp .bar{height:7px;background:#0b1120;border:1px solid #28324a;border-radius:4px;overflow:hidden}

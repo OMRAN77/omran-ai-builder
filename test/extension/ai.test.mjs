@@ -211,3 +211,15 @@ test('pocket bias uses the exact binomial tail: no false alarm on a few dozen sp
   assert.strictEqual(T.keyNum('22360771_Black_8_GoldenRoulette_f25d9053'), 8);
   assert.strictEqual(T.keyNum('Red_7_Roulette_x'), 7);
 });
+
+test('5-number pick: a new set every round, scored on the pick shown before the spin', () => {
+  let x = 99; const rnd = () => ((x = (x * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const L = T.ai.createLearner(); let mine = 0, prev = null;
+  for (let i = 0; i < 800; i++) {
+    const pk = L.report().pick5;
+    assert.strictEqual(new Set(pk).size, 5);
+    const key = pk.slice().sort().join(); if (prev) assert.notStrictEqual(key, prev); prev = key;
+    const n = Math.floor(rnd() * 37); if (pk.includes(n)) mine++; L.observe(n);
+  }
+  assert.strictEqual(L.report().pickHits5, mine);
+});
