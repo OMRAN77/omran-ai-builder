@@ -67,6 +67,12 @@ test('١ — المصنّف: شتيمة وتذمّر عن التطبيق يُل�
   assert.equal(IB.excerpt('سطر\nثانٍ\t  ثالث'), 'سطر ثانٍ ثالث');
 });
 
+test('١ب — v-inbox-near: وصفٌ في طلب صنع ليس تذمّرًا (بلاغ «grace»)، والكلمة الضعيفة تذمّر إن جاورت ذكر التطبيق', () => {
+  for (const t of ['i want you to build for me the Dandora community filled with litters broken drainge systems and a dumpsite with sick villagers',
+    'can you draw a sad broken old man', 'ارسم لي بيت قديم مكسور وانت مبدع', 'سوّ لي صورة سيارة خربانة في الصحراء يا مها']) assert.equal(IB.classify(t), null, t);
+  for (const t of ['والله التطبيق هذا من أمس ما يشتغل عندي', 'your app crashed again', 'you guys are slow today']) assert.equal(IB.classify(t), 'complaint', t);
+});
+
 test('٢ — المحادثة الحقيقيّة: كلام مستخدم بشتيمة يصير بلاغًا ويدفع للمالك مرّة في الساعة؛ المالك لا يُبلَّغ عن نفسه؛ الكلام العاديّ لا يُحفظ', async () => {
   db.clear(); pushes.length = 0;
   await turn('vipuser', 'gemini', 'التطبيق خايس ما يرد عليّ', [() => textTurn('أعتذر…')]);
