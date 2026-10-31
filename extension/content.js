@@ -279,6 +279,7 @@
       }
       state.loaded = true;
       reparseAll();
+      askExt();
     };
     if (!store || !isTop) { done(null); return; }
     const t = setTimeout(() => done(null), 2500);
@@ -376,59 +377,70 @@
       ${last ? `<div class="s">آخر جولة: ${last.nums.join(', ')} ← طلع <b>${esc(last.n)}</b> ${last.hit ? '✓' : '✗'}</div>` : ''}
       <div class="tp-verdict ${v.cls}" style="margin:6px 0 0">${v.text}${c.R ? `<div class="s">إصابة ${c.H}/${c.R} (${pct(c.H / c.R)}) مقابل صدفة ${pct(c.E / c.R)} · p=${pFmt(c.p)} · لو راهنت ${money(st)} على كل رقم: ${c.net * st >= 0 ? '+' : '−'}${money(Math.abs(c.net * st))}</div>` : ''}</div></div>`;
   }
-  // Three AI providers through the owner's TARYAM Cyber site (its own quota, not the
-  // 20 chat messages). Each is asked right after a round with the history; its answer
-  // is locked with a time stamp and scored on the NEXT result only — an answer that
-  // lands after that result is discarded.
+  // Three AI providers through the owner's TARYAM Cyber site (own 1000/day quota).
+  // Each is asked the moment a result lands (the next round opens ~13 s later); its
+  // answer is locked with the spin count and scored on the very next spin only — an
+  // answer that lands after that spin is discarded. Fast modes only: a reply in ~1–3 s.
   const oaText = (j) => (((j.choices || [])[0] || {}).message || {}).content || '';
   const PROVS = [
     { id: 'claude', name: 'Claude', body: (sys, u) => ({ system: sys, messages: [{ role: 'user', content: u }] }), text: (j) => (j.content || []).map((c) => c.text || '').join(' ') },
     { id: 'openai', name: 'GPT-4.1', body: (sys, u) => ({ model: 'gpt-4.1', messages: [{ role: 'system', content: sys }, { role: 'user', content: u }] }), text: oaText },
-    { id: 'deepseek', name: 'DeepSeek', body: (sys, u) => ({ model: 'deepseek-v4-pro', messages: [{ role: 'system', content: sys }, { role: 'user', content: u }] }), text: oaText, fallback: 'deepseek-flash' },
+    // deepseek-chat = DeepSeek's fast mode (~1 s); the thinking models take 30 s+.
+    { id: 'deepseek', name: 'DeepSeek', body: (sys, u) => ({ model: 'deepseek-chat', messages: [{ role: 'system', content: sys }, { role: 'user', content: u }] }), text: oaText },
   ];
-  const extRt = {}; // per provider, not saved: { busy, err }
+  const EXT_STALE = 120000; // a pick older than 2 min belongs to a round that is gone
+  const extRt = {}; // per provider, not saved: { busy, since, err }
   const pv = (id) => (state.ext.p[id] = state.ext.p[id] || { cur: null, rows: [] });
-  const rt = (id) => (extRt[id] = extRt[id] || { busy: false, err: '' });
+  const rt = (id) => (extRt[id] = extRt[id] || { busy: false, since: 0, err: '' });
   function extNums(txt, k) {
     const m = String(txt).match(/"numbers"\s*:\s*\[([^\]]*)\]/);
     return parseNums(m ? m[1] : txt).slice(0, k);
   }
+  const sameSet = (a, b) => a.length === b.length && a.every((n) => b.includes(n));
   function askExt() {
     if (!state.ext.on) return;
     const can = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage;
     const hist = state.spins.slice(-200);
-    const k = state.pickK === 5 ? 5 : 3; const atN = state.spins.length;
-    const sys = `You pick numbers for the next spin of a ${state.wheel === 'american' ? 'American (0, 00 as 37, 1-36)' : 'European (0-36)'} roulette wheel. Use the result history to choose the ${k} distinct numbers you consider most likely next. Reply with JSON only, exactly: {"numbers":[${Array.from({ length: k }, (_, i) => 'n' + (i + 1)).join(',')}]}`;
-    const user = `Results so far, oldest to newest (${hist.length}): ${hist.join(', ')}\nGive ${k} numbers for the next spin.`;
+    const k = state.pickK === 5 ? 5 : 3; const atN = state.spins.length; const now = Date.now();
+    const sys = `You pick numbers for the next spin of a ${state.wheel === 'american' ? 'American (0, 00 as 37, 1-36)' : 'European (0-36)'} roulette wheel. Choose the ${k} distinct numbers you consider most likely next. Pick a NEW set for every spin: never repeat your previous pick, and do not just copy the last ${k} results. Reply with JSON only, exactly: {"numbers":[${Array.from({ length: k }, (_, i) => 'n' + (i + 1)).join(',')}]}`;
     for (const P of PROVS) {
       const x = pv(P.id), r = rt(P.id);
+      if (x.cur && (now - x.cur.t > EXT_STALE || (x.cur.atN != null && x.cur.atN !== atN))) x.cur = null;
+      if (r.busy && now - r.since > 20000) r.busy = false; // a reply that never came back
       if (r.busy || x.cur) continue;
-      if (!can) { r.err = 'الإضافة تحتاج ↻ بعد التحديث'; continue; }
+      if (!can) { r.err = 'حدّث صفحة الكازينو (F5)'; continue; }
       if (hist.length < 10) { r.err = 'يحتاج ١٠ جولات على الأقل'; continue; }
-      r.busy = true; r.err = '';
+      const prev = x.rows.length ? x.rows[x.rows.length - 1] : null;
+      const user = `Results so far, oldest to newest (${hist.length}): ${hist.join(', ')}\n`
+        + (prev ? `Your previous pick ${JSON.stringify(prev.nums)} — the result was ${prev.n} (${prev.hit ? 'hit' : 'miss'}).\n` : '')
+        + `Give ${k} numbers for spin #${atN + 1}.`;
+      r.busy = true; r.since = now; r.err = '';
       const done = (err) => { r.busy = false; r.err = err || ''; scheduleRender(); };
-      const send = (body, retried) => chrome.runtime.sendMessage({ type: 'taryam-ask-ai', provider: P.id, body }, (res) => {
-          if (chrome.runtime.lastError || !res) return done('ما قدر يتصل');
-          // A slow or busy model gets one retry on its faster sibling, if the round is still open.
-          if ((res.status === 0 || res.status >= 500) && P.fallback && !retried && state.spins.length === atN) return send({ ...body, model: P.fallback }, true);
+      const send = (u, tries) => chrome.runtime.sendMessage({ type: 'taryam-ask-ai', provider: P.id, body: { ...P.body(sys, u), client: 'taryam-ext' } }, (res) => {
+          if (chrome.runtime.lastError || !res) return done('حدّث صفحة الكازينو (F5)');
+          if (state.spins.length !== atN) return done('وصل بعد الجولة — ما ينحسب');
+          if ((res.status === 0 || res.status >= 500) && tries < 1) return send(u, tries + 1); // one quick retry
           if (res.status === 402) return done('خلص حدّ اليوم');
           if (res.status !== 200) return done(res.status === 0 ? 'تأخّر الرد' : 'خطأ ' + res.status);
           let txt = ''; try { txt = P.text(JSON.parse(res.text)); } catch (e) { txt = res.text; }
           const nums = extNums(txt, k);
-          if (state.spins.length !== atN) return done('وصل بعد الجولة — ما ينحسب');
-          if (nums.length !== k) return done('الرد ما انفهم');
-          x.cur = { nums, t: Date.now() }; persistNow(); done('');
+          if (nums.length !== k) return tries < 1 ? send(u, tries + 1) : done('الرد ما انفهم');
+          if (prev && sameSet(nums, prev.nums) && tries < 1) return send(u + `\n${JSON.stringify(nums)} repeats your previous pick — give a different set.`, tries + 1);
+          x.cur = { nums, t: Date.now(), atN, ms: Date.now() - now }; persistNow(); done('');
         });
-      try { send({ ...P.body(sys, user), client: 'taryam-ext' }, false); } catch (e) { done('ما قدر يتصل'); }
+      try { send(user, 0); } catch (e) { done('حدّث صفحة الكازينو (F5)'); }
     }
   }
   function scoreExt(n, t) {
     const out = [];
     for (const P of PROVS) {
       const x = pv(P.id), c = x.cur; if (!c || !(t > c.t)) continue;
-      x.rows.push({ nums: c.nums, n, hit: c.nums.includes(n), t0: c.t, t1: t, K: state.wheel === 'american' ? 38 : 37 });
+      x.cur = null;
+      if (t - c.t > EXT_STALE) continue; // made for a round long gone — not scored
+      const m = c.atN != null && c.atN < state.spins.length ? state.spins[c.atN] : n; // the spin right after the pick
+      x.rows.push({ nums: c.nums, n: m, hit: c.nums.includes(m), t0: c.t, t1: t, K: state.wheel === 'american' ? 38 : 37 });
       if (x.rows.length > 5000) x.rows.shift();
-      x.cur = null; out.push({ name: P.name, hit: c.nums.includes(n) });
+      out.push({ name: P.name, hit: c.nums.includes(m) });
     }
     if (out.length) schedulePersist();
     return out;
@@ -445,9 +457,13 @@
       const x = pv(P.id), r = rt(P.id), st = extStats(P.id);
       const body = x.cur ? x.cur.nums.map((n) => `<span class="chip big ${T.colorOf(n)}">${esc(n)}</span>`).join('')
         : r.busy ? '<span class="tp-muted">يفكّر…</span>' : r.err ? `<span class="s bad">${esc(r.err)}</span>` : '<span class="tp-muted">—</span>';
-      return `<div class="tp-prov"><div class="nm">${esc(P.name)}<span class="sc">${st.R ? `أصاب ${st.H} من ${st.R} (${pct(st.H / st.R)})` : ''}</span></div><div class="tp-strip">${body}</div></div>`;
+      const sc = [x.cur && x.cur.ms ? `⚡ ${(x.cur.ms / 1000).toFixed(1)} ث` : '', st.R ? `أصاب ${st.H} من ${st.R} (${pct(st.H / st.R)})` : ''].filter(Boolean).join(' · ');
+      return `<div class="tp-prov"><div class="nm">${esc(P.name)}<span class="sc">${sc}</span></div><div class="tp-strip">${body}</div></div>`;
     }).join('');
-    return `<div class="tp-pick"><div class="hd">🤖 اختيار المزوّدين — جديد كل جولة</div>
+    const ready = PROVS.filter((P) => pv(P.id).cur).length;
+    const stat = !on ? '' : ready === PROVS.length ? '<div class="s good">✅ الثلاثة جاهزين للجولة الجاية</div>'
+      : PROVS.some((P) => rt(P.id).busy) ? `<div class="s">⏳ يجهّز أرقام الجولة الجاية… (${ready}/${PROVS.length})</div>` : '';
+    return `<div class="tp-pick"><div class="hd">🤖 اختيار المزوّدين — جديد كل جولة</div>${stat}
       <div class="tp-strip">${[3, 5].map((x) => `<button class="tp-sbtn${x === k ? ' on' : ''}" data-pk="${x}">${x === 3 ? '٣ أرقام' : '٥ أرقام'}</button>`).join('')}
         <button class="tp-sbtn${on ? ' on' : ''}" id="tp-ext">${on ? '⏸ إيقاف' : '▶ تشغيل'}</button></div>
       ${on || PROVS.some((P) => pv(P.id).rows.length) ? rows : '<div class="s">اضغط «▶ تشغيل» — كل جولة يختار Claude وGPT-4.1 وDeepSeek أرقامهم للجولة الجاية.</div>'}
@@ -487,7 +503,8 @@
         const pre = null;
         const p = parseBody(ev.body, ev.url); p.seq = seq; applyParsed(p);
         const fresh = noteLive(ev, before, pre ? pre.slice() : null);
-        if (fresh) { scoreClaim(live.last.n, live.last.t); live.last.ext = scoreExt(live.last.n, live.last.t); askExt(); }
+        if (fresh) { scoreClaim(live.last.n, live.last.t); live.last.ext = scoreExt(live.last.n, live.last.t); }
+        if (state.spins.length !== before) askExt(); // at once: the next round opens ~13 s after the result
         if (fresh) {
           if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
           render(); // at once: the outcome is already known while the wheel still spins
@@ -991,7 +1008,7 @@ ${rawHtml || '<p class="muted">لا شيء.</p>'}
   .tp-prov{margin:6px 0;padding-top:6px;border-top:1px dashed #2b3d66}
   .tp-prov .nm{display:flex;justify-content:space-between;font-weight:700;font-size:12px;margin-bottom:4px}
   .tp-prov .sc{font-weight:400;color:#9fb0d0;font-size:11px}
-  .tp-pick .s.bad{color:#f87171;font-size:11px}
+  .tp-pick .s.bad{color:#f87171;font-size:11px}.tp-pick .s.good{color:#34d399}
   .tp-pick .tp-strip{flex-wrap:nowrap}.tp-pick .chip.big{flex:1 1 0;min-width:0;padding:4px 0}
   .tp-exps{display:flex;flex-direction:column;gap:3px;margin-bottom:6px}
   .tp-exp{display:grid;grid-template-columns:118px 1fr 92px;gap:6px;align-items:center;font-size:11px;color:#9fb0cc}
