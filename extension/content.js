@@ -275,6 +275,40 @@
     if (store) { try { store.remove(SKEY); } catch (e) { /* ignore */ } }
     render();
   }
+  // Early result. The game server answers the bet with its outcome at once; the
+  // wheel animation only plays it back afterwards. Show it the moment it lands,
+  // and time how long before the game itself refreshes the balance (end of spin).
+  const live = { last: null, leads: [] };
+  const BAL_DONE = /"target"\s*:\s*"\w*Balance\w*"|balanceUpdate/i;
+  function betInfo(body) {
+    const s = String(body); const i = s.indexOf('"betResult"'); if (i < 0) return null;
+    const j = s.indexOf('"finishedRound"', i); const b = s.slice(i, j > i ? j : i + 4000);
+    const num = (re) => { const m = b.match(re); return m ? Number(m[1]) : null; };
+    return { amount: num(/"amount"\s*:\s*(-?[\d.]+)/), win: num(/"winAmount"\s*:\s*(-?[\d.]+)/), markets: [...b.matchAll(/"name"\s*:\s*"([^"]{1,40})"/g)].map((m) => m[1]).slice(0, 6) };
+  }
+  function noteLive(ev, before, pre) {
+    const now = Date.now(); const host = T.hostOf(ev.url || '') || '?'; const L = live.last;
+    if (L && L.lead == null && host === L.host && now - L.t >= 300 && now - L.t < 20000 && BAL_DONE.test(String(ev.body))) {
+      L.lead = now - L.t; live.leads.push(L.lead); if (live.leads.length > 2000) live.leads.shift();
+    }
+    const added = state.spins.length - before; if (added <= 0) return false;
+    const bet = betInfo(ev.body);
+    if (added > 3 && !bet) return false; // a history list on page open, not a fresh result
+    const n = state.spins[state.spins.length - 1];
+    live.last = { n, t: now, host, bet, lead: null, pre: added === 1 && pre ? pre : null };
+    return true;
+  }
+  function liveSection() {
+    const L = live.last; if (!L) return '';
+    const fresh = Date.now() - L.t < 12000;
+    const lead = L.lead != null ? `سبقت تحديث الرصيد (نهاية العجلة) بـ ${(L.lead / 1000).toFixed(1)} ث` : fresh ? 'العجلة لسّا تدور…' : '';
+    const b = L.bet;
+    const bet = b ? `رهانك ${esc(b.markets.join(' + ') || '—')} ${money(b.amount)} ← ${b.win > 0 ? 'ربح ' + money(b.win) : 'خسارة'}` : '';
+    const ai = L.pre ? `توقّع الذكاء قبل الرهان ${L.pre.join(', ')} ${L.pre.includes(L.n) ? '✓' : '✗'}` : '';
+    const avg = live.leads.length ? live.leads.reduce((x, y) => x + y, 0) / live.leads.length : null;
+    const line = [lead, bet, ai, avg != null ? `المتوسط ${(avg / 1000).toFixed(1)} ث في ${live.leads.length} جولة` : ''].filter(Boolean).join(' · ');
+    return `<div class="tp-live${fresh ? ' fresh' : ''}"><div class="hd"><span>🎯 نتيجة الجولة وصلت</span><span class="chip big ${T.colorOf(L.n)}">${esc(L.n)}</span></div>${line ? `<div class="s">${line}</div>` : ''}</div>`;
+  }
   // Text frames are capped at 8 KB; binary (base64) frames are kept whole so they still decode.
   const rawCap = (b) => (b.startsWith('[binary ') ? b.slice(0, 20000) : b.slice(0, 12000));
   function ingest(ev) {
@@ -288,7 +322,15 @@
       if (dq.length > 250) dq.shift();
       const seq = noteHashes(ev.body);
       state.raw[0].seq = seq;
-      if (state.loaded) { const p = parseBody(ev.body, ev.url); p.seq = seq; applyParsed(p); } // before load, reparseAll replays it
+      if (state.loaded) { // before load, reparseAll replays it
+        const before = state.spins.length;
+        const pre = state.ai && !state.aiPending && state.ai.n ? (aiReport() || {}).top : null;
+        const p = parseBody(ev.body, ev.url); p.seq = seq; applyParsed(p);
+        if (noteLive(ev, before, pre ? pre.slice() : null) && !(root && root.activeElement && root.activeElement.tagName === 'INPUT')) {
+          if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
+          render(); // at once: the outcome is already known while the wheel still spins
+        }
+      }
       state.events.unshift({ kind: ev.kind, url: ev.url || '', body: String(ev.body).slice(0, 400), t: Date.now() });
     } else if (ev.kind !== 'ready') {
       state.events.unshift({ kind: ev.kind, url: ev.url || '', body: '', t: Date.now() });
@@ -515,6 +557,7 @@
         <div class="tp-card"><div class="k">الصافي قبل/بعد</div><div class="v ${net !== null && net < 0 ? 'bad' : 'good'}">${net === null ? '—' : (net >= 0 ? '+' : '−') + money(Math.abs(net))}</div></div>
       </div>
 
+      ${liveSection()}
       <div class="tp-strip">${last.length ? last.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('') : '<span class="tp-muted">بانتظار أول دورة…</span>'}</div>
       ${!state.spins.length ? noSpinsHint() : ''}
 
@@ -642,6 +685,13 @@ ${(() => {
 <table><tr><td class="k">جولات مفحوصة</td><td dir="ltr">${f.n}</td></tr><tr><td class="k">البصمة مطابقة (SHA-512)</td><td dir="ltr">${f.hashOk}/${f.n}</td></tr><tr><td class="k">resultKey يطابق الرقم</td><td dir="ltr">${f.n - f.keyBad}/${f.n}</td></tr><tr><td class="k">البصمة وصلت قبل الرهان</td><td dir="ltr">${f.pre}/${f.n}</td></tr></table>`;
 })()}
 
+${(() => {
+  if (!live.leads.length) return '';
+  const a = live.leads; const avg = a.reduce((x, y) => x + y, 0) / a.length;
+  return `<h2>٢-هـ. توقيت النتيجة</h2>
+<p>في ${a.length} جولة وصلت النتيجة لمتصفح اللاعب مع ردّ الخادم على رهانه، قبل أن تحدّث اللعبة الرصيد (نهاية دوران العجلة) بمتوسط ${(avg / 1000).toFixed(1)} ث (أقل ${(Math.min(...a) / 1000).toFixed(1)}، أكثر ${(Math.max(...a) / 1000).toFixed(1)}). أي أن النتيجة محسومة لحظة معالجة الرهان، ودوران العجلة بعدها عرض لنتيجة معروفة.</p>`;
+})()}
+
 <h2>٣. من أين تُحمَّل اللعبة</h2>
 <p class="${providerSeen ? 'good' : casinoServes ? 'bad' : ''}">${esc(originVerdict)}</p>
 <table><thead><tr><th>الخادم</th><th>التصنيف</th><th>عدد الطلبات</th></tr></thead><tbody>${hostsHtml || '<tr><td colspan="3">—</td></tr>'}</tbody></table>
@@ -688,6 +738,11 @@ ${rawHtml || '<p class="muted">لا شيء.</p>'}
   .tp-card .s{font-size:10.5px;color:#8ea0bd;direction:ltr;text-align:right}
   .tp-card .v.good{color:#34d399}.tp-card .v.bad{color:#f87171}
   .tp-strip{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+  .tp-live{padding:8px 10px;border-radius:10px;margin-bottom:10px;border:1px solid #39456a;background:#111a2e}
+  .tp-live.fresh{border-color:#f59e0b;background:#2a1f08}
+  .tp-live .hd{display:flex;align-items:center;justify-content:space-between;font-weight:700}
+  .tp-live .s{font-size:11px;color:#9fb0d0;margin-top:4px}
+  .chip.big{font-size:20px;min-width:40px;padding:4px 10px}
   .chip{min-width:22px;text-align:center;padding:2px 6px;border-radius:6px;font-weight:700;direction:ltr}
   .chip.red{background:#7f1d1d;color:#fff}.chip.black{background:#1f2937;color:#fff;border:1px solid #39456a}.chip.green{background:#065f46;color:#fff}
   .tp-verdict{padding:9px 11px;border-radius:10px;margin-bottom:10px;border:1px solid}
