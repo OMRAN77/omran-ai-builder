@@ -3067,6 +3067,9 @@ Object.assign(I18N.en, {"editApplied": "Changes applied to the design ({n}).", "
 /* v-hw-resubmit-2 — «أفكار بلا صورة» في الديكور: العنوان ونائب الفكرة والزرّ كانت بلا مفتاح فتظهر إنجليزيّة (١٤ لغة) */
 Object.assign(I18N.ar, {"decorIdeasTitlePoster":"أفكار بلا صورة — اضغط على المكان في الصورة أو اكتب ما تريد","decorIdeaPh":"مثال: مجلس عربي فخم لعشرين شخصًا","decorIdeaGo":"أعطني أفكارًا"});
 Object.assign(I18N.en, {"decorIdeasTitlePoster":"Ideas without a photo — tap a place in the image or describe what you want","decorIdeaPh":"e.g. a luxurious Arabic majlis for twenty guests","decorIdeaGo":"Give me ideas"});
+/* v-play-invite — بطاقة دعوة مختبري الاختبار المغلق في Google Play لمتصفّح أندرويد (١٤ لغة) */
+Object.assign(I18N.ar, {"playTestTitle": "جرّب تطبيقنا على Google Play قبل الجميع", "playTestHint": "خطوتان بحساب Google نفسه الذي في جوّالك، ثمّ أبقِ التطبيق مثبّتًا ١٤ يومًا لنستطيع نشره.", "playTestStep1": "١. انضمّ للمختبرين", "playTestStep2": "٢. فعّل الاختبار وثبّت"});
+Object.assign(I18N.en, {"playTestTitle": "Try our app on Google Play before everyone", "playTestHint": "Two steps with the same Google account as on your phone, then keep the app installed for 14 days so we can publish it.", "playTestStep1": "1. Join the testers", "playTestStep2": "2. Opt in and install"});
 /* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
 /* v-opt-xl (طلب عمران: «في الديكور كلهم» بغير لغتهم): جدول __OPT_XL يترجم
