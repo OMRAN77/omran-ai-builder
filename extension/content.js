@@ -51,6 +51,9 @@
     fair: { seen: new Set(), rows: [] },
     ai: null,
     aiPending: false,
+    claim: { cur: null, rows: [] }, // «اختبار تطبيق توقّع»: numbers locked before a round, scored on its result
+    claimDraft: '',
+    claimErr: '',
     stake: 0,           // amount per number for the AI's 3-number pick (what-if only; nothing is bet)
   };
   const MAX_EVENTS = 40;
@@ -234,19 +237,21 @@
   const store = isExt && chrome.storage && chrome.storage.local ? chrome.storage.local : null;
   const SKEY = 'taryam:' + location.hostname;
   let persistTimer = null;
+  function persistNow() {
+    if (!store || !state.loaded || !isTop) return;
+    try {
+      store.set({ [SKEY]: {
+        v: 1, spins: state.spins.slice(-6000), seen: [...state.seenRounds].slice(-6000), snaps: state.snaps,
+        idSource: state.idSource, idlessSrc: state.idlessSrc, forcedSrc: state.forcedSrc, fieldResult: state.fieldMap.result,
+        fieldMap: state.fieldMap, wheel: state.wheel, stake: state.stake, claim: state.claim, startBalance: state.startBalance, balance: state.balance,
+        startedAt: state.startedAt.toISOString(),
+      } });
+    } catch (e) { /* storage full or context gone — keep running */ }
+  }
   function schedulePersist() {
     if (!store || !state.loaded || !isTop) return;
-    clearTimeout(persistTimer);
-    persistTimer = setTimeout(() => {
-      try {
-        store.set({ [SKEY]: {
-          v: 1, spins: state.spins.slice(-6000), seen: [...state.seenRounds].slice(-6000), snaps: state.snaps,
-          idSource: state.idSource, idlessSrc: state.idlessSrc, forcedSrc: state.forcedSrc, fieldResult: state.fieldMap.result,
-          fieldMap: state.fieldMap, wheel: state.wheel, stake: state.stake, startBalance: state.startBalance, balance: state.balance,
-          startedAt: state.startedAt.toISOString(),
-        } });
-      } catch (e) { /* storage full or context gone — keep running */ }
-    }, 700);
+    if (persistTimer) return; // throttle, not debounce: a busy feed must not starve the save
+    persistTimer = setTimeout(() => { persistTimer = null; persistNow(); }, 700);
   }
   function loadSaved() {
     const done = (saved) => {
@@ -259,6 +264,7 @@
         if (saved.fieldMap) state.fieldMap = { result: saved.fieldMap.result || '', balance: saved.fieldMap.balance || '' };
         if (saved.wheel) state.wheel = saved.wheel;
         if (Number(saved.stake) > 0) state.stake = Number(saved.stake);
+        if (saved.claim && Array.isArray(saved.claim.rows)) state.claim = { cur: saved.claim.cur && Array.isArray(saved.claim.cur.nums) ? saved.claim.cur : null, rows: saved.claim.rows.filter((r) => r && Array.isArray(r.nums)) };
         state.forcedSrc = saved.forcedSrc || null;
         if (saved.startedAt) { const d = new Date(saved.startedAt); if (!isNaN(d)) state.startedAt = d; }
       }
@@ -272,7 +278,7 @@
   function resetAll() {
     aiJob++;
     Object.assign(state, { spins: [], events: [], raw: [], seenRounds: new Set(), startBalance: null, balance: null, startedAt: new Date(),
-      snaps: {}, sources: new Map(), diag: new Map(), fair: { seen: new Set(), rows: [] }, idSource: false, idlessSrc: null, srcInfo: new Map(), primaryT: 0, lastSpinT: 0, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false });
+      snaps: {}, sources: new Map(), diag: new Map(), fair: { seen: new Set(), rows: [] }, idSource: false, idlessSrc: null, srcInfo: new Map(), primaryT: 0, lastSpinT: 0, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false, claim: { cur: null, rows: [] }, claimDraft: '', claimErr: '' });
     state.hosts.clear();
     if (store) { try { store.remove(SKEY); } catch (e) { /* ignore */ } }
     render();
@@ -300,6 +306,66 @@
     const tg = String(ev.body).match(/"(?:target|event|type|evt|cmd|action)"\s*:\s*"(\w{3,40})"/);
     live.last = { n, t: now, host, bet, lead: null, pre: added === 1 && pre ? pre : null, msg: tg ? tg[1] : (ev.kind || 'ws') };
     return true;
+  }
+  // «اختبار تطبيق توقّع»: lock any app's numbers BEFORE the round; the first fresh
+  // result from the server after the lock scores them. Chance per round = k / pockets;
+  // the evidence is the exact Poisson-binomial upper tail of the hit count.
+  const CLAIM_MIN = 50;
+  function parseNums(txt) {
+    const s = String(txt || '').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+    const out = [];
+    for (const m of s.match(/\d{1,2}/g) || []) { const n = Number(m); if (n <= 36 && !out.includes(n)) out.push(n); }
+    return out;
+  }
+  function lockClaim() {
+    const nums = parseNums(state.claimDraft);
+    if (!nums.length || nums.length > 18) { state.claimErr = 'اكتب من ١ إلى ١٨ رقم بين ٠ و٣٦'; render(); return; }
+    state.claim.cur = { nums, t: Date.now() };
+    state.claimDraft = ''; state.claimErr = '';
+    persistNow(); render(); // saved at once: the lock time is the evidence
+  }
+  function scoreClaim(n, t) {
+    const c = state.claim.cur; if (!c || !(t > c.t)) return;
+    const K = state.wheel === 'american' ? 38 : 37;
+    state.claim.rows.push({ nums: c.nums, n, hit: c.nums.includes(n), t0: c.t, t1: t, K });
+    if (state.claim.rows.length > 5000) state.claim.rows.shift();
+    state.claim.cur = null; _claimCache = null; schedulePersist();
+  }
+  let _claimCache = null;
+  function claimStats() {
+    const rows = state.claim.rows;
+    if (_claimCache && _claimCache.R === rows.length && _claimCache.last === rows[rows.length - 1]) return _claimCache;
+    let H = 0, E = 0, units = 0, net = 0; let dist = new Float64Array(1); dist[0] = 1;
+    for (const r of rows) {
+      const k = r.nums.length, p = k / (r.K || 37);
+      E += p; units += k; if (r.hit) { H++; net += 36 - k; } else net -= k;
+      const nd = new Float64Array(dist.length + 1);
+      for (let i = 0; i < dist.length; i++) { nd[i] += dist[i] * (1 - p); nd[i + 1] += dist[i] * p; }
+      dist = nd;
+    }
+    let pv = 0; for (let i = H; i < dist.length; i++) pv += dist[i];
+    _claimCache = { R: rows.length, last: rows[rows.length - 1], H, E, p: Math.min(1, Math.max(0, pv)), net, units };
+    return _claimCache;
+  }
+  function claimVerdict(c) {
+    if (!c.R) return { cls: 'warn', text: 'اكتب أرقام التطبيق واضغط «ثبّت» قبل الجولة — الإضافة تقارنها بالنتيجة لحالها.' };
+    if (c.R < CLAIM_MIN) return { cls: 'warn', text: `يقيس — ${c.R}/${CLAIM_MIN} جولة قبل الحكم` };
+    if (c.p < 0.01 && c.H > c.E) return { cls: 'bad', text: '⚠ التطبيق يتوقّع أفضل من الصدفة بفرق مؤكّد — وثّقه للجنة' };
+    return { cls: 'good', text: 'التطبيق ما يتوقّع: إصابته على قد الصدفة — ما في دليل إنه يعرف الرقم' };
+  }
+  const hms = (t) => new Date(t).toTimeString().slice(0, 8);
+  function claimSection() {
+    const c = claimStats(); const v = claimVerdict(c); const cur = state.claim.cur;
+    const chips = (a) => a.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('');
+    const last = state.claim.rows[state.claim.rows.length - 1];
+    const st = state.stake > 0 ? state.stake : 1;
+    const top = cur
+      ? `<div class="s">مثبّتة الساعة <b dir="ltr">${hms(cur.t)}</b> — تنتظر نتيجة الجولة <button class="tp-cbtn" id="tp-claim-cancel">إلغاء</button></div><div class="tp-strip">${chips(cur.nums)}</div>`
+      : `<div class="tp-crow"><input id="tp-claim" value="${esc(state.claimDraft)}" placeholder="أرقام التطبيق، مثلًا 7 12 25" inputmode="numeric"><button class="tp-btn" id="tp-claim-lock">ثبّت</button></div>`;
+    return `<div class="tp-claim"><div class="hd">🧪 اختبار تطبيق توقّع</div>${top}
+      ${state.claimErr ? `<div class="s bad">${esc(state.claimErr)}</div>` : ''}
+      ${last ? `<div class="s">آخر جولة: ${last.nums.join(', ')} ← طلع <b>${esc(last.n)}</b> ${last.hit ? '✓' : '✗'}</div>` : ''}
+      <div class="tp-verdict ${v.cls}" style="margin:6px 0 0">${v.text}${c.R ? `<div class="s">إصابة ${c.H}/${c.R} (${pct(c.H / c.R)}) مقابل صدفة ${pct(c.E / c.R)} · p=${pFmt(c.p)} · لو راهنت ${money(st)} على كل رقم: ${c.net * st >= 0 ? '+' : '−'}${money(Math.abs(c.net * st))}</div>` : ''}</div></div>`;
   }
   function liveSection() {
     const L = live.last; if (!L) return '';
@@ -332,7 +398,9 @@
         const before = state.spins.length;
         const pre = state.ai && !state.aiPending && state.ai.n ? (aiReport() || {}).pick : null;
         const p = parseBody(ev.body, ev.url); p.seq = seq; applyParsed(p);
-        if (noteLive(ev, before, pre ? pre.slice() : null) && !(root && root.activeElement && root.activeElement.tagName === 'INPUT')) {
+        const fresh = noteLive(ev, before, pre ? pre.slice() : null);
+        if (fresh) scoreClaim(live.last.n, live.last.t);
+        if (fresh && !(root && root.activeElement && root.activeElement.tagName === 'INPUT')) {
           if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
           render(); // at once: the outcome is already known while the wheel still spins
         }
@@ -574,6 +642,7 @@
       </div>
 
       ${liveSection()}
+      ${claimSection()}
       <div class="tp-strip">${last.length ? last.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('') : '<span class="tp-muted">بانتظار أول دورة…</span>'}</div>
       ${!state.spins.length ? noSpinsHint() : ''}
 
@@ -613,6 +682,15 @@
       </div>
       <div class="tp-foot">يقرأ جلستك فقط — لا يعدّل أي طلب أو نتيجة أو رصيد.</div>`;
 
+    const ci = root.getElementById('tp-claim');
+    if (ci) {
+      ci.addEventListener('input', () => { state.claimDraft = ci.value; });
+      ci.addEventListener('keydown', (e) => { if (e.key === 'Enter') { state.claimDraft = ci.value; ci.blur(); lockClaim(); } });
+    }
+    const cl = root.getElementById('tp-claim-lock');
+    if (cl) cl.addEventListener('click', () => { if (ci) state.claimDraft = ci.value; lockClaim(); });
+    const cc = root.getElementById('tp-claim-cancel');
+    if (cc) cc.addEventListener('click', () => { state.claim.cur = null; schedulePersist(); render(); });
     const stk = root.getElementById('tp-stake');
     if (stk) {
       const setStake = () => { const v = Number(String(stk.value).replace(',', '.')); state.stake = Number.isFinite(v) && v > 0 ? v : 0; schedulePersist(); stk.blur(); render(); };
@@ -714,6 +792,17 @@ ${(() => {
 <p>في ${a.length} جولة وصلت النتيجة لمتصفح اللاعب مع ردّ الخادم على رهانه، قبل أن تحدّث اللعبة الرصيد (نهاية دوران العجلة) بمتوسط ${(avg / 1000).toFixed(1)} ث (أقل ${(Math.min(...a) / 1000).toFixed(1)}، أكثر ${(Math.max(...a) / 1000).toFixed(1)}). أي أن النتيجة محسومة لحظة معالجة الرهان، ودوران العجلة بعدها عرض لنتيجة معروفة.</p>`;
 })()}
 
+${(() => {
+  const c = claimStats(); if (!c.R) return '';
+  const v = claimVerdict(c); const all = state.claim.rows; const show = all.slice(-500); const off = all.length - show.length;
+  const trs = show.map((r, i) => `<tr><td>${off + i + 1}</td><td dir="ltr">${new Date(r.t0).toLocaleString('en-GB')}</td><td dir="ltr">${new Date(r.t1).toLocaleTimeString('en-GB')}</td><td dir="ltr">${r.nums.join(', ')}</td><td dir="ltr">${r.n}</td><td>${r.hit ? '✓' : '✗'}</td></tr>`).join('');
+  return `<h2>٢-و. اختبار تطبيق توقّع</h2>
+<p class="muted">قبل كل جولة تُثبَّت أرقام التطبيق مع وقتها، ثم تُقارَن آليًّا بأول نتيجة تصل من خادم اللعبة بعد التثبيت — لا يمكن تعديلها بعد التثبيت. احتمال الصدفة لكل جولة = عدد الأرقام ÷ عدد خانات العجلة، والدليل ذيل بواسون-ذي الحدّين الدقيق لعدد الإصابات. الحكم يبدأ من ${CLAIM_MIN} جولة.</p>
+<p class="${v.cls === 'bad' ? 'bad' : v.cls === 'good' ? 'good' : ''}">${esc(v.text)}</p>
+<p class="muted">إصابة ${c.H}/${c.R} (${(100 * c.H / c.R).toFixed(1)}٪) مقابل صدفة ${(100 * c.E / c.R).toFixed(1)}٪ · p=${pFmt(c.p)} · صافي رهان وحدة على كل رقم: ${c.net >= 0 ? '+' : ''}${c.net} من ${c.units} وحدة</p>
+<table><thead><tr><th>#</th><th>وقت التثبيت</th><th>وصول النتيجة</th><th>أرقام التطبيق</th><th>النتيجة</th><th>إصابة</th></tr></thead><tbody>${trs}</tbody></table>`;
+})()}
+
 <h2>٣. من أين تُحمَّل اللعبة</h2>
 <p class="${providerSeen ? 'good' : casinoServes ? 'bad' : ''}">${esc(originVerdict)}</p>
 <table><thead><tr><th>الخادم</th><th>التصنيف</th><th>عدد الطلبات</th></tr></thead><tbody>${hostsHtml || '<tr><td colspan="3">—</td></tr>'}</tbody></table>
@@ -779,6 +868,12 @@ ${rawHtml || '<p class="muted">لا شيء.</p>'}
   .tp-verdict.warn{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.35);color:#fbbf24}
   .tp-verdict .s{color:#9fb0cc;font-size:11px;margin-top:4px;direction:ltr;text-align:right}
   .tp-sec{font-size:11px;color:#8ea0bd;margin:12px 0 6px;font-weight:700}
+  .tp-claim{padding:8px 10px;border-radius:10px;margin-bottom:10px;border:1px solid #7c3aed;background:#1a1033}
+  .tp-claim .hd{font-weight:700;margin-bottom:6px}
+  .tp-claim .s{font-size:11px;color:#b9a8e0;margin-top:3px}
+  .tp-claim .s.bad{color:#f87171}
+  .tp-crow{display:flex;gap:6px;align-items:center}
+  .tp-crow input{flex:1;min-width:0}
   .tp-origin{padding:8px 10px;border-radius:9px;border:1px solid;margin-bottom:6px}
   .tp-origin.good{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.35);color:#34d399}
   .tp-origin.bad{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.35);color:#f87171}
