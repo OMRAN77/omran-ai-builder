@@ -1,20 +1,45 @@
 {
   "manifest_version": 3,
   "name": "TARYAM — فاحص الكازينو المباشر",
-  "version": "1.0.0",
-  "description": "يقرأ جلستك داخل الكازينو مباشرة: جولات الروليت، الرصيد قبل/بعد، ومن أين تُحمَّل اللعبة — لعرض اللجنة. يقرأ فقط، لا يعدّل شيئًا.",
+  "version": "1.1.0",
+  "description": "يقرأ جلستك في الكازينو: جولات الروليت، الرصيد قبل/بعد، مصدر اللعبة، وذكاء اصطناعي يقيس قابلية التوقّع. يقرأ فقط.",
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["core.js", "predict.js", "content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "inpage.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "core.js",
+        "predict.js",
+        "ai.js",
+        "content.js"
+      ],
       "run_at": "document_start",
       "all_frames": true
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["inpage.js"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "inpage.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
+  ],
+  "permissions": [
+    "storage"
   ]
 }
