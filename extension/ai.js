@@ -187,7 +187,13 @@
     const E = experts.length;
     let w = new Float64Array(E).fill(1 / E);
     const hist = [];
-    const st = { n: 0, hits: 0, G: 0, maxG: 0, expLoss: new Float64Array(E), expHits: new Float64Array(E) };
+    const st = { n: 0, hits: 0, G: 0, maxG: 0, expLoss: new Float64Array(E), expHits: new Float64Array(E), ctxHits: 0 };
+    // "Per-round" view: what the context models (transitions, wheel sector, neural
+    // net) expect AFTER THE LAST NUMBER beyond plain frequency — the lift over the
+    // hot-numbers baseline. It changes every round; its hit rate is tracked the same
+    // honest way (scored before the spin is seen).
+    const CTX = experts.map((e, i) => (['markov1', 'markov2', 'sector', 'mlp'].includes(e.id) ? i : -1)).filter((i) => i >= 0);
+    const HOT = experts.findIndex((e) => e.id === 'hot');
     let cache = null;
 
     function mixture() {
@@ -200,6 +206,14 @@
       return cache;
     }
     const topOf = (p, kk) => [...p.keys()].sort((a, b) => p[b] - p[a] || a - b).slice(0, kk);
+    function ctxTop(parts) {
+      let ws = 0; const q = new Float64Array(N);
+      for (const i of CTX) { ws += w[i]; for (let n = 0; n < N; n++) q[n] += w[i] * parts[i][n]; }
+      if (!(ws > 0)) return topOf(parts[HOT], k);
+      const lift = new Float64Array(N);
+      for (let n = 0; n < N; n++) lift[n] = (q[n] / ws) / Math.max(parts[HOT][n], 1e-12);
+      return [...lift.keys()].sort((a, b) => lift[b] - lift[a] || q[b] - q[a] || a - b).slice(0, k);
+    }
 
     // Score the standing prediction against the real spin, THEN learn from it.
     function observe(x) {
@@ -207,6 +221,7 @@
       if (!Number.isInteger(x) || x < 0 || x >= N) return;
       const { p, parts } = mixture();
       if (topOf(p, k).includes(x)) st.hits++;
+      if (hist.length && ctxTop(parts).includes(x)) st.ctxHits++;
       st.G += Math.log(Math.max(p[x], 1e-300) * N);
       if (st.G > st.maxG) st.maxG = st.G;
       let s = 0;
@@ -222,8 +237,10 @@
     }
 
     function report() {
-      const { p } = mixture();
+      const { p, parts } = mixture();
       const top = topOf(p, k);
+      const ctx = hist.length ? ctxTop(parts) : [];
+      const ctxN = Math.max(0, st.n - 1);
       const mass = top.reduce((a, n) => a + p[n], 0);
       const chance = k / N;
       const pTop = binomUpper(st.hits, st.n, chance);
@@ -237,6 +254,7 @@
         hits: st.hits, rate: st.n ? st.hits / st.n : 0, pTop,
         G: st.G, bitsPerSpin: st.n ? st.G / st.n / Math.LN2 : 0, pAnytime,
         enough, predictable, minTrials, leader: rank[0], experts: rank,
+        ctxTop: ctx, ctxHits: st.ctxHits, ctxN, ctxRate: ctxN ? st.ctxHits / ctxN : 0, ctxP: binomUpper(st.ctxHits, ctxN, chance),
       };
     }
 

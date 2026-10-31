@@ -426,6 +426,9 @@
     return head + `
       <div class="tp-strip">${r.top.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('')}</div>
       <div class="tp-muted" style="margin-bottom:6px">ثقة النموذج في الخمسة ${pct(r.mass)} مقابل صدفة ${pct(r.chance)} · القائد: ${esc(r.leader.name)}</div>
+      ${r.ctxTop && r.ctxTop.length ? `<div class="tp-muted">حسب آخر رقم (يتغيّر كل جولة):</div>
+      <div class="tp-strip">${r.ctxTop.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('')}</div>
+      <div class="tp-muted" style="margin-bottom:6px">إصابة ${pct(r.ctxRate)} (${r.ctxHits}/${r.ctxN}) مقابل ${pct(r.chance)} · p=${pFmt(r.ctxP)}</div>` : ''}
       <div class="tp-verdict ${cls}">${verdict}
         <div class="s">hit ${pct(r.rate)} (${r.hits}/${r.n}) vs ${pct(r.chance)} · p(live)=${pFmt(r.pAnytime)} · ${r.bitsPerSpin >= 0 ? '+' : ''}${r.bitsPerSpin.toFixed(3)} bit/spin</div>
       </div>
@@ -625,7 +628,8 @@ ${(() => {
   const v = r.predictable ? 'متوقّعة: الذكاء الاصطناعي تفوّق على الصدفة بفرق مؤكّد — مؤشّر خلل في المولّد أو العجلة يستحق التوثيق.' : r.enough ? 'غير متوقّعة: الذكاء الاصطناعي لم يتفوّق على الصدفة — لا يمكن التنبؤ بالجولة القادمة، وأي ادّعاء ببوت توقّع باطل.' : `القياس جارٍ: ${r.n} جولة من ${r.minTrials} اللازمة للحكم.`;
   const rows = r.experts.map((e) => `<tr><td>${esc(e.name)}</td><td dir="ltr">${(e.weight * 100).toFixed(1)}%</td><td dir="ltr">${(e.hitRate * 100).toFixed(1)}%</td><td dir="ltr">${(e.avgLoss / Math.LN2).toFixed(3)}</td></tr>`).join('');
   return method + `<p class="${r.predictable ? 'bad' : 'good'}">${v}</p>
-<p class="muted">إصابة أقوى ٥: ${(r.rate * 100).toFixed(1)}٪ (${r.hits}/${r.n}) مقابل صدفة ${(r.chance * 100).toFixed(1)}٪ · p (ذو الحدّين)=${pFmt(r.pTop)} · p (مستمر)=${pFmt(r.pAnytime)} · ${r.bitsPerSpin.toFixed(4)} bit/spin (الصفر = لا معلومة) · القائد: ${esc(r.leader.name)}</p>
+<p class="muted">إصابة أقوى ٥: ${(r.rate * 100).toFixed(1)}٪ (${r.hits}/${r.n}) مقابل صدفة ${(r.chance * 100).toFixed(1)}٪ · p (ذو الحدّين)=${pFmt(r.pTop)} · p (مستمر)=${pFmt(r.pAnytime)} · ${r.bitsPerSpin.toFixed(4)} bit/spin (الصفر = لا معلومة) · القائد: ${esc(r.leader.name)}</p>${r.ctxN ? `
+<p class="muted">حسب آخر رقم: ${r.ctxTop.join(', ')} · إصابة ${(r.ctxRate * 100).toFixed(1)}٪ (${r.ctxHits}/${r.ctxN}) · p=${pFmt(r.ctxP)}</p>` : ''}
 <table><thead><tr><th>النموذج</th><th>الوزن</th><th>إصابة أقوى ٥</th><th>الخسارة (bit/جولة، الصدفة = 5.209)</th></tr></thead><tbody>${rows}</tbody></table>`;
 })()}
 
