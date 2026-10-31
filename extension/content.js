@@ -391,8 +391,8 @@
   // roundFinished from the game server scores it. Nothing is typed by hand, so every
   // row is a fixed claim made before its round began, then the server's own result.
   const CRASH_TARGETS = [1.1, 1.2, 1.5, 2];
-  const xFmt = (x) => '×' + Number(x).toFixed(2);
-  const xB = (x) => `<b dir="ltr">${xFmt(x)}</b>`; // keeps «×1.10» in order inside Arabic text
+  const xFmt = (x) => Number(x).toFixed(2) + 'x';
+  const xB = (x) => `<b dir="ltr">${xFmt(x)}</b>`; // keeps «1.10x» in order inside Arabic text
   function crashFeed(body) {
     const s = String(body);
     if (s.indexOf('"channelName":"game_') < 0 || !/"command"\s*:\s*"(roundFinished|gameUpdate)"/.test(s)) return false;
@@ -401,7 +401,7 @@
     const id = Number(d.roundId), x = Number(d.result);
     if (!Number.isFinite(id) || !Number.isFinite(x)) return false;
     const C = state.crash; const now = Date.now();
-    C.seen = true;
+    C.seen = true; C.lastT = now;
     if (j.command === 'gameUpdate') { if (Number(d.status) === 2) C.live = { id, x, t: now }; return true; }
     if (j.command !== 'roundFinished' || (C.lastFin && id <= C.lastFin)) return false; // re-sent result
     const cur = C.cur;
@@ -414,25 +414,31 @@
     C.fresh = true; persistNow(); // saved at once: the lock time is the evidence
     return true;
   }
-  function crashStats() {
-    const rows = state.crash.rows; let H = 0, run = 0, best = 0;
+  // Counted per target: a round claimed at ×1.10 is never shown as a ×2.00 hit.
+  const crashRows = (t) => state.crash.rows.filter((r) => r.target === t);
+  function crashStats(t) {
+    const rows = t === undefined ? state.crash.rows : crashRows(t); let H = 0, run = 0, best = 0;
     for (const r of rows) { if (r.ok) { H++; run++; if (run > best) best = run; } else run = 0; }
     return { N: rows.length, H, run, best };
   }
   function crashSection() {
     const C = state.crash; if (!C.seen && !C.rows.length) return '';
-    const st = crashStats(); const cur = C.cur;
+    const st = crashStats(C.target); const cur = C.cur;
     const lv = C.live && cur && C.live.id > cur.after ? C.live : null;
+    const passed = !!(lv && lv.x >= cur.target);
+    const last = C.rows[C.rows.length - 1]; const justDone = last && cur && last.id === cur.after && Date.now() - last.t1 < 6000 ? last : null;
+    const ring = cur ? `<div class="tp-ring${passed || (justDone && justDone.ok) ? ' ok' : justDone ? ' no' : ''}"><div class="n" dir="ltr">${Number(cur.target).toFixed(2)}x</div>
+      <div class="l">${lv ? (passed ? '✅ تعدّت' : `طايرة <b dir="ltr">${xFmt(lv.x)}</b>`) : justDone ? (justDone.ok ? '✅ صح' : '❌ غلط') + ` — طاحت <b dir="ltr">${xFmt(justDone.x)}</b>` : 'الجولة الجاية'}</div></div>` : '';
     const head = cur
       ? `<div class="s">🔒 توقّع الجولة الجاية: <b>بتعدّي</b> ${xB(cur.target)} — مثبّت الساعة <b dir="ltr">${hms(cur.t)}</b> قبل ما تبدا</div>`
       : '<div class="s">ينتظر نهاية الجولة الحالية — بعدها يثبّت أول توقّع لحاله.</div>';
     const flying = lv ? `<div class="s">الجولة طايرة الحين: ${xB(lv.x)} ${lv.x >= cur.target ? '✅ تعدّت' : '⏳'}</div>` : '';
-    const chips = C.rows.slice(-14).map((r) => `<span class="chip ${r.ok ? 'green' : 'red'}" title="${esc(hms(r.t1))}">${esc(Number(r.x).toFixed(2))}</span>`).join('');
+    const chips = crashRows(C.target).slice(-14).map((r) => `<span class="chip ${r.ok ? 'green' : 'red'}" title="${esc(hms(r.t1))}">${esc(Number(r.x).toFixed(2))}</span>`).join('');
     return `<div class="tp-claim"><div class="hd">🎯 تحدّي الطيارة</div>
       <div class="tp-strip">${CRASH_TARGETS.map((t) => `<button class="tp-sbtn${t === C.target ? ' on' : ''}" data-ct="${t}" dir="ltr">${xFmt(t)}</button>`).join('')}
         <button class="tp-cbtn" id="tp-crash-reset">تصفير العدّ</button></div>
-      ${head}${flying}
-      <div class="tp-score">✅ ${st.H} من ${st.N}</div>
+      ${ring}${head}
+      <div class="tp-score">✅ ${st.H} من ${st.N} <span class="s">على ${xB(C.target)}</span></div>
       <div class="s">صح ورا بعض الحين: <b>${st.run}</b> · أطول سلسلة: <b>${st.best}</b></div>
       ${chips ? `<div class="tp-strip" style="margin-top:4px">${chips}</div>` : ''}</div>`;
   }
@@ -777,6 +783,8 @@
     const proxied = hosts.some(([, v]) => v.kind === 'proxied');
     const casinoServes = hosts.some(([, v]) => v.kind === 'casino') && !providerSeen;
     const last = state.spins.slice(-16);
+    // On a crash game (AVI) the roulette cards, AI picks and balance reading do not apply: show the challenge only.
+    const crashMode = !!(state.crash.lastT && Date.now() - state.crash.lastT < 60000 && !state.spins.length);
     const ae = root.activeElement && root.activeElement.tagName === 'INPUT' && root.activeElement.id ? root.activeElement : null;
 
     body.innerHTML = `
@@ -802,7 +810,7 @@
       </div>
 
       ${crashSection()}
-      <div class="tp-cards">
+      ${crashMode ? '' : `<div class="tp-cards">
         <div class="tp-card"><div class="k">دورات مُلتقطة</div><div class="v">${a.n}</div><div class="s">${state.lastSpinT ? 'آخر جولة قبل ' + ago(state.lastSpinT) : '—'}</div></div>
         <div class="tp-card"><div class="k">الرصيد الآن</div><div class="v ${net !== null && net < 0 ? 'bad' : 'good'}">${money(state.balance)}</div><div class="s">قبل: ${money(state.startBalance)}</div></div>
         <div class="tp-card"><div class="k">الصافي قبل/بعد</div><div class="v ${net !== null && net < 0 ? 'bad' : 'good'}">${net === null ? '—' : (net >= 0 ? '+' : '−') + money(Math.abs(net))}</div></div>
@@ -813,7 +821,7 @@
       ${claimSection()}
       <div class="tp-muted">آخر الأرقام اللي طلعت:</div>
       <div class="tp-strip">${last.length ? last.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('') : '<span class="tp-muted">بانتظار أول دورة…</span>'}</div>
-      ${!state.spins.length ? noSpinsHint() : ''}
+      ${!state.spins.length ? noSpinsHint() : ''}`}
 
       <div class="tp-row"><button class="tp-btn wide" id="tp-details">📊 التفاصيل والفحوص ${state.showDetails ? '▴' : '▾'}</button></div>
       ${state.showDetails ? `<div class="tp-details">
@@ -1079,7 +1087,10 @@ ${rawHtml || '<p class="muted">لا شيء.</p>'}
   .tp-sec{font-size:11px;color:#8ea0bd;margin:12px 0 6px;font-weight:700}
   .tp-claim{padding:8px 10px;border-radius:10px;margin-bottom:10px;border:1px solid #7c3aed;background:#1a1033}
   .tp-claim .hd{font-weight:700;margin-bottom:6px}
-  .tp-score{font-size:22px;font-weight:800;color:#34d399;margin-top:6px}
+  .tp-score{font-size:22px;font-weight:800;color:#34d399;margin-top:6px}.tp-score .s{font-size:12px;font-weight:400}
+  .tp-ring{width:150px;height:150px;margin:8px auto 6px;border:5px solid #ef4444;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;color:#dc2626}
+  .tp-ring .n{font-size:34px;font-weight:800}.tp-ring .l{font-size:12px;color:#444;margin-top:2px;text-align:center}
+  .tp-ring.ok{border-color:#10b981;color:#059669}.tp-ring.no{border-color:#7f1d1d;color:#7f1d1d}
   .tp-claim .s{font-size:11px;color:#b9a8e0;margin-top:3px}
   .tp-claim .s.bad{color:#f87171}
   .tp-crow{display:flex;gap:6px;align-items:center}
