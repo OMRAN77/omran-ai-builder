@@ -87,6 +87,13 @@
     const WS = function (url, protocols) {
       const ws = protocols === undefined ? new OrigWS(url) : new OrigWS(url, protocols);
       send({ kind: 'ws-open', url: String(url) });
+      // Copy (never alter) what the game sends — e.g. "start round" / "open cell" — so
+      // the export shows what the player asked and what the server answered, in order.
+      const origWsSend = ws.send;
+      ws.send = function (data) {
+        try { if (typeof data === 'string') send({ kind: 'ws-out', url: String(url), body: clip(data) }); else binaryToText(data).then((body) => send({ kind: 'ws-out', url: String(url), body: clip(body) })).catch(() => {}); } catch (e) { /* ignore */ }
+        return origWsSend.apply(this, arguments);
+      };
       ws.addEventListener('message', (e) => {
         const data = e.data;
         if (typeof data === 'string') { send({ kind: 'ws', url: String(url), body: clip(data) }); return; }

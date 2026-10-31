@@ -485,17 +485,29 @@
       : `كيف وصلت: رسالة <b dir="ltr">${esc(L.msg)}</b> من <b dir="ltr">${esc(L.host)}</b> الساعة <b dir="ltr">${hms}</b> (جولة بدون ردّ رهان)`;
     return `<div class="tp-live${fresh ? ' fresh' : ''}"><div class="hd"><span>🎯 نتيجة الجولة وصلت</span><span class="chip big ${T.colorOf(L.n)}">${esc(L.n)}</span></div>${line ? `<div class="s">${line}</div>` : ''}<div class="s">${how}</div></div>`;
   }
+  // Diagnostic export: per host, each message kind keeps its own last 200 frames, so a
+  // lobby feed that broadcasts every player's bet (hundreds a minute) can no longer
+  // push out the few frames of the player's own game. Bounded per host by count and size.
+  const DIAG_PER_SIG = 200, DIAG_PER_HOST = 4000, DIAG_BYTES = 6e6;
+  const diagSig = (b) => { const m = /"(?:command|target|type|event|action|cmd|method|name|msg)"\s*:\s*"?([\w.:-]{1,40})/.exec(b.slice(0, 400)); return m ? m[1] : b.slice(0, 16); };
+  function diagPush(ev) {
+    const dh = T.hostOf(ev.url || '') || '?';
+    let dq = state.diag.get(dh); if (!dq) { dq = []; dq.sig = new Map(); dq.bytes = 0; state.diag.set(dh, dq); }
+    const body = String(ev.body).slice(0, 20000); const sig = (ev.kind === 'ws-out' ? '>' : '') + diagSig(body);
+    const drop = (i) => { const f = dq.splice(i, 1)[0]; dq.bytes -= f.body.length; dq.sig.set(f.sig, (dq.sig.get(f.sig) || 1) - 1); };
+    if ((dq.sig.get(sig) || 0) >= DIAG_PER_SIG) { const i = dq.findIndex((f) => f.sig === sig); if (i >= 0) drop(i); }
+    dq.push({ t: Date.now(), kind: ev.kind, url: ev.url || '', body, sig }); dq.bytes += body.length; dq.sig.set(sig, (dq.sig.get(sig) || 0) + 1);
+    while (dq.length > DIAG_PER_HOST || dq.bytes > DIAG_BYTES) drop(0);
+  }
   // Text frames are capped at 8 KB; binary (base64) frames are kept whole so they still decode.
   const rawCap = (b) => (b.startsWith('[binary ') ? b.slice(0, 20000) : b.slice(0, 12000));
   function ingest(ev) {
     if (ev.url) noteHost(ev.url);
     if (ev.body) {
+      diagPush(ev);
+      if (ev.kind === 'ws-out') return; // what the page sent: kept for the export only, never parsed as a result
       state.raw.unshift({ kind: ev.kind, url: ev.url || '', body: rawCap(String(ev.body)), t: Date.now() });
       if (state.raw.length > MAX_RAW) state.raw.length = MAX_RAW;
-      const dh = T.hostOf(ev.url || '') || '?';
-      let dq = state.diag.get(dh); if (!dq) { dq = []; state.diag.set(dh, dq); }
-      dq.push({ t: Date.now(), kind: ev.kind, url: ev.url || '', body: String(ev.body).slice(0, 20000) });
-      if (dq.length > 250) dq.shift();
       const seq = noteHashes(ev.body);
       state.raw[0].seq = seq;
       if (state.loaded) { // before load, reparseAll replays it
