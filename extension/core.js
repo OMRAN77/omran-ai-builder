@@ -129,11 +129,13 @@
   const SCALAR_RESULT_KEYS = /^(winningnumber|winning_number|winnumber|winnum|luckynumber|resultnumber|pocket|slotresult)$/;
   function isRoundObj(o) {
     return o && typeof o === 'object' && !Array.isArray(o) &&
-      ('color' in o || 'gameId' in o || 'gameid' in o || 'roundId' in o || 'roundid' in o || 'time' in o);
+      ('color' in o || 'gameId' in o || 'gameid' in o || 'roundId' in o || 'roundid' in o || 'time' in o ||
+        // XML result elements (<gameresult score="17" game="…"/>) may carry no colour
+        (typeof o._tag === 'string' && /result|winning|outcome/i.test(o._tag)));
   }
   // XML <result score="17" color="red"/> carries the pocket in "score".
   function roundNum(o) { return o.result ?? o.number ?? o.outcome ?? o.winningNumber ?? o.winningnumber ?? o.winNumber ?? o.score; }
-  function roundId(o) { return String(o.gameId ?? o.gameid ?? o.roundId ?? o.roundid ?? o.id ?? o.time ?? '') || null; }
+  function roundId(o) { return String(o.gameId ?? o.gameid ?? o.roundId ?? o.roundid ?? o.id ?? (o._tag ? o.game : undefined) ?? o.time ?? '') || null; }
   // Returns round records { n, id }; id lets the caller drop re-sent history.
   function guessNumbers(obj) {
     const out = [];

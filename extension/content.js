@@ -33,6 +33,7 @@
     hosts: new Map(),   // host → { kind, count }
     events: [],         // last raw captured payloads (for display)
     raw: [],            // last raw bodies (newest-first) for re-parsing on remap
+    diag: new Map(),    // host → its own last frames, so one chatty socket cannot evict the rest
     seenRounds: new Set(), // round ids already counted, so re-sent history is not double-counted
     fieldMap: { result: '', balance: '' },
     startedAt: new Date(),
@@ -48,7 +49,7 @@
     aiPending: false,
   };
   const MAX_EVENTS = 40;
-  const MAX_RAW = 400;
+  const MAX_RAW = 1500; // enough history to re-read a whole session when a field is picked later
 
   function noteHost(url) {
     const c = T.classifyHost(url, location.hostname);
@@ -195,16 +196,22 @@
   function resetAll() {
     aiJob++;
     Object.assign(state, { spins: [], events: [], raw: [], seenRounds: new Set(), startBalance: null, balance: null, startedAt: new Date(),
-      snaps: {}, sources: new Map(), idSource: false, idlessSrc: null, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false });
+      snaps: {}, sources: new Map(), diag: new Map(), idSource: false, idlessSrc: null, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false });
     state.hosts.clear();
     if (store) { try { store.remove(SKEY); } catch (e) { /* ignore */ } }
     render();
   }
+  // Text frames are capped at 8 KB; binary (base64) frames are kept whole so they still decode.
+  const rawCap = (b) => (b.startsWith('[binary ') ? b.slice(0, 20000) : b.slice(0, 8000));
   function ingest(ev) {
     if (ev.url) noteHost(ev.url);
     if (ev.body) {
-      state.raw.unshift({ kind: ev.kind, url: ev.url || '', body: String(ev.body).slice(0, 20000), t: Date.now() });
+      state.raw.unshift({ kind: ev.kind, url: ev.url || '', body: rawCap(String(ev.body)), t: Date.now() });
       if (state.raw.length > MAX_RAW) state.raw.length = MAX_RAW;
+      const dh = T.hostOf(ev.url || '') || '?';
+      let dq = state.diag.get(dh); if (!dq) { dq = []; state.diag.set(dh, dq); }
+      dq.push({ t: Date.now(), kind: ev.kind, url: ev.url || '', body: String(ev.body).slice(0, 20000) });
+      if (dq.length > 250) dq.shift();
       if (state.loaded) applyParsed(parseBody(ev.body, ev.url)); // before load, reparseAll replays it
       state.events.unshift({ kind: ev.kind, url: ev.url || '', body: String(ev.body).slice(0, 400), t: Date.now() });
     } else if (ev.kind !== 'ready') {
@@ -314,7 +321,8 @@
     const head = '<div class="tp-sec">🧠 الذكاء الاصطناعي — توقّع الجولة الجاية</div>';
     if (state.aiPending || !state.ai) return head + '<div class="tp-muted">يجهّز النموذج من الجولات المحفوظة…</div>';
     const r = aiReport();
-    if (!r || r.n < 10) return head + `<div class="tp-muted">يتعلّم… يحتاج ١٠ جولات على الأقل (${r ? r.n : 0}).</div>`;
+    if (!r || !r.n) return head + '<div class="tp-verdict warn">التوقّع يطلع هنا بعد ١٠ جولات مُلتقطة — للحين ما وصلت نتائج من الطاولة (٠).</div>';
+    if (r.n < 10) return head + `<div class="tp-muted">يتعلّم… يحتاج ١٠ جولات على الأقل (${r.n}).</div>`;
     const cls = r.predictable ? 'bad' : r.enough ? 'good' : 'warn';
     const verdict = r.predictable
       ? '⚠ نمط حقيقي: الذكاء الاصطناعي يتوقّع أفضل من الصدفة بفرق مؤكّد — خلل في المولّد أو العجلة'
@@ -329,6 +337,42 @@
       </div>
       <div class="tp-exps">${bars}</div>
       <div class="tp-foot">سبعة نماذج (منها شبكة عصبية) تتعلّم مباشرة، وكل توقّع يُسجَّل قبل ظهور نتيجته. الأوزان تتبع أداءها الفعلي؛ على عجلة سليمة تفوز «الصدفة». لا تراهن عليه.</div>`;
+  }
+
+  // No round counted yet: say why, and offer the detected fields right here.
+  function noSpinsHint() {
+    const frames = state.raw.length;
+    if (!frames) return '';
+    fieldsHelp(); // refresh the candidate cache
+    const c = _fcCache.val;
+    if (c.length) return `<div class="tp-verdict warn">ما انقرت نتيجة تلقائيًا — اضغط الحقل اللي فيه رقم الجولة:
+      <div class="tp-strip" style="margin:6px 0 0">${c.slice(0, 5).map((x) => `<button class="tp-cbtn" data-fkey="${esc(x.key)}" title="${esc(x.sample.join(', '))}">${esc(x.key)} · ${x.distinct}</button>`).join('')}</div></div>`;
+    return `<div class="tp-verdict warn">التقطت ${frames} إطار بس ما فيها رقم جولة. افتح طاولة الروليت وخلّ ٣ جولات تمرّ — وإذا بقى صفر اضغط «📦 صدّر الإطارات» وأرسل الملف.</div>`;
+  }
+
+  // Diagnostic export: every host's recent frames in full (tokens/session values
+  // masked), plus what the parser saw — enough to tune the reader to this casino.
+  const SECRET_KEY = '[\\w.-]*(?:token|auth|session|sess|password|passwd|pwd|jwt|secret|signature|sign|cookie|apikey|api_key|bearer|ticket)[\\w.-]*';
+  const RX_JSON_SECRET = new RegExp('("' + SECRET_KEY + '"\\s*:\\s*")([^"]{4,})"', 'gi');
+  const RX_ATTR_SECRET = new RegExp('(\\b' + SECRET_KEY + '\\s*=\\s*["\'])([^"\']{4,})(["\'])', 'gi');
+  const RX_URL_SECRET = new RegExp('([?&]' + SECRET_KEY + '=)([^&#\\s"]{4,})', 'gi');
+  const mask = (s) => String(s).replace(RX_JSON_SECRET, '$1***"').replace(RX_ATTR_SECRET, '$1***$3').replace(RX_URL_SECRET, '$1***');
+  function exportDiag() {
+    const frames = [];
+    for (const [host, q] of state.diag) for (const f of q) frames.push({ host, t: f.t, kind: f.kind, url: mask(f.url), body: mask(f.body) });
+    frames.sort((a, b) => a.t - b.t);
+    const data = {
+      tool: 'TARYAM diag', version: (isExt && chrome.runtime.getManifest ? chrome.runtime.getManifest().version : ''), page: location.hostname,
+      at: new Date().toISOString(), spins: state.spins.length, fieldMap: state.fieldMap, idSource: state.idSource, idlessSrc: state.idlessSrc,
+      sources: [...state.sources.entries()], candidates: T.fieldCandidates(state.raw.map((r) => r.body), { maxBodies: 400 }),
+      hosts: [...state.hosts.entries()], frames,
+    };
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'taryam-frames-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 4000);
   }
 
   function render() {
@@ -360,6 +404,7 @@
         <button class="tp-btn hot" id="tp-report">صدّر تقرير اللجنة</button>
         <button class="tp-btn" id="tp-fields-toggle">ضبط الحقول</button>
       </div>
+      <div class="tp-row"><button class="tp-btn wide" id="tp-diag">📦 صدّر الإطارات (للتشخيص)</button></div>
       <div class="tp-fields" id="tp-fields" style="display:${state.showFields ? 'block' : 'none'}">
         <label>اسم حقل الرقم <input id="tp-fr" value="${esc(state.fieldMap.result)}" placeholder="result"></label>
         <label>اسم حقل الرصيد <input id="tp-fb" value="${esc(state.fieldMap.balance)}" placeholder="balance"></label>
@@ -374,6 +419,7 @@
       </div>
 
       <div class="tp-strip">${last.length ? last.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('') : '<span class="tp-muted">بانتظار أول دورة…</span>'}</div>
+      ${!state.spins.length ? noSpinsHint() : ''}
 
       ${a.n ? `<div class="tp-verdict ${a.verdict === 'anomaly' ? 'bad' : a.verdict === 'fair' ? 'good' : 'warn'}">
         ${a.verdict === 'anomaly' ? 'شذوذ: الأرقام لا تتصرف كعجلة عادلة — راجع الأرقام المميّزة' : a.verdict === 'fair' ? 'ضمن العادل حتى الآن: لا نمط يُتوقّع؛ ما يأكل الرصيد هو أجر البيت' : `أرقام قليلة للحكم (${a.n})`}
@@ -415,6 +461,7 @@
     root.querySelectorAll('[data-src]').forEach((b) => b.addEventListener('click', () => { const v = b.getAttribute('data-src'); state.forcedSrc = state.forcedSrc === v ? null : v; reparseAll(); }));
     root.getElementById('tp-clear').addEventListener('click', resetAll);
     root.getElementById('tp-report').addEventListener('click', exportReport);
+    root.getElementById('tp-diag').addEventListener('click', exportDiag);
     root.getElementById('tp-fields-toggle').addEventListener('click', () => { state.showFields = !state.showFields; render(); });
     const fr = root.getElementById('tp-fr'), fb = root.getElementById('tp-fb');
     const remap = () => { state.fieldMap.result = fr.value.trim(); state.fieldMap.balance = fb.value.trim(); state.forcedSrc = null; reparseAll(); };
@@ -521,6 +568,7 @@ ${rawHtml || '<p class="muted">لا شيء.</p>'}
   .tp-row label{display:flex;gap:6px;align-items:center;color:#9fb0cc}
   .tp-row select{background:#0b1120;color:#e6eaf2;border:1px solid #39456a;border-radius:8px;padding:4px 8px}
   .tp-btn{background:#1b2740;border:1px solid #39456a;color:#cdd;border-radius:8px;padding:5px 12px;cursor:pointer}
+  .tp-btn.wide{flex:1}
   .tp-btn.hot{background:#0a5f46;border-color:#0f7a59;color:#d7ffee;font-weight:700}
   .tp-fields{background:#0b1120;border:1px solid #28324a;border-radius:10px;padding:10px;margin-bottom:10px}
   .tp-fields label{display:flex;justify-content:space-between;gap:8px;align-items:center;color:#9fb0cc;margin-bottom:6px}
