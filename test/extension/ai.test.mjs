@@ -183,13 +183,15 @@ test('Turbo RNG frames: big frame parses, cut frame is repaired, history seeds o
 test('3-number pick: scored before each spin, stays at chance on a fair wheel', () => {
   let x = 7; const rnd = () => ((x = (x * 1103515245 + 12345) % 2147483648) / 2147483648);
   const L = T.ai.createLearner();
-  let mine = 0;
+  let mine = 0; let prev = null;
   for (let i = 0; i < 1500; i++) {
     const pick = L.report().pick;
     assert.strictEqual(pick.length, 3);
     assert.strictEqual(new Set(pick).size, 3);
     const n = Math.floor(rnd() * 37);
     if (pick.includes(n)) mine++;
+    if (prev) assert.notStrictEqual(pick.slice().sort().join(), prev, 'a new set every round');
+    prev = pick.slice().sort().join();
     L.observe(n);
   }
   const r = L.report();

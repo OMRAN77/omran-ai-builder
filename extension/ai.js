@@ -206,13 +206,24 @@
       return cache;
     }
     const topOf = (p, kk) => [...p.keys()].sort((a, b) => p[b] - p[a] || a - b).slice(0, kk);
-    function ctxTop(parts) {
+    function ctxRank(parts) {
       let ws = 0; const q = new Float64Array(N);
       for (const i of CTX) { ws += w[i]; for (let n = 0; n < N; n++) q[n] += w[i] * parts[i][n]; }
-      if (!(ws > 0)) return topOf(parts[HOT], k);
+      if (!(ws > 0)) return topOf(parts[HOT], N);
       const lift = new Float64Array(N);
       for (let n = 0; n < N; n++) lift[n] = (q[n] / ws) / Math.max(parts[HOT][n], 1e-12);
-      return [...lift.keys()].sort((a, b) => lift[b] - lift[a] || q[b] - q[a] || a - b).slice(0, k);
+      return [...lift.keys()].sort((a, b) => lift[b] - lift[a] || q[b] - q[a] || a - b);
+    }
+    const ctxTop = (parts) => ctxRank(parts).slice(0, k);
+    // The 3-number pick: a fresh guess every round. It follows the per-round view
+    // (what is expected after the last number), and never repeats the previous
+    // round's set — every set of 3 has the same chance, so this costs nothing.
+    const setKey = (a) => a.slice().sort((x, y) => x - y).join();
+    function pickOf(p, parts) {
+      if (!hist.length) return topOf(p, 3);
+      const r = ctxRank(parts); let pk = r.slice(0, 3);
+      if (st.prevPick && setKey(pk) === setKey(st.prevPick)) pk = [r[0], r[1], r[3]];
+      return pk;
     }
 
     // Score the standing prediction against the real spin, THEN learn from it.
@@ -221,7 +232,8 @@
       if (!Number.isInteger(x) || x < 0 || x >= N) return;
       const { p, parts } = mixture();
       if (topOf(p, k).includes(x)) st.hits++;
-      if (topOf(p, 3).includes(x)) st.hits3++; // the 3-number pick, scored before the spin
+      const pk = pickOf(p, parts); if (pk.includes(x)) st.hits3++; // the 3-number pick, scored before the spin
+      st.prevPick = pk;
       if (hist.length && ctxTop(parts).includes(x)) st.ctxHits++;
       st.G += Math.log(Math.max(p[x], 1e-300) * N);
       if (st.G > st.maxG) st.maxG = st.G;
@@ -255,7 +267,7 @@
         hits: st.hits, rate: st.n ? st.hits / st.n : 0, pTop,
         G: st.G, bitsPerSpin: st.n ? st.G / st.n / Math.LN2 : 0, pAnytime,
         enough, predictable, minTrials, leader: rank[0], experts: rank,
-        pick: topOf(p, 3), pickHits: st.hits3,
+        pick: pickOf(p, parts), pickHits: st.hits3,
         ctxTop: ctx, ctxHits: st.ctxHits, ctxN, ctxRate: ctxN ? st.ctxHits / ctxN : 0, ctxP: binomUpper(st.ctxHits, ctxN, chance),
       };
     }

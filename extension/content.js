@@ -290,7 +290,7 @@
   }
   function noteLive(ev, before, pre) {
     const now = Date.now(); const host = T.hostOf(ev.url || '') || '?'; const L = live.last;
-    if (L && L.lead == null && host === L.host && now - L.t >= 300 && now - L.t < 20000 && BAL_DONE.test(String(ev.body))) {
+    if (L && L.bet && L.lead == null && host === L.host && now - L.t >= 300 && now - L.t < 20000 && BAL_DONE.test(String(ev.body))) {
       L.lead = now - L.t; live.leads.push(L.lead); if (live.leads.length > 2000) live.leads.shift();
     }
     const added = state.spins.length - before; if (added <= 0) return false;
@@ -304,14 +304,15 @@
   function liveSection() {
     const L = live.last; if (!L) return '';
     const fresh = Date.now() - L.t < 12000;
-    const lead = L.lead != null ? `سبقت تحديث الرصيد (نهاية العجلة) بـ ${(L.lead / 1000).toFixed(1)} ث` : fresh ? 'العجلة لسّا تدور…' : '';
+    const lead = !L.bet ? '' : L.lead != null ? `سبقت تحديث الرصيد (نهاية العجلة) بـ ${(L.lead / 1000).toFixed(1)} ث` : fresh ? 'العجلة لسّا تدور…' : '';
     const b = L.bet;
     const bet = b ? `رهانك ${esc(b.markets.join(' + ') || '—')} ${money(b.amount)} ← ${b.win > 0 ? 'ربح ' + money(b.win) : 'خسارة'}` : '';
     const ai = L.pre ? `اختيار الذكاء قبل الرهان ${L.pre.join(', ')} ${L.pre.includes(L.n) ? '✓' : '✗'}` : '';
     const avg = live.leads.length ? live.leads.reduce((x, y) => x + y, 0) / live.leads.length : null;
     const line = [lead, bet, ai, avg != null ? `المتوسط ${(avg / 1000).toFixed(1)} ث في ${live.leads.length} جولة` : ''].filter(Boolean).join(' · ');
     const d = new Date(L.t); const hms = d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
-    const how = `كيف وصلت: ردّ الخادم على رهانك — رسالة <b dir="ltr">${esc(L.msg)}</b> من <b dir="ltr">${esc(L.host)}</b> الساعة <b dir="ltr">${hms}</b>، وفيها الرقم قبل ما توقف العجلة`;
+    const how = b ? `كيف وصلت: ردّ الخادم على رهانك — رسالة <b dir="ltr">${esc(L.msg)}</b> من <b dir="ltr">${esc(L.host)}</b> الساعة <b dir="ltr">${hms}</b>، وفيها الرقم قبل ما توقف العجلة`
+      : `كيف وصلت: رسالة <b dir="ltr">${esc(L.msg)}</b> من <b dir="ltr">${esc(L.host)}</b> الساعة <b dir="ltr">${hms}</b> (جولة بدون ردّ رهان)`;
     return `<div class="tp-live${fresh ? ' fresh' : ''}"><div class="hd"><span>🎯 نتيجة الجولة وصلت</span><span class="chip big ${T.colorOf(L.n)}">${esc(L.n)}</span></div>${line ? `<div class="s">${line}</div>` : ''}<div class="s">${how}</div></div>`;
   }
   // Text frames are capped at 8 KB; binary (base64) frames are kept whole so they still decode.
@@ -472,7 +473,7 @@
     const s = state.stake > 0 ? state.stake : 0;
     const pc = r.pick ? r.pick.length / (state.wheel === 'american' ? 38 : 37) : 0;
     const pnl = s * (36 * r.pickHits - 3 * r.n);
-    const pick = r.pick ? `<div class="tp-pick"><div class="hd">🎲 اختيار الذكاء لك — ٣ أرقام</div>
+    const pick = r.pick ? `<div class="tp-pick"><div class="hd">🎲 اختيار الذكاء لك — ٣ أرقام (جديدة كل جولة)</div>
       <div class="tp-strip">${r.pick.map((n) => `<span class="chip big ${T.colorOf(n)}">${esc(n)}</span>`).join('')}</div>
       <label>مبلغك على كل رقم <input id="tp-stake" type="number" min="0" step="0.5" inputmode="decimal" value="${s || ''}" placeholder="مثلًا 1"></label>
       ${s ? `<div class="s">الرهان ${money(3 * s)} · لو طلع واحد منها: +${money(33 * s)} · لو لا: −${money(3 * s)}</div>
