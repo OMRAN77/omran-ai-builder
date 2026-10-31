@@ -51,6 +51,7 @@
     fair: { seen: new Set(), rows: [] },
     ai: null,
     aiPending: false,
+    stake: 0,           // amount per number for the AI's 3-number pick (what-if only; nothing is bet)
   };
   const MAX_EVENTS = 40;
   const MAX_RAW = 1500; // enough history to re-read a whole session when a field is picked later
@@ -241,7 +242,7 @@
         store.set({ [SKEY]: {
           v: 1, spins: state.spins.slice(-6000), seen: [...state.seenRounds].slice(-6000), snaps: state.snaps,
           idSource: state.idSource, idlessSrc: state.idlessSrc, forcedSrc: state.forcedSrc, fieldResult: state.fieldMap.result,
-          fieldMap: state.fieldMap, wheel: state.wheel, startBalance: state.startBalance, balance: state.balance,
+          fieldMap: state.fieldMap, wheel: state.wheel, stake: state.stake, startBalance: state.startBalance, balance: state.balance,
           startedAt: state.startedAt.toISOString(),
         } });
       } catch (e) { /* storage full or context gone — keep running */ }
@@ -257,6 +258,7 @@
           idSource: !!saved.idSource, idlessSrc: saved.idlessSrc || null, fieldResult: saved.fieldResult || '', startBalance: saved.startBalance, balance: saved.balance, loadedAt: Date.now() };
         if (saved.fieldMap) state.fieldMap = { result: saved.fieldMap.result || '', balance: saved.fieldMap.balance || '' };
         if (saved.wheel) state.wheel = saved.wheel;
+        if (Number(saved.stake) > 0) state.stake = Number(saved.stake);
         state.forcedSrc = saved.forcedSrc || null;
         if (saved.startedAt) { const d = new Date(saved.startedAt); if (!isNaN(d)) state.startedAt = d; }
       }
@@ -304,7 +306,7 @@
     const lead = L.lead != null ? `سبقت تحديث الرصيد (نهاية العجلة) بـ ${(L.lead / 1000).toFixed(1)} ث` : fresh ? 'العجلة لسّا تدور…' : '';
     const b = L.bet;
     const bet = b ? `رهانك ${esc(b.markets.join(' + ') || '—')} ${money(b.amount)} ← ${b.win > 0 ? 'ربح ' + money(b.win) : 'خسارة'}` : '';
-    const ai = L.pre ? `توقّع الذكاء قبل الرهان ${L.pre.join(', ')} ${L.pre.includes(L.n) ? '✓' : '✗'}` : '';
+    const ai = L.pre ? `اختيار الذكاء قبل الرهان ${L.pre.join(', ')} ${L.pre.includes(L.n) ? '✓' : '✗'}` : '';
     const avg = live.leads.length ? live.leads.reduce((x, y) => x + y, 0) / live.leads.length : null;
     const line = [lead, bet, ai, avg != null ? `المتوسط ${(avg / 1000).toFixed(1)} ث في ${live.leads.length} جولة` : ''].filter(Boolean).join(' · ');
     return `<div class="tp-live${fresh ? ' fresh' : ''}"><div class="hd"><span>🎯 نتيجة الجولة وصلت</span><span class="chip big ${T.colorOf(L.n)}">${esc(L.n)}</span></div>${line ? `<div class="s">${line}</div>` : ''}</div>`;
@@ -324,7 +326,7 @@
       state.raw[0].seq = seq;
       if (state.loaded) { // before load, reparseAll replays it
         const before = state.spins.length;
-        const pre = state.ai && !state.aiPending && state.ai.n ? (aiReport() || {}).top : null;
+        const pre = state.ai && !state.aiPending && state.ai.n ? (aiReport() || {}).pick : null;
         const p = parseBody(ev.body, ev.url); p.seq = seq; applyParsed(p);
         if (noteLive(ev, before, pre ? pre.slice() : null) && !(root && root.activeElement && root.activeElement.tagName === 'INPUT')) {
           if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
@@ -464,8 +466,18 @@
       ? '⚠ نمط حقيقي: الذكاء الاصطناعي يتوقّع أفضل من الصدفة بفرق مؤكّد — خلل في المولّد أو العجلة'
       : r.enough ? 'لا نمط: الذكاء الاصطناعي ما يتفوّق على الصدفة — الجولة الجاية غير قابلة للتوقّع'
         : `يتعلّم ويقيس — ${r.n}/${r.minTrials} جولة قبل الحكم`;
+    const s = state.stake > 0 ? state.stake : 0;
+    const pc = r.pick ? r.pick.length / (state.wheel === 'american' ? 38 : 37) : 0;
+    const pnl = s * (36 * r.pickHits - 3 * r.n);
+    const pick = r.pick ? `<div class="tp-pick"><div class="hd">🎲 اختيار الذكاء لك — ٣ أرقام</div>
+      <div class="tp-strip">${r.pick.map((n) => `<span class="chip big ${T.colorOf(n)}">${esc(n)}</span>`).join('')}</div>
+      <label>مبلغك على كل رقم <input id="tp-stake" type="number" min="0" step="0.5" inputmode="decimal" value="${s || ''}" placeholder="مثلًا 1"></label>
+      ${s ? `<div class="s">الرهان ${money(3 * s)} · لو طلع واحد منها: +${money(33 * s)} · لو لا: −${money(3 * s)}</div>
+      <div class="s">لو راهنت كذا على كل جولة من ${r.n}: أصاب ${r.pickHits} (${pct(r.pickHits / r.n)}) مقابل صدفة ${pct(pc)} ← <b class="${pnl < 0 ? 'bad' : 'good'}">${pnl >= 0 ? '+' : '−'}${money(Math.abs(pnl))}</b></div>` : `<div class="s">إصابته ${r.pickHits}/${r.n} (${pct(r.pickHits / r.n)}) مقابل صدفة ${pct(pc)} — حدّد المبلغ تشوف الربح/الخسارة.</div>`}
+      <div class="s">أنت تراهن بيدك؛ الإضافة ما تراهن عنك.</div></div>` : '';
     const bars = r.experts.map((e) => `<div class="tp-exp${e.id === r.leader.id ? ' lead' : ''}"><span class="nm">${esc(e.name)}</span><span class="bar"><i style="width:${Math.max(2, Math.round(e.weight * 100))}%"></i></span><span class="vv">${Math.round(e.weight * 100)}٪ · إصابة ${pct(e.hitRate)}</span></div>`).join('');
-    return head + `
+    return head + pick + `
+      <div class="tp-muted">أقوى ٥:</div>
       <div class="tp-strip">${r.top.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('')}</div>
       <div class="tp-muted" style="margin-bottom:6px">ثقة النموذج في الخمسة ${pct(r.mass)} مقابل صدفة ${pct(r.chance)} · القائد: ${esc(r.leader.name)}</div>
       ${r.ctxTop && r.ctxTop.length ? `<div class="tp-muted">حسب آخر رقم (يتغيّر كل جولة):</div>
@@ -597,6 +609,11 @@
       </div>
       <div class="tp-foot">يقرأ جلستك فقط — لا يعدّل أي طلب أو نتيجة أو رصيد.</div>`;
 
+    const stk = root.getElementById('tp-stake');
+    if (stk) {
+      const setStake = () => { const v = Number(String(stk.value).replace(',', '.')); state.stake = Number.isFinite(v) && v > 0 ? v : 0; schedulePersist(); stk.blur(); render(); };
+      stk.addEventListener('change', setStake); stk.addEventListener('keydown', (e) => { if (e.key === 'Enter') setStake(); });
+    }
     root.getElementById('tp-wheel').addEventListener('change', (e) => { state.wheel = e.target.value; schedulePersist(); render(); });
     root.querySelectorAll('[data-fkey]').forEach((b) => b.addEventListener('click', () => { state.fieldMap.result = b.getAttribute('data-fkey'); state.forcedSrc = null; reparseAll(); }));
     root.querySelectorAll('[data-src]').forEach((b) => b.addEventListener('click', () => { const v = b.getAttribute('data-src'); state.forcedSrc = state.forcedSrc === v ? null : v; reparseAll(); }));
@@ -672,6 +689,7 @@ ${(() => {
   const rows = r.experts.map((e) => `<tr><td>${esc(e.name)}</td><td dir="ltr">${(e.weight * 100).toFixed(1)}%</td><td dir="ltr">${(e.hitRate * 100).toFixed(1)}%</td><td dir="ltr">${(e.avgLoss / Math.LN2).toFixed(3)}</td></tr>`).join('');
   return method + `<p class="${r.predictable ? 'bad' : 'good'}">${v}</p>
 <p class="muted">إصابة أقوى ٥: ${(r.rate * 100).toFixed(1)}٪ (${r.hits}/${r.n}) مقابل صدفة ${(r.chance * 100).toFixed(1)}٪ · p (ذو الحدّين)=${pFmt(r.pTop)} · p (مستمر)=${pFmt(r.pAnytime)} · ${r.bitsPerSpin.toFixed(4)} bit/spin (الصفر = لا معلومة) · القائد: ${esc(r.leader.name)}</p>${r.ctxN ? `
+<p class="muted">اختيار ٣ أرقام: ${(r.pick || []).join(', ')} · أصاب ${r.pickHits}/${r.n}${state.stake > 0 ? ` · بمبلغ ${money(state.stake)} لكل رقم كان الصافي ${money(state.stake * (36 * r.pickHits - 3 * r.n))}` : ''} (لم تُوضع أي رهانات من الأداة)</p>
 <p class="muted">حسب آخر رقم: ${r.ctxTop.join(', ')} · إصابة ${(r.ctxRate * 100).toFixed(1)}٪ (${r.ctxHits}/${r.ctxN}) · p=${pFmt(r.ctxP)}</p>` : ''}
 <table><thead><tr><th>النموذج</th><th>الوزن</th><th>إصابة أقوى ٥</th><th>الخسارة (bit/جولة، الصدفة = 5.209)</th></tr></thead><tbody>${rows}</tbody></table>`;
 })()}
@@ -742,6 +760,12 @@ ${rawHtml || '<p class="muted">لا شيء.</p>'}
   .tp-live.fresh{border-color:#f59e0b;background:#2a1f08}
   .tp-live .hd{display:flex;align-items:center;justify-content:space-between;font-weight:700}
   .tp-live .s{font-size:11px;color:#9fb0d0;margin-top:4px}
+  .tp-pick{padding:8px 10px;border-radius:10px;margin-bottom:10px;border:1px solid #2563eb;background:#0f1d3a}
+  .tp-pick .hd{font-weight:700;margin-bottom:6px}
+  .tp-pick label{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:4px}
+  .tp-pick input{width:80px}
+  .tp-pick .s{font-size:11px;color:#9fb0d0;margin-top:3px}
+  .tp-pick b.bad{color:#f87171}.tp-pick b.good{color:#34d399}
   .chip.big{font-size:20px;min-width:40px;padding:4px 10px}
   .chip{min-width:22px;text-align:center;padding:2px 6px;border-radius:6px;font-weight:700;direction:ltr}
   .chip.red{background:#7f1d1d;color:#fff}.chip.black{background:#1f2937;color:#fff;border:1px solid #39456a}.chip.green{background:#065f46;color:#fff}

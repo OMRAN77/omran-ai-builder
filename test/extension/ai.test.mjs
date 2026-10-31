@@ -179,3 +179,20 @@ test('Turbo RNG frames: big frame parses, cut frame is repaired, history seeds o
   assert.strictEqual(T.keyNum(fr[0].key), hist[57].n);
   assert.ok(T.isNotPocketKey('order') && T.isNotPocketKey('maintabwhitelist') && !T.isNotPocketKey('lastwin'));
 });
+
+test('3-number pick: scored before each spin, stays at chance on a fair wheel', () => {
+  let x = 7; const rnd = () => ((x = (x * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const L = T.ai.createLearner();
+  let mine = 0;
+  for (let i = 0; i < 1500; i++) {
+    const pick = L.report().pick;
+    assert.strictEqual(pick.length, 3);
+    assert.strictEqual(new Set(pick).size, 3);
+    const n = Math.floor(rnd() * 37);
+    if (pick.includes(n)) mine++;
+    L.observe(n);
+  }
+  const r = L.report();
+  assert.strictEqual(r.pickHits, mine, 'pick hits counted on the pick shown before the spin');
+  assert.ok(Math.abs(r.pickHits / r.n - 3 / 37) < 0.03, 'no edge on a fair wheel: ' + r.pickHits / r.n);
+});

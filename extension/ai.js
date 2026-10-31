@@ -187,7 +187,7 @@
     const E = experts.length;
     let w = new Float64Array(E).fill(1 / E);
     const hist = [];
-    const st = { n: 0, hits: 0, G: 0, maxG: 0, expLoss: new Float64Array(E), expHits: new Float64Array(E), ctxHits: 0 };
+    const st = { n: 0, hits: 0, G: 0, maxG: 0, expLoss: new Float64Array(E), expHits: new Float64Array(E), ctxHits: 0, hits3: 0 };
     // "Per-round" view: what the context models (transitions, wheel sector, neural
     // net) expect AFTER THE LAST NUMBER beyond plain frequency — the lift over the
     // hot-numbers baseline. It changes every round; its hit rate is tracked the same
@@ -221,6 +221,7 @@
       if (!Number.isInteger(x) || x < 0 || x >= N) return;
       const { p, parts } = mixture();
       if (topOf(p, k).includes(x)) st.hits++;
+      if (topOf(p, 3).includes(x)) st.hits3++; // the 3-number pick, scored before the spin
       if (hist.length && ctxTop(parts).includes(x)) st.ctxHits++;
       st.G += Math.log(Math.max(p[x], 1e-300) * N);
       if (st.G > st.maxG) st.maxG = st.G;
@@ -254,6 +255,7 @@
         hits: st.hits, rate: st.n ? st.hits / st.n : 0, pTop,
         G: st.G, bitsPerSpin: st.n ? st.G / st.n / Math.LN2 : 0, pAnytime,
         enough, predictable, minTrials, leader: rank[0], experts: rank,
+        pick: topOf(p, 3), pickHits: st.hits3,
         ctxTop: ctx, ctxHits: st.ctxHits, ctxN, ctxRate: ctxN ? st.ctxHits / ctxN : 0, ctxP: binomUpper(st.ctxHits, ctxN, chance),
       };
     }
