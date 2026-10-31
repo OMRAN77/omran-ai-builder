@@ -58,6 +58,7 @@
     ext: { on: false, p: {} }, // Claude / GPT-4.1 / DeepSeek via TARYAM Cyber: asked after each round, scored on the next
     showDetails: false, // «📊 التفاصيل والفحوص» folded by default: one clear place to pick from
     stake: 0,           // amount per number for the AI's 3-number pick (what-if only; nothing is bet)
+    crash: { seen: false, target: 1.1, cur: null, rows: [], lastFin: 0, live: null }, // «🎯 تحدّي الطيارة»
   };
   const MAX_EVENTS = 40;
   const MAX_RAW = 1500; // enough history to re-read a whole session when a field is picked later
@@ -246,7 +247,7 @@
       store.set({ [SKEY]: {
         v: 1, spins: state.spins.slice(-6000), seen: [...state.seenRounds].slice(-6000), snaps: state.snaps,
         idSource: state.idSource, idlessSrc: state.idlessSrc, forcedSrc: state.forcedSrc, fieldResult: state.fieldMap.result,
-        fieldMap: state.fieldMap, wheel: state.wheel, stake: state.stake, pickK: state.pickK, claim: state.claim, ext: { on: state.ext.on, p: state.ext.p }, startBalance: state.startBalance, balance: state.balance,
+        fieldMap: state.fieldMap, wheel: state.wheel, stake: state.stake, pickK: state.pickK, claim: state.claim, crash: { target: state.crash.target, cur: state.crash.cur, rows: state.crash.rows.slice(-3000), lastFin: state.crash.lastFin }, ext: { on: state.ext.on, p: state.ext.p }, startBalance: state.startBalance, balance: state.balance,
         startedAt: state.startedAt.toISOString(),
       } });
     } catch (e) { /* storage full or context gone — keep running */ }
@@ -274,6 +275,14 @@
           state.ext = { on: !!saved.ext.on, p };
         }
         if (saved.claim && Array.isArray(saved.claim.rows)) state.claim = { cur: saved.claim.cur && Array.isArray(saved.claim.cur.nums) ? saved.claim.cur : null, rows: saved.claim.rows.filter((r) => r && Array.isArray(r.nums)) };
+        if (saved.crash && Array.isArray(saved.crash.rows)) {
+          const C = state.crash; const sc = saved.crash;
+          if (CRASH_TARGETS.includes(sc.target)) C.target = sc.target;
+          const old = sc.rows.filter((r) => r && Number.isFinite(r.id) && Number.isFinite(r.x) && !C.rows.some((q) => q.id === r.id));
+          C.rows = old.concat(C.rows).slice(-3000);
+          if (!C.cur && sc.cur && Number.isFinite(sc.cur.after) && Number.isFinite(sc.cur.target)) C.cur = sc.cur;
+          C.lastFin = Math.max(C.lastFin || 0, Number(sc.lastFin) || 0);
+        }
         state.forcedSrc = saved.forcedSrc || null;
         if (saved.startedAt) { const d = new Date(saved.startedAt); if (!isNaN(d)) state.startedAt = d; }
       }
@@ -288,7 +297,7 @@
   function resetAll() {
     aiJob++;
     Object.assign(state, { spins: [], events: [], raw: [], seenRounds: new Set(), startBalance: null, balance: null, startedAt: new Date(),
-      snaps: {}, sources: new Map(), diag: new Map(), fair: { seen: new Set(), rows: [] }, idSource: false, idlessSrc: null, srcInfo: new Map(), primaryT: 0, lastSpinT: 0, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false, claim: { cur: null, rows: [] }, claimDraft: '', claimErr: '', ext: { on: false, p: {} } });
+      snaps: {}, sources: new Map(), diag: new Map(), fair: { seen: new Set(), rows: [] }, idSource: false, idlessSrc: null, srcInfo: new Map(), primaryT: 0, lastSpinT: 0, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false, claim: { cur: null, rows: [] }, claimDraft: '', claimErr: '', ext: { on: false, p: {} }, crash: { seen: false, target: state.crash.target, cur: null, rows: [], lastFin: 0, live: null } });
     state.hosts.clear();
     if (store) { try { store.remove(SKEY); } catch (e) { /* ignore */ } }
     render();
@@ -376,6 +385,56 @@
       ${state.claimErr ? `<div class="s bad">${esc(state.claimErr)}</div>` : ''}
       ${last ? `<div class="s">آخر جولة: ${last.nums.join(', ')} ← طلع <b>${esc(last.n)}</b> ${last.hit ? '✓' : '✗'}</div>` : ''}
       <div class="tp-verdict ${v.cls}" style="margin:6px 0 0">${v.text}${c.R ? `<div class="s">إصابة ${c.H}/${c.R} (${pct(c.H / c.R)}) مقابل صدفة ${pct(c.E / c.R)} · p=${pFmt(c.p)} · لو راهنت ${money(st)} على كل رقم: ${c.net * st >= 0 ? '+' : '−'}${money(Math.abs(c.net * st))}</div>` : ''}</div></div>`;
+  }
+  // «🎯 تحدّي الطيارة» (crash games such as AVI). The moment a round ends, the claim
+  // for the next one is locked with its time — "the plane passes ×T" — and the next
+  // roundFinished from the game server scores it. Nothing is typed by hand, so every
+  // row is a fixed claim made before its round began, then the server's own result.
+  const CRASH_TARGETS = [1.1, 1.2, 1.5, 2];
+  const xFmt = (x) => '×' + Number(x).toFixed(2);
+  const xB = (x) => `<b dir="ltr">${xFmt(x)}</b>`; // keeps «×1.10» in order inside Arabic text
+  function crashFeed(body) {
+    const s = String(body);
+    if (s.indexOf('"channelName":"game_') < 0 || !/"command"\s*:\s*"(roundFinished|gameUpdate)"/.test(s)) return false;
+    let j; try { j = JSON.parse(s); } catch (e) { return false; } // guard-ok — not JSON: not a crash frame
+    const d = j && j.data; if (!d || typeof d !== 'object') return false;
+    const id = Number(d.roundId), x = Number(d.result);
+    if (!Number.isFinite(id) || !Number.isFinite(x)) return false;
+    const C = state.crash; const now = Date.now();
+    C.seen = true;
+    if (j.command === 'gameUpdate') { if (Number(d.status) === 2) C.live = { id, x, t: now }; return true; }
+    if (j.command !== 'roundFinished' || (C.lastFin && id <= C.lastFin)) return false; // re-sent result
+    const cur = C.cur;
+    if (cur && id > cur.after) {
+      C.rows.push({ id, target: cur.target, x, ok: x >= cur.target, t0: cur.t, t1: now });
+      if (C.rows.length > 3000) C.rows.shift();
+    }
+    C.lastFin = id; C.live = null;
+    C.cur = { after: id, target: C.target, t: now }; // the claim for the next round, locked before it starts
+    C.fresh = true; persistNow(); // saved at once: the lock time is the evidence
+    return true;
+  }
+  function crashStats() {
+    const rows = state.crash.rows; let H = 0, run = 0, best = 0;
+    for (const r of rows) { if (r.ok) { H++; run++; if (run > best) best = run; } else run = 0; }
+    return { N: rows.length, H, run, best };
+  }
+  function crashSection() {
+    const C = state.crash; if (!C.seen && !C.rows.length) return '';
+    const st = crashStats(); const cur = C.cur;
+    const lv = C.live && cur && C.live.id > cur.after ? C.live : null;
+    const head = cur
+      ? `<div class="s">🔒 توقّع الجولة الجاية: <b>بتعدّي</b> ${xB(cur.target)} — مثبّت الساعة <b dir="ltr">${hms(cur.t)}</b> قبل ما تبدا</div>`
+      : '<div class="s">ينتظر نهاية الجولة الحالية — بعدها يثبّت أول توقّع لحاله.</div>';
+    const flying = lv ? `<div class="s">الجولة طايرة الحين: ${xB(lv.x)} ${lv.x >= cur.target ? '✅ تعدّت' : '⏳'}</div>` : '';
+    const chips = C.rows.slice(-14).map((r) => `<span class="chip ${r.ok ? 'green' : 'red'}" title="${esc(hms(r.t1))}">${esc(Number(r.x).toFixed(2))}</span>`).join('');
+    return `<div class="tp-claim"><div class="hd">🎯 تحدّي الطيارة</div>
+      <div class="tp-strip">${CRASH_TARGETS.map((t) => `<button class="tp-sbtn${t === C.target ? ' on' : ''}" data-ct="${t}" dir="ltr">${xFmt(t)}</button>`).join('')}
+        <button class="tp-cbtn" id="tp-crash-reset">تصفير العدّ</button></div>
+      ${head}${flying}
+      <div class="tp-score">✅ ${st.H} من ${st.N}</div>
+      <div class="s">صح ورا بعض الحين: <b>${st.run}</b> · أطول سلسلة: <b>${st.best}</b></div>
+      ${chips ? `<div class="tp-strip" style="margin-top:4px">${chips}</div>` : ''}</div>`;
   }
   // Three AI providers through the owner's TARYAM Cyber site (own 1000/day quota).
   // Each is asked the moment a result lands (the next round opens ~13 s later); its
@@ -506,6 +565,9 @@
     if (ev.body) {
       diagPush(ev);
       if (ev.kind === 'ws-out') return; // what the page sent: kept for the export only, never parsed as a result
+      if (crashFeed(ev.body)) { if (state.crash.fresh) { state.crash.fresh = false; if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; } render(); } }
+      // The crash / mini-games socket carries multipliers, levels and bets, never a roulette number.
+      if (/^wss?:\/\/ws-crash\./i.test(ev.url || '')) { scheduleRender(); return; }
       state.raw.unshift({ kind: ev.kind, url: ev.url || '', body: rawCap(String(ev.body)), t: Date.now() });
       if (state.raw.length > MAX_RAW) state.raw.length = MAX_RAW;
       const seq = noteHashes(ev.body);
@@ -739,6 +801,7 @@
         ${state.showFields ? fieldsHelp() : ''}
       </div>
 
+      ${crashSection()}
       <div class="tp-cards">
         <div class="tp-card"><div class="k">دورات مُلتقطة</div><div class="v">${a.n}</div><div class="s">${state.lastSpinT ? 'آخر جولة قبل ' + ago(state.lastSpinT) : '—'}</div></div>
         <div class="tp-card"><div class="k">الرصيد الآن</div><div class="v ${net !== null && net < 0 ? 'bad' : 'good'}">${money(state.balance)}</div><div class="s">قبل: ${money(state.startBalance)}</div></div>
@@ -814,6 +877,15 @@
       for (const P of PROVS) { rt(P.id).err = ''; if (!state.ext.on) pv(P.id).cur = null; }
       persistNow(); if (state.ext.on) askExt(); render();
     });
+    root.querySelectorAll('[data-ct]').forEach((b) => b.addEventListener('click', () => {
+      const t = Number(b.getAttribute('data-ct')); const C = state.crash; if (!CRASH_TARGETS.includes(t) || t === C.target) return;
+      C.target = t;
+      // Still before the round takes off: the new target becomes this round's claim, re-timed now.
+      if (C.cur && !(C.live && C.live.id > C.cur.after)) C.cur = { after: C.cur.after, target: t, t: Date.now() };
+      persistNow(); render();
+    }));
+    const crr = root.getElementById('tp-crash-reset');
+    if (crr) crr.addEventListener('click', () => { state.crash.rows = []; persistNow(); render(); });
     const det = root.getElementById('tp-details');
     if (det) det.addEventListener('click', () => { state.showDetails = !state.showDetails; render(); });
     const stk = root.getElementById('tp-stake');
@@ -930,6 +1002,16 @@ ${(() => {
 <table><thead><tr><th>#</th><th>وقت التثبيت</th><th>وصول النتيجة</th><th>أرقام التطبيق</th><th>النتيجة</th><th>إصابة</th></tr></thead><tbody>${trs}</tbody></table>`;
 })()}
 
+${(() => {
+  const all = state.crash.rows; if (!all.length) return '';
+  const st = crashStats(); const show = all.slice(-500); const off = all.length - show.length;
+  const trs = show.map((r, i) => `<tr><td>${off + i + 1}</td><td dir="ltr">${r.id}</td><td dir="ltr">${new Date(r.t0).toLocaleTimeString('en-GB')}</td><td dir="ltr">${xFmt(r.target)}</td><td dir="ltr">${new Date(r.t1).toLocaleTimeString('en-GB')}</td><td dir="ltr">${xFmt(r.x)}</td><td class="${r.ok ? 'good' : 'bad'}">${r.ok ? '✅' : '❌'}</td></tr>`).join('');
+  return `<h2>٢-ز. تحدّي الطيارة</h2>
+<p class="muted">بعد نهاية كل جولة يُثبَّت توقّع الجولة اللي بعدها مع وقته («بتعدّي ×…») قبل ما تبدا، ثم يُقارَن آليًّا بالنتيجة اللي يرسلها خادم اللعبة (roundFinished). ما في أي إدخال يدوي.</p>
+<p class="big good">✅ ${st.H} من ${st.N} · أطول سلسلة صح ورا بعض: ${st.best}</p>
+<table><thead><tr><th>#</th><th>الجولة</th><th>وقت التثبيت</th><th>التوقّع</th><th>وصول النتيجة</th><th>النتيجة</th><th>صح</th></tr></thead><tbody>${trs}</tbody></table>`;
+})()}
+
 <h2>٣. من أين تُحمَّل اللعبة</h2>
 <p class="${providerSeen ? 'good' : casinoServes ? 'bad' : ''}">${esc(originVerdict)}</p>
 <table><thead><tr><th>الخادم</th><th>التصنيف</th><th>عدد الطلبات</th></tr></thead><tbody>${hostsHtml || '<tr><td colspan="3">—</td></tr>'}</tbody></table>
@@ -997,6 +1079,7 @@ ${rawHtml || '<p class="muted">لا شيء.</p>'}
   .tp-sec{font-size:11px;color:#8ea0bd;margin:12px 0 6px;font-weight:700}
   .tp-claim{padding:8px 10px;border-radius:10px;margin-bottom:10px;border:1px solid #7c3aed;background:#1a1033}
   .tp-claim .hd{font-weight:700;margin-bottom:6px}
+  .tp-score{font-size:22px;font-weight:800;color:#34d399;margin-top:6px}
   .tp-claim .s{font-size:11px;color:#b9a8e0;margin-top:3px}
   .tp-claim .s.bad{color:#f87171}
   .tp-crow{display:flex;gap:6px;align-items:center}
