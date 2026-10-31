@@ -129,13 +129,28 @@
   const SCALAR_RESULT_KEYS = /^(winningnumber|winning_number|winnumber|winnum|luckynumber|resultnumber|pocket|slotresult)$/;
   function isRoundObj(o) {
     return o && typeof o === 'object' && !Array.isArray(o) &&
-      ('color' in o || 'gameId' in o || 'gameid' in o || 'roundId' in o || 'roundid' in o || 'time' in o ||
+      ('color' in o || 'gameId' in o || 'gameid' in o || 'roundId' in o || 'roundid' in o || 'time' in o || 'roundData' in o || 'resultKey' in o ||
         // XML result elements (<gameresult score="17" game="…"/>) may carry no colour
         (typeof o._tag === 'string' && /result|winning|outcome/i.test(o._tag)));
   }
   // XML <result score="17" color="red"/> carries the pocket in "score".
-  function roundNum(o) { return o.result ?? o.number ?? o.outcome ?? o.winningNumber ?? o.winningnumber ?? o.winNumber ?? o.score; }
-  function roundId(o) { return String(o.gameId ?? o.gameid ?? o.roundId ?? o.roundid ?? o.id ?? (o._tag ? o.game : undefined) ?? o.time ?? '') || null; }
+  // Turbo-style RNG rounds keep the pocket in roundData.number and also spell it in
+  // resultKey ("Red_7_Roulette_<uuid>").
+  function keyNum(k) { const m = typeof k === 'string' ? /^(?:red|black|green)_(\d{1,2})_/i.exec(k) : null; return m ? Number(m[1]) : undefined; }
+  function roundNum(o) {
+    const rd = o.roundData && typeof o.roundData === 'object' ? o.roundData : null;
+    return o.result ?? o.number ?? o.outcome ?? o.winningNumber ?? o.winningnumber ?? o.winNumber ?? o.score ??
+      (rd ? (rd.number ?? rd.result ?? rd.winningNumber) : undefined) ?? keyNum(o.resultKey);
+  }
+  // First meaningful id: a placeholder gameId of 0 must not make every round "0".
+  function firstId(o) {
+    for (const v of [o.gameId, o.gameid, o.roundId, o.roundid, o.id, o._tag ? o.game : undefined]) {
+      if (v === null || v === undefined || typeof v === 'object') continue;
+      const s = String(v); if (s !== '' && s !== '0') return s;
+    }
+    return null;
+  }
+  function roundId(o) { return firstId(o) || (o.time !== undefined && o.time !== null && o.time !== '' ? String(o.time) : null); }
   // Returns round records { n, id }; id lets the caller drop re-sent history.
   function guessNumbers(obj) {
     const out = [];
@@ -283,6 +298,21 @@
   }
   function b64bytes(s) { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
 
+  // A frame cut by a size cap is still mostly good JSON: keep everything up to the
+  // last complete value and close the open brackets.
+  function repairJson(s) {
+    const stack = []; let inStr = false, esc = false, cut = -1, cutStack = null;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
+      if (c === '"') inStr = true;
+      else if (c === '{' || c === '[') stack.push(c === '{' ? '}' : ']');
+      else if (c === '}' || c === ']') { stack.pop(); cut = i + 1; cutStack = stack.slice(); if (!stack.length) return null; }
+      else if (c === ',') { cut = i; cutStack = stack.slice(); }
+    }
+    if (cut < 0 || !cutStack) return null;
+    return s.slice(0, cut).replace(/,\s*$/, '') + cutStack.reverse().join('');
+  }
   function decodeFrames(body) {
     if (body === null || body === undefined) return [];
     if (typeof body === 'object') return [unwrapStrings(body, 0)];
@@ -296,19 +326,33 @@
       const m = /^(\d+)(?=[[{])/.exec(part); if (m) part = part.slice(m[1].length); // socket.io / engine.io
       else if (/^a\[/.test(part)) part = part.slice(1);                         // SockJS
       if (part[0] !== '{' && part[0] !== '[') continue;
-      try { out.push(unwrapStrings(JSON.parse(part), 0)); } catch (e) { /* not JSON */ }
+      let parsed;
+      try { parsed = JSON.parse(part); } catch (e) { const fixed = repairJson(part); if (fixed) { try { parsed = JSON.parse(fixed); } catch (x) { parsed = undefined; } } }
+      if (parsed !== undefined) out.push(unwrapStrings(parsed, 0));
     }
     return out;
   }
 
-  function ordOf(o) {
-    const t = o.time ?? o.timestamp ?? o.ts ?? o.date;
-    if (t !== undefined && t !== null && t !== '') { const v = typeof t === 'number' ? t : (/^\d+$/.test(String(t)) ? Number(t) : Date.parse(t)); if (Number.isFinite(v)) return v; }
-    const m = /(\d+)$/.exec(String(o.gameId ?? o.gameid ?? o.roundId ?? o.roundid ?? o.id ?? ''));
-    return m ? Number(m[1]) : NaN;
+  // Two sort keys for a round: its time, and the number in its id.
+  function timeOf(o) {
+    const t = o.time ?? o.timestamp ?? o.ts ?? o.date ?? o.startedDate ?? o.startDate ?? o.createdDate ?? o.created ?? o.finishedDate;
+    if (t === undefined || t === null || t === '') return NaN;
+    const v = typeof t === 'number' ? t : (/^\d+$/.test(String(t)) ? Number(t) : Date.parse(t));
+    return Number.isFinite(v) ? v : NaN;
+  }
+  function idNum(o) { const m = /(\d+)$/.exec(firstId(o) || ''); return m ? Number(m[1]) : NaN; }
+  function ordOf(o) { const t = timeOf(o); return Number.isFinite(t) ? t : idNum(o); }
+  // Oldest → newest: by numeric id when every record has one, else by time.
+  function sortRecs(recs) {
+    const by = (k) => recs.length > 1 && recs.every((r) => Number.isFinite(r[k])) && new Set(recs.map((r) => r[k])).size > 1;
+    if (by('idn')) return recs.slice().sort((a, b) => a.idn - b.idn);
+    if (by('tn')) return recs.slice().sort((a, b) => a.tn - b.tn);
+    return recs;
   }
   // ---- Round extraction with a source path, so the inspector can tell a live
   // result from a re-sent history list and keep one source per table.
+  // hot/cold "top 5" lists are rankings, not a sequence of rounds.
+  const NOT_HISTORY_KEYS = /hot|cold|top|best|worst|favou?rite|popular|rank|sorted/;
   const HISTORY_KEYS = /result|history|last|recent|number|win|spin|outcome|stat|roulette|score/;
   function extractRounds(obj, name) {
     const key0 = String(name || '').toLowerCase();
@@ -323,16 +367,16 @@
         } else {
           const rounds = v.filter(isRoundObj);
           if (rounds.length && rounds.length === v.length) {
-            let recs = rounds.map((o) => ({ n: asPocket(roundNum(o)), id: roundId(o), ord: ordOf(o) })).filter((r) => r.n !== null);
+            let recs = rounds.map((o) => ({ n: asPocket(roundNum(o)), id: roundId(o), idn: idNum(o), tn: timeOf(o) })).filter((r) => r.n !== null);
             // History arrays are often newest-first: put them oldest → newest by their
             // time (or numeric round id) so the learner sees the real sequence.
-            if (recs.length > 1 && recs.every((r) => Number.isFinite(r.ord)) && new Set(recs.map((r) => r.ord)).size > 1) recs = recs.slice().sort((a, b) => a.ord - b.ord);
+            recs = sortRecs(recs);
             if (recs.length >= 3 && recs.some((r) => !r.id)) { lists.push({ path, items: recs.map((r) => r.n) }); return; }
-            for (const r of recs) singles.push({ n: r.n, id: r.id, path });
+            for (const r of recs) singles.push({ n: r.n, id: r.id, idn: r.idn, tn: r.tn, path });
             for (const o of rounds) for (const k of Object.keys(o)) if (o[k] && typeof o[k] === 'object') walk(o[k], k.toLowerCase(), path + '[].' + k, o, depth + 1);
             return;
           }
-          if (allPockets && v.length >= 3 && HISTORY_KEYS.test(key || '')) { lists.push({ path, items: pockets }); return; }
+          if (allPockets && v.length >= 3 && HISTORY_KEYS.test(key || '') && !NOT_HISTORY_KEYS.test(key || '')) { lists.push({ path, items: pockets }); return; }
         }
         for (const x of v) walk(x, key, path + '[]', parent, depth + 1);
         return;
@@ -340,7 +384,7 @@
       if (typeof v === 'object') {
         if (!key0 && isRoundObj(v)) {
           const n = asPocket(roundNum(v));
-          if (n !== null) singles.push({ n, id: roundId(v), path });
+          if (n !== null) singles.push({ n, id: roundId(v), idn: idNum(v), tn: timeOf(v), path });
           for (const k of Object.keys(v)) if (v[k] && typeof v[k] === 'object') walk(v[k], k.toLowerCase(), path + '.' + k, v, depth + 1);
           return;
         }
@@ -360,7 +404,7 @@
 
   // ---- Field discovery: which keys carry integers that look like pockets (0..36,
   // several distinct values, never out of range) across the captured bodies.
-  const NOT_POCKET_KEY = /(^|_)(status|code|type|seq|sequence|time|timestamp|ts|ms|id|uid|version|ver|count|total|index|idx|len|length|size|err|error|ok|state|step|ack|ping|pong|op|cmd|event|msgtype|level|limit|min|max|page|currency|lang|delay|timeout|interval|duration|percent|pct)$|(id|time|seq|count|status|code|type|stamp|limit|timeout)$/;
+  const NOT_POCKET_KEY = /(order|format|whitelist|navigation|animationnumber|sort|position|priority|rank|precision|decimals|odd|odds|percent)$|(^|_)(status|code|type|seq|sequence|time|timestamp|ts|ms|id|uid|version|ver|count|total|index|idx|len|length|size|err|error|ok|state|step|ack|ping|pong|op|cmd|event|msgtype|level|limit|min|max|page|currency|lang|delay|timeout|interval|duration|percent|pct)$|(id|time|seq|count|status|code|type|stamp|limit|timeout)$/;
   function fieldCandidates(bodies, opts) {
     const maxBodies = (opts && opts.maxBodies) || 300;
     const stats = new Map();
@@ -436,10 +480,36 @@
     return { state: { prev: arr, orient }, added };
   }
 
+  // Provably-fair records: rounds that publish resultKey + resultSalt + resultHash.
+  // Only direct objects (the round just finished), not history arrays.
+  function fairRecords(obj) {
+    const out = [];
+    const walk = (v, inArr, depth) => {
+      if (!v || typeof v !== 'object' || depth > 10) return;
+      if (Array.isArray(v)) {
+        // A list of several hashed rounds is history, not the round that just finished.
+        const hist = v.filter((x) => x && typeof x === 'object' && typeof x.resultHash === 'string').length >= 2;
+        for (const x of v) walk(x, hist, depth + 1);
+        return;
+      }
+      if (!inArr && typeof v.resultHash === 'string' && typeof v.resultKey === 'string' && typeof v.resultSalt === 'string') {
+        out.push({ id: roundId(v) || v.resultHash, hash: v.resultHash, key: v.resultKey, salt: v.resultSalt, n: asPocket(roundNum(v)) });
+      }
+      for (const k of Object.keys(v)) walk(v[k], inArr, depth + 1);
+    };
+    walk(obj, false, 0);
+    return out;
+  }
+  async function sha512Hex(str) {
+    const buf = await crypto.subtle.digest('SHA-512', new TextEncoder().encode(str));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  const isNotPocketKey = (k) => NOT_POCKET_KEY.test(String(k || '').toLowerCase());
+
   async function sha256Hex(str) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
     return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  window.TARYAM = { RED, colorOf, erfc, pFromZ, houseEdge, analyze, bias, classifyHost, hostOf, registrable, guessNumbers, guessBalance, byKeyNumbers, byKeyBalance, scanText, sha256Hex, PROVIDERS, decodeFrames, parseXml, decodeProto, extractRounds, fieldCandidates, mergeSnapshot, asPocket };
+  window.TARYAM = { RED, colorOf, erfc, pFromZ, houseEdge, analyze, bias, classifyHost, hostOf, registrable, guessNumbers, guessBalance, byKeyNumbers, byKeyBalance, scanText, sha256Hex, PROVIDERS, decodeFrames, parseXml, decodeProto, extractRounds, fieldCandidates, mergeSnapshot, asPocket, repairJson, fairRecords, sha512Hex, keyNum, isNotPocketKey };
 })();

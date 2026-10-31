@@ -48,6 +48,7 @@
     forcedSrc: null,    // source picked by hand in «ضبط الحقول»
     base: null,         // what was saved from earlier page loads on this site
     loaded: false,
+    fair: { seen: new Set(), rows: [] },
     ai: null,
     aiPending: false,
   };
@@ -65,14 +66,15 @@
   // unwrapped first (SignalR / socket.io / nested JSON / XML / protobuf), then the
   // mapped field names are used when given, otherwise the automatic heuristics.
   function parseBody(body, url) {
-    const out = { items: [], lists: [], balance: null };
+    const out = { items: [], lists: [], balance: null, fair: [] };
     if (!body) return out;
     const host = T.hostOf(url || '') || '';
     const objs = T.decodeFrames(body);
     if (objs.length) {
       for (const obj of objs) {
         const r = T.extractRounds(obj, state.fieldMap.result);
-        for (const it of r.singles) out.items.push({ n: it.n, id: it.id, src: host + (it.path || '·') });
+        for (const it of r.singles) out.items.push({ n: it.n, id: it.id, idn: it.idn, tn: it.tn, src: host + (it.path || '·') });
+        if (!state.fieldMap.result) for (const f of T.fairRecords(obj)) out.fair.push(f);
         for (const l of r.lists) out.lists.push({ src: host + (l.path || '·'), items: l.items });
         const b = state.fieldMap.balance ? T.byKeyBalance(obj, state.fieldMap.balance) : T.guessBalance(obj);
         if (b !== null) out.balance = b;
@@ -121,18 +123,55 @@
     state.failovers = (state.failovers || 0) + 1;
     emit(src, pend, t);
   }
+  // Provably-fair audit. A published hash only proves something if it reached the
+  // player BEFORE the bet (a commitment). For every newly finished round: check
+  // SHA-512(resultKey + resultSalt) = resultHash, that resultKey names the same
+  // pocket, and whether that hash was seen in any earlier frame.
+  const hashFirst = new Map(); // 128-hex hash → sequence number of the first frame it appeared in
+  let frameSeq = 0;
+  function noteHashes(body) {
+    const seq = ++frameSeq;
+    const m = String(body).match(/\b[0-9a-fA-F]{128}\b/g);
+    if (m) for (const h of m) { const k = h.toLowerCase(); if (!hashFirst.has(k)) hashFirst.set(k, seq); }
+    if (hashFirst.size > 20000) hashFirst.delete(hashFirst.keys().next().value);
+    return seq;
+  }
+  function auditFair(recs, seq) {
+    const f = state.fair;
+    for (const r of recs) {
+      if (f.seen.has(r.id)) continue;
+      f.seen.add(r.id);
+      const first = hashFirst.get(r.hash.toLowerCase());
+      const pre = first !== undefined && seq !== undefined && first < seq;
+      const keyN = T.keyNum(r.key);
+      const row = { id: r.id, n: r.n, pre, keyOk: keyN === undefined || keyN === r.n, hashOk: null };
+      f.rows.push(row); if (f.rows.length > 2000) f.rows.shift();
+      T.sha512Hex(r.key + r.salt).then((h) => { row.hashOk = h.toLowerCase() === r.hash.toLowerCase(); scheduleRender(); }).catch(() => { row.hashOk = null; });
+    }
+  }
+  const IDS = '#ids'; // the virtual source of all rounds that carry a round id
   function applyParsed(p, t) {
     t = t || Date.now();
     const bySrc = new Map(); const ids = new Set();
     const push = (src, r) => { let a = bySrc.get(src); if (!a) { a = []; bySrc.set(src, a); } a.push(r); };
+    // Rounds that carry an id are deduplicated by that id, so every id'd source (a
+    // live result and its history list) is safe to merge: they form one source.
+    const idRecs = [];
     for (const it of p.items) {
       noteSource(it.src, 1);
-      if (it.id) {
+      if (it.id && !state.forcedSrc) {
         if (state.seenRounds.has(it.id) || ids.has(it.id)) continue;
-        const x = state.srcInfo.get(it.src); if (x && x.pending.some((r) => r.id === it.id)) continue;
-        ids.add(it.id);
+        const x = state.srcInfo.get(IDS); if (x && x.pending.some((r) => r.id === it.id)) continue;
+        ids.add(it.id); idRecs.push({ n: it.n, id: it.id, idn: it.idn, tn: it.tn });
+        continue;
       }
+      if (it.id) { if (state.seenRounds.has(it.id) || ids.has(it.id)) continue; ids.add(it.id); }
       push(it.src, { n: it.n, id: it.id });
+    }
+    if (idRecs.length) {
+      const by = (k) => idRecs.length > 1 && idRecs.every((r) => Number.isFinite(r[k]));
+      const sorted = by('idn') ? idRecs.slice().sort((a, b) => a.idn - b.idn) : by('tn') ? idRecs.slice().sort((a, b) => a.tn - b.tn) : idRecs;
+      bySrc.set(IDS, sorted.map((r) => ({ n: r.n, id: r.id })));
     }
     for (const l of p.lists) {
       noteSource(l.src, l.items.length);
@@ -142,6 +181,7 @@
     }
     const before = state.spins.length;
     for (const [src, recs] of bySrc) emit(src, recs, t);
+    if (p.fair && p.fair.length) auditFair(p.fair, p.seq);
     if (p.balance !== null && Number.isFinite(p.balance)) {
       if (state.startBalance === null) state.startBalance = p.balance;
       if (state.balance !== p.balance) { state.balance = p.balance; schedulePersist(); }
@@ -162,7 +202,7 @@
     state.idlessSrc = sameMap ? b.idlessSrc || null : null;
     state.srcInfo = new Map(); state.primaryT = b ? (b.loadedAt || 0) : 0; state.lastSpinT = 0;
     state.sources = new Map();
-    for (let i = state.raw.length - 1; i >= 0; i--) applyParsed(parseBody(state.raw[i].body, state.raw[i].url), state.raw[i].t);
+    for (let i = state.raw.length - 1; i >= 0; i--) { const p = parseBody(state.raw[i].body, state.raw[i].url); p.seq = state.raw[i].seq; applyParsed(p, state.raw[i].t); }
     rebuildAI();
     schedulePersist();
     render();
@@ -210,6 +250,8 @@
   function loadSaved() {
     const done = (saved) => {
       if (state.loaded) return;
+      // A session counted from a junk field (e.g. "order" = 1,2,3 from site settings) is discarded.
+      if (saved && saved.fieldResult && T.isNotPocketKey(saved.fieldResult)) saved = { v: 1, spins: [], deep: saved.deep, wheel: saved.wheel };
       if (saved && saved.v === 1 && Array.isArray(saved.spins)) {
         state.base = { spins: saved.spins.filter((n) => Number.isInteger(n) && n >= 0 && n <= 36), seen: saved.seen || [], snaps: saved.snaps || {},
           idSource: !!saved.idSource, idlessSrc: saved.idlessSrc || null, fieldResult: saved.fieldResult || '', startBalance: saved.startBalance, balance: saved.balance, loadedAt: Date.now() };
@@ -228,13 +270,13 @@
   function resetAll() {
     aiJob++;
     Object.assign(state, { spins: [], events: [], raw: [], seenRounds: new Set(), startBalance: null, balance: null, startedAt: new Date(),
-      snaps: {}, sources: new Map(), diag: new Map(), idSource: false, idlessSrc: null, srcInfo: new Map(), primaryT: 0, lastSpinT: 0, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false });
+      snaps: {}, sources: new Map(), diag: new Map(), fair: { seen: new Set(), rows: [] }, idSource: false, idlessSrc: null, srcInfo: new Map(), primaryT: 0, lastSpinT: 0, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false });
     state.hosts.clear();
     if (store) { try { store.remove(SKEY); } catch (e) { /* ignore */ } }
     render();
   }
   // Text frames are capped at 8 KB; binary (base64) frames are kept whole so they still decode.
-  const rawCap = (b) => (b.startsWith('[binary ') ? b.slice(0, 20000) : b.slice(0, 8000));
+  const rawCap = (b) => (b.startsWith('[binary ') ? b.slice(0, 20000) : b.slice(0, 12000));
   function ingest(ev) {
     if (ev.url) noteHost(ev.url);
     if (ev.body) {
@@ -244,7 +286,9 @@
       let dq = state.diag.get(dh); if (!dq) { dq = []; state.diag.set(dh, dq); }
       dq.push({ t: Date.now(), kind: ev.kind, url: ev.url || '', body: String(ev.body).slice(0, 20000) });
       if (dq.length > 250) dq.shift();
-      if (state.loaded) applyParsed(parseBody(ev.body, ev.url)); // before load, reparseAll replays it
+      const seq = noteHashes(ev.body);
+      state.raw[0].seq = seq;
+      if (state.loaded) { const p = parseBody(ev.body, ev.url); p.seq = seq; applyParsed(p); } // before load, reparseAll replays it
       state.events.unshift({ kind: ev.kind, url: ev.url || '', body: String(ev.body).slice(0, 400), t: Date.now() });
     } else if (ev.kind !== 'ready') {
       state.events.unshift({ kind: ev.kind, url: ev.url || '', body: '', t: Date.now() });
@@ -349,6 +393,23 @@
   const ago = (t) => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 60 ? s + 'ث' : s < 3600 ? Math.round(s / 60) + 'د' : Math.round(s / 3600) + 'س'; };
   const pct = (v) => (v * 100).toFixed(1) + '٪';
   const pFmt = (p) => (p < 0.0001 ? '<0.0001' : p.toFixed(p < 0.01 ? 4 : 3));
+  function fairStats() {
+    const rows = state.fair.rows, n = rows.length;
+    return { n, hashOk: rows.filter((r) => r.hashOk === true).length, hashBad: rows.filter((r) => r.hashOk === false).length,
+      keyBad: rows.filter((r) => !r.keyOk).length, pre: rows.filter((r) => r.pre).length };
+  }
+  function fairVerdict(f) {
+    if (f.hashBad || f.keyBad) return { cls: 'bad', text: '⚠ بصمة ما تطابق النتيجة — دليل تلاعب بالنتيجة بعد إعلان بصمتها' };
+    if (!f.hashOk) return { cls: 'warn', text: typeof crypto !== 'undefined' && crypto.subtle ? 'جارٍ التحقّق من البصمة…' : 'تعذّر حساب البصمة في هذه الصفحة' };
+    if (f.pre === f.n) return { cls: 'good', text: '✓ البصمة وصلت قبل الرهان ومطابقة — النتيجة كانت محدّدة مسبقًا ولم تتغيّر' };
+    return { cls: 'warn', text: 'البصمة مطابقة، لكنها توصل مع النتيجة بعد الرهان — فهي ما تثبت إن النتيجة كانت محدّدة قبل رهانك' };
+  }
+  function fairSection() {
+    const f = fairStats(); if (!f.n) return '';
+    const v = fairVerdict(f);
+    return `<div class="tp-sec">🔐 فحص «العدالة المُثبتة» (Provably Fair)</div>
+      <div class="tp-verdict ${v.cls}">${v.text}<div class="s">SHA-512 ${f.hashOk}/${f.n} · resultKey ${f.n - f.keyBad}/${f.n} · before bet ${f.pre}/${f.n}</div></div>`;
+  }
   function aiSection() {
     if (!T.ai) return '';
     const head = '<div class="tp-sec">🧠 الذكاء الاصطناعي — توقّع الجولة الجاية</div>';
@@ -460,6 +521,7 @@
       </div>` : ''}
 
       ${aiSection()}
+      ${fairSection()}
 
       ${(() => {
         const pred = (T.predict && state.spins.length >= 10) ? T.predict.predictNext(state.spins, 5) : null;
@@ -565,6 +627,15 @@ ${(() => {
   return method + `<p class="${r.predictable ? 'bad' : 'good'}">${v}</p>
 <p class="muted">إصابة أقوى ٥: ${(r.rate * 100).toFixed(1)}٪ (${r.hits}/${r.n}) مقابل صدفة ${(r.chance * 100).toFixed(1)}٪ · p (ذو الحدّين)=${pFmt(r.pTop)} · p (مستمر)=${pFmt(r.pAnytime)} · ${r.bitsPerSpin.toFixed(4)} bit/spin (الصفر = لا معلومة) · القائد: ${esc(r.leader.name)}</p>
 <table><thead><tr><th>النموذج</th><th>الوزن</th><th>إصابة أقوى ٥</th><th>الخسارة (bit/جولة، الصدفة = 5.209)</th></tr></thead><tbody>${rows}</tbody></table>`;
+})()}
+
+${(() => {
+  const f = fairStats(); if (!f.n) return '';
+  const v = fairVerdict(f);
+  return `<h2>٢-د. فحص «العدالة المُثبتة» (Provably Fair)</h2>
+<p class="muted">لكل جولة تنشر اللعبة resultKey وresultSalt وresultHash. فُحص لكل جولة جديدة: هل SHA-512(resultKey + resultSalt) يساوي resultHash، وهل resultKey يسمّي نفس الرقم، وهل وصلت البصمة في أي إطار قبل إطار النتيجة (التزام مسبق). البصمة لا تثبت شيئًا إلا إذا وصلت للاعب قبل رهانه.</p>
+<p class="${v.cls === 'bad' ? 'bad' : v.cls === 'good' ? 'good' : ''}">${esc(v.text)}</p>
+<table><tr><td class="k">جولات مفحوصة</td><td dir="ltr">${f.n}</td></tr><tr><td class="k">البصمة مطابقة (SHA-512)</td><td dir="ltr">${f.hashOk}/${f.n}</td></tr><tr><td class="k">resultKey يطابق الرقم</td><td dir="ltr">${f.n - f.keyBad}/${f.n}</td></tr><tr><td class="k">البصمة وصلت قبل الرهان</td><td dir="ltr">${f.pre}/${f.n}</td></tr></table>`;
 })()}
 
 <h2>٣. من أين تُحمَّل اللعبة</h2>

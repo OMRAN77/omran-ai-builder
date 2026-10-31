@@ -11,7 +11,7 @@ import path from 'node:path';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const ext = path.join(dir, '..', '..', 'extension');
-const sandbox = { window: {}, location: { href: 'https://x/', hostname: 'x' }, crypto: globalThis.crypto, URL: globalThis.URL, atob: globalThis.atob, Math, console };
+const sandbox = { window: {}, location: { href: 'https://x/', hostname: 'x' }, crypto: globalThis.crypto, URL: globalThis.URL, atob: globalThis.atob, TextEncoder: globalThis.TextEncoder, Math, console };
 vm.createContext(sandbox);
 for (const f of ['core.js', 'predict.js', 'ai.js']) vm.runInContext(fs.readFileSync(path.join(ext, f), 'utf8'), sandbox);
 const T = sandbox.window.TARYAM;
@@ -149,4 +149,33 @@ test('binary protobuf frames decode into f<n> fields that fieldCandidates can ra
   assert.strictEqual(c[0].key, 'f3');
   assert.ok(!c.some((x) => x.key === 'f1'));
   assert.strictEqual(T.decodeFrames('[binary 3] b64://///w==').length, 0); // junk bytes are rejected
+});
+
+test('Turbo RNG frames: big frame parses, cut frame is repaired, history seeds oldest→newest, gameId 0 ignored', async () => {
+  const { createRequire } = await import('node:module');
+  const require = createRequire(import.meta.url);
+  const F = require('./fixtures/turbo.cjs');
+  const r0 = rng(3); const hist = [];
+  for (let i = 0; i < 58; i++) hist.push(F.round(22359000 + i * 4, Math.floor(r0() * 37), Date.UTC(2026, 9, 31, 2, 0, i * 10)));
+  const body = F.frame(hist, 91.01);
+  assert.ok(body.length > 20000, 'real frames exceed the old 20 KB cap');
+  const objs = T.decodeFrames(body);
+  assert.strictEqual(objs.length, 1);
+  const ex = T.extractRounds(objs[0], '');
+  const ids = new Set(Array.from(ex.singles, (s) => s.id));
+  assert.ok(!ids.has('0'), 'gameId 0 is not an id');
+  assert.ok(ids.has(String(hist[57].id)));
+  const hs = ex.singles.filter((s) => s.path === '.arguments[].lastResults');
+  assert.deepStrictEqual(Array.from(hs, (s) => s.n), hist.map((h) => h.n), 'lastResults sorted oldest → newest');
+  // Cut at 12 000 chars (the raw buffer cap): still yields the finished round.
+  const cut = T.decodeFrames(body.slice(0, 12000));
+  assert.strictEqual(cut.length, 1);
+  assert.strictEqual(T.extractRounds(cut[0], '').singles[0].n, hist[57].n);
+  // Provably fair record: only the finished round, and its hash checks out.
+  const fr = T.fairRecords(objs[0]);
+  assert.strictEqual(fr.length, 1);
+  assert.strictEqual(fr[0].n, hist[57].n);
+  assert.strictEqual((await T.sha512Hex(fr[0].key + fr[0].salt)).toUpperCase(), fr[0].hash);
+  assert.strictEqual(T.keyNum(fr[0].key), hist[57].n);
+  assert.ok(T.isNotPocketKey('order') && T.isNotPocketKey('maintabwhitelist') && !T.isNotPocketKey('lastwin'));
 });

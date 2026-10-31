@@ -9,7 +9,10 @@
   // reads this to skip the fallback <script> injection when the manifest already ran us.
   try { document.documentElement.setAttribute('data-taryam-hooked', '1'); } catch (e) { /* ignore */ }
 
-  const MAX = 20000; // cap copied bodies so a huge frame cannot freeze the panel
+  // Cap copied bodies so a pathological frame cannot freeze the panel. Live games
+  // send big frames (one Turbo roulette result carries ~60 KB of statistics), so
+  // the cap must be well above that or the JSON arrives cut and cannot be read.
+  const MAX = 1000000;
   function send(ev) {
     try { window.postMessage({ __taryam: true, ev }, '*'); } catch (e) { /* never break the page */ }
   }
