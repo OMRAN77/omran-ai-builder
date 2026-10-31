@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TARYAM — فاحص الكازينو المباشر",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "description": "يقرأ جلستك في الكازينو: جولات الروليت، الرصيد قبل/بعد، مصدر اللعبة، وذكاء اصطناعي يقيس قابلية التوقّع. يقرأ فقط.",
   "content_scripts": [
     {
@@ -41,5 +41,11 @@
   ],
   "permissions": [
     "storage"
+  ],
+  "background": {
+    "service_worker": "bg.js"
+  },
+  "host_permissions": [
+    "https://taryam-cyber.vercel.app/*"
   ]
 }

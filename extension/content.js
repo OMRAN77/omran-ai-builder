@@ -55,6 +55,7 @@
     claimDraft: '',
     claimErr: '',
     pickK: 3,           // how many numbers the AI picks (3 or 5)
+    ext: { on: false, cur: null, rows: [], busy: false, err: '' }, // Claude via TARYAM Cyber: asked after each round, scored on the next
     showDetails: false, // «📊 التفاصيل والفحوص» folded by default: one clear place to pick from
     stake: 0,           // amount per number for the AI's 3-number pick (what-if only; nothing is bet)
   };
@@ -245,7 +246,7 @@
       store.set({ [SKEY]: {
         v: 1, spins: state.spins.slice(-6000), seen: [...state.seenRounds].slice(-6000), snaps: state.snaps,
         idSource: state.idSource, idlessSrc: state.idlessSrc, forcedSrc: state.forcedSrc, fieldResult: state.fieldMap.result,
-        fieldMap: state.fieldMap, wheel: state.wheel, stake: state.stake, pickK: state.pickK, claim: state.claim, startBalance: state.startBalance, balance: state.balance,
+        fieldMap: state.fieldMap, wheel: state.wheel, stake: state.stake, pickK: state.pickK, claim: state.claim, ext: { on: state.ext.on, cur: state.ext.cur, rows: state.ext.rows }, startBalance: state.startBalance, balance: state.balance,
         startedAt: state.startedAt.toISOString(),
       } });
     } catch (e) { /* storage full or context gone — keep running */ }
@@ -267,6 +268,7 @@
         if (saved.wheel) state.wheel = saved.wheel;
         if (Number(saved.stake) > 0) state.stake = Number(saved.stake);
         if (saved.pickK === 5) state.pickK = 5;
+        if (saved.ext && Array.isArray(saved.ext.rows)) state.ext = { on: !!saved.ext.on, cur: saved.ext.cur && Array.isArray(saved.ext.cur.nums) ? saved.ext.cur : null, rows: saved.ext.rows.filter((r) => r && Array.isArray(r.nums)), busy: false, err: '' };
         if (saved.claim && Array.isArray(saved.claim.rows)) state.claim = { cur: saved.claim.cur && Array.isArray(saved.claim.cur.nums) ? saved.claim.cur : null, rows: saved.claim.rows.filter((r) => r && Array.isArray(r.nums)) };
         state.forcedSrc = saved.forcedSrc || null;
         if (saved.startedAt) { const d = new Date(saved.startedAt); if (!isNaN(d)) state.startedAt = d; }
@@ -281,7 +283,7 @@
   function resetAll() {
     aiJob++;
     Object.assign(state, { spins: [], events: [], raw: [], seenRounds: new Set(), startBalance: null, balance: null, startedAt: new Date(),
-      snaps: {}, sources: new Map(), diag: new Map(), fair: { seen: new Set(), rows: [] }, idSource: false, idlessSrc: null, srcInfo: new Map(), primaryT: 0, lastSpinT: 0, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false, claim: { cur: null, rows: [] }, claimDraft: '', claimErr: '' });
+      snaps: {}, sources: new Map(), diag: new Map(), fair: { seen: new Set(), rows: [] }, idSource: false, idlessSrc: null, srcInfo: new Map(), primaryT: 0, lastSpinT: 0, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false, claim: { cur: null, rows: [] }, claimDraft: '', claimErr: '', ext: { on: false, cur: null, rows: [], busy: false, err: '' } });
     state.hosts.clear();
     if (store) { try { store.remove(SKEY); } catch (e) { /* ignore */ } }
     render();
@@ -370,6 +372,63 @@
       ${last ? `<div class="s">آخر جولة: ${last.nums.join(', ')} ← طلع <b>${esc(last.n)}</b> ${last.hit ? '✓' : '✗'}</div>` : ''}
       <div class="tp-verdict ${v.cls}" style="margin:6px 0 0">${v.text}${c.R ? `<div class="s">إصابة ${c.H}/${c.R} (${pct(c.H / c.R)}) مقابل صدفة ${pct(c.E / c.R)} · p=${pFmt(c.p)} · لو راهنت ${money(st)} على كل رقم: ${c.net * st >= 0 ? '+' : '−'}${money(Math.abs(c.net * st))}</div>` : ''}</div></div>`;
   }
+  // Claude (through the owner's TARYAM Cyber site). Asked right after each round
+  // with the history; its answer is locked with a time stamp and scored on the
+  // NEXT result only. An answer that lands after that result is discarded.
+  const EXT_NAME = 'Claude';
+  function extNums(txt, k) {
+    const m = String(txt).match(/"numbers"\s*:\s*\[([^\]]*)\]/);
+    return parseNums(m ? m[1] : txt).slice(0, k);
+  }
+  function askExt() {
+    const x = state.ext;
+    if (!x.on || x.busy || x.cur) return;
+    if (!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage)) { x.err = 'الإضافة تحتاج ↻ بعد التحديث'; return; }
+    const hist = state.spins.slice(-200);
+    if (hist.length < 10) { x.err = 'يحتاج ١٠ جولات على الأقل'; return; }
+    const k = state.pickK === 5 ? 5 : 3; const atN = state.spins.length;
+    x.busy = true; x.err = '';
+    const body = {
+      system: `You pick numbers for the next spin of a ${state.wheel === 'american' ? 'American (0, 00 as 37, 1-36)' : 'European (0-36)'} roulette wheel. Use the result history to choose the ${k} distinct numbers you consider most likely next. Reply with JSON only, exactly: {"numbers":[${Array.from({ length: k }, (_, i) => 'n' + (i + 1)).join(',')}]}`,
+      messages: [{ role: 'user', content: `Results so far, oldest to newest (${hist.length}): ${hist.join(', ')}\nGive ${k} numbers for the next spin.` }],
+    };
+    const done = (err) => { x.busy = false; if (err) x.err = err; scheduleRender(); };
+    try {
+      chrome.runtime.sendMessage({ type: 'taryam-ask-ai', body }, (res) => {
+        if (chrome.runtime.lastError || !res) return done('ما قدر يتصل بـ TARYAM Cyber');
+        if (res.status === 402) { x.on = false; schedulePersist(); return done('خلص الحد اليومي في TARYAM Cyber (٢٠ رسالة) — يرجع بكرة'); }
+        if (res.status !== 200) return done(`TARYAM Cyber ردّ بخطأ ${res.status}`);
+        let txt = ''; try { const j = JSON.parse(res.text); txt = (j.content || []).map((c) => c.text || '').join(' '); } catch (e) { txt = res.text; }
+        const nums = extNums(txt, k);
+        if (state.spins.length !== atN) return done('الرد وصل بعد الجولة — ما ينحسب');
+        if (nums.length !== k) return done('ردّ Claude ما انفهم');
+        x.cur = { nums, t: Date.now() }; persistNow(); done('');
+      });
+    } catch (e) { done('ما قدر يتصل بـ TARYAM Cyber'); }
+  }
+  function scoreExt(n, t) {
+    const x = state.ext, c = x.cur; if (!c || !(t > c.t)) return;
+    x.rows.push({ nums: c.nums, n, hit: c.nums.includes(n), t0: c.t, t1: t, K: state.wheel === 'american' ? 38 : 37 });
+    if (x.rows.length > 5000) x.rows.shift();
+    x.cur = null; schedulePersist();
+  }
+  function extStats() {
+    const rows = state.ext.rows; let H = 0, E = 0;
+    for (const r of rows) { E += r.nums.length / (r.K || 37); if (r.hit) H++; }
+    return { R: rows.length, H, E };
+  }
+  function extBox() {
+    const x = state.ext; const st = extStats();
+    const chips = (a) => a.map((n) => `<span class="chip ${T.colorOf(n)}">${esc(n)}</span>`).join('');
+    const last = x.rows[x.rows.length - 1];
+    return `<div class="tp-ext">
+      <button class="tp-sbtn${x.on ? ' on' : ''}" id="tp-ext">🤖 ${EXT_NAME} ${x.on ? '— شغّال (اضغط للإيقاف)' : '— اسأله كل جولة'}</button>
+      ${x.on || x.cur ? `<div class="tp-strip" style="margin-top:6px">${x.cur ? `<span class="tp-muted">${EXT_NAME}:</span> ${chips(x.cur.nums)}` : x.busy ? `<span class="tp-muted">${EXT_NAME} يفكّر…</span>` : ''}</div>` : ''}
+      ${x.err ? `<div class="s bad">${esc(x.err)}</div>` : ''}
+      ${last ? `<div class="s">آخر جولة: ${last.nums.join(', ')} ← طلع ${esc(last.n)} ${last.hit ? '✓' : '✗'}</div>` : ''}
+      ${st.R ? `<div class="s">${EXT_NAME} أصاب ${st.H} من ${st.R} (${pct(st.H / st.R)}) — الصدفة ${pct(st.E / st.R)}</div>` : ''}
+    </div>`;
+  }
   function liveSection() {
     const L = live.last; if (!L) return '';
     const fresh = Date.now() - L.t < 12000;
@@ -402,7 +461,7 @@
         const pre = state.ai && !state.aiPending && state.ai.n ? (() => { const r = aiReport() || {}; return state.pickK === 5 ? r.pick5 : r.pick; })() : null;
         const p = parseBody(ev.body, ev.url); p.seq = seq; applyParsed(p);
         const fresh = noteLive(ev, before, pre ? pre.slice() : null);
-        if (fresh) scoreClaim(live.last.n, live.last.t);
+        if (fresh) { scoreClaim(live.last.n, live.last.t); scoreExt(live.last.n, live.last.t); askExt(); }
         if (fresh) {
           if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
           render(); // at once: the outcome is already known while the wheel still spins
@@ -546,7 +605,8 @@
       <label>مبلغك على كل رقم <input id="tp-stake" type="number" min="0" step="0.5" inputmode="decimal" value="${s || ''}" placeholder="مثلًا 1"></label>
       ${s ? `<div class="s">الرهان ${money(k * s)} · لو طلع واحد منها: +${money((36 - k) * s)} · لو لا: −${money(k * s)}</div>` : ''}
       <div class="s">أصاب ${hits} من ${r.n} (${pct(hits / r.n)}) — الصدفة ${pct(k / K)}${s ? ` · صافيك لو راهنت كذا كل جولة: <b class="${pnl < 0 ? 'bad' : 'good'}">${pnl >= 0 ? '+' : '−'}${money(Math.abs(pnl))}</b>` : ''}</div>
-      <div class="s">أنت تراهن بيدك؛ الإضافة ما تراهن عنك.</div></div>`;
+      <div class="s">أنت تراهن بيدك؛ الإضافة ما تراهن عنك.</div>
+      ${extBox()}</div>`;
   }
   function aiDetails() {
     if (!T.ai || state.aiPending || !state.ai) return '';
@@ -710,6 +770,8 @@
     const cc = root.getElementById('tp-claim-cancel');
     if (cc) cc.addEventListener('click', () => { state.claim.cur = null; schedulePersist(); render(); });
     root.querySelectorAll('[data-pk]').forEach((b) => b.addEventListener('click', () => { state.pickK = Number(b.getAttribute('data-pk')) === 5 ? 5 : 3; schedulePersist(); render(); }));
+    const xb = root.getElementById('tp-ext');
+    if (xb) xb.addEventListener('click', () => { state.ext.on = !state.ext.on; state.ext.err = ''; if (!state.ext.on) state.ext.cur = null; persistNow(); if (state.ext.on) askExt(); render(); });
     const det = root.getElementById('tp-details');
     if (det) det.addEventListener('click', () => { state.showDetails = !state.showDetails; render(); });
     const stk = root.getElementById('tp-stake');
@@ -793,6 +855,7 @@ ${(() => {
   const rows = r.experts.map((e) => `<tr><td>${esc(e.name)}</td><td dir="ltr">${(e.weight * 100).toFixed(1)}%</td><td dir="ltr">${(e.hitRate * 100).toFixed(1)}%</td><td dir="ltr">${(e.avgLoss / Math.LN2).toFixed(3)}</td></tr>`).join('');
   return method + `<p class="${r.predictable ? 'bad' : 'good'}">${v}</p>
 <p class="muted">إصابة أقوى ٥: ${(r.rate * 100).toFixed(1)}٪ (${r.hits}/${r.n}) مقابل صدفة ${(r.chance * 100).toFixed(1)}٪ · p (ذو الحدّين)=${pFmt(r.pTop)} · p (مستمر)=${pFmt(r.pAnytime)} · ${r.bitsPerSpin.toFixed(4)} bit/spin (الصفر = لا معلومة) · القائد: ${esc(r.leader.name)}</p>${r.ctxN ? `
+${state.ext.rows.length ? `<p class="muted">${EXT_NAME} (عبر TARYAM Cyber، يُسأل بعد كل جولة ويُقيَّم على الجولة التالية): أصاب ${extStats().H}/${extStats().R} مقابل صدفة ${(100 * extStats().E / extStats().R).toFixed(1)}٪</p>` : ''}
 <p class="muted">اختيار ٣ أرقام: ${(r.pick || []).join(', ')} · أصاب ${r.pickHits}/${r.n}${state.stake > 0 ? ` · بمبلغ ${money(state.stake)} لكل رقم كان الصافي ${money(state.stake * (36 * r.pickHits - 3 * r.n))}` : ''} (لم تُوضع أي رهانات من الأداة)</p>
 <p class="muted">حسب آخر رقم: ${r.ctxTop.join(', ')} · إصابة ${(r.ctxRate * 100).toFixed(1)}٪ (${r.ctxHits}/${r.ctxN}) · p=${pFmt(r.ctxP)}</p>` : ''}
 <table><thead><tr><th>النموذج</th><th>الوزن</th><th>إصابة أقوى ٥</th><th>الخسارة (bit/جولة، الصدفة = 5.209)</th></tr></thead><tbody>${rows}</tbody></table>`;
@@ -912,6 +975,9 @@ ${rawHtml || '<p class="muted">لا شيء.</p>'}
   .tp-cbtn.on,.tp-sbtn.on{background:#0a5f46;border-color:#0f7a59;color:#d7ffee}
   .tp-srcs{display:flex;flex-direction:column;gap:4px}.tp-sbtn{text-align:left;word-break:break-all}
   .tp-pick .tp-sbtn{font-size:13px;padding:4px 14px;direction:rtl;text-align:center}
+  .tp-ext{margin-top:8px;padding-top:8px;border-top:1px dashed #2b3d66}
+  .tp-ext .s.bad{color:#f87171}
+  .tp-ext .tp-sbtn{font-size:12px;padding:4px 10px}
   .tp-pick .tp-strip{flex-wrap:nowrap}.tp-pick .chip.big{flex:1 1 0;min-width:0;padding:4px 0}
   .tp-exps{display:flex;flex-direction:column;gap:3px;margin-bottom:6px}
   .tp-exp{display:grid;grid-template-columns:118px 1fr 92px;gap:6px;align-items:center;font-size:11px;color:#9fb0cc}
