@@ -43,6 +43,17 @@
   }
 
   // Each pocket's z against 1/K, with a hottest number and a Bonferroni flag.
+  // Exact binomial upper tail P(X >= k), X ~ Bin(n, p). The normal approximation
+  // badly overstates rare pockets when only a few dozen spins are in (false alarms).
+  function binomTail(k, n, p) {
+    if (k <= 0) return 1; if (k > n) return 0;
+    const q = 1 - p, r = p / q;
+    let lp = n * Math.log(q); // log pmf(0)
+    for (let i = 0; i < k; i++) lp += Math.log((n - i) / (i + 1)) + Math.log(r);
+    let term = Math.exp(lp), sum = 0;
+    for (let i = k; i <= n && term > 0; i++) { sum += term; if (term < sum * 1e-17) break; term *= ((n - i) / (i + 1)) * r; }
+    return Math.min(1, sum);
+  }
   function bias(spins, wheel) {
     const K = wheel === 'american' ? 38 : 37;
     const n = spins.length;
@@ -52,7 +63,7 @@
     for (const s of spins) c.set(String(s), (c.get(String(s)) || 0) + 1);
     const rows = [...c.entries()].map(([pocket, observed]) => {
       const z = sd > 0 ? (observed - e) / sd : 0;
-      return { pocket, observed, expected: e, z, pValue: pFromZ(z), color: colorOf(pocket === '00' ? '00' : Number(pocket)) };
+      return { pocket, observed, expected: e, z, pValue: binomTail(observed, n, 1 / K), color: colorOf(pocket === '00' ? '00' : Number(pocket)) };
     }).sort((a, b) => b.z - a.z);
     const threshold = 0.01 / K;
     return { rows, hot: rows[0], flagged: rows.filter((r) => r.pValue < threshold), threshold, expected: e, enough: e >= 5 };
@@ -136,7 +147,7 @@
   // XML <result score="17" color="red"/> carries the pocket in "score".
   // Turbo-style RNG rounds keep the pocket in roundData.number and also spell it in
   // resultKey ("Red_7_Roulette_<uuid>").
-  function keyNum(k) { const m = typeof k === 'string' ? /^(?:red|black|green)_(\d{1,2})_/i.exec(k) : null; return m ? Number(m[1]) : undefined; }
+  function keyNum(k) { const m = typeof k === 'string' ? /^(?:\d+_)?(?:red|black|green)_(\d{1,2})_/i.exec(k) : null; return m ? Number(m[1]) : undefined; }
   function roundNum(o) {
     const rd = o.roundData && typeof o.roundData === 'object' ? o.roundData : null;
     return o.result ?? o.number ?? o.outcome ?? o.winningNumber ?? o.winningnumber ?? o.winNumber ?? o.score ??

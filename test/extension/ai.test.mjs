@@ -198,3 +198,16 @@ test('3-number pick: scored before each spin, stays at chance on a fair wheel', 
   assert.strictEqual(r.pickHits, mine, 'pick hits counted on the pick shown before the spin');
   assert.ok(Math.abs(r.pickHits / r.n - 3 / 37) < 0.03, 'no edge on a fair wheel: ' + r.pickHits / r.n);
 });
+
+test('pocket bias uses the exact binomial tail: no false alarm on a few dozen spins', () => {
+  // 36 spins where 23 came 5 times: exact P(X>=5)≈0.0035, above the 0.01/37 bar.
+  const spins = [23, 23, 23, 23, 23, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+  const b = T.analyze(spins, 'european').bias;
+  assert.ok(Math.abs(b.hot.pValue - 0.0035) < 0.001, 'exact tail ' + b.hot.pValue);
+  assert.strictEqual(b.flagged.length, 0);
+  // A really loaded pocket on 600 spins is still caught.
+  const big = []; for (let i = 0; i < 600; i++) big.push(i < 60 ? 17 : i % 37);
+  assert.ok(T.analyze(big, 'european').bias.flagged.some((r) => r.pocket === '17'));
+  assert.strictEqual(T.keyNum('22360771_Black_8_GoldenRoulette_f25d9053'), 8);
+  assert.strictEqual(T.keyNum('Red_7_Roulette_x'), 7);
+});
