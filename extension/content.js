@@ -403,7 +403,7 @@
         const p = parseBody(ev.body, ev.url); p.seq = seq; applyParsed(p);
         const fresh = noteLive(ev, before, pre ? pre.slice() : null);
         if (fresh) scoreClaim(live.last.n, live.last.t);
-        if (fresh && !(root && root.activeElement && root.activeElement.tagName === 'INPUT')) {
+        if (fresh) {
           if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
           render(); // at once: the outcome is already known while the wheel still spins
         }
@@ -420,7 +420,7 @@
   let renderTimer = null;
   function scheduleRender() {
     if (renderTimer) return;
-    renderTimer = setTimeout(() => { renderTimer = null; if (root && root.activeElement && root.activeElement.tagName === 'INPUT') { scheduleRender(); return; } render(); }, 300);
+    renderTimer = setTimeout(() => { renderTimer = null; render(); }, 300);
   }
   window.addEventListener('message', (e) => {
     const d = e.data;
@@ -603,7 +603,10 @@
     setTimeout(() => URL.revokeObjectURL(link.href), 4000);
   }
 
-  function render() {
+  // Re-entrancy guard: an input's change/blur may fire while the panel is redrawn.
+  let rendering = false;
+  function render() { if (rendering) { scheduleRender(); return; } rendering = true; try { renderNow(); } finally { rendering = false; } }
+  function renderNow() {
     if (!active) return;
     if (!root) build();
     const minBtn = root.getElementById('tp-min');
@@ -617,6 +620,7 @@
     const proxied = hosts.some(([, v]) => v.kind === 'proxied');
     const casinoServes = hosts.some(([, v]) => v.kind === 'casino') && !providerSeen;
     const last = state.spins.slice(-16);
+    const ae = root.activeElement && root.activeElement.tagName === 'INPUT' && root.activeElement.id ? root.activeElement : null;
 
     body.innerHTML = `
       <div class="tp-row">
@@ -692,8 +696,12 @@
       </div>` : ''}
       <div class="tp-foot">يقرأ جلستك فقط — لا يعدّل أي طلب أو نتيجة أو رصيد.</div>`;
 
+    // Keep the very input being typed in (value, caret, keyboard) so the panel stays
+    // live while you type — the new pick shows the moment the round lands.
+    if (ae) { const fresh = root.getElementById(ae.id); if (fresh && fresh !== ae) { fresh.replaceWith(ae); try { ae.focus({ preventScroll: true }); } catch (e) { /* ignore */ } } }
     const ci = root.getElementById('tp-claim');
-    if (ci) {
+    if (ci && !ci.__w) {
+      ci.__w = 1;
       ci.addEventListener('input', () => { state.claimDraft = ci.value; });
       ci.addEventListener('keydown', (e) => { if (e.key === 'Enter') { state.claimDraft = ci.value; ci.blur(); lockClaim(); } });
     }
@@ -705,7 +713,8 @@
     const det = root.getElementById('tp-details');
     if (det) det.addEventListener('click', () => { state.showDetails = !state.showDetails; render(); });
     const stk = root.getElementById('tp-stake');
-    if (stk) {
+    if (stk && !stk.__w) {
+      stk.__w = 1;
       const setStake = () => { const v = Number(String(stk.value).replace(',', '.')); state.stake = Number.isFinite(v) && v > 0 ? v : 0; schedulePersist(); stk.blur(); render(); };
       stk.addEventListener('change', setStake); stk.addEventListener('keydown', (e) => { if (e.key === 'Enter') setStake(); });
     }
@@ -716,11 +725,11 @@
     root.getElementById('tp-report').addEventListener('click', exportReport);
     root.getElementById('tp-diag').addEventListener('click', exportDiag);
     root.getElementById('tp-fields-toggle').addEventListener('click', () => { state.showFields = !state.showFields; render(); });
-    const fr = root.getElementById('tp-fr'), fb = root.getElementById('tp-fb');
-    const remap = () => { state.fieldMap.result = fr.value.trim(); state.fieldMap.balance = fb.value.trim(); state.forcedSrc = null; reparseAll(); };
-    fr.addEventListener('change', remap); fb.addEventListener('change', remap);
-    fr.addEventListener('keydown', (e) => { if (e.key === 'Enter') remap(); });
-    fb.addEventListener('keydown', (e) => { if (e.key === 'Enter') remap(); });
+    const remap = () => { const a = root.getElementById('tp-fr'), b = root.getElementById('tp-fb'); state.fieldMap.result = a.value.trim(); state.fieldMap.balance = b.value.trim(); state.forcedSrc = null; reparseAll(); };
+    for (const el of [root.getElementById('tp-fr'), root.getElementById('tp-fb')]) {
+      if (!el || el.__w) continue;
+      el.__w = 1; el.addEventListener('change', remap); el.addEventListener('keydown', (e) => { if (e.key === 'Enter') remap(); });
+    }
   }
 
   // The committee report: a self-contained HTML page (print to PDF) with the session,
