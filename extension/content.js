@@ -40,8 +40,11 @@
     min: false,
     snaps: {},          // history-list source → snapshot state (id-less "last results" lists)
     sources: new Map(), // source (host + path) → how many numbers it carried
-    idSource: false,    // a source with round ids exists: id-less copies are then ignored
-    idlessSrc: null,    // the one id-less source counted (avoids double counting)
+    idSource: false,    // (kept for saved sessions from 1.1.0)
+    idlessSrc: null,    // the primary source being counted (avoids double counting)
+    srcInfo: new Map(), // other sources' rounds since the primary last spoke (for fail-over)
+    primaryT: 0,
+    lastSpinT: 0,
     forcedSrc: null,    // source picked by hand in «ضبط الحقول»
     base: null,         // what was saved from earlier page loads on this site
     loaded: false,
@@ -83,34 +86,62 @@
     return out;
   }
   function noteSource(src, k) { const c = state.sources.get(src) || 0; state.sources.set(src, c + k); }
-  // One id-less source per session: the same rounds often arrive both as a live
-  // result and inside a re-sent history list; counting both would double them.
-  function acceptIdless(src) {
-    if (state.forcedSrc) return src === state.forcedSrc;
-    if (!state.fieldMap.result && state.idSource) return false;
+  // Several sockets often carry the same rounds (a live result plus a re-sent
+  // history, or a lobby feed). One primary source is counted, so nothing is doubled.
+  // If it goes quiet while another source keeps reporting new rounds, the count
+  // fails over to that source — a one-shot history frame can never freeze the count.
+  const FAILOVER_MS = 75000;
+  function srcInfo(src) { let x = state.srcInfo.get(src); if (!x) { x = { pending: [] }; state.srcInfo.set(src, x); } return x; }
+  function addSpin(n, t) { state.spins.push(n); state.lastSpinT = t || Date.now(); if (state.ai && !state.aiPending) state.ai.observe(n); }
+  function emit(src, recs, t) { // recs oldest → newest, already new for this source
+    if (!recs.length) return;
+    if (state.forcedSrc && src !== state.forcedSrc) return;
     if (!state.idlessSrc) state.idlessSrc = src;
-    return state.idlessSrc === src;
+    if (src === state.idlessSrc) {
+      for (const r of recs) { if (r.id) state.seenRounds.add(r.id); addSpin(r.n, t); }
+      state.primaryT = t;
+      for (const x of state.srcInfo.values()) x.pending.length = 0;
+      return;
+    }
+    const x = srcInfo(src);
+    for (const r of recs) x.pending.push({ n: r.n, id: r.id, t });
+    if (x.pending.length > 60) x.pending.splice(0, x.pending.length - 60);
+    if (state.forcedSrc || t - (state.primaryT || 0) <= FAILOVER_MS || x.pending.length < 2) return;
+    // Fail over. Drop the copies of rounds the old primary already counted.
+    let pend = x.pending.filter((r) => !(r.id && state.seenRounds.has(r.id)));
+    let j = 0;
+    for (let k = Math.min(pend.length, state.spins.length); k > 0 && !j; k--) {
+      let ok = true;
+      for (let i = 0; i < k; i++) if (pend[i].n !== state.spins[state.spins.length - k + i] || pend[i].t - (state.primaryT || 0) > 30000) { ok = false; break; }
+      if (ok) j = k;
+    }
+    pend = pend.slice(j);
+    state.idlessSrc = src;
+    x.pending.length = 0;
+    state.failovers = (state.failovers || 0) + 1;
+    emit(src, pend, t);
   }
-  function addSpin(n) { state.spins.push(n); if (state.ai && !state.aiPending) state.ai.observe(n); }
-  function applyParsed(p) {
-    const before = state.spins.length;
+  function applyParsed(p, t) {
+    t = t || Date.now();
+    const bySrc = new Map(); const ids = new Set();
+    const push = (src, r) => { let a = bySrc.get(src); if (!a) { a = []; bySrc.set(src, a); } a.push(r); };
     for (const it of p.items) {
       noteSource(it.src, 1);
-      if (it.id && !state.forcedSrc) {
-        if (state.seenRounds.has(it.id)) continue;
-        state.seenRounds.add(it.id); state.idSource = true; addSpin(it.n); continue;
+      if (it.id) {
+        if (state.seenRounds.has(it.id) || ids.has(it.id)) continue;
+        const x = state.srcInfo.get(it.src); if (x && x.pending.some((r) => r.id === it.id)) continue;
+        ids.add(it.id);
       }
-      if (!acceptIdless(it.src)) continue;
-      if (it.id) { if (state.seenRounds.has(it.id)) continue; state.seenRounds.add(it.id); }
-      addSpin(it.n);
+      push(it.src, { n: it.n, id: it.id });
     }
     for (const l of p.lists) {
       noteSource(l.src, l.items.length);
       const r = T.mergeSnapshot(state.snaps[l.src], l.items);
       state.snaps[l.src] = r.state;
-      if (!acceptIdless(l.src)) continue;
-      for (const n of r.added) addSpin(n);
+      for (const n of r.added) push(l.src, { n, id: null });
     }
+    const before = state.spins.length;
+    for (const [src, recs] of bySrc) emit(src, recs, t);
     if (p.balance !== null && Number.isFinite(p.balance)) {
       if (state.startBalance === null) state.startBalance = p.balance;
       if (state.balance !== p.balance) { state.balance = p.balance; schedulePersist(); }
@@ -127,10 +158,11 @@
     state.startBalance = b && Number.isFinite(b.startBalance) ? b.startBalance : null;
     state.balance = b && Number.isFinite(b.balance) ? b.balance : null;
     const sameMap = b && (b.fieldResult || '') === state.fieldMap.result;
-    state.idSource = sameMap ? !!b.idSource : false;
+    state.idSource = false;
     state.idlessSrc = sameMap ? b.idlessSrc || null : null;
+    state.srcInfo = new Map(); state.primaryT = b ? (b.loadedAt || 0) : 0; state.lastSpinT = 0;
     state.sources = new Map();
-    for (let i = state.raw.length - 1; i >= 0; i--) applyParsed(parseBody(state.raw[i].body, state.raw[i].url));
+    for (let i = state.raw.length - 1; i >= 0; i--) applyParsed(parseBody(state.raw[i].body, state.raw[i].url), state.raw[i].t);
     rebuildAI();
     schedulePersist();
     render();
@@ -180,7 +212,7 @@
       if (state.loaded) return;
       if (saved && saved.v === 1 && Array.isArray(saved.spins)) {
         state.base = { spins: saved.spins.filter((n) => Number.isInteger(n) && n >= 0 && n <= 36), seen: saved.seen || [], snaps: saved.snaps || {},
-          idSource: !!saved.idSource, idlessSrc: saved.idlessSrc || null, fieldResult: saved.fieldResult || '', startBalance: saved.startBalance, balance: saved.balance };
+          idSource: !!saved.idSource, idlessSrc: saved.idlessSrc || null, fieldResult: saved.fieldResult || '', startBalance: saved.startBalance, balance: saved.balance, loadedAt: Date.now() };
         if (saved.fieldMap) state.fieldMap = { result: saved.fieldMap.result || '', balance: saved.fieldMap.balance || '' };
         if (saved.wheel) state.wheel = saved.wheel;
         state.forcedSrc = saved.forcedSrc || null;
@@ -196,7 +228,7 @@
   function resetAll() {
     aiJob++;
     Object.assign(state, { spins: [], events: [], raw: [], seenRounds: new Set(), startBalance: null, balance: null, startedAt: new Date(),
-      snaps: {}, sources: new Map(), diag: new Map(), idSource: false, idlessSrc: null, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false });
+      snaps: {}, sources: new Map(), diag: new Map(), idSource: false, idlessSrc: null, srcInfo: new Map(), primaryT: 0, lastSpinT: 0, forcedSrc: null, base: null, ai: T.ai ? T.ai.createLearner() : null, aiPending: false });
     state.hosts.clear();
     if (store) { try { store.remove(SKEY); } catch (e) { /* ignore */ } }
     render();
@@ -314,6 +346,7 @@
     _aiCache = { n: state.ai.n, ref: state.ai, val: state.ai.report() };
     return _aiCache.val;
   }
+  const ago = (t) => { const s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 60 ? s + 'ث' : s < 3600 ? Math.round(s / 60) + 'د' : Math.round(s / 3600) + 'س'; };
   const pct = (v) => (v * 100).toFixed(1) + '٪';
   const pFmt = (p) => (p < 0.0001 ? '<0.0001' : p.toFixed(p < 0.01 ? 4 : 3));
   function aiSection() {
@@ -413,7 +446,7 @@
       </div>
 
       <div class="tp-cards">
-        <div class="tp-card"><div class="k">دورات مُلتقطة</div><div class="v">${a.n}</div></div>
+        <div class="tp-card"><div class="k">دورات مُلتقطة</div><div class="v">${a.n}</div><div class="s">${state.lastSpinT ? 'آخر جولة قبل ' + ago(state.lastSpinT) : '—'}</div></div>
         <div class="tp-card"><div class="k">الرصيد الآن</div><div class="v ${net !== null && net < 0 ? 'bad' : 'good'}">${money(state.balance)}</div><div class="s">قبل: ${money(state.startBalance)}</div></div>
         <div class="tp-card"><div class="k">الصافي قبل/بعد</div><div class="v ${net !== null && net < 0 ? 'bad' : 'good'}">${net === null ? '—' : (net >= 0 ? '+' : '−') + money(Math.abs(net))}</div></div>
       </div>
