@@ -1,0 +1,39 @@
+/* v-tool-pages — صفحات الأدوات الثابتة (tools/*.html وen/tools/*.html، يولّدها scripts/tool-pages.mjs): أسود وذهبيّ كالتطبيق،
+   عمود واحد للقراءة، والصورة بضعف عرض عرضها (١٢٠٠ ← ٦٠٠) مقصوصة بـobject-fit لا مكبَّرة. */
+:root{--bg:#000; --panel:#101013; --line:rgba(212,175,55,.28); --gold:#d4af37; --gold2:#9b791e; --text:#f5f3ed; --muted:#b5b1a7; --r:16px;}
+*{box-sizing:border-box;}
+html{background:var(--bg); color:var(--text); -webkit-text-size-adjust:100%;}
+body{margin:0; font:17px/1.75 Tajawal, "IBM Plex Sans Arabic", system-ui, sans-serif;}
+html[lang="en"] body{font-family:Inter, "Plus Jakarta Sans", system-ui, sans-serif; line-height:1.65;}
+a{color:var(--gold);}
+.lp-top{display:flex; align-items:center; justify-content:space-between; gap:12px; max-width:880px; margin:0 auto; padding:16px 20px;}
+.lp-brand{color:var(--text); font-weight:700; font-size:20px; text-decoration:none; letter-spacing:.2px;}
+.lp-nav{display:flex; gap:16px; font-size:15px;}
+.lp-nav a{color:var(--muted); text-decoration:none;}
+.lp-nav a:hover{color:var(--gold);}
+main.lp{max-width:880px; margin:0 auto; padding:8px 20px 40px;}
+.lp-hero{text-align:center; padding:24px 0 8px;}
+h1{font-size:clamp(26px, 5vw, 38px); line-height:1.35; margin:0 0 12px;}
+h2{font-size:22px; margin:40px 0 12px; color:var(--gold);}
+.lp-lead{color:var(--muted); font-size:18px; max-width:680px; margin:0 auto 20px;}
+.lp-cta{display:inline-block; padding:13px 28px; border-radius:999px; background:linear-gradient(135deg, var(--gold), var(--gold2)); color:#111; font-weight:800; text-decoration:none; font-size:17px;}
+.lp-cta:hover{filter:brightness(1.08);}
+.lp-note{color:var(--muted); font-size:14px; margin:10px auto 0; max-width:560px;}
+.lp-fig{margin:28px auto 0; max-width:600px; border-radius:var(--r); overflow:hidden; border:1px solid var(--line); background:var(--panel);}
+.lp-fig img{display:block; width:100%; height:auto; aspect-ratio:16/9; object-fit:cover; object-position:center top;}
+/* لوحة كاملة (ملصق الديكور ٤:٣): قصّها ١٦:٩ يقطع صفّ الغرف الأخير — تُعرض بنسبتها. بطاقات clean/ ‏5:3 تبقى ١٦:٩ فيختفي أثر اللوحة أسفلها */
+.lp-fig img.lp-full{aspect-ratio:auto;}
+.lp-feat, .lp-steps{margin:0; padding-inline-start:22px;}
+.lp-feat li, .lp-steps li{margin:6px 0;}
+.lp-faq details{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 16px; margin:10px 0;}
+.lp-faq summary{cursor:pointer; font-weight:700;}
+.lp-faq p{margin:8px 0 0; color:var(--muted);}
+.lp-more ul, .lp-grid{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px;}
+.lp-more a{display:block; padding:10px 14px; background:var(--panel); border:1px solid var(--line); border-radius:12px; text-decoration:none; color:var(--text);}
+.lp-more a:hover, .lp-card a:hover{border-color:var(--gold);}
+.lp-card a{display:block; height:100%; background:var(--panel); border:1px solid var(--line); border-radius:var(--r); overflow:hidden; text-decoration:none; color:var(--text);}
+.lp-card img{display:block; width:100%; height:auto; aspect-ratio:5/3; object-fit:cover; object-position:center top;}
+.lp-card b{display:block; padding:10px 14px 2px;}
+.lp-card span{display:block; padding:0 14px 14px; color:var(--muted); font-size:14px; line-height:1.6;}
+.lp-foot{max-width:880px; margin:0 auto; padding:24px 20px 40px; color:var(--muted); font-size:14px; text-align:center; border-top:1px solid var(--line);}
+.lp-foot a{color:var(--muted);}
