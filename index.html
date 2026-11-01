@@ -119,8 +119,8 @@ window.__omranWhenSeen = (function () {
   var isNarrow = window.matchMedia('(max-width:860px)').matches;
   if((isMobileUA && isTouch) || isNarrow) document.documentElement.classList.add('mobile-ui');
 }catch(e){}})();</script>
-<meta name="description" content="om ai — أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر. تطبيق ويب تقدمي (PWA) ثنائي اللغة، مجاني بالكامل، بواسطة عمران.">
-<meta name="keywords" content="om ai, om ai builder, Omran AI Builder, عمران AI, منشئ تطبيقات بالذكاء الاصطناعي, AI app builder, AI code generator, أدوات ذكاء اصطناعي, بناء تطبيقات بدون كود, no-code AI, ChatGPT builder, Gemini, Claude, Groq, DeepSeek, Mistral, Cohere, Omran AI">
+<meta name="description" content="om ai — أنشئ تطبيقات ومواقع بالمحادثة، وحوّل صورك لأنماط فنّية، واصنع فيديو وإعلانات، وصمّم ديكورك وأزياءك، مع المستندات والتعليم والقبلة ومواقيت الصلاة.">
+<meta name="keywords" content="om ai, om ai builder, Omran AI Builder, عمران AI, منشئ تطبيقات بالذكاء الاصطناعي, AI app builder, AI code generator, أدوات ذكاء اصطناعي, بناء تطبيقات بدون كود, no-code AI, Omran AI">
 <meta name="author" content="Omran">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta name="theme-color" content="#000000">
@@ -136,7 +136,6 @@ window.__omranWhenSeen = (function () {
 <style>:root{color-scheme:dark}html[data-mode="light"]{color-scheme:light}</style>
 <link rel="canonical" href="https://omran-ai-builder.vercel.app/">
 <link rel="alternate" hreflang="ar" href="https://omran-ai-builder.vercel.app/">
-<link rel="alternate" hreflang="en" href="https://omran-ai-builder.vercel.app/">
 <link rel="alternate" hreflang="x-default" href="https://omran-ai-builder.vercel.app/">
 
 <!-- Open Graph / Facebook / WhatsApp -->
@@ -144,7 +143,7 @@ window.__omranWhenSeen = (function () {
 <meta property="og:site_name" content="om ai">
 <meta property="og:url" content="https://omran-ai-builder.vercel.app/">
 <meta property="og:title" content="om ai — مُنشئ التطبيقات بالذكاء الاصطناعي">
-<meta property="og:description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم 4 نماذج ذكاء اصطناعي رائدة، ثنائي اللغة، ومجاني بالكامل.">
+<meta property="og:description" content="محادثة ذكيّة، أنماط الصور، صانع الفيديو، الديكور، الأزياء، استوديو الإعلانات، المستندات، التعليم، القبلة ومواقيت الصلاة — ابدأ مجانًا وبـ١٤ لغة.">
 <meta property="og:image" content="https://omran-ai-builder.vercel.app/icons/og-omran.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -154,7 +153,7 @@ window.__omranWhenSeen = (function () {
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="om ai — مُنشئ التطبيقات بالذكاء الاصطناعي">
-<meta name="twitter:description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. مجاني وثنائي اللغة.">
+<meta name="twitter:description" content="محادثة ذكيّة، أنماط الصور، صانع الفيديو، الديكور، الأزياء، المستندات، التعليم، والقبلة — ابدأ مجانًا وبـ١٤ لغة.">
 <meta name="twitter:image" content="https://omran-ai-builder.vercel.app/icons/og-omran.jpg">
 
 <script type="application/ld+json">
@@ -174,7 +173,7 @@ window.__omranWhenSeen = (function () {
     "url": "https://omran-ai-builder.vercel.app/",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Any",
-    "description": "أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر.",
+    "description": "أنشئ تطبيقات ومواقع بالمحادثة، وحوّل صورك لأنماط فنّية، واصنع فيديو وإعلانات، وصمّم ديكورك وأزياءك، مع المستندات والتعليم والقبلة ومواقيت الصلاة.",
     "offers": {
       "@type": "Offer",
       "price": "0",
@@ -992,7 +991,7 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 <script src="/js/selfdiag.js?v=hw-twa-11"></script>
 <script defer src="/templates-data.js?v=590"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=0881ebca"></script>
+    <script defer src="/js/app.bundle.js?v=6a058918"></script>
     <script defer src="/js/frame-touch.js?v=4"></script><!-- v-frame-gold: لمسة الضغط للكمبيوتر والجوال (v-touch-mobile: وفراغ المحادثة في الجوال) -->
     <script defer src="/js/modes.js?v=m211026"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->

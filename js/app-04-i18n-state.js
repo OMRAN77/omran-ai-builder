@@ -51,6 +51,11 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
     if(urlLangMatch){
       lang = urlLangMatch[1].toLowerCase();
       localStorage.setItem('aiapp_lang', lang);
+    } else {
+      /* v-tool-pages: ?hl=ar|en من صفحات الأدوات — زائر بلا لغة محفوظة يأخذ لغة الصفحة التي قرأها بدل لغة جهازه (العربيّ بهاتف
+         إنجليزيّ كان يفتح التطبيق إنجليزيًّا). المحفوظة لا تُمسّ؛ وapplyLanguage يحفظ ما يُعرض كما يفعل مع كشف الجهاز. */
+      const hl = String(new URLSearchParams(location.search).get('hl') || '').toLowerCase();
+      if((hl === 'ar' || hl === 'en') && !localStorage.getItem('aiapp_lang')) lang = hl;
     }
   } catch(e){ __swallow(e, "save:app-04-i18n-state#3"); }
 })();
