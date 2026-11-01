@@ -43,7 +43,7 @@ test('٢. كلّ صفحة: لغتها واتّجاهها، canonical لنفسه�
       assert.ok(img && fs.existsSync(path.join(root, img)), rel + ': الصورة ' + img);
       assert.equal(attr(html, /<meta property="og:image" content="([^"]+)">/), BASE + encodeURI(img), rel + ': og:image مطلق');
       const cta = attr(html, /<a class="lp-cta" href="([^"]+)">/);
-      assert.equal(cta, t.slug === 'ads' ? '/ad-studio.html' : (lang === 'ar' ? '/' : '/en') + '?open=' + t.slug, rel + ': الزرّ');
+      assert.equal(cta, t.slug === 'ads' ? '/ad-studio.html?hl=' + lang : '/?open=' + t.slug + '&hl=' + lang, rel + ': الزرّ بلغة الصفحة (hl) لا /en الذي يفرضها');
       assert.doesNotMatch(visible(html) + ' ' + title + ' ' + desc, BANNED, rel + ': كلمة ممنوعة');
       assert.match(html, /<link rel="stylesheet" href="\/css\/landing\.css\?v=\d+">/);
       assert.ok(fs.existsSync(path.join(root, 'css/landing.css')));
@@ -74,7 +74,7 @@ test('٣. sitemap.xml: الرئيسيّة والفهرسان و٢٤ صفحة، �
   assert.equal(resolve('/en'), 'index.html', '/en ما زال التطبيق رغم مجلّد en/');
 });
 
-test('٤. /?open=<slug>: قائمة ثابتة تطابق الصفحات، يُحذف من الرابط، ينتظر الخصوصيّة، ولا يفتح الموقوف أو المخفيّ', () => {
+test('٤. /?open=<slug>: قائمة ثابتة تطابق الصفحات، يُحذف مع hl، ينتظر الخصوصيّة بلا سقف ثمّ قاموس اللغة، ولا يفتح الموقوف أو المخفيّ', async () => {
   const src = read('js/app-10-features.js');
   const m = /\/\* v-tool-pages[\s\S]*?\n\(function\(\)\{[\s\S]*?\n\}\)\(\);/.exec(src);
   assert.ok(m, 'كتلة ?open= موجودة');
@@ -85,14 +85,16 @@ test('٤. /?open=<slug>: قائمة ثابتة تطابق الصفحات، يُ�
     assert.equal(data.find((t) => t.slug === slug).btn, id, slug);
     assert.match(read('index.html') + read('js/partials-core.js'), new RegExp('id="' + id + '"'), id + ' موجود');
   }
-  function run({ href, present = [], paused = [], hidden = [], ready = 'loading' }) {
+  const settle = () => new Promise((r) => setImmediate(r));
+  function run({ href, present = [], paused = [], hidden = [], ready = 'loading', langFile = null }) {
     const clicks = [], timers = [], listeners = {};
     let replaced = null;
     const els = {};
     for (const id of Object.values(OPEN)) els[id] = { id, click: () => clicks.push(id) };
     for (const id of present) els[id] = { id };
     const ctx = {
-      URL, location: { href }, OMRAN_PAUSED_TOOLS: paused,
+      URL, Promise, location: { href }, OMRAN_PAUSED_TOOLS: paused, lang: 'fr',
+      loadLangFile: langFile || (() => Promise.resolve()),
       history: { state: null, replaceState: (s, t, u) => { replaced = u; } },
       getComputedStyle: (el) => ({ display: hidden.includes(el.id) ? 'none' : 'flex' }),
       __swallow: (e) => { throw e; },
@@ -101,30 +103,59 @@ test('٤. /?open=<slug>: قائمة ثابتة تطابق الصفحات، يُ�
       window: { addEventListener: (ev, fn) => { listeners['w:' + ev] = fn; } },
     };
     vm.runInNewContext(block, ctx);
-    const flush = () => { let n = 0; while (timers.length && n++ < 1000) timers.shift().fn(); };
-    return { clicks, timers, listeners, flush, els, get replaced() { return replaced; } };
+    const tick = () => { const t = timers.shift(); if (t) t.fn(); return t; };
+    return { clicks, timers, listeners, tick, els, get replaced() { return replaced; } };
   }
-  const a = run({ href: BASE + '/en?open=decor&ref=x' });
-  assert.equal(a.replaced, '/en?ref=x', 'open وحده يُحذف، وبقيّة الرابط تبقى');
+  const a = run({ href: BASE + '/?open=decor&hl=en&ref=x' });
+  assert.equal(a.replaced, '/?ref=x', 'open وhl يُحذفان، وبقيّة الرابط تبقى');
   assert.equal(a.clicks.length, 0, 'لا فتح قبل DOMContentLoaded (المستندات والتعليم في سكربتات مؤجَّلة)');
-  a.listeners['d:DOMContentLoaded'](); a.listeners['w:load'](); a.flush();
+  a.listeners['d:DOMContentLoaded'](); a.listeners['w:load'](); while (a.tick());
+  await settle();
   assert.deepEqual(a.clicks, ['btnDesignAI'], 'يفتح مرّة واحدة');
   const b = run({ href: BASE + '/?open=docs', present: ['privacyConsent'], ready: 'complete' });
-  b.timers.shift().fn();
+  for (let i = 0; i < 400; i++) b.tick(); // دقائق على بطاقة الخصوصيّة
+  await settle();
   assert.equal(b.clicks.length, 0, 'تحت بطاقة الخصوصيّة: ينتظر');
-  delete b.els.privacyConsent; b.flush();
+  assert.equal(b.timers.length, 1, 'ما زال ينتظر بلا سقف');
+  delete b.els.privacyConsent; b.tick(); await settle();
   assert.deepEqual(b.clicks, ['btnDocs'], 'بعد الموافقة يفتح');
-  const c = run({ href: BASE + '/?open=btnCV', ready: 'complete' }); c.flush();
+  let release;
+  const l = run({ href: BASE + '/?open=fashion', ready: 'complete', langFile: (lg) => { assert.equal(lg, 'fr'); return new Promise((r) => { release = r; }); } });
+  l.tick(); await settle();
+  assert.equal(l.clicks.length, 0, 'ينتظر قاموس اللغة الكسول — بدونه تُبنى الأداة بالإنجليزيّة');
+  release(); await settle();
+  assert.deepEqual(l.clicks, ['btnFashionAI']);
+  const c = run({ href: BASE + '/?open=btnCV', ready: 'complete' }); while (c.tick()); await settle();
   assert.equal(c.clicks.length, 0, 'معرّف حرّ من الرابط لا يُقبل');
   assert.equal(c.replaced, '/', 'ويُحذف');
-  const d = run({ href: BASE + '/?open=qibla', paused: ['btnQibla'], ready: 'complete' }); d.flush();
+  const d = run({ href: BASE + '/?open=qibla', paused: ['btnQibla'], ready: 'complete' }); while (d.tick()); await settle();
   assert.equal(d.clicks.length, 0, 'أداة موقوفة');
-  const e = run({ href: BASE + '/?open=email', hidden: ['btnEmailAssist'], ready: 'complete' }); e.flush();
+  const e = run({ href: BASE + '/?open=email', hidden: ['btnEmailAssist'], ready: 'complete' }); while (e.tick()); await settle();
   assert.equal(e.clicks.length, 0, 'أداة مخفيّة');
-  const f = run({ href: BASE + '/?open=__proto__', ready: 'complete' }); f.flush();
+  const f = run({ href: BASE + '/?open=__proto__', ready: 'complete' }); while (f.tick()); await settle();
   assert.equal(f.clicks.length, 0, '__proto__ لا يُقبل');
   const g = run({ href: BASE + '/?q=hi' });
   assert.equal(g.replaced, null, 'بلا open لا يمسّ الرابط');
+});
+
+test('٦. ?hl=ar|en: زائر بلا لغة محفوظة يأخذ لغة الصفحة، والمحفوظة لا تُمسّ، و/en ما زال يفرض الإنجليزيّة', () => {
+  const src = read('js/app-04-i18n-state.js');
+  const m = /\/\/ Language-specific shareable links[\s\S]*?\n\(function\(\)\{[\s\S]*?\n\}\)\(\);/.exec(src);
+  assert.ok(m, 'كتلة لغة الرابط');
+  const block = m[0].slice(m[0].indexOf('(function(){'));
+  const run = (pathname, search, saved) => {
+    const store = saved ? { aiapp_lang: saved } : {};
+    const ctx = { URLSearchParams, lang: 'en', location: { pathname, search }, __swallow: (e) => { throw e; },
+      localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } } };
+    vm.runInNewContext(block, ctx);
+    return { lang: ctx.lang, saved: store.aiapp_lang };
+  };
+  assert.deepEqual(run('/', '?open=decor&hl=ar', null), { lang: 'ar', saved: undefined }, 'زائر جديد بهاتف إنجليزيّ من الصفحة العربيّة');
+  assert.equal(run('/', '?hl=ar', 'fr').lang, 'en', 'لغة محفوظة لا تُمسّ (lang هنا قيمتها الأولى من المحفوظ)');
+  assert.equal(run('/', '?hl=de', null).lang, 'en', 'ar وen فقط');
+  assert.deepEqual(run('/en', '', 'ar'), { lang: 'en', saved: 'en' }, '/en للمشاركة كما كان');
+  const ad = read('ad-studio.html');
+  assert.match(ad, /const AL=\(\(\)=>\{try\{const h=new URLSearchParams\(location\.search\)\.get\('hl'\);return localStorage\.getItem\('aiapp_lang'\)\|\|\(h==='en'\|\|h==='ar'\?h:''\)\|\|'ar'\}/, 'استوديو الإعلانات يقرأ hl كذلك');
 });
 
 test('٥. وصف الصفحة الرئيسيّة في البحث والمعاينة بلا أسماء مزوّدين ولا «مجاني بالكامل»، وhreflang بلا «en» على الرابط نفسه', () => {

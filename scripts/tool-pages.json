@@ -33,7 +33,7 @@
     "faq": [
      {
       "q": "هل الأداة مجانية؟",
-      "a": "تحتاج إلى تسجيل الدخول. يتيح الحساب المجاني حتى ثلاث تحويلات في اليوم، وتمنح الباقات المدفوعة عددًا أكبر. والمحاولة التي تفشل بسبب خطأ تقني لا تُحتسب من حصّتك اليومية."
+      "a": "تحتاج إلى تسجيل الدخول. يتيح الحساب المجاني حتى ثلاثة تحويلات في اليوم، وتمنح الباقات المدفوعة عددًا أكبر. والمحاولة التي تفشل بسبب خطأ تقني لا تُحتسب من حصّتك اليومية."
      },
      {
       "q": "هل ستبقى ملامحي واضحة في النتيجة؟",
@@ -49,7 +49,7 @@
      }
     ],
     "cta": "افتح أنماط الصور",
-    "note": "التحويل يتطلّب تسجيل الدخول: حتى ثلاث تحويلات يوميًّا للحساب المجاني، وعدد أكبر في الباقات المدفوعة."
+    "note": "التحويل يتطلّب تسجيل الدخول: حتى ثلاثة تحويلات يوميًّا للحساب المجاني، وعدد أكبر في الباقات المدفوعة."
    },
    "en": {
     "title": "Turn Your Photo into Anime, Cartoon or Art — om ai",
@@ -222,7 +222,7 @@
      },
      {
       "q": "كم تصميمًا أستطيع أن أُنشئ في اليوم؟",
-      "a": "تحتاج الأداة إلى تسجيل الدخول، ولكلّ حساب ٣ محاولات تصميم مجانيّة يوميًّا، ولا تُحسب المحاولة التي تفشل. ويُحسب طلب التصاميم بلا صورة محاولةً واحدة ولو أعاد أربعة تصاميم، أمّا في المقارنة فكلّ نمط محاولة."
+      "a": "تحتاج الأداة إلى تسجيل الدخول، وللحساب المجاني حتى ٣ محاولات تصميم يوميًّا وللباقات المدفوعة أكثر، ولا تُحسب المحاولة التي تفشل. ويُحسب طلب التصاميم بلا صورة محاولةً واحدة ولو أعاد أربعة تصاميم، أمّا في المقارنة فكلّ نمط محاولة."
      },
      {
       "q": "هل تصلح الأداة للمجالس والأماكن الخارجيّة؟",
@@ -230,7 +230,7 @@
      }
     ],
     "cta": "افتح أداة الديكور",
-    "note": "تحتاج الأداة إلى تسجيل الدخول، ولكلّ حساب ٣ محاولات تصميم مجانيّة يوميًّا."
+    "note": "تحتاج الأداة إلى تسجيل الدخول: حتى ٣ محاولات تصميم يوميًّا للحساب المجاني، وعدد أكبر في الباقات المدفوعة."
    },
    "en": {
     "title": "AI Interior Design: Redesign Your Room From a Photo — om ai",
@@ -261,7 +261,7 @@
      },
      {
       "q": "How many designs can I make per day?",
-      "a": "Sign-in is required, and each account gets 3 free design attempts per day; a failed attempt is not counted. A no-photo request counts as one attempt even if it returns four designs, while in a style comparison each style counts as one."
+      "a": "Sign-in is required: a free account gets up to 3 design attempts a day and paid plans get more; a failed attempt is not counted. A no-photo request counts as one attempt even if it returns four designs, while in a style comparison each style counts as one."
      },
      {
       "q": "Does it work for majlis rooms and outdoor spaces?",
@@ -269,7 +269,7 @@
      }
     ],
     "cta": "Open the decor tool",
-    "note": "Sign-in required. Each account gets 3 free design attempts per day."
+    "note": "Sign-in required: up to 3 design attempts a day on a free account, more on paid plans."
    }
   },
   {

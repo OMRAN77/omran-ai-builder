@@ -12,15 +12,17 @@ const ICONS = '<link rel="icon" href="/favicon.ico" sizes="48x48">\n<link rel="i
 const FONTS = '<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&family=Inter:wght@400;700&display=swap">';
 
 const UI = {
-  ar: { dir: 'rtl', locale: 'ar_AR', home: 'الرئيسيّة', all: 'كلّ الأدوات', other: 'English', otherLang: 'en', what: 'ماذا يمكنك أن تفعل', how: 'كيف تستخدمها في ثلاث خطوات', faq: 'أسئلة شائعة', more: 'أدوات أخرى في om ai', privacy: 'الخصوصيّة', terms: 'الشروط', open: 'افتح التطبيق',
-    hub: { title: 'أدوات om ai بالذكاء الاصطناعي — صور وفيديو وديكور ومستندات', description: 'كلّ أدوات om ai في مكان واحد: أنماط الصور، صانع الفيديو، الديكور، الأزياء، الستايل، الإعلانات، المستندات، الإيميل، البناء، التعليم، القبلة، والأسئلة الدينيّة.', h1: 'أدوات om ai بالذكاء الاصطناعي', lead: 'اختر الأداة التي تحتاجها، واقرأ ما تفعله وكيف تستخدمها، ثمّ افتحها مباشرةً في التطبيق من متصفّحك.' } },
-  en: { dir: 'ltr', locale: 'en_US', home: 'Home', all: 'All tools', other: 'العربيّة', otherLang: 'ar', what: 'What you can do', how: 'How it works in three steps', faq: 'Frequently asked questions', more: 'More om ai tools', privacy: 'Privacy', terms: 'Terms', open: 'Open the app',
-    hub: { title: 'om ai AI tools — photos, video, interior design and documents', description: 'All om ai tools in one place: photo styles, video maker, interior design, fashion, style, ads, documents, email, construction, education, Qibla and Islamic Q&A.', h1: 'om ai AI tools', lead: 'Pick the tool you need, read what it does and how to use it, then open it straight in the app from your browser.' } },
+  ar: { dir: 'rtl', locale: 'ar_AR', home: 'الرئيسيّة', all: 'الأدوات', other: 'English', otherLang: 'en', what: 'ماذا يمكنك أن تفعل', how: 'كيف تستخدمها في ثلاث خطوات', faq: 'أسئلة شائعة', more: 'أدوات أخرى في om ai', privacy: 'الخصوصيّة', terms: 'الشروط', open: 'افتح التطبيق',
+    hub: { title: 'أدوات om ai بالذكاء الاصطناعي — صور وفيديو وديكور ومستندات', description: 'أدوات om ai في مكان واحد: أنماط الصور، صانع الفيديو، الديكور، الأزياء، الستايل، الإعلانات، المستندات، الإيميل، البناء، التعليم، القبلة، والأسئلة الدينيّة.', h1: 'أدوات om ai بالذكاء الاصطناعي', lead: 'اختر الأداة التي تحتاجها، واقرأ ما تفعله وكيف تستخدمها، ثمّ افتحها مباشرةً في التطبيق من متصفّحك.' } },
+  en: { dir: 'ltr', locale: 'en_US', home: 'Home', all: 'Tools', other: 'العربيّة', otherLang: 'ar', what: 'What you can do', how: 'How it works in three steps', faq: 'Frequently asked questions', more: 'More om ai tools', privacy: 'Privacy', terms: 'Terms', open: 'Open the app',
+    hub: { title: 'om ai AI tools — photos, video, interior design and documents', description: 'om ai tools in one place: photo styles, video maker, interior design, fashion, style, ads, documents, email, construction, education, Qibla and Islamic Q&A.', h1: 'om ai AI tools', lead: 'Pick the tool you need, read what it does and how to use it, then open it straight in the app from your browser.' } },
 };
 
+const HUB_IMAGE = '/assets/decor/chips/poster.webp';
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const pageUrl = (lang, slug) => (lang === 'ar' ? '' : '/en') + '/tools' + (slug ? '/' + slug : '');
-const ctaHref = (lang, t) => (t.slug === 'ads' ? '/ad-studio.html' : (lang === 'ar' ? '/' : '/en') + '?open=' + t.slug);
+// hl: لغة الصفحة لزائر بلا لغة محفوظة (app-04 وad-studio) — لا /en الذي يفرض الإنجليزيّة ويحفظها فوق اختيار سابق
+const ctaHref = (lang, t) => (t.slug === 'ads' ? '/ad-studio.html?hl=' + lang : '/?open=' + t.slug + '&hl=' + lang);
 const imgUrl = (t) => encodeURI(t.img);
 
 function head(lang, { title, description, canonical, alt, image, ld }) {
@@ -58,7 +60,8 @@ function top(lang, alt) {
 }
 function foot(lang) {
   const u = UI[lang];
-  return `<footer class="lp-foot"><a href="/privacy.html">${u.privacy}</a> · <a href="/terms.html">${u.terms}</a> · <a href="${lang === 'ar' ? '/' : '/en'}">${u.open}</a> · © 2026 om ai</footer>\n</body>\n</html>\n`;
+  const q = lang === 'en' ? '?lang=en' : ''; // الصفحتان تعرضان العربيّة لزائر بلا لغة محفوظة
+  return `<footer class="lp-foot"><a href="/privacy.html${q}">${u.privacy}</a> · <a href="/terms.html${q}">${u.terms}</a> · <a href="${lang === 'ar' ? '/' : '/en'}">${u.open}</a> · © 2026 om ai</footer>\n</body>\n</html>\n`;
 }
 function crumbs(lang, items) {
   return { '@type': 'BreadcrumbList', itemListElement: items.map(([name, url], i) => ({ '@type': 'ListItem', position: i + 1, name, item: BASE + url })) };
@@ -109,8 +112,9 @@ function hubPage(lang, all) {
     { '@type': 'CollectionPage', name: h.title, description: h.description, url: BASE + canonical, inLanguage: lang, isPartOf: { '@type': 'WebSite', name: 'om ai', url: BASE + '/' } },
     crumbs(lang, [[u.home, lang === 'ar' ? '/' : '/en'], [u.all, canonical]]),
   ] };
-  const cards = all.map((t) => `<li class="lp-card"><a href="${pageUrl(lang, t.slug)}"><img src="${encodeURI(t.thumb)}" alt="${esc(t.name[lang])}" width="600" height="360" loading="lazy" decoding="async"><b>${esc(t.name[lang])}</b><span>${esc(t[lang].description)}</span></a></li>`).join('\n');
-  return `${head(lang, { title: h.title, description: h.description, canonical, alt, image: '/icons/og-omran.jpg', ld })}
+  const cards = all.map((t) => `<li class="lp-card"><a href="${pageUrl(lang, t.slug)}"><img src="${encodeURI(t.thumb)}" srcset="${encodeURI(t.thumb)} 600w, /assets/tool-cards/clean/${t.btn}.jpg 1200w" sizes="(max-width: 640px) calc(100vw - 40px), 290px" alt="${esc(t.name[lang])}" width="600" height="360" loading="lazy" decoding="async"><b>${esc(t.name[lang])}</b><span>${esc(t[lang].description)}</span></a></li>`).join('\n');
+  // صورة المشاركة بلا كتابة: og-omran.jpg عليها الاسم القديم «عمران Ai»
+  return `${head(lang, { title: h.title, description: h.description, canonical, alt, image: HUB_IMAGE, ld })}
 <body>
 ${top(lang, alt)}
 <main class="lp">
