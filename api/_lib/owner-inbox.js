@@ -39,119 +39,13 @@ function excerpt(t, n) {
   const cut = s.length > (n || EXCERPT) ? s.slice(0, n || EXCERPT) : s;
   return (typeof cut.toWellFormed === 'function' ? cut.toWellFormed() : cut) + (s.length > cut.length ? '…' : '');
 }
-/* v-inbox-near (بلاغ «grace» ٣٠ أكتوبر: «i want you to build for me the Dandora community filled with litters broken drainge systems…»
-   صار «متضايق من التطبيق» — «broken» وصفٌ للمجاري و«you» في أوّل الطلب). ثلاث مراجعات لـPR #1265 أسقطت كلّ استثناء أوسع (أسكت
-   شكاوى حقيقيّة تصل على main: «سوّ لي صورة ثانية الأولى زبالة»، «can you make it again the last one was terrible»، «الزر خربان»).
-   الاستثناء الآن نحويّ ضيّق — الصفة **نعتٌ** في وصف المطلوب لا **خبرٌ** عن شيء:
-   ١) صفة ثابتة (broken/bad/terrible… خربان/زفت/خايس…) لا سلوك التطبيق (slow/stuck/بطيء/معلق) ولا فشل (failed/error/ما يرد) — هذه لا تُستثنى؛
-   ٢) نعت: قبلها اسم نكرة لا معرفة ولا رابط (is/was/so/its… طلعت/كان/مرة)، وبعدها كلمة في عبارتها («a broken robot»، «سيارة خربانة») —
-      «الزر خربان» و«this one is bad» خبر = شكوى؛
-   ٣) بعد طلب صنع صريح حاضر (لي/لنا، please/can you/want you to، أو فعل أوّل العبارة بعده مفعول) — لا «قلت لك ارسم لي»، ولا «asked you to»؛
-   ٤) لا بينهما علامة قطع ولا but/because/still/بس/للحين/طلعت، ولا رجوع لنتيجة سابقة (again/last/better/ثانية/الأولى/اللي قبل/عطيتني)،
-      ولا ذكر التطبيق/المساعد/«انت»؛ ولا ذكرٌ له بعد الصفة مباشرةً («خايس هالتطبيق»).
-   وما عداه كما على main: كلمة ضعيفة + ذكر التطبيق في أيّ مكان. فهرسة النصّ مرّة واحدة بخطوات خطّيّة (≤١٠م.ث لـ٤٠٠٠ حرف). */
-const CREATE = new RegExp(B + '(?:ارسم|ارسملي|صمم|صمّم|صمملي|سوّ|سوي|سوّي|سويلي|سوّلي|اعمل|اكتب|اكتبلي|ابني|ابنيلي|ولّد|ولد|انشئ|أنشئ|اصنع|اصنعلي|تخيل|تخيّل)' + E
-  + '|(?:^|[^a-z])(?:build|make|create|draw|generate|design|write|paint|render|imagine|illustrate|animate|compose)(?=$|[^a-z])', 'i');
-const set = (str) => new Set(str.split(' '));
-const CREATE_ATTACHED = set('ارسملي صمملي سويلي سوّلي اكتبلي ابنيلي اصنعلي');
-const FOR_ME_AR = set('لي لنا');
-const ASK_EN = set("please pls plz kindly lets let's wanna");
-const ASK_YOU_EN = set('can could would will please pls plz');
-const WANT_EN = set("want need i'd like love");
-const OBJECT_EN = set('me us a an the my our some this that him her them one another');
-const PAST_AR = set('قلت قلتلك قلنا اقول أقول اقولك أقولك اقوله طلبت طلبنا لما اذا إذا امس أمس كل ما لين'); // «قلت لك ارسم لي…» طلب مضى
-/* صفات ثابتة تصف المطلوب — وحدها تُستثنى (لا سلوك التطبيق: slow/stuck/annoying/buggy/بطيء/معلق) */
-const DESCRIBE = /^(?:broken|terrible|horrible|worst|bad|awful|useless|خربان|خربانة|خربانه|عطلان|معطل|معطّل|سيء|سيّء|سيئ|زبالة|زباله|مقرف|خايس|خايسة|خايسه|زفت|تافه|قذر|وسخ|غبي|غبية|سخيف|فاشل|فاشلة|فاشله)$/i;
-const BREAK_WORDS = set('but however yet still although though tho bt because cuz coz cause bc since now بس لكن للحين لسه لسا مازال بعده رغم بالرغم ترى ترا ليش صار طلع طلعت يطلع تطلع كان كانت');
-const BACKREF = set('again last previous old first better another redo properly proper same version once time ثاني ثانية ثانيه مرة مره جديد قبل الاول الأول الاولى الأولى السابق السابقة عطيتني سويته سويتها سويتوه عدل احسن أحسن افضل أفضل نفس');
-const PRED_EN = set("is was are were be been being am 's look looks looked looking sound sounds sounded seem seems seemed feel feels felt get gets got getting become became becomes came comes out its it's it this that these those so too very really kinda pretty quite super extremely not isn't isnt wasn't wasnt aren't arent doesn't doesnt don't dont never less more still always ur you're youre u you totally completely just damn fucking same all everything kept keeps stays remains");
-const PRED_AR = set('هو هي هم هذا هذي هذه هذيك ذا كان كانت صار صارت طلع طلعت يطلع تطلع مرة مره وايد جدا كله كلها مو مب مش ما يبين تبين شكله شكلها الحين للحين قبل عطيتني سويته');
-const AFTER_EN = set('for in on at to with by from of and or again today now lol as like af asf though tho bro man honestly anymore ever');
-const AFTER_AR = set('مرة مره وايد جدا كذا اليوم الحين للحين حيل مرررة');
-const CLAUSE_CH = '.!?؟…\n،,;؛:—–';
-const CORE = /[\p{L}\p{N}'](?:.*[\p{L}\p{N}'])?/su; // لبّ الكلمة بلا علامات حولها — خطّيّ (التقليم بنمط نهايته غير مثبّتة تربيعيّ)
-/* تطبيع للبحث في القوائم: بلا تشكيل ولا تطويل، وبلا و/ف/ب في أوّل كلمة عربيّة («وطلعت»، «وللحين»، «والتطبيق») */
-const bare = (w) => w.replace(/[\u064B-\u0652\u0670\u0640]/g, '');
-const inSet = (S, w) => { const b = bare(w); return S.has(b) || (/^[وفب][\u0600-\u06FF]{2,}$/.test(b) && S.has(b.slice(1))); };
-const definite = (w) => /^(?:[وفبل]?ال|لل)[\u0600-\u06FF]/.test(bare(w));
-function allIdx(re, s) {
-  const g = new RegExp(re.source, 'gi'), out = [];
-  for (let m = g.exec(s); m; m = g.exec(s)) {
-    const lead = m[0].search(/[\p{L}\p{N}]/u);
-    out.push({ p: m.index + (lead < 0 ? 0 : lead), e: m.index + m[0].length, t: m[0].slice(lead < 0 ? 0 : lead) });
-    if (g.lastIndex === m.index) g.lastIndex++;
-  }
-  return out;
-}
-/** فهرس النصّ مرّة واحدة: الكلمات (موضع أوّل حرف + الكلمة مطبَّعة) ورقم عبارة كلّ كلمة (علامة قطع أو كلمة قطع تبدأ عبارة). */
-function textIndex(s) {
-  const n = s.length, mark = new Int32Array(n + 1);
-  for (let i = 0; i < n; i++) mark[i + 1] = mark[i] + (CLAUSE_CH.includes(s[i]) ? 1 : 0);
-  const pos = [], norm = [], cl = [];
-  let extra = 0;
-  for (const m of s.matchAll(/\S+/g)) {
-    const c = CORE.exec(m[0]);
-    if (!c) continue;
-    const w = c[0].toLowerCase();
-    if (inSet(BREAK_WORDS, w) || /^[وف]?[تيا]?طلع/.test(bare(w))) extra++; // «طلعت/تطلعها/يطلع لي…» حكمٌ على الناتج
-    pos.push(m.index + c.index); norm.push(w); cl.push(mark[m.index + c.index] + extra);
-  }
-  /* رقم الكلمة عند موضع: آخر كلمة تبدأ عنده أو قبله */
-  const word = (p) => { let lo = 0, hi = pos.length - 1, k = -1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (pos[mid] <= p) { k = mid; lo = mid + 1; } else hi = mid - 1; } return k; };
-  return { pos, norm, cl, word };
-}
-/** فعل الصنع طلبٌ صريح حاضر (لا «كل ما اكتب له»، ولا «Build failed»، ولا «قلت لك ارسم لي»، ولا «I asked you to make»)؟ */
-function isRequest(m, T) {
-  const k = T.word(m.p); if (k < 0) return false;
-  const v = T.norm[k], at = (j) => (j >= 0 && j < T.norm.length && T.cl[j] === T.cl[k] ? T.norm[j] : '');
-  if (/[\u0600-\u06FF]/.test(v)) {
-    if (!(CREATE_ATTACHED.has(v) || FOR_ME_AR.has(at(k + 1)))) return false;
-    for (let j = k - 1; j >= k - 4; j--) if (at(j) && inSet(PAST_AR, at(j))) return false;
-    return true;
-  }
-  const prev = at(k - 1), prev2 = at(k - 2), prev3 = at(k - 3);
-  if (ASK_EN.has(prev)) return true;
-  if ((prev === 'you' || prev === 'u') && ASK_YOU_EN.has(prev2)) return true;
-  if (prev === 'to' && (prev2 === 'you' || prev2 === 'u')) return WANT_EN.has(prev3) || ASK_YOU_EN.has(prev3); // «want you to» لا «asked/told you to»
-  if (prev === 'to' && WANT_EN.has(prev2)) return prev3 === 'i' || prev3 === 'we' || !prev3;
-  return !prev && OBJECT_EN.has(at(k + 1));
-}
-const lastBefore = (arr, p) => { let lo = 0, hi = arr.length - 1, k = -1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (arr[mid].p < p) { k = mid; lo = mid + 1; } else hi = mid - 1; } return k; };
-/** الصفة نعتٌ في وصف ما طُلب للتوّ (فلا تُعدّ تذمّرًا)؟ */
-function describesRequest(w, req, subj, subjWords, T) {
-  if (!DESCRIBE.test(w.t.trim())) return false;
-  const k = T.word(w.p), r = lastBefore(req, w.p);
-  if (k < 1 || r < 0) return false;
-  const rk = T.word(req[r].p);
-  if (T.cl[rk] !== T.cl[k]) return false;
-  const prev = T.norm[k - 1], next = k + 1 < T.norm.length && T.cl[k + 1] === T.cl[k] ? T.norm[k + 1] : '';
-  const ar = /[\u0600-\u06FF]/.test(T.norm[k]);
-  if (!next || (ar ? (inSet(PRED_AR, prev) || definite(prev) || inSet(AFTER_AR, next)) : (PRED_EN.has(prev) || AFTER_EN.has(next)))) return false;
-  for (let j = rk + 1; j < k; j++) if (inSet(BACKREF, T.norm[j])) return false;
-  const sNext = subj[lastBefore(subj, req[r].p + 1) + 1];
-  if (sNext && sNext.p < w.p) return false; // ذكر التطبيق بين الطلب والصفة
-  const sAfter = subjWords.find((x) => x > k); // ذكره بعدها مباشرةً: «خايس هالتطبيق»، «broken in your app»
-  return !(sAfter !== undefined && sAfter - k - 1 <= 2 && T.cl[sAfter] === T.cl[k]);
-}
-function weakComplaint(s) {
-  const weak = allIdx(WEAK_AR, s).concat(allIdx(WEAK_EN, s));
-  if (!weak.length) return false;
-  const subj = allIdx(SUBJECT, s);
-  if (!subj.length) return false;
-  const T = textIndex(s);
-  const req = allIdx(CREATE, s).filter((m) => isRequest(m, T));
-  if (!req.length) return true; // بلا طلب صنع: كما على main
-  const subjWords = subj.map((x) => T.word(x.p));
-  /* كلمة ضعيفة واحدة ليست نعتًا لما يُطلب تكفي (كما على main) */
-  return weak.some((w) => !describesRequest(w, req, subj, subjWords, T));
-}
 /** نوع البلاغ لكلام المستخدم: 'insult' · 'complaint' · null. الشتيمة أوّلًا. */
 function classify(text) {
   const s = String(text || '').slice(0, SCAN_MAX);
   if (!s.trim()) return null;
   if (INSULT_AR.test(s) || OBSCENE_AR.test(s) || INSULT_EN.test(s) || OBSCENE_EN.test(s)) return 'insult';
   if (STRONG_AR.test(s) || STRONG_EN.test(s)) return 'complaint';
-  if (weakComplaint(s)) return 'complaint';
+  if ((WEAK_AR.test(s) || WEAK_EN.test(s)) && SUBJECT.test(s)) return 'complaint';
   return null;
 }
 function isOwnerUser(user) { try { return require('./_owner.js').isOwnerName(user); } catch (e) { return false; } }
