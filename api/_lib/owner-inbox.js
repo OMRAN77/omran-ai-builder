@@ -40,22 +40,74 @@ function excerpt(t, n) {
   return (typeof cut.toWellFormed === 'function' ? cut.toWellFormed() : cut) + (s.length > cut.length ? '…' : '');
 }
 /* v-inbox-near (بلاغ «grace» ٣٠ أكتوبر: «i want you to build for me the Dandora community filled with litters broken drainge systems…»
-   صار «متضايق من التطبيق» — «broken» وصفٌ للمجاري و«you» في أوّل الطلب): الكلمة الضعيفة تذمّر إن جاورت ذكر التطبيق/المساعد/«انت»
-   (≤ NEAR_WORDS كلمات بينهما) ولم تأتِ بعد فعل طلب صنع (ابنِ/ارسم/سوّ/build/draw…) — ما بعد فعل الصنع وصفٌ لما يُطلب لا تذمّر. */
+   صار «متضايق من التطبيق» — «broken» وصفٌ للمجاري و«you» في أوّل الطلب): الكلمة الضعيفة ليست تذمّرًا إن جاءت بعد طلب صنع في
+   عبارتها نفسها (لا فاصلة ولا نقطة بينهما) بلا ذكر التطبيق/المساعد/«انت» بينهما — ما بعد «ابنِ لي/ارسم/can you draw» وصفٌ لما يُطلب.
+   وطلب الصنع طلبٌ لا أيّ فعل: «اكتب/اعمل/ابني/ولد/تخيل» تحتمل «أكتب/ابني/ولد» فلا تُعدّ إلّا بـ«لي/لنا…» بعدها؛ «ارسم/صمّم/سوّي…»
+   أوّل العبارة أو بعد «ممكن/ابي…»؛ وbuild/make… أوّل العبارة أو بعد please/can you/you to/want to (لا «tried to/can't make»).
+   وتجاور ذكر التطبيق في الجملة نفسها، أو ≤ NEAR_WORDS كلمات عبر نقطة. فهرسة النصّ مرّة واحدة (كان التحقّق تكعيبيًّا: ١٠ث لنصّ ٤٠٠٠ حرف). */
 const NEAR_WORDS = 5;
 const CREATE = new RegExp(B + '(?:ارسم|ارسملي|صمم|صمّم|صمملي|سوّ|سوي|سوّي|سويلي|سوّلي|اعمل|اعملي|اكتب|اكتبلي|ابني|ابنيلي|ولّد|ولد|انشئ|أنشئ|اصنع|اصنعلي|تخيل|تخيّل)' + E
   + '|(?:^|[^a-z])(?:build|make|create|draw|generate|design|write|paint|render|imagine|illustrate|animate|compose)(?=$|[^a-z])', 'i');
+const CREATE_ATTACHED = new Set(['ارسملي', 'صمملي', 'سويلي', 'سوّلي', 'اكتبلي', 'ابنيلي', 'اصنعلي', 'اعملي']);
+const CREATE_CLEAR_AR = new Set(['ارسم', 'صمم', 'صمّم', 'سوّ', 'سوي', 'سوّي', 'انشئ', 'أنشئ', 'اصنع']);
+const FOR_ME_AR = new Set(['لي', 'لنا', 'له', 'لها', 'لهم', 'ليه']);
+const ASK_AR = new Set(['ممكن', 'سمحت', 'فضلك', 'تكفى', 'تكفين', 'ياليت', 'ابي', 'أبي', 'ابغى', 'أبغى', 'اريد', 'أريد', 'ابيك', 'أبيك', 'ابغاك', 'أبغاك', 'اريدك', 'أريدك', 'ودي', 'بليز', 'رجاء', 'الحين', 'طيب']);
+const ASK_EN = new Set(['please', 'pls', 'plz', 'kindly', 'lets', "let's", 'wanna']);
+const ASK_YOU_EN = new Set(['can', 'could', 'would', 'will', 'please', 'pls', 'plz']);
+const WANT_TO_EN = new Set(['you', 'u', 'want', 'need', 'like', 'love']);
+const SENT_CH = '.!?؟\n…', CLAUSE_CH = SENT_CH + '،,;؛:—–';
 function allIdx(re, s) {
   const g = new RegExp(re.source, 'gi'), out = [];
-  for (let m = g.exec(s); m; m = g.exec(s)) { out.push(m.index + (m[0].length - m[0].replace(/^[^\p{L}\p{N}]+/u, '').length)); if (g.lastIndex === m.index) g.lastIndex++; }
+  for (let m = g.exec(s); m; m = g.exec(s)) { out.push({ p: m.index + (m[0].length - m[0].replace(/^[^\p{L}\p{N}]+/u, '').length), e: m.index + m[0].length }); if (g.lastIndex === m.index) g.lastIndex++; }
   return out;
 }
-function wordsBetween(s, a, b) { const seg = s.slice(Math.min(a, b), Math.max(a, b)).trim(); return seg ? seg.split(/\s+/).length - 1 : 0; }
+/** فهرس النصّ مرّة واحدة: الكلمات (بداية أوّل حرف + الكلمة مطبَّعة)، ورقم الجملة والعبارة عند كلّ حرف. */
+function textIndex(s) {
+  const n = s.length, sent = new Int32Array(n + 1), clause = new Int32Array(n + 1);
+  for (let i = 0; i < n; i++) { const c = s[i]; sent[i + 1] = sent[i] + (SENT_CH.includes(c) ? 1 : 0); clause[i + 1] = clause[i] + (CLAUSE_CH.includes(c) ? 1 : 0); }
+  const pos = [], norm = [];
+  for (const m of s.matchAll(/\S+/g)) {
+    const lead = m[0].length - m[0].replace(/^[^\p{L}\p{N}]+/u, '').length;
+    const w = m[0].replace(/^[^\p{L}\p{N}']+|[^\p{L}\p{N}']+$/gu, '').toLowerCase();
+    if (w) { pos.push(m.index + lead); norm.push(w); }
+  }
+  /* رقم الكلمة عند موضع: آخر كلمة تبدأ عنده أو قبله */
+  const word = (p) => { let lo = 0, hi = pos.length - 1, k = -1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (pos[mid] <= p) { k = mid; lo = mid + 1; } else hi = mid - 1; } return k; };
+  return { pos, norm, word, sent: (p) => sent[p], clause: (p) => clause[p] };
+}
+/** فعل الصنع طلبٌ فعلًا (لا «كل ما اكتب»، ولا «ابني يقول»، ولا «tried to make»)؟ */
+function isRequest(m, T) {
+  const k = T.word(m.p); if (k < 0) return false;
+  const v = T.norm[k], same = (j) => j >= 0 && T.clause(T.pos[j]) === T.clause(m.p);
+  const prev = same(k - 1) ? T.norm[k - 1] : '', prev2 = same(k - 2) ? T.norm[k - 2] : '', next = same(k + 1) ? T.norm[k + 1] : '';
+  if (/[\u0600-\u06FF]/.test(v)) {
+    if (CREATE_ATTACHED.has(v) || FOR_ME_AR.has(next)) return true;
+    return CREATE_CLEAR_AR.has(v) && (!prev || ASK_AR.has(prev));
+  }
+  if (!prev || ASK_EN.has(prev)) return true;
+  if ((prev === 'you' || prev === 'u') && ASK_YOU_EN.has(prev2)) return true;
+  return prev === 'to' && WANT_TO_EN.has(prev2);
+}
+const lastBefore = (arr, p) => { let lo = 0, hi = arr.length - 1, k = -1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (arr[mid].p < p) { k = mid; lo = mid + 1; } else hi = mid - 1; } return k; };
 function weakComplaint(s) {
   const weak = allIdx(WEAK_AR, s).concat(allIdx(WEAK_EN, s));
   if (!weak.length) return false;
-  const subj = allIdx(SUBJECT, s), create = allIdx(CREATE, s);
-  return weak.some((w) => !create.some((c) => c < w) && subj.some((p) => wordsBetween(s, p, w) <= NEAR_WORDS));
+  const subj = allIdx(SUBJECT, s);
+  if (!subj.length) return false;
+  const T = textIndex(s);
+  const req = allIdx(CREATE, s).filter((m) => isRequest(m, T));
+  return weak.some((w) => {
+    /* بعد طلب صنع في عبارته، ولا ذكر للتطبيق بينهما: وصفٌ لما يُطلب */
+    const r = lastBefore(req, w.p);
+    if (r >= 0 && T.clause(req[r].p) === T.clause(w.p)) {
+      const sNext = subj[lastBefore(subj, req[r].p + 1) + 1];
+      if (!sNext || sNext.p > w.p) return false;
+    }
+    const b = lastBefore(subj, w.p), before = b >= 0 ? subj[b] : null, after = subj[b + 1] && subj[b + 1].p > w.p ? subj[b + 1] : null;
+    const wk = T.word(w.p), we = T.word(w.e - 1);
+    return (before && (T.sent(before.p) === T.sent(w.p) || wk - T.word(before.e - 1) - 1 <= NEAR_WORDS))
+      || (after && (T.sent(after.p) === T.sent(w.p) || T.word(after.p) - we - 1 <= NEAR_WORDS));
+  });
 }
 /** نوع البلاغ لكلام المستخدم: 'insult' · 'complaint' · null. الشتيمة أوّلًا. */
 function classify(text) {

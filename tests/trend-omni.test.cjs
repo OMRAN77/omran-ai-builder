@@ -669,3 +669,24 @@ test('٢١ب. veo-create يمرّر العمر الآخر والأسلوب ال�
   assert.ok(seen[1].includes('as photographed, never reinterpreted'), 'واقعيّ: القفل كاملًا');
   assert.ok(seen[2].includes('Keep each one\'s head angle') && !seen[2].includes('true skin tone'), 'أنمي: صيغته الفنّيّة');
 });
+
+/* مراجعة PR #1265: مرجع الصورة نفسها (selfRef) عند تعذّر الإطار — المونتاج يبقى بلقطاته، وتحويل الأسلوب يبقى مرجعًا كما كان */
+test('٢٢. تعذّر الإطار: المونتاج (عشر دول، يوم في حياتي) بلا «بلا قطع»؛ وتحويل الأسلوب (جيبلي، صلصال، أنمي، ليغو، دمية، لعبة) مرجع وحده بلا «احفظ أسلوبها»', async () => {
+  const real = TP.soloFirstFrame;
+  TP.soloFirstFrame = async (k, photo, scene, ratio, o) => { soloCalls.push({ scene, o }); return { error: 'frame down' }; };
+  try {
+    for (const trend of ['tencountries', 'dayinlife']) {
+      assert.ok(TP.MULTI_SHOT_TRENDS.has(trend), trend);
+      const r = await pair(photoBody(trend));
+      assert.deepEqual(images(r.omni), ['USERPHOTO', 'USERPHOTO'], trend);
+      assert.equal(text(r.omni), OMNI.FRAME_DECL + bind(r.veoPrompt) + veo.PHOTO_REF_GUIDE, trend + ': لقطاته كما هي');
+      assert.ok(!text(r.omni).includes(NO_CUTS), trend);
+    }
+    for (const trend of ['ghibli', 'claymation', 'animeaction', 'actionfigure', 'legofy', 'gamechar']) {
+      const r = await pair(photoBody(trend));
+      assert.deepEqual(images(r.omni), ['USERPHOTO'], trend + ': مرجع وحده');
+      assert.equal(text(r.omni), REF(r.veoPrompt, trend), trend + ': كما كان قبل v-video-identity-pose');
+      assert.ok(!text(r.omni).includes(veo.PHOTO_REF_GUIDE), trend);
+    }
+  } finally { TP.soloFirstFrame = real; }
+});

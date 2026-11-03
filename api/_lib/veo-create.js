@@ -101,9 +101,10 @@ async function trendOmni(o) {
       refs.forEach((r) => input.push({ type: 'image', data: r.data, mime_type: r.mime || 'image/png' }));
       prompt = groupRefDecl(refs.length) + bindGroupRefs(prompt, refs.length) + cuts + groupRefGuide(refs.length);
     } else if (o.selfRef) {
-      /* «سينمائي» بالصورة كما هي، أو ترند شخص تعذّر إطاره: الصورة نفسها أوّل إطار ومرجعًا، بلا قطع (كان التعذّر يرسم الشخص كلّه من مرجع) */
+      /* «سينمائي» بالصورة كما هي، أو ترند شخص تعذّر إطاره: الصورة نفسها أوّل إطار ومرجعًا (كان التعذّر يرسم الشخص كلّه من مرجع)؛
+         والمونتاج (عشر دول، يوم في حياتي، قصّة بعدّة مشاهد) يبقى بلقطاته — cuts لا «بلا قطع» ثابتًا */
       input.push({ type: 'image', data: o.imageBase64, mime_type: o.imageMime || 'image/png' });
-      prompt = omni.FRAME_DECL + bindTrendRef(prompt) + TREND_NO_CUTS + PHOTO_REF_GUIDE;
+      prompt = omni.FRAME_DECL + bindTrendRef(prompt) + cuts + PHOTO_REF_GUIDE;
     } else if (o.framed || !o.person) {
       /* إطار مبنيّ بلا مرجع (ترند بعمر آخر — مرجع البالغ يشدّ الطفل إلى عمره)، أو صورة يُقصد تحريكها هي نفسها
          (منتج، مكان، حيوان، «حرّك الصورة»): أوّل إطار كما كانت عند Veo (instance.image) */
@@ -364,8 +365,10 @@ module.exports = async (req, res) => {
         people: soloPeople,
         /* v-video-identity-pose: مرجع الصورة نفسها مع أوّل إطار خامّ — «سينمائي» بلا إطار مرسوم، وترند الشخص الذي تعذّر إطاره (بيكسار ورمضان
            يبقيان مرجعًا وحده عمدًا: شخصيّة مستوحاة لا الصورة أوّل إطار) */
-        selfRef: !framed && !groupFramed && !!(imageBase64 && String(imageBase64).trim()) && (cinemaOmni || (omniTrend && tp.omniPersonTrend(trendId) && !tp.OMNI_REF_TRENDS.has(trendId)
+        selfRef: !framed && !groupFramed && !!(imageBase64 && String(imageBase64).trim()) && ((cinemaOmni && body.style !== 'anime') || (omniTrend && tp.omniPersonTrend(trendId) && !tp.OMNI_REF_TRENDS.has(trendId)
           && !tp.OMNI_REVEAL_TRENDS.has(trendId) && !tp.AGE_SHIFT_TRENDS.has(trendId) /* الكشف ينتهي بصورته، والعمر الآخر لا يبدأ بالبالغ — يبقيان مرجعًا */
+          /* تحويل الأسلوب (جيبلي، صلصال، أنمي، ليغو، دمية، شخصيّة لعبة) و«أنمي» السينمائيّ: «احفظ أسلوب الصورة» يناقض الطلب — كما كانا */
+          && !tp.SOLO_FRAME_ART_TRENDS.has(trendId) && !tp.ART_STYLE_RE.test(tp.trendScene(promptText))
           && trendPeople.length <= 1 && ((require('./video-trends.js').TRENDS[trendId] || {}).photo !== 'none'))), /* ترند بلا خانة صورة (صورة المحادثة) يبقى مرجعًا */
         /* قصّة المحادثة في مقطع واحد (oneClip بعدّة مشاهد) لقطات متتالية بنصّها — كقوالب المونتاج */
         multiShot: tp.MULTI_SHOT_TRENDS.has(trendId) || !!(trendParams && trendParams.oneClip && Array.isArray(trendParams.scenes) && trendParams.scenes.length > 1) });

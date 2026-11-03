@@ -73,6 +73,22 @@ test('١ب — v-inbox-near: وصفٌ في طلب صنع ليس تذمّرًا (
   for (const t of ['والله التطبيق هذا من أمس ما يشتغل عندي', 'your app crashed again', 'you guys are slow today']) assert.equal(IB.classify(t), 'complaint', t);
 });
 
+test('١ج — مراجعة PR #1265: طلب الصنع طلبٌ في عبارته لا أيّ فعل قبله — شكاوى بعد فعل صنع أو بكلمة ملتبسة تبقى بلاغًا، والقرب بالجملة، وخطّيّ الكلفة', () => {
+  for (const t of ["the app can't even generate an image, useless", 'I tried to create a video 3 times and it failed, your app is a joke', 'I asked you to write code and you failed',
+    'make it work! the app is broken', 'ارسم لي قطة. التطبيق ما يرد من ساعة', 'قلت لك سوي لي صورة وما سويت، التطبيق خربان', 'صمّم لي شعار — بس التطبيق اليوم بطيء مرة',
+    'شو اعمل التطبيق ما يفتح', 'كل ما اكتب لك سؤال انت ما ترد', 'ابني يقول التطبيق ما يفتح عنده', 'عندي ولد صغير يقول التطبيق ما يفتح عنده', 'تخيل التطبيق ما يشتغل من امس',
+    'your design is terrible', "I can't make your app work, it's useless", 'you generate terrible images',
+    'التطبيق من يوم ما نزلت التحديث الجديد امس وهو ما يشتغل', 'I paid for the subscription and your assistant still gives me the same wrong answers, terrible', "The app keeps crashing. It's useless."]) {
+    assert.equal(IB.classify(t), 'complaint', t);
+  }
+  for (const t of ['ارسم لي سيارة خربان في الصحراء يا مها', 'i want to make a video of a slow sad train for you', 'you are amazing! tell me a story about a boy with a broken heart. thanks']) assert.equal(IB.classify(t), null, t);
+  for (const [a, b] of [['bad ', 'you '], ['غلط ', 'انت ']]) {
+    const s = a.repeat(495) + 'x x x x x x x ' + b.repeat(495), t0 = process.hrtime.bigint();
+    IB.classify(s);
+    assert.ok(Number(process.hrtime.bigint() - t0) / 1e6 < 250, 'نصّ ٤٠٠٠ حرف لا يحبس الخادم (كان ١٠ث)');
+  }
+});
+
 test('٢ — المحادثة الحقيقيّة: كلام مستخدم بشتيمة يصير بلاغًا ويدفع للمالك مرّة في الساعة؛ المالك لا يُبلَّغ عن نفسه؛ الكلام العاديّ لا يُحفظ', async () => {
   db.clear(); pushes.length = 0;
   await turn('vipuser', 'gemini', 'التطبيق خايس ما يرد عليّ', [() => textTurn('أعتذر…')]);

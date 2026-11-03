@@ -44,12 +44,14 @@ test('٢. قفل الصورة: الالتفات نحو الكاميرا صغير
   assert.ok(VT.withPhotoLock('', 5000).length <= VT.withIdentityLock('', 5000).length);
 });
 
-test('٣. Omni: إرشاد مرجع الصورة نفسها محايد، ومرجع الذات لا يشمل بيكسار/رمضان ولا الكشف ولا العمر الآخر ولا ترند بلا خانة صورة', () => {
+test('٣. Omni: إرشاد مرجع الصورة نفسها محايد، ومرجع الذات لا يشمل بيكسار/رمضان ولا الكشف ولا العمر الآخر ولا ترند بلا خانة صورة ولا تحويل الأسلوب ولا «أنمي» السينمائيّ', () => {
   assert.match(veo.PHOTO_REF_GUIDE, /^ Use Image1 as the starting frame\. Image2 is the same subject as Image1: use it only to keep its exact look/);
   assert.match(veo.PHOTO_REF_GUIDE, /whenever it turns, moves or is seen from another angle/);
   assert.doesNotMatch(veo.PHOTO_REF_GUIDE, /real person|identity/i, 'الأفاتار يبقى أفاتارًا والمنتج منتجًا');
   const src = fs.readFileSync(path.join(root, 'api/_lib/veo-create.js'), 'utf8');
-  assert.match(src, /selfRef: !framed && !groupFramed && .*\(cinemaOmni \|\| \(omniTrend && tp\.omniPersonTrend\(trendId\) && !tp\.OMNI_REF_TRENDS\.has\(trendId\)/);
+  assert.match(src, /selfRef: !framed && !groupFramed && .*\(\(cinemaOmni && body\.style !== 'anime'\) \|\| \(omniTrend && tp\.omniPersonTrend\(trendId\) && !tp\.OMNI_REF_TRENDS\.has\(trendId\)/);
+  assert.match(src, /!tp\.SOLO_FRAME_ART_TRENDS\.has\(trendId\) && !tp\.ART_STYLE_RE\.test\(tp\.trendScene\(promptText\)\)/, 'تحويل الأسلوب يبقى مرجعًا');
+  assert.match(src, /bindTrendRef\(prompt\) \+ cuts \+ PHOTO_REF_GUIDE/, 'المونتاج بلقطاته');
   assert.match(src, /!tp\.OMNI_REVEAL_TRENDS\.has\(trendId\) && !tp\.AGE_SHIFT_TRENDS\.has\(trendId\)/);
   assert.match(src, /\.photo !== 'none'/);
 });

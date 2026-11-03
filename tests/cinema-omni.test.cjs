@@ -191,3 +191,15 @@ test('٨. CINEMA_ENGINE=veo يعيد المسار القديم بلا نشر', a
   try { const r = await cine({ promptText: 'صقر' }); assert.equal(r.body.op, 'operations/veo-1'); assert.ok(veoCalled() && !omniCall()); }
   finally { delete process.env.CINEMA_ENGINE; }
 });
+
+test('٩. «أنمي» المختار وتعذّر إطاره: الصورة أوّل إطار كما كانت، بلا مرجع ثانٍ ولا «لا تجعلها كرتونيّة» (يناقض الأنمي)', async () => {
+  process.env.VIDEO_FREE_FRAME = 'on';
+  const real = TP.soloFirstFrame; TP.soloFirstFrame = async () => ({ error: 'timeout' });
+  try {
+    await cine({ promptText: DESC, imageBase64: 'USERPHOTO', imageMime: 'image/jpeg', style: 'anime' });
+    const o = omniCall();
+    assert.deepEqual(images(o), ['USERPHOTO']);
+    assert.ok(!text(o).includes(veo.PHOTO_REF_GUIDE) && !/more cartoonish/.test(text(o)), text(o).slice(-200));
+    assert.ok(text(o).startsWith('[# Sources <FIRST_FRAME>@Image1] ') && text(o).endsWith(NO_CUTS + ' Use Image1 as the starting frame.'), text(o).slice(-160));
+  } finally { TP.soloFirstFrame = real; delete process.env.VIDEO_FREE_FRAME; }
+});
