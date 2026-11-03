@@ -182,7 +182,7 @@ test('٥. السقف اليوميّ: فوقه لا نداء fal، وFAL_BACKUP=o
   } finally { global.fetch = realFetch; delete process.env.FAL_BACKUP_CAP_CENTS; }
 });
 
-test('٦. الفيديو: Omni عند fal بالطابور (مرجع/إطار/نصّ)، ورقم fal/<id>، والمتابعة تعطي الرابط', async () => {
+test('٦. الفيديو: Omni عند fal بالطابور (مرجع/إطار/نصّ)، ورقم bk/<id>، والمتابعة تعطي الرابط', async () => {
   reset();
   assert.equal(fb.videoInput({ prompt: 'p' }).model, 'google/gemini-omni-flash');
   const img = fb.videoInput({ prompt: 'p', image: { b64: 'IMG', mime: 'image/png' }, portrait: true, durationSec: 12 });
@@ -197,7 +197,7 @@ test('٦. الفيديو: Omni عند fal بالطابور (مرجع/إطار/ن
   try {
     global.fetch = fakeFetch(429, DEPLETED);
     const s = await fb.startVideo({ prompt: 'a dancer', image: { b64: 'IMG' }, durationSec: 8 }, { where: 'veo-create' });
-    assert.equal(s.op, 'fal/req-123');
+    assert.equal(s.op, 'bk/req-123', 'بادئة محايدة بلا اسم مزوّد');
     assert.match(s.rec.s, /^https:\/\/queue\.fal\.run\//);
     const day = new Date().toISOString().slice(0, 10);
     assert.equal(Number(store.get(fb.spentKey(day))), 100, '٨ ثوانٍ × ١٢٫٥ سنت');
@@ -210,8 +210,39 @@ test('٦. الفيديو: Omni عند fal بالطابور (مرجع/إطار/ن
 test('٧. «خطأ جديد» لا يصل بجانب إشعار رصيد الصور، ولا اسم مزوّد في ردّ المستخدم', async () => {
   const r = await alert.alertOwnerError({ route: 'studio', message: 'upstream 429: ' + DEPLETED }, { env: {} });
   assert.equal(r.reason === 'not-credit' || r.reason === 'media-credit', true);
-  const r2 = await alert.alertOwnerError({ route: 'veo', message: 'fal submit 403 User is locked. Reason: Exhausted balance.' }, { env: {} });
-  assert.equal(r2.reason, 'media-credit');
+  // سجلّ الاحتياط نفسه (السقف، رفض fal) له إشعاراته — بلا «خطأ جديد» مكرّر لكلّ نقطة نداء
+  const r2 = await alert.alertOwnerError({ route: 'swallowed:fal-backup/veo-create', message: 'fal submit 403 Exhausted balance' }, { env: {} });
+  assert.equal(r2.reason, 'media-backup');
+  const r3 = await alert.alertOwnerError({ route: 'swallowed:fal-backup/studio-create', message: 'daily cap reached or cap store down' }, { env: {} });
+  assert.equal(r3.reason, 'media-backup');
+  // رصيد fal في ميزات أخرى (الممثّل، التحسين) يبقى يصل المالك كما كان — لا يكتمه الاحتياط
+  const r4 = await alert.alertOwnerError({ route: 'video-enhance', message: 'fal 403 User is locked. Reason: Exhausted balance.' }, { env: {} });
+  assert.equal(r4.reason, 'no-vapid', 'وصل مسار الإرسال (لا كتم)');
+  // بلا احتياط: نصّ رصيد Gemini القصير يصل «خطأ جديد» كما كان (الإشعار الوحيد)
+  const k = process.env.FAL_KEY; delete process.env.FAL_KEY;
+  try {
+    const r5 = await alert.alertOwnerError({ route: 'studio', message: 'upstream 429: Your prepayment credits are depleted.' }, { env: {} });
+    assert.equal(r5.reason, 'no-vapid');
+  } finally { process.env.FAL_KEY = k; }
+});
+
+test('٩. المراجعة: لا علم بلا احتياط، والسقف يبقى محسوبًا على 5xx، وسبب الرفض بلا جسم المزوّد', async () => {
+  reset();
+  process.env.FAL_BACKUP = 'off';
+  try { await fb.markGeminiOut(); assert.equal(store.has(fb.OUT_KEY), false, 'العلم لا يُكتب والاحتياط مطفأ'); }
+  finally { delete process.env.FAL_BACKUP; }
+  const realFetch = global.fetch;
+  try {
+    global.fetch = async (u) => {
+      calls.push({ u: String(u) });
+      return { ok: false, status: 504, text: async () => '{"detail":"Request timed out","input":{"prompt":"secret user words"}}' };
+    };
+    const r = await fb.imageFromGemini('gemini-3-pro-image', { contents: [{ parts: [{ text: 'secret user words' }] }] }, { where: 't' });
+    assert.equal(r.error, 'fal_failed');
+    const day = new Date().toISOString().slice(0, 10);
+    assert.equal(Number(store.get(fb.spentKey(day))), 15, '504 قد يُحاسَب: الحجز يبقى');
+    assert.ok(logged.length && logged.every((l) => !/secret user words/.test(l)), 'نصّ المستخدم لا يصل السجلّ');
+  } finally { global.fetch = realFetch; }
 });
 
 test('٨. محاولة fal واحدة لكلّ نداء: العلم قائم وfal يرفض وGemini خلص ← لا نداء fal ثانٍ', async () => {

@@ -155,11 +155,12 @@ function falOpts(t0, share) {
   /* عدد صحيح: AbortSignal.timeout يرمي RangeError على الكسور */
   return { where: 'portrait-style', timeoutMs: Math.floor(Math.max(15000, Math.min(150000, (FAL_BUDGET_MS - (Date.now() - t0)) / (share || 1)))) };
 }
-/* رصيد Gemini خلص قبل دقائق ← fal مباشرة بلا نداء فاشل قبله؛ null = المسار القديم */
+/* رصيد Gemini خلص قبل دقائق ← fal مباشرة بلا نداء فاشل قبله. tried = جُرّب fal لهذه الصورة فلا يُعاد بعد فشل Gemini
+   (محاولة واحدة لكلّ صورة)؛ data = ناتجه بشكل ردّ Gemini أو null */
 async function falFirst(body, opts) {
-  if (!(await falBackup.geminiOutRecently())) return null;
+  if (!(await falBackup.geminiOutRecently())) return { tried: false, data: null };
   const fb = await falBackup.imageFromGemini(PORTRAIT_MODEL, body, opts);
-  return fb && fb.b64 ? falReply(fb) : null;
+  return { tried: true, data: fb && fb.b64 ? falReply(fb) : null };
 }
 
 /* v-pstyle-closeup: عنوان لقطة الوجه وقواعدها. العنوان مكيَّف من merge-identity.js («نفس الشخص، مقرَّبًا؛
@@ -243,7 +244,8 @@ module.exports = async (req, res) => {
           generationConfig: { imageConfig: { imageSize: '1K' } }, /* v-audit-stud2: العميل يبني GIF بعرض ٤٨٠ — 2K كان ثلاثة أضعاف ردّ البورتريه */
         };
         /* v-fal-backup: الرصيد خلص قبل دقائق ← الإطار عند fal مباشرة بدقّة 1K نفسها */
-        let frameData = await falFirst(frameReqBody, falOpts(t0, FRAME_PROMPTS.length - i));
+        const ffr = await falFirst(frameReqBody, falOpts(t0, FRAME_PROMPTS.length - i));
+        let frameData = ffr.data;
         const frameUpstream = frameData ? null : await fetch(endpointGif, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -254,7 +256,7 @@ module.exports = async (req, res) => {
         if (frameUpstream && !frameUpstream.ok) {
           console.error('[portrait-style] avatar frame failed status=' + frameUpstream.status + ' detail=' + ((frameData && frameData.error && frameData.error.message) || 'unknown'));
           /* v-fal-backup: نفاد الرصيد ← الإطار نفسه عند fal قبل رمز الخطأ؛ غير ذلك كما كان */
-          const fbFrame = await falBackup.rescueImage(frameUpstream.status, (frameData && frameData.error && frameData.error.message) || '', PORTRAIT_MODEL, frameReqBody, falOpts(t0, FRAME_PROMPTS.length - i));
+          const fbFrame = ffr.tried ? null : await falBackup.rescueImage(frameUpstream.status, (frameData && frameData.error && frameData.error.message) || '', PORTRAIT_MODEL, frameReqBody, falOpts(t0, FRAME_PROMPTS.length - i));
           if (!fbFrame) {
             res.status(502).json({ error: require('./_videoFail.js').isOutage(frameUpstream.status, (frameData && frameData.error && frameData.error.message) || '') ? 'unavailable' : 'image_generation_failed' });
             return;
@@ -533,7 +535,8 @@ module.exports = async (req, res) => {
     };
 
     /* v-fal-backup: الرصيد خلص قبل دقائق ← fal مباشرة، وناتجه يكمل كناتج Gemini (الحارس ثمّ الاحتساب) */
-    let data = await falFirst(reqBody, falOpts(t0));
+    const ffm = await falFirst(reqBody, falOpts(t0));
+    let data = ffm.data;
     const upstream = data ? null : await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -547,7 +550,7 @@ module.exports = async (req, res) => {
         .replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
       console.error('[portrait-style] upstream failed status=' + upstream.status + ' detail=' + detail);
       /* v-fal-backup: نفاد الرصيد ← النموذج نفسه عند fal قبل إنقاذ OpenAI؛ ناتجه يكمل كناتج Gemini بعد هذه الكتلة */
-      const fb = await falBackup.rescueImage(upstream.status, (data && data.error && data.error.message) || '', PORTRAIT_MODEL, reqBody, falOpts(t0));
+      const fb = ffm.tried ? null : await falBackup.rescueImage(upstream.status, (data && data.error && data.error.message) || '', PORTRAIT_MODEL, reqBody, falOpts(t0));
       // v-portrait-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعطّل الميزة — جرّب
       // gpt-image-1 (تعديل صورة) بمفتاح OPENAI_API_KEY. حارس التحقق نفسه على
       // Gemini فيُتجاوز في مسار الإنقاذ — سيرفض بدوره لو حاولناه.

@@ -1,7 +1,7 @@
 'use strict';
 /* v-fal-backup — الفيديو والإطار الأوّل (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»). المعالج الحقيقيّ veo-create/veo-status
    وtrend-people.callImage الحقيقيّ، وfetch مزيّف يوجّه googleapis وfal.run وqueue.fal.run (بلا شبكة ولا صرف):
-   ١) رصيد Gemini خلص (429 «prepayment credits are depleted» أو 402) عند Omni ← النموذج نفسه عند fal بالطابور: op «fal/…» وسجلّه
+   ١) رصيد Gemini خلص (429 «prepayment credits are depleted» أو 402) عند Omni ← النموذج نفسه عند fal بالطابور: op «bk/…» وسجلّه
       بعمر مهامّ omni والتذكرة نفسها، والنقاط تبقى مخصومة؛ والاستطلاع يسلّم ويسوّي بالعقد نفسه.
    ٢) الإطار الأوّل للترند يمرّ عبر fal (nano-banana-pro/edit بالدقّة والنسبة نفسيهما)، والفيديو بعده مباشرة بلا نداء Gemini فاشل.
    ٣) الزحام العاديّ (429 «Resource has been exhausted») لا يحوّل؛ وfal الموقوف (403 «User is locked») = المسار القديم حرفيًّا.
@@ -117,7 +117,7 @@ async function poll(op) { const r = res(); await status({ method: 'GET', query: 
 const submits = () => calls.filter((c) => /^https:\/\/queue\.fal\.run\//.test(c.url) && c.method === 'POST');
 const falImages = () => calls.filter((c) => /^https:\/\/fal\.run\//.test(c.url));
 const omniCalls = () => calls.filter((c) => /\/interactions$/.test(c.url));
-const idOf = (op) => String(op).slice('fal/'.length);
+const idOf = (op) => String(op).slice('bk/'.length);
 const spent = () => Number(kv.get(fb.spentKey(new Date().toISOString().slice(0, 10))) || 0);
 const falOps = () => [...kv.keys()].filter((k) => k.indexOf('fal:op:') === 0);
 /* لا اسم مزوّد ولا نموذج في ما يقرؤه العميل نصًّا (op والرابط معرّفان لا نصّ) */
@@ -132,12 +132,12 @@ function reset() {
   for (const k of [...kv.keys()]) if (k.indexOf('db/') === 0) kv.delete(k); // علم «خارج الرصيد» والعدّاد والإشعارات
 }
 
-test('١. ترند بلا صورة: Omni 429 «الرصيد» ← fal نصّ←فيديو بالأمر نفسه، op fal/ وسجلّه بعمر omni والتذكرة، والنقاط تبقى مخصومة؛ والاستطلاع يسلّم ويسوّي', async () => {
+test('١. ترند بلا صورة: Omni 429 «الرصيد» ← fal نصّ←فيديو بالأمر نفسه، op bk/ وسجلّه بعمر omni والتذكرة، والنقاط تبقى مخصومة؛ والاستطلاع يسلّم ويسوّي', async () => {
   reset(); account('u1', 1000);
   omniReply = err(429, DEPLETED);
   const r = await create({ token: token('u1'), trend: 'pixarsketch', params: { text: 'أبو سعيد يبيع القهوة', sceneIndex: 0 }, ratio: '720:1280' });
   assert.equal(r.code, 200, JSON.stringify(r.body));
-  assert.match(String(r.body.op), /^fal\/f\d+-/);
+  assert.match(String(r.body.op), /^bk\/f\d+-/, 'بادئة محايدة بلا اسم مزوّد');
   noProvider(r.body, 'create');
   assert.equal(omniCalls().length, 1, 'Gemini نودي مرّة واحدة');
   const s = submits();
@@ -307,7 +307,7 @@ test('٦. الاستطلاع: رفض الرقابة safety، عطب رصيد ا�
   assert.equal(calls[0].url, QUEUE + idOf(c) + '/status', 'الرابط من الرقم');
   assert.equal(pts('u4'), 2000 - COST, 'سُلّم: لا ردّ');
 
-  const bad = await poll('fal/../x');
+  const bad = await poll('bk/../x');
   assert.equal(bad.code, 400);
 });
 

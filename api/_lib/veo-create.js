@@ -55,7 +55,7 @@ function omniOpKey(op) { return 'omni:op:' + String(op); }
 /* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): نفاد رصيد Gemini (402، أو 429 «prepayment credits are depleted»)
    عند نداء الفيديو ← النموذج نفسه (Omni Flash) عند fal بالطابور (fal-fallback.startVideo)، فيرجع op «fal/<id>» يتابعه veo-status بالعقد
    نفسه، وسجلّ طابوره هنا بعمر مهامّ omni. الخصم والتذكرة كما لو أنتجه Gemini، ولا ردّ للنقاط إلّا إن رفض الاحتياط أيضًا. */
-const FAL_OP_PREFIX = 'fal/';
+const FAL_OP_PREFIX = falBackup.VIDEO_OP_PREFIX; /* «bk/» — بلا اسم مزوّد في رقم العمليّة */
 function falOpKey(op) { return 'fal:op:' + String(op); }
 const OMNI_FRAME_MS = 120000; // إطار المجموعة قبل Omni: يترك للمحرّك وقته داخل حدّ الدالّة (٣٠٠ث)
 function trendEngine() { return String(process.env.TREND_ENGINE || 'omni').toLowerCase() === 'veo' ? 'veo' : 'omni'; }

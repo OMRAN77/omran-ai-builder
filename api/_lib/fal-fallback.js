@@ -48,6 +48,7 @@ function clean(s) {
 
 /* ───── علم «Gemini خارج الرصيد» ───── */
 async function markGeminiOut(o) {
+  if (!enabled()) return; /* بلا احتياط: لا علم، والمسار القديم حرفيًّا */
   try { await kvOf(o).kvSetRaw(OUT_KEY, String(Date.now()), OUT_TTL_S); } catch (e) { /* guard-ok — العلم اختصار لا شرط */ }
 }
 async function geminiOutRecently(o) {
@@ -90,6 +91,18 @@ async function notify(kind, o) {
     const p = require('./_owner-alert.js').alertOwnerMedia(kind, o && o.alertOpts);
     await Promise.race([p, new Promise((r) => setTimeout(r, 2000))]);
   } catch (e) { /* guard-ok — الإشعار تحسين لا شرط */ }
+}
+/* سبب رفض fal: الحالة ونوع الخطأ ورسالته القصيرة — لا الجسم كلّه (قد يعيد نصّ المستخدم في السجلّ والإشعار) */
+function falWhy(status, raw) {
+  let why = '';
+  try {
+    const j = JSON.parse(raw);
+    const d = j && (j.detail != null ? j.detail : j.error);
+    if (Array.isArray(d)) why = d.map((x) => (x && (x.type || x.msg)) || '').filter(Boolean).slice(0, 3).join(',');
+    else if (typeof d === 'string') why = d;
+    if (j && j.error_type) why = j.error_type + (why ? ' ' + why : '');
+  } catch (e) { why = ''; }
+  return String(status) + (why ? ' ' + String(why).slice(0, 100) : '');
 }
 async function logFail(where, detail) {
   const d = clean(detail);
@@ -177,8 +190,9 @@ async function imageFromGemini(geminiModel, body, opts) {
     });
     const raw = await r.text().catch(() => '');
     if (!r.ok) {
-      await release(held, o);
-      await logFail(where, 'fal ' + r.status + ' ' + raw);
+      /* 4xx = رفضٌ قبل التشغيل فيُردّ الحجز؛ 5xx والمهلة قد تُحاسَب فتبقى محسوبة */
+      if (r.status < 500) await release(held, o);
+      await logFail(where, 'fal ' + falWhy(r.status, raw));
       if (falCreditOut(r.status, raw)) await notify('fal-out', o);
       await alerted;
       return { error: 'fal_failed', status: r.status };
@@ -189,8 +203,8 @@ async function imageFromGemini(geminiModel, body, opts) {
     const out = url ? await outToB64(url, f, signal) : null;
     await alerted;
     if (!out || !out.b64) {
-      await release(held, o);
-      await logFail(where, 'fal empty ' + clean(j && (j.description || j.detail)));
+      if (raw) await release(held, o); /* قراءة مقطوعة بالمهلة = ربّما حوسبت */
+      await logFail(where, 'fal empty ' + falWhy(r.status, raw));
       return { error: 'fal_empty' };
     }
     return { b64: out.b64, mime: out.mime, engine: 'fal' };
@@ -210,7 +224,9 @@ async function rescueImage(status, text, geminiModel, body, opts) {
   return r && r.b64 ? r : null;
 }
 
-/* ───── الفيديو: Gemini Omni Flash عند fal بالطابور، ورقم العمليّة fal/<id> يمرّ بمسار veo-status نفسه ───── */
+/* ───── الفيديو: Gemini Omni Flash عند fal بالطابور، ورقم العمليّة bk/<id> يمرّ بمسار veo-status نفسه ─────
+   البادئة محايدة: الرقم يصل نصّ أداة الوكيل في المحادثة، فلا اسم مزوّد فيه */
+const VIDEO_OP_PREFIX = 'bk/';
 const VIDEO_MODELS = {
   text: 'google/gemini-omni-flash',
   image: 'google/gemini-omni-flash/image-to-video',
@@ -257,7 +273,7 @@ async function startVideo(spec, opts) {
     try { d = JSON.parse(raw); } catch (e) { d = null; }
     if (!r.ok || !d || !d.request_id) {
       await release(held, o);
-      await logFail(where, 'fal submit ' + r.status + ' ' + raw);
+      await logFail(where, 'fal submit ' + falWhy(r.status, raw));
       if (falCreditOut(r.status, raw)) await notify('fal-out', o);
       await alerted;
       return { error: 'fal_failed', status: r.status };
@@ -266,7 +282,7 @@ async function startVideo(spec, opts) {
     const base = QUEUE + model.split('/').slice(0, 2).join('/') + '/requests/' + id;
     const rec = { p: 'fal', m: model, id, s: qOk(d.status_url) ? d.status_url : base + '/status', r: qOk(d.response_url) ? d.response_url : base, at: Date.now() };
     await alerted;
-    return { op: 'fal/' + id, rec };
+    return { op: VIDEO_OP_PREFIX + id, rec };
   } catch (e) {
     await logFail(where, 'fal submit ' + (e && e.name) + ' ' + (e && e.message));
     await alerted;
@@ -309,6 +325,6 @@ async function pollVideo(rec, opts) {
 module.exports = {
   enabled, capCents, geminiCreditOut, falCreditOut, markGeminiOut, geminiOutRecently,
   imageModelFor, inputFromGemini, imageFromGemini, rescueImage, imageCents,
-  videoInput, startVideo, pollVideo, videoCents, VIDEO_MODELS,
+  videoInput, startVideo, pollVideo, videoCents, VIDEO_MODELS, VIDEO_OP_PREFIX,
   OUT_KEY, spentKey,
 };

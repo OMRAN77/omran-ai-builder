@@ -79,15 +79,18 @@ async function alertOwnerMedia(kind, opts) {
   if (!r.sent) { try { require('./log-error.js').logError('owner-alert:media-' + kind, new Error(a.title + ' — ' + a.body)); } catch (e) { /* guard-ok — السجلّ تحسين */ } }
   return r;
 }
-/* نصوص نفاد الرصيد في الصور والفيديو يغطّيها alertOwnerMedia — لا «خطأ جديد» بجانبها */
-const MEDIA_OUT_RE = /prepay|credits? (?:are |is )?(?:depleted|exhausted)|exhausted balance|user is locked/i;
+/* نصّ نفاد رصيد Gemini يغطّيه alertOwnerMedia — حين الاحتياط شغّال فقط (بدونه «خطأ جديد» هو إشعار المالك الوحيد).
+   ورصيد fal للممثّل والتحسين وغيرهما يبقى يصل كما كان. */
+const MEDIA_OUT_RE = /prepay|credits? (?:are |is )?(?:depleted|exhausted)/i;
 
 // v-error-push: يُنادى من `_errors.js#reportError` لكلّ خطأ خادم جديد (لا تكرار). entry
 // كما يبنيه reportError: { route, action, method, message, name }.
 async function alertOwnerError(entry, opts) {
   const e = entry || {};
   if (isCreditFailure(null, e.message)) return { sent: 0, reason: 'not-credit' }; // v-credit-alert يغطّيها بمسارها الخاصّ
-  if (MEDIA_OUT_RE.test(String(e.message || ''))) return { sent: 0, reason: 'media-credit' }; // v-fal-backup: alertOwnerMedia يغطّيها
+  /* v-fal-backup: سجلّ الاحتياط نفسه له إشعاراته الثلاثة (السقف ورفض fal) — بلا «خطأ جديد» مكرّر لكلّ نقطة نداء */
+  if (/^swallowed:fal-backup\//.test(String(e.route || ''))) return { sent: 0, reason: 'media-backup' };
+  if (MEDIA_OUT_RE.test(String(e.message || '')) && require('./fal-fallback.js').enabled()) return { sent: 0, reason: 'media-credit' };
   const where = e.route + (e.action ? '?' + e.action : '');
   return pushToOwners({
     title: '🛑 خطأ جديد في الخادم',

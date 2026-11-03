@@ -372,9 +372,11 @@ module.exports = async (req, res) => {
 
     /* v-fal-backup: الرصيد خلص قبل دقائق ← بلا نداء Gemini فاشل: الموازي المدفوع إن أنتج (إنقاذ كما كان)، وإلّا fal بالنموذج نفسه */
     let data = null;
+    let falTried = false; /* محاولة fal واحدة لكلّ صورة: رفضه هنا لا يُعاد بعد فشل Gemini */
     if (await falBackup.geminiOutRecently()) {
       const paidF = duoP ? await duoP : null;
       if (paidF) { await sendDuo(paidF); return; }
+      falTried = true;
       const fbF = await falBackup.imageFromGemini(FASHION_MODEL, reqBody, falOpts(t0));
       if (fbF && fbF.b64) data = falReply(fbF);
     }
@@ -397,7 +399,7 @@ module.exports = async (req, res) => {
       const tech = String((data && data.error && data.error.message) || '');
       const paid = duoP ? await duoP : null;
       if (paid && falBackup.geminiCreditOut(upstream.status, tech)) await falBackup.markGeminiOut();
-      const fb = paid ? null : await falBackup.rescueImage(upstream.status, tech, FASHION_MODEL, reqBody, falOpts(t0));
+      const fb = (paid || falTried) ? null : await falBackup.rescueImage(upstream.status, tech, FASHION_MODEL, reqBody, falOpts(t0));
       // v-fashion-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعني تعطّل الميزة —
       // إن وُجد مفتاح OpenAI فجرّب gpt-image-1 قبل إبلاغ المستخدم بالفشل.
       const rescue = paid || (fb || duoP ? null : await altImage());
