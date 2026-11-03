@@ -370,7 +370,7 @@ I18N['zh'] = {
     "msgShareCopied": "回复已复制，请粘贴到你想用的应用中",
     "uploadCodeTitle": "上传代码文件(HTML 或 Python)",
     "newProject": "+ 新建项目",
-    "promptPlaceholder": "描述您想要构建的应用、游戏或网站...例如：一个简单的贪吃蛇游戏",
+    "promptPlaceholder": "在此输入您的消息...",
     "omNavHome": "首页",
     "omNavChats": "对话",
     "omNavTools": "工具",

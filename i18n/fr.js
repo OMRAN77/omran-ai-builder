@@ -389,7 +389,7 @@ I18N['fr'] = {
     settings: "Paramètres",
     download: "Télécharger",
     newProject: "+ Nouveau projet",
-    promptPlaceholder: "Décrivez l'application, le jeu ou le site web que vous voulez créer... ex. un jeu de serpent simple",
+    promptPlaceholder: "Écrivez votre message ici ...",
     omNavHome: 'Accueil',
     omNavChats: 'Discussions',
     omNavTools: 'Outils',

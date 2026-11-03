@@ -97,10 +97,12 @@ html.store-safe #btnReligion .tcSub{display:none !important;}
 @media (min-width:341px){
   .huawei-tools-grid > .hwToolCard:last-child:nth-child(odd){grid-column:1 / -1; justify-self:center; width:calc(50% - 6px);}
   .huawei-tools-grid > .hwToolCard:nth-last-child(2):nth-child(odd):has(+ .hwToolCard[hidden]){grid-column:1 / -1; justify-self:center; width:calc(50% - 6px);}
+  .huawei-tools-grid > .hwToolCard.hwOddLast{grid-column:1 / -1; justify-self:center; width:calc(50% - 6px);} /* v-hw-1316: بلا :has لـWebView 99 */
 }
 @media (min-width:341px) and (max-width:480px){
   .huawei-tools-grid > .hwToolCard:last-child:nth-child(odd){width:calc(50% - 4px);}
   .huawei-tools-grid > .hwToolCard:nth-last-child(2):nth-child(odd):has(+ .hwToolCard[hidden]){width:calc(50% - 4px);}
+  .huawei-tools-grid > .hwToolCard.hwOddLast{width:calc(50% - 4px);}
 }
 .hwToolCard{
   direction:rtl;

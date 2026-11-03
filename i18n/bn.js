@@ -372,7 +372,7 @@ I18N['bn'] = {
     settings: "সেটিংস",
     download: "ডাউনলোড করুন",
     newProject: "+ নতুন প্রকল্প",
-    promptPlaceholder: "আপনি যে অ্যাপ, গেম বা ওয়েবসাইট তৈরি করতে চান তার বর্ণনা দিন... যেমন একটি সাধারণ সাপের খেলা",
+    promptPlaceholder: "আপনার বার্তা এখানে লিখুন ...",
     omNavHome: 'হোম',
     omNavChats: 'চ্যাট',
     omNavTools: 'টুলস',

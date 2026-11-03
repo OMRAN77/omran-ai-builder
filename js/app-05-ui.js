@@ -915,6 +915,30 @@ function omranHwStampGroups(groups){
 if(OMRAN_PAUSED_TOOLS.indexOf('btnQuickTemplates') >= 0){
   try{ var __hwSug = document.getElementById('hwCardSuggestions'); if(__hwSug){ __hwSug.hidden = true; __hwSug.style.setProperty('display', 'none', 'important'); } }
   catch(e){ __swallow(e, 'ui:paused-hw-card'); }
+  /* v-hw-1316: البطاقة الفرديّة الأخيرة قبل المخفيّة تتوسّط بصنف لا بـ:has() (Chromium 105+، وWebView هواوي ≈ 99) */
+  try{
+    var __hwPrev = __hwSug && __hwSug.previousElementSibling;
+    if(__hwPrev && __hwPrev.classList.contains('hwToolCard') && Array.prototype.indexOf.call(__hwPrev.parentNode.children, __hwPrev) % 2 === 0) __hwPrev.classList.add('hwOddLast');
+  }catch(e){ __swallow(e, 'ui:hw-odd-last'); }
+}
+/* v-hw-1316 (رفض هواوي 1.3.15 بالقاعدة 1.14 «المعلومات واللقطات لا تطابق التطبيق»): داخل تطبيق هواوي لا يَعِد نصٌّ ظاهر ببناء
+   تطبيقات وألعاب ومواقع — وصف المتجر ولقطاته أدوات ومحادثة. في «عن التطبيق»: السطر التعريفيّ، وبطاقة «بناء تطبيقات بالمحادثة»، والنبذة.
+   :has() للحاضنات (Chromium 105+)، والنصوص نفسها احتياط لـWebView 99 في قاعدة مستقلّة (محدِّد غير مفهوم يُسقط قاعدته وحدها). */
+if(omranHwPackage()){
+  try{
+    var __hwNb = document.createElement('style');
+    __hwNb.id = 'hwNoBuilderCss';
+    __hwNb.textContent = '[data-i18n="aboutTagline"],[data-i18n="aboutFeatChat"],[data-i18n="aboutMoreSummary"],[data-i18n="aboutText"]{display:none !important;}'
+      + 'details:has(> [data-i18n="aboutText"]),div:has(> [data-i18n="aboutFeatChat"]){display:none !important;}';
+    (document.head || document.documentElement).appendChild(__hwNb);
+    var __hwNbBox = function(){
+      try{
+        document.querySelectorAll('[data-i18n="aboutFeatChat"]').forEach(function(e){ if(e.parentElement) e.parentElement.style.display = 'none'; });
+        document.querySelectorAll('[data-i18n="aboutText"]').forEach(function(e){ var d = e.closest('details'); if(d) d.style.display = 'none'; });
+      }catch(e){ __swallow(e, 'ui:hw-no-builder-box'); }
+    };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', __hwNbBox, { once: true }); else __hwNbBox();
+  }catch(e){ __swallow(e, 'ui:hw-no-builder'); }
 }
 var APP_CAPABILITIES = [
   { id:'btnCV',       icon:'💼', key:'cvTitle', ar:'مولّد السيرة الذاتية', en:'CV Builder',

@@ -377,7 +377,7 @@ I18N['fil'] = {
     "msgShareCopied": "Nakopya ang sagot — i-paste sa app na gusto mo",
     "uploadCodeTitle": "Mag-upload ng code file (HTML o Python)",
     "newProject": "+ Bagong Proyekto",
-    "promptPlaceholder": "Ilarawan ang app, laro, o website na gusto mong buuin... hal. simpleng snake game",
+    "promptPlaceholder": "Isulat ang iyong mensahe dito ...",
     "omNavHome": "Home",
     "omNavChats": "Mga Chat",
     "omNavTools": "Mga Tool",

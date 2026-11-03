@@ -96,6 +96,11 @@ window.__omranWhenSeen = (function () {
   في البحث تظهر om ai، وداخل التطبيق يُعاد عنوان النافذة فورًا إلى عمران AI. */
 (function(){try{
   var l = localStorage.getItem('aiapp_lang') || 'ar';
+  /* v-hw-1316: في عارض حزمة هواوي تتبع اللغة الهاتف (app-04 omranLangAuto) — فالاتّجاه والستار من لغة الهاتف لا من المحفوظ */
+  try { if((/[?&]store=huawei\b/.test(location.search) || sessionStorage.getItem('aiapp_store') === 'huawei') && window.OmranRender && localStorage.getItem('aiapp_lang_manual') !== '1'){
+    var nv = String((navigator.languages && navigator.languages[0]) || navigator.language || 'en').toLowerCase();
+    l = /^ar(-|$)/.test(nv) ? 'ar' : (/^ur(-|$)/.test(nv) ? 'ur' : (nv.split('-')[0] || 'en'));
+  } } catch(_){ /* guard-ok — بلا الفحص يبقى المحفوظ كما كان */ }
   if(l === 'ar'){ document.title = 'عمران AI — منصّة الذكاء'; return; }
   var d = document.documentElement;
   d.dir = (l === 'ur') ? 'rtl' : 'ltr';
@@ -209,7 +214,7 @@ window.__omranWhenSeen = (function () {
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" crossorigin="anonymous" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" crossorigin="anonymous"></noscript>
 <link rel="stylesheet" href="css/tokens.css?v=739">
-<link rel="stylesheet" href="css/redesign.css?v=697">
+<link rel="stylesheet" href="css/redesign.css?v=698">
 <link rel="stylesheet" href="css/modules.css?v=693">
 <link rel="stylesheet" href="css/خلفيات.css?v=5">
 <link rel="stylesheet" href="css/إطارات.css?v=9"><!-- v-frame-design: التصميم الجديد للكمبيوتر -->
@@ -217,7 +222,7 @@ window.__omranWhenSeen = (function () {
 <link rel="stylesheet" href="css/ثيم-خشبي.css?v=5"><!-- v-skin-wood: كلّه تحت html.skin-wood -->
 <link rel="stylesheet" href="css/ثيمات.css?v=10"><!-- v-themes: الثيمات الثلاثة عشر، كلّها تحت html.skin -->
 <link rel="stylesheet" href="css/أدوات-أسود.css?v=7">
-<link rel="stylesheet" href="css/رفع-الصور.css?v=6"><link rel="stylesheet" href="css/بلا-خطوط.css?v=12"><!-- v-no-lines-2: بلا إطارات ذهبيّة، الذهبيّ عند المرور فقط --><!-- v-upload-art: صور المالك خلفيّات مربّعات الرفع (الديكور، الأزياء، الستايل) --><!-- v-tools-black: خلفيّات الأدوات بلون المحادثة في الوضع الأسود -->
+<link rel="stylesheet" href="css/رفع-الصور.css?v=8"><link rel="stylesheet" href="css/بلا-خطوط.css?v=12"><!-- v-no-lines-2: بلا إطارات ذهبيّة، الذهبيّ عند المرور فقط --><!-- v-upload-art: صور المالك خلفيّات مربّعات الرفع (الديكور، الأزياء، الستايل) --><!-- v-tools-black: خلفيّات الأدوات بلون المحادثة في الوضع الأسود -->
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -991,7 +996,7 @@ html.plan-gold .setProfileName::after{ content: var(--plan-badge, ""); display:i
 <script src="/js/selfdiag.js?v=hw-twa-11"></script>
 <script defer src="/templates-data.js?v=590"></script>
     <script>/* كمبيوتر — الشاشة مفتوحة من الطرفين عند فتح التطبيق (طلب المالك): لوحة المعاينة والكود مفتوحة بجانب القائمة */try{if(localStorage.getItem('waCollapsed')===null||localStorage.getItem('waCollapsed')==='1')localStorage.setItem('waCollapsed','0');if(localStorage.getItem('sidebarCollapsed')==='1')localStorage.setItem('sidebarCollapsed','0');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=44d43773"></script>
+    <script defer src="/js/app.bundle.js?v=78f5722b"></script>
     <script defer src="/js/frame-touch.js?v=4"></script><!-- v-frame-gold: لمسة الضغط للكمبيوتر والجوال (v-touch-mobile: وفراغ المحادثة في الجوال) -->
     <script defer src="/js/modes.js?v=m211026"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->

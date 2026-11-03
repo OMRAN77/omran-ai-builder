@@ -371,7 +371,7 @@ I18N['ur'] = {
     settings: "ترتیبات",
     download: "ڈاؤن لوڈ کریں",
     newProject: "+ نیا پراجیکٹ",
-    promptPlaceholder: "جو ایپ، گیم یا ویب سائٹ بنانی ہے اس کی تفصیل دیں... مثلاً ایک سادہ سانپ کا گیم",
+    promptPlaceholder: "اپنا پیغام یہاں لکھیں ...",
     omNavHome: 'ہوم',
     omNavChats: 'چیٹس',
     omNavTools: 'ٹولز',

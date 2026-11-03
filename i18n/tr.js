@@ -375,7 +375,7 @@ I18N['tr'] = {
     "msgShareCopied": "Yanıt kopyalandı — istediğiniz uygulamaya yapıştırın",
     "uploadCodeTitle": "Bir kod dosyası yükleyin (HTML veya Python)",
     "newProject": "+ Yeni Proje",
-    "promptPlaceholder": "Oluşturmak istediğiniz uygulamayı, oyunu veya web sitesini tanımlayın... örn. basit bir yılan oyunu",
+    "promptPlaceholder": "Mesajınızı buraya yazın ...",
     "omNavHome": "Ana Sayfa",
     "omNavChats": "Sohbetler",
     "omNavTools": "Araçlar",

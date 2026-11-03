@@ -3,6 +3,13 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **applyLanguage يحفظ اللغة في كلّ إقلاع:** فالمكتشفة من الهاتف أوّل مرّة تُحفظ كأنّها اختيار، ولا تتبع الهاتف بعدها أبدًا (وتخزين WebView يعيش
+  مع تحديثات الحزمة). مراجع هواوي «بيئة متعدّدة اللغات» بدّل لغة هاتفه فبقي التطبيق على الأولى = «اللقطات لا تطابق» (1.14 أربع جولات).
+  «يتبع الهاتف» يحتاج علم اختيار يدويّ منفصلًا (`aiapp_lang_manual` في setLang وحده) لا قراءة aiapp_lang. ومن يصوّر الحزمة يضع locale
+  السياق لا aiapp_lang. (v-hw-1316)
+- **WebView نظام هواوي ≈ Chromium 99 (EMUI 12 بلا GMS):** ‏cqw و@container و:has() (105+) لا تعمل. ‏`max(…,var(--x,3cqw))` «غير صالح وقت
+  الحساب» فيرث الحجم ولا يرجع إلى clamp() قبله — ضع cqw داخل `@supports (font-size:1cqw)`، وقاعدة :has منفصلة. Playwright لا يشغّل
+  Chromium قديمًا: المحاكاة بحذف ما لا يعرفه (`.shots/hw-1316/webview-compat/emu.js`). (v-hw-1316)
 - **غلاف WebView ليس متصفّحًا:** `MahaWebViewFallbackActivity` (هواتف هواوي بلا Chrome — منها جهاز مراجع AppGallery) لا يفعل
   إلّا ما نُفِّذ فيه: بلا `onShowFileChooser` كلّ `<input type=file>` ميت صامتًا (رفض 1.3.14 بالقاعدة 3.1)، بلا
   `onGeolocationPermissionsShowPrompt` لا موقع، وتنزيل blob:/data: يسقط. ولا SpeechRecognition ولا navigator.share ولا Notification ولا
