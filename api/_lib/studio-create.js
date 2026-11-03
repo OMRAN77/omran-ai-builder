@@ -64,6 +64,7 @@ const faceLock = require('./face-lock.js');
 const mergeIdentity = require('./merge-identity');
 const { judgeBest, duoEnabled } = require('./image-judge');
 const variants = require('./studio-variants.js'); /* v-studio-variants */
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
 
 /* v-studio-more-looks: أوصاف الخيارات انتقلت إلى ملفّ بيانات صرف يقرأه مولّد المعاينات أيضًا */
 /* نسخة سطحيّة: دمج الميزات الـ١٤ أدناه يجب ألّا يلوّث بيانات الملفّ المشتركة (يقرأها مولّد المعاينات) */
@@ -196,6 +197,11 @@ async function geminiImage(apiKey, parts, feature, aspectRatio, tempOverride) {
   const temperature = Number.isFinite(tempOverride) ? tempOverride
     : (feature === 'anime' ? 0.65 : (DESIGN_FEATURES.indexOf(feature) !== -1 ? 0.45 : 0.15));
   const reqBody = { contents: [{ parts }], generationConfig: { temperature, imageConfig: aspectRatio ? { imageSize: '2K', aspectRatio } : { imageSize: '2K' } } };
+  /* v-fal-backup: رصيد Gemini خلص قبل دقائق ← النموذج نفسه عند fal مباشرة بلا نداء فاشل قبله */
+  if (await falBackup.geminiOutRecently()) {
+    const fb = await falBackup.imageFromGemini('gemini-3-pro-image', reqBody, { where: 'studio-create' });
+    if (fb.b64) return { b64: fb.b64, mime: fb.mime };
+  }
   const upstream = await fetch(endpoint, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody),
     signal: AbortSignal.timeout(240000), /* v-image-timeout */
@@ -205,6 +211,9 @@ async function geminiImage(apiKey, parts, feature, aspectRatio, tempOverride) {
     const tech = String((data && data.error && data.error.message) || 'unknown');
     const detail = tech.replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
     console.error('[studio-create] upstream failed status=' + upstream.status + ' detail=' + detail);
+    /* v-fal-backup: نفاد الرصيد ← fal بالنموذج نفسه قبل أيّ رمز خطأ (والباقي كما كان) */
+    const fb = await falBackup.rescueImage(upstream.status, tech, 'gemini-3-pro-image', reqBody, { where: 'studio-create' });
+    if (fb) return { b64: fb.b64, mime: fb.mime };
     /* v-audit-studeng (srv-studios-1-3): رمز لا نصّ — كان «تعذّر إنشاء الصورة الآن…» عربيًّا لكلّ اللغات ومعه نصّ المزوّد الخامّ (detail).
        نفاد الرصيد أو عطب المفتاح = unavailable بـ503 («الخدمة متوقّفة مؤقّتًا»، v-credit-out)؛ الزحام busy؛ والباقي failed. السبب في السجلّ وحده. */
     if (require('./_videoFail.js').isOutage(upstream.status, tech)) return { error: 'unavailable', status: 503 };
@@ -443,3 +452,4 @@ module.exports.FEATURE_INSTRUCTIONS = FEATURE_INSTRUCTIONS;
 module.exports.buildSinglePrompt = buildSinglePrompt; /* v-studio-variety: للاختبار */
 module.exports.styleTextOf = styleTextOf; /* v-style-match: للاختبار */
 module.exports.DESIGN_FEATURES = DESIGN_FEATURES;
+module.exports.__geminiImage = geminiImage; /* v-fal-backup: للاختبار */
