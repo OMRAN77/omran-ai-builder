@@ -375,7 +375,7 @@ I18N['id'] = {
     "msgShareCopied": "Balasan disalin — tempel di aplikasi yang Anda mau",
     "uploadCodeTitle": "Unggah file kode (HTML atau Python)",
     "newProject": "+ Proyek Baru",
-    "promptPlaceholder": "Jelaskan aplikasi, game, atau situs web yang ingin Anda buat... contoh: game ular sederhana",
+    "promptPlaceholder": "Tulis pesan Anda di sini ...",
     "omNavHome": "Beranda",
     "omNavChats": "Obrolan",
     "omNavTools": "Alat",

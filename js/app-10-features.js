@@ -484,7 +484,8 @@ btnToggleHistory.onclick = () => {
   // مفعّلًا فيتجاهل اختيار المستخدم ✅ للمزود في الرسائل التالية.
   window.__resetAskAllToggle = () => { window.__askAllToggleOn = false; paint(); };
   try{
-    if(!localStorage.getItem('askAllHintSeen')){
+    /* v-hw-1316: داخل تطبيق هواوي لا حبّة «الذكاء الاصطناعي يبني تطبيقك فورًا» — زرّها مخفيّ للكلّ أصلًا، ووصف المتجر أدوات ومحادثة (رفض 1.14) */
+    if(!localStorage.getItem('askAllHintSeen') && !(typeof omranHwPackage === 'function' && omranHwPackage())){
       const tip = document.createElement('div');
       tip.id = 'askAllHintTip'; tip.setAttribute('data-i18n', 'askAllHintText'); // v-hw-resubmit-2: يُعاد مع وصول القاموس (zh كان يبقى إنجليزيًّا)
       const txt = (typeof t === 'function') ? t('askAllHintText') : '';

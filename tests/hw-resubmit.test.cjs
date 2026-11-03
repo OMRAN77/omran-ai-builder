@@ -209,7 +209,7 @@ test('٧. المراجعة العدائيّة: أوّل شاشة صينيّة ب
   assert.equal(list.split(',').length, 13, 'الأدوات الـ١٣ في القوس');
   assert.ok(r.includes('bottom bar > Tools'), 'مكان زرّ الأدوات');
   assert.ok(r.includes('opens on every launch'), 'العرض في كلّ تشغيل لا مرّة لكلّ جهاز');
-  assert.ok(r.startsWith('1.3.15 fixes file upload'), 'v-hw-1315: Remarks تبدأ بإصلاح رفض 3.1');
+  assert.ok(r.startsWith('1.3.15 resubmitted: new AR/EN/ZH screenshots; app follows the phone language.'), 'v-hw-1316: Remarks تبدأ بإعادة التقديم — اللقطات الجديدة واللغة (رفض 1.14 وحده)');
   assert.doesNotMatch(notes, /does not open by itself again|فلن يفتح المربّع وحده/, 'لا ملاحظة قديمة تقول إنّه لا يعود');
 });
 

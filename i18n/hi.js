@@ -372,7 +372,7 @@ I18N['hi'] = {
     settings: "सेटिंग्स",
     download: "डाउनलोड करें",
     newProject: "+ नया प्रोजेक्ट",
-    promptPlaceholder: "जो ऐप, गेम या वेबसाइट बनानी है उसका विवरण दें... जैसे एक सरल स्नेक गेम",
+    promptPlaceholder: "अपना संदेश यहाँ लिखें ...",
     omNavHome: 'होम',
     omNavChats: 'चैट',
     omNavTools: 'टूल्स',

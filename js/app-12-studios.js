@@ -259,7 +259,7 @@ function __studioErrMsg(e, fbKey){
         cap.textContent = name;
         /* تدقيق ١٨ أكتوبر (الدفعة ٥، من b8 في ten-a): سطر واحد بقصّ كان يقطع «Living ro…» في خانة ~٦١px على جوّال ٣٩٠ — يلتفّ سطرين (الحاسوب سطر واحد كما كان) */
         cap.style.cssText = 'position:absolute; left:50%; bottom:3%; transform:translateX(-50%); width:96%; white-space:normal; overflow-wrap:anywhere; line-height:1.1; text-align:center;' +
-          ' font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
+          ' font-size:10px; font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
         b.appendChild(cap);
       }
       b.onclick = function(){ ideaPlace(o.value); };

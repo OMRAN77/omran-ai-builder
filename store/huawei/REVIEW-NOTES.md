@@ -1,5 +1,20 @@
 # ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.15)
 
+> **إعادة تقديم 1.3.15 نفسها (v-hw-1316، بلا APK جديد):** رُفضت ٣ نوفمبر ٢٠٢٦ بالقاعدة 1.14 وحدها («لقطة الشاشة لا تطابق محتوى
+> التطبيق ووظائفه الفعليّة»، بيئة الاختبار EMUI 12 «متعدّدة اللغات»). القاعدة 3.1 (رفع الملفّات) انحلّت. ما تغيّر — كلّه في الموقع فيصل
+> الحزمة المثبّتة بلا بناء:
+> - **اللغة تتبع الهاتف في كلّ تشغيل:** كانت تُحفظ من أوّل تشغيل، فمراجع بدّل لغة هاتفه ليقارن لقطات لغة أخرى بقي على الأولى. الآن
+>   داخل تطبيق هواوي تتبع الهاتف ما لم يختر المستخدم لغةً بيده من الإعدادات.
+> - **لا وعد ببناء تطبيقات:** نائب صندوق الكتابة في ١٢ لغة كان «صف التطبيق أو اللعبة أو الموقع… لعبة الثعبان» (صار «اكتب رسالتك هنا»)،
+>   وحبّة «الذكاء الاصطناعي يبني تطبيقك فورًا» وسطور «منصّة لبناء التطبيقات» في «عن التطبيق» مخفيّة داخل تطبيق هواوي.
+> - **هواتف بمحرّك ويب أقدم (Chromium 99):** زرّ الأزياء كان يُقصّ «Choose…» وأسماء غرف الديكور تلتفّ — احتياط بالقيم نفسها.
+> - **لقطات جديدة بثلاث لغات:** ١ الرئيسيّة والمحادثة (لم تكن في أيّ لقطة)، ٢–٤ مربّع الأدوات بأقسامه الثلاثة (الأدوات الـ١٣)،
+>   ٥ الأزياء، ٦ الديكور، ٧ البناء، ٨ القبلة. في AGC: احذف كلّ اللقطات القديمة في كلّ لغة وارفع `screenshots/*.png` تحت **العربيّة**،
+>   و`screenshots/en/` تحت **English**، و`screenshots/zh/` تحت **简体中文**.
+> - **اسم التطبيق في AGC:** التقرير يعرضه «عمران لبناء الذكاء الاصطناعي» واسم الهاتف «عمران AI» — اجعله **«عمران AI»** في كلّ لغة
+>   (القاعدة 1.20: الاسم المثبّت = اسم المتجر).
+> - **حساب التجربة** في خانتيه في AGC يعمل (سجّل به مرّة داخل التطبيق قبل Submit)، وجرّب أداة صورة واحدة به.
+
 > **1.3.15 (versionCode 20261030، v-hw-1315):** 1.3.14 رُفضت ٣٠ أكتوبر بالقاعدة 3.1 («مساعد المستندات ← حلّل المستند ← لا يمكن
 > تحميل ملف») و1.14 (اللقطات «لا تطابق الوظائف الفعليّة»). السبب: على هاتف هواوي بلا Chrome يعمل التطبيق في WebView
 > احتياطيّ لم يكن يفتح منتقي الملفّات أبدًا — فكلّ «اختيار ملف» في اللقطات ميت عنده. 1.3.15 يصلحه ومعه الموقع للقبلة
@@ -19,7 +34,7 @@
 
 ## خانة Remarks في AGC (حدّها ٣٠٠ حرف — الصق هذا كما هو)
 ```
-1.3.15 fixes file upload on Huawei phones (Document Assistant, photo tools) and location for Qibla. The Tools panel opens on every launch: 13 tools (photo styles, video, decor, fashion, style, ads, documents, email, construction, education, Qibla, religion, feedback). Also: bottom bar > Tools.
+1.3.15 resubmitted: new AR/EN/ZH screenshots; app follows the phone language. The Tools panel opens on every launch: 13 tools (photo styles, video, decor, fashion, style, ads, documents, email, construction, education, Qibla, religion, feedback). Also: bottom bar > Tools.
 ```
 
 ## Notes for review (English — full text, for a reply to the reviewer or an attachment)
@@ -36,7 +51,16 @@ Rule 3.1 (Document Assistant > Analyze document > cannot upload a file) — fixe
 - Also fixed in the same web view: Qibla & Prayer asks for location permission and uses the phone's location,
   and saved files (ad images, the construction report and bill of quantities, videos) go to the Downloads folder.
 
-Rules 1.14 and 1.15 (app information):
+Rule 1.14 (screenshots, report of 2026-11-03 on 1.3.15) — same package 1.3.15, changes on the web side:
+- The app now follows the phone language on every launch (until the user picks a language in Settings).
+  Before, it kept the language of its first launch, so after switching the phone to another language the screen
+  no longer matched that language's screenshots.
+- New screenshots in Arabic, English and Simplified Chinese: the home screen with the chat, the Tools panel with all
+  13 tools (three screens), Fashion AI, Design AI, Construction and Qibla & Prayer. Taken from this build, nothing drawn on them.
+- The chat box no longer suggests building apps or games in any language; it says "Type your message here".
+- Older system web views (Chromium 99) now render the Fashion and Design upload boxes the same as the screenshots.
+
+Rules 1.14 and 1.15 (app information, earlier reports):
 - All screenshots were retaken on 2026-10-26 from this build (Huawei package, phone size, a normal user account),
   in three languages: Arabic, English and Simplified Chinese. The app shows its interface in the phone's language,
   so each listing language has screenshots in that language.

@@ -376,7 +376,7 @@ I18N['es'] = {
     "msgShareCopied": "Respuesta copiada — pégala en la app que quieras",
     "uploadCodeTitle": "Sube un archivo de código (HTML o Python)",
     "newProject": "+ Nuevo proyecto",
-    "promptPlaceholder": "Describe la app, el juego o el sitio web que quieres crear... p. ej., un juego sencillo de la serpiente",
+    "promptPlaceholder": "Escribe tu mensaje aquí ...",
     "omNavHome": "Inicio",
     "omNavChats": "Chats",
     "omNavTools": "Herramientas",
