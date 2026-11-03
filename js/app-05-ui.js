@@ -884,7 +884,9 @@ document.addEventListener('click', closeMsgMoreMenu);
 /* v-tools-pause (المالك ١٠ أكتوبر: «اخفاء محلل المصاريف والسيرة الذاتية»، ثمّ «التلفزيون والاقتراحات»): أدوات مخفيّة مؤقّتًا —
    لا بطاقة في شاشة الأدوات (app-10-features) ولا اقتراح في المحادثة. الكود والنوافذ والخادم باقية كما هي؛
    الإرجاع = حذف المعرّف من هذه القائمة. */
-var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'];
+/* v-tv-owner (المالك ٣ نوفمبر: «ضيفه فقط لي المالك»): التلفزيون يبقى موقوفًا للجميع ويظهر للمالك وحده — حساب omran
+   (omranOwnerUi، يُقرأ عند التحميل). الإرجاع للجميع = حذف btnOmranTV من القائمتين؛ والإخفاء عن المالك أيضًا = حذفه من قائمة المالك وحدها. */
+var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'].filter(function(id){ return !(['btnOmranTV'].indexOf(id) >= 0 && typeof omranOwnerUi === 'function' && omranOwnerUi()); }); /* قائمة المالك: ['btnOmranTV'] */
 /* v-hw-resubmit-2 (رفض هواوي ٢٦ أكتوبر؛ القاعدة 1.15: لا أسماء علامات أو امتيازات تجاريّة لطرف ثالث بلا ترخيص): داخل تطبيق هواوي
    وحده (html.store-safe ومعه علم الحزمة ?store=huawei في الجلسة — ui-wiring يضع store-safe أيضًا لمتصفّح هواوي على الموقع، وذاك يبقى
    كما هو) تُخفى الخيارات المسمّاة بعلامة أو امتياز تجاريّ — أنماط الصور، ترندات الفيديو، الستايل، الطوابع. الموقع والمتاجر الأخرى كما هي؛
