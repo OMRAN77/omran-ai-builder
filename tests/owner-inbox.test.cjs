@@ -73,7 +73,7 @@ test('١ب — v-inbox-near: وصفٌ في طلب صنع ليس تذمّرًا (
   for (const t of ['والله التطبيق هذا من أمس ما يشتغل عندي', 'your app crashed again', 'you guys are slow today']) assert.equal(IB.classify(t), 'complaint', t);
 });
 
-test('١ج — مراجعتا PR #1265: لا يُستثنى إلّا صفةٌ لما يُطلب بعد طلب صريح في عبارته — كلّ شكوى بلاغ كما على main، وخطّيّ الكلفة', () => {
+test('١ج — مراجعات PR #1265: لا يُستثنى إلّا نعتٌ لما يُطلب بعد طلب صريح حاضر في عبارته — كلّ شكوى بلاغ كما على main، وخطّيّ الكلفة', () => {
   /* شكاوى حقيقيّة كانت بلاغًا على main وأسكتتها صيغ سابقة للاستثناء — تبقى بلاغًا */
   for (const t of ["the app can't even generate an image, useless", 'I tried to create a video 3 times and it failed, your app is a joke', 'I asked you to write code and you failed',
     'make it work! the app is broken', 'ارسم لي قطة. التطبيق ما يرد من ساعة', 'قلت لك سوي لي صورة وما سويت، التطبيق خربان', 'صمّم لي شعار — بس التطبيق اليوم بطيء مرة',
@@ -83,11 +83,18 @@ test('١ج — مراجعتا PR #1265: لا يُستثنى إلّا صفةٌ ل
     'مها كل ما اكتب لها ما ترد', 'المساعد كل ما اكتب له سؤال ما يرد علي', 'التطبيق كل ما اعمل له تحديث يعلق', 'اكتب ليه ما يرد المساعد',
     'Build failed on your site again', "Generate button doesn't work in your app", 'Render is so slow on your site', 'Make video button is broken in your app', '«ارسم» ما يشتغل في التطبيق',
     'I asked you to make a video and it failed', 'I told you to make it faster and it is still slow', 'can you make one image without an error for once', 'I want to create an account but it fails every time on your site',
-    'التطبيق من امس وانا احاول ادخل حسابي\nما يفتح', 'I love your app. But today when I opened it to check my old projects everything was slow']) {
+    'التطبيق من امس وانا احاول ادخل حسابي\nما يفتح', 'I love your app. But today when I opened it to check my old projects everything was slow',
+    /* المراجعة الثالثة: الصفة خبرٌ عن ناتج سابق أو عن التطبيق، لا نعتٌ لما يُطلب */
+    'can you make it again the last one was terrible', 'can you make the video again its stuck', 'can you make the chat less slow', 'can you make an image the upload is broken',
+    'can you make a new image because the last one was bad', 'hey bot, make me a better image this one is terrible', 'can you make it again same bad result',
+    'يا مها ارسم لي قطة الحين صار لي ساعة انتظر بطيء مرة', 'يا مها اكتب لي ملخص الزر خربان ما اقدر انسخ', 'ارسم لي قطة ولا تتأخر خايس هالتطبيق',
+    'يا مها ارسم لي قطة والتطبيق بطيء', 'يا مها سوّ لي صورة وللحين معلق', 'قلت لك يا مها ارسم لي قطة وطلعت زفت', 'يا مها كل ما اقول ارسم لي شي يطلع زفت',
+    'يا مها سوّ لي صورة ثانية الاولى طلعت زبالة', 'يا مها ارسم لي قطة ثانية اللي قبل زبالة', 'ارسم لي قطه زين لا تطلعها زباله مثل كل مره يا مها']) {
     assert.equal(IB.classify(t), 'complaint', t);
   }
   /* طلبات صنع تصف المطلوب — لا بلاغ */
-  for (const t of ['ارسم لي سيارة خربان في الصحراء يا مها', 'i want to make a video of a slow sad train for you', 'draw me a broken robot, you are the best']) assert.equal(IB.classify(t), null, t);
+  for (const t of ['ارسم لي سيارة خربان في الصحراء يا مها', 'i want you to draw an awful monster for halloween', 'draw me a broken robot, you are the best',
+    'can you make me a terrible pun about cats', 'can you write a story about a bad wolf for my kids']) assert.equal(IB.classify(t), null, t);
   /* نصّ ٤٠٠٠ حرف لا يحبس المحادثة (كان ١٠ث بالأزواج، ثمّ ٣٠٠م.ث بتقليم تربيعيّ لكلمة طويلة) */
   for (const s of ['bad '.repeat(495) + 'x x x x x x x ' + 'you '.repeat(495), 'غلط '.repeat(495) + 'x x x x x x x ' + 'انت '.repeat(495),
     'your app is broken ok' + '❤️'.repeat(1985) + 'ok', 'you bad a' + '\u200d'.repeat(3989) + 'b', 'انت غلط ب' + '\u064e'.repeat(3989) + 'ب']) {
