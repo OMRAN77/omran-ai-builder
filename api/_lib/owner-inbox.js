@@ -40,53 +40,65 @@ function excerpt(t, n) {
   return (typeof cut.toWellFormed === 'function' ? cut.toWellFormed() : cut) + (s.length > cut.length ? '…' : '');
 }
 /* v-inbox-near (بلاغ «grace» ٣٠ أكتوبر: «i want you to build for me the Dandora community filled with litters broken drainge systems…»
-   صار «متضايق من التطبيق» — «broken» وصفٌ للمجاري و«you» في أوّل الطلب): الكلمة الضعيفة ليست تذمّرًا إن جاءت بعد طلب صنع في
-   عبارتها نفسها (لا فاصلة ولا نقطة بينهما) بلا ذكر التطبيق/المساعد/«انت» بينهما — ما بعد «ابنِ لي/ارسم/can you draw» وصفٌ لما يُطلب.
-   وطلب الصنع طلبٌ لا أيّ فعل: «اكتب/اعمل/ابني/ولد/تخيل» تحتمل «أكتب/ابني/ولد» فلا تُعدّ إلّا بـ«لي/لنا…» بعدها؛ «ارسم/صمّم/سوّي…»
-   أوّل العبارة أو بعد «ممكن/ابي…»؛ وbuild/make… أوّل العبارة أو بعد please/can you/you to/want to (لا «tried to/can't make»).
-   وتجاور ذكر التطبيق في الجملة نفسها، أو ≤ NEAR_WORDS كلمات عبر نقطة. فهرسة النصّ مرّة واحدة (كان التحقّق تكعيبيًّا: ١٠ث لنصّ ٤٠٠٠ حرف). */
-const NEAR_WORDS = 5;
-const CREATE = new RegExp(B + '(?:ارسم|ارسملي|صمم|صمّم|صمملي|سوّ|سوي|سوّي|سويلي|سوّلي|اعمل|اعملي|اكتب|اكتبلي|ابني|ابنيلي|ولّد|ولد|انشئ|أنشئ|اصنع|اصنعلي|تخيل|تخيّل)' + E
+   صار «متضايق من التطبيق» — «broken» وصفٌ للمجاري و«you» في أوّل الطلب). الاستثناء ضيّق عمدًا (مراجعتان لـPR #1265 — كلّ توسيع
+   أسكت شكاوى حقيقيّة كانت تصل على main): الكلمة الضعيفة ليست تذمّرًا إلّا إن اجتمع كلّه —
+   ١) صفةٌ تصف المطلوب (broken/slow/bad… خربان/بطيء/زفت…) لا فشلٌ (failed/error/not working، ما يرد/ما يفتح/يعلق…: لا تُستثنى أبدًا)؛
+   ٢) بعد طلب صنع صريح: «لي/لنا» بعد الفعل (لا «اكتب له/لها»: أكتب له)، أو please/can you/want you to/I want to + الفعل، أو فعل أوّل
+      العبارة بعده مفعول (me/a/the/my…) — لا «Build failed»، ولا «Generate button»، ولا «asked/told you to» (طلب مضى)؛
+   ٣) في العبارة نفسها: لا فاصلة ولا نقطة ولا سطر ولا but/still/بس/للحين بينهما، ولا ذكر التطبيق/المساعد/«انت» بينهما.
+   وما عدا هذا الاستثناء كما على main: كلمة ضعيفة + ذكر التطبيق في أيّ مكان (شرط «القرب» أسقط شكاوى من جملتين — أُزيل).
+   فهرسة النصّ مرّة واحدة بخطوات خطّيّة (كانت مقارنة الأزواج تكعيبيّة: ١٠ث لنصّ ٤٠٠٠ حرف). */
+const CREATE = new RegExp(B + '(?:ارسم|ارسملي|صمم|صمّم|صمملي|سوّ|سوي|سوّي|سويلي|سوّلي|اعمل|اكتب|اكتبلي|ابني|ابنيلي|ولّد|ولد|انشئ|أنشئ|اصنع|اصنعلي|تخيل|تخيّل)' + E
   + '|(?:^|[^a-z])(?:build|make|create|draw|generate|design|write|paint|render|imagine|illustrate|animate|compose)(?=$|[^a-z])', 'i');
-const CREATE_ATTACHED = new Set(['ارسملي', 'صمملي', 'سويلي', 'سوّلي', 'اكتبلي', 'ابنيلي', 'اصنعلي', 'اعملي']);
-const CREATE_CLEAR_AR = new Set(['ارسم', 'صمم', 'صمّم', 'سوّ', 'سوي', 'سوّي', 'انشئ', 'أنشئ', 'اصنع']);
-const FOR_ME_AR = new Set(['لي', 'لنا', 'له', 'لها', 'لهم', 'ليه']);
-const ASK_AR = new Set(['ممكن', 'سمحت', 'فضلك', 'تكفى', 'تكفين', 'ياليت', 'ابي', 'أبي', 'ابغى', 'أبغى', 'اريد', 'أريد', 'ابيك', 'أبيك', 'ابغاك', 'أبغاك', 'اريدك', 'أريدك', 'ودي', 'بليز', 'رجاء', 'الحين', 'طيب']);
+const CREATE_ATTACHED = new Set(['ارسملي', 'صمملي', 'سويلي', 'سوّلي', 'اكتبلي', 'ابنيلي', 'اصنعلي']);
+const FOR_ME_AR = new Set(['لي', 'لنا']);
 const ASK_EN = new Set(['please', 'pls', 'plz', 'kindly', 'lets', "let's", 'wanna']);
 const ASK_YOU_EN = new Set(['can', 'could', 'would', 'will', 'please', 'pls', 'plz']);
-const WANT_TO_EN = new Set(['you', 'u', 'want', 'need', 'like', 'love']);
-const SENT_CH = '.!?؟\n…', CLAUSE_CH = SENT_CH + '،,;؛:—–';
+const WANT_EN = new Set(['want', 'need', "i'd", 'like', 'love']);
+const OBJECT_EN = new Set(['me', 'us', 'a', 'an', 'the', 'my', 'our', 'some', 'this', 'that', 'him', 'her', 'them', 'one', 'another']);
+/* صفات تصف المطلوب — وحدها تُستثنى بعد طلب صنع */
+const DESCRIBE = /^(?:broken|slow|terrible|horrible|worst|bad|awful|useless|annoying|stuck|buggy|خربان|خرب|عطلان|معطل|معطّل|معلق|معلّق|بطيء|بطئ|بطييء|فاشل|فاشلة|فاشله|سيء|سيّء|سيئ|زبالة|زباله|مقرف|خايس|خايسة|زفت|تافه|قذر|وسخ|غبي|غبية|سخيف)$/i;
+const BREAK_WORDS = new Set(['but', 'however', 'yet', 'still', 'although', 'though', 'بس', 'لكن', 'ولكن', 'للحين', 'لسه', 'لسا', 'مازال', 'ومازال', 'بعده']);
+const CLAUSE_CH = '.!?؟…\n،,;؛:—–';
+const CORE = /[\p{L}\p{N}'](?:.*[\p{L}\p{N}'])?/su; // لبّ الكلمة بلا علامات حولها — خطّيّ (التقليم بنمط نهايته غير مثبّتة تربيعيّ)
 function allIdx(re, s) {
   const g = new RegExp(re.source, 'gi'), out = [];
-  for (let m = g.exec(s); m; m = g.exec(s)) { out.push({ p: m.index + (m[0].length - m[0].replace(/^[^\p{L}\p{N}]+/u, '').length), e: m.index + m[0].length }); if (g.lastIndex === m.index) g.lastIndex++; }
+  for (let m = g.exec(s); m; m = g.exec(s)) {
+    const lead = m[0].search(/[\p{L}\p{N}]/u);
+    out.push({ p: m.index + (lead < 0 ? 0 : lead), e: m.index + m[0].length, t: m[0].slice(lead < 0 ? 0 : lead) });
+    if (g.lastIndex === m.index) g.lastIndex++;
+  }
   return out;
 }
-/** فهرس النصّ مرّة واحدة: الكلمات (بداية أوّل حرف + الكلمة مطبَّعة)، ورقم الجملة والعبارة عند كلّ حرف. */
+/** فهرس النصّ مرّة واحدة: الكلمات (موضع أوّل حرف + الكلمة مطبَّعة)، ورقم العبارة عند كلّ حرف، وعدّ كلمات القطع قبل كلّ كلمة. */
 function textIndex(s) {
-  const n = s.length, sent = new Int32Array(n + 1), clause = new Int32Array(n + 1);
-  for (let i = 0; i < n; i++) { const c = s[i]; sent[i + 1] = sent[i] + (SENT_CH.includes(c) ? 1 : 0); clause[i + 1] = clause[i] + (CLAUSE_CH.includes(c) ? 1 : 0); }
-  const pos = [], norm = [];
+  const n = s.length, clause = new Int32Array(n + 1);
+  for (let i = 0; i < n; i++) clause[i + 1] = clause[i] + (CLAUSE_CH.includes(s[i]) ? 1 : 0);
+  const pos = [], norm = [], brk = [0];
   for (const m of s.matchAll(/\S+/g)) {
-    const lead = m[0].length - m[0].replace(/^[^\p{L}\p{N}]+/u, '').length;
-    const w = m[0].replace(/^[^\p{L}\p{N}']+|[^\p{L}\p{N}']+$/gu, '').toLowerCase();
-    if (w) { pos.push(m.index + lead); norm.push(w); }
+    const c = CORE.exec(m[0]);
+    if (!c) continue;
+    pos.push(m.index + c.index); norm.push(c[0].toLowerCase());
+    brk.push(brk[brk.length - 1] + (BREAK_WORDS.has(c[0].toLowerCase()) ? 1 : 0));
   }
   /* رقم الكلمة عند موضع: آخر كلمة تبدأ عنده أو قبله */
   const word = (p) => { let lo = 0, hi = pos.length - 1, k = -1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (pos[mid] <= p) { k = mid; lo = mid + 1; } else hi = mid - 1; } return k; };
-  return { pos, norm, word, sent: (p) => sent[p], clause: (p) => clause[p] };
+  return { pos, norm, brk, word, clause: (p) => clause[p] };
 }
-/** فعل الصنع طلبٌ فعلًا (لا «كل ما اكتب»، ولا «ابني يقول»، ولا «tried to make»)؟ */
+/** فعل الصنع طلبٌ صريح (لا «كل ما اكتب له»، ولا «Build failed»، ولا «I asked you to make»)؟ */
 function isRequest(m, T) {
   const k = T.word(m.p); if (k < 0) return false;
-  const v = T.norm[k], same = (j) => j >= 0 && T.clause(T.pos[j]) === T.clause(m.p);
-  const prev = same(k - 1) ? T.norm[k - 1] : '', prev2 = same(k - 2) ? T.norm[k - 2] : '', next = same(k + 1) ? T.norm[k + 1] : '';
-  if (/[\u0600-\u06FF]/.test(v)) {
-    if (CREATE_ATTACHED.has(v) || FOR_ME_AR.has(next)) return true;
-    return CREATE_CLEAR_AR.has(v) && (!prev || ASK_AR.has(prev));
-  }
-  if (!prev || ASK_EN.has(prev)) return true;
+  /* كلمة j في عبارة الفعل نفسها: لا علامة قطع ولا but/بس بينهما */
+  const v = T.norm[k], same = (j) => j >= 0 && j < T.pos.length && T.clause(T.pos[j]) === T.clause(m.p)
+    && (j < k ? T.brk[k] === T.brk[j + 1] : T.brk[j] === T.brk[k + 1]);
+  const at = (j) => (same(j) ? T.norm[j] : '');
+  if (/[\u0600-\u06FF]/.test(v)) return CREATE_ATTACHED.has(v) || FOR_ME_AR.has(at(k + 1));
+  const prev = at(k - 1), prev2 = at(k - 2), prev3 = at(k - 3);
+  if (ASK_EN.has(prev)) return true;
   if ((prev === 'you' || prev === 'u') && ASK_YOU_EN.has(prev2)) return true;
-  return prev === 'to' && WANT_TO_EN.has(prev2);
+  if (prev === 'to' && (prev2 === 'you' || prev2 === 'u')) return WANT_EN.has(prev3) || ASK_YOU_EN.has(prev3); // «want you to» لا «asked/told you to»
+  if (prev === 'to' && WANT_EN.has(prev2)) return prev3 === 'i' || prev3 === 'we' || !prev3;
+  return !prev && OBJECT_EN.has(at(k + 1));
 }
 const lastBefore = (arr, p) => { let lo = 0, hi = arr.length - 1, k = -1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (arr[mid].p < p) { k = mid; lo = mid + 1; } else hi = mid - 1; } return k; };
 function weakComplaint(s) {
@@ -96,17 +108,13 @@ function weakComplaint(s) {
   if (!subj.length) return false;
   const T = textIndex(s);
   const req = allIdx(CREATE, s).filter((m) => isRequest(m, T));
+  /* كلمة ضعيفة واحدة ليست صفةً لما يُطلب تكفي (كما على main) */
   return weak.some((w) => {
-    /* بعد طلب صنع في عبارته، ولا ذكر للتطبيق بينهما: وصفٌ لما يُطلب */
+    if (!DESCRIBE.test(w.t.trim())) return true;
     const r = lastBefore(req, w.p);
-    if (r >= 0 && T.clause(req[r].p) === T.clause(w.p)) {
-      const sNext = subj[lastBefore(subj, req[r].p + 1) + 1];
-      if (!sNext || sNext.p > w.p) return false;
-    }
-    const b = lastBefore(subj, w.p), before = b >= 0 ? subj[b] : null, after = subj[b + 1] && subj[b + 1].p > w.p ? subj[b + 1] : null;
-    const wk = T.word(w.p), we = T.word(w.e - 1);
-    return (before && (T.sent(before.p) === T.sent(w.p) || wk - T.word(before.e - 1) - 1 <= NEAR_WORDS))
-      || (after && (T.sent(after.p) === T.sent(w.p) || T.word(after.p) - we - 1 <= NEAR_WORDS));
+    if (r < 0 || T.clause(req[r].p) !== T.clause(w.p) || T.brk[T.word(w.p)] !== T.brk[T.word(req[r].p) + 1]) return true;
+    const sNext = subj[lastBefore(subj, req[r].p + 1) + 1];
+    return !!sNext && sNext.p < w.p; // ذكر التطبيق بين الطلب والصفة: «make the app less slow» شكوى
   });
 }
 /** نوع البلاغ لكلام المستخدم: 'insult' · 'complaint' · null. الشتيمة أوّلًا. */
