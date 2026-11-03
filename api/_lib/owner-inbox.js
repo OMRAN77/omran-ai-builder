@@ -39,13 +39,31 @@ function excerpt(t, n) {
   const cut = s.length > (n || EXCERPT) ? s.slice(0, n || EXCERPT) : s;
   return (typeof cut.toWellFormed === 'function' ? cut.toWellFormed() : cut) + (s.length > cut.length ? '…' : '');
 }
+/* v-inbox-near (بلاغ «grace» ٣٠ أكتوبر: «i want you to build for me the Dandora community filled with litters broken drainge systems…»
+   صار «متضايق من التطبيق» — «broken» وصفٌ للمجاري و«you» في أوّل الطلب): الكلمة الضعيفة تذمّر إن جاورت ذكر التطبيق/المساعد/«انت»
+   (≤ NEAR_WORDS كلمات بينهما) ولم تأتِ بعد فعل طلب صنع (ابنِ/ارسم/سوّ/build/draw…) — ما بعد فعل الصنع وصفٌ لما يُطلب لا تذمّر. */
+const NEAR_WORDS = 5;
+const CREATE = new RegExp(B + '(?:ارسم|ارسملي|صمم|صمّم|صمملي|سوّ|سوي|سوّي|سويلي|سوّلي|اعمل|اعملي|اكتب|اكتبلي|ابني|ابنيلي|ولّد|ولد|انشئ|أنشئ|اصنع|اصنعلي|تخيل|تخيّل)' + E
+  + '|(?:^|[^a-z])(?:build|make|create|draw|generate|design|write|paint|render|imagine|illustrate|animate|compose)(?=$|[^a-z])', 'i');
+function allIdx(re, s) {
+  const g = new RegExp(re.source, 'gi'), out = [];
+  for (let m = g.exec(s); m; m = g.exec(s)) { out.push(m.index + (m[0].length - m[0].replace(/^[^\p{L}\p{N}]+/u, '').length)); if (g.lastIndex === m.index) g.lastIndex++; }
+  return out;
+}
+function wordsBetween(s, a, b) { const seg = s.slice(Math.min(a, b), Math.max(a, b)).trim(); return seg ? seg.split(/\s+/).length - 1 : 0; }
+function weakComplaint(s) {
+  const weak = allIdx(WEAK_AR, s).concat(allIdx(WEAK_EN, s));
+  if (!weak.length) return false;
+  const subj = allIdx(SUBJECT, s), create = allIdx(CREATE, s);
+  return weak.some((w) => !create.some((c) => c < w) && subj.some((p) => wordsBetween(s, p, w) <= NEAR_WORDS));
+}
 /** نوع البلاغ لكلام المستخدم: 'insult' · 'complaint' · null. الشتيمة أوّلًا. */
 function classify(text) {
   const s = String(text || '').slice(0, SCAN_MAX);
   if (!s.trim()) return null;
   if (INSULT_AR.test(s) || OBSCENE_AR.test(s) || INSULT_EN.test(s) || OBSCENE_EN.test(s)) return 'insult';
   if (STRONG_AR.test(s) || STRONG_EN.test(s)) return 'complaint';
-  if ((WEAK_AR.test(s) || WEAK_EN.test(s)) && SUBJECT.test(s)) return 'complaint';
+  if (weakComplaint(s)) return 'complaint';
   return null;
 }
 function isOwnerUser(user) { try { return require('./_owner.js').isOwnerName(user); } catch (e) { return false; } }
