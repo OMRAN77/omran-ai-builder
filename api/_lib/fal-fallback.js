@@ -130,7 +130,8 @@ function inputFromGemini(geminiModel, body) {
   const ic = gc.imageConfig || {};
   let prompt = texts.join('\n').trim();
   if (prompt.length < 3) prompt = 'Edit the image as requested.';
-  const input = { prompt: prompt.slice(0, 50000), num_images: 1, sync_mode: true, output_format: 'png' };
+  /* JPEG لا PNG: صورة 2K بصيغة PNG ~٤–٨ ميغا base64 تقارب سقف ردّ الدالّة (٤٫٥ ميغا) */
+  const input = { prompt: prompt.slice(0, 50000), num_images: 1, sync_mode: true, output_format: 'jpeg' };
   if (images.length) input.image_urls = images;
   const lite = model.indexOf('fal-ai/nano-banana/') === 0 || model === 'fal-ai/nano-banana';
   const ar = String(ic.aspectRatio || '');

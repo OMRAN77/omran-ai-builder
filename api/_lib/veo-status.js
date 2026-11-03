@@ -12,11 +12,48 @@ function failed(res, why) {
   res.status(200).json({ status: 'FAILED', failure: safety ? FAIL_SAFETY : FAIL_OTHER, failureCode: safety ? 'safety' : 'failed' });
 }
 
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): مهمّة الاحتياط «fal/<id>» (رصيد Gemini خلص عند الإنشاء، veo-create) —
+   تُتابَع بالعقد نفسه: RUNNING، وSUCCEEDED برابط الناتج (يُسوّى نجاحًا ويُحفظ ناتجًا لنا كـactor-status)، وFAILED بسبب عربيّ ورمز
+   (رفض الرقابة عنده «content_policy_violation… flagged by a content checker» = safety)، وعطب رصيده أو مفتاحه unavailable بـ503 —
+   والفشل يردّ الخصم ويفكّ القفل (video-job). العثرة العابرة (429/5xx/شبكة) RUNNING فيعيد العميل، والكنس يردّ ما لم يُسلَّم. */
+const FAL_SAFETY_RE = /content[_ ]policy|flagged|nsfw|content checker/i;
+async function falStatus(op, res) {
+  const id = op.slice(require('./veo-create.js').FAL_OP_PREFIX.length);
+  if (!/^[\w-]{1,100}$/.test(id)) { res.status(400).json({ error: 'Missing op' }); return; }
+  const falBackup = require('./fal-fallback.js');
+  let rec = null;
+  try { rec = JSON.parse((await require('./kv.js').kvGetRaw(require('./veo-create.js').falOpKey(op))) || 'null'); }
+  catch (e) { console.error('[veo-status] backup record read failed: ' + (e && e.message)); rec = null; }
+  if (!rec || !rec.s || !rec.r) { // مفقود أو تعذّرت قراءته: رابطا الطابور من الرقم (عائلة النموذج واحدة لكلّ أدوار الفيديو)
+    const base = 'https://queue.fal.run/' + falBackup.VIDEO_MODELS.text.split('/').slice(0, 2).join('/') + '/requests/' + id;
+    rec = { s: base + '/status', r: base };
+  }
+  const p = await falBackup.pollVideo(rec);
+  const settleFal = (ok) => require('./video-job.js').settleVideoJob(op, ok);
+  if (p.state === 'SUCCEEDED') {
+    await settleFal(true);
+    await require('./our-media.js').rememberOurMedia([p.url]); // v-dl-ours: ناتج مدفوع — حفظه لا يُعدّ على سقف التنزيل
+    res.status(200).json({ status: 'SUCCEEDED', output: [p.url] });
+    return;
+  }
+  if (p.state === 'OUTAGE' || p.state === 'FAILED') {
+    const why = String(p.why || '');
+    console.error('[veo-status] backup ' + p.state.toLowerCase() + ': ' + why.slice(0, 300));
+    await settleFal(false);
+    if (p.state === 'OUTAGE') res.status(503).json({ error: 'unavailable', retryable: false });
+    else failed(res, FAL_SAFETY_RE.test(why) ? 'safety: ' + why : why);
+    return;
+  }
+  res.status(200).json({ status: 'RUNNING' });
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   try {
     const op = (req.query && req.query.op) || '';
     if (!op || !/^[\w./-]+$/.test(op)) { res.status(400).json({ error: 'Missing op' }); return; }
+    /* v-fal-backup: مهمّة الاحتياط قبل فحص مفتاح Gemini — تُتابَع ولو أُزيل مفتاحه */
+    if (op.indexOf(require('./veo-create.js').FAL_OP_PREFIX) === 0) { await falStatus(op, res); return; }
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) { console.error('[veo-status] missing provider key'); res.status(500).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' }); return; }
 

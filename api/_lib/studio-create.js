@@ -197,8 +197,11 @@ async function geminiImage(apiKey, parts, feature, aspectRatio, tempOverride) {
   const temperature = Number.isFinite(tempOverride) ? tempOverride
     : (feature === 'anime' ? 0.65 : (DESIGN_FEATURES.indexOf(feature) !== -1 ? 0.45 : 0.15));
   const reqBody = { contents: [{ parts }], generationConfig: { temperature, imageConfig: aspectRatio ? { imageSize: '2K', aspectRatio } : { imageSize: '2K' } } };
-  /* v-fal-backup: رصيد Gemini خلص قبل دقائق ← النموذج نفسه عند fal مباشرة بلا نداء فاشل قبله */
+  /* v-fal-backup: رصيد Gemini خلص قبل دقائق ← النموذج نفسه عند fal مباشرة بلا نداء فاشل قبله. محاولة fal واحدة لكلّ نداء:
+     إن رفض هنا لا يُعاد بعد فشل Gemini (المهلة المقطوعة قد تُحاسَب عنده) */
+  let falTried = false;
   if (await falBackup.geminiOutRecently()) {
+    falTried = true;
     const fb = await falBackup.imageFromGemini('gemini-3-pro-image', reqBody, { where: 'studio-create' });
     if (fb.b64) return { b64: fb.b64, mime: fb.mime };
   }
@@ -212,7 +215,7 @@ async function geminiImage(apiKey, parts, feature, aspectRatio, tempOverride) {
     const detail = tech.replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
     console.error('[studio-create] upstream failed status=' + upstream.status + ' detail=' + detail);
     /* v-fal-backup: نفاد الرصيد ← fal بالنموذج نفسه قبل أيّ رمز خطأ (والباقي كما كان) */
-    const fb = await falBackup.rescueImage(upstream.status, tech, 'gemini-3-pro-image', reqBody, { where: 'studio-create' });
+    const fb = falTried ? null : await falBackup.rescueImage(upstream.status, tech, 'gemini-3-pro-image', reqBody, { where: 'studio-create' });
     if (fb) return { b64: fb.b64, mime: fb.mime };
     /* v-audit-studeng (srv-studios-1-3): رمز لا نصّ — كان «تعذّر إنشاء الصورة الآن…» عربيًّا لكلّ اللغات ومعه نصّ المزوّد الخامّ (detail).
        نفاد الرصيد أو عطب المفتاح = unavailable بـ503 («الخدمة متوقّفة مؤقّتًا»، v-credit-out)؛ الزحام busy؛ والباقي failed. السبب في السجلّ وحده. */

@@ -2,6 +2,7 @@
 // (predictLongRunning). Owner-only for now because each 8s clip costs
 // real money. Uses GEMINI_API_KEY env var.
 const { checkOwnerBypass } = require('./_videoUsage');
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
 
 const GL = 'https://generativelanguage.googleapis.com/v1beta';
 /* v-video-photo-identity: حدود الأمر حدودنا لا حدّ المحرّك (١٠٢٤ رمزًا) — مقسّمة حسب المسار كي لا يتجاوز
@@ -51,6 +52,11 @@ async function trendSteps(username, scenes, C) {
 const OMNI_OP_PREFIX = 'omni/';
 const OMNI_OP_TTL_SEC = 2 * 86400; // كتذكرة المهمّة: يومان
 function omniOpKey(op) { return 'omni:op:' + String(op); }
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): نفاد رصيد Gemini (402، أو 429 «prepayment credits are depleted»)
+   عند نداء الفيديو ← النموذج نفسه (Omni Flash) عند fal بالطابور (fal-fallback.startVideo)، فيرجع op «fal/<id>» يتابعه veo-status بالعقد
+   نفسه، وسجلّ طابوره هنا بعمر مهامّ omni. الخصم والتذكرة كما لو أنتجه Gemini، ولا ردّ للنقاط إلّا إن رفض الاحتياط أيضًا. */
+const FAL_OP_PREFIX = 'fal/';
+function falOpKey(op) { return 'fal:op:' + String(op); }
 const OMNI_FRAME_MS = 120000; // إطار المجموعة قبل Omni: يترك للمحرّك وقته داخل حدّ الدالّة (٣٠٠ث)
 function trendEngine() { return String(process.env.TREND_ENGINE || 'omni').toLowerCase() === 'veo' ? 'veo' : 'omni'; }
 function cinemaEngine() { return String(process.env.CINEMA_ENGINE || 'omni').toLowerCase() === 'veo' ? 'veo' : 'omni'; }
@@ -340,10 +346,41 @@ module.exports = async (req, res) => {
       } else console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
     }
 
+    /* v-fal-backup: بدء الفيديو عند الاحتياط — سجلّ الطابور (عطب كتابته لا يُسقطه: veo-status يبني الرابط من الرقم) وتذكرة الخصم
+       نفسها التي يكتبها النجاح، ثمّ {op}. رفضه = false فيكمل المتّصل مساره القديم (الردّ ورمز الخطأ) حرفيًّا. محاولة واحدة لكلّ طلب. */
+    let falTried = false;
+    const viaFal = async (spec, where) => {
+      falTried = true;
+      const s = await falBackup.startVideo(spec, { where });
+      if (!s || !s.op) return false;
+      try { await require('./kv.js').kvSetRaw(falOpKey(s.op), JSON.stringify(s.rec), OMNI_OP_TTL_SEC); }
+      catch (e) { console.error('[veo-create] backup record not saved (status rebuilds it): ' + (e && e.message)); }
+      await require('./video-job.js').rememberVideoJob(s.op, { username: chargedUser, cost: pointsLib.COSTS.veo_video, locked: !!videoLocked, pay: chargedPay });
+      chargedUser = null; videoLocked = null;
+      console.log('[veo-create] ' + (body.trend ? 'trend ' + String(body.trend).slice(0, 20) : 'cinematic') + ' started on the backup engine (' + where + ')');
+      res.status(200).json({ op: s.op });
+      return true;
+    };
+    const falRescue = (status, msg) => !falTried && falBackup.enabled() && falBackup.geminiCreditOut(status, msg);
+
     if (omniTrend || cinemaOmni) {
       let oPrompt = String(promptText).trim();
       if (cinemaOmni && framed) oPrompt = require('./video-trends.js').withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, 'the reference image <IMAGE_REF_0>', soloPeople > 1 ? soloPeople : undefined) + FRAME_LOCK;
       const oCap = body.trend ? VEO_PROMPT_MAX : (framed ? VEO_FREE_IMAGE_MAX + FRAME_LOCK.length : (hasImage ? VEO_FREE_IMAGE_MAX : VEO_FREE_MAX));
+      /* قصّة المحادثة في مقطع واحد (oneClip بعدّة مشاهد) لقطات متتالية بنصّها — كقوالب المونتاج */
+      const multiShot = tp.MULTI_SHOT_TRENDS.has(trendId) || !!(trendParams && trendParams.oneClip && Array.isArray(trendParams.scenes) && trendParams.scenes.length > 1);
+      /* v-fal-backup: مدخل الاحتياط — الأمر الخامّ بلا وسوم أدوار Interactions (Image1/Image2)، ودور الصورة كما يختاره trendOmni: إطار مبنيّ
+         أو صورة تُحرَّك = أوّل إطار؛ صورة شخص بلا إطار = مرجع ملامح بوسم <IMAGE_REF_0> وإرشاده. الإطار مع لقطة الوجه = الإطار وحده
+         (الاحتياط لا يجمع أوّل إطار ومرجعًا)، و«سامحوني» بلا صورته إطارًا أخيرًا. «بلا قطع» كما عند Omni (النموذج نفسه). */
+      const oImg = imageBase64 && String(imageBase64).trim();
+      const asRef = !!oImg && !(framed || groupFramed) && tp.omniPersonTrend(trendId);
+      const fPlain = String(promptText).trim().slice(0, oCap);
+      const fCuts = oImg && !multiShot ? TREND_NO_CUTS : '';
+      const falSpec = { prompt: asRef ? bindTrendRef(fPlain) + fCuts + TREND_REF_GUIDE : fPlain + fCuts, portrait: ratio === '720:1280', durationSec: body.trend ? 8 : omniDur };
+      if (asRef) falSpec.refs = [{ b64: oImg, mime: imageMime || 'image/png' }];
+      else if (oImg) falSpec.image = { b64: oImg, mime: imageMime || 'image/png' };
+      /* رصيد Gemini خلص قبل دقائق ← الاحتياط مباشرة بلا نداء فاشل قبله */
+      if (await falBackup.geminiOutRecently() && await viaFal(falSpec, 'veo-create/omni')) return;
       const r = await trendOmni({ apiKey, prompt: oPrompt.slice(0, oCap), durationSec: body.trend ? 0 : omniDur, imageBase64: imageBase64 && String(imageBase64).trim(),
         imageMime, framed: framed || groupFramed, ratio, quality, t0, person: tp.omniPersonTrend(trendId),
         /* v-trend-omni-refs (المالك بعد v-trend-omni-face: «بعده يغيّر شكل الشخصيّة في الملامح»): مرجع الملامح مع كلّ إطار مبنيّ —
@@ -355,9 +392,13 @@ module.exports = async (req, res) => {
           : groupFramed ? (tp.omniPersonTrend(trendId) ? trendPeople.map((x) => ({ data: String(x.data).trim(), mime: x.mime || 'image/png' })) : []) /* منتج أو مكان بعدّة صور: ليست وجوه أشخاص */
             : framed ? [frameRef || userPhoto] : [],
         people: soloPeople,
-        /* قصّة المحادثة في مقطع واحد (oneClip بعدّة مشاهد) لقطات متتالية بنصّها — كقوالب المونتاج */
-        multiShot: tp.MULTI_SHOT_TRENDS.has(trendId) || !!(trendParams && trendParams.oneClip && Array.isArray(trendParams.scenes) && trendParams.scenes.length > 1) });
+        multiShot });
       if (!r.uri) {
+        /* v-fal-backup: نفاد الرصيد وحده (لا الزحام ولا الرفض) ← الاحتياط قبل أيّ ردّ؛ قبوله {op} بخصمه وتذكرته، ورفضه المسار القديم */
+        if (r.status && falRescue(r.status, r.msg)) {
+          await falBackup.markGeminiOut();
+          if (await viaFal(falSpec, 'veo-create/omni')) return;
+        }
         if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video, chargedPay);
         if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
         chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
@@ -397,6 +438,10 @@ module.exports = async (req, res) => {
         mimeType: imageMime || 'image/png',
       };
     }
+    /* v-fal-backup: المسار القديم (TREND_ENGINE/CINEMA_ENGINE=veo) — الأمر نفسه وصورته أوّل إطار كـinstance.image */
+    const falVeo = { prompt, portrait: aspectRatio === '9:16', durationSec: body.trend ? 8 : omniDur };
+    if (instance.image) falVeo.image = { b64: instance.image.bytesBase64Encoded, mime: instance.image.mimeType };
+    if (await falBackup.geminiOutRecently() && await viaFal(falVeo, 'veo-create/veo')) return;
 
     const upstream = await fetch(GL + '/models/' + model + ':predictLongRunning', {
       method: 'POST',
@@ -409,6 +454,11 @@ module.exports = async (req, res) => {
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
       const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
+      /* v-fal-backup: نفاد الرصيد ← الاحتياط قبل الردّ، ورفضه المسار القديم */
+      if (falRescue(upstream.status, msg)) {
+        await falBackup.markGeminiOut();
+        if (await viaFal(falVeo, 'veo-create/veo')) return;
+      }
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
@@ -434,6 +484,8 @@ module.exports = async (req, res) => {
 module.exports.VEO_PROMPT_MAX = VEO_PROMPT_MAX;
 module.exports.OMNI_OP_PREFIX = OMNI_OP_PREFIX;
 module.exports.omniOpKey = omniOpKey;
+module.exports.FAL_OP_PREFIX = FAL_OP_PREFIX; // v-fal-backup
+module.exports.falOpKey = falOpKey;
 module.exports.trendEngine = trendEngine;
 module.exports.cinemaEngine = cinemaEngine;
 module.exports.TREND_NO_CUTS = TREND_NO_CUTS;

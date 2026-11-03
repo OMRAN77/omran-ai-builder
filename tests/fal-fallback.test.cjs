@@ -213,3 +213,19 @@ test('٧. «خطأ جديد» لا يصل بجانب إشعار رصيد الص�
   const r2 = await alert.alertOwnerError({ route: 'veo', message: 'fal submit 403 User is locked. Reason: Exhausted balance.' }, { env: {} });
   assert.equal(r2.reason, 'media-credit');
 });
+
+test('٨. محاولة fal واحدة لكلّ نداء: العلم قائم وfal يرفض وGemini خلص ← لا نداء fal ثانٍ', async () => {
+  reset(); falMode = 'locked';
+  store.set(fb.OUT_KEY, '1');
+  const studioCreate = require(rp('studio-create.js'));
+  const realFetch = global.fetch;
+  try {
+    global.fetch = fakeFetch(429, DEPLETED);
+    const r = await studioCreate.__geminiImage('gm-test', [{ text: 'x' }], 'hair');
+    assert.ok(!r.b64 && r.error, 'المسار القديم');
+    assert.equal(calls.filter((c) => /fal\.run/.test(c.u)).length, 1, 'fal مرّة واحدة');
+    assert.equal(calls.filter((c) => /generativelanguage/.test(c.u)).length, 1);
+    const falBody = calls.find((c) => /fal\.run/.test(c.u)).body;
+    assert.equal(falBody.output_format, 'jpeg', 'JPEG لا PNG: سقف الردّ ٤٫٥ ميغا');
+  } finally { global.fetch = realFetch; }
+});

@@ -8,6 +8,7 @@ const { keepGuardCharge } = require('./image-giveback.js'); /* v-guard-cap */
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const mergeIdentity = require('./merge-identity');
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
 
 // v-portrait-rescue: تعديل الصورة عبر gpt-image-1 عند رفض Gemini (نفس نمط
 // خطّ إنقاذ الأزياء). يرجع base64 أو null — لا يرمي أبدًا.
@@ -143,6 +144,24 @@ const BACKDROP_PROMPTS = {
 const AVATAR_FRAME_W = 512;
 const AVATAR_FRAMES_MAX = 4000000;
 
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): نفاد رصيد Gemini كان يُسقط البورتريه وإطارات الأفاتار.
+   الاحتياط النموذج نفسه عند fal بجسم الطلب نفسه (الصور بعناوينها والدقّة والنسبة والحرارة)، وناتجه يُلبَس شكل ردّ Gemini فيمرّ
+   بالحارس والتصغير والاحتساب كما هو، وقبل إنقاذ OpenAI (النموذج نفسه أقرب للأمر). مهلته ما بقي من حدّ الدالّة (٣٠٠ ث) بعد
+   هامش للحارس والردّ، وتُقسَم على الإطارات الباقية. لا اسم مزوّد في الردّ: الشكل نفسه بلا engine. */
+const PORTRAIT_MODEL = 'gemini-3-pro-image';
+const FAL_BUDGET_MS = 270000;
+function falReply(fb) { return { candidates: [{ content: { parts: [{ inlineData: { mimeType: fb.mime || 'image/png', data: fb.b64 } }] } }] }; }
+function falOpts(t0, share) {
+  /* عدد صحيح: AbortSignal.timeout يرمي RangeError على الكسور */
+  return { where: 'portrait-style', timeoutMs: Math.floor(Math.max(15000, Math.min(150000, (FAL_BUDGET_MS - (Date.now() - t0)) / (share || 1)))) };
+}
+/* رصيد Gemini خلص قبل دقائق ← fal مباشرة بلا نداء فاشل قبله؛ null = المسار القديم */
+async function falFirst(body, opts) {
+  if (!(await falBackup.geminiOutRecently())) return null;
+  const fb = await falBackup.imageFromGemini(PORTRAIT_MODEL, body, opts);
+  return fb && fb.b64 ? falReply(fb) : null;
+}
+
 /* v-pstyle-closeup: عنوان لقطة الوجه وقواعدها. العنوان مكيَّف من merge-identity.js («نفس الشخص، مقرَّبًا؛
    مرجع هويّة لا شخص إضافيّ»)، والقواعد تمنع الخطر المعاكس المثبَت في PITFALLS: مرجع فوتوغرافيّ يسحب
    الناتج نحو الواقعيّة فيضعف الأسلوب الفنّيّ. */
@@ -155,6 +174,7 @@ const CLOSEUP_RULES =
   'IDENTITY (mandatory): the face in the result must be this same person\'s own face, restyled — not a new, generic or better-looking face. If the art style and their real features ever conflict, their real features win.';
 
 module.exports = async (req, res) => {
+  const t0 = Date.now(); /* v-fal-backup: بداية ميزانيّة الدالّة */
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -222,17 +242,24 @@ module.exports = async (req, res) => {
           ],
           generationConfig: { imageConfig: { imageSize: '1K' } }, /* v-audit-stud2: العميل يبني GIF بعرض ٤٨٠ — 2K كان ثلاثة أضعاف ردّ البورتريه */
         };
-        const frameUpstream = await fetch(endpointGif, {
+        /* v-fal-backup: الرصيد خلص قبل دقائق ← الإطار عند fal مباشرة بدقّة 1K نفسها */
+        let frameData = await falFirst(frameReqBody, falOpts(t0, FRAME_PROMPTS.length - i));
+        const frameUpstream = frameData ? null : await fetch(endpointGif, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(frameReqBody),
           signal: AbortSignal.timeout(240000), /* v-image-timeout */
         });
-        const frameData = await frameUpstream.json();
-        if (!frameUpstream.ok) {
+        if (!frameData) frameData = await frameUpstream.json();
+        if (frameUpstream && !frameUpstream.ok) {
           console.error('[portrait-style] avatar frame failed status=' + frameUpstream.status + ' detail=' + ((frameData && frameData.error && frameData.error.message) || 'unknown'));
-          res.status(502).json({ error: require('./_videoFail.js').isOutage(frameUpstream.status, (frameData && frameData.error && frameData.error.message) || '') ? 'unavailable' : 'image_generation_failed' });
-          return;
+          /* v-fal-backup: نفاد الرصيد ← الإطار نفسه عند fal قبل رمز الخطأ؛ غير ذلك كما كان */
+          const fbFrame = await falBackup.rescueImage(frameUpstream.status, (frameData && frameData.error && frameData.error.message) || '', PORTRAIT_MODEL, frameReqBody, falOpts(t0, FRAME_PROMPTS.length - i));
+          if (!fbFrame) {
+            res.status(502).json({ error: require('./_videoFail.js').isOutage(frameUpstream.status, (frameData && frameData.error && frameData.error.message) || '') ? 'unavailable' : 'image_generation_failed' });
+            return;
+          }
+          frameData = falReply(fbFrame);
         }
         const frameParts = (((frameData.candidates || [])[0] || {}).content || {}).parts || [];
         const frameImgPart = frameParts.find((p) => p.inlineData && p.inlineData.data);
@@ -505,29 +532,36 @@ module.exports = async (req, res) => {
       generationConfig: { temperature: (isLocalizedEdit || isMultiSourceComposition) ? 0.15 : 0.65, imageConfig: mergeAspect ? { imageSize: '2K', aspectRatio: mergeAspect } : { imageSize: '2K' } },
     };
 
-    const upstream = await fetch(endpoint, {
+    /* v-fal-backup: الرصيد خلص قبل دقائق ← fal مباشرة، وناتجه يكمل كناتج Gemini (الحارس ثمّ الاحتساب) */
+    let data = await falFirst(reqBody, falOpts(t0));
+    const upstream = data ? null : await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),
       signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
 
-    const data = await upstream.json();
-    if (!upstream.ok) {
+    if (!data) data = await upstream.json();
+    if (upstream && !upstream.ok) {
       const detail = String((data && data.error && data.error.message) || 'unknown')
         .replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
       console.error('[portrait-style] upstream failed status=' + upstream.status + ' detail=' + detail);
+      /* v-fal-backup: نفاد الرصيد ← النموذج نفسه عند fal قبل إنقاذ OpenAI؛ ناتجه يكمل كناتج Gemini بعد هذه الكتلة */
+      const fb = await falBackup.rescueImage(upstream.status, (data && data.error && data.error.message) || '', PORTRAIT_MODEL, reqBody, falOpts(t0));
       // v-portrait-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعطّل الميزة — جرّب
       // gpt-image-1 (تعديل صورة) بمفتاح OPENAI_API_KEY. حارس التحقق نفسه على
       // Gemini فيُتجاوز في مسار الإنقاذ — سيرفض بدوره لو حاولناه.
-      const rescue = await openaiPortraitEdit(gptPrompt, imageBase64, mimeType, gptRefs);
+      const rescue = fb ? null : await openaiPortraitEdit(gptPrompt, imageBase64, mimeType, gptRefs);
       if (rescue) {
         const remR = await consumePortrait(quota.username, quota.limit);
         res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT });
         return;
       }
-      res.status(502).json({ error: require('./_videoFail.js').isOutage(upstream.status, detail) ? 'unavailable' : 'image_generation_failed', upstream: upstream.status, detail });
-      return;
+      if (!fb) {
+        res.status(502).json({ error: require('./_videoFail.js').isOutage(upstream.status, detail) ? 'unavailable' : 'image_generation_failed', upstream: upstream.status, detail });
+        return;
+      }
+      data = falReply(fb);
     }
 
     const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
