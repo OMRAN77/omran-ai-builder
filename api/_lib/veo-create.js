@@ -75,6 +75,9 @@ function groupRefGuide(n) {
   return ' Use Image1 as the starting frame. Use ' + imgList(n) + ' as references for the video generation: each one shows one of the real people already in Image1'
     + ' — use them only to keep each person\'s own face and identity, never as extra people; the clothing and setting come from Image1 and the description.';
 }
+/* v-video-identity-pose: صورة المستخدم أوّل إطار + الصورة نفسها مرجعًا (Omni يقبل الدورين معًا — FRAME_DECL في omni-create). إرشاد
+   محايد بلا «شخص حقيقيّ»: الأفاتار يبقى أفاتارًا والمنتج منتجًا، والمرجع يحفظ الشكل حين يلتفت أو يُرى من زاوية أخرى. */
+const PHOTO_REF_GUIDE = ' Use Image1 as the starting frame. Image2 is the same subject as Image1: use it only to keep its exact look — face, proportions, colours and art style — whenever it turns, moves or is seen from another angle; never redraw it more realistic, more cartoonish or generic.';
 async function trendOmni(o) {
   const omni = require('./omni-create.js');
   const input = [];
@@ -97,6 +100,11 @@ async function trendOmni(o) {
       /* إطار المجموعة + صورة كلّ شخص مرجعًا لوجهه (صيغة التوثيق لعدّة مراجع) */
       refs.forEach((r) => input.push({ type: 'image', data: r.data, mime_type: r.mime || 'image/png' }));
       prompt = groupRefDecl(refs.length) + bindGroupRefs(prompt, refs.length) + cuts + groupRefGuide(refs.length);
+    } else if (o.selfRef) {
+      /* «سينمائي» بالصورة كما هي، أو ترند شخص تعذّر إطاره: الصورة نفسها أوّل إطار ومرجعًا (كان التعذّر يرسم الشخص كلّه من مرجع)؛
+         والمونتاج (عشر دول، يوم في حياتي، قصّة بعدّة مشاهد) يبقى بلقطاته — cuts لا «بلا قطع» ثابتًا */
+      input.push({ type: 'image', data: o.imageBase64, mime_type: o.imageMime || 'image/png' });
+      prompt = omni.FRAME_DECL + bindTrendRef(prompt) + cuts + PHOTO_REF_GUIDE;
     } else if (o.framed || !o.person) {
       /* إطار مبنيّ بلا مرجع (ترند بعمر آخر — مرجع البالغ يشدّ الطفل إلى عمره)، أو صورة يُقصد تحريكها هي نفسها
          (منتج، مكان، حيوان، «حرّك الصورة»): أوّل إطار كما كانت عند Veo (instance.image) */
@@ -355,6 +363,13 @@ module.exports = async (req, res) => {
           : groupFramed ? (tp.omniPersonTrend(trendId) ? trendPeople.map((x) => ({ data: String(x.data).trim(), mime: x.mime || 'image/png' })) : []) /* منتج أو مكان بعدّة صور: ليست وجوه أشخاص */
             : framed ? [frameRef || userPhoto] : [],
         people: soloPeople,
+        /* v-video-identity-pose: مرجع الصورة نفسها مع أوّل إطار خامّ — «سينمائي» بلا إطار مرسوم، وترند الشخص الذي تعذّر إطاره (بيكسار ورمضان
+           يبقيان مرجعًا وحده عمدًا: شخصيّة مستوحاة لا الصورة أوّل إطار) */
+        selfRef: !framed && !groupFramed && !!(imageBase64 && String(imageBase64).trim()) && ((cinemaOmni && body.style !== 'anime') || (omniTrend && tp.omniPersonTrend(trendId) && !tp.OMNI_REF_TRENDS.has(trendId)
+          && !tp.OMNI_REVEAL_TRENDS.has(trendId) && !tp.AGE_SHIFT_TRENDS.has(trendId) /* الكشف ينتهي بصورته، والعمر الآخر لا يبدأ بالبالغ — يبقيان مرجعًا */
+          /* تحويل الأسلوب (جيبلي، صلصال، أنمي، ليغو، دمية، شخصيّة لعبة) و«أنمي» السينمائيّ: «احفظ أسلوب الصورة» يناقض الطلب — كما كانا */
+          && !tp.SOLO_FRAME_ART_TRENDS.has(trendId) && !tp.ART_STYLE_RE.test(tp.trendScene(promptText))
+          && trendPeople.length <= 1 && ((require('./video-trends.js').TRENDS[trendId] || {}).photo !== 'none'))), /* ترند بلا خانة صورة (صورة المحادثة) يبقى مرجعًا */
         /* قصّة المحادثة في مقطع واحد (oneClip بعدّة مشاهد) لقطات متتالية بنصّها — كقوالب المونتاج */
         multiShot: tp.MULTI_SHOT_TRENDS.has(trendId) || !!(trendParams && trendParams.oneClip && Array.isArray(trendParams.scenes) && trendParams.scenes.length > 1) });
       if (!r.uri) {
@@ -448,3 +463,4 @@ module.exports.TREND_REVEAL_GUIDE = TREND_REVEAL_GUIDE;
 module.exports.VEO_FREE_IMAGE_MAX = VEO_FREE_IMAGE_MAX;
 module.exports.VEO_FREE_MAX = VEO_FREE_MAX;
 module.exports.FRAME_LOCK = FRAME_LOCK;
+module.exports.PHOTO_REF_GUIDE = PHOTO_REF_GUIDE; // v-video-identity-pose
