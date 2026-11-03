@@ -55,6 +55,7 @@
     .omUpStyle .omUpB{left:38.5% !important; right:38.5% !important; font-size:12px !important;}
     .omUpStyle .omUpL{left:40% !important; right:40% !important; font-size:11px !important;}
     .omUpStyle :is(.omUpB,.omUpL){white-space:normal; overflow:visible; text-overflow:clip; line-height:1.05 !important;}
+    #studioAiSlots.two .omUpStyle :is(.omUpB,.omUpL){font-size:9px !important;}
   }
 }
 @container (max-width:560px){

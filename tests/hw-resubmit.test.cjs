@@ -62,8 +62,9 @@ test('٢. وصف المتجر بلا «رسمي/موثوق/مفضّل/مميّز
   assert.ok(descriptions.length > 500, 'قسما الوصف موجودان');
   assert.doesNotMatch(descriptions, BANNED);
   assert.doesNotMatch(enToolList + arToolList, BANNED);
-  // 1.3.15 (الحزمة نفسها برقم أكبر): اسم AGC كما هو (يطابق اسم الهاتف «عمران AI»)، والوصف يجمع اسم الهاتف واسم الواجهة «om ai» في أوّل سطر
-  assert.ok(descriptions.includes('**اسم التطبيق:** كما هو في AGC') && descriptions.includes('**App name:** unchanged in AGC'));
+  // v-hw-1316: اسم AGC «عمران AI» في كلّ لغة (تقرير ٣ نوفمبر عرضه «عمران لبناء الذكاء الاصطناعي» — القاعدة 1.20: الاسم المثبّت = اسم
+  // المتجر)، والوصف يجمع اسم الهاتف واسم الواجهة «om ai» في أوّل سطر
+  assert.ok(descriptions.includes('**اسم التطبيق:** «عمران AI» في كلّ لغة') && descriptions.includes('**App name:** «عمران AI» in every listing language'));
   assert.ok(descriptions.includes('عمران AI (om ai) تطبيق واحد') && descriptions.includes('Omran AI (om ai) brings'));
   assert.ok(notes.startsWith('# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.15)'));
   // 11.4 باقية صادقة (hw-nomarkets)، وحساب التجربة بلا كلمة مرور في المستودع

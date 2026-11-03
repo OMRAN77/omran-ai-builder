@@ -8,12 +8,13 @@
 > - **لا وعد ببناء تطبيقات:** نائب صندوق الكتابة في ١٢ لغة كان «صف التطبيق أو اللعبة أو الموقع… لعبة الثعبان» (صار «اكتب رسالتك هنا»)،
 >   وحبّة «الذكاء الاصطناعي يبني تطبيقك فورًا» وسطور «منصّة لبناء التطبيقات» في «عن التطبيق» مخفيّة داخل تطبيق هواوي.
 > - **هواتف بمحرّك ويب أقدم (Chromium 99):** زرّ الأزياء كان يُقصّ «Choose…» وأسماء غرف الديكور تلتفّ — احتياط بالقيم نفسها.
-> - **لقطات جديدة بثلاث لغات:** ١ الرئيسيّة والمحادثة (لم تكن في أيّ لقطة)، ٢–٤ مربّع الأدوات بأقسامه الثلاثة (الأدوات الـ١٣)،
+> - **لقطات جديدة بثلاث لغات:** ١ الرئيسيّة والمحادثة (لم تكن في أيّ لقطة)، ٢–٤ مربّع الأدوات بأقسامه الثلاثة (أوّل كلّ قسم — الأدوات الـ١٣ بأسمائها في Remarks)،
 >   ٥ الأزياء، ٦ الديكور، ٧ البناء، ٨ القبلة. في AGC: احذف كلّ اللقطات القديمة في كلّ لغة وارفع `screenshots/*.png` تحت **العربيّة**،
 >   و`screenshots/en/` تحت **English**، و`screenshots/zh/` تحت **简体中文**.
 > - **اسم التطبيق في AGC:** التقرير يعرضه «عمران لبناء الذكاء الاصطناعي» واسم الهاتف «عمران AI» — اجعله **«عمران AI»** في كلّ لغة
 >   (القاعدة 1.20: الاسم المثبّت = اسم المتجر).
 > - **حساب التجربة** في خانتيه في AGC يعمل (سجّل به مرّة داخل التطبيق قبل Submit)، وجرّب أداة صورة واحدة به.
+> - **قبل Submit:** انتظر تأكيد وصول التحديث إلى الموقع بعد دمج الطلب — الإصلاح في الموقع لا في الحزمة، والمراجع يفتح الموقع الحيّ.
 
 > **1.3.15 (versionCode 20261030، v-hw-1315):** 1.3.14 رُفضت ٣٠ أكتوبر بالقاعدة 3.1 («مساعد المستندات ← حلّل المستند ← لا يمكن
 > تحميل ملف») و1.14 (اللقطات «لا تطابق الوظائف الفعليّة»). السبب: على هاتف هواوي بلا Chrome يعمل التطبيق في WebView
@@ -28,7 +29,7 @@
 > - **داخل نسخة هواوي فقط:** خيارات بأسماء علامات تجاريّة مخفيّة، ووصف «إجابات موثوقة» تحت أداة التفسير مخفيّ.
 > - **الرصيد:** يومي ٢٤ و٢٥ أكتوبر نفد رصيد Gemini أثناء المراجعة (إعادة توليد صور بطاقات الستايل) فسقطت أدوات الصور كلّها. **قبل Submit:**
 >   تأكّد أنّ الرصيد يكفي، ولا تولّد صورًا بالجملة حتّى يصل ردّ هواوي، ثمّ جرّب أداة صورة واحدة بحساب التجربة.
-> اسم التطبيق في AGC يبقى كما هو — يطابق اسم الهاتف «عمران AI»؛ و«om ai» اسمه داخل التطبيق، فالوصف يجمعهما في أوّل سطر.
+> اسم التطبيق في AGC «عمران AI» في كلّ لغة — يطابق اسم الهاتف (v-hw-1316)؛ و«om ai» اسمه داخل التطبيق، فالوصف يجمعهما في أوّل سطر.
 > لا تُضِف أداة مخفيّة (التلفزيون، السيرة الذاتيّة، المصاريف، الاقتراحات، الخدمات الحكوميّة) ولا كلمة مثل «رسمي/موثوق/مفضّل/مميّز/الأفضل»
 > في أيّ خانة. حساب التجربة في خانتيه في AGC، لا في الملاحظة، وليس حساب «omran».
 
@@ -39,7 +40,8 @@
 
 ## Notes for review (English — full text, for a reply to the reviewer or an attachment)
 ```
-Omran AI (om ai), version 1.3.15: resubmission after the review report of 2026-10-30 on 1.3.14 (rules 3.1 and 1.14),
+Omran AI (om ai), version 1.3.15: resubmission after the review report of 2026-11-03 on 1.3.15 (rule 1.14), the report
+of 2026-10-30 on 1.3.14 (rules 3.1 and 1.14),
 and the reports of 2026-10-22, 2026-10-26 and 2026-10-28 on 1.3.13 (rules 1.14, 1.15 and 4.1).
 
 Rule 3.1 (Document Assistant > Analyze document > cannot upload a file) — fixed in 1.3.15:
@@ -56,15 +58,17 @@ Rule 1.14 (screenshots, report of 2026-11-03 on 1.3.15) — same package 1.3.15,
   Before, it kept the language of its first launch, so after switching the phone to another language the screen
   no longer matched that language's screenshots.
 - New screenshots in Arabic, English and Simplified Chinese: the home screen with the chat, the Tools panel with all
-  13 tools (three screens), Fashion AI, Design AI, Construction and Qibla & Prayer. Taken from this build, nothing drawn on them.
+  13 tools in three groups (one screen per group: Creativity, Business, Daily life), Fashion AI, Design AI, Construction and
+  Qibla & Prayer. Taken from this build, nothing drawn on them.
 - The chat box no longer suggests building apps or games in any language; it says "Type your message here".
 - Older system web views (Chromium 99) now render the Fashion and Design upload boxes the same as the screenshots.
 
 Rules 1.14 and 1.15 (app information, earlier reports):
-- All screenshots were retaken on 2026-10-26 from this build (Huawei package, phone size, a normal user account),
+- All screenshots were retaken on 2026-11-03 from this build (Huawei package, phone size, a normal user account),
   in three languages: Arabic, English and Simplified Chinese. The app shows its interface in the phone's language,
   so each listing language has screenshots in that language.
-  They show only screens that a user can open in this version: the Tools panel and six tools. Nothing was drawn on them.
+  They show only screens that a user can open in this version: the home screen with the chat, the Tools panel and four
+  tools. Nothing was drawn on them.
 - The startup splash image was removed. After the privacy notice the app opens on its Tools panel.
 - Removed from the screenshots and the description: the TV screen (it showed third-party channel names) and every tool
   that is not available in this version. The description now lists only the tools that are in the app.
@@ -102,9 +106,11 @@ Test account: (username) / (password)
 
 ## ملاحظات المراجع (عربيّ — للمراجعة العربيّة إن وُجدت)
 ```
-عمران AI (om ai)، الإصدار 1.3.15 — إعادة تقديم بعد تقرير ٣٠ أكتوبر ٢٠٢٦ على 1.3.14 (القاعدتان 3.1 و1.14) وتقارير ٢٢ و٢٦ و٢٨ أكتوبر على 1.3.13 (القواعد 1.14 و1.15 و4.1).
-1.14 و1.15: اللقطات أُخذت ٢٦ أكتوبر من هذا البناء نفسه بحساب مستخدم عاديّ وبثلاث لغات (العربيّة والإنجليزيّة والصينيّة) لأنّ
-التطبيق يعرض واجهته بلغة الهاتف، وفيها فقط ما يفتحه المستخدم في هذا الإصدار (مربّع الأدوات وستّ أدوات) بلا أيّ رسم فوقها.
+عمران AI (om ai)، الإصدار 1.3.15 — إعادة تقديم بعد تقرير ٣ نوفمبر ٢٠٢٦ على 1.3.15 (القاعدة 1.14) وتقرير ٣٠ أكتوبر ٢٠٢٦ على 1.3.14 (القاعدتان 3.1 و1.14) وتقارير ٢٢ و٢٦ و٢٨ أكتوبر على 1.3.13 (القواعد 1.14 و1.15 و4.1).
+1.14 و1.15: اللقطات أُخذت ٣ نوفمبر من هذا البناء نفسه بحساب مستخدم عاديّ وبثلاث لغات (العربيّة والإنجليزيّة والصينيّة) لأنّ
+التطبيق يعرض واجهته بلغة الهاتف — ويتبعها الآن في كلّ تشغيل ما لم يختر المستخدم لغةً من الإعدادات — وفيها فقط ما يفتحه المستخدم
+في هذا الإصدار (الرئيسيّة والمحادثة، ومربّع الأدوات بأقسامه الثلاثة، وأربع أدوات) بلا أيّ رسم فوقها. صندوق المحادثة لا يقترح بناء
+تطبيقات أو ألعاب بأيّ لغة.
 حُذفت صورة الافتتاح، فبعد إشعار الخصوصيّة يفتح التطبيق على مربّع الأدوات. حُذفت لقطة التلفزيون (أسماء قنوات لجهات أخرى) وكلّ أداة
 غير متاحة في هذا الإصدار، والوصف يعدّ الأدوات الموجودة فقط. لا كلمات مثل «رسمي» أو «موثوق» أو «مفضّل» أو «مميّز»، ولا خدمات حكوميّة،
 ولا خيارات بأسماء علامات تجاريّة في هذه الحزمة. om ai تطبيق مستقلّ لا يتبع أيّ جهة حكوميّة أو قناة أو علامة تجاريّة.
@@ -120,7 +126,7 @@ Test account: (username) / (password)
 ```
 
 ## وصف المتجر (عربيّ)
-**اسم التطبيق:** كما هو في AGC (لا يتغيّر — يطابق اسم الهاتف «عمران AI» في 1.3.15)
+**اسم التطبيق:** «عمران AI» في كلّ لغة — يطابق اسم الهاتف في 1.3.15 (تقرير ٣ نوفمبر عرضه «عمران لبناء الذكاء الاصطناعي»)
 
 **عنوان قصير:** أدوات ذكاء اصطناعيّ في تطبيق واحد
 
@@ -134,7 +140,7 @@ Test account: (username) / (password)
 كلّ الأدوات تعمل داخل التطبيق، على الجوّال والحاسوب.
 
 ## Store description (English)
-**App name:** unchanged in AGC (matches the launcher label of 1.3.15)
+**App name:** «عمران AI» in every listing language — the launcher label of 1.3.15
 
 **Short:** AI tools in one app
 

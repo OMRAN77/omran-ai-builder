@@ -260,6 +260,11 @@ function __studioErrMsg(e, fbKey){
         /* تدقيق ١٨ أكتوبر (الدفعة ٥، من b8 في ten-a): سطر واحد بقصّ كان يقطع «Living ro…» في خانة ~٦١px على جوّال ٣٩٠ — يلتفّ سطرين (الحاسوب سطر واحد كما كان) */
         cap.style.cssText = 'position:absolute; left:50%; bottom:3%; transform:translateX(-50%); width:96%; white-space:normal; overflow-wrap:anywhere; line-height:1.1; text-align:center;' +
           ' font-size:10px; font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
+        /* v-hw-1316 (لقطة الديكور الإنجليزيّة): كلمة واحدة طويلة («Restaurant»، «Restaurante») كانت تنكسر وسط الكلمة «Restaura/nt».
+           التقطيع بشرطة (hyphens) لا قاموس له في Chromium ويندوز فتختلف اللقطة عن الهاتف، والاسم يُترجم بعد البناء (مترجم الخيارات) فلا
+           يُقاس هنا — فالعرض بقدر النصّ حتّى ١٢٤٪ يمتدّ في الفراغ بين الخانتين، وما زاد يلتفّ كما كان */
+        cap.style.width = 'max-content';
+        cap.style.maxWidth = '124%';
         b.appendChild(cap);
       }
       b.onclick = function(){ ideaPlace(o.value); };

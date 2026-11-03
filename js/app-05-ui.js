@@ -929,6 +929,13 @@ if(omranHwPackage()){
     __hwNb.textContent = '[data-i18n="aboutTagline"],[data-i18n="aboutFeatChat"],[data-i18n="aboutMoreSummary"],[data-i18n="aboutText"]{display:none !important;}'
       + 'details:has(> [data-i18n="aboutText"]),div:has(> [data-i18n="aboutFeatChat"]){display:none !important;}';
     (document.head || document.documentElement).appendChild(__hwNb);
+    var __hwNbBox = function(){
+      try{
+        document.querySelectorAll('[data-i18n="aboutFeatChat"]').forEach(function(e){ if(e.parentElement) e.parentElement.style.display = 'none'; });
+        document.querySelectorAll('[data-i18n="aboutText"]').forEach(function(e){ var d = e.closest('details'); if(d) d.style.display = 'none'; });
+      }catch(e){ __swallow(e, 'ui:hw-no-builder-box'); }
+    };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', __hwNbBox, { once: true }); else __hwNbBox();
   }catch(e){ __swallow(e, 'ui:hw-no-builder'); }
 }
 var APP_CAPABILITIES = [

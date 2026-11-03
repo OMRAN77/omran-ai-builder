@@ -33,9 +33,11 @@ function loadLangFile(lg){
 /* v-hw-lang-follow (رفض هواوي 1.3.15 بالقاعدة 1.14 «اللقطات لا تطابق التطبيق»، في «بيئة متعدّدة اللغات»): applyLanguage يحفظ
    aiapp_lang في كلّ إقلاع، فاللغة المكتشفة في أوّل تشغيل تُحفظ كأنّها اختيار — مراجعٌ بدّل لغة هاتفه ليقارن لقطات لغة أخرى يبقى
    على الأولى (وتخزين WebView يعيش مع التحديثات). داخل حزمة هواوي (علم الجلسة من selfdiag.js، يُحمَّل قبل الحزمة) تتبع اللغة
-   الهاتف في كلّ تشغيل ما لم يكن aiapp_lang_manual='1' — يُكتب في setLang وحده (الإعدادات، أمر الإعدادات، مها). الموقع كما كان. */
+   الهاتف في كلّ تشغيل ما لم يكن aiapp_lang_manual='1' — يُكتب في setLang وحده (الإعدادات، أمر الإعدادات، مها). الموقع كما كان.
+   وفي عارض WebView الحزمة وحده (جسر OmranRender يُحقن قبل سكربتات الصفحة — هاتف المراجع بلا Chrome): في TWA داخل Chrome التخزين
+   مشترك مع الموقع، فكان إقلاع الحزمة يمحو لغة اختارها الموقع (/ar أو ?hl= أو اختيار قبل هذا العلم). */
 function omranLangAuto(){
-  try { return sessionStorage.getItem('aiapp_store') === 'huawei' && localStorage.getItem('aiapp_lang_manual') !== '1'; }
+  try { return sessionStorage.getItem('aiapp_store') === 'huawei' && !!window.OmranRender && localStorage.getItem('aiapp_lang_manual') !== '1'; }
   catch(e){ __swallow(e, 'i18n:hw-lang-auto'); return false; }
 }
 let lang = (!omranLangAuto() && localStorage.getItem('aiapp_lang')) || (function(){

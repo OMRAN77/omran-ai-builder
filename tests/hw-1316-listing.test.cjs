@@ -10,7 +10,7 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
-function langBoot({ huawei, phone, saved, manual }) {
+function langBoot({ huawei, phone, saved, manual, webview = true }) {
   const src = read('js/app-04-i18n-state.js');
   const a = src.indexOf('function omranLangAuto(){');
   const b = src.indexOf("if(omranLangAuto()){ try { localStorage.setItem('aiapp_lang', lang); }");
@@ -19,6 +19,7 @@ function langBoot({ huawei, phone, saved, manual }) {
   const local = Object.assign({}, saved ? { aiapp_lang: saved } : {}, manual ? { aiapp_lang_manual: '1' } : {});
   const ctx = {
     __swallow: (e) => { throw e; },
+    window: webview ? { OmranRender: { mode: () => 'cpu' } } : {},
     navigator: { languages: [phone], language: phone },
     sessionStorage: { getItem: (k) => (k === 'aiapp_store' && huawei ? 'huawei' : null) },
     localStorage: { getItem: (k) => (k in local ? local[k] : null), setItem: (k, v) => { local[k] = String(v); } },
@@ -37,6 +38,8 @@ test('١. تطبيق هواوي يتبع لغة الهاتف في كلّ تشغ�
   assert.equal(r.lang, 'ar');
   assert.equal(langBoot({ huawei: true, phone: 'zh-CN', saved: 'fr', manual: true }).lang, 'fr', 'اختار الفرنسيّة بيده: تبقى');
   assert.equal(langBoot({ huawei: false, phone: 'en-US', saved: 'zh' }).lang, 'zh', 'الموقع: المحفوظ يغلب كما كان');
+  assert.deepEqual(langBoot({ huawei: true, webview: false, phone: 'en-US', saved: 'ar' }), { lang: 'ar', saved: 'ar' },
+    'TWA داخل Chrome (بلا جسر OmranRender): التخزين مشترك مع الموقع — لا يمحو لغة اختارها الموقع');
   assert.equal(langBoot({ huawei: false, phone: 'en-US' }).lang, 'en', 'الموقع: أوّل زيارة من الهاتف');
   // setLang وحده يكتب العلم — قبل «اللغة نفسها؟ ارجع» (اختيار الظاهرة اختيار)
   const src = read('js/app-04-i18n-state.js');
@@ -47,6 +50,9 @@ test('١. تطبيق هواوي يتبع لغة الهاتف في كلّ تشغ�
   assert.match(read('js/selfdiag.js'), /sessionStorage\.setItem\('aiapp_store'/, 'علم الحزمة من selfdiag');
   const html = read('index.html');
   assert.ok(html.indexOf('/js/selfdiag.js?v=') < html.indexOf('/js/app.bundle.js?v='), 'selfdiag يسبق الحزمة');
+  // سكربت الرأس: الاتّجاه والستار من لغة الهاتف في الحالة نفسها (كان يرسم عربيًّا ثانيةً ثمّ ينقلب)
+  const boot = html.slice(html.indexOf("var l = localStorage.getItem('aiapp_lang') || 'ar';"), html.indexOf("if(l === 'ar'){ document.title"));
+  assert.match(boot, /store=huawei[\s\S]*window\.OmranRender[\s\S]*aiapp_lang_manual[\s\S]*navigator\.languages/);
 });
 
 test('٢. نائب صندوق الكتابة في الـ١٤ لغة «اكتب رسالتك هنا» — لا «صف التطبيق أو اللعبة أو الموقع… لعبة الثعبان»، والوسم مرفوع', () => {
@@ -75,6 +81,7 @@ test('٣. داخل تطبيق هواوي: لا حبّة «يبني تطبيقك 
   const css = u.slice(i, u.indexOf('appendChild(__hwNb)', i));
   for (const k of ['aboutTagline', 'aboutFeatChat', 'aboutMoreSummary', 'aboutText']) assert.ok(css.includes('[data-i18n=\\"' + k + '\\"]') || css.includes('[data-i18n="' + k + '"]'), k);
   assert.match(css, /\{display:none !important;\}'\s*\n\s*\+ 'details:has\(/, 'قاعدة :has مستقلّة — محدِّد مجهول في WebView 99 لا يُسقط الأولى');
+  assert.match(u, /e\.parentElement\.style\.display = 'none'[\s\S]{0,200}e\.closest\('details'\)/, 'وبالكود للحاضنات (WebView 99 بلا :has: بطاقة 💬 وصندوق فارغان)');
   const ps = read('js/partials-settings.js');
   for (const k of ['aboutTagline', 'aboutFeatChat', 'aboutMoreSummary', 'aboutText']) assert.match(ps, new RegExp('data-i18n="' + k + '"'), k + ' في الإعدادات');
   const d = JSON.parse(read('manifest-huawei.json')).description;
@@ -94,6 +101,8 @@ test('٤. WebView أقدم (Chromium 99): خطوط cqw داخل @supports، وا
   assert.match(read('index.html'), /css\/رفع-الصور\.css\?v=(\d+)/);
   assert.ok(Number(/css\/رفع-الصور\.css\?v=(\d+)/.exec(read('index.html'))[1]) >= 7, 'وسم CSS مرفوع');
   assert.match(read('js/app-12-studios.js'), /' font-size:10px; font-size:clamp\(10px, 1\.5cqw, 14px\); font-weight:800;/, 'cqw مجهول يُسقط clamp وحده');
+  assert.match(read('js/app-12-studios.js'), /cap\.style\.width = 'max-content';\s*\n\s*cap\.style\.maxWidth = '124%';/, '«Restaurant» كاملة لا «Restaura/nt» (الاسم يُترجم بعد البناء فلا يُقاس)');
+  assert.match(c, /#studioAiSlots\.two \.omUpStyle :is\(\.omUpB,\.omUpL\)\{font-size:9px !important;\}/, 'وضع الدمج ٩px كالحديث');
   const u = read('js/app-05-ui.js');
   assert.match(u, /__hwPrev\.classList\.add\('hwOddLast'\)/);
   const r = read('css/redesign.css');
@@ -113,4 +122,6 @@ test('٥. اللقطات الجديدة: الرئيسيّة والمحادثة،
   const notes = read('store/huawei/REVIEW-NOTES.md');
   assert.match(notes, /إعادة تقديم 1\.3\.15 نفسها \(v-hw-1316، بلا APK جديد\)/);
   assert.match(notes, /اجعله \*\*«عمران AI»\*\* في كلّ لغة/, 'اسم AGC = اسم الهاتف');
+  assert.doesNotMatch(notes, /يبقى كما هو — يطابق|unchanged in AGC|لا يتغيّر — يطابق|six tools|ستّ أدوات/, 'لا سطر قديم يناقض الجديد');
+  assert.match(notes, /\*\*قبل Submit:\*\* انتظر تأكيد وصول التحديث إلى الموقع/);
 });
