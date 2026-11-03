@@ -987,12 +987,15 @@
 
     setStatus(bT('🔗 جاري دمج القوالب مع فيديو الذكاء الاصطناعي...','🔗 Merging template + AI video...'));
     const { w, h } = ratioDims(ratio);
+    /* v-video-identity-pose (فحص الهويّة ٣ نوفمبر): scale=W:H كان يمطّ مقطع الذكاء إلى ١٢٨٠×٧٢٠ أو ٧٢٠×١٢٨٠ بالضبط — ومخرج «فيديو سريع»
+       بصورة بنسبة الصورة نفسها (3:4، مربّعة…) فيطول الوجه أو يعرض. الآن بنسبته داخل الإطار وحواشٍ سوداء، والقالبان كما كانا. */
+    const fit = (i, o) => '[' + i + ':v]scale=' + w + ':' + h + ':force_original_aspect_ratio=decrease:force_divisible_by=2,pad=' + w + ':' + h + ':(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p[' + o + '];';
     await ffmpeg.exec([
       '-i', 'intro.webm', '-i', mainForConcat, '-i', 'outro.webm',
       '-filter_complex',
-      '[0:v]scale=' + w + ':' + h + ',fps=30,format=yuv420p[v0];' +
-      '[1:v]scale=' + w + ':' + h + ',fps=30,format=yuv420p[v1];' +
-      '[2:v]scale=' + w + ':' + h + ',fps=30,format=yuv420p[v2];' +
+      fit(0, 'v0') +
+      fit(1, 'v1') +
+      fit(2, 'v2') +
       '[v0][v1][v2]concat=n=3:v=1:a=0[outv]',
       '-map', '[outv]', 'final.mp4',
     ]);

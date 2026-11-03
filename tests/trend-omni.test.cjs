@@ -302,7 +302,7 @@ test('١٠. المتحوّل أثناء الفيديو (بطل خارق، تبد
   assert.equal(text(om), GROUP(vp.slice(0, vp.length - TP.FRAME_LOCK.length), 2), 'Omni: بلا قفل، وصورتاهما مرجعان');
 });
 
-test('١١. الصورة مرجع لا لقطة أولى: بيكسار ورمضان، وتعذّر الإطار في كلّ ترند شخص، وإطفاء الإطار — لا تظهر الصورة الخام في أوّل الفيديو', async () => {
+test('١١. الصورة مرجع لا لقطة أولى: بيكسار ورمضان والعمر الآخر؛ وتعذّر الإطار أو إطفاؤه في ترند الشخص = صورته أوّل إطار ومرجعًا بلا قطع (v-video-identity-pose — كان مرجعًا وحده فيُرسم الشخص كلّه)', async () => {
   for (const trend of TP.OMNI_REF_TRENDS) {
     const r = await pair(photoBody(trend));
     assert.equal(r.omniSolo.length, 0, trend + ': لا إطار');
@@ -315,15 +315,20 @@ test('١١. الصورة مرجع لا لقطة أولى: بيكسار ورمض�
     for (const trend of ['heritagesing', 'underwater', 'babyversion', 'superhero']) {
       const r = await pair(photoBody(trend));
       assert.equal(r.omniSolo.length, 1, trend + ': حاول');
-      assert.deepEqual(images(r.omni), ['USERPHOTO'], trend);
-      assert.equal(text(r.omni), REF(r.veoPrompt), trend + ': مرجع بلا قفل الإطار');
+      if (TP.AGE_SHIFT_TRENDS.has(trend)) {
+        assert.deepEqual(images(r.omni), ['USERPHOTO'], trend);
+        assert.equal(text(r.omni), REF(r.veoPrompt), trend + ': العمر الآخر مرجع كما كان');
+      } else {
+        assert.deepEqual(images(r.omni), ['USERPHOTO', 'USERPHOTO'], trend + ': صورته أوّل إطار ومرجعًا');
+        assert.equal(text(r.omni), OMNI.FRAME_DECL + bind(r.veoPrompt) + NO_CUTS + veo.PHOTO_REF_GUIDE, trend);
+      }
     }
   } finally { TP.soloFirstFrame = real; }
   process.env.VIDEO_FIRST_FRAME = 'off';
   try {
     const r = await pair(photoBody('underwater'));
     assert.equal(r.omniSolo.length, 0);
-    assert.equal(text(r.omni), REF(r.veoPrompt), 'الإطفاء: مرجع');
+    assert.equal(text(r.omni), OMNI.FRAME_DECL + bind(r.veoPrompt) + NO_CUTS + veo.PHOTO_REF_GUIDE, 'الإطفاء: صورته أوّل إطار ومرجعًا');
   } finally { delete process.env.VIDEO_FIRST_FRAME; }
 });
 
@@ -601,7 +606,8 @@ test('٢١. إطار الشخص: زاوية الرأس والتعبير من ا�
   assert.equal(typeof TP.frameLookLock, 'function', 'الدالّة مصدَّرة');
   const one = TP.frameLookLock(false), many = TP.frameLookLock(true);
   for (const s of [one, many]) {
-    assert.match(s, /head angle and facial expression/, 'زاوية الرأس والتعبير');
+    assert.match(s, /head angle, gaze and facial expression close to/, 'زاوية الرأس والنظرة والتعبير');
+    assert.doesNotMatch(s, /wherever the scene allows/, 'v-video-identity-pose: لا استثناء «حيث يسمح المشهد»');
     assert.match(s, /no new smile, smirk or squint/, 'لا تعبير جديد');
     assert.match(s, /ghutra or shemagh, agal, hijab or scarf, cap, glasses, jewellery/, 'ما على الرأس والوجه بأسمائه');
     assert.match(s, /exact shape, size, thickness, pattern, colour and way of wearing/, 'بشكله ومقاسه وسماكته');

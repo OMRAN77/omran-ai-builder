@@ -31,6 +31,7 @@ function frameTask(n, scene, start, o) {
     + String(scene || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 700) + '\n'
     /* v-trend-omni-face: ترند يتحوّل أثناء الفيديو — الإطار لحظته الأولى قبل التحوّل */
     + (start ? 'Show the moment BEFORE the change this scene describes happens: everyone still wears their own clothing and look from their own photo.\n' : '')
+    + (opt.ageShift ? '' : 'This frame is the moment BEFORE any action in the scene: looking at the camera, smiling, turning or walking toward the lens happen later in the video — here each head angle, gaze and expression stay as in their own photo.\n')
     + 'Each person keeps their own exact face and identity from their own photo. Never merge two people into one face, '
     + 'never swap a face onto the wrong body, never replace anyone with an invented person, never drop anyone, '
     + 'and never add a person who is not in the reference photos.' + (opt.ageShift ? '' : ' ' + frameLookLock(true, { art: !!opt.art, desc: 'the scene' })) + ' A single photorealistic still frame, all ' + n + ' faces sharp.';
@@ -120,13 +121,19 @@ function frameLookLock(many, o) {
   /* الأسلوب الفنّيّ (أنمي، لعبة، دمية): ملامحه تُرسم بالأسلوب — لا «كما صُوّر» ولا «لون البشرة الحقيقيّ» */
   const copy = opt.art ? '' : (many ? 'Copy each person\'s face from ' + src + ' as photographed, never reinterpreted: ' : 'Copy their face from ' + src + ' as photographed, never reinterpreted: ');
   return copy + (copy ? 'keep ' : 'Keep ') + (many ? 'each one\'s' : 'their')
-    + ' head angle and facial expression close to ' + src + ' wherever the scene allows (no new smile, smirk or squint ' + desc + ' does not ask for) — a new angle or expression is what makes a face drift.'
+    + ' head angle, gaze and facial expression close to ' + src + ' (no new smile, smirk or squint) — a new angle or expression is what makes a face drift.'
     + ' Everything ' + (many ? 'each person wears' : 'worn') + ' on the head and face — ghutra or shemagh, agal, hijab or scarf, cap, glasses, jewellery — keeps the exact shape, size, thickness, pattern, colour and way of wearing shown in ' + src + ', unless ' + desc + ' changes it.'
     + (opt.art ? '' : ' Coloured scene light (neon, sunset, stage) may tint the background and the edges, but ' + (many ? 'every face stays' : 'their face stays') + ' clearly lit in its true skin tone so every feature reads exactly as in ' + src + '.'
       /* «قصّة حبّ الزومبي» (الشخص الثاني هو المتحوّل) والوصف الحرّ «خلّني زومبي/بصبغة وجه»: تغيير البشرة الذي يطلبه الوصف نفسه يُطبَّق
          على ملامحه هو — الضوء وحده لا يلوّن الوجه */
       + ' Light alone never recolours a face; only a change ' + desc + ' itself makes to ' + (many ? 'someone\'s' : 'their') + ' skin or face (make-up, face paint, a pale or tinted creature look) is applied, drawn on their own features.');
 }
+
+/* v-video-identity-pose (المالك ٣ نوفمبر: «افحص الفيديوات تغير ملامح الشخصية» — صورته ووجهه نازل للجوال، والوصف «يطالع الكاميرا»،
+   فاخترع المحرّك وجهًا أماميًّا آخر): ما لم تُظهره الصورة لا يُستعاد. الإطار الأوّل لحظة قبل أيّ فعل في الوصف — النظر للعدسة والابتسام
+   والالتفات والمشي نحو الكاميرا تحدث أثناء الفيديو لا في الإطار، فيبقى رأسه ونظرته وتعبيره كما في الصورة (كان «حيث يسمح المشهد»
+   فيتبع الإطار القالب: «ينظر للكاميرا ويبتسم» = وجه يُرسم من جديد قبل أوّل ثانية). */
+const FRAME_POSE_FIRST = 'This frame is the moment BEFORE any action in the description: looking at the camera, smiling, turning, nodding or walking toward the lens happen later in the video, not in this frame — here their head angle, gaze and expression stay as in Photo 1.';
 
 /** مهمّة أوّل إطار لشخص الصورة داخل مشهد الوصف — الوجه والجسم منه، والمكان واللبس من الوصف.
  *  o: { closeup، art، styleText (سطر أسلوب صريح يغلب سطر art — أنمي الواجهة)،
@@ -164,7 +171,7 @@ function soloFrameTask(scene, o) {
   return 'TASK: create the OPENING FRAME of a video — one single still image — for this video description: "'
     + String(scene || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 900) + '".\n'
     + 'Show the real person from Photo 1 (if Photo 1 shows several people, all of them) inside the scene the description asks for, as it looks at the very start of the video'
-    + look + 'Never remove a hijab or headscarf that Photo 1 shows.\n'
+    + look + 'Never remove a hijab or headscarf that Photo 1 shows. ' + FRAME_POSE_FIRST + '\n'
     + identity
     + frameLookLock(opt.people > 1, { src: 'Photo 1', art: !!(opt.art || opt.styleText) }) + '\n'
     + (opt.styleText || (opt.art ? 'Use the art style the description asks for, drawing their own real features in that style.' : 'Photorealistic, like a real film still.'))
@@ -330,5 +337,5 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
 module.exports = {
   MAX_PEOPLE, aspectOf, callImage /* v-actor-lipsync: بورتريه الممثّل */, frameTask, groupFirstFrame, ART_STYLE_RE, SOLO_CLOSEUP_LABEL, soloFrameTask, soloFirstFrame,
   ANIME_FRAME_STYLE, STYLE_ANIME_VIDEO, FRAME_LOCK, frameLookLock, SOLO_FRAME_TRENDS, SOLO_FRAME_ART_TRENDS, SOLO_FRAME_TOY_TRENDS, SINGLE_SUBJECT_TRENDS, trendScene, firstFrameOn, freeFrameOn, FRAME_CACHE,
-  OMNI_FRAME_TRENDS, OMNI_MORPH_TRENDS, OMNI_REF_TRENDS, OMNI_REVEAL_TRENDS, AGE_SHIFT_TRENDS, MULTI_SHOT_TRENDS, omniPersonTrend, FRAME_FACE_DETAIL,
+  FRAME_POSE_FIRST, OMNI_FRAME_TRENDS, OMNI_MORPH_TRENDS, OMNI_REF_TRENDS, OMNI_REVEAL_TRENDS, AGE_SHIFT_TRENDS, MULTI_SHOT_TRENDS, omniPersonTrend, FRAME_FACE_DETAIL,
 };

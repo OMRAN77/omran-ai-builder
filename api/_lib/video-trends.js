@@ -1081,8 +1081,10 @@ function withPhotoLock(promptText, max, subject) {
   const cap = max || 1500;
   /* مراجعة ٢٧ أكتوبر: بطول قفل الهويّة أو أقصر (حدود VEO_FREE_IMAGE_MAX قيست عليه — كلام الممثّل و«بلا ترجمة» لا يُقصّان)، وبلا «وجه» ولا
      «IDENTITY» (صورة منتج لا يُخترع لها شخص — v-ai-video-speed) */
-  const pre = 'MAIN SUBJECT: whoever or whatever is in ' + (subject || 'the attached image') + ' — keep it exactly as shown (same look, colours, clothes and art style; a photo stays a photo, a drawing stays a drawing) in every shot; the description sets only action, place, camera. ';
-  const post = ' SUBJECT (mandatory): the same subject from the image throughout — never redrawn more realistic, more cartoonish or generic.';
+  /* v-video-identity-pose (المالك ٣ نوفمبر: «تغير ملامح الشخصية» — صورته ووجهه نازل للجوال و«يطالع الكاميرا» فاخترع المحرّك وجهًا أماميًّا):
+     أيّ التفات نحو الكاميرا صغير وبطيء من زاوية الصورة نفسها — ما لم تُظهره الصورة لا يُرسم من جديد دفعة واحدة. والطول كما كان ≤ قفل الهويّة. */
+  const pre = 'MAIN SUBJECT: whoever or whatever is in ' + (subject || 'the attached image') + ' — keep it exactly as shown (look, proportions, colours, clothes, art style) in every shot; the description sets action, place, camera — any turn to the camera is small and slow. ';
+  const post = ' SUBJECT (mandatory): the same throughout — a photo stays a photo, a drawing a drawing, never more realistic or generic.';
   const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
   return pre + body + post;
 }
