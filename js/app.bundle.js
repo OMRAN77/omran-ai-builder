@@ -30611,10 +30611,25 @@ window.postWithConfirm = postWithConfirm;
     worker = new Worker(URL.createObjectURL(blob));
   }catch(e){ return; }
 
+  /* v-freeze-bg (لقطة عمران ٤ نوفمبر: البانر فوق محادثة عن إكسل — النافذة كانت خلف إكسل): الصفحة المخفيّة يخنقها
+     المتصفّح، فكان أيّ انشغال وهي مخفيّة يُحسب «تجمّدًا» ويطلع البانر عند الرجوع وما رأى المستخدم شيئًا (مسبار:
+     مخفيّة + ٨ث انشغال ← البانر). الآن: لا يُحسب إلّا ما جرى والصفحة ظاهرة — نبضة أُرسلت قبل آخر ظهور تُهمل، وتوقّف
+     العامل نفسه (نوم الجهاز/تعليق العمليّة) ليس تجمّد الخيط الرئيسيّ. التجمّد الحقيقيّ والصفحة ظاهرة يُظهره كما كان. */
+  let lastVisibleAt = 0;
+  let lastBeat = 0;
+  const markVisible = () => { if(!document.hidden){ lastVisibleAt = Date.now(); strikes = 0; } };
+  document.addEventListener('visibilitychange', markVisible);
+  document.addEventListener('resume', markVisible);
+  window.addEventListener('pageshow', markVisible);
+
   worker.onmessage = (e) => {
     const delay = Date.now() - e.data;
+    const gap = lastBeat ? e.data - lastBeat : 0;
+    lastBeat = e.data;
     // خلال فترة الإقلاع لا نحسب أي تأخّر تجمّدًا
     if(Date.now() - bootAt < BOOT_GRACE_MS){ strikes = 0; return; }
+    // الصفحة مخفيّة، أو النبضة من قبل رجوعها، أو العامل نفسه توقّف (نوم) — ليس تجمّدًا رآه المستخدم
+    if(document.hidden || e.data < lastVisibleAt || gap > 4000){ strikes = 0; return; }
     if(delay > FREEZE_THRESHOLD_MS){
       strikes++;
       if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
