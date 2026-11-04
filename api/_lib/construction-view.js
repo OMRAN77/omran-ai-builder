@@ -4,6 +4,17 @@
 // color scheme) so the user only pays the API cost for views they actually
 // ask for. Shares the same daily quota counter as construction-create.js.
 const { checkConstructionQuota, consumeConstruction, CONSTRUCTION_DAILY_LIMIT } = require('./_constructionUsage');
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
+
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): نفاد رصيد Gemini كان يُسقط «شاهد المبنى من زوايا أخرى» و«شاهد الغرف
+   من الداخل» إلى بديل OpenAI النصّيّ (يتجاهل صورة المرجع) أو «الخدمة متوقّفة». الاحتياط النموذج نفسه عند fal بجسم الطلب نفسه (2K،
+   وصورة المرجع معه إن وُجدت) قبل بديل OpenAI، وناتجه يُسلَّم ويُستهلك كناتج Gemini. مهلته ما بقي من حدّ الدالّة (٣٠٠ ث)، مرّة واحدة. */
+const VIEW_MODEL = 'gemini-3-pro-image';
+const FAL_BUDGET_MS = 270000;
+function falOpts(t0) {
+  const left = FAL_BUDGET_MS - (Date.now() - t0);
+  return left >= 15000 ? { where: 'construction-view', timeoutMs: Math.min(150000, left) } : null;
+}
 
 const BUILDING_LABELS = {
   villa: 'a residential villa',
@@ -54,6 +65,7 @@ const ROOM_LABELS_EN = {
 };
 
 module.exports = async (req, res) => {
+  const t0 = Date.now(); /* v-fal-backup: بداية ميزانيّة الدالّة */
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -124,17 +136,37 @@ module.exports = async (req, res) => {
     }
     const imgReqBody = { contents: [{ parts: promptParts }], generationConfig: { imageConfig: { imageSize: '2K' } } };
 
+    /* v-fal-backup: الرصيد خلص قبل دقائق ← النموذج نفسه عند fal مباشرة بلا نداء فاشل قبله */
+    let falOut = null, falTried = false;
+    if (await falBackup.geminiOutRecently()) {
+      const fo = falOpts(t0);
+      if (fo) {
+        falTried = true;
+        const f0 = await falBackup.imageFromGemini(VIEW_MODEL, imgReqBody, fo);
+        if (f0 && f0.b64) falOut = f0;
+      }
+    }
+
     let upstream = null, data = null;
-    try {
-      upstream = await fetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imgReqBody), signal: AbortSignal.timeout(240000) /* v-image-timeout */ });
-      data = await upstream.json();
-    } catch (e) { upstream = null; data = null; }
+    if (!falOut) {
+      try {
+        upstream = await fetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imgReqBody), signal: AbortSignal.timeout(240000) /* v-image-timeout */ });
+        data = await upstream.json();
+      } catch (e) { upstream = null; data = null; }
+    }
 
     let outB64 = null, outMime = 'image/png';
+    if (falOut) { outB64 = falOut.b64; outMime = falOut.mime; }
     if (upstream && upstream.ok) {
       const parts = (((data && data.candidates || [])[0] || {}).content || {}).parts || [];
       const imgPart = parts.find((p) => p.inlineData && p.inlineData.data);
       if (imgPart) { outB64 = imgPart.inlineData.data; outMime = imgPart.inlineData.mimeType || 'image/png'; }
+    }
+    /* v-fal-backup: نفاد الرصيد ← fal بالنموذج نفسه قبل بديل OpenAI (والباقي كما كان) */
+    if (!outB64 && !falTried && upstream && !upstream.ok) {
+      const fo = falOpts(t0);
+      const fb = fo ? await falBackup.rescueImage(upstream.status, String((data && data.error && data.error.message) || ''), VIEW_MODEL, imgReqBody, fo) : null;
+      if (fb) { outB64 = fb.b64; outMime = fb.mime; }
     }
     // v-construction-rescue: رفض/سقوط Gemini يهبط تلقائيًا إلى gpt-image-1
     if (!outB64) {

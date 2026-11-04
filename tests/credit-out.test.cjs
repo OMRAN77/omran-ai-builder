@@ -16,6 +16,8 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 
 process.env.GEMINI_API_KEY = 'test-gemini'; process.env.OPENAI_API_KEY = 'test-openai';
 process.env.MINIMAX_API_KEY = 'test-mm'; process.env.FAL_KEY = 'test-fal'; process.env.ACTOR_LIPSYNC_MODEL = 'fal-ai/test/lipsync';
+/* v-fal-backup: هذا الاختبار عن «لا شيء يخدم» — احتياط الصور والفيديو مطفأ عمدًا (يُختبر في fal-fallback وfal-backup-*) */
+process.env.FAL_BACKUP = 'off';
 process.env.IMAGE_UPSCALE = 'off'; process.env.IMAGE_CARDS = 'off';
 delete process.env.IMAGE_FREE_FALLBACK; delete process.env.IMG_DIAG;
 

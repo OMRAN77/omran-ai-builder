@@ -12,10 +12,12 @@
 // لا يرمي أبدًا: العطب يرجع { error, status } فيردّ المتّصل الخصم ويفكّ القفل.
 'use strict';
 const mergeIdentity = require('./merge-identity.js');
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
 
 const MAX_PEOPLE = 3;
 // نفس نقطة الدمج وإعداداتها في studio-create (حرارة ٠٫١٥ = أمانة للوجوه، لا إعادة تخيّل).
-const IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=';
+const IMAGE_MODEL = 'gemini-3-pro-image';
+const IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + IMAGE_MODEL + ':generateContent?key=';
 const IMAGE_TIMEOUT = 240000;
 
 /** نسبة الترند إلى نسبة الصورة — الطوليّ 9:16 وما عداه 16:9، كي يطابق أوّل إطارٍ إطارَ الفيديو. */
@@ -42,17 +44,34 @@ function frameTask(n, scene, start, o) {
 async function callImage(apiKey, parts, aspect, fetchImpl, cfg) {
   const c = cfg || {};
   const f = fetchImpl || fetch;
+  const t0 = Date.now();
+  const left = () => Math.max(5000, (c.timeoutMs || IMAGE_TIMEOUT) - (Date.now() - t0));
+  const reqBody = { contents: [{ parts }], generationConfig: { temperature: c.temperature != null ? c.temperature : 0.15, imageConfig: { imageSize: c.imageSize || '2K', aspectRatio: aspect } } };
+  /* v-fal-backup: إطار الترند (فرديّ وجماعيّ) وبورتريه الممثّل — نفاد رصيد Gemini ← النموذج نفسه عند fal بالجسم نفسه (الدقّة والنسبة
+     والحرارة)، بالـfetch نفسه وبباقي المهلة لا أكثر. رصيده خلص قبل دقائق = fal مباشرة بلا نداء فاشل قبله. الناتج { b64, mime } كناتج Gemini. */
+  const fbOpts = () => ({ where: 'trend-people/' + (c.tag || 'group'), fetchImpl: f, timeoutMs: left() });
+  /* محاولة fal واحدة لكلّ نداء: الأولى إن انتهت مهلتها قد تُحاسَب وأكلت الميزانيّة، فالإنقاذ بعدها دفعٌ ثانٍ وتجاوزٌ لمهلة المتّصل */
+  let falTried = false;
+  if (await falBackup.geminiOutRecently()) {
+    falTried = true;
+    const fb = await falBackup.imageFromGemini(IMAGE_MODEL, reqBody, fbOpts());
+    if (fb.b64) return { b64: fb.b64, mime: fb.mime };
+  }
   const upstream = await f(IMAGE_URL + apiKey, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: c.temperature != null ? c.temperature : 0.15, imageConfig: { imageSize: c.imageSize || '2K', aspectRatio: aspect } } }),
-    signal: AbortSignal.timeout(c.timeoutMs || IMAGE_TIMEOUT),
+    body: JSON.stringify(reqBody),
+    signal: AbortSignal.timeout(left()),
   });
   const data = await upstream.json().catch(() => ({}));
   if (!upstream.ok) {
     // المفتاح لا يُطبع أبدًا في السجلّ ولا في ردّ المستخدم.
-    const detail = String((data && data.error && data.error.message) || 'unknown').replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
+    const tech = String((data && data.error && data.error.message) || 'unknown');
+    const detail = tech.replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
     console.error('[trend-people] ' + (c.tag || 'group') + ' frame failed status=' + upstream.status + ' detail=' + detail);
+    /* v-fal-backup: نفاد الرصيد (لا الزحام) ← fal قبل رمز الخطأ ما لم يُجرَّب أعلاه؛ رفضه = الخطأ القديم كما هو */
+    const fb = falTried ? null : await falBackup.rescueImage(upstream.status, tech, IMAGE_MODEL, reqBody, fbOpts());
+    if (fb) return { b64: fb.b64, mime: fb.mime };
     /* v-trend-codes: حالة المزوّد ونصّه المنظَّف (بلا المفتاح) للتصنيف عند المتّصل — veo-create يحوّلهما رمزًا (_videoFail.startFail) */
     return { error: 'تعذّر تجهيز الأشخاص معًا الآن. أعد المحاولة بعد لحظات.', status: 502, retryable: true, upstream: upstream.status, tech: detail };
   }

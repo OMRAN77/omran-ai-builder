@@ -149,10 +149,16 @@ async function reportError(err, context) {
  * Wraps a route handler so nothing escapes unrecorded. The client still gets
  * a clean JSON error; the details go to the log, not to the user.
  */
+/* v-fal-backup (أمر المالك ٤ نوفمبر «أضفها+ادمج»): الطلب الجاري متاح لمن يحتاجه بلا تمرير عبر الدوالّ — تجربة الاحتياط
+   تعرف أنّ صاحب الطلب هو المالك من نقطة واحدة بدل ١٢ نقطة نداء */
+const { AsyncLocalStorage } = require('node:async_hooks');
+const __reqStore = new AsyncLocalStorage();
+function currentReq() { const s = __reqStore.getStore(); return (s && s.req) || null; }
+
 function withErrorCapture(routeName, handler) {
   return async function wrapped(req, res) {
     try {
-      return await handler(req, res);
+      return await __reqStore.run({ req }, () => handler(req, res));
     } catch (err) {
       const action = (req && req.query && req.query.action) || null;
       await reportError(err, { route: routeName, action, method: req && req.method });
@@ -169,4 +175,4 @@ function withErrorCapture(routeName, handler) {
   };
 }
 
-module.exports = { reportError, withErrorCapture, deployId };
+module.exports = { reportError, withErrorCapture, deployId, currentReq };
