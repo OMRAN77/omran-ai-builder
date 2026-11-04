@@ -260,3 +260,38 @@ test('٨. محاولة fal واحدة لكلّ نداء: العلم قائم وf
     assert.equal(falBody.output_format, 'jpeg', 'JPEG لا PNG: سقف الردّ ٤٫٥ ميغا');
   } finally { global.fetch = realFetch; }
 });
+
+test('١٠. تجربة المالك وحده (FAL_BACKUP_TEST_UNTIL): طلباته إلى fal بلا إشعار «Gemini خلص»، والباقون على Gemini، وتنتهي وحدها', async () => {
+  reset();
+  const crypto = require('node:crypto');
+  const tok = (u, exp) => { const p = Buffer.from(JSON.stringify({ u, exp })).toString('base64url'); return p + '.' + crypto.createHmac('sha256', process.env.AUTH_SECRET).update(p).digest('base64url'); };
+  const { withErrorCapture } = require(rp('_errors.js'));
+  const probe = withErrorCapture('t', async (req, res) => { res.v = await fb.geminiOutRecently(); });
+  const ask = async (req) => { const res = { status() { return this; }, json() {} }; await probe(req, res); return res.v; };
+  const owner = tok('omran', Date.now() + 3600e3);
+  process.env.FAL_BACKUP_TEST_UNTIL = new Date(Date.now() + 3600e3).toISOString();
+  try {
+    assert.equal(await ask({ body: { token: owner } }), true, 'المالك ← fal');
+    assert.equal(await ask({ body: JSON.stringify({ token: owner }) }), true, 'جسم نصّيّ');
+    assert.equal(await ask({ headers: { authorization: 'Bearer ' + owner } }), true, 'Bearer');
+    assert.equal(await ask({ body: { token: tok('sara', Date.now() + 3600e3) } }), false, 'غيره على Gemini');
+    assert.equal(await ask({ body: {} }), false, 'بلا جلسة');
+    assert.equal(await ask({ body: { token: owner.slice(0, -2) + 'xx' } }), false, 'توقيع مزوّر');
+    assert.equal(await fb.geminiOutRecently(), false, 'خارج طلب');
+    // طلب صورة حقيقيّ من المالك: fal مباشرة، بلا نداء Gemini، وبلا إشعار «Gemini خلص»
+    const studioCreate = require(rp('studio-create.js'));
+    const realFetch = global.fetch;
+    try {
+      global.fetch = fakeFetch(200, '');
+      const run = withErrorCapture('t2', async (req, res) => { res.v = await studioCreate.__geminiImage('gm-test', [{ text: 'Change only the hair to black.' }], 'hair'); });
+      const res = { status() { return this; }, json() {} };
+      await run({ body: { token: owner } }, res);
+      assert.equal(res.v.b64, PNG_B64, 'الصورة من fal');
+      assert.ok(!calls.some((c) => /generativelanguage/.test(c.u)), 'بلا نداء Gemini');
+      assert.ok(!store.has('db/alerts/media-gemini-out'), 'لا إشعار «Gemini خلص» في التجربة');
+      assert.ok(!store.has(fb.OUT_KEY), 'ولا علم يحوّل الباقين');
+    } finally { global.fetch = realFetch; }
+    process.env.FAL_BACKUP_TEST_UNTIL = new Date(Date.now() - 1000).toISOString();
+    assert.equal(await ask({ body: { token: owner } }), false, 'انتهى الوقت ← Gemini');
+  } finally { delete process.env.FAL_BACKUP_TEST_UNTIL; }
+});

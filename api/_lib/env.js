@@ -59,6 +59,7 @@ const SPEC = {
   // v-fal-backup: نفاد رصيد Gemini ← النموذج نفسه عند fal بمفتاح FAL_KEY نفسه، وإشعار المالك مرّة كلّ ٦ ساعات
   FAL_BACKUP:             ['tunable', 'off يطفئ احتياط الصور والفيديو — بلا ضبط شغّال ما دام FAL_KEY موجودًا'],
   FAL_BACKUP_CAP_CENTS:   ['tunable', 'بديل: ٢٠٠٠ — سقف صرف الاحتياط اليوميّ عند المزوّد بالسنت (يوم UTC)؛ ٠ يغلقه'],
+  FAL_BACKUP_TEST_UNTIL:  ['tunable', 'وقت ISO (مثل 2026-11-05T18:00Z) — حتّى ينتهي تمرّ صور المالك وفيديوه وحده على الاحتياط للتجربة؛ ينتهي وحده'],
   ACTOR_LIPSYNC_MODEL:    ['tunable', 'بديل: fal-ai/bytedance/omnihuman/v1.5 — محرّك تحريك الشفاه'],
   ACTOR_MAX_SEC:          ['tunable', 'بديل: ١٥ — أطول كلام للممثّل بالثواني (المحرّك يُحاسَب بالثانية)'],
   // v-video-enhance-pro: «تحسين احترافي» للفيديو — يعمل بمفتاح FAL_KEY نفسه؛ الخمسة لها بديل آمن في video-enhance.js

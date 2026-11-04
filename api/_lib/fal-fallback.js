@@ -51,8 +51,27 @@ async function markGeminiOut(o) {
   if (!enabled()) return; /* بلا احتياط: لا علم، والمسار القديم حرفيًّا */
   try { await kvOf(o).kvSetRaw(OUT_KEY, String(Date.now()), OUT_TTL_S); } catch (e) { /* guard-ok — العلم اختصار لا شرط */ }
 }
+/* تجربة المالك وحده (أمره ٤ نوفمبر «أضفها+ادمج»): FAL_BACKUP_TEST_UNTIL وقت ISO — حتّى ينتهي تتخطّى طلبات المالك Gemini
+   إلى fal بلا إشعار «Gemini خلص»، والباقون كما هم. ينتهي وحده بلا نشر جديد. المالك = جلسة موقَّعة من الجسم أو ?token أو Bearer. */
+function ownerTestOn() {
+  const t = Date.parse(String(process.env.FAL_BACKUP_TEST_UNTIL || '').trim());
+  return Number.isFinite(t) && Date.now() < t;
+}
+function ownerTesting() {
+  if (!ownerTestOn()) return false;
+  try {
+    const req = require('./_errors.js').currentReq();
+    if (!req) return false;
+    let body = req.body;
+    if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
+    const s = require('./_session.js');
+    const u = s.sessionUser(s.tokenOf({ body, query: req.query, headers: req.headers }));
+    return !!u && require('./_owner.js').isOwnerName(u);
+  } catch (e) { return false; }
+}
 async function geminiOutRecently(o) {
   if (!enabled()) return false;
+  if (ownerTesting()) return true;
   try { return !!(await kvOf(o).kvGetRaw(OUT_KEY)); } catch (e) { return false; }
 }
 
@@ -180,7 +199,8 @@ async function imageFromGemini(geminiModel, body, opts) {
   if (!held) { await notify('cap', o); await logFail(where, 'daily cap reached or cap store down'); return { error: 'fal_cap' }; }
   const f = o.fetchImpl || fetch;
   const signal = AbortSignal.timeout(Math.max(5000, Number(o.timeoutMs) || 150000));
-  const alerted = notify('gemini-out', o);
+  const testing = ownerTesting(); /* تجربة المالك: لا إشعار «Gemini خلص» — Gemini سليم */
+  const alerted = testing ? Promise.resolve() : notify('gemini-out', o);
   try {
     const r = await f(SYNC + model, {
       method: 'POST',
@@ -207,6 +227,7 @@ async function imageFromGemini(geminiModel, body, opts) {
       await logFail(where, 'fal empty ' + falWhy(r.status, raw));
       return { error: 'fal_empty' };
     }
+    if (testing) console.log('[fal-backup] owner-test ' + where + ' image ok via ' + model);
     return { b64: out.b64, mime: out.mime, engine: 'fal' };
   } catch (e) {
     /* المهلة أو الانقطاع بعد الإرسال: قد يُحاسَب عند fal — الحجز يبقى محسوبًا */
@@ -256,7 +277,8 @@ async function startVideo(spec, opts) {
   const held = await reserve(videoCents(seconds), o);
   if (!held) { await notify('cap', o); await logFail(where, 'daily cap reached or cap store down'); return { error: 'fal_cap' }; }
   const f = o.fetchImpl || fetch;
-  const alerted = notify('gemini-out', o);
+  const testing = ownerTesting(); /* تجربة المالك: لا إشعار «Gemini خلص» — Gemini سليم */
+  const alerted = testing ? Promise.resolve() : notify('gemini-out', o);
   try {
     const r = await f(QUEUE + model, {
       method: 'POST',
@@ -282,6 +304,7 @@ async function startVideo(spec, opts) {
     const base = QUEUE + model.split('/').slice(0, 2).join('/') + '/requests/' + id;
     const rec = { p: 'fal', m: model, id, s: qOk(d.status_url) ? d.status_url : base + '/status', r: qOk(d.response_url) ? d.response_url : base, at: Date.now() };
     await alerted;
+    if (testing) console.log('[fal-backup] owner-test ' + where + ' video started via ' + model);
     return { op: VIDEO_OP_PREFIX + id, rec };
   } catch (e) {
     await logFail(where, 'fal submit ' + (e && e.name) + ' ' + (e && e.message));
@@ -323,7 +346,7 @@ async function pollVideo(rec, opts) {
 }
 
 module.exports = {
-  enabled, capCents, geminiCreditOut, falCreditOut, markGeminiOut, geminiOutRecently,
+  enabled, capCents, ownerTesting, geminiCreditOut, falCreditOut, markGeminiOut, geminiOutRecently,
   imageModelFor, inputFromGemini, imageFromGemini, rescueImage, imageCents,
   videoInput, startVideo, pollVideo, videoCents, VIDEO_MODELS, VIDEO_OP_PREFIX,
   OUT_KEY, spentKey,
