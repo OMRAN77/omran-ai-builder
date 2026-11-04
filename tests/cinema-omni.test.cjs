@@ -115,27 +115,27 @@ test('٢. المدّة: ٣–١٠ كما اختارها، وغيرها (أو ب�
   assert.equal(omniCall().body.response_format.resolution, '1080p');
 });
 
-test('٣. الشخصيّة الكرتونيّة الجاهزة (keepPhoto): بلا إطار، وصورتها «الإطار الأوّل» كما عند Veo، والمدّة ٦', async () => {
+test('٣. الشخصيّة الكرتونيّة الجاهزة (keepPhoto): بلا إطار، وصورتها «الإطار الأوّل» ومرجعًا (v-video-identity-pose)، والمدّة ٦', async () => {
   const r = await cine({ promptText: 'A cute chibi 3D cartoon character talking.', ratio: '720:1280', durationSeconds: 6, imageBase64: 'CARTOON', imageMime: 'image/png', keepPhoto: true });
   assert.equal(r.code, 200);
   assert.equal(soloCalls.length, 0);
   const o = omniCall();
-  assert.deepEqual(images(o), ['CARTOON']);
+  assert.deepEqual(images(o), ['CARTOON', 'CARTOON'], 'أوّل إطار + الصورة نفسها مرجعًا للشكل حين يلتفت');
   /* v-photo-as-is: الكرتون يبقى كرتونًا — قفل محايد لا «الشخص الحقيقيّ» */
-  assert.ok(text(o).startsWith('[# Sources <FIRST_FRAME>@Image1] MAIN SUBJECT: whoever or whatever is in the attached image'), text(o).slice(0, 120));
+  assert.ok(text(o).startsWith('[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2] MAIN SUBJECT: whoever or whatever is in the attached image'), text(o).slice(0, 160));
   assert.doesNotMatch(text(o), /real person/);
-  assert.ok(text(o).endsWith(NO_CUTS + ' Use Image1 as the starting frame.'));
+  assert.ok(text(o).endsWith(NO_CUTS + veo.PHOTO_REF_GUIDE));
   assert.equal(o.body.response_format.duration, '6s');
 });
 
-test('٤. تعذّر الإطار: صورته نفسها «الإطار الأوّل» (كـVeo instance.image) بقفله القديم — لا فشل بسبب الإطار', async () => {
+test('٤. تعذّر الإطار: صورته نفسها «الإطار الأوّل» ومرجعًا بقفله القديم — لا فشل بسبب الإطار', async () => {
   process.env.VIDEO_FREE_FRAME = 'on'; /* v-photo-as-is: مسار الإطار المرسوم خلف مفتاحه */
   try {
   const real = TP.soloFirstFrame; TP.soloFirstFrame = async () => ({ error: 'timeout' });
   try { await cine({ promptText: DESC, imageBase64: 'USERPHOTO', imageMime: 'image/jpeg' }); } finally { TP.soloFirstFrame = real; }
   const o = omniCall();
-  assert.deepEqual(images(o), ['USERPHOTO']);
-  assert.equal(text(o), '[# Sources <FIRST_FRAME>@Image1] ' + VT.withIdentityLock(DESC, veo.VEO_FREE_IMAGE_MAX) + NO_CUTS + ' Use Image1 as the starting frame.');
+  assert.deepEqual(images(o), ['USERPHOTO', 'USERPHOTO']);
+  assert.equal(text(o), '[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2] ' + VT.withIdentityLock(DESC, veo.VEO_FREE_IMAGE_MAX) + NO_CUTS + veo.PHOTO_REF_GUIDE);
   } finally { delete process.env.VIDEO_FREE_FRAME; }
 });
 
@@ -190,4 +190,16 @@ test('٨. CINEMA_ENGINE=veo يعيد المسار القديم بلا نشر', a
   process.env.CINEMA_ENGINE = 'veo';
   try { const r = await cine({ promptText: 'صقر' }); assert.equal(r.body.op, 'operations/veo-1'); assert.ok(veoCalled() && !omniCall()); }
   finally { delete process.env.CINEMA_ENGINE; }
+});
+
+test('٩. «أنمي» المختار وتعذّر إطاره: الصورة أوّل إطار كما كانت، بلا مرجع ثانٍ ولا «لا تجعلها كرتونيّة» (يناقض الأنمي)', async () => {
+  process.env.VIDEO_FREE_FRAME = 'on';
+  const real = TP.soloFirstFrame; TP.soloFirstFrame = async () => ({ error: 'timeout' });
+  try {
+    await cine({ promptText: DESC, imageBase64: 'USERPHOTO', imageMime: 'image/jpeg', style: 'anime' });
+    const o = omniCall();
+    assert.deepEqual(images(o), ['USERPHOTO']);
+    assert.ok(!text(o).includes(veo.PHOTO_REF_GUIDE) && !/more cartoonish/.test(text(o)), text(o).slice(-200));
+    assert.ok(text(o).startsWith('[# Sources <FIRST_FRAME>@Image1] ') && text(o).endsWith(NO_CUTS + ' Use Image1 as the starting frame.'), text(o).slice(-160));
+  } finally { TP.soloFirstFrame = real; delete process.env.VIDEO_FREE_FRAME; }
 });
