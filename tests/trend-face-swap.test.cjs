@@ -385,7 +385,8 @@ test('١٢. veo-create: مطفأ = خيارات الإطار حرفيًّا كم
     for (const t of ['heritagesing', 'zombielove', 'saveyourself', 'catwalk']) {
       solo = []; const r = await one(t); assert.equal(r.code, 200, JSON.stringify(r.body));
       assert.ok(!('swap' in solo[0]), t + ': مطفأ = بلا swap');
-      assert.deepEqual(Object.keys(solo[0]), ['style', 'artHint', 'budgetMs', 'start', 'ageShift', 'detail', 'hiRes'], t + ': المفاتيح كما كانت');
+      assert.deepEqual(Object.keys(solo[0]), ['style', 'artHint', 'budgetMs', 'start', 'ageShift', 'single', 'detail', 'hiRes'], t + ': المفاتيح كما كانت (+single: v-video-identity-mirror)');
+      assert.equal(solo[0].single, TP.SINGLE_SUBJECT_TRENDS.has(t), t + ': single لترند الشخص الواحد وحده');
     }
     group = []; await pair('heritagesing'); assert.deepEqual(group[0], { timeoutMs: 120000 }, 'المجموعة مطفأً كما كانت');
     on({ TREND_FACE_SWAP: 'owner' });

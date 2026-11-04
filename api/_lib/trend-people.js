@@ -297,12 +297,19 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
     const anime = opt.style === 'anime';
     const art = anime || !!opt.artHint || ART_STYLE_RE.test(text);
     const swap = !!opt.swap && !art && !opt.ageShift; // v-trend-face-swap: لا للأسلوب الفنّيّ (لعبة، أنمي) ولا للعمر الآخر
-    const key = frameKey(shaped, text, aspectOf(ratio), (anime ? 'anime' : '') + (opt.start ? '|start' : '') + (opt.ageShift ? '|age' : '') + (opt.detail ? '|detail' : '') + (opt.hiRes ? '|2k' : '') + (swap ? '|swap' : ''), art);
+    const key = frameKey(shaped, text, aspectOf(ratio), (anime ? 'anime' : '') + (opt.start ? '|start' : '') + (opt.ageShift ? '|age' : '') + (opt.detail ? '|detail' : '') + (opt.hiRes ? '|2k' : '') + (swap ? '|swap' : '') + (opt.single ? '|single' : ''), art);
     const hit = FRAME_CACHE.get(key);
     if (hit && Date.now() - hit.t < FRAME_CACHE_TTL) return Object.assign({ b64: hit.b64, mime: hit.mime, ref: hit.ref, people: hit.people, cached: true }, swap ? { swapped: hit.swapped, swapWhy: hit.swapWhy } : {});
     let crops = [];
     const stats = {}; // v-ai-video-speed: stats.faces = عدد الوجوه حين نجح الكشف (لا قيمة عند العطب)
     try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, [shaped], { timeoutMs: Math.min(15000, budget), fetchImpl: opt.fetchImpl, stats }); } catch (e) { console.warn('[trend-people] solo face crop skipped: ' + (e && e.message)); crops = []; }
+    /* v-video-identity-mirror (المالك ٤ نوفمبر «شوف الملامح كيف»: صورتها بفستان أمام مرآة ← امرأة أخرى في «دخلة سلو موشن»): ترند الشخص
+       الواحد (opt.single) — وجهان بارزان فيه انعكاس مرآة أو وجه خلفيّ، لا شخصان: كان يصير «شخصين» فتسقط لقطة وجهها ويأخذ المحرّك الصورة كلّها
+       مرجعًا (وجهها ١٫٤٪ منها). الأكبر لقطةً وحده. */
+    if (opt.single && crops.length === 2) {
+      const big = (Number(crops[1].size) || 0) > (Number(crops[0].size) || 0) ? crops[1] : crops[0];
+      crops = [Object.assign({}, big, { who: 'the person' })];
+    }
     /* وجه واحد بارز: لقطته (v-pstyle-closeup). v-two-people: وجهان بارزان ولكلٍّ لقطته = كلّ لقطة بعنوان موضعها
        («the person on the left/right» كخطّ الدمج v-merge-faces) — كان الوجهان بلا لقطة فيُرسم الثاني من جديد.
        لقطة لأحد الوجهين وحده تبقى ممنوعة: تسحب ملامحه إلى الآخر. */
