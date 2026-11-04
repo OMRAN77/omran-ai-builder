@@ -852,10 +852,10 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Static wide vertical shot from a phone on a tripod in an ordinary open-air parking lot by day; the camera never moves. The person from the reference image, in casual streetwear, makes an exaggerated cinematic slow-motion entrance: starting at the left edge of the frame, they stride across the lot toward the lens, every step slow, heavy and deliberate, with a dramatically serious, intense face, each step landing on a big hit of the music, until they reach the foreground. True slow-motion movement throughout, an ordinary place played like a blockbuster opening. Dark, dramatic cinematic hip-hop instrumental with heavy drums, photorealistic.",
+   "prompt": "Static wide vertical shot from a phone on a tripod in an ordinary open-air parking lot by day; the camera never moves. The person from the reference image, in casual streetwear, makes an exaggerated cinematic slow-motion entrance: starting at the left edge of the frame, they stride across the lot toward the lens, every step slow, heavy and deliberate, their face and natural expression exactly as in the photo, each step landing on a big hit of the music, until they stand in the middle of the frame, seen from the knees up. True slow-motion movement throughout, an ordinary place played like a blockbuster opening. Dark, dramatic cinematic hip-hop instrumental with heavy drums, photorealistic.",
    "scenes": null,
    "preview": {
-     "frame": "photorealistic vertical still from a fixed camera in an ordinary open-air parking lot by day: a young man in casual streetwear striding in from the left in slow motion, mid-step, with a dramatically serious, intense face",
+     "frame": "photorealistic vertical still from a fixed camera in an ordinary open-air parking lot by day: a young man in casual streetwear striding in from the left in slow motion, mid-step, with a calm, natural face",
      "gender": "m"
    }
  }
