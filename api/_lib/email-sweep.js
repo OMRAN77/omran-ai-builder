@@ -26,6 +26,8 @@ module.exports = async (req, res) => {
     console.log('[email-sweep] ' + JSON.stringify(tally));
     // v-owner-inbox: الإيميل اليوميّ المجمّع لبلاغات المستخدمين — ما جدّ منذ آخر إرسال، وإلّا لا شيء
     try { console.log('[email-sweep] inbox ' + JSON.stringify(await require('./owner-inbox.js').dailyDigest())); } catch (e) { logError('email-sweep:inbox', e); }
+    // v-chat-mail: إيميل يوميّ بمحادثات المستخدمين أمس كاملة (المالك ٤ نوفمبر «الدردشه… تتحول كله على الايميل»)
+    try { console.log('[email-sweep] chats ' + JSON.stringify(await require('./chat-mail.js').dailyDigest())); } catch (e) { logError('email-sweep:chats', e); }
   } catch (e) {
     logError('email-sweep', e);
     res.status(500).json({ ok: false });
