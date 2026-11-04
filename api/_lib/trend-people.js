@@ -189,7 +189,9 @@ function soloFrameTask(scene, o) {
       + (opt.closeup ? ' and the close-up of their face' : '') + '. Never a different, younger, slimmer, prettier or more generic person; someone who knows them must recognize them instantly.\n';
   return 'TASK: create the OPENING FRAME of a video — one single still image — for this video description: "'
     + String(scene || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 900) + '".\n'
-    + 'Show the real person from Photo 1 (if Photo 1 shows several people, all of them) inside the scene the description asks for, as it looks at the very start of the video'
+    + (opt.single /* v-video-identity-mirror: ترند الشخص الواحد — انعكاس المرآة أو صورة على الحائط ليسا شخصًا ثانيًا */
+      ? 'Show only the one real person whose close-up face is attached (a mirror reflection, poster, screen or any other face in Photo 1 is not a second person — never add it) inside the scene the description asks for, as it looks at the very start of the video'
+      : 'Show the real person from Photo 1 (if Photo 1 shows several people, all of them) inside the scene the description asks for, as it looks at the very start of the video')
     + look + 'Never remove a hijab or headscarf that Photo 1 shows. ' + FRAME_POSE_FIRST + '\n'
     + identity
     + frameLookLock(opt.people > 1, { src: 'Photo 1', art: !!(opt.art || opt.styleText) }) + '\n'
@@ -309,7 +311,7 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
     if (opt.single && crops.length === 2) {
       const big = (Number(crops[1].size) || 0) > (Number(crops[0].size) || 0) ? crops[1] : crops[0];
       crops = [Object.assign({}, big, { who: 'the person' })];
-    }
+    } else if (opt.single && crops.length === 1) crops = [Object.assign({}, crops[0], { who: 'the person' })]; // الانعكاس كُشف وجهًا لكنّ قصّه سقط (صغير): لقطتها وحدها
     /* وجه واحد بارز: لقطته (v-pstyle-closeup). v-two-people: وجهان بارزان ولكلٍّ لقطته = كلّ لقطة بعنوان موضعها
        («the person on the left/right» كخطّ الدمج v-merge-faces) — كان الوجهان بلا لقطة فيُرسم الثاني من جديد.
        لقطة لأحد الوجهين وحده تبقى ممنوعة: تسحب ملامحه إلى الآخر. */
@@ -324,7 +326,7 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
     const parts = [{ text: 'Photo 1 — the user\'s own photo of the real ' + (two ? 'people' : 'person') + ' to feature:' }, { inlineData: { mimeType: shaped.mime, data: shaped.data } }];
     if (crop) parts.push({ text: SOLO_CLOSEUP_LABEL }, { inlineData: { mimeType: crop.mime, data: crop.data } });
     if (two) crops.forEach((c, k) => parts.push({ text: 'Close-up ' + (k + 1) + ' — the face of ' + c.who + ' in Photo 1, cropped and zoomed in from that same photo (identity reference for that one person only: NOT an extra person, never drawn as an extra face, an inset or a frame):' }, { inlineData: { mimeType: c.mime, data: c.data } }));
-    parts.push({ text: soloFrameTask(text, { closeup: !!crop || two, art, people, styleText: anime ? ANIME_FRAME_STYLE : '', start: !!opt.start, ageShift: !!opt.ageShift, detail: !!opt.detail }) });
+    parts.push({ text: soloFrameTask(text, { closeup: !!crop || two, art, people, styleText: anime ? ANIME_FRAME_STYLE : '', start: !!opt.start, ageShift: !!opt.ageShift, detail: !!opt.detail, single: !!opt.single && !!crop }) });
     const left = budget - (Date.now() - started);
     if (left < 20000) return { error: 'budget' };
     /* 1K: الفيديو 720p/1080p، والسعر نفسه لـ1K و2K — وحمولة أصغر للمحرّك. الأسلوب الفنّيّ بحرارة الأسلوب (mergeTemperature).

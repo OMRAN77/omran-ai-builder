@@ -56,10 +56,20 @@ test('٢. ترند الشخص الواحد: وجهها وانعكاسها = لق
   assert.ok(one.text.includes(TP.SOLO_CLOSEUP_LABEL), 'لقطة الوجه الواحد');
   assert.doesNotMatch(one.text, /Close-up 1|2 different real people|the person on the right/);
   assert.deepEqual(one.imgs, [P.data, her.data], 'الصورة ولقطة وجهها فقط');
+  /* مراجعة: مهمّة الإطار بشخص واحد صراحةً — لا «if Photo 1 shows several people, all of them» (لقطة لأحد وجهين تسحب ملامحه للآخر) */
+  assert.match(one.text, /Show only the one real person whose close-up face is attached \(a mirror reflection, poster, screen or any other face in Photo 1 is not a second person — never add it\)/);
+  assert.doesNotMatch(one.text, /all of them/);
+  /* الانعكاس كُشف لكنّ قصّه سقط (صغير): لقطة واحدة بعنوان «يسار» — وجهها لقطةً ومرجعًا في ترند الشخص الواحد (كانت تسقط) */
+  let p1 = null;
+  const lone = await TP.soloFirstFrame('K', { data: P.data + '  ', mime: 'image/jpeg' }, 'a person walks across a parking lot', '720:1280',
+    { single: true, detail: true, budgetMs: 90000, faceCrops: async () => [her], callImage: async (k, p) => { p1 = p; return { b64: 'FRAME', mime: 'image/png' }; } });
+  assert.deepEqual(lone.ref, { data: her.data, mime: her.mime });
+  assert.ok(p1.some((x) => x.text === TP.SOLO_CLOSEUP_LABEL));
   const two = await run(false);
   assert.equal(two.r.people, 2, 'ترند بلا single كما كان');
   assert.equal(two.r.ref, null);
   assert.match(two.text, /Close-up 1/);
+  assert.match(two.text, /if Photo 1 shows several people, all of them/, 'المهمّة العاديّة كما كانت');
 });
 
 test('٣. veo-create يمرّر single لترندات الشخص الواحد (SINGLE_SUBJECT_TRENDS)، ودخلة سلو موشن منها', () => {
@@ -74,6 +84,14 @@ test('٤. قالب «دخلة سلو موشن»: ملامحها وتعبيرها
   assert.match(p, /until they stand in the middle of the frame, seen from the knees up/);
   assert.match(p, /slow-motion entrance/);
   assert.doesNotMatch(TP.trendScene(p), /intense|serious|foreground/i);
+  assert.doesNotMatch(VT.TRENDS.slowmoentry.preview.frame, /serious|intense/i);
+  /* البطاقة بالـ١٤ لغة لا تَعِد بملامح جادّة لم يعد القالب يطلبها */
+  const data = fs.readFileSync(path.join(root, 'js/app-11-video-trends-data.js'), 'utf8');
+  const card = data.slice(data.indexOf('"key":"slowmoentry"'), data.indexOf('"maxPeople"', data.indexOf('"key":"slowmoentry"')));
+  const sub = JSON.parse(card.slice(card.indexOf('"sub":') + 6, card.indexOf(',"scenes"')));
+  assert.equal(Object.keys(sub).length, 14);
+  assert.doesNotMatch(Object.values(sub).join(' | '), /جادّة|serious|sérieuse|seria|ciddi|Серьёзный|गंभीर|गम्भीर|سنجیدہ|গম্ভীর|Seryoso|serius|一本正经|ഗൗരവ/i);
+  assert.equal(sub.ar, 'تدخل الكادر بتصوير بطيء كأنها افتتاحيّة فيلم');
 });
 
 console.log('✓ video-identity-mirror: انعكاس المرآة ليس شخصًا ثانيًا، والقالب لا يطلب وجهًا جديدًا، وعطب الكشف يُسجَّل');
