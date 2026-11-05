@@ -188,3 +188,24 @@ test('٦ — الربط والواجهة: المحادثة والوكيل يمر
   assert.ok(tag && cur >= Number(tag[1]), 'الوسم مرفوع وسببه في التعليق');
   assert.ok(read('js/app.bundle.js').includes('inboxOwnerBtn'), 'الحزمة مبنيّة');
 });
+
+/* v-inbox-own-words (لقطة المالك ٥ نوفمبر): مواصفات GameTracker ملصوقة من luki (مرفق «📄 Pasted code · 4 KB») صارت «متضايق من التطبيق»
+   لأنّ المواصفات فيها crash/errors/slow مع «the app». المرفق مادّة لا كلام المستخدم — المصنّف يقرأ ما كتبه هو قبل أوّل مرفق. */
+test('٧ — المرفق الملصوق ليس كلام المستخدم: مواصفات فيها crash/errors لا بلاغ، وما يكتبه هو يُقرأ كما كان', async () => {
+  const spec = 'Build a complete app called GameTracker\nCreate a modern, professional gaming statistics app called GameTracker. The app should allow users to track how much time they spend playing each game.\n\nRequirements:\n- Show clear errors if a save fails\n- No slow screens; the app must never crash\n- Your app is useless without charts, so add charts';
+  const att = (name, body) => '📄 ' + name + ':\n```\n' + body + '\n```';
+  assert.equal(IB.classify(att('Pasted code · 4 KB', spec)), null, 'مرفق وحده');
+  assert.equal(IB.classify('ابني لي هذا\n\n' + att('Pasted text · 2 KB', spec)), null, 'طلب + مرفق');
+  assert.equal(IB.classify('التطبيق خايس ما يرد\n\n' + att('app.js', 'throw new Error("failed")')), 'complaint', 'كلامه قبل المرفق يُقرأ');
+  assert.equal(IB.classify('No slow screens; the app must never crash'), 'complaint', 'الكلمات نفسها مكتوبةً = كما كانت');
+  assert.equal(IB.classify('يا غبي\n\n' + att('a.txt', 'x')), 'insult');
+  assert.equal(IB.ownWords('سؤال\n\n' + att('a.txt', 'x') + '\n\n' + att('b.txt', 'y')), 'سؤال');
+  db.clear(); pushes.length = 0;
+  await turn('vipuser', 'gemini', att('Pasted code · 4 KB', spec), [() => textTurn('تفضّل…')]);
+  assert.equal(items().length, 0, 'المحادثة الحقيقيّة: لا بلاغ');
+  assert.equal(pushes.length, 0);
+  const mails = [];
+  await IB.record({ user: 'luki', prov: 'openai', kind: 'complaint', text: 'how do I cancel?' }, { kv: kvStub, now: Date.now(), push: async () => ({}) });
+  await IB.dailyDigest({ kv: kvStub, env: { OWNER_NOTIFY_EMAIL: 'o@x.com', RESEND_API_KEY: 'k' }, sendMail: async (to, subject, html) => { mails.push(html); return true; } });
+  assert.ok(mails[0] && mails[0].includes('<div dir="auto">how do I cancel?</div>'), 'النصّ الإنجليزيّ في سطره بلا قلب ترتيبه');
+});

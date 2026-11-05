@@ -11,7 +11,7 @@ const crypto = require('crypto');
 
 const DAY_PREFIX = 'db/chat-mail/day/';
 const DROP_PREFIX = 'db/chat-mail/drop/';
-const USER_MAX = 1500;      // كلام المستخدم: ما يكفي لفهم طلبه
+const USER_MAX = 6000;      // كلام المستخدم مع ما ألصقه: مواصفات ٤ ك.ب (luki، ٤ نوفمبر) تصل كاملة — v-inbox-own-words
 const REPLY_MAX = 1200;     // ردّ التطبيق: ما يكفي للحكم على جودته
 const ERR_MAX = 240;
 const DAY_MAX = 1000;       // سقف أدوار اليوم (سعة Redis محدودة — v-redis-capacity)؛ الزائد يُعدّ ولا يُحفظ
