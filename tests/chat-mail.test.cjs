@@ -161,3 +161,14 @@ test('٥ — الربط: chat.js يجمع الردّ ويحفظ عند res.end،
   const pv = read('privacy.html');
   assert.ok(pv.includes('نراجع نصوص المحادثات') && pv.includes('we review chat transcripts'), 'الإفصاح للمستخدم');
 });
+
+test('٦ — مواصفات ملصوقة ٤ ك.ب (luki، ٤ نوفمبر) تُحفظ كاملة لا مقطع ٢٠٠ حرف (v-inbox-own-words)', async () => {
+  db.clear();
+  const env = { OWNER_NOTIFY_EMAIL: 'o@x.com', RESEND_API_KEY: 'k' };
+  const now = Date.UTC(2026, 10, 4, 18, 56);
+  const spec = 'Build a complete app called GameTracker. ' + 'Feature line for the tracker screen. '.repeat(110) + 'END-OF-SPEC';
+  assert.ok(spec.length > 4000);
+  await CM.noteTurn({ user: 'luki', prov: 'openai', text: '📄 Pasted code · 4 KB:\n```\n' + spec + '\n```' }, { env, kv: kvStub, now });
+  assert.ok(dayItems(now)[0].q.includes('END-OF-SPEC'), 'آخر المواصفات وصل');
+  assert.ok(CM.USER_MAX >= 6000);
+});
