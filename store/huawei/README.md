@@ -54,7 +54,7 @@
 ## ما في المستودع
 | الملفّ | دوره |
 |---|---|
-| `twa/` | **مشروع أندرويد كامل (Trusted Web Activity)** مولَّد بالقالب الرسميّ (`scripts/twa-generate.mjs` على `@bubblewrap/core`): الحزمة `com.omran.aibuilder.twa`، ينطلق من `/?store=huawei`، الإصدار يُضبط عند البناء (المرفوعة 1.3.13)، الاسم على الشاشة «عمران AI» واسم التطبيق Omran AI Builder — كما في 1.3.13 (المالك ٢٢ أكتوبر: «رقم الإصدار 1.3.13، ما يريد إصدار جديد»؛ «om ai» على الهاتف ينتظر إصدارًا قادمًا)، الأيقونات من `icons/`، وبلا متصفّح يدعم TWA يفتح **WebView ملء الشاشة** لا تبويب متصفّح. |
+| `twa/` | **مشروع أندرويد كامل (Trusted Web Activity)** مولَّد بالقالب الرسميّ (`scripts/twa-generate.mjs` على `@bubblewrap/core`): الحزمة `com.omran.aibuilder.twa`، ينطلق من `/?store=huawei`، الإصدار يُضبط عند البناء (المنشورة 1.3.15، والتالية 1.3.16)، الاسم على الشاشة وفي الإعدادات «om ai» من 1.3.16 (v-hw-om-ai؛ حتّى 1.3.15 «عمران AI» وOmran AI Builder)، الأيقونات من `icons/`، وبلا متصفّح يدعم TWA يفتح **WebView ملء الشاشة** لا تبويب متصفّح. |
 | `.github/workflows/android-release.yml` | يبني الـAPK على مشغّل GitHub (Android SDK جاهز هناك)، يوقّعه بمفتاحك من أسرار المستودع، ينشر **Release** `v1.3.12` بالـAPK، يطبع بصمة التوقيع، ويفتح طلب سحب يضعها في `assetlinks.json`. |
 | `../../manifest-huawei.json` | بيان الحزمة: `start_url`/`id` = `/?store=huawei`، `scope` = `/`. البيان العامّ `manifest.json` لم يتغيّر. |
 | `../../.well-known/assetlinks.json` | Digital Asset Links للحزمة. البصمة تُملأ تلقائيًّا من الورك فلو (أو يدويًّا). |

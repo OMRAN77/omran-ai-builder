@@ -71,12 +71,12 @@ Rule 1.14 (screenshots, report of 2026-11-03 on 1.3.15) — same package 1.3.15,
   no longer matched that language's screenshots.
 - New screenshots in Arabic, English and Simplified Chinese: the home screen with the chat, the Tools panel with all
   13 tools in three groups (one screen per group: Creativity, Business, Daily life), Fashion AI, Design AI, Construction and
-  Qibla & Prayer. Taken from this build, nothing drawn on them.
+  Qibla & Prayer. Taken from the app itself (the same screens as in this version), nothing drawn on them.
 - The chat box no longer suggests building apps or games in any language; it says "Type your message here".
 - Older system web views (Chromium 99) now render the Fashion and Design upload boxes the same as the screenshots.
 
 Rules 1.14 and 1.15 (app information, earlier reports):
-- All screenshots were retaken on 2026-11-03 from this build (Huawei package, phone size, a normal user account),
+- All screenshots were retaken on 2026-11-03 from the app (Huawei package, phone size, a normal user account; the same screens as in this version),
   in three languages: Arabic, English and Simplified Chinese. The app shows its interface in the phone's language,
   so each listing language has screenshots in that language.
   They show only screens that a user can open in this version: the home screen with the chat, the Tools panel and four
@@ -121,7 +121,7 @@ Test account: (username) / (password)
 om ai، الإصدار 1.3.16 — تحديث لـ1.3.15 التي وافقتم عليها ونُشرت (قُدّمت ٤ نوفمبر ٢٠٢٦). التغيير الوحيد: اسم التطبيق على الهاتف
 (تحت الأيقونة وفي الإعدادات) صار «om ai» كاسم المتجر في كلّ لغة واسمه داخل التطبيق، بدل «عمران AI». الحزمة والمفتاح والأدوات واللقطات كما هي.
 خلفيّة — ما أُصلح أثناء مراجعة 1.3.13 إلى 1.3.15 (تقرير ٣ نوفمبر ٢٠٢٦ على 1.3.15 بالقاعدة 1.14، وتقرير ٣٠ أكتوبر على 1.3.14 بالقاعدتين 3.1 و1.14، وتقارير ٢٢ و٢٦ و٢٨ أكتوبر على 1.3.13 بالقواعد 1.14 و1.15 و4.1):
-1.14 و1.15: اللقطات أُخذت ٣ نوفمبر من هذا البناء نفسه بحساب مستخدم عاديّ وبثلاث لغات (العربيّة والإنجليزيّة والصينيّة) لأنّ
+1.14 و1.15: اللقطات أُخذت ٣ نوفمبر من التطبيق نفسه (الشاشات نفسها في هذا الإصدار) بحساب مستخدم عاديّ وبثلاث لغات (العربيّة والإنجليزيّة والصينيّة) لأنّ
 التطبيق يعرض واجهته بلغة الهاتف — ويتبعها الآن في كلّ تشغيل ما لم يختر المستخدم لغةً من الإعدادات — وفيها فقط ما يفتحه المستخدم
 في هذا الإصدار (الرئيسيّة والمحادثة، ومربّع الأدوات بأقسامه الثلاثة، وأربع أدوات) بلا أيّ رسم فوقها. صندوق المحادثة لا يقترح بناء
 تطبيقات أو ألعاب بأيّ لغة.
