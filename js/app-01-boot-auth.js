@@ -1112,7 +1112,8 @@ try{
     /* v-audit-boot (cli-boot-6): بلغة الواجهة الـ١٤، وبلا أسماء إعداد الخادم وأسراره (كانت تُعرض للمستخدم). ما يقدر المستخدم عليه
        (ألغى، بريد غير مفعَّل) بنصّه؛ والباقي «تعذّر… أعد المحاولة» برمز السبب معزول الاتّجاه للتشخيص — والسبب في ملاحظة الجلسة (?diag=1). */
     const code = String(gerror || '');
-    const text = code === 'access_denied' ? authMsg('axBootGoogleCancelled', 'You cancelled the Google sign-in', 'ألغيتَ الدخول من شاشة جوجل')
+    /* v-google-retry: access_denied = «إلغاء» في شاشة جوجل أو رفضها الحساب (وضع Testing) — لا نتّهم المستخدم بالإلغاء */
+    const text = code === 'access_denied' ? authMsg('axBootGoogleCancelled', 'Google sign-in was cancelled or not allowed — please try again', 'أُلغي الدخول من شاشة جوجل أو لم تسمح به — أعد المحاولة')
       : code === 'email_not_verified' ? authMsg('axBootGoogleUnverified', 'Your Google account email is not verified — verify it, then try again', 'بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة')
       : authMsg('axBootGoogleFailed', "Couldn't complete the Google sign-in ({code}) — please try again", 'تعذّر إكمال الدخول بجوجل ({code}) — أعد المحاولة', { code: '\u2066' + code + '\u2069' });
     try { setMode('login'); showOverlay(); } catch(e){ /* فتح الشاشة تيسير؛ الرسالة محفوظة في الملاحظة على كلّ حال */ }
@@ -1301,8 +1302,13 @@ try{
       } catch(e){ return null; }
     }
     // v-google-app-fail: فشل الدخول في سفاري — الخادم أودع السبب فنعرضه بدل انتظار صامت.
-    function claimFail(err){
-      try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-fail'); }
+    /* v-google-retry: صفحة «تعذّر» في سفاري صار فيها «حاول مرّة ثانية» بـstate نفسها — فالانتظار يبقى (ويتجدّد عشر دقائق) بعد
+       عرض السبب، كي يُستلم نجاح المحاولة الثانية عند العودة. كان يُمحى هنا فيضيع ذاك الدخول. عودة الويب (رمز الاستلام) كما كانت. */
+    function claimFail(err, st){
+      try {
+        if(st && pending() === st) localStorage.setItem('aiapp_oauth_pending', st + ':' + Date.now());
+        else localStorage.removeItem('aiapp_oauth_pending');
+      } catch(e){ __swallow(e, 'auth:claim-fail'); }
       __oauthPick = null;
       showGoogleAuthError(String(err));
     }
@@ -1330,7 +1336,7 @@ try{
             if(d.avatar) localStorage.setItem('aiapp_avatar', d.avatar);
             noteSession('جوجل-جسر-آيفون');
             onAuthed(d.user, d.avatar || null);
-          } else if(d && d.error) claimFail(d.error);
+          } else if(d && d.error) claimFail(d.error, pk ? '' : st);
         }
       } catch(e){ __swallow(e, 'auth:oauth-claim'); }
       busy = false;

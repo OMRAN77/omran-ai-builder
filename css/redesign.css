@@ -348,6 +348,10 @@ html.mobile-ui #omranUserMeta, html.mobile-ui #omranAvatarBtn, html.mobile-ui #o
 html.mobile-ui #omranHamburger{display:inline-flex; order:-1;}
 html.mobile-ui header h1{justify-content:center;}
 html.mobile-ui #omranBottomNav{display:flex;}
+/* v-tools-exit (المالك ٦ نوفمبر: «اذا ادخل في الأدوات مايرجعني المحادثه يعلق في الادوات»): شاشة الأدوات (z:940) كانت تغطّي الشريط
+   السفليّ (z:70) و✕ مخفيّة بقرار السحب — فلا مخرج ظاهر على الآيفون. تقف الآن فوق الشريط بارتفاعه الفعليّ (--omNavH من ui-wiring.js،
+   صفر حين يختفي: الحاسوب ولوحة المفاتيح)، فيبقى «الأدوات» ظاهرًا: ضغطه يرجع للمحادثة، وأيّ تبويب آخر يخرج منها. الأدوات نفسها فوقها كما كانت. */
+#sectionsToolsOverlay{bottom:var(--omNavH, 0px);}
 html.mobile-ui main{padding-bottom:calc(48px + env(safe-area-inset-bottom, 0px));}
 html.mobile-ui #omranHero{justify-content:flex-start; gap:12px; padding:12px 12px 4px;}
 html.mobile-ui #omranWelcomeWrap{display:none !important;}

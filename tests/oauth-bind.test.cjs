@@ -330,7 +330,7 @@ test('١٢. العميل يعرض network_changed بلا تعديل ولا نص�
     const i = s.indexOf('action=oauth-claim');
     assert.ok(i > 0, f);
     const poll = s.slice(i, i + 1400);
-    assert.ok(/if\(r\.ok\)\{/.test(poll) && poll.includes('} else if(d && d.error) claimFail(d.error);'), f + ': ٢٠٠ بخطأ يصل claimFail');
+    assert.ok(/if\(r\.ok\)\{/.test(poll) && poll.includes("} else if(d && d.error) claimFail(d.error, pk ? '' : st);") /* v-google-retry: state التطبيق ليبقى الانتظار */, f + ': ٢٠٠ بخطأ يصل claimFail');
     // v-audit-boot (cli-boot-6): القالب العامّ صار مفتاحًا بالـ١٤ لغة (كان عربيًّا/إنجليزيًّا) — وما زال يعرض الرمز
     assert.ok(s.includes("authMsg('axBootGoogleFailed'") && s.includes("{ code: '\\u2066' + code + '\\u2069' }"), f + ': القالب العامّ يعرض الرمز');
     assert.ok(!s.includes('network_changed'), f + ': لا مفتاح ولا نصّ خاصّ');

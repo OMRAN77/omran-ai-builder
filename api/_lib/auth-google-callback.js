@@ -25,6 +25,9 @@ module.exports = async (req, res) => {
   const appSt = typeof st0 === 'string' ? /^([0-9a-f]{16,64})-app$/i.exec(st0) : null;
   const failRedirect = async (reason) => {
     reason = String(reason).slice(0, 64);
+    // v-google-retry: سبب الفشل في سجلّ Vercel — access_denied تأتي من جوجل نفسها (ضغطة «إلغاء» أو تطبيق في وضع Testing
+    // والحساب ليس من المختبِرين) ولا يميّز الرابط بينهما؛ كان الفشل لا يُسجَّل أبدًا فلا يُعرف كم مرّة يقع. الرمز وحده، لا بريد ولا state.
+    console.warn('[Google OAuth] sign-in failed:', reason, appSt ? '(app)' : '(web)');
     if (appSt) {
       let done = false;
       try {
@@ -37,7 +40,10 @@ module.exports = async (req, res) => {
           await kvExpire(key, 600);
         }
       } catch (e) { console.warn('[oauth] fail store failed:', e && e.message); }
-      res.writeHead(302, { Location: siteUrl() + '/login-done.html' + (done ? '' : '?gerror=' + encodeURIComponent(reason)) });
+      // v-google-retry: state نفسها مع الفشل — صفحة «تعذّر» تعيد المحاولة من سفاري مباشرة بها، فيودَع النجاح تحت ما ينتظره
+      // التطبيق (كان الطريق الوحيد: ارجع للتطبيق ← اضغط جوجل ← سفاري من جديد). state كانت في رابط الكولباك نفسه أصلًا، وحماية
+      // الاستلام (شبكة من أكمل الدخول — v-oauth-bind) كما هي.
+      res.writeHead(302, { Location: siteUrl() + '/login-done.html' + (done ? '' : '?gerror=' + encodeURIComponent(reason) + '&st=' + appSt[1].toLowerCase()) });
       res.end();
       return;
     }
