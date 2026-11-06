@@ -386,6 +386,22 @@
       "destination": "/download.html"
     },
     {
+      "source": "/tools",
+      "destination": "/tools/index.html"
+    },
+    {
+      "source": "/en/tools",
+      "destination": "/en/tools/index.html"
+    },
+    {
+      "source": "/tools/:slug",
+      "destination": "/tools/:slug.html"
+    },
+    {
+      "source": "/en/tools/:slug",
+      "destination": "/en/tools/:slug.html"
+    },
+    {
       "source": "/ar",
       "destination": "/index.html"
     },

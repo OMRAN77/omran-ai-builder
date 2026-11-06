@@ -1,0 +1,1084 @@
+{
+ "note": "v-tool-pages — مصدر صفحات الأدوات؛ بعد أيّ تعديل: node scripts/tool-pages.mjs",
+ "tools": [
+  {
+   "slug": "portrait",
+   "btn": "btnPortraitStyle",
+   "img": "/assets/tool-cards/clean/btnPortraitStyle.jpg",
+   "w": 1200,
+   "h": 720,
+   "thumb": "/assets/tool-cards/s/btnPortraitStyle.jpg",
+   "name": {
+    "ar": "أنماط الصور",
+    "en": "Photo styles"
+   },
+   "ar": {
+    "title": "تحويل الصور إلى كرتون وأنمي ولوحات فنية — om ai",
+    "description": "ارفع صورتك واختر من أكثر من ٩٠ نمطًا وأداة: أنمي وكرتون ولوحة زيتية وتراث خليجي، مع صورة الجواز وترميم الصور القديمة وتغيير الخلفية.",
+    "h1": "حوّل صورتك إلى كرتون وأنمي ولوحات فنية",
+    "lead": "ارفع صورة شخصية واختر النمط، فيعيد om ai رسمك بالأسلوب الذي تختاره مع الحرص على بقاء ملامح وجهك وظهور صورتك كاملة دون قصّ. وفي المكان نفسه أدوات عملية لصورة الجواز، وترميم الصور القديمة وتلوينها، ورفع الدقة، وتغيير الخلفية.",
+    "features": [
+     "أنماط فنية: أنمي، كرتون، لوحة زيتية، رسم بالرصاص، ألوان مائية، فسيفساء، فن البكسل",
+     "إطلالات خليجية: تراث إماراتي وسعودي وكويتي وعُماني وقطري وبحريني، والصيد بالصقور والفروسية",
+     "أدوات عملية: صورة جواز أو هوية، ترميم الصور القديمة وتلوينها، رفع الدقة، إزالة عنصر",
+     "خلفية جديدة من عشر خلفيات جاهزة، وتبديل الملابس والتسريحة، وتصغير العمر أو تكبيره",
+     "مناسبات: التخرّج والزفاف، وإطارات العيد ورمضان والحج ويوم الميلاد واليوم الوطني الإماراتي",
+     "دمج شخصين في صورة واحدة، أو صورة عائلية واحدة من صورتك وحتى ثلاث صور إضافية"
+    ],
+    "steps": [
+     "افتح أنماط الصور وتصفّح البطاقات أو صفِّها حسب الفئة، ثمّ اختر النمط الذي يعجبك.",
+     "اضغط «جرّب على صورتك» واختر صورة واضحة للوجه، وإن ظهرت خيارات إضافية فحدّدها ثمّ اضغط «حوّلها».",
+     "قارن بين الصورتين قبل وبعد بالسحب على الصورة، ثمّ حمّل النتيجة أو شاركها."
+    ],
+    "faq": [
+     {
+      "q": "هل الأداة مجانية؟",
+      "a": "تحتاج إلى تسجيل الدخول. يتيح الحساب المجاني حتى ثلاثة تحويلات في اليوم، وتمنح الباقات المدفوعة عددًا أكبر. والمحاولة التي تفشل بسبب خطأ تقني لا تُحتسب من حصّتك اليومية."
+     },
+     {
+      "q": "هل ستبقى ملامحي واضحة في النتيجة؟",
+      "a": "تطلب الأداة الحفاظ على ملامح وجهك وعلى صورتك كاملة دون قصّ، ومع ذلك قد تختلف بعض التفاصيل. وتساعد الصورة الأمامية الواضحة بإضاءة جيدة على نتيجة أدقّ."
+     },
+     {
+      "q": "هل أستطيع إعداد صورة جواز أو هوية؟",
+      "a": "نعم، يعيد خيار صورة الجواز أو الهوية تأطير الرأس والكتفين على خلفية بيضاء بإضاءة متساوية. ولا تُضبط المقاسات الرسمية تلقائيًّا، فراجع شروط الجهة الرسمية في بلدك قبل الطباعة."
+     },
+     {
+      "q": "هل يمكن جمع شخصين أو العائلة في صورة واحدة؟",
+      "a": "نعم، اختر «دمج شخصين بصورة واحدة» وأضف صورة الشخص الثاني، أو اختر النمط العائلي الموحّد وأضف حتى ثلاث صور إضافية لبقية أفراد العائلة."
+     }
+    ],
+    "cta": "افتح أنماط الصور",
+    "note": "التحويل يتطلّب تسجيل الدخول: حتى ثلاثة تحويلات يوميًّا للحساب المجاني، وعدد أكبر في الباقات المدفوعة."
+   },
+   "en": {
+    "title": "Turn Your Photo into Anime, Cartoon or Art — om ai",
+    "description": "Upload a photo and pick from 90+ styles and tools: anime, cartoon, oil painting, Gulf heritage, passport photos, old photo restoration and new backgrounds.",
+    "h1": "Turn your photo into anime, cartoon or a painting",
+    "lead": "Upload a portrait, pick a style, and om ai redraws you in that look while aiming to keep your facial features and your whole photo, uncropped. The same place has practical tools for passport photos, restoring and colorizing old photos, upscaling and changing the background.",
+    "features": [
+     "Art styles: anime, cartoon, oil painting, pencil sketch, watercolor, mosaic, pixel art",
+     "Gulf looks: Emirati, Saudi, Kuwaiti, Omani, Qatari and Bahraini heritage, falconry, horses",
+     "Tools: passport or ID photo, restore or colorize old photos, upscale, object removal",
+     "New background from ten backdrops, change outfit or hairstyle, look younger or older",
+     "Occasions: graduation, wedding, and Eid, Ramadan, Hajj, birthday, UAE National Day frames",
+     "Merge two people in one photo, or a family portrait from your photo plus up to three more"
+    ],
+    "steps": [
+     "Open Photo styles, browse the cards or filter them by category, and pick the style you like.",
+     "Tap “Try it on your photo”, pick a clear face photo, set any extra options that appear, then tap Transform.",
+     "Drag across the image to compare before and after, then download or share the result."
+    ],
+    "faq": [
+     {
+      "q": "Is the tool free?",
+      "a": "You need to sign in. A free account gets up to three transformations a day, and paid plans give you more. An attempt that fails because of a technical error does not count against your daily allowance."
+     },
+     {
+      "q": "Will the result still look like me?",
+      "a": "The tool asks to keep your facial features and your whole photo uncropped, but some details may still differ. A clear, front-facing photo with good lighting helps get a closer result."
+     },
+     {
+      "q": "Can I make a passport or ID photo?",
+      "a": "Yes. The passport or ID option reframes your head and shoulders on a plain white background with even lighting. It does not set official sizes, so check your issuing authority's requirements before printing."
+     },
+     {
+      "q": "Can I put two people or my family in one photo?",
+      "a": "Yes. Choose Merge Two People in One Photo and add the second person's photo, or choose Unified Family Style and add up to three more photos of your family members."
+     }
+    ],
+    "cta": "Open Photo styles",
+    "note": "Sign-in required to transform: up to three a day on a free account, more on paid plans."
+   }
+  },
+  {
+   "slug": "video",
+   "btn": "btnVideoMaker",
+   "img": "/assets/tool-cards/clean/btnVideoMaker.jpg",
+   "w": 1200,
+   "h": 720,
+   "thumb": "/assets/tool-cards/s/btnVideoMaker.jpg",
+   "name": {
+    "ar": "صانع الفيديو",
+    "en": "Video maker"
+   },
+   "ar": {
+    "title": "صانع فيديو بالذكاء الاصطناعي من نص أو صورة — om ai",
+    "description": "اصنع فيديو قصيرًا بالذكاء الاصطناعي من وصف مكتوب أو صورة مع om ai: ترندات بلمسة واحدة، ومقاطع من ٥ إلى ١٠ ثوانٍ، وكتابة وصوت، وتحسين جودة مجاني على جهازك.",
+    "h1": "اصنع فيديو بالذكاء الاصطناعي من نص أو صورة",
+    "lead": "اكتب وصف المشهد أو ارفع صورة، ويحوّلها om ai إلى فيديو قصير بشكل عرضي أو طولي. اختر ترندًا جاهزًا بلمسة واحدة، أو أضف كتابة وصوتًا إلى فيديوهاتك، أو حسّن جودة فيديو مشوّش داخل جهازك مجانًا.",
+    "features": [
+     "تحويل النص إلى فيديو: صِف المشهد واحصل على مقطع مدّته ٥ أو ٨ أو ١٠ ثوانٍ",
+     "تحريك الصور: ارفع صورتك لتكون بطل المقطع",
+     "ترندات بلمسة واحدة: صورة قديمة تتحرّك، وإعلان منتج، وتهنئة العيد ورمضان وغيرها",
+     "مساعد كتابة يصوغ قصة أو حوارًا أو إعلانًا على قدر مدّة الفيديو",
+     "كتابة بتوقيت فوق فيديوك، وتفريغ الكلام تلقائيًا، وصوت يقرأ نصّك",
+     "تحسين الجودة داخل جهازك مجانًا: تشويش أقل، وحواف أوضح، وألوان أجمل"
+    ],
+    "steps": [
+     "افتح صانع الفيديو في om ai واختر قسمًا: الترندات أو تعديل الفيديو أو سينمائي أو فيديو سريع أو تحسين الجودة.",
+     "صِف المشهد واختر المدّة والشكل، أو اختر ترندًا يحدّدهما بنفسه، وأضف صورتك عند الحاجة.",
+     "اضغط زر الإنشاء وأكّد التكلفة حين تظهر لك، ثم شاهد الفيديو ونزّله."
+    ],
+    "faq": [
+     {
+      "q": "هل صانع الفيديو بالذكاء الاصطناعي مجاني؟",
+      "a": "إنشاء الفيديو بالذكاء الاصطناعي للمشتركين، ويُخصم من فيديوهات باقتك أو من نقاطك، ولا تُخصم نقاط قبل أن تؤكّد التكلفة. ولكل حساب فيديو واحد كل ثلاث دقائق. أما تحسين الجودة داخل جهازك فمجاني."
+     },
+     {
+      "q": "هل أستطيع تحويل صورتي إلى فيديو؟",
+      "a": "نعم، أضف صورتك بطلًا لمقطع سريع أو سينمائي، أو اختر ترندًا يطلب صورة، وكثير من الترندات تقبل حتى ثلاثة أشخاص في فيديو واحد. والصورة الطولية تجعل المقطع طوليًا ٩:١٦ تلقائيًا، ويمكنك تغييره."
+     },
+     {
+      "q": "كم تبلغ مدّة الفيديو؟",
+      "a": "المقاطع السريعة والسينمائية ٥ أو ٨ أو ١٠ ثوانٍ، بشكل عرضي ١٦:٩ أو طولي ٩:١٦، ومدّة الترند يحدّدها الترند نفسه. ويعمل التعديل على أول ثلاث دقائق من فيديوك، والتحسين على فيديو حتى ٦٠ ثانية."
+     },
+     {
+      "q": "هل يُصلح الفيديو المغبّش جدًا أو المهتز؟",
+      "a": "التحسين المجاني ينقّي التشويش ويوضّح الحواف ويحسّن الألوان، لكنه لا يُصلح الغبش الشديد ولا اهتزاز الكاميرا. ويجري كلّه داخل جهازك، فلا يُرفع فيديوك إلى أي خادم."
+     }
+    ],
+    "cta": "افتح صانع الفيديو",
+    "note": "الفيديو بالذكاء الاصطناعي يتطلّب تسجيل الدخول واشتراكًا ساريًا، ويُخصم من باقتك أو نقاطك، وتحسين الجودة داخل جهازك مجاني."
+   },
+   "en": {
+    "title": "AI Video Maker: Text and Photo to Video — om ai",
+    "description": "Make short AI videos from a text description or a photo with om ai: one-tap trends, 5 to 10 second clips, text and sound, plus free on-device enhancement.",
+    "h1": "Make AI videos from text or a photo",
+    "lead": "Describe a scene or upload a photo, and om ai turns it into a short video in landscape or portrait. Pick a ready-made trend in one tap, add text and sound to your own clips, or clean up a noisy video on your device for free.",
+    "features": [
+     "Text to video: describe a scene and get a 5, 8 or 10 second clip",
+     "Bring photos to life: upload your picture as the star of the clip",
+     "One-tap trends: an old photo comes alive, a product ad, Eid and Ramadan greetings and more",
+     "A writing assistant drafts a story, dialogue or ad that fits your video length",
+     "Timed text on your video, automatic captions and a voice that reads your words",
+     "Free on-device enhancement: less noise, sharper edges, richer colors"
+    ],
+    "steps": [
+     "Open the om ai video maker and pick a section: Trends, Edit video, Cinematic, Fast video or Enhance quality.",
+     "Describe the scene and pick the length and shape, or choose a trend that sets them; add your photo if needed.",
+     "Tap create, confirm the cost when it appears, then watch and download your video."
+    ],
+    "faq": [
+     {
+      "q": "Is the AI video maker free?",
+      "a": "AI video is for subscribers and comes out of your plan's videos or your points; no points are taken before you confirm the cost. Each account can make one video every three minutes. On-device quality enhancement is free."
+     },
+     {
+      "q": "Can I turn my own photo into a video?",
+      "a": "Yes. Add your photo as the star of a fast or cinematic clip, or pick a trend that asks for a photo; many trends take up to three people in one video. A portrait photo switches the clip to 9:16 automatically, and you can change it."
+     },
+     {
+      "q": "How long can the videos be?",
+      "a": "Fast and cinematic clips are 5, 8 or 10 seconds, in landscape 16:9 or portrait 9:16; each trend sets its own length. Editing works on the first three minutes of your video, and the enhancer accepts videos up to 60 seconds."
+     },
+     {
+      "q": "Can it fix a very blurry or shaky video?",
+      "a": "The free enhancer reduces noise, sharpens edges and improves colors, but it cannot fix heavy blur or camera shake. It runs entirely on your device, so your video is not uploaded to any server."
+     }
+    ],
+    "cta": "Open the video maker",
+    "note": "AI video needs sign-in and an active subscription and uses your plan's videos or points; on-device quality enhancement is free."
+   }
+  },
+  {
+   "slug": "decor",
+   "btn": "btnDesignAI",
+   "img": "/assets/decor/chips/poster.webp",
+   "w": 1640,
+   "h": 1230,
+   "fit": "full",
+   "thumb": "/assets/tool-cards/s/btnDesignAI.jpg",
+   "name": {
+    "ar": "تصميم الديكور",
+    "en": "Interior design"
+   },
+   "ar": {
+    "title": "تصميم ديكور الغرف بالذكاء الاصطناعي من صورة — om ai",
+    "description": "ارفع صورة غرفتك واختر نمط الديكور، فيعيد om ai تصميمها محاولًا إبقاء الجدران والنوافذ، أو احصل بلا صورة على ما يصل إلى أربعة تصاميم لمجلس أو مطبخ أو حديقة.",
+    "h1": "تصميم ديكور غرفتك بالذكاء الاصطناعي",
+    "lead": "صمّم ديكور غرفتك بالذكاء الاصطناعي انطلاقًا من صورتها: ارفعها واختر نمطًا من ٤٨ نمطًا، فتحصل على تصميم جديد بمظهر واقعيّ، مع توجيه الأداة إلى إبقاء الجدران والنوافذ وزاوية التصوير. وإن لم تكن لديك صورة، فاختر نوع المكان أو صِف ما تريد بكلماتك لتحصل على ما يصل إلى أربعة تصاميم جديدة.",
+    "features": [
+     "إعادة تصميم غرفتك من صورتها، مع السعي إلى إبقاء الجدران والنوافذ وزاوية التصوير",
+     "٤٨ نمطًا، منها النجديّ والإماراتيّ المعاصر والأندلسيّ والسكندنافيّ والفخم",
+     "ما يصل إلى أربعة تصاميم بلا صورة لمجلس أو مطبخ أو مطعم أو مقهى أو مسبح أو سطح",
+     "تحكّم اختياريّ في الإضاءة والأثاث والأرضيّات والستائر وألوان الجدران والأقمشة",
+     "عرض غرفتك بنمطين أو ثلاثة جنبًا إلى جنب، وشريط سحب يقارنها قبل التصميم وبعده",
+     "معرض صور أفكار من الإنترنت، واقتراحات مكتوبة لتحسين غرفتك بناءً على صورتها"
+    ],
+    "steps": [
+     "سجّل دخولك وافتح أداة الديكور، ثمّ ارفع صورة غرفتك أو اختر نوع المكان.",
+     "اختر نمط الديكور، وحدّد إن شئت الإضاءة والأثاث والأرضيّات، أو اكتب تفاصيلك بكلماتك.",
+     "اضغط «صمّم الغرفة» وانتظر قليلًا، ثمّ شاهد النتيجة وحمّل الصورة التي تعجبك."
+    ],
+    "faq": [
+     {
+      "q": "هل أحتاج إلى صورة لغرفتي؟",
+      "a": "لا. يمكنك رفع صورة لإعادة تصميمها، أو اختيار نوع المكان أو وصفه بكلماتك، فتحصل دون أيّ صورة على ما يصل إلى أربعة تصاميم جديدة من زوايا مختلفة."
+     },
+     {
+      "q": "هل يغيّر التصميم شكل غرفتي؟",
+      "a": "تُوجَّه الأداة إلى الإبقاء على مخطّط الغرفة وجدرانها ونوافذها وزاوية التصوير، وتغيير الأثاث والألوان والديكور والتشطيبات فقط. والنتيجة تصوّر مقترح قد تختلف بعض تفاصيله عن الواقع، فراجعه قبل التنفيذ."
+     },
+     {
+      "q": "كم تصميمًا أستطيع أن أُنشئ في اليوم؟",
+      "a": "تحتاج الأداة إلى تسجيل الدخول، وللحساب المجاني حتى ٣ محاولات تصميم يوميًّا وللباقات المدفوعة أكثر، ولا تُحسب المحاولة التي تفشل. ويُحسب طلب التصاميم بلا صورة محاولةً واحدة ولو أعاد أربعة تصاميم، أمّا في المقارنة فكلّ نمط محاولة."
+     },
+     {
+      "q": "هل تصلح الأداة للمجالس والأماكن الخارجيّة؟",
+      "a": "نعم، ففيها أنماط مثل المجلس العربيّ والنجديّ والإماراتيّ المعاصر، وتشمل التصاميم بلا صورة أماكن خارجيّة مثل واجهة المنزل والمسبح والمظلّة الخشبيّة وركن الشواء والسطح والممرّ الخارجيّ."
+     }
+    ],
+    "cta": "افتح أداة الديكور",
+    "note": "تحتاج الأداة إلى تسجيل الدخول: حتى ٣ محاولات تصميم يوميًّا للحساب المجاني، وعدد أكبر في الباقات المدفوعة."
+   },
+   "en": {
+    "title": "AI Interior Design: Redesign Your Room From a Photo — om ai",
+    "description": "Upload a room photo, pick a style, and om ai redesigns it, aiming to keep walls and windows. No photo? Get up to four designs for a majlis, kitchen or garden.",
+    "h1": "Redesign your room with AI interior design",
+    "lead": "Redesign your room with AI from a photo: upload it, pick one of 48 styles, and get a new photorealistic design, with the tool instructed to keep the walls, windows and camera angle. No photo? Choose a type of space or describe it in your own words and get up to four new designs.",
+    "features": [
+     "Redesign your room from a photo, aiming to keep the walls, windows and camera angle",
+     "48 styles, including Najdi, modern Emirati, Andalusian, Scandinavian and luxury",
+     "Up to four no-photo designs for a majlis, kitchen, restaurant, cafe, pool or rooftop",
+     "Optional lighting, furniture, flooring, curtain, wall color and fabric choices",
+     "See your room in two or three styles side by side, plus a before-and-after slider",
+     "A gallery of idea photos from the web and written suggestions based on your room photo"
+    ],
+    "steps": [
+     "Sign in, open the decor tool, then upload a photo of your room or pick a type of space.",
+     "Choose a decor style and, if you like, set lighting, furniture and flooring or add details in your own words.",
+     "Press “Design the room”, wait a moment, then view the result and download the image you like."
+    ],
+    "faq": [
+     {
+      "q": "Do I need a photo of my room?",
+      "a": "No. You can upload a photo to redesign it, or pick a type of space or describe it in your own words and get up to four new designs from different angles without any photo."
+     },
+     {
+      "q": "Will the design change the shape of my room?",
+      "a": "The tool is instructed to keep the room layout, walls, windows and camera angle, and change only the furniture, colors, decor and finishes. The result is a suggested visual and some details may differ from reality, so check it before you build."
+     },
+     {
+      "q": "How many designs can I make per day?",
+      "a": "Sign-in is required: a free account gets up to 3 design attempts a day and paid plans get more; a failed attempt is not counted. A no-photo request counts as one attempt even if it returns four designs, while in a style comparison each style counts as one."
+     },
+     {
+      "q": "Does it work for majlis rooms and outdoor spaces?",
+      "a": "Yes. It includes styles such as Arabic majlis, Najdi and modern Emirati, and the no-photo designs cover outdoor spaces like a house facade, pool, pergola, barbecue corner, rooftop and outdoor pathway."
+     }
+    ],
+    "cta": "Open the decor tool",
+    "note": "Sign-in required: up to 3 design attempts a day on a free account, more on paid plans."
+   }
+  },
+  {
+   "slug": "fashion",
+   "btn": "btnFashionAI",
+   "img": "/assets/tool-cards/clean/btnFashionAI.jpg",
+   "w": 1200,
+   "h": 720,
+   "thumb": "/assets/tool-cards/s/btnFashionAI.jpg",
+   "name": {
+    "ar": "الأزياء",
+    "en": "Fashion try-on"
+   },
+   "ar": {
+    "title": "تصميم أزياء بالذكاء الاصطناعي على صورتك — om ai",
+    "description": "ارفع صورتك كاملة أو صِف الزيّ الذي تريده، واختر فئة النساء أو الرجال أو الأطفال ونمطًا كالعباية أو فستان السهرة أو البشت، ليصمّم لك om ai إطلالة جديدة.",
+    "h1": "جرّب أزياء جديدة على صورتك بالذكاء الاصطناعي",
+    "lead": "يُلبس استوديو الأزياء في om ai الشخصَ في صورتك الكاملة زيًّا جديدًا مع السعي إلى إبقاء وقفته وخلفية الصورة، أو يصمّم إطلالة كاملة من وصف تكتبه. اختر الفئة والمناسبة والنمط، من العباية والجلابية والمخورة الإماراتية إلى البشت وفساتين السهرة.",
+    "features": [
+     "غيّر الملابس في صورتك الكاملة مع السعي إلى إبقاء الوقفة والخلفية كما هي",
+     "بلا صورة؟ صِف الزيّ بكلماتك واحصل على صورة تصميم كاملة من الرأس إلى القدم",
+     "عشرات الأنماط للنساء والرجال والأطفال، منها العباية والقفطان والمخورة والبشت",
+     "حدّد المناسبة والموسم والألوان، وأضف حقيبة أو ساعة أو نظارة أو وشاحًا",
+     "قارن بين نمطين أو ثلاثة جنبًا إلى جنب، أو اعرض الزيّ من الأمام والجانب والخلف",
+     "شريط قبل وبعد في وضع الصورة، وتعديل تفصيلة واحدة، ثمّ التحميل أو الحفظ في المفضّلة"
+    ],
+    "steps": [
+     "سجّل دخولك وافتح استوديو الأزياء، ثمّ ارفع صورة واضحة كاملة من الرأس إلى القدم أو انتقل إلى «من وصف نصّي».",
+     "اختر الفئة (نسائي أو رجالي أو أطفال) والمناسبة، ومن «خصّصها» حدّد النمط والموسم والألوان والإضافات إن شئت.",
+     "اضغط «صمّم التصميم»، وفي وضع الصورة قارن قبل وبعد بالسحب، وعدّل تفصيلة واحدة إن لزم، ثمّ حمّل الصورة."
+    ],
+    "faq": [
+     {
+      "q": "هل أداة تصميم الأزياء مجّانيّة؟",
+      "a": "تحتاج إلى تسجيل الدخول، وللحساب المجّاني حتى ثلاثة تصاميم في اليوم. وكلّ صورة تُولَّد بنجاح تُحتسب، بما فيها كلّ إطلالة في المقارنة وكلّ تعديل لتفصيلة، ويتجدّد الحدّ يوميًّا."
+     },
+     {
+      "q": "هل تحافظ الأداة على وجهي ووقفتي؟",
+      "a": "في وضع الصورة يُطلب من الأداة أن تُبقي الشخص نفسه ووقفته وخلفية الصورة وإطارها وأن تغيّر الملابس فقط، ثمّ تُفحص النتيجة؛ فإن بدت ملامح الشخص متغيّرة ظهرت لك رسالة بدل الصورة. وفي المقارنة تكون الخلفية سادة موحّدة. واستخدم صورة واضحة كاملة."
+     },
+     {
+      "q": "هل أستطيع تصميم زيّ بلا صورة؟",
+      "a": "نعم. انتقل إلى «من وصف نصّي» واكتب ما تريد، مثل فستان سهرة أزرق طويل بأكمام مطرّزة. وصفك له الأولويّة، والنمط المختار يُكمل فقط ما تتركه مفتوحًا من تفاصيل."
+     },
+     {
+      "q": "هل تصلح الأداة للرجال والأطفال؟",
+      "a": "نعم. اختر فئة النساء أو الرجال أو الأطفال فتتغيّر الأنماط لتناسبها، مثل البشت والبدلة ذات القطع الثلاث للرجال، وملابس العيد والمدرسة للأطفال. وبعض الأنماط، كالعباية والمخورة، للنساء فقط."
+     }
+    ],
+    "cta": "افتح استوديو الأزياء",
+    "note": "يتطلّب تسجيل الدخول، وللحساب المجّاني حتى ثلاثة تصاميم يوميًّا، ويُحتسب كلّ تعديل وكلّ إطلالة في المقارنة تصميمًا واحدًا."
+   },
+   "en": {
+    "title": "AI Outfit Generator: Try New Looks on Your Photo — om ai",
+    "description": "Upload a full-length photo or describe an outfit, pick women, men or kids and a style such as abaya, evening gown or bisht, and om ai designs a new look.",
+    "h1": "Try new outfits on your photo with AI",
+    "lead": "The om ai fashion studio redresses the person in your full-length photo in a new outfit while aiming to keep the pose and background, or designs a complete look from a description you write. Choose a category, an occasion and a style, from abaya, jalabiya and Emirati mukhawar to bisht and evening gowns.",
+    "features": [
+     "Change the outfit in your full-length photo while aiming to keep the pose and background",
+     "No photo? Describe the outfit in words and get a head-to-toe design image",
+     "Dozens of styles for women, men and kids, including abaya, kaftan, mukhawar and bisht",
+     "Set the occasion, season and colors, and add a bag, watch, glasses or scarf",
+     "Compare two or three styles side by side, or see one look from front, side and back",
+     "Before-and-after slider in photo mode, one-detail edits, download or save to favorites"
+    ],
+    "steps": [
+     "Sign in, open the fashion studio and upload a clear head-to-toe photo, or switch to From description.",
+     "Pick women, men or kids and an occasion; optionally set style, season, colors or accessories under Customize.",
+     "Tap Generate design, drag to compare before and after in photo mode, edit one detail if needed, then download."
+    ],
+    "faq": [
+     {
+      "q": "Is the AI fashion tool free?",
+      "a": "You need to sign in, and free accounts get up to three designs a day. Every successfully generated image counts, including each look in a comparison and each one-detail edit. The limit resets daily."
+     },
+     {
+      "q": "Will it keep my face and pose?",
+      "a": "In photo mode the tool is told to keep the same person, pose, background and framing and change only the clothes. The result is checked; if the person looks changed, you get a message instead. Comparisons use a plain background. Use a clear full-length photo."
+     },
+     {
+      "q": "Can I design an outfit without a photo?",
+      "a": "Yes. Switch to From description and write what you want, for example a long blue evening dress with embroidered sleeves. Your description comes first; the chosen style only fills in details you leave open."
+     },
+     {
+      "q": "Does it work for men and children?",
+      "a": "Yes. Pick women, men or kids and the styles change to match, such as bisht and three-piece suit for men, or Eid and school outfits for children. Some styles, like the abaya and mukhawar, are for women only."
+     }
+    ],
+    "cta": "Open the fashion studio",
+    "note": "Sign-in required. Free accounts get up to three designs a day; each comparison look or edit counts as one design."
+   }
+  },
+  {
+   "slug": "style",
+   "btn": "btnStudioAI",
+   "img": "/assets/tool-cards/clean/btnStudioAI.jpg",
+   "w": 1200,
+   "h": 720,
+   "thumb": "/assets/tool-cards/s/btnStudioAI.jpg",
+   "name": {
+    "ar": "الستايل",
+    "en": "Hair and style"
+   },
+   "ar": {
+    "title": "جرّب لون الشعر والمكياج على صورتك — om ai",
+    "description": "جرّب على صورتك لون شعر أو قصّة جديدة، ومكياجًا ولحية ونظّارات وحنّاء وأزياء تراثيّة، مع السعي لإبقاء ملامحك. حتّى ثلاث صور مجّانيّة يوميًّا بعد تسجيل الدخول.",
+    "h1": "جرّب تسريحات الشعر والمكياج على صورتك",
+    "lead": "غيّر لون شعرك أو جرّب قصّة جديدة أو مكياجًا أو نظّارات على صورتك قبل أن تقرّر. ارفع صورة واحدة، واختر الشكل من بطاقات مصوّرة، ثمّ قارن النتيجة بالأصل وحمّلها.",
+    "features": [
+     "لون الشعر وقصّته وتسريحته، مع قصّات رجاليّة وضفائر وتسريحات مرفوعة",
+     "مكياج وأظافر وحنّاء بتصاميم كثيرة، ويتنوّع نقش الحنّاء والأظافر في كلّ مرّة",
+     "اللحية والنظّارات والإكسسوارات ولفّات الحجاب والزيّ الخليجيّ والتراثيّ",
+     "صورة رسميّة، وخلفيّة جديدة، وإطلالة عرس، وتغيير العمر، ورسم بأسلوب الأنمي",
+     "دمج صورتين، وعرض الشعر أو اللحية أو الزيّ التراثيّ من الأمام والجانب والخلف",
+     "مقارنة قبل وبعد بالسحب، ومقارنة إطلالتين أو ثلاث جنبًا إلى جنب، وحفظ ما يعجبك"
+    ],
+    "steps": [
+     "ارفع صورة واضحة لك من الكاميرا أو المعرض، أو اسحبها إلى الخانة أو الصقها.",
+     "اختر نوع التعديل ثمّ الشكل من البطاقات المصوّرة، ويمكنك جمع حتّى خمسة اختيارات.",
+     "اضغط «ولّد الصورة»، ثمّ قارن قبل وبعد وحمّل النتيجة أو احفظها في المفضّلة."
+    ],
+    "faq": [
+     {
+      "q": "هل يتغيّر وجهي في الصورة الناتجة؟",
+      "a": "تطلب الأداة تعديل ما اخترته فقط ثمّ تفحص النتيجة؛ فإن بدا الشخص مختلفًا أعادت المحاولة مرّة، وإن تكرّر ذلك أظهرت رسالة بدل الصورة. الصورة الأماميّة الواضحة تعطي نتيجة أدقّ."
+     },
+     {
+      "q": "كم صورة أستطيع أن أولّد في اليوم؟",
+      "a": "للحساب المجّانيّ حتّى ثلاث صور يوميًّا بعد تسجيل الدخول، ويتجدّد الرصيد كلّ يوم، والاشتراك الساري يرفع الحدّ بحسب الباقة. وعند جمع عدّة اختيارات يُحسب كلّ تعديل منها من رصيدك."
+     },
+     {
+      "q": "هل أستطيع تطبيق أكثر من تعديل على الصورة نفسها؟",
+      "a": "نعم، أضف حتّى خمسة اختيارات: الميزات المختلفة كالشعر والمكياج والنظّارات تجتمع في صورة واحدة، أمّا عدّة أشكال من الميزة نفسها فتعطي صورة لكلّ شكل، بحدّ أقصى ثلاث صور."
+     },
+     {
+      "q": "هل تقترح الأداة إطلالة تناسبني؟",
+      "a": "نعم، زرّ «اقترح لي ستايل» في الخيارات الإضافيّة يقرأ صورتك والمناسبة التي تختارها ويعطيك ثلاث أفكار مع نصيحة للألوان. ولأنّه لا يولّد صورة فلا يُحسب من صورك اليوميّة، وله حدّ يوميّ مستقلّ."
+     }
+    ],
+    "cta": "افتح أداة الستايل",
+    "note": "تحتاج الأداة إلى تسجيل الدخول، وللحساب المجّانيّ حتّى ثلاث صور يوميًّا، ويُحسب كلّ تعديل صورةً من الرصيد."
+   },
+   "en": {
+    "title": "Try hair color and makeup on your photo — om ai",
+    "description": "Try a new hair color or cut, makeup, beard, glasses, henna or heritage wear on your photo, aiming to keep your face. Up to 3 free images a day after sign-in.",
+    "h1": "Try hairstyles and makeup on your photo",
+    "lead": "Change your hair color, or try a new haircut, makeup or glasses on your own photo before you decide. Upload one picture, pick a look from photo cards, then compare the result with the original and download it.",
+    "features": [
+     "Hair color, cuts and styling, including men's haircuts, braids and updos",
+     "Makeup, nails and henna in many designs, with henna and nail patterns varying each time",
+     "Beard, glasses, accessories, hijab styles, Gulf attire and heritage outfits",
+     "Formal ID photo, new background, wedding look, age change and an anime-style drawing",
+     "Merge two photos, and see hair, a beard or a heritage outfit from front, side and back",
+     "Before-and-after slider, two or three looks side by side, and saving favorites"
+    ],
+    "steps": [
+     "Upload a clear photo of yourself from the camera or gallery, or drag it in or paste it.",
+     "Choose the type of edit, then a look from the photo cards. You can combine up to five picks.",
+     "Press Generate, compare before and after, then download the result or save it to favorites."
+    ],
+    "faq": [
+     {
+      "q": "Will my face change in the result?",
+      "a": "The tool asks for your chosen change only, then checks the result. If the person looks different it tries once more, and if that happens again it shows a message instead of the image. A clear front-facing photo gives a more accurate result."
+     },
+     {
+      "q": "How many images can I create per day?",
+      "a": "A free account gets up to 3 images a day after signing in, and the allowance renews daily; an active subscription raises the limit according to the plan. When you combine several picks, each edit counts toward your allowance."
+     },
+     {
+      "q": "Can I apply more than one change to the same photo?",
+      "a": "Yes. Add up to five picks: different features such as hair, makeup and glasses are combined in one image, while several looks from the same feature give one image per look, up to three images."
+     },
+     {
+      "q": "Can it suggest a look that suits me?",
+      "a": "Yes. The Suggest a style button under More options reads your photo and the occasion you pick, then gives three ideas with a color tip. It does not create an image, so it does not use your daily images, and it has its own daily limit."
+     }
+    ],
+    "cta": "Open the style tool",
+    "note": "Sign-in required. Free accounts get up to 3 images a day, and each edit counts as one image."
+   }
+  },
+  {
+   "slug": "ads",
+   "btn": "btnAdStudio",
+   "img": "/assets/tool-cards/clean/btnAdStudio.jpg",
+   "w": 1200,
+   "h": 720,
+   "thumb": "/assets/tool-cards/s/btnAdStudio.jpg",
+   "name": {
+    "ar": "استوديو الإعلانات",
+    "en": "Ad studio"
+   },
+   "ar": {
+    "title": "تصميم إعلان بالذكاء الاصطناعي من صورتك — om ai",
+    "description": "صمّم إعلانك بالذكاء الاصطناعي: اكتب ما تريد الإعلان عنه بكلامك وأضف صورتك، فتحصل على عشرة تصاميم جاهزة للسيّارات والعقار والمطاعم والخدمات.",
+    "h1": "تصميم إعلان بالذكاء الاصطناعي من صورتك وكلامك",
+    "lead": "اكتب بكلامك ما تريد الإعلان عنه، مثل سيّارة للبيع أو شقّة للإيجار أو مطعم أو صالون، فيسألك مساعد الإعلانات عن العنوان والمواصفات والسعر ورقم التواصل. ثمّ ارفع صورتك أو أكمل بلا صورة لتحصل على عشرة تصاميم جاهزة تضبطها وتنزّلها، أو ولّد الإعلان صورةً كاملة بالذكاء الاصطناعي.",
+    "features": [
+     "مساعد إعلانات يعطيك نصيحة تناسب نوع إعلانك، ثمّ يسألك سؤالين فقط في كلّ مرّة",
+     "عشرة تصاميم من بياناتك: سينمائيّ وفخم ومجلّة ونيون وبطاقة مواصفات وغيرها",
+     "ثلاث لوحات مركّبة للعقار والفلل ومعارض السيّارات، تكتب عليها مباشرة وتضع شعارك وأرقامك",
+     "اسحب أيّ نصّ وكبّره أو صغّره وغيّر الألوان، ثمّ نزّل التصميم صورة",
+     "ولّد الإعلان صورةً كاملة بالذكاء الاصطناعي بمقاس مربّع أو طوليّ أو عرضيّ",
+     "انسخ نصّ الإعلان جاهزًا للّصق في المحادثات ومواقع الإعلانات المبوّبة"
+    ],
+    "steps": [
+     "اختر نوع إعلانك أو اكتبه بكلامك، وأجب عن أسئلة المساعد: العنوان والمواصفات والسعر ورقم التواصل.",
+     "ارفع صورة واضحة لما تعلن عنه، أو أكمل بلا صورة إن لم تكن عندك واحدة.",
+     "اختر تصميمًا من العشرة ورتّب نصوصه، ثمّ نزّله صورة أو ولّد الإعلان صورةً كاملة بالذكاء الاصطناعي."
+    ],
+    "faq": [
+     {
+      "q": "هل أحتاج إلى تسجيل الدخول؟",
+      "a": "نعم للمحادثة مع المساعد ولتوليد الإعلان صورةً، وبلا تسجيل تكمل بخطوات موجّهة وتحصل على التصاميم. في الحساب المجّانيّ حتّى ٨ صور إعلانيّة و٣٠ رسالة مع المساعد يوميًّا، ومحاولة توليد الصورة التي تفشل لا تُحسب من حصّتك."
+     },
+     {
+      "q": "ما أنواع الإعلانات التي أستطيع تصميمها؟",
+      "a": "السيّارات، والعقار للبيع أو الإيجار، والمطاعم، والمتاجر والأزياء، والعيادات، وصالونات التجميل، والخدمات والمهن، وأيّ شيء آخر تصفه بكلامك. ومع كلّ إعلان ثلاث لوحات مركّبة تضمّ المزايا وخطّة الدفع والمعالم القريبة إن ذكرتها."
+     },
+     {
+      "q": "هل تظهر الأسعار والأرقام صحيحة داخل الإعلان؟",
+      "a": "في التصاميم العشرة واللوحات يُكتب النصّ فوق التصميم لا داخل الصورة، فلا تتشوّه حروفه ولا أرقامه، وفي اللوحات تصحّح أيّ نصّ بالضغط عليه. أمّا في الصورة المولّدة بالذكاء الاصطناعي فالكتابة مرسومة داخلها، لذا راجع السعر ورقم التواصل قبل النشر."
+     },
+     {
+      "q": "هل يعمل بلغات أخرى؟",
+      "a": "نعم، الصفحة والمساعد يعملان بأربع عشرة لغة، منها العربيّة والإنجليزيّة والأرديّة والهنديّة، ويكتب المساعد نصوص إعلانك بلغة التطبيق التي اخترتها، وبها تُكتب الصورة المولّدة أيضًا."
+     }
+    ],
+    "cta": "افتح استوديو الإعلانات",
+    "note": "تسجيل الدخول مطلوب للمساعد ولتوليد الصور، والحدّ اليوميّ المجّانيّ حتّى ٨ صور إعلانيّة و٣٠ رسالة."
+   },
+   "en": {
+    "title": "AI Ad Maker: Design an Ad From Your Photo — om ai",
+    "description": "Make an ad with AI: describe what you want to advertise, add your photo and get ten ready designs for cars, property, restaurants and services.",
+    "h1": "Make an ad with AI from your photo and words",
+    "lead": "Describe what you want to advertise in your own words, such as a car for sale, a flat for rent, a restaurant or a salon, and the ad assistant asks for the headline, details, price and contact number. Then add a photo or skip it to get ten ready designs to adjust and download, or generate the whole ad as one AI image.",
+    "features": [
+     "An ad assistant gives a tip for your ad type, then asks just two questions at a time",
+     "Ten designs from your details: cinematic, luxe, magazine, neon, spec card and more",
+     "Three boards for property, villas and car showrooms: type on them, add a logo and phones",
+     "Drag any text, make it bigger or smaller, change colours, then download the design",
+     "Generate the whole ad as one AI image in square, portrait or landscape",
+     "Copy the ad text, ready to paste into chats and classifieds sites"
+    ],
+    "steps": [
+     "Pick your ad type or describe it in your own words, then answer: headline, details, price and contact.",
+     "Upload one clear photo of what you are advertising, or continue without a photo if you do not have one.",
+     "Choose one of the ten designs and arrange its text, then download it or generate the ad as a full AI image."
+    ],
+    "faq": [
+     {
+      "q": "Do I need to sign in?",
+      "a": "Yes, to chat with the assistant and to generate the ad as an image; without sign-in you continue with guided steps and still get the designs. A free account gets up to 8 ad images and 30 assistant messages a day, and a failed image attempt does not count."
+     },
+     {
+      "q": "What kinds of ads can I make?",
+      "a": "Cars, property for sale or rent, restaurants, shops and fashion, clinics, beauty salons, services and trades, or anything else you describe. Every ad also gets three composite boards that show features, a payment plan and nearby landmarks if you give them."
+     },
+     {
+      "q": "Will prices and phone numbers appear correctly in the ad?",
+      "a": "In the ten designs and the boards, text sits over the design, not inside the picture, so letters and digits stay intact, and on the boards you can tap any text to fix it. In the AI image the text is drawn in, so check the price and number before you publish."
+     },
+     {
+      "q": "Does it work in other languages?",
+      "a": "Yes. The page and the assistant work in 14 languages, including Arabic, English, Urdu and Hindi, and the assistant writes your ad text in the app language you chose, which the generated image uses too."
+     }
+    ],
+    "cta": "Open the Ad Studio",
+    "note": "Sign-in is needed for the assistant and AI images. Free daily limit: up to 8 ad images and 30 assistant messages."
+   }
+  },
+  {
+   "slug": "docs",
+   "btn": "btnDocs",
+   "img": "/assets/tool-cards/clean/btnDocs.jpg",
+   "w": 1200,
+   "h": 720,
+   "thumb": "/assets/tool-cards/s/btnDocs.jpg",
+   "name": {
+    "ar": "مساعد المستندات",
+    "en": "Document assistant"
+   },
+   "ar": {
+    "title": "تلخيص المستندات وتحليل العقود والفواتير — om ai",
+    "description": "ارفع عقدًا أو فاتورة أو تقريرًا بصيغة PDF أو صورة، واحصل على ملخّص منظّم وأهمّ بياناته كالمبالغ والتواريخ، ثمّ اسأل عن أيّ بند فيه.",
+    "h1": "تلخيص المستندات وتحليل العقود بالذكاء الاصطناعي",
+    "lead": "ارفع مستندك بصيغة PDF أو صورة، أو الصق نصّه، ليقرأه مساعد المستندات في om ai ويلخّصه لك، عقدًا كان أو فاتورة أو تقريرًا أو عرض سعر. تحصل على ملخّص منظّم وأهمّ البيانات كالأطراف والمبالغ والتواريخ، ثمّ تسأل عن أيّ بند فيجيبك اعتمادًا على المستند نفسه.",
+    "features": [
+     "يقرأ ملفّات PDF والصور، ويقبل نصّ المستند إذا لصقته مباشرةً",
+     "يحدّد نوع المستند ويستخرج أهمّ بياناته كالأطراف والمبالغ والتواريخ والأرقام المرجعيّة",
+     "ملخّص منظّم يغطّي جوهر المستند بلغة واجهة التطبيق",
+     "نقاط تنبيه عمليّة، مثل الالتزامات والمواعيد والشروط الجزائيّة والبنود المهمّة",
+     "أسئلة متابعة عن المستند، مع أسئلة جاهزة كالمبلغ الإجماليّ وتاريخ البدء أو الانتهاء",
+     "يعتمد في إجاباته على المستند وحده، ويخبرك إن لم يجد الجواب فيه"
+    ],
+    "steps": [
+     "افتح مساعد المستندات، ثمّ ارفع ملفّ PDF أو صورة للمستند، أو الصق نصّه.",
+     "اضغط «حلّل المستند» لتحصل على الملخّص والبيانات الرئيسيّة والنقاط المهمّة.",
+     "اكتب سؤالك عن أيّ بند أو اختر سؤالًا جاهزًا، وواصل الأسئلة عن المستند نفسه."
+    ],
+    "faq": [
+     {
+      "q": "هل أحتاج إلى حساب لتحليل مستند؟",
+      "a": "لا. يمكنك تحليل حتّى ثلاثة مستندات يوميًّا دون تسجيل الدخول، وحتّى خمسة بحساب مجانيّ. ولأسئلة المتابعة حدّ يوميّ خاصّ بها يصل إلى خمسة عشر سؤالًا."
+     },
+     {
+      "q": "ما الملفّات التي يقبلها، وما الحجم المسموح؟",
+      "a": "ملفّات PDF والصور حتّى نحو ثلاثة ميغابايت، أو نصّ تلصقه مباشرةً. وتُصغَّر صور الكاميرا الكبيرة على جهازك قبل إرسالها، فإن بقي الملفّ أكبر من الحدّ فصغّره أو قسّمه ثمّ ارفعه."
+     },
+     {
+      "q": "هل يغني التحليل عن مراجعة محامٍ أو محاسب؟",
+      "a": "لا. الملخّص والإجابات مساعدة يولّدها الذكاء الاصطناعي لتفهم المستند بسرعة، وقد يخطئ المساعد في قراءة بعض التفاصيل، فراجع النصّ الأصليّ واستشر مختصًّا قبل أيّ قرار مهمّ."
+     },
+     {
+      "q": "بأيّ لغة تظهر النتيجة؟",
+      "a": "يكتب الملخّص والبيانات الرئيسيّة وإجابات أسئلتك بلغة واجهة التطبيق التي تستخدمها."
+     }
+    ],
+    "cta": "افتح مساعد المستندات",
+    "note": "يعمل دون حساب: ثلاثة تحليلات يوميًّا للزائر، وخمسة بحساب مجانيّ، ولأسئلة المتابعة حدّ يوميّ."
+   },
+   "en": {
+    "title": "Summarize Documents, Analyze Contracts and Invoices — om ai",
+    "description": "Upload a contract, invoice or report as a PDF or photo and get an organized summary with key details such as amounts and dates, then ask about any clause.",
+    "h1": "Summarize documents and analyze contracts with AI",
+    "lead": "Upload your document as a PDF or photo, or paste its text, and the om ai Document Assistant reads and summarizes it, be it a contract, invoice, report or quote. You get an organized summary and key details such as parties, amounts and dates, then ask about any clause and get an answer based on the document itself.",
+    "features": [
+     "Reads PDFs and images, or document text you paste in directly",
+     "Identifies the type and pulls out key details like parties, amounts, dates and references",
+     "An organized summary of what the document is about, in your app language",
+     "Practical watch-outs such as obligations, deadlines, penalty clauses and key terms",
+     "Follow-up questions, with ready-made ones like the total amount or the start or end date",
+     "Bases its answers on the document alone, and tells you when the answer is not there"
+    ],
+    "steps": [
+     "Open the Document Assistant, then upload a PDF or a photo of the document, or paste its text.",
+     "Press “Analyze document” to get the summary, the key details and the important points.",
+     "Type a question about any clause or pick a ready-made one, and keep asking about the same document."
+    ],
+    "faq": [
+     {
+      "q": "Do I need an account to analyze a document?",
+      "a": "No. You can analyze up to three documents a day without signing in, and up to five with a free account. Follow-up questions have their own daily limit of up to fifteen questions."
+     },
+     {
+      "q": "Which files does it accept, and how big can they be?",
+      "a": "PDFs and images up to about 3 MB, or text you paste in. Large camera photos are shrunk on your device before they are sent; if a file is still over the limit, compress or split it and upload it again."
+     },
+     {
+      "q": "Can it replace a lawyer or an accountant?",
+      "a": "No. The summary and answers are AI-generated help to understand a document quickly, and the assistant can misread some details, so check the original text and consult a qualified professional before any important decision."
+     },
+     {
+      "q": "What language are the results in?",
+      "a": "The summary, the key details and the answers to your questions come in the interface language you use in the app."
+     }
+    ],
+    "cta": "Open Document Assistant",
+    "note": "Works without an account: 3 analyses a day as a guest, 5 with a free account; follow-up questions have a daily limit."
+   }
+  },
+  {
+   "slug": "email",
+   "btn": "btnEmailAssist",
+   "img": "/assets/tool-cards/clean/btnEmailAssist.jpg",
+   "w": 1200,
+   "h": 720,
+   "thumb": "/assets/tool-cards/s/btnEmailAssist.jpg",
+   "name": {
+    "ar": "مساعد الإيميل",
+    "en": "Email assistant"
+   },
+   "ar": {
+    "title": "مساعد ردود البريد الإلكتروني بالذكاء الاصطناعي — om ai",
+    "description": "اربط Gmail ليكتب om ai مسوّدات الردود بلغة المرسل ونبرته، ويرتّب رسائلك حسب الأهمّيّة، ويضيف المواعيد إلى تقويمك بلمسة. لا يُرسَل شيء إلّا بموافقتك.",
+    "h1": "مساعد ذكيّ يكتب مسوّدات ردودك في Gmail",
+    "lead": "يقرأ om ai أحدث رسائل صندوق الوارد في Gmail، ويكتب لكلّ محادثة مسوّدة ردّ بلغة المرسل ونبرته ويقرّبها من أسلوبك في الكتابة. تعدّل المسوّدة أو تعيد توليدها أو تتجاهل المرسل، ولا يُرسَل أيّ ردّ حتّى تضغط «إرسال».",
+    "features": [
+     "يكتب كلّ ردّ بلغة المرسل ونبرته، مستعينًا بالرسائل السابقة في المحادثة",
+     "يستفيد من رسائلك المرسَلة مؤخّرًا لتقترب المسوّدات من أسلوبك",
+     "يصنّف الرسائل إلى عاجلة وعاديّة ومنخفضة الأهمّيّة، ويقدّم العاجلة أوّلًا",
+     "يعرض ترجمة الرسالة المكتوبة بلغة أخرى إلى لغة التطبيق، ومعنى المسوّدة إن كُتبت بغيرها",
+     "يلتقط الموعد المذكور في الرسالة ويضيفه إلى تقويمك بلمسة واحدة",
+     "ملخّص صوتيّ بعدد الرسائل المعروضة والعاجل منها، ومرسلي أوّل خمس منها وعناوينها"
+    ],
+    "steps": [
+     "سجّل الدخول إلى om ai، وافتح مساعد البريد، ثمّ اربط حساب Gmail.",
+     "راجع البطاقات: لكلّ رسالة أولويّتها ومقتطف منها ومسوّدة ردّ مقترحة.",
+     "عدّل المسوّدة أو أعد توليدها ثمّ اضغط «إرسال»، أو تجاهل المرسل فلا تظهر رسائله مجدّدًا."
+    ],
+    "faq": [
+     {
+      "q": "هل يرسل om ai الرسائل دون إذني؟",
+      "a": "لا. تبقى كلّ مسوّدة في مربّع قابل للتعديل، ولا يخرج الردّ إلّا حين تضغط «إرسال» على تلك الرسالة، فيُرسَل من حسابك في Gmail داخل المحادثة نفسها."
+     },
+     {
+      "q": "ماذا أحتاج لأبدأ؟",
+      "a": "حسابًا في om ai، ثمّ ربط Gmail مع السماح بقراءة بريدك وإرسال الردود التي توافق عليها، وهما شرطان للربط. أمّا إضافة المواعيد إلى التقويم فاختياريّة، وإن نقصت صلاحيّتها طلبت منك الأداة إعادة الربط."
+     },
+     {
+      "q": "ما الرسائل التي يعرضها؟",
+      "a": "رسائل صندوق الوارد في آخر سبعة أيّام دون رسائل العروض ومواقع التواصل، حتّى عشر رسائل في كلّ دفعة مع زرّ «المزيد». وإن لم يجد شيئًا وسّع النطاق إلى ثلاثين يومًا ثمّ إلى أحدث رسائلك، وأخبرك بالنطاق المعروض."
+     },
+     {
+      "q": "هل يمكن أن يخترع تفاصيل في الردّ؟",
+      "a": "تعليماته أن يعتمد على ما في الرسالة والمحادثة فقط، وحين يلزمك قرار كموعد أو سعر يترك مكانًا قصيرًا بين قوسين مربّعين لتملأه بنفسك. ومع ذلك اقرأ المسوّدة دائمًا قبل الإرسال."
+     }
+    ],
+    "cta": "افتح مساعد البريد",
+    "note": "يحتاج حسابًا في om ai وربط Gmail. لا يُرسَل أيّ ردّ دون موافقتك، وقد تنشغل خدمة الكتابة أحيانًا."
+   },
+   "en": {
+    "title": "AI Email Reply Assistant for Gmail — om ai",
+    "description": "Link Gmail: om ai drafts replies in the sender's language and tone, sorts mail by urgency and adds meetings to your calendar at a tap. You approve each send.",
+    "h1": "AI assistant that drafts your Gmail replies",
+    "lead": "om ai reads your latest Gmail inbox and writes a draft reply for each conversation in the sender's language and tone, bringing it closer to your own writing style. You edit the draft, regenerate it or ignore the sender, and nothing is sent until you press Send.",
+    "features": [
+     "Drafts each reply in the sender's language and tone, using earlier messages as context",
+     "Uses your recent sent emails to bring drafts closer to your own style",
+     "Labels emails urgent, normal or low priority and moves urgent ones to the top",
+     "Translates emails in another language into your app language and explains a foreign draft",
+     "Spots a meeting mentioned in an email and adds it to your calendar in one tap",
+     "Voice summary of listed emails: count, urgent ones, first five senders and subjects"
+    ],
+    "steps": [
+     "Sign in to om ai, open the email assistant and connect your Gmail account.",
+     "Review the cards: each email shows its priority, a short preview and a suggested reply.",
+     "Edit or regenerate the draft and press Send, or ignore that sender so their emails stop appearing."
+    ],
+    "faq": [
+     {
+      "q": "Does om ai send emails without my permission?",
+      "a": "No. Every draft stays in an editable box, and a reply goes out only when you press Send on that email. It is sent from your Gmail account inside the same conversation."
+     },
+     {
+      "q": "What do I need to start?",
+      "a": "An om ai account, then connecting Gmail and allowing it to read your mail and send the replies you approve; both are required. Adding calendar events is optional, and if that permission is missing the tool asks you to connect again."
+     },
+     {
+      "q": "Which emails does it show?",
+      "a": "Your inbox from the last seven days without promotions or social mail, up to ten at a time with a Load more button. If that is empty it widens to thirty days, then to your latest emails, and tells you which range it shows."
+     },
+     {
+      "q": "Can it make up details in my reply?",
+      "a": "It is instructed to use only facts from the email and its thread. Where you need to decide something, such as a date or a price, it leaves a short placeholder in square brackets for you to fill. Always read the draft before sending."
+     }
+    ],
+    "cta": "Open the email assistant",
+    "note": "Needs an om ai account and a connected Gmail. No reply is sent without your approval, and drafting may be busy at times."
+   }
+  },
+  {
+   "slug": "construction",
+   "btn": "btnConstruction",
+   "img": "/assets/tool-cards/clean/btnConstruction.jpg",
+   "w": 1200,
+   "h": 720,
+   "thumb": "/assets/tool-cards/s/btnConstruction.jpg",
+   "name": {
+    "ar": "مخطّط البناء",
+    "en": "Construction planner"
+   },
+   "ar": {
+    "title": "تصميم مخطط بيت بالذكاء الاصطناعي وجدول كميات — om ai",
+    "description": "صمّم مخطط بيت أو فيلا بالذكاء الاصطناعي: مقاسات تقريبية للغرف، وصور للواجهة والداخل، وجولة ثلاثية الأبعاد، وجدول كميات تقديري، وتقرير PDF.",
+    "h1": "تصميم مخطط بيت أو فيلا بالذكاء الاصطناعي",
+    "lead": "مع om ai تصمّم مخطط بيتك بالذكاء الاصطناعي: صف فيلتك أو عمارتك أو استراحتك، فتحصل على مخطط ثنائي الأبعاد بمقاسات تقريبية للغرف، وصور للواجهة والداخل، وجدول كميات تقديري للمواد. وفي المحرّر التفاعلي مخطط تعدّله بيدك وتستعرضه بثلاثة أبعاد قبل أن تجلس مع المهندس أو المقاول.",
+    "features": [
+     "مخطط ثنائي الأبعاد بمقاسات تقريبية للغرف لفلل وعمارات واستراحات ومساجد ومحلات وغيرها",
+     "صورة واقعية للواجهة وأخرى للتصميم الداخلي، ولقطات أمامية وجانبية وخلفية وجوية",
+     "محرّر تفاعلي تسحب فيه الغرف وتغيّر مقاساتها، مع جولة ثلاثية الأبعاد وفصل للطوابق",
+     "جدول كميات تقديري للخرسانة والحديد والطابوق والتشطيبات، تنزّله في ملفّ جدول بيانات",
+     "تقرير PDF يجمع المخطط والصور ومساحات الغرف والكميات والجدول الزمني للتنفيذ",
+     "عشرة طُرُز معمارية منها الخليجي التراثي والنجدي والأندلسي، وملاحق كالمجلس والمسبح"
+    ],
+    "steps": [
+     "اكتب وصف مشروعك في سطر واحد، أو اختر نوع المبنى وعدد الأدوار والمساحة والطراز.",
+     "اختر المخطط أو صورة الواجهة أو كليهما، وأضف صورة داخلية إن شئت، ثم ابدأ التوليد.",
+     "راجع النتيجة، واطلب زوايا أخرى أو صور الغرف من الداخل، ثم نزّل جدول الكميات وتقرير PDF."
+    ],
+    "faq": [
+     {
+      "q": "هل يصلح المخطط لاستخراج رخصة بناء؟",
+      "a": "لا. النتيجة تصوّر أوّليّ للعرض والنقاش، والكميات تقديرية. التنفيذ يحتاج إلى مهندس مرخّص ورخصة بناء رسمية، وكلّ تقرير ينصّ على ذلك صراحة."
+     },
+     {
+      "q": "كم تصميمًا أستطيع أن أولّد في اليوم؟",
+      "a": "تحتاج إلى تسجيل الدخول، وفي الخطة المجّانية حتّى ستّ عمليات يوميًّا: كلّ توليد عملية واحدة مهما اخترت من نتائج، وكلّ لقطة إضافية لزاوية أو غرفة عملية أخرى. والاشتراكات المدفوعة ترفع هذا الحدّ."
+     },
+     {
+      "q": "هل تعطيني الأداة تكلفة البناء؟",
+      "a": "لا، فهي ليست أداة تسعير. تعطيك كميات تقديرية للمواد ومساحات الغرف وجدولًا زمنيًّا للمراحل، تأخذها إلى المقاولين لتطلب عروض أسعارهم."
+     },
+     {
+      "q": "هل أستطيع تعديل المخطط بنفسي؟",
+      "a": "صورة المخطط المولَّدة لا تُعدَّل، لكنّ المحرّر التفاعلي يرسم من بيانات مشروعك مخططًا تسحب فيه الغرف وتغيّر مقاساتها وتضيف غرفًا وطوابق، وتُحسب المساحات من الأبعاد مباشرة، ثم تولّد منه صور الواجهة."
+     }
+    ],
+    "cta": "افتح أداة المقاولات",
+    "note": "تحتاج إلى تسجيل الدخول، وفي الخطة المجّانية حتّى ستّ عمليات يوميًّا. النتائج تصوّر أوّليّ لا يغني عن مهندس مرخّص."
+   },
+   "en": {
+    "title": "AI Floor Plan Generator with Bill of Quantities — om ai",
+    "description": "Design a house or villa floor plan with AI: rough room sizes, exterior and interior renders, a 3D tour, an estimated bill of quantities and a PDF report.",
+    "h1": "AI floor plan generator for houses and villas",
+    "lead": "Design your floor plan with AI on om ai: describe your villa, apartment block or rest house and get a 2D plan with rough room sizes, exterior and interior renders and an estimated bill of quantities. The interactive editor gives you a plan to adjust by hand and view in 3D before meeting your engineer or contractor.",
+    "features": [
+     "2D plan with rough room sizes for villas, apartments, rest houses, mosques, shops and more",
+     "Realistic exterior and interior renders, plus front, side, rear and aerial views",
+     "Interactive editor to drag and resize rooms, with a 3D tour and a split-floors view",
+     "Estimated bill of quantities for concrete, rebar, blocks and finishes, as a spreadsheet",
+     "PDF report with the plan, images, room areas, quantities and a phase timeline",
+     "Ten styles such as Gulf heritage, Najdi and Andalusian, with annexes like a majlis or pool"
+    ],
+    "steps": [
+     "Describe your project in one line, or pick the building type, floors, area and style.",
+     "Choose the 2D plan, the exterior render or both, add an interior image if you like, then generate.",
+     "Review it, request other angles or room interiors, then download the bill of quantities and PDF report."
+    ],
+    "faq": [
+     {
+      "q": "Can I use the plan to apply for a building permit?",
+      "a": "No. The result is an early concept for discussion, and the quantities are estimates. Building needs a licensed engineer and an official building permit, and every report states this clearly."
+     },
+     {
+      "q": "How many designs can I make per day?",
+      "a": "You need to sign in. The free plan allows up to six runs a day: each generation counts as one, whatever outputs you pick, and each extra angle or room view counts as another. Paid plans raise this limit."
+     },
+     {
+      "q": "Does it tell me the construction cost?",
+      "a": "No, it is not a pricing tool. You get estimated material quantities, room areas and a phase timeline to take to contractors when you ask for their quotes."
+     },
+     {
+      "q": "Can I edit the plan myself?",
+      "a": "The generated plan image cannot be edited, but the interactive editor draws a plan from your project details where you drag and resize rooms and add rooms or floors; areas update from the dimensions, and you can render the exterior from it."
+     }
+    ],
+    "cta": "Open construction tool",
+    "note": "Sign-in required; the free plan includes up to six runs a day. Results are an early concept, not a substitute for a licensed engineer."
+   }
+  },
+  {
+   "slug": "education",
+   "btn": "btnOmranEdu",
+   "img": "/assets/ثيمات/فصل/مشهد.jpg",
+   "w": 2560,
+   "h": 1710,
+   "thumb": "/assets/tool-cards/s/btnOmranEdu.jpg",
+   "name": {
+    "ar": "التعليم",
+    "en": "Education"
+   },
+   "ar": {
+    "title": "تلخيص المحاضرات وحلّ الواجبات بالذكاء الاصطناعي — om ai",
+    "description": "لخّص محاضرتك من ملفّ PDF أو صور، واحصل على بطاقات مراجعة واختبار، واسأل معلّم الدرس عمّا لم تفهمه، وصوّر واجبك ليُحلّ لك خطوة بخطوة.",
+    "h1": "لخّص محاضرتك وحلّ واجبك بالذكاء الاصطناعي",
+    "lead": "ارفع محاضرتك ملفًّا أو صورًا أو الصق نصّها، فيعطيك قسم التعليم في om ai ملخّصًا واضحًا وبطاقات مراجعة واختبارًا بثلاثة مستويات. وإن لم تكن لديك محاضرة فاختر بلدك وصفّك ومادّتك واسم الدرس ليُكتب لك شرح كامل، أو صوّر واجبك لتحصل على حلّه خطوة بخطوة.",
+    "features": [
+     "ملخّص وبطاقات مراجعة واختبار من محاضرتك: ملفّ PDF أو صور أو نصّ ملصوق",
+     "درس من المنهج: اختر البلد والمرحلة والصفّ والمادّة واسم الدرس",
+     "اسأل المعلّم داخل الدرس عن أيّ نقطة لم تفهمها فيشرحها لك بطريقة أبسط",
+     "حلّ الواجب من صورة أو نصّ: مسألة أو ورقة أسئلة أو تعبير أو مشروع",
+     "أسئلة مقاليّة تُقدَّر إجابتك عنها من ١٠ مع ما أصبت فيه وما فاتك",
+     "مراجعة متباعدة للبطاقات، وتجربة تفاعليّة للدرس، وخطّة مذاكرة حسب موعد امتحانك"
+    ],
+    "steps": [
+     "افتح قسم التعليم في om ai واختر: رفع محاضرة، أو درسًا من المنهج، أو حلّ الواجب.",
+     "أضف ملفّ المحاضرة أو صورها مع اسمها ومادّتها، أو أدخل بيانات الدرس، أو صوّر واجبك، ثمّ ابدأ.",
+     "ذاكر من الملخّص والبطاقات، واختبر نفسك، واسأل المعلّم عمّا لم تفهمه."
+    ],
+    "faq": [
+     {
+      "q": "هل أحتاج إلى تسجيل الدخول؟",
+      "a": "لا، يمكنك البدء ضيفًا: حتّى ٣ دروس و١٠ أسئلة للمعلّم و٣ حلول واجبات في اليوم (وبناء التجربة التفاعليّة يُحسب من الدروس الثلاثة)، وتُحفظ دروسك على جهازك فقط. وبتسجيل الدخول تُحفظ دروسك في حسابك وترتفع الحدود اليوميّة."
+     },
+     {
+      "q": "ما الملفّات التي يقبلها رفع المحاضرة؟",
+      "a": "ملفّ PDF أو DOCX، أو أرشيف ZIP فيه ملفّات نصّيّة، أو حتّى ١٠ صور للمحاضرة معًا، أو نصّ تلصقه مباشرة. حدّ الملفّات نحو ١٠ ميغابايت، أمّا الصور فتُصغَّر تلقائيًّا."
+     },
+     {
+      "q": "هل يحلّ الواجب كاملًا أم يعلّمني الطريقة؟",
+      "a": "الاثنان: «الحلّ الكامل» يعرض الخطوات والجواب وطريقة التحقّق، و«علّمني خطوة خطوة» يكشف الخطوات واحدة تلو الأخرى مع تلميح اختياريّ. والحلّ مولَّد بالذكاء الاصطناعي وقد يخطئ، فراجعه قبل تسليمه."
+     },
+     {
+      "q": "هل يلتزم الشرح بمنهج بلدي؟",
+      "a": "يحاول اتّباع مصطلحات منهج البلد الذي تختاره ومستوى صفّك، لكنّه لا يطّلع على كتابك المدرسيّ نفسه، فطابق الشرح مع كتابك ومعلّمك."
+     }
+    ],
+    "cta": "افتح أداة التعليم",
+    "note": "يعمل دون تسجيل: حتّى ٣ دروس و١٠ أسئلة للمعلّم و٣ حلول واجبات يوميًّا. سجّل الدخول لحفظ دروسك في حسابك."
+   },
+   "en": {
+    "title": "AI Lecture Summarizer and Homework Helper — om ai",
+    "description": "Turn a lecture PDF or photos into a summary, flashcards and a quiz, ask the tutor what you did not understand, and snap homework for a step-by-step solution.",
+    "h1": "Summarize lectures and solve homework with AI",
+    "lead": "Upload your lecture as a file or photos, or paste its text, and the om ai education tool gives you a clear summary, flashcards and a quiz at three levels. No lecture? Pick your country, grade, subject and lesson for a full explanation, or snap your homework for a step-by-step solution.",
+    "features": [
+     "Summary, flashcards and a quiz from your lecture: a PDF, photos or pasted text",
+     "Curriculum lesson: choose country, stage, grade, subject and lesson name",
+     "Ask the tutor about any point in a lesson and get a simpler explanation",
+     "Homework solver from a photo or text: a problem, worksheet, essay or project",
+     "Written questions scored out of 10, showing what you got right and what you missed",
+     "Spaced flashcard review, an interactive lab per lesson and a plan for your exam date"
+    ],
+    "steps": [
+     "Open Education in om ai and choose: upload a lecture, a curriculum lesson or the homework solver.",
+     "Add the lecture file or photos with its name and subject, enter lesson details or snap homework, then start.",
+     "Study the summary and flashcards, test yourself, and ask the tutor about anything you did not understand."
+    ],
+    "faq": [
+     {
+      "q": "Do I need to sign in?",
+      "a": "No. As a guest you get up to 3 lessons, 10 tutor questions and 3 homework solutions a day (building an interactive lab counts as one of the 3 lessons), saved on your device only. Signing in saves lessons to your account and raises the daily limits."
+     },
+     {
+      "q": "Which files can I upload as a lecture?",
+      "a": "A PDF or DOCX file, a ZIP archive with text files, up to 10 photos of the lecture at once, or text you paste directly. Files are limited to about 10 MB; photos are resized automatically."
+     },
+     {
+      "q": "Does it give the full answer or teach me the method?",
+      "a": "Both. \"Full solution\" shows the steps, the answer and how to check it; \"Teach me step by step\" reveals the steps one at a time with an optional hint. Solutions are AI-generated and can be wrong, so review them before handing in."
+     },
+     {
+      "q": "Does it follow my country's curriculum?",
+      "a": "It tries to use the terms of the curriculum you choose and your grade level, but it does not see your actual textbook, so check the explanation against your book and teacher."
+     }
+    ],
+    "cta": "Open the education tool",
+    "note": "Works without signing in: up to 3 lessons, 10 tutor questions and 3 homework solutions a day. Sign in to save lessons to your account."
+   }
+  },
+  {
+   "slug": "qibla",
+   "btn": "btnQibla",
+   "img": "/assets/tool-cards/clean/btnQibla.jpg",
+   "w": 1200,
+   "h": 720,
+   "thumb": "/assets/tool-cards/s/btnQibla.jpg",
+   "name": {
+    "ar": "القبلة ومواقيت الصلاة",
+    "en": "Qibla and prayer times"
+   },
+   "ar": {
+    "title": "اتّجاه القبلة ومواقيت الصلاة حسب موقعك — om ai",
+    "description": "اعرف اتّجاه القبلة من موقعك ومواقيت الصلاة لليوم مع التاريخ الهجريّ وعدّ تنازليّ للصلاة القادمة. تفتح بلا حساب، وتنبيهات الصلاة بعد تسجيل الدخول.",
+    "h1": "اتّجاه القبلة ومواقيت الصلاة حسب موقعك",
+    "lead": "افتح أداة القبلة في om ai لترى مواقيت الصلاة لليوم حيث أنت، وعدًّا تنازليًّا للصلاة القادمة، واتّجاه القبلة بالدرجات من الشمال. وعلى الهاتف المزوَّد ببوصلة يصبح السهم أخضر حين تواجه القبلة.",
+    "features": [
+     "مواقيت الصلوات الخمس والشروق لليوم مع التاريخ الهجريّ",
+     "عدّ تنازليّ مباشر للصلاة القادمة مع تمييزها في القائمة",
+     "زاوية القبلة من الشمال وسهم بوصلة يصبح أخضر حين تواجهها",
+     "طريقة حساب تُختار تلقائيًّا حسب موقعك، أو تختارها بنفسك مثل أمّ القرى أو الخليج",
+     "تنبيه اختياريّ لكلّ صلاة بعد تسجيل الدخول: عند الأذان أو قبله بـ٥ أو ١٠ أو ١٥ أو ٣٠ دقيقة",
+     "تعمل على الهاتف والحاسوب، وإن لم يتوفّر حسّاس بوصلة فتوجّه نحو الزاوية المعروضة"
+    ],
+    "steps": [
+     "افتح أداة القبلة والمواقيت واسمح بالوصول إلى موقعك، وإن رفضتَ استُخدم موقع تقريبيّ من الشبكة.",
+     "اطّلع على الصلاة القادمة والعدّ التنازليّ، وغيّر طريقة الحساب إن اختلفت المواقيت عن توقيت مسجد منطقتك.",
+     "انتقل إلى تبويب القبلة، واضغط «تفعيل البوصلة» إن ظهر، ثمّ أدر هاتفك حتّى يصبح السهم أخضر."
+    ],
+    "faq": [
+     {
+      "q": "هل أحتاج إلى حساب لأرى المواقيت واتّجاه القبلة؟",
+      "a": "لا. المواقيت والعدّ التنازليّ واتّجاه القبلة تفتح من دون حساب، وتسجيل الدخول مطلوب فقط لتفعيل تنبيهات الصلاة."
+     },
+     {
+      "q": "ما مدى دقّة اتّجاه القبلة؟",
+      "a": "يُحسب الاتّجاه من موقع جهازك إلى الكعبة، فالدقّة تعتمد على دقّة الموقع وبوصلة الهاتف. فعّل خدمة الموقع بدل الموقع التقريبيّ، وحرّك الهاتف على شكل الرقم ٨ لمعايرة البوصلة."
+     },
+     {
+      "q": "لماذا تختلف المواقيت دقائق عن مسجد منطقتي؟",
+      "a": "المواقيت تعتمد على طريقة الحساب. تختار الأداة طريقة تلقائيًّا حسب موقعك، ويمكنك تغييرها من القائمة مثل أمّ القرى أو الخليج أو رابطة العالم الإسلاميّ. وفي الصلاة اعتمد توقيت مسجدك أو الجهة الرسميّة في بلدك."
+     },
+     {
+      "q": "هل يصلني تنبيه الصلاة والتطبيق مغلق؟",
+      "a": "بعد تسجيل الدخول والضغط على الجرس بجانب الصلاة، يُرسَل إليك إشعار حتّى والتطبيق مغلق إن سمح جهازك بالإشعارات، وقد يتأخّر أحيانًا. وإن لم تتوفّر الإشعارات على جهازك فيظهر التنبيه والتطبيق مفتوح فقط."
+     }
+    ],
+    "cta": "افتح أداة القبلة",
+    "note": "المواقيت والقبلة من دون حساب، وتنبيهات الصلاة تحتاج إلى تسجيل الدخول. الدقّة تعتمد على موقع جهازك وبوصلته."
+   },
+   "en": {
+    "title": "Qibla Direction and Prayer Times Near You — om ai",
+    "description": "Qibla direction and today's prayer times for your location, with the Hijri date and a next-prayer countdown. No account needed; reminders need sign-in.",
+    "h1": "Qibla direction and prayer times near you",
+    "lead": "Open the om ai Qibla tool to see today's prayer times for where you are, a countdown to the next prayer and the Qibla direction in degrees from North. On a phone with a compass, the arrow turns green when you face the Qibla.",
+    "features": [
+     "Today's five prayer times plus sunrise, with the Hijri date",
+     "Live countdown to the next prayer, highlighted in the list",
+     "Qibla angle from North and a compass arrow that turns green when you face it",
+     "Calculation method set automatically by location, or pick one like Umm al-Qura or Gulf",
+     "Optional reminder per prayer after sign-in: at the adhan or 5, 10, 15 or 30 min before",
+     "Works on phone and desktop; without a compass sensor, face the angle shown"
+    ],
+    "steps": [
+     "Open the Qibla and prayer times tool and allow location; if you decline, an approximate location is used.",
+     "Check the next prayer and countdown, and change the calculation method if times differ from your local mosque.",
+     "Switch to the Qibla tab, tap Enable compass if it appears, then turn your phone until the arrow turns green."
+    ],
+    "faq": [
+     {
+      "q": "Do I need an account to see prayer times and the Qibla?",
+      "a": "No. Prayer times, the countdown and the Qibla direction open without an account. You only need to sign in to turn on prayer reminders."
+     },
+     {
+      "q": "How accurate is the Qibla direction?",
+      "a": "It is calculated from your device location to the Kaaba, so accuracy depends on your location and your phone's compass. Turn on location services instead of the approximate location, and move the phone in a figure-8 to calibrate."
+     },
+     {
+      "q": "Why do the times differ by a few minutes from my local mosque?",
+      "a": "Times depend on the calculation method. The tool picks one automatically by your location, and you can change it, for example to Umm al-Qura, Gulf Region or Muslim World League. For prayer, follow your mosque or official local authority."
+     },
+     {
+      "q": "Will the prayer reminder reach me when the app is closed?",
+      "a": "After you sign in and tap the bell beside a prayer, a notification is sent even with the app closed if your device allows notifications, though it may sometimes arrive late. Otherwise the alert shows only while the app is open."
+     }
+    ],
+    "cta": "Open the Qibla tool",
+    "note": "No account needed for times and Qibla. Sign in to turn on prayer reminders. Accuracy depends on your device location and compass."
+   }
+  },
+  {
+   "slug": "religion",
+   "btn": "btnReligion",
+   "img": "/assets/tool-cards/clean/btnReligion.jpg",
+   "w": 1200,
+   "h": 720,
+   "thumb": "/assets/tool-cards/s/btnReligion.jpg",
+   "name": {
+    "ar": "الأسئلة الدينيّة",
+    "en": "Islamic questions"
+   },
+   "ar": {
+    "title": "تفسير الآيات وشرح الأحاديث وتفسير الأحلام — om ai",
+    "description": "اكتب آيةً أو حديثًا أو حلمك، واحصل على جواب منظّم بلغة سؤالك: تفسير الآية، ومصدر الحديث ودرجته المشهورة، وقراءات متعدّدة للحلم. يحتاج تسجيل الدخول.",
+    "h1": "تفسير الآيات وشرح الأحاديث وتفسير الأحلام",
+    "lead": "أداة «التفسير الديني» في om ai تجمع ثلاث خدمات في مكان واحد: تفسير آية من القرآن الكريم، والبحث عن حديث نبويّ وشرحه، وتفسير الأحلام. اكتب سؤالك أو أمْلِه بصوتك، فيصلك الجواب مرتّبًا بعناوين وبلغة سؤالك.",
+    "features": [
+     "تفسير آية بنصّها أو بسورتها ورقمها: سبب النزول إن وُجد، والمعنى الإجماليّ، وأهمّ الفوائد",
+     "البحث عن حديث بنصّه أو موضوعه: الراوي والمصدر والدرجة المشهورة، مع الشرح والفوائد",
+     "ستّ قراءات للحلم: إسلاميّة ومسيحيّة ويهوديّة وهندوسيّة بوذيّة ونفسيّة ورمزيّة عامّة",
+     "الجواب بلغة سؤالك، مرتّب بعناوين وقوائم تسهّل قراءته",
+     "اكتب سؤالك أو أمْلِه بزرّ الإملاء الصوتيّ، وتابع الجواب وهو يُكتب أمامك"
+    ],
+    "steps": [
+     "سجّل دخولك في om ai، وافتح «التفسير الديني» من القائمة.",
+     "اختر التبويب المناسب: «تفسير آية» أو «بحث حديث» أو «تفسير الأحلام»، ثمّ اكتب سؤالك.",
+     "اضغط «فسّر» وانتظر قليلًا، فيظهر الجواب مرتّبًا بعناوين."
+    ],
+    "faq": [
+     {
+      "q": "هل الجواب فتوى شرعيّة؟",
+      "a": "لا. الأجوبة مساعدة يولّدها الذكاء الاصطناعيّ للفهم والاستئناس، وليست فتوى ولا حكمًا شرعيًّا. ارجع إلى أهل العلم المؤهّلين في أمور دينك، وتحقّق من نصوص الآيات والأحاديث في مصادرها."
+     },
+     {
+      "q": "كيف أبحث عن حديث لا أتذكّر نصّه؟",
+      "a": "اكتب موضوعه، مثل برّ الوالدين، أو ما تتذكّره منه، فتحصل على أقرب حديث معروف مع راويه ومصدره ودرجته المشهورة وشرحه. والأداة تجيب من معرفتها لا من قاعدة أحاديث، فتحقّق من النصّ والدرجة قبل النقل."
+     },
+     {
+      "q": "هل تفسير الأحلام على طريقة ابن سيرين؟",
+      "a": "تُبنى القراءة الإسلاميّة في الجواب على منهج ابن سيرين والنابلسي في معاني الرموز، وتليها قراءات دينيّة أخرى وقراءة نفسيّة وأخرى رمزيّة عامّة. هي اجتهاد آليّ للاستئناس، فلا تبنِ عليها قرارًا."
+     },
+     {
+      "q": "هل الأداة مجانيّة؟",
+      "a": "نعم ضمن حدّ يوميّ. تحتاج حسابًا في om ai، وكلّ تفسير يُحتسب من رصيدك المشترك مع المحادثة: 20 طلبًا في اليوم للحساب المجانيّ. إذا نفد رصيدك تظهر لك الباقات، أو انتظر إلى اليوم التالي."
+     }
+    ],
+    "cta": "افتح التفسير الديني",
+    "note": "يحتاج تسجيل الدخول، وكلّ تفسير يُحتسب من رصيد المحادثة: 20 طلبًا يوميًّا للحساب المجانيّ."
+   },
+   "en": {
+    "title": "Quran Tafsir, Hadith and Dream Interpretation — om ai",
+    "description": "Type a verse, hadith or dream for an organized answer in the language you use: verse tafsir, hadith source and grade, and dream readings. Sign-in required.",
+    "h1": "Quran Tafsir, Hadith and Dream Interpretation",
+    "lead": "The om ai Religious Insights tool puts three helpers in one place: explain a Quran verse, find and explain a hadith, and interpret a dream. Type or dictate your question, and the answer arrives laid out with headings, in the language you asked in.",
+    "features": [
+     "Verse tafsir by text or by surah and number: reason of revelation if any, meaning, lessons",
+     "Hadith search by text or topic: narrator, source, commonly cited grade and explanation",
+     "Dreams read six ways: Islamic, Christian, Jewish, Hindu-Buddhist, psychological, cultural",
+     "Answers in the language of your question, organized with headings and lists",
+     "Type or dictate with the mic button, and watch the answer appear as it is written"
+    ],
+    "steps": [
+     "Sign in to om ai and open Religious Insights from the menu.",
+     "Pick a tab: Verse Tafsir, Hadith Lookup or Dream Interpretation, then type your question.",
+     "Tap Interpret and wait a moment for the answer, organized under clear headings."
+    ],
+    "faq": [
+     {
+      "q": "Is the answer a fatwa?",
+      "a": "No. Answers are AI-generated help for understanding and reflection, not a fatwa or religious ruling. Consult qualified scholars on matters of your faith, and check verse and hadith texts against their sources."
+     },
+     {
+      "q": "How do I find a hadith when I do not remember its wording?",
+      "a": "Type its topic, like honoring parents, or a part you remember, and get the closest known hadith with its narrator, source, commonly cited grade and explanation. It answers from its own knowledge, not a hadith database, so check text and grade before quoting."
+     },
+     {
+      "q": "Does the dream interpretation follow Ibn Sirin?",
+      "a": "The Islamic reading in each answer draws on the approach of Ibn Sirin and al-Nabulsi to dream symbols, followed by other religious readings, a psychological one and a general cultural one. Treat it as reflection, not a basis for decisions."
+     },
+     {
+      "q": "Is the tool free?",
+      "a": "Yes, within a daily limit. You need an om ai account, and each answer counts toward the allowance you share with chat: 20 requests a day on a free account. When it runs out, the plans page opens, or you can wait for the next day."
+     }
+    ],
+    "cta": "Open Religious Insights",
+    "note": "Sign-in required. Each answer counts toward your chat allowance: 20 requests a day on a free account."
+   }
+  }
+ ]
+}

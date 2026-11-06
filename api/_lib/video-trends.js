@@ -852,10 +852,10 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Static wide vertical shot from a phone on a tripod in an ordinary open-air parking lot by day; the camera never moves. The person from the reference image, in casual streetwear, makes an exaggerated cinematic slow-motion entrance: starting at the left edge of the frame, they stride across the lot toward the lens, every step slow, heavy and deliberate, with a dramatically serious, intense face, each step landing on a big hit of the music, until they reach the foreground. True slow-motion movement throughout, an ordinary place played like a blockbuster opening. Dark, dramatic cinematic hip-hop instrumental with heavy drums, photorealistic.",
+   "prompt": "Static wide vertical shot from a phone on a tripod in an ordinary open-air parking lot by day; the camera never moves. The person from the reference image, in casual streetwear, makes an exaggerated cinematic slow-motion entrance: starting at the left edge of the frame, they stride across the lot toward the lens, every step slow, heavy and deliberate, their face and natural expression exactly as in the photo, each step landing on a big hit of the music, until they stand in the middle of the frame, seen from the knees up. True slow-motion movement throughout, an ordinary place played like a blockbuster opening. Dark, dramatic cinematic hip-hop instrumental with heavy drums, photorealistic.",
    "scenes": null,
    "preview": {
-     "frame": "photorealistic vertical still from a fixed camera in an ordinary open-air parking lot by day: a young man in casual streetwear striding in from the left in slow motion, mid-step, with a dramatically serious, intense face",
+     "frame": "photorealistic vertical still from a fixed camera in an ordinary open-air parking lot by day: a young man in casual streetwear striding in from the left in slow motion, mid-step, with a calm, natural face",
      "gender": "m"
    }
  }
@@ -1081,8 +1081,10 @@ function withPhotoLock(promptText, max, subject) {
   const cap = max || 1500;
   /* مراجعة ٢٧ أكتوبر: بطول قفل الهويّة أو أقصر (حدود VEO_FREE_IMAGE_MAX قيست عليه — كلام الممثّل و«بلا ترجمة» لا يُقصّان)، وبلا «وجه» ولا
      «IDENTITY» (صورة منتج لا يُخترع لها شخص — v-ai-video-speed) */
-  const pre = 'MAIN SUBJECT: whoever or whatever is in ' + (subject || 'the attached image') + ' — keep it exactly as shown (same look, colours, clothes and art style; a photo stays a photo, a drawing stays a drawing) in every shot; the description sets only action, place, camera. ';
-  const post = ' SUBJECT (mandatory): the same subject from the image throughout — never redrawn more realistic, more cartoonish or generic.';
+  /* v-video-identity-pose (المالك ٣ نوفمبر: «تغير ملامح الشخصية» — صورته ووجهه نازل للجوال و«يطالع الكاميرا» فاخترع المحرّك وجهًا أماميًّا):
+     أيّ التفات نحو الكاميرا صغير وبطيء من زاوية الصورة نفسها — ما لم تُظهره الصورة لا يُرسم من جديد دفعة واحدة. والطول كما كان ≤ قفل الهويّة. */
+  const pre = 'MAIN SUBJECT: whoever or whatever is in ' + (subject || 'the attached image') + ' — keep it exactly as shown (look, proportions, colours, clothes, art style) in every shot; the description sets action, place, camera — any turn to the camera is small and slow. ';
+  const post = ' SUBJECT (mandatory): the same throughout — a photo stays a photo, a drawing a drawing, never more realistic or generic.';
   const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
   return pre + body + post;
 }

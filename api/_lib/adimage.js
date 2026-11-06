@@ -17,21 +17,50 @@ const AD_FAIL_EN = 'Could not generate the ad right now — please try again.';
 const adPaused = (lg) => ({ error: 'unavailable', message_ar: 'الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.',
   message: lg === 'ar' ? undefined : 'This service is temporarily unavailable — please try again shortly.' });
 
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): إنقاذ Gemini أدناه كان يسقط هو أيضًا عند نفاد رصيده فيصل المستخدم
+   «الخدمة متوقّفة». الاحتياط النموذج نفسه عند fal بجسم الطلب نفسه (2K، القالب وصورة المستخدم بترتيبهما)، وناتجه يُسلَّم كناتج Gemini
+   (المحرّك «gemini»). مهلته ما بقي من حدّ الدالّة (٣٠٠ ث) محسوبًا من بداية الطلب (نداء OpenAI قبله قد يأكل معظمه)، مرّة واحدة. */
+const falBackup = require('./fal-fallback.js');
+const AD_GEMINI_MODEL = 'gemini-3-pro-image';
+const FAL_BUDGET_MS = 270000;
+function falOpts(t0) {
+  const left = FAL_BUDGET_MS - (Date.now() - (t0 || Date.now()));
+  return left >= 15000 ? { where: 'adimage', timeoutMs: Math.min(150000, left) } : null;
+}
+
 // v-ad-rescue: توليد الإعلان عبر Gemini عند رفض OpenAI — يرجع {data,mime} أو null، لا يرمي أبدًا.
-async function geminiAdImage(promptText, images) {
+async function geminiAdImage(promptText, images, t0) {
   const gkey = (process.env.GEMINI_API_KEY || '').trim();
   if (!gkey) return null;
   try {
     const parts = [{ text: String(promptText).slice(0, 7000) }];
     for (const [b64, mime] of images || []) parts.push({ inlineData: { mimeType: mime, data: b64 } });
+    const reqBody = { contents: [{ parts }], generationConfig: { imageConfig: { imageSize: '2K' } } };
+    /* v-fal-backup: الرصيد خلص قبل دقائق ← النموذج نفسه عند fal مباشرة بلا نداء فاشل قبله */
+    let falTried = false;
+    if (await falBackup.geminiOutRecently()) {
+      const fo = falOpts(t0);
+      if (fo) {
+        falTried = true;
+        const f0 = await falBackup.imageFromGemini(AD_GEMINI_MODEL, reqBody, fo);
+        if (f0 && f0.b64) return { data: f0.b64, mime: f0.mime };
+      }
+    }
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + gkey, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { imageConfig: { imageSize: '2K' } } }),
+      body: JSON.stringify(reqBody),
       signal: AbortSignal.timeout(240000),
     });
     const d = await r.json().catch(() => null);
-    if (!r.ok) { console.warn('[adimage] gemini HTTP ' + r.status + ' ' + String((d && d.error && d.error.message) || '').slice(0, 120)); return null; }
+    if (!r.ok) {
+      const tech = String((d && d.error && d.error.message) || '');
+      console.warn('[adimage] gemini HTTP ' + r.status + ' ' + tech.slice(0, 120));
+      /* v-fal-backup: نفاد الرصيد ← fal بالنموذج نفسه؛ غير ذلك null كما كان */
+      const fo = falTried ? null : falOpts(t0);
+      const fb = fo ? await falBackup.rescueImage(r.status, tech, AD_GEMINI_MODEL, reqBody, fo) : null;
+      return fb ? { data: fb.b64, mime: fb.mime } : null;
+    }
     const ps = ((((d && d.candidates) || [])[0] || {}).content || {}).parts || [];
     const ip = ps.find((x) => x.inlineData && x.inlineData.data);
     return ip ? { data: ip.inlineData.data, mime: ip.inlineData.mimeType || 'image/png' } : null;
@@ -94,6 +123,7 @@ const SCENES = {
 };
 
 module.exports = async (req, res) => {
+  const t0 = Date.now(); /* v-fal-backup: بداية ميزانيّة الدالّة */
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   if (req.method !== 'POST') { res.status(405).end('{"error":"POST only"}'); return; }
   let giveQuota = async () => {}; // v-quota-giveback
@@ -238,7 +268,7 @@ module.exports = async (req, res) => {
       const gImgs = [];
       if (tplB64) gImgs.push([tplB64, 'image/jpeg']);
       if (hasImg) gImgs.push([b.imageBase64, /^image\/(png|jpeg|webp)$/.test(String(b.mimeType || '')) ? b.mimeType : 'image/jpeg']);
-      const g = await geminiAdImage(p, gImgs);
+      const g = await geminiAdImage(p, gImgs, t0);
       if (g) {
         res.status(200).end(JSON.stringify({ imageBase64: g.data, mimeType: g.mime, dailyLimit: gate.limit || DAILY, engine: 'gemini' }));
         return;

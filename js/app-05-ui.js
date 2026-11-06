@@ -884,7 +884,9 @@ document.addEventListener('click', closeMsgMoreMenu);
 /* v-tools-pause (المالك ١٠ أكتوبر: «اخفاء محلل المصاريف والسيرة الذاتية»، ثمّ «التلفزيون والاقتراحات»): أدوات مخفيّة مؤقّتًا —
    لا بطاقة في شاشة الأدوات (app-10-features) ولا اقتراح في المحادثة. الكود والنوافذ والخادم باقية كما هي؛
    الإرجاع = حذف المعرّف من هذه القائمة. */
-var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'];
+/* v-tv-owner (المالك ٣ نوفمبر: «ضيفه فقط لي المالك»): التلفزيون يبقى موقوفًا للجميع ويظهر للمالك وحده — حساب omran
+   (omranOwnerUi، يُقرأ عند التحميل). الإرجاع للجميع = حذف btnOmranTV من القائمتين؛ والإخفاء عن المالك أيضًا = حذفه من قائمة المالك وحدها. */
+var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'].filter(function(id){ return !(['btnOmranTV'].indexOf(id) >= 0 && typeof omranOwnerUi === 'function' && omranOwnerUi()); }); /* قائمة المالك: ['btnOmranTV'] */
 /* v-hw-resubmit-2 (رفض هواوي ٢٦ أكتوبر؛ القاعدة 1.15: لا أسماء علامات أو امتيازات تجاريّة لطرف ثالث بلا ترخيص): داخل تطبيق هواوي
    وحده (html.store-safe ومعه علم الحزمة ?store=huawei في الجلسة — ui-wiring يضع store-safe أيضًا لمتصفّح هواوي على الموقع، وذاك يبقى
    كما هو) تُخفى الخيارات المسمّاة بعلامة أو امتياز تجاريّ — أنماط الصور، ترندات الفيديو، الستايل، الطوابع. الموقع والمتاجر الأخرى كما هي؛
@@ -913,6 +915,30 @@ function omranHwStampGroups(groups){
 if(OMRAN_PAUSED_TOOLS.indexOf('btnQuickTemplates') >= 0){
   try{ var __hwSug = document.getElementById('hwCardSuggestions'); if(__hwSug){ __hwSug.hidden = true; __hwSug.style.setProperty('display', 'none', 'important'); } }
   catch(e){ __swallow(e, 'ui:paused-hw-card'); }
+  /* v-hw-1316: البطاقة الفرديّة الأخيرة قبل المخفيّة تتوسّط بصنف لا بـ:has() (Chromium 105+، وWebView هواوي ≈ 99) */
+  try{
+    var __hwPrev = __hwSug && __hwSug.previousElementSibling;
+    if(__hwPrev && __hwPrev.classList.contains('hwToolCard') && Array.prototype.indexOf.call(__hwPrev.parentNode.children, __hwPrev) % 2 === 0) __hwPrev.classList.add('hwOddLast');
+  }catch(e){ __swallow(e, 'ui:hw-odd-last'); }
+}
+/* v-hw-1316 (رفض هواوي 1.3.15 بالقاعدة 1.14 «المعلومات واللقطات لا تطابق التطبيق»): داخل تطبيق هواوي لا يَعِد نصٌّ ظاهر ببناء
+   تطبيقات وألعاب ومواقع — وصف المتجر ولقطاته أدوات ومحادثة. في «عن التطبيق»: السطر التعريفيّ، وبطاقة «بناء تطبيقات بالمحادثة»، والنبذة.
+   :has() للحاضنات (Chromium 105+)، والنصوص نفسها احتياط لـWebView 99 في قاعدة مستقلّة (محدِّد غير مفهوم يُسقط قاعدته وحدها). */
+if(omranHwPackage()){
+  try{
+    var __hwNb = document.createElement('style');
+    __hwNb.id = 'hwNoBuilderCss';
+    __hwNb.textContent = '[data-i18n="aboutTagline"],[data-i18n="aboutFeatChat"],[data-i18n="aboutMoreSummary"],[data-i18n="aboutText"]{display:none !important;}'
+      + 'details:has(> [data-i18n="aboutText"]),div:has(> [data-i18n="aboutFeatChat"]){display:none !important;}';
+    (document.head || document.documentElement).appendChild(__hwNb);
+    var __hwNbBox = function(){
+      try{
+        document.querySelectorAll('[data-i18n="aboutFeatChat"]').forEach(function(e){ if(e.parentElement) e.parentElement.style.display = 'none'; });
+        document.querySelectorAll('[data-i18n="aboutText"]').forEach(function(e){ var d = e.closest('details'); if(d) d.style.display = 'none'; });
+      }catch(e){ __swallow(e, 'ui:hw-no-builder-box'); }
+    };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', __hwNbBox, { once: true }); else __hwNbBox();
+  }catch(e){ __swallow(e, 'ui:hw-no-builder'); }
 }
 var APP_CAPABILITIES = [
   { id:'btnCV',       icon:'💼', key:'cvTitle', ar:'مولّد السيرة الذاتية', en:'CV Builder',

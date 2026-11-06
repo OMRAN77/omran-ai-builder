@@ -12,10 +12,12 @@
 // لا يرمي أبدًا: العطب يرجع { error, status } فيردّ المتّصل الخصم ويفكّ القفل.
 'use strict';
 const mergeIdentity = require('./merge-identity.js');
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
 
 const MAX_PEOPLE = 3;
 // نفس نقطة الدمج وإعداداتها في studio-create (حرارة ٠٫١٥ = أمانة للوجوه، لا إعادة تخيّل).
-const IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=';
+const IMAGE_MODEL = 'gemini-3-pro-image';
+const IMAGE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/' + IMAGE_MODEL + ':generateContent?key=';
 const IMAGE_TIMEOUT = 240000;
 
 /** نسبة الترند إلى نسبة الصورة — الطوليّ 9:16 وما عداه 16:9، كي يطابق أوّل إطارٍ إطارَ الفيديو. */
@@ -31,6 +33,7 @@ function frameTask(n, scene, start, o) {
     + String(scene || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 700) + '\n'
     /* v-trend-omni-face: ترند يتحوّل أثناء الفيديو — الإطار لحظته الأولى قبل التحوّل */
     + (start ? 'Show the moment BEFORE the change this scene describes happens: everyone still wears their own clothing and look from their own photo.\n' : '')
+    + (opt.ageShift ? '' : 'This frame is the moment BEFORE any action in the scene: looking at the camera, smiling, turning or walking toward the lens happen later in the video — here each head angle, gaze and expression stay as in their own photo.\n')
     + 'Each person keeps their own exact face and identity from their own photo. Never merge two people into one face, '
     + 'never swap a face onto the wrong body, never replace anyone with an invented person, never drop anyone, '
     + 'and never add a person who is not in the reference photos.' + (opt.ageShift ? '' : ' ' + frameLookLock(true, { art: !!opt.art, desc: 'the scene' })) + ' A single photorealistic still frame, all ' + n + ' faces sharp.';
@@ -41,17 +44,34 @@ function frameTask(n, scene, start, o) {
 async function callImage(apiKey, parts, aspect, fetchImpl, cfg) {
   const c = cfg || {};
   const f = fetchImpl || fetch;
+  const t0 = Date.now();
+  const left = () => Math.max(5000, (c.timeoutMs || IMAGE_TIMEOUT) - (Date.now() - t0));
+  const reqBody = { contents: [{ parts }], generationConfig: { temperature: c.temperature != null ? c.temperature : 0.15, imageConfig: { imageSize: c.imageSize || '2K', aspectRatio: aspect } } };
+  /* v-fal-backup: إطار الترند (فرديّ وجماعيّ) وبورتريه الممثّل — نفاد رصيد Gemini ← النموذج نفسه عند fal بالجسم نفسه (الدقّة والنسبة
+     والحرارة)، بالـfetch نفسه وبباقي المهلة لا أكثر. رصيده خلص قبل دقائق = fal مباشرة بلا نداء فاشل قبله. الناتج { b64, mime } كناتج Gemini. */
+  const fbOpts = () => ({ where: 'trend-people/' + (c.tag || 'group'), fetchImpl: f, timeoutMs: left() });
+  /* محاولة fal واحدة لكلّ نداء: الأولى إن انتهت مهلتها قد تُحاسَب وأكلت الميزانيّة، فالإنقاذ بعدها دفعٌ ثانٍ وتجاوزٌ لمهلة المتّصل */
+  let falTried = false;
+  if (await falBackup.geminiOutRecently()) {
+    falTried = true;
+    const fb = await falBackup.imageFromGemini(IMAGE_MODEL, reqBody, fbOpts());
+    if (fb.b64) return { b64: fb.b64, mime: fb.mime };
+  }
   const upstream = await f(IMAGE_URL + apiKey, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: c.temperature != null ? c.temperature : 0.15, imageConfig: { imageSize: c.imageSize || '2K', aspectRatio: aspect } } }),
-    signal: AbortSignal.timeout(c.timeoutMs || IMAGE_TIMEOUT),
+    body: JSON.stringify(reqBody),
+    signal: AbortSignal.timeout(left()),
   });
   const data = await upstream.json().catch(() => ({}));
   if (!upstream.ok) {
     // المفتاح لا يُطبع أبدًا في السجلّ ولا في ردّ المستخدم.
-    const detail = String((data && data.error && data.error.message) || 'unknown').replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
+    const tech = String((data && data.error && data.error.message) || 'unknown');
+    const detail = tech.replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
     console.error('[trend-people] ' + (c.tag || 'group') + ' frame failed status=' + upstream.status + ' detail=' + detail);
+    /* v-fal-backup: نفاد الرصيد (لا الزحام) ← fal قبل رمز الخطأ ما لم يُجرَّب أعلاه؛ رفضه = الخطأ القديم كما هو */
+    const fb = falTried ? null : await falBackup.rescueImage(upstream.status, tech, IMAGE_MODEL, reqBody, fbOpts());
+    if (fb) return { b64: fb.b64, mime: fb.mime };
     /* v-trend-codes: حالة المزوّد ونصّه المنظَّف (بلا المفتاح) للتصنيف عند المتّصل — veo-create يحوّلهما رمزًا (_videoFail.startFail) */
     return { error: 'تعذّر تجهيز الأشخاص معًا الآن. أعد المحاولة بعد لحظات.', status: 502, retryable: true, upstream: upstream.status, tech: detail };
   }
@@ -120,13 +140,19 @@ function frameLookLock(many, o) {
   /* الأسلوب الفنّيّ (أنمي، لعبة، دمية): ملامحه تُرسم بالأسلوب — لا «كما صُوّر» ولا «لون البشرة الحقيقيّ» */
   const copy = opt.art ? '' : (many ? 'Copy each person\'s face from ' + src + ' as photographed, never reinterpreted: ' : 'Copy their face from ' + src + ' as photographed, never reinterpreted: ');
   return copy + (copy ? 'keep ' : 'Keep ') + (many ? 'each one\'s' : 'their')
-    + ' head angle and facial expression close to ' + src + ' wherever the scene allows (no new smile, smirk or squint ' + desc + ' does not ask for) — a new angle or expression is what makes a face drift.'
+    + ' head angle, gaze and facial expression close to ' + src + ' (no new smile, smirk or squint) — a new angle or expression is what makes a face drift.'
     + ' Everything ' + (many ? 'each person wears' : 'worn') + ' on the head and face — ghutra or shemagh, agal, hijab or scarf, cap, glasses, jewellery — keeps the exact shape, size, thickness, pattern, colour and way of wearing shown in ' + src + ', unless ' + desc + ' changes it.'
     + (opt.art ? '' : ' Coloured scene light (neon, sunset, stage) may tint the background and the edges, but ' + (many ? 'every face stays' : 'their face stays') + ' clearly lit in its true skin tone so every feature reads exactly as in ' + src + '.'
       /* «قصّة حبّ الزومبي» (الشخص الثاني هو المتحوّل) والوصف الحرّ «خلّني زومبي/بصبغة وجه»: تغيير البشرة الذي يطلبه الوصف نفسه يُطبَّق
          على ملامحه هو — الضوء وحده لا يلوّن الوجه */
       + ' Light alone never recolours a face; only a change ' + desc + ' itself makes to ' + (many ? 'someone\'s' : 'their') + ' skin or face (make-up, face paint, a pale or tinted creature look) is applied, drawn on their own features.');
 }
+
+/* v-video-identity-pose (المالك ٣ نوفمبر: «افحص الفيديوات تغير ملامح الشخصية» — صورته ووجهه نازل للجوال، والوصف «يطالع الكاميرا»،
+   فاخترع المحرّك وجهًا أماميًّا آخر): ما لم تُظهره الصورة لا يُستعاد. الإطار الأوّل لحظة قبل أيّ فعل في الوصف — النظر للعدسة والابتسام
+   والالتفات والمشي نحو الكاميرا تحدث أثناء الفيديو لا في الإطار، فيبقى رأسه ونظرته وتعبيره كما في الصورة (كان «حيث يسمح المشهد»
+   فيتبع الإطار القالب: «ينظر للكاميرا ويبتسم» = وجه يُرسم من جديد قبل أوّل ثانية). */
+const FRAME_POSE_FIRST = 'This frame is the moment BEFORE any action in the description: looking at the camera, smiling, turning, nodding or walking toward the lens happen later in the video, not in this frame — here their head angle, gaze and expression stay as in Photo 1.';
 
 /** مهمّة أوّل إطار لشخص الصورة داخل مشهد الوصف — الوجه والجسم منه، والمكان واللبس من الوصف.
  *  o: { closeup، art، styleText (سطر أسلوب صريح يغلب سطر art — أنمي الواجهة)،
@@ -163,8 +189,10 @@ function soloFrameTask(scene, o) {
       + (opt.closeup ? ' and the close-up of their face' : '') + '. Never a different, younger, slimmer, prettier or more generic person; someone who knows them must recognize them instantly.\n';
   return 'TASK: create the OPENING FRAME of a video — one single still image — for this video description: "'
     + String(scene || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 900) + '".\n'
-    + 'Show the real person from Photo 1 (if Photo 1 shows several people, all of them) inside the scene the description asks for, as it looks at the very start of the video'
-    + look + 'Never remove a hijab or headscarf that Photo 1 shows.\n'
+    + (opt.single /* v-video-identity-mirror: ترند الشخص الواحد — انعكاس المرآة أو صورة على الحائط ليسا شخصًا ثانيًا */
+      ? 'Show only the one real person whose close-up face is attached (a mirror reflection, poster, screen or any other face in Photo 1 is not a second person — never add it) inside the scene the description asks for, as it looks at the very start of the video'
+      : 'Show the real person from Photo 1 (if Photo 1 shows several people, all of them) inside the scene the description asks for, as it looks at the very start of the video')
+    + look + 'Never remove a hijab or headscarf that Photo 1 shows. ' + FRAME_POSE_FIRST + '\n'
     + identity
     + frameLookLock(opt.people > 1, { src: 'Photo 1', art: !!(opt.art || opt.styleText) }) + '\n'
     + (opt.styleText || (opt.art ? 'Use the art style the description asks for, drawing their own real features in that style.' : 'Photorealistic, like a real film still.'))
@@ -271,12 +299,19 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
     const anime = opt.style === 'anime';
     const art = anime || !!opt.artHint || ART_STYLE_RE.test(text);
     const swap = !!opt.swap && !art && !opt.ageShift; // v-trend-face-swap: لا للأسلوب الفنّيّ (لعبة، أنمي) ولا للعمر الآخر
-    const key = frameKey(shaped, text, aspectOf(ratio), (anime ? 'anime' : '') + (opt.start ? '|start' : '') + (opt.ageShift ? '|age' : '') + (opt.detail ? '|detail' : '') + (opt.hiRes ? '|2k' : '') + (swap ? '|swap' : ''), art);
+    const key = frameKey(shaped, text, aspectOf(ratio), (anime ? 'anime' : '') + (opt.start ? '|start' : '') + (opt.ageShift ? '|age' : '') + (opt.detail ? '|detail' : '') + (opt.hiRes ? '|2k' : '') + (swap ? '|swap' : '') + (opt.single ? '|single' : ''), art);
     const hit = FRAME_CACHE.get(key);
     if (hit && Date.now() - hit.t < FRAME_CACHE_TTL) return Object.assign({ b64: hit.b64, mime: hit.mime, ref: hit.ref, people: hit.people, cached: true }, swap ? { swapped: hit.swapped, swapWhy: hit.swapWhy } : {});
     let crops = [];
     const stats = {}; // v-ai-video-speed: stats.faces = عدد الوجوه حين نجح الكشف (لا قيمة عند العطب)
     try { crops = await (opt.faceCrops || mergeIdentity.faceCrops)(apiKey, [shaped], { timeoutMs: Math.min(15000, budget), fetchImpl: opt.fetchImpl, stats }); } catch (e) { console.warn('[trend-people] solo face crop skipped: ' + (e && e.message)); crops = []; }
+    /* v-video-identity-mirror (المالك ٤ نوفمبر «شوف الملامح كيف»: صورتها بفستان أمام مرآة ← امرأة أخرى في «دخلة سلو موشن»): ترند الشخص
+       الواحد (opt.single) — وجهان بارزان فيه انعكاس مرآة أو وجه خلفيّ، لا شخصان: كان يصير «شخصين» فتسقط لقطة وجهها ويأخذ المحرّك الصورة كلّها
+       مرجعًا (وجهها ١٫٤٪ منها). الأكبر لقطةً وحده. */
+    if (opt.single && crops.length === 2) {
+      const big = (Number(crops[1].size) || 0) > (Number(crops[0].size) || 0) ? crops[1] : crops[0];
+      crops = [Object.assign({}, big, { who: 'the person' })];
+    } else if (opt.single && crops.length === 1) crops = [Object.assign({}, crops[0], { who: 'the person' })]; // الانعكاس كُشف وجهًا لكنّ قصّه سقط (صغير): لقطتها وحدها
     /* وجه واحد بارز: لقطته (v-pstyle-closeup). v-two-people: وجهان بارزان ولكلٍّ لقطته = كلّ لقطة بعنوان موضعها
        («the person on the left/right» كخطّ الدمج v-merge-faces) — كان الوجهان بلا لقطة فيُرسم الثاني من جديد.
        لقطة لأحد الوجهين وحده تبقى ممنوعة: تسحب ملامحه إلى الآخر. */
@@ -291,7 +326,7 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
     const parts = [{ text: 'Photo 1 — the user\'s own photo of the real ' + (two ? 'people' : 'person') + ' to feature:' }, { inlineData: { mimeType: shaped.mime, data: shaped.data } }];
     if (crop) parts.push({ text: SOLO_CLOSEUP_LABEL }, { inlineData: { mimeType: crop.mime, data: crop.data } });
     if (two) crops.forEach((c, k) => parts.push({ text: 'Close-up ' + (k + 1) + ' — the face of ' + c.who + ' in Photo 1, cropped and zoomed in from that same photo (identity reference for that one person only: NOT an extra person, never drawn as an extra face, an inset or a frame):' }, { inlineData: { mimeType: c.mime, data: c.data } }));
-    parts.push({ text: soloFrameTask(text, { closeup: !!crop || two, art, people, styleText: anime ? ANIME_FRAME_STYLE : '', start: !!opt.start, ageShift: !!opt.ageShift, detail: !!opt.detail }) });
+    parts.push({ text: soloFrameTask(text, { closeup: !!crop || two, art, people, styleText: anime ? ANIME_FRAME_STYLE : '', start: !!opt.start, ageShift: !!opt.ageShift, detail: !!opt.detail, single: !!opt.single && !!crop }) });
     const left = budget - (Date.now() - started);
     if (left < 20000) return { error: 'budget' };
     /* 1K: الفيديو 720p/1080p، والسعر نفسه لـ1K و2K — وحمولة أصغر للمحرّك. الأسلوب الفنّيّ بحرارة الأسلوب (mergeTemperature).
@@ -330,5 +365,5 @@ async function soloFirstFrame(apiKey, photo, scene, ratio, o) {
 module.exports = {
   MAX_PEOPLE, aspectOf, callImage /* v-actor-lipsync: بورتريه الممثّل */, frameTask, groupFirstFrame, ART_STYLE_RE, SOLO_CLOSEUP_LABEL, soloFrameTask, soloFirstFrame,
   ANIME_FRAME_STYLE, STYLE_ANIME_VIDEO, FRAME_LOCK, frameLookLock, SOLO_FRAME_TRENDS, SOLO_FRAME_ART_TRENDS, SOLO_FRAME_TOY_TRENDS, SINGLE_SUBJECT_TRENDS, trendScene, firstFrameOn, freeFrameOn, FRAME_CACHE,
-  OMNI_FRAME_TRENDS, OMNI_MORPH_TRENDS, OMNI_REF_TRENDS, OMNI_REVEAL_TRENDS, AGE_SHIFT_TRENDS, MULTI_SHOT_TRENDS, omniPersonTrend, FRAME_FACE_DETAIL,
+  FRAME_POSE_FIRST, OMNI_FRAME_TRENDS, OMNI_MORPH_TRENDS, OMNI_REF_TRENDS, OMNI_REVEAL_TRENDS, AGE_SHIFT_TRENDS, MULTI_SHOT_TRENDS, omniPersonTrend, FRAME_FACE_DETAIL,
 };

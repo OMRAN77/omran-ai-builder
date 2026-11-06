@@ -63,10 +63,25 @@ window.postWithConfirm = postWithConfirm;
     worker = new Worker(URL.createObjectURL(blob));
   }catch(e){ return; }
 
+  /* v-freeze-bg (لقطة عمران ٤ نوفمبر: البانر فوق محادثة عن إكسل — النافذة كانت خلف إكسل): الصفحة المخفيّة يخنقها
+     المتصفّح، فكان أيّ انشغال وهي مخفيّة يُحسب «تجمّدًا» ويطلع البانر عند الرجوع وما رأى المستخدم شيئًا (مسبار:
+     مخفيّة + ٨ث انشغال ← البانر). الآن: لا يُحسب إلّا ما جرى والصفحة ظاهرة — نبضة أُرسلت قبل آخر ظهور تُهمل، وتوقّف
+     العامل نفسه (نوم الجهاز/تعليق العمليّة) ليس تجمّد الخيط الرئيسيّ. التجمّد الحقيقيّ والصفحة ظاهرة يُظهره كما كان. */
+  let lastVisibleAt = 0;
+  let lastBeat = 0;
+  const markVisible = () => { if(!document.hidden){ lastVisibleAt = Date.now(); strikes = 0; } };
+  document.addEventListener('visibilitychange', markVisible);
+  document.addEventListener('resume', markVisible);
+  window.addEventListener('pageshow', markVisible);
+
   worker.onmessage = (e) => {
     const delay = Date.now() - e.data;
+    const gap = lastBeat ? e.data - lastBeat : 0;
+    lastBeat = e.data;
     // خلال فترة الإقلاع لا نحسب أي تأخّر تجمّدًا
     if(Date.now() - bootAt < BOOT_GRACE_MS){ strikes = 0; return; }
+    // الصفحة مخفيّة، أو النبضة من قبل رجوعها، أو العامل نفسه توقّف (نوم) — ليس تجمّدًا رآه المستخدم
+    if(document.hidden || e.data < lastVisibleAt || gap > 4000){ strikes = 0; return; }
     if(delay > FREEZE_THRESHOLD_MS){
       strikes++;
       if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
@@ -285,7 +300,8 @@ window.addEventListener('appinstalled', () => {
    فالبطاقة سطح معتم بألوان وضعها (كـ v-bgimg-surface-text). القواعد في <style> واحد لا inline، كي تتبع تبديل الوضع وهي ظاهرة.
    والخطوتان زرّان أساسيّان — .btn العاديّ في الوضع الأسود نصّ بلا صندوق. */
 (function(){
-  const PLAY_TEST = { group: '', optIn: '' };
+  // المالك ٦ نوفمبر: المجموعة om-ai-testers (أيّ أحد ينضمّ) مضافة لمسار Alpha المغلق، والتطبيق في بلي com.omran.aibuilder
+  const PLAY_TEST = { group: 'https://groups.google.com/g/om-ai-testers', optIn: 'https://play.google.com/apps/testing/com.omran.aibuilder' };
   const SEEN = 'aiapp_play_invite_x', SESSION = 'aiapp_play_invite_s';
   try {
     if(!PLAY_TEST.group || !PLAY_TEST.optIn) return;
@@ -443,6 +459,45 @@ window.addEventListener('appinstalled', () => {
   } catch(e){ __swallow(e, "misc:app-10-features#q"); }
 })();
 
+/* v-tool-pages (المالك ١ نوفمبر «ابدأ»: Search Console يعرف الصفحة الرئيسيّة وحدها — ٤٣ ظهورًا في ٣ أشهر): صفحات الأدوات الثابتة
+   (/tools/<slug> و/en/tools/<slug>) تفتح أداتها بـ/?open=<slug>. قائمة ثابتة لا معرّف حرّ من الرابط؛ يُحذف open قبل الفتح (الرجوع
+   يغلق الأداة ثمّ يعود للصفحة)؛ يُنتظر DOMContentLoaded لأنّ المستندات والتعليم يُربطان في سكربتات مؤجَّلة بعد الحزمة، وتُنتظر
+   موافقة الخصوصيّة بلا سقف (من يقرأ السياسة دقائق لا يفقد أداته)، ثمّ قاموس اللغة الكسول (بدونه تُبنى الأداة بالإنجليزيّة لمستخدم
+   الفرنسيّة والأرديّة…)؛ والأداة الموقوفة أو المخفيّة لا تُفتح. hl (لغة الصفحة، app-04) يُحذف معه. الإعلانات صفحة مستقلّة: رابطها مباشر. */
+(function(){
+  const OPEN = { portrait: 'btnPortraitStyle', video: 'btnVideoMaker', decor: 'btnDesignAI', fashion: 'btnFashionAI', style: 'btnStudioAI',
+    docs: 'btnDocs', email: 'btnEmailAssist', construction: 'btnConstruction', education: 'btnOmranEdu', qibla: 'btnQibla', religion: 'btnReligion' };
+  try {
+    const u = new URL(location.href);
+    const slug = String(u.searchParams.get('open') || '').trim().toLowerCase();
+    if(!slug) return;
+    u.searchParams.delete('open');
+    u.searchParams.delete('hl');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    const id = Object.prototype.hasOwnProperty.call(OPEN, slug) ? OPEN[slug] : '';
+    if(!id) return;
+    let started = false;
+    const click = () => {
+      try {
+        const b = document.getElementById(id);
+        const paused = (typeof OMRAN_PAUSED_TOOLS !== 'undefined' && Array.isArray(OMRAN_PAUSED_TOOLS)) ? OMRAN_PAUSED_TOOLS : [];
+        if(!b || paused.indexOf(id) >= 0 || getComputedStyle(b).display === 'none') return;
+        b.click();
+      } catch(e){ __swallow(e, 'misc:app-10-features#open-tool'); }
+    };
+    const go = () => {
+      try {
+        if(document.getElementById('privacyConsent')){ setTimeout(go, 1000); return; }
+        const ready = (typeof loadLangFile === 'function' && typeof lang === 'string') ? loadLangFile(lang) : null;
+        if(ready && typeof ready.then === 'function') ready.then(click, click); else click();
+      } catch(e){ __swallow(e, 'misc:app-10-features#open-wait'); }
+    };
+    const start = () => { if(started) return; started = true; setTimeout(go, 0); };
+    if(document.readyState === 'complete') start();
+    else { document.addEventListener('DOMContentLoaded', start, { once: true }); window.addEventListener('load', start, { once: true }); }
+  } catch(e){ __swallow(e, 'misc:app-10-features#open'); }
+})();
+
 /* ---------- Share App button ---------- */
 const btnShareApp = $('#btnShareApp');
 if(btnShareApp){
@@ -592,7 +647,8 @@ btnToggleHistory.onclick = () => {
   // مفعّلًا فيتجاهل اختيار المستخدم ✅ للمزود في الرسائل التالية.
   window.__resetAskAllToggle = () => { window.__askAllToggleOn = false; paint(); };
   try{
-    if(!localStorage.getItem('askAllHintSeen')){
+    /* v-hw-1316: داخل تطبيق هواوي لا حبّة «الذكاء الاصطناعي يبني تطبيقك فورًا» — زرّها مخفيّ للكلّ أصلًا، ووصف المتجر أدوات ومحادثة (رفض 1.14) */
+    if(!localStorage.getItem('askAllHintSeen') && !(typeof omranHwPackage === 'function' && omranHwPackage())){
       const tip = document.createElement('div');
       tip.id = 'askAllHintTip'; tip.setAttribute('data-i18n', 'askAllHintText'); // v-hw-resubmit-2: يُعاد مع وصول القاموس (zh كان يبقى إنجليزيًّا)
       const txt = (typeof t === 'function') ? t('askAllHintText') : '';

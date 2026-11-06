@@ -10,6 +10,7 @@ const MORE = require('./studio-more.js');
    ملفّ البيانات صرف بلا أسرار، فلا يُحمَّل studio-create (يقرأ الحصص في نطاق الوحدة). */
 const BASE = require('./studio-styles.js');
 const CARD_FIX = require('./studio-card-fix.js'); /* v-style-match */
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
 /* v-style-match: مفتاح البطاقة المصحَّحة القديم يُحذف مرّة لكلّ نسخة دالّة — في الإنتاج وحده، فنشر المعاينة
    (نفس Redis) لا يمسح صورةً ما زال الإنتاج يقدّمها قبل الدمج */
 const cleaned = new Set();
@@ -152,14 +153,29 @@ const CARD_MODEL = 'gemini-3-pro-image';
 /* الوشم والحنّاء قد يكون الخيار نفسه كلمة أو تاريخًا على الجلد */
 const WRITING_ON_SKIN = { tattoo: 1, henna: 1 };
 const MODEST_CARD = { hair: 1, menhair: 1, makeup: 1, skin: 1, nails: 1, eyes: 1, glasses: 1, beard: 1, henna: 1, age: 1, accessories: 1 };
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): رصيد Gemini خلص ← البطاقة نفسها عند fal (Nano Banana Pro، 2K ٢:٣)
+   بالتصغير إلى WebP والتخزين الدائم نفسيهما. مهلة fal موعد واحد (١١٠ ث من بدء البطاقة) لمحاولتيه معًا — المباشرة عند العلم والإنقاذ
+   بعد ردّ Gemini — تحت قفل التوليد (١٢٠ ث)، فلا يدفع طلب موازٍ ثمن بطاقة ثانية؛ أقلّ من ١٥ ث باقية = بلا محاولة ثانية. */
+const FAL_CARD_MS = 110000;
 async function nanoCard(apiKey, prompt) {
+  const t0 = Date.now();
+  const falLeft = () => Math.floor(FAL_CARD_MS - (Date.now() - t0)); /* عدد صحيح: AbortSignal.timeout يرمي على الكسور */
+  const body = { contents: [{ parts: [{ text: prompt.slice(0, 3900) }] }], generationConfig: { imageConfig: { imageSize: '2K', aspectRatio: '2:3' } } };
+  if (await falBackup.geminiOutRecently()) {
+    const fb = await falBackup.imageFromGemini(CARD_MODEL, body, { where: 'studio-preview', timeoutMs: falLeft() });
+    if (fb && fb.b64) return (await require('./img-convert.js').toCardWebp(fb.b64, 1024, 88)).b64;
+  }
   const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + CARD_MODEL + ':generateContent?key=' + apiKey, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt.slice(0, 3900) }] }], generationConfig: { imageConfig: { imageSize: '2K', aspectRatio: '2:3' } } }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(240000),
   });
   const d = await r.json().catch(() => ({}));
+  if (!r.ok && falLeft() >= 15000) { /* v-fal-backup: نفاد الرصيد ← البطاقة عند fal قبل الرمي؛ الزحام العاديّ وغيره يرمي كما كان */
+    const fb = await falBackup.rescueImage(r.status, (d && d.error && d.error.message) || '', CARD_MODEL, body, { where: 'studio-preview', timeoutMs: falLeft() });
+    if (fb) return (await require('./img-convert.js').toCardWebp(fb.b64, 1024, 88)).b64;
+  }
   if (!r.ok) throw new Error('nano ' + r.status + ' ' + String((d && d.error && d.error.message) || '').replace(/key=[^&\s"']+/g, 'key=***').slice(0, 120));
   const parts = (((d.candidates || [])[0] || {}).content || {}).parts || [];
   const img = parts.find((p) => p.inlineData && p.inlineData.data);

@@ -97,17 +97,18 @@ test('٢. «سريع» (H3): الأفاتار نفسه first_frame، والقف�
   assert.equal(mm.duration, 8);
 });
 
-test('٣. «سينمائي» (Omni): الأفاتار نفسه <FIRST_FRAME> بلقطة واحدة متّصلة، بلا رسم، والقفل المحايد، والمدّة', async () => {
+test('٣. «سينمائي» (Omni): الأفاتار نفسه <FIRST_FRAME> و<IMAGE_REF_0> (v-video-identity-pose) بلقطة واحدة متّصلة، بلا رسم، والقفل المحايد، والمدّة', async () => {
   const r = await run('api/_lib/veo-create.js', BODY({ durationSeconds: 10 }));
   assert.equal(r.res.code, 200, JSON.stringify(r.res.body));
   assert.deepEqual(r.kinds, ['omni'], 'لا رسم ولا Veo الموقوف');
   const o = r.of('omni')[0].body;
   const imgs = o.input.filter((x) => x.type === 'image');
-  assert.equal(imgs.length, 1);
-  assert.equal(imgs[0].data, AVATAR, 'الصورة كما رفعها');
+  assert.equal(imgs.length, 2, 'أوّل إطار + مرجع الشكل');
+  assert.ok(imgs.every((x) => x.data === AVATAR), 'الصورة كما رفعها في الدورين');
   const text = o.input.find((x) => x.type === 'text').text;
-  assert.ok(text.startsWith('[# Sources <FIRST_FRAME>@Image1] MAIN SUBJECT:'), text.slice(0, 80));
-  assert.ok(text.includes('In a single continuous shot, no scene cuts.') && text.endsWith('Use Image1 as the starting frame.'));
+  assert.ok(text.startsWith('[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2] MAIN SUBJECT:'), text.slice(0, 100));
+  assert.ok(text.includes('In a single continuous shot, no scene cuts.') && text.includes('Use Image1 as the starting frame. Image2 is the same subject as Image1'));
+  assert.doesNotMatch(text, /real person|same face|IDENTITY/, 'الإرشاد محايد: الأفاتار يبقى أفاتارًا');
   assert.doesNotMatch(text, REALISM);
   assert.equal(o.response_format.duration, '10s');
   assert.match(String(r.res.body.op), /^omni\//);

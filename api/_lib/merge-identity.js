@@ -98,7 +98,7 @@ async function detectFaces(apiKey, img, opts) {
       generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', required: ['faces'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: ['box_2d'], properties: { box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } } } } } } },
     }),
   });
-  if (!r.ok) return []; // عطب الكشف: stats.faces يبقى بلا قيمة — لا يُقرأ «لا وجوه»
+  if (!r.ok) { console.warn('[merge-identity] face detect ' + r.status); return []; } // عطب الكشف: stats.faces يبقى بلا قيمة — لا يُقرأ «لا وجوه» (v-video-identity-mirror: ويُسجَّل — كان صامتًا)
   const d = await r.json().catch(() => null);
   const txt = ((((d && d.candidates) || [])[0] || {}).content || {}).parts || [];
   const s = txt.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join('').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -184,7 +184,7 @@ async function faceCrops(apiKey, photos, opts) {
   for (let round = 0; picked.length < budget && per.some((l) => l.length > round); round++) {
     per.forEach((l) => { if (l[round] && picked.length < budget) picked.push(l[round]); });
   }
-  return picked.map((c) => ({ of: c.of, who: c.who, data: c.data, mime: c.mime }));
+  return picked.map((c) => ({ of: c.of, who: c.who, size: c.size, data: c.data, mime: c.mime })); // size: عرض الصندوق — ترند الشخص الواحد يختار الأكبر
 }
 
 function closeupLine(c, k) {

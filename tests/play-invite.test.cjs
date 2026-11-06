@@ -244,3 +244,16 @@ test('٧. وسم ملفّات اللغة مرفوع لـv-play-invite (يُقر�
   assert.ok(m, 'السبب ملحق في تعليق الوسم');
   assert.ok(Number(m[1]) >= Number(m[2]) && Number(m[2]) >= 780, 'الوسم ' + (m && m[1]));
 });
+
+test('٨. الرابطان الحقيقيّان (المالك ٦ نوفمبر): مجموعة om-ai-testers ورابط اشتراك تطبيق بلي com.omran.aibuilder — والبطاقة تظهر بهما', () => {
+  const b = block(null);
+  const real = JSON.parse(/const PLAY_TEST = (\{[^}]*\});/.exec(b)[1].replace(/([{,]\s*)(\w+):/g, '$1"$2":').replace(/'/g, '"'));
+  assert.deepEqual(real, { group: 'https://groups.google.com/g/om-ai-testers', optIn: 'https://play.google.com/apps/testing/com.omran.aibuilder' });
+  const r = run({ links: null });
+  r.tick();
+  const card = r.els.playInvite;
+  assert.ok(card, 'ظهرت بالرابطين الحقيقيّين');
+  const [join, install] = card.children[2].children;
+  assert.equal(join.href, real.group);
+  assert.equal(install.href, real.optIn);
+});
