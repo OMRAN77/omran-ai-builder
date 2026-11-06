@@ -25,6 +25,11 @@
 - **WebView نظام هواوي ≈ Chromium 99 (EMUI 12 بلا GMS):** ‏cqw و@container و:has() (105+) لا تعمل. ‏`max(…,var(--x,3cqw))` «غير صالح وقت
   الحساب» فيرث الحجم ولا يرجع إلى clamp() قبله — ضع cqw داخل `@supports (font-size:1cqw)`، وقاعدة :has منفصلة. Playwright لا يشغّل
   Chromium قديمًا: المحاكاة بحذف ما لا يعرفه (`.shots/hw-1316/webview-compat/emu.js`). (v-hw-1316)
+
+- **بطاقة عائمة بـ--panel2 في الوضع الأسود = أسود على أسود:** هناك `--panel2` و`--panel` و`--bg` كلّها #000، وv-no-lines-2 يمسح الحدّ
+  (js/app-41-three-colors.js يصنّفه om3-line)، فلا يبقى إلّا النصّ طافيًا. «الأسود الثاني» هو #101013 لون صندوق الكتابة. ومع صورة خلفيّة
+  (bgimg) لون الكتابة على html يتبع الصورة لا السطح (١٫١:١) — السطح المعتم يعلن --text/--muted على نفسه. لا تثق بلقطة بلا قياس: اقرأ
+  getComputedStyle للخلفيّة والنصّ واحسب التباين في الأسود والفاتح ومع bgimg-dark/light. (v-play-invite)
 - **غلاف WebView ليس متصفّحًا:** `MahaWebViewFallbackActivity` (هواتف هواوي بلا Chrome — منها جهاز مراجع AppGallery) لا يفعل
   إلّا ما نُفِّذ فيه: بلا `onShowFileChooser` كلّ `<input type=file>` ميت صامتًا (رفض 1.3.14 بالقاعدة 3.1)، بلا
   `onGeolocationPermissionsShowPrompt` لا موقع، وتنزيل blob:/data: يسقط. ولا SpeechRecognition ولا navigator.share ولا Notification ولا
