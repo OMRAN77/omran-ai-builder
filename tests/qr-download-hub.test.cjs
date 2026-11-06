@@ -101,7 +101,19 @@ test('٣. صفحة التحويل: لا متاجر ولا باركود فيها 
   }
   assert.match(html, /location\.replace\(dest\)/);
   assert.match(html, /<noscript><meta http-equiv="refresh" content="0;url=\/"><\/noscript>/, 'بلا سكربت يفتح التطبيق');
-  assert.match(html, /var STORES = \{ ios: '', android: '', huawei: '', windows: '' \};/, 'لا متجر منشور بعد');
+  // v-hw-store-link: هواوي وحده منشور (1.3.15 في AppGallery، ٦ نوفمبر)، والبقيّة فارغة
+  assert.match(html, /var STORES = \{ ios: '', android: '', huawei: 'https:\/\/appgallery\.huawei\.com\/app\/C118703501', windows: '' \};/, 'هواوي منشور، والبقيّة لا');
+});
+
+test('٣ب. v-hw-store-link: STORES الحقيقيّة — جوّال هواوي إلى صفحة التطبيق في AppGallery، وغيره التطبيق نفسه بزرّ التثبيت', () => {
+  const f = goDestFn();
+  const html = read('download.html');
+  const m = /var STORES = (\{[^}]*\});/.exec(html);
+  const stores = JSON.parse(m[1].replace(/([{,]\s*)(\w+):/g, '$1"$2":').replace(/'/g, '"'));
+  assert.equal(f(UA.huawei[0], 5, '?ref=omran', stores), 'https://appgallery.huawei.com/app/C118703501', 'هواوي ← المتجر');
+  assert.equal(f(UA.android[0], 5, '?ref=omran', stores), '/?ref=omran&install=1', 'أندرويد آخر ← التطبيق (لا متجر جوجل بعد)');
+  assert.equal(f(UA.iphone[0], UA.iphone[1], '', stores), '/?install=1', 'آيفون ← التطبيق');
+  assert.equal(f(UA.windows[0], 0, '', stores), '/?install=1', 'ويندوز ← التطبيق');
 });
 
 test('٤. التوجيه: بلا متجر منشور كلّ جهاز يفتح التطبيق بزرّ التثبيت، ودعوة المالك تمرّ معه', () => {
