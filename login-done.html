@@ -24,6 +24,10 @@
     font-size:15px; line-height:1.9; color:#e6e2ff; max-width:340px;
   }
   .en { font-size:13px; color:#8a8a96; direction:ltr; }
+  .retry {
+    display:inline-block; padding:13px 30px; border-radius:14px; background:#7c6cff; color:#fff;
+    font-size:17px; font-weight:800; text-decoration:none; -webkit-tap-highlight-color:transparent;
+  }
 </style>
 </head>
 <body>
@@ -51,11 +55,31 @@
     document.title = 'تعذّر تسجيل الدخول';
     document.querySelector('.check').textContent = '⚠️';
     document.querySelector('h1').textContent = 'تعذّر إكمال الدخول بجوجل';
-    document.querySelector('.wrap p').textContent = g === 'access_denied' ? 'ألغيتَ الدخول من شاشة جوجل.' : 'حدث خطأ أثناء الدخول (' + g + ').';
+    /* v-google-retry (لقطة المالك ٦ نوفمبر: الصفحة تتّهمه بإلغاء الدخول وهو لم يلغِ): access_denied تعيدها جوجل لضغطة «إلغاء»
+       ولرفضها الحساب (تطبيق في وضع Testing والحساب ليس من المختبِرين) — الرابط لا يميّز، فلا نتّهم المستخدم بالإلغاء. */
+    document.querySelector('.wrap p').textContent = g === 'access_denied'
+      ? 'لم يكتمل الدخول من شاشة جوجل: أُلغي هناك، أو لم تسمح جوجل بالدخول لهذا الحساب.'
+      : 'حدث خطأ أثناء الدخول (' + g + ').';
+    /* v-google-retry: إعادة المحاولة من هنا بـstate التطبيق نفسها — النجاح يُودَع تحت ما ينتظره التطبيق، فلا رجوع للتطبيق
+       ثمّ سفاري من جديد. بلا st (رابط قديم) يبقى الطريق القديم: ارجع للتطبيق واضغط جوجل. */
+    var st = new URLSearchParams(location.search).get('st') || '';
+    if(/^[0-9a-f]{16,64}$/.test(st)){
+      var a = document.createElement('a');
+      a.className = 'retry';
+      a.href = '/api/system?action=google-start&app=1&state=' + st;
+      a.textContent = 'حاول مرّة ثانية';
+      var p0 = document.querySelector('.wrap p');
+      p0.parentNode.insertBefore(a, p0.nextSibling);
+      document.querySelector('.hint').textContent = android
+        ? 'بعد نجاح الدخول ارجع إلى تطبيق «om ai» (✕ أعلى هذه الصفحة أو زرّ الرجوع) — يكتمل الدخول تلقائيًا.'
+        : 'بعد نجاح الدخول ارجع إلى تطبيق om ai (اسمه أعلى الشاشة بجانب الساعة) — يكتمل الدخول تلقائيًا.';
+      document.querySelector('.en').textContent = 'Google sign-in did not complete (' + g + '). Tap “Try again” here, then return to the om ai app.';
+      return;
+    }
     document.querySelector('.hint').textContent = android
-      ? 'ارجع إلى تطبيق «om ai» (✕ أعلى هذه الصفحة أو زرّ الرجوع) واضغط «المتابعة عبر Google» مرة ثانية — السبب سيظهر لك هناك.'
-      : 'ارجع إلى تطبيق om ai (اسمه أعلى الشاشة بجانب الساعة) واضغط «المتابعة عبر Google» مرة ثانية — السبب سيظهر لك هناك.';
-    document.querySelector('.en').textContent = 'Google sign-in failed (' + g + '). Return to the ' + (android ? 'om ai' : 'om ai') + ' app and try again.';
+      ? 'ارجع إلى تطبيق «om ai» (✕ أعلى هذه الصفحة أو زرّ الرجوع) واضغط «المتابعة عبر Google» مرة ثانية.'
+      : 'ارجع إلى تطبيق om ai (اسمه أعلى الشاشة بجانب الساعة) واضغط «المتابعة عبر Google» مرة ثانية.';
+    document.querySelector('.en').textContent = 'Google sign-in did not complete (' + g + '). Return to the om ai app and try again.';
   } catch(e) { /* الصفحة الافتراضيّة تبقى */ }
 })();
 </script>

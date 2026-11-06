@@ -37,7 +37,7 @@ test('١. فشل مسار الآيفون: سفاري على صفحة «تعذّ�
   const r = mkRes();
   await cb({ query: { code: 'c', state: ST + '-app' } }, r);
   assert.equal(r.code, 302);
-  assert.equal(r.headers.Location, 'https://example.test/login-done.html?gerror=token_exchange_failed');
+  assert.equal(r.headers.Location, 'https://example.test/login-done.html?gerror=token_exchange_failed&st=' + ST); // v-google-retry: state لإعادة المحاولة من سفاري
   const c1 = mkRes();
   await claim({ method: 'POST', body: { state: ST } }, c1);
   assert.equal(c1.code, 200);
@@ -75,7 +75,7 @@ test('٤. العميل: الزرّ يعيد تشغيل النبضة، والجس
     assert.ok(s.indexOf('window.__armOauthClaim()', click) - click < 200, f + ': الزرّ يعيد النبضة');
     assert.ok(s.includes('window.__armOauthClaim = arm;'), f);
     assert.ok(s.includes("document.addEventListener('resume', claim);"), f);
-    assert.ok(s.includes('else if(d && d.error) claimFail(d.error);') && s.includes('showGoogleAuthError(String(err));'), f + ': الجسر يعرض السبب');
+    assert.ok(s.includes("else if(d && d.error) claimFail(d.error, pk ? '' : st);") && s.includes('showGoogleAuthError(String(err));'), f + ': الجسر يعرض السبب'); // v-google-retry
     const fn = s.slice(s.indexOf('function showGoogleAuthError('));
     assert.ok(fn.slice(0, 2500).includes("setMode('login'); showOverlay();"), f + ': يفتح الشاشة');
   }
