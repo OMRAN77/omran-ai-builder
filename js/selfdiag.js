@@ -55,9 +55,22 @@
          (sessionStorage يبقى مع التحديث داخل الفتح نفسه)، وإن كانت المحادثة الحاليّة بعد القديمة ينتظر المحادثة الجديدة الفارغة
          التي يفتحها app-22 مع كلّ فتح (حتّى ١٢ ث، بعد شبكة أمان التحميل ١٠ ث) بدل أن يتركه. ومن بدأ يكتب لا يُغطّى. */
       if(!sessionStorage.getItem('aiapp_store_tour_s')){
+        /* v-hw-tour-phone (المالك ٦ نوفمبر: «فقط في الهواوي تخليها عادي، اذا في الهواتف الاندرويد لا تخليها»): الحزمة نفسها
+           (?store=huawei) تُثبَّت على أيّ أندرويد، فكان كلّ هاتف يفتح على الأدوات. الجولة لهاتف هواوي وحده: جسر الحزمة يعرف
+           الصانع (OmranRender.mode() = «gpu» خارج هواوي — Build.MANUFACTURER في MahaWebViewFallbackActivity)، وبلا جسر (TWA في
+           كروم) هويّة أندرويد بلا HUAWEI/HarmonyOS/HMSCore = هاتف آخر. غير أندرويد (معاينة المتصفّح ولقطات المتجر) كما كان. */
+        var __hwPhone = function(){
+          try{
+            var R = window.OmranRender;
+            if(R && typeof R.mode === 'function') return R.mode() !== 'gpu';
+            var ua = String((window.navigator && window.navigator.userAgent) || '');
+            return !/Android/i.test(ua) || /HUAWEI|HarmonyOS|HMSCore/i.test(ua);
+          }catch(e){ return true; /* guard-ok — بلا كشف يبقى السلوك القديم */ }
+        };
         var __tourTries = 0;
         var __openTour = function(){
           try{
+            if(!__hwPhone()){ sessionStorage.setItem('aiapp_store_tour_s', '1'); return; } /* v-hw-tour-phone: أندرويد غير هواوي يفتح على المحادثة */
             /* بدأ يكتب في المحادثة (تركيز أو نصّ في الصندوق — قاعدة app-22 نفسها): لا يُغطّى ولا يعود في هذا الفتح */
             var pr = document.getElementById('prompt');
             if(pr && (document.activeElement === pr || String(pr.value || '').trim())){ sessionStorage.setItem('aiapp_store_tour_s', '1'); return; }
