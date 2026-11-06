@@ -121,7 +121,8 @@ test('٥. اللقطات الجديدة: الرئيسيّة والمحادثة،
   assert.equal(ui.split('locale: PHONE_LOCALE').length, 3, 'سياقا الهاتف والحاسوب');
   const notes = read('store/huawei/REVIEW-NOTES.md');
   assert.match(notes, /إعادة تقديم 1\.3\.15 نفسها \(v-hw-1316، بلا APK جديد\)/);
-  assert.match(notes, /اجعله \*\*«عمران AI»\*\* في كلّ لغة/, 'اسم AGC = اسم الهاتف');
+  assert.match(notes, /فصار \*\*«عمران AI»\*\* في كلّ\n> {3}لغة/, 'اسم AGC = اسم الهاتف يومها (1.3.15)');
+  assert.match(notes, /اجعله \*\*«om ai»\*\* في كلّ لغة/, 'v-hw-om-ai: ومن 1.3.16 «om ai»');
   assert.doesNotMatch(notes, /يبقى كما هو — يطابق|unchanged in AGC|لا يتغيّر — يطابق|six tools|ستّ أدوات/, 'لا سطر قديم يناقض الجديد');
   assert.match(notes, /\*\*قبل Submit:\*\* انتظر تأكيد وصول التحديث إلى الموقع/);
 });

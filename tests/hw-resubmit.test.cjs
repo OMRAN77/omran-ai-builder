@@ -58,15 +58,17 @@ test('١. الملاحظات تعدّ الأدوات الظاهرة في حزم�
   }
 });
 
-test('٢. وصف المتجر بلا «رسمي/موثوق/مفضّل/مميّز»، واسم الهاتف «عمران AI» واسم الواجهة «om ai» معًا', () => {
+test('٢. وصف المتجر بلا «رسمي/موثوق/مفضّل/مميّز»، واسم الهاتف واسم الواجهة «om ai» واحد', () => {
   assert.ok(descriptions.length > 500, 'قسما الوصف موجودان');
   assert.doesNotMatch(descriptions, BANNED);
   assert.doesNotMatch(enToolList + arToolList, BANNED);
-  // v-hw-1316: اسم AGC «عمران AI» في كلّ لغة (تقرير ٣ نوفمبر عرضه «عمران لبناء الذكاء الاصطناعي» — القاعدة 1.20: الاسم المثبّت = اسم
-  // المتجر)، والوصف يجمع اسم الهاتف واسم الواجهة «om ai» في أوّل سطر
-  assert.ok(descriptions.includes('**اسم التطبيق:** «عمران AI» في كلّ لغة') && descriptions.includes('**App name:** «عمران AI» in every listing language'));
-  assert.ok(descriptions.includes('عمران AI (om ai) تطبيق واحد') && descriptions.includes('Omran AI (om ai) brings'));
-  assert.ok(notes.startsWith('# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.15)'));
+  // v-hw-om-ai (بعد v-hw-1316): اسم AGC «om ai» في كلّ لغة = اسم الهاتف من 1.3.16 (القاعدة 1.20: الاسم المثبّت = اسم المتجر)،
+  // والوصف يبدأ به في اللغات الثلاث
+  assert.ok(descriptions.includes('**اسم التطبيق:** «om ai» في كلّ لغة') && descriptions.includes('**App name:** «om ai» in every listing language'));
+  assert.ok(descriptions.includes('**应用名称：** om ai（'));
+  assert.ok(descriptions.includes('\nom ai تطبيق واحد') && descriptions.includes('\nom ai brings') && descriptions.includes('\nom ai 在一个应用中汇集'));
+  assert.doesNotMatch(descriptions, /عمران AI \(om ai\)|Omran AI \(om ai\)|Omran AI（om ai）/, 'لا الاسم القديم في أوّل سطر');
+  assert.ok(notes.startsWith('# ملاحظات المراجع ونصوص المتجر — om ai (AppGallery، 1.3.16)'));
   // 11.4 باقية صادقة (hw-nomarkets)، وحساب التجربة بلا كلمة مرور في المستودع
   assert.match(notes, /all market screens \(stock ticker, stock market, currency\/forex rates\) are removed from this package/);
   assert.ok(notes.includes('Test account: (username) / (password)'));
@@ -98,16 +100,16 @@ test('٣. اللقطات الثماني بثلاث لغات من store/huawei/sh
   for (const id of [...sh.matchAll(/open\('(\w+)'\)/g)].map((m) => m[1])) assert.ok(visible.includes(id), 'لقطة لأداة ظاهرة فقط: ' + id);
 });
 
-test('٤. v-hw-1315 (بعد v-hw-1314): 1.3.15 — الحزمة نفسها واسم الهاتف نفسه، والنصوص كلّها على الرقم الجديد', () => {
+test('٤. v-hw-om-ai (بعد v-hw-1315): 1.3.16 — الحزمة نفسها واسم الهاتف «om ai»، والنصوص كلّها على الرقم الجديد', () => {
   const g = read('store/huawei/twa/app/build.gradle');
-  assert.match(g, /name: 'Omran AI Builder',/); assert.match(g, /launcherName: 'عمران AI',/);
-  assert.match(g, /versionName "1\.3\.15"/);
-  assert.ok(notes.includes('new version 1.3.15') && notes.includes('launcher label stays "عمران AI"'), 'الملاحظات تقول الرقم واسم الهاتف الفعليّ');
+  assert.match(g, /name: 'om ai',/); assert.match(g, /launcherName: 'om ai',/);
+  assert.match(g, /versionName "1\.3\.16"/);
+  assert.ok(notes.includes('new version 1.3.16') && notes.includes('Its launcher label is now "om ai"'), 'الملاحظات تقول الرقم واسم الهاتف الفعليّ');
   const readme = read('store/huawei/README.md');
-  assert.ok(readme.includes('version_code=20261030') && readme.includes('v-hw-1315') && readme.includes('v-hw-resubmit-1313'));
-  // كلّ ما يقرؤه المراجع على 1.3.15: لا «version 1.3.14/1.3.13» ولا اسم AGC «في 1.3.14» باقٍ
-  assert.doesNotMatch(notes, /version 1\.3\.1[34]\b|الإصدار 1\.3\.1[34] |launcher label of 1\.3\.1[34]|与 1\.3\.1[34]/);
-  assert.ok(!(readme + notes).includes('1.3.16'), 'لا رقم بعد 1.3.15');
+  assert.ok(readme.includes('version_name=1.3.16 -f version_code=20261106') && readme.includes('v-hw-om-ai') && readme.includes('v-hw-1315') && readme.includes('v-hw-resubmit-1313'));
+  // كلّ ما يقرؤه المراجع على 1.3.16: لا «version 1.3.14/1.3.15» ولا اسم الهاتف القديم على أنّه الحاليّ
+  assert.doesNotMatch(notes, /version 1\.3\.1[345]\b|الإصدار 1\.3\.1[345] |launcher label of 1\.3\.1[345]|launcher label stays|与 1\.3\.1[345]/);
+  assert.ok(!(readme + notes).includes('1.3.17'), 'لا رقم بعد 1.3.16');
 });
 
 test('٥. نسخة هواوي وحدها تخفي خيارات العلامات التجاريّة (1.15) ووصف «موثوقة»، والموقع كما هو', () => {
@@ -210,7 +212,7 @@ test('٧. المراجعة العدائيّة: أوّل شاشة صينيّة ب
   assert.equal(list.split(',').length, 13, 'الأدوات الـ١٣ في القوس');
   assert.ok(r.includes('bottom bar > Tools'), 'مكان زرّ الأدوات');
   assert.ok(r.includes('opens on every launch'), 'العرض في كلّ تشغيل لا مرّة لكلّ جهاز');
-  assert.ok(r.startsWith('1.3.15 resubmitted: new AR/EN/ZH screenshots; app follows the phone language.'), 'v-hw-1316: Remarks تبدأ بإعادة التقديم — اللقطات الجديدة واللغة (رفض 1.14 وحده)');
+  assert.ok(r.startsWith('1.3.16: only the app name changed, to "om ai" (phone and listing).'), 'v-hw-om-ai: Remarks تبدأ بالتغيير الوحيد في 1.3.16 — الاسم');
   assert.doesNotMatch(notes, /does not open by itself again|فلن يفتح المربّع وحده/, 'لا ملاحظة قديمة تقول إنّه لا يعود');
 });
 
