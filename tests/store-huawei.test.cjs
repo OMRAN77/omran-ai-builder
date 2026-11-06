@@ -59,7 +59,7 @@ const twa = 'store/huawei/twa/';
 const bg = fs.readFileSync(R(twa + 'app/build.gradle'), 'utf8');
 assert.ok(bg.includes("applicationId: 'com.omran.aibuilder.twa'") && bg.includes("hostName: 'omran-ai-builder.vercel.app'"), 'الحزمة والنطاق');
 assert.ok(bg.includes("launchUrl: '/?store=huawei'"), 'رابط التشغيل يحمل علم المتجر');
-assert.ok(/versionName "1\.3\.15"/.test(bg) && Number((bg.match(/versionCode (2026\d{4})/) || [])[1]) > 20261028, 'v-hw-1315: الإصدار 1.3.15 ورمزه بصيغة تاريخ أكبر من 1.3.14 (20261028)');
+assert.ok(/versionName "1\.3\.16"/.test(bg) && Number((bg.match(/versionCode (2026\d{4})/) || [])[1]) > 20261030, 'v-hw-om-ai: الإصدار 1.3.16 ورمزه بصيغة تاريخ أكبر من 1.3.15 (20261030)');
 assert.ok(bg.includes("fallbackType: 'webview'"), 'بلا متصفّح TWA يفتح WebView ملء الشاشة لا تبويبًا');
 assert.ok(bg.includes('com.google.androidbrowserhelper:androidbrowserhelper'), 'مكتبة TWA الرسميّة');
 const rootBg = fs.readFileSync(R(twa + 'build.gradle'), 'utf8');
@@ -69,7 +69,16 @@ assert.ok(am.includes('package="com.omran.aibuilder.twa"') && am.includes('andro
 const strs = fs.readFileSync(R(twa + 'app/src/main/res/values/strings.xml'), 'utf8');
 assert.ok(strs.includes('https://omran-ai-builder.vercel.app') && strs.includes('delegate_permission/common.handle_all_urls'), 'asset statements في الحزمة');
 const tm = JSON.parse(fs.readFileSync(R(twa + 'twa-manifest.json'), 'utf8'));
-assert.strictEqual(tm.packageId, 'com.omran.aibuilder.twa'); assert.strictEqual(tm.startUrl, '/?store=huawei'); assert.ok(tm.appVersion === '1.3.15' && tm.appVersionName === '1.3.15' && tm.appVersionCode === 20261030);
+assert.strictEqual(tm.packageId, 'com.omran.aibuilder.twa'); assert.strictEqual(tm.startUrl, '/?store=huawei'); assert.ok(tm.appVersion === '1.3.16' && tm.appVersionName === '1.3.16' && tm.appVersionCode === 20261106);
+// v-hw-om-ai: اسم الهاتف (launcherName تحت الأيقونة، وname في الإعدادات — resValue في build.gradle) «om ai» كاسم المتجر وداخل التطبيق،
+// ومولّد المشروع يعيده نفسه (name من manifest-huawei.json)؛ لا «عمران AI» ولا «Omran AI Builder» باقٍ في الحزمة
+const gen = fs.readFileSync(R('scripts/twa-generate.mjs'), 'utf8');
+assert.ok(bg.includes("name: 'om ai', // The application name.") && bg.includes("launcherName: 'om ai', // The name shown on the Android Launcher."), 'build.gradle: الاسمان om ai');
+assert.ok(/resValue "string", "appName", twaManifest\.name/.test(bg) && /resValue "string", "launcherName", twaManifest\.launcherName/.test(bg), 'الاسمان يصلان التسميتين في AndroidManifest');
+assert.ok(am.includes('android:label="@string/appName"') && am.includes('android:label="@string/launcherName"'));
+assert.ok(tm.name === 'om ai' && tm.launcherName === 'om ai', 'twa-manifest: الاسمان om ai');
+assert.ok(gen.includes("launcherName: 'om ai',") && gen.includes('name: web.name,') && JSON.parse(fs.readFileSync(R('manifest-huawei.json'), 'utf8')).name === 'om ai', 'المولّد يعيد om ai');
+assert.ok(!/عمران AI|Omran AI Builder/.test(bg + JSON.stringify(tm) + gen.slice(gen.indexOf('new TwaManifest('))), 'لا اسم قديم في الحزمة');
 assert.strictEqual(tm.webManifestUrl, 'https://omran-ai-builder.vercel.app/manifest-huawei.json');
 for (const f of ['gradlew', 'gradle/wrapper/gradle-wrapper.jar', 'gradle/wrapper/gradle-wrapper.properties', 'settings.gradle', 'app/src/main/java/com/omran/aibuilder/twa/LauncherActivity.java', 'app/src/main/res/mipmap-xxxhdpi/ic_launcher.png', 'store_icon.png']) assert.ok(fs.existsSync(R(twa + f)), 'ملفّ المشروع: ' + f);
 assert.ok(fs.statSync(R(twa + 'gradlew')).mode & 0o111, 'gradlew قابل للتنفيذ');
