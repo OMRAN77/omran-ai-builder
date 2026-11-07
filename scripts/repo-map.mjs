@@ -27,7 +27,7 @@ const LIB_PURPOSE = {
   'owner-carry': 'حمل «نفّذ الآن» إن توقّف المزوّد بعد القراءة',
   'owner-media': 'بوّابة الرسم/الفيديو المدفوعة (الطلب في الرسالة الأخيرة)',
   'owner-vision': 'من يرى الصور على أيّ مسار',
-  'provider-level': 'منهج Claude Code للمالك (OWNER_METHOD) وبطاقة مستوى العائلة والموديل',
+  'provider-level': 'منهج Claude Code للمالك وبطاقة مستوى العائلة والموديل',
   'provider-models': 'قوائم الموديلات الحيّة من الوسيط وافتراضيّها',
   'oa-direct': 'المسارات المباشرة (OpenAI، Groq، Kimi، Gemini، Perplexity) وترجمة البروتوكول',
   'free-chain': 'سلاسل الاحتياط لغير المالك وكشف «موديل غير موجود»',
@@ -49,7 +49,7 @@ const LIB_PURPOSE = {
   'log-error': 'تسجيل الأخطاء',
   'cost-meter': 'أسعار الموديلات وحساب الكلفة',
   'analyze-zip': 'فكّ الأرشيفات',
-  'repo-map': 'هذه الخريطة (مولَّدة)',
+  'repo-map': 'هذه الخريطة',
 };
 
 const slug = (f, re) => (re.exec(f) || [])[1] || '';

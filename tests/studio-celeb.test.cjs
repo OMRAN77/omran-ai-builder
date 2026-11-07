@@ -314,7 +314,7 @@ test('١٠. الواجهة: التبويب للمالك وحده، ثمانية 
   assert.equal(studioCreate.FEATURE_INSTRUCTIONS.celeb, undefined);
 });
 
-test('١١. النصوص الثمانية في ملفّات اللغات كلّها (العربيّة والإنجليزيّة في القاموس + ١٢ ملفًّا)، بلا اسم مزوّد، والوسم ≥ ٧٨٤ بسببه', () => {
+test('١١. النصوص الثمانية في ملفّات اللغات كلّها (العربيّة والإنجليزيّة في القاموس + ١٢ ملفًّا)، بلا اسم مزوّد، والوسم ≥ ٧٨٥ بسببه', () => {
   const KEYS = ['studioAiTabCeleb', 'studioCelebLabel', 'studioCelebPlaceholder', 'studioCelebNeedName', 'studioCelebNameOnly', 'studioCelebBlocked', 'studioCelebUnknown', 'studioCelebRefused'];
   const PROVIDER = /gemini|google|openai|gpt|claude|anthropic|groq|fal\b|nano/i;
   const files = [['js/app-03-i18n-data.js', 2]].concat(['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'].map((l) => ['i18n/' + l + '.js', 1]));
@@ -329,6 +329,6 @@ test('١١. النصوص الثمانية في ملفّات اللغات كلّ�
   }
   const st = read('js/app-04-i18n-state.js');
   const tag = Number((/sc\.src = 'i18n\/' \+ lg \+ '\.js\?v=(\d+)'/.exec(st) || [])[1]);
-  assert.ok(tag >= 784, 'وسم ملفّات اللغات ارتفع مع النصوص الجديدة');
-  assert.match(st, /v-celeb-style \(784\): ثمانية نصوص لتبويب «صورة مع مشهور»/);
+  assert.ok(tag >= 785, 'وسم ملفّات اللغات ارتفع مع النصوص الجديدة');
+  assert.match(st, /v-celeb-style \(785\): ثمانية نصوص لتبويب «صورة مع مشهور»/);
 });
