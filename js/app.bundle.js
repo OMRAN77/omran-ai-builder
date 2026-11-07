@@ -11062,7 +11062,10 @@ function omranLikelyApp(){
        وجدول الكمّيّات وحفظ الملفّات تنزّل blob محلّيًّا يسقط صامتًا بدل رابط الخادم الذي ينزّله النظام. */
     if(sessionStorage.getItem('aiapp_store')) return true;
     if(omranHwWebView()) return true;
-    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
+    /* v-desk-pwa-save (لقطة المالك ٧ نوفمبر: «تحميل الصور في الأنماط لي الكمبيوتر … ما يشتغل» — لوحة «مشاركة» ويندوز تدور بلا نهاية):
+       التطبيق المثبّت على الكمبيوتر (PWA متجر مايكروسوفت/كروم، standalone) ليس غلاف جوّال — التنزيل المباشر يعمل فيه، ولوحة مشاركة
+       النظام هناك تفشل. وضع standalone يُحسب «تطبيقًا» على الجوّال وحده. */
+    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches && omranMobileUA()) return true;
     if(navigator.standalone === true) return true;
     /* v-cap-detect (شكوى عمران «PDF عند + ما يشتغل» على TestFlight): غلاف
        كاباسيتور يحمّل الموقع الحي بلا أي علامة — جسره المحقون هو العلامة. */
