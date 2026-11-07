@@ -258,7 +258,8 @@ test('٥. الربط بالمرجع لا بالموضع: المرجع ١ على 
   for (const o of [{ ageShift: true }, { art: true }]) {
     const s3 = stub({ faces: [{ ref: 0, box_2d: LEFT, sure: true }, { ref: 1, box_2d: RIGHT, sure: true }] });
     const r3 = await TP.groupFirstFrame('K', [{ data: PHOTO, mime: 'image/png' }, { data: PHOTO, mime: 'image/png' }], 'x', '720:1280', Object.assign({ faceCrops: async () => [], callImage: async () => ({ b64: FRAME, mime: 'image/png' }), fetchImpl: s3.f, swap: { until: Date.now() + 120000, owner: true } }, o));
-    assert.deepEqual(r3, { b64: FRAME, mime: 'image/png' }); assert.equal(s3.calls.flash.length, 0);
+    /* v-trends-identity-audit: الإطار نفسه بلا تبديل، ومعه refs (مرجع كلّ شخص لمحرّك الفيديو) */
+    assert.equal(r3.b64, FRAME); assert.equal(r3.mime, 'image/png'); assert.equal(r3.swapped, undefined); assert.equal(r3.refs.length, 2); assert.equal(s3.calls.flash.length, 0);
   }
   const s4 = stub({ flash: { status: 500 } });
   const r4 = await TP.groupFirstFrame('K', [{ data: PHOTO, mime: 'image/png' }, { data: PHOTO, mime: 'image/png' }], 'x', '720:1280', { faceCrops: async () => [], callImage: async () => ({ b64: FRAME, mime: 'image/png' }), fetchImpl: s4.f, swap: { until: Date.now() + 120000, owner: true, kv: fakeKv() } });
@@ -590,7 +591,9 @@ test('١٧. صورة واحدة: لا مطابقة بالشعر واللبس، �
   /* «من ينقذك؟» (multi) كما كان: لا وجه وحيد يُفترض */
   x = await swapRun(one, { multi: true, alone: true }, [], { others: [{ box_2d: CENTER }] });
   assert.equal(x.r.reason, 'missing'); assert.equal(x.calls.fal.length, 0);
-  assert.ok(txt(x.calls.flash[0]).includes('Match by appearance'), 'multi: الأمر كما كان');
+  /* v-trends-identity-audit: نسختان لبسهما مختلف — لا مطابقة باللبس، والبحث عن كلّ نسخة */
+  assert.ok(!txt(x.calls.flash[0]).includes('Match by appearance'), 'multi: لا مطابقة باللبس');
+  assert.ok(txt(x.calls.flash[0]).includes('Find EVERY person in Image A whose face matches Reference 0'), 'multi: كلّ نسخة');
   off();
 });
 

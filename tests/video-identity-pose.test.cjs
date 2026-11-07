@@ -49,7 +49,7 @@ test('٣. Omni: إرشاد مرجع الصورة نفسها محايد، ومر�
   assert.match(veo.PHOTO_REF_GUIDE, /whenever it turns, moves or is seen from another angle/);
   assert.doesNotMatch(veo.PHOTO_REF_GUIDE, /real person|identity/i, 'الأفاتار يبقى أفاتارًا والمنتج منتجًا');
   const src = fs.readFileSync(path.join(root, 'api/_lib/veo-create.js'), 'utf8');
-  assert.match(src, /selfRef: !framed && !groupFramed && .*\(\(cinemaOmni && body\.style !== 'anime'\) \|\| \(omniTrend && tp\.omniPersonTrend\(trendId\) && !tp\.OMNI_REF_TRENDS\.has\(trendId\)/);
+  assert.match(src, /selfRef = !framed && !groupFramed && .*\(\(cinemaOmni && body\.style !== 'anime'\) \|\| \(omniTrend && tp\.omniPersonTrend\(trendId\) && !tp\.OMNI_REF_TRENDS\.has\(trendId\)/);
   assert.match(src, /!tp\.SOLO_FRAME_ART_TRENDS\.has\(trendId\) && !tp\.ART_STYLE_RE\.test\(tp\.trendScene\(promptText\)\)/, 'تحويل الأسلوب يبقى مرجعًا');
   assert.match(src, /bindTrendRef\(prompt\) \+ cuts \+ PHOTO_REF_GUIDE/, 'المونتاج بلقطاته');
   assert.match(src, /!tp\.OMNI_REVEAL_TRENDS\.has\(trendId\) && !tp\.AGE_SHIFT_TRENDS\.has\(trendId\)/);

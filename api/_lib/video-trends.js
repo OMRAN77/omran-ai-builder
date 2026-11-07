@@ -35,7 +35,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "req",
   "kind": "sentence",
-  "prompt": "Photorealistic cinematic video: the person from the reference image stands in an old Arabian souq decorated with festive lanterns and bunting, a crowd clapping softly behind, singing joyfully in Arabic: '{text}'. Lip-synced singing, close-up then medium shot, golden-hour light, shallow depth of field, celebratory ambience.",
+  "prompt": "Photorealistic cinematic video: the person from the reference image stands in an old Arabian souq decorated with festive lanterns and bunting, a crowd clapping softly behind, singing joyfully in Arabic: '{text}'. Lip-synced singing in one continuous medium close-up (chest up, their face large and clearly lit), the camera drifting slowly, golden-hour light, shallow depth of field, celebratory ambience.",
   "scenes": null,
   "preview": {
    "frame": "photorealistic cinematic still of a toddler in an embroidered white kandora smiling in an old Arabian souq with festive lanterns and clapping crowd, golden light",
@@ -59,7 +59,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "req",
   "kind": "none",
-  "prompt": "Bring this old photograph to life: the person subtly breathes, blinks, smiles warmly and turns slightly toward the camera, then says a short heartfelt greeting in Arabic. Keep the original look, natural film grain, respectful and realistic, gentle nostalgic music.",
+  "prompt": "Bring this old photograph to life: the person subtly breathes, blinks, makes a small natural head movement within the photo's own angle with a faint, gentle smile, then says a short heartfelt greeting in Arabic. Keep the original look, natural film grain, respectful and realistic, gentle nostalgic music.",
   "scenes": null,
   "preview": {
    "frame": "vintage sepia-toned photorealistic portrait still of an elderly Arab man smiling warmly at the camera, film grain",
@@ -95,7 +95,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "req",
   "kind": "none",
-  "prompt": "The person from the reference image stands in a studio while their outfit changes five times in quick snap transitions: elegant evening wear, traditional Gulf attire, sporty, business, casual street style. Only the clothes change: their face and hair stay exactly as in the photo in every look. Same face and pose, studio lighting, upbeat music.",
+  "prompt": "The person from the reference image stands in a studio while their outfit changes five times in quick snap transitions: elegant evening wear, a traditional Gulf kandura or abaya, sporty, business, casual street style. Only the clothes change: their face, hair and any headwear stay exactly as in the photo in every look — nothing is put on or taken off the head. Same face and pose, studio lighting, upbeat music.",
   "scenes": null,
   "preview": {
    "frame": "photorealistic studio still of a young Arab woman mid-transition between an elegant evening gown and traditional attire, motion blur sparkle",
@@ -191,7 +191,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "req",
   "kind": "setting",
-  "prompt": "The person from the reference image records a smiling selfie-style video at {text}: a glamorous gala with a red carpet and photographers' flashes behind, confident, handheld camera feel, festive atmosphere, photorealistic.",
+  "prompt": "The person from the reference image records a selfie-style video at {text}: a glamorous gala with a red carpet and photographers' flashes behind, confident, handheld camera feel, festive atmosphere, photorealistic.",
   "scenes": null,
   "preview": {
    "frame": "photorealistic selfie-style still of a young Arab woman smiling on a red carpet with camera flashes behind",
@@ -215,7 +215,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "opt",
   "kind": "name",
-  "prompt": "Festive Eid greeting video: the person (from the reference image if provided) in elegant Eid attire waves warmly and says joyfully in Arabic 'عيد مبارك {name}', decorated background with lanterns and a crescent moon, joyful music.",
+  "prompt": "Festive Eid greeting video: the person (from the reference image if provided) in elegant Eid clothes, their hair and any headwear exactly as in the photo (nothing added on the head), waves warmly and says joyfully in Arabic 'عيد مبارك {name}', decorated background with lanterns and a crescent moon, joyful music.",
   "scenes": null,
   "preview": {
    "frame": "photorealistic festive still of a smiling Arab family in Eid attire with lanterns and crescent decorations, golden light",
@@ -371,7 +371,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "sentence",
-   "prompt": "Warm customer testimonial clip: the person from the reference image sits in a bright, tidy interior, smiles at the camera and says sincerely in Arabic: '{text}'. Lip-synced natural speech, honest friendly delivery, soft window light, shallow depth of field, same face and clothing as the reference, no text overlay.",
+   "prompt": "Warm customer testimonial clip: the person from the reference image sits in a bright, tidy interior, looks at the camera and says sincerely in Arabic: '{text}'. Lip-synced natural speech, honest friendly delivery, soft window light, shallow depth of field, same face and clothing as the reference, no text overlay.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of a smiling Arab woman in hijab speaking warmly to camera in a bright modern interior, soft window light",
@@ -419,7 +419,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Cinematic wedding film moment: the couple from the reference image in slow motion as rose petals drift around them, warm bokeh string lights behind, the camera circles slowly and pushes in, elegant soft focus, golden warm grade, romantic orchestral music, photorealistic, faces and clothing unchanged from the reference, no text.",
+   "prompt": "Cinematic wedding film moment: the person or couple from the reference image (only the people it shows, never an invented partner) in slow motion as rose petals drift around them, warm bokeh string lights behind, the camera stays in front of them at eye level and pushes in slowly, elegant soft focus, golden warm grade, romantic orchestral music, photorealistic, faces and clothing unchanged from the reference, no text.",
    "scenes": null,
    "preview": {
      "frame": "cinematic wedding still of an elegantly dressed couple in slow motion with rose petals and warm bokeh string lights behind them",
@@ -455,7 +455,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Bring this family photograph to life: every person subtly breathes, blinks, turns slightly to each other, breaks into a warm smile and waves at the camera together, natural micro-movements only, identities, faces, clothing and background exactly as in the reference, gentle warm music, photorealistic, respectful.",
+   "prompt": "Bring this family photograph to life: every person subtly breathes, blinks, breaks into a warm smile and waves at the camera together, natural micro-movements only, identities, faces, clothing and background exactly as in the reference, gentle warm music, photorealistic, respectful.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of a warm Gulf Arab family of four smiling and waving at the camera in a bright living room",
@@ -624,7 +624,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "The person from the reference image is seen through a nostalgic 1990s VHS home-camcorder look: soft glow, gentle scan lines, slight tracking wobble and warm color bleed, subtle grain; they smile and wave naturally at the camera in a cozy home setting, handheld camera sway, same face and outfit as the reference, warm nostalgic feel.",
+   "prompt": "The person from the reference image is seen through a nostalgic 1990s VHS home-camcorder look: soft glow, gentle scan lines, slight tracking wobble and warm color bleed, subtle grain; they wave naturally at the camera in a cozy home setting, handheld camera sway, same face and outfit as the reference, warm nostalgic feel.",
    "scenes": null,
    "preview": {
      "frame": "nostalgic 1990s VHS camcorder-style still of a person smiling and waving in a cozy home setting, soft glow, gentle scan lines, warm grain",
@@ -648,7 +648,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Fast rhythmic day-in-the-life montage of the person from the reference image (same face, same hair, facial hair and outfit style, each shot a medium close-up): waking up and stretching in soft morning light, sipping coffee by a sunny window, stepping out of the front door with a smile, walking energetically down a city street; quick cuts, upbeat music, photorealistic, natural candid feel.",
+   "prompt": "Fast rhythmic day-in-the-life montage of the person from the reference image (same face, same hair, facial hair and outfit style, each shot a medium close-up): waking up and stretching in soft morning light, sipping coffee by a sunny window, stepping out of the front door, walking energetically down a city street; quick cuts, upbeat music, photorealistic, natural candid feel.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of a person sipping coffee by a sunny window in a warm morning montage moment, candid natural feel",
@@ -660,7 +660,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Joyful birthday celebration: the person from the reference image sits before a beautifully decorated birthday cake with lit candles, friends clapping softly out of focus behind them; they smile and blow out the candles as balloons and warm confetti drift down, warm party lighting, cheerful music, photorealistic, same face and outfit as the reference.",
+   "prompt": "Joyful birthday celebration: the person from the reference image sits before a beautifully decorated birthday cake with lit candles, friends clapping softly out of focus behind them; they blow out the candles as balloons and warm confetti drift down, warm party lighting, cheerful music, photorealistic, same face and outfit as the reference.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of a person smiling before a decorated birthday cake with lit candles, balloons and warm confetti drifting, cheerful party light",
@@ -672,7 +672,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Close-up emotional portrait starting exactly from the reference photo of the person: at first a calm, soft smile, then their eyes slowly fill and glisten, the eyelids redden, and a few tears roll gently down their cheeks as the expression turns quietly sad; tiny natural movements of breathing and blinking, the camera almost still with a very slow push-in, the face, hair, makeup, clothing and background exactly as in the photo, soft emotional piano music, photorealistic.",
+   "prompt": "Close-up emotional portrait starting exactly from the reference photo of the person: at first their expression exactly as in the photo, then their eyes slowly fill and glisten, the eyelids redden, and a few tears roll gently down their cheeks as the expression turns quietly sad; tiny natural movements of breathing and blinking, the camera almost still with a very slow push-in, the face, hair, makeup, clothing and background exactly as in the photo, soft emotional piano music, photorealistic.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic close-up portrait of a young woman with a single tear rolling down her cheek, soft window light, quiet emotional mood",
@@ -708,7 +708,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Selfie-style view from inside a parked car with an open panoramic sunroof: the person from the reference image sits in the driver's seat and looks up through the sunroof as a fighter jet roars low directly overhead against a clear blue sky, trailing long coloured smoke; the car shakes gently, the camera tilts up to follow the jet, thunderous engine rumble, proud and thrilling mood, photorealistic.",
+   "prompt": "Selfie-style view from inside a parked car with an open panoramic sunroof: the person from the reference image sits in the driver's seat and glances up only briefly, their face staying toward the camera as in the photo, as a fighter jet roars low directly overhead against a clear blue sky, trailing long coloured smoke, seen through the open sunroof behind them; the car shakes gently, the camera stays on them, thunderous engine rumble, proud and thrilling mood, photorealistic.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic selfie from inside a car with an open panoramic sunroof as a fighter jet flies low overhead trailing coloured smoke against a blue sky",
@@ -770,7 +770,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Vertical night phone clip at a red-lit restaurant entrance, filmed handheld by a street freestyler whose hand holds a small portable speaker in the foreground, blasting a dembow beat; people in the doorway film on their phones. The person from the reference image, in an open pale-pink mesh short-sleeve shirt, has stopped on the way in and faces the lens. The freestyler raps a playful line at them first; they grin and answer with an improvised Spanish-language rap freestyle into the phone, lips synced, with the signature nonstop shoulder bounce: right shoulder up, then left, on every beat, loose hands rolling at chest height. At the end the freestyler takes the vocals back while they lean in laughing, then point straight at the lens. Shaky handheld, photorealistic.",
+   "prompt": "Vertical night phone clip at a red-lit restaurant entrance, filmed handheld by a street freestyler whose hand holds a small portable speaker in the foreground, blasting a dembow beat; people in the doorway film on their phones. The person from the reference image, in an open pale-pink mesh short-sleeve shirt, has stopped on the way in and faces the lens. The freestyler raps a playful line at them first; they answer with an improvised Spanish-language rap freestyle into the phone, lips synced, with the signature nonstop shoulder bounce: right shoulder up, then left, on every beat, loose hands rolling at chest height. At the end the freestyler takes the vocals back while they keep the shoulder bounce, then point straight at the lens. Shaky handheld, photorealistic.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic vertical night still at a red-lit restaurant entrance: a grinning young man in an open pale-pink mesh short-sleeve shirt rapping into the lens with a shoulder bounce, a street freestyler's hand holding a small portable speaker in the foreground, people in the doorway filming on their phones",
@@ -818,7 +818,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Vertical handheld phone clip filmed by a guest at a party in a banquet hall, purple, pink and green party lights, formally dressed guests around the dance floor. The person from the reference image, in a plain black polo, holds a round sugar-topped sweet bun and starts a few steps back on the dance floor, dancing toward the phone, rolling their shoulders and swaying. Reaching the lens in close-up, they take one bite of the bun on the beat, then hold a deadpan stare straight into the lens while chewing, cheeks puffed, head still. Then they turn and dance back into the crowd. Fast sped-up dancehall beat with party chatter, one continuous shot, photorealistic.",
+   "prompt": "Vertical handheld phone clip filmed by a guest at a party in a banquet hall, purple, pink and green party lights, formally dressed guests around the dance floor. The person from the reference image, in a plain black polo, holds a round sugar-topped sweet bun and starts a few steps back on the dance floor, dancing toward the phone, rolling their shoulders and swaying. Stopping near the phone in a medium close-up (chest up), they take one bite of the bun on the beat, then hold a deadpan stare straight into the lens while chewing, cheeks puffed, head still. Then they turn and dance back into the crowd. Fast sped-up dancehall beat with party chatter, one continuous shot, photorealistic.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic vertical phone still in a banquet hall with purple, pink and green party lights: a young man in a plain black polo close to the lens, cheeks full mid-chew, holding a round sugar-topped sweet bun, deadpan stare straight into the camera, formally dressed guests blurred behind him",
@@ -830,7 +830,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "One continuous vertical tracking shot on a concrete highway overpass by day: the camera rolls backward at chest height in front of the person from the reference image, in their own clothes, riding toward it in a deep squat in mid-air, both fists forward on invisible handlebars, nothing at all beneath them, grinning at the lens as the road streams past. Close behind, a helmeted officer with no insignia chases on a white futuristic hover-bike with round red lights. The rider glances back, kicks off into a mid-air flip, lands in the same squat and speeds away as the camera drops to road level. High-energy instrumental Eurodance synth beat, hover-bike whine, wind, photorealistic.",
+   "prompt": "One continuous vertical tracking shot on a concrete highway overpass by day: the camera rolls backward at chest height in front of the person from the reference image, in their own clothes, riding toward it in a deep squat in mid-air, both fists forward on invisible handlebars, nothing at all beneath them, their face as in the photo as the road streams past. Close behind, a helmeted officer with no insignia chases on a white futuristic hover-bike with round red lights. The rider kicks off into a mid-air flip, lands in the same squat and speeds away, the camera still at chest height. High-energy instrumental Eurodance synth beat, hover-bike whine, wind, photorealistic.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic vertical still on a concrete highway overpass by day: a grinning young man in a hoodie squatting in mid-air with both fists forward on invisible handlebars and nothing beneath him, a helmeted rider on a white futuristic hover-bike with round red lights chasing close behind, motion blur on the road",
@@ -842,7 +842,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Locked overhead camera pointing straight down past a slowly turning wooden ceiling fan, its blades in the foreground and its hub just outside a top corner. Below, the person from the reference image lies still on their back, face up, on a patterned rug in warm afternoon light, in their own outfit. The camera never moves. Each time a blade sweeps fully across the lens their outfit changes instantly behind it, no dissolve or morph: first to an all-black modest look, then to a modest shimmering gold one. Face, hair, any headscarf, pose, spot, rug and light stay identical. Upbeat beat with each blade pass landing on a drop, one continuous shot, photorealistic.",
+   "prompt": "Locked overhead camera pointing straight down past a slowly turning wooden ceiling fan, its blades in the foreground and its hub just outside a top corner. Below, the person from the reference image lies still on their back, face up, on a patterned rug in warm afternoon light, in their own outfit. The camera never moves. Each time a blade sweeps fully across the lens their outfit changes instantly behind it, no dissolve or morph: first to an all-black modest look, then to a modest shimmering gold one. Face, hair and headwear (none added, none removed), pose, spot, rug and light stay identical. Upbeat beat with each blade pass landing on a drop, one continuous shot, photorealistic.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic overhead still looking straight down past the soft-blurred blades of a wooden ceiling fan at a young woman in a modest long shimmering gold outfit and headscarf lying on her back on a patterned rug in warm afternoon light",
@@ -854,7 +854,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Static wide vertical shot from a phone on a tripod in an ordinary open-air parking lot by day; the camera never moves. The person from the reference image, in casual streetwear, makes an exaggerated cinematic slow-motion entrance: starting at the left edge of the frame, they stride across the lot toward the lens, every step slow, heavy and deliberate, their face and natural expression exactly as in the photo, each step landing on a big hit of the music, until they stand in the middle of the frame, seen from the knees up. True slow-motion movement throughout, an ordinary place played like a blockbuster opening. Dark, dramatic cinematic hip-hop instrumental with heavy drums, photorealistic.",
+   "prompt": "Static vertical shot from a phone on a tripod in an ordinary open-air parking lot by day, framed from the knees up; the camera never moves. The person from the reference image, in casual streetwear, makes an exaggerated cinematic slow-motion entrance: starting left of centre, they stride across the lot at the same distance from the lens, every step slow and heavy, their face and natural expression exactly as in the photo, each step landing on a big hit of the music, until they stand in the middle of the frame, seen from the knees up. True slow motion throughout, an ordinary spot played like a blockbuster opening. Dark, dramatic cinematic hip-hop instrumental with heavy drums, photorealistic.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic vertical still from a fixed camera in an ordinary open-air parking lot by day: a young man in casual streetwear striding in from the left in slow motion, mid-step, with a calm, natural face",

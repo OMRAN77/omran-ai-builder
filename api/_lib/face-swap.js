@@ -41,6 +41,9 @@ const PHOTO_MAX = 1024;
 const ASPECT_TOL = 0.02;
 const BLACK_LUMA = 10; // فاحص الأمان عند المزوّد يعيد صورة سوداء
 const FEATHER = 0.1; // v-trend-hair-lock: حافة اللصق ~١٠٪ من ضلع القصّة (كانت ١٢٪ من نصف قطر البيضاويّ)
+/* v-trends-identity-audit: وجه خلفيّة بلا مرجع أقصر من ٤٠٪ من الوجه المُبدَّل (جمهور، راقصون، مصوّرون خلفه) لا يقصّ القصّة ولا يلغيها (tight)
+   — يمنع التوسيع إلى ٧٦٨ وحده. وجوه المراجع (متأكّدًا منها أو لا) وأيّ وجه أكبر تقصّ كما كانت */
+const BG_FACE = 0.4;
 
 /** off · owner · on — غير ذلك (ومنه غير المضبوط) = off. */
 function mode() {
@@ -116,11 +119,16 @@ async function locate(apiKey, frame, refs, o) {
   /* v-trend-hair-lock: صورة واحدة (لا «من ينقذك؟»): الإطار غيّر قصّة شعره ولبسه وإضاءته عمدًا — فلا يُطابَق بها ولا يصير ذلك سببًا للشكّ؛
      كان Flash يعيد sure=false فلا تبديل أبدًا لصاحب صورة واحدة. مع مرجعين فأكثر الأمر كما كان حرفيًّا. */
   const solo = refs.length === 1 && !o.multi;
+  /* v-trends-identity-audit: «من ينقذك؟» — نسختان من صاحب الصورة والقالب يلبس الثانية لبسًا آخر؛ الأمر الصارم («طابق باللبس والشعر… sure=false إن
+     لم تتأكّد») كان يجد نسخة واحدة أو يشكّ. ولا نصّ الصورة الواحدة: «اثنان يطابقان بالقدر نفسه = sure=false» يُفشل كلّ إطار فيه */
+  const twin = refs.length === 1 && !!o.multi;
   const parts = [{ text: 'Image A — a generated video frame:' }, { inlineData: { mimeType: 'image/jpeg', data: toB64(mi.shrinkTo(frame, 1024), 85) } }];
   refs.forEach((r, k) => parts.push({ text: 'Reference ' + k + ' — ' + (r.face ? 'a close-up of one real person\'s face' : 'a photo of a real person') + ':' }, { inlineData: { mimeType: r.mime, data: r.b64 } }));
   parts.push({ text: (solo
     ? 'Image A was drawn from Reference 0 and shows that real person restyled for a video scene: their hairstyle, clothing and lighting may differ from the reference, and that alone is NOT a reason to be unsure. '
       + 'If Image A shows other people too (a celebrity, a partner, bystanders), pick the one whose face matches Reference 0 best — never by left/right order or image order, and never by gender alone. '
+    : twin
+      ? 'Image A was drawn from Reference 0 and shows that same real person twice (two versions of them in one scene): their clothing, hairstyle and lighting may differ from the reference and between the two versions, and that alone is NOT a reason to be unsure. Find EVERY person in Image A whose face matches Reference 0 — never by left/right order or image order, and never by gender alone. '
     : 'Image A was drawn from the references: each reference shows a real person who appears in Image A. For EACH reference k, find the one person in Image A who is that same person. '
       + 'Match by appearance — face shape, features, skin tone, hair, facial hair, headwear, glasses, clothing and build — never by left/right order or image order, and never by gender alone. ')
     + 'Return box_2d [ymin, xmin, ymax, xmax] normalized to 0-1000 for that person\'s face in Image A, from the hairline/forehead to the chin and ear to ear. '
@@ -128,6 +136,7 @@ async function locate(apiKey, frame, refs, o) {
     + 'For a reference that is a photo (not a close-up) also return ref_box: that person\'s face inside the reference itself, in the same format. '
     + (solo
       ? 'Set sure to false only when the face is hidden, masked, inside a closed helmet, turned fully away, not a real human face, or when two people in Image A match Reference 0 equally well. '
+      : twin ? 'Set sure to false only when that face is hidden, masked, inside a closed helmet, turned fully away or not a real human face. '
       : 'Set sure to false whenever you are not certain which person in Image A matches, or the face is hidden, turned away or not a real human face. ')
     + 'Also list in others the face of EVERY other clearly visible human or human-like face in Image A that is not in faces (extra characters, a zombie, a partner, guests, bystanders), even when it matches no reference; others is [] when there is none. '
     + 'Return JSON {"faces": [{"ref": k, "box_2d": [...], "ref_box": [...], "sure": true}], "others": [{"box_2d": [...]}]} only; leave out a reference you cannot find.' });
@@ -139,7 +148,8 @@ async function locate(apiKey, frame, refs, o) {
       generationConfig: { temperature: 0, thinkingConfig: { thinkingBudget: 0 }, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', required: ['faces', 'others'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: ['ref', 'box_2d', 'sure'], properties: { ref: { type: 'INTEGER' }, box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } }, ref_box: { type: 'ARRAY', items: { type: 'INTEGER' } }, sure: { type: 'BOOLEAN' } } } }, others: { type: 'ARRAY', items: { type: 'OBJECT', required: ['box_2d'], properties: { box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } } } } } } },
     }),
   });
-  if (!r.ok) return { why: 'locate-' + r.status };
+  /* v-trends-identity-audit: نفاد رصيد Gemini يُسمّى (لا «locate-429» يُقرأ زحامًا) — ولا يطابق SWAP_RETRY_RE فلا تُعاد محاولة لا جدوى منها */
+  if (!r.ok) { const t = typeof r.text === 'function' ? await r.text().catch(() => '') : ''; return { why: require('./fal-fallback.js').geminiCreditOut(r.status, t) ? 'locate-gemini-out' : 'locate-' + r.status }; }
   const d = await r.json().catch(() => null);
   const txt = ((((d && d.candidates) || [])[0] || {}).content || {}).parts || [];
   const s = txt.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join('').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -167,6 +177,9 @@ function validate(list, extra, nRefs, only, multi, H) {
     const got = all.filter((f) => f.ref === k);
     if (!got.length) return { why: 'missing' };
     if (got.length > (multi && k === 0 ? 2 : 1)) return { why: 'duplicate' };
+    /* v-trends-identity-audit: «من ينقذك؟» — نسخة واحدة رُبطت ووجه آخر غيرها في الإطار (النسخة الثانية فاتت Flash) = لا تبديل: نسخة برأسه
+       الحقيقيّ وأخرى بوجه الإطار = وجهان مختلفان لشخص واحد. الإطار الذي لا يظهر فيه إلّا نسخة واحدة يُبدَّل كما كان */
+    if (multi && k === 0 && got.length === 1 && strangers.some((s) => iou(got[0].box, s.box) < DUP_IOU)) return { why: 'missing-copy' };
     for (const f of got) {
       if (!f.sure) return { why: 'unsure' };
       if ((f.box[3] - f.box[1]) * H < FACE_MIN_PX) return { why: 'small' };
@@ -207,11 +220,12 @@ function cropRect(img, f, others, known) {
   const ctr = (b) => [(b[0] + b[2]) / 2 * img.w, (b[1] + b[3]) / 2 * img.h];
   const [cx, cy] = ctr(f.box);
   const rest = others.filter((o) => o !== f);
-  const near = rest.slice().sort((a, b) => { const [ax, ay] = ctr(a.box), [bx, by] = ctr(b.box); return Math.hypot(ax - cx, ay - cy) - Math.hypot(bx - cx, by - cy); })[0];
+  const block = rest.filter((o) => o.ref !== -1 || (o.box[3] - o.box[1]) >= BG_FACE * (f.box[3] - f.box[1])); // v-trends-identity-audit
+  const near = block.slice().sort((a, b) => { const [ax, ay] = ctr(a.box), [bx, by] = ctr(b.box); return Math.hypot(ax - cx, ay - cy) - Math.hypot(bx - cx, by - cy); })[0];
   const r = mi.headRect(img, f.box, near ? near.box : null);
   if (!r) return { why: 'tight' };
   let rect = { x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 };
-  for (const o of rest) { if (touches(img, o.box, rect)) rect = apart(img, rect, f.box, o.box); if (!rect) return { why: 'tight' }; }
+  for (const o of block) { if (touches(img, o.box, rect)) rect = apart(img, rect, f.box, o.box); if (!rect) return { why: 'tight' }; }
   const big = Math.max(rect.x1 - rect.x0, rect.y1 - rect.y0);
   if (big > SIDE_MAX) return { why: 'large' };
   const side = Math.min(img.w, img.h, Math.max(SIDE_MIN, big));
@@ -276,14 +290,17 @@ async function swapOne(job, o, key) {
    نحو الإطار فلا خطّ — وحافة القصّة على حدّ الصورة نفسها لا تُنعَّم (لا إطار خلفها يُمزج). خارج المستطيل لا يُمسّ بكسل، والمستطيل
    نفسه (cropRect) يقف دون كلّ وجه آخر. كان بيضاويّ الوجه وحده فيبقى الشعر الذي اخترعه نموذج الإطار. */
 function paste(out, W, job, sw) {
-  const { rect } = job;
+  const { rect, box } = job;
   const cw = rect.x1 - rect.x0, ch = rect.y1 - rect.y0;
   const edge = Math.max(4, Math.round(Math.min(cw, ch) * FEATHER));
-  const far = Infinity;
+  /* v-trends-identity-audit: الحافة لا تدخل صندوق الوجه — ضلع قُصّ عند منتصف المسافة إلى جار (apart/headRect) يتنعّم في الفاصل وحده، وإلّا بقي
+     خدّ الإطار القديم وأذنه نصفهما تحت الجديد (الزوجان خدًّا لخدّ، المجموعة، المارّة). الضلع الواسع (كلّ أضلاع القصّة الفرديّة) كما كان حرفيًّا */
+  const gap = (m) => Math.max(1, Math.min(edge, Math.floor(m)));
+  const eL = gap(box[0] * W - rect.x0), eR = gap(rect.x1 - box[2] * W), eT = gap(box[1] * job.H - rect.y0), eB = gap(rect.y1 - box[3] * job.H);
   for (let y = rect.y0; y < rect.y1; y++) {
     for (let x = rect.x0; x < rect.x1; x++) {
-      const de = Math.min(rect.x0 > 0 ? x - rect.x0 : far, rect.x1 < W ? rect.x1 - 1 - x : far, rect.y0 > 0 ? y - rect.y0 : far, rect.y1 < job.H ? rect.y1 - 1 - y : far);
-      const a = Math.max(0, Math.min(1, (de + 0.5) / edge));
+      const a = Math.max(0, Math.min(1, rect.x0 > 0 ? (x - rect.x0 + 0.5) / eL : 1, rect.x1 < W ? (rect.x1 - 1 - x + 0.5) / eR : 1,
+        rect.y0 > 0 ? (y - rect.y0 + 0.5) / eT : 1, rect.y1 < job.H ? (rect.y1 - 1 - y + 0.5) / eB : 1));
       if (a <= 0) continue;
       const o = (y * W + x) * 4, s = ((y - rect.y0) * cw + (x - rect.x0)) * 4;
       for (let c = 0; c < 3; c++) out[o + c] = Math.round(sw.data[s + c] * a + out[o + c] * (1 - a));

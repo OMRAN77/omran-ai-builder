@@ -96,14 +96,19 @@ const cutsOf = (t) => (t && TP.MULTI_SHOT_TRENDS.has(t) ? '' : NO_CUTS); // قا
 const FIRST = (p, t) => '[# Sources <FIRST_FRAME>@Image1] ' + p + cutsOf(t) + ' Use Image1 as the starting frame.';
 const bind = veo.bindTrendRef; // v-trend-omni-refs: «the reference image» ← «the reference image <IMAGE_REF_0>» (حرفيًّا في ١٦)
 const REF = (p, t) => '[# References <IMAGE_REF_0>@Image1] ' + bind(p) + cutsOf(t) + veo.TREND_REF_GUIDE;
-const DECL = (p, t) => OMNI.FRAME_DECL + bind(p) + cutsOf(t) + OMNI.FRAME_GUIDE;
-const GROUP = (p, n, t) => veo.groupRefDecl(n) + veo.bindGroupRefs(p, n) + cutsOf(t) + veo.groupRefGuide(n);
+const TURN = veo.TREND_TURN_GUIDE; // v-trends-identity-audit: سطر الالتفات بعد كلّ إطار مبنيّ (لا للكشف ولا لصورة تُحرَّك)
+const DECL = (p, t) => OMNI.FRAME_DECL + bind(p) + cutsOf(t) + OMNI.FRAME_GUIDE + TURN;
+const GROUP = (p, n, t) => veo.groupRefDecl(n) + veo.bindGroupRefs(p, n) + cutsOf(t) + veo.groupRefGuide(n) + TURN;
+const FIRST_FRAMED = (p, t) => FIRST(p, t) + TURN; // إطار مبنيّ بلا مرجع (العمر الآخر)
+const SELF = (p, t) => OMNI.FRAME_DECL + bind(p) + cutsOf(t) + veo.PHOTO_REF_GUIDE; // selfRef: الصورة أوّل إطار ومرجعًا
 const { TRENDS } = require(rp('api/_lib/video-trends.js'));
 const PHOTO_TRENDS = Object.keys(TRENDS).filter((id) => TRENDS[id].photo !== 'none');
 /* ما يبقى صورته أوّل إطار: منتجات وأماكن وحيوانات و«حرّك الصورة كما هي» — مثبَّت حرفيًّا: ترند جديد بصورة يُصنَّف عمدًا (اختبار ١٢) */
 const ANIMATE_PHOTO = ['oldphoto', 'productad', 'beforeafter', 'talkingpet', 'productfly', 'asmr', 'drone', 'orbit360', 'bullettime', 'materialize',
   'parallaxpop', 'realtour', 'carreveal', 'foodsizzle', 'buildprogress', 'offercountdown', 'newborn', 'familywave', 'paintingalive', 'miniature', 'weathershift',
-  'tears', 'flyingcar', 'petclap']; /* v-trends-oct-12: الدموع من الصورة نفسها، وسيّارته وحيوانه */
+  'tears', 'flyingcar', 'petclap'].filter((t) => !TP.OMNI_SELFREF_PHOTO_TRENDS.has(t)); /* v-trends-oct-12: الدموع من الصورة نفسها، وسيّارته وحيوانه */
+/* v-trends-identity-audit: «حرّك الصورة» بأشخاصها والتفاتها — الصورة أوّل إطار ومرجعًا (selfRef) عند Omni */
+const SELFREF_PHOTO = ['oldphoto', 'familywave', 'tears', 'orbit360', 'bullettime'];
 
 test('١. التكافؤ: ترند «حرّك الصورة» (منتج، مكان، حيوان، صورة قديمة) — صورة المستخدم نفسها «الإطار الأوّل» كما عند Veo، بلقطة واحدة بلا قطع', async () => {
   for (const trend of ANIMATE_PHOTO) {
@@ -112,6 +117,14 @@ test('١. التكافؤ: ترند «حرّك الصورة» (منتج، مكا�
     assert.deepEqual(images(omni), ['USERPHOTO'], trend);
     assert.equal(text(omni), FIRST(inst.prompt, trend), trend + ': دور «الإطار الأوّل»');
   }
+  assert.deepEqual([...TP.OMNI_SELFREF_PHOTO_TRENDS].sort(), SELFREF_PHOTO.slice().sort());
+  for (const trend of SELFREF_PHOTO) {
+    const { inst, omni } = await both({ trend, params: { text: 'يا هلا', name: 'سعيد', sceneIndex: 0 }, ratio: '720:1280', imageBase64: 'USERPHOTO', imageMime: 'image/jpeg' });
+    assert.equal(inst.image.bytesBase64Encoded, 'USERPHOTO', trend + ': Veo كما كان');
+    assert.deepEqual(images(omni), ['USERPHOTO', 'USERPHOTO'], trend + ': أوّل إطار ومرجعًا');
+    assert.equal(text(omni), SELF(inst.prompt, trend), trend);
+  }
+  for (const trend of ['paintingalive', 'parallaxpop', 'newborn']) assert.ok(ANIMATE_PHOTO.includes(trend), trend + ': صورة واحدة كما كانت');
 });
 
 test('٢. التكافؤ: ترند الشخص الواحد بإطار أوّل — الإطار Image1 ولقطة الوجه Image2 بأدوار omni-create، والأمر نفسه بينهما', async () => {
@@ -264,7 +277,7 @@ test('٩. شخص يُنقل إلى مشهد أو أسلوب أو عمر (تحت 
     const p = r.veoPrompt + TP.FRAME_LOCK;
     if (age) { /* بعمر آخر: الإطار وحده — لقطة وجه البالغ تشدّ الطفل إلى عمره */
       assert.deepEqual(images(r.omni), ['SOLOFRAME'], trend);
-      assert.equal(text(r.omni), FIRST(p), trend);
+      assert.equal(text(r.omni), FIRST_FRAMED(p), trend);
     } else {
       assert.deepEqual(images(r.omni), ['SOLOFRAME', 'FACEREF'], trend);
       assert.equal(text(r.omni), DECL(p), trend);
@@ -342,8 +355,8 @@ test('١٢. التصنيف: كلّ ترند بصورة في فئة واحدة، 
     assert.equal(TP.omniPersonTrend(id), true, id);
   }
   for (const id of TP.AGE_SHIFT_TRENDS) assert.ok(TP.OMNI_FRAME_TRENDS.has(id) || TP.OMNI_MORPH_TRENDS.has(id), id);
-  assert.deepEqual(PHOTO_TRENDS.filter((id) => !seen.has(id)).sort(), ANIMATE_PHOTO.slice().sort(), 'ترند جديد بصورة يُصنَّف عمدًا');
-  for (const id of ANIMATE_PHOTO) assert.equal(TP.omniPersonTrend(id), false, id);
+  assert.deepEqual(PHOTO_TRENDS.filter((id) => !seen.has(id)).sort(), ANIMATE_PHOTO.concat(SELFREF_PHOTO).sort(), 'ترند جديد بصورة يُصنَّف عمدًا');
+  for (const id of ANIMATE_PHOTO.concat(SELFREF_PHOTO)) assert.equal(TP.omniPersonTrend(id), false, id);
   const sc = (id) => TP.trendScene(require(rp('api/_lib/video-trends.js')).buildTrendPrompt(id, { hasImage: true, text: 'س', name: 'س' }).prompt);
   for (const id of TP.OMNI_FRAME_TRENDS) assert.match(sc(id), /person|adult|subject/i, id + ': شخص');
   for (const id of TP.OMNI_MORPH_TRENDS) assert.match(sc(id), /transforms|changes|aging/i, id + ': تحوّل داخل الفيديو');
@@ -439,7 +452,7 @@ test('١٦. مرجع الملامح مع كلّ إطار مبنيّ: السيل�
     }
     const age = await pair(photoBody('babyversion'));
     assert.deepEqual(images(age.omni), ['SOLOFRAME'], 'نسخة طفل: مرجع البالغ يشدّ الطفل إلى عمره');
-    assert.equal(text(age.omni), FIRST(age.veoPrompt + TP.FRAME_LOCK));
+    assert.equal(text(age.omni), FIRST_FRAMED(age.veoPrompt + TP.FRAME_LOCK));
   } finally { TP.soloFirstFrame = real; }
   /* ثلاثة أشخاص */
   const body = { trend: 'heritagesing', params: { text: 'يا هلا', people: 3, sceneIndex: 0 }, ratio: '720:1280', imageBase64: 'P1', imageMime: 'image/png', imagesBase64: ['P1', 'P2', 'P3'], imagesMime: ['image/png', 'image/jpeg', 'image/png'] };
@@ -451,7 +464,7 @@ test('١٦. مرجع الملامح مع كلّ إطار مبنيّ: السيل�
   assert.match(text(om), /the reference photos <IMAGE_REF_0>, <IMAGE_REF_1> and <IMAGE_REF_2> show 3 different people/);
   assert.deepEqual(om.body.input.filter((x) => x.type === 'image').map((x) => x.mime_type), ['image/png', 'image/png', 'image/jpeg', 'image/png']);
   assert.ok(text(om).startsWith('[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2 <IMAGE_REF_1>@Image3 <IMAGE_REF_2>@Image4] '));
-  assert.ok(text(om).endsWith(' Use Image1 as the starting frame. Use Image2, Image3 and Image4 as references for the video generation: each one shows one of the real people already in Image1 — use them only to keep each person\'s own face and identity, never as extra people; the clothing and setting come from Image1 and the description.'));
+  assert.ok(text(om).endsWith(' Use Image1 as the starting frame. Use Image2, Image3 and Image4 as references for the video generation: each one shows one of the real people already in Image1 — use them only to keep each person\'s own face and identity, never as extra people; the clothing and setting come from Image1 and the description.' + TURN));
   /* نسخة طفل لشخصين: بلا مراجع البالغين */
   calls = [];
   await create(Object.assign({ token: ownerTok }, body, { trend: 'babyversion', imagesBase64: ['P1', 'P2'], imagesMime: ['image/png', 'image/png'], params: { people: 2, sceneIndex: 0 } }));
@@ -472,7 +485,7 @@ test('١٧. صورة واحدة فيها شخصان: مرجعها الصورة �
     assert.deepEqual(images(r.omni), ['SOLOFRAME', 'USERPHOTO']);
     assert.ok(text(r.omni).startsWith('[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2] '), 'الأدوار حرفيًّا');
     assert.ok(!/the reference image(?! <IMAGE_REF_0>)/.test(text(r.omni)), 'الوسم مربوط');
-    assert.ok(text(r.omni).endsWith(veo.TREND_FRAME_GUIDE_MANY), 'الإرشاد بالجمع');
+    assert.ok(text(r.omni).endsWith(veo.TREND_FRAME_GUIDE_MANY + TURN), 'الإرشاد بالجمع');
     assert.match(veo.TREND_FRAME_GUIDE_MANY, /it shows the same real people as Image1 — use it only to keep each person's own face and identity/);
   } finally { TP.soloFirstFrame = real; }
   assert.equal(veo.bindGroupRefs('WHO: the reference image shows 2 real people. IMPORTANT — the reference image contains 2 different people, each from the reference image.', 2),
@@ -483,7 +496,7 @@ test('١٧. صورة واحدة فيها شخصان: مرجعها الصورة �
   const t = text(calls.find((c) => /\/interactions$/.test(c.url)));
   assert.ok(!/the reference image\b/.test(t), 'لا «the reference image» في أمر المجموعة');
   assert.ok(t.startsWith('[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2 <IMAGE_REF_1>@Image3] '), 'الأدوار حرفيًّا');
-  assert.ok(t.endsWith(' Use Image1 as the starting frame. Use Image2 and Image3 as references for the video generation: each one shows one of the real people already in Image1 — use them only to keep each person\'s own face and identity, never as extra people; the clothing and setting come from Image1 and the description.'));
+  assert.ok(t.endsWith(' Use Image1 as the starting frame. Use Image2 and Image3 as references for the video generation: each one shows one of the real people already in Image1 — use them only to keep each person\'s own face and identity, never as extra people; the clothing and setting come from Image1 and the description.' + TURN));
   assert.match(t, /the reference photos <IMAGE_REF_0> and <IMAGE_REF_1> show 2 different people/);
   calls = [];
   await create(Object.assign({ token: ownerTok }, body, { trend: 'productad', params: { text: 'عطر', people: 2, sceneIndex: 0 }, ratio: '1280:720' }));
@@ -691,4 +704,51 @@ test('٢٢. تعذّر الإطار: المونتاج (عشر دول، يوم ف
       assert.ok(!text(r.omni).includes(veo.PHOTO_REF_GUIDE), trend);
     }
   } finally { TP.soloFirstFrame = real; }
+});
+
+/* v-trends-identity-audit — المعالج الحقيقيّ: سطر الالتفات بعد كلّ إطار مبنيّ (لا الكشف) و«اكتب اللي تبيه» سالم؛ نسخته بعمره الحاليّ مقفلة
+   (احضن نفسك الصغير، كبسولة الزمن) وحدهما؛ ومراجع المجموعة من بناء الإطار نفسه (لقطة الوجه) لا الصور كاملة. */
+test('٢٣. سطر الالتفات: كلّ ترند إطار على Omni ينتهي به و«اكتب اللي تبيه» كامل في الأمر؛ الكشف وصورة تُحرَّك بلا', async () => {
+  const dir = ('امش على الشاطئ وقت الغروب والبحر هادئ ' + 'والنخيل خلفي '.repeat(40)).slice(0, 400).trim();
+  const ids = [...TP.SOLO_FRAME_TRENDS, ...TP.OMNI_FRAME_TRENDS, ...TP.OMNI_MORPH_TRENDS];
+  for (const trend of ids) {
+    calls = []; delete process.env.TREND_ENGINE;
+    const r = await create({ token: ownerTok, trend, params: { text: 'يا هلا', name: 'سعيد', sceneIndex: 0, extra: dir }, ratio: TRENDS[trend].ratio, imageBase64: 'USERPHOTO', imageMime: 'image/jpeg' });
+    assert.equal(r.code, 200, trend + ': ' + JSON.stringify(r.body));
+    const t = text(calls.find((c) => /\/interactions$/.test(c.url)));
+    assert.ok(t.endsWith(TURN), trend + ': سطر الالتفات آخرًا');
+    assert.ok(t.includes(dir), trend + ': التوجيه كاملًا');
+  }
+  calls = [];
+  await create({ token: ownerTok, trend: 'sorryreveal', params: { sceneIndex: 0 }, ratio: TRENDS.sorryreveal.ratio, imageBase64: 'USERPHOTO', imageMime: 'image/jpeg' });
+  assert.ok(!text(calls.find((c) => /\/interactions$/.test(c.url))).includes(TURN), 'الكشف بلا سطر الالتفات');
+  calls = [];
+  await create({ token: ownerTok, trend: 'productad', params: { text: 'x', name: 'x', sceneIndex: 0 }, ratio: TRENDS.productad.ratio, imageBase64: 'USERPHOTO', imageMime: 'image/jpeg' });
+  assert.ok(!text(calls.find((c) => /\/interactions$/.test(c.url))).includes(TURN), 'صورة تُحرَّك كما هي بلا سطر');
+});
+
+test('٢٤. نسخته بعمره الحاليّ: presentSelf لاحضن نفسك الصغير وكبسولة الزمن وحدهما (فرديّ ومجموعة)، لا لنسخة الطفل ولا رحلة العمر', async () => {
+  for (const trend of ['hugyounger', 'timecapsule', 'babyversion', 'agejourney', 'heritagesing']) {
+    soloCalls = []; calls = []; delete process.env.TREND_ENGINE;
+    await create(Object.assign({ token: ownerTok }, photoBody(trend)));
+    const want = trend === 'hugyounger' || trend === 'timecapsule';
+    assert.equal(soloCalls[0].o.presentSelf, want ? true : undefined, trend);
+    groupOpts = 'unset';
+    await create(Object.assign({ token: ownerTok }, photoBody(trend), { imagesBase64: ['P1', 'P2'], imagesMime: ['image/png', 'image/png'] }));
+    assert.equal(groupOpts && groupOpts.presentSelf, want ? true : undefined, trend + ': المجموعة');
+  }
+  assert.deepEqual([...TP.PRESENT_SELF_TRENDS].sort(), ['hugyounger', 'timecapsule']);
+});
+
+test('٢٥. مراجع المجموعة عند Omni: refs التي بناها الإطار (لقطة الوجه أو الصورة) لا الصور الخام', async () => {
+  const real = TP.groupFirstFrame;
+  TP.groupFirstFrame = async () => ({ b64: 'GROUPFRAME', mime: 'image/png', refs: [{ data: 'C1', mime: 'image/jpeg', face: true }, { data: 'P2', mime: 'image/png', face: false }] });
+  try {
+    calls = []; delete process.env.TREND_ENGINE;
+    const r = await create({ token: ownerTok, trend: 'heritagesing', params: { text: 'يا هلا', people: 2, sceneIndex: 0 }, ratio: '720:1280', imageBase64: 'P1', imageMime: 'image/png', imagesBase64: ['P1', 'P2'], imagesMime: ['image/png', 'image/png'] });
+    assert.equal(r.code, 200, JSON.stringify(r.body));
+    const om = calls.find((c) => /\/interactions$/.test(c.url));
+    assert.deepEqual(images(om), ['GROUPFRAME', 'C1', 'P2']);
+    assert.deepEqual(om.body.input.filter((x) => x.type === 'image').map((x) => x.mime_type), ['image/png', 'image/jpeg', 'image/png']);
+  } finally { TP.groupFirstFrame = real; }
 });
