@@ -32,6 +32,9 @@ const HAT_KEEP = ' Keep the hat or cap worn on the head in Picture 1 in place, o
 const FACE_ONLY = ' Keep the hair, the head and anything on or around the head in Picture 1 exactly as they are; take only the face itself from Picture 2 — eyes, eyebrows, nose, mouth, cheeks, jaw, facial hair and skin — and never copy any hair, ghutra, scarf, agal, cap or other headwear from Picture 2.'
   /* v-body-eyes-colors: «مشكّر العيون» — ضحكة الصورة تضيّق العينين؛ عينا الوجه المنقول مفتوحتان كما في Picture 1 */
   + ' Both eyes stay fully open and clear, looking at the camera as in Picture 1 — never closed, squinting or half-closed.';
+/* v-body-beard (تجربة ٧ نوفمبر: امرأة بلا لحية ← لحية وشارب في الناتج): «facial hair» في قائمة ما يُنقل من Picture 2 يُقرأ عند الـLoRA «ضع
+   شعر وجه». لمن قال الكشف إنّه بلا لحية (beard:false) القائمة نفسها بلا شعر الوجه؛ لصاحب اللحية أو غير المعروف FACE_ONLY كما هو */
+const FACE_ONLY_SMOOTH = FACE_ONLY.replace('mouth, cheeks, jaw, facial hair and skin', 'mouth, cheeks, jaw and skin');
 const OVAL_FEATHER = 0.12;
 const COST_CENTS = 5; // تقدير الوجه الواحد (Klein 9B بقصّة ≤١٫٥ ميغابكسل)
 const CAP_CENTS_DEFAULT = 300;
@@ -266,7 +269,7 @@ async function swapOne(job, o, key) {
   const W = Math.ceil(job.crop.w / 16) * 16, H = Math.ceil(job.crop.h / 16) * 16;
   const lora = loraPath();
   const body = {
-    prompt: o.faceOnly ? PROMPT + FACE_ONLY : (o.hat ? PROMPT + HAT_KEEP : PROMPT),
+    prompt: o.faceOnly ? PROMPT + (o.beard === false ? FACE_ONLY_SMOOTH : FACE_ONLY) : (o.hat ? PROMPT + HAT_KEEP : PROMPT),
     image_urls: ['data:image/jpeg;base64,' + toB64(job.crop, 95), 'data:' + job.ref.mime + ';base64,' + job.ref.b64],
     image_size: { width: W, height: H }, output_format: 'png', sync_mode: true, enable_safety_checker: true, num_images: 1,
   };
@@ -443,4 +446,4 @@ async function lockFaces(frame, refs, opts) {
   }
 }
 
-module.exports = { lockFaces, enabledFor, mode, gateWhy, capCents, modelId, loraPath, PROMPT, HAT_KEEP, FACE_ONLY, COST_CENTS, CAP_CENTS_DEFAULT, LORA_DEFAULT, MODEL_LORA, MODEL_PLAIN, spentKey, MIN_LEFT_MS };
+module.exports = { lockFaces, enabledFor, mode, gateWhy, capCents, modelId, loraPath, PROMPT, HAT_KEEP, FACE_ONLY, FACE_ONLY_SMOOTH, COST_CENTS, CAP_CENTS_DEFAULT, LORA_DEFAULT, MODEL_LORA, MODEL_PLAIN, spentKey, MIN_LEFT_MS };
