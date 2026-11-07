@@ -699,8 +699,7 @@
   <div id="vaultSectionWrap" class="ownerCard" style="display:none;">
     <div class="ownerCardTitle" data-i18n="ownerVaultTitle">🔐 خزنة الأسرار</div>
     <div id="vaultSectionContent">
-      <!-- v-owner-i18n (تدقيق ١٨ أكتوبر): نصوص صفحة المالك بالـ١٤ لغة عبر data-i18n، ورمزا الصلاحيّتين خارج الترجمة معزولين لا يلتفّان (كانا يتلخبطان مع «و») -->
-      <div style="font-size:12.5px; line-height:1.8; opacity:.85;"><span data-i18n="ownerVaultDesc">الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع.</span> <span data-i18n="ownerVaultPerms">الرفع يحتاج توكن بهاتين الصلاحيّتين على المستودع:</span> <bdi dir="ltr" style="white-space:nowrap">Contents: write</bdi> · <bdi dir="ltr" style="white-space:nowrap">Pull requests: write</bdi></div>
+      <!-- v-vault-no-desc: شرح الخزنة وسطر الصلاحيّتين حُذفا بطلب المالك («شيل هذا الكلام كله») — حالة المفتاح تقول ما ينقص -->
       <div id="vaultGhStatus" style="margin-top:10px; font-size:12.5px; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px;">…</div>
       <div style="display:flex; gap:8px; margin-top:10px;">
         <input type="password" id="vaultGhInput" autocomplete="off" spellcheck="false" placeholder="ghp_… أو github_pat_…" data-i18n-placeholder="ownerVaultTokenPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; direction:ltr;">
