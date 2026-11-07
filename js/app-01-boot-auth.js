@@ -767,6 +767,7 @@ try{
         + '<span style="min-width:0;overflow-wrap:anywhere;font-size:11px;opacity:.6">' + (u.email ? '<bdi dir="ltr">' + escAdm(u.email) + '</bdi>' : escAdm(ownT('ownerNoEmail'))) + '</span>'
         + '</span>'
         + '<span style="display:flex;gap:6px;flex:none">'
+        + '<button type="button" onclick="adminResetLink(\'' + safeName + '\')" title="' + escAdm(ownT('ownerResetTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">🔑</button>'
         + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerMsgTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
         + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + escAdm(ownT(u.banned ? 'ownerUnbanTitle' : 'ownerBanTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
         + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerDeleteTitle')) + '" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
@@ -835,6 +836,22 @@ try{
         + '\n' + ownT('ownerDiagStatus', { s: ownLtr('HTTP ' + (data.status || '?')) })
         + '\n' + (data.detail || '');
     }catch(e){ if(box) box.textContent = '❌ ' + ownT('ownerErrorLine', { e: ownErr(e) }); }
+  };
+  /* v-owner-reset-link: رابط استرجاع يسلّمه المالك بيده لصاحب الحساب (واتساب…) حين لا يصله إيميل الاسترجاع.
+     التأكيد يذكّر بالتحقّق من صاحب الحساب أوّلًا، والرابط في prompt لينسخه، ويُنسخ تلقائيًّا إن سمح المتصفّح. */
+  window.adminResetLink = async function(username){
+    if(!confirm(ownT('ownerResetConfirm', { u: ownIso(username) }))) return;
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/admin-actions', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token, action: 'reset-link', targetUsername: username }),
+      });
+      const data = await res.json();
+      if(!res.ok || !data.ok || !data.link){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
+      try{ if(navigator.clipboard) navigator.clipboard.writeText(data.link).catch(e => __swallow(e, 'reset-link clipboard')); }catch(e){ __swallow(e, 'reset-link clipboard'); }
+      prompt(ownT('ownerResetLink', { u: ownIso(username), m: data.minutes || 30 }), data.link);
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   window.adminMessageUser = async function(username){
     const text = prompt(ownT('ownerMsgPrompt', { u: ownIso(username) }));
