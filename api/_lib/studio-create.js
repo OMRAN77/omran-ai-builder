@@ -314,6 +314,49 @@ async function runEdit(o) {
   return finish(out.b64, out.mime, 'gemini');
 }
 
+/* ───── v-merge-face-lock (لقطة المالك ٧ نوفمبر: صورتان لرجلين ونتيجة الدمج في مجلس — «شوف الملامح فرق بين السماء والارض»، ثمّ
+   «ابدأ الاثنين»): (١) الإطار — كان الدمج بنسبة الصورة الأولى (طوليّة) بلا ذكر للقطة، فرسم برو الشخصين بالجسم كاملًا في مشهد واسع
+   والوجه صغير يُعاد رسمه من عنده. الآن لقطة من الخصر وفوق بوجوه كبيرة ما لم يطلب المستخدم غيرها، و٤:٣ ما لم يسمِّ نسبة.
+   (٢) قفل الوجه — بعد الدمج يُبدَّل وجه كلّ شخص من صورته (face-swap.lockFaces: نفس أداة الترندات، ~٥ سنتات للوجه، سقف
+   FACE_SWAP_CAP_CENTS اليوميّ المشترك). MERGE_FACE_SWAP = on (الافتراضيّ، بموافقة المالك على الكلفة) · owner · off. أيّ عطب أو
+   لبس = صورة الدمج نفسها بلا تغيير، والطلب لا يفشل بسببه. ───── */
+const MERGE_ASPECT = '4:3';
+const MERGE_FRAMING = '\nFraming: when the photos show people, frame them from the waist up (a medium shot) unless the task above asks for a full-body or wide view; keep any scene the task describes around them, but never shrink the people so far that their faces become small — every face stays large, sharp and clearly visible with its own features.';
+/* بوّابة الإنفاق: غير مضبوط/on = الجميع (موافقة المالك)، owner = المالك، وأيّ قيمة أخرى (off، false، 0…) = مطفأ */
+function mergeSwapOn(username) {
+  const m = String(process.env.MERGE_FACE_SWAP || 'on').trim().toLowerCase();
+  if (m === 'on') return true;
+  if (m === 'owner') return require('./_owner.js').isOwnerName(username);
+  return false;
+}
+/* المراجعة: المستخدم طلب في وصفه شكلًا جديدًا (لحية، عمر، نظّارة، مكياج، غطاء وجه، أسلوب فنّيّ) = لا قفل — القفل يعيد الوجه كما صُوّر فيمحو ما طلبه */
+const MERGE_NEW_LOOK_RE = /لحي[ةه]|بلحي|ذقن|شنب|شوارب|سكسوك|نظار|عوينات|شيّاب|شياب|شيبان|عجوز|عجايز|كبار\s*(?:في|بال)\s*(?:العمر|السن)|(?:أكبر|اكبر|أصغر|اصغر)\s*(?:سن|بالعمر|في\s*العمر)|صغار|أطفال|اطفال|مكياج|ميك\s*اب|وشم|تاتو|حليق|أصلع|اصلع|صلع|صبغ|حجاب|نقاب|برقع|لثام|قناع|\b(?:beard(?:ed)?|moustache|mustache|goatee|glasses|sunglasses|spectacles|older|younger|aged|elderly|kids?|child(?:ren)?|makeup|make-up|tattoo|bald|shaved|dyed|hijab|niqab|burqa|veil|mask)\b/i;
+function mergeWantsNewLook(text) {
+  const s = String(text || '');
+  if (!s.trim()) return false;
+  try { if (require('./image-intent.js').detectEditIntent(s).restyle) return true; } catch (e) { /* guard-ok — بلا كاشف الأسلوب: الكلمات أدناه تكفي */ }
+  return MERGE_NEW_LOOK_RE.test(s);
+}
+/* m: { photos, crops (faceCrops)، counts (عدد الأشخاص الرئيسيّين لكلّ صورة)، userTask، apiKey، username، t0 }.
+   المراجعة: صورة فيها شخص واحد بالضبط تُقفل (بلقطة وجهها إن وُجدت، وإلّا الصورة كاملة)؛ صورة فيها اثنان فأكثر تبقى مرجعًا يُتجنَّب
+   (خارج only) كي لا يُلصق وجه أحدهما على الآخر؛ تعذّر العدّ أو لا وجه = لا قفل لها، ولا شيء يُقفل = لا نداء أصلًا. */
+async function lockMergeFaces(frame, m) {
+  if (!mergeSwapOn(m.username)) return frame;
+  if (mergeWantsNewLook(m.userTask)) { console.warn('[studio-create] merge face-lock skipped: new-look'); return frame; }
+  const only = m.photos.map((_, k) => k).filter((k) => m.counts[k] === 1);
+  if (!only.length) { console.warn('[studio-create] merge face-lock skipped: no single-person photo'); return frame; }
+  const refs = m.photos.map((p, k) => {
+    const own = (m.crops || []).filter((c) => c.of === k);
+    return (m.counts[k] === 1 && own.length === 1) ? { data: own[0].data, mime: own[0].mime, face: true } : { data: p.data, mime: p.mime };
+  });
+  try {
+    const r = await require('./face-swap.js').lockFaces(frame, refs, { apiKey: m.apiKey, enabled: true, only, until: m.t0 + 280000 });
+    if (r && r.swapped > 0 && r.b64) return { b64: r.b64, mime: r.mime || 'image/jpeg' };
+    console.warn('[studio-create] merge face-lock skipped: ' + String((r && r.reason) || 'none').slice(0, 60));
+  } catch (e) { console.warn('[studio-create] merge face-lock ' + (e && e.message)); } /* lockFaces لا يرمي — حارس احتياطيّ */
+  return frame;
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -378,21 +421,27 @@ module.exports = async (req, res) => {
     if (feature === 'merge') {
       /* v-merge-faces: قالب هويّة الدمج نفسه (maha-image) — كان الأمر يطلب «مزج» الناس معًا (blend) — دعوة صريحة لخلط الوجوه،
          والناس «recognizable» فقط. كلّ صورة بعنوانها، ولقطة مقرّبة لكلّ وجه، والأمر الكامل آخرًا ويستلمه GPT نفسه. */
-      const task = description ? String(description).slice(0, 300) : 'Place the people/subjects from both photos together naturally in one consistent, photorealistic scene.';
+      const tMerge = Date.now(); /* v-merge-face-lock: مهلة قفل الوجه من بداية الدمج */
+      const userTask = description ? String(description).slice(0, 300) : '';
+      const task = (userTask || 'Place the people/subjects from both photos together naturally in one consistent, photorealistic scene.') + MERGE_FRAMING;
       const photos = [{ data: imageBase64, mime: mimeType || 'image/jpeg' }, { data: imageBase64B, mime: mimeTypeB || 'image/jpeg' }];
-      const crops = await mergeIdentity.faceCrops(apiKey, photos);
+      const counts = []; /* v-merge-face-lock: عدد الأشخاص في كلّ صورة من كشف faceCrops نفسه (بلا نداء زائد) */
+      const crops = await mergeIdentity.faceCrops(apiKey, photos, { perPhoto: counts });
       const parts = mergeIdentity.mergeParts(photos, crops, task);
       const promptText = parts[parts.length - 1].text;
-      const out = await geminiImage(apiKey, parts, 'merge', mergeIdentity.mergeAspect(photos[0], task));
+      const out = await geminiImage(apiKey, parts, 'merge', mergeIdentity.explicitAspect(userTask) || MERGE_ASPECT);
+      const lockOpts = { photos, crops, counts, userTask, apiKey, username: quota.username, t0: tMerge };
       if (out.b64) {
+        const locked = await lockMergeFaces({ b64: out.b64, mime: out.mime }, lockOpts);
         const rem = await consumeStudio(quota.username, quota.limit);
-        res.status(200).json({ imageBase64: out.b64, mimeType: out.mime, remaining: rem, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
+        res.status(200).json({ imageBase64: locked.b64, mimeType: locked.mime, remaining: rem, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
         return;
       }
       const rescue = await rescueGuarded(promptText, photos.concat(crops).map((p) => [p.data, p.mime]), apiKey, 'merge');
       if (rescue) {
+        const lockedR = await lockMergeFaces({ b64: rescue, mime: 'image/png' }, lockOpts);
         const remR = await consumeStudio(quota.username, quota.limit);
-        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
+        res.status(200).json({ imageBase64: lockedR.b64, mimeType: lockedR.mime, engine: 'openai', remaining: remR, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
         return;
       }
       res.status(out.status || 502).json({ error: out.error || 'image_generation_failed' }); /* v-audit-studeng: رمز لا نصّ */
@@ -456,3 +505,5 @@ module.exports.buildSinglePrompt = buildSinglePrompt; /* v-studio-variety: لل�
 module.exports.styleTextOf = styleTextOf; /* v-style-match: للاختبار */
 module.exports.DESIGN_FEATURES = DESIGN_FEATURES;
 module.exports.__geminiImage = geminiImage; /* v-fal-backup: للاختبار */
+module.exports.__MERGE_FRAMING = MERGE_FRAMING; /* v-merge-face-lock: للاختبار */
+module.exports.__mergeWantsNewLook = mergeWantsNewLook; /* v-merge-face-lock: للاختبار */

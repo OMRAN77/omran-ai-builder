@@ -167,6 +167,7 @@ async function faceCrops(apiKey, photos, opts) {
       const faces = await detectFaces(apiKey, img, o);
       const biggest = Math.max(0, ...faces.map((f) => f.box[3] - f.box[1]));
       const main = faces.filter((f) => f.box[3] - f.box[1] >= biggest * 0.5);
+      if (Array.isArray(o.perPhoto)) o.perPhoto[i] = main.length; /* v-merge-face-lock: عدد الأشخاص الرئيسيّين لكلّ صورة (قفل الوجه لصورة الشخص الواحد) */
       /* صورة جماعيّة (٣ وجوه فأكثر): لقطة أيّ وجه تُدخل وجوه جيرانه فتلتبس — تبقى الصورة وحدها مرجعًا */
       if (main.length > 2) return [];
       /* القصّ هنا من نسخة العمل (صغيرة) — لا تُحفظ صور كاملة حتّى نهاية كلّ الصور */
@@ -235,7 +236,8 @@ function nearestRatio(w, h) {
 }
 /* نسبة صريحة للدمج: كلمة المستخدم أوّلًا (عرضي/مربع/ستوري/طولي/خلفية جوال/نسبة رقميّة)، وإلّا أقرب نسبة مدعومة للصورة
    الأساسيّة (آخر ما رفعه المستخدم) — كي لا يتبع الناتج لقطة الوجه الأخيرة. لا «شعار = مربّع» هنا: دمج شعار مع صورة ليس توليد شعار. */
-function mergeAspect(photo, text) {
+/* v-merge-face-lock: النسبة التي سمّاها المستخدم بكلمته وحدها ('' = لم يسمِّ) — الستايل يختار افتراضيّه للشخصين بدل نسبة الصورة الأولى */
+function explicitAspect(text) {
   const s = String(text || '').replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x660));
   const m = /(?:^|[^\d])(\d{1,2})\s*[:x×\/]\s*(\d{1,2})(?!\d)/.exec(s);
   if (m && +m[1] > 0 && +m[2] > 0 && +m[1] / +m[2] <= 4 && +m[2] / +m[1] <= 4) return nearestRatio(+m[1], +m[2]);
@@ -243,10 +245,15 @@ function mergeAspect(photo, text) {
   if (/عرضي|عرضيه|عرضية|بانر|بنر|غلاف\s*(?:يوتيوب|قناة|فيس)|landscape|banner|widescreen/i.test(s)) return '16:9';
   if (/مربع|مربعه|مربعة|square|بوست\s*انستقرام|instagram\s*post|بروفايل|profile\s*(?:pic|photo)/i.test(s)) return '1:1';
   if (/طولي|طوليه|طولية|عمودي|عموديه|عمودية|portrait|vertical/i.test(s)) return '3:4';
+  return '';
+}
+function mergeAspect(photo, text) {
+  const e = explicitAspect(text);
+  if (e) return e;
   let d = null;
   try { const buf = Buffer.from(String(photo && photo.data || ''), 'base64'); d = imageSize(buf); if (d && d.type === 'jpeg' && (jpegOrientation(buf) || 1) >= 5) d = { w: d.h, h: d.w }; } catch (e) { d = null; } /* guard-ok — بلا أبعاد = الافتراضيّ */
   return d && d.w && d.h ? nearestRatio(d.w, d.h) : '3:4';
 }
 
-module.exports = { faceCrops, detectFaces, mergeParts, mergeInstruction, mergeTemperature, mergeAspect, headRect, whereIn, orient, sniffMime, MAX_HUMAN_REFS,
+module.exports = { faceCrops, detectFaces, mergeParts, mergeInstruction, mergeTemperature, mergeAspect, explicitAspect, headRect, whereIn, orient, sniffMime, MAX_HUMAN_REFS,
   decodeWork, shrinkTo, DETECT_URL /* v-trend-face-swap: نفس الفكّ والتصغير ونقطة الكشف في face-swap.js */ };

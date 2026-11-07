@@ -271,7 +271,7 @@ function paste(out, W, job, sw) {
 
 /**
  * frame: { b64, mime } الإطار المبنيّ؛ refs: [{ data, mime, face }] بترتيب الأشخاص (face = لقطة وجه جاهزة).
- * o: { apiKey (Gemini للربط)، until (آخر لحظة لها، ms)، owner، only ([k…] المراجع التي تُبدَّل؛ الافتراضيّ كلّها)، multi، fetchImpl، kv }.
+ * o: { apiKey (Gemini للربط)، until (آخر لحظة لها، ms)، owner، enabled (true = بوّابة المتّصل بدل TREND_FACE_SWAP)، only ([k…] المراجع التي تُبدَّل؛ الافتراضيّ كلّها)، multi، fetchImpl، kv }.
  * يرجع { b64, mime, swapped, reason } — swapped عدد الوجوه المبدَّلة؛ صفر = الإطار نفسه بايتًا ببايت.
  */
 async function lockFaces(frame, refs, opts) {
@@ -282,13 +282,22 @@ async function lockFaces(frame, refs, opts) {
   let held = 0, kv = null, day = '';
   try {
     if (!frame || !frame.b64) return same('no-frame');
-    if (!enabledFor(o.owner)) return same(mode() === 'off' ? 'off' : (falKey() ? 'not-owner' : 'no-key'));
+    /* v-merge-face-lock: o.enabled = المتّصل حسم التشغيل ببوّابته (دمج الستايل: MERGE_FACE_SWAP)؛ المفتاح شرط في الحالين */
+    if (o.enabled === true) { if (!falKey()) return same('no-key'); }
+    else if (!enabledFor(o.owner)) return same(mode() === 'off' ? 'off' : (falKey() ? 'not-owner' : 'no-key'));
     if (!o.apiKey) return same('no-locator');
     const list = (refs || []).filter((r) => r && r.data);
     if (!list.length) return same('no-refs');
     o.until = Number(o.until) || (t0 + 60000);
     if (o.until - t0 < MIN_LEFT_MS) return same('budget');
     const only = (Array.isArray(o.only) && o.only.length ? o.only : list.map((_, k) => k)).filter((k) => k < list.length);
+    /* v-merge-face-lock (المراجعة): سقف مستنفد = لا نداء ربط أصلًا (كان Flash يُدفع ثمّ يُرفض الحجز بعده). القراءة تلميح؛ الحجز الذرّيّ أدناه هو الحكم */
+    if (capCents() <= 0) return same('cap');
+    try {
+      const kv0 = o.kv || require('./kv.js');
+      const s0 = typeof kv0.kvGetRaw === 'function' ? Number(await kv0.kvGetRaw(spentKey(new Date().toISOString().slice(0, 10)))) : NaN;
+      if (Number.isFinite(s0) && s0 + COST_CENTS * only.length > capCents()) return same('cap');
+    } catch (e) { /* guard-ok — تعذّرت قراءة التلميح: يكمل إلى الحجز الذرّيّ */ }
     const img = decodeImage(Buffer.from(String(frame.b64), 'base64'));
     if (!img) return same('decode');
     const prepared = list.map(prepRef);
