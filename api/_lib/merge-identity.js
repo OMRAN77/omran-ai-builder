@@ -169,7 +169,9 @@ function uprightCrop(img, f) {
   const v = [e[0] - m[0], e[1] - m[1]]; // من الفم إلى العينين = أعلى الوجه
   const d = Math.hypot(v[0], v[1]), io = Math.hypot(b[0] - a[0], b[1] - a[1]);
   if (!(d >= 12) || io < 0.4 * d || io > 1.8 * d) return null;
-  if (Math.abs((b[0] - a[0]) * v[0] + (b[1] - a[1]) * v[1]) / (io * d) > 0.5) return null; // خطّ العينين يعترض محور الوجه
+  /* خطّ العينين يعترض محور الوجه — المراجعة: ٠٫٥ كان يرفض وجهًا حقيقيًّا ملتفتًا ثلاثة أرباع مصوَّرًا من تحت (الفم أمام العينين فيميل الإسقاط)
+     فيعود إلى الصورة المائلة؛ الميل يُحسب من محور الفم←العينين وحده، فالحدّ يرفض الهراء وحده (خطّ عينين على بُعد أقلّ من ~٣٧° من المحور) */
+  if (Math.abs((b[0] - a[0]) * v[0] + (b[1] - a[1]) * v[1]) / (io * d) > 0.8) return null;
   const [bx0, by0, bx1, by1] = f.box, mx = 0.15 * (bx1 - bx0), my = 0.15 * (by1 - by0);
   const inside = (p) => p[0] >= (bx0 - mx) * img.w && p[0] <= (bx1 + mx) * img.w && p[1] >= (by0 - my) * img.h && p[1] <= (by1 + my) * img.h;
   if (![a, b, m].every(inside)) return null;
@@ -211,10 +213,13 @@ function whereIn(f, main) {
   return dy < 0 ? 'the upper person' : 'the lower person';
 }
 
+/* MERGE_FACE_CROPS=off يوقف كلّ لقطات الوجوه بلا نشر — faceCrops ولقطة الجسم المستقيمة (v-body-upright، المراجعة: كانت تتخطّاه) */
+function cropsOn() { return String(process.env.MERGE_FACE_CROPS || 'on').toLowerCase() !== 'off'; }
+
 /* photos: [{ data, mime }] بترتيب رفع المستخدم → [{ of, who, data, mime }] لقطات وجوه، أكبرها في كلّ صورة أوّلًا */
 async function faceCrops(apiKey, photos, opts) {
   const o = opts || {};
-  if (!apiKey || String(process.env.MERGE_FACE_CROPS || 'on').toLowerCase() === 'off') return [];
+  if (!apiKey || !cropsOn()) return [];
   const budget = Math.min(4, MAX_HUMAN_REFS - photos.length);
   if (budget <= 0) return [];
   const per = await Promise.all(photos.map(async (p, i) => {
@@ -322,5 +327,5 @@ function mergeAspect(photo, text) {
   return d && d.w && d.h ? nearestRatio(d.w, d.h) : '3:4';
 }
 
-module.exports = { faceCrops, detectFaces, mergeParts, mergeInstruction, mergeTemperature, mergeAspect, explicitAspect, headRect, whereIn, orient, sniffMime, MAX_HUMAN_REFS, uprightCrop,
+module.exports = { faceCrops, detectFaces, mergeParts, mergeInstruction, mergeTemperature, mergeAspect, explicitAspect, headRect, whereIn, orient, sniffMime, MAX_HUMAN_REFS, uprightCrop, cropsOn,
   decodeWork, shrinkTo, DETECT_URL /* v-trend-face-swap: نفس الفكّ والتصغير ونقطة الكشف في face-swap.js */ };

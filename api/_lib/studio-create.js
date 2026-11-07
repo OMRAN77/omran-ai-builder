@@ -387,10 +387,13 @@ async function bodyCloseUp(apiKey, b64) {
     const main = faces.filter((f) => f.box[3] - f.box[1] >= biggest * 0.5);
     if (!(biggest > BODY_CLOSEUP && main.length === 1)) return null;
     let crop = null;
-    try {
-      const u = mergeIdentity.uprightCrop(img, main[0]);
-      if (u) crop = { of: 0, who: 'the person', size: main[0].box[3] - main[0].box[1], data: u.data, mime: u.mime, upright: true, roll: u.roll };
-    } catch (e) { console.warn('[studio-create] body upright crop ' + (e && e.message)); } /* اللقطة تعذّرت = faceCrops كما كان */
+    /* المراجعة: MERGE_FACE_CROPS=off يوقف هذه اللقطة أيضًا (كانت تتخطّاه) — فيعود faceCrops ويرجع [] كما كان */
+    if (mergeIdentity.cropsOn()) {
+      try {
+        const u = mergeIdentity.uprightCrop(img, main[0]);
+        if (u) crop = { of: 0, who: 'the person', size: main[0].box[3] - main[0].box[1], data: u.data, mime: u.mime, upright: true, roll: u.roll };
+      } catch (e) { console.warn('[studio-create] body upright crop ' + (e && e.message)); } /* اللقطة تعذّرت = faceCrops كما كان */
+    }
     return { faces, crop };
   } catch (e) { console.warn('[studio-create] body close-up check ' + (e && e.message)); return null; } /* الكشف تعذّر = المسار القديم */
 }
@@ -412,10 +415,12 @@ function bodyColorway(variant) {
 }
 /* v-body-upright (لقطة المالك: بنت شعرها مكشوف بغرّة وكعكة ← غطاء رأس أسود ورقبة سوداء لم تلبسهما): سطر الرأس العامّ يذكر «حجابًا رياضيًّا»
    والموديل أضافه؛ فحص الصورة (photoLook) قال «شعر مكشوف» = سطر صريح: شعرها كما في الصورة ولا شيء على الرأس أو الرقبة. الرجل كما كان.
-   وفي السطر العامّ (الفحص لم يحسم): الشعر المكشوف يبقى مكشوفًا بتسريحته، لا قلنسوة ولا لثام ولا غطاء رقبة. */
+   وفي السطر العامّ (الفحص لم يحسم): الشعر المكشوف يبقى مكشوفًا بتسريحته، لا قلنسوة ولا لثام ولا غطاء رقبة.
+   المراجعة: السطر الصريح لا يأمر بنزع شيء أبدًا — «مكشوف» جواب Flash قد يخطئ (شيلة رخوة تُظهر الغرّة)، فكان «no hijab, headscarf» ينزع غطاءها؛
+   الآن: لا يُضاف ما لا تُظهره الصورة، وما تُظهره على الرأس يبقى كما هو. */
 function bodyHeadLine(look) {
   const l = look || {};
-  if (l.covered === false && l.g !== 'm') return 'Head: the hair is uncovered in Photo 1 — keep their own hair exactly as in Photo 1 (the same hairstyle, fringe, length and colour), fully visible, with nothing on the head or around the neck: no hijab, headscarf, hood, cap, balaclava or neck gaiter.';
+  if (l.covered === false && l.g !== 'm') return 'Head: the hair is uncovered in Photo 1 — keep their own hair exactly as in Photo 1 (the same hairstyle, fringe, length and colour), fully visible, and add nothing on the head or around the neck that Photo 1 does not show: no hood, cap, balaclava or neck gaiter. A hijab, headscarf or shayla that Photo 1 does show stays exactly as worn.';
   return 'Head: a man\'s ghutra, shemagh, agal, kufi or cap is removed — his head is bare, with short neat hair whose colour matches his beard and age, and nothing on his head. A woman\'s hijab or headscarf stays, fully covering, worn as a fitted sports hijab. Never add a head covering to anyone who wears none — uncovered hair stays uncovered, in its own hairstyle, never under a hood, balaclava or neck gaiter.';
 }
 function bodyReframeTask(style, description, variant, look) {
