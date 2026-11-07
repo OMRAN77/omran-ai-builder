@@ -68,6 +68,7 @@
   }
   function isMobile(){
     try{
+      if(typeof omranDesktopApp === 'function' && omranDesktopApp()) return false; /* v-desktop-app: تطبيق ويندوز/ماك حاسوب — تنزيل مباشر لا لوحة النظام */
       if(typeof omranLikelyApp === 'function' && omranLikelyApp()) return true;
       if(/Android|HarmonyOS|HUAWEI|HONOR|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent)) return true;
       if(navigator.maxTouchPoints > 1 && /Mac|Linux/i.test(navigator.platform || '')) return true;

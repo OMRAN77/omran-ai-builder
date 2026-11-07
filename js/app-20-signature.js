@@ -164,6 +164,8 @@
   function shareCanvas(canvas){
     return blobOf(canvas).then(function(blob){
       if(!blob){ toast(T('voiceImageFailed', 'تعذّر توليد الصورة.', 'Could not build the image.')); return; }
+      /* v-share-sheet: نافذة المشاركة الموحّدة (app-45) عبر مسار الصور (رابط دائم + «المزيد» بالملفّ على الهاتف) */
+      if(typeof window.omranShareSheet === 'function' && typeof window.omranSaveImage === 'function'){ window.omranSaveImage(blob, 'omran-signature.png', 'share'); return; }
       var file = null;
       try{ file = new File([blob], 'omran-signature.png', { type:'image/png' }); }
       catch(e){ tell(e, 'sig:file'); }

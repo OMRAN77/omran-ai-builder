@@ -56,6 +56,20 @@ function omranLikelyApp(){
   }catch(e){ __swallow(e, 'share:app-detect'); }
   return false;
 }
+/* v-desktop-app (لقطات المالك ٧ نوفمبر: «مشاركة» تدور فوق صفحة الصور الشخصيّة بعد «تحميل الصورة» في تطبيق ويندوز): تطبيق المتجر على
+   ويندوز/ماك standalone فيصدق فيه omranLikelyApp — لكنّه حاسوب: <a download> يعمل فيه، وnavigator.share هي لوحة النظام التي تعلق. مسارات
+   الحفظ والمشاركة تعامله حاسوبًا (تنزيل مباشر + النافذة الموحّدة)، والهواتف وأغلفة أندرويد/آيفون كما كانت. */
+function omranDesktopApp(){
+  try{
+    if(omranMobileUA() || omranNativeBridge('omranShare') || omranHwWebView()) return false;
+    const ua = navigator.userAgent || '';
+    if(/Android|\bwv\b/i.test(ua) || window.OmranAndroidShare || (window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform())))) return false;
+    /* standalone نفسه لا omranLikelyApp: v-desk-pwa-save (main) جعل omranLikelyApp لا يعدّ standalone إلّا على الهاتف، فكان التطبيق المثبّت
+       على الحاسوب يخرج من هنا «لا» ودفع ويندوز الضيّق (mobile-ui) يرجع للوحة النظام؛ وأعلام المتجر/TWA تبقى «تطبيقًا» على أيّ جهاز (قراره) */
+    const standalone = !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    return standalone && /Windows NT|Macintosh|CrOS|X11|Linux x86_64/i.test(ua);
+  }catch(e){ __swallow(e, 'share:desktop-app'); return false; }
+}
 async function omranBlobToServerLink(blob, filename){
   const b64 = await new Promise((resolve, reject) => {
     const fr = new FileReader();
@@ -122,7 +136,7 @@ function omranReadySheet(opts){
     const o = opts || {};
     const kind = o.kind || 'file';
     const isArT = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
-    const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp());
+    const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())); /* v-desktop-app: تطبيق ويندوز حاسوب */
     const desktop = !mobile;
     // رابط دائم يصحّ إرساله للغير — واتساب/نسخ الرابط فقط حين يكون موجودًا (لا رابط تنزيل عمره ساعة ولا blob محلّيّ)
     const canLink = /^https?:/i.test(String(o.shareUrl || ''));
@@ -173,6 +187,12 @@ function omranReadySheet(opts){
     const addIcon = function(el, name){ const i = document.createElement('span'); i.style.cssText = 'display:inline-flex'; i.innerHTML = rsIcon(name); el.appendChild(i); };
     const status = function(txt){ try{ ttl.textContent = txt; }catch(e){ /* guard-ok */ } };
     const buttons = [];
+    const sheetBtn = function(){ /* v-share-sheet */
+      const sb = document.createElement('button'); sb.type = 'button'; sb.style.cssText = outCss;
+      addIcon(sb, 'share'); sb.appendChild(labelSpan(rsT('imgShareBtn', 'مشاركة', 'Share')));
+      sb.onclick = function(){ try{ window.omranShareSheet({ url: canLink ? o.shareUrl : '', file: o.shareFile || null }); }catch(e){ __swallow(e, 'ready:share-sheet'); } };
+      return sb;
+    };
     // تحميل (الكلّ)
     const dl = document.createElement('a');
     dl.href = o.downloadUrl; dl.setAttribute('download', o.name || 'omran-ai'); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
@@ -213,14 +233,19 @@ function omranReadySheet(opts){
         }
         buttons.push(cp);
       }
+      // v-share-sheet: زرّ «مشاركة» واحد يفتح نافذة المشاركة الموحّدة (app-45) — الرابط الدائم وحده (v-save-no-wa)
+      if(typeof window.omranShareSheet === 'function'){ if(canLink) buttons.push(sheetBtn()); }
       // واتساب: الرابط الدائم (٧ أيّام) وحده، لا رابط التنزيل ذي الساعة
-      if(canLink){
+      else if(canLink){
         const waLink = o.shareUrl;
         const wa = document.createElement('a'); wa.href = 'https://wa.me/?text=' + encodeURIComponent(waLink); wa.target = '_blank'; wa.rel = 'noopener';
         wa.style.cssText = outCss; addIcon(wa, 'whatsapp'); wa.appendChild(labelSpan(rsT('imgWaBtn', 'واتساب', 'WhatsApp')));
         buttons.push(wa);
       }
     } else {
+      // v-share-sheet: النافذة الموحّدة — «المزيد» فيها ورقة الهاتف بالملفّ نفسه
+      if(typeof window.omranShareSheet === 'function' && (canLink || o.shareFile)){ buttons.push(sheetBtn()); }
+      else {
       // الجوّال: مشاركة النظام، وإن فشلت رسالة واضحة (لا صمت)
       let canShareFile = false;
       try{ canShareFile = !!(o.shareFile && navigator.canShare && navigator.canShare({ files: [o.shareFile] })); }catch(e){ canShareFile = false; }
@@ -241,6 +266,7 @@ function omranReadySheet(opts){
         const wa = document.createElement('a'); wa.href = 'https://wa.me/?text=' + encodeURIComponent(waLink); wa.target = '_blank'; wa.rel = 'noopener';
         wa.style.cssText = outCss; addIcon(wa, 'whatsapp'); wa.appendChild(labelSpan(rsT('imgWaBtn', 'واتساب', 'WhatsApp')));
         buttons.push(wa);
+      }
       }
     }
     const row = document.createElement('div');
@@ -269,7 +295,7 @@ async function omranSaveBlob(blob, filename){
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
   /* v-audit-uicore: مشاركة النظام على الجوّال والأغلفة وحدها (قرار v-ready-sheet، كما في img-save وsave-media) — على الكمبيوتر
      كانت تفتح لوحة ويندوز/ماك بلا «حفظ»، وإغلاقها (AbortError) يُنهي الدالّة بلا تنزيل. الكمبيوتر ينزّل مباشرة في الأسفل. */
-  const mobileish = omranLikelyApp() || omranMobileUA();
+  const mobileish = (omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())) || omranMobileUA(); /* v-desktop-app: تطبيق ويندوز ينزّل مباشرة — لا لوحة ويندوز */
   try{
     if(mobileish && navigator.canShare && typeof File === 'function'){
       const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
@@ -844,7 +870,7 @@ function exportReplyAsTxt(text){
    الكمبيوتر ينزّل مباشرة كما كان. */
 function msgSaveExport(blob, filename){
   let viaSheet = false;
-  try{ viaSheet = !!(omranNativeBridge('omranShare') || omranLikelyApp() || omranMobileUA()); }catch(e){ viaSheet = false; }
+  try{ viaSheet = !!(omranNativeBridge('omranShare') || (omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())) || omranMobileUA()); }catch(e){ viaSheet = false; } /* v-desktop-app */
   if(viaSheet){
     omranSaveBlob(blob, filename).catch((e) => { __swallow(e, 'export:save-blob'); msgDownloadBlob(blob, filename); });
     return true; /* v-audit-uicore: المسار الموحّد — ورقته هي التأكيد، فلا رسالة «تمّ» من المنادي */
@@ -3805,6 +3831,7 @@ window.acctToggleQr = function() {
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
   var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
+  if (typeof window.omranShareSheet === 'function') { window.omranShareSheet({ url: shareUrl, text: t('acctShareText') }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45)
   if (navigator.share) {
     try { await navigator.share({ title: 'om ai', text: t('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
   } else {

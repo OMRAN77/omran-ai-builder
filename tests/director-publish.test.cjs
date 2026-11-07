@@ -246,7 +246,7 @@ test('٨. النصوص الاثنان والعشرون بالـ١٤ لغة بل�
   for (const k of used) assert.ok(KEYS.includes(k), 'غير معرَّف: ' + k);
   for (const k of KEYS) assert.ok(used.has(k), 'غير مستعمل: ' + k);
   const tag = read('js/app-04-i18n-state.js').match(/\.js\?v=(\d+)';[^\n]* v-director-publish \((\d+)\): [^\n]*\*\//);
-  assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && Number(tag[2]) === 786, 'وسم اللغات مرفوع وسببه آخر التعليق');
+  assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && Number(tag[2]) === 787, 'وسم اللغات مرفوع وسببه آخر التعليق');
   const h = read('index.html');
   assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 465 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 695);
 });

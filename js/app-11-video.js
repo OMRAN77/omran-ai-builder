@@ -106,6 +106,8 @@
       a.textContent = (bT('⬇️ مشهد ','⬇️ Scene ')) + (i + 1);
       a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
       linksEl.appendChild(a);
+      /* v-share-next: «↗️ مشهد N» بجانب «⬇️ مشهد N» */
+      if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'video', label: '↗️ ' + bT('مشهد ', 'Scene ') + (i + 1), style: a.style.cssText + 'border:0;cursor:pointer;font-family:inherit;', getSrc: function(){ return u; } }); }catch(e){ __swallow(e, 'vmk:scene-share'); } }
     });
     setStatus(why + ' ' + partialScenesNote(urls.length, n));
   }
@@ -1517,6 +1519,8 @@
             a.textContent = (bT('⬇️ مشهد ','⬇️ Scene ')) + (i + 1);
             a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
             linksEl.appendChild(a);
+            /* v-share-next: «↗️ مشهد N» بجانب «⬇️ مشهد N» */
+            if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'video', label: '↗️ ' + bT('مشهد ', 'Scene ') + (i + 1), style: a.style.cssText + 'border:0;cursor:pointer;font-family:inherit;', getSrc: function(){ return sc.videoUrl; } }); }catch(e){ __swallow(e, 'vmk:scene-share2'); } }
           });
           setStatus(bT('✅ فيلمك جاهز! المشاهد تُعرض ورا بعض تلقائيًا — وتقدر تحمّل كل مشهد من الأزرار تحت.','✅ Your film is ready! Scenes will play back-to-back — download each scene below.'));
         };
