@@ -28,11 +28,11 @@ const con = [];
 for (const m of ['log', 'warn', 'error']) console[m] = (...a) => { con.push(a.map(String).join(' ')); };
 
 // ── Redis في الذاكرة ──
-const kv = new Map(), ttl = new Map();
+const kv = new Map(), ttl = new Map(), hook = {}; // hook.setnx(k): يرمي أو يغيّر شيئًا قبل الحجز (عطل أو سباق)
 require.cache[rp('api/_lib/kv.js')] = { id: rp('api/_lib/kv.js'), filename: rp('api/_lib/kv.js'), loaded: true, exports: {
   kvGetRaw: async (k) => (kv.has(k) ? kv.get(k) : null),
   kvSetRaw: async (k, v, t) => { kv.set(k, String(v)); ttl.set(k, t); },
-  kvSetIfAbsent: async (k, v, t) => { if (kv.has(k)) return false; kv.set(k, String(v)); ttl.set(k, t); return true; },
+  kvSetIfAbsent: async (k, v, t) => { if (hook.setnx) hook.setnx(k); if (kv.has(k)) return false; kv.set(k, String(v)); ttl.set(k, t); return true; },
   kvDel: async (k) => { kv.delete(k); ttl.delete(k); },
 } };
 
@@ -217,6 +217,7 @@ test('٥. رفض صريح يحرّر حجزه؛ خطأ اتّصال قبل ال�
   assert.match(lost.body.request, new RegExp('^omdir-' + id + '-[0-9a-f]{8}$'));
   const again = await call('publish', { token: owner(), id, caption: 'x', platforms: ['x'] });
   assert.deepEqual([again.body.again, again.body.already, again.body.request, sends], [true, ['x'], lost.body.request, 1], 'لا إرسال ثانٍ في المهلة');
+  assert.deepEqual(again.body.held, { x: lost.body.request }, 'الطلب الذي يحجز كلّ منصّة يعود لتتابعه اللوحة');
   assert.deepEqual((await call('status', { token: owner(), request: lost.body.request })).body, { ok: true, state: 'wait', results: [] });
   // مضت المهلة والخدمة ما زالت لا تعرفه = ما وصل: الحالة تقولها، والضغطة التالية ترسل بطلب جديد
   const rk = 'socpub:req:' + lost.body.request, rec = JSON.parse(kv.get(rk));
@@ -229,6 +230,22 @@ test('٥. رفض صريح يحرّر حجزه؛ خطأ اتّصال قبل ال�
   const last = uploadsOf().pop();
   assert.deepEqual([last.body.get('request_id'), last.headers['Idempotency-Key'], kv.get('socpub:sent:' + id + ':x')], [re.body.request, re.body.request, re.body.request]);
   assert.ok(kv.has('socpub:rel:' + lost.body.request + ':x'), 'التحرير مرّة واحدة للطلب والمنصّة');
+  // ٥xx بعد الإرسال (مهلة البوّابة) و٤٠٨/٤٠٩ قد تكون أنشأت المهمّة — وثائق الخدمة: لا تُعِد بعد مهلة — فلا تحرير: «غير متأكّد»؛
+  // و٤xx غيرها رفض صريح قبل البدء يحرّر
+  for (const [code, kept] of [[504, true], [500, true], [502, true], [408, true], [409, true], [400, false], [413, false], [401, false]]) {
+    kv.delete('socpub:sent:' + id + ':threads');
+    routes['/api/upload'] = () => { sends++; return { status: code, body: { message: 'm' } }; };
+    const g = await call('publish', { token: owner(), id, caption: 'x', platforms: ['threads'] });
+    assert.equal(kv.has('socpub:sent:' + id + ':threads'), kept, code + ' الحجز');
+    assert.deepEqual(kept ? [g.status, g.body.unsure] : [g.status, g.body.error], kept ? [200, true] : [502, 'publish'], String(code));
+  }
+  // وبعد ٥٠٤ الضغطة الثانية في المهلة لا ترسل (الطلب ربّما أُنشئ)
+  routes['/api/upload'] = () => { sends++; return { status: 504, body: {} }; };
+  kv.delete('socpub:sent:' + id + ':threads');
+  await call('publish', { token: owner(), id, caption: 'x', platforms: ['threads'] });
+  const n0 = sends;
+  assert.equal((await call('publish', { token: owner(), id, caption: 'x', platforms: ['threads'] })).body.again, true);
+  assert.equal(sends, n0, 'لا إعادة بعد مهلة البوّابة');
 });
 
 test('٦. الحالة لكلّ منصّة: «في الطابور» ينتظر لا «نزل»، والإعادة التلقائيّة تنتظر، ومسوّدة صندوق تيك توك «ما نزل»، و«لا طلب» ينتظر في المهلة ثمّ «ما وصل»', async () => {
@@ -256,6 +273,9 @@ test('٦. الحالة لكلّ منصّة: «في الطابور» ينتظر �
     { platform: 'youtube', state: 'fail', url: '', error: 'profile_platform_not_configured' },
   ] }, 'رابط غير https لا يُعرض، وtwitter = X، والمتخطّى ما نزل');
   assert.equal(sp.statusOf({ status: 'failed' }).state, 'fail');
+  // طابور في مهمّة أعلنت فشلها: «ما نزل» (كما يحرّره deadRow) لا «ينتظر» للأبد؛ والمعالَج فيها يبقى ينتظر (قد يكون نشر)
+  assert.deepEqual(sp.statusOf({ status: 'failed', results: [{ platform: 'x', success: true, message: 'Queued' }, { platform: 'threads', status: 'queued' }, { platform: 'youtube', status: 'processing' }] })
+    .results.map((x) => x.platform + ':' + x.state), ['x:fail', 'threads:fail', 'youtube:wait']);
   // التحرير بإثبات أنّها لم تنشر وحده
   const D = (x, top) => sp.deadRow(x, top || 'in_progress');
   assert.deepEqual([D({ status: 'failed' }), D({ success: false, error: 'quota' }), D({ success: true, skipped: true }), D(undefined, 'failed')], [true, true, true, true]);
@@ -296,7 +316,7 @@ test('٧. لا نشر مرّتين في منصّة: المجموعة المتد�
   st['srv-req-1'] = { status: 'completed', results: [{ platform: 'instagram', success: true, post_url: 'https://www.instagram.com/reel/1/' }] };
   // إنستغرام نزل + يوتيوب جديد: يوتيوب وحده يُرسل
   const b = await pub(['instagram', 'youtube']);
-  assert.deepEqual([b.body.request, b.body.already, sent[1], sent.length], ['srv-req-2', ['instagram'], ['youtube'], 2]);
+  assert.deepEqual([b.body.request, b.body.already, b.body.held, sent[1], sent.length], ['srv-req-2', ['instagram'], { instagram: 'srv-req-1' }, ['youtube'], 2]);
   assert.equal(uploadsOf().pop().body.get('youtube_title'), 'نصّ');
   // يوتيوب قيد المعالجة: لا إرسال ثانٍ
   st['srv-req-2'] = { status: 'in_progress', results: [{ platform: 'youtube', status: 'processing' }] };
@@ -376,13 +396,14 @@ function panel() {
       if (u.startsWith('blob:')) return { blob: async () => ({ size: 10, type: 'video/mp4' }) };
       const op = /[?&]op=(\w+)/.exec(u)[1], body = JSON.parse(o.body);
       api.push({ op, body });
-      const r = replies[op];
-      return { json: async () => J(typeof r === 'function' ? r(body) : r) };
+      const r = replies[op], out = typeof r === 'function' ? r(body) : r;
+      return { json: async () => J(await out) }; // ردّ قد يكون وعدًا معلَّقًا (خادم بطيء)
     },
     XMLHttpRequest: function () {
-      const x = this; x.upload = {};
+      const x = this; x.upload = {}; x.status = 0;
       x.open = (m, u) => { x.u = u; }; x.setRequestHeader = () => {};
-      x.send = () => { puts.push(x.u); x.status = 200; setImmediate(() => x.onload()); };
+      x.send = () => { puts.push(x.u); if (ctx.holdPut) return; x.status = 200; setImmediate(() => x.onload()); }; // holdPut: الرفع معلَّق
+      x.abort = () => { ctx.aborts = (ctx.aborts || 0) + 1; setImmediate(() => x.onabort && x.onabort()); };
     },
     confirms: [], answer: true,
   };
@@ -447,7 +468,7 @@ test('١٠. اللوحة تقول الصدق وتبدأ من الصفر: «ان�
   replies.publish = { ok: true, again: true, already: ['tiktok', 'youtube'], request: 'r0' };
   await ctx.pbGo();
   assert.equal(els.vdPubMsg.textContent, 'vdPubAgain {"p":"TikTok، YouTube"}', 'ما انرسل شي جديد');
-  assert.deepEqual([ctx.PB.req, boxes().map((b) => b.off)], ['r0', [true, true]]);
+  assert.deepEqual([Object.keys(ctx.PB.reqs), boxes().map((b) => b.off)], [['r0'], [true, true]]);
   // ما وصل الخدمة ← يُقال، وتعود المنصّتان للاختيار
   replies.status = { ok: true, state: 'fail', lost: true, results: [] };
   timers.pop()(); await flush();
@@ -464,7 +485,7 @@ test('١٠. اللوحة تقول الصدق وتبدأ من الصفر: «ان�
   assert.equal(els.vdPubMsg.textContent, 'vdPubSent · vdPubAgain {"p":"TikTok"}');
   // فيديو جديد: لوحة من الصفر (نصّ ونتيجة ومنصّات) واسم جديد
   ctx.DR.out = 'blob:v2'; ctx.pbNewVideo();
-  assert.deepEqual([els.vdPubCap.value, els.vdPubMsg.textContent, els.vdPubRes.children.length, ctx.PB.req, J(ctx.PB.sent)], ['', '', 0, '', {}]);
+  assert.deepEqual([els.vdPubCap.value, els.vdPubMsg.textContent, els.vdPubRes.children.length, Object.keys(ctx.PB.reqs).length, J(ctx.PB.sent), J(ctx.PB.rows)], ['', '', 0, 0, {}, {}]);
   assert.deepEqual(boxes().map((b) => [b.on, b.off]), [[true, false], [true, false], [true, false]]);
   els.vdPubCap.value = 'نصّ ثانٍ'; api.length = 0;
   replies.target = { ok: true, id: 'b'.repeat(24), up: 'https://up.example/put?sig=9', ctype: 'video/mp4' };
@@ -527,4 +548,167 @@ test('١٢. النصوص الخمسة والعشرون بالـ١٤ لغة بل�
   assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && Number(tag[2]) === 789, 'وسم اللغات مرفوع وسببه آخر التعليق');
   const h = read('index.html');
   assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 465 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 695);
+});
+
+test('١٣. نشر ثانٍ لا يقطع متابعة الأوّل: كلّ منصّة تُحسم بآخر طلب أُرسلت فيه، وطلب أقدم لا يغلب الأحدث، ومن أخذه قبل يُتابَع طلبه', async () => {
+  const { ctx, els, api, timers, replies, boxes } = panel();
+  const rowsTxt = () => els.vdPubRes.children.map((li) => li.children[0].textContent + ':' + li.className.replace('is-', ''));
+  ctx.PB.plats = ['instagram', 'youtube', 'x']; ctx.pbPlats();
+  els.vdPubCap.value = 'نصّ';
+  replies.target = { ok: true, id: F24, up: 'https://up.example/put?sig=1', ctype: 'video/mp4' };
+  replies.publish = { ok: true, request: 'r1', already: [], held: {} };
+  await ctx.pbGo();
+  assert.deepEqual(rowsTxt(), ['Instagram:wait', 'YouTube:wait', 'X:wait']);
+  const st = { r1: { ok: true, state: 'wait', results: [
+    { platform: 'instagram', state: 'wait', url: '', error: '' }, { platform: 'youtube', state: 'wait', url: '', error: '' }, { platform: 'x', state: 'fail', url: '', error: 'too long' },
+  ] } };
+  replies.status = (b) => st[b.request];
+  timers.pop()(); await flush();
+  assert.deepEqual(boxes().map((b) => [b.p, b.off]), [['instagram', true], ['youtube', true], ['x', false]]);
+  // إعادة X وحده ← r2، ومتابعة r1 مستمرّة
+  boxes()[2].box.checked = true;
+  replies.publish = { ok: true, request: 'r2', already: [], held: {} };
+  await ctx.pbGo();
+  assert.deepEqual(Object.keys(ctx.PB.reqs).sort(), ['r1', 'r2']);
+  assert.deepEqual(rowsTxt(), ['Instagram:wait', 'YouTube:wait', 'X:wait'], 'X المعاد ينتظر، لا «ما نزل» محاولته الأولى');
+  // r1 ما زال ينتظر ويقول عن X «ما نزل»، وr2 يقول X نزل: الأحدث يغلب، والطلبان يُسألان
+  st.r2 = { ok: true, state: 'done', results: [{ platform: 'x', state: 'ok', url: 'https://x.com/i/1', error: '' }] };
+  api.length = 0; timers.pop()(); await flush();
+  assert.deepEqual(api.map((a) => a.body.request).sort(), ['r1', 'r2']);
+  assert.deepEqual(rowsTxt(), ['Instagram:wait', 'YouTube:wait', 'X:ok']);
+  // r1 يكتمل: إنستغرام نزل ويوتيوب فشل ← يعود للاختيار، وX باقٍ «نزل» معطّلًا؛ ولا متابعة بعدها
+  st.r1 = { ok: true, state: 'done', results: [
+    { platform: 'instagram', state: 'ok', url: 'https://i/1', error: '' }, { platform: 'youtube', state: 'fail', url: '', error: 'quota' }, { platform: 'x', state: 'fail', url: '', error: 'too long' },
+  ] };
+  const t0 = timers.length;
+  timers.pop()(); await flush();
+  assert.deepEqual(rowsTxt(), ['Instagram:ok', 'YouTube:fail', 'X:ok']);
+  assert.deepEqual(boxes().map((b) => [b.p, b.off]), [['instagram', true], ['youtube', false], ['x', true]]);
+  assert.deepEqual([Object.keys(ctx.PB.reqs).length, els.vdPubMsg.textContent, timers.length], [0, 'vdPubDone {"ok":2,"n":3}', t0 - 1]);
+  // «انرسل قبل» ومعه الطلب الذي يحجز المنصّة: يُتابَع فيُعرف أنّه نزل
+  boxes()[1].box.checked = true;
+  replies.publish = { ok: true, again: true, already: ['youtube'], held: { youtube: 'r9' }, request: 'r9' };
+  await ctx.pbGo();
+  assert.deepEqual(Object.keys(ctx.PB.reqs), ['r9']);
+  st.r9 = { ok: true, state: 'done', results: [{ platform: 'youtube', state: 'ok', url: 'https://y/1', error: '' }] };
+  timers.pop()(); await flush();
+  assert.deepEqual(rowsTxt(), ['Instagram:ok', 'YouTube:ok', 'X:ok']);
+  // فيديو جديد أثناء سؤال الحالة: نتيجة القديم لا تُرسم تحته
+  ctx.pbTrack('r11', ['instagram']);
+  st.r11 = { ok: true, state: 'done', results: [{ platform: 'instagram', state: 'fail', url: '', error: 'late' }] };
+  timers.pop()(); ctx.DR.out = 'blob:v2'; ctx.pbNewVideo(); await flush();
+  assert.deepEqual([rowsTxt(), J(ctx.PB.sent), els.vdPubMsg.textContent], [[], {}, ''], 'لا «خلص النشر» تحت الفيديو الجديد');
+});
+
+test('١٤. لا تحرير بلا إثبات: ما قبلته الخدمة أو أرته حيًّا أو مضى عليه يوم لا يُعدّ «ما وصل»، ورمز التحرير قصير ولا يمسح حجزًا تغيّر، وخطأ قبل الإرسال يحرّر ما حُجز', async () => {
+  calls.length = 0; kv.clear();
+  const id = '7'.repeat(24);
+  kv.set('socpub:file:' + id, 'https://v3.fal.media/files/om-7.mp4');
+  let sends = 0;
+  routes = {
+    '/uploadposts/status': { status: 404, body: { status: 'not_found' } },
+    '/api/upload': () => { sends++; return { status: 200, body: { request_id: '' } }; },
+  };
+  const age = (req, ms) => { const k = 'socpub:req:' + req, rec = JSON.parse(kv.get(k)); rec.at -= ms; kv.set(k, JSON.stringify(rec)); };
+  const pub = (platforms) => call('publish', { token: owner(), id, caption: 'x', platforms });
+  // ١) قبلته الخدمة (2xx) ثمّ نسيته: لا «ما وصل» ولا إعادة
+  const a = await pub(['instagram']);
+  assert.equal(JSON.parse(kv.get('socpub:req:' + a.body.request)).ok, 1);
+  age(a.body.request, sp.GRACE_MS + 1000);
+  assert.deepEqual((await call('status', { token: owner(), request: a.body.request })).body, { ok: true, state: 'wait', results: [] });
+  assert.deepEqual([(await pub(['instagram'])).body.again, sends], [true, 1]);
+  // ٢) غير متأكّد (٥٠٤) ثمّ أرته الخدمة حيًّا ثمّ نسيته: لا إعادة
+  routes['/api/upload'] = () => { sends++; return { status: 504, body: {} }; };
+  const b = await pub(['youtube']);
+  assert.equal(b.body.unsure, true);
+  routes['/uploadposts/status'] = { status: 200, body: { status: 'in_progress', results: [{ platform: 'youtube', status: 'processing' }] } };
+  await call('status', { token: owner(), request: b.body.request });
+  assert.equal(kv.get('socpub:seen:' + b.body.request), '1');
+  routes['/uploadposts/status'] = { status: 404, body: { status: 'not_found' } };
+  age(b.body.request, sp.GRACE_MS + 1000);
+  let n = sends;
+  assert.deepEqual([(await pub(['youtube'])).body.again, sends], [true, n]);
+  // ٣) غير متأكّد وما أرته، لكن مضى يوم: غيابه لم يعد دليلًا
+  const c = await pub(['x']);
+  age(c.body.request, sp.LOST_MAX_MS + 1000);
+  assert.equal((await call('status', { token: owner(), request: c.body.request })).body.state, 'wait');
+  n = sends;
+  assert.deepEqual([(await pub(['x'])).body.again, sends], [true, n]);
+  // ٤) غير متأكّد وما وصل (بعد المهلة): رمز تحرير قائم لمحرِّر آخر في الدقيقة = لا حذف؛ بعد انتهائه يتحرّر ويُرسل
+  const d = await pub(['threads']);
+  age(d.body.request, sp.GRACE_MS + 1000);
+  kv.set('socpub:rel:' + d.body.request + ':threads', 'other');
+  n = sends;
+  assert.deepEqual([(await pub(['threads'])).body.again, kv.get('socpub:sent:' + id + ':threads'), sends], [true, d.body.request, n], 'المحرِّر الآخر يحذف لا نحن');
+  kv.delete('socpub:rel:' + d.body.request + ':threads');
+  routes['/api/upload'] = () => { sends++; return { status: 200, body: { request_id: '' } }; };
+  const e = await pub(['threads']);
+  assert.deepEqual([e.body.again, sends], [undefined, n + 1]);
+  assert.equal(ttl.get('socpub:rel:' + d.body.request + ':threads'), 60, 'الرمز دقيقة لا أسبوع');
+  // ٥) الحجز تغيّر بين قراءته والتحرير (سباق): لا يُمسح حجز غيره
+  routes['/api/upload'] = () => { sends++; return { status: 504, body: {} }; };
+  const f = await pub(['facebook']);
+  age(f.body.request, sp.GRACE_MS + 1000);
+  hook.setnx = (k) => { if (k === 'socpub:rel:' + f.body.request + ':facebook') kv.set('socpub:sent:' + id + ':facebook', 'omdir-newer-claim'); };
+  n = sends;
+  const g = await pub(['facebook']);
+  hook.setnx = null;
+  assert.deepEqual([g.body.again, kv.get('socpub:sent:' + id + ':facebook'), sends], [true, 'omdir-newer-claim', n]);
+  // ٦) خطأ في الحجز قبل الإرسال: ما حُجز يتحرّر، والمعالج «أعد»، ولا إرسال
+  const E = 'e'.repeat(24);
+  kv.set('socpub:file:' + E, 'https://v3.fal.media/files/om-8.mp4');
+  hook.setnx = (k) => { if (k.endsWith(':tiktok')) throw new Error('kv down'); };
+  n = sends;
+  const h = await call('publish', { token: owner(), id: E, caption: 'x', platforms: ['instagram', 'tiktok'] });
+  hook.setnx = null;
+  assert.deepEqual([h.status, h.body.error, kv.has('socpub:sent:' + E + ':instagram'), sends], [503, 'retry', false, n]);
+});
+
+test('١٥. اللوحة: انقطاع نداء النشر يُعاد مرّة (آمن بالحجز)، والمتابعة إذا توقّفت لا تقفل المنصّة، ولا سؤالان متداخلان، وفيديو جديد يلغي رفع القديم', async () => {
+  const { ctx, els, api, timers, replies, boxes } = panel();
+  ctx.PB.plats = ['instagram', 'x']; ctx.pbPlats();
+  els.vdPubCap.value = 'نصّ';
+  replies.target = { ok: true, id: F24, up: 'https://up.example/put?sig=1', ctype: 'video/mp4' };
+  // ٠) انقطع النداءان (ما نعرف هل وصل): «طوّل — شوف حساباتك» لا «ما قدر ينشر»، والمنصّتان تبقيان للاختيار (الحجز يحسم الضغطة التالية)
+  replies.publish = { ok: false, error: 'retry' };
+  await ctx.pbGo();
+  assert.deepEqual([api.filter((a) => a.op === 'publish').length, els.vdPubMsg.textContent, boxes().map((b) => b.off)], [2, 'vdPubSlow (retry)', [false, false]]);
+  assert.ok(els.vdPubMsg.classList.contains('err'));
+  api.length = 0;
+  // ١) أوّل نداء نشر انقطع (ردّ ليس JSON)، والإعادة تقول «انرسل قبل» ومعها الطلب: لا «ما قدر ينشر»
+  let k = 0;
+  replies.publish = () => (k++ ? { ok: true, again: true, already: ['instagram', 'x'], held: { instagram: 'r1', x: 'r1' }, request: 'r1' } : { ok: false, error: 'http', status: 504 });
+  await ctx.pbGo();
+  assert.deepEqual([api.filter((a) => a.op === 'publish').length, els.vdPubMsg.textContent, Object.keys(ctx.PB.reqs)], [2, 'vdPubAgain {"p":"Instagram، X"}', ['r1']]);
+  // ٢) المتابعة تبلغ حدّها وما زال ينتظر: المنصّتان تعودان للاختيار، والرسالة «طوّل»
+  replies.status = { ok: true, state: 'wait', results: [{ platform: 'instagram', state: 'wait', url: '', error: '' }, { platform: 'x', state: 'wait', url: '', error: '' }] };
+  ctx.PB.reqs.r1.n = 119;
+  timers.pop()(); await flush();
+  assert.deepEqual([boxes().map((b) => b.off), els.vdPubMsg.textContent, Object.keys(ctx.PB.reqs).length], [[false, false], 'vdPubSlow', 0]);
+  // ٣) سؤال حالة بطيء وما خلص: الدور التالي لا يسأل فوقه
+  ctx.pbTrack('r2', ['x']);
+  let release = null;
+  replies.status = () => new Promise((r) => { release = () => r({ ok: true, state: 'done', results: [{ platform: 'x', state: 'ok', url: '', error: '' }] }); });
+  timers.pop()(); await flush();
+  const asked = api.filter((a) => a.op === 'status').length;
+  timers.pop()(); await flush();
+  assert.equal(api.filter((a) => a.op === 'status').length, asked, 'لا سؤال فوق سؤال');
+  release(); await flush();
+  assert.equal(ctx.PB.ticking, false);
+  // ٣ب) طلب حُسم (فشلت المهمّة) وصفّ منصّته ما زال «ينتظر» (قيد المعالجة): تعود للاختيار بدل قفل أبديّ
+  ctx.pbTrack('r3', ['instagram']);
+  replies.status = { ok: true, state: 'fail', results: [{ platform: 'instagram', state: 'wait', url: '', error: '' }] };
+  ctx.PB.sent.instagram = 'wait'; ctx.pbPlats();
+  timers.pop()(); await flush();
+  assert.deepEqual([boxes()[0].off, Object.keys(ctx.PB.reqs).length], [false, 0]);
+  // ٤) فيديو جديد أثناء رفع القديم: الرفع يُلغى، و«انشر الآن» يعود، ولا نشر ولا رسالة فشل
+  ctx.PB.sent = {}; els.vdPubPlats.textContent = ''; ctx.pbPlats();
+  ctx.holdPut = true; ctx.DR.out = 'blob:v7'; api.length = 0;
+  replies.target = { ok: true, id: '6'.repeat(24), up: 'https://up.example/put?sig=7', ctype: 'video/mp4' };
+  const go = ctx.pbGo(); await flush();
+  assert.equal(ctx.PB.busy, true);
+  ctx.DR.out = 'blob:v8'; ctx.pbNewVideo();
+  await Promise.race([go, new Promise((r, j) => setTimeout(() => j(new Error('رفع القديم ما انلغى: «انشر الآن» مقفل')), 3000))]);
+  assert.deepEqual([ctx.PB.busy, ctx.aborts, api.map((a) => a.op)], [false, 1, ['target']]);
+  assert.ok(!/vdPubFail/.test(els.vdPubMsg.textContent));
 });

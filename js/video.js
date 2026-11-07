@@ -583,7 +583,7 @@
      في المخرج»، واختار «انشر في حساباتي»): زرّ تحت الفيديو الجاهز يفتح لوحة — النصّ المرافق (فارغ عمدًا: ملاحظات التوليد ليست وصفًا للعامّة)
      والمنصّات الموصولة كما يراها الخادم، ثمّ «انشر الآن» بموافقة صريحة لكلّ نشر (علنيّ ولا يُسحب). الفيديو يُرفع من الجهاز مباشرة إلى هدف مؤقّت
      يصدره الخادم (مرّة لكلّ فيديو)، والخادم ينشر بخدمة النشر نفسها التي يستعملها بوت التسويق، ثمّ استطلاع حتّى تقول كلّ منصّة كلمتها. ═══ */
-  var PB={busy:false,plats:null,reauth:[],loading:false,src:'',id:'',vid:'',at:0,req:'',reqPlats:[],sent:{},poll:0};
+  var PB={busy:false,plats:null,reauth:[],loading:false,src:'',id:'',vid:'',at:0,reqs:{},rows:{},own:{},sent:{},poll:0,gen:0,ticking:false,xhr:null};
   var PB_NAMES={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',youtube:'YouTube',x:'X',threads:'Threads'};
   var PB_FRESH=5*3600*1000; /* v-director-publish-guard: الملفّ المرفوع يعيش ٦ ساعات عند الخادم وخدمة النشر تجلبه في الخلفيّة — بعد ٥ يُرفع من جديد */
   function pbApi(op,body){
@@ -601,10 +601,12 @@
     return e==='no_key'?L('vdPubNoKey'):e==='limit'?L('vdPubLimit'):e==='too_big'?drT('vdPubBig',{n:(d&&d.maxMB)||500}):L('vdPubFail');
   }
   function pbNames(list){ return (list||[]).map(function(p){ return PB_NAMES[p]||p; }).join('، '); }
+  function pbUnknown(d){ return !!d&&!d.ok&&(d.error==='net'||d.error==='http'||(d.error==='retry'&&!d.detail)); } /* لا نعرف هل حجز الخادم وأرسل (انقطاع أو خطأ بعد الإرسال) */
   /* v-director-publish-guard: فيديو جديد = لوحة من الصفر — نصّ السابق ونتيجته ومنصّاته لا تُعرض تحته (كان التصفير عند فتح اللوحة وحده،
      فلوحة مفتوحة تُبقي «نزل» ونصّ الفيديو السابق تحت الجديد). يُنادى حيث يتغيّر DR.out. */
   function pbNewVideo(){
-    PB.req=''; PB.reqPlats=[]; PB.sent={}; PB.vid=''; clearTimeout(PB.poll);
+    PB.gen++; PB.reqs={}; PB.rows={}; PB.own={}; PB.sent={}; PB.vid=''; clearTimeout(PB.poll);
+    if(PB.xhr){ var x=PB.xhr; PB.xhr=null; try{ x.abort(); }catch(e){ /* guard-ok — رفع انتهى أو لا يُلغى */ } } /* رفع الفيديو القديم يُلغى: «انشر الآن» لا يبقى مقفلًا عليه */
     pbRes([]); pbMsg(''); var c=id('vdPubCap'); if(c) c.value='';
     var b=id('vdPubPlats'); if(b) b.textContent=''; pbPlats(); /* المنصّات كلّها مؤشَّرة من جديد */
   }
@@ -616,14 +618,15 @@
   function pbLoad(){
     if(PB.loading) return; /* سؤال واحد في الطريق */
     /* كلّ فتح يسأل من جديد: حساب أُعيد ربطه أو وُصل يظهر بلا إعادة تحميل (إعادة التحميل تضيّع الفيديو). القائمة الحاضرة تبقى أثناء السؤال */
-    PB.loading=true; if(!PB.plats){ if(!PB.busy&&!PB.req) pbMsg(''); pbPlats(); } syncDirector();
+    PB.loading=true; if(!PB.plats){ if(!pbKeep()) pbMsg(''); pbPlats(); } syncDirector();
     pbApi('accounts').then(function(d){
-      PB.loading=false; var keep=PB.busy||!!PB.req; /* رسالة رفع أو نشر قائم لا تُمسح */
+      PB.loading=false; var keep=pbKeep(); /* رسالة رفع أو نشر قائم أو منتهٍ لا تُمسح */
       if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; if(!keep) pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
       else if(!keep) pbMsg(pbErr(d),true,pbWhy(d)); /* القائمة السابقة تبقى؛ وبلا قائمة يعيد الفتح التالي السؤال (مفتاح أُضيف بعدها) */
       pbPlats(); syncDirector();
-    }).catch(function(e){ PB.loading=false; if(!PB.busy&&!PB.req) pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); syncDirector(); });
+    }).catch(function(e){ PB.loading=false; if(!pbKeep()) pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); syncDirector(); });
   }
+  function pbKeep(){ return PB.busy||Object.keys(PB.reqs).length>0||Object.keys(PB.rows).length>0; }
   function pbPlats(){
     var box=id('vdPubPlats'); if(!box) return;
     var off={}; [].forEach.call(box.querySelectorAll('input[type=checkbox]'),function(c){ if(!c.checked) off[c.value]=1; }); /* ما شاله المالك يبقى مشالًا بعد التحديث */
@@ -645,7 +648,7 @@
       x.upload.onprogress=function(e){ if(at===DR.out&&e.lengthComputable&&e.total>0) pbMsg(drT('vdPubUp',{p:Math.min(99,Math.round(e.loaded/e.total*100))})); };
       x.onload=function(){ if(x.status>=200&&x.status<300) res(); else bad(); };
       x.onerror=bad; x.ontimeout=bad; x.onabort=bad;
-      x.send(blob);
+      PB.xhr=x; x.send(blob);
     });
   }
   function pbRes(list){
@@ -668,7 +671,7 @@
     if(!picked.length){ pbMsg(L('vdPubPick'),true); return; }
     if(!window.confirm(drT('vdPubConfirm',{p:pbNames(picked)}))) return; /* علنيّ ولا يُسحب: موافقة لكلّ نشر */
     var at=DR.out; /* الفيديو الذي وافق عليه: إن جاء فيديو جديد أثناء الرفع لا يُنشر القديم ولا تُرسم نتيجته تحت الجديد */
-    PB.busy=true; PB.req=''; clearTimeout(PB.poll); syncDirector(); pbRes([]);
+    PB.busy=true; syncDirector(); /* نتائج النشر السابق ومتابعته تبقى: النشر الجديد يضيف ولا يقطع */
     try{
       var d=null;
       for(var round=0;round<2;round++){
@@ -687,44 +690,81 @@
           if(PB.src!==at||!PB.vid) PB.vid=t.id; /* أوّل رفع يسمّي الفيديو؛ إعادة رفعه تبقي اسمه فتبقى حجوزات منصّاته عند الخادم */
           PB.src=at; PB.id=t.id; PB.at=t0;
         }
-        d=await pbApi('publish',{id:PB.id,vid:PB.vid||PB.id,caption:cap,platforms:picked});
+        var pub=function(){ return pbApi('publish',{id:PB.id,vid:PB.vid||PB.id,caption:cap,platforms:picked}).catch(function(e){ return {ok:false,error:'net',detail:String((e&&e.message)||e)}; }); };
+        d=await pub();
         if(at!==DR.out) return;
+        if(pbUnknown(d)){ d=await pub(); if(at!==DR.out) return; } /* انقطاع بيننا وبين الخادم: الحجز لكلّ منصّة يجعل الإعادة آمنة — إن كان الأوّل وصل عادت «انرسل قبل» وتُوبع طلبه */
         if(d&&d.error==='no_file'&&!up){ PB.id=''; continue; } /* انتهى عمر الملفّ عند الخادم ولم يُنشر شيء: رفع واحد من جديد في الضغطة نفسها */
         break;
       }
+      if(pbUnknown(d)){ pbMsg(L('vdPubSlow'),true,pbWhy(d)); return; } /* ما نعرف هل وصل: لا «ما قدر ينشر» ولا وعد بمتابعة بلا طلب — الضغطة التالية يحسمها حجز الخادم */
       if(!d||!d.ok) throw (d||{error:'publish'});
-      var already=d.already||[], sent=d.again?[]:picked.filter(function(p){ return already.indexOf(p)<0; });
+      var already=d.already||[], sent=d.again?[]:picked.filter(function(p){ return already.indexOf(p)<0; }), hold=d.held||{};
       sent.concat(already).forEach(function(p){ if(!PB.sent[p]) PB.sent[p]='wait'; });
-      PB.req=String(d.request||''); PB.reqPlats=d.again?already:sent;
+      sent.forEach(function(p){ PB.rows[p]={platform:p,state:'wait',url:'',error:''}; }); /* ما أُرسل الآن ينتظر، لا نتيجة محاولته السابقة */
       var again=already.length?drT('vdPubAgain',{p:pbNames(already)}):'';
       pbMsg(d.again?again:(d.unsure?L('vdPubUnsure'):L('vdPubSent')+(again?' · '+again:''))); /* ما لم يُرسل لا يُقال عنه «انرسل» */
-      pbPlats();
-      if(PB.req) pbPoll(PB.req,0);
+      pbRes(pbRowList()); pbPlats();
+      Object.keys(hold).forEach(function(p){ pbTrack(String(hold[p]||''),[p]); }); /* من أخذه قبل: طلبه يُتابَع فيُعرف هل نزل */
+      if(d.again&&!d.held) pbTrack(String(d.request||''),already);
+      if(!d.again) pbTrack(String(d.request||''),sent);
     }catch(e){
       if(at!==DR.out) return;
       pbMsg(pbErr(e),true,pbWhy(e)||String((e&&e.message)||e));
       try{ __swallow(e,'director:publish'); }catch(x){ /* guard-ok — لا مسجّل */ }
     }finally{ PB.busy=false; syncDirector(); }
   }
-  function pbPoll(req,n){
+  /* v-director-publish-guard: كلّ طلب نشر يُتابَع حتّى تقول منصّاته كلمتها — نشرٌ ثانٍ (منصّة أخرى أو إعادة ما فشل) لا يقطع متابعة
+     الأوّل (كانت منصّاته تبقى «ينتظر» معطّلة للأبد)، والنتيجة صفّ لكلّ منصّة من أيّ طلب. مؤقّت واحد يسأل عن المعلَّق كلّه. */
+  function pbTrack(req,plats){
+    if(!req) return;
+    var r=PB.reqs[req]||(PB.reqs[req]={plats:[],n:0});
+    (plats||[]).forEach(function(p){ if(r.plats.indexOf(p)<0) r.plats.push(p); PB.own[p]=req; }); /* المنصّة تتبع آخر طلب أُرسلت فيه */
+    r.n=0; pbPoll();
+  }
+  function pbMine(req,p){ if(!PB.own[p]) PB.own[p]=req; return PB.own[p]===req; } /* طلب أقدم لا يغلب نتيجة الأحدث للمنصّة نفسها */
+  /* المتابعة انتهت (حُسم الطلب أو بلغ حدّ الأسئلة) ومنصّة منه ما زالت «ينتظر»: لا تبقى قفلًا في اللوحة — الضغطة التالية يحسمها الخادم
+     (يحرّر ما لم ينشر، أو يقول «انرسل قبل» ويعيد ربط المتابعة) */
+  function pbFree(req,r){ r.plats.forEach(function(p){ if(PB.own[p]===req&&PB.sent[p]==='wait') delete PB.sent[p]; }); }
+  function pbPoll(){
     clearTimeout(PB.poll);
-    PB.poll=setTimeout(function(){
-      if(req!==PB.req) return;
-      pbApi('status',{request:req}).then(function(d){
-        if(req!==PB.req) return;
+    var keys=Object.keys(PB.reqs), gen=PB.gen; if(!keys.length) return;
+    var young=keys.some(function(k){ return PB.reqs[k].n<6; });
+    PB.poll=setTimeout(function(){ pbTick(gen); },young?5000:10000);
+  }
+  async function pbTick(gen){
+    if(PB.ticking){ pbPoll(); return; } /* سؤال سابق ما خلص (شبكة بطيئة): الدور بعده، لا سؤالان متداخلان */
+    PB.ticking=true;
+    try{
+      var lost=false, slow=false, keys=Object.keys(PB.reqs);
+      for(var i=0;i<keys.length;i++){
+        var req=keys[i], r=PB.reqs[req]; if(!r) continue;
+        var d=await pbApi('status',{request:req}).catch(function(){ return null; });
+        if(gen!==PB.gen) return; /* فيديو جديد أثناء السؤال: نتيجة القديم لا تُرسم تحته */
+        if(PB.reqs[req]!==r) continue;
+        r.n++;
         if(d&&d.ok){
-          var rows=d.results||[], fin=d.state!=='wait';
-          rows.forEach(function(r){ if(r.state==='fail') delete PB.sent[r.platform]; else PB.sent[r.platform]=r.state; }); /* ما لم ينزل يُختار من جديد */
+          var rows=d.results||[];
+          rows.forEach(function(x){ if(!pbMine(req,x.platform)) return; PB.rows[x.platform]=x; if(x.state==='fail') delete PB.sent[x.platform]; else PB.sent[x.platform]=x.state; }); /* ما لم ينزل يُختار من جديد */
           if(d.lost||(d.state==='fail'&&!rows.length)){ /* ما وصل الخدمة: لا شيء نزل، والنشر التالي يرسله */
-            PB.reqPlats.forEach(function(p){ delete PB.sent[p]; }); pbRes([]); pbPlats(); pbMsg(L('vdPubLost'),true); return;
+            r.plats.forEach(function(p){ if(PB.own[p]!==req) return; delete PB.sent[p]; delete PB.rows[p]; delete PB.own[p]; }); delete PB.reqs[req]; lost=true; continue;
           }
-          if(d.state==='fail') PB.reqPlats.forEach(function(p){ if(!rows.some(function(r){ return r.platform===p; })) delete PB.sent[p]; }); /* مهمّة فشلت قبل أن تبلغها */
-          pbRes(rows); pbPlats();
-          if(fin){ var ok=rows.filter(function(r){ return r.state==='ok'; }).length; pbMsg(drT('vdPubDone',{ok:ok,n:rows.length}),!ok); return; }
+          if(d.state==='fail') r.plats.forEach(function(p){ if(PB.own[p]===req&&!rows.some(function(x){ return x.platform===p; })){ delete PB.sent[p]; PB.rows[p]={platform:p,state:'fail',url:'',error:''}; } }); /* مهمّة فشلت قبل أن تبلغها */
+          if(d.state!=='wait'){ pbFree(req,r); delete PB.reqs[req]; continue; }
         }
-        if(n<120) pbPoll(req,n+1); else pbMsg(L('vdPubSlow'));
-      }).catch(function(){ if(n<120) pbPoll(req,n+1); });
-    },n<6?5000:10000);
+        if(r.n>=120){ pbFree(req,r); delete PB.reqs[req]; slow=true; }
+      }
+      pbRes(pbRowList()); pbPlats();
+      if(!PB.busy){ /* رسالة الرفع الجاري لا تُغطّى */
+        if(lost) pbMsg(L('vdPubLost'),true);
+        else if(slow) pbMsg(L('vdPubSlow'));
+        else if(!Object.keys(PB.reqs).length){ var all=pbRowList(), ok=all.filter(function(x){ return x.state==='ok'; }).length; pbMsg(drT('vdPubDone',{ok:ok,n:all.length}),!ok); }
+      }
+    }finally{ PB.ticking=false; pbPoll(); }
+  }
+  function pbRowList(){
+    var order=Object.keys(PB_NAMES), rank=function(p){ var i=order.indexOf(p); return i<0?99:i; };
+    return Object.keys(PB.rows).sort(function(a,b){ return rank(a)-rank(b); }).map(function(p){ return PB.rows[p]; });
   }
   function syncDirector(){
     var box=id('vmkDirector'); if(!box) return;

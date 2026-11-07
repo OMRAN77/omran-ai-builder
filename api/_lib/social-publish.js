@@ -26,6 +26,8 @@ const MAX_BYTES = 500 * 1024 * 1024;
 const FILE_TTL = 6 * 3600; // خدمة النشر تجلب الملفّ في الخلفيّة وقد تعيد المحاولة — يبقى ستّ ساعات ثمّ يُحذف عند المزوّد
 const SENT_TTL = 7 * 86400;
 const GRACE_MS = 10 * 60 * 1000; // أطول من أقصى عمر للدالّة (٣٠٠ ث): «لا طلب بهذا المعرّف» بعدها = ما وصلهم أبدًا
+const LOST_MAX_MS = 24 * 3600 * 1000; // بعد يوم قد تكون الخدمة نسيت الطلب: غيابه عندها لم يعد دليلًا على أنّه ما وصل
+const REL_TTL = 60; // رمز التحرير قصير: يمنع محرِّرَين متزامنَين، وحذفٌ فشل يُعاد بعد دقيقة لا بعد أسبوع
 const CAP_MAX = 2200;
 const HEX24 = /^[0-9a-f]{24}$/;
 const REQ_RE = /^[A-Za-z0-9_-]{6,80}$/;
@@ -33,8 +35,10 @@ const PENDING = ['queued', 'pending', 'processing', 'retryable']; // retryable: 
 const PRE_SEND = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH', 'UND_ERR_CONNECT_TIMEOUT']; // الطلب ما خرج أصلًا
 const fileKey = (id) => 'socpub:file:' + id;
 const sentKey = (v, p) => 'socpub:sent:' + v + ':' + p; // المنصّة p أخذت الفيديو v بالطلب المخزَّن قيمةً
-const reqKey = (r) => 'socpub:req:' + r; // وقت الطلب: «لا طلب» في المهلة = ينتظر، وبعدها = ما وصل
-const relKey = (r, p) => 'socpub:rel:' + r + ':' + p; // تحرير حجز منصّة من طلب ميّت مرّة واحدة: لا يمسح حجزًا جديدًا لغيره
+const reqKey = (r) => 'socpub:req:' + r; // وقت الطلب وقبول الخدمة له: «لا طلب» في المهلة = ينتظر، وبعدها = ما وصل
+const seenKey = (r) => 'socpub:seen:' + r; // الخدمة أرت الطلب حيًّا مرّة: غيابه بعدها نسيان لا ضياع
+const relKey = (r, p) => 'socpub:rel:' + r + ':' + p; // تحرير حجز منصّة من طلب ميّت: محرِّر واحد في الدقيقة، ولا يمسح حجزًا جديدًا لغيره
+const logErr = (where, e) => console.error('[social-publish] ' + where + ': ' + String((e && e.message) || e).replace(/https?:\/\/\S+/g, '<url>').slice(0, 200));
 const isHttps = (u) => typeof u === 'string' && u.startsWith('https://');
 const lc = (v) => String(v == null ? '' : v).trim().toLowerCase();
 const norm = (p) => { const q = lc(p); return q === 'twitter' ? 'x' : q; };
@@ -100,6 +104,8 @@ function rowOf(x, top) {
     const note = typeof x.post_url === 'string' && x.post_url && !isHttps(x.post_url) ? x.post_url : 'fallback_to_inbox';
     return { state: 'fail', url: '', error: why('inbox: ' + note) };
   }
+  // طابور في مهمّة أعلنت الخدمة فشلها لن يُعالَج: «ما نزل» (كما يحرّره deadRow) لا «ينتظر» للأبد
+  if (top === 'failed' && (s === 'queued' || s === 'pending' || (!s && msg === 'queued'))) return { state: 'fail', url, error: why(x.message || s || 'failed') };
   if (PENDING.includes(s)) return { state: 'wait', url, error: '' };
   if (s === 'failed' || s === 'skipped' || x.skipped === true || x.success === false || x.error || x.error_code) {
     return { state: 'fail', url, error: why(x.error_message || (typeof x.error === 'string' ? x.error : '') || x.skip_reason || x.message || x.error_code || s) };
@@ -126,10 +132,14 @@ function deadRow(x, top) {
   return x.success === false;
 }
 const readRec = (s) => { try { const o = JSON.parse(s); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } }; // سجلّ تالف = لا سجلّ
-/** الطلب ما وصل الخدمة أبدًا: لا طلب عندهم ومضت المهلة على إرساله. بلا سجلّ لا نحكم (يبقى منتظرًا محجوزًا). */
+/** الطلب ما وصل الخدمة أبدًا: لا طلب عندهم، ومضت المهلة على إرساله، ولم تقبله صراحةً (ردّ 2xx) ولم ترِه حيًّا قطّ، وما زال في يومه الأوّل
+    (بعدها قد تكون نسيته). بلا سجلّ لا نحكم (يبقى محجوزًا). */
 async function lostReq(r) {
   const rec = readRec(await kvGetRaw(reqKey(r)));
-  return !!(rec && Number(rec.at) > 0 && Date.now() - Number(rec.at) > GRACE_MS);
+  if (!rec || rec.ok || !(Number(rec.at) > 0)) return false;
+  const age = Date.now() - Number(rec.at);
+  if (!(age > GRACE_MS && age < LOST_MAX_MS)) return false;
+  return !(await kvGetRaw(seenKey(r)));
 }
 const notFound = (st) => !!st && (st.status === 404 || lc(st.j && st.j.status) === 'not_found');
 
@@ -176,81 +186,96 @@ async function publish(res, body, key) {
   // نشر واحد لكلّ فيديو ومنصّة: كلّ منصّة تُحجز وحدها (SET NX)، فالضغطة الثانية وانقطاع الردّ ومجموعة تتداخل مع سابقتها لا تنشر في منصّة
   // أخذت الفيديو. السجلّ (ووقته) قبل الحجز: من يجد الحجز يجد وقت طلبه.
   const reqId = 'omdir-' + id + '-' + crypto.randomBytes(4).toString('hex');
-  await kvSetRaw(reqKey(reqId), JSON.stringify({ at: Date.now(), id, v: vid, p: plats }), SENT_TTL);
+  const at = Date.now();
+  await kvSetRaw(reqKey(reqId), JSON.stringify({ at, id, v: vid, p: plats }), SENT_TTL);
   const mine = [], held = {};
-  for (const p of plats) {
-    if (await kvSetIfAbsent(sentKey(vid, p), reqId, SENT_TTL)) mine.push(p);
-    else held[p] = String((await kvGetRaw(sentKey(vid, p))) || '');
-  }
-  // المحجوز لطلب سابق يتحرّر بإثبات من الخدمة وحدها: صفّه ميّت يقينًا، أو طلبه ما وصلها بعد المهلة. سؤال واحد لكلّ طلب.
-  const byReq = {};
-  for (const p of Object.keys(held)) (byReq[held[p]] = byReq[held[p]] || []).push(p);
-  for (const r of Object.keys(byReq)) {
-    let free = [];
-    if (!r) free = byReq[r]; // انتهى الحجز بين الخطوتين
-    else {
-      const st = await upStatus(key, r).catch(() => null);
-      if (notFound(st)) { if (await lostReq(r)) free = byReq[r]; }
-      else if (st && st.ok) {
-        const top = lc(st.j.status), rows = rowsOf(st.j);
-        free = byReq[r].filter((p) => deadRow(rows.find((x) => norm(x.platform) === p), top));
+  const release = async () => { for (const p of mine) await kvDel(sentKey(vid, p)); };
+  let posting = false, r, send = [], already = [];
+  const hold = {}; // منصّة ← الطلب الذي يحجزها: اللوحة تتابعه فتعرف هل نزل
+  try {
+    for (const p of plats) {
+      if (await kvSetIfAbsent(sentKey(vid, p), reqId, SENT_TTL)) mine.push(p);
+      else held[p] = String((await kvGetRaw(sentKey(vid, p))) || '');
+    }
+    // المحجوز لطلب سابق يتحرّر بإثبات من الخدمة وحدها: صفّه ميّت يقينًا، أو طلبه ما وصلها بعد المهلة. سؤال واحد لكلّ طلب.
+    const byReq = {};
+    for (const p of Object.keys(held)) (byReq[held[p]] = byReq[held[p]] || []).push(p);
+    for (const q of Object.keys(byReq)) {
+      let free = [];
+      if (!q) free = byReq[q]; // انتهى الحجز بين الخطوتين
+      else {
+        const st = await upStatus(key, q).catch(() => null);
+        if (notFound(st)) { if (await lostReq(q)) free = byReq[q]; }
+        else if (st && st.ok) {
+          const top = lc(st.j.status), rows = rowsOf(st.j);
+          free = byReq[q].filter((p) => deadRow(rows.find((x) => norm(x.platform) === p), top));
+        }
+      }
+      for (const p of free) {
+        // محرِّر واحد في الدقيقة، والحجز يُحذف فقط إن بقي على الطلب الميّت نفسه — لا يُمسح حجز جديد لغيره
+        if (q && (await kvSetIfAbsent(relKey(q, p), reqId, REL_TTL)) && (await kvGetRaw(sentKey(vid, p))) === q) await kvDel(sentKey(vid, p));
+        if (await kvSetIfAbsent(sentKey(vid, p), reqId, SENT_TTL)) { mine.push(p); delete held[p]; }
       }
     }
-    for (const p of free) {
-      if (r && (await kvSetIfAbsent(relKey(r, p), reqId, SENT_TTL))) await kvDel(sentKey(vid, p));
-      if (await kvSetIfAbsent(sentKey(vid, p), reqId, SENT_TTL)) { mine.push(p); delete held[p]; }
+    send = plats.filter((p) => mine.includes(p));
+    already = plats.filter((p) => !mine.includes(p));
+    for (const p of already) if (held[p]) hold[p] = held[p];
+    if (!send.length) {
+      await kvDel(reqKey(reqId));
+      return res.status(200).json({ ok: true, again: true, already, held: hold, request: already.map((p) => held[p]).find(Boolean) || '' });
     }
-  }
-  const send = plats.filter((p) => mine.includes(p));
-  const already = plats.filter((p) => !mine.includes(p));
-  if (!send.length) {
-    await kvDel(reqKey(reqId));
-    return res.status(200).json({ ok: true, again: true, already, request: already.map((p) => held[p]).find(Boolean) || '' });
-  }
-  const fd = new FormData();
-  fd.append('user', upUser());
-  for (const p of send) fd.append('platform[]', p);
-  fd.append('title', c.cap);
-  fd.append('video', file);
-  if (send.includes('instagram')) { fd.append('media_type', 'REELS'); fd.append('share_to_feed', 'true'); }
-  if (send.includes('facebook')) {
-    const pg = await upFetch(key, '/uploadposts/facebook/pages?profile=' + encodeURIComponent(upUser())).catch(() => ({ j: {} }));
-    const pages = (pg.j && pg.j.pages) || [];
-    const page = pages.find((x) => /om\s*ai/i.test((x && x.name) || '')) || pages[0];
-    if (page && page.id) fd.append('facebook_page_id', String(page.id));
-    fd.append('facebook_title', c.yt); fd.append('facebook_description', c.cap); fd.append('facebook_media_type', 'VIDEO'); // VIDEO: أيّ نسبة وأيّ طول (الريلز حدّها أقصر)
-  }
-  if (send.includes('tiktok')) {
-    fd.append('tiktok_title', c.cap); fd.append('privacy_level', 'PUBLIC_TO_EVERYONE');
-    fd.append('disable_inbox_fallback', 'true'); // حدّ تيك توك اليوميّ = فشل معلَن، لا مسوّدة بلا نصّ في صندوقه لا تُحذف
-  }
-  if (send.includes('youtube')) { fd.append('youtube_title', c.yt); fd.append('youtube_description', c.cap); }
-  if (send.includes('x')) fd.append('x_title', c.x);
-  if (send.includes('threads')) fd.append('threads_title', c.threads);
-  fd.append('request_id', reqId);
-  fd.append('async_upload', 'true');
-  fd.append('external_id', 'director-' + vid);
-  const release = async () => { for (const p of send) await kvDel(sentKey(vid, p)); };
-  let r;
-  try { r = await upFetch(key, '/upload', { method: 'POST', body: fd, headers: { 'Idempotency-Key': reqId } }); }
-  catch (e) {
+    const fd = new FormData();
+    fd.append('user', upUser());
+    for (const p of send) fd.append('platform[]', p);
+    fd.append('title', c.cap);
+    fd.append('video', file);
+    if (send.includes('instagram')) { fd.append('media_type', 'REELS'); fd.append('share_to_feed', 'true'); }
+    if (send.includes('facebook')) {
+      const pg = await upFetch(key, '/uploadposts/facebook/pages?profile=' + encodeURIComponent(upUser())).catch(() => ({ j: {} }));
+      const pages = (pg.j && pg.j.pages) || [];
+      const page = pages.find((x) => /om\s*ai/i.test((x && x.name) || '')) || pages[0];
+      if (page && page.id) fd.append('facebook_page_id', String(page.id));
+      fd.append('facebook_title', c.yt); fd.append('facebook_description', c.cap); fd.append('facebook_media_type', 'VIDEO'); // VIDEO: أيّ نسبة وأيّ طول (الريلز حدّها أقصر)
+    }
+    if (send.includes('tiktok')) {
+      fd.append('tiktok_title', c.cap); fd.append('privacy_level', 'PUBLIC_TO_EVERYONE');
+      fd.append('disable_inbox_fallback', 'true'); // حدّ تيك توك اليوميّ = فشل معلَن، لا مسوّدة بلا نصّ في صندوقه لا تُحذف
+    }
+    if (send.includes('youtube')) { fd.append('youtube_title', c.yt); fd.append('youtube_description', c.cap); }
+    if (send.includes('x')) fd.append('x_title', c.x);
+    if (send.includes('threads')) fd.append('threads_title', c.threads);
+    fd.append('request_id', reqId);
+    fd.append('async_upload', 'true');
+    fd.append('external_id', 'director-' + vid);
+    posting = true;
+    r = await upFetch(key, '/upload', { method: 'POST', body: fd, headers: { 'Idempotency-Key': reqId } });
+  } catch (e) {
+    // قبل خروج الطلب (خطأ في الحجز أو التحضير): ما حُجز يتحرّر، والمعالج يقول «أعد» — لا «انرسل قبل» كاذبة عشر دقائق
+    if (!posting) { await release().catch((er) => logErr('release', er)); throw e; }
     const code = String((e && e.cause && e.cause.code) || (e && e.code) || '');
     if (PRE_SEND.includes(code)) { await release(); return fail(res, 503, 'retry', { detail: code }); } // ما خرج الطلب: المحاولة الثانية آمنة
-    return res.status(200).json({ ok: true, request: reqId, unsure: true, already }); // ربّما وصل: الاستطلاع يحسم، وما لم يصل خلال المهلة يتحرّر
+    return res.status(200).json({ ok: true, request: reqId, unsure: true, already, held: hold }); // ربّما وصل: الاستطلاع يحسم، وما لم يصل خلال المهلة يتحرّر
   }
   if (!r.ok && r.status !== 202) {
-    // رفض صريح قبل البدء (حدّ الشهر، الباقة، صيغة): ما حُجز في هذا الطلب يتحرّر فتصحّ محاولة ثانية
-    await release();
-    return fail(res, 502, r.status === 429 ? 'limit' : 'publish', { status: r.status, detail: cut(String(r.j.message || r.j.error || ''), 160) });
+    // رفض صريح قبل البدء (4xx: حدّ الشهر، الباقة، صيغة): ما حُجز في هذا الطلب يتحرّر فتصحّ محاولة ثانية. أمّا 5xx (مهلة البوّابة بعد
+    // الإرسال) و408/409 فقد يكون الطلب وصل وأُنشئ — وثائق الخدمة: لا تُعِد بعد مهلة — فلا تحرير: «غير متأكّد» والاستطلاع يحسم.
+    if (r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 409) {
+      await release();
+      return fail(res, 502, r.status === 429 ? 'limit' : 'publish', { status: r.status, detail: cut(String(r.j.message || r.j.error || ''), 160) });
+    }
+    return res.status(200).json({ ok: true, request: reqId, unsure: true, already, held: hold });
   }
+  // قبلته الخدمة صراحةً: غيابه عندها لاحقًا (نسيان) لا يحرّر حجوزه أبدًا
+  const accepted = JSON.stringify({ at, id, v: vid, p: send, ok: 1 });
+  await kvSetRaw(reqKey(reqId), accepted, SENT_TTL);
   const got = String(r.j.request_id || '');
   const request = REQ_RE.test(got) ? got : reqId;
   if (request !== reqId) {
     // الخدمة ردّت بمعرّفها: الحالة تُسأل به، فالحجز يشير إليه ولسجلّه الوقت نفسه
-    await kvSetRaw(reqKey(request), JSON.stringify({ at: Date.now(), id, v: vid, p: send }), SENT_TTL);
+    await kvSetRaw(reqKey(request), accepted, SENT_TTL);
     for (const p of send) await kvSetRaw(sentKey(vid, p), request, SENT_TTL);
   }
-  return res.status(200).json({ ok: true, request, already });
+  return res.status(200).json({ ok: true, request, already, held: hold });
 }
 
 async function status(res, body, key) {
@@ -260,6 +285,7 @@ async function status(res, body, key) {
   // لا طلب بهذا المعرّف: في المهلة يُنتظر (قد يكون في الطريق)، وبعدها ما وصل أبدًا — اللوحة تقول ذلك والنشر التالي يرسله من جديد
   if (notFound(r)) return res.status(200).json((await lostReq(reqId)) ? { ok: true, state: 'fail', lost: true, results: [] } : { ok: true, state: 'wait', results: [] });
   if (!r.ok) return fail(res, 502, 'status', { status: r.status });
+  await kvSetIfAbsent(seenKey(reqId), '1', SENT_TTL); // رأته الخدمة حيًّا: غيابه بعدها لا يحرّر
   return res.status(200).json(Object.assign({ ok: true }, statusOf(r.j)));
 }
 
@@ -288,4 +314,4 @@ module.exports = async (req, res) => {
     return fail(res, 503, 'retry');
   }
 };
-Object.assign(module.exports, { PLATFORMS, MAX_BYTES, FILE_TTL, GRACE_MS, accountsOf, captions, statusOf, deadRow, xLen, threadsLen });
+Object.assign(module.exports, { PLATFORMS, MAX_BYTES, FILE_TTL, GRACE_MS, LOST_MAX_MS, accountsOf, captions, statusOf, deadRow, xLen, threadsLen });
