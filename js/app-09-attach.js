@@ -799,6 +799,19 @@ window.__omranImgTools = function(wrap, dataUrl, att){
     b.innerHTML = svg('share');
     b.onclick = (e) => {
       if(e && e.stopPropagation) e.stopPropagation();
+      /* v-share-sheet (المالك ٧ نوفمبر: نافذة يوتيوب في كلّ التطبيق): النافذة الموحّدة (app-45) أوّلًا — دوائر التطبيقات بالرابط العامّ
+         (يُرفع عند الفتح إن لم يكن جاهزًا)، و«المزيد» على الهاتف ورقته بالملفّ نفسه (أو جسر الغلاف)، والتنزيل ونسخ الصورة دائرتان. */
+      if(typeof window.omranShareSheet === 'function'){
+        let bl0 = null;
+        try{ bl0 = toBlob(dataUrl); }catch(err){ __swallow(err, 'sheet:app-09-attach#v-share-sheet'); }
+        window.omranShareSheet({ url: shUrl || '', getUrl: shUrl ? undefined : upload, file: fileOnce(),
+          mailSubject: omranAttachT('axAttachMailSubject', 'صورة', 'Image'),
+          extras: [
+            { label: omranAttachT('axAttachDownloadImage', 'تنزيل الصورة', 'Download image'), icon: 'download', onClick: (close, say) => { if(saveDl(bl0)) say(omranAttachT('sheetDlDesktop', 'حُفظت الصورة في «التنزيلات»', 'Saved to Downloads')); else hint(bl0); } },
+            { label: omranAttachT('sheetCopyImg', 'نسخ الصورة', 'Copy image'), icon: 'copy', onClick: () => copyImg(b, bl0) },
+          ] });
+        return;
+      }
       /* v-share-bridge (صورة المالك ٤ سبتمبر: «share-api:no» داخل تطبيق المتجر): غلاف المتجر
          (أندرويد/آيفون) بلا navigator.share لكنه يوفّر جسر omranShare — ورقة مشاركة النظام
          الحقيقية بالملف نفسه. المسار الأول قبل أي شيء. */

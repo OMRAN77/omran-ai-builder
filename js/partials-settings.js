@@ -929,6 +929,7 @@
     var tt = function(k) { var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? String(v) : ''; };
     var u = document.getElementById('acctReferralLink');
     var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
+    if (typeof window.omranShareSheet === 'function') { window.omranShareSheet({ url: shareUrl, text: tt('acctShareText') }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45) — تُفتح داخل حوار الإعدادات
     if (navigator.share) {
       try { await navigator.share({ title: 'om ai', text: tt('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
     } else {

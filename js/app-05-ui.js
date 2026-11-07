@@ -173,6 +173,12 @@ function omranReadySheet(opts){
     const addIcon = function(el, name){ const i = document.createElement('span'); i.style.cssText = 'display:inline-flex'; i.innerHTML = rsIcon(name); el.appendChild(i); };
     const status = function(txt){ try{ ttl.textContent = txt; }catch(e){ /* guard-ok */ } };
     const buttons = [];
+    const sheetBtn = function(){ /* v-share-sheet */
+      const sb = document.createElement('button'); sb.type = 'button'; sb.style.cssText = outCss;
+      addIcon(sb, 'share'); sb.appendChild(labelSpan(rsT('imgShareBtn', 'مشاركة', 'Share')));
+      sb.onclick = function(){ try{ window.omranShareSheet({ url: canLink ? o.shareUrl : '', file: o.shareFile || null }); }catch(e){ __swallow(e, 'ready:share-sheet'); } };
+      return sb;
+    };
     // تحميل (الكلّ)
     const dl = document.createElement('a');
     dl.href = o.downloadUrl; dl.setAttribute('download', o.name || 'omran-ai'); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
@@ -213,14 +219,19 @@ function omranReadySheet(opts){
         }
         buttons.push(cp);
       }
+      // v-share-sheet: زرّ «مشاركة» واحد يفتح نافذة المشاركة الموحّدة (app-45) — الرابط الدائم وحده (v-save-no-wa)
+      if(typeof window.omranShareSheet === 'function'){ if(canLink) buttons.push(sheetBtn()); }
       // واتساب: الرابط الدائم (٧ أيّام) وحده، لا رابط التنزيل ذي الساعة
-      if(canLink){
+      else if(canLink){
         const waLink = o.shareUrl;
         const wa = document.createElement('a'); wa.href = 'https://wa.me/?text=' + encodeURIComponent(waLink); wa.target = '_blank'; wa.rel = 'noopener';
         wa.style.cssText = outCss; addIcon(wa, 'whatsapp'); wa.appendChild(labelSpan(rsT('imgWaBtn', 'واتساب', 'WhatsApp')));
         buttons.push(wa);
       }
     } else {
+      // v-share-sheet: النافذة الموحّدة — «المزيد» فيها ورقة الهاتف بالملفّ نفسه
+      if(typeof window.omranShareSheet === 'function' && (canLink || o.shareFile)){ buttons.push(sheetBtn()); }
+      else {
       // الجوّال: مشاركة النظام، وإن فشلت رسالة واضحة (لا صمت)
       let canShareFile = false;
       try{ canShareFile = !!(o.shareFile && navigator.canShare && navigator.canShare({ files: [o.shareFile] })); }catch(e){ canShareFile = false; }
@@ -241,6 +252,7 @@ function omranReadySheet(opts){
         const wa = document.createElement('a'); wa.href = 'https://wa.me/?text=' + encodeURIComponent(waLink); wa.target = '_blank'; wa.rel = 'noopener';
         wa.style.cssText = outCss; addIcon(wa, 'whatsapp'); wa.appendChild(labelSpan(rsT('imgWaBtn', 'واتساب', 'WhatsApp')));
         buttons.push(wa);
+      }
       }
     }
     const row = document.createElement('div');
@@ -3805,6 +3817,7 @@ window.acctToggleQr = function() {
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
   var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
+  if (typeof window.omranShareSheet === 'function') { window.omranShareSheet({ url: shareUrl, text: t('acctShareText') }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45)
   if (navigator.share) {
     try { await navigator.share({ title: 'om ai', text: t('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
   } else {
