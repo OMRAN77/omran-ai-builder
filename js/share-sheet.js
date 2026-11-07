@@ -360,12 +360,14 @@
     /* الزرّ يلازم زرّ التحميل: إن نُقل التحميل (صانع الفيديو ينقله إلى عمود النتيجة عند فتحه) لحقه الزرّ */
     var place = function(){ try{ var an = o.after || dl; if(an.parentNode && an.nextSibling !== b) an.parentNode.insertBefore(b, an.nextSibling); }catch(err){ sw(err, 'share-next:place'); } };
     place();
+    var lastCss = null;
     var sync = function(){
       try{
         place();
         /* v-share-visible: أسلوب زرّ التحميل كما هو الآن لا لحظة الربط — الاستوديو والأزياء يضيفان max-width:760px;margin-inline:auto
-           بعد الربط (الحزمة ٤٫٧ م.ب تنفَّذ بعد هذا الملفّ)، فكان زرّ المشاركة بعرض النافذة (١١٠٠) تحت تحميلٍ بعرض ٧٦٠ */
-        if(o.style == null) b.style.cssText = dl.style.cssText;
+           بعد الربط (الحزمة ٤٫٧ م.ب تنفَّذ بعد هذا الملفّ)، فكان زرّ المشاركة بعرض النافذة (١١٠٠) تحت تحميلٍ بعرض ٧٦٠. عند تغيّره فقط:
+           إسناد cssText ولو بالنصّ نفسه طفرةُ style توقظ مراقب app-41 — ومع autoRun كلّ ٦٠ م.ث أثناء بثّ الردّ تشبّع الخيط على الهاتف */
+        if(o.style == null && dl.style.cssText !== lastCss){ lastCss = dl.style.cssText; b.style.cssText = lastCss; }
         if(hiddenEl(dl)){ b.style.display = 'none'; return; }
         var cs = dl.isConnected ? getComputedStyle(dl) : null;
         var d = o.display || (cs ? cs.display : (dl.style.display || '')); /* نفس عرض زرّ التحميل: كتلة بعرضه أو سطريّ بجانبه */

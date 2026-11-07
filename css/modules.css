@@ -751,13 +751,13 @@ html[data-mode="light"] #videoMakerModal #videoMakerQualityRow{background:#fffff
 #videoMakerModal #vmkClCancel{font:inherit;font-size:12.5px;padding:6px 14px;border-radius:99px;border:1px solid rgba(255,255,255,.2);background:none;color:#d9dde6;cursor:pointer}
 #videoMakerModal .vmk-cl-done{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:12px}
 #videoMakerModal .vmk-cl-dl{display:inline-flex;align-items:center;padding:11px 20px;border-radius:12px;background:linear-gradient(135deg,#f0cf8f,#c9964a);color:#1a1408;font-weight:800;font-size:13.5px;text-decoration:none}
-/* v-share-visible: «مشاركة» بجانب «تحميل الفيديو» المحسَّن — بصنف زرّ التحميل (الحجم والشكل) مخطَّطًا لا مملوءًا. كان أسلوبه المضمَّن
-   background:transparent يُبقي نصّ الزرّ الذهبيّ الداكن (#1a1408) على أسود الاستوديو فلا يُرى (١٫١٤:١). والصفّ كان space-between فيُدفع
-   الثالث إلى الطرف الآخر: «قبل/بعد» تأخذ الفراغ فيلتصق التحميل والمشاركة، وعلى الهاتف تأخذ سطرها وحدها فيبقيان معًا تحتها. */
-#videoMakerModal .vmk-cl-dl.omShareNext{background:none;border:1.5px solid rgba(232,194,122,.6);color:#f0dcb0;cursor:pointer;font-family:inherit}
+/* v-share-visible: «مشاركة» بجانب «تحميل الفيديو» المحسَّن — بصنف زرّ التحميل (الحجم والشكل) بتعبئة «قبل» الداكنة ونصّ ذهبيّ. كان أسلوبه
+   المضمَّن background:transparent يُبقي نصّ الزرّ الذهبيّ الداكن (#1a1408) على أسود الاستوديو فلا يُرى (١٫١٤:١). والصفّ كان space-between
+   فيُدفع الثالث إلى الطرف الآخر أو سطر وحده: «قبل/بعد» سطرها دائمًا والتحميل والمشاركة معًا تحتها — عمود الحاسوب ٣٧٣–٥١٢ فقط فكان حدّ
+   ٥٦٠ للشاشة لا يكفي (٨٦١–٩٤٥ واللغات الطويلة حتّى ١٢٨٠ تفصلهما). */
+#videoMakerModal .vmk-cl-dl.omShareNext{background:rgba(255,255,255,.04);border:1.5px solid rgba(232,194,122,.6);color:#f0dcb0;cursor:pointer;font-family:inherit}
 html[data-mode="light"] #videoMakerModal .vmk-cl-dl.omShareNext{background:#fff;color:#8a5a12}
-#videoMakerModal .vmk-cl-done .vmk-cl-ab{margin-inline-end:auto}
-@media (max-width:560px){#videoMakerModal .vmk-cl-done .vmk-cl-ab{flex-basis:100%}}
+#videoMakerModal .vmk-cl-done .vmk-cl-ab{flex-basis:100%}
 #videoMakerModal .vmk-cl-msg{margin:0;font-size:13px;color:#d9dde6;min-height:0}
 #videoMakerModal .vmk-cl-msg.err{color:#ffb4b4}
 #videoMakerModal .vmk-cl-msg:empty{display:none}

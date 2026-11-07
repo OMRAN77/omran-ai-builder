@@ -495,16 +495,23 @@ test('٢٢. زرّ المشاركة يلحق أسلوب زرّ التحميل ب
   c.fire(dl);
   assert.equal(b.style.cssText, dl.style.cssText, 'أسلوب التحميل الآن لا لحظة الربط');
   assert.equal(b.style.display, 'block'); assert.equal(b.style.width, '100%');
+  // مزامنة بلا تغيّر في أسلوب التحميل لا تُسند cssText (الإسناد ولو بالنصّ نفسه طفرة style توقظ app-41 كلّ ٦٠ م.ث أثناء البثّ)
+  let writes = 0, css = b.style.cssText;
+  Object.defineProperty(b.style, 'cssText', { configurable: true, get() { return css; }, set(v) { writes++; css = v; } });
+  c.fire(dl); c.fire(dl); c.fire(wrap);
+  assert.equal(writes, 0, 'لا إسناد بلا تغيير');
+  dl.style.cssText = 'display:block; margin-top:12px; max-width: 760px; margin-inline: auto;'; c.fire(dl);
+  assert.equal(writes, 1); assert.equal(css, dl.style.cssText, 'ويلحق التغيير نفسه');
   const dl2 = c.document.createElement('a'); dl2.setAttribute('href', 'https://cdn.example/s.mp4'); wrap.appendChild(dl2);
   const b2 = c.omranAddShareNextTo(dl2, { kind: 'video', style: 'padding:6px 12px;' });
   dl2.style.cssText = 'padding:1px;'; c.fire(dl2);
   assert.equal(b2.style.cssText, 'padding:6px 12px;', 'الأسلوب الصريح (مشاهد الصانع، أنماط الاستوديو) يبقى');
-  assert.match(SRC, /if\(o\.style == null\) b\.style\.cssText = dl\.style\.cssText;/);
+  assert.match(SRC, /if\(o\.style == null && dl\.style\.cssText !== lastCss\)\{ lastCss = dl\.style\.cssText; b\.style\.cssText = lastCss; \}/);
   assert.ok(Number(/\/js\/share-sheet\.js\?v=(\d+)/.exec(read('index.html'))[1]) >= 2, 'وسم الملفّ مرفوع في التطبيق');
   assert.ok(Number(/\/js\/share-sheet\.js\?v=(\d+)/.exec(read('ad-studio.html'))[1]) >= 2, 'وفي استوديو الإعلانات');
 });
 
-test('٢٣. تنظيف الفيديو: «مشاركة» بلا أسلوب مضمَّن يمحو الذهبيّ ويُبقي النصّ الداكن على الأسود (١٫١٤:١) — مخطَّط مقروء في الوضعين وملاصق للتحميل', () => {
+test('٢٣. تنظيف الفيديو: «مشاركة» بلا أسلوب مضمَّن يمحو الذهبيّ ويُبقي النصّ الداكن على الأسود (١٫١٤:١) — مقروء في الوضعين وملاصق للتحميل في كلّ عرض', () => {
   const c = load2();
   const r = c.omranShareNextList.find((x) => x.sel === '#vmkClDl');
   assert.equal(r.className, 'vmk-cl-dl'); assert.equal(r.style, '', 'لا background:transparent مضمَّن');
@@ -513,12 +520,12 @@ test('٢٣. تنظيف الفيديو: «مشاركة» بلا أسلوب مضم
   const b = c.omranAddShareNextTo(dl, { kind: r.kind, className: r.className, style: r.style });
   assert.equal(b.style.cssText, ''); assert.equal(b.className, 'vmk-cl-dl omShareNext');
   const css = read('css/modules.css');
-  assert.ok(css.includes('#videoMakerModal .vmk-cl-dl.omShareNext{background:none;border:1.5px solid rgba(232,194,122,.6);color:#f0dcb0;cursor:pointer;font-family:inherit}'), 'نصّ ذهبيّ فاتح على الأسود');
+  assert.ok(css.includes('#videoMakerModal .vmk-cl-dl.omShareNext{background:rgba(255,255,255,.04);border:1.5px solid rgba(232,194,122,.6);color:#f0dcb0;cursor:pointer;font-family:inherit}'), 'نصّ ذهبيّ فاتح بتعبئة «قبل» الداكنة');
   assert.ok(css.includes('html[data-mode="light"] #videoMakerModal .vmk-cl-dl.omShareNext{background:#fff;color:#8a5a12}'), 'وبنّيّ على الأبيض في الفاتح');
   const row = css.match(/#videoMakerModal \.vmk-cl-done\{[^}]*\}/)[0];
   assert.ok(row.includes('justify-content:flex-start') && !row.includes('space-between'), 'الصفّ لا يدفع الزرّ الثالث إلى الطرف الآخر');
-  assert.ok(css.includes('#videoMakerModal .vmk-cl-done .vmk-cl-ab{margin-inline-end:auto}'), '«قبل/بعد» تأخذ الفراغ فيلتصق التحميل والمشاركة');
-  assert.ok(css.includes('@media (max-width:560px){#videoMakerModal .vmk-cl-done .vmk-cl-ab{flex-basis:100%}}'), 'وعلى الهاتف سطرها وحدها');
+  assert.ok(css.includes('#videoMakerModal .vmk-cl-done .vmk-cl-ab{flex-basis:100%}'), '«قبل/بعد» سطرها دائمًا والتحميل والمشاركة معًا تحتها');
+  assert.ok(!/vmk-cl-ab\{margin-inline-end:auto\}|@media \(max-width:560px\)\{#videoMakerModal \.vmk-cl-done/.test(css), 'لا حدّ بعرض الشاشة: عمود الحاسوب ٣٧٣–٥١٢ يفصلهما في ٨٦١–٩٤٥');
   assert.ok(Number(/css\/modules\.css\?v=(\d+)/.exec(read('index.html'))[1]) >= 695, 'وسم modules مرفوع');
 });
 
