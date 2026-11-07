@@ -69,7 +69,9 @@ module.exports = async (req, res) => {
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + name + '"');
+    /* v-share-next: اسم بغير اللاتينيّة (ملفّ Office باسمه العربيّ) بترميز RFC 5987 كـpdf-share — والاسم اللاتينيّ كما كان حرفيًّا */
+    const ascii = name.replace(/[^\x20-\x7E]/g, '-').replace(/["\\]/g, '-') || 'file';
+    res.setHeader('Content-Disposition', 'attachment; filename="' + ascii + '"' + (ascii !== name ? '; filename*=UTF-8\'\'' + encodeURIComponent(name) : ''));
     res.status(200).send(buf);
     return;
   }
@@ -91,7 +93,8 @@ module.exports = async (req, res) => {
     const plan = uploadPlan(body, 'share-file', DAILY_UPLOADS, TTL_SEC); // v-media-save: التنزيل في سلّته وبعمر ساعة
     if (!(await gateShare(req, res, body, plan.bucket, plan.limit, data.length))) return; // v-share-bytes
     const rawName = String(body.name || 'file');
-    const name = rawName.replace(/[^A-Za-z0-9_\-.]/g, '-').slice(0, 60) || 'file';
+    /* v-share-next: حروف أيّ لغة وأرقامها والمسافة تبقى (اسم ملفّ Office بلغة المستخدم كان يصل «--------.xlsx»)؛ النقطتان والاقتباس والمسارات تُستبدل */
+    const name = rawName.replace(/[^\p{L}\p{N}_\-. ]/gu, '-').replace(/\s+/g, ' ').trim().slice(0, 60) || 'file';
     const id = crypto.randomBytes(6).toString('hex');
 
     const CHUNK = 700 * 1024;

@@ -12,6 +12,8 @@
   function gtx(k, ar, en){ try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return isAr() ? ar : en; }
   function appish(){
     try{
+      /* v-desktop-app: تطبيق متجر ويندوز/ماك حاسوب — التنزيل مباشر، لا لوحة النظام المعلّقة */
+      if(typeof omranDesktopApp === 'function' && omranDesktopApp()) return false;
       if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare')) return true;
       if(typeof omranLikelyApp === 'function' && omranLikelyApp()) return true;
       const ua = navigator.userAgent || '';
@@ -126,11 +128,18 @@
     let blob = null;
     try{ blob = await toBlob(src); }catch(e){ blob = null; }
     if(!blob) return false;
+    let file = null;
+    try{ if(typeof File === 'function') file = new File([blob], name, { type: blob.type || 'image/png' }); }catch(e){ file = null; }
+    /* v-share-sheet (المالك ٧ نوفمبر: «نفس هذي في كل التطبيق» — لقطة نافذة يوتيوب، وتطبيق متجر ويندوز كان يفتح لوحة ويندوز المعلّقة):
+       زرّ المشاركة يفتح النافذة الموحّدة (app-45) في كلّ بيئة؛ الرابط الدائم يُرفع عند الفتح، و«المزيد» على الهاتف ورقته (أو جسر الغلاف) بالملفّ. */
+    if(mode === 'share' && typeof window.omranShareSheet === 'function'){
+      window.omranShareSheet({ file: file, getUrl: function(){ return uploadImage(blob, name, '').then(function(l){ return l && l.open; }); },
+        extras: [{ label: gtx('imgDlBtn', 'تحميل', 'Download'), icon: 'download', onClick: function(close){ close(); window.omranSaveImage(blob, name, 'save'); } }] });
+      return true;
+    }
     try{
       if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare') && typeof msgDownloadBlob === 'function'){ msgDownloadBlob(blob, name); return true; }
     }catch(e){ /* guard-ok */ }
-    let file = null;
-    try{ if(typeof File === 'function') file = new File([blob], name, { type: blob.type || 'image/png' }); }catch(e){ file = null; }
     /* v-share-native-first (أمر المالك): ورقة النظام أولًا على كل الأجهزة (الكمبيوتر أيضًا) عند المشاركة؛
        وعلى الجوال عند الحفظ كذلك. رفض AbortError خلال أقل من ١.٥ ثانية = فشل اللوحة (ويندوز) لا إلغاء. */
     const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || appish();

@@ -197,6 +197,26 @@ function isOfficeEdit(text, ctx) {
   if (HOWTO_RE.test(s) && !EDIT_RE.test(s)) return false;
   return EDIT_RE.test(s) || FILE_RE.test(s);
 }
+/* ── الاقتراح (قرار المالك ٧ نوفمبر: «1 + 3، ومايكون ثابت — من سوى جدول مرّة وحدة مايطلعله مرّة ثانية») ──
+   العميل يرسل officeHint ما دام المستخدم لم يصنع ملفًّا على جهازه (app-44)، والخادم يضيف سطر الاقتراح للنموذج فقط حين يتكلّم
+   المستخدم في موضوع ينفعه جدول أو عرض، ولم يُعرض عليه في هذه المحادثة. وجوابه «إيه سوّه» بعد العرض = طلب ملفّ. */
+const HINT_RE = /(موظف|عمّال|عمال|طلاب|طالب|طالبات|درجات|علامات|حضور|حظور|غياب|دوام|رواتب|راتب|مصاريف|مصروف|ميزاني|ادخار|توفير|مخزون|بضاع|مبيعات|فواتير|أقساط|اقساط|ديون|جدول|خطة|خطّة|نظّم|انظم|أنظم|تنظيم|قائمة|مشتريات|مهام|محاضرة|اجتماع|تقرير|employees?|staff|students?|grades|attendance|budget|expenses|inventory|sales|invoices?|schedule|organi[sz]e|to-?do|report|presentation|lecture)/i;
+const OFFERED_RE = /(excel|إكسل|اكسل|powerpoint|بوربوينت|باوربوينت)/i;
+const ACCEPT_RE = /^\s*(ايه|إيه|ايوه|إيوه|اي|أي|نعم|اكيد|أكيد|تمام|اوكي|أوكي|اوك|طيب|زين|يلا|يالله|سوه|سوّه|سويه|سوّيه|سوها|سوّها|جهزه|جهّزه|جهزها|جهّزها|ابيه|أبيه|ابغاه|أبغاه|ابيها|أبيها|ok|okay|yes|yeah|yep|sure|please|go\s*ahead|do\s*it)([\s،,.!؟?]|$)/i;
+const msgText = (m) => (typeof m.content === 'string' ? m.content : (Array.isArray(m.content) ? m.content.map((x) => (x && x.text) || '').join(' ') : ''));
+function isHintTopic(text) { const s = ownWords(text); return s.length >= 8 && HINT_RE.test(s) && !isOfficeAsk(s); }
+/** عُرض الملفّ في هذه المحادثة من قبل؟ (أيّ ردّ سابق ذكر Excel/PowerPoint) — فلا يتكرّر الاقتراح */
+function alreadyOffered(messages) { return (messages || []).some((m) => m && m.role === 'assistant' && OFFERED_RE.test(msgText(m))); }
+/** «إيه سوّه» جوابًا لآخر ردّ عرض ملفًّا = طلب ملفّ */
+function isOfficeAccept(text, messages) {
+  const s = ownWords(text);
+  if (!s || s.length > 40 || !ACCEPT_RE.test(s)) return false;
+  const prev = (messages || []).slice(0, -1).reverse().find((m) => m && m.role === 'assistant');
+  return !!(prev && OFFERED_RE.test(msgText(prev)));
+}
+const HINT_NOTE = '[اقتراح ملفّ — سطر واحد في آخر الردّ]: إن كان ما يتكلّم عنه المستخدم ينفعه ملفّ Excel أو PowerPoint جاهز (جدول، كشف، خطّة، قائمة، عرض)، '
+  + 'فأجب أوّلًا كالعادة ثمّ اختم بسطر واحد قصير بلغته يعرض أن تجهّزه له ملفًّا جاهزًا للطباعة (مثل: «أقدر أسوي لك هذا ملف Excel جاهز للطباعة إذا تبي 📄»). إن لم يناسب فلا تذكره.';
+
 /** آخر ملفّ في المحادثة كما أرسله العميل (body.office) — يُنظَّف كأنّه من النموذج؛ تالف = لا شيء. */
 function contextSpec(raw) {
   if (!raw || typeof raw !== 'object') return null;
@@ -345,6 +365,6 @@ async function createFile(input, ctx) {
 }
 
 module.exports = {
-  TOOL, FREE_MONTHLY, sanitizeSpec, isOfficeAsk, isOfficeEdit, contextSpec, ownWords, systemNote, createFile,
+  TOOL, FREE_MONTHLY, sanitizeSpec, isOfficeAsk, isOfficeEdit, contextSpec, ownWords, systemNote, createFile, isHintTopic, alreadyOffered, isOfficeAccept, HINT_NOTE,
   usedThisMonth, takeMonthly, moveMonth, monthKey, gateEvent, gateText, cardEvent, formula,
 };

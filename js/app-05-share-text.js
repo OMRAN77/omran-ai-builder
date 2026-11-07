@@ -119,6 +119,12 @@
   window.omranShareText = function(text){
     text = String(text || '').trim();
     if(!text) return false;
+    /* v-share-sheet (المالك ٧ نوفمبر: نافذة يوتيوب في كلّ التطبيق): النافذة الموحّدة (app-45) أوّلًا؛ «المزيد» فيها جسر غلاف المتجر
+       (بطاقة الردّ صورةً) أو ورقة الهاتف. المسارات تحت احتياط إن لم يُحمَّل الجزء. */
+    if(typeof window.omranShareSheet === 'function'){
+      var bridged = false; try{ bridged = typeof omranNativeBridge === 'function' && !!omranNativeBridge('omranShare'); }catch(e){ bridged = false; }
+      return window.omranShareSheet({ text: text, title: tt('msgShareReply', 'مشاركة الردّ', 'Share reply'), more: bridged ? function(close){ bridgeShare(text); close(); } : undefined });
+    }
     if(bridgeShare(text)) return true;
     /* v-share-native-first (أمر المالك ٥ سبتمبر: «في شي يسمونه رسمي مش رسمة من عندك»): ورقة النظام أولًا.
        v-share-desktop-both (المالك: «نفس المشكلة» على ويندوز): لوحة ويندوز أحيانًا لا تفتح ولا ترفض ولا

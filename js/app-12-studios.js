@@ -470,6 +470,8 @@ function __studioErrMsg(e, fbKey){
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
           vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; designRun(again); };
           cell.appendChild(vb);
+          /* v-share-next: «مشاركة» تحت «زوّدني مثله» لكلّ تصميم */
+          if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', after: vb, className: 'btn', style: vb.style.cssText, name: 'omran-design-' + (i + 1) + '.webp' }); }catch(e){ __swallow(e, 'design:share-next'); } }
           gridEl.appendChild(cell);
         });
         dsReveal(gridEl); /* v-scene-kinds */
@@ -1384,6 +1386,8 @@ function stud2ErrText(e, prefix, fbKey){
     shareBtn2.onclick = () => {
       const src = (resultEl && resultEl.src) || '';
       const nm = /gif/i.test(src.slice(0, 20)) || (downloadEl && /\.gif$/i.test(downloadEl.getAttribute('download') || '')) ? 'omran-avatar.gif' : 'omran-portrait-style.png';
+      /* v-share-next: الـGIF عبر مسار الملفّات — مسار الصور يحوّله JPEG (لقطة ثابتة) */
+      if(nm === 'omran-avatar.gif' && typeof window.omranShareMedia === 'function'){ window.omranShareMedia({ src: (downloadEl && downloadEl.getAttribute('href')) || src, name: nm, kind: 'file' }); return; }
       if(typeof window.omranSaveImage === 'function'){ window.omranSaveImage(src, nm, 'share'); return; }
       try{ if(downloadEl) downloadEl.click(); }catch(_){ /* guard-ok — fallback */ }
     };
@@ -1594,7 +1598,7 @@ function stud2ErrText(e, prefix, fbKey){
         downloadEl.href = gifUrl;
         downloadEl.setAttribute('download', 'omran-avatar.gif');
         downloadEl.style.display = 'block';
-        if(shareBtn2) shareBtn2.style.display = 'none';
+        if(shareBtn2) shareBtn2.style.display = 'block'; /* v-share-next: الأفاتار المتحرّك يُشارَك أيضًا (ملفًّا ليبقى متحرّكًا — انظر onclick) */
         setStatus(t('portraitDone'));
       } else {
         const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
