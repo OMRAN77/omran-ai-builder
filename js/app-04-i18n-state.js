@@ -2246,21 +2246,21 @@ function renderMessages(keepScroll){
     if(__genShown && __genShown.length){
       const genStrip = document.createElement('div');
       genStrip.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin:6px 0';
+      div.appendChild(genStrip); // v-share-visible: قبل أدوات الصورة — فيجد وسمُها (‎.oImgMsg‎) فقاعتَه فورًا، لا بعد تمرير الرسم للأسفل
       __genShown.slice(0, 4).forEach((url) => {
         const gimg = document.createElement('img');
         gimg.src = url; gimg.alt = ''; gimg.loading = 'lazy';
         gimg.style.cssText = 'max-width:min(100%,320px);border-radius:12px';
         gimg.onerror = () => { gimg.remove(); };
         /* v-share-visible (فحص المتصفّح ٧ نوفمبر): صورة أداة التوليد ارتفاعها صفر حتّى يُفكّ ترميزها، والتمرير للأسفل يسبقها — فيبقى
-           آخر الردّ (الشرح وزرّ «مشاركة») تحت صندوق الكتابة. صور الردّ الأحدث وحده تلحق الأسفل عند تحميلها (كصور المرفقات v-chat-wait) إن كان
-           القارئ ملاحِقًا ولم يغادر هذا الردّ (ما تحته ≤ ارتفاع الرسالة + ١٦٠). الصور lazy: صورة قديمة تُحمَّل حين يصلها بحث Ctrl+F أو تمرير بلا
-           عجلة ولا إصبع (follow() يبقى صحيحًا) — حدّ بارتفاع الصورة أفشل الصورتين (تُحجَّمان معًا قبل أوّل load)، وبارتفاع الشريط شدّ من وصل
-           شريطًا قديمًا قرب الآخر، وتضييق الفقاعة (‎.oImgMsg‎) يضيف نموًّا خارج الشريط. الردود القديمة بلا مستمع أصلًا. */
-        if(mIdx === cur.messages.length - 1) gimg.addEventListener('load', () => { try{ if(gimg.isConnected && window.omranChatFollow && window.omranChatFollow.follow() && messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight <= div.offsetHeight + 160) smartScrollBottom(true); }catch(e){ __swallow(e, 'gen:follow'); } });
-        if(window.__omranImgTools){ const gb = document.createElement('div'); gb.style.cssText = 'position:relative;display:inline-block;max-width:100%'; gb.appendChild(gimg); window.__omranImgTools(gb, url); genStrip.appendChild(gb); }
+           آخر الردّ (الشرح وزرّ «مشاركة») تحت صندوق الكتابة. عند تحميلها تلحق الأسفل إن كان القارئ ملاحِقًا ولم يصعد منذ كان في الأسفل
+           (followGrowth في app-40): بحث Ctrl+F وscrollIntoView يصعدان بلا عجلة ولا إصبع فيبقى follow() صحيحًا — وحدود الارتفاع
+           (الصورة، الشريط، الرسالة) فشلت كلّها في فحص ما. وصورة مخزّنة (إعادة رسم، فتح المحادثة ثانيةً) مقاسة لحظة إدراجها ويُطلق
+           load مع ذلك بلا نموّ — فلا مستمع لها، وإلّا شدّت قارئًا أبقته إعادة الرسم مكانه. */
+        if(!(gimg.complete && gimg.naturalHeight)) gimg.addEventListener('load', () => { try{ if(gimg.isConnected && window.omranChatFollow && window.omranChatFollow.followGrowth()) smartScrollBottom(true); }catch(e){ __swallow(e, 'gen:follow'); } });
+        if(window.__omranImgTools){ const gb = document.createElement('div'); gb.style.cssText = 'position:relative;display:inline-block;max-width:100%'; gb.appendChild(gimg); genStrip.appendChild(gb); window.__omranImgTools(gb, url); }
         else genStrip.appendChild(gimg);
       });
-      div.appendChild(genStrip);
     }
     // 🖼️ Feature ② — image strip ABOVE the reply text: up to 4 live images
     // returned by the search backend, ChatGPT-style horizontal scroller.

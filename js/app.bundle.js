@@ -3988,7 +3988,7 @@ function smartScrollBottom(wasNearBottom){
     /* v-scroll-free: الملاحقة يقرّرها omranChatFollow (app-40) من حركة المستخدم — لا فرق ١٦٠px يشدّ إصبعه أثناء السحب */
     const __F = window.omranChatFollow;
     const follow = (typeof wasNearBottom === 'boolean') ? wasNearBottom : (__F ? __F.follow() : chatIsNearBottom());
-    if(follow) messagesEl.scrollTop = messagesEl.scrollHeight;
+    if(follow){ messagesEl.scrollTop = messagesEl.scrollHeight; if(__F && __F.atBottom) __F.atBottom(); } // v-share-visible: في الأسفل الآن (followGrowth)
     syncChatJumpButton();
   }catch(e){ __swallow(e, "misc:app-02-tts#8"); }
 }
@@ -9454,21 +9454,21 @@ function renderMessages(keepScroll){
     if(__genShown && __genShown.length){
       const genStrip = document.createElement('div');
       genStrip.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin:6px 0';
+      div.appendChild(genStrip); // v-share-visible: قبل أدوات الصورة — فيجد وسمُها (‎.oImgMsg‎) فقاعتَه فورًا، لا بعد تمرير الرسم للأسفل
       __genShown.slice(0, 4).forEach((url) => {
         const gimg = document.createElement('img');
         gimg.src = url; gimg.alt = ''; gimg.loading = 'lazy';
         gimg.style.cssText = 'max-width:min(100%,320px);border-radius:12px';
         gimg.onerror = () => { gimg.remove(); };
         /* v-share-visible (فحص المتصفّح ٧ نوفمبر): صورة أداة التوليد ارتفاعها صفر حتّى يُفكّ ترميزها، والتمرير للأسفل يسبقها — فيبقى
-           آخر الردّ (الشرح وزرّ «مشاركة») تحت صندوق الكتابة. صور الردّ الأحدث وحده تلحق الأسفل عند تحميلها (كصور المرفقات v-chat-wait) إن كان
-           القارئ ملاحِقًا ولم يغادر هذا الردّ (ما تحته ≤ ارتفاع الرسالة + ١٦٠). الصور lazy: صورة قديمة تُحمَّل حين يصلها بحث Ctrl+F أو تمرير بلا
-           عجلة ولا إصبع (follow() يبقى صحيحًا) — حدّ بارتفاع الصورة أفشل الصورتين (تُحجَّمان معًا قبل أوّل load)، وبارتفاع الشريط شدّ من وصل
-           شريطًا قديمًا قرب الآخر، وتضييق الفقاعة (‎.oImgMsg‎) يضيف نموًّا خارج الشريط. الردود القديمة بلا مستمع أصلًا. */
-        if(mIdx === cur.messages.length - 1) gimg.addEventListener('load', () => { try{ if(gimg.isConnected && window.omranChatFollow && window.omranChatFollow.follow() && messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight <= div.offsetHeight + 160) smartScrollBottom(true); }catch(e){ __swallow(e, 'gen:follow'); } });
-        if(window.__omranImgTools){ const gb = document.createElement('div'); gb.style.cssText = 'position:relative;display:inline-block;max-width:100%'; gb.appendChild(gimg); window.__omranImgTools(gb, url); genStrip.appendChild(gb); }
+           آخر الردّ (الشرح وزرّ «مشاركة») تحت صندوق الكتابة. عند تحميلها تلحق الأسفل إن كان القارئ ملاحِقًا ولم يصعد منذ كان في الأسفل
+           (followGrowth في app-40): بحث Ctrl+F وscrollIntoView يصعدان بلا عجلة ولا إصبع فيبقى follow() صحيحًا — وحدود الارتفاع
+           (الصورة، الشريط، الرسالة) فشلت كلّها في فحص ما. وصورة مخزّنة (إعادة رسم، فتح المحادثة ثانيةً) مقاسة لحظة إدراجها ويُطلق
+           load مع ذلك بلا نموّ — فلا مستمع لها، وإلّا شدّت قارئًا أبقته إعادة الرسم مكانه. */
+        if(!(gimg.complete && gimg.naturalHeight)) gimg.addEventListener('load', () => { try{ if(gimg.isConnected && window.omranChatFollow && window.omranChatFollow.followGrowth()) smartScrollBottom(true); }catch(e){ __swallow(e, 'gen:follow'); } });
+        if(window.__omranImgTools){ const gb = document.createElement('div'); gb.style.cssText = 'position:relative;display:inline-block;max-width:100%'; gb.appendChild(gimg); genStrip.appendChild(gb); window.__omranImgTools(gb, url); }
         else genStrip.appendChild(gimg);
       });
-      div.appendChild(genStrip);
     }
     // 🖼️ Feature ② — image strip ABOVE the reply text: up to 4 live images
     // returned by the search backend, ChatGPT-style horizontal scroller.
@@ -52043,18 +52043,25 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
 (function(){
   var el = document.getElementById('messages');
   var NEAR = 48, COOL = 700, WHEEL = 400, KEY = 600;
-  var stick = true, touching = false, dragging = false, coolUntil = 0, lastTop = 0, lastH = 0, lastId;
+  var stick = true, away = false, touching = false, dragging = false, coolUntil = 0, lastTop = 0, lastH = 0, lastId;
   function gap(){ return el ? el.scrollHeight - el.scrollTop - el.clientHeight : 0; }
   function now(){ return Date.now(); }
   function hold(ms){ var u = now() + ms; if(u > coolUntil) coolUntil = u; }
   window.omranChatFollow = {
     /** هل يجوز للبثّ أن يمرّر للأسفل الآن؟ */
     follow: function(){ return stick && !touching && !dragging && now() >= coolUntil; },
+    /** v-share-visible: نموّ متأخّر (صورة تُفكّ بعد التمرير) يلحق الأسفل؟ قرار الملاحقة نفسه، وألّا يكون القارئ صعد منذ كان في الأسفل.
+        بحث الصفحة (Ctrl+F) وscrollIntoView وسحب التحديد والتمرير البرمجيّ تصعد بلا عجلة ولا إصبع فلا تُسقط stick (البثّ يلاحق كما
+        قرّر v-scroll-free)، لكنّها أبعدت القارئ عمّا تحته — فلا تشدّه صورة تكبر بعدها. وصعود لم يصل حدثه بعد يُحسب صعودًا. */
+    followGrowth: function(){ return window.omranChatFollow.follow() && !away && !(el && el.scrollTop < lastTop - 1 && el.scrollHeight >= lastH - 1); },
     /** إرسال رسالة أو زرّ ↓: الملاحقة من جديد. */
-    stickNow: function(){ stick = true; coolUntil = 0; },
+    stickNow: function(){ stick = true; away = false; coolUntil = 0; },
     /** إعادة رسم القائمة: محادثة أخرى = من الأسفل؛ وإلّا قرار الملاحقة نفسه. */
-    forRender: function(id){ if(id !== lastId){ lastId = id; stick = true; coolUntil = 0; } return window.omranChatFollow.follow(); },
-    _state: function(){ return { stick: stick, touching: touching, dragging: dragging, coolUntil: coolUntil }; }, // للاختبار
+    forRender: function(id){ if(id !== lastId){ lastId = id; stick = true; away = false; coolUntil = 0; } return window.omranChatFollow.follow(); },
+    /** كتبنا الأسفل نحن (smartScrollBottom): القارئ في الأسفل الآن — ولو كبر المحتوى قبل أن يصل حدث scroll. لا يُستنتج من الحدث:
+        صورة فوق القارئ يعوّضها التثبيت (scroll anchoring) تزيد scrollTop بقدر نموّها كأنّه نزل — فشدّ من صعد بسحب التحديد (فحص المتصفّح). */
+    atBottom: function(){ away = false; },
+    _state: function(){ return { stick: stick, away: away, touching: touching, dragging: dragging, coolUntil: coolUntil }; }, // للاختبار
   };
   if(!el) return;
   lastTop = el.scrollTop; lastH = el.scrollHeight;
@@ -52073,8 +52080,8 @@ html[dir="rtl"] #inspireScreen .insQ svg{transform:scaleX(-1);}
   });
   el.addEventListener('scroll', function(){
     var t = el.scrollTop, h = el.scrollHeight, upward = t < lastTop - 1 && h >= lastH - 1;
-    if(upward){ if(dragging || touching || now() < coolUntil) stick = false; }
-    else if(t >= lastTop && gap() < NEAR) stick = true; // نزل بنفسه إلى الأسفل (أو كتبنا نحن هناك)
+    if(upward){ if(dragging || touching || now() < coolUntil) stick = false; if(gap() > NEAR) away = true; } // away: أيّ صعود يُبعده عن الأسفل
+    else if(t >= lastTop && gap() < NEAR){ stick = true; away = false; } // نزل بنفسه إلى الأسفل (أو كتبنا نحن هناك)
     lastTop = t; lastH = h;
   }, { passive: true });
 })();

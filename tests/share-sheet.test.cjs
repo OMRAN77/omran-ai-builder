@@ -560,20 +560,27 @@ test('٢٤. صانع الفيديو: صفّ «مشهد N» مكان زرّ ال�
   assert.ok(!/label: '↗️ ' \+ bT\('مشهد /.test(js), 'زرّ المشاركة «مشاركة» (بلا الإيموجي كان «مشهد N» مثل زرّ التحميل)');
 });
 
-test('٢٥. صورة أداة التوليد في الردّ الأحدث تلحق الأسفل عند تحميلها — كان زرّ «مشاركة» وشرح الصورة تحت صندوق الكتابة؛ والردود القديمة لا تشدّ القارئ', () => {
+test('٢٥. صورة أداة التوليد تلحق الأسفل عند تحميلها إن لم يصعد القارئ منذ كان في الأسفل — كان زرّ «مشاركة» وشرح الصورة تحت صندوق الكتابة؛ ولا تشدّ من صعد ببحث Ctrl+F، ولا مستمع لصورة مخزّنة', () => {
   const s = read('js/app-04-i18n-state.js');
   const i = s.indexOf("const genStrip = document.createElement('div');"); assert.ok(i > 0);
-  const blk = s.slice(i, s.indexOf('div.appendChild(genStrip);', i));
-  assert.ok(blk.includes("if(mIdx === cur.messages.length - 1) gimg.addEventListener('load', () => { try{ if(gimg.isConnected && window.omranChatFollow && window.omranChatFollow.follow() && messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight <= div.offsetHeight + 160) smartScrollBottom(true); }catch(e){ __swallow(e, 'gen:follow'); } });"), 'الردّ الأحدث وحده، كصور المرفقات (v-chat-wait)');
-  assert.ok(s.slice(s.lastIndexOf('cur.messages.forEach((m, mIdx) => {', i), i).includes('const div = document.createElement(\'div\');'), 'div رسالة الردّ نفسها و mIdx فهرسه');
-  // الحارس نفسه منفّذًا
-  const m = /if\(mIdx === cur\.messages\.length - 1\) gimg\.addEventListener\('load', \(\) => \{ try\{ (if\(.*?\) smartScrollBottom\(true\);) \}catch/.exec(blk);
-  assert.ok(m, 'جسم المستمع');
-  const run = (st) => { let n = 0; new Function('gimg', 'div', 'window', 'messagesEl', 'smartScrollBottom', m[1])(
-    { isConnected: true }, { offsetHeight: st.msg }, { omranChatFollow: { follow: () => st.follow } }, { scrollHeight: st.sh, scrollTop: st.top, clientHeight: 700 }, () => { n++; }); return n; };
-  assert.equal(run({ follow: true, msg: 900, sh: 5000, top: 5000 - 700 - 569 }), 1, 'صورة واحدة كبرت تحته: يلحق');
-  assert.equal(run({ follow: true, msg: 1300, sh: 5000, top: 5000 - 700 - 863 }), 1, 'صورتان حُجّمتا معًا قبل أوّل load: يلحق');
-  assert.equal(run({ follow: true, msg: 850, sh: 5000, top: 5000 - 700 - 498 }), 1, 'وتضييق الفقاعة (.oImgMsg) أضاف نموًّا خارج الشريط: يلحق');
-  assert.equal(run({ follow: true, msg: 1500, sh: 30000, top: 2600 }), 0, 'غادر الردّ إلى أعلى المحادثة (بحث Ctrl+F) قبل تحميلها: لا يشدّ');
-  assert.equal(run({ follow: false, msg: 900, sh: 5000, top: 3731 }), 0, 'من صعد بعجلة أو إصبع لا يُشدّ');
+  const end = s.indexOf('// 🖼️ Feature ② — image strip ABOVE the reply text', i); assert.ok(end > i);
+  const blk = s.slice(i, end);
+  const LINE = "if(!(gimg.complete && gimg.naturalHeight)) gimg.addEventListener('load', () => { try{ if(gimg.isConnected && window.omranChatFollow && window.omranChatFollow.followGrowth()) smartScrollBottom(true); }catch(e){ __swallow(e, 'gen:follow'); } });";
+  assert.ok(blk.includes(LINE), 'قرار followGrowth (app-40) لكلّ الردود، وصورة مخزّنة بلا مستمع');
+  assert.ok(!blk.includes('mIdx === cur.messages.length - 1'), 'كلّ الردود: ردّ صورة قبل آخر رسالة يكبر بعد فتح المحادثة أيضًا');
+  assert.ok(!/offsetHeight \+ 160/.test(blk), 'لا حدّ ارتفاع: كلّها فشلت في فحص ما');
+  // الترتيب: الشريط في فقاعته، والصورة في الشريط، قبل أدوات الصورة — فيجد وسمُها (.oImgMsg) الفقاعةَ فورًا لا بعد تمرير الرسم
+  const a = blk.indexOf('div.appendChild(genStrip);'), f = blk.indexOf('__genShown.slice(0, 4).forEach(');
+  assert.ok(a > 0 && a < f, 'الشريط يُلحق بالفقاعة قبل الصور');
+  assert.ok(blk.includes('gb.appendChild(gimg); genStrip.appendChild(gb); window.__omranImgTools(gb, url);'), 'الصورة في الشريط قبل أدواتها');
+  assert.ok(read('js/app-09-attach.js').includes("__markBox(); setTimeout(__markBox, 0);"), 'أدوات الصورة تسم فورًا ثمّ بعد نبضة');
+  // المستمع منفّذًا: صورة جديدة تكبر → يلحق بقرار followGrowth؛ مخزّنة (مقاسة لحظة إدراجها) → لا مستمع
+  const run = (st) => { const h = {}; let n = 0;
+    const gimg = { complete: st.complete, naturalHeight: st.natH, isConnected: true, addEventListener: (ev, fn) => { h[ev] = fn; } };
+    new Function('gimg', 'window', 'smartScrollBottom', '__swallow', LINE)(gimg, { omranChatFollow: { followGrowth: () => st.grow } }, (near) => { if(near === true) n++; }, (e) => { throw e; });
+    if(h.load) h.load(); return { listener: !!h.load, calls: n }; };
+  assert.deepEqual(run({ complete: false, natH: 0, grow: true }), { listener: true, calls: 1 }, 'صورة تُفكّ الآن والقارئ في الأسفل: يلحق');
+  assert.deepEqual(run({ complete: false, natH: 0, grow: false }), { listener: true, calls: 0 }, 'صعد (Ctrl+F أو عجلة) منذ كان في الأسفل: لا يشدّ');
+  assert.deepEqual(run({ complete: true, natH: 1200, grow: true }), { listener: false, calls: 0 }, 'مخزّنة: مقاسة لحظة الإدراج وload بلا نموّ — لا مستمع');
+  assert.deepEqual(run({ complete: true, natH: 0, grow: true }), { listener: true, calls: 1 }, 'complete بلا مقاس (لم تُفكّ): مستمع');
 });
