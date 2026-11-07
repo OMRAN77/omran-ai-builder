@@ -44,6 +44,31 @@
     r.onerror = function(){ done(''); };
     r.readAsDataURL(file);
   }
+  /* v-trends-identity-audit: صورة واحدة = حتّى ٢٠٤٨ (WORK_MAX عند الخادم) بجودة ٠٫٩، فلقطة الوجه ومرجع تبديل الرأس من بكسلات حقيقيّة لا من نسخة
+     ١٤٠٠ مضغوطة (صورة واقف كامل وجهها ~١٧٠ بكسل، والإطار 2K يطلب وجهًا ~٤٦٠). تُحسب مرّة وتبقى للقصّة كلّها (البايتات نفسها = FRAME_CACHE يصيب).
+     أكبر من SOLO_B64_MAX أو أيّ عطب = نسخة ١٤٠٠ كما كانت. عدّة صور كما كانت حرفيًّا (حدّ ٤٫٥م للطلب، v-trend-413). */
+  var SOLO_MAX = 2048, SOLO_Q = 0.9, SOLO_B64_MAX = 3500000;
+  function soloHi(file){
+    return new Promise(function(res){
+      var r = new FileReader();
+      r.onload = function(){
+        var img = new Image();
+        img.onload = function(){
+          try{
+            var k = Math.min(1, SOLO_MAX / Math.max(img.width, img.height)), w = Math.round(img.width * k), h = Math.round(img.height * k);
+            var c = document.createElement('canvas'); c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            var u = c.toDataURL('image/jpeg', SOLO_Q);
+            res(u.length <= SOLO_B64_MAX ? u : '');
+          }catch(e){ res(''); }
+        };
+        img.onerror = function(){ res(''); };
+        img.src = String(r.result || '');
+      };
+      r.onerror = function(){ res(''); };
+      r.readAsDataURL(file);
+    });
+  }
 
   /* بطاقة نظيفة: المعاينة تملأها والاسم فوقها في أسفلها — لا شيء تحتها، ولا أيقونة، ولا سطر وصف */
   function card(t){
@@ -116,7 +141,7 @@
       var left = files.length; if(!left) return;
       files.forEach(function(f){
         shrink(f, function(dataUrl){
-          if(dataUrl) photos.push({ dataUrl: dataUrl, mime: 'image/jpeg' });
+          if(dataUrl) photos.push({ dataUrl: dataUrl, mime: 'image/jpeg', file: f });
           if(!--left) renderPeople(strip, t);
         });
       });
@@ -347,7 +372,9 @@
     if(preConfirmed) payload.confirmed = true; // v-trend-one-confirm: وافق على مجموع القصّة مرّة واحدة
     /* v-trend-people: الأولى في imageBase64 كما كانت (توافق)، وما زاد عنها في imagesBase64 للخادم. */
     if(photos.length){
-      var raw = photos.map(function(p){ return { b64: p.dataUrl.slice(p.dataUrl.indexOf(',') + 1), mime: p.mime }; });
+      if(photos.length === 1 && photos[0].file && photos[0].hi === undefined) photos[0].hi = await soloHi(photos[0].file); // مرّة واحدة: كلّ مشاهد القصّة بالبايتات نفسها
+      var src = (photos.length === 1 && photos[0].hi) ? [{ dataUrl: photos[0].hi, mime: 'image/jpeg' }] : photos;
+      var raw = src.map(function(p){ return { b64: p.dataUrl.slice(p.dataUrl.indexOf(',') + 1), mime: p.mime }; });
       payload.imageBase64 = raw[0].b64; payload.imageMime = raw[0].mime;
       if(raw.length > 1){ payload.imagesBase64 = raw.map(function(x){ return x.b64; }); payload.imagesMime = raw.map(function(x){ return x.mime; }); }
       payload.params = Object.assign({}, params, { people: raw.length });

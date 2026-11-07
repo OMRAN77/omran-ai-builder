@@ -2,10 +2,12 @@
 /* v-trend-face-swap — المالك ٢٥ أكتوبر: «صلحة الاشكال الملامح». Omni يحفظ وجه الإطار الأوّل، وبرو يعيد رسم الوجه وهو يبنيه؛ فبعد
    بناء الإطار خطوة تبديل وجه (face-swap.lockFaces) مطفأة افتراضيًّا. يثبت هذا الملفّ (بلا أيّ نداء مدفوع — fetch مزيّف وصور مصنوعة):
    ١) البوّابات: مطفأة/بلا مفتاح/«المالك» لغير المالك/فنّيّ/عمر آخر = لا نداء والبايتات نفسها؛ وveo-create مطفأً = الخيارات كما كانت.
-   ٢) المسار السعيد: البيضاويّ وحده يتغيّر، وشكل الطلب، وإشارة مهلة، وترميز JPEG واحد، والذاكرة تعيد الإطار المبدَّل.
+   ٢) المسار السعيد: مستطيل القصّة (الرأس بشعره) وحده يتغيّر بحافة ناعمة، وشكل الطلب، وإشارة مهلة، وترميز JPEG واحد، والذاكرة تعيد الإطار المبدَّل.
    ٣) الربط بالمرجع لا بالموضع، والزومبي نداء واحد، و«من ينقذك؟» نداءان. ٤) الربط الملتبس = صفر نداءات.
    ٥) أعطال المزوّد = الإطار نفسه، والحجز يُردّ لما لم يُنتجه المزوّد وحده. ٦) الميزانيّة والسقف. ٧) التحميل ببيئة فارغة، والسجلّ بلا مفتاح.
-   ٨) قصّة Picture 1 لا تحمل وجهًا آخر (بلا مرجع أو غير متأكّد). ٩) الزومبي بشخصين من صورة واحدة = لا تبديل (لا دور معروف). */
+   ٨) قصّة Picture 1 لا تحمل وجهًا آخر (بلا مرجع أو غير متأكّد). ٩) الزومبي بشخصين من صورة واحدة = لا تبديل (لا دور معروف).
+   v-trend-hair-lock (١٥–٢٠): أمر الـLoRA الرسميّ ولصق القصّة كلّها (الرأس بشعره)، ونصّ رفض المزوّد في السبب، وصورة واحدة لا تُطابَق بشعر
+   ولبس رسمهما الإطار، وإعادة تبديل فشل عابر من الذاكرة، وسجلّ المالك لكلّ تخطٍّ، والوجه الوحيد لمشهد صاحبه وحده (لا الزومبي)، وقبّعة المشهد. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -38,6 +40,12 @@ mock('api/_lib/kv.js', {
 mock('api/_lib/auth.js', { getUser: async () => null, getUserOnce: async () => null, putUser: async () => {}, isBanned: async () => false, verifyToken: () => null });
 mock('api/_lib/_vip.js', { isVip: async () => false });
 mock('api/_lib/abuse-guard.js', { videoLock: async () => ({ ok: true }), releaseVideoLock: async () => {}, videoCooldownLeft: async () => 0, imageHourlyGuard: async () => ({ ok: true }) });
+/* v-trend-hair-lock: سجلّ المالك مزيّف — كلّ سطر [الموضع، الرسالة] */
+const notes = [];
+mock('api/_lib/log-error.js', {
+  logError: (scope, err) => { notes.push([scope, String((err && err.message) || err)]); },
+  logErrorAndFlush: async (scope, err) => { notes.push([scope, String((err && err.message) || err)]); },
+});
 
 const FS = require(rp('api/_lib/face-swap.js'));
 const TP = require(rp('api/_lib/trend-people.js'));
@@ -107,11 +115,14 @@ const swapRun = (refs, o, faces, extra) => {
   return FS.lockFaces({ b64: FRAME, mime: 'image/png' }, refs, Object.assign({ apiKey: GKEY, until: Date.now() + 120000, owner: true, fetchImpl: s.f, kv }, o))
     .then((r) => ({ r, calls: s.calls, kv }));
 };
-/* بيضاويّ اللصق نفسه (أعرض ٦٪، أعلى ٤٪، ١٨٪ تحت) — نصف قطر مطبَّع لبكسل */
-function ellR(b, x, y) {
-  const fx0 = b[1] / 1000 * W, fx1 = b[3] / 1000 * W, fy0 = b[0] / 1000 * H, fy1 = b[2] / 1000 * H, fw = fx1 - fx0, fh = fy1 - fy0;
-  const ex0 = fx0 - 0.06 * fw, ex1 = fx1 + 0.06 * fw, ey0 = fy0 - 0.04 * fh, ey1 = fy1 + 0.18 * fh;
-  return Math.hypot((x + 0.5 - (ex0 + ex1) / 2) / ((ex1 - ex0) / 2), (y + 0.5 - (ey0 + ey1) / 2) / ((ey1 - ey0) / 2));
+/* v-trend-hair-lock: صندوق كلّ بكسل تغيّر عن الرماديّ (سماح ترميز JPEG) — يساوي مستطيل القصّة الملصوق */
+function changedBox(img) {
+  const b = { x0: Infinity, y0: Infinity, x1: -1, y1: -1 };
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) {
+    if (near(px(img, x, y), GRAY, 6)) continue;
+    b.x0 = Math.min(b.x0, x); b.y0 = Math.min(b.y0, y); b.x1 = Math.max(b.x1, x); b.y1 = Math.max(b.y1, y);
+  }
+  return b;
 }
 const center = (b) => [Math.round((b[1] + b[3]) / 2000 * W), Math.round((b[0] + b[2]) / 2000 * H)];
 
@@ -147,7 +158,7 @@ test('٢. soloFirstFrame: الفنّيّ والعمر الآخر لا يُبدَ
   off();
 });
 
-test('٣. المسار السعيد (فرديّ): البيضاويّ وحده يتغيّر، وشكل الطلب حرفيًّا، وإشارة مهلة، والذاكرة تعيد الإطار المبدَّل', async () => {
+test('٣. المسار السعيد (فرديّ): مستطيل القصّة وحده يتغيّر بحافة ناعمة، وشكل الطلب حرفيًّا، وإشارة مهلة، والذاكرة تعيد الإطار المبدَّل', async () => {
   on();
   const s = stub({ faces: [{ ref: 0, box_2d: CENTER, sure: true }] });
   const kv = fakeKv();
@@ -178,18 +189,25 @@ test('٣. المسار السعيد (فرديّ): البيضاويّ وحده ي
   assert.deepEqual(c.body.loras, [{ path: FS.LORA_DEFAULT, scale: 1 }]);
   assert.deepEqual(c.body.image_size, { width: 768, height: 768 }, 'قصّة موسّعة ٧٦٨ بلا تكبير');
   assert.deepEqual([c.body.output_format, c.body.sync_mode, c.body.enable_safety_checker, c.body.num_images], ['png', true, true, 1]);
-  /* البيضاويّ وحده: داخله لون المبدَّل، وخارجه الرماديّ (سماح ترميز JPEG) */
+  /* v-trend-hair-lock: مستطيل القصّة وحده يتغيّر (الرأس بشعره لا بيضاويّ الوجه) بحافة ناعمة ~١٠٪ من ضلعه؛ خارجه الرماديّ (سماح JPEG) */
   const img = decode(r.b64);
   assert.deepEqual([img.w, img.h], [W, H]);
   const [cx, cy] = center(CENTER);
   assert.ok(near(px(img, cx, cy), [230, 0, 0], 12), 'الوجه بُدّل: ' + px(img, cx, cy));
-  let changedOutside = 0, inside = 0;
-  for (let y = 0; y < H; y += 3) for (let x = 0; x < W; x += 3) {
-    const e = ellR(CENTER, x, y);
-    if (e > 1.12 && !near(px(img, x, y), GRAY, 6)) changedOutside++;
-    if (e < 0.8) inside++;
-  }
-  assert.equal(changedOutside, 0, 'لا تغيير خارج البيضاويّ'); assert.ok(inside > 500);
+  const box = changedBox(img);
+  assert.deepEqual([box.x1 - box.x0 + 1, box.y1 - box.y0 + 1].map((v) => v <= 768 && v >= 756), [true, true], 'المتغيّر = مستطيل القصّة ٧٦٨ (أطراف الحافة الخارجيّة دون سماح JPEG): ' + JSON.stringify(box));
+  assert.ok(box.x0 > 0 && box.y0 > 0 && box.x1 < W - 1 && box.y1 < H - 1, 'القصّة داخل الإطار (حوافّها الأربع ناعمة)');
+  /* الشعر فوق الوجه وما حوله من القصّة بُدّل كلّه — كان البيضاويّ يتركه */
+  const fy0 = Math.round(CENTER[0] / 1000 * H);
+  assert.ok(fy0 - box.y0 > 100, 'القصّة تمتدّ فوق الجبهة');
+  assert.ok(near(px(img, cx, Math.round((box.y0 + fy0) / 2) + 40), [230, 0, 0], 12), 'فوق الجبهة (الشعر) بُدّل: ' + px(img, cx, Math.round((box.y0 + fy0) / 2) + 40));
+  const edge = Math.round(768 * 0.1);
+  assert.ok(near(px(img, box.x0 + edge + 6, cy), [230, 0, 0], 12) && near(px(img, box.x1 - edge - 6, cy), [230, 0, 0], 12), 'بعد الحافة لون المبدَّل كاملًا');
+  const mid = px(img, box.x0 + Math.round(edge / 2), cy);
+  assert.ok(!near(mid, GRAY, 20) && !near(mid, [230, 0, 0], 20), 'منتصف الحافة مزيج لا خطّ: ' + mid);
+  let prev = -1, mono = true;
+  for (let x = box.x0; x <= box.x0 + edge; x += 4) { const rr = px(img, x, cy)[0]; if (rr + 8 < prev) mono = false; prev = rr; }
+  assert.ok(mono, 'الحافة تتدرّج من الإطار إلى المبدَّل');
   assert.equal(kv.spent(), 5, 'حجز وجه واحد');
   /* الذاكرة: النداء الثاني نفسه = الإطار المبدَّل بلا بناء ولا تبديل */
   const again = await run();
@@ -240,7 +258,8 @@ test('٥. الربط بالمرجع لا بالموضع: المرجع ١ على 
   for (const o of [{ ageShift: true }, { art: true }]) {
     const s3 = stub({ faces: [{ ref: 0, box_2d: LEFT, sure: true }, { ref: 1, box_2d: RIGHT, sure: true }] });
     const r3 = await TP.groupFirstFrame('K', [{ data: PHOTO, mime: 'image/png' }, { data: PHOTO, mime: 'image/png' }], 'x', '720:1280', Object.assign({ faceCrops: async () => [], callImage: async () => ({ b64: FRAME, mime: 'image/png' }), fetchImpl: s3.f, swap: { until: Date.now() + 120000, owner: true } }, o));
-    assert.deepEqual(r3, { b64: FRAME, mime: 'image/png' }); assert.equal(s3.calls.flash.length, 0);
+    /* v-trends-identity-audit: الإطار نفسه بلا تبديل، ومعه refs (مرجع كلّ شخص لمحرّك الفيديو) */
+    assert.equal(r3.b64, FRAME); assert.equal(r3.mime, 'image/png'); assert.equal(r3.swapped, undefined); assert.equal(r3.refs.length, 2); assert.equal(s3.calls.flash.length, 0);
   }
   const s4 = stub({ flash: { status: 500 } });
   const r4 = await TP.groupFirstFrame('K', [{ data: PHOTO, mime: 'image/png' }, { data: PHOTO, mime: 'image/png' }], 'x', '720:1280', { faceCrops: async () => [], callImage: async () => ({ b64: FRAME, mime: 'image/png' }), fetchImpl: s4.f, swap: { until: Date.now() + 120000, owner: true, kv: fakeKv() } });
@@ -287,7 +306,7 @@ test('٨. أعطال المزوّد (٥٠٠، انقطاع، أسود، تالف
   on();
   const one = [{ data: REF_A, mime: 'image/jpeg', face: true }];
   const faults = {
-    'fal-500': () => new Response(JSON.stringify({ detail: 'boom' }), { status: 500 }),
+    'fal-500 boom': () => new Response(JSON.stringify({ detail: 'boom' }), { status: 500 }), // v-trend-hair-lock: نصّ رفض المزوّد في السبب
     timeout: () => { throw Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' }); },
     black: (c) => falImage(png(c.body.image_size.width, c.body.image_size.height, [0, 0, 0])),
     'bad-output': () => falImage(Buffer.from('this is not an image at all, just text bytes')),
@@ -295,7 +314,7 @@ test('٨. أعطال المزوّد (٥٠٠، انقطاع، أسود، تالف
     'fal-empty': () => new Response(JSON.stringify({ images: [] }), { status: 200 }),
   };
   /* غير 2xx أو بلا صورة = لم يُنتج شيئًا فيُردّ؛ الأسود (فاحص الأمان) والتالف والنسبة والمهلة بعد الإرسال صُرفت فتبقى محسوبة (نمط render-ai) */
-  const billed = { 'fal-500': 0, 'fal-empty': 0, timeout: 5, black: 5, 'bad-output': 5, aspect: 5 };
+  const billed = { 'fal-500 boom': 0, 'fal-empty': 0, timeout: 5, black: 5, 'bad-output': 5, aspect: 5 };
   for (const [why, fn] of Object.entries(faults)) {
     const x = await swapRun(one, {}, [{ ref: 0, box_2d: CENTER, sure: true }], { fal: async (c) => fn(c) });
     assert.equal(x.r.b64, FRAME, why); assert.equal(x.r.swapped, 0, why); assert.equal(x.r.reason, why, why);
@@ -493,4 +512,204 @@ test('١٤. الزومبي بشخصين من صورة واحدة = لا تبدي
   assert.equal(r.swapped, 1); assert.equal(s.calls.fal.length, 1);
   assert.equal(s.calls.fal[0].body.image_urls[1], 'data:image/jpeg;base64,' + REF_A);
   off();
+});
+
+/* ── v-trend-hair-lock (المالك: «سامحوني» بصورة واحدة لرجل ملتحٍ بشعر قصير جدًّا ← وجه أنحف وشعر طويل، والتبديل مفعّل للمالك) ── */
+const OFFICIAL = 'head_swap: start with Picture 1 as the base image, keeping its lighting, environment, and background. remove the head from Picture 1 completely and replace it with the head from Picture 2, strictly preserving the hair, eye color, and nose structure of Picture 2. copy the direction of the eye, head rotation, and micro-expressions from Picture 1. Keep the body, clothing, pose, framing, and background intact.';
+
+test('١٥. أمر الـLoRA الرسميّ حرفيًّا، وPicture 1 القصّة وPicture 2 المرجع؛ وعلامات التنصيص في TREND_FACE_SWAP تُقرأ؛ وgateWhy بلا مفتاح', async () => {
+  assert.equal(FS.PROMPT, OFFICIAL);
+  on();
+  const x = await swapRun([{ data: REF_A, mime: 'image/jpeg', face: true }], {}, [{ ref: 0, box_2d: CENTER, sure: true }]);
+  assert.equal(x.r.swapped, 1);
+  assert.equal(x.calls.fal[0].body.prompt, OFFICIAL);
+  assert.equal(x.calls.fal[0].body.image_urls[1], 'data:image/jpeg;base64,' + REF_A, 'Picture 2 = المرجع، لا يُعكس');
+  assert.deepEqual(x.calls.fal[0].body.loras, [{ path: FS.LORA_DEFAULT, scale: 1 }]);
+  process.env.TREND_FACE_SWAP = "'owner'"; assert.equal(FS.mode(), 'owner');
+  process.env.TREND_FACE_SWAP = '"on"'; assert.equal(FS.mode(), 'on');
+  process.env.TREND_FACE_SWAP = 'owner';
+  assert.equal(FS.gateWhy(true), ''); assert.equal(FS.gateWhy(false), 'not-owner');
+  delete process.env.FAL_KEY; assert.equal(FS.gateWhy(true), 'no-key');
+  off(); assert.equal(FS.gateWhy(true), 'off');
+});
+
+test('١٦. رفض المزوّد يحمل نصّه في السبب (٤٢٢/٤٠٤) منظَّفًا من المفتاح، والحجز يُردّ', async () => {
+  on();
+  const lines = [];
+  const orig = { log: console.log, warn: console.warn, error: console.error };
+  for (const k of Object.keys(orig)) console[k] = (...a) => lines.push(a.join(' '));
+  let x;
+  try {
+    x = await swapRun([{ data: REF_A, mime: 'image/jpeg', face: true }], {}, [{ ref: 0, box_2d: CENTER, sure: true }],
+      { fal: async () => new Response(JSON.stringify({ detail: [{ msg: 'loras.0.path invalid ' + FAL }] }), { status: 422 }) });
+  } finally { Object.assign(console, orig); }
+  assert.match(x.r.reason, /^fal-422 loras\.0\.path invalid \*\*\*/);
+  assert.equal(x.r.b64, FRAME); assert.equal(x.kv.spent(), 0, 'لم يُنتج شيئًا = يُردّ');
+  for (const l of lines.concat([x.r.reason])) assert.ok(!l.includes(FAL), l);
+  const y = await swapRun([{ data: REF_A, mime: 'image/jpeg', face: true }], {}, [{ ref: 0, box_2d: CENTER, sure: true }],
+    { fal: async () => new Response(JSON.stringify({ error: 'Application not found' }), { status: 404 }) });
+  assert.equal(y.r.reason, 'fal-404 Application not found');
+  off();
+});
+
+test('١٧. صورة واحدة: لا مطابقة بالشعر واللبس، ولا تفكير للصناديق، والوجه الوحيد في الإطار هو صاحبها؛ ومرجعان كما كانا', async () => {
+  on();
+  const one = [{ data: REF_A, mime: 'image/jpeg', face: true }];
+  const two = [one[0], { data: REF_B, mime: 'image/jpeg', face: true }];
+  const txt = (c) => c.body.contents[0].parts.filter((p) => p.text).map((p) => p.text).join('\n');
+  let x = await swapRun(one, {}, [{ ref: 0, box_2d: CENTER, sure: true }]);
+  const t1 = txt(x.calls.flash[0]);
+  assert.ok(!t1.includes('Match by appearance'), 'لا مطابقة بالشعر واللبس');
+  assert.ok(t1.includes('that alone is NOT a reason to be unsure'));
+  assert.ok(t1.includes('EVERY other clearly visible human'));
+  assert.match(t1, /never by left\/right order/); assert.match(t1, /never by gender alone/);
+  assert.equal(x.calls.flash[0].body.generationConfig.thinkingConfig.thinkingBudget, 0);
+  x = await swapRun(two, {}, [{ ref: 0, box_2d: LEFT, sure: true }, { ref: 1, box_2d: RIGHT, sure: true }]);
+  assert.ok(txt(x.calls.flash[0]).includes('Match by appearance'), 'مرجعان: الأمر كما كان');
+  assert.ok(!txt(x.calls.flash[0]).includes('NOT a reason to be unsure'));
+  assert.equal(x.calls.flash[0].body.generationConfig.thinkingConfig.thinkingBudget, 0);
+  const none = (x, why) => { assert.equal(x.r.reason, why || 'missing'); assert.equal(x.r.swapped, 0); assert.equal(x.calls.fal.length, 0); assert.equal(x.kv.spent(), 0); assert.equal(x.r.b64, FRAME, 'الإطار نفسه بايتًا ببايت'); };
+  /* مشهد صاحبها وحده (alone): Flash لم يربط أحدًا لكنّه عدّ وجهًا واحدًا = صاحب الصورة */
+  x = await swapRun(one, { alone: true }, [], { others: [{ box_2d: CENTER }] });
+  assert.equal(x.r.swapped, 1); assert.equal(x.calls.fal.length, 1);
+  x = await swapRun(one, { alone: true }, [{ ref: -1, box_2d: CENTER, sure: true }]);
+  assert.equal(x.r.swapped, 1, 'ref ‎-1 متأكّد في faces نفسها');
+  /* sure=false صريح على الوجه الوحيد (مغطّى، ملتفت) = لا تبديل ولا صرف */
+  none(await swapRun(one, { alone: true }, [{ ref: -1, box_2d: CENTER, sure: false }]));
+  /* بلا alone (الزومبي، الأميرة، المشهور): الوجه الوحيد قد يكون الشخصيّة الثانية — لا يُفترض أنّه صاحب الصورة */
+  none(await swapRun(one, {}, [], { others: [{ box_2d: CENTER }] }));
+  none(await swapRun(one, { only: [0] }, [], { others: [{ box_2d: RIGHT }] }));
+  none(await swapRun(one, { alone: true, only: [0] }, [], { others: [{ box_2d: RIGHT }] }), 'missing');
+  none(await swapRun(one, {}, [{ ref: -1, box_2d: CENTER, sure: true }]));
+  /* وجهان = لا نعرف أيّهما: missing بلا صرف */
+  none(await swapRun(one, { alone: true }, [], { others: [{ box_2d: LEFT }, { box_2d: RIGHT }] }));
+  /* بلا others (الشكل القديم) = لا نعرف عدد الوجوه */
+  none(await swapRun(one, { alone: true }, [], { others: null }));
+  /* sure=false صريح (مغطّى، ملتبس) يبقى محميًّا */
+  x = await swapRun(one, {}, [{ ref: 0, box_2d: CENTER, sure: false }]);
+  assert.equal(x.r.reason, 'unsure'); assert.equal(x.calls.fal.length, 0);
+  /* «من ينقذك؟» (multi) كما كان: لا وجه وحيد يُفترض */
+  x = await swapRun(one, { multi: true, alone: true }, [], { others: [{ box_2d: CENTER }] });
+  assert.equal(x.r.reason, 'missing'); assert.equal(x.calls.fal.length, 0);
+  /* v-trends-identity-audit: نسختان لبسهما مختلف — لا مطابقة باللبس، والبحث عن كلّ نسخة */
+  assert.ok(!txt(x.calls.flash[0]).includes('Match by appearance'), 'multi: لا مطابقة باللبس');
+  assert.ok(txt(x.calls.flash[0]).includes('Find EVERY person in Image A whose face matches Reference 0'), 'multi: كلّ نسخة');
+  off();
+});
+
+test('١٨. الذاكرة: فشل تبديل عابر يُعاد على الإطار الخام بلا دفع الإطار ثانية؛ والسبب الدائم لا يُعاد', async () => {
+  on();
+  let built = 0, fail = true;
+  const s = stub({ faces: [{ ref: 0, box_2d: CENTER, sure: true }], fal: async () => (fail ? new Response('{}', { status: 500 }) : null) });
+  const kv = fakeKv();
+  const run = () => TP.soloFirstFrame('K', { data: PHOTO + 'retry', mime: 'image/png' }, 'a knight on a cliff', '720:1280', {
+    faceCrops: async () => [{ of: 0, who: 'the person', data: REF_A, mime: 'image/jpeg' }],
+    callImage: async () => { built++; return { b64: FRAME, mime: 'image/png' }; }, fetchImpl: s.f, detail: true, hiRes: true,
+    swap: { until: Date.now() + 120000, owner: true, kv } });
+  const a = await run();
+  assert.equal(a.swapped, 0); assert.equal(a.swapWhy, 'fal-500'); assert.equal(a.b64, FRAME);
+  fail = false;
+  const b = await run();
+  assert.equal(b.cached, true); assert.equal(b.swapped, 1); assert.equal(b.mime, 'image/jpeg');
+  assert.equal(built, 1, 'الإطار لم يُدفع ثانية'); assert.equal(s.calls.fal.length, 2);
+  const c = await run();
+  assert.equal(c.swapped, 1); assert.equal(c.b64, b.b64); assert.equal(s.calls.fal.length, 2, 'نجح = لا تبديل ثالث');
+  /* سبب دائم (وجه صغير) = الإطار المخزَّن كما هو بلا نداء */
+  let built2 = 0;
+  const s2 = stub({ faces: [{ ref: 0, box_2d: [300, 150, 350, 200], sure: true }] });
+  const run2 = () => TP.soloFirstFrame('K', { data: PHOTO + 'small', mime: 'image/png' }, 'a knight on a cliff', '720:1280', {
+    faceCrops: async () => [{ of: 0, who: 'the person', data: REF_A, mime: 'image/jpeg' }],
+    callImage: async () => { built2++; return { b64: FRAME, mime: 'image/png' }; }, fetchImpl: s2.f, detail: true, hiRes: true,
+    swap: { until: Date.now() + 120000, owner: true, kv: fakeKv() } });
+  const d = await run2(); assert.equal(d.swapWhy, 'small');
+  const e = await run2(); assert.equal(e.cached, true); assert.equal(e.swapWhy, 'small');
+  assert.equal(built2, 1); assert.equal(s2.calls.flash.length, 1); assert.equal(s2.calls.fal.length, 0);
+  off();
+});
+
+test('١٩. veo-create: تخطّي التبديل وسقوط الإطار وإغلاق البوّابة تصل سجلّ المالك؛ والنجاح بلا سطر؛ والمفتاح في لا سطر', async () => {
+  const realSolo = TP.soloFirstFrame, realFetch = global.fetch;
+  global.fetch = async (url) => (/\/interactions$/.test(String(url))
+    ? new Response(JSON.stringify({ steps: [{ type: 'model_output', content: [{ type: 'video', uri: 'https://x/v' }] }] }), { status: 200 })
+    : new Response('{}', { status: 404 }));
+  const one = (trend, photo) => create({ trend, params: { text: 'يا هلا', sceneIndex: 0 }, ratio: '720:1280', imageBase64: photo, imageMime: 'image/jpeg' });
+  /* الإطار الحقيقيّ (soloFirstFrame + lockFaces) ببناء مزيّف وFlash/fal مزيّفين */
+  const withFake = (s) => { TP.soloFirstFrame = (k, p, sc, r, o) => realSolo(k, p, sc, r, Object.assign({}, o, {
+    faceCrops: async () => [{ of: 0, who: 'the person', data: REF_A, mime: 'image/jpeg' }], callImage: async () => ({ b64: FRAME, mime: 'image/png' }), fetchImpl: s.f })); };
+  try {
+    on({ TREND_FACE_SWAP: 'owner' });
+    let s = stub({ faces: [{ ref: 0, box_2d: CENTER, sure: false }] });
+    withFake(s); notes.length = 0;
+    let r = await one('sorryreveal', 'PHOTO-unsure'); assert.equal(r.code, 200, JSON.stringify(r.body));
+    assert.equal(s.calls.fal.length, 0);
+    assert.equal(notes.length, 1, JSON.stringify(notes)); assert.equal(notes[0][0], 'face-swap/solo');
+    assert.match(notes[0][1], /^trend=sorryreveal swap=0 why=unsure$/);
+    s = stub({ faces: [{ ref: 0, box_2d: CENTER, sure: true }] });
+    withFake(s); notes.length = 0;
+    r = await one('sorryreveal', 'PHOTO-ok'); assert.equal(r.code, 200);
+    assert.equal(s.calls.fal.length, 1); assert.deepEqual(notes, [], 'نجاح = لا سطر');
+    /* رفض المزوّد: السبب بنصّه في سجلّ المالك بلا المفتاح */
+    s = stub({ faces: [{ ref: 0, box_2d: CENTER, sure: true }], fal: async () => new Response(JSON.stringify({ detail: [{ msg: 'bad path ' + FAL }] }), { status: 422 }) });
+    withFake(s); notes.length = 0;
+    await one('heritagesing', 'PHOTO-422');
+    assert.equal(notes.length, 1); assert.match(notes[0][1], /swap=0 why=fal-422 bad path \*\*\*/); assert.ok(!notes[0][1].includes(FAL));
+    /* الإطار سقط = المحرّك يرسم وجهًا جديدًا — سطر */
+    TP.soloFirstFrame = async () => ({ error: 'frame down' }); notes.length = 0;
+    await one('sorryreveal', 'PHOTO-down');
+    assert.deepEqual(notes.map((n) => n[0]), ['trend-frame/solo']); assert.match(notes[0][1], /^trend=sorryreveal skipped why=frame down$/);
+    /* البوّابة مغلقة للمالك: مطفأة، ثمّ بلا مفتاح */
+    TP.soloFirstFrame = async () => ({ b64: 'SOLOFRAME', mime: 'image/png', ref: null, people: 1 });
+    process.env.TREND_FACE_SWAP = ''; notes.length = 0;
+    await one('sorryreveal', 'PHOTO-off');
+    assert.deepEqual(notes, [['face-swap/gate', 'trend=sorryreveal swap=off']]);
+    process.env.TREND_FACE_SWAP = 'owner'; delete process.env.FAL_KEY; notes.length = 0;
+    await one('sorryreveal', 'PHOTO-nokey');
+    assert.deepEqual(notes, [['face-swap/gate', 'trend=sorryreveal swap=no-key']]);
+    /* ترند مستثنى (لعبة) أو Veo = لا سطر */
+    off(); notes.length = 0;
+    await one('actionfigure', 'PHOTO-toy');
+    process.env.TREND_ENGINE = 'veo'; await one('sorryreveal', 'PHOTO-veo'); delete process.env.TREND_ENGINE;
+    assert.deepEqual(notes, []);
+  } finally { TP.soloFirstFrame = realSolo; global.fetch = realFetch; off(); delete process.env.TREND_ENGINE; }
+});
+
+test('٢٠. veo-create: alone لمشهد صاحب الصورة وحده (لا الزومبي)، وhat للتخرّج وفيلم الثمانينات بجملة إبقاء القبّعة — وغيرها الأمر الرسميّ حرفيًّا', async () => {
+  const realSolo = TP.soloFirstFrame, realFetch = global.fetch;
+  global.fetch = async (url) => (/\/interactions$/.test(String(url))
+    ? new Response(JSON.stringify({ steps: [{ type: 'model_output', content: [{ type: 'video', uri: 'https://x/v' }] }] }), { status: 200 })
+    : new Response('{}', { status: 404 }));
+  const one = (trend, photo) => create({ trend, params: { text: 'يا هلا', sceneIndex: 0 }, ratio: '720:1280', imageBase64: photo, imageMime: 'image/jpeg' });
+  let swaps = [];
+  const withFake = (s) => { TP.soloFirstFrame = (k, p, sc, r, o) => { swaps.push(o.swap); return realSolo(k, p, sc, r, Object.assign({}, o, {
+    faceCrops: async () => [{ of: 0, who: 'the person', data: REF_A, mime: 'image/jpeg' }], callImage: async () => ({ b64: FRAME, mime: 'image/png' }), fetchImpl: s.f })); }; };
+  try {
+    on({ TREND_FACE_SWAP: 'owner' });
+    for (const t of ['graduation', 'lostfilm80s']) {
+      const s = stub({ faces: [{ ref: 0, box_2d: CENTER, sure: true }] });
+      withFake(s); swaps = [];
+      const r = await one(t, 'PHOTO-hat-' + t); assert.equal(r.code, 200, JSON.stringify(r.body));
+      assert.equal(swaps[0].hat, true, t); assert.ok(!('alone' in swaps[0]), t + ': في المشهد غيره');
+      assert.equal(s.calls.fal.length, 1, t);
+      assert.equal(s.calls.fal[0].body.prompt, OFFICIAL + FS.HAT_KEEP, t + ': الأمر الرسميّ + إبقاء القبّعة');
+      assert.match(FS.HAT_KEEP, /^ Keep the hat or cap worn on the head in Picture 1 in place/);
+    }
+    /* «سامحوني»: صاحب الصورة وحده (alone) والأمر الرسميّ حرفيًّا — والوجه الوحيد بلا ربط يُبدَّل */
+    let s = stub({ faces: [], others: [{ box_2d: CENTER }] });
+    withFake(s); swaps = [];
+    await one('sorryreveal', 'PHOTO-alone');
+    assert.equal(swaps[0].alone, true); assert.ok(!('hat' in swaps[0]));
+    assert.equal(s.calls.fal.length, 1); assert.equal(s.calls.fal[0].body.prompt, OFFICIAL);
+    /* «الزومبي» بصورة واحدة: Flash لم يجد وجه المستخدم وعدّ الزومبي وحده = لا تبديل ولا صرف */
+    s = stub({ faces: [], others: [{ box_2d: RIGHT }] });
+    withFake(s); swaps = []; notes.length = 0;
+    await one('zombielove', 'PHOTO-zombie');
+    assert.ok(!('alone' in swaps[0]) && !('hat' in swaps[0])); assert.deepEqual(swaps[0].only, [0]);
+    assert.equal(s.calls.fal.length, 0, 'رأس المستخدم لا يُلصق على الزومبي');
+    assert.match(notes[0][1], /^trend=zombielove swap=0 why=missing$/);
+    for (const t of ['spanishrap', 'bbywow', 'invisiblebike', 'celebselfie', 'standstill']) {
+      withFake(stub({ faces: [], others: [{ box_2d: CENTER }] })); swaps = [];
+      await one(t, 'PHOTO-' + t);
+      assert.ok(swaps.length && !('alone' in swaps[0]), t + ': شخصيّة أخرى في المشهد');
+    }
+  } finally { TP.soloFirstFrame = realSolo; global.fetch = realFetch; off(); }
 });
