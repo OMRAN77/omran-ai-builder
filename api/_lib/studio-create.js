@@ -356,7 +356,7 @@ async function lockMergeFaces(frame, m) {
     return (m.counts[k] === 1 && own.length === 1) ? { data: own[0].data, mime: own[0].mime, face: true } : { data: p.data, mime: p.mime };
   });
   try {
-    const r = await require('./face-swap.js').lockFaces(frame, refs, { apiKey: m.apiKey, enabled: true, only, until: m.t0 + 280000, faceOnly: !!m.faceOnly });
+    const r = await require('./face-swap.js').lockFaces(frame, refs, { apiKey: m.apiKey, enabled: true, only, until: m.t0 + 280000, faceOnly: !!m.faceOnly, beard: m.beard });
     if (r && r.swapped > 0 && r.b64) return { b64: r.b64, mime: r.mime || 'image/jpeg' };
     console.warn('[studio-create] merge face-lock skipped: ' + String((r && r.reason) || 'none').slice(0, 60));
   } catch (e) { console.warn('[studio-create] merge face-lock ' + (e && e.message)); } /* lockFaces لا يرمي — حارس احتياطيّ */
@@ -395,7 +395,7 @@ async function bodyCloseUp(apiKey, b64) {
       } catch (e) { console.warn('[studio-create] body upright crop ' + (e && e.message)); } /* اللقطة تعذّرت = faceCrops كما كان */
     }
     /* v-body-hair-keep: «الشعر مغطّى؟» من الكشف نفسه (قائمة صريحة فيها الغترة والطاقيّة) — true/false أو null إن لم يُجب */
-    return { faces, crop, covered: typeof main[0].covered === 'boolean' ? main[0].covered : null };
+    return { faces, crop, covered: typeof main[0].covered === 'boolean' ? main[0].covered : null, beard: typeof main[0].beard === 'boolean' ? main[0].beard : null }; /* v-body-beard */
   } catch (e) { console.warn('[studio-create] body close-up check ' + (e && e.message)); return null; } /* الكشف تعذّر = المسار القديم */
 }
 /* v-body-sport (المالك بعد التجربة، صورته بقميص رماديّ فضفاض طويل الأكمام وغترة: «كأنه صياد رايح البحر… في الجسم واللياقة مش صيد بحر
@@ -430,7 +430,7 @@ function bodyHeadLine(look) {
 function bodyReframeTask(style, description, variant, look) {
   const cw = bodyColorway(variant);
   return 'Photo 1 shows the user as a close-up. Create a new full-body standing photo of this same person, the whole figure visible from the top of the head down to the feet, standing naturally and facing the camera, with ' + styleTextOf('body', style) + '.\n' +
-    'Keep from Photo 1, exactly and with full fidelity: their face and every facial feature, skin tone, facial hair and apparent age. Copy the face from the close-up when one is given. Expression: both eyes fully open, clear and looking straight at the camera — never closed, squinting or half-closed — with a natural, relaxed smile.\n' +
+    'Keep from Photo 1, exactly and with full fidelity: their face and every facial feature, skin tone, ' + (look && look.beard === false ? '' : 'facial hair ') + 'and apparent age. Copy the face from the close-up when one is given. Expression: both eyes fully open, clear and looking straight at the camera — never closed, squinting or half-closed — with a natural, relaxed smile.\n' +
     'New in this photo, and only these: the body build described above, the sportswear and the head. Dress them like a fitness reference photo: a man wears a fitted short-sleeved athletic t-shirt that clearly shows the build, knee-length athletic shorts or slim athletic joggers, and sneakers; a woman wears a modest fitted long-sleeved athletic top with a hip-length tunic over full-length leggings, and sneakers. Never a bare chest or midriff, never swimwear, never loose everyday clothes that hide the build. ' +
     'Sportswear colours for this photo: a ' + cw[0] + ' top with ' + cw[1] + ' shorts, joggers or leggings, and sneakers that go with them.\n' +
     bodyHeadLine(look) + '\n' +
@@ -512,12 +512,12 @@ async function bodyCardRef(style) {
   } catch (e) { console.warn('[studio-create] body card read ' + (e && e.message)); } /* تعذّرت القراءة = الوصف النصّيّ */
   return null;
 }
-function bodyCardTask(style, description, variant, traits) {
+function bodyCardTask(style, description, variant, traits, look) {
   const cw = bodyColorway(variant);
   const t = traits || {};
   return 'Create ONE new photorealistic photo of the user from Photo 1 that recreates the chosen look in Photo 2: the same body build, muscularity and proportions, the same pose and stance, the same camera angle, framing, lighting, backdrop and props, and the same top and bottoms (pieces and cut) as Photo 2. The chosen look is ' + styleTextOf('body', style) + '. Exactly one person in the result.\n' +
     'Photo 2 is a reference for the body, pose, framing, setting and clothes only: the model\'s face, skin tone and hair, and anything on or around the model\'s head (a sports hijab, swim cap, goggles, ear guards or headband), are not part of the look — ignore them.\n' +
-    'From Photo 1, exactly and with full fidelity: the face and every facial feature, the skin tone (on the face and on all visible skin — neck, arms, hands and legs), facial hair and apparent age. Copy the face from the close-up when one is given. Expression: both eyes fully open, clear and looking at the camera — never closed, squinting or half-closed — with a natural, relaxed smile.\n' +
+    'From Photo 1, exactly and with full fidelity: the face and every facial feature, the skin tone (on the face and on all visible skin — neck, arms, hands and legs), ' + (look && look.beard === false ? '' : 'facial hair and ') + 'apparent age. Copy the face from the close-up when one is given. Expression: both eyes fully open, clear and looking at the camera — never closed, squinting or half-closed — with a natural, relaxed smile.\n' +
     'Clothes: the same pieces as Photo 2 recoloured — a ' + cw[0] + ' top with ' + cw[1] + ' bottoms; footwear (or bare feet) exactly as in Photo 2.' +
     (t.swimwear ? ' Photo 2 shows swimwear: dress the user instead in a fitted athletic t-shirt with the same sleeves and knee-length athletic shorts of the same cut — never swimwear.' : '') +
     ' Never a bare chest or midriff.\n' +
@@ -563,18 +563,20 @@ async function bodyReframe(o) {
   /* v-body-hair-keep: «الشعر مغطّى؟» من الكشف (o.covered — قائمته صريحة: حجاب، شيلة، غترة، طاقيّة) أوّلًا، ثمّ من فحص الجنس؛ فحص الجنس
      لا يجيب عن بعض الصور (صورة المالك: `photo ?[no answer]` مرّتين) فكان السطر العامّ يُضيف حجابًا */
   const hair = typeof o.covered === 'boolean' ? o.covered : null;
-  const look = Object.assign({}, cl.look, { covered: hair !== null ? hair : cl.look.covered });
+  /* v-body-beard: «لحية؟» من الكشف وحده (فحص الجنس لا يسألها) — false = لا «facial hair» في أمر الرسم ولا في أمر القفل (كان يضع لحية على وجه امرأة) */
+  const beard = typeof o.beard === 'boolean' ? o.beard : null;
+  const look = Object.assign({}, cl.look, { covered: hair !== null ? hair : cl.look.covered, beard });
   const traits = bodyCardTraits(o.style);
   const cardG = bodyCardGender(o.style);
   const useCard = !!(card && look.g && look.g === cardG && !traits.profile && (!traits.hijab || look.covered === true));
   const face = crops[0] ? (crops[0].upright ? 'face upright ' + crops[0].roll + '°' : 'face crop') : 'no face crop';
-  console.log('[studio-create] body reframe ' + o.style + ': ' + (useCard ? 'card' : 'text') + ' (card ' + (card ? 'cached' : 'missing') + ', photo ' + (cl.look.g || '?' + (cl.look.why ? '[' + cl.look.why + ']' : '')) + (cl.look.covered ? ' covered' : (cl.look.covered === false ? ' uncovered' : '')) + ', hair ' + (hair === true ? 'covered' : (hair === false ? 'uncovered' : '?')) + ', card model ' + cardG + (traits.profile ? ', profile' : '') + (traits.hijab ? ', hijab card' : '') + ', ' + face + ')');
+  console.log('[studio-create] body reframe ' + o.style + ': ' + (useCard ? 'card' : 'text') + ' (card ' + (card ? 'cached' : 'missing') + ', photo ' + (cl.look.g || '?' + (cl.look.why ? '[' + cl.look.why + ']' : '')) + (cl.look.covered ? ' covered' : (cl.look.covered === false ? ' uncovered' : '')) + ', hair ' + (hair === true ? 'covered' : (hair === false ? 'uncovered' : '?')) + ', beard ' + (beard === true ? 'yes' : (beard === false ? 'no' : '?')) + ', card model ' + cardG + (traits.profile ? ', profile' : '') + (traits.hijab ? ', hijab card' : '') + ', ' + face + ')');
   const textTask = bodyReframeTask(o.style, o.description, o.variant, look);
   const textParts = () => bodyReframeParts(photos[0], crops, textTask);
   /* v-body-bare-head: الوجه وحده (faceOnly) — الغترة أُزيلت عمدًا فلا يُنقل الرأس بغطائه. v-body-hair-keep: شعر مكشوف بشهادة الكشف = الرأس كلّه
      بشعره من صورته (أمر الـLoRA الرسميّ ولصق القصّة كلّها كالترندات v-trend-hair-lock) — غرّتها وتسريحتها جزء من شكلها؛ مغطّى أو غير معروف = الوجه وحده */
-  const lockOf = (img) => lockMergeFaces({ b64: img.b64, mime: img.mime }, { photos, crops, counts: [1], userTask: '', apiKey: o.apiKey, username: o.username, t0: o.t0, gate: 'BODY_FACE_SWAP', faceOnly: hair !== false });
-  let out = await geminiImage(o.apiKey, useCard ? bodyReframeParts(photos[0], crops, bodyCardTask(o.style, o.description, o.variant, traits), card) : textParts(), 'body', '2:3');
+  const lockOf = (img) => lockMergeFaces({ b64: img.b64, mime: img.mime }, { photos, crops, counts: [1], userTask: '', apiKey: o.apiKey, username: o.username, t0: o.t0, gate: 'BODY_FACE_SWAP', faceOnly: hair !== false, beard });
+  let out = await geminiImage(o.apiKey, useCard ? bodyReframeParts(photos[0], crops, bodyCardTask(o.style, o.description, o.variant, traits, look), card) : textParts(), 'body', '2:3');
   let engine;
   let fromCard = useCard;
   if (!out.b64) {
@@ -698,7 +700,7 @@ module.exports = async (req, res) => {
        الوجه (البوّابة، المفتاح، السقف، لبس الربط) ففحص هويّة مقابل الصورة قبل الخصم — وجه غريب = ٤٢٢ كحارس التعديل */
     const closeUp = (feature === 'body' && bodyReframeOn()) ? await bodyCloseUp(apiKey, imageBase64) : null;
     if (closeUp) {
-      const rb = await bodyReframe({ apiKey, imageBase64, mimeType, style, description, variant: Number(variant), faces: closeUp.faces, crop: closeUp.crop, covered: closeUp.covered, username: quota.username, t0: Date.now() });
+      const rb = await bodyReframe({ apiKey, imageBase64, mimeType, style, description, variant: Number(variant), faces: closeUp.faces, crop: closeUp.crop, covered: closeUp.covered, beard: closeUp.beard, username: quota.username, t0: Date.now() });
       if (!rb.b64) { res.status(rb.status).json({ error: rb.error }); return; }
       if (!rb.swapped) {
         const idg = await verifyLocalizedImageEdit({
