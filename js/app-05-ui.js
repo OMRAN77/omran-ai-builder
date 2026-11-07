@@ -64,7 +64,10 @@ function omranDesktopApp(){
     if(omranMobileUA() || omranNativeBridge('omranShare') || omranHwWebView()) return false;
     const ua = navigator.userAgent || '';
     if(/Android|\bwv\b/i.test(ua) || window.OmranAndroidShare || (window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform())))) return false;
-    return omranLikelyApp() && /Windows NT|Macintosh|CrOS|X11|Linux x86_64/i.test(ua);
+    /* standalone نفسه لا omranLikelyApp: v-desk-pwa-save (main) جعل omranLikelyApp لا يعدّ standalone إلّا على الهاتف، فكان التطبيق المثبّت
+       على الحاسوب يخرج من هنا «لا» ودفع ويندوز الضيّق (mobile-ui) يرجع للوحة النظام؛ وأعلام المتجر/TWA تبقى «تطبيقًا» على أيّ جهاز (قراره) */
+    const standalone = !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    return standalone && /Windows NT|Macintosh|CrOS|X11|Linux x86_64/i.test(ua);
   }catch(e){ __swallow(e, 'share:desktop-app'); return false; }
 }
 async function omranBlobToServerLink(blob, filename){

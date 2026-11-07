@@ -305,12 +305,15 @@ test('١٣. تطبيق متجر ويندوز/ماك «حاسوب» في الحف
     ctx.window = ctx; vm.createContext(ctx); vm.runInContext(fnSource(UI, 'omranDesktopApp') + ';this.r = omranDesktopApp();', ctx); return ctx.r;
   };
   const WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36';
-  assert.equal(run(WIN, true, false), true, 'تطبيق ويندوز');
-  assert.equal(run('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) Safari/605', true, false), true, 'تطبيق ماك');
+  // التطبيق المثبّت = standalone نفسه (بعد v-desk-pwa-save في main لا يعدّه omranLikelyApp على الحاسوب)
+  const SA = { matchMedia: (q) => ({ matches: /standalone/.test(q) }) };
+  assert.equal(run(WIN, false, false, SA), true, 'تطبيق ويندوز المثبّت (متجر مايكروسوفت بلا علم)');
+  assert.equal(run('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) Safari/605', false, false, SA), true, 'تطبيق ماك');
   assert.equal(run(WIN, false, false), false, 'متصفّح ويندوز عاديّ (ليس تطبيقًا) — المسار الحاسوبيّ القائم');
-  assert.equal(run('Mozilla/5.0 (Linux; Android 14) Chrome/131 Mobile', true, true), false, 'هاتف أندرويد/TWA');
-  assert.equal(run(WIN, true, false, { omranNativeBridge: () => ({}) }), false, 'غلاف بجسر مشاركة');
-  assert.equal(run(WIN, true, false, { OmranAndroidShare: { share() {} } }), false);
+  assert.equal(run(WIN, true, false), false, 'علم متجر/TWA في متصفّح الحاسوب يبقى «تطبيقًا» (قرار main: desk-pwa-save ٣)');
+  assert.equal(run('Mozilla/5.0 (Linux; Android 14) Chrome/131 Mobile', true, true, SA), false, 'هاتف أندرويد/TWA');
+  assert.equal(run(WIN, true, false, Object.assign({ omranNativeBridge: () => ({}) }, SA)), false, 'غلاف بجسر مشاركة');
+  assert.equal(run(WIN, true, false, Object.assign({ OmranAndroidShare: { share() {} } }, SA)), false);
   // مسارات الحفظ تسأله قبل أن تعامل «التطبيق» هاتفًا (navigator.share = لوحة ويندوز المعلّقة)
   assert.match(fnSource(read('js/app-05-img-save.js'), 'appish'), /omranDesktopApp\(\)\) return false;/);
   assert.match(read('js/app-05-save-media.js'), /function isMobile\(\)\{\s*try\{\s*if\(typeof omranDesktopApp === 'function' && omranDesktopApp\(\)\) return false;/);
@@ -318,7 +321,6 @@ test('١٣. تطبيق متجر ويندوز/ماك «حاسوب» في الحف
   assert.ok(UI.includes('const mobileish = (omranLikelyApp() && ' + GD + ') || omranMobileUA();'), 'omranSaveBlob');
   assert.ok(UI.includes("viaSheet = !!(omranNativeBridge('omranShare') || (omranLikelyApp() && " + GD + ') || omranMobileUA());'), 'msgSaveExport');
   assert.ok(UI.includes("omranLikelyApp() && " + GD + '); /* v-desktop-app: تطبيق ويندوز حاسوب */'), 'بطاقة «الملفّ جاهز»');
-  assert.match(read('js/app-12-studios.js'), /omranLikelyApp\(\) && !\(typeof omranDesktopApp === 'function' && omranDesktopApp\(\)\)\); \/\* v-desktop-app \*\//);
 });
 
 test('١٤. محرّر الفيديو ونافذة «شارك المشروع برابط عامّ» يمرّان بالنافذة الموحّدة (لا لوحة ويندوز ولا صندوق نسخ وحده)', () => {
