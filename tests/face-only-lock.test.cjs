@@ -52,11 +52,11 @@ function kv() {
   const m = new Map();
   return { kvIncrBy: async (k, n) => { const v = Number(m.get(k) || 0) + n; m.set(k, v); return v; }, kvDecrBy: async (k, n) => { const v = Number(m.get(k) || 0) - n; m.set(k, v); return v; }, kvExpire: async () => {}, kvGetRaw: async () => '0' };
 }
-async function run(faceOnly) {
+async function run(faceOnly, beard) {
   process.env.FAL_KEY = 'fal-test-key';
   try {
     const s = stub();
-    const r = await FS.lockFaces({ b64: FRAME, mime: 'image/png' }, [{ data: REF, mime: 'image/jpeg', face: true }], { apiKey: 'gm', enabled: true, until: Date.now() + 120000, fetchImpl: s.f, kv: kv(), faceOnly });
+    const r = await FS.lockFaces({ b64: FRAME, mime: 'image/png' }, [{ data: REF, mime: 'image/jpeg', face: true }], { apiKey: 'gm', enabled: true, until: Date.now() + 120000, fetchImpl: s.f, kv: kv(), faceOnly, beard });
     return { r, calls: s.calls, img: r.swapped ? decode(r.b64) : null };
   } finally { delete process.env.FAL_KEY; }
 }
@@ -69,6 +69,7 @@ test('١. faceOnly: أمر التبديل يطلب الوجه وحده بلا غ
   assert.equal(calls.fal.length, 1);
   assert.ok(calls.fal[0].prompt.endsWith(FS.FACE_ONLY), 'نصّ الوجه وحده');
   assert.match(FS.FACE_ONLY, /never copy any hair, ghutra, scarf, agal, cap or other headwear from Picture 2/);
+  assert.match(FS.FACE_ONLY, /Both eyes stay fully open and clear, looking at the camera as in Picture 1 — never closed, squinting or half-closed/, 'v-body-eyes-colors');
   assert.ok(near(px(img, cx, Math.round(fy0 + 0.55 * fh)), [230, 0, 0], 40), 'وسط الوجه مبدَّل');
   assert.ok(near(px(img, cx, Math.round(fy0 + 0.04 * fh)), GRAY, 6), 'خطّ الشعر وطرف الغطاء من الإطار');
   assert.ok(near(px(img, cx, Math.round(fy0 - 0.5 * fh)), GRAY, 6), 'الرأس فوق الوجه من الإطار');
@@ -85,8 +86,21 @@ test('٢. بلا faceOnly (الترندات والدمج): القصّة كلّه
 
 test('٣. رسم الجسم كاملًا يطلب faceOnly، والدمج لا يطلبه (الغترة فيه تبقى كما صُوّرت)', () => {
   const src = require('node:fs').readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
-  assert.match(src, /gate: 'BODY_FACE_SWAP', faceOnly: true/);
-  assert.match(src, /enabled: true, only, until: m\.t0 \+ 280000, faceOnly: !!m\.faceOnly \}/);
+  /* v-body-hair-keep: الوجه وحده ما لم يشهد الكشف أنّ الشعر ظاهر (مغطّى أو غير معروف = الوجه وحده فلا تعود الغترة؛ ظاهر = الرأس كلّه بشعره) —
+     السلوك نفسه في body-reframe ‏٢٢–٢٤ */
+  assert.match(src, /gate: 'BODY_FACE_SWAP', faceOnly: hair !== false/);
+  assert.match(src, /enabled: true, only, until: m\.t0 \+ 280000, faceOnly: !!m\.faceOnly, beard: m\.beard \}/);
   const mergeCall = src.slice(src.indexOf("const lockOpts = { photos, crops, counts, userTask"), src.indexOf("const lockOpts = { photos, crops, counts, userTask") + 200);
   assert.ok(mergeCall && !/faceOnly/.test(mergeCall), 'الدمج بلا faceOnly');
+});
+
+test('٤. v-body-beard: بلا لحية (beard:false) أمر الوجه وحده بلا «facial hair» — كان يضع لحية وشاربًا على وجه امرأة؛ اللحية أو غير المعروف كما كان', async () => {
+  assert.ok(!/facial hair/.test(FS.FACE_ONLY_SMOOTH), 'بلا شعر الوجه');
+  assert.match(FS.FACE_ONLY, /cheeks, jaw, facial hair and skin/);
+  assert.equal(FS.FACE_ONLY_SMOOTH, FS.FACE_ONLY.replace('cheeks, jaw, facial hair and skin', 'cheeks, jaw and skin'), 'الباقي حرفيًّا');
+  let o = await run(true, false);
+  assert.ok(o.calls.fal[0].prompt.endsWith(FS.FACE_ONLY_SMOOTH));
+  for (const b of [true, undefined, null]) { o = await run(true, b); assert.ok(o.calls.fal[0].prompt.endsWith(FS.FACE_ONLY), String(b)); }
+  o = await run(false, false);
+  assert.ok(!o.calls.fal[0].prompt.includes('Picture 2 — eyes'), 'الرأس كلّه: الأمر الرسميّ وحده');
 });

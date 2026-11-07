@@ -2850,9 +2850,45 @@
   if(fileBtnA) fileBtnA.onclick = () => fileInputA.click();
   if(fileBtnB) fileBtnB.onclick = () => fileInputB.click();
 
+  /* v-studio-bands (لقطة المالك ٧ نوفمبر «الصوره مش كامله»: سيلفي مصدَّر من CapCut — صورة طوليّة في وسط مربّع، وجانباه نسخة
+     مكبّرة مغبّشة منها؛ التعديل يحفظ ما في الصورة فخرج الناتج بحافّتين مغبّشتين): قبل القصّ إلى النسبة يُكشف «الحشو» على جانبين
+     متقابلين ويُقصّ إلى الصورة الحقيقيّة. لكلّ عمود (أو صفّ) كثافة تفاصيله: نسبة بكسلاته التي يتغيّر عندها اللون عبر المحور (فرقا الجارين
+     > ١٠)؛ الحشو المغبّش أو الأسود ≈ صفر والصورة عالية. العلامة كلّها معًا من كلّ طرف (بعد تخطّي ٣٪ أطراف الحفظ): حشو كثافته ≤ ١٥٪ من
+     كثافة الوسط ثمّ قفزة إلى ≥ ٤٥٪ عند خطّ واحد، و«درجة» إضاءة عبر هذا الخطّ في نصف الخطوط على الأقلّ (حافّة الصورة المستقيمة: الحشو
+     المكبَّر عندها من موضع آخر فيختلف لونه)، والحافّتان ≥ ٦٪ ومتناظرتان (فرق ≤ ٦٪) والوسط ≥ ٣٠٪. شخص كامل على خلفيّة ناعمة (صور
+     الجسم الأربع في تجربة ٧ نوفمبر) يجتاز القفزة لكنّ «الدرجة» عند حدّه في ٢١–٢٦٪ من الخطوط وحدها (الحشو ٧٢–٩٧٪) = لا قصّ؛ وتعذّر
+     الكشف أو حشو خفيف التغبيش = الصورة كما هي. gray: إضاءة w×h (٠–٢٥٥) ← { x0, y0, x1, y1 } نسبيّة، أو null */
+  function studioBandBox(gray, w, h){
+    const side = (cols) => {
+      const n = cols ? w : h, m = cols ? h : w;
+      const px = cols ? (i, j) => gray[j * w + i] : (i, j) => gray[i * w + j];
+      const rho = new Float64Array(n);
+      for (let i = 0; i < n; i++) { let c = 0; for (let j = 1; j + 1 < m; j++) { const v = px(i, j); if (Math.abs(px(i, j + 1) - v) + Math.abs(v - px(i, j - 1)) > 10) c++; } rho[i] = c / Math.max(1, m - 2); }
+      const mid = Array.from(rho.slice(Math.floor(n * 0.35), Math.ceil(n * 0.65))).sort((p, q) => p - q);
+      const med = mid[Math.floor(mid.length / 2)] || 0;
+      if (med < 0.08) return null;
+      const skip = Math.max(1, Math.round(n * 0.03));
+      const edgeFrom = (fromEnd) => {
+        const at = (k) => rho[fromEnd ? n - 1 - k : k], pos = (k) => fromEnd ? n - 1 - k : k;
+        let k = skip; while (k < n && at(k) < 0.45 * med) k++;
+        if (k >= n || at(Math.max(skip, k - 3)) > 0.15 * med) return null;
+        for (let q = skip; q < k - 1; q++) if (at(q) > 0.15 * med) return null;
+        let step = 0;
+        for (let j = 1; j + 1 < m; j++) if (Math.abs(px(pos(Math.max(skip, k - 3)), j) - px(pos(Math.min(n - 1, k + 1)), j)) > 12) step++;
+        return step / Math.max(1, m - 2) >= 0.5 ? k : null;
+      };
+      const a = edgeFrom(false), b = edgeFrom(true);
+      if (a == null || b == null || a < n * 0.06 || b < n * 0.06 || Math.abs(a - b) > n * 0.06 || n - a - b < n * 0.3) return null;
+      return [a / n, (n - b) / n];
+    };
+    const cx = side(true), cy = side(false);
+    if (!cx && !cy) return null;
+    return { x0: cx ? cx[0] : 0, x1: cx ? cx[1] : 1, y0: cy ? cy[0] : 0, y1: cy ? cy[1] : 1 };
+  }
   /* v-face-lock: الصورة تُعاد ترميزها في المتصفح (يثبّت اتجاه EXIF ويحدّ الحجم بـ2048)
-     حتى تتطابق إحداثيات قناع الوجه في الخادم مع البكسلات الفعلية. */
-  function normalizeStudioPhoto(file){
+     حتى تتطابق إحداثيات قناع الوجه في الخادم مع البكسلات الفعلية.
+     v-studio-bands: opts.trimBands (رفع المستخدم وحده — لا خطوات السلسلة) يقصّ حشو الحافّتين قبل النسبة */
+  function normalizeStudioPhoto(file, opts){
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -2862,15 +2898,27 @@
           const img = new Image();
           img.onload = () => {
             try{
+              const iw0 = img.naturalWidth || img.width, ih0 = img.naturalHeight || img.height;
+              let bx = 0, by = 0, iw = iw0, ih = ih0;
+              if (opts && opts.trimBands) {
+                try{
+                  const k = 240 / Math.max(iw0, ih0), gw = Math.max(1, Math.round(iw0 * k)), gh = Math.max(1, Math.round(ih0 * k));
+                  const gc = document.createElement('canvas'); gc.width = gw; gc.height = gh;
+                  const gx = gc.getContext('2d'); gx.drawImage(img, 0, 0, gw, gh);
+                  const d = gx.getImageData(0, 0, gw, gh).data, gray = new Float32Array(gw * gh);
+                  for (let i = 0; i < gray.length; i++) gray[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+                  const box = studioBandBox(gray, gw, gh);
+                  if (box) { bx = Math.round(box.x0 * iw0); by = Math.round(box.y0 * ih0); iw = Math.round((box.x1 - box.x0) * iw0); ih = Math.round((box.y1 - box.y0) * ih0); }
+                }catch(e){ __swallow(e, 'studio:bands'); } /* الكشف تعذّر = الصورة كما هي */
+              }
               /* v-face-composite: قصّ مركزي إلى أقرب نسبة يدعمها محرّك القناع (2:3، 3:2، 1:1)
                  وبأبعاد ناتجه نفسها — فالناتج يطابق الأصل بكسلًا ببكسل ويُلصق الوجه بلا انزياح */
-              const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
               const ar = iw / ih;
               const target = (ar < 0.82) ? [1024, 1536] : (ar > 1.22 ? [1536, 1024] : [1024, 1024]);
               const tw = target[0], th = target[1], tr = tw / th;
               let sw = iw, sh = ih;
               if (ar > tr) sw = Math.round(ih * tr); else sh = Math.round(iw / tr);
-              const sx = Math.round((iw - sw) / 2), sy = Math.round((ih - sh) / 2);
+              const sx = bx + Math.round((iw - sw) / 2), sy = by + Math.round((ih - sh) / 2);
               const c = document.createElement('canvas');
               c.width = tw; c.height = th;
               c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
@@ -2910,7 +2958,7 @@
   }
   function studioSetPhoto(which, file){
     if(!file || !/^image\//.test(file.type || 'image/')) return;
-    normalizeStudioPhoto(file).then((r) => {
+    normalizeStudioPhoto(file, { trimBands: true }).then((r) => { /* v-studio-bands: رفع المستخدم وحده */
       if(!r) return;
       const pv = which === 'A' ? previewA : previewB;
       if(which === 'A'){ selectedMimeA = r.mime; selectedBase64A = r.b64; if(fileNameA) fileNameA.textContent = file.name || ''; }

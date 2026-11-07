@@ -1658,6 +1658,8 @@ async function isBanned(username) {
 }
 module.exports.isBanned = isBanned;
 module.exports.emailVerifiedFor = emailVerifiedFor; // v-vip-verified: vip.js يحوّل الإيميل إلى حساب أثبته وحده
+module.exports.resolveLoginUser = resolveLoginUser; // v-owner-reset-find: رابط استرجاع المالك بالإيميل
+module.exports.googleAccountFor = googleAccountFor; // v-owner-reset-find
 module.exports.emailProven = emailProven; // v-unverified-email: والكولباك (الربط التلقائيّ بالبريد)
 module.exports.settleUnverifiedEmail = settleUnverifiedEmail;
 module.exports.sweepUnverifiedEmails = sweepUnverifiedEmails; // email-sweep.js
