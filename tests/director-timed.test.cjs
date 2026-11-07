@@ -33,8 +33,9 @@ test('١. التقسيم: كلّ مقطع مشاهد ١٠ ث وآخرها ٥ إ�
   const { w } = engine();
   const p = w.__vmkTimelinePlan([{ d: 30, n: 'السوق' }, { d: 15, n: 'المحلّ' }, { d: 5, n: 'القهوة' }, { d: 99, n: 'كثير' }, { d: 1, n: 'قليل' }, { d: 12, n: 'تقريب' }]);
   assert.deepEqual(J(p.map((x) => x.d)), [10, 10, 10, 10, 5, 5, 10, 10, 10, 5, 10]);
-  assert.equal(p[0].prompt, 'السوق'); assert.equal(p[1].prompt, 'السوق (استكمال نفس المشهد، اللحظة التالية)');
-  assert.equal(p[3].prompt, 'المحلّ'); assert.equal(p[5].prompt, 'القهوة');
+  const S = p[0].prompt.slice('السوق'.length); /* v-director-steady: أمر الكاميرا الثابتة في آخر كلّ مشهد (اختبار ٦) */
+  assert.equal(p[0].prompt, 'السوق' + S); assert.equal(p[1].prompt, 'السوق (استكمال نفس المشهد، اللحظة التالية)' + S);
+  assert.equal(p[3].prompt, 'المحلّ' + S); assert.equal(p[5].prompt, 'القهوة' + S);
   assert.equal(p.slice(6, 9).length, 3, '٩٩ ث ← ٣٠ (٣ مشاهد)'); assert.equal(p[9].d, 5, '١ ث ← ٥'); assert.equal(p[10].d, 10, '١٢ ث ← ١٠');
   assert.equal(w.__vmkTimelinePlan([]).length, 0);
 });
@@ -121,4 +122,22 @@ test('٥. النصوص الثلاثة والعشرون بالـ١٤ لغة بل�
   const h = read('index.html');
   assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 464 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 694);
   assert.ok(read('js/app.bundle.js').includes('window.__vmkTimelineRun = async function(segs, hooks){'), 'شغّل npm run bundle');
+});
+
+test('٦. v-director-steady: كلّ مشهد من «بتوقيتي» يُختم بأمر كاميرا ناعمة ثابتة (لا محمولة ولا ركض)، ولا يقصّه حدّ الوصف عند الخادم', () => {
+  // المالك ٧ نوفمبر: «عند توليد الفيديو فيه حركه كانه واحد ماسك الكاميره ويركض ويصور» — الخادم يختم بـ«real camera recording» بلا ثبات
+  const { w } = engine();
+  const long = 'م'.repeat(500); /* أطول ملاحظة يقبلها المحرّر (ta.maxLength=500) */
+  const p = w.__vmkTimelinePlan([{ d: 20, n: long }, { d: 5, n: 'قصير' }]);
+  for (const x of p) {
+    assert.match(x.prompt, /stabilized/); assert.match(x.prompt, /no handheld shake/); assert.match(x.prompt, /no shaky or running camera/);
+    assert.ok(x.prompt.indexOf('Camera:') > x.prompt.indexOf('م') || x.prompt.startsWith('قصير'), 'الأمر بعد ملاحظة المالك لا قبلها');
+  }
+  // الخادم يقصّ وصف المستخدم إلى 1000 ناقص لاحقته الواقعيّة: أطول مشهد (ملاحظة ٥٠٠ + استكمال + الأمر) يبقى كاملًا
+  const vc = read('api/_lib/video-create.js');
+  const MAX = Number((/const RUNWAY_PROMPT_MAX = (\d+);/.exec(vc) || [])[1]);
+  const REAL = (/const RW_STYLE_REAL = '([^']*)';/.exec(vc) || [])[1];
+  assert.ok(MAX > 0 && REAL, 'حدّ الوصف ولاحقته من الخادم');
+  assert.ok(p[1].prompt.length <= MAX - REAL.length, 'المشهد الأطول ' + p[1].prompt.length + ' > ' + (MAX - REAL.length));
+  assert.match(vjs, /ta\.maxLength=500/, 'حدّ الملاحظة في المحرّر كما افترضه الاختبار');
 });
