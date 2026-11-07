@@ -29,7 +29,9 @@ const PROMPT = 'head_swap: start with Picture 1 as the base image, keeping its l
 const HAT_KEEP = ' Keep the hat or cap worn on the head in Picture 1 in place, on top of the hair and headwear from Picture 2.';
 /* v-body-bare-head: الوجه وحده — رسم الجسم كاملًا يزيل الغترة عمدًا (أمر المالك «بدون أي شي فوق راسه»)، ونقل الرأس كلّه كان يعيد الغترة
    والعقال شريطًا فوق الجبين (لقطة المالك ٧ نوفمبر) */
-const FACE_ONLY = ' Keep the hair, the head and anything on or around the head in Picture 1 exactly as they are; take only the face itself from Picture 2 — eyes, eyebrows, nose, mouth, cheeks, jaw, facial hair and skin — and never copy any hair, ghutra, scarf, agal, cap or other headwear from Picture 2.';
+const FACE_ONLY = ' Keep the hair, the head and anything on or around the head in Picture 1 exactly as they are; take only the face itself from Picture 2 — eyes, eyebrows, nose, mouth, cheeks, jaw, facial hair and skin — and never copy any hair, ghutra, scarf, agal, cap or other headwear from Picture 2.'
+  /* v-body-eyes-colors: «مشكّر العيون» — ضحكة الصورة تضيّق العينين؛ عينا الوجه المنقول مفتوحتان كما في Picture 1 */
+  + ' Both eyes stay fully open and clear, looking at the camera as in Picture 1 — never closed, squinting or half-closed.';
 const OVAL_FEATHER = 0.12;
 const COST_CENTS = 5; // تقدير الوجه الواحد (Klein 9B بقصّة ≤١٫٥ ميغابكسل)
 const CAP_CENTS_DEFAULT = 300;

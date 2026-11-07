@@ -390,10 +390,24 @@ async function bodyCloseUp(apiKey, b64) {
    شوف الملابس كيف»، ثمّ «مش ضروري كاب، عادي بدون أي شي فوق راسه»): اللبس رياضيّ كبطاقات الميزة (قميص رياضيّ قصير الأكمام يُظهر البنية
    وشورت للركبة أو بنطال رياضيّ)، والرجل بلا غترة ولا عقال ولا طاقيّة — رأس مكشوف بشعر قصير مرتّب؛ المرأة بحجابها حجابًا رياضيًّا، ولا يُضاف
    غطاء رأس لمن لا يلبسه؛ والخلفيّة خلفيّة البطاقات (بنّيّة دافئة بضوء ذهبيّ). */
-function bodyReframeTask(style, description) {
+/* v-body-eyes-colors (المالك بعد v-body-bare-head: «مشكّر العيون، وثاني شي الملابس خلها في كل مرّه الوان مختلفه»): الابتسامة العريضة في
+   صورته تضيّق العينين، وتعبير الصورة كان يُنسخ كما هو — الآن عينان مفتوحتان تنظران إلى الكاميرا بابتسامة هادئة (وفي أمر قفل الوجه أيضًا)؛
+   واللبس كان رماديًّا وأسود في كلّ مرّة — ألوانه الآن من BODY_COLORWAYS برقم الشكل نفسه الذي يرسله العميل في كلّ ضغطة (variant). */
+const BODY_COLORWAYS = [
+  ['navy blue', 'black'], ['heather grey', 'charcoal'], ['olive green', 'black'], ['white', 'navy blue'], ['burgundy', 'dark grey'],
+  ['royal blue', 'black'], ['sand beige', 'olive green'], ['teal', 'charcoal'], ['black', 'grey'], ['light blue', 'navy blue'],
+  ['forest green', 'khaki'], ['mustard yellow', 'black'], ['slate blue', 'grey'], ['deep red', 'black'], ['white', 'black'], ['coral', 'navy blue'],
+];
+function bodyColorway(variant) {
+  const n = Number.isFinite(variant) ? Math.abs(Math.floor(variant)) : Math.floor(Math.random() * BODY_COLORWAYS.length);
+  return BODY_COLORWAYS[n % BODY_COLORWAYS.length];
+}
+function bodyReframeTask(style, description, variant) {
+  const cw = bodyColorway(variant);
   return 'Photo 1 shows the user as a close-up. Create a new full-body standing photo of this same person, the whole figure visible from the top of the head down to the feet, standing naturally and facing the camera, with ' + styleTextOf('body', style) + '.\n' +
-    'Keep from Photo 1, exactly and with full fidelity: their face and every facial feature, skin tone, facial hair, apparent age and expression. Copy the face from the close-up when one is given.\n' +
-    'New in this photo, and only these: the body build described above, the sportswear and the head. Dress them like a fitness reference photo: a man wears a fitted short-sleeved athletic t-shirt that clearly shows the build, knee-length athletic shorts or slim athletic joggers, and sneakers; a woman wears a modest fitted long-sleeved athletic top with a hip-length tunic over full-length leggings, and sneakers. Never a bare chest or midriff, never swimwear, never loose everyday clothes that hide the build.\n' +
+    'Keep from Photo 1, exactly and with full fidelity: their face and every facial feature, skin tone, facial hair and apparent age. Copy the face from the close-up when one is given. Expression: both eyes fully open, clear and looking straight at the camera — never closed, squinting or half-closed — with a natural, relaxed smile.\n' +
+    'New in this photo, and only these: the body build described above, the sportswear and the head. Dress them like a fitness reference photo: a man wears a fitted short-sleeved athletic t-shirt that clearly shows the build, knee-length athletic shorts or slim athletic joggers, and sneakers; a woman wears a modest fitted long-sleeved athletic top with a hip-length tunic over full-length leggings, and sneakers. Never a bare chest or midriff, never swimwear, never loose everyday clothes that hide the build. ' +
+    'Sportswear colours for this photo: a ' + cw[0] + ' top with ' + cw[1] + ' shorts, joggers or leggings, and sneakers that go with them.\n' +
     'Head: a man\'s ghutra, shemagh, agal, kufi or cap is removed — his head is bare, with short neat hair whose colour matches his beard and age, and nothing on his head. A woman\'s hijab or headscarf stays, fully covering, worn as a fitted sports hijab. Never add a head covering to anyone who wears none.\n' +
     'Dark warm brown studio backdrop with soft golden light, sharp focus on the face. No text, logos or watermarks. Output a single photorealistic image.' +
     (description ? '\nExtra request: ' + String(description).slice(0, 200) : '');
@@ -409,7 +423,7 @@ function bodyReframeParts(photo, crops, task) {
 async function bodyReframe(o) {
   const photos = [{ data: o.imageBase64, mime: o.mimeType || 'image/jpeg' }];
   const crops = await mergeIdentity.faceCrops(o.apiKey, photos, { faces: [o.faces] }); /* الكشف نفسه — بلا نداء ثانٍ */
-  const parts = bodyReframeParts(photos[0], crops, bodyReframeTask(o.style, o.description));
+  const parts = bodyReframeParts(photos[0], crops, bodyReframeTask(o.style, o.description, o.variant));
   let out = await geminiImage(o.apiKey, parts, 'body', '2:3');
   let engine;
   if (!out.b64) {
@@ -520,7 +534,7 @@ module.exports = async (req, res) => {
        الوجه (البوّابة، المفتاح، السقف، لبس الربط) ففحص هويّة مقابل الصورة قبل الخصم — وجه غريب = ٤٢٢ كحارس التعديل */
     const closeUp = (feature === 'body' && bodyReframeOn()) ? await bodyCloseUp(apiKey, imageBase64) : null;
     if (closeUp) {
-      const rb = await bodyReframe({ apiKey, imageBase64, mimeType, style, description, faces: closeUp.faces, username: quota.username, t0: Date.now() });
+      const rb = await bodyReframe({ apiKey, imageBase64, mimeType, style, description, variant: Number(variant), faces: closeUp.faces, username: quota.username, t0: Date.now() });
       if (!rb.b64) { res.status(rb.status).json({ error: rb.error }); return; }
       if (!rb.swapped) {
         const idg = await verifyLocalizedImageEdit({

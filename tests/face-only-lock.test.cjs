@@ -69,6 +69,7 @@ test('١. faceOnly: أمر التبديل يطلب الوجه وحده بلا غ
   assert.equal(calls.fal.length, 1);
   assert.ok(calls.fal[0].prompt.endsWith(FS.FACE_ONLY), 'نصّ الوجه وحده');
   assert.match(FS.FACE_ONLY, /never copy any hair, ghutra, scarf, agal, cap or other headwear from Picture 2/);
+  assert.match(FS.FACE_ONLY, /Both eyes stay fully open and clear, looking at the camera as in Picture 1 — never closed, squinting or half-closed/, 'v-body-eyes-colors');
   assert.ok(near(px(img, cx, Math.round(fy0 + 0.55 * fh)), [230, 0, 0], 40), 'وسط الوجه مبدَّل');
   assert.ok(near(px(img, cx, Math.round(fy0 + 0.04 * fh)), GRAY, 6), 'خطّ الشعر وطرف الغطاء من الإطار');
   assert.ok(near(px(img, cx, Math.round(fy0 - 0.5 * fh)), GRAY, 6), 'الرأس فوق الوجه من الإطار');
