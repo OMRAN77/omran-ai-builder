@@ -27,6 +27,15 @@ const PROMPT = 'head_swap: start with Picture 1 as the base image, keeping its l
 /* v-trend-hair-lock: قالب يضع قبّعة المشهد على الرأس (التخرّج، فيلم الثمانينات) — الأمر الرسميّ يمحو رأس Picture 1 كلّه فتسقط القبّعة؛ جملة
    قصيرة على الرأس وحده (يسمح بها التوثيق) تُبقيها. غيرها الأمر الرسميّ حرفيًّا. */
 const HAT_KEEP = ' Keep the hat or cap worn on the head in Picture 1 in place, on top of the hair and headwear from Picture 2.';
+/* v-body-bare-head: الوجه وحده — رسم الجسم كاملًا يزيل الغترة عمدًا (أمر المالك «بدون أي شي فوق راسه»)، ونقل الرأس كلّه كان يعيد الغترة
+   والعقال شريطًا فوق الجبين (لقطة المالك ٧ نوفمبر) */
+const FACE_ONLY = ' Keep the hair, the head and anything on or around the head in Picture 1 exactly as they are; take only the face itself from Picture 2 — eyes, eyebrows, nose, mouth, cheeks, jaw, facial hair and skin — and never copy any hair, ghutra, scarf, agal, cap or other headwear from Picture 2.'
+  /* v-body-eyes-colors: «مشكّر العيون» — ضحكة الصورة تضيّق العينين؛ عينا الوجه المنقول مفتوحتان كما في Picture 1 */
+  + ' Both eyes stay fully open and clear, looking at the camera as in Picture 1 — never closed, squinting or half-closed.';
+/* v-body-beard (تجربة ٧ نوفمبر: امرأة بلا لحية ← لحية وشارب في الناتج): «facial hair» في قائمة ما يُنقل من Picture 2 يُقرأ عند الـLoRA «ضع
+   شعر وجه». لمن قال الكشف إنّه بلا لحية (beard:false) القائمة نفسها بلا شعر الوجه؛ لصاحب اللحية أو غير المعروف FACE_ONLY كما هو */
+const FACE_ONLY_SMOOTH = FACE_ONLY.replace('mouth, cheeks, jaw, facial hair and skin', 'mouth, cheeks, jaw and skin');
+const OVAL_FEATHER = 0.12;
 const COST_CENTS = 5; // تقدير الوجه الواحد (Klein 9B بقصّة ≤١٫٥ ميغابكسل)
 const CAP_CENTS_DEFAULT = 300;
 const spentKey = (day) => 'faceswap:spent:' + day;
@@ -260,7 +269,7 @@ async function swapOne(job, o, key) {
   const W = Math.ceil(job.crop.w / 16) * 16, H = Math.ceil(job.crop.h / 16) * 16;
   const lora = loraPath();
   const body = {
-    prompt: o.hat ? PROMPT + HAT_KEEP : PROMPT,
+    prompt: o.faceOnly ? PROMPT + (o.beard === false ? FACE_ONLY_SMOOTH : FACE_ONLY) : (o.hat ? PROMPT + HAT_KEEP : PROMPT),
     image_urls: ['data:image/jpeg;base64,' + toB64(job.crop, 95), 'data:' + job.ref.mime + ';base64,' + job.ref.b64],
     image_size: { width: W, height: H }, output_format: 'png', sync_mode: true, enable_safety_checker: true, num_images: 1,
   };
@@ -289,7 +298,34 @@ async function swapOne(job, o, key) {
 /* v-trend-hair-lock: لصق القصّة كلّها (الرأس بشعره وغطائه من الصورة الحقيقيّة) فوق مستطيلها، بحافة ناعمة ~١٠٪ من ضلعها الأقصر تخبو
    نحو الإطار فلا خطّ — وحافة القصّة على حدّ الصورة نفسها لا تُنعَّم (لا إطار خلفها يُمزج). خارج المستطيل لا يُمسّ بكسل، والمستطيل
    نفسه (cropRect) يقف دون كلّ وجه آخر. كان بيضاويّ الوجه وحده فيبقى الشعر الذي اخترعه نموذج الإطار. */
+/* v-body-bare-head: بيضاويّ الوجه وحده (faceOnly) — يبدأ تحت خطّ الشعر بـ١٢٪ من الوجه (لا يحمل طرف غطاء رأس من القصّة) ويمتدّ ١٨٪ تحت
+   الذقن (اللحية) وأعرض ٦٪، بحافة ناعمة؛ الشعر والرأس وما حولهما من الإطار نفسه */
+function pasteFace(out, W, job, sw) {
+  const { rect, box } = job;
+  const fx0 = box[0] * W, fx1 = box[2] * W, fy0 = box[1] * job.H, fy1 = box[3] * job.H;
+  const fw = fx1 - fx0, fh = fy1 - fy0;
+  const ex0 = fx0 - 0.06 * fw, ex1 = fx1 + 0.06 * fw, ey0 = fy0 + 0.12 * fh, ey1 = fy1 + 0.18 * fh;
+  const cx = (ex0 + ex1) / 2, cy = (ey0 + ey1) / 2, rx = (ex1 - ex0) / 2, ry = (ey1 - ey0) / 2;
+  const cw = rect.x1 - rect.x0, ch = rect.y1 - rect.y0;
+  const edge = Math.max(4, Math.round(Math.min(cw, ch) * 0.04));
+  const xa = Math.max(rect.x0, Math.floor(ex0)), xb = Math.min(rect.x1, Math.ceil(ex1));
+  const ya = Math.max(rect.y0, Math.floor(ey0)), yb = Math.min(rect.y1, Math.ceil(ey1));
+  for (let y = ya; y < yb; y++) {
+    for (let x = xa; x < xb; x++) {
+      const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      if (r >= 1) continue;
+      let a = Math.min(1, (1 - r) / OVAL_FEATHER);
+      const de = Math.min(x - rect.x0, rect.x1 - 1 - x, y - rect.y0, rect.y1 - 1 - y);
+      a *= Math.max(0, Math.min(1, de / edge));
+      if (a <= 0) continue;
+      const o = (y * W + x) * 4, s = ((y - rect.y0) * cw + (x - rect.x0)) * 4;
+      for (let c = 0; c < 3; c++) out[o + c] = Math.round(sw.data[s + c] * a + out[o + c] * (1 - a));
+    }
+  }
+}
 function paste(out, W, job, sw) {
+  if (job.faceOnly) { pasteFace(out, W, job, sw); return; }
   const { rect, box } = job;
   const cw = rect.x1 - rect.x0, ch = rect.y1 - rect.y0;
   const edge = Math.max(4, Math.round(Math.min(cw, ch) * FEATHER));
@@ -311,7 +347,8 @@ function paste(out, W, job, sw) {
 /**
  * frame: { b64, mime } الإطار المبنيّ؛ refs: [{ data, mime, face }] بترتيب الأشخاص (face = لقطة وجه جاهزة).
  * o: { apiKey (Gemini للربط)، until (آخر لحظة لها، ms)، owner، enabled (v-merge-face-lock: true = بوّابة المتّصل بدل TREND_FACE_SWAP)، only ([k…] المراجع التي تُبدَّل؛ الافتراضيّ كلّها)، multi، fetchImpl، kv،
- *      alone (v-trend-hair-lock: المشهد فيه صاحب الصورة وحده)، hat (v-trend-hair-lock: قبّعة المشهد تبقى) }.
+ *      alone (v-trend-hair-lock: المشهد فيه صاحب الصورة وحده)، hat (v-trend-hair-lock: قبّعة المشهد تبقى)،
+ *      faceOnly (v-body-bare-head: الوجه وحده بيضاويًّا — الشعر والرأس وما عليه من الإطار) }.
  * يرجع { b64, mime, swapped, reason } — swapped عدد الوجوه المبدَّلة؛ صفر = الإطار نفسه بايتًا ببايت.
  */
 async function lockFaces(frame, refs, opts) {
@@ -364,7 +401,7 @@ async function lockFaces(frame, refs, opts) {
         const rr = mi.headRect(ref.img, f.refBox, null);
         if (rr && rr.fh < ref.img.h * 0.45 && rr.x1 - rr.x0 >= 48 && rr.y1 - rr.y0 >= 48) ref = { b64: toB64(mi.shrinkTo(cut(ref.img, rr), 768), 92), mime: 'image/jpeg' };
       }
-      jobs.push({ rect: c.rect, crop: cut(img, c.rect), box: f.box, H: img.h, ref });
+      jobs.push({ rect: c.rect, crop: cut(img, c.rect), box: f.box, H: img.h, ref, faceOnly: !!o.faceOnly });
     }
     if (!jobs.length) return same(skip || 'no-faces');
     if (o.until - Date.now() < 5000) return same('budget');
@@ -409,4 +446,4 @@ async function lockFaces(frame, refs, opts) {
   }
 }
 
-module.exports = { lockFaces, enabledFor, mode, gateWhy, capCents, modelId, loraPath, PROMPT, HAT_KEEP, COST_CENTS, CAP_CENTS_DEFAULT, LORA_DEFAULT, MODEL_LORA, MODEL_PLAIN, spentKey, MIN_LEFT_MS };
+module.exports = { lockFaces, enabledFor, mode, gateWhy, capCents, modelId, loraPath, PROMPT, HAT_KEEP, FACE_ONLY, FACE_ONLY_SMOOTH, COST_CENTS, CAP_CENTS_DEFAULT, LORA_DEFAULT, MODEL_LORA, MODEL_PLAIN, spentKey, MIN_LEFT_MS };

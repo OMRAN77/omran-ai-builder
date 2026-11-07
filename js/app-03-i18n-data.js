@@ -1343,8 +1343,6 @@ const I18N = {
     stocksPfTitle: "محفظتي التعليمية",
     /* v-owner-i18n (a9): صفحة المالك ولوحاتها (الخزنة، الإحصاءات، المستخدمون، VIP، فحص النظام)، كبسولة التنبيه، سطر النسخة، عنوان البلاغات — كانت عربيّة ثابتة */
     ownerVaultTitle: "🔐 خزنة الأسرار",
-    ownerVaultDesc: "الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع.",
-    ownerVaultPerms: "الرفع يحتاج توكن بهاتين الصلاحيّتين على المستودع:",
     ownerVaultTokenPh: "ghp_… أو github_pat_…",
     ownerVaultTest: "فحص المفتاح",
     ownerStatsRefresh: "🔄 تحديث الإحصائيات",
@@ -1406,6 +1404,11 @@ const I18N = {
     ownerPurgeDone: "✅ حُذف {n} حساب فحص.",
     ownerMsgPrompt: "اكتب الرسالة التي ستصل لـ \"{u}\" (تظهر له عند فتح البرنامج):",
     ownerMsgSent: "✅ تم إرسال الرسالة.",
+    ownerResetTitle: "رابط استرجاع الحساب", // v-owner-reset-link
+    ownerResetConfirm: "🔑 إنشاء رابط استرجاع لحساب \"{u}\"؟ تأكّد أوّلًا أنّه صاحب الحساب (آخر ٤ أرقام البطاقة أو الرقم المسجّل). أيّ رابط سابق يتوقّف.",
+    ownerResetLink: "🔑 رابط استرجاع \"{u}\" (صالح {m} دقيقة) — انسخه وأرسله له وحده:",
+    ownerResetGoogle: "🔑 الحساب \"{u}\" مسجَّل بزرّ Google ولا كلمة مرور له — يدخل بزرّ «المتابعة عبر Google» بالإيميل نفسه.", // v-owner-reset-find
+    ownerResetNotFound: "ما في حساب بهذا الإيميل أو الاسم.",
     ownerDiagRunning: "⏳ يفحص مفتاح كلود على أنثروبيك…",
     ownerDiagKey: "المفتاح: {k}",
     ownerDiagStatus: "الحالة: {s}",
@@ -1995,8 +1998,6 @@ const I18N = {
     stocksPfTitle: "My practice portfolio",
     /* v-owner-i18n (a9): صفحة المالك ولوحاتها (الخزنة، الإحصاءات، المستخدمون، VIP، فحص النظام)، كبسولة التنبيه، سطر النسخة، عنوان البلاغات — كانت عربيّة ثابتة */
     ownerVaultTitle: "🔐 Secrets vault",
-    ownerVaultDesc: "Secrets never go in the chat. Save the GitHub token here: it is encrypted on the server (AES-256-GCM), never shown again, and used by the agent and the code analyzer to read and push.",
-    ownerVaultPerms: "Pushing needs a token with these two permissions on the repository:",
     ownerVaultTokenPh: "ghp_… or github_pat_…",
     ownerVaultTest: "Check key",
     ownerStatsRefresh: "🔄 Refresh stats",
@@ -2058,6 +2059,11 @@ const I18N = {
     ownerPurgeDone: "✅ Deleted {n} check accounts.",
     ownerMsgPrompt: "Write the message for “{u}” (shown when they open the app):",
     ownerMsgSent: "✅ Message sent.",
+    ownerResetTitle: "Account recovery link", // v-owner-reset-link
+    ownerResetConfirm: "🔑 Create a recovery link for “{u}”? Verify first that they own the account (last 4 card digits or registered phone). Any earlier link stops working.",
+    ownerResetLink: "🔑 Recovery link for “{u}” (valid {m} min) — copy it and send it to them only:",
+    ownerResetGoogle: "🔑 The account “{u}” signed up with Google and has no password — they sign in with “Continue with Google” using that same email.", // v-owner-reset-find
+    ownerResetNotFound: "No account with this email or username.",
     ownerDiagRunning: "⏳ Checking the Claude key with Anthropic…",
     ownerDiagKey: "Key: {k}",
     ownerDiagStatus: "Status: {s}",
