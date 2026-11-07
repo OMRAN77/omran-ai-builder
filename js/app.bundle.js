@@ -5479,8 +5479,6 @@ const I18N = {
     stocksPfTitle: "محفظتي التعليمية",
     /* v-owner-i18n (a9): صفحة المالك ولوحاتها (الخزنة، الإحصاءات، المستخدمون، VIP، فحص النظام)، كبسولة التنبيه، سطر النسخة، عنوان البلاغات — كانت عربيّة ثابتة */
     ownerVaultTitle: "🔐 خزنة الأسرار",
-    ownerVaultDesc: "الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع.",
-    ownerVaultPerms: "الرفع يحتاج توكن بهاتين الصلاحيّتين على المستودع:",
     ownerVaultTokenPh: "ghp_… أو github_pat_…",
     ownerVaultTest: "فحص المفتاح",
     ownerStatsRefresh: "🔄 تحديث الإحصائيات",
@@ -6134,8 +6132,6 @@ const I18N = {
     stocksPfTitle: "My practice portfolio",
     /* v-owner-i18n (a9): صفحة المالك ولوحاتها (الخزنة، الإحصاءات، المستخدمون، VIP، فحص النظام)، كبسولة التنبيه، سطر النسخة، عنوان البلاغات — كانت عربيّة ثابتة */
     ownerVaultTitle: "🔐 Secrets vault",
-    ownerVaultDesc: "Secrets never go in the chat. Save the GitHub token here: it is encrypted on the server (AES-256-GCM), never shown again, and used by the agent and the code analyzer to read and push.",
-    ownerVaultPerms: "Pushing needs a token with these two permissions on the repository:",
     ownerVaultTokenPh: "ghp_… or github_pat_…",
     ownerVaultTest: "Check key",
     ownerStatsRefresh: "🔄 Refresh stats",
