@@ -27,7 +27,9 @@ body { display: flex; align-items: center; justify-content: center; }
   // رابط متجر كلّ منصّة حين يُنشر التطبيق فيه — يُملأ هنا وحده، والباركود المطبوع لا يتغيّر.
   // فارغ = لا متجر منشور بعد، فيفتح الجهاز التطبيق نفسه وزرّ «تثبيت التطبيق» (?install=1، app-10-features).
   // v-hw-store-link (٦ نوفمبر ٢٠٢٦): هواوي وافقت على 1.3.15 ونشرته — جوّال هواوي أو هونر يذهب إلى صفحته في AppGallery.
-  var STORES = { ios: '', android: '', huawei: 'https://appgallery.huawei.com/app/C118703501', windows: '' };
+  // v-qr-all-stores (٧ نوفمبر): المالك «كلهم اريدهم في باركود واحد» — آيفون إلى App Store (om ai app 2.0.1)، وويندوز إلى Microsoft Store.
+  // روابط بالمعرّف وحده بلا الاسم القديم (رابط آبل في الإيميل كان /app/omran-ai-builder/…). أندرويد فارغ: Google Play ما زال اختبارًا مغلقًا.
+  var STORES = { ios: 'https://apps.apple.com/app/id6795795451', android: '', huawei: 'https://appgallery.huawei.com/app/C118703501', windows: 'https://apps.microsoft.com/detail/9NZLQM4G1X3D' };
 
   function goDest(ua, touch, search, stores){
     var m = /[?&]ref=([^&#]*)/.exec(search || '');

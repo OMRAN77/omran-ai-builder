@@ -30,6 +30,16 @@
   alone/hat من veo-create وجملة القبّعة، والزومبي بلا تبديل) و٣ صار «مستطيل القصّة
   وحده يتغيّر بحافة متدرّجة» و٨ «fal-500 boom»؛ trend-omni ٢٠ (دليل الكشف). كلّه بـfetch مزيّف، بلا نداء مدفوع.
 
+## ٧ نوفمبر ٢٠٢٦ — الباركود الواحد يرسل آيفون وويندوز إلى متجريهما، وملفّه om-ai-qr.png (v-qr-all-stores)
+- **العرض:** بعد قبول آبل لـ«om ai app» 2.0.1 وإعادة تقديم Microsoft Store، المالك: «ضيفهم في الباركود وغير الاسم كلهم اريدهم في
+  باركود واحد». `STORES` في `download.html` كان فيه هواوي وحده، وصورة الباركود تُنزَّل باسم `omran-ai-qr.png`.
+- **القرار:** `ios` = `https://apps.apple.com/app/id6795795451`، و`windows` = `https://apps.microsoft.com/detail/9NZLQM4G1X3D` — بالمعرّف وحده
+  بلا الاسم القديم (رابط إيميل آبل كان `/app/omran-ai-builder/…`؛ رابط المعرّف يحوّل الآن إلى `/app/om-ai-app/…`). أندرويد فارغ: Google
+  Play ما زال اختبارًا مغلقًا فرابطه «غير موجود» لغير المختبرين. ماك بلا متجر. اسم ملفّ الباركود `om-ai-qr.png`، ووسم partials-settings 708←709.
+- **الاختبار:** qr-download-hub ‏٣ و٣ب (آيفون وآيباد ← App Store، ويندوز ← Microsoft Store، هواوي ← AppGallery، أندرويد ← التطبيق) و١٠
+  (اسم الملفّ). مسبار Chromium `.shots/qr-all/probe.mjs` بستّ هويّات: هواوي وهونر ← AppGallery، آيفون ← App Store، ويندوز ← Microsoft Store،
+  أندرويد وماك ← `/?ref=omran&install=1`. الروابط الثلاثة تردّ ٢٠٠.
+
 ## ٦ نوفمبر ٢٠٢٦ — لقطات Microsoft Store من الحاسوب: رفض 10.1.1.3 (v-ms-shots)
 - **العرض:** المالك أرسل لقطة Microsoft Store: التطبيق «Omran AI Builder» ووصفه قديم. في Partner Center المنتج اسمه «Om ai»
   (`9NZLQM4G1X3D`) وحالته «Attention needed»: Submission 4 (٢٢ أكتوبر) رُفض في Certification بالقاعدة 10.1.1.3 Inaccurate

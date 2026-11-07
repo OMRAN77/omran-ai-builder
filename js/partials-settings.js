@@ -117,7 +117,7 @@
       <div id="acctQrBox" style="display:none; margin-top:12px; padding:12px; background:rgba(0,0,0,.35); border-radius:var(--r-2); text-align:center; border:1px solid rgba(212,175,55,.25);">
         <canvas id="acctQrCanvas" aria-label="QR" style="width:180px; height:180px; border-radius:12px; background:#fff; padding:6px; box-shadow:0 4px 16px rgba(0,0,0,.4); display:inline-block;"></canvas>
         <div style="display:flex; gap:8px; margin-top:10px; justify-content:center;">
-          <a id="acctQrDl" download="omran-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;" data-i18n="acctQrDownload">تحميل الباركود</a>
+          <a id="acctQrDl" download="om-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;" data-i18n="acctQrDownload">تحميل الباركود</a>
         </div>
       </div>
       <div id="acctReferralMsg" style="font-size:12px; min-height:16px; margin-top:8px; color:var(--muted);" data-i18n="acctReferralHint">لكل صديق يسجّل برابطك، تحصلان أنت وهو على 10 رسائل مجانية إضافية</div>
