@@ -356,7 +356,7 @@ async function lockMergeFaces(frame, m) {
     return (m.counts[k] === 1 && own.length === 1) ? { data: own[0].data, mime: own[0].mime, face: true } : { data: p.data, mime: p.mime };
   });
   try {
-    const r = await require('./face-swap.js').lockFaces(frame, refs, { apiKey: m.apiKey, enabled: true, only, until: m.t0 + 280000 });
+    const r = await require('./face-swap.js').lockFaces(frame, refs, { apiKey: m.apiKey, enabled: true, only, until: m.t0 + 280000, faceOnly: !!m.faceOnly });
     if (r && r.swapped > 0 && r.b64) return { b64: r.b64, mime: r.mime || 'image/jpeg' };
     console.warn('[studio-create] merge face-lock skipped: ' + String((r && r.reason) || 'none').slice(0, 60));
   } catch (e) { console.warn('[studio-create] merge face-lock ' + (e && e.message)); } /* lockFaces لا يرمي — حارس احتياطيّ */
@@ -419,7 +419,7 @@ async function bodyReframe(o) {
     out = { b64: rescue, mime: 'image/png' };
     engine = 'openai';
   }
-  const locked = await lockMergeFaces({ b64: out.b64, mime: out.mime }, { photos, crops, counts: [1], userTask: '', apiKey: o.apiKey, username: o.username, t0: o.t0, gate: 'BODY_FACE_SWAP' });
+  const locked = await lockMergeFaces({ b64: out.b64, mime: out.mime }, { photos, crops, counts: [1], userTask: '', apiKey: o.apiKey, username: o.username, t0: o.t0, gate: 'BODY_FACE_SWAP', faceOnly: true /* v-body-bare-head: الغترة أُزيلت عمدًا — الوجه وحده لا الرأس بغطائه */ });
   return { b64: locked.b64, mime: locked.mime, engine, swapped: locked.b64 !== out.b64 };
 }
 
