@@ -723,6 +723,11 @@
       <div id="adminClaudeDiagBox" style="display:none; font-size:12.5px; line-height:1.8; background:var(--panel2); border-radius:var(--r-2); padding:10px 12px; white-space:pre-wrap; word-break:break-all; margin-bottom:10px;"></div>
       <div id="adminStatsBox" style="font-size: var(--fs-3); line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;"><span data-i18n="ownerStatsHint">اضغط "تحديث" لعرض الإحصائيات...</span></div>
       <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;" data-i18n="ownerUsersTitle">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
+      <!-- v-owner-reset-find: الجدول أحدث ٦٠ تسجيلًا فقط — رابط الاسترجاع لأيّ حساب بإيميله أو اسمه -->
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="adminResetInput" autocomplete="off" spellcheck="false" placeholder="إيميل أو اسم مستخدم" data-i18n-placeholder="ownerVipPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
+        <button type="button" onclick="adminResetLinkFind()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🔑 <span data-i18n="ownerResetTitle">رابط استرجاع الحساب</span></button>
+      </div>
       <div id="adminUsersTable" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:320px; overflow-y:auto;"></div>
 
       <!-- v-sec-knowledge-approve: مراجعة حقائق «المعرفة الجماعيّة» قبل حقنها — يُملأ بالـJS بأزرار إيموجي بلا نصّ مترجَم جديد. -->

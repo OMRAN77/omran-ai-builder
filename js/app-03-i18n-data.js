@@ -1407,6 +1407,8 @@ const I18N = {
     ownerResetTitle: "رابط استرجاع الحساب", // v-owner-reset-link
     ownerResetConfirm: "🔑 إنشاء رابط استرجاع لحساب \"{u}\"؟ تأكّد أوّلًا أنّه صاحب الحساب (آخر ٤ أرقام البطاقة أو الرقم المسجّل). أيّ رابط سابق يتوقّف.",
     ownerResetLink: "🔑 رابط استرجاع \"{u}\" (صالح {m} دقيقة) — انسخه وأرسله له وحده:",
+    ownerResetGoogle: "🔑 الحساب \"{u}\" مسجَّل بزرّ Google ولا كلمة مرور له — يدخل بزرّ «المتابعة عبر Google» بالإيميل نفسه.", // v-owner-reset-find
+    ownerResetNotFound: "ما في حساب بهذا الإيميل أو الاسم.",
     ownerDiagRunning: "⏳ يفحص مفتاح كلود على أنثروبيك…",
     ownerDiagKey: "المفتاح: {k}",
     ownerDiagStatus: "الحالة: {s}",
@@ -2060,6 +2062,8 @@ const I18N = {
     ownerResetTitle: "Account recovery link", // v-owner-reset-link
     ownerResetConfirm: "🔑 Create a recovery link for “{u}”? Verify first that they own the account (last 4 card digits or registered phone). Any earlier link stops working.",
     ownerResetLink: "🔑 Recovery link for “{u}” (valid {m} min) — copy it and send it to them only:",
+    ownerResetGoogle: "🔑 The account “{u}” signed up with Google and has no password — they sign in with “Continue with Google” using that same email.", // v-owner-reset-find
+    ownerResetNotFound: "No account with this email or username.",
     ownerDiagRunning: "⏳ Checking the Claude key with Anthropic…",
     ownerDiagKey: "Key: {k}",
     ownerDiagStatus: "Status: {s}",

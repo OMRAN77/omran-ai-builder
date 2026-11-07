@@ -87,7 +87,21 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'missing targetUsername' });
       return;
     }
-    const key = targetUsername.trim().toLowerCase();
+    let key = targetUsername.trim().toLowerCase();
+    /* v-owner-reset-find: جدول المستخدمين يعرض أحدث ٦٠ تسجيلًا فقط، فصاحب الحساب الأقدم لا صفّ له ولا 🔑. خانة البحث ترسل
+       الإيميل كما كتبه المالك: يُحوَّل إلى حسابه بفهرس البريد (مؤكَّدًا أو لا — المالك تحقّق بنفسه)، وحساب «المتابعة عبر Google»
+       لا كلمة مرور يعرفها صاحبه فيُقال للمالك ذلك بدل رابط لا ينفع. */
+    if (action === 'reset-link' && key.includes('@')) {
+      const { resolveLoginUser, googleAccountFor } = require('./auth.js');
+      const found = await resolveLoginUser(key);
+      if (found.user && !found.user.deleted) key = found.key;
+      else {
+        const g = await googleAccountFor(key);
+        if (g) { res.status(200).json({ ok: false, google: true, username: g.key }); return; }
+        res.status(404).json({ error: 'user not found' });
+        return;
+      }
+    }
     if (isOwnerName(key)) {
       res.status(400).json({ error: 'cannot act on the owner account' });
       return;
@@ -130,7 +144,7 @@ module.exports = async (req, res) => {
       await putUser(key, user);
       const { siteUrl } = require('./_site.js');
       const link = siteUrl() + '/?resetToken=' + encodeURIComponent(rt) + '&ru=' + encodeURIComponent(key);
-      res.status(200).json({ ok: true, link, minutes: RESET_LINK_MIN });
+      res.status(200).json({ ok: true, link, minutes: RESET_LINK_MIN, username: key });
       return;
     }
 
