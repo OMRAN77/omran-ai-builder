@@ -1531,6 +1531,32 @@ function stud2ErrText(e, prefix, fbKey){
     };
   }
 
+  /* v-pstyle-variety (المالك: «شكل واحد… حتى لو اخترت 1 او 2… اريد في كل شخصيه على الاقل 100 شكل»): عدّاد لكلّ نمط (وحقبة/مهنة)
+     يُرسَل مع كلّ توليد، والخادم يحوّله إلى شكل من ≥١٠٠ للنمط لا يتكرّر حتّى تنفد (api/_lib/portrait-variety.js). يبدأ من رقم
+     عشوائيّ لكلّ جهاز فلا يرى الجميع الشكل نفسه أوّلًا، ويتقدّم عند الإرسال فتعطي الضغطة التالية شكلًا آخر — كعدّاد الأزياء. */
+  const PS_VARIANT_KEY = 'aiapp_portrait_variant';
+  function psNextVariant(k){
+    let map = {};
+    try{ map = JSON.parse(localStorage.getItem(PS_VARIANT_KEY) || '{}') || {}; }catch(e){ map = {}; }
+    let n = Number(map[k]);
+    if(!Number.isSafeInteger(n) || n < 0) n = Math.floor(Math.random() * 100000);
+    map[k] = n + 1;
+    try{ localStorage.setItem(PS_VARIANT_KEY, JSON.stringify(map)); }catch(e){ __swallow(e, 'portrait:variant'); }
+    return n;
+  }
+  function psVariantKey(){
+    const v = styleEl.value;
+    if(v === 'timeshift' && $('#portraitEraSelect')) return v + ':' + $('#portraitEraSelect').value;
+    if(v === 'profession' && $('#portraitProfSelect')) return v + ':' + $('#portraitProfSelect').value;
+    return v;
+  }
+  // «التصميم رقم ٣٧ من ٣٦٠ لهذا النمط» — النصّ القائم fxDesignNo بالـ١٤ لغة؛ فارغ لخادم قديم أو تعديل أمين بلا الحقل.
+  function psLookLine(d){
+    if(!d || !(d.n > 0) || !(d.total > 0)) return '';
+    const tpl = t('fxDesignNo');
+    return (tpl && tpl !== 'fxDesignNo' ? tpl : 'Design {n} of {total}').replace('{n}', d.n).replace('{total}', d.total);
+  }
+
   btnGenerate.onclick = async () => {
     if(!selectedBase64){
       setStatus(t('portraitNeedImage'));
@@ -1560,7 +1586,7 @@ function stud2ErrText(e, prefix, fbKey){
       const res = await fetch('/api/portrait-style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, style: styleEl.value, backdrop: (backdropEl ? backdropEl.value : ''), beautify: (styleEl.value === 'beautify') ? { skin: !!(beautifySkinEl && beautifySkinEl.checked), light: !!(beautifyLightEl && beautifyLightEl.checked), teeth: !!(beautifyTeethEl && beautifyTeethEl.checked) } : null, ageTarget: (styleEl.value === 'ageshift' && $('#portraitAgeSelect')) ? $('#portraitAgeSelect').value : '', hairStyle: (styleEl.value === 'hairstyle' && $('#portraitHairSelect')) ? $('#portraitHairSelect').value : '', adText: (styleEl.value === 'adposter' && $('#portraitAdTextInput')) ? $('#portraitAdTextInput').value : '', charName: (styleEl.value === 'celebtoon' && $('#portraitCelebInput')) ? $('#portraitCelebInput').value : '', removeText: (styleEl.value === 'objectremove' && $('#portraitRemoveInput')) ? $('#portraitRemoveInput').value : '', outfit: (styleEl.value === 'outfit' && $('#portraitOutfitSelect')) ? $('#portraitOutfitSelect').value : '', profession: (styleEl.value === 'profession' && $('#portraitProfSelect')) ? $('#portraitProfSelect').value : '', era: (styleEl.value === 'timeshift' && $('#portraitEraSelect')) ? $('#portraitEraSelect').value : '', extraImages: (styleEl.value === 'familystyle' || styleEl.value === 'merge2') ? extraImagesB64.map(function(x){ return x.base64; }) : [], token }),
+        body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, style: styleEl.value, backdrop: (backdropEl ? backdropEl.value : ''), beautify: (styleEl.value === 'beautify') ? { skin: !!(beautifySkinEl && beautifySkinEl.checked), light: !!(beautifyLightEl && beautifyLightEl.checked), teeth: !!(beautifyTeethEl && beautifyTeethEl.checked) } : null, ageTarget: (styleEl.value === 'ageshift' && $('#portraitAgeSelect')) ? $('#portraitAgeSelect').value : '', hairStyle: (styleEl.value === 'hairstyle' && $('#portraitHairSelect')) ? $('#portraitHairSelect').value : '', adText: (styleEl.value === 'adposter' && $('#portraitAdTextInput')) ? $('#portraitAdTextInput').value : '', charName: (styleEl.value === 'celebtoon' && $('#portraitCelebInput')) ? $('#portraitCelebInput').value : '', removeText: (styleEl.value === 'objectremove' && $('#portraitRemoveInput')) ? $('#portraitRemoveInput').value : '', outfit: (styleEl.value === 'outfit' && $('#portraitOutfitSelect')) ? $('#portraitOutfitSelect').value : '', profession: (styleEl.value === 'profession' && $('#portraitProfSelect')) ? $('#portraitProfSelect').value : '', era: (styleEl.value === 'timeshift' && $('#portraitEraSelect')) ? $('#portraitEraSelect').value : '', extraImages: (styleEl.value === 'familystyle' || styleEl.value === 'merge2') ? extraImagesB64.map(function(x){ return x.base64; }) : [], variant: psNextVariant(psVariantKey()), token }),
       });
       const data = await __safeJson(res);
       if(!res.ok || data.error){
@@ -1609,7 +1635,8 @@ function stud2ErrText(e, prefix, fbKey){
         downloadEl.setAttribute('download', 'omran-portrait-style.png');
         downloadEl.style.display = 'block';
         if(shareBtn2) shareBtn2.style.display = 'block';
-        setStatus(t('portraitDone'));
+        const lookLine = psLookLine(data.look); /* v-pstyle-variety */
+        setStatus(t('portraitDone') + (lookLine ? ' · ' + lookLine : ''));
       }
     } catch(e){
       setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */

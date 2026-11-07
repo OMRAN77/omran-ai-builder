@@ -29,7 +29,7 @@ const LIB_PURPOSE = {
   'owner-vision': 'من يرى الصور على أيّ مسار',
   'provider-level': 'منهج Claude Code للمالك (OWNER_METHOD) وبطاقة مستوى العائلة والموديل',
   'provider-models': 'قوائم الموديلات الحيّة من الوسيط وافتراضيّها',
-  'oa-direct': 'المسارات المباشرة (OpenAI، Groq، Kimi، Gemini، Perplexity) وترجمة البروتوكول',
+  'oa-direct': 'المسارات المباشرة لكلّ مزوّد وترجمة البروتوكول', /* v-pstyle-variety: قُصّ ليتّسع السقف لملفّ portrait-variety */
   'free-chain': 'سلاسل الاحتياط لغير المالك وكشف «موديل غير موجود»',
   'tier': 'الباقات وتوجيهها والدور الصعب (isStrongTurn)',
   'github-read': 'read_github: شجرة، ملفّ بأسطر، بحث (الحاوية والمستدعون)، التزامات وفروق',
