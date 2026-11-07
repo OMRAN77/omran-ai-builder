@@ -58,15 +58,19 @@ stub('api/_lib/face-swap.js', {
   lockFaces: async (frame, refs, o) => { lockCalls.push({ frame, refs, o }); return lockSwap ? { b64: SWAPPED, mime: 'image/jpeg', swapped: 1 } : { b64: frame.b64, mime: frame.mime, swapped: 0, reason: 'x' }; },
 });
 
-let faces = CLOSE, detectDown = false, image = 'ok', identity = true;
+let faces = CLOSE, detectDown = false, image = 'ok', identity = true, photoG = '', photoCovered = false, cardCheck = true;
 const calls = [];
 const realFetch = global.fetch;
 global.fetch = async (url, init) => {
   const u = String(url);
   const body = init && typeof init.body === 'string' ? JSON.parse(init.body) : null;
   const text = body ? JSON.stringify(body.contents || '') : '';
-  calls.push({ u, body, guard: /Identity check only/.test(text), detect: /Find every human face/.test(text) });
+  const form = init && init.body && typeof init.body.get === 'function' ? init.body : null;
+  calls.push({ u, body, guard: /Identity check only/.test(text), detect: /Find every human face/.test(text), cardCheck: /should show that same person/.test(text),
+    oaiPrompt: form ? String(form.get('prompt')) : '', oaiImages: form ? form.getAll('image').length + form.getAll('image[]').length : 0 });
   if (/gemini-flash-latest:generateContent/.test(u)) {
+    if (/a man or a woman/.test(text)) return photoG === 'down' ? Response.json({ error: {} }, { status: 500 }) : Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ gender: photoG || 'unknown', covered: photoCovered }) }] } }] });
+    if (/should show that same person/.test(text)) return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ onePerson: cardCheck, samePerson: true, skinMatches: true }) }] } }] });
     if (/Identity check only/.test(text)) return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ identityPreserved: identity, sameVisualMedium: true }) }] } }] });
     if (detectDown) return Response.json({ error: { message: 'down' } }, { status: 500 });
     return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ faces: faces.map((b) => ({ box_2d: b })) }) }] } }] });
@@ -86,7 +90,7 @@ const CARD = require(rp('api/_lib/studio-card-fix.js'));
 
 function reset(o) {
   store.clear(); calls.length = 0; lockCalls.length = 0;
-  faces = (o && o.faces) || CLOSE; detectDown = !!(o && o.down); image = (o && o.image) || 'ok'; lockSwap = !(o && o.noSwap); identity = !(o && o.stranger);
+  faces = (o && o.faces) || CLOSE; detectDown = !!(o && o.down); image = (o && o.image) || 'ok'; lockSwap = !(o && o.noSwap); identity = !(o && o.stranger); photoG = (o && o.g) || ''; photoCovered = !!(o && o.covered); cardCheck = !(o && o.cardReject);
 }
 async function post(body) {
   let done; const sent = new Promise((r) => { done = r; });
@@ -219,4 +223,135 @@ test('٦. الواجهة: نتيجة reframed تخفي «قبل/بعد» في ا
   assert.match(src, /setupBeforeAfter\(\);\n\s*if\(data\.reframed\) studioBaShow\(false\);/);
   assert.match(src, /setupBeforeAfter\(\);\n\s*if\(r\.last\.reframed\) studioBaShow\(false\);/);
   assert.match(src, /reframed: !!\(data\.reframed \|\| \(last && last\.reframed\)\)/);
+});
+
+/* ───── v-body-card-match (المالك: «الصور ماتتطابق الشكل الي اطلبه… عدّل مرّة وحدة»): البطاقة المخزّنة نفسها مرجع البنية والوقفة واللبس ───── */
+const CARD_IMG = png(40, 60, [90, 60, 30]);
+const cardKey = (style, rev) => 'studio:preview:v2:body:' + style + (rev ? ':r' + rev : '');
+const imagesOf = (c) => c.body.contents[0].parts.filter((p) => p.inlineData).map((p) => p.inlineData.data);
+const cardChecks = () => calls.filter((c) => c.cardCheck);
+function cache(style) {
+  const rev = CARD.REV['body:' + style] || 0;
+  store.set(cardKey(style, rev), CARD_IMG);
+}
+
+test('٨. بطاقة مخزّنة + جنس الصورة = جنس نموذجها ← الصورة والبطاقة معًا، وأمر يعيد رسم البطاقة بوجهه ولون بشرته وألوانه، ثمّ القفل والفحص', async () => {
+  reset({ g: 'man' });
+  cache('bdsurferc');
+  const r = await post({ style: 'bdsurferc', variant: 3 });
+  assert.equal(r.code, 200); assert.equal(r.body.reframed, true);
+  const call = proCalls()[0];
+  assert.deepEqual(imagesOf(call), [SRC, CARD_IMG], 'صورته ثمّ البطاقة');
+  const p = promptOf(call);
+  assert.match(p, /^Photo 1 of 2 — the user \(identity reference\):/);
+  assert.match(p, /Photo 2 of 2 — the chosen look \(the option card the user picked: an example photo of a different, generic model — never the user, and never a second person in the result\):/);
+  assert.match(p, /recreates the chosen look in Photo 2: the same body build, muscularity and proportions, the same pose and stance, the same camera angle, framing, lighting, backdrop and props, and the same top and bottoms \(pieces and cut\) as Photo 2/);
+  assert.match(p, /a strongly surfer's build/);
+  assert.match(p, /Exactly one person in the result/);
+  assert.match(p, /the model's face, skin tone and hair, and anything on or around the model's head \(a sports hijab, swim cap, goggles, ear guards or headband\), are not part of the look — ignore them/);
+  assert.match(p, /the skin tone \(on the face and on all visible skin — neck, arms, hands and legs\)/);
+  assert.match(p, /both eyes fully open/);
+  assert.match(p, /Clothes: the same pieces as Photo 2 recoloured — a .+ top with .+ bottoms; footwear \(or bare feet\) exactly as in Photo 2/);
+  assert.ok(!/sneakers|down to the feet|like the model in Photo 2/.test(p), 'لا حذاء ولا إطار ثابتان، ولا «رأس كنموذج البطاقة»');
+  assert.match(p, /a woman whose hair is uncovered in Photo 1 keeps her own hair, uncovered/);
+  assert.equal(call.body.generationConfig.imageConfig.aspectRatio, '2:3');
+  assert.equal(lockCalls.length, 1, 'قفل الوجه بعده');
+  assert.equal(lockCalls[0].o.faceOnly, true);
+  assert.equal(cardChecks().length, 1, 'فحص ما بعد الرسم');
+});
+
+test('٩. البطاقة بمراجعتها الحاليّة أوّلًا ثمّ الأقدم؛ وبطاقة الحجاب لامرأة محجّبة', async () => {
+  const rev = CARD.REV['body:bdsurfera'];
+  assert.ok(rev >= 1, 'خيار له مراجعة');
+  reset({ g: 'man' });
+  store.set(cardKey('bdsurfera', rev), CARD_IMG); store.set(cardKey('bdsurfera'), SRC);
+  await post({ style: 'bdsurfera' });
+  assert.equal(imagesOf(proCalls()[0])[1], CARD_IMG, 'المراجعة الحاليّة');
+  reset({ g: 'man' });
+  store.set(cardKey('bdsurfera'), CARD_IMG);
+  await post({ style: 'bdsurfera' });
+  assert.equal(imagesOf(proCalls()[0])[1], CARD_IMG, 'الأقدم حين لا الحاليّة');
+  reset({ g: 'woman', covered: true });
+  cache('slim');
+  await post({ style: 'slim' });
+  assert.equal(imagesOf(proCalls()[0]).length, 2, 'بطاقة الحجاب لامرأة محجّبة');
+});
+
+test('١٠. ← الوصف النصّيّ: جنس مختلف، امرأة شعرها مكشوف مع بطاقة حجاب، بطاقة جانبيّة، لا بطاقة، جنس غير واضح، تعذّر الفحص', async () => {
+  const cases = [
+    [{ g: 'man' }, 'slim', true, 'رجل وبطاقة امرأة'],
+    [{ g: 'woman' }, 'bdsurferc', true, 'امرأة وبطاقة رجل'],
+    [{ g: 'woman', covered: false }, 'bdhourglassa', true, 'امرأة شعرها مكشوف وبطاقة حجاب'],
+    [{ g: 'man' }, 'bdposturea', true, 'بطاقة جانبيّة'],
+    [{ g: 'man' }, 'bdflatstomachb', true, 'بطاقة جانبيّة'],
+    [{ g: 'man' }, 'bdsurferc', false, 'لا بطاقة'],
+    [{ g: '' }, 'bdsurferc', true, 'جنس غير واضح'],
+    [{ g: 'down' }, 'bdsurferc', true, 'تعذّر الفحص'],
+  ];
+  for (const [o, style, cached, why] of cases) {
+    reset(o);
+    if (cached) cache(style);
+    const r = await post({ style });
+    assert.equal(r.code, 200, why);
+    assert.equal(imagesOf(proCalls()[0]).length, 1, why + ': صورته وحدها');
+    assert.match(promptOf(proCalls()[0]), /^Photo 1 of 1:[\s\S]*Create a new full-body standing photo of this same person/, why);
+    assert.equal(cardChecks().length, 0, why + ': لا فحص بطاقة');
+  }
+  reset({ g: 'man' });
+  await post({ style: 'bdsurferc' });
+  assert.equal(calls.filter((c) => /a man or a woman/.test(JSON.stringify(c.body && c.body.contents || ''))).length, 0, 'لا فحص جنس بلا بطاقة مخزّنة');
+});
+
+test('١١. رفض برو في وضع البطاقة ← الإنقاذ بالوصف النصّيّ وصورته وحدها (لا «Photo 2» ولا البطاقة)', async () => {
+  process.env.OPENAI_API_KEY = 'oa-test';
+  try {
+    reset({ g: 'man', image: 'none' });
+    cache('bdsurferc');
+    const r = await post({ style: 'bdsurferc' });
+    assert.equal(r.code, 200); assert.equal(r.body.engine, 'openai');
+    const oai = calls.find((c) => /api\.openai\.com/.test(c.u));
+    assert.ok(oai, 'نداء الإنقاذ');
+    assert.match(oai.oaiPrompt, /Create a new full-body standing photo of this same person/);
+    assert.ok(!/Photo 2/.test(oai.oaiPrompt));
+    assert.equal(oai.oaiImages, 1, 'صورته وحدها');
+    assert.equal(cardChecks().length, 0, 'ناتج الإنقاذ ليس من البطاقة');
+  } finally { delete process.env.OPENAI_API_KEY; }
+});
+
+test('١٢. بطاقات السباحة والأمواج والمصارعة: لبس السباحة يُبدَّل رياضيًّا بالقصّة نفسها، ولا قبّعة سباحة ولا نظّارة ولا واقيات أذن', async () => {
+  for (const style of ['bdswimmera', 'bdsurfera', 'bdwrestlera']) {
+    reset({ g: 'man' });
+    cache(style);
+    await post({ style });
+    const p = promptOf(proCalls()[0]);
+    assert.equal(imagesOf(proCalls()[0]).length, 2, style + ': وضع البطاقة');
+    if (style !== 'bdwrestlera') assert.match(p, /Photo 2 shows swimwear: dress the user instead in a fitted athletic t-shirt with the same sleeves and knee-length athletic shorts of the same cut — never swimwear/, style);
+    if (style !== 'bdsurfera') assert.match(p, /no swim cap, goggles, ear guards or other headgear, even though Photo 2 shows them/, style);
+    assert.ok(!/like the model in Photo 2/.test(p), style);
+  }
+  reset({ g: 'man' });
+  cache('bdboxerc');
+  await post({ style: 'bdboxerc' });
+  const p = promptOf(proCalls()[0]);
+  assert.ok(!/Photo 2 shows swimwear|even though Photo 2 shows them/.test(p), 'بطاقة بلا سباحة ولا غطاء رأس = بلا جملتي الاستبدال');
+});
+
+test('١٣. فحص ما بعد الرسم رفض (شخص ثانٍ/جلد آخر) ← إعادة الرسم بالوصف النصّيّ مرّة والقفل، والنتيجة من النصّ', async () => {
+  reset({ g: 'man', cardReject: true });
+  cache('bdsurferc');
+  const r = await post({ style: 'bdsurferc' });
+  assert.equal(r.code, 200);
+  assert.equal(proCalls().length, 2, 'رسم بالبطاقة ثمّ بالنصّ');
+  assert.equal(imagesOf(proCalls()[1]).length, 1);
+  assert.match(promptOf(proCalls()[1]), /^Photo 1 of 1:/);
+  assert.equal(lockCalls.length, 2, 'قفل لكلّ رسم');
+  assert.equal(cardChecks().length, 1, 'الفحص لناتج البطاقة وحده');
+});
+
+test('١٤. سمات البطاقات من تأطيرها: الحجاب والسباحة وغطاء الرأس والجانبيّة', () => {
+  const FR = CARD.FRAME;
+  const hijab = Object.keys(FR).filter((k) => k.startsWith('body:') && /hijab/i.test(FR[k])).map((k) => k.slice(5)).sort();
+  assert.deepEqual(hijab, ['bdhourglassa', 'bdhourglassb', 'bdhourglassc', 'posture', 'slim', 'toned']);
+  /* ترتيب studio-preview نفسه: SUBJECT المصحَّح أوّلًا ثمّ PREVIEW_SUBJECT */
+  for (const k of hijab) assert.equal(CARD.SUBJECT['body:' + k] || require(rp('api/_lib/studio-more.js')).PREVIEW_SUBJECT.body[k], 'w', k + ': بطاقات الحجاب لنموذج امرأة');
 });
