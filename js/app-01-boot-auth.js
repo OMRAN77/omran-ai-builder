@@ -848,10 +848,20 @@ try{
         body: JSON.stringify({ token, action: 'reset-link', targetUsername: username }),
       });
       const data = await res.json();
+      // v-owner-reset-find: حساب Google لا كلمة مرور له، والغائب برسالة مترجمة لا «user not found» خامًا
+      if(data && data.google){ alert(ownT('ownerResetGoogle', { u: ownIso(data.username || username) })); return; }
+      if(res.status === 404){ alert('❌ ' + ownT('ownerResetNotFound')); return; }
       if(!res.ok || !data.ok || !data.link){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       try{ if(navigator.clipboard) navigator.clipboard.writeText(data.link).catch(e => __swallow(e, 'reset-link clipboard')); }catch(e){ __swallow(e, 'reset-link clipboard'); }
-      prompt(ownT('ownerResetLink', { u: ownIso(username), m: data.minutes || 30 }), data.link);
+      prompt(ownT('ownerResetLink', { u: ownIso(data.username || username), m: data.minutes || 30 }), data.link);
     }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
+  };
+  /* v-owner-reset-find: خانة «إيميل أو اسم مستخدم» فوق الجدول — للحساب الذي لا صفّ له (الجدول أحدث ٦٠ تسجيلًا). */
+  window.adminResetLinkFind = function(){
+    const el = document.getElementById('adminResetInput');
+    const v = el ? String(el.value || '').trim() : '';
+    if(!v){ if(el) el.focus(); return; }
+    return window.adminResetLink(v);
   };
   window.adminMessageUser = async function(username){
     const text = prompt(ownT('ownerMsgPrompt', { u: ownIso(username) }));

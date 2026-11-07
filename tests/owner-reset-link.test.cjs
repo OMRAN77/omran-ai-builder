@@ -112,3 +112,55 @@ test('٤. الزرّ في كلّ صفّ، والرفض لا يرسل شيئًا�
   assert.equal(p[2], 'https://x.test/?resetToken=ab&ru=alya');
   assert.match(p[1], /valid 30 min/);
 });
+
+/* ---------- v-owner-reset-find: الحساب الأقدم من أحدث ٦٠ تسجيلًا — بالإيميل من خانة البحث ---------- */
+test('٥. بالإيميل: يُحوَّل إلى حسابه بفهرس البريد ويعمل الرابط، وحساب Google يُقال ولا رمز، والغائب ٤٠٤', async () => {
+  await auth.putUser('alya_old', { username: 'alya_old', email: 'aliya.test@icloud.com', hash: 'h', salt: 's' });
+  store.set('db/email-index/aliya.test@icloud.com', JSON.stringify({ username: 'alya_old' }));
+  const r = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: ' Aliya.Test@iCloud.com ' });
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  assert.equal(r.body.username, 'alya_old');
+  const u = new URL(r.body.link);
+  assert.equal(u.searchParams.get('ru'), 'alya_old');
+  const ok = await callAuth({ action: 'resetWithToken', username: 'alya_old', resetToken: u.searchParams.get('resetToken'), newPassword: 'NewPass123' });
+  assert.equal(ok.code, 200);
+
+  await auth.putUser('g_hamad@gmail.com', { username: 'g_hamad@gmail.com', email: 'hamad@gmail.com', hash: 'h', salt: 's' });
+  const g = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'hamad@gmail.com' });
+  assert.equal(g.code, 200);
+  assert.deepEqual(g.body, { ok: false, google: true, username: 'g_hamad@gmail.com' });
+  assert.ok(!(await auth.getUser('g_hamad@gmail.com')).resetTokenHash, 'لا رمز لحساب Google');
+
+  assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'nobody@x.com' })).code, 404);
+  assert.equal((await callAdmin({ token: auth.makeToken('sara'), action: 'reset-link', targetUsername: 'aliya.test@icloud.com' })).code, 403, 'المالك وحده بالإيميل أيضًا');
+});
+
+test('٦. الواجهة: خانة البحث فوق الجدول ترسل ما كُتب، وحساب Google والغائب برسائل مترجمة', async () => {
+  const partial = require('fs').readFileSync(require('path').join(__dirname, '..', 'js/partials-settings.js'), 'utf8');
+  const i = partial.indexOf('id="adminResetInput"'), t = partial.indexOf('id="adminUsersTable"');
+  assert.ok(i > 0 && i < t, 'الخانة قبل الجدول');
+  assert.match(partial, /onclick="adminResetLinkFind\(\)"[^>]*>🔑 <span data-i18n="ownerResetTitle">/);
+  const mk = (body, status) => {
+    const e = env('ar', true);
+    const input = e.ctx.document.createElement('input'); input.id = 'adminResetInput'; input.value = '  aliya@icloud.com '; e.ctx.document.body.appendChild(input);
+    const real = e.ctx.fetch; e.ctx.fetch = async (url, init) => { await real(url, init); return { ok: (status || 200) < 400, status: status || 200, json: async () => body }; };
+    return e;
+  };
+  const ok = mk({ ok: true, link: 'https://x.test/?resetToken=cd&ru=alya_old', minutes: 30, username: 'alya_old' });
+  await ok.ctx.adminResetLinkFind();
+  assert.equal(ok.sent[0][1].targetUsername, 'aliya@icloud.com');
+  const p = ok.said.find((x) => x[0] === 'prompt');
+  assert.equal(p[2], 'https://x.test/?resetToken=cd&ru=alya_old');
+  assert.match(p[1], /alya_old/);
+  const g = mk({ ok: false, google: true, username: 'g_hamad@gmail.com' });
+  await g.ctx.adminResetLinkFind();
+  assert.ok(g.said.some((x) => x[0] === 'alert' && /Google/.test(x[1]) && /g_hamad@gmail\.com/.test(x[1])));
+  assert.ok(!g.said.some((x) => x[0] === 'prompt'));
+  const nf = mk({ error: 'user not found' }, 404);
+  await nf.ctx.adminResetLinkFind();
+  assert.ok(nf.said.some((x) => x[0] === 'alert' && x[1].includes('ما في حساب بهذا الإيميل أو الاسم')));
+  const empty = env('ar', true);
+  const inp = empty.ctx.document.createElement('input'); inp.id = 'adminResetInput'; inp.value = '   '; empty.ctx.document.body.appendChild(inp);
+  await empty.ctx.adminResetLinkFind();
+  assert.equal(empty.sent.length, 0, 'الخانة الفارغة لا ترسل');
+});
