@@ -32,7 +32,8 @@
     officeFreeBadge: 'ملفّك المجّانيّ لهذا الشهر', officeBuilding: 'يجهّز الملفّ…', officeFail: 'تعذّر تجهيز الملفّ — جرّب مرّة ثانية',
     officeGatePlans: 'استخدمت ملفّك المجّانيّ لهذا الشهر — الملفّات الجديدة والتعديل عليها بالاشتراك', officeGateLogin: 'سجّل دخولك — عندك ملفّ Excel أو PowerPoint مجّانيّ كلّ شهر',
     officeSubscribe: 'اشترك الآن', officeLogin: 'تسجيل الدخول', officeEditHint: 'للتعديل اكتب طلبك تحت — مثل: كبّر الخط، زد ١٠ أسماء',
-    officeFreeHint: 'التعديل عليه أو ملفّ آخر هذا الشهر بالاشتراك', officeTotal: 'المجموع'
+    officeFreeHint: 'التعديل عليه أو ملفّ آخر هذا الشهر بالاشتراك', officeTotal: 'المجموع',
+    officeHint1: 'جرّب: سوّ لي كشف حضور جاهز للطباعة 📄', officeHint2: 'جرّب: عرض بوربوينت عن أي موضوع 📊', officeHint3: 'جرّب: جدول مصاريف البيت الشهرية 📄'
   };
 
   /* ── أدوات صغيرة ── */
@@ -526,8 +527,42 @@
     box.appendChild(note);
     return box;
   }
+  /* ── التعريف بالميزة (قرار المالك ٧ نوفمبر: «1 + 3، ومايكون ثابت — من سوى جدول مرّة وحدة مايطلعله مرّة ثانية») ──
+     (١) النصّ الباهت في خانة الكتابة يتبدّل بين ثلاثة أمثلة ما دام المستخدم لم يصنع ملفًّا — ولا عنصر جديد في الشاشة. لا يلمس النصّ
+     الباهت إلّا إن كان نصّ الخانة الأصليّ (promptPlaceholder) أو أحد أمثلته، فلا يزاحم أيّ وضع آخر يكتب فيه.
+     (٣) طلب المحادثة يحمل officeHint (app-18) فيعرض النموذج الملفّ بسطر واحد حين يناسب الموضوع (الخادم: office.js HINT_NOTE).
+     أوّل كرت ملفّ (أو كرت «خلص ملفّ الشهر») يُرى على هذا الجهاز يعلّم omranOfficeMade فيتوقّف الاثنان نهائيًّا. */
+  var MADE_KEY = 'omranOfficeMade', HINT_MS = 5000, HINT_FIRST_MS = 3500;
+  var hintTimer = null, hintIdx = 0;
+  function made(){ try{ return localStorage.getItem(MADE_KEY) === '1'; }catch(e){ return false; } }
+  function hints(){ return [tt('officeHint1'), tt('officeHint2'), tt('officeHint3')]; }
+  function basePh(){ try{ var v = (typeof t === 'function') ? t('promptPlaceholder') : ''; return (typeof v === 'string' && v && v !== 'promptPlaceholder') ? v : ''; }catch(e){ return ''; } }
+  function ours(p){ var cur = p.getAttribute('placeholder') || ''; return cur === basePh() || hints().indexOf(cur) !== -1 || Object.keys(DEF).some(function(k){ return /^officeHint/.test(k) && DEF[k] === cur; }); }
+  function stopHint(){
+    if(hintTimer){ clearInterval(hintTimer); hintTimer = null; }
+    try{ var p = document.getElementById('prompt'); if(p && ours(p) && basePh()) p.setAttribute('placeholder', basePh()); }catch(e){ __swallow(e, 'office:hint-stop'); }
+  }
+  function hintTick(){
+    if(made()) return stopHint();
+    var p = document.getElementById('prompt');
+    if(!p || !ours(p)) return; // وضع آخر يملك النصّ الباهت الآن — يُترك
+    var hs = hints();
+    p.setAttribute('placeholder', hs[hintIdx++ % hs.length]);
+  }
+  function startHint(){
+    if(made() || hintTimer) return;
+    setTimeout(function(){ if(made() || hintTimer) return; hintTick(); hintTimer = setInterval(hintTick, HINT_MS); }, HINT_FIRST_MS);
+  }
+  function markMade(){
+    try{ localStorage.setItem(MADE_KEY, '1'); }catch(e){ __swallow(e, 'office:made'); }
+    stopHint();
+  }
+  window.omranOfficeHintWanted = function(){ return !made(); };
+  try{ startHint(); }catch(e){ __swallow(e, 'office:hint-start'); }
+
   window.omranOfficeCard = function(office){
     css();
+    if(office && (office.spec || office.gate === 'plans')) markMade(); /* صنع ملفًّا (أو استعمل ملفّ شهره على جهاز آخر) — لا تعريف بعد اليوم */
     var wrap = el('div', 'omOfWrap');
     try{
       if(office && office.gate) wrap.appendChild(gateCard(office));
@@ -547,5 +582,5 @@
     return undefined;
   };
   /* للاختبار والمسابر: البناء نفسه بلا بطاقة */
-  window.omranOffice = { buildXlsx: buildXlsx, buildPptx: buildPptx, xlsxPdfBlocks: xlsxPdfBlocks, sheetPlan: sheetPlan };
+  window.omranOffice = { buildXlsx: buildXlsx, buildPptx: buildPptx, xlsxPdfBlocks: xlsxPdfBlocks, sheetPlan: sheetPlan, hintTick: hintTick, stopHint: stopHint };
 })();
