@@ -394,7 +394,8 @@ async function bodyCloseUp(apiKey, b64) {
         if (u) crop = { of: 0, who: 'the person', size: main[0].box[3] - main[0].box[1], data: u.data, mime: u.mime, upright: true, roll: u.roll };
       } catch (e) { console.warn('[studio-create] body upright crop ' + (e && e.message)); } /* اللقطة تعذّرت = faceCrops كما كان */
     }
-    return { faces, crop };
+    /* v-body-hair-keep: «الشعر مغطّى؟» من الكشف نفسه (قائمة صريحة فيها الغترة والطاقيّة) — true/false أو null إن لم يُجب */
+    return { faces, crop, covered: typeof main[0].covered === 'boolean' ? main[0].covered : null };
   } catch (e) { console.warn('[studio-create] body close-up check ' + (e && e.message)); return null; } /* الكشف تعذّر = المسار القديم */
 }
 /* v-body-sport (المالك بعد التجربة، صورته بقميص رماديّ فضفاض طويل الأكمام وغترة: «كأنه صياد رايح البحر… في الجسم واللياقة مش صيد بحر
@@ -417,11 +418,14 @@ function bodyColorway(variant) {
    والموديل أضافه؛ فحص الصورة (photoLook) قال «شعر مكشوف» = سطر صريح: شعرها كما في الصورة ولا شيء على الرأس أو الرقبة. الرجل كما كان.
    وفي السطر العامّ (الفحص لم يحسم): الشعر المكشوف يبقى مكشوفًا بتسريحته، لا قلنسوة ولا لثام ولا غطاء رقبة.
    المراجعة: السطر الصريح لا يأمر بنزع شيء أبدًا — «مكشوف» جواب Flash قد يخطئ (شيلة رخوة تُظهر الغرّة)، فكان «no hijab, headscarf» ينزع غطاءها؛
-   الآن: لا يُضاف ما لا تُظهره الصورة، وما تُظهره على الرأس يبقى كما هو. */
+   الآن: لا يُضاف ما لا تُظهره الصورة، وما تُظهره على الرأس يبقى كما هو.
+   v-body-hair-keep (المالك بعد v-body-upright، الصورة نفسها و«وضعيّة»: حجاب أسود كامل لم تلبسه، والوجه ليس وجهها — «ولا تحسين»): فحص الجنس
+   (photoLook) لم يُجب عن صورتها مرّتين (`photo ?[no answer]`) فبقي السطر العامّ، و«A woman's hijab or headscarf stays… sports hijab» قرأه الموديل
+   «المرأة بحجاب». الآن «الشعر مغطّى؟» من الكشف أوّلًا (look.covered يُملأ منه في bodyReframe)، والسطر العامّ يقول «حجاب تُظهره Photo 1» لا «حجاب المرأة». */
 function bodyHeadLine(look) {
   const l = look || {};
   if (l.covered === false && l.g !== 'm') return 'Head: the hair is uncovered in Photo 1 — keep their own hair exactly as in Photo 1 (the same hairstyle, fringe, length and colour), fully visible, and add nothing on the head or around the neck that Photo 1 does not show: no hood, cap, balaclava or neck gaiter. A hijab, headscarf or shayla that Photo 1 does show stays exactly as worn.';
-  return 'Head: a man\'s ghutra, shemagh, agal, kufi or cap is removed — his head is bare, with short neat hair whose colour matches his beard and age, and nothing on his head. A woman\'s hijab or headscarf stays, fully covering, worn as a fitted sports hijab. Never add a head covering to anyone who wears none — uncovered hair stays uncovered, in its own hairstyle, never under a hood, balaclava or neck gaiter.';
+  return 'Head: a man\'s ghutra, shemagh, agal, kufi or cap is removed — his head is bare, with short neat hair whose colour matches his beard and age, and nothing on his head. A hijab or headscarf that Photo 1 shows stays, fully covering, worn as a fitted sports hijab. Never add a head covering to anyone who wears none — uncovered hair stays uncovered, in its own hairstyle, never under a hood, balaclava or neck gaiter.';
 }
 function bodyReframeTask(style, description, variant, look) {
   const cw = bodyColorway(variant);
@@ -555,15 +559,21 @@ async function bodyReframe(o) {
     o.crop ? Promise.resolve([o.crop]) : mergeIdentity.faceCrops(o.apiKey, photos, { faces: [o.faces] }),
     bodyCardRef(o.style).then(async (c) => (c ? { card: c, look: await photoLook(o.apiKey, o.imageBase64, o.mimeType, o.crop) } : { card: null, look: { g: '', covered: null } })),
   ]);
-  const card = cl.card, look = cl.look;
+  const card = cl.card;
+  /* v-body-hair-keep: «الشعر مغطّى؟» من الكشف (o.covered — قائمته صريحة: حجاب، شيلة، غترة، طاقيّة) أوّلًا، ثمّ من فحص الجنس؛ فحص الجنس
+     لا يجيب عن بعض الصور (صورة المالك: `photo ?[no answer]` مرّتين) فكان السطر العامّ يُضيف حجابًا */
+  const hair = typeof o.covered === 'boolean' ? o.covered : null;
+  const look = Object.assign({}, cl.look, { covered: hair !== null ? hair : cl.look.covered });
   const traits = bodyCardTraits(o.style);
   const cardG = bodyCardGender(o.style);
   const useCard = !!(card && look.g && look.g === cardG && !traits.profile && (!traits.hijab || look.covered === true));
   const face = crops[0] ? (crops[0].upright ? 'face upright ' + crops[0].roll + '°' : 'face crop') : 'no face crop';
-  console.log('[studio-create] body reframe ' + o.style + ': ' + (useCard ? 'card' : 'text') + ' (card ' + (card ? 'cached' : 'missing') + ', photo ' + (look.g || '?' + (look.why ? '[' + look.why + ']' : '')) + (look.covered ? ' covered' : (look.covered === false ? ' uncovered' : '')) + ', card model ' + cardG + (traits.profile ? ', profile' : '') + (traits.hijab ? ', hijab card' : '') + ', ' + face + ')');
+  console.log('[studio-create] body reframe ' + o.style + ': ' + (useCard ? 'card' : 'text') + ' (card ' + (card ? 'cached' : 'missing') + ', photo ' + (cl.look.g || '?' + (cl.look.why ? '[' + cl.look.why + ']' : '')) + (cl.look.covered ? ' covered' : (cl.look.covered === false ? ' uncovered' : '')) + ', hair ' + (hair === true ? 'covered' : (hair === false ? 'uncovered' : '?')) + ', card model ' + cardG + (traits.profile ? ', profile' : '') + (traits.hijab ? ', hijab card' : '') + ', ' + face + ')');
   const textTask = bodyReframeTask(o.style, o.description, o.variant, look);
   const textParts = () => bodyReframeParts(photos[0], crops, textTask);
-  const lockOf = (img) => lockMergeFaces({ b64: img.b64, mime: img.mime }, { photos, crops, counts: [1], userTask: '', apiKey: o.apiKey, username: o.username, t0: o.t0, gate: 'BODY_FACE_SWAP', faceOnly: true /* v-body-bare-head: الغترة أُزيلت عمدًا — الوجه وحده لا الرأس بغطائه */ });
+  /* v-body-bare-head: الوجه وحده (faceOnly) — الغترة أُزيلت عمدًا فلا يُنقل الرأس بغطائه. v-body-hair-keep: شعر مكشوف بشهادة الكشف = الرأس كلّه
+     بشعره من صورته (أمر الـLoRA الرسميّ ولصق القصّة كلّها كالترندات v-trend-hair-lock) — غرّتها وتسريحتها جزء من شكلها؛ مغطّى أو غير معروف = الوجه وحده */
+  const lockOf = (img) => lockMergeFaces({ b64: img.b64, mime: img.mime }, { photos, crops, counts: [1], userTask: '', apiKey: o.apiKey, username: o.username, t0: o.t0, gate: 'BODY_FACE_SWAP', faceOnly: hair !== false });
   let out = await geminiImage(o.apiKey, useCard ? bodyReframeParts(photos[0], crops, bodyCardTask(o.style, o.description, o.variant, traits), card) : textParts(), 'body', '2:3');
   let engine;
   let fromCard = useCard;
@@ -688,7 +698,7 @@ module.exports = async (req, res) => {
        الوجه (البوّابة، المفتاح، السقف، لبس الربط) ففحص هويّة مقابل الصورة قبل الخصم — وجه غريب = ٤٢٢ كحارس التعديل */
     const closeUp = (feature === 'body' && bodyReframeOn()) ? await bodyCloseUp(apiKey, imageBase64) : null;
     if (closeUp) {
-      const rb = await bodyReframe({ apiKey, imageBase64, mimeType, style, description, variant: Number(variant), faces: closeUp.faces, crop: closeUp.crop, username: quota.username, t0: Date.now() });
+      const rb = await bodyReframe({ apiKey, imageBase64, mimeType, style, description, variant: Number(variant), faces: closeUp.faces, crop: closeUp.crop, covered: closeUp.covered, username: quota.username, t0: Date.now() });
       if (!rb.b64) { res.status(rb.status).json({ error: rb.error }); return; }
       if (!rb.swapped) {
         const idg = await verifyLocalizedImageEdit({
