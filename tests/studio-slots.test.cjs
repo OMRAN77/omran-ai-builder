@@ -42,7 +42,8 @@ test('٢. الخانة: كاميرا (للّمس) ومعرض — بلا «آخر
 
 test('٣. الصورتان تُضغطان، والزرّ يرشد إلى الخانة الناقصة', () => {
   assert.match(js, /fileInputB\.onchange = \(\) => \{ const f = fileInputB\.files && fileInputB\.files\[0\]; if\(f\) studioSetPhoto\('B', f\); \};/);
-  assert.match(js, /function studioSetPhoto\(which, file\)\{[\s\S]*?normalizeStudioPhoto\(file\)/);
+  /* v-studio-bands: رفع المستخدم يطلب قصّ الحشو أيضًا (trimBands) — الضغط نفسه كما كان */
+  assert.match(js, /function studioSetPhoto\(which, file\)\{[\s\S]*?normalizeStudioPhoto\(file, \{ trimBands: true \}\)/);
   assert.doesNotMatch(js.slice(js.indexOf('fileInputB.onchange'), js.indexOf('btnGenerate.onclick')), /FileReader/, 'لا رفع خام للصورة الثانية');
   assert.match(js, /studioOpenMenu\(studioMissing\(\)\); \/\* v-studio-slots/);
   assert.match(js, /btnGenerate\.textContent = studioMissing\(\) \? t\('studioAddPhotoCta'\) : t\('studioAiGenerateBtn'\);/);
