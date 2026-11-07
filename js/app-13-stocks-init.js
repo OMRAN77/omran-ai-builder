@@ -2217,6 +2217,22 @@
   /* v-studio-14: الميزات الأربع عشرة الجديدة (app-12-studio-more.js) */
   const MORE = window.__STUDIO_MORE || { features: [], options: {} };
   Object.keys(MORE.options).forEach((k) => { STUDIO_OPTIONS[k] = MORE.options[k]; });
+  /* v-celeb-style (طلب المالك ٧ نوفمبر: «خاصية تصور مع مشاهير العالم كلهم … وتكون في الاستايل»، ثمّ «الحينه فقط لي المالك فقط
+     لا تنشره»): تبويب «صورة مع مشهور» للمالك وحده — اسم أيّ مشهور نصًّا حرًّا ومشهد من ثمانية (مفاتيحها SCENES في
+     api/_lib/studio-create.js). البطاقات بلون المشهد بلا وجه مشهور، ولا وصف حرّ ولا سلّة ولا مقارنة؛ والخادم يرفض غير المالك. */
+  STUDIO_OPTIONS.celeb = [
+    { value:'selfie', bg:'radial-gradient(circle at 30% 25%,#5b3f7a,#15111c 70%)', ar:'🤳 سيلفي معًا', en:'🤳 Selfie together', fr:'🤳 Selfie ensemble', es:'🤳 Selfie juntos', tr:'🤳 Birlikte selfie', ru:'🤳 Селфи вместе', hi:'🤳 साथ में सेल्फ़ी', ur:'🤳 ساتھ سیلفی', bn:'🤳 একসঙ্গে সেলফি', ne:'🤳 सँगै सेल्फी', fil:'🤳 Selfie nang magkasama', id:'🤳 Swafoto bersama', zh:'🤳 一起自拍', ml:'🤳 ഒരുമിച്ച് സെൽഫി' },
+    { value:'polaroid', bg:'radial-gradient(circle at 30% 25%,#7a6a4a,#17140f 70%)', ar:'📸 صورة بولارويد', en:'📸 Polaroid', fr:'📸 Polaroid', es:'📸 Polaroid', tr:'📸 Polaroid', ru:'📸 Полароид', hi:'📸 पोलरॉइड', ur:'📸 پولرائیڈ', bn:'📸 পোলারয়েড', ne:'📸 पोलारोइड', fil:'📸 Polaroid', id:'📸 Polaroid', zh:'📸 宝丽来', ml:'📸 പോളറോയ്ഡ്' },
+    { value:'redcarpet', bg:'radial-gradient(circle at 30% 25%,#8a1f2b,#1a0c0f 70%)', ar:'🎬 السجادة الحمراء', en:'🎬 Red carpet', fr:'🎬 Tapis rouge', es:'🎬 Alfombra roja', tr:'🎬 Kırmızı halı', ru:'🎬 Красная дорожка', hi:'🎬 रेड कार्पेट', ur:'🎬 ریڈ کارپٹ', bn:'🎬 লাল গালিচা', ne:'🎬 रातो कार्पेट', fil:'🎬 Red carpet', id:'🎬 Karpet merah', zh:'🎬 红毯', ml:'🎬 റെഡ് കാർപെറ്റ്' },
+    { value:'backstage', bg:'radial-gradient(circle at 30% 25%,#2b4a8a,#0e1220 70%)', ar:'🎤 كواليس حفلة', en:'🎤 Concert backstage', fr:'🎤 Coulisses de concert', es:'🎤 Backstage de concierto', tr:'🎤 Konser kulisi', ru:'🎤 За кулисами концерта', hi:'🎤 कॉन्सर्ट बैकस्टेज', ur:'🎤 کنسرٹ کے پیچھے', bn:'🎤 কনসার্টের ব্যাকস্টেজ', ne:'🎤 कन्सर्ट ब्याकस्टेज', fil:'🎤 Backstage ng konsiyerto', id:'🎤 Belakang panggung konser', zh:'🎤 演唱会后台', ml:'🎤 കച്ചേരി ബാക്ക്സ്റ്റേജ്' },
+    { value:'stadium', bg:'radial-gradient(circle at 30% 25%,#2f7a3e,#0d1a10 70%)', ar:'🏟️ في الملعب', en:'🏟️ At the stadium', fr:'🏟️ Au stade', es:'🏟️ En el estadio', tr:'🏟️ Stadyumda', ru:'🏟️ На стадионе', hi:'🏟️ स्टेडियम में', ur:'🏟️ اسٹیڈیم میں', bn:'🏟️ স্টেডিয়ামে', ne:'🏟️ रंगशालामा', fil:'🏟️ Sa istadyum', id:'🏟️ Di stadion', zh:'🏟️ 在体育场', ml:'🏟️ സ്റ്റേഡിയത്തിൽ' },
+    { value:'photoshoot', bg:'radial-gradient(circle at 30% 25%,#6b6b72,#141416 70%)', ar:'📷 جلسة تصوير', en:'📷 Photoshoot', fr:'📷 Séance photo', es:'📷 Sesión de fotos', tr:'📷 Fotoğraf çekimi', ru:'📷 Фотосессия', hi:'📷 फ़ोटोशूट', ur:'📷 فوٹو شوٹ', bn:'📷 ফটোশুট', ne:'📷 फोटोसुट', fil:'📷 Photoshoot', id:'📷 Sesi foto', zh:'📷 写真拍摄', ml:'📷 ഫോട്ടോഷൂട്ട്' },
+    { value:'talkshow', bg:'radial-gradient(circle at 30% 25%,#8a5a1f,#1a120a 70%)', ar:'📺 برنامج تلفزيوني', en:'📺 TV talk show', fr:'📺 Talk-show télé', es:'📺 Programa de TV', tr:'📺 TV programı', ru:'📺 Ток-шоу', hi:'📺 टीवी टॉक शो', ur:'📺 ٹی وی ٹاک شو', bn:'📺 টিভি টক শো', ne:'📺 टिभी टक शो', fil:'📺 TV talk show', id:'📺 Acara bincang TV', zh:'📺 电视访谈节目', ml:'📺 ടിവി ടോക്ക് ഷോ' },
+    { value:'vintage', bg:'radial-gradient(circle at 30% 25%,#9a9a9a,#121212 70%)', ar:'🎞️ صورة قديمة أبيض وأسود', en:'🎞️ Vintage black & white', fr:'🎞️ Ancienne photo noir et blanc', es:'🎞️ Foto antigua en blanco y negro', tr:'🎞️ Eski siyah-beyaz fotoğraf', ru:'🎞️ Старое чёрно-белое фото', hi:'🎞️ पुरानी ब्लैक एंड व्हाइट फ़ोटो', ur:'🎞️ پرانی بلیک اینڈ وائٹ تصویر', bn:'🎞️ পুরোনো সাদাকালো ছবি', ne:'🎞️ पुरानो कालो-सेतो फोटो', fil:'🎞️ Lumang itim at puting litrato', id:'🎞️ Foto lama hitam putih', zh:'🎞️ 老式黑白照片', ml:'🎞️ പഴയ ബ്ലാക്ക് ആൻഡ് വൈറ്റ് ഫോട്ടോ' },
+  ];
+  const celebOwner = () => { try{ return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); }catch(e){ return false; } };
+  /* رموز رفض الخادم ← نصوص الواجهة (١٤ لغة) */
+  const CELEB_ERR = { celeb_name_required: 'studioCelebNeedName', celeb_name_only: 'studioCelebNameOnly', celeb_blocked: 'studioCelebBlocked', celeb_unknown: 'studioCelebUnknown', celeb_refused: 'studioCelebRefused' };
   /* v-style-match (تدقيق ٢٥ أكتوبر، «الصور ما تطابق الشي اللي اخترته»): البطاقات المصحَّحة لها رقم مراجعة — نفس
      REV في api/_lib/studio-card-fix.js (tests/studio-card-fix يقارنهما). الرقم في الرابط (&r=) لأنّ الصورة القديمة
      مخزّنة «immutable» سنة كاملة في المتصفّح وكاش الشبكة؛ و__tab يأخذ مراجعة أوّل خيار (الخادم يرسمه هو). */
@@ -2253,6 +2269,10 @@
   const STUDIO_STATIC_WRONG = new Set(['anime-cyberpunk', 'anime-retro90s', 'anime-shonenstudio', 'beard-anchor', 'glasses-hexagon', 'glasses-sunglasses', 'heritage-embroidered', 'heritage-emirati', 'heritage-kandora', 'heritage-omani', 'heritage-saudimen2', 'skin-circles', 'tattoo-arabictattoo', 'tattoo-back', 'tattoo-geometric']);
   const STUDIO_TAB_PREVIEW = new Set(['nails', 'makeup', 'skin']);
   function optionImgs(f, v){
+    if(f === 'celeb'){ /* v-celeb-style: لا معاينة مولّدة (الخادم لا يرسم مشاهير) — بطاقة بلون المشهد (it.bg في المنتقي) */
+      const sc = ((typeof STUDIO_OPTIONS !== 'undefined' && STUDIO_OPTIONS.celeb) || []).find((o) => o.value === v);
+      return { img: '', img2: '', bg: (sc && sc.bg) || '' };
+    }
     const gen = PREVIEW_API(f, v);
     if(!STUDIO_STATIC_OPTS.has(f + '-' + v) || STUDIO_STATIC_WRONG.has(f + '-' + v)) return { img: gen, img2: '' }; /* v-studio-static-set: لا صورة جاهزة ⇒ المعاينة وحدها */
     const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
@@ -2392,13 +2412,45 @@
     if(compareHandle) compareHandle.style.left = pct + '%';
   }
   function setupBeforeAfter(){
-    if(feature === 'merge' || !selectedBase64A){
+    if(feature === 'merge' || feature === 'celeb' || !selectedBase64A){
       studioBaShow(false);
       return;
     }
     beforeImg.src = 'data:' + selectedMimeA + ';base64,' + selectedBase64A;
     studioBaShow(true);
     updateSliderClip(50);
+  }
+  /* v-celeb-style: صورة مع شخص حقيقيّ لم تُلتقط — شارة «✦ AI» صغيرة في الزاوية داخل البكسلات نفسها (المعروضة والمحمّلة)،
+     كي لا تُتداول على أنّها حقيقيّة. تعذّر الرسم = الصورة كما هي. */
+  function celebStamp(dataUrl){
+    return new Promise((resolve) => {
+      try{
+        const im = new Image();
+        im.onload = () => {
+          try{
+            const c = document.createElement('canvas');
+            c.width = im.naturalWidth; c.height = im.naturalHeight;
+            const g = c.getContext('2d');
+            g.drawImage(im, 0, 0);
+            const s = Math.max(14, Math.round(Math.min(c.width, c.height) * 0.03));
+            g.font = '700 ' + s + 'px system-ui, -apple-system, Segoe UI, sans-serif';
+            g.direction = 'ltr';
+            const label = '✦ AI';
+            const w = Math.round(g.measureText(label).width + s * 1.1), h = Math.round(s * 1.7), m = Math.round(s * 0.8);
+            const x = c.width - w - m, y = c.height - h - m;
+            g.fillStyle = 'rgba(0,0,0,.5)';
+            g.beginPath();
+            if(typeof g.roundRect === 'function') g.roundRect(x, y, w, h, h / 2); else g.rect(x, y, w, h);
+            g.fill();
+            g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.textAlign = 'center';
+            g.fillText(label, x + w / 2, y + h / 2 + 1);
+            resolve(c.toDataURL('image/png')); /* PNG كبقيّة نتائج الاستوديو — اسم ملفّ التحميل .png يبقى صادقًا */
+          }catch(e){ __swallow(e, 'studio:celeb-stamp'); resolve(dataUrl); }
+        };
+        im.onerror = () => resolve(dataUrl);
+        im.src = dataUrl;
+      }catch(e){ __swallow(e, 'studio:celeb-stamp-load'); resolve(dataUrl); }
+    });
   }
   let __studioBaDragging = false;
   function studioBaPctFromEvent(ev){
@@ -2456,6 +2508,7 @@
     /* v-studio-compare-cards (لقطة المالك «كيف الشخص يعرف الشكل»): كلّ خيار بطاقة بصورته (optionImgs نفسها)
        بدل مربّع نصّيّ، وثلاثة كحدّ أقصى. الصور تُحمَّل عند ظهورها فقط. */
     compareChecksEl.innerHTML = '';
+    if(feature === 'celeb') return; /* v-celeb-style: المقارنة تحتاج اسم المشهور — مخفيّة في هذا التبويب */
     Array.from(styleEl.options).forEach(opt => {
       const label = document.createElement('label');
       label.className = 'stCmp';
@@ -2505,14 +2558,20 @@
     const trig = document.createElement('div');
     trig.id = 'studioStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
-    const img = document.createElement('img');
-    img.alt = cur.textContent.trim(); img.loading = 'lazy';
-    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
-    /* v-art-defer: داخل #studioAiModal المغلق — المقاس ثابت 44×58 فالتأجيل آمن. */
     const __srcs = optionImgs(feature, cur.value); /* v-studio-more-looks */
-    if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __srcs.img; });
-    else img.src = __srcs.img;
-    img.onerror = function(){ if(!img.__alt && __srcs.img2){ img.__alt = 1; img.src = __srcs.img2; } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
+    /* v-celeb-style: خيار بلا صورة (مشاهد «صورة مع مشهور») — مربّع بلون المشهد بالمقاس نفسه بدل صورة فارغة */
+    const img = document.createElement(__srcs.img ? 'img' : 'div');
+    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    if(!__srcs.img){
+      if(__srcs.bg) img.style.background = __srcs.bg;
+      img.style.border = '1px solid rgba(212,175,55,.4)';
+    } else {
+      img.alt = cur.textContent.trim(); img.loading = 'lazy';
+      /* v-art-defer: داخل #studioAiModal المغلق — المقاس ثابت 44×58 فالتأجيل آمن. */
+      if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __srcs.img; });
+      else img.src = __srcs.img;
+      img.onerror = function(){ if(!img.__alt && __srcs.img2){ img.__alt = 1; img.src = __srcs.img2; } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
+    }
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
@@ -2569,14 +2628,14 @@
     let box = document.getElementById('studioBasket');
     if(!box){ box = document.createElement('div'); box.id = 'studioBasket'; }
     studioCardsEl.appendChild(box);
-    box.style.cssText = 'margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;';
+    box.style.cssText = 'margin-top:8px; display:' + (feature === 'celeb' ? 'none' : 'flex') + '; flex-wrap:wrap; gap:6px; align-items:center;'; /* v-celeb-style: لا سلّة في «صورة مع مشهور» */
     box.innerHTML = '';
     const addBtn = document.createElement('button');
     addBtn.type = 'button'; addBtn.className = 'btn';
     addBtn.style.cssText = 'font-size:12.5px; padding:6px 12px; border-radius:999px;';
     const inB = studioBasket.some((it) => it.f === feature && it.v === styleEl.value);
     addBtn.textContent = inB ? bT('✓ مضاف للاختيارات', '✓ Added') : bT('➕ أضف هذا للاختيارات', '➕ Add to selection');
-    addBtn.disabled = inB || feature === 'merge';
+    addBtn.disabled = inB || feature === 'merge' || feature === 'celeb'; /* v-celeb-style: الاسم لا يمرّ في السلسلة */
     addBtn.onclick = () => {
       if(studioBasket.length >= STUDIO_BASKET_MAX){ studioBasketRefuse(bT('الحدّ ' + STUDIO_BASKET_MAX + ' اختيارات — احذف واحدًا لتضيف غيره.', 'Up to ' + STUDIO_BASKET_MAX + ' picks — remove one first.')); return; }
       if(studioComboCount(studioBasket.concat([{ f: feature }])) > STUDIO_IMAGES_MAX){ studioBasketRefuse(t2('studioBasketImgMax').replace('{n}', STUDIO_IMAGES_MAX)); return; }
@@ -2613,7 +2672,7 @@
   }
   function refreshGenerateLabel(){
     if(!btnGenerate || studioMissing()) return;
-    const n = studioBasket.length;
+    const n = feature === 'celeb' ? 0 : studioBasket.length; /* v-celeb-style: التبويب لا يستعمل السلّة — الزرّ لا يعد بها */
     btnGenerate.textContent = n ? bT('✨ ولّد بالاختيارات (' + n + ')', '✨ Generate with picks (' + n + ')') : t('studioAiGenerateBtn');
   }
   async function studioChainOne(combo, token, onStep){
@@ -2709,7 +2768,8 @@
       b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700; white-space:normal;';
       const img = document.createElement('img');
       const staticTab = !STUDIO_TAB_PREVIEW.has(f) && (STUDIO_STATIC_FEATS.has(f) || !IS_MORE(f)); /* v-studio-static-set: الميزات الإضافيّة بلا صورة جاهزة ⇒ المعاينة مباشرة؛ v-style-match: والتبويبات الثلاثة الخاطئة */
-      img.src = staticTab ? 'assets/studio/features/' + f + '.webp' : PREVIEW_API(f, '__tab');
+      /* v-celeb-style: صورة تبويب «صورة مع مشهور» = بطاقة «السجادة الحمراء» في الإطلالات الأيقونيّة (مخزّنة مسبقًا — بلا توليد) */
+      img.src = f === 'celeb' ? PREVIEW_API('iconic', 'icredcarpetscene') : (staticTab ? 'assets/studio/features/' + f + '.webp' : PREVIEW_API(f, '__tab'));
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;';
       img.onerror = function(){ if(!img.__alt && staticTab && IS_MORE(f)){ img.__alt = 1; img.src = PREVIEW_API(f, '__tab'); } else img.remove(); }; /* v-studio-14 */
@@ -2722,8 +2782,50 @@
     });
   }
   photoizeStudioTabs();
+  /* v-celeb-style: خانة اسم المشهور فوق المشاهد — تظهر في تبويبها وحده (نصوصها بالـ١٤ لغة عبر data-i18n) */
+  const celebWrap = (function(){
+    try{
+      if(!styleWrap || !styleWrap.parentNode) return null;
+      const w = document.createElement('div');
+      w.id = 'studioCelebWrap'; w.style.cssText = 'display:none; margin-top:12px;';
+      w.innerHTML = '<label for="studioCelebName" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioCelebLabel"></label>'
+        + '<div class="mini-mic-field-row"><input type="text" id="studioCelebName" maxlength="60" autocomplete="off" style="width:100%; padding:8px; border-radius:var(--r-2);" data-i18n-placeholder="studioCelebPlaceholder">'
+        + '<button type="button" class="mini-mic-btn" data-target="studioCelebName" title="🎤" data-i18n-title="micTitle">🎤</button></div>';
+      w.querySelector('label').textContent = t2('studioCelebLabel');
+      w.querySelector('input').placeholder = t2('studioCelebPlaceholder');
+      styleWrap.parentNode.insertBefore(w, styleWrap);
+      return w;
+    }catch(e){ __swallow(e, 'studio:celeb-field'); return null; }
+  })();
+  const celebNameEl = celebWrap ? celebWrap.querySelector('#studioCelebName') : null;
+  /* التبويب للمالك وحده: يُضاف قبل «دمج صور» عند الإقلاع وعند كلّ فتح (دخول بعد الإقلاع)، ويُزال إن لم يعد المالك */
+  function ensureCelebTab(){
+    if(!tabsWrap) return;
+    let b = tabsWrap.querySelector('.studioAiTabBtn[data-feature="celeb"]');
+    if(!celebOwner()){
+      if(b) b.remove();
+      if(feature === 'celeb') feature = 'hair';
+      return;
+    }
+    if(b) return;
+    b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn studioAiTabBtn'; b.dataset.feature = 'celeb';
+    b.setAttribute('data-i18n', 'studioAiTabCeleb');
+    b.style.whiteSpace = 'nowrap';
+    b.textContent = t2('studioAiTabCeleb');
+    const mergeBtn = tabsWrap.querySelector('.studioAiTabBtn[data-feature="merge"]');
+    if(mergeBtn) tabsWrap.insertBefore(b, mergeBtn); else tabsWrap.appendChild(b);
+    b.onclick = () => setFeature('celeb');
+  }
   function setFeature(next){
     feature = next;
+    { /* v-celeb-style: الاسم ظاهر في تبويبه؛ «خيارات إضافية» (الوصف الحرّ) والمقارنة مخفيّتان فيه */
+      const isCeleb = feature === 'celeb';
+      if(celebWrap) celebWrap.style.display = isCeleb ? 'block' : 'none';
+      const more = $('#studioAiMore'); if(more) more.style.display = isCeleb ? 'none' : '';
+      const cmp = $('#studioAiCompareMore'); if(cmp) cmp.style.display = isCeleb ? 'none' : '';
+      const cmpTitle = modal.querySelector('[data-i18n="studioCompareTitle"]'); if(cmpTitle) cmpTitle.style.visibility = isCeleb ? 'hidden' : ''; /* العنوان بلا قائمة تحته (زرّ المفضّلة في سطره يبقى) */
+    }
     photoizeStudioTabs(); // ترجمة i18n تمسح حقن الصور — أعد حقن ما نقص
     Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
       b.classList.toggle('active', b.dataset.feature === next);
@@ -2755,6 +2857,7 @@
   Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
     b.onclick = () => setFeature(b.dataset.feature);
   });
+  ensureCelebTab(); /* v-celeb-style */
 
   /* v-studio-strip-desktop (المالك ١٧ أكتوبر: «شريط اختر التعديل مايتحرك» على الكمبيوتر، ثمّ «يتحرّك بعجلة الماوس والسحب، بدون أيّ
      تغيير ثاني، والجوّال ما ينلمس»): الشريط ٢٤ تبويبًا والحاسوب يعرض نصفها، وشريط التمرير مخفيّ في التطبيق كلّه (v-noscroll-all)،
@@ -2836,6 +2939,7 @@
     if(stripUnlatch) stripUnlatch(); // v-strip-wheel-latch: تمرير زيارة سابقة لا يقرّر عن الشريط الآن
     modal.style.display = 'flex';
     closeHeaderMenu();
+    ensureCelebTab(); /* v-celeb-style: المالك دخل بعد الإقلاع، أو خرج */
     setFeature(feature);
   };
   // بطاقة الخيارات جاهزة من الإقلاع — لا تنتظر أول فتح (أي مسار فتح يجدها).
@@ -3006,6 +3110,12 @@
       studioOpenMenu('A');
       return;
     }
+    const celebRun = feature === 'celeb'; /* v-celeb-style */
+    if(celebRun && !(celebNameEl && celebNameEl.value.trim())){
+      setStatus(t2('studioCelebNeedName'));
+      if(celebNameEl) celebNameEl.focus();
+      return;
+    }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){
       setStatus(t('studioAiNeedLogin'));
@@ -3022,7 +3132,7 @@
     { const mr = document.getElementById('studioMultiResults'); if(mr){ mr.innerHTML = ''; mr.style.display = 'none'; } }
 
     /* v-studio-chain: اختيارات متعدّدة ⇒ سلسلة/صور متعدّدة */
-    if(studioBasket.length && feature !== 'merge'){
+    if(studioBasket.length && feature !== 'merge' && !celebRun){
       try{ await runStudioBasket(token); }
       catch(e){ setStatus(studioErrText(e)); }
       finally{ btnGenerate.disabled = false; }
@@ -3044,6 +3154,7 @@
         payload.imageBase64B = selectedBase64B;
         payload.mimeTypeB = selectedMimeB;
       }
+      if(celebRun){ payload.celebName = celebNameEl.value.trim(); delete payload.description; payload.multiAngle = false; } /* v-celeb-style */
       const res = await fetch('/api/studio-create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3053,9 +3164,12 @@
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('studioAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; }
+        if(CELEB_ERR[data.error]){ setStatus('⚠️ ' + t2(CELEB_ERR[data.error])); return; } /* v-celeb-style */
+        if(celebRun && data.error === 'Unknown feature'){ setStatus(t('studioAiNeedLogin')); return; } /* جلسة المالك انتهت — التبويب ظاهر له فقط */
         throw new Error(data.error || 'unknown');
       }
-      const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      const rawUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      const dataUrl = celebRun ? await celebStamp(rawUrl) : rawUrl; /* v-celeb-style: شارة «✦ AI» */
       resultWrap.style.display = 'block';
       resultEl.src = dataUrl;
       resultEl.style.display = 'block';

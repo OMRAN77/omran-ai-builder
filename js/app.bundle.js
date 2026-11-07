@@ -4912,6 +4912,14 @@ const I18N = {
     studioAiTabTattoo: '🎨 تاتو',
     studioAiTabAnime: '🎭 أنمي',
     studioAiTabMerge: '🖼️ دمج صور',
+    studioAiTabCeleb: '🌟 صورة مع مشهور',
+    studioCelebLabel: '🌟 اسم المشهور (قديم أو جديد)',
+    studioCelebPlaceholder: 'الاسم الكامل — لاعب، مطرب، ممثل، شخصية تاريخية…',
+    studioCelebNeedName: 'اكتب اسم المشهور أولًا.',
+    studioCelebBlocked: 'هذا الاسم غير مسموح في هذه الميزة.',
+    studioCelebUnknown: 'لم نتعرّف على هذا الاسم كشخص مشهور حقيقي — اكتب الاسم كاملًا.',
+    studioCelebRefused: 'تعذّر إنشاء صورة مع هذا المشهور — جرّب مشهدًا آخر أو اسمًا آخر. لم يُخصم شيء من رصيدك.',
+    studioCelebNameOnly: 'اكتب اسم المشهور وحده — بلا وصف ولا أشخاص آخرين.',
     studioAiStyleLabel: 'اختر الخيار',
     studioAiDescLabel: 'وصف إضافي (اختياري)',
     studioAiDescPlaceholder: 'أضف تفاصيل إضافية إذا أردت...',
@@ -6974,6 +6982,14 @@ const I18N = {
     studioAiTabTattoo: '🎨 Tattoo',
     studioAiTabAnime: '🎭 Anime',
     studioAiTabMerge: '🖼️ Merge Photos',
+    studioAiTabCeleb: '🌟 Photo with a star',
+    studioCelebLabel: '🌟 Celebrity name (classic or current)',
+    studioCelebPlaceholder: 'Full name — athlete, singer, actor, historical figure…',
+    studioCelebNeedName: 'Type the celebrity\'s name first.',
+    studioCelebBlocked: 'This name isn\'t allowed in this feature.',
+    studioCelebUnknown: 'We couldn\'t recognise this as a real famous person — type the full name.',
+    studioCelebRefused: 'Couldn\'t create a photo with this celebrity — try another scene or name. Nothing was deducted.',
+    studioCelebNameOnly: 'Type the celebrity\'s name only — no description or other people.',
     studioAiStyleLabel: 'Choose option',
     studioAiDescLabel: 'Extra details (optional)',
     studioAiDescPlaceholder: 'Add extra details if you want...',
@@ -7225,7 +7241,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=783'; /* v-hw-resubmit-2 (774): أسطر «أفكار بلا صورة» في الديكور (١٤ لغة) · v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج · v-director-story (778): نوع «قصة» في «مخرج التطبيق» — تسعة نصوص (١٤ لغة) · v-reply-dialect (779): «لهجة الصوت العربي» وأسماء اللهجات الستّ (١٤ لغة) · v-hw-1316 (781): نائب صندوق الكتابة «اكتب رسالتك هنا» في ١٢ لغة كان «ابنِ تطبيقًا أو لعبة» · v-google-retry (782): نصّ access_denied «أُلغي أو لم تسمح به» لا اتّهام المستخدم بالإلغاء (١٢ لغة) · v-play-invite (783): بطاقة دعوة مختبري Google Play (١٤ لغة) */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */ /* v-audit-fixes (775): نصوص إصلاحات الفحص الشامل — رسائل الدخول والأخطاء الودّيّة والاستوديوهات والتعليم والأدوات والتصدير والمحادثة والصوت (١٤ لغة)؛ ٧٧٤ نشره main بنصوص هواوي فارتفع الوسم مرّة أخرى · v-video-modes-by-result (776): أسماء الأوضاع بالنتيجة ومربّع «مقدّمة وخاتمة بتوقيعك» (١٤ لغة) · v-video-durations (777): «فيلم متكامل» بلا «سريع» (١٤ لغة) */
+    sc.src = 'i18n/' + lg + '.js?v=784'; /* v-hw-resubmit-2 (774): أسطر «أفكار بلا صورة» في الديكور (١٤ لغة) · v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج · v-director-story (778): نوع «قصة» في «مخرج التطبيق» — تسعة نصوص (١٤ لغة) · v-reply-dialect (779): «لهجة الصوت العربي» وأسماء اللهجات الستّ (١٤ لغة) · v-hw-1316 (781): نائب صندوق الكتابة «اكتب رسالتك هنا» في ١٢ لغة كان «ابنِ تطبيقًا أو لعبة» · v-google-retry (782): نصّ access_denied «أُلغي أو لم تسمح به» لا اتّهام المستخدم بالإلغاء (١٢ لغة) · v-play-invite (783): بطاقة دعوة مختبري Google Play (١٤ لغة) · v-celeb-style (784): ثمانية نصوص لتبويب «صورة مع مشهور» في الستايل — للمالك (١٤ لغة) */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */ /* v-audit-fixes (775): نصوص إصلاحات الفحص الشامل — رسائل الدخول والأخطاء الودّيّة والاستوديوهات والتعليم والأدوات والتصدير والمحادثة والصوت (١٤ لغة)؛ ٧٧٤ نشره main بنصوص هواوي فارتفع الوسم مرّة أخرى · v-video-modes-by-result (776): أسماء الأوضاع بالنتيجة ومربّع «مقدّمة وخاتمة بتوقيعك» (١٤ لغة) · v-video-durations (777): «فيلم متكامل» بلا «سريع» (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -40573,6 +40589,22 @@ function stud2ErrText(e, prefix, fbKey){
   /* v-studio-14: الميزات الأربع عشرة الجديدة (app-12-studio-more.js) */
   const MORE = window.__STUDIO_MORE || { features: [], options: {} };
   Object.keys(MORE.options).forEach((k) => { STUDIO_OPTIONS[k] = MORE.options[k]; });
+  /* v-celeb-style (طلب المالك ٧ نوفمبر: «خاصية تصور مع مشاهير العالم كلهم … وتكون في الاستايل»، ثمّ «الحينه فقط لي المالك فقط
+     لا تنشره»): تبويب «صورة مع مشهور» للمالك وحده — اسم أيّ مشهور نصًّا حرًّا ومشهد من ثمانية (مفاتيحها SCENES في
+     api/_lib/studio-create.js). البطاقات بلون المشهد بلا وجه مشهور، ولا وصف حرّ ولا سلّة ولا مقارنة؛ والخادم يرفض غير المالك. */
+  STUDIO_OPTIONS.celeb = [
+    { value:'selfie', bg:'radial-gradient(circle at 30% 25%,#5b3f7a,#15111c 70%)', ar:'🤳 سيلفي معًا', en:'🤳 Selfie together', fr:'🤳 Selfie ensemble', es:'🤳 Selfie juntos', tr:'🤳 Birlikte selfie', ru:'🤳 Селфи вместе', hi:'🤳 साथ में सेल्फ़ी', ur:'🤳 ساتھ سیلفی', bn:'🤳 একসঙ্গে সেলফি', ne:'🤳 सँगै सेल्फी', fil:'🤳 Selfie nang magkasama', id:'🤳 Swafoto bersama', zh:'🤳 一起自拍', ml:'🤳 ഒരുമിച്ച് സെൽഫി' },
+    { value:'polaroid', bg:'radial-gradient(circle at 30% 25%,#7a6a4a,#17140f 70%)', ar:'📸 صورة بولارويد', en:'📸 Polaroid', fr:'📸 Polaroid', es:'📸 Polaroid', tr:'📸 Polaroid', ru:'📸 Полароид', hi:'📸 पोलरॉइड', ur:'📸 پولرائیڈ', bn:'📸 পোলারয়েড', ne:'📸 पोलारोइड', fil:'📸 Polaroid', id:'📸 Polaroid', zh:'📸 宝丽来', ml:'📸 പോളറോയ്ഡ്' },
+    { value:'redcarpet', bg:'radial-gradient(circle at 30% 25%,#8a1f2b,#1a0c0f 70%)', ar:'🎬 السجادة الحمراء', en:'🎬 Red carpet', fr:'🎬 Tapis rouge', es:'🎬 Alfombra roja', tr:'🎬 Kırmızı halı', ru:'🎬 Красная дорожка', hi:'🎬 रेड कार्पेट', ur:'🎬 ریڈ کارپٹ', bn:'🎬 লাল গালিচা', ne:'🎬 रातो कार्पेट', fil:'🎬 Red carpet', id:'🎬 Karpet merah', zh:'🎬 红毯', ml:'🎬 റെഡ് കാർപെറ്റ്' },
+    { value:'backstage', bg:'radial-gradient(circle at 30% 25%,#2b4a8a,#0e1220 70%)', ar:'🎤 كواليس حفلة', en:'🎤 Concert backstage', fr:'🎤 Coulisses de concert', es:'🎤 Backstage de concierto', tr:'🎤 Konser kulisi', ru:'🎤 За кулисами концерта', hi:'🎤 कॉन्सर्ट बैकस्टेज', ur:'🎤 کنسرٹ کے پیچھے', bn:'🎤 কনসার্টের ব্যাকস্টেজ', ne:'🎤 कन्सर्ट ब्याकस्टेज', fil:'🎤 Backstage ng konsiyerto', id:'🎤 Belakang panggung konser', zh:'🎤 演唱会后台', ml:'🎤 കച്ചേരി ബാക്ക്സ്റ്റേജ്' },
+    { value:'stadium', bg:'radial-gradient(circle at 30% 25%,#2f7a3e,#0d1a10 70%)', ar:'🏟️ في الملعب', en:'🏟️ At the stadium', fr:'🏟️ Au stade', es:'🏟️ En el estadio', tr:'🏟️ Stadyumda', ru:'🏟️ На стадионе', hi:'🏟️ स्टेडियम में', ur:'🏟️ اسٹیڈیم میں', bn:'🏟️ স্টেডিয়ামে', ne:'🏟️ रंगशालामा', fil:'🏟️ Sa istadyum', id:'🏟️ Di stadion', zh:'🏟️ 在体育场', ml:'🏟️ സ്റ്റേഡിയത്തിൽ' },
+    { value:'photoshoot', bg:'radial-gradient(circle at 30% 25%,#6b6b72,#141416 70%)', ar:'📷 جلسة تصوير', en:'📷 Photoshoot', fr:'📷 Séance photo', es:'📷 Sesión de fotos', tr:'📷 Fotoğraf çekimi', ru:'📷 Фотосессия', hi:'📷 फ़ोटोशूट', ur:'📷 فوٹو شوٹ', bn:'📷 ফটোশুট', ne:'📷 फोटोसुट', fil:'📷 Photoshoot', id:'📷 Sesi foto', zh:'📷 写真拍摄', ml:'📷 ഫോട്ടോഷൂട്ട്' },
+    { value:'talkshow', bg:'radial-gradient(circle at 30% 25%,#8a5a1f,#1a120a 70%)', ar:'📺 برنامج تلفزيوني', en:'📺 TV talk show', fr:'📺 Talk-show télé', es:'📺 Programa de TV', tr:'📺 TV programı', ru:'📺 Ток-шоу', hi:'📺 टीवी टॉक शो', ur:'📺 ٹی وی ٹاک شو', bn:'📺 টিভি টক শো', ne:'📺 टिभी टक शो', fil:'📺 TV talk show', id:'📺 Acara bincang TV', zh:'📺 电视访谈节目', ml:'📺 ടിവി ടോക്ക് ഷോ' },
+    { value:'vintage', bg:'radial-gradient(circle at 30% 25%,#9a9a9a,#121212 70%)', ar:'🎞️ صورة قديمة أبيض وأسود', en:'🎞️ Vintage black & white', fr:'🎞️ Ancienne photo noir et blanc', es:'🎞️ Foto antigua en blanco y negro', tr:'🎞️ Eski siyah-beyaz fotoğraf', ru:'🎞️ Старое чёрно-белое фото', hi:'🎞️ पुरानी ब्लैक एंड व्हाइट फ़ोटो', ur:'🎞️ پرانی بلیک اینڈ وائٹ تصویر', bn:'🎞️ পুরোনো সাদাকালো ছবি', ne:'🎞️ पुरानो कालो-सेतो फोटो', fil:'🎞️ Lumang itim at puting litrato', id:'🎞️ Foto lama hitam putih', zh:'🎞️ 老式黑白照片', ml:'🎞️ പഴയ ബ്ലാക്ക് ആൻഡ് വൈറ്റ് ഫോട്ടോ' },
+  ];
+  const celebOwner = () => { try{ return typeof omranOwnerUi === 'function' && !!omranOwnerUi(); }catch(e){ return false; } };
+  /* رموز رفض الخادم ← نصوص الواجهة (١٤ لغة) */
+  const CELEB_ERR = { celeb_name_required: 'studioCelebNeedName', celeb_name_only: 'studioCelebNameOnly', celeb_blocked: 'studioCelebBlocked', celeb_unknown: 'studioCelebUnknown', celeb_refused: 'studioCelebRefused' };
   /* v-style-match (تدقيق ٢٥ أكتوبر، «الصور ما تطابق الشي اللي اخترته»): البطاقات المصحَّحة لها رقم مراجعة — نفس
      REV في api/_lib/studio-card-fix.js (tests/studio-card-fix يقارنهما). الرقم في الرابط (&r=) لأنّ الصورة القديمة
      مخزّنة «immutable» سنة كاملة في المتصفّح وكاش الشبكة؛ و__tab يأخذ مراجعة أوّل خيار (الخادم يرسمه هو). */
@@ -40609,6 +40641,10 @@ function stud2ErrText(e, prefix, fbKey){
   const STUDIO_STATIC_WRONG = new Set(['anime-cyberpunk', 'anime-retro90s', 'anime-shonenstudio', 'beard-anchor', 'glasses-hexagon', 'glasses-sunglasses', 'heritage-embroidered', 'heritage-emirati', 'heritage-kandora', 'heritage-omani', 'heritage-saudimen2', 'skin-circles', 'tattoo-arabictattoo', 'tattoo-back', 'tattoo-geometric']);
   const STUDIO_TAB_PREVIEW = new Set(['nails', 'makeup', 'skin']);
   function optionImgs(f, v){
+    if(f === 'celeb'){ /* v-celeb-style: لا معاينة مولّدة (الخادم لا يرسم مشاهير) — بطاقة بلون المشهد (it.bg في المنتقي) */
+      const sc = ((typeof STUDIO_OPTIONS !== 'undefined' && STUDIO_OPTIONS.celeb) || []).find((o) => o.value === v);
+      return { img: '', img2: '', bg: (sc && sc.bg) || '' };
+    }
     const gen = PREVIEW_API(f, v);
     if(!STUDIO_STATIC_OPTS.has(f + '-' + v) || STUDIO_STATIC_WRONG.has(f + '-' + v)) return { img: gen, img2: '' }; /* v-studio-static-set: لا صورة جاهزة ⇒ المعاينة وحدها */
     const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
@@ -40748,13 +40784,45 @@ function stud2ErrText(e, prefix, fbKey){
     if(compareHandle) compareHandle.style.left = pct + '%';
   }
   function setupBeforeAfter(){
-    if(feature === 'merge' || !selectedBase64A){
+    if(feature === 'merge' || feature === 'celeb' || !selectedBase64A){
       studioBaShow(false);
       return;
     }
     beforeImg.src = 'data:' + selectedMimeA + ';base64,' + selectedBase64A;
     studioBaShow(true);
     updateSliderClip(50);
+  }
+  /* v-celeb-style: صورة مع شخص حقيقيّ لم تُلتقط — شارة «✦ AI» صغيرة في الزاوية داخل البكسلات نفسها (المعروضة والمحمّلة)،
+     كي لا تُتداول على أنّها حقيقيّة. تعذّر الرسم = الصورة كما هي. */
+  function celebStamp(dataUrl){
+    return new Promise((resolve) => {
+      try{
+        const im = new Image();
+        im.onload = () => {
+          try{
+            const c = document.createElement('canvas');
+            c.width = im.naturalWidth; c.height = im.naturalHeight;
+            const g = c.getContext('2d');
+            g.drawImage(im, 0, 0);
+            const s = Math.max(14, Math.round(Math.min(c.width, c.height) * 0.03));
+            g.font = '700 ' + s + 'px system-ui, -apple-system, Segoe UI, sans-serif';
+            g.direction = 'ltr';
+            const label = '✦ AI';
+            const w = Math.round(g.measureText(label).width + s * 1.1), h = Math.round(s * 1.7), m = Math.round(s * 0.8);
+            const x = c.width - w - m, y = c.height - h - m;
+            g.fillStyle = 'rgba(0,0,0,.5)';
+            g.beginPath();
+            if(typeof g.roundRect === 'function') g.roundRect(x, y, w, h, h / 2); else g.rect(x, y, w, h);
+            g.fill();
+            g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.textAlign = 'center';
+            g.fillText(label, x + w / 2, y + h / 2 + 1);
+            resolve(c.toDataURL('image/png')); /* PNG كبقيّة نتائج الاستوديو — اسم ملفّ التحميل .png يبقى صادقًا */
+          }catch(e){ __swallow(e, 'studio:celeb-stamp'); resolve(dataUrl); }
+        };
+        im.onerror = () => resolve(dataUrl);
+        im.src = dataUrl;
+      }catch(e){ __swallow(e, 'studio:celeb-stamp-load'); resolve(dataUrl); }
+    });
   }
   let __studioBaDragging = false;
   function studioBaPctFromEvent(ev){
@@ -40812,6 +40880,7 @@ function stud2ErrText(e, prefix, fbKey){
     /* v-studio-compare-cards (لقطة المالك «كيف الشخص يعرف الشكل»): كلّ خيار بطاقة بصورته (optionImgs نفسها)
        بدل مربّع نصّيّ، وثلاثة كحدّ أقصى. الصور تُحمَّل عند ظهورها فقط. */
     compareChecksEl.innerHTML = '';
+    if(feature === 'celeb') return; /* v-celeb-style: المقارنة تحتاج اسم المشهور — مخفيّة في هذا التبويب */
     Array.from(styleEl.options).forEach(opt => {
       const label = document.createElement('label');
       label.className = 'stCmp';
@@ -40861,14 +40930,20 @@ function stud2ErrText(e, prefix, fbKey){
     const trig = document.createElement('div');
     trig.id = 'studioStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
-    const img = document.createElement('img');
-    img.alt = cur.textContent.trim(); img.loading = 'lazy';
-    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
-    /* v-art-defer: داخل #studioAiModal المغلق — المقاس ثابت 44×58 فالتأجيل آمن. */
     const __srcs = optionImgs(feature, cur.value); /* v-studio-more-looks */
-    if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __srcs.img; });
-    else img.src = __srcs.img;
-    img.onerror = function(){ if(!img.__alt && __srcs.img2){ img.__alt = 1; img.src = __srcs.img2; } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
+    /* v-celeb-style: خيار بلا صورة (مشاهد «صورة مع مشهور») — مربّع بلون المشهد بالمقاس نفسه بدل صورة فارغة */
+    const img = document.createElement(__srcs.img ? 'img' : 'div');
+    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    if(!__srcs.img){
+      if(__srcs.bg) img.style.background = __srcs.bg;
+      img.style.border = '1px solid rgba(212,175,55,.4)';
+    } else {
+      img.alt = cur.textContent.trim(); img.loading = 'lazy';
+      /* v-art-defer: داخل #studioAiModal المغلق — المقاس ثابت 44×58 فالتأجيل آمن. */
+      if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __srcs.img; });
+      else img.src = __srcs.img;
+      img.onerror = function(){ if(!img.__alt && __srcs.img2){ img.__alt = 1; img.src = __srcs.img2; } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
+    }
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
@@ -40925,14 +41000,14 @@ function stud2ErrText(e, prefix, fbKey){
     let box = document.getElementById('studioBasket');
     if(!box){ box = document.createElement('div'); box.id = 'studioBasket'; }
     studioCardsEl.appendChild(box);
-    box.style.cssText = 'margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;';
+    box.style.cssText = 'margin-top:8px; display:' + (feature === 'celeb' ? 'none' : 'flex') + '; flex-wrap:wrap; gap:6px; align-items:center;'; /* v-celeb-style: لا سلّة في «صورة مع مشهور» */
     box.innerHTML = '';
     const addBtn = document.createElement('button');
     addBtn.type = 'button'; addBtn.className = 'btn';
     addBtn.style.cssText = 'font-size:12.5px; padding:6px 12px; border-radius:999px;';
     const inB = studioBasket.some((it) => it.f === feature && it.v === styleEl.value);
     addBtn.textContent = inB ? bT('✓ مضاف للاختيارات', '✓ Added') : bT('➕ أضف هذا للاختيارات', '➕ Add to selection');
-    addBtn.disabled = inB || feature === 'merge';
+    addBtn.disabled = inB || feature === 'merge' || feature === 'celeb'; /* v-celeb-style: الاسم لا يمرّ في السلسلة */
     addBtn.onclick = () => {
       if(studioBasket.length >= STUDIO_BASKET_MAX){ studioBasketRefuse(bT('الحدّ ' + STUDIO_BASKET_MAX + ' اختيارات — احذف واحدًا لتضيف غيره.', 'Up to ' + STUDIO_BASKET_MAX + ' picks — remove one first.')); return; }
       if(studioComboCount(studioBasket.concat([{ f: feature }])) > STUDIO_IMAGES_MAX){ studioBasketRefuse(t2('studioBasketImgMax').replace('{n}', STUDIO_IMAGES_MAX)); return; }
@@ -40969,7 +41044,7 @@ function stud2ErrText(e, prefix, fbKey){
   }
   function refreshGenerateLabel(){
     if(!btnGenerate || studioMissing()) return;
-    const n = studioBasket.length;
+    const n = feature === 'celeb' ? 0 : studioBasket.length; /* v-celeb-style: التبويب لا يستعمل السلّة — الزرّ لا يعد بها */
     btnGenerate.textContent = n ? bT('✨ ولّد بالاختيارات (' + n + ')', '✨ Generate with picks (' + n + ')') : t('studioAiGenerateBtn');
   }
   async function studioChainOne(combo, token, onStep){
@@ -41065,7 +41140,8 @@ function stud2ErrText(e, prefix, fbKey){
       b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700; white-space:normal;';
       const img = document.createElement('img');
       const staticTab = !STUDIO_TAB_PREVIEW.has(f) && (STUDIO_STATIC_FEATS.has(f) || !IS_MORE(f)); /* v-studio-static-set: الميزات الإضافيّة بلا صورة جاهزة ⇒ المعاينة مباشرة؛ v-style-match: والتبويبات الثلاثة الخاطئة */
-      img.src = staticTab ? 'assets/studio/features/' + f + '.webp' : PREVIEW_API(f, '__tab');
+      /* v-celeb-style: صورة تبويب «صورة مع مشهور» = بطاقة «السجادة الحمراء» في الإطلالات الأيقونيّة (مخزّنة مسبقًا — بلا توليد) */
+      img.src = f === 'celeb' ? PREVIEW_API('iconic', 'icredcarpetscene') : (staticTab ? 'assets/studio/features/' + f + '.webp' : PREVIEW_API(f, '__tab'));
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;';
       img.onerror = function(){ if(!img.__alt && staticTab && IS_MORE(f)){ img.__alt = 1; img.src = PREVIEW_API(f, '__tab'); } else img.remove(); }; /* v-studio-14 */
@@ -41078,8 +41154,50 @@ function stud2ErrText(e, prefix, fbKey){
     });
   }
   photoizeStudioTabs();
+  /* v-celeb-style: خانة اسم المشهور فوق المشاهد — تظهر في تبويبها وحده (نصوصها بالـ١٤ لغة عبر data-i18n) */
+  const celebWrap = (function(){
+    try{
+      if(!styleWrap || !styleWrap.parentNode) return null;
+      const w = document.createElement('div');
+      w.id = 'studioCelebWrap'; w.style.cssText = 'display:none; margin-top:12px;';
+      w.innerHTML = '<label for="studioCelebName" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioCelebLabel"></label>'
+        + '<div class="mini-mic-field-row"><input type="text" id="studioCelebName" maxlength="60" autocomplete="off" style="width:100%; padding:8px; border-radius:var(--r-2);" data-i18n-placeholder="studioCelebPlaceholder">'
+        + '<button type="button" class="mini-mic-btn" data-target="studioCelebName" title="🎤" data-i18n-title="micTitle">🎤</button></div>';
+      w.querySelector('label').textContent = t2('studioCelebLabel');
+      w.querySelector('input').placeholder = t2('studioCelebPlaceholder');
+      styleWrap.parentNode.insertBefore(w, styleWrap);
+      return w;
+    }catch(e){ __swallow(e, 'studio:celeb-field'); return null; }
+  })();
+  const celebNameEl = celebWrap ? celebWrap.querySelector('#studioCelebName') : null;
+  /* التبويب للمالك وحده: يُضاف قبل «دمج صور» عند الإقلاع وعند كلّ فتح (دخول بعد الإقلاع)، ويُزال إن لم يعد المالك */
+  function ensureCelebTab(){
+    if(!tabsWrap) return;
+    let b = tabsWrap.querySelector('.studioAiTabBtn[data-feature="celeb"]');
+    if(!celebOwner()){
+      if(b) b.remove();
+      if(feature === 'celeb') feature = 'hair';
+      return;
+    }
+    if(b) return;
+    b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn studioAiTabBtn'; b.dataset.feature = 'celeb';
+    b.setAttribute('data-i18n', 'studioAiTabCeleb');
+    b.style.whiteSpace = 'nowrap';
+    b.textContent = t2('studioAiTabCeleb');
+    const mergeBtn = tabsWrap.querySelector('.studioAiTabBtn[data-feature="merge"]');
+    if(mergeBtn) tabsWrap.insertBefore(b, mergeBtn); else tabsWrap.appendChild(b);
+    b.onclick = () => setFeature('celeb');
+  }
   function setFeature(next){
     feature = next;
+    { /* v-celeb-style: الاسم ظاهر في تبويبه؛ «خيارات إضافية» (الوصف الحرّ) والمقارنة مخفيّتان فيه */
+      const isCeleb = feature === 'celeb';
+      if(celebWrap) celebWrap.style.display = isCeleb ? 'block' : 'none';
+      const more = $('#studioAiMore'); if(more) more.style.display = isCeleb ? 'none' : '';
+      const cmp = $('#studioAiCompareMore'); if(cmp) cmp.style.display = isCeleb ? 'none' : '';
+      const cmpTitle = modal.querySelector('[data-i18n="studioCompareTitle"]'); if(cmpTitle) cmpTitle.style.visibility = isCeleb ? 'hidden' : ''; /* العنوان بلا قائمة تحته (زرّ المفضّلة في سطره يبقى) */
+    }
     photoizeStudioTabs(); // ترجمة i18n تمسح حقن الصور — أعد حقن ما نقص
     Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
       b.classList.toggle('active', b.dataset.feature === next);
@@ -41111,6 +41229,7 @@ function stud2ErrText(e, prefix, fbKey){
   Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
     b.onclick = () => setFeature(b.dataset.feature);
   });
+  ensureCelebTab(); /* v-celeb-style */
 
   /* v-studio-strip-desktop (المالك ١٧ أكتوبر: «شريط اختر التعديل مايتحرك» على الكمبيوتر، ثمّ «يتحرّك بعجلة الماوس والسحب، بدون أيّ
      تغيير ثاني، والجوّال ما ينلمس»): الشريط ٢٤ تبويبًا والحاسوب يعرض نصفها، وشريط التمرير مخفيّ في التطبيق كلّه (v-noscroll-all)،
@@ -41192,6 +41311,7 @@ function stud2ErrText(e, prefix, fbKey){
     if(stripUnlatch) stripUnlatch(); // v-strip-wheel-latch: تمرير زيارة سابقة لا يقرّر عن الشريط الآن
     modal.style.display = 'flex';
     closeHeaderMenu();
+    ensureCelebTab(); /* v-celeb-style: المالك دخل بعد الإقلاع، أو خرج */
     setFeature(feature);
   };
   // بطاقة الخيارات جاهزة من الإقلاع — لا تنتظر أول فتح (أي مسار فتح يجدها).
@@ -41362,6 +41482,12 @@ function stud2ErrText(e, prefix, fbKey){
       studioOpenMenu('A');
       return;
     }
+    const celebRun = feature === 'celeb'; /* v-celeb-style */
+    if(celebRun && !(celebNameEl && celebNameEl.value.trim())){
+      setStatus(t2('studioCelebNeedName'));
+      if(celebNameEl) celebNameEl.focus();
+      return;
+    }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){
       setStatus(t('studioAiNeedLogin'));
@@ -41378,7 +41504,7 @@ function stud2ErrText(e, prefix, fbKey){
     { const mr = document.getElementById('studioMultiResults'); if(mr){ mr.innerHTML = ''; mr.style.display = 'none'; } }
 
     /* v-studio-chain: اختيارات متعدّدة ⇒ سلسلة/صور متعدّدة */
-    if(studioBasket.length && feature !== 'merge'){
+    if(studioBasket.length && feature !== 'merge' && !celebRun){
       try{ await runStudioBasket(token); }
       catch(e){ setStatus(studioErrText(e)); }
       finally{ btnGenerate.disabled = false; }
@@ -41400,6 +41526,7 @@ function stud2ErrText(e, prefix, fbKey){
         payload.imageBase64B = selectedBase64B;
         payload.mimeTypeB = selectedMimeB;
       }
+      if(celebRun){ payload.celebName = celebNameEl.value.trim(); delete payload.description; payload.multiAngle = false; } /* v-celeb-style */
       const res = await fetch('/api/studio-create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -41409,9 +41536,12 @@ function stud2ErrText(e, prefix, fbKey){
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('studioAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; }
+        if(CELEB_ERR[data.error]){ setStatus('⚠️ ' + t2(CELEB_ERR[data.error])); return; } /* v-celeb-style */
+        if(celebRun && data.error === 'Unknown feature'){ setStatus(t('studioAiNeedLogin')); return; } /* جلسة المالك انتهت — التبويب ظاهر له فقط */
         throw new Error(data.error || 'unknown');
       }
-      const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      const rawUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      const dataUrl = celebRun ? await celebStamp(rawUrl) : rawUrl; /* v-celeb-style: شارة «✦ AI» */
       resultWrap.style.display = 'block';
       resultEl.src = dataUrl;
       resultEl.style.display = 'block';

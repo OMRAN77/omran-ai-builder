@@ -59,7 +59,7 @@ async function rescueGuarded(promptText, images, apiKey, feature, verdictOf) {
     return passed(g2) ? second : { rejected: g2 };
   } catch (e) { return first; /* الحارس لا يرمي؛ عطب غير متوقّع لا يُسقط صورة مدفوعة (v-guard-fail-open) */ }
 }
-const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
+const { verifyLocalizedImageEdit, publicGuardError, extractJsonObject } = require('./image-edit-guard'); /* v-celeb-style: extractJsonObject لجواب فحص الاسم */
 const faceLock = require('./face-lock.js');
 const mergeIdentity = require('./merge-identity');
 const { judgeBest, duoEnabled } = require('./image-judge');
@@ -204,6 +204,8 @@ async function geminiImage(apiKey, parts, feature, aspectRatio, tempOverride) {
     falTried = true;
     const fb = await falBackup.imageFromGemini('gemini-3-pro-image', reqBody, { where: 'studio-create' });
     if (fb.b64) return { b64: fb.b64, mime: fb.mime };
+    /* v-celeb-style: رفض الاحتياط صورةَ شخص مسمّى (٤٢٢ أو بلا صورة) — يصل رفضًا (celeb_refused) لا «متوقّفة مؤقّتًا» بعد نداء Gemini المنفد */
+    if (feature === 'celeb' && (fb.error === 'fal_empty' || fb.status === 422)) return { error: 'image_generation_failed', status: 500, why: 'fallback_refused' };
   }
   const upstream = await fetch(endpoint, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody),
@@ -314,6 +316,193 @@ async function runEdit(o) {
   return finish(out.b64, out.mime, 'gemini');
 }
 
+/* ───── v-celeb-style (طلب المالك ٧ نوفمبر ٢٠٢٦: «خاصية تصور مع مشاهير العالم كلهم، المشاهير القدماء
+   والجدد، وتكون في الاستايل»، ثمّ «الحينه فقط لي المالك فقط لا تنشره» و«شيلها عنّي»).
+
+   المستخدم يرفع صورته ويكتب اسم أيّ مشهور نصًّا حرًّا ويختار مشهدًا من ثمانية؛ المولّد يضعهما معًا في صورة واحدة.
+   شبه المشهور من معرفة النموذج وحدها — لا صورة مرجعيّة تُجلب له (صور الصحافة محفوظة الحقوق، وصورة حقيقيّة تجعلها تركيب وجه).
+
+   قبل أيّ توليد يُفحص الاسم بنداء نصّيّ قصير (JSON بمخطّط): هل النصّ اسم شخص واحد فقط، من هو (اسمه الشائع ونوع شهرته)، هل هو
+   حقيقيّ معروف الوجه، هل هو من الأنبياء والصحابة وآل البيت، هل هو قاصر. والاسم المكتوب لا يدخل أمر الصورة أبدًا — الأمر يأخذ
+   الاسم الشائع الذي أرجعه الفحص (المراجعة العدائيّة: «رونالدو وولده» و«… يبوسني» كانت تصل المولّد بنصّها).
+     ممنوع على الجميع دائمًا: الأنبياء والصحابة وآل البيت، والقُصّر، والنصّ الذي فيه غير الاسم، والخياليّ وغير المعروف (لا وجه
+     يُخترع ويُنسب لاسم حقيقيّ)، واللقطات الرومانسيّة (المشاهد ثابتة والأمر يمنع التلامس — لا وصف حرّ في هذه الميزة).
+     ممنوع على غير المالك (حين تُفتح للجميع): السياسيّون والحكّام والأسر الحاكمة والعلماء والقرّاء والدعاة — المالك اختار رفعها عنه.
+   تعذّر الفحص أو جواب خارج المخطّط = لا توليد (يُغلق الباب ولا يُفتح). ───── */
+const CHECK_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=';
+
+/* المشاهد الثمانية — مفاتيحها نفسها في STUDIO_OPTIONS.celeb (app-13). كلّها لقطة ودّيّة جنبًا إلى جنب. */
+const SCENES = {
+  selfie: 'a casual close-up selfie of the two of them taken at arm\'s length, both smiling at the camera, with a bright, pleasant city street softly blurred behind them',
+  polaroid: 'an instant-film Polaroid photo of the two of them standing side by side and smiling, lit by an on-camera flash against a plain curtain backdrop, shown as a real Polaroid print with its classic white border',
+  redcarpet: 'the two of them posing side by side on the red carpet at a film premiere, with press photographers\' flashes and the event backdrop softly blurred behind them, in evening event lighting',
+  backstage: 'the two of them backstage after a big concert, posing side by side near the stage entrance, with stage lights and equipment softly blurred behind them',
+  stadium: 'the two of them standing side by side pitch-side in a packed football stadium in daylight, with the green pitch and the crowded stands behind them',
+  photoshoot: 'a professional photoshoot of the two of them standing side by side against a seamless neutral studio backdrop, under soft, even studio lighting, with no lighting equipment visible',
+  talkshow: 'the two of them sitting side by side on a stylish sofa on a bright television talk-show set under studio lights, turned slightly toward each other and smiling',
+  vintage: 'an authentic old black-and-white photograph of the two of them standing side by side, with soft film grain, gentle vignetting and the tones of a decades-old print',
+};
+
+const KINDS = ['athlete', 'actor', 'singer', 'musician', 'creator', 'presenter', 'business', 'scientist', 'writer', 'artist',
+  'historical', 'politician', 'head_of_state', 'royal', 'religious_scholar', 'sacred', 'other'];
+const KIND_WORD = {
+  athlete: 'athlete', actor: 'actor', singer: 'singer', musician: 'musician', creator: 'content creator', presenter: 'TV presenter',
+  business: 'business figure', scientist: 'scientist', writer: 'writer', artist: 'artist', historical: 'historical figure',
+  politician: 'politician', head_of_state: 'head of state', royal: 'royal', religious_scholar: 'religious scholar', other: 'public figure',
+};
+/* لغير المالك وحده (الميزة اليوم للمالك؛ هذا هو الاتّفاق حين تُفتح) */
+const PUBLIC_BLOCK = ['politician', 'head_of_state', 'royal', 'religious_scholar'];
+
+/* الاسم كما كتبه المستخدم: سطر واحد قصير بلا روابط ولا علامات ولا أقواس. '' = لا اسم صالح. يدخل الفحص وحده لا أمر الصورة. */
+function sanitizeName(raw) {
+  let s = String(raw == null ? '' : raw).normalize('NFC')
+    .replace(/https?:\/\/\S+|www\.\S+/gi, ' ')
+    .replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff"“”«»<>{}\[\]()\\`|]/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+  if (s.length > 60) s = s.slice(0, 60).replace(/\s+\S*$/, '').trim() || s.slice(0, 60);
+  if ((s.match(/\p{L}/gu) || []).length < 2) return '';
+  if (s.split(' ').length > 8) return '';
+  return s;
+}
+
+/* حجب محلّيّ قبل الفحص (لا يُترك للنموذج وحده): ألقاب الأنبياء والصحابة وآل البيت الصريحة، على نسخة مطويّة بلا تشكيل ولا
+   تطويل ولا محارف خفيّة وبهمزات موحّدة (المراجعة: «النّبيّ» و«رضيَ الله عنه» و«عليهِ السلام» كانت تمرّ). لا يحجب الأسماء
+   المجرّدة — «محمد صلاح» و«عمر الشريف» و«حسين الجسمي» و«رسول خان» و«Allah Rakha» تمرّ، والفحص يحسم «محمد» أو «علي» وحده. */
+function foldName(s) {
+  return String(s || '').normalize('NFC')
+    .replace(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff\u064b-\u065f\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي');
+}
+const SACRED_AR = new RegExp([
+  '(?:^|[^\\p{L}])[وبلف]?ال(?:نبي|رسول|صحابي|صحابيه|صحابية|صحابه|صحابة)(?:[^\\p{L}]|$)',
+  'رسول\\s*الله', 'نبي\\s*الله', '(?:^|[^\\p{L}])سيد(?:نا|تنا)(?:[^\\p{L}]|$)', 'ام\\s*المومنين', 'ال\\s*البيت',
+  'صلي\\s*الله\\s*عليه', 'عليه(?:ما)?\\s*(?:الصلا[ةه]\\s*و)?السلام', 'عليها\\s*السلام', 'رضي\\s*الله\\s*عن', 'ﷺ', '\\((?:ص|ع|رض|عج)\\)', '(?:^|[^\\p{L}])(?:رض|عج)(?:[^\\p{L}]|$)',
+  '(?:^|[^\\p{L}])الامام\\s+(?:علي|الحسن|الحسين|زين\\s*العابدين|الباقر|جعفر\\s*الصادق|الكاظم|الرضا|الجواد|الهادي|العسكري|المهدي)(?:[^\\p{L}]|$)',
+  'يسوع', '(?:^|[^\\p{L}])المسيح(?:[^\\p{L}]|$)', 'العذراء',
+].join('|'), 'u');
+const SACRED_EN = /\b(?:prophet|messenger\s+of\s+(?:god|allah)|rasul(?:ullah|\s+allah)|nabiyy?ullah|nabi\s+allah|pbuh|p\.b\.u\.h|peace\s+be\s+upon\s+(?:him|her|them)|sall?all?ahu|alayhi[\s-]*(?:s[\s-]*)?salam|radiy?all?ahu|virgin\s+mary|sahaba|sahabi|sayyid[iu]na|hazrat|hazreti|christ)\b|\bhz\.|\((?:saw|s\.a\.w\.?|as|a\.s\.?|ra|r\.a\.?)\)/i;
+function sacredName(name) {
+  const s = foldName(name);
+  return SACRED_AR.test(s) || SACRED_EN.test(s);
+}
+
+function checkPrompt(name) {
+  return [
+    'You check text that a user typed into the "celebrity name" box of a "photo of me with a celebrity" feature. Reply with JSON only.',
+    '- only_name: true only if the text is just ONE person\'s name (any language or spelling, optionally with a common title such as Dr. or Sheikh); false if it also contains anything else — another person, a relation (e.g. "and his son", "with his wife"), an action, a pose, clothing, a place, an age, a scene or any request.',
+    '- real: true only for a real person who exists or existed — false for fictional, animated, game, mascot or brand characters.',
+    '- known: true only if this person is famous enough that their face is widely recognisable from public photos or well-known portraits. If unsure, false.',
+    '- name: the person\'s full name as commonly written in English (Latin letters) — the name only, nothing else; "" if you do not know who this is.',
+    '- sacred: true if the person is a prophet or messenger of any religion (including Jesus, Moses, Abraham and Muhammad), a Companion (Sahabi or Sahabiyya) of the Prophet Muhammad, a wife, family member or descendant of the Prophet Muhammad counted among Ahl al-Bayt (including Fatima, Ali, Hasan, Husayn, Zaynab and the Twelve Imams), Mary the mother of Jesus, an angel or a deity — true even if they were also a caliph, ruler, commander, imam or scholar.',
+    '- kind: exactly one of ' + KINDS.join(', ') + '. Use sacred whenever sacred is true. religious_scholar = a religious scholar, Quran reciter, preacher or clergy member who is not sacred.',
+    '- minor: true if the person is under 18 years old today, died before turning 18, or is known mainly from photos taken when they were under 18.',
+    '- photographed: true if real photographs of this person exist (roughly anyone alive after 1850); false if they are known only from paintings, statues or descriptions.',
+    'Arabic and dialect spellings are common — judge who is meant. If the name is ambiguous, choose the most famous person with that name.',
+    'Text: "' + String(name || '').replace(/["\n]+/g, ' ').slice(0, 80) + '"',
+  ].join('\n');
+}
+/* مخطّط الجواب: النوع من القائمة والحقول كلّها إلزاميّة — لا «نوع آخر» يفلت من الحجب */
+const CHECK_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    only_name: { type: 'BOOLEAN' }, real: { type: 'BOOLEAN' }, known: { type: 'BOOLEAN' }, name: { type: 'STRING' },
+    sacred: { type: 'BOOLEAN' }, kind: { type: 'STRING', enum: KINDS }, minor: { type: 'BOOLEAN' }, photographed: { type: 'BOOLEAN' },
+  },
+  required: ['only_name', 'real', 'known', 'name', 'sacred', 'kind', 'minor', 'photographed'],
+};
+
+/* جواب الفحص بحزم: كلّ حقل بنوعه والنوع من القائمة، وإلّا null (= تعذّر الفحص ← لا توليد) */
+function parseCheck(raw) {
+  const o = (raw && typeof raw === 'object') ? raw : extractJsonObject(raw);
+  if (!o || typeof o !== 'object') return null;
+  if (!['only_name', 'real', 'known', 'sacred', 'minor'].every((k) => typeof o[k] === 'boolean')) return null;
+  const kind = String(o.kind || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (!KINDS.includes(kind)) return null;
+  const name = String(o.name || '').replace(/[\u0000-\u001f\u007f"“”«»<>{}\[\]()\\`|]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+  return { only_name: o.only_name, real: o.real, known: o.known, sacred: o.sacred, minor: o.minor, kind, name, photographed: o.photographed !== false };
+}
+
+/* نداء الفحص — الحكم أو null. لا يرمي. */
+async function checkName(apiKey, name, fetchImpl) {
+  if (!apiKey || !name) return null;
+  const f = fetchImpl || fetch;
+  try {
+    const r = await f(CHECK_URL + apiKey, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(10000),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: checkPrompt(name) }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 256, responseMimeType: 'application/json', responseSchema: CHECK_SCHEMA, thinkingConfig: { thinkingBudget: 0 } }, /* v-flash-nothink */
+      }),
+    });
+    if (!r.ok) { console.warn('[studio-celeb] name check HTTP ' + r.status); return null; }
+    const d = await r.json().catch(function () { return null; });
+    const txt = String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map(function (p) { return p.text || ''; }).join(' '));
+    return parseCheck(txt);
+  } catch (e) { console.warn('[studio-celeb] name check ' + (e && e.message)); return null; }
+}
+
+/* سبب المنع أو '' — owner: صاحب الطلب هو المالك */
+function blockReason(v, o) {
+  if (!v) return 'unavailable';
+  if (v.sacred || v.kind === 'sacred' || v.minor) return 'celeb_blocked';
+  if (!v.only_name) return 'celeb_name_only';
+  if (!v.real || !v.known || !v.name) return 'celeb_unknown';
+  if (!(o && o.owner) && PUBLIC_BLOCK.includes(v.kind)) return 'celeb_blocked';
+  return '';
+}
+
+/* مهمّة الدمج (تدخل قالب هويّة الدمج: الصورة ١ هي المستخدم بوجهه ولباسه كما صُوّر) — بالاسم الشائع من الفحص وحده */
+function celebTask(v, scene) {
+  return 'Photo 1 is the user. Make a photo of the user together with ' + v.name + ', the real, famous ' + (KIND_WORD[v.kind] || 'public figure') +
+    ', shown with their true, widely recognised face and appearance ' +
+    (v.photographed === false ? 'as depicted in their best-known portraits, rendered as a realistic photograph' : 'as seen in their well-known public photos') +
+    ', as an adult at the height of their fame. ' +
+    'Scene: ' + (SCENES[scene] || SCENES.selfie) + '. ' +
+    'The two of them appear side by side like a friendly photo with a fan: a natural, respectful pose with no hugging, no kissing, no holding hands and no romantic or intimate contact. ' +
+    'The famous person is fully and modestly dressed in their typical style. ' +
+    'The user keeps their own face, hair, head covering and clothing exactly as in Photo 1. Never give the user any of the famous person\'s features, and never give the famous person any of the user\'s features. ' +
+    'No text, captions, names, logos, brand marks or watermarks anywhere in the image. The two of them are the only people in focus; anyone else is only a blurred background figure.';
+}
+const celeb = { SCENES, KINDS, PUBLIC_BLOCK, CHECK_SCHEMA, sanitizeName, foldName, sacredName, checkPrompt, parseCheck, checkName, blockReason, celebTask, CHECK_URL };
+
+/* ───── v-celeb-style: «صورة مع مشهور» — للمالك وحده الآن (أمره ٧ نوفمبر «الحينه فقط لي المالك فقط لا تنشره»).
+   الترتيب: بوّابة المالك ← الاسم ← حجب الألقاب ← الحجز ← فحص الاسم ← قالب هويّة الدمج بصورة المستخدم وحدها.
+   لا قفل وجه ولا حارس موضعيّ (المشهد جديد وفيه شخص مضاف — الحارس يرفضه حتمًا، وقفل الوجه قد يختار المشهور «الشخص الرئيسيّ»).
+   ولا إنقاذ بمحرّك آخر: رفض المولّد صورةً لشخص مسمّى قرار سلامة لا عطب، وتمريره لمحرّك ثانٍ التفاف عليه. ───── */
+async function celebCreate(res, o) {
+  const owner = require('./_owner.js');
+  if (!owner.isOwnerSession({ query: o.query || {}, body: o.body })) { res.status(400).json({ error: 'Unknown feature' }); return; }
+  const typed = String(o.body.celebName == null ? '' : o.body.celebName).trim();
+  const name = celeb.sanitizeName(typed);
+  /* مكتوب لكن غير صالح (رابط وحده، أكثر من ثماني كلمات…) ≠ فارغ — رسالتان مختلفتان */
+  if (!name) { res.status(400).json({ error: typed ? 'celeb_name_only' : 'celeb_name_required' }); return; }
+  if (!Object.prototype.hasOwnProperty.call(celeb.SCENES, o.body.style)) { res.status(400).json({ error: 'Unknown style' }); return; }
+  if (celeb.sacredName(typed) || celeb.sacredName(name)) { res.status(422).json({ error: 'celeb_blocked' }); return; } /* المكتوب قبل التنظيف أيضًا: «(رض)» تفقد أقواسها فيه */
+  const quota = await checkStudioQuota(o.body.token, res); /* v-atomic-quota: الحجز يُردّ ما لم تُستهلك صورة */
+  if (!quota.allowed) { res.status(quota.reason === 'auth' ? 401 : 402).json({ error: quota.reason === 'auth' ? 'auth_required' : 'daily_limit_reached' }); return; }
+  const verdict = await celeb.checkName(o.apiKey, name);
+  const why = celeb.blockReason(verdict, { owner: owner.isOwnerName(quota.username) });
+  if (why) {
+    console.warn('[studio-celeb] stopped: ' + why + (verdict ? ' kind=' + verdict.kind : ''));
+    res.status(why === 'unavailable' ? 503 : 422).json({ error: why });
+    return;
+  }
+  const photos = [{ data: o.body.imageBase64, mime: o.body.mimeType || 'image/jpeg' }];
+  const crops = await mergeIdentity.faceCrops(o.apiKey, photos);
+  const parts = mergeIdentity.mergeParts(photos, crops, celeb.celebTask(verdict, o.body.style));
+  const out = await geminiImage(o.apiKey, parts, 'celeb', mergeIdentity.mergeAspect(photos[0], ''));
+  if (out.b64) {
+    const remaining = await consumeStudio(quota.username, quota.limit);
+    res.status(200).json({ imageBase64: out.b64, mimeType: out.mime, remaining, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT });
+    return;
+  }
+  /* ردّ بلا صورة (why موجود) = المولّد رفض هذا الاسم أو المشهد؛ ما سواه عطب أو زحام كبقيّة الميزات. لا خصم في الحالين. */
+  if (out.why !== undefined) { res.status(422).json({ error: 'celeb_refused' }); return; }
+  res.status(out.status || 502).json({ error: out.error || 'image_generation_failed' });
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -362,6 +551,8 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'Missing imageBase64' });
       return;
     }
+
+    if (feature === 'celeb') { await celebCreate(res, { apiKey, body, query: req.query }); return; } /* v-celeb-style */
 
     const quota = await checkStudioQuota(token, res); /* v-atomic-quota: حجز ذرّيّ يُردّ إن فشل */
     if (!quota.allowed) {
@@ -456,3 +647,4 @@ module.exports.buildSinglePrompt = buildSinglePrompt; /* v-studio-variety: لل�
 module.exports.styleTextOf = styleTextOf; /* v-style-match: للاختبار */
 module.exports.DESIGN_FEATURES = DESIGN_FEATURES;
 module.exports.__geminiImage = geminiImage; /* v-fal-backup: للاختبار */
+module.exports.celeb = celeb; /* v-celeb-style: للاختبار */
