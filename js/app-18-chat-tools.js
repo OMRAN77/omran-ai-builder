@@ -209,6 +209,7 @@
         guestId: window.getGuestId ? window.getGuestId() : '',
         // v-custom-instructions: تعليمات المستخدم من الإعدادات — الخادم ينظّفها ويحقنها.
         customInstructions: (function () { try { return window.getCustomInstructions ? window.getCustomInstructions() : ''; } catch (e) { return ''; } })(),
+        office: (function () { try { return window.omranOfficeLast ? window.omranOfficeLast(__rcChat) : undefined; } catch (e) { return undefined; } })(), /* v-office-files: آخر ملفّ Excel/PowerPoint في هذه المحادثة — يعدّل عليه النموذج (app-44) */
       }),
     }), __CHAT_IDLE_MS, '__chat_no_headers__');
     if (!res.ok || !res.body) {
