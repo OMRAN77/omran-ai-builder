@@ -118,6 +118,9 @@ test('١. صورة وجه + «ملاكم — قوي» ← صورة كاملة م
   assert.match(p, /a man's ghutra, shemagh, agal, kufi or cap is removed — his head is bare, with short neat hair whose colour matches his beard and age, and nothing on his head/);
   assert.match(p, /A woman's hijab or headscarf stays, fully covering, worn as a fitted sports hijab\. Never add a head covering to anyone who wears none/);
   assert.match(p, /Dark warm brown studio backdrop with soft golden light/);
+  // v-body-eyes-colors: «مشكّر العيون» — عينان مفتوحتان تنظران إلى الكاميرا (لا تعبير الصورة كما هو)
+  assert.match(p, /Expression: both eyes fully open, clear and looking straight at the camera — never closed, squinting or half-closed — with a natural, relaxed smile/);
+  assert.ok(!/apparent age and expression\./.test(p), 'تعبير الصورة (الضحكة التي تضيّق العينين) لا يُنسخ');
   assert.ok(!/clothing — MUST be reproduced|never averaged or blended/.test(p), 'لا قالب الدمج (يأمر بإبقاء اللبس)');
   assert.ok(!/STRICT EDIT LOCK/.test(p), 'لا قفل إطار — الإطار جديد');
   assert.equal(proCalls()[0].body.generationConfig.imageConfig.aspectRatio, '2:3');
@@ -191,6 +194,24 @@ test('٥. رفض برو ← إنقاذ (gpt-image) بالأمر نفسه ثمّ 
   const p = promptOf(proCalls()[0]);
   assert.match(p, /a strongly boxer's build/);
   assert.match(p, /Extra request: في نادي ملاكمة/);
+});
+
+test('٥ب. «الملابس خلها في كل مرّه الوان مختلفه»: ألوان اللبس من رقم الشكل (عدّاد العميل) — ضغطتان متتاليتان بلونين مختلفين', async () => {
+  const colourOf = (p) => (/Sportswear colours for this photo: a (.+?) top with (.+?) shorts, joggers or leggings/.exec(p) || []).slice(1).join(' / ');
+  const seen = [];
+  for (const v of [1, 2, 3]) {
+    reset();
+    await post({ variant: v });
+    seen.push(colourOf(promptOf(proCalls()[0])));
+  }
+  assert.ok(seen.every(Boolean), 'سطر الألوان في الأمر');
+  assert.equal(new Set(seen).size, 3, 'كلّ ضغطة بلون: ' + seen.join(' | '));
+  reset();
+  await post({ variant: 1 });
+  assert.equal(colourOf(promptOf(proCalls()[0])), seen[0], 'الرقم نفسه = اللون نفسه');
+  reset();
+  await post({});
+  assert.ok(colourOf(promptOf(proCalls()[0])), 'بلا رقم: لون من القائمة');
 });
 
 test('٦. الواجهة: نتيجة reframed تخفي «قبل/بعد» في المسار الواحد والسلسلة', () => {
