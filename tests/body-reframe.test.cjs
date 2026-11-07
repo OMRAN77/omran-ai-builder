@@ -111,9 +111,13 @@ test('١. صورة وجه + «ملاكم — قوي» ← صورة كاملة م
   assert.match(p, /^Photo 1 of 1:/);
   assert.match(p, /Create a new full-body standing photo of this same person, the whole figure visible from the top of the head down to the feet/);
   assert.match(p, /a light boxer's build/, 'البنية المختارة');
-  assert.match(p, /head covering exactly as photographed — a ghutra, hijab, headscarf or cap stays exactly as it is, and if they wear none, add none/);
-  assert.match(p, /never a bare chest or midriff, never swimwear or a skin-tight second-skin top/);
-  assert.match(p, /If Photo 1 shows a hijab or headscarf, the outfit is a loose long-sleeved tunic that covers the hips over full-length loose trousers/);
+  // v-body-sport: لبس رياضيّ كالبطاقات، والرجل رأسه مكشوف (لا غترة ولا كاب)، والمرأة بحجابها، وخلفيّة البطاقات
+  assert.match(p, /a man wears a fitted short-sleeved athletic t-shirt that clearly shows the build, knee-length athletic shorts or slim athletic joggers, and sneakers/);
+  assert.match(p, /a woman wears a modest fitted long-sleeved athletic top with a hip-length tunic over full-length leggings/);
+  assert.match(p, /Never a bare chest or midriff, never swimwear, never loose everyday clothes that hide the build/);
+  assert.match(p, /a man's ghutra, shemagh, agal, kufi or cap is removed — his head is bare, with short neat hair whose colour matches his beard and age, and nothing on his head/);
+  assert.match(p, /A woman's hijab or headscarf stays, fully covering, worn as a fitted sports hijab\. Never add a head covering to anyone who wears none/);
+  assert.match(p, /Dark warm brown studio backdrop with soft golden light/);
   assert.ok(!/clothing — MUST be reproduced|never averaged or blended/.test(p), 'لا قالب الدمج (يأمر بإبقاء اللبس)');
   assert.ok(!/STRICT EDIT LOCK/.test(p), 'لا قفل إطار — الإطار جديد');
   assert.equal(proCalls()[0].body.generationConfig.imageConfig.aspectRatio, '2:3');
@@ -129,7 +133,7 @@ test('٢. لا لبس البطاقة ولا غطاء رأسها يصل الأم�
     const p = promptOf(proCalls()[0]);
     const frame = CARD.FRAME['body:' + style];
     if (frame) assert.ok(!p.includes(frame), style + ': تأطير البطاقة بلبسها');
-    assert.ok(!/sports hijab|swim cap|compression|second-skin compression|boxing shorts|mid-thigh/i.test(p.replace('never swimwear or a skin-tight second-skin top', '')), style);
+    assert.ok(!/black sports hijab|swim cap|compression|second-skin|boxing shorts|mid-thigh/i.test(p), style);
   }
 });
 
