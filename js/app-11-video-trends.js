@@ -496,6 +496,8 @@
       dl.download = 'omran-trend-' + t.key + '.mp4'; dl.className = 'btn'; dl.style.cssText = 'display:block;text-align:center;margin-top:6px;';
       dl.textContent = ui('download');
       out.appendChild(dl);
+      /* v-share-next: «مشاركة» بجانب التحميل — رابط الفيديو الأصليّ لا رابط تنزيله */
+      if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(dl, { kind: 'video', className: 'btn', getSrc: function(){ return u; } }); }catch(e){ /* guard-ok — المشاركة تحسين لا يمنع التحميل */ } }
     });
     var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };
     out.appendChild(again);

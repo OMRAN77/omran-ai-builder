@@ -2425,6 +2425,8 @@ function renderMessages(keepScroll){
           dl.style.textDecoration = 'none';
           dl.style.alignSelf = 'center';
           wrap.appendChild(dl);
+          /* v-share-next (المالك ٧ نوفمبر: «فقط تحميل في التطبيق كامل»): «مشاركة» بجانب «تنزيل الفيديو» — النافذة الموحّدة (app-45) */
+          if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(dl, { kind: 'video', className: 'file-chip', mirrorColor: true, style: 'text-decoration:none;align-self:center;cursor:pointer;font-family:inherit;' }); }catch(e){ __swallow(e, 'ui:video-share-next'); } }
         } else if(a.isImage && a.purged && !a.vaultId){
           const chip = document.createElement('div');
           chip.className = 'file-chip';

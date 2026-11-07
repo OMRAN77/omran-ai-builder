@@ -2687,6 +2687,8 @@
         const a = document.createElement('a'); a.href = url; a.download = 'omran-style.png'; a.textContent = bT('⬇️ تحميل', '⬇️ Download');
         a.style.cssText = 'display:inline-block; margin-top:5px; font-size:12px; color:#d4af37;';
         cell.appendChild(im); cell.appendChild(a);
+        /* v-share-next: «↗️ مشاركة» بجانب «⬇️ تحميل» في كلّ خانة */
+        if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', style: 'display:inline-block; margin-top:5px; margin-inline-start:12px; font-size:12px; color:#d4af37; background:none; border:0; padding:0; cursor:pointer; font-family:inherit;' }); }catch(e){ __swallow(e, 'studio:style-share-next'); } }
       }
       if(r.error){
         const er = document.createElement('div');

@@ -1471,7 +1471,7 @@
       if(st.outUrl) URL.revokeObjectURL(st.outUrl);
       st.outBlob = new Blob([out], { type: 'video/mp4' }); st.outUrl = URL.createObjectURL(st.outBlob);
       K('outVid').src = st.outUrl; K('result').hidden = false;
-      K('share').hidden = !(navigator.canShare && navigator.share);
+      K('share').hidden = !(typeof window.omranShareMedia === 'function' || (navigator.canShare && navigator.share)); /* v-share-sheet: النافذة الموحّدة على كلّ جهاز */
       setBar(100); setStatus(T_('done'));
       try{ K('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(e){ /* guard-ok */ }
     }catch(e){
@@ -1487,6 +1487,9 @@
   }
   async function shareOut(){
     if(!st.outBlob) return;
+    /* v-share-sheet (المالك ٧ نوفمبر: نافذة يوتيوب في كلّ التطبيق): كان navigator.share مباشرة — في تطبيق ويندوز لوحة ويندوز المعلّقة.
+       الآن النافذة الموحّدة (app-45): الفيديو يُرفع رابطًا إن كان تحت حدّ الملفّ، وإلّا سطر واضح؛ و«المزيد» على الهاتف بالملفّ، و«تحميل». */
+    if(typeof window.omranShareMedia === 'function'){ window.omranShareMedia({ src: st.outBlob, name: OUT_NAME, kind: 'video', download: saveOut }); return; }
     try{
       var file = new File([st.outBlob], OUT_NAME, { type: 'video/mp4' });
       if(navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'om ai' });
