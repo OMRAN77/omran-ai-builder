@@ -446,6 +446,7 @@
     box.innerHTML='<div class="vmk-dir-head"><b></b><p></p></div>'
       +'<textarea id="vdReq" rows="3" maxlength="3000"></textarea>'
       +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label><label><span></span><select id="vdVoice"><option value="on"></option><option value="off"></option></select></label><label class="vmk-dir-kind"><span></span><select id="vdKind"><option value="app"></option><option value="story"></option></select></label></div>'
+      +'<div class="vmk-tl" id="vdTl"></div>' /* v-director-timed: محرّر «بتوقيتي» — يظهر بالنوع الثالث وحده */
       +'<label class="vmk-dir-ref"><input type="file" accept="image/*" id="vdRef"><img id="vdRefImg" alt="" hidden><span></span></label>'
       +'<button type="button" id="vdGo"></button>'
       +'<div class="vmk-dir-stage" id="vdStage" hidden><div class="vmk-dir-stage-bg"></div><img id="vdStageImg" alt=""><div class="vmk-dir-stage-reel"></div>'
@@ -461,9 +462,119 @@
     box.querySelector('#vdGo').addEventListener('click',drRun);
     box.querySelector('#vdReq').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); drRun(); } });
     box.querySelector('#vdVoice').addEventListener('change',syncDirector); /* بدون صوت: اختيار المتحدّث بلا معنى فيُعطَّل */
+    var kT=document.createElement('option'); kT.value='timed'; box.querySelector('#vdKind').appendChild(kT); /* v-director-timed: النوع الثالث «بتوقيتي» */
+    tlInit(box.querySelector('#vdTl'));
     box.querySelector('#vdKind').addEventListener('change',syncDirector); /* v-director-story: القصّة حدّها ٣٠٠٠ حرف وبلا مدّة ولا صورة مرجع */
   }
   function drStory(){ return ((id('vdKind')||{}).value==='story'); }
+  /* v-director-timed (المالك ٧ نوفمبر: «اريده الشخص نفسه يحط التوقيت مع الملاحظات لين ٥ دقائق»، ثمّ «ابدأ… في المخرج» واختار «فيديو AI»):
+     النوع الثالث «بتوقيتي»: مقاطع بمدّة (٥–٣٠ ث) وملاحظة لكلّ مقطع حتّى ٥ دقائق، وشريط زمنيّ يتعبّى. التوليد في app-11-video.js
+     (window.__vmkTimelineRun: مشاهد ١٠/٥ ث بمحرّك «طويل (دقائق)» ثمّ لصق). المقاطع تُحفظ على الجهاز (راحة، لا حالة لازمة). */
+  var TL_MAX=300, TL_DUR=[5,10,15,20,30], TL_KEY='aiapp_vd_timeline';
+  var TL={segs:null};
+  function drTimed(){ return ((id('vdKind')||{}).value==='timed'); }
+  function tlFmt(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
+  function tlTotal(){ return (TL.segs||[]).reduce(function(a,s){ return a+s.d; },0); }
+  function tlClipCount(){ return (typeof window.__vmkTimelinePlan==='function')?window.__vmkTimelinePlan(TL.segs||[]).length:(TL.segs||[]).reduce(function(a,s){ return a+Math.ceil(s.d/10); },0); }
+  function tlSave(){ try{ localStorage.setItem(TL_KEY,JSON.stringify(TL.segs)); }catch(e){ /* guard-ok — بلا تخزين: تبقى المقاطع في الصفحة */ } }
+  function tlLoad(){
+    var v=null; try{ v=JSON.parse(localStorage.getItem(TL_KEY)||'null'); }catch(e){ v=null; /* guard-ok — قيمة تالفة: بداية جديدة */ }
+    TL.segs=(Array.isArray(v)?v:[]).filter(function(s){ return s&&TL_DUR.indexOf(+s.d)>=0; }).map(function(s){ return {d:+s.d,n:String(s.n||'').slice(0,500)}; });
+    while(tlTotal()>TL_MAX) TL.segs.pop();
+    if(!TL.segs.length) TL.segs=[{d:10,n:''}];
+  }
+  function tlErr(t){ var e=id('vdTlErr'); if(e) e.textContent=t||''; }
+  function tlInit(el){
+    if(!el) return; tlLoad();
+    el.innerHTML='<div class="vmk-tl-top"><span id="vdTlLeft"></span></div><div class="vmk-tl-bar" id="vdTlBar" dir="ltr"></div>'
+      +'<div class="vmk-tl-scale" dir="ltr"><span>0:00</span><span>1:00</span><span>2:00</span><span>3:00</span><span>4:00</span><span>5:00</span></div>'
+      +'<div class="vmk-tl-head"><span data-k="vdTlTime"></span><span data-k="vdTlNote"></span><span data-k="vdTlDur"></span><span></span></div>'
+      +'<div class="vmk-tl-list" id="vdTlList"></div>'
+      +'<div class="vmk-tl-add"><button type="button" id="vdTlAdd"></button><small data-k="vdTlSplit"></small></div>'
+      +'<p class="vmk-tl-err" id="vdTlErr"></p><p class="vmk-tl-sum" id="vdTlSum"></p><div class="vmk-tl-links" id="vdTlLinks"></div>';
+    el.querySelector('#vdTlAdd').addEventListener('click',function(){
+      if(DR.busy) return;
+      if(tlTotal()+5>TL_MAX){ tlErr(L('vdTlFull')); return; }
+      TL.segs.push({d:Math.min(10,TL_MAX-tlTotal()),n:''}); tlErr(''); tlSave(); tlRender();
+      var ts=el.querySelectorAll('#vdTlList textarea'); if(ts.length) ts[ts.length-1].focus();
+    });
+  }
+  function tlRender(){
+    var list=id('vdTlList'), bar=id('vdTlBar'); if(!list||!bar) return;
+    list.innerHTML=''; bar.innerHTML=''; var t=0;
+    TL.segs.forEach(function(s,i){
+      var row=document.createElement('div'); row.className='vmk-tl-row';
+      var tm=document.createElement('span'); tm.className='vmk-tl-time'; tm.dir='ltr'; tm.textContent=tlFmt(t)+' – '+tlFmt(t+s.d);
+      var ta=document.createElement('textarea'); ta.rows=2; ta.maxLength=500; ta.value=s.n; ta.placeholder=L('vdTlPh'); ta.disabled=DR.busy;
+      ta.addEventListener('input',function(){ s.n=ta.value; ta.classList.remove('err'); tlErr(''); tlSave(); });
+      var sel=document.createElement('select'); sel.disabled=DR.busy;
+      TL_DUR.forEach(function(d){ var o=document.createElement('option'); o.value=String(d); o.textContent=drT('vdTlSec',{n:d}); if(d===s.d) o.selected=true; sel.appendChild(o); });
+      sel.addEventListener('change',function(){ var nd=+sel.value; if(tlTotal()-s.d+nd>TL_MAX){ tlErr(L('vdTlOver')); sel.value=String(s.d); return; } s.d=nd; tlErr(''); tlSave(); tlRender(); });
+      var del=document.createElement('button'); del.type='button'; del.className='vmk-tl-del'; del.textContent='×'; del.title=L('vdTlDel'); del.setAttribute('aria-label',L('vdTlDel')); del.disabled=DR.busy;
+      del.addEventListener('click',function(){ TL.segs.splice(i,1); if(!TL.segs.length) TL.segs.push({d:10,n:''}); tlErr(''); tlSave(); tlRender(); });
+      row.appendChild(tm); row.appendChild(ta); row.appendChild(sel); row.appendChild(del); list.appendChild(row);
+      var g=document.createElement('i'); g.className=i%2?'b':'a'; g.style.width=(s.d/TL_MAX*100)+'%'; g.textContent=s.d>=10?String(i+1):''; g.title=tlFmt(t)+' – '+tlFmt(t+s.d);
+      g.addEventListener('click',function(){ ta.focus(); });
+      bar.appendChild(g); t+=s.d;
+    });
+    var lf=id('vdTlLeft'); if(lf) lf.textContent=drT('vdTlLeft',{r:tlFmt(TL_MAX-tlTotal()),max:tlFmt(TL_MAX)});
+    var sm=id('vdTlSum'); if(sm) sm.textContent=drT('vdTlSum',{k:TL.segs.length,t:tlFmt(tlTotal()),c:tlClipCount()});
+  }
+  function tlSync(){
+    var el=id('vdTl'); if(!el) return; if(!TL.segs) tlLoad();
+    [].forEach.call(el.querySelectorAll('[data-k]'),function(x){ x.textContent=L(x.getAttribute('data-k')); });
+    var ad=id('vdTlAdd'); if(ad){ ad.textContent='+ '+L('vdTlAdd'); ad.disabled=DR.busy; }
+    tlRender();
+  }
+  function tlLinks(urls){ /* إن تعذّر اللصق أو توقّف التوليد: المشاهد المكتملة روابط تحميل — لا يضيع ما دُفع */
+    var box=id('vdTlLinks'); if(!box) return; box.innerHTML='';
+    (urls||[]).forEach(function(u,i){
+      var a=document.createElement('a'); a.href=(typeof window.__vmkProxyUrl==='function')?window.__vmkProxyUrl(u):u; a.download='scene-'+(i+1)+'.mp4'; a.target='_blank'; a.rel='noopener';
+      a.textContent=drT('vdTlScenePart',{i:i+1}); box.appendChild(a);
+    });
+  }
+  async function drTimedRun(){
+    if(DR.busy||!drOwner()) return;
+    var segs=TL.segs||[]; tlErr('');
+    if(!segs.length){ tlErr(L('vdTlEmpty')); return; }
+    for(var i=0;i<segs.length;i++){
+      if(!String(segs[i].n||'').trim()){
+        tlErr(drT('vdTlNeedNote',{i:i+1}));
+        var tas=id('vdTlList')?id('vdTlList').querySelectorAll('textarea'):[]; if(tas[i]){ tas[i].classList.add('err'); tas[i].focus(); }
+        return;
+      }
+    }
+    if(tlTotal()>TL_MAX){ tlErr(L('vdTlOver')); return; }
+    if(typeof window.__vmkTimelineRun!=='function'){ drMsg(L('vdFail'),true,'timeline engine missing'); return; }
+    var clips=tlClipCount();
+    if(!window.confirm(drT('vdTlConfirm',{c:clips,t:tlFmt(tlTotal()),lo:clips*2,hi:clips*5}))) return; /* إنفاق حقيقيّ: موافقة لكلّ تشغيلة */
+    var my=++DR.run, res=id('vdRes');
+    DR.busy=true; syncDirector(); drMsg(''); if(res) res.classList.remove('has'); tlLinks([]);
+    try{
+      var out=await window.__vmkTimelineRun(segs.map(function(s){ return {d:s.d,n:String(s.n).trim()}; }),{
+        status:function(kind,a,b){ if(my===DR.run) drMsg(kind==='join'?L('vdTlJoin'):drT('vdTlScene',{i:a,n:b})); }
+      });
+      if(my!==DR.run) return;
+      if(out&&out.blob){
+        if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ /* guard-ok — رابط زال */ } }
+        DR.out=URL.createObjectURL(out.blob);
+        var vid=id('vdVideo'), dl=id('vdDl');
+        if(vid) vid.src=DR.out;
+        if(dl){ dl.href=DR.out; dl.setAttribute('download','omran-timeline.'+(/webm/i.test(out.blob.type||'')?'webm':'mp4')); }
+        if(res) res.classList.add('has');
+        drMsg(drT('vdTlDone',{t:tlFmt(tlTotal())}));
+      } else { drMsg(L('vdTlNoJoin'),true); tlLinks(out&&out.urls); }
+    }catch(err){
+      if(my!==DR.run) return;
+      var code=String((err&&err.code)||(err&&err.message)||'');
+      if(code==='tl_credits') drMsg(drT('vdTlCredits',{c:err.credits,n:err.needed}),true);
+      else drMsg(L('vdFail'),true,code.slice(0,300));
+      if(err&&err.partial&&err.partial.length) tlLinks(err.partial);
+      try{ __swallow(err,'director:timed'); }catch(e){ /* guard-ok — لا مسجّل */ }
+    }finally{
+      if(my===DR.run){ DR.busy=false; syncDirector(); }
+    }
+  }
   function syncDirector(){
     var box=id('vmkDirector'); if(!box) return;
     box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=drStory()?L('vdSubStory'):L('vdSub'); /* v-director-story: وصف القصّة لا «يصوّر شاشات التطبيق» */
@@ -479,6 +590,10 @@
     var names={plan:'vdStepPlan',shots:story?'vdStepFrames':'vdStepShots',samples:story?'vdStepDraw':'vdStepSamples',voice:'vdStepVoice',join:'vdStepJoin'};
     [].forEach.call(box.querySelectorAll('#vdSteps li'),function(li){ li.querySelector('b').textContent=L(names[li.dataset.step]); });
     box.querySelector('#vdDl').textContent=L('vdDownload');
+    var timed=drTimed(); box.classList.toggle('vd-timed',timed); /* v-director-timed */
+    if(kd.options[2]) kd.options[2].textContent=L('vdKindTimed');
+    if(timed) box.querySelector('.vmk-dir-head p').textContent=L('vdSubTimed');
+    tlSync();
   }
   /* v-app-director-motion (المالك: «خل فيه حركة فيديو عشان اعرف ان الفيديو يتولد»): شاشة حيّة أثناء التوليد — ضوء يتحرّك وشريط لقطات،
      وما يكتبه المخرج مشهدًا مشهدًا، ونماذج الأنماط تظهر فيها بحركة كاميرا فور توليدها، مع عدّاد وقت وشريط تقدّم كلّيّ. تعمل أثناء التوليد فقط. */
@@ -642,6 +757,7 @@
   function drPlanCall(body){ return drJson('/api/ai?action=app-director-plan',body); }
   async function drRun(){
     if(DR.busy||!drOwner()) return;
+    if(drTimed()) return drTimedRun(); /* v-director-timed */
     var req=(id('vdReq').value||'').trim(); if(!req){ drMsg(L('vdEmpty'),true); return; }
     if(!drStory()&&req.length>600){ drMsg(L('vdTooLong'),true); return; } /* «عرض التطبيق» طلب قصير — الطويل قصّة، لا قصّ صامت عند ٦٠٠ */
     var lang=id('vdLang').value||'ar', speaker=id('vdSpeaker').value||'female', minutes=parseInt(id('vdMin').value,10)||2;

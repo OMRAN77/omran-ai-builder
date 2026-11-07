@@ -1976,6 +1976,51 @@
       btnGenerate.disabled = false;
     }
   };
+  /* v-director-timed (المالك ٧ نوفمبر: «اريده الشخص نفسه يحط التوقيت مع الملاحظات لين ٥ دقائق»، ثمّ «ابدأ… في المخرج» واختار «فيديو AI»):
+     «بتوقيتي» في «مخرج التطبيق» (video.js) يرسل مقاطعه هنا: كلّ مقطع (٥–٣٠ ث + ملاحظة) يُقسَّم مشاهد ١٠/٥ ث بالمحرّك نفسه الذي يبني
+     «طويل (دقائق)» (createSceneWithRetry بنمط الطويل)، بالتتابع، ثمّ تُلصق (concatScenes). بلا سيناريو آليّ ولا سرد. للمالك وحده،
+     والرصيد يُفحص قبل أوّل مشهد فلا يُصرف على تشغيلة لا تكتمل؛ وما اكتمل قبل عطب يعود في e.partial فلا يضيع مدفوع. */
+  window.__vmkProxyUrl = proxyVideoUrl;
+  window.__vmkTimelinePlan = function(segs){
+    const plan = [];
+    (segs || []).forEach((s) => {
+      let rem = Math.max(5, Math.min(30, Math.round((Number(s && s.d) || 0) / 5) * 5)), k = 0;
+      const note = String((s && s.n) || '').trim();
+      while(rem > 0){
+        const d = rem >= SCENE_SECONDS_CONST ? SCENE_SECONDS_CONST : 5;
+        plan.push({ prompt: note + (k ? bT(' (استكمال نفس المشهد، اللحظة التالية)', ' (continuing the same scene, next moment)') : ''), d });
+        rem -= d; k++;
+      }
+    });
+    return plan;
+  };
+  window.__vmkTimelineRun = async function(segs, hooks){
+    const hk = hooks || {};
+    const say = (k, a, b) => { try{ if(hk.status) hk.status(k, a, b); }catch(e){ __swallow(e, 'video:timeline-status'); } };
+    if(!isOwnerAccount()) throw Object.assign(new Error('owner_only'), { code: 'owner_only' });
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token) throw Object.assign(new Error('auth_required'), { code: 'auth_required' });
+    const plan = window.__vmkTimelinePlan(segs);
+    if(!plan.length) throw Object.assign(new Error('empty'), { code: 'empty' });
+    try{
+      const r = await fetch('/api/video?action=video-balance&token=' + (typeof ownerToken === 'function' ? ownerToken() : ''));
+      const d = await r.json();
+      const needed = plan.length * 50;
+      if(d && typeof d.credits === 'number' && d.credits >= 0 && d.credits < needed) throw Object.assign(new Error('tl_credits'), { code: 'tl_credits', credits: d.credits, needed });
+    }catch(e){ if(e && e.code === 'tl_credits') throw e; __swallow(e, 'video:timeline-balance'); /* فحص الرصيد اجتهاد — عطب الشبكة لا يوقف */ }
+    const style = styleEl ? styleEl.value : '', ratio = ratioEl ? ratioEl.value : '1280:720';
+    const urls = [];
+    try{
+      for(let i = 0; i < plan.length; i++){
+        say('scene', i + 1, plan.length);
+        const url = await sceneInSequence(i + 1, plan.length, () => createSceneWithRetry(plan[i].prompt, style, plan[i].d, ratio, token, true, () => say('scene', i + 1, plan.length)));
+        urls.push(url);
+      }
+    }catch(e){ if(e && typeof e === 'object') e.partial = urls.slice(); throw e; }
+    say('join');
+    try{ return { blob: await concatScenes(urls), urls }; }
+    catch(e){ __swallow(e, 'video:timeline-join'); return { blob: null, urls }; }
+  };
   /* v-audit-video (cli-video-4): «إنشاء» يخفي الناتج السابق وزرّ تحميله قبل أيّ فحص — فإلغاء نافذة الخصم أو المهلة أو الرصيد يتركهما
      مخفيّين والفيديو المدفوع لا يُرى. الغلاف يعيدهما (والوضع واسم الملفّ) ما لم يظهر ناتج جديد. */
   { const __vmkGenRun = btnGenerate.onclick;
