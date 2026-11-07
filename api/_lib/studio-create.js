@@ -321,7 +321,12 @@ async function runEdit(o) {
    FACE_SWAP_CAP_CENTS اليوميّ المشترك). MERGE_FACE_SWAP = on (الافتراضيّ، بموافقة المالك على الكلفة) · owner · off. أيّ عطب أو
    لبس = صورة الدمج نفسها بلا تغيير، والطلب لا يفشل بسببه. ───── */
 const MERGE_ASPECT = '4:3';
-const MERGE_FRAMING = '\nFraming: when the photos show people, frame them from the waist up (a medium shot) unless the task above asks for a full-body or wide view; keep any scene the task describes around them, but never shrink the people so far that their faces become small — every face stays large, sharp and clearly visible with its own features.';
+/* v-merge-face-angle (المالك بعد التجربة: «الصورة الحقيقية غيّرت الملامح» — صورته أماميّة والناتج أداره برو ثلاثة أرباع نحو الآخر،
+   ولحيته الكثيفة صارت مشذّبة): زاوية الرأس والنظرة والتعبير وكثافة اللحية وطولها كما في صورة كلّ شخص — نفس قاعدة إطار الترندات
+   (frameTask: «each head angle, gaze and expression stay as in their own photo»)؛ والتبديل بعده يضيع مع الوجه المدار، واللحية تحت
+   بيضاويّ اللصق من رسم برو. */
+const MERGE_FRAMING = '\nFraming: when the photos show people, frame them from the waist up (a medium shot) unless the task above asks for a full-body or wide view; keep any scene the task describes around them, but never shrink the people so far that their faces become small — every face stays large, sharp and clearly visible with its own features.'
+  + ' Unless the task above asks for a different pose, each person keeps the head angle, gaze and expression of their own photo (facing the camera when their photo does — never turned to the side toward the other person), and keeps the exact beard or facial hair of their photo: the same fullness, length, density and outline, never trimmed, thinned or restyled.';
 /* بوّابة الإنفاق: غير مضبوط/on = الجميع (موافقة المالك)، owner = المالك، وأيّ قيمة أخرى (off، false، 0…) = مطفأ */
 function mergeSwapOn(username) {
   const m = String(process.env.MERGE_FACE_SWAP || 'on').trim().toLowerCase();

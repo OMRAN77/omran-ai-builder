@@ -115,6 +115,9 @@ test('١. الإطار: سطر «من الخصر وفوق» يحفظ مشهد ا
   assert.ok(p.includes('Place the people/subjects from both photos together naturally in one consistent, photorealistic scene.' + studioCreate.__MERGE_FRAMING));
   assert.match(studioCreate.__MERGE_FRAMING, /frame them from the waist up \(a medium shot\) unless the task above asks for a full-body or wide view; keep any scene the task describes around them/);
   assert.match(studioCreate.__MERGE_FRAMING, /never shrink the people so far that their faces become small/);
+  // v-merge-face-angle: زاوية الرأس والنظرة واللحية كما في صورة كلّ شخص (التبديل يضيع مع الوجه المدار)
+  assert.match(studioCreate.__MERGE_FRAMING, /each person keeps the head angle, gaze and expression of their own photo \(facing the camera when their photo does — never turned to the side toward the other person\)/);
+  assert.match(studioCreate.__MERGE_FRAMING, /keeps the exact beard or facial hair of their photo: the same fullness, length, density and outline, never trimmed, thinned or restyled/);
   assert.equal(proCall().body.generationConfig.imageConfig.aspectRatio, '4:3');
   assert.equal(proCall().body.generationConfig.temperature, 0.15);
 });
