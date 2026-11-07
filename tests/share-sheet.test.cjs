@@ -168,9 +168,11 @@ test('٨. كلّ مسار مشاركة يمرّ بالنافذة أوّلًا (�
 });
 
 test('٩. نصوص النافذة بالـ١٤ لغة', () => {
-  const keys = ['shareSheetTitle', 'shareCopy', 'shareCopied', 'shareMore', 'shareMessages', 'shareEmail', 'shareFail', 'sharePreparing', 'shareLinkFail'];
+  const keys = ['shareSheetTitle', 'shareCopy', 'shareSheetCopied', 'shareMore', 'shareMessages', 'shareEmail', 'shareFail', 'sharePreparing', 'shareLinkFail'];
   const data = read('js/app-03-i18n-data.js');
-  for (const k of keys) assert.equal((data.match(new RegExp('\\b' + k + ': "', 'g')) || []).length, 2, 'ar+en: ' + k);
+  // لا تصادم مع مفتاح قائم بأيّ علامة اقتباس — المكرّر في الكائن يظلّل أحدهما، وObject.assign في آخر ملفّ اللغة يغيّر نصّ الميزة القديمة
+  for (const k of keys) assert.equal((data.match(new RegExp('[\\s{,"\']' + k + '["\']?\\s*:', 'g')) || []).length, 2, 'ar+en مرّة لكلّ لغة: ' + k);
+  for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) { const f = read('i18n/' + lg + '.js'); for (const k of keys) assert.equal((f.match(new RegExp('[\\s{,"\']' + k + '["\']?\\s*:', 'g')) || []).length, 1, lg + ' مرّة واحدة: ' + k); }
   const ctx = { I18N: {} }; ctx.window = ctx; vm.createContext(ctx);
   for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) {
     ctx.I18N[lg] = {};

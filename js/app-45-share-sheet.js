@@ -170,7 +170,7 @@
       var rtlTxt = !url && /[\u0600-\u06FF]/.test(text); inp.style.direction = rtlTxt ? 'rtl' : 'ltr'; inp.style.textAlign = rtlTxt ? 'right' : 'left'; /* نصّ الردّ العربيّ من اليمين، والرابط من اليسار */
       needBtns.forEach(function(b){ b.disabled = !url; });
     };
-    cp.onclick = function(){ if(copyText(url || text)){ cp.textContent = tt('shareCopied', 'تمّ النسخ', 'Copied'); setTimeout(function(){ cp.textContent = tt('shareCopy', 'نسخ', 'Copy'); }, 1600); } else say(tt('sheetCopyFail', 'تعذّر النسخ', 'Copy failed')); };
+    cp.onclick = function(){ if(copyText(url || text)){ cp.textContent = tt('shareSheetCopied', 'تمّ النسخ', 'Copied'); setTimeout(function(){ cp.textContent = tt('shareCopy', 'نسخ', 'Copy'); }, 1600); } else say(tt('sheetCopyFail', 'تعذّر النسخ', 'Copy failed')); };
     inp.addEventListener('focus', function(){ try{ inp.select(); }catch(err){ __swallow(err, 'share-sheet:select'); } });
     lk.appendChild(inp); lk.appendChild(cp);
     if(url || text || pending) sh.appendChild(lk);

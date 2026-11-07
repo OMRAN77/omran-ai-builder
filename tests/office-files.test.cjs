@@ -312,7 +312,8 @@ test('١٤. نصوص الكرت والحالة بالـ١٤ لغة، ووسم م
   ctx.window = ctx;
   vm.createContext(ctx);
   const data = read('js/app-03-i18n-data.js');
-  for (const k of keys) assert.equal((data.match(new RegExp('\\b' + k + ': "', 'g')) || []).length, 2, 'ar+en: ' + k);
+  for (const k of keys) assert.equal((data.match(new RegExp('[\\s{,"\']' + k + '["\']?\\s*:', 'g')) || []).length, 2, 'ar+en مرّة لكلّ لغة (لا تصادم مع مفتاح قائم): ' + k);
+  for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) { const f = read('i18n/' + lg + '.js'); for (const k of keys) assert.equal((f.match(new RegExp('[\\s{,"\']' + k + '["\']?\\s*:', 'g')) || []).length, 1, lg + ' مرّة واحدة: ' + k); }
   for (const lg of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) {
     ctx.I18N[lg] = {};
     vm.runInContext(read('i18n/' + lg + '.js'), ctx);
