@@ -453,7 +453,10 @@
         +'<div class="vmk-dir-stage-cap" id="vdStageCap"></div><div class="vmk-dir-stage-hud"><span id="vdStageStep"></span><b id="vdStageTime">0:00</b></div><div class="vmk-dir-stage-bar"><i id="vdStageBar"></i></div></div>'
       +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','voice','samples','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small><i class="vmk-dir-log" dir="ltr"></i></li>'; }).join('')+'</ol>'
       +'<p class="vmk-dir-msg" id="vdMsg"></p>'
-      +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a></div>';
+      +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><div class="vmk-dir-acts"><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a><button type="button" class="vmk-dir-dl vmk-pub-btn" id="vdPubBtn"></button></div>'
+        /* v-director-publish: لوحة «انشر في حساباتي» — النصّ والمنصّات الموصولة ثمّ «انشر الآن» */
+        +'<div class="vmk-pub" id="vdPub" hidden><label class="vmk-pub-cap"><span></span><textarea id="vdPubCap" rows="3" maxlength="2200"></textarea></label>'
+        +'<div class="vmk-pub-plats" id="vdPubPlats"></div><button type="button" class="vmk-pub-go" id="vdPubGo"></button><p class="vmk-pub-msg" id="vdPubMsg"></p><ul class="vmk-pub-res" id="vdPubRes"></ul></div></div>';
     var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
     var ls=box.querySelector('#vdLang'); DR_LANGS.forEach(function(l){ var o=document.createElement('option'); o.value=l[0]; o.textContent=l[1]; ls.appendChild(o); });
     ls.value=DR_LANGS.some(function(l){ return l[0]===drUiLang(); })?drUiLang():'ar';
@@ -464,6 +467,7 @@
     box.querySelector('#vdVoice').addEventListener('change',syncDirector); /* بدون صوت: اختيار المتحدّث بلا معنى فيُعطَّل */
     var kT=document.createElement('option'); kT.value='timed'; box.querySelector('#vdKind').appendChild(kT); /* v-director-timed: النوع الثالث «بتوقيتي» */
     tlInit(box.querySelector('#vdTl'));
+    box.querySelector('#vdPubBtn').addEventListener('click',pbToggle); box.querySelector('#vdPubGo').addEventListener('click',pbGo); /* v-director-publish */
     box.querySelector('#vdKind').addEventListener('change',syncDirector); /* v-director-story: القصّة حدّها ٣٠٠٠ حرف وبلا مدّة ولا صورة مرجع */
   }
   function drStory(){ return ((id('vdKind')||{}).value==='story'); }
@@ -575,6 +579,115 @@
       if(my===DR.run){ DR.busy=false; syncDirector(); }
     }
   }
+  /* ═══ v-director-publish (المالك ٧ نوفمبر: «اي فيديو الي اسويه اقدر ارسله الي اي مكان… في السوشيل ميديا هذي الخاصيه موجوده عندي لكن ضيفها عندي
+     في المخرج»، واختار «انشر في حساباتي»): زرّ تحت الفيديو الجاهز يفتح لوحة — النصّ المرافق (فارغ عمدًا: ملاحظات التوليد ليست وصفًا للعامّة)
+     والمنصّات الموصولة كما يراها الخادم، ثمّ «انشر الآن» بموافقة صريحة لكلّ نشر (علنيّ ولا يُسحب). الفيديو يُرفع من الجهاز مباشرة إلى هدف مؤقّت
+     يصدره الخادم (مرّة لكلّ فيديو)، والخادم ينشر بخدمة النشر نفسها التي يستعملها بوت التسويق، ثمّ استطلاع حتّى تقول كلّ منصّة كلمتها. ═══ */
+  var PB={busy:false,plats:null,reauth:[],loading:false,src:'',id:'',req:'',poll:0};
+  var PB_NAMES={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',youtube:'YouTube',x:'X',threads:'Threads'};
+  function pbApi(op,body){
+    return fetch('/api/media?action=social-publish&op='+op,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({token:drTok()},body||{}))})
+      .then(function(r){ return r.json().catch(function(){ return {ok:false,error:'http',status:r.status}; }); });
+  }
+  function pbMsg(t,err,why){
+    var m=id('vdPubMsg'); if(!m) return;
+    m.textContent=(t||'')+(why?' ('+String(why).slice(0,200)+')':''); /* السبب الحقيقيّ بين قوسين: اللوحة للمالك وحده */
+    m.classList.toggle('err',!!err);
+  }
+  function pbWhy(d){ d=d||{}; return [d.error||d.message||'',d.status||'',d.detail||''].filter(Boolean).join(' '); }
+  function pbErr(d){
+    var e=String((d&&d.error)||'');
+    return e==='no_key'?L('vdPubNoKey'):e==='limit'?L('vdPubLimit'):e==='too_big'?drT('vdPubBig',{n:(d&&d.maxMB)||500}):L('vdPubFail');
+  }
+  function pbToggle(){
+    var p=id('vdPub'); if(!p) return;
+    p.hidden=!p.hidden;
+    if(!p.hidden&&!PB.busy&&PB.src&&PB.src!==DR.out){ PB.req=''; clearTimeout(PB.poll); pbRes([]); pbMsg(''); } /* فيديو جديد: نتيجة نشر السابق لا تُعرض تحته */
+    if(!p.hidden){ pbLoad(); var c=id('vdPubCap'); if(c&&!PB.busy) c.focus(); }
+  }
+  function pbLoad(){
+    if(PB.plats||PB.loading){ pbPlats(); return; }
+    PB.loading=true; pbMsg(''); pbPlats();
+    pbApi('accounts').then(function(d){
+      PB.loading=false;
+      if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
+      else pbMsg(pbErr(d),true,pbWhy(d)); /* PB.plats يبقى فارغًا: الفتح التالي يعيد السؤال (مفتاح أُضيف بعدها) */
+      pbPlats(); syncDirector();
+    }).catch(function(e){ PB.loading=false; pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); });
+  }
+  function pbPlats(){
+    var box=id('vdPubPlats'); if(!box) return;
+    box.textContent='';
+    if(PB.loading){ box.textContent=L('vdPubLoading'); return; }
+    (PB.plats||[]).forEach(function(p){
+      var l=document.createElement('label'), c=document.createElement('input');
+      c.type='checkbox'; c.value=p; c.checked=true; l.appendChild(c); l.appendChild(document.createTextNode(PB_NAMES[p]||p)); box.appendChild(l);
+    });
+    (PB.reauth||[]).forEach(function(p){ var s=document.createElement('span'); s.className='off'; s.textContent=drT('vdPubReauth',{p:PB_NAMES[p]||p}); box.appendChild(s); });
+  }
+  function pbPut(url,mime,blob){
+    return new Promise(function(res,rej){
+      var x=new XMLHttpRequest(), bad=function(){ rej({error:'upload',status:x.status}); };
+      x.open('PUT',url,true); x.timeout=1800000;
+      x.setRequestHeader('Content-Type',mime); /* النوع الذي أصدر الخادم الهدف به حرفيًّا */
+      x.upload.onprogress=function(e){ if(e.lengthComputable&&e.total>0) pbMsg(drT('vdPubUp',{p:Math.min(99,Math.round(e.loaded/e.total*100))})); };
+      x.onload=function(){ if(x.status>=200&&x.status<300) res(); else bad(); };
+      x.onerror=bad; x.ontimeout=bad; x.onabort=bad;
+      x.send(blob);
+    });
+  }
+  function pbRes(list){
+    var ul=id('vdPubRes'); if(!ul) return;
+    ul.textContent='';
+    (list||[]).forEach(function(r){
+      var li=document.createElement('li'); li.className='is-'+r.state;
+      var b=document.createElement('b'); b.textContent=PB_NAMES[r.platform]||r.platform; li.appendChild(b);
+      var s=document.createElement('span'); s.textContent=L(r.state==='ok'?'vdPubOk':(r.state==='fail'?'vdPubNo':'vdPubWait')); li.appendChild(s);
+      if(r.url){ var a=document.createElement('a'); a.href=r.url; a.target='_blank'; a.rel='noopener'; a.textContent=L('vdPubOpen'); li.appendChild(a); }
+      if(r.error){ var sm=document.createElement('small'); sm.dir='auto'; sm.textContent=r.error; li.appendChild(sm); }
+      ul.appendChild(li);
+    });
+  }
+  async function pbGo(){
+    if(PB.busy||!drOwner()||!DR.out) return;
+    var capEl=id('vdPubCap'), cap=String((capEl||{}).value||'').trim();
+    var picked=[].map.call((id('vdPubPlats')||document).querySelectorAll('input:checked'),function(c){ return c.value; });
+    if(!cap){ pbMsg(L('vdPubNeedCap'),true); if(capEl) capEl.focus(); return; }
+    if(!picked.length){ pbMsg(L('vdPubPick'),true); return; }
+    if(!window.confirm(drT('vdPubConfirm',{p:picked.map(function(p){ return PB_NAMES[p]||p; }).join('، ')}))) return; /* علنيّ ولا يُسحب: موافقة لكلّ نشر */
+    PB.busy=true; PB.req=''; clearTimeout(PB.poll); syncDirector(); pbRes([]);
+    try{
+      if(PB.src!==DR.out||!PB.id){ /* فيديو جديد = رفع جديد؛ الفيديو نفسه لمنصّات أخرى لا يُرفع مرّتين */
+        var src=DR.out; pbMsg(drT('vdPubUp',{p:0}));
+        var blob=await fetch(src).then(function(r){ return r.blob(); });
+        var type=/webm/i.test(blob.type||'')?'video/webm':(/quicktime/i.test(blob.type||'')?'video/quicktime':'video/mp4');
+        var t=await pbApi('target',{size:blob.size,type:type});
+        if(!t||!t.ok) throw (t||{error:'target'});
+        await pbPut(t.up,t.ctype||type,blob);
+        PB.src=src; PB.id=t.id;
+      }
+      var d=await pbApi('publish',{id:PB.id,caption:cap,platforms:picked});
+      if(!d||!d.ok) throw (d||{error:'publish'});
+      PB.req=d.request; pbMsg(L('vdPubSent')); pbPoll(PB.req,0);
+    }catch(e){
+      pbMsg(pbErr(e),true,pbWhy(e)||String((e&&e.message)||e));
+      try{ __swallow(e,'director:publish'); }catch(x){ /* guard-ok — لا مسجّل */ }
+    }finally{ PB.busy=false; syncDirector(); }
+  }
+  function pbPoll(req,n){
+    clearTimeout(PB.poll);
+    PB.poll=setTimeout(function(){
+      if(req!==PB.req) return;
+      pbApi('status',{request:req}).then(function(d){
+        if(req!==PB.req) return;
+        if(d&&d.ok){
+          pbRes(d.results);
+          if(d.state!=='wait'){ var ok=(d.results||[]).filter(function(r){ return r.state==='ok'; }).length; pbMsg(drT('vdPubDone',{ok:ok,n:(d.results||[]).length}),!ok); return; }
+        }
+        if(n<120) pbPoll(req,n+1); else pbMsg(L('vdPubSlow'));
+      }).catch(function(){ if(n<120) pbPoll(req,n+1); });
+    },n<6?5000:10000);
+  }
   function syncDirector(){
     var box=id('vmkDirector'); if(!box) return;
     box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=drStory()?L('vdSubStory'):L('vdSub'); /* v-director-story: وصف القصّة لا «يصوّر شاشات التطبيق» */
@@ -594,6 +707,8 @@
     if(kd.options[2]) kd.options[2].textContent=L('vdKindTimed');
     if(timed) box.querySelector('.vmk-dir-head p').textContent=L('vdSubTimed');
     tlSync();
+    box.querySelector('#vdPubBtn').textContent=L('vdPubBtn'); box.querySelector('.vmk-pub-cap>span').textContent=L('vdPubCap'); /* v-director-publish */
+    box.querySelector('#vdPubCap').placeholder=L('vdPubPh'); var pg=box.querySelector('#vdPubGo'); pg.textContent=L('vdPubGo'); pg.disabled=PB.busy||!(PB.plats&&PB.plats.length);
   }
   /* v-app-director-motion (المالك: «خل فيه حركة فيديو عشان اعرف ان الفيديو يتولد»): شاشة حيّة أثناء التوليد — ضوء يتحرّك وشريط لقطات،
      وما يكتبه المخرج مشهدًا مشهدًا، ونماذج الأنماط تظهر فيها بحركة كاميرا فور توليدها، مع عدّاد وقت وشريط تقدّم كلّيّ. تعمل أثناء التوليد فقط. */
