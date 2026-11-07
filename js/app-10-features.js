@@ -515,6 +515,7 @@ if(btnShareApp){
       ne: 'निःशुल्क AI ले एप बनाउन om ai प्रयोग गर्नुहोस्:'
     };
     const shareText = texts[currentLang] || texts.ar;
+    if(typeof window.omranShareSheet === 'function'){ window.omranShareSheet({ url: shareUrl, text: shareText }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45)
     if(navigator.share){
       try {
         await navigator.share({ title: titles[currentLang] || titles.ar, text: shareText, url: shareUrl });
