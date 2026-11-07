@@ -98,10 +98,13 @@ async function detectFaces(apiKey, img, opts) {
         { text: 'Find every human face in this photo. For each face return box_2d [ymin, xmin, ymax, xmax] normalized to 0-1000, from the hairline/forehead to the chin and ear to ear.'
           + (pts ? ' Also return eyes [y1, x1, y2, x2]: the centre of each of the two eyes, and mouth [y, x]: the centre of the mouth, normalized to 0-1000 in the same way.'
             /* v-body-hair-keep: ومعها «الشعر مغطّى؟» بقائمة صريحة تشمل الغترة والطاقيّة — فحص الجنس (photoLook) لا يجيب عن بعض الصور */
-            + ' Also return hair_covered: true when the hair is covered by a hijab, headscarf, shayla, ghutra, cap, hat or hood, false when the hair is visible.' : '')
-          + ' Return JSON {"faces": [{"box_2d": [...]' + (pts ? ', "eyes": [...], "mouth": [...], "hair_covered": false' : '') + '}]} only; an empty list if there are no people.' },
+            + ' Also return hair_covered: true when the hair is covered by a hijab, headscarf, shayla, ghutra, cap, hat or hood, false when the hair is visible.'
+            /* v-body-beard: و«لحية؟» — «facial hair» في أمر الرسم والقفل لكلّ أحد وضع لحية على وجه امرأة (تجربة ٧ نوفمبر) */
+            + ' Also return facial_hair: true when the person has a beard, moustache or stubble, false otherwise.' : '')
+          + ' Return JSON {"faces": [{"box_2d": [...]' + (pts ? ', "eyes": [...], "mouth": [...], "hair_covered": false, "facial_hair": false' : '') + '}]} only; an empty list if there are no people.' },
       ] }],
-      generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', required: ['faces'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: ['box_2d'], properties: Object.assign({ box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } }, pts ? { eyes: { type: 'ARRAY', items: { type: 'INTEGER' } }, mouth: { type: 'ARRAY', items: { type: 'INTEGER' } }, hair_covered: { type: 'BOOLEAN' } } : {}) } } } } },
+      /* v-body-beard: السؤالان إلزاميّان في المخطّط — اختياريًّا أسقط الموديل hair_covered فبقي «hair ?» والسطر العامّ */
+      generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', required: ['faces'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: pts ? ['box_2d', 'hair_covered', 'facial_hair'] : ['box_2d'], properties: Object.assign({ box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } }, pts ? { eyes: { type: 'ARRAY', items: { type: 'INTEGER' } }, mouth: { type: 'ARRAY', items: { type: 'INTEGER' } }, hair_covered: { type: 'BOOLEAN' }, facial_hair: { type: 'BOOLEAN' } } : {}) } } } } },
     }),
   });
   if (!r.ok) { const t = typeof r.text === 'function' ? await r.text().catch(() => '') : ''; console.warn('[merge-identity] face detect ' + r.status + (require('./fal-fallback.js').geminiCreditOut(r.status, t) ? ' gemini-out' : '')); return []; } /* v-trends-identity-audit: نفاد Gemini يُسمّى — اللقطة تسقط فيه */ // عطب الكشف: stats.faces يبقى بلا قيمة — لا يُقرأ «لا وجوه» (v-video-identity-mirror: ويُسجَّل — كان صامتًا)
@@ -124,6 +127,7 @@ async function detectFaces(apiKey, img, opts) {
     const e = pts && Array.isArray(f.eyes) ? f.eyes.flat().map(Number) : null, m = pts && Array.isArray(f.mouth) ? f.mouth.flat().map(Number) : null;
     if (e && m && e.length === 4 && m.length === 2 && e.concat(m).every(Number.isFinite)) { out.eyes = [[c(e[1]), c(e[0])], [c(e[3]), c(e[2])]]; out.mouth = [c(m[1]), c(m[0])]; }
     if (pts && typeof f.hair_covered === 'boolean') out.covered = f.hair_covered; /* v-body-hair-keep */
+    if (pts && typeof f.facial_hair === 'boolean') out.beard = f.facial_hair; /* v-body-beard */
     return out;
   }).filter(Boolean).sort((a, b) => area(b.box) - area(a.box));
   /* صندوق مكرّر للوجه نفسه (تقاطع > ٥٠٪) يُسقط */

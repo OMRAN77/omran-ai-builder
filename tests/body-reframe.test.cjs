@@ -449,7 +449,7 @@ test('١٧. صورتها مائلة والوجه يملأ الصورة ← لق�
   const look = calls.find((c) => /a man or a woman/.test(JSON.stringify((c.body && c.body.contents) || '')));
   assert.deepEqual(look.body.contents[0].parts.filter((p) => p.inlineData).map((p) => p.inlineData.data), [SRC, imgs[1]], 'فحص الجنس يرى وجهها المستقيم أيضًا');
   assert.match(JSON.stringify(look.body.contents), /the second image is a close-up of that same person's face, turned upright/);
-  assert.ok(logs.some((s) => /body reframe toned: text \(card cached, photo w uncovered, hair \?, card model w, hijab card, face upright -90°\)/.test(s)), logs.join(' | '));
+  assert.ok(logs.some((s) => /body reframe toned: text \(card cached, photo w uncovered, hair \?, beard \?, card model w, hijab card, face upright -90°\)/.test(s)), logs.join(' | '));
   // وضع البطاقة: فحص ما بعد الرسم يقارن بوجهه المستقيم
   reset({ pts: PTS, g: 'man' });
   cache('bdsurferc');
@@ -486,16 +486,19 @@ test('١٨. «شعرها مكشوف» من فحص الصورة ← سطر رأس
 
 test('١٩. detectFaces: بلا points الطلب والمخطّط والناتج كما كانت حرفيًّا (الدمج والترندات والفيديو)؛ وبها العينان والفم نسبيّةً [x, y]', async () => {
   const bodies = [];
-  const fake = async (u, init) => { bodies.push(JSON.parse(init.body)); return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ faces: [{ box_2d: [100, 200, 500, 600], eyes: [250, 300, 260, 500], mouth: [400, 400], hair_covered: false }] }) }] } }] }); };
+  const fake = async (u, init) => { bodies.push(JSON.parse(init.body)); return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ faces: [{ box_2d: [100, 200, 500, 600], eyes: [250, 300, 260, 500], mouth: [400, 400], hair_covered: false, facial_hair: false }] }) }] } }] }); };
   const img = { w: 10, h: 10, data: Buffer.alloc(400, 128) };
   const plain = await MI.detectFaces('k', img, { fetchImpl: fake });
   const pts = await MI.detectFaces('k', img, { fetchImpl: fake, points: true });
   assert.equal(bodies[0].contents[0].parts[1].text, 'Find every human face in this photo. For each face return box_2d [ymin, xmin, ymax, xmax] normalized to 0-1000, from the hairline/forehead to the chin and ear to ear. Return JSON {"faces": [{"box_2d": [...]}]} only; an empty list if there are no people.');
   assert.equal(JSON.stringify(bodies[0].generationConfig.responseSchema), JSON.stringify({ type: 'OBJECT', required: ['faces'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: ['box_2d'], properties: { box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } } } } } }));
   assert.deepEqual(plain, [{ box: [0.2, 0.1, 0.6, 0.5] }], 'بلا نقاط وإن أعادها الموديل');
-  assert.match(bodies[1].contents[0].parts[1].text, /Also return eyes \[y1, x1, y2, x2\]: the centre of each of the two eyes, and mouth \[y, x\]: the centre of the mouth, normalized to 0-1000 in the same way\. Also return hair_covered: true when the hair is covered by a hijab, headscarf, shayla, ghutra, cap, hat or hood, false when the hair is visible\. Return JSON \{"faces": \[\{"box_2d": \[\.\.\.\], "eyes": \[\.\.\.\], "mouth": \[\.\.\.\], "hair_covered": false\}\]\}/);
-  assert.deepEqual(Object.keys(bodies[1].generationConfig.responseSchema.properties.faces.items.properties), ['box_2d', 'eyes', 'mouth', 'hair_covered']);
-  assert.deepEqual(pts, [{ box: [0.2, 0.1, 0.6, 0.5], eyes: [[0.3, 0.25], [0.5, 0.26]], mouth: [0.4, 0.4], covered: false }]);
+  assert.match(bodies[1].contents[0].parts[1].text, /Also return eyes \[y1, x1, y2, x2\]: the centre of each of the two eyes, and mouth \[y, x\]: the centre of the mouth, normalized to 0-1000 in the same way\. Also return hair_covered: true when the hair is covered by a hijab, headscarf, shayla, ghutra, cap, hat or hood, false when the hair is visible\. Also return facial_hair: true when the person has a beard, moustache or stubble, false otherwise\. Return JSON \{"faces": \[\{"box_2d": \[\.\.\.\], "eyes": \[\.\.\.\], "mouth": \[\.\.\.\], "hair_covered": false, "facial_hair": false\}\]\}/);
+  /* v-body-beard: السؤالان إلزاميّان (اختياريًّا أسقط الموديل hair_covered في تجربة حقيقيّة) */
+  assert.deepEqual(bodies[1].generationConfig.responseSchema.properties.faces.items.required, ['box_2d', 'hair_covered', 'facial_hair']);
+  assert.deepEqual(bodies[0].generationConfig.responseSchema.properties.faces.items.required, ['box_2d'], 'بلا points كما كان');
+  assert.deepEqual(Object.keys(bodies[1].generationConfig.responseSchema.properties.faces.items.properties), ['box_2d', 'eyes', 'mouth', 'hair_covered', 'facial_hair']);
+  assert.deepEqual(pts, [{ box: [0.2, 0.1, 0.6, 0.5], eyes: [[0.3, 0.25], [0.5, 0.26]], mouth: [0.4, 0.4], covered: false, beard: false }]);
 });
 
 /* المراجعة العدائيّة لـv-body-upright (٤ مؤكّدة، مصلحة): وجه ثلاثة أرباع من تحت كان يُرفض، ومفتاح MERGE_FACE_CROPS كان يُتخطّى */
@@ -605,4 +608,36 @@ test('٢٤. الكشف لم يُجب عن الشعر ← القفل بالوجه
   await post({ style: 'toned' });
   assert.equal(lockCalls[0].o.faceOnly, true);
   assert.match(headOf(promptOf(proCalls()[0])), /^\nHead: a man's ghutra/);
+});
+
+/* ───── v-body-beard (تجربتي الحقيقيّة ٧ نوفمبر بعد v-body-hair-keep: الحجاب زال والشعر بقي، لكن لحية وشارب على وجه امرأة؛ والكشف أسقط
+   hair_covered الاختياريّ فبقي «hair ?») ───── */
+const BEARD_PTS = (beard) => [{ eyes: [250, 330, 450, 330], mouth: [350, 560], hair_covered: false, facial_hair: beard }];
+test('٢٥. الكشف: بلا لحية ← لا «facial hair» في أمر الرسم (النصّيّ والبطاقة) ولا في القفل، والسجلّ «beard no»', async () => {
+  reset({ pts: BEARD_PTS(false), g: 'woman' });
+  cache('toned');
+  const logs = [], log0 = console.log;
+  console.log = (...x) => { logs.push(x.join(' ')); };
+  try { await post({ style: 'toned' }); } finally { console.log = log0; }
+  const p = promptOf(proCalls()[0]);
+  assert.ok(!/facial hair/.test(p), 'الوصف النصّيّ بلا شعر الوجه');
+  assert.match(p, /their face and every facial feature, skin tone, and apparent age/);
+  assert.equal(lockCalls[0].o.beard, false, 'القفل بلا شعر الوجه');
+  assert.ok(logs.some((s) => /, hair uncovered, beard no, /.test(s)), logs.join(' | '));
+  reset({ pts: [{ eyes: [250, 330, 450, 330], mouth: [350, 560], hair_covered: true, facial_hair: false }], g: 'man' });
+  cache('bdsurferc');
+  await post({ style: 'bdsurferc' });
+  assert.equal(imagesOf(proCalls()[0]).length, 3, 'وضع البطاقة');
+  assert.ok(!/facial hair/.test(promptOf(proCalls()[0])), 'أمر البطاقة بلا شعر الوجه');
+});
+test('٢٦. لحية (أو غير معروف) ← «facial hair» كما كان في الرسم والقفل (لحية المالك تُنقل)', async () => {
+  reset({ pts: [{ eyes: [250, 330, 450, 330], mouth: [350, 560], hair_covered: true, facial_hair: true }], g: 'man' });
+  cache('bdsurferc');
+  await post({ style: 'bdsurferc' });
+  assert.match(promptOf(proCalls()[0]), /\), facial hair and apparent age/, 'أمر البطاقة');
+  assert.equal(lockCalls[0].o.beard, true);
+  reset({ pts: [{ eyes: [250, 330, 450, 330], mouth: [350, 560] }], g: 'man' });
+  await post({ style: 'bdboxera' });
+  assert.match(promptOf(proCalls()[0]), /skin tone, facial hair and apparent age/, 'غير معروف = كما كان');
+  assert.equal(lockCalls[0].o.beard, null);
 });
