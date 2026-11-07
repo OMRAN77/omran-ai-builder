@@ -71,7 +71,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "req",
   "kind": "none",
-  "prompt": "Fast rhythmic travel montage: the person from the reference image (same face, same outfit) appears in famous world locations one after another: Dubai Burj Khalifa, Paris Eiffel Tower, Tokyo neon street, New York Times Square, Istanbul Bosphorus, Cairo pyramids, London Big Ben, Rome Colosseum, Maldives beach, Swiss Alps. Quick cuts, upbeat music, photorealistic.",
+  "prompt": "Fast rhythmic travel montage: the person from the reference image (same face, hair and outfit) appears in famous world locations one after another: Dubai Burj Khalifa, Paris Eiffel Tower, Tokyo neon street, New York Times Square, Istanbul Bosphorus, Cairo pyramids, London Big Ben, Rome Colosseum, Maldives beach, Swiss Alps — each shot a medium close-up with their face large and clearly lit. Quick cuts, upbeat music, photorealistic.",
   "scenes": null,
   "preview": {
    "frame": "photorealistic still of a young Arab woman in hijab smiling in front of the Eiffel Tower, travel vlog style",
@@ -95,7 +95,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "req",
   "kind": "none",
-  "prompt": "The person from the reference image stands in a studio while their outfit changes five times in quick snap transitions: elegant evening wear, traditional Gulf attire, sporty, business, casual street style. Same face and pose, studio lighting, upbeat music.",
+  "prompt": "The person from the reference image stands in a studio while their outfit changes five times in quick snap transitions: elegant evening wear, traditional Gulf attire, sporty, business, casual street style. Only the clothes change: their face and hair stay exactly as in the photo in every look. Same face and pose, studio lighting, upbeat music.",
   "scenes": null,
   "preview": {
    "frame": "photorealistic studio still of a young Arab woman mid-transition between an elegant evening gown and traditional attire, motion blur sparkle",
@@ -143,7 +143,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "req",
   "kind": "none",
-  "prompt": "Transform the reference image into a hand-painted Studio Ghibli-style animated scene: wind moves the hair and clothes, clouds drift, grass sways, soft watercolor light, gentle orchestral music, same person recognizable.",
+  "prompt": "Transform the reference image into a hand-painted Studio Ghibli-style animated scene: wind moves their clothes and gently stirs their hair without changing its length or cut, clouds drift, grass sways, soft watercolor light, gentle orchestral music, same person recognizable.",
   "scenes": null,
   "preview": {
    "frame": "Studio Ghibli-style hand-painted anime still of a young woman in hijab standing in a windy green meadow under drifting clouds",
@@ -275,7 +275,7 @@ const TRENDS = {
   "ratio": "720:1280",
   "photo": "req",
   "kind": "name",
-  "prompt": "Cinematic motion poster: the person from the reference image as the movie star of a dramatic blockbuster film poster titled '{text}' - epic stormy backdrop, drifting smoke and light rays animating subtly, lens flares sweeping, the bold glowing title '{text}' and a small credits block at the bottom, the SAME face as the reference. Vertical poster framing, blockbuster color grade, slow majestic camera drift.",
+  "prompt": "Cinematic motion poster: the person from the reference image, exactly as they look, as the star of a dramatic blockbuster film poster titled '{text}' - epic stormy backdrop, drifting smoke and light rays animating subtly, lens flares sweeping, the bold glowing title '{text}' and a small credits block at the bottom, the SAME face as the reference. Vertical poster framing, blockbuster color grade on the backdrop, their face in natural light, slow majestic camera drift.",
   "scenes": null,
   "preview": {
    "frame": "cinematic Hollywood movie poster still of a determined young Arab man in a dark coat, epic stormy backdrop, glowing bold title text and credits block, lens flare",
@@ -395,7 +395,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "name",
-   "prompt": "Joyful graduation moment: the person from the reference image wears a graduation gown and cap, throws the cap into the air in slow motion while golden confetti falls, campus lawn at golden hour, friends cheering warmly out of focus behind and calling out their name '{name}' with joy, photorealistic, warm uplifting music.",
+   "prompt": "Joyful graduation moment: the person from the reference image wears a graduation gown and a cap (worn over their own ghutra or headscarf if they have one, their hair exactly as in the photo), tosses the cap into the air in slow motion while golden confetti falls, campus lawn at golden hour, friends cheering warmly out of focus behind and calling out their name '{name}' with joy, photorealistic, warm uplifting music.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of a young Arab graduate in gown and cap throwing the cap into the air with golden confetti at sunset on a campus lawn",
@@ -467,7 +467,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Blockbuster action-hero shot: the person from the reference image walks slowly toward the camera in confident slow motion while a fiery explosion erupts behind them and they never look back, embers and debris flying, heavy contrast and lens flares, low hero angle, epic drum score, photorealistic, same face and clothing as the reference, no text.",
+   "prompt": "Blockbuster action-hero shot: the person from the reference image walks a few slow steps toward the camera in confident slow motion, seen from the waist up at eye level throughout, their face evenly lit and unchanged, while a fiery explosion erupts behind them (its glow on the background and edges only) and they never look back, embers and debris flying, heavy contrast and lens flares on the background, epic drum score, photorealistic, same face and clothing as the reference, no text.",
    "scenes": null,
    "preview": {
      "frame": "blockbuster action still of a man walking toward camera in slow motion with a fiery explosion behind him, embers flying, low hero angle",
@@ -503,7 +503,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Underwater dream scene: the subject from the reference image floats gracefully in clear turquoise water, shafts of sunlight cutting down from the surface, bubbles rising, hair and fabric drifting slowly, colourful fish passing by, gentle slow motion, photorealistic, same face as the reference, calm ambient music, no text.",
+   "prompt": "Underwater dream scene: the subject from the reference image floats gracefully in clear turquoise water, shafts of sunlight cutting down from the surface, bubbles rising, fabric drifting slowly while their hair keeps its exact length and cut and only stirs gently (any headscarf stays on), their face clearly lit in its true skin tone, colourful fish passing by, gentle slow motion, photorealistic, same face as the reference, calm ambient music, no text.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic underwater still of a person floating in clear turquoise water with sun rays from above, bubbles and colourful fish",
@@ -564,7 +564,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "The person from the reference image stands as energy swirls around them and their clothing transforms into a sleek superhero suit with a flowing cape, wind whipping, a city skyline glowing at dusk behind them; they plant their feet and look up heroically, dramatic rim light, powerful orchestral score, photorealistic, same face as the reference.",
+   "prompt": "The person from the reference image stands as energy swirls around them and their clothing transforms into a sleek superhero suit with a flowing cape — no mask, cowl or helmet; their face, hair and any headwear stay exactly as in the photo — the wind whipping the cape, a city skyline glowing at dusk behind them; they plant their feet and look ahead with their own steady expression, their face clearly lit, dramatic rim light on the edges, powerful orchestral score, photorealistic, same face as the reference.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of a person in a sleek superhero suit with a flowing cape standing heroically before a glowing dusk city skyline, dramatic rim light",
@@ -588,7 +588,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Transform the scene into a high-energy Japanese shonen-anime style: bold ink outlines, dramatic speed lines and impact frames, the person from the reference image strikes a confident dynamic pose as their hair and clothes whip with sudden wind, vivid saturated color flashes, intense orchestral hit, same person recognizable in anime form.",
+   "prompt": "Transform the scene into a high-energy Japanese shonen-anime style: bold ink outlines, dramatic speed lines and impact frames, the person from the reference image strikes a confident dynamic pose as their clothes whip with sudden wind (their hair keeps its own length and cut), vivid saturated color flashes, intense orchestral hit, same person recognizable in anime form.",
    "scenes": null,
    "preview": {
      "frame": "high-energy shonen anime still of a young man in a dynamic pose with bold ink outlines, dramatic speed lines and vivid color flashes",
@@ -648,7 +648,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Fast rhythmic day-in-the-life montage of the person from the reference image (same face, same general style): waking up and stretching in soft morning light, sipping coffee by a sunny window, stepping out of the front door with a smile, walking energetically down a city street; quick cuts, upbeat music, photorealistic, natural candid feel.",
+   "prompt": "Fast rhythmic day-in-the-life montage of the person from the reference image (same face, same hair, facial hair and outfit style, each shot a medium close-up): waking up and stretching in soft morning light, sipping coffee by a sunny window, stepping out of the front door with a smile, walking energetically down a city street; quick cuts, upbeat music, photorealistic, natural candid feel.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic still of a person sipping coffee by a sunny window in a warm morning montage moment, candid natural feel",
@@ -684,7 +684,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Cinematic rescue on a sea cliff at sunset: the person from the reference image hangs from the crumbling edge of a high rocky cliff above crashing waves, fingers slipping; a second figure who is the very same person, standing strong and calm on the edge in different, darker clothes, kneels, grabs their wrist and pulls them up to safety; both share the same face; wind, dust and sea spray, dramatic orchestral music, photorealistic.",
+   "prompt": "Cinematic rescue on a sea cliff at sunset: the person from the reference image hangs from the crumbling edge of a high rocky cliff above crashing waves, fingers slipping; a second figure who is the very same person, standing strong and calm on the edge in different, darker clothes, kneels, grabs their wrist and pulls them up to safety; both share the same face; dust and sea spray in the air, both with the hair exactly as in the photo, dramatic orchestral music, photorealistic.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic cinematic still of a man hanging from a rocky cliff edge above the sea at sunset while a strong hand reaches down and grabs his wrist",
@@ -720,7 +720,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Grainy, warm footage from a lost 1980s fantasy film shot on 35mm with practical effects: in a candle-lit medieval barn strewn with straw beside an old spinning wheel, the person from the reference image, dressed as a mischievous trickster in a ragged velvet tunic and a pointed felt hat, does a sly, gleeful tiptoe dance in a little circle, grinning, while a frightened young princess in a flowing gown backs away clutching her skirts; dust and straw float in the shafts of light; soft film grain, slight gate weave, faded colours, eerie playful harpsichord-and-synth score.",
+   "prompt": "Grainy, warm footage from a lost 1980s fantasy film shot on 35mm with practical effects: in a candle-lit medieval barn strewn with straw beside an old spinning wheel, the person from the reference image, dressed as a mischievous trickster in a ragged velvet tunic and a pointed felt hat (over their own headwear if any), does a sly tiptoe dance in a little circle with a mischievous look, their face turned toward the camera, while a frightened young princess in a flowing gown backs away clutching her skirts; dust and straw float in the shafts of light; soft film grain, slight gate weave, faded colours, eerie playful harpsichord-and-synth score.",
    "scenes": null,
    "preview": {
      "frame": "grainy 1980s 35mm fantasy film still: a grinning trickster in a ragged velvet tunic and pointed felt hat tiptoe-dancing in a candle-lit straw barn beside a spinning wheel while a frightened princess in a gown backs away",
@@ -751,12 +751,14 @@ const TRENDS = {
      "gender": "m"
    }
  },
+ /* v-trend-hair-lock (المالك: «سامحوني» بصورة رجل ملتحٍ بشعر قصير جدًّا ← وجه أنحف وشعر طويل تطيّره الريح): لا «glow-up» ولا «ريح في
+    الشعر» في القوالب — الريح تحرّك العباءة واللبس، والوجه والشعر واللحية كما في الصورة (والمثل في ترندات أخرى أدناه) */
  "sorryreveal": {
    "engine": "veo",
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Epic glow-up reveal: the clip opens on a legendary, heroic version of the person from the reference image — a desert knight in ornate golden armour and a flowing cape on a cliff at golden hour, wind in their hair, an epic orchestral swell — then in the final second it cuts to the plain, ordinary reference photo itself, as a funny self-mocking reveal; photorealistic.",
+   "prompt": "Epic hero reveal: the clip opens on the person from the reference image as a legendary desert knight — only the costume and the setting are epic; their own face, build, facial hair and hair stay exactly as in the photo, bare-headed or in their own headwear from the photo — in ornate golden armour with a cape billowing in the wind on a cliff at golden hour, their face clearly lit, an epic orchestral swell; then in the final second it cuts to the reference photo itself, as a funny self-mocking reveal; photorealistic.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic epic still of a heroic desert knight in ornate golden armour with a flowing cape standing on a cliff at golden hour",

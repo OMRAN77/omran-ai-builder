@@ -139,9 +139,11 @@ test('٢. وصف طويل جدًّا: الأمر ≤ ١٥٠٠ دائمًا — �
   assert.match(p, /IDENTITY \(mandatory\)[^]*recognize them instantly\. Use Image1 as the starting frame\./);
   assert.ok(p.endsWith(M.FRAME_GUIDE));
   assert.ok(p.includes(long.trim().slice(0, 400)), 'الوصف يبقى ما اتّسع الحدّ');
-  // وفي الإطار نفسه: الوصف حتّى ٩٠٠ حرف، والمهمّة كاملة بعده
+  // وفي الإطار نفسه: الوصف حتّى ١٦٠٠ حرف (v-trend-hair-lock: كان ٩٠٠ فيُقصّ توجيه المستخدم)، والمهمّة كاملة بعده
   const t = TP.soloFrameTask(long, { closeup: true });
-  assert.ok(t.includes(long.trim().slice(0, 900)) && !t.includes(long.trim().slice(0, 901)));
+  assert.ok(long.trim().length > 1600);
+  assert.equal(TP.SCENE_MAX, 1600);
+  assert.ok(t.includes(long.trim().slice(0, 1600)) && !t.includes(long.trim().slice(0, 1601)));
   assert.match(t, /No text, captions, logos or watermarks\.$/);
 });
 

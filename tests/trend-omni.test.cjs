@@ -586,7 +586,9 @@ test('٢٠. ترندات أكتوبر على Omni: الشخص في مشهد = إ
   assert.equal(r.omniSolo.length, 1);
   assert.deepEqual([r.omniSolo[0].o.start, r.omniSolo[0].o.detail], [false, true]);
   assert.deepEqual(images(r.omni), ['SOLOFRAME', 'USERPHOTO'], 'الإطار أوّلًا وصورته آخرًا');
-  assert.equal(text(r.omni), '[# Sources <FIRST_FRAME>@Image1 <LAST_FRAME>@Image2] ' + r.veoPrompt + ' Use Image1 as the starting frame and Image2 as the final frame: the clip ends exactly on Image2, the plain real photo.');
+  assert.equal(text(r.omni), veo.TREND_REVEAL_DECL + r.veoPrompt + veo.TREND_REVEAL_GUIDE);
+  assert.ok(veo.TREND_REVEAL_GUIDE.startsWith(' Use Image1 as the starting frame and Image2 as the final frame: the clip ends exactly on Image2, the plain real photo.'));
+  assert.match(veo.TREND_REVEAL_GUIDE, /keeps the exact face, hair \(length and cut\)/, 'v-trend-hair-lock: وجه Image1 وشعره حتّى القطع الأخير');
   assert.ok(!text(r.omni).includes(TP.FRAME_LOCK.trim()), 'بلا قفل الإطار — ينتهي بصورته');
   assert.deepEqual(r.omni.body.input.filter((x) => x.type === 'image').map((x) => x.mime_type), ['image/png', 'image/jpeg']);
   /* تعذّر الإطار: مرجع كترندات الشخص */

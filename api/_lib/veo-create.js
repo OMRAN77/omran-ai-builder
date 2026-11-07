@@ -62,7 +62,10 @@ function trendEngine() { return String(process.env.TREND_ENGINE || 'omni').toLow
 function cinemaEngine() { return String(process.env.CINEMA_ENGINE || 'omni').toLowerCase() === 'veo' ? 'veo' : 'omni'; }
 const TREND_NO_CUTS = ' In a single continuous shot, no scene cuts.';
 const TREND_REVEAL_DECL = '[# Sources <FIRST_FRAME>@Image1 <LAST_FRAME>@Image2] ';
-const TREND_REVEAL_GUIDE = ' Use Image1 as the starting frame and Image2 as the final frame: the clip ends exactly on Image2, the plain real photo.';
+/* v-trend-hair-lock: الكشف بلا قفل الإطار (ينتهي بصورته) — فكان Omni حرًّا في إعادة رسم الوجه والشعر قبل القطع الأخير؛ الآن يثبّت وجه
+   Image1 وشعره ولحيته وجسمه حتّى القطع، والملحميّ اللبس والمكان والضوء وحدها. يبقى في MULTI_SHOT_TRENDS (القطع الأخير مقصود). */
+const TREND_REVEAL_GUIDE = ' Use Image1 as the starting frame and Image2 as the final frame: the clip ends exactly on Image2, the plain real photo.'
+  + ' Until that final cut, animate Image1 as it is in one continuous shot: the person keeps the exact face, hair (length and cut), facial hair and build shown in Image1 — never restyle, idealise or lengthen the hair; only the costume, setting and light are epic.';
 const TREND_REF_GUIDE = ' Use the given image as a reference for video generation — keep the face and identity of the person in it. The image should not be used as a literal initial frame.';
 /* v-trend-omni-refs: التوثيق يربط المرجع بالشخص داخل النصّ («a woman <IMAGE_REF_0> is walking»)، وomni-create يفعل ذلك في قفله؛
    أوامر الترندات (مكتوبة لـVeo) تقول «the reference image» بلا وسم — فيُلحق الوسم بها حين يكون للصورة مرجع واحد. */
@@ -281,11 +284,18 @@ module.exports = async (req, res) => {
        كلّ شخص بوجه صورته (face-swap.js). مطفأ افتراضيًّا (TREND_FACE_SWAP) والإنفاق بموافقة المالك؛ لترندات الشخص على Omni وحدها، بلا
        الفنّيّة واللعب والعمر الآخر و«فلاش باك VHS». «الزومبي» المرجع الأوّل وحده (الثاني هو المتحوّل)، و«من ينقذك؟» نسختان منه.
        مطفأ = الخيارات كما كانت حرفيًّا. */
-    const swapOpt = (omniTrend && tp.omniPersonTrend(trendId) && !tp.SOLO_FRAME_ART_TRENDS.has(trendId) && !tp.SOLO_FRAME_TOY_TRENDS.has(trendId)
-      && !tp.AGE_SHIFT_TRENDS.has(trendId) && trendId !== 'vhsflashback' && !tp.ART_STYLE_RE.test(tp.trendScene(promptText))
-      && require('./face-swap.js').enabledFor(gate.allowed))
-      ? Object.assign({ until: t0 + OMNI_FRAME_MS, owner: !!gate.allowed }, trendId === 'zombielove' ? { only: [0] } : {}, trendId === 'saveyourself' ? { multi: true } : {})
+    const swapTrend = omniTrend && tp.omniPersonTrend(trendId) && !tp.SOLO_FRAME_ART_TRENDS.has(trendId) && !tp.SOLO_FRAME_TOY_TRENDS.has(trendId)
+      && !tp.AGE_SHIFT_TRENDS.has(trendId) && trendId !== 'vhsflashback' && !tp.ART_STYLE_RE.test(tp.trendScene(promptText));
+    const swapOpt = (swapTrend && require('./face-swap.js').enabledFor(gate.allowed))
+      ? Object.assign({ until: t0 + OMNI_FRAME_MS, owner: !!gate.allowed }, trendId === 'zombielove' ? { only: [0] } : {}, trendId === 'saveyourself' ? { multi: true } : {},
+        tp.ALONE_SCENE_TRENDS.has(trendId) ? { alone: true } : {}, tp.HAT_SCENE_TRENDS.has(trendId) ? { hat: true } : {}) // v-trend-hair-lock
       : null;
+    /* v-trend-hair-lock (المالك: «فعّلته وأعدت النشر» والوجه تغيّر): كلّ تخطٍّ للتبديل كان سطرًا في سجلّ Vercel وحده — الآن سطر في سجلّ
+       المالك (log-error، كما fal-fallback). منتظَر بسقف ١٫٥ث ولا يرمي؛ الرسالة بلا توقيت فيجمع _errors.js تكرارها عدًّا وتنبيهًا واحدًا لكلّ سبب. */
+    const ownerNote = (scope, msg) => require('./log-error.js').logErrorAndFlush(scope, new Error(msg));
+    if (swapTrend && gate.allowed && !swapOpt && (soloWanted || (body.trend && trendPeople.length > 1))) {
+      await ownerNote('face-swap/gate', 'trend=' + trendId + ' swap=' + require('./face-swap.js').gateWhy(true));
+    }
 
     /* v-trend-people: أوّل إطار فيه كلّ الأشخاص معًا في مشهد الترند، ثمّ يحرّكه المحرّك. بعد القفل
        عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءات الدمج. فشله = لا خصم ولا قفل (يُردّان هنا). */
@@ -301,6 +311,7 @@ module.exports = async (req, res) => {
       if (frame && frame.b64) {
         imageBase64 = frame.b64; imageMime = frame.mime; groupFramed = true;
         if (swapOpt) console.log('[veo-create] group frame ready swap=' + (frame.swapped || 0) + (frame.swapWhy ? ' (' + String(frame.swapWhy).slice(0, 60) + ')' : ''));
+        if (swapOpt && !frame.swapped) await ownerNote('face-swap/group', 'trend=' + trendId + ' swap=0 why=' + String(frame.swapWhy || '?').slice(0, 80)); // v-trend-hair-lock
         /* v-trend-identity: الإطار الأوّل بُني للتوّ بوجوه الأشخاص الحقيقيّة داخل مشهد الترند، لكنّ أمر
            الترند نفسه يبقى «Transform the person … into …» — فيعيد المحرّك تنفيذ التحويل فوق إطار
            نُفِّذ فيه أصلًا، ويرسم وجوهًا جديدة. هذا السطر يُلحق أخيرًا فيغلب: التحويل انتهى، والمطلوب
@@ -351,7 +362,12 @@ module.exports = async (req, res) => {
         framed = true; frameRef = solo.ref || null; soloPeople = singleSubject ? 0 : (solo.people || 0);
         console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : '')
           + (swapOpt ? ' swap=' + (solo.swapped || 0) + (solo.swapWhy ? ' (' + String(solo.swapWhy).slice(0, 60) + ')' : '') : ''));
-      } else console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
+        if (swapOpt && !solo.swapped) await ownerNote('face-swap/solo', 'trend=' + trendId + ' swap=0 why=' + String(solo.swapWhy || '?').slice(0, 80) + (solo.cached ? ' cached' : '')); // v-trend-hair-lock
+      } else {
+        console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
+        /* v-trend-hair-lock: إطار ترند الشخص سقط = المحرّك يرسم وجهًا جديدًا من المرجع بلا تبديل — يُرى في سجلّ المالك */
+        if (omniTrend && tp.omniPersonTrend(trendId)) await ownerNote('trend-frame/solo', 'trend=' + trendId + ' skipped why=' + String((solo && solo.error) || 'none').slice(0, 80));
+      }
     }
 
     /* v-fal-backup: بدء الفيديو عند الاحتياط — سجلّ الطابور (عطب كتابته لا يُسقطه: veo-status يبني الرابط من الرقم) وتذكرة الخصم
