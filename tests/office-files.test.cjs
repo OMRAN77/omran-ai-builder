@@ -251,10 +251,14 @@ function fakeDom() {
   return { createElement: mk, getElementById: () => null, head: mk('head'), body: mk('body') };
 }
 function loadClient(extra) {
-  const ctx = Object.assign({ console, Promise, Object, Array, String, Number, Math, Date, JSON, Intl, setTimeout, clearTimeout, Blob, URL }, extra || {});
+  const ls = new Map();
+  const ctx = Object.assign({ console, Promise, Object, Array, String, Number, Math, Date, JSON, Intl, Blob, URL,
+    setTimeout: () => 0, clearTimeout: () => {}, setInterval: () => 1, clearInterval: () => {}, /* مؤقّتات التعريف لا تعمل في الاختبار — hintTick يُنادى يدويًّا */
+    localStorage: { getItem: (k) => (ls.has(k) ? ls.get(k) : null), setItem: (k, v) => { ls.set(k, String(v)); } } }, extra || {});
   ctx.window = ctx; ctx.document = fakeDom();
+  if (ctx.prompt) ctx.document.getElementById = (id) => (id === 'prompt' ? ctx.prompt : null);
   ctx.__swallow = (e, w) => { (ctx.swallowed = ctx.swallowed || []).push(w + ':' + (e && e.message)); };
-  ctx.t = (k) => k;
+  if (!ctx.t) ctx.t = (k) => k;
   vm.createContext(ctx);
   vm.runInContext(read('js/app-44-office.js'), ctx, { filename: 'app-44-office.js' });
   return ctx;
@@ -303,7 +307,7 @@ test('١٣. الخطّافات: app-37 يرسم office، app-18 يرسل body.of
 
 test('١٤. نصوص الكرت والحالة بالـ١٤ لغة، ووسم ملفّات اللغة مرفوع', () => {
   const keys = ['stOffice', 'trOfficeOk', 'trOfficeFail', 'officeDownload', 'officePdf', 'officeSheets', 'officeSlides', 'officeFreeBadge', 'officeBuilding', 'officeFail',
-    'officeGatePlans', 'officeGateLogin', 'officeSubscribe', 'officeLogin', 'officeEditHint', 'officeFreeHint', 'officeTotal', 'plansWhyOffice'];
+    'officeGatePlans', 'officeGateLogin', 'officeSubscribe', 'officeLogin', 'officeEditHint', 'officeFreeHint', 'officeTotal', 'plansWhyOffice', 'officeHint1', 'officeHint2', 'officeHint3'];
   const ctx = { I18N: {} };
   ctx.window = ctx;
   vm.createContext(ctx);
@@ -318,3 +322,54 @@ test('١٤. نصوص الكرت والحالة بالـ١٤ لغة، ووسم م
   const vm1 = /i18n\/' \+ lg \+ '\.js\?v=(\d+)'/.exec(read('js/app-04-i18n-state.js')); // الرقم يُقرأ لا يُثبَّت (arch-ratchet vPinTests)
   assert.ok(vm1 && Number(vm1[1]) > 783, 'وسم ملفّات اللغة رُفع بعد إضافة النصوص');
 });
+
+// ── ٦. التعريف بالميزة: أمثلة خانة الكتابة + سطر الاقتراح من النموذج، ويتوقّفان بعد أوّل ملفّ ─────────────────
+test('١٥. الاقتراح: موضوع ينفعه جدول، لم يُعرض في المحادثة؛ و«إيه سوّه» بعد العرض = طلب ملفّ', () => {
+  for (const s of ['عندي 20 موظف وابي انظم دوامهم', 'ابي انظم مصاريفي هالشهر', 'I need to track my students grades']) assert.equal(O.isHintTopic(s), true, s);
+  for (const s of ['السلام عليكم', 'ما عاصمة فرنسا', 'ابي صورة قطة', 'سوي لي جدول حضور من الاكسل']) assert.equal(O.isHintTopic(s), false, s);
+  const offer = { role: 'assistant', content: 'هذي طريقة… أقدر أسوي لك هذا ملف Excel جاهز للطباعة إذا تبي 📄' };
+  assert.equal(O.alreadyOffered([{ role: 'user', content: 'x' }, offer]), true);
+  assert.equal(O.alreadyOffered([{ role: 'assistant', content: 'هلا' }]), false);
+  assert.equal(O.isOfficeAccept('ايه سوه', [offer, { role: 'user', content: 'ايه سوه' }]), true);
+  assert.equal(O.isOfficeAccept('yes please', [offer, { role: 'user', content: 'yes please' }]), true);
+  assert.equal(O.isOfficeAccept('ايه', [{ role: 'assistant', content: 'تبي قهوة؟' }, { role: 'user', content: 'ايه' }]), false, 'موافقة على شيء آخر');
+  assert.equal(O.isOfficeAccept('ايه بس قبلها قل لي كيف أحسب الضريبة على الفواتير بالتفصيل', [offer, { role: 'user', content: 'x' }]), false, 'كلام طويل ليس موافقة');
+});
+
+test('١٦. المعالج: سطر الاقتراح يصل النموذج (المجّانيّ والمشترك) ما دام العميل يطلبه، ومرّة في المحادثة، ولا لمن خلص ملفّ شهره', async () => {
+  reset();
+  const HINT = '[اقتراح ملفّ';
+  const seen = (r) => JSON.stringify(r.sent).includes(HINT);
+  assert.ok(seen(await chatTurn('hinty', 'عندي 20 موظف وابي انظم دوامهم', { body: { officeHint: true } })), 'المجّانيّ: في نظام السلسلة المجّانيّة');
+  assert.ok(seen(await chatTurn('hintsub', 'عندي 20 موظف وابي انظم دوامهم', { body: { officeHint: true }, usage: { tier: 'sub', subscriber: true, plan: 'basic' } })), 'المشترك: في ذيل الدور');
+  assert.ok(!seen(await chatTurn('hinty', 'عندي 20 موظف وابي انظم دوامهم')), 'صنع ملفًّا على جهازه (لا officeHint) = لا اقتراح');
+  assert.ok(!seen(await chatTurn('hinty', 'ما عاصمة فرنسا؟', { body: { officeHint: true } })), 'موضوع لا ينفعه جدول');
+  const offered = { messages: [{ role: 'user', content: 'كيف أرتّب رواتب الموظفين' }, { role: 'assistant', content: 'كذا… أقدر أسوي لك ملف Excel جاهز للطباعة إذا تبي 📄' }, { role: 'user', content: 'وكيف أحسب الإضافي للموظفين؟' }], officeHint: true };
+  assert.ok(!seen(await chatTurn('hinty', 'وكيف أحسب الإضافي للموظفين؟', { body: offered })), 'عُرض في المحادثة = لا يتكرّر');
+  store.set(O.monthKey('spent'), '1');
+  assert.ok(!seen(await chatTurn('spent', 'عندي 20 موظف وابي انظم دوامهم', { body: { officeHint: true } })), 'المجّانيّ الذي خلص ملفّ شهره لا يُعرض عليه ما لا يقدر عليه');
+  // «إيه سوّه» بعد العرض: مجّانيّ بحصّته ← المسار المدفوع بأداة الملفّ
+  const acc = await chatTurn('accepter', 'ايه سوه', { body: { messages: [{ role: 'user', content: 'كيف أرتّب رواتب الموظفين' }, { role: 'assistant', content: 'كذا… أقدر أسوي لك ملف Excel جاهز للطباعة إذا تبي 📄' }, { role: 'user', content: 'ايه سوه' }] } });
+  assert.deepEqual(toolNames(acc.sent[0]), ['create_office_file']);
+});
+
+test('١٧. العميل: أمثلة خانة الكتابة تتبدّل حتّى أوّل ملفّ ثمّ تتوقّف نهائيًّا، ولا تمسّ نصًّا باهتًا لغيرها؛ وapp-18 يرسل officeHint', () => {
+  const attrs = { placeholder: 'اكتب رسالتك هنا ...' };
+  const prompt = { getAttribute: (k) => attrs[k], setAttribute: (k, v) => { attrs[k] = v; } };
+  const dict = { promptPlaceholder: 'اكتب رسالتك هنا ...', officeHint1: 'H1', officeHint2: 'H2', officeHint3: 'H3' };
+  const c = loadClient({ prompt, t: (k) => (k in dict ? dict[k] : k) });
+  assert.equal(c.omranOfficeHintWanted(), true);
+  c.omranOffice.hintTick(); assert.equal(attrs.placeholder, 'H1');
+  c.omranOffice.hintTick(); assert.equal(attrs.placeholder, 'H2');
+  attrs.placeholder = 'وضع آخر'; c.omranOffice.hintTick(); assert.equal(attrs.placeholder, 'وضع آخر', 'نصّ وضع آخر لا يُلمس');
+  attrs.placeholder = 'H3';
+  c.omranOfficeCard({ id: 'x', spec: O.sanitizeSpec(XL).spec });
+  assert.equal(c.omranOfficeHintWanted(), false, 'أوّل ملفّ يوقف التعريف');
+  assert.equal(attrs.placeholder, 'اكتب رسالتك هنا ...', 'النصّ الأصليّ يعود');
+  c.omranOffice.hintTick(); assert.equal(attrs.placeholder, 'اكتب رسالتك هنا ...', 'ولا يعود للتبدّل بعدها');
+  const c2 = loadClient({ prompt });
+  c2.omranOfficeCard({ gate: 'plans' });
+  assert.equal(c2.omranOfficeHintWanted(), false, 'كرت «خلص ملفّ الشهر» (ملفّ من جهاز آخر) يوقفه أيضًا');
+  assert.match(read('js/app-18-chat-tools.js'), /officeHint: \(function \(\) \{ try \{ return \(window\.omranOfficeHintWanted && window\.omranOfficeHintWanted\(\)\) \? true : undefined;/);
+});
+
