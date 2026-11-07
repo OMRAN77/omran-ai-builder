@@ -561,7 +561,7 @@
       if(my!==DR.run) return;
       if(out&&out.blob){
         if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ /* guard-ok — رابط زال */ } }
-        DR.out=URL.createObjectURL(out.blob);
+        DR.out=URL.createObjectURL(out.blob); pbNewVideo(); /* v-director-publish-guard */
         var vid=id('vdVideo'), dl=id('vdDl');
         if(vid) vid.src=DR.out;
         if(dl){ dl.href=DR.out; dl.setAttribute('download','omran-timeline.'+(/webm/i.test(out.blob.type||'')?'webm':'mp4')); }
@@ -583,8 +583,9 @@
      في المخرج»، واختار «انشر في حساباتي»): زرّ تحت الفيديو الجاهز يفتح لوحة — النصّ المرافق (فارغ عمدًا: ملاحظات التوليد ليست وصفًا للعامّة)
      والمنصّات الموصولة كما يراها الخادم، ثمّ «انشر الآن» بموافقة صريحة لكلّ نشر (علنيّ ولا يُسحب). الفيديو يُرفع من الجهاز مباشرة إلى هدف مؤقّت
      يصدره الخادم (مرّة لكلّ فيديو)، والخادم ينشر بخدمة النشر نفسها التي يستعملها بوت التسويق، ثمّ استطلاع حتّى تقول كلّ منصّة كلمتها. ═══ */
-  var PB={busy:false,plats:null,reauth:[],loading:false,src:'',id:'',req:'',poll:0};
+  var PB={busy:false,plats:null,reauth:[],loading:false,src:'',id:'',vid:'',at:0,req:'',reqPlats:[],sent:{},poll:0};
   var PB_NAMES={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',youtube:'YouTube',x:'X',threads:'Threads'};
+  var PB_FRESH=5*3600*1000; /* v-director-publish-guard: الملفّ المرفوع يعيش ٦ ساعات عند الخادم وخدمة النشر تجلبه في الخلفيّة — بعد ٥ يُرفع من جديد */
   function pbApi(op,body){
     return fetch('/api/media?action=social-publish&op='+op,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({token:drTok()},body||{}))})
       .then(function(r){ return r.json().catch(function(){ return {ok:false,error:'http',status:r.status}; }); });
@@ -599,38 +600,49 @@
     var e=String((d&&d.error)||'');
     return e==='no_key'?L('vdPubNoKey'):e==='limit'?L('vdPubLimit'):e==='too_big'?drT('vdPubBig',{n:(d&&d.maxMB)||500}):L('vdPubFail');
   }
+  function pbNames(list){ return (list||[]).map(function(p){ return PB_NAMES[p]||p; }).join('، '); }
+  /* v-director-publish-guard: فيديو جديد = لوحة من الصفر — نصّ السابق ونتيجته ومنصّاته لا تُعرض تحته (كان التصفير عند فتح اللوحة وحده،
+     فلوحة مفتوحة تُبقي «نزل» ونصّ الفيديو السابق تحت الجديد). يُنادى حيث يتغيّر DR.out. */
+  function pbNewVideo(){
+    PB.req=''; PB.reqPlats=[]; PB.sent={}; PB.vid=''; clearTimeout(PB.poll);
+    pbRes([]); pbMsg(''); var c=id('vdPubCap'); if(c) c.value='';
+    var b=id('vdPubPlats'); if(b) b.textContent=''; pbPlats(); /* المنصّات كلّها مؤشَّرة من جديد */
+  }
   function pbToggle(){
     var p=id('vdPub'); if(!p) return;
     p.hidden=!p.hidden;
-    if(!p.hidden&&!PB.busy&&PB.src&&PB.src!==DR.out){ PB.req=''; clearTimeout(PB.poll); pbRes([]); pbMsg(''); } /* فيديو جديد: نتيجة نشر السابق لا تُعرض تحته */
     if(!p.hidden){ pbLoad(); var c=id('vdPubCap'); if(c&&!PB.busy) c.focus(); }
   }
   function pbLoad(){
-    if(PB.plats||PB.loading){ pbPlats(); return; }
-    PB.loading=true; pbMsg(''); pbPlats();
+    if(PB.loading) return; /* سؤال واحد في الطريق */
+    /* كلّ فتح يسأل من جديد: حساب أُعيد ربطه أو وُصل يظهر بلا إعادة تحميل (إعادة التحميل تضيّع الفيديو). القائمة الحاضرة تبقى أثناء السؤال */
+    PB.loading=true; if(!PB.plats){ if(!PB.busy&&!PB.req) pbMsg(''); pbPlats(); } syncDirector();
     pbApi('accounts').then(function(d){
-      PB.loading=false;
-      if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
-      else pbMsg(pbErr(d),true,pbWhy(d)); /* PB.plats يبقى فارغًا: الفتح التالي يعيد السؤال (مفتاح أُضيف بعدها) */
+      PB.loading=false; var keep=PB.busy||!!PB.req; /* رسالة رفع أو نشر قائم لا تُمسح */
+      if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; if(!keep) pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
+      else if(!keep) pbMsg(pbErr(d),true,pbWhy(d)); /* القائمة السابقة تبقى؛ وبلا قائمة يعيد الفتح التالي السؤال (مفتاح أُضيف بعدها) */
       pbPlats(); syncDirector();
-    }).catch(function(e){ PB.loading=false; pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); });
+    }).catch(function(e){ PB.loading=false; if(!PB.busy&&!PB.req) pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); syncDirector(); });
   }
   function pbPlats(){
     var box=id('vdPubPlats'); if(!box) return;
+    var off={}; [].forEach.call(box.querySelectorAll('input[type=checkbox]'),function(c){ if(!c.checked) off[c.value]=1; }); /* ما شاله المالك يبقى مشالًا بعد التحديث */
     box.textContent='';
-    if(PB.loading){ box.textContent=L('vdPubLoading'); return; }
+    if(PB.loading&&!PB.plats){ box.textContent=L('vdPubLoading'); return; }
     (PB.plats||[]).forEach(function(p){
-      var l=document.createElement('label'), c=document.createElement('input');
-      c.type='checkbox'; c.value=p; c.checked=true; l.appendChild(c); l.appendChild(document.createTextNode(PB_NAMES[p]||p)); box.appendChild(l);
+      var l=document.createElement('label'), c=document.createElement('input'), st=PB.sent[p];
+      c.type='checkbox'; c.value=p; c.checked=!st&&!off[p]; c.disabled=!!st; /* أخذ هذا الفيديو (نزل أو ينتظر): لا يُرسل له مرّة ثانية */
+      if(st) l.className='is-sent';
+      l.appendChild(c); l.appendChild(document.createTextNode((PB_NAMES[p]||p)+(st?' · '+L(st==='ok'?'vdPubOk':'vdPubWait'):''))); box.appendChild(l);
     });
     (PB.reauth||[]).forEach(function(p){ var s=document.createElement('span'); s.className='off'; s.textContent=drT('vdPubReauth',{p:PB_NAMES[p]||p}); box.appendChild(s); });
   }
-  function pbPut(url,mime,blob){
+  function pbPut(url,mime,blob,at){
     return new Promise(function(res,rej){
       var x=new XMLHttpRequest(), bad=function(){ rej({error:'upload',status:x.status}); };
       x.open('PUT',url,true); x.timeout=1800000;
       x.setRequestHeader('Content-Type',mime); /* النوع الذي أصدر الخادم الهدف به حرفيًّا */
-      x.upload.onprogress=function(e){ if(e.lengthComputable&&e.total>0) pbMsg(drT('vdPubUp',{p:Math.min(99,Math.round(e.loaded/e.total*100))})); };
+      x.upload.onprogress=function(e){ if(at===DR.out&&e.lengthComputable&&e.total>0) pbMsg(drT('vdPubUp',{p:Math.min(99,Math.round(e.loaded/e.total*100))})); };
       x.onload=function(){ if(x.status>=200&&x.status<300) res(); else bad(); };
       x.onerror=bad; x.ontimeout=bad; x.onabort=bad;
       x.send(blob);
@@ -651,25 +663,45 @@
   async function pbGo(){
     if(PB.busy||!drOwner()||!DR.out) return;
     var capEl=id('vdPubCap'), cap=String((capEl||{}).value||'').trim();
-    var picked=[].map.call((id('vdPubPlats')||document).querySelectorAll('input:checked'),function(c){ return c.value; });
+    var picked=[].map.call((id('vdPubPlats')||document).querySelectorAll('input:checked'),function(c){ return c.value; }).filter(function(p){ return !PB.sent[p]; });
     if(!cap){ pbMsg(L('vdPubNeedCap'),true); if(capEl) capEl.focus(); return; }
     if(!picked.length){ pbMsg(L('vdPubPick'),true); return; }
-    if(!window.confirm(drT('vdPubConfirm',{p:picked.map(function(p){ return PB_NAMES[p]||p; }).join('، ')}))) return; /* علنيّ ولا يُسحب: موافقة لكلّ نشر */
+    if(!window.confirm(drT('vdPubConfirm',{p:pbNames(picked)}))) return; /* علنيّ ولا يُسحب: موافقة لكلّ نشر */
+    var at=DR.out; /* الفيديو الذي وافق عليه: إن جاء فيديو جديد أثناء الرفع لا يُنشر القديم ولا تُرسم نتيجته تحت الجديد */
     PB.busy=true; PB.req=''; clearTimeout(PB.poll); syncDirector(); pbRes([]);
     try{
-      if(PB.src!==DR.out||!PB.id){ /* فيديو جديد = رفع جديد؛ الفيديو نفسه لمنصّات أخرى لا يُرفع مرّتين */
-        var src=DR.out; pbMsg(drT('vdPubUp',{p:0}));
-        var blob=await fetch(src).then(function(r){ return r.blob(); });
-        var type=/webm/i.test(blob.type||'')?'video/webm':(/quicktime/i.test(blob.type||'')?'video/quicktime':'video/mp4');
-        var t=await pbApi('target',{size:blob.size,type:type});
-        if(!t||!t.ok) throw (t||{error:'target'});
-        await pbPut(t.up,t.ctype||type,blob);
-        PB.src=src; PB.id=t.id;
+      var d=null;
+      for(var round=0;round<2;round++){
+        var up=PB.src!==at||!PB.id||!(Date.now()-PB.at<PB_FRESH);
+        if(up){ /* فيديو جديد أو ملفّ قارب عمره = رفع؛ الفيديو نفسه لمنصّات أخرى لا يُرفع مرّتين */
+          pbMsg(drT('vdPubUp',{p:0}));
+          var blob=await fetch(at).then(function(r){ return r.blob(); });
+          if(at!==DR.out) return;
+          var type=/webm/i.test(blob.type||'')?'video/webm':(/quicktime/i.test(blob.type||'')?'video/quicktime':'video/mp4');
+          var t=await pbApi('target',{size:blob.size,type:type});
+          if(at!==DR.out) return;
+          if(!t||!t.ok) throw (t||{error:'target'});
+          var t0=Date.now();
+          await pbPut(t.up,t.ctype||type,blob,at);
+          if(at!==DR.out) return;
+          if(PB.src!==at||!PB.vid) PB.vid=t.id; /* أوّل رفع يسمّي الفيديو؛ إعادة رفعه تبقي اسمه فتبقى حجوزات منصّاته عند الخادم */
+          PB.src=at; PB.id=t.id; PB.at=t0;
+        }
+        d=await pbApi('publish',{id:PB.id,vid:PB.vid||PB.id,caption:cap,platforms:picked});
+        if(at!==DR.out) return;
+        if(d&&d.error==='no_file'&&!up){ PB.id=''; continue; } /* انتهى عمر الملفّ عند الخادم ولم يُنشر شيء: رفع واحد من جديد في الضغطة نفسها */
+        break;
       }
-      var d=await pbApi('publish',{id:PB.id,caption:cap,platforms:picked});
       if(!d||!d.ok) throw (d||{error:'publish'});
-      PB.req=d.request; pbMsg(L('vdPubSent')); pbPoll(PB.req,0);
+      var already=d.already||[], sent=d.again?[]:picked.filter(function(p){ return already.indexOf(p)<0; });
+      sent.concat(already).forEach(function(p){ if(!PB.sent[p]) PB.sent[p]='wait'; });
+      PB.req=String(d.request||''); PB.reqPlats=d.again?already:sent;
+      var again=already.length?drT('vdPubAgain',{p:pbNames(already)}):'';
+      pbMsg(d.again?again:(d.unsure?L('vdPubUnsure'):L('vdPubSent')+(again?' · '+again:''))); /* ما لم يُرسل لا يُقال عنه «انرسل» */
+      pbPlats();
+      if(PB.req) pbPoll(PB.req,0);
     }catch(e){
+      if(at!==DR.out) return;
       pbMsg(pbErr(e),true,pbWhy(e)||String((e&&e.message)||e));
       try{ __swallow(e,'director:publish'); }catch(x){ /* guard-ok — لا مسجّل */ }
     }finally{ PB.busy=false; syncDirector(); }
@@ -681,8 +713,14 @@
       pbApi('status',{request:req}).then(function(d){
         if(req!==PB.req) return;
         if(d&&d.ok){
-          pbRes(d.results);
-          if(d.state!=='wait'){ var ok=(d.results||[]).filter(function(r){ return r.state==='ok'; }).length; pbMsg(drT('vdPubDone',{ok:ok,n:(d.results||[]).length}),!ok); return; }
+          var rows=d.results||[], fin=d.state!=='wait';
+          rows.forEach(function(r){ if(r.state==='fail') delete PB.sent[r.platform]; else PB.sent[r.platform]=r.state; }); /* ما لم ينزل يُختار من جديد */
+          if(d.lost||(d.state==='fail'&&!rows.length)){ /* ما وصل الخدمة: لا شيء نزل، والنشر التالي يرسله */
+            PB.reqPlats.forEach(function(p){ delete PB.sent[p]; }); pbRes([]); pbPlats(); pbMsg(L('vdPubLost'),true); return;
+          }
+          if(d.state==='fail') PB.reqPlats.forEach(function(p){ if(!rows.some(function(r){ return r.platform===p; })) delete PB.sent[p]; }); /* مهمّة فشلت قبل أن تبلغها */
+          pbRes(rows); pbPlats();
+          if(fin){ var ok=rows.filter(function(r){ return r.state==='ok'; }).length; pbMsg(drT('vdPubDone',{ok:ok,n:rows.length}),!ok); return; }
         }
         if(n<120) pbPoll(req,n+1); else pbMsg(L('vdPubSlow'));
       }).catch(function(){ if(n<120) pbPoll(req,n+1); });
@@ -708,7 +746,7 @@
     if(timed) box.querySelector('.vmk-dir-head p').textContent=L('vdSubTimed');
     tlSync();
     box.querySelector('#vdPubBtn').textContent=L('vdPubBtn'); box.querySelector('.vmk-pub-cap>span').textContent=L('vdPubCap'); /* v-director-publish */
-    box.querySelector('#vdPubCap').placeholder=L('vdPubPh'); var pg=box.querySelector('#vdPubGo'); pg.textContent=L('vdPubGo'); pg.disabled=PB.busy||!(PB.plats&&PB.plats.length);
+    box.querySelector('#vdPubCap').placeholder=L('vdPubPh'); var pg=box.querySelector('#vdPubGo'); pg.textContent=L('vdPubGo'); pg.disabled=PB.busy||PB.loading||!(PB.plats&&PB.plats.length);
   }
   /* v-app-director-motion (المالك: «خل فيه حركة فيديو عشان اعرف ان الفيديو يتولد»): شاشة حيّة أثناء التوليد — ضوء يتحرّك وشريط لقطات،
      وما يكتبه المخرج مشهدًا مشهدًا، ونماذج الأنماط تظهر فيها بحركة كاميرا فور توليدها، مع عدّاد وقت وشريط تقدّم كلّيّ. تعمل أثناء التوليد فقط. */
@@ -1037,7 +1075,7 @@
       var vr=await fetch(url,{headers:auth}); if(!vr.ok) throw drFail('download '+vr.status);
       var blob=await vr.blob(); if(my!==DR.run) return;
       if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ /* guard-ok — رابط زال */ } }
-      DR.out=URL.createObjectURL(blob);
+      DR.out=URL.createObjectURL(blob); pbNewVideo(); /* v-director-publish-guard */
       var vid=id('vdVideo'), dl=id('vdDl'), res=id('vdRes');
       drStagePct(100); drStageStop(true);
       if(vid) vid.src=DR.out; if(dl){ dl.href=DR.out; dl.setAttribute('download','omran-app-director-'+lang+'.mp4'); } if(res) res.classList.add('has');

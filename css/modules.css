@@ -873,6 +873,12 @@ html[data-mode="light"] #videoMakerModal .vmk-dir-dl{color:#8a5a12;background:#f
 #videoMakerModal .vmk-pub-plats{display:flex;flex-wrap:wrap;gap:8px;font-size:13px}
 #videoMakerModal .vmk-pub-plats label{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:1px solid rgba(232,194,122,.35);cursor:pointer}
 #videoMakerModal .vmk-pub-plats input{accent-color:#c9964a;margin:0}
+#videoMakerModal .vmk-pub-plats label.is-sent{opacity:.6;cursor:default} /* v-director-publish-guard: أخذ الفيديو */
+/* v-director-publish-guard: المربّع غير المؤشَّر حدٌّ وحده (redesign.css)، و«بلا خطوط» في الأسود يجعل الحدّ شبحًا وom3-field يطلي تعبئته
+   بلون اللوحة — فالمنصّة المعادة للاختيار تظهر بلا مربّع (القصّ المكبّر: غير مرئيّ إطلاقًا). حلقة داخليّة لا حدّ ولا تعبئة. */
+html:not(.mobile-ui) #videoMakerModal .vmk-pub-plats input[type=checkbox]:not(:checked){box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5)}
+html[data-mode="light"]:not(.mobile-ui) #videoMakerModal .vmk-pub-plats input[type=checkbox]:not(:checked){background:rgba(0,0,0,.08);box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.32)}
+#videoMakerModal .vmk-pub-plats input[type=checkbox]:disabled{cursor:default}
 #videoMakerModal .vmk-pub-plats .off{padding:7px 12px;border-radius:999px;border:1px dashed rgba(255,255,255,.22);color:var(--muted,#9a9a9e)}
 #videoMakerModal .vmk-pub-go{align-self:flex-start;font:inherit;font-weight:800;font-size:14px;padding:10px 22px;border-radius:12px;border:0;cursor:pointer;color:#1a1408;background:linear-gradient(135deg,#f6dca2,#c9964a)}
 #videoMakerModal .vmk-pub-go:disabled{opacity:.5;cursor:default}
