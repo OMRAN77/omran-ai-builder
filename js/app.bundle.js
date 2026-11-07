@@ -34956,13 +34956,18 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
      والرصيد يُفحص قبل أوّل مشهد فلا يُصرف على تشغيلة لا تكتمل؛ وما اكتمل قبل عطب يعود في e.partial فلا يضيع مدفوع. */
   window.__vmkProxyUrl = proxyVideoUrl;
   window.__vmkTimelinePlan = function(segs){
+    /* v-director-steady (المالك ٧ نوفمبر: «عند توليد الفيديو فيه حركه كانه واحد ماسك الكاميره ويركض ويصور»): الخادم يختم كلّ وصف واقعيّ
+       بـ«تصوير حيّ بكاميرا حقيقيّة» (RW_STYLE_REAL) بلا كلمة عن ثبات الكاميرا، فيميل المحرّك إلى كاميرا محمولة تهتزّ وتندفع. كلّ مشهد من
+       «بتوقيتي» يُختم بأمر كاميرا ناعمة ثابتة — بالإنجليزيّة (المحرّك يطيع أوامر الكاميرا بها أدقّ) وبعد ملاحظة المالك. قصير عمدًا:
+       ملاحظة ٥٠٠ + «استكمال» + هذا ≤ ٧٥٠ (حدّ الوصف ١٠٠٠ ناقص لاحقة الخادم) فلا يُقصّ شيء منهما. */
+    const STEADY = ' — Camera: smooth stabilized cinematic move (gimbal, dolly or slow drone), level horizon; no handheld shake, no shaky or running camera, no whip pans.';
     const plan = [];
     (segs || []).forEach((s) => {
       let rem = Math.max(5, Math.min(30, Math.round((Number(s && s.d) || 0) / 5) * 5)), k = 0;
       const note = String((s && s.n) || '').trim();
       while(rem > 0){
         const d = rem >= SCENE_SECONDS_CONST ? SCENE_SECONDS_CONST : 5;
-        plan.push({ prompt: note + (k ? bT(' (استكمال نفس المشهد، اللحظة التالية)', ' (continuing the same scene, next moment)') : ''), d });
+        plan.push({ prompt: note + (k ? bT(' (استكمال نفس المشهد، اللحظة التالية)', ' (continuing the same scene, next moment)') : '') + STEADY, d });
         rem -= d; k++;
       }
     });
