@@ -1,6 +1,6 @@
 'use strict';
 /* v-share-sheet (لقطة المالك ٧ نوفمبر: نافذة يوتيوب «نفس هذي في كل التطبيق»، و«الصور لا ترسمه — الصور الرسميّة»):
-   نافذة مشاركة واحدة (js/app-45-share-sheet.js) لكلّ أزرار المشاركة. الجذر: تطبيق متجر ويندوز يُعدّ «تطبيقًا» فكانت المسارات تفتح
+   نافذة مشاركة واحدة (js/share-sheet.js — ملفّ مستقلّ تحمّله index.html قبل الحزمة واستوديو الإعلانات) لكلّ أزرار المشاركة. الجذر: تطبيق متجر ويندوز يُعدّ «تطبيقًا» فكانت المسارات تفتح
    لوحة ويندوز المعلّقة. ١–٦ النافذة نفسها في بيئة DOM مزيّفة (حاسوب/هاتف/نصّ/رابط مؤجَّل/حوار/ملفّ بلا رابط)، ٧ الشعارات الرسميّة،
    ٨ كلّ مسار مشاركة يمرّ بها أوّلًا، ٩ النصوص بالـ١٤ لغة. */
 const test = require('node:test');
@@ -11,7 +11,7 @@ const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
-const SRC = read('js/app-45-share-sheet.js');
+const SRC = read('js/share-sheet.js');
 
 function makeDom() {
   const all = [];
@@ -55,7 +55,7 @@ function load(o) {
   ctx.window.open = (u) => { opened.push(u); };
   Object.assign(ctx, opts.globals || {});
   vm.createContext(ctx);
-  vm.runInContext(SRC, ctx, { filename: 'app-45-share-sheet.js' });
+  vm.runInContext(SRC, ctx, { filename: 'share-sheet.js' });
   // فتح الروابط في الكود بنقر <a target=_blank> — نلتقطه من الشجرة
   const realCreate = ctx.document.createElement;
   ctx.document.createElement = (tag) => { const n = realCreate(tag); if (String(tag) === 'a') n.click = function () { opened.push(this.href); }; return n; };
@@ -163,8 +163,13 @@ test('٨. كلّ مسار مشاركة يمرّ بالنافذة أوّلًا (�
   assert.match(read('js/app-20-signature.js'), /window\.omranSaveImage\(blob, 'omran-signature\.png', 'share'\); return;/);
   const a09 = first(read('js/app-09-attach.js'), "b.type = 'button'; b.className = 'oSendOut';", 'صورة المحادثة');
   assert.ok(a09.indexOf('window.omranShareSheet({') >= 0 && a09.indexOf('window.omranShareSheet({') < a09.indexOf('nativeBridgeShare()'), 'صورة المحادثة: النافذة قبل الجسر');
-  assert.ok(read('js/app.bundle.js').includes('window.omranShareSheet = function'), 'الحزمة مبنيّة بالجزء');
-  assert.ok(read('.vercelignore').split('\n').includes('js/app-45-share-sheet.js'));
+  // v-share-next: ملفّ مستقلّ تحمّله index.html قبل الحزمة (أزرار «مشاركة» من أوّل رسم) ويُنشر — لا نسخة ثانية في الحزمة
+  const html = read('index.html');
+  const iS = html.indexOf('<script defer src="/js/share-sheet.js?v='), iB = html.indexOf('<script defer src="/js/app.bundle.js?v=');
+  assert.ok(iS > 0 && iS < iB, 'index.html: قبل الحزمة');
+  assert.ok(!read('js/app.bundle.js').includes('window.omranShareSheet = function'), 'لا نسخة في الحزمة');
+  assert.ok(!fs.existsSync(path.join(root, 'js/app-45-share-sheet.js')), 'الجزء القديم لا يعود للحزمة');
+  assert.ok(!read('.vercelignore').split('\n').some((l) => /share-sheet/.test(l)), 'يُنشر');
 });
 
 test('٩. نصوص النافذة بالـ١٤ لغة', () => {
@@ -229,7 +234,7 @@ function load2(o) {
   ctx.window = ctx; ctx.document = d.doc; ctx.window.open = () => {};
   Object.assign(ctx, opts.globals || {});
   vm.createContext(ctx);
-  vm.runInContext(SRC, ctx, { filename: 'app-45-share-sheet.js' });
+  vm.runInContext(SRC, ctx, { filename: 'share-sheet.js' });
   ctx.fire = d.fire; ctx.fetches = fetches;
   return ctx;
 }
@@ -353,4 +358,124 @@ test('١٦. كلّ موضع تحميل يُبنى بالكود يضيف «مشا
   assert.ok(sels.includes('#vdDl') && sels.includes('#vmkClDl'), 'video.js: مخرج التطبيق وتنظيف الفيديو');
   const vjs = read('js/video.js');
   assert.ok(vjs.includes('id="vdDl"') && vjs.includes('id="vmkClDl"'));
+});
+
+// ── تكملة v-share-next بعد مراجعة مستقلّة (١٥ ملاحظة) ─────────────────────────────────────────────────────────────
+const itemOf = (c, l) => walk(sheetOf(c), []).find((n) => n.className === 'omShIt' && n.children[1].textContent === l);
+
+test('١٧. الروابط: البروكسي يُفكّ لأصله، والرابط الداخليّ يكتمل بلا رفع، و«تحميل» عبر الحافظ الموحّد؛ والصورة في صفحة بلا مسار الصور ترفع /i/ برمز الجلسة', async () => {
+  const saves = [];
+  const c = load2({ globals: { URL, location: { origin: 'https://omran.app', href: 'https://omran.app/' }, omranSaveMedia: (s, n) => { saves.push([s, n]); } } });
+  c.omranShareMedia({ src: '/api/video-download?url=' + encodeURIComponent('https://cdn.example/v/a.mp4') + '&name=a.mp4', name: 'a.mp4', kind: 'video' });
+  assert.equal(inputOf(c).value, 'https://cdn.example/v/a.mp4', 'البروكسي يطلب جلسة — يُشارَك الأصل');
+  c.omranShareMedia({ src: '/api/video?action=veo-download&id=7', name: 'b.mp4', kind: 'video' });
+  assert.equal(inputOf(c).value, 'https://omran.app/api/video?action=veo-download&id=7', 'رابط داخل التطبيق جاهز — لا يُنزَّل ليُرفع');
+  assert.equal(c.fetches.length, 0, 'لا رفع لرابط قائم');
+  itemOf(c, 'تحميل').click();
+  assert.deepEqual(saves, [['/api/video?action=veo-download&id=7', 'b.mp4']], 'الحافظ الموحّد لا <a download> يستبدل التطبيق بالملفّ');
+  // صفحة مستقلّة (استوديو الإعلانات): لا omranSaveImage ولا authGet
+  const posts = [];
+  const c2 = load2({ globals: {
+    URL, Blob, File, atob, location: { origin: 'https://omran.app', href: 'https://omran.app/ad-studio.html' },
+    localStorage: { getItem: (k) => (k === 'aiapp_auth_token' ? 'tok-123' : null) },
+    fetch: async (url, init) => { posts.push({ url: String(url), body: JSON.parse(init.body) }); return { ok: true, status: 200, json: async () => ({ id: 'abc123def4567890' }) }; },
+  } });
+  assert.equal(typeof c2.omranSaveImage, 'undefined');
+  c2.omranShareMedia({ src: 'data:image/png;base64,QUJD', name: 'ad-neon.png', kind: 'image' });
+  for (let i = 0; i < 8; i++) await tick();
+  assert.equal(posts.length, 1); assert.equal(posts[0].url, '/api/media?action=img', 'مسار الصور لا /f/ (يُنزَّل ملفًّا ولا يظهر صورة)');
+  assert.equal(posts[0].body.token, 'tok-123', 'رمز الجلسة من التخزين المحلّيّ');
+  assert.equal(posts[0].body.mime, 'image/png'); assert.equal(posts[0].body.data, 'QUJD');
+  assert.equal(inputOf(c2).value, 'https://omran.app/i/abc123def4567890.png');
+  assert.ok(labelsOf(c2).includes('تحميل') && !labelsOf(c2).some((l) => /⬇/.test(l)), 'دائرة التحميل بلا سهم ثانٍ في التسمية');
+});
+
+test('١٨. زرّ المشاركة يتبع إخفاء انتظار التوليد (data-genw-hide) ويلحق زرّ التحميل إن نُقل — كانت مشاركة الاستوديو لا تظهر أبدًا', () => {
+  const gcs = (el) => ({ display: (el && el.attrs && el.attrs['data-genw-hide'] != null) ? 'none' : ((el && el.style && el.style.display) || 'block'), visibility: 'visible', direction: 'rtl' });
+  const c = load2({ globals: { getComputedStyle: gcs, omranSaveImage: () => true } });
+  const wrap = c.document.createElement('div'); c.document.body.appendChild(wrap);
+  const dl = c.document.createElement('a'); dl.className = 'btn';
+  dl.setAttribute('href', 'data:image/png;base64,QQ=='); dl.setAttribute('data-genw-hide', '1'); wrap.appendChild(dl);
+  const b = c.omranAddShareNextTo(dl, { className: 'btn' });
+  assert.equal(b.style.display, 'none', 'أثناء الانتظار مخفيّ مع زرّ التحميل');
+  delete dl.attrs['data-genw-hide']; c.fire(dl);
+  assert.equal(b.style.display, 'block', 'انتهى التوليد = يظهر');
+  assert.match(SRC, /observe\(dl, \{ attributes: true, attributeFilter: \['style', 'hidden', 'class', 'href', 'src', 'data-genw-hide'\] \}\)/, 'المراقب يسمع السمة نفسها');
+  const col = c.document.createElement('div'); c.document.body.appendChild(col);
+  dl.remove(); col.appendChild(dl); c.fire(dl);
+  assert.equal(b.parentNode, col, 'لحق زرّ التحميل إلى حاويته الجديدة (صانع الفيديو)'); assert.equal(dl.nextSibling, b);
+});
+
+test('١٩. «المزيد» في غلاف المتجر لملفّ blob: يُجهَّز بعد الفتح (filePromise) فيُسلَّم الملفّ نفسه للجسر — والحاسوب بلا «المزيد» ولو وُجد الجسر', async () => {
+  const sent = [];
+  const blob = new Blob(['x'], { type: 'video/mp4' });
+  const mk = (mobile) => load2({ globals: { File, URL, omranMobileUA: () => mobile, omranNativeBridge: (n) => (n === 'omranShare' ? {} : null), msgDownloadBlob: (bl, nm) => sent.push([bl, nm]),
+    fetch: async () => ({ ok: true, status: 200, blob: async () => blob, json: async () => ({ url: '/f/abc' }) }) } });
+  const c = mk(true);
+  c.omranShareMedia({ src: 'blob:https://omran.app/xyz', name: 'clip.mp4', kind: 'video' });
+  assert.ok(labelsOf(c).includes('المزيد'), 'الهاتف: «المزيد»');
+  itemOf(c, 'المزيد').click();
+  for (let i = 0; i < 8; i++) await tick();
+  assert.equal(sent.length, 1); assert.equal(sent[0][1], 'clip.mp4'); assert.equal(sent[0][0].size, 1, 'الملفّ نفسه للجسر');
+  const d = mk(false);
+  d.omranShareMedia({ src: 'blob:https://omran.app/xyz', name: 'clip.mp4', kind: 'video' });
+  assert.ok(!labelsOf(d).includes('المزيد'), 'الحاسوب: لا لوحة نظام');
+});
+
+test('٢٠. رابط الملفّ (/f/) يحفظ اسم ملفّ Office بلغة المستخدم (RFC 5987 بجانب اسم لاتينيّ آمن)، والاسم اللاتينيّ كما كان، ولا حقن ترويسة', async () => {
+  const store = new Map();
+  const kvPath = require.resolve(path.join(root, 'api/_lib/kv.js'));
+  const fsPath = require.resolve(path.join(root, 'api/_lib/file-share.js'));
+  const gatePath = require.resolve(path.join(root, 'api/_lib/share-gate.js'));
+  const savedKv = require.cache[kvPath], savedGate = require.cache[gatePath];
+  delete require.cache[fsPath];
+  require.cache[gatePath] = { id: gatePath, filename: gatePath, loaded: true, exports: { gateShare: async () => 'tester', refundShare: async () => {}, uploadPlan: (b, bucket, limit, ttlSec) => ({ bucket, limit, ttlSec }) } };
+  require.cache[kvPath] = { id: kvPath, filename: kvPath, loaded: true, exports: {
+    kvSetIfAbsent: async (k, v) => { if (store.has(k)) return false; store.set(k, v); return true; },
+    kvGetRaw: async (k) => store.get(k) || null,
+  } };
+  try {
+    const handler = require(fsPath);
+    const call = async (req) => {
+      const res = { headers: {}, code: 0, body: null, setHeader(k, v) { this.headers[k.toLowerCase()] = v; }, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; }, send(b) { this.body = b; return this; } };
+      await handler(req, res); return res;
+    };
+    const disp = async (name) => {
+      const up = await call({ method: 'POST', body: { data: Buffer.from('x').toString('base64'), name, mime: 'application/octet-stream' } });
+      assert.equal(up.code, 200, name);
+      return (await call({ method: 'GET', query: { id: up.body.id } })).headers['content-disposition'];
+    };
+    assert.equal(await disp('جدول الحضور.xlsx'), 'attachment; filename="---- ------.xlsx"; filename*=UTF-8\'\'' + encodeURIComponent('جدول الحضور.xlsx'));
+    assert.equal(await disp('omran-ai-reply.txt'), 'attachment; filename="omran-ai-reply.txt"', 'اللاتينيّ حرفيًّا كما كان');
+    assert.equal(await disp('a"b\r\nSet-Cookie: x/../c.pdf'), 'attachment; filename="a-b--Set-Cookie- x-..-c.pdf"', 'لا سطر جديد ولا اقتباس ولا مسار');
+  } finally {
+    if (savedKv) require.cache[kvPath] = savedKv; else delete require.cache[kvPath];
+    if (savedGate) require.cache[gatePath] = savedGate; else delete require.cache[gatePath];
+    delete require.cache[fsPath];
+  }
+});
+
+test('٢١. بقيّة مواضع التحميل: الأفاتار المتحرّك ملفًّا، ودرس الفيديو القديم، ومدينة الإلهام، ودفع ويندوز الضيّق، واستوديو الإعلانات (الصورة المولَّدة والتصاميم العشرة واللوحات الثلاث) بالـ١٤ لغة', () => {
+  const st = read('js/app-12-studios.js');
+  assert.ok(st.includes("if(nm === 'omran-avatar.gif' && typeof window.omranShareMedia === 'function'){ window.omranShareMedia({ src: (downloadEl && downloadEl.getAttribute('href')) || src, name: nm, kind: 'file' }); return; }"), 'الـGIF ملفًّا (مسار الصور يحوّله JPEG ثابتًا)');
+  assert.ok(st.includes("if(shareBtn2) shareBtn2.style.display = 'block'; /* v-share-next"), 'زرّ مشاركة الأفاتار ظاهر');
+  assert.ok(read('js/app-06-checkout.js').includes("const isMobile = document.documentElement.classList.contains('mobile-ui') && !(typeof omranDesktopApp === 'function' && omranDesktopApp());"), 'تطبيق ويندوز في نافذة ضيّقة حاسوب');
+  const edu = read('edu-old/index.html');
+  assert.ok(edu.includes('<button id="shareLink" type="button">'), 'درس الفيديو: الزرّ');
+  assert.equal((edu.match(/download:'⬇️[^']*', share:'↗️ [^']+'/g) || []).length, 14, 'درس الفيديو: النصّ بالـ١٤ لغة');
+  assert.ok(edu.includes("window.parent.omranShareMedia({ src: lastLessonBlob, name: 'lesson.mp4', kind: 'video' })"));
+  assert.ok(read('inspire/real3d.html').includes("parent.omranShareMedia({ src: $('aiSave').href, name: 'city.jpg', kind: 'image' })"), 'مدينة الإلهام');
+  const ad = read('ad-studio.html');
+  assert.ok(ad.includes('<script defer src="/js/share-sheet.js?v='), 'الاستوديو يحمّل نافذة التطبيق نفسها');
+  assert.ok(ad.includes('window.t=k=>T(k);'), 'نصوص النافذة من قاموس الصفحة');
+  assert.ok(ad.includes(`<button type="button" class="genSh">'+shl()+'</button>`), 'الصورة المولَّدة');
+  assert.ok(ad.includes(`<button class="shB">'+shl()+'</button>`), 'التصاميم العشرة');
+  assert.ok(ad.includes(`<button class="shB" data-csh="'+i+'">'+shl()+'</button>`), 'اللوحات الثلاث');
+  assert.equal((ad.match(/window\.omranShareMedia\(\{src:/g) || []).length, 3, 'الثلاثة تشارك الصورة نفسها التي تُنزَّل');
+  assert.ok(Number(/\/i18n\/ad-studio\.js\?v=(\d+)/.exec(ad)[1]) > 608, 'وسم القاموس مرفوع');
+  const ctx = { window: {} }; vm.createContext(ctx); vm.runInContext(read('i18n/ad-studio.js'), ctx);
+  const A = ctx.window.ADI18N;
+  assert.equal(Object.keys(A).length, 14);
+  for (const lg of Object.keys(A)) for (const k of ['shareSheetTitle', 'closeTitle', 'shareMessages', 'shareEmail', 'shareMore', 'sharePreparing', 'shareFail', 'shareCopy', 'shareSheetCopied', 'sheetCopyFail', 'shareLinkFail', 'shareFileBig', 'imgDlBtn', 'shareNextBtn'])
+    assert.ok(typeof A[lg][k] === 'string' && A[lg][k], lg + ': ' + k);
 });
