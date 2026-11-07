@@ -1699,6 +1699,7 @@ function openShareModal(project){
     const __shareSig = String(shareModalProject.title || '') + '|' + String(shareModalProject.code || '').length + '|' + __shareMsgs.length;
     const __shareOld = __shareKey ? __shareMade[__shareKey] : null;
     if(__shareOld && __shareOld.sig === __shareSig){
+      if(typeof window.omranShareSheet === 'function'){ const __ttl0 = String(shareModalProject.title || ''); closeModal(); window.omranShareSheet({ url: __shareOld.url, text: __ttl0 }); return; } // v-share-sheet: الرابط الموجود في النافذة الموحّدة (العنوان قبل الإغلاق — closeModal يصفّر المشروع)
       resultUrl.value = __shareOld.url;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
@@ -1726,6 +1727,8 @@ function openShareModal(project){
       if(!resp.ok || !data.id) throw new Error(data.error || 'error');
       const fullUrl = location.origin + '/p.html?id=' + data.id;
       if(__shareKey) __shareMade[__shareKey] = { sig: __shareSig, url: fullUrl };
+      /* v-share-sheet (المالك ٧ نوفمبر: نافذة يوتيوب في كلّ التطبيق): الرابط العامّ يُرسَل من النافذة الموحّدة (app-45) بدل صندوق النسخ وحده */
+      if(typeof window.omranShareSheet === 'function'){ const __ttl = String((shareModalProject && shareModalProject.title) || ''); closeModal(); window.omranShareSheet({ url: fullUrl, text: __ttl }); return; }
       resultUrl.value = fullUrl;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';

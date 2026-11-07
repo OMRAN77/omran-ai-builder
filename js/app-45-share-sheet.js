@@ -179,10 +179,153 @@
     if(pending){
       inp.value = tt('sharePreparing', 'جارٍ تجهيز الرابط…', 'Preparing the link…'); cp.disabled = true;
       Promise.resolve().then(o.getUrl).then(function(u){ if(!ov.isConnected) return; if(u) setUrl(u); else { setUrl(''); say(tt('shareLinkFail', 'تعذّر تجهيز الرابط', 'Could not prepare the link')); } },
-        function(err){ __swallow(err, 'share-sheet:get-url'); if(!ov.isConnected) return; setUrl(''); say(tt('shareLinkFail', 'تعذّر تجهيز الرابط', 'Could not prepare the link')); });
+        function(err){ __swallow(err, 'share-sheet:get-url'); if(!ov.isConnected) return; setUrl(''); say((err && err.userMsg) || tt('shareLinkFail', 'تعذّر تجهيز الرابط', 'Could not prepare the link')); });
     }
     host().appendChild(ov);
     setTimeout(arrows, 0);
     return true;
   };
+
+  /* ── زرّ «مشاركة» بجانب كلّ زرّ تحميل لنتيجة (المالك ٧ نوفمبر بلقطة استوديو فيها «تحميل الصورة» و«حفظ في المفضلة» وحدهما:
+     «مافي اي شي — فقط تحميل في التطبيق كامل في الهاتف والكمبيوتر… الايميل والسناب والتواصل الاجتماعي») ──
+     omranShareMedia({ src, name, kind }): الصورة ← omranSaveImage(…, 'share') (رابط /i/ أسبوعًا + «المزيد» بالملفّ)؛ الفيديو والـPDF والملفّ:
+     رابط https قائم يُشارَك كما هو، وdata:/blob: يُرفع إلى /api/media (PDF ≈٣ م.ب، ملفّ ≈٤ م.ب، أسبوعًا) — الأكبر سطر واضح و«المزيد»
+     على الهاتف بالملفّ نفسه، و«تحميل» دائرة إضافيّة.
+     omranAddShareNextTo(dl, { getSrc, name, kind, after }): زرّ بصنف زرّ التحميل وأسلوبه نفسه يُدرج بعده (أو بعد after)، يظهر ويختفي معه
+     (مراقب سماته)، ونصّه بمفتاح shareNextBtn فيتبع تبديل اللغة. omranShareNextAuto(): يربط قائمة عناصر التحميل المعروفة (SHARE_NEXT) كلّما
+     ظهرت في الصفحة — القوالب تُحقن بعد الحزمة. */
+  function kindOf(src, name, mime){
+    var s = (typeof src === 'string') ? src : '', n = String(name || '').toLowerCase(), m = String(mime || (src && src.type) || '').toLowerCase();
+    var both = n + ' ' + s.slice(0, 300).toLowerCase();
+    if(/^image\//.test(m) || /^data:image\//i.test(s) || /\.(png|jpe?g|webp|gif|bmp|avif|heic)(\?|#|\s|$)/i.test(both) || /\/i\/[a-f0-9]{6,}/i.test(s)) return 'image';
+    if(/^video\//.test(m) || /^data:video\//i.test(s) || /\.(mp4|webm|mov|m4v)(\?|#|\s|$)/i.test(both)) return 'video';
+    if(/pdf/.test(m) || /^data:application\/pdf/i.test(s) || /\.pdf(\?|#|\s|$)/i.test(both)) return 'pdf';
+    return 'file';
+  }
+  function blobOf(src){
+    if(src && typeof src === 'object' && typeof src.size === 'number') return Promise.resolve(src);
+    return fetch(String(src)).then(function(r){ if(!r.ok) throw new Error('fetch ' + r.status); return r.blob(); });
+  }
+  function bigErr(){ var e = new Error('too-large'); e.userMsg = tt('shareFileBig', 'الملفّ أكبر من حدّ رابط المشاركة — حمّله وأرسله، أو من «المزيد» في الجوّال', 'The file is too big for a share link — download it and send it, or use More on your phone'); return e; }
+  function uploadForShare(blob, name){
+    var isPdf = (blob.type === 'application/pdf') || /\.pdf$/i.test(name || '');
+    var cap = (isPdf ? 4 : 5) * 1024 * 1024;
+    if(blob.size * 1.37 > cap) return Promise.reject(bigErr());
+    return new Promise(function(res, rej){ var fr = new FileReader(); fr.onload = function(){ res(String(fr.result || '').split(',')[1] || ''); }; fr.onerror = function(){ rej(new Error('read')); }; fr.readAsDataURL(blob); })
+      .then(function(b64){
+        if(!b64 || b64.length > cap) throw bigErr();
+        var tok = ''; try{ tok = (typeof authGet === 'function') ? (authGet('aiapp_auth_token') || '') : ''; }catch(e){ tok = ''; }
+        return fetch(isPdf ? '/api/media?action=pdf' : '/api/media?action=file', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: b64, name: name || 'omran-file', mime: blob.type || 'application/octet-stream', token: tok }) });
+      })
+      .then(function(r){ return r.json().catch(function(){ return null; }).then(function(d){ if(!r.ok || !d || !d.url) throw new Error((d && d.error) || ('http ' + r.status)); return /^https?:/i.test(d.url) ? d.url : (location.origin + d.url); }); });
+  }
+  function plainDl(src, name){
+    try{
+      var a = document.createElement('a'); a.href = (typeof src === 'string') ? src : URL.createObjectURL(src); a.download = name || ''; a.rel = 'noopener';
+      a.dataset.nativeDownload = '1'; a.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(a); a.click();
+      setTimeout(function(){ try{ a.remove(); }catch(e){ __swallow(e, 'share-next:dl-rm'); } }, 3000);
+    }catch(e){ __swallow(e, 'share-next:dl'); }
+  }
+  window.omranShareMedia = function(o){
+    o = o || {};
+    var src = o.src, name = o.name || '', kind = o.kind || kindOf(src, name, o.mime);
+    if(!src) return false;
+    if(kind === 'image' && typeof window.omranSaveImage === 'function'){ window.omranSaveImage(src, name || ('omran-image-' + Date.now() + '.png'), 'share'); return true; }
+    var s = (typeof src === 'string') ? src : '';
+    var http = /^https?:/i.test(s) ? s : '';
+    var dlOne = { label: tt('imgDlBtn', 'تحميل', 'Download'), icon: 'download', onClick: function(close){ close(); if(typeof o.download === 'function') o.download(); else plainDl(src, name); } };
+    var opts = { url: http, extras: [dlOne] };
+    if(!http){
+      opts.getUrl = function(){
+        return blobOf(src).then(function(b){
+          try{ if(typeof File === 'function') opts.file = new File([b], name || ('omran-' + kind), { type: b.type || 'application/octet-stream' }); }catch(e){ __swallow(e, 'share-next:file'); }
+          return uploadForShare(b, name || ('omran-' + kind));
+        });
+      };
+    }
+    return window.omranShareSheet(opts);
+  };
+  function hiddenEl(el){
+    try{
+      if(!el) return true;
+      if(el.hidden || el.style.display === 'none' || el.style.visibility === 'hidden') return true;
+      if(!el.isConnected) return false; /* أُنشئ ولم يُلحق بالصفحة بعد (فقاعة رسالة تُبنى ثمّ تُلحق) — يُحكم بأسلوبه المضمّن وحده */
+      var cs = getComputedStyle(el); return cs.display === 'none' || cs.visibility === 'hidden';
+    }catch(e){ return false; }
+  }
+  window.omranAddShareNextTo = function(dl, o){
+    o = o || {};
+    if(!dl || dl.__omShareNext) return dl ? dl.__omShareNext : null;
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = String(o.className != null ? o.className : (dl.className || 'btn')).replace(/\bomShareNext\b/g, '').trim() + ' omShareNext';
+    b.style.cssText = (o.style != null) ? String(o.style) : dl.style.cssText; b.style.removeProperty('display');
+    if(o.label){ b.textContent = String(o.label); } /* نصّ خاصّ (مثل «↗️ مشهد ٢») — يُبنى مع العنصر نفسه عند كلّ رسم */
+    else { b.setAttribute('data-i18n', 'shareNextBtn'); b.textContent = tt('shareNextBtn', '↗️ مشاركة', '↗️ Share'); }
+    b.addEventListener('click', function(ev){
+      try{
+        if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+        var src = (typeof o.getSrc === 'function' ? o.getSrc() : '') || dl.getAttribute('href') || dl.getAttribute('src') || '';
+        if(!src || src === '#') return;
+        var nm = (typeof o.name === 'function' ? o.name() : o.name) || dl.getAttribute('download') || '';
+        window.omranShareMedia({ src: src, name: nm, kind: o.kind });
+      }catch(err){ __swallow(err, 'share-next:click'); }
+    });
+    var anchor = o.after || dl;
+    anchor.parentNode.insertBefore(b, anchor.nextSibling);
+    var sync = function(){
+      try{
+        if(hiddenEl(dl)){ b.style.display = 'none'; return; }
+        var cs = dl.isConnected ? getComputedStyle(dl) : null;
+        var d = o.display || (cs ? cs.display : (dl.style.display || '')); /* نفس عرض زرّ التحميل: كتلة بعرضه أو سطريّ بجانبه */
+        b.style.display = d;
+        /* بعرض الحاوية فقط إن كان زرّ التحميل نفسه بعرضها: داخل حاوية مرنة يُحسب كلّ ابن «block» وإن كان شريحة صغيرة (فيديو المحادثة،
+           مشاهد الصانع) فكان الزرّ يأخذ سطرًا كاملًا وحده */
+        var p = dl.parentNode, pcs = (cs && p && p.nodeType !== 9) ? getComputedStyle(p) : null;
+        var full = /^(block|flex|grid)$/.test(d) && !(pcs && /flex|grid/.test(pcs.display));
+        if(!full && pcs && p.clientWidth){ var cw = p.clientWidth - (parseFloat(pcs.paddingLeft) || 0) - (parseFloat(pcs.paddingRight) || 0); full = cw > 0 && dl.offsetWidth >= cw - 2; }
+        if(full){ b.style.width = '100%'; b.style.boxSizing = 'border-box'; } else b.style.width = '';
+        if(o.mirrorColor && cs) b.style.color = cs.color; /* لون رابط التحميل نفسه (الذهبيّ في فقاعة المحادثة) */
+      }catch(err){ __swallow(err, 'share-next:sync'); }
+    };
+    try{ new MutationObserver(sync).observe(dl, { attributes: true, attributeFilter: ['style', 'hidden', 'class', 'href', 'src'] }); }catch(err){ __swallow(err, 'share-next:observe'); }
+    if(dl.parentNode && dl.parentNode !== document.body){ try{ new MutationObserver(sync).observe(dl.parentNode, { attributes: true, attributeFilter: ['style', 'hidden', 'class'] }); }catch(err){ __swallow(err, 'share-next:observe-parent'); } }
+    sync();
+    dl.__omShareNext = b;
+    return b;
+  };
+  /* عناصر التحميل المعروفة في القوالب (جرد الأدوات) — تُربط تلقائيًّا حين تظهر. after: عنصر يُدرج الزرّ بعده بدل زرّ التحميل نفسه. */
+  var SHARE_NEXT = [
+    { sel: '#studioAiDownloadLink', className: 'btn' },          // الاستوديو
+    { sel: '#fashionAiDownloadLink', className: 'btn' },         // الأزياء
+    { sel: '#designAiDownloadLink', className: 'btn' },          // الديكور
+    { sel: '#constructionDownloadLink', className: 'btn' },      // المقاولات: المخطّط
+    { sel: '#constructionPhotoDownloadLink', className: 'btn' }, // المقاولات: الصورة الواقعيّة
+    { sel: '#constructionInteriorDownloadLink', className: 'btn' },
+    { sel: '#constructionAngleDownloadLink', className: 'btn' },
+    { sel: '#constructionRoomDownloadLink', className: 'btn' },
+    { sel: '#videoMakerDownloadLink', className: 'btn', kind: 'video' }, // صانع الفيديو
+    { sel: '#vdDl', className: 'vmk-dir-dl', kind: 'video', style: 'background:transparent;cursor:pointer;font-family:inherit;' },  // مخرج التطبيق (video.js)
+    { sel: '#vmkClDl', className: 'vmk-cl-dl', kind: 'video', style: 'background:transparent;cursor:pointer;font-family:inherit;' } // تنظيف الفيديو (video.js)
+  ];
+  window.omranShareNextList = SHARE_NEXT;
+  var autoTimer = 0;
+  function autoRun(){
+    autoTimer = 0;
+    SHARE_NEXT.forEach(function(r){
+      try{
+        var els = document.querySelectorAll(r.sel);
+        for(var i = 0; i < els.length; i++){
+          var el = els[i]; if(el.__omShareNext) continue;
+          var after = r.after ? document.querySelector(r.after) : null;
+          window.omranAddShareNextTo(el, { kind: r.kind, className: r.className, style: r.style, after: after && after.parentNode === el.parentNode ? after : null, getSrc: r.getSrc, name: r.name });
+        }
+      }catch(err){ __swallow(err, 'share-next:auto'); }
+    });
+  }
+  window.omranShareNextAuto = function(){ if(!autoTimer) autoTimer = setTimeout(autoRun, 60); };
+  try{
+    window.omranShareNextAuto();
+    new MutationObserver(function(){ window.omranShareNextAuto(); }).observe(document.documentElement, { childList: true, subtree: true });
+  }catch(err){ __swallow(err, 'share-next:boot'); }
 })();

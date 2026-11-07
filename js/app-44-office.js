@@ -33,6 +33,7 @@
     officeGatePlans: 'استخدمت ملفّك المجّانيّ لهذا الشهر — الملفّات الجديدة والتعديل عليها بالاشتراك', officeGateLogin: 'سجّل دخولك — عندك ملفّ Excel أو PowerPoint مجّانيّ كلّ شهر',
     officeSubscribe: 'اشترك الآن', officeLogin: 'تسجيل الدخول', officeEditHint: 'للتعديل اكتب طلبك تحت — مثل: كبّر الخط، زد ١٠ أسماء',
     officeFreeHint: 'التعديل عليه أو ملفّ آخر هذا الشهر بالاشتراك', officeTotal: 'المجموع',
+    shareNextBtn: '↗️ مشاركة',
     officeHint1: 'جرّب: سوّ لي كشف حضور جاهز للطباعة 📄', officeHint2: 'جرّب: عرض بوربوينت عن أي موضوع 📊', officeHint3: 'جرّب: جدول مصاريف البيت الشهرية 📄'
   };
 
@@ -518,6 +519,12 @@
     row.appendChild(btn('omOfMain', '⬇ ' + tt('officeDownload'), function(b){
       run(b, '⬇ ' + tt('officeDownload'), function(){ return (isX ? buildXlsx(spec) : buildPptx(spec)).then(function(blob){ save(blob, name); }); });
     }));
+    /* v-share-next (المالك ٧ نوفمبر: «فقط تحميل… الايميل والسناب والتواصل»): الملفّ نفسه يُبنى ثمّ يُرفع رابطًا أسبوعيًّا في النافذة الموحّدة */
+    if(typeof window.omranShareMedia === 'function'){
+      row.appendChild(btn('', tt('shareNextBtn'), function(b){
+        run(b, tt('shareNextBtn'), function(){ return (isX ? buildXlsx(spec) : buildPptx(spec)).then(function(blob){ window.omranShareMedia({ src: blob, name: name, kind: 'file', download: function(){ save(blob, name); } }); }); });
+      }));
+    }
     if(isX && typeof omranExportPagedPdfFile === 'function'){
       row.appendChild(btn('', '🖨 ' + tt('officePdf'), function(b){
         run(b, '🖨 ' + tt('officePdf'), function(){ return omranExportPagedPdfFile(xlsxPdfBlocks(spec), { rtl: !!spec.rtl, fileName: spec.fileName + '.pdf', pixelRatio: 2, jpegQuality: 0.9, fontFamily: 'Arial, Tahoma, sans-serif' }); });

@@ -180,3 +180,177 @@ test('٩. نصوص النافذة بالـ١٤ لغة', () => {
     for (const k of keys) assert.ok(typeof ctx.I18N[lg][k] === 'string' && ctx.I18N[lg][k], lg + ': ' + k);
   }
 });
+
+// ── v-share-next / v-desktop-app (المالك ٧ نوفمبر: «مافي اي شي — فقط تحميل في التطبيق كامل في الهاتف والكمبيوتر») ─────────────
+function makeDom2() {
+  const all = [];
+  const observers = [];
+  const style = () => ({ cssText: '', display: '', visibility: '', width: '', boxSizing: '', removeProperty(p) { if (p === 'display') this.display = ''; } });
+  const mk = (tag) => {
+    const n = {
+      tagName: String(tag).toUpperCase(), children: [], parentNode: null, className: '', textContent: '', innerHTML: '', style: style(), dataset: {},
+      attrs: {}, listeners: {}, hidden: false, disabled: false, type: '', id: '', value: '', readOnly: false, dir: '', scrollWidth: 0, clientWidth: 0, scrollLeft: 0,
+      appendChild(c) { c.parentNode = this; this.children.push(c); return c; },
+      insertBefore(c, ref) { c.parentNode = this; const i = ref ? this.children.indexOf(ref) : -1; if (i < 0) this.children.push(c); else this.children.splice(i, 0, c); return c; },
+      get nextSibling() { if (!this.parentNode) return null; const s = this.parentNode.children; return s[s.indexOf(this) + 1] || null; },
+      remove() { if (this.parentNode) { const i = this.parentNode.children.indexOf(this); if (i >= 0) this.parentNode.children.splice(i, 1); this.parentNode = null; } },
+      setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attrs, k) ? this.attrs[k] : null; },
+      addEventListener(t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); },
+      click() { if (this.onclick) this.onclick({ stopPropagation() {}, preventDefault() {} }); (this.listeners.click || []).forEach((f) => f({ target: this, stopPropagation() {}, preventDefault() {} })); },
+      select() {}, scrollBy() {},
+      get isConnected() { let p = this; while (p) { if (p === doc.body) return true; p = p.parentNode; } return false; },
+    };
+    all.push(n);
+    return n;
+  };
+  const doc = {
+    createElement: mk, head: null, body: null, documentElement: { dir: 'rtl', lang: 'ar' },
+    getElementById: () => null,
+    querySelector: (sel) => (sel === '.omShOv' ? all.find((n) => n.className === 'omShOv' && n.isConnected) || null : null),
+    querySelectorAll: () => [], addEventListener() {}, removeEventListener() {},
+  };
+  doc.head = mk('head'); doc.body = mk('body');
+  class MO { constructor(cb) { this.cb = cb; } observe(t) { this.t = t; observers.push(this); } disconnect() {} }
+  return { doc, MO, fire: (t) => observers.filter((o) => o.t === t).forEach((o) => o.cb([])) };
+}
+function load2(o) {
+  const opts = o || {};
+  const d = makeDom2();
+  const fetches = [];
+  const ctx = {
+    console, Promise, Object, Array, String, Number, Math, JSON, encodeURIComponent, Date, setTimeout: (f) => { f(); return 0; },
+    navigator: { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130', clipboard: { writeText: async () => {} } },
+    location: { origin: 'https://omran.app', set href(u) { /* mailto/sms */ } },
+    getComputedStyle: (el) => ({ display: (el && el.style && el.style.display) || 'block', visibility: (el && el.style && el.style.visibility) || 'visible', direction: 'rtl' }),
+    MutationObserver: d.MO, __swallow: () => {}, t: (k) => k, omranMobileUA: () => false,
+    FileReader: class { readAsDataURL(b) { this.result = 'data:' + (b.type || 'application/octet-stream') + ';base64,QUJD'; setImmediate(() => this.onload && this.onload()); } },
+    fetch: async (url, init) => { fetches.push({ url: String(url), body: init && init.body }); return { ok: true, status: 200, json: async () => ({ url: /action=pdf/.test(String(url)) ? '/p/abc123' : '/f/def456' }) }; },
+  };
+  ctx.window = ctx; ctx.document = d.doc; ctx.window.open = () => {};
+  Object.assign(ctx, opts.globals || {});
+  vm.createContext(ctx);
+  vm.runInContext(SRC, ctx, { filename: 'app-45-share-sheet.js' });
+  ctx.fire = d.fire; ctx.fetches = fetches;
+  return ctx;
+}
+const sheetOf = (c) => c.document.querySelector('.omShOv');
+const inputOf = (c) => walk(sheetOf(c), []).find((n) => n.tagName === 'INPUT');
+const noteOf = (c) => walk(sheetOf(c), []).find((n) => n.className === 'omShNote');
+const labelsOf = (c) => walk(sheetOf(c), []).filter((n) => n.className === 'omShIt').map((b) => b.children[1].textContent);
+
+test('١٠. omranShareMedia: الصورة لمسار الصور (رابط /i/)، والفيديو برابطه https، والـPDF الصغير يُرفع رابطًا أسبوعيًّا، والملفّ الكبير سطر واضح', async () => {
+  const saved = [];
+  const c = load2({ globals: { omranSaveImage: (src, nm, mode) => { saved.push([src, nm, mode]); return true; } } });
+  c.omranShareMedia({ src: 'data:image/png;base64,QQ==', name: 'omran-studio-ai.png' });
+  assert.deepEqual(saved, [['data:image/png;base64,QQ==', 'omran-studio-ai.png', 'share']]);
+  c.omranShareMedia({ src: 'https://cdn.example/v/abc.mp4', name: 'omran-ai-video.mp4' });
+  assert.equal(inputOf(c).value, 'https://cdn.example/v/abc.mp4');
+  assert.ok(labelsOf(c).includes('تحميل'), 'التحميل دائرة إضافيّة');
+  c.omranShareMedia({ src: { size: 900, type: 'application/pdf' }, name: 'report.pdf' });
+  await tick(); await tick(); await tick(); await tick();
+  assert.equal(c.fetches.length, 1); assert.match(c.fetches[0].url, /\/api\/media\?action=pdf$/);
+  assert.ok(!/"purpose"/.test(c.fetches[0].body), 'رابط مشاركة أسبوعيّ لا تنزيل ساعة');
+  assert.equal(inputOf(c).value, 'https://omran.app/p/abc123');
+  c.omranShareMedia({ src: { size: 40 * 1024 * 1024, type: 'video/mp4' }, name: 'big.mp4' });
+  await tick(); await tick(); await tick();
+  assert.match(noteOf(c).textContent, /أكبر من حدّ رابط المشاركة/);
+  assert.equal(c.fetches.length, 1, 'الكبير لا يُرفع أصلًا');
+});
+
+test('١١. omranAddShareNextTo: زرّ «مشاركة» بعد زرّ التحميل بصنفه، يختفي ويظهر معه، والضغط يشارك رابط التحميل نفسه — ومرّة واحدة', () => {
+  const saved = [];
+  const c = load2({ globals: { omranSaveImage: (src, nm, mode) => { saved.push([src, nm, mode]); return true; } } });
+  const wrap = c.document.createElement('div'); c.document.body.appendChild(wrap);
+  const dl = c.document.createElement('a'); dl.className = 'btn primary'; dl.style.display = 'none';
+  dl.setAttribute('href', 'data:image/png;base64,QQ=='); dl.setAttribute('download', 'omran-studio-ai.png');
+  const fav = c.document.createElement('button'); wrap.appendChild(dl); wrap.appendChild(fav);
+  const b = c.omranAddShareNextTo(dl, { className: 'btn' });
+  assert.deepEqual(wrap.children.map((x) => x === dl ? 'dl' : (x === b ? 'share' : 'fav')), ['dl', 'share', 'fav'], 'بين التحميل والمفضّلة');
+  assert.equal(b.className, 'btn omShareNext'); assert.equal(b.getAttribute('data-i18n'), 'shareNextBtn');
+  assert.equal(b.style.display, 'none', 'زرّ التحميل مخفيّ = المشاركة مخفيّة');
+  dl.style.display = 'block'; c.fire(dl);
+  assert.equal(b.style.display, 'block'); assert.equal(b.style.width, '100%');
+  b.click();
+  assert.deepEqual(saved, [['data:image/png;base64,QQ==', 'omran-studio-ai.png', 'share']]);
+  assert.equal(c.omranAddShareNextTo(dl, { className: 'btn' }), b, 'لا زرّ ثانٍ');
+  assert.equal(wrap.children.length, 3);
+});
+
+test('١٢. قائمة أزرار التحميل المعروفة: الاستوديو والأزياء والديكور والمقاولات الخمسة وصانع الفيديو — والصور الشخصيّة لها زرّها القائم', () => {
+  const c = load2();
+  const sels = c.omranShareNextList.map((r) => r.sel);
+  for (const id of ['#studioAiDownloadLink', '#fashionAiDownloadLink', '#designAiDownloadLink', '#constructionDownloadLink', '#constructionPhotoDownloadLink',
+    '#constructionInteriorDownloadLink', '#constructionAngleDownloadLink', '#constructionRoomDownloadLink', '#videoMakerDownloadLink']) assert.ok(sels.includes(id), id);
+  assert.ok(!sels.includes('#portraitStyleDownloadLink'), 'الصور الشخصيّة: زرّ «مشاركة (واتساب/ستوري)» قائم');
+  const tpl = read('js/partials-core.js') + read('js/video.js'); // قوالب الأدوات وقالب صانع الفيديو
+  for (const s of sels) assert.ok(tpl.includes('id="' + s.slice(1) + '"'), 'العنصر موجود في القالب: ' + s);
+});
+
+function fnSource(src, name) {
+  const i = src.indexOf('function ' + name + '(');
+  assert.ok(i >= 0, name);
+  let depth = 0, j = src.indexOf('{', i);
+  for (let k = j; k < src.length; k++) { if (src[k] === '{') depth++; else if (src[k] === '}') { depth--; if (!depth) return src.slice(i, k + 1); } }
+  throw new Error('unbalanced ' + name);
+}
+test('١٣. تطبيق متجر ويندوز/ماك «حاسوب» في الحفظ والمشاركة (omranDesktopApp) — والهواتف وأغلفة أندرويد/آيفون كما كانت؛ ومسارات الحفظ تسأله', () => {
+  const UI = read('js/app-05-ui.js');
+  const run = (ua, likely, mobile, extra) => {
+    const ctx = Object.assign({ navigator: { userAgent: ua }, __swallow: () => {}, omranMobileUA: () => mobile, omranLikelyApp: () => likely, omranNativeBridge: () => null, omranHwWebView: () => false }, extra || {});
+    ctx.window = ctx; vm.createContext(ctx); vm.runInContext(fnSource(UI, 'omranDesktopApp') + ';this.r = omranDesktopApp();', ctx); return ctx.r;
+  };
+  const WIN = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36';
+  assert.equal(run(WIN, true, false), true, 'تطبيق ويندوز');
+  assert.equal(run('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) Safari/605', true, false), true, 'تطبيق ماك');
+  assert.equal(run(WIN, false, false), false, 'متصفّح ويندوز عاديّ (ليس تطبيقًا) — المسار الحاسوبيّ القائم');
+  assert.equal(run('Mozilla/5.0 (Linux; Android 14) Chrome/131 Mobile', true, true), false, 'هاتف أندرويد/TWA');
+  assert.equal(run(WIN, true, false, { omranNativeBridge: () => ({}) }), false, 'غلاف بجسر مشاركة');
+  assert.equal(run(WIN, true, false, { OmranAndroidShare: { share() {} } }), false);
+  // مسارات الحفظ تسأله قبل أن تعامل «التطبيق» هاتفًا (navigator.share = لوحة ويندوز المعلّقة)
+  assert.match(fnSource(read('js/app-05-img-save.js'), 'appish'), /omranDesktopApp\(\)\) return false;/);
+  assert.match(read('js/app-05-save-media.js'), /function isMobile\(\)\{\s*try\{\s*if\(typeof omranDesktopApp === 'function' && omranDesktopApp\(\)\) return false;/);
+  const GD = "!(typeof omranDesktopApp === 'function' && omranDesktopApp())"; // مُحاط بـtypeof: اختبارات تنسخ دالّة وحدها في بيئة معزولة
+  assert.ok(UI.includes('const mobileish = (omranLikelyApp() && ' + GD + ') || omranMobileUA();'), 'omranSaveBlob');
+  assert.ok(UI.includes("viaSheet = !!(omranNativeBridge('omranShare') || (omranLikelyApp() && " + GD + ') || omranMobileUA());'), 'msgSaveExport');
+  assert.ok(UI.includes("omranLikelyApp() && " + GD + '); /* v-desktop-app: تطبيق ويندوز حاسوب */'), 'بطاقة «الملفّ جاهز»');
+  assert.match(read('js/app-12-studios.js'), /omranLikelyApp\(\) && !\(typeof omranDesktopApp === 'function' && omranDesktopApp\(\)\)\); \/\* v-desktop-app \*\//);
+});
+
+test('١٤. محرّر الفيديو ونافذة «شارك المشروع برابط عامّ» يمرّان بالنافذة الموحّدة (لا لوحة ويندوز ولا صندوق نسخ وحده)', () => {
+  const ve = read('js/video-edit.js');
+  const so = fnSource(ve, 'shareOut');
+  assert.ok(so.indexOf('window.omranShareMedia({ src: st.outBlob') >= 0 && so.indexOf('window.omranShareMedia(') < so.indexOf('navigator.share('), 'الفيديو: النافذة قبل navigator.share');
+  assert.match(ve, /K\('share'\)\.hidden = !\(typeof window\.omranShareMedia === 'function' \|\|/);
+  assert.match(read('index.html'), /js\/video-edit\.js\?v=(\d+)/);
+  assert.ok(Number(/js\/video-edit\.js\?v=(\d+)/.exec(read('index.html'))[1]) > 9, 'وسم محرّر الفيديو مرفوع');
+  const a10 = read('js/app-10-features.js');
+  assert.match(a10, /const __ttl0 = String\(shareModalProject\.title \|\| ''\); closeModal\(\); window\.omranShareSheet\(\{ url: __shareOld\.url, text: __ttl0 \}\); return;/);
+  assert.match(a10, /const __ttl = String\(\(shareModalProject && shareModalProject\.title\) \|\| ''\); closeModal\(\); window\.omranShareSheet\(\{ url: fullUrl, text: __ttl \}\); return;/);
+});
+
+test('١٥. زرّ أُنشئ قبل إلحاقه بالصفحة (فقاعة رسالة تُبنى ثمّ تُلحق) لا يُعدّ مخفيًّا، والنصّ الخاصّ والأسلوب المستعار يُطبّقان', () => {
+  const c = load2({ globals: { omranSaveImage: () => true } });
+  const cell = c.document.createElement('div'); // ليس في الصفحة بعد
+  const dl = c.document.createElement('a'); dl.className = 'file-chip'; dl.setAttribute('href', 'https://cdn.example/v.mp4'); cell.appendChild(dl);
+  const b = c.omranAddShareNextTo(dl, { kind: 'video', label: '↗️ مشهد 2', style: 'padding:6px 12px;' });
+  assert.notEqual(b.style.display, 'none', 'ظاهر');
+  assert.equal(b.textContent, '↗️ مشهد 2'); assert.equal(b.getAttribute('data-i18n'), null, 'النصّ الخاصّ لا يُستبدل بمفتاح عند تبديل اللغة');
+  assert.equal(b.style.cssText, 'padding:6px 12px;');
+});
+
+test('١٦. كلّ موضع تحميل يُبنى بالكود يضيف «مشاركة» بجانبه (فيديو المحادثة، الترند، مشاهد الصانع، تصاميم الديكور، أنماط الاستوديو، بوستر التعليم، كرت Office) ومخرج التطبيق وتنظيف الفيديو في القائمة', () => {
+  const has = (f, re, why) => assert.match(read(f), re, why);
+  has('js/app-04-i18n-state.js', /window\.omranAddShareNextTo\(dl, \{ kind: 'video', className: 'file-chip'/, 'فيديو المحادثة');
+  has('js/app-11-video-trends.js', /window\.omranAddShareNextTo\(dl, \{ kind: 'video', className: 'btn', getSrc: function\(\)\{ return u; \} \}\)/, 'الترند');
+  assert.equal((read('js/app-11-video.js').match(/window\.omranAddShareNextTo\(a, \{ kind: 'video', label: '↗️ ' \+ bT\('مشهد ', 'Scene '\)/g) || []).length, 2, 'مشاهد الصانع (المساران)');
+  has('js/app-12-studios.js', /window\.omranAddShareNextTo\(a, \{ kind: 'image', after: vb, className: 'btn'/, 'تصاميم الديكور المتعدّدة');
+  has('js/app-13-stocks-init.js', /window\.omranAddShareNextTo\(a, \{ kind: 'image', style:/, 'أنماط الاستوديو');
+  has('js/edu-plus.js', /window\.omranAddShareNextTo\(a, \{ kind: 'image', className: 'eduPrimary'/, 'بوستر التعليم');
+  has('js/app-44-office.js', /window\.omranShareMedia\(\{ src: blob, name: name, kind: 'file'/, 'كرت Office');
+  assert.ok(Number(/js\/edu-plus\.js\?v=(\d+)/.exec(read('index.html'))[1]) > 6, 'وسم edu-plus مرفوع');
+  const c = load2();
+  const sels = c.omranShareNextList.map((r) => r.sel);
+  assert.ok(sels.includes('#vdDl') && sels.includes('#vmkClDl'), 'video.js: مخرج التطبيق وتنظيف الفيديو');
+  const vjs = read('js/video.js');
+  assert.ok(vjs.includes('id="vdDl"') && vjs.includes('id="vmkClDl"'));
+});

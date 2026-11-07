@@ -4222,7 +4222,7 @@ const I18N = {
     /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ حوّلتها إلى {fmt} — نفس الصورة بدون أي تغيير، وجاهزة للحفظ.", imgConvertSame: "الصورة أصلًا بصيغة {fmt} — هذي هي جاهزة للحفظ.", imgConvertAsk: "أيّ صيغة تبيها؟ PNG (أنقى جودة) أو JPG (أصغر حجمًا) أو WEBP (أخفّ للمواقع). اكتب مثلًا: حوّلها jpg", imgConvertGuess: "(فهمت «{word}» على أنّها {fmt} — إذا تبي صيغة ثانية قل: حوّلها jpg)", imgConvertFail: "تعذّر تحويل الصيغة في هذا المتصفّح — جرّب PNG أو JPG.",
     /* v-cards: بطاقات الخيارات */ stCards: "🛍️ يجمع لك خيارات منظّمة…", trCards: "عرضتُ {n} بطاقات لـ«{q}»", trCardsNone: "لا بطاقات لـ«{q}»", cardsOpen: "افتح", cardsPriceSite: "السعر في الموقع" /* v-google-cards */,
     /* v-office-files: كرت ملفّ Excel/PowerPoint */ stOffice: "📄 يجهّز ملفّك…", trOfficeOk: "جهّزتُ الملفّ 📄", trOfficeFail: "لم يُجهَّز الملفّ", officeDownload: "تحميل", officePdf: "PDF للطباعة", officeSheets: "{n} ورقة", officeSlides: "{n} شريحة", officeFreeBadge: "ملفّك المجّانيّ لهذا الشهر", officeBuilding: "يجهّز الملفّ…", officeFail: "تعذّر تجهيز الملفّ — جرّب مرّة ثانية", officeGatePlans: "استخدمت ملفّك المجّانيّ لهذا الشهر — الملفّات الجديدة والتعديل عليها بالاشتراك", officeGateLogin: "سجّل دخولك — عندك ملفّ Excel أو PowerPoint مجّانيّ كلّ شهر", officeSubscribe: "اشترك الآن", officeLogin: "تسجيل الدخول", officeEditHint: "للتعديل اكتب طلبك تحت — مثل: كبّر الخط، زد ١٠ أسماء", officeFreeHint: "التعديل عليه أو ملفّ آخر هذا الشهر بالاشتراك", officeTotal: "المجموع", plansWhyOffice: "ملفّات Excel وPowerPoint الجديدة والتعديل عليها للمشتركين — ملفّ مجّانيّ واحد كلّ شهر", officeHint1: "جرّب: سوّ لي كشف حضور جاهز للطباعة 📄", officeHint2: "جرّب: عرض بوربوينت عن أي موضوع 📊", officeHint3: "جرّب: جدول مصاريف البيت الشهرية 📄",
-    /* v-share-sheet: نافذة المشاركة الموحّدة */ shareSheetTitle: "مشاركة", shareCopy: "نسخ", shareSheetCopied: "تمّ النسخ", shareMore: "المزيد", shareMessages: "الرسائل", shareEmail: "البريد", shareFail: "تعذّرت المشاركة — جرّب نسخ الرابط", sharePreparing: "جارٍ تجهيز الرابط…", shareLinkFail: "تعذّر تجهيز الرابط",
+    /* v-share-sheet: نافذة المشاركة الموحّدة */ shareSheetTitle: "مشاركة", shareCopy: "نسخ", shareSheetCopied: "تمّ النسخ", shareMore: "المزيد", shareMessages: "الرسائل", shareEmail: "البريد", shareFail: "تعذّرت المشاركة — جرّب نسخ الرابط", sharePreparing: "جارٍ تجهيز الرابط…", shareLinkFail: "تعذّر تجهيز الرابط", shareNextBtn: "↗️ مشاركة", shareFileBig: "الملفّ أكبر من حدّ رابط المشاركة — حمّله وأرسله، أو من «المزيد» في الجوّال",
     /* v-call-agent: بطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (app-42) */ callAgentTitle: "مكالمة بالنيابة عنك", callAgentGoal: "الهدف", callAgentMax: "حدّ المكالمة {n} دقائق", callAgentFreeOwner: "مجانيّة للمالك", callAgentUserPrice: "للمستخدم: {land} نقطة/دقيقة أرضي · {mob} موبايل", callAgentPrice: "{n} نقطة لكلّ دقيقة", callAgentTry: "🎧 جرّب عليّ", callAgentDial: "📞 اتّصل فعليًّا", callAgentEnd: "إنهاء المكالمة", callAgentCancel: "إلغاء المكالمة", callAgentDisclosure: "يعرّف المساعد بنفسه أنّه آليّ في أوّل المكالمة، ولا يُسجَّل الصوت.", callAgentConfirm: "سيتّصل المساعد الآن فعليًّا بـ«{b}». متابعة؟", callAgentTrialTitle: "مكالمة تجريبيّة", callAgentTrialHint: "أنت تمثّل «{b}» — قل «ألو» ويبدأ المساعد.", callAgentStConnecting: "يجهّز المكالمة…", callAgentStMic: "بانتظار إذن المايك…", callAgentStLive: "المكالمة جارية", callAgentStQueued: "يبدأ الاتّصال…", callAgentStRinging: "يرنّ…", callAgentStCompleted: "انتهت المكالمة", callAgentStBusy: "الخطّ مشغول", callAgentStNoAnswer: "لم يردّ أحد", callAgentStFailed: "تعذّرت المكالمة", callAgentStCanceled: "أُلغيت المكالمة", callAgentStDropped: "انقطعت المكالمة", callAgentStTimeout: "توقّفت المتابعة — راجعها لاحقًا", callAgentWhoAgent: "المساعد", callAgentWhoCallee: "الطرف الآخر", callAgentOcBooked: "تمّ الحجز", callAgentOcNotAvailable: "غير متاح", callAgentOcNeedsUser: "يحتاج قرارك", callAgentOcDeclined: "اعتذر الطرف الآخر", callAgentOcFailed: "لم تنجح", callAgentDetails: "المؤكَّد", callAgentFollowUp: "الخطوة التالية", callAgentDuration: "المدّة", callAgentResultHead: "📞 نتيجة المكالمة مع «{b}»: {s}", callAgentResultNone: "انتهت المكالمة بلا نتيجة مسجّلة.", callAgentErrOwner: "متاحة للمالك فقط حاليًّا.", callAgentErrExpired: "انتهت صلاحيّة هذه البطاقة — اطلب المكالمة من جديد.", callAgentErrNoKey: "الخدمة غير مهيّأة بعد.", callAgentErrRelay: "الاتّصال الفعليّ غير مفعّل بعد — استعمل «جرّب عليّ».", callAgentErrNoPhone: "لا يوجد رقم لهذه الجهة.", callAgentErrBadPhone: "الرقم غير مسموح: أرقام الإمارات فقط، بلا طوارئ ولا أرقام خدمات.", callAgentErrBusy: "عندك مكالمة جارية — انتظر حتّى تنتهي.", callAgentErrHours: "الاتّصال الفعليّ متاح من ٨ صباحًا إلى ١٠ مساءً بتوقيت الإمارات.", callAgentErrGeneric: "تعذّر بدء المكالمة — حاول مرّة ثانية.", callAgentErrMaha: "أنهِ مكالمة {voice} أوّلًا.", callAgentErrActive: "في مكالمة جارية الآن.", callAgentErrNoRtc: "هذا المتصفّح لا يدعم المكالمات الصوتيّة.", callAgentErrCancel: "تعذّر الإلغاء — حاول مرّة ثانية.", /* v-call-agent-r2 */ callAgentPlace: "الرقم من الخرائط", callAgentCaller: "يتّصل نيابةً عن", callAgentShare: "قد يذكر للجهة", callAgentErrTrialBusy: "أنهِ المكالمة التجريبيّة أوّلًا." /* v-call-agent-paid */, callAgentErrPlan: "المكالمة الآليّة للمشتركين بباقة سارية.", callAgentErrPoints: "رصيدك لا يكفي — المكالمة تحجز {n} نقطة.", callAgentHold: "يُحجز {n} نقطة قبل المكالمة ويُرجع الباقي حسب المدّة، والمكالمة التي لا يُردّ عليها مجّانيّة.", callAgentTrialConfirm: "المكالمة التجريبيّة بنفس سعر المكالمة الحقيقيّة. متابعة؟", stCall: "📞 يجهّز كرت الاتّصال…",
     aiGenTag: "✨ محتوى مولّد بالذكاء الاصطناعي", msgStopped: "تم إيقاف الرد", stReading: "💭 يقرأ سؤالك…", stTimeout: "⏱️ انتهت مهلة الردّ.", stSearch: "🔍 أتحقق لك من المصادر الحية…", stFetchPage: "🌐 يقرأ صفحة…", stRunJs: "⚙️ يشغّل كودًا للتحقّق…", stGenImage: "🎨 يرسم صورة…", stTestHtml: "🧪 يجرّب الصفحة…", stGeoLoc: "📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…", trSearchN: "بحثتُ عن «{q}» — حصلتُ {n} نتيجة", trSearchC: "بحثتُ عن «{q}» — حصلتُ {n} حرفًا", trFetch: "قرأتُ {h} — حصلتُ {n} حرفًا", trFetchFail: "تعذّرت قراءة {h}", trJsErr: "شغّلتُ كودًا — ظهر خطأ", trJsOk: "شغّلتُ كودًا — عاد ناتج {n} حرفًا", trImgOk: "رسمتُ صورة ✅", trImgFail: "تعذّرت الصورة", trLocOk: "حدّدتُ موقعك ✅", trLocFail: "حاولتُ تحديد موقعك — لم ينجح", trHtmlOk: "جرّبتُ الصفحة — بلا أخطاء ✅", trHtmlErr: "جرّبتُ الصفحة — ظهرت أخطاء", trTool: "استخدمتُ {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
@@ -5743,7 +5743,7 @@ const I18N = {
     /* v-img-format: تحويل الصيغة محلّيًّا */ imgConvertDone: "✅ Converted to {fmt} — the same picture, unchanged, ready to save.", imgConvertSame: "The picture is already {fmt} — here it is, ready to save.", imgConvertAsk: "Which format do you want? PNG (best quality), JPG (smaller file) or WEBP (lighter for websites). For example: convert to jpg", imgConvertGuess: "(I read «{word}» as {fmt} — for another format say: convert to jpg)", imgConvertFail: "This browser couldn't convert the format — try PNG or JPG.",
     /* v-cards */ stCards: "🛍️ Gathering organized options…", trCards: "Showed {n} cards for “{q}”", trCardsNone: "No cards for “{q}”", cardsOpen: "Open", cardsPriceSite: "Price on site" /* v-google-cards */,
     /* v-office-files: كرت ملفّ Excel/PowerPoint */ stOffice: "📄 Preparing your file…", trOfficeOk: "Prepared the file 📄", trOfficeFail: "File not prepared", officeDownload: "Download", officePdf: "PDF to print", officeSheets: "{n} sheets", officeSlides: "{n} slides", officeFreeBadge: "Your free file this month", officeBuilding: "Preparing the file…", officeFail: "Couldn't prepare the file — try again", officeGatePlans: "You've used your free file this month — new files and edits are for subscribers", officeGateLogin: "Sign in — you get one free Excel or PowerPoint file every month", officeSubscribe: "Subscribe now", officeLogin: "Sign in", officeEditHint: "To edit, type your request below — e.g. bigger font, add 10 names", officeFreeHint: "Editing it or another file this month needs a subscription", officeTotal: "Total", plansWhyOffice: "New Excel and PowerPoint files and edits are for subscribers — one free file every month", officeHint1: "Try: make me a printable attendance sheet 📄", officeHint2: "Try: a PowerPoint about any topic 📊", officeHint3: "Try: a monthly home expenses sheet 📄",
-    /* v-share-sheet: نافذة المشاركة الموحّدة */ shareSheetTitle: "Share", shareCopy: "Copy", shareSheetCopied: "Copied", shareMore: "More", shareMessages: "Messages", shareEmail: "Email", shareFail: "Couldn't share — try copying the link", sharePreparing: "Preparing the link…", shareLinkFail: "Couldn't prepare the link",
+    /* v-share-sheet: نافذة المشاركة الموحّدة */ shareSheetTitle: "Share", shareCopy: "Copy", shareSheetCopied: "Copied", shareMore: "More", shareMessages: "Messages", shareEmail: "Email", shareFail: "Couldn't share — try copying the link", sharePreparing: "Preparing the link…", shareLinkFail: "Couldn't prepare the link", shareNextBtn: "↗️ Share", shareFileBig: "The file is too big for a share link — download it and send it, or use More on your phone",
     /* v-call-agent */ callAgentTitle: "Call on your behalf", callAgentGoal: "Goal", callAgentMax: "Call limit: {n} min", callAgentFreeOwner: "Free for the owner", callAgentUserPrice: "For users: {land} points/min landline · {mob} mobile", callAgentPrice: "{n} points per minute", callAgentTry: "🎧 Try it on me", callAgentDial: "📞 Call for real", callAgentEnd: "End call", callAgentCancel: "Cancel call", callAgentDisclosure: "The assistant says it is automated at the start of the call. No audio is recorded.", callAgentConfirm: "The assistant will now really call “{b}”. Continue?", callAgentTrialTitle: "Trial call", callAgentTrialHint: "You play “{b}”. Say “hello” and the assistant begins.", callAgentStConnecting: "Setting up the call…", callAgentStMic: "Waiting for microphone permission…", callAgentStLive: "Call in progress", callAgentStQueued: "Starting the call…", callAgentStRinging: "Ringing…", callAgentStCompleted: "Call ended", callAgentStBusy: "Line busy", callAgentStNoAnswer: "No answer", callAgentStFailed: "Call failed", callAgentStCanceled: "Call cancelled", callAgentStDropped: "Call dropped", callAgentStTimeout: "Stopped following — check back later", callAgentWhoAgent: "Assistant", callAgentWhoCallee: "Other side", callAgentOcBooked: "Booked", callAgentOcNotAvailable: "Not available", callAgentOcNeedsUser: "Needs your decision", callAgentOcDeclined: "Declined", callAgentOcFailed: "Did not succeed", callAgentDetails: "Confirmed", callAgentFollowUp: "Next step", callAgentDuration: "Duration", callAgentResultHead: "📞 Call result with “{b}”: {s}", callAgentResultNone: "The call ended with no recorded result.", callAgentErrOwner: "Available to the owner only for now.", callAgentErrExpired: "This card has expired. Ask for the call again.", callAgentErrNoKey: "The service is not set up yet.", callAgentErrRelay: "Real calls are not enabled yet. Use “Try it on me”.", callAgentErrNoPhone: "There is no number for this place.", callAgentErrBadPhone: "Number not allowed: UAE numbers only, no emergency or service numbers.", callAgentErrBusy: "You already have a call in progress. Wait for it to end.", callAgentErrHours: "Real calls are available from 8 AM to 10 PM UAE time.", callAgentErrGeneric: "Could not start the call. Try again.", callAgentErrMaha: "End the call with {voice} first.", callAgentErrActive: "A call is already in progress.", callAgentErrNoRtc: "This browser does not support voice calls.", callAgentErrCancel: "Could not cancel. Try again.", /* v-call-agent-r2 */ callAgentPlace: "Number from the map", callAgentCaller: "On behalf of", callAgentShare: "May tell them", callAgentErrTrialBusy: "End the trial call first." /* v-call-agent-paid */, callAgentErrPlan: "Automated calls are for users with an active plan.", callAgentErrPoints: "Not enough points — the call holds {n} points.", callAgentHold: "{n} points are held before the call; the rest comes back based on its length. Unanswered calls are free.", callAgentTrialConfirm: "The trial call costs the same as a real call. Continue?", stCall: "📞 Preparing the call card…",
     aiGenTag: "✨ AI-generated content", msgStopped: "Response stopped", stReading: "💭 Reading your question…", stTimeout: "⏱️ The response timed out.", stSearch: "🔍 Checking live sources for you…", stFetchPage: "🌐 Reading a page…", stRunJs: "⚙️ Running code to verify…", stGenImage: "🎨 Drawing an image…", stTestHtml: "🧪 Testing the page…", stGeoLoc: "📍 Getting your location (the browser will ask permission)…", trSearchN: "Searched for «{q}» — got {n} results", trSearchC: "Searched for «{q}» — got {n} characters", trFetch: "Read {h} — got {n} characters", trFetchFail: "Could not read {h}", trJsErr: "Ran code — an error appeared", trJsOk: "Ran code — {n} characters returned", trImgOk: "Drew an image ✅", trImgFail: "The image failed", trLocOk: "Located you ✅", trLocFail: "Tried to locate you — did not succeed", trHtmlOk: "Tested the page — no errors ✅", trHtmlErr: "Tested the page — errors appeared", trTool: "Used {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
@@ -9633,6 +9633,8 @@ function renderMessages(keepScroll){
           dl.style.textDecoration = 'none';
           dl.style.alignSelf = 'center';
           wrap.appendChild(dl);
+          /* v-share-next (المالك ٧ نوفمبر: «فقط تحميل في التطبيق كامل»): «مشاركة» بجانب «تنزيل الفيديو» — النافذة الموحّدة (app-45) */
+          if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(dl, { kind: 'video', className: 'file-chip', mirrorColor: true, style: 'text-decoration:none;align-self:center;cursor:pointer;font-family:inherit;' }); }catch(e){ __swallow(e, 'ui:video-share-next'); } }
         } else if(a.isImage && a.purged && !a.vaultId){
           const chip = document.createElement('div');
           chip.className = 'file-chip';
@@ -10175,6 +10177,8 @@ function renderMessages(keepScroll){
   function gtx(k, ar, en){ try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return isAr() ? ar : en; }
   function appish(){
     try{
+      /* v-desktop-app: تطبيق متجر ويندوز/ماك حاسوب — التنزيل مباشر، لا لوحة النظام المعلّقة */
+      if(typeof omranDesktopApp === 'function' && omranDesktopApp()) return false;
       if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare')) return true;
       if(typeof omranLikelyApp === 'function' && omranLikelyApp()) return true;
       const ua = navigator.userAgent || '';
@@ -10411,6 +10415,7 @@ function renderMessages(keepScroll){
   }
   function isMobile(){
     try{
+      if(typeof omranDesktopApp === 'function' && omranDesktopApp()) return false; /* v-desktop-app: تطبيق ويندوز/ماك حاسوب — تنزيل مباشر لا لوحة النظام */
       if(typeof omranLikelyApp === 'function' && omranLikelyApp()) return true;
       if(/Android|HarmonyOS|HUAWEI|HONOR|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent)) return true;
       if(navigator.maxTouchPoints > 1 && /Mac|Linux/i.test(navigator.platform || '')) return true;
@@ -11089,6 +11094,17 @@ function omranLikelyApp(){
   }catch(e){ __swallow(e, 'share:app-detect'); }
   return false;
 }
+/* v-desktop-app (لقطات المالك ٧ نوفمبر: «مشاركة» تدور فوق صفحة الصور الشخصيّة بعد «تحميل الصورة» في تطبيق ويندوز): تطبيق المتجر على
+   ويندوز/ماك standalone فيصدق فيه omranLikelyApp — لكنّه حاسوب: <a download> يعمل فيه، وnavigator.share هي لوحة النظام التي تعلق. مسارات
+   الحفظ والمشاركة تعامله حاسوبًا (تنزيل مباشر + النافذة الموحّدة)، والهواتف وأغلفة أندرويد/آيفون كما كانت. */
+function omranDesktopApp(){
+  try{
+    if(omranMobileUA() || omranNativeBridge('omranShare') || omranHwWebView()) return false;
+    const ua = navigator.userAgent || '';
+    if(/Android|\bwv\b/i.test(ua) || window.OmranAndroidShare || (window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform())))) return false;
+    return omranLikelyApp() && /Windows NT|Macintosh|CrOS|X11|Linux x86_64/i.test(ua);
+  }catch(e){ __swallow(e, 'share:desktop-app'); return false; }
+}
 async function omranBlobToServerLink(blob, filename){
   const b64 = await new Promise((resolve, reject) => {
     const fr = new FileReader();
@@ -11155,7 +11171,7 @@ function omranReadySheet(opts){
     const o = opts || {};
     const kind = o.kind || 'file';
     const isArT = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
-    const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp());
+    const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())); /* v-desktop-app: تطبيق ويندوز حاسوب */
     const desktop = !mobile;
     // رابط دائم يصحّ إرساله للغير — واتساب/نسخ الرابط فقط حين يكون موجودًا (لا رابط تنزيل عمره ساعة ولا blob محلّيّ)
     const canLink = /^https?:/i.test(String(o.shareUrl || ''));
@@ -11314,7 +11330,7 @@ async function omranSaveBlob(blob, filename){
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
   /* v-audit-uicore: مشاركة النظام على الجوّال والأغلفة وحدها (قرار v-ready-sheet، كما في img-save وsave-media) — على الكمبيوتر
      كانت تفتح لوحة ويندوز/ماك بلا «حفظ»، وإغلاقها (AbortError) يُنهي الدالّة بلا تنزيل. الكمبيوتر ينزّل مباشرة في الأسفل. */
-  const mobileish = omranLikelyApp() || omranMobileUA();
+  const mobileish = (omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())) || omranMobileUA(); /* v-desktop-app: تطبيق ويندوز ينزّل مباشرة — لا لوحة ويندوز */
   try{
     if(mobileish && navigator.canShare && typeof File === 'function'){
       const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
@@ -11889,7 +11905,7 @@ function exportReplyAsTxt(text){
    الكمبيوتر ينزّل مباشرة كما كان. */
 function msgSaveExport(blob, filename){
   let viaSheet = false;
-  try{ viaSheet = !!(omranNativeBridge('omranShare') || omranLikelyApp() || omranMobileUA()); }catch(e){ viaSheet = false; }
+  try{ viaSheet = !!(omranNativeBridge('omranShare') || (omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())) || omranMobileUA()); }catch(e){ viaSheet = false; } /* v-desktop-app */
   if(viaSheet){
     omranSaveBlob(blob, filename).catch((e) => { __swallow(e, 'export:save-blob'); msgDownloadBlob(blob, filename); });
     return true; /* v-audit-uicore: المسار الموحّد — ورقته هي التأكيد، فلا رسالة «تمّ» من المنادي */
@@ -32302,6 +32318,7 @@ function openShareModal(project){
     const __shareSig = String(shareModalProject.title || '') + '|' + String(shareModalProject.code || '').length + '|' + __shareMsgs.length;
     const __shareOld = __shareKey ? __shareMade[__shareKey] : null;
     if(__shareOld && __shareOld.sig === __shareSig){
+      if(typeof window.omranShareSheet === 'function'){ const __ttl0 = String(shareModalProject.title || ''); closeModal(); window.omranShareSheet({ url: __shareOld.url, text: __ttl0 }); return; } // v-share-sheet: الرابط الموجود في النافذة الموحّدة (العنوان قبل الإغلاق — closeModal يصفّر المشروع)
       resultUrl.value = __shareOld.url;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
@@ -32329,6 +32346,8 @@ function openShareModal(project){
       if(!resp.ok || !data.id) throw new Error(data.error || 'error');
       const fullUrl = location.origin + '/p.html?id=' + data.id;
       if(__shareKey) __shareMade[__shareKey] = { sig: __shareSig, url: fullUrl };
+      /* v-share-sheet (المالك ٧ نوفمبر: نافذة يوتيوب في كلّ التطبيق): الرابط العامّ يُرسَل من النافذة الموحّدة (app-45) بدل صندوق النسخ وحده */
+      if(typeof window.omranShareSheet === 'function'){ const __ttl = String((shareModalProject && shareModalProject.title) || ''); closeModal(); window.omranShareSheet({ url: fullUrl, text: __ttl }); return; }
       resultUrl.value = fullUrl;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
@@ -32986,6 +33005,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       dl.download = 'omran-trend-' + t.key + '.mp4'; dl.className = 'btn'; dl.style.cssText = 'display:block;text-align:center;margin-top:6px;';
       dl.textContent = ui('download');
       out.appendChild(dl);
+      /* v-share-next: «مشاركة» بجانب التحميل — رابط الفيديو الأصليّ لا رابط تنزيله */
+      if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(dl, { kind: 'video', className: 'btn', getSrc: function(){ return u; } }); }catch(e){ /* guard-ok — المشاركة تحسين لا يمنع التحميل */ } }
     });
     var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };
     out.appendChild(again);
@@ -33122,6 +33143,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       a.textContent = (bT('⬇️ مشهد ','⬇️ Scene ')) + (i + 1);
       a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
       linksEl.appendChild(a);
+      /* v-share-next: «↗️ مشهد N» بجانب «⬇️ مشهد N» */
+      if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'video', label: '↗️ ' + bT('مشهد ', 'Scene ') + (i + 1), style: a.style.cssText + 'border:0;cursor:pointer;font-family:inherit;', getSrc: function(){ return u; } }); }catch(e){ __swallow(e, 'vmk:scene-share'); } }
     });
     setStatus(why + ' ' + partialScenesNote(urls.length, n));
   }
@@ -34533,6 +34556,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             a.textContent = (bT('⬇️ مشهد ','⬇️ Scene ')) + (i + 1);
             a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
             linksEl.appendChild(a);
+            /* v-share-next: «↗️ مشهد N» بجانب «⬇️ مشهد N» */
+            if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'video', label: '↗️ ' + bT('مشهد ', 'Scene ') + (i + 1), style: a.style.cssText + 'border:0;cursor:pointer;font-family:inherit;', getSrc: function(){ return sc.videoUrl; } }); }catch(e){ __swallow(e, 'vmk:scene-share2'); } }
           });
           setStatus(bT('✅ فيلمك جاهز! المشاهد تُعرض ورا بعض تلقائيًا — وتقدر تحمّل كل مشهد من الأزرار تحت.','✅ Your film is ready! Scenes will play back-to-back — download each scene below.'));
         };
@@ -35783,6 +35808,8 @@ function __studioErrMsg(e, fbKey){
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
           vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; designRun(again); };
           cell.appendChild(vb);
+          /* v-share-next: «مشاركة» تحت «زوّدني مثله» لكلّ تصميم */
+          if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', after: vb, className: 'btn', style: vb.style.cssText, name: 'omran-design-' + (i + 1) + '.webp' }); }catch(e){ __swallow(e, 'design:share-next'); } }
           gridEl.appendChild(cell);
         });
         dsReveal(gridEl); /* v-scene-kinds */
@@ -36708,7 +36735,7 @@ function stud2ErrText(e, prefix, fbKey){
         /* v-audit-shell (cli-ui-shell-2): الحافظ الموحّد (app-05-save-media، التقاط على document) سبقنا بنقرة المستخدم ونادى omranSaveMedia —
            كان هذا ينادي omranSaveImage فوقه: رفعتان وورقتان للنقرة الواحدة على متصفّح الجوّال. */
         if(ev.defaultPrevented) return;
-        const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp());
+        const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())); /* v-desktop-app */
         if(!mobile || typeof window.omranSaveImage !== 'function') return;
         ev.preventDefault(); ev.stopPropagation();
         window.omranSaveImage(downloadEl.href, downloadEl.getAttribute('download') || 'omran-portrait-style.png', 'save');
@@ -41162,6 +41189,8 @@ function stud2ErrText(e, prefix, fbKey){
         const a = document.createElement('a'); a.href = url; a.download = 'omran-style.png'; a.textContent = bT('⬇️ تحميل', '⬇️ Download');
         a.style.cssText = 'display:inline-block; margin-top:5px; font-size:12px; color:#d4af37;';
         cell.appendChild(im); cell.appendChild(a);
+        /* v-share-next: «↗️ مشاركة» بجانب «⬇️ تحميل» في كلّ خانة */
+        if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', style: 'display:inline-block; margin-top:5px; margin-inline-start:12px; font-size:12px; color:#d4af37; background:none; border:0; padding:0; cursor:pointer; font-family:inherit;' }); }catch(e){ __swallow(e, 'studio:style-share-next'); } }
       }
       if(r.error){
         const er = document.createElement('div');
@@ -53636,6 +53665,7 @@ async function mahaAppTool(name, args){
     officeGatePlans: 'استخدمت ملفّك المجّانيّ لهذا الشهر — الملفّات الجديدة والتعديل عليها بالاشتراك', officeGateLogin: 'سجّل دخولك — عندك ملفّ Excel أو PowerPoint مجّانيّ كلّ شهر',
     officeSubscribe: 'اشترك الآن', officeLogin: 'تسجيل الدخول', officeEditHint: 'للتعديل اكتب طلبك تحت — مثل: كبّر الخط، زد ١٠ أسماء',
     officeFreeHint: 'التعديل عليه أو ملفّ آخر هذا الشهر بالاشتراك', officeTotal: 'المجموع',
+    shareNextBtn: '↗️ مشاركة',
     officeHint1: 'جرّب: سوّ لي كشف حضور جاهز للطباعة 📄', officeHint2: 'جرّب: عرض بوربوينت عن أي موضوع 📊', officeHint3: 'جرّب: جدول مصاريف البيت الشهرية 📄'
   };
 
@@ -54121,6 +54151,12 @@ async function mahaAppTool(name, args){
     row.appendChild(btn('omOfMain', '⬇ ' + tt('officeDownload'), function(b){
       run(b, '⬇ ' + tt('officeDownload'), function(){ return (isX ? buildXlsx(spec) : buildPptx(spec)).then(function(blob){ save(blob, name); }); });
     }));
+    /* v-share-next (المالك ٧ نوفمبر: «فقط تحميل… الايميل والسناب والتواصل»): الملفّ نفسه يُبنى ثمّ يُرفع رابطًا أسبوعيًّا في النافذة الموحّدة */
+    if(typeof window.omranShareMedia === 'function'){
+      row.appendChild(btn('', tt('shareNextBtn'), function(b){
+        run(b, tt('shareNextBtn'), function(){ return (isX ? buildXlsx(spec) : buildPptx(spec)).then(function(blob){ window.omranShareMedia({ src: blob, name: name, kind: 'file', download: function(){ save(blob, name); } }); }); });
+      }));
+    }
     if(isX && typeof omranExportPagedPdfFile === 'function'){
       row.appendChild(btn('', '🖨 ' + tt('officePdf'), function(b){
         run(b, '🖨 ' + tt('officePdf'), function(){ return omranExportPagedPdfFile(xlsxPdfBlocks(spec), { rtl: !!spec.rtl, fileName: spec.fileName + '.pdf', pixelRatio: 2, jpegQuality: 0.9, fontFamily: 'Arial, Tahoma, sans-serif' }); });
@@ -54368,12 +54404,155 @@ async function mahaAppTool(name, args){
     if(pending){
       inp.value = tt('sharePreparing', 'جارٍ تجهيز الرابط…', 'Preparing the link…'); cp.disabled = true;
       Promise.resolve().then(o.getUrl).then(function(u){ if(!ov.isConnected) return; if(u) setUrl(u); else { setUrl(''); say(tt('shareLinkFail', 'تعذّر تجهيز الرابط', 'Could not prepare the link')); } },
-        function(err){ __swallow(err, 'share-sheet:get-url'); if(!ov.isConnected) return; setUrl(''); say(tt('shareLinkFail', 'تعذّر تجهيز الرابط', 'Could not prepare the link')); });
+        function(err){ __swallow(err, 'share-sheet:get-url'); if(!ov.isConnected) return; setUrl(''); say((err && err.userMsg) || tt('shareLinkFail', 'تعذّر تجهيز الرابط', 'Could not prepare the link')); });
     }
     host().appendChild(ov);
     setTimeout(arrows, 0);
     return true;
   };
+
+  /* ── زرّ «مشاركة» بجانب كلّ زرّ تحميل لنتيجة (المالك ٧ نوفمبر بلقطة استوديو فيها «تحميل الصورة» و«حفظ في المفضلة» وحدهما:
+     «مافي اي شي — فقط تحميل في التطبيق كامل في الهاتف والكمبيوتر… الايميل والسناب والتواصل الاجتماعي») ──
+     omranShareMedia({ src, name, kind }): الصورة ← omranSaveImage(…, 'share') (رابط /i/ أسبوعًا + «المزيد» بالملفّ)؛ الفيديو والـPDF والملفّ:
+     رابط https قائم يُشارَك كما هو، وdata:/blob: يُرفع إلى /api/media (PDF ≈٣ م.ب، ملفّ ≈٤ م.ب، أسبوعًا) — الأكبر سطر واضح و«المزيد»
+     على الهاتف بالملفّ نفسه، و«تحميل» دائرة إضافيّة.
+     omranAddShareNextTo(dl, { getSrc, name, kind, after }): زرّ بصنف زرّ التحميل وأسلوبه نفسه يُدرج بعده (أو بعد after)، يظهر ويختفي معه
+     (مراقب سماته)، ونصّه بمفتاح shareNextBtn فيتبع تبديل اللغة. omranShareNextAuto(): يربط قائمة عناصر التحميل المعروفة (SHARE_NEXT) كلّما
+     ظهرت في الصفحة — القوالب تُحقن بعد الحزمة. */
+  function kindOf(src, name, mime){
+    var s = (typeof src === 'string') ? src : '', n = String(name || '').toLowerCase(), m = String(mime || (src && src.type) || '').toLowerCase();
+    var both = n + ' ' + s.slice(0, 300).toLowerCase();
+    if(/^image\//.test(m) || /^data:image\//i.test(s) || /\.(png|jpe?g|webp|gif|bmp|avif|heic)(\?|#|\s|$)/i.test(both) || /\/i\/[a-f0-9]{6,}/i.test(s)) return 'image';
+    if(/^video\//.test(m) || /^data:video\//i.test(s) || /\.(mp4|webm|mov|m4v)(\?|#|\s|$)/i.test(both)) return 'video';
+    if(/pdf/.test(m) || /^data:application\/pdf/i.test(s) || /\.pdf(\?|#|\s|$)/i.test(both)) return 'pdf';
+    return 'file';
+  }
+  function blobOf(src){
+    if(src && typeof src === 'object' && typeof src.size === 'number') return Promise.resolve(src);
+    return fetch(String(src)).then(function(r){ if(!r.ok) throw new Error('fetch ' + r.status); return r.blob(); });
+  }
+  function bigErr(){ var e = new Error('too-large'); e.userMsg = tt('shareFileBig', 'الملفّ أكبر من حدّ رابط المشاركة — حمّله وأرسله، أو من «المزيد» في الجوّال', 'The file is too big for a share link — download it and send it, or use More on your phone'); return e; }
+  function uploadForShare(blob, name){
+    var isPdf = (blob.type === 'application/pdf') || /\.pdf$/i.test(name || '');
+    var cap = (isPdf ? 4 : 5) * 1024 * 1024;
+    if(blob.size * 1.37 > cap) return Promise.reject(bigErr());
+    return new Promise(function(res, rej){ var fr = new FileReader(); fr.onload = function(){ res(String(fr.result || '').split(',')[1] || ''); }; fr.onerror = function(){ rej(new Error('read')); }; fr.readAsDataURL(blob); })
+      .then(function(b64){
+        if(!b64 || b64.length > cap) throw bigErr();
+        var tok = ''; try{ tok = (typeof authGet === 'function') ? (authGet('aiapp_auth_token') || '') : ''; }catch(e){ tok = ''; }
+        return fetch(isPdf ? '/api/media?action=pdf' : '/api/media?action=file', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: b64, name: name || 'omran-file', mime: blob.type || 'application/octet-stream', token: tok }) });
+      })
+      .then(function(r){ return r.json().catch(function(){ return null; }).then(function(d){ if(!r.ok || !d || !d.url) throw new Error((d && d.error) || ('http ' + r.status)); return /^https?:/i.test(d.url) ? d.url : (location.origin + d.url); }); });
+  }
+  function plainDl(src, name){
+    try{
+      var a = document.createElement('a'); a.href = (typeof src === 'string') ? src : URL.createObjectURL(src); a.download = name || ''; a.rel = 'noopener';
+      a.dataset.nativeDownload = '1'; a.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(a); a.click();
+      setTimeout(function(){ try{ a.remove(); }catch(e){ __swallow(e, 'share-next:dl-rm'); } }, 3000);
+    }catch(e){ __swallow(e, 'share-next:dl'); }
+  }
+  window.omranShareMedia = function(o){
+    o = o || {};
+    var src = o.src, name = o.name || '', kind = o.kind || kindOf(src, name, o.mime);
+    if(!src) return false;
+    if(kind === 'image' && typeof window.omranSaveImage === 'function'){ window.omranSaveImage(src, name || ('omran-image-' + Date.now() + '.png'), 'share'); return true; }
+    var s = (typeof src === 'string') ? src : '';
+    var http = /^https?:/i.test(s) ? s : '';
+    var dlOne = { label: tt('imgDlBtn', 'تحميل', 'Download'), icon: 'download', onClick: function(close){ close(); if(typeof o.download === 'function') o.download(); else plainDl(src, name); } };
+    var opts = { url: http, extras: [dlOne] };
+    if(!http){
+      opts.getUrl = function(){
+        return blobOf(src).then(function(b){
+          try{ if(typeof File === 'function') opts.file = new File([b], name || ('omran-' + kind), { type: b.type || 'application/octet-stream' }); }catch(e){ __swallow(e, 'share-next:file'); }
+          return uploadForShare(b, name || ('omran-' + kind));
+        });
+      };
+    }
+    return window.omranShareSheet(opts);
+  };
+  function hiddenEl(el){
+    try{
+      if(!el) return true;
+      if(el.hidden || el.style.display === 'none' || el.style.visibility === 'hidden') return true;
+      if(!el.isConnected) return false; /* أُنشئ ولم يُلحق بالصفحة بعد (فقاعة رسالة تُبنى ثمّ تُلحق) — يُحكم بأسلوبه المضمّن وحده */
+      var cs = getComputedStyle(el); return cs.display === 'none' || cs.visibility === 'hidden';
+    }catch(e){ return false; }
+  }
+  window.omranAddShareNextTo = function(dl, o){
+    o = o || {};
+    if(!dl || dl.__omShareNext) return dl ? dl.__omShareNext : null;
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = String(o.className != null ? o.className : (dl.className || 'btn')).replace(/\bomShareNext\b/g, '').trim() + ' omShareNext';
+    b.style.cssText = (o.style != null) ? String(o.style) : dl.style.cssText; b.style.removeProperty('display');
+    if(o.label){ b.textContent = String(o.label); } /* نصّ خاصّ (مثل «↗️ مشهد ٢») — يُبنى مع العنصر نفسه عند كلّ رسم */
+    else { b.setAttribute('data-i18n', 'shareNextBtn'); b.textContent = tt('shareNextBtn', '↗️ مشاركة', '↗️ Share'); }
+    b.addEventListener('click', function(ev){
+      try{
+        if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+        var src = (typeof o.getSrc === 'function' ? o.getSrc() : '') || dl.getAttribute('href') || dl.getAttribute('src') || '';
+        if(!src || src === '#') return;
+        var nm = (typeof o.name === 'function' ? o.name() : o.name) || dl.getAttribute('download') || '';
+        window.omranShareMedia({ src: src, name: nm, kind: o.kind });
+      }catch(err){ __swallow(err, 'share-next:click'); }
+    });
+    var anchor = o.after || dl;
+    anchor.parentNode.insertBefore(b, anchor.nextSibling);
+    var sync = function(){
+      try{
+        if(hiddenEl(dl)){ b.style.display = 'none'; return; }
+        var cs = dl.isConnected ? getComputedStyle(dl) : null;
+        var d = o.display || (cs ? cs.display : (dl.style.display || '')); /* نفس عرض زرّ التحميل: كتلة بعرضه أو سطريّ بجانبه */
+        b.style.display = d;
+        /* بعرض الحاوية فقط إن كان زرّ التحميل نفسه بعرضها: داخل حاوية مرنة يُحسب كلّ ابن «block» وإن كان شريحة صغيرة (فيديو المحادثة،
+           مشاهد الصانع) فكان الزرّ يأخذ سطرًا كاملًا وحده */
+        var p = dl.parentNode, pcs = (cs && p && p.nodeType !== 9) ? getComputedStyle(p) : null;
+        var full = /^(block|flex|grid)$/.test(d) && !(pcs && /flex|grid/.test(pcs.display));
+        if(!full && pcs && p.clientWidth){ var cw = p.clientWidth - (parseFloat(pcs.paddingLeft) || 0) - (parseFloat(pcs.paddingRight) || 0); full = cw > 0 && dl.offsetWidth >= cw - 2; }
+        if(full){ b.style.width = '100%'; b.style.boxSizing = 'border-box'; } else b.style.width = '';
+        if(o.mirrorColor && cs) b.style.color = cs.color; /* لون رابط التحميل نفسه (الذهبيّ في فقاعة المحادثة) */
+      }catch(err){ __swallow(err, 'share-next:sync'); }
+    };
+    try{ new MutationObserver(sync).observe(dl, { attributes: true, attributeFilter: ['style', 'hidden', 'class', 'href', 'src'] }); }catch(err){ __swallow(err, 'share-next:observe'); }
+    if(dl.parentNode && dl.parentNode !== document.body){ try{ new MutationObserver(sync).observe(dl.parentNode, { attributes: true, attributeFilter: ['style', 'hidden', 'class'] }); }catch(err){ __swallow(err, 'share-next:observe-parent'); } }
+    sync();
+    dl.__omShareNext = b;
+    return b;
+  };
+  /* عناصر التحميل المعروفة في القوالب (جرد الأدوات) — تُربط تلقائيًّا حين تظهر. after: عنصر يُدرج الزرّ بعده بدل زرّ التحميل نفسه. */
+  var SHARE_NEXT = [
+    { sel: '#studioAiDownloadLink', className: 'btn' },          // الاستوديو
+    { sel: '#fashionAiDownloadLink', className: 'btn' },         // الأزياء
+    { sel: '#designAiDownloadLink', className: 'btn' },          // الديكور
+    { sel: '#constructionDownloadLink', className: 'btn' },      // المقاولات: المخطّط
+    { sel: '#constructionPhotoDownloadLink', className: 'btn' }, // المقاولات: الصورة الواقعيّة
+    { sel: '#constructionInteriorDownloadLink', className: 'btn' },
+    { sel: '#constructionAngleDownloadLink', className: 'btn' },
+    { sel: '#constructionRoomDownloadLink', className: 'btn' },
+    { sel: '#videoMakerDownloadLink', className: 'btn', kind: 'video' }, // صانع الفيديو
+    { sel: '#vdDl', className: 'vmk-dir-dl', kind: 'video', style: 'background:transparent;cursor:pointer;font-family:inherit;' },  // مخرج التطبيق (video.js)
+    { sel: '#vmkClDl', className: 'vmk-cl-dl', kind: 'video', style: 'background:transparent;cursor:pointer;font-family:inherit;' } // تنظيف الفيديو (video.js)
+  ];
+  window.omranShareNextList = SHARE_NEXT;
+  var autoTimer = 0;
+  function autoRun(){
+    autoTimer = 0;
+    SHARE_NEXT.forEach(function(r){
+      try{
+        var els = document.querySelectorAll(r.sel);
+        for(var i = 0; i < els.length; i++){
+          var el = els[i]; if(el.__omShareNext) continue;
+          var after = r.after ? document.querySelector(r.after) : null;
+          window.omranAddShareNextTo(el, { kind: r.kind, className: r.className, style: r.style, after: after && after.parentNode === el.parentNode ? after : null, getSrc: r.getSrc, name: r.name });
+        }
+      }catch(err){ __swallow(err, 'share-next:auto'); }
+    });
+  }
+  window.omranShareNextAuto = function(){ if(!autoTimer) autoTimer = setTimeout(autoRun, 60); };
+  try{
+    window.omranShareNextAuto();
+    new MutationObserver(function(){ window.omranShareNextAuto(); }).observe(document.documentElement, { childList: true, subtree: true });
+  }catch(err){ __swallow(err, 'share-next:boot'); }
 })();
 /* ===== app-99-boot-ok — آخر شريحة في الحزمة (scripts/build.mjs يرتّب الأجزاء بالاسم) =====
    v-ios-boot-flag (فحص ١١ أكتوبر): حارس إقلاع الآيفون (selfdiag.js) يعدّ الإقلاع مكتملًا حين __omranBootOk

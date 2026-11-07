@@ -470,6 +470,8 @@ function __studioErrMsg(e, fbKey){
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
           vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; designRun(again); };
           cell.appendChild(vb);
+          /* v-share-next: «مشاركة» تحت «زوّدني مثله» لكلّ تصميم */
+          if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', after: vb, className: 'btn', style: vb.style.cssText, name: 'omran-design-' + (i + 1) + '.webp' }); }catch(e){ __swallow(e, 'design:share-next'); } }
           gridEl.appendChild(cell);
         });
         dsReveal(gridEl); /* v-scene-kinds */
@@ -1395,7 +1397,7 @@ function stud2ErrText(e, prefix, fbKey){
         /* v-audit-shell (cli-ui-shell-2): الحافظ الموحّد (app-05-save-media، التقاط على document) سبقنا بنقرة المستخدم ونادى omranSaveMedia —
            كان هذا ينادي omranSaveImage فوقه: رفعتان وورقتان للنقرة الواحدة على متصفّح الجوّال. */
         if(ev.defaultPrevented) return;
-        const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp());
+        const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())); /* v-desktop-app */
         if(!mobile || typeof window.omranSaveImage !== 'function') return;
         ev.preventDefault(); ev.stopPropagation();
         window.omranSaveImage(downloadEl.href, downloadEl.getAttribute('download') || 'omran-portrait-style.png', 'save');

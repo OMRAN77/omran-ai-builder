@@ -12,6 +12,8 @@
   function gtx(k, ar, en){ try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return isAr() ? ar : en; }
   function appish(){
     try{
+      /* v-desktop-app: تطبيق متجر ويندوز/ماك حاسوب — التنزيل مباشر، لا لوحة النظام المعلّقة */
+      if(typeof omranDesktopApp === 'function' && omranDesktopApp()) return false;
       if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare')) return true;
       if(typeof omranLikelyApp === 'function' && omranLikelyApp()) return true;
       const ua = navigator.userAgent || '';
