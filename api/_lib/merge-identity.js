@@ -98,7 +98,7 @@ async function detectFaces(apiKey, img, opts) {
       generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', required: ['faces'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: ['box_2d'], properties: { box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } } } } } } },
     }),
   });
-  if (!r.ok) { console.warn('[merge-identity] face detect ' + r.status); return []; } // عطب الكشف: stats.faces يبقى بلا قيمة — لا يُقرأ «لا وجوه» (v-video-identity-mirror: ويُسجَّل — كان صامتًا)
+  if (!r.ok) { const t = typeof r.text === 'function' ? await r.text().catch(() => '') : ''; console.warn('[merge-identity] face detect ' + r.status + (require('./fal-fallback.js').geminiCreditOut(r.status, t) ? ' gemini-out' : '')); return []; } /* v-trends-identity-audit: نفاد Gemini يُسمّى — اللقطة تسقط فيه */ // عطب الكشف: stats.faces يبقى بلا قيمة — لا يُقرأ «لا وجوه» (v-video-identity-mirror: ويُسجَّل — كان صامتًا)
   const d = await r.json().catch(() => null);
   const txt = ((((d && d.candidates) || [])[0] || {}).content || {}).parts || [];
   const s = txt.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join('').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -170,20 +170,29 @@ async function faceCrops(apiKey, photos, opts) {
       /* صورة جماعيّة (٣ وجوه فأكثر): لقطة أيّ وجه تُدخل وجوه جيرانه فتلتبس — تبقى الصورة وحدها مرجعًا */
       if (main.length > 2) return [];
       /* القصّ هنا من نسخة العمل (صغيرة) — لا تُحفظ صور كاملة حتّى نهاية كلّ الصور */
-      return main.map((f) => {
+      const out = main.map((f) => {
         const r = headRect(img, f.box, main.length === 2 ? (main[0] === f ? main[1] : main[0]).box : null);
         /* وجه يملأ الصورة أصلًا = الموديل يراه جيّدًا؛ وجه أصغر من ٣٢ بكسل = لا تفاصيل تُنقذ */
         if (!r || r.fh >= img.h * 0.45 || r.fh < 32 || r.x1 - r.x0 < 48 || r.y1 - r.y0 < 48) return null;
         const c = shrinkTo(crop(img, r.x0, r.y0, r.x1, r.y1), CROP_MAX);
         return { of: i, who: whereIn(f, main), size: f.box[3] - f.box[1], data: Buffer.from(encodeJpeg(c, 92)).toString('base64'), mime: 'image/jpeg' };
-      }).filter(Boolean);
+      });
+      /* v-trends-identity-audit: onePerPhoto (صورة لكلّ شخص: إطار المجموعة وترند الشخص الواحد) — لقطة أكبر وجه وحده (main مرتّب بالمساحة).
+         سقط قصّه (سيلفي ≥٤٥٪ من الصورة) = بلا لقطة، لا الوجه التالي (صديق خلفه، انعكاس، ملصق) يصير مرجع هويّته */
+      if (o.onePerPhoto) return out[0] ? [Object.assign(out[0], { who: 'the person' })] : [];
+      return out.filter(Boolean);
     } catch (e) { console.error('[merge-identity] faces ' + (i + 1) + ': ' + (e && e.message ? e.message : e)); return []; }
   }));
   /* بالتناوب بين الصور (وجه كلّ صورة الأكبر أوّلًا) حتّى تنفد الحصّة */
   const picked = [];
-  for (let round = 0; picked.length < budget && per.some((l) => l.length > round); round++) {
-    per.forEach((l) => { if (l[round] && picked.length < budget) picked.push(l[round]); });
+  /* v-trends-identity-audit: مع ٣ صور الحصّة لقطتان — الأصغر وجهًا (الأخشن عند نموذج الصور) أوّلًا في كلّ جولة لا ترتيب الرفع، فلا يبقى الثالث
+     دائمًا بلا لقطة وهو ربّما الأحوج؛ ثمّ ترتيب الإخراج القديم نفسه (جولة جولة بترتيب الصور) — الحصّة غير الضيّقة كما كانت حرفيًّا */
+  const chosen = new Set();
+  for (let round = 0; chosen.size < budget && per.some((l) => l.length > round); round++) {
+    per.map((l) => l[round]).filter(Boolean).sort((a, b) => a.size - b.size)
+      .forEach((c) => { if (chosen.size < budget) chosen.add(c); });
   }
+  for (let round = 0; per.some((l) => l.length > round); round++) per.forEach((l) => { if (l[round] && chosen.has(l[round])) picked.push(l[round]); });
   return picked.map((c) => ({ of: c.of, who: c.who, size: c.size, data: c.data, mime: c.mime })); // size: عرض الصندوق — ترند الشخص الواحد يختار الأكبر
 }
 

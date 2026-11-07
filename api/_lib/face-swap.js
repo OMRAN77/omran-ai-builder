@@ -3,7 +3,9 @@
    الجذر مثبت: Omni يحفظ وجه الإطار الأوّل طوال المقطع، ونموذج الصور (برو) هو الذي يعيد رسم الوجه وهو يبني الإطار.
    سطر القفل وحده (frameLookLock) لم يكفِ، وتصحيح ثانٍ ببرو رُجع (v-trend-face-refine). فهنا خطوة مخصّصة بعد بناء الإطار:
    تبديل رأس بنموذج تعديل صغير على مزوّد fal (Flux 2 Klein 9B + LoRA «BFS head swap»): Picture 1 قصّة الوجه من الإطار بدقّتها،
-   وPicture 2 وجه الشخص الحقيقيّ، ثمّ يُلصق **بيضاويّ الوجه وحده** بحافة ناعمة فوق الإطار — المشهد واللبس والإضاءة كما رسمها برو.
+   وPicture 2 وجه الشخص الحقيقيّ، ثمّ تُلصق **القصّة كلّها (الرأس بشعره)** بحافة ناعمة فوق الإطار — المشهد خارجها كما رسمه برو.
+   v-trend-hair-lock: كان يُلصق بيضاويّ الوجه وحده فيبقى الشعر الذي اخترعه برو (شعر طويل تطيّره الريح فوق رأس محلوق)؛ والـLoRA
+   تبديل رأس يجلب شعر الصورة الحقيقيّ (توثيقه docs/flux-2-klein.md في مستودع الـLoRA على Hugging Face).
    - مطفأة افتراضيًّا: TREND_FACE_SWAP = off · owner (المالك وحده) · on، تُقرأ عند النداء؛ بلا FAL_KEY = مطفأة. التشغيل إنفاق بموافقة المالك.
    - سقف يوميّ FACE_SWAP_CAP_CENTS (٣٠٠ افتراضيًّا، يوم UTC) في KV: يُحجز ٥ سنتات لكلّ وجه قبل النداء، ولا يُردّ إلّا حجز نداء لم يُنتج شيئًا
      (غير 2xx أو ردّ بلا صورة — نمط render-ai)؛ الأسود والتالف والمهلة صُرفت عند المزوّد فتبقى محسوبة.
@@ -18,8 +20,13 @@ const SYNC = 'https://fal.run/';
 const MODEL_LORA = 'fal-ai/flux-2/klein/9b/edit/lora';
 const MODEL_PLAIN = 'fal-ai/flux-2/klein/9b/edit';
 const LORA_DEFAULT = 'https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap/resolve/d74319971db6bf2492b8d8869c8dc627edc00ed8/head_swap_flux-klein_9b_v1_step3750_rank64.safetensors';
-/* عقد BFS: Picture 1 = الجسم والمشهد (قصّة الإطار)، Picture 2 = وجه الشخص الحقيقيّ */
-const PROMPT = 'head_swap: start with Picture 1 as the base image, keeping its lighting, environment, background, body, clothing, headwear, pose and framing intact. Remove the head from Picture 1 and replace it with the head from Picture 2, keeping the face from Picture 2 exactly - same face shape, eyes, eyebrows, nose, lips, jawline, facial hair and skin details - with the head angle, expression and lighting of Picture 1.';
+/* عقد BFS: Picture 1 = الجسم والمشهد (قصّة الإطار)، Picture 2 = وجه الشخص الحقيقيّ ورأسه — لا يُعكسان أبدًا.
+   v-trend-hair-lock: أمر توثيق الـLoRA الرسميّ حرفيًّا (docs/flux-2-klein.md في مستودعها) بقوّة ~١٫٠ — كان أمرنا يقول «keep headwear» من Picture 1
+   فيبقى ما على رأس الإطار، والرسميّ يجلب شعر Picture 2 */
+const PROMPT = 'head_swap: start with Picture 1 as the base image, keeping its lighting, environment, and background. remove the head from Picture 1 completely and replace it with the head from Picture 2, strictly preserving the hair, eye color, and nose structure of Picture 2. copy the direction of the eye, head rotation, and micro-expressions from Picture 1. Keep the body, clothing, pose, framing, and background intact.';
+/* v-trend-hair-lock: قالب يضع قبّعة المشهد على الرأس (التخرّج، فيلم الثمانينات) — الأمر الرسميّ يمحو رأس Picture 1 كلّه فتسقط القبّعة؛ جملة
+   قصيرة على الرأس وحده (يسمح بها التوثيق) تُبقيها. غيرها الأمر الرسميّ حرفيًّا. */
+const HAT_KEEP = ' Keep the hat or cap worn on the head in Picture 1 in place, on top of the hair and headwear from Picture 2.';
 const COST_CENTS = 5; // تقدير الوجه الواحد (Klein 9B بقصّة ≤١٫٥ ميغابكسل)
 const CAP_CENTS_DEFAULT = 300;
 const spentKey = (day) => 'faceswap:spent:' + day;
@@ -33,14 +40,25 @@ const SIDE_MIN = 768, SIDE_MAX = 1536; // ضلع القصّة بالبكسل ا�
 const PHOTO_MAX = 1024;
 const ASPECT_TOL = 0.02;
 const BLACK_LUMA = 10; // فاحص الأمان عند المزوّد يعيد صورة سوداء
-const FEATHER = 0.12;
+const FEATHER = 0.1; // v-trend-hair-lock: حافة اللصق ~١٠٪ من ضلع القصّة (كانت ١٢٪ من نصف قطر البيضاويّ)
+/* v-trends-identity-audit: وجه خلفيّة بلا مرجع أقصر من ٤٠٪ من الوجه المُبدَّل (جمهور، راقصون، مصوّرون خلفه) لا يقصّ القصّة ولا يلغيها (tight)
+   — يمنع التوسيع إلى ٧٦٨ وحده. وجوه المراجع (متأكّدًا منها أو لا) وأيّ وجه أكبر تقصّ كما كانت */
+const BG_FACE = 0.4;
 
 /** off · owner · on — غير ذلك (ومنه غير المضبوط) = off. */
 function mode() {
-  const m = String(process.env.TREND_FACE_SWAP || '').trim().toLowerCase();
+  /* v-trend-hair-lock: قيمة كُتبت بعلامات تنصيص في Vercel ('owner' أو "on") تُقرأ كما قصدها المالك لا مطفأة */
+  const m = String(process.env.TREND_FACE_SWAP || '').trim().toLowerCase().replace(/^['"]+|['"]+$/g, '');
   return m === 'on' || m === 'owner' ? m : 'off';
 }
 const falKey = () => String(process.env.FAL_KEY || '').trim();
+/** v-trend-hair-lock: لماذا البوّابة مغلقة لهذا الطالب — 'off' · 'no-key' · 'not-owner' · '' (مفتوحة). لا يعيد المفتاح أبدًا. */
+function gateWhy(owner) {
+  const m = mode();
+  if (m === 'off') return 'off';
+  if (!falKey()) return 'no-key';
+  return m === 'owner' && !owner ? 'not-owner' : '';
+}
 /** مفعّلة لهذا الطلب؟ owner = الطالب حساب المالك (بوّابة checkOwnerBypass في المتّصل). */
 function enabledFor(owner) {
   const m = mode();
@@ -98,24 +116,40 @@ function prepRef(r) {
 
 /* نداء Flash واحد: الإطار وكلّ مرجع ← صندوق كلّ مرجع في الإطار بالشكل، وsure. شكل الطلب كـmerge-identity.detectFaces */
 async function locate(apiKey, frame, refs, o) {
+  /* v-trend-hair-lock: صورة واحدة (لا «من ينقذك؟»): الإطار غيّر قصّة شعره ولبسه وإضاءته عمدًا — فلا يُطابَق بها ولا يصير ذلك سببًا للشكّ؛
+     كان Flash يعيد sure=false فلا تبديل أبدًا لصاحب صورة واحدة. مع مرجعين فأكثر الأمر كما كان حرفيًّا. */
+  const solo = refs.length === 1 && !o.multi;
+  /* v-trends-identity-audit: «من ينقذك؟» — نسختان من صاحب الصورة والقالب يلبس الثانية لبسًا آخر؛ الأمر الصارم («طابق باللبس والشعر… sure=false إن
+     لم تتأكّد») كان يجد نسخة واحدة أو يشكّ. ولا نصّ الصورة الواحدة: «اثنان يطابقان بالقدر نفسه = sure=false» يُفشل كلّ إطار فيه */
+  const twin = refs.length === 1 && !!o.multi;
   const parts = [{ text: 'Image A — a generated video frame:' }, { inlineData: { mimeType: 'image/jpeg', data: toB64(mi.shrinkTo(frame, 1024), 85) } }];
   refs.forEach((r, k) => parts.push({ text: 'Reference ' + k + ' — ' + (r.face ? 'a close-up of one real person\'s face' : 'a photo of a real person') + ':' }, { inlineData: { mimeType: r.mime, data: r.b64 } }));
-  parts.push({ text: 'Image A was drawn from the references: each reference shows a real person who appears in Image A. For EACH reference k, find the one person in Image A who is that same person. '
-    + 'Match by appearance — face shape, features, skin tone, hair, facial hair, headwear, glasses, clothing and build — never by left/right order or image order, and never by gender alone. '
+  parts.push({ text: (solo
+    ? 'Image A was drawn from Reference 0 and shows that real person restyled for a video scene: their hairstyle, clothing and lighting may differ from the reference, and that alone is NOT a reason to be unsure. '
+      + 'If Image A shows other people too (a celebrity, a partner, bystanders), pick the one whose face matches Reference 0 best — never by left/right order or image order, and never by gender alone. '
+    : twin
+      ? 'Image A was drawn from Reference 0 and shows that same real person twice (two versions of them in one scene): their clothing, hairstyle and lighting may differ from the reference and between the two versions, and that alone is NOT a reason to be unsure. Find EVERY person in Image A whose face matches Reference 0 — never by left/right order or image order, and never by gender alone. '
+    : 'Image A was drawn from the references: each reference shows a real person who appears in Image A. For EACH reference k, find the one person in Image A who is that same person. '
+      + 'Match by appearance — face shape, features, skin tone, hair, facial hair, headwear, glasses, clothing and build — never by left/right order or image order, and never by gender alone. ')
     + 'Return box_2d [ymin, xmin, ymax, xmax] normalized to 0-1000 for that person\'s face in Image A, from the hairline/forehead to the chin and ear to ear. '
     + (o.multi ? 'Image A may show the person from Reference 0 twice (two versions of the same person): return one entry for each of them. ' : '')
     + 'For a reference that is a photo (not a close-up) also return ref_box: that person\'s face inside the reference itself, in the same format. '
-    + 'Set sure to false whenever you are not certain which person in Image A matches, or the face is hidden, turned away or not a real human face. '
+    + (solo
+      ? 'Set sure to false only when the face is hidden, masked, inside a closed helmet, turned fully away, not a real human face, or when two people in Image A match Reference 0 equally well. '
+      : twin ? 'Set sure to false only when that face is hidden, masked, inside a closed helmet, turned fully away or not a real human face. '
+      : 'Set sure to false whenever you are not certain which person in Image A matches, or the face is hidden, turned away or not a real human face. ')
     + 'Also list in others the face of EVERY other clearly visible human or human-like face in Image A that is not in faces (extra characters, a zombie, a partner, guests, bystanders), even when it matches no reference; others is [] when there is none. '
     + 'Return JSON {"faces": [{"ref": k, "box_2d": [...], "ref_box": [...], "sure": true}], "others": [{"box_2d": [...]}]} only; leave out a reference you cannot find.' });
   const r = await (o.fetchImpl || fetch)(mi.DETECT_URL + apiKey, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(Math.max(1, Math.min(LOCATE_MAX_MS, o.until - Date.now()))),
     body: JSON.stringify({
       contents: [{ parts }],
-      generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', required: ['faces', 'others'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: ['ref', 'box_2d', 'sure'], properties: { ref: { type: 'INTEGER' }, box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } }, ref_box: { type: 'ARRAY', items: { type: 'INTEGER' } }, sure: { type: 'BOOLEAN' } } } }, others: { type: 'ARRAY', items: { type: 'OBJECT', required: ['box_2d'], properties: { box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } } } } } } },
+      /* v-trend-hair-lock: بلا تفكير للصناديق (كما v-flash-budget في image-judge وmedia-intent) — يبقى الربط دون LOCATE_MAX_MS */
+      generationConfig: { temperature: 0, thinkingConfig: { thinkingBudget: 0 }, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', required: ['faces', 'others'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: ['ref', 'box_2d', 'sure'], properties: { ref: { type: 'INTEGER' }, box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } }, ref_box: { type: 'ARRAY', items: { type: 'INTEGER' } }, sure: { type: 'BOOLEAN' } } } }, others: { type: 'ARRAY', items: { type: 'OBJECT', required: ['box_2d'], properties: { box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } } } } } } },
     }),
   });
-  if (!r.ok) return { why: 'locate-' + r.status };
+  /* v-trends-identity-audit: نفاد رصيد Gemini يُسمّى (لا «locate-429» يُقرأ زحامًا) — ولا يطابق SWAP_RETRY_RE فلا تُعاد محاولة لا جدوى منها */
+  if (!r.ok) { const t = typeof r.text === 'function' ? await r.text().catch(() => '') : ''; return { why: require('./fal-fallback.js').geminiCreditOut(r.status, t) ? 'locate-gemini-out' : 'locate-' + r.status }; }
   const d = await r.json().catch(() => null);
   const txt = ((((d && d.candidates) || [])[0] || {}).content || {}).parts || [];
   const s = txt.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join('').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -143,6 +177,9 @@ function validate(list, extra, nRefs, only, multi, H) {
     const got = all.filter((f) => f.ref === k);
     if (!got.length) return { why: 'missing' };
     if (got.length > (multi && k === 0 ? 2 : 1)) return { why: 'duplicate' };
+    /* v-trends-identity-audit: «من ينقذك؟» — نسخة واحدة رُبطت ووجه آخر غيرها في الإطار (النسخة الثانية فاتت Flash) = لا تبديل: نسخة برأسه
+       الحقيقيّ وأخرى بوجه الإطار = وجهان مختلفان لشخص واحد. الإطار الذي لا يظهر فيه إلّا نسخة واحدة يُبدَّل كما كان */
+    if (multi && k === 0 && got.length === 1 && strangers.some((s) => iou(got[0].box, s.box) < DUP_IOU)) return { why: 'missing-copy' };
     for (const f of got) {
       if (!f.sure) return { why: 'unsure' };
       if ((f.box[3] - f.box[1]) * H < FACE_MIN_PX) return { why: 'small' };
@@ -183,11 +220,12 @@ function cropRect(img, f, others, known) {
   const ctr = (b) => [(b[0] + b[2]) / 2 * img.w, (b[1] + b[3]) / 2 * img.h];
   const [cx, cy] = ctr(f.box);
   const rest = others.filter((o) => o !== f);
-  const near = rest.slice().sort((a, b) => { const [ax, ay] = ctr(a.box), [bx, by] = ctr(b.box); return Math.hypot(ax - cx, ay - cy) - Math.hypot(bx - cx, by - cy); })[0];
+  const block = rest.filter((o) => o.ref !== -1 || (o.box[3] - o.box[1]) >= BG_FACE * (f.box[3] - f.box[1])); // v-trends-identity-audit
+  const near = block.slice().sort((a, b) => { const [ax, ay] = ctr(a.box), [bx, by] = ctr(b.box); return Math.hypot(ax - cx, ay - cy) - Math.hypot(bx - cx, by - cy); })[0];
   const r = mi.headRect(img, f.box, near ? near.box : null);
   if (!r) return { why: 'tight' };
   let rect = { x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 };
-  for (const o of rest) { if (touches(img, o.box, rect)) rect = apart(img, rect, f.box, o.box); if (!rect) return { why: 'tight' }; }
+  for (const o of block) { if (touches(img, o.box, rect)) rect = apart(img, rect, f.box, o.box); if (!rect) return { why: 'tight' }; }
   const big = Math.max(rect.x1 - rect.x0, rect.y1 - rect.y0);
   if (big > SIDE_MAX) return { why: 'large' };
   const side = Math.min(img.w, img.h, Math.max(SIDE_MIN, big));
@@ -222,7 +260,7 @@ async function swapOne(job, o, key) {
   const W = Math.ceil(job.crop.w / 16) * 16, H = Math.ceil(job.crop.h / 16) * 16;
   const lora = loraPath();
   const body = {
-    prompt: PROMPT,
+    prompt: o.hat ? PROMPT + HAT_KEEP : PROMPT,
     image_urls: ['data:image/jpeg;base64,' + toB64(job.crop, 95), 'data:' + job.ref.mime + ';base64,' + job.ref.b64],
     image_size: { width: W, height: H }, output_format: 'png', sync_mode: true, enable_safety_checker: true, num_images: 1,
   };
@@ -232,7 +270,12 @@ async function swapOne(job, o, key) {
   const r = await f(SYNC + modelId(), { method: 'POST', headers: { Authorization: 'Key ' + key, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
   const j = await r.json().catch(() => null);
   /* refund: المزوّد لم يُنتج شيئًا (غير 2xx أو بلا صورة) — وحده يُردّ حجزه؛ ما بعده صورة مولَّدة محسوبة عليه */
-  if (!r.ok) return { why: 'fal-' + r.status, refund: true };
+  if (!r.ok) {
+    /* v-trend-hair-lock: نصّ رفض المزوّد (٤٠٤ نموذج، ٤٢٢ شكل الطلب) في السبب نفسه — أوّل تشغيل حيّ يسمّي العطب؛ منظَّفًا من المفتاحين */
+    const d = j && (Array.isArray(j.detail) ? (j.detail[0] && j.detail[0].msg) : (typeof j.detail === 'string' ? j.detail : j.error));
+    const detail = d ? clean(typeof d === 'string' ? d : JSON.stringify(d), [key, o.apiKey]).slice(0, 80).replace(/,/g, ';') : '';
+    return { why: 'fal-' + r.status + (detail ? ' ' + detail : ''), refund: true };
+  }
   const url = String((j && j.images && j.images[0] && j.images[0].url) || '');
   if (!url) return { why: 'fal-empty', refund: true };
   const buf = await fetchOut(url, f, signal);
@@ -243,25 +286,21 @@ async function swapOne(job, o, key) {
   return { img: fc.resample(img, job.crop.w, job.crop.h) };
 }
 
-/* لصق بيضاويّ الوجه وحده: الصندوق أعرض ٦٪ وأعلى ٤٪ ويمتدّ ١٨٪ تحت الذقن (اللحية)، وحافة ناعمة ~١٢٪، وتخبو عند حدود القصّة فلا خطّ */
+/* v-trend-hair-lock: لصق القصّة كلّها (الرأس بشعره وغطائه من الصورة الحقيقيّة) فوق مستطيلها، بحافة ناعمة ~١٠٪ من ضلعها الأقصر تخبو
+   نحو الإطار فلا خطّ — وحافة القصّة على حدّ الصورة نفسها لا تُنعَّم (لا إطار خلفها يُمزج). خارج المستطيل لا يُمسّ بكسل، والمستطيل
+   نفسه (cropRect) يقف دون كلّ وجه آخر. كان بيضاويّ الوجه وحده فيبقى الشعر الذي اخترعه نموذج الإطار. */
 function paste(out, W, job, sw) {
   const { rect, box } = job;
-  const fx0 = box[0] * W, fx1 = box[2] * W, fy0 = box[1] * job.H, fy1 = box[3] * job.H;
-  const fw = fx1 - fx0, fh = fy1 - fy0;
-  const ex0 = fx0 - 0.06 * fw, ex1 = fx1 + 0.06 * fw, ey0 = fy0 - 0.04 * fh, ey1 = fy1 + 0.18 * fh;
-  const cx = (ex0 + ex1) / 2, cy = (ey0 + ey1) / 2, rx = (ex1 - ex0) / 2, ry = (ey1 - ey0) / 2;
   const cw = rect.x1 - rect.x0, ch = rect.y1 - rect.y0;
-  const edge = Math.max(4, Math.round(Math.min(cw, ch) * 0.04));
-  const xa = Math.max(rect.x0, Math.floor(ex0)), xb = Math.min(rect.x1, Math.ceil(ex1));
-  const ya = Math.max(rect.y0, Math.floor(ey0)), yb = Math.min(rect.y1, Math.ceil(ey1));
-  for (let y = ya; y < yb; y++) {
-    for (let x = xa; x < xb; x++) {
-      const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry;
-      const r = Math.sqrt(dx * dx + dy * dy);
-      if (r >= 1) continue;
-      let a = Math.min(1, (1 - r) / FEATHER);
-      const de = Math.min(x - rect.x0, rect.x1 - 1 - x, y - rect.y0, rect.y1 - 1 - y);
-      a *= Math.max(0, Math.min(1, de / edge));
+  const edge = Math.max(4, Math.round(Math.min(cw, ch) * FEATHER));
+  /* v-trends-identity-audit: الحافة لا تدخل صندوق الوجه — ضلع قُصّ عند منتصف المسافة إلى جار (apart/headRect) يتنعّم في الفاصل وحده، وإلّا بقي
+     خدّ الإطار القديم وأذنه نصفهما تحت الجديد (الزوجان خدًّا لخدّ، المجموعة، المارّة). الضلع الواسع (كلّ أضلاع القصّة الفرديّة) كما كان حرفيًّا */
+  const gap = (m) => Math.max(1, Math.min(edge, Math.floor(m)));
+  const eL = gap(box[0] * W - rect.x0), eR = gap(rect.x1 - box[2] * W), eT = gap(box[1] * job.H - rect.y0), eB = gap(rect.y1 - box[3] * job.H);
+  for (let y = rect.y0; y < rect.y1; y++) {
+    for (let x = rect.x0; x < rect.x1; x++) {
+      const a = Math.max(0, Math.min(1, rect.x0 > 0 ? (x - rect.x0 + 0.5) / eL : 1, rect.x1 < W ? (rect.x1 - 1 - x + 0.5) / eR : 1,
+        rect.y0 > 0 ? (y - rect.y0 + 0.5) / eT : 1, rect.y1 < job.H ? (rect.y1 - 1 - y + 0.5) / eB : 1));
       if (a <= 0) continue;
       const o = (y * W + x) * 4, s = ((y - rect.y0) * cw + (x - rect.x0)) * 4;
       for (let c = 0; c < 3; c++) out[o + c] = Math.round(sw.data[s + c] * a + out[o + c] * (1 - a));
@@ -271,7 +310,8 @@ function paste(out, W, job, sw) {
 
 /**
  * frame: { b64, mime } الإطار المبنيّ؛ refs: [{ data, mime, face }] بترتيب الأشخاص (face = لقطة وجه جاهزة).
- * o: { apiKey (Gemini للربط)، until (آخر لحظة لها، ms)، owner، only ([k…] المراجع التي تُبدَّل؛ الافتراضيّ كلّها)، multi، fetchImpl، kv }.
+ * o: { apiKey (Gemini للربط)، until (آخر لحظة لها، ms)، owner، only ([k…] المراجع التي تُبدَّل؛ الافتراضيّ كلّها)، multi، fetchImpl، kv،
+ *      alone (v-trend-hair-lock: المشهد فيه صاحب الصورة وحده)، hat (v-trend-hair-lock: قبّعة المشهد تبقى) }.
  * يرجع { b64, mime, swapped, reason } — swapped عدد الوجوه المبدَّلة؛ صفر = الإطار نفسه بايتًا ببايت.
  */
 async function lockFaces(frame, refs, opts) {
@@ -294,6 +334,14 @@ async function lockFaces(frame, refs, opts) {
     const prepared = list.map(prepRef);
     const loc = await locate(o.apiKey, img, prepared, o);
     if (loc.why) return same(loc.why);
+    /* v-trend-hair-lock: صورة واحدة في مشهد قالبه لا يذكر إلّا صاحبها (alone من المتّصل: ALONE_SCENE_TRENDS)، وFlash لم يربط أحدًا بالمرجع ٠
+       لكنّه عدّ في الإطار وجهًا واحدًا بالضبط (others أو ref ‎-1) = هو صاحب الصورة. بلا alone، أو مع only (شخصيّة ثانية في المشهد: الزومبي)،
+       يبقى «missing» — وإلّا لصق رأس المستخدم على الزومبي أو الأميرة حين يفوت Flash وجهه. وجهان فأكثر «missing»، وsure=false صريح على
+       الوجه الوحيد (مغطّى، ملتفت) لا يُبدَّل، وsure=false على المرجع ٠ يبقى «unsure». بلا others = لا نعرف */
+    if (o.alone === true && prepared.length === 1 && !o.multi && !(Array.isArray(o.only) && o.only.length) && Array.isArray(loc.others) && loc.faces.every((x) => Number(x && x.ref) === -1)) {
+      const seen = loc.others.concat(loc.faces);
+      if (seen.length === 1 && seen[0] && seen[0].sure !== false) { loc.faces = [{ ref: 0, box_2d: seen[0].box_2d, sure: true }]; loc.others = []; }
+    }
     const v = validate(loc.faces, loc.others, prepared.length, only, !!o.multi, img.h);
     if (v.why) return same(v.why);
     /* المهامّ: قصّة الإطار، ووجه المرجع (صورة كاملة بصندوقها = قصّة وجهها؛ وإلّا الصورة المصغّرة نفسها) */
@@ -352,4 +400,4 @@ async function lockFaces(frame, refs, opts) {
   }
 }
 
-module.exports = { lockFaces, enabledFor, mode, capCents, modelId, loraPath, PROMPT, COST_CENTS, CAP_CENTS_DEFAULT, LORA_DEFAULT, MODEL_LORA, MODEL_PLAIN, spentKey, MIN_LEFT_MS };
+module.exports = { lockFaces, enabledFor, mode, gateWhy, capCents, modelId, loraPath, PROMPT, HAT_KEEP, COST_CENTS, CAP_CENTS_DEFAULT, LORA_DEFAULT, MODEL_LORA, MODEL_PLAIN, spentKey, MIN_LEFT_MS };
