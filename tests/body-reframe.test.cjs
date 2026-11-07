@@ -58,7 +58,7 @@ stub('api/_lib/face-swap.js', {
   lockFaces: async (frame, refs, o) => { lockCalls.push({ frame, refs, o }); return lockSwap ? { b64: SWAPPED, mime: 'image/jpeg', swapped: 1 } : { b64: frame.b64, mime: frame.mime, swapped: 0, reason: 'x' }; },
 });
 
-let faces = CLOSE, detectDown = false, image = 'ok', identity = true, photoG = '', photoCovered = false, cardCheck = true;
+let faces = CLOSE, detectDown = false, image = 'ok', identity = true, photoG = '', photoCovered = false, cardCheck = true, facePts = null;
 const calls = [];
 const realFetch = global.fetch;
 global.fetch = async (url, init) => {
@@ -73,7 +73,7 @@ global.fetch = async (url, init) => {
     if (/should show that same person/.test(text)) return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ onePerson: cardCheck, samePerson: true, skinMatches: true }) }] } }] });
     if (/Identity check only/.test(text)) return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ identityPreserved: identity, sameVisualMedium: true }) }] } }] });
     if (detectDown) return Response.json({ error: { message: 'down' } }, { status: 500 });
-    return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ faces: faces.map((b) => ({ box_2d: b })) }) }] } }] });
+    return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ faces: faces.map((b, i) => Object.assign({ box_2d: b }, (facePts && facePts[i]) || {})) }) }] } }] });
   }
   if (/gemini-3-pro-image:generateContent/.test(u)) {
     if (image === 'none') return Response.json({ candidates: [{ finishReason: 'OTHER', content: { parts: [{ text: 'no' }] } }] });
@@ -90,7 +90,7 @@ const CARD = require(rp('api/_lib/studio-card-fix.js'));
 
 function reset(o) {
   store.clear(); calls.length = 0; lockCalls.length = 0;
-  faces = (o && o.faces) || CLOSE; detectDown = !!(o && o.down); image = (o && o.image) || 'ok'; lockSwap = !(o && o.noSwap); identity = !(o && o.stranger); photoG = (o && o.g) || ''; photoCovered = !!(o && o.covered); cardCheck = !(o && o.cardReject);
+  faces = (o && o.faces) || CLOSE; detectDown = !!(o && o.down); image = (o && o.image) || 'ok'; lockSwap = !(o && o.noSwap); identity = !(o && o.stranger); photoG = (o && o.g) || ''; photoCovered = !!(o && o.covered); cardCheck = !(o && o.cardReject); facePts = (o && o.pts) || null;
 }
 async function post(body) {
   let done; const sent = new Promise((r) => { done = r; });
@@ -354,4 +354,198 @@ test('١٤. سمات البطاقات من تأطيرها: الحجاب والس
   assert.deepEqual(hijab, ['bdhourglassa', 'bdhourglassb', 'bdhourglassc', 'posture', 'slim', 'toned']);
   /* ترتيب studio-preview نفسه: SUBJECT المصحَّح أوّلًا ثمّ PREVIEW_SUBJECT */
   for (const k of hijab) assert.equal(CARD.SUBJECT['body:' + k] || require(rp('api/_lib/studio-more.js')).PREVIEW_SUBJECT.body[k], 'w', k + ': بطاقات الحجاب لنموذج امرأة');
+});
+
+/* ───── v-body-upright (لقطة المالك ٧ نوفمبر: سيلفي مائل نحو ٧٠° بفلتر والوجه يملأ الصورة ← جسم كامل بوجه امرأة أخرى ولون عيون آخر،
+   وغطاء رأس أسود لم تلبسه، والقفل «بدّل ١/١»: «بعده يغير الملامح خسرتني توكن وتجارب كثير») ───── */
+const MI = require(rp('api/_lib/merge-identity.js'));
+const { decodeImage } = require(rp('api/_lib/image-diff.js'));
+/* «وجه» اصطناعيّ بميل معلوم: عين يسراه زرقاء ويمناه صفراء (المراجعة: عينان بلون واحد لا تكشفان لقطة معكوسة كالمرآة)، فم أحمر، قمّة رأس
+   خضراء على جلد — والنقاط والصندوق كما يعيدها الكاشف (نسبيّة) */
+const SKIN = [200, 160, 120], BLUE = [20, 40, 230], YELLOW = [230, 210, 30], RED = [230, 30, 30], GREEN = [30, 200, 40];
+function paint(W, H, dots, rad) {
+  const data = Buffer.alloc(W * H * 4);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let c = SKIN;
+    for (const [p, col] of dots) if (Math.hypot(x + 0.5 - p[0], y + 0.5 - p[1]) < rad) c = col;
+    const i = (y * W + x) * 4; data[i] = c[0]; data[i + 1] = c[1]; data[i + 2] = c[2]; data[i + 3] = 255;
+  }
+  return { w: W, h: H, data };
+}
+function tiltedFace(rollDeg, o) {
+  const W = 600, H = 800, d = (o && o.d) || 100, r = rollDeg * Math.PI / 180;
+  const up = [Math.sin(r), -Math.cos(r)], rt = [Math.cos(r), Math.sin(r)];
+  const e = [300, 380], m = [e[0] - d * up[0], e[1] - d * up[1]];
+  const a = [e[0] - 0.45 * d * rt[0], e[1] - 0.45 * d * rt[1]], b = [e[0] + 0.45 * d * rt[0], e[1] + 0.45 * d * rt[1]];
+  const top = [e[0] + 1.2 * d * up[0], e[1] + 1.2 * d * up[1]];
+  const img = paint(W, H, [[a, BLUE], [b, YELLOW], [m, RED], [top, GREEN]], 0.14 * d);
+  const rel = (p) => [p[0] / W, p[1] / H];
+  return { img, face: { box: [(e[0] - 1.5 * d) / W, (e[1] - 1.5 * d) / H, (e[0] + 1.5 * d) / W, (e[1] + 1.5 * d) / H], eyes: [rel(a), rel(b)], mouth: rel(m) } };
+}
+/* مراكز الألوان في اللقطة: L = العين الزرقاء (يسرى الوجه)، R = الصفراء */
+function blobs(b64) {
+  const im = decodeImage(Buffer.from(b64, 'base64'));
+  const pick = (t) => { const out = []; for (let y = 0; y < im.h; y++) for (let x = 0; x < im.w; x++) { const i = (y * im.w + x) * 4; if (t(im.data[i], im.data[i + 1], im.data[i + 2])) out.push([x, y]); } return out; };
+  const mean = (p) => [p.reduce((s, q) => s + q[0], 0) / p.length, p.reduce((s, q) => s + q[1], 0) / p.length];
+  const L = pick((r, g, b) => b > 160 && r < 90 && g < 110), R = pick((r, g, b) => r > 170 && g > 170 && b < 100);
+  return { T: im.w, nL: L.length, nR: R.length, L: mean(L), R: mean(R), mouth: mean(pick((r, g, b) => r > 170 && g < 90 && b < 90)), top: mean(pick((r, g, b) => g > 150 && r < 100 && b < 110)) };
+}
+
+test('١٥. uprightCrop: وجه مائل بأيّ زاوية (٠، ٢، ٣٠، ‎-٧٩ كصورتها، ٩٠، مقلوب ١٨٠) ← لقطة مستقيمة: العينان أفقيّتان فوق الفم، والرأس في الأعلى', () => {
+  for (const deg of [0, 2, 30, -79, 90, 180]) {
+    const { img, face } = tiltedFace(deg);
+    const up = MI.uprightCrop(img, face);
+    assert.ok(up, deg + '°');
+    assert.equal(up.mime, 'image/jpeg');
+    assert.equal(up.side, 400, deg + '°: الضلع ٤ أضعاف مسافة العينين←الفم');
+    const expect = Math.abs(deg) < 4 ? 0 : deg;
+    assert.ok(Math.abs(((up.roll - expect + 540) % 360) - 180) <= 1, deg + '°: roll=' + up.roll);
+    const k = blobs(up.data);
+    assert.ok(k.nL > 20 && k.nR > 20, deg + '°: العينان في اللقطة');
+    assert.ok(k.L[0] < k.R[0], deg + '°: يسرى الوجه يسارًا — دوران لا مرآة');
+    assert.ok(Math.abs(k.L[1] - k.R[1]) < 0.03 * k.T, deg + '°: العينان على خطّ أفقيّ ' + JSON.stringify(k));
+    assert.ok(Math.abs((k.R[0] - k.L[0]) - 90) < 8, deg + '°: مسافة العينين كما هي (لا تكبير ولا تصغير)');
+    assert.ok(k.L[0] < k.mouth[0] && k.mouth[0] < k.R[0] && Math.abs(k.mouth[0] - k.T / 2) < 0.04 * k.T, deg + '°: الفم في الوسط بين العينين');
+    assert.ok(k.mouth[1] > k.L[1] + 0.15 * k.T, deg + '°: الفم تحت العينين');
+    assert.ok(k.top[1] < k.L[1] - 0.15 * k.T && Math.abs(k.top[0] - k.T / 2) < 0.04 * k.T, deg + '°: قمّة الرأس في الأعلى');
+  }
+});
+
+test('١٦. نقاط لا تشبه وجهًا ← null (والمتّصل يعود إلى faceCrops): بلا فم، عين واحدة، عين خارج الصندوق، العينان على محور الوجه، عين فوق عين، وجه صغير', () => {
+  const { img, face } = tiltedFace(30);
+  assert.equal(MI.uprightCrop(img, Object.assign({}, face, { mouth: undefined })), null, 'بلا فم');
+  assert.equal(MI.uprightCrop(img, Object.assign({}, face, { eyes: [face.eyes[0]] })), null, 'عين واحدة');
+  assert.equal(MI.uprightCrop(img, Object.assign({}, face, { eyes: [[0.97, 0.97], face.eyes[1]] })), null, 'عين خارج الصندوق');
+  const z = tiltedFace(0);
+  /* المراجعة: «عين خارج الصندوق» أعلاه يسقط بفحوص الهندسة قبل الصندوق — هنا الصندوق وحده: نقاط سليمة الهندسة وصندوق في مكان آخر */
+  assert.ok(MI.uprightCrop(z.img, z.face), 'الضابط: النقاط نفسها بصندوقها = لقطة');
+  assert.equal(MI.uprightCrop(z.img, Object.assign({}, z.face, { box: [0, 0, 0.2, 0.15] })), null, 'النقاط خارج صندوق الوجه');
+  assert.equal(MI.uprightCrop(z.img, Object.assign({}, z.face, { eyes: [[0.5, 340 / 800], [0.5, 420 / 800]] })), null, 'خطّ العينين على محور الوجه');
+  assert.equal(MI.uprightCrop(z.img, Object.assign({}, z.face, { eyes: [[0.5, 380 / 800], [0.5, 380 / 800]] })), null, 'العينان نقطة واحدة');
+  const s = tiltedFace(0, { d: 10 });
+  assert.equal(MI.uprightCrop(s.img, s.face), null, 'وجه أصغر من أن يُقوَّم');
+});
+
+test('١٧. صورتها مائلة والوجه يملأ الصورة ← لقطة وجه مستقيمة مع صورتها للرسم، ومرجعًا للقفل وفحص الجنس وفحص البطاقة؛ والكشف يطلب العينين والفم', async () => {
+  // CLOSE = وجه بنصف ارتفاع الصورة (faceCrops لا يقصّ له لقطة)؛ أعلى الوجه إلى اليسار (‎-٩٠°)
+  const PTS = [{ eyes: [250, 330, 450, 330], mouth: [350, 560] }];
+  reset({ pts: PTS, g: 'woman' });
+  cache('toned');
+  const logs = [], log0 = console.log;
+  console.log = (...a) => { logs.push(a.join(' ')); };
+  let r;
+  try { r = await post({ style: 'toned' }); } finally { console.log = log0; }
+  assert.equal(r.code, 200); assert.equal(r.body.reframed, true);
+  assert.match(JSON.stringify(calls.find((c) => c.detect).body.contents), /Also return eyes \[y1, x1, y2, x2\]: the centre of each of the two eyes, and mouth \[y, x\]: the centre of the mouth/);
+  const call = proCalls()[0], imgs = imagesOf(call);
+  assert.equal(imgs.length, 2, 'صورتها ثمّ لقطة وجهها المستقيمة');
+  assert.equal(imgs[0], SRC);
+  assert.match(promptOf(call), /Close-up 1 — the face of the person in Photo 1 \(the same person, zoomed in and turned upright; identity reference only, not an extra person\):/);
+  assert.equal(lockCalls.length, 1);
+  assert.deepEqual(lockCalls[0].refs[0], { data: imgs[1], mime: 'image/jpeg', face: true }, 'القفل من وجهها المستقيم لا الصورة المائلة');
+  assert.equal(lockCalls[0].o.faceOnly, true);
+  const look = calls.find((c) => /a man or a woman/.test(JSON.stringify((c.body && c.body.contents) || '')));
+  assert.deepEqual(look.body.contents[0].parts.filter((p) => p.inlineData).map((p) => p.inlineData.data), [SRC, imgs[1]], 'فحص الجنس يرى وجهها المستقيم أيضًا');
+  assert.match(JSON.stringify(look.body.contents), /the second image is a close-up of that same person's face, turned upright/);
+  assert.ok(logs.some((s) => /body reframe toned: text \(card cached, photo w uncovered, card model w, hijab card, face upright -90°\)/.test(s)), logs.join(' | '));
+  // وضع البطاقة: فحص ما بعد الرسم يقارن بوجهه المستقيم
+  reset({ pts: PTS, g: 'man' });
+  cache('bdsurferc');
+  await post({ style: 'bdsurferc' });
+  const crop = imagesOf(proCalls()[0])[1];
+  assert.equal(imagesOf(proCalls()[0]).length, 3, 'صورته ولقطته والبطاقة');
+  assert.equal(cardChecks()[0].body.contents[0].parts[1].inlineData.data, crop, 'Image A = وجهه المستقيم');
+  // بلا نقاط (كشف قديم أو ناقص) = كما كان حرفيًّا: لا لقطة لوجه يملأ الصورة، والقفل من الصورة
+  reset();
+  await post();
+  assert.equal(imagesOf(proCalls()[0]).length, 1);
+  assert.equal(lockCalls[0].refs[0].data, SRC);
+});
+
+test('١٨. «شعرها مكشوف» من فحص الصورة ← سطر رأس صريح (شعرها كما هو، لا شيء على الرأس ولا الرقبة، لا «حجاب رياضيّ»)؛ الرجل والمحجّبة والفحص المتعذّر بالسطر العامّ وفيه «المكشوف يبقى مكشوفًا»', async () => {
+  const head = (p) => (/\nHead: [^\n]*/.exec(p) || [''])[0];
+  for (const [o, why] of [[{ g: 'woman' }, 'امرأة شعرها مكشوف'], [{ g: '' }, 'جنس غير واضح وشعر مكشوف']]) {
+    reset(o); cache('toned');
+    await post({ style: 'toned' });
+    const h = head(promptOf(proCalls()[0]));
+    assert.match(h, /Head: the hair is uncovered in Photo 1 — keep their own hair exactly as in Photo 1 \(the same hairstyle, fringe, length and colour\), fully visible, and add nothing on the head or around the neck that Photo 1 does not show: no hood, cap, balaclava or neck gaiter\. A hijab, headscarf or shayla that Photo 1 does show stays exactly as worn\./, why);
+    assert.ok(!/sports hijab|ghutra/.test(h), why);
+    /* المراجعة: «مكشوف» جواب Flash قد يخطئ (شيلة رخوة تُظهر الغرّة) — السطر لا يأمر بنزع غطاء أبدًا */
+    assert.ok(!/no hijab|no headscarf|remove/i.test(h), why + ': لا أمر بنزع');
+  }
+  for (const [o, style, cached, why] of [[{ g: 'man' }, 'toned', true, 'رجل'], [{ g: 'woman', covered: true }, 'bdboxera', true, 'محجّبة'], [{ g: 'down' }, 'toned', true, 'تعذّر الفحص'], [{ g: 'woman' }, 'toned', false, 'لا بطاقة = لا فحص']]) {
+    reset(o); if (cached) cache(style);
+    await post({ style });
+    const h = head(promptOf(proCalls()[0]));
+    assert.match(h, /^\nHead: a man's ghutra, shemagh, agal, kufi or cap is removed/, why);
+    assert.match(h, /Never add a head covering to anyone who wears none — uncovered hair stays uncovered, in its own hairstyle, never under a hood, balaclava or neck gaiter\.$/, why);
+  }
+});
+
+test('١٩. detectFaces: بلا points الطلب والمخطّط والناتج كما كانت حرفيًّا (الدمج والترندات والفيديو)؛ وبها العينان والفم نسبيّةً [x, y]', async () => {
+  const bodies = [];
+  const fake = async (u, init) => { bodies.push(JSON.parse(init.body)); return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ faces: [{ box_2d: [100, 200, 500, 600], eyes: [250, 300, 260, 500], mouth: [400, 400] }] }) }] } }] }); };
+  const img = { w: 10, h: 10, data: Buffer.alloc(400, 128) };
+  const plain = await MI.detectFaces('k', img, { fetchImpl: fake });
+  const pts = await MI.detectFaces('k', img, { fetchImpl: fake, points: true });
+  assert.equal(bodies[0].contents[0].parts[1].text, 'Find every human face in this photo. For each face return box_2d [ymin, xmin, ymax, xmax] normalized to 0-1000, from the hairline/forehead to the chin and ear to ear. Return JSON {"faces": [{"box_2d": [...]}]} only; an empty list if there are no people.');
+  assert.equal(JSON.stringify(bodies[0].generationConfig.responseSchema), JSON.stringify({ type: 'OBJECT', required: ['faces'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: ['box_2d'], properties: { box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } } } } } }));
+  assert.deepEqual(plain, [{ box: [0.2, 0.1, 0.6, 0.5] }], 'بلا نقاط وإن أعادها الموديل');
+  assert.match(bodies[1].contents[0].parts[1].text, /Also return eyes \[y1, x1, y2, x2\]: the centre of each of the two eyes, and mouth \[y, x\]: the centre of the mouth, normalized to 0-1000 in the same way\. Return JSON \{"faces": \[\{"box_2d": \[\.\.\.\], "eyes": \[\.\.\.\], "mouth": \[\.\.\.\]\}\]\}/);
+  assert.deepEqual(Object.keys(bodies[1].generationConfig.responseSchema.properties.faces.items.properties), ['box_2d', 'eyes', 'mouth']);
+  assert.deepEqual(pts, [{ box: [0.2, 0.1, 0.6, 0.5], eyes: [[0.3, 0.25], [0.5, 0.26]], mouth: [0.4, 0.4] }]);
+});
+
+/* المراجعة العدائيّة لـv-body-upright (٤ مؤكّدة، مصلحة): وجه ثلاثة أرباع من تحت كان يُرفض، ومفتاح MERGE_FACE_CROPS كان يُتخطّى */
+/* وجه ثلاثيّ الأبعاد مُسقَط بمنظور سيلفي: العينان ±٣٢ مم، والفم ٧٠ مم تحتهما و١٠ مم أمامهما، والكاميرا على ٣٥٠ مم؛ التفات (yaw) ثمّ
+   انحناء (pitch) ثمّ ميل في الصورة (roll) — النقاط كما يراها الكاشف لوجه حقيقيّ */
+function projectedFace(yawDeg, pitchDeg, rollDeg) {
+  const W = 600, H = 1000, f = 1.6, D = 350;
+  const th = yawDeg * Math.PI / 180, ph = pitchDeg * Math.PI / 180, ps = rollDeg * Math.PI / 180;
+  const proj = ([x, y, z]) => {
+    const x1 = x * Math.cos(th) + z * Math.sin(th), z1 = -x * Math.sin(th) + z * Math.cos(th);
+    const y2 = y * Math.cos(ph) - z1 * Math.sin(ph), z2 = y * Math.sin(ph) + z1 * Math.cos(ph);
+    const s = D / (D - z2), u = x1 * s * f, v = -y2 * s * f;
+    return [W / 2 + u * Math.cos(ps) - v * Math.sin(ps), H / 2 + u * Math.sin(ps) + v * Math.cos(ps)];
+  };
+  const a = proj([-32, 0, 0]), b = proj([32, 0, 0]), m = proj([0, -70, 10]), top = proj([0, 75, -10]);
+  const d = Math.hypot((a[0] + b[0]) / 2 - m[0], (a[1] + b[1]) / 2 - m[1]);
+  const xs = [a[0], b[0], m[0], top[0]], ys = [a[1], b[1], m[1], top[1]];
+  const box = [Math.min(...xs) - 0.6 * d, Math.min(...ys) - 0.6 * d, Math.max(...xs) + 0.6 * d, Math.max(...ys) + 0.6 * d];
+  const img = paint(W, H, [[a, BLUE], [b, YELLOW], [m, RED], [top, GREEN]], 0.14 * d);
+  const rel = (p) => [p[0] / W, p[1] / H];
+  return { img, face: { box: [box[0] / W, box[1] / H, box[2] / W, box[3] / H].map((v) => Math.max(0, Math.min(1, v))), eyes: [rel(a), rel(b)], mouth: rel(m) } };
+}
+
+test('٢٠. المراجعة: وجه ملتفت ثلاثة أرباع مصوَّر من تحت أو فوق، مائل كصورتها (‎-٧٩°) ← لقطة مستقيمة لا null (كان حدّ التعامد ٠٫٥ يرفضه فيعود العطل نفسه)', () => {
+  for (const yaw of [-45, 45]) {
+    for (const pitch of [-35, -25, 25, 35]) {
+      const why = 'yaw ' + yaw + ' pitch ' + pitch;
+      const { img, face } = projectedFace(yaw, pitch, -79);
+      const up = MI.uprightCrop(img, face);
+      assert.ok(up, why + ': لقطة');
+      const k = blobs(up.data);
+      assert.ok(k.nL > 20 && k.nR > 20, why + ': العينان في اللقطة');
+      assert.ok(k.L[0] < k.R[0], why + ': دوران لا مرآة');
+      assert.ok(k.mouth[1] > Math.max(k.L[1], k.R[1]) + 0.1 * k.T, why + ': الفم تحت العينين');
+      assert.ok(Math.abs(k.mouth[0] - (k.L[0] + k.R[0]) / 2) < 0.05 * k.T, why + ': محور الفم←العينين قائم ' + JSON.stringify(k));
+      assert.ok(k.top[1] < Math.min(k.L[1], k.R[1]), why + ': قمّة الرأس فوق العينين');
+    }
+  }
+});
+
+test('٢١. المراجعة: MERGE_FACE_CROPS=off (إيقاف اللقطات بلا نشر) يوقف لقطة الجسم المستقيمة أيضًا ← صورته وحدها للرسم والقفل وفحص الجنس، والسجلّ «no face crop»', async () => {
+  process.env.MERGE_FACE_CROPS = 'off';
+  try {
+    reset({ pts: [{ eyes: [250, 330, 450, 330], mouth: [350, 560] }], g: 'woman' });
+    cache('toned');
+    const logs = [], log0 = console.log;
+    console.log = (...a) => { logs.push(a.join(' ')); };
+    try { await post({ style: 'toned' }); } finally { console.log = log0; }
+    assert.equal(imagesOf(proCalls()[0]).length, 1, 'صورته وحدها للرسم');
+    assert.deepEqual(lockCalls[0].refs[0], { data: SRC, mime: 'image/png' }, 'القفل من الصورة كما كان (لا لقطة)');
+    const look = calls.find((c) => /a man or a woman/.test(JSON.stringify((c.body && c.body.contents) || '')));
+    assert.equal(look.body.contents[0].parts.filter((p) => p.inlineData).length, 1, 'فحص الجنس بالصورة وحدها');
+    assert.ok(logs.some((s) => /body reframe toned: .*, no face crop\)$/.test(s)), logs.join(' | '));
+  } finally { delete process.env.MERGE_FACE_CROPS; }
 });

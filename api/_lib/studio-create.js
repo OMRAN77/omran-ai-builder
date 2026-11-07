@@ -375,15 +375,26 @@ async function lockMergeFaces(frame, m) {
    شخصين مقرّبة ← المسار القديم؛ كشف مرّتين ← مرّة؛ رفض برو ← إنقاذ؛ وبوّابة إنفاق خاصّة. ───── */
 const BODY_CLOSEUP = 0.22;
 function bodyReframeOn() { return String(process.env.BODY_REFRAME || 'on').trim().toLowerCase() === 'on'; }
-/* ← { faces } حين تصلح الصورة لإعادة التأطير (شخص رئيسيّ واحد ووجهه مقرّب)، وإلّا null (المسار القديم) */
+/* ← { faces, crop } حين تصلح الصورة لإعادة التأطير (شخص رئيسيّ واحد ووجهه مقرّب)، وإلّا null (المسار القديم).
+   v-body-upright: الكشف نفسه يعيد مركزي العينين والفم، وcrop لقطة وجهه المستقيمة (uprightCrop) أيًّا كان ميله وحجمه في الصورة — مرجع الرسم
+   والقفل وفحص الجنس وفحص البطاقة؛ تعذّرت = null وfaceCrops كما كان */
 async function bodyCloseUp(apiKey, b64) {
   try {
     const img = mergeIdentity.decodeWork(b64);
     if (!img) return null;
-    const faces = await mergeIdentity.detectFaces(apiKey, img, {});
+    const faces = await mergeIdentity.detectFaces(apiKey, img, { points: true });
     const biggest = Math.max(0, ...faces.map((f) => f.box[3] - f.box[1]));
     const main = faces.filter((f) => f.box[3] - f.box[1] >= biggest * 0.5);
-    return (biggest > BODY_CLOSEUP && main.length === 1) ? { faces } : null;
+    if (!(biggest > BODY_CLOSEUP && main.length === 1)) return null;
+    let crop = null;
+    /* المراجعة: MERGE_FACE_CROPS=off يوقف هذه اللقطة أيضًا (كانت تتخطّاه) — فيعود faceCrops ويرجع [] كما كان */
+    if (mergeIdentity.cropsOn()) {
+      try {
+        const u = mergeIdentity.uprightCrop(img, main[0]);
+        if (u) crop = { of: 0, who: 'the person', size: main[0].box[3] - main[0].box[1], data: u.data, mime: u.mime, upright: true, roll: u.roll };
+      } catch (e) { console.warn('[studio-create] body upright crop ' + (e && e.message)); } /* اللقطة تعذّرت = faceCrops كما كان */
+    }
+    return { faces, crop };
   } catch (e) { console.warn('[studio-create] body close-up check ' + (e && e.message)); return null; } /* الكشف تعذّر = المسار القديم */
 }
 /* v-body-sport (المالك بعد التجربة، صورته بقميص رماديّ فضفاض طويل الأكمام وغترة: «كأنه صياد رايح البحر… في الجسم واللياقة مش صيد بحر
@@ -402,20 +413,30 @@ function bodyColorway(variant) {
   const n = Number.isFinite(variant) ? Math.abs(Math.floor(variant)) : Math.floor(Math.random() * BODY_COLORWAYS.length);
   return BODY_COLORWAYS[n % BODY_COLORWAYS.length];
 }
-function bodyReframeTask(style, description, variant) {
+/* v-body-upright (لقطة المالك: بنت شعرها مكشوف بغرّة وكعكة ← غطاء رأس أسود ورقبة سوداء لم تلبسهما): سطر الرأس العامّ يذكر «حجابًا رياضيًّا»
+   والموديل أضافه؛ فحص الصورة (photoLook) قال «شعر مكشوف» = سطر صريح: شعرها كما في الصورة ولا شيء على الرأس أو الرقبة. الرجل كما كان.
+   وفي السطر العامّ (الفحص لم يحسم): الشعر المكشوف يبقى مكشوفًا بتسريحته، لا قلنسوة ولا لثام ولا غطاء رقبة.
+   المراجعة: السطر الصريح لا يأمر بنزع شيء أبدًا — «مكشوف» جواب Flash قد يخطئ (شيلة رخوة تُظهر الغرّة)، فكان «no hijab, headscarf» ينزع غطاءها؛
+   الآن: لا يُضاف ما لا تُظهره الصورة، وما تُظهره على الرأس يبقى كما هو. */
+function bodyHeadLine(look) {
+  const l = look || {};
+  if (l.covered === false && l.g !== 'm') return 'Head: the hair is uncovered in Photo 1 — keep their own hair exactly as in Photo 1 (the same hairstyle, fringe, length and colour), fully visible, and add nothing on the head or around the neck that Photo 1 does not show: no hood, cap, balaclava or neck gaiter. A hijab, headscarf or shayla that Photo 1 does show stays exactly as worn.';
+  return 'Head: a man\'s ghutra, shemagh, agal, kufi or cap is removed — his head is bare, with short neat hair whose colour matches his beard and age, and nothing on his head. A woman\'s hijab or headscarf stays, fully covering, worn as a fitted sports hijab. Never add a head covering to anyone who wears none — uncovered hair stays uncovered, in its own hairstyle, never under a hood, balaclava or neck gaiter.';
+}
+function bodyReframeTask(style, description, variant, look) {
   const cw = bodyColorway(variant);
   return 'Photo 1 shows the user as a close-up. Create a new full-body standing photo of this same person, the whole figure visible from the top of the head down to the feet, standing naturally and facing the camera, with ' + styleTextOf('body', style) + '.\n' +
     'Keep from Photo 1, exactly and with full fidelity: their face and every facial feature, skin tone, facial hair and apparent age. Copy the face from the close-up when one is given. Expression: both eyes fully open, clear and looking straight at the camera — never closed, squinting or half-closed — with a natural, relaxed smile.\n' +
     'New in this photo, and only these: the body build described above, the sportswear and the head. Dress them like a fitness reference photo: a man wears a fitted short-sleeved athletic t-shirt that clearly shows the build, knee-length athletic shorts or slim athletic joggers, and sneakers; a woman wears a modest fitted long-sleeved athletic top with a hip-length tunic over full-length leggings, and sneakers. Never a bare chest or midriff, never swimwear, never loose everyday clothes that hide the build. ' +
     'Sportswear colours for this photo: a ' + cw[0] + ' top with ' + cw[1] + ' shorts, joggers or leggings, and sneakers that go with them.\n' +
-    'Head: a man\'s ghutra, shemagh, agal, kufi or cap is removed — his head is bare, with short neat hair whose colour matches his beard and age, and nothing on his head. A woman\'s hijab or headscarf stays, fully covering, worn as a fitted sports hijab. Never add a head covering to anyone who wears none.\n' +
+    bodyHeadLine(look) + '\n' +
     'Dark warm brown studio backdrop with soft golden light, sharp focus on the face. No text, logos or watermarks. Output a single photorealistic image.' +
     (description ? '\nExtra request: ' + String(description).slice(0, 200) : '');
 }
 /* أجزاء Gemini: الصورة بعنوانها، ثمّ اللقطة المقرّبة (إن وُجدت) بعنوانها، ثمّ (في وضع البطاقة) بطاقة الخيار، ثمّ الأمر — لا قالب الدمج (يأمر بإبقاء اللبس) */
 function bodyReframeParts(photo, crops, task, card) {
   const parts = [{ text: card ? 'Photo 1 of 2 — the user (identity reference):' : 'Photo 1 of 1:' }, { inlineData: { mimeType: photo.mime || 'image/jpeg', data: photo.data } }];
-  (crops || []).forEach((c, k) => parts.push({ text: 'Close-up ' + (k + 1) + ' — the face of the person in Photo 1 (the same person, zoomed in; identity reference only, not an extra person):' }, { inlineData: { mimeType: c.mime, data: c.data } }));
+  (crops || []).forEach((c, k) => parts.push({ text: 'Close-up ' + (k + 1) + ' — the face of the person in Photo 1 (the same person, zoomed in' + (c.roll ? ' and turned upright' : '') + '; identity reference only, not an extra person):' }, { inlineData: { mimeType: c.mime, data: c.data } }));
   if (card) parts.push({ text: 'Photo 2 of 2 — the chosen look (the option card the user picked: an example photo of a different, generic model — never the user, and never a second person in the result):' }, { inlineData: { mimeType: card.mime, data: card.data } });
   parts.push({ text: task });
   return parts;
@@ -432,24 +453,28 @@ function bodyReframeParts(photo, crops, task, card) {
    لا «حذاء رياضيّ من الرأس إلى القدمين» ثابتًا؛ بطاقات الجانب (profile) تبقى بالوصف النصّيّ (الوجه للكاميرا)؛ فحص بعد الرسم (شخص واحد، الوجه
    نفسه، لون جلد الجسم كالوجه) يعيد الرسم بالوصف النصّيّ مرّة إن رُفض والوقت يسمح؛ الإنقاذ بالوصف النصّيّ وصوره؛ وفحص الجنس بعد وجود بطاقة. ───── */
 const LOOK_SCHEMA = { type: 'OBJECT', properties: { gender: { type: 'STRING', enum: ['man', 'woman', 'unknown'] }, covered: { type: 'BOOLEAN' } }, required: ['gender', 'covered'] };
-/* الشخص الرئيسيّ في الصورة ← { g: 'm' | 'w' | '' (تعذّر/غير واضح), covered: true | false | null (شعره مغطّى بحجاب/طرحة) } */
-async function photoLook(apiKey, b64, mime) {
-  const none = { g: '', covered: null };
+/* الشخص الرئيسيّ في الصورة ← { g: 'm' | 'w' | '' (تعذّر/غير واضح), covered: true | false | null (شعره مغطّى بحجاب/طرحة), why (سبب «؟» للسجلّ) }.
+   v-body-upright: ومعها لقطة وجهه المستقيمة إن وُجدت (صورة مائلة جانبًا كانت تعطي «؟») */
+async function photoLook(apiKey, b64, mime, crop) {
+  const none = (why) => ({ g: '', covered: null, why });
   try {
+    const parts = [{ inlineData: { mimeType: mime || 'image/jpeg', data: b64 } }];
+    if (crop) parts.push({ inlineData: { mimeType: crop.mime, data: crop.data } });
+    parts.push({ text: 'Look at the main person in this photo' + (crop ? ' (the second image is a close-up of that same person\'s face, turned upright)' : '') + '. Is it a man or a woman, and is their hair covered by a hijab, headscarf or veil? Reply with JSON only: {"gender":"man"|"woman"|"unknown","covered":true|false}.' });
     const r = await fetch(mergeIdentity.DETECT_URL + apiKey, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(12000),
       body: JSON.stringify({
-        contents: [{ parts: [{ inlineData: { mimeType: mime || 'image/jpeg', data: b64 } }, { text: 'Look at the main person in this photo. Is it a man or a woman, and is their hair covered by a hijab, headscarf or veil? Reply with JSON only: {"gender":"man"|"woman"|"unknown","covered":true|false}.' }] }],
+        contents: [{ parts }],
         generationConfig: { temperature: 0, maxOutputTokens: 64, responseMimeType: 'application/json', responseSchema: LOOK_SCHEMA, thinkingConfig: { thinkingBudget: 0 } }, /* v-flash-nothink */
       }),
     });
-    if (!r.ok) return none;
+    if (!r.ok) return none('http ' + r.status);
     const d = await r.json().catch(() => null);
     const txt = String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' '));
     const j = extractJsonObject(txt) || {};
     const g = String(j.gender || '');
-    return { g: g === 'man' ? 'm' : (g === 'woman' ? 'w' : ''), covered: typeof j.covered === 'boolean' ? j.covered : null };
-  } catch (e) { console.warn('[studio-create] body look check ' + (e && e.message)); return none; } /* تعذّر = الوصف النصّيّ */
+    return { g: g === 'man' ? 'm' : (g === 'woman' ? 'w' : ''), covered: typeof j.covered === 'boolean' ? j.covered : null, why: g === 'man' || g === 'woman' ? '' : (g || 'no answer') };
+  } catch (e) { console.warn('[studio-create] body look check ' + (e && e.message)); return none('error'); } /* تعذّر = الوصف النصّيّ */
 }
 /* جنس نموذج البطاقة كما رسمها studio-preview نفسه */
 function bodyCardGender(style) {
@@ -521,20 +546,22 @@ async function bodyCardCheck(apiKey, photo, result) {
 }
 const CARD_REDO_MS = 120000; /* إعادة الرسم بالوصف النصّيّ مرّة إن رُفض الناتج قبل هذه المدّة من بدء الطلب (مهلة الدالّة ٣٠٠ ث) */
 
-/* { apiKey, imageBase64, mimeType, style, description, variant, faces, username, t0 } ← { b64, mime, engine?, swapped, card } أو { error, status } */
+/* { apiKey, imageBase64, mimeType, style, description, variant, faces, crop (v-body-upright)، username, t0 } ← { b64, mime, engine?, swapped, card } أو { error, status } */
 async function bodyReframe(o) {
   const photos = [{ data: o.imageBase64, mime: o.mimeType || 'image/jpeg' }];
-  /* الكشف نفسه (بلا نداء ثانٍ) — وبالتوازي البطاقة المخزّنة، وفحص صاحب الصورة بعدها وحدها (لا نداء بلا بطاقة) */
+  /* الكشف نفسه (بلا نداء ثانٍ) — وبالتوازي البطاقة المخزّنة، وفحص صاحب الصورة بعدها وحدها (لا نداء بلا بطاقة).
+     v-body-upright: لقطة الوجه المستقيمة (o.crop) هي لقطة الرسم ومرجع القفل؛ بلاها faceCrops كما كان (لا لقطة لوجه يملأ الصورة) */
   const [crops, cl] = await Promise.all([
-    mergeIdentity.faceCrops(o.apiKey, photos, { faces: [o.faces] }),
-    bodyCardRef(o.style).then(async (c) => (c ? { card: c, look: await photoLook(o.apiKey, o.imageBase64, o.mimeType) } : { card: null, look: { g: '', covered: null } })),
+    o.crop ? Promise.resolve([o.crop]) : mergeIdentity.faceCrops(o.apiKey, photos, { faces: [o.faces] }),
+    bodyCardRef(o.style).then(async (c) => (c ? { card: c, look: await photoLook(o.apiKey, o.imageBase64, o.mimeType, o.crop) } : { card: null, look: { g: '', covered: null } })),
   ]);
   const card = cl.card, look = cl.look;
   const traits = bodyCardTraits(o.style);
   const cardG = bodyCardGender(o.style);
   const useCard = !!(card && look.g && look.g === cardG && !traits.profile && (!traits.hijab || look.covered === true));
-  console.log('[studio-create] body reframe ' + o.style + ': ' + (useCard ? 'card' : 'text') + ' (card ' + (card ? 'cached' : 'missing') + ', photo ' + (look.g || '?') + (look.covered ? ' covered' : '') + ', card model ' + cardG + (traits.profile ? ', profile' : '') + (traits.hijab ? ', hijab card' : '') + ')');
-  const textTask = bodyReframeTask(o.style, o.description, o.variant);
+  const face = crops[0] ? (crops[0].upright ? 'face upright ' + crops[0].roll + '°' : 'face crop') : 'no face crop';
+  console.log('[studio-create] body reframe ' + o.style + ': ' + (useCard ? 'card' : 'text') + ' (card ' + (card ? 'cached' : 'missing') + ', photo ' + (look.g || '?' + (look.why ? '[' + look.why + ']' : '')) + (look.covered ? ' covered' : (look.covered === false ? ' uncovered' : '')) + ', card model ' + cardG + (traits.profile ? ', profile' : '') + (traits.hijab ? ', hijab card' : '') + ', ' + face + ')');
+  const textTask = bodyReframeTask(o.style, o.description, o.variant, look);
   const textParts = () => bodyReframeParts(photos[0], crops, textTask);
   const lockOf = (img) => lockMergeFaces({ b64: img.b64, mime: img.mime }, { photos, crops, counts: [1], userTask: '', apiKey: o.apiKey, username: o.username, t0: o.t0, gate: 'BODY_FACE_SWAP', faceOnly: true /* v-body-bare-head: الغترة أُزيلت عمدًا — الوجه وحده لا الرأس بغطائه */ });
   let out = await geminiImage(o.apiKey, useCard ? bodyReframeParts(photos[0], crops, bodyCardTask(o.style, o.description, o.variant, traits), card) : textParts(), 'body', '2:3');
@@ -550,7 +577,8 @@ async function bodyReframe(o) {
     fromCard = false;
   }
   let locked = await lockOf(out);
-  if (fromCard && !(await bodyCardCheck(o.apiKey, photos[0], locked))) {
+  /* v-body-upright: الفحص يقارن بوجهه المستقيم إن وُجد (الصورة المائلة جانبًا تُربك «الشخص نفسه») */
+  if (fromCard && !(await bodyCardCheck(o.apiKey, o.crop ? { data: o.crop.data, mime: o.crop.mime } : photos[0], locked))) {
     /* الناتج حمل من نموذج البطاقة (شخص ثانٍ، وجه آخر، جلد بلون آخر): مرّة بالوصف النصّيّ إن سمح الوقت، وإلّا رفض بلا خصم */
     const late = Date.now() - o.t0 >= CARD_REDO_MS;
     console.warn('[studio-create] body card result rejected — ' + (late ? 'no time to redo' : 'redo with the text task'));
@@ -660,7 +688,7 @@ module.exports = async (req, res) => {
        الوجه (البوّابة، المفتاح، السقف، لبس الربط) ففحص هويّة مقابل الصورة قبل الخصم — وجه غريب = ٤٢٢ كحارس التعديل */
     const closeUp = (feature === 'body' && bodyReframeOn()) ? await bodyCloseUp(apiKey, imageBase64) : null;
     if (closeUp) {
-      const rb = await bodyReframe({ apiKey, imageBase64, mimeType, style, description, variant: Number(variant), faces: closeUp.faces, username: quota.username, t0: Date.now() });
+      const rb = await bodyReframe({ apiKey, imageBase64, mimeType, style, description, variant: Number(variant), faces: closeUp.faces, crop: closeUp.crop, username: quota.username, t0: Date.now() });
       if (!rb.b64) { res.status(rb.status).json({ error: rb.error }); return; }
       if (!rb.swapped) {
         const idg = await verifyLocalizedImageEdit({
