@@ -9461,9 +9461,10 @@ function renderMessages(keepScroll){
         gimg.onerror = () => { gimg.remove(); };
         /* v-share-visible (فحص المتصفّح ٧ نوفمبر): صورة أداة التوليد ارتفاعها صفر حتّى يُفكّ ترميزها، والتمرير للأسفل يسبقها — فيبقى
            آخر الردّ (الشرح وزرّ «مشاركة») تحت صندوق الكتابة. تلحق الأسفل عند تحميلها (كصور المرفقات v-chat-wait) إن كان القارئ ملاحِقًا
-           وكان في الأسفل قبل أن تكبر (ما تحته لا يزيد على ارتفاعها): الصورة lazy، فصورة قديمة تُحمَّل حين يصلها بحث Ctrl+F أو تمرير بلا
-           عجلة ولا إصبع (follow() يبقى صحيحًا) كانت تشدّه إلى آخر المحادثة بعيدًا عمّا وجده. */
-        gimg.addEventListener('load', () => { try{ if(gimg.isConnected && window.omranChatFollow && window.omranChatFollow.follow() && messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight <= gimg.offsetHeight + 160) smartScrollBottom(true); }catch(e){ __swallow(e, 'gen:follow'); } });
+           وكان في الأسفل قبل أن تكبر (ما تحته لا يزيد على ارتفاع الشريط كلّه): الصورة lazy، فصورة قديمة تُحمَّل حين يصلها بحث Ctrl+F أو تمرير
+           بلا عجلة ولا إصبع (follow() يبقى صحيحًا) كانت تشدّه إلى آخر المحادثة بعيدًا عمّا وجده. الشريط لا الصورة: صورتان أو أكثر تُحجَّمان
+           في تخطيط واحد قبل أوّل load، فما تحته مجموعهما. */
+        gimg.addEventListener('load', () => { try{ if(gimg.isConnected && window.omranChatFollow && window.omranChatFollow.follow() && messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight <= genStrip.offsetHeight + 160) smartScrollBottom(true); }catch(e){ __swallow(e, 'gen:follow'); } });
         if(window.__omranImgTools){ const gb = document.createElement('div'); gb.style.cssText = 'position:relative;display:inline-block;max-width:100%'; gb.appendChild(gimg); window.__omranImgTools(gb, url); genStrip.appendChild(gb); }
         else genStrip.appendChild(gimg);
       });
