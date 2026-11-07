@@ -2251,6 +2251,9 @@ function renderMessages(keepScroll){
         gimg.src = url; gimg.alt = ''; gimg.loading = 'lazy';
         gimg.style.cssText = 'max-width:min(100%,320px);border-radius:12px';
         gimg.onerror = () => { gimg.remove(); };
+        /* v-share-visible (فحص المتصفّح ٧ نوفمبر): صورة أداة التوليد ارتفاعها صفر حتّى يُفكّ ترميزها، والتمرير للأسفل يسبقها — فيبقى
+           آخر الردّ (الشرح وزرّ «مشاركة») تحت صندوق الكتابة. تلحق الأسفل عند تحميلها كصور المرفقات (v-chat-wait) إن كان القارئ ملاحِقًا. */
+        gimg.addEventListener('load', () => { try{ if(gimg.isConnected && window.omranChatFollow && window.omranChatFollow.follow()) smartScrollBottom(true); }catch(e){ __swallow(e, 'gen:follow'); } });
         if(window.__omranImgTools){ const gb = document.createElement('div'); gb.style.cssText = 'position:relative;display:inline-block;max-width:100%'; gb.appendChild(gimg); window.__omranImgTools(gb, url); genStrip.appendChild(gb); }
         else genStrip.appendChild(gimg);
       });

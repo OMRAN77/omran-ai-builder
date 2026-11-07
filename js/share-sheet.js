@@ -363,6 +363,9 @@
     var sync = function(){
       try{
         place();
+        /* v-share-visible: أسلوب زرّ التحميل كما هو الآن لا لحظة الربط — الاستوديو والأزياء يضيفان max-width:760px;margin-inline:auto
+           بعد الربط (الحزمة ٤٫٧ م.ب تنفَّذ بعد هذا الملفّ)، فكان زرّ المشاركة بعرض النافذة (١١٠٠) تحت تحميلٍ بعرض ٧٦٠ */
+        if(o.style == null) b.style.cssText = dl.style.cssText;
         if(hiddenEl(dl)){ b.style.display = 'none'; return; }
         var cs = dl.isConnected ? getComputedStyle(dl) : null;
         var d = o.display || (cs ? cs.display : (dl.style.display || '')); /* نفس عرض زرّ التحميل: كتلة بعرضه أو سطريّ بجانبه */
@@ -395,7 +398,7 @@
     { sel: '#constructionRoomDownloadLink', className: 'btn' },
     { sel: '#videoMakerDownloadLink', className: 'btn', kind: 'video' }, // صانع الفيديو
     { sel: '#vdDl', className: 'vmk-dir-dl', kind: 'video', style: 'background:transparent;cursor:pointer;font-family:inherit;' },  // مخرج التطبيق (video.js)
-    { sel: '#vmkClDl', className: 'vmk-cl-dl', kind: 'video', style: 'background:transparent;cursor:pointer;font-family:inherit;' } // تنظيف الفيديو (video.js)
+    { sel: '#vmkClDl', className: 'vmk-cl-dl', kind: 'video', style: '' } // تنظيف الفيديو (video.js) — أسلوبه في modules.css (v-share-visible): المضمَّن كان يمحو الذهبيّ ويُبقي النصّ الداكن على الأسود
   ];
   window.omranShareNextList = SHARE_NEXT;
   var autoTimer = 0;
