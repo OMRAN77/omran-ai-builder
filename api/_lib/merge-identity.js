@@ -164,7 +164,8 @@ async function faceCrops(apiKey, photos, opts) {
     try {
       const img = decodeWork(p.data);
       if (!img) return [];
-      const faces = await detectFaces(apiKey, img, o);
+      /* v-body-reframe: وجوه كُشفت قبلُ لهذه الصورة (o.faces[i]) = بلا نداء كشف ثانٍ */
+      const faces = (Array.isArray(o.faces) && Array.isArray(o.faces[i])) ? o.faces[i] : await detectFaces(apiKey, img, o);
       const biggest = Math.max(0, ...faces.map((f) => f.box[3] - f.box[1]));
       const main = faces.filter((f) => f.box[3] - f.box[1] >= biggest * 0.5);
       if (Array.isArray(o.perPhoto)) o.perPhoto[i] = main.length; /* v-merge-face-lock: عدد الأشخاص الرئيسيّين لكلّ صورة (قفل الوجه لصورة الشخص الواحد) */
