@@ -127,6 +127,7 @@
   }
   window.omranRenderCards = function(cards){
     if(cards && cards.kind === 'call' && typeof window.omranCallCard === 'function') return window.omranCallCard(cards.call, cards); // v-call-agent: بطاقة المكالمة (app-42)
+    if(cards && cards.kind === 'office' && typeof window.omranOfficeCard === 'function') return window.omranOfficeCard(cards.office); // v-office-files: كرت ملفّ Excel/PowerPoint (app-44)
     css();
     var wrap = document.createElement('div');
     wrap.className = 'omCardsWrap';
