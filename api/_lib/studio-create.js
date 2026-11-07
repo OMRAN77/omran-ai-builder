@@ -386,11 +386,16 @@ async function bodyCloseUp(apiKey, b64) {
     return (biggest > BODY_CLOSEUP && main.length === 1) ? { faces } : null;
   } catch (e) { console.warn('[studio-create] body close-up check ' + (e && e.message)); return null; } /* الكشف تعذّر = المسار القديم */
 }
+/* v-body-sport (المالك بعد التجربة، صورته بقميص رماديّ فضفاض طويل الأكمام وغترة: «كأنه صياد رايح البحر… في الجسم واللياقة مش صيد بحر
+   شوف الملابس كيف»، ثمّ «مش ضروري كاب، عادي بدون أي شي فوق راسه»): اللبس رياضيّ كبطاقات الميزة (قميص رياضيّ قصير الأكمام يُظهر البنية
+   وشورت للركبة أو بنطال رياضيّ)، والرجل بلا غترة ولا عقال ولا طاقيّة — رأس مكشوف بشعر قصير مرتّب؛ المرأة بحجابها حجابًا رياضيًّا، ولا يُضاف
+   غطاء رأس لمن لا يلبسه؛ والخلفيّة خلفيّة البطاقات (بنّيّة دافئة بضوء ذهبيّ). */
 function bodyReframeTask(style, description) {
   return 'Photo 1 shows the user as a close-up. Create a new full-body standing photo of this same person, the whole figure visible from the top of the head down to the feet, standing naturally and facing the camera, with ' + styleTextOf('body', style) + '.\n' +
-    'Keep from Photo 1, exactly and with full fidelity: their face and every facial feature, skin tone, facial hair, apparent age and expression, and their head covering exactly as photographed — a ghutra, hijab, headscarf or cap stays exactly as it is, and if they wear none, add none. Copy the face from the close-up when one is given.\n' +
-    'New in this photo, and only these: the body build described above and the clothing. Dress them in modest athletic clothing that suits them and shows the build — never a bare chest or midriff, never swimwear or a skin-tight second-skin top. If Photo 1 shows a hijab or headscarf, the outfit is a loose long-sleeved tunic that covers the hips over full-length loose trousers.\n' +
-    'Plain neutral background, soft even light, sharp focus on the face. No text, logos or watermarks. Output a single photorealistic image.' +
+    'Keep from Photo 1, exactly and with full fidelity: their face and every facial feature, skin tone, facial hair, apparent age and expression. Copy the face from the close-up when one is given.\n' +
+    'New in this photo, and only these: the body build described above, the sportswear and the head. Dress them like a fitness reference photo: a man wears a fitted short-sleeved athletic t-shirt that clearly shows the build, knee-length athletic shorts or slim athletic joggers, and sneakers; a woman wears a modest fitted long-sleeved athletic top with a hip-length tunic over full-length leggings, and sneakers. Never a bare chest or midriff, never swimwear, never loose everyday clothes that hide the build.\n' +
+    'Head: a man\'s ghutra, shemagh, agal, kufi or cap is removed — his head is bare, with short neat hair whose colour matches his beard and age, and nothing on his head. A woman\'s hijab or headscarf stays, fully covering, worn as a fitted sports hijab. Never add a head covering to anyone who wears none.\n' +
+    'Dark warm brown studio backdrop with soft golden light, sharp focus on the face. No text, logos or watermarks. Output a single photorealistic image.' +
     (description ? '\nExtra request: ' + String(description).slice(0, 200) : '');
 }
 /* أجزاء Gemini: الصورة بعنوانها، ثمّ اللقطة المقرّبة (إن وُجدت) بعنوانها، ثمّ الأمر — لا قالب الدمج (يأمر بإبقاء اللبس) */
