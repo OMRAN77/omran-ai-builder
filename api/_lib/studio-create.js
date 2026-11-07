@@ -327,9 +327,10 @@ const MERGE_ASPECT = '4:3';
    بيضاويّ اللصق من رسم برو. */
 const MERGE_FRAMING = '\nFraming: when the photos show people, frame them from the waist up (a medium shot) unless the task above asks for a full-body or wide view; keep any scene the task describes around them, but never shrink the people so far that their faces become small — every face stays large, sharp and clearly visible with its own features.'
   + ' Unless the task above asks for a different pose, each person keeps the head angle, gaze and expression of their own photo (facing the camera when their photo does — never turned to the side toward the other person), and keeps the exact beard or facial hair of their photo: the same fullness, length, density and outline, never trimmed, thinned or restyled.';
-/* بوّابة الإنفاق: غير مضبوط/on = الجميع (موافقة المالك)، owner = المالك، وأيّ قيمة أخرى (off، false، 0…) = مطفأ */
-function mergeSwapOn(username) {
-  const m = String(process.env.MERGE_FACE_SWAP || 'on').trim().toLowerCase();
+/* بوّابة الإنفاق: غير مضبوط/on = الجميع (موافقة المالك)، owner = المالك، وأيّ قيمة أخرى (off، false، 0…) = مطفأ.
+   gate: اسم المتغيّر (MERGE_FACE_SWAP للدمج، BODY_FACE_SWAP لجسم الصورة المقرّبة — v-body-reframe) */
+function mergeSwapOn(username, gate) {
+  const m = String(process.env[gate || 'MERGE_FACE_SWAP'] || 'on').trim().toLowerCase();
   if (m === 'on') return true;
   if (m === 'owner') return require('./_owner.js').isOwnerName(username);
   return false;
@@ -346,7 +347,7 @@ function mergeWantsNewLook(text) {
    المراجعة: صورة فيها شخص واحد بالضبط تُقفل (بلقطة وجهها إن وُجدت، وإلّا الصورة كاملة)؛ صورة فيها اثنان فأكثر تبقى مرجعًا يُتجنَّب
    (خارج only) كي لا يُلصق وجه أحدهما على الآخر؛ تعذّر العدّ أو لا وجه = لا قفل لها، ولا شيء يُقفل = لا نداء أصلًا. */
 async function lockMergeFaces(frame, m) {
-  if (!mergeSwapOn(m.username)) return frame;
+  if (!mergeSwapOn(m.username, m.gate)) return frame;
   if (mergeWantsNewLook(m.userTask)) { console.warn('[studio-create] merge face-lock skipped: new-look'); return frame; }
   const only = m.photos.map((_, k) => k).filter((k) => m.counts[k] === 1);
   if (!only.length) { console.warn('[studio-create] merge face-lock skipped: no single-person photo'); return frame; }
@@ -360,6 +361,61 @@ async function lockMergeFaces(frame, m) {
     console.warn('[studio-create] merge face-lock skipped: ' + String((r && r.reason) || 'none').slice(0, 60));
   } catch (e) { console.warn('[studio-create] merge face-lock ' + (e && e.message)); } /* lockFaces لا يرمي — حارس احتياطيّ */
   return frame;
+}
+
+/* ───── v-body-reframe (لقطة المالك ٧ نوفمبر: صورة وجه وكتفين بكندورة + «ملاكم — قوي» ← الصورة نفسها تقريبًا: «شوف شو طالب وشو عطاني»،
+   ثمّ اختار «يرسم جسمي كامل»): ميزة الجسم تعدّل الصورة نفسها بقفل الإطار (EDIT_LOCK)، وفي صورة الوجه لا جسم يتغيّر، والبطاقة جسم كامل.
+   الآن: صورة فيها شخص واحد مقرّب (أكبر وجه أطول من BODY_CLOSEUP من ارتفاع الصورة، ولا وجه رئيسيّ غيره) = صورة كاملة من الرأس إلى
+   القدمين بالبنية المختارة (وصف الخيار نفسه) في لبس رياضيّ ساتر يناسب صاحب الصورة، بأجزاء هويّة خاصّة (الوجه ولون البشرة وشعر الوجه
+   وغطاء الرأس كما هي؛ اللبس والبنية وحدهما جديدان)، ثمّ قفل الوجه من صورته (lockMergeFaces، بوّابة BODY_FACE_SWAP). بلا قفل بكسل
+   ولا حارس موضعيّ — الإطار جديد؛ وإن لم يُقفل الوجه ففحص هويّة مقابل الصورة قبل الخصم. تعذّر الكشف أو أكثر من شخص = المسار القديم.
+   BODY_REFRAME=off يعيد السلوك القديم كلّه.
+   المراجعة العدائيّة (٧ عيوب مؤكّدة، مصلحة): تأطير البطاقة كان يُرسل بلبسها وغطاء رأسها (حجاب رياضيّ للرجل، قبعة سباحة للمحجّبة) ← لا لبس
+   ولا غطاء رأس من البطاقة؛ قالب الدمج يأمر بإبقاء اللبس فيناقض المهمّة ← أجزاء خاصّة؛ القفل الصامت كان يُخصم بلا فحص هويّة ← فحص؛ صورة
+   شخصين مقرّبة ← المسار القديم؛ كشف مرّتين ← مرّة؛ رفض برو ← إنقاذ؛ وبوّابة إنفاق خاصّة. ───── */
+const BODY_CLOSEUP = 0.22;
+function bodyReframeOn() { return String(process.env.BODY_REFRAME || 'on').trim().toLowerCase() === 'on'; }
+/* ← { faces } حين تصلح الصورة لإعادة التأطير (شخص رئيسيّ واحد ووجهه مقرّب)، وإلّا null (المسار القديم) */
+async function bodyCloseUp(apiKey, b64) {
+  try {
+    const img = mergeIdentity.decodeWork(b64);
+    if (!img) return null;
+    const faces = await mergeIdentity.detectFaces(apiKey, img, {});
+    const biggest = Math.max(0, ...faces.map((f) => f.box[3] - f.box[1]));
+    const main = faces.filter((f) => f.box[3] - f.box[1] >= biggest * 0.5);
+    return (biggest > BODY_CLOSEUP && main.length === 1) ? { faces } : null;
+  } catch (e) { console.warn('[studio-create] body close-up check ' + (e && e.message)); return null; } /* الكشف تعذّر = المسار القديم */
+}
+function bodyReframeTask(style, description) {
+  return 'Photo 1 shows the user as a close-up. Create a new full-body standing photo of this same person, the whole figure visible from the top of the head down to the feet, standing naturally and facing the camera, with ' + styleTextOf('body', style) + '.\n' +
+    'Keep from Photo 1, exactly and with full fidelity: their face and every facial feature, skin tone, facial hair, apparent age and expression, and their head covering exactly as photographed — a ghutra, hijab, headscarf or cap stays exactly as it is, and if they wear none, add none. Copy the face from the close-up when one is given.\n' +
+    'New in this photo, and only these: the body build described above and the clothing. Dress them in modest athletic clothing that suits them and shows the build — never a bare chest or midriff, never swimwear or a skin-tight second-skin top. If Photo 1 shows a hijab or headscarf, the outfit is a loose long-sleeved tunic that covers the hips over full-length loose trousers.\n' +
+    'Plain neutral background, soft even light, sharp focus on the face. No text, logos or watermarks. Output a single photorealistic image.' +
+    (description ? '\nExtra request: ' + String(description).slice(0, 200) : '');
+}
+/* أجزاء Gemini: الصورة بعنوانها، ثمّ اللقطة المقرّبة (إن وُجدت) بعنوانها، ثمّ الأمر — لا قالب الدمج (يأمر بإبقاء اللبس) */
+function bodyReframeParts(photo, crops, task) {
+  const parts = [{ text: 'Photo 1 of 1:' }, { inlineData: { mimeType: photo.mime || 'image/jpeg', data: photo.data } }];
+  (crops || []).forEach((c, k) => parts.push({ text: 'Close-up ' + (k + 1) + ' — the face of the person in Photo 1 (the same person, zoomed in; identity reference only, not an extra person):' }, { inlineData: { mimeType: c.mime, data: c.data } }));
+  parts.push({ text: task });
+  return parts;
+}
+/* { apiKey, imageBase64, mimeType, style, description, faces, username, t0 } ← { b64, mime, engine?, swapped } أو { error, status } */
+async function bodyReframe(o) {
+  const photos = [{ data: o.imageBase64, mime: o.mimeType || 'image/jpeg' }];
+  const crops = await mergeIdentity.faceCrops(o.apiKey, photos, { faces: [o.faces] }); /* الكشف نفسه — بلا نداء ثانٍ */
+  const parts = bodyReframeParts(photos[0], crops, bodyReframeTask(o.style, o.description));
+  let out = await geminiImage(o.apiKey, parts, 'body', '2:3');
+  let engine;
+  if (!out.b64) {
+    /* رفض برو أو عطبه (لا نفاد الرصيد): الإنقاذ نفسه كالدمج — 'merge' يتخطّى حارس التعديل الموضعيّ (الإطار جديد) */
+    const rescue = out.status === 503 ? null : await rescueGuarded(parts[parts.length - 1].text, photos.concat(crops).map((p) => [p.data, p.mime]), o.apiKey, 'merge');
+    if (!rescue || rescue.rejected) return { error: out.error || 'image_generation_failed', status: out.status || 502 };
+    out = { b64: rescue, mime: 'image/png' };
+    engine = 'openai';
+  }
+  const locked = await lockMergeFaces({ b64: out.b64, mime: out.mime }, { photos, crops, counts: [1], userTask: '', apiKey: o.apiKey, username: o.username, t0: o.t0, gate: 'BODY_FACE_SWAP' });
+  return { b64: locked.b64, mime: locked.mime, engine, swapped: locked.b64 !== out.b64 };
 }
 
 module.exports = async (req, res) => {
@@ -454,6 +510,29 @@ module.exports = async (req, res) => {
     }
 
     if (feature === 'combo') { res.status(410).json({ error: 'combo_removed' }); return; } /* v-studio-combo-removed: أمر المالك */
+
+    /* v-body-reframe: صورة وجه في ميزة الجسم = صورة كاملة بالبنية المختارة. الخصم عند النجاح وحده (الحجز يُردّ غير ذلك)؛ وإن لم يُقفل
+       الوجه (البوّابة، المفتاح، السقف، لبس الربط) ففحص هويّة مقابل الصورة قبل الخصم — وجه غريب = ٤٢٢ كحارس التعديل */
+    const closeUp = (feature === 'body' && bodyReframeOn()) ? await bodyCloseUp(apiKey, imageBase64) : null;
+    if (closeUp) {
+      const rb = await bodyReframe({ apiKey, imageBase64, mimeType, style, description, faces: closeUp.faces, username: quota.username, t0: Date.now() });
+      if (!rb.b64) { res.status(rb.status).json({ error: rb.error }); return; }
+      if (!rb.swapped) {
+        const idg = await verifyLocalizedImageEdit({
+          apiKey, sourceBase64: imageBase64, sourceMime: mimeType || 'image/jpeg', resultBase64: rb.b64, resultMime: rb.mime,
+          userPrompt: 'Identity check only: the close-up person was intentionally redrawn as a full-body photo with a new body build and clothing. Judge only whether the face is still the same person.',
+          allowBroadChange: true,
+        });
+        if (!idg.ok && idg.reason === 'identity_or_scope_mismatch') {
+          await keepGuardCharge('studio', quota, consumeStudio);
+          res.status(422).json({ error: 'image_edit_identity_mismatch', retryable: false });
+          return;
+        }
+      }
+      const remB = await consumeStudio(quota.username, quota.limit);
+      res.status(200).json(Object.assign({ imageBase64: rb.b64, mimeType: rb.mime, reframed: true, remaining: remB, dailyLimit: quota.limit || STUDIO_DAILY_LIMIT }, rb.engine ? { engine: rb.engine } : {}));
+      return;
+    }
 
     const promptText = buildSinglePrompt(feature, style, description, multiAngle, Number(variant));
     if (!promptText) { res.status(400).json({ error: 'Unknown feature' }); return; }

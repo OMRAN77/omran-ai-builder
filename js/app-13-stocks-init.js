@@ -2628,7 +2628,7 @@
       let data = {};
       try{ data = await res.json(); }catch(e){ data = { error: 'HTTP ' + res.status }; } /* guard-ok — جسم غير JSON (413/504) */
       if(!res.ok || data.error) return { combo, error: data.error || 'unknown', last, stoppedAt: it };
-      last = { b64: data.imageBase64, mime: data.mimeType || 'image/png' };
+      last = { b64: data.imageBase64, mime: data.mimeType || 'image/png', reframed: !!(data.reframed || (last && last.reframed)) }; /* v-body-reframe */
       if(i < combo.length - 1){
         const blob = await (await fetch('data:' + last.mime + ';base64,' + last.b64)).blob();
         const n = await normalizeStudioPhoto(new File([blob], 'step.png', { type: last.mime }));
@@ -2661,6 +2661,7 @@
         downloadEl.href = dataUrl; downloadEl.style.display = 'block';
         favSaveBtn.style.display = 'block'; favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
         setupBeforeAfter();
+        if(r.last.reframed) studioBaShow(false); /* v-body-reframe: صورة كاملة بإطار جديد — «قبل/بعد» فوق وجه مقرّب لا يُقارن */
         stReveal(resultWrap); /* v-style-scene */
       }
       if(r.error){
@@ -3066,6 +3067,7 @@
       favSaveBtn.style.display = 'block';
       favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
       setupBeforeAfter();
+      if(data.reframed) studioBaShow(false); /* v-body-reframe: صورة كاملة بإطار جديد — «قبل/بعد» فوق وجه مقرّب لا يُقارن */
       stReveal(resultWrap); /* v-style-scene */
       setStatus(t('studioAiDone'));
     } catch(e){
