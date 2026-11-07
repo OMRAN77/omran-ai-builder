@@ -86,7 +86,9 @@ test('٢. بلا faceOnly (الترندات والدمج): القصّة كلّه
 
 test('٣. رسم الجسم كاملًا يطلب faceOnly، والدمج لا يطلبه (الغترة فيه تبقى كما صُوّرت)', () => {
   const src = require('node:fs').readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
-  assert.match(src, /gate: 'BODY_FACE_SWAP', faceOnly: true/);
+  /* v-body-hair-keep: الوجه وحده ما لم يشهد الكشف أنّ الشعر ظاهر (مغطّى أو غير معروف = الوجه وحده فلا تعود الغترة؛ ظاهر = الرأس كلّه بشعره) —
+     السلوك نفسه في body-reframe ‏٢٢–٢٤ */
+  assert.match(src, /gate: 'BODY_FACE_SWAP', faceOnly: hair !== false/);
   assert.match(src, /enabled: true, only, until: m\.t0 \+ 280000, faceOnly: !!m\.faceOnly \}/);
   const mergeCall = src.slice(src.indexOf("const lockOpts = { photos, crops, counts, userTask"), src.indexOf("const lockOpts = { photos, crops, counts, userTask") + 200);
   assert.ok(mergeCall && !/faceOnly/.test(mergeCall), 'الدمج بلا faceOnly');
