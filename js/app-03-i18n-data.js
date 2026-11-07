@@ -1406,6 +1406,9 @@ const I18N = {
     ownerPurgeDone: "✅ حُذف {n} حساب فحص.",
     ownerMsgPrompt: "اكتب الرسالة التي ستصل لـ \"{u}\" (تظهر له عند فتح البرنامج):",
     ownerMsgSent: "✅ تم إرسال الرسالة.",
+    ownerResetTitle: "رابط استرجاع الحساب", // v-owner-reset-link
+    ownerResetConfirm: "🔑 إنشاء رابط استرجاع لحساب \"{u}\"؟ تأكّد أوّلًا أنّه صاحب الحساب (آخر ٤ أرقام البطاقة أو الرقم المسجّل). أيّ رابط سابق يتوقّف.",
+    ownerResetLink: "🔑 رابط استرجاع \"{u}\" (صالح {m} دقيقة) — انسخه وأرسله له وحده:",
     ownerDiagRunning: "⏳ يفحص مفتاح كلود على أنثروبيك…",
     ownerDiagKey: "المفتاح: {k}",
     ownerDiagStatus: "الحالة: {s}",
@@ -2058,6 +2061,9 @@ const I18N = {
     ownerPurgeDone: "✅ Deleted {n} check accounts.",
     ownerMsgPrompt: "Write the message for “{u}” (shown when they open the app):",
     ownerMsgSent: "✅ Message sent.",
+    ownerResetTitle: "Account recovery link", // v-owner-reset-link
+    ownerResetConfirm: "🔑 Create a recovery link for “{u}”? Verify first that they own the account (last 4 card digits or registered phone). Any earlier link stops working.",
+    ownerResetLink: "🔑 Recovery link for “{u}” (valid {m} min) — copy it and send it to them only:",
     ownerDiagRunning: "⏳ Checking the Claude key with Anthropic…",
     ownerDiagKey: "Key: {k}",
     ownerDiagStatus: "Status: {s}",
