@@ -73,6 +73,7 @@ const SPEC = {
   FACE_SWAP_MODEL:        ['tunable', 'بديل: fal-ai/flux-2/klein/9b/edit/lora (وبلا LoRA: fal-ai/flux-2/klein/9b/edit)'],
   FACE_SWAP_LORA:         ['tunable', 'بديل: LoRA «BFS head swap» المثبّت بالالتزام — الفارغ صراحةً = بلا LoRA'],
   FACE_SWAP_CAP_CENTS:    ['tunable', 'بديل: ٣٠٠ — سقف صرف التبديل اليوميّ بالسنت (يوم UTC، ٥ للوجه)؛ ٠ يغلق'],
+  MERGE_FACE_SWAP:        ['tunable', 'بديل: on — قفل الوجه بعد «دمج صور» في الستايل (٥ سنتات للوجه، السقف أعلاه مشترك): on الجميع · owner المالك وحده · غيرهما (off) لا أحد (v-merge-face-lock)'],
   REPLICATE_API_TOKEN:    ['feature', 'ترقية دقّة الصور (مكبّر Real-ESRGAN) — بدونه تُعاد الصورة كما هي (v-img-upscale)'],
   IMAGE_UPSCALE:          ['tunable', 'off يعطّل الترقية التلقائيّة لنواتج الصور دون 2K'],
   UPSCALE_MAX_MS:         ['tunable', 'بديل: ٦٠٠٠٠ — مهلة الترقية'],
