@@ -50,6 +50,7 @@ mock('api/_lib/create-checkout-session.js', {
   autoRenewToggle: async (req, res) => { renewCalls.push(req.body.on); res.status(200).json({ ok: true, subs: 0, on: false }); },
   BUSY: 'busy',
   withAccount: async (name, fn) => { const a = await require(rp('api/_lib/auth.js')).liveAccount(name); return fn(a.key, a.user); },
+  withNameLock: async (name, fn) => fn(), // v-r3 (r3-5): وقفل الاسم الجديد — هنا بلا قفل كما أعلاه
 });
 
 const mail = {};

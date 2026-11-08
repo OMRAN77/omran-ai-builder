@@ -23,13 +23,11 @@ const { grantPlanToUser, PLANS, supersedeSubs, cancelSub, subIdOf } = require('.
    v-lock-r2 (r2-1 · r2-2): «محذوف» هنا شاهدٌ مؤكَّد وحده — عطل قراءة الحساب يرمي من المنح (non-2xx فيُعاد) فلا يصل هنا؛ ودفعة المحفظة
    (payment_intent.succeeded) تمرّ به أيضًا بمبلغها (amount_received) وبلا اشتراك يُلغى. */
 async function orphanPaid(obj, md, kind) {
-  const { kvSetIfAbsent } = require('./_lib/kv.js');
-  if (await kvSetIfAbsent('payorphan:' + String(obj.id).slice(0, 200), '1', 400 * 86400)) {
-    const amount = Number(obj.amount_total || obj.amount_paid || obj.amount_received || obj.amount) || 0;
-    await require('./_lib/pay-refund.js').alertOwner('⚠️ دفعة لحساب محذوف — ردّ المبلغ',
-      String(md.username || '?') + ' · ' + String(md.plan || '?') + ' · ' + (amount > 0 ? (amount / 100).toFixed(2) + ' ' + String(obj.currency || '').toUpperCase() : '?')
-      + ' · ' + kind + ' ' + String(obj.id).slice(0, 60) + (obj.payment_intent ? ' · ' + String(obj.payment_intent).slice(0, 40) : ''));
-  }
+  // v-r3 (r3-7): الحجز نفسه في PayPal — كان غير صارم فردٌّ لا يُقرأ يعني «سبق التنبيه» و200 بلا تنبيه. alertOnce صارم بمرحلتين (pay-refund.js)، وعطبه يرمي ⇒ 500 فيُعاد.
+  const amount = Number(obj.amount_total || obj.amount_paid || obj.amount_received || obj.amount) || 0;
+  await require('./_lib/pay-refund.js').alertOnce('payorphan:' + String(obj.id).slice(0, 200), '⚠️ دفعة لحساب محذوف — ردّ المبلغ',
+    String(md.username || '?') + ' · ' + String(md.plan || '?') + ' · ' + (amount > 0 ? (amount / 100).toFixed(2) + ' ' + String(obj.currency || '').toUpperCase() : '?')
+    + ' · ' + kind + ' ' + String(obj.id).slice(0, 60) + (obj.payment_intent ? ' · ' + String(obj.payment_intent).slice(0, 40) : ''));
   const sub = subIdOf(obj);
   if (sub) await cancelSub(sub);
 }
