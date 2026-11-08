@@ -1,4 +1,12 @@
 # سجلّ القرارات
+## ٨ نوفمبر ٢٠٢٦ — رمز الجلسة في points.js عبر _session أيضًا (v-points-session، بموافقة المالك على باب النقاط)
+- **العرض:** بعد v-session-dedupe بقيت النسخة المتساهلة نفسها في `points.js` — و`verifyPointsToken` منه تستعمله مسارات الخصم كلّها
+  (claude وgemini وadchat وadimage وmaha-image وminimax وomni وactor…): تذكرة موقّعة بلا exp تمرّ جلسة لا تنتهي. المالك: «ادمج وصلّح النقاط».
+- **القرار:** `verifyToken` في points.js = `_session.sessionUser` (مثل auth والعدّادات)، وحُذف HMAC اليدويّ و`AUTH_SECRET` في نطاق الوحدة.
+  الخصم والرصيد والأسعار لم تُمسّ — التحقّق من الرمز وحده.
+- **الاختبار:** `session-dedupe` ‏١ (لا مقارنة `exp < now` في أيّ وحدة خادم الآن) و٣ (verifyPointsToken ترفض بلا exp/منتهية/مزوّرة/بلا
+  اسم/فارغة وتقبل الصالحة) — ٣ يفشل على points.js من main.
+
 ## ٨ نوفمبر ٢٠٢٦ — عدّادات الاستخدام الثمانية تتحقّق من الجلسة عبر _session لا نسخها (v-session-dedupe، إصلاح Desloppify الثاني)
 - **العرض:** فحص Desloppify: «Exact dupe cluster — verifyToken» في ثمانية ملفّات (`_usage` و`_car` و`_construction` و`_design`
   و`_fashion` و`_portrait` و`_studio` و`_video`). القراءة كشفت أنّها ليست تكرارًا فقط: كلّ نسخة تقارن `data.exp < Date.now()`، فحمولة
