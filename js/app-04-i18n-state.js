@@ -766,6 +766,9 @@ const __projTab = Math.random().toString(36).slice(2, 8) || 't0';
 let __projSeq = 0;
 let __projRec = new WeakMap(); /* المشروع ← { key, h }: آخر سجلّ كُتب له أو قُرئ منه وبصمة نصّه */
 let __vaultChain = Promise.resolve(); /* حفظ واحد في كلّ لحظة في التبويب: الأحدث ينتظر الأقدم الذي يتوقّف عند أوّل مهلة */
+/* v-r3 (r3-rv1): يُنادى مع كلّ تقدّم للحفظ (بدؤه، كلّ مهلة، قبل كلّ معاملة) — __saveFlushWait يقيس به انقطاع التقدّم لا المدّة */
+let __vaultTick = null;
+function __vaultProgress(){ if(__vaultTick){ try{ __vaultTick(); }catch(e){ __swallow(e, 'save:tick'); } } }
 function __projKey(){ return PROJ_PFX + __projTab + ':' + Date.now().toString(36) + ':' + (++__projSeq).toString(36); }
 function __projHashStr(s, h){
   const imul = Math.imul, n = s.length; /* محلّيّ: لا بحث عن Math في كلّ حرف */
@@ -843,11 +846,13 @@ function __vaultSave(sync){
 }
 async function __vaultSaveRun(sync, gen, attempt){
   if(gen !== __vaultGen) return;
+  __vaultProgress();
   const puts = __vaultAssign(state.projects, Date.now());
   let vaulted = true;
   /* v-img-view: نسخة عرض صُنعت قبل أن يُكتب الأصل تُكتب معه */
   try{ await idbImgPutAll(puts.concat(puts.filter(x => x.ref && x.ref.viewUrl).map(x => ({ id: x.id + '~v', dataUrl: x.ref.viewUrl })))); puts.forEach(x => { delete x.ref.vaultPending; }); }
   catch(e){ vaulted = false; __swallow(e, 'vault:put'); }
+  __vaultProgress();
   const rep = vaulted ? __vaultReplacer : __noViewReplacer;
   const projs = state.projects.slice(), keys = [], hs = [];
   let len = 1, t0 = Date.now(), batch = [], batchLen = 0;
@@ -872,6 +877,7 @@ async function __vaultSaveRun(sync, gen, attempt){
         keys.push(key); hs.push(h);
         if(!sync && batch.length && batchLen + sz > PROJ_BATCH){ /* المعاملة ≤ max(PROJ_BATCH، مشروع واحد) */
           const b = batch; batch = []; batchLen = 0;
+          __vaultProgress();
           await __projTx(b.map(d => [d.key, d.obj]), null);
           done(b);
           if(gen !== __vaultGen) return;
@@ -883,12 +889,14 @@ async function __vaultSaveRun(sync, gen, attempt){
     if(!sync && i < projs.length - 1 && Date.now() - t0 > 40){
       await new Promise(r => setTimeout(r, 0));
       if(gen !== __vaultGen) return;
+      __vaultProgress();
       t0 = Date.now();
     }
   }
   if(gen !== __vaultGen) return;
   __vaultLastLen = len;
   /* الدفعة الأخيرة والفهرس في معاملة واحدة (حفظ معتاد = معاملة واحدة صغيرة) */
+  __vaultProgress(); /* v-r3 (r3-rv1): بعد التسلسل المتزامن مباشرةً — مهلة __saveFlushWait التي انقضت أثناءه تُلغى قبل أن تسبق الالتزام */
   const missing = await __projTx(batch.map(d => [d.key, d.obj]), { v: 1, at: Date.now(), keys: keys, hs: hs });
   if(missing.length){
     /* مفتاح أُعيد استعماله مسحه تبويب آخر: يُكتب من جديد — لا يُلتزم فهرسٌ بمفتاح غير موجود */
@@ -955,19 +963,38 @@ function __projTx(recs, man){
   }));
 }
 /* v-r3 (r3-f1): قراءة المشاريع عند الإقلاع — الفهرس ثمّ سجلّاته بترتيبه في معاملة واحدة، ويُسجَّل لكلّ مشروع مفتاحه وبصمته فلا يُعاد
-   كتابة ما لم يتغيّر. إن وُجد السجلّ القديم الواحد فهو الأحدث (كلّ التزام فهرس يمحوه في معاملته): يُقرأ هو ويرحّله الحفظ التالي.
-   يرجع ما كان يرجعه idbGet('aiapp_projects') — مصفوفة قبل __codeExpand، أو undefined. alive يُنادى مع كلّ سجلّ (مهلة الإقلاع للتعليق لا للحجم). */
+   كتابة ما لم يتغيّر. إن وُجد السجلّ القديم الواحد فهو الأحدث (كلّ التزام فهرس يمحوه في معاملته): يُقرأ (مدموجًا بالفهرس) ويرحّله الحفظ التالي.
+   يرجع ما كان يرجعه idbGet('aiapp_projects') — مصفوفة قبل __codeExpand، أو undefined. alive يُنادى مع كلّ سجلّ (مهلة الإقلاع للتعليق لا للحجم).
+   v-r3 (r3-rv2): «القديم هو الأحدث» لا يعني أنّه الأكمل — الإصدار السابق (بعد تراجع) لا يقرأ إلّا السجلّ القديم فيقلع على المرآة المنحّفة
+   ويكتبها سجلًّا قديمًا ببضع محادثات؛ قراءته وحده ثمّ الكنس بعد ١٠ دقائق (مفاتيح «تبويب آخر» خارج الفهرس الجديد) محَوَا التاريخ كلّه
+   (مسبار المراجعة: ٦١ محادثة و٢٠ تطبيقًا ← ٦ محادثات بلا تطبيقات). فإن وُجدا معًا يُدمجان بالمعرّف (__projMerge). */
+function __projMerge(fromMan, old){
+  const byId = new Map(), seen = new Set();
+  old.forEach(l => { if(l && typeof l === 'object' && l.id) byId.set(l.id, l); });
+  const n = (p) => (Array.isArray(p.messages) ? p.messages.length : 0);
+  /* لكلّ معرّف: الأكثر رسائل (قاعدة دمج المرآة عند الإقلاع، v-idb-mirror)، وعند التساوي الأطول نصًّا — المنحّفة بلا كود ولا آلة زمن.
+     ترتيب الفهرس يبقى، وما في القديم وحده (محادثة كتبها الإصدار السابق) يُلحق بترتيبه (الجديد يُلحق في آخر state.projects) */
+  const out = fromMan.map(m => {
+    seen.add(m.id);
+    const l = byId.get(m.id);
+    if(!l) return m;
+    if(n(l) !== n(m)) return n(l) > n(m) ? l : m;
+    return JSON.stringify(l).length > JSON.stringify(m).length ? l : m;
+  });
+  old.forEach(l => { if(l && typeof l === 'object' && !(l.id && seen.has(l.id))){ if(l.id) seen.add(l.id); out.push(l); } });
+  return out;
+}
 function __projLoad(alive){
   return idbOpen().then(db => new Promise((res, rej) => {
     const tx = db.transaction(IDB_STORE, 'readonly');
     const st = tx.objectStore(IDB_STORE);
-    let out, man = null, recs = null, pend = 2;
+    let out, man = null, recs = null, pend = 2, old;
     const rm = st.get(PROJ_MANIFEST), rc = st.count(PROJ_LEGACY);
     const ping = () => { if(typeof alive === 'function') alive(); };
     const next = () => {
       ping();
       if(--pend) return;
-      if(rc.result > 0){ const rl = st.get(PROJ_LEGACY); rl.onsuccess = () => { out = rl.result; ping(); }; return; }
+      if(rc.result > 0){ const rl = st.get(PROJ_LEGACY); rl.onsuccess = () => { old = rl.result; ping(); }; } /* v-r3 (r3-rv2): والفهرس يُقرأ معه */
       man = rm.result;
       if(!man || !Array.isArray(man.keys)) return;
       recs = new Array(man.keys.length);
@@ -984,6 +1011,7 @@ function __projLoad(alive){
           out.push(p);
         });
       }
+      if(old !== undefined) out = (out && Array.isArray(old)) ? __projMerge(out, old) : (out || old);
       res(out);
     };
     tx.onerror = () => { db.close(); rej(tx.error); };
@@ -1128,16 +1156,26 @@ window.addEventListener('pagehide', __writeChatsMirror); /* v-idb-mirror: مرآ
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') __saveFlush(); });
 /* v-r3 (r3-f2): «تم حفظ عملك تلقائيًا. إعادة التحميل الآن؟» لم تكن صادقة — تغيير عبر saveState ثمّ إعادة تحميل داخل نافذة التجميع
    (١٫٥ث، و١٠ث فوق 12MB، و٣٠ث فوق 60MB) يضيع: pagehide ← __saveFlush يبدأ حفظًا غير متزامن لا يكتمل بعد مغادرة الصفحة.
-   هنا: ما ينتظر في التجميع يُكتب الآن دفعة واحدة، ويُنتظر الحفظ الجاري كلّه. المهلة (ms) تبدأ بعد الجزء المتزامن (التسلسل) فتحدّ
-   انتظار IndexedDB وحده (تعليقه على iOS) — كي لا يسبق مؤقّتٌ انقضى أثناء التسلسل كتابةً صغيرة على وشك الالتزام. */
+   هنا: ما ينتظر في التجميع يُكتب الآن دفعة واحدة، ويُنتظر الحفظ الجاري كلّه.
+   v-r3 (r3-rv1): مراجعة على ٣٦١ محادثة (المعالج ×٢): النقر أثناء حفظ مقسّم جارٍ (٦٫٢ث) ولا شيء «قذر» كان يعيد بعد ٥ث من النقر قبل
+   التزام الفهرس فيضيع التغيير الذي يحمله؛ والمهلة المسلّحة من النقر قد تنقضي أثناء تسلسل متزامن طويل فتسبق الالتزام. الآن المهلة
+   لانقطاع التقدّم: يعيد تسليحها الحفظ نفسه (__vaultProgress: بدؤه، كلّ مهلة، وقبل كلّ معاملة — أي بعد التسلسل مباشرةً)، فتحدّ انتظار
+   IndexedDB المعلّق (iOS) وحده. وحفظ أحدث أوقف المنتظَر (الجيل ارتفع) هو الذي يحمل التغيير الآن فيُتبع، حتّى ٣٠ث من النقر. */
 function __saveFlushWait(ms){
-  try{ if(__saveDirty) __saveFlush(true); }catch(e){ __swallow(e, 'save:flush-wait'); }
-  const run = (typeof __vaultChain !== 'undefined' && __vaultChain) || Promise.resolve();
+  const idle = Promise.resolve(), chain = () => (typeof __vaultChain !== 'undefined' && __vaultChain) || idle;
+  const tickable = typeof __vaultTick !== 'undefined', until = Date.now() + 30000;
   return new Promise(res => {
-    let fin = false;
-    const end = () => { if(!fin){ fin = true; res(); } };
-    run.then(end, end);
-    setTimeout(() => { setTimeout(end, ms || 5000); }, 0);
+    let fin = false, timer = 0;
+    const end = () => { if(fin) return; fin = true; clearTimeout(timer); if(tickable && __vaultTick === arm) __vaultTick = null; res(); };
+    const arm = () => { clearTimeout(timer); if(!fin) timer = setTimeout(end, ms || 5000); };
+    const follow = () => {
+      const run = chain();
+      arm();
+      run.then(() => { if(fin) return; if(run === chain() || Date.now() > until) end(); else follow(); });
+    };
+    if(tickable) __vaultTick = arm;
+    try{ if(__saveDirty) __saveFlush(true); }catch(e){ __swallow(e, 'save:flush-wait'); }
+    follow();
   });
 }
 window.__saveFlushWait = __saveFlushWait;
