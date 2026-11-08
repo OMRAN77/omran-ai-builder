@@ -164,3 +164,109 @@ test('٦. الواجهة: خانة البحث فوق الجدول ترسل ما 
   await empty.ctx.adminResetLinkFind();
   assert.equal(empty.sent.length, 0, 'الخانة الفارغة لا ترسل');
 });
+
+/* ---------- v-owner-reset-stripe: من سجّل بلا إيميل (منذ ١٨ أكتوبر) ودفع به — اسمه من Stripe (قراءة فقط) ---------- */
+test('٧. إيميل لا يصل حسابًا ← اسمه من جلسة دفع مكتملة أو اشتراك عميله أو شحنة Google Pay، والرابط يعمل؛ حسابان ٤٠٩؛ الاسم المغيَّر يُتبع؛ الفهرس أوّلًا؛ GET وحده', async () => {
+  const realFetch = global.fetch, realWarn = console.warn;
+  const calls = [], warns = [];
+  let mode = 'ok';
+  const sess = (email, username, extra) => Object.assign({ customer_details: { email }, payment_status: 'paid', metadata: { username } }, extra || {});
+  global.fetch = async (url, init) => {
+    const u = String(url);
+    calls.push({ u, method: (init && init.method) || 'GET', auth: init && init.headers && init.headers.Authorization });
+    if (!u.startsWith('https://api.stripe.com/v1/')) throw new Error('نداء غير Stripe: ' + u);
+    if (mode === 'down') return { ok: false, status: 401, json: async () => ({ error: { message: 'x' } }) };
+    const data = [];
+    let has_more = false;
+    if (u.includes('checkout/sessions')) {
+      assert.match(u, /[?&]status=complete/, 'الجلسات المكتملة وحدها');
+      if (mode === 'ignored') data.push(sess('someone.else@x.com', 'aliya_old2'));
+      if (u.includes(encodeURIComponent('Paid.User@iCloud.com'))) data.push(sess('paid.user@icloud.com', 'Aliya_Old2'), sess('Paid.User@iCloud.com', 'ghost'));
+      if (u.includes(encodeURIComponent('gone@x.com'))) data.push(sess('gone@x.com', 'gone_user'));
+      if (u.includes(encodeURIComponent('two@x.com'))) data.push(sess('two@x.com', 'acct_b'), sess('two@x.com', 'acct_a'));
+      if (u.includes(encodeURIComponent('moved@x.com'))) data.push(sess('moved@x.com', 'old_name'));
+      if (u.includes(encodeURIComponent('unpaid@x.com'))) data.push(sess('unpaid@x.com', 'aliya_old2', { payment_status: 'unpaid' }));
+    }
+    if (u.includes('customers/search') && u.includes(encodeURIComponent("email:'sub@x.com'"))) data.push({ id: 'cus_1', email: 'sub@x.com', metadata: {} }, { id: 'cus_other', email: 'other@x.com', metadata: { username: 'aliya_old2' } });
+    if (u.includes('subscriptions?') && u.includes('customer=cus_1')) data.push({ metadata: { username: 'subuser' } });
+    if (u.includes('/charges?')) {
+      if (!u.includes('starting_after')) { data.push({ id: 'ch_1', paid: true, billing_details: { email: 'other@x.com' }, metadata: { username: 'aliya_old2' } }); has_more = true; }
+      else data.push({ id: 'ch_2', paid: true, billing_details: { email: 'Wallet@X.com' }, metadata: { username: 'gpayuser' } }, { id: 'ch_3', paid: false, billing_details: { email: 'wallet@x.com' }, metadata: { username: 'subuser' } });
+    }
+    return { ok: true, status: 200, json: async () => ({ data, has_more }) };
+  };
+  console.warn = (...a) => { warns.push(a.join(' ')); };
+  process.env.STRIPE_SECRET_KEY = 'sk_test_reset';
+  try {
+    for (const k of ['aliya_old2', 'subuser', 'gpayuser', 'acct_a', 'acct_b', 'new_name']) await auth.putUser(k, { username: k, email: null, hash: 'h', salt: 's' }); // سجّلوا بلا إيميل
+    await auth.putUser('gone_user', { username: 'gone_user', deleted: true });
+    await auth.putUser('old_name', { username: 'old_name', deleted: true, movedTo: 'new_name' }); // غيّر اسمه بعد الدفع
+    // ١) جلسة دفع مكتملة بالبريد كما كُتب (حروفه الكبيرة) ← الحساب الحيّ الوحيد (ghost غائب)
+    const r = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: ' Paid.User@iCloud.com ' });
+    assert.equal(r.code, 200, JSON.stringify(r.body));
+    assert.equal(r.body.username, 'aliya_old2');
+    assert.equal(r.body.via, 'stripe');
+    const link = new URL(r.body.link);
+    assert.equal(link.searchParams.get('ru'), 'aliya_old2');
+    const ok = await callAuth({ action: 'resetWithToken', username: 'aliya_old2', resetToken: link.searchParams.get('resetToken'), newPassword: 'NewPass123' });
+    assert.equal(ok.code, 200, 'الرابط يعمل');
+    // ٢) لا جلسات ← العميل بالبريد (عميل ببريد آخر يُتجاهل) واشتراكه
+    const s = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'sub@x.com' });
+    assert.equal(s.code, 200); assert.equal(s.body.username, 'subuser');
+    // ٣) Google Pay: لا جلسة ولا عميل ← الشحنات المدفوعة (الصفحة الثانية)، والشحنة غير المدفوعة وبريد آخر يُتجاهلان
+    const g = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'wallet@x.com' });
+    assert.equal(g.code, 200, JSON.stringify(g.body)); assert.equal(g.body.username, 'gpayuser');
+    // ٤) حسابان حيّان دفعا بالبريد نفسه ← ٤٠٩ بالمرشّحَين (الأحدث أوّلًا) بلا رابط ولا رمز
+    const two = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'two@x.com' });
+    assert.equal(two.code, 409); assert.deepEqual(two.body.candidates, ['acct_b', 'acct_a']); assert.ok(!two.body.link);
+    assert.ok(!(await auth.getUser('acct_a')).resetTokenHash && !(await auth.getUser('acct_b')).resetTokenHash, 'لا رمز لأيّهما');
+    // ٥) غيّر اسمه بعد الدفع ← يُتبع إلى اسمه الجديد
+    const mv = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'moved@x.com' });
+    assert.equal(mv.code, 200, JSON.stringify(mv.body)); assert.equal(mv.body.username, 'new_name');
+    // ٦) جلسة غير مدفوعة، أو اسم لحساب محذوف ← ٤٠٤
+    assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'unpaid@x.com' })).code, 404, 'جلسة لم تكتمل');
+    assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'gone@x.com' })).code, 404);
+    // ٧) قراءة فقط: GET بمفتاح Stripe، لا كتابة
+    assert.ok(calls.length > 0 && calls.every((c) => c.method === 'GET' && c.auth === 'Bearer sk_test_reset'), JSON.stringify(calls.map((c) => c.method)));
+    // ٨) مرشِّح البريد تجاهله Stripe (يعيد جلسات بريد آخر) ← لا رابط لحساب شخص آخر
+    mode = 'ignored';
+    assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'nobody.paid@x.com' })).code, 404, 'بريد الجلسة غير البريد المطلوب');
+    // ٩) رفض Stripe ← ٤٠٤ بلا رمي، ومسجَّل بلا بريد
+    mode = 'down'; warns.length = 0;
+    assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'Paid.User@iCloud.com' })).code, 404);
+    assert.ok(warns.some((w) => /reset-link stripe checkout\/sessions HTTP 401/.test(w)), warns.join(' | '));
+    assert.ok(!warns.some((w) => /@|aliya|paid\.user/i.test(w)), 'لا بريد ولا اسم في السجلّ');
+    mode = 'ok';
+    // ١٠) فهرس البريد أوّلًا: بريد مفهرس لا يسأل Stripe
+    calls.length = 0;
+    store.set('db/email-index/indexed@x.com', JSON.stringify({ username: 'alya_old' }));
+    await auth.putUser('alya_old', { username: 'alya_old', email: 'indexed@x.com', hash: 'h', salt: 's' });
+    assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'indexed@x.com' })).body.username, 'alya_old');
+    assert.equal(calls.length, 0, 'لا نداء Stripe');
+    // ١١) غير المالك ممنوع قبل أيّ نداء
+    assert.equal((await callAdmin({ token: auth.makeToken('sara'), action: 'reset-link', targetUsername: 'Paid.User@iCloud.com' })).code, 403);
+    assert.equal(calls.length, 0);
+  } finally {
+    delete process.env.STRIPE_SECRET_KEY;
+    global.fetch = realFetch;
+    console.warn = realWarn;
+  }
+  // ١٢) بلا مفتاح Stripe: لا نداء أصلًا و٤٠٤ كما كان
+  let any = false;
+  global.fetch = async () => { any = true; throw new Error('no'); };
+  try { assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'Paid.User@iCloud.com' })).code, 404); assert.equal(any, false); }
+  finally { global.fetch = realFetch; }
+});
+
+test('٨. الواجهة: ٤٠٩ (أكثر من حساب دفع بالإيميل) ← رسالة مترجمة بالأسماء، بلا نافذة رابط', async () => {
+  const e = env('ar', true);
+  const real = e.ctx.fetch; e.ctx.fetch = async (url, init) => { await real(url, init); return { ok: false, status: 409, json: async () => ({ error: 'multiple accounts', candidates: ['acct_b', 'acct_a'] }) }; };
+  await e.ctx.adminResetLink('two@x.com');
+  const a = e.said.find((x) => x[0] === 'alert');
+  assert.ok(a && a[1].includes('دفع بهذا الإيميل أكثر من حساب') && a[1].includes('acct_b') && a[1].includes('acct_a'), JSON.stringify(e.said));
+  assert.ok(!e.said.some((x) => x[0] === 'prompt'), 'لا رابط');
+  const en = env('en', true);
+  const real2 = en.ctx.fetch; en.ctx.fetch = async (url, init) => { await real2(url, init); return { ok: false, status: 409, json: async () => ({ candidates: ['x1', 'x2'] }) }; };
+  await en.ctx.adminResetLink('two@x.com');
+  assert.ok(en.said.some((x) => x[0] === 'alert' && /More than one account paid with this email/.test(x[1]) && /x1/.test(x[1])));
+});
