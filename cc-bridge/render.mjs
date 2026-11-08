@@ -11,7 +11,7 @@
 'use strict';
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { mkdir, writeFile, rm, readdir, stat } from 'node:fs/promises';
+import { mkdir, writeFile, rm, readdir, stat, statfs } from 'node:fs/promises';
 import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { availableParallelism, totalmem as os_totalmem } from 'node:os';
@@ -31,7 +31,15 @@ export const LIMITS = {
   scenes: 90, steps: 8, imageChars: 9e6, audioChars: 4e6, bodyBytes: 160e6, textChars: 180, subChars: 200,
   minSec: 2.5, maxSec: 40, ttlMs: 24 * 3600 * 1000, jobTimeoutMs: 55 * 60 * 1000, segmentTimeoutMs: 6 * 60 * 1000, joinTimeoutMs: 25 * 60 * 1000,
   sceneTimeoutMs: 3 * 60 * 1000, /* v-app-director-watchdog: مشهد بمحاولتيه فوق ٣ دقائق يُقطع ويصير بطاقة عنوان (page.evaluate بلا مهلة في Playwright) */
+  /* v-bridge-disk: فيديو ناجح نُزّل يبقى ساعة ثمّ تمسحه المهمّة التالية (١٠ دقائق إن ضاق القرص)، والدمج يحتاج حجم المقاطع وهامشًا */
+  doneKeepMs: 60 * 60 * 1000, pressKeepMs: 10 * 60 * 1000, joinSlackBytes: 64 * 1048576,
 };
+const ENOSPC = /No space left on device|ENOSPC/i;
+const toMB = (b) => (Number.isFinite(b) ? Math.max(0, Math.round(b / 1048576)) : -1);
+/** رسالة القرص الممتلئ: عربيّة بالأرقام (اللوحة للمالك وحده تعرضها كما هي)، ومفتاحها disk_full للآلة */
+export function diskFullMessage(free, need) {
+  return 'disk_full: مساحة القرص على الجسر ما تكفي لتجميع الفيديو — المتاح ' + toMB(free) + ' م.ب' + (need > 0 ? ' ويلزم نحو ' + toMB(need) + ' م.ب' : '') + '. كبّر قرص Railway (Volume) أو أعد المحاولة بعد قليل.';
+}
 const RTL = new Set(['ar', 'ur']);
 const STEP_CLICK = /^#[A-Za-z0-9_-]{1,60}$/, STEP_TAB = /^[a-z]{2,20}$/, STEP_SETTINGS = /^[A-Za-z]{2,40}Section$/, STEP_FOCUS = /^[#.][A-Za-z0-9_ .#>-]{1,80}$/;
 
@@ -198,7 +206,7 @@ export function buildFfmpegArgs(manifest, dir) {
   const segs = sc.map((s, i) => {
     const out = join(d, 'seg_' + i + '.mp4');
     const files = { image: sceneImage(s, i, d), nextImage: i < sc.length - 1 ? sceneImage(sc[i + 1], i + 1, d) : '', audio: s.audio ? join(d, 'audio_' + i + '.' + (s.audioExt || 'mp3')) : '', out };
-    return { index: i, out, needs: [i].concat(i < sc.length - 1 ? [i + 1] : []), args: sceneArgs(sc, i, files, manifest.dir), light: sceneArgs(sc, i, files, manifest.dir, { light: true }) };
+    return { index: i, out, needs: [i].concat(i < sc.length - 1 ? [i + 1] : []), inputs: { image: files.image, audio: files.audio }, args: sceneArgs(sc, i, files, manifest.dir), light: sceneArgs(sc, i, files, manifest.dir, { light: true }) };
   });
   const out = join(d, 'video.mp4'), list = join(d, 'concat.txt');
   return { segments: segs, list, listText: concatList(segs.map((x) => x.out)), join: { out, args: concatArgs(list, out, false) }, fallback: { out, args: concatArgs(list, out, true) }, total: totalSeconds(sc) };
@@ -327,6 +335,60 @@ export function createRenderer(cfg) {
   let running = null;
   const jobDir = (id) => join(c.workDir, 'jobs', id);
   const appOrigin = (() => { try { return new URL(c.appUrl).origin; } catch (e) { return ''; } })();
+
+  /* v-bridge-disk (لقطة المالك ٨ نوفمبر: «render join failed: … No space left on device» بعد أن رُسمت مشاهد القصّة وسُجّل صوتها): القرص
+     نفسه (/work على Railway) يحمل نسخة المستودع وجلسات Claude Code وكلّ مهمّات المخرج، ومهمّة فشلت كانت تُبقي لقطاتها ٤K وصوتها ومقاطعها
+     ٢٤ ساعة، والناجحة فيديوها ٢٤ ساعة — فامتلأ القرص بالمحاولات. الآن: الفاشلة تُمسح فورًا، والمدخلات تُمسح أوّلًا بأوّل، ومهمّة جديدة تمسح
+     ما بقي من غيرها (والفيديو الذي نُزّل قبل ساعة)، وقبل الدمج يُحسب المتاح ويُفرَّغ ما يمكن — وإن لم يكفِ فرسالة بالأرقام لا خطأ ffmpeg. */
+  async function workStat() { await mkdir(c.workDir, { recursive: true }).catch(() => null); return statfs(c.workDir); }
+  async function freeBytes() {
+    if (typeof c.diskFree === 'function') return c.diskFree(); /* الاختبار */
+    try { const s = await workStat(); return Number(s.bavail) * Number(s.bsize); } catch (e) { return Infinity; } /* لا يُعرف = لا يُمنع */
+  }
+  /** ما تستطيع المهمّة التالية مسحه (الفاشلة واليتيمة والناجحة التي مضت عليها ساعة) بالبايت — للصحّة، قراءة فقط */
+  async function reclaimable() {
+    const now = Date.now(), base = join(c.workDir, 'jobs');
+    let bytes = 0;
+    try {
+      if (!existsSync(base)) return 0;
+      for (const name of await readdir(base)) {
+        const j = jobs.get(name);
+        if (j && (j === running || j.state === 'queued' || j.state === 'running' || (j.state === 'done' && now - (j.doneAt || 0) <= LIMITS.doneKeepMs))) continue;
+        for (const f of await readdir(join(base, name)).catch(() => [])) bytes += await stat(join(base, name, f)).then((s) => s.size, () => 0);
+      }
+    } catch (e) { /* لا مجلّد */ }
+    return bytes;
+  }
+  /** يمسح مجلّدات المهمّات الأخرى: الفاشلة، والناجحة التي مضى على تمامها keepDoneMs، واليتيمة (من تشغيل سابق) — لا يمسّ keepId */
+  async function reclaim(keepId, keepDoneMs) {
+    const now = Date.now();
+    let n = 0;
+    for (const [id, j] of jobs) {
+      if (id === keepId) continue;
+      const old = j.state === 'done' && !!j.file && now - (j.doneAt || 0) > keepDoneMs;
+      if (j.state !== 'error' && !old) continue;
+      if (old) { j.file = ''; j.purged = true; }
+      if (existsSync(jobDir(id))) { await rm(jobDir(id), { recursive: true, force: true }).catch(() => null); n++; }
+    }
+    try {
+      const base = join(c.workDir, 'jobs');
+      if (existsSync(base)) for (const name of await readdir(base)) {
+        if (name === keepId || jobs.has(name)) continue;
+        await rm(join(base, name), { recursive: true, force: true }).catch(() => null); n++;
+      }
+    } catch (e) { /* لا مجلّد */ }
+    return n;
+  }
+  /** يكفي القرص لخطوة تحتاج need؟ وإلّا يمسح ما يمكن ويقيس ثانية، وإن بقي ضيّقًا فالمهمّة تفشل برسالة واضحة */
+  async function ensureSpace(j, need, what) {
+    let free = await freeBytes();
+    if (free >= need) return free;
+    const n = await reclaim(j.id, LIMITS.pressKeepMs);
+    free = await freeBytes();
+    jlog(j, 'disk: ' + toMB(free) + ' MB free after clearing ' + n + ' old job folder(s); ' + what + ' needs ~' + toMB(need) + ' MB');
+    if (free < need) throw new Error(diskFullMessage(free, need));
+    return free;
+  }
 
   function corsAllowed(origin) {
     if (!origin) return false;
@@ -510,9 +572,26 @@ export function createRenderer(cfg) {
     const ready = new Set(), started = new Set(), retry = [];
     let active = 0, done = 0, capturing = true, failed = null, wake = null, retrying = false;
     const limit = () => (capturing ? 1 : c.concurrency);
+    /* v-bridge-disk: صورة المشهد k يحتاجها مقطعه وسابقه (الانتقال)، وصوته مقطعه وحده — تُمسح فور ألّا يحتاجها مقطع باقٍ، فلا تتراكم لقطات
+       ٤K حتّى الدمج. المقطع الفاشل لا يُنقص عدّاده حتّى تنجح إعادته، فمدخلاته باقية لها. */
+    const refs = new Map();
+    for (const s of plan.segments) for (const k of s.needs) refs.set(k, (refs.get(k) || 0) + 1);
+    function release(seg) {
+      if (seg.inputs && seg.inputs.audio) rm(seg.inputs.audio, { force: true }).catch(() => null);
+      for (const k of seg.needs) {
+        const left = (refs.get(k) || 0) - 1;
+        refs.set(k, left);
+        const img = left <= 0 && plan.segments[k] && plan.segments[k].inputs && plan.segments[k].inputs.image;
+        if (img) rm(img, { force: true }).catch(() => null);
+      }
+    }
     async function encode(seg, args, what) {
       const r = await run(c.ffmpeg, args, { timeoutMs: LIMITS.segmentTimeoutMs });
-      if (r.code !== 0) throw new Error('segment ' + seg.index + what + ' failed: ' + runWhy(r));
+      if (r.code !== 0) {
+        if (ENOSPC.test(r.err)) { const n = await reclaim(j.id, LIMITS.pressKeepMs); jlog(j, 'disk full while encoding segment ' + seg.index + ': cleared ' + n + ' old job folder(s)'); }
+        throw new Error('segment ' + seg.index + what + ' failed: ' + runWhy(r));
+      }
+      release(seg);
     }
     function pump() {
       if (failed || retrying) return;
@@ -541,12 +620,28 @@ export function createRenderer(cfg) {
 
   async function joinSegments(j, plan) {
     const d = jobDir(j.id);
+    /* v-bridge-disk: الفيديو المدموج بحجم مقاطعه تقريبًا والمقاطع باقية حتّى ينجح — يُتأكّد من المساحة قبله لا بعد فشل ffmpeg */
+    let segBytes = 0;
+    for (const s of plan.segments) { try { segBytes += (await stat(s.out)).size; } catch (e) { /* مقطع غائب: ffmpeg يقول السبب */ } }
+    const need = Math.round(segBytes * 1.05) + LIMITS.joinSlackBytes;
+    await ensureSpace(j, need, 'the join');
     await writeFile(plan.list, plan.listText);
     let r = await run(c.ffmpeg, plan.join.args, { timeoutMs: LIMITS.joinTimeoutMs });
+    if (r.code !== 0 && ENOSPC.test(r.err)) { /* امتلأ أثناء الدمج (كتب غيرنا): يُمسح الناقص ويُفرَّغ ما يمكن ثمّ محاولة واحدة */
+      await rm(plan.join.out, { force: true }).catch(() => null);
+      jlog(j, 'join ran out of disk (' + runWhy(r) + ') — clearing old jobs and retrying once');
+      await reclaim(j.id, LIMITS.pressKeepMs);
+      await ensureSpace(j, need, 'the join retry');
+      r = await run(c.ffmpeg, plan.join.args, { timeoutMs: LIMITS.joinTimeoutMs });
+    }
     if (r.code !== 0) {
       jlog(j, 'join with audio re-encode failed (' + runWhy(r) + '), copying both streams');
+      await rm(plan.join.out, { force: true }).catch(() => null);
       r = await run(c.ffmpeg, plan.fallback.args, { timeoutMs: LIMITS.joinTimeoutMs });
-      if (r.code !== 0) throw new Error('join failed: ' + runWhy(r));
+      if (r.code !== 0) {
+        if (ENOSPC.test(r.err)) throw new Error(diskFullMessage(await freeBytes(), need));
+        throw new Error('join failed: ' + runWhy(r));
+      }
     }
     for (const s of plan.segments) rm(s.out, { force: true }).catch(() => null);
     rm(plan.list, { force: true }).catch(() => null);
@@ -559,7 +654,9 @@ export function createRenderer(cfg) {
     const guard = setTimeout(() => { set(j, { state: 'error', step: 'timeout', message: 'انتهت مهلة الإخراج.' }); }, LIMITS.jobTimeoutMs);
     try {
       set(j, { state: 'running', step: 'assets', total: j.manifest.scenes.length, done: 0 });
-      jlog(j, 'job ' + j.id + ' started: ' + j.manifest.scenes.length + ' scenes, concurrency ' + c.concurrency + ', memory limit ' + (memLimit ? Math.round(memLimit / 1048576) + ' MB' : 'unknown'));
+      const cleared = await reclaim(j.id, LIMITS.doneKeepMs); /* v-bridge-disk: ما بقي من المحاولات السابقة قبل أن نكتب شيئًا */
+      const free = await freeBytes();
+      jlog(j, 'job ' + j.id + ' started: ' + j.manifest.scenes.length + ' scenes, concurrency ' + c.concurrency + ', memory limit ' + (memLimit ? Math.round(memLimit / 1048576) + ' MB' : 'unknown') + ', disk free ' + (Number.isFinite(free) ? toMB(free) + ' MB' : 'unknown') + (cleared ? ' (cleared ' + cleared + ' old job folder(s))' : ''));
       await writeAssets(j);
       const plan = buildFfmpegArgs(j.manifest, jobDir(j.id));
       const enc = makeEncoder(j, plan);
@@ -572,14 +669,19 @@ export function createRenderer(cfg) {
       const out = await joinSegments(j, plan);
       j.done = 1;
       if (j.state === 'error') return;
-      set(j, { state: 'done', step: 'done', file: out, expiresAt: Date.now() + c.ttlMs, message: '' });
+      set(j, { state: 'done', step: 'done', file: out, doneAt: Date.now(), expiresAt: Date.now() + c.ttlMs, message: '' });
       jlog(j, 'job ' + j.id + ' done in ' + Math.round((Date.now() - started) / 1000) + 's, ' + j.seconds + 's of video, ' + j.manifest.scenes.length + ' scenes' + (j.fallbacks ? ', ' + j.fallbacks + ' title card(s) instead of screens' : '') + (j.stills ? ', ' + j.stills + ' still segment(s)' : ''));
       j.manifest = { lang: j.manifest.lang, dir: j.manifest.dir, scenes: [] };
     } catch (e) {
-      const msg = String(e && e.message || e).replace(/\u001b\[[0-9;]*m/g, '').split('\n')[0].slice(0, 300); /* سطر واحد بلا ألوان الطرفيّة */
+      let msg = String(e && e.message || e).replace(/\u001b\[[0-9;]*m/g, '').split('\n')[0].slice(0, 300); /* سطر واحد بلا ألوان الطرفيّة */
+      if (ENOSPC.test(msg) && !/^disk_full/.test(msg)) msg = diskFullMessage(await freeBytes(), 0); /* v-bridge-disk: القرص لا ffmpeg */
       jlog(j, 'job ' + j.id + ' failed at ' + j.step + ': ' + msg);
       set(j, { state: 'error', message: msg });
-    } finally { clearTimeout(guard); }
+    } finally {
+      clearTimeout(guard);
+      /* v-bridge-disk: مهمّة فشلت لا يُنزَّل منها شيء — لقطاتها وصوتها ومقاطعها تُمسح الآن لا بعد ٢٤ ساعة (سجلّها في الذاكرة يبقى للحالة) */
+      if (j.state === 'error') await rm(jobDir(j.id), { recursive: true, force: true }).catch(() => null);
+    }
   }
   async function drain() {
     if (running || !queue.length) return;
@@ -626,6 +728,7 @@ export function createRenderer(cfg) {
       const j = jobs.get(m[1]);
       if (!j || j.id !== auth.jobId) { json(res, 404, { error: 'no_such_job' }); return true; }
       if (!m[2]) { json(res, 200, publicState(j)); return true; }
+      if (j.purged) { json(res, 410, { error: 'gone', state: j.state }); return true; } /* v-bridge-disk: نُزّل ومضت ساعة فمسحته مهمّة لاحقة */
       if (j.state !== 'done' || !j.file || !existsSync(j.file)) { json(res, 409, { error: 'not_ready', state: j.state }); return true; }
       const size = (await stat(j.file)).size;
       res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': String(size), 'Content-Disposition': 'attachment; filename="omran-director.mp4"', 'Cache-Control': 'private, max-age=0' });
@@ -639,5 +742,11 @@ export function createRenderer(cfg) {
   const timer = setInterval(sweep, 3600 * 1000);
   if (timer.unref) timer.unref();
   sweep().catch(() => null);
-  return { handle, jobs, sweep, corsAllowed, _execute: execute, _capture: capture, _makeEncoder: makeEncoder, _joinSegments: joinSegments, _publicState: publicState, _log: jlog, concurrency: c.concurrency };
+  /** للصحّة (/health): المتاح والكلّيّ وما يمكن مسحه من قرص المهمّات بالميغابايت — قراءة فقط (‎-1 = لا يُعرف) */
+  async function disk() {
+    const reclaimMB = toMB(await reclaimable());
+    if (typeof c.diskFree === 'function') return { freeMB: toMB(await c.diskFree()), totalMB: -1, reclaimMB };
+    try { const s = await workStat(); return { freeMB: toMB(Number(s.bavail) * Number(s.bsize)), totalMB: toMB(Number(s.blocks) * Number(s.bsize)), reclaimMB }; } catch (e) { return { freeMB: -1, totalMB: -1, reclaimMB }; }
+  }
+  return { handle, jobs, sweep, corsAllowed, disk, _execute: execute, _capture: capture, _makeEncoder: makeEncoder, _joinSegments: joinSegments, _publicState: publicState, _log: jlog, _reclaim: reclaim, concurrency: c.concurrency };
 }

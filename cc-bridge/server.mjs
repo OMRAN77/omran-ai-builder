@@ -241,7 +241,8 @@ function gc() { const now = Date.now(); for (const [id, l] of runs) if (l.done &
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/health') return json(res, 200, { ok: true, busy: !!(current && !current.done), renderJobs: renderer.jobs.size });
+  /* v-bridge-disk: القرص في الصحّة — رمز المهمّة في Vercel يرفض قبل أيّ إنفاق إن لم يكفِ لفيديو جديد حتّى بعد المسح */
+  if (url.pathname === '/health') return json(res, 200, { ok: true, busy: !!(current && !current.done), renderJobs: renderer.jobs.size, disk: await renderer.disk().catch(() => null) });
   /* v-app-director: /render يتحقّق من رمز المهمّة بنفسه (لا السرّ الخام) ويردّ على CORS لأصل التطبيق */
   if (url.pathname === '/render' || url.pathname.startsWith('/render/')) {
     try { if (await renderer.handle(req, res, url)) return; } catch (e) { return json(res, 500, { error: redact(String((e && e.message) || e).slice(0, 300)) }); }
