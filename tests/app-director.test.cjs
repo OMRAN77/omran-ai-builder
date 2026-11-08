@@ -320,8 +320,8 @@ test('٨. النصوص الستّة والعشرون بالـ١٤ لغة بلا 
     seen[lg] = obj.vdTab;
   }
   assert.ok(new Set(Object.values(seen)).size >= 10, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=464'));
-  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=789';"));
+  assert.ok(read('index.html').includes('/js/video.js?v=466'));
+  assert.ok(read('js/app-04-i18n-state.js').includes("sc.src = 'i18n/' + lg + '.js?v=791';"));
   assert.ok(read('css/modules.css').includes('.vmk-studio.vmk-tab-director>.vmk-side') && read('css/modules.css').includes('#vmkDirector'));
 });
 
@@ -457,7 +457,7 @@ test('١٢. الواجهة: خيار «مع صوت / بدون صوت»، وال�
   assert.equal(drWrap(ctx, 'كلمةطويلةجداجداجدا', 50).join('|'), 'كلمةطويلةجداجداجدا', 'كلمة أطول من السطر تبقى كاملة');
   const css = read('css/modules.css');
   assert.ok(css.includes('.vmk-dir-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}') && css.includes('#videoMakerModal .vmk-dir-row{grid-template-columns:1fr 1fr}'), 'خمسة خيارات في صفّ (v-director-story: «النوع» خامسها)، وعلى الجوّال عمودان');
-  assert.ok(read('index.html').includes('css/modules.css?v=694'));
+  assert.ok(read('index.html').includes('css/modules.css?v=696'));
   // النصوص الأربعة بالـ١٤ لغة، بلا اسم مزوّد
   const core = read('js/app-03-i18n-data.js');
   const base = { $: () => null, document: { getElementById: () => null, querySelector: () => null }, window: {}, localStorage: { getItem: () => null } }; base.window = base;
@@ -531,7 +531,7 @@ test('١٣. الجسر يُفحص قبل أيّ صرف: جسر بنسخة قدي
   assert.ok(iTok > 0 && iTok < js.indexOf('var labels=await drLabels(lang)') && iTok < js.indexOf("'/api/media?action=tts'") && iTok < js.indexOf("'/api/portrait-style'"), 'رمز المهمّة (وفحص الجسر معه) قبل الخطّة والصوت والصور');
   assert.equal(js.split("action=app-director-token',{token:tk}").length - 1, 1, 'نداء رمز واحد لا اثنان');
   assert.ok(js.includes("throw drFail('token '+tr.status+(tr.json&&tr.json.error?' '+tr.json.error:'')+(tr.json&&tr.json.why?' '+tr.json.why:''));"), 'سبب الخادم في سطر التشخيص');
-  assert.ok(js.includes("var key=/bridge_outdated/.test(code)?'vdFailBridgeOld':/^plan/.test(code)?'vdFailPlan':"), 'جسر قديم ← رسالته لا «تحقّق من العنوان والسرّ»');
+  assert.ok(js.includes("var key=/disk_full/.test(code)?'vdFailDisk':/bridge_outdated/.test(code)?'vdFailBridgeOld':/^plan/.test(code)?'vdFailPlan':"), 'جسر قديم ← رسالته لا «تحقّق من العنوان والسرّ» (وقرص ممتلئ ← رسالته قبلها، v-bridge-disk)');
   assert.ok(js.includes("throw drFail('bridge offline (browser)');"), 'فشل الإرسال بعد نجاح فحص الخادم = المتصفّح هو الممنوع');
   // النصّ بالـ١٤ لغة
   const core = read('js/app-03-i18n-data.js');
@@ -546,5 +546,5 @@ test('١٣. الجسر يُفحص قبل أيّ صرف: جسر بنسخة قدي
     assert.ok(t && t.length > 20, lg); assert.doesNotMatch(t, BANNED, lg); seenT.add(t);
   }
   assert.equal(seenT.size, LANGS.length, 'ترجمات لا نسخ');
-  assert.ok(read('index.html').includes('/js/video.js?v=464'));
+  assert.ok(read('index.html').includes('/js/video.js?v=466'));
 });

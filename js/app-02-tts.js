@@ -1662,7 +1662,7 @@ function smartScrollBottom(wasNearBottom){
     /* v-scroll-free: الملاحقة يقرّرها omranChatFollow (app-40) من حركة المستخدم — لا فرق ١٦٠px يشدّ إصبعه أثناء السحب */
     const __F = window.omranChatFollow;
     const follow = (typeof wasNearBottom === 'boolean') ? wasNearBottom : (__F ? __F.follow() : chatIsNearBottom());
-    if(follow) messagesEl.scrollTop = messagesEl.scrollHeight;
+    if(follow){ messagesEl.scrollTop = messagesEl.scrollHeight; if(__F && __F.atBottom) __F.atBottom(); } // v-share-visible: في الأسفل الآن (followGrowth)
     syncChatJumpButton();
   }catch(e){ __swallow(e, "misc:app-02-tts#8"); }
 }

@@ -349,7 +349,7 @@ test('١٦. كلّ موضع تحميل يُبنى بالكود يضيف «مشا
   const has = (f, re, why) => assert.match(read(f), re, why);
   has('js/app-04-i18n-state.js', /window\.omranAddShareNextTo\(dl, \{ kind: 'video', className: 'file-chip'/, 'فيديو المحادثة');
   has('js/app-11-video-trends.js', /window\.omranAddShareNextTo\(dl, \{ kind: 'video', className: 'btn', getSrc: function\(\)\{ return u; \} \}\)/, 'الترند');
-  assert.equal((read('js/app-11-video.js').match(/window\.omranAddShareNextTo\(a, \{ kind: 'video', label: '↗️ ' \+ bT\('مشهد ', 'Scene '\)/g) || []).length, 2, 'مشاهد الصانع (المساران)');
+  assert.equal((read('js/app-11-video.js').match(/window\.omranAddShareNextTo\(a, \{ kind: 'video', style: a\.style\.cssText \+ 'border:0;cursor:pointer;font-family:inherit;', getSrc:/g) || []).length, 2, 'مشاهد الصانع (المساران) — «مشاركة» بمفتاحها لا «مشهد N» ثانية (v-share-visible)');
   has('js/app-12-studios.js', /window\.omranAddShareNextTo\(a, \{ kind: 'image', after: vb, className: 'btn'/, 'تصاميم الديكور المتعدّدة');
   has('js/app-13-stocks-init.js', /window\.omranAddShareNextTo\(a, \{ kind: 'image', style:/, 'أنماط الاستوديو');
   has('js/edu-plus.js', /window\.omranAddShareNextTo\(a, \{ kind: 'image', className: 'eduPrimary'/, 'بوستر التعليم');
@@ -480,4 +480,107 @@ test('٢١. بقيّة مواضع التحميل: الأفاتار المتحر�
   assert.equal(Object.keys(A).length, 14);
   for (const lg of Object.keys(A)) for (const k of ['shareSheetTitle', 'closeTitle', 'shareMessages', 'shareEmail', 'shareMore', 'sharePreparing', 'shareFail', 'shareCopy', 'shareSheetCopied', 'sheetCopyFail', 'shareLinkFail', 'shareFileBig', 'imgDlBtn', 'shareNextBtn'])
     assert.ok(typeof A[lg][k] === 'string' && A[lg][k], lg + ': ' + k);
+});
+
+// ── v-share-visible (المالك ٧ نوفمبر بعد الدمج: «شغلك مافي اي شي» + فحص المتصفّح الحقيقيّ لكلّ موضع تحميل) ─────────────────────
+test('٢٢. زرّ المشاركة يلحق أسلوب زرّ التحميل بعد الربط — الاستوديو والأزياء يضيفان max-width:760px بعد أن تنفَّذ الحزمة فكان بعرض النافذة؛ والأسلوب الصريح لا يُستبدل', () => {
+  const c = load2();
+  const wrap = c.document.createElement('div'); c.document.body.appendChild(wrap);
+  const dl = c.document.createElement('a'); dl.className = 'btn'; dl.setAttribute('href', 'data:image/png;base64,QQ==');
+  dl.style.cssText = 'display:none; margin-top:8px; text-align:center;'; dl.style.display = 'none'; wrap.appendChild(dl);
+  const b = c.omranAddShareNextTo(dl, { kind: 'image', className: 'btn' }); // كما يربطه SHARE_NEXT من القالب قبل الحزمة
+  assert.equal(b.style.display, 'none', 'مخفيّ مع التحميل');
+  // الحزمة (٤٫٧ م.ب) تنفَّذ بعد الملفّ: ST_RESULT_STYLE ثمّ تظهر النتيجة
+  dl.style.cssText = 'display:block; margin-top:8px; text-align:center; max-width: 760px; margin-inline: auto;'; dl.style.display = 'block';
+  c.fire(dl);
+  assert.equal(b.style.cssText, dl.style.cssText, 'أسلوب التحميل الآن لا لحظة الربط');
+  assert.equal(b.style.display, 'block'); assert.equal(b.style.width, '100%');
+  // مزامنة بلا تغيّر في أسلوب التحميل لا تُسند cssText (الإسناد ولو بالنصّ نفسه طفرة style توقظ app-41 كلّ ٦٠ م.ث أثناء البثّ)
+  let writes = 0, css = b.style.cssText;
+  Object.defineProperty(b.style, 'cssText', { configurable: true, get() { return css; }, set(v) { writes++; css = v; } });
+  c.fire(dl); c.fire(dl); c.fire(wrap);
+  assert.equal(writes, 0, 'لا إسناد بلا تغيير');
+  dl.style.cssText = 'display:block; margin-top:12px; max-width: 760px; margin-inline: auto;'; c.fire(dl);
+  assert.equal(writes, 1); assert.equal(css, dl.style.cssText, 'ويلحق التغيير نفسه');
+  const dl2 = c.document.createElement('a'); dl2.setAttribute('href', 'https://cdn.example/s.mp4'); wrap.appendChild(dl2);
+  const b2 = c.omranAddShareNextTo(dl2, { kind: 'video', style: 'padding:6px 12px;' });
+  dl2.style.cssText = 'padding:1px;'; c.fire(dl2);
+  assert.equal(b2.style.cssText, 'padding:6px 12px;', 'الأسلوب الصريح (مشاهد الصانع، أنماط الاستوديو) يبقى');
+  assert.match(SRC, /if\(o\.style == null && dl\.style\.cssText !== lastCss\)\{ lastCss = dl\.style\.cssText; b\.style\.cssText = lastCss; \}/);
+  assert.ok(Number(/\/js\/share-sheet\.js\?v=(\d+)/.exec(read('index.html'))[1]) >= 2, 'وسم الملفّ مرفوع في التطبيق');
+  assert.ok(Number(/\/js\/share-sheet\.js\?v=(\d+)/.exec(read('ad-studio.html'))[1]) >= 2, 'وفي استوديو الإعلانات');
+});
+
+test('٢٣. تنظيف الفيديو: «مشاركة» بلا أسلوب مضمَّن يمحو الذهبيّ ويُبقي النصّ الداكن على الأسود (١٫١٤:١) — مقروء في الوضعين وملاصق للتحميل في كلّ عرض', () => {
+  const c = load2();
+  const r = c.omranShareNextList.find((x) => x.sel === '#vmkClDl');
+  assert.equal(r.className, 'vmk-cl-dl'); assert.equal(r.style, '', 'لا background:transparent مضمَّن');
+  const wrap = c.document.createElement('div'); c.document.body.appendChild(wrap);
+  const dl = c.document.createElement('a'); dl.className = 'vmk-cl-dl'; dl.setAttribute('href', 'blob:x'); wrap.appendChild(dl);
+  const b = c.omranAddShareNextTo(dl, { kind: r.kind, className: r.className, style: r.style });
+  assert.equal(b.style.cssText, ''); assert.equal(b.className, 'vmk-cl-dl omShareNext');
+  const css = read('css/modules.css');
+  assert.ok(css.includes('#videoMakerModal .vmk-cl-dl.omShareNext{background:rgba(255,255,255,.04);border:1.5px solid rgba(232,194,122,.6);color:#f0dcb0;cursor:pointer;font-family:inherit}'), 'نصّ ذهبيّ فاتح بتعبئة «قبل» الداكنة');
+  assert.ok(css.includes('html[data-mode="light"] #videoMakerModal .vmk-cl-dl.omShareNext{background:#fff;color:#8a5a12}'), 'وبنّيّ على الأبيض في الفاتح');
+  const row = css.match(/#videoMakerModal \.vmk-cl-done\{[^}]*\}/)[0];
+  assert.ok(row.includes('justify-content:flex-start') && !row.includes('space-between'), 'الصفّ لا يدفع الزرّ الثالث إلى الطرف الآخر');
+  assert.ok(css.includes('#videoMakerModal .vmk-cl-done .vmk-cl-ab{flex-basis:100%}'), '«قبل/بعد» سطرها دائمًا والتحميل والمشاركة معًا تحتها');
+  assert.ok(!/vmk-cl-ab\{margin-inline-end:auto\}|@media \(max-width:560px\)\{#videoMakerModal \.vmk-cl-done/.test(css), 'لا حدّ بعرض الشاشة: عمود الحاسوب ٣٧٣–٥١٢ يفصلهما في ٨٦١–٩٤٥');
+  assert.ok(Number(/css\/modules\.css\?v=(\d+)/.exec(read('index.html'))[1]) >= 695, 'وسم modules مرفوع');
+});
+
+test('٢٤. صانع الفيديو: صفّ «مشهد N» مكان زرّ التحميل لا داخل منصّة العرض (فيديوها مطلق فوقه)، وكلّ مشهد زوج مع «مشاركة» لا ينقسم', () => {
+  const js = read('js/app-11-video.js');
+  const fn = (name) => { const i = js.indexOf('  function ' + name + '('); assert.ok(i >= 0, name); return js.slice(i, js.indexOf('\n  }\n', i) + 4); };
+  const one = (name) => { const i = js.indexOf('  function ' + name + '('); assert.ok(i >= 0, name); return js.slice(i, js.indexOf('\n', i) + 1); };
+  const make = new Function('resultEl', 'downloadEl', '__swallow', 'document', fn('placeSceneLinks') + one('scenePair') + 'return { placeSceneLinks, scenePair };');
+  const node = (cls) => { const n = { cls, parentNode: null, children: [], style: {}, appendChild(c) { if (c.parentNode) c.parentNode.children.splice(c.parentNode.children.indexOf(c), 1); c.parentNode = this; this.children.push(c); return c; },
+    insertBefore(c, ref) { if (c.parentNode) c.parentNode.children.splice(c.parentNode.children.indexOf(c), 1); c.parentNode = this; const i = ref ? this.children.indexOf(ref) : -1; if (i < 0) this.children.push(c); else this.children.splice(i, 0, c); return c; },
+    get nextSibling() { const s = this.parentNode ? this.parentNode.children : []; return s[s.indexOf(this) + 1] || null; },
+    closest(sel) { let p = this; while (p) { if ('.' + p.cls === sel) return p; p = p.parentNode; } return null; } }; return n; };
+  const doc = { createElement: () => node('span') };
+  // بعد بناء video.js: الفيديو في .vmk-stage، والتحميل وزرّ مشاركته في العمود الجانبيّ
+  const side = node('vmk-side'), stage = node('vmk-stage'), res = node('video'), status = node('status'), dl = node('dl'), share = node('share'), desc = node('desc');
+  side.appendChild(stage); stage.appendChild(res); side.appendChild(status); side.appendChild(dl); side.appendChild(share); side.appendChild(desc); dl.__omShareNext = share;
+  const F = make(res, dl, () => {}, doc);
+  const links = node('links');
+  F.placeSceneLinks(links);
+  assert.equal(links.parentNode, side, 'خارج منصّة العرض'); assert.equal(share.nextSibling, links, 'تحت زرّ التحميل ومشاركته');
+  stage.appendChild(links); F.placeSceneLinks(links); // صفّ قديم بقي في المنصّة من مرّة سابقة يُنقل
+  assert.equal(share.nextSibling, links);
+  // بلا بناء video.js (التخطيط القديم): بعد الفيديو كما كان
+  const box = node('box'), res2 = node('video'); box.appendChild(res2);
+  const F2 = make(res2, node('dl'), () => {}, doc); const l2 = node('links'); F2.placeSceneLinks(l2);
+  assert.equal(res2.nextSibling, l2);
+  const a = node('a'); const pair = F.scenePair(a);
+  assert.equal(a.parentNode, pair); assert.match(pair.style.cssText, /display:inline-flex/);
+  assert.equal((js.match(/placeSceneLinks\(linksEl\);/g) || []).length, 2, 'المساران: المشاهد الجزئيّة وقائمة التشغيل');
+  assert.equal((js.match(/linksEl\.appendChild\(scenePair\(a\)\);/g) || []).length, 2);
+  assert.ok(!js.includes('resultEl.parentNode.insertBefore(linksEl'), 'لا إدراج بعد الفيديو داخل المنصّة');
+  assert.ok(!/label: '↗️ ' \+ bT\('مشهد /.test(js), 'زرّ المشاركة «مشاركة» (بلا الإيموجي كان «مشهد N» مثل زرّ التحميل)');
+});
+
+test('٢٥. صورة أداة التوليد تلحق الأسفل عند تحميلها إن لم يصعد القارئ منذ كان في الأسفل — كان زرّ «مشاركة» وشرح الصورة تحت صندوق الكتابة؛ ولا تشدّ من صعد ببحث Ctrl+F، ولا مستمع لصورة مخزّنة', () => {
+  const s = read('js/app-04-i18n-state.js');
+  const i = s.indexOf("const genStrip = document.createElement('div');"); assert.ok(i > 0);
+  const end = s.indexOf('// 🖼️ Feature ② — image strip ABOVE the reply text', i); assert.ok(end > i);
+  const blk = s.slice(i, end);
+  const LINE = "if(!(gimg.complete && gimg.naturalHeight)) gimg.addEventListener('load', () => { try{ if(gimg.isConnected && window.omranChatFollow && window.omranChatFollow.followGrowth()) smartScrollBottom(true); }catch(e){ __swallow(e, 'gen:follow'); } });";
+  assert.ok(blk.includes(LINE), 'قرار followGrowth (app-40) لكلّ الردود، وصورة مخزّنة بلا مستمع');
+  assert.ok(!blk.includes('mIdx === cur.messages.length - 1'), 'كلّ الردود: ردّ صورة قبل آخر رسالة يكبر بعد فتح المحادثة أيضًا');
+  assert.ok(!/offsetHeight \+ 160/.test(blk), 'لا حدّ ارتفاع: كلّها فشلت في فحص ما');
+  // الترتيب: الشريط في فقاعته، والصورة في الشريط، قبل أدوات الصورة — فيجد وسمُها (.oImgMsg) الفقاعةَ فورًا لا بعد تمرير الرسم
+  const a = blk.indexOf('div.appendChild(genStrip);'), f = blk.indexOf('__genShown.slice(0, 4).forEach(');
+  assert.ok(a > 0 && a < f, 'الشريط يُلحق بالفقاعة قبل الصور');
+  assert.ok(blk.includes('gb.appendChild(gimg); genStrip.appendChild(gb); window.__omranImgTools(gb, url);'), 'الصورة في الشريط قبل أدواتها');
+  assert.ok(read('js/app-09-attach.js').includes("__markBox(); setTimeout(__markBox, 0);"), 'أدوات الصورة تسم فورًا ثمّ بعد نبضة');
+  // المستمع منفّذًا: صورة جديدة تكبر → يلحق بقرار followGrowth؛ مخزّنة (مقاسة لحظة إدراجها) → لا مستمع
+  const run = (st) => { const h = {}; let n = 0;
+    const gimg = { complete: st.complete, naturalHeight: st.natH, isConnected: true, addEventListener: (ev, fn) => { h[ev] = fn; } };
+    new Function('gimg', 'window', 'smartScrollBottom', '__swallow', LINE)(gimg, { omranChatFollow: { followGrowth: () => st.grow } }, (near) => { if(near === true) n++; }, (e) => { throw e; });
+    if(h.load) h.load(); return { listener: !!h.load, calls: n }; };
+  assert.deepEqual(run({ complete: false, natH: 0, grow: true }), { listener: true, calls: 1 }, 'صورة تُفكّ الآن والقارئ في الأسفل: يلحق');
+  assert.deepEqual(run({ complete: false, natH: 0, grow: false }), { listener: true, calls: 0 }, 'صعد (Ctrl+F أو عجلة) منذ كان في الأسفل: لا يشدّ');
+  assert.deepEqual(run({ complete: true, natH: 1200, grow: true }), { listener: false, calls: 0 }, 'مخزّنة: مقاسة لحظة الإدراج وload بلا نموّ — لا مستمع');
+  assert.deepEqual(run({ complete: true, natH: 0, grow: true }), { listener: true, calls: 1 }, 'complete بلا مقاس (لم تُفكّ): مستمع');
 });
