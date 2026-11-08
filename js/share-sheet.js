@@ -399,7 +399,7 @@
     { sel: '#constructionAngleDownloadLink', className: 'btn' },
     { sel: '#constructionRoomDownloadLink', className: 'btn' },
     { sel: '#videoMakerDownloadLink', className: 'btn', kind: 'video' }, // صانع الفيديو
-    { sel: '#vdDl', className: 'vmk-dir-dl', kind: 'video', style: 'background:transparent;cursor:pointer;font-family:inherit;' },  // مخرج التطبيق (video.js)
+    { sel: '#vdDl', className: 'vmk-dir-dl', kind: 'video', style: 'cursor:pointer;font-family:inherit;' },  // مخرج التطبيق (video.js) — v-share-visible: لا خلفيّة مضمّنة؛ قاعدتا button.vmk-dir-dl في modules.css (شفّافة داكنًا، بيضاء فاتحًا) كبقيّة الصفّ
     { sel: '#vmkClDl', className: 'vmk-cl-dl', kind: 'video', style: '' } // تنظيف الفيديو (video.js) — أسلوبه في modules.css (v-share-visible): المضمَّن كان يمحو الذهبيّ ويُبقي النصّ الداكن على الأسود
   ];
   window.omranShareNextList = SHARE_NEXT;
