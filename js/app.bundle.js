@@ -1699,6 +1699,28 @@ try{
      هنا ننتظر النتيجة كلّ ٣ ثوانٍ. رابط إعادة كلمة المرور لا يمرّ من هنا أبدًا: يصل محادثة الرقم نفسه. */
   let phonePoll = null;
   function phoneSay(el, txt, color){ if(el){ el.textContent = txt || ''; el.style.color = color || 'var(--muted,#999)'; } }
+  /* v-lock-r2 (userdata-4): البريد والهاتف قناتا استرجاع — الخادم يطلب كلمة المرور الحاليّة لربطهما ممّن وضعها (password_required)،
+     فخانة كلمة مرور تظهر فوق سطر الرسالة عند طلبها وحده (بنصّ acctCurrentPasswordLabel القائم بالـ١٤ لغة)، وتُرسل مع المحاولة التالية. */
+  function acctPassBox(msgEl, id, show){
+    let box = $('#' + id);
+    if(!box && show && msgEl && msgEl.parentNode){
+      box = document.createElement('input');
+      box.type = 'password';
+      box.id = id;
+      box.setAttribute('autocomplete', 'current-password');
+      box.setAttribute('dir', 'auto');
+      box.style.cssText = 'display:block; width:100%; box-sizing:border-box; height:44px; margin-top:8px; padding:0 10px; border-radius:var(--r-2);';
+      msgEl.parentNode.insertBefore(box, msgEl);
+    }
+    if(box){
+      box.style.display = show ? 'block' : 'none';
+      box.placeholder = curT().acctCurrentPasswordLabel || '';
+      if(!show) box.value = '';
+      else box.focus();
+    }
+    return box;
+  }
+  function acctPassVal(id){ const b = $('#' + id); return (b && b.style.display !== 'none') ? b.value : ''; }
   async function phoneFlow(btn){
     const t2 = curT();
     const recover = btn.getAttribute('data-recover') === '1';
@@ -1711,15 +1733,21 @@ try{
     let data = null;
     try {
       const body = { action: recover ? 'phone-recover-start' : 'phone-link-start', channel };
-      if(!recover) body.token = authGet('aiapp_auth_token');
+      if(!recover){ body.token = authGet('aiapp_auth_token'); const pw = acctPassVal('acctPhonePass'); if(pw) body.password = pw; } // v-lock-r2 (userdata-4)
       const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
-      if(!res.ok || !data || !data.link) throw Object.assign(new Error('start'), { said: (data && data.error) || t2.acctGenericError });
+      if(!res.ok || !data || !data.link) throw Object.assign(new Error('start'), { said: (data && data.error) || t2.acctGenericError, code: data && data.code });
     } catch(e){
       if(win) try { win.close(); } catch(e2){ window.__swallow(e2, 'phone-link:close'); }
+      if(!recover && e && (e.code === 'password_required' || e.code === 'wrong_password')){ // v-lock-r2 (userdata-4)
+        acctPassBox(msgEl, 'acctPhonePass', true);
+        phoneSay(msgEl, e.code === 'wrong_password' ? t2.acctDeleteWrongPass : t2.acctCurrentPasswordLabel, '#ef4444');
+        return;
+      }
       phoneSay(msgEl, e && e.said ? e.said : t2.acctNetError, '#ef4444');
       return;
     }
+    if(!recover) acctPassBox(msgEl, 'acctPhonePass', false);
     if(win && !win.closed){ win.opener = null; win.location.href = data.link; }
     phoneSay(msgEl, t2.phoneWaiting);
     if(!win || win.closed){ // النوافذ محجوبة: رابط يُضغط بدلها
@@ -1776,9 +1804,14 @@ try{
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(confirming
             ? { action: 'email-otp-verify', purpose: 'change', token, email: emailVal, otp: code, lang }
-            : { action: 'email-otp-request', purpose: 'change', token, email: emailVal, lang }),
+            : Object.assign({ action: 'email-otp-request', purpose: 'change', token, email: emailVal, lang }, acctPassVal('acctEmailPass') ? { password: acctPassVal('acctEmailPass') } : {})),
         });
         const data = await res.json().catch(() => ({}));
+        if(data.code === 'password_required' || data.code === 'wrong_password'){ // v-lock-r2 (userdata-4): كلمة المرور الحاليّة لربط بريد استرجاع
+          acctPassBox(acctEmailMsg, 'acctEmailPass', true);
+          say(data.code === 'wrong_password' ? t2.acctDeleteWrongPass : t2.acctCurrentPasswordLabel, '#ef4444');
+          return;
+        }
         if(!res.ok || data.error){
           // رسالة الخادم عربيّة/إنجليزيّة فقط — الحالات المعروفة بنصّ الواجهة بلغتها الـ١٤
           const byCode = { bad_otp: t2.acctEmailBadCode, email_taken: t2.acctEmailTaken, bad_email: t2.acctInvalidEmail,
@@ -1797,6 +1830,7 @@ try{
         }
         acctEmailPending = emailKey;
         acctEmailPendingUser = authGet('aiapp_username') || '';
+        acctPassBox(acctEmailMsg, 'acctEmailPass', false); // v-lock-r2 (userdata-4): أُرسل الرمز — لا تبقى الكلمة في الصفحة
         const box = acctEmailCodeBox(true);
         if(box){ box.value = ''; box.focus(); }
         say(String(t2.acctEmailCodeSent || '').replace('{email}', emailVal), 'var(--muted,#999)');
@@ -8333,20 +8367,39 @@ function __msgForServer(m){
 }
 function chatsSlimForServer(){
   if(__slimCache) return __slimCache;
-  let list = (state.projects || []).map(p => ({
+  // v381: رفع الحد لـ 2MB عشان الصور المضغوطة تمر
+  const LIMIT = 2000000;
+  const src = state.projects || [];
+  const slimOf = p => ({
     id: p.id,
     title: p.title || '',
     provider: p.provider || '',
     messages: Array.isArray(p.messages) ? p.messages.map(__msgForServer) : [],
     code: (typeof p.code === 'string') ? p.code : '',
     updatedAt: Number(p.updatedAt) || 0, // v-chat-order: الخادم يحفظه أصلًا (slimProjects)
-  })).filter(p => p.id);
-  // v381: رفع الحد لـ 2MB عشان الصور المضغوطة تمر
+  });
+  /* v-freeze-fix (لقطة عمران ٨ نوفمبر: «التطبيق يستجيب ببطء» على الحاسوب فوق محادثة فارغة): كانت تنسخ كلّ رسالة في كلّ المحادثات
+     (__msgForServer يحمل كود التطبيق كاملًا في رسائل البناء) وتسلسلها ثانيةً للقياس، ثمّ لا تُبقي إلّا أحدث ما يتّسع في 2MB — الكلفة
+     بحجم السجلّ كلّه والناتج ثابت. مسبار سجلّ المالك الثقيل (٢٤١ محادثة، ٢٥٦ مليون حرف كود في الرسائل، المعالج ×٢): مهمّة واحدة
+     ٧٫٨ث بعد «محادثة جديدة» (مرآة الحفظ) ← البانر. الآن تُبنى من الأحدث وتتوقّف أوّل ما يفيض الجزء الأحدث حتّى بلا p.code: حينها
+     كانت الخوارزميّة السابقة ستنزع p.code من الكلّ (الإجماليّ يبقى فوق الحدّ) وتُبقي أطول ذيل يتّسع — وهو ما بُني بالضبط. وإن اتّسع
+     السجلّ كلّه بلا p.code طُبّقت الحلقتان السابقتان حرفيًّا على القائمة كاملة. العمل = الحدّ + محادثة واحدة، والناتج نفسه حرفيًّا. */
+  const full = [], bare = [];
+  let sum = 0;
+  for(let j = src.length - 1; j >= 0; j--){
+    const sp = slimOf(src[j]);
+    if(!sp.id) continue;
+    const b = sp.code ? Object.assign({}, sp, { code: '' }) : sp;
+    let ln;
+    try{ ln = JSON.stringify(b).length; }catch(e){ return []; } /* guard-ok — كالسابق: مشروع لا يُسلسَل يفرّغ القائمة */
+    if(2 + bare.length + sum + ln > LIMIT){ __slimCache = bare.reverse(); return __slimCache; }
+    full.push(sp); bare.push(b); sum += ln;
+  }
+  const list = full.reverse();
   /* v-perf-slim-linear (المالك ٢٩ سبتمبر: «إذا أطلع من التطبيق وأدخل يأخذ ١٠–٢٠ ثانية، وإذا أدخل أيّ مكان مجمّد ويفتح»):
      كان كلّ دور في الحلقتين يعيد JSON.stringify للقائمة كلّها — مئات النسخ لعدّة ميغا (تربيعيّ). مسبار حساب ثقيل
      (٤٠ محادثة، المعالج ×٤): ٤٫٣ ثانية للنداء الواحد، وهو يُنادى عند الإقلاع (المرآة) وكلّ حفظ ومزامنة وعند الخروج.
      الآن يُقاس كلّ مشروع مرّة: طول نصّ المصفوفة = '[' + العناصر مفصولة بفواصل + ']'، والناتج هو نفسه حرفيًّا. */
-  const LIMIT = 2000000;
   let lens;
   try{ lens = list.map(p => JSON.stringify(p).length); }catch(e){ return []; } /* guard-ok — كالسابق: قائمة لا تُسلسَل = Infinity فتُفرَّغ كلّها */
   let total = list.length ? 2 + (list.length - 1) + lens.reduce((a, b) => a + b, 0) : 2;
@@ -15768,18 +15821,23 @@ window.showPriceTab = showPriceTab;
 /* v-audit-shell (cli-ui-shell-5): «باقتك الحالية» كانت ثابتة على بطاقة «مجاني» في الجزء (partials-settings)، و«اشترك الآن» على باقة المشترك
    نفسها — فيُدعى المشترك لشراء باقته مرّة ثانية. بطاقة الباقة الفعليّة (__omranPlan) تأخذ الزرّ المعطّل بمفتاحه، وزرّ «مجاني» يُخفى لمن ليس
    مجّانيًّا أو ضيفًا، وكلّ زرّ يعود كما كان حين تتغيّر الباقة. عرض فقط: الأسعار والدفع (openCheckout) والخادم كما هي. */
+/* v-lock-r2 (r2-5): بطاقة الباقة الحاليّة المعطّلة مع منع الأدنى (lower_plan) وشريط «قارب الانتهاء — جدّد» (app-33) = طريق مسدود: مشترك Max بدفعة
+   لشهر يُدعى للتجديد ولا شيء يُشترى، فينتظر السقوط إلى المجّانيّ. في نافذة ذلك الشريط نفسها (٣ أيّام قبل نهاية الفترة، NOTICE_DAYS في
+   app-33، من subs ردّ الرصيد) تصير بطاقته «جدّد» وتفتح دفع الباقة نفسها؛ قبلها تبقى «باقتك الحالية» (لا شراء مبكّر يقصّر الفترة)، والأدنى ممنوعة كما كانت. */
 function pricingMarkCurrentPlan(plan){
   const p = String(plan || '').toLowerCase();
   const cur = (!p || p === 'free' || p === 'guest') ? 'free' : p;
+  const subs = Array.isArray(window.__omranSubs) ? window.__omranSubs : [];
+  const renew = cur !== 'free' && subs.some(function(s){ return s && s.kind === 'chat' && s.active && String(s.plan || '').toLowerCase() === cur && Number(s.endsAt) - Date.now() <= 3 * 86400000; });
   document.querySelectorAll('#pricingSection .priceTab[data-tab="chat"] .pcard .pbtn').forEach(function(b){
     if(b.dataset.planCard === undefined){
       b.dataset.planCard = ((b.getAttribute('onclick') || '').match(/openCheckout\('(\w+)'\)/) || [])[1] || 'free';
       b.dataset.planCls = b.className;
       b.dataset.planKey = b.getAttribute('data-i18n') || '';
     }
-    const id = b.dataset.planCard, on = id === cur, key = on ? 'planCurrentBtn' : b.dataset.planKey;
-    b.className = on ? 'pbtn ghost' : b.dataset.planCls;
-    b.disabled = on || id === 'free';
+    const id = b.dataset.planCard, on = id === cur, key = on ? (renew ? 'plansRenew' : 'planCurrentBtn') : b.dataset.planKey;
+    b.className = (on && !renew) ? 'pbtn ghost' : b.dataset.planCls;
+    b.disabled = (on && !renew) || id === 'free';
     b.style.visibility = (id === 'free' && !on) ? 'hidden' : '';
     if(key && b.getAttribute('data-i18n') !== key){ b.setAttribute('data-i18n', key); b.textContent = t(key); }
   });
@@ -15839,8 +15897,9 @@ async function refreshPointsWallet(){
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
       renderMediaPlanStatus(d.media);
       window.__omranMediaStatus = d.media || {}; // v-lock-subs (srv-money-4): checkoutLowerThanCurrent
+      window.__omranSubs = Array.isArray(d.subs) ? d.subs : []; // v-lock-r2 (r2-5): نهاية الفترة لبطاقة «جدّد»
       pricingMarkCurrentPlan(window.__omranPlan); // v-audit-shell
-    } else { row.style.display = 'none'; window.__omranMediaStatus = {}; pricingMarkCurrentPlan('guest'); }
+    } else { row.style.display = 'none'; window.__omranMediaStatus = {}; window.__omranSubs = []; pricingMarkCurrentPlan('guest'); }
   }catch(e){ /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
@@ -20840,6 +20899,15 @@ const MAHA_IMAGE_ASK = [
   mahaImgRe(MAHA_IMG_HEAD, '[وف]?صمّ?م(?:ي)?(?:لي|لنا)?' + MAHA_IMG_FOR + '\\s+(?:ال)?(?:شعار|لوجو|لوقو|صور[ةه]|رسم[ةه]|بوستر|تصميم)' + MAHA_IMG_E),
   mahaImgRe(MAHA_IMG_HEAD, '[وف]?(?:[اأ]ب[اي]|ولّ?د(?:ي)?(?:لي)?|[اأ]عمل(?:ي)?(?:لي)?|[اأ]صنع(?:ي)?(?:لي)?)' + MAHA_IMG_FOR + MAHA_IMG_NOUN),
   mahaImgRe(MAHA_IMG_ANY, '[وف]?(?:[اأ]?عط(?:ي)?ني|هات(?:ي)?(?:لي)?|[اأ]بغ[اىي](?:لي)?|[اأ]ريد|سوّ?ي?(?:لي)?)' + MAHA_IMG_FOR + MAHA_IMG_NOUN),
+  /* v-lock-r2 (client-ux-3): صيغة الطلب المؤدّبة الأشيع — المضارع للمخاطَب بعد ممكن/تقدر/تكفى أو أوّل الكلام («ممكن ترسم لي قطة»، «تقدرين
+     ترسمين لي بيت؟»، «تقدر تسوي لي صورة قطة؟»، «تصمم لي شعار؟») — صارت ردًّا نصّيًّا بعد قصر المطابقة على الأمر. «ترسم» بمفعول لي/لنا/ها
+     لا وحدها («تقدر ترسم؟» سؤال قدرة كـcan you draw?)، و«تسوّي/تولّد» مع صورة/رسمة، و«تصمّم» مع شعار/صورة. ونحن/الرغبة: «نبي/نبغى صورة»
+     في موضع الأمر كـ«ابي»، و«ودي/حاب صورة» نكرةً («ودّي الصورة لأمي» توصيلٌ لا طلب). النفي و«كيف» كما هما (mahaImgHit). */
+  mahaImgRe(MAHA_IMG_HEAD, '[وف]?ترسم(?:ين|ي)?(?:لي|لنا|ها|ه|\\s+(?:لي|لنا))' + MAHA_IMG_E),
+  mahaImgRe(MAHA_IMG_HEAD, '[وف]?ت(?:سوّ?(?:ين|ي)|ولّ?د(?:ين|ي)?)(?:لي|لنا)?' + MAHA_IMG_FOR + MAHA_IMG_NOUN),
+  mahaImgRe(MAHA_IMG_HEAD, '[وف]?تصمّ?م(?:ين|ي)?(?:لي|لنا)?' + MAHA_IMG_FOR + '\\s+(?:ال)?(?:شعار|لوجو|لوقو|صور[ةه]|رسم[ةه]|بوستر|تصميم)' + MAHA_IMG_E),
+  mahaImgRe(MAHA_IMG_HEAD, '[وف]?نب(?:[اي]|غ[اىي])' + MAHA_IMG_FOR + MAHA_IMG_NOUN),
+  mahaImgRe(MAHA_IMG_ANY, '[وف]?(?:ودّ?ي|حاب[ةه]?)' + MAHA_IMG_FOR + '\\s+(?:صور[ةه]|رسم[ةه]|لوجو|لوقو)' + MAHA_IMG_E + '(?!\\s+(?:عام|واضح|كامل|شامل|مبسط|مختصر)[ةه]?' + MAHA_IMG_E + ')'),
   mahaImgRe(MAHA_IMG_HEAD, 'draw\\s+(?:me\\s+|us\\s+|for\\s+me\\s+)?(?!(?:(?:an?|the|some|my|your|his|her|our|their)\\s+)?(?:money|cash|funds?|lines?|conclusions?|cards?|attention|blood|water|breath|straws?|lots|up|out|from|on|back|near|closer|parallels?|comparisons?|inspiration|crowds?|curtains?|blinds|baths?|swords?|guns?|weapons?|fire|criticism|interest|support|a\\s+blank)\\b)[a-z]'),
   mahaImgRe(MAHA_IMG_ANY, '(?:generate|create|make|design)\\s+(?:me\\s+|us\\s+)?(?:(?:an?|one)\\s+(?:[a-z-]+\\s+){0,2}?(?:image|picture|photo|drawing|logo|poster|illustration)(?=\\s*$|\\s*[,.!?;:]|\\s+(?:of|for|showing|that|with|about|please|now)\\b)|(?:(?:the|some|this|that)\\s+)?(?:image|picture|photo|drawing|logo|poster|illustration)s?\\s+(?:of|for)\\b)'),
   mahaImgRe(MAHA_IMG_ANY, '(?:give\\s+me|i\\s+(?:want|need|would\\s+like)|i[\'’]d\\s+like)\\s+(?:(?:an?|one|the|some)\\s+)?(?:[a-z-]+\\s+){0,2}?(?:(?:image|picture|drawing|illustration)s?\\s+of|logo\\s+for)\\b'),
@@ -31146,7 +31214,9 @@ window.postWithConfirm = postWithConfirm;
     if(delay > FREEZE_THRESHOLD_MS){
       strikes++;
       if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
-        try{ saveState(); }catch(err){ __swallow(err, "save:app-10-features#1"); }
+        /* v-freeze-fix: لا إعادة حفظ هنا — كانت تُبطل النسخة المنحّفة وتجدول رفعها وحفظ السجلّ كاملًا في IndexedDB لحظة التجمّد نفسها
+           (مسبار سجلّ المالك الثقيل: تجمّد ثانٍ ١٤ث بعد البانر). أيّ تغيير ينتظر أصلًا في الحفظ المجمّع (١٫٥ث)، و«إعادة التحميل» =
+           pagehide ← __saveFlush والمرآة؛ فـ«تم حفظ عملك تلقائيًا» صادقة بلا هذه الكلفة. */
         shown = true;
         banner.style.display = 'flex';
       }
@@ -43341,7 +43411,7 @@ window.updateVersionLabel();
     '.note{margin:16px 0 0;padding:11px 14px;background:#FFF6E5;border-radius:8px;font-size:13px;color:#6b5320}'
   ].join('');
 
-  var EDITOR_CLIENT = '/* عميل المحرّر — يعمل داخل صفحة المعاينة (iframe).\n *\n * لماذا محرّر لا رسم ثابت:\n * الترتيب الآلي يرصّ الغرف في صفوف — نِسَب صحيحة ومساحات صحيحة، لكنه ليس\n * توزيعًا معماريًا. والمستخدم يعرف بيته أكثر من أي نموذج: أين يريد المجلس،\n * وأي غرفة على الشارع. فالنموذج يعطي البداية، وهو يضبط.\n *\n * والمساحة تبقى محسوبة في كل لحظة — تُعاد من العرض×الطول بعد كل سحب أو\n * تغيير مقاس. لا يمكن أن يظهر رقم لا يطابق الشكل.\n *\n * pointer events لا mouse: أغلب المستخدمين على الجوال.\n */\n(function () {\n  \'use strict\';\n\n  var SNAP = 0.25;                       // متر\n  var spec = window.__omranSpec || { floors: [] };\n  var LT = window.__omranL10n || null;\n  function T2(k, arv) { return (LT && LT[k]) || arv; }\n  function rn2(n) { if (!LT || !LT.roomEn) return String(n || \'\'); n = String(n || \'\'); for (var k in LT.roomEn) { if (n.indexOf(k) !== -1) return LT.roomEn[k]; } return n; }\n  var M = 30;                            // بكسل لكل متر (يُعاد حسابه للجوال)\n  var active = 0;                        // الطابق المعروض\n  var selected = null;\n\n  var PALETTE = {\n    مجلس: \'#F6E4D7\', صالة: \'#FAF3DC\', نوم: \'#FCE6D2\', حمام: \'#DCE9F5\',\n    مطبخ: \'#F5DDEE\', كراج: \'#E6E6E6\', خدامة: \'#EDE7DA\', مسبح: \'#BFE4F2\',\n    مكتب: \'#E4EEDC\', مخزن: \'#EAEAEA\', سلم: \'#E0DCE8\',\n  };\n  function colorFor(n) {\n    n = String(n || \'\');\n    for (var k in PALETTE) if (n.indexOf(k) !== -1) return PALETTE[k];\n    return \'#F0EFEA\';\n  }\n  function snap(v) { return Math.max(SNAP, Math.round(v / SNAP) * SNAP); }\n  function fmt(v) { return String(Math.round(v * 100) / 100); }\n\n  /* أول تحميل: نوزّع الغرف صفوفًا كبداية، ثم يعدّل المستخدم. */\n  function seedPositions() {\n    var pw = Number(spec.plotWidth) || 15;\n    (spec.floors || []).forEach(function (f) {\n      var x = 0, y = 0, rowH = 0;\n      (f.rooms || []).forEach(function (r) {\n        r.w = Number(r.w) || 3; r.h = Number(r.h) || 3;\n        if (typeof r.x === \'number\' && typeof r.y === \'number\') return;\n        if (x + r.w > pw + 0.01) { x = 0; y += rowH; rowH = 0; }\n        r.x = x; r.y = y; x += r.w; rowH = Math.max(rowH, r.h);\n      });\n    });\n  }\n\n  function floorDepth(f) {\n    return (f.rooms || []).reduce(function (m, r) { return Math.max(m, (r.y || 0) + r.h); }, 0);\n  }\n  function floorArea(f) {\n    return (f.rooms || []).reduce(function (s, r) { return s + r.w * r.h; }, 0);\n  }\n\n  /* تداخل الغرف — لا نمنعه (قد يريد المستخدم غرفة داخل أخرى مؤقتًا) لكن نُظهره. */\n  function overlaps(f, room) {\n    return (f.rooms || []).some(function (o) {\n      if (o === room) return false;\n      return room.x < o.x + o.w - 0.01 && o.x < room.x + room.w - 0.01 &&\n             room.y < o.y + o.h - 0.01 && o.y < room.y + room.h - 0.01;\n    });\n  }\n\n  var $ = function (id) { return document.getElementById(id); };\n\n  function render(keepPanel) {\n    var f = spec.floors[active];\n    if (!f) return;\n    var pw = Number(spec.plotWidth) || 15;\n    var avail = Math.min(document.body.clientWidth - 28, 900);\n    M = Math.max(14, Math.floor(avail / pw));\n    var depth = Math.max(floorDepth(f), 4);\n\n    var stage = $(\'stage\');\n    stage.style.width = (pw * M) + \'px\';\n    stage.style.height = (depth * M) + \'px\';\n    stage.innerHTML = \'\';\n\n    (f.rooms || []).forEach(function (r, i) {\n      var el = document.createElement(\'div\');\n      el.className = \'room\' + (selected === r ? \' sel\' : \'\') + (overlaps(f, r) ? \' clash\' : \'\');\n      el.style.cssText = \'left:\' + (r.x * M) + \'px;top:\' + (r.y * M) + \'px;width:\' + (r.w * M) +\n        \'px;height:\' + (r.h * M) + \'px;background:\' + colorFor(r.name);\n      el.dataset.i = i;\n      el.innerHTML =\n        \'<div class="rn">\' + rn2(r.name).replace(/</g, \'&lt;\') + \'</div>\' +\n        \'<div class="ra">\' + fmt(r.w * r.h) + T2(\'m2\', \' م²\') + \'</div>\' +\n        \'<div class="rd">\' + fmt(r.w) + \'×\' + fmt(r.h) + \'</div>\' +\n        \'<div class="grip" data-grip="1"></div>\' +\n        \'<div class="rx" data-del="1" title="\' + T2(\'del\', \'حذف\') + \'">✕</div>\';\n      stage.appendChild(el);\n    });\n\n    $(\'total\').textContent = fmt(floorArea(f)) + T2(\'m2\', \' م²\');\n    $(\'depth\').textContent = fmt(depth) + T2(\'m\', \' م\');\n    $(\'pw\').textContent = fmt(pw) + T2(\'m\', \' م\');\n    var grand = (spec.floors || []).reduce(function (s, x) { return s + floorArea(x); }, 0);\n    $(\'grand\').textContent = fmt(grand) + T2(\'m2\', \' م²\');\n    renderTabs();\n    if (!keepPanel) renderPanel(); /* v-audit-studcli: أثناء الكتابة تبقى حقول اللوحة كما هي */\n  }\n\n  function renderTabs() {\n    var t = $(\'tabs\');\n    t.innerHTML = (spec.floors || []).map(function (f, i) {\n      return \'<button class="tab\' + (i === active ? \' on\' : \'\') + \'" data-f="\' + i + \'">\' +\n        String((LT && f.name && f.name.indexOf(\'طابق \') === 0) ? (T2(\'floor\', \'طابق\') + \' \' + f.name.slice(5)) : (f.name || (T2(\'floor\', \'طابق\') + \' \' + (i + 1)))).replace(/</g, \'&lt;\') + \'</button>\';\n    }).join(\'\');\n  }\n\n  function renderPanel() {\n    var p = $(\'panel\');\n    if (!selected) { p.innerHTML = \'<div class="hint">\' + T2(\'hint\', \'اضغط على أي غرفة لتغيير اسمها أو مقاسها · اسحبها لتحريكها · اسحب الزاوية لتكبيرها\') + \'</div>\'; return; }\n    p.innerHTML =\n      \'<div class="row"><label>\' + T2(\'nm\', \'الاسم\') + \'</label><input id="fName" value="\' + String(selected.name).replace(/"/g, \'&quot;\') + \'"></div>\' +\n      \'<div class="row"><label>\' + T2(\'w\', \'العرض (م)\') + \'</label><input id="fW" type="number" step="0.25" min="0.5" value="\' + fmt(selected.w) + \'"></div>\' +\n      \'<div class="row"><label>\' + T2(\'h\', \'الطول (م)\') + \'</label><input id="fH" type="number" step="0.25" min="0.5" value="\' + fmt(selected.h) + \'"></div>\' +\n      \'<div class="row"><span class="area">\' + T2(\'area\', \'المساحة\') + \': <b id="fArea">\' + fmt(selected.w * selected.h) + T2(\'m2\', \' م²\') + \'</b></span>\' +\n      \'<button id="fDel" class="danger">\' + T2(\'del\', \'حذف\') + \'</button></div>\';\n\n    [\'fName\', \'fW\', \'fH\'].forEach(function (id) {\n      var el = $(id);\n      /* v-audit-studcli (cli-studios-1): كان كلّ حرف يعيد بناء اللوحة بـinnerHTML ثمّ focus() على حقل جديد فيقفز المؤشّر لأوّله\n       * («مجلس»+XY ← «YمجلسX»، و3.5 ← 50.3). الكتابة الآن تحدّث النموذج والمسرح والمساحة وحدها والحقل باقٍ كما هو؛ القيد\n       * (0.5 حتّى عرض الأرض) على النموذج لحظيًّا، و«غرفة» الافتراضيّة وتسوية الحقل عند change (الخروج من الحقل). */\n      el.oninput = function () {\n        if (!selected) return;\n        if (id === \'fName\') selected.name = el.value || T2(\'room\', \'غرفة\');\n        else {\n          var v = parseFloat(el.value);\n          if (!isFinite(v) || v <= 0) return;\n          var pw = Number(spec.plotWidth) || 15;\n          if (id === \'fW\') selected.w = Math.max(0.5, Math.min(pw - (selected.x || 0), v)); else selected.h = Math.max(0.5, v);\n          var ar = $(\'fArea\'); if (ar) ar.textContent = fmt(selected.w * selected.h) + T2(\'m2\', \' م²\');\n        }\n        render(true);\n      };\n      el.onchange = function () {\n        if (!selected) return;\n        el.value = id === \'fName\' ? selected.name : fmt(id === \'fW\' ? selected.w : selected.h);\n      };\n    });\n    $(\'fDel\').onclick = function () {\n      var f = spec.floors[active];\n      f.rooms = f.rooms.filter(function (r) { return r !== selected; });\n      selected = null; render();\n    };\n  }\n\n  /* ───────── السحب وتغيير المقاس ───────── */\n  var drag = null;\n\n  function onDown(e) {\n    var el = e.target.closest ? e.target.closest(\'.room\') : null;\n    if (!el) { selected = null; render(); return; }\n    var f = spec.floors[active];\n    var r = f.rooms[+el.dataset.i];\n    if (e.target.dataset && e.target.dataset.del) { f.rooms = f.rooms.filter(function (x) { return x !== r; }); selected = null; render(); e.preventDefault(); return; } /* v-plan-delete: ✕ على الغرفة يحذفها مباشرة */\n    selected = r;\n    var isGrip = e.target.dataset && e.target.dataset.grip;\n    drag = {\n      room: r, mode: isGrip ? \'size\' : \'move\',\n      px: e.clientX, py: e.clientY,\n      ox: r.x, oy: r.y, ow: r.w, oh: r.h,\n    };\n    el.setPointerCapture && el.setPointerCapture(e.pointerId);\n    render();\n    e.preventDefault();\n  }\n\n  function onMove(e) {\n    if (!drag) return;\n    var dx = (e.clientX - drag.px) / M, dy = (e.clientY - drag.py) / M;\n    // v-plan-drag: الغرف موضوعة بـleft/top مطلقين فالسحب يمينًا = زيادة x دائمًا (كان يُعكس في RTL فتتحرك الغرفة عكس الإصبع)\n    var pw = Number(spec.plotWidth) || 15;\n    if (drag.mode === \'move\') {\n      drag.room.x = Math.max(0, Math.min(pw - drag.room.w, snap(drag.ox + dx)));\n      drag.room.y = Math.max(0, snap(drag.oy + dy));\n    } else {\n      drag.room.w = Math.max(0.5, Math.min(pw - drag.room.x, snap(drag.ow + dx)));\n      drag.room.h = Math.max(0.5, snap(drag.oh + dy));\n    }\n    render();\n    e.preventDefault();\n  }\n\n  function onUp() { drag = null; }\n\n  function addRoom() {\n    var f = spec.floors[active];\n    f.rooms = f.rooms || [];\n    var r = { name: T2(\'room\', \'غرفة\'), w: 4, h: 3.5, x: 0, y: floorDepth(f) };\n    f.rooms.push(r); selected = r; render();\n  }\n\n  function addFloor() {\n    spec.floors.push({ name: T2(\'floor\', \'طابق\') + \' \' + (spec.floors.length + 1), rooms: [] });\n    active = spec.floors.length - 1; selected = null; render();\n  }\n\n  /* ───────── توليد الواجهة من المخطط المُعدَّل ───────── */\n  function requestView(view, btn) {\n    var label = btn.textContent;\n    btn.disabled = true; btn.textContent = T2(\'gen\', \'… جارٍ التوليد\');\n    var id = Date.now();\n    function onMsg(e) {\n      var d = e.data;\n      if (!d || d.__omranViewOut !== 1 || d.id !== id) return;\n      window.removeEventListener(\'message\', onMsg);\n      btn.disabled = false; btn.textContent = label;\n      var out = $(\'views\');\n      if (d.ok) {\n        var fig = document.createElement(\'figure\');\n        fig.style.cssText = \'margin:12px 0\';\n        fig.innerHTML = \'<img src="\' + d.dataUrl + \'" style="width:100%;border-radius:12px;display:block">\' +\n          \'<figcaption style="font-size:12px;color:#777;margin-top:6px;text-align:center">\' +\n          label + \' — \' + T2(\'cap\', \'مولّد من المخطط كما عدّلته\') + \'</figcaption>\';\n        out.appendChild(fig);\n      } else if (!d.cancelled) { /* v-lock-quotab: ألغاه المستخدم أو طلب آخر جارٍ — الزرّ يعود بلا رسالة خطأ */\n        var p = document.createElement(\'p\');\n        p.style.cssText = \'color:#a33;font-size:13px\';\n        p.textContent = \'⚠️ \' + (d.error || T2(\'genFail\', \'تعذّر التوليد\'));\n        out.appendChild(p);\n      }\n    }\n    window.addEventListener(\'message\', onMsg);\n    // نرسل المواصفات الحالية — أي بعد تعديلات المستخدم، لا الأصلية\n    parent.postMessage({ __omranView: 1, id: id, view: view, spec: spec }, \'*\');\n  }\n\n  function boot() {\n    seedPositions();\n    render();\n    var stage = $(\'stage\');\n    stage.addEventListener(\'pointerdown\', onDown);\n    /* v-drag-touch: بعض المتصفحات تخطف اللمس للتمرير رغم touch-action — نمنعها صراحة أثناء السحب */\n    stage.addEventListener(\'touchstart\', function (e) { if (e.target.closest && e.target.closest(\'.room\')) e.preventDefault(); }, { passive: false });\n    window.addEventListener(\'touchmove\', function (e) { if (drag) e.preventDefault(); }, { passive: false });\n    window.addEventListener(\'pointermove\', onMove);\n    window.addEventListener(\'pointerup\', onUp);\n    window.addEventListener(\'pointercancel\', onUp);\n    $(\'tabs\').addEventListener(\'click\', function (e) {\n      var b = e.target.closest(\'.tab\'); if (!b) return;\n      active = +b.dataset.f; selected = null; render();\n    });\n    $(\'addRoom\').onclick = addRoom;\n    $(\'addFloor\').onclick = addFloor;\n    document.querySelectorAll(\'.ov-btn\').forEach(function (b) {\n      b.onclick = function () { requestView(b.dataset.view, b); };\n    });\n    window.addEventListener(\'resize\', function () { render(); });\n  }\n\n  if (document.readyState === \'loading\') document.addEventListener(\'DOMContentLoaded\', boot);\n  else boot();\n})();\n';
+  var EDITOR_CLIENT = '/* عميل المحرّر — يعمل داخل صفحة المعاينة (iframe).\n *\n * لماذا محرّر لا رسم ثابت:\n * الترتيب الآلي يرصّ الغرف في صفوف — نِسَب صحيحة ومساحات صحيحة، لكنه ليس\n * توزيعًا معماريًا. والمستخدم يعرف بيته أكثر من أي نموذج: أين يريد المجلس،\n * وأي غرفة على الشارع. فالنموذج يعطي البداية، وهو يضبط.\n *\n * والمساحة تبقى محسوبة في كل لحظة — تُعاد من العرض×الطول بعد كل سحب أو\n * تغيير مقاس. لا يمكن أن يظهر رقم لا يطابق الشكل.\n *\n * pointer events لا mouse: أغلب المستخدمين على الجوال.\n */\n(function () {\n  \'use strict\';\n\n  var SNAP = 0.25;                       // متر\n  var spec = window.__omranSpec || { floors: [] };\n  var LT = window.__omranL10n || null;\n  function T2(k, arv) { return (LT && LT[k]) || arv; }\n  function rn2(n) { if (!LT || !LT.roomEn) return String(n || \'\'); n = String(n || \'\'); for (var k in LT.roomEn) { if (n.indexOf(k) !== -1) return LT.roomEn[k]; } return n; }\n  var M = 30;                            // بكسل لكل متر (يُعاد حسابه للجوال)\n  var active = 0;                        // الطابق المعروض\n  var selected = null;\n\n  var PALETTE = {\n    مجلس: \'#F6E4D7\', صالة: \'#FAF3DC\', نوم: \'#FCE6D2\', حمام: \'#DCE9F5\',\n    مطبخ: \'#F5DDEE\', كراج: \'#E6E6E6\', خدامة: \'#EDE7DA\', مسبح: \'#BFE4F2\',\n    مكتب: \'#E4EEDC\', مخزن: \'#EAEAEA\', سلم: \'#E0DCE8\',\n  };\n  function colorFor(n) {\n    n = String(n || \'\');\n    for (var k in PALETTE) if (n.indexOf(k) !== -1) return PALETTE[k];\n    return \'#F0EFEA\';\n  }\n  function snap(v) { return Math.max(SNAP, Math.round(v / SNAP) * SNAP); }\n  function fmt(v) { return String(Math.round(v * 100) / 100); }\n\n  /* أول تحميل: نوزّع الغرف صفوفًا كبداية، ثم يعدّل المستخدم. */\n  function seedPositions() {\n    var pw = Number(spec.plotWidth) || 15;\n    (spec.floors || []).forEach(function (f) {\n      var x = 0, y = 0, rowH = 0;\n      (f.rooms || []).forEach(function (r) {\n        r.w = Number(r.w) || 3; r.h = Number(r.h) || 3;\n        if (typeof r.x === \'number\' && typeof r.y === \'number\') return;\n        if (x + r.w > pw + 0.01) { x = 0; y += rowH; rowH = 0; }\n        r.x = x; r.y = y; x += r.w; rowH = Math.max(rowH, r.h);\n      });\n    });\n  }\n\n  function floorDepth(f) {\n    return (f.rooms || []).reduce(function (m, r) { return Math.max(m, (r.y || 0) + r.h); }, 0);\n  }\n  function floorArea(f) {\n    return (f.rooms || []).reduce(function (s, r) { return s + r.w * r.h; }, 0);\n  }\n\n  /* تداخل الغرف — لا نمنعه (قد يريد المستخدم غرفة داخل أخرى مؤقتًا) لكن نُظهره. */\n  function overlaps(f, room) {\n    return (f.rooms || []).some(function (o) {\n      if (o === room) return false;\n      return room.x < o.x + o.w - 0.01 && o.x < room.x + room.w - 0.01 &&\n             room.y < o.y + o.h - 0.01 && o.y < room.y + room.h - 0.01;\n    });\n  }\n\n  var $ = function (id) { return document.getElementById(id); };\n\n  function render(keepPanel) {\n    var f = spec.floors[active];\n    if (!f) return;\n    var pw = Number(spec.plotWidth) || 15;\n    var avail = Math.min(document.body.clientWidth - 28, 900);\n    M = Math.max(14, Math.floor(avail / pw));\n    var depth = Math.max(floorDepth(f), 4);\n\n    var stage = $(\'stage\');\n    stage.style.width = (pw * M) + \'px\';\n    stage.style.height = (depth * M) + \'px\';\n    stage.innerHTML = \'\';\n\n    (f.rooms || []).forEach(function (r, i) {\n      var el = document.createElement(\'div\');\n      el.className = \'room\' + (selected === r ? \' sel\' : \'\') + (overlaps(f, r) ? \' clash\' : \'\');\n      el.style.cssText = \'left:\' + (r.x * M) + \'px;top:\' + (r.y * M) + \'px;width:\' + (r.w * M) +\n        \'px;height:\' + (r.h * M) + \'px;background:\' + colorFor(r.name);\n      el.dataset.i = i;\n      el.innerHTML =\n        \'<div class="rn">\' + rn2(r.name).replace(/</g, \'&lt;\') + \'</div>\' +\n        \'<div class="ra">\' + fmt(r.w * r.h) + T2(\'m2\', \' م²\') + \'</div>\' +\n        \'<div class="rd">\' + fmt(r.w) + \'×\' + fmt(r.h) + \'</div>\' +\n        \'<div class="grip" data-grip="1"></div>\' +\n        \'<div class="rx" data-del="1" title="\' + T2(\'del\', \'حذف\') + \'">✕</div>\';\n      stage.appendChild(el);\n    });\n\n    $(\'total\').textContent = fmt(floorArea(f)) + T2(\'m2\', \' م²\');\n    $(\'depth\').textContent = fmt(depth) + T2(\'m\', \' م\');\n    $(\'pw\').textContent = fmt(pw) + T2(\'m\', \' م\');\n    var grand = (spec.floors || []).reduce(function (s, x) { return s + floorArea(x); }, 0);\n    $(\'grand\').textContent = fmt(grand) + T2(\'m2\', \' م²\');\n    renderTabs();\n    if (!keepPanel) renderPanel(); /* v-audit-studcli: أثناء الكتابة تبقى حقول اللوحة كما هي */\n  }\n\n  function renderTabs() {\n    var t = $(\'tabs\');\n    t.innerHTML = (spec.floors || []).map(function (f, i) {\n      return \'<button class="tab\' + (i === active ? \' on\' : \'\') + \'" data-f="\' + i + \'">\' +\n        String((LT && f.name && f.name.indexOf(\'طابق \') === 0) ? (T2(\'floor\', \'طابق\') + \' \' + f.name.slice(5)) : (f.name || (T2(\'floor\', \'طابق\') + \' \' + (i + 1)))).replace(/</g, \'&lt;\') + \'</button>\';\n    }).join(\'\');\n  }\n\n  function renderPanel() {\n    var p = $(\'panel\');\n    if (!selected) { p.innerHTML = \'<div class="hint">\' + T2(\'hint\', \'اضغط على أي غرفة لتغيير اسمها أو مقاسها · اسحبها لتحريكها · اسحب الزاوية لتكبيرها\') + \'</div>\'; return; }\n    p.innerHTML =\n      \'<div class="row"><label>\' + T2(\'nm\', \'الاسم\') + \'</label><input id="fName" value="\' + String(selected.name).replace(/"/g, \'&quot;\') + \'"></div>\' +\n      \'<div class="row"><label>\' + T2(\'w\', \'العرض (م)\') + \'</label><input id="fW" type="number" step="0.25" min="0.5" value="\' + fmt(selected.w) + \'"></div>\' +\n      \'<div class="row"><label>\' + T2(\'h\', \'الطول (م)\') + \'</label><input id="fH" type="number" step="0.25" min="0.5" value="\' + fmt(selected.h) + \'"></div>\' +\n      \'<div class="row"><span class="area">\' + T2(\'area\', \'المساحة\') + \': <b id="fArea">\' + fmt(selected.w * selected.h) + T2(\'m2\', \' م²\') + \'</b></span>\' +\n      \'<button id="fDel" class="danger">\' + T2(\'del\', \'حذف\') + \'</button></div>\';\n\n    [\'fName\', \'fW\', \'fH\'].forEach(function (id) {\n      var el = $(id);\n      /* v-audit-studcli (cli-studios-1): كان كلّ حرف يعيد بناء اللوحة بـinnerHTML ثمّ focus() على حقل جديد فيقفز المؤشّر لأوّله\n       * («مجلس»+XY ← «YمجلسX»، و3.5 ← 50.3). الكتابة الآن تحدّث النموذج والمسرح والمساحة وحدها والحقل باقٍ كما هو؛ القيد\n       * (0.5 حتّى عرض الأرض) على النموذج لحظيًّا، و«غرفة» الافتراضيّة وتسوية الحقل عند change (الخروج من الحقل). */\n      el.oninput = function () {\n        if (!selected) return;\n        if (id === \'fName\') selected.name = el.value || T2(\'room\', \'غرفة\');\n        else {\n          var v = parseFloat(el.value);\n          if (!isFinite(v) || v <= 0) return;\n          var pw = Number(spec.plotWidth) || 15;\n          if (id === \'fW\') selected.w = Math.max(0.5, Math.min(pw - (selected.x || 0), v)); else selected.h = Math.max(0.5, v);\n          var ar = $(\'fArea\'); if (ar) ar.textContent = fmt(selected.w * selected.h) + T2(\'m2\', \' م²\');\n        }\n        render(true);\n      };\n      el.onchange = function () {\n        if (!selected) return;\n        el.value = id === \'fName\' ? selected.name : fmt(id === \'fW\' ? selected.w : selected.h);\n      };\n    });\n    $(\'fDel\').onclick = function () {\n      var f = spec.floors[active];\n      f.rooms = f.rooms.filter(function (r) { return r !== selected; });\n      selected = null; render();\n    };\n  }\n\n  /* ───────── السحب وتغيير المقاس ───────── */\n  var drag = null;\n\n  function onDown(e) {\n    var el = e.target.closest ? e.target.closest(\'.room\') : null;\n    if (!el) { selected = null; render(); return; }\n    var f = spec.floors[active];\n    var r = f.rooms[+el.dataset.i];\n    if (e.target.dataset && e.target.dataset.del) { f.rooms = f.rooms.filter(function (x) { return x !== r; }); selected = null; render(); e.preventDefault(); return; } /* v-plan-delete: ✕ على الغرفة يحذفها مباشرة */\n    selected = r;\n    var isGrip = e.target.dataset && e.target.dataset.grip;\n    drag = {\n      room: r, mode: isGrip ? \'size\' : \'move\',\n      px: e.clientX, py: e.clientY,\n      ox: r.x, oy: r.y, ow: r.w, oh: r.h,\n    };\n    el.setPointerCapture && el.setPointerCapture(e.pointerId);\n    render();\n    e.preventDefault();\n  }\n\n  function onMove(e) {\n    if (!drag) return;\n    var dx = (e.clientX - drag.px) / M, dy = (e.clientY - drag.py) / M;\n    // v-plan-drag: الغرف موضوعة بـleft/top مطلقين فالسحب يمينًا = زيادة x دائمًا (كان يُعكس في RTL فتتحرك الغرفة عكس الإصبع)\n    var pw = Number(spec.plotWidth) || 15;\n    if (drag.mode === \'move\') {\n      drag.room.x = Math.max(0, Math.min(pw - drag.room.w, snap(drag.ox + dx)));\n      drag.room.y = Math.max(0, snap(drag.oy + dy));\n    } else {\n      drag.room.w = Math.max(0.5, Math.min(pw - drag.room.x, snap(drag.ow + dx)));\n      drag.room.h = Math.max(0.5, snap(drag.oh + dy));\n    }\n    render();\n    e.preventDefault();\n  }\n\n  function onUp() { drag = null; }\n\n  function addRoom() {\n    var f = spec.floors[active];\n    f.rooms = f.rooms || [];\n    var r = { name: T2(\'room\', \'غرفة\'), w: 4, h: 3.5, x: 0, y: floorDepth(f) };\n    f.rooms.push(r); selected = r; render();\n  }\n\n  function addFloor() {\n    spec.floors.push({ name: T2(\'floor\', \'طابق\') + \' \' + (spec.floors.length + 1), rooms: [] });\n    active = spec.floors.length - 1; selected = null; render();\n  }\n\n  /* ───────── توليد الواجهة من المخطط المُعدَّل ───────── */\n  function requestView(view, btn) {\n    var label = btn.textContent;\n    /* v-lock-r2 (client-ux-2): التطبيق يولّد واجهةً واحدة في كلّ مرّة ويرفض ما يصل أثناءها (حارس الحلقة) — فكلّ أزرار الواجهات تُعطَّل\n     * حتّى الردّ، لا الزرّ المضغوط وحده: ضغطة «المجلس» أثناء «الشكل الخارجي» كانت تعود بلا صورة ولا رسالة. */\n    var all = document.querySelectorAll(\'.ov-btn\');\n    all.forEach(function (b) { b.disabled = true; }); btn.textContent = T2(\'gen\', \'… جارٍ التوليد\');\n    var id = Date.now();\n    function onMsg(e) {\n      var d = e.data;\n      if (!d || d.__omranViewOut !== 1 || d.id !== id) return;\n      window.removeEventListener(\'message\', onMsg);\n      all.forEach(function (b) { b.disabled = false; }); btn.textContent = label;\n      var out = $(\'views\');\n      if (d.ok) {\n        var fig = document.createElement(\'figure\');\n        fig.style.cssText = \'margin:12px 0\';\n        fig.innerHTML = \'<img src="\' + d.dataUrl + \'" style="width:100%;border-radius:12px;display:block">\' +\n          \'<figcaption style="font-size:12px;color:#777;margin-top:6px;text-align:center">\' +\n          label + \' — \' + T2(\'cap\', \'مولّد من المخطط كما عدّلته\') + \'</figcaption>\';\n        out.appendChild(fig);\n      } else if (!d.cancelled) { /* v-lock-quotab: ألغاه المستخدم أو طلب آخر جارٍ — الزرّ يعود بلا رسالة خطأ */\n        var p = document.createElement(\'p\');\n        p.style.cssText = \'color:#a33;font-size:13px\';\n        p.textContent = \'⚠️ \' + (d.error || T2(\'genFail\', \'تعذّر التوليد\'));\n        out.appendChild(p);\n      }\n    }\n    window.addEventListener(\'message\', onMsg);\n    // نرسل المواصفات الحالية — أي بعد تعديلات المستخدم، لا الأصلية\n    parent.postMessage({ __omranView: 1, id: id, view: view, spec: spec }, \'*\');\n  }\n\n  function boot() {\n    seedPositions();\n    render();\n    var stage = $(\'stage\');\n    stage.addEventListener(\'pointerdown\', onDown);\n    /* v-drag-touch: بعض المتصفحات تخطف اللمس للتمرير رغم touch-action — نمنعها صراحة أثناء السحب */\n    stage.addEventListener(\'touchstart\', function (e) { if (e.target.closest && e.target.closest(\'.room\')) e.preventDefault(); }, { passive: false });\n    window.addEventListener(\'touchmove\', function (e) { if (drag) e.preventDefault(); }, { passive: false });\n    window.addEventListener(\'pointermove\', onMove);\n    window.addEventListener(\'pointerup\', onUp);\n    window.addEventListener(\'pointercancel\', onUp);\n    $(\'tabs\').addEventListener(\'click\', function (e) {\n      var b = e.target.closest(\'.tab\'); if (!b) return;\n      active = +b.dataset.f; selected = null; render();\n    });\n    $(\'addRoom\').onclick = addRoom;\n    $(\'addFloor\').onclick = addFloor;\n    document.querySelectorAll(\'.ov-btn\').forEach(function (b) {\n      b.onclick = function () { requestView(b.dataset.view, b); };\n    });\n    window.addEventListener(\'resize\', function () { render(); });\n  }\n\n  if (document.readyState === \'loading\') document.addEventListener(\'DOMContentLoaded\', boot);\n  else boot();\n})();\n';
 
   /* v-construction-3d: 🧊 «امشِ داخل بيتك قبل أن يُبنى» — جولة ثلاثية الأبعاد
    * مبنية من نفس مواصفات المخطط (أبعاد الغرف الحقيقية بالمتر، بعد تعديلات
@@ -43757,7 +43827,10 @@ window.updateVersionLabel();
     Promise.resolve(costs).catch(function (err) { __swallow(err, 'floorplan:bridge#costs'); return null; }).then(function (c) {
       var ask = (typeof t === 'function' && t('spendConfirm')) || 'هذه العملية تخصم {n} نقطة. أكمل؟';
       var price = c && (VIEW_ASK_4K.test(' ' + String(prompt)) ? c.image_4k : c.image); // ما يخصمه الخادم لهذا الوصف بعينه
-      if (!confirm(String(ask).replace('{n}', price || '?'))) { reply({ ok: false, cancelled: true, error: '' }); return null; }
+      /* v-lock-r2 (client-ux-1): السؤال «تخصم ٢٠ نقطة» لمن يُخصم منه — المالك وVIP (رصيد بلا حدّ، maha-image يعفيهما) والضيف (صورته التجريبيّة
+         بلا نقاط) لا خصم عليهم، وكان المالك يُسأل عند كلّ ضغطة. viewBusy أعلاه يبقى حارس الحلقة لهم. */
+      var noCharge = window.__pointsBalance === Infinity || (typeof omranOwnerUi === 'function' && omranOwnerUi()) || !authGet('aiapp_auth_token');
+      if (!noCharge && !confirm(String(ask).replace('{n}', price || '?'))) { reply({ ok: false, cancelled: true, error: '' }); return null; }
       return fetch('/api/maha-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
