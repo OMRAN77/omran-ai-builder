@@ -1339,19 +1339,6 @@ async function applyDialectForSpeech(text){
   // v248: ميزة اللهجة التجريبية أُزيلت نهائيًا — النص يُقرأ كما هو مباشرة
   // (الإعداد القديم المحفوظ في أجهزة المستخدمين كان يعلّق القراءة بطلب AI إضافي).
   return text;
-  const dialect = localStorage.getItem('aiapp_voice_dialect') || '';
-  if(!dialect) return text;
-  if(!/[\u0600-\u06FF]/.test(text)) return text; // only convert Arabic text
-  try{
-    const dialectName = dialect === 'gulf' ? 'اللهجة الخليجية' : 'اللهجة المصرية';
-    const prompt = `أعد صياغة النص التالي بالكامل باللغة العربية العامية (${dialectName}) بنفس المعنى تمامًا، بدون أي إضافات أو شرح، وأعطني النص المعاد صياغته فقط بدون مقدمات:\n\n${text}`;
-    const reply = await callAI([{ role: 'user', content: prompt }]);
-    const converted = (reply ? String(reply).trim() : '');
-    return converted || text;
-  }catch(e){
-    console.error('dialect conversion failed', e);
-    return text;
-  }
 }
 // v265: عنصر صوت واحد يُفتح (unlock) لحظة ضغطة المستخدم ثم يُعاد استخدامه —
 // آيفون وبعض المتصفحات تمنع تشغيل صوت أُنشئ بعد جلب من الشبكة خارج الضغطة.
