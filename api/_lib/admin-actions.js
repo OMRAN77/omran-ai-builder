@@ -225,7 +225,7 @@ module.exports = async (req, res) => {
     /* v-owner-link-sub: اشتراك Stripe دُفع بلا دخول (قبل v-checkout-login) يُربط بحساب صاحبه — الدفعات الفائتة تُضاف بمفاتيح
        الويب هوك نفسها والتجديد بعدها يُشحن وحده (sub-link.js). يكتب فقط بـconfirm:true صريحًا، وإلّا فحصٌ بلا أثر. */
     if (action === 'link-sub') {
-      const r = await require('./sub-link.js').linkSub({ target: targetUsername, subscriptionId: body.subscriptionId, confirm: body.confirm === true });
+      const r = await require('./sub-link.js').linkSub({ target: targetUsername, subscriptionId: body.subscriptionId, confirm: body.confirm === true, expect: body.expect });
       res.status(r.status).json(r.body);
       return;
     }

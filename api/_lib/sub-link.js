@@ -14,9 +14,20 @@
    اشتراك مربوط بحساب حيّ آخر = ٤٠٩ بلا كتابة. عطب Stripe = ٥٠٢ قبل أيّ أثر. دفعة مستردّة أو عليها اعتراض أو لم تُعرف شحنتها لا تُضاف.
    السجلّ بلا بريد. المفتاح يُقرأ عند النداء (نقاط الدخول تُحمَّل في بيئة عارية). */
 
+/* المراجعة العدائيّة (مؤكَّدة بتجارب على المعالجات الحقيقيّة، مصلحة):
+   • «أُضيفت من قبل» كانت تُعرف بحجز v-pay-once وحده — لا حجز لما شُحن قبل ٥ أكتوبر، والحجز وسجلّ المنح يسقطان بعد ٤٠٠ يوم، فاشتراكٌ
+     شحنه الويب هوك يُعرض «يُضاف» ويُشحن ثانيةً. الآن تُضاف الدفعة فقط بدليل أنّ الويب هوك تجاهلها: نسختها في Stripe (metadata الجلسة،
+     أو نسخة الاشتراك على الفاتورة) بلا اسم، ولا حجز ولا سجلّ منح ولا أثر على الحساب، وعمرها دون ٣٩٥ يومًا (داخل عمر الحجز).
+     نسخةٌ تحمل اسم حساب حيّ = «مضافة من قبل»، واسم حساب لا وجود له = «تُراجع» لا تُضاف تلقائيًّا.
+   • دفعة قديمة كانت تستبدل باقةً سارية أعلى دُفعت بعدها (Pro أمس ← Plus) — keepHigherPlan: النقاط وحدها والباقة كما هي (grantLocked).
+   • البريد كان يصل حسابًا وضع البريد بلا تأكيد قبل حساب Google الذي يدخل به الدافع — الآن من أثبته أوّلًا (verifiedHolderOf)، وغير
+     المؤكَّد يُعلَّم فيحذّر المالك.
+   • دفعة شُحنت لحساب حيّ آخر = ٤٠٩ (لا يُقسَم اشتراك بين حسابين)، والتأكيد يحمل الحساب الذي وافق عليه المالك (expect) فلا يُنفَّذ على غيره. */
 const STRIPE_API = 'https://api.stripe.com/v1/';
 const SUB_RE = /^sub_[A-Za-z0-9]{6,}$/;
 const INVOICE_PAGES = 5;
+const ELIGIBLE_MS = 395 * 86400000; // الحجز (CLAIM_TTL_SEC) وسجلّ المنح ٤٠٠ يوم: ما هو أقدم لا يُثبت أنّه لم يُشحن
+const PLAN_RANK = { basic: 1, pro: 2, max: 3 };
 const NO_META_WRITE = new Set(['canceled', 'incomplete_expired']); // لا تجديد بعدهما، وStripe يرفض تعديل الملغى
 const idOf = (x) => (typeof x === 'string' ? x : (x && typeof x.id === 'string' ? x.id : ''));
 
@@ -48,6 +59,10 @@ function stripeClient(fetchImpl) {
 // فاتورة ← اشتراكها بالشكلين (قبل basil: subscription؛ basil: parent.subscription_details.subscription)
 const invoiceSub = (inv) => idOf(inv && inv.subscription)
   || idOf(inv && inv.parent && inv.parent.subscription_details && inv.parent.subscription_details.subscription);
+// الاسم في نسخة Stripe وقت الدفع — الجلسة نفسها، أو نسخة الاشتراك المجمَّدة على الفاتورة (لا metadata السطر: تعكس الاشتراك الآن)
+const snapUser = (md) => (md && typeof md.username === 'string' ? md.username.trim().toLowerCase() : '');
+const invoiceSnapUser = (inv) => snapUser(inv && inv.subscription_details && inv.subscription_details.metadata)
+  || snapUser(inv && inv.parent && inv.parent.subscription_details && inv.parent.subscription_details.metadata);
 
 /* دفعة الفاتورة وشحنتها: أرقامها لسجلّ المنح (الاسترداد يصل برقم الشحنة أو النيّة)، وهل استُردّت أو اعتُرض عليها.
    known=false: لم تُعرف شحنة (دفع خارج Stripe، أو رصيد) — لا تُضاف دفعة لا تُعرف حالتها. */
@@ -81,7 +96,7 @@ async function paymentOf(get, inv) {
 }
 
 /* القراءة كلّها: الاشتراك، والربط الحاليّ، وبريد العميل، والدفعات المرشّحة بحالاتها. ترمي StripeFail عند العطب. */
-async function survey(get, subId) {
+async function survey(get, subId, acct) {
   const { PLANS, claimKey } = require('./create-checkout-session.js');
   const sub = await get('subscriptions/' + encodeURIComponent(subId));
   if (!sub || (sub.object && sub.object !== 'subscription') || (sub.id && sub.id !== subId)) return { error: 'no_sub' };
@@ -134,45 +149,64 @@ async function survey(get, subId) {
       amount: Number(session.amount_total) > 0 ? Number(session.amount_total) : (first ? Number(first.amount_paid) : 0),
       currency: String(session.currency || (first && first.currency) || '').toLowerCase(),
       refs: [idOf(session.payment_intent), idOf(session.invoice), first && first.id, pay && pay.pi, pay && pay.ch].filter(Boolean), pay,
+      snap: snapUser(session.metadata),
     });
   } else if (first) { // اشتراك بلا جلسة دفع: فاتورته الأولى لم يشحنها شيء — تُضاف برقمها
     const pay = pays.get(first.id);
-    cands.push({ kind: 'first', field: 'lastStripeInvoiceId', id: first.id, created: Number(first.created) || 0, amount: Number(first.amount_paid), currency: String(first.currency || '').toLowerCase(), refs: [pay.pi, pay.ch].filter(Boolean), pay });
+    cands.push({ kind: 'first', field: 'lastStripeInvoiceId', id: first.id, created: Number(first.created) || 0, amount: Number(first.amount_paid), currency: String(first.currency || '').toLowerCase(), refs: [pay.pi, pay.ch].filter(Boolean), pay, snap: invoiceSnapUser(first) });
   }
   for (const i of relevant) {
     if (i.billing_reason !== 'subscription_cycle') continue;
     const pay = pays.get(i.id);
-    cands.push({ kind: 'renewal', field: 'lastStripeInvoiceId', id: i.id, created: Number(i.created) || 0, amount: Number(i.amount_paid), currency: String(i.currency || '').toLowerCase(), refs: [pay.pi, pay.ch].filter(Boolean), pay });
+    cands.push({ kind: 'renewal', field: 'lastStripeInvoiceId', id: i.id, created: Number(i.created) || 0, amount: Number(i.amount_paid), currency: String(i.currency || '').toLowerCase(), refs: [pay.pi, pay.ch].filter(Boolean), pay, snap: invoiceSnapUser(i) });
   }
   cands.sort((a, b) => a.created - b.created);
 
+  /* الحالة: تُضاف (grant) فقط بدليل أنّ الويب هوك تجاهلها ولم يشحنها شيء — انظر رأس الملفّ. holder: الحساب الحيّ الذي شُحنت له. */
   const { kvGetRaw } = require('./kv.js');
+  const { findRec } = require('./pay-refund.js');
+  const liveKey = async (name) => { const a = name ? await require('./auth.js').liveAccount(name) : null; return (a && a.user && !a.user.deleted) ? a.key : ''; };
+  const now = Date.now();
   for (const c of cands) {
-    if (!c.pay || !c.pay.known) c.state = 'unverified';
-    else if (c.pay.refunded || c.pay.disputed) c.state = 'refunded';
-    else {
-      const claimed = await kvGetRaw(claimKey(c.field, c.id)); // حجز v-pay-once: شُحنت من قبل، أو سُحب حجزها قبل شحنها
-      c.state = claimed ? (String(claimed).startsWith('!revoked:') ? 'blocked' : 'already') : 'grant';
+    c.holder = null;
+    if (!c.pay || !c.pay.known) { c.state = 'unverified'; continue; }
+    if (c.pay.refunded || c.pay.disputed) { c.state = 'refunded'; continue; }
+    if (c.snap) { // الويب هوك رأى اسمًا: شحنها لصاحبه — أو حاول لحساب لا وجود له، فيراجعها المالك ولا تُضاف تلقائيًّا
+      c.holder = await liveKey(c.snap);
+      c.state = c.holder ? 'already' : 'review';
+      continue;
     }
+    const claimed = await kvGetRaw(claimKey(c.field, c.id)); // حجز v-pay-once: شُحنت من قبل، أو سُحب حجزها قبل شحنها
+    if (claimed) {
+      if (String(claimed).startsWith('!revoked:')) c.state = 'blocked';
+      else { c.state = 'already'; c.holder = (await liveKey(String(claimed))) || null; }
+      continue;
+    }
+    const rec = await findRec([c.id]); // سجلّ منح بلا حجز (أو أقدم من الحجز)
+    if (rec && rec.rec) { c.state = 'already'; c.holder = (await liveKey(rec.rec.username)) || null; continue; }
+    if (acct && acct.user && acct.user[c.field] === c.id) { c.state = 'already'; c.holder = acct.key; continue; } // شُحنت قبل v-pay-once
+    if (now - c.created * 1000 > ELIGIBLE_MS) { c.state = 'old'; continue; }
+    c.state = 'grant';
   }
   const planLabel = String(PLANS[plan].name || plan).split(' / ').pop();
   return { sub: { id: subId, status: String(sub.status || ''), plan, planLabel, linkedTo, linkedLive }, customerEmail, cands, points: PLANS[plan].points };
 }
 
-/* البريد ← حسابه (الفهرس، ثمّ Google بمفتاحه أو اسمه المستعار)؛ الاسم ← حسابه الحيّ إن غيّر اسمه. */
+/* الاسم ← حسابه الحيّ إن غيّر اسمه. البريد ← من أثبته أوّلًا (فهرس مؤكَّد، ثمّ حساب Google بمفتاحه أو اسمه المستعار — verifiedHolderOf)،
+   وإلّا مطابقة غير مؤكَّدة (فهرس بلا تأكيد، أو اسم قديم هو البريد نفسه) مع verified:false فيُحذَّر المالك. */
 async function resolveAccount(target) {
   const auth = require('./auth.js');
   const key = String(target || '').trim().toLowerCase();
   if (!key) return null;
-  if (key.includes('@')) {
-    const found = await auth.resolveLoginUser(key);
-    if (found && found.user && !found.user.deleted) return { key: found.key, user: found.user };
-    const g = await auth.googleAccountFor(key);
-    if (g && g.user && !g.user.deleted) return { key: g.key, user: g.user };
-    return null;
-  }
-  const a = await auth.liveAccount(key);
-  return (a && a.user && !a.user.deleted) ? { key: a.key, user: a.user } : null;
+  const live = async (k) => { const a = await auth.liveAccount(k); return (a && a.user && !a.user.deleted) ? a : null; };
+  if (!key.includes('@')) { const a = await live(key); return a ? { key: a.key, user: a.user, verified: null } : null; }
+  const holder = await auth.verifiedHolderOf(key);
+  if (holder) { const a = await live(holder); if (a) return { key: a.key, user: a.user, verified: true }; }
+  const found = await auth.resolveLoginUser(key);
+  if (found && found.user && !found.user.deleted) return { key: found.key, user: found.user, verified: false };
+  const g = await auth.googleAccountFor(key);
+  if (g && g.user && !g.user.deleted) return { key: g.key, user: g.user, verified: false };
+  return null;
 }
 
 /** { target, subscriptionId, confirm } ← { status, body }. بلا confirm:true فحصٌ لا يكتب شيئًا. */
@@ -187,7 +221,7 @@ async function linkSub(input, opts) {
   if (!client) return { status: 503, body: { error: 'stripe_not_configured' } };
 
   let sv;
-  try { sv = await survey(client.get, subId); }
+  try { sv = await survey(client.get, subId, acct); }
   catch (e) {
     if (!(e instanceof StripeFail)) throw e;
     console.warn('[sub-link] read failed ' + e.where + ' ' + e.code);
@@ -196,19 +230,28 @@ async function linkSub(input, opts) {
   if (sv.error === 'no_sub') return { status: 404, body: { error: 'subscription not found' } };
   if (sv.error === 'no_plan') return { status: 422, body: { error: 'subscription has no known plan', plan: sv.plan || null } };
   if (sv.sub.linkedLive && sv.sub.linkedLive !== acct.key) return { status: 409, body: { error: 'linked_other', username: sv.sub.linkedLive } };
+  const other = sv.cands.find((c) => c.state === 'already' && c.holder && c.holder !== acct.key);
+  if (other) return { status: 409, body: { error: 'linked_other', username: other.holder, payment: other.id } }; // لا يُقسَم اشتراك بين حسابين
 
   const grants = sv.cands.filter((c) => c.state === 'grant');
+  const { planActive } = require('./tier.js');
+  const curPlan = planActive(acct.user) ? String(acct.user.plan) : '';
   const summary = {
     username: acct.key,
     accountEmail: String(acct.user.email || (acct.key.startsWith('g_') ? acct.key.slice(2) : '')),
+    accountEmailVerified: acct.verified, // false: البريد يصل هذا الحساب بلا تأكيد — يُحذَّر المالك
+    accountPlan: curPlan || null,
+    keepPlan: !!curPlan && (PLAN_RANK[curPlan] || 0) >= (PLAN_RANK[sv.sub.plan] || 0), // الباقة السارية تبقى والنقاط وحدها تُضاف
     customerEmail: sv.customerEmail,
     subscription: subId, status: sv.sub.status, plan: sv.sub.plan, planLabel: sv.sub.planLabel,
     linkedTo: sv.sub.linkedLive || null,
     previous: (sv.sub.linkedTo && !sv.sub.linkedLive) ? sv.sub.linkedTo : null, // اسم على الاشتراك لا حساب حيّ له
-    payments: sv.cands.map((c) => ({ id: c.id, kind: c.kind, amount: c.amount, currency: c.currency, created: c.created, state: c.state })),
+    payments: sv.cands.map((c) => ({ id: c.id, kind: c.kind, amount: c.amount, currency: c.currency, created: c.created, state: c.state, holder: c.holder || null })),
     toGrant: grants.length, points: grants.length * sv.points,
   };
   if (!(input && input.confirm === true)) return { status: 200, body: Object.assign({ ok: true, dryRun: true }, summary) };
+  // التأكيد على الحساب نفسه الذي عرضه الفحص ووافق عليه المالك — تغيّر بينهما (حساب Google أُنشئ، فهرس تغيّر) = لا تنفيذ
+  if (input.expect !== undefined && String(input.expect || '') !== acct.key) return { status: 409, body: { error: 'target_changed', username: acct.key } };
 
   // ١) الاسم على الاشتراك أوّلًا: فشلُه يوقف كلّ شيء قبل أيّ منح، والضغط ثانيةً يكمل (المنح بعده لا يتكرّر)
   const writeMeta = sv.sub.linkedLive !== acct.key && !NO_META_WRITE.has(sv.sub.status);
@@ -228,7 +271,7 @@ async function linkSub(input, opts) {
   let granted = 0, pointsAdded = 0, balance = null, failed = null;
   for (const c of grants) {
     try {
-      const g = await grantPlanToUser(acct.key, sv.sub.plan, c.field, c.id, { refs: c.refs, amount: c.amount, currency: c.currency });
+      const g = await grantPlanToUser(acct.key, sv.sub.plan, c.field, c.id, { refs: c.refs, amount: c.amount, currency: c.currency, keepHigherPlan: true });
       if (g && g.error) { failed = String(g.error); break; }
       if (g && !g.alreadyGranted) { granted++; pointsAdded += Number(g.pointsAdded) || 0; }
       if (g && g.balance !== undefined) balance = g.balance;

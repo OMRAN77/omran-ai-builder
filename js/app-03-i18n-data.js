@@ -1420,6 +1420,8 @@ const I18N = {
     ownerLinkSubNoSub: "لم أجد هذا الاشتراك في Stripe.",
     ownerLinkSubBadId: "❌ اكتب رقم الاشتراك من Stripe (يبدأ بـ sub_).",
     ownerLinkSubNothing: "✅ الاشتراك مربوط بهذا الحساب وكلّ دفعاته مضافة من قبل.",
+    ownerLinkSubUnverified: "⚠️ هذا الإيميل يصل الحساب بلا تأكيد — تأكّد أنّه صاحب الاشتراك قبل الربط.",
+    ownerLinkSubKeepPlan: "ℹ️ الحساب على باقة {plan} سارية — تبقى كما هي وتُضاف النقاط وحدها.",
     ownerResetMany: "دفع بهذا الإيميل أكثر من حساب: {list} — اسأل صاحبه عن اسم حسابه واكتبه في الخانة.", // v-owner-reset-stripe
     ownerDiagRunning: "⏳ يفحص مفتاح كلود على أنثروبيك…",
     ownerDiagKey: "المفتاح: {k}",
@@ -2087,6 +2089,8 @@ const I18N = {
     ownerLinkSubNoSub: "Could not find this subscription in Stripe.",
     ownerLinkSubBadId: "❌ Enter the Stripe subscription ID (it starts with sub_).",
     ownerLinkSubNothing: "✅ The subscription is linked to this account and all its payments were already added.",
+    ownerLinkSubUnverified: "⚠️ This email reaches the account without verification — make sure they own the subscription before linking.",
+    ownerLinkSubKeepPlan: "ℹ️ The account has an active {plan} plan — it stays as is and only the points are added.",
     ownerResetMany: "More than one account paid with this email: {list} — ask the person for their account name and type it in the box.", // v-owner-reset-stripe
     ownerDiagRunning: "⏳ Checking the Claude key with Anthropic…",
     ownerDiagKey: "Key: {k}",

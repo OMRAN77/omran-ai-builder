@@ -177,6 +177,9 @@ test('٢. التأكيد: الاسم على الاشتراك أوّلًا، ثم
   const rec = JSON.parse(kv.get('payrec:cs_sub_ALYA0001'));
   for (const ref of ['in_sub_ALYA0001_1', 'pi_sub_ALYA0001_1', 'ch_sub_ALYA0001_1']) assert.ok(rec.refs.includes(ref), 'سجلّ المنح يحمل ' + ref);
   assert.equal(rec.amount, 1000);
+  const rec2 = JSON.parse(kv.get('payrec:in_sub_ALYA0001_2')); // التجديد: استرداده يصل برقم شحنته أو نيّته
+  assert.ok(rec2.refs.includes('pi_sub_ALYA0001_2') && rec2.refs.includes('ch_sub_ALYA0001_2'));
+  assert.equal(kv.get('payref:ch_sub_ALYA0001_2'), 'in_sub_ALYA0001_2');
 
   net.calls.length = 0;
   const again = await link(ALYA, 'sub_ALYA0001');
@@ -208,6 +211,9 @@ test('٤. دفعة مستردّة أو عليها اعتراض قبل الربط
   assert.deepEqual(a.body.payments.map((p) => p.state), ['grant', 'refunded']);
   const b = await link('r@x.com', 'sub_DISPUTE1');
   assert.deepEqual(b.body.payments.map((p) => p.state), ['refunded', 'grant']);
+  seedAlya('sub_PARTIAL1', { charge: { 2: { refunded: false, amount_refunded: 500 } } }); // استرداد جزئيّ قبل الربط: يُترك للمالك كما يفعل pay-refund
+  const part = await link('r@x.com', 'sub_PARTIAL1');
+  assert.deepEqual(part.body.payments.map((p) => p.state), ['grant', 'refunded']);
   const c = await link('r@x.com', 'sub_REFUND01', { confirm: true });
   assert.equal(c.body.pointsAdded, 360);
   assert.equal(await bal('g_r@x.com'), 360);
@@ -400,4 +406,178 @@ test('١١. الواجهة: رقم بلا sub_ لا يُرسل، والإيمي�
   await part.ctx.adminLinkSubscription();
   const pa = part.said.filter((x) => x[0] === 'alert').pop()[1];
   assert.ok(pa.includes('360') && pa.includes('busy'), pa);
+});
+
+/* ---------- المراجعة العدائيّة (مؤكَّدة بتجارب): كلّ إصلاح باختبار يحمرّ لو عاد الخطأ ---------- */
+test('١٢. لا شحن مرّتين لما شحنه الويب هوك قبل v-pay-once (بلا حجز): نسخة Stripe تحمل الاسم ← «مضافة من قبل»؛ اسم ميّت ← «تُراجع»؛ أقدم من ٣٩٥ يومًا ← «قديمة»؛ ودفعة شُحنت لحساب حيّ آخر ← ٤٠٩', async () => {
+  // bob اشترك مسجَّلًا قبل ٥ أكتوبر: الويب هوك شحن الجلسة والتجديد بلا حجز، ونسختاهما تحملان اسمه
+  seedAlya('sub_PRE00001', { md: { username: 'bob' } });
+  net.sessions.find((x) => x.id === 'cs_sub_PRE00001').metadata.username = 'bob';
+  for (const i of net.invoices.filter((x) => x.subscription === 'sub_PRE00001')) i.subscription_details = { metadata: { plan: 'basic', username: 'bob' } };
+  await auth.putUser('bob', { username: 'bob', hash: 'h', salt: 's', points: 720, lastStripeInvoiceId: 'in_sub_PRE00001_2' });
+  const pre = await link('bob', 'sub_PRE00001');
+  assert.equal(pre.code, 200);
+  assert.deepEqual(pre.body.payments.map((p) => p.state), ['already', 'already'], 'كانت grant وتُشحن ثانيةً');
+  assert.equal(pre.body.toGrant, 0);
+  const preC = await link('bob', 'sub_PRE00001', { confirm: true });
+  assert.equal(preC.body.pointsAdded, 0);
+  assert.equal(await bal('bob'), 720);
+
+  // جلسة باسم حساب لا وجود له (حاول الويب هوك ورجع ٤٠٤): لا تُضاف تلقائيًّا
+  seedAlya('sub_DEADSN01');
+  net.sessions.find((x) => x.id === 'cs_sub_DEADSN01').metadata.username = 'ghost_user';
+  await googleUser('g_d@x.com', 'd@x.com', 0);
+  const dead = await link('d@x.com', 'sub_DEADSN01');
+  assert.deepEqual(dead.body.payments.map((p) => p.state), ['review', 'grant']);
+
+  // أثرها على الحساب نفسه (lastStripeInvoiceId) بلا حجز ولا سجلّ ولا اسم في النسخة: شُحنت له — لا تُشحن ثانيةً
+  seedAlya('sub_TRACE001');
+  await auth.putUser('traced', { username: 'traced', hash: 'h', salt: 's', points: 0, lastStripeInvoiceId: 'in_sub_TRACE001_2' });
+  const tr = await link('traced', 'sub_TRACE001');
+  assert.deepEqual(tr.body.payments.map((p) => p.state), ['grant', 'already']);
+
+  // أقدم من عمر الحجز: لا يُثبت أنّه لم يُشحن
+  seedAlya('sub_OLD00001');
+  net.invoices.find((x) => x.id === 'in_sub_OLD00001_2').created = nowSec() - 400 * DAY;
+  const old = await link('d@x.com', 'sub_OLD00001');
+  assert.equal(old.body.payments.find((p) => p.id === 'in_sub_OLD00001_2').state, 'old');
+
+  // شُحنت جلسته لحساب حيّ آخر (حجز باسمه): لا يُقسَم الاشتراك بين حسابين
+  seedAlya('sub_SPLIT001');
+  await auth.putUser('other_acct', { username: 'other_acct', hash: 'h', salt: 's', points: 0 });
+  kv.set(claimKey('lastStripeSessionId', 'cs_sub_SPLIT001'), 'other_acct');
+  net.calls.length = 0;
+  const split = await link('d@x.com', 'sub_SPLIT001', { confirm: true });
+  assert.equal(split.code, 409);
+  assert.equal(split.body.username, 'other_acct');
+  assert.equal(posts().length, 0);
+  assert.equal(await bal('g_d@x.com'), 0);
+});
+
+test('١٣. باقة سارية أعلى (Pro اشتُريت أمس) تبقى: النقاط وحدها تُضاف، واسترداد الدفعة المضافة يسحب نقاطها ولا يُسقط Pro', async () => {
+  seedAlya('sub_KEEP0001');
+  const yesterday = Date.now() - DAY * 1000;
+  await auth.putUser('prouser', { username: 'prouser', hash: 'h', salt: 's', points: 920, plan: 'pro', planUpdatedAt: yesterday, planPayId: 'cs_pro_yesterday' });
+  const d = await link('prouser', 'sub_KEEP0001');
+  assert.equal(d.body.accountPlan, 'pro');
+  assert.equal(d.body.keepPlan, true);
+  const c = await link('prouser', 'sub_KEEP0001', { confirm: true });
+  assert.equal(c.body.pointsAdded, 720);
+  let u = await auth.getUser('prouser');
+  assert.equal(u.plan, 'pro', 'Pro باقية (كانت تصير basic)');
+  assert.equal(u.planUpdatedAt, yesterday);
+  assert.equal(u.planPayId, 'cs_pro_yesterday');
+  assert.equal(await bal('prouser'), 1640);
+  const r = await hook(evt('charge.refunded', { id: 'ch_sub_KEEP0001_1', object: 'charge', payment_intent: 'pi_sub_KEEP0001_1', amount: 1000, amount_refunded: 1000, refunded: true, currency: 'usd', created: nowSec() }));
+  assert.equal(r.code, 200);
+  u = await auth.getUser('prouser');
+  assert.equal(u.plan, 'pro');
+  assert.ok(tier.planActive(u), 'Pro سارية بعد الاسترداد');
+  assert.equal(await bal('prouser'), 1280, 'نقاط الدفعة المستردّة وحدها سُحبت');
+
+  // باقة أدنى سارية (basic) وربط Pro: الدفعة المتأخّرة ترقّي — دفع ثمن Pro
+  seedAlya('sub_UPGR0001', { md: { plan: 'pro' } });
+  await auth.putUser('basicuser', { username: 'basicuser', hash: 'h', salt: 's', points: 0, plan: 'basic', planUpdatedAt: yesterday, planPayId: 'cs_b' });
+  const up = await link('basicuser', 'sub_UPGR0001');
+  assert.equal(up.body.keepPlan, false);
+  await link('basicuser', 'sub_UPGR0001', { confirm: true });
+  assert.equal((await auth.getUser('basicuser')).plan, 'pro');
+});
+
+test('١٤. البريد ← من أثبته أوّلًا: حساب Google قبل فهرس غير مؤكَّد؛ وغير المؤكَّد وحده يُعلَّم فيُحذَّر المالك', async () => {
+  seedAlya('sub_RESOLV01');
+  await auth.putUser('mallory', { username: 'mallory', hash: 'h', salt: 's', email: 'm@x.com', points: 0 });
+  kv.set('db/email-index/m@x.com', JSON.stringify({ username: 'mallory' }));
+  await googleUser('g_m@x.com', 'm@x.com', 0);
+  const g = await link('m@x.com', 'sub_RESOLV01');
+  assert.equal(g.body.username, 'g_m@x.com', 'كانت mallory (فهرس بلا تأكيد) قبل حساب Google');
+  assert.equal(g.body.accountEmailVerified, true);
+  await auth.putUser('mallory2', { username: 'mallory2', hash: 'h', salt: 's', email: 'u@x.com', points: 0 });
+  kv.set('db/email-index/u@x.com', JSON.stringify({ username: 'mallory2' }));
+  const u = await link('u@x.com', 'sub_RESOLV01');
+  assert.equal(u.body.username, 'mallory2');
+  assert.equal(u.body.accountEmailVerified, false);
+});
+
+test('١٥. الويب هوك بعد الربط بكلّ الأشكال: basil (parent)، ونسخة مجمَّدة بلا اسم والسطر يحمله، وبلا اسم في الفاتورة ← الاشتراك الآن؛ وبلا اسم أبدًا لا شحن؛ وعطب Stripe ٥٠٠ فيُعاد', async () => {
+  let before = await bal(GKEY);
+  const inv = (id, extra) => evt('invoice.paid', Object.assign({ id, billing_reason: 'subscription_cycle', amount_paid: 1000, currency: 'usd', payments: { data: [{ payment: { payment_intent: 'pi_' + id, charge: 'ch_' + id } }] } }, extra));
+  const basil = await hook(inv('in_w_basil', { parent: { subscription_details: { subscription: 'sub_ALYA0001', metadata: { plan: 'basic', username: GKEY } } }, lines: { data: [{ metadata: {} }] } }));
+  assert.equal(basil.code, 200);
+  assert.equal(await bal(GKEY), before + 360, 'basil: الاسم في parent.subscription_details');
+  before += 360;
+  const frozen = await hook(inv('in_w_frozen', { subscription: 'sub_ALYA0001', subscription_details: { metadata: { plan: 'basic' } }, lines: { data: [{ metadata: { plan: 'basic', username: GKEY } }] } }));
+  assert.equal(frozen.code, 200);
+  assert.equal(await bal(GKEY), before + 360, 'نسخة أُصدرت قبل الربط بلا اسم: الاسم من السطر');
+  before += 360;
+  net.calls.length = 0;
+  const live = await hook(inv('in_w_live', { subscription: 'sub_ALYA0001', subscription_details: { metadata: { plan: 'basic' } }, lines: { data: [{ metadata: {} }] } }));
+  assert.equal(live.code, 200);
+  assert.equal(await bal(GKEY), before + 360, 'لا اسم في الفاتورة: من الاشتراك الآن');
+  assert.ok(net.calls.some((c) => c.path === 'subscriptions/sub_ALYA0001' && c.method === 'GET'));
+  before += 360;
+  const none = await hook(inv('in_w_none', { subscription: 'sub_NOCHG001', subscription_details: { metadata: { plan: 'basic' } } }));
+  assert.equal(none.code, 200);
+  assert.equal(await bal(GKEY), before, 'اشتراك لم يُربط: لا شحن لأحد');
+  net.failGet = /^subscriptions\//;
+  const down = await hook(inv('in_w_down', { subscription: 'sub_ALYA0001', subscription_details: { metadata: { plan: 'basic' } } }));
+  net.failGet = null;
+  assert.equal(down.code, 500, 'عطب عابر: يُعاد الحدث لا يُبتلع');
+  const retry = await hook(inv('in_w_down', { subscription: 'sub_ALYA0001', subscription_details: { metadata: { plan: 'basic' } } }));
+  assert.equal(retry.code, 200);
+  assert.equal(await bal(GKEY), before + 360);
+});
+
+test('١٦. التأكيد على حساب غير الذي وافق عليه المالك ٤٠٩ بلا أيّ كتابة', async () => {
+  seedAlya('sub_EXPECT01');
+  await googleUser('g_e@x.com', 'e@x.com', 0);
+  net.calls.length = 0;
+  const r = await link('e@x.com', 'sub_EXPECT01', { confirm: true, expect: 'g_someone_else@x.com' });
+  assert.equal(r.code, 409);
+  assert.equal(r.body.error, 'target_changed');
+  assert.equal(posts().length, 0);
+  assert.equal(await bal('g_e@x.com'), 0);
+  const ok = await link('e@x.com', 'sub_EXPECT01', { confirm: true, expect: 'g_e@x.com' });
+  assert.equal(ok.code, 200);
+  assert.equal(await bal('g_e@x.com'), 720);
+});
+
+test('١٧. الواجهة: التحذيرات (إيميلان مختلفان لا بالحروف وحدها، بريد غير مؤكَّد، باقة تبقى)، والتأكيد يحمل الحساب المعروض، وضغطتان = فحص واحد، والعطب برمزه', async () => {
+  const D = dictFor('ar');
+  const run = async (dry, answers, more) => {
+    const e = uiEnv('ar', answers, [[200, dry]].concat(more || []));
+    e.field('adminLinkUserInput', ALYA); e.field('adminLinkSubInput', 'sub_ALYA0001');
+    await e.ctx.adminLinkSubscription();
+    return e;
+  };
+  const mm = await run(Object.assign({}, DRY, { customerEmail: 'other@x.com' }), [false]);
+  assert.ok(mm.said.find((x) => x[0] === 'confirm')[1].includes(D.ownerLinkSubMismatch), 'تحذير الإيميلين');
+  const cs = await run(Object.assign({}, DRY, { customerEmail: 'Aliya.Alshamsi181@iCloud.com' }), [false]);
+  assert.ok(!cs.said.find((x) => x[0] === 'confirm')[1].includes(D.ownerLinkSubMismatch), 'الحروف وحدها ليست اختلافًا');
+  const un = await run(Object.assign({}, DRY, { accountEmailVerified: false }), [false]);
+  assert.ok(un.said.find((x) => x[0] === 'confirm')[1].includes(D.ownerLinkSubUnverified));
+  const kp = await run(Object.assign({}, DRY, { keepPlan: true, accountPlan: 'pro' }), [false]);
+  assert.ok(kp.said.find((x) => x[0] === 'confirm')[1].includes('pro'));
+  const go = await run(DRY, [true], [[200, Object.assign({}, DRY, { granted: 2, pointsAdded: 720 })]]);
+  assert.equal(go.sent[1].expect, GKEY, 'التنفيذ على الحساب المعروض');
+  assert.equal(go.sent[1].confirm, true);
+  assert.equal(go.sent[0].expect, undefined);
+
+  const slow = uiEnv('ar', [false, false], [[200, DRY], [200, DRY]]);
+  slow.field('adminLinkUserInput', ALYA); slow.field('adminLinkSubInput', 'sub_ALYA0001');
+  await Promise.all([slow.ctx.adminLinkSubscription(), slow.ctx.adminLinkSubscription()]);
+  assert.equal(slow.sent.length, 1, 'ضغطتان: فحص واحد');
+
+  const err = uiEnv('ar', [], [[502, { error: 'stripe_error', at: 'invoices', code: 500 }]]);
+  err.field('adminLinkUserInput', ALYA); err.field('adminLinkSubInput', 'sub_ALYA0001');
+  await err.ctx.adminLinkSubscription();
+  const msg = err.said.find((x) => x[0] === 'alert')[1];
+  assert.ok(msg.includes('stripe_error') && msg.includes('500') && msg.includes('invoices'), msg);
+
+  const sk = uiEnv('ar', [], [[200, Object.assign({}, DRY, { linkedTo: GKEY, toGrant: 0, points: 0, payments: [{ state: 'already' }, { state: 'refunded' }] })]]);
+  sk.field('adminLinkUserInput', ALYA); sk.field('adminLinkSubInput', 'sub_ALYA0001');
+  await sk.ctx.adminLinkSubscription();
+  assert.equal(sk.said.filter((x) => x[0] === 'confirm').length, 0);
+  const skm = sk.said.find((x) => x[0] === 'alert')[1];
+  assert.ok(!skm.includes(D.ownerLinkSubNothing) && skm.includes('1'), 'لا «كلّها مضافة» وفيها مستردّة');
 });
