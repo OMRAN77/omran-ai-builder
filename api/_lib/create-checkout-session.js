@@ -229,7 +229,7 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     return pend ? finishGrant(username, user, plan, sourceField, sourceId, meta, pend) : already;
   }
   const claim = (sourceField && sourceId) ? claimKey(sourceField, sourceId) : null;
-  if (claim && !(await kvSetIfAbsent(claim, username, CLAIM_TTL_SEC))) { // v-pay-once
+  if (claim && !(await takeClaim(claim, username, sourceField, sourceId, plan))) { // v-pay-once
     // v-lock-credit (srv-money-2): محاولة سابقة شحنت ثمّ فشلت كتابة السجلّ — تُكمله بلا شحن ثانٍ. بلا علامة = سبق الشحن.
     // المراجعة المعاكسة الثانية (#4): قراءة صارمة — ردّ 200 لا يُقرأ كان يعود null فيُجاب «سبق الشحن» 200 والباقة لم تُسلَّم.
     const pend = await kvGetRaw(mark, { strict: true });
@@ -334,12 +334,29 @@ async function ownerAlert(title, body) {
   try { await require('./pay-refund.js').alertOwner(title, body); } catch (e) { /* guard-ok — التنبيه تحسين لا شرط */ }
 }
 
+/* v-lock-r2 (money-invariants-7): الحجز كان SET NX غير صارم خارج الـtry — ردّ 200 لا يُقرأ يعود false «مشغول» فيُجاب «سبق الشحن» 2xx والدفعة
+   لم تُشحن (والتحقّق من العميل يقول alreadyGranted)، وأمرٌ وصل وضاع ردّه (مهلة بعد الكتابة) يرمي بلا فكّ ولا علامة فتجد الإعادة حجزًا وحده:
+   «سبق الشحن» للأبد بلا سطر للمالك، ثمّ يعدّه الاسترداد دليل منح. المنح كلّه تحت قفل الحساب (withAccount)، فالحجز يُقرأ صارمًا قبل كتابته:
+   قائمٌ = سبق (أو حجز سحب) كما كان؛ وغائبٌ ثمّ ردٌّ غامض ⇒ يُقرأ ثانيةً — باسمنا = حجزنا (لا منحَ آخر لهذا الحساب الآن) فيكمل المنح، وغائبٌ =
+   لم يُكتب فيُرمى بلا أثر (يُعاد)، ولغيرنا = سبق. وإن تعذّرت القراءة نفسها يُفكّ حجزنا بالقاعدة نفسها (تنبيه المالك إن علق) ثمّ يُرمى. */
+async function takeClaim(claim, username, field, id, plan) {
+  if ((await kvGetRaw(claim, { strict: true })) != null) return false; // عطلها يرمي قبل أيّ أثر
+  try { return await kvSetIfAbsent(claim, username, CLAIM_TTL_SEC, { strict: true }); } catch (e) {
+    let v = null;
+    const err = await settleWrite(async () => { v = await kvGetRaw(claim, { strict: true }); });
+    if (err) { await releaseClaim(claim, field, id, username, plan, true); throw e; }
+    if (v !== null && v !== undefined && String(v) === String(username)) return true;
+    if (v === null || v === undefined) throw e;
+    return false;
+  }
+}
+
 // v-lock-credit (المراجعة المعاكسة الثانية، #6): الفشل قبل الأثر يفكّ الحجز — وكان kvDel يبتلع فشله، فعطلٌ يطال الفكّ أيضًا يترك حجزًا
 // بلا علامة ولا منح: كلّ إعادة «سبق الشحن» والمال مأخوذ بلا شيء، بلا سطر واحد للمالك. الفكّ صارم ويُعاد، ثمّ تنبيه برقم الدفعة.
 // الإعادة لا تمحو إلّا حجزنا (قيمته اسم الحساب): حذفٌ وصل وضاع ردّه ثمّ استرداد كامل أشغل الحجز بعلامة سحبه (pay-refund blockGrant)
 // — محوُها يجعل الدفعة المستردّة تُشحن بعده.
-async function releaseClaim(claim, field, id, username, plan) {
-  let first = true;
+async function releaseClaim(claim, field, id, username, plan, checkFirst) {
+  let first = !checkFirst; // v-lock-r2 (money-invariants-7): حجزٌ لا نعرف أكُتب لنا — يُقرأ قبل كلّ حذف، فلا يُمحى حجز سحبٍ كتبه غيرنا
   const err = await settleWrite(async () => {
     if (!first) {
       const v = await kvGetRaw(claim, { strict: true });
@@ -852,7 +869,15 @@ async function autoRenewToggle(req, res, fetchImpl) {
     // v-rename-move: الاشتراك يحمل الاسم وقت الشراء — بعد تغيير الاسم يُبحث بالأسماء السابقة أيضًا، وإلّا لم يجد المشترك
     // اشتراكه ليوقفه وبقي يُخصم كلّ شهر.
     let prev = [];
-    try { const u = await getUser(username); prev = (u && Array.isArray(u.prevUsernames)) ? u.prevUsernames.slice(-3) : []; } catch (e) { prev = []; }
+    /* v-lock-r2 (userdata-3): حذف الحساب وحده (account-delete.js) يمرّر على الطلب نفسه — لا في جسمه، فلا يصل من العميل — كلّ أسمائه المثبتة
+       بشواهدها: اشتراكٌ اشتُري قبل أكثر من ثلاثة تغييرات كان يبقى يُخصم بعد «تم». وعطل قراءة الحساب في الحذف = لا «لا أسماء سابقة» بل 503. */
+    if (Array.isArray(req.names)) prev = req.names.map((n) => String(n || '').trim().toLowerCase());
+    else {
+      let u = null;
+      try { u = await getUser(username); } catch (e) { u = null; }
+      if (!u && req.immediate === true) { res.status(503).json({ error: 'account read failed, retry' }); return; }
+      prev = (u && Array.isArray(u.prevUsernames)) ? u.prevUsernames.slice(-3) : [];
+    }
     const names = [username].concat(prev.filter((n) => n && n !== username));
     let subs;
     try { subs = await liveSubs(names, f, auth); } catch (e) { res.status(502).json({ error: e.message || 'stripe search failed' }); return; }
@@ -911,6 +936,7 @@ module.exports.liveAccount = liveAccount;
 module.exports.claimKey = claimKey;
 module.exports.completeCredit = completeCredit; // v-lock-credit (srv-money-2): الاسترداد يكمل منحًا معلَّقًا قبل أن يسحبه
 module.exports.withAccount = withAccount; // v-acct-lock — السحب يأخذ قفل الحساب نفسه
+module.exports.BUSY = BUSY; // v-lock-r2 (money-invariants-8): تغيير الاسم يأخذ قفل الحساب نفسه ويعرف رميه
 // v-lock-subs: الويب هوك يلغي الاشتراك القديم من خانته (srv-money-3) واشتراك الحساب المحذوف (srv-money-5)، وPayPal يرفض الأدنى (srv-money-4)
 module.exports.supersedeSubs = supersedeSubs;
 module.exports.cancelSub = cancelSub;

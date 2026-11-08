@@ -1601,6 +1601,28 @@ try{
      هنا ننتظر النتيجة كلّ ٣ ثوانٍ. رابط إعادة كلمة المرور لا يمرّ من هنا أبدًا: يصل محادثة الرقم نفسه. */
   let phonePoll = null;
   function phoneSay(el, txt, color){ if(el){ el.textContent = txt || ''; el.style.color = color || 'var(--muted,#999)'; } }
+  /* v-lock-r2 (userdata-4): البريد والهاتف قناتا استرجاع — الخادم يطلب كلمة المرور الحاليّة لربطهما ممّن وضعها (password_required)،
+     فخانة كلمة مرور تظهر فوق سطر الرسالة عند طلبها وحده (بنصّ acctCurrentPasswordLabel القائم بالـ١٤ لغة)، وتُرسل مع المحاولة التالية. */
+  function acctPassBox(msgEl, id, show){
+    let box = $('#' + id);
+    if(!box && show && msgEl && msgEl.parentNode){
+      box = document.createElement('input');
+      box.type = 'password';
+      box.id = id;
+      box.setAttribute('autocomplete', 'current-password');
+      box.setAttribute('dir', 'auto');
+      box.style.cssText = 'display:block; width:100%; box-sizing:border-box; height:44px; margin-top:8px; padding:0 10px; border-radius:var(--r-2);';
+      msgEl.parentNode.insertBefore(box, msgEl);
+    }
+    if(box){
+      box.style.display = show ? 'block' : 'none';
+      box.placeholder = curT().acctCurrentPasswordLabel || '';
+      if(!show) box.value = '';
+      else box.focus();
+    }
+    return box;
+  }
+  function acctPassVal(id){ const b = $('#' + id); return (b && b.style.display !== 'none') ? b.value : ''; }
   async function phoneFlow(btn){
     const t2 = curT();
     const recover = btn.getAttribute('data-recover') === '1';
@@ -1613,15 +1635,21 @@ try{
     let data = null;
     try {
       const body = { action: recover ? 'phone-recover-start' : 'phone-link-start', channel };
-      if(!recover) body.token = authGet('aiapp_auth_token');
+      if(!recover){ body.token = authGet('aiapp_auth_token'); const pw = acctPassVal('acctPhonePass'); if(pw) body.password = pw; } // v-lock-r2 (userdata-4)
       const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
-      if(!res.ok || !data || !data.link) throw Object.assign(new Error('start'), { said: (data && data.error) || t2.acctGenericError });
+      if(!res.ok || !data || !data.link) throw Object.assign(new Error('start'), { said: (data && data.error) || t2.acctGenericError, code: data && data.code });
     } catch(e){
       if(win) try { win.close(); } catch(e2){ window.__swallow(e2, 'phone-link:close'); }
+      if(!recover && e && (e.code === 'password_required' || e.code === 'wrong_password')){ // v-lock-r2 (userdata-4)
+        acctPassBox(msgEl, 'acctPhonePass', true);
+        phoneSay(msgEl, e.code === 'wrong_password' ? t2.acctDeleteWrongPass : t2.acctCurrentPasswordLabel, '#ef4444');
+        return;
+      }
       phoneSay(msgEl, e && e.said ? e.said : t2.acctNetError, '#ef4444');
       return;
     }
+    if(!recover) acctPassBox(msgEl, 'acctPhonePass', false);
     if(win && !win.closed){ win.opener = null; win.location.href = data.link; }
     phoneSay(msgEl, t2.phoneWaiting);
     if(!win || win.closed){ // النوافذ محجوبة: رابط يُضغط بدلها
@@ -1678,9 +1706,14 @@ try{
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(confirming
             ? { action: 'email-otp-verify', purpose: 'change', token, email: emailVal, otp: code, lang }
-            : { action: 'email-otp-request', purpose: 'change', token, email: emailVal, lang }),
+            : Object.assign({ action: 'email-otp-request', purpose: 'change', token, email: emailVal, lang }, acctPassVal('acctEmailPass') ? { password: acctPassVal('acctEmailPass') } : {})),
         });
         const data = await res.json().catch(() => ({}));
+        if(data.code === 'password_required' || data.code === 'wrong_password'){ // v-lock-r2 (userdata-4): كلمة المرور الحاليّة لربط بريد استرجاع
+          acctPassBox(acctEmailMsg, 'acctEmailPass', true);
+          say(data.code === 'wrong_password' ? t2.acctDeleteWrongPass : t2.acctCurrentPasswordLabel, '#ef4444');
+          return;
+        }
         if(!res.ok || data.error){
           // رسالة الخادم عربيّة/إنجليزيّة فقط — الحالات المعروفة بنصّ الواجهة بلغتها الـ١٤
           const byCode = { bad_otp: t2.acctEmailBadCode, email_taken: t2.acctEmailTaken, bad_email: t2.acctInvalidEmail,
@@ -1699,6 +1732,7 @@ try{
         }
         acctEmailPending = emailKey;
         acctEmailPendingUser = authGet('aiapp_username') || '';
+        acctPassBox(acctEmailMsg, 'acctEmailPass', false); // v-lock-r2 (userdata-4): أُرسل الرمز — لا تبقى الكلمة في الصفحة
         const box = acctEmailCodeBox(true);
         if(box){ box.value = ''; box.focus(); }
         say(String(t2.acctEmailCodeSent || '').replace('{email}', emailVal), 'var(--muted,#999)');

@@ -125,12 +125,14 @@ async function kvDecrBy(key, amount) {
 }
 
 /** SET only if the key does not exist. Returns true when this call created it. */
-async function kvSetIfAbsent(key, value, ttlSec) {
+// v-lock-r2 (money-invariants-7): `{ strict: true }` — ردّ 200 لا يُقرأ يرمي بدل false «مشغول» (حجز دفعة: false كاذبة تُجيب «سبق الشحن»
+// والحجز ربّما كُتب لنا). بلا الخيار كما كان.
+async function kvSetIfAbsent(key, value, ttlSec, opts) {
   // ‏TTL داخل نفس الأمر (NX EX) لا EXPIRE منفصل: انهيار بين الخطوتين كان
   // سيترك قفلًا أبديًا يعطّل الميزة المعتمدة عليه بصمت.
   const cmd = ['SET', key, String(value), 'NX'];
   if (ttlSec) cmd.push('EX', String(Math.max(1, Math.trunc(ttlSec))));
-  const res = await command(cmd);
+  const res = await command(cmd, !!(opts && opts.strict));
   return res === 'OK';
 }
 

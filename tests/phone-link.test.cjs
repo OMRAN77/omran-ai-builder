@@ -71,6 +71,7 @@ async function waPost(payload, secret) {
   return res;
 }
 const waMsg = (from, text) => ({ entry: [{ changes: [{ value: { messages: [{ from, type: 'text', text: { body: text } }] } }] }] });
+// v-lock-r2 (userdata-4): ربط الهاتف (قناة استرجاع) يطلب كلمة المرور الحاليّة ممّن وضعها — pass12345 في الطلبات أدناه
 async function signup(username) {
   const r = await call({ action: 'signup', username, password: 'pass12345' });
   assert.equal(r.code, 200, JSON.stringify(r.body));
@@ -79,7 +80,7 @@ async function signup(username) {
 
 test('١. تيليجرام: ‎/start الرمز‎ ← زرّ «شارك رقمي» ← رقم صاحب الحساب يُربط بحسابه', async () => {
   const token = await signup('salem');
-  const st = await call({ action: 'phone-link-start', channel: 'telegram', token }, '10.0.0.1');
+  const st = await call({ action: 'phone-link-start', channel: 'telegram', token, password: 'pass12345' }, '10.0.0.1');
   assert.equal(st.code, 200, JSON.stringify(st.body));
   assert.match(st.body.link, /^https:\/\/t\.me\/OmranAIBuilder_bot\?start=PL[A-HJ-NP-Z2-9]{8}$/);
   sent.length = 0;
@@ -98,7 +99,7 @@ test('١. تيليجرام: ‎/start الرمز‎ ← زرّ «شارك رقم
 
 test('٢. تيليجرام: رقم شخص آخر (contact.user_id ≠ from.id) يُرفض، وبلا رمز سابق لا شيء', async () => {
   const token = await signup('fahad');
-  const st = await call({ action: 'phone-link-start', channel: 'telegram', token }, '10.0.0.2');
+  const st = await call({ action: 'phone-link-start', channel: 'telegram', token, password: 'pass12345' }, '10.0.0.2');
   await tgUpdate({ chat: { id: 88 }, from: { id: 88 }, text: '/start ' + st.body.code });
   sent.length = 0;
   await tgUpdate({ chat: { id: 88 }, from: { id: 88 }, contact: { user_id: 99, phone_number: '+971509999999' } });
@@ -110,13 +111,13 @@ test('٢. تيليجرام: رقم شخص آخر (contact.user_id ≠ from.id) �
 
 test('٣. واتساب: الرمز في رسالة موقَّعة يربط رقم المرسل؛ توقيع خاطئ ٤٠١ بلا ربط؛ وGET تحقّق Meta', async () => {
   const token = await signup('mariam');
-  const off = await call({ action: 'phone-link-start', channel: 'whatsapp', token }, '10.0.0.3');
+  const off = await call({ action: 'phone-link-start', channel: 'whatsapp', token, password: 'pass12345' }, '10.0.0.3');
   assert.equal(off.code, 503, 'واتساب غير مهيّأ → ٥٠٣ برسالة');
   assert.match(off.body.error, /جرّب تيليجرام/);
   process.env.WHATSAPP_NUMBER = '+971 50 000 0000';
   process.env.WHATSAPP_APP_SECRET = 'meta-app-secret';
   process.env.WHATSAPP_VERIFY_TOKEN = 'verify-me';
-  const st = await call({ action: 'phone-link-start', channel: 'whatsapp', token }, '10.0.0.3');
+  const st = await call({ action: 'phone-link-start', channel: 'whatsapp', token, password: 'pass12345' }, '10.0.0.3');
   assert.equal(st.code, 200, JSON.stringify(st.body));
   assert.ok(st.body.link.startsWith('https://wa.me/971500000000?text='));
   assert.ok(decodeURIComponent(st.body.link.split('text=')[1]).includes(st.body.code), 'الرسالة الجاهزة فيها الرمز');
@@ -136,7 +137,7 @@ test('٣. واتساب: الرمز في رسالة موقَّعة يربط رق�
 
 test('٤. الرقم لحساب واحد: ربطه بحساب ثانٍ ← taken، والأوّل باقٍ', async () => {
   const token = await signup('khalid');
-  const st = await call({ action: 'phone-link-start', channel: 'telegram', token }, '10.0.0.4');
+  const st = await call({ action: 'phone-link-start', channel: 'telegram', token, password: 'pass12345' }, '10.0.0.4');
   await tgUpdate({ chat: { id: 55 }, from: { id: 55 }, text: '/start ' + st.body.code });
   await tgUpdate({ chat: { id: 55 }, from: { id: 55 }, contact: { user_id: 55, phone_number: '+971501234567' } }); // رقم salem
   assert.equal((await call({ action: 'phone-link-status', code: st.body.code })).body.status, 'taken');

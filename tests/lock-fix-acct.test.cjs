@@ -45,7 +45,12 @@ mock('api/_lib/kv.js', new Proxy(kvImpl, { get: (t, p) => t[p] || (async () => n
 const logs = []; // وسوم logError — عطب لا يُبتلع بصمت
 mock('api/_lib/log-error.js', { logError: (tag) => { logs.push(String(tag)); }, logErrorAndFlush: async () => {} });
 const renewCalls = [];
-mock('api/_lib/create-checkout-session.js', { autoRenewToggle: async (req, res) => { renewCalls.push(req.body.on); res.status(200).json({ ok: true, subs: 0, on: false }); } });
+// v-lock-r2 (money-invariants-8): تغيير الاسم يأخذ قفل الحساب (withAccount) — هنا بلا قفل: الحساب الحيّ كما يحلّه liveAccount
+mock('api/_lib/create-checkout-session.js', {
+  autoRenewToggle: async (req, res) => { renewCalls.push(req.body.on); res.status(200).json({ ok: true, subs: 0, on: false }); },
+  BUSY: 'busy',
+  withAccount: async (name, fn) => { const a = await require(rp('api/_lib/auth.js')).liveAccount(name); return fn(a.key, a.user); },
+});
 
 const mail = {};
 let googleProfile = null;

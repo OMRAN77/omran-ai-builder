@@ -266,7 +266,8 @@ test('paypal capture is idempotent per order id', () => {
   // v-paypal-honest: الالتقاط يشحن عبر grantPlanToUser نفسها (حجز ذرّيّ لرقم الطلب) — السلوك مُختبَر في pay-once.
   const pp = read('api/_lib/paypal-order.js');
   assert.match(pp, /grantPlanToUser\(username, m\.plan, 'lastPaypalOrderId', order\.id\)/);
-  assert.match(read('api/_lib/create-checkout-session.js'), /kvSetIfAbsent\(claim, username, CLAIM_TTL_SEC\)/);
+  // v-lock-r2 (money-invariants-7): الحجز صارم (ردّ لا يُقرأ يرمي فيُقرأ ثانيةً) — الحجز الذرّيّ نفسه
+  assert.match(read('api/_lib/create-checkout-session.js'), /kvSetIfAbsent\(claim, username, CLAIM_TTL_SEC(?:, \{ strict: true \})?\)/);
 });
 
 test('completeJson: retired preferred name ignored, 404 tries the next candidate, other errors pass through', async () => {

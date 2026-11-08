@@ -36,9 +36,10 @@ async function call(body) {
 }
 
 // v-signup-no-email (أمر المالك ١٨ أكتوبر): التسجيل لا يحفظ إيميلًا أبدًا — يُضاف من «حسابي» برمز يصل البريد (purpose:'change').
+// v-lock-r2 (userdata-4): ربط بريد الاسترجاع يطلب كلمة المرور الحاليّة ممّن وضعها (حسابات التسجيل هنا بـpass12345)
 async function addEmail(token, email) {
   mails.length = 0;
-  const r = await call({ action: 'email-otp-request', purpose: 'change', token, email, lang: 'ar' });
+  const r = await call({ action: 'email-otp-request', purpose: 'change', token, email, lang: 'ar', password: 'pass12345' });
   if (r.code !== 200 || r.body.verified) return r;
   const code = (String((mails[0] || {}).html || '').match(/>(\d{6})</) || [])[1];
   return call({ action: 'email-otp-verify', purpose: 'change', token, email, otp: code, lang: 'ar' });

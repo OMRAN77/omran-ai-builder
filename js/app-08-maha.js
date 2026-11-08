@@ -1008,6 +1008,15 @@ const MAHA_IMAGE_ASK = [
   mahaImgRe(MAHA_IMG_HEAD, '[وف]?صمّ?م(?:ي)?(?:لي|لنا)?' + MAHA_IMG_FOR + '\\s+(?:ال)?(?:شعار|لوجو|لوقو|صور[ةه]|رسم[ةه]|بوستر|تصميم)' + MAHA_IMG_E),
   mahaImgRe(MAHA_IMG_HEAD, '[وف]?(?:[اأ]ب[اي]|ولّ?د(?:ي)?(?:لي)?|[اأ]عمل(?:ي)?(?:لي)?|[اأ]صنع(?:ي)?(?:لي)?)' + MAHA_IMG_FOR + MAHA_IMG_NOUN),
   mahaImgRe(MAHA_IMG_ANY, '[وف]?(?:[اأ]?عط(?:ي)?ني|هات(?:ي)?(?:لي)?|[اأ]بغ[اىي](?:لي)?|[اأ]ريد|سوّ?ي?(?:لي)?)' + MAHA_IMG_FOR + MAHA_IMG_NOUN),
+  /* v-lock-r2 (client-ux-3): صيغة الطلب المؤدّبة الأشيع — المضارع للمخاطَب بعد ممكن/تقدر/تكفى أو أوّل الكلام («ممكن ترسم لي قطة»، «تقدرين
+     ترسمين لي بيت؟»، «تقدر تسوي لي صورة قطة؟»، «تصمم لي شعار؟») — صارت ردًّا نصّيًّا بعد قصر المطابقة على الأمر. «ترسم» بمفعول لي/لنا/ها
+     لا وحدها («تقدر ترسم؟» سؤال قدرة كـcan you draw?)، و«تسوّي/تولّد» مع صورة/رسمة، و«تصمّم» مع شعار/صورة. ونحن/الرغبة: «نبي/نبغى صورة»
+     في موضع الأمر كـ«ابي»، و«ودي/حاب صورة» نكرةً («ودّي الصورة لأمي» توصيلٌ لا طلب). النفي و«كيف» كما هما (mahaImgHit). */
+  mahaImgRe(MAHA_IMG_HEAD, '[وف]?ترسم(?:ين|ي)?(?:لي|لنا|ها|ه|\\s+(?:لي|لنا))' + MAHA_IMG_E),
+  mahaImgRe(MAHA_IMG_HEAD, '[وف]?ت(?:سوّ?(?:ين|ي)|ولّ?د(?:ين|ي)?)(?:لي|لنا)?' + MAHA_IMG_FOR + MAHA_IMG_NOUN),
+  mahaImgRe(MAHA_IMG_HEAD, '[وف]?تصمّ?م(?:ين|ي)?(?:لي|لنا)?' + MAHA_IMG_FOR + '\\s+(?:ال)?(?:شعار|لوجو|لوقو|صور[ةه]|رسم[ةه]|بوستر|تصميم)' + MAHA_IMG_E),
+  mahaImgRe(MAHA_IMG_HEAD, '[وف]?نب(?:[اي]|غ[اىي])' + MAHA_IMG_FOR + MAHA_IMG_NOUN),
+  mahaImgRe(MAHA_IMG_ANY, '[وف]?(?:ودّ?ي|حاب[ةه]?)' + MAHA_IMG_FOR + '\\s+(?:صور[ةه]|رسم[ةه]|لوجو|لوقو)' + MAHA_IMG_E + '(?!\\s+(?:عام|واضح|كامل|شامل|مبسط|مختصر)[ةه]?' + MAHA_IMG_E + ')'),
   mahaImgRe(MAHA_IMG_HEAD, 'draw\\s+(?:me\\s+|us\\s+|for\\s+me\\s+)?(?!(?:(?:an?|the|some|my|your|his|her|our|their)\\s+)?(?:money|cash|funds?|lines?|conclusions?|cards?|attention|blood|water|breath|straws?|lots|up|out|from|on|back|near|closer|parallels?|comparisons?|inspiration|crowds?|curtains?|blinds|baths?|swords?|guns?|weapons?|fire|criticism|interest|support|a\\s+blank)\\b)[a-z]'),
   mahaImgRe(MAHA_IMG_ANY, '(?:generate|create|make|design)\\s+(?:me\\s+|us\\s+)?(?:(?:an?|one)\\s+(?:[a-z-]+\\s+){0,2}?(?:image|picture|photo|drawing|logo|poster|illustration)(?=\\s*$|\\s*[,.!?;:]|\\s+(?:of|for|showing|that|with|about|please|now)\\b)|(?:(?:the|some|this|that)\\s+)?(?:image|picture|photo|drawing|logo|poster|illustration)s?\\s+(?:of|for)\\b)'),
   mahaImgRe(MAHA_IMG_ANY, '(?:give\\s+me|i\\s+(?:want|need|would\\s+like)|i[\'’]d\\s+like)\\s+(?:(?:an?|one|the|some)\\s+)?(?:[a-z-]+\\s+){0,2}?(?:(?:image|picture|drawing|illustration)s?\\s+of|logo\\s+for)\\b'),

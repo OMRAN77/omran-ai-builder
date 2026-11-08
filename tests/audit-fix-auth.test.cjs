@@ -84,8 +84,10 @@ async function otpLogin(email, ip) {
   return call({ action: 'email-otp-verify', email, otp: rec.otp }, ip);
 }
 // بريد مؤكَّد على حساب بكلمة مرور بمسار «حسابي» الحقيقيّ (رمز التغيير)
-async function confirmEmail(user, token, email, ip) {
-  const a = await call({ action: 'email-otp-request', purpose: 'change', token, email }, ip);
+// v-lock-r2 (userdata-4): ربط بريد الاسترجاع يطلب كلمة المرور الحاليّة ممّن وضعها — كلمة التسجيل (PASSES) أو ما تغيّرت إليه (pass)
+const PASSES = {};
+async function confirmEmail(user, token, email, ip, pass) {
+  const a = await call({ action: 'email-otp-request', purpose: 'change', token, email, password: pass || PASSES[user] }, ip);
   assert.equal(a.status, 200, JSON.stringify(a.body));
   const otp = JSON.parse(store.get('db/otp-change/' + encodeURIComponent(user))).otp;
   const b = await call({ action: 'email-otp-verify', purpose: 'change', token, email, otp }, ip);
@@ -94,6 +96,7 @@ async function confirmEmail(user, token, email, ip) {
 async function signup(name, pass, ip) {
   const r = await call({ action: 'signup', username: name, password: pass }, ip || freshIp());
   assert.equal(r.status, 200, JSON.stringify(r.body));
+  PASSES[name] = pass;
   return r.body.token;
 }
 
@@ -214,7 +217,7 @@ test('srv-auth-8: تغيير كلمة المرور أو استعادتها يُ�
   assert.equal((await call({ action: 'changeUsername', token: leaked, newUsername: 'thief8' })).status, 401);
   assert.equal(await auth.getUser('thief8', 1), null);
   // الاسترجاع بالرابط كذلك
-  await confirmEmail('sami8', ok.body.token, 'sami8@mail.com', freshIp());
+  await confirmEmail('sami8', ok.body.token, 'sami8@mail.com', freshIp(), 'sami8-pass-2');
   const before = ok.body.token;
   mails.length = 0;
   assert.equal((await call({ action: 'forgotPassword', username: 'sami8' }, freshIp())).status, 200);

@@ -225,12 +225,24 @@ async function meterOp(username, reason) {
   try { await require('./cost-meter.js').meterOp(username, reason); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
 }
 
+/* v-lock-r2 (money-invariants-9): الردّ يأتي باسم وقت الخصم (تذكرة الفيديو job.u، حجز صورة مها، تذكرة الباقة) — وبعد تغيير الاسم كان
+   ensureBalance يبذر عدّادًا يتيمًا للاسم الميّت من شاهده (0) ويزيده، والمرآة تتبع movedTo فلا يتغيّر رصيد الحساب: النقاط والفيديو
+   (علامة الردّ نهائيّة) يضيعان معًا. الردّ يتبع الشاهد إلى الحساب الحيّ (٣٢ قفزة كالشحن)؛ تعذّر القراءة = الاسم كما جاء (كما كان). */
+async function liveName(username) {
+  try {
+    const { name, user } = await require('./create-checkout-session.js').liveAccount(username);
+    return (user && !user.deleted && name) ? String(name) : username;
+  } catch (e) { return username; } // guard-ok — القراءة تحسين؛ الردّ إلى الاسم كما جاء كما كان
+}
+
 // يعيد نقاطًا للمستخدم (استرجاع عند فشل توليد بعد الخصم).
 // v-refund-kind (مراجعة باب المال ١٦ أكتوبر): how اختياريّ = نتيجة spendPoints نفسها، فيعود الردّ بنوع الخصم: صلاحيّة الباقة لها
 // (ضياع تذكرتها = نقاطًا كي لا يخرج بلا شيء)، ورصيد الاشتراك له ثمّ النقاط، والنقاط للنقاط وحدها. بلا how يُطابَق بالمبلغ كما كان —
 // وهناك كانت تذكرة صلاحيّة قديمة بالمبلغ نفسه (فيديو ترند نجح قبل ساعة) تبتلع ردّ فيديو دُفع نقاطًا، فتبقى النقاط مخصومة.
 async function refundPoints(username, amount, how) {
   if (!username || isOwner(username)) return;
+  username = await liveName(username);
+  if (isOwner(username)) return;
   if (await isVip(username)) return; // لم يُخصم منه شيء، فلا شيء يُعاد.
   let amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (!amt) return;
@@ -283,6 +295,8 @@ async function canAfford(username, steps) {
    الجواب»: المتّصل يقرأ ختمه قبل أن يعيد. المالك وVIP والمبلغ صفر لا يصلون النداء، فالختم لا يُكتب لهم هنا. */
 async function refundPointsOnly(username, amount, mark) {
   if (!username || isOwner(username)) return true;
+  username = await liveName(username); // v-lock-r2 (money-invariants-9)
+  if (isOwner(username)) return true;
   if (await isVip(username)) return true; // لم يُخصم منه شيء، فلا شيء يُعاد.
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (!amt) return true;

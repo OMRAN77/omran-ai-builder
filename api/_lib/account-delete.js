@@ -44,6 +44,11 @@ function singleKeys(key) {
 function prefixKeys(key) {
   return ['planvid:' + n(key) + ':', 'emaildraft:' + String(key).trim().toLowerCase() + ':'];
 }
+/* v-lock-r2 (userdata-6): بادئة المسوّدات بالاسم خامًا و«:» مسموحة في الاسم — فحذف «bob» كان يسرد emaildraft:bob:work:<رسالة> ويمحو مسوّدات
+   الحساب الحيّ «bob:work». معرّف الرسالة بلا «:» (MSG_ID في email-list.js)، فما بقي بعد البادئة وفيه «:» ليس لهذا الاسم. */
+function ownPrefixKey(prefix, k) {
+  return !(prefix.startsWith('emaildraft:') && String(k).slice(prefix.length).includes(':'));
+}
 
 /* v-lock-acct (srv-auth-3): الكولباك ورمز البريد ينشئان salt/hash عشوائيّين لا يعرفهما صاحب الحساب، فكان الحذف يطلب كلمة مرور لا
    وجود لها (wrong_password دائمًا). كلمة المرور تُطلب ممّن وضعها بنفسه: حساب التسجيل، أو حساب Google/رمز البريد بعد استرجاع أو تغيير
@@ -68,16 +73,25 @@ function needsPassword(user) {
    (بلا مدخل فهرس) تبقى بعد «تم حذف حسابك». الآن تُقرأ سجلّات db/shares نفسها وتُطابَق بحقل owner (مفتاح الحساب من الرمز —
    v-share-owner)، والسجلّ القديم بلا owner باسمه حرفيًّا كما يفعل حذف المشاركة الواحدة في share.js، ما عدا الاسم الافتراضيّ. */
 const SHARE_DEFAULT_NAME = 'زائر'; // DEFAULT_NAME في share.js: ضيف بلا حساب أو اسم لا يُعرض — ليس هويّة أحد
-async function leadsTo(auth, fromKey, key) {
+/* v-lock-r2 (userdata-2): الشاهد كان يُقرأ محاولةً واحدة بقراءة غير صارمة، ورميُها يُبتلع — فعطل نقل عابر (٤٢٩، مهلة) يُسقط اسمه السابق من
+   مفاتيحه: مشاركاته باسمه السابق تُعدّ لغيره ويخرج «تم» وهي منشورة للأبد (جلسته ماتت). الآن صارمة: المفقود فعلًا (null) والمقفل بسرّ قديم
+   ليسا له، وعطل النقل يرمي ← 503 retry قبل أيّ أثر (ownerKeys داخل ذلك الـtry). مخزن الاختبار بلا getUserOnce يقرأ بـgetUser كما كان. */
+async function readHop(auth, k) {
   try {
-    let rec = await auth.getUser(fromKey, 1);
-    for (let i = 0; i < 32; i++) {
-      if (!rec || !rec.deleted || !rec.movedTo) return false;
-      const next = String(rec.movedTo).trim().toLowerCase();
-      if (next === key) return true;
-      rec = await auth.getUser(next, 1);
-    }
-  } catch (e) { console.error('[account-delete] chain read failed'); }
+    return typeof auth.getUserOnce === 'function' ? await auth.getUserOnce(k, { strict: true }) : await auth.getUser(k, 1);
+  } catch (e) {
+    if ((e && e.code === 'USER_RECORD_UNDECRYPTABLE') || e instanceof SyntaxError) return null; // لا يُفكّ أبدًا أو ليس JSON: لا يُثبت أنّه له
+    throw e;
+  }
+}
+async function leadsTo(auth, fromKey, key) {
+  let rec = await readHop(auth, fromKey);
+  for (let i = 0; i < 32; i++) {
+    if (!rec || !rec.deleted || !rec.movedTo) return false;
+    const next = String(rec.movedTo).trim().toLowerCase();
+    if (next === key) return true;
+    rec = await readHop(auth, next);
+  }
   return false;
 }
 /** مفاتيح هذا الحساب: مفتاحه، وأسماؤه السابقة ومفتاح Google الأوّل إن قادت شواهدها إليه (الاسم المتروك لا يُعطى لغيره — v-name-reuse). */
@@ -119,13 +133,15 @@ async function ownedShares(kv, keys) {
   return owned.concat(explore);
 }
 
-async function stopAutoRenew(token, o) {
+async function stopAutoRenew(token, o, names) {
   const toggle = (o && o.autoRenewToggle) || require('./create-checkout-session.js').autoRenewToggle;
   return new Promise((resolve) => {
     const res = { code: 200, status(c) { this.code = c; return this; }, json(j) { resolve({ code: this.code, body: j }); return this; } };
     // v-lock-subs (srv-money-5): immediate — الحساب يُحذف فلا فترة تُكمَّل: كلّ اشتراك (نشط وpast_due وunpaid) يُلغى فورًا، وكان past_due
     // يبقى يُعاد سحبه بعد الحذف بلا منح. الحقل على الطلب نفسه لا في جسمه: لا يصل من العميل.
-    Promise.resolve(toggle({ body: { token, on: false }, immediate: true }, res, o && o.fetch)).catch((e) => resolve({ code: 500, body: { error: String(e && e.message || e) } }));
+    // v-lock-r2 (userdata-3): names — كلّ أسمائه المثبتة بشواهدها (ownerKeys)، على الطلب كـimmediate لا في الجسم. الزرّ يبحث بالاسم وآخر
+    // ثلاثة أسماء، فاشتراكٌ اشتُري باسمٍ أقدم كان يبقى يُخصم بعد «تم» حتّى يلغيه تنبيه «دفعة لحساب محذوف».
+    Promise.resolve(toggle({ body: { token, on: false }, immediate: true, names: names || undefined }, res, o && o.fetch)).catch((e) => resolve({ code: 500, body: { error: String(e && e.message || e) } }));
   });
 }
 
@@ -159,32 +175,38 @@ async function deleteAccount(input, o) {
   }
 
   // v-lock-acct (srv-auth-1 · pages-static-3): المشاركات تُجمع قبل أيّ أثر — تعذّر السرد = لا حذف (لا «تم» ومشاركاته منشورة)
-  let shareKeys;
-  try { shareKeys = await ownedShares(kv, await ownerKeys(key, user, auth)); }
+  let shareKeys, keys;
+  try { keys = await ownerKeys(key, user, auth); shareKeys = await ownedShares(kv, keys); }
   catch (e) { console.error('[account-delete] share scan failed'); return { status: 503, body: { ok: false, code: 'retry' } }; }
 
-  const renew = await stopAutoRenew(token, opt);
+  const renew = await stopAutoRenew(token, opt, [...keys]);
   if (renew.code !== 200) return { status: 502, body: { ok: false, code: 'billing' } };
 
+  /* v-lock-r2 (userdata-1): البيانات تبقى تحت الاسم الذي كُتبت به (تغيير الاسم ينقل العدّادات وحدها — moveLiveCounters)، والفهارس تحمل
+     الاسم وقت كتابتها — فحذف حساب غيّر اسمه كان يترك محادثاته وذاكرته وتذكيراته (تصل إشعاراتها جهازه بعد الحذف) واشتراك إشعاراته تحت اسمه
+     السابق، وفهرسَي بريده وهاتفه (وفيهما البريد والرقم). الآن لكلّ مفاتيحه المثبتة بشواهدها (ownerKeys أعلاه، الاسم المتروك لا يُعطى لغيره). */
   const removed = [];
   const del = async (k) => { try { await kv.kvDel(k); removed.push(k); } catch (e) { console.error('[account-delete] del failed: ' + k.split(':')[0]); } };
-  for (const k of singleKeys(key)) await del(k);
-  for (const p of prefixKeys(key)) {
-    let keys = [];
-    try { keys = await kv.kvList(p); } catch (e) { keys = []; }
-    for (const k of keys) await del(k);
+  for (const owner of keys) {
+    for (const k of singleKeys(owner)) await del(k);
+    for (const p of prefixKeys(owner)) {
+      let list = [];
+      try { list = await kv.kvList(p); } catch (e) { list = []; }
+      for (const k of list) if (ownPrefixKey(p, k)) await del(k);
+    }
   }
   // مشاركاته العامّة والخاصّة ومداخل «استكشف» لها (جُمعت أعلاه بمالكها — v-lock-acct)
   for (const k of shareKeys) await del(k);
-  // الفهارس تُحذف إن كانت تشير إليه وحده (لا يمسّ حسابًا آخر يحمل البريد نفسه)
+  // الفهارس تُحذف إن كانت تشير إليه وحده (لا يمسّ حسابًا آخر يحمل البريد نفسه) — بأيّ من مفاتيحه (v-lock-r2، userdata-1)
+  const mine = (v) => keys.has(String(v || '').trim().toLowerCase());
   const email = String(user.email || '').trim().toLowerCase();
   if (email) {
-    try { const idx = await kv.kvGetJSON('db/email-index/' + email); if (idx && String(idx.username || '').trim().toLowerCase() === key) await del('db/email-index/' + email); } catch (e) { /* guard-ok — فهرس مقروء بعطب يبقى؛ الحساب نفسه شاهد محذوف فلا يدخل به أحد */ }
-    try { const al = await kv.kvGetJSON('db/alias/g_' + email); if (al && String(al.primary || '').trim().toLowerCase() === key) await del('db/alias/g_' + email); } catch (e) { /* guard-ok — كما أعلاه */ }
+    try { const idx = await kv.kvGetJSON('db/email-index/' + email); if (idx && mine(idx.username)) await del('db/email-index/' + email); } catch (e) { /* guard-ok — فهرس مقروء بعطب يبقى؛ الحساب نفسه شاهد محذوف فلا يدخل به أحد */ }
+    try { const al = await kv.kvGetJSON('db/alias/g_' + email); if (al && mine(al.primary)) await del('db/alias/g_' + email); } catch (e) { /* guard-ok — كما أعلاه */ }
   }
   const phone = String(user.phone || '').trim();
   if (phone) {
-    try { const idx = await kv.kvGetJSON('db/phone-index/' + phone); if (idx && String(idx.username || '').trim().toLowerCase() === key) await del('db/phone-index/' + phone); } catch (e) { /* guard-ok — كما أعلاه */ }
+    try { const idx = await kv.kvGetJSON('db/phone-index/' + phone); if (idx && mine(idx.username)) await del('db/phone-index/' + phone); } catch (e) { /* guard-ok — كما أعلاه */ }
   }
   // السجلّ: شاهد بلا بيانات — والاسم محجوز (v-name-reuse)
   await auth.putUser(key, { deleted: true, deletedAt: Number(opt.now) || Date.now(), selfDeleted: true });

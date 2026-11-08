@@ -87,8 +87,9 @@ async function plant(name, email, extra) {
   await auth.putUser(name, Object.assign({}, rec, { email }, extra || {}));
   store.set('db/email-index/' + email, JSON.stringify({ username: name, at: Date.now() }));
 }
+// v-lock-r2 (userdata-4): ربط بريد الاسترجاع يطلب كلمة المرور الحاليّة ممّن وضعها (PASS هنا)
 async function confirmFromAccount(token, email) {
-  const r = await call({ action: 'email-otp-request', purpose: 'change', token, email, lang: 'ar' });
+  const r = await call({ action: 'email-otp-request', purpose: 'change', token, email, lang: 'ar', password: PASS });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   const code = codeIn(mailTo(email).slice(-1)[0]);
   return call({ action: 'email-otp-verify', purpose: 'change', token, email, otp: code, lang: 'ar' });

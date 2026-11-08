@@ -7,6 +7,18 @@
 //   r2-5  مشترك يُدعى «جدّد» قبل الانتهاء ولا طريق شراء: بطاقته معطّلة والأدنى ممنوع.
 //   r2-6  حساب Google/رمز البريد وضع صاحبه كلمة مرور ثمّ أعاد forgotPassword أو رابط المالك كتابة resetTokenHash: يُحذف بالجلسة والاسم وحدهما.
 // على المعالجات الحقيقيّة بـKV في الذاكرة وشبكة مزيّفة (Stripe وPayPal) — لا نداء حقيقيّ لأيّ مزوّد.
+// الجولة الثانية للمراجعة (lock-r2/fix-b) — عدسات بيانات المستخدمين والواجهة وثوابت المال على 9cead158، كلّ حالة باسم معرّفها:
+//   userdata-1  حذف حساب غيّر اسمه يترك بيانات أسمائه السابقة وفهارس بريده وهاتفه.
+//   userdata-2  قراءة شاهد اسم سابق تتعثّر ⇒ مشاركاته باسمه السابق تُعدّ لغيره ويخرج «تم» وهي منشورة للأبد.
+//   userdata-3  اشتراك اشتُري باسم قبل أكثر من ثلاثة تغييرات لا يُلغى بحذف الحساب.
+//   userdata-4  جلسة مسروقة وحدها تنقل بريد حساب بكلمة مرور (أو تربط هاتفًا) ثمّ تستعيد كلمته وتحذفه.
+//   userdata-6  حذف «bob» يمحو مسوّدات بريد الحساب الحيّ «bob:work».
+//   client-ux-1 جسر محرّر المخطّطات يسأل «تخصم ٢٠ نقطة» من المالك والضيف وهما لا يُخصم منهما.
+//   client-ux-2 ضغطة واجهة ثانية أثناء توليد الأولى تضيع بلا أثر.
+//   client-ux-3 «ممكن ترسم لي…» و«تقدر تسوي لي صورة…» لم تعد تطلب صورة في مها الأساسيّ.
+//   money-invariants-7 حجز الدفعة (SET NX) لا يُقرأ ردّه أو يضيع بعد الكتابة ⇒ «سبق الشحن» 2xx والدفعة لم تُشحن.
+//   money-invariants-8 تغيير الاسم بلا قفل الحساب ⇒ منحٌ أو مرآة تكتب السجلّ القديم فوق شاهد الاسم.
+//   money-invariants-9 ردّ نقاط بالاسم السابق (فيديو فشل، حجز صورة مها) يصل عدّادًا يتيمًا لا الحساب.
 'use strict';
 
 const test = require('node:test');
@@ -37,13 +49,27 @@ const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(
 
 // ── KV في الذاكرة. failUserReads: عطل Upstash عابر على سجلّات الحسابات وحدها — kv.js الحقيقيّ: بلا strict يعود null، وstrict يرمي ──
 const store = new Map();
-const fail = { userReads: false, userPut: 0 }; // userPut: كتابات سجلّ الحساب التالية تفشل (بعد أثرٍ تمّ)
+// userPut: كتابات سجلّ الحساب التالية تفشل (بعد أثرٍ تمّ). readKeys: مفاتيح بعينها تتعثّر قراءتها (بلا strict ⇒ null، وstrict يرمي — kv.js الحقيقيّ).
+// claimSet: حجز الدفعة التالي (paid:… NX) — 'unreadable' كُتب وردّه 200 لا يُقرأ (kv.js: بلا strict ⇒ false، وstrict يرمي)، 'lost' كُتب ثمّ رمى، 'before' رمى بلا كتابة.
+const fail = { userReads: false, userPut: 0, readKeys: new Set(), claimSet: null };
+const hooks = { get: null }; // تُنتظر قبل كلّ kvGetRaw — لفرض تداخل (money-invariants-8)
 const kvImpl = {
-  kvGetJSON: async (k, o) => { if (fail.userReads && /^db\/users\//.test(k)) { if (o && o.strict) throw new Error('upstash timeout'); return null; } return (store.has(k) ? JSON.parse(store.get(k)) : null); },
+  kvGetJSON: async (k, o) => { if ((fail.userReads && /^db\/users\//.test(k)) || fail.readKeys.has(k)) { if (o && o.strict) throw new Error('upstash timeout'); return null; } return (store.has(k) ? JSON.parse(store.get(k)) : null); },
   kvPutJSON: async (k, v) => { if (fail.userPut > 0 && /^db\/users\//.test(k)) { fail.userPut--; throw new Error('upstash write failed'); } store.set(k, JSON.stringify(v)); },
-  kvGetRaw: async (k) => (store.has(k) ? String(store.get(k)) : null),
+  kvGetRaw: async (k) => { if (hooks.get) await hooks.get(k); return (store.has(k) ? String(store.get(k)) : null); },
   kvSetRaw: async (k, v) => { store.set(k, String(v)); },
-  kvSetIfAbsent: async (k, v) => { if (store.has(k)) return false; store.set(k, String(v)); return true; },
+  kvSetIfAbsent: async (k, v, ttl, o) => {
+    if (fail.claimSet && /^paid:/.test(k)) {
+      const f = fail.claimSet;
+      fail.claimSet = null;
+      if (f === 'before') throw new Error('fetch failed');
+      if (!store.has(k)) store.set(k, String(v));
+      if (f === 'lost') throw new Error('ETIMEDOUT after write');
+      if (o && o.strict) throw new Error('Upstash error: unreadable reply');
+      return false; // kv.js بلا strict: data = null ⇒ result null ⇒ ليس 'OK'
+    }
+    if (store.has(k)) return false; store.set(k, String(v)); return true;
+  },
   kvIncrBy: async (k, n) => { const v = Number(store.get(k) || 0) + Number(n); store.set(k, String(v)); return v; },
   kvDecrBy: async (k, n) => { const v = Number(store.get(k) || 0) - Number(n); store.set(k, String(v)); return v; },
   kvIncr: async (k) => { const v = Number(store.get(k) || 0) + 1; store.set(k, String(v)); return v; },
@@ -110,8 +136,17 @@ global.fetch = async (url, init) => {
     if (m) { const o = net.orders[decodeURIComponent(m[1])]; return o ? reply(200, o) : reply(404, { message: 'not found' }); }
     return reply(404, { message: 'unknown' });
   }
-  return reply(404, {}); // البريد وغيره: لا يُرسل شيء
+  if (u.hostname === 'redis.invalid' && net.upstash) return net.upstash(JSON.parse(body || '[]')); // money-invariants-7: kv.js الحقيقيّ
+  if (u.hostname === 'api.resend.com') { // userdata-4: البريد يُلتقط (الرمز والرابط) ولا يُرسل
+    const b = JSON.parse(body || '{}');
+    const html = String(b.html || '');
+    const code = html.match(/>(\d{6})</);
+    mail[String((b.to || [])[0] || '')] = { code: code && code[1], html };
+    return reply(200, { id: 'm' });
+  }
+  return reply(404, {}); // غير ذلك: لا يُرسل شيء
 };
+const mail = {};
 
 const auth = require(rp('api/_lib/auth.js'));
 const checkout = require(rp('api/_lib/create-checkout-session.js'));
@@ -523,4 +558,460 @@ test('r2-6: التسجيل الحقيقيّ يكتب passwordSet: true', async (
   const r = await call(auth, { body: { action: 'signup', username: 'r2signup', password: 'r2-signup-pass-1' } });
   assert.equal(r.code, 200, JSON.stringify(r.body));
   assert.equal((await user('r2signup')).passwordSet, true);
+});
+
+// ═════════════════════════ جولة المراجعة الثانية (lock-r2/fix-b): عدسات بيانات المستخدمين والواجهة وثوابت المال ═════════════════════════
+
+const rename = (from, to, token) => call(auth, { body: { action: 'changeUsername', token: token || tok(from), newUsername: to } });
+async function signupU(name, pw) {
+  const r = await call(auth, { body: { action: 'signup', username: name, password: pw } });
+  assert.equal(r.code, 200, name + ' ' + JSON.stringify(r.body));
+  return r.body.token;
+}
+async function freshWindow(k) { const u = await user(k); u.renameLog = []; await auth.putUser(k, u); } // حدّ التغييرين في ٢٤ ساعة — للاختبار وحده
+
+// ───────────────────────── userdata-1: حذف حساب غيّر اسمه يمحو ما تحت أسمائه السابقة ─────────────────────────
+
+test('userdata-1: حساب غيّر اسمه ثمّ حذف نفسه ⇒ محادثاته وذاكرته وتذكيراته واشتراك إشعاراته تحت اسمه السابق تُمحى، وفهرسا بريده وهاتفه أيضًا', async () => {
+  await signupU('lina1', 'lina1-pass-1234');
+  const oldData = ['chats:lina1', 'chats_deleted:lina1', 'db/memory/lina1.json', 'db/living/lina1.json', 'db/reminders/lina1.json', 'db/push-subs/lina1.json', 'db/stocks/pf/lina1.json', 'db/agentrun/lina1.json', 'emaildraft:lina1:m1', 'planvid:lina1:123'];
+  for (const k of oldData) store.set(k, JSON.stringify({ secret: 'lina1' }));
+  const rec = await user('lina1');
+  rec.email = 'lina1@mail.test'; rec.verifiedEmail = 'lina1@mail.test'; rec.phone = '+971500000071';
+  await auth.putUser('lina1', rec);
+  store.set('db/email-index/lina1@mail.test', JSON.stringify({ username: 'lina1', at: Date.now() })); // كما يكتبه email-otp-verify
+  store.set('db/phone-index/+971500000071', JSON.stringify({ username: 'lina1', at: Date.now() })); // كما يكتبه ربط الهاتف
+  store.set('chats:other1', JSON.stringify([{ id: 'x' }])); // حساب آخر حيّ
+  assert.equal((await rename('lina1', 'lina1_new')).code, 200);
+  store.set('chats:lina1_new', JSON.stringify([{ id: 'new' }]));
+  const r = await del('lina1_new', 'lina1_new', 'lina1-pass-1234');
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.ok((await user('lina1_new')).deleted);
+  const left = oldData.filter((k) => store.has(k));
+  assert.deepEqual(left, [], 'كانت تبقى تحت الاسم السابق بعد «تم حذف حسابك»');
+  assert.equal(store.has('db/email-index/lina1@mail.test'), false, 'فهرس البريد (فيه البريد نفسه) كان يبقى يشير إلى الاسم السابق');
+  assert.equal(store.has('db/phone-index/+971500000071'), false, 'وفهرس الهاتف');
+  assert.equal(store.has('chats:lina1_new'), false);
+  assert.equal(store.get('chats:other1'), JSON.stringify([{ id: 'x' }]), 'لا يمسّ حسابًا آخر');
+});
+
+// ───────────────────────── userdata-2: عطل قراءة شاهد الاسم السابق لا يُقرأ «ليس له» ─────────────────────────
+
+test('userdata-2: قراءة شاهد الاسم السابق تتعثّر ⇒ لا «تم» ومشاركته العامّة باقية (retry)، والإعادة تحذفها', async () => {
+  const { createShare } = require(rp('api/_lib/share.js'));
+  await signupU('pub2old', 'pub2-pass-1234');
+  const made = await createShare({ title: 't', code: '<p>pub2</p>', owner: 'pub2old', username: 'pub2old', isPublic: true });
+  assert.ok(made && made.id);
+  const shareKey = 'db/shares/' + made.id + '.json';
+  const explore = () => [...store.keys()].filter((k) => k.startsWith('db/explore/') && k.endsWith('_' + made.id + '.json'));
+  assert.ok(store.has(shareKey));
+  assert.equal((await rename('pub2old', 'pub2new')).code, 200);
+  fail.readKeys.add('db/users/pub2old.json'); // عطل نقل على شاهد الاسم السابق وحده (٤٢٩ أو مهلة)
+  let r;
+  try { r = await del('pub2new', 'pub2new', 'pub2-pass-1234'); } finally { fail.readKeys.clear(); }
+  assert.notEqual(r.status, 200, 'كان 200 «تم» والمشاركة منشورة للأبد (الجلسة ماتت فلا يحذفها share.js)');
+  assert.equal(r.body.code, 'retry');
+  assert.ok(store.has(shareKey), 'لا أثر قبل أن تُعرف مشاركاته');
+  assert.ok(!(await user('pub2new')).deleted);
+  r = await del('pub2new', 'pub2new', 'pub2-pass-1234');
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(store.has(shareKey), false);
+  assert.deepEqual(explore(), []);
+});
+
+// ───────────────────────── userdata-3: كلّ أسمائه المثبتة تُبحث اشتراكاتها عند الحذف ─────────────────────────
+
+test('userdata-3: اشتراك Max اشتُري باسمه قبل أربعة تغييرات ⇒ حذف الحساب يلغيه فورًا (كان يُخصم حتّى التجديد)', async () => {
+  await signupU('subs3a', 'subs3-pass-1234');
+  sub('sub_subs3', 'subs3a', 'max', 'active');
+  let cur = 'subs3a';
+  for (const nx of ['subs3b', 'subs3c', 'subs3d', 'subs3e']) {
+    await freshWindow(cur);
+    assert.equal((await rename(cur, nx)).code, 200, nx);
+    cur = nx;
+  }
+  const r = await del(cur, cur, 'subs3-pass-1234');
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(net.subs.sub_subs3.status, 'canceled', 'كان يبحث بالاسم الحاليّ وآخر ثلاثة أسماء وحدها');
+});
+
+test('userdata-3: الأسماء من حذف الحساب وحده (req.names) لا من جسم الطلب — جسمٌ فيه names لا يمسّ اشتراك غيره', async () => {
+  await fresh('own3', {});
+  sub('sub_victim3', 'victim3', 'max', 'active');
+  const res = mkRes();
+  await checkout.autoRenewToggle({ body: { token: tok('own3'), on: false, names: ['victim3'] } }, res);
+  assert.equal(res.code, 200, JSON.stringify(res.body));
+  assert.equal(net.subs.sub_victim3.status, 'active');
+  assert.equal(net.subs.sub_victim3.cancel_at_period_end, false);
+});
+
+// ───────────────────────── userdata-4: الجلسة وحدها لا تعيد ربط قنوات الاسترجاع لحساب بكلمة مرور ─────────────────────────
+
+test('userdata-4: جلسة مسروقة لحساب بكلمة مرور لا تنقل بريده ولا تربط هاتفًا بلا كلمته (ثمّ استرجاع ثمّ حذف)', async () => {
+  const stolen = await signupU('victim4', 'victim4-pass-99');
+  const ask = (extra) => call(auth, { body: Object.assign({ action: 'email-otp-request', purpose: 'change', token: stolen, email: 'attacker4@evil.test', lang: 'en' }, extra || {}) });
+  let r = await ask();
+  assert.equal(r.code, 401, 'كان 200: الرمز يصل بريد المهاجم ثمّ forgotPassword ثمّ resetWithToken ثمّ الحذف — ' + JSON.stringify(r.body));
+  assert.equal(r.body.code, 'password_required');
+  assert.equal(mail['attacker4@evil.test'], undefined, 'لا رمز يُرسل');
+  r = await ask({ password: 'guess-1234' });
+  assert.equal(r.code, 401);
+  assert.equal(r.body.code, 'wrong_password');
+  r = await call(auth, { body: { action: 'phone-link-start', token: stolen, channel: 'telegram' } });
+  assert.equal(r.code, 401, 'ربط الهاتف ثمّ الاسترجاع به — ' + JSON.stringify(r.body));
+  assert.equal(r.body.code, 'password_required');
+  // صاحب الحساب بكلمته: كما كان
+  r = await ask({ password: 'victim4-pass-99' });
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  r = await call(auth, { body: { action: 'email-otp-verify', purpose: 'change', token: stolen, email: 'attacker4@evil.test', otp: mail['attacker4@evil.test'].code, lang: 'en' } });
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  r = await call(auth, { body: { action: 'phone-link-start', token: stolen, channel: 'telegram', password: 'victim4-pass-99' } });
+  assert.notEqual(r.body && r.body.code, 'password_required');
+  assert.notEqual(r.body && r.body.code, 'wrong_password');
+});
+
+test('userdata-4: حساب Google بلا كلمة وضعها صاحبها يغيّر بريده بجلسته كما كان (لا كلمة لم يضعها)', async () => {
+  const { salt, hash } = auth.hashPassword(crypto.randomBytes(16).toString('hex'));
+  await auth.putUser('g_gg4@x.com', { username: 'GG Four', email: 'gg4@x.com', verifiedEmail: 'gg4@x.com', googleAuth: true, passwordSet: false, salt, hash, createdAt: Date.now() - 9 * DAY });
+  const r = await call(auth, { body: { action: 'email-otp-request', purpose: 'change', token: tok('g_gg4@x.com'), email: 'gg4.new@x.com', lang: 'en' } });
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  assert.ok(mail['gg4.new@x.com'] && mail['gg4.new@x.com'].code);
+});
+
+// ───────────────────────── userdata-6: مسوّدات حساب اسمه يبدأ باسم المحذوف و«:» ─────────────────────────
+
+test('userdata-6: حذف «bob6» لا يمحو مسوّدات بريد الحساب الحيّ «bob6:work»، ويمحو مسوّداته هو', async () => {
+  await signupU('bob6:work', 'bobw-pass-1234');
+  store.set('emaildraft:bob6:work:18c2f0aa', JSON.stringify({ subject: 'draft of bob6:work' }));
+  await signupU('bob6', 'bob6-pass-1234');
+  store.set('emaildraft:bob6:abc123', JSON.stringify({ subject: 'draft of bob6' }));
+  const r = await del('bob6', 'bob6', 'bob6-pass-1234');
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(store.has('emaildraft:bob6:abc123'), false);
+  assert.ok(store.has('emaildraft:bob6:work:18c2f0aa'), 'كانت تُمحى: البادئة emaildraft:bob6: تطابق مسوّدات bob6:work');
+  assert.ok(!(await user('bob6:work')).deleted);
+});
+
+// ───────────────────────── money-invariants-7: حجز الدفعة لا يبقى وحده ولا يُقال «سبق الشحن» على ردّ لا يُقرأ ─────────────────────────
+
+test('money-invariants-7: ردّ حجز الدفعة 200 لا يُقرأ (والحجز كُتب) ⇒ الجلسة تُشحن مرّة — لا «سبق الشحن» 2xx بلا شيء', async () => {
+  await fresh('ua7', {});
+  fail.claimSet = 'unreadable';
+  const ev = paidSession('cs_ua7', 'ua7', 'pro', 2000);
+  const r = await hook(ev);
+  fail.claimSet = null;
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  assert.equal(pts('ua7'), 70 + 920, 'كان ٧٠: «سبق الشحن» والباقة لم تُسلَّم');
+  assert.equal((await user('ua7')).plan, 'pro');
+  assert.equal((await hook(ev)).code, 200);
+  net.sessions.cs_ua7 = Object.assign({}, ev.data.object);
+  const v = await stripe('verify-checkout', { session_id: 'cs_ua7', token: tok('ua7') });
+  assert.equal(v.code, 200);
+  assert.equal(pts('ua7'), 70 + 920, 'مرّة واحدة');
+});
+
+test('money-invariants-7: الحجز وصل وضاع ردّه (ETIMEDOUT) لدفعة محفظة ⇒ تُشحن مرّة، والإعادة لا تضاعف', async () => {
+  await fresh('ub7', {});
+  fail.claimSet = 'lost';
+  const ev = walletPi('pi_ub7', 'ub7', 'max', 10000);
+  const r1 = await hook(ev);
+  fail.claimSet = null;
+  const r2 = await hook(ev);
+  assert.equal(r2.code, 200);
+  assert.ok(r1.code === 200 || r1.code >= 500, String(r1.code));
+  assert.equal(pts('ub7'), 70 + 3200, 'كان ٧٠ والإعادة «سبق الشحن» (claim=ub7 بلا علامة)');
+  assert.equal((await user('ub7')).plan, 'max');
+  assert.equal((await hook(ev)).code, 200);
+  assert.equal(pts('ub7'), 70 + 3200);
+});
+
+test('money-invariants-7: الحجز لم يُكتب (عطل قبل الكتابة) ⇒ non-2xx بلا حجز، والإعادة تشحن', async () => {
+  await fresh('uc7', {});
+  fail.claimSet = 'before';
+  const ev = paidSession('cs_uc7', 'uc7', 'pro', 2000);
+  const r1 = await hook(ev);
+  fail.claimSet = null;
+  assert.ok(r1.code >= 500, String(r1.code));
+  assert.equal(store.has('paid:lastStripeSessionId:cs_uc7'), false);
+  assert.equal(pts('uc7'), 70);
+  assert.equal((await hook(ev)).code, 200);
+  assert.equal(pts('uc7'), 70 + 920);
+});
+
+test('money-invariants-7: دفعة مُنحت سابقًا ثمّ أُعيدت وردّ الحجز لا يُقرأ ⇒ لا شحن ثانٍ (الحجز القائم يُقرأ قبل الكتابة)', async () => {
+  await fresh('ud7', {});
+  const evA = paidSession('cs_ud7a', 'ud7', 'pack700', 500);
+  assert.equal((await hook(evA)).code, 200);
+  assert.equal((await hook(paidSession('cs_ud7b', 'ud7', 'pack700', 500))).code, 200); // الحقل على الحساب صار رقم الدفعة الثانية
+  const before = pts('ud7');
+  fail.claimSet = 'unreadable';
+  let r;
+  try { r = await hook(evA); } finally { fail.claimSet = null; }
+  assert.equal(r.code, 200);
+  assert.equal(pts('ud7'), before, 'لا شحن ثانٍ لدفعة حجزها قائم');
+});
+
+test('money-invariants-7: kv.js الحقيقيّ — SET NX بردّ 200 لا يُقرأ: strict يرمي، وبلا strict false كما كان', async () => {
+  const f = rp('api/_lib/kv.js');
+  const saved = require.cache[f];
+  delete require.cache[f];
+  let realKv;
+  try { realKv = require(f); } finally { require.cache[f] = saved; }
+  net.upstash = () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('Unexpected token <'); } });
+  try {
+    assert.equal(await realKv.kvSetIfAbsent('paid:x:1', 'u', 10), false, 'بلا strict كما كان');
+    await assert.rejects(() => realKv.kvSetIfAbsent('paid:x:1', 'u', 10, { strict: true }), /unreadable/);
+    net.upstash = () => reply(200, { result: null });
+    assert.equal(await realKv.kvSetIfAbsent('paid:x:1', 'u', 10, { strict: true }), false, 'مشغول = false');
+    net.upstash = () => reply(200, { result: 'OK' });
+    assert.equal(await realKv.kvSetIfAbsent('paid:x:1', 'u', 10, { strict: true }), true);
+  } finally { net.upstash = null; }
+});
+
+// ───────────────────────── money-invariants-8: تغيير الاسم يأخذ قفل الحساب ─────────────────────────
+
+// يبدأ تغيير الاسم لحظة القراءة المختارة داخل قفل الحساب، وينتظر حتّى يكتمل أو ٣٠٠ms (فلا ينتظره إن كان هو ينتظر القفل نفسه)
+function raceRename(name, to, fire) {
+  let p = null, done = false;
+  hooks.get = async (k) => {
+    if (p || !fire(k) || !store.has('db/acct-lock/' + name)) return;
+    p = rename(name, to).then((x) => { done = true; return x; });
+    const until = Date.now() + 300;
+    while (!done && Date.now() < until) await new Promise((r) => setTimeout(r, 5));
+  };
+  return { renamed: () => p };
+}
+
+test('money-invariants-8: تغيير الاسم أثناء منحٍ يمسك قفل الحساب ينتظره ⇒ الباقة ونقاطها على الاسم الجديد، والقديم شاهد لا حساب حيّ', async () => {
+  await fresh('renold8', {});
+  const race = raceRename('renold8', 'rennew8', (k) => k === 'points:renold8');
+  let r;
+  try { r = await hook(paidSession('cs_ren8', 'renold8', 'pro', 2000)); } finally { hooks.get = null; }
+  const rn = await race.renamed();
+  assert.ok(rn, 'التغيير بدأ داخل المنح');
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  assert.equal(rn.code, 200, JSON.stringify(rn.body));
+  const oldRec = await auth.getUser('renold8', 1);
+  assert.equal(oldRec.deleted, true, 'كان المنح يكتب السجلّ القديم فوق الشاهد: الاسم الميّت حيّ بالباقة');
+  assert.equal(oldRec.movedTo, 'rennew8');
+  const nu = await user('rennew8');
+  assert.equal(nu.plan, 'pro', 'الباقة المدفوعة على الحساب الحيّ');
+  assert.equal(pts('rennew8'), 70 + 920);
+  assert.equal(store.has('points:renold8'), false);
+});
+
+test('money-invariants-8: مرآة صرف النقاط أثناء تغيير الاسم لا تُحيي الاسم القديم', async () => {
+  const points = require(rp('api/_lib/points.js'));
+  await fresh('mold8', { points: 500 });
+  const race = raceRename('mold8', 'mnew8', (k) => k === 'points:mold8');
+  let s;
+  try { s = await points.spendPoints('mold8', 15, 'chat'); } finally { hooks.get = null; }
+  const rn = await race.renamed();
+  assert.ok(s && s.ok, JSON.stringify(s));
+  assert.ok(rn, 'التغيير بدأ داخل المرآة');
+  assert.equal(rn.code, 200, JSON.stringify(rn.body));
+  const oldRec = await auth.getUser('mold8', 1);
+  assert.equal(oldRec.deleted, true, 'كانت المرآة تكتب السجلّ القديم فوق الشاهد');
+  assert.equal(pts('mnew8'), 485);
+  assert.equal(store.has('points:mold8'), false);
+});
+
+// ───────────────────────── money-invariants-9: الردّ بالاسم السابق يصل الحساب الحيّ ─────────────────────────
+
+test('money-invariants-9: فيديو مدفوع ثمّ تغيير الاسم ثمّ فشل المزوّد ⇒ النقاط تعود للاسم الجديد لا لعدّاد يتيم', async () => {
+  const points = require(rp('api/_lib/points.js'));
+  const vj = require(rp('api/_lib/video-job.js'));
+  await fresh('vold9', { points: 500 });
+  const pay = await points.spendPoints('vold9', 120, 'omni_video');
+  assert.ok(pay.ok, JSON.stringify(pay));
+  assert.ok(await vj.rememberVideoJob('omni/op-r2-9', { username: 'vold9', cost: 120, pay }));
+  assert.equal((await rename('vold9', 'vnew9')).code, 200);
+  assert.equal(pts('vnew9'), 380);
+  const s = await vj.settleVideoJob('omni/op-r2-9', false);
+  assert.ok(s && s.refunded, JSON.stringify(s));
+  assert.equal(pts('vnew9'), 500, 'كان ٣٨٠ والـ١٢٠ في points:vold9 اليتيم');
+  assert.equal(store.has('points:vold9'), false);
+});
+
+test('money-invariants-9: حجز صورة مها بالاسم السابق يُكنس ويُردّ بعد تغيير الاسم', async () => {
+  const points = require(rp('api/_lib/points.js'));
+  const hold = require(rp('api/_lib/image-hold.js'));
+  await fresh('hold9', { points: 500 });
+  const pay = await points.spendPoints('hold9', 20, 'image');
+  assert.ok(pay.ok);
+  assert.equal(await hold.holdFromRequest('hold-r2nine01', 'hold9', 20, pay), 'hold-r2nine01');
+  assert.equal((await rename('hold9', 'holdnew9')).code, 200);
+  const sw = await hold.settleStale('holdnew9', { now: Date.now() + 10 * 60000 });
+  assert.equal(sw.refunded, 1, 'كان {refunded:0}: القائمة بقيت تحت الاسم القديم ولا يكنسها شيء — ' + JSON.stringify(sw));
+  assert.equal(pts('holdnew9'), 500);
+});
+
+// ───────────────────────── client-ux-1 · client-ux-2: جسر محرّر المخطّطات ─────────────────────────
+
+const FLOOR_SRC = read('js/app-15-floorplan.js');
+const FLOOR_AST = acorn.parse(FLOOR_SRC, { ecmaVersion: 'latest', sourceType: 'script' });
+// الجسر: IIFE التكامل في نافذة التطبيق (يستمع لـ{__omranView} من إطار المعاينة)
+const BRIDGE_SRC = (() => {
+  const st = FLOOR_AST.body.find((n) => n.type === 'ExpressionStatement' && FLOOR_SRC.slice(n.start, n.end).includes('__omranView !== 1'));
+  assert.ok(st, 'IIFE الجسر');
+  return FLOOR_SRC.slice(st.start, st.end);
+})();
+// عميل المحرّر: النصّ الذي يُحقن في إطار المعاينة (EDITOR_CLIENT)
+const EDITOR_CLIENT_SRC = (() => {
+  let out = null;
+  (function walk(n) {
+    if (!n || typeof n.type !== 'string' || out) return;
+    if (n.type === 'VariableDeclarator' && n.id && n.id.name === 'EDITOR_CLIENT' && n.init && n.init.type === 'Literal') { out = n.init.value; return; }
+    for (const k of Object.keys(n)) { const v = n[k]; if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v.type === 'string') walk(v); }
+  })(FLOOR_AST);
+  assert.ok(out, 'EDITOR_CLIENT');
+  return out;
+})();
+
+async function bridgeWorld(o) {
+  const asked = [], replies = [], posts = [];
+  const frame = { postMessage: (m) => replies.push(m) };
+  let listener = null;
+  const sb = {
+    console, __swallow() {},
+    t: (k) => (k === 'spendConfirm' ? 'هذه العملية تخصم {n} نقطة. أكمل؟' : k),
+    confirm: (m) => { asked.push(m); return true; },
+    authGet: (k) => (k === 'aiapp_auth_token' ? (o.token || '') : (k === 'aiapp_username' ? (o.username || '') : '')),
+    omranOwnerUi: () => o.username === 'omran',
+    fetch: async (url, init) => { posts.push({ url, body: JSON.parse(init.body) }); return { ok: true, json: async () => ({ imageBase64: 'QUFB', mimeType: 'image/png' }) }; },
+    document: { getElementById: (id) => (id === 'previewFrame' ? { contentWindow: frame } : null) },
+  };
+  sb.window = sb;
+  Object.assign(sb, {
+    omranFloorplan: { facadePrompt: () => 'villa facade, modern' },
+    addEventListener: (type, fn) => { if (type === 'message') listener = fn; },
+    omranLoadCosts: () => ({ image: 20, image_4k: 60 }),
+    getGuestId: () => 'guest_abc123',
+    __pointsBalance: o.balance,
+  });
+  vm.createContext(sb);
+  vm.runInContext(BRIDGE_SRC, sb);
+  assert.ok(listener, 'الجسر يستمع');
+  return {
+    asked, replies, posts,
+    async view(id) {
+      listener({ data: { __omranView: 1, id, view: 'front', spec: {} }, source: frame });
+      for (let i = 0; i < 50 && !replies.some((r) => r.id === id); i++) await new Promise((r) => setImmediate(r));
+      return replies.find((r) => r.id === id);
+    },
+  };
+}
+
+test('client-ux-1: جسر المخطّطات لا يسأل «تخصم ٢٠ نقطة» المالكَ ولا VIP ولا الضيف (لا خصم عليهم)، ويسأل صاحب النقاط كما كان', async () => {
+  const owner = await bridgeWorld({ token: 'tok', username: 'omran', balance: Infinity });
+  assert.equal((await owner.view(1)).ok, true);
+  assert.deepEqual(owner.asked, [], 'كان المالك يُسأل عند كلّ ضغطة');
+  const vip = await bridgeWorld({ token: 'tok', username: 'vipu', balance: Infinity });
+  assert.equal((await vip.view(1)).ok, true);
+  assert.deepEqual(vip.asked, []);
+  const guest = await bridgeWorld({ token: '', username: '', balance: undefined });
+  assert.equal((await guest.view(1)).ok, true);
+  assert.deepEqual(guest.asked, [], 'الضيف: صورته التجريبيّة بلا نقاط');
+  const paid = await bridgeWorld({ token: 'tok', username: 'sara', balance: 300 });
+  assert.equal((await paid.view(1)).ok, true);
+  assert.deepEqual(paid.asked, ['هذه العملية تخصم 20 نقطة. أكمل؟'], 'من يُخصم منه يُسأل بالسعر');
+  assert.equal(paid.posts.length, 1);
+});
+
+test('client-ux-1: حارس الحلقة باقٍ — طلب ثانٍ أثناء الأوّل يُرفض بلا توليد ثانٍ حتّى للمالك', async () => {
+  const w = await bridgeWorld({ token: 'tok', username: 'omran', balance: Infinity });
+  const first = w.view(1);
+  const second = await w.view(2);
+  assert.equal(second.cancelled, true);
+  assert.equal((await first).ok, true);
+  assert.equal(w.posts.length, 1);
+});
+
+function editorWorld() {
+  const sent = [], listeners = {};
+  const el = (tag) => ({
+    tag, style: {}, dataset: {}, innerHTML: '', textContent: '', children: [], disabled: false,
+    appendChild(c) { this.children.push(c); return c; }, addEventListener() {}, setPointerCapture() {}, closest: () => null,
+  });
+  const byId = {};
+  const btns = ['front', 'majlis', 'hall'].map((v) => { const b = el('button'); b.dataset.view = v; b.textContent = v; b.className = 'ov-btn'; return b; });
+  const sb = {
+    console,
+    document: {
+      readyState: 'complete', body: { clientWidth: 900 },
+      getElementById: (id) => (byId[id] || (byId[id] = el('div'))),
+      createElement: el,
+      querySelectorAll: (s) => (s === '.ov-btn' ? btns : []),
+      addEventListener() {},
+    },
+    parent: { postMessage: (m) => sent.push(m) },
+    addEventListener: (type, fn) => { (listeners[type] = listeners[type] || []).push(fn); },
+    removeEventListener: (type, fn) => { listeners[type] = (listeners[type] || []).filter((x) => x !== fn); },
+    __omranSpec: { plotWidth: 15, floors: [{ name: 'طابق 1', rooms: [{ name: 'مجلس', w: 5, h: 4 }] }] },
+  };
+  sb.window = sb;
+  vm.createContext(sb);
+  vm.runInContext(EDITOR_CLIENT_SRC, sb);
+  return { btns, sent, reply: (m) => (listeners.message || []).slice().forEach((fn) => fn({ data: Object.assign({ __omranViewOut: 1 }, m) })) };
+}
+
+test('client-ux-2: أثناء توليد واجهة تُعطَّل أزرار الواجهات كلّها (لا ضغطة تضيع بلا أثر)، وتعود بعد الردّ', () => {
+  const w = editorWorld();
+  const [front, majlis, hall] = w.btns;
+  front.onclick();
+  assert.equal(w.sent.length, 1);
+  assert.equal(front.disabled, true);
+  assert.equal(majlis.disabled, true, 'كان «المجلس» يبقى مفعّلًا فيُرفض طلبه (cancelled) ويعود بلا صورة ولا رسالة');
+  assert.equal(hall.disabled, true);
+  w.reply({ id: w.sent[0].id, ok: false, cancelled: true, error: '' });
+  assert.deepEqual(w.btns.map((b) => b.disabled), [false, false, false]);
+  assert.equal(front.textContent, 'front', 'نصّ الزرّ يعود');
+  majlis.onclick();
+  assert.equal(w.sent.length, 2);
+  assert.equal(w.sent[1].view, 'majlis');
+});
+
+// ───────────────────────── client-ux-3: صيغة الطلب المؤدّبة في مها الأساسيّ ─────────────────────────
+
+function mahaImageFn() {
+  const src = read('js/app-08-maha.js');
+  const ast = acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'script' });
+  const want = (name) => /^MAHA_IMG|^MAHA_IMAGE_|^mahaImgRe$|^mahaLastImageBase64$|^mahaImgThisCall$/.test(name);
+  const parts = [];
+  for (const n of ast.body) {
+    if (n.type === 'VariableDeclaration' && n.declarations.every((d) => d.id && want(d.id.name))) parts.push(src.slice(n.start, n.end));
+    if (n.type === 'FunctionDeclaration' && (n.id.name === 'mahaImgHit' || n.id.name === 'mahaNeedsImage')) parts.push(src.slice(n.start, n.end));
+  }
+  const sb = {};
+  vm.createContext(sb);
+  vm.runInContext(parts.join('\n') + '\nthis.mahaNeedsImage = mahaNeedsImage;', sb);
+  return sb.mahaNeedsImage;
+}
+
+test('client-ux-3: «ممكن ترسم لي قطة» و«تقدر تسوي لي صورة قطة؟» وأخواتها طلب صورة — والنفي و«كيف» وسؤال القدرة ليست طلبًا', () => {
+  const needs = mahaImageFn();
+  const IS = ['ممكن ترسم لي قطة', 'تقدرين ترسمين لي بيت؟', 'تقدر تسوي لي صورة قطة؟', 'ممكن تسوين لي صورة بحر', 'تصمم لي شعار لمطعمي؟', 'نبي صورة لقطة', 'ودي صورة لقطة',
+    'تكفى ترسم لنا جمل', 'مها، ممكن ترسمها؟', 'لو سمحت تصممين لي لوجو', 'ارسم لي قطة', 'can you draw me a horse'];
+  for (const s of IS) assert.equal(needs(s), true, 'كان ردًّا نصّيًّا: ' + s);
+  const NOT = ['تقدر ترسم؟', 'كيف ترسم قطة؟', 'انت ترسم كويس', 'ما نبي صورة', 'ودي الصورة لأمي', 'حاب الصورة مرة', 'ما تسوي لي صورة', 'الرسمي', 'اشرح لي الموضوع بصورة مبسطة', 'متى تولد القطة'];
+  for (const s of NOT) assert.equal(needs(s), false, 'ليس طلب صورة: ' + s);
+});
+
+// ───────────────────────── userdata-4 (الواجهة): خانة كلمة المرور عند طلبها ─────────────────────────
+
+test('userdata-4 (الواجهة): «حسابي» يُظهر خانة كلمة المرور عند password_required ويرسلها مع المحاولة التالية — للبريد والهاتف', () => {
+  const src = read('js/app-01-boot-auth.js');
+  const i = src.indexOf('function acctPassBox(');
+  assert.ok(i > 0, 'خانة كلمة المرور تُبنى عند الطلب');
+  const box = src.slice(i, src.indexOf('\n  }\n', i));
+  assert.match(box, /type = 'password'/);
+  assert.match(box, /autocomplete', 'current-password'/);
+  assert.match(box, /acctCurrentPasswordLabel/, 'بنصّ قائم بالـ١٤ لغة');
+  const email = src.slice(src.indexOf('acctEmailSaveBtn.onclick'), src.indexOf('v-unverified-email (أمر المالك ١٨ أكتوبر'));
+  assert.match(email, /password_required/);
+  assert.match(email, /acctPassVal\('acctEmailPass'\) \? \{ password: acctPassVal\('acctEmailPass'\) \}/, 'الطلب يحمل الكلمة إن كُتبت');
+  const phone = src.slice(src.indexOf('async function phoneFlow('), src.indexOf('acctEmailSaveBtn.onclick'));
+  assert.match(phone, /body\.password = pw/);
+  assert.match(phone, /e\.code === 'password_required'/);
+  assert.match(phone, /acctDeleteWrongPass/);
 });
