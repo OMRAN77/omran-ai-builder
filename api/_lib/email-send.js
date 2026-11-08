@@ -4,24 +4,8 @@
 const { getUser, verifyToken } = require('./auth.js');
 const { decrypt } = require('./_emailCrypto.js');
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-
-async function getAccessToken(refreshToken) {
-  const r = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error || 'refresh_failed');
-  return d.access_token;
-}
+// v-google-token: رمز وصول Gmail من النسخة الواحدة (تقرأ السرّين عند النداء لا في نطاق الوحدة)
+const { refreshGoogleAccessToken: getAccessToken } = require('./_google-token.js');
 
 function encodeSubject(subject) {
   return '=?UTF-8?B?' + Buffer.from(String(subject), 'utf8').toString('base64') + '?=';

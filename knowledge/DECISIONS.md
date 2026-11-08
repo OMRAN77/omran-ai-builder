@@ -1,4 +1,12 @@
 # سجلّ القرارات
+## ٨ نوفمبر ٢٠٢٦ — رمز وصول Gmail من نسخة واحدة (v-google-token، إصلاح Desloppify الرابع)
+- **العرض:** Desloppify: «Exact dupe cluster — getAccessToken» في `email-list` و`email-send` و`email-calendar`، وكلّها تقرأ
+  `GOOGLE_CLIENT_ID/SECRET` في نطاق الوحدة (قاعدة CLAUDE.md: الأسرار داخل المعالج).
+- **القرار:** `api/_lib/_google-token.js` ‏`refreshGoogleAccessToken` — الطلب نفسه حرفيًّا، والسرّان يُقرآن عند النداء؛ الثلاثة تستورده باسم
+  `getAccessToken` فلا تتغيّر نداءاتها. **لم تُحذف** `edu-old/ffmpeg-assets` المكرّرة: `edu-old/index.html` يحمّلها فعلًا (iframe التعليم).
+- **الاختبار:** `tests/google-token.test.cjs` — لا نسخة محلّيّة ولا سرّ في نطاق الوحدة، والطلب (الرابط والطريقة والحقول الأربعة) حرفيًّا، والسرّ
+  المضبوط بعد التحميل يُقرأ، وخطأ جوجل يُرمى برمزه أو refresh_failed. اختبارات البريد القائمة تمرّ.
+
 ## ٨ نوفمبر ٢٠٢٦ — رمز الجلسة في points.js عبر _session أيضًا (v-points-session، بموافقة المالك على باب النقاط)
 - **العرض:** بعد v-session-dedupe بقيت النسخة المتساهلة نفسها في `points.js` — و`verifyPointsToken` منه تستعمله مسارات الخصم كلّها
   (claude وgemini وadchat وadimage وmaha-image وminimax وomni وactor…): تذكرة موقّعة بلا exp تمرّ جلسة لا تنتهي. المالك: «ادمج وصلّح النقاط».
