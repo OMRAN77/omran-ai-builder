@@ -5,7 +5,7 @@
 //   ٢) render: تركيب أنمي يُرسم بدالّة زمنيّة حتميّة R(t) ويُصوَّر إطارًا إطارًا (٣٠/ث، ١٩٢٠×١٠٨٠): شخصيّة مها «تشيبي» SVG مرسومة
 //      باليد (لا صورة مولَّدة)، خطوط سرعة، نقاط هافتون، بطاقات عناوين بحدود سميكة، فقاعات كلام عربيّة بخطّ حادّ.
 //   ٣) audio: موسيقى افتتاحيّة أنمي مولَّدة بالكود (تتابع IV–V–iii–vi، ١٤٠ نبضة) ومؤثّرات (هبّة، لمعة، ضربة) على مواضع المشاهد.
-//   ٤) encode: ffmpeg ‏H.264 ‏crf 20 + AAC.
+//   ٤) encode: ffmpeg ‏H.264 ‏crf 26 ‏tune animation + AAC (قِيس: نصّ اللقطة والفقاعة كما في crf 20 بنصف الحجم تقريبًا).
 // الاستعمال: node scripts/video-anime-tour.mjs [--stage all|capture|render|audio|encode] [--work DIR] [--out video/final/anime-tour-ar.mp4]
 //            [--from 0 --to 30]  (معاينة مقطع) [--patch] (إعادة رسم المقطع فوق الإطارات الموجودة)  [--frames 12.5,40]  (إطارات مفردة للفحص)
 import http from 'node:http';
@@ -418,6 +418,8 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
   // العنوان سطر واحد: يصغر الخطّ حتّى يتّسع للعمود (يُستدعى بعد تحميل الخطوط)
   window.FIT = function () {
     document.querySelectorAll('.tt').forEach((el) => { let f = 96; el.style.fontSize = f + 'px'; while (el.scrollWidth > 540 && f > 52) { f -= 4; el.style.fontSize = f + 'px'; } });
+    // الصيحة داخل وسط النجمة (المسنّنات تأكل الأطراف): لا تتجاوز ٢٤٠px
+    document.querySelectorAll('.shout span').forEach((el) => { let f = 74; el.style.fontSize = f + 'px'; while (el.getBoundingClientRect().width > 240 && f > 36) { f -= 2; el.style.fontSize = f + 'px'; } });
   };
   // تقريب كين برنز داخل الإطار عند التقدّم zp (0..1)
   function kbAt(kb, s, zp) {
@@ -616,9 +618,9 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:#000;font-family
 .ctitle{direction:rtl;position:absolute;right:120px;top:300px;width:1100px;text-align:right;font-family:Lalezar,Tajawal,sans-serif;font-size:250px;line-height:1.1;color:#fff;-webkit-text-stroke:22px #111;paint-order:stroke fill;transform-origin:80% 50%}
 .csub{direction:rtl;position:absolute;right:120px;top:640px;padding:14px 46px 22px;background:#111;transform-origin:100% 50%}
 .csub span{display:block;color:#fff;font:800 56px 'Baloo Bhaijaan 2';transform:skewX(10deg)}
-.shout{position:absolute;left:520px;top:170px;width:330px;height:240px;display:flex;align-items:center;justify-content:center;opacity:0;
+.shout{position:absolute;left:470px;top:150px;width:440px;height:290px;display:flex;align-items:center;justify-content:center;opacity:0;
   clip-path:polygon(50% 0,60% 22%,84% 6%,78% 32%,100% 36%,82% 54%,98% 76%,72% 72%,66% 100%,50% 80%,32% 100%,28% 74%,2% 80%,18% 56%,0 36%,22% 30%,14% 6%,40% 22%);background:#fff}
-.shout span{direction:rtl;font-family:Lalezar,Tajawal,sans-serif;font-size:74px;color:#111;margin-top:6px}
+.shout span{direction:rtl;white-space:nowrap;font-family:Lalezar,Tajawal,sans-serif;font-size:74px;color:#111;margin-top:6px}
 #ep{position:absolute;inset:0;opacity:0;direction:rtl}
 #epband{position:absolute;left:-100px;right:-100px;top:330px;height:420px;background:linear-gradient(90deg,#0d1238,#1b2a6b 40%,#b8862f 100%);box-shadow:0 0 0 8px #fff,0 0 0 14px #111;transform-origin:100% 50%}
 #epnum{position:absolute;right:220px;top:370px;font:800 64px 'Baloo Bhaijaan 2';color:#ffd166}
@@ -892,7 +894,7 @@ function synthAudio() {
 function encode() {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(WORK, 'frames', '%05d.jpg'), '-i', path.join(WORK, 'audio.wav'),
-    '-c:v', 'libx264', '-crf', '20', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-af', 'loudnorm=I=-15:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '192k', '-ar', '44100', '-shortest', '-movflags', '+faststart', OUT]);
+    '-c:v', 'libx264', '-crf', '26', '-preset', 'slow', '-tune', 'animation', '-pix_fmt', 'yuv420p', '-af', 'loudnorm=I=-15:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '192k', '-ar', '44100', '-shortest', '-movflags', '+faststart', OUT]);
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', '44.4', '-i', OUT, '-frames:v', '1', '-vf', 'scale=1280:-2', '-q:v', '3', OUT.replace(/\.mp4$/, '.jpg')]);
   console.log('🎬', OUT, (fs.statSync(OUT).size / 1048576).toFixed(1) + 'MB');
 }
