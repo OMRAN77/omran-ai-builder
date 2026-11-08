@@ -12,6 +12,16 @@ const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-gua
 const { judgeBest, duoEnabled } = require('./image-judge');
 const { locksFor, needsModest, FAIRNESS_LOCK, MODEST_LOCK } = require('./fashion-locks');
 const variety = require('./fashion-variety');
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
+
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): نفاد رصيد Gemini كان يُسقط مصمّم الأزياء (أو يسلّم بديل OpenAI).
+   الاحتياط النموذج نفسه عند fal بجسم الطلب نفسه (2K، تعديل عند وجود صورة وإلّا توليد)، وناتجه يُلبَس شكل ردّ Gemini فيمرّ بالحارس
+   والاحتساب كما هو وبمحرّك «gemini» نفسه. البديل الموازي (duo) مدفوع أصلًا: إن أنتج صورة فهو الإنقاذ كما كان ولا يُدفع لـfal مرّة
+   ثانية. مهلة fal ما بقي من حدّ الدالّة (٣٠٠ ث) بعد هامش للحارس والردّ. */
+const FASHION_MODEL = 'gemini-3-pro-image';
+const FAL_BUDGET_MS = 270000;
+function falReply(fb) { return { candidates: [{ content: { parts: [{ inlineData: { mimeType: fb.mime || 'image/png', data: fb.b64 } }] } }] }; }
+function falOpts(t0) { return { where: 'fashion-create', timeoutMs: Math.floor(Math.max(15000, Math.min(150000, FAL_BUDGET_MS - (Date.now() - t0)))) }; }
 
 // 🎨 محرك بديل اختياري: gpt-image-1 (نفس محرك صور ChatGPT) بمفتاح OPENAI_API_KEY.
 // وضع الصورة فقط (تعديل صورة المستخدمة). فشله يهبط صامتًا إلى Gemini.
@@ -175,6 +185,7 @@ function joinList(v) {
 }
 
 module.exports = async (req, res) => {
+  const t0 = Date.now(); /* v-fal-backup: بداية ميزانيّة الدالّة */
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -359,30 +370,49 @@ module.exports = async (req, res) => {
       res.status(200).json({ imageBase64: alt.imageBase64, mimeType: alt.mimeType || 'image/png', engine: 'openai', remaining: remD, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
     };
 
-    const upstream = await fetch(endpoint, {
+    /* v-fal-backup: الرصيد خلص قبل دقائق ← بلا نداء Gemini فاشل: الموازي المدفوع إن أنتج (إنقاذ كما كان)، وإلّا fal بالنموذج نفسه */
+    let data = null;
+    let falTried = false; /* محاولة fal واحدة لكلّ صورة: رفضه هنا لا يُعاد بعد فشل Gemini */
+    if (await falBackup.geminiOutRecently()) {
+      const paidF = duoP ? await duoP : null;
+      if (paidF) { await sendDuo(paidF); return; }
+      falTried = true;
+      const fbF = await falBackup.imageFromGemini(FASHION_MODEL, reqBody, falOpts(t0));
+      if (fbF && fbF.b64) data = falReply(fbF);
+    }
+    const upstream = data ? null : await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),
       signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
 
-    const data = await upstream.json();
-    if (!upstream.ok) {
+    if (!data) data = await upstream.json();
+    if (upstream && !upstream.ok) {
       // v-fashion-diag: سبب رفض Gemini يظهر في الردّ منقّحًا (بلا مفتاح) —
       // بدونه يبقى العطل «تعذّر إنشاء الصورة» بلا اسم، ولا سبيل لسجلّات الخادم.
       const detail = String((data && data.error && data.error.message) || 'unknown')
         .replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
       console.error('[fashion-create] upstream failed status=' + upstream.status + ' detail=' + detail);
+      /* v-fal-backup: الموازي المدفوع أوّلًا (لا ندفع مرّتين)، ثمّ fal عند نفاد الرصيد (ناتجه يكمل كناتج Gemini بعد هذه الكتلة)،
+         ثمّ الإنقاذ المتسلسل القديم حين لا موازي */
+      const tech = String((data && data.error && data.error.message) || '');
+      const paid = duoP ? await duoP : null;
+      if (paid && falBackup.geminiCreditOut(upstream.status, tech)) await falBackup.markGeminiOut();
+      const fb = (paid || falTried) ? null : await falBackup.rescueImage(upstream.status, tech, FASHION_MODEL, reqBody, falOpts(t0));
       // v-fashion-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعني تعطّل الميزة —
       // إن وُجد مفتاح OpenAI فجرّب gpt-image-1 قبل إبلاغ المستخدم بالفشل.
-      const rescue = duoP ? await duoP : await altImage();
+      const rescue = paid || (fb || duoP ? null : await altImage());
       if (rescue) {
         const remR = await consumeFashion(quota.username, quota.limit);
         res.status(200).json({ imageBase64: rescue.imageBase64, mimeType: rescue.mimeType, engine: 'openai', remaining: remR, dailyLimit: quota.limit || FASHION_DAILY_LIMIT, design: designOut });
         return;
       }
-      res.status(502).json({ error: require('./_videoFail.js').isOutage(upstream.status, detail) ? 'unavailable' : 'image_generation_failed', upstream: upstream.status, detail });
-      return;
+      if (!fb) {
+        res.status(502).json({ error: require('./_videoFail.js').isOutage(upstream.status, detail) ? 'unavailable' : 'image_generation_failed', upstream: upstream.status, detail });
+        return;
+      }
+      data = falReply(fb);
     }
 
     const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];

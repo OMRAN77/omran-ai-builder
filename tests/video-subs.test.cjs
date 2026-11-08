@@ -106,17 +106,17 @@ test('٢. المجّانيّ (وعنده ١٠٠٠ نقطة): كلّ مسار ف�
 test('٣. المشترك (باقة المحادثة، «صور وفيديو»، VIP): يمرّ الحارس فيصل سؤال الخصم أو الإنشاء كما كان — لا ٤٠٣', async () => {
   for (const kind of ['veo', 'veoPrice', 'runway', 'actor', 'minimax', 'omni']) {
     for (const u of ['chat1', 'mix1', 'vip1']) {
+      const before = upstream;
       const r = await call(kind, u);
       assert.notEqual(r.code, 403, kind + ' ' + u + ' ' + JSON.stringify(r.body));
       assert.notEqual(r.body && r.body.error, 'video_subscribers', kind + ' ' + u);
+      /* الاقتصاديّ لمشترك المحادثة يُصرف من صلاحيّة باقته بلا سؤال (كما قبل) — يصل المزوّد نفسه.
+         v-minimax-h3: يُقاس عند النداء الأوّل — ردّ v2 الناجح ({ task_id }) يستهلك صلاحيّة الباقة ويحجز القفل، فنداء ثانٍ يسأل الخصم كما ينبغي */
+      if (kind === 'minimax' && u === 'chat1') assert.equal(upstream, before + 1, 'الاقتصاديّ وصل المزوّد');
     }
   }
   /* غير VIP: سؤال الخصم (٤٢٨) كما قبل الحارس — الحارس قبله لا بعده */
   for (const kind of ['veo', 'runway', 'omni']) assert.equal((await call(kind, 'chat1')).code, 428, kind);
-  /* الاقتصاديّ لمشترك المحادثة يُصرف من صلاحيّة باقته بلا سؤال (كما قبل) — يصل المزوّد نفسه */
-  const before = upstream;
-  await call('minimax', 'chat1');
-  assert.equal(upstream, before + 1, 'الاقتصاديّ وصل المزوّد');
 });
 
 test('٤. الترتيب في الكود: الحارس بعد التعرّف على الحساب وقبل سؤال الخصم والحجز في الخمسة، وvideo-create بعد حجز اليوم (يُردّ مع الردّ)', () => {

@@ -55,7 +55,11 @@ const SPEC = {
   KIMI_API_KEY:           ['feature', 'Kimi في منتقي المالك على مسار Moonshot المباشر (أو MOONSHOT_API_KEY) — بدونه يمرّ Kimi بالوسيط (v-kimi)'],
   MOONSHOT_API_KEY:       ['feature', 'اسم بديل لمفتاح Kimi (v-kimi)'],
   CHAT_KIMI_MODEL:        ['tunable', 'بديل: kimi-k3 — موديل Kimi الافتراضيّ على المسار المباشر'],
-  FAL_KEY:                ['feature', 'ممثل يتكلم بصوت إماراتيّ أصيل (حمدان/فاطمة) وتحريك الشفاه عليه — بدونه يعمل الوضع على Veo كما كان (v-actor-lipsync)'],
+  FAL_KEY:                ['feature', 'ممثل يتكلم بصوت إماراتيّ أصيل (حمدان/فاطمة) وتحريك الشفاه عليه — بدونه يعمل الوضع على Veo كما كان (v-actor-lipsync)؛ واحتياط الصور والفيديو حين يخلص رصيد Gemini (v-fal-backup)'],
+  // v-fal-backup: نفاد رصيد Gemini ← النموذج نفسه عند fal بمفتاح FAL_KEY نفسه، وإشعار المالك مرّة كلّ ٦ ساعات
+  FAL_BACKUP:             ['tunable', 'off يطفئ احتياط الصور والفيديو — بلا ضبط شغّال ما دام FAL_KEY موجودًا'],
+  FAL_BACKUP_CAP_CENTS:   ['tunable', 'بديل: ٢٠٠٠ — سقف صرف الاحتياط اليوميّ عند المزوّد بالسنت (يوم UTC)؛ ٠ يغلقه'],
+  FAL_BACKUP_TEST_UNTIL:  ['tunable', 'وقت ISO (مثل 2026-11-05T18:00Z) — حتّى ينتهي تمرّ صور المالك وفيديوه وحده على الاحتياط للتجربة؛ ينتهي وحده'],
   ACTOR_LIPSYNC_MODEL:    ['tunable', 'بديل: fal-ai/bytedance/omnihuman/v1.5 — محرّك تحريك الشفاه'],
   ACTOR_MAX_SEC:          ['tunable', 'بديل: ١٥ — أطول كلام للممثّل بالثواني (المحرّك يُحاسَب بالثانية)'],
   // v-video-enhance-pro: «تحسين احترافي» للفيديو — يعمل بمفتاح FAL_KEY نفسه؛ الخمسة لها بديل آمن في video-enhance.js
@@ -69,6 +73,9 @@ const SPEC = {
   FACE_SWAP_MODEL:        ['tunable', 'بديل: fal-ai/flux-2/klein/9b/edit/lora (وبلا LoRA: fal-ai/flux-2/klein/9b/edit)'],
   FACE_SWAP_LORA:         ['tunable', 'بديل: LoRA «BFS head swap» المثبّت بالالتزام — الفارغ صراحةً = بلا LoRA'],
   FACE_SWAP_CAP_CENTS:    ['tunable', 'بديل: ٣٠٠ — سقف صرف التبديل اليوميّ بالسنت (يوم UTC، ٥ للوجه)؛ ٠ يغلق'],
+  MERGE_FACE_SWAP:        ['tunable', 'بديل: on — قفل الوجه بعد «دمج صور» في الستايل (٥ سنتات للوجه، السقف أعلاه مشترك): on الجميع · owner المالك وحده · غيرهما (off) لا أحد (v-merge-face-lock)'],
+  BODY_REFRAME:           ['tunable', 'بديل: on — ميزة الجسم بصورة وجه مقرّبة ترسم الجسم كاملًا بالبنية المختارة ثمّ تقفل الوجه؛ off = تعديل الصورة نفسها كما كان (v-body-reframe)'],
+  BODY_FACE_SWAP:         ['tunable', 'بديل: on — قفل الوجه بعد رسم الجسم كاملًا (٥ سنتات للوجه، سقف FACE_SWAP_CAP_CENTS المشترك): on الجميع · owner المالك وحده · غيرهما لا أحد (v-body-reframe)'],
   REPLICATE_API_TOKEN:    ['feature', 'ترقية دقّة الصور (مكبّر Real-ESRGAN) — بدونه تُعاد الصورة كما هي (v-img-upscale)'],
   IMAGE_UPSCALE:          ['tunable', 'off يعطّل الترقية التلقائيّة لنواتج الصور دون 2K'],
   UPSCALE_MAX_MS:         ['tunable', 'بديل: ٦٠٠٠٠ — مهلة الترقية'],

@@ -50,7 +50,7 @@ try {
     packageId: PACKAGE_ID,
     host: HOST,
     name: web.name,
-    launcherName: 'عمران AI',
+    launcherName: 'om ai', // v-hw-om-ai: اسم الهاتف = اسم المتجر = اسم الواجهة
     display: web.display,
     themeColor: web.theme_color,
     themeColorDark: web.theme_color,

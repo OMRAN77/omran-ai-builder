@@ -16,6 +16,8 @@ const vm = require('vm');
 
 const root = path.join(__dirname, '..');
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'ai-video-speed-test-secret-' + 'x'.repeat(24);
+/* v-photo-as-is: مسار الإطار المرسوم (needPerson) خلف مفتاحه — الافتراضيّ الجديد في video-photo-as-is.test.cjs */
+process.env.VIDEO_FREE_FRAME = 'on';
 const rp = (f) => require.resolve(path.join(root, f));
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 const SRC = read('js/app-11-video.js');
@@ -319,7 +321,7 @@ test('٩. رسائل لا تعلّق بطاقة الانتظار، وإلغاء 
   assert.ok(busy && !busy.includes('🕒') && !busy.includes('⛔'));
   assert.match(SRC, /if\(code === 'confirm_declined'\) return scenesDone > 0 \? bT\('⛔ /);
   assert.equal((SRC.match(/scenesDone\+\+/g) || []).length, 2, 'الفيلم والمشهدان يعدّان ما اكتمل');
-  assert.equal((SRC.match(/throwIfDeclined\(cr\);/g) || []).length, 2, 'السينمائيّ والاقتصاديّ (كان «body stream already read» خامًا)');
+  assert.equal((SRC.match(/throwIfDeclined\(cr\);/g) || []).length, 3, 'Omni والاقتصاديّ و«سينمائي» (v-cinema-omni: صار للزبون بنافذة الخصم) — كان «body stream already read» خامًا');
   const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'];
   const KEYS = ['✅ Video ready — ✨ preparing a higher-quality version in the background…', '✅ Done — upgraded to higher quality.', '✅ Done! (The higher-quality version was unavailable — your video is ready)', 'The video was cancelled by the engine — please try again.', '⛔ Stopped at your cancel — the scenes completed before it were charged.'];
   KEYS.forEach((k) => assert.ok(SRC.includes("'" + k + "'"), 'النصّ في الكود: ' + k));

@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>استوديو الإعلانات — om ai</title>
-<script src="/i18n/ad-studio.js?v=608"></script>
+<script src="/i18n/ad-studio.js?v=609"></script>
+<script defer src="/js/share-sheet.js?v=2"></script><!-- v-share-next: نافذة المشاركة نفسها التي في التطبيق -->
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -100,7 +101,8 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
 #genOut.on{display:block}
 #genOut h3{font-size:13px;font-weight:700;color:#c9d1d9;margin-bottom:9px}
 #genOut img{max-width:min(420px,100%);border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.5);display:block}
-#genOut a{display:inline-block;margin-top:9px;background:#1c1f25;border:1px solid #2b3038;color:#cbd2da;font:700 12px 'Tajawal';padding:7px 14px;border-radius:99px;text-decoration:none}
+#genOut a,#genOut .genSh{display:inline-block;margin-top:9px;background:#1c1f25;border:1px solid #2b3038;color:#cbd2da;font:700 12px 'Tajawal';padding:7px 14px;border-radius:99px;text-decoration:none}
+#genOut .genSh{cursor:pointer;margin-inline-start:6px}
 .gwait{color:#9aa3ad;font:600 12.5px 'Tajawal';padding:14px;border:1px dashed #2b3038;border-radius:12px}
 .rst:hover,.rstAll:hover{background:#262b33}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;margin-top:20px;align-items:start}
@@ -272,9 +274,9 @@ body.inkw .canvas h2{text-shadow:0 1px 12px rgba(0,0,0,.85)}
 body.inkb .canvas :is(.pr,.p,.dpr,.fpr,.hnum,.hk,.hbar b,.mono,.stamp b,.top b,h2 u,.jbd,.jgrid span i,.jrow b,.jloc b,.jnote b){text-shadow:0 0 3px #fff,0 0 8px rgba(255,255,255,.92)}
 .swat b.w{background:#fff}
 .swat b.k{background:#0b0d10;border-color:#5a626c}
-.dlB{display:block;width:100%;margin-top:6px;background:#161a20;border:1px solid #2b3038;color:#cbd2da;font:700 12px 'Tajawal';padding:7px;border-radius:9px;cursor:pointer}
-.dlB:hover{border-color:var(--ac);color:#fff}
-.dlB:disabled{opacity:.6;cursor:default}
+.dlB,.shB{display:block;width:100%;margin-top:6px;background:#161a20;border:1px solid #2b3038;color:#cbd2da;font:700 12px 'Tajawal';padding:7px;border-radius:9px;cursor:pointer}
+.dlB:hover,.shB:hover{border-color:var(--ac);color:#fff}
+.dlB:disabled,.shB:disabled{opacity:.6;cursor:default}
 
 /* تحديد + تكبير */
 .canvas .drg.sel{outline:1.5px dashed var(--ac);outline-offset:3px}
@@ -478,8 +480,8 @@ body{background:#000 !important}
 .chat{background:#000 !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;border-color:rgba(212,175,55,.6) !important}
 .chead,.comp{border-color:rgba(212,175,55,.6) !important}
 .m.u span{background:#000 !important;border:1px solid rgba(212,175,55,.6)}
-.chip,.comp input,.rst,.rstAll,.rtb button,#genOut a,.pick,a.back{background:#000 !important;border-color:rgba(212,175,55,.6) !important}
-.chip:hover,.comp input:focus,.rst:hover,.rstAll:hover,.rtb button:hover,.rtb button.on,#genOut a:hover,.pick:hover,a.back:hover{background:#000 !important;border-color:#c9c9c9 !important}
+.chip,.comp input,.rst,.rstAll,.rtb button,#genOut a,#genOut .genSh,.pick,a.back{background:#000 !important;border-color:rgba(212,175,55,.6) !important}
+.chip:hover,.comp input:focus,.rst:hover,.rstAll:hover,.rtb button:hover,.rtb button.on,#genOut a:hover,#genOut .genSh:hover,.pick:hover,a.back:hover{background:#000 !important;border-color:#c9c9c9 !important}
 .gwait{border-color:rgba(212,175,55,.6) !important}
 .note{background:#000 !important;border-color:rgba(212,175,55,.6) !important;color:#c9c9c9 !important}
 </style>
@@ -529,12 +531,14 @@ body{background:#000 !important}
 <script>
 const TOKEN=(()=>{try{return localStorage.getItem('aiapp_auth_token')||''}catch(e){return''}})();
 /* ============ i18n — قاموس مستقلّ لهذه الصفحة: /i18n/ad-studio.js ============ */
-const AL=(()=>{try{return localStorage.getItem('aiapp_lang')||'ar'}catch(e){return'ar'}})();
+const AL=(()=>{try{const h=new URLSearchParams(location.search).get('hl');return localStorage.getItem('aiapp_lang')||(h==='en'||h==='ar'?h:'')||'ar'}catch(e){return'ar'}})(); /* v-tool-pages: ?hl= من صفحة الأداة لزائر بلا لغة محفوظة */
 const ADX=window.ADI18N||{}, ADD=ADX[AL]||ADX.en||{}, ADE=ADX.en||{};
 const ARN=(AL==='ar'||AL==='ur');                      // الأرقام العربيّة-الهنديّة لهاتين فقط
 function T(k,v){ let x=ADD[k]!==undefined?ADD[k]:(ADE[k]!==undefined?ADE[k]:k);
   if(v) for(const p in v) x=String(x).split('{'+p+'}').join(v[p]);
   return x; }
+/* v-share-next: نافذة المشاركة (js/share-sheet.js) تقرأ نصوصها بـwindow.t — هنا من قاموس الصفحة (مفاتيح التطبيق نفسها بالـ١٤ لغة) */
+window.t=k=>T(k);
 function NU(n){ return ARN?String(n).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]):String(n); }
 function step(n,m){ return n?T('stepOf',{n:NU(n),m:NU(m||4)}):T('stepReady'); }
 document.documentElement.lang=AL; document.documentElement.dir=T('dir')||'ltr';
@@ -807,6 +811,7 @@ const NAMES=Array.from({length:10},(_,i)=>T('nm'+i));
 const CAPS=Array.from({length:10},(_,i)=>T('cp'+i));
 
 function esc(s){ return String(s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+function shl(){ return '\u2197\ufe0e '+esc(String(T('shareNextBtn')).replace(/^[\u2190-\u2BFF\uFE0F\s]+/,'')); } // v-share-next: «↗︎ مشاركة» أحاديّ اللون كـ«⬇︎ نزّل PNG» — للتصاميم واللوحات والصورة المولَّدة
 function render(){
   const c=CATS[S.cat], ac=S.ac||c.ac, grad=c.grad, nc=S.ac||'#a855f7';
   const img=S.img, title=esc(S.title||c.title), spec=esc(S.spec||c.spec),
@@ -900,7 +905,7 @@ function render(){
   document.getElementById('grid').innerHTML=ORD.map(n=>
     '<div class="col" data-ci="'+n+'" style="--ac:'+ac+'"><h3><i></i>'+NAMES[n]+'</h3>'+HH[n]+
     '<div class="cap">'+CAPS[n]+'</div><button class="pick">'+T('pickBtn')+'</button>'+
-    '<button class="dlB">\u2b07\ufe0e '+T('dlBtn')+'</button></div>').join('');
+    '<button class="dlB">\u2b07\ufe0e '+T('dlBtn')+'</button><button class="shB">'+shl()+'</button></div>').join('');
   if(S.chosen!=null){const cc=document.querySelector('#grid .col[data-ci="'+S.chosen+'"]'); if(cc)cc.classList.add('chosen');}
   initDrag();
 }
@@ -1076,10 +1081,16 @@ genB.onclick=async()=>{
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.imageBase64){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(genErrMsg(j,r.status))+'</div>'; }
     else{ const mt=j.mimeType||'image/webp', src='data:'+mt+';base64,'+j.imageBase64, ext=(mt.split('/')[1]||'webp');
-      genOut.innerHTML='<h3>'+T('genOutTitle')+'</h3><img src="'+src+'"><a download="ad.'+ext+'" href="'+src+'">⬇︎ '+T('genDl')+'</a>'; }
+      genOut.innerHTML='<h3>'+T('genOutTitle')+'</h3><img src="'+src+'"><a download="ad.'+ext+'" href="'+src+'">⬇︎ '+T('genDl')+'</a><button type="button" class="genSh">'+shl()+'</button>'; }
   }catch(e){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(e.message||T('genErrConn'))+'</div>'; }
   genB.disabled=false; genB.textContent=old;
 };
+/* v-share-next (المالك ٧ نوفمبر: «فقط تحميل… الايميل والسناب والتواصل الاجتماعي»): الصورة نفسها برابط /i/ أسبوعًا في نافذة التطبيق */
+genOut.addEventListener('click',e=>{
+  if(!e.target.closest('.genSh')) return;
+  const a=genOut.querySelector('a[download]'); if(!a||typeof window.omranShareMedia!=='function') return;
+  window.omranShareMedia({src:a.getAttribute('href'),name:a.getAttribute('download')||'ad.png',kind:'image'});
+});
 
 /* ============ تنزيل أيّ تصميم صورةً PNG ============ */
 let H2I=null;
@@ -1101,6 +1112,15 @@ document.getElementById('grid').addEventListener('click',async e=>{
   setTimeout(()=>{ b.textContent=old; b.disabled=false; },1600);
 });
 window.__cardPng=cardPng;
+document.getElementById('grid').addEventListener('click',async e=>{
+  const b=e.target.closest('.shB'); if(!b) return;
+  const col=b.closest('.col'), cv=col&&col.querySelector('.canvas'); if(!cv||typeof window.omranShareMedia!=='function') return;
+  const old=b.textContent; b.disabled=true; b.textContent=T('dlPrep');
+  try{ const url=await cardPng(cv); b.textContent=old;
+    window.omranShareMedia({src:url,name:'ad-'+(NAMES[col.dataset.ci]||'design')+'.png',kind:'image'});
+  }catch(err){ b.textContent='⚠️ '+T('dlFail'); setTimeout(()=>{ b.textContent=old; },1600); }
+  b.disabled=false;
+});
 
 /* ================= v-ad-inline: التحرير على اللوحة نفسها =================
    طلب المالك: «بدل ما الكتابة في اتجاه والتحميل في اتجاه آخر — خلّه في نفس الصورة:
@@ -1284,7 +1304,7 @@ function renderComp(){
       '<button class="tbb" data-rst="'+i+'">↺ '+T('resetBoard')+'</button>'+
     '</div>'+h+
     '<div class="cap">'+CCP[i]+'</div>'+
-    '<button class="dlB" data-cdl="'+i+'">⬇︎ '+T('dlPrint')+'</button></div>').join('');
+    '<button class="dlB" data-cdl="'+i+'">⬇︎ '+T('dlPrint')+'</button><button class="shB" data-csh="'+i+'">'+shl()+'</button></div>').join('');
   host.querySelectorAll('.cpo').forEach((el,i)=>{ el.style.aspectRatio=ar||CNAT[i];
     el.insertAdjacentHTML('beforeend','<button class="xdel" type="button" aria-label="×">×</button>');
     cSetU(el); });
@@ -1382,6 +1402,15 @@ cgrid.addEventListener('pointerover',e=>{
    تُخفي الـ× قبل أن تصله الضغطة — فالمسح لا يحدث أبدًا. الآن يُخفى عند مغادرة الشبكة. */
 cgrid.addEventListener('pointerleave',()=>document.querySelectorAll('.xdel.on').forEach(x=>x.classList.remove('on')));
 
+/* v-share-next: صورة اللوحة المركّبة كما تُنزَّل — للتنزيل و«مشاركة» معًا */
+async function compPng(el){
+  el.classList.add('exporting');                      // يُخفي أدوات التحرير من الصورة المنزَّلة
+  try{ const L=await h2iLib();
+    const pr=Math.max(2,Math.min(4,Math.ceil(1600/(el.offsetWidth||520))));
+    return await L.toPng(el,{pixelRatio:pr,cacheBust:true,backgroundColor:'#080b11',
+      width:el.offsetWidth,height:el.offsetHeight});
+  }finally{ el.classList.remove('exporting'); }
+}
 cgrid.addEventListener('click',async e=>{
   const add=e.target.closest('[data-add]');
   if(add){ const i=+add.dataset.add; FREE[i]=(FREE[i]||[]).concat([{t:T('newBoxTxt'),x:38,y:44,s:2.4}]);
@@ -1396,18 +1425,20 @@ cgrid.addEventListener('click',async e=>{
     z.querySelectorAll('.canvas,.cpo').forEach(n=>n.remove());
     const cl=el.cloneNode(true); cl.querySelectorAll('.xdel').forEach(n=>n.remove());
     z.appendChild(cl); z.classList.add('on'); requestAnimationFrame(()=>cSetU(cl)); return; }
+  const sh=e.target.closest('.shB[data-csh]');
+  if(sh){ const el=sh.closest('.col').querySelector('.cpo'); if(!el||typeof window.omranShareMedia!=='function') return;
+    const o=sh.textContent; sh.disabled=true; sh.textContent=T('dlPrep');
+    try{ const url=await compPng(el); sh.textContent=o;
+      window.omranShareMedia({src:url,name:'ad-'+(CNM[+sh.dataset.csh]||'poster')+'.png',kind:'image'});
+    }catch(err){ sh.textContent='⚠️ '+T('dlFail'); setTimeout(()=>{ sh.textContent=o; },1600); }
+    sh.disabled=false; return; }
   const d=e.target.closest('.dlB[data-cdl]');
   if(d){ const el=d.closest('.col').querySelector('.cpo'); if(!el) return;
     const o=d.textContent; d.disabled=true; d.textContent=T('dlPrep');
-    el.classList.add('exporting');                    // يُخفي أدوات التحرير من الصورة المنزَّلة
-    try{ const L=await h2iLib();
-      const pr=Math.max(2,Math.min(4,Math.ceil(1600/(el.offsetWidth||520))));
-      const url=await L.toPng(el,{pixelRatio:pr,cacheBust:true,backgroundColor:'#080b11',
-        width:el.offsetWidth,height:el.offsetHeight});
+    try{ const url=await compPng(el);
       const a=document.createElement('a'); a.href=url; a.download='ad-'+(CNM[+d.dataset.cdl]||'poster')+'.png';
       document.body.appendChild(a); a.click(); a.remove(); d.textContent='✅ '+T('dlDone');
     }catch(err){ d.textContent='⚠️ '+T('dlFail'); }
-    el.classList.remove('exporting');
     setTimeout(()=>{ d.textContent=o; d.disabled=false; },1600); return; }
   const x=e.target.closest('.xdel');
   if(x){ const k=x.dataset.k||'';

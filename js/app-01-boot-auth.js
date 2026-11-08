@@ -767,6 +767,7 @@ try{
         + '<span style="min-width:0;overflow-wrap:anywhere;font-size:11px;opacity:.6">' + (u.email ? '<bdi dir="ltr">' + escAdm(u.email) + '</bdi>' : escAdm(ownT('ownerNoEmail'))) + '</span>'
         + '</span>'
         + '<span style="display:flex;gap:6px;flex:none">'
+        + '<button type="button" onclick="adminResetLink(\'' + safeName + '\')" title="' + escAdm(ownT('ownerResetTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">🔑</button>'
         + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerMsgTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
         + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + escAdm(ownT(u.banned ? 'ownerUnbanTitle' : 'ownerBanTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
         + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerDeleteTitle')) + '" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
@@ -835,6 +836,32 @@ try{
         + '\n' + ownT('ownerDiagStatus', { s: ownLtr('HTTP ' + (data.status || '?')) })
         + '\n' + (data.detail || '');
     }catch(e){ if(box) box.textContent = '❌ ' + ownT('ownerErrorLine', { e: ownErr(e) }); }
+  };
+  /* v-owner-reset-link: رابط استرجاع يسلّمه المالك بيده لصاحب الحساب (واتساب…) حين لا يصله إيميل الاسترجاع.
+     التأكيد يذكّر بالتحقّق من صاحب الحساب أوّلًا، والرابط في prompt لينسخه، ويُنسخ تلقائيًّا إن سمح المتصفّح. */
+  window.adminResetLink = async function(username){
+    if(!confirm(ownT('ownerResetConfirm', { u: ownIso(username) }))) return;
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/admin-actions', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token, action: 'reset-link', targetUsername: username }),
+      });
+      const data = await res.json();
+      // v-owner-reset-find: حساب Google لا كلمة مرور له، والغائب برسالة مترجمة لا «user not found» خامًا
+      if(data && data.google){ alert(ownT('ownerResetGoogle', { u: ownIso(data.username || username) })); return; }
+      if(res.status === 404){ alert('❌ ' + ownT('ownerResetNotFound')); return; }
+      if(!res.ok || !data.ok || !data.link){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
+      try{ if(navigator.clipboard) navigator.clipboard.writeText(data.link).catch(e => __swallow(e, 'reset-link clipboard')); }catch(e){ __swallow(e, 'reset-link clipboard'); }
+      prompt(ownT('ownerResetLink', { u: ownIso(data.username || username), m: data.minutes || 30 }), data.link);
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
+  };
+  /* v-owner-reset-find: خانة «إيميل أو اسم مستخدم» فوق الجدول — للحساب الذي لا صفّ له (الجدول أحدث ٦٠ تسجيلًا). */
+  window.adminResetLinkFind = function(){
+    const el = document.getElementById('adminResetInput');
+    const v = el ? String(el.value || '').trim() : '';
+    if(!v){ if(el) el.focus(); return; }
+    return window.adminResetLink(v);
   };
   window.adminMessageUser = async function(username){
     const text = prompt(ownT('ownerMsgPrompt', { u: ownIso(username) }));
@@ -1112,7 +1139,8 @@ try{
     /* v-audit-boot (cli-boot-6): بلغة الواجهة الـ١٤، وبلا أسماء إعداد الخادم وأسراره (كانت تُعرض للمستخدم). ما يقدر المستخدم عليه
        (ألغى، بريد غير مفعَّل) بنصّه؛ والباقي «تعذّر… أعد المحاولة» برمز السبب معزول الاتّجاه للتشخيص — والسبب في ملاحظة الجلسة (?diag=1). */
     const code = String(gerror || '');
-    const text = code === 'access_denied' ? authMsg('axBootGoogleCancelled', 'You cancelled the Google sign-in', 'ألغيتَ الدخول من شاشة جوجل')
+    /* v-google-retry: access_denied = «إلغاء» في شاشة جوجل أو رفضها الحساب (وضع Testing) — لا نتّهم المستخدم بالإلغاء */
+    const text = code === 'access_denied' ? authMsg('axBootGoogleCancelled', 'Google sign-in was cancelled or not allowed — please try again', 'أُلغي الدخول من شاشة جوجل أو لم تسمح به — أعد المحاولة')
       : code === 'email_not_verified' ? authMsg('axBootGoogleUnverified', 'Your Google account email is not verified — verify it, then try again', 'بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة')
       : authMsg('axBootGoogleFailed', "Couldn't complete the Google sign-in ({code}) — please try again", 'تعذّر إكمال الدخول بجوجل ({code}) — أعد المحاولة', { code: '\u2066' + code + '\u2069' });
     try { setMode('login'); showOverlay(); } catch(e){ /* فتح الشاشة تيسير؛ الرسالة محفوظة في الملاحظة على كلّ حال */ }
@@ -1301,8 +1329,13 @@ try{
       } catch(e){ return null; }
     }
     // v-google-app-fail: فشل الدخول في سفاري — الخادم أودع السبب فنعرضه بدل انتظار صامت.
-    function claimFail(err){
-      try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-fail'); }
+    /* v-google-retry: صفحة «تعذّر» في سفاري صار فيها «حاول مرّة ثانية» بـstate نفسها — فالانتظار يبقى (ويتجدّد عشر دقائق) بعد
+       عرض السبب، كي يُستلم نجاح المحاولة الثانية عند العودة. كان يُمحى هنا فيضيع ذاك الدخول. عودة الويب (رمز الاستلام) كما كانت. */
+    function claimFail(err, st){
+      try {
+        if(st && pending() === st) localStorage.setItem('aiapp_oauth_pending', st + ':' + Date.now());
+        else localStorage.removeItem('aiapp_oauth_pending');
+      } catch(e){ __swallow(e, 'auth:claim-fail'); }
       __oauthPick = null;
       showGoogleAuthError(String(err));
     }
@@ -1330,7 +1363,7 @@ try{
             if(d.avatar) localStorage.setItem('aiapp_avatar', d.avatar);
             noteSession('جوجل-جسر-آيفون');
             onAuthed(d.user, d.avatar || null);
-          } else if(d && d.error) claimFail(d.error);
+          } else if(d && d.error) claimFail(d.error, pk ? '' : st);
         }
       } catch(e){ __swallow(e, 'auth:oauth-claim'); }
       busy = false;

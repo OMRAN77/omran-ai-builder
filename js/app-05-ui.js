@@ -28,12 +28,26 @@ function omranNativeBridge(name){
 /* v-pdf-link: هل نعمل داخل غلاف تطبيق (TWA/متجر/PWA مثبّت)؟ الأغلفة لا
    تنفّذ تنزيل blob المحلي — نرفع الملف للسيرفر ونفتح رابط تنزيل حقيقي
    يمرّ عبر منزّل النظام نفسه فيعمل في كل غلاف. */
+/* v-hw-webview (رفض هواوي ٣٠ أكتوبر): غلاف WebView الاحتياطيّ لحزمة هواوي (MahaWebViewFallbackActivity —
+   أجهزة بلا متصفّح يدعم TWA) وحده يحقن جسر OmranRender؛ في Chrome/TWA والموقع لا يوجد. */
+function omranHwWebView(){
+  try{ return !!(window.OmranRender && typeof window.OmranRender.mode === 'function'); }
+  catch(e){ __swallow(e, 'hw:webview-detect'); return false; }
+}
 function omranLikelyApp(){
   try{
     if(document.referrer && document.referrer.indexOf('android-app://') === 0) localStorage.setItem('aiapp_twa', '1');
     if(localStorage.getItem('aiapp_twa') === '1') return true;
     if(localStorage.getItem('aiapp_store')) return true;
-    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
+    /* v-hw-webview: علم المتجر انتقل إلى sessionStorage (v-store-flag-session) فلم يعد السطر أعلاه يراه، وWebView
+       الاحتياطيّ لا يرسل android-app:// في document.referrer — فكانت حزمة هواوي تُعامَل موقعًا: تقرير المقاولات
+       وجدول الكمّيّات وحفظ الملفّات تنزّل blob محلّيًّا يسقط صامتًا بدل رابط الخادم الذي ينزّله النظام. */
+    if(sessionStorage.getItem('aiapp_store')) return true;
+    if(omranHwWebView()) return true;
+    /* v-desk-pwa-save (لقطة المالك ٧ نوفمبر: «تحميل الصور في الأنماط لي الكمبيوتر … ما يشتغل» — لوحة «مشاركة» ويندوز تدور بلا نهاية):
+       التطبيق المثبّت على الكمبيوتر (PWA متجر مايكروسوفت/كروم، standalone) ليس غلاف جوّال — التنزيل المباشر يعمل فيه، ولوحة مشاركة
+       النظام هناك تفشل. وضع standalone يُحسب «تطبيقًا» على الجوّال وحده. */
+    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches && omranMobileUA()) return true;
     if(navigator.standalone === true) return true;
     /* v-cap-detect (شكوى عمران «PDF عند + ما يشتغل» على TestFlight): غلاف
        كاباسيتور يحمّل الموقع الحي بلا أي علامة — جسره المحقون هو العلامة. */
@@ -41,6 +55,20 @@ function omranLikelyApp(){
     if(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)) return true;
   }catch(e){ __swallow(e, 'share:app-detect'); }
   return false;
+}
+/* v-desktop-app (لقطات المالك ٧ نوفمبر: «مشاركة» تدور فوق صفحة الصور الشخصيّة بعد «تحميل الصورة» في تطبيق ويندوز): تطبيق المتجر على
+   ويندوز/ماك standalone فيصدق فيه omranLikelyApp — لكنّه حاسوب: <a download> يعمل فيه، وnavigator.share هي لوحة النظام التي تعلق. مسارات
+   الحفظ والمشاركة تعامله حاسوبًا (تنزيل مباشر + النافذة الموحّدة)، والهواتف وأغلفة أندرويد/آيفون كما كانت. */
+function omranDesktopApp(){
+  try{
+    if(omranMobileUA() || omranNativeBridge('omranShare') || omranHwWebView()) return false;
+    const ua = navigator.userAgent || '';
+    if(/Android|\bwv\b/i.test(ua) || window.OmranAndroidShare || (window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform())))) return false;
+    /* standalone نفسه لا omranLikelyApp: v-desk-pwa-save (main) جعل omranLikelyApp لا يعدّ standalone إلّا على الهاتف، فكان التطبيق المثبّت
+       على الحاسوب يخرج من هنا «لا» ودفع ويندوز الضيّق (mobile-ui) يرجع للوحة النظام؛ وأعلام المتجر/TWA تبقى «تطبيقًا» على أيّ جهاز (قراره) */
+    const standalone = !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    return standalone && /Windows NT|Macintosh|CrOS|X11|Linux x86_64/i.test(ua);
+  }catch(e){ __swallow(e, 'share:desktop-app'); return false; }
 }
 async function omranBlobToServerLink(blob, filename){
   const b64 = await new Promise((resolve, reject) => {
@@ -108,7 +136,7 @@ function omranReadySheet(opts){
     const o = opts || {};
     const kind = o.kind || 'file';
     const isArT = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
-    const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp());
+    const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())); /* v-desktop-app: تطبيق ويندوز حاسوب */
     const desktop = !mobile;
     // رابط دائم يصحّ إرساله للغير — واتساب/نسخ الرابط فقط حين يكون موجودًا (لا رابط تنزيل عمره ساعة ولا blob محلّيّ)
     const canLink = /^https?:/i.test(String(o.shareUrl || ''));
@@ -159,6 +187,12 @@ function omranReadySheet(opts){
     const addIcon = function(el, name){ const i = document.createElement('span'); i.style.cssText = 'display:inline-flex'; i.innerHTML = rsIcon(name); el.appendChild(i); };
     const status = function(txt){ try{ ttl.textContent = txt; }catch(e){ /* guard-ok */ } };
     const buttons = [];
+    const sheetBtn = function(){ /* v-share-sheet */
+      const sb = document.createElement('button'); sb.type = 'button'; sb.style.cssText = outCss;
+      addIcon(sb, 'share'); sb.appendChild(labelSpan(rsT('imgShareBtn', 'مشاركة', 'Share')));
+      sb.onclick = function(){ try{ window.omranShareSheet({ url: canLink ? o.shareUrl : '', file: o.shareFile || null }); }catch(e){ __swallow(e, 'ready:share-sheet'); } };
+      return sb;
+    };
     // تحميل (الكلّ)
     const dl = document.createElement('a');
     dl.href = o.downloadUrl; dl.setAttribute('download', o.name || 'omran-ai'); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
@@ -199,14 +233,19 @@ function omranReadySheet(opts){
         }
         buttons.push(cp);
       }
+      // v-share-sheet: زرّ «مشاركة» واحد يفتح نافذة المشاركة الموحّدة (app-45) — الرابط الدائم وحده (v-save-no-wa)
+      if(typeof window.omranShareSheet === 'function'){ if(canLink) buttons.push(sheetBtn()); }
       // واتساب: الرابط الدائم (٧ أيّام) وحده، لا رابط التنزيل ذي الساعة
-      if(canLink){
+      else if(canLink){
         const waLink = o.shareUrl;
         const wa = document.createElement('a'); wa.href = 'https://wa.me/?text=' + encodeURIComponent(waLink); wa.target = '_blank'; wa.rel = 'noopener';
         wa.style.cssText = outCss; addIcon(wa, 'whatsapp'); wa.appendChild(labelSpan(rsT('imgWaBtn', 'واتساب', 'WhatsApp')));
         buttons.push(wa);
       }
     } else {
+      // v-share-sheet: النافذة الموحّدة — «المزيد» فيها ورقة الهاتف بالملفّ نفسه
+      if(typeof window.omranShareSheet === 'function' && (canLink || o.shareFile)){ buttons.push(sheetBtn()); }
+      else {
       // الجوّال: مشاركة النظام، وإن فشلت رسالة واضحة (لا صمت)
       let canShareFile = false;
       try{ canShareFile = !!(o.shareFile && navigator.canShare && navigator.canShare({ files: [o.shareFile] })); }catch(e){ canShareFile = false; }
@@ -227,6 +266,7 @@ function omranReadySheet(opts){
         const wa = document.createElement('a'); wa.href = 'https://wa.me/?text=' + encodeURIComponent(waLink); wa.target = '_blank'; wa.rel = 'noopener';
         wa.style.cssText = outCss; addIcon(wa, 'whatsapp'); wa.appendChild(labelSpan(rsT('imgWaBtn', 'واتساب', 'WhatsApp')));
         buttons.push(wa);
+      }
       }
     }
     const row = document.createElement('div');
@@ -255,7 +295,7 @@ async function omranSaveBlob(blob, filename){
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
   /* v-audit-uicore: مشاركة النظام على الجوّال والأغلفة وحدها (قرار v-ready-sheet، كما في img-save وsave-media) — على الكمبيوتر
      كانت تفتح لوحة ويندوز/ماك بلا «حفظ»، وإغلاقها (AbortError) يُنهي الدالّة بلا تنزيل. الكمبيوتر ينزّل مباشرة في الأسفل. */
-  const mobileish = omranLikelyApp() || omranMobileUA();
+  const mobileish = (omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())) || omranMobileUA(); /* v-desktop-app: تطبيق ويندوز ينزّل مباشرة — لا لوحة ويندوز */
   try{
     if(mobileish && navigator.canShare && typeof File === 'function'){
       const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
@@ -830,7 +870,7 @@ function exportReplyAsTxt(text){
    الكمبيوتر ينزّل مباشرة كما كان. */
 function msgSaveExport(blob, filename){
   let viaSheet = false;
-  try{ viaSheet = !!(omranNativeBridge('omranShare') || omranLikelyApp() || omranMobileUA()); }catch(e){ viaSheet = false; }
+  try{ viaSheet = !!(omranNativeBridge('omranShare') || (omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())) || omranMobileUA()); }catch(e){ viaSheet = false; } /* v-desktop-app */
   if(viaSheet){
     omranSaveBlob(blob, filename).catch((e) => { __swallow(e, 'export:save-blob'); msgDownloadBlob(blob, filename); });
     return true; /* v-audit-uicore: المسار الموحّد — ورقته هي التأكيد، فلا رسالة «تمّ» من المنادي */
@@ -873,7 +913,9 @@ document.addEventListener('click', closeMsgMoreMenu);
 /* v-tools-pause (المالك ١٠ أكتوبر: «اخفاء محلل المصاريف والسيرة الذاتية»، ثمّ «التلفزيون والاقتراحات»): أدوات مخفيّة مؤقّتًا —
    لا بطاقة في شاشة الأدوات (app-10-features) ولا اقتراح في المحادثة. الكود والنوافذ والخادم باقية كما هي؛
    الإرجاع = حذف المعرّف من هذه القائمة. */
-var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'];
+/* v-tv-owner (المالك ٣ نوفمبر: «ضيفه فقط لي المالك»): التلفزيون يبقى موقوفًا للجميع ويظهر للمالك وحده — حساب omran
+   (omranOwnerUi، يُقرأ عند التحميل). الإرجاع للجميع = حذف btnOmranTV من القائمتين؛ والإخفاء عن المالك أيضًا = حذفه من قائمة المالك وحدها. */
+var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'].filter(function(id){ return !(['btnOmranTV'].indexOf(id) >= 0 && typeof omranOwnerUi === 'function' && omranOwnerUi()); }); /* قائمة المالك: ['btnOmranTV'] */
 /* v-hw-resubmit-2 (رفض هواوي ٢٦ أكتوبر؛ القاعدة 1.15: لا أسماء علامات أو امتيازات تجاريّة لطرف ثالث بلا ترخيص): داخل تطبيق هواوي
    وحده (html.store-safe ومعه علم الحزمة ?store=huawei في الجلسة — ui-wiring يضع store-safe أيضًا لمتصفّح هواوي على الموقع، وذاك يبقى
    كما هو) تُخفى الخيارات المسمّاة بعلامة أو امتياز تجاريّ — أنماط الصور، ترندات الفيديو، الستايل، الطوابع. الموقع والمتاجر الأخرى كما هي؛
@@ -902,6 +944,30 @@ function omranHwStampGroups(groups){
 if(OMRAN_PAUSED_TOOLS.indexOf('btnQuickTemplates') >= 0){
   try{ var __hwSug = document.getElementById('hwCardSuggestions'); if(__hwSug){ __hwSug.hidden = true; __hwSug.style.setProperty('display', 'none', 'important'); } }
   catch(e){ __swallow(e, 'ui:paused-hw-card'); }
+  /* v-hw-1316: البطاقة الفرديّة الأخيرة قبل المخفيّة تتوسّط بصنف لا بـ:has() (Chromium 105+، وWebView هواوي ≈ 99) */
+  try{
+    var __hwPrev = __hwSug && __hwSug.previousElementSibling;
+    if(__hwPrev && __hwPrev.classList.contains('hwToolCard') && Array.prototype.indexOf.call(__hwPrev.parentNode.children, __hwPrev) % 2 === 0) __hwPrev.classList.add('hwOddLast');
+  }catch(e){ __swallow(e, 'ui:hw-odd-last'); }
+}
+/* v-hw-1316 (رفض هواوي 1.3.15 بالقاعدة 1.14 «المعلومات واللقطات لا تطابق التطبيق»): داخل تطبيق هواوي لا يَعِد نصٌّ ظاهر ببناء
+   تطبيقات وألعاب ومواقع — وصف المتجر ولقطاته أدوات ومحادثة. في «عن التطبيق»: السطر التعريفيّ، وبطاقة «بناء تطبيقات بالمحادثة»، والنبذة.
+   :has() للحاضنات (Chromium 105+)، والنصوص نفسها احتياط لـWebView 99 في قاعدة مستقلّة (محدِّد غير مفهوم يُسقط قاعدته وحدها). */
+if(omranHwPackage()){
+  try{
+    var __hwNb = document.createElement('style');
+    __hwNb.id = 'hwNoBuilderCss';
+    __hwNb.textContent = '[data-i18n="aboutTagline"],[data-i18n="aboutFeatChat"],[data-i18n="aboutMoreSummary"],[data-i18n="aboutText"]{display:none !important;}'
+      + 'details:has(> [data-i18n="aboutText"]),div:has(> [data-i18n="aboutFeatChat"]){display:none !important;}';
+    (document.head || document.documentElement).appendChild(__hwNb);
+    var __hwNbBox = function(){
+      try{
+        document.querySelectorAll('[data-i18n="aboutFeatChat"]').forEach(function(e){ if(e.parentElement) e.parentElement.style.display = 'none'; });
+        document.querySelectorAll('[data-i18n="aboutText"]').forEach(function(e){ var d = e.closest('details'); if(d) d.style.display = 'none'; });
+      }catch(e){ __swallow(e, 'ui:hw-no-builder-box'); }
+    };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', __hwNbBox, { once: true }); else __hwNbBox();
+  }catch(e){ __swallow(e, 'ui:hw-no-builder'); }
 }
 var APP_CAPABILITIES = [
   { id:'btnCV',       icon:'💼', key:'cvTitle', ar:'مولّد السيرة الذاتية', en:'CV Builder',
@@ -3765,6 +3831,7 @@ window.acctToggleQr = function() {
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
   var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
+  if (typeof window.omranShareSheet === 'function') { window.omranShareSheet({ url: shareUrl, text: t('acctShareText') }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45)
   if (navigator.share) {
     try { await navigator.share({ title: 'om ai', text: t('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
   } else {

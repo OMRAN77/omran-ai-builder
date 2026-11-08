@@ -101,7 +101,21 @@ test('٣. صفحة التحويل: لا متاجر ولا باركود فيها 
   }
   assert.match(html, /location\.replace\(dest\)/);
   assert.match(html, /<noscript><meta http-equiv="refresh" content="0;url=\/"><\/noscript>/, 'بلا سكربت يفتح التطبيق');
-  assert.match(html, /var STORES = \{ ios: '', android: '', huawei: '', windows: '' \};/, 'لا متجر منشور بعد');
+  // v-hw-store-link ثمّ v-qr-all-stores: هواوي وآبل وويندوز منشورة، وGoogle Play فارغ (اختبار مغلق)
+  assert.match(html, /var STORES = \{ ios: 'https:\/\/apps\.apple\.com\/app\/id6795795451', android: '', huawei: 'https:\/\/appgallery\.huawei\.com\/app\/C118703501', windows: 'https:\/\/apps\.microsoft\.com\/detail\/9NZLQM4G1X3D' \};/, 'ثلاثة متاجر منشورة، وبلي لا');
+  assert.doesNotMatch(html, /omran-ai-builder\/id|Omran AI Builder/, 'روابط المتاجر بلا الاسم القديم');
+});
+
+test('٣ب. v-qr-all-stores: STORES الحقيقيّة — هواوي وآيفون وويندوز إلى متاجرها، وأندرويد الآخر التطبيق نفسه بزرّ التثبيت', () => {
+  const f = goDestFn();
+  const html = read('download.html');
+  const m = /var STORES = (\{[^}]*\});/.exec(html);
+  const stores = JSON.parse(m[1].replace(/([{,]\s*)(\w+):/g, '$1"$2":').replace(/'/g, '"'));
+  assert.equal(f(UA.huawei[0], 5, '?ref=omran', stores), 'https://appgallery.huawei.com/app/C118703501', 'هواوي ← AppGallery');
+  assert.equal(f(UA.android[0], 5, '?ref=omran', stores), '/?ref=omran&install=1', 'أندرويد آخر ← التطبيق (Google Play ما زال اختبارًا مغلقًا)');
+  assert.equal(f(UA.iphone[0], UA.iphone[1], '', stores), 'https://apps.apple.com/app/id6795795451', 'آيفون ← App Store');
+  assert.equal(f(UA.windows[0], 0, '', stores), 'https://apps.microsoft.com/detail/9NZLQM4G1X3D', 'ويندوز ← Microsoft Store');
+  for (const k of Object.keys(UA).filter((x) => /ipad/i.test(x))) assert.equal(f(UA[k][0], UA[k][1], '', stores), 'https://apps.apple.com/app/id6795795451', k + ' ← App Store');
 });
 
 test('٤. التوجيه: بلا متجر منشور كلّ جهاز يفتح التطبيق بزرّ التثبيت، ودعوة المالك تمرّ معه', () => {
@@ -265,4 +279,11 @@ test('١٢. نصّا الزرّ (install وcloseTitle) موجودان فعلًا
     vm.runInNewContext(read('i18n/' + lg + '.js'), ctx);
     for (const k of ['install', 'closeTitle']) assert.ok(typeof ctx.I18N[lg][k] === 'string' && ctx.I18N[lg][k].length > 1, k + ' في ' + lg);
   }
+});
+
+test('١٠. v-qr-all-stores: صورة الباركود تُنزَّل باسم om-ai-qr.png لا الاسم القديم، ووسم الجزء مرفوع', () => {
+  const ps = read('js/partials-settings.js');
+  assert.ok(ps.includes('<a id="acctQrDl" download="om-ai-qr.png"'), 'اسم الملفّ الجديد');
+  assert.ok(!ps.includes('omran-ai-qr.png'), 'لا الاسم القديم');
+  assert.ok(Number((/\/js\/partials-settings\.js\?v=(\d+)"/.exec(read('index.html')) || [])[1]) >= 709, 'كسر كاش الجزء بعد تغييره');
 });

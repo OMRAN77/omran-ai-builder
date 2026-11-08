@@ -1,8 +1,24 @@
-# حزمة متجر هواوي (AppGallery) — إعادة تقديم بعد رفض 1.3.13 (٢٢ ثمّ ٢٦ أكتوبر ٢٠٢٦)
+# حزمة متجر هواوي (AppGallery) — 1.3.16 «om ai» بعد نشر 1.3.15 (رُفضت قبلها 1.3.14 و1.3.13 في أكتوبر ٢٠٢٦)
+
+> **v-hw-om-ai (٦ نوفمبر ٢٠٢٦):** 1.3.15 منشورة في AppGallery. المالك: «اريد الاسم om ai في كل الروابط» — 1.3.16 تغيّر اسم الهاتف
+> (`name` و`launcherName` في `twa/app/build.gradle`) إلى «om ai»، ولا شيء غيره. ابنها بأمر الخطوة ٢، واسم AGC «om ai» في كلّ لغة مع رفعها.
+
+> **v-hw-1316 (٣ نوفمبر ٢٠٢٦):** 1.3.15 رُفضت بالقاعدة 1.14 وحدها (3.1 انحلّت). أعد تقديم **1.3.15 نفسها بلا بناء**: الإصلاح كلّه في الموقع —
+> اللغة تتبع الهاتف، ولا وعد ببناء تطبيقات، واحتياط محرّك الويب الأقدم، ولقطات جديدة (`node store/huawei/shots.mjs`). الخطوات في REVIEW-NOTES.md أعلاه.
 
 **التطبيق:** om ai (سابقًا Omran AI Builder / «عمران AI») · **معرّف AGC:** 118703501 · **اسم الحزمة المسجّل في AGC:** `com.omran.aibuilder.twa` (لا `com.omran.aibuilder` — ذاك اسم حزمة APKPure؛ AGC رفض الرفع به ١٨ سبتمبر)
 
-## آخر رفض: 1.3.13 مرّة ثانية (٢٦ أكتوبر ٢٠٢٦) — الخطآن نفسهما (التفاصيل: `knowledge/DECISIONS.md` ← v-hw-resubmit-2)
+## رفض 1.3.14 (٣٠ أكتوبر ٢٠٢٦) — 3.1 «لا يمكن تحميل ملف» و1.14 (التفاصيل: `knowledge/DECISIONS.md` ← v-hw-1315)
+مراجع هواوي (EMUI 16) يشغّل التطبيق في WebView الاحتياطيّ (`MahaWebViewFallbackActivity`) لأنّ هاتفه بلا متصفّح يدعم TWA،
+وذاك النشاط لم يكن ينفّذ `onShowFileChooser` — كلّ «اختيار ملف» ميت، فأداة المستندات «لا يمكن تحميل ملف» ولقطتا الأزياء
+والديكور (زرّ اختيار الملف) «لا تطابق الوظائف الفعليّة». **تغيّر في 1.3.15:** منتقي الملفّات، الموقع للقبلة، حفظ تنزيلات blob:/data:،
+وعلى الموقع (بلا APK): تصغير صور الكاميرا في المستندات، وتمييز الغلاف (`omranHwWebView`). **يلزم APK جديد** — هذه المرّة الإصلاح في الغلاف.
+
+## الرفض الثالث: 1.3.13 (٢٨ أكتوبر ٢٠٢٦) — 4.1 «نوع محتوى واحد» (التفاصيل: `knowledge/DECISIONS.md` ← v-hw-tools-home)
+عرض الأدوات التلقائيّ كان مرّة في عمر الجهاز، والمراجع يعيد الحزمة على الهاتف نفسه فيفتح على محادثة فارغة. **تغيّر:** مربّع الأدوات
+شاشة البداية في **كلّ** فتح لحزمة هواوي (بلا APK جديد — المنطق في الصفحة)، وخانة Remarks والملاحظات تقولها للمراجع.
+
+## رفض قبله: 1.3.13 مرّة ثانية (٢٦ أكتوبر ٢٠٢٦) — الخطآن نفسهما (التفاصيل: `knowledge/DECISIONS.md` ← v-hw-resubmit-2)
 1. **1.14 «اللقطات لا تطابق التطبيق»:** التطبيق يعرض واجهته **بلغة الهاتف** (`js/app-04-i18n-state.js`)، ومراجع هواوي على هاتف صينيّ أو
    إنجليزيّ — واللقطات الثماني كانت عربيّة فقط. وأوّل ما يراه كان **شاشة افتتاح** هي صورة ثابتة لتصميم قديم («أهلاً عمران»، سعر الذهب،
    شريط سفليّ غير موجود). **تغيّر:** اللقطات بثلاث لغات (`screenshots/` عربيّ، `screenshots/en/`، `screenshots/zh/`) تُرفع كلّ مجموعة تحت
@@ -38,7 +54,7 @@
 ## ما في المستودع
 | الملفّ | دوره |
 |---|---|
-| `twa/` | **مشروع أندرويد كامل (Trusted Web Activity)** مولَّد بالقالب الرسميّ (`scripts/twa-generate.mjs` على `@bubblewrap/core`): الحزمة `com.omran.aibuilder.twa`، ينطلق من `/?store=huawei`، الإصدار يُضبط عند البناء (المرفوعة 1.3.13)، الاسم على الشاشة «عمران AI» واسم التطبيق Omran AI Builder — كما في 1.3.13 (المالك ٢٢ أكتوبر: «رقم الإصدار 1.3.13، ما يريد إصدار جديد»؛ «om ai» على الهاتف ينتظر إصدارًا قادمًا)، الأيقونات من `icons/`، وبلا متصفّح يدعم TWA يفتح **WebView ملء الشاشة** لا تبويب متصفّح. |
+| `twa/` | **مشروع أندرويد كامل (Trusted Web Activity)** مولَّد بالقالب الرسميّ (`scripts/twa-generate.mjs` على `@bubblewrap/core`): الحزمة `com.omran.aibuilder.twa`، ينطلق من `/?store=huawei`، الإصدار يُضبط عند البناء (المنشورة 1.3.15، والتالية 1.3.16)، الاسم على الشاشة وفي الإعدادات «om ai» من 1.3.16 (v-hw-om-ai؛ حتّى 1.3.15 «عمران AI» وOmran AI Builder)، الأيقونات من `icons/`، وبلا متصفّح يدعم TWA يفتح **WebView ملء الشاشة** لا تبويب متصفّح. |
 | `.github/workflows/android-release.yml` | يبني الـAPK على مشغّل GitHub (Android SDK جاهز هناك)، يوقّعه بمفتاحك من أسرار المستودع، ينشر **Release** `v1.3.12` بالـAPK، يطبع بصمة التوقيع، ويفتح طلب سحب يضعها في `assetlinks.json`. |
 | `../../manifest-huawei.json` | بيان الحزمة: `start_url`/`id` = `/?store=huawei`، `scope` = `/`. البيان العامّ `manifest.json` لم يتغيّر. |
 | `../../.well-known/assetlinks.json` | Digital Asset Links للحزمة. البصمة تُملأ تلقائيًّا من الورك فلو (أو يدويًّا). |
@@ -84,7 +100,7 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
 القسم التالي (خطوات PWABuilder) يبقى مرجعًا عامًّا لمسار توليد حزمة بلا كود مخصَّص فقط — لا تستعمله
 لهذي المشكلة تحديدًا:
 1. افتح <https://www.pwabuilder.com> وأدخل `https://omran-ai-builder.vercel.app/?store=huawei` ← **Package for stores** ← **Android**.
-2. في الخيارات: **Package ID** `com.omran.aibuilder.twa` · **App name** `Omran AI Builder` · **Launcher name** `عمران AI` ·
+2. في الخيارات: **Package ID** `com.omran.aibuilder.twa` · **App name** `om ai` · **Launcher name** `om ai` ·
    **Version** `1.3.12` · **Version code** `20260925` · **Start URL** `/?store=huawei` ·
    **Manifest URL** `https://omran-ai-builder.vercel.app/manifest-huawei.json` · **Fallback** WebView ·
    **Signing key: Create new** (املأ الاسم والمنظّمة كيفما شئت).
@@ -100,12 +116,21 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
 
 **لاحقًا (اختياريّ):** ضع الأربعة من `signing-key-info.txt` في أسرار المستودع (الخطوة ١) فتُبنى الإصدارات القادمة بضغطة من هنا.
 
-### ٢) البناء — لا يلزم لإعادة تقديم 1.3.13
-**إعادة تقديم 1.3.13 (٢٢ أكتوبر): لا بناء.** الحزمة غلاف للموقع، فاللقطات والنصوص والإصلاحات تصل بلا APK جديد — AGC يقبل
-إعادة إرسال الحزمة نفسها بعد تعديل المعلومات. لإصدار قادم: **Actions ← android-release ← Run workflow** برقم أكبر من 1.3.13
-و`versionCode` أكبر من 20261010 (القيم الافتراضيّة في النموذج قديمة: 1.3.12).
+### ٢) البناء — 1.3.16 (versionCode 20261106)
+**1.3.16 (٦ نوفمبر): الاسم «om ai» على الهاتف (v-hw-om-ai)** — **Actions ← android-release ← Run workflow** واكتب `version_name` = `1.3.16`
+و`version_code` = `20261106`، أو من PowerShell بعد `gh auth login`:
+`gh workflow run android-release.yml --repo OMRAN77/omran-ai-builder --ref main -f version_name=1.3.16 -f version_code=20261106 -f release=true`
+**1.3.15 (٣٠ أكتوبر): منتقي الملفّات والموقع والتنزيلات في WebView (v-hw-1315)** — اكتب `version_name` = `1.3.15`
+و`version_code` = `20261030`:
+`gh workflow run android-release.yml --repo OMRAN77/omran-ai-builder --ref main -f version_name=1.3.15 -f version_code=20261030 -f release=true`
+**1.3.14 (٢٨ أكتوبر): بناء جديد بأمر المالك** («1.3.14 سو جديد» — v-hw-1314). الحزمة غلاف للموقع: اللقطات والنصوص والإصلاحات
+تصل بلا APK جديد، و1.3.14 هي 1.3.13 نفسها (الحزمة والمفتاح واسم الهاتف «عمران AI») برقم أكبر. 1.3.13 كانت versionCode 20261010.
+**Actions ← android-release ← Run workflow** واكتب `version_name` = `1.3.14` و`version_code` = `20261028` (القيم الافتراضيّة في
+النموذج قديمة: 1.3.12)، أو من PowerShell بعد `gh auth login`:
+`gh workflow run android-release.yml --repo OMRAN77/omran-ai-builder --ref main -f version_name=1.3.14 -f version_code=20261028 -f release=true`
+الإصدار القادم: رقم أكبر من 1.3.16 و`versionCode` أكبر من 20261106.
 بعد دقائق:
-- **Release `v1.3.12`** في صفحة المستودع (Releases) وفيه `omran-ai-builder-1.3.12.apk` — حمّله.
+- **Release `v1.3.16`** في صفحة المستودع (Releases) وفيه `omran-ai-builder-1.3.16.apk` — حمّله.
 - ملخّص التشغيل يعرض **بصمة التوقيع SHA-256**، ويُفتح طلب سحب يضعها في `assetlinks.json` — ادمجه (Vercel ينشر تلقائيًّا).
   تحقّق: `https://omran-ai-builder.vercel.app/.well-known/assetlinks.json` يعرض البصمة.
 - إن كان **App signing** مفعّلًا في AppGallery Connect (التطبيق ← App signing) فخذ بصمة شهادة AGC من الصفحة نفسها
@@ -113,8 +138,8 @@ base64 -w0 signing.keystore                           # Linux: انسخ النا
 
 ### ٣) الرفع في AppGallery Connect
 - جرّب الـAPK على جهاز هواوي أوّلًا: **بلا شريط عنوان** + مربّع الأدوات يفتح من أوّل ثانية + لا شريط أسهم. (شريط عنوان = البصمة لم تُنشر بعد على النطاق.)
-- أبقِ حزمة 1.3.13 المرفوعة واسم التطبيق في AGC كما هو (يطابق اسم الهاتف «عمران AI»)، **احذف كلّ اللقطات القديمة من AGC في كلّ لغة**
-  وارفع `screenshots/*.png` تحت العربيّة و`screenshots/en/` تحت English و`screenshots/zh/` تحت 简体中文 (أضف اللغة الصينيّة للتطبيق)، والوصف من `REVIEW-NOTES.md`، وفي خانة **Remarks** النصّ القصير (٣٠٠ حرف) من `REVIEW-NOTES.md`،
+- ارفع حزمة 1.3.16 (versionCode 20261106) مكان 1.3.15، واسم التطبيق في AGC **«om ai»** في كلّ لغة (يطابق اسم الهاتف من 1.3.16). اللقطات المرفوعة في AGC
+  مع 1.3.15 تبقى (`screenshots/*.png` تحت العربيّة و`screenshots/en/` تحت English و`screenshots/zh/` تحت 简体中文 — لا تتغيّر إلّا إن تغيّرت الشاشات)، والوصف من `REVIEW-NOTES.md`، وفي خانة **Remarks** النصّ القصير (٣٠٠ حرف) من `REVIEW-NOTES.md`،
   وحساب التجربة في خانتيه (اسم مستخدم وكلمة مرور تُنشئهما أنت — لا تكتبهما في المستودع؛ ليس «omran»).
 - قبل الضغط على Submit: افتح أدوات الصور بحساب التجربة نفسه وتأكّد أنّها تُنتج — إن سقطت فالمراجع سيراها ساقطة.
 

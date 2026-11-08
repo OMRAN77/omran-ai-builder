@@ -209,6 +209,7 @@ async function moveLiveCounters(oldKey, newKey, user) {
   await step('daily-quota', () => require('./_dailyQuota.js').moveToday(oldKey, newKey)); // v-farm-gate: حصص أدوات الصور والفيديو اليوميّة كانت تتصفّر بتغيير الاسم
   await step('image-giveback', () => require('./image-giveback.js').moveToday(oldKey, newKey)); // ردود الحارس و«لم يُنفَّذ» اليوم — كانت تتجدّد مع كلّ اسم
   await step('cost-meter', () => require('./cost-meter.js').moveMonthCosts(oldKey, newKey));
+  await step('office-month', () => require('./office.js').moveMonth(oldKey, newKey, require('./kv.js'))); // v-office-files: ملفّ الشهر المجّانيّ لا يتجدّد بتغيير الاسم
 }
 
 function makeToken(username, sv) {
@@ -1678,6 +1679,8 @@ async function isBanned(username) {
 }
 module.exports.isBanned = isBanned;
 module.exports.emailVerifiedFor = emailVerifiedFor; // v-vip-verified: vip.js يحوّل الإيميل إلى حساب أثبته وحده
+module.exports.resolveLoginUser = resolveLoginUser; // v-owner-reset-find: رابط استرجاع المالك بالإيميل
+module.exports.googleAccountFor = googleAccountFor; // v-owner-reset-find
 module.exports.emailProven = emailProven; // v-unverified-email: والكولباك (الربط التلقائيّ بالبريد)
 module.exports.settleUnverifiedEmail = settleUnverifiedEmail;
 module.exports.sweepUnverifiedEmails = sweepUnverifiedEmails; // email-sweep.js

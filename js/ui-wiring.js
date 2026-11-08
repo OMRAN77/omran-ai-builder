@@ -196,7 +196,10 @@
   var NAV = {
     home:     function(){ tap('#btnNew'); },
     chats:    function(){ tap('#btnToggleProjects'); },
-    tools:    function(){ var o=document.getElementById('sectionsToolsOverlay'); if(o) o.classList.add('show'); }, /* v433: تبويب الأدوات يفتح المربع الاحترافي المنفصل */
+    /* v433: تبويب الأدوات يفتح المربع الاحترافي المنفصل. v-tools-exit (المالك ٦ نوفمبر: «اذا ادخل في الأدوات مايرجعني المحادثه
+       يعلق في الادوات»): ✕ مخفيّة بقرار السحب (v-swipe-back) والشاشة كانت تغطّي الشريط السفليّ، فلا مخرج ظاهر على الآيفون. الشريط
+       صار ظاهرًا فوقها في الجوّال، وضغطة «الأدوات» وهي مفتوحة ترجع للمحادثة — التبويب يفتح ويغلق كدرجَي المحادثات والملفّات. */
+    tools:    function(){ var o=document.getElementById('sectionsToolsOverlay'); if(o) o.classList.toggle('show'); },
     files:    function(){ tap('#btnToggleHistory'); },
     settings: function(){ tap('#btnSettings'); }
   };
@@ -225,14 +228,43 @@
   }
   watchNav();
   syncNavActive();
+  /* v-tools-exit: ارتفاع الشريط السفليّ الظاهر فعلًا (يختلف بحافّة الآيفون الآمنة، ويختفي مع لوحة المفاتيح) في --omNavH —
+     شاشة الأدوات في الجوّال تقف فوقه (redesign.css) فيبقى التبويب الذي فتحها ظاهرًا ومخرجًا منها. */
+  (function(){
+    var nav = document.getElementById('omranBottomNav');
+    if(!nav) return;
+    var last = -1;
+    function sync(){
+      var h = Math.round(nav.getBoundingClientRect().height) || 0;
+      if(h === last) return;
+      last = h;
+      document.documentElement.style.setProperty('--omNavH', h + 'px');
+    }
+    sync();
+    try{ if(typeof ResizeObserver === 'function') new ResizeObserver(sync).observe(nav); }catch(e){ __swallow(e, "wiring:nav-h"); }
+    window.addEventListener('resize', sync);
+    var ov = document.getElementById('sectionsToolsOverlay');
+    if(ov && typeof MutationObserver === 'function'){
+      try{ new MutationObserver(sync).observe(ov, { attributes:true, attributeFilter:['class'] }); }catch(e){ __swallow(e, "wiring:nav-h-ov"); }
+    }
+  })();
   document.querySelectorAll('.omNavBtn').forEach(function(b){
     b.addEventListener('click', function(){
-      b.__omLastClick = Date.now(); /* v-ios-tap-fallback */
+      var now = Date.now();
+      /* v-tools-exit: الأدوات والدرجان تبديل — نقرة أصليّة تصل متأخّرة بعد أن أطلق بديل اللمس أدناه نقرته كانت ستفتح ثمّ تغلق.
+         تُبلع تلك وحدها؛ ضغطات المستخدم الحقيقيّة المتتالية تُحسب كلّها كما كانت. */
+      if(b.__omSynth){ b.__omSynthAt = now; }
+      else if(now - (b.__omSynthAt || 0) < 700) return;
+      b.__omLastClick = now; /* v-ios-tap-fallback */
       var k = b.getAttribute('data-omnav');
       /* v-nav-top: الشريط صار فوق الأدراج — تبويب غير درجيّ يغلق أي درج مفتوح
          أولًا حتى لا ينفّذ فعله خلف الدُّرج. (chats/files تبديلهما يتكفّل بذلك) */
       if(k !== 'chats' && k !== 'files'){
         try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ __swallow(e, "wiring:nav-top"); }
+      }
+      /* v-tools-exit: أيّ تبويب آخر يخرج من شاشة الأدوات — كان «المحادثات» يفتح الدرج فوقها، واختيار محادثة يغلقه ويبقي الأدوات */
+      if(k !== 'tools'){
+        var ov = document.getElementById('sectionsToolsOverlay'); if(ov) ov.classList.remove('show');
       }
       var f = NAV[k]; if(f) f();
       watchNav();
@@ -246,7 +278,9 @@
       setTimeout(function(){
         if(Date.now() - (b.__omLastClick || 0) < 600) return;
         b.__omLastClick = Date.now();
+        b.__omSynth = true; /* v-tools-exit */
         try{ b.click(); }catch(e){ __swallow(e, "wiring:ios-tap-fallback"); }
+        finally{ b.__omSynth = false; }
       }, 450);
     }, {passive:true});
   });

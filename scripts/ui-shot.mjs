@@ -68,6 +68,8 @@ const base = 'http://127.0.0.1:' + srv.address().port;
 const pwMod = await loadPlaywright();
 const chromium = pwMod.chromium || (pwMod.default && pwMod.default.chromium); // CJS عبر import: الاسم قد يكون تحت default
 // لغة المتصفّح نفسه مع --lang: على جهاز لغته عربيّة كانت حقول الأرقام تعرض ١ و٣٠٠ في لقطات en/zh
+// v-hw-1316: وlocale السياق = لغة الهاتف — حزمة هواوي صارت تتبع navigator.languages في كلّ تشغيل (v-hw-lang-follow) لا aiapp_lang المحفوظ
+const PHONE_LOCALE = LANG === 'zh' ? 'zh-CN' : (LANG === 'ar' ? 'ar' : (LANG === 'en' ? 'en-US' : LANG));
 const browser = await chromium.launch({ executablePath: chromiumPath(), args: LANG === 'ar' ? [] : ['--lang=' + (LANG === 'zh' ? 'zh-CN' : 'en-US')] });
 fs.mkdirSync(OUT, { recursive: true });
 const summary = { base, out: OUT, user: USER || null, shots: [], pageErrors: [], consoleErrors: [] };
@@ -75,8 +77,8 @@ try {
   for (const kind of which) {
     const mobile = kind === 'mobile';
     const ctx = await browser.newContext(mobile
-      ? { viewport: VIEWPORT || { width: 400, height: 860 }, isMobile: true, hasTouch: true, deviceScaleFactor: SCALE || 2, userAgent: 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36' }
-      : { viewport: VIEWPORT || { width: 1280, height: 900 }, deviceScaleFactor: SCALE || 1 });
+      ? { locale: PHONE_LOCALE, viewport: VIEWPORT || { width: 400, height: 860 }, isMobile: true, hasTouch: true, deviceScaleFactor: SCALE || 2, userAgent: 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36' }
+      : { locale: PHONE_LOCALE, viewport: VIEWPORT || { width: 1280, height: 900 }, deviceScaleFactor: SCALE || 1 });
     await ctx.addInitScript(({ u, l }) => {
       try { sessionStorage.setItem('omran_sess_v1', '1'); } catch (e) { /* لا شيء */ }
       try {

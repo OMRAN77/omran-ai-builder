@@ -80,6 +80,17 @@ document.querySelectorAll('.voiceSpeedBtn').forEach(b => {
     setVoiceSpeedUI(b.dataset.speed);
   };
 });
+// v-reply-dialect: لهجة الصوت العربيّ بنمط أزرار السرعة نفسه، والضغط يُسمعك المختار فورًا (مثل زرّي الجنس).
+function setVoiceDialectUI(val){
+  document.querySelectorAll('.voiceDialectBtn').forEach(b => b.classList.toggle('active', b.dataset.dialect === val));
+}
+document.querySelectorAll('.voiceDialectBtn').forEach(b => {
+  b.onclick = () => {
+    localStorage.setItem('aiapp_voice_dialect', b.dataset.dialect);
+    setVoiceDialectUI(b.dataset.dialect);
+    try{ speakSmart(voicePersonaSample(localStorage.getItem('aiapp_voice_gender') === 'male' ? 'male' : 'female'), null, null, true); }catch(e){ __swallow(e, 'voice:dialect-sample'); }
+  };
+});
 const btnTestVoice = $('#btnTestVoice');
 if(btnTestVoice){
   btnTestVoice.onclick = () => {

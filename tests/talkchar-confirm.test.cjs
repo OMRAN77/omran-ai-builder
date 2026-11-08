@@ -64,9 +64,9 @@ const bal = (u) => Number(kv.get('points:' + u));
 let upstream = 0;
 const plan = []; // حالات المزوّد القادمة بالترتيب (فارغ = ٢٠٠)
 global.fetch = async (url) => {
-  if (!/predictLongRunning/.test(url)) return new Response('{}', { status: 404 });
+  if (!/\/interactions$/.test(String(url))) return new Response('{}', { status: 404 });
   const st = plan.length ? plan.shift() : 200;
-  return st === 200 ? new Response(JSON.stringify({ name: 'operations/veo-' + (++upstream) }), { status: 200 })
+  return st === 200 ? new Response(JSON.stringify({ steps: [{ type: 'model_output', content: [{ type: 'video', uri: 'https://generativelanguage.googleapis.com/v1beta/files/t' + (++upstream) + ':download?alt=media' }] }] }), { status: 200 })
     : new Response(JSON.stringify({ error: { message: 'models/veo-x: upstream ' + st } }), { status: st });
 };
 async function serve(body, action) {

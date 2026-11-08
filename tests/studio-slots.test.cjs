@@ -42,7 +42,8 @@ test('٢. الخانة: كاميرا (للّمس) ومعرض — بلا «آخر
 
 test('٣. الصورتان تُضغطان، والزرّ يرشد إلى الخانة الناقصة', () => {
   assert.match(js, /fileInputB\.onchange = \(\) => \{ const f = fileInputB\.files && fileInputB\.files\[0\]; if\(f\) studioSetPhoto\('B', f\); \};/);
-  assert.match(js, /function studioSetPhoto\(which, file\)\{[\s\S]*?normalizeStudioPhoto\(file\)/);
+  /* v-studio-bands: رفع المستخدم يطلب قصّ الحشو أيضًا (trimBands) — الضغط نفسه كما كان */
+  assert.match(js, /function studioSetPhoto\(which, file\)\{[\s\S]*?normalizeStudioPhoto\(file, \{ trimBands: true \}\)/);
   assert.doesNotMatch(js.slice(js.indexOf('fileInputB.onchange'), js.indexOf('btnGenerate.onclick')), /FileReader/, 'لا رفع خام للصورة الثانية');
   assert.match(js, /studioOpenMenu\(studioMissing\(\)\); \/\* v-studio-slots/);
   assert.match(js, /btnGenerate\.textContent = studioMissing\(\) \? t\('studioAddPhotoCta'\) : t\('studioAiGenerateBtn'\);/);
@@ -59,8 +60,8 @@ test('٤. النصوص الجديدة بالـ١٤ لغة، والحزمة وا�
     for (const k of K) assert.ok(new RegExp('"?' + k + '"?:').test(s), lg + ' ' + k);
   }
   assert.ok(read('js/app.bundle.js').includes("function studioSetPhoto(which, file){"), 'الحزمة أُعيد بناؤها');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=676'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=775'"));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=677'));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=790'"));
 });
 
 test('٥. المقارنة (لقطة المالك «كيف الشخص يعرف الشكل»): بطاقات مصوّرة مطويّة، وثلاثة كحدّ أقصى', () => {
@@ -74,7 +75,7 @@ test('٥. المقارنة (لقطة المالك «كيف الشخص يعرف �
   assert.match(b, /querySelectorAll\('\.studioCompareCheck:checked'\)\.length > 3\)\{ cb\.checked = false; studioCompareMaxHint\(\); return; \}/);
   assert.doesNotMatch(b, /innerHTML = '<input type="checkbox"/, 'لا مربّعات نصّيّة');
   assert.match(js, /compareChecksEl\.querySelectorAll\('\.studioCompareCheck:checked'\)/, 'قارئ المقارنة كما هو');
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=676'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=677'));
 });
 
 test('٦. قائمة المصدر (لقطة المالك «شوف وين تتحرك عند الإضافة»): ورقة من الأسفل للّمس، وتحت الخانة للحاسوب', () => {
@@ -83,5 +84,5 @@ test('٦. قائمة المصدر (لقطة المالك «شوف وين تتح�
   assert.match(js, /const below = r\.bottom \+ 8, above = r\.top - mh - 8;/, 'تحت الخانة، وفوقها إن ضاق ما تحتها');
   assert.doesNotMatch(js, /r\.top \+ r\.height \/ 2/, 'لا وسط الخانة فوق الميزات');
   assert.match(html, /\.stSrcMenu\.sheet\{left:0; right:0; bottom:0;/);
-  assert.ok(read('index.html').includes('/js/partials-core.js?v=676'));
+  assert.ok(read('index.html').includes('/js/partials-core.js?v=677'));
 });

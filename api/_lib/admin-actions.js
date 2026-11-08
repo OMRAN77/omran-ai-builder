@@ -1,8 +1,10 @@
 // Vercel Serverless Function: OWNER-ONLY user management actions.
 // Requires a valid session token belonging to OWNER_USERNAME. Regular users
-// get 403 no matter what they send. Actions: ban, unban, delete, message.
+// get 403 no matter what they send. Actions: ban, unban, delete, message, reset-link.
 const { getUser, putUser, userPath } = require('./auth.js');
 const { kvDel, kvList } = require('./kv.js');
+const crypto = require('crypto');
+const RESET_LINK_MIN = 30; // v-owner-reset-link: صلاحيّة الرابط كرابط البريد
 
 // v-owner-core: قائمة المالك الموحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
 const { isOwnerName } = require('./_owner.js');
@@ -85,7 +87,21 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'missing targetUsername' });
       return;
     }
-    const key = targetUsername.trim().toLowerCase();
+    let key = targetUsername.trim().toLowerCase();
+    /* v-owner-reset-find: جدول المستخدمين يعرض أحدث ٦٠ تسجيلًا فقط، فصاحب الحساب الأقدم لا صفّ له ولا 🔑. خانة البحث ترسل
+       الإيميل كما كتبه المالك: يُحوَّل إلى حسابه بفهرس البريد (مؤكَّدًا أو لا — المالك تحقّق بنفسه)، وحساب «المتابعة عبر Google»
+       لا كلمة مرور يعرفها صاحبه فيُقال للمالك ذلك بدل رابط لا ينفع. */
+    if (action === 'reset-link' && key.includes('@')) {
+      const { resolveLoginUser, googleAccountFor } = require('./auth.js');
+      const found = await resolveLoginUser(key);
+      if (found.user && !found.user.deleted) key = found.key;
+      else {
+        const g = await googleAccountFor(key);
+        if (g) { res.status(200).json({ ok: false, google: true, username: g.key }); return; }
+        res.status(404).json({ error: 'user not found' });
+        return;
+      }
+    }
     if (isOwnerName(key)) {
       res.status(400).json({ error: 'cannot act on the owner account' });
       return;
@@ -113,6 +129,22 @@ module.exports = async (req, res) => {
     }
     if (!user) {
       res.status(404).json({ error: 'user not found' });
+      return;
+    }
+
+    /* v-owner-reset-link: مستخدم نسي كلمة مروره وإيميل الاسترجاع لا يصله (MAIL_FROM التجريبيّ يصل صاحب حساب Resend وحده)،
+       فيعيد الضغط حتّى ينقفل ربع ساعة. هنا المالك — بعد أن يتحقّق من صاحب الحساب بنفسه — ينشئ رابط الاسترجاع نفسه الذي
+       يرسله البريد (رمز ٣٠ دقيقة، يُخزَّن مجزَّأً، ويُبطل الرابط السابق) ويسلّمه له بيده. لا يرى المالك كلمة المرور ولا يضعها؛
+       صاحب الحساب يكتبها، وresetWithToken يُبطل كلّ جلساته السابقة كما في الاسترجاع بالبريد. */
+    if (action === 'reset-link') {
+      if (user.deleted) { res.status(404).json({ error: 'user not found' }); return; }
+      const rt = crypto.randomBytes(24).toString('hex');
+      user.resetTokenHash = crypto.createHash('sha256').update(rt).digest('hex');
+      user.resetTokenExpiry = Date.now() + RESET_LINK_MIN * 60 * 1000;
+      await putUser(key, user);
+      const { siteUrl } = require('./_site.js');
+      const link = siteUrl() + '/?resetToken=' + encodeURIComponent(rt) + '&ru=' + encodeURIComponent(key);
+      res.status(200).json({ ok: true, link, minutes: RESET_LINK_MIN, username: key });
       return;
     }
 

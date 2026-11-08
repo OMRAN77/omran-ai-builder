@@ -63,10 +63,25 @@ window.postWithConfirm = postWithConfirm;
     worker = new Worker(URL.createObjectURL(blob));
   }catch(e){ return; }
 
+  /* v-freeze-bg (لقطة عمران ٤ نوفمبر: البانر فوق محادثة عن إكسل — النافذة كانت خلف إكسل): الصفحة المخفيّة يخنقها
+     المتصفّح، فكان أيّ انشغال وهي مخفيّة يُحسب «تجمّدًا» ويطلع البانر عند الرجوع وما رأى المستخدم شيئًا (مسبار:
+     مخفيّة + ٨ث انشغال ← البانر). الآن: لا يُحسب إلّا ما جرى والصفحة ظاهرة — نبضة أُرسلت قبل آخر ظهور تُهمل، وتوقّف
+     العامل نفسه (نوم الجهاز/تعليق العمليّة) ليس تجمّد الخيط الرئيسيّ. التجمّد الحقيقيّ والصفحة ظاهرة يُظهره كما كان. */
+  let lastVisibleAt = 0;
+  let lastBeat = 0;
+  const markVisible = () => { if(!document.hidden){ lastVisibleAt = Date.now(); strikes = 0; } };
+  document.addEventListener('visibilitychange', markVisible);
+  document.addEventListener('resume', markVisible);
+  window.addEventListener('pageshow', markVisible);
+
   worker.onmessage = (e) => {
     const delay = Date.now() - e.data;
+    const gap = lastBeat ? e.data - lastBeat : 0;
+    lastBeat = e.data;
     // خلال فترة الإقلاع لا نحسب أي تأخّر تجمّدًا
     if(Date.now() - bootAt < BOOT_GRACE_MS){ strikes = 0; return; }
+    // الصفحة مخفيّة، أو النبضة من قبل رجوعها، أو العامل نفسه توقّف (نوم) — ليس تجمّدًا رآه المستخدم
+    if(document.hidden || e.data < lastVisibleAt || gap > 4000){ strikes = 0; return; }
     if(delay > FREEZE_THRESHOLD_MS){
       strikes++;
       if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
@@ -275,6 +290,154 @@ window.addEventListener('appinstalled', () => {
   } catch(e){ __swallow(e, "misc:app-10-features#install-pill"); }
 })();
 
+/* v-play-invite (المالك ٣٠ أكتوبر: «ماعندي احد… حطّ الدعوة في التطبيق»): Google Play يشترط ١٢ مختبِرًا ١٤ يومًا متواصلة قبل
+   النشر للعموم، والاختبار المغلق لا يقبل إلّا من في قائمته. بطاقة فوق صندوق الكتابة لمن يفتح الموقع في متصفّح أندرويد عاديّ:
+   ١) الانضمام لمجموعة Google المضافة للاختبار ٢) رابط الاشتراك في بلي ثمّ التثبيت. لا تظهر داخل أيّ تطبيق (هواوي، TWA، PWA مثبّت،
+   WebView)، ولا على آيفون أو الحاسوب أو متصفّح هواوي، ولا ما دام أحد الرابطين فارغًا. تنتظر ٨ ثوانٍ وتتأخّر ما دامت نافذة أخرى
+   ظاهرة؛ مرّة في الجلسة على الأكثر. ✕ أو الخطوة الثانية = لا تعود على هذا الجهاز؛ التركيز على الكتابة يخفيها بلا حفظ.
+   ألوانها من الثيم (--panel2 و--text و--muted)، وفي الوضع الأسود لون صندوق الكتابة #101013: --panel2 هناك أسود صافٍ والحدّ يُمسح
+   (v-no-lines-2) فكانت البطاقة أسود على أسود. مع صورة خلفيّة (bgimg) لون الكتابة على html يتبع الصورة لا البطاقة (كان ١٫١:١) —
+   فالبطاقة سطح معتم بألوان وضعها (كـ v-bgimg-surface-text). القواعد في <style> واحد لا inline، كي تتبع تبديل الوضع وهي ظاهرة.
+   والخطوتان زرّان أساسيّان — .btn العاديّ في الوضع الأسود نصّ بلا صندوق. */
+(function(){
+  // المالك ٦ نوفمبر: المجموعة om-ai-testers (أيّ أحد ينضمّ) مضافة لمسار Alpha المغلق، والتطبيق في بلي com.omran.aibuilder
+  const PLAY_TEST = { group: 'https://groups.google.com/g/om-ai-testers', optIn: 'https://play.google.com/apps/testing/com.omran.aibuilder' };
+  const SEEN = 'aiapp_play_invite_x', SESSION = 'aiapp_play_invite_s';
+  try {
+    if(!PLAY_TEST.group || !PLAY_TEST.optIn) return;
+    const ua = navigator.userAgent || '';
+    if(!/Android/i.test(ua) || /HUAWEI|HarmonyOS|HONOR|HuaweiBrowser|HMSCore/i.test(ua) || /;\s*wv\)/.test(ua)) return;
+    if(localStorage.getItem(SEEN) === '1' || sessionStorage.getItem(SESSION) === '1') return;
+  } catch(e){ __swallow(e, 'play-invite:gate'); return; }
+  // يُعاد عند العرض: store-safe من ui-wiring (مؤجَّل) وomranLikelyApp من الجزء ٠٥
+  const inApp = () => {
+    const root = document.documentElement;
+    if(root && root.classList.contains('store-safe')) return true;
+    if(isStandalone() || (typeof omranLikelyApp === 'function' && omranLikelyApp())) return true;
+    return !!(window.matchMedia && (window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: minimal-ui)').matches));
+  };
+  const inCall = () => {
+    const c = document.getElementById('mahaCallScreen');
+    return !!(c && c.style.display === 'flex') || !!(document.body && document.body.classList.contains('maha-band-on'));
+  };
+  const blocked = () => {
+    if(document.visibilityState && document.visibilityState !== 'visible') return true;
+    if(['privacyConsent', 'introTourOverlay', 'installPill', 'mediaNotifAskBar', 'sessToast', 'askAllHintTip'].some(id => document.getElementById(id))) return true;
+    if(inCall() || document.querySelector('#sectionsToolsOverlay.show, #sidebar.open, #workarea.open')) return true;
+    const p = document.getElementById('prompt');
+    return !!(p && document.activeElement === p);
+  };
+  const mount = () => {
+    if(document.getElementById('playInvite')) return;
+    const d = (typeof window.curT === 'function') ? window.curT() : {};
+    const tx = (k) => d[k] || (I18N.en || {})[k] || '';
+    if(!document.getElementById('playInviteCss')){
+      const st = document.createElement('style');
+      st.id = 'playInviteCss';
+      st.textContent = '#playInvite{background:var(--panel2, #1c2230); color:var(--text, #eee); border:1px solid rgba(201,162,39,.45); box-shadow:var(--sh-2, 0 8px 24px rgba(0,0,0,.45));}'
+        + '#playInvite .omPiMuted{color:var(--muted, #999);}'
+        + 'html:not([data-mode="light"]):not(.skin):not(.skin-wood) #playInvite, html.bgimg:not([data-mode="light"]) #playInvite{background:#101013; --text:#eef0f6; --muted:#9a9a9e;}'
+        + 'html.bgimg[data-mode="light"] #playInvite{background:#fbf5e9; --text:#1d1a16; --muted:#5f574c;}';
+      document.head.appendChild(st);
+    }
+    const card = document.createElement('div');
+    card.id = 'playInvite';
+    card.style.cssText = 'position:fixed; transform:translateX(-50%); max-width:440px; box-sizing:border-box; z-index:50; padding:12px 14px; border-radius:var(--r-3, 14px); line-height:1.5;';
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex; align-items:flex-start; gap:8px;';
+    const title = document.createElement('div');
+    title.style.cssText = 'flex:1; min-width:0; font-weight:700;';
+    title.setAttribute('data-i18n', 'playTestTitle');
+    title.textContent = tx('playTestTitle');
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '✕';
+    x.setAttribute('data-i18n', '[aria-label]closeTitle');
+    x.setAttribute('aria-label', tx('closeTitle') || '✕');
+    x.className = 'omPiMuted';
+    x.style.cssText = 'flex:none; background:none; border:none; font-size:16px; line-height:1; cursor:pointer; padding:4px;';
+    head.append(title, x);
+    const hint = document.createElement('div');
+    hint.className = 'omPiMuted';
+    hint.style.cssText = 'margin:4px 0 10px; font-size:var(--fs-4, 12.5px);';
+    hint.setAttribute('data-i18n', 'playTestHint');
+    hint.textContent = tx('playTestHint');
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px;';
+    const step = (key, href) => {
+      const a = document.createElement('a');
+      a.className = 'btn primary';
+      a.href = href;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.style.cssText = 'flex:1 1 140px; display:inline-flex; align-items:center; justify-content:center; text-align:center; text-decoration:none; white-space:normal;';
+      const s = document.createElement('span');
+      s.setAttribute('data-i18n', key);
+      s.textContent = tx(key);
+      a.appendChild(s);
+      return a;
+    };
+    const join = step('playTestStep1', PLAY_TEST.group);
+    const install = step('playTestStep2', PLAY_TEST.optIn);
+    row.append(join, install);
+    card.append(head, hint, row);
+    const offs = [];
+    const close = (forever) => {
+      card.remove();
+      offs.splice(0).forEach(off => { try { off(); } catch(e){ __swallow(e, 'play-invite:unwatch'); } });
+      if(forever){ try { localStorage.setItem(SEEN, '1'); } catch(e){ __swallow(e, 'play-invite:dismiss'); } }
+    };
+    /* فوق الصندوق المقيس، وفوق شريط ملاحظات المالك إن ظهر؛ يُعاد مع كبر الصندوق (مرفقات) والتدوير وفتح الجوّال المطويّ.
+       مكالمة مها أو شريط الإشعارات (نفس الموضع، z أعلى) = تُخفى بلا حفظ، وكذا إن لم يبقَ لها مكان في الشاشة. */
+    const place = () => {
+      if(inCall() || document.getElementById('mediaNotifAskBar')){ close(false); return; }
+      let pos = null, bottom = 0;
+      try { pos = (typeof window.__omranAboveComposer === 'function') ? window.__omranAboveComposer(10) : null; } catch(e){ __swallow(e, 'play-invite:pos'); }
+      if(pos) bottom = pos.bottom;
+      try {
+        const hb = document.getElementById('ownerHealthBar'), ih = window.innerHeight || 0;
+        const r = hb && hb.getBoundingClientRect();
+        if(r && r.height > 0 && r.top > 0 && r.top < ih) bottom = Math.max(bottom, Math.round(ih - r.top + 10));
+      } catch(e){ __swallow(e, 'play-invite:health'); }
+      card.style.bottom = bottom ? bottom + 'px' : 'calc(76px + env(safe-area-inset-bottom, 0px))';
+      card.style.left = pos ? pos.cx + 'px' : '50%';
+      card.style.width = pos ? Math.min(440, pos.width) + 'px' : 'calc(100% - 24px)';
+      const r = card.getBoundingClientRect();
+      if(r && r.height > 0 && r.top < 0) close(false);
+    };
+    x.onclick = () => close(true);
+    install.addEventListener('click', () => close(true));
+    const p = document.getElementById('prompt');
+    if(p) p.addEventListener('focus', () => close(false), { once: true });
+    document.body.appendChild(card);
+    try { sessionStorage.setItem(SESSION, '1'); } catch(e){ __swallow(e, 'play-invite:session'); }
+    place();
+    if(!card.isConnected) return;
+    window.addEventListener('resize', place);
+    offs.push(() => window.removeEventListener('resize', place));
+    const box = document.getElementById('composerBox') || document.getElementById('inputbar');
+    if(box && typeof window.ResizeObserver === 'function'){ const ro = new window.ResizeObserver(place); ro.observe(box); offs.push(() => ro.disconnect()); }
+    if(typeof window.MutationObserver === 'function'){
+      const mo = new window.MutationObserver(place);
+      mo.observe(document.body, { childList: true, attributes: true, attributeFilter: ['class'] });
+      const call = document.getElementById('mahaCallScreen');
+      if(call) mo.observe(call, { attributes: true, attributeFilter: ['style'] });
+      offs.push(() => mo.disconnect());
+    }
+  };
+  let tries = 0;
+  const arm = () => {
+    try {
+      if(inApp()) return;
+      if(blocked()){ if(++tries < 300) setTimeout(arm, 1000); return; }
+      mount();
+    } catch(e){ __swallow(e, 'play-invite:arm'); }
+  };
+  const start = () => setTimeout(arm, 8000);
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
+})();
+
 /* v-browser-install: /?q=نصّ (بحث المتصفّح عبر opensearch.xml، وقائمة إضافة المتصفّح) يعبّئ صندوق
    المحادثة ولا يرسل — الإرسال بيد المستخدم. يُحذف q من الرابط كي لا يعود مع التحديث. */
 (function(){
@@ -296,6 +459,45 @@ window.addEventListener('appinstalled', () => {
   } catch(e){ __swallow(e, "misc:app-10-features#q"); }
 })();
 
+/* v-tool-pages (المالك ١ نوفمبر «ابدأ»: Search Console يعرف الصفحة الرئيسيّة وحدها — ٤٣ ظهورًا في ٣ أشهر): صفحات الأدوات الثابتة
+   (/tools/<slug> و/en/tools/<slug>) تفتح أداتها بـ/?open=<slug>. قائمة ثابتة لا معرّف حرّ من الرابط؛ يُحذف open قبل الفتح (الرجوع
+   يغلق الأداة ثمّ يعود للصفحة)؛ يُنتظر DOMContentLoaded لأنّ المستندات والتعليم يُربطان في سكربتات مؤجَّلة بعد الحزمة، وتُنتظر
+   موافقة الخصوصيّة بلا سقف (من يقرأ السياسة دقائق لا يفقد أداته)، ثمّ قاموس اللغة الكسول (بدونه تُبنى الأداة بالإنجليزيّة لمستخدم
+   الفرنسيّة والأرديّة…)؛ والأداة الموقوفة أو المخفيّة لا تُفتح. hl (لغة الصفحة، app-04) يُحذف معه. الإعلانات صفحة مستقلّة: رابطها مباشر. */
+(function(){
+  const OPEN = { portrait: 'btnPortraitStyle', video: 'btnVideoMaker', decor: 'btnDesignAI', fashion: 'btnFashionAI', style: 'btnStudioAI',
+    docs: 'btnDocs', email: 'btnEmailAssist', construction: 'btnConstruction', education: 'btnOmranEdu', qibla: 'btnQibla', religion: 'btnReligion' };
+  try {
+    const u = new URL(location.href);
+    const slug = String(u.searchParams.get('open') || '').trim().toLowerCase();
+    if(!slug) return;
+    u.searchParams.delete('open');
+    u.searchParams.delete('hl');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    const id = Object.prototype.hasOwnProperty.call(OPEN, slug) ? OPEN[slug] : '';
+    if(!id) return;
+    let started = false;
+    const click = () => {
+      try {
+        const b = document.getElementById(id);
+        const paused = (typeof OMRAN_PAUSED_TOOLS !== 'undefined' && Array.isArray(OMRAN_PAUSED_TOOLS)) ? OMRAN_PAUSED_TOOLS : [];
+        if(!b || paused.indexOf(id) >= 0 || getComputedStyle(b).display === 'none') return;
+        b.click();
+      } catch(e){ __swallow(e, 'misc:app-10-features#open-tool'); }
+    };
+    const go = () => {
+      try {
+        if(document.getElementById('privacyConsent')){ setTimeout(go, 1000); return; }
+        const ready = (typeof loadLangFile === 'function' && typeof lang === 'string') ? loadLangFile(lang) : null;
+        if(ready && typeof ready.then === 'function') ready.then(click, click); else click();
+      } catch(e){ __swallow(e, 'misc:app-10-features#open-wait'); }
+    };
+    const start = () => { if(started) return; started = true; setTimeout(go, 0); };
+    if(document.readyState === 'complete') start();
+    else { document.addEventListener('DOMContentLoaded', start, { once: true }); window.addEventListener('load', start, { once: true }); }
+  } catch(e){ __swallow(e, 'misc:app-10-features#open'); }
+})();
+
 /* ---------- Share App button ---------- */
 const btnShareApp = $('#btnShareApp');
 if(btnShareApp){
@@ -313,6 +515,7 @@ if(btnShareApp){
       ne: 'निःशुल्क AI ले एप बनाउन om ai प्रयोग गर्नुहोस्:'
     };
     const shareText = texts[currentLang] || texts.ar;
+    if(typeof window.omranShareSheet === 'function'){ window.omranShareSheet({ url: shareUrl, text: shareText }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45)
     if(navigator.share){
       try {
         await navigator.share({ title: titles[currentLang] || titles.ar, text: shareText, url: shareUrl });
@@ -445,7 +648,8 @@ btnToggleHistory.onclick = () => {
   // مفعّلًا فيتجاهل اختيار المستخدم ✅ للمزود في الرسائل التالية.
   window.__resetAskAllToggle = () => { window.__askAllToggleOn = false; paint(); };
   try{
-    if(!localStorage.getItem('askAllHintSeen')){
+    /* v-hw-1316: داخل تطبيق هواوي لا حبّة «الذكاء الاصطناعي يبني تطبيقك فورًا» — زرّها مخفيّ للكلّ أصلًا، ووصف المتجر أدوات ومحادثة (رفض 1.14) */
+    if(!localStorage.getItem('askAllHintSeen') && !(typeof omranHwPackage === 'function' && omranHwPackage())){
       const tip = document.createElement('div');
       tip.id = 'askAllHintTip'; tip.setAttribute('data-i18n', 'askAllHintText'); // v-hw-resubmit-2: يُعاد مع وصول القاموس (zh كان يبقى إنجليزيًّا)
       const txt = (typeof t === 'function') ? t('askAllHintText') : '';
@@ -1495,6 +1699,7 @@ function openShareModal(project){
     const __shareSig = String(shareModalProject.title || '') + '|' + String(shareModalProject.code || '').length + '|' + __shareMsgs.length;
     const __shareOld = __shareKey ? __shareMade[__shareKey] : null;
     if(__shareOld && __shareOld.sig === __shareSig){
+      if(typeof window.omranShareSheet === 'function'){ const __ttl0 = String(shareModalProject.title || ''); closeModal(); window.omranShareSheet({ url: __shareOld.url, text: __ttl0 }); return; } // v-share-sheet: الرابط الموجود في النافذة الموحّدة (العنوان قبل الإغلاق — closeModal يصفّر المشروع)
       resultUrl.value = __shareOld.url;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
@@ -1522,6 +1727,8 @@ function openShareModal(project){
       if(!resp.ok || !data.id) throw new Error(data.error || 'error');
       const fullUrl = location.origin + '/p.html?id=' + data.id;
       if(__shareKey) __shareMade[__shareKey] = { sig: __shareSig, url: fullUrl };
+      /* v-share-sheet (المالك ٧ نوفمبر: نافذة يوتيوب في كلّ التطبيق): الرابط العامّ يُرسَل من النافذة الموحّدة (app-45) بدل صندوق النسخ وحده */
+      if(typeof window.omranShareSheet === 'function'){ const __ttl = String((shareModalProject && shareModalProject.title) || ''); closeModal(); window.omranShareSheet({ url: fullUrl, text: __ttl }); return; }
       resultUrl.value = fullUrl;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';

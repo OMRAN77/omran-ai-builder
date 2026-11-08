@@ -240,8 +240,12 @@
              فيديو مدفوع يكتمل عند المزوّد ولا يراه أحد، وسقف Runway ‏٣٦×٥ ث = ١٨٠ ث والخادم ينتظر الأداة ٢٩٠ ث. الآن كلّ استطلاع في try يُعاد
              بعد مهلته، والانتظار للمحرّكين حتّى ٢٨٠ ث من طلب الأداة (قبل مهلة الخادم)، ولا خروج إلّا بنتيجة أو فشل أو انتهاء الوقت. */
           var vStep = engine === 'veo' ? 8000 : 5000;
-          while (Date.now() + vStep <= vT0 + 280000) {
-            await new Promise(function (resolve) { setTimeout(resolve, vStep); });
+          /* v-cinema-omni (مراجعة ٢٧ أكتوبر): «سينمائي» على Omni متزامن — قد يستهلك الإنشاء نافذة الانتظار كلّها والناتج محفوظ لحظة الردّ
+             (omni/…)؛ استطلاع فوريّ واحد ولو انتهت النافذة، وإلّا يُردّ فيديو مكتمل مدفوع ولا يراه أحد */
+          var vReady = engine === 'veo' && /^omni\//.test(String(vjson.op || ''));
+          while (vReady || Date.now() + vStep <= vT0 + 280000) {
+            if (!vReady) await new Promise(function (resolve) { setTimeout(resolve, vStep); });
+            vReady = false;
             var sj = null;
             try {
               var sr = engine === 'veo'

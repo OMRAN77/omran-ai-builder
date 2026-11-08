@@ -27,9 +27,9 @@ const LIB_PURPOSE = {
   'owner-carry': 'حمل «نفّذ الآن» إن توقّف المزوّد بعد القراءة',
   'owner-media': 'بوّابة الرسم/الفيديو المدفوعة (الطلب في الرسالة الأخيرة)',
   'owner-vision': 'من يرى الصور على أيّ مسار',
-  'provider-level': 'منهج Claude Code للمالك (OWNER_METHOD) وبطاقة مستوى العائلة والموديل',
+  'provider-level': 'منهج Claude Code للمالك وبطاقة مستوى العائلة والموديل',
   'provider-models': 'قوائم الموديلات الحيّة من الوسيط وافتراضيّها',
-  'oa-direct': 'المسارات المباشرة (OpenAI، Groq، Kimi، Gemini، Perplexity) وترجمة البروتوكول',
+  'oa-direct': 'المسارات المباشرة للمزوّدين وترجمة البروتوكول',
   'free-chain': 'سلاسل الاحتياط لغير المالك وكشف «موديل غير موجود»',
   'tier': 'الباقات وتوجيهها والدور الصعب (isStrongTurn)',
   'github-read': 'read_github: شجرة، ملفّ بأسطر، بحث (الحاوية والمستدعون)، التزامات وفروق',
@@ -38,7 +38,7 @@ const LIB_PURPOSE = {
   'github-manage': 'manage_github: status · deploy · ci · test · shots · runs · run_log · close…',
   'branch-shots': 'فاحصا جهاز اللقطات (branch-shots.yml)',
   'branch-test': 'فاحص جهاز الاختبار الواحد (branch-test.yml)',
-  'bundle-core': 'بناء الحزمة js/app.bundle.js وبصمتها (يشاركه الخادم والسكربت)',
+  'bundle-core': 'بناء الحزمة js/app.bundle.js وبصمتها',
   'app-errors': 'read_app_errors: سجلّ أخطاء الإنتاج الحيّ',
   'secrets': 'خزنة الأسرار',
   'kv': 'التخزين KV',
@@ -49,7 +49,7 @@ const LIB_PURPOSE = {
   'log-error': 'تسجيل الأخطاء',
   'cost-meter': 'أسعار الموديلات وحساب الكلفة',
   'analyze-zip': 'فكّ الأرشيفات',
-  'repo-map': 'هذه الخريطة (مولَّدة)',
+  'repo-map': 'هذه الخريطة',
 };
 
 const slug = (f, re) => (re.exec(f) || [])[1] || '';

@@ -1263,6 +1263,15 @@ function ttsSpeedSetting(){
 /* v-tts-account (المالك: «ابدا فيهم كلهم»): صوت القراءة كان يطلب /api/tts بلا حساب فيُعدّ على عنوان IP —
    المالك نفسه يُحدّ بستّين طلبًا في اليوم، ومن يتشاركون شبكة يتشاركونها. الحساب يُرسل الآن: المالك وVIP بلا حدّ،
    وكلّ حساب حصّته، والضيف على عنوانه كما كان. مها الأساسيّ وتأكيد تبويب الصوت يستعملان المساعدين نفسيهما. */
+/* v-reply-dialect (المالك ٢٩ أكتوبر «التطبيقات عندهم بلهجتهم العماني والإماراتي والسعودي»، ثمّ «سوّيها»): لهجة صوت الردود
+   العربيّ من «الصوت» في الإعدادات — إماراتيّ (الافتراضيّ، كما كان) وعمانيّ وسعوديّ وكويتيّ وقطريّ وبحرينيّ. قيمة تالفة = إماراتيّ. */
+const TTS_DIALECTS = ['ae', 'om', 'sa', 'kw', 'qa', 'bh'];
+function ttsDialectSetting(){
+  try{
+    const v = localStorage.getItem('aiapp_voice_dialect');
+    return TTS_DIALECTS.indexOf(v) >= 0 ? v : 'ae';
+  }catch(e){ return 'ae'; }
+}
 function ttsAuthToken(){
   try{ return (typeof authGet === 'function' ? authGet('aiapp_auth_token') : '') || ''; }catch(e){ return ''; }
 }
@@ -1278,7 +1287,7 @@ async function fetchCloudSpeech(text){
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     // v-om-voices-chat: src 'reply' = «استمع» على ردّ المحادثة؛ للمالك يقرأ الخادم بأصوات om (api/_lib/om-voices.js)
-    body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
+    body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting(), dialect: ttsDialectSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -1506,6 +1515,14 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
             if(onEnd) onEnd();
             return;
           }
+          /* v-om-voices-piper: سيرفر الصوتين الخفيفين نائم (المجّانيّ ينام بعد ٤٨ ساعة ويصحى في دقيقة) ⇐ «حاول مرة ثانية»
+             المترجمة نفسها (mahaTryAgain) ويقف — لا مها ولا صوت الجهاز بدل أصواته. */
+          if(e && e.message === 'om-waking'){
+            currentCloudToken = null; currentCloudAudio = null; clearWordHighlight();
+            try{ if(typeof settingsToast === 'function') settingsToast(t('mahaTryAgain')); }catch(err){ __swallow(err, 'tts:om-waking-toast'); }
+            if(onEnd) onEnd();
+            return;
+          }
           if('speechSynthesis' in window){
             currentCloudToken = null; currentCloudAudio = null;
             speakOnDevice(chunks[i].wordStart, started);
@@ -1645,7 +1662,7 @@ function smartScrollBottom(wasNearBottom){
     /* v-scroll-free: الملاحقة يقرّرها omranChatFollow (app-40) من حركة المستخدم — لا فرق ١٦٠px يشدّ إصبعه أثناء السحب */
     const __F = window.omranChatFollow;
     const follow = (typeof wasNearBottom === 'boolean') ? wasNearBottom : (__F ? __F.follow() : chatIsNearBottom());
-    if(follow) messagesEl.scrollTop = messagesEl.scrollHeight;
+    if(follow){ messagesEl.scrollTop = messagesEl.scrollHeight; if(__F && __F.atBottom) __F.atBottom(); } // v-share-visible: في الأسفل الآن (followGrowth)
     syncChatJumpButton();
   }catch(e){ __swallow(e, "misc:app-02-tts#8"); }
 }

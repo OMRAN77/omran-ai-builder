@@ -45,13 +45,11 @@ test('١. وسوم صفحة المالك: لا نصّ عربيّ بلا data-i18
   assert.deepEqual(bad, [], 'نصوص عربيّة ثابتة في صفحة المالك');
 });
 
-test('٢. سطر الصلاحيّات: الرمزان داخل <bdi dir="ltr"> لا يلتفّان، وخارج النصّ المترجَم', () => {
-  for (const tok of ['Contents: write', 'Pull requests: write']) {
-    assert.ok(owner.includes('<bdi dir="ltr" style="white-space:nowrap">' + tok + '</bdi>'), tok);
-    assert.equal(owner.split(tok).length - 1, 1, tok + ' مرّة واحدة');
-  }
+test('٢. v-vault-no-desc: شرح الخزنة وسطر الصلاحيّتين محذوفان من الصفحة والقواميس، والعنوان والخانات باقية', () => {
+  for (const gone of ['ownerVaultDesc', 'ownerVaultPerms', 'Contents: write', 'Pull requests: write', 'AES-256-GCM']) assert.ok(!owner.includes(gone), 'باقٍ في الصفحة: ' + gone);
+  for (const keep of ['data-i18n="ownerVaultTitle"', 'id="vaultGhStatus"', 'id="vaultGhInput"', 'id="vaultRepoInput"']) assert.ok(owner.includes(keep), 'ناقص: ' + keep);
   const I = dicts();
-  for (const lg of ['ar', 'en', ...LANGS12]) assert.ok(!/Contents: write/.test(I[lg].ownerVaultPerms || ''), lg + ': الرمز خارج الترجمة');
+  for (const lg of ['ar', 'en', ...LANGS12]) for (const k of ['ownerVaultDesc', 'ownerVaultPerms']) assert.equal(I[lg][k], undefined, lg + ': ' + k);
 });
 
 test('٣. كلّ مفتاح تستعمله صفحة المالك ولوحاتها موجود بالـ١٤ لغة وبالعناصر النائبة نفسها', () => {

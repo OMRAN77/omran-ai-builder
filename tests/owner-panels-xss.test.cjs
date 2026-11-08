@@ -186,14 +186,15 @@ test('٦. جدول الإدارة: اسم وإيميل خبيثان يُرسما
     for (const a of Object.keys(t.attrs)) assert.ok(allowed[t.tag].includes(a), 'سمة محقونة: ' + a + ' في ' + t.tag);
   }
   const buttons = tags.filter((t) => t.tag === 'button');
-  assert.equal(buttons.length, users.length * 3, 'ثلاثة أزرار لكلّ مستخدم — لا زرّ مكسور');
+  assert.equal(buttons.length, users.length * 4, 'أربعة أزرار لكلّ مستخدم — لا زرّ مكسور (v-owner-reset-link: 🔑)');
   for (const [i, b] of buttons.entries()) {
-    const u = users[Math.floor(i / 3)];
+    const u = users[Math.floor(i / 4)];
     const calls = [];
     const top = {};
     // المتصفّح يفكّ كيانات السمة أوّلًا ثمّ يقرأ JS — نفعل الشيء نفسه وننفّذ
     vm.runInNewContext(unescapeHtml(b.attrs.onclick), {
       top, window: top,
+      adminResetLink: (n) => calls.push(['reset', n]),
       adminMessageUser: (n) => calls.push(['msg', n]),
       adminToggleBan: (n, ban) => calls.push(['ban', n, ban]),
       adminDeleteUser: (n) => calls.push(['del', n]),
@@ -212,8 +213,8 @@ test('٧. جدول الإدارة: المستخدمون العاديّون يُ�
   const ROW = '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333)"><span style="flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px">';
   const BTN = 'style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer"';
   const DEL = 'style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer"';
-  const OLD = ROW + '<span style="min-width:0;overflow-wrap:anywhere;font-weight:500"><bdi>sara</bdi></span><span style="min-width:0;overflow-wrap:anywhere;font-size:11px;opacity:.6"><bdi dir="ltr">s@x.com</bdi></span></span><span style="display:flex;gap:6px;flex:none"><button type="button" onclick="adminMessageUser(\'sara\')" title="إرسال رسالة" ' + BTN + '>📩</button><button type="button" onclick="adminToggleBan(\'sara\', true)" title="حظر" ' + BTN + '>🚫</button><button type="button" onclick="adminDeleteUser(\'sara\')" title="حذف نهائي" ' + DEL + '>🗑️</button></span></div>'
-    + ROW + '<span style="min-width:0;overflow-wrap:anywhere;font-weight:500">🚫 <bdi>ali</bdi></span><span style="min-width:0;overflow-wrap:anywhere;font-size:11px;opacity:.6">بدون إيميل</span></span><span style="display:flex;gap:6px;flex:none"><button type="button" onclick="adminMessageUser(\'ali\')" title="إرسال رسالة" ' + BTN + '>📩</button><button type="button" onclick="adminToggleBan(\'ali\', false)" title="فك الحظر" ' + BTN + '>✅</button><button type="button" onclick="adminDeleteUser(\'ali\')" title="حذف نهائي" ' + DEL + '>🗑️</button></span></div>';
+  const OLD = ROW + '<span style="min-width:0;overflow-wrap:anywhere;font-weight:500"><bdi>sara</bdi></span><span style="min-width:0;overflow-wrap:anywhere;font-size:11px;opacity:.6"><bdi dir="ltr">s@x.com</bdi></span></span><span style="display:flex;gap:6px;flex:none"><button type="button" onclick="adminResetLink(\'sara\')" title="رابط استرجاع الحساب" ' + BTN + '>🔑</button><button type="button" onclick="adminMessageUser(\'sara\')" title="إرسال رسالة" ' + BTN + '>📩</button><button type="button" onclick="adminToggleBan(\'sara\', true)" title="حظر" ' + BTN + '>🚫</button><button type="button" onclick="adminDeleteUser(\'sara\')" title="حذف نهائي" ' + DEL + '>🗑️</button></span></div>'
+    + ROW + '<span style="min-width:0;overflow-wrap:anywhere;font-weight:500">🚫 <bdi>ali</bdi></span><span style="min-width:0;overflow-wrap:anywhere;font-size:11px;opacity:.6">بدون إيميل</span></span><span style="display:flex;gap:6px;flex:none"><button type="button" onclick="adminResetLink(\'ali\')" title="رابط استرجاع الحساب" ' + BTN + '>🔑</button><button type="button" onclick="adminMessageUser(\'ali\')" title="إرسال رسالة" ' + BTN + '>📩</button><button type="button" onclick="adminToggleBan(\'ali\', false)" title="فك الحظر" ' + BTN + '>✅</button><button type="button" onclick="adminDeleteUser(\'ali\')" title="حذف نهائي" ' + DEL + '>🗑️</button></span></div>';
   assert.equal(html, OLD);
   const dc = read('js/delete-confirm.js');
   assert.ok(dc.includes('[onclick*="adminDeleteUser"]'), 'delete-confirm ما زال يبحث عن onclick');

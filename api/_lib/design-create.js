@@ -5,6 +5,18 @@ const { judgeBest, duoEnabled } = require('./image-judge');
 // style while keeping the room's basic layout/structure. Returns a base64
 // PNG/JPEG the client can preview and download.
 const { checkDesignQuota, consumeDesign, DESIGN_DAILY_LIMIT } = require('./_designUsage');
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
+
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): نفاد رصيد Gemini كان يُسقط إعادة تصميم الغرفة إلى بديل OpenAI أو
+   «الخدمة متوقّفة»، ولقطات «بلا صورة» من نانو برو إلى نانو ٢ الذي يسقط بالسبب نفسه. الاحتياط النموذج نفسه عند fal بجسم الطلب نفسه
+   (2K، و16:9 للّقطات)، وناتجه يُسلَّم كناتج Gemini (المحرّك «gemini» والاستهلاك كما هما). البديل الموازي (duo) مدفوع أصلًا: إن أنتج
+   صورة فهو الإنقاذ كما كان ولا يُدفع لـfal مرّة ثانية. مهلة fal ما بقي من حدّ الدالّة (٣٠٠ ث) بعد هامش للردّ، ومحاولة واحدة لكلّ صورة. */
+const DESIGN_MODEL = 'gemini-3-pro-image';
+const FAL_BUDGET_MS = 270000;
+function falOpts(deadline, where) {
+  const left = deadline - Date.now();
+  return left >= 15000 ? { where, timeoutMs: Math.min(150000, left) } : null;
+}
 
 // v-design-rescue: إعادة تصميم الغرفة عبر gpt-image-1 عند رفض Gemini (نفس نمط
 // خطّ إنقاذ الأزياء والبورتريه). يرجع base64 أو null — لا يرمي أبدًا.
@@ -289,16 +301,27 @@ async function placeShotOpenAI(key, prompt, deadline, noteErr) {
 }
 
 async function placeShotGemini(apiKey, prompt, deadline, noteErr) {
+  /* برو يقبل imageSize/aspectRatio؛ نانو ٢ بالصيغة النظيفة responseModalities وحدها (درس v-nano-banana) */
+  const bodyOf = (m) => ({ contents: [{ parts: [{ text: prompt }] }], generationConfig: /pro-image/.test(m) ? { imageConfig: { imageSize: '2K', aspectRatio: '16:9' } } : { responseModalities: ['IMAGE'] } });
+  /* v-fal-backup: الرصيد خلص قبل دقائق ← برو نفسه عند fal بلا نداء فاشل قبله؛ وإلّا عند ردّ الرصيد. مرّة واحدة لكلّ لقطة */
+  let falTried = false;
+  if (await falBackup.geminiOutRecently()) {
+    const fo = falOpts(deadline, 'design-place');
+    if (fo) {
+      falTried = true;
+      const f0 = await falBackup.imageFromGemini(PLACE_GEMINI_MODELS[0], bodyOf(PLACE_GEMINI_MODELS[0]), fo);
+      if (f0 && f0.b64) return { b64: f0.b64, mime: f0.mime };
+    }
+  }
   for (const m of PLACE_GEMINI_MODELS) {
     const left = deadline - Date.now();
     if (left < 10000) return null;
     try {
-      /* برو يقبل imageSize/aspectRatio؛ نانو ٢ بالصيغة النظيفة responseModalities وحدها (درس v-nano-banana) */
-      const gc = /pro-image/.test(m) ? { imageConfig: { imageSize: '2K', aspectRatio: '16:9' } } : { responseModalities: ['IMAGE'] };
+      const reqBody = bodyOf(m);
       const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + m + ':generateContent?key=' + apiKey, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: gc }),
+        body: JSON.stringify(reqBody),
         signal: AbortSignal.timeout(Math.min(150000, left)),
       });
       const d = await r.json().catch(() => null);
@@ -306,6 +329,13 @@ async function placeShotGemini(apiKey, prompt, deadline, noteErr) {
       const part = ((c.content || {}).parts || []).find((x) => x && x.inlineData && x.inlineData.data);
       if (part) return { b64: part.inlineData.data, mime: part.inlineData.mimeType || 'image/png' };
       noteErr(m + ' ' + r.status + ': ' + ((d && d.error && d.error.message) || c.finishReason || (d && d.promptFeedback && d.promptFeedback.blockReason) || 'no image'));
+      if (!r.ok && !falTried) {
+        const tech = String((d && d.error && d.error.message) || '');
+        const fo = falOpts(deadline, 'design-place');
+        const fb = fo ? await falBackup.rescueImage(r.status, tech, m, reqBody, fo) : null;
+        if (fb) return { b64: fb.b64, mime: fb.mime };
+        if (falBackup.geminiCreditOut(r.status, tech)) falTried = true;
+      }
     } catch (e) { noteErr(m + ': ' + ((e && e.message) || e)); }
   }
   return null;
@@ -341,6 +371,7 @@ function fitPlaceImages(images, noteErr) {
 }
 
 module.exports = async (req, res) => {
+  const t0 = Date.now(); /* v-fal-backup: بداية ميزانيّة الدالّة */
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -501,6 +532,28 @@ module.exports = async (req, res) => {
     /* v-image-duo: gpt-image بالتوازي مع Gemini، والحكم يختار الأدقّ في النهاية */
     const duoP = duoEnabled() ? openaiDesignEdit(promptText, imageBase64, mimeType).catch(function () { return null; }) : null;
 
+    /* v-fal-backup: ناتج fal يُسلَّم كناتج Gemini بلا حكم (لا مرشّح ثانٍ: الموازي لم ينتج)، ويُستهلك المقعد كما هو */
+    const sendFal = async (fb) => {
+      const frem = await consumeDesign(quota.username, quota.limit);
+      res.status(200).json({ imageBase64: fb.b64, mimeType: fb.mime, engine: 'gemini', remaining: frem, dailyLimit: quota.limit || DESIGN_DAILY_LIMIT });
+    };
+    /* v-fal-backup: الرصيد خلص قبل دقائق ← بلا نداء Gemini فاشل: الموازي المدفوع إن أنتج (إنقاذ كما كان)، وإلّا fal بالنموذج نفسه */
+    let falTried = false;
+    if (await falBackup.geminiOutRecently()) {
+      const paidE = duoP ? await duoP : null;
+      if (paidE) {
+        const prem = await consumeDesign(quota.username, quota.limit);
+        res.status(200).json({ imageBase64: paidE, mimeType: 'image/webp', remaining: prem, dailyLimit: quota.limit || DESIGN_DAILY_LIMIT, engine: 'openai' });
+        return;
+      }
+      const fo = falOpts(t0 + FAL_BUDGET_MS, 'design-create');
+      if (fo) {
+        falTried = true;
+        const fbE = await falBackup.imageFromGemini(DESIGN_MODEL, reqBody, fo);
+        if (fbE && fbE.b64) { await sendFal(fbE); return; }
+      }
+    }
+
     const upstream = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -512,7 +565,14 @@ module.exports = async (req, res) => {
     if (!upstream.ok) {
       // v-design-rescue: رفض Gemini (رصيد/حصة/غيره) يهبط تلقائيًا إلى gpt-image-1
       // بمفتاح الخادم — نفس خط إنقاذ الأزياء والبورتريه والستايل.
-      const rescued = duoP ? await duoP : await openaiDesignEdit(promptText, imageBase64, mimeType);
+      /* v-fal-backup: الموازي المدفوع أوّلًا (لا ندفع مرّتين)، ثمّ fal عند نفاد الرصيد بالنموذج نفسه، ثمّ الإنقاذ المتسلسل القديم حين لا موازي */
+      const tech = String((data && data.error && data.error.message) || '');
+      const paid = duoP ? await duoP : null;
+      if (paid && falBackup.enabled() && falBackup.geminiCreditOut(upstream.status, tech)) await falBackup.markGeminiOut();
+      const fo = (paid || falTried) ? null : falOpts(t0 + FAL_BUDGET_MS, 'design-create');
+      const fb = fo ? await falBackup.rescueImage(upstream.status, tech, DESIGN_MODEL, reqBody, fo) : null;
+      if (fb) { await sendFal(fb); return; }
+      const rescued = paid || (duoP ? null : await openaiDesignEdit(promptText, imageBase64, mimeType));
       if (rescued) {
         const rrem = await consumeDesign(quota.username, quota.limit);
         res.status(200).json({ imageBase64: rescued, mimeType: 'image/webp', remaining: rrem, dailyLimit: quota.limit || DESIGN_DAILY_LIMIT, engine: 'openai' });

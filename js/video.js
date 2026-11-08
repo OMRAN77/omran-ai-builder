@@ -139,23 +139,45 @@
     card.dataset.vmk='1';
   }
   /* ═══ v-vmk-sections: شريط الأقسام (الترندات + الأوضاع) ═══ */
-  var TABS=['trend','canvas','runway','minimax','omni','hybrid','veo','actor','clean'];
+  /* v-five-sections (المالك ٢٨ أكتوبر: «اخلي 5 فقط… الترندات، كتابة وصوت، تحسين… وانته قولي شو الاثنين الافضل»): للزبون خمسة —
+     الترندات · تعديل الفيديو (video-edit يُدخله ثانيًا) · سينمائي · فيديو سريع · تحسين الجودة؛ «جودة عالية» و«بدون ذكاء» و«ممثل يتكلم» للمالك */
+  var TABS=['trend','veo','minimax','runway','actor','canvas','clean']; /* v-video-modes-by-result: omni وhybrid خرجا منها */
   var tab='trend';
   /* v-owner-modes (المالك ١٧ أكتوبر: «أخفي الثلاثة وخلها لي المالك فقط»): «فيديو اقتصادي» و«فيديو سينمائي» (Omni) و«دمج الاثنين»
      تكرّر غيرها وتلخبط الزبون — تختفي لغير المالك (تبويب وبطاقة وخيار)، ويرجع وضعه إلى «فيديو AI» لو كان عليها */
-  var OWNER_MODES={minimax:1,omni:1,hybrid:1};
+  var OWNER_MODES={runway:1,canvas:1,omni:1,hybrid:1,actor:1}; /* v-video-durations: «ممثل يتكلم» للمالك حتّى تنجح تجربته · v-five-sections: «جودة عالية» (بلا صوت وبلا ربح بعشر ثوانٍ) و«بدون ذكاء» للمالك، و«فيديو سريع» للجميع */
   /* v-owner-modes: «ممثل يتكلم — لهجة إماراتية» كانت صورته وجوهًا لا تشبه أهل الإمارات — رجل بالغترة من صور التطبيق (أعلى الصورة) */
   var TAB_ART={actor:'/assets/studio/options/heritage-emirati.webp'};
-  function tabsFor(){ var own=drOwner(); return TABS.filter(function(v){ return own||!OWNER_MODES[v]; }); }
+  /* v-owner-five (المالك ٢٨ أكتوبر: «خل لي انا مخرج التطبيق 5 بس الحينه مؤقت»): المالك مؤقّتًا يرى ما يراه الزبون — الخمسة و«مخرج التطبيق» وحده؛
+     الأوضاع الثلاثة مخفيّة عنه أيضًا (تبويب وخيار) وكودها باقٍ. OWNER_EXTRA=true يعيدها له */
+  var OWNER_EXTRA=false;
+  function ownExtra(){ return OWNER_EXTRA&&drOwner(); }
+  function tabsFor(){ var own=ownExtra(); return TABS.filter(function(v){ return own||!OWNER_MODES[v]; }); }
   function guardModes(){
-    var sel=id('videoMakerMode'), own=drOwner(); if(!sel) return;
+    var sel=id('videoMakerMode'), own=ownExtra(); if(!sel) return;
     [].slice.call(sel.options).forEach(function(o){ o.hidden=o.disabled=!own&&!!OWNER_MODES[o.value]; });
-    if(!own&&OWNER_MODES[sel.value]){ sel.value='runway'; sel.dispatchEvent(new Event('change')); }
+    if(!own&&OWNER_MODES[sel.value]){ sel.value='minimax'; sel.dispatchEvent(new Event('change')); } /* v-five-sections: افتراضيّ الزبون «فيديو سريع» */
   }
   /* v-vmk-tab-warm (تدقيق ١٨–١٩ أكتوبر، لقطة ٠٠١): صور التبويبات كانت فارغة ٢–٣ ثوانٍ عند الفتح — كسولة وتُنشأ لحظة الفتح بينما تبدأ
      شبكة الترندات ٤٥ صورة معها. رابط واحد يرسم به التبويب ويسخّن به الذاكرة عند مرور المؤشّر أو اللمس أو التركيز على زرّ الصانع
      (مرّة؛ لا تحميل لمن لا يقترب من الصانع) */
   function tabArt(v){ return TAB_ART[v]||'/assets/videos/tabs/'+v+'.jpg?v=2'; }
+  /* v-tab-video (المالك ٢٨ أكتوبر: «الي اريده فيديو مصغر نفس المكان بجوده عاليه مش كانفا»): مربّع القسم فيديو قصير صامت يتكرّر حين يُرفع
+     /media/samples/tab-<القسم>.mp4 (index.json «tab-<القسم>»، و«tab-edit» لتعديل الفيديو)، وصورته الحاليّة غلافه؛ بلا ملفّ تبقى الصورة
+     كما كانت، ومع «تقليل الحركة» الصورة وحدها. */
+  function tabVid(k){ return VIDEOS['tab-'+k] ? '/media/samples/tab-'+k+'.mp4' : ''; }
+  function tabMedia(k,poster){
+    var src=tabVid(k), rm=false, el;
+    if(src) poster='/media/samples/tab-'+k+'.jpg'; /* غلاف من المقطع نفسه (لقطته الأولى) — ومع «تقليل الحركة» هو الصورة */
+    try{ rm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches); }catch(e){ /* guard-ok — بلا matchMedia = حركة عاديّة */ }
+    if(src&&!rm){
+      el=document.createElement('video'); el.muted=true; el.defaultMuted=true; el.loop=true; el.autoplay=true; el.playsInline=true;
+      el.setAttribute('muted',''); el.setAttribute('playsinline',''); el.setAttribute('aria-hidden','true'); el.preload='auto'; el.poster=poster; el.src=src;
+      try{ var pr=el.play(); if(pr&&pr.catch) pr.catch(function(){ /* guard-ok — التشغيل التلقائيّ محجوب: يبقى الغلاف */ }); }catch(e){ /* guard-ok — كذلك */ }
+    } else { el=document.createElement('img'); el.alt=''; el.loading='eager'; el.fetchPriority='high'; el.src=poster; }
+    el.className='vmk-tab-img'; return el;
+  }
+  window.__vmkTabMedia=tabMedia; /* video-edit.js: مربّع «تعديل الفيديو» */
   var tabsWarm=false;
   function warmTabs(){
     if(tabsWarm) return; tabsWarm=true;
@@ -170,7 +192,7 @@
   function loadManifest(){
     if(manifestAsked) return; manifestAsked=true;
     fetch('/media/samples/index.json',{cache:'no-cache'}).then(function(r){ return r.ok?r.json():{}; }).then(function(j){
-      if(j&&typeof j==='object'&&Object.keys(j).length){ VIDEOS=j; sync(); }
+      if(j&&typeof j==='object'&&Object.keys(j).length){ VIDEOS=j; sync(); if(Object.keys(j).some(function(k){ return k.indexOf('tab-')===0; })) buildTabs(); } /* v-tab-video: المربّعات تُبنى ثانيةً بفيديوهاتها */
     }).catch(function(){ /* guard-ok — لا قائمة = لا فيديوهات نماذج */ });
   }
   /* v-tab-tut (المالك ١٧ أكتوبر «حط الفيديوين»): «كيف تسوي فيديو» من محرّك القسم نفسه بصوت الراوي — '<الوضع>-tut' في index.json
@@ -219,7 +241,7 @@
       /* v-vmk-tab-art (المالك ١١ أكتوبر بلوحة التبويبات: «شوف الصور مقاس واحد كلهم»): صورة مربّعة واحدة المقاس فوق اسم كلّ قسم */
       /* v-app-director: قسم المخرج بلا صورة (طلب المالك «بدون أيقونات») — لا <img> فلا أيقونة مكسورة بجانب صور الأقسام */
       if(v==='director'){ var dlb=document.createElement('span'); dlb.className='vmk-tab-lbl'; dlb.textContent=tabLabel(v); b.classList.add('vmk-tab-noimg'); b.appendChild(dlb); tb.appendChild(b); return; }
-      var im=document.createElement('img'); im.className='vmk-tab-img'; im.alt=''; im.loading='eager'; im.fetchPriority='high'; im.src=tabArt(v); if(TAB_ART[v]) im.style.objectPosition='50% 0';; /* v-vmk-tab-warm: ظاهرة دائمًا عند الفتح — لا كسل */
+      var im=tabMedia(v,tabArt(v)); if(TAB_ART[v]) im.style.objectPosition='50% 0'; /* v-vmk-tab-warm: ظاهرة دائمًا عند الفتح — لا كسل · v-tab-video: أو فيديو القسم */
       var lb=document.createElement('span'); lb.className='vmk-tab-lbl'; lb.textContent=tabLabel(v);
       b.appendChild(im); b.appendChild(lb); tb.appendChild(b);
     });
@@ -323,6 +345,31 @@
   }
   /* ═══ v-vmk-simple (المالك: «أبسّط للجمهور… ما أريد شي معقّد»): الظاهر الوصف والمدّة (٥/٨/١٠) والشكل وزرّ الإنشاء — والباقي مطويّ في «خيارات إضافية» ═══ */
   var BASIC_DUR={'5':1,'8':1,'10':1};
+  /* v-video-durations (المالك ٢٧ أكتوبر: «شيل الازرار الي مافيها التوقيت»): كلّ وضع يُظهر المدد التي يصنعها محرّكه فعلًا — كانت
+     الحبّات واحدة للكلّ: «سريع» يعطي ٦ ثوانٍ لكلّ زرّ، و«٢٠ ثانية» و«فيلم» و«طويل» لا تعمل خارج «جودة عالية»، و«إعلان/ريلز» تعد بسرد
+     لا يُطبَّق في «سريع» و«سينمائي». الممثّل مدّته كلامه فتختفي المدّة كلّها. 'owner' = للمالك وحده (فيلم «سينمائي»). */
+  var DUR_OK={
+    canvas:{'5':1,'8':1,'10':1,long20:1,adspot:1,reels:1},
+    runway:{'5':1,'8':1,'10':1,long20:1,film:1,adspot:1,reels:1,longMinutes:1},
+    minimax:{'5':1,'8':1,'10':1},
+    veo:{'5':1,'8':1,'10':1,film:'owner'},
+    actor:{}
+  };
+  function durOk(mode,v){ var m=DUR_OK[mode]; if(!m) return true; var x=m[v]; return x==='owner'?ownerNow():!!x; }
+  function syncDurations(){
+    var du=id('videoMakerDuration'); if(!du) return;
+    var md=(id('videoMakerMode')||{}).value||'', col=du.parentElement;
+    var pills=[].slice.call(M.querySelectorAll('.vmk-pill[data-v]')).filter(function(c){ var g=c.parentNode; return g&&(g.previousElementSibling===du||g.parentNode&&g.parentNode.id==='vmkMoreDur'); });
+    pills.forEach(function(c){ var off=!durOk(md,c.dataset.v); c.hidden=off; c.style.display=off?'none':''; }); /* display صريح: صنف الحبّة يغلب [hidden] */
+    var none=!!(DUR_OK[md]&&!Object.keys(DUR_OK[md]).length);
+    if(col) col.style.display=none?'none':'';
+    /* مراجعة ٢٧ أكتوبر: الممثّل بلا مدّة — قيمة «فيلم/٢٠/طويل» باقية من قسم آخر كانت توقف الإنشاء ببوّابة الفيلم والعمود مخفيّ؛ ترجع ٥ */
+    if(none&&!BASIC_DUR[du.value]){ du.value='5'; du.dispatchEvent(new Event('change')); return; }
+    if(!none&&!durOk(md,du.value)){
+      var first=[].slice.call(du.options).map(function(o){ return o.value; }).filter(function(v){ return durOk(md,v); })[0];
+      if(first&&first!==du.value){ du.value=first; du.dispatchEvent(new Event('change')); }
+    }
+  }
   function simplify(){
     var main=M.querySelector('.vmk-main'); if(!main) return;
     var more=id('vmkMore');
@@ -341,7 +388,7 @@
     more.querySelector('summary').textContent=L('vcMore');
     var st=id('videoMakerStyle'), stBox=st&&st.parentElement;
     var nt=id('videoMakerNarrationToggle'), ntLab=nt&&nt.closest('label');
-    [id('vmkChars'),stBox,id('videoMakerSignatureRow'),id('videoMakerLongMinutesRow'),
+    [id('vmkChars'),stBox,id('videoMakerWrapRow'),id('videoMakerSignatureRow'),id('videoMakerLongMinutesRow'),
      ntLab,id('videoMakerVoiceGenderRow'),id('videoMakerNarrationRow'),M.querySelector('details.vmk-adv')].forEach(function(e){
       if(e&&e.parentNode!==body) body.appendChild(e);
     });
@@ -378,7 +425,8 @@
         box.innerHTML='';
         [].slice.call(g.children).forEach(function(c){ if(!BASIC_DUR[c.dataset.v]) box.appendChild(c); });
       }
-      ex.style.display=box.children.length?'':'none';
+      syncDurations();
+      ex.style.display=[].some.call(box.children,function(c){ return c.style.display!=='none'; })?'':'none';
     }
   }
   /* ═══ v-app-director (المالك: «سوّ لي أو عطني فكرة فيديو عن أنماط الصور ويعطيني فيديو عنه كامل… فيديو عن التطبيق ١٠ دقائق مع مها أو
@@ -396,15 +444,19 @@
     var card=M.firstElementChild; if(!card||!drOwner()||id('vmkDirector')) return;
     var box=document.createElement('div'); box.id='vmkDirector'; box.className='vmk-dir';
     box.innerHTML='<div class="vmk-dir-head"><b></b><p></p></div>'
-      +'<textarea id="vdReq" rows="3" maxlength="600"></textarea>'
-      +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label><label><span></span><select id="vdVoice"><option value="on"></option><option value="off"></option></select></label></div>'
+      +'<textarea id="vdReq" rows="3" maxlength="3000"></textarea>'
+      +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label><label><span></span><select id="vdVoice"><option value="on"></option><option value="off"></option></select></label><label class="vmk-dir-kind"><span></span><select id="vdKind"><option value="app"></option><option value="story"></option></select></label></div>'
+      +'<div class="vmk-tl" id="vdTl"></div>' /* v-director-timed: محرّر «بتوقيتي» — يظهر بالنوع الثالث وحده */
       +'<label class="vmk-dir-ref"><input type="file" accept="image/*" id="vdRef"><img id="vdRefImg" alt="" hidden><span></span></label>'
       +'<button type="button" id="vdGo"></button>'
       +'<div class="vmk-dir-stage" id="vdStage" hidden><div class="vmk-dir-stage-bg"></div><img id="vdStageImg" alt=""><div class="vmk-dir-stage-reel"></div>'
         +'<div class="vmk-dir-stage-cap" id="vdStageCap"></div><div class="vmk-dir-stage-hud"><span id="vdStageStep"></span><b id="vdStageTime">0:00</b></div><div class="vmk-dir-stage-bar"><i id="vdStageBar"></i></div></div>'
       +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','voice','samples','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small><i class="vmk-dir-log" dir="ltr"></i></li>'; }).join('')+'</ol>'
       +'<p class="vmk-dir-msg" id="vdMsg"></p>'
-      +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a></div>';
+      +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><div class="vmk-dir-acts"><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a><button type="button" class="vmk-dir-dl vmk-pub-btn" id="vdPubBtn"></button></div>'
+        /* v-director-publish: لوحة «انشر في حساباتي» — النصّ والمنصّات الموصولة ثمّ «انشر الآن» */
+        +'<div class="vmk-pub" id="vdPub" hidden><label class="vmk-pub-cap"><span></span><textarea id="vdPubCap" rows="3" maxlength="2200"></textarea></label>'
+        +'<div class="vmk-pub-plats" id="vdPubPlats"></div><button type="button" class="vmk-pub-go" id="vdPubGo"></button><p class="vmk-pub-msg" id="vdPubMsg"></p><ul class="vmk-pub-res" id="vdPubRes"></ul></div></div>';
     var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
     var ls=box.querySelector('#vdLang'); DR_LANGS.forEach(function(l){ var o=document.createElement('option'); o.value=l[0]; o.textContent=l[1]; ls.appendChild(o); });
     ls.value=DR_LANGS.some(function(l){ return l[0]===drUiLang(); })?drUiLang():'ar';
@@ -413,19 +465,328 @@
     box.querySelector('#vdGo').addEventListener('click',drRun);
     box.querySelector('#vdReq').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); drRun(); } });
     box.querySelector('#vdVoice').addEventListener('change',syncDirector); /* بدون صوت: اختيار المتحدّث بلا معنى فيُعطَّل */
+    var kT=document.createElement('option'); kT.value='timed'; box.querySelector('#vdKind').appendChild(kT); /* v-director-timed: النوع الثالث «بتوقيتي» */
+    tlInit(box.querySelector('#vdTl'));
+    box.querySelector('#vdPubBtn').addEventListener('click',pbToggle); box.querySelector('#vdPubGo').addEventListener('click',pbGo); /* v-director-publish */
+    box.querySelector('#vdKind').addEventListener('change',syncDirector); /* v-director-story: القصّة حدّها ٣٠٠٠ حرف وبلا مدّة ولا صورة مرجع */
+  }
+  function drStory(){ return ((id('vdKind')||{}).value==='story'); }
+  /* v-director-timed (المالك ٧ نوفمبر: «اريده الشخص نفسه يحط التوقيت مع الملاحظات لين ٥ دقائق»، ثمّ «ابدأ… في المخرج» واختار «فيديو AI»):
+     النوع الثالث «بتوقيتي»: مقاطع بمدّة (٥–٣٠ ث) وملاحظة لكلّ مقطع حتّى ٥ دقائق، وشريط زمنيّ يتعبّى. التوليد في app-11-video.js
+     (window.__vmkTimelineRun: مشاهد ١٠/٥ ث بمحرّك «طويل (دقائق)» ثمّ لصق). المقاطع تُحفظ على الجهاز (راحة، لا حالة لازمة). */
+  var TL_MAX=300, TL_DUR=[5,10,15,20,30], TL_KEY='aiapp_vd_timeline';
+  var TL={segs:null};
+  function drTimed(){ return ((id('vdKind')||{}).value==='timed'); }
+  function tlFmt(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
+  function tlTotal(){ return (TL.segs||[]).reduce(function(a,s){ return a+s.d; },0); }
+  function tlClipCount(){ return (typeof window.__vmkTimelinePlan==='function')?window.__vmkTimelinePlan(TL.segs||[]).length:(TL.segs||[]).reduce(function(a,s){ return a+Math.ceil(s.d/10); },0); }
+  function tlSave(){ try{ localStorage.setItem(TL_KEY,JSON.stringify(TL.segs)); }catch(e){ /* guard-ok — بلا تخزين: تبقى المقاطع في الصفحة */ } }
+  function tlLoad(){
+    var v=null; try{ v=JSON.parse(localStorage.getItem(TL_KEY)||'null'); }catch(e){ v=null; /* guard-ok — قيمة تالفة: بداية جديدة */ }
+    TL.segs=(Array.isArray(v)?v:[]).filter(function(s){ return s&&TL_DUR.indexOf(+s.d)>=0; }).map(function(s){ return {d:+s.d,n:String(s.n||'').slice(0,500)}; });
+    while(tlTotal()>TL_MAX) TL.segs.pop();
+    if(!TL.segs.length) TL.segs=[{d:10,n:''}];
+  }
+  function tlErr(t){ var e=id('vdTlErr'); if(e) e.textContent=t||''; }
+  function tlInit(el){
+    if(!el) return; tlLoad();
+    el.innerHTML='<div class="vmk-tl-top"><span id="vdTlLeft"></span></div><div class="vmk-tl-bar" id="vdTlBar" dir="ltr"></div>'
+      +'<div class="vmk-tl-scale" dir="ltr"><span>0:00</span><span>1:00</span><span>2:00</span><span>3:00</span><span>4:00</span><span>5:00</span></div>'
+      +'<div class="vmk-tl-head"><span data-k="vdTlTime"></span><span data-k="vdTlNote"></span><span data-k="vdTlDur"></span><span></span></div>'
+      +'<div class="vmk-tl-list" id="vdTlList"></div>'
+      +'<div class="vmk-tl-add"><button type="button" id="vdTlAdd"></button><small data-k="vdTlSplit"></small></div>'
+      +'<p class="vmk-tl-err" id="vdTlErr"></p><p class="vmk-tl-sum" id="vdTlSum"></p><div class="vmk-tl-links" id="vdTlLinks"></div>';
+    el.querySelector('#vdTlAdd').addEventListener('click',function(){
+      if(DR.busy) return;
+      if(tlTotal()+5>TL_MAX){ tlErr(L('vdTlFull')); return; }
+      TL.segs.push({d:Math.min(10,TL_MAX-tlTotal()),n:''}); tlErr(''); tlSave(); tlRender();
+      var ts=el.querySelectorAll('#vdTlList textarea'); if(ts.length) ts[ts.length-1].focus();
+    });
+  }
+  function tlRender(){
+    var list=id('vdTlList'), bar=id('vdTlBar'); if(!list||!bar) return;
+    list.innerHTML=''; bar.innerHTML=''; var t=0;
+    TL.segs.forEach(function(s,i){
+      var row=document.createElement('div'); row.className='vmk-tl-row';
+      var tm=document.createElement('span'); tm.className='vmk-tl-time'; tm.dir='ltr'; tm.textContent=tlFmt(t)+' – '+tlFmt(t+s.d);
+      var ta=document.createElement('textarea'); ta.rows=2; ta.maxLength=500; ta.value=s.n; ta.placeholder=L('vdTlPh'); ta.disabled=DR.busy;
+      ta.addEventListener('input',function(){ s.n=ta.value; ta.classList.remove('err'); tlErr(''); tlSave(); });
+      var sel=document.createElement('select'); sel.disabled=DR.busy;
+      TL_DUR.forEach(function(d){ var o=document.createElement('option'); o.value=String(d); o.textContent=drT('vdTlSec',{n:d}); if(d===s.d) o.selected=true; sel.appendChild(o); });
+      sel.addEventListener('change',function(){ var nd=+sel.value; if(tlTotal()-s.d+nd>TL_MAX){ tlErr(L('vdTlOver')); sel.value=String(s.d); return; } s.d=nd; tlErr(''); tlSave(); tlRender(); });
+      var del=document.createElement('button'); del.type='button'; del.className='vmk-tl-del'; del.textContent='×'; del.title=L('vdTlDel'); del.setAttribute('aria-label',L('vdTlDel')); del.disabled=DR.busy;
+      del.addEventListener('click',function(){ TL.segs.splice(i,1); if(!TL.segs.length) TL.segs.push({d:10,n:''}); tlErr(''); tlSave(); tlRender(); });
+      row.appendChild(tm); row.appendChild(ta); row.appendChild(sel); row.appendChild(del); list.appendChild(row);
+      var g=document.createElement('i'); g.className=i%2?'b':'a'; g.style.width=(s.d/TL_MAX*100)+'%'; g.textContent=s.d>=10?String(i+1):''; g.title=tlFmt(t)+' – '+tlFmt(t+s.d);
+      g.addEventListener('click',function(){ ta.focus(); });
+      bar.appendChild(g); t+=s.d;
+    });
+    var lf=id('vdTlLeft'); if(lf) lf.textContent=drT('vdTlLeft',{r:tlFmt(TL_MAX-tlTotal()),max:tlFmt(TL_MAX)});
+    var sm=id('vdTlSum'); if(sm) sm.textContent=drT('vdTlSum',{k:TL.segs.length,t:tlFmt(tlTotal()),c:tlClipCount()});
+  }
+  function tlSync(){
+    var el=id('vdTl'); if(!el) return; if(!TL.segs) tlLoad();
+    [].forEach.call(el.querySelectorAll('[data-k]'),function(x){ x.textContent=L(x.getAttribute('data-k')); });
+    var ad=id('vdTlAdd'); if(ad){ ad.textContent='+ '+L('vdTlAdd'); ad.disabled=DR.busy; }
+    tlRender();
+  }
+  function tlLinks(urls){ /* إن تعذّر اللصق أو توقّف التوليد: المشاهد المكتملة روابط تحميل — لا يضيع ما دُفع */
+    var box=id('vdTlLinks'); if(!box) return; box.innerHTML='';
+    (urls||[]).forEach(function(u,i){
+      var a=document.createElement('a'); a.href=(typeof window.__vmkProxyUrl==='function')?window.__vmkProxyUrl(u):u; a.download='scene-'+(i+1)+'.mp4'; a.target='_blank'; a.rel='noopener';
+      a.textContent=drT('vdTlScenePart',{i:i+1}); box.appendChild(a);
+    });
+  }
+  async function drTimedRun(){
+    if(DR.busy||!drOwner()) return;
+    var segs=TL.segs||[]; tlErr('');
+    if(!segs.length){ tlErr(L('vdTlEmpty')); return; }
+    for(var i=0;i<segs.length;i++){
+      if(!String(segs[i].n||'').trim()){
+        tlErr(drT('vdTlNeedNote',{i:i+1}));
+        var tas=id('vdTlList')?id('vdTlList').querySelectorAll('textarea'):[]; if(tas[i]){ tas[i].classList.add('err'); tas[i].focus(); }
+        return;
+      }
+    }
+    if(tlTotal()>TL_MAX){ tlErr(L('vdTlOver')); return; }
+    if(typeof window.__vmkTimelineRun!=='function'){ drMsg(L('vdFail'),true,'timeline engine missing'); return; }
+    var clips=tlClipCount();
+    if(!window.confirm(drT('vdTlConfirm',{c:clips,t:tlFmt(tlTotal()),lo:clips*2,hi:clips*5}))) return; /* إنفاق حقيقيّ: موافقة لكلّ تشغيلة */
+    var my=++DR.run, res=id('vdRes');
+    DR.busy=true; syncDirector(); drMsg(''); if(res) res.classList.remove('has'); tlLinks([]);
+    try{
+      var out=await window.__vmkTimelineRun(segs.map(function(s){ return {d:s.d,n:String(s.n).trim()}; }),{
+        status:function(kind,a,b){ if(my===DR.run) drMsg(kind==='join'?L('vdTlJoin'):drT('vdTlScene',{i:a,n:b})); }
+      });
+      if(my!==DR.run) return;
+      if(out&&out.blob){
+        if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ /* guard-ok — رابط زال */ } }
+        DR.out=URL.createObjectURL(out.blob); pbNewVideo(); /* v-director-publish-guard */
+        var vid=id('vdVideo'), dl=id('vdDl');
+        if(vid) vid.src=DR.out;
+        if(dl){ dl.href=DR.out; dl.setAttribute('download','omran-timeline.'+(/webm/i.test(out.blob.type||'')?'webm':'mp4')); }
+        if(res) res.classList.add('has');
+        drMsg(drT('vdTlDone',{t:tlFmt(tlTotal())}));
+      } else { drMsg(L('vdTlNoJoin'),true); tlLinks(out&&out.urls); }
+    }catch(err){
+      if(my!==DR.run) return;
+      var code=String((err&&err.code)||(err&&err.message)||'');
+      if(code==='tl_credits') drMsg(drT('vdTlCredits',{c:err.credits,n:err.needed}),true);
+      else drMsg(L('vdFail'),true,code.slice(0,300));
+      if(err&&err.partial&&err.partial.length) tlLinks(err.partial);
+      try{ __swallow(err,'director:timed'); }catch(e){ /* guard-ok — لا مسجّل */ }
+    }finally{
+      if(my===DR.run){ DR.busy=false; syncDirector(); }
+    }
+  }
+  /* ═══ v-director-publish (المالك ٧ نوفمبر: «اي فيديو الي اسويه اقدر ارسله الي اي مكان… في السوشيل ميديا هذي الخاصيه موجوده عندي لكن ضيفها عندي
+     في المخرج»، واختار «انشر في حساباتي»): زرّ تحت الفيديو الجاهز يفتح لوحة — النصّ المرافق (فارغ عمدًا: ملاحظات التوليد ليست وصفًا للعامّة)
+     والمنصّات الموصولة كما يراها الخادم، ثمّ «انشر الآن» بموافقة صريحة لكلّ نشر (علنيّ ولا يُسحب). الفيديو يُرفع من الجهاز مباشرة إلى هدف مؤقّت
+     يصدره الخادم (مرّة لكلّ فيديو)، والخادم ينشر بخدمة النشر نفسها التي يستعملها بوت التسويق، ثمّ استطلاع حتّى تقول كلّ منصّة كلمتها. ═══ */
+  var PB={busy:false,plats:null,reauth:[],loading:false,src:'',id:'',vid:'',at:0,reqs:{},rows:{},own:{},sent:{},poll:0,gen:0,ticking:false,xhr:null};
+  var PB_NAMES={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',youtube:'YouTube',x:'X',threads:'Threads'};
+  var PB_FRESH=5*3600*1000; /* v-director-publish-guard: الملفّ المرفوع يعيش ٦ ساعات عند الخادم وخدمة النشر تجلبه في الخلفيّة — بعد ٥ يُرفع من جديد */
+  function pbApi(op,body){
+    return fetch('/api/media?action=social-publish&op='+op,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({token:drTok()},body||{}))})
+      .then(function(r){ return r.json().catch(function(){ return {ok:false,error:'http',status:r.status}; }); });
+  }
+  function pbMsg(t,err,why){
+    var m=id('vdPubMsg'); if(!m) return;
+    m.textContent=(t||'')+(why?' ('+String(why).slice(0,200)+')':''); /* السبب الحقيقيّ بين قوسين: اللوحة للمالك وحده */
+    m.classList.toggle('err',!!err);
+  }
+  function pbWhy(d){ d=d||{}; return [d.error||d.message||'',d.status||'',d.detail||''].filter(Boolean).join(' '); }
+  function pbErr(d){
+    var e=String((d&&d.error)||'');
+    return e==='no_key'?L('vdPubNoKey'):e==='limit'?L('vdPubLimit'):e==='too_big'?drT('vdPubBig',{n:(d&&d.maxMB)||500}):L('vdPubFail');
+  }
+  function pbNames(list){ return (list||[]).map(function(p){ return PB_NAMES[p]||p; }).join('، '); }
+  function pbUnknown(d){ return !!d&&!d.ok&&(d.error==='net'||d.error==='http'||(d.error==='retry'&&!d.detail)); } /* لا نعرف هل حجز الخادم وأرسل (انقطاع أو خطأ بعد الإرسال) */
+  /* v-director-publish-guard: فيديو جديد = لوحة من الصفر — نصّ السابق ونتيجته ومنصّاته لا تُعرض تحته (كان التصفير عند فتح اللوحة وحده،
+     فلوحة مفتوحة تُبقي «نزل» ونصّ الفيديو السابق تحت الجديد). يُنادى حيث يتغيّر DR.out. */
+  function pbNewVideo(){
+    PB.gen++; PB.reqs={}; PB.rows={}; PB.own={}; PB.sent={}; PB.vid=''; clearTimeout(PB.poll);
+    if(PB.xhr){ var x=PB.xhr; PB.xhr=null; try{ x.abort(); }catch(e){ /* guard-ok — رفع انتهى أو لا يُلغى */ } } /* رفع الفيديو القديم يُلغى: «انشر الآن» لا يبقى مقفلًا عليه */
+    pbRes([]); pbMsg(''); var c=id('vdPubCap'); if(c) c.value='';
+    var b=id('vdPubPlats'); if(b) b.textContent=''; pbPlats(); /* المنصّات كلّها مؤشَّرة من جديد */
+  }
+  function pbToggle(){
+    var p=id('vdPub'); if(!p) return;
+    p.hidden=!p.hidden;
+    if(!p.hidden){ pbLoad(); var c=id('vdPubCap'); if(c&&!PB.busy) c.focus(); }
+  }
+  function pbLoad(){
+    if(PB.loading) return; /* سؤال واحد في الطريق */
+    /* كلّ فتح يسأل من جديد: حساب أُعيد ربطه أو وُصل يظهر بلا إعادة تحميل (إعادة التحميل تضيّع الفيديو). القائمة الحاضرة تبقى أثناء السؤال */
+    PB.loading=true; if(!PB.plats){ if(!pbKeep()) pbMsg(''); pbPlats(); } syncDirector();
+    pbApi('accounts').then(function(d){
+      PB.loading=false; var keep=pbKeep(); /* رسالة رفع أو نشر قائم أو منتهٍ لا تُمسح */
+      if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; if(!keep) pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
+      else if(!keep) pbMsg(pbErr(d),true,pbWhy(d)); /* القائمة السابقة تبقى؛ وبلا قائمة يعيد الفتح التالي السؤال (مفتاح أُضيف بعدها) */
+      pbPlats(); syncDirector();
+    }).catch(function(e){ PB.loading=false; if(!pbKeep()) pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); syncDirector(); });
+  }
+  function pbKeep(){ return PB.busy||Object.keys(PB.reqs).length>0||Object.keys(PB.rows).length>0; }
+  function pbPlats(){
+    var box=id('vdPubPlats'); if(!box) return;
+    var off={}; [].forEach.call(box.querySelectorAll('input[type=checkbox]'),function(c){ if(!c.checked) off[c.value]=1; }); /* ما شاله المالك يبقى مشالًا بعد التحديث */
+    box.textContent='';
+    if(PB.loading&&!PB.plats){ box.textContent=L('vdPubLoading'); return; }
+    (PB.plats||[]).forEach(function(p){
+      var l=document.createElement('label'), c=document.createElement('input'), st=PB.sent[p];
+      c.type='checkbox'; c.value=p; c.checked=!st&&!off[p]; c.disabled=!!st; /* أخذ هذا الفيديو (نزل أو ينتظر): لا يُرسل له مرّة ثانية */
+      if(st) l.className='is-sent';
+      l.appendChild(c); l.appendChild(document.createTextNode((PB_NAMES[p]||p)+(st?' · '+L(st==='ok'?'vdPubOk':'vdPubWait'):''))); box.appendChild(l);
+    });
+    (PB.reauth||[]).forEach(function(p){ var s=document.createElement('span'); s.className='off'; s.textContent=drT('vdPubReauth',{p:PB_NAMES[p]||p}); box.appendChild(s); });
+  }
+  function pbPut(url,mime,blob,at){
+    return new Promise(function(res,rej){
+      var x=new XMLHttpRequest(), bad=function(){ rej({error:'upload',status:x.status}); };
+      x.open('PUT',url,true); x.timeout=1800000;
+      x.setRequestHeader('Content-Type',mime); /* النوع الذي أصدر الخادم الهدف به حرفيًّا */
+      x.upload.onprogress=function(e){ if(at===DR.out&&e.lengthComputable&&e.total>0) pbMsg(drT('vdPubUp',{p:Math.min(99,Math.round(e.loaded/e.total*100))})); };
+      x.onload=function(){ if(x.status>=200&&x.status<300) res(); else bad(); };
+      x.onerror=bad; x.ontimeout=bad; x.onabort=bad;
+      PB.xhr=x; x.send(blob);
+    });
+  }
+  function pbRes(list){
+    var ul=id('vdPubRes'); if(!ul) return;
+    ul.textContent='';
+    (list||[]).forEach(function(r){
+      var li=document.createElement('li'); li.className='is-'+r.state;
+      var b=document.createElement('b'); b.textContent=PB_NAMES[r.platform]||r.platform; li.appendChild(b);
+      var s=document.createElement('span'); s.textContent=L(r.state==='ok'?'vdPubOk':(r.state==='fail'?'vdPubNo':'vdPubWait')); li.appendChild(s);
+      if(r.url){ var a=document.createElement('a'); a.href=r.url; a.target='_blank'; a.rel='noopener'; a.textContent=L('vdPubOpen'); li.appendChild(a); }
+      if(r.error){ var sm=document.createElement('small'); sm.dir='auto'; sm.textContent=r.error; li.appendChild(sm); }
+      ul.appendChild(li);
+    });
+  }
+  async function pbGo(){
+    if(PB.busy||!drOwner()||!DR.out) return;
+    var capEl=id('vdPubCap'), cap=String((capEl||{}).value||'').trim();
+    var picked=[].map.call((id('vdPubPlats')||document).querySelectorAll('input:checked'),function(c){ return c.value; }).filter(function(p){ return !PB.sent[p]; });
+    if(!cap){ pbMsg(L('vdPubNeedCap'),true); if(capEl) capEl.focus(); return; }
+    if(!picked.length){ pbMsg(L('vdPubPick'),true); return; }
+    if(!window.confirm(drT('vdPubConfirm',{p:pbNames(picked)}))) return; /* علنيّ ولا يُسحب: موافقة لكلّ نشر */
+    var at=DR.out; /* الفيديو الذي وافق عليه: إن جاء فيديو جديد أثناء الرفع لا يُنشر القديم ولا تُرسم نتيجته تحت الجديد */
+    PB.busy=true; syncDirector(); /* نتائج النشر السابق ومتابعته تبقى: النشر الجديد يضيف ولا يقطع */
+    try{
+      var d=null;
+      for(var round=0;round<2;round++){
+        var up=PB.src!==at||!PB.id||!(Date.now()-PB.at<PB_FRESH);
+        if(up){ /* فيديو جديد أو ملفّ قارب عمره = رفع؛ الفيديو نفسه لمنصّات أخرى لا يُرفع مرّتين */
+          pbMsg(drT('vdPubUp',{p:0}));
+          var blob=await fetch(at).then(function(r){ return r.blob(); });
+          if(at!==DR.out) return;
+          var type=/webm/i.test(blob.type||'')?'video/webm':(/quicktime/i.test(blob.type||'')?'video/quicktime':'video/mp4');
+          var t=await pbApi('target',{size:blob.size,type:type});
+          if(at!==DR.out) return;
+          if(!t||!t.ok) throw (t||{error:'target'});
+          var t0=Date.now();
+          await pbPut(t.up,t.ctype||type,blob,at);
+          if(at!==DR.out) return;
+          if(PB.src!==at||!PB.vid) PB.vid=t.id; /* أوّل رفع يسمّي الفيديو؛ إعادة رفعه تبقي اسمه فتبقى حجوزات منصّاته عند الخادم */
+          PB.src=at; PB.id=t.id; PB.at=t0;
+        }
+        var pub=function(){ return pbApi('publish',{id:PB.id,vid:PB.vid||PB.id,caption:cap,platforms:picked}).catch(function(e){ return {ok:false,error:'net',detail:String((e&&e.message)||e)}; }); };
+        d=await pub();
+        if(at!==DR.out) return;
+        if(pbUnknown(d)){ d=await pub(); if(at!==DR.out) return; } /* انقطاع بيننا وبين الخادم: الحجز لكلّ منصّة يجعل الإعادة آمنة — إن كان الأوّل وصل عادت «انرسل قبل» وتُوبع طلبه */
+        if(d&&d.error==='no_file'&&!up){ PB.id=''; continue; } /* انتهى عمر الملفّ عند الخادم ولم يُنشر شيء: رفع واحد من جديد في الضغطة نفسها */
+        break;
+      }
+      if(pbUnknown(d)){ pbMsg(L('vdPubSlow'),true,pbWhy(d)); return; } /* ما نعرف هل وصل: لا «ما قدر ينشر» ولا وعد بمتابعة بلا طلب — الضغطة التالية يحسمها حجز الخادم */
+      if(!d||!d.ok) throw (d||{error:'publish'});
+      var already=d.already||[], sent=d.again?[]:picked.filter(function(p){ return already.indexOf(p)<0; }), hold=d.held||{};
+      sent.concat(already).forEach(function(p){ if(!PB.sent[p]) PB.sent[p]='wait'; });
+      sent.forEach(function(p){ PB.rows[p]={platform:p,state:'wait',url:'',error:''}; }); /* ما أُرسل الآن ينتظر، لا نتيجة محاولته السابقة */
+      var again=already.length?drT('vdPubAgain',{p:pbNames(already)}):'';
+      pbMsg(d.again?again:(d.unsure?L('vdPubUnsure'):L('vdPubSent')+(again?' · '+again:''))); /* ما لم يُرسل لا يُقال عنه «انرسل» */
+      pbRes(pbRowList()); pbPlats();
+      Object.keys(hold).forEach(function(p){ pbTrack(String(hold[p]||''),[p]); }); /* من أخذه قبل: طلبه يُتابَع فيُعرف هل نزل */
+      if(d.again&&!d.held) pbTrack(String(d.request||''),already);
+      if(!d.again) pbTrack(String(d.request||''),sent);
+    }catch(e){
+      if(at!==DR.out) return;
+      pbMsg(pbErr(e),true,pbWhy(e)||String((e&&e.message)||e));
+      try{ __swallow(e,'director:publish'); }catch(x){ /* guard-ok — لا مسجّل */ }
+    }finally{ PB.busy=false; syncDirector(); }
+  }
+  /* v-director-publish-guard: كلّ طلب نشر يُتابَع حتّى تقول منصّاته كلمتها — نشرٌ ثانٍ (منصّة أخرى أو إعادة ما فشل) لا يقطع متابعة
+     الأوّل (كانت منصّاته تبقى «ينتظر» معطّلة للأبد)، والنتيجة صفّ لكلّ منصّة من أيّ طلب. مؤقّت واحد يسأل عن المعلَّق كلّه. */
+  function pbTrack(req,plats){
+    if(!req) return;
+    var r=PB.reqs[req]||(PB.reqs[req]={plats:[],n:0});
+    (plats||[]).forEach(function(p){ if(r.plats.indexOf(p)<0) r.plats.push(p); PB.own[p]=req; }); /* المنصّة تتبع آخر طلب أُرسلت فيه */
+    r.n=0; pbPoll();
+  }
+  function pbMine(req,p){ if(!PB.own[p]) PB.own[p]=req; return PB.own[p]===req; } /* طلب أقدم لا يغلب نتيجة الأحدث للمنصّة نفسها */
+  /* المتابعة انتهت (حُسم الطلب أو بلغ حدّ الأسئلة) ومنصّة منه ما زالت «ينتظر»: لا تبقى قفلًا في اللوحة — الضغطة التالية يحسمها الخادم
+     (يحرّر ما لم ينشر، أو يقول «انرسل قبل» ويعيد ربط المتابعة) */
+  function pbFree(req,r){ r.plats.forEach(function(p){ if(PB.own[p]===req&&PB.sent[p]==='wait') delete PB.sent[p]; }); }
+  function pbPoll(){
+    clearTimeout(PB.poll);
+    var keys=Object.keys(PB.reqs), gen=PB.gen; if(!keys.length) return;
+    var young=keys.some(function(k){ return PB.reqs[k].n<6; });
+    PB.poll=setTimeout(function(){ pbTick(gen); },young?5000:10000);
+  }
+  async function pbTick(gen){
+    if(PB.ticking){ pbPoll(); return; } /* سؤال سابق ما خلص (شبكة بطيئة): الدور بعده، لا سؤالان متداخلان */
+    PB.ticking=true;
+    try{
+      var lost=false, slow=false, keys=Object.keys(PB.reqs);
+      for(var i=0;i<keys.length;i++){
+        var req=keys[i], r=PB.reqs[req]; if(!r) continue;
+        var d=await pbApi('status',{request:req}).catch(function(){ return null; });
+        if(gen!==PB.gen) return; /* فيديو جديد أثناء السؤال: نتيجة القديم لا تُرسم تحته */
+        if(PB.reqs[req]!==r) continue;
+        r.n++;
+        if(d&&d.ok){
+          var rows=d.results||[];
+          rows.forEach(function(x){ if(!pbMine(req,x.platform)) return; PB.rows[x.platform]=x; if(x.state==='fail') delete PB.sent[x.platform]; else PB.sent[x.platform]=x.state; }); /* ما لم ينزل يُختار من جديد */
+          if(d.lost||(d.state==='fail'&&!rows.length)){ /* ما وصل الخدمة: لا شيء نزل، والنشر التالي يرسله */
+            r.plats.forEach(function(p){ if(PB.own[p]!==req) return; delete PB.sent[p]; delete PB.rows[p]; delete PB.own[p]; }); delete PB.reqs[req]; lost=true; continue;
+          }
+          if(d.state==='fail') r.plats.forEach(function(p){ if(PB.own[p]===req&&!rows.some(function(x){ return x.platform===p; })){ delete PB.sent[p]; PB.rows[p]={platform:p,state:'fail',url:'',error:''}; } }); /* مهمّة فشلت قبل أن تبلغها */
+          if(d.state!=='wait'){ pbFree(req,r); delete PB.reqs[req]; continue; }
+        }
+        if(r.n>=120){ pbFree(req,r); delete PB.reqs[req]; slow=true; }
+      }
+      pbRes(pbRowList()); pbPlats();
+      if(!PB.busy){ /* رسالة الرفع الجاري لا تُغطّى */
+        if(lost) pbMsg(L('vdPubLost'),true);
+        else if(slow) pbMsg(L('vdPubSlow'));
+        else if(!Object.keys(PB.reqs).length){ var all=pbRowList(), ok=all.filter(function(x){ return x.state==='ok'; }).length; pbMsg(drT('vdPubDone',{ok:ok,n:all.length}),!ok); }
+      }
+    }finally{ PB.ticking=false; pbPoll(); }
+  }
+  function pbRowList(){
+    var order=Object.keys(PB_NAMES), rank=function(p){ var i=order.indexOf(p); return i<0?99:i; };
+    return Object.keys(PB.rows).sort(function(a,b){ return rank(a)-rank(b); }).map(function(p){ return PB.rows[p]; });
   }
   function syncDirector(){
     var box=id('vmkDirector'); if(!box) return;
-    box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=L('vdSub');
-    box.querySelector('#vdReq').placeholder=L('vdPh');
+    box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=drStory()?L('vdSubStory'):L('vdSub'); /* v-director-story: وصف القصّة لا «يصوّر شاشات التطبيق» */
+    var story=drStory(), rq=box.querySelector('#vdReq');
+    rq.placeholder=story?L('vdPhStory'):L('vdPh'); /* v-director-story: الحقل ٣٠٠٠ في النوعين — لصق قصّة قبل اختيار «قصة» كان يُقصّ عند ٦٠٠ ولا يرجع */
     var labs=box.querySelectorAll('.vmk-dir-row label>span'); labs[0].textContent=L('vdLang'); labs[1].textContent=L('vdSpeaker'); labs[2].textContent=L('vdMinutes'); labs[3].textContent=L('vdVoiceLabel');
     var vo=box.querySelector('#vdVoice'); vo.options[0].textContent=L('vdVoiceOn'); vo.options[1].textContent=L('vdVoiceOff'); box.querySelector('#vdSpeaker').disabled=(vo.value==='off');
     var sp=box.querySelector('#vdSpeaker'); sp.options[0].textContent=L('vdMaha')||'مها'; sp.options[1].textContent=L('vdAbdullah')||'عبدالله';
     box.querySelector('.vmk-dir-ref span').textContent=L('vdRef');
+    var kd=box.querySelector('#vdKind'); box.querySelector('.vmk-dir-kind>span').textContent=L('vdKind'); kd.options[0].textContent=L('vdKindApp'); kd.options[1].textContent=L('vdKindStory');
+    box.querySelector('#vdMin').disabled=story; box.querySelector('.vmk-dir-ref').hidden=story; /* القصّة: مدّتها من طولها، ونماذج الأنماط لا تدخلها */
     box.querySelector('#vdGo').textContent=L('vdGo'); box.querySelector('#vdGo').disabled=DR.busy;
-    var names={plan:'vdStepPlan',shots:'vdStepShots',samples:'vdStepSamples',voice:'vdStepVoice',join:'vdStepJoin'};
+    var names={plan:'vdStepPlan',shots:story?'vdStepFrames':'vdStepShots',samples:story?'vdStepDraw':'vdStepSamples',voice:'vdStepVoice',join:'vdStepJoin'};
     [].forEach.call(box.querySelectorAll('#vdSteps li'),function(li){ li.querySelector('b').textContent=L(names[li.dataset.step]); });
     box.querySelector('#vdDl').textContent=L('vdDownload');
+    var timed=drTimed(); box.classList.toggle('vd-timed',timed); /* v-director-timed */
+    if(kd.options[2]) kd.options[2].textContent=L('vdKindTimed');
+    if(timed) box.querySelector('.vmk-dir-head p').textContent=L('vdSubTimed');
+    tlSync();
+    box.querySelector('#vdPubBtn').textContent=L('vdPubBtn'); box.querySelector('.vmk-pub-cap>span').textContent=L('vdPubCap'); /* v-director-publish */
+    box.querySelector('#vdPubCap').placeholder=L('vdPubPh'); var pg=box.querySelector('#vdPubGo'); pg.textContent=L('vdPubGo'); pg.disabled=PB.busy||PB.loading||!(PB.plats&&PB.plats.length);
   }
   /* v-app-director-motion (المالك: «خل فيه حركة فيديو عشان اعرف ان الفيديو يتولد»): شاشة حيّة أثناء التوليد — ضوء يتحرّك وشريط لقطات،
      وما يكتبه المخرج مشهدًا مشهدًا، ونماذج الأنماط تظهر فيها بحركة كاميرا فور توليدها، مع عدّاد وقت وشريط تقدّم كلّيّ. تعمل أثناء التوليد فقط. */
@@ -510,7 +871,11 @@
      في الفيديو بلا صوت هذا هو ما يشرح المشهد. يعيد null إن تعذّر الرسم فتُرسل الصورة كما هي. */
   function drWrap(ctx,text,maxW){
     var words=String(text||'').split(/\s+/).filter(Boolean), lines=[], cur='';
-    words.forEach(function(w){ var t=cur?cur+' '+w:w; if(cur&&ctx.measureText(t).width>maxW){ lines.push(cur); cur=w; } else cur=t; });
+    words.forEach(function(w){
+      if(/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/.test(w)&&ctx.measureText(w).width>maxW){ /* مراجعة v-director-story: الصينيّة/اليابانيّة بلا مسافات كانت سطرًا يخرج عن الإطار — تُكسر بالحروف؛ والكلمة العربيّة الطويلة تبقى كاملة (لا تُقطع حروفها المتّصلة) */
+        Array.from(w).forEach(function(g){ var t=cur+g; if(cur&&ctx.measureText(t).width>maxW){ lines.push(cur); cur=g; } else cur=t; }); return;
+      }
+      var t=cur?cur+' '+w:w; if(cur&&ctx.measureText(t).width>maxW){ lines.push(cur); cur=w; } else cur=t; });
     if(cur) lines.push(cur);
     return lines;
   }
@@ -542,13 +907,54 @@
       img.src='data:'+(mime||'image/png')+';base64,'+b64;
     });
   }
+  /* v-director-story: مشهد القصّة لوحة كاملة 1920×1080 (الصورة 16:9 تُقصّ قصًّا لا تُمطّ)، وسطر الراوي ترجمةً على تدرّج داكن أسفلها —
+     لا خلفيّة مموّهة ولا كبسولة ذهبيّة (شكل «كانفا» الذي رفضه المالك). النصّ يُرسم فوق الصورة لا داخل التوليد. */
+  function drStoryFrame(b64,mime,text,dir){
+    return new Promise(function(res){
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var W=1920,H=1080,c=document.createElement('canvas'); c.width=W; c.height=H; var x=c.getContext('2d');
+          var k=Math.max(W/img.width,H/img.height), bw=img.width*k, bh=img.height*k;
+          x.drawImage(img,(W-bw)/2,(H-bh)/2,bw,bh);
+          if(text){
+            var fam='system-ui,sans-serif'; try{ fam=getComputedStyle(document.body).fontFamily||fam; }catch(e){ /* guard-ok — خطّ النظام */ }
+            x.direction=dir==='rtl'?'rtl':'ltr'; x.textAlign='center'; x.textBaseline='middle';
+            /* مراجعة: قصّ الأسطر عند الثالث كان يُسقط آخر الجملة — الخطّ يصغر حتّى ٣٠ لتكفي ثلاثة أسطر، وما زاد بعدها يبقى ولا يُحذف */
+            var fs=46, lines; for(;;){ x.font='700 '+fs+'px '+fam; lines=drWrap(x,text,W*0.8); if(lines.length<=3||fs<=30) break; fs-=2; }
+            var lh=Math.round(fs*1.39), y0=H-70-lh*(lines.length-1), gy=Math.max(0,Math.min(H*0.56,y0-lh*1.6));
+            var g=x.createLinearGradient(0,gy,0,H); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.78)'); x.fillStyle=g; x.fillRect(0,gy,W,H-gy);
+            x.shadowColor='rgba(0,0,0,.85)'; x.shadowBlur=14; x.fillStyle='#ffffff';
+            lines.forEach(function(ln,i){ x.fillText(ln,W/2,y0+lh*i); });
+          }
+          res({b64:c.toDataURL('image/jpeg',0.92).split(',')[1],mime:'image/jpeg'});
+        }catch(e){ try{ __swallow(e,'director:story-frame'); }catch(z){ /* guard-ok — لا مسجّل */ } res(null); }
+      };
+      img.onerror=function(){ res(null); };
+      img.src='data:'+(mime||'image/png')+';base64,'+b64;
+    });
+  }
+  /* أمر صورة المشهد: الأسلوب الواحد + ورقة الشخصيّات + لقطة المشهد — 16:9 وبلا كتابة (قاعدة المالك: لا نصّ داخل صورة مولّدة) */
+  /* مراجعة: مسار الصور يقصّ الأمر عند ١٨٠٠ حرف (فاللقطة في آخره تسقط)، وكلمات مثل screen/text/caption/menu/label/icon/app تحوّله
+     لمسار الكتابة بمقاس 3:2 — اللقطة أوّلًا، والكلمات المحوِّلة تُستبدل، والشخصيّات المذكورة في اللقطة قبل غيرها حتّى الحدّ */
+  function drStoryNeutral(t){ return String(t||'').replace(/\bscreens?\b/gi,'display').replace(/\binterfaces?\b/gi,'panel').replace(/\bmenus?\b/gi,'board').replace(/\blabels?\b/gi,'tag').replace(/\bicons?\b/gi,'symbol').replace(/\bapps?\b/gi,'').replace(/\btexts?\b/gi,'').replace(/captions?|lettering|typograph\w*/gi,'').replace(/\s{2,}/g,' ').trim(); }
+  function drStoryPrompt(plan,visual){
+    var p='Cinematic 16:9 film still. Shot: '+drStoryNeutral(visual)+' Clean frame with no writing, no signage and no watermark.'+(plan.style?' Style: '+drStoryNeutral(plan.style)+'.':'');
+    var cs=(plan.characters||[]).slice(), low=String(visual||'').toLowerCase();
+    cs.sort(function(a,b){ var na=String(a.name||'').split(' (')[0].toLowerCase(), nb=String(b.name||'').split(' (')[0].toLowerCase(); return (low.indexOf(nb)>=0)-(low.indexOf(na)>=0); });
+    var head=' Characters (same faces, ages and clothes in every shot): ', cast='';
+    cs.forEach(function(c){ var it=drStoryNeutral(c.name+': '+c.look)+'; '; if((p+head+cast+it).length<=1750) cast+=it; });
+    return (cast?p+head+cast.replace(/;\s*$/,'.'):p).slice(0,1750);
+  }
   function drFail(code){ return Object.assign(new Error(code),{code:code}); }
   function drPlanCall(body){ return drJson('/api/ai?action=app-director-plan',body); }
   async function drRun(){
     if(DR.busy||!drOwner()) return;
+    if(drTimed()) return drTimedRun(); /* v-director-timed */
     var req=(id('vdReq').value||'').trim(); if(!req){ drMsg(L('vdEmpty'),true); return; }
+    if(!drStory()&&req.length>600){ drMsg(L('vdTooLong'),true); return; } /* «عرض التطبيق» طلب قصير — الطويل قصّة، لا قصّ صامت عند ٦٠٠ */
     var lang=id('vdLang').value||'ar', speaker=id('vdSpeaker').value||'female', minutes=parseInt(id('vdMin').value,10)||2;
-    var voiceOn=((id('vdVoice')||{}).value!=='off'), capDir=(lang==='ar'||lang==='ur')?'rtl':'ltr';
+    var voiceOn=((id('vdVoice')||{}).value!=='off'), capDir=(lang==='ar'||lang==='ur')?'rtl':'ltr', story=drStory();
     var my=++DR.run, tk=drTok();
     DR.busy=true; DR.lang=lang; syncDirector(); drReset(); drStageStart();
     try{
@@ -562,6 +968,7 @@
       /* ١) الفكرة والسيناريو — الفيديو الطويل يُكتب أجزاءً، كلّ جزء نداء مستقلّ على مخطّط الجزء الأوّل */
       var labels=await drLabels(lang); if(my!==DR.run) return;
       var base={request:req,lang:lang,speaker:speaker,minutes:minutes,voice:voiceOn,token:tk,labels:labels};
+      if(story) base.kind='story'; /* v-director-story: القصّة كاملة بكلام المالك، والخادم يقسّمها حرفيًّا */
       var pr=await drPlanCall(base); if(my!==DR.run) return;
       if(!pr.ok||!pr.json||!pr.json.plan){ drStep('plan','err'); throw drFail('plan '+pr.status+(pr.json&&pr.json.error?' '+pr.json.error:'')+(pr.json&&pr.json.diag?' · '+pr.json.diag:'')); }
       var plan=pr.json.plan, parts=pr.json.parts||1, cat=pr.json.catalog||{screens:[],styles:{}}, screens={}; (cat.screens||[]).forEach(function(s){ screens[s.id]=s; });
@@ -586,6 +993,7 @@
         o.cap=voiceOn?o.text:(o.narration||o.text); /* مع الصوت: الاسم القصير؛ بدونه: جملة المشهد كاملة */
         if(o.type==='screen'){ var scr=screens[o.target]||screens.home||{steps:[]}; o.steps=scr.steps||[]; }
         if(o.type==='style_sample'){ var st=(cat.styles||{})[o.target]; o.prompt=st?st.prompt:''; }
+        if(story){ if(o.type==='title') o.sub=''; if(o.type==='story'){ o.prompt=drStoryPrompt(plan,sc.visual||sc.narration); o.cap=o.narration; } } /* لا عنوان فرعيّ ولا ملاحظات على الشاشة؛ سطر الراوي ترجمةً */
         o.board={text:o.text||o.narration.slice(0,110),img:''}; ST.board.push(o.board);
         return o;
       });
@@ -599,8 +1007,8 @@
          الاحتياطيّ (لا خلط صوتين) ويُعلَن ذلك في الخطوة. */
       var voiced=voiceOn?scenes.filter(function(s){ return !!s.narration; }):[], vLimit=Math.max(1,Math.floor(voiced.length*0.2));
       /* v-video-voice-speed: speed وتنظيف النصّ من app-11-video.js (window.__vmkVoice)؛ لو غاب: «fast» والنصّ كما هو */
-      var vvSpeed=function(){ try{ var V=window.__vmkVoice; return (V&&V.speed&&V.speed())||'fast'; }catch(e){ return 'fast'; /* guard-ok — الافتراضيّ سريع */ } };
-      var vvClean=function(t){ try{ var V=window.__vmkVoice; return (V&&V.clean)?V.clean(t):t; }catch(e){ return t; /* guard-ok — النصّ كما هو */ } };
+      var vvSpeed=function(){ if(story) return 'normal'; try{ var V=window.__vmkVoice; return (V&&V.speed&&V.speed())||'fast'; }catch(e){ return 'fast'; /* guard-ok — الافتراضيّ سريع */ } };
+      var vvClean=function(t){ if(story) t=String(t).replace(/\s*(?:\.{2,}|…)\s*/g,'، '); try{ var V=window.__vmkVoice; return (V&&V.clean)?V.clean(t):t; }catch(e){ return t; /* guard-ok — النصّ كما هو */ } }; /* v-director-story: «عمّي.. ما عندي» وقفة الراوي — كانت تُحذف */
       var voiceRun=async function(backup){
         var done=0, miss=0, got=0, last='', cool=0, dead=false, vModel='';
         await drPool(voiced,2,async function(s){
@@ -651,7 +1059,7 @@
         drStep('voice','ok',backupVoice?L('vdVoiceBackup'):(vres.miss?('−'+vres.miss):''));
       }
       /* ٣) نماذج الأنماط بمسار الصور القائم (صورة المالك مرجعًا إن أرفقها) — المالك بلا نقاط */
-      var samples=scenes.filter(function(s){ return s.type==='style_sample'; });
+      var samples=scenes.filter(function(s){ return s.type==='style_sample'||s.type==='story'; });
       var failed=0;
       if(samples.length){
         drStep('samples','on',drT('vdScene',{i:0,n:samples.length}),0);
@@ -660,23 +1068,26 @@
           if(my!==DR.run) return;
           var r=null;
           try{
-            r=DR.ref?await drJson('/api/portrait-style',{imageBase64:DR.ref,mimeType:DR.refMime,style:s.target,token:tk})
+            r=s.type==='story'?await drJson('/api/media?action=maha-image',{prompt:s.prompt,userText:'',token:tk,guestId:(window.getGuestId?window.getGuestId():'')})
+             :DR.ref?await drJson('/api/portrait-style',{imageBase64:DR.ref,mimeType:DR.refMime,style:s.target,token:tk})
                     :await drJson('/api/media?action=maha-image',{prompt:s.prompt||('portrait in the '+s.target+' style'),userText:'',token:tk,guestId:(window.getGuestId?window.getGuestId():'')});
           }catch(e){ r=null; try{ __swallow(e,'director:sample'); }catch(z){ /* guard-ok — لا مسجّل */ } }
           if(my!==DR.run) return;
           if(r&&r.ok&&r.json&&r.json.imageBase64){
             s.image=r.json.imageBase64; s.mime=r.json.mimeType||'image/png';
-            if(s.cap){ var cc=await drCaptionSample(s.image,s.mime,s.cap,capDir); if(my!==DR.run) return; if(cc){ s.image=cc.b64; s.mime=cc.mime; } }
+            if(s.type==='story'){ var sf=await drStoryFrame(s.image,s.mime,s.cap,capDir); if(my!==DR.run) return; if(sf){ s.image=sf.b64; s.mime=sf.mime; } }
+            else if(s.cap){ var cc=await drCaptionSample(s.image,s.mime,s.cap,capDir); if(my!==DR.run) return; if(cc){ s.image=cc.b64; s.mime=cc.mime; } }
             s.board.img='data:'+s.mime+';base64,'+s.image; ST.bi=ST.board.indexOf(s.board); drStageNext(); /* النموذج يظهر في الشاشة الحيّة فور توليده */
-          } else { failed++; s.type='screen'; s.target='portrait'; s.steps=(screens.portrait||{steps:[]}).steps; s.image=''; }
+          } else if(s.type==='story'){ failed++; s.type='title'; s.text=plan.title; s.sub=s.narration; s.image=''; } /* مشهد قصّة لم يُرسم: بطاقة بسطره لا شاشة من التطبيق */
+          else { failed++; s.type='screen'; s.target='portrait'; s.steps=(screens.portrait||{steps:[]}).steps; s.image=''; }
           doneS++; drStep('samples','on',drT('vdScene',{i:doneS,n:samples.length}),doneS/samples.length);
         });
         if(my!==DR.run) return;
-        drStep('samples','ok',failed?drT('vdWarnSamples',{n:failed}):'');
+        drStep('samples','ok',failed?drT(story?'vdWarnDraw':'vdWarnSamples',{n:failed}):'');
       } else drStep('samples','ok','');
       /* ٤) المانيفست إلى الجسر مباشرة (رمز المهمّة وعنوان الجسر أُخذا في الخطوة ٠) */
       drStep('shots','on');
-      var manifest={lang:lang,title:plan.title,scenes:scenes.map(function(s){ return {type:s.type,target:s.target,text:(s.type==='screen'?s.cap:s.text),sub:s.sub,steps:s.steps||undefined,image:s.image||undefined,mime:s.mime||undefined,audio:s.audio||undefined,seconds:s.seconds}; })};
+      var manifest={lang:lang,title:plan.title,scenes:scenes.map(function(s){ return {type:(s.type==='story'?'style_sample':s.type),target:s.target,text:(s.type==='screen'?s.cap:s.text),sub:s.sub,steps:s.steps||undefined,image:s.image||undefined,mime:s.mime||undefined,audio:s.audio||undefined,seconds:s.seconds}; })};
       var post;
       try{ post=await fetch(bridge+'/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},auth),body:JSON.stringify(manifest)}); }
       catch(e){ drStep('shots','err'); throw drFail('bridge offline (browser)'); } /* الخادم وصله قبل قليل: المتصفّح هو من مُنع (أصل الصفحة أو الشبكة) */
@@ -704,7 +1115,7 @@
       var vr=await fetch(url,{headers:auth}); if(!vr.ok) throw drFail('download '+vr.status);
       var blob=await vr.blob(); if(my!==DR.run) return;
       if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ /* guard-ok — رابط زال */ } }
-      DR.out=URL.createObjectURL(blob);
+      DR.out=URL.createObjectURL(blob); pbNewVideo(); /* v-director-publish-guard */
       var vid=id('vdVideo'), dl=id('vdDl'), res=id('vdRes');
       drStagePct(100); drStageStop(true);
       if(vid) vid.src=DR.out; if(dl){ dl.href=DR.out; dl.setAttribute('download','omran-app-director-'+lang+'.mp4'); } if(res) res.classList.add('has');
@@ -714,7 +1125,7 @@
     }catch(err){
       if(my!==DR.run) return;
       var code=String((err&&err.code)||(err&&err.message)||'');
-      var key=/bridge_outdated/.test(code)?'vdFailBridgeOld':/^plan/.test(code)?'vdFailPlan':/^voice/.test(code)?'vdFailVoice':(/^token|offline/.test(code)?'vdFailBridge':(/^(render|download|bridge)/.test(code)?'vdFailRender':'vdFail'));
+      var key=/disk_full/.test(code)?'vdFailDisk':/bridge_outdated/.test(code)?'vdFailBridgeOld':/^plan/.test(code)?'vdFailPlan':/^voice/.test(code)?'vdFailVoice':(/^token|offline/.test(code)?'vdFailBridge':(/^(render|download|bridge)/.test(code)?'vdFailRender':'vdFail'));
       /* السبب الحقيقيّ بين قوسين (القسم للمالك وحده): ما قاله الخادم عن كلّ محاولة، لا رسالة عامّة */
       drMsg(key==='vdFail'?L('vdFail'):L('vdFail')+' — '+L(key),true,code.slice(0,520));
       drStageStop(true);
@@ -1157,7 +1568,10 @@
       var ac=document.createElement('div'); ac.className='vmk-ai-a';
       var speech=(r.lines.length?r.lines.map(function(l){return l.text;}).join(' '):r.narration);
       if(r.scene) ac.appendChild(act(L('vwToScene'),function(){ put(id('videoMakerPrompt'),r.scene); }));
-      if(r.narration||r.lines.length) ac.appendChild(act(L('vwToNarr'),function(){
+      /* v-video-durations (مراجعة ٢٧ أكتوبر): «للتعليق الصوتيّ» حيث يُدمج التعليق وحده — في «سريع» و«سينمائي» بلا «مقدّمة وخاتمة» مربّعه مخفيّ
+         وكان الزرّ يفعّله فيُكتب تعليق لا يُطبَّق ولا يُطفأ */
+      var ntg=id('videoMakerNarrationToggle'), ntl=ntg&&ntg.closest('label'), narrOn=!(ntl&&ntl.style.display==='none');
+      if((r.narration||r.lines.length)&&narrOn) ac.appendChild(act(L('vwToNarr'),function(){
         var tg=id('videoMakerNarrationToggle'); if(tg&&!tg.checked){ tg.checked=true; tg.dispatchEvent(new Event('change',{bubbles:true})); }
         put(id('videoMakerNarrationText'),speech); }));
       if(r.lines.length&&chars.length) ac.appendChild(act(L('vwToChars'),function(){

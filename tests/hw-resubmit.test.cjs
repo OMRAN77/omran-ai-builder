@@ -39,7 +39,7 @@ const BANNED = /official|trusted|preferred|featured|\bbest\b|\btop\b|#1|number o
 const notes = read('store/huawei/REVIEW-NOTES.md');
 const descriptions = notes.slice(notes.indexOf('## وصف المتجر (عربيّ)'));
 const enToolList = notes.slice(notes.indexOf('It has '), notes.indexOf('The home screen also has'));
-const arToolList = notes.slice(notes.indexOf('4.1: عند أوّل تشغيل'), notes.indexOf('إن شُغّل التطبيق'));
+const arToolList = notes.slice(notes.indexOf('4.1: في كلّ تشغيل'), notes.indexOf('وكذلك على هاتف شغّله'));
 
 test('١. الملاحظات تعدّ الأدوات الظاهرة في حزمة هواوي بعددها وأسمائها، ولا أداة مخفيّة', () => {
   const { visible, hidden } = visibleHuaweiTools();
@@ -58,14 +58,17 @@ test('١. الملاحظات تعدّ الأدوات الظاهرة في حزم�
   }
 });
 
-test('٢. وصف المتجر بلا «رسمي/موثوق/مفضّل/مميّز»، واسم الهاتف «عمران AI» واسم الواجهة «om ai» معًا', () => {
+test('٢. وصف المتجر بلا «رسمي/موثوق/مفضّل/مميّز»، واسم الهاتف واسم الواجهة «om ai» واحد', () => {
   assert.ok(descriptions.length > 500, 'قسما الوصف موجودان');
   assert.doesNotMatch(descriptions, BANNED);
   assert.doesNotMatch(enToolList + arToolList, BANNED);
-  // 1.3.13 بلا بناء: اسم AGC كما هو (يطابق اسم الهاتف «عمران AI»)، والوصف يجمع اسم الهاتف واسم الواجهة «om ai» في أوّل سطر
-  assert.ok(descriptions.includes('**اسم التطبيق:** كما هو في AGC') && descriptions.includes('**App name:** unchanged in AGC'));
-  assert.ok(descriptions.includes('عمران AI (om ai) تطبيق واحد') && descriptions.includes('Omran AI (om ai) brings'));
-  assert.ok(notes.startsWith('# ملاحظات المراجع ونصوص المتجر — om ai / عمران AI (AppGallery، 1.3.13)'));
+  // v-hw-om-ai (بعد v-hw-1316): اسم AGC «om ai» في كلّ لغة = اسم الهاتف من 1.3.16 (القاعدة 1.20: الاسم المثبّت = اسم المتجر)،
+  // والوصف يبدأ به في اللغات الثلاث
+  assert.ok(descriptions.includes('**اسم التطبيق:** «om ai» في كلّ لغة') && descriptions.includes('**App name:** «om ai» in every listing language'));
+  assert.ok(descriptions.includes('**应用名称：** om ai（'));
+  assert.ok(descriptions.includes('\nom ai تطبيق واحد') && descriptions.includes('\nom ai brings') && descriptions.includes('\nom ai 在一个应用中汇集'));
+  assert.doesNotMatch(descriptions, /عمران AI \(om ai\)|Omran AI \(om ai\)|Omran AI（om ai）/, 'لا الاسم القديم في أوّل سطر');
+  assert.ok(notes.startsWith('# ملاحظات المراجع ونصوص المتجر — om ai (AppGallery، 1.3.16)'));
   // 11.4 باقية صادقة (hw-nomarkets)، وحساب التجربة بلا كلمة مرور في المستودع
   assert.match(notes, /all market screens \(stock ticker, stock market, currency\/forex rates\) are removed from this package/);
   assert.ok(notes.includes('Test account: (username) / (password)'));
@@ -97,13 +100,16 @@ test('٣. اللقطات الثماني بثلاث لغات من store/huawei/sh
   for (const id of [...sh.matchAll(/open\('(\w+)'\)/g)].map((m) => m[1])) assert.ok(visible.includes(id), 'لقطة لأداة ظاهرة فقط: ' + id);
 });
 
-test('٤. إعادة تقديم 1.3.13 نفسها بلا بناء (المالك: «ما يريد إصدار جديد»): المشروع باسم الحزمة المرفوعة، والنصوص بلا إصدار جديد', () => {
+test('٤. v-hw-om-ai (بعد v-hw-1315): 1.3.16 — الحزمة نفسها واسم الهاتف «om ai»، والنصوص كلّها على الرقم الجديد', () => {
   const g = read('store/huawei/twa/app/build.gradle');
-  assert.match(g, /name: 'Omran AI Builder',/); assert.match(g, /launcherName: 'عمران AI',/);
-  assert.ok(notes.includes('version 1.3.13') && notes.includes('launcher label stays "عمران AI"'), 'الملاحظات تقول اسم الهاتف الفعليّ');
+  assert.match(g, /name: 'om ai',/); assert.match(g, /launcherName: 'om ai',/);
+  assert.match(g, /versionName "1\.3\.16"/);
+  assert.ok(notes.includes('new version 1.3.16') && notes.includes('Its launcher label is now "om ai"'), 'الملاحظات تقول الرقم واسم الهاتف الفعليّ');
   const readme = read('store/huawei/README.md');
-  assert.ok(readme.includes('**إعادة تقديم 1.3.13 (٢٢ أكتوبر): لا بناء.**') && readme.includes('v-hw-resubmit-1313'));
-  assert.ok(!(readme + notes).includes('1.3.14') && !(readme + notes).includes('20261022'), 'لا إصدار جديد');
+  assert.ok(readme.includes('version_name=1.3.16 -f version_code=20261106') && readme.includes('v-hw-om-ai') && readme.includes('v-hw-1315') && readme.includes('v-hw-resubmit-1313'));
+  // كلّ ما يقرؤه المراجع على 1.3.16: لا «version 1.3.14/1.3.15» ولا اسم الهاتف القديم على أنّه الحاليّ
+  assert.doesNotMatch(notes, /version 1\.3\.1[345]\b|الإصدار 1\.3\.1[345] |launcher label of 1\.3\.1[345]|launcher label stays|与 1\.3\.1[345]/);
+  assert.ok(!(readme + notes).includes('1.3.17'), 'لا رقم بعد 1.3.16');
 });
 
 test('٥. نسخة هواوي وحدها تخفي خيارات العلامات التجاريّة (1.15) ووصف «موثوقة»، والموقع كما هو', () => {
@@ -199,10 +205,61 @@ test('٧. المراجعة العدائيّة: أوّل شاشة صينيّة ب
   assert.ok(edu.includes("zh:'按教材学习——选择国家、年级和科目'") && !edu.includes('课程中的课程'));
   assert.match(read('index.html'), /\/js\/edu\.js\?v=(\d+)"/);
   assert.ok(Number(read('index.html').match(/\/js\/edu\.js\?v=(\d+)"/)[1]) >= 673, 'وسم edu.js مرفوع');
-  // خانة Remarks: ٣٠٠ حرف على الأكثر، الأدوات الـ١٣ بأسمائها، وأين زرّ الأدوات (العرض التلقائيّ مرّة لكلّ جهاز)
+  // خانة Remarks: ٣٠٠ حرف على الأكثر، الأدوات الـ١٣ بأسمائها، وأين زرّ الأدوات، وأنّ المربّع يُفتح في كلّ تشغيل (v-hw-tools-home)
   const r = (notes.match(/## خانة Remarks[^\n]*\n```\n([^\n]+)\n```/) || [])[1] || '';
   assert.ok(r.length > 200 && r.length <= 300, 'Remarks ≤ ٣٠٠: ' + r.length);
   const list = (r.match(/13 tools \(([^)]*)\)/) || [])[1] || '';
   assert.equal(list.split(',').length, 13, 'الأدوات الـ١٣ في القوس');
   assert.ok(r.includes('bottom bar > Tools'), 'مكان زرّ الأدوات');
+  assert.ok(r.includes('opens on every launch'), 'العرض في كلّ تشغيل لا مرّة لكلّ جهاز');
+  assert.ok(r.startsWith('1.3.16: only the app name changed, to "om ai" (phone and listing).'), 'v-hw-om-ai: Remarks تبدأ بالتغيير الوحيد في 1.3.16 — الاسم');
+  assert.doesNotMatch(notes, /does not open by itself again|فلن يفتح المربّع وحده/, 'لا ملاحظة قديمة تقول إنّه لا يعود');
+});
+
+test('٨. v-hw-tools-home: مربّع الأدوات شاشة البداية في كلّ فتح لحزمة هواوي — ينتظر المحادثة الجديدة الفارغة، ولا يعود مع التحديث داخل الفتح نفسه', () => {
+  const sd = read('js/selfdiag.js');
+  const a = sd.indexOf("if(!sessionStorage.getItem('aiapp_store_tour_s')){");
+  const b = sd.indexOf('else setTimeout(__openTour, 1800);', a);
+  assert.ok(a > sd.indexOf("=== 'huawei'){") && b > a, 'داخل فرع حزمة هواوي وحده');
+  const src = sd.slice(a, sd.indexOf('}', b) + 1);
+  assert.doesNotMatch(src, /localStorage\./, 'لا علم دائم: كلّ فتح جديد يعرضها');
+  // فتح واحد: sessionStorage الفتح، ومحادثة حاليّة فيها رسائل لعدد من الدورات (قبل أن يبدّلها app-22)
+  // o.typing: الصندوق مركّز/فيه نصّ · o.loadedAfter: لا محادثة حاليّة ولا تحميل حتّى الدورة n · o.toast: إشعار app-22 ظاهر
+  const launch = (ss, busyTicks, o = {}) => {
+    const timers = [], dcl = []; let calls = 0; const shown = [];
+    const overlay = { classList: { add: (c) => shown.push(c) } };
+    const prompt = { value: o.typing === 'text' ? 'ابغي' : '' };
+    const toast = { removed: false, remove() { this.removed = true; } };
+    const win = { __localChatsLoaded: !o.loadedAfter };
+    const ids = { sectionsToolsOverlay: overlay, prompt, sessToast: o.toast ? toast : null };
+    const env = {
+      sessionStorage: { getItem: (k) => (k in ss ? ss[k] : null), setItem: (k, v) => { ss[k] = String(v); } },
+      document: { readyState: o.ready || 'loading', activeElement: o.typing === 'focus' ? prompt : null,
+        getElementById: (id) => ids[id] || null, addEventListener: (ev, fn) => { if (ev === 'DOMContentLoaded') dcl.push(fn); } },
+      setTimeout: (fn) => { timers.push(fn); },
+      getCurrent: () => { const i = calls++; if (o.loadedAfter) { if (i < o.loadedAfter) return undefined; win.__localChatsLoaded = true; } return { messages: i < busyTicks ? [{ role: 'user' }] : [] }; },
+    };
+    new Function('sessionStorage', 'document', 'setTimeout', 'getCurrent', 'window', src)(env.sessionStorage, env.document, env.setTimeout, env.getCurrent, win);
+    dcl.forEach((f) => f()); // المسار الفعليّ: selfdiag يُحمَّل قبل اكتمال الصفحة
+    let n = 0; while (timers.length && n++ < 100) timers.shift()();
+    return Object.defineProperties(shown, { toastRemoved: { value: toast.removed }, calls: { value: calls } }); // غير قابلة للعدّ: deepEqual يقارن العرض وحده
+  };
+  const ss1 = {};
+  assert.deepEqual(launch(ss1, 3), ['show'], 'الفتح الأوّل: تنفتح بعد أن تصير المحادثة فارغة');
+  assert.equal(ss1.aiapp_store_tour_s, '1');
+  assert.deepEqual(launch(ss1, 0), [], 'تحديث داخل الفتح نفسه: لا تُفتح فوق ما يعمل عليه');
+  assert.deepEqual(launch({}, 5), ['show'], 'الفتح الثاني (جلسة جديدة) على الجهاز نفسه: تنفتح من جديد');
+  assert.deepEqual(launch({}, 1000), [], 'محادثة لا تفرغ: يتوقّف بعد عدد محدود من المحاولات بلا حلقة لا تنتهي');
+  assert.deepEqual(launch({}, 0, { ready: 'complete' }), ['show'], 'الصفحة مكتملة قبل selfdiag: يعمل أيضًا');
+  // مراجعة عدائيّة: من بدأ يكتب لا يُغطّى، ولا تعود في الفتح نفسه
+  for (const typing of ['focus', 'text']) {
+    const ss = {};
+    assert.deepEqual([...launch(ss, 0, { typing })], [], 'بدأ يكتب (' + typing + '): لا يغطّي الصندوق');
+    assert.equal(ss.aiapp_store_tour_s, '1', 'ولا تعود في هذا الفتح');
+  }
+  // قبل تحميل المحادثات المحفوظة: ينتظر بدل أن يفتح فيغلقه الإقلاع
+  const late = launch({}, 0, { loadedAfter: 4 });
+  assert.deepEqual([...late], ['show']); assert.ok(late.calls > 4, 'انتظر التحميل');
+  // إشعار «جلسة جديدة» لا يبقى فوق شاشة الأدوات (عربيّ/إنجليزيّ فقط — الصينيّ يرى الإنجليزيّ)
+  assert.equal(launch({}, 2, { toast: true }).toastRemoved, true);
 });

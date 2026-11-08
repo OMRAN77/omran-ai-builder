@@ -117,7 +117,7 @@
       <div id="acctQrBox" style="display:none; margin-top:12px; padding:12px; background:rgba(0,0,0,.35); border-radius:var(--r-2); text-align:center; border:1px solid rgba(212,175,55,.25);">
         <canvas id="acctQrCanvas" aria-label="QR" style="width:180px; height:180px; border-radius:12px; background:#fff; padding:6px; box-shadow:0 4px 16px rgba(0,0,0,.4); display:inline-block;"></canvas>
         <div style="display:flex; gap:8px; margin-top:10px; justify-content:center;">
-          <a id="acctQrDl" download="omran-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;" data-i18n="acctQrDownload">تحميل الباركود</a>
+          <a id="acctQrDl" download="om-ai-qr.png" class="btn" style="width:auto; padding:6px 12px; font-size:12px; text-decoration:none; background:#d4af37; color:#111; font-weight:700;" data-i18n="acctQrDownload">تحميل الباركود</a>
         </div>
       </div>
       <div id="acctReferralMsg" style="font-size:12px; min-height:16px; margin-top:8px; color:var(--muted);" data-i18n="acctReferralHint">لكل صديق يسجّل برابطك، تحصلان أنت وهو على 10 رسائل مجانية إضافية</div>
@@ -387,9 +387,12 @@
   <!-- v-voice-calligraphy (المالك ٢ أكتوبر، صورتان «عبدالله/Abdullah» و«مها/Maha» بالذهب: «عطِ كلّ اسم بالعربي عربي والإنجليزي
        بالإنجليزي والباقين بالإنجليزي… في الإعدادات فقط، والبراويز الموجودة خلّها باللون الذهبيّ») -->
   <style>
-  #voiceSection .voiceGenderBtn, #voiceSection .voiceSpeedBtn, #voiceSection #btnTestVoice{border:2px solid rgba(201,162,39,.38) !important;}
-  #voiceSection .voiceGenderBtn.active, #voiceSection .voiceSpeedBtn.active{border-color:#c9a227 !important; box-shadow:0 0 14px rgba(201,162,39,.28);}
+  #voiceSection .voiceGenderBtn, #voiceSection .voiceSpeedBtn, #voiceSection .voiceDialectBtn, #voiceSection #btnTestVoice{border:2px solid rgba(201,162,39,.38) !important;}
+  #voiceSection .voiceGenderBtn.active, #voiceSection .voiceSpeedBtn.active, #voiceSection .voiceDialectBtn.active{border-color:#c9a227 !important; box-shadow:0 0 14px rgba(201,162,39,.28);}
   #voiceSection .voiceGenderBtn svg{color:#c9a227;}
+  /* v-reply-dialect: أزرار اللهجة بشكل أزرار السرعة نفسه (.voiceSpeedBtn في tokens.css) */
+  #voiceSection .voiceDialectBtn{flex:1 1 0; padding:10px 8px; background:var(--panel2); border-radius:var(--r-3); cursor:pointer; color:var(--muted); font-size:var(--fs-4); transition:border-color .15s, color .15s; white-space:nowrap;}
+  #voiceSection .voiceDialectBtn.active{color:var(--text);}
   /* v-voice-calligraphy2 (المالك: «شيل الأيقونة الشخصيّة، خلّهم في الوسط»): الاسم وحده في منتصف البطاقة */
   #voiceGenderBtns .voiceGenderBtn:has(.vgName.on) svg{display:none;}
   #voiceGenderBtns .voiceGenderBtn:has(.vgName.on){justify-content:center; min-height:120px;}
@@ -411,6 +414,17 @@
     <button type="button" class="voiceSpeedBtn" data-speed="normal"><span data-i18n="voiceSpeedNormal">عادي</span></button>
     <button type="button" class="voiceSpeedBtn" data-speed="fast"><span data-i18n="voiceSpeedFast">سريع</span></button>
     <button type="button" class="voiceSpeedBtn" data-speed="xfast"><span data-i18n="voiceSpeedXFast">سريع جدًا</span></button>
+  </div>
+  <!-- v-reply-dialect (المالك ٢٩ أكتوبر «التطبيقات عندهم بلهجتهم العماني والإماراتي والسعودي»): لهجة الصوت العربيّ لـ«استمع»
+       وتجربة الصوت — الضغط يحفظ ويُسمعك المختار فورًا. -->
+  <label style="display:block; margin-top:18px;" data-i18n="voiceDialectLabel">لهجة الصوت العربي</label>
+  <div id="voiceDialectBtns" style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+    <button type="button" class="voiceDialectBtn" data-dialect="ae"><span data-i18n="voiceDialectAE">إماراتي</span></button>
+    <button type="button" class="voiceDialectBtn" data-dialect="om"><span data-i18n="voiceDialectOM">عماني</span></button>
+    <button type="button" class="voiceDialectBtn" data-dialect="sa"><span data-i18n="voiceDialectSA">سعودي</span></button>
+    <button type="button" class="voiceDialectBtn" data-dialect="kw"><span data-i18n="voiceDialectKW">كويتي</span></button>
+    <button type="button" class="voiceDialectBtn" data-dialect="qa"><span data-i18n="voiceDialectQA">قطري</span></button>
+    <button type="button" class="voiceDialectBtn" data-dialect="bh"><span data-i18n="voiceDialectBH">بحريني</span></button>
   </div>
   <button type="button" class="btn" id="btnTestVoice" style="margin-top:16px; display:inline-flex; align-items:center; gap:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg><span data-i18n="testVoiceBtn">تجربة الصوت</span></button>
   </div></div>
@@ -685,8 +699,7 @@
   <div id="vaultSectionWrap" class="ownerCard" style="display:none;">
     <div class="ownerCardTitle" data-i18n="ownerVaultTitle">🔐 خزنة الأسرار</div>
     <div id="vaultSectionContent">
-      <!-- v-owner-i18n (تدقيق ١٨ أكتوبر): نصوص صفحة المالك بالـ١٤ لغة عبر data-i18n، ورمزا الصلاحيّتين خارج الترجمة معزولين لا يلتفّان (كانا يتلخبطان مع «و») -->
-      <div style="font-size:12.5px; line-height:1.8; opacity:.85;"><span data-i18n="ownerVaultDesc">الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع.</span> <span data-i18n="ownerVaultPerms">الرفع يحتاج توكن بهاتين الصلاحيّتين على المستودع:</span> <bdi dir="ltr" style="white-space:nowrap">Contents: write</bdi> · <bdi dir="ltr" style="white-space:nowrap">Pull requests: write</bdi></div>
+      <!-- v-vault-no-desc: شرح الخزنة وسطر الصلاحيّتين حُذفا بطلب المالك («شيل هذا الكلام كله») — حالة المفتاح تقول ما ينقص -->
       <div id="vaultGhStatus" style="margin-top:10px; font-size:12.5px; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px;">…</div>
       <div style="display:flex; gap:8px; margin-top:10px;">
         <input type="password" id="vaultGhInput" autocomplete="off" spellcheck="false" placeholder="ghp_… أو github_pat_…" data-i18n-placeholder="ownerVaultTokenPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; direction:ltr;">
@@ -710,6 +723,11 @@
       <div id="adminClaudeDiagBox" style="display:none; font-size:12.5px; line-height:1.8; background:var(--panel2); border-radius:var(--r-2); padding:10px 12px; white-space:pre-wrap; word-break:break-all; margin-bottom:10px;"></div>
       <div id="adminStatsBox" style="font-size: var(--fs-3); line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;"><span data-i18n="ownerStatsHint">اضغط "تحديث" لعرض الإحصائيات...</span></div>
       <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;" data-i18n="ownerUsersTitle">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
+      <!-- v-owner-reset-find: الجدول أحدث ٦٠ تسجيلًا فقط — رابط الاسترجاع لأيّ حساب بإيميله أو اسمه -->
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="adminResetInput" autocomplete="off" spellcheck="false" placeholder="إيميل أو اسم مستخدم" data-i18n-placeholder="ownerVipPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
+        <button type="button" onclick="adminResetLinkFind()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🔑 <span data-i18n="ownerResetTitle">رابط استرجاع الحساب</span></button>
+      </div>
       <div id="adminUsersTable" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:320px; overflow-y:auto;"></div>
 
       <!-- v-sec-knowledge-approve: مراجعة حقائق «المعرفة الجماعيّة» قبل حقنها — يُملأ بالـJS بأزرار إيموجي بلا نصّ مترجَم جديد. -->
@@ -915,6 +933,7 @@
     var tt = function(k) { var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? String(v) : ''; };
     var u = document.getElementById('acctReferralLink');
     var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
+    if (typeof window.omranShareSheet === 'function') { window.omranShareSheet({ url: shareUrl, text: tt('acctShareText') }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45) — تُفتح داخل حوار الإعدادات
     if (navigator.share) {
       try { await navigator.share({ title: 'om ai', text: tt('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
     } else {
