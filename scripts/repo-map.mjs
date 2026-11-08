@@ -38,7 +38,7 @@ const LIB_PURPOSE = {
   'github-manage': 'manage_github: status · deploy · ci · test · shots · runs · run_log · close…',
   'branch-shots': 'فاحصا جهاز اللقطات (branch-shots.yml)',
   'branch-test': 'فاحص جهاز الاختبار الواحد (branch-test.yml)',
-  'bundle-core': 'بناء الحزمة js/app.bundle.js وبصمتها (يشاركه الخادم والسكربت)',
+  'bundle-core': 'بناء الحزمة js/app.bundle.js وبصمتها',
   'app-errors': 'read_app_errors: سجلّ أخطاء الإنتاج الحيّ',
   'secrets': 'خزنة الأسرار',
   'kv': 'التخزين KV',
