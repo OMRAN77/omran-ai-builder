@@ -1409,6 +1409,7 @@ const I18N = {
     ownerResetLink: "🔑 رابط استرجاع \"{u}\" (صالح {m} دقيقة) — انسخه وأرسله له وحده:",
     ownerResetGoogle: "🔑 الحساب \"{u}\" مسجَّل بزرّ Google ولا كلمة مرور له — يدخل بزرّ «المتابعة عبر Google» بالإيميل نفسه.", // v-owner-reset-find
     ownerResetNotFound: "ما في حساب بهذا الإيميل أو الاسم.",
+    ownerResetMany: "دفع بهذا الإيميل أكثر من حساب: {list} — اسأل صاحبه عن اسم حسابه واكتبه في الخانة.", // v-owner-reset-stripe
     ownerDiagRunning: "⏳ يفحص مفتاح كلود على أنثروبيك…",
     ownerDiagKey: "المفتاح: {k}",
     ownerDiagStatus: "الحالة: {s}",
@@ -2064,6 +2065,7 @@ const I18N = {
     ownerResetLink: "🔑 Recovery link for “{u}” (valid {m} min) — copy it and send it to them only:",
     ownerResetGoogle: "🔑 The account “{u}” signed up with Google and has no password — they sign in with “Continue with Google” using that same email.", // v-owner-reset-find
     ownerResetNotFound: "No account with this email or username.",
+    ownerResetMany: "More than one account paid with this email: {list} — ask the person for their account name and type it in the box.", // v-owner-reset-stripe
     ownerDiagRunning: "⏳ Checking the Claude key with Anthropic…",
     ownerDiagKey: "Key: {k}",
     ownerDiagStatus: "Status: {s}",
