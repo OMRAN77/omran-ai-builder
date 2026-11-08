@@ -1092,20 +1092,39 @@ function __msgForServer(m){
 }
 function chatsSlimForServer(){
   if(__slimCache) return __slimCache;
-  let list = (state.projects || []).map(p => ({
+  // v381: رفع الحد لـ 2MB عشان الصور المضغوطة تمر
+  const LIMIT = 2000000;
+  const src = state.projects || [];
+  const slimOf = p => ({
     id: p.id,
     title: p.title || '',
     provider: p.provider || '',
     messages: Array.isArray(p.messages) ? p.messages.map(__msgForServer) : [],
     code: (typeof p.code === 'string') ? p.code : '',
     updatedAt: Number(p.updatedAt) || 0, // v-chat-order: الخادم يحفظه أصلًا (slimProjects)
-  })).filter(p => p.id);
-  // v381: رفع الحد لـ 2MB عشان الصور المضغوطة تمر
+  });
+  /* v-freeze-fix (لقطة عمران ٨ نوفمبر: «التطبيق يستجيب ببطء» على الحاسوب فوق محادثة فارغة): كانت تنسخ كلّ رسالة في كلّ المحادثات
+     (__msgForServer يحمل كود التطبيق كاملًا في رسائل البناء) وتسلسلها ثانيةً للقياس، ثمّ لا تُبقي إلّا أحدث ما يتّسع في 2MB — الكلفة
+     بحجم السجلّ كلّه والناتج ثابت. مسبار سجلّ المالك الثقيل (٢٤١ محادثة، ٢٥٦ مليون حرف كود في الرسائل، المعالج ×٢): مهمّة واحدة
+     ٧٫٨ث بعد «محادثة جديدة» (مرآة الحفظ) ← البانر. الآن تُبنى من الأحدث وتتوقّف أوّل ما يفيض الجزء الأحدث حتّى بلا p.code: حينها
+     كانت الخوارزميّة السابقة ستنزع p.code من الكلّ (الإجماليّ يبقى فوق الحدّ) وتُبقي أطول ذيل يتّسع — وهو ما بُني بالضبط. وإن اتّسع
+     السجلّ كلّه بلا p.code طُبّقت الحلقتان السابقتان حرفيًّا على القائمة كاملة. العمل = الحدّ + محادثة واحدة، والناتج نفسه حرفيًّا. */
+  const full = [], bare = [];
+  let sum = 0;
+  for(let j = src.length - 1; j >= 0; j--){
+    const sp = slimOf(src[j]);
+    if(!sp.id) continue;
+    const b = sp.code ? Object.assign({}, sp, { code: '' }) : sp;
+    let ln;
+    try{ ln = JSON.stringify(b).length; }catch(e){ return []; } /* guard-ok — كالسابق: مشروع لا يُسلسَل يفرّغ القائمة */
+    if(2 + bare.length + sum + ln > LIMIT){ __slimCache = bare.reverse(); return __slimCache; }
+    full.push(sp); bare.push(b); sum += ln;
+  }
+  const list = full.reverse();
   /* v-perf-slim-linear (المالك ٢٩ سبتمبر: «إذا أطلع من التطبيق وأدخل يأخذ ١٠–٢٠ ثانية، وإذا أدخل أيّ مكان مجمّد ويفتح»):
      كان كلّ دور في الحلقتين يعيد JSON.stringify للقائمة كلّها — مئات النسخ لعدّة ميغا (تربيعيّ). مسبار حساب ثقيل
      (٤٠ محادثة، المعالج ×٤): ٤٫٣ ثانية للنداء الواحد، وهو يُنادى عند الإقلاع (المرآة) وكلّ حفظ ومزامنة وعند الخروج.
      الآن يُقاس كلّ مشروع مرّة: طول نصّ المصفوفة = '[' + العناصر مفصولة بفواصل + ']'، والناتج هو نفسه حرفيًّا. */
-  const LIMIT = 2000000;
   let lens;
   try{ lens = list.map(p => JSON.stringify(p).length); }catch(e){ return []; } /* guard-ok — كالسابق: قائمة لا تُسلسَل = Infinity فتُفرَّغ كلّها */
   let total = list.length ? 2 + (list.length - 1) + lens.reduce((a, b) => a + b, 0) : 2;
