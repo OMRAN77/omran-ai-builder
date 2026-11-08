@@ -584,3 +584,20 @@ test('٢٥. صورة أداة التوليد تلحق الأسفل عند تحم
   assert.deepEqual(run({ complete: true, natH: 1200, grow: true }), { listener: false, calls: 0 }, 'مخزّنة: مقاسة لحظة الإدراج وload بلا نموّ — لا مستمع');
   assert.deepEqual(run({ complete: true, natH: 0, grow: true }), { listener: true, calls: 1 }, 'complete بلا مقاس (لم تُفكّ): مستمع');
 });
+
+test('٢٦. «مشاركة» مخرج التطبيق بلا خلفيّة مضمّنة: في الفاتح كانت شفّافة بين «تحميل» و«انشر في حساباتي» البيضاوين (فحص الدمج مع #1283)', () => {
+  const s = read('js/share-sheet.js');
+  const line = s.split('\n').find((l) => l.includes("sel: '#vdDl'"));
+  assert.ok(line, 'مدخل #vdDl');
+  const m = /style: '([^']*)'/.exec(line);
+  assert.ok(m, 'أسلوب صريح (لا نسخ لأسلوب التحميل)');
+  assert.ok(!/background/.test(m[1]), 'لا background مضمّنة: كانت تغلب قاعدة الفاتح البيضاء');
+  assert.ok(line.includes("className: 'vmk-dir-dl'"), 'صنف الصفّ نفسه');
+  const css = read('css/modules.css');
+  assert.ok(/#videoMakerModal button\.vmk-dir-dl,#videoMakerModal #vdTlAdd\{background:transparent;/.test(css), 'الداكن: الزرّ شفّاف من القاعدة (كالتحميل)');
+  assert.ok(css.includes('html[data-mode="light"] #videoMakerModal button.vmk-dir-dl,html[data-mode="light"] #videoMakerModal #vdTlAdd{color:#8a5a12;background:#fff}'), 'الفاتح: أبيض كبقيّة الصفّ');
+  for (const f of ['index.html', 'ad-studio.html']) {
+    const v = Number((/\/js\/share-sheet\.js\?v=(\d+)/.exec(read(f)) || [])[1]);
+    assert.ok(v >= 3, f + ': وسم share-sheet ≥ ٣ (تغيّر الملفّ)');
+  }
+});
