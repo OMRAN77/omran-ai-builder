@@ -706,15 +706,18 @@ test('٢٤. شراء جديد يُمنح مع سحب كامل لفترة حال�
   for (const u of V) assert.equal(Number(kv.get('media:video:' + u)), media.MEDIA_PLANS.vid_max.budget);
 });
 
-test('٢٥. صرف نقاط متزامن مع سحب كامل (مرآته تقرأ قبل السحب وتكتب بعده): (د) تسحب الفترة العائدة — المحادثة والوسائط', async () => {
-  // كان: كتابة المرآة القديمة تصل بعد (ج) فتعود الفترة المسحوبة والحدث «تمّ». تضييق لا سدّ: كتابةٌ أبطأ من مهلة (د) تبقى ممكنة
+test('٢٥. صرف نقاط متزامن مع سحب كامل (مرآته تقرأ قبل السحب وتكتب بعده): لا كتابة تعيد الفترة المسحوبة — المحادثة والوسائط', async () => {
+  // كان: كتابة المرآة القديمة تصل بعد (ج) فتعود الفترة المسحوبة والحدث «تمّ». (د) ضيّقت النافذة بمهلة ٣٠٠ms حقيقيّة والتأخير هنا بعدد
+  // الدورات، فكان الاختبار يتقلّب تحت الحمل (x-build-1). v-lock-credit: المرآة تحت قفل الحساب — الشاهد الكتابة المُعيدة لحظة وصولها
+  // (كـ٢٢–٢٣) لا الحال النهائيّة بعد إصلاح (د)، فلا يعتمد على سرعة الجهاز.
   const C = Array.from({ length: 200 }, (_, i) => 'xsc' + i);
   const V = Array.from({ length: 200 }, (_, i) => 'xsv' + i);
   for (const u of C) { fresh(u); await buy(u, 'pro', u + 'c', 2000); }
   for (const u of V) { fresh(u); await buy(u, 'vid_pro', u + 'v', 2042); }
-  const rs = await jittered(20261008, () => C.flatMap((u) => [hook(refundOf('ch_' + u + 'c', 'pi_' + u + 'c', 2000, 2000)), points.spendPoints(u, 10, 'chat')])
-    .concat(V.flatMap((u) => [hook(refundOf('ch_' + u + 'v', 'pi_' + u + 'v', 2042, 2042)), points.spendPoints(u, 10, 'chat')])));
+  const { out: rs, hits } = await resurrections(() => jittered(20261008, () => C.flatMap((u) => [hook(refundOf('ch_' + u + 'c', 'pi_' + u + 'c', 2000, 2000)), points.spendPoints(u, 10, 'chat')])
+    .concat(V.flatMap((u) => [hook(refundOf('ch_' + u + 'v', 'pi_' + u + 'v', 2042, 2042)), points.spendPoints(u, 10, 'chat')]))));
   assert.deepEqual(codesOf(rs), [200]);
+  assert.deepEqual(hits, [], 'كتابة أعادت فترة مسحوبة: ' + hits.length);
   const back = C.filter((u) => tier.planActive(users.get(u))).concat(V.filter((u) => media.mediaActive(users.get(u), 'video')));
   assert.deepEqual(back, [], 'حسابات عادت لها باقة مسحوبة: ' + back.length + ' من ' + (C.length + V.length)); // قبل: ٦٨
   for (const u of C.concat(V)) assert.equal(await bal(u), 60);

@@ -132,12 +132,21 @@ async function ensureBalance(username) {
 }
 
 /** Keeps the user record in step with the counter. Best-effort by design. */
+/* v-lock-credit (x-build-1، باب المال بموافقة المالك ٢٧ أكتوبر): المرآة كانت تقرأ السجلّ ثمّ تكتبه كاملًا خارج قفل الحساب، فقراءةٌ سبقت
+   سحب باقة (استرداد أو اعتراض) تصل كتابتها بعده فتعود الباقة المسحوبة. مهلة (د) في pay-refund (٣٠٠ms) تضيّق النافذة ولا تسدّها،
+   وبها كان اختبار pay-refund ٢٥ يتقلّب تحت الحمل. الآن تحت قفل الحساب نفسه (withAccount) على نسخة طازجة، والرقم من العدّاد الحيّ
+   لحظتها. قفلٌ بيد عمليّة دفع أكثر من MIRROR_WAIT_MS ⇒ تُترك المرآة (العدّاد هو المرجع في readPoints) ولا ينتظر الصرف ٨ ثوانٍ. */
+const MIRROR_WAIT_MS = 2000;
 async function mirrorToUser(username, points) {
   try {
-    const rec = await readPoints(username);
-    if (!rec) return;
-    rec.user.points = Math.max(0, Math.floor(points));
-    await putUser(username, rec.user);
+    await require('./create-checkout-session.js').withAccount(username, async (name, user) => {
+      if (!user || user.deleted) return;
+      const raw = await kvGetRaw(balanceKey(name));
+      const live = (raw !== null && raw !== undefined && String(raw) !== '') ? Number(raw) : Number(points);
+      if (!Number.isFinite(live)) return;
+      user.points = Math.max(0, Math.floor(live));
+      await putUser(name, user);
+    }, MIRROR_WAIT_MS);
   } catch (e) {
     console.warn('[points] mirror failed for ' + username + ':', e && e.message);
   }

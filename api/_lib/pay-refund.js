@@ -21,8 +21,10 @@
 // ٥. دفعة قديمة بلا سجلّ: تُستخرج خطّتها وصاحبها من Stripe/PayPal، ولا يُسحب إلّا بدليل منح (حجز v-pay-once أو أثر الدفعة على
 //    الحساب)؛ وإلّا تنبيه للمالك بلا سحب — لا يُسحب ما لم يُثبت أنّه مُنح. واسترداد كامل أو اعتراض لدفعة لم تُشحن بعد يُشغل
 //    حجزها بعلامة السحب فلا يشحنها شيء بعده. عطل Stripe/PayPal العابر يرمي (500 فيُعاد الحدث) لا «لا سجلّ».
+//    ودفعةٌ شُحنت ولم يُكتب سجلّها بعد (علامة إكمال معلَّقة) يُكمَل منحها أوّلًا ثمّ يُسحب منه (v-lock-credit، completeFirst).
 // ٦. v-acct-lock: السحب كلّه (والمنح في grantPlanToUser) تحت قفل الحساب على نسخته الطازجة — كلّ كاتب يكتب السجلّ كاملًا (KV بلا
-//    CAS)، فسحبان على خانتين أو سحب مع منح كان أحدهما يعيد ما كتبه الآخر. صرف النقاط خارج القفل: (د) في applyRevoke تضيّق نافذته.
+//    CAS)، فسحبان على خانتين أو سحب مع منح كان أحدهما يعيد ما كتبه الآخر. ومرآة صرف النقاط تحته أيضًا (v-lock-credit)؛ وكتّاب
+//    السجلّ الآخرون خارجه: (د) في applyRevoke تضيّق نافذتهم.
 const { kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel, kvIncrBy, kvDecrBy } = require('./kv.js');
 const { MEDIA_PLANS, MEDIA_WINDOW_DAYS } = require('./_mediaPlans.js');
 
@@ -264,9 +266,10 @@ async function applyRevoke(rec, step) {
     if (periods) await recheck(name, 'pay-refund:recheck');
   });
 
-  // (د) صرف النقاط لا يأخذ قفل الحساب (المسار الساخن): مرآته (mirrorToUser) تقرأ السجلّ ثمّ تكتبه كاملًا، فقراءةٌ سبقت السحب
-  //     تصل كتابتها بعد (ج) فتعود الفترة المسحوبة والحدث «تمّ». تضييق النافذة: (ج) مرّة أخيرة تحت القفل بعد مهلة قصيرة تكفي
-  //     لوصول كتابةٍ بدأت قبل السحب (قراءة + كتابة KV). لا يسدّها كلّها: كتابةٌ أبطأ من المهلة تبقى ممكنة.
+  // (د) كتّاب السجلّ خارج قفل الحساب يقرؤونه ثمّ يكتبونه كاملًا، فقراءةٌ سبقت السحب تصل كتابتها بعد (ج) فتعود الفترة المسحوبة
+  //     والحدث «تمّ». تضييق النافذة: (ج) مرّة أخيرة تحت القفل بعد مهلة قصيرة تكفي لوصول كتابةٍ بدأت قبل السحب (قراءة + كتابة KV).
+  //     لا يسدّها كلّها. v-lock-credit (x-build-1): مرآة صرف النقاط (mirrorToUser) صارت تحت القفل فلا تمرّ من هنا؛ تبقى (د)
+  //     للكتّاب الآخرين (تغيير الاسم، الإعدادات، هديّة الترحيب).
   if (periods && out[slot] && out.account) {
     await new Promise((r) => setTimeout(r, SETTLE_MS));
     try {
@@ -396,6 +399,17 @@ async function legacyRecord(cand, extra) {
   return now ? { id: rec.id, rec: now } : null;
 }
 
+// v-lock-credit (srv-money-2، المراجعة المعاكسة): دفعة بلا سجلّ وحجزها لحساب — ربّما شُحنت ولم يُكتب سجلّها بعد (علامة إكمال معلَّقة).
+// تُكمَل أوّلًا (create-checkout-session completeCredit، تحت قفل الحساب) فيسحب الاسترداد ما يسحبه من منحٍ مكتمل، لا من سجلّ قديم
+// يبنيه من الحجز: ذاك لا يأخذ رصيد الوسائط المملوء ويمنع تسليم الباقة بعد سحبٍ جزئيّ. يرجع سجلّ المنح إن صار له سجلّ.
+async function completeFirst(cand, meta) {
+  const { claimKey, completeCredit } = require('./create-checkout-session.js');
+  const owner = await kvGetRaw(claimKey(cand.field, cand.id));
+  if (!owner || String(owner).startsWith(REVOKED_CLAIM)) return null;
+  await completeCredit(String(owner), cand.field, cand.id, cand.md && cand.md.plan, meta);
+  return findRec([cand.id]);
+}
+
 // دفعة عُرفت ولا دليل على شحنها، وقد استُردّت كاملة أو اعتُرض عليها: كان يُردّ 200 بلا أثر فيشحنها ما يأتي بعده (التحقّق من
 // العميل ٧٢ ساعة — الـPaymentIntent يبقى succeeded، أو حدث الدفع يُعاد). الآن يُشغل حجزها (v-pay-once) بعلامة السحب، فيرى كلّ شحن
 // بعدها «سبق الشحن». حجزٌ سبقنا إليه شحنٌ متزامن ⇒ retry: يُعاد الحدث فيجد سجلّ ذلك المنح ويسحبه.
@@ -448,7 +462,7 @@ async function stripeLegacy(obj, dispute, o, ctx) {
     }
   }
   if (!cand) return null;
-  const hit = await findRec([cand.id]);
+  const hit = (await findRec([cand.id])) || (await completeFirst(cand, { refs: [pi, charge.id, invoice], amount: charge.amount, currency: charge.currency })); // v-lock-credit
   if (hit) return hit;
   const found = await legacyRecord(cand, { approxAt: (Number(charge.created) || 0) * 1000, amount: charge.amount, currency: charge.currency, refs: [pi, charge.id, invoice] });
   if (!found && ctx.block) await blockGrant(cand, ctx);
@@ -538,6 +552,8 @@ async function paypalLegacy(captureId, ctx) {
   if (!m || !m.plan) return null;
   // v-media-merge (المراجعة المعاكسة): طلب img_/vid_ بعد الإيقاف مُنح media_<الدرجة> (grantablePlan) — يُبنى سجلّه بالخطّة الممنوحة لا custom_id الخامّ.
   const cand = { field: 'lastPaypalOrderId', id: orderId, md: { username: m.ref, plan: pp.grantablePlan(m.plan, order) } };
+  const done = await completeFirst(cand, { refs: [captureId], amount: cents(cap.amount), currency: 'usd' }); // v-lock-credit
+  if (done) return done;
   const found = await legacyRecord(cand, { approxAt: Date.parse(cap.create_time) || 0, amount: cents(cap.amount), currency: 'usd', refs: [captureId] });
   if (!found && ctx.block(cents(cap.amount))) await blockGrant(cand, ctx); // الطلب يبقى COMPLETED بعد الاسترداد: claim كان سيشحنه
   return found;
