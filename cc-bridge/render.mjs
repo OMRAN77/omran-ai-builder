@@ -4,7 +4,7 @@
 // التعليق وصور الأنماط، ثمّ يرسل مانيفست المشاهد إلى هنا برمز مهمّة قصير العمر (HMAC بسرّ الجسر نفسه — السرّ لا
 // يبلغ المتصفّح). الجسر: يصوّر كلّ شاشة مطلوبة من التطبيق المنشور بـChromium (١٩٢٠×١٠٨٠، دقّة مضاعفة، ثيم داكن،
 // بلا نوافذ منبثقة)، يرسم بطاقات العناوين صفحةً بخطّ عربيّ واضح (لا drawtext)، ثمّ ffmpeg: كلّ مشهد صورة ثابتة
-// بحركة كاميرا بطيئة (zoompan، يتبدّل اتّجاهها)، صوته عليه وخانته = مدّة صوته + نصف ثانية، وانتقال xfade مخبوز في آخر كلّ مقطع
+// بحركة كاميرا بطيئة دون البكسل (perspective، يتبدّل اتّجاهها)، صوته عليه وخانته = مدّة صوته + نصف ثانية، وانتقال xfade مخبوز في آخر كلّ مقطع
 // (من صورته وصورة تاليه) فيكون الدمج لصقًا بلا إعادة ترميز؛ الإخراج 1080p30 H.264 + AAC. الناتج يبقى ٢٤ ساعة ثمّ يُحذف.
 //
 // بناء أوامر ffmpeg دوالّ نقيّة (buildFfmpegArgs) تُختبر بلا ffmpeg. لا يطبع الرمز ولا السرّ في السجلّ.
@@ -24,7 +24,9 @@ export const OUT_W = 1920, OUT_H = 1080;
 /* نافذة التصوير ١٢٨٠×٧٢٠ بدقّة ×٣ (= ٣٨٤٠×٢١٦٠): نوافذ الأدوات (≤ ١٠٠٠ بكسل عرضًا) تملأ الإطار ونصّها يُقرأ في الفيديو،
    بينما ١٩٢٠ تترك النافذة عمودًا ضيّقًا وسط فراغ. بطاقات العناوين تُرسم ١٩٢٠×١٠٨٠ ×٢. */
 export const VIEW_W = 1280, VIEW_H = 720, VIEW_SCALE = 3;
-export const WORK_W = 2560, WORK_H = 1440;   // مقاس العمل قبل zoompan: أكبر من الإخراج فلا يفقد الزوم حدّته، وأصغر من ٤K فلا يبطئ
+/* مقاس العمل قبل الحركة: ١٫١ من الإخراج — أكبر زوم (١٫٠٨) يبقى تصغيرًا من الصورة لا تكبيرًا فلا تفقد الحدّة، وأصغر من ٢٥٦٠ لأنّ
+   perspective يرسم كلّ بكسل بالاستيفاء التكعيبيّ (قيس: حدّة نصّ لقطة التطبيق كما كانت عند ٢٥٦٠، ووقت المرشّح أقلّ بالثلث) — v-director-subpixel */
+export const WORK_W = 2112, WORK_H = 1188;
 export const XFADE = 0.5;                    // ثانية الانتقال
 export const TAIL = 0.5;                     // ما يُضاف بعد نهاية الصوت
 export const LIMITS = {
@@ -134,21 +136,32 @@ const MOTIONS = ['in', 'out', 'right', 'left'];
 export const XF = Math.round(XFADE * FPS); // إطارات الانتقال
 /** إطارات خانة المشهد (عدد صحيح: كلّ مقطع يبدأ وينتهي على حدّ إطار) */
 export function slotFrames(scene) { return Math.max(XF * 2, Math.round(scene.seconds * FPS)); }
-/** حركة الكاميرا لـd إطارًا تبدأ من الإطار on0 من أصل total — المقام ثابت فسرعة الحركة واحدة بين مقدّمة المشهد (في ذوبان سابقه) وبقيّته */
+/** حركة الكاميرا لـd إطارًا تبدأ من الإطار on0 من أصل total — المقام ثابت فسرعة الحركة واحدة بين مقدّمة المشهد (في ذوبان سابقه) وبقيّته.
+    v-director-subpixel (المالك ٨ نوفمبر عن فيديو «قصة»: «الفيديو فيه حركه … يعور العين»): كانت zoompan، وهي تقرّب موضع القصّ ومقاسه إلى بكسل
+    صحيح في كلّ إطار، فتتذبذب الصورة ذهابًا وإيابًا (قيس دون البكسل: إزاحة زاوية الإطار تتناوب +٠٫١٣ ثمّ −٠٫٦٢ بكسل، تذبذب ٠٫٦٣ بكسل/إطار؛ الآن ٠٫٠٠٤).
+    الآن: الصورة الواحدة تُكرَّر إطاراتها (tpad، نسخ بلا ذاكرة)، وperspective يرسم القصّ (W/Z × H/Z بزواياه العشريّة، دقّة ١/٢٥٦ بكسل، استيفاء
+    تكعيبيّ) على أوّل OUT_W×OUT_H من إطار العمل، ثمّ crop — استيفاء واحد بلا تصغير بعده. بكسل الإخراج x ← بداية القصّ + (x+½)·(W/Z)/OUT_W − ½
+    (مراكز البكسلات، فالزوم متمركز بدقّة). المسار نفسه (in/out/right/left وسرعته) كما كان؛ on في perspective يبدأ من ١. */
 function zoomFilter(kind, total, on0, d) {
-  const n = '(on+' + on0 + ')/' + Math.max(1, total);
-  let z, x = "x='iw/2-(iw/zoom/2)'";
-  const y = "y='ih/2-(ih/zoom/2)'";
-  if (kind === 'in') z = "z='1+0.08*" + n + "'";
-  else if (kind === 'out') z = "z='1.08-0.08*" + n + "'";
-  else if (kind === 'right') { z = "z='1.06'"; x = "x='(iw-iw/zoom)*" + n + "'"; }
-  else { z = "z='1.06'"; x = "x='(iw-iw/zoom)*(1-" + n + ")'"; }
-  return 'zoompan=' + z + ':' + x + ':' + y + ':d=' + Math.max(1, d) + ':s=' + OUT_W + 'x' + OUT_H + ':fps=' + FPS;
+  const n = '((on-1+' + on0 + ')/' + Math.max(1, total) + ')';
+  let Z, PX = '0.5';
+  if (kind === 'in') Z = '(1+0.08*' + n + ')';
+  else if (kind === 'out') Z = '(1.08-0.08*' + n + ')';
+  else if (kind === 'right') { Z = '1.06'; PX = n; }
+  else { Z = '1.06'; PX = '(1-' + n + ')'; }
+  const sx = '(W/' + Z + '/' + OUT_W + ')', sy = '(H/' + Z + '/' + OUT_H + ')'; // بكسل عمل لكلّ بكسل إخراج
+  const L = '((W-W/' + Z + ')*' + PX + '+0.5*' + sx + '-0.5)', T = '((H-H/' + Z + ')*0.5+0.5*' + sy + '-0.5)';
+  const R = '(' + L + '+W*' + sx + ')', B = '(' + T + '+H*' + sy + ')';
+  const D = Math.max(1, d);
+  return 'fps=' + FPS + ',tpad=stop_mode=clone:stop=' + D + ',trim=end_frame=' + D +
+    ",perspective=x0='" + L + "':y0='" + T + "':x1='" + R + "':y1='" + T + "':x2='" + L + "':y2='" + B + "':x3='" + R + "':y3='" + B + "':interpolation=cubic:eval=frame" +
+    ',crop=' + OUT_W + ':' + OUT_H + ':0:0';
 }
-/** ملء الإطار: لقطة ١٦:٩ تُحشى، وصورة ليست ١٦:٩ (نموذج نمط مربّع) على خلفيّة مموّهة من نفسها بدل شريطين أسودين */
+/** ملء الإطار: لقطة ١٦:٩ تُحشى، وصورة ليست ١٦:٩ (نموذج نمط مربّع) على خلفيّة مموّهة من نفسها بدل شريطين أسودين
+    (التمويه ٣٣ على مقاس العمل ٢١١٢ = ٤٠ على ٢٥٦٠ السابق: الشكل نفسه) */
 function fitFilter(type, tag) {
   return type === 'style_sample'
-    ? 'split[bg' + tag + '][fg' + tag + '];[bg' + tag + ']scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=increase,crop=' + WORK_W + ':' + WORK_H + ',gblur=sigma=40,eq=brightness=-0.12[bgb' + tag + '];[fg' + tag + ']scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=decrease[fgs' + tag + '];[bgb' + tag + '][fgs' + tag + ']overlay=(W-w)/2:(H-h)/2,setsar=1'
+    ? 'split[bg' + tag + '][fg' + tag + '];[bg' + tag + ']scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=increase,crop=' + WORK_W + ':' + WORK_H + ',gblur=sigma=33,eq=brightness=-0.12[bgb' + tag + '];[fg' + tag + ']scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=decrease[fgs' + tag + '];[bgb' + tag + '][fgs' + tag + ']overlay=(W-w)/2:(H-h)/2,setsar=1'
     : 'scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=decrease,pad=' + WORK_W + ':' + WORK_H + ':(ow-iw)/2:(oh-ih)/2:color=0x07080c,setsar=1';
 }
 /** نموذج نمط وصل بنسبة ١٦:٩ (التعليق مرسوم عليه في المتصفّح) يُعامل كلقطة: بلا خلفيّة مموّهة (أسرع) */
@@ -162,26 +175,33 @@ function transitionFor(i, scenes, dir) {
   if (i % 3 === 1) return dir === 'rtl' ? 'smoothright' : 'smoothleft';
   return 'fade';
 }
-/** مرشّح فيديو المقطع i: حركته من الإطار lead (مقدّمته ظهرت في ذوبان سابقه) ثمّ ذوبان في مقدّمة التالي إن وُجد */
+/** مرشّح فيديو المقطع i: حركته من الإطار lead (مقدّمته ظهرت في ذوبان سابقه) ثمّ ذوبان في مقدّمة التالي إن وُجد.
+    التحويل إلى yuv420p مرّة على الصورة الواحدة قبل تكرارها (perspective لا يقبل RGB المرصوص، ويرسم 4:2:0 بنصف كلفة RGB المستويّ) */
 export function sceneVideoFilter(scenes, index, dir) {
   const s = scenes[index], next = scenes[index + 1];
   const F = slotFrames(s), lead = index > 0 ? XF : 0;
-  const own = '[0:v]' + fitFilter(fitType(s), 'a') + ',' + zoomFilter(MOTIONS[index % MOTIONS.length], F + lead, lead, F) + ',format=yuv420p';
+  const own = '[0:v]' + fitFilter(fitType(s), 'a') + ',format=yuv420p,' + zoomFilter(MOTIONS[index % MOTIONS.length], F + lead, lead, F) + ',format=yuv420p';
   if (!next) return own + '[v]';
-  const nx = '[1:v]' + fitFilter(fitType(next), 'b') + ',' + zoomFilter(MOTIONS[(index + 1) % MOTIONS.length], slotFrames(next) + XF, 0, XF) + ',format=yuv420p';
+  const nx = '[1:v]' + fitFilter(fitType(next), 'b') + ',format=yuv420p,' + zoomFilter(MOTIONS[(index + 1) % MOTIONS.length], slotFrames(next) + XF, 0, XF) + ',format=yuv420p';
   return own + '[own];' + nx + '[nx];[own][nx]xfade=transition=' + transitionFor(index + 1, scenes, dir) + ':duration=' + XFADE + ':offset=' + ((F - XF) / FPS).toFixed(3) + '[v]';
 }
 /** أمر مقطع واحد: صورته (+ صورة التالي للذوبان) + صوته أو صمت → مقطع 1080p30 بطول خانته بالضبط.
-    v-app-director-watchdog — opts.light: إعادة خفيفة بعد قتل المقطع (الذاكرة): صورته ثابتة بلا zoompan ولا ذوبان (مدخل واحد)، وخيط واحد
+    v-app-director-watchdog — opts.light: إعادة خفيفة بعد قتل المقطع (الذاكرة): صورته ثابتة بلا حركة ولا ذوبان (مدخل واحد)، وخيط واحد
     ونظر أقصر؛ الترميز نفسه (الملفّ الشخصيّ والمستوى وB-frames وCABAC من veryfast) كي يُلصق مع البقيّة بلا إعادة ترميز. */
 export function sceneArgs(scenes, index, files, dir, opts) {
   const s = scenes[index], light = !!(opts && opts.light), hasNext = !light && index < scenes.length - 1;
-  const args = ['-y', '-hide_banner', '-loglevel', 'error', '-i', files.image];
-  if (hasNext) args.push('-i', files.nextImage);
-  if (files.audio) args.push('-i', files.audio); else args.push('-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo');
+  /* v-director-threads (قصّة الحمرية ٨ نوفمبر: ٥ من ١٧ مقطعًا «Error reinitializing filters! | Failed to inject frame into filter network:
+     Resource temporarily unavailable» فصارت صورًا ثابتة): ffmpeg يفتح لرسم المرشّحات ولكلّ مرشّح تحجيم فيه (sws) ولكلّ فاكّ ترميز خيوطًا بعدد
+     أنوية الجهاز كلّه (av_cpu_count()+1 — على Railway أنوية المضيف لا حصّة الحاوية)، فمقاطع متوازية مع Chromium تبلغ مئات الخيوط؛ وحين يرفض
+     النظام خيطًا (pthread_create = EAGAIN) تفشل تهيئة sws فتهيئة المرشّحات بهذا الخطأ حرفيًّا (ثبت من مصدر ffmpeg 5.1 وأُعيد إنتاجه محلّيًّا)،
+     وتنجح الإعادة لأنّها وحدها. الخيوط الآن محدودة صراحةً: خيطان للمرشّحات (واحد للخفيفة)، وخيط لكلّ فاكّ، وخيطا x264 كما كانا؛ والصمت
+     مرشّح داخل الرسم نفسه لا مدخل lavfi (ذاك رسم ثانٍ بخيوطه التلقائيّة). قيس على ffmpeg 6.1 بـ-cpucount 64: ١٣٢–١٤٧ خيطًا للمقطع ← ١٤–١٧. */
+  const args = ['-y', '-hide_banner', '-loglevel', 'error', '-filter_complex_threads', light ? '1' : '2', '-threads', '1', '-i', files.image];
+  if (hasNext) args.push('-threads', '1', '-i', files.nextImage);
+  if (files.audio) args.push('-threads', '1', '-i', files.audio);
   /* الصورة تُصغَّر مرّة ثمّ تُنسخ إطاراتها بطول الخانة (tpad) — بلا هذا يخرج المقطع إطارًا واحدًا (ثبت بالتشغيل: nb_frames=1) */
   const vf = light ? '[0:v]' + fitFilter(fitType(s), 'a') + ',scale=' + OUT_W + ':' + OUT_H + ',fps=' + FPS + ',tpad=stop_mode=clone:stop_duration=' + (slotFrames(s) / FPS).toFixed(3) + ',format=yuv420p[v]' : sceneVideoFilter(scenes, index, dir);
-  const fc = vf + ';[' + (hasNext ? 2 : 1) + ':a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,apad[a]';
+  const fc = vf + ';' + (files.audio ? '[' + (hasNext ? 2 : 1) + ':a]aresample=44100,' : 'anullsrc=r=44100:cl=stereo,') + 'aformat=sample_fmts=fltp:channel_layouts=stereo' + (files.audio ? ',apad' : '') + '[a]';
   /* الإعدادات واحدة في كلّ المقاطع (الملفّ الشخصيّ والمستوى وطول المجموعة) كي يصحّ لصقها بلا إعادة ترميز.
      خيطان ونظر ١٠ ومرجع واحد (قيس محلّيًّا على لقطة ٣٨٤٠×٢١٦٠: −١٧٪ ذاكرة و−٤٠٪ وقتًا بلا فرق مرئيّ على صور ثابتة) */
   args.push('-filter_complex', fc, '-map', '[v]', '-map', '[a]', '-t', (slotFrames(s) / FPS).toFixed(3),
