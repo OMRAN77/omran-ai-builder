@@ -2,7 +2,7 @@
 // Requires a valid session token belonging to OWNER_USERNAME. Regular users
 // get 403 no matter what they send. Actions: ban, unban, delete, message, reset-link.
 const { getUser, putUser, userPath } = require('./auth.js');
-const { kvDel, kvList } = require('./kv.js');
+const { kvDel, kvList, kvGetJSON } = require('./kv.js');
 const crypto = require('crypto');
 const RESET_LINK_MIN = 30; // v-owner-reset-link: صلاحيّة الرابط كرابط البريد
 
@@ -228,31 +228,66 @@ module.exports = async (req, res) => {
     }
     const typed = targetUsername.trim();
     let key = typed.toLowerCase();
-    let stripeHit = false; // v-owner-reset-stripe
+    let via = ''; // v-owner-reset-stripe / v-owner-reset-records: من أين عُرف الحساب (stripe · record · paypal)
     const stripeDiag = {}; // v-owner-reset-scan: أعداد البحث في Stripe (بلا بريد ولا اسم)
+    const extra = {}; // v-owner-reset-records: أعداد السجلّات وPayPal للفحص وللـ٤٠٤
     /* v-owner-reset-find: جدول المستخدمين يعرض أحدث ٦٠ تسجيلًا فقط، فصاحب الحساب الأقدم لا صفّ له ولا 🔑. خانة البحث ترسل
        الإيميل كما كتبه المالك: يُحوَّل إلى حسابه بفهرس البريد (مؤكَّدًا أو لا — المالك تحقّق بنفسه)، وحساب «المتابعة عبر Google»
        لا كلمة مرور يعرفها صاحبه فيُقال للمالك ذلك بدل رابط لا ينفع. */
     if (action === 'reset-link' && key.includes('@')) {
-      const { resolveLoginUser, googleAccountFor } = require('./auth.js');
-      const found = await resolveLoginUser(key);
-      if (found.user && !found.user.deleted) key = found.key;
+      const auth = require('./auth.js');
+      /* v-owner-reset-records: قراءة فقط — resolveLoginUser قد يختم بريدًا قديمًا ويكتب (emailProven ← stampLegacyEmail)، فالخانة تقرأ ما
+         يقرؤه بلا ختم: اسم مستخدم بالنصّ نفسه، ثمّ فهرس البريد إلى الحساب الحيّ (مؤكَّدًا أو لا — كما كان) */
+      const direct = await getUser(key);
+      let found = (direct && !direct.deleted) ? key : '';
+      if (!found) {
+        try {
+          const idx = await kvGetJSON('db/email-index/' + key);
+          const uname = idx && idx.username ? String(idx.username).trim().toLowerCase() : '';
+          /* الفهرس يُتبع إن كان بريد الحساب الحيّ هو البريد نفسه (كـindexOwner): فهرس قديم بقي على اسم تغيّر بريده، أو كتبه من زرع البريد
+             قبل ١٨ أكتوبر، لا يعطي رابطًا لحساب آخر — يمضي البحث إلى السجلّات */
+          if (uname) {
+            const live = await auth.liveAccount(uname);
+            if (live.user && !live.user.deleted && String(live.user.email || '').trim().toLowerCase() === key) found = live.key;
+          }
+        } catch (e) { console.warn('[admin-actions] reset-link index ' + String((e && e.name) || 'error')); } /* كـresolveLoginUser: عطب الفهرس لا يُسقط البحث */
+      }
+      if (found) key = found;
       else {
-        const g = await googleAccountFor(key);
+        const g = await auth.googleAccountFor(key);
         if (g) { res.status(200).json({ ok: false, google: true, username: g.key }); return; }
         /* v-owner-reset-stripe (المالك بعد v-owner-reset-find: إيميل علياء ← «ما في حساب بهذا الإيميل أو الاسم»، ثمّ «سوّها»): التسجيل لا يحفظ
            إيميلًا منذ ١٨ أكتوبر (v-signup-no-email) — فمن سجّل باسم وكلمة مرور ودفع ببريده لا يصل حسابَه فهرسٌ ولا Google؛ بريده في Stripe وحده،
            ومعه اسمه في metadata.username الذي يضعه createCheckoutSession. قراءة فقط (بموافقة المالك على البند — Stripe باب مقفل). */
-        const paid = await stripeAccountsFor([typed, key], require('./auth.js').liveAccount, { diag: stripeDiag });
-        if (!paid.length) {
-          console.warn('[admin-actions] reset-link stripe none ' + JSON.stringify(stripeDiag)); /* أعداد فقط — بلا بريد ولا اسم */
-          res.status(404).json({ error: 'user not found', diag: stripeDiag });
-          return;
-        }
+        const paid = await stripeAccountsFor([typed, key], auth.liveAccount, { diag: stripeDiag });
         /* بريد دفع منه أكثر من حساب: لا رابط تلقائيّ — المالك يسأل صاحبه عن اسم حسابه ويكتبه في الخانة نفسها */
-        if (paid.length > 1) { res.status(409).json({ error: 'multiple accounts', candidates: paid.slice(0, 5) }); return; }
-        key = paid[0];
-        stripeHit = true;
+        if (paid.length > 1) { res.status(409).json({ error: 'multiple accounts', kind: 'stripe', candidates: paid.slice(0, 5) }); return; }
+        if (paid.length === 1) { key = paid[0]; via = 'stripe'; }
+        else {
+          console.warn('[admin-actions] reset-link stripe none ' + JSON.stringify(stripeDiag)); /* أعداد فقط — بلا بريد ولا اسم */
+          /* v-owner-reset-records (المالك بعد #1303: Stripe كلّه بلا دفعة بإيميلها ← «سوّها» على بحثين آخرين، قراءة فقط — بيانات المستخدمين
+             والمال بابان مقفلان): كلّ سجلّات الحسابات (إثبات قويّ = رابط، ضعيف = أسماء للمالك)، ثمّ دافعو PayPal ببريد الدافع. */
+          const lookup = require('./owner-lookup.js');
+          extra.records = {};
+          const rec = await lookup.recordAccountsFor(typed, { diag: extra.records });
+          console.warn('[admin-actions] reset-link records ' + JSON.stringify(extra.records)); /* أعداد فقط */
+          if (rec.strong.length > 1) { res.status(409).json({ error: 'multiple accounts', kind: 'record', candidates: rec.strong.slice(0, 5).map((x) => x.key) }); return; }
+          if (rec.strong.length === 1) {
+            if (rec.strong[0].google) { res.status(200).json({ ok: false, google: true, username: rec.strong[0].key }); return; }
+            key = rec.strong[0].key;
+            via = 'record';
+          } else {
+            extra.paypal = {};
+            const pp = await lookup.paypalAccountsFor([typed, key], auth.liveAccount, { diag: extra.paypal, orders: rec.paypalOrders });
+            console.warn('[admin-actions] reset-link paypal ' + JSON.stringify(extra.paypal)); /* أعداد فقط */
+            if (pp.length > 1) { res.status(409).json({ error: 'multiple accounts', kind: 'paypal', candidates: pp.slice(0, 5) }); return; }
+            if (pp.length === 1) { key = pp[0]; via = 'paypal'; }
+            else {
+              res.status(404).json(Object.assign({ error: 'user not found', diag: stripeDiag, candidates: rec.weak.map((x) => x.key) }, extra));
+              return;
+            }
+          }
+        }
       }
     }
     if (isOwnerName(key)) {
@@ -280,7 +315,21 @@ module.exports = async (req, res) => {
       res.status(409).json({ error: 'sealed_record', message: 'السجلّ مقفل بسرّ قديم ولا يُقرأ — لا يصحّ عليه إلا الحذف (أو استرجاعه بـ AUTH_SECRET_PREVIOUS)' });
       return;
     }
+    /* v-owner-reset-records: اسم قديم تغيّر ← حسابه الحيّ (شاهد movedTo)؛ واسم لا حساب له ← أسماء فيها النصّ نفسه، للمالك لا رابط */
+    if (action === 'reset-link' && user && user.deleted && user.movedTo) {
+      const live = await require('./auth.js').liveAccount(key);
+      if (live.user && !live.user.deleted) {
+        if (isOwnerName(live.key)) { res.status(400).json({ error: 'cannot act on the owner account' }); return; } /* اسم قديم يقود إلى حساب المالك */
+        key = live.key;
+        user = live.user;
+      }
+    }
     if (!user) {
+      if (action === 'reset-link' && !key.includes('@')) {
+        const names = await require('./owner-lookup.js').nameAccountsFor(key);
+        res.status(404).json({ error: 'user not found', candidates: names });
+        return;
+      }
       res.status(404).json({ error: 'user not found' });
       return;
     }
@@ -291,14 +340,14 @@ module.exports = async (req, res) => {
        صاحب الحساب يكتبها، وresetWithToken يُبطل كلّ جلساته السابقة كما في الاسترجاع بالبريد. */
     if (action === 'reset-link') {
       if (user.deleted) { res.status(404).json({ error: 'user not found' }); return; }
-      if (dryRun) { res.status(200).json(Object.assign({ ok: true, dryRun: true, username: key }, stripeHit ? { via: 'stripe', diag: stripeDiag } : {})); return; }
+      if (dryRun) { res.status(200).json(Object.assign({ ok: true, dryRun: true, username: key }, via ? { via, diag: stripeDiag } : {}, extra)); return; }
       const rt = crypto.randomBytes(24).toString('hex');
       user.resetTokenHash = crypto.createHash('sha256').update(rt).digest('hex');
       user.resetTokenExpiry = Date.now() + RESET_LINK_MIN * 60 * 1000;
       await putUser(key, user);
       const { siteUrl } = require('./_site.js');
       const link = siteUrl() + '/?resetToken=' + encodeURIComponent(rt) + '&ru=' + encodeURIComponent(key);
-      res.status(200).json(Object.assign({ ok: true, link, minutes: RESET_LINK_MIN, username: key }, stripeHit ? { via: 'stripe' } : {}));
+      res.status(200).json(Object.assign({ ok: true, link, minutes: RESET_LINK_MIN, username: key }, via ? { via } : {}));
       return;
     }
 

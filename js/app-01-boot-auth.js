@@ -850,20 +850,32 @@ try{
       const data = await res.json();
       // v-owner-reset-find: حساب Google لا كلمة مرور له، والغائب برسالة مترجمة لا «user not found» خامًا
       if(data && data.google){ alert(ownT('ownerResetGoogle', { u: ownIso(data.username || username) })); return; }
-      if(res.status === 404){ alert('❌ ' + ownT('ownerResetNotFound')); return; }
+      /* v-owner-reset-records: بعد Stripe تبحث الخانة في كلّ الحسابات وفي PayPal — ما لا يثبت البريد يُعرض أسماءً للمالك لا رابطًا،
+         والبحث الكامل بلا أثر يقول أين بحث ومن يُسأل، وPayPal المقفل يقول ما يفعّله المالك */
+      const names = (data && Array.isArray(data.candidates)) ? data.candidates.map(ownIso).join(' · ') : '';
+      const ppOff = (data && data.paypal && data.paypal.denied) ? '\n' + ownT('ownerResetPaypalOff') : '';
+      if(res.status === 404){
+        if(names){ alert('⚠️ ' + ownT('ownerResetMaybe', { list: names }) + ppOff); return; }
+        alert('❌ ' + ownT('ownerResetNotFound') + (data && data.records ? '\n' + ownT('ownerResetAsk') : '') + ppOff);
+        return;
+      }
       // v-owner-reset-stripe: بريد دفع منه أكثر من حساب في Stripe — لا رابط تلقائيّ، المالك يسأل صاحبه عن اسمه ويكتبه في الخانة
-      if(res.status === 409 && data && Array.isArray(data.candidates) && data.candidates.length){ alert('⚠️ ' + ownT('ownerResetMany', { list: data.candidates.map(ownIso).join(' · ') })); return; }
+      if(res.status === 409 && names){ alert('⚠️ ' + ownT(data.kind === 'record' ? 'ownerResetMaybe' : 'ownerResetMany', { list: names })); return; }
       if(!res.ok || !data.ok || !data.link){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       try{ if(navigator.clipboard) navigator.clipboard.writeText(data.link).catch(e => __swallow(e, 'reset-link clipboard')); }catch(e){ __swallow(e, 'reset-link clipboard'); }
       prompt(ownT('ownerResetLink', { u: ownIso(data.username || username), m: data.minutes || 30 }), data.link);
     }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   /* v-owner-reset-find: خانة «إيميل أو اسم مستخدم» فوق الجدول — للحساب الذي لا صفّ له (الجدول أحدث ٦٠ تسجيلًا). */
-  window.adminResetLinkFind = function(){
+  window.adminResetLinkFind = async function(){
     const el = document.getElementById('adminResetInput');
     const v = el ? String(el.value || '').trim() : '';
     if(!v){ if(el) el.focus(); return; }
-    return window.adminResetLink(v);
+    /* v-owner-reset-records: البحث قد يأخذ ثواني (Stripe ثمّ كلّ الحسابات ثمّ PayPal) — الزرّ ينشغل فلا يُضغط مرّتين ولا يبدو معلّقًا */
+    const btn = el && el.parentNode ? el.parentNode.querySelector('button') : null; /* زرّ 🔑 جار الخانة في الصفّ نفسه */
+    if(btn){ btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.style.opacity = '.55'; }
+    try{ return await window.adminResetLink(v); }
+    finally{ if(btn){ btn.disabled = false; btn.removeAttribute('aria-busy'); btn.style.opacity = ''; } }
   };
   window.adminMessageUser = async function(username){
     const text = prompt(ownT('ownerMsgPrompt', { u: ownIso(username) }));

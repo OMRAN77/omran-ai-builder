@@ -429,3 +429,221 @@ test('١٠. المراجعة المستقلّة: لكلّ مسح ساعته، و
     console.warn = realWarn;
   }
 });
+
+/* ---------- v-owner-reset-records: المالك بعد #1303 (Stripe كلّه بلا دفعة بإيميلها) ← «سوّها»: كلّ السجلّات، والاسم، وPayPal — قراءة فقط ---------- */
+const paymentsOff = () => { delete process.env.STRIPE_SECRET_KEY; delete process.env.PAYPAL_CLIENT_ID; delete process.env.PAYPAL_SECRET; };
+
+test('١١. كلّ السجلّات: المؤكَّد بلا فهرس = رابط، وغير المؤكَّد واسم رمز البريد والاسم القريب = أسماء بلا رابط، والفهرس على بريد آخر لا يُتبع، والمختوم يُعدّ، والاسم القديم يُتبع', async () => {
+  paymentsOff();
+  const realWarn = console.warn;
+  const warns = [];
+  console.warn = (...a) => { warns.push(a.join(' ')); };
+  try {
+    // ١) بريد مؤكَّد على حسابه ولا فهرس له ← رابط (via record) يعمل
+    await auth.putUser('amy_v', { username: 'amy_v', email: 'amy.v@x.com', verifiedEmail: 'amy.v@x.com', hash: 'h', salt: 's' });
+    const r = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'Amy.V@X.com' });
+    assert.equal(r.code, 200, JSON.stringify(r.body)); assert.equal(r.body.username, 'amy_v'); assert.equal(r.body.via, 'record');
+    assert.equal((await callAuth({ action: 'resetWithToken', username: 'amy_v', resetToken: new URL(r.body.link).searchParams.get('resetToken'), newPassword: 'NewPass123' })).code, 200);
+    // ٢) صندوق Gmail ربطه صاحبه بـOAuth (وبريد الحساب فارغ) ← إثبات قويّ
+    await auth.putUser('gm_user', { username: 'gm_user', email: null, emailAssist: { gmailAddress: 'Gm.User@Gmail.com' }, hash: 'h', salt: 's' });
+    const gm = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'gm.user@gmail.com', dryRun: true });
+    assert.equal(gm.code, 200, JSON.stringify(gm.body)); assert.equal(gm.body.username, 'gm_user'); assert.ok(!(await auth.getUser('gm_user')).resetTokenHash, 'الفحص لا يكتب');
+    // ٣) علياء: لا فهرس ولا دفع — بريد مكتوب بلا تأكيد، واسم رمز البريد، واسم قريب = أسماء للمالك بالترتيب، بلا رمز لأحد
+    await auth.putUser('aliyaalshams_1a2b3c', { username: 'aliyaalshams_1a2b3c', email: null, otpOnly: true, hash: 'h', salt: 's', createdAt: 2 });
+    await auth.putUser('aliya_rose', { username: 'Aliya_Rose', email: null, hash: 'h', salt: 's', createdAt: 3 });
+    await auth.putUser('planted', { username: 'planted', email: 'aliya.alshamsi181@icloud.com', hash: 'h', salt: 's', createdAt: 1 });
+    await auth.putUser('aliya_gone', { username: 'aliya_gone', email: 'aliya.alshamsi181@icloud.com', verifiedEmail: 'aliya.alshamsi181@icloud.com', deleted: true });
+    await auth.putUser('boss', { username: 'boss', email: 'aliya.alshamsi181@icloud.com', verifiedEmail: 'aliya.alshamsi181@icloud.com', hash: 'h', salt: 's' });
+    store.set('db/users/sealed_one.json', JSON.stringify({ enc: 1, iv: 'AAAAAAAAAAAAAAAA', tag: 'AAAAAAAAAAAAAAAAAAAAAA==', data: 'AAAA' }));
+    warns.length = 0;
+    const al = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'aliya.alshamsi181@icloud.com' });
+    assert.equal(al.code, 404, JSON.stringify(al.body));
+    assert.deepEqual(al.body.candidates.slice(0, 3), ['planted', 'aliyaalshams_1a2b3c', 'aliya_rose'], JSON.stringify(al.body.candidates));
+    assert.ok(!al.body.candidates.includes('aliya_gone') && !al.body.candidates.includes('boss'), 'لا محذوف ولا المالك');
+    for (const k of ['planted', 'aliyaalshams_1a2b3c', 'aliya_rose']) assert.ok(!(await auth.getUser(k)).resetTokenHash, 'لا رمز لـ' + k);
+    assert.ok(al.body.records.sealed >= 1 && al.body.records.partial === true, 'المختوم يُعدّ: ' + JSON.stringify(al.body.records));
+    assert.equal(al.body.paypal.off, true, 'بلا مفاتيح PayPal لا بحث');
+    assert.ok(warns.some((w) => /reset-link records \{/.test(w)), warns.join(' | '));
+    assert.ok(!warns.some((w) => /@|aliya|planted|rose/i.test(w)), 'السجلّ بلا بريد ولا اسم: ' + warns.join(' | '));
+    store.delete('db/users/sealed_one.json');
+    // ٣ب) مرشَّح ضعيف واحد (بريد مكتوب بلا تأكيد) ← اسمه للمالك، لا رابط ولو كان وحيدًا
+    await auth.putUser('solo_u', { username: 'solo_u', email: 'solo@x.com', hash: 'h', salt: 's' });
+    const solo = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'solo@x.com' });
+    assert.equal(solo.code, 404, JSON.stringify(solo.body)); assert.deepEqual(solo.body.candidates, ['solo_u']);
+    assert.ok(!(await auth.getUser('solo_u')).resetTokenHash, 'المرشَّح الوحيد الضعيف لا رابط له');
+    // ٤) بريد مؤكَّد على حسابين ← ٤٠٩ (kind record) بلا رمز
+    await auth.putUser('twin_a', { username: 'twin_a', email: 'twin@x.com', verifiedEmail: 'twin@x.com', hash: 'h', salt: 's' });
+    await auth.putUser('twin_b', { username: 'twin_b', email: 'twin@x.com', verifiedEmail: 'twin@x.com', hash: 'h', salt: 's' });
+    const tw = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'twin@x.com' });
+    assert.equal(tw.code, 409); assert.equal(tw.body.kind, 'record'); assert.deepEqual([...tw.body.candidates].sort(), ['twin_a', 'twin_b']);
+    assert.ok(!(await auth.getUser('twin_a')).resetTokenHash && !(await auth.getUser('twin_b')).resetTokenHash);
+    // ٥) فهرس يشير إلى حساب تغيّر بريده ← لا يُتبع ولا رمز له
+    await auth.putUser('oldie', { username: 'oldie', email: 'new@x.com', verifiedEmail: 'new@x.com', hash: 'h', salt: 's' });
+    store.set('db/email-index/stale@x.com', JSON.stringify({ username: 'oldie' }));
+    assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'stale@x.com' })).code, 404);
+    assert.ok(!(await auth.getUser('oldie')).resetTokenHash, 'الفهرس القديم لا يعطي رابطًا لحساب آخر');
+    // ٦) بالاسم: نصّ بلا @ لا حساب له بالضبط ← أسماء فيها النصّ (والعربيّ)، والمحذوف خارجها، والقصير جدًّا لا شيء
+    await auth.putUser('عليا_٩', { username: 'عليا_٩', hash: 'h', salt: 's' });
+    const nm = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'Aliya' });
+    assert.equal(nm.code, 404);
+    assert.ok(nm.body.candidates.includes('aliya_rose') && nm.body.candidates.includes('aliyaalshams_1a2b3c') && !nm.body.candidates.includes('aliya_gone'), JSON.stringify(nm.body.candidates));
+    assert.deepEqual((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'عليا' })).body.candidates, ['عليا_٩']);
+    assert.deepEqual((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'al' })).body.candidates, []);
+    // ٧) اسم قديم تغيّر ← حسابه الحيّ؛ واسم قديم يقود إلى المالك ← ٤٠٠
+    await auth.putUser('rose_old', { username: 'rose_old', deleted: true, movedTo: 'aliya_rose' });
+    const mv = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'rose_old', dryRun: true });
+    assert.equal(mv.code, 200, JSON.stringify(mv.body)); assert.equal(mv.body.username, 'aliya_rose');
+    await auth.putUser('boss_old', { username: 'boss_old', deleted: true, movedTo: 'boss' });
+    assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'boss_old' })).code, 400);
+  } finally { console.warn = realWarn; }
+});
+
+const ppMock = (handler) => async (url, init) => {
+  const u = new URL(String(url));
+  if (u.origin !== 'https://api-m.paypal.com') throw new Error('نداء غير PayPal: ' + u);
+  if (u.pathname === '/v1/oauth2/token') return { ok: true, status: 200, json: async () => ({ access_token: 'tok_test', scope: 'openid' }) };
+  return handler(u, init);
+};
+const ok = (body) => ({ ok: true, status: 200, json: async () => body });
+const fail = (status, name) => ({ ok: false, status, json: async () => ({ name: name || 'X' }) });
+
+test('١٢. PayPal بطلباتنا: حجز الشحن وآخر طلب في السجلّ ← بريد الدافع من الطلب، والاسم من عندنا لا من reference_id، والملغى لا يُقرأ، والبحث الكامل المقفل يقف من أوّل نداء', async () => {
+  paymentsOff();
+  process.env.PAYPAL_CLIENT_ID = 'id_test'; process.env.PAYPAL_SECRET = 'sec_test';
+  const realFetch = global.fetch, realWarn = console.warn;
+  const calls = [], warns = [];
+  const orders = {
+    ORD1: { id: 'ORD1', payer: { email_address: 'Pay.Pal@X.com' }, purchase_units: [{ reference_id: 'someone_else' }] },
+    ORD2: { id: 'ORD2', payer: { email_address: 'revoked@x.com' }, purchase_units: [{ reference_id: 'rv_user' }] },
+    ORD3: { id: 'ORD3', payer: { email_address: 'old.payer@x.com' }, purchase_units: [{ reference_id: 'default' }] },
+  };
+  global.fetch = ppMock(async (u, init) => {
+    calls.push({ path: u.pathname, method: (init && init.method) || 'GET' });
+    const m = u.pathname.match(/^\/v2\/checkout\/orders\/([^/]+)$/);
+    if (m) return orders[m[1]] ? ok(orders[m[1]]) : fail(404, 'RESOURCE_NOT_FOUND');
+    if (u.pathname === '/v1/reporting/transactions') return fail(403, 'NOT_AUTHORIZED');
+    return fail(404);
+  });
+  console.warn = (...a) => { warns.push(a.join(' ')); };
+  try {
+    for (const k of ['pp_user', 'rv_user', 'someone_else']) await auth.putUser(k, { username: k, email: null, hash: 'h', salt: 's' });
+    await auth.putUser('pp_old', { username: 'pp_old', email: null, lastPaypalOrderId: 'ORD3', hash: 'h', salt: 's' });
+    store.set('paid:lastPaypalOrderId:ORD1', 'pp_user');
+    store.set('paid:lastPaypalOrderId:ORD2', '!revoked:evt_1');
+    store.set('paid:lastPaypalOrderId:ORD_GONE', 'pp_user'); // طلب لا يعود من PayPal (٤٠٤): ليس عطبًا
+    // ١) حجز الشحن ← الاسم من الحجز (pp_user) لا من reference_id
+    const a = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'pay.pal@x.com' });
+    assert.equal(a.code, 200, JSON.stringify(a.body)); assert.equal(a.body.username, 'pp_user'); assert.equal(a.body.via, 'paypal');
+    // ٢) آخر طلب في السجلّ — و«default» في الطلب لا يهمّ
+    const b = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'Old.Payer@X.com', dryRun: true });
+    assert.equal(b.code, 200, JSON.stringify(b.body)); assert.equal(b.body.username, 'pp_old'); assert.equal(b.body.via, 'paypal');
+    assert.equal(b.body.paypal.ordersMatched, 1); assert.equal(b.body.paypal.errors, 0, '٤٠٤ طلب قديم ليس عطبًا: ' + JSON.stringify(b.body.paypal));
+    // ٣) حجز ملغى ← لا يُقرأ طلبه؛ والبحث الكامل مقفل (٤٠٣) ← denied ويقف من أوّل نداء
+    calls.length = 0;
+    const c = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'revoked@x.com' });
+    assert.equal(c.code, 404); assert.equal(c.body.paypal.denied, true);
+    assert.ok(!calls.some((x) => x.path === '/v2/checkout/orders/ORD2'), 'الملغى لا يُقرأ');
+    assert.equal(calls.filter((x) => x.path === '/v1/reporting/transactions').length, 1, 'المقفل يقف من أوّل نداء');
+    assert.ok(!(await auth.getUser('rv_user')).resetTokenHash);
+    // ٤) قراءة فقط، والسجلّ بلا بريد ولا اسم ولا رقم
+    assert.ok(calls.every((x) => x.method === 'GET'), JSON.stringify(calls));
+    assert.ok(!warns.some((w) => /@|pp_user|pp_old|ORD\d|ORD_GONE/.test(w)), warns.join(' | '));
+  } finally {
+    delete process.env.PAYPAL_CLIENT_ID; delete process.env.PAYPAL_SECRET;
+    global.fetch = realFetch; console.warn = realWarn;
+    for (const k of ['ORD1', 'ORD2', 'ORD_GONE']) store.delete('paid:lastPaypalOrderId:' + k);
+  }
+});
+
+test('١٣. Transaction Search: نوافذ ٣٠ يومًا بتاريخ Z حتّى بدء PayPal، والدفعة لنا مرّة واحدة، والاسم بدليل منح لا reference_id وحده ولا «default»', async () => {
+  paymentsOff();
+  process.env.PAYPAL_CLIENT_ID = 'id_test'; process.env.PAYPAL_SECRET = 'sec_test';
+  const realFetch = global.fetch;
+  const windows = [];
+  const tx = (email, id, code, value) => ({ transaction_info: { transaction_id: id, transaction_event_code: code, transaction_amount: { value: String(value), currency_code: 'USD' } }, payer_info: { email_address: email } });
+  const caps = { CAP_OK: 'ORD_OK', CAP_SPOOF: 'ORD_SPOOF', CAP_DEF: 'ORD_DEF' };
+  const refs = { ORD_OK: 'ref_user', ORD_SPOOF: 'victim', ORD_DEF: 'default' };
+  const paidAt = Date.now() - 40 * 86400000; // الدفعات في النافذة الثانية من كلّ بحث
+  global.fetch = ppMock(async (u) => {
+    if (u.pathname === '/v1/reporting/transactions') {
+      const ws = u.searchParams.get('start_date'), we = u.searchParams.get('end_date');
+      windows.push([ws, we, u.searchParams.get('fields'), u.searchParams.get('page_size')]);
+      return ok({ transaction_details: (Date.parse(ws) <= paidAt && paidAt < Date.parse(we)) ? [
+        tx('Search.Payer@X.com', 'CAP_OK', 'T0006', 10), tx('search.payer@x.com', 'CAP_OK', 'T0006', 10), // مكرّر
+        tx('search.payer@x.com', 'REF_1', 'T1107', -10), // استرداد
+        tx('search.payer@x.com', 'OUT_1', 'T0000', -15), // دفعة صادرة منّا إلى البريد نفسه — ليست دفعة لنا
+        tx('spoof@x.com', 'CAP_SPOOF', 'T0006', 20), tx('def@x.com', 'CAP_DEF', 'T0006', 5),
+      ] : [], total_pages: 1, page: 1 });
+    }
+    let m = u.pathname.match(/^\/v2\/payments\/captures\/([^/]+)$/);
+    if (m) return caps[m[1]] ? ok({ id: m[1], supplementary_data: { related_ids: { order_id: caps[m[1]] } } }) : fail(404);
+    m = u.pathname.match(/^\/v2\/checkout\/orders\/([^/]+)$/);
+    if (m && refs[m[1]]) return ok({ id: m[1], payer: { email_address: 'other@x.com' }, purchase_units: [{ reference_id: refs[m[1]] }] });
+    return fail(404);
+  });
+  try {
+    await auth.putUser('ref_user', { username: 'ref_user', email: null, lastPaypalOrderId: 'ORD_OK', hash: 'h', salt: 's' });
+    await auth.putUser('victim', { username: 'victim', email: null, lastPaypalOrderId: 'ORD_REAL', hash: 'h', salt: 's' });
+    await auth.putUser('default', { username: 'default', email: null, hash: 'h', salt: 's' });
+    // ١) الدفعة (مكرّرة في التقرير) ← الالتقاط ← الطلب ← آخر طلب شُحن لحساب ref_user
+    const a = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'search.payer@x.com', dryRun: true });
+    assert.equal(a.code, 200, JSON.stringify(a.body)); assert.equal(a.body.username, 'ref_user'); assert.equal(a.body.paypal.matched, 1, 'المكرّر والاسترداد لا يُعدّان');
+    const { PAYPAL_FROM } = require('../api/_lib/owner-lookup.js');
+    assert.ok(windows.length >= 2);
+    for (const [s, e, fields, size] of windows) {
+      assert.match(s, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/); assert.match(e, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
+      assert.ok(Date.parse(e) - Date.parse(s) <= 31 * 86400000 && Date.parse(e) > Date.parse(s), s + ' → ' + e);
+      assert.equal(fields, 'transaction_info,payer_info'); assert.equal(size, '500');
+    }
+    assert.equal(Date.parse(windows[windows.length - 1][0]), PAYPAL_FROM, 'آخر نافذة تبدأ من بدء PayPal في التطبيق');
+    assert.ok(Math.abs(Date.parse(windows[0][1]) - Date.now()) < 60000, 'أوّل نافذة تنتهي الآن');
+    // ٢) reference_id لحساب آخر بلا دليل منح ← لا اسم ولا رمز؛ و«default» ليس اسمًا وإن وُجد حساب بهذا الاسم
+    const s = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'spoof@x.com' });
+    assert.equal(s.code, 404); assert.equal(s.body.paypal.unnamed, 1); assert.ok(!(await auth.getUser('victim')).resetTokenHash);
+    const d = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'def@x.com' });
+    assert.equal(d.code, 404); assert.ok(!(await auth.getUser('default')).resetTokenHash);
+    // ٣) دليل المنح بلا مسح السجلّات (o.orders فارغ): reference_id يُقبل إذا كان آخر طلب شُحن لذلك الحساب هو هذا الطلب
+    const lookup = require('../api/_lib/owner-lookup.js');
+    const got = await lookup.paypalAccountsFor(['search.payer@x.com'], auth.liveAccount, { diag: {}, kv: { kvList: async () => [], kvGetRaw: async () => null }, payRefund: { findRec: async () => null } });
+    assert.deepEqual(got, ['ref_user']);
+  } finally {
+    delete process.env.PAYPAL_CLIENT_ID; delete process.env.PAYPAL_SECRET;
+    global.fetch = realFetch;
+  }
+});
+
+test('١٤. الواجهة: أسماء محتملة بلا رابط، وأين بحثت، وبحث PayPal المقفل، و٤٠٩ السجلّات، والزرّ ينشغل أثناء البحث', async () => {
+  const mk = (body, status, lang) => {
+    const e = env(lang || 'ar', true);
+    const real = e.ctx.fetch;
+    e.ctx.fetch = async (url, init) => { await real(url, init); return { ok: status < 400, status, json: async () => body }; };
+    return e;
+  };
+  const maybe = mk({ error: 'user not found', candidates: ['planted', 'aliya_rose'], records: { records: 9 }, paypal: { denied: true } }, 404);
+  await maybe.ctx.adminResetLink('aliya.alshamsi181@icloud.com');
+  const a = maybe.said.find((x) => x[0] === 'alert');
+  assert.ok(a && a[1].includes('حسابات محتملة') && a[1].includes('planted') && a[1].includes('aliya_rose') && a[1].includes('Transaction search'), JSON.stringify(maybe.said));
+  assert.ok(!maybe.said.some((x) => x[0] === 'prompt'), 'لا رابط');
+  const none = mk({ error: 'user not found', candidates: [], records: { records: 9 }, paypal: { denied: false } }, 404, 'en');
+  await none.ctx.adminResetLink('x@y.com');
+  const b = none.said.find((x) => x[0] === 'alert');
+  assert.ok(/No account with this email or username/.test(b[1]) && /Ask the person for their username/.test(b[1]) && !/Transaction search/.test(b[1]), b[1]);
+  const plain = mk({ error: 'user not found' }, 404);
+  await plain.ctx.adminResetLink('someone');
+  assert.ok(!plain.said.find((x) => x[0] === 'alert')[1].includes('دوّرت'), 'بحث الاسم لا يقول «دوّرت في Stripe…»');
+  const rec409 = mk({ error: 'multiple accounts', kind: 'record', candidates: ['twin_a', 'twin_b'] }, 409);
+  await rec409.ctx.adminResetLink('twin@x.com');
+  const c = rec409.said.find((x) => x[0] === 'alert');
+  assert.ok(c && c[1].includes('حسابات محتملة') && c[1].includes('twin_b') && !c[1].includes('دفع بهذا الإيميل'), JSON.stringify(rec409.said));
+  // الزرّ جار الخانة ينشغل أثناء البحث ثمّ يعود
+  const busy = env('ar', true);
+  const row = busy.ctx.document.createElement('div');
+  const input = busy.ctx.document.createElement('input'); input.id = 'adminResetInput'; input.value = 'x@y.com';
+  const btn = busy.ctx.document.createElement('button');
+  row.appendChild(input); row.appendChild(btn); busy.ctx.document.body.appendChild(row);
+  let during = null;
+  busy.ctx.fetch = async () => { during = { disabled: btn.disabled, busy: btn.getAttribute('aria-busy') }; return { ok: false, status: 404, json: async () => ({ error: 'user not found' }) }; };
+  await busy.ctx.adminResetLinkFind();
+  assert.deepEqual(during, { disabled: true, busy: 'true' });
+  assert.equal(btn.disabled, false); assert.equal(btn.getAttribute('aria-busy'), null);
+});

@@ -3,6 +3,9 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **resolveLoginUser يكتب:** `emailProven` ← `stampLegacyEmail` يختم بريدًا قديمًا (putUser وVIP)، و`settleUnverifiedEmail` يعلّم البريد أو يشيله.
+  `dryRun` في #1303 قيل «لا يكتب» وهو يمرّ بها. مسار قراءة (فحص، بحث المالك) يقرأ بـ`getUser`/`getUserOnce` والفهرس و`emailVerifiedFor`
+  وحدها. (v-owner-reset-records)
 - **محاكي Stripe يقلّد Stripe لا افتراضنا:** metadata جلسة الدفع لا تنتقل إلى شحنتها ولا نيّتها (بلا `payment_intent_data`)، ومرشِّحات البريد
   تطابق الحروف كما خُزّنت. اختبار #1298 وضع `username` على الشحنة الوهميّة وطابق البريد بلا حالة أحرف، فمرّ أخضر، وفي الإنتاج بقي بريد مستخدمة
   دافعة ٤٠٤ مرّتين أمام المالك. الاسم من الجلسة (بـ`payment_intent`)، والمطابقة بلا حالة أحرف، والمحاكي بسلوك Stripe الموثَّق. (v-owner-reset-scan)
