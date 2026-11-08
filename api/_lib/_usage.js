@@ -4,7 +4,6 @@
 // tracked as one Redis counter per user+day+provider (db/usage/tally/<key>/<date>),
 // separate from the account record in db/users/, and resets automatically each
 // day (UTC) via a 2-day TTL on the counter key.
-const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
 const { kvIncr, kvIncrBy, kvExpire, kvGetJSON, kvDecrBy, kvSetIfAbsent, kvDel } = require('./kv.js');
 const { isVip } = require('./_vip.js');
@@ -17,11 +16,6 @@ function netOf(ip) {
 // v-tiers: السقف اليومي صار بحسب الطبقة (ضيف/مجاني/مشترك بباقته) لا رقمًا واحدًا،
 // والمزوّدات المدفوعة للمشتركين فقط. انظر tier.js.
 const tierLib = require('./tier.js');
-
-// ⏳ مؤجَّلة: قراءة السرّ في نطاق الوحدة تحوّل متغيّرًا مفقودًا إلى انهيار
-// عند الإقلاع البارد بلا سجلّ (حدث في /api/edu). انظر api/_lib/auth.js.
-const __secrets = require('./_secrets.js');
-const authSecret = () => __secrets.AUTH_SECRET;
 
 // Combined daily limit shared across all three free server-proxied providers
 // (Groq + OpenAI + Claude), per logged-in account.
@@ -44,17 +38,9 @@ function isOwnerUsername(username) {
 // الباقين يمرّ من ذاكرة ٣٠ ثانية داخل العملية لا من نداء لكل رسالة.
 // isVip لا ترمي أبدًا: عطبٌ في القائمة = «ليس VIP» = الحدّ كما كان.
 
+// v-session-dedupe: رمز الجلسة كما يصنعه auth.makeToken حرفيًّا (u نصّ، exp رقم في المستقبل) — نسخة محلّيّة كانت تقبل حمولة بلا exp
 function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', authSecret()).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
+  return require('./_session.js').sessionUser(token);
 }
 
 function tallyKey(key) {

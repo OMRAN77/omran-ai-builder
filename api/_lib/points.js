@@ -2,13 +2,11 @@
 // النقاط = عملة موحدة تُصرف على مها والصور والفيديو — الأسعار في COSTS أدناه وحدها (لا أرقام في التعليقات تتقادم).
 // هدية الترحيب عند التسجيل = 70 نقطة (فيديو اقتصاديّ + صورة، أو ٤ دقائق مع مها).
 // المالك (omran) = بلا حدود، لا يُخصم منه شيء أبدًا.
-const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
 const media = require('./_mediaPlans.js');
 const planVideos = require('./_planVideos.js'); // v-plan-videos
 
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 // v-owner-core: قائمة المالك الموحّدة من _owner.js — ‹omran› مدمج دائمًا
 // والبيئة تضيف أسماء ولا تستبدله (قيمة بيئة مغلوطة كانت تُسقط إعفاء المالك).
 const OWNER_LIST = require('./_owner.js').ownerList();
@@ -67,17 +65,9 @@ function isOwner(username) {
 // (see _lib/_vip.js). المالك يُفحص أوّلًا دائمًا فلا يمسّ Redis، وقائمة
 // VIP تُقرأ من ذاكرة ٣٠ ثانية. isVip لا ترمي: عطبٌ فيها = مستخدم عاديّ.
 
+// v-points-session: رمز الجلسة كما يصنعه auth.makeToken حرفيًّا (u نصّ، exp رقم في المستقبل) — النسخة المحلّيّة كانت تقبل حمولة بلا exp
 function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
+  return require('./_session.js').sessionUser(token);
 }
 
 // يقرأ رصيد المستخدم. الحسابات القديمة اللي انفتحت قبل نظام النقاط

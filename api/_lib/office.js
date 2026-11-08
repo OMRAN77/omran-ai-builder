@@ -167,16 +167,58 @@ function sanitizeSpec(input) {
 
 /* ── النيّة ── ما يكتبه المستخدم بكلامه وحده (المرفق الملصوق يصل ذيلًا «📄 الاسم:\n```…```» — PITFALLS) */
 function ownWords(text) {
-  let s = String(text || '').slice(0, 4000);
+  /* v-office-image: والعميل يُلحق «[مرفقات: اسم.jpg]» بنصّ دور الصورة — «جدول الحضور.jpg» أو «presentation.png» ليسا طلب ملفّ */
+  let s = String(text || '').slice(0, 4000).replace(require('./owner-carry.js').ATTACH_NOTE_RE, ''); // القصّ قبل التعبير: \n* في أوّله تربيعيّ على سطور جديدة طويلة (٨٠ ألفًا = ٥ ث لكلّ مستخدم) — والناتج نفسه (أوّل ١٢٠٠ حرف)
   const cut = s.search(/\n\n📄|```/);
   if (cut !== -1) s = s.slice(0, cut);
   return s.slice(0, 1200);
 }
-const FILE_RE = /(excel|إكسل|اكسل|اكسيل|إكسيل|الاكسل|الإكسل|xlsx|spreadsheet|شيت|power\s?point|بوربوينت|باوربوينت|بور\s?بوينت|باور\s?بوينت|البوربوينت|البوربوينت|pptx|\bppt\b|عرض\s*تقديم|عرض\s*بور|عرض\s*باور|شرائح|سلايدات|سلايد|slides?\b|presentation|slide\s?deck)/i;
+/* v-office-spell (رسالة المالك ٨ نوفمبر «سولي راجعه بي  الباور بويت» — جاءه سؤال «قصدك…؟» بلا ملفّ): كتابة الناس لا القاموس.
+   «باور/بور/بوور/بوير» + فاصل اختياريّ + «بوينت/بويت/بونت/بوانت» (ونطق «ط»)، وأخطاء power point الإنجليزيّة، و«برزنتيشن»، و«إيكسل/exel».
+   تُركت عمدًا (تقيس إيجابيّات كاذبة): بوين/بون بلا «ت» (بوربون، بوينغ)، بوت، بنت؛ أكسل/الأكسل/أكسيل/ايكسل (أكسل = أكثر كسلًا، Axel)؛ xls.
+   v-office-explicit: exel كلمةً كاملة (exelent ليست ملفًّا)، و«شيت» بحدّ يسار عربيّ (مشيت/تمشيت ليستا شيت — حصّة المجّانيّ كانت تُصرف عليهما). */
+const FILE_RE = /(excel|\bexel\b|إكسل|اكسل|اكسيل|إكسيل|الاكسل|الإكسل|إيكسي?ل|ايكسيل|xlsx|spreadsheet|(?<![\u0600-\u06FF])(?:ال|بال|لل|ب|و|ف)?شيت|po?we?r?[\s\-]?p(?:oi?nt|iont|oit|oin\b)|با?و{1,2}ي?ر[\s\-ـ]*بو{1,2}(?:ي{0,2}ن[تط]|ي[تط]|ان[تط])|بر[يى]?[زس][يى]?نت[يى]?ش[يى]?ن|pptx|\bppt\b|عرض\s*تقديم|عرض\s*بور|عرض\s*باور|شرائح|سلايدات|سلايد|slides?\b|presentation|slide\s?deck)/i;
 const DOMAIN_RE = /(جدول|كشف|سجل|سجلّ|نموذج|ملف|ملفّ|timesheet|roster|tracker)[\s\S]{0,24}(حضور|حظور|انصراف|دوام|غياب|درجات|علامات|مناوب|ورديات|رواتب|معاشات|مصاريف|مصروفات|ميزاني|مخزون|جرد|مبيعات|حصص|دراسي|طلاب|موظفين|عملاء|فواتير|أقساط|اقساط|مهام|attendance|grades|salar|inventory|expenses|budget|schedule|shifts)/i;
 const MAKE_RE = /(^|[\s،,.!؟?«"'(])(سو|سوّ|سوي|سوّي|سويلي|سوّيلي|سولي|سوّلي|اعمل|إعمل|اعملي|اصنع|جهز|جهّز|جهزلي|جهّزلي|حضّر|حضر|انشئ|أنشئ|انشأ|صمم|صمّم|ابي|أبي|ابغى|أبغى|ابغي|أبغي|اريد|أريد|ودي|بغيت|عطني|أعطني|اعطني|ارسل|أرسل|طلع|طلّع|make|create|build|generate|prepare|design|need|want|give\s+me|i'?d\s+like|can\s+you\s+(make|create|do))(?=$|[\s،,.!؟?»"')]|لي|ني)/i;
 const HOWTO_RE = /(^|[\s،,.!؟?«"'])(كيف|شلون|طريقة|شرح|اشرح|ليش|لماذا|ما\s*هي|ماهي|وش\s*الفرق|how\s+(to|do|can\s+i)|what\s+is|explain|why)(?=$|[\s،,.!؟?»"'])/i;
 const FOR_ME_RE = /(سو\s*لي|سوّ\s*لي|سوي\s*لي|سوّي\s*لي|اعمل\s*لي|جهز\s*لي|جهّز\s*لي|حضر\s*لي|make\s+me|create\s+me|for\s+me)/i;
+/* ── v-office-explicit (مراجعة v-office-image، ٨ نوفمبر): طلب الملفّ «الصريح» = الفعل مفعوله الملفّ، لا كلمة الملفّ في أيّ مكان ──
+   كلمة Excel/PowerPoint وحدها سرقت تعديلات صور حقيقيّة («شيل الخلفية عشان احطها في البوربوينت»، «صمم بوستر لدورة اكسل»)،
+   و«ابي» مع لقطة صارت ملفًّا إجباريًّا لسؤال («ابي رايك في البوربوينت حقي»، «ابي زر اكسل هنا»). الصريح واحد من ثلاثة:
+   (أ) فعل صنع أو «سوّ لي» أو «ابي/عطني» مفعوله الملفّ مباشرة («سوّ لي اكسل»، «ابي ملف اكسل من هذي الصورة»، «ابي هذا الجدول بالاكسل»)؛
+   (ب) فعل صنع والملفّ صيغته («سولي راجعه بي  الباور بويت»، «make a summary in excel»)؛ (ج) تحويل إلى ملفّ («حوّل هذا الجدول إلى اكسل»).
+   وليس صريحًا: مفعول الفعل صورة أو تصميم أو زرّ («صمّم بوستر…»، «make this logo transparent…»، «سوي زر بوربوينت هنا»)، ولا الملصقات.
+   نسخة العميل (js/app-09-attach.js: OMRAN_OFFICE_*) حرفيّة — اختبار office-files ٢١ يطابق المصادر. بلا lookbehind (سفاري قبل 16.4). */
+const B_ = '(?:^|[\\s،,.!؟?«»"\'()])';
+const FILE_W = '(?:excel|exel\\b|xlsx|spreadsheets?|po?we?r?[\\s\\-]?p(?:oi?nt|iont|oit|oin\\b)|pptx?\\b|presentation|slides?\\b|slide\\s?deck'
+  + '|إكسل|اكسل|اكسيل|إكسيل|إيكسي?ل|ايكسيل|شيت|با?و{1,2}ي?ر[\\s\\-ـ]*بو{1,2}(?:ي{0,2}ن[تط]|ي[تط]|ان[تط])|بر[يى]?[زس][يى]?نت[يى]?ش[يى]?ن|عرض\\s*تقديمي|سلايدات|سلايد)'; // بلا «شرائح» المجرّدة: شرائح زين/بيانات/لحم
+const EN_FILE = '(?:excel|exel\\b|xlsx|spreadsheets?|po?we?r?[\\s\\-]?p(?:oi?nt|iont|oit|oin\\b)|pptx?\\b|presentation|slides?\\b|slide\\s?deck)';
+const CREATE_V = '(?:سو|سوّ|سوي|سوّي|سويلي|سوّيلي|سولي|سوّلي|اعمل|إعمل|اعملي|اصنع|جهز|جهّز|جهزلي|جهّزلي|حضّر|حضر|انشئ|أنشئ|انشأ|صمم|صمّم|make|create|build|generate|prepare|design|can\\s+you\\s+(?:make|create|do))';
+const FORME_V = '(?:[تي]?(?:سو|سوّ|سوي|سوّي)\\s*لي|[تي]?(?:عمل|اعمل)\\s*لي|[تي]?(?:جهز|جهّز|حضر|حضّر)\\s*لي|make\\s+me|create\\s+me)';
+const WANT_V = '(?:ابي|أبي|ابغى|أبغى|ابغي|أبغي|اريد|أريد|ودي|بغيت|عطني|أعطني|اعطني|ارسل\\s*لي|أرسل\\s*لي|need|want|give\\s+me|send\\s+me|i\'?d\\s+like)';
+const FILL = '(?:لي|ني|ملف|ملفّ|ملفات|عرض|جدول|ورق[ةه]|كشف|نموذج|احلى|أحلى|افضل|أفضل|احسن|أحسن|حلو|حلو[ةه]|زين|جديد|جديد[ةه]|مرتّ?ب|مرتّ?ب[ةه]|بسيط|كامل|واحد|وحد[ةه]|شريح[ةه]|شرائح|me|us|an?|one|nice|good|great|cool|clean|simple|quick|new|full|short|small|detailed|professional|\\d+(?:-\\w+)?|[٠-٩]+)';
+const DEM_AR = '(?:\\s*(?:لي|ني))?\\s+(?:نفس\\s+)?(?:(?:هذا|هذي|هذه|هال\\S+|ال(?:جدول|بيانات|[اأ]سماء|[اأ]رقام|قائم[ةه]|درجات|حضور|معلومات|ملاحظات|نتائج|كشف|محتوى|نص|كلام|مراجع[ةه]|شرح|ملخص|درس|فصل|وحد[ةه])\\S*)\\s+){1,2}(?:بال|ب|في|على|كـ|ك|لل|ل|إلى|الى)?\\s*(?:ملفّ?\\s+)?' + FILE_W;
+const DEM_EN = '\\s+(?:this|that|these|those|it|them|the|my)\\b(?:\\s+\\S+){0,2}?\\s+(?:in|as|into|to)\\s+(?:(?:an?|the)\\s+)?' + EN_FILE;
+const OBJ = (v) => B_ + v + '(?:\\s*(?:لي|ني))?(?:\\s+' + FILL + '){0,3}\\s*(?:بال|ب|ال)?(?:' + FILE_W + '|' + DOMAIN_RE.source + ')' + '|' + B_ + v + '(?:' + DEM_AR + '|' + DEM_EN + ')';
+const ANY_V = '(?:' + FORME_V + '|' + CREATE_V + '|' + WANT_V + ')', MAKE_V = '(?:' + FORME_V + '|' + CREATE_V + ')';
+const OBJ_RE = new RegExp(OBJ(ANY_V), 'i');
+const OBJ_OWNER_RE = new RegExp(OBJ(MAKE_V), 'i'); // المالك: «ابي/ودي» مع لقطته كلام عن واجهة التطبيق غالبًا («ابي شيت هنا بدال الجدول») — فعل الصنع وحده
+const MED_RE = new RegExp(B_ + MAKE_V + '[\\s\\S]{0,80}?(?:' + B_ + '(?:(?:بي|بـ|في|فى|على|كـ|بشكل|بصيغ[ةه]|على\\s+شكل|كملف|بملف)\\s*(?:ملفّ?\\s+)?(?:ال)?|بال|ب|ك)' + FILE_W
+  + '|\\b(?:in|as|into|using|via)\\s+(?:(?:an?|the|my)\\s+)?' + EN_FILE + ')', 'i');
+const CONV_RE = new RegExp(B_ + '(?:حوّ?ل(?:ها|ه|هم|لي)?|انقل(?:ها|ه|هم|لي)?|فرّ?غ(?:ها|ه|هم|لي)?|convert|turn|transfer|export|make\\s+(?:it|this|that|them)\\s+into)'
+  + '(?:\\s+(?:لي|it|this|that|these|them|the|my|هذا|هذي|هذه|هال\\S+|ال\\S+)(?:\\s+\\S+){0,3}?)?'
+  + '\\s+(?:إلى|الى|لل|ل|لـ|في|على|into|to|in)\\s*(?:(?:an?|the)\\s+)?(?:(?:ملفّ?|file|جدول|عرض)\\s+)?(?:ال)?' + FILE_W, 'i'); // «حول» = «عن» لا تطابق: بعدها مفعول معرّف ثمّ «إلى» ملفّ
+const STICKER_RE = /(ستيكر|ستكر|ملصق|stickers?)/i;
+const NOT_OBJ_RE = new RegExp(B_ + ANY_V + '(?:\\s*(?:لي|ني))?\\s+(?:(?:an?|the|one|this|that|my|هذا|هذي|هذه)\\s+)?(?:ال)?'
+  + '(?:صور[ةه]?|تصميم|شعار|لوجو|بوستر|خلفي[ةه]|غلاف|بنر|[اأ]يقون[ةه]|زرّ?|[اأ]زرار|كرت|بطاق[ةه]|دعو[ةه]|تبويب|image|picture|photo|pic|logo|poster|background|wallpaper|banner|icon|button|thumbnail|card|invitation|flyer)'
+  + '|' + B_ + 'make\\s+(?:it|them)\\b(?!\\s+(?:into|in|as|to)\\b)', 'i');
+const OWNER_UI_RE = new RegExp(B_ + '(?:ال)?(?:زرّ?|[اأ]زرار|[اأ]يقون[ةه]|كرت|تبويب|buttons?|icons?|tabs?)(?=$|[\\s،,.!؟?«»"\'()])', 'i');
+/* v-office-image: «ابي افتح البوربوينت» و«ابغى استرجع ملف الاكسل» عن البرنامج نفسه لا طلب ملفّ — v-office-explicit: البرنامج مفعول الفعل،
+   لا الفعل في أيّ مكان من الجملة («ابي ملف اكسل اثبت فيه حضور الطلاب»، «ابي شيت مصاريف ارجع له»، «backup and restore» طلبات حقيقيّة) */
+const APP_USE_RE = new RegExp(B_ + '(?:افتح(?!\\s+لي)|أفتح(?!\\s+لي)|اشغّ?ل|أشغّ?ل|ثبّ?ت|أثبّ?ت|اثبّ?ت|نزّ?ل|أنزّ?ل|انزّ?ل|حمّ?ل|أحمّ?ل|احمّ?ل|استرجع|أسترجع|ارجّ?ع|أرجّ?ع|رجّع|استعيد|أستعيد|open|install|download|recover|restore)'
+  + '\\s+(?:(?:my|the|an?|this)\\s+)?(?:(?:ال)?(?:برنامج|ملفّ?|file|app)\\s+)?(?:ال|بال)?(?:' + FILE_W + '|شرائح)', 'i'); // لا «فتح» (فتح مكّة) ولا «شغل» (الشغل)
+/* v-office-explicit: «ابي نصايح للبرزنتيشن»، «ابي اتدرب على البرزنتيشن»، «give me tips for my presentation» — يريد نصيحة لا ملفًّا */
+const ADVICE_RE = new RegExp(B_ + WANT_V + '(?:\\s*(?:لي|ني))?\\s+(?:(?:some|a\\s+few|few|بعض|شوي[ةه]?|كم)\\s+)?(?:نصايح|نصائح|نصيح[ةه]|تلميحات|[اأ]فكار|[اأ]تدرب|[اأ]تمرن|tips?|advice|ideas|to\\s+practi[cs]e|to\\s+rehearse|practi[cs]e)', 'i');
 const EDIT_RE = /(^|[\s،,.!؟?«"'])(كبر|كبّر|صغر|صغّر|زد|زيد|زود|ضيف|أضف|اضف|احذف|امسح|شيل|غير|غيّر|عدل|عدّل|بدل|بدّل|خل|خلّ|خليه|خلّيه|حط|حطّ|لون|لوّن|رتب|رتّب|حول|حوّل|نقص|قلل|قلّل|اجعل|ابي|أبي|اريد|أريد|ودي|سو|سوي|ترجم|كمل|كمّل|add|remove|delete|change|edit|make\s+it|bigger|smaller|rename|translate|more|another|also)(?=$|[\s،,.!؟?»"'])/i;
 
 /** طلب ملفّ Excel/PowerPoint جديد؟ فعل صنع + (اسم الصيغة أو جدول من مجال معروف)، وليس سؤال «كيف» إلّا مع «سوّ لي». */
@@ -185,10 +227,21 @@ function isOfficeAsk(text) {
   if (!s || s.length < 4) return false;
   const file = FILE_RE.test(s), domain = DOMAIN_RE.test(s);
   if (!file && !domain) return false;
-  if (!MAKE_RE.test(s) && !FOR_ME_RE.test(s)) return false;
-  if (HOWTO_RE.test(s) && !FOR_ME_RE.test(s)) return false;
+  if (!MAKE_RE.test(s) && !FOR_ME_RE.test(s) && !CONV_RE.test(s)) return false;
+  if ((HOWTO_RE.test(s) || APP_USE_RE.test(s) || ADVICE_RE.test(s)) && !FOR_ME_RE.test(s)) return false;
   return true;
 }
+/** الطلب الصريح (أ/ب/ج أعلاه) — الجزء الذي ينسخه العميل حرفيًّا. owner: فعل الصنع وحده، وعنصر واجهة في نصّه = لقطة تطبيقه. */
+function explicitFileAsk(text, owner) {
+  const s = String(text || '').slice(0, 1200);
+  if (!s || STICKER_RE.test(s)) return false;
+  if (owner && OWNER_UI_RE.test(s)) return false;
+  if (CONV_RE.test(s)) return true;
+  if (NOT_OBJ_RE.test(s)) return false;
+  return (owner ? OBJ_OWNER_RE : OBJ_RE).test(s) || MED_RE.test(s);
+}
+/** طلب ملفّ مع صورة (لقطة شاشة أو جدول مصوَّر): طلب ملفّ + صريح. «ابي» وحدها مع صورة سؤال عنها في الغالب. */
+function isOfficeImageAsk(text, owner) { return isOfficeAsk(text) && explicitFileAsk(ownWords(text), owner); }
 /** تعديل على ملفّ هذه المحادثة؟ (ctx = آخر ملفّ في المحادثة من العميل) */
 function isOfficeEdit(text, ctx) {
   if (!ctx) return false;
@@ -337,6 +390,9 @@ function systemNote(opts) {
     + '(بلا أسئلة قبله، وبافتراضات معقولة: الشهر الحاليّ ' + monthStr(d) + '، ٢٥ صفًّا فارغًا للتعبئة إن لم يعطِ أسماء). اجعل النسخة الأولى مبهرة: عنوان ووصف، '
     + 'حقول ترويسة، معادلات تحسب وحدها، قوائم منسدلة، ألوان شرطيّة، مجاميع، تواقيع، وورقة ثانية حين تفيد؛ وفي العرض ٦–١٠ شرائح بتخطيطات متنوّعة '
     + '(أرقام كبيرة، رسم بيانيّ، جدول، خطّ زمنيّ). بعد الأداة سطر واحد قصير فقط — لا تكتب محتوى الملفّ نصًّا.';
+  /* v-office-image: صورة مع طلب الملفّ — تعليمات دور الصورة (edit_image، إرشاد الشاشة) كانت تنافس الملفّ */
+  if (o.image) s += '\n[صورة مرفقة مع طلب الملفّ]: إن كان فيها جدول أو أسماء أو أرقام أو نصّ للملفّ فانقله كما هو بترتيبه (صفوف حقيقيّة لا فارغة)؛ '
+    + 'وإن كانت لقطة شاشة بلا محتوى للملفّ فابنِه من طلبه وسياق المحادثة. لا edit_image ولا generate_image في هذا الردّ، ولا تصف الصورة.';
   if (o.ctx) {
     let j = '';
     try { j = JSON.stringify(o.ctx); } catch (e) { j = ''; }
@@ -365,6 +421,6 @@ async function createFile(input, ctx) {
 }
 
 module.exports = {
-  TOOL, FREE_MONTHLY, sanitizeSpec, isOfficeAsk, isOfficeEdit, contextSpec, ownWords, systemNote, createFile, isHintTopic, alreadyOffered, isOfficeAccept, HINT_NOTE,
+  TOOL, FREE_MONTHLY, sanitizeSpec, isOfficeAsk, isOfficeImageAsk, explicitFileAsk, EXPLICIT: { STICKER_RE, CONV_RE, NOT_OBJ_RE, OBJ_RE, MED_RE }, isOfficeEdit, contextSpec, ownWords, systemNote, createFile, isHintTopic, alreadyOffered, isOfficeAccept, HINT_NOTE,
   usedThisMonth, takeMonthly, moveMonth, monthKey, gateEvent, gateText, cardEvent, formula,
 };

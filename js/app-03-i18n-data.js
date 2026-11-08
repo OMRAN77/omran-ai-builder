@@ -1423,6 +1423,12 @@ const I18N = {
     ownerLinkSubUnverified: "⚠️ هذا الإيميل يصل الحساب بلا تأكيد — تأكّد أنّه صاحب الاشتراك قبل الربط.",
     ownerLinkSubKeepPlan: "ℹ️ الحساب على باقة {plan} سارية — تبقى كما هي وتُضاف النقاط وحدها.",
     ownerResetMany: "دفع بهذا الإيميل أكثر من حساب: {list} — اسأل صاحبه عن اسم حسابه واكتبه في الخانة.", // v-owner-reset-stripe
+    ownerResetMaybe: "ما لقيت حساب يثبت هذا الإيميل. حسابات محتملة: {list} — تأكّد من صاحبها واكتب اسم حسابه في الخانة.", // v-owner-reset-records
+    ownerResetAsk: "دوّرت في الحسابات وGoogle وStripe وPayPal. اسأل صاحبه عن اسم المستخدم.", // v-owner-reset-records
+    ownerResetPaypalOff: "بحث PayPal الكامل مقفل: في developer.paypal.com افتح Apps & Credentials ثمّ Live ثمّ تطبيقك ثمّ Features، وفعّل «Transaction search»، وقد يأخذ ساعات حتى يشتغل.", // v-owner-reset-records
+    ownerResetPartial: "ما اكتمل البحث (عطل مؤقّت أو مهلة في أحد المصادر) — جرّب بعد دقائق، أو اسأل صاحبه عن اسم المستخدم.", // v-owner-reset-records
+    ownerResetNameMaybe: "ما في حساب بهذا الاسم بالضبط. أسماء قريبة: {list} — تأكّد من صاحبه واكتب اسم حسابه في الخانة.", // v-owner-reset-records
+    ownerResetManyRec: "أكثر من حساب أثبت هذا الإيميل: {list} — اسأل صاحبه عن اسم حسابه واكتبه في الخانة.", // v-owner-reset-records
     ownerDiagRunning: "⏳ يفحص مفتاح كلود على أنثروبيك…",
     ownerDiagKey: "المفتاح: {k}",
     ownerDiagStatus: "الحالة: {s}",
@@ -2092,6 +2098,12 @@ const I18N = {
     ownerLinkSubUnverified: "⚠️ This email reaches the account without verification — make sure they own the subscription before linking.",
     ownerLinkSubKeepPlan: "ℹ️ The account has an active {plan} plan — it stays as is and only the points are added.",
     ownerResetMany: "More than one account paid with this email: {list} — ask the person for their account name and type it in the box.", // v-owner-reset-stripe
+    ownerResetMaybe: "No account proves this email. Possible accounts: {list} — confirm with the person, then type the name in the box.", // v-owner-reset-records
+    ownerResetAsk: "Searched the accounts, Google, Stripe and PayPal. Ask the person for their username.", // v-owner-reset-records
+    ownerResetPaypalOff: "Full PayPal search is off: enable “Transaction search” for your app on developer.paypal.com (Apps & Credentials → Live → your app → Features); it can take a few hours to start working.", // v-owner-reset-records
+    ownerResetPartial: "The search did not finish (a temporary error or timeout in one source) — try again in a few minutes, or ask the person for their username.", // v-owner-reset-records
+    ownerResetNameMaybe: "No account has exactly this name. Close names: {list} — confirm with the person, then type the account name in the box.", // v-owner-reset-records
+    ownerResetManyRec: "More than one account has proven this email: {list} — ask the person for their account name and type it in the box.", // v-owner-reset-records
     ownerDiagRunning: "⏳ Checking the Claude key with Anthropic…",
     ownerDiagKey: "Key: {k}",
     ownerDiagStatus: "Status: {s}",
