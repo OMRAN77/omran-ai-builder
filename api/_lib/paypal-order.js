@@ -88,7 +88,9 @@ async function creditOrder(order, username) {
   if (m.status !== 'COMPLETED') return { credited: false, reason: 'capture_' + (m.status || 'unknown').toLowerCase() };
   if (m.ref && m.ref !== username && !(await wasNamed(username, m.ref))) return { credited: false, reason: 'not_owner' };
   m.plan = grantablePlan(m.plan, order);
-  const g = await grantPlanToUser(username, m.plan, 'lastPaypalOrderId', order.id);
+  /* v-r3 (r3-rv6): رقم الالتقاط ومبلغه مع المنح نفسه (كـStripe) — منحٌ لم يصل سجلّه قد يكمله قفل الحساب قبل إعادة الحدث (completeCredits)، فتعود
+     الإعادة «سبق المنح» ولا يصل linkGrant أدناه: كان سجلّه سيبقى بلا مبلغ فيُعدّ أيّ استرداد جزئيّ كاملًا (fraction = 1)، وبلا رقم الالتقاط. */
+  const g = await grantPlanToUser(username, m.plan, 'lastPaypalOrderId', order.id, { refs: [m.capture], amount: m.cents, currency: 'usd' });
   if (g.error) return { credited: false, reason: 'account' };
   // v-pay-refund: رقم الالتقاط لسجلّ المنح — للمنح الجديد وحده (claim بعد استرداد لا يعيد كتابة السجلّ وعلامة سحبه). لا يرمي.
   if (m.capture && !g.alreadyGranted) await require('./pay-refund.js').linkGrant(order.id, { refs: [m.capture], amount: m.cents, currency: 'usd' });

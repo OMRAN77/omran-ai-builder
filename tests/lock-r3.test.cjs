@@ -1112,3 +1112,395 @@ test('r3-rv5-R7: حالة x1 وعطل قراءة علامة السريان تح�
   assert.equal((await hook(ev)).code, 200);
   assert.equal(await spendAll('rv5r7'), 0);
 });
+
+// ───────────── r3-rv6-*: مراجعة lock-r3/money-d — الإكمال المركزيّ يعيد اختيار الفترة التي يعيدها السحب ─────────────
+// سلسلة ثلاث فترات: media_pro P (بقي ٢٠٠٠) ⊂ media_max X (بقي ٩٠٠٠، سابقتها P) ⊂ media_max Y (سابقتها X). استرداد Y كاملًا يعيد رصيد X بـfillOnce
+// ('media-back:Y') ثمّ تفشل كتابة السجلّ (نصف حالة). يُستردّ X كاملًا (أو يُعترض عليه) قبل إعادة Y: كان completeDropped(Y) يعيد حساب السابقة،
+// فيتخطّى X المسحوبة إلى P، والعلامة تمنع الملء — فيبقى رصيد X (٩٠٠٠) تحت P، وسحبُ X لا يجد فترته. تراجعٌ عن 36e1841b (هناك ٢٠٠٠).
+// الإصلاح (v-r3 r4-target): العلامة تحمل رقم الفترة التي أعادها الملء الأوّل، والإكمال يعيدها هي (periodOf في سلسلة سوابق Y) بلا ملء، ثمّ يسحبها سحبُها.
+async function chain3(u, pLeft, xLeft) {
+  await fresh(u, {});
+  assert.equal((await hook(paidSession('cs_' + u + '_p', u, 'media_pro', 2042))).code, 200);
+  store.set('media:mix:' + u, String(pLeft));
+  assert.equal((await hook(paidSession('cs_' + u + '_x', u, 'media_max', 10211))).code, 200);
+  store.set('media:mix:' + u, String(xLeft));
+  assert.equal((await hook(paidSession('cs_' + u + '_y', u, 'media_max', 10211))).code, 200);
+  assert.equal((await user(u)).media.mix.payId, 'cs_' + u + '_y');
+}
+// نصف حالة استرداد Y: 500، والسجلّ ما زال على Y، ورصيد X العائد في العدّاد
+async function halfY(u, eY) {
+  fail.userPut = 1;
+  const r = await hook(eY);
+  fail.userPut = 0;
+  assert.ok(r.code >= 500, 'المحاولة الأولى تفشل: ' + r.code);
+  assert.equal((await user(u)).media.mix.payId, 'cs_' + u + '_y', 'نصف الحالة: السجلّ ما زال على Y');
+  assert.equal(mix(u), 9000, 'ورصيد X العائد في العدّاد');
+}
+const yFull = (u) => refundOf('cs_' + u + '_y', 10211, 10211);
+const xFull = (u) => refundOf('cs_' + u + '_x', 10211, 10211);
+const xDispute = (u) => evt('charge.dispute.created', { id: 'dp_' + u, object: 'dispute', charge: 'ch_cs_' + u + '_x', payment_intent: 'pi_cs_' + u + '_x', amount: 10211, currency: 'usd', reason: 'fraudulent' });
+async function rv6A1(u, faulty, xEv) {
+  await chain3(u, 2000, 9000);
+  const eY = yFull(u);
+  if (faulty) await halfY(u, eY); else assert.equal((await hook(eY)).code, 200);
+  assert.equal((await hook(xEv(u))).code, 200);
+  if (faulty) assert.equal((await hook(eY)).code, 200); // إعادة Stripe لاسترداد Y
+  return spendAll(u);
+}
+test('r3-rv6-A1: نصف حالة استرداد Y (عاد رصيد X)، ثمّ استرداد X كاملًا قبل إعادة Y ⇒ ما بقي من P وحده (كان ٩٠٠٠ — تراجعٌ عن 36e1841b)', async () => {
+  const c = await rv6A1('rv6a1c', false, xFull);
+  const f = await rv6A1('rv6a1f', true, xFull);
+  assert.equal(c, 2000, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وفشل كتابة واحد ترك ' + f + ' (رصيد X المستردّة كاملًا باقٍ تحت P)');
+  assert.equal(store.get('media-back:cs_rv6a1f_y'), 'cs_rv6a1f_x', 'علامة الإعادة تحمل الفترة التي أعادها الملء الأوّل');
+  assert.equal((await user('rv6a1f')).media.mix.payId, 'cs_rv6a1f_p');
+});
+test('r3-rv6-A1d: نفسه والاعتراض البنكيّ على X بدل استردادها ⇒ ما بقي من P وحده (كان ٩٠٠٠)', async () => {
+  const c = await rv6A1('rv6a1dc', false, xDispute);
+  const f = await rv6A1('rv6a1df', true, xDispute);
+  assert.equal(c, 2000, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وفشل كتابة واحد ترك ' + f);
+});
+async function rv6A2(u, faulty) {
+  await chain3(u, 2000, 9000);
+  const eY = yFull(u);
+  if (faulty) await halfY(u, eY); else assert.equal((await hook(eY)).code, 200);
+  let n = 0;
+  for (let i = 0; i < 120; i++) { const s = await media.trySpendMedia(u, 5, 'image_normal'); if (!s) break; n += s.fils; } // ٣٠٠٠ من رصيد X العائد
+  assert.equal((await hook(xFull(u))).code, 200);
+  if (faulty) assert.equal((await hook(eY)).code, 200);
+  return n + await spendAll(u);
+}
+test('r3-rv6-A2: كـA1 مع صرف ٣٠٠٠ من رصيد X العائد قبل استردادها ⇒ ٣٠٠٠ + ما بقي من P (كان ٩٠٠٠)', async () => {
+  const c = await rv6A2('rv6a2c', false);
+  const f = await rv6A2('rv6a2f', true);
+  assert.equal(c, 5000, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وفشل كتابة واحد أعطى ' + f);
+});
+async function rv6A8(u, faulty) {
+  await chain3(u, 2000, 9000);
+  const eY = yFull(u);
+  if (faulty) await halfY(u, eY); else assert.equal((await hook(eY)).code, 200);
+  const [r1, r2] = await Promise.all([hook(xFull(u)), hook(paidSession('cs_' + u + '_z', u, 'media_max', 10211))]);
+  assert.equal(r1.code, 200);
+  assert.equal(r2.code, 200);
+  assert.equal((await hook(refundOf('cs_' + u + '_z', 10211, 10211))).code, 200);
+  if (faulty) assert.equal((await hook(eY)).code, 200);
+  return spendAll(u);
+}
+test('r3-rv6-A8: نصف حالة استرداد Y، ثمّ استرداد X ومنح media_max جديدة Z معًا، ثمّ استرداد Z كاملًا ⇒ ما بقي من P (كان ٢٥٠٠)', async () => {
+  const c = await rv6A8('rv6a8c', false);
+  const f = await rv6A8('rv6a8f', true);
+  assert.equal(c, 2000, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وفشل كتابة واحد أعطى ' + f);
+});
+// ثابتان: البديلان المرفوضان (إعادة الملء حين تتغيّر الفترة، أو ربط الملء بسجلّ الفترة المعادة) يكسران أحدهما
+async function rv6A3(u, faulty) {
+  await chain3(u, 2000, 9000);
+  const eY = yFull(u);
+  if (faulty) fail.userPut = 1;
+  await hook(eY);
+  fail.userPut = 0;
+  let n = await spendAll(u); // رصيد X العائد يُصرف (٩٠٠٠)
+  if (faulty) fail.userPut = 1;
+  const rx = await hook(xFull(u));
+  fail.userPut = 0;
+  if (faulty) assert.ok(rx.code >= 500, String(rx.code)); else assert.equal(rx.code, 200);
+  assert.equal((await hook(paidSession('cs_' + u + '_basic', u, 'basic', 1000))).code, 200); // كاتب آخر تحت القفل
+  n += await spendAll(u);
+  if (faulty) { assert.equal((await hook(xFull(u))).code, 200); assert.equal((await hook(eY)).code, 200); }
+  return n + await spendAll(u);
+}
+test('r3-rv6-A3 (عطلان): نصف حالة Y، صرف رصيد X، فشل كتابة إكمال استرداد X، ثمّ كاتب آخر قبل إعادته ⇒ ٩٠٠٠ + ٢٠٠٠ لا أكثر (ثابت)', async () => {
+  const c = await rv6A3('rv6a3c', false);
+  const f = await rv6A3('rv6a3f', true);
+  assert.equal(c, 11000, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ بعطلين ' + f);
+});
+async function rv6A7(u, faulty) {
+  await fresh(u, {});
+  assert.equal((await hook(paidSession('cs_' + u + '_x', u, 'media_max', 10211))).code, 200);
+  store.set('media:mix:' + u, '9000');
+  const ux = await user(u); ux.media.mix.at = Date.now() - 2 * DAY; await auth.putUser(u, ux); // أوقات مميّزة (لا تتساوى بالملّي ثانية)
+  assert.equal((await hook(paidSession('cs_' + u + '_y', u, 'media_max', 10211))).code, 200);
+  store.set('media:mix:' + u, '8000');
+  const uy = await user(u); uy.media.mix.at = Date.now() - DAY; await auth.putUser(u, uy);
+  const gz = paidSession('cs_' + u + '_z', u, 'media_max', 10211);
+  if (faulty) fail.userPut = 1;
+  const r = await hook(gz);
+  fail.userPut = 0;
+  if (faulty) assert.ok(r.code >= 500, String(r.code)); else assert.equal(r.code, 200);
+  assert.equal((await hook(refundOf('cs_' + u + '_y', 10211, 10211))).code, 200);
+  if (faulty) assert.equal((await hook(gz)).code, 200);
+  assert.equal((await user(u)).media.mix.payId, 'cs_' + u + '_z');
+  assert.equal((await hook(refundOf('cs_' + u + '_z', 10211, 10211))).code, 200);
+  return spendAll(u);
+}
+test('r3-rv6-A7: منح Z معلَّق فوق Y، ثمّ استرداد Y كاملًا، ثمّ إكمال Z، ثمّ استرداد Z كاملًا ⇒ ما بقي من X (٩٠٠٠) لا رصيد Z (ثابت)', async () => {
+  const c = await rv6A7('rv6a7c', false);
+  const f = await rv6A7('rv6a7f', true);
+  assert.equal(c, 9000, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ بعطل ' + f);
+});
+
+// ───────────── r3-rv6-G*: مسح الصنف — توأم media-on وmedia-back في المنح: رصيدٌ مُلئ وسجلّ لم يُكتب ─────────────
+// منح وسائط غير مؤجَّل (grantMedia) يملأ الرصيد ثمّ يكتب السجلّ؛ فشلُ الكتابة يُبقي الحجز وعلامة الإكمال، والسجلّ على الفترة السابقة P ورصيدُ المنح
+// في العدّاد حتّى إعادة الحدث. كلّ كاتب تحت قفل الحساب قبلها يعمل على P: انتهت نافذتها أو سُحبت ⇒ تسري المؤجَّلة تحتها فوق الرصيد المملوء، ثمّ
+// يرى الإكمال فترةً «أحدث» فلا تُسلَّم media_max المدفوعة أبدًا (G1 · G2 — تراجعٌ عن 36e1841b بالتأجيل). وقديمًا: سحب P كاملًا يعيد سابقتها ثمّ يعيد
+// الإكمال الملء (G3: ١٧٥٠٠ من ١٢٥٠٠)، ونصفها يأخذ من رصيد المنح (G4). الإصلاح: مؤشّر للحساب يُكتب مع علامة الإكمال، وwithAccount يكمل المنح أوّلًا.
+const swPayRefund = require(rp('api/_lib/pay-refund.js'));
+async function swExpireCur(u) { // تنتهي كلّ نافذة حاليّة فتسري أيّ مؤجَّلة، ويُصرف كلّ شيء
+  let total = await spendAll(u);
+  for (let k = 0; k < 3; k++) {
+    const x = await user(u);
+    if (!x.media || !x.media.mix) break;
+    x.media.mix.at = Date.now() - 36 * DAY;
+    await auth.putUser(u, x);
+    total += await spendAll(u);
+  }
+  return total;
+}
+// نصف حالة المنح: media_max m2 فوق media_max P (بقي ٩٠٠٠) ومعها media_basic مؤجَّلة؛ الرصيد مُلئ والسجلّ لم يُكتب
+async function grantHalf(u, g) {
+  fail.userPut = 1;
+  const r = await hook(g);
+  fail.userPut = 0;
+  assert.ok(r.code >= 500, 'المحاولة الأولى تفشل: ' + r.code);
+  const v = await user(u);
+  assert.equal(v.media.mix.payId, 'cs_' + u + '_p', 'نصف الحالة: السجلّ ما زال على P');
+  assert.equal(mix(u), 12500, 'ورصيد المنح في العدّاد');
+  assert.ok(store.has('paid-credit:lastStripeSessionId:cs_' + u + '_m2'), 'وعلامة الإكمال');
+}
+async function rv6G(u, faulty, kill, deferred) {
+  await fresh(u, {});
+  assert.equal((await hook(paidSession('cs_' + u + '_p', u, 'media_max', 10211))).code, 200);
+  store.set('media:mix:' + u, '9000');
+  if (deferred) assert.equal((await hook(paidSession('cs_' + u + '_b', u, 'media_basic', 1021))).code, 200);
+  const g = paidSession('cs_' + u + '_m2', u, 'media_max', 10211);
+  if (faulty) await grantHalf(u, g); else assert.equal((await hook(g)).code, 200);
+  await kill(u);
+  if (faulty) assert.equal((await hook(g)).code, 200); // إعادة حدث الدفع
+  return swExpireCur(u);
+}
+const killRefundP = async (u) => { assert.equal((await hook(refundOf('cs_' + u + '_p', 10211, 10211))).code, 200); };
+const killExpireP = async (u) => { // تنتهي نافذة P (إن كانت الحاليّة على السجلّ) ثمّ قراءة وسائط
+  const v = await user(u);
+  if (v.media.mix.payId === 'cs_' + u + '_p') { v.media.mix.at = Date.now() - 36 * DAY; await auth.putUser(u, v); }
+  await media.mediaStatus(u);
+};
+test('r3-rv6-G1: منح media_max فوق P ومؤجَّلة يفشل سجلّه، ثمّ استرداد P كاملًا قبل الإعادة ⇒ المنح يُسلَّم ثمّ المؤجَّلة (كان ١٢٥٠ بدل ١٣٧٥٠ — تراجعٌ عن 36e1841b)', async () => {
+  const c = await rv6G('rv6g1c', false, killRefundP, true);
+  const f = await rv6G('rv6g1f', true, killRefundP, true);
+  assert.equal(c, 13750, 'ضابط بلا عطل: media_max ثمّ media_basic المؤجَّلة');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وفشل كتابة واحد أعطى ' + f + ' (media_max المدفوعة لم تُسلَّم)');
+});
+test('r3-rv6-G2: نفسه وتنتهي نافذة P قبل الإعادة (قراءة تُسري المؤجَّلة) ⇒ كما بلا عطل (كان ١٢٥٠ بدل ١٣٧٥٠)', async () => {
+  const c = await rv6G('rv6g2c', false, killExpireP, true);
+  const f = await rv6G('rv6g2f', true, killExpireP, true);
+  assert.equal(c, 13750, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وفشل كتابة واحد أعطى ' + f);
+});
+// G3: P سابقتها Q (media_pro ٢٠٠٠)؛ صرف ٣٠٠٠ في نصف الحالة، ثمّ استرداد P كاملًا، ثمّ صرف، ثمّ الإعادة
+async function rv6G3(u, faulty) {
+  await fresh(u, {});
+  assert.equal((await hook(paidSession('cs_' + u + '_q', u, 'media_pro', 2042))).code, 200);
+  store.set('media:mix:' + u, '2000');
+  assert.equal((await hook(paidSession('cs_' + u + '_p', u, 'media_max', 10211))).code, 200);
+  store.set('media:mix:' + u, '9000');
+  const g = paidSession('cs_' + u + '_m2', u, 'media_max', 10211);
+  if (faulty) await grantHalf(u, g); else assert.equal((await hook(g)).code, 200);
+  let n = 0;
+  for (let i = 0; i < 120; i++) { const s = await media.trySpendMedia(u, 5, 'image_normal'); if (!s) break; n += s.fils; }
+  assert.equal((await hook(refundOf('cs_' + u + '_p', 10211, 10211))).code, 200);
+  n += await spendAll(u);
+  if (faulty) assert.equal((await hook(g)).code, 200);
+  return n + await swExpireCur(u);
+}
+test('r3-rv6-G3: نصف حالة المنح، صرف، ثمّ استرداد P كاملًا (تعود Q) قبل الإعادة ⇒ رصيد المنح مرّة واحدة (كان ١٧٥٠٠ من ١٢٥٠٠ — قديم في 36e1841b)', async () => {
+  const c = await rv6G3('rv6g3c', false);
+  const f = await rv6G3('rv6g3f', true);
+  assert.equal(c, 12500, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وفشل كتابة واحد أعطى ' + f);
+});
+test('r3-rv6-G4: نصف حالة المنح ثمّ استرداد نصف P قبل الإعادة ⇒ رصيد المنح لا يُمسّ (كان يُؤخذ نصف P منه — قديم في 36e1841b)', async () => {
+  const half = async (u) => { assert.equal((await hook(refundOf('cs_' + u + '_p', 10211, 5106))).code, 200); };
+  const c = await rv6G('rv6g4c', false, half, false);
+  const f = await rv6G('rv6g4f', true, half, false);
+  assert.equal(c, 12500, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وفشل كتابة واحد أعطى ' + f);
+});
+
+// الإكمال المركزيّ نفسه
+test('r3-rv6-G-lock: نصف حالة المنح ثمّ منح باقة محادثة (كاتب آخر تحت القفل) ⇒ يكمل media_max بوقتها وبلا ملء ثانٍ، والإعادة «سبق المنح»', async () => {
+  await fresh('rv6gl1', {});
+  assert.equal((await hook(paidSession('cs_rv6gl1_p', 'rv6gl1', 'media_max', 10211))).code, 200);
+  store.set('media:mix:rv6gl1', '9000');
+  const g = paidSession('cs_rv6gl1_m2', 'rv6gl1', 'media_max', 10211);
+  await grantHalf('rv6gl1', g);
+  const at = JSON.parse(store.get('paid-credit:lastStripeSessionId:cs_rv6gl1_m2')).at;
+  store.set('media:mix:rv6gl1', '12000'); // صُرف ٥٠٠ تحت P القديمة
+  assert.equal((await hook(paidSession('cs_rv6gl1_basic', 'rv6gl1', 'basic', 1000))).code, 200);
+  const u = await user('rv6gl1');
+  assert.equal(u.plan, 'basic');
+  assert.equal(u.media.mix.payId, 'cs_rv6gl1_m2', 'أكمله قفل الحساب لا إعادة الحدث');
+  assert.equal(u.media.mix.at, at, 'بوقت المنح الأصليّ');
+  assert.equal(mix('rv6gl1'), 12000, 'لا ملء ثانٍ');
+  assert.equal(store.has('paid-credit:lastStripeSessionId:cs_rv6gl1_m2'), false, 'العلامة مُحيت');
+  assert.equal(store.has('paid-credit-acct:rv6gl1'), false, 'والمؤشّر');
+  const rec = JSON.parse(store.get('payrec:cs_rv6gl1_m2'));
+  assert.equal(rec.prev.payId, 'cs_rv6gl1_p', 'سجلّ المنح بسابقته');
+  assert.ok(rec.refs.includes('pi_cs_rv6gl1_m2'), 'وبأرقام دفعته من العلامة');
+  const r = await hook(g);
+  assert.equal(r.code, 200);
+  assert.equal(mix('rv6gl1'), 12000);
+});
+test('r3-rv6-G-lock: نصف حالة المنح وعطل قراءة المؤشّر تحت القفل ⇒ الكاتب 500 بلا أثر، والإعادة تكمل مرّة', async () => {
+  await fresh('rv6gl2', {});
+  assert.equal((await hook(paidSession('cs_rv6gl2_p', 'rv6gl2', 'media_max', 10211))).code, 200);
+  store.set('media:mix:rv6gl2', '9000');
+  const g = paidSession('cs_rv6gl2_m2', 'rv6gl2', 'media_max', 10211);
+  await grantHalf('rv6gl2', g);
+  const ev = refundOf('cs_rv6gl2_p', 10211, 5106);
+  fail.strictGet = /^paid-credit-acct:/;
+  const r1 = await hook(ev);
+  fail.strictGet = null;
+  assert.ok(r1.code >= 500, String(r1.code));
+  assert.equal(mix('rv6gl2'), 12500, 'لا أثر');
+  assert.equal(JSON.parse(store.get('payrec:cs_rv6gl2_p')).revoked, undefined, 'الحدث غير معلَّم «تمّ»');
+  assert.equal((await hook(ev)).code, 200);
+  assert.equal((await user('rv6gl2')).media.mix.payId, 'cs_rv6gl2_m2');
+  assert.equal(mix('rv6gl2'), 12500, 'نصف P المستردّ لا يُؤخذ من رصيد المنح');
+  assert.equal((await hook(g)).code, 200);
+  assert.equal(await spendAll('rv6gl2'), 12500);
+});
+test('r3-rv6-G-lock: صرف النقاط (المسار الساخن) لحساب بلا خانة وسائط ⇒ مرآته تحت القفل لا تقرأ مؤشّر المنح المعلَّق (لا كلفة على الكلّ)', async () => {
+  await fresh('rv6gl3', { points: 200 });
+  const seen = [];
+  hooks.get = async (k) => { seen.push(k); };
+  try { assert.equal((await points.spendPoints('rv6gl3', 20, 'image')).ok, true); } finally { hooks.get = null; }
+  assert.ok(seen.some((k) => /^points:/.test(k)), 'المرآة جرت: ' + JSON.stringify(seen));
+  assert.equal(seen.filter((k) => /^paid-credit-acct:/.test(k)).length, 0, JSON.stringify(seen));
+  assert.equal(pts('rv6gl3'), 180);
+});
+test('r3-rv6-G-lock: PayPal — منح وسائط ملتقَط لم يصل سجلّه يكمله القفل برقم الالتقاط ومبلغه ⇒ استرداد نصفه يأخذ النصف لا الباقة كلّها', async () => {
+  await fresh('rv6gl4', {});
+  assert.equal((await hook(paidSession('cs_rv6gl4_p', 'rv6gl4', 'media_max', 10211))).code, 200);
+  store.set('media:mix:rv6gl4', '9000');
+  ppOrder('ORD-RV6GL4', 'CAP-RV6GL4', 'rv6gl4', 'media_max', '102.11');
+  fail.userPut = 1;
+  let first;
+  try { first = await paypal.captureCompleted(capEvent('ORD-RV6GL4', 'CAP-RV6GL4')); } catch (e) { first = { threw: e.message }; } finally { fail.userPut = 0; }
+  assert.ok(first.threw, 'المحاولة الأولى ترمي (500 فيعيد PayPal): ' + JSON.stringify(first));
+  assert.equal((await hook(paidSession('cs_rv6gl4_basic', 'rv6gl4', 'basic', 1000))).code, 200); // كاتب آخر يكمل المنح
+  assert.equal((await user('rv6gl4')).media.mix.payId, 'ORD-RV6GL4');
+  assert.equal((await paypal.captureCompleted(capEvent('ORD-RV6GL4', 'CAP-RV6GL4'))).status, 'already');
+  const rec = JSON.parse(store.get('payrec:ORD-RV6GL4'));
+  assert.equal(rec.amount, 10211, 'المبلغ في سجلّ المنح');
+  assert.equal(store.get('payref:CAP-RV6GL4'), 'ORD-RV6GL4', 'ورقم الالتقاط');
+  const r = await swPayRefund.paypalEvent({ id: 'WH-RV6GL4', event_type: 'PAYMENT.CAPTURE.REFUNDED', resource: { id: 'RF-RV6GL4', amount: { value: '51.05', currency_code: 'USD' }, seller_payable_breakdown: { total_refunded_amount: { value: '51.05', currency_code: 'USD' } }, links: [{ rel: 'up', href: 'https://api.sandbox.paypal.com/v2/payments/captures/CAP-RV6GL4' }] } });
+  assert.equal(r.results[0].status, 'partial', JSON.stringify(r.results[0]));
+  assert.equal((await user('rv6gl4')).media.mix.payId, 'ORD-RV6GL4', 'الباقة باقية');
+  assert.equal(mix('rv6gl4'), 12500 - 6249, 'نصف رصيدها');
+});
+// ثوابت
+test('r3-rv6-G5: ردّ كتابة سجلّ المنح يضيع (وصلت)، ثمّ استرداد P كاملًا قبل الإعادة ⇒ كما بلا عطل (ثابت)', async () => {
+  const lost = async (u, faulty) => {
+    await fresh(u, {});
+    assert.equal((await hook(paidSession('cs_' + u + '_p', u, 'media_max', 10211))).code, 200);
+    store.set('media:mix:' + u, '9000');
+    assert.equal((await hook(paidSession('cs_' + u + '_b', u, 'media_basic', 1021))).code, 200);
+    const g = paidSession('cs_' + u + '_m2', u, 'media_max', 10211);
+    if (faulty) fail.userPutLost = 1;
+    const r = await hook(g);
+    fail.userPutLost = 0;
+    if (faulty) assert.ok(r.code >= 500, String(r.code)); else assert.equal(r.code, 200);
+    await killRefundP(u);
+    if (faulty) assert.equal((await hook(g)).code, 200);
+    return swExpireCur(u);
+  };
+  const c = await lost('rv6g5c', false);
+  const f = await lost('rv6g5f', true);
+  assert.equal(c, 13750);
+  assert.equal(f, c, 'ضابط ' + c + '؛ بعطل ' + f);
+});
+test('r3-rv6-G6: نصف حالة المنح، ثمّ تغيير الاسم، ثمّ استرداد P كاملًا ⇒ المنح والمؤجَّلة تحت الاسم الجديد كما بلا عطل (ثابت)', async () => {
+  const run = async (u, faulty) => {
+    await fresh(u, {});
+    assert.equal((await hook(paidSession('cs_' + u + '_p', u, 'media_max', 10211))).code, 200);
+    store.set('media:mix:' + u, '9000');
+    assert.equal((await hook(paidSession('cs_' + u + '_b', u, 'media_basic', 1021))).code, 200);
+    const g = paidSession('cs_' + u + '_m2', u, 'media_max', 10211);
+    if (faulty) await grantHalf(u, g); else assert.equal((await hook(g)).code, 200);
+    const rn = await rename(u, u + 'n');
+    assert.equal(rn.code, 200, JSON.stringify(rn.body));
+    await killRefundP(u + 'n');
+    if (faulty) assert.equal((await hook(g)).code, 200);
+    return { spent: await swExpireCur(u + 'n'), old: store.has('media:mix:' + u) };
+  };
+  const c = await run('rv6g6c', false);
+  const f = await run('rv6g6f', true);
+  assert.deepEqual(c, { spent: 13750, old: false });
+  assert.deepEqual(f, c);
+});
+// قديمان في 36e1841b والحساب بلا خانة وسائط بعد (أوّل شراء): كاتبُ دفعٍ أو تغيير اسم يأخذ القفل بانتظاره الكامل يكمل المنح أيضًا
+test('r3-rv6-G7: أوّل media_max يفشل سجلّه، ثمّ تغيير الاسم قبل الإعادة ⇒ رصيدها ينتقل إلى الاسم الجديد (كان يبقى تحت القديم فتُسلَّم بلا رصيد — قديم في 36e1841b)', async () => {
+  const run = async (u, faulty) => {
+    await fresh(u, {});
+    const g = paidSession('cs_' + u + '_m2', u, 'media_max', 10211);
+    if (faulty) fail.userPut = 1;
+    const r = await hook(g);
+    fail.userPut = 0;
+    if (faulty) assert.ok(r.code >= 500, String(r.code)); else assert.equal(r.code, 200);
+    const rn = await rename(u, u + 'n');
+    assert.equal(rn.code, 200, JSON.stringify(rn.body));
+    if (faulty) assert.equal((await hook(g)).code, 200);
+    return { spent: await swExpireCur(u + 'n'), old: store.has('media:mix:' + u) };
+  };
+  const c = await run('rv6g7c', false);
+  const f = await run('rv6g7f', true);
+  assert.deepEqual(c, { spent: 12500, old: false }, 'ضابط بلا عطل');
+  assert.deepEqual(f, c, 'ضابط ' + JSON.stringify(c) + '؛ وفشل كتابة واحد أعطى ' + JSON.stringify(f));
+});
+test('r3-rv6-G8: أوّل media_max يفشل سجلّه، ثمّ تصل media_basic قبل الإعادة ⇒ تُؤجَّل تحت media_max كما بلا عطل (كان رصيد media_max يُمحى — قديم في 36e1841b)', async () => {
+  const run = async (u, faulty) => {
+    await fresh(u, {});
+    const g = paidSession('cs_' + u + '_m2', u, 'media_max', 10211);
+    if (faulty) fail.userPut = 1;
+    const r = await hook(g);
+    fail.userPut = 0;
+    if (faulty) assert.ok(r.code >= 500, String(r.code)); else assert.equal(r.code, 200);
+    assert.equal((await hook(paidSession('cs_' + u + '_b', u, 'media_basic', 1021))).code, 200);
+    if (faulty) assert.equal((await hook(g)).code, 200);
+    return swExpireCur(u);
+  };
+  const c = await run('rv6g8c', false);
+  const f = await run('rv6g8f', true);
+  assert.equal(c, 13750, 'ضابط بلا عطل: media_max ثمّ media_basic المؤجَّلة');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وفشل كتابة واحد أعطى ' + f);
+});
+
+// مسح الصنف — تغيير الاسم: التحضير (r3-4) يكتب نقاط الاسم الجديد '0' قبل سجلّه
+test('r3-rv6-RN0: تغيير اسم يفشل بكتابة السجلّ الجديد ⇒ لا عدّاد يتيم، ومن يسجّل ذلك الاسم بعدُ يأخذ هديّة ترحيبه (كان صفرًا — تراجعٌ عن 36e1841b)', async () => {
+  await fresh('rv6rn0', { points: 300 });
+  fail.userPut = 1;
+  const rn = await rename('rv6rn0', 'rv6rn0new');
+  fail.userPut = 0;
+  assert.ok(rn.code >= 500, String(rn.code));
+  assert.equal(store.has('points:rv6rn0new'), false, 'الصفر اليتيم مُحي');
+  assert.equal(pts('rv6rn0'), 300, 'الاسم القديم ورصيده لم يُمسّا');
+  await auth.putUser('rv6rn0new', { username: 'rv6rn0new', points: 70, welcomeGift: true, createdAt: Date.now() }); // تسجيلٌ لاحق لغيره
+  assert.equal((await points.readPoints('rv6rn0new')).points, 70);
+  const ok = await rename('rv6rn0', 'rv6rn0b'); // والتغيير يعمل بعدها
+  assert.equal(ok.code, 200, JSON.stringify(ok.body));
+  assert.equal(pts('rv6rn0b'), 300);
+});
+test('r3-rv6-RN0: وصلت كتابة السجلّ الجديد وضاع ردّها ⇒ يبقى الصفر فلا تُبذر نقاط النسخة من مرآة السجلّ (ثابت)', async () => {
+  await fresh('rv6rn1', { points: 300 });
+  fail.userPutLost = 1;
+  const rn = await rename('rv6rn1', 'rv6rn1new');
+  fail.userPutLost = 0;
+  assert.ok(rn.code >= 500, String(rn.code));
+  assert.equal(store.get('points:rv6rn1new'), '0');
+  assert.equal((await points.readPoints('rv6rn1new')).points, 0, 'النسخة لا تأخذ نقاطًا من المرآة');
+  assert.equal(pts('rv6rn1'), 300);
+});

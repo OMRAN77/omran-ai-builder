@@ -201,6 +201,18 @@ async function prepareCounterMove(oldKey, newKey, user) {
   for (const at of planVideoAts(user)) await kvDel('planvid:' + n(newKey) + ':' + at, { strict: true });
 }
 
+/* v-r3 (r3-rv6): التحضير يكتب نقاط الاسم الجديد '0' قبل سجلّه — فشلُ التحضير أو كتابة السجلّ الجديد (التغيير يردّ 500 ولا شيء انتقل) كان يترك
+   عدّادًا يتيمًا '0' تحت اسمٍ لم يُسجَّل، فمن يسجّله بعدُ يقرأ صفرًا بدل هديّة ترحيبه (readPoints يقدّم العدّاد الحيّ على السجلّ). يُمحى الصفر إن
+   لم يصل السجلّ الجديد يقينًا (قراءة صارمة بلا سجلّ)؛ وصلَ وضاع ردّه، أو الاسم شاهدٌ سابق ⇒ يبقى الصفر (يحمي من بذر المرآة). لا يرمي. */
+async function undoCounterPrep(newKey) {
+  try {
+    const { kvGetRaw, kvDel } = require('./kv.js');
+    const k = 'points:' + renameKey(newKey);
+    if ((await getUserOnce(newKey, { strict: true })) !== null) return;
+    if (String(await kvGetRaw(k, { strict: true })) === '0') await kvDel(k, { strict: true });
+  } catch (e) { logError('auth:rename-undo', e, { to: String(newKey).slice(0, 40) }); }
+}
+
 async function moveLiveCounters(oldKey, newKey, user) {
   const { kvGetRaw, kvSetRaw, kvDel, kvExpire, kvPipeline } = require('./kv.js');
   const n = renameKey;
@@ -1176,8 +1188,10 @@ module.exports = async (req, res) => {
           // v-rename-move: الأسماء السابقة — اشتراك أو جلسة دفع بدأت بالاسم القديم تُعرف لصاحبها بعد التغيير.
           movedUser.prevUsernames = (Array.isArray(user.prevUsernames) ? user.prevUsernames : []).filter((x) => x !== newKey).concat([oldKey]).slice(-10);
           movedUser.renameLog = renameLog.concat([now]);
-          await prepareCounterMove(oldKey, newKey, user); // v-r3 (r3-4): قبل الشاهد — عطله يرمي ولا شيء كُتب
-          await putUser(newKey, movedUser);
+          try {
+            await prepareCounterMove(oldKey, newKey, user); // v-r3 (r3-4): قبل الشاهد — عطله يرمي ولا شيء كُتب
+            await putUser(newKey, movedUser);
+          } catch (e) { await undoCounterPrep(newKey); throw e; } // v-r3 (r3-rv6): لا عدّاد '0' يتيم تحت اسمٍ لم يُسجَّل
           // Free up the old key so it can't be logged into or re-claimed while pointing here.
           await putUser(oldKey, { deleted: true, movedTo: newKey });
           try { await moveLiveCounters(oldKey, newKey, movedUser); } catch (e) { logError('auth:rename-move', e, { from: String(oldKey).slice(0, 40) }); }

@@ -116,12 +116,12 @@ function deferNext(user, planKey, payId, paidAt) {
    أثر مسمّى: علامة بوقت الملء تُكتب مع الرصيد في طلب واحد (pipeline، كنقل العدّادات r3-4)، والإعادة تجدها فلا تملأ. يرجع وقت الملء الأوّل إن
    سبق (ولا يكتب شيئًا)، وإلّا 0 بعد الملء. يرمي عطب القراءة، وأمرَ رصيد لم يقع (بعد محو علامته) — المستدعي يُعيد. */
 const FILL_MARK_TTL_SEC = 400 * 86400; // كسجلّ المنح: الإكمال والاسترداد قد يصلان بعد أشهر
-async function fillOnce(mark, key, value, ttlSec, now) {
+async function fillOnce(mark, key, value, ttlSec, now, tag) { /* v-r3 (r3-rv6): tag قيمة العلامة بدل وقت الملء — رقم الفترة التي أعادها السحب (pay-refund dropPeriod) */
   const m = String(mark).slice(0, 220);
   const was = await kvGetRaw(m, { strict: true });
   if (was !== null && was !== undefined && String(was) !== '') return Number(was) || 1;
   const t = typeof now === 'number' ? now : Date.now();
-  const r = await kvPipeline([['SET', key, String(value), 'EX', String(Math.max(1, Math.trunc(ttlSec)))], ['SET', m, String(t), 'EX', String(FILL_MARK_TTL_SEC)]]);
+  const r = await kvPipeline([['SET', key, String(value), 'EX', String(Math.max(1, Math.trunc(ttlSec)))], ['SET', m, tag ? String(tag) : String(t), 'EX', String(FILL_MARK_TTL_SEC)]]);
   if (!Array.isArray(r) || r[0] !== 'OK') { // الأوامر بالترتيب لا ذرّيًّا: الرصيد لم يُكتب والعلامة ربّما كُتبت — تُمحى فتملأ الإعادة
     await kvDel(m, { strict: true });
     throw new Error('budget fill not applied: ' + m.slice(0, 60));

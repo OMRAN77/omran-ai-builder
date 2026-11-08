@@ -197,6 +197,19 @@ async function priorPeriod(rec) {
   return null;
 }
 
+/* v-r3 (r3-rv6): الفترة التي أعادها سحبٌ سابق لـr لم يصل سجلّه (رقم دفعتها في علامة media-back:<r>) — تُطلب في سلسلة سوابق r ولو سُحبت
+   دفعتها بعده، فيُكمَل السحب كما بدأ (إعادة الحساب كانت تختار سابقتَها وتُبقي رصيدها هي في العدّاد). منتهية أو غائبة ⇒ null. القراءة صارمة:
+   يُكتب عليها، وnull كاذبة تُسقط إلى priorPeriod فتعود العلّة نفسها. */
+async function periodOf(r, id) {
+  let p = r.prev;
+  for (let i = 0; p && i < 5; i++) {
+    if (String(p.payId || '') === id) return require('./_mediaPlans.js').mediaActive({ media: { [r.media]: p } }, r.media) ? { p, frac: 0 } : null;
+    const x = p.payId ? await readRec(p.payId, { strict: true }) : null;
+    p = x && x.prev;
+  }
+  return null;
+}
+
 // هل الفترة الحاليّة على u (فترة المحادثة، أو باقة الوسائط من نوع r) من الدفعة r؟
 const holdsMain = (u, r) => CHAT_PLANS.includes(r.plan) && String(u.plan || '') === r.plan && sameGrant(u.planUpdatedAt, r, u.planPayId);
 // v-lock-subs (srv-money-4): دفعة أدنى وصلت تحت أعلى سارية — فترتها في planNext برقمها (create-checkout-session.js)، تسري بعد الأعلى
@@ -240,7 +253,11 @@ async function dropPeriod(name, u, r) {
     await require('./auth.js').putUser(name, u);
     return null;
   }
-  const prior = await priorPeriod(r);
+  /* v-r3 (r3-rv6): نصف حالة — علامة media-back:<r> تحمل الفترة التي أعادها الملء الأوّل؛ الإكمال يعيدها هي (بلا ملء: العلامة)، وسحبُ دفعتها
+     (إن كان هو الكاتب الذي يُكمل) يسحبها بعده من رصيدها. كانت تُختار من جديد: سُحبت X كاملًا قبل الإكمال ⇒ عادت P ورصيد X تحتها (٩٠٠٠ بدل ٢٠٠٠).
+     علامة قديمة (وقت الملء لا رقم فترة) أو فترة انتهت ⇒ priorPeriod كما كان. */
+  const was = r.media ? await kvGetRaw(('media-back:' + cut(r.id)).slice(0, 220), { strict: true }) : null;
+  const prior = (was && await periodOf(r, String(was))) || await priorPeriod(r);
   const back = prior ? Object.assign({}, prior.p) : null;
   if (back) delete back.budget;
   if (r.media) {
@@ -252,7 +269,7 @@ async function dropPeriod(name, u, r) {
       const ttl = Math.max(60, Math.ceil((Number(back.at) + MEDIA_WINDOW_DAYS * 86400000 - Date.now()) / 1000));
       /* v-r3 (r3-rv4): مرّة واحدة لسحب هذه الدفعة — فشلُ السجلّ بعده يُبقي فترتها فيُصرف الرصيد العائد تحتها، وكانت الإعادة تعيده كاملًا
          (ما بقي ١٠٠٠ ⇒ ٢٠٠٠). وكذلك (ج) حين تعيد كتابةٌ متأخّرة فترتها: العدّاد لم تمسّه، فلا يُكتب فوق ما صُرف منه. */
-      await require('./_mediaPlans.js').fillOnce('media-back:' + cut(r.id), budgetKey(name, r.media), left, ttl);
+      await require('./_mediaPlans.js').fillOnce('media-back:' + cut(r.id), budgetKey(name, r.media), left, ttl, undefined, back.payId);
     } else {
       // v-r3 (r3-2): خلت الخانة — المؤجَّلة تحتها (أدنى دُفعت أثناء الأعلى) تسري الآن برصيدها ونافذتها كاملين؛ كان العدّاد يُحذف فيضيع ثمنها
       await require('./_mediaPlans.js').activateDue(u, name);

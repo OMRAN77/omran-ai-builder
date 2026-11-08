@@ -449,7 +449,10 @@ test('srv-money-2 · ١٣. استرداد فترة الوسائط السابقة
     assert.equal(Number(kv.get('media:mix:lc13')), 2500, 'الرصيد مُلئ');
     t += 3600000;
     assert.equal((await hook(refundOf('ch_lc13a', 'pi_lc13a', 1021, 1021))).code, 200, 'استرداد الفترة السابقة كاملة');
-    assert.equal(kv.has('media:mix:lc13'), false, 'سحبُها محا الرصيد');
+    // v-r3 (r3-rv6): قفل الحساب يكمل المنح المعلَّق قبل هذا الاسترداد (completeCredits) — فلم تعد السابقة فترةً حاليّة، وسحبُها لا يمحو رصيد
+    // المنح (كان يمحوه ثمّ يعيد الإكمالُ ملأه عند إعادة الحدث). النتيجة بعد الإعادة كما كانت: الباقة الجديدة برصيدها وبوقتها الأصليّ.
+    assert.equal(Number(kv.get('media:mix:lc13')), 2500, 'رصيد المنح باقٍ: لم يمسّه سحب السابقة');
+    assert.equal(users.get('lc13').media.mix.payId, 'cs_lc13b', 'أكمله قفل الحساب قبل الاسترداد');
     assert.equal((await hook(e)).code, 200, 'إعادة حدث الدفع');
     const m = users.get('lc13').media.mix;
     assert.equal(m.plan, 'media_pro');
@@ -458,7 +461,7 @@ test('srv-money-2 · ١٣. استرداد فترة الوسائط السابقة
     assert.equal(media.mediaActive(users.get('lc13'), 'mix'), true);
     assert.equal(Number(kv.get('media:mix:lc13')), 2500, 'الباقة المدفوعة برصيدها');
     const left = Number(ttl.get('media:mix:lc13'));
-    assert.ok(left <= media.MEDIA_WINDOW_DAYS * 86400 - 3600 && left > media.MEDIA_WINDOW_DAYS * 86400 - 3700, 'نافذة الرصيد من وقت المنح — ' + left);
+    assert.equal(left, media.MEDIA_WINDOW_DAYS * 86400, 'نافذة الرصيد من وقت المنح — مُلئ عنده (t0) ولم يُعَد ملؤه: ' + left); // v-r3 (r3-rv6): المحاكي لا يُنقص المهلة
   } finally { Date.now = realNow; }
 });
 

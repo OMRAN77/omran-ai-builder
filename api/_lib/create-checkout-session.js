@@ -168,6 +168,8 @@ async function withAccount(username, fn, waitMs) {
     if (acct.name !== name) throw new Error(BUSY); // غيّر اسمه بين القراءة والقفل: الإعادة تقفل اسمه الجديد
     /* v-r3 (r3-rv2-stale): مؤجَّلة وسائط سرت (رصيدها وعلامتها في KV) ولم يصل سجلّها تُكمَل هنا قبل أيّ كاتب — المنح والسحب وتغيير الاسم والمرآة
        كانت تعمل على الفترة القديمة حتّى قراءة الوسائط التالية. تُكتب فورًا (فشلها يرمي قبل أيّ أثر للكاتب فيُعاد). انظر _mediaPlans completeActivated. */
+    /* v-r3 (r3-rv6): وتوأمهما في المنح — منح وسائط ملأ رصيده ولم يصل سجلّه (علامة إكمال معلَّقة) يُكمَل هنا أوّلًا، لا عند إعادة حدثه وحدها. */
+    await completeCredits(acct.name, acct.user, !(Number(waitMs) >= 0));
     if (await completeActivated(acct.user, acct.name)) await putUser(acct.name, acct.user);
     /* v-r3 (r4-back): وتوأمه في السحب — استرداد كامل أعاد رصيد الفترة السابقة (علامة media-back) ولم يصل سجلّه. dropPeriod يكتب السجلّ بنفسه. */
     await require('./pay-refund.js').completeDropped(acct.name, acct.user);
@@ -325,7 +327,7 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
        عطل، وkvDel يبتلع فشله — ردٌّ نجح وفكٌّ لم يصل يترك الدافع بلا نقاط ولا باقة ولا ما يكملها؛ والإكمال يغطّي ما كان يحميه (شحنة واحدة،
        والإعادة تسلّم الباقة) ويغطّي معه «لا يُعرف» (getUser يعيد null عند العطل) بلا تخمين وملء رصيد الوسائط الذي لا يُردّ أصلًا. */
     if (claim && !creditedAt) await releaseClaim(claim, sourceField, sourceId, username, plan); // لم يقع أثر — يُفكّ الحجز فتنجح المحاولة التالية
-    else if (claim) await markCredited(sourceField, sourceId, { at: creditedAt, was, prev: prior, kept, drop }, username, plan); // الحجز باقٍ، والإعادة تكمل
+    else if (claim) await markCredited(sourceField, sourceId, { at: creditedAt, was, prev: prior, kept, drop, meta }, username, plan); // الحجز باقٍ، والإعادة تكمل
     throw e;
   }
 }
@@ -402,10 +404,12 @@ async function releaseClaim(claim, field, id, username, plan, checkFirst) {
 // المراجعة المعاكسة الثانية (#2): الكتابة تُعاد (settleWrite)، والسطران برقم الدفعة ويُنتظر حفظهما، والفشل الأخير إشعارٌ للمالك أيضًا.
 async function markCredited(field, id, w, username, plan) {
   const body = { at: Number(w.at) || Date.now(), was: String(w.was || ''), prev: w.prev || null, kept: !!w.kept, drop: w.drop || null };
+  if (w.meta && typeof w.meta === 'object') body.meta = { refs: Array.isArray(w.meta.refs) ? w.meta.refs : [], amount: w.meta.amount || null, currency: w.meta.currency || null }; // v-r3 (r3-rv6): لإكمال المنح تحت القفل بلا إعادة حدثه
   const ref = payRef(field, id);
   const meta = { user: username, plan, id: String(id).slice(0, 60) };
   const err = await settleWrite(() => kvSetRaw(creditMarkKey(field, id), JSON.stringify(body), CREDIT_MARK_TTL_SEC));
   if (!err) {
+    await notePending(username, field, id, plan, !!w.kept);
     await ownerLog('checkout:credit-pending', 'credited, account record pending — completes on the next retry · ' + ref, meta);
     return;
   }
@@ -510,6 +514,46 @@ async function finishGrant(username, user, plan, sourceField, sourceId, meta, pe
   await kvDel(mark);
   if (p.media) return { ok: true, plan: user.plan || null, media: p.media, mediaPlan: plan, pointsAdded: 0, balance: Number(user.points || 0), completed: true };
   return Object.assign({ ok: true, plan: (p.pack || newer || kept) ? (user.plan || null) : plan, pack: !!p.pack, pointsAdded: p.points, balance: Number(user.points || 0), completed: true }, kept ? { kept: true } : {});
+}
+
+/* v-r3 (r3-rv6): توأم media-on وmedia-back في المنح — منح وسائط ملأ رصيده (grantMedia) ثمّ فشلت كتابة السجلّ: الحجز باقٍ وعلامة الإكمال، والسجلّ
+   على الفترة السابقة ورصيدُ المنح في العدّاد حتّى إعادة حدثه. كلّ كاتب يأخذ القفل قبلها يعمل على تلك الفترة: انتهت نافذتها أو سُحبت ⇒ تسري
+   المؤجَّلة تحتها فوق الرصيد المملوء (activateDue)، ثمّ يرى الإكمال فترةً «أحدث» فلا يُسلَّم المنح أبدًا (media_max مدفوعة ⇒ ١٢٥٠ بدل ١٣٧٥٠ —
+   تراجعٌ عن 36e1841b بالتأجيل)؛ واسترداد نصفها يأخذ من رصيد المنح؛ وسحبها كاملًا يعيد سابقتها ثمّ يعيد الإكمال الملء. الآن مؤشّر للحساب برقم
+   الدفعة (يُكتب مع علامة الإكمال)، وwithAccount يكمل المنح أوّلًا (finishGrant، بعلامته ووقتها وبلا شحن ثانٍ) قبل أيّ كاتب، فإعادة الحدث تجده تمّ.
+   للوسائط غير المؤجَّلة وحدها: المؤجَّلة لا رصيد لها قبل سجلّها، ومنح المحادثة لا رصيد فترة. يُقرأ المؤشّر لكلّ كاتب بانتظار القفل الكامل (منح،
+   سحب، تغيير اسم — نادرة)، وفي المسار الساخن بانتظار قصير (مرآة الصرف، سريان المؤجَّلة) لحساب له خانة وسائط أو مؤجَّلة وحده: بلا خانة لا يمسّ
+   رصيدَ المنح إلّا منحٌ آخر أو تغيير اسم (أوّل شراء: يكتب الآخرُ فوقه، أو يُترك تحت الاسم القديم). فشل الإكمال يرمي قبل أثر الكاتب فيُعاد. */
+const creditAcctKey = (name) => 'paid-credit-acct:' + encodeURIComponent(String(name || '').trim().toLowerCase());
+async function notePending(username, field, id, plan, kept) {
+  if (kept || !PLANS[plan] || !PLANS[plan].media) return;
+  try {
+    const raw = await kvGetRaw(creditAcctKey(username), { strict: true });
+    let list = [];
+    try { list = raw ? JSON.parse(raw) : []; } catch (e) { list = []; } // مؤشّر تالف: يُستبدل (العلامات نفسها باقية لإعادة الحدث)
+    list = (Array.isArray(list) ? list : []).filter((x) => x && !(x.f === field && x.i === String(id)));
+    list.push({ f: field, i: String(id), p: plan });
+    await kvSetRaw(creditAcctKey(username), JSON.stringify(list.slice(-6)), CREDIT_MARK_TTL_SEC);
+  } catch (e) { // عطلٌ ثانٍ: يكمل المنحَ إعادةُ حدثه كما كان
+    await ownerLog('checkout:credit-pointer', 'credit pending pointer not written — completes on the next retry · ' + payRef(field, id) + ' · ' + String((e && e.message) || e).slice(0, 60), { user: username, plan });
+  }
+}
+async function completeCredits(name, user, all) {
+  if (!user || user.deleted) return;
+  if (!all && !((user.media && Object.keys(user.media).length) || (Array.isArray(user.mediaNext) && user.mediaNext.length))) return;
+  const raw = await kvGetRaw(creditAcctKey(name), { strict: true });
+  if (raw === null || raw === undefined || String(raw) === '') return;
+  let list = [];
+  try { list = JSON.parse(raw); } catch (e) { list = []; }
+  for (const x of (Array.isArray(list) ? list : [])) {
+    if (!x || !x.f || !x.i || !PLANS[x.p]) continue;
+    const pend = await kvGetRaw(creditMarkKey(x.f, x.i), { strict: true });
+    if (!pend) continue; // أكملته إعادة الحدث
+    let w = null;
+    try { w = JSON.parse(pend); } catch (e) { w = null; }
+    await finishGrant(name, user, x.p, x.f, x.i, (w && w.meta) || undefined, pend);
+  }
+  await kvDel(creditAcctKey(name));
 }
 
 /* v-lock-credit (srv-money-2، المراجعة المعاكسة): استرداد أو اعتراض يصل بين «شُحن» و«كُتب السجلّ» كان يجد الحساب بلا فترة الدفعة ولا سجلّ

@@ -414,7 +414,7 @@ test('٨. الباقات ٣٦٠/٩٢٠/٣٬٢٠٠ متطابقة في Stripe وP
   assert.match(ccs, /if \(recurring\) params\.append\('line_items\[0\]\[price_data\]\[recurring\]\[interval\]', 'month'\);/);
   const pp = read('api/_lib/paypal-order.js');
   // v-paypal-honest: PayPal يشحن بـgrantPlanToUser نفسها (الرزمة لا تمسّ الباقة هناك — مُختبَر أعلاه في ccs).
-  assert.match(pp, /grantPlanToUser\(username, m\.plan, 'lastPaypalOrderId', order\.id\)/);
+  assert.match(pp, /grantPlanToUser\(username, m\.plan, 'lastPaypalOrderId', order\.id(?:, \{ refs: \[m\.capture\], amount: m\.cents, currency: 'usd' \})?\)/);
   // العميل: الأزرار الأربعة تفتح نافذة الدفع بنفس الأسعار المعروضة
   const a6 = read('js/app-06-checkout.js');
   assert.match(a6, /const CHECKOUT_PLAN_AMOUNTS = \{ basic: 1000, pro: 2000, max: 10000, pack100: 499, pack300: 1299, pack700: 2499, pack900: 3499(, maha_basic: 1021[^}]*)? \};/); // v-media-plans: اشتراكات الوسائط بعد الرزم (v-media-merge: مها و«صور وفيديو»؛ img_/vid_ خرجت)
