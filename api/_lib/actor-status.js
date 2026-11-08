@@ -9,7 +9,9 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   try {
     const id = String((req.query && req.query.id) || '');
-    if (!/^[\w-]{8,80}$/.test(id)) { res.status(400).json({ error: 'Missing id' }); return; }
+    /* v-lock-vid-r (srv-video-1): المحرّك يصدر UUID بحروف صغيرة، وقد يقرأ الكبيرة وبلا شَرطات المهمّةَ نفسها — بلا تذكرة ولا علامة فتسلّم
+       بعد الردّ. الشكل القانونيّ وحده. */
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)) { res.status(400).json({ error: 'Missing id' }); return; }
     const key = String(process.env.FAL_KEY || '').trim();
     if (!key) { res.status(500).json({ error: 'lipsync_unavailable' }); return; }
     const saved = await require('./kv.js').kvGetJSON('actor/req/' + id);
@@ -45,7 +47,10 @@ module.exports = async (req, res) => {
       res.status(200).json({ status: 'FAILED', failure: why.slice(0, 300) });
       return;
     }
-    await settle(true);
+    /* v-lock-vid (srv-video-1): لا تسليم فوق ردّ — رُدّت نقاطها (كنسٌ أو عطل سابق) = FAILED بلا رابط، ولم تُحسم = RUNNING */
+    const held = await settle(true);
+    if (held && held.pending) { res.status(200).json({ status: 'RUNNING' }); return; }
+    if (held && held.refunded) { console.warn('[actor-status] delivery refused after refund'); res.status(200).json({ status: 'FAILED' }); return; }
     await require('./our-media.js').rememberOurMedia([url]); // v-dl-ours: ناتج مدفوع — حفظه لا يُعدّ على سقف التنزيل
     res.status(200).json({ status: 'SUCCEEDED', output: [url] });
   } catch (e) {

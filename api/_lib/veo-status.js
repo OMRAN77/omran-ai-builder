@@ -11,6 +11,12 @@ function failed(res, why) {
   const safety = SAFETY_RE.test(String(why || ''));
   res.status(200).json({ status: 'FAILED', failure: safety ? FAIL_SAFETY : FAIL_OTHER, failureCode: safety ? 'safety' : 'failed' });
 }
+/* v-lock-vid (srv-video-1): حكم التسوية قبل الرابط — رُدّت نقاطها (كنسٌ أو عطل سابق) = FAILED بلا رابط، ولم تُحسم = RUNNING يعيد العميل. */
+function refusedDelivery(s, res, op) {
+  if (s && s.pending) { res.status(200).json({ status: 'RUNNING' }); return true; }
+  if (s && s.refunded) { console.warn('[veo-status] delivery refused after refund: ' + String(op).slice(0, 80)); failed(res, 'refunded before delivery'); return true; }
+  return false;
+}
 
 /* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): مهمّة الاحتياط «fal/<id>» (رصيد Gemini خلص عند الإنشاء، veo-create) —
    تُتابَع بالعقد نفسه: RUNNING، وSUCCEEDED برابط الناتج (يُسوّى نجاحًا ويُحفظ ناتجًا لنا كـactor-status)، وFAILED بسبب عربيّ ورمز
@@ -19,7 +25,9 @@ function failed(res, why) {
 const FAL_SAFETY_RE = /content[_ ]policy|flagged|nsfw|content checker/i;
 async function falStatus(op, res) {
   const id = op.slice(require('./veo-create.js').FAL_OP_PREFIX.length);
-  if (!/^[\w-]{1,100}$/.test(id)) { res.status(400).json({ error: 'Missing op' }); return; }
+  /* v-lock-port-vid (srv-video-1): رقم الطابور UUID بحروف صغيرة (request_id عند fal، كـactor-status) — الكبيرة وبلا شَرطات قد يقرؤها
+     المزوّد المهمّةَ نفسها، ولا سجلّ لها ولا تذكرة ولا علامة (الرابط يُبنى من الرقم)، فتسلّم بعد الردّ. الشكل القانونيّ وحده. */
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)) { res.status(400).json({ error: 'Missing op' }); return; }
   const falBackup = require('./fal-fallback.js');
   let rec = null;
   try { rec = JSON.parse((await require('./kv.js').kvGetRaw(require('./veo-create.js').falOpKey(op))) || 'null'); }
@@ -31,7 +39,10 @@ async function falStatus(op, res) {
   const p = await falBackup.pollVideo(rec);
   const settleFal = (ok) => require('./video-job.js').settleVideoJob(op, ok);
   if (p.state === 'SUCCEEDED') {
-    await settleFal(true);
+    /* v-lock-port-vid (srv-video-1): مسار التسليم الخامس (أضافه main بعد v-lock-vid) — الكنس يردّ تذاكر الاحتياط بلا سؤال fal، وكان هذا
+       يسلّم الرابط بعده (وبعد ردّ OUTAGE/FAILED سابق) فيصير الفيديو مجّانيًّا. حكم التسوية قبل الرابط كباقي المسارات: رُدّت = FAILED
+       بلا رابط ولا حفظ ناتج، ولم تُحسم (تعذّر قراءة التذكرة أو العلامة) = RUNNING يعيد العميل. */
+    if (refusedDelivery(await settleFal(true), res, op)) return;
     await require('./our-media.js').rememberOurMedia([p.url]); // v-dl-ours: ناتج مدفوع — حفظه لا يُعدّ على سقف التنزيل
     res.status(200).json({ status: 'SUCCEEDED', output: [p.url] });
     return;
@@ -51,7 +62,9 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   try {
     const op = (req.query && req.query.op) || '';
-    if (!op || !/^[\w./-]+$/.test(op)) { res.status(400).json({ error: 'Missing op' }); return; }
+    /* v-lock-vid-r (srv-video-1): fetch يطبّع «.» و«..» في المسار (والمزوّد قد يتسامح في «//» و«/» الطرفيّة)، فتصل التهجئة البديلة
+       المهمّةَ نفسها بلا تذكرة ولا علامة: تسليم بعد الردّ، أو تسليم لا يسوّي التذكرة فيردّها الكنس بعده. الشكل القانونيّ وحده (كـcanonicalId لـRunway). */
+    if (!op || !/^[\w./-]+$/.test(op) || op.split('/').some((seg) => seg === '' || seg === '.' || seg === '..')) { res.status(400).json({ error: 'Missing op' }); return; }
     /* v-fal-backup: مهمّة الاحتياط قبل فحص مفتاح Gemini — تُتابَع ولو أُزيل مفتاحه */
     if (op.indexOf(require('./veo-create.js').FAL_OP_PREFIX) === 0) { await falStatus(op, res); return; }
     const apiKey = process.env.GEMINI_API_KEY;
@@ -65,7 +78,7 @@ module.exports = async (req, res) => {
       try { rec = JSON.parse((await require('./kv.js').kvGetRaw(vc.omniOpKey(op))) || 'null'); }
       catch (e) { console.error('[veo-status] omni result read failed: ' + (e && e.message)); res.status(200).json({ status: 'RUNNING' }); return; }
       if (!rec || !rec.uri) { await require('./video-job.js').settleVideoJob(op, false); failed(res, 'omni result missing'); return; }
-      await require('./video-job.js').settleVideoJob(op, true);
+      if (refusedDelivery(await require('./video-job.js').settleVideoJob(op, true), res, op)) return; // v-lock-vid: لا تسليم فوق ردّ
       res.status(200).json({ status: 'SUCCEEDED', output: [require('./veo-download.js').downloadUrl(rec.uri)] });
       return;
     }
@@ -112,7 +125,7 @@ module.exports = async (req, res) => {
       failed(res, why);
       return;
     }
-    await settle(true);
+    if (refusedDelivery(await settle(true), res, op)) return; // v-lock-vid: لا تسليم فوق ردّ
     res.status(200).json({
       status: 'SUCCEEDED',
       output: [require('./veo-download.js').downloadUrl(uri)], // v-video-open-lock: موقّع على الملفّ — التنزيل لا يقبل غيره بلا جلسة

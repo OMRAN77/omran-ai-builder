@@ -57,16 +57,16 @@ test('١. الموجّه يسجّل minimax-create وminimax-status', () => {
 test('٢. minimax-status (v2): succeeded → SUCCEEDED مع content.url، queued/running → RUNNING، failed → FAILED؛ المسار v2 بمعرّف المهمّة', async () => {
   process.env.MINIMAX_API_KEY = 'test-key';
   const urls = [];
-  let res = await runHandler('api/_lib/minimax-status.js', { 'api/_lib/video-job.js': jobSpy }, statusReq('T1'),
-    async (url, init) => { urls.push(String(url)); assert.equal(init.headers.Authorization, 'Bearer test-key'); return taskReply({ id: 'T1', status: 'succeeded', content: { url: 'https://cdn/x.mp4' } })(url); });
+  let res = await runHandler('api/_lib/minimax-status.js', { 'api/_lib/video-job.js': jobSpy }, statusReq('1001'),
+    async (url, init) => { urls.push(String(url)); assert.equal(init.headers.Authorization, 'Bearer test-key'); return taskReply({ id: '1001', status: 'succeeded', content: { url: 'https://cdn/x.mp4' } })(url); });
   assert.equal(res.body.status, 'SUCCEEDED');
   assert.equal(res.body.output[0], 'https://cdn/x.mp4');
-  assert.deepEqual(urls, ['https://api.minimax.io/v2/query/video_generation/T1'], 'نداء واحد: لا files/retrieve في v2');
+  assert.deepEqual(urls, ['https://api.minimax.io/v2/query/video_generation/1001'], 'نداء واحد: لا files/retrieve في v2');
   for (const st of ['queued', 'running']) {
-    res = await runHandler('api/_lib/minimax-status.js', { 'api/_lib/video-job.js': jobSpy }, statusReq('T1'), taskReply({ id: 'T1', status: st }));
+    res = await runHandler('api/_lib/minimax-status.js', { 'api/_lib/video-job.js': jobSpy }, statusReq('1001'), taskReply({ id: '1001', status: st }));
     assert.equal(res.body.status, 'RUNNING', st);
   }
-  res = await runHandler('api/_lib/minimax-status.js', { 'api/_lib/video-job.js': jobSpy }, statusReq('T1'), taskReply({ id: 'T1', status: 'failed', error: { code: 1, message: 'bad' } }));
+  res = await runHandler('api/_lib/minimax-status.js', { 'api/_lib/video-job.js': jobSpy }, statusReq('1001'), taskReply({ id: '1001', status: 'failed', error: { code: 1, message: 'bad' } }));
   assert.equal(res.body.status, 'FAILED');
 });
 
@@ -77,7 +77,7 @@ test('٣. minimax-status بلا task_id = 400، وبلا مفتاح = 500', asyn
   assert.equal(res.code, 400);
   const saved = process.env.MINIMAX_API_KEY; delete process.env.MINIMAX_API_KEY;
   res = fakeRes();
-  await handler({ method: 'GET', query: { task_id: 'T' } }, res);
+  await handler({ method: 'GET', query: { task_id: '1000' } }, res);
   assert.equal(res.code, 500);
   if (saved) process.env.MINIMAX_API_KEY = saved;
 });
@@ -122,25 +122,25 @@ test('٦. v2: failed/cancelled وخطأ نهائيّ (٤٠٤ بجسم error) = F
   process.env.MINIMAX_API_KEY = 'test-key';
   const stubs = { 'api/_lib/video-job.js': jobSpy };
   settled.length = 0;
-  let res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('T9'), taskReply({ id: 'T9', status: 'failed', error: { code: 2013, message: 'content rejected' } }));
+  let res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('1009'), taskReply({ id: '1009', status: 'failed', error: { code: 2013, message: 'content rejected' } }));
   assert.equal(res.body.status, 'FAILED', 'الفشل ما زال يُقرأ «لسّا شغّال»');
-  assert.deepEqual(settled, [['T9', false]], 'التذكرة لم تُسوَّ فلا تُردّ النقاط');
+  assert.deepEqual(settled, [['1009', false]], 'التذكرة لم تُسوَّ فلا تُردّ النقاط');
 
   settled.length = 0;
-  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('T8'), taskReply({ id: 'T8', status: 'cancelled' }));
+  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('1008'), taskReply({ id: '1008', status: 'cancelled' }));
   assert.equal(res.body.status, 'FAILED');
-  assert.deepEqual(settled, [['T8', false]]);
+  assert.deepEqual(settled, [['1008', false]]);
 
   // خطأ نهائيّ من المزوّد (مهمّة غير موجودة / مفتاح / رصيد): المستخدم دفع ولن يستلم ⇒ FAILED وتسوية
   settled.length = 0;
-  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('T7'), async () => ({ ok: false, status: 404, json: async () => ({ type: 'error', error: { type: 'not_found', message: 'task not found', http_code: 404 }, request_id: 'r1' }) }));
+  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('1007'), async () => ({ ok: false, status: 404, json: async () => ({ type: 'error', error: { type: 'not_found', message: 'task not found', http_code: 404 }, request_id: 'r1' }) }));
   assert.equal(res.body.status, 'FAILED');
-  assert.deepEqual(settled, [['T7', false]]);
+  assert.deepEqual(settled, [['1007', false]]);
 
   // عابر: المزوّد مشغول — خطأ للعميل (حارسه يحتمل ستّة متتالية) ولا تسوية
   for (const code of [429, 529, 500]) {
     settled.length = 0;
-    res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('T6'), async () => ({ ok: false, status: code, json: async () => ({ type: 'error', error: { type: 'busy', message: 'rate limit', http_code: code } }) }));
+    res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('1006'), async () => ({ ok: false, status: code, json: async () => ({ type: 'error', error: { type: 'busy', message: 'rate limit', http_code: code } }) }));
     assert.equal(res.code, code, String(code));
     assert.doesNotMatch(String(res.body.error), /MiniMax|rate limit|HTTP/, 'رمز تقنيّ في رسالة المستخدم');
     assert.deepEqual(settled, [], code + ': عابر لا يُسوّى');
@@ -148,24 +148,25 @@ test('٦. v2: failed/cancelled وخطأ نهائيّ (٤٠٤ بجسم error) = F
 
   // نجاح سليم يسوّي بـtrue بلا استرجاع، وحالة وسطى بلا تسوية
   settled.length = 0;
-  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('T5'), taskReply({ id: 'T5', status: 'succeeded', content: { url: 'https://cdn/ok.mp4' } }));
+  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('1005'), taskReply({ id: '1005', status: 'succeeded', content: { url: 'https://cdn/ok.mp4' } }));
   assert.equal(res.body.status, 'SUCCEEDED');
-  assert.deepEqual(settled, [['T5', true]]);
+  assert.deepEqual(settled, [['1005', true]]);
   settled.length = 0;
-  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('T4'), taskReply({ id: 'T4', status: 'running' }));
+  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('1004'), taskReply({ id: '1004', status: 'running' }));
   assert.equal(res.body.status, 'RUNNING');
   assert.deepEqual(settled, []);
 });
 
 test('٧. حلقات الاستطلاع (خمس منذ v-actor-lipsync) محروسة بعمر وبأخطاء متتالية، ولا ابتلاع صامت', () => {
   const src = read('js/app-11-video.js');
-  assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 5, 'حلقة استطلاع بلا حارس');
-  /* v-video-poll-transient: والزحام العابر (٤٢٩/٥xx) في حلقات الاقتصاديّ والسينمائيّ (اثنتان) والممثّل يمرّ بالحارس بنصّ الخادم
+  /* v-lock-vid (srv-video-5): حلقة سادسة — استلام «omni-create» (الوضع المخفيّ) من veo-status بمعرّف omni/… (كان ردًّا متزامنًا بلا تذكرة).
+     v-video-poll-transient: والزحام العابر (٤٢٩/٥xx) في حلقات الاقتصاديّ والسينمائيّ والممثّل يمرّ بالحارس بنصّ الخادم
      guard.fail(iv, d.error) — مختبَر في video-durations ٥ */
-  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 5, 'خطأ شبكة ما زال يُبتلع بصمت'); // v-ai-video-speed: وpollTaskOnce يعدّ خطأ الخادم ٥xx عابرًا بنصّه guard.fail(iv, data.error)
-  assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 5, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
+  assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 6, 'حلقة استطلاع بلا حارس');
+  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 6, 'خطأ شبكة ما زال يُبتلع بصمت'); // v-ai-video-speed: وpollTaskOnce يعدّ خطأ الخادم ٥xx عابرًا بنصّه guard.fail(iv, data.error)
+  assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 6, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
   assert.doesNotMatch(src, /catch\(e\)\{ \/\* keep polling \*\/ \}/, 'بقي ابتلاع صامت');
-  assert.equal((src.match(/setInterval\(async \(\) => \{/g) || []).length, 5, /* v-actor-lipsync: حلقة الممثّل */ 'عدد الحلقات تغيّر — راجع الحراسة');
+  assert.equal((src.match(/setInterval\(async \(\) => \{/g) || []).length, 6, /* v-actor-lipsync: حلقة الممثّل */ 'عدد الحلقات تغيّر — راجع الحراسة');
   assert.match(src, /function makePollGuard\(reject, everyMs, maxMs\)/);
   assert.ok(read('js/app.bundle.js').includes('function makePollGuard('), 'الحارس ليس في الحزمة — شغّل npm run bundle');
   // سلوك الحارس نفسه: العمر ينتهي، والأخطاء المتتالية تُنهي، والنجاح يصفّرها
@@ -207,18 +208,18 @@ test('٩. succeeded بلا content.url يردّ النقاط (FAILED وتسوي�
   process.env.MINIMAX_API_KEY = 'test-key';
   const stubs = { 'api/_lib/video-job.js': jobSpy };
   settled.length = 0;
-  let res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('T5'), taskReply({ id: 'T5', status: 'succeeded' }));
+  let res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('1005'), taskReply({ id: '1005', status: 'succeeded' }));
   assert.equal(res.body.status, 'FAILED');
-  assert.deepEqual(settled, [['T5', false]], 'لم تُسوَّ التذكرة فشلًا فلا تُردّ النقاط');
+  assert.deepEqual(settled, [['1005', false]], 'لم تُسوَّ التذكرة فشلًا فلا تُردّ النقاط');
   settled.length = 0;
-  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('T6'), taskReply({ id: 'T6', status: 'succeeded', content: {} }));
+  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('1006'), taskReply({ id: '1006', status: 'succeeded', content: {} }));
   assert.equal(res.body.status, 'FAILED');
-  assert.deepEqual(settled, [['T6', false]]);
+  assert.deepEqual(settled, [['1006', false]]);
   // والنجاح الكامل ما زال يسوّي بـtrue (لا استرجاع)
   settled.length = 0;
-  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('T7'), taskReply({ id: 'T7', status: 'succeeded', content: { url: 'https://cdn/ok.mp4' } }));
+  res = await runHandler('api/_lib/minimax-status.js', stubs, statusReq('1007'), taskReply({ id: '1007', status: 'succeeded', content: { url: 'https://cdn/ok.mp4' } }));
   assert.equal(res.body.status, 'SUCCEEDED');
-  assert.deepEqual(settled, [['T7', true]]);
+  assert.deepEqual(settled, [['1007', true]]);
   // حارس «مرّة واحدة» في الوحدة نفسها، لا في المتّصل
   assert.match(read('api/_lib/video-job.js'), /kvSetIfAbsent\(key \+ ':done'/, 'حارس الاسترجاع المزدوج');
 });
