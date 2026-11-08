@@ -136,8 +136,8 @@ async function priorOf(user, username, p) {
 }
 
 // القراءة ترمي عند عطب KV (لا «لا سجلّ» كاذبة تُسقط حدثًا مدفوعًا) — المستدعي يردّ 500 فيعيد المرسل.
-async function readRec(id) {
-  const raw = await kvGetRaw(recKey(id));
+async function readRec(id, opts) {
+  const raw = await kvGetRaw(recKey(id), opts); /* v-r3 (r4-back): opts = { strict } لمن يكتب على ما يقرؤه (completeDropped) */
   if (raw === null || raw === undefined || raw === '') return null;
   try { return JSON.parse(raw); } catch (e) { return null; }
 }
@@ -270,6 +270,28 @@ async function dropPeriod(name, u, r) {
   await require('./auth.js').putUser(name, u);
   if (!back && r.media && u.media && u.media[r.media]) return u.media[r.media].plan; // v-r3 (r3-2): المؤجَّلة التي سرت مكانها
   return back ? back.plan : null;
+}
+
+/* v-r3 (r4-back): توأم r3-rv2-stale في جهة السحب — استردادٌ كامل أعاد رصيد الفترة السابقة (fillOnce 'media-back:<الدفعة>') ثمّ فشلت كتابة
+   السجلّ، فيفكّ revoke علامته ويردّ 500. حتّى إعادة الحدث يبقى السجلّ على الفترة المستردّة ورصيدُ السابقة في العدّاد، وكلّ كاتب يأخذ القفل قبلها
+   يعمل عليها: استرداد جزئيّ لها يصل بعد الكامل يأخذ الرصيد العائد (والإعادة لا تملأ: العلامة)، ومنحٌ جديد يحفظ سابقتَه الفترةَ المستردّة فيعيد
+   استردادُه رصيدَ الأقدم ثانيةً، واسترداد جزئيّ للعائدة لا يجد فترتها، وتجديد العائدة يُؤجَّل تحت المستردّة. يُكمَل السحب هنا مرّة تحت قفل الحساب
+   (create-checkout-session withAccount) قبل أيّ كاتب: فترةٌ لدفعتها علامة إعادة = سُحبت كاملًا ولم يصل سجلّها. fillOnce يجد العلامة فلا يملأ
+   ثانية، وdropPeriod يكتب السجلّ (فشله يرمي قبل أثر الكاتب فيُعاد). القراءتان صارمتان: العطل يرمي لا «لا علامة». الكلفة قراءة لكلّ خانة وسائط. */
+async function completeDropped(name, u) {
+  if (!u || u.deleted || !u.media) return false;
+  let done = false;
+  for (const kind of Object.keys(u.media)) {
+    const x = u.media[kind];
+    if (!x || !x.payId) continue;
+    const was = await kvGetRaw(('media-back:' + cut(x.payId)).slice(0, 220), { strict: true });
+    if (was === null || was === undefined || String(was) === '') continue;
+    const rec = await readRec(String(x.payId), { strict: true });
+    if (!rec || rec.media !== kind || !holds(u, rec)) continue;
+    await dropPeriod(name, u, rec);
+    done = true;
+  }
+  return done;
 }
 
 async function applyRevoke(rec, step) {
@@ -694,3 +716,4 @@ async function paypalEvent(event) {
 module.exports = { recordGrant, linkGrant, relinkPrev, priorOf, findRec, revoke, stripeEvent, paypalEvent, verifyPaypalSig, captureOf, REC_TTL_SEC };
 module.exports.alertOwner = alertOwner; // v-lock-subs (srv-money-5): الويب هوك ينبّه المالك بدفعة لحساب محذوف بالمسار نفسه (سجلّ أخطائه + الإشعار بمهلة)
 module.exports.alertOnce = alertOnce; // v-r3 (r3-7): تنبيه مرّة لكلّ دفعة بحجز صارم — PayPal وStripe معًا
+module.exports.completeDropped = completeDropped; /* v-r3 (r4-back): قفل الحساب يكمل سحبًا أعاد رصيد السابقة ولم يصل سجلّه */

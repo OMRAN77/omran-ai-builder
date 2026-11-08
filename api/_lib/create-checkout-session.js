@@ -169,6 +169,8 @@ async function withAccount(username, fn, waitMs) {
     /* v-r3 (r3-rv2-stale): مؤجَّلة وسائط سرت (رصيدها وعلامتها في KV) ولم يصل سجلّها تُكمَل هنا قبل أيّ كاتب — المنح والسحب وتغيير الاسم والمرآة
        كانت تعمل على الفترة القديمة حتّى قراءة الوسائط التالية. تُكتب فورًا (فشلها يرمي قبل أيّ أثر للكاتب فيُعاد). انظر _mediaPlans completeActivated. */
     if (await completeActivated(acct.user, acct.name)) await putUser(acct.name, acct.user);
+    /* v-r3 (r4-back): وتوأمه في السحب — استرداد كامل أعاد رصيد الفترة السابقة (علامة media-back) ولم يصل سجلّه. dropPeriod يكتب السجلّ بنفسه. */
+    await require('./pay-refund.js').completeDropped(acct.name, acct.user);
     return fn(acct.name, acct.user);
   }, waitMs);
 }
