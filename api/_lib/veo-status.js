@@ -82,6 +82,10 @@ module.exports = async (req, res) => {
       res.status(200).json({ status: 'SUCCEEDED', output: [require('./veo-download.js').downloadUrl(rec.uri)] });
       return;
     }
+    /* v-lock-port-vid-r (srv-video-1): عمليّة Veo بشكلها القانونيّ وحده «models/<نموذج>/operations/<معرّف>» — تذكرتها بمعرّف العمليّة
+       (video-job.jobIdentity: مقطع النموذج قد يتجاهله جوجل)، وشكل آخر («operations/<معرّف>» أو بادئة غير models) قد يقرؤه العمليّةَ نفسها
+       ولا تذكرة له ولا علامة: تسليم بعد الردّ. */
+    if (!/^models\/[^/]+\/operations\/[^/]+$/.test(op)) { res.status(400).json({ error: 'Missing op' }); return; }
     const upstream = await fetch(GL + '/' + op, { headers: { 'x-goog-api-key': apiKey } });
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {

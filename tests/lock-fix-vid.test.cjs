@@ -12,7 +12,10 @@
    v-lock-port-vid (نقل الإصلاح فوق main بعد ١٢ يومًا): main أضاف مسار تسليم خامسًا — احتياط الفيديو «bk/<uuid>» (v-fal-backup) يتابعه
    veo-status عند fal ويسلّم رابط الناتج — وكان يسلّم بعد ردّ الكنس كما كانت الأربعة؛ وصار الاقتصاديّ على واجهة v2 (رابط الناتج في
    task.content.url، بلا files/retrieve)، و«سينمائي» على veo-create بمعرّف omni/… وتذكرة. كلّ ثابت من ثوابت المال أدناه يمرّ الآن على
-   الاحتياط أيضًا (fal في المصفوفات)، وفي آخر الملفّ مساره الكامل من veo-create الحقيقيّ و«سينمائي» الجديد. */
+   الاحتياط أيضًا (fal في المصفوفات)، وفي آخر الملفّ مساره الكامل من veo-create الحقيقيّ و«سينمائي» الجديد.
+   v-lock-port-vid-r (الجولة الثالثة، مراجعة معاكسة للنقل — «جولة ٣» في آخر الملفّ): رقم fal الواحد بمفتاحي تذكرة (احتياط bk/ وممثّل actor:)
+   كان يسلّم من الباب الآخر بعد الردّ أو قبل الكنس؛ وعلامة الردّ تُكتب قبل وقوعه (ضاع ردّ SET NX أو رمى refundPoints = لا ردّ ولا تسليم
+   للأبد)؛ ومعرّف Runway بحروف كبيرة وعمليّة Veo بمقطع نموذج آخر (أو بشكل غير models/…/operations/…) بلا تذكرة. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -41,7 +44,8 @@ const kv = new Map();
 const ttls = new Map();
 /* أعطال kv.js الحقيقيّة: ticketRead/doneRead = ردّ لا يُقرأ (المرن يرجع null، والصارم strict يرمي)، claimLost = SET NX بردّ ٢٠٠ لا يُقرأ
    (kvSetIfAbsent يرجع false ولم يُكتب شيء) */
-const fail = { setIfAbsent: 0, rawPrefix: '', ticketRead: 0, doneRead: 0, claimLost: 0 };
+const fail = { setIfAbsent: 0, rawPrefix: '', ticketRead: 0, doneRead: 0, claimLost: 0, claimWroteThrow: 0, claimWroteLost: 0 };
+/* v-lock-port-vid-r: claimWroteThrow/claimWroteLost = SET NX كتب العلامة ثمّ ضاع ردّه (مهلة بعد الكتابة، أو ردّ ٢٠٠ لا يُقرأ) */
 const isTicket = (k) => /^vidjob:[0-9a-f]{40}$/.test(String(k));
 const isDone = (k) => /^vidjob:[0-9a-f]{40}:done$/.test(String(k));
 let jitter = null; // دالّة تأخير أو null
@@ -49,7 +53,12 @@ const pause = async () => { if (jitter) await jitter(); };
 mock('api/_lib/kv.js', {
   kvGetRaw: async (k) => { await pause(); if (fail.doneRead > 0 && isDone(k)) { fail.doneRead--; return null; } return kv.has(k) ? String(kv.get(k)) : null; },
   kvSetRaw: async (k, v, ttl) => { await pause(); if (fail.rawPrefix && String(k).indexOf(fail.rawPrefix) === 0) throw new Error('redis down'); kv.set(k, String(v)); if (ttl) ttls.set(k, ttl); },
-  kvSetIfAbsent: async (k, v, ttl) => { await pause(); if (fail.setIfAbsent > 0) { fail.setIfAbsent--; throw new Error('redis timeout'); } if (fail.claimLost > 0 && isDone(k)) { fail.claimLost--; return false; } if (kv.has(k)) return false; kv.set(k, String(v)); ttls.set(k, ttl); return true; },
+  kvSetIfAbsent: async (k, v, ttl) => {
+    await pause(); if (fail.setIfAbsent > 0) { fail.setIfAbsent--; throw new Error('redis timeout'); } if (fail.claimLost > 0 && isDone(k)) { fail.claimLost--; return false; } if (kv.has(k)) return false; kv.set(k, String(v)); ttls.set(k, ttl);
+    if (fail.claimWroteThrow > 0 && isDone(k)) { fail.claimWroteThrow--; throw new Error('redis timeout after write'); }
+    if (fail.claimWroteLost > 0 && isDone(k)) { fail.claimWroteLost--; return false; }
+    return true;
+  },
   kvIncrBy: async (k, n) => { await pause(); const v = Number(kv.get(k) || 0) + Number(n); kv.set(k, String(v)); return v; },
   kvDecrBy: async (k, n) => { await pause(); const v = Number(kv.get(k) || 0) - Number(n); kv.set(k, String(v)); return v; },
   kvGetJSON: async (k, o) => {
@@ -104,7 +113,7 @@ const token = (u) => { const p = Buffer.from(JSON.stringify({ u, exp: NOW + DAY 
 /* حساب Max استهلك صلاحيّة فيديوهات باقته — فالخصم نقاط (نمط trend-omni ٦) */
 function account(u, p) { users.set(u, { username: u, plan: 'max', planUpdatedAt: NOW - DAY, points: p }); kv.set('points:' + u, String(p)); kv.set('planvid:' + encodeURIComponent(u) + ':' + Math.floor(NOW - DAY), '3'); }
 const pts = (u) => Number(kv.get('points:' + u));
-function reset() { kv.clear(); ttls.clear(); users.clear(); locks.clear(); media.length = 0; Object.assign(fail, { setIfAbsent: 0, rawPrefix: '', ticketRead: 0, doneRead: 0, claimLost: 0 }); jitter = null; }
+function reset() { kv.clear(); ttls.clear(); users.clear(); locks.clear(); media.length = 0; Object.assign(fail, { setIfAbsent: 0, rawPrefix: '', ticketRead: 0, doneRead: 0, claimLost: 0, claimWroteThrow: 0, claimWroteLost: 0 }); jitter = null; }
 /* الزمن يمضي «days» يومًا: يسقط كلّ مفتاح مدّته أقصر (كلّ الكتابات هنا عند الزمن صفر)، والمفتاح بلا مدّة يبقى */
 function after(days) { for (const [k, t] of [...ttls]) if (t && t <= days * 86400) { kv.delete(k); ttls.delete(k); } }
 /* معرّفات بشكل المزوّد الحقيقيّ: MiniMax رقم (v2 كـv1 — مثال التوثيق الرسميّ «424010985738629»)، والممثّل والاحتياط UUID بحروف صغيرة (request_id عند fal) */
@@ -136,6 +145,7 @@ providersOk();
 global.fetch = async (url, init) => {
   const u = new URL(String(url)).href; // كـfetch الحقيقيّ (WHATWG URL): «.» و«..» في المسار تُطبَّع قبل أن يصل المزوّد
   calls.push(u);
+  if (/tts\.speech\.microsoft\.com\//.test(u)) return new Response(Buffer.alloc(6000, 7), { status: 200 }); // v-lock-port-vid-r: صوت الممثّل (actor-create الحقيقيّ) — ثانية واحدة
   let r;
   if (/\/interactions$/.test(u)) r = P.omni(u);
   else if (/generativelanguage\.googleapis\.com\/v1beta\/.*operations\//.test(u)) r = P.veoOp(u);
@@ -171,6 +181,8 @@ async function omni(u, extra) {
   return r;
 }
 const delivered = (r) => r.body && r.body.status === 'SUCCEEDED' && Array.isArray(r.body.output) && r.body.output.length > 0;
+/* v-lock-port-vid-r: علامة «رُدّت» = '0' (القديمة) أو حجز ردّ برمز من كتبه ('"0:<16 hex>"' — يقرؤه صاحبه بعد ضياع ردّ SET NX) */
+const refundMark = (v) => v === '0' || /^"0:[0-9a-f]{16}"$/.test(String(v));
 const leaks = (r) => JSON.stringify(r.body || {}).match(/veo-download|cdn\.minimax|fal\.media|cloudfront/);
 
 /* تذكرة مهمّة غير متزامنة كما يسجّلها مسار الإنشاء بعد الخصم: نقاط مخصومة + تذكرة بنوع الخصم */
@@ -298,7 +310,8 @@ test('srv-video-1 ز: علامة «رُدّت» بلا انتهاء — بعد �
     await charged('reem', id, cost);
     assert.equal((await sweep('reem')).refunded, 1, kind);
     const k = job.ticketKey(id) + ':done';
-    assert.equal(kv.get(k), '0', kind + ': علامة الردّ');
+    const mark = kv.get(k);
+    assert.ok(refundMark(mark), kind + ': علامة الردّ — ' + mark);
     const ttl = ttls.get(k);
     for (const d of [3, 31, 400]) {
       after(d); // التذكرة (يومان) سقطت، والمزوّد ما زال يسلّم الناتج
@@ -306,7 +319,7 @@ test('srv-video-1 ز: علامة «رُدّت» بلا انتهاء — بعد �
       assert.ok(!delivered(p) && !leaks(p), kind + ' بعد ' + d + ' يومًا: لا تسليم فوق ردّ (مدّة العلامة ' + ttl + ' ثانية) — ' + JSON.stringify(p.body));
     }
     assert.ok(!ttl, kind + ': علامة الردّ بلا مدّة');
-    assert.equal(kv.get(k), '0', kind + ': ما زالت بعد سنة');
+    assert.equal(kv.get(k), mark, kind + ': ما زالت بعد سنة');
     assert.equal(pts('reem'), 1000, kind + ': ردّ واحد');
   }
   reset(); account('reem', 1000); providersOk();
@@ -688,4 +701,322 @@ test('srv-video-5 ز: العميل — يستلم op فيستطلع veo-status �
   assert.ok(!old.log.fetches.some((x) => /veo-status/.test(x)), 'الرابط المباشر بلا استطلاع');
   assert.equal(old.ctx.resultEl.src, 'blob:omni');
   assert.equal(old.ctx.downloadEl.href, OUT);
+});
+
+// ───── v-lock-port-vid-r (الجولة الثالثة، مراجعة معاكسة للنقل): رقم fal بمفتاحين، وحجز الردّ قبل وقوعه، وتهجئات Runway وVeo ─────
+/* (١) احتياط الفيديو «bk/<uuid>» و«ممثل يتكلم» «actor:<uuid>» كلاهما رقم طابور fal على الحساب نفسه (FAL_KEY)، ولكلّ واحد مفتاح تذكرة.
+   actor-status (بلا سجلّ actor/req) وfalStatus (بلا سجلّ fal:op) يبنيان رابط الطابور من الرقم وحده، وكلٌّ يفحص تذكرته هو — فإن قرأ fal
+   الطلب برقمه أيًّا كان مسار التطبيق في الرابط سلّم أحدهما فيديو الآخر بعد ردّه، أو قبل أن يردّه الكنس. المزوّد هنا يقرأ بالرقم وحده. */
+const actorCreate = require(rp('api/_lib/actor-create.js'));
+const falBackupLib = require(rp('api/_lib/fal-fallback.js'));
+function falById(id) {
+  providersOk();
+  const stOk = P.falStatus, resOk = P.falResult;
+  const same = (u) => { const m = /\/requests\/([^/?]+)/.exec(u); return !!m && m[1] === id; };
+  P.falStatus = (u) => (same(u) ? stOk() : { status: 404, body: { detail: 'Request not found' } });
+  P.falResult = (u) => (same(u) ? resOk() : { status: 404, body: { detail: 'Request not found' } });
+}
+async function actor(u) { // «ممثل يتكلم» من actor-create الحقيقيّ: الصوت ثمّ fal بتذكرة actor:<request_id>
+  process.env.AZURE_SPEECH_KEY = 'az-test';
+  const r = res();
+  await quiet(() => actorCreate({ method: 'POST', body: { speech: 'هلا والله', voiceGender: 'male', imageBase64: 'aGVsbG8=', imageMime: 'image/jpeg', ratio: '720:1280', confirmed: true, token: token(u) } }, r));
+  return r;
+}
+
+test('جولة ٣ أ (X1): احتياط ردّه الكنس ثمّ actor-status?id=<رقمه> — كان SUCCEEDED برابط fal؛ الآن FAILED بلا رابط ولا ناتج ولا ردّ ثانٍ', async () => {
+  reset(); account('sara', 1000); geminiOut();
+  const c = await trend('sara');
+  assert.equal(c.body && c.body.op, 'bk/' + FAL_REQ, JSON.stringify(c.body));
+  falById(FAL_REQ); // الفيديو جاهز عند fal ويُقرأ برقمه
+  assert.equal((await sweep('sara')).refunded, 1);
+  assert.equal(pts('sara'), 1000);
+  for (const kind of ['actor', 'fal']) {
+    const p = await poll(kind, kind === 'actor' ? 'actor:' + FAL_REQ : c.body.op);
+    assert.ok(!delivered(p) && !leaks(p), kind + ': لا تسليم فوق ردّ الاحتياط — ' + JSON.stringify(p.body));
+  }
+  assert.deepEqual(media, [], 'لا ناتج مسلَّم');
+  assert.equal((await sweep('sara', NOW + 2 * LATE)).refunded, 0);
+  assert.equal(pts('sara'), 1000, 'ردّ واحد');
+});
+
+test('جولة ٣ ب (X1b): الاحتياط يُستلم من actor-status أوّلًا ثمّ الكنس — كان يسلّم ثمّ يردّ ١٧٥ (فيديو مجّانيّ)؛ الآن التسليم يسوّي تذكرة الاحتياط فلا ردّ', async () => {
+  reset(); account('lina', 1000); geminiOut();
+  const c = await trend('lina');
+  assert.equal(c.body && c.body.op, 'bk/' + FAL_REQ, JSON.stringify(c.body));
+  falById(FAL_REQ);
+  const a = await poll('actor', 'actor:' + FAL_REQ);
+  const s = await sweep('lina');
+  assert.ok(!(delivered(a) && s.refunded), 'سُلِّم من باب الممثّل ثمّ رُدّت نقاط الاحتياط');
+  assert.ok(delivered(a), 'التسليم نفسه يبقى (الفيديو مدفوع): ' + JSON.stringify(a.body));
+  assert.equal(s.refunded, 0, 'المسلَّم لا يُردّ');
+  assert.ok(!kv.has(job.ticketKey(c.body.op)), 'تذكرة الاحتياط سُوّيت تسليمًا');
+  assert.ok(delivered(await poll('fal', c.body.op)), 'وصاحبه يستلمه من بابه');
+  assert.equal((await sweep('lina', NOW + 3 * DAY)).refunded, 0);
+  assert.equal(pts('lina'), 1000 - COSTS.veo_video, 'دفع مرّة واستلم');
+});
+
+test('جولة ٣ ج (X2): «ممثل يتكلم» من actor-create الحقيقيّ — رُدّ (كنسٌ أو عطل عند الاستطلاع) ثمّ veo-status?op=bk/<رقمه> لا يسلّم؛ وسُلِّم من bk أوّلًا لا يُردّ', async () => {
+  for (const how of ['sweep', 'poll-outage', 'deliver-first']) {
+    reset(); account('omar', 1000); providersOk();
+    const c = await actor('omar');
+    assert.equal(c.code, 200, how + ': ' + JSON.stringify(c.body));
+    assert.equal(c.body.id, FAL_REQ, how);
+    assert.ok(kv.has(job.ticketKey('actor:' + FAL_REQ)), how + ': تذكرة الممثّل');
+    assert.equal(pts('omar'), 1000 - COSTS.veo_video, how);
+    falById(FAL_REQ);
+    if (how === 'deliver-first') {
+      const a = await poll('fal', 'bk/' + FAL_REQ);
+      const s = await sweep('omar');
+      assert.ok(!(delivered(a) && s.refunded), how + ': سُلِّم من باب الاحتياط ثمّ رُدّت نقاط الممثّل');
+      assert.ok(delivered(a), how + ': ' + JSON.stringify(a.body));
+      assert.equal(s.refunded, 0, how);
+      assert.ok(delivered(await poll('actor', 'actor:' + FAL_REQ)), how + ': وبابه يسلّم');
+      assert.equal(pts('omar'), 1000 - COSTS.veo_video, how + ': دفع مرّة واستلم');
+      continue;
+    }
+    if (how === 'sweep') assert.equal((await sweep('omar')).refunded, 1, how);
+    else {
+      P.falStatus = () => ({ status: 403, body: { detail: 'User is locked. Reason: Exhausted balance.' } });
+      assert.equal((await poll('actor', 'actor:' + FAL_REQ)).code, 503, how);
+      falById(FAL_REQ); // رصيد fal عاد، والفيديو جاهز عنده
+    }
+    assert.equal(pts('omar'), 1000, how + ': رُدّت');
+    const p = await poll('fal', 'bk/' + FAL_REQ);
+    assert.ok(!delivered(p) && !leaks(p), how + ': لا تسليم فوق ردّ الممثّل — ' + JSON.stringify(p.body));
+    assert.ok(!delivered(await poll('actor', 'actor:' + FAL_REQ)), how + ': ولا من بابه');
+    assert.deepEqual(media, [], how + ': لا ناتج مسلَّم');
+    assert.equal((await sweep('omar', NOW + 2 * LATE)).refunded, 0, how);
+    assert.equal(pts('omar'), 1000, how + ': ردّ واحد');
+  }
+});
+
+test('جولة ٣ د: السباق بين الكنس واستطلاع الباب الآخر (الاتّجاهان) بترتيب عشوائيّ — إمّا ردّ بلا رابط وإمّا رابط بلا ردّ', async () => {
+  let seed = 31;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  const seen = { got: 0, back: 0 };
+  for (let i = 0; i < 40; i++) {
+    const u = uuid(900 + i);
+    const [own, cross] = i % 2 ? ['bk/' + u, 'actor'] : ['actor:' + u, 'fal'];
+    reset(); account('race', 1000); falById(u);
+    await charged('race', own, 175);
+    jitter = () => new Promise((r) => setTimeout(r, Math.floor(rnd() * 3)));
+    const [s, p] = await Promise.all([sweep('race'), poll(cross, cross === 'actor' ? 'actor:' + u : 'bk/' + u)]);
+    jitter = null;
+    const got = delivered(p), back = pts('race') === 1000;
+    assert.ok(got !== back, 'مرّة ' + i + ' (' + own + ' من باب ' + cross + '): سُلِّم=' + got + ' ورُدّ=' + back + ' — ' + JSON.stringify(p.body));
+    assert.equal(s.refunded, back ? 1 : 0);
+    seen[got ? 'got' : 'back']++;
+    if (back) for (const k of ['actor', 'fal']) assert.ok(!delivered(await poll(k, k === 'actor' ? 'actor:' + u : 'bk/' + u)), 'لا تسليم لاحق من أيّ باب');
+    else assert.equal((await sweep('race', NOW + 2 * LATE)).refunded, 0, 'كنس لاحق لا يردّ');
+  }
+  assert.equal(seen.got + seen.back, 40);
+});
+
+test('جولة ٣ هـ: المالك (بلا تذكرة في أيّ باب) — رقم fal يُسلَّم من البابين كما كان، والكنس لا يلمسه', async () => {
+  reset(); providersOk(); geminiOut();
+  const c = await trend('omran');
+  assert.equal(c.body && c.body.op, 'bk/' + FAL_REQ, JSON.stringify(c.body));
+  falById(FAL_REQ);
+  assert.ok(delivered(await poll('fal', c.body.op)));
+  assert.ok(delivered(await poll('actor', 'actor:' + FAL_REQ)));
+  assert.ok(delivered(await poll('fal', c.body.op)), 'وإعادته');
+  assert.equal((await sweep('omran')).refunded, 0);
+});
+
+/* (٢) علامة الردّ تُكتب قبل أن يقع الردّ: SET NX يكتبها ثمّ يضيع ردّه، أو يرمي refundPoints — فلا ردّ ولا تسليم أبدًا (A7/A8). */
+test('جولة ٣ و (A7): حجز الردّ كُتب وضاع ردّه (مهلة بعد الكتابة، أو ٢٠٠ لا يُقرأ) — كان لا ردّ ولا تسليم للأبد؛ الآن يُقرأ الحجز فيُردّ مرّة واحدة', async () => {
+  let n = 0;
+  for (const mode of ['claimWroteThrow', 'claimWroteLost']) {
+    for (const via of ['sweep', 'poll']) {
+      const id = mmId(800 + n++);
+      reset(); account('amal', 1000); providersOk();
+      await charged('amal', id, COSTS.minimax_video);
+      fail[mode] = 1;
+      if (via === 'sweep') assert.equal((await sweep('amal')).refunded, 1, mode + '/' + via + ': الكنس ردّ');
+      else {
+        P.mmQuery = () => ({ status: 200, body: { task: { status: 'failed', error: { code: 1, message: 'x' } } } });
+        assert.equal((await poll('mm', id)).body.status, 'FAILED', mode + '/' + via);
+        providersOk();
+      }
+      assert.equal(pts('amal'), 1000, mode + '/' + via + ': رُدّت رغم ضياع ردّ الحجز');
+      assert.ok(!locks.has('amal'), mode + '/' + via + ': القفل فُكّ');
+      const p = await poll('mm', id);
+      assert.ok(!delivered(p) && !leaks(p), mode + '/' + via + ': لا تسليم فوق ردّ — ' + JSON.stringify(p.body));
+      assert.equal((await sweep('amal', NOW + 2 * LATE)).refunded, 0, mode + '/' + via + ': لا ردّ ثانٍ');
+      assert.equal(pts('amal'), 1000, mode + '/' + via);
+    }
+  }
+  // حجزان متزامنان أحدهما ضاع ردّه: ردّ واحد بالضبط
+  reset(); account('amal', 1000); providersOk();
+  await charged('amal', mmId(899), COSTS.minimax_video);
+  fail.claimWroteThrow = 1;
+  const out = await Promise.all([sweep('amal'), sweep('amal'), sweep('amal')]);
+  assert.equal(out.reduce((a, s) => a + s.refunded, 0), 1, 'ردّ واحد من ثلاثة كنوس');
+  assert.equal(pts('amal'), 1000);
+  // حجز التسليم كُتب وضاع ردّه: RUNNING ثمّ يسلّم (العلامة '1' تُقرأ)، والكنس لا يردّ ما سُلِّم
+  for (const kind of ['mm', 'fal', 'actor']) {
+    const id = kind === 'mm' ? mmId(898) : kind === 'fal' ? falOp(898) : 'actor:' + uuid(898);
+    reset(); account('amal', 1000); providersOk();
+    await charged('amal', id, 100);
+    fail.claimWroteThrow = 1;
+    const a = await poll(kind, id);
+    assert.equal(a.body && a.body.status, 'RUNNING', kind + ': لم يُحسم — ' + JSON.stringify(a.body));
+    assert.ok(delivered(await poll(kind, id)), kind + ': التالي يسلّم');
+    assert.equal((await sweep('amal')).refunded, 0, kind + ': المسلَّم لا يُردّ');
+    assert.equal(pts('amal'), 900, kind);
+  }
+  // عطلان متتاليان في الردّ نفسه (ضاع ردّ الحجز ثمّ تعذّرت قراءته): يبقى بلا حسم — لكن لا ردّ مرّتين ولا تسليم فوق حجز ردّ
+  reset(); account('amal', 1000); providersOk();
+  await charged('amal', mmId(897), COSTS.minimax_video);
+  fail.claimWroteThrow = 1; fail.doneRead = 1;
+  const r1 = await sweep('amal');
+  const r2 = await sweep('amal', NOW + LATE + 60000);
+  const p = await poll('mm', mmId(897));
+  assert.ok(r1.refunded + r2.refunded <= 1, 'لا ردّ مرّتين');
+  assert.ok(!(delivered(p) && pts('amal') === 1000), 'ولا تسليم مع ردّ');
+  assert.ok(!delivered(p), 'حجز ردّ قائم = لا تسليم');
+});
+
+test('جولة ٣ ز: الحجز لم يُكتب أو التذكرة لم تُقرأ عند الكنس — كانت المهمّة تسقط من الفهرس بلا ردّ؛ الآن تبقى: الكنس التالي يردّ، أو يستلم صاحبها ولا يُردّ', async () => {
+  let n = 0;
+  for (const glitch of ['setIfAbsent', 'ticketRead']) {
+    for (const next of ['sweep', 'poll']) {
+      const id = mmId(850 + n++);
+      reset(); account('huda', 1000); providersOk();
+      await charged('huda', id, COSTS.minimax_video);
+      fail[glitch] = 1;
+      assert.equal((await sweep('huda')).refunded, 0, glitch + ': لم يُحسم');
+      assert.equal(pts('huda'), 1000 - COSTS.minimax_video, glitch);
+      if (next === 'sweep') {
+        assert.equal((await sweep('huda', NOW + LATE + 60000)).refunded, 1, glitch + ': بقيت في الفهرس فردّها الكنس التالي');
+        assert.equal(pts('huda'), 1000, glitch);
+        assert.ok(!delivered(await poll('mm', id)), glitch + ': ولا تسليم بعده');
+      } else {
+        assert.ok(delivered(await poll('mm', id)), glitch + ': صاحبها يستلمه');
+        assert.equal((await sweep('huda', NOW + LATE + 60000)).refunded, 0, glitch + ': المسلَّم لا يُردّ');
+        assert.equal(pts('huda'), 1000 - COSTS.minimax_video, glitch);
+      }
+    }
+  }
+});
+
+test('جولة ٣ ح (A8): refundPoints يرمي (قبل أن يمسّ الرصيد) — كان يُعدّ ردًّا وعلامته تمنع التسليم للأبد؛ الآن لا يُعدّ، والحجز يُفكّ، والمهمّة تبقى', async () => {
+  const boom = { refundPoints: async () => { throw new Error('vip read failed'); } };
+  for (const next of ['sweep', 'poll']) {
+    reset(); account('dana', 1000); providersOk();
+    await charged('dana', mmId(870), COSTS.minimax_video);
+    const s = await quiet(() => job.sweepStaleVideoJobs('dana', { now: NOW + LATE, points: boom }));
+    assert.equal(s.refunded, 0, next + ': لا يُعدّ ردًّا ما لم يقع');
+    assert.equal(pts('dana'), 1000 - COSTS.minimax_video, next);
+    assert.ok(kv.has(job.ticketKey(mmId(870))), next + ': التذكرة باقية');
+    assert.ok(!kv.has(job.ticketKey(mmId(870)) + ':done'), next + ': الحجز فُكّ');
+    if (next === 'sweep') {
+      assert.equal((await sweep('dana', NOW + LATE + 60000)).refunded, 1, next + ': الكنس التالي يردّ');
+      assert.equal(pts('dana'), 1000, next);
+      assert.ok(!delivered(await poll('mm', mmId(870))), next + ': ولا تسليم بعده');
+      assert.equal((await sweep('dana', NOW + 2 * LATE)).refunded, 0, next + ': مرّة واحدة');
+      assert.equal(pts('dana'), 1000, next);
+    } else {
+      assert.ok(delivered(await poll('mm', mmId(870))), next + ': صاحبها يستلمه');
+      assert.equal((await sweep('dana', NOW + LATE + 60000)).refunded, 0, next + ': المسلَّم لا يُردّ');
+      assert.equal(pts('dana'), 1000 - COSTS.minimax_video, next);
+    }
+  }
+  // الردّ من الاستطلاع (فشل المهمّة) ورمية refundPoints: الكنس بعده يردّ مرّة
+  reset(); account('dana', 1000); providersOk();
+  await charged('dana', mmId(871), COSTS.minimax_video);
+  const real = points.refundPoints;
+  points.refundPoints = async () => { throw new Error('vip read failed'); };
+  try {
+    P.mmQuery = () => ({ status: 200, body: { task: { status: 'failed', error: { code: 1, message: 'x' } } } });
+    assert.equal((await poll('mm', mmId(871))).body.status, 'FAILED');
+  } finally { points.refundPoints = real; }
+  assert.equal(pts('dana'), 1000 - COSTS.minimax_video, 'لم يقع الردّ');
+  assert.equal((await sweep('dana')).refunded, 1, 'الكنس يردّ ما لم يقع');
+  assert.equal(pts('dana'), 1000);
+  assert.equal((await poll('mm', mmId(871))).body.status, 'FAILED');
+  assert.equal((await sweep('dana', NOW + 2 * LATE)).refunded, 0);
+  assert.equal(pts('dana'), 1000, 'ردّ واحد');
+});
+
+test('جولة ٣ ط: علامة «رُدّت» القديمة («0» قبل هذا النشر، وتذكرة بقيت لأنّ حذفها ابتُلع) — لا تسليم ولا ردّ ثانٍ', async () => {
+  for (const leftover of [false, true]) {
+    reset(); account('reem', 1000); providersOk();
+    await charged('reem', mmId(880), COSTS.minimax_video);
+    kv.set('points:reem', '1000'); // الكود القديم ردّ
+    kv.set(job.ticketKey(mmId(880)) + ':done', '0');
+    if (!leftover) kv.delete(job.ticketKey(mmId(880)));
+    assert.ok(!delivered(await poll('mm', mmId(880))), 'لا تسليم فوق ردّ قديم');
+    assert.equal((await sweep('reem')).refunded, 0, 'ولا ردّ ثانٍ');
+    P.mmQuery = () => ({ status: 200, body: { task: { status: 'failed', error: { code: 1, message: 'x' } } } });
+    await poll('mm', mmId(880));
+    assert.equal(pts('reem'), 1000, leftover ? 'التذكرة الباقية لا تردّ ثانيةً' : 'مرّة واحدة');
+  }
+});
+
+/* (٣) تهجئات بقيت: معرّف Runway الخامّ بحروف كبيرة، وعمليّة Veo بمقطع نموذج آخر — المزوّد قد يقرؤهما المهمّةَ نفسها */
+const RW_UUID = 'a3f1c2d4-5b6e-4f70-8a91-b2c3d4e5f607';
+test('جولة ٣ ي: Runway — ردّ عطلنا (٤٠٢) ثمّ الاستطلاع بالمعرّف الخامّ بحروف كبيرة لا يسلّم؛ وتسليمه بالكبيرة أوّلًا يسوّي التذكرة فلا يُردّ بعده', async () => {
+  const id = '0:' + RW_UUID, up = '0:' + RW_UUID.toUpperCase();
+  reset(); account('rami', 1000); providersOk(); // مزوّد يقرأ المعرّف بأيّ حالة حروف
+  await charged('rami', id, COSTS.runway_video);
+  P.rw = () => ({ status: 402, body: { error: 'You do not have enough credits to run this task.' } });
+  await poll('rw', id);
+  assert.equal(pts('rami'), 1000, 'رُدّت');
+  providersOk();
+  /* الكبيرة يوحّدها مفتاح التذكرة؛ والمسافة والترميز والنقطة والشرطة المائلة (قد يتسامح فيها المزوّد) تُرفض قبل أيّ نداء */
+  const shaped = [' ' + RW_UUID, RW_UUID + ' ', '%61' + RW_UUID.slice(1), RW_UUID + '.', './' + RW_UUID, RW_UUID + '/', '-' + RW_UUID];
+  for (const v of [up, RW_UUID.toUpperCase(), '0:' + RW_UUID.slice(0, 8).toUpperCase() + RW_UUID.slice(8)].concat(shaped.map((s) => '0:' + s))) {
+    const p = await poll('rw', v);
+    assert.ok(!delivered(p) && !leaks(p), '«' + v + '»: لا تسليم فوق ردّ — ' + JSON.stringify(p.body));
+  }
+  for (const s of shaped) assert.equal((await poll('rw', '0:' + s)).code, 400, '«' + s + '»: الشكل القانونيّ وحده');
+  assert.deepEqual(media, []);
+  assert.equal(pts('rami'), 1000);
+
+  reset(); account('rami', 1000); providersOk();
+  await charged('rami', id, COSTS.runway_video);
+  assert.ok(delivered(await poll('rw', up)), 'الكبيرة تسلّم وتسوّي التذكرة نفسها');
+  P.rw = () => ({ status: 402, body: { error: 'You do not have enough credits to run this task.' } });
+  await poll('rw', id);
+  providersOk();
+  assert.equal((await sweep('rami')).refunded, 0);
+  assert.equal(pts('rami'), 1000 - COSTS.runway_video, 'سُلِّم بالكبيرة فلا ردّ بعده');
+});
+
+test('جولة ٣ ك: Veo — ردّ الكنس ثمّ الاستطلاع بمقطع نموذج آخر للعمليّة نفسها لا يسلّم؛ وتسليمه بمقطع آخر أوّلًا يسوّي التذكرة فلا يُردّ', async () => {
+  const op = 'models/veo-3.1-fast-generate-preview/operations/opz1';
+  const others = ['models/veo-3.1-generate-preview/operations/opz1', 'models/veo-3.1/operations/opz1', 'models/anything/operations/opz1'];
+  const shaped = ['operations/opz1', 'tunedModels/veo/operations/opz1', 'v1beta/models/veo-3.1/operations/opz1', 'models/veo-3.1/operations/opz1/x'];
+  reset(); account('vera', 1000); providersOk(); // جوجل هنا يتجاهل مقطع النموذج (والمزيّف يقرأ أيّ مسار ينتهي بالعمليّة)
+  await charged('vera', op, COSTS.veo_video);
+  assert.equal((await sweep('vera')).refunded, 1);
+  for (const v of others.concat(shaped)) {
+    const p = await poll('veo', v);
+    assert.ok(!delivered(p) && !leaks(p), '«' + v + '»: لا تسليم فوق ردّ — ' + JSON.stringify(p.body));
+  }
+  for (const v of shaped) assert.equal((await poll('veo', v)).code, 400, '«' + v + '»: شكل العمليّة القانونيّ وحده');
+  assert.equal(pts('vera'), 1000);
+
+  reset(); account('vera', 1000); providersOk();
+  await charged('vera', op, COSTS.veo_video);
+  assert.ok(delivered(await poll('veo', others[0])), 'مقطع آخر يسلّم ويسوّي التذكرة نفسها');
+  assert.equal((await sweep('vera')).refunded, 0, 'المسلَّم لا يُردّ');
+  assert.equal(pts('vera'), 1000 - COSTS.veo_video);
+  assert.ok(delivered(await poll('veo', op)));
+});
+
+test('جولة ٣ ل: بادئتا رقم fal في video-job هما ما يكتبه الإنشاء — «bk/» من fal-fallback و«actor:» من actor-create (تغيير إحداهما يعيد فتح الباب)', () => {
+  assert.equal(falBackupLib.VIDEO_OP_PREFIX, 'bk/');
+  assert.match(read('api/_lib/actor-create.js'), /rememberVideoJob\('actor:' \+ sub\.id/);
+  assert.match(read('api/_lib/actor-status.js'), /settleVideoJob\('actor:' \+ id/);
+  assert.equal(typeof job.deliveryAliases, 'function', 'video-job يصدّر deliveryAliases');
+  assert.deepEqual(job.deliveryAliases('bk/' + FAL_REQ), ['actor:' + FAL_REQ]);
+  assert.deepEqual(job.deliveryAliases('actor:' + FAL_REQ), ['bk/' + FAL_REQ]);
+  assert.deepEqual(job.deliveryAliases(mmId(1)), []);
+  assert.deepEqual(job.deliveryAliases('omni/' + FAL_REQ), []);
+  assert.equal(job.ticketKey('0:' + RW_UUID.toUpperCase()), job.ticketKey('0:' + RW_UUID), 'Runway بلا حالة حروف');
+  assert.equal(job.ticketKey('models/a/operations/x1'), job.ticketKey('models/b/operations/x1'), 'Veo بمعرّف العمليّة');
+  assert.notEqual(job.ticketKey('models/a/operations/x1'), job.ticketKey('models/a/operations/x2'));
+  assert.notEqual(job.ticketKey(mmId(1)), job.ticketKey(mmId(2)));
 });

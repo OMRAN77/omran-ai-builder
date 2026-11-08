@@ -34,6 +34,9 @@ module.exports = async (req, res) => {
       console.error('[video-status] missing provider key'); res.status(500).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' });
       return;
     }
+    /* v-lock-port-vid-r (srv-video-1): معرّف المهمّة الخامّ حروف وأرقام وشَرطات (UUID عند المزوّد) — مسافة أو ترميز أو نقطة قد يقرؤها المهمّةَ
+       نفسها ولا تذكرة لها ولا علامة: تسليم بعد ردّ عطلنا (٤٠٢). حالة الحروف يوحّدها مفتاح التذكرة (video-job.jobIdentity). */
+    if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/.test(String(rawId || ''))) { res.status(400).json({ error: 'Missing id' }); return; }
 
     const upstream = await fetch(RUNWAY_API_BASE + '/v1/tasks/' + encodeURIComponent(rawId), {
       method: 'GET',
