@@ -75,7 +75,7 @@ function fakeIDB(seed) {
         if (r.rq.onsuccess) r.rq.onsuccess({ target: r.rq });
         setTimeout(step, 0);
       };
-      setTimeout(step, 0);
+      setTimeout(step, hooks.lag || 0); // lag: قرص بطيء — أوّل طلب في كلّ معاملة بعد lag م.ث (r3-rv1ج)
     }));
     return tx;
   }
@@ -472,5 +472,107 @@ test('١٢. مهلة الإقلاع لانقطاع التقدّم: قراءة ط
   let hung = 0;
   await assert.rejects(guard()(() => { hung++; return new Promise(() => {}); }), /idb-timeout/);
   assert.equal(hung, 2);
+});
+
+/* ── جولة المراجعة (r3-rv*) ── */
+/* «إعادة التحميل» أثناء حفظ مقسّم جارٍ — المعالج البطيء محاكى: كلّ نداء Date.now يتقدّم ١٥م.ث (فيتنازل الحفظ كلّ ٣ مشاريع تقريبًا)،
+   والتنازل ٢٥م.ث حقيقيّة، ومهلة ٥ث ← ١٠٠م.ث، وسقف ٣٠ث ← ٦٠٠م.ث. التغيير يمرّ عليه مؤقّت التجميع (__saveFlush) فيبدأ حفظ مقسّم
+   ولا يبقى شيء «قذر» — ثمّ ينقر المستخدم «إعادة التحميل» والحفظ ما زال جاريًا. */
+const slowTimers = (f, ms) => setTimeout(f, ms === 0 ? 25 : (ms >= 1000 ? Math.round(ms / 50) : ms));
+async function inflightApp() {
+  const fdb = fakeIDB();
+  const A = makeApp(fdb, { setTimeout: slowTimers });
+  A.ctx.state.projects = history(30, 20000); A.ctx.state.currentId = A.ctx.state.projects[29].id;
+  await A.save(false);
+  let off = 0; const RD = A.ctx.Date;
+  A.ctx.Date = class extends RD { static now() { off += 15; return RD.now() + off; } };
+  A.set('__vaultLastLen', 70000000); A.set('__idbSavedAt', 0);
+  A.ctx.state.projects[17].messages.push({ role: 'user', content: 'CHANGE_IN_FLIGHT' });
+  A.ctx.saveState();
+  A.ctx.__saveFlush(); // ما يفعله مؤقّت التجميع: حفظ مقسّم يبدأ، ولا شيء «قذر» بعده
+  assert.equal(A.get('__saveDirty'), false);
+  await tick(30);
+  return { fdb, A };
+}
+
+test('r3-rv1أ. «إعادة التحميل» أثناء حفظ مقسّم جارٍ ولا شيء ينتظر: الإعادة بعد التزام الحفظ الذي يحمل التغيير لا بعد ٥ث من النقر', async () => {
+  const { fdb, A } = await inflightApp();
+  const w = detector(A, () => fdb.snapshot());
+  w.freeze();
+  w.reloadBtn.onclick();
+  for (let i = 0; i < 300 && !w.reloads.length; i++) await tick(10);
+  assert.equal(w.reloads.length, 1, 'أعاد');
+  const after = await makeApp(w.reloads[0]).load();
+  assert.ok(J(after).includes('CHANGE_IN_FLIGHT'), 'التغيير الذي يحمله الحفظ الجاري ضاع بإعادة التحميل');
+});
+
+test('r3-rv1ب. حفظ أحدث يوقف الحفظ المنتظَر أثناء الانتظار: الانتظار يتبع الأحدث (هو الذي يحمل التغيير الآن)', async () => {
+  const { fdb, A } = await inflightApp();
+  const w = detector(A, () => fdb.snapshot());
+  w.freeze();
+  w.reloadBtn.onclick();
+  // بعد النقر: تغيير آخر ومؤقّت التجميع يبدأ حفظًا جديدًا ← الجيل يرتفع فيتوقّف الجاري عند أوّل مهلة بلا فهرس
+  A.ctx.state.projects[3].title = 'بعد النقر';
+  A.ctx.saveState();
+  A.ctx.__saveFlush();
+  for (let i = 0; i < 300 && !w.reloads.length; i++) await tick(10);
+  assert.equal(w.reloads.length, 1, 'أعاد');
+  const after = await makeApp(w.reloads[0]).load();
+  assert.ok(J(after).includes('CHANGE_IN_FLIGHT'), 'الحفظ المنتظَر توقّف والأحدث لم يلتزم بعد — والإعادة لم تنتظره');
+});
+
+test('r3-rv1ج. مهلة الانتظار لـIndexedDB لا للتسلسل: حفظ متزامن طويل خلف حفظ جارٍ لا تسبقه المهلة إلى الإعادة', async () => {
+  const fdb = fakeIDB();
+  const A = makeApp(fdb, { setTimeout: slowTimers }); // ٥ث ← ١٠٠م.ث
+  const busy = (ms) => { const t = Date.now(); while (Date.now() - t < ms); };
+  A.ctx.state.projects = history(30, 2000); A.ctx.state.currentId = A.ctx.state.projects[29].id;
+  A.ctx.state.projects.forEach((p) => { p.heavy = { toJSON: () => { busy(10); return 1; } }; }); // تسلسل كلّ مشروع ١٠م.ث: الحفظ كلّه ٣٠٠م.ث
+  await A.save(false);
+  A.set('__vaultLastLen', 70000000); A.set('__idbSavedAt', 0);
+  A.ctx.state.projects[17].messages.push({ role: 'user', content: 'CHANGE_IN_FLIGHT' });
+  A.ctx.saveState();
+  fdb.hooks.lag = 40; // القرص بطيء: معاملة الفهرس تنتظر ٤٠م.ث
+  const n0 = fdb.hooks.txSeen;
+  A.ctx.__saveFlush(); // حفظ مقسّم جارٍ
+  for (let i = 0; i < 2000 && fdb.hooks.txSeen === n0; i++) await tick(1); // النقر والحفظ الجاري ينتظر التزام فهرسه في IndexedDB
+  assert.notEqual(fdb.hooks.txSeen, n0, 'الحفظ الجاري بلغ معاملة فهرسه');
+  A.ctx.state.projects[3].messages.push({ role: 'user', content: 'CHANGE_PENDING' });
+  A.ctx.saveState(); // وتغيير ينتظر في التجميع ← النقر يفرض حفظًا متزامنًا خلف الجاري (٣٠٠م.ث في مهمّة واحدة > مهلة ١٠٠م.ث)
+  const w = detector(A, () => fdb.snapshot());
+  w.freeze();
+  w.reloadBtn.onclick();
+  for (let i = 0; i < 300 && !w.reloads.length; i++) await tick(10);
+  assert.equal(w.reloads.length, 1, 'أعاد');
+  const after = J(await makeApp(w.reloads[0]).load());
+  assert.ok(after.includes('CHANGE_IN_FLIGHT') && after.includes('CHANGE_PENDING'), 'المهلة انقضت أثناء التسلسل فسبقت الإعادة التزام الفهرس');
+});
+
+test('r3-rv2. التراجع ثمّ العودة: الإصدار السابق كتب المرآة المنحّفة سجلًّا قديمًا — الإقلاع يدمجه بالفهرس بالمعرّف ولا يُكنس التاريخ', async () => {
+  const fdb = fakeIDB();
+  const A = makeApp(fdb, { random: 0.111 });
+  const full = history(12, 20000);
+  A.ctx.state.projects = clone(full);
+  await A.save(false);
+  // الإصدار السابق لا يقرأ إلّا aiapp_projects: يقلع على المرآة المنحّفة (أحدث ما يتّسع، بلا كود ولا آلة زمن)، وأوّل حفظ له يكتبها سجلًّا قديمًا
+  const slim = full.slice(-3).map((p) => ({ id: p.id, title: p.title, provider: p.provider, messages: p.messages.map((m) => ({ role: m.role, content: m.content })), code: '', updatedAt: p.updatedAt }));
+  slim.push({ id: 'p_rolled_back', title: 'من الإصدار السابق', messages: [{ role: 'user', content: 'كتبتها أثناء التراجع' }], code: '' });
+  fdb.kv().set('aiapp_projects', slim);
+  // العودة إلى هذا الإصدار: تبويب جديد
+  const B = makeApp(fdb, { random: 0.777 });
+  const got = await B.load();
+  assert.equal(got.length, 13, 'التاريخ كلّه + محادثة الإصدار السابق: ' + got.length);
+  assert.equal(J(got.slice(0, 12)), J(full), 'النسخة الكاملة تغلب المنحّفة (الرسائل نفسها، والكاملة أطول)');
+  assert.equal(got[12].messages[0].content, 'كتبتها أثناء التراجع', 'وما كتبه الإصدار السابق وحده يُضاف');
+  B.ctx.state.projects = got;
+  await B.save(false);
+  assert.ok(!fdb.keys().includes('aiapp_projects'), 'رُحّل');
+  // بعد ١١ دقيقة: كنس مفاتيح التبويب الآخر القديمة لا يمسّ شيئًا من التاريخ
+  B.advance(11 * 60000);
+  B.ctx.state.projects[0].title = 'بعد ١١ دقيقة';
+  await B.save(false);
+  const back = await makeApp(fdb.snapshot()).load();
+  assert.equal(back.length, 13, 'بعد الكنس: ' + back.length);
+  assert.equal(J(back), J(B.ctx.state.projects));
+  assert.ok(back.filter((p) => p.code).length >= 6 && back.some((p) => (p.codeHistory || []).length === 2), 'التطبيقات بكودها وآلة الزمن');
 });
 
