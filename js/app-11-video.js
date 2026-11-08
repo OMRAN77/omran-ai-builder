@@ -83,6 +83,17 @@
     }catch(e){ __swallow(e, 'video:partial-note'); }
     return bT('اكتمل ' + k + ' من ' + n + ' مشاهد — الجاهز تحت.', 'Finished ' + k + ' of ' + n + ' scenes — the ready part is below.');
   }
+  /* v-share-visible (فحص المتصفّح ٧ نوفمبر): video.js ينقل الفيديو إلى ‎.vmk-stage‎، وفيديوها مطلق inset:0 فوق ما بعده — فكان صفّ
+     «مشهد N» المُدرج بعد الفيديو يُرسم تحته: لا تحميل ولا مشاركة تُرى ولا تُلمس. الصفّ مكان زرّ التحميل (يُخفى للمشاهد المتعدّدة). */
+  function placeSceneLinks(linksEl){
+    try{
+      const inStage = !!(resultEl.closest && resultEl.closest('.vmk-stage'));
+      const an = inStage ? (downloadEl.__omShareNext || downloadEl) : resultEl;
+      if(an && an.parentNode && an.nextSibling !== linksEl) an.parentNode.insertBefore(linksEl, an.nextSibling);
+    }catch(e){ __swallow(e, 'vmk:scene-links'); }
+  }
+  /* «مشهد N» و«مشاركة» زوج لا ينقسم على سطرين — بلا الإيموجي (v-clean-ui) كان الزرّان «مشهد N» و«مشهد N» */
+  function scenePair(a){ const s = document.createElement('span'); s.style.cssText = 'display:inline-flex;gap:4px;align-items:center;'; s.appendChild(a); return s; }
   function showPartialScenes(urls, n, why){
     let idx = 0;
     resultEl.onended = () => { idx++; if(idx < urls.length){ resultEl.src = urls[idx]; resultEl.play().catch(() => {}); } };
@@ -96,8 +107,8 @@
       linksEl = document.createElement('div');
       linksEl.id = 'filmSceneLinks';
       linksEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;justify-content:center;';
-      resultEl.parentNode.insertBefore(linksEl, resultEl.nextSibling);
     }
+    placeSceneLinks(linksEl);
     linksEl.innerHTML = '';
     if(urls.length > 1) urls.forEach((u, i) => {
       const a = document.createElement('a');
@@ -105,9 +116,9 @@
       a.download = 'scene-' + (i + 1) + '.mp4';
       a.textContent = (bT('⬇️ مشهد ','⬇️ Scene ')) + (i + 1);
       a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
-      linksEl.appendChild(a);
-      /* v-share-next: «↗️ مشهد N» بجانب «⬇️ مشهد N» */
-      if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'video', label: '↗️ ' + bT('مشهد ', 'Scene ') + (i + 1), style: a.style.cssText + 'border:0;cursor:pointer;font-family:inherit;', getSrc: function(){ return u; } }); }catch(e){ __swallow(e, 'vmk:scene-share'); } }
+      linksEl.appendChild(scenePair(a));
+      /* v-share-next: «مشاركة» بجانب «⬇️ مشهد N» (زوج واحد، المفتاح shareNextBtn بلغات التطبيق) */
+      if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'video', style: a.style.cssText + 'border:0;cursor:pointer;font-family:inherit;', getSrc: function(){ return u; } }); }catch(e){ __swallow(e, 'vmk:scene-share'); } }
     });
     setStatus(why + ' ' + partialScenesNote(urls.length, n));
   }
@@ -1509,8 +1520,8 @@
             linksEl = document.createElement('div');
             linksEl.id = 'filmSceneLinks';
             linksEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;justify-content:center;';
-            resultEl.parentNode.insertBefore(linksEl, resultEl.nextSibling);
           }
+          placeSceneLinks(linksEl);
           linksEl.innerHTML = '';
           builtScenes.forEach((sc, i) => {
             const a = document.createElement('a');
@@ -1518,9 +1529,9 @@
             a.download = 'scene-' + (i + 1) + '.mp4';
             a.textContent = (bT('⬇️ مشهد ','⬇️ Scene ')) + (i + 1);
             a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
-            linksEl.appendChild(a);
-            /* v-share-next: «↗️ مشهد N» بجانب «⬇️ مشهد N» */
-            if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'video', label: '↗️ ' + bT('مشهد ', 'Scene ') + (i + 1), style: a.style.cssText + 'border:0;cursor:pointer;font-family:inherit;', getSrc: function(){ return sc.videoUrl; } }); }catch(e){ __swallow(e, 'vmk:scene-share2'); } }
+            linksEl.appendChild(scenePair(a));
+            /* v-share-next: «مشاركة» بجانب «⬇️ مشهد N» (زوج واحد، المفتاح shareNextBtn بلغات التطبيق) */
+            if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'video', style: a.style.cssText + 'border:0;cursor:pointer;font-family:inherit;', getSrc: function(){ return sc.videoUrl; } }); }catch(e){ __swallow(e, 'vmk:scene-share2'); } }
           });
           setStatus(bT('✅ فيلمك جاهز! المشاهد تُعرض ورا بعض تلقائيًا — وتقدر تحمّل كل مشهد من الأزرار تحت.','✅ Your film is ready! Scenes will play back-to-back — download each scene below.'));
         };
