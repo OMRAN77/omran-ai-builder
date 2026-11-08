@@ -270,3 +270,103 @@ test('٨. الواجهة: ٤٠٩ (أكثر من حساب دفع بالإيميل
   await en.ctx.adminResetLink('two@x.com');
   assert.ok(en.said.some((x) => x[0] === 'alert' && /More than one account paid with this email/.test(x[1]) && /x1/.test(x[1])));
 });
+
+/* ---------- v-owner-reset-scan: المالك بعد #1298 — إيميل علياء نفسه ← «ما في حساب» ثانيةً، وStripe ردّ بلا رفض ولم يُطلع اسمًا ---------- */
+test('٩. بريد مخزَّن بحروف كبيرة يُوجد بمسح الجلسات، وشحنة صفحة الدفع اسمها من جلستها، والفحص لا يكتب، و٤٠٤ بأعداد بلا بريد، والمسح محدود', async () => {
+  const realFetch = global.fetch, realWarn = console.warn;
+  const calls = [], warns = [];
+  /* Stripe مصغّر: القوائم الأحدث أوّلًا بـlimit وstarting_after وhas_more؛ مرشّح customer_details[email] يطابق البريد بحروفه كما خُزّن
+     (كقائمة العملاء الموثَّقة case-sensitive)؛ metadata الجلسة لا تنتقل إلى شحنتها (لا payment_intent_data) */
+  const sessions = [], charges = [], intents = {};
+  for (let i = 0; i < 140; i++) sessions.push({ id: 'cs_n' + i, payment_status: 'paid', customer_details: { email: 'buyer' + i + '@x.com' }, metadata: { username: 'buyer' + i } });
+  sessions.push({ id: 'cs_case', payment_status: 'paid', customer_details: { email: 'Aliya.Case@iCloud.com' }, metadata: { username: 'Case_User' } }); // الصفحة الثانية
+  sessions.push({ id: 'cs_page', payment_status: 'paid', payment_intent: 'pi_page', customer_details: { email: 'typed.other@x.com' }, metadata: { username: 'page_user' } });
+  for (let i = 0; i < 130; i++) charges.push({ id: 'ch_n' + i, paid: true, payment_intent: 'pi_n' + i, billing_details: { email: 'buyer' + i + '@x.com' }, metadata: {} });
+  charges.push({ id: 'ch_page', paid: true, payment_intent: 'pi_page', billing_details: { email: 'Pay.Page@X.com' }, metadata: {} }); // صفحة الدفع: لا اسم على الشحنة
+  charges.push({ id: 'ch_rcpt', paid: true, payment_intent: 'pi_rcpt', billing_details: { email: null }, receipt_email: 'receipt@x.com', metadata: { username: 'rcpt_user' } });
+  charges.push({ id: 'ch_orphan', paid: true, billing_details: { email: 'orphan@x.com' }, metadata: {} }); // دفعة لا اسم لها في أيّ مكان
+  intents.pi_page = { id: 'pi_page', metadata: {} };
+  intents.pi_rcpt = { id: 'pi_rcpt', metadata: { username: 'rcpt_user' } };
+  let endless = false;
+  const page = (arr, q) => {
+    const lim = Math.min(Number(q.get('limit')) || 10, 100);
+    const start = q.get('starting_after') ? arr.findIndex((x) => x.id === q.get('starting_after')) + 1 : 0;
+    return { data: arr.slice(start, start + lim), has_more: start + lim < arr.length };
+  };
+  const filler = (kind) => Array.from({ length: 100 }, (_, i) => (kind === 'cs'
+    ? { id: 'cs_e' + calls.length + '_' + i, payment_status: 'paid', customer_details: { email: 'e@x.com' }, metadata: { username: 'e' } }
+    : { id: 'ch_e' + calls.length + '_' + i, paid: true, billing_details: { email: 'e@x.com' }, metadata: {} }));
+  global.fetch = async (url, init) => {
+    const u = new URL(String(url));
+    const q = u.searchParams;
+    calls.push({ path: u.pathname, q: u.search, method: (init && init.method) || 'GET' });
+    if (u.origin !== 'https://api.stripe.com') throw new Error('نداء غير Stripe: ' + u);
+    let body = { data: [] };
+    if (u.pathname === '/v1/checkout/sessions') {
+      let arr = sessions;
+      if (q.get('customer_details[email]') !== null) arr = arr.filter((s) => s.customer_details.email === q.get('customer_details[email]'));
+      if (q.get('payment_intent')) arr = arr.filter((s) => s.payment_intent === q.get('payment_intent'));
+      body = endless ? { data: filler('cs'), has_more: true } : page(arr, q);
+    } else if (u.pathname === '/v1/charges') {
+      body = endless ? { data: filler('ch'), has_more: true } : page(charges, q);
+    } else if (u.pathname.startsWith('/v1/payment_intents/')) {
+      body = intents[decodeURIComponent(u.pathname.split('/').pop())] || {};
+    }
+    return { ok: true, status: 200, json: async () => body };
+  };
+  console.warn = (...a) => { warns.push(a.join(' ')); };
+  process.env.STRIPE_SECRET_KEY = 'sk_test_scan';
+  const fresh = (u) => auth.putUser(u, { username: u, email: null, hash: 'h', salt: 's' });
+  try {
+    for (const k of ['case_user', 'page_user', 'rcpt_user']) await fresh(k);
+    // ١) فحص بلا رمز: يقول الحساب ولا يكتب شيئًا
+    const dry = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'aliya.case@icloud.com', dryRun: true });
+    assert.equal(dry.code, 200, JSON.stringify(dry.body));
+    assert.equal(dry.body.dryRun, true); assert.equal(dry.body.username, 'case_user'); assert.equal(dry.body.via, 'stripe');
+    assert.ok(!dry.body.link, 'لا رابط في الفحص');
+    assert.ok(!(await auth.getUser('case_user')).resetTokenHash, 'الفحص لا يكتب رمزًا');
+    assert.equal(dry.body.diag.sessions, 1); assert.ok(dry.body.diag.scanned > 100, 'وصل الصفحة الثانية: ' + dry.body.diag.scanned);
+    // ٢) مرشِّح Stripe لا يصل «Aliya.Case@iCloud.com» بـ«aliya.case@icloud.com» ← مسح الجلسات يجده (الصفحة الثانية)، والرابط يعمل
+    calls.length = 0;
+    const r = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'aliya.case@icloud.com' });
+    assert.equal(r.code, 200, JSON.stringify(r.body)); assert.equal(r.body.username, 'case_user'); assert.equal(r.body.via, 'stripe');
+    const link = new URL(r.body.link);
+    assert.equal((await callAuth({ action: 'resetWithToken', username: 'case_user', resetToken: link.searchParams.get('resetToken'), newPassword: 'NewPass123' })).code, 200);
+    assert.ok(calls.some((c) => c.path === '/v1/checkout/sessions' && /starting_after=cs_n99/.test(c.q)), 'صفحة ثانية من المسح');
+    assert.ok(!calls.some((c) => c.path === '/v1/charges'), 'وُجد قبل الشحنات');
+    // ٣) شحنة صفحة الدفع بلا metadata (وجلستها ببريد آخر) ← نيّتها بلا اسم ← جلستها بـpayment_intent
+    const pg = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'pay.page@x.com' });
+    assert.equal(pg.code, 200, JSON.stringify(pg.body)); assert.equal(pg.body.username, 'page_user');
+    // ٤) بريد الإيصال وحده (billing_details بلا بريد) ← metadata الشحنة
+    const rc = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'receipt@x.com' });
+    assert.equal(rc.code, 200, JSON.stringify(rc.body)); assert.equal(rc.body.username, 'rcpt_user');
+    // ٥) فحص بعد رابط قائم لا يُبطله
+    assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'receipt@x.com', dryRun: true })).body.dryRun, true);
+    assert.equal((await callAuth({ action: 'resetWithToken', username: 'rcpt_user', resetToken: new URL(rc.body.link).searchParams.get('resetToken'), newPassword: 'NewPass123' })).code, 200, 'الرابط السابق باقٍ');
+    // ٦) دفعة بالبريد لا اسم لها في أيّ مكان ← ٤٠٤ بأعداد، والسجلّ أعداد بلا بريد ولا اسم
+    warns.length = 0;
+    const orphan = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'orphan@x.com' });
+    assert.equal(orphan.code, 404);
+    assert.equal(orphan.body.diag.matched, 1); assert.equal(orphan.body.diag.unnamed, 1); assert.equal(orphan.body.diag.names, 0);
+    assert.equal(orphan.body.diag.partial, false); assert.equal(orphan.body.diag.charges, charges.length);
+    assert.ok(warns.some((w) => /reset-link stripe none \{/.test(w)), warns.join(' | '));
+    assert.ok(!warns.some((w) => /@|orphan|user/i.test(w.replace('[admin-actions] reset-link stripe none', ''))), 'لا بريد ولا اسم في السجلّ: ' + warns.join(' | '));
+    // ٧) بريد لم يدفع ← ٤٠٤ وكلّ ما مُسح معدود
+    const none = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'nobody@x.com' });
+    assert.equal(none.code, 404);
+    assert.equal(none.body.diag.scanned, sessions.length); assert.equal(none.body.diag.matched, 0); assert.equal(none.body.diag.sessions, 0);
+    // ٨) Stripe بلا نهاية ← المسح يقف عند ١٠ صفحات لكلّ قائمة ويقول «partial»
+    endless = true; calls.length = 0;
+    const big = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'nobody@x.com' });
+    assert.equal(big.code, 404); assert.equal(big.body.diag.partial, true);
+    assert.equal(calls.filter((c) => c.path === '/v1/checkout/sessions' && !/customer_details|payment_intent=/.test(decodeURIComponent(c.q))).length, 10);
+    assert.equal(calls.filter((c) => c.path === '/v1/charges').length, 10);
+    endless = false;
+    // ٩) قراءة فقط
+    assert.ok(calls.every((c) => c.method === 'GET'));
+  } finally {
+    delete process.env.STRIPE_SECRET_KEY;
+    global.fetch = realFetch;
+    console.warn = realWarn;
+  }
+});
