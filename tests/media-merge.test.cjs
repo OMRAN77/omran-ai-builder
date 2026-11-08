@@ -52,6 +52,7 @@ const kvImpl = {
     if (op === 'INCRBY') { const v = Number(store.get(k) || 0) + Number(a); store.set(k, String(v)); return v; }
     if (op === 'EXPIRE') { ttl.set(k, Number(a)); return 1; }
     if (op === 'DEL') { store.delete(k); return 1; }
+    if (op === 'SET') { store.set(k, String(a)); return 'OK'; } // v-r3 (r3-rv4): رصيد الفترة العائدة مع علامته في طلب واحد (fillOnce) — عقد Upstash
     return null;
   }),
 };

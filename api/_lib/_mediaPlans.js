@@ -6,7 +6,7 @@
 // صارا باقة واحدة (media_*، خانة 'mix') برصيد واحد يصرف منه أيّ صورة أو فيديو بتكلفته في UNIT_COST. الرصيد = ثلث السعر بالدرهم
 // (قاعدة «كلّ خدمة ٣ أضعاف تكلفتها»): ١٢٥٠ · ٢٥٠٠ · ١٢٥٠٠ فلس. img_*/vid_* توقّف بيعها (retired) — لا جلسة دفع جديدة لها — لكنّها
 // تبقى هنا: تجديد اشتراك قائم أو جلسة بدأت قبل النشر يُمنح كما كان (لا مال بلا منح)، والقائمة تكمل نافذتها ويُصرف منها أوّلًا.
-const { kvGetRaw, kvSetRaw, kvIncrBy, kvDecrBy } = require('./kv.js');
+const { kvGetRaw, kvSetRaw, kvIncrBy, kvDecrBy, kvDel, kvPipeline } = require('./kv.js');
 
 const MEDIA_WINDOW_DAYS = 35;
 const MEDIA_WINDOW_MS = MEDIA_WINDOW_DAYS * 86400000;
@@ -110,11 +110,39 @@ function deferNext(user, planKey, payId, paidAt) {
   list.push({ media: p.media, plan: planKey, budget: p.budget, payId: id, paidAt: Number(paidAt) || Date.now() });
   user.mediaNext = list;
 }
+/* v-r3 (r3-rv1 · r3-rv2 · r3-rv4): رصيدٌ يُكتب قبل سجلّ الحساب — سريان مؤجَّلة (activateDue)، أو عودة الفترة السابقة باسترداد (pay-refund
+   dropPeriod) — كان يُملأ ثانيةً كلّما أُعيد: فشلُ كتابة السجلّ بعده (أو ضياع ردّها) يترك الحالة القديمة، فيُصرف الرصيد تحت الفترة القديمة ثمّ
+   تُعيد الإعادةُ (القراءة التالية، إعادة حدث السحب) الملء: دفعة media_basic واحدة = ٢٥٠٠ فلس، وما بقي من فترة عائدة = ضعفه. الآن مرّة واحدة لكلّ
+   أثر مسمّى: علامة بوقت الملء تُكتب مع الرصيد في طلب واحد (pipeline، كنقل العدّادات r3-4)، والإعادة تجدها فلا تملأ. يرجع وقت الملء الأوّل إن
+   سبق (ولا يكتب شيئًا)، وإلّا 0 بعد الملء. يرمي عطب القراءة، وأمرَ رصيد لم يقع (بعد محو علامته) — المستدعي يُعيد. */
+const FILL_MARK_TTL_SEC = 400 * 86400; // كسجلّ المنح: الإكمال والاسترداد قد يصلان بعد أشهر
+async function fillOnce(mark, key, value, ttlSec, now) {
+  const m = String(mark).slice(0, 220);
+  const was = await kvGetRaw(m, { strict: true });
+  if (was !== null && was !== undefined && String(was) !== '') return Number(was) || 1;
+  const t = typeof now === 'number' ? now : Date.now();
+  const r = await kvPipeline([['SET', key, String(value), 'EX', String(Math.max(1, Math.trunc(ttlSec)))], ['SET', m, String(t), 'EX', String(FILL_MARK_TTL_SEC)]]);
+  if (!Array.isArray(r) || r[0] !== 'OK') { // الأوامر بالترتيب لا ذرّيًّا: الرصيد لم يُكتب والعلامة ربّما كُتبت — تُمحى فتملأ الإعادة
+    await kvDel(m, { strict: true });
+    throw new Error('budget fill not applied: ' + m.slice(0, 60));
+  }
+  return 0;
+}
+const activatedKey = (payId) => 'media-on:' + String(payId).slice(0, 200);
+// v-r3 (r3-rv1 · r3-rv3): وقت سريان المؤجَّلة برقم دفعتها إن سرت قبلُ، وإلّا 0. قراءة صارمة: العطل يرمي.
+async function activatedAt(payId) {
+  if (!payId) return 0;
+  const v = await kvGetRaw(activatedKey(payId), { strict: true });
+  return v !== null && v !== undefined && String(v) !== '' ? (Number(v) || 1) : 0;
+}
 // خانات فيها مؤجَّلة وقد خلت: لا فترة سارية، أو رصيدها نفد. يرمي عطب قراءة الرصيد (لا سريان على تخمين).
+// v-r3 (r3-rv1): أو سرت أولاها قبلُ ولم يصل سجلّها (فشلت كتابته بعد الرصيد) — تُكمَل الآن بلا ملء، لا تبقى تحت الفترة القديمة حتّى ينفد رصيدها.
 async function dueKinds(user, username, now) {
   const out = [];
-  for (const kind of [...new Set(pendingNext(user).map((x) => x.media))]) {
-    if (!mediaActive(user, kind, now) || !(Number(await kvGetRaw(budgetKey(username, kind), { strict: true })) > 0)) out.push(kind);
+  const pend = pendingNext(user);
+  for (const kind of [...new Set(pend.map((x) => x.media))]) {
+    if ((await activatedAt(pend.find((x) => x.media === kind).payId)) || !mediaActive(user, kind, now)
+      || !(Number(await kvGetRaw(budgetKey(username, kind), { strict: true })) > 0)) out.push(kind);
   }
   return out;
 }
@@ -128,9 +156,13 @@ async function activateDue(user, username, now) {
   for (const kind of kinds) {
     const x = pend.find((y) => y.media === kind);
     const cut = Math.min(1, Math.max(0, Number(x.cut) || 0));
-    await kvSetRaw(budgetKey(username, kind), Math.max(0, Math.round((Number(x.budget) || 0) * (1 - cut))), MEDIA_WINDOW_DAYS * 86400);
+    const v = Math.max(0, Math.round((Number(x.budget) || 0) * (1 - cut)));
+    // v-r3 (r3-rv1 · r3-rv2): مرّة واحدة لكلّ دفعة — سريانٌ سبق ولم يصل سجلّه يُكمَل بوقته الأوّل (نافذته كمدّة رصيده) ولا يُعاد ملء رصيده
+    const on = x.payId ? await fillOnce(activatedKey(x.payId), budgetKey(username, kind), v, MEDIA_WINDOW_DAYS * 86400, t) : 0;
+    if (!x.payId) await kvSetRaw(budgetKey(username, kind), v, MEDIA_WINDOW_DAYS * 86400);
+    const at = on > 1 ? on : t;
     user.media = Object.assign({}, user.media || {});
-    user.media[kind] = Object.assign({ plan: x.plan, at: t }, x.payId ? { payId: String(x.payId) } : {});
+    user.media[kind] = Object.assign({ plan: x.plan, at }, x.payId ? { payId: String(x.payId) } : {});
     done.push(x);
   }
   const rest = pend.filter((x) => !done.includes(x));
@@ -325,4 +357,5 @@ module.exports = {
   MEDIA_PLANS, UNIT_COST, MEDIA_WINDOW_DAYS, MAHA_CALL_CAP_MIN, MEDIA_KINDS, SPEND_POOLS,
   mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, refundMahaMinute, mediaStatus, imageQuality, setImageQuality, coverage,
   deferNext, activateDue, // v-r3 (r3-2 · r3-3): المنح يؤجّل الأدنى تحت أعلى سارية، والسحب يُسري المؤجَّلة حين يُسقط الأعلى
+  fillOnce, activatedAt, // v-r3 (r3-rv1..4): رصيدٌ قبل السجلّ يُملأ مرّة لكلّ أثر، وإكمال المنح لا يعيد مؤجَّلة سرت
 };

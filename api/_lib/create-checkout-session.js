@@ -18,7 +18,7 @@
 // الويب هوك (api/webhook.js، invoice.paid) بـgrantPlanToUser نفسها. Apple Pay / Google Pay دفعة واحدة (PaymentIntent).
 const { verifyToken, getUser, putUser } = require('./auth.js');
 const { kvIncrBy, kvSetIfAbsent, kvDel, kvGetRaw, kvSetRaw } = require('./kv.js');
-const { MEDIA_PLANS, MEDIA_WINDOW_DAYS, grantMedia, mediaActive, deferNext } = require('./_mediaPlans.js');
+const { MEDIA_PLANS, MEDIA_WINDOW_DAYS, grantMedia, mediaActive, deferNext, activatedAt } = require('./_mediaPlans.js');
 
 const PLANS = {
   // v-plans-2026-09 (قرار المالك ١٢ سبتمبر): الباقات الأكبر تأخذ سعر نقطة أفضل
@@ -447,7 +447,8 @@ async function finishGrant(username, user, plan, sourceField, sourceId, meta, pe
       // v-r3 (r3-2): مؤجَّلة تحت أعلى سارية (grantLocked) — الفترة الحاليّة لا تُمسّ؛ تُكتب في mediaNext إن لم تصل كتابة المنح (deferNext مرّة
       // برقمها)، ولا تُكتب إن كانت سرت وصارت الفترة نفسها (landed).
       kept = true;
-      if (!landed) deferNext(user, plan, sid, at);
+      // v-r3 (r3-rv3): ولا تُكتب إن سرت قبلُ ثمّ حلّت محلّها فترة أحدث (ترقية بين الفشل والإعادة) — كانت تعود إلى الانتظار فتسري مرّة ثانية برصيد جديد
+      if (!landed && !(await activatedAt(sid))) deferNext(user, plan, sid, at);
     } else if (!landed && cur && curId !== wasId && Number(cur.at) >= at) newer = true;
     else if (!landed) {
       // المراجعة المعاكسة: الفترة التي حلّ محلّها سُحبت أو تبدّلت بين الفشل والإعادة (استردادها) — سحبها محا الرصيد الذي ملأه هذا المنح

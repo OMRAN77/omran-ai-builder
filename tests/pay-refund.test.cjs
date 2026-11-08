@@ -52,6 +52,17 @@ const kvApi = {
   kvGetJSON: async (k) => (kv.has(k) ? JSON.parse(kv.get(k)) : null),
   kvPutJSON: async (k, v) => { kv.set(k, JSON.stringify(v)); },
   kvExpire: async () => {}, kvIncr: async (k) => kvApi.kvIncrBy(k, 1), kvList: async () => [],
+  // v-r3 (r3-rv4): رصيد الفترة العائدة يُكتب مع علامته في طلب واحد (fillOnce) — عقد Upstash: SET ⇒ 'OK'؛ وحقن فشل الكتابة (fail.set) يُفشل الطلب كلّه قبل التنفيذ
+  kvPipeline: async (cmds) => {
+    await tick();
+    if (fail.set && fail.set.n > 0 && cmds.some(([op, k]) => op === 'SET' && fail.set.re.test(k))) { fail.set.n--; throw new Error('ERR DB capacity quota exceeded'); }
+    return cmds.map(([op, k, a]) => {
+      if (op === 'GET') return kv.has(k) ? String(kv.get(k)) : null;
+      if (op === 'SET') { kv.set(k, String(a)); return 'OK'; }
+      if (op === 'DEL') { kv.delete(k); return 1; }
+      return null;
+    });
+  },
 };
 mock('api/_lib/kv.js', kvApi);
 mock('api/_lib/auth.js', {

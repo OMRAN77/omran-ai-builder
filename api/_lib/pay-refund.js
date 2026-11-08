@@ -250,7 +250,9 @@ async function dropPeriod(name, u, r) {
       const mp = MEDIA_PLANS[back.plan];
       const left = Math.min(Math.max(0, Number(prior.p.budget) || 0), mp ? Math.round(mp.budget * (1 - prior.frac)) : 0);
       const ttl = Math.max(60, Math.ceil((Number(back.at) + MEDIA_WINDOW_DAYS * 86400000 - Date.now()) / 1000));
-      await kvSetRaw(budgetKey(name, r.media), left, ttl);
+      /* v-r3 (r3-rv4): مرّة واحدة لسحب هذه الدفعة — فشلُ السجلّ بعده يُبقي فترتها فيُصرف الرصيد العائد تحتها، وكانت الإعادة تعيده كاملًا
+         (ما بقي ١٠٠٠ ⇒ ٢٠٠٠). وكذلك (ج) حين تعيد كتابةٌ متأخّرة فترتها: العدّاد لم تمسّه، فلا يُكتب فوق ما صُرف منه. */
+      await require('./_mediaPlans.js').fillOnce('media-back:' + cut(r.id), budgetKey(name, r.media), left, ttl);
     } else {
       // v-r3 (r3-2): خلت الخانة — المؤجَّلة تحتها (أدنى دُفعت أثناء الأعلى) تسري الآن برصيدها ونافذتها كاملين؛ كان العدّاد يُحذف فيضيع ثمنها
       await require('./_mediaPlans.js').activateDue(u, name);
