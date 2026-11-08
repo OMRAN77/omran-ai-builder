@@ -9,6 +9,9 @@
 //   التوحيد      قاعدة واحدة لفشلٍ بعد أثرٍ لا يُعاد مع v-lock-gpay (Apple/Google Pay بالويب هوك والتحقّق المعلّق) وv-lock-subs (الأعلى السارية
 //                لا تنزل بأدنى، وإلغاء الاشتراك الأقدم): المحفظة، الأدنى تحت الأعلى، الأعلى بعد أدنى اشتُري في النافذة، السجلّ الواصل ثمّ
 //                الرمي، الاسترداد الجزئيّ في النافذة، PayPal، الاشتراك الجديد، والحساب المحذوف قبل الإعادة.
+//   مراجعة ٢     المراجعة المعاكسة الثانية (lock-port/credit-r): الحجز بعد فشلٍ يصير مفكوكًا أو بعلامة أو مكتملًا ولا يبقى وحده (#2 #6)،
+//                «سبق الشحن» لا يُقال بقراءة معطوبة (#4)، الحساب الذي لا يُقرأ يُعاد لا يُتخطّى ولا يُعامَل محذوفًا (#1 #7)، والأحدث في
+//                النافذة يُربط بالفترة التي حلّ محلّها فاستردادُه يعيدها (#3).
 //
 // على المعالجات الحقيقيّة (api/webhook.js موقَّعًا، create-checkout-session، paypal-order، points، pay-refund) بـKV في الذاكرة
 // وشبكة مزيّفة مثبّتة مرّة للملفّ كلّه — لا نداء حقيقيّ لـStripe ولا PayPal.
@@ -37,13 +40,19 @@ const ttl = new Map(); // مهلة كلّ مفتاح كما طُلبت (الحج
 const users = new Map();
 // putAfterIncr: عدد كتابات سجلّ الحساب التي تفشل بعد INCRBY ناجح على عدّاد نقاط · putAfterBudget: بعد كتابة رصيد وسائط
 // incr: فشل INCRBY التالي (قبل أيّ أثر) · putArm: الكتابات الفاشلة المسلّحة الآن
-const fail = { putAfterIncr: 0, putAfterBudget: 0, putArm: 0, incr: 0, mark: 0, landAfterIncr: 0, landArm: 0 }; // mark: فشل كتابة علامة الإكمال التالية
+const fail = { putAfterIncr: 0, putAfterBudget: 0, putArm: 0, incr: 0, mark: 0, landAfterIncr: 0, landArm: 0, unreadable: 0, del: 0, getNull: null }; // mark: فشل كتابة علامة الإكمال التالية
+// المراجعة المعاكسة الثانية: unreadable — قراءات الحجز/العلامة التالية ردّ 200 لا يُقرأ (kv.js: الصارمة ترمي، وبلا الخيار null) ·
+// del — حذف الحجز التالي يفشل (kv.js: الصارم يرمي، وبلا الخيار يُبتلع ويبقى المفتاح) · getNull { u, n } — getUser يعيد null (عطل القراءة)
 // landAfterIncr (التوحيد مع v-lock-gpay): كتابة السجلّ التي تلي INCRBY تصل ثمّ ترمي (مهلة بعد الكتابة) · landArm: المسلّحة الآن
 const gate = { put: null };     // x-build-1: كتابة سجلّ تُمسك حتّى يُفتح لها
 const lockSeen = { key: '', fn: null }; // x-build-1: أوّل محاولة فاشلة لأخذ قفل حساب
 const imm = () => new Promise((r) => setImmediate(r));
 const kvApi = {
-  kvGetRaw: async (k) => { await imm(); return kv.has(k) ? String(kv.get(k)) : null; },
+  kvGetRaw: async (k, o) => {
+    await imm();
+    if (fail.unreadable > 0 && /^paid(-credit)?:/.test(k)) { fail.unreadable--; if (o && o.strict) throw new Error('Upstash error: unreadable reply'); return null; }
+    return kv.has(k) ? String(kv.get(k)) : null;
+  },
   kvSetRaw: async (k, v, t) => {
     await imm();
     if (fail.mark > 0 && /^paid-credit:/.test(k)) { fail.mark--; throw new Error('Upstash error: fetch failed'); }
@@ -64,7 +73,12 @@ const kvApi = {
     return v;
   },
   kvDecrBy: async (k, n) => { await imm(); const v = Number(kv.get(k) || 0) - Number(n); kv.set(k, String(v)); return v; },
-  kvDel: async (k) => { kv.delete(k); },
+  kvDel: async (k, o) => {
+    if (fail.del > 0 && /^paid:/.test(k)) { fail.del--; if (o && o.strict) throw new Error('Upstash error: fetch failed'); return; }
+    // delRace: الحذف وصل وضاع ردّه، وفي اللحظة نفسها أشغل استردادٌ كامل الحجز بعلامة سحبه (pay-refund blockGrant)
+    if (fail.delRace && /^paid:/.test(k)) { const v = fail.delRace; fail.delRace = null; kv.set(k, v); if (o && o.strict) throw new Error('ETIMEDOUT after write'); return; }
+    kv.delete(k);
+  },
   kvGetJSON: async (k) => (kv.has(k) ? JSON.parse(kv.get(k)) : null),
   kvPutJSON: async (k, v) => { kv.set(k, JSON.stringify(v)); },
   kvExpire: async () => {}, kvIncr: async (k) => kvApi.kvIncrBy(k, 1), kvList: async () => [],
@@ -72,7 +86,11 @@ const kvApi = {
 };
 mock('api/_lib/kv.js', kvApi);
 mock('api/_lib/auth.js', {
-  getUser: async (u) => { await imm(); return users.has(u) ? structuredClone(users.get(u)) : null; },
+  getUser: async (u) => {
+    await imm();
+    if (fail.getNull && fail.getNull.u === u && fail.getNull.n > 0) { fail.getNull.n--; return null; } // getUser الحقيقيّ عند العطل
+    return users.has(u) ? structuredClone(users.get(u)) : null;
+  },
   putUser: async (u, rec) => {
     const v = structuredClone(rec); // يُسلسَل وقت النداء
     await imm();
@@ -86,7 +104,8 @@ mock('api/_lib/auth.js', {
 });
 mock('api/_lib/_vip.js', { isVip: async () => false });
 const logged = [];
-mock('api/_lib/log-error.js', { logError: (scope, e) => { logged.push({ scope, msg: e && e.message }); }, logErrorAndFlush: async (scope, e) => { logged.push({ scope, msg: e && e.message }); } });
+// flush: سطرٌ يُنتظر حفظه قبل الردّ (logErrorAndFlush) — «أطلق وانسَ» (logError) يُسقطه Vercel بعد الردّ
+mock('api/_lib/log-error.js', { logError: (scope, e) => { logged.push({ scope, msg: e && e.message }); }, logErrorAndFlush: async (scope, e) => { logged.push({ scope, msg: e && e.message, flush: true }); } });
 const alerts = [];
 mock('api/_lib/_owner-alert.js', { pushToOwners: async (p) => { alerts.push(p); return { sent: 1 }; }, alertOwnerError: async () => ({}), alertOwnerCredit: async () => ({}), isCreditFailure: () => false });
 
@@ -183,7 +202,7 @@ async function ourOrder(id, cap, user, plan, value, capStatus, ref) {
 }
 const ppCompleted = (orderId, cap, value) => ({ id: 'WH-C' + (++seq), event_type: 'PAYMENT.CAPTURE.COMPLETED', resource_type: 'capture', resource: { id: cap, status: 'COMPLETED', amount: { value, currency_code: 'USD' }, supplementary_data: { related_ids: { order_id: orderId } }, links: [{ rel: 'self', href: 'https://api.sandbox.paypal.com/v2/payments/captures/' + cap }, { rel: 'up', href: 'https://api.sandbox.paypal.com/v2/checkout/orders/' + orderId }] } });
 const ppRefund = (cap, value, total) => ({ id: 'WH-R' + (++seq), event_type: 'PAYMENT.CAPTURE.REFUNDED', resource_type: 'refund', resource: { id: 'RF' + seq, status: 'COMPLETED', amount: { value, currency_code: 'USD' }, seller_payable_breakdown: { total_refunded_amount: { value: total, currency_code: 'USD' } }, links: [{ rel: 'up', href: 'https://api.sandbox.paypal.com/v2/payments/captures/' + cap }] } });
-const disarm = () => { fail.putAfterIncr = 0; fail.putAfterBudget = 0; fail.putArm = 0; fail.incr = 0; fail.mark = 0; fail.landAfterIncr = 0; fail.landArm = 0; };
+const disarm = () => { fail.putAfterIncr = 0; fail.putAfterBudget = 0; fail.putArm = 0; fail.incr = 0; fail.mark = 0; fail.landAfterIncr = 0; fail.landArm = 0; fail.unreadable = 0; fail.del = 0; fail.delRace = null; fail.getNull = null; };
 
 // ───────────────────────── srv-money-2 ─────────────────────────
 
@@ -334,15 +353,18 @@ test('srv-money-2 · ٨. PayPal: الالتقاط شحن ثمّ فشل السج�
   assert.deepEqual(JSON.parse(kv.get('payrec:PL8')).refs, ['CAPL8'], 'رقم الالتقاط مربوط فيعرفه الاسترداد');
 });
 
-test('srv-money-2 · ٩. حتّى علامة الإكمال لم تُكتب (التخزين معطَّل): الحجز باقٍ فلا شحن ثانٍ، والمالك يُنبَّه في سجلّ أخطائه', async () => {
+// مهلات settleWrite (٣٠٠/٦٠٠/٩٠٠ms) بلا انتظار حقيقيّ — لاختبارات العطل الدائم
+const fastTimers = async (fn) => { const real = global.setTimeout; global.setTimeout = (f, ms, ...a) => real(f, 0, ...a); try { return await fn(); } finally { global.setTimeout = real; } };
+
+test('srv-money-2 · ٩. حتّى علامة الإكمال لم تُكتب (التخزين معطَّل): الحجز باقٍ فلا شحن ثانٍ، والمالك يُنبَّه برقم الدفعة', async () => {
   fresh('lc9');
   const e = paidSession('cs_lc9', 'lc9', 'pack300', 'pi_lc9', 1299);
   logged.length = 0;
-  fail.putAfterIncr = 1; fail.mark = 1;
+  fail.putAfterIncr = 1; fail.mark = 99; // المراجعة المعاكسة الثانية: كتابة العلامة تُعاد ٤ مرّات — عطلٌ دائم يفشلها كلّها
   let r;
-  try { r = await hook(e); } finally { disarm(); }
+  try { r = await fastTimers(() => hook(e)); } finally { disarm(); }
   assert.ok(r.code >= 500);
-  assert.ok(logged.some((l) => l.scope === 'checkout:credit-mark'), 'تنبيه المالك ليكمل السجلّ يدويًّا');
+  assert.ok(logged.some((l) => l.scope === 'checkout:credit-mark' && l.flush && l.msg.includes('cs_lc9')), 'تنبيه المالك ليكمل السجلّ يدويًّا — برقم الدفعة ويُنتظر حفظه');
   for (let i = 0; i < 3; i++) assert.equal((await hook(e)).code, 200);
   assert.equal(await bal('lc9'), 370, 'شحنة واحدة — لا فكّ للحجز بعد الأثر');
 });
@@ -482,7 +504,7 @@ test('srv-money-2 · ١٥. علامة الإكمال تعيش ما عاش الح
   const mark = 'paid-credit:lastStripeSessionId:cs_lc15';
   assert.ok(kv.has(mark));
   assert.ok(Number(ttl.get(mark)) >= Number(ttl.get('paid:lastStripeSessionId:cs_lc15')), 'لا تنتهي قبل الحجز — ' + ttl.get(mark));
-  assert.ok(logged.some((l) => l.scope === 'checkout:credit-pending'), 'سطر للمالك: دفعة شُحنت وسجلّها معلَّق');
+  assert.ok(logged.some((l) => l.scope === 'checkout:credit-pending' && l.flush && l.msg.includes('cs_lc15')), 'سطر للمالك: دفعة شُحنت وسجلّها معلَّق — برقمها ويُنتظر حفظه');
   assert.equal((await hook(e)).code, 200);
   assert.equal(users.get('lc15').plan, 'basic');
   assert.equal(await bal('lc15'), 430);
@@ -944,4 +966,347 @@ test('x-build-1 · ٤. صرف وردّ متزامنان كثيرًا: العدّ
   assert.equal(await bal('mx4'), 370 - 8 * 5 + 4 * 5);
   assert.equal(users.get('mx4').points, 350, 'السجلّ = العدّاد بعد آخر كاتب');
   assert.equal(kv.has('db/acct-lock/mx4'), false, 'القفل فُكّ');
+});
+
+// ───────────────────────── المراجعة المعاكسة الثانية (lock-port/credit-r) ─────────────────────────
+// كلّ هجوم من تقرير المراجعة باختبار يفشل على lock-port/credit (46f00bcc) وينجح هنا. القاعدة: بعد فشلٍ يصير الحجز إلى واحد من ثلاثة —
+// مفكوك (لا أثر)، أو بعلامة إكمال (أثرٌ والإعادة تكمل)، أو منح مكتمل؛ و«سبق الشحن» 2xx لا يُقال إلّا والعلامة غائبة يقينًا.
+
+test('مراجعة ٢ · #1. استرداد في النافذة والحساب لا يُقرأ لحظتها: لا يسقط إلى السجلّ القديم (كان رصيد media_max ‏١٢٥٠٠ يبقى تحت media_basic) — يُعاد حتّى يُكمَل ثمّ يُسحب', async () => {
+  fresh('rv1');
+  await buy('rv1', 'media_basic', 'rv1a', 1021);
+  kv.set('media:mix:rv1', '300'); // صُرف من الفترة السابقة حتّى بقي ٣٠٠
+  const e = paidSession('cs_rv1b', 'rv1', 'media_max', 'pi_rv1b', 10211);
+  net.sessionList.push({ id: 'cs_rv1b', payment_intent: 'pi_rv1b', metadata: { username: 'rv1', plan: 'media_max' } });
+  fail.putAfterBudget = 1;
+  try { assert.ok((await hook(e)).code >= 500); } finally { disarm(); }
+  assert.equal(Number(kv.get('media:mix:rv1')), 12500, 'الرصيد مُلئ');
+  const rf = refundOf('ch_rv1b', 'pi_rv1b', 10211, 10211);
+  fail.getNull = { u: 'rv1', n: 2 }; // قراءتا الحساب في الإكمال (قبل قفله وداخله) تعودان null كما يفعل getUser عند عطل KV
+  let r1;
+  try { r1 = await hook(rf); } finally { disarm(); }
+  assert.ok(r1.code >= 500, 'non-2xx فيُعاد حدث السحب — ' + r1.code);
+  assert.ok(markOf('lastStripeSessionId', 'cs_rv1b'), 'العلامة باقية للإعادة');
+  assert.equal(Number(kv.get('media:mix:rv1')), 12500, 'لا سحب من سجلّ قديم أعمى');
+  assert.equal((await hook(rf)).code, 200, 'إعادة حدث السحب بعد العطل');
+  const m = users.get('rv1').media.mix;
+  assert.equal(m.plan, 'media_basic', 'تعود الفترة السابقة');
+  assert.equal(m.payId, 'cs_rv1a');
+  assert.equal(Number(kv.get('media:mix:rv1')), 300, 'برصيدها كما كان (كان ١٢٥٠٠)');
+  assert.equal((await hook(e)).code, 200, 'إعادة حدث الدفع');
+  assert.equal(users.get('rv1').media.mix.plan, 'media_basic', 'لا تُسلَّم المستردّة');
+  assert.equal(Number(kv.get('media:mix:rv1')), 300);
+  assert.equal(markOf('lastStripeSessionId', 'cs_rv1b'), undefined);
+});
+
+test('مراجعة ٢ · #2أ. عطلان متتاليان (السجلّ ثمّ أوّل كتابة للعلامة): العلامة تُعاد حتّى تُكتب، والإعادة تسلّم Max (كانت 200 بلا باقة و٣٢٧٠ نقطة)', async () => {
+  fresh('dm1');
+  const e = paidSession('cs_dm1', 'dm1', 'max', 'pi_dm1', 10000);
+  fail.putAfterIncr = 1; fail.mark = 1;
+  try { assert.ok((await hook(e)).code >= 500); } finally { disarm(); }
+  assert.ok(markOf('lastStripeSessionId', 'cs_dm1'), 'العلامة كُتبت في المحاولة الثانية');
+  assert.equal((await hook(e)).code, 200);
+  const u = users.get('dm1');
+  assert.equal(u.plan, 'max', 'الباقة المدفوعة وصلت');
+  assert.equal(u.planPayId, 'cs_dm1');
+  assert.equal(tier.planActive(u), true);
+  assert.equal(await bal('dm1'), 70 + 3200, 'شحنة واحدة');
+  assert.ok(recOf('cs_dm1'), 'وسجلّ المنح للاسترداد');
+  // والمسار نفسه من تحقّق العميل (المحفظة)
+  fresh('dm2');
+  const pi = walletPi('dm2', 'pro', 2000);
+  fail.putAfterIncr = 1; fail.mark = 2;
+  try { assert.ok((await verifyPi(pi.id, 'dm2')).code >= 500); } finally { disarm(); }
+  const v = await verifyPi(pi.id, 'dm2');
+  assert.equal(v.code, 200);
+  assert.equal(v.body.completed, true);
+  assert.equal(users.get('dm2').plan, 'pro');
+  assert.equal(await bal('dm2'), 70 + 920);
+});
+
+test('مراجعة ٢ · #2ب. العلامة لا تُكتب أبدًا: لا شحن ثانٍ، والمالك يُنبَّه لكلّ دفعة برقمها — سطرٌ يُنتظر حفظه وإشعار (كان سطرًا ثابتًا «أطلق وانسَ» يُكتم بعد ثلاثة)', async () => {
+  logged.length = 0; alerts.length = 0;
+  const ids = ['cs_dp1', 'cs_dp2', 'cs_dp3', 'cs_dp4', 'cs_dp5', 'cs_dp6'];
+  for (const [i, id] of ids.entries()) {
+    const u = 'dp' + (i + 1);
+    const pack = i % 2 === 1;
+    fresh(u);
+    const e = paidSession(id, u, pack ? 'pack300' : 'pro', 'pi_' + id.slice(3), pack ? 1299 : 2000);
+    fail.putAfterIncr = 1; fail.mark = 99;
+    let r;
+    try { r = await fastTimers(() => hook(e)); } finally { disarm(); }
+    assert.ok(r.code >= 500, id + ' — ' + r.code);
+    assert.equal(kv.get('paid:lastStripeSessionId:' + id), u, 'الحجز باقٍ بعد الأثر');
+    for (let k = 0; k < 2; k++) assert.equal((await hook(e)).code, 200);
+    assert.equal(await bal(u), 70 + (pack ? 300 : 920), 'شحنة واحدة ' + id);
+  }
+  const marks = logged.filter((l) => l.scope === 'checkout:credit-mark');
+  assert.equal(marks.length, ids.length, 'سطر لكلّ دفعة');
+  assert.ok(marks.every((l) => l.flush), 'يُنتظر حفظه قبل الردّ (لا «أطلق وانسَ»)');
+  for (const id of ids) assert.equal(marks.filter((l) => l.msg.includes(id)).length, 1, 'برقم الدفعة ' + id);
+  assert.equal(new Set(marks.map((l) => l.msg)).size, ids.length, 'رسائل مختلفة: سقف الموضع (٣ لكلّ رسالة) لا يكتم دفعة');
+  for (const id of ids) assert.equal(alerts.filter((a) => String(a.body).includes(id)).length, 1, 'إشعار للمالك برقم ' + id);
+});
+
+async function newerSameCase(u, planB, amountB, withPrior) {
+  fresh(u);
+  if (withPrior) await buy(u, 'basic', u + '0', 1000);
+  const eA = paidSession('cs_' + u + 'A', u, 'pro', 'pi_' + u + 'A', 2000);
+  fail.putAfterIncr = 1;
+  try { assert.ok((await hook(eA)).code >= 500); } finally { disarm(); }
+  const tA = JSON.parse(markOf('lastStripeSessionId', 'cs_' + u + 'A')).at;
+  await buy(u, planB, u + 'B', amountB); // اشترى ثانيةً ظنًّا أنّ الأولى فشلت — السجلّ لا يعرف A بعد
+  assert.equal((await hook(eA)).code, 200, 'إكمال A');
+  let x = users.get(u);
+  assert.equal(x.plan, planB, 'الأحدث باقية');
+  assert.equal(x.planPayId, 'cs_' + u + 'B');
+  const base = 70 + (withPrior ? 360 : 0);
+  assert.equal(await bal(u), base + 920 + (planB === 'max' ? 3200 : 920));
+  assert.equal((await hook(refundOf('ch_' + u + 'B', 'pi_' + u + 'B', amountB, amountB))).code, 200, 'استرداد الأحدث كاملًا');
+  x = users.get(u);
+  assert.equal(x.plan, 'pro', 'Pro الأولى المدفوعة تعود (كانت لا باقة)');
+  assert.equal(x.planPayId, 'cs_' + u + 'A');
+  assert.equal(x.planUpdatedAt, tA, 'بوقت دفعها');
+  assert.equal(tier.planActive(x), true);
+  assert.equal(await bal(u), base + 920);
+  assert.equal((recOf('cs_' + u + 'B').prev || {}).planPayId, 'cs_' + u + 'A', 'سابقة الأحدث في سجلّه صارت فترة A');
+  assert.equal((recOf('cs_' + u + 'A').prev || {}).planPayId, withPrior ? 'cs_' + u + '0' : undefined, 'وسابقة A ما كانت قبلها');
+  assert.equal((await hook(refundOf('ch_' + u + 'A', 'pi_' + u + 'A', 2000, 2000))).code, 200, 'ثمّ استرداد A');
+  x = users.get(u);
+  if (withPrior) { assert.equal(x.plan, 'basic', 'تعود سابقتها'); assert.equal(x.planPayId, 'cs_' + u + '0'); } else assert.equal(tier.planActive(x), false);
+  assert.equal(await bal(u), base);
+}
+test('مراجعة ٢ · #3. فشل Pro بعد الشحن ثمّ شراء بالدرجة نفسها أو أعلى في النافذة: استرداد الأحدث يعيد Pro المدفوعة (كانت تضيع بلا استرداد)', async () => {
+  await newerSameCase('nw1', 'pro', 2000);
+  await newerSameCase('nw2', 'max', 10000);
+  await newerSameCase('nw3', 'pro', 2000, true);
+  await frozenClock(() => newerSameCase('nw4', 'pro', 2000));
+});
+
+test('مراجعة ٢ · #3ج. سحب الأحدث جارٍ لحظة الإكمال (revoke علّم سجلّه وينتظر قفل الحساب): الإكمال يُعاد ولا يترك الربط، فلا تضيع Pro المدفوعة (وجده سباق ٣٠ حسابًا)', async () => {
+  fresh('rl1');
+  const eA = paidSession('cs_rl1A', 'rl1', 'pro', 'pi_rl1A', 2000);
+  fail.putAfterIncr = 1;
+  try { assert.ok((await hook(eA)).code >= 500); } finally { disarm(); }
+  await buy('rl1', 'pro', 'rl1B', 2000);
+  // استرداد B بدأ: revoke أخذ قفل سحب سجلّه وعلّمه «مسحوبًا كاملًا» قبل أن يسحب الفترة تحت قفل الحساب
+  const recB = recOf('cs_rl1B');
+  kv.set('payrev:lock:cs_rl1B', 'stripe:evt_rl1');
+  kv.set('payrec:cs_rl1B', JSON.stringify(Object.assign({}, recB, { revoked: { fraction: 1, refunded: 1, disputed: false, points: 920, budget: 0, plan: true, ids: ['stripe:evt_rl1'], reason: 'refund', at: Date.now() } })));
+  const r = await hook(eA);
+  assert.ok(r.code >= 500, 'الإكمال يُعاد — لا يقرأ سحبًا لم يقع بعد فيترك الربط — ' + r.code);
+  assert.ok(markOf('lastStripeSessionId', 'cs_rl1A'), 'العلامة باقية');
+  // السحب ينتهي: (هنا يُعاد من أوّله بعد فكّ قفله ورفع علامته، كما يفعل revoke عند فشل التطبيق) — يُسقط B إلى ما قبلها
+  kv.delete('payrev:lock:cs_rl1B');
+  kv.set('payrec:cs_rl1B', JSON.stringify(recB));
+  assert.equal((await hook(refundOf('ch_rl1B', 'pi_rl1B', 2000, 2000))).code, 200);
+  assert.equal((await hook(eA)).code, 200, 'ثمّ الإكمال');
+  const x = users.get('rl1');
+  assert.equal(x.plan, 'pro', 'Pro الأولى المدفوعة وصلت');
+  assert.equal(x.planPayId, 'cs_rl1A');
+  assert.equal(await bal('rl1'), 70 + 920);
+  assert.equal(markOf('lastStripeSessionId', 'cs_rl1A'), undefined);
+});
+
+test('مراجعة ٢ · #3ب. والوسائط: الأحدث بالدرجة نفسها في النافذة — استرداده يعيد فترة الأولى برصيدها وقت حلّ محلّها، ثمّ استردادها يعيد سابقتها', async () => {
+  // بلا فترة قبلها: لا صرف بلا فترة سارية، فرصيد A وقت حلّ محلّه B كامل
+  fresh('nm1');
+  const eA = paidSession('cs_nm1A', 'nm1', 'media_pro', 'pi_nm1A', 2042);
+  fail.putAfterBudget = 1;
+  try { assert.ok((await hook(eA)).code >= 500); } finally { disarm(); }
+  const tA = JSON.parse(markOf('lastStripeSessionId', 'cs_nm1A')).at;
+  await buy('nm1', 'media_pro', 'nm1B', 2042);
+  assert.equal((await hook(eA)).code, 200);
+  assert.equal(users.get('nm1').media.mix.payId, 'cs_nm1B', 'الأحدث باقية');
+  assert.equal((await points.spendPoints('nm1', 175, 'veo_video')).ok, true);
+  assert.equal((await hook(refundOf('ch_nm1B', 'pi_nm1B', 2042, 2042))).code, 200);
+  let m = users.get('nm1').media.mix || {};
+  assert.deepEqual([m.plan, m.payId, m.at], ['media_pro', 'cs_nm1A', tA], 'فترة A المدفوعة تعود (كانت لا باقة)');
+  assert.equal(Number(kv.get('media:mix:nm1')), 2500, 'برصيدها');
+  assert.equal((recOf('cs_nm1B').prev || {}).payId, 'cs_nm1A', 'سابقة الأحدث في سجلّه صارت فترة A');
+  assert.equal((await hook(refundOf('ch_nm1A', 'pi_nm1A', 2042, 2042))).code, 200);
+  assert.equal(media.mediaActive(users.get('nm1'), 'mix'), false);
+  // وبفترة قبلها (media_basic بقي منها ٣٠٠): A ملأ ٢٥٠٠ وصُرف منها، ثمّ B — رصيد A وقتها هو سابقة B المسجَّلة
+  fresh('nm2');
+  await buy('nm2', 'media_basic', 'nm20', 1021);
+  kv.set('media:mix:nm2', '300');
+  const eA2 = paidSession('cs_nm2A', 'nm2', 'media_pro', 'pi_nm2A', 2042);
+  fail.putAfterBudget = 1;
+  try { assert.ok((await hook(eA2)).code >= 500); } finally { disarm(); }
+  assert.equal((await points.spendPoints('nm2', 175, 'veo_video')).ok, true, 'يُصرف من رصيد A تحت الفترة السابقة السارية');
+  const leftA = Number(kv.get('media:mix:nm2'));
+  await buy('nm2', 'media_pro', 'nm2B', 2042);
+  assert.equal((await hook(eA2)).code, 200);
+  assert.equal((await hook(refundOf('ch_nm2B', 'pi_nm2B', 2042, 2042))).code, 200);
+  m = users.get('nm2').media.mix || {};
+  assert.deepEqual([m.plan, m.payId], ['media_pro', 'cs_nm2A']);
+  assert.equal(Number(kv.get('media:mix:nm2')), leftA, 'رصيد A كما تركه B');
+  assert.equal((await hook(refundOf('ch_nm2A', 'pi_nm2A', 2042, 2042))).code, 200);
+  m = users.get('nm2').media.mix;
+  assert.deepEqual([m.plan, m.payId], ['media_basic', 'cs_nm20'], 'ثمّ تعود السابقة');
+  assert.equal(Number(kv.get('media:mix:nm2')), 300, 'برصيدها وقت حلّ A محلّها');
+});
+
+test('مراجعة ٢ · #4. ردّ 200 لا يُقرأ عند قراءة علامة الإكمال أو الحجز: non-2xx لا «سبق الشحن» (كانت 200 فتقف الإعادات)، والإعادة التالية تكمل', async () => {
+  // الحجز مأخوذ والعلامة موجودة، وقراءتها ردّ لا يُقرأ
+  fresh('ur1');
+  const e = paidSession('cs_ur1', 'ur1', 'pro', 'pi_ur1', 2000);
+  fail.putAfterIncr = 1;
+  try { assert.ok((await hook(e)).code >= 500); } finally { disarm(); }
+  fail.unreadable = 1;
+  let r;
+  try { r = await hook(e); } finally { disarm(); }
+  assert.ok(r.code >= 500, 'لا 200 والعلامة لم تُقرأ — ' + r.code);
+  assert.equal(users.get('ur1').plan, undefined);
+  assert.equal((await hook(e)).code, 200);
+  assert.equal(users.get('ur1').plan, 'pro', 'الإعادة سلّمت الباقة');
+  assert.equal(await bal('ur1'), 70 + 920);
+  // السجلّ وصل ثمّ رمى (مسار «سبق الشحن»): العلامة لا تُقرأ ⇒ non-2xx، والإعادة تكتب سجلّ المنح بسابقته
+  fresh('ur2');
+  await buy('ur2', 'pro', 'ur2p', 2000);
+  const e2 = paidSession('cs_ur2m', 'ur2', 'max', 'pi_ur2m', 10000);
+  fail.landAfterIncr = 1;
+  try { assert.ok((await hook(e2)).code >= 500); } finally { disarm(); }
+  fail.unreadable = 1;
+  try { r = await hook(e2); } finally { disarm(); }
+  assert.ok(r.code >= 500, '«سبق الشحن» لا يُقال والعلامة لم تُقرأ — ' + r.code);
+  assert.equal(kv.has('payrec:cs_ur2m'), false);
+  assert.equal((await hook(e2)).code, 200);
+  assert.equal(recOf('cs_ur2m').prev.planPayId, 'cs_ur2p', 'سجلّ المنح بسابقته');
+  // استرداد في النافذة وقراءة الحجز ردّ لا يُقرأ: لا يسقط إلى السجلّ القديم (لا يرى ملء الوسائط)
+  fresh('ur3');
+  await buy('ur3', 'media_basic', 'ur3a', 1021);
+  kv.set('media:mix:ur3', '300');
+  const e3 = paidSession('cs_ur3b', 'ur3', 'media_max', 'pi_ur3b', 10211);
+  net.sessionList.push({ id: 'cs_ur3b', payment_intent: 'pi_ur3b', metadata: { username: 'ur3', plan: 'media_max' } });
+  fail.putAfterBudget = 1;
+  try { assert.ok((await hook(e3)).code >= 500); } finally { disarm(); }
+  const rf = refundOf('ch_ur3b', 'pi_ur3b', 10211, 10211);
+  fail.unreadable = 1;
+  try { r = await hook(rf); } finally { disarm(); }
+  assert.ok(r.code >= 500, 'non-2xx فيُعاد حدث السحب — ' + r.code);
+  assert.equal((await hook(rf)).code, 200);
+  assert.equal(users.get('ur3').media.mix.plan, 'media_basic');
+  assert.equal(Number(kv.get('media:mix:ur3')), 300, 'رصيد الفترة السابقة (كان ١٢٥٠٠)');
+});
+
+test('مراجعة ٢ · #4/#6. kv.js الحقيقيّ: kvGetRaw وkvDel بـ{ strict: true } يرميان (ردّ 200 لا يُقرأ، عطل الحذف)، وبلا الخيار كما كانا', async () => {
+  const fs = require('node:fs');
+  const Module = require('node:module');
+  const file = rp('api/_lib/kv.js');
+  const env0 = { u: process.env.UPSTASH_REDIS_REST_URL, t: process.env.UPSTASH_REDIS_REST_TOKEN };
+  process.env.UPSTASH_REDIS_REST_URL = 'https://kv.test'; process.env.UPSTASH_REDIS_REST_TOKEN = 'tok';
+  const m = new Module(file, module);
+  m.filename = file; m.paths = Module._nodeModulePaths(path.dirname(file));
+  try { m._compile(fs.readFileSync(file, 'utf8'), file); } finally {
+    if (env0.u === undefined) delete process.env.UPSTASH_REDIS_REST_URL; else process.env.UPSTASH_REDIS_REST_URL = env0.u;
+    if (env0.t === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN; else process.env.UPSTASH_REDIS_REST_TOKEN = env0.t;
+  }
+  const realKv = m.exports;
+  const realFetch = global.fetch;
+  let mode = 'unreadable';
+  global.fetch = async (url, opts) => {
+    if (!String(url).startsWith('https://kv.test')) return realFetch(url, opts);
+    if (mode === 'unreadable') return { ok: true, status: 200, json: async () => { throw new SyntaxError('Unexpected token <'); } };
+    if (mode === 'down') return { ok: false, status: 503, json: async () => ({ error: 'unavailable' }) };
+    return { ok: true, status: 200, json: async () => ({ result: 'v' }) };
+  };
+  try {
+    assert.equal(await realKv.kvGetRaw('k'), null, 'بلا الخيار: null كما كان');
+    await assert.rejects(realKv.kvGetRaw('k', { strict: true }), /unreadable reply/);
+    mode = 'down';
+    await realKv.kvDel('k'); // بلا الخيار: يُبتلع كما كان
+    await assert.rejects(realKv.kvDel('k', { strict: true }), /Upstash error/);
+    mode = 'ok';
+    assert.equal(await realKv.kvGetRaw('k', { strict: true }), 'v');
+    await realKv.kvDel('k', { strict: true });
+  } finally { global.fetch = realFetch; }
+});
+
+test('مراجعة ٢ · #6. الفشل قبل الأثر وفكّ الحجز يتعثّر: يُعاد الفكّ حتّى يصل فتشحن الإعادة مرّة (كان الحجز يبقى: كلّ إعادة «سبق الشحن» والمال بلا شيء)، وإن لم يصل يُنبَّه المالك برقم الدفعة', async () => {
+  fresh('cr1');
+  const e = paidSession('cs_cr1', 'cr1', 'pro', 'pi_cr1', 2000);
+  fail.incr = 1; fail.del = 1;
+  let r;
+  try { r = await hook(e); } finally { disarm(); }
+  assert.ok(r.code >= 500);
+  assert.equal(kv.has('paid:lastStripeSessionId:cs_cr1'), false, 'الفكّ وصل في المحاولة الثانية');
+  assert.equal((await hook(e)).code, 200);
+  assert.equal(users.get('cr1').plan, 'pro');
+  assert.equal(await bal('cr1'), 70 + 920, 'شحنة واحدة');
+  // عطل دائم: الحجز عالق — لا شحن، وسطر يُنتظر حفظه وإشعار برقم الدفعة ومفتاح الحجز
+  fresh('cr2');
+  logged.length = 0; alerts.length = 0;
+  const e2 = paidSession('cs_cr2', 'cr2', 'pack100', 'pi_cr2', 499);
+  fail.incr = 1; fail.del = 99;
+  try { r = await fastTimers(() => hook(e2)); } finally { disarm(); }
+  assert.ok(r.code >= 500);
+  assert.equal(await bal('cr2'), 70);
+  const st = logged.filter((l) => l.scope === 'checkout:claim-stuck');
+  assert.equal(st.length, 1, 'سطر للمالك');
+  assert.ok(st[0].flush && st[0].msg.includes('cs_cr2') && st[0].msg.includes('paid:lastStripeSessionId:cs_cr2'), st[0].msg);
+  assert.equal(alerts.filter((a) => String(a.body).includes('cs_cr2')).length, 1, 'وإشعار');
+  // إعادة الفكّ لا تمحو إلّا حجزنا: حذفٌ وصل وضاع ردّه واستردادٌ كامل أشغل الحجز بعلامة سحبه قبل الإعادة — تبقى، فلا تُشحن المستردّة
+  fresh('cr3');
+  const e3 = paidSession('cs_cr3', 'cr3', 'pro', 'pi_cr3', 2000);
+  fail.incr = 1; fail.delRace = '!revoked:stripe:evt_cr3';
+  try { r = await fastTimers(() => hook(e3)); } finally { disarm(); }
+  assert.ok(r.code >= 500);
+  assert.equal(kv.get('paid:lastStripeSessionId:cs_cr3'), '!revoked:stripe:evt_cr3', 'علامة السحب باقية');
+  assert.equal((await hook(e3)).code, 200);
+  assert.equal(await bal('cr3'), 70, 'الدفعة المستردّة لا تُشحن');
+  assert.equal(tier.planActive(users.get('cr3')), false);
+});
+
+test('مراجعة ٢ · #7. إعادة دفعةٍ محجوزة والحساب لا يُقرأ لحظتها: non-2xx فيُعاد — لا «حساب محذوف» ولا إلغاء الاشتراك الحيّ (كان تنبيه «ردّ المبلغ» وإلغاء و200)', async () => {
+  fresh('nr1');
+  net.subs.sub_nr1 = { id: 'sub_nr1', status: 'active', created: nowSec(), metadata: { username: 'nr1', plan: 'pro' } };
+  const e = evt('checkout.session.completed', { id: 'cs_nr1', payment_status: 'paid', mode: 'subscription', subscription: 'sub_nr1', invoice: 'in_nr1', amount_total: 2000, currency: 'usd', created: nowSec(), metadata: { username: 'nr1', plan: 'pro' } });
+  fail.putAfterIncr = 1;
+  try { assert.ok((await hook(e)).code >= 500); } finally { disarm(); }
+  alerts.length = 0;
+  fail.getNull = { u: 'nr1', n: 2 };
+  let r;
+  try { r = await hook(e); } finally { disarm(); }
+  assert.ok(r.code >= 500, 'non-2xx فيعيد Stripe — ' + r.code);
+  assert.equal(net.subs.sub_nr1.status, 'active', 'الاشتراك الحيّ لا يُلغى');
+  assert.equal(alerts.filter((a) => /محذوف/.test(String(a.title))).length, 0, 'لا تنبيه «ردّ المبلغ» كاذب');
+  assert.equal(kv.has('payorphan:cs_nr1'), false);
+  assert.equal((await hook(e)).code, 200, 'الإعادة بعد العطل');
+  assert.equal(users.get('nr1').plan, 'pro', 'الإكمال سلّم الباقة');
+  assert.equal(await bal('nr1'), 70 + 920);
+  assert.equal(net.subs.sub_nr1.status, 'active');
+  // تجديد (invoice.paid) بعد فشل السجلّ والحساب لا يُقرأ عند الإعادة
+  fresh('nr2');
+  const inv = evt('invoice.paid', { id: 'in_nr2', object: 'invoice', billing_reason: 'subscription_cycle', subscription: 'sub_nr2', payment_intent: 'pi_nr2', charge: 'ch_nr2', amount_paid: 2000, currency: 'usd', subscription_details: { metadata: { username: 'nr2', plan: 'pro' } } });
+  net.subs.sub_nr2 = { id: 'sub_nr2', status: 'active', created: nowSec(), metadata: { username: 'nr2', plan: 'pro' } };
+  fail.putAfterIncr = 1;
+  try { assert.ok((await hook(inv)).code >= 500); } finally { disarm(); }
+  fail.getNull = { u: 'nr2', n: 2 };
+  try { r = await hook(inv); } finally { disarm(); }
+  assert.ok(r.code >= 500);
+  assert.equal(net.subs.sub_nr2.status, 'active');
+  assert.equal((await hook(inv)).code, 200);
+  assert.equal(users.get('nr2').plan, 'pro');
+  // PayPal claim: لا reason 'account' (العميل يترك طلبه المعلَّق عندها) — 'error' فيعيد
+  fresh('nr3');
+  net.orders.PN3 = ppOrder('PN3', 'CAPN3', 'nr3', 'pro', '20.00');
+  fail.putAfterIncr = 1;
+  try { assert.equal((await pp({ action: 'capture', orderId: 'PN3', token: 'T:nr3' })).body.credited, false); } finally { disarm(); }
+  fail.getNull = { u: 'nr3', n: 2 };
+  let c;
+  try { c = await pp({ action: 'claim', orderId: 'PN3', token: 'T:nr3' }); } finally { disarm(); }
+  assert.equal(c.body.credited, false);
+  assert.equal(c.body.reason, 'error', 'عطل عابر لا «لا حساب» — ' + c.body.reason);
+  c = await pp({ action: 'claim', orderId: 'PN3', token: 'T:nr3' });
+  assert.equal(c.body.credited, true);
+  assert.equal(users.get('nr3').plan, 'pro');
+  assert.equal(await bal('nr3'), 70 + 920);
+  // ودفعة لم تُحجز قطّ لحساب لا يُقرأ: كما كانت (404 ⇒ مسار الدفعة اليتيمة؛ قرار المالك في ملاحظات الفرع)
+  fresh('nr4');
+  fail.getNull = { u: 'nr4', n: 2 };
+  let g;
+  try { g = await checkout.grantPlanToUser('nr4', 'pack100', 'lastStripeSessionId', 'cs_nr4'); } finally { disarm(); }
+  assert.equal(g.status, 404);
+  assert.equal(kv.has('paid:lastStripeSessionId:cs_nr4'), false);
 });

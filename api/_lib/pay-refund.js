@@ -81,6 +81,44 @@ async function linkGrant(id, extra) {
   } catch (e) { logError('pay-refund:link', e, { id: cut(id).slice(0, 40) }); }
 }
 
+/* v-lock-credit (المراجعة المعاكسة الثانية، #3): إكمالُ منحٍ معلَّق (create-checkout-session finishGrant) وجد فترة أحدث حلّت محلّ ما كانت
+   دفعته ستحلّ محلّه (شراء في النافذة بين الشحن والإكمال). لو كُتب المنح في وقته لكانت سابقةُ الأحدث فترةَ تلك الدفعة، وسجلّ الأحدث يقول
+   «ما قبلها» — فاستردادُه كاملًا يُسقط فترتها المدفوعة غير المستردّة. يُعاد الربط في أوّل سجلّ في سلسلة السوابق من الأحدث (حتّى ٥) سابقتُه
+   رقمها fromId: تصير period(سابقته القديمة) — فترة الدفعة toId. تحت قفل سحب ذلك السجلّ (كـrevoke) فلا يمحو علامة سحبٍ جارٍ؛ مشغول ⇒ رمي
+   فيُعاد الإكمال. سلسلة تمرّ بـtoId = رُبطت قبلُ (إكمالٌ معاد). القراءة صارمة (عطلها يرمي). سجلّ مسحوب كاملًا أو لا سجلّ ⇒ لا ربط. يرجع هل رُبط. */
+async function relinkPrev(newerId, fromId, toId, period, isMedia) {
+  const from = String(fromId || '');
+  const to = String(toId || '');
+  const pidOf = (p) => String((p && (isMedia ? p.payId : p.planPayId)) || '');
+  const strictRec = async (id) => {
+    const raw = await kvGetRaw(recKey(id), { strict: true });
+    if (raw === null || raw === undefined || raw === '') return null;
+    try { return JSON.parse(raw); } catch (e) { return null; } // سجلّ تالف: لا ربط عليه (كـreadRec)
+  };
+  // كلّ سجلّ يُقرأ تحت قفل سحبه: revoke يعلّم السجلّ «مسحوبًا» قبل أن يسحب الفترة تحت قفل الحساب (الذي يحمله الإكمال الآن)، فقراءةٌ
+  // بلا القفل ترى سحبًا لم يقع بعد فتترك الربط، ثمّ يُسقط السحب الأحدث إلى «ما قبلها» وتضيع فترة هذه الدفعة (أُثبت بسباق ٣٠ حسابًا).
+  let id = String(newerId || '');
+  for (let i = 0; id && to && i < 5; i++) {
+    if (id === to) return true;
+    if (!(await kvSetIfAbsent(lockKey(id), 'relink', LOCK_TTL_SEC))) throw new Error('payrec busy, retry: ' + cut(id).slice(0, 40));
+    let next = '';
+    try {
+      const rec = await strictRec(id);
+      if (!rec || (rec.revoked && rec.revoked.plan)) return false;
+      const pp = pidOf(rec.prev);
+      if (pp === to) return true;
+      if (pp !== from) next = pp;
+      else {
+        rec.prev = period(rec.prev || null);
+        await kvSetRaw(recKey(id), JSON.stringify(rec), REC_TTL_SEC);
+        return true;
+      }
+    } finally { await kvDel(lockKey(id)); }
+    id = next;
+  }
+  return false;
+}
+
 /** الفترة التي ستحلّ هذه الدفعة محلّها (قبل المنح) — تُحفظ في سجلّها (prev) فتعود إن سُحبت هي كاملة. للوسائط مع رصيدها وقتها. لا يرمي. */
 async function priorOf(user, username, p) {
   try {
@@ -404,7 +442,8 @@ async function legacyRecord(cand, extra) {
 // يبنيه من الحجز: ذاك لا يأخذ رصيد الوسائط المملوء ويمنع تسليم الباقة بعد سحبٍ جزئيّ. يرجع سجلّ المنح إن صار له سجلّ.
 async function completeFirst(cand, meta) {
   const { claimKey, completeCredit } = require('./create-checkout-session.js');
-  const owner = await kvGetRaw(claimKey(cand.field, cand.id));
+  // المراجعة المعاكسة الثانية (#4): قراءة صارمة — null كاذبة (ردّ 200 لا يُقرأ) كانت تُسقط السحب إلى السجلّ القديم الذي لا يرى ملء الوسائط
+  const owner = await kvGetRaw(claimKey(cand.field, cand.id), { strict: true });
   if (!owner || String(owner).startsWith(REVOKED_CLAIM)) return null;
   await completeCredit(String(owner), cand.field, cand.id, cand.md && cand.md.plan, meta);
   return findRec([cand.id]);
@@ -602,5 +641,5 @@ async function paypalEvent(event) {
   return { status: 'done', retry, results };
 }
 
-module.exports = { recordGrant, linkGrant, priorOf, findRec, revoke, stripeEvent, paypalEvent, verifyPaypalSig, captureOf, REC_TTL_SEC };
+module.exports = { recordGrant, linkGrant, relinkPrev, priorOf, findRec, revoke, stripeEvent, paypalEvent, verifyPaypalSig, captureOf, REC_TTL_SEC };
 module.exports.alertOwner = alertOwner; // v-lock-subs (srv-money-5): الويب هوك ينبّه المالك بدفعة لحساب محذوف بالمسار نفسه (سجلّ أخطائه + الإشعار بمهلة)

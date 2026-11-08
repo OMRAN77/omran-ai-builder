@@ -64,11 +64,13 @@ async function kvPutJSON(key, obj) {
   await command(['SET', key, JSON.stringify(obj)]);
 }
 
-// DEL key
-async function kvDel(key) {
+// DEL key — أفضل جهد يبتلع فشله. v-lock-credit (المراجعة المعاكسة الثانية): `{ strict: true }` يرميه لمن يتوقّف عليه شيء
+// (فكّ حجز دفعة لم تُشحن: بقاؤه يجعل كلّ إعادة «سبق الشحن»).
+async function kvDel(key, opts) {
   try {
     await command(['DEL', key]);
   } catch (e) {
+    if (opts && opts.strict) throw e;
     // best-effort
   }
 }
@@ -131,8 +133,10 @@ async function kvSetIfAbsent(key, value, ttlSec) {
   return res === 'OK';
 }
 
-async function kvGetRaw(key) {
-  return await command(['GET', key]);
+// v-lock-credit (المراجعة المعاكسة الثانية): `{ strict: true }` كـkvGetJSON — ردّ 200 لا يُقرأ يرمي بدل أن يعود null «غير موجود»
+// (علامة إكمال دفعة أو حجزها: null كاذبة تُجيب «سبق الشحن» 200 فتقف الإعادات والباقة لم تُسلَّم). بلا الخيار كما كان.
+async function kvGetRaw(key, opts) {
+  return await command(['GET', key], !!(opts && opts.strict));
 }
 
 // SET a plain value, optionally with an expiry. Session markers must have a
