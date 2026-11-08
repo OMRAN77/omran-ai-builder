@@ -162,6 +162,12 @@ test('٥. رمز المهمّة يرفض قبل أيّ إنفاق إن لم يك
   assert.ok(js.includes("var key=/disk_full/.test(code)?'vdFailDisk':"), 'رمز الرفض (token … bridge_disk_full) ورسالة الدمج (render join disk_full) ← رسالة القرص');
   const srv = read('cc-bridge/server.mjs');
   assert.ok(srv.includes('renderJobs: renderer.jobs.size, disk: await renderer.disk().catch(() => null)'), 'القرص في الصحّة، وrenderJobs باقٍ رقمًا');
+  // v-bridge-render-tmp (الصحّة بعد النشر: «free 0 MB + 172 MB to clear of 433 MB» — القرص المركّب كلّه ٤٣٣ م.ب): المهمّات على قرص
+  // الحاوية المؤقّت لا المركّب، وما تركته القديمة على المركّب يُمسح عند الإقلاع
+  assert.ok(srv.includes("const RENDER_DIR = env.DIRECTOR_WORK_DIR || join(tmpdir(), 'omran-render');") && srv.includes('workDir: RENDER_DIR,'), 'مكان المهمّات');
+  assert.ok(!srv.includes("workDir: join(STATE_DIR, 'render')"), 'لا على القرص المركّب');
+  assert.ok(srv.includes("const OLD_RENDER_DIR = join(STATE_DIR, 'render');") && srv.includes('if (RENDER_DIR !== OLD_RENDER_DIR) rm(OLD_RENDER_DIR, { recursive: true, force: true })'), 'القديم يُمسح عند الإقلاع');
+  assert.ok(read('cc-bridge/README.md').includes('`DIRECTOR_WORK_DIR`'), 'README يذكر المتغيّر');
 });
 
 test('٦. رسالة «قرص الجسر» بالـ١٤ لغة بلا اسم مزوّد ذكاء، والوسوم مرفوعة بسببها', () => {

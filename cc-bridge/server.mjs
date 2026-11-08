@@ -11,8 +11,9 @@
 'use strict';
 
 import { createServer } from 'node:http';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { timingSafeEqual, randomBytes } from 'node:crypto';
 import { ALLOWED_TOOLS, DENIED_TOOLS, RULES_APPEND, RunLog, briefTool, detailTool, DETAIL_MAX, redact, agentEnv, bridgeDecision } from './policy.mjs';
 import { makeGit } from './git.mjs';
@@ -43,12 +44,19 @@ if (!SECRET || SECRET.length < 24) { console.error('CC_BRIDGE_SECRET مفقود 
 if (!env.ANTHROPIC_API_KEY && !env.CLAUDE_CODE_OAUTH_TOKEN) { console.error('لا ANTHROPIC_API_KEY ولا CLAUDE_CODE_OAUTH_TOKEN في البيئة.'); process.exit(1); }
 
 const gitOps = makeGit({ cwd: REPO_DIR });
+/* v-bridge-render-tmp (بعد v-bridge-disk: الصحّة قالت «free 0 MB + 172 MB to clear of 433 MB» — قرص Railway المركّب كلّه ٤٣٣ م.ب):
+   مهمّات المخرج لا تحتاج البقاء بين النشرات (سجلّها في الذاكرة، وملفّاتها تيتم عند كلّ إعادة تشغيل)، فمكانها قرص الحاوية المؤقّت لا
+   القرص المركّب الذي تبقى فيه نسخة المستودع والجلسات والحالة. DIRECTOR_WORK_DIR يغيّره صراحةً. وما تركته المهمّات القديمة على
+   القرص المركّب يُمسح عند الإقلاع فيعود له مكانه. */
+const RENDER_DIR = env.DIRECTOR_WORK_DIR || join(tmpdir(), 'omran-render');
+const OLD_RENDER_DIR = join(STATE_DIR, 'render');
+if (RENDER_DIR !== OLD_RENDER_DIR) rm(OLD_RENDER_DIR, { recursive: true, force: true }).catch((e) => console.warn('[cc] old render dir cleanup failed', e && e.message));
 /* v-app-director: مسار /render برمز مهمّة (HMAC بالسرّ نفسه يصدره Vercel للمالك) لا بالسرّ الخام — المتصفّح يناديه مباشرة.
    DIRECTOR_APP_URL: التطبيق الذي تُصوَّر شاشاته (الإنتاج افتراضيًّا). FFMPEG_BIN/FFPROBE_BIN اختياريّان. */
 const renderer = createRenderer({
   secret: SECRET,
   appUrl: String(env.DIRECTOR_APP_URL || 'https://omran-ai-builder.vercel.app').replace(/\/+$/, ''),
-  workDir: join(STATE_DIR, 'render'),
+  workDir: RENDER_DIR,
   repoDir: REPO_DIR,
   ffmpeg: env.FFMPEG_BIN || 'ffmpeg',
   ffprobe: env.FFPROBE_BIN || 'ffprobe',
