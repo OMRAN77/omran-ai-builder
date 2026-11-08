@@ -75,7 +75,7 @@ function load(root) {
     line('const __rtTextRev = '), line('const __rtAfterTextOut = '),
     line('const __IMGF_NEW_RE = '), line('const __IMGF_NOT_RE = '), line('const __IMG_EDIT_VERB_RE = '),
     imgFollowSrc,
-    line('const __nanoQ = '), line('const __ATT_VISION_RE = '), line('const __codeWordRe = '), optional('const __ackOnly = '),
+    line('const __nanoQ = '), line('const __ATT_VISION_RE = '), line('const __codeWordRe = '), optional('const OMRAN_OFFICE_FILE_RE = '), optional('const __ackOnly = '),
     '  const __srcImg = null;',
     line('const __FOLLOW_ANY = '),
     line('const __imgEditRe = '), line('const __IMG_CREATIVE_RE = '), line('const __editStyleIntent = '), line('const __FOLLOW_DEFAULT = '),
@@ -85,7 +85,7 @@ function load(root) {
     '  const mem = !!(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && !__rtWriteAsk' + memCond + ');',
     '  const editWord = __imgEditRe.test(text) || __imgGenIntentRe.test(text);',
     /* فيتوهات مدخل مسار التعديل (السطر نفسه في الكود): شكر (إن وُجد)، كود، قراءة، سؤال */
-    '  const veto = ' + (ackVeto ? '__OMRAN_ACK_RE.test(text) || ' : '') + '__codeWordRe.test(text) || __ATT_VISION_RE.test(text) || ' + qStart + '.test(text) || /[؟?]\\s*$/.test(text);',
+    '  const veto = ' + (ackVeto ? '__OMRAN_ACK_RE.test(text) || ' : '') + '__codeWordRe.test(text) || (typeof OMRAN_OFFICE_FILE_RE !== "undefined" && OMRAN_OFFICE_FILE_RE.test(text)) || __ATT_VISION_RE.test(text) || ' + qStart + '.test(text) || /[؟?]\\s*$/.test(text);', // v-office-image: فيتو كلمات الملفّ في السطر نفسه
     '  return { follow: __IMG_FOLLOW, any: __FOLLOW_ANY, def: __FOLLOW_DEFAULT, style: __STYLE_FOLLOW, mem, editWord, veto,',
     '    edit: !veto && (__IMG_FOLLOW || __FOLLOW_ANY || __FOLLOW_DEFAULT || __STYLE_FOLLOW || (mem && editWord)) };',
     '};',
