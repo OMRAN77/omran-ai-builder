@@ -44,7 +44,9 @@ function fakeIDB(seed) {
       put(v, k) {
         if (mode !== 'readwrite') throw new Error('ReadOnlyError');
         const c = structuredClone(v); // الاستنساخ عند put نفسه، كالمتصفّح
-        info.keys.push(k); info.chars += (J(v) || '').length;
+        const chars = (J(v) || '').length;
+        if (hooks.nsPerChar) { const t = Date.now(), ms = chars * hooks.nsPerChar / 1e6; while (Date.now() - t < ms); } // كلفة الاستنساخ في المتصفّح البطيء (r3-rv3)
+        info.keys.push(k); info.chars += chars;
         return enqueue(() => { writes.set(k, c); return k; });
       },
       get: (k) => enqueue(() => { const v = read(k); return v === undefined ? undefined : structuredClone(v); }),
@@ -537,7 +539,7 @@ test('r3-rv1ج. مهلة الانتظار لـIndexedDB لا للتسلسل: ح�
   for (let i = 0; i < 2000 && fdb.hooks.txSeen === n0; i++) await tick(1); // النقر والحفظ الجاري ينتظر التزام فهرسه في IndexedDB
   assert.notEqual(fdb.hooks.txSeen, n0, 'الحفظ الجاري بلغ معاملة فهرسه');
   A.ctx.state.projects[3].messages.push({ role: 'user', content: 'CHANGE_PENDING' });
-  A.ctx.saveState(); // وتغيير ينتظر في التجميع ← النقر يفرض حفظًا متزامنًا خلف الجاري (٣٠٠م.ث في مهمّة واحدة > مهلة ١٠٠م.ث)
+  A.ctx.saveState(); // وتغيير ينتظر في التجميع ← النقر يبدأ حفظًا خلف الجاري (كان متزامنًا: ٣٠٠م.ث في مهمّة واحدة > مهلة ١٠٠م.ث؛ مقسّم منذ r3-rv3)
   const w = detector(A, () => fdb.snapshot());
   w.freeze();
   w.reloadBtn.onclick();
@@ -574,5 +576,98 @@ test('r3-rv2. التراجع ثمّ العودة: الإصدار السابق ك
   assert.equal(back.length, 13, 'بعد الكنس: ' + back.length);
   assert.equal(J(back), J(B.ctx.state.projects));
   assert.ok(back.filter((p) => p.code).length >= 6 && back.some((p) => (p.codeHistory || []).length === 2), 'التطبيقات بكودها وآلة الزمن');
+});
+
+/* ── جولة المراجعة الثالثة (r3-rv3): «إعادة التحميل» بعد أوّل إقلاع من السجلّ القديم ── */
+/* أوّل إقلاع لكلّ جهاز بعد النشر يقرأ السجلّ القديم الواحد، فلا __projRec لأيّ مشروع. النقر كان يفرض حفظًا متزامنًا (__saveFlush(true))
+   = كلّ المشاريع في معاملة الفهرس الواحدة، واستنساخها البنيويّ داخل put متزامن بحجم التاريخ كلّه (>٥ث على ٣٦١ محادثة، المعالج ×٢):
+   المهلة المسلّحة قبلها تنقضي أثناءه، والإعادة تقتل المعاملة قبل التزامها فيضيع التغيير (ويبقى يتيم الدفعات السابقة).
+   محاكاة المعالج البطيء: كلّ حرف يُستنسخ في put بـ٣٠ن.ث (دفعة ٤م حرف ≈ ١٢٠م.ث، والسجلّ كلّه ≈ ١٢م حرف ≈ ٣٦٠م.ث)، ومهلة ٥ث ← ٢٥٠م.ث. */
+const budgetTimers = (f, ms) => setTimeout(f, ms >= 1000 ? Math.round(ms / 20) : ms);
+async function legacyBootApp() {
+  const legacy = legacyRecord(makeApp(fakeIDB()), history(30, 400000));
+  const fdb = fakeIDB({ kv: [['aiapp_projects', legacy]], images: [] });
+  const A = makeApp(fdb, { setTimeout: budgetTimers });
+  A.ctx.state.projects = await A.load(); // أوّل إقلاع بعد النشر: من السجلّ القديم وحده
+  A.ctx.state.currentId = A.ctx.state.projects[29].id;
+  const biggestRec = Math.max(...legacy.map((p) => J(p).length));
+  fdb.hooks.nsPerChar = 30;
+  return { fdb, A, biggestRec };
+}
+async function clickReload(A, fdb) {
+  const w = detector(A, () => fdb.snapshot());
+  w.freeze();
+  w.reloadBtn.onclick();
+  for (let i = 0; i < 1500 && !w.reloads.length; i++) await tick(10);
+  assert.equal(w.reloads.length, 1, 'أعاد');
+  return w.reloads[0];
+}
+const maxTx = (fdb, from) => Math.max(0, ...fdb.stats.txs.slice(from).map((t) => t.chars));
+
+test('r3-rv3أ. «إعادة التحميل» بعد أوّل إقلاع من السجلّ القديم: الحفظ الذي ينتظره مقسّم (لا معاملة بحجم التاريخ) والتغيير ملتزم قبل الإعادة', async () => {
+  const { fdb, A, biggestRec } = await legacyBootApp();
+  const n0 = fdb.stats.txs.length;
+  A.ctx.state.projects[17].title = 'CHANGE_AFTER_LEGACY_BOOT';
+  A.ctx.saveState();
+  const snap = await clickReload(A, fdb);
+  const after = await makeApp(snap).load();
+  assert.ok(J(after).includes('CHANGE_AFTER_LEGACY_BOOT'), 'التغيير ضاع: الإعادة سبقت التزام معاملة الفهرس');
+  assert.ok(snap.keys().includes('aiapp_projects_m') && !snap.keys().includes('aiapp_projects'), 'رُحّل قبل الإعادة');
+  assert.equal(J(after), J(A.ctx.state.projects));
+  await A.ctx.__saveFlushWait(1000);
+  assert.ok(maxTx(fdb, n0) <= Math.max(4000000, biggestRec) + 20000, 'أكبر معاملة ' + maxTx(fdb, n0) + ' حرفًا — الحفظ المفروض كتب التاريخ كلّه في معاملة واحدة');
+});
+
+test('r3-rv3ب. ترحيل مقسّم جارٍ من مؤقّت التجميع لحظة النقر وتغيير ينتظر: الحفظ الأحدث مقسّم أيضًا، والتغييران ملتزمان قبل الإعادة', async () => {
+  const { fdb, A, biggestRec } = await legacyBootApp();
+  const n0 = fdb.stats.txs.length;
+  let off = 0; const RD = A.ctx.Date;
+  A.ctx.Date = class extends RD { static now() { off += 15; return RD.now() + off; } }; // المعالج البطيء: الترحيل يتنازل كلّ مشروعين تقريبًا
+  A.ctx.state.projects[3].title = 'CHANGE_IN_FLIGHT';
+  A.ctx.saveState();
+  A.ctx.__saveFlush(); // مؤقّت التجميع: الترحيل المقسّم يبدأ ولا شيء «قذر» بعده
+  assert.equal(A.get('__saveDirty'), false);
+  await tick(0);
+  A.ctx.state.projects[17].title = 'CHANGE_PENDING';
+  A.ctx.saveState(); // تغيير ينتظر في التجميع لحظة النقر
+  const snap = await clickReload(A, fdb);
+  const after = J(await makeApp(snap).load());
+  assert.ok(after.includes('CHANGE_IN_FLIGHT') && after.includes('CHANGE_PENDING'), 'ضاع تغيير: الإعادة سبقت التزام معاملة الفهرس');
+  await A.ctx.__saveFlushWait(1000);
+  assert.ok(maxTx(fdb, n0) <= Math.max(4000000, biggestRec) + 20000, 'أكبر معاملة ' + maxTx(fdb, n0) + ' حرفًا');
+});
+
+test('r3-rv3ج. ترحيل أوّل انقطع بعد دفعة (يتيم بمعرّف تبويب ميّت): لا يحجب السجلّ القديم عند الإقلاع ولا الفهرس بعد الترحيل، ويُكنس بعد ١٠ دقائق', async () => {
+  const want = history(6, 1500000); // ثلاثة تطبيقات ~٣م حرف: كلّ تطبيق معاملة
+  const legacy = legacyRecord(makeApp(fakeIDB()), want);
+  const fdb = fakeIDB({ kv: [['aiapp_projects', legacy]], images: [] });
+  const A = makeApp(fdb, { random: 0.111 });
+  A.ctx.state.projects = await A.load();
+  A.ctx.state.projects.forEach((p) => { p.title = 'ORPHAN_ONLY ' + p.title; }); // لم يلتزم قطّ: يبقى في اليتيم وحده
+  fdb.hooks.killAfterTx = fdb.hooks.txSeen + 1; // الصفحة تموت بعد أوّل دفعة (إعادة أو إغلاق أثناء الترحيل)
+  A.save(false).catch(() => {});
+  for (let i = 0; i < 300 && !fdb.hooks.dead; i++) await tick(10);
+  assert.ok(fdb.hooks.dead, 'ماتت في منتصف الترحيل');
+  const S = fdb.snapshot();
+  const orphans = recKeys(S.keys());
+  assert.ok(orphans.length >= 1 && S.keys().includes('aiapp_projects') && !S.keys().includes('aiapp_projects_m'), 'يتيم والسجلّ القديم ولا فهرس: ' + S.keys().join(','));
+  // الإقلاع التالي (تبويب جديد): السجلّ القديم كما هو — اليتيم لا يُقرأ
+  const B = makeApp(S, { random: 0.777 });
+  const got = await B.load();
+  assert.equal(J(got), J(want), 'السجلّ القديم الملتزم هو المقروء — لا شيء من اليتيم');
+  B.ctx.state.projects = got;
+  await B.save(false);
+  assert.ok(!S.keys().includes('aiapp_projects') && S.keys().includes('aiapp_projects_m'), 'رُحّل');
+  const mid = J(await makeApp(S.snapshot()).load());
+  assert.equal(mid, J(want), 'بعد الترحيل: الفهرس وحده يُقرأ — اليتيم الحديث (تبويب آخر <١٠ دقائق) باقٍ ولا يحجب');
+  assert.ok(orphans.every((k) => S.keys().includes(k)), 'اليتيم الحديث باقٍ قبل ١٠ دقائق (قد يكون قيد الكتابة في تبويب حيّ)');
+  // بعد ١١ دقيقة: أوّل حفظ يكنس اليتيم — المخزن = مفاتيح الفهرس
+  B.advance(11 * 60000);
+  B.ctx.state.projects[0].title = 'بعد ١١ دقيقة';
+  await B.save(false);
+  const man = S.kv().get('aiapp_projects_m');
+  assert.ok(orphans.every((k) => !S.keys().includes(k)), 'اليتيم كُنس');
+  assert.deepEqual(recKeys(S.keys()), [...man.keys].sort(), 'المخزن = مفاتيح الفهرس');
+  assert.equal(J(await makeApp(S.snapshot()).load()), J(B.ctx.state.projects));
 });
 
