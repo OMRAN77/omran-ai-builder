@@ -48,7 +48,14 @@ window.postWithConfirm = postWithConfirm;
   let dismissedUntil = 0;
   let strikes = 0;
 
-  reloadBtn.onclick = () => location.reload();
+  /* v-r3 (r3-f2): «تم حفظ عملك تلقائيًا» صادقة — إعادة التحميل تنتظر كتابة ما ينتظر في الحفظ المجمّع (مهلة ٥ث لانتظار IndexedDB)؛
+     كانت تعيد فورًا فيضيع تغيير لم يمرّ عليه الحفظ بعد (١٫٥–٣٠ث حسب حجم السجلّ) */
+  reloadBtn.onclick = () => {
+    reloadBtn.disabled = true;
+    let wait = null;
+    try{ if(typeof window.__saveFlushWait === 'function') wait = window.__saveFlushWait(5000); }catch(e){ __swallow(e, 'freeze:flush'); }
+    Promise.resolve(wait).then(() => location.reload(), () => location.reload());
+  };
   dismissBtn.onclick = () => {
     banner.style.display = 'none';
     shown = false;
@@ -87,7 +94,8 @@ window.postWithConfirm = postWithConfirm;
       if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
         /* v-freeze-fix: لا إعادة حفظ هنا — كانت تُبطل النسخة المنحّفة وتجدول رفعها وحفظ السجلّ كاملًا في IndexedDB لحظة التجمّد نفسها
            (مسبار سجلّ المالك الثقيل: تجمّد ثانٍ ١٤ث بعد البانر). أيّ تغيير ينتظر أصلًا في الحفظ المجمّع (١٫٥ث)، و«إعادة التحميل» =
-           pagehide ← __saveFlush والمرآة؛ فـ«تم حفظ عملك تلقائيًا» صادقة بلا هذه الكلفة. */
+           pagehide ← __saveFlush والمرآة؛ فـ«تم حفظ عملك تلقائيًا» صادقة بلا هذه الكلفة.
+           v-r3 (r3-f2): pagehide وحده لا يكمل حفظه بعد المغادرة — فزرّ «إعادة التحميل» ينتظر الحفظ (__saveFlushWait) قبل أن يعيد. */
         shown = true;
         banner.style.display = 'flex';
       }
