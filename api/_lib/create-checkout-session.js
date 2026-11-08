@@ -17,7 +17,7 @@
 // التجديد: «بطاقة» دفعة لشهر افتراضيًّا (mode=payment)، واشتراك متجدّد لمن فعّل autoRenew؛ فواتير التجديد يشحنها
 // الويب هوك (api/webhook.js، invoice.paid) بـgrantPlanToUser نفسها. Apple Pay / Google Pay دفعة واحدة (PaymentIntent).
 const { verifyToken, getUser, putUser } = require('./auth.js');
-const { kvIncrBy, kvSetIfAbsent, kvDel, kvGetRaw } = require('./kv.js');
+const { kvIncrBy, kvSetIfAbsent, kvDel, kvGetRaw, kvSetRaw } = require('./kv.js');
 const { MEDIA_PLANS, MEDIA_WINDOW_DAYS, grantMedia, mediaActive } = require('./_mediaPlans.js');
 
 const PLANS = {
@@ -108,9 +108,17 @@ async function lowerPlanBlock(username, plan) {
 /* v-pay-once (فحص الاشتراكات ٥ أكتوبر): «أمان التكرار» كان يتذكّر آخر دفعة وحدها وبلا قفل — دفعتان حقيقيّتان
    تُعادان بالتناوب (A، B، A…) تُشحنان بلا نهاية، وعشرة طلبات تحقّق متزامنة لدفعة واحدة تُشحن عشر مرّات (أُثبت محلّيًّا).
    الآن كلّ رقم دفعة يُحجز حجزًا ذرّيًّا (SET NX) قبل الشحن: أوّل نداء يشحن وكلّ ما بعده «سبق الشحن» — في التحقّق
-   والويب هوك وApple/Google Pay وPayPal معًا. فشل الشحن بعد الحجز يفكّه، فتعيد المحاولة (الويب هوك يعيد ثلاثة أيّام). */
+   والويب هوك وApple/Google Pay وPayPal معًا. فشل الشحن قبل أثره يفكّه، فتعيد المحاولة (الويب هوك يعيد ثلاثة أيّام)؛ وبعد أثره لا (v-lock-credit). */
 const CLAIM_TTL_SEC = 400 * 86400;
 const claimKey = (field, id) => 'paid:' + field + ':' + String(id).slice(0, 200);
+/* v-lock-credit (srv-money-2، باب المال بموافقة المالك ٢٧ أكتوبر): الفكّ كان لكلّ فشل، حتّى بعد أن زاد العدّاد — فشلُ كتابة السجلّ
+   بعده (عطل Upstash عابر) يفكّ الحجز ويردّ 500، فتشحن إعادة Stripe/PayPal أو تحقّق العميل مرّة ثانية (pack700 = ١٤٠٠، أُثبت محلّيًّا).
+   الآن الفكّ للفشل قبل الأثر غير المتكرّر وحده (زيادة النقاط أو ملء رصيد الوسائط). بعده يبقى الحجز، وتُكتب علامة «شُحن ولم يُكتب
+   السجلّ» بوقت الأثر، ويُرمى (non-2xx فيعيد المرسل). الإعادة تجد العلامة فتكمل السجلّ (الباقة ورقم الدفعة وسجلّ المنح) بلا شحن ثانٍ. */
+// المراجعة المعاكسة: كانت ٤ أيّام فتنتهي صامتة إن طال العطل — يبقى الحساب بنقاط الدفعة بلا باقتها ولا يكملها شيء بعدها (claim،
+// استرداد). تعيش ما عاش الحجز الذي يرافقها، والمالك يُبلَّغ بكلّ إكمال معلَّق (markCredited).
+const CREDIT_MARK_TTL_SEC = CLAIM_TTL_SEC;
+const creditMarkKey = (field, id) => 'paid-credit:' + field + ':' + String(id).slice(0, 200);
 // التحقّق من العميل (العودة وجسر الآيفون) لدفعة حديثة فقط: ما سبق الحجز الذرّيّ لا يُعاد بعد النشر؛ الويب هوك (الموقَّع) بلا حدّ.
 const VERIFY_WINDOW_SEC = 72 * 3600;
 const tooOld = (created) => Number(created) > 0 && (Date.now() / 1000 - Number(created)) > VERIFY_WINDOW_SEC;
@@ -127,16 +135,17 @@ async function liveAccount(username) {
 /* v-acct-lock (المراجعة المعاكسة الثالثة لـv-pay-refund): سجلّ الحساب يُكتب كاملًا من قراءة سابقة (KV بلا CAS)، فسحبان معًا على
    خانتين (باقة المحادثة وباقة الفيديو، أو باقة ورزمة نقاط) أو منحٌ مع سحب على الحساب نفسه يكتب أحدهما نسخته القديمة فوق ما كتبه
    الآخر — فتعود فترة مسحوبة أو يضيع شراء جديد. المنح (grantPlanToUser) والسحب (pay-refund.js) يأخذان قفلًا للحساب ويقرآن داخله
-   نسخة طازجة فيعدّلان ما يملكانه وحده. لم يُنل القفل في ~٨ ثوانٍ ⇒ رمي قبل أيّ أثر (non-2xx فيعيد المرسل). صرف النقاط لا يأخذه
-   (المسار الساخن)؛ نافذته تُضيَّق في pay-refund.js. */
+   نسخة طازجة فيعدّلان ما يملكانه وحده. لم يُنل القفل في ~٨ ثوانٍ ⇒ رمي قبل أيّ أثر (non-2xx فيعيد المرسل). خصم الصرف نفسه لا يأخذه
+   (المسار الساخن، عدّاد ذرّيّ)؛ مرآته على السجلّ تأخذه بانتظار قصير (v-lock-credit، points.js mirrorToUser). */
 const ACCT_LOCK_TTL_SEC = 20;
 const ACCT_LOCK_WAIT_MS = 8000;
 const BUSY = 'الحساب مشغول بعمليّة دفع أخرى، أعد المحاولة بعد لحظات / Account busy with another payment, please retry in a moment';
 const acctLockKey = (name) => 'db/acct-lock/' + encodeURIComponent(String(name || '').trim().toLowerCase());
-async function withAccount(username, fn) {
+// waitMs اختياريّ (v-lock-credit، x-build-1): مرآة صرف النقاط في المسار الساخن تنتظر أقلّ من مهلة الدفع.
+async function withAccount(username, fn, waitMs) {
   const name = (await liveAccount(username)).name;
   const key = acctLockKey(name);
-  const until = Date.now() + ACCT_LOCK_WAIT_MS;
+  const until = Date.now() + (Number(waitMs) >= 0 ? Number(waitMs) : ACCT_LOCK_WAIT_MS);
   for (let wait = 40; !(await kvSetIfAbsent(key, '1', ACCT_LOCK_TTL_SEC)); wait = Math.min(400, Math.round(wait * 1.5))) {
     if (Date.now() + wait > until) throw new Error(BUSY);
     await new Promise((r) => setTimeout(r, wait + Math.floor(Math.random() * wait)));
@@ -180,23 +189,53 @@ async function grantPlanToUser(username, plan, sourceField, sourceId, meta) {
   return withAccount(username, (name, user) => grantLocked(name, user, plan, sourceField, sourceId, meta));
 }
 async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
-  if (!user || user.deleted) return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
+  if (!user) {
+    /* v-lock-credit (المراجعة المعاكسة الثانية، #7 في نطاق الإكمال): getUser يعيد null عند عطل القراءة كما للمفقود. دفعةٌ حُجزت قبلُ
+       (شُحنت ولم يُكتب سجلّها، أو سبق منحها) حسابها موجود يقينًا — كان 404 هنا يجعل الويب هوك يعاملها يتيمة: تنبيه «ردّ المبلغ» وإلغاء
+       الاشتراك الحيّ و200، فيقف الإكمال الذي تعتمد عليه القاعدة الواحدة (والعطل العابر هو بالذات ما يأتي بالإعادة). الآن رمي (non-2xx
+       فيُعاد). عطل قراءة الحجز نفسه يرمي كذلك. دفعة لم تُحجز قطّ كما كانت (قرار المالك — انظر ملاحظات الفرع). */
+    if (sourceField && sourceId && (await kvGetRaw(claimKey(sourceField, sourceId), { strict: true }))) throw new Error(BUSY);
+    return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
+  }
+  if (user.deleted) return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
 
   // أمان التكرار: نفس الجلسة/العملية لا تضيف النقاط مرتين — كان الحقل يُخزَّن
   // بلا فحص، فتكرار التحقق (تحديث صفحة النجاح، أو جسر الآيفون) كان يضاعفها.
   const already = { ok: true, plan, pointsAdded: 0, alreadyGranted: true, balance: Number(user.points || 0) };
-  if (sourceField && sourceId && user[sourceField] === sourceId) return already;
+  const mark = (sourceField && sourceId) ? creditMarkKey(sourceField, sourceId) : null;
+  if (sourceField && sourceId && user[sourceField] === sourceId) {
+    /* v-lock-credit (srv-money-2 × v-lock-gpay): السجلّ قد يكون وصل ثمّ رمت كتابته (مهلة بعد الكتابة) — الباقة والرقم على الحساب وسجلّ
+       المنح لم يُكتب. علامة الإكمال باقية من تلك المحاولة ⇒ تُكمَل (سجلّ المنح فقط، بلا شحن ولا مسّ الفترة).
+       المراجعة المعاكسة الثانية (#4): القراءة صارمة وعطلها يرمي — «سبق الشحن» (2xx يوقف الإعادات) لا يُقال إلّا والعلامة غائبة يقينًا؛
+       كان عطلها يُقرأ «لا علامة» فيبقى سجلّ المنح وربط الأحدث (#3) معلَّقَين حتّى يأتي استرداد. */
+    const pend = await kvGetRaw(mark, { strict: true });
+    return pend ? finishGrant(username, user, plan, sourceField, sourceId, meta, pend) : already;
+  }
   const claim = (sourceField && sourceId) ? claimKey(sourceField, sourceId) : null;
-  if (claim && !(await kvSetIfAbsent(claim, username, CLAIM_TTL_SEC))) return already; // v-pay-once
+  if (claim && !(await kvSetIfAbsent(claim, username, CLAIM_TTL_SEC))) { // v-pay-once
+    // v-lock-credit (srv-money-2): محاولة سابقة شحنت ثمّ فشلت كتابة السجلّ — تُكمله بلا شحن ثانٍ. بلا علامة = سبق الشحن.
+    // المراجعة المعاكسة الثانية (#4): قراءة صارمة — ردّ 200 لا يُقرأ كان يعود null فيُجاب «سبق الشحن» 200 والباقة لم تُسلَّم.
+    const pend = await kvGetRaw(mark, { strict: true });
+    return pend ? finishGrant(username, user, plan, sourceField, sourceId, meta, pend) : already;
+  }
 
-  let added = null; // v-lock-gpay: { key, n } بعد أن أُضيفت النقاط فعلًا — أثر لا يُعاد
+  /* v-lock-credit (srv-money-2، موحَّدة مع v-lock-gpay وv-lock-subs): ما يحتاجه الإكمال ليكتب ما كان هذا المنح سيكتبه، بلا أثر ثانٍ. */
+  let creditedAt = 0; // وقت الأثر غير المتكرّر (زيادة النقاط أو ملء رصيد الوسائط) — بعده لا يُفكّ الحجز أبدًا
+  let was = ''; // رقم دفعة الفترة التي يحلّ هذا المنح محلّها — يعرف به الإكمال أنّ السجلّ لم يتغيّر بعده
+  let prior = null; // تلك الفترة كاملة (ورصيد الوسائط قبل ملئه) — priorOf وقت الإكمال يقرأ الرصيد بعد الملء
+  let kept = false; // v-lock-subs (srv-money-4): أدنى تحت أعلى سارية — فترته في planNext والأعلى لا تُمسّ، في المنح وفي إكماله
+  let drop = null; // v-lock-subs: فترة planNext التي حلّ محلّها هذا المنح (الفعليّة قبله) — تخرج منها في المنح وفي إكماله
   try {
-    const kept = !!keepsHigherChat(user, plan); // v-lock-subs (srv-money-4): الأعلى السارية تبقى، وفترة الأدنى في planNext (داخل try: رميٌ يفكّ الحجز)
+    kept = !!keepsHigherChat(user, plan); // v-lock-subs (srv-money-4): الأعلى السارية تبقى، وفترة الأدنى في planNext (داخل try: رميٌ يفكّ الحجز)
     const cp = (PLANS[plan].pack || PLANS[plan].media) ? null : require('./tier.js').chatPeriod(user); // الفترة الفعليّة قبل المنح
+    drop = !kept && cp && cp.next ? { plan: cp.plan, at: cp.at } : null;
     const prev = kept ? null : await require('./pay-refund.js').priorOf(user, username, PLANS[plan]); // v-pay-refund: قبل أن تُستبدل الفترة. لا يرمي
+    prior = prev;
+    was = String((prev && (PLANS[plan].media ? prev.payId : prev.planPayId)) || '');
     if (PLANS[plan].media) {
       if (sourceField) user[sourceField] = sourceId;
       const g = await grantMedia(user, username, plan);
+      creditedAt = (g && Number(user.media[g.media].at)) || Date.now(); // الرصيد مُلئ: إعادة ملئه تعيد ما صُرف منه بعده
       if (g && sourceId) user.media[g.media].payId = String(sourceId); // v-pay-refund: الدفعة التي فتحت فترة الباقة — استردادها وحده يسحبها
       await putUser(username, user);
       await noteGrant(username, plan, sourceField, sourceId, meta, user, prev); // v-pay-refund
@@ -208,10 +247,9 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     if (!PLANS[plan].pack && !kept) user.planPayId = sourceId ? String(sourceId) : undefined; // v-pay-refund: كالسطر أعلاه للوسائط
     // v-lock-subs (srv-money-4): فترة الأدنى تُحفظ في planNext (kept)، وفترة planNext التي حلّ محلّها هذا المنح تخرج منها (هي prev في سجلّه)
     const keptAt = kept ? Date.now() : 0;
-    if (!PLANS[plan].pack) {
-      const list = nextPeriods(user, kept ? { plan, at: keptAt, payId: sourceId ? String(sourceId) : null } : null, !kept && cp && cp.next ? cp : null);
-      if (list.length) user.planNext = list; else delete user.planNext;
-    }
+    if (!PLANS[plan].pack) setNext(user, nextPeriods(user, kept ? { plan, at: keptAt, payId: sourceId ? String(sourceId) : null } : null, drop));
+    // v-lock-credit: وقت فترة هذا المنح (planNext للأدنى تحت أعلى، وإلّا الرئيسيّة؛ الرزمة بلا فترة) — العلامة تحمله فيكمل الإكمال بالوقت نفسه لا بوقت الإعادة
+    const grantAt = keptAt || (!PLANS[plan].pack && Number(user.planUpdatedAt)) || Date.now();
     if (sourceField) user[sourceField] = sourceId;
 
     // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في points.js
@@ -222,30 +260,200 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     await require('./points.js').ensureBalance(username);
     const balanceKey = 'points:' + encodeURIComponent(String(username).trim().toLowerCase());
     const newBalance = await kvIncrBy(balanceKey, PLANS[plan].points);
-    added = { key: balanceKey, n: PLANS[plan].points };
+    creditedAt = grantAt; // النقاط في العدّاد الحيّ: كلّ ما بعده لا يفكّ الحجز
     user.points = Number(newBalance);
 
     await putUser(username, user);
     await noteGrant(username, plan, sourceField, sourceId, meta, user, prev, keptAt); // v-pay-refund
     return Object.assign({ ok: true, plan: (PLANS[plan].pack || kept) ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) }, kept ? { kept: true } : {});
   } catch (e) {
-    /* v-lock-gpay: فشلٌ بعد أن أُضيفت النقاط (حفظ الحساب) — فكّ الحجز وحده كان يجعل الإعادة (الويب هوك، أو تحقّق Apple/Google Pay
-       المعلّق في المتصفّح) تضيفها مرّة ثانية. يُقرأ الحساب: الحفظ وصل ⇒ الشحنة تمّت، يبقى الحجز؛ لم يصل ⇒ تُردّ النقاط ثمّ يُفكّ؛
-       ولا يُعرف أو تعذّر الردّ ⇒ يبقى الحجز: شحنة واحدة قد تنقصها الباقة خيرٌ من اثنتين.
-       v-lock-gpay (srv-money-1، المراجعة المعاكسة): getUser لا يرمي عند عطل القراءة — يبتلعه getUserOnce ويعيد null بعد أربع
-       محاولات (auth.js). فـnull «لا يُعرف» لا «لم يصل»: كان الحفظ الواصل ثمّ المهلة ثمّ قراءة متعثّرة يردّ النقاط ويفكّ الحجز،
-       والإعادة تقف عند user[sourceField] === sourceId فتبقى الباقة بلا نقاطها. الردّ والفكّ لسجلّ مقروء يخلو من الرقم وحده. */
-    let release = !added;
-    if (added && claim) {
-      try {
-        const now = await getUser(username);
-        if (now && now[sourceField] !== sourceId) { await kvIncrBy(added.key, -added.n); release = true; }
-        else if (!now) console.error('[grant] after-credit failure — account unreadable, claim kept', String(sourceId).slice(0, 40));
-      } catch (e2) { console.error('[grant] after-credit failure — claim kept', String(sourceId).slice(0, 40), e2 && e2.message); }
-    }
-    if (claim && release) await kvDel(claim); // لم يكتمل الشحن ولا أثر باقٍ — يُفكّ الحجز فتنجح المحاولة التالية
+    /* v-lock-credit (srv-money-2) — القاعدة الواحدة لفشلٍ بعد أثرٍ لا يُعاد، تحلّ محلّ ردّ v-lock-gpay (srv-money-1):
+       قبل الأثر ⇒ يُفكّ الحجز فتمنح الإعادة كاملًا. بعده ⇒ لا فكّ أبدًا: علامة الإكمال (markCredited) بوقت الأثر والفترة السابقة وقرار
+       الخانة (kept/drop)، ثمّ رمي (non-2xx فيعيد المرسل)، وأيّ إعادة — من أيّ مسار — تكمل السجلّ بلا شحن ثانٍ (finishGrant).
+       v-lock-gpay كان يقرأ الحساب بعد الفشل: لم يصل الحفظ ⇒ تُردّ النقاط ويُفكّ الحجز. أُزيل: الردّ نفسه أثرٌ ثانٍ على عدّاد حيّ في لحظة
+       عطل، وkvDel يبتلع فشله — ردٌّ نجح وفكٌّ لم يصل يترك الدافع بلا نقاط ولا باقة ولا ما يكملها؛ والإكمال يغطّي ما كان يحميه (شحنة واحدة،
+       والإعادة تسلّم الباقة) ويغطّي معه «لا يُعرف» (getUser يعيد null عند العطل) بلا تخمين وملء رصيد الوسائط الذي لا يُردّ أصلًا. */
+    if (claim && !creditedAt) await releaseClaim(claim, sourceField, sourceId, username, plan); // لم يقع أثر — يُفكّ الحجز فتنجح المحاولة التالية
+    else if (claim) await markCredited(sourceField, sourceId, { at: creditedAt, was, prev: prior, kept, drop }, username, plan); // الحجز باقٍ، والإعادة تكمل
     throw e;
   }
+}
+// planNext بعد منحٍ أو إكماله: قائمة فارغة تُحذف كما كانت (v-lock-subs)
+function setNext(user, list) { if (list.length) user.planNext = list; else delete user.planNext; }
+
+/* v-lock-credit (المراجعة المعاكسة الثانية، #2 و#6): بعد فشلٍ في المنح يجب أن يصير الحجز إلى واحد من ثلاثة: مفكوكًا (لا أثر)، أو بعلامة
+   إكمال (أثرٌ والإعادة تكمل)، أو منحًا مكتملًا. الكتابة التي تحسم ذلك (فكّ الحجز قبل الأثر، أو العلامة بعده) كانت محاولة واحدة في لحظة
+   العطل نفسها، وفشلها يترك الحجز وحده: كلّ إعادة «سبق الشحن» 200 — نقاط بلا باقة (أُثبت: max ⇒ ٣٢٧٠ بلا باقة) أو دفعة لم تُشحن أصلًا
+   (٧٠ بلا شيء) — وتنبيه المالك سطرٌ «أطلق وانسَ» برسالة ثابتة يُسقطه Vercel بعد الردّ ويكتمه سقف الموضع (٣ لكلّ عامل). الآن تُعاد
+   الكتابة ٤ مرّات بمهلة متزايدة (كقراءة getUser)، وإن بقيت تفشل يُنتظر تنبيه المالك برقم الدفعة: سجلّ أخطائه (logErrorAndFlush) وإشعاره. */
+const SETTLE_TRIES = 4;
+async function settleWrite(fn) {
+  let err = null;
+  for (let i = 0; i < SETTLE_TRIES; i++) {
+    try { await fn(); return null; } catch (e) { err = e; }
+    if (i < SETTLE_TRIES - 1) await new Promise((r) => setTimeout(r, 300 * (i + 1)));
+  }
+  return err;
+}
+const payRef = (field, id) => String(field) + ':' + String(id).slice(0, 120);
+// سطر في سجلّ أخطاء المالك يُنتظر حفظه (بمهلة log-error) وفيه رقم الدفعة — فلا يُسقَط بعد الردّ ولا تكتم دفعةٌ أخرى سطرها. لا يرمي.
+async function ownerLog(scope, message, meta) {
+  try { await require('./log-error.js').logErrorAndFlush(scope, new Error(message), meta); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
+}
+// وإشعار المالك (pay-refund alertOwner: سجلّه + الدفع بمهلة) — لحجزٍ لا يحسمه شيء وحده بعد الآن. لا يرمي.
+async function ownerAlert(title, body) {
+  try { await require('./pay-refund.js').alertOwner(title, body); } catch (e) { /* guard-ok — التنبيه تحسين لا شرط */ }
+}
+
+// v-lock-credit (المراجعة المعاكسة الثانية، #6): الفشل قبل الأثر يفكّ الحجز — وكان kvDel يبتلع فشله، فعطلٌ يطال الفكّ أيضًا يترك حجزًا
+// بلا علامة ولا منح: كلّ إعادة «سبق الشحن» والمال مأخوذ بلا شيء، بلا سطر واحد للمالك. الفكّ صارم ويُعاد، ثمّ تنبيه برقم الدفعة.
+// الإعادة لا تمحو إلّا حجزنا (قيمته اسم الحساب): حذفٌ وصل وضاع ردّه ثمّ استرداد كامل أشغل الحجز بعلامة سحبه (pay-refund blockGrant)
+// — محوُها يجعل الدفعة المستردّة تُشحن بعده.
+async function releaseClaim(claim, field, id, username, plan) {
+  let first = true;
+  const err = await settleWrite(async () => {
+    if (!first) {
+      const v = await kvGetRaw(claim, { strict: true });
+      if (v === null || v === undefined || String(v) !== String(username)) return; // فُكّ، أو صار لغيرنا: لا نمحو ما ليس لنا
+    }
+    first = false;
+    await kvDel(claim, { strict: true });
+  });
+  if (!err) return;
+  const ref = payRef(field, id);
+  const meta = { user: username, plan, id: String(id).slice(0, 60) };
+  await ownerLog('checkout:claim-stuck', 'not credited, claim not released — delete ' + claim + ' then resend the payment event · ' + ref + ' · ' + String((err && err.message) || err).slice(0, 80), meta);
+  await ownerAlert('⚠️ دفعة لم تُشحن وحجزها عالق — احذف الحجز ثمّ أعد حدثها', String(username || '?') + ' · ' + String(plan || '?') + ' · ' + ref);
+}
+
+// v-lock-credit (srv-money-2): علامة «شُحن ولم يُكتب السجلّ» بوقت الأثر والفترة السابقة (رقمها، وكاملةً برصيدها). لا ترمي: فشلها
+// يُبقي الحجز (لا شحن ثانٍ) لكنّ الإعادة لن تكمل السجلّ — فيُنبَّه المالك ليكمله يدويًّا. ونجاحها سطرٌ للمالك أيضًا
+// (المراجعة المعاكسة): إن لم تصل إعادة (عطل يطول أيّامًا) يعرف أنّ دفعة شُحنت ولم تُسلَّم باقتها بعد.
+// v-lock-credit × v-lock-subs: وقرار الخانة وقت المنح — kept (أدنى تحت أعلى سارية: فترته في planNext لا الرئيسيّة) وdrop (فترة planNext
+// التي حلّ محلّها) — فالإكمال لا ينزل الأعلى ولو انتهت قبل الإعادة، ولا يعيد ما أخرجه المنح.
+// المراجعة المعاكسة الثانية (#2): الكتابة تُعاد (settleWrite)، والسطران برقم الدفعة ويُنتظر حفظهما، والفشل الأخير إشعارٌ للمالك أيضًا.
+async function markCredited(field, id, w, username, plan) {
+  const body = { at: Number(w.at) || Date.now(), was: String(w.was || ''), prev: w.prev || null, kept: !!w.kept, drop: w.drop || null };
+  const ref = payRef(field, id);
+  const meta = { user: username, plan, id: String(id).slice(0, 60) };
+  const err = await settleWrite(() => kvSetRaw(creditMarkKey(field, id), JSON.stringify(body), CREDIT_MARK_TTL_SEC));
+  if (!err) {
+    await ownerLog('checkout:credit-pending', 'credited, account record pending — completes on the next retry · ' + ref, meta);
+    return;
+  }
+  await ownerLog('checkout:credit-mark', 'credited, completion mark not written — complete the grant by hand · ' + ref + ' · ' + String((err && err.message) || err).slice(0, 80), meta);
+  await ownerAlert('⚠️ دفعة شُحنت ولم يُكتب سجلّ منحها — أكمله يدويًّا', String(username || '?') + ' · ' + String(plan || '?') + ' · ' + ref);
+}
+
+/* v-lock-credit (srv-money-2): إكمال منحٍ زاد عدّاده ولم يُكتب سجلّه — ما كان grantLocked سيكتبه، بلا الأثر نفسه وبوقته الأصليّ.
+   سجلّ منحٍ مكتمل لهذه الدفعة، أو سجلّ سحبٍ كامل (استرداد وصل قبل الإكمال فسحب ما شُحن) = لا شيء يُكمَل: لا باقة بعد الاسترداد.
+   وفترةٌ أحدث على الخانة نفسها (شراء آخر بين الفشل والإعادة) لا تُستبدل بالأقدم: الفترة الحاليّة تُستبدل إن كانت السابقة نفسها
+   (رقمها في العلامة)، أو أقدم منها عادت باسترداد، أو لا فترة. فشل الكتابة يرمي والعلامة والحجز باقيان.
+   v-lock-credit × v-lock-subs (srv-money-4): والمحادثة بقاعدة المنح نفسها — أدنى تحت أعلى (kept في العلامة) إلى planNext لا الرئيسيّة، وأحدثُ
+   أدنى درجةً يُحفظ في planNext تحت هذه الدفعة؛ فالأعلى المدفوعة لا تنزل بأدنى في أيّ ترتيب وصول. */
+async function finishGrant(username, user, plan, sourceField, sourceId, meta, pend) {
+  const p = PLANS[plan];
+  const mark = creditMarkKey(sourceField, sourceId);
+  const pr = require('./pay-refund.js');
+  // المراجعة المعاكسة: سجلٌّ قديم (legacy) بناه استرداد جزئيّ من الحجز دليلًا ليس «اكتمل» — أخذ نسبته من النقاط وبقيت الباقة حقًّا
+  // لمن دفع باقي ثمنها (كان يمحو العلامة فلا تُسلَّم أبدًا). يُكمَل، ولا يُكتب فوقه سجلّ جديد يمحو علامة سحبه (holds يطابق برقم الدفعة).
+  const hit = await pr.findRec([String(sourceId)]);
+  if (hit && (!hit.rec.legacy || (hit.rec.revoked && hit.rec.revoked.plan))) {
+    await kvDel(mark);
+    return { ok: true, plan, pointsAdded: 0, alreadyGranted: true, balance: Number(user.points || 0) };
+  }
+  let w = {};
+  try { w = JSON.parse(pend) || {}; } catch (e) { w = {}; } // علامة لا تُقرأ: وقت الإكمال، ولا فترة سابقة معروفة
+  if (typeof w !== 'object') w = {};
+  const at = Number(w.at) > 0 ? Number(w.at) : Date.now();
+  const prev = ('prev' in w) ? w.prev : await pr.priorOf(user, username, p); // كما قُرئت وقت المنح (ورصيد الوسائط قبل ملئه)
+  const sid = String(sourceId);
+  const wasId = String(w.was || '');
+  /* v-lock-credit × v-lock-gpay/v-lock-subs: ثلاث حالات للخانة وقت الإكمال —
+     landed: الفترة على الحساب برقم هذه الدفعة (السجلّ وصل ثمّ رمت كتابته) ⇒ لا مسّ؛ يُكتب سجلّ المنح وحده بسابقتها.
+     newer:  فترة أحدث حلّت محلّها (شراء بين الفشل والإعادة) ⇒ لا تُستبدل بالأقدم.
+     وإلّا تُكتب كما كان المنح سيكتبها، بوقته الأصليّ. */
+  let newer = false;
+  let kept = false; // v-lock-subs: فترة هذه الدفعة في planNext والأعلى السارية باقية
+  const view = {}; // وقت الفترة كما فتحها المنح الأصليّ — يقرؤه سجلّ المنح
+  if (p.media) {
+    const cur = user.media && user.media[p.media];
+    const curId = String((cur && cur.payId) || '');
+    const landed = curId === sid;
+    if (!landed && cur && curId !== wasId && Number(cur.at) >= at) newer = true;
+    else if (!landed) {
+      // المراجعة المعاكسة: الفترة التي حلّ محلّها سُحبت أو تبدّلت بين الفشل والإعادة (استردادها) — سحبها محا الرصيد الذي ملأه هذا المنح
+      // أو كتب فوقه رصيد فترة أقدم، فكانت الباقة المدفوعة تُسلَّم بلا رصيد. يُعاد رصيدها بنافذته من وقت المنح.
+      const same = ('prev' in w) ? ((!cur && !prev) || (!!cur && !!prev && String(cur.payId || '') === String(prev.payId || '') && Number(cur.at) === Number(prev.at))) : curId === wasId;
+      if (!same) {
+        const ttl = Math.max(60, Math.ceil((at + MEDIA_WINDOW_DAYS * 86400000 - Date.now()) / 1000));
+        await kvSetRaw('media:' + p.media + ':' + encodeURIComponent(String(username).trim().toLowerCase()), MEDIA_PLANS[plan].budget, ttl);
+      }
+      user.media = Object.assign({}, user.media); user.media[p.media] = { plan, at, payId: sid };
+    }
+    view.media = { [p.media]: { at } };
+  } else if (!p.pack) {
+    const cur = user.plan ? { plan: String(user.plan).toLowerCase(), at: Number(user.planUpdatedAt) || 0, payId: String(user.planPayId || '') } : null;
+    const inNext = Array.isArray(user.planNext) && user.planNext.some((n) => n && String(n.payId || '') === sid);
+    const install = () => { user.plan = plan; user.planUpdatedAt = at; user.planPayId = sid; };
+    const landed = (!!cur && cur.payId === sid) || inNext;
+    if (landed) kept = !(cur && cur.payId === sid); // وصل في planNext (أدنى تحت أعلى) أو رئيسيّةً
+    else if (w.kept) {
+      // v-lock-subs (srv-money-4): كان أدنى تحت أعلى سارية وقت المنح ⇒ فترته في planNext بوقته، والرئيسيّة لا تُمسّ (كان الإكمال يكتب
+      // الأدنى رئيسيّةً فينزل Max إلى Plus ويضيع ما بقي من أيّامها). وإن انتهت الأعلى قبل الإعادة فالفترة نفسها تسري (tier.chatPeriod).
+      kept = true;
+      setNext(user, nextPeriods(user, { plan, at, payId: sid }, null));
+    } else if (!cur || cur.payId === wasId || cur.at < at) {
+      install(); // الرئيسيّة هي السابقة نفسها، أو أقدم منها عادت باسترداد، أو لا فترة
+      setNext(user, nextPeriods(user, null, w.drop || null));
+    } else if (rankOf(cur.plan) < rankOf(plan)) {
+      // v-lock-subs (srv-money-4): الأحدث أدنى درجة (Plus اشتُري بين فشل Max وإعادته) — لو كُتب المنح في وقته لحُفظ الأدنى في planNext تحت
+      // الأعلى. يُعاد ذلك الترتيب: هذه الدفعة رئيسيّة بوقتها، والأدنى في planNext بوقته ورقمه (استرداده يسحبه منها، pay-refund holdsNext).
+      setNext(user, nextPeriods(user, { plan: cur.plan, at: cur.at, payId: cur.payId || null }, w.drop || null));
+      install();
+    } else newer = true; // الأحدث بالدرجة نفسها أو أعلى حلّ محلّها كما لو كُتبت في وقتها
+    view.planUpdatedAt = at;
+  }
+  user[sourceField] = sourceId;
+  const raw = await kvGetRaw('points:' + encodeURIComponent(String(username).trim().toLowerCase()));
+  if (raw !== null && raw !== undefined && String(raw) !== '' && Number.isFinite(Number(raw))) user.points = Number(raw); // المرآة من العدّاد الحيّ (شُحن فيه أصلًا)
+  await putUser(username, user);
+  /* v-lock-credit (المراجعة المعاكسة الثانية، #3): الأحدث بالدرجة نفسها أو أعلى حلّ محلّ ما كانت هذه الدفعة ستحلّ محلّه — لو كُتب المنح في
+     وقته لكانت سابقته فترةَ هذه الدفعة. سجلّه كُتب وسابقته «ما قبلها» (رقمها = was)، فاستردادُه كاملًا كان يُسقط فترتها المدفوعة غير
+     المستردّة (Pro ثمّ Pro في النافذة، واسترداد الثاني ⇒ لا باقة؛ بلا عطل تعود الأولى). يُعاد الربط في سجلّه (pay-refund relinkPrev): سابقته
+     فترة هذه الدفعة بوقتها، وللوسائط برصيدها وقت حلّ محلّها (سابقته المسجَّلة، أو رصيدها كاملًا إن لم تكن قبلها فترة: لا يُصرف منه
+     شيء بلا فترة سارية). قبل سجلّ منح هذه الدفعة ومحو العلامة: فشلُه (قفل سحب الأحدث مشغول) يرمي فتعيده الإعادة. علامة لا تُقرأ
+     (بلا prev) لا تُربط: سابقتها غير معروفة. */
+  let linked = false;
+  if (newer && ('prev' in w)) {
+    const curId = String((p.media ? (user.media && user.media[p.media] && user.media[p.media].payId) : user.planPayId) || '');
+    linked = await pr.relinkPrev(curId, wasId, sid, p.media
+      ? (old) => ({ plan, at, payId: sid, budget: old ? Math.max(0, Number(old.budget) || 0) : MEDIA_PLANS[plan].budget })
+      : () => ({ plan, planUpdatedAt: at, planPayId: sid }), !!p.media);
+  }
+  // سجلّ المنح: prev الفترة التي حلّ محلّها (لا شيء إن حُفظ تحت أعلى، أو حلّ محلّه أحدث لم يُربط بها)، وkeptAt وقت فترته في planNext
+  if (!hit) await noteGrant(username, plan, sourceField, sourceId, meta, view, ((newer && !linked) || kept) ? null : prev, kept ? at : 0);
+  await kvDel(mark);
+  if (p.media) return { ok: true, plan: user.plan || null, media: p.media, mediaPlan: plan, pointsAdded: 0, balance: Number(user.points || 0), completed: true };
+  return Object.assign({ ok: true, plan: (p.pack || newer || kept) ? (user.plan || null) : plan, pack: !!p.pack, pointsAdded: p.points, balance: Number(user.points || 0), completed: true }, kept ? { kept: true } : {});
+}
+
+/* v-lock-credit (srv-money-2، المراجعة المعاكسة): استرداد أو اعتراض يصل بين «شُحن» و«كُتب السجلّ» كان يجد الحساب بلا فترة الدفعة ولا سجلّ
+   منحها، فيبني سجلًّا قديمًا من الحجز دليلًا: كاملُه لباقة وسائط لا يأخذ الرصيد الذي ملأته (holds لا يطابق الفترة السابقة الباقية)،
+   وجزئيّه يمنع إكمال الباقة بعده. pay-refund.js يستدعي هذا أوّلًا لدفعةٍ حجزها لحساب (owner): يكمل المنح تحت قفل الحساب — العلامة تُقرأ
+   داخله، فمنحٌ جارٍ يُنتظر حتّى يكتمل أو يكتبها — فيرى السحب ما كان سيراه بعد منحٍ مكتمل: الفترة وسابقتها برصيدها وسجلّ المنح بأرقامه.
+   يرمي عند العطل (non-2xx فيُعاد حدث السحب).
+   المراجعة المعاكسة الثانية (#1، #4): كان يتخطّى بصمت حين لا يُقرأ الحساب (getUser يعيد null عند العطل) أو حين تعود قراءة العلامة null
+   كاذبة، فيسقط السحب إلى السجلّ القديم الذي لا يرى ملء الوسائط: media_max فشل بعد الملء ثمّ استرداده كاملًا في عطل قراءة ⇒ ١٢٥٠٠ تبقى
+   تحت media_basic (بلا العطل ٣٠٠). الآن القراءة صارمة، وعلامةٌ لحسابٍ لم يُقرأ ترمي BUSY فيُعاد حدث السحب؛ المحذوف صراحةً وحده يُتخطّى. */
+async function completeCredit(owner, field, id, plan, meta) {
+  if (!owner || !field || !id || !PLANS[plan]) return;
+  await withAccount(String(owner), async (name, user) => {
+    const pend = await kvGetRaw(creditMarkKey(field, id), { strict: true });
+    if (!pend) return;
+    if (!user) throw new Error(BUSY);
+    if (!user.deleted) await finishGrant(name, user, plan, field, id, meta, pend);
+  });
 }
 
 async function createCheckoutSession(req, res) {
@@ -657,6 +865,7 @@ module.exports.autoRenewToggle = autoRenewToggle; // v-autorenew-toggle — لل
 // v-pay-refund: الاسترداد يتبع الحساب بعد تغيير اسمه، ويعرف الدفعة القديمة الممنوحة بحجزها.
 module.exports.liveAccount = liveAccount;
 module.exports.claimKey = claimKey;
+module.exports.completeCredit = completeCredit; // v-lock-credit (srv-money-2): الاسترداد يكمل منحًا معلَّقًا قبل أن يسحبه
 module.exports.withAccount = withAccount; // v-acct-lock — السحب يأخذ قفل الحساب نفسه
 // v-lock-subs: الويب هوك يلغي الاشتراك القديم من خانته (srv-money-3) واشتراك الحساب المحذوف (srv-money-5)، وPayPal يرفض الأدنى (srv-money-4)
 module.exports.supersedeSubs = supersedeSubs;

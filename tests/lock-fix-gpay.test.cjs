@@ -227,17 +227,23 @@ test('srv-money-1: عطل قراءة الحساب قبل الأثر (getUser ا�
 });
 
 test('srv-money-1: فشل حفظ الحساب بعد إضافة النقاط — الإعادة (تحقّق معلّق أو ويب هوك) لا تضاعفها', async () => {
-  // (أ) الحفظ لم يصل: تُردّ النقاط ويُفكّ الحجز، فالإعادة تشحن الباقة والنقاط مرّة (كان الحجز يُفكّ والنقاط باقية ⇒ ١٬٨٤٠)
+  // (أ) الحفظ لم يصل: كان الحجز يُفكّ والنقاط باقية ⇒ ١٬٨٤٠. v-lock-credit (القاعدة الموحّدة): لا ردّ للنقاط ولا فكّ للحجز بعد الأثر —
+  // علامة إكمال، والإعادة (تحقّق معلّق أو ويب هوك) تكمل الباقة وسجلّ المنح بلا نقاط ثانية. (كان v-lock-gpay يردّ النقاط ويفكّ الحجز.)
   fresh('dana');
   const a = paidPi('dana', 'pro', 2000);
   fail.put = 1;
   assert.equal((await verifyPi('dana', a.id)).code, 500);
-  assert.equal(await bal('dana'), 70, 'النقاط رُدّت');
-  assert.equal(kv.has('paid:lastStripePaymentIntentId:' + a.id), false, 'ولا أثر باقٍ فالحجز مفكوك');
-  assert.equal((await verifyPi('dana', a.id)).code, 200);
+  assert.equal(await bal('dana'), 70 + 920, 'شُحنت مرّة وسجلّها معلَّق');
+  assert.equal(kv.get('paid:lastStripePaymentIntentId:' + a.id), 'dana', 'الحجز باقٍ بعد الأثر');
+  assert.ok(kv.has('paid-credit:lastStripePaymentIntentId:' + a.id), 'وعلامة الإكمال');
+  const v2 = await verifyPi('dana', a.id);
+  assert.equal(v2.code, 200);
+  assert.equal(v2.body.completed, true, 'التحقّق المعلّق أكمل السجلّ');
   assert.equal((await hook(piEvent(a))).code, 200);
   assert.equal(await bal('dana'), 70 + 920, 'شحنة واحدة لا اثنتان');
   assert.equal(users.get('dana').plan, 'pro');
+  assert.ok(kv.has('payrec:' + a.id), 'وسجلّ المنح للاسترداد');
+  assert.equal(kv.has('paid-credit:lastStripePaymentIntentId:' + a.id), false, 'العلامة تُمحى بعد الإكمال');
   // والويب هوك أوّلًا: 500 فيعيد Stripe، والإعادة تشحن مرّة
   fresh('dana2');
   const a2 = paidPi('dana2', 'pack700', 2499);
@@ -255,7 +261,8 @@ test('srv-money-1: فشل حفظ الحساب بعد إضافة النقاط —
   assert.equal((await verifyPi('maha', b.id)).body.alreadyGranted, true);
   assert.equal(await bal('maha'), 70 + 920);
   assert.equal(users.get('maha').plan, 'pro');
-  // (ج) لا يُعرف (قراءة الحساب تفشل أيضًا): يبقى الحجز — لا شحنة ثانية أبدًا (الباقة قد تنقص: موثَّق للمالك)
+  // (ج) لا يُعرف (قراءة الحساب تفشل أيضًا): يبقى الحجز — لا شحنة ثانية أبدًا. v-lock-credit: والباقة لم تعد «قد تنقص» — الإكمال لا
+  // يحتاج قراءة الحساب بعد الفشل (العلامة تحمل ما يلزم)، فالإعادة الأولى بعد العطل تسلّمها.
   fresh('reem');
   const c = paidPi('reem', 'pro', 2000);
   fail.put = 1; fail.getAfterPut = 1;
@@ -263,20 +270,24 @@ test('srv-money-1: فشل حفظ الحساب بعد إضافة النقاط —
   assert.equal(kv.get('paid:lastStripePaymentIntentId:' + c.id), 'reem', 'الحجز باقٍ');
   for (let i = 0; i < 3; i++) { await hook(piEvent(c)); await verifyPi('reem', c.id); }
   assert.equal(await bal('reem'), 70 + 920, 'أُضيفت مرّة ولم تتكرّر');
+  assert.equal(users.get('reem').plan, 'pro', 'والباقة سُلّمت');
 });
 
 test('srv-money-1: الحفظ وصل ثمّ رمى، والقراءة بعده تعثّرت (null) ⇒ لا ردّ للنقاط ولا فكّ للحجز — الباقة ونقاطها معًا', async () => {
   /* المراجعة المعاكسة: «لا يُعرف» كان يُعامَل «لم يُحفظ» — تُردّ النقاط ويُفكّ الحجز، ثمّ كلّ إعادة تقف عند
      user.lastStripePaymentIntentId === الرقم («سبق الشحن») فيبقى Pro بـ٧٠ نقطة وقد دفع ثمن ٩٢٠. */
-  // (أ) الويب هوك أوّلًا
+  // (أ) الويب هوك أوّلًا. v-lock-credit: الفشل بعد الأثر لا يقرأ الحساب ليخمّن (القراءة المعطوبة المسلّحة تبقى لمن يليها)، والإعادة
+  // تجد السجلّ واصلًا فتكمل سجلّ المنح وحده.
   fresh('aziz');
   const a = paidPi('aziz', 'pro', 2000);
   fail.putLanded = 1; fail.getAfterPut = 1;
   assert.equal((await hook(piEvent(a))).code, 500, 'الرمي بعد الأثر يبقى non-2xx — والإعادة آمنة لأنّ الحجز باقٍ');
-  assert.equal(await bal('aziz'), 70 + 920, 'النقاط لم تُردّ');
+  assert.equal(fail.get, 1, 'لا قراءة للحساب بعد الفشل (لا ردّ ولا فكّ بالتخمين)');
   assert.equal(kv.get('paid:lastStripePaymentIntentId:' + a.id), 'aziz', 'الحجز باقٍ');
   assert.equal(users.get('aziz').plan, 'pro');
-  assert.equal((await hook(piEvent(a))).code, 200);
+  assert.equal((await hook(piEvent(a))).code, 200, 'الإعادة (وقراءتها الأولى قبل القفل معطوبة) تكمل');
+  assert.equal(await bal('aziz'), 70 + 920, 'النقاط لم تُردّ');
+  assert.ok(kv.has('payrec:' + a.id), 'سجلّ المنح كُتب في الإعادة (كان يبقى بلا سجلّ)');
   const va = await verifyPi('aziz', a.id);
   assert.equal(va.body.alreadyGranted, true);
   assert.equal(va.body.balance, await bal('aziz'), '«سبق الشحن» برصيدٍ يطابق الحقيقيّ');
@@ -377,14 +388,17 @@ const verifies = (env) => env.calls.filter((c) => c === 'verify-payment-intent')
 test('cli-money-1: «تمّ» في الورقة ثمّ فشل التحقّق (500): الرقم محفوظ، والرسالة «وصلنا دفعك» لا «حاول مرة أخرى»، ثمّ العودة تشحنه مرّة', async () => {
   fresh('rana');
   const env = client({ user: 'rana' });
-  fail.put = 4; // التحقّق الأوّل وإعاداته الثلاث داخل النافذة: كتابة KV الخادم معطوبة (500، والنقاط تُردّ والحجز يُفكّ)
+  // التحقّق الأوّل وإعاداته الثلاث داخل النافذة: كتابة KV الخادم معطوبة (500). v-lock-credit: النقاط شُحنت مرّة في الأوّل والحجز باقٍ
+  // بعلامة إكمال، والإعادات تحاول الإكمال فتفشل كتابته (كان v-lock-gpay يردّ النقاط ويفكّ الحجز)
+  fail.put = 4;
   await env.pay('pro');
   const id = lastPi();
   assert.deepEqual(env.completes, ['success'], 'الورقة قالت «تمّ» — المبلغ مسحوب');
   assert.equal(net.pi[id].status, 'succeeded');
   assert.equal(env.status(), 'T:checkoutPaidPending', 'لا checkoutError ولا نصّ الخادم «أعد المحاولة»');
   assert.deepEqual(env.pending(), [id], 'رقم العمليّة محفوظ للعودة');
-  assert.equal(await bal('rana'), 70, 'لم يُشحن بعد');
+  assert.equal(await bal('rana'), 70 + 920, 'شُحن مرّة والباقة لم تُكتب بعد');
+  assert.equal(users.get('rana').plan, undefined, 'السجلّ معلَّق');
   assert.equal(verifies(env), 4, 'تحقّق ثمّ ثلاث إعادات داخل النافذة');
   // يعود للتطبيق: التحقّق المعلّق يشحن، يُمسح الرقم، ورسالة نجاح واحدة
   env.boot();
