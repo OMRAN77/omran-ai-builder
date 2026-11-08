@@ -163,7 +163,9 @@ window.postWithConfirm = postWithConfirm;
       strikes++;
       strikeDelays.push(delay);
       if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
-        try{ saveState(); }catch(err){ __swallow(err, "save:app-10-features#1"); }
+        /* v-freeze-fix: لا إعادة حفظ هنا — كانت تُبطل النسخة المنحّفة وتجدول رفعها وحفظ السجلّ كاملًا في IndexedDB لحظة التجمّد نفسها
+           (مسبار سجلّ المالك الثقيل: تجمّد ثانٍ ١٤ث بعد البانر). أيّ تغيير ينتظر أصلًا في الحفظ المجمّع (١٫٥ث)، و«إعادة التحميل» =
+           pagehide ← __saveFlush والمرآة؛ فـ«تم حفظ عملك تلقائيًا» صادقة بلا هذه الكلفة. */
         shown = true;
         banner.style.display = 'flex';
         freezeReport(strikeDelays.slice(-4)); // v-freeze-why: لماذا — للمالك
