@@ -137,7 +137,7 @@ test('٤. أخطاء الاستطلاع (Runway · Veo · الممثّل): بل�
     ['veo-status.js', GET({ op: 'models/veo/operations/1' }), null, { key: false }],
     ['veo-status.js', GET({ op: 'models/veo/operations/1' }), reply(429, { error: { message: 'Quota exceeded for veo-3.1 on Gemini API' } })],
     ['veo-status.js', GET({ op: 'models/veo/operations/1' }), offline],
-    ['actor-status.js', GET({ id: 'abcdefgh12' }), offline],
+    ['actor-status.js', GET({ id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' }), offline],
   ];
   for (const [f, req, net, opt] of cases) {
     const r = await call(f, req, net, opt);

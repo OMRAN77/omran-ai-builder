@@ -11,8 +11,11 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
   try {
-    const taskId = req.query && (req.query.task_id || req.query.id);
-    if (!taskId) { res.status(400).json({ error: 'Missing task_id' }); return; }
+    const taskId = String((req.query && (req.query.task_id || req.query.id)) || '');
+    /* v-lock-vid-r (srv-video-1): معرّف المزوّد رقم — «0123» و« 123» و«+123» و«0x7b» يقرؤها محلّل الأرقام المهمّةَ نفسها ولا تذكرة لها
+       ولا علامة، فتسلّم بعد الردّ أو يُردّ بعد تسليمها. الرقم القانونيّ وحده (بلا صفر في أوّله ولا مسافة ولا إشارة).
+       v-lock-port-vid: وفي v2 (v-minimax-h3) المعرّف رقم كذلك (مثال توثيق /v2/query/video_generation/{task_id} الرسميّ «424010985738629»). */
+    if (!/^[1-9]\d{0,39}$/.test(taskId)) { res.status(400).json({ error: 'Missing task_id' }); return; }
     const apiKey = process.env.MINIMAX_API_KEY;
     if (!apiKey) { console.error('[minimax-status] missing provider key'); res.status(500).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' }); return; }
     const auth = { 'Authorization': 'Bearer ' + apiKey };
@@ -69,7 +72,10 @@ module.exports = async (req, res) => {
       return;
     }
 
-    await require('./video-job.js').settleVideoJob(taskId, true);
+    /* v-lock-vid (srv-video-1): لا تسليم فوق ردّ — رُدّت نقاطها (كنسٌ أو تعذّر الرابط قبلُ) = FAILED بلا رابط، ولم تُحسم = RUNNING */
+    const held = await require('./video-job.js').settleVideoJob(taskId, true);
+    if (held && held.pending) { res.status(200).json({ status: 'RUNNING' }); return; }
+    if (held && held.refunded) { console.warn('[minimax-status] delivery refused after refund'); res.status(200).json({ status: 'FAILED' }); return; }
     await require('./our-media.js').rememberOurMedia([url]); // v-dl-ours: ناتج مدفوع — حفظه لا يُعدّ على سقف التنزيل
     res.status(200).json({ status: 'SUCCEEDED', output: [url] });
   } catch (e) {

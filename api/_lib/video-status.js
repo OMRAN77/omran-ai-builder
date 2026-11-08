@@ -34,6 +34,9 @@ module.exports = async (req, res) => {
       console.error('[video-status] missing provider key'); res.status(500).json({ error: 'تعذّر متابعة الفيديو الآن. أعد المحاولة.' });
       return;
     }
+    /* v-lock-port-vid-r (srv-video-1): معرّف المهمّة الخامّ حروف وأرقام وشَرطات (UUID عند المزوّد) — مسافة أو ترميز أو نقطة قد يقرؤها المهمّةَ
+       نفسها ولا تذكرة لها ولا علامة: تسليم بعد ردّ عطلنا (٤٠٢). حالة الحروف يوحّدها مفتاح التذكرة (video-job.jobIdentity). */
+    if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,99}$/.test(String(rawId || ''))) { res.status(400).json({ error: 'Missing id' }); return; }
 
     const upstream = await fetch(RUNWAY_API_BASE + '/v1/tasks/' + encodeURIComponent(rawId), {
       method: 'GET',
@@ -59,8 +62,12 @@ module.exports = async (req, res) => {
 
     // v-video-refund: المهمّة انتهت فاشلة (أو أُلغيت) → ردّ الخصم والقفل وحصّة اليوم مرّة واحدة.
     const st = String((data && data.status) || '').toUpperCase();
+    let held = null;
     if (st === 'FAILED' || st === 'CANCELLED') await require('./video-job.js').settleVideoJob(canonId, false);
-    else if (st === 'SUCCEEDED') await require('./video-job.js').settleVideoJob(canonId, true);
+    else if (st === 'SUCCEEDED') held = await require('./video-job.js').settleVideoJob(canonId, true);
+    /* v-lock-vid (srv-video-1): لا تسليم فوق ردّ — رُدّت نقاطها (عطل المزوّد عند استطلاع سابق) = FAILED بلا مخرجات، ولم تُحسم = RUNNING */
+    if (held && held.pending) { res.status(200).json({ status: 'RUNNING' }); return; }
+    if (held && held.refunded) { console.warn('[video-status] delivery refused after refund'); res.status(200).json({ status: 'FAILED' }); return; }
     // v-video-open-lock: مخرجات سلّمها خادمنا — وحدها تقبلها ترقية الجودة (video-upscale-create.js)
     if (st === 'SUCCEEDED') await require('./video-upscale-create.js').rememberOutputs(data.output);
     if (st === 'SUCCEEDED') await require('./our-media.js').rememberOurMedia(data.output); // v-dl-ours: حفظه لا يُعدّ على سقف التنزيل

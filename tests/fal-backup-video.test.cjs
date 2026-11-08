@@ -99,7 +99,7 @@ global.fetch = async (url, init) => {
   if (/^https:\/\/queue\.fal\.run\//.test(u)) {
     if (init && init.method === 'POST') {
       if (falSubmit === 'locked') return new Response(LOCKED, { status: 403 });
-      const id = 'f' + (++ridN) + '-5a1e-4c2b-9d3e-0011223344aa';
+      const id = String(++ridN).padStart(8, '0') + '-5a1e-4c2b-9d3e-0011223344aa'; // v-lock-port-vid: request_id بشكل fal الحقيقيّ (UUID بحروف صغيرة) — veo-status يرفض غيره
       falJobs.set(id, { code: 200, status: 'IN_QUEUE' });
       return new Response(JSON.stringify({ request_id: id, status_url: QUEUE + id + '/status', response_url: QUEUE + id }), { status: 200 });
     }
@@ -137,7 +137,7 @@ test('١. ترند بلا صورة: Omni 429 «الرصيد» ← fal نصّ←�
   omniReply = err(429, DEPLETED);
   const r = await create({ token: token('u1'), trend: 'pixarsketch', params: { text: 'أبو سعيد يبيع القهوة', sceneIndex: 0 }, ratio: '720:1280' });
   assert.equal(r.code, 200, JSON.stringify(r.body));
-  assert.match(String(r.body.op), /^bk\/f\d+-/, 'بادئة محايدة بلا اسم مزوّد');
+  assert.match(String(r.body.op), /^bk\/\d{8}-/, 'بادئة محايدة بلا اسم مزوّد');
   noProvider(r.body, 'create');
   assert.equal(omniCalls().length, 1, 'Gemini نودي مرّة واحدة');
   const s = submits();
