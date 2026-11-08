@@ -370,3 +370,62 @@ test('٩. بريد مخزَّن بحروف كبيرة يُوجد بمسح الج
     console.warn = realWarn;
   }
 });
+
+test('١٠. المراجعة المستقلّة: لكلّ مسح ساعته، والعطب يُعدّ ولا يوقف ما بعده، واسم حساب محذوف لا يوقف البحث قبل الحساب الحيّ', async () => {
+  const realFetch = global.fetch, realWarn = console.warn, realNow = Date.now;
+  const warns = [];
+  let fake = realNow();
+  let mode = '';
+  const wallet = (email, username) => ({ id: 'ch_' + username, paid: true, payment_intent: 'pi_' + username, billing_details: { email }, metadata: { username } });
+  global.fetch = async (url) => {
+    const u = new URL(String(url));
+    const q = u.searchParams;
+    const ok = (body) => ({ ok: true, status: 200, json: async () => body });
+    const fail = (status) => ({ ok: false, status, json: async () => ({ error: { message: 'x' } }) });
+    const filter = q.get('customer_details[email]');
+    if (u.pathname === '/v1/checkout/sessions' && filter !== null) {
+      if (mode === 'flaky') { const e = new Error('timeout'); e.name = 'TimeoutError'; throw e; }
+      if (filter === 'twice@x.com') return ok({ data: [{ id: 'cs_old', payment_status: 'paid', customer_details: { email: 'twice@x.com' }, metadata: { username: 'gone_old' } }], has_more: false });
+      return ok({ data: [], has_more: false });
+    }
+    if (u.pathname === '/v1/checkout/sessions') {
+      if (mode === 'slow') { fake += 3000; return ok({ data: Array.from({ length: 100 }, (_, i) => ({ id: 'cs_s' + fake + '_' + i, payment_status: 'paid', customer_details: { email: 's@x.com' }, metadata: { username: 's' } })), has_more: true }); }
+      if (mode === 'flaky') return fail(429);
+      return ok({ data: [], has_more: false });
+    }
+    if (u.pathname === '/v1/customers/search') return mode === 'flaky' ? fail(500) : ok({ data: [] });
+    if (u.pathname === '/v1/charges') return ok({ data: [wallet('clock@x.com', 'clock_user'), wallet('flaky@x.com', 'flaky_user'), wallet('twice@x.com', 'twice_new')], has_more: false });
+    return ok({ data: [] });
+  };
+  console.warn = (...a) => { warns.push(a.join(' ')); };
+  Date.now = () => fake;
+  process.env.STRIPE_SECRET_KEY = 'sk_test_review';
+  try {
+    for (const k of ['clock_user', 'flaky_user', 'twice_new']) await auth.putUser(k, { username: k, email: null, hash: 'h', salt: 's' });
+    await auth.putUser('gone_old', { username: 'gone_old', deleted: true }); // حساب قديم حُذف، ثمّ دفعت بالبريد نفسه من حساب جديد
+    // ١) مسح جلسات يستنفد مهلته (٣ ث للصفحة، بلا نهاية) ← مسح الشحنات بساعته يجد دافع Apple/Google Pay
+    mode = 'slow';
+    const c = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'clock@x.com', dryRun: true });
+    assert.equal(c.code, 200, JSON.stringify(c.body)); assert.equal(c.body.username, 'clock_user');
+    assert.equal(c.body.diag.partial, true, 'مسح الجلسات انقطع بالمهلة'); assert.ok(c.body.diag.charges >= 1, 'ومسح الشحنات جرى');
+    // ٢) مهلة نداء، و٤٢٩ صفحة، و٥٠٠ عملاء ← تُعدّ كلّها ويكمل البحث إلى الشحنات
+    mode = 'flaky'; warns.length = 0;
+    const fl = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'flaky@x.com', dryRun: true });
+    assert.equal(fl.code, 200, JSON.stringify(fl.body)); assert.equal(fl.body.username, 'flaky_user');
+    assert.ok(fl.body.diag.errors >= 3 && fl.body.diag.partial === true, JSON.stringify(fl.body.diag));
+    assert.ok(warns.some((w) => /checkout\/sessions TimeoutError/.test(w)) && warns.some((w) => /HTTP 429/.test(w)) && warns.some((w) => /customers\/search HTTP 500/.test(w)), warns.join(' | '));
+    assert.ok(!warns.some((w) => /@|flaky_user/.test(w)), 'السجلّ بلا بريد ولا اسم');
+    const none = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'nobody@x.com' });
+    assert.equal(none.code, 404); assert.ok(none.body.diag.errors >= 3 && none.body.diag.partial === true, 'الـ٤٠٤ يقول إنّ البحث لم يكتمل');
+    // ٣) المرشِّح يجد اسم حساب محذوف ← لا يقف؛ الشحنات تجد الحساب الحيّ بالبريد نفسه
+    mode = '';
+    const tw = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'twice@x.com', dryRun: true });
+    assert.equal(tw.code, 200, JSON.stringify(tw.body)); assert.equal(tw.body.username, 'twice_new');
+    assert.equal(tw.body.diag.names, 2); assert.equal(tw.body.diag.live, 1);
+  } finally {
+    Date.now = realNow;
+    delete process.env.STRIPE_SECRET_KEY;
+    global.fetch = realFetch;
+    console.warn = realWarn;
+  }
+});

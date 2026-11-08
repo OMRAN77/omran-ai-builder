@@ -28,25 +28,33 @@ const { sessionUser } = require('./_session.js');
      فإن لم يُطلع المرشِّح اسمًا تُمسح أحدث جلسات الدفع المكتملة (١٠ صفحات × ١٠٠ و٢٥ ث حدًّا) ويُطابَق البريد بلا حالة أحرف.
    • metadata الجلسة لا تنتقل إلى دفعتها (لا payment_intent_data) — فشحنة صفحة الدفع بلا اسم وكانت تُترك: يُقرأ الاسم من نيّتها ثمّ من جلستها
      بـpayment_intent (كما يفعل pay-refund). وبريد الشحنة من billing_details أو receipt_email، ومسحها بالحدّ نفسه.
-   • opts.diag أعداد بلا بريد ولا اسم (ما مُسح، وما طابق، وما طابق بلا اسم، وهل انقطع المسح) — تُعاد للمالك مع ٤٠٤ وتُسجَّل، فلا يُخمَّن الفشل القادم. */
+   • opts.diag أعداد بلا بريد ولا اسم (ما مُسح، وما طابق، وما طابق بلا اسم، والأعطال، وهل انقطع المسح) — تُعاد للمالك مع ٤٠٤ وتُسجَّل.
+   • المراجعة المستقلّة (٣ مؤكّدة بمحاكاة، مصلحة): المسحان كانا على ساعة واحدة فمسح جلسات طويل يُسقط مسح الشحنات (دافعو Apple/Google Pay) — لكلّ
+     مسح ساعته؛ مهلة نداء واحد كانت تقفز إلى نهاية البحث، و٤٢٩/5xx كانت «نهاية القائمة» بلا partial — كلّ عطب يُعدّ ويُكمل ما بعده؛ واسم حساب
+     محذوف كان يوقف البحث قبل الحساب الحيّ — الخطوة التالية تُترك فقط إذا وُجد حساب حيّ. */
 const STRIPE_API = 'https://api.stripe.com/v1/';
 const STRIPE_PAID = new Set(['paid', 'no_payment_required']);
 const STRIPE_SCAN_PAGES = 10;
-const STRIPE_SCAN_MS = 25000;
+const STRIPE_SCAN_MS = 25000; // لكلّ مسح
 async function stripeAccountsFor(emails, follow, opts) {
   const diag = (opts && opts.diag) || {};
-  Object.assign(diag, { filter: 0, scanned: 0, sessions: 0, customers: 0, charges: 0, matched: 0, unnamed: 0, names: 0, live: 0, partial: false });
+  Object.assign(diag, { filter: 0, scanned: 0, sessions: 0, customers: 0, charges: 0, matched: 0, unnamed: 0, names: 0, live: 0, errors: 0, partial: false });
   const secret = String(process.env.STRIPE_SECRET_KEY || '').trim();
   if (!secret) return [];
   const f = (opts && opts.fetchImpl) || fetch;
-  const started = Date.now();
+  /* عطب (رفض، مهلة، جسم لا يُقرأ) = null يُعدّ ويُسجَّل بالمسار وحده — لا يرمي، ولا يُقرأ «لا نتائج» */
   const get = async (path) => {
-    const r = await f(STRIPE_API + path, { headers: { Authorization: 'Bearer ' + secret }, signal: AbortSignal.timeout(8000) });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) console.warn('[admin-actions] reset-link stripe ' + path.split('?')[0] + ' HTTP ' + r.status); /* بلا بريد ولا اسم */
-    return r.ok && d ? d : {};
+    const where = '[admin-actions] reset-link stripe ' + path.split('?')[0]; /* بلا بريد ولا اسم */
+    try {
+      const r = await f(STRIPE_API + path, { headers: { Authorization: 'Bearer ' + secret }, signal: AbortSignal.timeout(8000) });
+      const d = await r.json().catch(() => null);
+      if (r.ok && d && typeof d === 'object') return d;
+      console.warn(where + ' HTTP ' + r.status + (r.ok ? ' unreadable' : ''));
+    } catch (e) { console.warn(where + ' ' + String((e && e.name) || 'error')); }
+    diag.errors++;
+    return null;
   };
-  const rows = async (path) => { const d = await get(path); return Array.isArray(d.data) ? d.data : []; };
+  const rows = async (path) => { const d = await get(path); return d && Array.isArray(d.data) ? d.data : []; };
   const idOf = (x) => (typeof x === 'string' ? x : (x && typeof x.id === 'string' ? x.id : ''));
   const names = [];
   const add = (md) => {
@@ -66,28 +74,49 @@ async function stripeAccountsFor(emails, follow, opts) {
     diag.sessions++;
     if (!add(s.metadata)) diag.unnamed++;
   };
-  /* الأحدث أوّلًا صفحةً صفحة حتّى الحدّ؛ «partial» إن بقي بعده ما لم يُمسح */
+  /* الأحدث أوّلًا صفحةً صفحة حتّى الحدّ، بساعة لكلّ مسح؛ «partial» إن بقي ما لم يُمسح (الحدّ، أو المهلة، أو عطب صفحة) */
   const scan = async (path, each) => {
+    const t0 = Date.now();
     let after = '';
     for (let page = 0; page < STRIPE_SCAN_PAGES; page++) {
-      if (Date.now() - started > STRIPE_SCAN_MS) { diag.partial = true; return; }
+      if (Date.now() - t0 > STRIPE_SCAN_MS) { diag.partial = true; return; }
       const d = await get(path + (after ? '&starting_after=' + encodeURIComponent(after) : ''));
-      const data = Array.isArray(d.data) ? d.data : [];
-      for (const x of data) await each(x);
-      if (!d.has_more || !data.length) return;
-      after = idOf(data[data.length - 1]);
-      if (!after) return;
+      if (!d || !Array.isArray(d.data)) { if (d) diag.errors++; diag.partial = true; return; }
+      for (const x of d.data) await each(x);
+      if (!d.has_more || !d.data.length) return;
+      after = idOf(d.data[d.data.length - 1]);
+      if (!after) { diag.partial = true; return; }
     }
     diag.partial = true;
   };
-  try {
+  /* خطوة رمت (بيانات غير متوقَّعة) تُعدّ وتُكمل التالية — لا تُسقط البحث كلّه (عطب Stripe = لا حساب، ٤٠٤) */
+  const step = async (fn) => {
+    try { await fn(); }
+    catch (e) { diag.errors++; diag.partial = true; console.warn('[admin-actions] reset-link stripe lookup failed: ' + String((e && e.name) || 'error')); }
+  };
+  /* الأسماء إلى حساباتها الحيّة (الأحدث أوّلًا)؛ الخطوة التالية تُترك فقط إذا وُجد حساب حيّ — اسم حساب محذوف لا يوقف البحث.
+     عطب قراءة الحساب هنا يرمي للمستدعي كما كان (٥٠٠، لا «لا حساب») */
+  const live = [];
+  const followed = new Set();
+  const found = async () => {
+    for (const u of names) {
+      if (followed.has(u)) continue;
+      followed.add(u);
+      const hit = await follow(u);
+      if (hit && hit.user && !hit.user.deleted && !live.includes(hit.key)) live.push(hit.key);
+    }
+    return live.length > 0;
+  };
+  await step(async () => {
     for (const e of list) {
       const got = await rows('checkout/sessions?status=complete&limit=20&customer_details[email]=' + encodeURIComponent(e));
       diag.filter += got.length;
       got.forEach(paidSession);
     }
-    if (!names.length) await scan('checkout/sessions?status=complete&limit=100', (s) => { diag.scanned++; paidSession(s); });
-    if (!names.length) {
+  });
+  if (!(await found())) await step(() => scan('checkout/sessions?status=complete&limit=100', (s) => { diag.scanned++; paidSession(s); }));
+  if (!(await found())) {
+    await step(async () => {
       for (const e of list) {
         const q = "email:'" + e.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
         for (const c of (await rows('customers/search?limit=5&query=' + encodeURIComponent(q))).slice(0, 5)) {
@@ -97,31 +126,28 @@ async function stripeAccountsFor(emails, follow, opts) {
           for (const s of await rows('subscriptions?status=all&limit=10&customer=' + encodeURIComponent(String(c.id || '')))) add(s && s.metadata);
         }
       }
-    }
-    /* Google Pay (PaymentRequest ← createPaymentIntent): لا جلسة ولا عميل؛ الشحنة تحمل بريد الدافع ونسخة metadata النيّة. وشحنة صفحة الدفع
-       بلا metadata: الاسم من نيّتها ثمّ من جلستها. لا مرشّح بريد في قائمة الشحنات — المسح بالحدّ نفسه */
-    if (!names.length) {
-      await scan('charges?limit=100', async (ch) => {
-        diag.charges++;
-        if (!ch || !ch.paid) return;
-        if (!same(ch.billing_details && ch.billing_details.email) && !same(ch.receipt_email)) return;
-        diag.matched++;
-        if (add(ch.metadata)) return;
-        const pi = idOf(ch.payment_intent);
-        if (pi) {
-          if (add((await get('payment_intents/' + encodeURIComponent(pi))).metadata)) return;
-          const s = (await rows('checkout/sessions?limit=1&payment_intent=' + encodeURIComponent(pi)))[0];
-          if (s && add(s.metadata)) return;
-        }
-        diag.unnamed++;
-      });
-    }
-  } catch (e) { console.warn('[admin-actions] reset-link stripe lookup failed: ' + String((e && e.name) || 'error')); } /* عطب Stripe = لا حساب (٤٠٤) */
-  const live = [];
-  for (const u of names) {
-    const hit = await follow(u);
-    if (hit && hit.user && !hit.user.deleted && !live.includes(hit.key)) live.push(hit.key);
+    });
   }
+  /* Google Pay (PaymentRequest ← createPaymentIntent): لا جلسة ولا عميل؛ الشحنة تحمل بريد الدافع ونسخة metadata النيّة. وشحنة صفحة الدفع
+     بلا metadata: الاسم من نيّتها ثمّ من جلستها. لا مرشّح بريد في قائمة الشحنات — المسح بالحدّ نفسه */
+  if (!(await found())) {
+    await step(() => scan('charges?limit=100', async (ch) => {
+      diag.charges++;
+      if (!ch || !ch.paid) return;
+      if (!same(ch.billing_details && ch.billing_details.email) && !same(ch.receipt_email)) return;
+      diag.matched++;
+      if (add(ch.metadata)) return;
+      const pi = idOf(ch.payment_intent);
+      if (pi) {
+        const p = await get('payment_intents/' + encodeURIComponent(pi));
+        if (p && add(p.metadata)) return;
+        const s = (await rows('checkout/sessions?limit=1&payment_intent=' + encodeURIComponent(pi)))[0];
+        if (s && add(s.metadata)) return;
+      }
+      diag.unnamed++;
+    }));
+  }
+  await found();
   diag.names = names.length;
   diag.live = live.length;
   return live;
