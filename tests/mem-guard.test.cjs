@@ -20,6 +20,8 @@ const vaultLib = (vault, reads = [], w = {}, mk = { calls: 0, live: 0, maxLive: 
   'function idbImgGetMany(ids){ ids.forEach(id => reads.push(id)); const o = {}; ids.forEach(id => { if(vault[id]) o[id] = vault[id]; }); return new Promise(r => setTimeout(() => r(o), 5)); }' +
   'function idbImgGet(id){ reads.push(id); return new Promise(r => setTimeout(() => r(vault[id]), 5)); }' +
   'let idbSetCalls = []; function idbSet(k, v){ idbSetCalls.push([k, v]); return Promise.resolve(); }' +
+  /* v-r3 (r3-f1): الحفظ سجلٌّ لكلّ مشروع ثمّ فهرس — يُسجَّل عند التزام الفهرس بما يقرؤه الإقلاع */
+  'const __recs = new Map(); function __projTx(puts, man){ puts.forEach(x => __recs.set(x[0], x[1])); if(man) idbSetCalls.push(["aiapp_projects", man.keys.map(k => __recs.get(k))]); return Promise.resolve([]); }' +
   'function getCurrent(){ return (state.projects || []).find(p => p.id === state.currentId) || null; }' +
   slice('function __vaultRead(a){', 'function idbImgSweep(liveIds){') +
   'function __makeView(src){ mk.calls++; mk.live++; mk.maxLive = Math.max(mk.maxLive, mk.live); return new Promise(r => setTimeout(() => { mk.live--; r("data:image/jpeg;base64,VIEW" + src.length); }, 8)); }' +

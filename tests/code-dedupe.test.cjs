@@ -13,12 +13,13 @@ const boot = fs.readFileSync('js/app-09-attach.js', 'utf8');
 const slice = (from, to) => { const i = src.indexOf(from), j = src.indexOf(to, i); assert.ok(i >= 0 && j > i, from); return src.slice(i, j); };
 
 function box(projects) {
-  const writes = [];
+  const writes = []; const recs = new Map();
   const sb = {
     state: { projects, currentId: 'none' }, JSON, Object, Array, String, Promise, Math, Map, Set,
     Date: { now: () => 0 }, setTimeout, __swallow: () => {},
     __vaultAssign: () => [], idbImgPutAll: () => Promise.resolve(),
-    idbSet: (k, v) => { writes.push(v); return Promise.resolve(); },
+    /* v-r3 (r3-f1): الحفظ سجلٌّ لكلّ مشروع ثمّ فهرس — «ما كُتب» = ما يقرؤه الإقلاع بترتيب الفهرس */
+    __projTx: (puts, man) => { puts.forEach((x) => recs.set(x[0], x[1])); if (man) writes.push(man.keys.map((k) => recs.get(k))); return Promise.resolve([]); },
     getCurrent: () => null, __vaultRelease: () => {}, __imgWindowStart: () => 0,
   };
   vm.createContext(sb);
@@ -97,8 +98,10 @@ test('٤. إصداران بالطول نفسه وبصمة واحدة لا يُد
 });
 
 test('٥. الإقلاع يوسّع القراءتين من IndexedDB (الترحيل والعاديّة) قبل أيّ دمج', () => {
-  assert.ok(boot.includes("const idbOld = __codeExpand(await idbGetGuarded('aiapp_projects'));"));
-  assert.ok(boot.includes("const idbProjects = __codeExpand(await idbGetGuarded('aiapp_projects'));"));
-  assert.equal((boot.match(/idbGetGuarded\('aiapp_projects'\)/g) || []).length, 2, 'لا قارئ ثالث بلا توسيع');
+  // v-r3 (r3-f1): القارئ __projLoad (الفهرس وسجلّاته أو السجلّ القديم) — والتوسيع على ناتجه كما كان
+  assert.ok(boot.includes("const idbOld = __codeExpand(await idbGetGuarded(__projLoad));"));
+  assert.ok(boot.includes("const idbProjects = __codeExpand(await idbGetGuarded(__projLoad));"));
+  assert.equal((boot.match(/idbGetGuarded\(/g) || []).length, 2, 'لا قارئ ثالث بلا توسيع');
+  assert.ok(!/idbGet\('aiapp_projects'\)/.test(boot), 'لا قراءة مباشرة للسجلّ القديم');
   assert.match(src, /if\(k === 'code' && typeof v === 'string' && plan\.tokenOf\.has\(this\)\) return plan\.tokenOf\.get\(this\);/);
 });

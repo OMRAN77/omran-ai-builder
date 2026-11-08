@@ -8028,6 +8028,36 @@ function idbImgSweep(liveIds){
    قبل الكتابة، فلا تكتب نسخة قديمة فوق أحدث. */
 let __vaultGen = 0;
 let __vaultLastLen = 0;
+/* v-r3 (r3-f1): بانر «التطبيق يستجيب ببطء» (الجذر الثاني بعد v-freeze-fix): الحفظ كان يكتب السجلّ كلّه put واحدًا، والاستنساخ البنيويّ
+   داخل put متزامن على الخيط الرئيسيّ ويكبر مع التاريخ كلّه (مسبار المعالج ×٢: ٢٤١ محادثة ٦٫٢ث، ٣٠١ ‏٧٫٧ث، ٣٦١ ‏١٢٫٧ث والبانر).
+   الآن كلّ مشروع سجلٌّ بمفتاح فريد (aiapp_p:<تبويب>:<زمن>:<تسلسل>) يُكتب في معاملات صغيرة (≤ PROJ_BATCH حرفًا) بمهلة بينها، ثمّ
+   الفهرس (الترتيب والمفاتيح وبصمات المحتوى) آخرًا في معاملة واحدة تتحقّق أوّلًا أنّ كلّ مفتاح فيه موجود. فأطول مهمّة يحدّها أكبر مشروع
+   لا التاريخ، والانقطاع أو امتلاء السعة بين الكتابات يُبقي الفهرس السابق وسجلّاته سليمة. والمشروع الذي لم تتغيّر بصمة نصّه منذ آخر
+   كتابة لا يُعاد (حفظ معتاد = المحادثة المفتوحة وحدها). السجلّ القديم الواحد يُقرأ ويُرحَّل (__projLoad)، وكلّ التزام فهرس يمحوه. */
+const PROJ_PFX = 'aiapp_p:', PROJ_MANIFEST = 'aiapp_projects_m', PROJ_LEGACY = 'aiapp_projects';
+const PROJ_BATCH = 4000000; /* ≈ ١٥٠ م.ث استنساخًا في المعالج ×٢ */
+const PROJ_FOREIGN_TTL = 600000; /* مفتاح تبويب آخر أحدث من ١٠ دقائق قد يكون قيد الكتابة قبل فهرسه: لا يُكنس بعد (فهرسه يتحقّق على كلّ حال) */
+const __projTab = Math.random().toString(36).slice(2, 8) || 't0';
+let __projSeq = 0;
+let __projRec = new WeakMap(); /* المشروع ← { key, h }: آخر سجلّ كُتب له أو قُرئ منه وبصمة نصّه */
+let __vaultChain = Promise.resolve(); /* حفظ واحد في كلّ لحظة في التبويب: الأحدث ينتظر الأقدم الذي يتوقّف عند أوّل مهلة */
+/* v-r3 (r3-rv1): يُنادى مع كلّ تقدّم للحفظ (بدؤه، كلّ مهلة، قبل كلّ معاملة) — __saveFlushWait يقيس به انقطاع التقدّم لا المدّة */
+let __vaultTick = null;
+function __vaultProgress(){ if(__vaultTick){ try{ __vaultTick(); }catch(e){ __swallow(e, 'save:tick'); } } }
+function __projKey(){ return PROJ_PFX + __projTab + ':' + Date.now().toString(36) + ':' + (++__projSeq).toString(36); }
+function __projHashStr(s, h){
+  const imul = Math.imul, n = s.length; /* محلّيّ: لا بحث عن Math في كلّ حرف */
+  let x = h[0] | 0, y = h[1] | 0;
+  for(let i = 0; i < n; i++){ const c = s.charCodeAt(i); x = (imul(x, 31) + c) | 0; y = (imul(y, 0x01000193) ^ c) | 0; }
+  h[0] = (imul(x, 31) + 1) | 0; h[1] = y; h[2] += n + 1;
+}
+/* بصمة النصّ كلّه (لا عيّنات): أيّ تغيير في أيّ حرف يغيّرها؛ ~٢ن.ث للحرف، والبديل (إبقاء آخر نصّ مكتوب لكلّ مشروع) يضاعف الذاكرة */
+function __projHash(js, table){
+  const h = [0, 7, 0];
+  __projHashStr(js, h);
+  (table || []).forEach(t => __projHashStr(t, h));
+  return (h[0] >>> 0).toString(36) + '.' + (h[1] >>> 0).toString(36) + '.' + h[2];
+}
 /* v-code-dedupe (المالك ٣٠ سبتمبر: «كمل على نسخ آلة الزمن»): كلّ إصدار كود كان يُكتب في السجلّ مرّتين أو ثلاثًا — في رسالة البناء
    (m.code لزرّ «استخدم هذا الإصدار») وفي لقطة آلة الزمن، والحاليّ في p.code أيضًا — فيتضخّم السجلّ وتطول قراءته عند الإقلاع وكلّ
    حفظ. عند الكتابة في IndexedDB وحدها: ما يساوي p.code يصير «\0omcode:cur»، وما يتكرّر غيره يُكتب مرّة في p.__omCodes ويصير
@@ -8082,35 +8112,76 @@ function __codeExpand(list){
   });
   return list;
 }
-async function __vaultSave(sync){
+/* v-r3 (r3-f1): الحفظ في سلسلة التبويب — نداء أحدث يرفع الجيل فيتوقّف الأقدم عند أوّل مهلة أو قبل الفهرس ولا يُلتزم بنسخة قديمة */
+function __vaultSave(sync){
   const gen = ++__vaultGen;
+  const run = __vaultChain.then(() => __vaultSaveRun(sync, gen, 0));
+  __vaultChain = run.then(() => {}, () => {}); /* السلسلة لا تنقطع بفشل حفظ (الفشل يصل لمن نادى) */
+  return run;
+}
+async function __vaultSaveRun(sync, gen, attempt){
+  if(gen !== __vaultGen) return;
+  __vaultProgress();
   const puts = __vaultAssign(state.projects, Date.now());
   let vaulted = true;
   /* v-img-view: نسخة عرض صُنعت قبل أن يُكتب الأصل تُكتب معه */
   try{ await idbImgPutAll(puts.concat(puts.filter(x => x.ref && x.ref.viewUrl).map(x => ({ id: x.id + '~v', dataUrl: x.ref.viewUrl })))); puts.forEach(x => { delete x.ref.vaultPending; }); }
   catch(e){ vaulted = false; __swallow(e, 'vault:put'); }
+  __vaultProgress();
   const rep = vaulted ? __vaultReplacer : __noViewReplacer;
-  const projs = state.projects.slice(), copy = [];
-  let len = 1, t0 = Date.now();
+  const projs = state.projects.slice(), keys = [], hs = [];
+  let len = 1, t0 = Date.now(), batch = [], batchLen = 0;
+  const done = (b) => b.forEach(d => __projRec.set(d.p, { key: d.key, h: d.h }));
   for(let i = 0; i < projs.length; i++){
-    const plan = __codeDedupePlan(projs[i]);
+    const p = projs[i];
+    const plan = __codeDedupePlan(p);
     const js = JSON.stringify(projs[i], plan ? function(k, v){
       if(k === 'code' && typeof v === 'string' && plan.tokenOf.has(this)) return plan.tokenOf.get(this);
       return rep.call(this, k, v);
     } : rep);
-    const obj = js === undefined ? null : JSON.parse(js); /* كالسابق: عنصر لا يُسلسَل = null في المصفوفة */
-    if(obj && plan && plan.table.length) obj.__omCodes = plan.table;
-    len += (js === undefined ? 4 : js.length) + 1 + (plan ? plan.table.reduce((a, t) => a + t.length + 3, 0) : 0);
-    copy.push(obj);
+    const tlen = plan ? plan.table.reduce((a, t) => a + t.length + 3, 0) : 0;
+    len += (js === undefined ? 4 : js.length) + 1 + tlen;
+    if(js !== undefined && p && typeof p === 'object'){ /* ما ليس كائنًا (null) لا مشروع فيه: كان null في المصفوفة ويكسر الإقلاع */
+      const h = __projHash(js, plan && plan.table);
+      const r = __projRec.get(p);
+      if(r && r.h === h){ keys.push(r.key); hs.push(h); }
+      else {
+        const obj = JSON.parse(js);
+        if(obj && plan && plan.table.length) obj.__omCodes = plan.table;
+        const key = __projKey(), sz = js.length + tlen;
+        keys.push(key); hs.push(h);
+        if(!sync && batch.length && batchLen + sz > PROJ_BATCH){ /* المعاملة ≤ max(PROJ_BATCH، مشروع واحد) */
+          const b = batch; batch = []; batchLen = 0;
+          __vaultProgress();
+          await __projTx(b.map(d => [d.key, d.obj]), null);
+          done(b);
+          if(gen !== __vaultGen) return;
+          t0 = Date.now();
+        }
+        batch.push({ p: p, key: key, h: h, obj: obj }); batchLen += sz;
+      }
+    }
     if(!sync && i < projs.length - 1 && Date.now() - t0 > 40){
       await new Promise(r => setTimeout(r, 0));
       if(gen !== __vaultGen) return;
+      __vaultProgress();
       t0 = Date.now();
     }
   }
   if(gen !== __vaultGen) return;
   __vaultLastLen = len;
-  await idbSet('aiapp_projects', copy);
+  /* الدفعة الأخيرة والفهرس في معاملة واحدة (حفظ معتاد = معاملة واحدة صغيرة) */
+  __vaultProgress(); /* v-r3 (r3-rv1): بعد التسلسل المتزامن مباشرةً — مهلة __saveFlushWait التي انقضت أثناءه تُلغى قبل أن تسبق الالتزام */
+  const missing = await __projTx(batch.map(d => [d.key, d.obj]), { v: 1, at: Date.now(), keys: keys, hs: hs });
+  if(missing.length){
+    /* مفتاح أُعيد استعماله مسحه تبويب آخر: يُكتب من جديد — لا يُلتزم فهرسٌ بمفتاح غير موجود */
+    const gone = new Set(missing);
+    projs.forEach(p => { const r = (p && typeof p === 'object') ? __projRec.get(p) : null; if(r && gone.has(r.key)) __projRec.delete(p); });
+    if(gen !== __vaultGen) return; /* حفظ أحدث ينتظر في السلسلة ويكتبها */
+    if(attempt < 2) return __vaultSaveRun(sync, gen, attempt + 1);
+    throw new Error('proj-store: missing ' + missing.length);
+  }
+  done(batch);
   /* v-proj-vault: ما كُتب للتوّ في المخزن من غير المحادثة المفتوحة يخرج من الذاكرة الآن لا عند الرسم التالي (أوّل حفظ بعد النشر
      ينقل base64 كلّ المشاريع إلى المخزن دفعة واحدة) */
   if(vaulted && puts.length){ try{ const __cp = (typeof getCurrent === 'function') ? getCurrent() : null; __vaultRelease(__cp, __cp ? __imgWindowStart(__cp) : 0); }catch(e){ __swallow(e, 'vault:release-after-save'); } }
@@ -8125,6 +8196,99 @@ function idbImgGetMany(ids){
     const st = tx.objectStore(IDB_IMAGES);
     ids.forEach(id => { const rq = st.get(id); rq.onsuccess = () => { if(typeof rq.result === 'string') out[id] = rq.result; }; });
     tx.oncomplete = () => { db.close(); res(out); };
+    tx.onerror = () => { db.close(); rej(tx.error); };
+  }));
+}
+/* v-r3 (r3-f1): سجلّ لا يذكره الفهرس الجديد يُكنس إن كان من هذا التبويب (حفظ سابق أو مشروع حُذف) أو من تبويب آخر قبل ١٠ دقائق */
+function __projGone(k, now){
+  const m = /^aiapp_p:([^:]+):([0-9a-z]+):[0-9a-z]+$/.exec(String(k));
+  if(!m || m[1] === __projTab) return true;
+  const at = parseInt(m[2], 36);
+  return !(at > 0) || now - at > PROJ_FOREIGN_TTL;
+}
+/* v-r3 (r3-f1): معاملة واحدة على مخزن kv: سجلّات [مفتاح، قيمة]، ثمّ إن أُعطي فهرس: التحقّق أنّ كلّ مفتاح فيه موجود — في المعاملة نفسها،
+   فلا يمسح تبويب آخر بين التحقّق والالتزام — ثمّ الفهرس، ومحو السجلّ القديم الواحد، وكنس اليتيم. ينقص مفتاح = تُلغى المعاملة كلّها
+   (ومعها سجلّاتها) ويرجع الناقص ليُعاد كتابته. أيّ تعثّر آخر (امتلاء السعة) يرفض والفهرس السابق باقٍ كما هو. */
+function __projTx(recs, man){
+  return idbOpen().then(db => new Promise((res, rej) => {
+    let missing = [], fin = false, tx = null;
+    const end = (ok, v) => { if(fin) return; fin = true; try{ db.close(); }catch(e){ __swallow(e, 'proj:close'); } (ok ? res : rej)(v); };
+    try{
+      tx = db.transaction(IDB_STORE, 'readwrite');
+      const st = tx.objectStore(IDB_STORE);
+      tx.oncomplete = () => end(true, []);
+      tx.onabort = () => (missing.length ? end(true, missing) : end(false, tx.error || new Error('proj-tx abort')));
+      recs.forEach(x => st.put(x[1], x[0]));
+      if(man){
+        const rq = st.getAllKeys(IDBKeyRange.bound(PROJ_PFX, PROJ_PFX + '\uffff'));
+        rq.onsuccess = () => {
+          const all = rq.result || [], have = new Set(all);
+          missing = man.keys.filter(k => !have.has(k));
+          if(missing.length){ tx.abort(); return; }
+          st.put(man, PROJ_MANIFEST);
+          st.delete(PROJ_LEGACY); /* وجوده بعد هذا = كتبه بعدنا تبويب من الإصدار السابق (أو احتياط الحفظ) فهو الأحدث عند الإقلاع */
+          const live = new Set(man.keys), now = Date.now();
+          all.forEach(k => { if(!live.has(k) && __projGone(k, now)) st.delete(k); });
+        };
+      }
+    }catch(e){
+      try{ if(tx) tx.abort(); }catch(e2){ __swallow(e2, 'proj:abort'); }
+      end(false, e);
+    }
+  }));
+}
+/* v-r3 (r3-f1): قراءة المشاريع عند الإقلاع — الفهرس ثمّ سجلّاته بترتيبه في معاملة واحدة، ويُسجَّل لكلّ مشروع مفتاحه وبصمته فلا يُعاد
+   كتابة ما لم يتغيّر. إن وُجد السجلّ القديم الواحد فهو الأحدث (كلّ التزام فهرس يمحوه في معاملته): يُقرأ (مدموجًا بالفهرس) ويرحّله الحفظ التالي.
+   يرجع ما كان يرجعه idbGet('aiapp_projects') — مصفوفة قبل __codeExpand، أو undefined. alive يُنادى مع كلّ سجلّ (مهلة الإقلاع للتعليق لا للحجم).
+   v-r3 (r3-rv2): «القديم هو الأحدث» لا يعني أنّه الأكمل — الإصدار السابق (بعد تراجع) لا يقرأ إلّا السجلّ القديم فيقلع على المرآة المنحّفة
+   ويكتبها سجلًّا قديمًا ببضع محادثات؛ قراءته وحده ثمّ الكنس بعد ١٠ دقائق (مفاتيح «تبويب آخر» خارج الفهرس الجديد) محَوَا التاريخ كلّه
+   (مسبار المراجعة: ٦١ محادثة و٢٠ تطبيقًا ← ٦ محادثات بلا تطبيقات). فإن وُجدا معًا يُدمجان بالمعرّف (__projMerge). */
+function __projMerge(fromMan, old){
+  const byId = new Map(), seen = new Set();
+  old.forEach(l => { if(l && typeof l === 'object' && l.id) byId.set(l.id, l); });
+  const n = (p) => (Array.isArray(p.messages) ? p.messages.length : 0);
+  /* لكلّ معرّف: الأكثر رسائل (قاعدة دمج المرآة عند الإقلاع، v-idb-mirror)، وعند التساوي الأطول نصًّا — المنحّفة بلا كود ولا آلة زمن.
+     ترتيب الفهرس يبقى، وما في القديم وحده (محادثة كتبها الإصدار السابق) يُلحق بترتيبه (الجديد يُلحق في آخر state.projects) */
+  const out = fromMan.map(m => {
+    seen.add(m.id);
+    const l = byId.get(m.id);
+    if(!l) return m;
+    if(n(l) !== n(m)) return n(l) > n(m) ? l : m;
+    return JSON.stringify(l).length > JSON.stringify(m).length ? l : m;
+  });
+  old.forEach(l => { if(l && typeof l === 'object' && !(l.id && seen.has(l.id))){ if(l.id) seen.add(l.id); out.push(l); } });
+  return out;
+}
+function __projLoad(alive){
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const st = tx.objectStore(IDB_STORE);
+    let out, man = null, recs = null, pend = 2, old;
+    const rm = st.get(PROJ_MANIFEST), rc = st.count(PROJ_LEGACY);
+    const ping = () => { if(typeof alive === 'function') alive(); };
+    const next = () => {
+      ping();
+      if(--pend) return;
+      if(rc.result > 0){ const rl = st.get(PROJ_LEGACY); rl.onsuccess = () => { old = rl.result; ping(); }; } /* v-r3 (r3-rv2): والفهرس يُقرأ معه */
+      man = rm.result;
+      if(!man || !Array.isArray(man.keys)) return;
+      recs = new Array(man.keys.length);
+      man.keys.forEach((k, i) => { const r = st.get(k); r.onsuccess = () => { recs[i] = r.result; ping(); }; });
+    };
+    rm.onsuccess = next; rc.onsuccess = next;
+    tx.oncomplete = () => {
+      db.close();
+      if(recs){
+        out = [];
+        recs.forEach((p, i) => {
+          if(!p || typeof p !== 'object'){ __swallow(new Error('proj-store: no record ' + man.keys[i]), 'proj:load'); return; }
+          __projRec.set(p, { key: man.keys[i], h: Array.isArray(man.hs) ? String(man.hs[i]) : '' });
+          out.push(p);
+        });
+      }
+      if(old !== undefined) out = (out && Array.isArray(old)) ? __projMerge(out, old) : (out || old);
+      res(out);
+    };
     tx.onerror = () => { db.close(); rej(tx.error); };
   }));
 }
@@ -8265,6 +8429,34 @@ function __saveFlush(force){
 window.addEventListener('pagehide', __saveFlush);
 window.addEventListener('pagehide', __writeChatsMirror); /* v-idb-mirror: مرآة طازجة عند كل مغادرة */
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') __saveFlush(); });
+/* v-r3 (r3-f2): «تم حفظ عملك تلقائيًا. إعادة التحميل الآن؟» لم تكن صادقة — تغيير عبر saveState ثمّ إعادة تحميل داخل نافذة التجميع
+   (١٫٥ث، و١٠ث فوق 12MB، و٣٠ث فوق 60MB) يضيع: pagehide ← __saveFlush يبدأ حفظًا غير متزامن لا يكتمل بعد مغادرة الصفحة.
+   هنا: ما ينتظر في التجميع يُكتب الآن بلا تباعد (مقسّمًا منذ r3-rv3)، ويُنتظر الحفظ الجاري كلّه.
+   v-r3 (r3-rv1): مراجعة على ٣٦١ محادثة (المعالج ×٢): النقر أثناء حفظ مقسّم جارٍ (٦٫٢ث) ولا شيء «قذر» كان يعيد بعد ٥ث من النقر قبل
+   التزام الفهرس فيضيع التغيير الذي يحمله؛ والمهلة المسلّحة من النقر قد تنقضي أثناء تسلسل متزامن طويل فتسبق الالتزام. الآن المهلة
+   لانقطاع التقدّم: يعيد تسليحها الحفظ نفسه (__vaultProgress: بدؤه، كلّ مهلة، وقبل كلّ معاملة — أي بعد التسلسل مباشرةً)، فتحدّ انتظار
+   IndexedDB المعلّق (iOS) وحده. وحفظ أحدث أوقف المنتظَر (الجيل ارتفع) هو الذي يحمل التغيير الآن فيُتبع، حتّى ٣٠ث من النقر. */
+function __saveFlushWait(ms){
+  const idle = Promise.resolve(), chain = () => (typeof __vaultChain !== 'undefined' && __vaultChain) || idle;
+  const tickable = typeof __vaultTick !== 'undefined', until = Date.now() + 30000;
+  return new Promise(res => {
+    let fin = false, timer = 0;
+    const end = () => { if(fin) return; fin = true; clearTimeout(timer); if(tickable && __vaultTick === arm) __vaultTick = null; res(); };
+    const arm = () => { clearTimeout(timer); if(!fin) timer = setTimeout(end, ms || 5000); };
+    const follow = () => {
+      const run = chain();
+      arm();
+      run.then(() => { if(fin) return; if(run === chain() || Date.now() > until) end(); else follow(); });
+    };
+    if(tickable) __vaultTick = arm;
+    /* v-r3 (r3-rv3): بلا تباعد لكن مقسّم — __saveFlush(true) متزامن = كلّ سجلّ تغيّر في معاملة الفهرس الواحدة، وبعد أوّل إقلاع من السجلّ
+       القديم (لا __projRec لأيّ مشروع) هو التاريخ كلّه: استنساخه داخل put متزامن >٥ث على ٣٦١ محادثة (المعالج ×٢) فتنقضي المهلة أثناءه
+       وتقتل الإعادةُ المعاملة قبل التزامها. المقسّم يعيد تسليح المهلة مع كلّ دفعة ٤م حرف. pagehide والإخفاء والمكالمة يبقون متزامنين. */
+    try{ if(__saveDirty){ __idbSavedAt = 0; __saveFlush(); } }catch(e){ __swallow(e, 'save:flush-wait'); }
+    follow();
+  });
+}
+window.__saveFlushWait = __saveFlushWait;
 /* v-hist-select-persist: شبكة أمان — نحو عشرين مسارًا (الصوت، مها، مشاهدة الفيديو…) تغيّر state.currentId بلا saveState،
    فيفتح الإقلاع التالي غير المحادثة الظاهرة. عند المغادرة أو الإخفاء يُحفظ المعرّف الحاليّ؛ والفارغ لا يمسح المحفوظ. */
 function __saveCurIdFlush(){
@@ -30901,11 +31093,17 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
   // v-idb-timeout: على iOS PWA قد يتجمد idbGet للأبد عند الإقلاع البارد —
   // مهلة ٣ ثوانٍ ثم محاولة إنعاش واحدة (٥ ثوانٍ)؛ الفشل النهائي يُبلَّغ
   // ويُترك للمرآة (v-idb-mirror) التي رسمت المحادثات أصلًا من أول لحظة.
-  const idbGetGuarded = async (key) => {
-    const withTimeout = (ms) => Promise.race([
-      idbGet(key),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('idb-timeout')), ms)),
-    ]);
+  // v-r3 (r3-f1): القارئ دالّة لا مفتاح — المشاريع صارت فهرسًا وسجلًّا لكلّ مشروع (__projLoad يقرأ الصيغتين ويختار الأحدث).
+  // والمهلة لانقطاع التقدّم لا للمدّة كلّها: سجلّ ثقيل (٢٤١ محادثة، ٣٧٦م حرف، المعالج ×٢) يُقرأ في أكثر من ٣ث وهو يتقدّم سجلًّا
+  // سجلًّا — فكانت المهلة تطلق قراءة ثانية كاملة فوق الأولى (ضعف العمل والذاكرة)، وإن جاوزت الثانية ٥ث صار __idbBroken والحفظ
+  // في localStorage. التعليق الحقيقيّ (علّة iOS) لا تقدّم فيه فيُكشف كما كان.
+  const idbGetGuarded = async (load) => {
+    const withTimeout = (ms) => new Promise((res, rej) => {
+      let fin = false, timer = 0;
+      const arm = () => { clearTimeout(timer); if(!fin) timer = setTimeout(() => { fin = true; rej(new Error('idb-timeout')); }, ms); };
+      arm();
+      load(arm).then(v => { fin = true; clearTimeout(timer); res(v); }, e => { fin = true; clearTimeout(timer); rej(e); });
+    });
     try{ return await withTimeout(3000); }
     catch(e1){
       try{ return await withTimeout(5000); }
@@ -30922,7 +31120,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
     const migrated = localStorage.getItem('aiapp_idb_on') === '1';
     if(!migrated){
       // أول تشغيل: بيانات localStorage هي المصدر → ننسخها إلى IndexedDB ثم نحرر المساحة.
-      const idbOld = __codeExpand(await idbGetGuarded('aiapp_projects')); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
+      const idbOld = __codeExpand(await idbGetGuarded(__projLoad)); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
       const merged = Array.isArray(idbOld) && idbOld.length
         ? idbOld.filter(p => !state.projects.some(q => q.id === p.id)).concat(state.projects)
         : state.projects;
@@ -30932,7 +31130,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       try{ localStorage.removeItem('aiapp_projects'); }catch(e){ __swallow(e, "save:app-09-attach#33"); }
       renderAll();
     } else {
-      const idbProjects = __codeExpand(await idbGetGuarded('aiapp_projects')); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
+      const idbProjects = __codeExpand(await idbGetGuarded(__projLoad)); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
       if(Array.isArray(idbProjects) && idbProjects.length){
         // دمج أي مشاريع أنشئت قبل اكتمال التحميل (نادر) بدون فقدان — وإن كان
         // المعروض مرآةً وكتب المستخدم فيها رسالة قبل وصول الكاملة، تُحفظ نسخته
@@ -31177,7 +31375,14 @@ window.postWithConfirm = postWithConfirm;
   let dismissedUntil = 0;
   let strikes = 0;
 
-  reloadBtn.onclick = () => location.reload();
+  /* v-r3 (r3-f2): «تم حفظ عملك تلقائيًا» صادقة — إعادة التحميل تنتظر كتابة ما ينتظر في الحفظ المجمّع (مهلة ٥ث لانتظار IndexedDB)؛
+     كانت تعيد فورًا فيضيع تغيير لم يمرّ عليه الحفظ بعد (١٫٥–٣٠ث حسب حجم السجلّ) */
+  reloadBtn.onclick = () => {
+    reloadBtn.disabled = true;
+    let wait = null;
+    try{ if(typeof window.__saveFlushWait === 'function') wait = window.__saveFlushWait(5000); }catch(e){ __swallow(e, 'freeze:flush'); }
+    Promise.resolve(wait).then(() => location.reload(), () => location.reload());
+  };
   dismissBtn.onclick = () => {
     banner.style.display = 'none';
     shown = false;
@@ -31216,7 +31421,8 @@ window.postWithConfirm = postWithConfirm;
       if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
         /* v-freeze-fix: لا إعادة حفظ هنا — كانت تُبطل النسخة المنحّفة وتجدول رفعها وحفظ السجلّ كاملًا في IndexedDB لحظة التجمّد نفسها
            (مسبار سجلّ المالك الثقيل: تجمّد ثانٍ ١٤ث بعد البانر). أيّ تغيير ينتظر أصلًا في الحفظ المجمّع (١٫٥ث)، و«إعادة التحميل» =
-           pagehide ← __saveFlush والمرآة؛ فـ«تم حفظ عملك تلقائيًا» صادقة بلا هذه الكلفة. */
+           pagehide ← __saveFlush والمرآة؛ فـ«تم حفظ عملك تلقائيًا» صادقة بلا هذه الكلفة.
+           v-r3 (r3-f2): pagehide وحده لا يكمل حفظه بعد المغادرة — فزرّ «إعادة التحميل» ينتظر الحفظ (__saveFlushWait) قبل أن يعيد. */
         shown = true;
         banner.style.display = 'flex';
       }

@@ -7736,11 +7736,17 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
   // v-idb-timeout: على iOS PWA قد يتجمد idbGet للأبد عند الإقلاع البارد —
   // مهلة ٣ ثوانٍ ثم محاولة إنعاش واحدة (٥ ثوانٍ)؛ الفشل النهائي يُبلَّغ
   // ويُترك للمرآة (v-idb-mirror) التي رسمت المحادثات أصلًا من أول لحظة.
-  const idbGetGuarded = async (key) => {
-    const withTimeout = (ms) => Promise.race([
-      idbGet(key),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('idb-timeout')), ms)),
-    ]);
+  // v-r3 (r3-f1): القارئ دالّة لا مفتاح — المشاريع صارت فهرسًا وسجلًّا لكلّ مشروع (__projLoad يقرأ الصيغتين ويختار الأحدث).
+  // والمهلة لانقطاع التقدّم لا للمدّة كلّها: سجلّ ثقيل (٢٤١ محادثة، ٣٧٦م حرف، المعالج ×٢) يُقرأ في أكثر من ٣ث وهو يتقدّم سجلًّا
+  // سجلًّا — فكانت المهلة تطلق قراءة ثانية كاملة فوق الأولى (ضعف العمل والذاكرة)، وإن جاوزت الثانية ٥ث صار __idbBroken والحفظ
+  // في localStorage. التعليق الحقيقيّ (علّة iOS) لا تقدّم فيه فيُكشف كما كان.
+  const idbGetGuarded = async (load) => {
+    const withTimeout = (ms) => new Promise((res, rej) => {
+      let fin = false, timer = 0;
+      const arm = () => { clearTimeout(timer); if(!fin) timer = setTimeout(() => { fin = true; rej(new Error('idb-timeout')); }, ms); };
+      arm();
+      load(arm).then(v => { fin = true; clearTimeout(timer); res(v); }, e => { fin = true; clearTimeout(timer); rej(e); });
+    });
     try{ return await withTimeout(3000); }
     catch(e1){
       try{ return await withTimeout(5000); }
@@ -7757,7 +7763,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
     const migrated = localStorage.getItem('aiapp_idb_on') === '1';
     if(!migrated){
       // أول تشغيل: بيانات localStorage هي المصدر → ننسخها إلى IndexedDB ثم نحرر المساحة.
-      const idbOld = __codeExpand(await idbGetGuarded('aiapp_projects')); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
+      const idbOld = __codeExpand(await idbGetGuarded(__projLoad)); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
       const merged = Array.isArray(idbOld) && idbOld.length
         ? idbOld.filter(p => !state.projects.some(q => q.id === p.id)).concat(state.projects)
         : state.projects;
@@ -7767,7 +7773,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       try{ localStorage.removeItem('aiapp_projects'); }catch(e){ __swallow(e, "save:app-09-attach#33"); }
       renderAll();
     } else {
-      const idbProjects = __codeExpand(await idbGetGuarded('aiapp_projects')); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
+      const idbProjects = __codeExpand(await idbGetGuarded(__projLoad)); // v-code-dedupe: الصيغة المضغوطة تعود نصوصًا كاملة
       if(Array.isArray(idbProjects) && idbProjects.length){
         // دمج أي مشاريع أنشئت قبل اكتمال التحميل (نادر) بدون فقدان — وإن كان
         // المعروض مرآةً وكتب المستخدم فيها رسالة قبل وصول الكاملة، تُحفظ نسخته
