@@ -651,3 +651,241 @@ test('r3-rv4: استرداد ترقية يعيد رصيد الفترة السا�
   assert.equal(u.media.mix.payId, 'cs_rv4_mb');
   assert.equal(s1 + s2, 1000, 'ما بقي من media_basic (١٠٠٠) أعطى ' + (s1 + s2));
 });
+
+// ───────────── r3-rv2-*: المراجعة العدائيّة الثانية لـ547e2f68 — سريانٌ لم يصل سجلّه كان يُكمَل عند قراءة الوسائط التالية وحدها ─────────────
+// بعد سريان مؤجَّلة (الرصيد + العلامة media-on) وفشل كتابة السجلّ: KV فيه رصيد media_basic والسجلّ ما زال media_max والمؤجَّلة في الانتظار.
+// كلّ كاتب يأخذ قفل الحساب قبل القراءة التالية (منح، استرداد، تغيير اسم) كان يعمل على السجلّ القديم، والإكمال المتأخّر يكتب فوق فترة أحدث.
+// الإصلاح (v-r3 r3-rv2-stale): withAccount يكمل ما سرى (علامته قائمة) مرّة واحدة قبل أيّ كاتب، بلا ملء ثانٍ (_mediaPlans completeActivated).
+// x1: نفد رصيد media_max ⇒ أوّل صرف يُسري media_basic المؤجَّلة ثمّ تفشل كتابة السجلّ مرّة واحدة.
+async function x1(u) {
+  await maxThenBasic(u, 300);
+  store.set('media:mix:' + u, '0');
+  fail.userPut = 1;
+  const s = await media.trySpendMedia(u, 5, 'image_normal');
+  fail.userPut = 0;
+  const v = await user(u);
+  assert.equal(v.media.mix.plan, 'media_max', 'حالة x1: السجلّ لم يُكتب');
+  assert.equal((v.mediaNext || []).length, 1);
+  assert.ok(store.has('media-on:cs_' + u + '_mb'), 'علامة السريان');
+  return s ? s.fils : 0;
+}
+// ضابط بلا عطل: السريان نفسه وكتابة السجلّ نجحت
+async function x1ok(u) {
+  await maxThenBasic(u, 300);
+  store.set('media:mix:' + u, '0');
+  const s = await media.trySpendMedia(u, 5, 'image_normal');
+  assert.equal((await user(u)).media.mix.plan, 'media_basic');
+  return s ? s.fils : 0;
+}
+
+test('r3-rv2-G0 (ضابط): بلا عطل — استرداد media_basic كاملًا بعد سريانها ⇒ لا يبقى شيء يُصرف', async () => {
+  await x1ok('g0');
+  assert.equal((await hook(refundOf('cs_g0_mb', 1021, 1021))).code, 200);
+  assert.equal(await spendAll('g0'), 0);
+});
+test('r3-rv2-G: حالة x1 ثمّ استرداد media_basic كاملًا قبل أيّ قراءة ⇒ لا يبقى من رصيدها شيء (كان يُصرف كاملًا تحت media_max)', async () => {
+  await x1('g1');
+  assert.equal((await hook(refundOf('cs_g1_mb', 1021, 1021))).code, 200);
+  const spent = await spendAll('g1');
+  assert.equal(spent, 0, 'media_basic مستردّة كاملًا ومع ذلك صُرف منها ' + spent + ' فلسًا');
+});
+test('r3-rv2-G-half: حالة x1 ثمّ استرداد نصف media_basic قبل أيّ قراءة ⇒ ينقص رصيدها النصف (كان يبقى كاملًا)', async () => {
+  const f = await x1('gh1');
+  assert.equal((await hook(refundOf('cs_gh1_mb', 1021, 511))).code, 200);
+  const spent = await spendAll('gh1');
+  const want = 1250 - Math.round(1250 * 511 / 1021) - f;
+  assert.ok(spent <= want, 'نصف media_basic مستردّ ومع ذلك صُرف ' + spent + ' (المستحقّ ' + want + ')');
+});
+
+test('r3-rv2-B0 (ضابط): بلا عطل — استرداد نصف media_max بعد سريان media_basic ⇒ رصيد media_basic لا يُمسّ', async () => {
+  const f = await x1ok('b0');
+  assert.equal((await hook(refundOf('cs_b0_mm', 10211, 5106))).code, 200);
+  assert.equal(await spendAll('b0'), 1250 - f);
+});
+test('r3-rv2-B: حالة x1 ثمّ استرداد نصف media_max قبل أيّ قراءة ⇒ رصيد media_basic غير المستردّة لا يُمسّ (كان يُؤخذ كلّه)', async () => {
+  const f = await x1('b1');
+  assert.equal((await hook(refundOf('cs_b1_mm', 10211, 5106))).code, 200);
+  const left = await spendAll('b1');
+  assert.equal(left, 1250 - f, 'media_basic غير مستردّة وبقي منها ' + left + ' من ' + (1250 - f));
+});
+
+test('r3-rv2-A0 (ضابط): بلا عطل — media_max جديدة بعد سريان media_basic ثمّ استردادها كاملًا ⇒ يعود ما بقي من media_basic وحده', async () => {
+  const f = await x1ok('a0');
+  assert.equal((await hook(paidSession('cs_a0_mm2', 'a0', 'media_max', 10211))).code, 200);
+  await media.mediaStatus('a0');
+  assert.equal((await user('a0')).media.mix.payId, 'cs_a0_mm2');
+  assert.equal((await hook(refundOf('cs_a0_mm2', 10211, 10211))).code, 200);
+  assert.equal(await spendAll('a0'), 1250 - f);
+});
+test('r3-rv2-A: حالة x1 ثمّ media_max جديدة قبل أيّ قراءة ⇒ القراءة لا تكتب media_basic فوق فترتها، واستردادها كاملًا يسحبها (كان ١٢٥٠٠ تبقى)', async () => {
+  const f = await x1('a1');
+  assert.equal((await hook(paidSession('cs_a1_mm2', 'a1', 'media_max', 10211))).code, 200);
+  await media.mediaStatus('a1'); // أيّ قراءة وسائط
+  const u = await user('a1');
+  assert.equal(u.media.mix.payId, 'cs_a1_mm2', 'الفترة بعد القراءة ' + JSON.stringify(u.media.mix));
+  assert.equal(u.mediaNext, undefined);
+  assert.equal((await hook(refundOf('cs_a1_mm2', 10211, 10211))).code, 200);
+  const spent = await spendAll('a1');
+  assert.equal(spent, 1250 - f, 'media_max الثانية مستردّة كاملًا وصُرف بعدها ' + spent + ' (يعود ما بقي من media_basic وحده)');
+});
+test('r3-rv2-A-sub: media_max اشتراكًا + media_basic مؤجَّلة، حالة x1، ثمّ تجديد media_max قبل أيّ قراءة ⇒ استرداد التجديد كاملًا يسحبه', async () => {
+  await fresh('as1', {});
+  sub('sub_as1_mm', 'as1', 'media_max', 'active');
+  assert.equal((await hook(subSession('cs_as1_mm', 'as1', 'media_max', 10211, 'sub_as1_mm'))).code, 200);
+  store.set('media:mix:as1', '300');
+  assert.equal((await hook(paidSession('cs_as1_mb', 'as1', 'media_basic', 1021))).code, 200);
+  store.set('media:mix:as1', '0');
+  fail.userPut = 1;
+  const s = await media.trySpendMedia('as1', 5, 'image_normal');
+  fail.userPut = 0;
+  const f = s ? s.fils : 0;
+  assert.equal((await user('as1')).media.mix.plan, 'media_max');
+  assert.equal((await hook(renewal('in_as1_mm2', 'as1', 'media_max', 10211, 'sub_as1_mm'))).code, 200);
+  await media.mediaStatus('as1');
+  const u = await user('as1');
+  assert.equal(u.media.mix.payId, 'in_as1_mm2', 'بعد القراءة ' + JSON.stringify(u.media.mix));
+  assert.equal((await hook(refundOf('in_as1_mm2', 10211, 10211))).code, 200);
+  const spent = await spendAll('as1');
+  assert.ok(spent <= 1250 - f, 'التجديد مستردّ كاملًا وصُرف بعده ' + spent);
+});
+test('r3-rv2-A-x2: استرداد media_max يُسري media_basic وتفشل كتابة السجلّ (500)، ثمّ media_max جديدة قبل إعادة Stripe ⇒ استردادها كاملًا يسحبها', async () => {
+  await maxThenBasic('ax2', 9000);
+  const ev = refundOf('cs_ax2_mm', 10211, 10211);
+  fail.userPut = 1;
+  const r1 = await hook(ev);
+  fail.userPut = 0;
+  assert.ok(r1.code >= 500, String(r1.code));
+  assert.equal((await hook(paidSession('cs_ax2_mm2', 'ax2', 'media_max', 10211))).code, 200);
+  assert.equal((await hook(ev)).code, 200); // إعادة Stripe لاسترداد الأولى
+  await media.mediaStatus('ax2');
+  const u = await user('ax2');
+  assert.equal(u.media.mix.payId, 'cs_ax2_mm2', 'بعد القراءة ' + JSON.stringify(u.media.mix));
+  assert.equal((await hook(refundOf('cs_ax2_mm2', 10211, 10211))).code, 200);
+  const spent = await spendAll('ax2');
+  assert.ok(spent <= 1250, 'media_max الثانية مستردّة كاملًا وصُرف بعدها ' + spent);
+});
+test('r3-rv2-A-x2r: كـA-x2 ويُقارَن ما يعود بعد استرداد media_max الثانية بضابط بلا عطل (١٢٥٠ — كان ١٢٥٠٠)', async () => {
+  for (const [u, faulty] of [['ax2c', false], ['ax2f', true]]) {
+    await maxThenBasic(u, 9000);
+    const ev = refundOf('cs_' + u + '_mm', 10211, 10211);
+    if (faulty) fail.userPut = 1;
+    const r1 = await hook(ev);
+    fail.userPut = 0;
+    if (r1.code !== 200) assert.equal(faulty, true);
+    assert.equal((await hook(paidSession('cs_' + u + '_mm2', u, 'media_max', 10211))).code, 200);
+    if (r1.code !== 200) assert.equal((await hook(ev)).code, 200);
+    assert.equal((await hook(refundOf('cs_' + u + '_mm2', 10211, 10211))).code, 200);
+  }
+  const c = await spendAll('ax2c');
+  const f = await spendAll('ax2f');
+  assert.equal(c, 1250);
+  assert.equal(f, c, 'بلا عطل يعود ' + c + '، ومع عطل كتابة واحد ' + f);
+});
+
+test('r3-rv2-RN-exp: نافذة media_max انتهت ⇒ سريان media_basic ثمّ تفشل كتابة السجلّ، ثمّ تغيير الاسم قبل أيّ قراءة ⇒ رصيدها ينتقل إلى الاسم الجديد (كان يبقى تحت القديم)', async () => {
+  await maxThenBasic('rx1', 300);
+  const u0 = await user('rx1');
+  u0.media.mix.at = Date.now() - 36 * DAY; // انتهت الأعلى ⇒ حلّ وقت المؤجَّلة
+  await auth.putUser('rx1', u0);
+  fail.userPut = 1;
+  const s = await media.trySpendMedia('rx1', 5, 'image_normal');
+  fail.userPut = 0;
+  const f = s ? s.fils : 0;
+  assert.equal((await user('rx1')).media.mix.plan, 'media_max', 'السجلّ لم يُكتب');
+  const r = await rename('rx1', 'rx1new');
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  let total = f + await spendAll('rx1new');
+  const u = await user('rx1new');
+  const label = JSON.stringify(u.media && u.media.mix);
+  if (u.media && u.media.mix) { u.media.mix.at = Date.now() - 36 * DAY; await auth.putUser('rx1new', u); }
+  total += await spendAll('rx1new');
+  assert.equal(total, 1250, 'دفعة media_basic واحدة أعطت ' + total + ' (السجلّ ' + label + '، وتحت الاسم القديم ' + store.get('media:mix:rx1') + ')');
+  assert.equal(store.has('media:mix:rx1'), false, 'لا شيء تحت الاسم القديم');
+});
+
+// الإكمال المركزيّ نفسه
+test('r3-rv2-lock: حالة x1 ثمّ منح باقة محادثة (كاتب آخر تحت قفل الحساب) ⇒ يكمل سجلّ media_basic بلا ملء ثانٍ', async () => {
+  const f = await x1('lk1');
+  assert.equal(mix('lk1'), 1250 - f);
+  assert.equal((await hook(paidSession('cs_lk1_basic', 'lk1', 'basic', 1000))).code, 200);
+  const u = await user('lk1');
+  assert.equal(u.plan, 'basic');
+  assert.equal(u.media.mix.plan, 'media_basic', 'أكمله قفل الحساب لا القراءة التالية');
+  assert.equal(u.media.mix.payId, 'cs_lk1_mb');
+  assert.equal(u.media.mix.at, Number(store.get('media-on:cs_lk1_mb')), 'بوقت سريانه الأوّل');
+  assert.equal(u.mediaNext, undefined);
+  assert.equal(mix('lk1'), 1250 - f, 'لا ملء ثانٍ');
+});
+test('r3-rv2-lock: حالة x1 وفشل كتابة الإكمال تحت القفل ⇒ الاسترداد 500 بلا أثر، والإعادة تسحب media_basic مرّة', async () => {
+  const f = await x1('lk2');
+  const ev = refundOf('cs_lk2_mb', 1021, 1021);
+  fail.userPut = 1;
+  const r1 = await hook(ev);
+  fail.userPut = 0;
+  assert.ok(r1.code >= 500, String(r1.code));
+  const v = await user('lk2');
+  assert.equal(v.media.mix.plan, 'media_max', 'لا أثر');
+  assert.equal((v.mediaNext || []).length, 1);
+  assert.equal(mix('lk2'), 1250 - f, 'الرصيد لم يُمسّ');
+  assert.equal(JSON.parse(store.get('payrec:cs_lk2_mb')).revoked, undefined, 'الحدث غير معلَّم «تمّ»');
+  assert.equal((await hook(ev)).code, 200);
+  assert.equal(await spendAll('lk2'), 0);
+});
+test('r3-rv2-lock: حساب بلا مؤجَّلة ⇒ قفل الحساب لا يقرأ علامات السريان (لا كلفة على الكلّ) (ثابت)', async () => {
+  await fresh('lk3', {});
+  const seen = [];
+  hooks.get = async (k) => { seen.push(k); };
+  try { assert.equal((await hook(paidSession('cs_lk3_mm', 'lk3', 'media_max', 10211))).code, 200); } finally { hooks.get = null; }
+  assert.equal(seen.filter((k) => /^media-on:/.test(k)).length, 0, JSON.stringify(seen));
+});
+
+// ثوابت يجب أن تصمد
+test('r3-rv2: حالة x1 ثمّ تغيير الاسم ⇒ media_basic بالاسم الجديد بلا ملء والمجموع ١٢٥٠ (ثابت)', async () => {
+  const f = await x1('rn1');
+  const r = await rename('rn1', 'rn1new');
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  let total = f + await spendAll('rn1new');
+  const u = await user('rn1new');
+  assert.equal(u.media.mix.plan, 'media_basic');
+  u.media.mix.at = Date.now() - 36 * DAY;
+  await auth.putUser('rn1new', u);
+  total += await spendAll('rn1new');
+  assert.equal(total, 1250);
+});
+test('r3-rv2: خمس قراءات متزامنة عند حلول المؤجَّلة ⇒ تسري مرّة واحدة والمجموع ١٢٥٠ (ثابت)', async () => {
+  await maxThenBasic('par1', 300);
+  store.set('media:mix:par1', '0');
+  const rs = await Promise.all([1, 2, 3, 4, 5].map(() => media.trySpendMedia('par1', 5, 'image_normal')));
+  let total = rs.reduce((a, s) => a + (s ? s.fils : 0), 0) + await spendAll('par1');
+  const u = await user('par1');
+  assert.equal(u.media.mix.plan, 'media_basic');
+  u.media.mix.at = Date.now() - 36 * DAY;
+  await auth.putUser('par1', u);
+  total += await spendAll('par1');
+  assert.equal(total, 1250);
+});
+test('r3-rv2: استرداد الأعلى والأدنى المؤجَّل متزامنين ⇒ لا شيء يبقى (ثابت)', async () => {
+  await maxThenBasic('cc1', 6000);
+  const [r1, r2] = await Promise.all([hook(refundOf('cs_cc1_mm', 10211, 10211)), hook(refundOf('cs_cc1_mb', 1021, 1021))]);
+  if (r1.code !== 200) assert.equal((await hook(refundOf('cs_cc1_mm', 10211, 10211))).code, 200);
+  if (r2.code !== 200) assert.equal((await hook(refundOf('cs_cc1_mb', 1021, 1021))).code, 200);
+  assert.equal(await spendAll('cc1'), 0);
+  assert.equal((await user('cc1')).mediaNext, undefined);
+});
+test('r3-rv2: منح الأدنى واسترداد الأعلى متزامنين ⇒ الأدنى برصيده مرّة واحدة (ثابت)', async () => {
+  await fresh('cc2', {});
+  assert.equal((await hook(paidSession('cs_cc2_mm', 'cc2', 'media_max', 10211))).code, 200);
+  store.set('media:mix:cc2', '6000');
+  const evG = paidSession('cs_cc2_mb', 'cc2', 'media_basic', 1021);
+  const evR = refundOf('cs_cc2_mm', 10211, 10211);
+  const [g, r] = await Promise.all([hook(evG), hook(evR)]);
+  if (g.code !== 200) assert.equal((await hook(evG)).code, 200);
+  if (r.code !== 200) assert.equal((await hook(evR)).code, 200);
+  let total = await spendAll('cc2');
+  const u = await user('cc2');
+  assert.equal(u.media.mix.plan, 'media_basic');
+  u.media.mix.at = Date.now() - 36 * DAY;
+  await auth.putUser('cc2', u);
+  total += await spendAll('cc2');
+  assert.equal(total, 1250);
+});

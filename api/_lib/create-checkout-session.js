@@ -18,7 +18,7 @@
 // الويب هوك (api/webhook.js، invoice.paid) بـgrantPlanToUser نفسها. Apple Pay / Google Pay دفعة واحدة (PaymentIntent).
 const { verifyToken, getUser, putUser } = require('./auth.js');
 const { kvIncrBy, kvSetIfAbsent, kvDel, kvGetRaw, kvSetRaw } = require('./kv.js');
-const { MEDIA_PLANS, MEDIA_WINDOW_DAYS, grantMedia, mediaActive, deferNext, activatedAt } = require('./_mediaPlans.js');
+const { MEDIA_PLANS, MEDIA_WINDOW_DAYS, grantMedia, mediaActive, deferNext, activatedAt, completeActivated } = require('./_mediaPlans.js');
 
 const PLANS = {
   // v-plans-2026-09 (قرار المالك ١٢ سبتمبر): الباقات الأكبر تأخذ سعر نقطة أفضل
@@ -166,6 +166,9 @@ async function withAccount(username, fn, waitMs) {
   return withNameLock(name, async () => {
     const acct = await liveAccount(name); // طازجة داخل القفل
     if (acct.name !== name) throw new Error(BUSY); // غيّر اسمه بين القراءة والقفل: الإعادة تقفل اسمه الجديد
+    /* v-r3 (r3-rv2-stale): مؤجَّلة وسائط سرت (رصيدها وعلامتها في KV) ولم يصل سجلّها تُكمَل هنا قبل أيّ كاتب — المنح والسحب وتغيير الاسم والمرآة
+       كانت تعمل على الفترة القديمة حتّى قراءة الوسائط التالية. تُكتب فورًا (فشلها يرمي قبل أيّ أثر للكاتب فيُعاد). انظر _mediaPlans completeActivated. */
+    if (await completeActivated(acct.user, acct.name)) await putUser(acct.name, acct.user);
     return fn(acct.name, acct.user);
   }, waitMs);
 }

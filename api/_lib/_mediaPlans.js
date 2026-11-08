@@ -137,18 +137,19 @@ async function activatedAt(payId) {
 }
 // خانات فيها مؤجَّلة وقد خلت: لا فترة سارية، أو رصيدها نفد. يرمي عطب قراءة الرصيد (لا سريان على تخمين).
 // v-r3 (r3-rv1): أو سرت أولاها قبلُ ولم يصل سجلّها (فشلت كتابته بعد الرصيد) — تُكمَل الآن بلا ملء، لا تبقى تحت الفترة القديمة حتّى ينفد رصيدها.
-async function dueKinds(user, username, now) {
+// onlyOn (v-r3 r3-rv2-stale): ما سرى قبلُ وحده (علامته قائمة) — إكمال سجلّه بلا سريان جديد، لكلّ كاتب تحت قفل الحساب (completeActivated).
+async function dueKinds(user, username, now, onlyOn) {
   const out = [];
   const pend = pendingNext(user);
   for (const kind of [...new Set(pend.map((x) => x.media))]) {
-    if ((await activatedAt(pend.find((x) => x.media === kind).payId)) || !mediaActive(user, kind, now)
-      || !(Number(await kvGetRaw(budgetKey(username, kind), { strict: true })) > 0)) out.push(kind);
+    if ((await activatedAt(pend.find((x) => x.media === kind).payId)) || (!onlyOn && (!mediaActive(user, kind, now)
+      || !(Number(await kvGetRaw(budgetKey(username, kind), { strict: true })) > 0)))) out.push(kind);
   }
   return out;
 }
 /** تحت قفل الحساب وعلى نسخته الطازجة: أوّل مؤجَّلة في كلّ خانة خلت تسري الآن برصيدها (ناقصًا ما استُردّ). الرصيد قبل السجلّ — المستدعي يكتب السجلّ. */
-async function activateDue(user, username, now) {
-  const kinds = await dueKinds(user, username, now);
+async function activateDue(user, username, now, onlyOn) {
+  const kinds = await dueKinds(user, username, now, onlyOn);
   if (!kinds.length) return false;
   const t = typeof now === 'number' ? now : Date.now();
   const pend = pendingNext(user);
@@ -168,6 +169,16 @@ async function activateDue(user, username, now) {
   const rest = pend.filter((x) => !done.includes(x));
   if (rest.length) user.mediaNext = rest; else delete user.mediaNext;
   return true;
+}
+/* v-r3 (r3-rv2-stale): سريانٌ كُتب رصيده وعلامته ثمّ فشلت كتابة السجلّ كان يُكمَل عند قراءة الوسائط التالية وحدها (settleNext) — وكلّ كاتب
+   يأخذ قفل الحساب قبلها (منح، استرداد، اعتراض، تغيير اسم، مرآة النقاط) يرى الفترة الأعلى القديمة والمؤجَّلة في الانتظار ورصيدُ المؤجَّلة في
+   العدّاد: استرداد media_basic كاملًا يخرجها من الانتظار ويبقى رصيدها يُصرف، واسترداد نصف media_max يأخذ من رصيد media_basic، ومنحُ media_max
+   جديدة ثمّ القراءة تكتب media_basic فوق فترتها المدفوعة (فلا يطابقها استردادها)، وتغيير الاسم يترك رصيدها تحت الاسم القديم. الآن يُكمَل مرّة
+   واحدة مركزيًّا عند أخذ القفل (create-checkout-session withAccount)، قبل أن يقرأ الكاتب السجلّ: ما سرى قبلُ (علامته قائمة) يصير الفترة بوقته
+   الأوّل بلا ملء ثانٍ (fillOnce يجد العلامة). لا سريان جديد هنا — يبقى عند القراءة وفي سحب الأعلى. يرجع هل تغيّر السجلّ (فيُكتب). يرمي عطب القراءة. */
+async function completeActivated(user, username) {
+  if (!user || user.deleted || !pendingNext(user).length) return false;
+  return activateDue(user, username, undefined, true);
 }
 // قراءة الحساب لمسارات الوسائط: مؤجَّلة حلّ وقتها تسري أوّلًا (قفل الحساب بانتظار قصير؛ مشغول أو عطب ⇒ كما هو، والقراءة التالية تُسريها).
 const NEXT_LOCK_WAIT_MS = 2000;
@@ -358,4 +369,5 @@ module.exports = {
   mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, refundMahaMinute, mediaStatus, imageQuality, setImageQuality, coverage,
   deferNext, activateDue, // v-r3 (r3-2 · r3-3): المنح يؤجّل الأدنى تحت أعلى سارية، والسحب يُسري المؤجَّلة حين يُسقط الأعلى
   fillOnce, activatedAt, // v-r3 (r3-rv1..4): رصيدٌ قبل السجلّ يُملأ مرّة لكلّ أثر، وإكمال المنح لا يعيد مؤجَّلة سرت
+  completeActivated, // v-r3 (r3-rv2-stale): قفل الحساب يكمل سريانًا لم يصل سجلّه قبل أيّ كاتب
 };
