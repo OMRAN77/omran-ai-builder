@@ -8,7 +8,7 @@
 const { verifyToken } = require('./auth.js');
 const { MEDIA_PLANS } = require('./_mediaPlans.js');
 const { grantPlanToUser, wasNamed, RETIRED } = require('./create-checkout-session.js');
-const { kvGetRaw, kvSetRaw } = require('./kv.js');
+const { kvGetRaw, kvSetRaw, kvSetIfAbsent } = require('./kv.js');
 
 const PLANS = {
   // v-plans-2026-09: يجب أن تطابق create-checkout-session.js (نقاط ومبالغ).
@@ -143,6 +143,12 @@ async function captureCompleted(event) {
   if (order.status !== 'COMPLETED') { note('order_' + String(order.status || 'unknown').toLowerCase()); return { status: 'not_completed' }; }
   const out = await creditOrder(order, m.ref); // يرمي عند فشل الشحن ⇒ 500 فيعيد PayPal (والحجز لا يشحن مرّتين)
   if (!out.credited) note(out.reason || 'not_credited');
+  /* v-lock-r2 (r2-2): 'account' = حساب محذوف يقينًا (عطل قراءته يرمي من المنح ⇒ 500 فيُعاد) — قاعدة ويب هوك Stripe نفسها (orphanPaid):
+     تنبيه المالك مرّة لكلّ دفعة ليردّ المبلغ، لا سطر سجلّ وحده يُنسى والمال مأخوذ بلا خدمة. عطب الحجز يرمي ⇒ 500 فيُعاد. */
+  if (out.reason === 'account' && (await kvSetIfAbsent('payorphan:' + orderId.slice(0, 200), '1', 400 * 86400))) {
+    await require('./pay-refund.js').alertOwner('⚠️ دفعة لحساب محذوف — ردّ المبلغ',
+      m.ref + ' · ' + String(m.plan || '?') + ' · ' + (m.cents > 0 ? (m.cents / 100).toFixed(2) + ' USD' : '?') + ' · PayPal ' + orderId.slice(0, 60) + (m.capture ? ' · ' + m.capture.slice(0, 40) : ''));
+  }
   return { status: out.credited ? (out.alreadyGranted ? 'already' : 'credited') : String(out.reason || 'none') };
 }
 

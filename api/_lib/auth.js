@@ -992,6 +992,7 @@ module.exports = async (req, res) => {
         points: gift ? 70 : 0,
         welcomeGift: gift,
         giftCapped: giftOut.capped === true,
+        passwordSet: true, // v-lock-r2 (r2-6): كلمة وضعها صاحبها — حذف الحساب يطلبها (account-delete.js needsPassword)
       };
       await putUser(key, user); // v-signup-no-email: ولا فهرس بريد — يكتبه تأكيد «حسابي» وحده
       await notifyNewAccount({ key, user, method: 'password', req }); // v-signup-notify: بعد الكتابة الناجحة وحدها — في الخلفيّة
@@ -1592,6 +1593,7 @@ module.exports = async (req, res) => {
           welcomeGift: !!gift,
           giftCapped: giftOut.capped === true,
           otpOnly: true,
+          passwordSet: false, // v-lock-r2 (r2-6): كلمة عشوائيّة لا يعرفها صاحبها — العلامة الصريحة لا يمحوها طلب استرجاع (needsPassword)
         };
         userKey = candidateKey;
         await putUser(userKey, user);

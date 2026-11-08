@@ -1302,11 +1302,10 @@ test('مراجعة ٢ · #7. إعادة دفعةٍ محجوزة والحساب �
   assert.equal(c.body.credited, true);
   assert.equal(users.get('nr3').plan, 'pro');
   assert.equal(await bal('nr3'), 70 + 920);
-  // ودفعة لم تُحجز قطّ لحساب لا يُقرأ: كما كانت (404 ⇒ مسار الدفعة اليتيمة؛ قرار المالك في ملاحظات الفرع)
+  // v-lock-r2 (r2-1): ودفعة لم تُحجز قطّ لحساب لا يُقرأ كذلك — رمي (يُعاد) لا 404 «محذوف» (كان مسار الدفعة اليتيمة: إلغاء الاشتراك الحيّ وتنبيه و200)
   fresh('nr4');
   fail.getNull = { u: 'nr4', n: 2 };
-  let g;
-  try { g = await checkout.grantPlanToUser('nr4', 'pack100', 'lastStripeSessionId', 'cs_nr4'); } finally { disarm(); }
-  assert.equal(g.status, 404);
-  assert.equal(kv.has('paid:lastStripeSessionId:cs_nr4'), false);
+  try { await assert.rejects(checkout.grantPlanToUser('nr4', 'pack100', 'lastStripeSessionId', 'cs_nr4'), /Account busy/); } finally { disarm(); }
+  assert.equal(kv.has('paid:lastStripeSessionId:cs_nr4'), false, 'لا حجز قبل الأثر');
+  assert.equal((await checkout.grantPlanToUser('nr4', 'pack100', 'lastStripeSessionId', 'cs_nr4')).pointsAdded, 100, 'والإعادة تشحن');
 });

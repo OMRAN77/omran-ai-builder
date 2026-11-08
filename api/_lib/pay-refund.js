@@ -206,6 +206,12 @@ function holds(u, r) {
   if (r.media) { const x = u.media && u.media[r.media]; return !!(x && x.plan === r.plan && sameGrant(x.at, r, x.payId)); }
   return holdsMain(u, r) || holdsNext(u, r);
 }
+// v-lock-r2 (r2-4): دفعة وسائط أدنى أُضيف رصيدها تحت أعلى سارية (topUp، create-checkout-session) — لا فترة لها تُسحب، ورصيدها في فترة الأعلى
+// التي وقتها في السجلّ ما دامت هي نفسها سارية (تجديدٌ بعدها أعاد الملء فلا يُؤخذ من رصيد غيرها).
+function topUpIn(u, r) {
+  const x = r.topUp && r.media && u.media && u.media[r.media];
+  return !!(x && Number(x.at) === Number(r.at) && require('./_mediaPlans.js').mediaActive(u, r.media));
+}
 
 // الدفعة التي فتحت الفترة الحاليّة في خانة rec إن كان سجلّها مسحوبًا كاملًا (revoked.plan) — فترة لا يجوز أن تبقى على الحساب.
 async function revokedHolder(u, rec) {
@@ -280,7 +286,7 @@ async function applyRevoke(rec, step) {
   await withAccount(rec.username, async (name, user) => {
     if (!user || user.deleted) return;
     out.account = name;
-    const mediaCurrent = !!(rec.media && holds(user, rec));
+    const mediaCurrent = !!(rec.media && (holds(user, rec) || topUpIn(user, rec))); // v-lock-r2 (r2-4): ورصيد الإضافة يُسحب منها
 
     // (أ) الباقة نفسها عند بلوغ المبلغ كاملًا — يتكرّر بلا أثر (بعد السحب لا تطابق الفترة)، فيُعاد بأمان بعد فشل لاحق
     //     وبعد كتابة متزامنة. الفترة التي حلّت هذه الدفعة محلّها تعود إن بقيت سارية غير مسحوبة (priorPeriod)، وإلّا لا باقة.

@@ -51,11 +51,16 @@ function prefixKeys(key) {
 /* v-lock-acct (srv-auth-3، المراجعة): sv والعلامة لم يبلغا الإنتاج بعد، فالسجلّ الذي وضع صاحبه كلمته بالاسترجاع قبل هذا الإصلاح لا
    يحمل أيّهما — وكان يُحذف بالاسم وحده لمن يحمل رمز جلسته. أثره القائم resetTokenHash === null: لا يكتب null إلّا resetWithToken
    (طلب الاسترجاع وربط الهاتف يكتبان نصًّا، والكولباك ورمز البريد لا يكتبانه). */
+/* v-lock-r2 (r2-6): resetTokenHash === null أثرٌ يُمحى — forgotPassword (بالاسم أو بمفتاح g_<البريد>) ورابط المالك (admin-actions reset-link)
+   يكتبان فوقه نصًّا، فيعود الحساب «بلا كلمة» ويُحذف بالجلسة والاسم وحدهما. الآن علامة صريحة دائمة: passwordSet: true حيث تُوضع كلمة
+   (التسجيل وchangePassword وresetWithToken)، وfalse يكتبها كولباك Google ورمز البريد عند الإنشاء. وما لا علامة له لا يُعرف ⇒ تُطلب كلمته،
+   إلّا سجلًّا قديمًا لم يُصدَر له رمز استرجاع قطّ (لا مفتاح resetTokenHash): لا طريق له لكلمة يعرفها (changePassword يطلب الحاليّة العشوائيّة). */
 function needsPassword(user) {
   if (!(user.hash && user.salt)) return false;
-  const ownPassword = user.passwordSet === true || Number(user.sv) > 0 || user.resetTokenHash === null;
-  const passwordless = (user.googleAuth === true || user.otpOnly === true) && !ownPassword;
-  return !passwordless;
+  if (!(user.googleAuth === true || user.otpOnly === true)) return true; // حساب التسجيل بكلمة مرور
+  if (user.passwordSet === true || Number(user.sv) > 0) return true;
+  if (user.passwordSet === false) return false;
+  return Object.prototype.hasOwnProperty.call(user, 'resetTokenHash');
 }
 
 /* v-lock-acct (srv-auth-1 · pages-static-3): المشاركات كانت تُطابَق بالاسم المعروض في فهرس «استكشف» — فحذف حساب اسمه «Mohammed Ali»

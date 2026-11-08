@@ -76,6 +76,13 @@ function keepsHigherChat(user, plan) {
   const cp = require('./tier.js').chatPeriod(user);
   return cp && rankOf(cp.plan) > rankOf(plan) ? cp : null;
 }
+// v-lock-r2 (r2-3 · r2-4): فترة الخانة الفعليّة أعلى من plan — منحه حُفظ تحتها (المحادثة: planNext؛ الوسائط: رصيد أُضيف) ولم يحلّ محلّها
+function heldHigher(user, plan) {
+  const p = PLANS[plan];
+  if (!p || !p.media) return !!keepsHigherChat(user, plan);
+  const m = user && user.media && user.media[p.media];
+  return !!(m && mediaActive(user, p.media) && rankOf(m.plan) > rankOf(plan));
+}
 // فترات planNext بعد هذا المنح: المنتهية تسقط، وفترة الأدنى المحفوظة (add) تُضاف، والفترة التي حلّ محلّها هذا المنح (drop) تخرج — هي prev في سجلّه.
 function nextPeriods(user, add, drop) {
   const t = Date.now();
@@ -95,14 +102,21 @@ async function lowerPlanBlock(username, plan) {
     const user = await getUser(username);
     if (!user || user.deleted) return null;
     if (!p.media) { const hc = keepsHigherChat(user, plan); return hc ? { until: hc.at + require('./tier.js').SUB_WINDOW_DAYS * 86400000 } : null; }
-    const m = user.media && user.media[p.media];
-    if (!m || !mediaActive(user, p.media) || !(rankOf(m.plan) > rankOf(plan))) return null;
-    const left = Number(await kvGetRaw('media:' + p.media + ':' + encodeURIComponent(String(username).trim().toLowerCase()))) || 0;
-    return left > 0 ? { until: Number(m.at) + MEDIA_WINDOW_DAYS * 86400000 } : null;
+    return (await higherMediaLeft(user, username, plan)) > 0 ? { until: Number(user.media[p.media].at) + MEDIA_WINDOW_DAYS * 86400000 } : null;
   } catch (e) {
     console.warn('[checkout] lower-plan check skipped:', e && e.message); // الفحص تحسين؛ المنح يحمي المحادثة
     return null;
   }
+}
+
+/* v-lock-r2 (r2-4): ما بقي في رصيد باقة وسائط أعلى سارية في خانة plan (0 إن لم تكن) — الشرط نفسه قبل الدفع (lowerPlanBlock) وعند المنح
+   (grantLocked): فحص الطلب وحده لا يرى دفعةً تصل بعد شراء الأعلى (التقاط PayPal معلَّق يكتمل بعد أيّام، جلسة Stripe قديمة). يرمي عطب القراءة. */
+const mediaBudgetKey = (username, media) => 'media:' + media + ':' + encodeURIComponent(String(username).trim().toLowerCase());
+async function higherMediaLeft(user, username, plan) {
+  const p = PLANS[plan];
+  const m = p && p.media && user && user.media && user.media[p.media];
+  if (!m || !mediaActive(user, p.media) || !(rankOf(m.plan) > rankOf(plan))) return 0;
+  return Number(await kvGetRaw(mediaBudgetKey(username, p.media), { strict: true })) || 0;
 }
 
 /* v-pay-once (فحص الاشتراكات ٥ أكتوبر): «أمان التكرار» كان يتذكّر آخر دفعة وحدها وبلا قفل — دفعتان حقيقيّتان
@@ -176,6 +190,7 @@ async function noteGrant(username, plan, sourceField, sourceId, meta, user, prev
     amount: Number(m.amount) > 0 ? Math.round(Number(m.amount)) : null, currency: m.currency ? String(m.currency).toLowerCase() : null,
     refs: Array.isArray(m.refs) ? m.refs : [],
     prev: prev || null, // الفترة التي حلّت هذه الدفعة محلّها — تعود إن استُردّت هذه كاملة وتلك سارية غير مسحوبة
+    ...(p.media && keptAt ? { topUp: true } : {}), // v-lock-r2 (r2-4): رصيد أُضيف تحت وسائط أعلى سارية (at وقتها) — استرداده يسحب الرصيد وحده
   });
 }
 
@@ -193,9 +208,11 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     /* v-lock-credit (المراجعة المعاكسة الثانية، #7 في نطاق الإكمال): getUser يعيد null عند عطل القراءة كما للمفقود. دفعةٌ حُجزت قبلُ
        (شُحنت ولم يُكتب سجلّها، أو سبق منحها) حسابها موجود يقينًا — كان 404 هنا يجعل الويب هوك يعاملها يتيمة: تنبيه «ردّ المبلغ» وإلغاء
        الاشتراك الحيّ و200، فيقف الإكمال الذي تعتمد عليه القاعدة الواحدة (والعطل العابر هو بالذات ما يأتي بالإعادة). الآن رمي (non-2xx
-       فيُعاد). عطل قراءة الحجز نفسه يرمي كذلك. دفعة لم تُحجز قطّ كما كانت (قرار المالك — انظر ملاحظات الفرع). */
-    if (sourceField && sourceId && (await kvGetRaw(claimKey(sourceField, sourceId), { strict: true }))) throw new Error(BUSY);
-    return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
+       فيُعاد). عطل قراءة الحجز نفسه يرمي كذلك.
+       v-lock-r2 (r2-1): ودفعة لم تُحجز قطّ كذلك — null «لا يُعرف» لا «محذوف». كان 404 هنا فيلغي الويب هوك الاشتراك الحيّ وينبّه «ردّ المبلغ»
+       ويردّ 200 في عطل Upstash لثوانٍ (فلا تُشحن الدفعة أبدًا وتقف التجديدات)، وPayPal يردّ 200 بـ'account'. الآن رمي في كلّ مسار (non-2xx
+       فيُعاد، والعميل يعيد التحقّق)؛ الحساب المحذوف يقينًا (شاهد deleted) وحده 404 أدناه — والمسارات الثلاثة تعامله دفعةً يتيمة. */
+    throw new Error(BUSY);
   }
   if (user.deleted) return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
 
@@ -234,6 +251,18 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     was = String((prev && (PLANS[plan].media ? prev.payId : prev.planPayId)) || '');
     if (PLANS[plan].media) {
       if (sourceField) user[sourceField] = sourceId;
+      /* v-lock-r2 (r2-4): أدنى تحت وسائط أعلى سارية في رصيدها شيء (التقاط PayPal معلَّق اكتمل بعد شراء الأعلى، جلسة قديمة) — grantMedia
+         كان يعيد الملء بالأدنى فيمحو المتبقّي (media_max ‏٩٠٠٠ ← ١٢٥٠). كقاعدة المحادثة (kept): الأعلى وفترتها لا تُمسّ، ورصيد الأدنى يُضاف
+         إليها (الدفعة لا تضيع). الإضافة هي الأثر: قبلها يُفكّ الحجز، وبعدها علامة إكمال لا تُعيد الملء. */
+      if ((await higherMediaLeft(user, username, plan)) > 0) {
+        const hm = user.media[PLANS[plan].media];
+        kept = true;
+        await kvIncrBy(mediaBudgetKey(username, PLANS[plan].media), MEDIA_PLANS[plan].budget);
+        creditedAt = Number(hm.at) || Date.now();
+        await putUser(username, user);
+        await noteGrant(username, plan, sourceField, sourceId, meta, user, null, creditedAt); // بلا سابقة: لم يحلّ محلّ فترة
+        return { ok: true, plan: user.plan || null, media: PLANS[plan].media, mediaPlan: plan, pointsAdded: 0, balance: Number(user.points || 0), kept: true };
+      }
       const g = await grantMedia(user, username, plan);
       creditedAt = (g && Number(user.media[g.media].at)) || Date.now(); // الرصيد مُلئ: إعادة ملئه تعيد ما صُرف منه بعده
       if (g && sourceId) user.media[g.media].payId = String(sourceId); // v-pay-refund: الدفعة التي فتحت فترة الباقة — استردادها وحده يسحبها
@@ -380,7 +409,8 @@ async function finishGrant(username, user, plan, sourceField, sourceId, meta, pe
     const cur = user.media && user.media[p.media];
     const curId = String((cur && cur.payId) || '');
     const landed = curId === sid;
-    if (!landed && cur && curId !== wasId && Number(cur.at) >= at) newer = true;
+    if (w.kept) kept = true; // v-lock-r2 (r2-4): رصيد أُضيف تحت أعلى سارية — الأثر تمّ، والفترة لا تُمسّ ولا يُعاد الملء
+    else if (!landed && cur && curId !== wasId && Number(cur.at) >= at) newer = true;
     else if (!landed) {
       // المراجعة المعاكسة: الفترة التي حلّ محلّها سُحبت أو تبدّلت بين الفشل والإعادة (استردادها) — سحبها محا الرصيد الذي ملأه هذا المنح
       // أو كتب فوقه رصيد فترة أقدم، فكانت الباقة المدفوعة تُسلَّم بلا رصيد. يُعاد رصيدها بنافذته من وقت المنح.
@@ -784,10 +814,24 @@ async function supersedeSubs(username, plan, keepId, fetchImpl) {
   if (!LIVE_SUB.includes(keep.status)) return 0; // أُلغي قبلنا (أحدثُ منه ألغاه، أو حُذف الحساب): حدثه المتأخّر لا يلغي غيره
   const older = (x) => Number(x.created) < Number(keep.created) || (Number(x.created) === Number(keep.created) && String(x.id) < String(keep.id));
   const acct = await liveAccount(username);
-  const prev = (acct.user && Array.isArray(acct.user.prevUsernames)) ? acct.user.prevUsernames.slice(-3) : [];
+  /* v-lock-r2 (r2-3): منح الأدنى تحت أعلى سارية (keepsHigherChat، srv-money-4) لم يحلّ محلّ شيء — فترته في planNext. كان الإلغاء يجري بعده
+     كأنّه الأحدث فيُلغى اشتراك Max الأقدم: يبقى Max حتّى نهاية فترته ثمّ يسقط إلى Plus للأبد (Plus وحده يتجدّد). الآن الأعلى لا يُلغى؛
+     وإن كان له اشتراك حيّ في الخانة فالأدنى الجديد هو الزائد (لا خصمان شهريّان) فيُلغى هو — فترته المدفوعة باقية في planNext ونقاطه مُنحت.
+     وبلا اشتراك أعلى (الأعلى دفعة لشهر) يبقى الأدنى يتجدّد بعده. القرار من حالة الحساب لا من ردّ المنح، فإعادة الحدث («سبق المنح» بلا kept)
+     والعودة من الدفع تصلان إليه نفسه. لا يُقرأ الحساب ⇒ رمي (يُعاد)، لا إلغاء بلا علم.
+     وكذلك خانة الوسائط: أدنى أُضيف رصيده تحت أعلى سارية (r2-4) لم يحلّ محلّها — فترة الخانة الحاليّة أعلى من خطّته. */
+  if (!acct.user) throw new Error(BUSY);
+  const prev = Array.isArray(acct.user.prevUsernames) ? acct.user.prevUsernames.slice(-3) : [];
   const names = [...new Set([acct.name, String(username)].concat(prev).filter(Boolean))];
+  const subs = await liveSubs(names, f, auth);
+  if (heldHigher(acct.user, plan)) {
+    const higher = subs.some((x) => x.id !== String(keepId) && planSlot(x.metadata && x.metadata.plan) === slot && rankOf(x.metadata.plan) > rankOf(plan));
+    if (!higher) return 0;
+    await cancelSubNow(keepId, f, auth);
+    return 1;
+  }
   let n = 0;
-  for (const x of await liveSubs(names, f, auth)) {
+  for (const x of subs) {
     if (x.id === String(keepId) || planSlot(x.metadata && x.metadata.plan) !== slot || !older(x)) continue;
     await cancelSubNow(x.id, f, auth);
     n++;

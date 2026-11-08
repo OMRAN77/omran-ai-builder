@@ -19,11 +19,13 @@ const { grantPlanToUser, PLANS, supersedeSubs, cancelSub, subIdOf } = require('.
 
 /* v-lock-subs (srv-money-5، موافقة المالك ٢٧ أكتوبر): منحٌ يرجع خطأً (الحساب محذوف) كان سطرًا في السجلّ و200 — المال مأخوذ بلا خدمة
    ولا يعرف أحد. الآن: تنبيه للمالك مرّة واحدة لكلّ دفعة (ليردّ المبلغ يدويًّا)، واشتراكها يُلغى فورًا فلا يتكرّر الخصم. تعذّر
-   الإلغاء يرمي ⇒ 500 فيعيد Stripe الحدث (والتنبيه لا يتكرّر بحجزه). */
+   الإلغاء يرمي ⇒ 500 فيعيد Stripe الحدث (والتنبيه لا يتكرّر بحجزه).
+   v-lock-r2 (r2-1 · r2-2): «محذوف» هنا شاهدٌ مؤكَّد وحده — عطل قراءة الحساب يرمي من المنح (non-2xx فيُعاد) فلا يصل هنا؛ ودفعة المحفظة
+   (payment_intent.succeeded) تمرّ به أيضًا بمبلغها (amount_received) وبلا اشتراك يُلغى. */
 async function orphanPaid(obj, md, kind) {
   const { kvSetIfAbsent } = require('./_lib/kv.js');
   if (await kvSetIfAbsent('payorphan:' + String(obj.id).slice(0, 200), '1', 400 * 86400)) {
-    const amount = Number(obj.amount_total || obj.amount_paid) || 0;
+    const amount = Number(obj.amount_total || obj.amount_paid || obj.amount_received || obj.amount) || 0;
     await require('./_lib/pay-refund.js').alertOwner('⚠️ دفعة لحساب محذوف — ردّ المبلغ',
       String(md.username || '?') + ' · ' + String(md.plan || '?') + ' · ' + (amount > 0 ? (amount / 100).toFixed(2) + ' ' + String(obj.currency || '').toUpperCase() : '?')
       + ' · ' + kind + ' ' + String(obj.id).slice(0, 60) + (obj.payment_intent ? ' · ' + String(obj.payment_intent).slice(0, 40) : ''));
@@ -174,8 +176,10 @@ module.exports = async (req, res) => {
           { refs: [obj.latest_charge], amount: obj.amount_received || obj.amount, currency: obj.currency }); // كما في verifyPaymentIntent
         console.log('[webhook] wallet ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
         /* v-lock-gpay (المراجعة المعاكسة): عطل قراءة الحساب لا يرمي — getUser يعيد null فيعود المنح {error, 404}، وكان 200 هنا
-           يوقف إعادة Stripe فيبقى المبلغ مسحوبًا بلا شحن. 2xx بعد أثرٍ تمّ أو سبق فقط؛ والحجز لم يُؤخذ فالإعادة تشحن مرّة. */
-        if (g.error) { res.status(500).json({ error: 'grant failed, retry' }); return; }
+           يوقف إعادة Stripe فيبقى المبلغ مسحوبًا بلا شحن. 2xx بعد أثرٍ تمّ أو سبق فقط؛ والحجز لم يُؤخذ فالإعادة تشحن مرّة.
+           v-lock-r2 (r2-1 · r2-2): عطل القراءة صار يرمي من المنح نفسه (500 أدناه، كما في الجلسة والتجديد)، فالخطأ هنا حساب محذوف يقينًا —
+           كان 500 ثلاثة أيّام ثمّ يُسقطه Stripe والمال مأخوذ بلا تنبيه. الآن قاعدة الجلسة والتجديد: تنبيه المالك مرّة ليردّ المبلغ، و200. */
+        if (g.error) await orphanPaid(obj, md, 'محفظة');
       }
     } else if (event.type === 'charge.refunded' || event.type === 'charge.dispute.created') {
       // v-pay-refund: الاسترداد (بنسبة المسترد) والاعتراض البنكيّ (مع تنبيه المالك) يسحبان ما منحته الدفعة، مرّة واحدة لكلّ حدث.

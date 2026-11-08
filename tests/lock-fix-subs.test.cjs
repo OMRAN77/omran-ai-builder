@@ -437,7 +437,8 @@ test('srv-money-4 ٧. جلسة اشتراك Plus قديمة دُفعت وMax س�
   assert.equal((await hook(subSession('cs_yara_plus', 'yara', 'basic', 1000, 'sub_yara_plus'))).code, 200);
   const u = await user('yara');
   assert.deepEqual([u.plan, u.planUpdatedAt, u.planPayId], ['max', at, 'cs_yara_max'], 'Max لا تسقط');
-  assert.deepEqual([net.subs.sub_yara_max.status, net.subs.sub_yara_plus.status], ['canceled', 'active'], 'لا خصمان شهريّان: الأحدث يبقى');
+  // v-lock-r2 (r2-3): كان «الأحدث يبقى» فيُلغى Max ويسقط إلى Plus للأبد بعد نهاية فترته — الأعلى يبقى يتجدّد، والأدنى المحفوظ هو الزائد
+  assert.deepEqual([net.subs.sub_yara_max.status, net.subs.sub_yara_plus.status], ['active', 'canceled'], 'لا خصمان شهريّان: الأعلى يبقى');
   assert.equal(pts('yara'), 70 + 360);
   assert.deepEqual(await tierAt('yara', at + 34 * DAY), ['sub', 'max', 250]);
   assert.deepEqual(await tierAt('yara', at + 36 * DAY), ['sub', 'basic', 50], 'كان: مجّانيّ حتّى تجديد Plus وهو يدفعه');

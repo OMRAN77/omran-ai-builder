@@ -76,18 +76,23 @@ window.showPriceTab = showPriceTab;
 /* v-audit-shell (cli-ui-shell-5): «باقتك الحالية» كانت ثابتة على بطاقة «مجاني» في الجزء (partials-settings)، و«اشترك الآن» على باقة المشترك
    نفسها — فيُدعى المشترك لشراء باقته مرّة ثانية. بطاقة الباقة الفعليّة (__omranPlan) تأخذ الزرّ المعطّل بمفتاحه، وزرّ «مجاني» يُخفى لمن ليس
    مجّانيًّا أو ضيفًا، وكلّ زرّ يعود كما كان حين تتغيّر الباقة. عرض فقط: الأسعار والدفع (openCheckout) والخادم كما هي. */
+/* v-lock-r2 (r2-5): بطاقة الباقة الحاليّة المعطّلة مع منع الأدنى (lower_plan) وشريط «قارب الانتهاء — جدّد» (app-33) = طريق مسدود: مشترك Max بدفعة
+   لشهر يُدعى للتجديد ولا شيء يُشترى، فينتظر السقوط إلى المجّانيّ. في نافذة ذلك الشريط نفسها (٣ أيّام قبل نهاية الفترة، NOTICE_DAYS في
+   app-33، من subs ردّ الرصيد) تصير بطاقته «جدّد» وتفتح دفع الباقة نفسها؛ قبلها تبقى «باقتك الحالية» (لا شراء مبكّر يقصّر الفترة)، والأدنى ممنوعة كما كانت. */
 function pricingMarkCurrentPlan(plan){
   const p = String(plan || '').toLowerCase();
   const cur = (!p || p === 'free' || p === 'guest') ? 'free' : p;
+  const subs = Array.isArray(window.__omranSubs) ? window.__omranSubs : [];
+  const renew = cur !== 'free' && subs.some(function(s){ return s && s.kind === 'chat' && s.active && String(s.plan || '').toLowerCase() === cur && Number(s.endsAt) - Date.now() <= 3 * 86400000; });
   document.querySelectorAll('#pricingSection .priceTab[data-tab="chat"] .pcard .pbtn').forEach(function(b){
     if(b.dataset.planCard === undefined){
       b.dataset.planCard = ((b.getAttribute('onclick') || '').match(/openCheckout\('(\w+)'\)/) || [])[1] || 'free';
       b.dataset.planCls = b.className;
       b.dataset.planKey = b.getAttribute('data-i18n') || '';
     }
-    const id = b.dataset.planCard, on = id === cur, key = on ? 'planCurrentBtn' : b.dataset.planKey;
-    b.className = on ? 'pbtn ghost' : b.dataset.planCls;
-    b.disabled = on || id === 'free';
+    const id = b.dataset.planCard, on = id === cur, key = on ? (renew ? 'plansRenew' : 'planCurrentBtn') : b.dataset.planKey;
+    b.className = (on && !renew) ? 'pbtn ghost' : b.dataset.planCls;
+    b.disabled = (on && !renew) || id === 'free';
     b.style.visibility = (id === 'free' && !on) ? 'hidden' : '';
     if(key && b.getAttribute('data-i18n') !== key){ b.setAttribute('data-i18n', key); b.textContent = t(key); }
   });
@@ -147,8 +152,9 @@ async function refreshPointsWallet(){
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
       renderMediaPlanStatus(d.media);
       window.__omranMediaStatus = d.media || {}; // v-lock-subs (srv-money-4): checkoutLowerThanCurrent
+      window.__omranSubs = Array.isArray(d.subs) ? d.subs : []; // v-lock-r2 (r2-5): نهاية الفترة لبطاقة «جدّد»
       pricingMarkCurrentPlan(window.__omranPlan); // v-audit-shell
-    } else { row.style.display = 'none'; window.__omranMediaStatus = {}; pricingMarkCurrentPlan('guest'); }
+    } else { row.style.display = 'none'; window.__omranMediaStatus = {}; window.__omranSubs = []; pricingMarkCurrentPlan('guest'); }
   }catch(e){ /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;

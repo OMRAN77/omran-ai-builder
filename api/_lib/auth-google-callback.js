@@ -182,6 +182,7 @@ module.exports = async (req, res) => {
         verifiedEmail: email, // v-vip-verified: Google أثبتته (email_verified أعلاه)
         avatar: profile.picture || null,
         googleAuth: true,
+        passwordSet: false, // v-lock-r2 (r2-6): كلمة عشوائيّة لا يعرفها صاحبها — العلامة الصريحة لا يمحوها طلب استرجاع (account-delete needsPassword)
         createdAt: Date.now(),
         points: gift ? 70 : 0,
         welcomeGift: gift,
