@@ -29,6 +29,7 @@ const PLAN_BUDGET_MS = 270000;   // كلّ المحاولات تحت سقف دا
 const ATTEMPT_MS = 150000;       // مهلة المحاولة الواحدة (النموذج يفكّر قبل أوّل حرف)
 const PART_MINUTES = 2.5;        // فيديو أطول من ٣ دقائق يُكتب أجزاءً: كلّ جزء نداء مستقلّ قصير
 const TOKEN_TTL_MS = 2 * 3600 * 1000;
+const BRIDGE_MIN_DISK_MB = 500; // v-bridge-disk: قصّة ٢٥ مشهدًا تبلغ ذروتها نحو ٤٠٠–٥٠٠ م.ب (المقاطع + الفيديو المدموج)
 const MAX_REQUEST = 600;
 /* v-director-story (المالك ٢٨ أكتوبر بفيديو «قصة سعيد وعمّي بلال»: «انا طالب قصة… سوالي كانفا يعني التصميم زفت»): القصّة تُقرأ
    كاملةً بكلام المالك — ٦٠٠ حرف قصّت قصّته (١٢٣٠) عند «ويوم تخرّجه» فلم تصل الورقة ولا النهاية. التقسيم في الكود لا في النموذج
@@ -520,7 +521,13 @@ async function probeBridge(bridge, opts) {
       const d = await r.json().catch(() => null);
       if (!r.ok || !d || d.ok !== true) { last = { error: 'bridge_offline', why: 'health_' + r.status }; continue; }
       if (typeof d.renderJobs !== 'number') return { ok: false, error: 'bridge_outdated', why: 'no_render_route' };
-      return { ok: true, renderJobs: d.renderJobs, busy: !!d.busy };
+      /* v-bridge-disk (لقطة المالك ٨ نوفمبر: «No space left on device» عند تجميع قصّة رُسمت مشاهدها وسُجّل صوتها): قرص الجسر لا يكفي لفيديو
+         جديد حتّى بعد مسح ما تمسحه المهمّة نفسها = رفض الآن، قبل الخطّة والصوت والرسم (لا إنفاق على فيديو لن يُجمَّع) */
+      const dk = d.disk && typeof d.disk === 'object' ? d.disk : null;
+      if (dk && dk.freeMB >= 0 && dk.freeMB + Math.max(0, Number(dk.reclaimMB) || 0) < BRIDGE_MIN_DISK_MB) {
+        return { ok: false, error: 'bridge_disk_full', why: 'free ' + dk.freeMB + ' MB' + (dk.reclaimMB > 0 ? ' + ' + dk.reclaimMB + ' MB to clear' : '') + (dk.totalMB > 0 ? ' of ' + dk.totalMB + ' MB' : '') };
+      }
+      return Object.assign({ ok: true, renderJobs: d.renderJobs, busy: !!d.busy }, dk ? { disk: dk } : {});
     } catch (e) { last = { error: 'bridge_offline', why: e && e.name === 'TimeoutError' ? 'timeout' : 'network' }; }
   }
   return Object.assign({ ok: false }, last);
@@ -569,7 +576,7 @@ async function handler(req, res) {
     }
     const jobId = newJobId();
     const exp = Date.now() + TOKEN_TTL_MS;
-    res.status(200).json({ token: signJobToken({ user: sessionUser(body.token), jobId, exp }, secret), jobId, bridge, exp });
+    res.status(200).json(Object.assign({ token: signJobToken({ user: sessionUser(body.token), jobId, exp }, secret), jobId, bridge, exp }, health.disk ? { disk: health.disk } : {})); // v-bridge-disk: قرص الجسر للتشخيص (أرقام فقط)
     return;
   }
 
@@ -644,4 +651,4 @@ async function handler(req, res) {
 }
 
 module.exports = handler;
-module.exports.__test = { storyText, splitStory, buildStoryPrompt, normalizeStory, STORY_SYSTEM, MAX_STORY, probeBridge, directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, LAST_RESORT, cleanLabels, partsFor, cleanOutline, discoverPro, diagOf, callModel, requestVoice, voiceBody, voiceModels, voiceName, pickAudio, toWav, VOICE_MODELS };
+module.exports.__test = { storyText, splitStory, buildStoryPrompt, normalizeStory, STORY_SYSTEM, MAX_STORY, probeBridge, BRIDGE_MIN_DISK_MB, directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, LAST_RESORT, cleanLabels, partsFor, cleanOutline, discoverPro, diagOf, callModel, requestVoice, voiceBody, voiceModels, voiceName, pickAudio, toWav, VOICE_MODELS };
