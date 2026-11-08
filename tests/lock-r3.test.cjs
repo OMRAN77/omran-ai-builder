@@ -1504,3 +1504,129 @@ test('r3-rv6-RN0: وصلت كتابة السجلّ الجديد وضاع ردّ�
   assert.equal((await points.readPoints('rv6rn1new')).points, 0, 'النسخة لا تأخذ نقاطًا من المرآة');
   assert.equal(pts('rv6rn1'), 300);
 });
+
+// ───────────── r3-rv7-*: مراجعة lock-r3/money-e — كتابةٌ واحدة تصل ويضيع ردّها ─────────────
+// lostOnce: أوّل كتابة لسجلّ الحساب u بعده تصل ثمّ يرمي ردّها (ETIMEDOUT بعد الكتابة) — كتابة بعينها لا «التالية» (كـr3-rv3).
+function lostOnce(u) {
+  const k = 'db/users/' + u + '.json';
+  const origSet = store.set;
+  const st = { hit: false, restore() { store.set = origSet; } };
+  store.set = function (key, v) { origSet.call(store, key, v); if (!st.hit && key === k) { st.hit = true; throw new Error('ETIMEDOUT after write'); } return store; };
+  return st;
+}
+
+// T: شاهد الاسم القديم يصل ويضيع ردّه ⇒ كان التغيير يردّ 500 قبل نقل العدّادات، والحساب صار تحت الاسم الجديد بنقاط '0' (التحضير r3-4)
+// ورصيدُ وسائطه تحت الاسم الميّت، وإعادة العميل برمزه القديم لا تنقل شيئًا (٩٩٠ ⇒ ٠، و٩٠٠٠ ⇒ ٠؛ وعلى 36e1841b تعود النقاط من المرآة).
+async function rv7Tomb(u, faulty) {
+  await fresh(u, {});
+  assert.equal((await hook(paidSession('cs_' + u + '_c', u, 'pro', 2000))).code, 200);
+  assert.equal((await hook(paidSession('cs_' + u + '_p', u, 'media_max', 10211))).code, 200);
+  store.set('media:mix:' + u, '9000');
+  const t = tok(u);
+  let first;
+  let retry = null;
+  if (faulty) {
+    const f = lostOnce(u);
+    try { first = await rename(u, u + 'n', t); } finally { f.restore(); }
+    assert.ok(f.hit, 'ضاع ردّ كتابة الشاهد');
+    if (first.code !== 200) retry = (await rename(u, u + 'n', t)).code; // العميل يعيد برمزه القديم (٤٢٩ بعد انتظار القفل — لا ينقل شيئًا)
+  } else first = await rename(u, u + 'n', t);
+  const old = await auth.getUser(u);
+  assert.ok(old && old.deleted && old.movedTo === u + 'n', 'الشاهد وصل: الحساب تحت الاسم الجديد');
+  const n = await user(u + 'n');
+  assert.ok(n && !n.deleted);
+  return {
+    points: (await points.readPoints(u + 'n')).points,
+    media: await spendAll(u + 'n'),
+    oldLeft: ['points:' + u, 'media:mix:' + u].filter((k) => store.has(k) && Number(store.get(k)) !== 0),
+    first: first.code, retry,
+  };
+}
+test('r3-rv7-T: شاهد الاسم القديم وصل وضاع ردّه ⇒ النقاط ورصيد الوسائط تحت الاسم الجديد كما بلا عطل (كان ٠ و٠ — تراجعٌ عن 36e1841b في النقاط)', async () => {
+  const c = await rv7Tomb('rv7tc', false);
+  const f = await rv7Tomb('rv7tf', true);
+  assert.equal(c.first, 200);
+  assert.ok(c.points > 70, 'ضابط: نقاط Pro المدفوعة ' + c.points);
+  assert.equal(c.media, 9000, 'ضابط: رصيد الوسائط');
+  assert.deepEqual({ points: f.points, media: f.media, oldLeft: f.oldLeft }, { points: c.points, media: c.media, oldLeft: [] },
+    'ضابط ' + JSON.stringify(c) + '؛ وضياع ردّ الشاهد أعطى ' + JSON.stringify(f));
+});
+test('r3-rv7-T: كتابة الشاهد فشلت ولم تصل ⇒ يرمي كما كان (500)، والاسم القديم حيّ برصيده كاملًا (ثابت)', async () => {
+  await fresh('rv7tn', { points: 300 });
+  const origSet = store.set;
+  let hit = false;
+  store.set = function (key, v) { if (!hit && key === 'db/users/rv7tn.json') { hit = true; throw new Error('upstash write failed'); } return origSet.call(store, key, v); };
+  let r;
+  try { r = await rename('rv7tn', 'rv7tnn'); } finally { store.set = origSet; }
+  assert.ok(hit);
+  assert.ok(r.code >= 500, String(r.code));
+  const old = await user('rv7tn');
+  assert.ok(old && !old.deleted, 'لا شاهد');
+  assert.equal(pts('rv7tn'), 300, 'لم يُنقل شيء');
+  assert.equal((await points.readPoints('rv7tnn')).points, 0, 'نسخة الاسم الجديد بلا نقاط (الصفر يحميها من المرآة)');
+});
+
+// C: استرداد نصف مؤجَّلة (trimNext) وصلت كتابة cut وضاع ردّها ⇒ يفكّ revoke علامته (500). ثمّ تسري المؤجَّلة بنصف رصيدها (استرداد الأعلى، أو
+// الاعتراض عليه، أو انتهاء نافذته) قبل إعادة Stripe — فكانت الإعادة تجدها الفترة الحاليّة فيأخذ floorDecr النصف ثانيةً (٦٢٤ ⇒ ٠).
+async function rv7Cut(u, faulty, kill) {
+  await maxThenBasic(u, 9000);
+  const ev = refundOf('cs_' + u + '_mb', 1021, 511);
+  if (faulty) {
+    const f = lostOnce(u);
+    let r1;
+    try { r1 = await hook(ev); } finally { f.restore(); }
+    assert.ok(f.hit && r1.code >= 500, 'المحاولة الأولى 500: ' + r1.code);
+    const v = await user(u);
+    assert.ok(v.mediaNext && v.mediaNext[0].cut > 0, 'كتابة cut وصلت');
+    assert.equal(JSON.parse(store.get('payrec:cs_' + u + '_mb')).revoked, undefined, 'والحدث غير معلَّم «تمّ»');
+  } else assert.equal((await hook(ev)).code, 200);
+  await kill(u);
+  const v = await user(u);
+  assert.equal(v.media.mix.payId, 'cs_' + u + '_mb', 'سرت المؤجَّلة');
+  if (faulty) assert.equal((await hook(ev)).code, 200); // إعادة Stripe لحدث النصف
+  return mix(u);
+}
+const rv7Half = 1250 - Math.round(1250 * 511 / 1021); // ٦٢٤
+test('r3-rv7-C1: نصف حالة استرداد نصف المؤجَّلة، ثمّ استرداد الأعلى كاملًا قبل الإعادة ⇒ النصف يُؤخذ مرّة (كان ٦٢٤ ⇒ ٠)', async () => {
+  const kill = async (u) => { assert.equal((await hook(refundOf('cs_' + u + '_mm', 10211, 10211))).code, 200); };
+  const c = await rv7Cut('rv7c1c', false, kill);
+  const f = await rv7Cut('rv7c1f', true, kill);
+  assert.equal(c, rv7Half, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وضياع ردّ كتابة واحدة أعطى ' + f);
+});
+test('r3-rv7-C2: نفسه والاعتراض البنكيّ على الأعلى ⇒ النصف يُؤخذ مرّة (كان ٠)', async () => {
+  const kill = async (u) => { assert.equal((await hook(evt('charge.dispute.created', { id: 'dp_' + u, object: 'dispute', charge: 'ch_cs_' + u + '_mm', payment_intent: 'pi_cs_' + u + '_mm', amount: 10211, currency: 'usd', reason: 'fraudulent' }))).code, 200); };
+  const c = await rv7Cut('rv7c2c', false, kill);
+  const f = await rv7Cut('rv7c2f', true, kill);
+  assert.equal(c, rv7Half, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وضياع ردّ كتابة واحدة أعطى ' + f);
+});
+test('r3-rv7-C3: نفسه وتنتهي نافذة الأعلى (قراءة تُسري المؤجَّلة) ⇒ النصف يُؤخذ مرّة (كان ٠)', async () => {
+  const kill = async (u) => { const v = await user(u); v.media.mix.at = Date.now() - 36 * DAY; await auth.putUser(u, v); await media.mediaStatus(u); };
+  const c = await rv7Cut('rv7c3c', false, kill);
+  const f = await rv7Cut('rv7c3f', true, kill);
+  assert.equal(c, rv7Half, 'ضابط بلا عطل');
+  assert.equal(f, c, 'ضابط ' + c + '؛ وضياع ردّ كتابة واحدة أعطى ' + f);
+});
+test('r3-rv7-C4: نصف حالة النصف، تسري المؤجَّلة، ثمّ يصل حدث ثلاثة الأرباع قبل إعادة النصف ⇒ يبقى ربعها، وإعادة النصف لا تأخذ شيئًا (كان ٠ بدل ٣١٢)', async () => {
+  await maxThenBasic('rv7c5', 9000);
+  const ev = refundOf('cs_rv7c5_mb', 1021, 511);
+  const f = lostOnce('rv7c5');
+  let r1;
+  try { r1 = await hook(ev); } finally { f.restore(); }
+  assert.ok(f.hit && r1.code >= 500);
+  assert.equal((await hook(refundOf('cs_rv7c5_mm', 10211, 10211))).code, 200);
+  assert.equal((await hook(refundOf('cs_rv7c5_mb', 1021, 766))).code, 200);
+  assert.equal(mix('rv7c5'), 1250 - Math.round(1250 * 766 / 1021), 'ثلاثة الأرباع تراكميًّا: الربع الزائد على المقصوص وحده');
+  assert.equal((await hook(ev)).code, 200);
+  assert.equal(mix('rv7c5'), 1250 - Math.round(1250 * 766 / 1021), 'إعادة النصف لا شيء');
+});
+// ثوابت: ما قُصّ قبل السريان وعرفه سجلّ الدفعة لا يُطرح مرّتين، ولا يُنقص سحبَ نسبةٍ أكبر منه، ولا يمسّ فترة دفعة أخرى
+test('r3-rv7-C: نصف المؤجَّلة بلا عطل، ثمّ تسري، ثمّ استرداد ثلاثة أرباعها ⇒ يُؤخذ الربع الزائد وحده (ثابت)', async () => {
+  await maxThenBasic('rv7c4', 9000);
+  assert.equal((await hook(refundOf('cs_rv7c4_mb', 1021, 511))).code, 200);
+  assert.equal((await hook(refundOf('cs_rv7c4_mm', 10211, 10211))).code, 200);
+  assert.equal(mix('rv7c4'), rv7Half);
+  assert.equal((await hook(refundOf('cs_rv7c4_mb', 1021, 766))).code, 200);
+  assert.equal(mix('rv7c4'), 1250 - Math.round(1250 * 766 / 1021), 'الربع الزائد وحده');
+});

@@ -163,7 +163,8 @@ async function activateDue(user, username, now, onlyOn) {
     if (!x.payId) await kvSetRaw(budgetKey(username, kind), v, MEDIA_WINDOW_DAYS * 86400);
     const at = on > 1 ? on : t;
     user.media = Object.assign({}, user.media || {});
-    user.media[kind] = Object.assign({ plan: x.plan, at }, x.payId ? { payId: String(x.payId) } : {});
+    /* v-r3 (r3-rv7): وما قُصّ منها قبل السريان (cut) يبقى على الفترة — سحبٌ معاد بعدها يقرؤه (pay-refund applyRevoke) فلا يأخذه من عدّادها ثانيةً */
+    user.media[kind] = Object.assign({ plan: x.plan, at }, x.payId ? { payId: String(x.payId) } : {}, cut > 0 ? { cut } : {});
     done.push(x);
   }
   const rest = pend.filter((x) => !done.includes(x));

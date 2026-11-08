@@ -213,6 +213,16 @@ async function undoCounterPrep(newKey) {
   } catch (e) { logError('auth:rename-undo', e, { to: String(newKey).slice(0, 40) }); }
 }
 
+/* v-r3 (r3-rv7): شاهد الاسم القديم وصل وضاع ردّه — كان التغيير يردّ 500 قبل نقل العدّادات، والحساب صار تحت الاسم الجديد بنقاط '0' (التحضير r3-4)
+   ورصيدُ وسائطه تحت الاسم الميّت، وإعادة العميل برمزه القديم لا تنقل شيئًا (٤٢٩): ٩٩٠ نقطة ⇒ ٠، وعلى 36e1841b كانت تعود من المرآة. يُقرأ الاسم
+   القديم صارمًا: الشاهد وصل ⇒ يكمل التغيير والنقل كأنّ الردّ وصل؛ لم يصل أو تعذّرت القراءة ⇒ يُرمى الخطأ الأصليّ كما كان. لا يرمي. */
+async function tombLanded(oldKey, newKey) {
+  try {
+    const t = await getUserOnce(oldKey, { strict: true });
+    return !!(t && t.deleted && t.movedTo === newKey);
+  } catch (e) { logError('auth:rename-tomb', e, { from: String(oldKey).slice(0, 40) }); return false; }
+}
+
 async function moveLiveCounters(oldKey, newKey, user) {
   const { kvGetRaw, kvSetRaw, kvDel, kvExpire, kvPipeline } = require('./kv.js');
   const n = renameKey;
@@ -1193,7 +1203,7 @@ module.exports = async (req, res) => {
             await putUser(newKey, movedUser);
           } catch (e) { await undoCounterPrep(newKey); throw e; } // v-r3 (r3-rv6): لا عدّاد '0' يتيم تحت اسمٍ لم يُسجَّل
           // Free up the old key so it can't be logged into or re-claimed while pointing here.
-          await putUser(oldKey, { deleted: true, movedTo: newKey });
+          try { await putUser(oldKey, { deleted: true, movedTo: newKey }); } catch (e) { if (!(await tombLanded(oldKey, newKey))) throw e; } // v-r3 (r3-rv7): وصل وضاع ردّه ⇒ ينقل
           try { await moveLiveCounters(oldKey, newKey, movedUser); } catch (e) { logError('auth:rename-move', e, { from: String(oldKey).slice(0, 40) }); }
           await moveVip(oldKey, newKey); // v-lock-acct (srv-auth-12): VIP يتبع الحساب لا الاسم — لا يرمي
           _banMemo.delete(oldKey); _banMemo.delete(newKey); // الشاهد جلسة ميّتة الآن (isBanned) — لا ينتظر ذاكرة الخمس ثوانٍ

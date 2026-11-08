@@ -364,7 +364,15 @@ async function applyRevoke(rec, step) {
     if (rec.media) {
       // v-r3 (r3-2): المؤجَّلة لا عدّاد لها بعد — ينقص رصيدها حين تسري (trimNext بالنسبة التراكميّة)، والسارية من عدّادها كما كان
       if (!out.mediaRevoked && deferred && step.budget > 0) out.budgetTaken = await trimNext(name, user, rec, step.fraction);
-      else if (!out.mediaRevoked && mediaCurrent && step.budget > 0) out.budgetTaken = await floorDecr(budgetKey(name, rec.media), step.budget);
+      else if (!out.mediaRevoked && mediaCurrent && step.budget > 0) {
+        /* v-r3 (r3-rv7): trimNext كتب cut ووصل وضاع ردّه، ففكّ revoke علامته (500)، ثمّ سرت المؤجَّلة بما بعد القصّ — إعادة الحدث تجدها الفترة
+           الحاليّة فكان floorDecr يأخذ القصّ نفسه ثانيةً من عدّادها (٦٢٤ ⇒ ٠). ما قُصّ عند السريان (cut على الفترة) ولا يعرفه سجلّ الدفعة يُطرح ممّا يُؤخذ. */
+        const x = user.media && user.media[rec.media];
+        const mp = MEDIA_PLANS[rec.plan];
+        const pre = x && mp && String(x.payId || '') === String(rec.id) ? Math.round(mp.budget * clamp01(Number(x.cut) || 0)) : 0;
+        const want = step.budget - Math.max(0, pre - (Number(rec.revoked && rec.revoked.budget) || 0));
+        if (want > 0) out.budgetTaken = await floorDecr(budgetKey(name, rec.media), want);
+      }
     } else if (step.points > 0) {
       await require('./points.js').ensureBalance(name); // عدّاد غائب يُبذر من السجلّ (v-pay-seed)
       out.pointsTaken = await floorDecr(pointsKey(name), step.points);
