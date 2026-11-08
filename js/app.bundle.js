@@ -35070,7 +35070,25 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         throwIfDeclined(cr);
         const d = await cr.json();
         if(!cr.ok || d.error) throw Object.assign(new Error(d.error || 'omni failed'), { code: d.error });
-        const videoUrl = d.url || d.dataUrl;
+        /* v-lock-vid (srv-video-5): الخادم يحفظ الناتج بمعرّف omni/… وتذكرة — الاستلام استطلاع veo-status يسوّيها (من أغلق التطبيق قبل الاستلام
+           يردّ الكنس نقاطه). الرابط المباشر (d.url) يبقى لردّ خادم أقدم أو تعذّر الحفظ. */
+        const videoUrl = d.op ? await new Promise((resolve, reject) => {
+          const guard = makePollGuard(reject, 3000);
+          const iv = setInterval(async () => {
+            if(!guard.tick(iv)) return;
+            try{
+              const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(d.op));
+              const s = await st.json();
+              guard.ok();
+              if(s.error){
+                if(s.error !== 'unavailable' && (st.status >= 500 || st.status === 429)){ guard.fail(iv, s.error); return; } /* عابر: الفيديو جاهز ومدفوع — يُعاد */
+                clearInterval(iv); reject(Object.assign(new Error(s.error), { code: s.error })); return;
+              }
+              if(s.status === 'SUCCEEDED' && s.output && s.output[0]){ clearInterval(iv); resolve(s.output[0]); }
+              else if(s.status === 'FAILED'){ clearInterval(iv); reject(new Error(vmkT('axAttachVidFailed', 'فشل إنشاء الفيديو', 'Video generation failed'))); }
+            } catch(e){ guard.fail(iv); }
+          }, 3000);
+        }) : (d.url || d.dataUrl);
         if(!videoUrl) throw new Error('no video');
         setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
         let vurl;
@@ -35083,7 +35101,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = vurl;
         resultEl.style.display = 'block';
-        downloadEl.href = d.url || vurl;
+        downloadEl.href = d.dataUrl ? vurl : videoUrl; /* v-lock-vid: الرابط الموقّع المسلَّم (من الاستطلاع أو الردّ المباشر) */
         downloadEl.style.display = 'block';
         autoSaveVideo(vurl);
       } catch(e){
