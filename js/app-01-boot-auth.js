@@ -851,6 +851,8 @@ try{
       // v-owner-reset-find: حساب Google لا كلمة مرور له، والغائب برسالة مترجمة لا «user not found» خامًا
       if(data && data.google){ alert(ownT('ownerResetGoogle', { u: ownIso(data.username || username) })); return; }
       if(res.status === 404){ alert('❌ ' + ownT('ownerResetNotFound')); return; }
+      // v-owner-reset-stripe: بريد دفع منه أكثر من حساب في Stripe — لا رابط تلقائيّ، المالك يسأل صاحبه عن اسمه ويكتبه في الخانة
+      if(res.status === 409 && data && Array.isArray(data.candidates) && data.candidates.length){ alert('⚠️ ' + ownT('ownerResetMany', { list: data.candidates.map(ownIso).join(' · ') })); return; }
       if(!res.ok || !data.ok || !data.link){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
       try{ if(navigator.clipboard) navigator.clipboard.writeText(data.link).catch(e => __swallow(e, 'reset-link clipboard')); }catch(e){ __swallow(e, 'reset-link clipboard'); }
       prompt(ownT('ownerResetLink', { u: ownIso(data.username || username), m: data.minutes || 30 }), data.link);
