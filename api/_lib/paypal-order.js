@@ -8,6 +8,7 @@
 const { verifyToken } = require('./auth.js');
 const { MEDIA_PLANS } = require('./_mediaPlans.js');
 const { grantPlanToUser, wasNamed, RETIRED } = require('./create-checkout-session.js');
+const { kvGetRaw, kvSetRaw } = require('./kv.js');
 
 const PLANS = {
   // v-plans-2026-09: يجب أن تطابق create-checkout-session.js (نقاط ومبالغ).
@@ -104,10 +105,19 @@ async function safeCredit(order, username) {
   }
 }
 
+/* v-lock-credit (srv-money-6، المراجعة المعاكسة): reference_id يكتبه المشتري — طلبٌ يُنشأ ويُلتقط من حزمة PayPal في المتصفّح بالمعرّف العامّ
+   (كما يقرّ v-media-merge أعلاه) باسم حساب آخر كان هذا الويب هوك يشحنه له، وgrantLocked يستبدل فترته السارية: بعشرة دولارات تنزل باقته
+   من Max إلى Plus، ورصيد media_max ‏١٢٥٠٠ يصير ١٢٥٠ (أُثبت محلّيًّا). claim وcapture يشترطان رمز صاحب الطلب؛ هذا لا رمز فيه. الآن 'create' يكتب
+   علامة «أنشأه خادمنا لهذا المشتري» (ppo:<رقم الطلب>)، والويب هوك لا يشحن إلّا طلبًا علامته = reference_id. غيره 200 وسطر للمالك، ويبقى
+   claim صاحبه يشحنه من متصفّحه كما كان. المهلة أطول من اكتمال التقاطٍ معلَّق (شيك بنكيّ: أيّام). */
+const PPO_TTL_SEC = 30 * 86400;
+const ppoKey = (id) => 'ppo:' + String(id).slice(0, 200);
+
 /* v-lock-credit (srv-money-6، باب المال بموافقة المالك ٢٧ أكتوبر): التقاط PENDING (شيك بنكيّ، مراجعة PayPal) كان لا يُشحن إلّا من
    متصفّح الدافع (aiapp_pp_pending، ‏claim عند كلّ تركيز ٧ أيّام) — بدّل جهازه أو مسح التخزين أو تأخّر الاكتمال، فالمال مسحوب بلا خدمة؛
    والويب هوك الذي يعد به التعليق أعلاه كان يتجاهل الحدث. الآن PAYMENT.CAPTURE.COMPLETED (موقَّعًا، api/webhook.js?src=paypal) يجلب
-   الطلب نفسه من PayPal (الحالة الحاليّة لا حمولة الحدث، فإعادة حدث قديم بعد استرداد لا تشحن) ويشحنه لصاحبه بـcreditOrder نفسها —
+   الطلب نفسه من PayPal (الحالة الحاليّة لا حمولة الحدث، فإعادة حدث قديم بعد استرداد لا تشحن) ويشحنه لصاحبه (طلبٌ أنشأه خادمنا له
+   وحده، ppo أعلاه) بـcreditOrder نفسها —
    حجز رقم الطلب الذرّيّ يمنع الازدواج مع capture وclaim، وحجز مسحوب قبل الشحن (pay-refund) يمنعه بعد الاسترداد. طلب بلا صاحب
    (قبل reference_id) لا يُشحن من هنا كـclaim. لا 2xx إلّا والأثر تمّ أو لا يُعاد: عطل عابر يرمي (500)، والتقاط ما زال PENDING عند
    PayPal ⇒ retry (503)؛ ما لا يُشحن أبدًا (مستردّ، مبلغ بلا خطّة، حساب محذوف) 200 وسطر في سجلّ أخطاء المالك. */
@@ -116,6 +126,8 @@ async function captureCompleted(event) {
   const orderId = String((r0.supplementary_data && r0.supplementary_data.related_ids && r0.supplementary_data.related_ids.order_id) || '');
   const note = (reason) => { try { require('./log-error.js').logError('paypal:capture-completed', new Error(reason), { orderId: orderId.slice(0, 60), capture: String(r0.id || '').slice(0, 60) }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ } };
   if (!orderId) { note('no_order'); return { status: 'ignored' }; }
+  const buyer = await kvGetRaw(ppoKey(orderId)); // يرمي عند عطب KV ⇒ 500 فيُعاد (لا «ليس لنا» كاذبة)
+  if (!buyer) { note('not_our_order'); return { status: 'foreign' }; }
   const token = await getAccessToken();
   if (!token) throw new Error('paypal token unavailable'); // التوقيع تحقّق بالرمز نفسه للتوّ: غيابه عطل عابر يُعاد
   const r = await fetch(`${baseUrl()}/v2/checkout/orders/${encodeURIComponent(orderId)}`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -126,6 +138,7 @@ async function captureCompleted(event) {
   }
   const m = matchOrder(order);
   if (!m.ref) { note('legacy'); return { status: 'legacy' }; }
+  if (m.ref !== String(buyer)) { note('not_our_order'); return { status: 'foreign' }; } // reference_id غُيّر بعد الإنشاء
   if (m.status === 'PENDING') return { status: 'pending', retry: true }; // الحدث سبق حالة الطلب عند PayPal
   if (order.status !== 'COMPLETED') { note('order_' + String(order.status || 'unknown').toLowerCase()); return { status: 'not_completed' }; }
   const out = await creditOrder(order, m.ref); // يرمي عند فشل الشحن ⇒ 500 فيعيد PayPal (والحجز لا يشحن مرّتين)
@@ -182,6 +195,11 @@ module.exports = async (req, res) => {
       });
       const data = await r.json();
       if (!r.ok) { res.status(500).json({ error: data.message || 'PayPal error' }); return; }
+      // v-lock-credit (srv-money-6): علامة صاحب الطلب لويب هوك الاكتمال. أفضل جهد: فشلها لا يمنع الدفع — الالتقاط من المتصفّح وclaim
+      // يشحنان كما كانا، والويب هوك وحده يترك هذا الطلب مع سطر للمالك.
+      try { await kvSetRaw(ppoKey(data.id), String(buyer).slice(0, 256), PPO_TTL_SEC); } catch (e) {
+        try { require('./log-error.js').logError('paypal:order-mark', e, { orderId: String(data.id || '').slice(0, 60) }); } catch (e2) { /* guard-ok — التسجيل تحسين لا شرط */ }
+      }
       res.status(200).json({ id: data.id });
       return;
     }

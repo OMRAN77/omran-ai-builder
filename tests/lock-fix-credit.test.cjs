@@ -30,6 +30,7 @@ const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(
 
 // ── KV في الذاكرة مع حقن الأعطال ──
 const kv = new Map();
+const ttl = new Map(); // مهلة كلّ مفتاح كما طُلبت (الحجز وعلامة الإكمال)
 const users = new Map();
 // putAfterIncr: عدد كتابات سجلّ الحساب التي تفشل بعد INCRBY ناجح على عدّاد نقاط · putAfterBudget: بعد كتابة رصيد وسائط
 // incr: فشل INCRBY التالي (قبل أيّ أثر) · putArm: الكتابات الفاشلة المسلّحة الآن
@@ -39,16 +40,16 @@ const lockSeen = { key: '', fn: null }; // x-build-1: أوّل محاولة فا
 const imm = () => new Promise((r) => setImmediate(r));
 const kvApi = {
   kvGetRaw: async (k) => { await imm(); return kv.has(k) ? String(kv.get(k)) : null; },
-  kvSetRaw: async (k, v) => {
+  kvSetRaw: async (k, v, t) => {
     await imm();
     if (fail.mark > 0 && /^paid-credit:/.test(k)) { fail.mark--; throw new Error('Upstash error: fetch failed'); }
-    kv.set(k, String(v));
+    kv.set(k, String(v)); ttl.set(k, t);
     if (fail.putAfterBudget > 0 && /^media:/.test(k)) { fail.putArm = fail.putAfterBudget; fail.putAfterBudget = 0; }
   },
-  kvSetIfAbsent: async (k, v) => {
+  kvSetIfAbsent: async (k, v, t) => {
     await imm();
     if (kv.has(k)) { if (lockSeen.fn && k === lockSeen.key) { const f = lockSeen.fn; lockSeen.fn = null; f(); } return false; }
-    kv.set(k, String(v)); return true;
+    kv.set(k, String(v)); ttl.set(k, t); return true;
   },
   kvIncrBy: async (k, n) => {
     await imm();
@@ -84,9 +85,9 @@ const alerts = [];
 mock('api/_lib/_owner-alert.js', { pushToOwners: async (p) => { alerts.push(p); return { sent: 1 }; }, alertOwnerError: async () => ({}), alertOwnerCredit: async () => ({}), isCreditFailure: () => false });
 
 // ── شبكة مزيّفة واحدة للملفّ ──
-const net = { sessions: {}, sessionList: [], pi: {}, orders: {}, captures: {}, orderFail: 0, verify: 'SUCCESS' };
+const net = { sessions: {}, sessionList: [], pi: {}, orders: {}, captures: {}, orderFail: 0, verify: 'SUCCESS', nextOrder: '' };
 const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
-global.fetch = async (url) => {
+global.fetch = async (url, opts) => {
   const u = new URL(String(url));
   if (u.hostname === 'api.stripe.com') {
     const p = u.pathname.replace(/^\/v1\//, '');
@@ -103,6 +104,7 @@ global.fetch = async (url) => {
   if (/paypal\.com$/.test(u.hostname)) {
     if (u.pathname === '/v1/oauth2/token') return reply(200, { access_token: 'A' });
     if (u.pathname === '/v1/notifications/verify-webhook-signature') return reply(200, { verification_status: net.verify });
+    if (u.pathname === '/v2/checkout/orders' && opts && opts.method === 'POST') return reply(201, { id: net.nextOrder || ('PPX' + (++seq)), status: 'CREATED' }); // action 'create'
     let m;
     if ((m = u.pathname.match(/^\/v2\/checkout\/orders\/([^/]+)(\/capture)?$/))) {
       if (net.orderFail > 0) { net.orderFail--; return reply(503, { message: 'Service Unavailable' }); }
@@ -153,6 +155,15 @@ const pp = async (body) => { const r = mkRes(); await paypal({ method: 'POST', b
 const ppHead = () => ({ 'paypal-auth-algo': 'SHA256withRSA', 'paypal-cert-url': 'https://api.sandbox.paypal.com/v1/notifications/certs/CERT-1', 'paypal-transmission-id': 'tx-' + (++seq), 'paypal-transmission-sig': 'sig', 'paypal-transmission-time': new Date().toISOString() });
 const ppOrder = (id, cap, ref, plan, value, capStatus) => ({ id, status: 'COMPLETED', create_time: new Date().toISOString(), purchase_units: [Object.assign(ref === undefined ? {} : { reference_id: ref }, { custom_id: plan, payments: { captures: [{ id: cap, custom_id: plan, amount: { value, currency_code: 'USD' }, status: capStatus || 'COMPLETED', create_time: new Date().toISOString() }] } })] });
 const setCap = (orderId, status) => { net.orders[orderId].purchase_units[0].payments.captures[0].status = status; };
+// طلب أنشأه خادمنا ('create' برمز صاحبه) ثمّ دفعه — ويب هوك الاكتمال لا يشحن غيره (srv-money-6). ref: reference_id إن غيّره المشتري بعد الإنشاء.
+async function ourOrder(id, cap, user, plan, value, capStatus, ref) {
+  net.nextOrder = id;
+  let r;
+  try { r = await pp({ action: 'create', plan, token: 'T:' + user }); } finally { net.nextOrder = ''; }
+  assert.equal(r.code, 200);
+  assert.equal(r.body.id, id);
+  net.orders[id] = ppOrder(id, cap, ref === undefined ? user : ref, plan, value, capStatus);
+}
 const ppCompleted = (orderId, cap, value) => ({ id: 'WH-C' + (++seq), event_type: 'PAYMENT.CAPTURE.COMPLETED', resource_type: 'capture', resource: { id: cap, status: 'COMPLETED', amount: { value, currency_code: 'USD' }, supplementary_data: { related_ids: { order_id: orderId } }, links: [{ rel: 'self', href: 'https://api.sandbox.paypal.com/v2/payments/captures/' + cap }, { rel: 'up', href: 'https://api.sandbox.paypal.com/v2/checkout/orders/' + orderId }] } });
 const ppRefund = (cap, value, total) => ({ id: 'WH-R' + (++seq), event_type: 'PAYMENT.CAPTURE.REFUNDED', resource_type: 'refund', resource: { id: 'RF' + seq, status: 'COMPLETED', amount: { value, currency_code: 'USD' }, seller_payable_breakdown: { total_refunded_amount: { value: total, currency_code: 'USD' } }, links: [{ rel: 'up', href: 'https://api.sandbox.paypal.com/v2/payments/captures/' + cap }] } });
 const disarm = () => { fail.putAfterIncr = 0; fail.putAfterBudget = 0; fail.putArm = 0; fail.incr = 0; fail.mark = 0; };
@@ -334,11 +345,137 @@ test('srv-money-2 · ١٠. استرداد بعد الإكمال يسحب الب�
   assert.equal(await bal('lc10'), 70);
 });
 
+// ── المراجعة المعاكسة لـsrv-money-2: استرداد يصل في النافذة بين «شُحن» و«كُتب السجلّ» ──
+
+test('srv-money-2 · ١١. استرداد جزئيّ بين الفشل والإعادة: الباقة المدفوعة تُسلَّم ويُسحب نصف نقاطها وحده (كانت لا تُسلَّم أبدًا)', async () => {
+  fresh('lc11');
+  const e = paidSession('cs_lc11', 'lc11', 'pro', 'pi_lc11', 2000);
+  net.sessionList.push({ id: 'cs_lc11', payment_intent: 'pi_lc11', metadata: { username: 'lc11', plan: 'pro' } });
+  fail.putAfterIncr = 1;
+  try { assert.ok((await hook(e)).code >= 500); } finally { disarm(); }
+  assert.equal(await bal('lc11'), 990);
+  const half = refundOf('ch_lc11', 'pi_lc11', 2000, 1000);
+  assert.equal((await hook(half)).code, 200);
+  assert.equal(await bal('lc11'), 530, 'نصف نقاط الدفعة: ٩٩٠ − ٤٦٠');
+  assert.equal((await hook(half)).code, 200, 'إعادة حدث الاسترداد');
+  assert.equal(await bal('lc11'), 530, 'لا سحب ثانٍ');
+  assert.equal((await hook(e)).code, 200, 'إعادة حدث الدفع');
+  const u = users.get('lc11');
+  assert.equal(u.plan, 'pro', 'دفع نصف المبلغ فبقيت باقته');
+  assert.equal(u.planPayId, 'cs_lc11');
+  assert.equal(u.lastStripeSessionId, 'cs_lc11');
+  assert.equal(tier.planActive(u), true);
+  assert.equal(await bal('lc11'), 530, 'ولا نقاط ثانية');
+  assert.equal(kv.has('paid-credit:lastStripeSessionId:cs_lc11'), false, 'علامة الإكمال تُمحى');
+  assert.equal((await hook(refundOf('ch_lc11', 'pi_lc11', 2000, 2000))).code, 200, 'ثمّ يُستردّ الباقي');
+  assert.equal(tier.planActive(users.get('lc11')), false, 'الاسترداد الكامل يسحب الباقة');
+  assert.equal(await bal('lc11'), 70, 'والباقي ٤٦٠ لا ٩٢٠');
+});
+
+test('srv-money-2 · ١٢. سجلّ منحٍ قديم (legacy) بسحبٍ جزئيّ لا يمنع الإكمال، والإكمال لا يمحو علامة سحبه', async () => {
+  fresh('lc12');
+  const e = paidSession('cs_lc12', 'lc12', 'pro', 'pi_lc12', 2000);
+  fail.putAfterIncr = 1;
+  try { assert.ok((await hook(e)).code >= 500); } finally { disarm(); }
+  // كما يبنيه مسار الاسترداد القديم من الحجز دليلًا (stripeLegacy/legacyRecord) ثمّ يسحب نصفه: ٤٦٠ نقطة
+  const rv = { fraction: 0.5, refunded: 0.5, disputed: false, points: 460, budget: 0, plan: false, ids: ['stripe:evt_lc12half'], reason: 'refund', at: Date.now() };
+  kv.set('payrec:cs_lc12', JSON.stringify({ v: 1, legacy: true, id: 'cs_lc12', field: 'lastStripeSessionId', username: 'lc12', plan: 'pro', points: 920, media: null, at: null, approxAt: Date.now(), amount: 2000, currency: 'usd', refs: ['pi_lc12', 'ch_lc12'], grantedAt: null, revoked: rv }));
+  kv.set('payref:pi_lc12', 'cs_lc12');
+  kv.set('payref:ch_lc12', 'cs_lc12');
+  kv.set('points:lc12', String(990 - 460));
+  assert.equal((await hook(e)).code, 200);
+  const u = users.get('lc12');
+  assert.equal(u.plan, 'pro', 'الباقة تُسلَّم بعد سحبٍ جزئيّ');
+  assert.equal(u.planPayId, 'cs_lc12');
+  assert.equal(tier.planActive(u), true);
+  assert.equal(await bal('lc12'), 530, 'بلا نقاط ثانية');
+  assert.equal(JSON.parse(kv.get('payrec:cs_lc12')).revoked.points, 460, 'علامة السحب باقية في السجلّ');
+  assert.equal((await hook(refundOf('ch_lc12', 'pi_lc12', 2000, 2000))).code, 200);
+  assert.equal(tier.planActive(users.get('lc12')), false);
+  assert.equal(await bal('lc12'), 70, 'الاسترداد الباقي يأخذ ٤٦٠ لا ٩٢٠');
+});
+
+test('srv-money-2 · ١٣. استرداد فترة الوسائط السابقة بين الفشل والإعادة: الباقة الجديدة تُسلَّم برصيدها (كانت بلا رصيد) وبوقتها الأصليّ', async () => {
+  const realNow = Date.now;
+  let t = realNow();
+  Date.now = () => t;
+  try {
+    fresh('lc13');
+    await buy('lc13', 'media_basic', 'lc13a', 1021);
+    t += 60000;
+    const t0 = t;
+    const e = paidSession('cs_lc13b', 'lc13', 'media_pro', 'pi_lc13b', 2042);
+    fail.putAfterBudget = 1;
+    try { assert.ok((await hook(e)).code >= 500); } finally { disarm(); }
+    assert.equal(Number(kv.get('media:mix:lc13')), 2500, 'الرصيد مُلئ');
+    t += 3600000;
+    assert.equal((await hook(refundOf('ch_lc13a', 'pi_lc13a', 1021, 1021))).code, 200, 'استرداد الفترة السابقة كاملة');
+    assert.equal(kv.has('media:mix:lc13'), false, 'سحبُها محا الرصيد');
+    assert.equal((await hook(e)).code, 200, 'إعادة حدث الدفع');
+    const m = users.get('lc13').media.mix;
+    assert.equal(m.plan, 'media_pro');
+    assert.equal(m.payId, 'cs_lc13b');
+    assert.equal(m.at, t0, 'بوقت المنح الأصليّ — لا منح ثانٍ يمدّ الفترة');
+    assert.equal(media.mediaActive(users.get('lc13'), 'mix'), true);
+    assert.equal(Number(kv.get('media:mix:lc13')), 2500, 'الباقة المدفوعة برصيدها');
+    const left = Number(ttl.get('media:mix:lc13'));
+    assert.ok(left <= media.MEDIA_WINDOW_DAYS * 86400 - 3600 && left > media.MEDIA_WINDOW_DAYS * 86400 - 3700, 'نافذة الرصيد من وقت المنح — ' + left);
+  } finally { Date.now = realNow; }
+});
+
+test('srv-money-2 · ١٤. الوسائط: استرداد الدفعة الجديدة بين الفشل والإعادة يأخذ ما ملأته — كاملًا تعود السابقة برصيدها، وجزئيًّا نصفه والباقة تُسلَّم', async () => {
+  fresh('lc14');
+  await buy('lc14', 'media_basic', 'lc14a', 1021);
+  assert.equal((await points.spendPoints('lc14', 175, 'veo_video')).ok, true);
+  assert.equal(Number(kv.get('media:mix:lc14')), 810, 'بقي من الفترة السابقة ٨١٠');
+  const e = paidSession('cs_lc14b', 'lc14', 'media_pro', 'pi_lc14b', 2042);
+  net.sessionList.push({ id: 'cs_lc14b', payment_intent: 'pi_lc14b', metadata: { username: 'lc14', plan: 'media_pro' } });
+  fail.putAfterBudget = 1;
+  try { assert.ok((await hook(e)).code >= 500); } finally { disarm(); }
+  assert.equal(Number(kv.get('media:mix:lc14')), 2500);
+  assert.equal((await hook(refundOf('ch_lc14b', 'pi_lc14b', 2042, 2042))).code, 200);
+  assert.equal(Number(kv.get('media:mix:lc14')), 810, 'الرصيد المملوء يُؤخذ ويعود رصيد الفترة السابقة كما كان (كان يبقى ٢٥٠٠)');
+  assert.equal((await hook(e)).code, 200, 'إعادة حدث الدفع');
+  let m = users.get('lc14').media.mix;
+  assert.equal(m.plan, 'media_basic', 'لا تُسلَّم الباقة المستردّة');
+  assert.equal(m.payId, 'cs_lc14a');
+  assert.equal(Number(kv.get('media:mix:lc14')), 810);
+
+  fresh('lc14p');
+  await buy('lc14p', 'media_basic', 'lc14pa', 1021);
+  const e2 = paidSession('cs_lc14pb', 'lc14p', 'media_pro', 'pi_lc14pb', 2042);
+  net.sessionList.push({ id: 'cs_lc14pb', payment_intent: 'pi_lc14pb', metadata: { username: 'lc14p', plan: 'media_pro' } });
+  fail.putAfterBudget = 1;
+  try { assert.ok((await hook(e2)).code >= 500); } finally { disarm(); }
+  assert.equal((await hook(refundOf('ch_lc14pb', 'pi_lc14pb', 2042, 1021))).code, 200);
+  assert.equal(Number(kv.get('media:mix:lc14p')), 1250, 'نصف رصيد الباقة المستردّ نصفها');
+  assert.equal((await hook(e2)).code, 200);
+  m = users.get('lc14p').media.mix;
+  assert.equal(m.plan, 'media_pro', 'دفع نصفها فبقيت');
+  assert.equal(m.payId, 'cs_lc14pb');
+  assert.equal(Number(kv.get('media:mix:lc14p')), 1250, 'ولا ملء ثانٍ');
+});
+
+test('srv-money-2 · ١٥. علامة الإكمال تعيش ما عاش الحجز (كانت تنتهي صامتة بعد ٤ أيّام)، والمالك يُبلَّغ بالإكمال المعلَّق', async () => {
+  fresh('lc15');
+  logged.length = 0;
+  const e = paidSession('cs_lc15', 'lc15', 'basic', 'pi_lc15', 1000);
+  fail.putAfterIncr = 1;
+  try { assert.ok((await hook(e)).code >= 500); } finally { disarm(); }
+  const mark = 'paid-credit:lastStripeSessionId:cs_lc15';
+  assert.ok(kv.has(mark));
+  assert.ok(Number(ttl.get(mark)) >= Number(ttl.get('paid:lastStripeSessionId:cs_lc15')), 'لا تنتهي قبل الحجز — ' + ttl.get(mark));
+  assert.ok(logged.some((l) => l.scope === 'checkout:credit-pending'), 'سطر للمالك: دفعة شُحنت وسجلّها معلَّق');
+  assert.equal((await hook(e)).code, 200);
+  assert.equal(users.get('lc15').plan, 'basic');
+  assert.equal(await bal('lc15'), 430);
+});
+
 // ───────────────────────── srv-money-6 ─────────────────────────
 
 test('srv-money-6 · ١. التقاط معلَّق ثمّ PAYMENT.CAPTURE.COMPLETED موقَّع: يُشحن الحساب من الخادم (كان يُتجاهل)', async () => {
   fresh('pc1');
-  net.orders.PP1 = ppOrder('PP1', 'CAPP1', 'pc1', 'pro', '20.00', 'PENDING');
+  await ourOrder('PP1', 'CAPP1', 'pc1', 'pro', '20.00', 'PENDING');
   const c = await pp({ action: 'capture', orderId: 'PP1', token: 'T:pc1' });
   assert.equal(c.body.credited, false);
   assert.equal(c.body.reason, 'capture_pending');
@@ -354,7 +491,7 @@ test('srv-money-6 · ١. التقاط معلَّق ثمّ PAYMENT.CAPTURE.COMPLE
 
 test('srv-money-6 · ٢. إعادة الحدث ومعها claim العميل متزامنَين: شحنة واحدة', async () => {
   fresh('pc2');
-  net.orders.PP2 = ppOrder('PP2', 'CAPP2', 'pc2', 'pack300', '12.99', 'PENDING');
+  await ourOrder('PP2', 'CAPP2', 'pc2', 'pack300', '12.99', 'PENDING');
   await pp({ action: 'capture', orderId: 'PP2', token: 'T:pc2' });
   setCap('PP2', 'COMPLETED');
   const ev = ppCompleted('PP2', 'CAPP2', '12.99');
@@ -371,7 +508,7 @@ test('srv-money-6 · ٢. إعادة الحدث ومعها claim العميل م�
 
 test('srv-money-6 · ٣. الحدث يسبق الطلب (الالتقاط ما زال PENDING عند PayPal): 503 فيُعاد، ولا شحن حتّى يكتمل', async () => {
   fresh('pc3');
-  net.orders.PP3 = ppOrder('PP3', 'CAPP3', 'pc3', 'basic', '10.00', 'PENDING');
+  await ourOrder('PP3', 'CAPP3', 'pc3', 'basic', '10.00', 'PENDING');
   const ev = ppCompleted('PP3', 'CAPP3', '10.00');
   const r1 = await hook(ev, { src: 'paypal', headers: ppHead() });
   assert.equal(r1.code, 503);
@@ -387,12 +524,12 @@ test('srv-money-6 · ٣. الحدث يسبق الطلب (الالتقاط ما �
 
 test('srv-money-6 · ٤. لا شحن بعد الاسترداد: التقاط مستردّ، أو حجز مسحوب قبل الشحن، أو طلب قديم بلا صاحب، أو مبلغ لا يطابق خطّة', async () => {
   fresh('pc4');
-  net.orders.PP4 = ppOrder('PP4', 'CAPP4', 'pc4', 'pro', '20.00', 'REFUNDED');
+  await ourOrder('PP4', 'CAPP4', 'pc4', 'pro', '20.00', 'REFUNDED');
   assert.equal((await hook(ppCompleted('PP4', 'CAPP4', '20.00'), { src: 'paypal', headers: ppHead() })).code, 200);
   assert.equal(await bal('pc4'), 70, 'الالتقاط مستردّ عند PayPal');
   // استرداد كامل وصل قبل الشحن: الحجز يُشغَل بعلامة السحب، فحدث الاكتمال المتأخّر (وطلبٌ ما زال يُقرأ COMPLETED) لا يشحن
   fresh('pc5');
-  net.orders.PP5 = ppOrder('PP5', 'CAPP5', 'pc5', 'pro', '20.00', 'COMPLETED');
+  await ourOrder('PP5', 'CAPP5', 'pc5', 'pro', '20.00', 'COMPLETED');
   net.captures.CAPP5 = { id: 'CAPP5', amount: { value: '20.00', currency_code: 'USD' }, create_time: new Date().toISOString(), supplementary_data: { related_ids: { order_id: 'PP5' } } };
   assert.equal((await hook(ppRefund('CAPP5', '20.00', '20.00'), { src: 'paypal', headers: ppHead() })).code, 200);
   assert.match(String(kv.get('paid:lastPaypalOrderId:PP5')), /^!revoked:/);
@@ -406,7 +543,7 @@ test('srv-money-6 · ٤. لا شحن بعد الاسترداد: التقاط م�
   assert.equal(await bal('pc6'), 70);
   // مبلغ بلا خطّة: لا شحن، وتنبيه للمالك (مال سُحب بلا خدمة)
   fresh('pc7');
-  net.orders.PP7 = ppOrder('PP7', 'CAPP7', 'pc7', 'pro', '19.00', 'COMPLETED');
+  await ourOrder('PP7', 'CAPP7', 'pc7', 'pro', '19.00', 'COMPLETED');
   logged.length = 0;
   assert.equal((await hook(ppCompleted('PP7', 'CAPP7', '19.00'), { src: 'paypal', headers: ppHead() })).code, 200);
   assert.equal(await bal('pc7'), 70);
@@ -415,7 +552,7 @@ test('srv-money-6 · ٤. لا شحن بعد الاسترداد: التقاط م�
 
 test('srv-money-6 · ٥. توقيع غير صالح لا يشحن، وفشل الشحن بعد التحقّق non-2xx فيُعاد ويشحن مرّة واحدة', async () => {
   fresh('pc8');
-  net.orders.PP8 = ppOrder('PP8', 'CAPP8', 'pc8', 'pack700', '24.99', 'COMPLETED');
+  await ourOrder('PP8', 'CAPP8', 'pc8', 'pack700', '24.99', 'COMPLETED');
   const ev = ppCompleted('PP8', 'CAPP8', '24.99');
   net.verify = 'FAILURE';
   try { assert.ok((await hook(ev, { src: 'paypal', headers: ppHead() })).code >= 400); } finally { net.verify = 'SUCCESS'; }
@@ -429,6 +566,37 @@ test('srv-money-6 · ٥. توقيع غير صالح لا يشحن، وفشل ا�
   assert.equal((await hook(ev, { src: 'paypal', headers: ppHead() })).code, 200);
   assert.equal(await bal('pc8'), 770, 'مرّة واحدة');
   assert.equal(users.get('pc8').lastPaypalOrderId, 'PP8');
+});
+
+test('srv-money-6 · ٦. طلب لم يُنشئه خادمنا لصاحبه (reference_id يكتبه المشتري): الاكتمال لا يشحن الحساب المذكور فيه — لا تنزيل باقة ولا مسح رصيد', async () => {
+  fresh('vic');
+  await buy('vic', 'max', 'vic1', 10000);
+  await buy('vic', 'media_max', 'vic2', 10211);
+  assert.equal(Number(kv.get('media:mix:vic')), 12500);
+  logged.length = 0;
+  // المهاجم ينشئ الطلب ويلتقطه من حزمة PayPal في متصفّحه بالمعرّف العامّ، وreference_id اسم الضحيّة
+  net.orders.EV1 = ppOrder('EV1', 'CAPEV1', 'vic', 'basic', '10.00', 'COMPLETED');
+  net.orders.EV2 = ppOrder('EV2', 'CAPEV2', 'vic', 'media_basic', '10.21', 'COMPLETED');
+  // أو يُنشئه خادمنا له ثمّ يغيّر reference_id إلى الضحيّة
+  await ourOrder('EV3', 'CAPEV3', 'atk', 'basic', '10.00', 'COMPLETED', 'vic');
+  for (const [o, c, v] of [['EV1', 'CAPEV1', '10.00'], ['EV2', 'CAPEV2', '10.21'], ['EV3', 'CAPEV3', '10.00']]) {
+    assert.equal((await hook(ppCompleted(o, c, v), { src: 'paypal', headers: ppHead() })).code, 200, o + ': لا يُعاد');
+  }
+  const u = users.get('vic');
+  assert.equal(u.plan, 'max', 'باقة الضحيّة باقية (كانت تصير basic)');
+  assert.equal(u.planPayId, 'cs_vic1');
+  assert.equal(u.media.mix.plan, 'media_max');
+  assert.equal(Number(kv.get('media:mix:vic')), 12500, 'رصيدها باقٍ (كان يصير ١٢٥٠)');
+  assert.equal(await bal('vic'), 70 + 3200);
+  assert.equal(logged.filter((l) => l.scope === 'paypal:capture-completed' && /not_our_order/.test(l.msg)).length, 3, 'سطر للمالك لكلّ طلب');
+  // وطلب خادمنا لصاحبه يُشحن حين يكتمل التقاطه المعلَّق
+  fresh('pc9');
+  await ourOrder('PP9', 'CAPP9', 'pc9', 'pro', '20.00', 'PENDING');
+  assert.equal((await pp({ action: 'capture', orderId: 'PP9', token: 'T:pc9' })).body.reason, 'capture_pending');
+  setCap('PP9', 'COMPLETED');
+  assert.equal((await hook(ppCompleted('PP9', 'CAPP9', '20.00'), { src: 'paypal', headers: ppHead() })).code, 200);
+  assert.equal(await bal('pc9'), 990);
+  assert.equal(users.get('pc9').plan, 'pro');
 });
 
 // ───────────────────────── x-build-1 ─────────────────────────
