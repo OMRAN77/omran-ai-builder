@@ -17,6 +17,20 @@ const RECORD_SCAN_MS = 60000;
 const WEAK_MAX = 10;
 
 const low = (x) => String(x == null ? '' : x).trim().toLowerCase();
+const RO = { readOnly: true, quiet: true }; // قراءة بلا إعادة تشفير ولا سطر لكلّ مختوم (auth.getUserOnce)
+
+/* الحساب الحيّ لاسم بلا كتابة (auth.liveAccount يقرأ بـgetUser الذي قد يعيد تشفير سجلّ بالسرّ السابق): يتبع شاهد تغيير الاسم (movedTo)
+   ٣٢ قفزة حدًّا كـliveAccount. المختوم يرمي USER_RECORD_UNDECRYPTABLE للمستدعي. */
+async function liveReadOnly(key, auth) {
+  const a = auth || require('./auth.js');
+  let k = low(key);
+  let user = k ? await a.getUserOnce(k, RO) : null;
+  for (let i = 0; i < 32 && user && user.deleted && user.movedTo; i++) {
+    k = low(user.movedTo);
+    user = await a.getUserOnce(k, RO);
+  }
+  return { key: k, user };
+}
 
 /* مقدّمة اسم حساب رمز البريد — كـauth.js otpNamePrefix حرفيًّا */
 function otpNamePrefix(email) {
@@ -45,10 +59,12 @@ async function recordAccountsFor(typed, opts) {
   const otpName = new RegExp('^' + prefix + '_[0-9a-f]{6}$');
   const hints = nameHints(email);
   const weakRank = { unverified: 0, old: 1, 'otp-name': 2, name: 3 };
-  const add = (list, key, why, rec) => {
+  /* gid: هويّة Google لهذا الحساب هي البريد نفسه — وحدها تجعل الجواب «ادخل بـGoogle بهذا البريد»؛ إثبات Gmail أو بريد مؤكَّد على حساب
+     Google آخر الهويّة يعطي رابطًا (المراجعة المستقلّة: «ادخل بـGoogle بهذا البريد» كان يُنشئ حسابًا فارغًا جديدًا) */
+  const add = (list, key, why, rec, gid) => {
     const hit = list.find((x) => x.key === key);
     if (hit) { if (list === out.weak && weakRank[why] < weakRank[hit.why]) hit.why = why; return; }
-    list.push({ key, why, google: rec.googleAuth === true, at: Number(rec.createdAt) || 0 });
+    list.push({ key, why, gid: !!gid, at: Number(rec.createdAt) || 0 });
   };
   let keys = [];
   try { keys = (await kv.kvList('db/users/')).filter((k) => String(k).startsWith('db/users/')); }
@@ -62,7 +78,7 @@ async function recordAccountsFor(typed, opts) {
       catch (e) { diag.unread++; diag.partial = true; return; } /* مفتاح لا يُفكّ ترميزه — يُعدّ ولا يُسقط المسح */
       if (!key) return;
       let rec = null;
-      try { rec = await auth.getUserOnce(key); }
+      try { rec = await auth.getUserOnce(key, RO); }
       catch (e) {
         if (e && e.code === 'USER_RECORD_UNDECRYPTABLE') diag.sealed++; else diag.unread++;
         diag.partial = true;
@@ -76,9 +92,9 @@ async function recordAccountsFor(typed, opts) {
       const mail = low(rec.email);
       const gmail = low(rec.emailAssist && rec.emailAssist.gmailAddress);
       const prev = Array.isArray(rec.prevUsernames) ? rec.prevUsernames.map(low) : [];
-      if ((mail === email && auth.emailVerifiedFor(key, rec)) || gmail === email
-          || (rec.googleAuth === true && (key === 'g_' + email || prev.includes('g_' + email)))) {
-        add(out.strong, key, mail === email ? 'verified' : (gmail === email ? 'gmail' : 'google'), rec);
+      const gid = rec.googleAuth === true && (key === 'g_' + email || prev.includes('g_' + email));
+      if ((mail === email && auth.emailVerifiedFor(key, rec)) || gmail === email || gid) {
+        add(out.strong, key, gid ? 'google' : (mail === email ? 'verified' : 'gmail'), rec, gid);
         return;
       }
       if (mail === email || low(rec.emailUnverified && rec.emailUnverified.email) === email) { add(out.weak, key, 'unverified', rec); return; }
@@ -117,7 +133,7 @@ async function nameAccountsFor(text, opts) {
   const out = [];
   for (const k of hits.slice(0, 40)) {
     try {
-      const live = await auth.liveAccount(k, 1);
+      const live = await liveReadOnly(k, auth);
       if (live.user && !live.user.deleted && !isOwner(live.key) && !out.includes(live.key)) out.push(live.key);
     } catch (e) { /* سجلّ مختوم أو عطب قراءة: يُترك من القائمة، والباقي يُعرض */ }
     if (out.length >= WEAK_MAX) break;
@@ -153,6 +169,9 @@ async function paypalAccountsFor(emails, follow, opts) {
   const pp = o.paypal || require('./paypal-order.js');
   const f = o.fetchImpl || fetch;
   const scanMs = Number(o.scanMs) > 0 ? Number(o.scanMs) : PAYPAL_SCAN_MS;
+  /* بلا مفاتيح PayPal = off (لا شيء يُبحث)؛ مفاتيح موجودة ولا رمز (عطل أو مفتاح تغيّر) = عطب يُعدّ، والبحث لم يكتمل (المراجعة المستقلّة:
+     كان الاثنان off، فيقول للمالك «بحثت في PayPal» وهو لم يبحث) */
+  const keysSet = !!(String(process.env.PAYPAL_CLIENT_ID || '').trim() && String(process.env.PAYPAL_SECRET || '').trim());
   let token = null;
   try {
     /* getAccessToken بلا مهلة (مسار الدفع) — هنا ١٠ ث حدًّا كي لا يعلق زرّ المالك */
@@ -161,8 +180,12 @@ async function paypalAccountsFor(emails, follow, opts) {
     if (timer && typeof timer.unref === 'function') timer.unref();
     token = await Promise.race([pp.getAccessToken(), limit]);
     clearTimeout(timer);
-  } catch (e) { diag.errors++; console.warn('[owner-lookup] paypal token ' + String((e && e.name) || 'error')); }
-  if (!token) { diag.off = true; return []; } /* بلا مفاتيح PayPal أو رفضها: لا بحث */
+  } catch (e) { console.warn('[owner-lookup] paypal token ' + String((e && e.name) || 'error')); }
+  if (!token) {
+    if (keysSet) { diag.errors++; diag.partial = true; console.warn('[owner-lookup] paypal token none'); }
+    else diag.off = true;
+    return [];
+  }
   const base = pp.baseUrl();
   /* search: ٤٠١/٤٠٣ من Transaction Search وحده = الميزة غير مفعّلة؛ missingOk: طلب قديم لا يعود (٤٠٤) ليس عطبًا */
   const get = async (path, how) => {
@@ -178,21 +201,30 @@ async function paypalAccountsFor(emails, follow, opts) {
     diag.errors++;
     return null;
   };
+  /* الاسم ومعه وقت الدفع: اسمٌ حُرّر بعد الدفع (حذف المالك لسجلّ مختوم) وسجّله غيره لا يأخذ رابط الدافع (المراجعة المستقلّة) */
   const names = [];
-  const add = (u) => {
+  const add = (u, at) => {
     const n = low(u);
     if (!n || n === 'default') return false;
-    if (!names.includes(n)) names.push(n);
+    const hit = names.find((x) => x.name === n);
+    const t = Number(at) > 0 ? Number(at) : 0;
+    if (!hit) names.push({ name: n, at: t });
+    else if (t && (!hit.at || t < hit.at)) hit.at = t;
     return true;
   };
   const live = [];
   const followed = new Set();
+  /* كلّ اسم بمفرده: مختوم أو عطب قراءة يُعدّ ولا يُسقط البحث (كان ٥٠٠ يخفي الدافع الحيّ والأسماء الضعيفة — المراجعة المستقلّة) */
   const found = async () => {
-    for (const u of names) {
-      if (followed.has(u)) continue;
-      followed.add(u);
-      const hit = await follow(u);
-      if (hit && hit.user && !hit.user.deleted && !live.includes(hit.key)) live.push(hit.key);
+    for (const x of names) {
+      if (followed.has(x.name)) continue;
+      followed.add(x.name);
+      let hit = null;
+      try { hit = await follow(x.name); }
+      catch (e) { diag.errors++; diag.partial = true; continue; } /* مختوم أو عطب قراءة: الاسم التالي */
+      if (!hit || !hit.user || hit.user.deleted || live.includes(hit.key)) continue;
+      if (x.at && Number(hit.user.createdAt) > x.at + 60000) { diag.reused = (diag.reused || 0) + 1; continue; } /* سُجّل بعد الدفع: ليس الدافع */
+      live.push(hit.key);
     }
     return live.length > 0;
   };
@@ -225,7 +257,7 @@ async function paypalAccountsFor(emails, follow, opts) {
       diag.ordersRead++;
       if (!want.has(low(order.payer && order.payer.email_address))) return;
       diag.ordersMatched++;
-      add(orders.get(id));
+      add(orders.get(id), Date.parse(order.create_time));
     }));
   }
 
@@ -233,24 +265,24 @@ async function paypalAccountsFor(emails, follow, opts) {
   if (!(await found())) {
     let pay = null;
     try { pay = o.payRefund || require('./pay-refund.js'); } catch (e) { pay = null; } /* بلا سجلّ المنح: بالحجز ودليل المنح */
-    const fromRec = async (id) => {
+    const fromRec = async (id, at) => {
       if (!pay || typeof pay.findRec !== 'function') return false;
-      try { const hit = await pay.findRec([id]); return !!(hit && hit.rec && add(hit.rec.username)); }
+      try { const hit = await pay.findRec([id]); return !!(hit && hit.rec && add(hit.rec.username, at)); }
       catch (e) { diag.errors++; return false; } /* عطب قراءة السجلّ: نكمل */
     };
-    const ownerOf = async (captureId) => {
-      if (await fromRec(captureId)) return true;
+    const ownerOf = async (captureId, at) => {
+      if (await fromRec(captureId, at)) return true;
       const cap = await get('/v2/payments/captures/' + encodeURIComponent(captureId), 'missingOk');
       const orderId = cap && cap.supplementary_data && cap.supplementary_data.related_ids && cap.supplementary_data.related_ids.order_id;
       if (!orderId) return false;
-      if (add(orders.get(orderId)) || add(await claimOf(orderId)) || (await fromRec(orderId))) return true;
+      if (add(orders.get(orderId), at) || add(await claimOf(orderId), at) || (await fromRec(orderId, at))) return true;
       const order = await get('/v2/checkout/orders/' + encodeURIComponent(orderId), 'missingOk');
       const pu = order && Array.isArray(order.purchase_units) ? order.purchase_units[0] : null;
       const ref = low(pu && pu.reference_id);
       if (!ref || ref === 'default') return false;
       try {
         const a = await follow(ref);
-        if (a && a.user && !a.user.deleted && a.user.lastPaypalOrderId === orderId) return add(ref);
+        if (a && a.user && !a.user.deleted && a.user.lastPaypalOrderId === orderId) return add(ref, at);
       } catch (e) { diag.errors++; } /* حساب لا يُقرأ: لا دليل منح */
       return false;
     };
@@ -275,7 +307,7 @@ async function paypalAccountsFor(emails, follow, opts) {
           if (seen.has(tid)) continue;
           seen.add(tid);
           diag.matched++;
-          if (!(await ownerOf(tid))) diag.unnamed++;
+          if (!(await ownerOf(tid, Date.parse(ti.transaction_initiation_date)))) diag.unnamed++;
         }
         if (!(Number(d.total_pages) > page)) break;
         if (page === PAYPAL_PAGES) diag.partial = true;
@@ -288,4 +320,4 @@ async function paypalAccountsFor(emails, follow, opts) {
   return live;
 }
 
-module.exports = { recordAccountsFor, nameAccountsFor, paypalAccountsFor, nameHints, otpNamePrefix, RECORD_SCAN_MS, PAYPAL_FROM };
+module.exports = { recordAccountsFor, nameAccountsFor, paypalAccountsFor, liveReadOnly, nameHints, otpNamePrefix, RECORD_SCAN_MS, PAYPAL_FROM };

@@ -115,7 +115,15 @@ test('٤. الزرّ في كلّ صفّ، والرفض لا يرسل شيئًا�
 
 /* ---------- v-owner-reset-find: الحساب الأقدم من أحدث ٦٠ تسجيلًا — بالإيميل من خانة البحث ---------- */
 test('٥. بالإيميل: يُحوَّل إلى حسابه بفهرس البريد ويعمل الرابط، وحساب Google يُقال ولا رمز، والغائب ٤٠٤', async () => {
-  await auth.putUser('alya_old', { username: 'alya_old', email: 'aliya.test@icloud.com', hash: 'h', salt: 's' });
+  /* v-owner-reset-records (المراجعة المستقلّة): الفهرس يعطي رابطًا لبريد مؤكَّد على الحساب — غير المؤكَّد (التسجيل قبل ١٨ أكتوبر قبل
+     بريد غيره) اسمٌ محتمل للمالك بلا رمز، وباسمه يأخذ الرابط بعد أن يتحقّق */
+  await auth.putUser('alya_unv', { username: 'alya_unv', email: 'aliya.unv@icloud.com', hash: 'h', salt: 's' });
+  store.set('db/email-index/aliya.unv@icloud.com', JSON.stringify({ username: 'alya_unv' }));
+  const unv = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'aliya.unv@icloud.com' });
+  assert.equal(unv.code, 404, JSON.stringify(unv.body)); assert.equal(unv.body.candidates[0], 'alya_unv');
+  assert.ok(!(await auth.getUser('alya_unv')).resetTokenHash, 'غير المؤكَّد لا رمز له');
+  assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'alya_unv' })).code, 200, 'وباسمه يأخذ الرابط');
+  await auth.putUser('alya_old', { username: 'alya_old', email: 'aliya.test@icloud.com', verifiedEmail: 'aliya.test@icloud.com', hash: 'h', salt: 's' });
   store.set('db/email-index/aliya.test@icloud.com', JSON.stringify({ username: 'alya_old' }));
   const r = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: ' Aliya.Test@iCloud.com ' });
   assert.equal(r.code, 200, JSON.stringify(r.body));
@@ -240,7 +248,7 @@ test('٧. إيميل لا يصل حسابًا ← اسمه من جلسة دفع 
     // ١٠) فهرس البريد أوّلًا: بريد مفهرس لا يسأل Stripe
     calls.length = 0;
     store.set('db/email-index/indexed@x.com', JSON.stringify({ username: 'alya_old' }));
-    await auth.putUser('alya_old', { username: 'alya_old', email: 'indexed@x.com', hash: 'h', salt: 's' });
+    await auth.putUser('alya_old', { username: 'alya_old', email: 'indexed@x.com', verifiedEmail: 'indexed@x.com', hash: 'h', salt: 's' });
     assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'indexed@x.com' })).body.username, 'alya_old');
     assert.equal(calls.length, 0, 'لا نداء Stripe');
     // ١١) غير المالك ممنوع قبل أيّ نداء
@@ -634,7 +642,7 @@ test('١٤. الواجهة: أسماء محتملة بلا رابط، وأين �
   const rec409 = mk({ error: 'multiple accounts', kind: 'record', candidates: ['twin_a', 'twin_b'] }, 409);
   await rec409.ctx.adminResetLink('twin@x.com');
   const c = rec409.said.find((x) => x[0] === 'alert');
-  assert.ok(c && c[1].includes('حسابات محتملة') && c[1].includes('twin_b') && !c[1].includes('دفع بهذا الإيميل'), JSON.stringify(rec409.said));
+  assert.ok(c && c[1].includes('أكثر من حساب أثبت هذا الإيميل') && c[1].includes('twin_b') && !c[1].includes('دفع بهذا الإيميل'), JSON.stringify(rec409.said));
   // الزرّ جار الخانة ينشغل أثناء البحث ثمّ يعود
   const busy = env('ar', true);
   const row = busy.ctx.document.createElement('div');
@@ -646,4 +654,123 @@ test('١٤. الواجهة: أسماء محتملة بلا رابط، وأين �
   await busy.ctx.adminResetLinkFind();
   assert.deepEqual(during, { disabled: true, busy: 'true' });
   assert.equal(btn.disabled, false); assert.equal(btn.getAttribute('aria-busy'), null);
+});
+
+/* ---------- v-owner-reset-records: ملاحظات المراجعة المستقلّة (كلّها مثبتة بمحاكاة، ومصلحة) ---------- */
+test('١٥. المراجعة المستقلّة: الزرع لا يسبق صاحب البريد، والاسم «@» ليس دليلًا، والإثبات قبل الدفع، وهويّة Google وحدها جوابها Google، والمختوم لا يُسقط البحث، والاسم المُعاد لا يأخذ رابط الدافع، والفحص لا يعيد التشفير', async () => {
+  paymentsOff();
+  const realFetch = global.fetch, realWarn = console.warn;
+  console.warn = () => {};
+  try {
+    // ١) فهرس كتبه زارع (بريد غير مؤكَّد) وصاحب البريد دخل بـGoogle ← جواب Google، ولا رمز للزارع
+    await auth.putUser('planter1', { username: 'planter1', email: 'victim.one@gmail.com', hash: 'h', salt: 's' });
+    store.set('db/email-index/victim.one@gmail.com', JSON.stringify({ username: 'planter1' }));
+    await auth.putUser('g_victim.one@gmail.com', { username: 'Victim', email: 'victim.one@gmail.com', verifiedEmail: 'victim.one@gmail.com', googleAuth: true });
+    const v = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'victim.one@gmail.com' });
+    assert.deepEqual(v.body, { ok: false, google: true, username: 'g_victim.one@gmail.com' });
+    assert.ok(!(await auth.getUser('planter1')).resetTokenHash, 'لا رمز للزارع');
+    // ٢) اسم مستخدم هو البريد نفسه (قديم، بلا بريد) وصاحب البريد المؤكَّد حساب آخر ← الرابط للمؤكَّد
+    await auth.putUser('sara.k@outlook.com', { username: 'sara.k@outlook.com', email: null, hash: 'h', salt: 's' });
+    await auth.putUser('sara_k', { username: 'sara_k', email: 'sara.k@outlook.com', verifiedEmail: 'sara.k@outlook.com', hash: 'h', salt: 's' });
+    const sk = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'sara.k@outlook.com', dryRun: true });
+    assert.equal(sk.code, 200, JSON.stringify(sk.body)); assert.equal(sk.body.username, 'sara_k'); assert.equal(sk.body.via, 'record');
+    // ٣) الإثبات قبل الدفع: Gmail ربطه حساب، وStripe فيه دفعة لحساب آخر بالبريد نفسه ← المُثبِت، ولا نداء Stripe
+    process.env.STRIPE_SECRET_KEY = 'sk_test_order';
+    const stripeCalls = [];
+    global.fetch = async (url) => { stripeCalls.push(String(url)); return { ok: true, status: 200, json: async () => ({ data: [{ id: 'cs_x', payment_status: 'paid', customer_details: { email: 'nora.h@gmail.com' }, metadata: { username: 'payer_a' } }], has_more: false }) }; };
+    await auth.putUser('payer_a', { username: 'payer_a', email: null, hash: 'h', salt: 's' });
+    await auth.putUser('nora_mail', { username: 'nora_mail', email: null, emailAssist: { gmailAddress: 'nora.h@gmail.com' }, hash: 'h', salt: 's' });
+    const no = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'nora.h@gmail.com', dryRun: true });
+    assert.equal(no.body.username, 'nora_mail', JSON.stringify(no.body)); assert.equal(stripeCalls.length, 0, 'المُثبِت قبل الدفع');
+    delete process.env.STRIPE_SECRET_KEY; global.fetch = realFetch;
+    // ٤) حساب Google بهويّة أخرى ربط Gmail شخصيًّا ← رابط (لا «ادخل بـGoogle بهذا البريد» الذي يُنشئ حسابًا فارغًا)
+    await auth.putUser('huda', { username: 'huda', email: 'work@company.com', verifiedEmail: 'work@company.com', googleAuth: true, prevUsernames: ['g_work@company.com'], emailAssist: { gmailAddress: 'huda.personal@gmail.com' }, hash: 'h', salt: 's' });
+    const hu = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'huda.personal@gmail.com', dryRun: true });
+    assert.equal(hu.code, 200, JSON.stringify(hu.body)); assert.equal(hu.body.dryRun, true); assert.equal(hu.body.username, 'huda');
+    // ٥) PayPal: دافعٌ سجلّه مختوم لا يُسقط البحث (كان ٥٠٠) ← الدافع الحيّ
+    process.env.PAYPAL_CLIENT_ID = 'id_test'; process.env.PAYPAL_SECRET = 'sec_test';
+    const orders = { ORD_S: { payer: { email_address: 'payer.t@x.com' }, create_time: '2026-09-01T10:00:00Z' }, ORD_L: { payer: { email_address: 'payer.t@x.com' }, create_time: '2026-09-02T10:00:00Z' },
+      ORD_R: { payer: { email_address: 'old.reused@x.com' }, create_time: '2026-08-01T10:00:00Z' } };
+    global.fetch = ppMock(async (u) => {
+      const m = u.pathname.match(/^\/v2\/checkout\/orders\/([^/]+)$/);
+      if (m) return orders[m[1]] ? ok(Object.assign({ id: m[1] }, orders[m[1]])) : fail(404);
+      if (u.pathname === '/v1/reporting/transactions') return fail(403, 'NOT_AUTHORIZED');
+      return fail(404);
+    });
+    store.set('db/users/sealed_pp.json', JSON.stringify({ enc: 1, iv: 'AAAAAAAAAAAAAAAA', tag: 'AAAAAAAAAAAAAAAAAAAAAA==', data: 'AAAA' }));
+    await auth.putUser('live_pp', { username: 'live_pp', email: null, hash: 'h', salt: 's', createdAt: Date.parse('2026-08-15T00:00:00Z') });
+    store.set('paid:lastPaypalOrderId:ORD_S', 'sealed_pp');
+    store.set('paid:lastPaypalOrderId:ORD_L', 'live_pp');
+    const pt = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'payer.t@x.com', dryRun: true });
+    assert.equal(pt.code, 200, JSON.stringify(pt.body)); assert.equal(pt.body.username, 'live_pp'); assert.ok(pt.body.paypal.errors >= 1);
+    // ٦) اسم حُرّر بعد الدفع وسجّله غيره ← لا رابط له
+    await auth.putUser('reused', { username: 'reused', email: null, hash: 'h', salt: 's', createdAt: Date.parse('2026-10-25T00:00:00Z') });
+    store.set('paid:lastPaypalOrderId:ORD_R', 'reused');
+    const ru = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'old.reused@x.com' });
+    assert.equal(ru.code, 404, JSON.stringify(ru.body)); assert.equal(ru.body.paypal.reused, 1); assert.ok(!(await auth.getUser('reused')).resetTokenHash);
+    // ٧) مفاتيح PayPal موجودة ولا رمز ← عطب (البحث لم يكتمل)، لا «غير مفعّل»
+    global.fetch = async () => ({ ok: false, status: 401, json: async () => ({ error: 'invalid_client' }) });
+    const tk = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'nobody.tk@x.com' });
+    assert.equal(tk.code, 404); assert.equal(tk.body.paypal.off, false); assert.equal(tk.body.paypal.errors, 1); assert.equal(tk.body.complete, false);
+    for (const k of ['ORD_S', 'ORD_L', 'ORD_R']) store.delete('paid:lastPaypalOrderId:' + k);
+    store.delete('db/users/sealed_pp.json');
+    delete process.env.PAYPAL_CLIENT_ID; delete process.env.PAYPAL_SECRET; global.fetch = realFetch;
+    // ٨) الفحص لا يعيد تشفير سجلّ بالسرّ السابق (كان getUserOnce يكتبه)، والرابط الحقيقيّ يكتب بالسرّ الحاليّ
+    const cur = process.env.AUTH_SECRET;
+    process.env.AUTH_SECRET = 'سرّ-قديم';
+    await auth.putUser('rekey_me', { username: 'rekey_me', email: 'rekey@x.com', verifiedEmail: 'rekey@x.com', hash: 'h', salt: 's' });
+    process.env.AUTH_SECRET = cur; process.env.AUTH_SECRET_PREVIOUS = 'سرّ-قديم';
+    try {
+      const before = store.get('db/users/rekey_me.json');
+      const dr = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'rekey@x.com', dryRun: true });
+      assert.equal(dr.code, 200, JSON.stringify(dr.body)); assert.equal(dr.body.username, 'rekey_me');
+      assert.equal(store.get('db/users/rekey_me.json'), before, 'الفحص لم يكتب السجلّ');
+      const real = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'rekey_me' });
+      assert.equal(real.code, 200); assert.notEqual(store.get('db/users/rekey_me.json'), before, 'الرابط يكتب الرمز');
+    } finally { delete process.env.AUTH_SECRET_PREVIOUS; }
+  } finally {
+    delete process.env.STRIPE_SECRET_KEY; delete process.env.PAYPAL_CLIENT_ID; delete process.env.PAYPAL_SECRET;
+    global.fetch = realFetch; console.warn = realWarn;
+  }
+});
+
+test('١٦. الواجهة: خانة البحث تفحص أوّلًا بلا كتابة وتؤكّد على الاسم الذي وُجد، والرفض لا يُنشئ رابطًا، والبحث غير المكتمل يقول ذلك', async () => {
+  const flow = (answer, first) => {
+    const e = env('ar', answer);
+    const row = e.ctx.document.createElement('div');
+    const input = e.ctx.document.createElement('input'); input.id = 'adminResetInput'; input.value = ' Aliya@iCloud.com ';
+    row.appendChild(input); row.appendChild(e.ctx.document.createElement('button')); e.ctx.document.body.appendChild(row);
+    e.ctx.fetch = async (url, init) => {
+      const body = JSON.parse(init.body); e.sent.push([String(url), body]);
+      return body.dryRun ? (first || { ok: true, status: 200, json: async () => ({ ok: true, dryRun: true, username: 'alya_old', via: 'record' }) })
+        : { ok: true, status: 200, json: async () => ({ ok: true, link: 'https://x.test/?resetToken=cd&ru=alya_old', minutes: 30, username: 'alya_old' }) };
+    };
+    return e;
+  };
+  const yes = flow(true);
+  await yes.ctx.adminResetLinkFind();
+  assert.deepEqual(yes.sent.map((x) => [x[1].targetUsername, !!x[1].dryRun]), [['Aliya@iCloud.com', true], ['alya_old', false]], 'فحص ثمّ رابط باسم الحساب نفسه');
+  const c = yes.said.find((x) => x[0] === 'confirm');
+  assert.ok(c && c[1].includes('alya_old') && c[1].includes('Aliya@iCloud.com'), 'التأكيد يذكر الحساب الذي وُجد: ' + (c && c[1]));
+  assert.ok(yes.said.some((x) => x[0] === 'prompt' && x[2].includes('ru=alya_old')));
+  const no = flow(false);
+  await no.ctx.adminResetLinkFind();
+  assert.equal(no.sent.length, 1, 'الرفض بعد الفحص لا يطلب رابطًا'); assert.ok(!no.said.some((x) => x[0] === 'prompt'));
+  const part = flow(true, { ok: false, status: 404, json: async () => ({ error: 'user not found', candidates: [], records: { records: 3 }, complete: false, paypal: { denied: false } }) });
+  await part.ctx.adminResetLinkFind();
+  const a = part.said.find((x) => x[0] === 'alert');
+  assert.ok(a && a[1].includes('ما اكتمل البحث') && !a[1].includes('دوّرت في'), a && a[1]);
+  assert.equal(part.sent.length, 1);
+  // اسم بلا @ ← «أسماء قريبة» لا «يثبت هذا الإيميل»؛ ورفض الخادم بنصّ مترجم، وصفحة خطأ نصّيّة لا ترمي
+  const mk2 = (body, status, text) => { const e = env('ar', true); e.ctx.fetch = async () => ({ ok: status < 400, status, json: async () => { if (text) throw new SyntaxError('Unexpected token'); return body; } }); return e; };
+  const nm = mk2({ error: 'user not found', candidates: ['aliya_rose'] }, 404);
+  await nm.ctx.adminResetLink('aliya');
+  assert.ok(nm.said.find((x) => x[0] === 'alert')[1].includes('ما في حساب بهذا الاسم بالضبط'));
+  const fb = mk2({ error: 'forbidden' }, 403);
+  await fb.ctx.adminResetLink('x');
+  assert.ok(fb.said.find((x) => x[0] === 'alert')[1].includes('غير مصرح'));
+  const tx = mk2(null, 504, true);
+  await tx.ctx.adminResetLink('x');
+  const t = tx.said.find((x) => x[0] === 'alert')[1];
+  assert.ok(t.includes('فشل') && t.includes('HTTP 504') && !/Unexpected|SyntaxError/.test(t), t);
 });
