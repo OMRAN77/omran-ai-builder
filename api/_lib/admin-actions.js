@@ -1,6 +1,6 @@
 // Vercel Serverless Function: OWNER-ONLY user management actions.
 // Requires a valid session token belonging to OWNER_USERNAME. Regular users
-// get 403 no matter what they send. Actions: ban, unban, delete, message, reset-link.
+// get 403 no matter what they send. Actions: ban, unban, delete, message, reset-link, link-sub.
 const { getUser, putUser, userPath } = require('./auth.js');
 const { kvDel, kvList } = require('./kv.js');
 const crypto = require('crypto');
@@ -219,6 +219,14 @@ module.exports = async (req, res) => {
       } catch (e) { bodyTxt = 'fetch: ' + (e && e.message); }
       const sh = shape(akey).label;
       res.status(200).json({ ok: st === 200, status: st, keyTail: '…' + akey.slice(-6), shape: sh, detail: (st === 200 ? 'المفتاح شغال والرصيد سليم ✅' : bodyTxt) + '\nشكل المفتاح: ' + sh });
+      return;
+    }
+
+    /* v-owner-link-sub: اشتراك Stripe دُفع بلا دخول (قبل v-checkout-login) يُربط بحساب صاحبه — الدفعات الفائتة تُضاف بمفاتيح
+       الويب هوك نفسها والتجديد بعدها يُشحن وحده (sub-link.js). يكتب فقط بـconfirm:true صريحًا، وإلّا فحصٌ بلا أثر. */
+    if (action === 'link-sub') {
+      const r = await require('./sub-link.js').linkSub({ target: targetUsername, subscriptionId: body.subscriptionId, confirm: body.confirm === true });
+      res.status(r.status).json(r.body);
       return;
     }
 

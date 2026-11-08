@@ -1409,6 +1409,17 @@ const I18N = {
     ownerResetLink: "🔑 رابط استرجاع \"{u}\" (صالح {m} دقيقة) — انسخه وأرسله له وحده:",
     ownerResetGoogle: "🔑 الحساب \"{u}\" مسجَّل بزرّ Google ولا كلمة مرور له — يدخل بزرّ «المتابعة عبر Google» بالإيميل نفسه.", // v-owner-reset-find
     ownerResetNotFound: "ما في حساب بهذا الإيميل أو الاسم.",
+    ownerLinkSubBtn: "ربط اشتراك Stripe", // v-owner-link-sub
+    ownerLinkSubPh: "رقم الاشتراك (sub_…)",
+    ownerLinkSubConfirm: "🔗 ربط الاشتراك {s} ({plan}) بحساب \"{u}\"؟\nإيميل الحساب: {ae}\nإيميل Stripe: {se}\nدفعات تُضاف الآن: {n} ← +{p} نقطة\nوالتجديدات القادمة تُضاف للحساب تلقائيًّا.",
+    ownerLinkSubMismatch: "⚠️ إيميل الحساب يختلف عن إيميل Stripe — تأكّد أنّه صاحب الاشتراك.",
+    ownerLinkSubPrev: "⚠️ الاشتراك كان باسم \"{u}\" وهذا الحساب محذوف أو غير موجود.",
+    ownerLinkSubSkipped: "{n} دفعة مستردّة أو عليها اعتراض أو لم تُعرف شحنتها — لن تُضاف.",
+    ownerLinkSubDone: "✅ رُبط الاشتراك بحساب \"{u}\": +{p} نقطة عن {n} دفعة، والتجديدات القادمة تُضاف تلقائيًّا.",
+    ownerLinkSubTaken: "❌ هذا الاشتراك مربوط من قبل بحساب \"{u}\".",
+    ownerLinkSubNoSub: "لم أجد هذا الاشتراك في Stripe.",
+    ownerLinkSubBadId: "❌ اكتب رقم الاشتراك من Stripe (يبدأ بـ sub_).",
+    ownerLinkSubNothing: "✅ الاشتراك مربوط بهذا الحساب وكلّ دفعاته مضافة من قبل.",
     ownerResetMany: "دفع بهذا الإيميل أكثر من حساب: {list} — اسأل صاحبه عن اسم حسابه واكتبه في الخانة.", // v-owner-reset-stripe
     ownerDiagRunning: "⏳ يفحص مفتاح كلود على أنثروبيك…",
     ownerDiagKey: "المفتاح: {k}",
@@ -2065,6 +2076,17 @@ const I18N = {
     ownerResetLink: "🔑 Recovery link for “{u}” (valid {m} min) — copy it and send it to them only:",
     ownerResetGoogle: "🔑 The account “{u}” signed up with Google and has no password — they sign in with “Continue with Google” using that same email.", // v-owner-reset-find
     ownerResetNotFound: "No account with this email or username.",
+    ownerLinkSubBtn: "Link Stripe subscription", // v-owner-link-sub
+    ownerLinkSubPh: "Subscription ID (sub_…)",
+    ownerLinkSubConfirm: "🔗 Link subscription {s} ({plan}) to the account “{u}”?\nAccount email: {ae}\nStripe email: {se}\nPayments added now: {n} → +{p} points\nFuture renewals will be added to the account automatically.",
+    ownerLinkSubMismatch: "⚠️ The account email differs from the Stripe email — make sure they own the subscription.",
+    ownerLinkSubPrev: "⚠️ The subscription was under the name “{u}”, and that account is deleted or does not exist.",
+    ownerLinkSubSkipped: "{n} payment(s) refunded, disputed or with an unknown charge — they will not be added.",
+    ownerLinkSubDone: "✅ Subscription linked to “{u}”: +{p} points for {n} payment(s). Future renewals will be added automatically.",
+    ownerLinkSubTaken: "❌ This subscription is already linked to the account “{u}”.",
+    ownerLinkSubNoSub: "Could not find this subscription in Stripe.",
+    ownerLinkSubBadId: "❌ Enter the Stripe subscription ID (it starts with sub_).",
+    ownerLinkSubNothing: "✅ The subscription is linked to this account and all its payments were already added.",
     ownerResetMany: "More than one account paid with this email: {list} — ask the person for their account name and type it in the box.", // v-owner-reset-stripe
     ownerDiagRunning: "⏳ Checking the Claude key with Anthropic…",
     ownerDiagKey: "Key: {k}",

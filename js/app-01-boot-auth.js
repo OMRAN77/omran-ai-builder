@@ -865,6 +865,50 @@ try{
     if(!v){ if(el) el.focus(); return; }
     return window.adminResetLink(v);
   };
+  /* v-owner-link-sub: ربط اشتراك Stripe دُفع بلا دخول بحساب صاحبه. فحصٌ أوّلًا (بلا confirm — لا يكتب الخادم شيئًا) يعرض للمالك
+     الحساب وإيميله وإيميل Stripe والدفعات والنقاط ويحذّر إن اختلف الإيميلان، ثمّ التنفيذ بـconfirm:true بعد موافقته وحدها. */
+  window.adminLinkSubscription = async function(){
+    const uEl = document.getElementById('adminLinkUserInput'), sEl = document.getElementById('adminLinkSubInput');
+    const who = uEl ? String(uEl.value || '').trim() : '';
+    const sub = sEl ? String(sEl.value || '').trim() : '';
+    if(!who){ if(uEl) uEl.focus(); return; }
+    if(!/^sub_[A-Za-z0-9]{6,}$/.test(sub)){ alert(ownT('ownerLinkSubBadId')); if(sEl) sEl.focus(); return; }
+    const call = async (go) => {
+      const res = await fetch('/api/admin-actions', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token: authGet('aiapp_auth_token'), action: 'link-sub', targetUsername: who, subscriptionId: sub, confirm: go === true }),
+      });
+      let data = {};
+      try{ data = (await res.json()) || {}; }catch(e){ __swallow(e, 'link-sub json'); }
+      return { res, data };
+    };
+    const failed = (r) => {
+      const d = r.data;
+      if(d.error === 'linked_other'){ alert(ownT('ownerLinkSubTaken', { u: ownIso(d.username || '?') })); return true; }
+      if(r.res.status === 404 && d.error === 'subscription not found'){ alert('❌ ' + ownT('ownerLinkSubNoSub')); return true; }
+      if(r.res.status === 404){ alert('❌ ' + ownT('ownerResetNotFound')); return true; }
+      if(d.error === 'partial'){ alert(ownT('ownerLinkSubDone', { u: ownIso(d.username), p: d.pointsAdded || 0, n: d.granted || 0 }) + '\n❌ ' + (d.detail || ownT('ownerFailed'))); return true; }
+      if(!r.res.ok || !d.ok){ alert('❌ ' + (d.detail || d.error || ownT('ownerFailed'))); return true; }
+      return false;
+    };
+    try{
+      const a = await call(false);
+      if(failed(a)) return;
+      const d = a.data;
+      if(!(d.toGrant > 0) && d.linkedTo && d.linkedTo === d.username){ alert(ownT('ownerLinkSubNothing')); return; }
+      const ae = String(d.accountEmail || ''), se = String(d.customerEmail || '');
+      const lines = [];
+      if(d.previous) lines.push(ownT('ownerLinkSubPrev', { u: ownIso(d.previous) }));
+      if(ae && se && ae.toLowerCase() !== se.toLowerCase()) lines.push(ownT('ownerLinkSubMismatch'));
+      lines.push(ownT('ownerLinkSubConfirm', { s: ownLtr(d.subscription), plan: ownLtr(d.planLabel || d.plan || ''), u: ownIso(d.username), ae: ae ? ownLtr(ae) : '—', se: se ? ownLtr(se) : '—', n: d.toGrant || 0, p: d.points || 0 }));
+      const skipped = (Array.isArray(d.payments) ? d.payments : []).filter(x => x && (x.state === 'refunded' || x.state === 'blocked' || x.state === 'unverified')).length;
+      if(skipped) lines.push(ownT('ownerLinkSubSkipped', { n: skipped }));
+      if(!confirm(lines.join('\n'))) return;
+      const b = await call(true);
+      if(failed(b)) return;
+      alert(ownT('ownerLinkSubDone', { u: ownIso(b.data.username), p: b.data.pointsAdded || 0, n: b.data.granted || 0 }));
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
+  };
   window.adminMessageUser = async function(username){
     const text = prompt(ownT('ownerMsgPrompt', { u: ownIso(username) }));
     if(!text || !text.trim()) return;

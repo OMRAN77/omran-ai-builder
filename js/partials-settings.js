@@ -728,6 +728,12 @@
         <input type="text" id="adminResetInput" autocomplete="off" spellcheck="false" placeholder="إيميل أو اسم مستخدم" data-i18n-placeholder="ownerVipPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
         <button type="button" onclick="adminResetLinkFind()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🔑 <span data-i18n="ownerResetTitle">رابط استرجاع الحساب</span></button>
       </div>
+      <!-- v-owner-link-sub: اشتراك Stripe دُفع بلا دخول (قبل ٢٥ سبتمبر) يُربط بحساب صاحبه — الدفعات الفائتة تُضاف والتجديد بعدها يُشحن وحده -->
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+        <input type="text" id="adminLinkUserInput" dir="auto" autocomplete="off" spellcheck="false" placeholder="إيميل أو اسم مستخدم" data-i18n-placeholder="ownerVipPh" style="flex:1 1 160px; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
+        <input type="text" id="adminLinkSubInput" dir="auto" autocomplete="off" spellcheck="false" placeholder="رقم الاشتراك (sub_…)" data-i18n-placeholder="ownerLinkSubPh" style="flex:1 1 160px; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
+        <button type="button" onclick="adminLinkSubscription()" style="flex:none; padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🔗 <span data-i18n="ownerLinkSubBtn">ربط اشتراك Stripe</span></button>
+      </div>
       <div id="adminUsersTable" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:320px; overflow-y:auto;"></div>
 
       <!-- v-sec-knowledge-approve: مراجعة حقائق «المعرفة الجماعيّة» قبل حقنها — يُملأ بالـJS بأزرار إيموجي بلا نصّ مترجَم جديد. -->
