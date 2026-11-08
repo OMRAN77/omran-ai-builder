@@ -181,28 +181,76 @@ function verifyPassword(password, salt, hash) {
    القديم يعيد الرصيد كاملًا بعد صرفه (٩٨٠ ← صرف ٨٢٥ ← رجوع ← ٩٨٠، أُثبت بهذا الكود)، والاسم الجديد يبدأ بفيديوهات باقة
    وحصص يوم جديدة، ورصيد اشتراك الوسائط يختفي عنه. الآن كلّ عدّاد يتبع الحساب ولا يبقى منه شيء تحت الاسم القديم،
    وعدّاد يتيم تحت الاسم الجديد (من صاحب سابق) يُمحى بدل أن يُبعث. */
+const COUNTER_MEDIA_KINDS = ['image', 'video', 'maha', 'mix']; // رصيد اشتراك الوسائط — mix: «صور وفيديو» (v-media-merge، MEDIA_KINDS)
+const renameKey = (u) => encodeURIComponent(String(u).trim().toLowerCase());
+// فيديوهات الباقة للفترة الحاليّة (_planVideos.js). v-lock-subs (srv-money-4): وفترات planNext (أدنى مدفوعة تسري بعد الأعلى بعدّاد فترتها)
+const planVideoAts = (user) => [...new Set([user.planUpdatedAt].concat(Array.isArray(user.planNext) ? user.planNext.map((x) => x && x.at) : [])
+  .map((v) => Math.floor(Number(v) || 0)))].filter((at) => at > 0);
+
+/* v-r3 (r3-4): قبل كتابة السجلّ الجديد والشاهد (والقفلان ممسوكان، ولا كاتب يصل الاسم الجديد بعد: الردّ والمنح يتبعان الشاهد ولم يُكتب) — عدّادات
+   الاسم الجديد تُصفَّر: اليتيم من صاحب سابق لا يُبعث (كما كان النقل بالكتابة فوقه)، والنقاط '0' لا غائبة، فردٌّ يصل الاسم الجديد بعد الشاهد لا
+   يبذر عدّاده من مرآة السجلّ (ensureBalance) ثمّ يُضاف إليه العدّاد القديم مرّة ثانية. وعدّاد القديم يُبذر من سجلّه إن غاب (حساب لم يلمس محفظته)
+   فلا تضيع نقاط المرآة. عطلٌ هنا يرمي قبل أيّ كتابة: لا تغيير. */
+async function prepareCounterMove(oldKey, newKey, user) {
+  const { kvSetRaw, kvDel } = require('./kv.js');
+  const n = renameKey;
+  if (n(oldKey) === n(newKey)) return;
+  await require('./points.js').ensureBalance(oldKey);
+  await kvSetRaw('points:' + n(newKey), '0');
+  for (const kind of COUNTER_MEDIA_KINDS) await kvDel('media:' + kind + ':' + n(newKey), { strict: true });
+  for (const at of planVideoAts(user)) await kvDel('planvid:' + n(newKey) + ':' + at, { strict: true });
+}
+
 async function moveLiveCounters(oldKey, newKey, user) {
-  const { kvGetRaw, kvSetRaw, kvDel } = require('./kv.js');
-  const n = (u) => encodeURIComponent(String(u).trim().toLowerCase());
+  const { kvGetRaw, kvSetRaw, kvDel, kvExpire, kvPipeline } = require('./kv.js');
+  const n = renameKey;
   if (n(oldKey) === n(newKey)) return; // النقل إلى المفتاح نفسه = نسخ ثمّ حذف — يمحو الرصيد
-  const move = async (from, to, ttlSec) => {
-    const v = await kvGetRaw(from);
-    if (v !== null && v !== undefined && String(v) !== '') await kvSetRaw(to, v, ttlSec);
-    else await kvDel(to);
-    await kvDel(from);
+  /* v-r3 (r3-4 · r3-5): النقل كان كتابةً فوق الجديد (GET القديم ثمّ SET الجديد) — ردٌّ يتبع الشاهد إلى الاسم الجديد (points.js liveName) أو منحٌ
+     يقفل الجديد بعد الشاهد ويصل قبل النقل كان يُمحى بالكتابة فوقه (٥٠٠ ← ٣٨٠، و١٧٠ ← ٧٠). الآن جمعٌ: INCRBY على الجديد بقيمة القديم
+     (الجديد مصفَّر قبل الشاهد في prepareCounterMove، فما فيه الآن وصل بعده)، ثمّ حذف القديم. والإعادة لا تجمع مرّتين: علامة لهذا التغيير
+     وهذا العدّاد تُكتب مع INCRBY في طلب واحد (pipeline، كـrefundPointsOnly)، فردٌّ ضاع بعد التنفيذ تجد إعادته العلامة فلا تجمع ثانيةً.
+     هويّة التغيير: وقته في renameLog (آخر مدخل يكتبه changeUsername). */
+  const log = Array.isArray(user.renameLog) ? user.renameLog : [];
+  const stamp = n(oldKey) + '>' + n(newKey) + '@' + (Number(log[log.length - 1]) || 0);
+  const moveAdd = async (from, to, ttlSec) => {
+    const mark = 'rename-moved:' + stamp + ':' + from;
+    let err = null;
+    for (let i = 0; i < 3; i++) {
+      try {
+        if (!(await kvGetRaw(mark, { strict: true }))) {
+          const raw = await kvGetRaw(from, { strict: true });
+          const v = Math.trunc(Number(raw));
+          if (raw !== null && raw !== undefined && String(raw) !== '' && Number.isFinite(v) && v !== 0) {
+            const cmds = [['INCRBY', to, String(v)], ['SET', mark, String(v), 'EX', '3600']];
+            if (ttlSec) cmds.push(['EXPIRE', to, String(ttlSec)]);
+            const r = await kvPipeline(cmds);
+            if (!Array.isArray(r) || r[0] === null || r[0] === undefined || !Number.isFinite(Number(r[0]))) {
+              // INCRBY لم يقع والعلامة ربّما كُتبت (الأوامر تُنفَّذ بالترتيب لا ذرّيًّا): تُمحى، وإن تعذّر محوها يُترك القديم مكانه ولا يُعاد
+              try { await kvDel(mark, { strict: true }); } catch (e2) { throw Object.assign(new Error('counter move not applied, mark stuck: ' + from), { stop: true }); }
+              throw new Error('counter move not applied: ' + from);
+            }
+          }
+        } else if (ttlSec) await kvExpire(to, ttlSec);
+        await kvDel(from, { strict: true });
+        return;
+      } catch (e) {
+        err = e;
+        if (e && e.stop) break;
+        if (i < 2) await sleep(150 * (i + 1));
+      }
+    }
+    throw err;
   };
-  await move('points:' + n(oldKey), 'points:' + n(newKey));
-  for (const kind of ['image', 'video', 'maha', 'mix']) { // رصيد اشتراك الوسائط بما بقي من نافذته (٣٥ يومًا) — mix: «صور وفيديو» (v-media-merge، MEDIA_KINDS)
+  // عطل نقلٍ لا يوقف البقيّة؛ ويُرمى في الآخر فيسجّله changeUsername للمالك (auth:rename-move).
+  const failed = [];
+  const counter = async (from, to, ttlSec) => { try { await moveAdd(from, to, ttlSec); } catch (e) { failed.push(from + ': ' + String((e && e.message) || e).slice(0, 80)); } };
+  await counter('points:' + n(oldKey), 'points:' + n(newKey));
+  for (const kind of COUNTER_MEDIA_KINDS) { // رصيد اشتراك الوسائط بما بقي من نافذته (٣٥ يومًا)؛ الجديد صُفّر قبل الشاهد
     const m = user.media && user.media[kind];
     const left = m ? Math.floor((Number(m.at || 0) + 35 * 86400000 - Date.now()) / 1000) : 0;
-    if (left > 0) await move('media:' + kind + ':' + n(oldKey), 'media:' + kind + ':' + n(newKey), left);
-    else await kvDel('media:' + kind + ':' + n(newKey));
+    if (left > 0) await counter('media:' + kind + ':' + n(oldKey), 'media:' + kind + ':' + n(newKey), left);
   }
-  // فيديوهات الباقة للفترة الحاليّة (_planVideos.js). v-lock-subs (srv-money-4): وفترات planNext (أدنى مدفوعة تسري بعد الأعلى بعدّاد فترتها)
-  const ats = [user.planUpdatedAt].concat(Array.isArray(user.planNext) ? user.planNext.map((x) => x && x.at) : []);
-  for (const at of [...new Set(ats.map((v) => Math.floor(Number(v) || 0)))]) {
-    if (at > 0) await move('planvid:' + n(oldKey) + ':' + at, 'planvid:' + n(newKey) + ':' + at, 40 * 86400);
-  }
+  for (const at of planVideoAts(user)) await counter('planvid:' + n(oldKey) + ':' + at, 'planvid:' + n(newKey) + ':' + at, 40 * 86400);
   // كلّ نقل مستقلّ: عطل في واحد لا يترك البقيّة على الاسم القديم (فتتجدّد مع الاسم الجديد).
   const step = async (label, fn) => { try { await fn(); } catch (e) { console.warn('[rename] move ' + label + ' failed: ' + (e && e.message)); } };
   /* v-lock-r2 (money-invariants-9): تذاكر الخصم المعلَّق باسم وقت الخصم — حجوز صور مها (imghold)، وفهرس مهامّ الفيديو المفتوحة للكنس
@@ -228,6 +276,7 @@ async function moveLiveCounters(oldKey, newKey, user) {
   await step('image-giveback', () => require('./image-giveback.js').moveToday(oldKey, newKey)); // ردود الحارس و«لم يُنفَّذ» اليوم — كانت تتجدّد مع كلّ اسم
   await step('cost-meter', () => require('./cost-meter.js').moveMonthCosts(oldKey, newKey));
   await step('office-month', () => require('./office.js').moveMonth(oldKey, newKey, require('./kv.js'))); // v-office-files: ملفّ الشهر المجّانيّ لا يتجدّد بتغيير الاسم
+  if (failed.length) throw new Error('counters not moved — ' + failed.join(' · ')); // v-r3 (r3-4): القديم باقٍ مكانه (لم يُحذف) فيُنقل يدويًّا
 }
 
 function makeToken(username, sv) {
@@ -1078,8 +1127,13 @@ module.exports = async (req, res) => {
       const ck = require('./create-checkout-session.js');
       let out = null;
       const held = { status(c) { out = [c, null]; return this; }, json(b) { if (out) out[1] = b; return this; } };
+      /* v-r3 (r3-5): وقفل الاسم الجديد أيضًا، بترتيب ثابت (القديم ثمّ الجديد) وانتظار محدود — منحٌ يصل بعد الشاهد يتبعه إلى الاسم الجديد ويقفله،
+         وكان قفله حرًّا فيجري مع نقل العدّادات وتُكتب نقاطه فوقها. الآن ينتظر حتّى يكتمل التغيير. لم يُنل ⇒ BUSY ⇒ ٤٢٩ القائم أدناه. اسمٌ يساوي
+         القديم بعد التطبيع قفلُه هو الممسوك نفسه. */
+      const sameLock = String(oldKey).trim().toLowerCase() === newKey;
+      const newNameLock = (fn) => (sameLock ? fn() : ck.withNameLock(newKey, fn));
       try {
-        await ck.withAccount(oldKey, async (lockedName, user) => {
+        await ck.withAccount(oldKey, (lockedName, user) => newNameLock(async () => {
           const res = held; // الردّ بعد فكّ القفلين — انظر out أعلاه
           // v-name-reuse: رمز اسم ميّت (غيّره صاحبه أو حذفه المالك) لا ينقل شيئًا.
           if (lockedName !== oldKey || !user || user.deleted) {
@@ -1122,6 +1176,7 @@ module.exports = async (req, res) => {
           // v-rename-move: الأسماء السابقة — اشتراك أو جلسة دفع بدأت بالاسم القديم تُعرف لصاحبها بعد التغيير.
           movedUser.prevUsernames = (Array.isArray(user.prevUsernames) ? user.prevUsernames : []).filter((x) => x !== newKey).concat([oldKey]).slice(-10);
           movedUser.renameLog = renameLog.concat([now]);
+          await prepareCounterMove(oldKey, newKey, user); // v-r3 (r3-4): قبل الشاهد — عطله يرمي ولا شيء كُتب
           await putUser(newKey, movedUser);
           // Free up the old key so it can't be logged into or re-claimed while pointing here.
           await putUser(oldKey, { deleted: true, movedTo: newKey });
@@ -1129,7 +1184,7 @@ module.exports = async (req, res) => {
           await moveVip(oldKey, newKey); // v-lock-acct (srv-auth-12): VIP يتبع الحساب لا الاسم — لا يرمي
           _banMemo.delete(oldKey); _banMemo.delete(newKey); // الشاهد جلسة ميّتة الآن (isBanned) — لا ينتظر ذاكرة الخمس ثوانٍ
           res.status(200).json({ ok: true, token: makeToken(newKey, movedUser.sv), username: movedUser.username, avatar: movedUser.avatar || null });
-        });
+        }));
       } catch (e) {
         if (!(e && e.message === ck.BUSY)) throw e;
         out = [429, { error: m('محاولات كثيرة، حاول بعد ' + 1 + ' دقيقة', 'Too many attempts, try again in ' + 1 + ' min'), code: 'too_many', minutes: 1 }];

@@ -18,7 +18,7 @@
 // الويب هوك (api/webhook.js، invoice.paid) بـgrantPlanToUser نفسها. Apple Pay / Google Pay دفعة واحدة (PaymentIntent).
 const { verifyToken, getUser, putUser } = require('./auth.js');
 const { kvIncrBy, kvSetIfAbsent, kvDel, kvGetRaw, kvSetRaw } = require('./kv.js');
-const { MEDIA_PLANS, MEDIA_WINDOW_DAYS, grantMedia, mediaActive } = require('./_mediaPlans.js');
+const { MEDIA_PLANS, MEDIA_WINDOW_DAYS, grantMedia, mediaActive, deferNext } = require('./_mediaPlans.js');
 
 const PLANS = {
   // v-plans-2026-09 (قرار المالك ١٢ سبتمبر): الباقات الأكبر تأخذ سعر نقطة أفضل
@@ -76,7 +76,7 @@ function keepsHigherChat(user, plan) {
   const cp = require('./tier.js').chatPeriod(user);
   return cp && rankOf(cp.plan) > rankOf(plan) ? cp : null;
 }
-// v-lock-r2 (r2-3 · r2-4): فترة الخانة الفعليّة أعلى من plan — منحه حُفظ تحتها (المحادثة: planNext؛ الوسائط: رصيد أُضيف) ولم يحلّ محلّها
+// v-lock-r2 (r2-3 · r2-4): فترة الخانة الفعليّة أعلى من plan — منحه حُفظ تحتها (المحادثة: planNext؛ الوسائط: mediaNext مؤجَّلة، v-r3 r3-2) ولم يحلّ محلّها
 function heldHigher(user, plan) {
   const p = PLANS[plan];
   if (!p || !p.media) return !!keepsHigherChat(user, plan);
@@ -146,6 +146,11 @@ async function liveAccount(username) {
   for (let i = 0; i < 32 && user && user.deleted && user.movedTo; i++) { name = String(user.movedTo); user = await getUser(name); }
   return { name, user };
 }
+/* v-r3 (r3-6 · r3-8): getUser يعيد null للمفقود ولعطل القراءة معًا. «مفقود يقينًا» = قراءة صارمة نجحت ولم تجد سجلًّا (ولا شاهدًا) — حساب
+   مُحي أو اسم لم يوجد قطّ. عطلها (مهلة، ردّ لا يُقرأ، قيمة تالفة) = false: لا يُعرف، فيُعاد. لا يرمي. */
+async function surelyMissing(name) {
+  try { return (await require('./auth.js').getUserOnce(String(name || ''), { strict: true })) === null; } catch (e) { return false; } // guard-ok — العطل «لا يُعرف» لا «مفقود»
+}
 /* v-acct-lock (المراجعة المعاكسة الثالثة لـv-pay-refund): سجلّ الحساب يُكتب كاملًا من قراءة سابقة (KV بلا CAS)، فسحبان معًا على
    خانتين (باقة المحادثة وباقة الفيديو، أو باقة ورزمة نقاط) أو منحٌ مع سحب على الحساب نفسه يكتب أحدهما نسخته القديمة فوق ما كتبه
    الآخر — فتعود فترة مسحوبة أو يضيع شراء جديد. المنح (grantPlanToUser) والسحب (pay-refund.js) يأخذان قفلًا للحساب ويقرآن داخله
@@ -158,6 +163,15 @@ const acctLockKey = (name) => 'db/acct-lock/' + encodeURIComponent(String(name |
 // waitMs اختياريّ (v-lock-credit، x-build-1): مرآة صرف النقاط في المسار الساخن تنتظر أقلّ من مهلة الدفع.
 async function withAccount(username, fn, waitMs) {
   const name = (await liveAccount(username)).name;
+  return withNameLock(name, async () => {
+    const acct = await liveAccount(name); // طازجة داخل القفل
+    if (acct.name !== name) throw new Error(BUSY); // غيّر اسمه بين القراءة والقفل: الإعادة تقفل اسمه الجديد
+    return fn(acct.name, acct.user);
+  }, waitMs);
+}
+/* v-r3 (r3-5): قفل الحساب باسمه كما هو، بلا تتبّع الشواهد — تغيير الاسم يمسك قفل الاسم الجديد أيضًا (الترتيب ثابت: القديم ثمّ الجديد)، والجديد
+   قد يكون شاهد اسمٍ سابق يقود إلى الحساب نفسه فيُحلّ withAccount إلى القفل الممسوك. الانتظار محدود؛ ثمّ BUSY (٤٢٩ القائم في التغيير). */
+async function withNameLock(name, fn, waitMs) {
   const key = acctLockKey(name);
   const until = Date.now() + (Number(waitMs) >= 0 ? Number(waitMs) : ACCT_LOCK_WAIT_MS);
   for (let wait = 40; !(await kvSetIfAbsent(key, '1', ACCT_LOCK_TTL_SEC)); wait = Math.min(400, Math.round(wait * 1.5))) {
@@ -165,9 +179,7 @@ async function withAccount(username, fn, waitMs) {
     await new Promise((r) => setTimeout(r, wait + Math.floor(Math.random() * wait)));
   }
   try {
-    const acct = await liveAccount(name); // طازجة داخل القفل
-    if (acct.name !== name) throw new Error(BUSY); // غيّر اسمه بين القراءة والقفل: الإعادة تقفل اسمه الجديد
-    return await fn(acct.name, acct.user);
+    return await fn();
   } finally { await kvDel(key); } // kvDel لا يرمي: بعد أثرٍ تمّ لا يُفشل فكُّ القفل العمليّة
 }
 
@@ -190,7 +202,7 @@ async function noteGrant(username, plan, sourceField, sourceId, meta, user, prev
     amount: Number(m.amount) > 0 ? Math.round(Number(m.amount)) : null, currency: m.currency ? String(m.currency).toLowerCase() : null,
     refs: Array.isArray(m.refs) ? m.refs : [],
     prev: prev || null, // الفترة التي حلّت هذه الدفعة محلّها — تعود إن استُردّت هذه كاملة وتلك سارية غير مسحوبة
-    ...(p.media && keptAt ? { topUp: true } : {}), // v-lock-r2 (r2-4): رصيد أُضيف تحت وسائط أعلى سارية (at وقتها) — استرداده يسحب الرصيد وحده
+    ...(p.media && keptAt ? { deferred: true } : {}), // v-r3 (r3-2): مؤجَّلة تحت وسائط أعلى سارية (user.mediaNext برقمها) — استردادها يسحب المؤجَّلة أو ما بقي منها
   });
 }
 
@@ -211,7 +223,10 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
        فيُعاد). عطل قراءة الحجز نفسه يرمي كذلك.
        v-lock-r2 (r2-1): ودفعة لم تُحجز قطّ كذلك — null «لا يُعرف» لا «محذوف». كان 404 هنا فيلغي الويب هوك الاشتراك الحيّ وينبّه «ردّ المبلغ»
        ويردّ 200 في عطل Upstash لثوانٍ (فلا تُشحن الدفعة أبدًا وتقف التجديدات)، وPayPal يردّ 200 بـ'account'. الآن رمي في كلّ مسار (non-2xx
-       فيُعاد، والعميل يعيد التحقّق)؛ الحساب المحذوف يقينًا (شاهد deleted) وحده 404 أدناه — والمسارات الثلاثة تعامله دفعةً يتيمة. */
+       فيُعاد، والعميل يعيد التحقّق)؛ الحساب المحذوف يقينًا (شاهد deleted) وحده 404 أدناه — والمسارات الثلاثة تعامله دفعةً يتيمة.
+       v-r3 (r3-6): وكان المفقود فعلًا (سجلّ مُحي، أو دفعة باسم لا وجود له) يرمي BUSY للأبد — Stripe يعيد ثلاثة أيّام ثمّ يُسقطه بلا تنبيه ولا
+       إلغاء للاشتراك. القراءة الصارمة تفصل: نجحت ولا سجلّ ⇒ 404 فيصل المسار اليتيم كما قبل r2-1 (تنبيه المالك وإلغاء الاشتراك)؛ تعثّرت ⇒ BUSY. */
+    if (await surelyMissing(username)) return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
     throw new Error(BUSY);
   }
   if (user.deleted) return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
@@ -252,16 +267,18 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     if (PLANS[plan].media) {
       if (sourceField) user[sourceField] = sourceId;
       /* v-lock-r2 (r2-4): أدنى تحت وسائط أعلى سارية في رصيدها شيء (التقاط PayPal معلَّق اكتمل بعد شراء الأعلى، جلسة قديمة) — grantMedia
-         كان يعيد الملء بالأدنى فيمحو المتبقّي (media_max ‏٩٠٠٠ ← ١٢٥٠). كقاعدة المحادثة (kept): الأعلى وفترتها لا تُمسّ، ورصيد الأدنى يُضاف
-         إليها (الدفعة لا تضيع). الإضافة هي الأثر: قبلها يُفكّ الحجز، وبعدها علامة إكمال لا تُعيد الملء. */
+         كان يعيد الملء بالأدنى فيمحو المتبقّي (media_max ‏٩٠٠٠ ← ١٢٥٠). كقاعدة المحادثة (kept): الأعلى وفترتها لا تُمسّ.
+         v-r3 (r3-2 · r3-3): ورصيد الأدنى كان يُضاف إلى الأعلى فيُمحى مع استردادها (dropPeriod) وينتهي بنهايتها (تجديد Basic وبقي من Max ثلاثة
+         أيّام = ثلاثة أيّام). الآن يُؤجَّل كاملًا بنافذته (user.mediaNext، _mediaPlans deferNext) ويسري حين تخلو الخانة. كتابة السجلّ هي الأثر:
+         بعدها علامة إكمال (finishGrant يكتب المؤجَّلة إن لم تصل الكتابة، ومرّة واحدة برقمها). */
       if ((await higherMediaLeft(user, username, plan)) > 0) {
-        const hm = user.media[PLANS[plan].media];
         kept = true;
-        await kvIncrBy(mediaBudgetKey(username, PLANS[plan].media), MEDIA_PLANS[plan].budget);
-        creditedAt = Number(hm.at) || Date.now();
+        const paidAt = Date.now();
+        deferNext(user, plan, sourceId, paidAt);
+        creditedAt = paidAt;
         await putUser(username, user);
-        await noteGrant(username, plan, sourceField, sourceId, meta, user, null, creditedAt); // بلا سابقة: لم يحلّ محلّ فترة
-        return { ok: true, plan: user.plan || null, media: PLANS[plan].media, mediaPlan: plan, pointsAdded: 0, balance: Number(user.points || 0), kept: true };
+        await noteGrant(username, plan, sourceField, sourceId, meta, {}, null, paidAt); // بلا فترة ولا سابقة: مؤجَّلة (deferred في سجلّها)
+        return { ok: true, plan: user.plan || null, media: PLANS[plan].media, mediaPlan: plan, pointsAdded: 0, balance: Number(user.points || 0), kept: true, deferred: true };
       }
       const g = await grantMedia(user, username, plan);
       creditedAt = (g && Number(user.media[g.media].at)) || Date.now(); // الرصيد مُلئ: إعادة ملئه تعيد ما صُرف منه بعده
@@ -426,8 +443,12 @@ async function finishGrant(username, user, plan, sourceField, sourceId, meta, pe
     const cur = user.media && user.media[p.media];
     const curId = String((cur && cur.payId) || '');
     const landed = curId === sid;
-    if (w.kept) kept = true; // v-lock-r2 (r2-4): رصيد أُضيف تحت أعلى سارية — الأثر تمّ، والفترة لا تُمسّ ولا يُعاد الملء
-    else if (!landed && cur && curId !== wasId && Number(cur.at) >= at) newer = true;
+    if (w.kept) {
+      // v-r3 (r3-2): مؤجَّلة تحت أعلى سارية (grantLocked) — الفترة الحاليّة لا تُمسّ؛ تُكتب في mediaNext إن لم تصل كتابة المنح (deferNext مرّة
+      // برقمها)، ولا تُكتب إن كانت سرت وصارت الفترة نفسها (landed).
+      kept = true;
+      if (!landed) deferNext(user, plan, sid, at);
+    } else if (!landed && cur && curId !== wasId && Number(cur.at) >= at) newer = true;
     else if (!landed) {
       // المراجعة المعاكسة: الفترة التي حلّ محلّها سُحبت أو تبدّلت بين الفشل والإعادة (استردادها) — سحبها محا الرصيد الذي ملأه هذا المنح
       // أو كتب فوقه رصيد فترة أقدم، فكانت الباقة المدفوعة تُسلَّم بلا رصيد. يُعاد رصيدها بنافذته من وقت المنح.
@@ -438,7 +459,7 @@ async function finishGrant(username, user, plan, sourceField, sourceId, meta, pe
       }
       user.media = Object.assign({}, user.media); user.media[p.media] = { plan, at, payId: sid };
     }
-    view.media = { [p.media]: { at } };
+    if (!kept) view.media = { [p.media]: { at } }; // المؤجَّلة بلا فترة بعد: سجلّها بلا وقت (deferred)
   } else if (!p.pack) {
     const cur = user.plan ? { plan: String(user.plan).toLowerCase(), at: Number(user.planUpdatedAt) || 0, payId: String(user.planPayId || '') } : null;
     const inNext = Array.isArray(user.planNext) && user.planNext.some((n) => n && String(n.payId || '') === sid);
@@ -841,11 +862,21 @@ async function supersedeSubs(username, plan, keepId, fetchImpl) {
   const prev = Array.isArray(acct.user.prevUsernames) ? acct.user.prevUsernames.slice(-3) : [];
   const names = [...new Set([acct.name, String(username)].concat(prev).filter(Boolean))];
   const subs = await liveSubs(names, f, auth);
+  /* v-r3 (r3-1): وبلا اشتراك أعلى كان يرجع 0 قبل حلقة الإلغاء — Max دفعة لشهر + اشتراك Basic أقدم + جلسة Pro قديمة تُبقي Basic وPro حيّين
+     معًا (خصمان كلّ شهر في خانة واحدة). الآن: الأعلى اشتراكًا حيًّا ⇒ لا يُمسّ أبدًا، ويُلغى الأدنى الجديد ومعه كلّ أدنى أقدم منه في خانته
+     (زائدان تحت الأعلى). ولا اشتراك أعلى ⇒ الحلقة العاديّة أدناه: يُلغى الأقدم في الخانة ويبقى هذا الأحدث وحده — وليس فيها ما هو أعلى منه. */
   if (heldHigher(acct.user, plan)) {
-    const higher = subs.some((x) => x.id !== String(keepId) && planSlot(x.metadata && x.metadata.plan) === slot && rankOf(x.metadata.plan) > rankOf(plan));
-    if (!higher) return 0;
-    await cancelSubNow(keepId, f, auth);
-    return 1;
+    const inSlot = (x) => x.id !== String(keepId) && planSlot(x.metadata && x.metadata.plan) === slot;
+    if (subs.some((x) => inSlot(x) && rankOf(x.metadata.plan) > rankOf(plan))) {
+      let c = 0;
+      for (const x of subs) {
+        if (!inSlot(x) || rankOf(x.metadata.plan) > rankOf(plan) || !older(x)) continue;
+        await cancelSubNow(x.id, f, auth);
+        c++;
+      }
+      await cancelSubNow(keepId, f, auth);
+      return c + 1;
+    }
   }
   let n = 0;
   for (const x of subs) {
@@ -937,6 +968,8 @@ module.exports.claimKey = claimKey;
 module.exports.completeCredit = completeCredit; // v-lock-credit (srv-money-2): الاسترداد يكمل منحًا معلَّقًا قبل أن يسحبه
 module.exports.withAccount = withAccount; // v-acct-lock — السحب يأخذ قفل الحساب نفسه
 module.exports.BUSY = BUSY; // v-lock-r2 (money-invariants-8): تغيير الاسم يأخذ قفل الحساب نفسه ويعرف رميه
+module.exports.withNameLock = withNameLock; // v-r3 (r3-5): وقفل الاسم الجديد بلا تتبّع الشواهد
+module.exports.surelyMissing = surelyMissing; // v-r3 (r3-8): السحب يفصل المفقود يقينًا عن عطل القراءة كالمنح
 // v-lock-subs: الويب هوك يلغي الاشتراك القديم من خانته (srv-money-3) واشتراك الحساب المحذوف (srv-money-5)، وPayPal يرفض الأدنى (srv-money-4)
 module.exports.supersedeSubs = supersedeSubs;
 module.exports.cancelSub = cancelSub;

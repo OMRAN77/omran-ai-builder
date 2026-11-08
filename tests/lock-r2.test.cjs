@@ -360,9 +360,12 @@ test('r2-4: طلب PayPal media_basic معلَّق ثمّ media_max بالبطا
   assert.equal(u2.media.mix.plan, 'media_max', 'كانت media_basic');
   assert.equal(u2.media.mix.at, u1.media.mix.at, 'نافذة الأعلى كما هي');
   assert.equal(u2.media.mix.payId, 'cs_rana_mm');
-  assert.equal(store.get('media:mix:rana'), String(9000 + 1250), 'كان ١٢٥٠: المتبقّي ٩٠٠٠ مُحي');
+  // v-r3 (r3-2 · r3-3): رصيد الأدنى لا يُضاف إلى الأعلى (كان يُمحى مع استردادها وينتهي بنهايتها) — يُؤجَّل كاملًا ويسري حين تخلو الخانة (tests/lock-r3.test.cjs)
+  assert.equal(store.get('media:mix:rana'), '9000', 'كان ١٢٥٠: المتبقّي ٩٠٠٠ مُحي');
+  assert.deepEqual((u2.mediaNext || []).map((x) => [x.plan, x.payId, x.budget]), [['media_basic', orderId, 1250]], 'الدفعة لا تضيع');
   assert.equal((await paypal.captureCompleted(capEvent(orderId, 'CAP_R'))).status, 'already');
-  assert.equal(store.get('media:mix:rana'), String(9000 + 1250), 'مرّة واحدة');
+  assert.equal(store.get('media:mix:rana'), '9000');
+  assert.equal((await user('rana')).mediaNext.length, 1, 'مرّة واحدة');
 });
 
 test('r2-4: جلسة Stripe قديمة لوسائط أدنى بالطريقة نفسها؛ واستردادها كاملًا يأخذ ما أضافته وحده والأعلى باقية', async () => {
@@ -372,12 +375,14 @@ test('r2-4: جلسة Stripe قديمة لوسائط أدنى بالطريقة ن
   assert.equal((await hook(paidSession('cs_sama_mb', 'sama', 'media_basic', 1021))).code, 200);
   let u = await user('sama');
   assert.equal(u.media.mix.plan, 'media_max');
-  assert.equal(store.get('media:mix:sama'), String(5000 + 1250));
+  assert.equal(store.get('media:mix:sama'), '5000'); // v-r3 (r3-2): مؤجَّلة لا مضافة
+  assert.equal(u.mediaNext.length, 1);
   const refund = evt('charge.refunded', { id: 'ch_sama_mb', object: 'charge', payment_intent: 'pi_cs_sama_mb', amount: 1021, amount_refunded: 1021, refunded: true, currency: 'usd' });
   assert.equal((await hook(refund)).code, 200);
   u = await user('sama');
   assert.equal(u.media.mix.plan, 'media_max', 'استرداد الأدنى لا يُسقط الأعلى');
-  assert.equal(store.get('media:mix:sama'), '5000', 'ما أضافته الدفعة المستردّة يُسحب');
+  assert.equal(store.get('media:mix:sama'), '5000', 'ولا يأخذ من رصيدها');
+  assert.equal(u.mediaNext, undefined, 'المؤجَّلة المستردّة تُسحب');
 });
 
 test('r2-4 · r2-3: اشتراك media_basic من جلسة قديمة فوق اشتراك media_max حيّ برصيد ⇒ الرصيد يُضاف، واشتراك الأعلى يبقى والأدنى الزائد يُلغى', async () => {
@@ -389,7 +394,8 @@ test('r2-4 · r2-3: اشتراك media_basic من جلسة قديمة فوق ا�
   assert.equal((await hook(subSession('cs_lama_mb', 'lama', 'media_basic', 1021, 'sub_lama_mb'))).code, 200);
   const u = await user('lama');
   assert.equal(u.media.mix.plan, 'media_max');
-  assert.equal(store.get('media:mix:lama'), String(7000 + 1250));
+  assert.equal(store.get('media:mix:lama'), '7000'); // v-r3 (r3-2): مؤجَّلة لا مضافة
+  assert.ok(u.mediaNext.some((x) => x.payId === 'cs_lama_mb'));
   assert.equal(net.subs.sub_lama_mm.status, 'active', 'الأعلى لا يُلغى');
   assert.equal(net.subs.sub_lama_mb.status, 'canceled', 'لا خصمان شهريّان');
 });
@@ -403,17 +409,18 @@ test('r2-4: فشل كتابة السجلّ بعد إضافة الرصيد ⇒ ا
   const r1 = await hook(ev);
   fail.userPut = 0;
   assert.ok(r1.code >= 500, String(r1.code));
-  assert.equal(store.get('media:mix:nada'), String(6000 + 1250), 'الأثر تمّ مرّة');
+  assert.equal(store.get('media:mix:nada'), '6000', 'رصيد الأعلى لا يُمسّ'); // v-r3 (r3-2): مؤجَّلة لا مضافة
   assert.equal(store.has('paid-credit:lastStripeSessionId:cs_nada_mb'), true, 'علامة الإكمال');
   assert.equal((await hook(ev)).code, 200);
   assert.equal((await hook(ev)).code, 200);
   const u = await user('nada');
   assert.equal(u.media.mix.plan, 'media_max', 'الإكمال لا يكتب الأدنى فترةً');
   assert.equal(u.media.mix.payId, 'cs_nada_mm');
-  assert.equal(store.get('media:mix:nada'), String(6000 + 1250), 'لا إضافة ثانية ولا إعادة ملء ١٢٥٠');
+  assert.equal(store.get('media:mix:nada'), '6000', 'لا إضافة ولا إعادة ملء ١٢٥٠');
+  assert.equal(u.mediaNext.filter((x) => x.payId === 'cs_nada_mb').length, 1, 'المؤجَّلة مرّة واحدة');
   assert.equal(store.has('paid-credit:lastStripeSessionId:cs_nada_mb'), false);
   const rec = JSON.parse(store.get('payrec:cs_nada_mb'));
-  assert.equal(rec.topUp, true, 'سجلّ المنح يعرف أنّها إضافة');
+  assert.equal(rec.deferred, true, 'سجلّ المنح يعرف أنّها مؤجَّلة');
 });
 
 test('r2-4: رصيد الأعلى فارغ ⇒ الأدنى يحلّ محلّها كما كان (لا خسارة)', async () => {

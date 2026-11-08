@@ -93,6 +93,72 @@ async function grantMedia(user, username, planKey, now) {
   return { media: p.media, budget: p.budget };
 }
 
+/* v-r3 (r3-2 · r3-3): دفعة وسائط أدنى تصل وفي خانتها أعلى سارية برصيد (التقاط PayPal معلَّق، جلسة قديمة، تجديد اشتراك أدنى أقدم) — كانت
+   تُضاف إلى رصيد الأعلى (v-lock-r2 r2-4) فتنتهي بنهاية الأعلى (٣ أيّام بدل شهر) وتُمحى مع استرداده (dropPeriod يحذف عدّاده). الآن تُؤجَّل
+   كفترات المحادثة (planNext): user.mediaNext = [{ media, plan, budget, payId, paidAt, cut }] برصيدها كاملًا، وتسري بنافذتها كاملة (٣٥ يومًا)
+   من لحظة سريانها حين تخلو خانتها: انتهت نافذة الأعلى، أو نفد رصيدها، أو سُحبت باسترداد أو اعتراض. cut = ما استُردّ منها قبل سريانها
+   (نسبة تراكميّة؛ تكرار السحب بالنسبة نفسها لا يأخذ مرّتين). */
+function pendingNext(user) {
+  return (user && Array.isArray(user.mediaNext) ? user.mediaNext : []).filter((x) => x && MEDIA_PLANS[x.plan] && MEDIA_PLANS[x.plan].media === x.media);
+}
+// يضيف الدفعة إلى المؤجَّلة (مرّة واحدة برقمها — إعادة المنح أو إكماله لا تكرّرها).
+function deferNext(user, planKey, payId, paidAt) {
+  const p = MEDIA_PLANS[planKey];
+  if (!p) return;
+  const id = payId ? String(payId) : null;
+  const list = pendingNext(user).filter((x) => !id || String(x.payId || '') !== id);
+  list.push({ media: p.media, plan: planKey, budget: p.budget, payId: id, paidAt: Number(paidAt) || Date.now() });
+  user.mediaNext = list;
+}
+// خانات فيها مؤجَّلة وقد خلت: لا فترة سارية، أو رصيدها نفد. يرمي عطب قراءة الرصيد (لا سريان على تخمين).
+async function dueKinds(user, username, now) {
+  const out = [];
+  for (const kind of [...new Set(pendingNext(user).map((x) => x.media))]) {
+    if (!mediaActive(user, kind, now) || !(Number(await kvGetRaw(budgetKey(username, kind), { strict: true })) > 0)) out.push(kind);
+  }
+  return out;
+}
+/** تحت قفل الحساب وعلى نسخته الطازجة: أوّل مؤجَّلة في كلّ خانة خلت تسري الآن برصيدها (ناقصًا ما استُردّ). الرصيد قبل السجلّ — المستدعي يكتب السجلّ. */
+async function activateDue(user, username, now) {
+  const kinds = await dueKinds(user, username, now);
+  if (!kinds.length) return false;
+  const t = typeof now === 'number' ? now : Date.now();
+  const pend = pendingNext(user);
+  const done = [];
+  for (const kind of kinds) {
+    const x = pend.find((y) => y.media === kind);
+    const cut = Math.min(1, Math.max(0, Number(x.cut) || 0));
+    await kvSetRaw(budgetKey(username, kind), Math.max(0, Math.round((Number(x.budget) || 0) * (1 - cut))), MEDIA_WINDOW_DAYS * 86400);
+    user.media = Object.assign({}, user.media || {});
+    user.media[kind] = Object.assign({ plan: x.plan, at: t }, x.payId ? { payId: String(x.payId) } : {});
+    done.push(x);
+  }
+  const rest = pend.filter((x) => !done.includes(x));
+  if (rest.length) user.mediaNext = rest; else delete user.mediaNext;
+  return true;
+}
+// قراءة الحساب لمسارات الوسائط: مؤجَّلة حلّ وقتها تسري أوّلًا (قفل الحساب بانتظار قصير؛ مشغول أو عطب ⇒ كما هو، والقراءة التالية تُسريها).
+const NEXT_LOCK_WAIT_MS = 2000;
+async function settleNext(username, user, now) {
+  if (!pendingNext(user).length) return user;
+  try {
+    if (!(await dueKinds(user, username, now)).length) return user;
+    return await require('./create-checkout-session.js').withAccount(username, async (name, fresh) => {
+      if (!fresh || fresh.deleted) return user;
+      if (await activateDue(fresh, name, now)) await require('./auth.js').putUser(name, fresh);
+      return fresh;
+    }, NEXT_LOCK_WAIT_MS);
+  } catch (e) {
+    console.warn('[media] deferred plan not activated yet:', e && e.message);
+    return user;
+  }
+}
+async function readMediaUser(username, o) {
+  let user = null;
+  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  return settleNext(username, user, o.now);
+}
+
 async function readTickets(username) {
   try {
     const raw = await kvGetRaw(ticketsKey(username));
@@ -129,8 +195,7 @@ async function trySpendMedia(username, pts, reason, opts) {
   const kind = mediaOf(reason);
   if (!kind || !username) return null;
   const o = opts || {};
-  let user = null;
-  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  const user = await readMediaUser(username, o); // v-r3 (r3-3): مؤجَّلة حلّ وقتها تسري قبل القراءة
   const fils = UNIT_COST[reason];
   for (const pool of SPEND_POOLS[kind]) {
     if (!mediaActive(user, pool, o.now)) continue;
@@ -189,8 +254,7 @@ async function refundMedia(username, pts, pool) {
    بترتيب SPEND_POOLS، والرصيد ينقص بما غُطّي قبله) بلا خصم ولا تذكرة. ما لا يُغطّى يُدفع نقاطًا. دقيقة مها لا تغطّي صورة ولا فيديو. */
 async function coverage(username, reasons, opts) {
   const o = opts || {};
-  let user = null;
-  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  const user = await readMediaUser(username, o); // v-r3 (r3-3): مؤجَّلة حلّ وقتها تسري قبل القراءة
   const left = {};
   const out = [];
   for (const reason of reasons || []) {
@@ -222,8 +286,7 @@ const imageSlots = (user, now) => SPEND_POOLS.image.filter((k) => mediaActive(us
 /** جودة صورة مشترك الصور: «عاديّة» افتراضيًّا، و«جودة عالية» في الطلب أو الإعداد تجعلها عالية. null = ليس مشتركًا. */
 async function imageQuality(username, text, opts) {
   const o = opts || {};
-  let user = null;
-  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  const user = await readMediaUser(username, o); // v-r3 (r3-3): مؤجَّلة حلّ وقتها تسري قبل القراءة
   const slot = imageSlots(user, o.now)[0];
   if (!slot) return null;
   if (HIGH_ASK_RE.test(String(text || '')) || TEXT_ASK_RE.test(String(text || ''))) return 'high';
@@ -244,8 +307,7 @@ async function setImageQuality(username, quality) {
 /** الرصيد المتبقّي وعدد ما يكفيه من كلّ نوع — للواجهة. */
 async function mediaStatus(username, opts) {
   const o = opts || {};
-  let user = null;
-  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  const user = await readMediaUser(username, o); // v-r3 (r3-3): مؤجَّلة حلّ وقتها تسري قبل القراءة
   const out = {};
   for (const kind of MEDIA_KINDS) {
     if (!mediaActive(user, kind, o.now)) continue;
@@ -262,4 +324,5 @@ async function mediaStatus(username, opts) {
 module.exports = {
   MEDIA_PLANS, UNIT_COST, MEDIA_WINDOW_DAYS, MAHA_CALL_CAP_MIN, MEDIA_KINDS, SPEND_POOLS,
   mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, refundMahaMinute, mediaStatus, imageQuality, setImageQuality, coverage,
+  deferNext, activateDue, // v-r3 (r3-2 · r3-3): المنح يؤجّل الأدنى تحت أعلى سارية، والسحب يُسري المؤجَّلة حين يُسقط الأعلى
 };

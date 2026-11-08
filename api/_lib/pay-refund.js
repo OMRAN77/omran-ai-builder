@@ -202,15 +202,23 @@ const holdsMain = (u, r) => CHAT_PLANS.includes(r.plan) && String(u.plan || '') 
 // v-lock-subs (srv-money-4): دفعة أدنى وصلت تحت أعلى سارية — فترتها في planNext برقمها (create-checkout-session.js)، تسري بعد الأعلى
 const isNextOf = (n, r) => !!(n && String(n.plan || '') === r.plan && n.payId && String(n.payId) === String(r.id));
 const holdsNext = (u, r) => !r.media && CHAT_PLANS.includes(r.plan) && Array.isArray(u.planNext) && u.planNext.some((n) => isNextOf(n, r));
+// v-r3 (r3-2): دفعة وسائط أدنى وصلت تحت أعلى سارية — مؤجَّلة في user.mediaNext برقمها (_mediaPlans deferNext) حتّى تخلو خانتها، ثمّ فترةٌ برقمها
+const isNextMedia = (n, r) => !!(n && n.media === r.media && String(n.plan || '') === r.plan && n.payId && String(n.payId) === String(r.id));
+const holdsNextMedia = (u, r) => !!r.media && Array.isArray(u.mediaNext) && u.mediaNext.some((n) => isNextMedia(n, r));
 function holds(u, r) {
-  if (r.media) { const x = u.media && u.media[r.media]; return !!(x && x.plan === r.plan && sameGrant(x.at, r, x.payId)); }
+  if (r.media) { const x = u.media && u.media[r.media]; return !!(x && x.plan === r.plan && sameGrant(x.at, r, x.payId)) || holdsNextMedia(u, r); }
   return holdsMain(u, r) || holdsNext(u, r);
 }
-// v-lock-r2 (r2-4): دفعة وسائط أدنى أُضيف رصيدها تحت أعلى سارية (topUp، create-checkout-session) — لا فترة لها تُسحب، ورصيدها في فترة الأعلى
-// التي وقتها في السجلّ ما دامت هي نفسها سارية (تجديدٌ بعدها أعاد الملء فلا يُؤخذ من رصيد غيرها).
-function topUpIn(u, r) {
-  const x = r.topUp && r.media && u.media && u.media[r.media];
-  return !!(x && Number(x.at) === Number(r.at) && require('./_mediaPlans.js').mediaActive(u, r.media));
+// v-r3 (r3-2): استرداد جزئيّ لمؤجَّلة لم تسرِ — ينقص رصيدها حين تسري بالنسبة التراكميّة (cut)؛ تكرار السحب بالنسبة نفسها لا يأخذ مرّتين. يرجع ما أُخذ.
+async function trimNext(name, u, r, fraction) {
+  const n = u.mediaNext.find((x) => isNextMedia(x, r));
+  const was = Math.min(1, Math.max(0, Number(n.cut) || 0));
+  const cut = Math.max(was, clamp01(Number(fraction) || 0));
+  if (!(cut > was)) return 0;
+  const budget = Math.max(0, Number(n.budget) || 0);
+  n.cut = cut;
+  await require('./auth.js').putUser(name, u);
+  return Math.round(budget * cut) - Math.round(budget * was);
 }
 
 // الدفعة التي فتحت الفترة الحاليّة في خانة rec إن كان سجلّها مسحوبًا كاملًا (revoked.plan) — فترة لا يجوز أن تبقى على الحساب.
@@ -226,6 +234,12 @@ async function revokedHolder(u, rec) {
 // يترك رصيد الباقة المستردّة كاملًا تحت الباقة الأدنى ولا تطابق الإعادة شيئًا). رصيد العائدة: ما بقي لها وقت حلّت r محلّها،
 // ولا يزيد على ما لم يُستردّ من دفعتها.
 async function dropPeriod(name, u, r) {
+  if (holdsNextMedia(u, r)) { // v-r3 (r3-2): مؤجَّلة لم تسرِ — تخرج من mediaNext، والفترة الحاليّة ورصيدها لا تُمسّ
+    u.mediaNext = u.mediaNext.filter((n) => !isNextMedia(n, r));
+    if (!u.mediaNext.length) delete u.mediaNext;
+    await require('./auth.js').putUser(name, u);
+    return null;
+  }
   const prior = await priorPeriod(r);
   const back = prior ? Object.assign({}, prior.p) : null;
   if (back) delete back.budget;
@@ -237,7 +251,11 @@ async function dropPeriod(name, u, r) {
       const left = Math.min(Math.max(0, Number(prior.p.budget) || 0), mp ? Math.round(mp.budget * (1 - prior.frac)) : 0);
       const ttl = Math.max(60, Math.ceil((Number(back.at) + MEDIA_WINDOW_DAYS * 86400000 - Date.now()) / 1000));
       await kvSetRaw(budgetKey(name, r.media), left, ttl);
-    } else await kvDel(budgetKey(name, r.media));
+    } else {
+      // v-r3 (r3-2): خلت الخانة — المؤجَّلة تحتها (أدنى دُفعت أثناء الأعلى) تسري الآن برصيدها ونافذتها كاملين؛ كان العدّاد يُحذف فيضيع ثمنها
+      await require('./_mediaPlans.js').activateDue(u, name);
+      if (!(u.media && u.media[r.media])) await kvDel(budgetKey(name, r.media));
+    }
   } else {
     const main = holdsMain(u, r);
     if (holdsNext(u, r)) { // v-lock-subs (srv-money-4): فترة planNext لهذه الدفعة تخرج — لا تسري بعد الأعلى وثمنها مُستردّ
@@ -248,6 +266,7 @@ async function dropPeriod(name, u, r) {
     if (back) { u.plan = back.plan; u.planUpdatedAt = back.planUpdatedAt; u.planPayId = back.planPayId; } else { u.plan = null; delete u.planUpdatedAt; delete u.planPayId; }
   }
   await require('./auth.js').putUser(name, u);
+  if (!back && r.media && u.media && u.media[r.media]) return u.media[r.media].plan; // v-r3 (r3-2): المؤجَّلة التي سرت مكانها
   return back ? back.plan : null;
 }
 
@@ -284,9 +303,14 @@ async function applyRevoke(rec, step) {
   // (خانة أخرى، أو رزمة نقاط، أو جزئيّ) ومنحٌ جديد لا يكتبان نسختهما القديمة فوق هذا السحب ولا هذا فوقهما. لم يُنل القفل ⇒
   // رمي قبل أيّ أثر فيعيد المرسل الحدث. v-rename-move: الحساب بعد تغيير اسمه.
   await withAccount(rec.username, async (name, user) => {
+    /* v-r3 (r3-8): getUser يعيد null عند عطل القراءة — كان السحب يعود هنا بلا أثر والحدث معلَّم «تمّ» قبله (revoke)، فاسترداد في عطل KV لا يأخذ
+       شيئًا ولا يُعاد أبدًا (توأم r2-1 في جهة السحب). الآن المفقود يقينًا (قراءة صارمة بلا سجلّ) وحده لا شيء يُسحب منه؛ والعطل يرمي قبل أيّ
+       أثر فيفكّ revoke علامته (non-2xx فيُعاد الحدث)، والإعادة بعد التعافي تسحب مرّة واحدة. */
+    if (!user && !(await require('./create-checkout-session.js').surelyMissing(name))) throw new Error('account unreadable, retry: ' + cut(rec.username).slice(0, 40));
     if (!user || user.deleted) return;
     out.account = name;
-    const mediaCurrent = !!(rec.media && (holds(user, rec) || topUpIn(user, rec))); // v-lock-r2 (r2-4): ورصيد الإضافة يُسحب منها
+    const mediaCurrent = !!(rec.media && holds(user, rec)); // v-r3 (r3-2): الفترة الحاليّة أو مؤجَّلة لم تسرِ
+    const deferred = !!(rec.media && holdsNextMedia(user, rec));
 
     // (أ) الباقة نفسها عند بلوغ المبلغ كاملًا — يتكرّر بلا أثر (بعد السحب لا تطابق الفترة)، فيُعاد بأمان بعد فشل لاحق
     //     وبعد كتابة متزامنة. الفترة التي حلّت هذه الدفعة محلّها تعود إن بقيت سارية غير مسحوبة (priorPeriod)، وإلّا لا باقة.
@@ -297,7 +321,9 @@ async function applyRevoke(rec, step) {
 
     // (ب) عدّاد واحد غير متكرّر الأثر: رصيد الوسائط (باقة الوسائط بلا نقاط) أو النقاط.
     if (rec.media) {
-      if (!out.mediaRevoked && mediaCurrent && step.budget > 0) out.budgetTaken = await floorDecr(budgetKey(name, rec.media), step.budget);
+      // v-r3 (r3-2): المؤجَّلة لا عدّاد لها بعد — ينقص رصيدها حين تسري (trimNext بالنسبة التراكميّة)، والسارية من عدّادها كما كان
+      if (!out.mediaRevoked && deferred && step.budget > 0) out.budgetTaken = await trimNext(name, user, rec, step.fraction);
+      else if (!out.mediaRevoked && mediaCurrent && step.budget > 0) out.budgetTaken = await floorDecr(budgetKey(name, rec.media), step.budget);
     } else if (step.points > 0) {
       await require('./points.js').ensureBalance(name); // عدّاد غائب يُبذر من السجلّ (v-pay-seed)
       out.pointsTaken = await floorDecr(pointsKey(name), step.points);
@@ -352,7 +378,7 @@ async function revoke(recId, ev) {
       fraction: f, refunded, disputed, points: Math.max(rv.points, tPoints), budget: Math.max(rv.budget, tBudget), plan: rv.plan || full,
       ids: rv.ids.concat(ev.key).slice(-20), reason: ev.reason, at: Date.now(),
     };
-    const step = { full: full && !rv.plan, points: next.points - rv.points, budget: next.budget - rv.budget };
+    const step = { full: full && !rv.plan, points: next.points - rv.points, budget: next.budget - rv.budget, fraction: f }; // fraction: v-r3 (r3-2) للمؤجَّلة
     // العلامة قبل الأثر: إن مات الطلب بعد الخصم فالإعادة ترى الحدث مسجَّلًا ولا تخصم ثانية.
     await kvSetRaw(recKey(recId), JSON.stringify(Object.assign({}, rec, { revoked: next })), REC_TTL_SEC);
     let out;
@@ -386,6 +412,22 @@ async function alertOwner(title, body) {
       .then(() => require('./_owner-alert.js').pushToOwners({ title, body: String(body).slice(0, 220), url: '/' }))
       .then(() => { clearTimeout(t); resolve(); }, (e) => { clearTimeout(t); logError('pay-refund:alert', e); resolve(); });
   });
+}
+
+/* v-r3 (r3-7): «تنبيه مرّة لكلّ دفعة» (دفعة لحساب محذوف: payorphan:<رقمها>) كان SET NX غير صارم — ردّ 200 لا يُقرأ يعود false «سبق التنبيه»،
+   فيُجاب PayPal أو Stripe 200 بلا أيّ تنبيه والمال مأخوذ. الآن الحجز صارم (الردّ الغامض يرمي ⇒ non-2xx فيُعاد الحدث)، وبمرحلتين: 'pending'
+   قبل التنبيه ثمّ 'sent' بعده — فحجزٌ كُتب وضاع ردّه، أو مات الطلب بعده قبل التنبيه، تجده الإعادة 'pending' فتنبّه. القيمة القديمة '1' = أُرسل.
+   الثمن: تنبيه مكرّر نادر (تسليمان متزامنان، أو تعذّر كتابة 'sent') بدل تنبيه ضائع. يرمي عطب KV للمستدعي. */
+const ORPHAN_ALERT_TTL_SEC = 400 * 86400;
+async function alertOnce(key, title, body) {
+  const k = String(key).slice(0, 220);
+  if (!(await kvSetIfAbsent(k, 'pending', ORPHAN_ALERT_TTL_SEC, { strict: true }))) {
+    const v = await kvGetRaw(k, { strict: true });
+    if (v !== null && v !== undefined && String(v) !== 'pending') return false;
+  }
+  await alertOwner(title, body); // لا يرمي
+  try { await kvSetRaw(k, 'sent', ORPHAN_ALERT_TTL_SEC); } catch (e) { logError('pay-refund:alert-once', e, { key: k.slice(0, 60) }); } // فشلها = تنبيه مكرّر في الإعادة لا ضائع
+  return true;
 }
 
 const money = (amount, currency) => (Number(amount) > 0 ? (Number(amount) / 100).toFixed(2) + ' ' + String(currency || '').toUpperCase() : '?');
@@ -649,3 +691,4 @@ async function paypalEvent(event) {
 
 module.exports = { recordGrant, linkGrant, relinkPrev, priorOf, findRec, revoke, stripeEvent, paypalEvent, verifyPaypalSig, captureOf, REC_TTL_SEC };
 module.exports.alertOwner = alertOwner; // v-lock-subs (srv-money-5): الويب هوك ينبّه المالك بدفعة لحساب محذوف بالمسار نفسه (سجلّ أخطائه + الإشعار بمهلة)
+module.exports.alertOnce = alertOnce; // v-r3 (r3-7): تنبيه مرّة لكلّ دفعة بحجز صارم — PayPal وStripe معًا
