@@ -235,20 +235,22 @@ async function paypalAccountsFor(emails, follow, opts) {
     } catch (e) { diag.errors++; return ''; } /* عطب قراءة الحجز: الطلب يُقرأ من طريق آخر */
   };
 
-  // أ) طلباتنا المشحونة
+  // أ) طلباتنا المشحونة — الحجوزات تُقرأ ٢٥ معًا وتحت ساعة الطلبات نفسها (مراجعة الخصوصيّة: قراءتها واحدًا واحدًا بلا حدّ قد تتجاوز ٣٠٠ ث)
+  const t0 = Date.now();
   const orders = new Map();
   if (o.orders) for (const [id, u] of o.orders) if (id && u) orders.set(String(id), String(u));
   try {
-    for (const k of (await kv.kvList(PAYPAL_CLAIM)).filter((x) => String(x).startsWith(PAYPAL_CLAIM))) {
-      const id = String(k).slice(PAYPAL_CLAIM.length);
-      if (!id || orders.has(id)) continue;
-      const u = await claimOf(id);
-      if (u) orders.set(id, u);
+    const claimIds = (await kv.kvList(PAYPAL_CLAIM)).filter((x) => String(x).startsWith(PAYPAL_CLAIM))
+      .map((k) => String(k).slice(PAYPAL_CLAIM.length)).filter((id) => id && !orders.has(id));
+    for (let i = 0; i < claimIds.length; i += 25) {
+      if (Date.now() - t0 > PAYPAL_ORDERS_MS) { diag.partial = true; break; }
+      const batch = claimIds.slice(i, i + 25);
+      const got = await Promise.all(batch.map((id) => claimOf(id)));
+      batch.forEach((id, j) => { if (got[j]) orders.set(id, got[j]); });
     }
   } catch (e) { diag.errors++; diag.partial = true; console.warn('[owner-lookup] paypal claims ' + String((e && e.name) || 'error')); }
   diag.orders = orders.size;
   const ids = [...orders.keys()];
-  const t0 = Date.now();
   for (let i = 0; i < ids.length; i += 5) {
     if (Date.now() - t0 > PAYPAL_ORDERS_MS) { diag.partial = true; break; }
     await Promise.all(ids.slice(i, i + 5).map(async (id) => {
@@ -305,6 +307,7 @@ async function paypalAccountsFor(emails, follow, opts) {
           if (!/^T00/.test(String(ti.transaction_event_code || '')) || !(Number(ti.transaction_amount && ti.transaction_amount.value) > 0) || !ti.transaction_id) continue;
           const tid = String(ti.transaction_id);
           if (seen.has(tid)) continue;
+          if (Date.now() - t1 > scanMs) { diag.partial = true; break windows; } /* نداءات كلّ دفعة مطابقة تحت ساعة البحث نفسها */
           seen.add(tid);
           diag.matched++;
           if (!(await ownerOf(tid, Date.parse(ti.transaction_initiation_date)))) diag.unnamed++;

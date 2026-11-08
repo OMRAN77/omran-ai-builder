@@ -176,6 +176,8 @@ module.exports = async (req, res) => {
     const { token, action, targetUsername, text } = body;
     /* v-owner-reset-scan: فحص بلا رمز — يقول لأيّ حساب يصل البريد ولا يكتب شيئًا ولا يُبطل رابطًا سابقًا (للتحقّق الحيّ دون إنشاء رابط) */
     const dryRun = body.dryRun === true;
+    /* v-owner-reset-records: exact — اسم حساب بعينه (زرّ الجدول، أو الطلب الثاني بعد الفحص): لا يُعاد البحث بالبريد ولو كان في الاسم «@» */
+    const exact = body.exact === true;
 
     const requester = sessionUser(token);
     if (!isOwnerName(requester)) {
@@ -235,7 +237,8 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'missing targetUsername' });
       return;
     }
-    const typed = targetUsername.trim();
+    /* v-owner-reset-records (مراجعة الخصوصيّة): علامات الاتّجاه المخفيّة (من قائمة الأسماء في التنبيه أو من محادثة عربيّة) تُشال قبل البحث */
+    const typed = targetUsername.replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '').trim();
     let key = typed.toLowerCase();
     let via = ''; // v-owner-reset-stripe / v-owner-reset-records: من أين عُرف الحساب (stripe · record · paypal)
     const stripeDiag = {}; // v-owner-reset-scan: أعداد البحث في Stripe (بلا بريد ولا اسم)
@@ -243,7 +246,7 @@ module.exports = async (req, res) => {
     /* v-owner-reset-find: جدول المستخدمين يعرض أحدث ٦٠ تسجيلًا فقط، فصاحب الحساب الأقدم لا صفّ له ولا 🔑. خانة البحث ترسل
        الإيميل كما كتبه المالك: يُحوَّل إلى حسابه بفهرس البريد (مؤكَّدًا أو لا — المالك تحقّق بنفسه)، وحساب «المتابعة عبر Google»
        لا كلمة مرور يعرفها صاحبه فيُقال للمالك ذلك بدل رابط لا ينفع. */
-    if (action === 'reset-link' && key.includes('@')) {
+    if (action === 'reset-link' && key.includes('@') && !exact) {
       const auth = require('./auth.js');
       const lookup = require('./owner-lookup.js');
       const follow = (u) => lookup.liveReadOnly(u, auth); // v-owner-reset-records: يتبع الاسم المغيَّر بلا كتابة
@@ -253,12 +256,13 @@ module.exports = async (req, res) => {
          يُثبَت يصير اسمًا محتملًا للمالك، ويمضي البحث إلى من أثبته. قراءة فقط: لا resolveLoginUser (emailProven ← stampLegacyEmail يكتب)
          ولا getUser/googleAccountFor (قد يعيدان تشفير سجلّ بالسرّ السابق ويكتبان). */
       const weakFirst = [];
+      let directKey = ''; // اسم مستخدم بالنصّ نفسه بلا إثبات للبريد — آخر ما يُرجع إليه
       let found = '';
       try {
         const direct = await auth.getUserOnce(key, { readOnly: true, quiet: true });
         if (direct && !direct.deleted) {
           if (low(direct.email) === key && auth.emailVerifiedFor(key, direct)) found = key;
-          else weakFirst.push(key);
+          else { weakFirst.push(key); directKey = key; }
         }
       } catch (e) { console.warn('[admin-actions] reset-link direct ' + String((e && e.code) || (e && e.name) || 'error')); } /* اسم بالنصّ نفسه لا يُقرأ: ليس دليلًا، يمضي البحث */
       if (!found) {
@@ -314,10 +318,16 @@ module.exports = async (req, res) => {
                  «ما اكتمل البحث» بدل «دوّرت في كلّ شيء» (المراجعة المستقلّة) */
               const p = extra.paypal;
               const complete = !stripeDiag.off && !stripeDiag.partial && !stripeDiag.errors && !extra.records.partial
-                && (p.denied ? p.errors <= 1 : (!p.errors && !p.partial));
+                && !p.off && (p.denied ? p.errors <= 1 : (!p.errors && !p.partial));
               const candidates = [...weakFirst, ...rec.weak.map((x) => x.key)].filter((k, i, a) => a.indexOf(k) === i && !isOwnerName(k)).slice(0, 10);
-              res.status(404).json(Object.assign({ error: 'user not found', diag: stripeDiag, candidates, complete }, extra));
-              return;
+              /* اسم «@» قديم هو النصّ نفسه ولا أحد غيره يدّعي البريد ولا أثبته: هو الحساب (كما كان قبل المراجعة) — والمالك يرى اسمه في الفحص
+                 قبل أن يؤكّد. وإلّا أسماء محتملة. */
+              const rival = weakFirst.some((k) => k !== directKey) || rec.weak.some((x) => x.key !== directKey && (x.why === 'unverified' || x.why === 'old'));
+              if (directKey && !rival) { key = directKey; via = 'name'; }
+              else {
+                res.status(404).json(Object.assign({ error: 'user not found', diag: stripeDiag, candidates, complete }, extra));
+                return;
+              }
             }
           }
         }

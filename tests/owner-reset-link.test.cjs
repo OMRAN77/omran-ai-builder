@@ -106,7 +106,7 @@ test('٤. الزرّ في كلّ صفّ، والرفض لا يرسل شيئًا�
   assert.match(no.said[0][1], /تأكّد أوّلًا أنّه صاحب الحساب/);
   const yes = env('en', true);
   await yes.ctx.adminResetLink('alya');
-  assert.deepEqual(yes.sent[0][1], { token: 'tok', action: 'reset-link', targetUsername: 'alya' });
+  assert.deepEqual(yes.sent[0][1], { token: 'tok', action: 'reset-link', targetUsername: 'alya', exact: true }); // v-owner-reset-records: زرّ الصفّ اسمٌ بعينه
   const p = yes.said.find((x) => x[0] === 'prompt');
   assert.ok(p, 'نافذة الرابط');
   assert.equal(p[2], 'https://x.test/?resetToken=ab&ru=alya');
@@ -732,6 +732,37 @@ test('١٥. المراجعة المستقلّة: الزرع لا يسبق صاح
     delete process.env.STRIPE_SECRET_KEY; delete process.env.PAYPAL_CLIENT_ID; delete process.env.PAYPAL_SECRET;
     global.fetch = realFetch; console.warn = realWarn;
   }
+});
+
+test('١٥ب. مراجعة الخصوصيّة: اسم «@» قديم بلا منافس يبقى حسابه، وزرّ الجدول اسمٌ بعينه، وعلامات الاتّجاه المخفيّة تُشال، وPayPal غير المربوط بحثٌ لم يكتمل', async () => {
+  paymentsOff();
+  const realWarn = console.warn, realFetchB = global.fetch;
+  console.warn = () => {};
+  try {
+    // ١) اسم مستخدم هو بريد (قديم، بلا بريد مؤكَّد) ولا أحد غيره يدّعي البريد ← هو الحساب (والمالك يراه في الفحص قبل التأكيد)
+    await auth.putUser('legacy.at@x.com', { username: 'legacy.at@x.com', email: null, hash: 'h', salt: 's' });
+    const lg = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'legacy.at@x.com', dryRun: true });
+    assert.equal(lg.code, 200, JSON.stringify(lg.body)); assert.equal(lg.body.username, 'legacy.at@x.com'); assert.equal(lg.body.via, 'name');
+    // ٢) ومع منافس يدّعي البريد بلا إثبات ← أسماء لا رابط
+    await auth.putUser('rival_c', { username: 'rival_c', email: 'legacy.at@x.com', hash: 'h', salt: 's' });
+    const rv = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'legacy.at@x.com' });
+    assert.equal(rv.code, 404, JSON.stringify(rv.body)); assert.ok(rv.body.candidates.includes('legacy.at@x.com') && rv.body.candidates.includes('rival_c'));
+    // ٣) زرّ الجدول (exact) يعطي الحساب نفسه ولو كان غيره أثبت البريد (sara_k من ١٥)
+    const ex = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'sara.k@outlook.com', exact: true, dryRun: true });
+    assert.equal(ex.code, 200, JSON.stringify(ex.body)); assert.equal(ex.body.username, 'sara.k@outlook.com');
+    // ٤) علامات الاتّجاه المخفيّة (من تنبيه الأسماء أو محادثة عربيّة) لا تُضيّع الحساب
+    assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: '⁨aliya_rose⁩', dryRun: true })).body.username, 'aliya_rose');
+    assert.equal((await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: '‏amy.v@x.com', dryRun: true })).body.username, 'amy_v');
+    // ٥) بلا مفاتيح PayPal (ولا Stripe) ← البحث لم يكتمل، لا «دوّرت في كلّ شيء»
+    const off = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'nobody.off@x.com' });
+    assert.equal(off.code, 404); assert.equal(off.body.paypal.off, true); assert.equal(off.body.complete, false);
+    // ٦) Stripe مربوط وبحث كاملًا، وPayPal وحده غير مربوط ← ما زال «لم يكتمل»
+    process.env.STRIPE_SECRET_KEY = 'sk_test_off';
+    global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: [], has_more: false }) });
+    const ppOff = await callAdmin({ token: ownerToken(), action: 'reset-link', targetUsername: 'nobody.off@x.com' });
+    assert.equal(ppOff.code, 404); assert.ok(!ppOff.body.diag.off && !ppOff.body.diag.partial, JSON.stringify(ppOff.body.diag));
+    assert.equal(ppOff.body.paypal.off, true); assert.equal(ppOff.body.complete, false, 'PayPal غير المربوط ليس «بحثت فيه»');
+  } finally { console.warn = realWarn; delete process.env.STRIPE_SECRET_KEY; global.fetch = realFetchB; }
 });
 
 test('١٦. الواجهة: خانة البحث تفحص أوّلًا بلا كتابة وتؤكّد على الاسم الذي وُجد، والرفض لا يُنشئ رابطًا، والبحث غير المكتمل يقول ذلك', async () => {

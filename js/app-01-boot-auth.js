@@ -860,7 +860,7 @@ try{
         });
         return { res: r, data: await r.json().catch(() => ({})) }; /* صفحة خطأ نصّيّة (٥٠٤) لا ترمي خطأ JSON في وجه المالك */
       };
-      let { res, data } = await post(lookup ? { targetUsername: username, dryRun: true } : { targetUsername: username });
+      let { res, data } = await post(lookup ? { targetUsername: username, dryRun: true } : { targetUsername: username, exact: true });
       // v-owner-reset-find: حساب Google لا كلمة مرور له، والغائب برسالة مترجمة لا «user not found» خامًا
       if(data && data.google){ alert(ownT('ownerResetGoogle', { u: ownIso(data.username || username) })); return; }
       /* v-owner-reset-records: ما لا يثبت البريد يُعرض أسماءً للمالك لا رابطًا؛ والبحث الكامل بلا أثر يقول أين بحث ومن يُسأل، وغير المكتمل
@@ -880,7 +880,7 @@ try{
         const found = String(data.username);
         const label = found === String(username).trim().toLowerCase() ? ownIso(found) : ownIso(found) + ' ← ' + ownIso(username);
         if(!confirm(ownT('ownerResetConfirm', { u: label }))) return;
-        ({ res, data } = await post({ targetUsername: found }));
+        ({ res, data } = await post({ targetUsername: found, exact: true }));
         if(data && data.google){ alert(ownT('ownerResetGoogle', { u: ownIso(data.username || found) })); return; }
       }
       if(!res.ok || !data.ok || !data.link){ alert('❌ ' + resetFail(res, data)); return; }
@@ -891,7 +891,8 @@ try{
   /* v-owner-reset-find: خانة «إيميل أو اسم مستخدم» فوق الجدول — للحساب الذي لا صفّ له (الجدول أحدث ٦٠ تسجيلًا). */
   window.adminResetLinkFind = async function(){
     const el = document.getElementById('adminResetInput');
-    const v = el ? String(el.value || '').trim() : '';
+    /* v-owner-reset-records: علامات الاتّجاه المخفيّة (اسم منسوخ من تنبيه الأسماء أو من محادثة عربيّة) تُشال قبل الإرسال */
+    const v = el ? String(el.value || '').replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '').trim() : '';
     if(!v){ if(el) el.focus(); return; }
     /* v-owner-reset-records: البحث قد يأخذ ثواني (Stripe ثمّ كلّ الحسابات ثمّ PayPal) — الزرّ ينشغل فلا يُضغط مرّتين ولا يبدو معلّقًا */
     const btn = el && el.parentNode ? el.parentNode.querySelector('button') : null; /* زرّ 🔑 جار الخانة في الصفّ نفسه */
