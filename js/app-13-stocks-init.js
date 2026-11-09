@@ -900,6 +900,9 @@
     const rows = boqRows();
     if(!rows){ setStatus(bT('⚠️ لا يوجد جدول كميات في هذه النتيجة.','⚠️ This result has no bill of quantities.')); return; }
     const csv = '\ufeff' + rows.map(function(r){ return r.map(csvEsc).join(','); }).join('\r\n');
+    /* v-dl-unified (فحص المالك ٩ نوفمبر): رابط blob بنقرة برمجيّة لا ينزّل شيئًا في الآيفون ولا في الغلاف — مسار الحفظ الموحّد
+       (مشاركة الهاتف ثمّ ورقة «الملف جاهز»، والحاسوب تنزيل مباشر كما كان) */
+    if(typeof msgSaveExport === 'function'){ msgSaveExport(new Blob([csv], { type: 'text/csv;charset=utf-8' }), 'omran-boq.csv'); return; }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     a.download = 'omran-boq.csv';

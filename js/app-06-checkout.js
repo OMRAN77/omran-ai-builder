@@ -1115,12 +1115,16 @@ $('#codeUploadInput').addEventListener('change', (e) => {
    على iOS Safari (يفتح تبويبًا أو لا شيء). على الجوّال نستخدم مشاركة الملف (navigator.share)
    فيظهر «حفظ في الملفات»؛ على الحاسوب يبقى التنزيل المباشر. */
 async function omranSaveOrShareFile(blob, fname){
+  /* v-dl-unified (فحص المالك ٩ نوفمبر «كل ملفات التحميل»): مسار الحفظ الموحّد أوّلًا (app-05 omranSaveBlob) — جسر التطبيق، ثمّ مشاركة
+     الهاتف، وإن رُفضت (ZIP ينتظر تحميل مكتبته من الشبكة فتنتهي «لمسة المستخدم» في الآيفون) رابط خادم بورقة «الملف جاهز» بلمسة جديدة.
+     كان السقوط هنا على رابط blob الذي لا ينزّله الآيفون ولا الغلاف — «ما يطلع شي». والجهاز من نوعه لا من عرض النافذة (mobile-ui). */
+  if(typeof omranSaveBlob === 'function') return omranSaveBlob(blob, fname);
   const isMobile = document.documentElement.classList.contains('mobile-ui') && !(typeof omranDesktopApp === 'function' && omranDesktopApp()); /* v-desktop-app: تطبيق ويندوز في نافذة ضيّقة يبقى حاسوبًا — لا لوحة النظام */
   if(isMobile){
     try{
       const file = new File([blob], fname, { type: blob.type || 'application/octet-stream' });
       if(navigator.canShare && navigator.canShare({ files: [file] })){
-        await navigator.share({ files: [file], title: fname });
+        await navigator.share({ files: [file] });
         return;
       }
     }catch(e){ if(e && e.name === 'AbortError') return; /* غير الإلغاء: ننزّل عاديًّا أدناه */ }

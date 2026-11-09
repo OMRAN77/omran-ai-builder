@@ -147,7 +147,7 @@
     try{ canNative = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canNative = false; }
     if(mobile && canNative){
       const t0 = Date.now();
-      try{ await navigator.share({ files: [file], title: 'om ai' }); return true; }
+      try{ await navigator.share({ files: [file] }); return true; }
       catch(e){ if(e && e.name === 'AbortError' && (Date.now() - t0) > 1500) return true; }
     }
     /* v-ready-sheet (أمر المالك): لا لوحة مشاركة نظام على الكمبيوتر — لوحة ويندوز تفشل صامتة فيبدو الزرّ ميتًا.

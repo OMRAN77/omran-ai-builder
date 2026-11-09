@@ -10459,7 +10459,7 @@ function renderMessages(keepScroll){
     try{ canNative = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canNative = false; }
     if(mobile && canNative){
       const t0 = Date.now();
-      try{ await navigator.share({ files: [file], title: 'om ai' }); return true; }
+      try{ await navigator.share({ files: [file] }); return true; }
       catch(e){ if(e && e.name === 'AbortError' && (Date.now() - t0) > 1500) return true; }
     }
     /* v-ready-sheet (أمر المالك): لا لوحة مشاركة نظام على الكمبيوتر — لوحة ويندوز تفشل صامتة فيبدو الزرّ ميتًا.
@@ -10620,7 +10620,7 @@ function renderMessages(keepScroll){
             var vb = /^data:/i.test(url) ? dataUrlToBlob(url) : await (await fetch(url)).blob();
             var vf = new File([vb], nm, { type: vb.type || 'video/mp4' });
             if(navigator.canShare && navigator.canShare({ files: [vf] })){
-              try{ await navigator.share({ files: [vf], title: 'om ai' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
+              try{ await navigator.share({ files: [vf] }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
             }
             if(showSheet(URL.createObjectURL(vb), vf, nm, 'video')) return true;
           } else {
@@ -10634,7 +10634,7 @@ function renderMessages(keepScroll){
           if(link && showSheet(link.dl, ifile, link.name, 'image', link.open)) return true;
           /* تعذّر الرفع: المشاركة بالملف ثم الفتح */
           if(ifile && navigator.canShare && navigator.canShare({ files: [ifile] })){
-            try{ await navigator.share({ files: [ifile], title: 'om ai' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
+            try{ await navigator.share({ files: [ifile] }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
           }
           if(showSheet(URL.createObjectURL(ib), ifile, nm, 'image')) return true;
         }
@@ -10648,7 +10648,7 @@ function renderMessages(keepScroll){
       try{
         var file = new File([blob], nm, { type: blob.type || 'application/octet-stream' });
         if(isMobile() && navigator.canShare && navigator.canShare({ files: [file] })){
-          try{ await navigator.share({ files: [file], title: 'om ai' }); return true; }
+          try{ await navigator.share({ files: [file] }); return true; }
           catch(err){ if(err && err.name === 'AbortError') return true; }
         }
       }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:160'); /* guard-ok — نكمل بالرابط */ }
@@ -11438,7 +11438,7 @@ function omranReadySheet(opts){
         const sh = document.createElement('button'); sh.type = 'button'; sh.style.cssText = outCss;
         addIcon(sh, 'share'); sh.appendChild(labelSpan(rsT('imgShareBtn', 'مشاركة', 'Share')));
         sh.onclick = function(){
-          navigator.share({ files: [o.shareFile], title: o.name || 'om ai' }).then(function(){ closeAll(); }).catch(function(e3){
+          navigator.share({ files: [o.shareFile] }).then(function(){ closeAll(); }).catch(function(e3){
             if(e3 && e3.name === 'AbortError') return;
             __swallow(e3, 'sheet:share');
             status(rsT('sheetShareFail', 'تعذّرت المشاركة — جرّب التحميل', 'Share failed — try Download'));
@@ -11485,7 +11485,7 @@ async function omranSaveBlob(blob, filename){
     if(mobileish && navigator.canShare && typeof File === 'function'){
       const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
       if(navigator.canShare({ files: [f] })){
-        try{ await navigator.share({ files: [f], title: filename }); return; }
+        try{ await navigator.share({ files: [f] }); return; }
         catch(e){
           if(e && e.name === 'AbortError') return;
           /* v-reply-export: رفض المشاركة (انتهاء «ضغطة المستخدم» في الآيفون، أو نوع خارج قائمة كروم
@@ -11734,11 +11734,12 @@ function omranLoadMammoth(){
 }
 /* heights: ارتفاع كلّ كتلة (px)، pageH: ارتفاع محتوى الصفحة، breaks[i]: الكتلة i تبدأ صفحة جديدة.
    الناتج: [{items:[فهارس الكتل]}] أو لكتلة أطول من صفحة شرائح [{items:[i], clipTop, clipH}]. */
-function omranPaginateBlocks(heights, pageH, breaks){
+function omranPaginateBlocks(heights, pageH0, breaks){
   const pages = [];
   let cur = null, used = 0;
   heights.forEach((h0, i) => {
     const h = Math.max(0, Number(h0) || 0);
+    const pageH = typeof pageH0 === 'function' ? pageH0(i) : pageH0; /* v-xlsx-pdf-calc: ارتفاع الصفحة لكلّ كتلة (الأفقيّة أقصر) */
     if(h > pageH){
       for(let top = 0; top < h; top += pageH) pages.push({ items: [i], clipTop: top, clipH: pageH });
       cur = null; used = 0;
@@ -11755,10 +11756,15 @@ async function omranExportPagedPdfFile(blocks, opts){
   const contentH = PH - PADV * 2 - 6;
   const maxPages = opts.maxPages || 80;
   const css = '<style>p{margin:0 0 .6em}h1,h2,h3,h4,h5,h6{margin:.4em 0 .3em;line-height:1.5}h1{font-size:24px}h2{font-size:20px}h3{font-size:17px}ul,ol{margin:0 0 .6em;padding-inline-start:1.6em}table{border-collapse:collapse;width:100%;margin:0 0 .6em}td,th{border:1px solid #999;padding:3px 8px;vertical-align:top}img{max-width:100%;max-height:' + (contentH - 20) + 'px;display:block;margin:0 auto}</style>';
-  const mk = () => {
+  /* v-xlsx-pdf-calc: كتلة landscape:true تُرسم في صفحة A4 أفقيّة (شبكة أيّام الشهر في PDF الطباعة كما يطبعها Excel). اختياريّ لكلّ كتلة —
+     بلاه كلّ شيء عموديّ كما كان؛ وتغيّر الاتّجاه يبدأ صفحة جديدة. */
+  const landAt = (i) => !!(blocks[i] && blocks[i].landscape);
+  const anyLand = blocks.some((b) => b && b.landscape);
+  const contentOf = (land) => (land ? PW : PH) - PADV * 2 - 6;
+  const mk = (land) => {
     const h = document.createElement('div');
     h.dir = opts.rtl === false ? 'ltr' : 'rtl';
-    h.style.cssText = 'position:fixed; left:-12000px; top:0; width:' + PW + 'px; background:#ffffff; color:#111; padding:' + PADV + 'px ' + PADH + 'px; box-sizing:border-box; line-height:1.9; font-size:15px;';
+    h.style.cssText = 'position:fixed; left:-12000px; top:0; width:' + (land ? PH : PW) + 'px; background:#ffffff; color:#111; padding:' + PADV + 'px ' + PADH + 'px; box-sizing:border-box; line-height:1.9; font-size:15px;';
     h.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
     return h;
   };
@@ -11770,7 +11776,7 @@ async function omranExportPagedPdfFile(blocks, opts){
     pill.textContent = '⏳ …';
     document.body.appendChild(pill);
   }catch(e){ pill = null; }
-  const measure = mk();
+  const measure = mk(false), measureL = anyLand ? mk(true) : null;
   try{
     await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
     try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
@@ -11778,22 +11784,29 @@ async function omranExportPagedPdfFile(blocks, opts){
     measure.innerHTML = css + blocks.map((b) => wrap(b.html)).join('');
     document.body.appendChild(measure);
     await Promise.all(Array.from(measure.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
-    const heights = Array.from(measure.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
+    let heights = Array.from(measure.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
     measure.remove();
-    const breaks = blocks.map((b, i) => !!(b.newpage || (i > 0 && blocks[i - 1].alone)));
-    let pages = omranPaginateBlocks(heights, contentH, breaks);
+    if(measureL){
+      measureL.innerHTML = css + blocks.map((b) => wrap(b.html)).join('');
+      document.body.appendChild(measureL);
+      const hl = Array.from(measureL.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
+      measureL.remove();
+      heights = heights.map((h, i) => (landAt(i) ? hl[i] : h));
+    }
+    const breaks = blocks.map((b, i) => !!(b.newpage || (i > 0 && blocks[i - 1].alone) || (i > 0 && landAt(i) !== landAt(i - 1))));
+    let pages = omranPaginateBlocks(heights, anyLand ? (i) => contentOf(landAt(i)) : contentH, breaks);
     const total = pages.length;
     if(!total) throw new Error('empty-doc');
     if(total > maxPages) pages = pages.slice(0, maxPages);
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pw = pdf.internal.pageSize.getWidth();
+    const pageLand = (pg) => landAt(pg.items[0]);
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: pageLand(pages[0]) ? 'landscape' : 'portrait' });
     for(let k = 0; k < pages.length; k++){
       if(pill) pill.textContent = String(t('pdfDocPage')).replace('{i}', k + 1).replace('{n}', pages.length);
       await new Promise((r) => setTimeout(r, 0));
       const pg = pages[k];
       const inner = pg.items.map((i) => wrap(blocks[i].html)).join('');
-      const holder = mk();
+      const holder = mk(pageLand(pg));
       holder.innerHTML = css + (pg.clipH ? '<div style="height:' + pg.clipH + 'px;overflow:hidden"><div style="margin-top:-' + pg.clipTop + 'px">' + inner + '</div></div>' : inner);
       document.body.appendChild(holder);
       let canvas;
@@ -11802,7 +11815,8 @@ async function omranExportPagedPdfFile(blocks, opts){
         canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: opts.pixelRatio || 1.3, style: { position: 'static', left: '0', top: '0' } });
       } finally { holder.remove(); }
       if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
-      if(k > 0) pdf.addPage();
+      if(k > 0) pdf.addPage('a4', pageLand(pg) ? 'landscape' : 'portrait');
+      const pw = pdf.internal.pageSize.getWidth();
       pdf.addImage(canvas.toDataURL('image/jpeg', opts.jpegQuality || 0.72), 'JPEG', 0, 0, pw, (canvas.height / canvas.width) * pw); /* ٠٫٧٢ وx١٫٣: ٨٠ صفحة نصّ ≈٧ م.ب لا ١٦ — رابط الخادم حدّه ٤ م.ب والمشاركة تتعثّر بالكبير (PDF الردّ يمرّر دقّته السابقة x٢ و٠٫٩٢: v-audit-uicore) */
     }
     await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-docs.pdf');
@@ -11814,7 +11828,7 @@ async function omranExportPagedPdfFile(blocks, opts){
     }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:629'); /* guard-ok */ }
     throw err;
   } finally {
-    try{ measure.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:632'); /* guard-ok */ }
+    try{ measure.remove(); if(measureL) measureL.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:632'); /* guard-ok */ }
     try{ if(pill) pill.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:633'); /* guard-ok */ }
   }
 }
@@ -11990,11 +12004,138 @@ function exportReplyAsPdf(text){
     msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
   });
 }
+/* v-docx (فحص المالك ٩ نوفمبر «كل ملفات التحميل»): «تحويل إلى Word» كان HTML باسم ‎.doc‎ — Word على الحاسوب يفتحه، لكنّ الآيفون
+   (المعاينة وPages) وGoogle Docs وLibreOffice يقرؤونه صيغة Word 97 فيفشل أو يتشوّه: الجدول أعمدة بحرفين والعربيّ يسارًا (لقطة
+   LibreOffice). الآن ‎.docx‎ حقيقيّ (WordprocessingML) من محلّل الردّ نفسه (msgExportParse): فقرة لكلّ سطر باتّجاهه (w:bidi)،
+   عريض ومائل ومشطوب وكود، قوائم، اقتباس، كود أحاديّ الخطّ يسارًا، وجدول Word حقيقيّ باتّجاه واحد (bidiVisual) ورأس يتكرّر.
+   الحزمة ZIP مخزّنة بلا ضغط (omranZipStore) — لا مكتبة تُحمَّل. */
+function omranCrc32(u8){
+  let t = omranCrc32.table;
+  if(!t){
+    t = omranCrc32.table = new Uint32Array(256);
+    for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; }
+  }
+  let crc = -1;
+  for(let i = 0; i < u8.length; i++) crc = t[(crc ^ u8[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ -1) >>> 0;
+}
+/* ZIP بلا ضغط (stored) بأسماء UTF-8: [{ name, data: نصّ أو Uint8Array }] → أجزاء Uint8Array لـBlob */
+function omranZipStore(files){
+  const enc = new TextEncoder(), parts = [], central = [];
+  let off = 0;
+  files.forEach((f) => {
+    const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = omranCrc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(12, 0x21, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(14, 0x21, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    off += 30 + name.length + data.length;
+  });
+  const cd = central.reduce((n, u) => n + u.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cd, true); end.setUint32(16, off, true);
+  return parts.concat(central, [new Uint8Array(end.buffer)]);
+}
+/* التنسيق داخل السطر (كـmsgExportInline) إلى مقاطع: { t, b, i, s, c } */
+function msgDocxRuns(str, base){
+  const runs = [];
+  const add = (t, f) => { if(t) runs.push({ t: t, b: !!f.b, i: !!f.i, s: !!f.s, c: !!f.c }); };
+  const walk = (x, f) => {
+    const re = /`([^`\n]+)`|\*\*(?!\s)([^\n]+?)\*\*|~~(?!\s)([^\n]+?)~~|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|\*(?![\s*])([^*\n]+?)\*(?!\w)/g;
+    let last = 0, m;
+    while((m = re.exec(x))){
+      add(x.slice(last, m.index), f);
+      if(m[1] != null) add(m[1], Object.assign({}, f, { c: true }));
+      else if(m[2] != null) walk(m[2], Object.assign({}, f, { b: true }));
+      else if(m[3] != null) walk(m[3], Object.assign({}, f, { s: true }));
+      else if(m[4] != null){ walk(m[4], f); add(' (' + m[5] + ')', f); }
+      else walk(m[6], Object.assign({}, f, { i: true }));
+      last = re.lastIndex;
+    }
+    add(x.slice(last), f);
+  };
+  walk(String(str || ''), base || {});
+  return runs;
+}
+function msgDocxXml(text){
+  const P = msgExportParse(text);
+  const AR = /[֐-ࣿיִ-﷿ﹰ-﻿]/;
+  const X = (v) => String(v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const run = (r, o) => {
+    const mono = r.c || o.mono, f = mono ? 'Consolas' : 'Arial', sz = o.sz || 24;
+    let p = '<w:rFonts w:ascii="' + f + '" w:hAnsi="' + f + '" w:cs="' + f + '"/>';
+    if(r.b || o.b) p += '<w:b/><w:bCs/>';
+    if(r.i || o.i) p += '<w:i/><w:iCs/>';
+    if(r.s) p += '<w:strike/>';
+    if(o.color) p += '<w:color w:val="' + o.color + '"/>';
+    p += '<w:sz w:val="' + sz + '"/><w:szCs w:val="' + sz + '"/>';
+    if(r.c && !o.mono) p += '<w:shd w:val="clear" w:color="auto" w:fill="F1F1F1"/>';
+    if(AR.test(r.t)) p += '<w:rtl/>';
+    return '<w:r><w:rPr>' + p + '</w:rPr><w:t xml:space="preserve">' + X(r.t) + '</w:t></w:r>';
+  };
+  const para = (runsXml, o) => {
+    let pp = '';
+    if(o.keepNext) pp += '<w:keepNext/>';
+    if(o.border) pp += '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="CCCCCC"/></w:pBdr>';
+    if(o.shd) pp += '<w:shd w:val="clear" w:color="auto" w:fill="' + o.shd + '"/>';
+    if(o.rtl) pp += '<w:bidi/>';
+    pp += '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after == null ? 120 : o.after) + '"/>';
+    if(o.jc) pp += '<w:jc w:val="' + o.jc + '"/>';
+    return '<w:p><w:pPr>' + pp + '</w:pPr>' + runsXml + '</w:p>';
+  };
+  const inline = (t, o, base) => msgDocxRuns(t, base).map((r) => run(r, o)).join('');
+  const table = (rows) => {
+    const n = Math.max.apply(null, rows.map((r) => r.cells.length)), W = 9638, cw = Math.floor(W / n), rtl = rows[0].rtl;
+    let x = '<w:tbl><w:tblPr>' + (rtl ? '<w:bidiVisual/>' : '') + '<w:tblW w:w="' + (cw * n) + '" w:type="dxa"/><w:tblBorders>'
+      + ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map((k) => '<w:' + k + ' w:val="single" w:sz="4" w:space="0" w:color="999999"/>').join('')
+      + '</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>'
+      + new Array(n + 1).join('<w:gridCol w:w="' + cw + '"/>') + '</w:tblGrid>';
+    rows.forEach((r) => {
+      x += '<w:tr>' + (r.head ? '<w:trPr><w:tblHeader/></w:trPr>' : '');
+      for(let k = 0; k < n; k++){
+        x += '<w:tc><w:tcPr><w:tcW w:w="' + cw + '" w:type="dxa"/>' + (r.head ? '<w:shd w:val="clear" w:color="auto" w:fill="F3F3F3"/>' : '') + '</w:tcPr>'
+          + para(inline(r.cells[k] || '', { b: r.head }), { rtl: rtl, after: 40, before: 40 }) + '</w:tc>';
+      }
+      x += '</w:tr>';
+    });
+    return x + '</w:tbl>' + para('', { after: 120 });
+  };
+  const body = [];
+  for(let i = 0; i < P.items.length; i++){
+    const it = P.items[i];
+    if(it.type === 'blank') continue;
+    if(it.type === 'row'){ let j = i; while(j < P.items.length && P.items[j].type === 'row') j++; body.push(table(P.items.slice(i, j))); i = j - 1; continue; }
+    if(it.type === 'hr'){ body.push(para('', { border: true, after: 120 })); continue; }
+    if(it.type === 'h'){ const L = Math.min(6, it.level); body.push(para(inline(it.text, { b: true, sz: [0, 36, 32, 28, 26, 24, 24][L] }), { rtl: it.rtl, keepNext: true, before: 200, after: 100 })); continue; }
+    if(it.type === 'li'){ body.push(para(run({ t: ' '.repeat(2 * (it.depth || 0)) + (it.num ? it.num + '. ' : '• ') }, {}) + inline(it.text, {}), { rtl: it.rtl, after: 60 })); continue; }
+    if(it.type === 'quote'){ body.push(para(inline(it.text, { i: true, color: '444444' }), { rtl: it.rtl, shd: 'F5F5F5', after: 60 })); continue; }
+    if(it.type === 'code'){
+      const next = P.items[i + 1];
+      body.push(para(run({ t: it.text || ' ' }, { mono: true, sz: 20 }), { shd: 'F4F4F4', after: (next && next.type === 'code') ? 0 : 120, jc: 'left' }));
+      continue;
+    }
+    body.push(para(inline(it.text, {}), { rtl: it.rtl }));
+  }
+  if(!body.length) body.push(para('', {}));
+  return { rtl: P.rtl, xml: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+    + body.join('') + '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/>' + (P.rtl ? '<w:bidi/>' : '') + '</w:sectPr></w:body></w:document>' };
+}
+function msgDocxBlob(text){
+  const d = msgDocxXml(text), W = 'http://schemas.openxmlformats.org/', R = W + 'officeDocument/2006/relationships';
+  const files = [
+    { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="' + W + 'package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>' },
+    { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="' + W + 'package/2006/relationships"><Relationship Id="rId1" Type="' + R + '/officeDocument" Target="word/document.xml"/></Relationships>' },
+    { name: 'word/_rels/document.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="' + W + 'package/2006/relationships"><Relationship Id="rId1" Type="' + R + '/styles" Target="styles.xml"/></Relationships>' },
+    { name: 'word/styles.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:styles xmlns:w="' + W + 'wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US" w:eastAsia="en-US" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="300" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style></w:styles>' },
+    { name: 'word/document.xml', data: d.xml },
+  ];
+  return new Blob(omranZipStore(files), { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
 function exportReplyAsWord(text){
-  const doc = msgExportBlocks(text, null); /* v-audit-uicore */
-  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>om ai</title></head><body dir="' + (doc.rtl ? 'rtl' : 'ltr') + '" style="font-family:Tahoma,Arial,sans-serif; line-height:2;">' + doc.blocks.join('') + '</body></html>';
-  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-  msgSaveExport(blob, 'omran-ai-reply.doc');
+  msgSaveExport(msgDocxBlob(text), 'omran-ai-reply.docx');
 }
 function exportReplyAsImage(text){
   const width = 900;
@@ -16915,12 +17056,16 @@ $('#codeUploadInput').addEventListener('change', (e) => {
    على iOS Safari (يفتح تبويبًا أو لا شيء). على الجوّال نستخدم مشاركة الملف (navigator.share)
    فيظهر «حفظ في الملفات»؛ على الحاسوب يبقى التنزيل المباشر. */
 async function omranSaveOrShareFile(blob, fname){
+  /* v-dl-unified (فحص المالك ٩ نوفمبر «كل ملفات التحميل»): مسار الحفظ الموحّد أوّلًا (app-05 omranSaveBlob) — جسر التطبيق، ثمّ مشاركة
+     الهاتف، وإن رُفضت (ZIP ينتظر تحميل مكتبته من الشبكة فتنتهي «لمسة المستخدم» في الآيفون) رابط خادم بورقة «الملف جاهز» بلمسة جديدة.
+     كان السقوط هنا على رابط blob الذي لا ينزّله الآيفون ولا الغلاف — «ما يطلع شي». والجهاز من نوعه لا من عرض النافذة (mobile-ui). */
+  if(typeof omranSaveBlob === 'function') return omranSaveBlob(blob, fname);
   const isMobile = document.documentElement.classList.contains('mobile-ui') && !(typeof omranDesktopApp === 'function' && omranDesktopApp()); /* v-desktop-app: تطبيق ويندوز في نافذة ضيّقة يبقى حاسوبًا — لا لوحة النظام */
   if(isMobile){
     try{
       const file = new File([blob], fname, { type: blob.type || 'application/octet-stream' });
       if(navigator.canShare && navigator.canShare({ files: [file] })){
-        await navigator.share({ files: [file], title: fname });
+        await navigator.share({ files: [file] });
         return;
       }
     }catch(e){ if(e && e.name === 'AbortError') return; /* غير الإلغاء: ننزّل عاديًّا أدناه */ }
@@ -39536,6 +39681,9 @@ function stud2ErrText(e, prefix, fbKey){
     const rows = boqRows();
     if(!rows){ setStatus(bT('⚠️ لا يوجد جدول كميات في هذه النتيجة.','⚠️ This result has no bill of quantities.')); return; }
     const csv = '\ufeff' + rows.map(function(r){ return r.map(csvEsc).join(','); }).join('\r\n');
+    /* v-dl-unified (فحص المالك ٩ نوفمبر): رابط blob بنقرة برمجيّة لا ينزّل شيئًا في الآيفون ولا في الغلاف — مسار الحفظ الموحّد
+       (مشاركة الهاتف ثمّ ورقة «الملف جاهز»، والحاسوب تنزيل مباشر كما كان) */
+    if(typeof msgSaveExport === 'function'){ msgSaveExport(new Blob([csv], { type: 'text/csv;charset=utf-8' }), 'omran-boq.csv'); return; }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     a.download = 'omran-boq.csv';
@@ -54078,6 +54226,13 @@ async function mahaAppTool(name, args){
         nc.alignment = { horizontal: rtl ? 'right' : 'left', wrapText: true, readingOrder: rtl ? 'rtl' : 'ltr' }; ws.getRow(r).height = 30;
       }
       ws.pageSetup.printArea = 'A1:' + colLetter(N) + r;
+      /* v-xlsx-onepage (فحص المالك ٩ نوفمبر): كشف ٢٥ صفًّا مع الترويسة والتواقيع أطول من A4 بقليل، فكانت التواقيع والملاحظة وحدها في
+         صفحة ثانية. إن كانت الورقة (بعد تصغير العرض لعرض الصفحة) حتّى ١٫٣ صفحة، فصفحة واحدة؛ والأطول صفحات برأس متكرّر كما كانت. */
+      var land = plan.orient === 'landscape', hPt = 0, wPt = 0;
+      for(var hr = 1; hr <= r; hr++) hPt += ws.getRow(hr).height || 15;
+      cols.forEach(function(c){ wPt += (colWidth(c) * 7 + 5) * 0.75; });
+      var useH = (land ? 595 : 842) - 0.95 * 72, useW = (land ? 842 : 595) - 0.6 * 72;
+      if(hPt * Math.min(1, useW / Math.max(1, wPt)) <= useH * 1.3) ws.pageSetup.fitToHeight = 1;
     });
     var buf = await wb.xlsx.writeBuffer();
     return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -54095,32 +54250,188 @@ async function mahaAppTool(name, args){
       var wsum = cols.reduce(function(a, c){ return a + colWidth(c); }, 0) || 1; /* نسب من عرض الصفحة: مجموع العرض بالحروف كان يتجاوزها فيُقصّ الجدول */
       var colgroup = '<colgroup>' + cols.map(function(c){ return '<col style="width:' + (colWidth(c) * 100 / wsum).toFixed(2) + '%">'; }).join('') + '</colgroup>';
       var thead = '<tr>' + cols.map(function(c){ return '<th style="overflow:hidden;background:#' + (c.weekend ? '6b7280' : (c.type === 'count' ? th.dark : th.main)) + ';color:#fff;border:1px solid #bfc5cc;padding:3px 2px;font-size:' + fs + 'px;line-height:1.25">' + esc(c.header) + (c.sub ? '<br><span style="font-weight:400;font-size:' + (fs - 1) + 'px">' + esc(c.sub) + '</span>' : '') + '</th>'; }).join('') + '</tr>';
+      /* v-xlsx-pdf-calc (فحص المالك ٩ نوفمبر): كان PDF يطبع القيم خامًا — عمود المعادلة («الإجمالي» = الكمّيّة × السعر) فارغًا،
+         وسطر المجاميع غائبًا، والعملة «15.5» لا «15.50 ر.س». الآن القيمة كما يعرضها Excel: المعادلة تُحسب (fxEval)، والتنسيق نفسه،
+         وسطر المجاميع بعمليّاته. والورقة العريضة (شبكة أيّام الشهر) صفحة أفقيّة كما يطبعها Excel. */
+      var headRow = 3 + (sh.subtitle ? 1 : 0) + Math.ceil((sh.fields || []).length / 2);
+      var nCols = (sh.columns || []).length;
+      var valueAt = function(ri, n, depth){
+        var c = cols[n - 1], row = data[ri] || null;
+        if(!c) return '';
+        var v = row && n <= nCols ? row[n - 1] : '';
+        if(v == null) v = '';
+        if(c.type === 'index') return v === '' ? ri + 1 : v;
+        if(c.type === 'hours' && v === ''){
+          if(!row || plan.times.length !== 2) return '';
+          var t1 = timeVal(row[plan.times[0] - 1]), t2 = timeVal(row[plan.times[1] - 1]);
+          return (typeof t1 === 'number' && typeof t2 === 'number') ? ((t2 - t1 + 1) % 1) * 24 : '';
+        }
+        if(c.type === 'formula' && c.formula){
+          if(depth > 4) return '';
+          try{ return fxEval(String(c.formula).replace(/\{r\}/gi, String(headRow + 1 + ri)), function(k){ return valueAt(ri, k, depth + 1); }); }catch(e){ return ''; }
+        }
+        if(c.type === 'count') return row ? 0 : '';
+        if(v === '') return '';
+        if(c.type === 'time') return timeVal(v);
+        if(c.type === 'number' || c.type === 'currency' || c.type === 'percent') return numVal(v);
+        return v;
+      };
+      var cellText = function(c, ri, n){
+        var raw = data[ri] && n <= nCols ? data[ri][n - 1] : '';
+        if((c.type === 'time' || c.type === 'date') && raw != null) return String(raw); /* الوقت والتاريخ كما كتبهما */
+        var v = valueAt(ri, n, 0);
+        return c.type === 'count' ? '' : fmtCell(c, v, '');
+      };
       var trs = [];
       for(var ri = 0; ri < plan.rows; ri++){
-        var row = data[ri] || null;
         trs.push('<tr>' + cols.map(function(c, ci){
-          var v = row && ci < (sh.columns || []).length ? row[ci] : '';
-          if(c.type === 'index' && (v === '' || v == null)) v = ri + 1;
-          if(c.type === 'hours' && (v === '' || v == null) && row && plan.times.length === 2){ /* الساعات كما يحسبها Excel للصفوف المعبّأة */
-            var t1 = timeVal(row[plan.times[0] - 1]), t2 = timeVal(row[plan.times[1] - 1]);
-            v = (typeof t1 === 'number' && typeof t2 === 'number') ? (((t2 - t1 + 1) % 1) * 24).toFixed(1) : '';
+          var bg = c.weekend ? '#e5e7eb' : (ri % 2 ? '#' + th.soft : '#fff'), txt = cellText(c, ri, ci + 1), fg = '';
+          if((c.type === 'choice' || c.type === 'day' || c.type === 'check') && txt){ /* الألوان الشرطيّة نفسها التي في Excel */
+            plan.hl.some(function(h){ if(String(h.value) !== txt) return false; var hc = HL[h.color] || HL.gray; bg = '#' + hc[0]; fg = ';color:#' + hc[1] + ';font-weight:700'; return true; });
           }
-          if(c.type === 'formula' || c.type === 'count' || c.type === 'hours') v = (v == null ? '' : v);
-          var bg = c.weekend ? '#e5e7eb' : (ri % 2 ? '#' + th.soft : '#fff');
-          return '<td style="overflow:hidden;border:1px solid #bfc5cc;padding:' + (small ? '2px 1px' : '5px 4px') + ';height:' + (small ? 16 : 20) + 'px;font-size:' + fs + 'px;text-align:' + (c.type === 'text' ? 'start' : 'center') + ';background:' + bg + '">' + esc(v) + '</td>';
+          return '<td style="overflow:hidden;border:1px solid #bfc5cc;padding:' + (small ? '2px 1px' : '5px 4px') + ';height:' + (small ? 16 : 20) + 'px;font-size:' + fs + 'px;text-align:' + (c.type === 'text' ? 'start' : 'center') + ';background:' + bg + fg + '">' + esc(txt) + '</td>';
         }).join('') + '</tr>');
       }
+      if(sh.totals && sh.totals.ops){ /* كما في Excel: العنوان على الأعمدة الأولى حتّى أوّل مجموع */
+        var ops = sh.totals.ops, opCols = Object.keys(ops).map(Number).filter(function(x){ return x > 1; });
+        var labelTo = opCols.length ? Math.min.apply(null, opCols) - 1 : 1;
+        var tcell = function(txt, span){ return '<td' + (span > 1 ? ' colspan="' + span + '"' : '') + ' style="overflow:hidden;border:1px solid #bfc5cc;padding:' + (small ? '2px 1px' : '5px 4px') + ';height:' + (small ? 16 : 20) + 'px;font-size:' + fs + 'px;text-align:center;font-weight:700;color:#' + th.dark + ';background:#' + th.light + '">' + esc(txt) + '</td>'; };
+        var tds = [];
+        for(var cn = 1; cn <= cols.length; cn++){
+          var op = ops[cn];
+          if(!op && cn === 1 && labelTo > 1){ tds.push(tcell(sh.totals.label || tt('officeTotal'), labelTo)); cn = labelTo; continue; }
+          if(!op){ tds.push(tcell(cn === 1 ? (sh.totals.label || tt('officeTotal')) : '', 1)); continue; }
+          var vals = [];
+          for(var rj = 0; rj < plan.rows; rj++) vals.push(valueAt(rj, cn, 0));
+          var nums = vals.filter(function(x){ return typeof x === 'number' && isFinite(x); });
+          var res = op === 'sum' ? nums.reduce(function(a, b){ return a + b; }, 0)
+            : op === 'avg' ? (nums.length ? nums.reduce(function(a, b){ return a + b; }, 0) / nums.length : '')
+            : op === 'count' ? vals.filter(function(x){ return x !== '' && x != null; }).length
+            : op === 'min' ? (nums.length ? Math.min.apply(null, nums) : 0) : (nums.length ? Math.max.apply(null, nums) : 0);
+          tds.push(tcell(fmtCell(cols[cn - 1], res, op), 1));
+        }
+        trs.push('<tr>' + tds.join('') + '</tr>');
+      }
       var tbl = function(rows){ return '<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0">' + colgroup + thead + rows.join('') + '</table>'; };
-      var CH = 30;
+      var land = plan.orient === 'landscape', CH = land ? 24 : 30;
       for(var k = 0; k < trs.length; k += CH){
-        blocks.push({ html: (k === 0 ? head : '') + tbl(trs.slice(k, k + CH)), newpage: k === 0 && si > 0 });
+        blocks.push({ html: (k === 0 ? head : '') + tbl(trs.slice(k, k + CH)), newpage: k === 0 && si > 0, landscape: land });
       }
       var foot = '';
       if(sh.signatures && sh.signatures.length) foot += '<div style="display:flex;justify-content:space-around;gap:12px;margin-top:22px;font-weight:700;font-size:12px">' + sh.signatures.map(function(s){ return '<span>' + esc(s) + ': ………………</span>'; }).join('') + '</div>';
       if(sh.note) foot += '<div style="margin-top:10px;color:#6b7280;font-size:10px">' + esc(sh.note) + '</div>';
-      if(foot) blocks.push({ html: foot });
+      if(foot) blocks.push({ html: foot, landscape: land });
     });
     return blocks;
+  }
+  /* القيمة كما يعرضها تنسيق Excel للعمود (buildXlsx)، وop = سطر المجاميع (تنسيقه بلا رمز العملة كما في الملفّ) */
+  function fmtCell(c, v, op){
+    if(v === '' || v == null) return '';
+    if(typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+    if(typeof v !== 'number' || !isFinite(v)) return String(v);
+    var cur = c.type === 'currency' || c.format === 'currency', pct = c.type === 'percent' || c.format === 'percent';
+    var dec1 = c.type === 'hours' || c.format === 'hours' || c.format === 'decimal' || op === 'avg';
+    if(op){
+      if(cur) return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return dec1 ? v.toFixed(1) : v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    }
+    if(dec1) return v.toFixed(1);
+    if(cur) return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (c.currency ? ' ' + c.currency : '');
+    if(pct) return Math.round(v * 100) + '%';
+    if(c.type === 'number' || c.format === 'number') return v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    return String(Math.round(v * 10000) / 10000);
+  }
+  /* حاسبة صغيرة لمعادلات العمود (التي مرّت من مرشّح الخادم office.js formula): أرقام ونصوص و{cN} و+ - * / ^ & % والمقارنات،
+     ودوالّ IF IFERROR AND OR NOT SUM AVERAGE MIN MAX ROUND ROUNDUP ROUNDDOWN ABS INT MOD LEN CONCAT(ENATE) COUNT COUNTA.
+     ما لا تعرفه يرمي فتبقى الخليّة فارغة كما كانت. IF وIFERROR كسولتان (شجرة ثمّ تقييم) كـExcel. */
+  function fxEval(src, cellOf){
+    var s = String(src).replace(/^\s*=/, ''), i = 0;
+    var bad = function(){ throw new Error('fx'); };
+    var sp = function(){ while(i < s.length && /\s/.test(s.charAt(i))) i++; };
+    var eat = function(t){ sp(); if(s.substr(i, t.length).toUpperCase() === t){ i += t.length; return true; } return false; };
+    function cmpOp(){ sp(); var two = s.substr(i, 2); if(two === '<>' || two === '<=' || two === '>='){ i += 2; return two; } var one = s.charAt(i); if(one === '=' || one === '<' || one === '>'){ i++; return one; } return null; }
+    function expr(){ var a = cat(), op; while((op = cmpOp())) a = { t: 'cmp', op: op, a: a, b: cat() }; return a; }
+    function cat(){ var a = add(); while(eat('&')) a = { t: '&', a: a, b: add() }; return a; }
+    function add(){ var a = mul(); for(;;){ if(eat('+')) a = { t: '+', a: a, b: mul() }; else if(eat('-')) a = { t: '-', a: a, b: mul() }; else return a; } }
+    function mul(){ var a = pw(); for(;;){ if(eat('*')) a = { t: '*', a: a, b: pw() }; else if(eat('/')) a = { t: '/', a: a, b: pw() }; else return a; } }
+    function pw(){ var a = un(); while(eat('^')) a = { t: '^', a: a, b: un() }; return a; }
+    function un(){ if(eat('-')) return { t: 'neg', a: un() }; if(eat('+')) return un(); var v = prim(); while(eat('%')) v = { t: '%', a: v }; return v; }
+    function prim(){
+      sp();
+      var rest = s.slice(i), m;
+      if((m = /^\{c(\d+)\}/i.exec(rest))){ i += m[0].length; return { t: 'c', n: Number(m[1]) }; }
+      if((m = /^\d+(?:\.\d+)?/.exec(rest))){ i += m[0].length; return { t: 'v', v: Number(m[0]) }; }
+      if(rest.charAt(0) === '"'){
+        var j = i + 1, out = '';
+        for(;;){ if(j >= s.length) bad(); var ch = s.charAt(j); if(ch === '"'){ if(s.charAt(j + 1) === '"'){ out += '"'; j += 2; continue; } break; } out += ch; j++; }
+        i = j + 1; return { t: 'v', v: out };
+      }
+      if(eat('(')){ var e = expr(); if(!eat(')')) bad(); return e; }
+      if((m = /^[A-Za-z][A-Za-z0-9.]*/.exec(rest))){
+        var name = m[0].toUpperCase(); i += m[0].length;
+        if(name === 'TRUE' || name === 'FALSE'){ if(eat('(')){ if(!eat(')')) bad(); } return { t: 'v', v: name === 'TRUE' }; }
+        if(!eat('(')) bad();
+        var args = [];
+        if(!eat(')')){ for(;;){ sp(); args.push((s.charAt(i) === ',' || s.charAt(i) === ';' || s.charAt(i) === ')') ? { t: 'v', v: '' } : expr()); if(eat(')')) break; if(!(eat(',') || eat(';'))) bad(); } }
+        return { t: 'f', name: name, args: args };
+      }
+      return bad();
+    }
+    var tree = expr(); sp(); if(i < s.length) bad();
+    var num = function(v){ if(v === '' || v == null) return 0; if(typeof v === 'number') return v; if(typeof v === 'boolean') return v ? 1 : 0; var n = Number(String(v).replace(/,/g, '')); return isFinite(n) && String(v).trim() !== '' ? n : bad(); };
+    var str = function(v){ return v == null ? '' : typeof v === 'boolean' ? (v ? 'TRUE' : 'FALSE') : typeof v === 'number' ? String(Math.round(v * 1e10) / 1e10) : String(v); };
+    var bool = function(v){ if(typeof v === 'string'){ if(v === '') return false; if(/^true$/i.test(v)) return true; if(/^false$/i.test(v)) return false; return bad(); } return !!num(v); };
+    var nums = function(list){ var o = []; list.forEach(function(v){ if(typeof v === 'number' && isFinite(v)) o.push(v); }); return o; };
+    var rnd = function(v, d, mode){ var f = Math.pow(10, d), x = Math.abs(v) * f, r = mode === 'up' ? Math.ceil(x - 1e-9) : mode === 'down' ? Math.floor(x + 1e-9) : Math.round(x); return (v < 0 ? -r : r) / f; };
+    function ev(n){
+      switch(n.t){
+        case 'v': return n.v;
+        case 'c': return cellOf(n.n);
+        case 'neg': return -num(ev(n.a));
+        case '%': return num(ev(n.a)) / 100;
+        case '+': return num(ev(n.a)) + num(ev(n.b));
+        case '-': return num(ev(n.a)) - num(ev(n.b));
+        case '*': return num(ev(n.a)) * num(ev(n.b));
+        case '/': { var d = num(ev(n.b)); return d ? num(ev(n.a)) / d : bad(); }
+        case '^': return Math.pow(num(ev(n.a)), num(ev(n.b)));
+        case '&': return str(ev(n.a)) + str(ev(n.b));
+        case 'cmp': {
+          var a = ev(n.a), b = ev(n.b);
+          if(a === '' && typeof b === 'number') a = 0; if(b === '' && typeof a === 'number') b = 0;
+          if(typeof a === 'string' && typeof b === 'string'){ a = a.toLowerCase(); b = b.toLowerCase(); }
+          else if(typeof a !== typeof b){ var rank = function(x){ return typeof x === 'number' ? 0 : typeof x === 'string' ? 1 : 2; }; a = rank(a); b = rank(b); }
+          return n.op === '=' ? a === b : n.op === '<>' ? a !== b : n.op === '<' ? a < b : n.op === '>' ? a > b : n.op === '<=' ? a <= b : a >= b;
+        }
+        case 'f': {
+          var A = n.args, F = n.name;
+          if(F === 'IF') return bool(ev(A[0] || { t: 'v', v: false })) ? (A[1] ? ev(A[1]) : true) : (A[2] ? ev(A[2]) : false);
+          if(F === 'IFERROR'){ try{ return ev(A[0]); }catch(e){ return A[1] ? ev(A[1]) : ''; } }
+          var V = A.map(ev);
+          switch(F){
+            case 'AND': return V.every(bool);
+            case 'OR': return V.some(bool);
+            case 'NOT': return !bool(V[0]);
+            case 'SUM': return nums(V).reduce(function(x, y){ return x + y; }, 0);
+            case 'AVERAGE': { var q = nums(V); return q.length ? q.reduce(function(x, y){ return x + y; }, 0) / q.length : bad(); }
+            case 'MIN': { var q1 = nums(V); return q1.length ? Math.min.apply(null, q1) : 0; }
+            case 'MAX': { var q2 = nums(V); return q2.length ? Math.max.apply(null, q2) : 0; }
+            case 'ROUND': return rnd(num(V[0]), num(V[1]), '');
+            case 'ROUNDUP': return rnd(num(V[0]), num(V[1]), 'up');
+            case 'ROUNDDOWN': return rnd(num(V[0]), num(V[1]), 'down');
+            case 'ABS': return Math.abs(num(V[0]));
+            case 'INT': return Math.floor(num(V[0]));
+            case 'MOD': { var dv = num(V[1]); if(!dv) bad(); var mv = num(V[0]); return mv - dv * Math.floor(mv / dv); }
+            case 'LEN': return str(V[0]).length;
+            case 'CONCAT': case 'CONCATENATE': return V.map(str).join('');
+            case 'COUNT': return nums(V).length;
+            case 'COUNTA': return V.filter(function(x){ return x !== ''; }).length;
+          }
+          return bad();
+        }
+      }
+      return bad();
+    }
+    return ev(tree);
   }
 
   /* ── PowerPoint ── */
@@ -54147,26 +54458,54 @@ async function mahaAppTool(name, args){
     var W = 13.333, H = 7.5, M = 0.6;
     var X = function(x, w){ return rtl ? (W - x - w) : x; };
     var AL = rtl ? 'right' : 'left';
-    var T = function(o){ return Object.assign({ fontFace: 'Arial', rtlMode: rtl, isTextBox: true, margin: 0, valign: 'top', align: AL, color: '1F2937' }, o); };
+    /* v-pptx-audit (فحص المالك ٩ نوفمبر «افحص الباور بوينت كامل… من أ إلى ي»):
+       • لغة النصّ (lang) بلغة الملفّ — كانت en-US لكلّ نصّ فيدقّق PowerPoint العربيّة إملاءً إنجليزيًّا (خطوط حمراء تحت كلّ كلمة).
+       • rtlMode على كلّ سطر نقطة، لا على الصندوق وحده: PptxGenJS يأخذ اتّجاه الفقرة من خيارات سطرها، فكانت نقاط العرض العربيّ
+         فقرات يساريّة محاذاة يمينًا (العنوان وحده rtl) — في PowerPoint وKeynote تقفز النقطة يسارًا وتنقلب علامات الترقيم.
+       • حجم الخطّ يُحسب من طول النصّ قبل الرسم (fitSize): النصّ الطويل في حدود المخطّط كان يخرج من أسفل الشريحة والعنوان من سطرين
+         يركب العنوان الفرعيّ. لا autofit: PowerPoint لا يطبّقه حتّى يُحرَّر النصّ. */
+    var LANG_TAG = { ar: 'ar-SA', ur: 'ur-PK', fa: 'fa-IR', he: 'he-IL', en: 'en-US', hi: 'hi-IN', bn: 'bn-BD', fil: 'fil-PH', id: 'id-ID', ml: 'ml-IN', ne: 'ne-NP', zh: 'zh-CN', es: 'es-ES', fr: 'fr-FR', ru: 'ru-RU', tr: 'tr-TR' }[spec.lang] || 'en-US';
+    var T = function(o){ return Object.assign({ fontFace: 'Arial', rtlMode: rtl, lang: LANG_TAG, isTextBox: true, margin: 0, valign: 'top', align: AL, color: '1F2937' }, o); };
     var total = (spec.slides || []).length;
-    function titleOf(s, sl){ s.addText(sl.title || '', T({ x: M, y: 0.4, w: W - 2 * M, h: 0.9, fontSize: 30, bold: true, color: th.dark, valign: 'middle' })); }
+    /* تقدير التفاف السطور: عرض الحرف ≈ ٠٫٥٥ من حجم الخطّ (Arial، عربيّ ولاتينيّ، بهامش)، وارتفاع السطر ١٫٢ */
+    var CHW = 0.55, LNH = 1.2;
+    function linesOf(text, size, wIn){
+      var per = Math.max(1, Math.floor((wIn * 72) / (size * CHW)));
+      return String(text == null ? '' : text).split('\n').reduce(function(n, part){ return n + Math.max(1, Math.ceil(part.length / per)); }, 0);
+    }
+    function fitSize(texts, wIn, hIn, max, min, gap){
+      for(var sz = max; sz > min; sz--){
+        var hPt = 0;
+        for(var i = 0; i < texts.length; i++) hPt += linesOf(texts[i], sz, wIn) * sz * LNH + (i ? (gap ? gap(sz) : 0) : 0);
+        if(hPt <= hIn * 72) return sz;
+      }
+      return min;
+    }
+    function oneLine(text, wIn, max, min, chw){ return Math.max(min, Math.min(max, Math.floor((wIn * 72) / (Math.max(1, String(text || '').length) * (chw || CHW))))); }
+    var paraGap = function(sz){ return Math.round(sz * 0.5); };
+    function titleOf(s, sl){ var t = sl.title || ''; s.addText(t, T({ x: M, y: 0.4, w: W - 2 * M, h: 0.9, fontSize: fitSize([t], W - 2 * M, 0.9, 30, 18), bold: true, color: th.dark, valign: 'middle' })); }
     function bulletsBox(s, list, x, y, w, h, size){
       if(!list || !list.length) return;
-      s.addText(list.map(function(b, i){ return { text: b, options: { bullet: rtl ? { code: '25C0' } : { code: '25B6' }, breakLine: i < list.length - 1, paraSpaceAfter: 10 } }; }),
-        T({ x: x, y: y, w: w, h: h, fontSize: size || (list.length > 5 ? 17 : 20), color: '374151' }));
+      var sz = fitSize(list, w - 0.4, h, size || (list.length > 5 ? 17 : 20), 10, paraGap); /* ٠٫٤ بوصة: مسافة النقطة */
+      s.addText(list.map(function(b, i){ return { text: b, options: { bullet: rtl ? { code: '25C0' } : { code: '25B6' }, breakLine: i < list.length - 1, paraSpaceAfter: paraGap(sz), rtlMode: rtl, lang: LANG_TAG } }; }),
+        T({ x: x, y: y, w: w, h: h, fontSize: sz, color: '374151' }));
     }
     function iconCircle(s, icon, x, y, d, bg){
       s.addShape(pres.shapes.OVAL, { x: x, y: y, w: d, h: d, fill: { color: bg || th.main }, line: { color: bg || th.main } });
       var img = emojiPng(icon); if(img) s.addImage({ data: img, x: x + d * 0.22, y: y + d * 0.22, w: d * 0.56, h: d * 0.56 });
     }
-    function tableOf(s, tb, x, y, w){
+    function tableOf(s, tb, x, y, w, hMax){
       var headers = tb.headers.slice(), rows = tb.rows.map(function(r){ var o = r.slice(); while(o.length < headers.length) o.push(''); return o; });
       if(rtl){ headers.reverse(); rows = rows.map(function(r){ return r.slice().reverse(); }); }
-      var fs = rows.length > 8 || headers.length > 6 ? 12 : 15;
-      var opt = function(v, extra){ return { text: String(v == null ? '' : v), options: Object.assign({ align: 'center', valign: 'middle', rtlMode: rtl, fontFace: 'Arial', fontSize: fs, color: '1F2937' }, extra || {}) }; };
+      /* v-pptx-audit: ارتفاع كلّ صفّ من أطول خليّة فيه بعد الالتفاف، والخطّ يصغر حتّى يدخل الجدول كلّه فوق أسفل الشريحة (كان صفّ ١٢ يُقصّ) */
+      var cw = w / Math.max(1, headers.length), base = rows.length > 8 ? 0.38 : 0.48, all = [headers].concat(rows);
+      var heights = function(f){ return all.map(function(r){ var ln = 1; r.forEach(function(v){ ln = Math.max(ln, linesOf(v, f, cw - 0.2)); }); return Math.max(base, ln * f * LNH / 72 + 0.14); }); };
+      var fs = rows.length > 8 || headers.length > 6 ? 12 : 15, hs = heights(fs);
+      while(fs > 8 && hs.reduce(function(a, b){ return a + b; }, 0) > hMax){ fs--; base = Math.max(0.3, base - 0.02); hs = heights(fs); }
+      var opt = function(v, extra){ return { text: String(v == null ? '' : v), options: Object.assign({ align: 'center', valign: 'middle', rtlMode: rtl, lang: LANG_TAG, fontFace: 'Arial', fontSize: fs, color: '1F2937' }, extra || {}) }; };
       var body = [headers.map(function(h){ return opt(h, { bold: true, color: 'FFFFFF', fill: { color: th.main } }); })]
         .concat(rows.map(function(r, i){ return r.map(function(v){ return opt(v, { fill: { color: i % 2 ? 'FFFFFF' : th.soft } }); }); }));
-      s.addTable(body, { x: x, y: y, w: w, rowH: rows.length > 8 ? 0.38 : 0.48, border: { type: 'solid', pt: 0.75, color: 'D1D5DB' } });
+      s.addTable(body, { x: x, y: y, w: w, rowH: hs, border: { type: 'solid', pt: 0.75, color: 'D1D5DB' } });
     }
     (spec.slides || []).forEach(function(sl, idx){
       var dark = sl.layout === 'title' || sl.layout === 'closing' || sl.layout === 'section';
@@ -54176,14 +54515,15 @@ async function mahaAppTool(name, args){
       var L = sl.layout;
       if(L === 'title' || L === 'closing'){
         iconCircle(s, sl.icon || (L === 'closing' ? 'star' : 'idea'), X(1.0, 2.4), 2.45, 2.4, th.main);
-        s.addText(sl.title || spec.title || '', T({ x: X(3.9, 8.6), y: 2.3, w: 8.6, h: 1.6, fontSize: L === 'title' ? 42 : 40, bold: true, color: 'FFFFFF', valign: 'bottom' }));
-        if(sl.subtitle) s.addText(sl.subtitle, T({ x: X(3.9, 8.6), y: 4.05, w: 8.6, h: 1.0, fontSize: 20, color: th.light }));
+        var tt0 = sl.title || spec.title || '';
+        s.addText(tt0, T({ x: X(3.9, 8.6), y: 2.3, w: 8.6, h: 1.6, fontSize: fitSize([tt0], 8.6, 1.6, L === 'title' ? 42 : 40, 22), bold: true, color: 'FFFFFF', valign: 'bottom' }));
+        if(sl.subtitle) s.addText(sl.subtitle, T({ x: X(3.9, 8.6), y: 4.05, w: 8.6, h: 1.0, fontSize: fitSize([sl.subtitle], 8.6, 1.0, 20, 12), color: th.light }));
       } else if(L === 'section'){
-        s.addText(sl.title || '', T({ x: M, y: 2.6, w: W - 2 * M, h: 1.3, fontSize: 40, bold: true, color: 'FFFFFF', align: 'center', valign: 'middle' }));
-        if(sl.subtitle) s.addText(sl.subtitle, T({ x: M, y: 3.95, w: W - 2 * M, h: 0.8, fontSize: 20, color: th.light, align: 'center' }));
+        s.addText(sl.title || '', T({ x: M, y: 2.6, w: W - 2 * M, h: 1.3, fontSize: fitSize([sl.title || ''], W - 2 * M, 1.3, 40, 22), bold: true, color: 'FFFFFF', align: 'center', valign: 'middle' }));
+        if(sl.subtitle) s.addText(sl.subtitle, T({ x: M, y: 3.95, w: W - 2 * M, h: 0.8, fontSize: fitSize([sl.subtitle], W - 2 * M, 0.8, 20, 12), color: th.light, align: 'center' }));
       } else if(L === 'table' && sl.table){
         titleOf(s, sl);
-        tableOf(s, sl.table, M, 1.55, W - 2 * M);
+        tableOf(s, sl.table, M, 1.55, W - 2 * M, (sl.subtitle ? H - 1.05 : H - 0.6) - 1.55);
         if(sl.subtitle) s.addText(sl.subtitle, T({ x: M, y: H - 0.95, w: W - 2 * M, h: 0.4, fontSize: 12, color: '6B7280' }));
       } else if(L === 'stats' && sl.stats){
         titleOf(s, sl);
@@ -54191,21 +54531,27 @@ async function mahaAppTool(name, args){
         sl.stats.forEach(function(st, i){
           var x = X(M + i * (cw + gap), cw);
           s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: x, y: 1.9, w: cw, h: 3.4, fill: { color: th.soft }, line: { color: th.light }, rectRadius: 0.15 });
-          s.addText(st.value, T({ x: x, y: 2.35, w: cw, h: 1.4, fontSize: n > 3 ? 44 : 54, bold: true, color: [th.main, th.dark, th.accent, '6B7280'][i % 4], align: 'center', valign: 'middle', rtlMode: false }));
-          s.addText(st.label, T({ x: x + 0.2, y: 3.85, w: cw - 0.4, h: 1.1, fontSize: 17, color: '374151', align: 'center' }));
+          /* v-pptx-audit: الرقم سطر واحد يدخل البطاقة («1,250,000» كان يلمس حدّيها)، و«24 ساعة» بنصّ عربيّ اتّجاهه يمين (كانت تُقرأ «ساعة 24») */
+          var arVal = rtl && /[\u0621-\u064A\u0671-\u06D3]/.test(st.value);
+          s.addText(st.value, T({ x: x + 0.1, y: 2.35, w: cw - 0.2, h: 1.4, fontSize: oneLine(st.value, cw - 0.3, n > 3 ? 44 : 54, 20, 0.62), bold: true, color: [th.main, th.dark, th.accent, '6B7280'][i % 4], align: 'center', valign: 'middle', rtlMode: arVal }));
+          s.addText(st.label, T({ x: x + 0.2, y: 3.85, w: cw - 0.4, h: 1.1, fontSize: fitSize([st.label], cw - 0.4, 1.1, 17, 11), color: '374151', align: 'center' }));
         });
         bulletsBox(s, sl.bullets, M, 5.6, W - 2 * M, 1.2, 15);
       } else if(L === 'chart' && sl.chart){
         titleOf(s, sl);
         var C = sl.chart, typ = { bar: pres.charts.BAR, column: pres.charts.BAR, line: pres.charts.LINE, pie: pres.charts.PIE, doughnut: pres.charts.DOUGHNUT }[C.type] || pres.charts.BAR;
         var data = C.series.map(function(se){ return { name: se.name || ' ', labels: C.labels, values: se.values }; });
+        /* v-pptx-audit: الأعمدة الأفقيّة يرسمها PowerPoint من الأسفل — أوّل بند كان آخر سطر؛ القلب يضعه في الأعلى والمحور يبقى أسفل */
+        if(C.type === 'bar') data = data.map(function(d){ return { name: d.name, labels: d.labels.slice().reverse(), values: d.values.slice().reverse() }; });
         var pie = C.type === 'pie' || C.type === 'doughnut';
         if(pie) data = data.slice(0, 1);
         var hasSide = sl.bullets && sl.bullets.length, cwid = hasSide ? 8.0 : W - 2 * M;
         s.addChart(typ, data, { x: X(M, cwid), y: 1.5, w: cwid, h: 5.3, barDir: C.type === 'bar' ? 'bar' : 'col',
           chartColors: [th.main, th.accent, th.dark, 'F59E0B', '6B7280', 'EF4444', '8B5CF6', '10B981', '3B82F6', 'EC4899', '84CC16', '06B6D4'],
           showLegend: pie || data.length > 1, legendPos: 'b', legendFontSize: 12, legendFontFace: 'Arial',
-          showValue: !pie, showPercent: pie, dataLabelFontSize: 11, dataLabelFontFace: 'Arial', dataLabelColor: '374151', dataLabelPosition: pie ? 'bestFit' : 'outEnd',
+          showValue: !pie, showPercent: pie, dataLabelFontSize: pie ? 13 : 11, dataLabelFontFace: 'Arial', dataLabelFontBold: pie,
+          /* v-pptx-audit: النسب داخل شرائح ألوان الثيم الداكنة — كانت رماديّة داكنة على الكحليّ فلا تُقرأ؛ أبيض في وسط الشريحة */
+          dataLabelColor: pie ? 'FFFFFF' : '374151', dataLabelPosition: pie ? 'ctr' : 'outEnd',
           catAxisLabelFontSize: 12, catAxisLabelFontFace: 'Arial', catAxisLabelColor: '4B5563', valAxisLabelFontSize: 11, valAxisLabelColor: '6B7280',
           valGridLine: { color: 'E5E7EB', size: 0.75 }, catGridLine: { style: 'none' }, holeSize: 55,
           catAxisOrientation: (rtl && C.type !== 'bar') ? 'maxMin' : 'minMax', /* العربيّة: الأسبوع الأوّل يمينًا */
@@ -54218,7 +54564,7 @@ async function mahaAppTool(name, args){
           if(!col) return;
           var x = X(M + i * (cw2 + 0.4), cw2);
           s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: x, y: 1.55, w: cw2, h: 5.2, fill: { color: i ? 'FFFFFF' : th.soft }, line: { color: th.light, width: 1.25 }, rectRadius: 0.15 });
-          if(col.heading) s.addText(col.heading, T({ x: x + 0.35, y: 1.8, w: cw2 - 0.7, h: 0.6, fontSize: 21, bold: true, color: i ? th.dark : th.main }));
+          if(col.heading) s.addText(col.heading, T({ x: x + 0.35, y: 1.8, w: cw2 - 0.7, h: 0.6, fontSize: fitSize([col.heading], cw2 - 0.7, 0.6, 21, 13), bold: true, color: i ? th.dark : th.main }));
           bulletsBox(s, col.bullets, x + 0.35, 2.55, cw2 - 0.7, 3.9, 16);
         });
       } else if(L === 'timeline' && sl.steps){
@@ -54229,8 +54575,8 @@ async function mahaAppTool(name, args){
           var cxp = rtl ? (W - M - sw * (i + 0.5)) : (M + sw * (i + 0.5));
           s.addShape(pres.shapes.OVAL, { x: cxp - 0.45, y: 2.6, w: 0.9, h: 0.9, fill: { color: i % 2 ? th.accent : th.main }, line: { color: 'FFFFFF', width: 2 } });
           s.addText(String(i + 1), T({ x: cxp - 0.45, y: 2.6, w: 0.9, h: 0.9, fontSize: 22, bold: true, color: 'FFFFFF', align: 'center', valign: 'middle', rtlMode: false }));
-          s.addText(stp.title || '', T({ x: cxp - sw / 2 + 0.1, y: 3.75, w: sw - 0.2, h: 0.6, fontSize: 17, bold: true, color: th.dark, align: 'center' }));
-          if(stp.text) s.addText(stp.text, T({ x: cxp - sw / 2 + 0.1, y: 4.4, w: sw - 0.2, h: 1.9, fontSize: 13, color: '4B5563', align: 'center' }));
+          s.addText(stp.title || '', T({ x: cxp - sw / 2 + 0.1, y: 3.75, w: sw - 0.2, h: 0.6, fontSize: fitSize([stp.title || ''], sw - 0.2, 0.6, 17, 10), bold: true, color: th.dark, align: 'center' }));
+          if(stp.text) s.addText(stp.text, T({ x: cxp - sw / 2 + 0.1, y: 4.4, w: sw - 0.2, h: 1.9, fontSize: fitSize([stp.text], sw - 0.2, 1.9, 13, 9), color: '4B5563', align: 'center' }));
         });
       } else if(L === 'quote' && sl.quote){
         s.background = { color: th.soft };
@@ -54242,12 +54588,12 @@ async function mahaAppTool(name, args){
         var pw = 4.9;
         s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: X(M, pw), y: 1.55, w: pw, h: 5.2, fill: { color: th.light }, line: { color: th.light }, rectRadius: 0.2 });
         var img = emojiPng(sl.icon || 'image'); if(img) s.addImage({ data: img, x: X(M + (pw - 2.4) / 2, 2.4), y: 2.3, w: 2.4, h: 2.4 });
-        if(sl.imageCaption) s.addText(sl.imageCaption, T({ x: X(M + 0.3, pw - 0.6), y: 5.2, w: pw - 0.6, h: 1.2, fontSize: 14, color: th.dark, align: 'center' }));
+        if(sl.imageCaption) s.addText(sl.imageCaption, T({ x: X(M + 0.3, pw - 0.6), y: 5.2, w: pw - 0.6, h: 1.2, fontSize: fitSize([sl.imageCaption], pw - 0.6, 1.2, 14, 10), color: th.dark, align: 'center' }));
         bulletsBox(s, sl.bullets, X(M + pw + 0.5, W - 2 * M - pw - 0.5), 1.75, W - 2 * M - pw - 0.5, 4.9);
       } else {
         titleOf(s, sl);
         var side = !!sl.icon, bw = side ? W - 2 * M - 3.6 : W - 2 * M;
-        if(sl.subtitle) s.addText(sl.subtitle, T({ x: X(M, bw), y: 1.35, w: bw, h: 0.55, fontSize: 16, color: '6B7280' }));
+        if(sl.subtitle) s.addText(sl.subtitle, T({ x: X(M, bw), y: 1.35, w: bw, h: 0.55, fontSize: fitSize([sl.subtitle], bw, 0.55, 16, 10), color: '6B7280' }));
         bulletsBox(s, sl.bullets, X(M, bw), sl.subtitle ? 2.0 : 1.65, bw, 4.9);
         if(side){
           s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: X(W - M - 3.2, 3.2), y: 1.65, w: 3.2, h: 4.6, fill: { color: th.soft }, line: { color: th.light }, rectRadius: 0.2 });
@@ -54256,7 +54602,10 @@ async function mahaAppTool(name, args){
       }
       if(sl.notes) s.addNotes(sl.notes);
     });
-    return await pres.write({ outputType: 'blob' });
+    /* v-pptx-ios (فيديو المالك ٩ نوفمبر: «في الباور بوينت اذا يحمل ملف مايطلع اي شي»): المكتبة تعطي blob بنوع application/zip
+       (افتراض JSZip)، فيصل الملفّ للمشاركة والرابط «zip» باسم .pptx — النوع الحقيقيّ كما في Excel */
+    var pb = await pres.write({ outputType: 'blob' });
+    return new Blob([pb], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
   }
 
   /* ── البطاقة ── */
@@ -54320,7 +54669,9 @@ async function mahaAppTool(name, args){
     var head = el('div', 'omOfHead');
     head.appendChild(el('div', 'omOfIco ' + (isX ? 'omOfX' : 'omOfP'), isX ? 'X' : 'P'));
     var ht = el('div', 'omOfHeadTxt');
-    ht.appendChild(el('div', 'omOfName', spec.fileName + '\u2066' + (isX ? '.xlsx' : '.pptx') + '\u2069')); /* الامتداد معزول يسارًا-يمينًا: «.xlsx» لا «xlsx.» في الاسم العربيّ */
+    var nameEl = el('div', 'omOfName', spec.fileName + '\u2066' + (isX ? '.xlsx' : '.pptx') + '\u2069'); /* الامتداد معزول يسارًا-يمينًا: «.xlsx» لا «xlsx.» في الاسم العربيّ */
+    nameEl.dir = 'auto'; /* v-pptx-audit: اتّجاه السطر من الاسم نفسه — اسم إنجليزيّ في واجهة عربيّة كان «.pptxCrisis Management» */
+    ht.appendChild(nameEl);
     ht.appendChild(el('div', 'omOfMeta', (isX ? 'Excel · ' + fill(tt('officeSheets'), { n: spec.sheets.length }) : 'PowerPoint · ' + fill(tt('officeSlides'), { n: spec.slides.length }))));
     head.appendChild(ht); box.appendChild(head);
     if(spec.free) box.appendChild(el('div', 'omOfFree', tt('officeFreeBadge')));
@@ -54412,7 +54763,7 @@ async function mahaAppTool(name, args){
     return undefined;
   };
   /* للاختبار والمسابر: البناء نفسه بلا بطاقة */
-  window.omranOffice = { buildXlsx: buildXlsx, buildPptx: buildPptx, xlsxPdfBlocks: xlsxPdfBlocks, sheetPlan: sheetPlan, hintTick: hintTick, stopHint: stopHint };
+  window.omranOffice = { buildXlsx: buildXlsx, buildPptx: buildPptx, xlsxPdfBlocks: xlsxPdfBlocks, sheetPlan: sheetPlan, hintTick: hintTick, stopHint: stopHint, fxEval: fxEval, fmtCell: fmtCell };
 })();
 /* ===== app-99-boot-ok — آخر شريحة في الحزمة (scripts/build.mjs يرتّب الأجزاء بالاسم) =====
    v-ios-boot-flag (فحص ١١ أكتوبر): حارس إقلاع الآيفون (selfdiag.js) يعدّ الإقلاع مكتملًا حين __omranBootOk

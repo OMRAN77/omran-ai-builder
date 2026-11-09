@@ -1492,7 +1492,7 @@
     if(typeof window.omranShareMedia === 'function'){ window.omranShareMedia({ src: st.outBlob, name: OUT_NAME, kind: 'video', download: saveOut }); return; }
     try{
       var file = new File([st.outBlob], OUT_NAME, { type: 'video/mp4' });
-      if(navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'om ai' });
+      if(navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file] });
       else saveOut();
     }catch(e){ if(!(e && e.name === 'AbortError')) sw(e, 'ved:share'); }
   }
