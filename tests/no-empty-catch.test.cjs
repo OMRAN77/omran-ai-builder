@@ -21,9 +21,10 @@ const visit = (n, fn) => {
   }
 };
 
-test('١. لا catch فارغًا في أجزاء الحزمة (ما عدا تعريف __swallow نفسه)', () => {
-  const parts = fs.readdirSync(path.join(root, 'js')).filter((f) => /^app-\d\d-.*\.js$/.test(f) && f !== 'app-00-swallow.js');
-  assert.ok(parts.length > 50);
+test('١. لا catch فارغًا في أجزاء الحزمة ولا الملفّات المنفصلة في js/ (ما عدا تعريف __swallow والمكتبات)', () => {
+  // v-standalone-swallow: الملفّات المنفصلة (video وselfdiag وmodes وmedia-notify وpartials…) بالصيغة المحروسة نفسها
+  const parts = fs.readdirSync(path.join(root, 'js')).filter((f) => f.endsWith('.js') && f !== 'app-00-swallow.js' && !/app\.bundle|\.min\./.test(f));
+  assert.ok(parts.length > 70);
   const bad = [];
   for (const f of parts) {
     const ast = acorn.parse(read('js/' + f), { ecmaVersion: 'latest', sourceType: 'script', locations: true, allowReturnOutsideFunction: true, allowAwaitOutsideFunction: true });

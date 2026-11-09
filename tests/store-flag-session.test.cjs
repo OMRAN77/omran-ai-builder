@@ -13,7 +13,7 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 test('selfdiag.js: العلم في sessionStorage، والقديم في localStorage يُمسح، والفرع يقرأ sessionStorage', () => {
   const sd = read('js/selfdiag.js');
   assert.ok(sd.includes("if(sp) sessionStorage.setItem('aiapp_store', String(sp).slice(0, 20));"), 'الحفظ في sessionStorage');
-  assert.ok(sd.includes("try{ localStorage.removeItem('aiapp_store'); }catch(e){ /* guard-ok */ }"), 'مسح العلم القديم');
+  assert.match(sd, /try\{ localStorage\.removeItem\('aiapp_store'\); \}catch\(e\)\{ (typeof __swallow === 'function' && __swallow\(e, 'selfdiag:\d+'\); )?\/\* guard-ok \*\/ \}/, 'مسح العلم القديم'); // v-standalone-swallow: الخطأ يُسجَّل
   assert.ok(sd.includes("if((sessionStorage.getItem('aiapp_store') || '') === 'huawei'){"), 'الفرع يقرأ sessionStorage');
   assert.ok(!sd.includes("localStorage.setItem('aiapp_store'"), 'لا حفظ دائم للعلم');
   // جولة الأدوات صارت لكلّ فتح للتطبيق (v-hw-tools-home) — في sessionStorage لا localStorage

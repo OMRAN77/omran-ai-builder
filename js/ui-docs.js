@@ -33,7 +33,7 @@
   /* v-audit-tools: سقف الملفّ قبل الإرسال — base64 يكبّر الملفّ الثلث، و٣ م.ب ← ~٤٫٢ م.ب تحت حدّ جسم الطلب في Vercel
      (٤٫٥ م.ب؛ PITFALLS). رسالة الخادم «حوالي 10 ميغابايت» لا تصل أبدًا لأنّ الحافّة ترفض قبله. */
   var DOC_MAX_MB=3, DOC_MAX_BYTES=DOC_MAX_MB*1024*1024;
-  function docK(k, ar, en){ try{ if(typeof window.t==='function'){ var v=window.t(k); if(v && v!==k) return String(v); } }catch(e){ /* guard-ok — الاحتياط العربيّ/الإنجليزيّ أدناه */ } return T(ar,en); }
+  function docK(k, ar, en){ try{ if(typeof window.t==='function'){ var v=window.t(k); if(v && v!==k) return String(v); } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'ui-docs:36'); /* guard-ok — الاحتياط العربيّ/الإنجليزيّ أدناه */ } return T(ar,en); }
   function docTooBig(){ return docK('axToolsDocTooBig','الملفّ أكبر من {n} ميغابايت — صغّره أو قسّمه ثمّ ارفعه من جديد.','The file is larger than {n} MB — compress or split it, then upload it again.').split('{n}').join(String(DOC_MAX_MB)); }
   /* v-hw-doc-shrink (رفض هواوي ٣٠ أكتوبر «حلّل المستند ← لا يمكن تحميل ملف»): صورة كاميرا الهاتف ٣–٨ م.ب فتُرفض
      بسقف ٣ م.ب قبل أيّ إرسال، وهي أكثر ما يرفعه المستخدم هنا. الصورة فوق ١٫٥ م.ب تُصغَّر على الجهاز (JPEG ≤١٦٠٠ بكسل
@@ -53,7 +53,7 @@
             res(b64 ? {base64:b64,mime:'image/jpeg'} : null);
           }catch(e){ res(null); /* guard-ok — لوحة معطوبة: يُرسل الأصل إن وسعه السقف */ }
         };
-        im.onerror=function(){ try{ URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } res(null); };
+        im.onerror=function(){ try{ URL.revokeObjectURL(u); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'ui-docs:56'); /* guard-ok */ } res(null); };
         im.src=u;
       }catch(e){ res(null); /* guard-ok — بلا تصغير يُرسل الأصل إن وسعه السقف */ }
     });
@@ -728,7 +728,7 @@
   function docL(ar, en){
     /* v657: كل لغة بنصّها عبر القاموس الثنائيّ __BI؛ الرجوع ar/en عند غيابه. */
     try{ if(typeof window.__bT === 'function'){ var v = window.__bT(ar, en); if(v) return v; } }
-    catch(_){ /* guard-ok: tool label lookup is cosmetic — falls back below. */ }
+    catch(_){ typeof __swallow === 'function' && __swallow(_, 'ui-docs:731'); /* guard-ok: tool label lookup is cosmetic — falls back below. */ }
     var l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
     if(l === 'ar' || l === 'ur') return ar;
     if(l === 'en') return en;
@@ -906,7 +906,7 @@
       document.getElementById('cvPdf').onclick=async function(){
         /* v-cv-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة
            الطباعة ميتة — نصدّر ملف PDF حقيقيًا عبر سلسلة الجسر/المشاركة/الرابط. */
-        var inApp=false; try{ inApp = typeof window.omranLikelyApp==='function' && window.omranLikelyApp(); }catch(e){ /* guard-ok */ }
+        var inApp=false; try{ inApp = typeof window.omranLikelyApp==='function' && window.omranLikelyApp(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'ui-docs:909'); /* guard-ok */ }
         async function fileExport(){
           if(typeof window.omranExportHtmlAsPdfFile!=='function') return false;
           try{

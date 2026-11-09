@@ -857,7 +857,7 @@
     function go() {
       var root = document.getElementById('settingsDialog');
       var sel = document.getElementById('setCurSel');
-      if (root && sel && window.OmranCur) { try { window.OmranCur.mount(root, sel); } catch (e) {} } // guard-ok: تعثّر منتقي العملة يجب ألّا يُسقط شاشة الإعدادات كلّها
+      if (root && sel && window.OmranCur) { try { window.OmranCur.mount(root, sel); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'partials-settings:860');} } // guard-ok: تعثّر منتقي العملة يجب ألّا يُسقط شاشة الإعدادات كلّها
     }
     function loadCur() {
       if (window.OmranCur) { go(); return; }
@@ -924,7 +924,7 @@
       cv.setAttribute('data-link', link);
       window.OmranQR.draw(cv, link, { px: 720, logo: '/icons/ai-hub-mark-256.png' }, function() {
         var a = document.getElementById('acctQrDl');
-        try { if (a) a.href = /[?&]ref=/.test(link) ? cv.toDataURL('image/png') : '/icons/omran-qr-code.png'; } catch (e) { /* guard-ok — لوحة ملوّثة لا تُصدَّر؛ الباركود ظاهر ويُمسح من الشاشة */ }
+        try { if (a) a.href = /[?&]ref=/.test(link) ? cv.toDataURL('image/png') : '/icons/omran-qr-code.png'; } catch (e) { typeof __swallow === 'function' && __swallow(e, 'partials-settings:927'); /* guard-ok — لوحة ملوّثة لا تُصدَّر؛ الباركود ظاهر ويُمسح من الشاشة */ }
       });
     };
     if (window.OmranQR) return paint();
@@ -941,7 +941,7 @@
     var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
     if (typeof window.omranShareSheet === 'function') { window.omranShareSheet({ url: shareUrl, text: tt('acctShareText') }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45) — تُفتح داخل حوار الإعدادات
     if (navigator.share) {
-      try { await navigator.share({ title: 'om ai', text: tt('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+      try { await navigator.share({ title: 'om ai', text: tt('acctShareText'), url: shareUrl }); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'partials-settings:944'); /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
