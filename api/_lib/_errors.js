@@ -169,8 +169,61 @@ async function revokedSessionGate(routeName, req, res) {
   return true;
 }
 
+/* v-owner-problems (المالك ٩ نوفمبر: «اريد كل المشاكل الي في التطبيق توصلي على الايميل»): ردّ خطأ خادم (5xx) أو رفض بدء فيديو
+   يصل مستخدمًا غير المالك من أيّ موجّه = بلاغ «فشل أداة» في صندوق المالك (Push وإيميل) بالأداة والطلب والسبب. يُفحص عند أوّل res.end
+   (داخل سياق الطلب فيعمل waitUntil) ولا يغيّر الردّ. استطلاع الفيديو مستثنى: عثراته العابرة يعيدها العميل، وفشله النهائيّ يبلّغه
+   video-job بسببه. بلا جلسة ولا معرّف زائر (Telegram، الكرون، الويب هوك) = خطأ الخادم في سجلّه كما كان، لا بلاغ مستخدم. */
+const TOOL_FAIL_CODES = new Set(['video_rejected', 'video_busy']);
+const POLL_ACTIONS = new Set(['veo-status', 'video-status', 'minimax-status', 'actor-status']);
+const NO_USER_ROUTES = new Set(['telegram']);
+function requestText(req) {
+  const b = (req && req.body && typeof req.body === 'object') ? req.body : {};
+  for (const k of ['prompt', 'text', 'description', 'message', 'q', 'query', 'idea']) {
+    if (typeof b[k] === 'string' && b[k].trim()) return b[k];
+  }
+  return '';
+}
+function failureOf(res, body) {
+  const code = Number(res && res.statusCode) || 0;
+  const err = body && typeof body.error === 'string' ? body.error : '';
+  if (!(code >= 500 || TOOL_FAIL_CODES.has(err))) return null;
+  return ['HTTP ' + code, err, body && typeof body.code === 'string' ? body.code : '', body && typeof body.message_ar === 'string' ? body.message_ar : '']
+    .filter(Boolean).join(' · ');
+}
+function watchToolFailure(routeName, req, res) {
+  if (NO_USER_ROUTES.has(routeName) || !res || typeof res.end !== 'function') return;
+  const action = String((req && req.query && req.query.action) || '');
+  if (routeName === 'video' && POLL_ACTIONS.has(action)) return;
+  let body = null;
+  if (typeof res.json === 'function') {
+    const json = res.json;
+    res.json = function (o) { body = o; return json.apply(this, arguments); };
+  }
+  const end = res.end;
+  let seen = false;
+  res.end = function () {
+    if (!seen) {
+      seen = true;
+      try {
+        const detail = failureOf(res, body);
+        if (detail) {
+          const session = require('./_session.js');
+          const user = session.sessionUser(session.tokenOf(req));
+          const b = (req && req.body && typeof req.body === 'object') ? req.body : {};
+          const guest = user ? '' : require('./chat-mail.js').guestAlias(b.guestId || (req.query && req.query.guestId) || (req.headers && req.headers['x-guest-id']));
+          if (user || guest) {
+            require('./owner-inbox.js').noteToolLater({ user: user || guest, tool: routeName + (action ? '?' + action : ''), text: requestText(req) || '(بلا نصّ)', detail });
+          }
+        }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_errors:tool-fail'); /* guard-ok — البلاغ لا يمسّ الردّ */ }
+    }
+    return end.apply(this, arguments);
+  };
+}
+
 function withErrorCapture(routeName, handler) {
   return async function wrapped(req, res) {
+    watchToolFailure(routeName, req, res); // v-owner-problems
     try {
       if (await revokedSessionGate(routeName, req, res)) return;
       return await __reqStore.run({ req }, () => handler(req, res));
@@ -190,4 +243,4 @@ function withErrorCapture(routeName, handler) {
   };
 }
 
-module.exports = { reportError, withErrorCapture, deployId, currentReq };
+module.exports = { reportError, withErrorCapture, deployId, currentReq, watchToolFailure, failureOf, TOOL_FAIL_CODES, POLL_ACTIONS };

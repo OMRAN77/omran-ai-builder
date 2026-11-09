@@ -104,14 +104,14 @@ test('٥. التوصيل: المحرّكات الثلاثة تسجّل التذ�
 
 test('٦. التوصيل: نقاط الحالة الثلاث تسوّي عند الانتهاء — والفشل الصامت عند Veo منها', async () => {
   const veo = read('api/_lib/veo-status.js');
-  assert.ok(veo.includes("const settle = (ok) => require('./video-job.js').settleVideoJob(op, ok);"));
-  assert.equal((veo.match(/await settle\(false\)/g) || []).length, 2, 'خطأ العمليّة + اكتمال بلا فيديو (فلتر الأمان)');
+  assert.ok(veo.includes("const settle = (ok, why) => require('./video-job.js').settleVideoJob(op, ok, { why });"));
+  assert.equal((veo.match(/await settle\(false, /g) || []).length, 2, 'خطأ العمليّة + اكتمال بلا فيديو (فلتر الأمان) — بسببه لبلاغ المالك (v-owner-problems)');
   assert.equal((veo.match(/await settle\(true\)/g) || []).length, 1);
   const mm = read('api/_lib/minimax-status.js');
-  assert.match(mm, /settleVideoJob\(taskId, false\)/);
+  assert.match(mm, /settleVideoJob\(taskId, false, \{ why: /);
   assert.match(mm, /settleVideoJob\(taskId, true\)/);
   const rw = read('api/_lib/video-status.js');
-  assert.match(rw, /if \(st === 'FAILED' \|\| st === 'CANCELLED'\) await require\('\.\/video-job\.js'\)\.settleVideoJob\(canonId, false\);/);
+  assert.match(rw, /if \(st === 'FAILED' \|\| st === 'CANCELLED'\) await require\('\.\/video-job\.js'\)\.settleVideoJob\(canonId, false, \{ why: st \+/);
   assert.match(rw, /else if \(st === 'SUCCEEDED'\) await require\('\.\/video-job\.js'\)\.settleVideoJob\(canonId, true\);/);
 
   // نقطة حالة Veo فعليًّا: اكتمال بلا فيديو = FAILED (المسار الذي كان يحرق فيديو المشترك).

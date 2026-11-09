@@ -49,7 +49,7 @@ module.exports = async (req, res) => {
       /* v-credit-out (أمر المالك ٢١ أكتوبر «ما تنخصم منه ولا نقطة»): المزوّد يرفض الاستطلاع نفسه لعطب عندنا (رصيده نفد، المفتاح، الصلاحيّة) — المهمّة لن
          تُتابَع أبدًا، وكانت تذكرتها تنتهي بعد ساعتين بلا ردّ. تُسوّى فشلًا الآن (مرّة واحدة) وunavailable يعرضه العميل «الخدمة متوقّفة مؤقّتًا». */
       if (require('./_videoFail.js').isOutage(upstream.status, JSON.stringify(data))) {
-        await require('./video-job.js').settleVideoJob(canonId, false);
+        await require('./video-job.js').settleVideoJob(canonId, false, { why: 'outage ' + upstream.status + ': ' + JSON.stringify(data).slice(0, 250) });
         res.status(503).json({ error: 'unavailable', retryable: false });
         return;
       }
@@ -59,7 +59,7 @@ module.exports = async (req, res) => {
 
     // v-video-refund: المهمّة انتهت فاشلة (أو أُلغيت) → ردّ الخصم والقفل وحصّة اليوم مرّة واحدة.
     const st = String((data && data.status) || '').toUpperCase();
-    if (st === 'FAILED' || st === 'CANCELLED') await require('./video-job.js').settleVideoJob(canonId, false);
+    if (st === 'FAILED' || st === 'CANCELLED') await require('./video-job.js').settleVideoJob(canonId, false, { why: st + (data.failure ? ': ' + String(data.failure).slice(0, 250) : '') + (data.failureCode ? ' (' + String(data.failureCode).slice(0, 60) + ')' : '') });
     else if (st === 'SUCCEEDED') await require('./video-job.js').settleVideoJob(canonId, true);
     // v-video-open-lock: مخرجات سلّمها خادمنا — وحدها تقبلها ترقية الجودة (video-upscale-create.js)
     if (st === 'SUCCEEDED') await require('./video-upscale-create.js').rememberOutputs(data.output);

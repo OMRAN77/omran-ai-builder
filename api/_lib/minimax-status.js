@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
       /* v-credit-out (أمر المالك ٢١ أكتوبر «ما تنخصم منه ولا نقطة»): المزوّد يرفض الاستطلاع نفسه لعطب عندنا (رصيده نفد، المفتاح، الصلاحيّة) — المهمّة لن
          تُتابَع أبدًا، وكانت تذكرتها تنتهي بعد ساعتين بلا ردّ. تُسوّى فشلًا الآن (مرّة واحدة) وunavailable يعرضه العميل «الخدمة متوقّفة مؤقّتًا». */
       if (require('./_videoFail.js').isOutage(q.status, JSON.stringify(qd))) {
-        await require('./video-job.js').settleVideoJob(taskId, false);
+        await require('./video-job.js').settleVideoJob(taskId, false, { why: 'outage ' + q.status + ': ' + JSON.stringify(qd).slice(0, 250) });
         res.status(503).json({ error: 'unavailable', retryable: false });
         return;
       }
@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
          فتُسوّى التذكرة فشلًا وتُردّ النقاط (روح v-video-retrieve-refund). */
       const transient = q.status === 429 || q.status >= 500;
       if (!transient) {
-        await require('./video-job.js').settleVideoJob(taskId, false);
+        await require('./video-job.js').settleVideoJob(taskId, false, { why: 'query HTTP ' + q.status + ': ' + JSON.stringify(qd).slice(0, 250) });
         res.status(200).json({ status: 'FAILED' });
         return;
       }
@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
     // v-video-refund: الفشل يردّ الخصم ويفكّ قفل الثلاث دقائق (تذكرة سجّلها minimax-create).
     if (raw === 'failed' || raw === 'fail' || raw === 'cancelled' || raw === 'canceled') {
       if (task.error) console.error('[minimax-status] task error ' + JSON.stringify(task.error).slice(0, 200));
-      await require('./video-job.js').settleVideoJob(taskId, false);
+      await require('./video-job.js').settleVideoJob(taskId, false, { why: raw + (task.error ? ': ' + JSON.stringify(task.error).slice(0, 250) : '') });
       res.status(200).json({ status: 'FAILED' });
       return;
     }
@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
          ولم يستلم. تُسوّى التذكرة فشلًا فتُردّ النقاط ويُفكّ القفل وتُعاد حصّة اليوم. حارس «مرّة واحدة»
          في settleVideoJob يمنع الاسترجاع المزدوج لو نجح استطلاع لاحق. */
       console.error('[minimax-status] succeeded without content.url ' + JSON.stringify(task).slice(0, 300));
-      await require('./video-job.js').settleVideoJob(taskId, false);
+      await require('./video-job.js').settleVideoJob(taskId, false, { why: 'succeeded without content.url' });
       res.status(200).json({ status: 'FAILED' });
       return;
     }

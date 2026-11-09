@@ -29,7 +29,7 @@ async function falStatus(op, res) {
     rec = { s: base + '/status', r: base };
   }
   const p = await falBackup.pollVideo(rec);
-  const settleFal = (ok) => require('./video-job.js').settleVideoJob(op, ok);
+  const settleFal = (ok, why) => require('./video-job.js').settleVideoJob(op, ok, { why }); // v-owner-problems: السبب لبلاغ المالك
   if (p.state === 'SUCCEEDED') {
     await settleFal(true);
     await require('./our-media.js').rememberOurMedia([p.url]); // v-dl-ours: ناتج مدفوع — حفظه لا يُعدّ على سقف التنزيل
@@ -39,7 +39,7 @@ async function falStatus(op, res) {
   if (p.state === 'OUTAGE' || p.state === 'FAILED') {
     const why = String(p.why || '');
     console.error('[veo-status] backup ' + p.state.toLowerCase() + ': ' + why.slice(0, 300));
-    await settleFal(false);
+    await settleFal(false, 'backup ' + p.state.toLowerCase() + ': ' + why.slice(0, 300));
     if (p.state === 'OUTAGE') res.status(503).json({ error: 'unavailable', retryable: false });
     else failed(res, FAL_SAFETY_RE.test(why) ? 'safety: ' + why : why);
     return;
@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
       let rec;
       try { rec = JSON.parse((await require('./kv.js').kvGetRaw(vc.omniOpKey(op))) || 'null'); }
       catch (e) { console.error('[veo-status] omni result read failed: ' + (e && e.message)); res.status(200).json({ status: 'RUNNING' }); return; }
-      if (!rec || !rec.uri) { await require('./video-job.js').settleVideoJob(op, false); failed(res, 'omni result missing'); return; }
+      if (!rec || !rec.uri) { await require('./video-job.js').settleVideoJob(op, false, { why: 'omni result missing' }); failed(res, 'omni result missing'); return; }
       await require('./video-job.js').settleVideoJob(op, true);
       res.status(200).json({ status: 'SUCCEEDED', output: [require('./veo-download.js').downloadUrl(rec.uri)] });
       return;
@@ -77,7 +77,7 @@ module.exports = async (req, res) => {
       /* v-credit-out (أمر المالك ٢١ أكتوبر «ما تنخصم منه ولا نقطة»): المزوّد يرفض الاستطلاع نفسه لعطب عندنا (رصيده نفد، المفتاح، الصلاحيّة) — المهمّة لن
          تُتابَع أبدًا، وكانت تذكرتها تنتهي بعد ساعتين بلا ردّ. تُسوّى فشلًا الآن (مرّة واحدة) وunavailable يعرضه العميل «الخدمة متوقّفة مؤقّتًا». */
       if (require('./_videoFail.js').isOutage(upstream.status, msg)) {
-        await require('./video-job.js').settleVideoJob(op, false);
+        await require('./video-job.js').settleVideoJob(op, false, { why: 'outage ' + upstream.status + ': ' + String(msg).slice(0, 250) });
         res.status(503).json({ error: 'unavailable', retryable: false });
         return;
       }
@@ -86,10 +86,10 @@ module.exports = async (req, res) => {
     }
     if (!data.done) { res.status(200).json({ status: 'RUNNING' }); return; }
     // v-video-refund: انتهت المهمّة — نسوّي تذكرتها قبل الردّ (الفشل يردّ الخصم ويفكّ القفل).
-    const settle = (ok) => require('./video-job.js').settleVideoJob(op, ok);
+    const settle = (ok, why) => require('./video-job.js').settleVideoJob(op, ok, { why }); // v-owner-problems: السبب لبلاغ المالك
     if (data.error) {
-      await settle(false);
       const why = String(data.error.message || '');
+      await settle(false, why.slice(0, 300) || 'provider error');
       console.error('[veo-status] failed: ' + why.slice(0, 300));
       failed(res, why);
       return;
@@ -104,11 +104,11 @@ module.exports = async (req, res) => {
     }
     if (!uri) {
       // أشيع فشل صامت عند Veo: اكتملت العمليّة وحجب فلتر الأمان الناتج. لا ناتج = لا محاسبة.
-      await settle(false);
       let why = 'no video in response';
       const rai = gvr.raiMediaFilteredReasons || r.raiMediaFilteredReasons;
       if (rai && rai.length) { why = 'filtered: ' + String(rai.join(' | ')).slice(0, 400); console.warn('[veo-status] ' + why); }
       else console.error('[veo-status] no video, raw: ' + JSON.stringify(r).slice(0, 300)); // v-video-names: الخامّ (@type googleapis…) للسجلّ لا للمستخدم
+      await settle(false, why);
       failed(res, why);
       return;
     }

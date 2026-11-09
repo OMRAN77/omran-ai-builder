@@ -4,7 +4,13 @@
    التطبيق (complaint: عبارة قويّة وحدها، أو عبارة ضعيفة مع ذكر التطبيق/المساعد/«انت»)، أو فشل ردّ أمامه (error: حدث error من الخادم).
    يُحفظ البلاغ وحده — الاسم والوقت والمزوّد والنوع ومقطع ≤٢٠٠ حرف — لا المحادثة (المالك وافق صراحةً على قراءة المقاطع). يصل المالك
    Push فورًا (مرّة لكلّ مستخدم ونوع في الساعة)، ويظهر في لوحته («📥 صندوق المالك» في نافذة رأيك يهمنا)، وإيميل يوميّ مجمّع مع
-   جرد البريد (email-sweep). المالك نفسه لا يُبلَّغ عن كلامه. لا مفتاح يُقرأ في نطاق الوحدة. */
+   جرد البريد (email-sweep). المالك نفسه لا يُبلَّغ عن كلامه. لا مفتاح يُقرأ في نطاق الوحدة.
+   v-owner-problems (المالك ٩ نوفمبر: «واحد من المستخدمين يقول سويت فيديو وماحصلته… اريد كل المشاكل الي في التطبيق توصلي على الايميل»):
+   - نوع رابع tool = أداة فشلت أمام مستخدم: فيديو مدفوع فشل عند المزوّد أو لم يُسلَّم (video-job.settleVideoJob)، وأيّ ردّ خطأ خادم
+     (5xx) أو رفض بدء فيديو من موجّهات api لمستخدم غير المالك (_errors.withErrorCapture). يُحفظ بالأداة والطلب والسبب.
+   - كلّ بلاغ يدفع Push يصل المالك إيميلًا فوريًّا أيضًا (الحارس نفسه: مرّة لكلّ مستخدم ونوع في الساعة)، بسقف يوميّ OWNER_MAIL_DAY_CAP
+     (الافتراضيّ ٢٠، و٠ يطفئه) — Resend المجّانيّ ١٠٠ رسالة في اليوم ومنها رموز دخول المستخدمين. ما فوق السقف في الإيميل اليوميّ.
+   - الإيميل اليوميّ يضمّ أخطاء الخادم الجديدة منذ آخر إرسال (سجلّ _errors.js) ولو بلا بلاغ. */
 const LIST_KEY = 'db/owner-inbox/list.json';
 const DIGEST_KEY = 'db/owner-inbox/digest.json';
 const PUSH_KEY = 'db/owner-inbox/push/';
@@ -13,6 +19,11 @@ const EXCERPT = 200;
 const SCAN_MAX = 4000;
 const PUSH_TTL_S = 3600;
 const DEDUPE_MS = 10 * 60 * 1000;
+const DETAIL = 300;               // v-owner-problems: سبب فشل الأداة (رفض الرقابة، رصيد المزوّد…) يصل كاملًا تقريبًا
+const MAIL_DAY_KEY = 'db/owner-inbox/mail-day/';
+const MAIL_DAY_CAP_DEFAULT = 20;  // v-owner-problems: إيميلات فوريّة في اليوم (توقيت الإمارات) — الباقي في الإيميل اليوميّ
+const SERVER_LOG_KEY = 'db/server-errors/log.json'; // سجلّ _errors.js (لا يُستورد: ذلك الملفّ يحمّل kv عند التحميل)
+const SERVER_MAX = 40;
 
 // حدود الكلمة بلا \b (ميّت جنب العربيّة): بداية أو فاصل قبلها، ونهاية أو فاصل بعدها.
 const B = '(?:^|[\\s،,.!؟?«»"\'()\\-:؛;])', E = '(?=$|[\\s،,.!؟?«»"\'()\\-:؛;])';
@@ -70,24 +81,82 @@ async function record(entry, opts) {
   const kv = o.kv || require('./kv.js');
   const now = typeof o.now === 'number' ? o.now : Date.now();
   const user = String(entry.user || 'guest').slice(0, 40);
-  const item = { id: 'R' + now.toString(36) + Math.random().toString(36).slice(2, 5), at: now, user, prov: String(entry.prov || '').slice(0, 20), via: entry.via === 'agent' ? 'agent' : 'chat', kind: entry.kind, text: excerpt(entry.text) };
-  if (entry.detail) item.detail = excerpt(entry.detail, 140);
+  const via = entry.via === 'agent' || entry.via === 'tool' ? entry.via : 'chat';
+  const item = { id: 'R' + now.toString(36) + Math.random().toString(36).slice(2, 5), at: now, user, prov: String(entry.prov || '').slice(0, 40), via, kind: entry.kind, text: excerpt(entry.text) };
+  if (entry.detail) item.detail = excerpt(entry.detail, DETAIL);
   const items = await readList(kv);
   const key = normKey(item.text);
   if (items.some((x) => x && x.user === user && x.kind === item.kind && now - (Number(x.at) || 0) < DEDUPE_MS && normKey(x.text) === key)) return { saved: false, reason: 'dup', item: null };
   items.push(item);
   await kv.kvPutJSON(LIST_KEY, { items: items.slice(-MAX_ITEMS) });
-  let pushed = false;
+  let pushed = false, mailed = 'skip', fresh = false;
   try {
-    const fresh = await kv.kvSetIfAbsent(PUSH_KEY + encodeURIComponent(user.toLowerCase()) + ':' + item.kind, String(now), PUSH_TTL_S);
+    fresh = await kv.kvSetIfAbsent(PUSH_KEY + encodeURIComponent(user.toLowerCase()) + ':' + item.kind, String(now), PUSH_TTL_S);
     if (fresh) {
       const push = o.push || require('./_owner-alert.js').pushToOwners;
-      const title = item.kind === 'insult' ? '🤬 شتيمة من مستخدم' : (item.kind === 'complaint' ? '😠 مستخدم متضايق من التطبيق' : '⚠️ فشل ردّ أمام مستخدم');
-      await push({ title, body: user + ' · ' + (item.prov || '-') + ': ' + item.text.slice(0, 120) + (item.detail ? ' — ' + item.detail.slice(0, 60) : ''), url: '/' }, o.pushOpts);
+      await push({ title: PUSH_TITLE[item.kind] || PUSH_TITLE.error, body: user + ' · ' + (item.prov || '-') + ': ' + item.text.slice(0, 120) + (item.detail ? ' — ' + item.detail.slice(0, 60) : ''), url: '/' }, o.pushOpts);
       pushed = true;
     }
   } catch (e) { try { require('./log-error.js').logError('owner-inbox:push', e); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/owner-inbox:89'); /* guard-ok — فشل الإشعار لا يمنع الحفظ */ } }
-  return { saved: true, pushed, item };
+  /* v-owner-problems: البلاغ نفسه إيميلًا فوريًّا بالحارس نفسه (مرّة لكلّ مستخدم ونوع في الساعة). بعد الردّ (waitUntil) فلا يؤخّر دور
+     المحادثة الذي ينتظر scanTurn؛ والاختبار يحقن sendMail فينتظره. */
+  if (fresh) {
+    const job = mailNow(item, o).catch((e) => { try { require('./log-error.js').logError('owner-inbox:mail', e); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/owner-inbox:mail'); /* guard-ok — الإيميل تحسين */ } return 'error'; });
+    mailed = (!o.sendMail && later(job)) ? 'background' : await job;
+  }
+  return { saved: true, pushed, mailed, item };
+}
+const PUSH_TITLE = { insult: '🤬 شتيمة من مستخدم', complaint: '😠 مستخدم متضايق من التطبيق', error: '⚠️ فشل ردّ أمام مستخدم', tool: '🧰 أداة فشلت أمام مستخدم' };
+
+/** waitUntil المنصّة إن وُجد (الوعد يكمل بعد الردّ)؛ وإلّا false فينتظره المستدعي. */
+function later(job) {
+  try {
+    const w = _seam.waitUntil || require('./signup-notify.js').platformWaitUntil();
+    if (w) { w(job); return true; }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-inbox:later'); /* guard-ok — بلا سياق طلب يُنتظر الوعد */ }
+  return false;
+}
+const _seam = { waitUntil: null }; // للاختبارات وحدها
+
+function mailCap(env) {
+  const raw = String(env.OWNER_MAIL_DAY_CAP == null ? '' : env.OWNER_MAIL_DAY_CAP).trim();
+  const n = Number(raw);
+  return raw === '' || !Number.isFinite(n) ? MAIL_DAY_CAP_DEFAULT : Math.max(0, Math.floor(n));
+}
+function uaeDay(ms) { return new Date(ms + 4 * 3600000).toISOString().slice(0, 10); }
+
+/** v-owner-problems: إيميل فوريّ ببلاغ واحد — بسقف يوميّ (OWNER_MAIL_DAY_CAP). يرجع sent · failed · capped · off. */
+async function mailNow(item, o) {
+  const env = o.env || process.env;
+  const to = String(env.OWNER_NOTIFY_EMAIL || '').trim();
+  if (!to || !env.RESEND_API_KEY) return 'off';
+  const cap = mailCap(env);
+  if (!cap) return 'off';
+  const kv = o.kv || require('./kv.js');
+  const dk = MAIL_DAY_KEY + uaeDay(Number(item.at) || Date.now());
+  const n = Number(await kv.kvIncr(dk)) || 0;
+  if (n === 1) await kv.kvExpire(dk, 2 * 86400);
+  if (n > cap) return 'capped';
+  const auth = require('./auth.js');
+  const esc = (s) => auth.escapeHtml(String(s == null ? '' : s));
+  const label = KIND_LABEL[item.kind] || item.kind;
+  const rows = [
+    ['الوقت (الإمارات)', uaeTime(item.at)],
+    ['المستخدم', item.user],
+    ['النوع', label],
+    [item.kind === 'tool' ? 'الأداة' : 'المزوّد', item.prov || '-'],
+    [item.kind === 'tool' ? 'الطلب' : 'كلامه', item.text],
+  ];
+  if (item.detail) rows.push([item.kind === 'tool' ? 'السبب' : 'الخطأ', item.detail]);
+  const html = '<div dir="rtl" style="font-family:sans-serif;max-width:620px;margin:0 auto;font-size:14px">'
+    + '<h2 style="margin:0 0 10px">' + esc(PUSH_TITLE[item.kind] || label) + '</h2>'
+    + '<table style="border-collapse:collapse;width:100%">'
+    + rows.map(([k, v]) => '<tr><td style="padding:6px 10px;border-bottom:1px solid #ddd;color:#666;white-space:nowrap;vertical-align:top">' + esc(k)
+      + '</td><td style="padding:6px 10px;border-bottom:1px solid #ddd"><div dir="auto" style="white-space:pre-wrap;word-break:break-word">' + esc(v) + '</div></td></tr>').join('')
+    + '</table><p style="color:#888;font-size:12px;margin:12px 0 0">إيميل فوريّ ' + n + ' من ' + cap + ' اليوم — البلاغات كلّها في «📥 صندوق المالك» وفي الإيميل اليوميّ.</p></div>';
+  const subject = ('⚠️ ' + label + ' — ' + item.user + (item.prov ? ' · ' + item.prov : '')).replace(/[\r\n]+/g, ' ').slice(0, 120);
+  const send = o.sendMail || auth.sendMail;
+  return (await send(to, subject, html)) ? 'sent' : 'failed';
 }
 /** كلام المستخدم في بداية الدور: المالك لا يُبلَّغ عن نفسه. */
 async function scanTurn(args, opts) {
@@ -106,7 +175,26 @@ async function noteFailure(args, opts) {
   const r = await record({ user: a.user, prov: a.prov, via: a.via, kind: 'error', text: a.text || '(بلا نصّ)', detail: err }, opts);
   return Object.assign({ kind: 'error' }, r);
 }
-const KIND_LABEL = { insult: 'شتيمة', complaint: 'متضايق من التطبيق', error: 'فشل ردّ أمامه' };
+/** v-owner-problems: أداة فشلت أمام مستخدم غير المالك (فيديو لم يصل، خطأ خادم في أداة). args: { user, tool, text, detail }. لا يرمي. */
+async function noteTool(args, opts) {
+  const a = args || {};
+  try {
+    const user = String(a.user || '').trim();
+    if (!user || isOwnerUser(user)) return { kind: null };
+    const r = await record({ user, prov: a.tool, via: 'tool', kind: 'tool', text: a.text || a.tool || '(أداة)', detail: a.detail }, opts);
+    return Object.assign({ kind: 'tool' }, r);
+  } catch (e) {
+    try { require('./log-error.js').logError('owner-inbox:tool', e); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/owner-inbox:tool'); /* guard-ok — البلاغ تحسين */ }
+    return { kind: 'tool', saved: false };
+  }
+}
+/** نفسه بعد الردّ (waitUntil) — من مسارات لا يجوز أن ينتظر ردّها البلاغ (استطلاع الفيديو، ردّ خطأ الموجّه). */
+function noteToolLater(args, opts) {
+  const job = noteTool(args, opts);
+  later(job);
+  return job;
+}
+const KIND_LABEL = { insult: 'شتيمة', complaint: 'متضايق من التطبيق', error: 'فشل ردّ أمامه', tool: 'فشل أداة أمامه' };
 function uaeTime(ms) { try { return new Date(ms).toLocaleString('en-GB', { timeZone: 'Asia/Dubai', hour12: false }); } catch (e) { return new Date(ms).toISOString(); } }
 /** الإيميل اليوميّ: ما جدّ منذ آخر إرسال، وإلّا لا شيء. يُنادى من email-sweep (مرّة كلّ ٢٠ ساعة). */
 async function dailyDigest(opts) {
@@ -119,23 +207,42 @@ async function dailyDigest(opts) {
   let since = 0;
   try { const d = await kv.kvGetJSON(DIGEST_KEY); since = Number(d && d.sentAt) || 0; } catch (e) { since = 0; }
   const items = (await readList(kv)).filter((x) => x && Number(x.at) > since && Number(x.at) <= now);
-  if (!items.length) return { sent: false, reason: 'empty' };
+  const errs = await newServerErrors(kv, since, now); // v-owner-problems: أخطاء الخادم الجديدة منذ آخر إيميل
+  if (!items.length && !errs.length) return { sent: false, reason: 'empty' };
   const auth = require('./auth.js');
   const esc = (s) => auth.escapeHtml(String(s == null ? '' : s));
   const counts = items.reduce((m, x) => { m[x.kind] = (m[x.kind] || 0) + 1; return m; }, {});
   const html = '<div dir="rtl" style="font-family:sans-serif;max-width:640px;margin:0 auto">'
     + '<h2 style="margin:0 0 8px">صندوق المالك — ' + items.length + ' بلاغًا جديدًا</h2>'
-    + '<p style="margin:0 0 12px;color:#666">' + Object.keys(counts).map((k) => esc(KIND_LABEL[k] || k) + ': ' + counts[k]).join(' · ') + '</p>'
-    + '<table style="border-collapse:collapse;width:100%;font-size:14px">'
+    + '<p style="margin:0 0 12px;color:#666">' + Object.keys(counts).map((k) => esc(KIND_LABEL[k] || k) + ': ' + counts[k]).join(' · ') + (errs.length ? (items.length ? ' · ' : '') + 'أخطاء خادم جديدة: ' + errs.length : '') + '</p>'
+    + (items.length ? '<table style="border-collapse:collapse;width:100%;font-size:14px">'
     + items.slice().reverse().map((x) => '<tr><td style="padding:6px 8px;border-bottom:1px solid #ddd;white-space:nowrap;color:#666">' + esc(uaeTime(x.at)) + '</td>'
       + '<td style="padding:6px 8px;border-bottom:1px solid #ddd;white-space:nowrap"><b>' + esc(x.user) + '</b><br><span style="color:#888">' + esc(x.prov || '') + '</span></td>'
       + '<td style="padding:6px 8px;border-bottom:1px solid #ddd;white-space:nowrap">' + esc(KIND_LABEL[x.kind] || x.kind) + '</td>'
       + '<td style="padding:6px 8px;border-bottom:1px solid #ddd"><div dir="auto">' + esc(x.text) + '</div>' + (x.detail ? '<br><span style="color:#a33">' + esc(x.detail) + '</span>' : '') + '</td></tr>').join('')
-    + '</table></div>';
+    + '</table>' : '')
+    + (errs.length ? '<h3 style="margin:18px 0 6px">أخطاء الخادم الجديدة (' + errs.length + ')</h3>'
+      + '<table style="border-collapse:collapse;width:100%;font-size:13px">'
+      + errs.map((x) => '<tr><td style="padding:5px 8px;border-bottom:1px solid #eee;white-space:nowrap;color:#666">' + esc(uaeTime(Date.parse(x.lastAt || x.at) || 0)) + '</td>'
+        + '<td style="padding:5px 8px;border-bottom:1px solid #eee;white-space:nowrap"><b dir="ltr">' + esc(String(x.route || '') + (x.action ? '?' + x.action : '')) + '</b>' + ((Number(x.count) || 1) > 1 ? '<br><span style="color:#888">×' + esc(x.count) + '</span>' : '') + '</td>'
+        + '<td style="padding:5px 8px;border-bottom:1px solid #eee;color:#a33"><div dir="auto" style="word-break:break-word">' + esc(String(x.message || '').slice(0, 300)) + '</div></td></tr>').join('')
+      + '</table>' : '')
+    + '</div>';
+  const subject = items.length ? 'صندوق المالك: ' + items.length + ' بلاغًا جديدًا من المستخدمين' + (errs.length ? ' · أخطاء خادم: ' + errs.length : '') : 'صندوق المالك: أخطاء خادم جديدة: ' + errs.length;
   const send = o.sendMail || auth.sendMail;
-  const ok = await send(to, ('صندوق المالك: ' + items.length + ' بلاغًا جديدًا من المستخدمين').slice(0, 120), html);
-  if (ok) await kv.kvPutJSON(DIGEST_KEY, { sentAt: now, count: items.length });
-  return { sent: !!ok, count: items.length };
+  const ok = await send(to, subject.slice(0, 120), html);
+  if (ok) await kv.kvPutJSON(DIGEST_KEY, { sentAt: now, count: items.length, errors: errs.length });
+  return { sent: !!ok, count: items.length, errors: errs.length };
+}
+/** v-owner-problems: أخطاء سجلّ الخادم التي وقعت (أو تكرّرت) بعد آخر إيميل — الأحدث أوّلًا، حتّى SERVER_MAX. */
+async function newServerErrors(kv, since, now) {
+  try {
+    const list = await kv.kvGetJSON(SERVER_LOG_KEY);
+    return (Array.isArray(list) ? list : []).filter((x) => {
+      const t = Date.parse((x && (x.lastAt || x.at)) || '') || 0;
+      return t > since && t <= now;
+    }).slice(0, SERVER_MAX);
+  } catch (e) { return []; } // guard-ok — السجلّ تحسين: بلاغات المستخدمين تُرسل بدونه
 }
 /** /api/system?action=owner-inbox — GET القائمة (الأحدث أوّلًا) للمالك وحده؛ POST {action:'clear'} يمسحها. */
 async function handler(req, res) {
@@ -153,4 +260,4 @@ async function handler(req, res) {
   res.status(200).json({ items, count: items.length });
 }
 module.exports = handler;
-Object.assign(module.exports, { classify, ownWords, excerpt, scanTurn, noteFailure, record, dailyDigest, readList, KIND_LABEL, LIST_KEY, DIGEST_KEY, MAX_ITEMS, EXCERPT, PUSH_TTL_S, DEDUPE_MS });
+Object.assign(module.exports, { classify, ownWords, excerpt, scanTurn, noteFailure, noteTool, noteToolLater, record, mailNow, mailCap, dailyDigest, readList, KIND_LABEL, LIST_KEY, DIGEST_KEY, MAIL_DAY_KEY, MAIL_DAY_CAP_DEFAULT, SERVER_LOG_KEY, MAX_ITEMS, EXCERPT, DETAIL, PUSH_TTL_S, DEDUPE_MS, _seam });

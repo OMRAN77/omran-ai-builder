@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
     const statusUrl = (saved && saved.s) || base + '/status';
     const responseUrl = (saved && saved.r) || base;
     const auth = { headers: { Authorization: 'Key ' + key } };
-    const settle = (ok) => require('./video-job.js').settleVideoJob('actor:' + id, ok);
+    const settle = (ok, why) => require('./video-job.js').settleVideoJob('actor:' + id, ok, { why }); // v-owner-problems: السبب لبلاغ المالك
 
     const st = await fetch(statusUrl, auth);
     const sd = await st.json().catch(() => ({}));
@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
          تُتابَع أبدًا، وكانت تذكرتها تنتهي بعد ساعتين بلا ردّ. تُسوّى فشلًا الآن (مرّة واحدة) وunavailable يعرضه العميل «الخدمة متوقّفة مؤقّتًا». */
       if (require('./_videoFail.js').isOutage(st.status, JSON.stringify(sd))) {
         console.error('[actor-status] status HTTP ' + st.status + ' ' + JSON.stringify(sd).slice(0, 300));
-        await settle(false);
+        await settle(false, 'outage ' + st.status + ': ' + JSON.stringify(sd).slice(0, 250));
         res.status(503).json({ error: 'unavailable', retryable: false });
         return;
       }
@@ -39,8 +39,8 @@ module.exports = async (req, res) => {
     const rd = await rr.json().catch(() => ({}));
     const url = rd && rd.video && rd.video.url;
     if (!rr.ok || !url) {
-      await settle(false);
       const why = String((rd && (rd.detail && (rd.detail[0] && rd.detail[0].msg || rd.detail))) || (rd && rd.error) || ('HTTP ' + rr.status));
+      await settle(false, why.slice(0, 300));
       if (require('./_videoFail.js').isOutage(rr.status, why)) { console.error('[actor-status] result ' + why.slice(0, 300)); res.status(503).json({ error: 'unavailable', retryable: false }); return; } // v-credit-out: «User is locked. Exhausted balance» كان يصل المستخدم سببًا
       res.status(200).json({ status: 'FAILED', failure: why.slice(0, 300) });
       return;

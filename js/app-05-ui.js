@@ -1877,7 +1877,7 @@ $('#btnDeleteAll').onclick = () => {
 
   /* v-owner-inbox (المالك ٢٠ أكتوبر «نعم ابدا»): صندوق المالك — بلاغات كلام المستخدمين من الخادم (شتيمة · تذمّر من التطبيق · فشل ردّ أمامه)،
      الأحدث أوّلًا، كلّ حقل مهرَّب كآراء المستخدمين. */
-  const INBOX_KIND = { insult: ['inboxKindInsult', '#ff5c6c', '🤬'], complaint: ['inboxKindComplaint', '#f5a623', '😠'], error: ['inboxKindError', '#8ab4ff', '⚠️'] };
+  const INBOX_KIND = { insult: ['inboxKindInsult', '#ff5c6c', '🤬'], complaint: ['inboxKindComplaint', '#f5a623', '😠'], error: ['inboxKindError', '#8ab4ff', '⚠️'], tool: ['inboxKindTool', '#c58cff', '🧰'] }; /* v-owner-problems: أداة فشلت أمامه (فيديو لم يصل، خطأ خادم) */
   function inboxListHtml(items){
     return items.map(it=>{
       const k = INBOX_KIND[it.kind] || INBOX_KIND.error;

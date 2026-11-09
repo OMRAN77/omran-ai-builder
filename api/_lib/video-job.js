@@ -91,7 +91,27 @@ async function settleVideoJob(taskId, ok, o) {
   if (job.q) {
     try { await usage.releaseVideo(job.u); } catch (e) { console.error('[video-job] quota release failed: ' + (e && e.message)); }
   }
+  /* v-owner-problems (المالك ٩ نوفمبر: «واحد من المستخدمين يقول سويت فيديو وماحصلته… اريد كل المشاكل… توصلي على الايميل»): الفيديو
+     المدفوع الذي فشل أو لم يُسلَّم كان يُردّ خصمه بصمت (سطر في سجلّ Vercel وحده). الآن بلاغ «فشل أداة» في صندوق المالك بالاسم والمحرّك
+     والسبب، ويصله Push وإيميل. بعد الردّ (waitUntil) فلا يؤخّر الاستطلاع. */
+  try {
+    const note = opt.notify || require('./owner-inbox.js').noteToolLater;
+    note({ user: job.u, tool: 'video/' + videoEngine(taskId), text: 'فيديو لم يصل للمستخدم — رُدّ له الخصم (' + job.c + ')', detail: String(opt.why || 'سبب غير معروف') },
+      opt.kv ? { kv: opt.kv } : undefined);
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-job:notify'); /* guard-ok — البلاغ تحسين: الردّ تمّ */ }
   return { settled: true, refunded: true, username: job.u, cost: job.c };
+}
+
+/** v-owner-problems: اسم المحرّك من رقم المهمّة — لبلاغ المالك وحده (لا يراه مستخدم)، لاتينيًّا كبقيّة أسماء الأدوات (media?studio-create) فلا ينقلب سطر الاسم. */
+function videoEngine(id) {
+  const s = String(id || '');
+  if (s.indexOf('omni/') === 0) return 'omni';
+  if (s.indexOf('bk/') === 0) return 'fal-backup';
+  if (s.indexOf('actor:') === 0) return 'actor';
+  if (/^\d+:/.test(s)) return 'runway';
+  if (/operations\//.test(s)) return 'veo';
+  if (/^\d+$/.test(s)) return 'minimax';
+  return 'other';
 }
 
 /* v-sec-video-verify: حكم المزوّد على مهمّة Runway قبل أن يردّ التنظيف نقاطها.
@@ -137,7 +157,8 @@ async function sweepStaleVideoJobs(username, o) {
     const verdict = await runwayVerdict(x.id, opt);
     if (verdict === 'delivered') { await settleVideoJob(x.id, true, opt); continue; }
     if (verdict === 'pending' || verdict === 'unknown') { keep.push(x); continue; }
-    const r = await settleVideoJob(x.id, false, opt); // 'failed' أو 'skip': سُلِّم أو سُوّي من قبل = لا تذكرة = لا أثر
+    const why = verdict === 'failed' ? 'فشل عند المزوّد (اكتُشف عند فتح التطبيق)' : 'لم يُسلَّم خلال ٣٠ دقيقة — أُغلق التطبيق قبل النهاية أو تعثّرت المتابعة'; // v-owner-problems
+    const r = await settleVideoJob(x.id, false, Object.assign({}, opt, { why })); // 'failed' أو 'skip': سُلِّم أو سُوّي من قبل = لا تذكرة = لا أثر
     if (r && r.refunded) { out.refunded++; out.points += Number(r.cost) || 0; }
   }
   try {
@@ -147,4 +168,4 @@ async function sweepStaleVideoJobs(username, o) {
   return out;
 }
 
-module.exports = { TICKET_TTL_SEC, STALE_MS, ticketKey, rememberVideoJob, settleVideoJob, sweepStaleVideoJobs };
+module.exports = { TICKET_TTL_SEC, STALE_MS, ticketKey, rememberVideoJob, settleVideoJob, sweepStaleVideoJobs, videoEngine };
