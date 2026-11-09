@@ -124,3 +124,16 @@ test('كلّ صورة مثال تُعرض بنصف مقاسها الأصليّ �
   // الفيديو: إطاراته بمقاسه الأصليّ ١٢٨٠×٧٢٠ وتُعرض ٨٠٠×٤٥٠
   assert.ok(src.includes("'-vf', 'fps=30'") && src.includes('style="width:800px;height:450px"'));
 });
+
+test('الخاتمة فيها باركود صفحة التحميل الرسميّ، ظاهر ٥ ثوانٍ على الأقلّ وبمقاس يُمسح من الشاشة', () => {
+  // المالك ٩ نوفمبر: «نسيت تحط الباركود آخر شي»
+  assert.ok(read('scripts/generate-qr.mjs').includes("const TARGET_URL = 'https://omran-ai-builder.vercel.app/download';"));
+  assert.ok(src.includes('<div id="qr"><img src="/icons/omran-qr-code.png" alt="">'), 'الباركود نفسه الذي في الإعدادات');
+  const png = fs.readFileSync(path.join(root, 'icons/omran-qr-code.png'));
+  assert.ok(png.readUInt32BE(16) >= 2 * 440, 'الباركود بضعف مقاس عرضه');
+  assert.ok(src.includes('#qr img{display:block;width:440px;height:440px}'));
+  const outro = SC.find((s) => s.k === 'outro'), shown = outro.bars * 240 / 140 - 3.3 - 0.7;
+  assert.ok(shown >= 5, 'مدّة ظهور الباركود ' + shown.toFixed(1));
+  assert.ok(src.includes("const qp = eOut((lt - 3.3) / 0.45)") && src.includes('scale(${0.4 + 0.6 * qp})'), 'يدخل بلا تكبير فوق مقاسه');
+  assert.ok(outro.lines.some((l) => l.includes('امسح الباركود')));
+});

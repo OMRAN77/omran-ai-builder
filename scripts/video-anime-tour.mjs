@@ -189,7 +189,8 @@ const SCENES = [
   { k: 'shot', shot: 'btnReligion', bars: 3, chap: 'life', title: 'التفسير الديني', line: 'تفسير آية، بحث حديث، وتفسير الأحلام', r: [0.06, 0.02, 0.95, 0.35] },
   { k: 'shot', shot: 'btnFeedback', bars: 3, chap: 'life', title: 'رأيك يهمّنا', line: 'قيّمنا بنجمة… وكلمتك توصل لنا مباشرة', f: [0.5, 0.5], z: 1.3, eyes: 'happy' },
   { k: 'shot', shot: 'themes', bars: 4, chap: 'style', title: 'الثيمات', line: 'وغيّر شكل التطبيق بثيمات… حتى أنمي! ويدعم ١٤ لغة', f: [0.5, 0.45], z: 1.12, eyes: 'star' },
-  { k: 'outro', bars: 5, chap: 'sunset', lines: ['شفت؟ كلّ هذا في تطبيق واحد!', 'جرّبه الحين… وأنا معك!'] },
+  // الخاتمة: باركود صفحة التحميل الرسميّ (icons/omran-qr-code.png ← /download، نفس باركود الإعدادات) ظاهر ٨ ثوانٍ ليُمسح من الشاشة
+  { k: 'outro', bars: 7, chap: 'sunset', lines: ['شفت؟ كلّ هذا في تطبيق واحد!', 'امسح الباركود وحمّله… وأنا معك!'] },
 ];
 {
   let t0 = 0; const chapIdx = {};
@@ -336,7 +337,7 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
     if (s.k === 'chapter') { cue(s.start + 0.36, 'impact'); cue(s.start + 0.75, 'sparkle'); }
     if (s.k === 'intro') { cue(s.start + 1.15, 'impact'); cue(s.start + 2.0, 'jump'); cue(s.start + 2.72, 'pop'); words(s.lines[0], s.start + 2.85, 0.13); cue(s.start + 4.47, 'pop'); words(s.lines[1], s.start + 4.6, 0.13); }
     if (s.k === 'title') { cue(s.start + 0.38, 'slam'); cue(s.start + 0.6, 'sparkle'); }
-    if (s.k === 'outro') { cue(s.start + 0.6, 'sparkle'); cue(s.start + 1.02, 'pop'); words(s.lines[0], s.start + 1.15, 0.13); cue(s.start + 3.62, 'pop'); words(s.lines[1], s.start + 3.75, 0.13); cue(s.start + 5.35, 'impact'); }
+    if (s.k === 'outro') { cue(s.start + 0.6, 'sparkle'); cue(s.start + 1.02, 'pop'); words(s.lines[0], s.start + 1.15, 0.13); cue(s.start + 3.3, 'slam', 0.7); cue(s.start + 3.45, 'sparkle'); cue(s.start + 3.62, 'pop'); words(s.lines[1], s.start + 3.75, 0.13); cue(s.start + 5.85, 'impact'); }
   });
   window.CUES = CUES;
   const sceneAt = (t) => { for (let i = SC.length - 1; i >= 0; i--) if (t >= SC[i].start) return i; return 0; };
@@ -593,7 +594,7 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
     }
 
     // ── المقدّمة والخاتمة: مها كبيرة مع فقاعتين ──
-    $('mI').style.opacity = 0; $('outroTxt').style.opacity = 0;
+    $('mI').style.opacity = 0; $('outroTxt').style.opacity = 0; $('qr').style.opacity = 0;
     ['introb0', 'introb1', 'outrob0', 'outrob1'].forEach((id) => { $(id).style.opacity = 0; });
     if (intro) {
       const jt = (lt - 2.0) / 0.55;
@@ -613,19 +614,24 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
     if (sunset) {
       $('mI').style.opacity = 1;
       const jin = eBack(lt / 0.5);
-      $('mI').style.left = '1220px'; $('mI').style.top = '430px';
+      $('mI').style.left = '1200px'; $('mI').style.top = '430px';
       $('mI').style.transform = `translateY(${(1 - jin) * 600}px)`;
       const b0 = $('outrob0'), b1 = $('outrob1');
-      b0.style.left = '640px'; b0.style.top = '560px'; b1.style.left = '640px'; b1.style.top = '560px';
+      b0.style.left = '780px'; b0.style.top = '320px'; b1.style.left = '780px'; b1.style.top = '320px';
       const out = s.dur - 0.9;
       bubbleIn(b0, lt, 1.0, 3.45); const r0 = reveal(b0, lt, 1.15, 0.13);
       bubbleIn(b1, lt, 3.6, out); const r1 = reveal(b1, lt, 3.75, 0.13);
-      mahaPose('mi', { t, talk: (r0.talking || r1.talking) ? talkAmt(t) : 0, eyes: lt > 5 ? 'happy' : (blink(t, 0.9) ? 'closed' : 'open'), arm: 118 + Math.sin(t * 13) * 12 });
+      // الباركود: يدخل من ٠٫٤ إلى ١ بلا ارتداد (لا تكبير فوق مقاسه)، ومها تشير إليه وهي تقول «امسحه»
+      const qp = eOut((lt - 3.3) / 0.45), qr = $('qr');
+      qr.style.opacity = clamp((lt - 3.3) / 0.15, 0, 1);
+      qr.style.transform = `translate(-50%,0) scale(${0.4 + 0.6 * qp}) rotate(${(1 - qp) * -6}deg)`;
+      const point = lt > 3.5;
+      mahaPose('mi', { t, talk: (r0.talking || r1.talking) ? talkAmt(t) : 0, eyes: lt > 6.5 ? 'happy' : (blink(t, 0.9) ? 'closed' : 'open'), arm: point ? 100 + Math.sin(t * 6) * 3 : 118 + Math.sin(t * 13) * 12, point });
       const lp = eOut((lt - 0.35) / 0.45);
       $('logo').style.opacity = lt > 0.35 ? 1 : 0;
-      $('logo').style.transform = `translate(-50%,-50%) translate(-330px,-330px) scale(${lt < 0.35 ? 0 : 0.3 + 0.7 * lp})`;
-      $('outroTxt').style.opacity = clamp((lt - 5.2) / 0.3, 0, 1);
-      $('outroTxt').style.transform = `scale(${0.6 + 0.4 * eBack((lt - 5.2) / 0.4)})`;
+      $('logo').style.transform = `translate(-50%,-50%) translate(-440px,-355px) scale(${lt < 0.35 ? 0 : 0.3 + 0.7 * lp})`;
+      $('outroTxt').style.opacity = clamp((lt - 5.85) / 0.3, 0, 1);
+      $('outroTxt').style.transform = `scale(${0.6 + 0.4 * eBack((lt - 5.85) / 0.4)})`;
       $('fade').style.opacity = clamp((lt - (s.dur - 0.7)) / 0.7, 0, 1);
     } else $('fade').style.opacity = 0;
     // دخول المقدّمة من السواد
@@ -701,7 +707,10 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:#000;font-family
 #eptitle{position:absolute;left:0;right:0;top:445px;text-align:center;font-family:Lalezar,Tajawal,sans-serif;font-size:150px;color:#fff;-webkit-text-stroke:16px #111;paint-order:stroke fill;text-shadow:8px 10px 0 #b8862f}
 #epsub{position:absolute;left:0;right:0;top:650px;text-align:center;font:800 46px 'Baloo Bhaijaan 2';color:#fff}
 #letter{position:absolute;inset:0;pointer-events:none;opacity:0;box-shadow:inset 0 110px 0 #000,inset 0 -110px 0 #000}
-#outroTxt{direction:rtl;position:absolute;left:220px;top:300px;width:820px;text-align:center;opacity:0}
+#outroTxt{direction:rtl;position:absolute;left:110px;top:826px;width:820px;text-align:center;opacity:0}
+#qr{position:absolute;left:520px;top:238px;padding:16px;background:#fff;border:7px solid #e9c46a;outline:7px solid #111;border-radius:26px;box-shadow:14px 14px 0 rgba(0,0,0,.4);opacity:0;transform-origin:50% 50%}
+#qr img{display:block;width:440px;height:440px}
+#qr .qlbl{direction:rtl;margin-top:8px;text-align:center;font:800 38px 'Baloo Bhaijaan 2';color:#111}
 #outroTxt .made{font:800 40px 'Baloo Bhaijaan 2';color:#fff;text-shadow:3px 3px 0 #2a1d55}
 #outroTxt .cta{display:inline-block;margin-top:14px;padding:10px 60px 18px;border-radius:60px;background:linear-gradient(135deg,#fff0c2,#e9c46a 55%,#b8862f);border:6px solid #111;box-shadow:8px 8px 0 #111;font-family:Lalezar,Tajawal,sans-serif;font-size:70px;color:#111}
 /* لوحة المثال داخل إطار اللقطة */
@@ -738,6 +747,7 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:#000;font-family
 <div id="logo"><div class="plate"></div><img src="/icons/brand-om-s.png" alt="OM Ai"><svg viewBox="0 0 22 42"><g id="ls0" data-base="translate(7.5 14) scale(0.42)" transform="translate(7.5 14) scale(0.42)"><path fill="#04BAEC" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g id="ls1" data-base="translate(15 19) scale(0.62)" transform="translate(15 19) scale(0.62)"><path fill="#FEED01" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g id="ls2" data-base="translate(7.5 28) scale(0.38)" transform="translate(7.5 28) scale(0.38)"><path fill="#F049D7" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g></svg></div>
 <div class="maha" id="mI"></div>
 <div id="bubbles"></div>
+<div id="qr"><img src="/icons/omran-qr-code.png" alt=""><div class="qlbl">امسح وحمّل <bdi dir="ltr">OM Ai</bdi></div></div>
 <div id="outroTxt"><div class="made">صُنع في الإمارات</div><div class="cta">ابدأ مجانًا</div></div>
 <div id="letter"></div>
 <div id="wipe"><div id="wipeA" style="width:120px"></div><div style="width:40px;background:#fff"></div><div style="width:2900px;background:#111"></div><div style="width:40px;background:#fff"></div><div style="width:200px;background:#000;opacity:0"></div></div>
