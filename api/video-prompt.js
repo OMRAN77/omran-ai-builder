@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
     // الهويّة والسقف قبل المفتاح وقبل أيّ نداء مدفوع (الأسرار تُقرأ هنا لا في نطاق الوحدة)
     const session = require('./_lib/_session.js');
     const token = session.tokenOf({ body, query: req.query, headers: req.headers });
-    if (!session.sessionUser(token)) { res.status(401).json({ error: 'auth_required' }); return; }
+    if (!session.sessionUser(token) || await session.sessionRevoked(token)) { res.status(401).json({ error: 'auth_required' }); return; } // v-session-revoke: خارج withErrorCapture
     const { imageBase64, mime } = body;
     if (!imageBase64) { res.status(400).json({ error: 'missing image' }); return; }
     const usage = require('./_lib/_usage.js');

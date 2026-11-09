@@ -1111,6 +1111,7 @@ module.exports = async (req, res) => {
       user.hash = hash;
       user.sv = sessionVersion(user) + 1; // v-audit-auth (srv-auth-8): كلّ جلسة سابقة تموت — وهذا الجهاز يأخذ رمزه الجديد
       await putUser(u, user);
+      await require('./_session.js').recordSessionVersion(u, user.sv); // v-session-revoke: والرفض في كلّ الخدمات لا هنا وحده
       res.status(200).json({ ok: true, token: makeToken(u, user.sv) });
       return;
     }
@@ -1276,6 +1277,7 @@ module.exports = async (req, res) => {
       user.resetTokenExpiry = null;
       user.sv = sessionVersion(user) + 1; // v-audit-auth (srv-auth-8): الاستعادة تُبطل كلّ جلسة سابقة
       await putUser(key, user);
+      await require('./_session.js').recordSessionVersion(key, user.sv); // v-session-revoke
       await markKnownNet(key, req);
       res.status(200).json({ ok: true, token: makeToken(key, user.sv), username: user.username, avatar: user.avatar || null });
       return;
@@ -1331,6 +1333,8 @@ module.exports = async (req, res) => {
         res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true, code: 'banned' });
         return;
       }
+      // v-session-revoke: من غيّر كلمته قبل هذا القرار يُنسخ إصداره إلى الجدول عند أوّل فتح (يكتب فقط إذا كان الجدول أقدم)
+      if (user && sessionVersion(user) > 0) await require('./_session.js').recordSessionVersion(u, user.sv);
       let adminMessage = null;
       if (user && user.pendingMessage) {
         adminMessage = user.pendingMessage;
