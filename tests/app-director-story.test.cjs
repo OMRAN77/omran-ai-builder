@@ -237,4 +237,42 @@ test('١٢. مراجعة: لقطات مرقّمة من الصفر لا تُزا�
   assert.match(p, /16\s*[:x]\s*9/, 'مسار الصور يختار 16:9');
 });
 
+test('١٣. قصص الأنبياء (لقطة المالك ٩ نوفمبر: آدم واقف بجسده ووجهه نور): القصّة الدينيّة تُعرف بأوصافها، فلا شخصيّة لأحد ولا هيئة في أيّ لقطة — وقصّة الناس كما هي', () => {
+  for (const t of ['آدم عليه السلام في الجنّة', 'قال النبيّ ﷺ لأصحابه', 'أبو بكر رضي الله عنه', 'بعث الله نبيّ الله نوحًا', 'قصص الأنبياء: الحلقة الثانية', 'قال رسول الله', 'Noah (pbuh) built the ark', 'the prophet Yunus'])
+    assert.equal(D.sacredStory([t]), true, 'دينيّة: ' + t);
+  for (const t of [STORY, 'وعليكم السلام يا عمّي', 'وصلت الرسالة', 'النبيل وقف عند الباب', 'محمد وآدم ونوح أصدقاء في المدرسة'])
+    assert.equal(D.sacredStory([t]), false, 'ليست دينيّة: ' + String(t).slice(0, 30));
+  assert.match(D.STORY_SYSTEM, /الأنبياء والرسل وآل البيت والصحابة وأمّهات المؤمنين والملائكة لا يظهرون في أيّ لقطة بأيّ هيئة/);
+  assert.match(D.STORY_SYSTEM, /يغطّي النور وجهها/, 'تغطية الوجه بالنور ليست حلًّا');
+  const ADAM = ['خلق الله آدم عليه السلام من طين، وأسكنه الجنّة. وكانت الجنّة واسعة فيها أنهار وأشجار. ثمّ أمره الله ألّا يقرب الشجرة.',
+    'وكان في الجنّة كلّ ما تشتهيه النفس من ثمار وظلال وأنهار جارية، والملائكة تسبّح بحمد ربّها.',
+    'فوسوس الشيطان وقال: هل أدلّك على شجرة الخلد؟ فأكلا منها فبدت لهما سوآتهما.',
+    'ثمّ تاب آدم عليه السلام، فتاب الله عليه، وأهبطه إلى الأرض ليكون خليفة فيها.'].join('\n\n');
+  const chunks = D.splitStory(ADAM);
+  assert.ok(chunks.length >= 3, 'قصّة بعدّة مشاهد');
+  const sp = D.buildStoryPrompt({ chunks, lang: 'ar' });
+  assert.match(sp, /هذه قصّة فيها نبيّ أو صحابيّ: "characters" فارغة/, 'موجّه القصّة الدينيّة');
+  assert.doesNotMatch(D.buildStoryPrompt({ chunks: D.splitStory(STORY), lang: 'ar' }), /قصّة فيها نبيّ/, 'قصّة الناس بلا السطر');
+  const plan = D.normalizeStory({ title: 'قصص الأنبياء', characters: [{ name: 'Adam (30)', look: 'tall man, white robe, glowing face' }],
+    shots: chunks.map((c, i) => (i === 1 ? { i: i + 1, visual: '' } : { i: i + 1, visual: 'Adam stands by a river in paradise' })) }, chunks);
+  assert.deepEqual(plan.characters, [], 'لا شخصيّة ثابتة الملامح لأحد');
+  const story = plan.scenes.filter((x) => x.type === 'story');
+  assert.equal(story.length, chunks.length);
+  for (const x of story) assert.ok(x.visual.endsWith(D.SACRED_SHOT), 'كلّ لقطة مختومة بأمر «بلا أشخاص»: ' + x.visual.slice(0, 40));
+  assert.equal(story[1].visual, D.SACRED_SHOT, 'اللقطة الفارغة لا تسقط إلى سطر السرد (فيه اسم النبيّ)');
+  const keep = D.normalizeStory({ title: 't', characters: [{ name: 'Saeed (10)', look: 'boy' }], shots: D.splitStory(STORY).map((c, i) => ({ i: i + 1, visual: 'v' + (i + 1) })) }, D.splitStory(STORY));
+  assert.equal(keep.characters.length, 1, 'قصّة الناس: الشخصيّات باقية');
+  assert.ok(keep.scenes.slice(1).every((x, i) => x.visual === 'v' + (i + 1)), 'وأوصافها كما هي');
+  // ما يصل مسار الصور: الأمر في أوّل الوصف، تحت حدّ ١٨٠٠، ولا يحوّله لمسار الكتابة
+  const js = read('js/video.js');
+  const grab = (name) => { const i = js.indexOf('function ' + name + '('); let d = 0; for (let k = js.indexOf('{', i); k < js.length; k++) { if (js[k] === '{') d++; else if (js[k] === '}' && --d === 0) return js.slice(i, k + 1); } return ''; };
+  const build = new Function(grab('drStoryNeutral') + '\n' + grab('drStoryPrompt') + '\nreturn drStoryPrompt;')();
+  const p = build({ style: 'cinematic photoreal, golden light', characters: plan.characters }, story[0].visual);
+  assert.ok(p.length <= 1800 && p.includes(D.SACRED_SHOT), 'الأمر يصل مسار الصور كاملًا');
+  assert.doesNotMatch(p, /Characters \(same faces/, 'بلا ورقة وجوه');
+  const maha = read('api/_lib/maha-image.js');
+  const cue = new RegExp(maha.match(/const __textCueRe = \/(.+)\/i;/)[1], 'i');
+  assert.doesNotMatch(D.SACRED_SHOT, cue, 'الأمر لا يحوّل الصورة لمسار الكتابة');
+});
+
 console.log('✓ app-director-story: القصّة حرفيّة كاملة، بلا إعلان ولا ملاحظات، صور مشاهدها من لقطاتها، ووقفات الراوي باقية');

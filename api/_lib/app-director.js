@@ -67,8 +67,18 @@ const STORY_SYSTEM = [
   'مهمّتك الصورة وحدها: عنوان قصير، وشخصيّات ثابتة الملامح، وأسلوب بصريّ واحد للفيلم كلّه، ولكلّ مقطع لقطة واحدة تصوّر لحظته بدقّة.',
   'الأوصاف البصريّة بالإنجليزيّة وملموسة: من في اللقطة (باسم الشخصيّة وعمرها في تلك اللحظة)، والمكان، والوقت والإضاءة، وتعبير الوجه، وزاوية الكاميرا. الملابس والأماكن خليجيّة إماراتيّة حين تقتضي القصّة.',
   'لا كتابة ولا حروف ولا لافتات داخل اللقطة. لا إعلان ولا تطبيق ولا دعوة لتحميل شيء. ممنوع ذكر اسم أيّ مزوّد أو نموذج ذكاء اصطناعيّ.',
+  'الأنبياء والرسل وآل البيت والصحابة وأمّهات المؤمنين والملائكة لا يظهرون في أيّ لقطة بأيّ هيئة: لا وجه ولا جسد ولا ظلّ ولا ظهر ولا يد ولا هيئة يغطّي النور وجهها، ولا تُكتب لأحدهم شخصيّة في "characters" — تُروى لحظتهم بالمكان والطبيعة والأشياء والأثر والنور.',
   'تعيد JSON واحدًا صالحًا فقط بلا أيّ نصّ خارجه ولا أسوار كود.',
 ].join('\n');
+
+/* v-director-no-prophet-figures (لقطة المالك ٩ نوفمبر: «قصص الأنبياء — آدم عليه السلام، الحلقة الثانية: الجنّة» وآدم واقف بجسده ووجهه نور):
+   نوع «قصة» يطلب «شخصيّات ثابتة الملامح» ووجهًا وتعبيرًا لكلّ من في اللقطة، فصارت قصّة النبيّ شخصيّةً مرسومة. تغطية الوجه بالنور لا تحلّ:
+   جمهور العلماء يمنع تجسيد النبيّ بأيّ هيئة (فيلم «نوح» مُنع في قطر والإمارات والبحرين ٢٠١٤). القصّة الدينيّة تُعرف بأوصافها (عليه السلام،
+   ﷺ، رضي الله عنه، نبيّ الله، الأنبياء) — لا بالأسماء (آدم ونوح ومحمد أسماء ناس) — فتُطلب لقطاتها بلا أشخاص، وتُفرَّغ «الشخصيّات» حتّى لا
+   يرسم مسار الصور وجهًا ثابتًا، ويُختم كلّ وصف بأمر إنجليزيّ يقرؤه مسار الصور (بلا كلمات تحوّله لمسار الكتابة — __textCueRe). */
+const SACRED_RE = /(عليه\s*السلام|عليها\s*السلام|عليهم(?:ا)?\s*السلام|صل(?:ّ)?ى\s*الله\s*عليه\s*و\s*سل(?:ّ)?م|ﷺ|رضي\s*الله\s*عن(?:ه|ها|هم|هما)|نبي(?:ّ)?\s*الله|رسول\s*الله|الأنبياء|الانبياء|النبي(?:ّ)?(?=$|[\s،,.!؟?»"'])|peace\s+be\s+upon\s+(?:him|her|them)|\bpbuh\b|\bprophets?\b|messenger\s+of\s+god)/i;
+const SACRED_SHOT = 'Only places, nature, objects and light appear: no prophet, messenger, companion or angel in any form (no face, body, silhouette, back view, hands or veiled figure); any other people only distant and featureless.';
+function sacredStory(chunks) { return SACRED_RE.test((Array.isArray(chunks) ? chunks : [chunks]).join(' ')); }
 
 function sceneTarget(minutes) { return Math.max(4, Math.round((minutes * 60) / SCENE_SECONDS)); }
 function wordsPerScene() { return Math.round(SCENE_SECONDS * WORDS_PER_SEC); }
@@ -247,9 +257,10 @@ function buildStoryPrompt(o) {
     o.chunks.map((c, i) => (i + 1) + ') ' + c).join('\n'),
     'لغة القصّة: ' + (LANG_NAMES[o.lang] || o.lang) + ' — العنوان بها، والأوصاف البصريّة بالإنجليزيّة.',
     'إن ظهرت شخصيّة في عمرين (طفلًا ثمّ كبيرًا) فاكتب لها في "characters" وصفين منفصلين بالملامح نفسها، وسمِّ في كلّ لقطة نسخة عمرها في تلك اللحظة.',
+    sacredStory(o.chunks) ? 'هذه قصّة فيها نبيّ أو صحابيّ: "characters" فارغة، وكلّ لقطة مكان أو طبيعة أو أشياء أو أثر أو نور — لا يظهر النبيّ ولا الصحابيّ ولا الملَك بأيّ هيئة، ومن يلزم من الناس الآخرين يُرى من بعيد بلا ملامح.' : '',
     'الصيغة: {"title":"عنوان قصير (٦ كلمات على الأكثر)","style":"one English line: the single visual style of every shot","characters":[{"name":"name (age)","look":"English: age, face, hair, skin tone, clothing — fixed details"}],"shots":[{"i":1,"visual":"English, 25-60 words: who is in frame by character name, action, place, time of day, lighting, expression, camera angle"}]}',
     'أعد "shots" بعدد المقاطع بالضبط (' + o.chunks.length + ') وبترتيبها، كلّ عنصر برقم مقطعه.',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 /** خطّة القصّة: المقاطع نفسها (لا ما قد يعيد النموذج صياغته) + لقطة كلّ مقطع؛ نموذج أسقط أغلب اللقطات = null فيُعاد */
 function normalizeStory(obj, chunks) {
@@ -263,8 +274,10 @@ function normalizeStory(obj, chunks) {
     if (v && i >= 1 && i <= chunks.length && !byI[i]) byI[i] = v;
   });
   if (Object.keys(byI).length < Math.ceil(chunks.length * 0.6)) return null;
-  const characters = (Array.isArray(obj.characters) ? obj.characters : []).slice(0, 8)
+  const sacred = sacredStory(chunks); /* v-director-no-prophet-figures: لا وجه ثابتًا لأحد، وكلّ لقطة بأمر «بلا أشخاص» — والفارغة لا تسقط إلى السرد */
+  const characters = sacred ? [] : (Array.isArray(obj.characters) ? obj.characters : []).slice(0, 8)
     .map((c) => ({ name: clip(c && c.name, 60), look: clip(c && c.look, 300) })).filter((c) => c.name && c.look);
+  if (sacred) for (let k = 1; k <= chunks.length; k++) byI[k] = (byI[k] ? byI[k] + ' ' : '') + SACRED_SHOT;
   const title = clip(obj.title, 80) || clip(chunks[0], 40);
   const scenes = [{ type: 'title', target: '', text: title, highlight: '', narration: '', seconds: 3 }];
   chunks.forEach((c, k) => scenes.push({
@@ -651,4 +664,4 @@ async function handler(req, res) {
 }
 
 module.exports = handler;
-module.exports.__test = { storyText, splitStory, buildStoryPrompt, normalizeStory, STORY_SYSTEM, MAX_STORY, probeBridge, BRIDGE_MIN_DISK_MB, directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, LAST_RESORT, cleanLabels, partsFor, cleanOutline, discoverPro, diagOf, callModel, requestVoice, voiceBody, voiceModels, voiceName, pickAudio, toWav, VOICE_MODELS };
+module.exports.__test = { storyText, splitStory, buildStoryPrompt, normalizeStory, STORY_SYSTEM, SACRED_RE, SACRED_SHOT, sacredStory, MAX_STORY, probeBridge, BRIDGE_MIN_DISK_MB, directorModels, buildPrompt, normalizePlan, requestPlan, signJobToken, verifyJobToken, extractJson, sceneTarget, SYSTEM, TOKEN_TTL_MS, DEFAULT_MODELS, LAST_RESORT, cleanLabels, partsFor, cleanOutline, discoverPro, diagOf, callModel, requestVoice, voiceBody, voiceModels, voiceName, pickAudio, toWav, VOICE_MODELS };
