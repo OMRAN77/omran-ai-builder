@@ -275,25 +275,29 @@ test('٧. «جودة أعلى» بعد ظهور الفيديو لا قبله: ا
       proxyVideoUrl: (u) => '/api/video-download?u=' + u, proxyFetch: async () => new Response('vid', { status: 200 }),
       muxNarration: async () => new Blob(['m']), Blob,
       resultEl: { src: 'blob:raw', currentTime: 3, paused: true, play: () => { sb.played = true; return Promise.resolve(); }, pause: () => { sb.paused = true; } }, downloadEl: { href: '/dl/raw' },
-      __swallow() {}, revoked: [],
+      __swallow() {}, revoked: [], saved: [],
     };
     sb.URL.revokeObjectURL = (u) => sb.revoked.push(u);
+    sb.autoSaveVideo = (u) => sb.saved.push(u); /* v-video-autosave: يُحفظ في الجهاز مرّة واحدة في نهاية الترقية */
     vm.runInNewContext(fnSrc + '\nthis.go = upgradeInBackground; this.bump = function(){ genSeq++; }; this.seq = function(){ return ++genSeq; };', sb);
     return sb;
   };
   let sb = mk(false, false);
-  await sb.go('https://cdn/raw.mp4', 't', null, sb.seq());
-  assert.equal(sb.resultEl.src, 'blob:up'); assert.equal(sb.downloadEl.href, '/api/video-download?u=https://cdn/up.mp4');
+  await sb.go('https://cdn/raw.mp4', 't', null, sb.seq(), 'blob:raw');
+  assert.equal(sb.resultEl.src, 'blob:up');
+  assert.deepEqual(sb.saved, ['blob:up'], 'v-video-autosave: الأعلى جودة وحده يُحفظ — لا نسختان في الاستوديو'); assert.equal(sb.downloadEl.href, '/api/video-download?u=https://cdn/up.mp4');
   assert.equal(sb.quiet, true, 'استطلاع هادئ — «⏳ الحالة» كانت ستُظهر بطاقة الانتظار فوق النتيجة');
   assert.equal(sb.played, undefined, 'لا تشغيل لفيديو أوقفه المستخدم أو أغلق نافذته'); assert.equal(sb.paused, true, 'autoplay يُلغى بالإيقاف');
   assert.deepEqual(sb.revoked, ['blob:raw'], 'النسخة القديمة تُحرَّر من الذاكرة');
   assert.ok(sb.statuses.every((s) => /^✅/.test(s)), 'حالات الخلفية ليست «مشغول»: ' + sb.statuses.join(' | '));
   sb = mk(false, true);
-  await sb.go('https://cdn/raw.mp4', 't', null, sb.seq());
+  await sb.go('https://cdn/raw.mp4', 't', null, sb.seq(), 'blob:raw');
   assert.equal(sb.resultEl.src, 'blob:raw', 'طلب أحدث بدأ = لا استبدال');
+  assert.deepEqual(sb.saved, ['blob:raw'], 'v-video-autosave: طلب أحدث لا يُضيّع حفظ هذا الفيديو');
   sb = mk(true, false);
-  await sb.go('https://cdn/raw.mp4', 't', null, sb.seq());
+  await sb.go('https://cdn/raw.mp4', 't', null, sb.seq(), 'blob:raw');
   assert.equal(sb.resultEl.src, 'blob:raw'); assert.match(sb.statuses.pop(), /^✅ تم الانتهاء! \(تعذّرت/);
+  assert.deepEqual(sb.saved, ['blob:raw'], 'v-video-autosave: تعذّر الترقية = يُحفظ الحاليّ');
 });
 
 test('٨. التعليق الصوتيّ مع الفيديو لا بعده، وffmpeg يُحمَّل مرّة لنداءين متزامنين، وعدّاد الانتظار لا يُصفَّر عند ⬇️', async () => {

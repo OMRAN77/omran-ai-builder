@@ -123,12 +123,14 @@
     setStatus(why + ' ' + partialScenesNote(urls.length, n));
   }
 
-  // v526: autoSaveVideo — النقر البرمجي محظور على هواوي/أندرويد
-  // الزر يظهر للمستخدم ليضغط عليه بنفسه (رابط البروكسي مع Content-Disposition: attachment)
+  /* v-video-autosave (المالك ٩ نوفمبر: «اول مايخلص يتحمل الي الاستوديو»): كانت فارغة منذ v526 (النقر البرمجيّ يسقط في WebView هواوي).
+     الحفظ نفسه في app-05-save-media (omranAutoSaveVideo: جسر هواوي، ورقة الآيفون، التنزيل المباشر)؛ هنا الاسم من زرّ التحميل،
+     وزرّ «تحميل الفيديو» باقٍ كما هو لمن يريد نسخة ثانية. */
   function autoSaveVideo(url, name){
-    // لا نفعل شيئاً — زر التحميل يُضبَط خارجياً قبل هذه الدالة
+    if(!url || typeof window.omranAutoSaveVideo !== 'function') return;
+    window.omranAutoSaveVideo(url, name || (downloadEl && downloadEl.getAttribute('download')) || 'omran-ai-video.mp4');
   }
-  window.autoSaveVideo = autoSaveVideo;
+  /* window.autoSaveVideo (المحادثة، مخرج التطبيق، الترندات) يعرّفه app-05-save-media بلا اسم هذه النافذة */
   const narrationToggle = $('#videoMakerNarrationToggle');
   const narrationText = $('#videoMakerNarrationText');
   const qualityToggle = $('#videoMakerQualityToggle');
@@ -1051,7 +1053,8 @@
      (✅/✨ لا تُظهر بطاقة الانتظار فوق النتيجة) ثمّ تستبدل المشغّل ورابط التحميل — ومع التعليق الصوتيّ يُدمَج الصوت نفسه على النسخة
      الأعلى. runSeq: طلب أحدث بدأ = لا استبدال. */
   let genSeq = 0;
-  async function upgradeInBackground(rawUrl, token, audioBlob, runSeq){
+  async function upgradeInBackground(rawUrl, token, audioBlob, runSeq, curUrl){
+    let saveUrl = curUrl; /* v-video-autosave: يُحفظ في النهاية مرّة واحدة — الأعلى جودة إن وصل، وإلّا الحاليّ */
     setStatus(bT('✅ الفيديو جاهز — ✨ نجهّز نسخة أعلى جودة في الخلفية وتستبدله تلقائيًّا…','✅ Video ready — ✨ preparing a higher-quality version in the background…'));
     try{
       const upRes = await fetch('/api/video-upscale-create', {
@@ -1082,10 +1085,14 @@
       /* المشغّل بخاصيّة autoplay: تبديل المصدر يشغّله ولو أوقفه المستخدم أو أغلق النافذة (صوت التعليق من نافذة مغلقة) */
       if(wasPlaying) resultEl.play().catch(function(){ /* autoplay may be blocked */ }); else resultEl.pause();
       downloadEl.href = dl;
+      /* المشغّل الحاليّ قد يُلغى أدناه — الحفظ من ملفّ الجودة الأعلى نفسه */
+      saveUrl = /^blob:/.test(player || '') ? player : upUrl;
       if(/^blob:/.test(old || '') && old !== dl && old !== player){ try{ URL.revokeObjectURL(old); }catch(e){ __swallow(e, 'video:revoke'); } }
       setStatus(bT('✅ تم — صار الفيديو بجودة أعلى.','✅ Done — upgraded to higher quality.'));
     } catch(e){
       if(runSeq === genSeq) setStatus(bT('✅ تم الانتهاء! (تعذّرت النسخة الأعلى جودة — فيديوك الحاليّ جاهز)','✅ Done! (The higher-quality version was unavailable — your video is ready)'));
+    } finally {
+      autoSaveVideo(saveUrl); /* v-video-autosave: وطلب أحدث بدأ أثناء الترقية لا يُضيّع حفظ هذا الفيديو */
     }
   }
 
@@ -1562,6 +1569,7 @@
           downloadEl.href = finalUrl;
           downloadEl.download = dlName('omran-film', finalType); // يجبر المتصفح على التحميل لا الفتح — v-vmk-dl-ext: والامتداد من نوع الملفّ
           downloadEl.style.display = 'block';
+          autoSaveVideo(finalUrl); /* v-video-autosave */
         } else {
           // آخر ملاذ: عرض المشاهد ورا بعض مع روابط تحميل منفصلة
           showScenesPlaylist();
@@ -1715,6 +1723,7 @@
             resultEl.style.display = 'block';
             downloadEl.href = proxyVideoUrl(actorUrl);
             downloadEl.style.display = 'block';
+            autoSaveVideo(avurl); /* v-video-autosave */
             return;
           }
           if(!acData.fallback) throw new Error(acData.error || ('actor ' + ac.status));
@@ -1766,6 +1775,7 @@
           resultEl.style.display = 'block';
           downloadEl.href = proxyVideoUrl(videoUrl);
           downloadEl.style.display = 'block';
+          autoSaveVideo(videoUrl); /* v-video-autosave */
           return;
         }
         const vblob = await vres.blob();
@@ -1777,6 +1787,7 @@
         // رابط التحميل = المسار المباشر للسيرفر (Content-Disposition: attachment)، يشتغل على هواوي
         downloadEl.href = proxyVideoUrl(videoUrl);
         downloadEl.style.display = 'block';
+        autoSaveVideo(vurl); /* v-video-autosave: الملفّ نفسه الذي في المشغّل — بلا جلب ثانٍ */
       } catch(e){
         setStatus(friendlyError(e));
       } finally {
@@ -1876,6 +1887,7 @@
         downloadEl.href = finalUrl;
         downloadEl.download = dlName('omran-ai-video', finalBlob.type); // v-vmk-dl-ext
         downloadEl.style.display = 'block';
+        autoSaveVideo(finalUrl); /* v-video-autosave */
       } catch(e){
         setStatus(friendlyError(e)); /* v-video-partial: الرسالة المترجمة كبقيّة الأوضاع لا نصّ الخطأ الخام */
       } finally {
@@ -1982,8 +1994,10 @@
       downloadEl.href = dlUrl;
       downloadEl.download = finalIsBlob ? dlName('omran-ai-video', finalSrc && finalSrc.type) : 'omran-ai-video.mp4'; // v-vmk-dl-ext
       downloadEl.style.display = 'block';
-      /* v-ai-video-speed: الترقية بعد ظهور الفيديو لا قبله (مشهد واحد؛ الطويل بلا ترقية أصلًا) */
-      if(wantQuality && sceneUrls.length === 1) upgradeInBackground(sceneUrls[0], token, narrationBlob, runSeq);
+      /* v-ai-video-speed: الترقية بعد ظهور الفيديو لا قبله (مشهد واحد؛ الطويل بلا ترقية أصلًا)
+         v-video-autosave: مع الترقية يُحفظ الأعلى جودة حين يصل (أو هذا إن تعذّرت) — ملفّ واحد في الاستوديو لا نسختان */
+      if(wantQuality && sceneUrls.length === 1) upgradeInBackground(sceneUrls[0], token, narrationBlob, runSeq, playerUrl);
+      else autoSaveVideo(playerUrl);
     } catch(e){
       if(longPartial && longPartial.length) showPartialScenes(longPartial.slice(), 2, friendlyError(e));
       else setStatus(friendlyError(e));

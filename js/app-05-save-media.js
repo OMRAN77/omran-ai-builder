@@ -168,6 +168,118 @@
     /* v-dl-ticket: فشل البروكسي (401/429) يفتح الرابط الأصليّ — كان يفتح ردّ JSON خامًّا، وصار الضيف لا يحفظ أيّ صورة خارجيّة */
     try{ window.open(url, '_blank', 'noopener'); return true; }catch(e){ return false; }
   };
+  /* ───────── v-video-autosave (طلب المالك ٩ نوفمبر: «اريد خاصيه في الفيديوهات اول مايخلص يتحمل الي الاستوديو») ─────────
+     كان autoSaveVideo خطّافًا فارغًا منذ v526 (النقر البرمجيّ يسقط صامتًا في WebView هواوي). الآن الفيديو المكتمل يُحفظ في الجهاز
+     بلا ضغطة حيث يسمح النظام، وبضغطة واحدة حيث لا يسمح:
+     - غلاف هواوي (WebView): جسره OmranBlobSave (v-hw-blob-save) يكتبه في «التنزيلات» عبر MediaStore، والمعرض يعرضه.
+     - غلاف بجسر مشاركة (تطبيق الآيفون، OmranAndroidShare): ورقة النظام تنفتح وحدها، و«حفظ الفيديو» يضعه في الصور.
+     - سفاري الآيفون/الآيباد: آبل لا تحفظ في الصور إلّا بلمسة — شريط بزرّ واحد يفتح ورقة النظام بالملفّ الجاهز.
+     - كروم أندرويد وTWA والكمبيوتر: <a download> برمجيّ إلى «التنزيلات» (ومعرض الجوّال يعرضها).
+     مرّة واحدة لكلّ رابط، والعطل يُبتلع: زرّ «تحميل الفيديو» باقٍ كما كان. */
+  var autoSaved = {};
+  function autoT(k, ar, en){
+    try{ var v = (typeof window.t === 'function') ? window.t(k) : ''; if(v && v !== k) return v; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:autoT'); /* guard-ok — النصّ الاحتياطيّ أدناه */ }
+    var lg = ''; try{ lg = String(document.documentElement.lang || ''); }catch(e){ lg = ''; }
+    return /^(ar|ur)/.test(lg) || !lg ? ar : en;
+  }
+  function autoNote(msg){ try{ if(typeof settingsToast === 'function') settingsToast(msg); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:autoNote'); /* guard-ok — التنبيه ترف */ } }
+  function vidName(type, name){
+    var ext = /webm/i.test(type || '') ? 'webm' : (/quicktime/i.test(type || '') ? 'mov' : 'mp4');
+    var nm = String(name || '').trim();
+    if(!nm) return 'omran-video-' + Date.now() + '.' + ext;
+    return /\.(mp4|webm|mov)$/i.test(nm) ? nm.replace(/\.(mp4|webm|mov)$/i, '.' + ext) : nm + '.' + ext; /* v-vmk-dl-ext: الامتداد من نوع الملفّ */
+  }
+  function isIOSDevice(){
+    try{ var ua = navigator.userAgent || ''; return /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1); }
+    catch(e){ return false; }
+  }
+  async function videoBlob(url){
+    if(/^data:/i.test(url)) return dataUrlToBlob(url);
+    if(/^blob:/i.test(url)){ var r = await fetch(url); if(!r.ok) throw new Error('blob ' + r.status); return r.blob(); }
+    return proxiedBlob(url); /* رابط المزوّد: البروكسي بالجلسة في الترويسة (v-dl-ticket)؛ ردّ غير ناجح يرمي ولا يُحفظ نصّ خطأ */
+  }
+  /* عقد الجسر نفسه الذي يستعمله غلاف هواوي لتنزيلات blob: (BLOB_SAVE_JS): أجزاء ٧٦٨ ك.ب (من مضاعفات ٣ فلا حشو base64 في الوسط) */
+  function bridgeSave(B, blob, nm){
+    return new Promise(function(resolve, reject){
+      var id = B.begin(nm, blob.type || 'video/mp4', blob.size);
+      if(id < 0) return reject(new Error('bridge begin'));
+      var CH = 786432, off = 0;
+      (function next(){
+        if(off >= blob.size){ B.end(id); resolve(true); return; }
+        var fr = new FileReader();
+        fr.onload = function(){ var s = String(fr.result); B.chunk(id, s.slice(s.indexOf(',') + 1)); off += CH; next(); };
+        fr.onerror = function(){ B.fail(id); reject(new Error('bridge read')); };
+        fr.readAsDataURL(blob.slice(off, off + CH));
+      })();
+    });
+  }
+  /* سفاري الآيفون: navigator.share يرفض بلا لمسة — شريط صغير بزرّ واحد، والملفّ جاهز قبل اللمسة فلا انتظار يُسقط إذنها */
+  function tapBar(file, url, nm){
+    var old = document.getElementById('omranVidSaveBar'); if(old) old.remove();
+    var bar = document.createElement('div'); bar.id = 'omranVidSaveBar'; bar.setAttribute('role', 'status');
+    bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:2147482000;width:min(440px,calc(100vw - 24px));box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(24,24,30,.97);color:#eef0f6;border:1px solid rgba(212,175,55,.45);box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:13.5px;line-height:1.6;';
+    var txt = document.createElement('span'); txt.style.cssText = 'flex:1;min-width:0;';
+    txt.textContent = autoT('vidAutoSaveTap', '📲 ضغطة وحدة ويصير في الاستوديو: اضغط الزرّ ثمّ «حفظ الفيديو»', '📲 One tap to keep it: press the button, then “Save Video”');
+    var go = document.createElement('button'); go.type = 'button';
+    go.textContent = autoT('vidAutoSaveBtn', '💾 حفظ في الاستوديو', '💾 Save to Photos');
+    go.style.cssText = 'flex:none;padding:8px 14px;border-radius:10px;border:0;background:#d4af37;color:#111;font-weight:800;font-family:inherit;font-size:13.5px;cursor:pointer;touch-action:manipulation;';
+    var x = document.createElement('button'); x.type = 'button'; x.textContent = '✕';
+    x.setAttribute('aria-label', autoT('closeTitle', 'إغلاق', 'Close'));
+    x.style.cssText = 'flex:none;background:none;border:0;color:#9a9a9e;font-size:15px;cursor:pointer;padding:4px 6px;';
+    var close = function(){ try{ bar.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:bar-close'); /* guard-ok */ } };
+    go.onclick = function(){
+      try{
+        navigator.share({ files: [file], title: 'om ai' }).then(close).catch(function(err){
+          if(err && err.name === 'AbortError') return; /* أغلق الورقة بنفسه — الشريط باقٍ لمحاولة ثانية */
+          typeof __swallow === 'function' && __swallow(err, 'app-05-save-media:bar-share');
+          close(); window.omranSaveMedia(url, nm);
+        });
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:bar-share2'); close(); window.omranSaveMedia(url, nm); }
+    };
+    x.onclick = close;
+    bar.appendChild(txt); bar.appendChild(go); bar.appendChild(x);
+    document.body.appendChild(bar);
+    setTimeout(close, 180000);
+    return true;
+  }
+  window.omranAutoSaveVideo = async function(url, name){
+    url = unwrap(String(url || ''));
+    if(!url || autoSaved[url]) return false;
+    autoSaved[url] = 1;
+    try{
+      var blob = await videoBlob(url);
+      if(!blob || !blob.size) throw new Error('empty video');
+      var nm = vidName(blob.type, name);
+      var hw = window.OmranBlobSave;
+      if(hw && typeof hw.begin === 'function'){
+        await bridgeSave(hw, blob, nm);
+        autoNote(autoT('vidAutoSaved', '💾 نزل الفيديو في جهازك — تلقاه في الاستوديو أو التنزيلات', '💾 Video saved to your device — find it in your gallery or Downloads'));
+        return true;
+      }
+      if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare') && typeof msgDownloadBlob === 'function'){
+        msgDownloadBlob(blob, nm); /* ورقة النظام تنفتح وحدها بالملفّ */
+        autoNote(autoT('vidAutoSaveHint', '📲 اختر «حفظ الفيديو» عشان ينحفظ في الاستوديو', '📲 Choose “Save Video” to keep it in your Photos'));
+        return true;
+      }
+      if(isIOSDevice()){
+        var file = null;
+        try{ file = new File([blob], nm, { type: blob.type || 'video/mp4' }); }catch(e){ file = null; }
+        if(file && navigator.canShare && navigator.canShare({ files: [file] })) return tapBar(file, url, nm);
+        return window.omranSaveMedia(url, nm);
+      }
+      var u = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = u; a.download = nm; a.rel = 'noopener'; a.dataset.nativeDownload = '1'; a.style.display = 'none';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ try{ URL.revokeObjectURL(u); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:autosave-revoke'); /* guard-ok */ } }, 60000);
+      autoNote(autoT('vidAutoSaved', '💾 نزل الفيديو في جهازك — تلقاه في الاستوديو أو التنزيلات', '💾 Video saved to your device — find it in your gallery or Downloads'));
+      return true;
+    }catch(e){
+      delete autoSaved[url];
+      typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:autosave'); /* guard-ok — زرّ «تحميل الفيديو» باقٍ */
+      return false;
+    }
+  };
+  window.autoSaveVideo = window.omranAutoSaveVideo; /* الاسم القديم الذي تناديه المحادثة ومخرج التطبيق والترندات وأداة الوكيل */
   /* كل روابط التحميل في التطبيق تمرّ من الحافظ الموحّد — نقرة المستخدم فقط
      (v-pdf-loop: النقرات البرمجية من مصدّر الـPDF ومن هذا الحافظ لا تُلتقط) */
   /* v-audit-shell (cli-ui-shell-2): مصيدة app-05-img-save تُسجَّل قبل هذه على document نفسه وتملك صور data:/blob: داخل الأغلفة —

@@ -1119,7 +1119,7 @@
       var vid=id('vdVideo'), dl=id('vdDl'), res=id('vdRes');
       drStagePct(100); drStageStop(true);
       if(vid) vid.src=DR.out; if(dl){ dl.href=DR.out; dl.setAttribute('download','omran-app-director-'+lang+'.mp4'); } if(res) res.classList.add('has');
-      /* لا «حُفظ في فيديوهاتي»: autoSaveVideo خطّاف فارغ اليوم ولا مكتبة فيديوهات في التطبيق — لا نعلن ما لم يحدث؛ الفيديو يبقى هنا للمعاينة والتحميل */
+      /* لا «حُفظ في فيديوهاتي»: لا مكتبة فيديوهات في التطبيق — autoSaveVideo (v-video-autosave، app-05-save-media) يحفظه في الجهاز ويقول ذلك بتنبيهه */
       var secs=Number(st.seconds)||0; drMsg(drT('vdDone',{m:Math.floor(secs/60),s:secs%60}));
       if(typeof window.autoSaveVideo==='function') window.autoSaveVideo(DR.out,'omran-app-director-'+lang+'.mp4');
     }catch(err){

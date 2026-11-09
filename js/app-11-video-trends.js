@@ -485,9 +485,12 @@
         if(n > 1) status(ui('scene').replace('{i}', i + 1).replace('{n}', n) + ' ' + ui('working'));
         urls.push(await clipInSequence(t, Object.assign({ sceneIndex: i }, params), token, i + 1, n));
       }
-      await show(t, urls);
+      var savedUrl = await show(t, urls);
       setBusyFlag(false);
       status(ui('done'));
+      /* v-video-autosave (المالك: «اول مايخلص يتحمل الي الاستوديو»): الفيديو النهائيّ الواحد يُحفظ في الجهاز (app-05-save-media)؛
+         مشاهد لم تُدمج تبقى بأزرارها — لا تنزيلات متتالية بلا طلب */
+      if(savedUrl && typeof window.autoSaveVideo === 'function') window.autoSaveVideo(savedUrl, 'omran-trend-' + t.key + '.mp4');
     }catch(e){
       setBusyFlag(false);
       /* v-audit-video (cli-video-4): لا ناتج جديد — الناتج السابق يعود مكانه */
@@ -529,6 +532,7 @@
     var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };
     out.appendChild(again);
     try{ window.__chatVideoResult = { url: finalUrl || urls[0] }; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:531'); /* guard-ok */ }
+    return finalUrl; /* v-video-autosave: الفيديو الواحد النهائيّ (أو null حين بقيت المشاهد منفصلة) */
   }
 
   function boot(){

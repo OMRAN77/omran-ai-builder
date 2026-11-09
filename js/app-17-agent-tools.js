@@ -263,6 +263,7 @@
           var vRes = { url: videoUrl, name: 'chat-video.mp4', provider: engine }, vChat = CHAT();
           if (vChat && vChat.id != null) (window.__chatVideoByChat = window.__chatVideoByChat || {})[vChat.id] = vRes;
           else window.__chatVideoResult = vRes;
+          if (typeof window.autoSaveVideo === 'function') window.autoSaveVideo(videoUrl, 'chat-video.mp4'); /* v-video-autosave: أوّل ما يكتمل يُحفظ في الجهاز (app-05-save-media) */
           return '✅ تم إنشاء الفيديو بنجاح. سيظهر الآن داخل المحادثة مع زر التنزيل.';
         }
         // 🎨 صورة حقيقية بدل رابط عشوائي. تُخزَّن محليًّا ويُعاد للنموذج رمز قصير
