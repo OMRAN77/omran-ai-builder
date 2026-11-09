@@ -40,6 +40,30 @@ export function captions(p) {
   };
 }
 
+// هل المنشور ظاهر للناس فعلًا؟ (المالك: «ما وصل أيّ شي») — oEmbed العامّ لكلّ منصّة بلا تسجيل دخول: يردّ للعامّ والمخفيّ بالرابط،
+// ويرفض الخاصّ والمحذوف. فيسبوك بلا oEmbed عامّ (يحتاج رمزًا) فيُطبع رمز HTTP لصفحة الفيديو وحده.
+async function visibility(rows) {
+  for (const it of rows) {
+    const url = it.post_url || it.url || '';
+    let res = 'لا رابط';
+    try {
+      if (/youtube\.com|youtu\.be/.test(url)) {
+        const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(url));
+        res = r.status === 200 ? 'ظاهر للعامّ: ' + ((await r.json()).title || '') : 'غير ظاهر (HTTP ' + r.status + ' — خاصّ أو قيد المعالجة أو محذوف)';
+      } else if (/tiktok\.com/.test(url)) {
+        const r = await fetch('https://www.tiktok.com/oembed?url=' + encodeURIComponent(url));
+        const j = await r.json().catch(() => ({}));
+        res = r.status === 200 && j.title !== undefined ? 'ظاهر للعامّ: ' + (j.author_name || '') + ' — ' + String(j.title || '').slice(0, 60) : 'غير ظاهر (HTTP ' + r.status + ')';
+      } else if (url) {
+        const r = await fetch(url, { redirect: 'manual', headers: { 'user-agent': 'Mozilla/5.0' } });
+        res = 'HTTP ' + r.status + (r.headers.get('location') ? ' ← ' + String(r.headers.get('location')).slice(0, 80) : '');
+      }
+    } catch (e) { res = 'تعذّر الفحص: ' + String(e && e.message).slice(0, 80); }
+    const line = it.platform + ': ' + res + ' · ' + url + ' · ' + (it.upload_timestamp || '');
+    log(line); gh(/ظاهر للعامّ/.test(res) ? 'notice' : 'warning', line);
+  }
+}
+
 async function main() {
   const file = String(process.env.FILE || '').trim();
   const post = POSTS[file];
@@ -62,9 +86,10 @@ async function main() {
 
   // لا نشر مرّتين: المعرّف نفسه منشور بنجاح ⇐ توقّف
   const h = await upFetch('/uploadposts/history?limit=100&status=success&page=1&profile_username=' + encodeURIComponent(UP_USER));
-  const done = ((h.j && h.j.history) || []).filter((it) => it && it.external_id === post.id && it.success !== false).map((it) => it.platform);
+  const doneRows = ((h.j && h.j.history) || []).filter((it) => it && it.external_id === post.id && it.success !== false);
+  const done = doneRows.map((it) => it.platform);
   const todo = on.filter((x) => !done.includes(x));
-  if (done.length) log('منشور من قبل بهذا المعرّف على: ' + [...new Set(done)].join(','));
+  if (done.length) { log('منشور من قبل بهذا المعرّف على: ' + [...new Set(done)].join(',')); await visibility(doneRows); }
   if (!todo.length) { gh('notice', 'منشور من قبل على كلّ المنصّات — لا شيء'); return; }
 
   const cap = captions(post);
