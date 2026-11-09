@@ -1665,6 +1665,7 @@ module.exports.isBanned = isBanned;
 module.exports.emailVerifiedFor = emailVerifiedFor; // v-vip-verified: vip.js يحوّل الإيميل إلى حساب أثبته وحده
 module.exports.resolveLoginUser = resolveLoginUser; // v-owner-reset-find: رابط استرجاع المالك بالإيميل
 module.exports.googleAccountFor = googleAccountFor; // v-owner-reset-find
+module.exports.verifiedHolderOf = verifiedHolderOf; // v-owner-link-sub: البريد ← من أثبته (رمز أو Google) قبل أيّ مطابقة غير مؤكَّدة
 module.exports.emailProven = emailProven; // v-unverified-email: والكولباك (الربط التلقائيّ بالبريد)
 module.exports.settleUnverifiedEmail = settleUnverifiedEmail;
 module.exports.sweepUnverifiedEmails = sweepUnverifiedEmails; // email-sweep.js
