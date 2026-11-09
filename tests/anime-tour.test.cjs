@@ -90,6 +90,8 @@ test('الاسم «OM Ai» في الفيديو: الشعار brand-om-s بمقا
   assert.ok(!lines.some((l) => /عمران|Omran/i.test(l)), 'اسم قديم في نصّ ظاهر');
   // «OM Ai» كلمة واحدة في الفقاعة وإلّا يقلبها اتّجاه RTL إلى «Ai OM»
   assert.ok(src.includes("line.replace(/OM Ai/g, 'OM\\u00a0Ai').split(' ')"));
+  // اللاتينيّ وحده معزول بـbdi وعلامة الترقيم بعده في السياق العربيّ (لا dir=ltr على الكلمة كلّها)
+  assert.ok(src.includes("'<bdi dir=\"ltr\">' + m + '</bdi>'") && !src.includes("' dir=\"ltr\"' : ''"));
   // لا تكبير لصورة نقطيّة: الشعار يدخل من ٠٫٣ إلى ١ بلا ارتداد فوقه
   assert.ok(!/scale\(\$\{\(2\.4/.test(src) && src.includes('scale(${(0.3 + 0.7 * lp) * (1 - 0.18 * up)})'));
 });

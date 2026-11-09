@@ -472,7 +472,9 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N, CAST, WHOS, ENV) {
 
   // بناء الطبقات
   const shotIdx = SC.map((s, i) => s.k === 'shot' ? i : -1).filter((i) => i >= 0);
-  function wordsHtml(line) { return tokens(line).map((w) => `<span class="w"${/[A-Za-z]/.test(w) ? ' dir="ltr"' : ''}>${w}</span>`).join(' '); }
+  // الحروف اللاتينيّة وحدها معزولة (bdi) وعلامة الترقيم بعدها في سياق العربيّ — dir=ltr على الكلمة كلّها كان يضع «…» و«:» و«؟»
+  // على الجهة الخطأ («جولة في …OM Ai»)
+  function wordsHtml(line) { return tokens(line).map((w) => `<span class="w">${w.replace(/[A-Za-z][A-Za-z\u00a0]*[A-Za-z]|[A-Za-z]/g, (m) => '<bdi dir="ltr">' + m + '</bdi>')}</span>`).join(' '); }
   shotIdx.forEach((i) => {
     const s = SC[i], m = SHOTS[s.shot];
     const pn = document.createElement('div'); pn.className = 'panel'; pn.id = 'pn' + i;
