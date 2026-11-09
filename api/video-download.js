@@ -99,7 +99,7 @@ async function admit(req, url) {
   const session = require('./_lib/_session.js');
   const token = session.tokenOf(req);
   const username = session.sessionUser(token);
-  if (!username) return { status: 401, error: 'auth_required' };
+  if (!username || await session.sessionRevoked(token)) return { status: 401, error: 'auth_required' }; // v-session-revoke: خارج withErrorCapture
   const banned = async () => require('./_lib/auth.js').isBanned(username);
   // v-dl-ours: ناتج سلّمه خادمنا — مدفوع، فحفظه لا يُعدّ على سقف الوسائط الخارجيّة
   if (await require('./_lib/our-media.js').isOurMedia(url)) return (await banned()) ? { status: 403, error: 'banned' } : { username, refund: null };
