@@ -145,7 +145,7 @@ test('Word: القائمة البيضاء تُسقط أيّ وسم أو خاصّ
 test('المصدّر المقسَّم: لوحة لكلّ صفحة، سقف صفحات، نفس إصلاح الموضع، وحفظ بالمسار الموحَّد', () => {
   const body = fnSource(UI, 'omranExportPagedPdfFile');
   assert.match(body, /toCanvas\(holder,\s*\{[^}]*style:\s*\{\s*position:\s*'static',\s*left:\s*'0',\s*top:\s*'0'\s*\}/);
-  assert.match(body, /omranPaginateBlocks\(heights, contentH, breaks\)/);
+  assert.match(body, /omranPaginateBlocks\(heights, anyLand \? \(i\) => contentOf\(landAt\(i\)\) : contentH, breaks\)/); // v-xlsx-pdf-calc: الكتلة الأفقيّة بارتفاع صفحتها، وبلاها contentH كما كان
   assert.match(body, /maxPages/);
   assert.match(body, /await omranSaveBlob\(pdf\.output\('blob'\)/);
   assert.match(body, /holder\.remove\(\)/, 'حاوية الصفحة تُزال حتى عند الفشل');

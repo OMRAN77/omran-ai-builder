@@ -549,11 +549,12 @@ function omranLoadMammoth(){
 }
 /* heights: ارتفاع كلّ كتلة (px)، pageH: ارتفاع محتوى الصفحة، breaks[i]: الكتلة i تبدأ صفحة جديدة.
    الناتج: [{items:[فهارس الكتل]}] أو لكتلة أطول من صفحة شرائح [{items:[i], clipTop, clipH}]. */
-function omranPaginateBlocks(heights, pageH, breaks){
+function omranPaginateBlocks(heights, pageH0, breaks){
   const pages = [];
   let cur = null, used = 0;
   heights.forEach((h0, i) => {
     const h = Math.max(0, Number(h0) || 0);
+    const pageH = typeof pageH0 === 'function' ? pageH0(i) : pageH0; /* v-xlsx-pdf-calc: ارتفاع الصفحة لكلّ كتلة (الأفقيّة أقصر) */
     if(h > pageH){
       for(let top = 0; top < h; top += pageH) pages.push({ items: [i], clipTop: top, clipH: pageH });
       cur = null; used = 0;
@@ -570,10 +571,15 @@ async function omranExportPagedPdfFile(blocks, opts){
   const contentH = PH - PADV * 2 - 6;
   const maxPages = opts.maxPages || 80;
   const css = '<style>p{margin:0 0 .6em}h1,h2,h3,h4,h5,h6{margin:.4em 0 .3em;line-height:1.5}h1{font-size:24px}h2{font-size:20px}h3{font-size:17px}ul,ol{margin:0 0 .6em;padding-inline-start:1.6em}table{border-collapse:collapse;width:100%;margin:0 0 .6em}td,th{border:1px solid #999;padding:3px 8px;vertical-align:top}img{max-width:100%;max-height:' + (contentH - 20) + 'px;display:block;margin:0 auto}</style>';
-  const mk = () => {
+  /* v-xlsx-pdf-calc: كتلة landscape:true تُرسم في صفحة A4 أفقيّة (شبكة أيّام الشهر في PDF الطباعة كما يطبعها Excel). اختياريّ لكلّ كتلة —
+     بلاه كلّ شيء عموديّ كما كان؛ وتغيّر الاتّجاه يبدأ صفحة جديدة. */
+  const landAt = (i) => !!(blocks[i] && blocks[i].landscape);
+  const anyLand = blocks.some((b) => b && b.landscape);
+  const contentOf = (land) => (land ? PW : PH) - PADV * 2 - 6;
+  const mk = (land) => {
     const h = document.createElement('div');
     h.dir = opts.rtl === false ? 'ltr' : 'rtl';
-    h.style.cssText = 'position:fixed; left:-12000px; top:0; width:' + PW + 'px; background:#ffffff; color:#111; padding:' + PADV + 'px ' + PADH + 'px; box-sizing:border-box; line-height:1.9; font-size:15px;';
+    h.style.cssText = 'position:fixed; left:-12000px; top:0; width:' + (land ? PH : PW) + 'px; background:#ffffff; color:#111; padding:' + PADV + 'px ' + PADH + 'px; box-sizing:border-box; line-height:1.9; font-size:15px;';
     h.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
     return h;
   };
@@ -585,7 +591,7 @@ async function omranExportPagedPdfFile(blocks, opts){
     pill.textContent = '⏳ …';
     document.body.appendChild(pill);
   }catch(e){ pill = null; }
-  const measure = mk();
+  const measure = mk(false), measureL = anyLand ? mk(true) : null;
   try{
     await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
     try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
@@ -593,22 +599,29 @@ async function omranExportPagedPdfFile(blocks, opts){
     measure.innerHTML = css + blocks.map((b) => wrap(b.html)).join('');
     document.body.appendChild(measure);
     await Promise.all(Array.from(measure.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
-    const heights = Array.from(measure.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
+    let heights = Array.from(measure.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
     measure.remove();
-    const breaks = blocks.map((b, i) => !!(b.newpage || (i > 0 && blocks[i - 1].alone)));
-    let pages = omranPaginateBlocks(heights, contentH, breaks);
+    if(measureL){
+      measureL.innerHTML = css + blocks.map((b) => wrap(b.html)).join('');
+      document.body.appendChild(measureL);
+      const hl = Array.from(measureL.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
+      measureL.remove();
+      heights = heights.map((h, i) => (landAt(i) ? hl[i] : h));
+    }
+    const breaks = blocks.map((b, i) => !!(b.newpage || (i > 0 && blocks[i - 1].alone) || (i > 0 && landAt(i) !== landAt(i - 1))));
+    let pages = omranPaginateBlocks(heights, anyLand ? (i) => contentOf(landAt(i)) : contentH, breaks);
     const total = pages.length;
     if(!total) throw new Error('empty-doc');
     if(total > maxPages) pages = pages.slice(0, maxPages);
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pw = pdf.internal.pageSize.getWidth();
+    const pageLand = (pg) => landAt(pg.items[0]);
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: pageLand(pages[0]) ? 'landscape' : 'portrait' });
     for(let k = 0; k < pages.length; k++){
       if(pill) pill.textContent = String(t('pdfDocPage')).replace('{i}', k + 1).replace('{n}', pages.length);
       await new Promise((r) => setTimeout(r, 0));
       const pg = pages[k];
       const inner = pg.items.map((i) => wrap(blocks[i].html)).join('');
-      const holder = mk();
+      const holder = mk(pageLand(pg));
       holder.innerHTML = css + (pg.clipH ? '<div style="height:' + pg.clipH + 'px;overflow:hidden"><div style="margin-top:-' + pg.clipTop + 'px">' + inner + '</div></div>' : inner);
       document.body.appendChild(holder);
       let canvas;
@@ -617,7 +630,8 @@ async function omranExportPagedPdfFile(blocks, opts){
         canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: opts.pixelRatio || 1.3, style: { position: 'static', left: '0', top: '0' } });
       } finally { holder.remove(); }
       if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
-      if(k > 0) pdf.addPage();
+      if(k > 0) pdf.addPage('a4', pageLand(pg) ? 'landscape' : 'portrait');
+      const pw = pdf.internal.pageSize.getWidth();
       pdf.addImage(canvas.toDataURL('image/jpeg', opts.jpegQuality || 0.72), 'JPEG', 0, 0, pw, (canvas.height / canvas.width) * pw); /* ٠٫٧٢ وx١٫٣: ٨٠ صفحة نصّ ≈٧ م.ب لا ١٦ — رابط الخادم حدّه ٤ م.ب والمشاركة تتعثّر بالكبير (PDF الردّ يمرّر دقّته السابقة x٢ و٠٫٩٢: v-audit-uicore) */
     }
     await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-docs.pdf');
@@ -629,7 +643,7 @@ async function omranExportPagedPdfFile(blocks, opts){
     }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:629'); /* guard-ok */ }
     throw err;
   } finally {
-    try{ measure.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:632'); /* guard-ok */ }
+    try{ measure.remove(); if(measureL) measureL.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:632'); /* guard-ok */ }
     try{ if(pill) pill.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:633'); /* guard-ok */ }
   }
 }
@@ -805,11 +819,138 @@ function exportReplyAsPdf(text){
     msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
   });
 }
+/* v-docx (فحص المالك ٩ نوفمبر «كل ملفات التحميل»): «تحويل إلى Word» كان HTML باسم ‎.doc‎ — Word على الحاسوب يفتحه، لكنّ الآيفون
+   (المعاينة وPages) وGoogle Docs وLibreOffice يقرؤونه صيغة Word 97 فيفشل أو يتشوّه: الجدول أعمدة بحرفين والعربيّ يسارًا (لقطة
+   LibreOffice). الآن ‎.docx‎ حقيقيّ (WordprocessingML) من محلّل الردّ نفسه (msgExportParse): فقرة لكلّ سطر باتّجاهه (w:bidi)،
+   عريض ومائل ومشطوب وكود، قوائم، اقتباس، كود أحاديّ الخطّ يسارًا، وجدول Word حقيقيّ باتّجاه واحد (bidiVisual) ورأس يتكرّر.
+   الحزمة ZIP مخزّنة بلا ضغط (omranZipStore) — لا مكتبة تُحمَّل. */
+function omranCrc32(u8){
+  let t = omranCrc32.table;
+  if(!t){
+    t = omranCrc32.table = new Uint32Array(256);
+    for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; }
+  }
+  let crc = -1;
+  for(let i = 0; i < u8.length; i++) crc = t[(crc ^ u8[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ -1) >>> 0;
+}
+/* ZIP بلا ضغط (stored) بأسماء UTF-8: [{ name, data: نصّ أو Uint8Array }] → أجزاء Uint8Array لـBlob */
+function omranZipStore(files){
+  const enc = new TextEncoder(), parts = [], central = [];
+  let off = 0;
+  files.forEach((f) => {
+    const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = omranCrc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(12, 0x21, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(14, 0x21, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    off += 30 + name.length + data.length;
+  });
+  const cd = central.reduce((n, u) => n + u.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cd, true); end.setUint32(16, off, true);
+  return parts.concat(central, [new Uint8Array(end.buffer)]);
+}
+/* التنسيق داخل السطر (كـmsgExportInline) إلى مقاطع: { t, b, i, s, c } */
+function msgDocxRuns(str, base){
+  const runs = [];
+  const add = (t, f) => { if(t) runs.push({ t: t, b: !!f.b, i: !!f.i, s: !!f.s, c: !!f.c }); };
+  const walk = (x, f) => {
+    const re = /`([^`\n]+)`|\*\*(?!\s)([^\n]+?)\*\*|~~(?!\s)([^\n]+?)~~|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|\*(?![\s*])([^*\n]+?)\*(?!\w)/g;
+    let last = 0, m;
+    while((m = re.exec(x))){
+      add(x.slice(last, m.index), f);
+      if(m[1] != null) add(m[1], Object.assign({}, f, { c: true }));
+      else if(m[2] != null) walk(m[2], Object.assign({}, f, { b: true }));
+      else if(m[3] != null) walk(m[3], Object.assign({}, f, { s: true }));
+      else if(m[4] != null){ walk(m[4], f); add(' (' + m[5] + ')', f); }
+      else walk(m[6], Object.assign({}, f, { i: true }));
+      last = re.lastIndex;
+    }
+    add(x.slice(last), f);
+  };
+  walk(String(str || ''), base || {});
+  return runs;
+}
+function msgDocxXml(text){
+  const P = msgExportParse(text);
+  const AR = /[֐-ࣿיִ-﷿ﹰ-﻿]/;
+  const X = (v) => String(v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const run = (r, o) => {
+    const mono = r.c || o.mono, f = mono ? 'Consolas' : 'Arial', sz = o.sz || 24;
+    let p = '<w:rFonts w:ascii="' + f + '" w:hAnsi="' + f + '" w:cs="' + f + '"/>';
+    if(r.b || o.b) p += '<w:b/><w:bCs/>';
+    if(r.i || o.i) p += '<w:i/><w:iCs/>';
+    if(r.s) p += '<w:strike/>';
+    if(o.color) p += '<w:color w:val="' + o.color + '"/>';
+    p += '<w:sz w:val="' + sz + '"/><w:szCs w:val="' + sz + '"/>';
+    if(r.c && !o.mono) p += '<w:shd w:val="clear" w:color="auto" w:fill="F1F1F1"/>';
+    if(AR.test(r.t)) p += '<w:rtl/>';
+    return '<w:r><w:rPr>' + p + '</w:rPr><w:t xml:space="preserve">' + X(r.t) + '</w:t></w:r>';
+  };
+  const para = (runsXml, o) => {
+    let pp = '';
+    if(o.keepNext) pp += '<w:keepNext/>';
+    if(o.border) pp += '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="CCCCCC"/></w:pBdr>';
+    if(o.shd) pp += '<w:shd w:val="clear" w:color="auto" w:fill="' + o.shd + '"/>';
+    if(o.rtl) pp += '<w:bidi/>';
+    pp += '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after == null ? 120 : o.after) + '"/>';
+    if(o.jc) pp += '<w:jc w:val="' + o.jc + '"/>';
+    return '<w:p><w:pPr>' + pp + '</w:pPr>' + runsXml + '</w:p>';
+  };
+  const inline = (t, o, base) => msgDocxRuns(t, base).map((r) => run(r, o)).join('');
+  const table = (rows) => {
+    const n = Math.max.apply(null, rows.map((r) => r.cells.length)), W = 9638, cw = Math.floor(W / n), rtl = rows[0].rtl;
+    let x = '<w:tbl><w:tblPr>' + (rtl ? '<w:bidiVisual/>' : '') + '<w:tblW w:w="' + (cw * n) + '" w:type="dxa"/><w:tblBorders>'
+      + ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map((k) => '<w:' + k + ' w:val="single" w:sz="4" w:space="0" w:color="999999"/>').join('')
+      + '</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>'
+      + new Array(n + 1).join('<w:gridCol w:w="' + cw + '"/>') + '</w:tblGrid>';
+    rows.forEach((r) => {
+      x += '<w:tr>' + (r.head ? '<w:trPr><w:tblHeader/></w:trPr>' : '');
+      for(let k = 0; k < n; k++){
+        x += '<w:tc><w:tcPr><w:tcW w:w="' + cw + '" w:type="dxa"/>' + (r.head ? '<w:shd w:val="clear" w:color="auto" w:fill="F3F3F3"/>' : '') + '</w:tcPr>'
+          + para(inline(r.cells[k] || '', { b: r.head }), { rtl: rtl, after: 40, before: 40 }) + '</w:tc>';
+      }
+      x += '</w:tr>';
+    });
+    return x + '</w:tbl>' + para('', { after: 120 });
+  };
+  const body = [];
+  for(let i = 0; i < P.items.length; i++){
+    const it = P.items[i];
+    if(it.type === 'blank') continue;
+    if(it.type === 'row'){ let j = i; while(j < P.items.length && P.items[j].type === 'row') j++; body.push(table(P.items.slice(i, j))); i = j - 1; continue; }
+    if(it.type === 'hr'){ body.push(para('', { border: true, after: 120 })); continue; }
+    if(it.type === 'h'){ const L = Math.min(6, it.level); body.push(para(inline(it.text, { b: true, sz: [0, 36, 32, 28, 26, 24, 24][L] }), { rtl: it.rtl, keepNext: true, before: 200, after: 100 })); continue; }
+    if(it.type === 'li'){ body.push(para(run({ t: ' '.repeat(2 * (it.depth || 0)) + (it.num ? it.num + '. ' : '• ') }, {}) + inline(it.text, {}), { rtl: it.rtl, after: 60 })); continue; }
+    if(it.type === 'quote'){ body.push(para(inline(it.text, { i: true, color: '444444' }), { rtl: it.rtl, shd: 'F5F5F5', after: 60 })); continue; }
+    if(it.type === 'code'){
+      const next = P.items[i + 1];
+      body.push(para(run({ t: it.text || ' ' }, { mono: true, sz: 20 }), { shd: 'F4F4F4', after: (next && next.type === 'code') ? 0 : 120, jc: 'left' }));
+      continue;
+    }
+    body.push(para(inline(it.text, {}), { rtl: it.rtl }));
+  }
+  if(!body.length) body.push(para('', {}));
+  return { rtl: P.rtl, xml: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+    + body.join('') + '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/>' + (P.rtl ? '<w:bidi/>' : '') + '</w:sectPr></w:body></w:document>' };
+}
+function msgDocxBlob(text){
+  const d = msgDocxXml(text), W = 'http://schemas.openxmlformats.org/', R = W + 'officeDocument/2006/relationships';
+  const files = [
+    { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="' + W + 'package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>' },
+    { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="' + W + 'package/2006/relationships"><Relationship Id="rId1" Type="' + R + '/officeDocument" Target="word/document.xml"/></Relationships>' },
+    { name: 'word/_rels/document.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="' + W + 'package/2006/relationships"><Relationship Id="rId1" Type="' + R + '/styles" Target="styles.xml"/></Relationships>' },
+    { name: 'word/styles.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:styles xmlns:w="' + W + 'wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US" w:eastAsia="en-US" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="300" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style></w:styles>' },
+    { name: 'word/document.xml', data: d.xml },
+  ];
+  return new Blob(omranZipStore(files), { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
 function exportReplyAsWord(text){
-  const doc = msgExportBlocks(text, null); /* v-audit-uicore */
-  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>om ai</title></head><body dir="' + (doc.rtl ? 'rtl' : 'ltr') + '" style="font-family:Tahoma,Arial,sans-serif; line-height:2;">' + doc.blocks.join('') + '</body></html>';
-  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-  msgSaveExport(blob, 'omran-ai-reply.doc');
+  msgSaveExport(msgDocxBlob(text), 'omran-ai-reply.docx');
 }
 function exportReplyAsImage(text){
   const width = 900;

@@ -424,7 +424,8 @@ async function createFile(input, ctx) {
   const count = spec.kind === 'xlsx' ? spec.sheets.length : spec.slides.length;
   const what = spec.kind === 'xlsx' ? ('ملفّ Excel «' + spec.fileName + '.xlsx» (' + count + ' ورقة)') : ('عرض PowerPoint «' + spec.fileName + '.pptx» (' + count + ' شريحة)');
   const tail = spec.free ? ' هذا ملفّ المستخدم المجّانيّ لهذا الشهر: التعديل عليه أو ملفّ آخر يحتاج اشتراكًا.' : '';
-  return { result: '✓ ظهر للمستخدم كرت ' + what + ' بأزرار التحميل وPDF للطباعة.' + tail + ' اكتب سطرًا واحدًا قصيرًا فقط.', event: cardEvent({ id, spec }) };
+  const btns = spec.kind === 'xlsx' ? ' بأزرار التحميل والمشاركة وPDF للطباعة.' : ' بزرّي التحميل والمشاركة.'; // v-pptx-audit: العرض بلا زرّ PDF — كان النموذج يَعِد المستخدم به
+  return { result: '✓ ظهر للمستخدم كرت ' + what + btns + tail + ' اكتب سطرًا واحدًا قصيرًا فقط.', event: cardEvent({ id, spec }) };
 }
 
 module.exports = {
