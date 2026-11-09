@@ -479,7 +479,7 @@ function makePoster(s, out, btn){
           + '<a class="eduPrimary" id="eduPosterSave" style="text-decoration:none;">⬇️ ' + esc(L('احفظ البوستر', 'Save the poster')) + '</a></div>';
         var a = $id('eduPosterSave'); a.href = src; a.download = 'poster-' + hashStr(s.topic || s.problem) + '.png';
         /* v-share-next (المالك ٧ نوفمبر): «مشاركة» بجانب «احفظ البوستر» — النافذة الموحّدة (app-45) */
-        if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', className: 'eduPrimary', style: 'text-decoration:none;cursor:pointer;font-family:inherit;border:0;' }); }catch(e){ /* guard-ok — المشاركة تحسين لا يمنع الحفظ */ } }
+        if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', className: 'eduPrimary', style: 'text-decoration:none;cursor:pointer;font-family:inherit;border:0;' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'edu-plus:482'); /* guard-ok — المشاركة تحسين لا يمنع الحفظ */ } }
         btn.textContent = '🔁 ' + L('صمّم نسخة أخرى', 'Design another version');
         return;
       }

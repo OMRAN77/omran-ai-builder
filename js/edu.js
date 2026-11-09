@@ -206,7 +206,7 @@ function api(payload){
   payload=payload||{}; payload.token=getToken()||undefined;
   /* v-edu-upload (المالك ٤ أكتوبر: «طالبة رفعت الملف بدون أي تحليل»): ردّ غير JSON (413 من Vercel فوق ~4.5 م.ب، أو صفحة خطأ)
      كان يُرمى كخطأ تحليل غامض؛ وطلب معلّق لا ينتهي. الآن رسالة مفهومة ومهلة. */
-  var ctl=null, tm=null; try{ ctl=new AbortController(); tm=setTimeout(function(){ try{ ctl.abort(); }catch(e){ /* guard-ok */ } },290000); }catch(e){ ctl=null; }
+  var ctl=null, tm=null; try{ ctl=new AbortController(); tm=setTimeout(function(){ try{ ctl.abort(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'edu:209'); /* guard-ok */ } },290000); }catch(e){ ctl=null; }
   return fetch('/api/edu',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl?ctl.signal:undefined})
     .then(function(r){
       return r.text().then(function(txt){
@@ -233,7 +233,7 @@ function eduShrinkImage(file,maxDim,q){
           res({base64:String(c.toDataURL('image/jpeg',q)).split(',')[1]||'',mime:'image/jpeg'});
         }catch(e){ res(null); }
       };
-      im.onerror=function(){ try{ URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } res(null); };
+      im.onerror=function(){ try{ URL.revokeObjectURL(u); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'edu:236'); /* guard-ok */ } res(null); };
       im.src=u;
     }catch(e){ res(null); }
   });
@@ -1123,7 +1123,7 @@ function showUploadForm(){
     close();
     handleFiles(picked,meta);
   };
-  setTimeout(function(){ try{ $('eduUpName').focus(); }catch(e){ /* guard-ok — التركيز ترف؛ النموذج يعمل بدونه */ } },30);
+  setTimeout(function(){ try{ $('eduUpName').focus(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'edu:1126'); /* guard-ok — التركيز ترف؛ النموذج يعمل بدونه */ } },30);
 }
 /* «محاضراتك المرفوعة» — المرفوعة من النموذج وحدها (src:'upload')، الأحدث أوّلًا، وتاريخ رفعها؛ الضغط يفتح الدرس */
 function renderUploads(lessons){

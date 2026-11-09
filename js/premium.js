@@ -38,7 +38,7 @@
      Sonnet/Opus في modes.js). هنا نزيله من الإعدادات فقط لا غير. */
   function mountAgentModelPicker(){
     try{ var box = document.getElementById('agentModelPicker'); if(box) box.remove(); }
-    catch(_){ /* guard-ok — إزالة تحسينيّة */ }
+    catch(_){ typeof __swallow === 'function' && __swallow(_, 'premium:41'); /* guard-ok — إزالة تحسينيّة */ }
   }
 
   function syncAgentNote(){
@@ -88,7 +88,7 @@
         window.__pointsBalance = d.unlimited ? Infinity : d.points;
         if(valEl) valEl.textContent = d.unlimited ? '\u221E' : String(d.points);
       }
-    }catch(_){ /* silent */ }
+    }catch(_){ typeof __swallow === 'function' && __swallow(_, 'premium:91'); /* silent */ }
   }
   window.refreshPremiumPoints = refreshPremiumPoints;
 
