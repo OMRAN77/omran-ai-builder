@@ -433,7 +433,10 @@
       }
       if(sl.notes) s.addNotes(sl.notes);
     });
-    return await pres.write({ outputType: 'blob' });
+    /* v-pptx-ios (فيديو المالك ٩ نوفمبر: «في الباور بوينت اذا يحمل ملف مايطلع اي شي»): المكتبة تعطي blob بنوع application/zip
+       (افتراض JSZip)، فيصل الملفّ للمشاركة والرابط «zip» باسم .pptx — النوع الحقيقيّ كما في Excel */
+    var pb = await pres.write({ outputType: 'blob' });
+    return new Blob([pb], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
   }
 
   /* ── البطاقة ── */

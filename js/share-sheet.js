@@ -148,7 +148,7 @@
         }
         try{
           if(o.file && typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare') && typeof msgDownloadBlob === 'function'){ msgDownloadBlob(o.file, o.file.name || 'omran-file'); close(); return; }
-          var data = (o.file && navigator.canShare && navigator.canShare({ files: [o.file] })) ? { files: [o.file], title: 'om ai' } : { title: 'om ai', text: text || undefined, url: url || undefined };
+          var data = (o.file && navigator.canShare && navigator.canShare({ files: [o.file] })) ? { files: [o.file] } : { title: 'om ai', text: text || undefined, url: url || undefined };
           var pr = navigator.share(data);
           if(pr && pr.then) pr.then(close, function(err){ if(!(err && err.name === 'AbortError')) say(tt('shareFail', 'تعذّرت المشاركة — جرّب نسخ الرابط', 'Could not share — try copying the link')); });
         }catch(err){ sw(err, 'share-sheet:more'); say(tt('shareFail', 'تعذّرت المشاركة — جرّب نسخ الرابط', 'Could not share — try copying the link')); }

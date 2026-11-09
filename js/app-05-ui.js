@@ -253,7 +253,7 @@ function omranReadySheet(opts){
         const sh = document.createElement('button'); sh.type = 'button'; sh.style.cssText = outCss;
         addIcon(sh, 'share'); sh.appendChild(labelSpan(rsT('imgShareBtn', 'مشاركة', 'Share')));
         sh.onclick = function(){
-          navigator.share({ files: [o.shareFile], title: o.name || 'om ai' }).then(function(){ closeAll(); }).catch(function(e3){
+          navigator.share({ files: [o.shareFile] }).then(function(){ closeAll(); }).catch(function(e3){
             if(e3 && e3.name === 'AbortError') return;
             __swallow(e3, 'sheet:share');
             status(rsT('sheetShareFail', 'تعذّرت المشاركة — جرّب التحميل', 'Share failed — try Download'));
@@ -300,7 +300,7 @@ async function omranSaveBlob(blob, filename){
     if(mobileish && navigator.canShare && typeof File === 'function'){
       const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
       if(navigator.canShare({ files: [f] })){
-        try{ await navigator.share({ files: [f], title: filename }); return; }
+        try{ await navigator.share({ files: [f] }); return; }
         catch(e){
           if(e && e.name === 'AbortError') return;
           /* v-reply-export: رفض المشاركة (انتهاء «ضغطة المستخدم» في الآيفون، أو نوع خارج قائمة كروم
