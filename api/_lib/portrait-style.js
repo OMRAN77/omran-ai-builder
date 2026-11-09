@@ -9,6 +9,7 @@ const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const mergeIdentity = require('./merge-identity');
 const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
+const pVariety = require('./portrait-variety'); /* v-pstyle-variety: ≥١٠٠ شكل لكلّ نمط */
 
 // v-portrait-rescue: تعديل الصورة عبر gpt-image-1 عند رفض Gemini (نفس نمط
 // خطّ إنقاذ الأزياء). يرجع base64 أو null — لا يرمي أبدًا.
@@ -201,7 +202,10 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { imageBase64, mimeType, style, backdrop, beautify, ageTarget, hairStyle, adText, era, extraImages, token, charName, removeText, outfit, profession } = body;
+    const { imageBase64, mimeType, style, backdrop, beautify, ageTarget, hairStyle, adText, era, extraImages, token, charName, removeText, outfit, profession, variant } = body;
+    /* v-pstyle-variety (المالك: «شكل واحد… حتى لو اخترت 1 او 2… اريد في كل شخصيه على الاقل 100 شكل»): الأمر الثابت للنمط كان يعيد الشكل
+       نفسه. عدّاد العميل يختار شكلًا محدّدًا من كتالوج النمط (portrait-variety.js) — null للتعديلات الأمينة فيبقى أمرها كما كان حرفيًّا. */
+    const look = pVariety.lookFor({ style, era, profession, variant });
     if (!imageBase64) {
       res.status(400).json({ error: 'Missing imageBase64' });
       return;
@@ -326,6 +330,7 @@ module.exports = async (req, res) => {
       const eraDesc = ERA_MAP[era] || ERA_MAP['1990s'];
       promptText =
         'Take this exact photo and transform the scene to look like it was taken in ' + eraDesc + '. ' +
+        (look ? 'Scene for this image: ' + look.text + '. ' : '') +
         'Keep the person\'s facial identity recognizable, but restyle their clothing, hair, photo style, and background to authentically match that time period. Output a single image only.';
     } else if (style === 'adposter') {
       const adLine = (adText && String(adText).trim()) ? String(adText).trim() : '';
@@ -426,6 +431,7 @@ module.exports = async (req, res) => {
       const profDesc = PROF_MAP[profession] || PROF_MAP.doctor;
       promptText =
         'Take this photo and restyle the person as ' + profDesc + '. ' +
+        (look ? 'Scene for this image: ' + look.text + '. ' : '') +
         'Keep the face and identity of the person clearly recognizable and unchanged, but replace their clothing and background so they realistically match that profession, with consistent natural lighting. Output a single image only.';
     } else if (EDIT_PROMPTS[style]) {
       promptText =
@@ -442,6 +448,7 @@ module.exports = async (req, res) => {
       promptText =
         'Take this exact photo and keep the person completely unchanged (same face, identity, clothes, pose, background). ' +
         'Only ADD a beautiful decorative photo frame/border effect around the image for ' + occasionDesc + '. ' +
+        (look ? 'Frame design for this image: ' + look.text + ', with no text or lettering. ' : '') +
         'The person and original background must remain fully visible and untouched in the center; the decoration should ' +
         'only affect the border/frame area and a subtle festive lighting glow. Output a single image only.';
     } else {
@@ -461,6 +468,7 @@ module.exports = async (req, res) => {
         'Only the drawing medium changes; who this person is never changes, and someone who knows them must ' +
         'recognize them instantly in the result.\n' +
         'TASK: redraw this same person in ' + styleDesc + '. ' +
+        (look ? 'This image\'s specific look (one of many variations of this style — follow it): ' + look.text + '. ' : '') +
         'Re-render the clothes, the background and the whole rendering technique in that art style, and keep the pose ' +
         'and general framing — but draw their own real face in that style instead of inventing a new face. ' +
         'Output a single image only.';
@@ -557,7 +565,7 @@ module.exports = async (req, res) => {
       const rescue = fb ? null : await openaiPortraitEdit(gptPrompt, imageBase64, mimeType, gptRefs);
       if (rescue) {
         const remR = await consumePortrait(quota.username, quota.limit);
-        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT });
+        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT, look: look ? { n: look.index + 1, total: look.total } : undefined });
         return;
       }
       if (!fb) {
@@ -600,6 +608,7 @@ module.exports = async (req, res) => {
       mimeType: imgPart.inlineData.mimeType || 'image/png',
       remaining,
       dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT,
+      look: look ? { n: look.index + 1, total: look.total } : undefined, /* v-pstyle-variety */
     });
   } catch (e) {
     console.error('[portrait-style] exception: ' + (e && e.stack ? e.stack : e));

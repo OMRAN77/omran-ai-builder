@@ -122,7 +122,8 @@ test('النتيجة المطابقة للأصل تُرفض عند طلب الت
   const srv = fs.readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
   assert.match(srv, /const SUBTLE = \['skin'\]/, 'البشرة وحدها دقيقة — العيون والجسم والعمر تغييرها ظاهر');
   assert.match(srv, /requireChange: SUBTLE\.indexOf\(feature\) === -1/, 'requireChange لا يصل الحارس');
-  assert.match(srv, /guard\.reason === 'no_change' \? NO_CHANGE_RETRY : STRONGER_LOCK/, 'المحاولة الثانية لا تفرّق بين سببي الرفض');
+  /* v-studio-age: سطر رفض الهويّة صار لكلّ ميزة (strongerLockFor) — العمر لا «طبقة رقيقة فوق الأصل» */
+  assert.match(srv, /guard\.reason === 'no_change' \? NO_CHANGE_RETRY : strongerLockFor\(o\.feature\)/, 'المحاولة الثانية لا تفرّق بين سببي الرفض');
   assert.match(srv, /the requested change was not applied at all/, 'نصّ المحاولة الثانية لا يطلب التنفيذ صراحةً');
 
   const cli = fs.readFileSync(path.join(root, 'js/app-02-tts.js'), 'utf8');
