@@ -225,7 +225,7 @@ module.exports = async (req, res) => {
             cleanText = fixed;
           }
         }
-      } catch (e) { /* correction is best-effort; keep original text on any failure */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/stt:228'); /* correction is best-effort; keep original text on any failure */ }
     }
 
     res.status(200).json({ text: cleanText, lowConfidence, language: detectedLanguage });

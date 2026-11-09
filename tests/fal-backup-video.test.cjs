@@ -196,7 +196,7 @@ test('٢. 402 مع صورة: إطار الترند عبر fal (nano-banana-pro/e
   assert.equal(s.length, 1);
   assert.equal(s[0].url, 'https://queue.fal.run/google/gemini-omni-flash/image-to-video');
   assert.equal(s[0].body.image_url, 'data:image/png;base64,' + FAL_PNG, 'الإطار المبنيّ أوّل إطار');
-  assert.ok(s[0].body.prompt.endsWith(TP.FRAME_LOCK + veo.TREND_NO_CUTS), 'قفل الإطار و«بلا قطع» كما عند Omni');
+  assert.ok(s[0].body.prompt.endsWith(TP.FRAME_LOCK + veo.TREND_NO_CUTS + veo.TREND_TURN_GUIDE), 'قفل الإطار و«بلا قطع» وسطر الالتفات كما عند Omni (v-trends-identity-audit)');
   assert.doesNotMatch(s[0].body.prompt, /\[# |Image1|Image2/, 'بلا وسوم أدوار Interactions');
   assert.equal(s[0].body.duration, 8);
 
@@ -382,4 +382,46 @@ test('٩. بلا FAL_KEY: كما كان حرفيًّا — 503 unavailable بل�
     assert.equal(submits().length + falImages().length, 0);
     assert.ok(!kv.get(fb.OUT_KEY), 'لا علم بلا احتياط');
   } finally { process.env.FAL_KEY = k; }
+});
+
+/* v-trends-identity-audit — مسار الاحتياط (نفاد رصيد Gemini) لا يغيّر دور الصورة عمّا يفعله Omni:
+   ترند الشخص الذي سقط إطاره = صورته أوّل إطار (لا مرجعًا يُرسم منه الوجه من جديد)، والكشف بإطاره = قفل الوجه والشعر ونهاية بالشخص نفسه. */
+test('١١. سقوط الإطار على الاحتياط (heritagesing): صورته نفسها أوّل إطار image-to-video، لا مرجع؛ والكشف بلا إطار يبقى مرجعًا', async () => {
+  reset();
+  imageReply = err(402, DEPLETED); falImage = 'locked'; // الإطار يسقط عند الاثنين
+  const photo = Buffer.from('photo-selfref-' + Date.now()).toString('base64');
+  const r = await create({ token: ownerTok, trend: 'heritagesing', params: { text: 'يا هلا', sceneIndex: 0 }, ratio: '720:1280', imageBase64: photo, imageMime: 'image/jpeg' });
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  const s = submits();
+  assert.equal(s.length, 1);
+  assert.equal(s[0].url, 'https://queue.fal.run/google/gemini-omni-flash/image-to-video', 'أوّل إطار حقيقيّ');
+  assert.equal(s[0].body.image_url, 'data:image/jpeg;base64,' + photo);
+  assert.ok(!('image_urls' in s[0].body), 'لا مرجع');
+  assert.doesNotMatch(s[0].body.prompt, /literal initial frame|<IMAGE_REF_|\[# /);
+  assert.ok(!s[0].body.prompt.includes(veo.TREND_TURN_GUIDE), 'بلا إطار مبنيّ = بلا سطر الالتفات');
+
+  reset();
+  imageReply = err(402, DEPLETED); falImage = 'locked';
+  const photo2 = Buffer.from('photo-reveal-noframe-' + Date.now()).toString('base64');
+  const r2 = await create({ token: ownerTok, trend: 'sorryreveal', params: { sceneIndex: 0 }, ratio: '720:1280', imageBase64: photo2, imageMime: 'image/jpeg' });
+  assert.equal(r2.code, 200, JSON.stringify(r2.body));
+  assert.equal(submits()[0].url, 'https://queue.fal.run/google/gemini-omni-flash/reference-to-video', 'الكشف بلا إطار: مرجع كما عند Omni');
+});
+
+test('١٢. «سامحوني» بإطاره على الاحتياط: الإطار أوّلًا وقفل الوجه والشعر حتّى النهاية، ونهاية بالشخص نفسه بلبس عاديّ — بلا «الصورة المرجعيّة نفسها» ولا وسوم ولا FRAME_LOCK', async () => {
+  reset();
+  imageReply = () => ({ status: 200, body: { candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: FAL_PNG } }] } }] } });
+  omniReply = err(402, 'Payment required');
+  const photo = Buffer.from('photo-reveal-' + Date.now()).toString('base64');
+  const r = await create({ token: ownerTok, trend: 'sorryreveal', params: { sceneIndex: 0 }, ratio: '720:1280', imageBase64: photo, imageMime: 'image/jpeg' });
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  assert.equal(omniCalls().length, 1, 'Omni نودي بإطاره وصورته الأخيرة ثمّ نفد الرصيد');
+  const s = submits()[0];
+  assert.equal(s.url, 'https://queue.fal.run/google/gemini-omni-flash/image-to-video');
+  assert.equal(s.body.image_url, 'data:image/png;base64,' + FAL_PNG, 'الإطار المبنيّ أوّلًا');
+  assert.ok(s.body.prompt.endsWith(veo.TREND_REVEAL_GUIDE_BK), 'قفل الوجه والشعر');
+  assert.ok(s.body.prompt.includes('it cuts to the same person in plain everyday clothes'));
+  assert.doesNotMatch(s.body.prompt, /reference photo itself|Image1|Image2|\[# /);
+  assert.ok(!s.body.prompt.includes(TP.FRAME_LOCK.trim()), 'بلا FRAME_LOCK («اللبس كما هو» يناقض النهاية)');
+  assert.ok(!s.body.prompt.includes(veo.TREND_TURN_GUIDE));
 });

@@ -49,7 +49,7 @@ function clean(s) {
 /* ───── علم «Gemini خارج الرصيد» ───── */
 async function markGeminiOut(o) {
   if (!enabled()) return; /* بلا احتياط: لا علم، والمسار القديم حرفيًّا */
-  try { await kvOf(o).kvSetRaw(OUT_KEY, String(Date.now()), OUT_TTL_S); } catch (e) { /* guard-ok — العلم اختصار لا شرط */ }
+  try { await kvOf(o).kvSetRaw(OUT_KEY, String(Date.now()), OUT_TTL_S); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/fal-fallback:52'); /* guard-ok — العلم اختصار لا شرط */ }
 }
 /* تجربة المالك وحده (أمره ٤ نوفمبر «أضفها+ادمج»): FAL_BACKUP_TEST_UNTIL وقت ISO — حتّى ينتهي تتخطّى طلبات المالك Gemini
    إلى fal بلا إشعار «Gemini خلص»، والباقون كما هم. ينتهي وحده بلا نشر جديد. المالك = جلسة موقَّعة من الجسم أو ?token أو Bearer. */
@@ -90,7 +90,7 @@ async function reserve(cents, o) {
     const spent = Number(await kv.kvIncrBy(spentKey(day), cents));
     if (kv.kvExpire) await kv.kvExpire(spentKey(day), SPENT_TTL_S);
     if (!Number.isFinite(spent) || spent > capCents()) {
-      try { await kv.kvDecrBy(spentKey(day), cents); } catch (e) { /* guard-ok — الحجز يسقط بانتهاء اليوم */ }
+      try { await kv.kvDecrBy(spentKey(day), cents); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/fal-fallback:93'); /* guard-ok — الحجز يسقط بانتهاء اليوم */ }
       return null;
     }
     return { day, cents };
@@ -109,7 +109,7 @@ async function notify(kind, o) {
   try {
     const p = require('./_owner-alert.js').alertOwnerMedia(kind, o && o.alertOpts);
     await Promise.race([p, new Promise((r) => setTimeout(r, 2000))]);
-  } catch (e) { /* guard-ok — الإشعار تحسين لا شرط */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/fal-fallback:112'); /* guard-ok — الإشعار تحسين لا شرط */ }
 }
 /* سبب رفض fal: الحالة ونوع الخطأ ورسالته القصيرة — لا الجسم كلّه (قد يعيد نصّ المستخدم في السجلّ والإشعار) */
 function falWhy(status, raw) {
@@ -126,7 +126,7 @@ function falWhy(status, raw) {
 async function logFail(where, detail) {
   const d = clean(detail);
   console.error('[fal-backup] ' + where + ': ' + d);
-  try { require('./log-error.js').logError('fal-backup/' + where, new Error(d)); } catch (e) { /* guard-ok — السجلّ تحسين */ }
+  try { require('./log-error.js').logError('fal-backup/' + where, new Error(d)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/fal-fallback:129'); /* guard-ok — السجلّ تحسين */ }
 }
 
 /* ───── الصور ───── */

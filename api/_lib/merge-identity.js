@@ -88,17 +88,26 @@ function crop(img, x0, y0, x1, y1) {
 async function detectFaces(apiKey, img, opts) {
   const o = opts || {};
   const small = shrinkTo(img, DETECT_MAX);
+  /* v-body-upright: o.points = ومعه مركزا العينين ومركز الفم لكلّ وجه (uprightCrop)؛ بلا o.points الطلب والمخطّط كما كانا حرفيًّا */
+  const pts = !!o.points;
   const r = await (o.fetchImpl || fetch)(DETECT_URL + apiKey, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(o.timeoutMs || 15000),
     body: JSON.stringify({
       contents: [{ parts: [
         { inlineData: { mimeType: 'image/jpeg', data: Buffer.from(encodeJpeg(small, 85)).toString('base64') } },
-        { text: 'Find every human face in this photo. For each face return box_2d [ymin, xmin, ymax, xmax] normalized to 0-1000, from the hairline/forehead to the chin and ear to ear. Return JSON {"faces": [{"box_2d": [...]}]} only; an empty list if there are no people.' },
+        { text: 'Find every human face in this photo. For each face return box_2d [ymin, xmin, ymax, xmax] normalized to 0-1000, from the hairline/forehead to the chin and ear to ear.'
+          + (pts ? ' Also return eyes [y1, x1, y2, x2]: the centre of each of the two eyes, and mouth [y, x]: the centre of the mouth, normalized to 0-1000 in the same way.'
+            /* v-body-hair-keep: ومعها «الشعر مغطّى؟» بقائمة صريحة تشمل الغترة والطاقيّة — فحص الجنس (photoLook) لا يجيب عن بعض الصور */
+            + ' Also return hair_covered: true when the hair is covered by a hijab, headscarf, shayla, ghutra, cap, hat or hood, false when the hair is visible.'
+            /* v-body-beard: و«لحية؟» — «facial hair» في أمر الرسم والقفل لكلّ أحد وضع لحية على وجه امرأة (تجربة ٧ نوفمبر) */
+            + ' Also return facial_hair: true when the person has a beard, moustache or stubble, false otherwise.' : '')
+          + ' Return JSON {"faces": [{"box_2d": [...]' + (pts ? ', "eyes": [...], "mouth": [...], "hair_covered": false, "facial_hair": false' : '') + '}]} only; an empty list if there are no people.' },
       ] }],
-      generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', required: ['faces'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: ['box_2d'], properties: { box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } } } } } } },
+      /* v-body-beard: السؤالان إلزاميّان في المخطّط — اختياريًّا أسقط الموديل hair_covered فبقي «hair ?» والسطر العامّ */
+      generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', required: ['faces'], properties: { faces: { type: 'ARRAY', items: { type: 'OBJECT', required: pts ? ['box_2d', 'hair_covered', 'facial_hair'] : ['box_2d'], properties: Object.assign({ box_2d: { type: 'ARRAY', items: { type: 'INTEGER' } } }, pts ? { eyes: { type: 'ARRAY', items: { type: 'INTEGER' } }, mouth: { type: 'ARRAY', items: { type: 'INTEGER' } }, hair_covered: { type: 'BOOLEAN' }, facial_hair: { type: 'BOOLEAN' } } : {}) } } } } },
     }),
   });
-  if (!r.ok) { console.warn('[merge-identity] face detect ' + r.status); return []; } // عطب الكشف: stats.faces يبقى بلا قيمة — لا يُقرأ «لا وجوه» (v-video-identity-mirror: ويُسجَّل — كان صامتًا)
+  if (!r.ok) { const t = typeof r.text === 'function' ? await r.text().catch(() => '') : ''; console.warn('[merge-identity] face detect ' + r.status + (require('./fal-fallback.js').geminiCreditOut(r.status, t) ? ' gemini-out' : '')); return []; } /* v-trends-identity-audit: نفاد Gemini يُسمّى — اللقطة تسقط فيه */ // عطب الكشف: stats.faces يبقى بلا قيمة — لا يُقرأ «لا وجوه» (v-video-identity-mirror: ويُسجَّل — كان صامتًا)
   const d = await r.json().catch(() => null);
   const txt = ((((d && d.candidates) || [])[0] || {}).content || {}).parts || [];
   const s = txt.filter((p) => typeof p.text === 'string' && !p.thought).map((p) => p.text).join('').replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
@@ -112,7 +121,14 @@ async function detectFaces(apiKey, img, opts) {
     if (!b || b.length !== 4 || b.some((v) => !Number.isFinite(v))) return null;
     const c = (v) => Math.max(0, Math.min(1, v / 1000));
     const box = [c(b[1]), c(b[0]), c(b[3]), c(b[2])];
-    return box[2] > box[0] && box[3] > box[1] ? { box } : null;
+    if (!(box[2] > box[0] && box[3] > box[1])) return null;
+    const out = { box };
+    /* v-body-upright: النقاط [y, x] من ٠–١٠٠٠ ← [x, y] نسبيّ؛ ناقصة أو معيبة = الصندوق وحده */
+    const e = pts && Array.isArray(f.eyes) ? f.eyes.flat().map(Number) : null, m = pts && Array.isArray(f.mouth) ? f.mouth.flat().map(Number) : null;
+    if (e && m && e.length === 4 && m.length === 2 && e.concat(m).every(Number.isFinite)) { out.eyes = [[c(e[1]), c(e[0])], [c(e[3]), c(e[2])]]; out.mouth = [c(m[1]), c(m[0])]; }
+    if (pts && typeof f.hair_covered === 'boolean') out.covered = f.hair_covered; /* v-body-hair-keep */
+    if (pts && typeof f.facial_hair === 'boolean') out.beard = f.facial_hair; /* v-body-beard */
+    return out;
   }).filter(Boolean).sort((a, b) => area(b.box) - area(a.box));
   /* صندوق مكرّر للوجه نفسه (تقاطع > ٥٠٪) يُسقط */
   /* v-ai-video-speed: stats.faces (أعلاه) يُكتب حين أجاب الكشف فعلًا — faceCrops يرجع [] أيضًا لوجه يملأ الصورة ولجماعة ولعطب، فلا يكفي ليقول «لا شخص» */
@@ -145,6 +161,56 @@ function headRect(img, box, other) {
   return { x0: Math.round(x0), y0: Math.round(y0), x1: Math.round(x1), y1: Math.round(y1), fh };
 }
 
+/* v-body-upright (لقطة المالك ٧ نوفمبر: سيلفي مائل نحو ٧٠° بفلتر، والوجه يملأ الصورة ← جسم كامل بوجه امرأة أخرى ولون عيون آخر، والقفل
+   «بدّل ١/١»): وجه يملأ الصورة لا لقطة له (headRect ≥ ٤٥٪)، فكان مرجع الرسم والقفل الصورة المائلة نفسها — ونموذج التبديل لا يقرأ وجهًا
+   مقلوبًا جانبًا فيخترع وجهًا. هنا لقطة وجه **مستقيمة** من مركزي العينين ومركز الفم (detectFaces بـpoints): الفم←العينين = أعلى الوجه، فلا
+   لبس يمين/يسار حتّى بزاوية ٩٠°. ضلعها ٤ أضعاف مسافة العينين←الفم (≈ ١٫٥× طول الوجه كـheadRect)، ومركزها تحت منتصف العينين بقليل،
+   وما وقع خارج الصورة رماديّ. ميل أقلّ من ٤° = قصّ بلا تدوير. نقاط لا تشبه وجهًا (خارج الصندوق، خطّ العينين لا يعترض الوجه، نسبة
+   غريبة) = null، والمتّصل يعود إلى faceCrops كما كان. ← { data (JPEG)، mime، roll (درجات، موجب = أعلى الوجه مائل يمينًا)، side } */
+const UPRIGHT_MIN_DEG = 4;
+function uprightCrop(img, f) {
+  if (!img || !f || !Array.isArray(f.box) || !Array.isArray(f.eyes) || f.eyes.length !== 2 || !Array.isArray(f.mouth)) return null;
+  const px = (p) => [p[0] * img.w, p[1] * img.h];
+  const [a, b] = f.eyes.map(px), m = px(f.mouth);
+  const e = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const v = [e[0] - m[0], e[1] - m[1]]; // من الفم إلى العينين = أعلى الوجه
+  const d = Math.hypot(v[0], v[1]), io = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (!(d >= 12) || io < 0.4 * d || io > 1.8 * d) return null;
+  /* خطّ العينين يعترض محور الوجه — المراجعة: ٠٫٥ كان يرفض وجهًا حقيقيًّا ملتفتًا ثلاثة أرباع مصوَّرًا من تحت (الفم أمام العينين فيميل الإسقاط)
+     فيعود إلى الصورة المائلة؛ الميل يُحسب من محور الفم←العينين وحده، فالحدّ يرفض الهراء وحده (خطّ عينين على بُعد أقلّ من ~٣٧° من المحور) */
+  if (Math.abs((b[0] - a[0]) * v[0] + (b[1] - a[1]) * v[1]) / (io * d) > 0.8) return null;
+  const [bx0, by0, bx1, by1] = f.box, mx = 0.15 * (bx1 - bx0), my = 0.15 * (by1 - by0);
+  const inside = (p) => p[0] >= (bx0 - mx) * img.w && p[0] <= (bx1 + mx) * img.w && p[1] >= (by0 - my) * img.h && p[1] <= (by1 + my) * img.h;
+  if (![a, b, m].every(inside)) return null;
+  let roll = Math.atan2(v[0], -v[1]);
+  if (Math.abs(roll) < UPRIGHT_MIN_DEG * Math.PI / 180) roll = 0;
+  const cs = Math.cos(roll), sn = Math.sin(roll);
+  const ux = [cs, sn], uy = [-sn, cs]; // يمين الوجه وأسفله في الصورة
+  const S = 4 * d, c = [e[0] + 0.15 * d * uy[0], e[1] + 0.15 * d * uy[1]];
+  const T = Math.max(64, Math.min(CROP_MAX, Math.round(S))), k = Math.max(1, Math.min(4, Math.ceil(S / T)));
+  const W = img.w, H = img.h, src = img.data, out = Buffer.alloc(T * T * 4), acc = [0, 0, 0];
+  for (let j = 0; j < T; j++) {
+    for (let i = 0; i < T; i++) {
+      acc[0] = acc[1] = acc[2] = 0;
+      for (let q = 0; q < k; q++) {
+        for (let p = 0; p < k; p++) {
+          const s = ((i + (p + 0.5) / k) / T - 0.5) * S, t = ((j + (q + 0.5) / k) / T - 0.5) * S;
+          const x = c[0] + s * ux[0] + t * uy[0] - 0.5, y = c[1] + s * ux[1] + t * uy[1] - 0.5;
+          if (x < -0.5 || y < -0.5 || x > W - 0.5 || y > H - 0.5) { acc[0] += 128; acc[1] += 128; acc[2] += 128; continue; }
+          const x0 = Math.max(0, Math.min(W - 1, Math.floor(x))), y0 = Math.max(0, Math.min(H - 1, Math.floor(y)));
+          const x1 = Math.min(W - 1, x0 + 1), y1 = Math.min(H - 1, y0 + 1);
+          const fx = Math.max(0, Math.min(1, x - x0)), fy = Math.max(0, Math.min(1, y - y0));
+          const i00 = (y0 * W + x0) * 4, i10 = (y0 * W + x1) * 4, i01 = (y1 * W + x0) * 4, i11 = (y1 * W + x1) * 4;
+          for (let ch = 0; ch < 3; ch++) acc[ch] += (src[i00 + ch] * (1 - fx) + src[i10 + ch] * fx) * (1 - fy) + (src[i01 + ch] * (1 - fx) + src[i11 + ch] * fx) * fy;
+        }
+      }
+      const o = (j * T + i) * 4, n = k * k;
+      out[o] = acc[0] / n; out[o + 1] = acc[1] / n; out[o + 2] = acc[2] / n; out[o + 3] = 255;
+    }
+  }
+  return { data: Buffer.from(encodeJpeg({ w: T, h: T, data: out }, 92)).toString('base64'), mime: 'image/jpeg', roll: Math.round(roll * 180 / Math.PI), side: T };
+}
+
 /* الموضع بين الوجوه المقصوصة وحدها (≤ ٢) — لا بين المارّة الصغار في الخلفيّة */
 function whereIn(f, main) {
   if (main.length < 2) return 'the person';
@@ -154,36 +220,50 @@ function whereIn(f, main) {
   return dy < 0 ? 'the upper person' : 'the lower person';
 }
 
+/* MERGE_FACE_CROPS=off يوقف كلّ لقطات الوجوه بلا نشر — faceCrops ولقطة الجسم المستقيمة (v-body-upright، المراجعة: كانت تتخطّاه) */
+function cropsOn() { return String(process.env.MERGE_FACE_CROPS || 'on').toLowerCase() !== 'off'; }
+
 /* photos: [{ data, mime }] بترتيب رفع المستخدم → [{ of, who, data, mime }] لقطات وجوه، أكبرها في كلّ صورة أوّلًا */
 async function faceCrops(apiKey, photos, opts) {
   const o = opts || {};
-  if (!apiKey || String(process.env.MERGE_FACE_CROPS || 'on').toLowerCase() === 'off') return [];
+  if (!apiKey || !cropsOn()) return [];
   const budget = Math.min(4, MAX_HUMAN_REFS - photos.length);
   if (budget <= 0) return [];
   const per = await Promise.all(photos.map(async (p, i) => {
     try {
       const img = decodeWork(p.data);
       if (!img) return [];
-      const faces = await detectFaces(apiKey, img, o);
+      /* v-body-reframe: وجوه كُشفت قبلُ لهذه الصورة (o.faces[i]) = بلا نداء كشف ثانٍ */
+      const faces = (Array.isArray(o.faces) && Array.isArray(o.faces[i])) ? o.faces[i] : await detectFaces(apiKey, img, o);
       const biggest = Math.max(0, ...faces.map((f) => f.box[3] - f.box[1]));
       const main = faces.filter((f) => f.box[3] - f.box[1] >= biggest * 0.5);
+      if (Array.isArray(o.perPhoto)) o.perPhoto[i] = main.length; /* v-merge-face-lock: عدد الأشخاص الرئيسيّين لكلّ صورة (قفل الوجه لصورة الشخص الواحد) */
       /* صورة جماعيّة (٣ وجوه فأكثر): لقطة أيّ وجه تُدخل وجوه جيرانه فتلتبس — تبقى الصورة وحدها مرجعًا */
       if (main.length > 2) return [];
       /* القصّ هنا من نسخة العمل (صغيرة) — لا تُحفظ صور كاملة حتّى نهاية كلّ الصور */
-      return main.map((f) => {
+      const out = main.map((f) => {
         const r = headRect(img, f.box, main.length === 2 ? (main[0] === f ? main[1] : main[0]).box : null);
         /* وجه يملأ الصورة أصلًا = الموديل يراه جيّدًا؛ وجه أصغر من ٣٢ بكسل = لا تفاصيل تُنقذ */
         if (!r || r.fh >= img.h * 0.45 || r.fh < 32 || r.x1 - r.x0 < 48 || r.y1 - r.y0 < 48) return null;
         const c = shrinkTo(crop(img, r.x0, r.y0, r.x1, r.y1), CROP_MAX);
         return { of: i, who: whereIn(f, main), size: f.box[3] - f.box[1], data: Buffer.from(encodeJpeg(c, 92)).toString('base64'), mime: 'image/jpeg' };
-      }).filter(Boolean);
+      });
+      /* v-trends-identity-audit: onePerPhoto (صورة لكلّ شخص: إطار المجموعة وترند الشخص الواحد) — لقطة أكبر وجه وحده (main مرتّب بالمساحة).
+         سقط قصّه (سيلفي ≥٤٥٪ من الصورة) = بلا لقطة، لا الوجه التالي (صديق خلفه، انعكاس، ملصق) يصير مرجع هويّته */
+      if (o.onePerPhoto) return out[0] ? [Object.assign(out[0], { who: 'the person' })] : [];
+      return out.filter(Boolean);
     } catch (e) { console.error('[merge-identity] faces ' + (i + 1) + ': ' + (e && e.message ? e.message : e)); return []; }
   }));
   /* بالتناوب بين الصور (وجه كلّ صورة الأكبر أوّلًا) حتّى تنفد الحصّة */
   const picked = [];
-  for (let round = 0; picked.length < budget && per.some((l) => l.length > round); round++) {
-    per.forEach((l) => { if (l[round] && picked.length < budget) picked.push(l[round]); });
+  /* v-trends-identity-audit: مع ٣ صور الحصّة لقطتان — الأصغر وجهًا (الأخشن عند نموذج الصور) أوّلًا في كلّ جولة لا ترتيب الرفع، فلا يبقى الثالث
+     دائمًا بلا لقطة وهو ربّما الأحوج؛ ثمّ ترتيب الإخراج القديم نفسه (جولة جولة بترتيب الصور) — الحصّة غير الضيّقة كما كانت حرفيًّا */
+  const chosen = new Set();
+  for (let round = 0; chosen.size < budget && per.some((l) => l.length > round); round++) {
+    per.map((l) => l[round]).filter(Boolean).sort((a, b) => a.size - b.size)
+      .forEach((c) => { if (chosen.size < budget) chosen.add(c); });
   }
+  for (let round = 0; per.some((l) => l.length > round); round++) per.forEach((l) => { if (l[round] && chosen.has(l[round])) picked.push(l[round]); });
   return picked.map((c) => ({ of: c.of, who: c.who, size: c.size, data: c.data, mime: c.mime })); // size: عرض الصندوق — ترند الشخص الواحد يختار الأكبر
 }
 
@@ -235,7 +315,8 @@ function nearestRatio(w, h) {
 }
 /* نسبة صريحة للدمج: كلمة المستخدم أوّلًا (عرضي/مربع/ستوري/طولي/خلفية جوال/نسبة رقميّة)، وإلّا أقرب نسبة مدعومة للصورة
    الأساسيّة (آخر ما رفعه المستخدم) — كي لا يتبع الناتج لقطة الوجه الأخيرة. لا «شعار = مربّع» هنا: دمج شعار مع صورة ليس توليد شعار. */
-function mergeAspect(photo, text) {
+/* v-merge-face-lock: النسبة التي سمّاها المستخدم بكلمته وحدها ('' = لم يسمِّ) — الستايل يختار افتراضيّه للشخصين بدل نسبة الصورة الأولى */
+function explicitAspect(text) {
   const s = String(text || '').replace(/[٠-٩]/g, (c) => String(c.charCodeAt(0) - 0x660));
   const m = /(?:^|[^\d])(\d{1,2})\s*[:x×\/]\s*(\d{1,2})(?!\d)/.exec(s);
   if (m && +m[1] > 0 && +m[2] > 0 && +m[1] / +m[2] <= 4 && +m[2] / +m[1] <= 4) return nearestRatio(+m[1], +m[2]);
@@ -243,10 +324,15 @@ function mergeAspect(photo, text) {
   if (/عرضي|عرضيه|عرضية|بانر|بنر|غلاف\s*(?:يوتيوب|قناة|فيس)|landscape|banner|widescreen/i.test(s)) return '16:9';
   if (/مربع|مربعه|مربعة|square|بوست\s*انستقرام|instagram\s*post|بروفايل|profile\s*(?:pic|photo)/i.test(s)) return '1:1';
   if (/طولي|طوليه|طولية|عمودي|عموديه|عمودية|portrait|vertical/i.test(s)) return '3:4';
+  return '';
+}
+function mergeAspect(photo, text) {
+  const e = explicitAspect(text);
+  if (e) return e;
   let d = null;
   try { const buf = Buffer.from(String(photo && photo.data || ''), 'base64'); d = imageSize(buf); if (d && d.type === 'jpeg' && (jpegOrientation(buf) || 1) >= 5) d = { w: d.h, h: d.w }; } catch (e) { d = null; } /* guard-ok — بلا أبعاد = الافتراضيّ */
   return d && d.w && d.h ? nearestRatio(d.w, d.h) : '3:4';
 }
 
-module.exports = { faceCrops, detectFaces, mergeParts, mergeInstruction, mergeTemperature, mergeAspect, headRect, whereIn, orient, sniffMime, MAX_HUMAN_REFS,
+module.exports = { faceCrops, detectFaces, mergeParts, mergeInstruction, mergeTemperature, mergeAspect, explicitAspect, headRect, whereIn, orient, sniffMime, MAX_HUMAN_REFS, uprightCrop, cropsOn,
   decodeWork, shrinkTo, DETECT_URL /* v-trend-face-swap: نفس الفكّ والتصغير ونقطة الكشف في face-swap.js */ };

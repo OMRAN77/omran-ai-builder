@@ -192,7 +192,8 @@ test('chat.js wiring: tier first, free lane before the tool loop, limit as a rep
   assert.match(chat, /__tier = await tierLib\.resolveTier\(token \? __vt\(token\) : null\);/);
   assert.match(chat, /checkAndConsume\(token, guestId, \(__tier && !__tier\.subscriber\) \? 'chat' : \(\(__planRoute && __planRoute\.bucket\) \|\| prov\), clientIp\(req\), \{ tier: __tier \|\| undefined \}\)/);
   assert.match(chat, /send\(\{ tier: usage\.tier === 'guest' \? 'guest-limit' : 'free-limit' \}\);\n\s+send\(\{ delta: usage\.message \|\| tierLib\.FREE_TEXT\.freeLimit \}\);\n\s+send\(\{ done: true \}\);/);
-  assert.match(chat, /const __freeLane = !!\(usage\.tier && !usage\.subscriber\);/);
+  // v-office-files: دور «طلب ملفّ» لمجّانيّ بقيت حصّته الشهريّة وحده يخرج من السلسلة المجّانيّة (أداة الملفّ — tests/office-files.test.cjs ١٠–١١)
+  assert.match(chat, /const __freeLane = !!\(usage\.tier && !usage\.subscriber\) && !__officeTurn;/);
   const freeStart = chat.indexOf('if (__freeLane || !__visionRoute) {');
   const toolStart = chat.indexOf('while (steps < MAX_STEPS) {');
   assert.ok(freeStart >= 0 && freeStart < toolStart, 'المجاني وفشل الرؤية ينتهيان قبل حلقة الأدوات');

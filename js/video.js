@@ -16,7 +16,7 @@
     /* -t: حدّ المدّة يُفرض في الأداة نفسها (ملفّ بلا مدّة مقروءة لا يفلت منه)، و0:a:0? أوّل مسار صوت فقط إن وُجد */
     return ['-i',o.input,'-t',String(o.maxSec||60),'-map','0:v:0','-map','0:a:0?','-vf',vf.join(','),'-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p','-c:a','aac','-b:a','160k','-movflags','+faststart',o.output||'out.mp4'];
   }
-  try{ window.__vmkCleanArgs=cleanArgs; }catch(e){ /* guard-ok — بيئة بلا window */ }
+  try{ window.__vmkCleanArgs=cleanArgs; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:19'); /* guard-ok — بيئة بلا window */ }
   /* v-video-enhance-pro (المالك بعد تجربة المسار المجّانيّ: «مش قوي بما فيه الكفاية… مش الجودة المطلوبة» ثمّ «اريده في التطبيق»):
      زرّ «تحسين احترافي» في القسم نفسه — ترميم على الخادم بالنقاط (api/_lib/video-enhance.js). المسار المجّانيّ أعلاه لا يتغيّر ولا
      يمرّ بالخادم. هذه الدوالّ الصرفة تُكشف للاختبار: estimate تقدير النقاط قبل الرفع (الحكم لقياس الخادم)، check فحص محلّيّ يُرجع
@@ -40,7 +40,7 @@
   var PRO_ERR={points_insufficient:'vclProNoPoints',too_big:'vclTooBig',too_long:'vclProTooLong',fps:'vclProSpec',resolution:'vclProSpec',format:'vclProSpec',
     limit:'vclProLimit',unavailable:'vclProUnavailable',upload:'vclProUploadFail',not_uploaded:'vclProUploadFail'};
   function proErrKey(code){ var c=String(code||''); return Object.prototype.hasOwnProperty.call(PRO_ERR,c)?PRO_ERR[c]:'vclProFail'; }
-  try{ window.__vmkPro={estimate:proEstimate,check:proCheck,errKey:proErrKey}; }catch(e){ /* guard-ok — بيئة بلا window */ }
+  try{ window.__vmkPro={estimate:proEstimate,check:proCheck,errKey:proErrKey}; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:43'); /* guard-ok — بيئة بلا window */ }
   var M=document.getElementById('videoMakerModal'); if(!M) return;
   var G=[['videoMakerMode','card'],['videoMakerStyle','pill'],['videoMakerDuration','pill'],['videoMakerRatio','pill']];
   /* v-vmk-price-src (تدقيق ١٨ أكتوبر، الدفعة ١ «الفلوس»: «الرقم اللي على الزر لازم يطلع من نفس المصدر اللي يخصم، ويطابقه بالضبط»):
@@ -107,7 +107,7 @@
     if(rs){
       stage.appendChild(rs);
       /* v-vmk-res-mode: وسم الوضع يُكتب عند «إنشاء» (app-11) فيُعاد الحساب فورًا — لا صنف قديم يخفي النتيجة الجديدة في وضعها؛ وautoplay في قسم آخر يتوقّف */
-      try{ new MutationObserver(syncResult).observe(rs,{attributes:true,attributeFilter:['data-mode']}); }catch(e){ /* guard-ok — بلا مراقب يُحسب عند كلّ تبديل */ }
+      try{ new MutationObserver(syncResult).observe(rs,{attributes:true,attributeFilter:['data-mode']}); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:110'); /* guard-ok — بلا مراقب يُحسب عند كلّ تبديل */ }
       rs.addEventListener('play',syncResult);
     }
     /* عارض قسم «تحسين فيديو» عنصر مستقلّ: لا يكتب فوق نتيجة المولّد ولا يظهر خارج قسمه */
@@ -169,11 +169,11 @@
   function tabMedia(k,poster){
     var src=tabVid(k), rm=false, el;
     if(src) poster='/media/samples/tab-'+k+'.jpg'; /* غلاف من المقطع نفسه (لقطته الأولى) — ومع «تقليل الحركة» هو الصورة */
-    try{ rm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches); }catch(e){ /* guard-ok — بلا matchMedia = حركة عاديّة */ }
+    try{ rm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:172'); /* guard-ok — بلا matchMedia = حركة عاديّة */ }
     if(src&&!rm){
       el=document.createElement('video'); el.muted=true; el.defaultMuted=true; el.loop=true; el.autoplay=true; el.playsInline=true;
       el.setAttribute('muted',''); el.setAttribute('playsinline',''); el.setAttribute('aria-hidden','true'); el.preload='auto'; el.poster=poster; el.src=src;
-      try{ var pr=el.play(); if(pr&&pr.catch) pr.catch(function(){ /* guard-ok — التشغيل التلقائيّ محجوب: يبقى الغلاف */ }); }catch(e){ /* guard-ok — كذلك */ }
+      try{ var pr=el.play(); if(pr&&pr.catch) pr.catch(function(){ /* guard-ok — التشغيل التلقائيّ محجوب: يبقى الغلاف */ }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:176'); /* guard-ok — كذلك */ }
     } else { el=document.createElement('img'); el.alt=''; el.loading='eager'; el.fetchPriority='high'; el.src=poster; }
     el.className='vmk-tab-img'; return el;
   }
@@ -181,7 +181,7 @@
   var tabsWarm=false;
   function warmTabs(){
     if(tabsWarm) return; tabsWarm=true;
-    tabsFor().forEach(function(v){ try{ var im=new Image(); im.src=tabArt(v); }catch(e){ /* guard-ok — التسخين تحسين، والتبويب يطلب صورته بنفسه */ } });
+    tabsFor().forEach(function(v){ try{ var im=new Image(); im.src=tabArt(v); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:184'); /* guard-ok — التسخين تحسين، والتبويب يطلب صورته بنفسه */ } });
   }
   var bvm=id('btnVideoMaker'); if(bvm) ['pointerenter','pointerdown','focus'].forEach(function(ev){ bvm.addEventListener(ev,warmTabs); });
   /* ملفّات النماذج الجاهزة: '<الوضع>-<١..٣>': true حين يُرفع /media/samples/<الوضع>-<رقم>.mp4 — بلا ملفّ تظهر البطاقة بنصّ المثال فقط */
@@ -204,7 +204,7 @@
     var x=document.createElement('button'); x.type='button'; x.className='vmk-lb-x'; x.textContent='×'; x.setAttribute('aria-label',L('vcRemove'));
     /* v-back-layers (تدقيق ١٨–١٩ أكتوبر: «Esc يسكّر فيديو المثال ويسكّر الصانع كلّه معاه»): مستمع الفقاعة هنا كان يأتي بعد
        معالج Esc العامّ (app-05-swipe-back) فيُغلق الصانع أوّلًا. الالتقاط + إيقاف الانتشار: Esc يغلق المشغّل وحده. */
-    function close(){ try{ vd.pause(); }catch(e){ /* guard-ok — العنصر يُزال */ } document.removeEventListener('keydown',esc,true); lb.remove(); }
+    function close(){ try{ vd.pause(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:207'); /* guard-ok — العنصر يُزال */ } document.removeEventListener('keydown',esc,true); lb.remove(); }
     function esc(e){ if(e.key==='Escape'){ e.preventDefault(); e.stopImmediatePropagation(); close(); } }
     lb.addEventListener('click',function(e){ if(e.target!==vd) close(); }); x.addEventListener('click',close);
     document.addEventListener('keydown',esc,true);
@@ -291,8 +291,8 @@
         vsrc='/media/samples/'+md+'-'+(i+1)+'.mp4';
         var vd=document.createElement('video'); vd.muted=true; vd.loop=true; vd.playsInline=true; vd.preload='none'; vd.poster='/media/samples/'+md+'-'+(i+1)+'.jpg'; vd.src=vsrc;
         /* v-vmk-play-catch (تدقيق ١٨–١٩ أكتوبر): مغادرة البطاقة أثناء التحميل ترفض وعد play() — كان بلا معالج فصار خطأ صفحة */
-        el.addEventListener('mouseenter',function(){ try{ var pp=vd.play(); if(pp&&typeof pp.catch==='function') pp.catch(function(){ /* guard-ok — الإيقاف قبل بدء التشغيل ليس خطأ */ }); }catch(e){ /* guard-ok — المتصفّح قد يمنع التشغيل التلقائي */ } });
-        el.addEventListener('mouseleave',function(){ try{ vd.pause(); }catch(e){ /* guard-ok — لا أثر */ } });
+        el.addEventListener('mouseenter',function(){ try{ var pp=vd.play(); if(pp&&typeof pp.catch==='function') pp.catch(function(){ /* guard-ok — الإيقاف قبل بدء التشغيل ليس خطأ */ }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:294'); /* guard-ok — المتصفّح قد يمنع التشغيل التلقائي */ } });
+        el.addEventListener('mouseleave',function(){ try{ vd.pause(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:295'); /* guard-ok — لا أثر */ } });
         pv.appendChild(vd);
       }
       if(vm){ var pl=document.createElement('span'); pl.className='vmk-sm-play'; pv.appendChild(pl); }
@@ -446,13 +446,17 @@
     box.innerHTML='<div class="vmk-dir-head"><b></b><p></p></div>'
       +'<textarea id="vdReq" rows="3" maxlength="3000"></textarea>'
       +'<div class="vmk-dir-row"><label><span></span><select id="vdLang"></select></label><label><span></span><select id="vdSpeaker"><option value="female"></option><option value="male"></option></select></label><label><span></span><select id="vdMin"></select></label><label><span></span><select id="vdVoice"><option value="on"></option><option value="off"></option></select></label><label class="vmk-dir-kind"><span></span><select id="vdKind"><option value="app"></option><option value="story"></option></select></label></div>'
+      +'<div class="vmk-tl" id="vdTl"></div>' /* v-director-timed: محرّر «بتوقيتي» — يظهر بالنوع الثالث وحده */
       +'<label class="vmk-dir-ref"><input type="file" accept="image/*" id="vdRef"><img id="vdRefImg" alt="" hidden><span></span></label>'
       +'<button type="button" id="vdGo"></button>'
       +'<div class="vmk-dir-stage" id="vdStage" hidden><div class="vmk-dir-stage-bg"></div><img id="vdStageImg" alt=""><div class="vmk-dir-stage-reel"></div>'
         +'<div class="vmk-dir-stage-cap" id="vdStageCap"></div><div class="vmk-dir-stage-hud"><span id="vdStageStep"></span><b id="vdStageTime">0:00</b></div><div class="vmk-dir-stage-bar"><i id="vdStageBar"></i></div></div>'
       +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','voice','samples','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small><i class="vmk-dir-log" dir="ltr"></i></li>'; }).join('')+'</ol>'
       +'<p class="vmk-dir-msg" id="vdMsg"></p>'
-      +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a></div>';
+      +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><div class="vmk-dir-acts"><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a><button type="button" class="vmk-dir-dl vmk-pub-btn" id="vdPubBtn"></button></div>'
+        /* v-director-publish: لوحة «انشر في حساباتي» — النصّ والمنصّات الموصولة ثمّ «انشر الآن» */
+        +'<div class="vmk-pub" id="vdPub" hidden><label class="vmk-pub-cap"><span></span><textarea id="vdPubCap" rows="3" maxlength="2200"></textarea></label>'
+        +'<div class="vmk-pub-plats" id="vdPubPlats"></div><button type="button" class="vmk-pub-go" id="vdPubGo"></button><p class="vmk-pub-msg" id="vdPubMsg"></p><ul class="vmk-pub-res" id="vdPubRes"></ul></div></div>';
     var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
     var ls=box.querySelector('#vdLang'); DR_LANGS.forEach(function(l){ var o=document.createElement('option'); o.value=l[0]; o.textContent=l[1]; ls.appendChild(o); });
     ls.value=DR_LANGS.some(function(l){ return l[0]===drUiLang(); })?drUiLang():'ar';
@@ -461,9 +465,307 @@
     box.querySelector('#vdGo').addEventListener('click',drRun);
     box.querySelector('#vdReq').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); drRun(); } });
     box.querySelector('#vdVoice').addEventListener('change',syncDirector); /* بدون صوت: اختيار المتحدّث بلا معنى فيُعطَّل */
+    var kT=document.createElement('option'); kT.value='timed'; box.querySelector('#vdKind').appendChild(kT); /* v-director-timed: النوع الثالث «بتوقيتي» */
+    tlInit(box.querySelector('#vdTl'));
+    box.querySelector('#vdPubBtn').addEventListener('click',pbToggle); box.querySelector('#vdPubGo').addEventListener('click',pbGo); /* v-director-publish */
     box.querySelector('#vdKind').addEventListener('change',syncDirector); /* v-director-story: القصّة حدّها ٣٠٠٠ حرف وبلا مدّة ولا صورة مرجع */
   }
   function drStory(){ return ((id('vdKind')||{}).value==='story'); }
+  /* v-director-timed (المالك ٧ نوفمبر: «اريده الشخص نفسه يحط التوقيت مع الملاحظات لين ٥ دقائق»، ثمّ «ابدأ… في المخرج» واختار «فيديو AI»):
+     النوع الثالث «بتوقيتي»: مقاطع بمدّة (٥–٣٠ ث) وملاحظة لكلّ مقطع حتّى ٥ دقائق، وشريط زمنيّ يتعبّى. التوليد في app-11-video.js
+     (window.__vmkTimelineRun: مشاهد ١٠/٥ ث بمحرّك «طويل (دقائق)» ثمّ لصق). المقاطع تُحفظ على الجهاز (راحة، لا حالة لازمة). */
+  var TL_MAX=300, TL_DUR=[5,10,15,20,30], TL_KEY='aiapp_vd_timeline';
+  var TL={segs:null};
+  function drTimed(){ return ((id('vdKind')||{}).value==='timed'); }
+  function tlFmt(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
+  function tlTotal(){ return (TL.segs||[]).reduce(function(a,s){ return a+s.d; },0); }
+  function tlClipCount(){ return (typeof window.__vmkTimelinePlan==='function')?window.__vmkTimelinePlan(TL.segs||[]).length:(TL.segs||[]).reduce(function(a,s){ return a+Math.ceil(s.d/10); },0); }
+  function tlSave(){ try{ localStorage.setItem(TL_KEY,JSON.stringify(TL.segs)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:483'); /* guard-ok — بلا تخزين: تبقى المقاطع في الصفحة */ } }
+  function tlLoad(){
+    var v=null; try{ v=JSON.parse(localStorage.getItem(TL_KEY)||'null'); }catch(e){ v=null; /* guard-ok — قيمة تالفة: بداية جديدة */ }
+    TL.segs=(Array.isArray(v)?v:[]).filter(function(s){ return s&&TL_DUR.indexOf(+s.d)>=0; }).map(function(s){ return {d:+s.d,n:String(s.n||'').slice(0,500)}; });
+    while(tlTotal()>TL_MAX) TL.segs.pop();
+    if(!TL.segs.length) TL.segs=[{d:10,n:''}];
+  }
+  function tlErr(t){ var e=id('vdTlErr'); if(e) e.textContent=t||''; }
+  function tlInit(el){
+    if(!el) return; tlLoad();
+    el.innerHTML='<div class="vmk-tl-top"><span id="vdTlLeft"></span></div><div class="vmk-tl-bar" id="vdTlBar" dir="ltr"></div>'
+      +'<div class="vmk-tl-scale" dir="ltr"><span>0:00</span><span>1:00</span><span>2:00</span><span>3:00</span><span>4:00</span><span>5:00</span></div>'
+      +'<div class="vmk-tl-head"><span data-k="vdTlTime"></span><span data-k="vdTlNote"></span><span data-k="vdTlDur"></span><span></span></div>'
+      +'<div class="vmk-tl-list" id="vdTlList"></div>'
+      +'<div class="vmk-tl-add"><button type="button" id="vdTlAdd"></button><small data-k="vdTlSplit"></small></div>'
+      +'<p class="vmk-tl-err" id="vdTlErr"></p><p class="vmk-tl-sum" id="vdTlSum"></p><div class="vmk-tl-links" id="vdTlLinks"></div>';
+    el.querySelector('#vdTlAdd').addEventListener('click',function(){
+      if(DR.busy) return;
+      if(tlTotal()+5>TL_MAX){ tlErr(L('vdTlFull')); return; }
+      TL.segs.push({d:Math.min(10,TL_MAX-tlTotal()),n:''}); tlErr(''); tlSave(); tlRender();
+      var ts=el.querySelectorAll('#vdTlList textarea'); if(ts.length) ts[ts.length-1].focus();
+    });
+  }
+  function tlRender(){
+    var list=id('vdTlList'), bar=id('vdTlBar'); if(!list||!bar) return;
+    list.innerHTML=''; bar.innerHTML=''; var t=0;
+    TL.segs.forEach(function(s,i){
+      var row=document.createElement('div'); row.className='vmk-tl-row';
+      var tm=document.createElement('span'); tm.className='vmk-tl-time'; tm.dir='ltr'; tm.textContent=tlFmt(t)+' – '+tlFmt(t+s.d);
+      var ta=document.createElement('textarea'); ta.rows=2; ta.maxLength=500; ta.value=s.n; ta.placeholder=L('vdTlPh'); ta.disabled=DR.busy;
+      ta.addEventListener('input',function(){ s.n=ta.value; ta.classList.remove('err'); tlErr(''); tlSave(); });
+      var sel=document.createElement('select'); sel.disabled=DR.busy;
+      TL_DUR.forEach(function(d){ var o=document.createElement('option'); o.value=String(d); o.textContent=drT('vdTlSec',{n:d}); if(d===s.d) o.selected=true; sel.appendChild(o); });
+      sel.addEventListener('change',function(){ var nd=+sel.value; if(tlTotal()-s.d+nd>TL_MAX){ tlErr(L('vdTlOver')); sel.value=String(s.d); return; } s.d=nd; tlErr(''); tlSave(); tlRender(); });
+      var del=document.createElement('button'); del.type='button'; del.className='vmk-tl-del'; del.textContent='×'; del.title=L('vdTlDel'); del.setAttribute('aria-label',L('vdTlDel')); del.disabled=DR.busy;
+      del.addEventListener('click',function(){ TL.segs.splice(i,1); if(!TL.segs.length) TL.segs.push({d:10,n:''}); tlErr(''); tlSave(); tlRender(); });
+      row.appendChild(tm); row.appendChild(ta); row.appendChild(sel); row.appendChild(del); list.appendChild(row);
+      var g=document.createElement('i'); g.className=i%2?'b':'a'; g.style.width=(s.d/TL_MAX*100)+'%'; g.textContent=s.d>=10?String(i+1):''; g.title=tlFmt(t)+' – '+tlFmt(t+s.d);
+      g.addEventListener('click',function(){ ta.focus(); });
+      bar.appendChild(g); t+=s.d;
+    });
+    var lf=id('vdTlLeft'); if(lf) lf.textContent=drT('vdTlLeft',{r:tlFmt(TL_MAX-tlTotal()),max:tlFmt(TL_MAX)});
+    var sm=id('vdTlSum'); if(sm) sm.textContent=drT('vdTlSum',{k:TL.segs.length,t:tlFmt(tlTotal()),c:tlClipCount()});
+  }
+  function tlSync(){
+    var el=id('vdTl'); if(!el) return; if(!TL.segs) tlLoad();
+    [].forEach.call(el.querySelectorAll('[data-k]'),function(x){ x.textContent=L(x.getAttribute('data-k')); });
+    var ad=id('vdTlAdd'); if(ad){ ad.textContent='+ '+L('vdTlAdd'); ad.disabled=DR.busy; }
+    tlRender();
+  }
+  function tlLinks(urls){ /* إن تعذّر اللصق أو توقّف التوليد: المشاهد المكتملة روابط تحميل — لا يضيع ما دُفع */
+    var box=id('vdTlLinks'); if(!box) return; box.innerHTML='';
+    (urls||[]).forEach(function(u,i){
+      var a=document.createElement('a'); a.href=(typeof window.__vmkProxyUrl==='function')?window.__vmkProxyUrl(u):u; a.download='scene-'+(i+1)+'.mp4'; a.target='_blank'; a.rel='noopener';
+      a.textContent=drT('vdTlScenePart',{i:i+1}); box.appendChild(a);
+    });
+  }
+  async function drTimedRun(){
+    if(DR.busy||!drOwner()) return;
+    var segs=TL.segs||[]; tlErr('');
+    if(!segs.length){ tlErr(L('vdTlEmpty')); return; }
+    for(var i=0;i<segs.length;i++){
+      if(!String(segs[i].n||'').trim()){
+        tlErr(drT('vdTlNeedNote',{i:i+1}));
+        var tas=id('vdTlList')?id('vdTlList').querySelectorAll('textarea'):[]; if(tas[i]){ tas[i].classList.add('err'); tas[i].focus(); }
+        return;
+      }
+    }
+    if(tlTotal()>TL_MAX){ tlErr(L('vdTlOver')); return; }
+    if(typeof window.__vmkTimelineRun!=='function'){ drMsg(L('vdFail'),true,'timeline engine missing'); return; }
+    var clips=tlClipCount();
+    if(!window.confirm(drT('vdTlConfirm',{c:clips,t:tlFmt(tlTotal()),lo:clips*2,hi:clips*5}))) return; /* إنفاق حقيقيّ: موافقة لكلّ تشغيلة */
+    var my=++DR.run, res=id('vdRes');
+    DR.busy=true; syncDirector(); drMsg(''); if(res) res.classList.remove('has'); tlLinks([]);
+    try{
+      var out=await window.__vmkTimelineRun(segs.map(function(s){ return {d:s.d,n:String(s.n).trim()}; }),{
+        status:function(kind,a,b){ if(my===DR.run) drMsg(kind==='join'?L('vdTlJoin'):drT('vdTlScene',{i:a,n:b})); }
+      });
+      if(my!==DR.run) return;
+      if(out&&out.blob){
+        if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:563'); /* guard-ok — رابط زال */ } }
+        DR.out=URL.createObjectURL(out.blob); pbNewVideo(); /* v-director-publish-guard */
+        var vid=id('vdVideo'), dl=id('vdDl');
+        if(vid) vid.src=DR.out;
+        if(dl){ dl.href=DR.out; dl.setAttribute('download','omran-timeline.'+(/webm/i.test(out.blob.type||'')?'webm':'mp4')); }
+        if(res) res.classList.add('has');
+        drMsg(drT('vdTlDone',{t:tlFmt(tlTotal())}));
+      } else { drMsg(L('vdTlNoJoin'),true); tlLinks(out&&out.urls); }
+    }catch(err){
+      if(my!==DR.run) return;
+      var code=String((err&&err.code)||(err&&err.message)||'');
+      if(code==='tl_credits') drMsg(drT('vdTlCredits',{c:err.credits,n:err.needed}),true);
+      else drMsg(L('vdFail'),true,code.slice(0,300));
+      if(err&&err.partial&&err.partial.length) tlLinks(err.partial);
+      try{ __swallow(err,'director:timed'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:577'); /* guard-ok — لا مسجّل */ }
+    }finally{
+      if(my===DR.run){ DR.busy=false; syncDirector(); }
+    }
+  }
+  /* ═══ v-director-publish (المالك ٧ نوفمبر: «اي فيديو الي اسويه اقدر ارسله الي اي مكان… في السوشيل ميديا هذي الخاصيه موجوده عندي لكن ضيفها عندي
+     في المخرج»، واختار «انشر في حساباتي»): زرّ تحت الفيديو الجاهز يفتح لوحة — النصّ المرافق (فارغ عمدًا: ملاحظات التوليد ليست وصفًا للعامّة)
+     والمنصّات الموصولة كما يراها الخادم، ثمّ «انشر الآن» بموافقة صريحة لكلّ نشر (علنيّ ولا يُسحب). الفيديو يُرفع من الجهاز مباشرة إلى هدف مؤقّت
+     يصدره الخادم (مرّة لكلّ فيديو)، والخادم ينشر بخدمة النشر نفسها التي يستعملها بوت التسويق، ثمّ استطلاع حتّى تقول كلّ منصّة كلمتها. ═══ */
+  var PB={busy:false,plats:null,reauth:[],loading:false,src:'',id:'',vid:'',at:0,reqs:{},rows:{},own:{},sent:{},poll:0,gen:0,ticking:false,xhr:null};
+  var PB_NAMES={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',youtube:'YouTube',x:'X',threads:'Threads'};
+  var PB_FRESH=5*3600*1000; /* v-director-publish-guard: الملفّ المرفوع يعيش ٦ ساعات عند الخادم وخدمة النشر تجلبه في الخلفيّة — بعد ٥ يُرفع من جديد */
+  function pbApi(op,body){
+    return fetch('/api/media?action=social-publish&op='+op,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({token:drTok()},body||{}))})
+      .then(function(r){ return r.json().catch(function(){ return {ok:false,error:'http',status:r.status}; }); });
+  }
+  function pbMsg(t,err,why){
+    var m=id('vdPubMsg'); if(!m) return;
+    m.textContent=(t||'')+(why?' ('+String(why).slice(0,200)+')':''); /* السبب الحقيقيّ بين قوسين: اللوحة للمالك وحده */
+    m.classList.toggle('err',!!err);
+  }
+  function pbWhy(d){ d=d||{}; return [d.error||d.message||'',d.status||'',d.detail||''].filter(Boolean).join(' '); }
+  function pbErr(d){
+    var e=String((d&&d.error)||'');
+    return e==='no_key'?L('vdPubNoKey'):e==='limit'?L('vdPubLimit'):e==='too_big'?drT('vdPubBig',{n:(d&&d.maxMB)||500}):L('vdPubFail');
+  }
+  function pbNames(list){ return (list||[]).map(function(p){ return PB_NAMES[p]||p; }).join('، '); }
+  function pbUnknown(d){ return !!d&&!d.ok&&(d.error==='net'||d.error==='http'||(d.error==='retry'&&!d.detail)); } /* لا نعرف هل حجز الخادم وأرسل (انقطاع أو خطأ بعد الإرسال) */
+  /* v-director-publish-guard: فيديو جديد = لوحة من الصفر — نصّ السابق ونتيجته ومنصّاته لا تُعرض تحته (كان التصفير عند فتح اللوحة وحده،
+     فلوحة مفتوحة تُبقي «نزل» ونصّ الفيديو السابق تحت الجديد). يُنادى حيث يتغيّر DR.out. */
+  function pbNewVideo(){
+    PB.gen++; PB.reqs={}; PB.rows={}; PB.own={}; PB.sent={}; PB.vid=''; clearTimeout(PB.poll);
+    if(PB.xhr){ var x=PB.xhr; PB.xhr=null; try{ x.abort(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:609'); /* guard-ok — رفع انتهى أو لا يُلغى */ } } /* رفع الفيديو القديم يُلغى: «انشر الآن» لا يبقى مقفلًا عليه */
+    pbRes([]); pbMsg(''); var c=id('vdPubCap'); if(c) c.value='';
+    var b=id('vdPubPlats'); if(b) b.textContent=''; pbPlats(); /* المنصّات كلّها مؤشَّرة من جديد */
+  }
+  function pbToggle(){
+    var p=id('vdPub'); if(!p) return;
+    p.hidden=!p.hidden;
+    if(!p.hidden){ pbLoad(); var c=id('vdPubCap'); if(c&&!PB.busy) c.focus(); }
+  }
+  function pbLoad(){
+    if(PB.loading) return; /* سؤال واحد في الطريق */
+    /* كلّ فتح يسأل من جديد: حساب أُعيد ربطه أو وُصل يظهر بلا إعادة تحميل (إعادة التحميل تضيّع الفيديو). القائمة الحاضرة تبقى أثناء السؤال */
+    PB.loading=true; if(!PB.plats){ if(!pbKeep()) pbMsg(''); pbPlats(); } syncDirector();
+    pbApi('accounts').then(function(d){
+      PB.loading=false; var keep=pbKeep(); /* رسالة رفع أو نشر قائم أو منتهٍ لا تُمسح */
+      if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; if(!keep) pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
+      else if(!keep) pbMsg(pbErr(d),true,pbWhy(d)); /* القائمة السابقة تبقى؛ وبلا قائمة يعيد الفتح التالي السؤال (مفتاح أُضيف بعدها) */
+      pbPlats(); syncDirector();
+    }).catch(function(e){ PB.loading=false; if(!pbKeep()) pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); syncDirector(); });
+  }
+  function pbKeep(){ return PB.busy||Object.keys(PB.reqs).length>0||Object.keys(PB.rows).length>0; }
+  function pbPlats(){
+    var box=id('vdPubPlats'); if(!box) return;
+    var off={}; [].forEach.call(box.querySelectorAll('input[type=checkbox]'),function(c){ if(!c.checked) off[c.value]=1; }); /* ما شاله المالك يبقى مشالًا بعد التحديث */
+    box.textContent='';
+    if(PB.loading&&!PB.plats){ box.textContent=L('vdPubLoading'); return; }
+    (PB.plats||[]).forEach(function(p){
+      var l=document.createElement('label'), c=document.createElement('input'), st=PB.sent[p];
+      c.type='checkbox'; c.value=p; c.checked=!st&&!off[p]; c.disabled=!!st; /* أخذ هذا الفيديو (نزل أو ينتظر): لا يُرسل له مرّة ثانية */
+      if(st) l.className='is-sent';
+      l.appendChild(c); l.appendChild(document.createTextNode((PB_NAMES[p]||p)+(st?' · '+L(st==='ok'?'vdPubOk':'vdPubWait'):''))); box.appendChild(l);
+    });
+    (PB.reauth||[]).forEach(function(p){ var s=document.createElement('span'); s.className='off'; s.textContent=drT('vdPubReauth',{p:PB_NAMES[p]||p}); box.appendChild(s); });
+  }
+  function pbPut(url,mime,blob,at){
+    return new Promise(function(res,rej){
+      var x=new XMLHttpRequest(), bad=function(){ rej({error:'upload',status:x.status}); };
+      x.open('PUT',url,true); x.timeout=1800000;
+      x.setRequestHeader('Content-Type',mime); /* النوع الذي أصدر الخادم الهدف به حرفيًّا */
+      x.upload.onprogress=function(e){ if(at===DR.out&&e.lengthComputable&&e.total>0) pbMsg(drT('vdPubUp',{p:Math.min(99,Math.round(e.loaded/e.total*100))})); };
+      x.onload=function(){ if(x.status>=200&&x.status<300) res(); else bad(); };
+      x.onerror=bad; x.ontimeout=bad; x.onabort=bad;
+      PB.xhr=x; x.send(blob);
+    });
+  }
+  function pbRes(list){
+    var ul=id('vdPubRes'); if(!ul) return;
+    ul.textContent='';
+    (list||[]).forEach(function(r){
+      var li=document.createElement('li'); li.className='is-'+r.state;
+      var b=document.createElement('b'); b.textContent=PB_NAMES[r.platform]||r.platform; li.appendChild(b);
+      var s=document.createElement('span'); s.textContent=L(r.state==='ok'?'vdPubOk':(r.state==='fail'?'vdPubNo':'vdPubWait')); li.appendChild(s);
+      if(r.url){ var a=document.createElement('a'); a.href=r.url; a.target='_blank'; a.rel='noopener'; a.textContent=L('vdPubOpen'); li.appendChild(a); }
+      if(r.error){ var sm=document.createElement('small'); sm.dir='auto'; sm.textContent=r.error; li.appendChild(sm); }
+      ul.appendChild(li);
+    });
+  }
+  async function pbGo(){
+    if(PB.busy||!drOwner()||!DR.out) return;
+    var capEl=id('vdPubCap'), cap=String((capEl||{}).value||'').trim();
+    var picked=[].map.call((id('vdPubPlats')||document).querySelectorAll('input:checked'),function(c){ return c.value; }).filter(function(p){ return !PB.sent[p]; });
+    if(!cap){ pbMsg(L('vdPubNeedCap'),true); if(capEl) capEl.focus(); return; }
+    if(!picked.length){ pbMsg(L('vdPubPick'),true); return; }
+    if(!window.confirm(drT('vdPubConfirm',{p:pbNames(picked)}))) return; /* علنيّ ولا يُسحب: موافقة لكلّ نشر */
+    var at=DR.out; /* الفيديو الذي وافق عليه: إن جاء فيديو جديد أثناء الرفع لا يُنشر القديم ولا تُرسم نتيجته تحت الجديد */
+    PB.busy=true; syncDirector(); /* نتائج النشر السابق ومتابعته تبقى: النشر الجديد يضيف ولا يقطع */
+    try{
+      var d=null;
+      for(var round=0;round<2;round++){
+        var up=PB.src!==at||!PB.id||!(Date.now()-PB.at<PB_FRESH);
+        if(up){ /* فيديو جديد أو ملفّ قارب عمره = رفع؛ الفيديو نفسه لمنصّات أخرى لا يُرفع مرّتين */
+          pbMsg(drT('vdPubUp',{p:0}));
+          var blob=await fetch(at).then(function(r){ return r.blob(); });
+          if(at!==DR.out) return;
+          var type=/webm/i.test(blob.type||'')?'video/webm':(/quicktime/i.test(blob.type||'')?'video/quicktime':'video/mp4');
+          var t=await pbApi('target',{size:blob.size,type:type});
+          if(at!==DR.out) return;
+          if(!t||!t.ok) throw (t||{error:'target'});
+          var t0=Date.now();
+          await pbPut(t.up,t.ctype||type,blob,at);
+          if(at!==DR.out) return;
+          if(PB.src!==at||!PB.vid) PB.vid=t.id; /* أوّل رفع يسمّي الفيديو؛ إعادة رفعه تبقي اسمه فتبقى حجوزات منصّاته عند الخادم */
+          PB.src=at; PB.id=t.id; PB.at=t0;
+        }
+        var pub=function(){ return pbApi('publish',{id:PB.id,vid:PB.vid||PB.id,caption:cap,platforms:picked}).catch(function(e){ return {ok:false,error:'net',detail:String((e&&e.message)||e)}; }); };
+        d=await pub();
+        if(at!==DR.out) return;
+        if(pbUnknown(d)){ d=await pub(); if(at!==DR.out) return; } /* انقطاع بيننا وبين الخادم: الحجز لكلّ منصّة يجعل الإعادة آمنة — إن كان الأوّل وصل عادت «انرسل قبل» وتُوبع طلبه */
+        if(d&&d.error==='no_file'&&!up){ PB.id=''; continue; } /* انتهى عمر الملفّ عند الخادم ولم يُنشر شيء: رفع واحد من جديد في الضغطة نفسها */
+        break;
+      }
+      if(pbUnknown(d)){ pbMsg(L('vdPubSlow'),true,pbWhy(d)); return; } /* ما نعرف هل وصل: لا «ما قدر ينشر» ولا وعد بمتابعة بلا طلب — الضغطة التالية يحسمها حجز الخادم */
+      if(!d||!d.ok) throw (d||{error:'publish'});
+      var already=d.already||[], sent=d.again?[]:picked.filter(function(p){ return already.indexOf(p)<0; }), hold=d.held||{};
+      sent.concat(already).forEach(function(p){ if(!PB.sent[p]) PB.sent[p]='wait'; });
+      sent.forEach(function(p){ PB.rows[p]={platform:p,state:'wait',url:'',error:''}; }); /* ما أُرسل الآن ينتظر، لا نتيجة محاولته السابقة */
+      var again=already.length?drT('vdPubAgain',{p:pbNames(already)}):'';
+      pbMsg(d.again?again:(d.unsure?L('vdPubUnsure'):L('vdPubSent')+(again?' · '+again:''))); /* ما لم يُرسل لا يُقال عنه «انرسل» */
+      pbRes(pbRowList()); pbPlats();
+      Object.keys(hold).forEach(function(p){ pbTrack(String(hold[p]||''),[p]); }); /* من أخذه قبل: طلبه يُتابَع فيُعرف هل نزل */
+      if(d.again&&!d.held) pbTrack(String(d.request||''),already);
+      if(!d.again) pbTrack(String(d.request||''),sent);
+    }catch(e){
+      if(at!==DR.out) return;
+      pbMsg(pbErr(e),true,pbWhy(e)||String((e&&e.message)||e));
+      try{ __swallow(e,'director:publish'); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:714'); /* guard-ok — لا مسجّل */ }
+    }finally{ PB.busy=false; syncDirector(); }
+  }
+  /* v-director-publish-guard: كلّ طلب نشر يُتابَع حتّى تقول منصّاته كلمتها — نشرٌ ثانٍ (منصّة أخرى أو إعادة ما فشل) لا يقطع متابعة
+     الأوّل (كانت منصّاته تبقى «ينتظر» معطّلة للأبد)، والنتيجة صفّ لكلّ منصّة من أيّ طلب. مؤقّت واحد يسأل عن المعلَّق كلّه. */
+  function pbTrack(req,plats){
+    if(!req) return;
+    var r=PB.reqs[req]||(PB.reqs[req]={plats:[],n:0});
+    (plats||[]).forEach(function(p){ if(r.plats.indexOf(p)<0) r.plats.push(p); PB.own[p]=req; }); /* المنصّة تتبع آخر طلب أُرسلت فيه */
+    r.n=0; pbPoll();
+  }
+  function pbMine(req,p){ if(!PB.own[p]) PB.own[p]=req; return PB.own[p]===req; } /* طلب أقدم لا يغلب نتيجة الأحدث للمنصّة نفسها */
+  /* المتابعة انتهت (حُسم الطلب أو بلغ حدّ الأسئلة) ومنصّة منه ما زالت «ينتظر»: لا تبقى قفلًا في اللوحة — الضغطة التالية يحسمها الخادم
+     (يحرّر ما لم ينشر، أو يقول «انرسل قبل» ويعيد ربط المتابعة) */
+  function pbFree(req,r){ r.plats.forEach(function(p){ if(PB.own[p]===req&&PB.sent[p]==='wait') delete PB.sent[p]; }); }
+  function pbPoll(){
+    clearTimeout(PB.poll);
+    var keys=Object.keys(PB.reqs), gen=PB.gen; if(!keys.length) return;
+    var young=keys.some(function(k){ return PB.reqs[k].n<6; });
+    PB.poll=setTimeout(function(){ pbTick(gen); },young?5000:10000);
+  }
+  async function pbTick(gen){
+    if(PB.ticking){ pbPoll(); return; } /* سؤال سابق ما خلص (شبكة بطيئة): الدور بعده، لا سؤالان متداخلان */
+    PB.ticking=true;
+    try{
+      var lost=false, slow=false, keys=Object.keys(PB.reqs);
+      for(var i=0;i<keys.length;i++){
+        var req=keys[i], r=PB.reqs[req]; if(!r) continue;
+        var d=await pbApi('status',{request:req}).catch(function(){ return null; });
+        if(gen!==PB.gen) return; /* فيديو جديد أثناء السؤال: نتيجة القديم لا تُرسم تحته */
+        if(PB.reqs[req]!==r) continue;
+        r.n++;
+        if(d&&d.ok){
+          var rows=d.results||[];
+          rows.forEach(function(x){ if(!pbMine(req,x.platform)) return; PB.rows[x.platform]=x; if(x.state==='fail') delete PB.sent[x.platform]; else PB.sent[x.platform]=x.state; }); /* ما لم ينزل يُختار من جديد */
+          if(d.lost||(d.state==='fail'&&!rows.length)){ /* ما وصل الخدمة: لا شيء نزل، والنشر التالي يرسله */
+            r.plats.forEach(function(p){ if(PB.own[p]!==req) return; delete PB.sent[p]; delete PB.rows[p]; delete PB.own[p]; }); delete PB.reqs[req]; lost=true; continue;
+          }
+          if(d.state==='fail') r.plats.forEach(function(p){ if(PB.own[p]===req&&!rows.some(function(x){ return x.platform===p; })){ delete PB.sent[p]; PB.rows[p]={platform:p,state:'fail',url:'',error:''}; } }); /* مهمّة فشلت قبل أن تبلغها */
+          if(d.state!=='wait'){ pbFree(req,r); delete PB.reqs[req]; continue; }
+        }
+        if(r.n>=120){ pbFree(req,r); delete PB.reqs[req]; slow=true; }
+      }
+      pbRes(pbRowList()); pbPlats();
+      if(!PB.busy){ /* رسالة الرفع الجاري لا تُغطّى */
+        if(lost) pbMsg(L('vdPubLost'),true);
+        else if(slow) pbMsg(L('vdPubSlow'));
+        else if(!Object.keys(PB.reqs).length){ var all=pbRowList(), ok=all.filter(function(x){ return x.state==='ok'; }).length; pbMsg(drT('vdPubDone',{ok:ok,n:all.length}),!ok); }
+      }
+    }finally{ PB.ticking=false; pbPoll(); }
+  }
+  function pbRowList(){
+    var order=Object.keys(PB_NAMES), rank=function(p){ var i=order.indexOf(p); return i<0?99:i; };
+    return Object.keys(PB.rows).sort(function(a,b){ return rank(a)-rank(b); }).map(function(p){ return PB.rows[p]; });
+  }
   function syncDirector(){
     var box=id('vmkDirector'); if(!box) return;
     box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=drStory()?L('vdSubStory'):L('vdSub'); /* v-director-story: وصف القصّة لا «يصوّر شاشات التطبيق» */
@@ -479,6 +781,12 @@
     var names={plan:'vdStepPlan',shots:story?'vdStepFrames':'vdStepShots',samples:story?'vdStepDraw':'vdStepSamples',voice:'vdStepVoice',join:'vdStepJoin'};
     [].forEach.call(box.querySelectorAll('#vdSteps li'),function(li){ li.querySelector('b').textContent=L(names[li.dataset.step]); });
     box.querySelector('#vdDl').textContent=L('vdDownload');
+    var timed=drTimed(); box.classList.toggle('vd-timed',timed); /* v-director-timed */
+    if(kd.options[2]) kd.options[2].textContent=L('vdKindTimed');
+    if(timed) box.querySelector('.vmk-dir-head p').textContent=L('vdSubTimed');
+    tlSync();
+    box.querySelector('#vdPubBtn').textContent=L('vdPubBtn'); box.querySelector('.vmk-pub-cap>span').textContent=L('vdPubCap'); /* v-director-publish */
+    box.querySelector('#vdPubCap').placeholder=L('vdPubPh'); var pg=box.querySelector('#vdPubGo'); pg.textContent=L('vdPubGo'); pg.disabled=PB.busy||PB.loading||!(PB.plats&&PB.plats.length);
   }
   /* v-app-director-motion (المالك: «خل فيه حركة فيديو عشان اعرف ان الفيديو يتولد»): شاشة حيّة أثناء التوليد — ضوء يتحرّك وشريط لقطات،
      وما يكتبه المخرج مشهدًا مشهدًا، ونماذج الأنماط تظهر فيها بحركة كاميرا فور توليدها، مع عدّاد وقت وشريط تقدّم كلّيّ. تعمل أثناء التوليد فقط. */
@@ -522,7 +830,7 @@
   function drMsg(t,err,diag){
     var m=id('vdMsg'); if(!m) return; m.textContent=t||''; m.className='vmk-dir-msg'+(err?' err':'');
     if(diag){ var d=document.createElement('code'); d.className='vmk-dir-diag'; d.dir='ltr'; d.textContent=diag; m.appendChild(d); } /* سبب الخادم كما هو، للمالك وحده */
-    if(err){ try{ m.scrollIntoView({block:'end'}); }catch(e){ /* guard-ok — متصفّح بلا خيارات التمرير */ } } /* السبب كان أسفل النافذة مقصوصًا */
+    if(err){ try{ m.scrollIntoView({block:'end'}); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:833'); /* guard-ok — متصفّح بلا خيارات التمرير */ } } /* السبب كان أسفل النافذة مقصوصًا */
   }
   function drReset(){ ['plan','voice','samples','shots','join'].forEach(function(k){ drStep(k,'',''); }); drMsg(''); var r=id('vdRes'); if(r) r.classList.remove('has'); }
   function drPickRef(f){
@@ -535,7 +843,7 @@
           var c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h);
           var du=c.toDataURL('image/jpeg',0.86); DR.ref=du.split(',')[1]; DR.refMime='image/jpeg';
           var pv=id('vdRefImg'); if(pv){ pv.src=du; pv.hidden=false; }
-        }catch(e){ DR.ref=''; try{ __swallow(e,'director:ref'); }catch(x){ /* guard-ok — لا مسجّل */ } }
+        }catch(e){ DR.ref=''; try{ __swallow(e,'director:ref'); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:846'); /* guard-ok — لا مسجّل */ } }
       };
       img.src=String(r.result||'');
     };
@@ -579,12 +887,12 @@
           var W=1920,H=1080,c=document.createElement('canvas'); c.width=W; c.height=H; var x=c.getContext('2d');
           x.fillStyle='#07080c'; x.fillRect(0,0,W,H);
           var k=Math.max(W/img.width,H/img.height), bw=img.width*k, bh=img.height*k;
-          try{ x.filter='blur(34px) brightness(0.78)'; }catch(e){ /* guard-ok — متصفّح بلا مرشّحات اللوحة: خلفيّة بلا تمويه */ }
+          try{ x.filter='blur(34px) brightness(0.78)'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:890'); /* guard-ok — متصفّح بلا مرشّحات اللوحة: خلفيّة بلا تمويه */ }
           x.drawImage(img,(W-bw)/2,(H-bh)/2,bw,bh);
-          try{ x.filter='none'; }catch(e){ /* guard-ok — كسابقه */ }
+          try{ x.filter='none'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:892'); /* guard-ok — كسابقه */ }
           var f=Math.min(W/img.width,H/img.height), fw=img.width*f, fh=img.height*f;
           x.drawImage(img,(W-fw)/2,(H-fh)/2,fw,fh);
-          var fam='system-ui,sans-serif'; try{ fam=getComputedStyle(document.body).fontFamily||fam; }catch(e){ /* guard-ok — خطّ النظام */ }
+          var fam='system-ui,sans-serif'; try{ fam=getComputedStyle(document.body).fontFamily||fam; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:895'); /* guard-ok — خطّ النظام */ }
           x.font='700 44px '+fam; x.direction=dir==='rtl'?'rtl':'ltr'; x.textAlign='center'; x.textBaseline='middle';
           var lines=drWrap(x,text,W*0.72).slice(0,3), lh=62, padX=46, padY=20, tw=0;
           lines.forEach(function(ln){ tw=Math.max(tw,x.measureText(ln).width); });
@@ -593,7 +901,7 @@
           x.fillStyle='rgba(7,8,12,.84)'; x.fill(); x.lineWidth=2; x.strokeStyle='rgba(232,194,122,.6)'; x.stroke();
           x.fillStyle='#f6e7c3'; lines.forEach(function(ln,i){ x.fillText(ln,W/2,py+padY+lh*i+lh/2); });
           res({b64:c.toDataURL('image/jpeg',0.92).split(',')[1],mime:'image/jpeg'});
-        }catch(e){ try{ __swallow(e,'director:caption'); }catch(z){ /* guard-ok — لا مسجّل */ } res(null); }
+        }catch(e){ try{ __swallow(e,'director:caption'); }catch(z){ typeof __swallow === 'function' && __swallow(z, 'video:904'); /* guard-ok — لا مسجّل */ } res(null); }
       };
       img.onerror=function(){ res(null); };
       img.src='data:'+(mime||'image/png')+';base64,'+b64;
@@ -610,7 +918,7 @@
           var k=Math.max(W/img.width,H/img.height), bw=img.width*k, bh=img.height*k;
           x.drawImage(img,(W-bw)/2,(H-bh)/2,bw,bh);
           if(text){
-            var fam='system-ui,sans-serif'; try{ fam=getComputedStyle(document.body).fontFamily||fam; }catch(e){ /* guard-ok — خطّ النظام */ }
+            var fam='system-ui,sans-serif'; try{ fam=getComputedStyle(document.body).fontFamily||fam; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:921'); /* guard-ok — خطّ النظام */ }
             x.direction=dir==='rtl'?'rtl':'ltr'; x.textAlign='center'; x.textBaseline='middle';
             /* مراجعة: قصّ الأسطر عند الثالث كان يُسقط آخر الجملة — الخطّ يصغر حتّى ٣٠ لتكفي ثلاثة أسطر، وما زاد بعدها يبقى ولا يُحذف */
             var fs=46, lines; for(;;){ x.font='700 '+fs+'px '+fam; lines=drWrap(x,text,W*0.8); if(lines.length<=3||fs<=30) break; fs-=2; }
@@ -620,7 +928,7 @@
             lines.forEach(function(ln,i){ x.fillText(ln,W/2,y0+lh*i); });
           }
           res({b64:c.toDataURL('image/jpeg',0.92).split(',')[1],mime:'image/jpeg'});
-        }catch(e){ try{ __swallow(e,'director:story-frame'); }catch(z){ /* guard-ok — لا مسجّل */ } res(null); }
+        }catch(e){ try{ __swallow(e,'director:story-frame'); }catch(z){ typeof __swallow === 'function' && __swallow(z, 'video:931'); /* guard-ok — لا مسجّل */ } res(null); }
       };
       img.onerror=function(){ res(null); };
       img.src='data:'+(mime||'image/png')+';base64,'+b64;
@@ -642,6 +950,7 @@
   function drPlanCall(body){ return drJson('/api/ai?action=app-director-plan',body); }
   async function drRun(){
     if(DR.busy||!drOwner()) return;
+    if(drTimed()) return drTimedRun(); /* v-director-timed */
     var req=(id('vdReq').value||'').trim(); if(!req){ drMsg(L('vdEmpty'),true); return; }
     if(!drStory()&&req.length>600){ drMsg(L('vdTooLong'),true); return; } /* «عرض التطبيق» طلب قصير — الطويل قصّة، لا قصّ صامت عند ٦٠٠ */
     var lang=id('vdLang').value||'ar', speaker=id('vdSpeaker').value||'female', minutes=parseInt(id('vdMin').value,10)||2;
@@ -726,7 +1035,7 @@
                   if(r.status===401||r.status===403||/insufficient_quota|no credits|invalid subscription/i.test(et)) dead=true;
                 }
               }
-            }catch(e){ last='network'; try{ __swallow(e,'director:tts'); }catch(z){ /* guard-ok — لا مسجّل */ } }
+            }catch(e){ last='network'; try{ __swallow(e,'director:tts'); }catch(z){ typeof __swallow === 'function' && __swallow(z, 'video:1038'); /* guard-ok — لا مسجّل */ } }
             if(!s.audio&&!dead&&att<6) cool=Math.max(cool,Date.now()+Math.min(4000*att,20000));
           }
           /* مزوّد عاجز لا يُنتظر على كلّ مشهد: فوق الحدّ، أو مشهدان استنفدا إعاداتهما بلا نجاح واحد ← يتوقّف الكلّ (والاحتياطيّ يتولّى) */
@@ -762,7 +1071,7 @@
             r=s.type==='story'?await drJson('/api/media?action=maha-image',{prompt:s.prompt,userText:'',token:tk,guestId:(window.getGuestId?window.getGuestId():'')})
              :DR.ref?await drJson('/api/portrait-style',{imageBase64:DR.ref,mimeType:DR.refMime,style:s.target,token:tk})
                     :await drJson('/api/media?action=maha-image',{prompt:s.prompt||('portrait in the '+s.target+' style'),userText:'',token:tk,guestId:(window.getGuestId?window.getGuestId():'')});
-          }catch(e){ r=null; try{ __swallow(e,'director:sample'); }catch(z){ /* guard-ok — لا مسجّل */ } }
+          }catch(e){ r=null; try{ __swallow(e,'director:sample'); }catch(z){ typeof __swallow === 'function' && __swallow(z, 'video:1074'); /* guard-ok — لا مسجّل */ } }
           if(my!==DR.run) return;
           if(r&&r.ok&&r.json&&r.json.imageBase64){
             s.image=r.json.imageBase64; s.mime=r.json.mimeType||'image/png';
@@ -805,8 +1114,8 @@
       /* ٦) الفيديو: معاينة وتحميل وحفظ */
       var vr=await fetch(url,{headers:auth}); if(!vr.ok) throw drFail('download '+vr.status);
       var blob=await vr.blob(); if(my!==DR.run) return;
-      if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ /* guard-ok — رابط زال */ } }
-      DR.out=URL.createObjectURL(blob);
+      if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1117'); /* guard-ok — رابط زال */ } }
+      DR.out=URL.createObjectURL(blob); pbNewVideo(); /* v-director-publish-guard */
       var vid=id('vdVideo'), dl=id('vdDl'), res=id('vdRes');
       drStagePct(100); drStageStop(true);
       if(vid) vid.src=DR.out; if(dl){ dl.href=DR.out; dl.setAttribute('download','omran-app-director-'+lang+'.mp4'); } if(res) res.classList.add('has');
@@ -816,11 +1125,11 @@
     }catch(err){
       if(my!==DR.run) return;
       var code=String((err&&err.code)||(err&&err.message)||'');
-      var key=/bridge_outdated/.test(code)?'vdFailBridgeOld':/^plan/.test(code)?'vdFailPlan':/^voice/.test(code)?'vdFailVoice':(/^token|offline/.test(code)?'vdFailBridge':(/^(render|download|bridge)/.test(code)?'vdFailRender':'vdFail'));
+      var key=/disk_full/.test(code)?'vdFailDisk':/bridge_outdated/.test(code)?'vdFailBridgeOld':/^plan/.test(code)?'vdFailPlan':/^voice/.test(code)?'vdFailVoice':(/^token|offline/.test(code)?'vdFailBridge':(/^(render|download|bridge)/.test(code)?'vdFailRender':'vdFail'));
       /* السبب الحقيقيّ بين قوسين (القسم للمالك وحده): ما قاله الخادم عن كلّ محاولة، لا رسالة عامّة */
       drMsg(key==='vdFail'?L('vdFail'):L('vdFail')+' — '+L(key),true,code.slice(0,520));
       drStageStop(true);
-      try{ __swallow(err,'director:run'); }catch(e){ /* guard-ok — لا مسجّل */ }
+      try{ __swallow(err,'director:run'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1132'); /* guard-ok — لا مسجّل */ }
       DR.run++; DR.busy=false; syncDirector(); /* رفع الرمز يوقف ما بقي من نداءات الخلفيّة */
     }finally{ if(my===DR.run){ DR.busy=false; drStageStop(false); syncDirector(); } }
   }
@@ -832,7 +1141,7 @@
      مهمّة الملفّ المختار: مهمّة الحساب الجارية أو المستأنَفة)، who جلسة الدخول التي تخصّها هذه الحالة. التخزين المحلّيّ يحفظ معرّف آخر نتيجة عُرضت فقط. */
   var PRO={info:null,asked:false,stage:'',id:'',up:false,quote:null,xhr:null,parked:'',last:0,job:''}, PRO_SEEN='vmk_pro_seen';
   function clMaxMB(){ return (window.matchMedia&&matchMedia('(max-width:860px)').matches)?80:200; }
-  function clRevoke(u){ try{ if(u) URL.revokeObjectURL(u); }catch(e){ /* guard-ok — رابط زال */ } }
+  function clRevoke(u){ try{ if(u) URL.revokeObjectURL(u); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1144'); /* guard-ok — رابط زال */ } }
   var clLoad=null;
   function clFF(){
     if(CL.ff) return Promise.resolve(CL.ff);
@@ -845,9 +1154,9 @@
           ff.load({coreURL:'/ffmpeg/core/ffmpeg-core.js',wasmURL:'/ffmpeg/core/ffmpeg-core.wasm',classWorkerURL:'/ffmpeg/lib/worker.js'}),
           new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('ffmpeg load timeout')); },120000); })
         ]);
-      }catch(e){ try{ ff.terminate(); }catch(x){ /* guard-ok — أُنهي بالإلغاء */ } throw e; }
+      }catch(e){ try{ ff.terminate(); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:1157'); /* guard-ok — أُنهي بالإلغاء */ } throw e; }
       finally{ if(CL.ffLoading===ff) CL.ffLoading=null; }
-      if(CL.ff&&CL.ff!==ff){ try{ ff.terminate(); }catch(x){ /* guard-ok — نسخة زائدة */ } return CL.ff; }
+      if(CL.ff&&CL.ff!==ff){ try{ ff.terminate(); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:1159'); /* guard-ok — نسخة زائدة */ } return CL.ff; }
       CL.ff=ff; return ff;
     })();
     clLoad=p;
@@ -863,9 +1172,9 @@
   }
   function clStage(url){
     var v=id('vmkClView'); if(!v) return;
-    if(!url){ CL.view=null; v.removeAttribute('src'); try{ v.load(); }catch(e){ /* guard-ok — بلا مصدر */ } v.style.display='none'; M.firstElementChild.classList.remove('vmk-cl-view'); stageDims(); return; }
+    if(!url){ CL.view=null; v.removeAttribute('src'); try{ v.load(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1175'); /* guard-ok — بلا مصدر */ } v.style.display='none'; M.firstElementChild.classList.remove('vmk-cl-view'); stageDims(); return; }
     var t=v.currentTime||0;
-    if(v.getAttribute('src')!==url){ CL.view=null; v.src=url; try{ v.currentTime=t; }catch(e){ /* guard-ok — قبل تحميل البيانات */ } }
+    if(v.getAttribute('src')!==url){ CL.view=null; v.src=url; try{ v.currentTime=t; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1177'); /* guard-ok — قبل تحميل البيانات */ } }
     v.style.display='block'; M.firstElementChild.classList.add('vmk-cl-view');
     v.onloadedmetadata=function(){ if(v.videoWidth){ CL.view={w:v.videoWidth,h:v.videoHeight}; stageDims(); } }; /* أبعاد المعروض فعلًا (بعد المضاعفة أو لملفّ لم تُقرأ بياناته قبل التحسين) */
     stageDims();
@@ -882,7 +1191,7 @@
     var s=Math.floor((+(ev&&ev.time)||0)/1e6); if(!(s>0)) s=0;
     return {clock:Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60)};
   }
-  try{ window.__vmkClProg=clProg; }catch(e){ /* guard-ok — بيئة بلا window */ }
+  try{ window.__vmkClProg=clProg; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1194'); /* guard-ok — بيئة بلا window */ }
   function clRender(){
     var box=id('vmkClean'); if(!box) return;
     var has=!!CL.file, done=!!CL.out;
@@ -982,7 +1291,7 @@
         if(r.pct!=null) clProgress(r.pct/100); else if(n) n.textContent=r.clock;
       };
       ff.on('progress',onProg);
-      try{ await ff.createDir('/clin'); }catch(e){ /* guard-ok — المجلّد موجود من مرّة سابقة */ }
+      try{ await ff.createDir('/clin'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1294'); /* guard-ok — المجلّد موجود من مرّة سابقة */ }
       /* اسم ثابت داخل نظام ملفّات العامل: أسماء الملفّات العربيّة أو بمسافات قد تكسر المسار — ffmpeg يقرأ الصيغة من المحتوى */
       try{ await ff.mount('WORKERFS',{blobs:[{name:'input',data:CL.file}]},'/clin'); mounted=true; inPath='/clin/input'; }
       catch(e){ var buf=new Uint8Array(await CL.file.arrayBuffer()); await ff.writeFile('clin.bin',buf); inPath='clin.bin'; }
@@ -992,25 +1301,25 @@
       if(my!==CL.run) return;
       if(code!==0) throw new Error('ffmpeg exit '+code);
       var data=await ff.readFile('clout.mp4');
-      try{ await ff.deleteFile('clout.mp4'); }catch(e){ /* guard-ok — تنظيف */ }
+      try{ await ff.deleteFile('clout.mp4'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1304'); /* guard-ok — تنظيف */ }
       if(my!==CL.run) return;
       clRevoke(CL.out); CL.out=URL.createObjectURL(new Blob([data.buffer],{type:'video/mp4'})); CL.showing='after';
       CL.busy=false; clRender(); clStage(CL.out); clProgress(1);
     }catch(err){
       if(my!==CL.run) return; /* أُلغي: الإلغاء أعاد الرسم بنفسه */
       CL.busy=false; clRender(); clMsg(L('vclFail'),true);
-      try{ __swallow(err,'video:clean'); }catch(e){ /* guard-ok — لا مسجّل */ }
+      try{ __swallow(err,'video:clean'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1311'); /* guard-ok — لا مسجّل */ }
     }finally{
-      if(ff&&onProg){ try{ ff.off('progress',onProg); }catch(e){ /* guard-ok — أُنهي */ } }
-      if(ff&&mounted){ try{ await ff.unmount('/clin'); }catch(e){ /* guard-ok — فُكّ أو أُنهي */ } }
-      if(ff&&inPath==='clin.bin'){ try{ await ff.deleteFile('clin.bin'); }catch(e){ /* guard-ok — تنظيف */ } }
+      if(ff&&onProg){ try{ ff.off('progress',onProg); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1313'); /* guard-ok — أُنهي */ } }
+      if(ff&&mounted){ try{ await ff.unmount('/clin'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1314'); /* guard-ok — فُكّ أو أُنهي */ } }
+      if(ff&&inPath==='clin.bin'){ try{ await ff.deleteFile('clin.bin'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1315'); /* guard-ok — تنظيف */ } }
     }
   }
   function clCancel(){
     if(!CL.busy) return;
     if(PRO.stage){ proCancel(); return; } /* v-video-enhance-pro: إلغاء الرفع الاحترافيّ لا يُنهي أداة التحسين المحمَّلة */
     CL.run++;
-    [CL.ff,CL.ffLoading].forEach(function(f){ try{ if(f) f.terminate(); }catch(e){ /* guard-ok — العامل انتهى */ } });
+    [CL.ff,CL.ffLoading].forEach(function(f){ try{ if(f) f.terminate(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1322'); /* guard-ok — العامل انتهى */ } });
     CL.ff=null; CL.ffLoading=null; clLoad=null; CL.busy=false; clMsg(''); clRender();
   }
   function syncClean(){
@@ -1034,13 +1343,13 @@
     return s?' ['+String(s).slice(0,300)+']':'';
   }
   function proQuoteText(q){ return proText('vclProQuote',{s:q.sec,n:q.cost,p:q.points==null?'∞':q.points})+proDiag(q); }
-  function proWallets(){ ['refreshPointsWallet','refreshPremiumPoints'].forEach(function(n){ try{ if(typeof window[n]==='function') window[n](); }catch(e){ /* guard-ok — الرصيد يتحدّث عند أوّل قراءة تالية */ } }); }
+  function proWallets(){ ['refreshPointsWallet','refreshPremiumPoints'].forEach(function(n){ try{ if(typeof window[n]==='function') window[n](); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1346'); /* guard-ok — الرصيد يتحدّث عند أوّل قراءة تالية */ } }); }
   function proSeenId(){ try{ return localStorage.getItem(PRO_SEEN)||''; }catch(e){ return ''; } }
   /* عُرضت نتيجتها (أو انتهت): لا تُستأنف ثانية — في التخزين للزيارة التالية، وفي الذاكرة إن تعذّر التخزين */
   function proForget(jid){ if(PRO.parked===jid) PRO.parked=''; if(PRO.info&&PRO.info.job===jid) PRO.info.job=null; }
   function proSeen(jid){
     proForget(jid);
-    try{ localStorage.setItem(PRO_SEEN,jid); }catch(e){ /* guard-ok — بلا تخزين تُعرض النتيجة مرّة أخرى في زيارة تالية */ }
+    try{ localStorage.setItem(PRO_SEEN,jid); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1352'); /* guard-ok — بلا تخزين تُعرض النتيجة مرّة أخرى في زيارة تالية */ }
   }
   function proDrop(jid){ if(!jid||PRO.id===jid){ PRO.id=''; PRO.up=false; PRO.quote=null; } }
   function proIdle(){ PRO.stage=''; PRO.xhr=null; CL.busy=false; clRender(); }
@@ -1099,7 +1408,7 @@
   async function clPro(){
     var pi=PRO.info;
     if(!CL.file||CL.busy||!pi||!pi.on||proCheck(pi,CL.file,CL.meta)) return;
-    if(!proTok()){ try{ if(typeof window.requireLogin==='function') window.requireLogin('guestLimit'); }catch(e){ /* guard-ok — بلا شاشة دخول لا شيء يُرفع */ } return; }
+    if(!proTok()){ try{ if(typeof window.requireLogin==='function') window.requireLogin('guestLimit'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1411'); /* guard-ok — بلا شاشة دخول لا شيء يُرفع */ } return; }
     if(PRO.quote&&PRO.id){ proConfirm(PRO.quote); return; }
     /* مهمّة للحساب لم تُعرف نهايتها أو لم تُرَ نتيجتها (رُكنت، تُركت باختيار ملفّ آخر، أو بدأت من جهاز آخر): الزرّ يسأل الخادم عنها أوّلًا —
        لا رفع ثانٍ ولا عرض تكلفة ثانٍ لفيديو ربّما خُصم ثمنه، ولا مهمّة جديدة تكتب فوق نتيجة مدفوعة لم تُعرض */
@@ -1194,7 +1503,7 @@
       }
     }catch(err){
       /* عطل غير متوقَّع في الواجهة لا يحبس القسم في «جارٍ» بلا زرّ إلغاء: المهمّة تكمل على الخادم */
-      try{ __swallow(err,'video:pro'); }catch(e){ /* guard-ok — لا مسجّل */ }
+      try{ __swallow(err,'video:pro'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1506'); /* guard-ok — لا مسجّل */ }
       if(my===CL.run) proPark(jid);
     }
   }
@@ -1213,7 +1522,7 @@
       CL.busy=false; clRender(); clStage(CL.out); clProgress(1);
       clMsg(proText('vclProDone',{n:d.cost==null?0:d.cost,s:d.sec==null?'':d.sec}));
       proSeen(jid);
-      try{ if(typeof window.mediaReadyNotify==='function') window.mediaReadyNotify('video',true); }catch(e){ /* guard-ok — الإشعار تحسين */ }
+      try{ if(typeof window.mediaReadyNotify==='function') window.mediaReadyNotify('video',true); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1525'); /* guard-ok — الإشعار تحسين */ }
     }catch(err){
       if(my!==CL.run) return;
       proPark(jid); /* النتيجة محفوظة على الخادم: تعذّر جلبها الآن ليس فشلًا */
@@ -1226,7 +1535,7 @@
   function proCancel(){
     if(PRO.stage==='run') return; /* بعد إرسال التأكيد لا إلغاء: المهمّة تكمل على الخادم، وإلغاء المزوّد لا يضمن ألّا يحاسبنا */
     CL.run++;
-    try{ if(PRO.xhr) PRO.xhr.abort(); }catch(e){ /* guard-ok — الرفع انتهى */ }
+    try{ if(PRO.xhr) PRO.xhr.abort(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1538'); /* guard-ok — الرفع انتهى */ }
     proIdle(); clMsg('');
   }
   /* مهمّة تُركت تكمل (أو بدأت من جهاز آخر): العودة إلى القسم تتابعها — مرّة كلّ دقيقة على الأكثر (أو فورًا بنقرة المستخدم)، ولا تقاطع عملًا جاريًا.
@@ -1330,7 +1639,7 @@
     var md=(id('videoMakerMode')||{}).value||'', rm=(rs.dataset&&rs.dataset.mode)||'';
     var other=tab==='trend'||tab==='clean'||tab==='director'||!!(rm&&rm!==md);
     card.classList.toggle('vmk-res-other',other);
-    if(other&&!rs.paused){ try{ rs.pause(); }catch(e){ /* guard-ok — مشغّل بلا مصدر */ } }
+    if(other&&!rs.paused){ try{ rs.pause(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:1642'); /* guard-ok — مشغّل بلا مصدر */ } }
   }
   function sync(){
     var chips=M.querySelector('.vmk-chips'); if(chips) chips.innerHTML='';

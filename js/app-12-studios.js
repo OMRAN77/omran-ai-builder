@@ -3,7 +3,7 @@
 function __compressImg(file, onDone, MAX){
   MAX = MAX || 1024;
   if(file && !file.__omranNorm && (/hei[cf]/i.test(file.type || '') || /\.hei[cf]$/i.test(file.name || '')) && typeof omranNormalizeImageFile === 'function'){
-    omranNormalizeImageFile(file).then(function(f){ try{ f.__omranNorm = true; }catch(e){ /* guard-ok */ } __compressImg(f, onDone, MAX); }, function(){ onDone(''); });
+    omranNormalizeImageFile(file).then(function(f){ try{ f.__omranNorm = true; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:6'); /* guard-ok */ } __compressImg(f, onDone, MAX); }, function(){ onDone(''); });
     return;
   }
   const reader = new FileReader();
@@ -78,7 +78,7 @@ function __studioErrMsg(e, fbKey){
   else if(raw === 'auth_required') key = 'portraitNeedLogin';
   else if(/\b413\b|Entity Too Large|PAYLOAD_TOO_LARGE/i.test(raw)) key = 'acctAvatarTooBig';
   let msg = '';
-  try{ if(typeof window.t === 'function'){ const v = window.t(key); if(v && v !== key) msg = String(v); } }catch(_){ /* guard-ok — المترجم لم يجهز: الاحتياط أدناه */ }
+  try{ if(typeof window.t === 'function'){ const v = window.t(key); if(v && v !== key) msg = String(v); } }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-12-studios:81'); /* guard-ok — المترجم لم يجهز: الاحتياط أدناه */ }
   if(!msg){ const fb = __STUDIO_ERR_FB[key] || __STUDIO_ERR_FB.voiceImageFailed; msg = (typeof window.__bT === 'function') ? window.__bT(fb[0], fb[1]) : fb[0]; }
   msg = '❌ ' + String(msg).replace(/^\s*❌\s*/, '');
   if(raw && !/^[a-z_]+$/.test(raw) && typeof omranOwnerUi === 'function' && omranOwnerUi()) msg += ' (' + raw.slice(0, 300) + ')';
@@ -140,7 +140,7 @@ function __studioErrMsg(e, fbKey){
   function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
-    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:143'); /* لم يجهز بعد */ }
     const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
@@ -156,7 +156,7 @@ function __studioErrMsg(e, fbKey){
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
     /* v651: صفّ «غرفتي بكل الأنماط» يُبنى قبل وصول ملفّ اللغة الكسول فيتجمّد — يُعاد عند الفتح. */
-    try { buildCompareStyleRow(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
+    try { buildCompareStyleRow(); } catch(_e651) { typeof __swallow === 'function' && __swallow(_e651, 'app-12-studios:159'); /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -276,17 +276,17 @@ function __studioErrMsg(e, fbKey){
 
      if(ideaTitle){
      var __k = 'decorIdeasTitlePoster', __g = '';
-    try{ if(typeof window.t === 'function'){ var __v = window.t(__k); if(__v && __v !== __k) __g = __v; } }catch(e){ /* guard-ok */ }
+    try{ if(typeof window.t === 'function'){ var __v = window.t(__k); if(__v && __v !== __k) __g = __v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:279'); /* guard-ok */ }
       ideaTitle.textContent = '💡 ' + (__g || bT('أفكار بلا صورة — اضغط على المكان في الصورة أو اكتب ما تريد', 'Ideas without a photo — tap a place in the image or describe what you want'));
     }
     /* v-hw-resubmit-2: مفتاح أوّلًا (decorIdeaPh/decorIdeaGo بالـ١٤ لغة)، والثنائيّ احتياطًا */
-    var __tk = function(k, ar, en){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return bT(ar, en); };
+    var __tk = function(k, ar, en){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:283'); /* guard-ok */ } return bT(ar, en); };
     if(ideaText) ideaText.placeholder = __tk('decorIdeaPh', 'مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
     if(ideaGo){ ideaGo.textContent = '✨ ' + __tk('decorIdeaGo', 'أعطني أفكارًا', 'Give me ideas'); ideaGo.style.display = ''; } /* v-poster-notext: الزرّ ظاهر — لا مخ في البوستر */
   }
   buildIdeaChips();
   /* v-poster-notext: الأسماء فوق البوستر HTML فتُعاد عند تبديل اللغة (applyLanguage يكتب html.lang) */
-  try{ new MutationObserver(function(){ buildIdeaChips(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); }catch(e){ /* guard-ok — المتصفّحات القديمة: تبقى لغة التحميل */ }
+  try{ new MutationObserver(function(){ buildIdeaChips(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:289'); /* guard-ok — المتصفّحات القديمة: تبقى لغة التحميل */ }
   /* v-decor-gallery: معرض صور حقيقية (عشرات) من الويب — يفتح فورًا، والتوليد بالذكاء زرّ منفصل */
   const ideaStatusEl = document.getElementById('designAiIdeaStatus');
   const ideaGallery = document.getElementById('designAiIdeaGallery');
@@ -342,7 +342,7 @@ function __studioErrMsg(e, fbKey){
       ideaGallery.style.display = 'block';
       ideaStatus(galleryLine());
       if(ideaAI) ideaAI.style.display = '';
-      try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
+      try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:345'); /* guard-ok */ }
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
   }
   if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button[data-place]'), function(c){
@@ -374,7 +374,7 @@ function __studioErrMsg(e, fbKey){
     try{
       const target = (gridEl && gridEl.style.display !== 'none') ? gridEl : ((resultEl && resultEl.style.display !== 'none') ? resultEl : statusEl);
       if(target) target.scrollIntoView({ behavior:'smooth', block:'start' });
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:377'); /* guard-ok */ }
   };
   if(ideaAI) ideaAI.textContent = '🎨 ' + bT('ولّد ٤ تصاميم بالذكاء الاصطناعي', 'Generate 4 AI designs');
   if(ideaText) ideaText.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); if(ideaGo) ideaGo.onclick(); } });
@@ -470,6 +470,8 @@ function __studioErrMsg(e, fbKey){
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
           vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; designRun(again); };
           cell.appendChild(vb);
+          /* v-share-next: «مشاركة» تحت «زوّدني مثله» لكلّ تصميم */
+          if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', after: vb, className: 'btn', style: vb.style.cssText, name: 'omran-design-' + (i + 1) + '.webp' }); }catch(e){ __swallow(e, 'design:share-next'); } }
           gridEl.appendChild(cell);
         });
         dsReveal(gridEl); /* v-scene-kinds */
@@ -576,7 +578,7 @@ function __studioErrMsg(e, fbKey){
     baWrap.style.cursor = 'ew-resize';
     baWrap.addEventListener('pointerdown', (ev) => {
       __baDragging = true;
-      try{ baWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      try{ baWrap.setPointerCapture(ev.pointerId); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:581'); /* guard-ok — بعض المتصفحات القديمة */ }
       baSet(baPctFromEvent(ev));
       ev.preventDefault();
     });
@@ -1038,7 +1040,7 @@ function stud2ErrText(e, prefix, fbKey){
   }
   /* v-psheet-oneface (فكرة المالك ٥ سبتمبر: نفس الوجه عبر كل الأنماط، فلتر فئات، بطاقة «قبل»،
      لمعة عند التمرير، وزر «جرّب على صورتك»): */
-  function gt(k, ar, en){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return pstyleLang().indexOf('ar') === 0 ? ar : en; }
+  function gt(k, ar, en){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1043'); /* guard-ok */ } return pstyleLang().indexOf('ar') === 0 ? ar : en; }
   let pstyleFilter = 'all';
   function pstyleGroupOf(opt){
     const g = opt.parentElement;
@@ -1191,10 +1193,10 @@ function stud2ErrText(e, prefix, fbKey){
       pick.appendChild(pi); pick.appendChild(pt);
       const star = document.getElementById('portraitFavStarBtn');
       const photo = document.createElement('button'); photo.type = 'button'; photo.id = 'portraitFootPhoto'; photo.className = 'btn'; photo.textContent = '📁'; photo.title = gt('fileChooseBtn', '📁 اختيار ملف', '📁 Choose file');
-      photo.onclick = function(){ window.__portraitAutoRun = false; const fi = $('#portraitStyleFileInput'); if(fi){ try{ fi.click(); }catch(e){ /* guard-ok */ } } };
+      photo.onclick = function(){ window.__portraitAutoRun = false; const fi = $('#portraitStyleFileInput'); if(fi){ try{ fi.click(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1196'); /* guard-ok */ } } };
       const cta = document.createElement('button'); cta.type = 'button'; cta.id = 'portraitStyleCta'; cta.className = 'pstyleCta';
       cta.onclick = function(){
-        if(!window.__portraitHasPhoto){ window.__portraitAutoRun = true; const fi = $('#portraitStyleFileInput'); if(fi){ try{ fi.click(); }catch(e){ /* guard-ok */ } } return; }
+        if(!window.__portraitHasPhoto){ window.__portraitAutoRun = true; const fi = $('#portraitStyleFileInput'); if(fi){ try{ fi.click(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1199'); /* guard-ok */ } } return; }
         const go = $('#portraitStyleGenerateBtn'); if(go && typeof go.onclick === 'function'){ showPortraitWork(true); go.onclick(); }
       };
       foot.appendChild(pick); if(star) foot.appendChild(star); foot.appendChild(photo); foot.appendChild(cta);
@@ -1384,8 +1386,10 @@ function stud2ErrText(e, prefix, fbKey){
     shareBtn2.onclick = () => {
       const src = (resultEl && resultEl.src) || '';
       const nm = /gif/i.test(src.slice(0, 20)) || (downloadEl && /\.gif$/i.test(downloadEl.getAttribute('download') || '')) ? 'omran-avatar.gif' : 'omran-portrait-style.png';
+      /* v-share-next: الـGIF عبر مسار الملفّات — مسار الصور يحوّله JPEG (لقطة ثابتة) */
+      if(nm === 'omran-avatar.gif' && typeof window.omranShareMedia === 'function'){ window.omranShareMedia({ src: (downloadEl && downloadEl.getAttribute('href')) || src, name: nm, kind: 'file' }); return; }
       if(typeof window.omranSaveImage === 'function'){ window.omranSaveImage(src, nm, 'share'); return; }
-      try{ if(downloadEl) downloadEl.click(); }catch(_){ /* guard-ok — fallback */ }
+      try{ if(downloadEl) downloadEl.click(); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-12-studios:1392'); /* guard-ok — fallback */ }
     };
   }
   if(downloadEl){
@@ -1399,7 +1403,7 @@ function stud2ErrText(e, prefix, fbKey){
         if(!mobile || typeof window.omranSaveImage !== 'function') return;
         ev.preventDefault(); ev.stopPropagation();
         window.omranSaveImage(downloadEl.href, downloadEl.getAttribute('download') || 'omran-portrait-style.png', 'save');
-      }catch(_){ /* guard-ok — يسقط للتنزيل العادي */ }
+      }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-12-studios:1406'); /* guard-ok — يسقط للتنزيل العادي */ }
     });
   }
   /* v-compare-drag (طلب المالك ٢١ سبتمبر: «تحسّن طريقة السحب» بعد استعادة شريط قبل/بعد): السحب صار
@@ -1430,7 +1434,7 @@ function stud2ErrText(e, prefix, fbKey){
     compareWrap.style.cursor = 'ew-resize';
     compareWrap.addEventListener('pointerdown', (ev) => {
       __compareDragging = true;
-      try{ compareWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      try{ compareWrap.setPointerCapture(ev.pointerId); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1437'); /* guard-ok — بعض المتصفحات القديمة */ }
       setComparePct(comparePctFromEvent(ev));
       ev.preventDefault();
     });
@@ -1443,7 +1447,7 @@ function stud2ErrText(e, prefix, fbKey){
   function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
-    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1450'); /* لم يجهز بعد */ }
     const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
@@ -1460,7 +1464,7 @@ function stud2ErrText(e, prefix, fbKey){
     modal.style.display = 'none';
     /* المعرض كان ابن النافذة الأم المخفية فلا يُرسم — يُنقل إلى body مرة واحدة */
     if(styleSheet && styleSheet.parentElement !== document.body) document.body.appendChild(styleSheet);
-    try{ renderPortraitStyleCards(); }catch(e){ /* guard-ok — cosmetic */ }
+    try{ renderPortraitStyleCards(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1467'); /* guard-ok — cosmetic */ }
     if(styleSheet) styleSheet.style.display = 'flex';
     closeHeaderMenu();
   };
@@ -1480,7 +1484,7 @@ function stud2ErrText(e, prefix, fbKey){
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
       window.__portraitHasPhoto = true; window.__portraitPhotoUrl = dataUrl;
-      try{ setPortraitBeforeFace(dataUrl); refreshPortraitFoot(); }catch(e){ /* guard-ok — cosmetic */ }
+      try{ setPortraitBeforeFace(dataUrl); refreshPortraitFoot(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1487'); /* guard-ok — cosmetic */ }
       if(window.__portraitAutoRun){
         window.__portraitAutoRun = false;
         showPortraitWork(true);
@@ -1620,7 +1624,7 @@ function stud2ErrText(e, prefix, fbKey){
         downloadEl.href = gifUrl;
         downloadEl.setAttribute('download', 'omran-avatar.gif');
         downloadEl.style.display = 'block';
-        if(shareBtn2) shareBtn2.style.display = 'none';
+        if(shareBtn2) shareBtn2.style.display = 'block'; /* v-share-next: الأفاتار المتحرّك يُشارَك أيضًا (ملفًّا ليبقى متحرّكًا — انظر onclick) */
         setStatus(t('portraitDone'));
       } else {
         const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -2032,7 +2036,7 @@ function stud2ErrText(e, prefix, fbKey){
       /* v-fashion-compare-rtl: صفّ التعديل داخل الحاوية — نقره ليس سحبًا للشريط (كان يُحرّك الشريط ويمنع تركيز الحقل ونقر الزرّ) */
       if(ev.target && ev.target.closest && ev.target.closest('#fashionRefineRow')) return;
       __fashionBaDragging = true;
-      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:2012'); /* guard-ok */ }
       updateSliderClip(fashionBaPctFromEvent(ev));
       ev.preventDefault();
     });
@@ -2112,7 +2116,7 @@ function stud2ErrText(e, prefix, fbKey){
     modal.style.display = 'flex';
     renderStyleCards(); // تسميات الترجمة قد تكون تغيّرت بعد التهيئة
     /* v651: صفّ «قارن بين الإطلالات» كان يتجمّد على الإنجليزيّة لنفس السبب. */
-    try { buildCompareChecks(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
+    try { buildCompareChecks(); } catch(_e651) { typeof __swallow === 'function' && __swallow(_e651, 'app-12-studios:2092'); /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -2219,7 +2223,7 @@ function stud2ErrText(e, prefix, fbKey){
      كمصدر مع طلب التعديل، والسيرفر يقفل كل ما عداه. ---- */
   let __lastFxB64 = null, __lastFxMime = 'image/png';
   const __gt2 = (k, arFb, enFb) => {
-    try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* المترجم لم يجهز */ }
+    try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:2199'); /* المترجم لم يجهز */ }
     return isEn() ? enFb : arFb;
   };
   let refineRow = null, refineInput = null, refineBtn = null, refineStatusEl = null;
@@ -3147,8 +3151,8 @@ function stud2ErrText(e, prefix, fbKey){
          المستخدم فيظهر عند العودة والتحديث. */
       let emIosWrap = false;
       /* v-google-safari-2: الكشف بجسر كاباسيتور «bridge» — الغلاف الفعلي بلا جسور omran */
-      try { emIosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ /* guard-ok */ }
-      try { if(!emIosWrap){ const mh = window.webkit && window.webkit.messageHandlers; emIosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ /* guard-ok */ }
+      try { emIosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:3127'); /* guard-ok */ }
+      try { if(!emIosWrap){ const mh = window.webkit && window.webkit.messageHandlers; emIosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:3128'); /* guard-ok */ }
       if (emIosWrap) { window.open(location.origin + emStartUrl, '_blank'); emPrefetchTicket(); return; }
       window.location.href = emStartUrl;
     };
@@ -3184,6 +3188,6 @@ function stud2ErrText(e, prefix, fbKey){
           setTimeout(() => { emLinkError(err); }, 300);
         }
       }
-    }catch(e){ /* ignore */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:3164'); /* ignore */ }
   })();
 })();

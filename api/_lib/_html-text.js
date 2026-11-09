@@ -28,11 +28,11 @@ async function readCappedText(r, maxBytes) {
       if (value && value.length) {
         chunks.push(value);
         total += value.length;
-        if (total >= cap) { try { await reader.cancel(); } catch (e) { /* أفضل جهد */ } break; }
+        if (total >= cap) { try { await reader.cancel(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_html-text:31'); /* أفضل جهد */ } break; }
       }
     }
   } finally {
-    try { reader.releaseLock(); } catch (e) { /* أفضل جهد */ }
+    try { reader.releaseLock(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_html-text:35'); /* أفضل جهد */ }
   }
   return Buffer.concat(chunks.map((c) => Buffer.from(c))).slice(0, cap).toString('utf8');
 }

@@ -121,7 +121,7 @@ test('٦. صور الشخصيّات تُصغَّر قبل الإرسال — ل�
   assert.match(SRC, /var SHRINK_MAX = 1400, SHRINK_Q = 0.85;/, 'حدّ التصغير أو الجودة تغيّرا');
   assert.match(SRC, /c\.getContext\('2d'\)\.drawImage\(img, 0, 0, w, h\)/, 'لا رسم على canvas');
   assert.match(SRC, /toDataURL\('image\/jpeg', SHRINK_Q\)/, 'لا إعادة ترميز JPEG');
-  assert.match(SRC, /photos\.push\(\{ dataUrl: dataUrl, mime: 'image\/jpeg' \}\)/, 'نوع الصورة بعد التصغير');
+  assert.match(SRC, /photos\.push\(\{ dataUrl: dataUrl, mime: 'image\/jpeg'(, file: f)? \}\)/, 'نوع الصورة بعد التصغير');
 
   // حساب الأبعاد الحقيقيّ من المصدر: ٤٠٠٠×٣٠٠٠ ⇒ ١٠٢٤×٧٦٨، والصغيرة لا تُكبَّر
   const body = SRC.slice(SRC.indexOf('function shrink(file, done){'), SRC.indexOf('\n  }', SRC.indexOf('r.readAsDataURL(file);')) + 4);

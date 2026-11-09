@@ -84,7 +84,7 @@ async function ackImage(username, id, o) {
   let mine = false;
   try { mine = await kv.kvSetIfAbsent(doneKey(username, hid), '1', TTL_SEC); } catch (e) { return null; }
   if (!mine) return null;
-  try { await writeList(kv, username, (await readList(kv, username)).filter((x) => x.id !== hid)); } catch (e) { /* guard-ok — التذكرة محسومة بمفتاح التسوية؛ القائمة تسقط بعد يومين */ }
+  try { await writeList(kv, username, (await readList(kv, username)).filter((x) => x.id !== hid)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/image-hold:87'); /* guard-ok — التذكرة محسومة بمفتاح التسوية؛ القائمة تسقط بعد يومين */ }
   return { committed: true };
 }
 
@@ -112,7 +112,7 @@ async function settleStale(username, o) {
     const how = h.k ? { planVideo: h.k === 'v', media: h.k === 'm', pool: h.pl || '' } : undefined;
     try { await points.refundPoints(username, h.c, how); out.refunded++; out.points += h.c; } catch (e) { console.error('[image-hold] refund failed: ' + (e && e.message)); }
   }
-  try { await writeList(kv, username, (await readList(kv, username)).filter((x) => !settled.has(x.id))); } catch (e) { /* guard-ok — المحسوم لا يُردّ ثانية (مفتاح التسوية) */ }
+  try { await writeList(kv, username, (await readList(kv, username)).filter((x) => !settled.has(x.id))); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/image-hold:115'); /* guard-ok — المحسوم لا يُردّ ثانية (مفتاح التسوية) */ }
   return out;
 }
 
@@ -136,7 +136,7 @@ async function closeTicket(username, id, o) {
   if (!username || !hid) return true;
   let mine = false;
   try { mine = await kv.kvSetIfAbsent(doneKey(username, hid), '1', TTL_SEC); } catch (e) { return false; }
-  if (mine) { try { await writeList(kv, username, (await readList(kv, username)).filter((x) => x.id !== hid)); } catch (e) { /* guard-ok — محسومة بمفتاح التسوية */ } }
+  if (mine) { try { await writeList(kv, username, (await readList(kv, username)).filter((x) => x.id !== hid)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/image-hold:139'); /* guard-ok — محسومة بمفتاح التسوية */ } }
   return !!mine;
 }
 

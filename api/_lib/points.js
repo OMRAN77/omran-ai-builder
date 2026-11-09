@@ -2,13 +2,11 @@
 // النقاط = عملة موحدة تُصرف على مها والصور والفيديو — الأسعار في COSTS أدناه وحدها (لا أرقام في التعليقات تتقادم).
 // هدية الترحيب عند التسجيل = 70 نقطة (فيديو اقتصاديّ + صورة، أو ٤ دقائق مع مها).
 // المالك (omran) = بلا حدود، لا يُخصم منه شيء أبدًا.
-const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
 const media = require('./_mediaPlans.js');
 const planVideos = require('./_planVideos.js'); // v-plan-videos
 
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 // v-owner-core: قائمة المالك الموحّدة من _owner.js — ‹omran› مدمج دائمًا
 // والبيئة تضيف أسماء ولا تستبدله (قيمة بيئة مغلوطة كانت تُسقط إعفاء المالك).
 const OWNER_LIST = require('./_owner.js').ownerList();
@@ -67,17 +65,9 @@ function isOwner(username) {
 // (see _lib/_vip.js). المالك يُفحص أوّلًا دائمًا فلا يمسّ Redis، وقائمة
 // VIP تُقرأ من ذاكرة ٣٠ ثانية. isVip لا ترمي: عطبٌ فيها = مستخدم عاديّ.
 
+// v-points-session: رمز الجلسة كما يصنعه auth.makeToken حرفيًّا (u نصّ، exp رقم في المستقبل) — النسخة المحلّيّة كانت تقبل حمولة بلا exp
 function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
+  return require('./_session.js').sessionUser(token);
 }
 
 // يقرأ رصيد المستخدم. الحسابات القديمة اللي انفتحت قبل نظام النقاط
@@ -92,11 +82,11 @@ async function readPoints(username) {
       const live = Number(raw);
       if (Number.isFinite(live)) return { user, points: Math.max(0, Math.floor(live)) };
     }
-  } catch (e) { /* fall through to the record */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:85'); /* fall through to the record */ }
   if (typeof user.points !== 'number' || !Number.isFinite(user.points)) {
     user.points = WELCOME_POINTS;
     user.welcomeGift = true;
-    try { await putUser(username, user); } catch (e) { /* best-effort */ }
+    try { await putUser(username, user); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:89'); /* best-effort */ }
   }
   return { user, points: Math.max(0, Math.floor(user.points)) };
 }
@@ -161,7 +151,7 @@ async function spendPoints(username, amount, reason, opts) {
     if (await require('./kv.js').kvGetRaw('db/rename-lock/' + encodeURIComponent(username))) {
       return { ok: false, reason: 'renaming', points: 0 };
     }
-  } catch (e) { /* guard-ok — تعذّر قراءة القفل لا يوقف الخصم */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:154'); /* guard-ok — تعذّر قراءة القفل لا يوقف الخصم */ }
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (amt === 0) return { ok: true, points: 0 };
 
@@ -213,7 +203,7 @@ async function spendPoints(username, amount, reason, opts) {
 
 // v-cost-meter: تكلفة العمليّة علينا (جدول الوسائط) في عدّاد الشهر لهذا الحساب — أفضل جهد، لا يوقف الخصم.
 async function meterOp(username, reason) {
-  try { await require('./cost-meter.js').meterOp(username, reason); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+  try { await require('./cost-meter.js').meterOp(username, reason); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:206'); /* guard-ok — القياس لا يوقف خدمة */ }
 }
 
 // يعيد نقاطًا للمستخدم (استرجاع عند فشل توليد بعد الخصم).
@@ -290,7 +280,7 @@ async function refundPointsOnly(username, amount, mark) {
       after = Number(r[0]);
     } else after = Number(await kvIncrBy(balanceKey(username), amt));
   } catch (e) { console.error('[points] refund failed for ' + username + ':', e && e.message); return false; }
-  try { await mirrorToUser(username, after); } catch (e) { /* guard-ok — المرآة لا تقلب نتيجة الردّ */ }
+  try { await mirrorToUser(username, after); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:283'); /* guard-ok — المرآة لا تقلب نتيجة الردّ */ }
   return true;
 }
 
@@ -348,8 +338,8 @@ module.exports = async (req, res) => {
       // لأنّه ليس مالكًا — لوحة التحكّم لا تُفتح له، الحدّ وحده يسقط.
       if (await isVip(username)) { res.status(200).json({ ok: true, authed: true, owner: false, vip: true, points: null, unlimited: true, costs: COSTS, tier: 'vip', plan: null }); return; }
       // v-maha-img-hold: صورة مها لم يؤكَّد حفظها خلال دقائق = لم تصل — تُردّ نقاطها قبل قراءة الرصيد فيظهر الرقم بعد الردّ.
-      try { await require('./image-hold.js').settleStale(username); } catch (e) { /* guard-ok — التسوية أفضل جهد ولا توقف قراءة الرصيد */ }
-      try { await require('./video-job.js').sweepStaleVideoJobs(username); } catch (e) { /* guard-ok — v-video-sweep: فيديو لم يُسلَّم تُردّ نقاطه هنا، وعطبه لا يوقف قراءة الرصيد */ }
+      try { await require('./image-hold.js').settleStale(username); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:341'); /* guard-ok — التسوية أفضل جهد ولا توقف قراءة الرصيد */ }
+      try { await require('./video-job.js').sweepStaleVideoJobs(username); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:342'); /* guard-ok — v-video-sweep: فيديو لم يُسلَّم تُردّ نقاطه هنا، وعطبه لا يوقف قراءة الرصيد */ }
       const rec = await readPoints(username);
       if (!rec) { res.status(200).json({ ok: true, authed: false, points: 0, costs: COSTS }); return; }
       // v-plan-routing: الباقة السارية مع الرصيد (الواجهة تقفل منتقي المزوّد لغير Max). عطب القراءة = مجّاني.

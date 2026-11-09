@@ -4,16 +4,16 @@
       تعمل داخل أغلفة المتجر بلا Web Share (المتصفح/الغلاف يحوّل الرابط للتطبيق). */
 (function(){
   'use strict';
-  function tt(k, ar, en){ try{ var v = (typeof window.t === 'function') ? window.t(k) : k; if(v && v !== k) return v; }catch(e){ /* guard-ok */ } return ((document.documentElement.lang || 'ar') === 'ar') ? ar : en; }
+  function tt(k, ar, en){ try{ var v = (typeof window.t === 'function') ? window.t(k) : k; if(v && v !== k) return v; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:7'); /* guard-ok */ } return ((document.documentElement.lang || 'ar') === 'ar') ? ar : en; }
   function copyText(txt){
-    try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt); return true; } }catch(e){ /* guard-ok */ }
-    try{ var ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); return true; }catch(e){ /* guard-ok */ }
+    try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt); return true; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:9'); /* guard-ok */ }
+    try{ var ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); return true; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:10'); /* guard-ok */ }
     return false;
   }
-  function toast(msg){ try{ if(typeof settingsToast === 'function'){ settingsToast(msg); return; } }catch(e){ /* guard-ok */ } try{ alert(msg); }catch(e){ /* guard-ok */ } }
+  function toast(msg){ try{ if(typeof settingsToast === 'function'){ settingsToast(msg); return; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:13'); /* guard-ok */ } try{ alert(msg); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:13'); /* guard-ok */ } }
   function openExternal(url){
-    try{ var a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(a); a.click(); setTimeout(function(){ try{ a.remove(); }catch(e){ /* guard-ok */ } }, 1000); return true; }catch(e){ /* guard-ok */ }
-    try{ window.open(url, '_blank'); return true; }catch(e){ /* guard-ok */ }
+    try{ var a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(a); a.click(); setTimeout(function(){ try{ a.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:15'); /* guard-ok */ } }, 1000); return true; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:15'); /* guard-ok */ }
+    try{ window.open(url, '_blank'); return true; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:16'); /* guard-ok */ }
     return false;
   }
   function css(){
@@ -34,7 +34,7 @@
     css();
     var ov = document.createElement('div'); ov.className = 'oStOv';
     var sh = document.createElement('div'); sh.className = 'oStSh'; ov.appendChild(sh);
-    var close = function(){ try{ ov.remove(); }catch(e){ /* guard-ok */ } };
+    var close = function(){ try{ ov.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:37'); /* guard-ok */ } };
     ov.onclick = function(e){ if(e.target === ov) close(); };
     var hd = document.createElement('div'); hd.className = 'oStHd';
     hd.innerHTML = '<span>' + tt('msgShareReply', 'مشاركة الردّ', 'Share reply') + '</span>';
@@ -63,7 +63,7 @@
       var vd = document.createElement('div'); vd.style.cssText = 'margin-top:8px;font-size:10px;opacity:.45;text-align:center;direction:ltr;';
       vd.textContent = 'v ' + vv.slice(0, 8) + (typeof navigator.share === 'function' ? ' · share:yes' : ' · share:no');
       sh.appendChild(vd);
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:66'); /* guard-ok */ }
     document.body.appendChild(ov);
     return ov;
   }
@@ -74,7 +74,7 @@
     var W = 1080, pad = 72, fs = 40, lh = Math.round(fs * 1.75);
     var rtl = /[\u0600-\u06FF]/.test(text);
     var fam = '';
-    try{ fam = getComputedStyle(document.body).fontFamily || ''; }catch(e){ /* guard-ok */ }
+    try{ fam = getComputedStyle(document.body).fontFamily || ''; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:77'); /* guard-ok */ }
     var font = fs + 'px ' + (fam || 'system-ui, sans-serif');
     var c = document.createElement('canvas'); c.width = W; c.height = 400;
     var x = c.getContext('2d'); x.font = font;
@@ -119,6 +119,12 @@
   window.omranShareText = function(text){
     text = String(text || '').trim();
     if(!text) return false;
+    /* v-share-sheet (المالك ٧ نوفمبر: نافذة يوتيوب في كلّ التطبيق): النافذة الموحّدة (app-45) أوّلًا؛ «المزيد» فيها جسر غلاف المتجر
+       (بطاقة الردّ صورةً) أو ورقة الهاتف. المسارات تحت احتياط إن لم يُحمَّل الجزء. */
+    if(typeof window.omranShareSheet === 'function'){
+      var bridged = false; try{ bridged = typeof omranNativeBridge === 'function' && !!omranNativeBridge('omranShare'); }catch(e){ bridged = false; }
+      return window.omranShareSheet({ text: text, title: tt('msgShareReply', 'مشاركة الردّ', 'Share reply'), more: bridged ? function(close){ bridgeShare(text); close(); } : undefined });
+    }
     if(bridgeShare(text)) return true;
     /* v-share-native-first (أمر المالك ٥ سبتمبر: «في شي يسمونه رسمي مش رسمة من عندك»): ورقة النظام أولًا.
        v-share-desktop-both (المالك: «نفس المشكلة» على ويندوز): لوحة ويندوز أحيانًا لا تفتح ولا ترفض ولا
@@ -137,18 +143,18 @@
             sheet(text);
           });
           return true;
-        }catch(e){ /* guard-ok */ }
+        }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:146'); /* guard-ok */ }
       } else {
         var ov = null;
         try{ ov = sheet(text); }catch(e){ ov = null; }
         try{
           var t1 = Date.now();
           var pr2 = navigator.share({ text: text });
-          if(pr2 && pr2.then) pr2.then(function(){ try{ if(ov) ov.remove(); }catch(e){ /* guard-ok */ } }, function(err){
+          if(pr2 && pr2.then) pr2.then(function(){ try{ if(ov) ov.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:153'); /* guard-ok */ } }, function(err){
             /* إلغاء حقيقي من المستخدم (بعد وقت) → لا نُبقي شيئًا؛ فشل فوري → ورقتنا تبقى */
-            if(err && err.name === 'AbortError' && (Date.now() - t1) > 1500){ try{ if(ov) ov.remove(); }catch(e){ /* guard-ok */ } }
+            if(err && err.name === 'AbortError' && (Date.now() - t1) > 1500){ try{ if(ov) ov.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:155'); /* guard-ok */ } }
           });
-        }catch(e){ /* guard-ok — ورقتنا حاضرة */ }
+        }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-share-text:157'); /* guard-ok — ورقتنا حاضرة */ }
         return true;
       }
     }

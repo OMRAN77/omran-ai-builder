@@ -188,7 +188,7 @@
       st.textContent = '@keyframes omranTickerScroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}';
       document.head.appendChild(st);
     }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:191'); /* guard-ok */ }
   const TICKER_SYMS = (function(){
     try{ const s = JSON.parse(localStorage.getItem('stockTickerSyms')||'null'); if(Array.isArray(s) && s.length) return s.slice(0,5); }catch(e){ __swallow(e, "misc:app-13-stocks-init#1"); }
     return ['AAPL','TSLA','NVDA','MSFT','GOOGL']; /* v-no-crypto: أُزيلت BTC/USD امتثالًا لسياسة متجر هواوي (لا عملات رقمية) */
@@ -218,7 +218,7 @@
       const oneCopy = tickerTrack.scrollWidth / 2;
       const dur = (oneCopy > 0) ? (oneCopy / __TSPEED) : 30;
       tickerTrack.style.animation = 'omranTickerScroll ' + dur + 's linear infinite';
-    }catch(e){ /* guard-ok — حركة الشريط ترفٌ لا يُسقط العرض */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:221'); /* guard-ok — حركة الشريط ترفٌ لا يُسقط العرض */ }
   }
 
   // v598: تسميات الذهب تُبنى من القاموس، فتُحفظ البيانات الخام ويُعاد الوسم عند تبديل اللغة
@@ -243,7 +243,7 @@
       tickerRaw = { syms: (j && j.items) ? j.items : [], gold: g };
       window.__tickerLatest = tickerRaw; /* v-live-cards: بطاقة الأسهم الحيّة */
       renderTicker(tickerItems());
-    }catch(e){ /* keep old ticker on error */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:246'); /* keep old ticker on error */ }
   }
   window.__tickerRelabel = function(){ try{ if(tickerRaw) renderTicker(tickerItems()); }catch(e){ __swallow(e, "misc:app-13-stocks-init#relabel"); } };
 
@@ -267,7 +267,7 @@
     if(icon) icon.style.transform = collapsed ? 'rotate(180deg)' : '';
     if(collapsed){
       if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
-      try{ tickerTrack.style.animation = 'none'; }catch(e){ /* guard-ok */ } // v-ticker-css-anim
+      try{ tickerTrack.style.animation = 'none'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:270'); /* guard-ok */ } // v-ticker-css-anim
     }
   }
   function startTicker(){
@@ -279,7 +279,7 @@
   }
   function stopTicker(){
     if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
-    try{ tickerTrack.style.animation = 'none'; }catch(e){ /* guard-ok */ } // v-ticker-css-anim
+    try{ tickerTrack.style.animation = 'none'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:282'); /* guard-ok */ } // v-ticker-css-anim
     tickerWrap.style.display = 'none';
   }
   window.__tickerStart = startTicker;
@@ -714,7 +714,7 @@
   function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
-    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:717'); /* لم يجهز بعد */ }
     const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
@@ -904,7 +904,7 @@
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     a.download = 'omran-boq.csv';
     document.body.appendChild(a); a.click();
-    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){ /* guard-ok — تنظيف رابط مؤقّت بعد التنزيل؛ فشله لا يمسّ الملفّ */ } }, 1500);
+    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:907'); /* guard-ok — تنظيف رابط مؤقّت بعد التنزيل؛ فشله لا يمسّ الملفّ */ } }, 1500);
   };
 
   if(pdfBtn) pdfBtn.onclick = async function(){
@@ -953,7 +953,7 @@
       + '</body></html>');
     /* v-cons-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة الطباعة
        ميتة — نصدّر ملف PDF حقيقيًا؛ والطباعة تبقى للكمبيوتر. */
-    let __inApp = false; try{ __inApp = typeof window.omranLikelyApp === 'function' && window.omranLikelyApp(); }catch(e){ /* guard-ok — cosmetic */ }
+    let __inApp = false; try{ __inApp = typeof window.omranLikelyApp === 'function' && window.omranLikelyApp(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:956'); /* guard-ok — cosmetic */ }
     async function __fileExport(){
       if(typeof window.omranExportHtmlAsPdfFile !== 'function') return false;
       try{
@@ -972,7 +972,7 @@
     }
     w.document.write(__docHtml);
     w.document.close();
-    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){ /* guard-ok — نافذة أُغلقت قبل الطباعة؛ التقرير معروض فيها */ } }, 800);
+    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:975'); /* guard-ok — نافذة أُغلقت قبل الطباعة؛ التقرير معروض فيها */ } }, 800);
   };
 
   angleBtns.forEach((btn) => {
@@ -2279,7 +2279,7 @@
     });
   }
   injectMoreTabs();
-  try{ new MutationObserver(injectMoreTabs).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
+  try{ new MutationObserver(injectMoreTabs).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:2282'); /* guard-ok */ }
 
   let feature = 'hair';
   let selectedBase64A = '', selectedMimeA = 'image/jpeg';
@@ -2411,7 +2411,7 @@
     resultWrap.addEventListener('pointerdown', (ev) => {
       if(!beforeWrap || beforeWrap.style.display === 'none') return;
       __studioBaDragging = true;
-      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:2414'); /* guard-ok */ }
       updateSliderClip(studioBaPctFromEvent(ev));
       ev.preventDefault();
     });
@@ -2438,7 +2438,7 @@
       const isAr = !((typeof lang !== 'undefined' && lang) ? String(lang) : (localStorage.getItem('aiapp_lang') || 'ar')).startsWith('en');
       const friendly = (typeof imgErrFriendly === 'function') ? imgErrFriendly(code, isAr) : null;
       if(friendly) return '⚠️ ' + friendly;
-    }catch(err){ /* guard-ok — بلا ترجمة نعرض الكود */ }
+    }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-13-stocks-init:2441'); /* guard-ok — بلا ترجمة نعرض الكود */ }
     return (bT('❌ خطأ: ','❌ Error: ')) + code;
   }
 
@@ -2628,7 +2628,7 @@
       let data = {};
       try{ data = await res.json(); }catch(e){ data = { error: 'HTTP ' + res.status }; } /* guard-ok — جسم غير JSON (413/504) */
       if(!res.ok || data.error) return { combo, error: data.error || 'unknown', last, stoppedAt: it };
-      last = { b64: data.imageBase64, mime: data.mimeType || 'image/png' };
+      last = { b64: data.imageBase64, mime: data.mimeType || 'image/png', reframed: !!(data.reframed || (last && last.reframed)) }; /* v-body-reframe */
       if(i < combo.length - 1){
         const blob = await (await fetch('data:' + last.mime + ';base64,' + last.b64)).blob();
         const n = await normalizeStudioPhoto(new File([blob], 'step.png', { type: last.mime }));
@@ -2661,6 +2661,7 @@
         downloadEl.href = dataUrl; downloadEl.style.display = 'block';
         favSaveBtn.style.display = 'block'; favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
         setupBeforeAfter();
+        if(r.last.reframed) studioBaShow(false); /* v-body-reframe: صورة كاملة بإطار جديد — «قبل/بعد» فوق وجه مقرّب لا يُقارن */
         stReveal(resultWrap); /* v-style-scene */
       }
       if(r.error){
@@ -2687,6 +2688,8 @@
         const a = document.createElement('a'); a.href = url; a.download = 'omran-style.png'; a.textContent = bT('⬇️ تحميل', '⬇️ Download');
         a.style.cssText = 'display:inline-block; margin-top:5px; font-size:12px; color:#d4af37;';
         cell.appendChild(im); cell.appendChild(a);
+        /* v-share-next: «↗️ مشاركة» بجانب «⬇️ تحميل» في كلّ خانة */
+        if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', style: 'display:inline-block; margin-top:5px; margin-inline-start:12px; font-size:12px; color:#d4af37; background:none; border:0; padding:0; cursor:pointer; font-family:inherit;' }); }catch(e){ __swallow(e, 'studio:style-share-next'); } }
       }
       if(r.error){
         const er = document.createElement('div');
@@ -2847,9 +2850,45 @@
   if(fileBtnA) fileBtnA.onclick = () => fileInputA.click();
   if(fileBtnB) fileBtnB.onclick = () => fileInputB.click();
 
+  /* v-studio-bands (لقطة المالك ٧ نوفمبر «الصوره مش كامله»: سيلفي مصدَّر من CapCut — صورة طوليّة في وسط مربّع، وجانباه نسخة
+     مكبّرة مغبّشة منها؛ التعديل يحفظ ما في الصورة فخرج الناتج بحافّتين مغبّشتين): قبل القصّ إلى النسبة يُكشف «الحشو» على جانبين
+     متقابلين ويُقصّ إلى الصورة الحقيقيّة. لكلّ عمود (أو صفّ) كثافة تفاصيله: نسبة بكسلاته التي يتغيّر عندها اللون عبر المحور (فرقا الجارين
+     > ١٠)؛ الحشو المغبّش أو الأسود ≈ صفر والصورة عالية. العلامة كلّها معًا من كلّ طرف (بعد تخطّي ٣٪ أطراف الحفظ): حشو كثافته ≤ ١٥٪ من
+     كثافة الوسط ثمّ قفزة إلى ≥ ٤٥٪ عند خطّ واحد، و«درجة» إضاءة عبر هذا الخطّ في نصف الخطوط على الأقلّ (حافّة الصورة المستقيمة: الحشو
+     المكبَّر عندها من موضع آخر فيختلف لونه)، والحافّتان ≥ ٦٪ ومتناظرتان (فرق ≤ ٦٪) والوسط ≥ ٣٠٪. شخص كامل على خلفيّة ناعمة (صور
+     الجسم الأربع في تجربة ٧ نوفمبر) يجتاز القفزة لكنّ «الدرجة» عند حدّه في ٢١–٢٦٪ من الخطوط وحدها (الحشو ٧٢–٩٧٪) = لا قصّ؛ وتعذّر
+     الكشف أو حشو خفيف التغبيش = الصورة كما هي. gray: إضاءة w×h (٠–٢٥٥) ← { x0, y0, x1, y1 } نسبيّة، أو null */
+  function studioBandBox(gray, w, h){
+    const side = (cols) => {
+      const n = cols ? w : h, m = cols ? h : w;
+      const px = cols ? (i, j) => gray[j * w + i] : (i, j) => gray[i * w + j];
+      const rho = new Float64Array(n);
+      for (let i = 0; i < n; i++) { let c = 0; for (let j = 1; j + 1 < m; j++) { const v = px(i, j); if (Math.abs(px(i, j + 1) - v) + Math.abs(v - px(i, j - 1)) > 10) c++; } rho[i] = c / Math.max(1, m - 2); }
+      const mid = Array.from(rho.slice(Math.floor(n * 0.35), Math.ceil(n * 0.65))).sort((p, q) => p - q);
+      const med = mid[Math.floor(mid.length / 2)] || 0;
+      if (med < 0.08) return null;
+      const skip = Math.max(1, Math.round(n * 0.03));
+      const edgeFrom = (fromEnd) => {
+        const at = (k) => rho[fromEnd ? n - 1 - k : k], pos = (k) => fromEnd ? n - 1 - k : k;
+        let k = skip; while (k < n && at(k) < 0.45 * med) k++;
+        if (k >= n || at(Math.max(skip, k - 3)) > 0.15 * med) return null;
+        for (let q = skip; q < k - 1; q++) if (at(q) > 0.15 * med) return null;
+        let step = 0;
+        for (let j = 1; j + 1 < m; j++) if (Math.abs(px(pos(Math.max(skip, k - 3)), j) - px(pos(Math.min(n - 1, k + 1)), j)) > 12) step++;
+        return step / Math.max(1, m - 2) >= 0.5 ? k : null;
+      };
+      const a = edgeFrom(false), b = edgeFrom(true);
+      if (a == null || b == null || a < n * 0.06 || b < n * 0.06 || Math.abs(a - b) > n * 0.06 || n - a - b < n * 0.3) return null;
+      return [a / n, (n - b) / n];
+    };
+    const cx = side(true), cy = side(false);
+    if (!cx && !cy) return null;
+    return { x0: cx ? cx[0] : 0, x1: cx ? cx[1] : 1, y0: cy ? cy[0] : 0, y1: cy ? cy[1] : 1 };
+  }
   /* v-face-lock: الصورة تُعاد ترميزها في المتصفح (يثبّت اتجاه EXIF ويحدّ الحجم بـ2048)
-     حتى تتطابق إحداثيات قناع الوجه في الخادم مع البكسلات الفعلية. */
-  function normalizeStudioPhoto(file){
+     حتى تتطابق إحداثيات قناع الوجه في الخادم مع البكسلات الفعلية.
+     v-studio-bands: opts.trimBands (رفع المستخدم وحده — لا خطوات السلسلة) يقصّ حشو الحافّتين قبل النسبة */
+  function normalizeStudioPhoto(file, opts){
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -2859,15 +2898,27 @@
           const img = new Image();
           img.onload = () => {
             try{
+              const iw0 = img.naturalWidth || img.width, ih0 = img.naturalHeight || img.height;
+              let bx = 0, by = 0, iw = iw0, ih = ih0;
+              if (opts && opts.trimBands) {
+                try{
+                  const k = 240 / Math.max(iw0, ih0), gw = Math.max(1, Math.round(iw0 * k)), gh = Math.max(1, Math.round(ih0 * k));
+                  const gc = document.createElement('canvas'); gc.width = gw; gc.height = gh;
+                  const gx = gc.getContext('2d'); gx.drawImage(img, 0, 0, gw, gh);
+                  const d = gx.getImageData(0, 0, gw, gh).data, gray = new Float32Array(gw * gh);
+                  for (let i = 0; i < gray.length; i++) gray[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+                  const box = studioBandBox(gray, gw, gh);
+                  if (box) { bx = Math.round(box.x0 * iw0); by = Math.round(box.y0 * ih0); iw = Math.round((box.x1 - box.x0) * iw0); ih = Math.round((box.y1 - box.y0) * ih0); }
+                }catch(e){ __swallow(e, 'studio:bands'); } /* الكشف تعذّر = الصورة كما هي */
+              }
               /* v-face-composite: قصّ مركزي إلى أقرب نسبة يدعمها محرّك القناع (2:3، 3:2، 1:1)
                  وبأبعاد ناتجه نفسها — فالناتج يطابق الأصل بكسلًا ببكسل ويُلصق الوجه بلا انزياح */
-              const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
               const ar = iw / ih;
               const target = (ar < 0.82) ? [1024, 1536] : (ar > 1.22 ? [1536, 1024] : [1024, 1024]);
               const tw = target[0], th = target[1], tr = tw / th;
               let sw = iw, sh = ih;
               if (ar > tr) sw = Math.round(ih * tr); else sh = Math.round(iw / tr);
-              const sx = Math.round((iw - sw) / 2), sy = Math.round((ih - sh) / 2);
+              const sx = bx + Math.round((iw - sw) / 2), sy = by + Math.round((ih - sh) / 2);
               const c = document.createElement('canvas');
               c.width = tw; c.height = th;
               c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
@@ -2890,7 +2941,7 @@
   const slotEls = { A: $('#studioAiSlotA'), B: $('#studioAiSlotB') };
   /* v-studio-no-recent (أمر المالك «احذف آخر صوري عندما أرفع الصور»): «آخر صوري» أُزيلت — لا تُحفظ صورة على الجهاز،
      وما حُفظ سابقًا يُمسح مرّة عند الإقلاع. */
-  try{ localStorage.removeItem('omStudioRecent'); }catch(e){ /* guard-ok: تخزين محجوب = لا شيء محفوظ أصلًا */ }
+  try{ localStorage.removeItem('omStudioRecent'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:2944'); /* guard-ok: تخزين محجوب = لا شيء محفوظ أصلًا */ }
   function studioRenderSlot(which){
     const el = slotEls[which]; if(!el) return;
     const has = which === 'A' ? !!selectedBase64A : !!selectedBase64B;
@@ -2907,7 +2958,7 @@
   }
   function studioSetPhoto(which, file){
     if(!file || !/^image\//.test(file.type || 'image/')) return;
-    normalizeStudioPhoto(file).then((r) => {
+    normalizeStudioPhoto(file, { trimBands: true }).then((r) => { /* v-studio-bands: رفع المستخدم وحده */
       if(!r) return;
       const pv = which === 'A' ? previewA : previewB;
       if(which === 'A'){ selectedMimeA = r.mime; selectedBase64A = r.b64; if(fileNameA) fileNameA.textContent = file.name || ''; }
@@ -3064,6 +3115,7 @@
       favSaveBtn.style.display = 'block';
       favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
       setupBeforeAfter();
+      if(data.reframed) studioBaShow(false); /* v-body-reframe: صورة كاملة بإطار جديد — «قبل/بعد» فوق وجه مقرّب لا يُقارن */
       stReveal(resultWrap); /* v-style-scene */
       setStatus(t('studioAiDone'));
     } catch(e){
@@ -3275,7 +3327,7 @@ window.updateVersionLabel = function(){
     // v-bundle-ver: بصمة البندل من وسم السكربت — تكشف أي نسخة يشغّلها الجهاز فعلًا
     // (تأكيد وصول التحديث بدل التخمين).
     var __bv = '';
-    try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ /* guard-ok */ }
+    try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:3330'); /* guard-ok */ }
     /* v-ver-label (تدقيق ١٨ أكتوبر، لقطتا ٠٢٣ و٠٤٦): العناوين كانت عربيّة في كلّ لغة، والسطر نصّ واحد يقلبه اتّجاه الفقرة
        و«رفع:» تنفصل عن قيمتها عند الالتفاف. الآن العنوان من القاموس، وكلّ «عنوان: قيمة» span لا يلتفّ ومعزول، والقيمة
        <bdi dir=ltr> (نصّ لا HTML)؛ الالتفاف بين الأزواج وحدها، وداخل القيمة الطويلة (خطأ) وحدها. */

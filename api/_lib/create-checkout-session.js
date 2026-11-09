@@ -36,6 +36,7 @@ const PLANS = {
   // v-fair-video (قرار المالك ٥ أكتوبر): الرزمة الكبرى كانت أغلى للنقطة من ٧٠٠ — ١٬٠٥٠ بالسعر نفسه (المفتاح pack900 باقٍ لجلسات الطريق).
   pack900: { amount: 3499, points: 1050, pack: true, name: '1,050 نقطة / 1,050 pts' },
 };
+const PLAN_RANK = { basic: 1, pro: 2, max: 3 }; // v-owner-link-sub: ترتيب باقات المحادثة (منحٌ متأخّر لا ينزل بالباقة)
 // v-media-plans: اشتراكات الصور/الفيديو — شهريّة، بلا نقاط ولا تغيير للباقة (رصيدها منفصل في _mediaPlans.js).
 // v-media-merge: img_/vid_ متوقّفة (retired): لا جلسة دفع جديدة لها، ويبقى منحها لتجديدٍ قائم أو جلسة بدأت قبل الإيقاف.
 for (const [k, p] of Object.entries(MEDIA_PLANS)) {
@@ -113,7 +114,8 @@ async function noteGrant(username, plan, sourceField, sourceId, meta, user, prev
   if (!sourceId) return;
   const p = PLANS[plan];
   const m = meta || {};
-  const at = p.media ? (user.media && user.media[p.media] && user.media[p.media].at) : (p.pack ? null : user.planUpdatedAt);
+  // v-owner-link-sub: منحٌ متأخّر أبقى الباقة الأعلى أو المساوية كما هي (keptPlan) لم يفتح فترة — كرزمة النقاط بلا وقت فترة
+  const at = p.media ? (user.media && user.media[p.media] && user.media[p.media].at) : ((p.pack || m.keptPlan) ? null : user.planUpdatedAt);
   await require('./pay-refund.js').recordGrant({
     id: String(sourceId), field: sourceField || null, username, plan, points: p.points, media: p.media || null, at: Number(at) || null,
     amount: Number(m.amount) > 0 ? Math.round(Number(m.amount)) : null, currency: m.currency ? String(m.currency).toLowerCase() : null,
@@ -153,8 +155,14 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     }
 
     // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها — النقاط فقط.
-    if (!PLANS[plan].pack) { user.plan = plan; user.planUpdatedAt = Date.now(); }
-    if (!PLANS[plan].pack) user.planPayId = sourceId ? String(sourceId) : undefined; // v-pay-refund: كالسطر أعلاه للوسائط
+    /* v-owner-link-sub: دفعة قديمة يُضيفها المالك متأخّرًا (meta.keepHigherPlan) لا تستبدل باقةً سارية أعلى أو مساوية دُفعت بعدها
+       (كانت Pro اشتُريت أمس تصير Plus ٣٥ يومًا): النقاط وحدها، والفترة الحاليّة ورقم دفعتها كما هما — فاستردادها لاحقًا يسحب نقاطها ولا يُسقط الباقة. */
+    const keep = !PLANS[plan].pack && !!(meta && meta.keepHigherPlan) && require('./tier.js').planActive(user)
+      && (PLAN_RANK[String(user.plan || '')] || 0) >= (PLAN_RANK[plan] || 0);
+    if (!keep) { // PITFALLS: السطران كما هما حرفيًّا (تثبّتهما plan-routing) — اللفّ لا الحشر
+      if (!PLANS[plan].pack) { user.plan = plan; user.planUpdatedAt = Date.now(); }
+      if (!PLANS[plan].pack) user.planPayId = sourceId ? String(sourceId) : undefined; // v-pay-refund: كالسطر أعلاه للوسائط
+    }
     if (sourceField) user[sourceField] = sourceId;
 
     // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في points.js
@@ -168,8 +176,8 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     user.points = Number(newBalance);
 
     await putUser(username, user);
-    await noteGrant(username, plan, sourceField, sourceId, meta, user, prev); // v-pay-refund
-    return { ok: true, plan: PLANS[plan].pack ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) };
+    await noteGrant(username, plan, sourceField, sourceId, keep ? Object.assign({}, meta, { keptPlan: true }) : meta, user, keep ? null : prev); // v-pay-refund
+    return { ok: true, plan: (PLANS[plan].pack || keep) ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, planKept: keep || undefined, pointsAdded: PLANS[plan].points, balance: Number(newBalance) };
   } catch (e) {
     if (claim) await kvDel(claim); // لم يكتمل الشحن — يُفكّ الحجز فتنجح المحاولة التالية
     throw e;

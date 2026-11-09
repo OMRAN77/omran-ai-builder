@@ -323,36 +323,11 @@ try{ new MutationObserver(() => { try{ mahaPersonaTitles(mahaReadVoiceGender() =
 function mahaEnsureVoiceChosen(){
   return new Promise(resolve => {
     let already = null;
-    try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){ /* guard-ok: unavailable storage shows the safe first-run picker. */ }
+    try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-08-maha:326'); /* guard-ok: unavailable storage shows the safe first-run picker. */ }
     // v-maha-solo: لا سؤال في أول تشغيل — مها افتراضيًّا. v-voice-names: اختيار عبدالله المحفوظ يبقى كما هو.
     if(already === 'male' || already === 'female') return resolve(already);
     try{ localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo-first'); }
     return resolve('female');
-    /* eslint-disable no-unreachable */
-    const wrap = document.createElement('div');
-    wrap.id = 'voicePickFirstRun';
-    wrap.style.cssText = 'position:fixed; inset:0; z-index:100000; display:flex; align-items:center; justify-content:center; background:rgba(8,7,14,.82); backdrop-filter:blur(6px);';
-    const card = document.createElement('div');
-    card.dir = 'rtl';
-    card.style.cssText = 'width:min(92vw,420px); background:#12101c; border:1px solid rgba(255,255,255,.10); border-radius:22px; padding:26px 22px; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.55);';
-    const opt = (g, name) => '<button type="button" data-g="' + g + '" class="vpFirstBtn" style="flex:1; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.10); border-radius:18px; padding:18px 10px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:12px;">'
-      + '<span style="width:74px; height:74px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:36px; background:' + (g === 'male' ? 'linear-gradient(135deg,#ffd77a,#b8860b)' : 'linear-gradient(135deg,#ff5fa2,#7b5cff)') + '; box-shadow:' + (g === 'male' ? '0 0 50px rgba(184,134,11,.6)' : '0 0 40px rgba(123,92,255,.5)') + ';">'
-      + (g === 'male' ? '🧔' : '💁‍♀️')
-      + '</span><span style="color:#fff; font-size:17px; font-weight:700;">' + name + '</span></button>';
-    card.innerHTML = '<div style="color:#fff; font-size:19px; font-weight:700; margin-bottom:6px;">اختر صوت المساعد</div>'
-      + '<div style="color:#a9a2bd; font-size:13px; margin-bottom:20px;">تقدر تغيّره لاحقًا من الإعدادات</div>'
-      + '<div style="display:flex; gap:12px;">' + opt('female','مها') + opt('male','عبدالله') + '</div>';
-    wrap.appendChild(card);
-    document.body.appendChild(wrap);
-    card.querySelectorAll('.vpFirstBtn').forEach(b => {
-      b.onclick = () => {
-        const g = b.getAttribute('data-g');
-        try{ localStorage.setItem('aiapp_voice_gender', g); }catch(e){ /* guard-ok: voice selection still applies for this session. */ }
-        if(typeof setVoiceGenderUI === 'function'){ try{ setVoiceGenderUI(g); }catch(e){ /* guard-ok: optional settings mirror must not block the call. */ } }
-        wrap.remove();
-        resolve(g);
-      };
-    });
   });
 }
 // All pitch samples collected across the *entire* call (not reset per turn).
@@ -2077,7 +2052,7 @@ async function mahaHandleRtFunctionCall(ev){
   if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
   const askDc = mahaRtDc; // v-audit-voice (cli-voice-5): النتيجة لقناة الجلسة التي طلبتها وحدها
   let args = {};
-  try{ args = JSON.parse(ev.arguments || '{}'); }catch(e){ /* ignore */ }
+  try{ args = JSON.parse(ev.arguments || '{}'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-08-maha:2055'); /* ignore */ }
 
   let output = { ok: false };
   try{
@@ -2567,7 +2542,7 @@ function mahaStartPointsMeter(budget){
         } else if(d && d.reason === 'insufficient'){
           endGently();
         }
-      }catch(e){ /* خطأ شبكة مؤقت — نحاول الدقيقة الجاية */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-08-maha:2545'); /* خطأ شبكة مؤقت — نحاول الدقيقة الجاية */ }
     }, 60000);
   }catch(e){ __swallow(e, "points:app-08-maha#25"); }
 }
@@ -2663,7 +2638,7 @@ function mahaEndCall(){
 let mahaCallMode = 'assistant'; // 'assistant' (مها) or 'builder' (voice tab)
 // v500: رسالة صريحة بدل الصمت عند تعذّر المايك — تُميّز رفض الإذن / لا يوجد جهاز / مشغول.
 function mahaMicMsg(e){
-  var L = "ar"; try{ L = localStorage.getItem("aiapp_lang") || "ar"; }catch(_){ /* guard-ok: unavailable storage uses the Arabic fallback. */ }
+  var L = "ar"; try{ L = localStorage.getItem("aiapp_lang") || "ar"; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-08-maha:2641'); /* guard-ok: unavailable storage uses the Arabic fallback. */ }
   var ar = L === "ar";
   var n = (e && e.name) ? String(e.name) : "";
   if(/NotAllowed|Permission|Security/i.test(n))
@@ -2699,19 +2674,19 @@ async function mahaGetUserMediaRetry(constraints){
 // الحالة فقط ونتخطّى الفتح التجريبي كليًّا فيختفي هذا التعارض الذاتي في أغلب الحالات.
 async function mahaMicPreflight(){
   var perm = "";
-  try{ perm = (await navigator.permissions.query({ name: "microphone" })).state; }catch(_){ /* guard-ok: unsupported Permissions API falls through to getUserMedia. */ }
+  try{ perm = (await navigator.permissions.query({ name: "microphone" })).state; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-08-maha:2677'); /* guard-ok: unsupported Permissions API falls through to getUserMedia. */ }
   if(perm === "denied") return mahaMicMsg({ name: "NotAllowedError" });
   if(perm === "granted") return null; // مُصرَّح مسبقًا — لا داعي لفتح/إغلاق المايك هنا إطلاقًا
   try{
     // If the permission prompt is answered AFTER the 15s race rejected, the
     // stream still arrives with nobody left to stop it - the mic stays hot.
     var __gum = navigator.mediaDevices.getUserMedia({ audio: true });
-    __gum.then(function(st){ try{ st.getTracks().forEach(function(tr){ tr.stop(); }); }catch(_){ /* guard-ok */ } });
+    __gum.then(function(st){ try{ st.getTracks().forEach(function(tr){ tr.stop(); }); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-08-maha:2684'); /* guard-ok */ } });
     var s = await Promise.race([
       __gum,
       new Promise(function(_res, rej){ setTimeout(function(){ rej({ name: "__timeout__" }); }, 15000); })
     ]);
-    s.getTracks().forEach(function(tr){ try{ tr.stop(); }catch(_){ /* guard-ok: an already-ended track needs no cleanup. */ } });
+    s.getTracks().forEach(function(tr){ try{ tr.stop(); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-08-maha:2689'); /* guard-ok: an already-ended track needs no cleanup. */ } });
     // مهلة صغيرة قبل العودة: بعض أجهزة أندرويد لا تُحرِّر عتاد المايك فور tr.stop()،
     // والنداء الحقيقيّ القادم (mahaStartRealtimeCall) يفتحه ثانية بقيود مختلفة خلال أجزاء
     // من الثانية — إمهال قصير يقلّل احتمال NotReadableError الذاتيّ دون تأخير محسوس للمستخدم.
@@ -2725,7 +2700,7 @@ async function mahaStartCallInner(mode){
     alert(t('micNotSupported'));
     return;
   }
-  var __ar = true; try{ __ar = (localStorage.getItem("aiapp_lang") || "ar") === "ar"; }catch(_){ /* guard-ok: unavailable storage retains the Arabic fallback. */ }
+  var __ar = true; try{ __ar = (localStorage.getItem("aiapp_lang") || "ar") === "ar"; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-08-maha:2703'); /* guard-ok: unavailable storage retains the Arabic fallback. */ }
   mahaCallMode = mode === 'builder' ? 'builder' : 'assistant';
   if(mahaCallMode !== 'builder'){ await mahaEnsureVoiceChosen(); }
   if(mahaCallScreenEl){

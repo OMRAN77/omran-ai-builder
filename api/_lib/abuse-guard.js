@@ -22,7 +22,7 @@ async function imageHourlyGuard(username, o) {
     const count = await kv.kvIncr(key);
     if (count === 1) await kv.kvExpire(key, 7200);
     if (count > max) {
-      try { await kv.kvDecrBy(key, 1); } catch (e) { /* أفضل جهد — العدّاد يسقط مع الساعة */ }
+      try { await kv.kvDecrBy(key, 1); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/abuse-guard:25'); /* أفضل جهد — العدّاد يسقط مع الساعة */ }
       return { ok: false, reason: 'image_hourly_limit', retryAfter: Math.max(1, Math.ceil(((bucket + 1) * HOUR_MS - now) / 1000)), max };
     }
     return { ok: true, count, max, bucket };
@@ -51,7 +51,7 @@ async function cooldownLeft(kv, key, ttl) {
       const left = Math.ceil(ttl - (Date.now() - at) / 1000);
       if (left >= 1 && left <= ttl) return left;
     }
-  } catch (e) { /* أفضل جهد — المهلة كاملة أدناه */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/abuse-guard:54'); /* أفضل جهد — المهلة كاملة أدناه */ }
   return ttl;
 }
 
@@ -91,7 +91,7 @@ async function releaseVideoLock(username, o) {
   const opt = o || {};
   const kv = opt.kv || require('./kv.js');
   if (!username) return;
-  try { await kv.kvDel('abuse:video:' + userKey(username)); } catch (e) { /* أفضل جهد — القفل يسقط بعد ٣ دقائق */ }
+  try { await kv.kvDel('abuse:video:' + userKey(username)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/abuse-guard:94'); /* أفضل جهد — القفل يسقط بعد ٣ دقائق */ }
 }
 
 module.exports = { IMAGE_HOURLY_MAX, VIDEO_COOLDOWN_SEC, imageHourlyGuard, imageHourlyGiveBack, videoLock, releaseVideoLock, videoCooldownLeft };

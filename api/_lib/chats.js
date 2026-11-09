@@ -143,7 +143,7 @@ module.exports = async (req, res) => {
       // Merge: server + client, respecting deletions
       const merged = slimProjects(mergeProjects(serverProjects, incoming, deletedSet));
       await kvPutJSON(chatsKey(username), { projects: merged, updatedAt: Date.now() });
-      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').absorbProjects(merged); } catch (e) { /* guard-ok — فشل ربط المحادثات بالمخزن المشترك لا يوقف الحفظ */ } } // v-prov-one
+      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').absorbProjects(merged); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chats:146'); /* guard-ok — فشل ربط المحادثات بالمخزن المشترك لا يوقف الحفظ */ } } // v-prov-one
       res.status(200).json({ ok: true, count: merged.length, merged: true });
       return;
     }
@@ -177,7 +177,7 @@ module.exports = async (req, res) => {
       const wipedSet = new Set(wipedIds);
       const tomb = ((delRec && Array.isArray(delRec.ids)) ? delRec.ids : []).filter((id) => !wipedSet.has(id)).concat(Array.from(wipedSet)); // معرّفات المسح آخرًا فلا يقصّها السقف
       await kvPutJSON(chatsKey(username), { projects: [], updatedAt: Date.now(), wiped: true });
-      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').clearGen(); } catch (e) { /* guard-ok — فشل مسح المخزن المشترك لا يوقف المسح */ } } // v-prov-one
+      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').clearGen(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chats:180'); /* guard-ok — فشل مسح المخزن المشترك لا يوقف المسح */ } } // v-prov-one
       await kvPutJSON(deletedKey(username), { ids: tomb.slice(-Math.max(500, wipedSet.size)), updatedAt: Date.now() });
       res.status(200).json({ ok: true, wiped: true });
       return;

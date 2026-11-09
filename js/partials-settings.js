@@ -699,8 +699,7 @@
   <div id="vaultSectionWrap" class="ownerCard" style="display:none;">
     <div class="ownerCardTitle" data-i18n="ownerVaultTitle">🔐 خزنة الأسرار</div>
     <div id="vaultSectionContent">
-      <!-- v-owner-i18n (تدقيق ١٨ أكتوبر): نصوص صفحة المالك بالـ١٤ لغة عبر data-i18n، ورمزا الصلاحيّتين خارج الترجمة معزولين لا يلتفّان (كانا يتلخبطان مع «و») -->
-      <div style="font-size:12.5px; line-height:1.8; opacity:.85;"><span data-i18n="ownerVaultDesc">الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع.</span> <span data-i18n="ownerVaultPerms">الرفع يحتاج توكن بهاتين الصلاحيّتين على المستودع:</span> <bdi dir="ltr" style="white-space:nowrap">Contents: write</bdi> · <bdi dir="ltr" style="white-space:nowrap">Pull requests: write</bdi></div>
+      <!-- v-vault-no-desc: شرح الخزنة وسطر الصلاحيّتين حُذفا بطلب المالك («شيل هذا الكلام كله») — حالة المفتاح تقول ما ينقص -->
       <div id="vaultGhStatus" style="margin-top:10px; font-size:12.5px; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px;">…</div>
       <div style="display:flex; gap:8px; margin-top:10px;">
         <input type="password" id="vaultGhInput" autocomplete="off" spellcheck="false" placeholder="ghp_… أو github_pat_…" data-i18n-placeholder="ownerVaultTokenPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; direction:ltr;">
@@ -724,6 +723,17 @@
       <div id="adminClaudeDiagBox" style="display:none; font-size:12.5px; line-height:1.8; background:var(--panel2); border-radius:var(--r-2); padding:10px 12px; white-space:pre-wrap; word-break:break-all; margin-bottom:10px;"></div>
       <div id="adminStatsBox" style="font-size: var(--fs-3); line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;"><span data-i18n="ownerStatsHint">اضغط "تحديث" لعرض الإحصائيات...</span></div>
       <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;" data-i18n="ownerUsersTitle">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
+      <!-- v-owner-reset-find: الجدول أحدث ٦٠ تسجيلًا فقط — رابط الاسترجاع لأيّ حساب بإيميله أو اسمه -->
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="adminResetInput" autocomplete="off" spellcheck="false" placeholder="إيميل أو اسم مستخدم" data-i18n-placeholder="ownerVipPh" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
+        <button type="button" onclick="adminResetLinkFind()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🔑 <span data-i18n="ownerResetTitle">رابط استرجاع الحساب</span></button>
+      </div>
+      <!-- v-owner-link-sub: اشتراك Stripe دُفع بلا دخول (قبل ٢٥ سبتمبر) يُربط بحساب صاحبه — الدفعات الفائتة تُضاف والتجديد بعدها يُشحن وحده -->
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+        <input type="text" id="adminLinkUserInput" dir="auto" autocomplete="off" spellcheck="false" placeholder="إيميل أو اسم مستخدم" data-i18n-placeholder="ownerVipPh" style="flex:1 1 160px; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
+        <input type="text" id="adminLinkSubInput" dir="auto" autocomplete="off" spellcheck="false" placeholder="رقم الاشتراك (sub_…)" data-i18n-placeholder="ownerLinkSubPh" style="flex:1 1 160px; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
+        <button type="button" onclick="adminLinkSubscription()" style="flex:none; padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🔗 <span data-i18n="ownerLinkSubBtn">ربط اشتراك Stripe</span></button>
+      </div>
       <div id="adminUsersTable" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:320px; overflow-y:auto;"></div>
 
       <!-- v-sec-knowledge-approve: مراجعة حقائق «المعرفة الجماعيّة» قبل حقنها — يُملأ بالـJS بأزرار إيموجي بلا نصّ مترجَم جديد. -->
@@ -847,7 +857,7 @@
     function go() {
       var root = document.getElementById('settingsDialog');
       var sel = document.getElementById('setCurSel');
-      if (root && sel && window.OmranCur) { try { window.OmranCur.mount(root, sel); } catch (e) {} } // guard-ok: تعثّر منتقي العملة يجب ألّا يُسقط شاشة الإعدادات كلّها
+      if (root && sel && window.OmranCur) { try { window.OmranCur.mount(root, sel); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'partials-settings:860');} } // guard-ok: تعثّر منتقي العملة يجب ألّا يُسقط شاشة الإعدادات كلّها
     }
     function loadCur() {
       if (window.OmranCur) { go(); return; }
@@ -914,7 +924,7 @@
       cv.setAttribute('data-link', link);
       window.OmranQR.draw(cv, link, { px: 720, logo: '/icons/ai-hub-mark-256.png' }, function() {
         var a = document.getElementById('acctQrDl');
-        try { if (a) a.href = /[?&]ref=/.test(link) ? cv.toDataURL('image/png') : '/icons/omran-qr-code.png'; } catch (e) { /* guard-ok — لوحة ملوّثة لا تُصدَّر؛ الباركود ظاهر ويُمسح من الشاشة */ }
+        try { if (a) a.href = /[?&]ref=/.test(link) ? cv.toDataURL('image/png') : '/icons/omran-qr-code.png'; } catch (e) { typeof __swallow === 'function' && __swallow(e, 'partials-settings:927'); /* guard-ok — لوحة ملوّثة لا تُصدَّر؛ الباركود ظاهر ويُمسح من الشاشة */ }
       });
     };
     if (window.OmranQR) return paint();
@@ -929,8 +939,9 @@
     var tt = function(k) { var v = (typeof window.t === 'function') ? window.t(k) : ''; return (v && v !== k) ? String(v) : ''; };
     var u = document.getElementById('acctReferralLink');
     var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
+    if (typeof window.omranShareSheet === 'function') { window.omranShareSheet({ url: shareUrl, text: tt('acctShareText') }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45) — تُفتح داخل حوار الإعدادات
     if (navigator.share) {
-      try { await navigator.share({ title: 'om ai', text: tt('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+      try { await navigator.share({ title: 'om ai', text: tt('acctShareText'), url: shareUrl }); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'partials-settings:944'); /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);

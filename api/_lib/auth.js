@@ -206,6 +206,7 @@ async function moveLiveCounters(oldKey, newKey, user) {
   await step('daily-quota', () => require('./_dailyQuota.js').moveToday(oldKey, newKey)); // v-farm-gate: حصص أدوات الصور والفيديو اليوميّة كانت تتصفّر بتغيير الاسم
   await step('image-giveback', () => require('./image-giveback.js').moveToday(oldKey, newKey)); // ردود الحارس و«لم يُنفَّذ» اليوم — كانت تتجدّد مع كلّ اسم
   await step('cost-meter', () => require('./cost-meter.js').moveMonthCosts(oldKey, newKey));
+  await step('office-month', () => require('./office.js').moveMonth(oldKey, newKey, require('./kv.js'))); // v-office-files: ملفّ الشهر المجّانيّ لا يتجدّد بتغيير الاسم
 }
 
 function makeToken(username, sv) {
@@ -230,7 +231,10 @@ function verifyToken(token) {
 const _timing = { sleep(ms) { return new Promise((r) => setTimeout(r, process.env.OMRAN_TEST_FAST_SLEEP === '1' ? 0 : ms)); } };
 function sleep(ms) { return _timing.sleep(ms); }
 
-async function getUserOnce(key) {
+/* v-owner-reset-records: opts.readOnly — بحث المالك وفحصه (dryRun) يقرآن كلّ السجلّات ولا يكتبان: السجلّ المفكوك بالسرّ السابق يُعاد
+   كما هو بلا إعادة تشفير (الكتابة هنا قد تمحو منحًا كُتب بين القراءة والكتابة). opts.quiet — المختوم يُعدّه المسح، فلا سطر لكلّ سجلّ في كلّ بحث. */
+async function getUserOnce(key, opts) {
+  const ro = !!(opts && opts.readOnly);
   try {
     const parsed = await kvGetJSON(userPath(key));
     if (!parsed) return null;
@@ -245,14 +249,16 @@ async function getUserOnce(key) {
           let migrated = null;
           try { migrated = decryptUserBlob(parsed, pk); } catch (e2) { migrated = null; }
           if (migrated) {
-            try { await putUser(key, migrated); }
-            catch (e3) { logError('auth:rekey', e3, { key: String(key).slice(0, 40) }); }
+            if (!ro) {
+              try { await putUser(key, migrated); }
+              catch (e3) { logError('auth:rekey', e3, { key: String(key).slice(0, 40) }); }
+            }
             return migrated;
           }
         }
         // لا مفتاح يفكّه. هذا ليس «حسابًا غير موجود» — وإعادته null كانت تخفي
         // السبب خلف «كلمة المرور خاطئة»، وتتيح لـsignup الكتابة فوق السجلّ.
-        logError('auth:decrypt', e, { key: String(key).slice(0, 40), hasPrev: Boolean(pk) });
+        if (!(opts && opts.quiet)) logError('auth:decrypt', e, { key: String(key).slice(0, 40), hasPrev: Boolean(pk) });
         throw new UndecryptableUserRecord(key);
       }
     }
@@ -1657,6 +1663,9 @@ async function isBanned(username) {
 }
 module.exports.isBanned = isBanned;
 module.exports.emailVerifiedFor = emailVerifiedFor; // v-vip-verified: vip.js يحوّل الإيميل إلى حساب أثبته وحده
+module.exports.resolveLoginUser = resolveLoginUser; // v-owner-reset-find: رابط استرجاع المالك بالإيميل
+module.exports.googleAccountFor = googleAccountFor; // v-owner-reset-find
+module.exports.verifiedHolderOf = verifiedHolderOf; // v-owner-link-sub: البريد ← من أثبته (رمز أو Google) قبل أيّ مطابقة غير مؤكَّدة
 module.exports.emailProven = emailProven; // v-unverified-email: والكولباك (الربط التلقائيّ بالبريد)
 module.exports.settleUnverifiedEmail = settleUnverifiedEmail;
 module.exports.sweepUnverifiedEmails = sweepUnverifiedEmails; // email-sweep.js

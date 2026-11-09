@@ -88,7 +88,7 @@ async function saveLastTask(index, taskId) {
   try {
     const prev = await readSlot(index);
     await kvPutJSON(lastTaskPath(index), Object.assign({ id: taskId }, prev.hold ? { hold: prev.hold } : {}));
-  } catch (e) {
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/runway-keys:91');
     // best-effort only
   }
 }
@@ -129,7 +129,7 @@ async function clearStuckTask(index, apiKey) {
   const live = (id) => ids.indexOf(id) >= 0 && states[ids.indexOf(id)] === 'live';
   const hold = live(slot.hold) ? slot.hold : (live(slot.id) ? slot.id : null);
   if ((hold || null) !== (slot.hold || null) && process.env.UPSTASH_REDIS_REST_URL) {
-    try { await kvPutJSON(lastTaskPath(index), Object.assign({ id: slot.id }, hold ? { hold } : {})); } catch (e) { /* guard-ok — أفضل جهد */ }
+    try { await kvPutJSON(lastTaskPath(index), Object.assign({ id: slot.id }, hold ? { hold } : {})); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/runway-keys:132'); /* guard-ok — أفضل جهد */ }
   }
 }
 

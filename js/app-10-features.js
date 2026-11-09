@@ -515,10 +515,11 @@ if(btnShareApp){
       ne: 'निःशुल्क AI ले एप बनाउन om ai प्रयोग गर्नुहोस्:'
     };
     const shareText = texts[currentLang] || texts.ar;
+    if(typeof window.omranShareSheet === 'function'){ window.omranShareSheet({ url: shareUrl, text: shareText }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45)
     if(navigator.share){
       try {
         await navigator.share({ title: titles[currentLang] || titles.ar, text: shareText, url: shareUrl });
-      } catch(e){ /* user cancelled share, ignore */ }
+      } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:522'); /* user cancelled share, ignore */ }
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
@@ -707,13 +708,13 @@ btnToggleHistory.onclick = () => {
       /* v-nav-cards-menus: في العربيّ ⋮ قرب يسار الشاشة، والقائمة المحاذاة لحافّته اليمنى كانت تبدأ خارجها (-11px) — تُحصر بهامش ٦px */
       const edge = window.innerWidth - parseFloat(dd.style.right);
       if(edge - (dd.offsetWidth || 0) < 6){ dd.style.left = '6px'; dd.style.right = 'auto'; }
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:711'); /* guard-ok */ }
   }
   function restore(){
     try{
       if(wrap && dd.parentNode !== wrap) wrap.appendChild(dd);
       dd.style.position=''; dd.style.top=''; dd.style.right=''; dd.style.left=''; dd.style.insetInlineEnd=''; dd.style.zIndex='';
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:717'); /* guard-ok */ }
   }
   function close(){ dd.classList.remove('show'); btn.classList.remove('active'); restore(); }
   // v-review-menu-close: «مراجعة» و«تحليل» (app-24/app-27) يوقفان انتشار نقرتهما فلا يصل مستمع الإغلاق أدناه — يناديان هذا قبل فتح نافذتيهما
@@ -1259,7 +1260,7 @@ btnToggleHistory.onclick = () => {
       failed.push(String((err && err.message) || err).slice(0, 120));
     }
     btn.disabled = false;
-    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+    try{ input.value = ''; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1263'); /* guard-ok — cleanup */ }
     const notes = [];
     if(outcome && outcome.truncated) notes.push(fmtPdf('pdfDocTruncated', { n: outcome.pages }));
     if(skipped.length) notes.push(fmtPdf('pdfDocSkipped', { n: skipped.length, names: skipped.slice(0, 3).join('، ') }));
@@ -1274,7 +1275,7 @@ btnToggleHistory.onclick = () => {
     /* v-attach-picker-v3: مسح input.value يُؤجَّل إلى ما بعد قراءة الصور.
        مسحه هنا (قبل القراءة) يفصل الملفّ عن مصدره داخل غلاف أندرويد
        (content://) فتفشل كلّ الصور بصمت ولا يُنتَج PDF — نفس فخّ v405. */
-    if(!files.length){ try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } return; }
+    if(!files.length){ try{ input.value = ''; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1278'); /* guard-ok — cleanup */ } return; }
     const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
     btn.disabled = true;
     /* v-img2pdf-heic (لقطة عمران ١ سبتمبر): صورة واحدة بصيغة لا يفكها
@@ -1347,7 +1348,7 @@ btnToggleHistory.onclick = () => {
         + '\n' + (isAr ? 'التفاصيل: ' : 'Details: ') + detParts.filter(Boolean).join(' | '));
     }
     btn.disabled = false;
-    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+    try{ input.value = ''; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1351'); /* guard-ok — cleanup */ }
   }
   // v-attach-picker-v3: تُعاد الوعدة للمراقب فلا يُمسح input.value قبل أن
   // تنتهي قراءة الصور فعلًا (فصل الملفّ عن مصدره يُفشل القراءة بصمت).
@@ -1367,8 +1368,8 @@ btnToggleHistory.onclick = () => {
      يقفل الأدراج ويرجع لأعلى المحادثة فقط. محادثة جديدة = زر + أو الرئيسية. */
   if(h1) h1.onclick = () => {
     try{ saveState(); }catch(_){ __swallow(_, "save:app-10-features#16"); }
-    try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(_){ /* guard-ok */ }
-    try{ window.scrollTo(0, 0); const m = document.getElementById('messages'); if(m) m.scrollTop = 0; }catch(_){ /* guard-ok */ }
+    try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1371'); /* guard-ok */ }
+    try{ window.scrollTo(0, 0); const m = document.getElementById('messages'); if(m) m.scrollTop = 0; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1372'); /* guard-ok */ }
   };
   /* v-om-brand (طلب عمران ٢٥ سبتمبر): شعار «OM Ai» بنجومه الثلاث واحد لكلّ اللغات
      ومكتوب في index.html بأبعاده (لا قفزة)، فلا تبديل صورة حسب اللغة — بدّل شعار
@@ -1385,52 +1386,6 @@ btnToggleHistory.onclick = () => {
 })();
 btnToggleProjects.onclick = () => { openDrawer(sidebarEl); closeHeaderMenu(); };
 
-// One-time onboarding hint for new/mobile users who don't know ☰ opens the
-// code + live-preview drawer: a pulsing glow + tooltip pointing at it, shown
-// only once (localStorage flag), dismissed on tap/close/timeout.
-(function initCodeHint(){
-  try{
-    return; // hint retired — code button now lives in the ⚙️ menu
-    if(localStorage.getItem('aiapp_seen_code_hint')) return;
-    if(window.innerWidth > 860) return; // mobile-only nudge
-    const tip = $('#codeHintTip');
-    const promptEl = $('#prompt');
-    if(!btnToggleHistory || !tip || !promptEl) return;
-    function position(){
-      const r = btnToggleHistory.getBoundingClientRect();
-      tip.style.top = (r.bottom + 10) + 'px';
-      const left = Math.max(8, Math.min(window.innerWidth - tip.offsetWidth - 8, r.left + r.width / 2 - tip.offsetWidth / 2));
-      tip.style.left = left + 'px';
-    }
-    function dismiss(){
-      try{ localStorage.setItem('aiapp_seen_code_hint', '1'); }catch(e){ __swallow(e, "save:app-10-features#17"); }
-      btnToggleHistory.classList.remove('code-hint-pulse');
-      tip.style.display = 'none';
-      window.removeEventListener('resize', position);
-    }
-    function show(){
-      btnToggleHistory.classList.add('code-hint-pulse');
-      tip.style.display = 'block';
-      position();
-      window.addEventListener('resize', position);
-      btnToggleHistory.addEventListener('click', dismiss, {once: true});
-      const closeBtn = $('#codeHintCloseBtn');
-      if(closeBtn) closeBtn.addEventListener('click', dismiss);
-      // dismiss automatically once the user sends the message, or after a timeout
-      promptEl.removeEventListener('keydown', onFirstKey);
-      setTimeout(dismiss, 9000);
-    }
-    function onFirstKey(){
-      promptEl.removeEventListener('input', onFirstKey);
-      promptEl.removeEventListener('keydown', onFirstKey);
-      show();
-    }
-    // Wait until the user actually starts typing their request before nudging
-    // them toward ☰ — this is the moment the tip is most relevant.
-    promptEl.addEventListener('input', onFirstKey, {once: true});
-    promptEl.addEventListener('keydown', onFirstKey, {once: true});
-  }catch(e){ console.error('codeHint init', e); }
-})();
 backdropEl.onclick = closeDrawers;
 // v-drawer-close + v-sb-collapse (طلب المالك): سهم القائمة الجانبيّة —
 // على الجوّال يسكر الدرج، وعلى سطح المكتب يطوي العمود (مثل طيّ لوحة العمل) مع مقبض إعادة فتح.
@@ -1698,6 +1653,7 @@ function openShareModal(project){
     const __shareSig = String(shareModalProject.title || '') + '|' + String(shareModalProject.code || '').length + '|' + __shareMsgs.length;
     const __shareOld = __shareKey ? __shareMade[__shareKey] : null;
     if(__shareOld && __shareOld.sig === __shareSig){
+      if(typeof window.omranShareSheet === 'function'){ const __ttl0 = String(shareModalProject.title || ''); closeModal(); window.omranShareSheet({ url: __shareOld.url, text: __ttl0 }); return; } // v-share-sheet: الرابط الموجود في النافذة الموحّدة (العنوان قبل الإغلاق — closeModal يصفّر المشروع)
       resultUrl.value = __shareOld.url;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
@@ -1725,6 +1681,8 @@ function openShareModal(project){
       if(!resp.ok || !data.id) throw new Error(data.error || 'error');
       const fullUrl = location.origin + '/p.html?id=' + data.id;
       if(__shareKey) __shareMade[__shareKey] = { sig: __shareSig, url: fullUrl };
+      /* v-share-sheet (المالك ٧ نوفمبر: نافذة يوتيوب في كلّ التطبيق): الرابط العامّ يُرسَل من النافذة الموحّدة (app-45) بدل صندوق النسخ وحده */
+      if(typeof window.omranShareSheet === 'function'){ const __ttl = String((shareModalProject && shareModalProject.title) || ''); closeModal(); window.omranShareSheet({ url: fullUrl, text: __ttl }); return; }
       resultUrl.value = fullUrl;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
@@ -1845,8 +1803,8 @@ function openShareModal(project){
       var closeBtn = document.getElementById(p[1]);
       if(!modal || !closeBtn || modal.__omranBC) return;
       modal.__omranBC = 1;
-      try{ modal.style.paddingTop = 'calc(20px + max(env(safe-area-inset-top, 0px), 30px))'; }catch(e){ /* guard-ok — cosmetic */ }
-      try{ closeBtn.style.minWidth = '44px'; closeBtn.style.minHeight = '40px'; closeBtn.style.fontSize = '16px'; }catch(e){ /* guard-ok — cosmetic */ }
+      try{ modal.style.paddingTop = 'calc(20px + max(env(safe-area-inset-top, 0px), 30px))'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:1806'); /* guard-ok — cosmetic */ }
+      try{ closeBtn.style.minWidth = '44px'; closeBtn.style.minHeight = '40px'; closeBtn.style.fontSize = '16px'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:1807'); /* guard-ok — cosmetic */ }
     });
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ arm(); setTimeout(arm, 1200); });

@@ -247,7 +247,7 @@ module.exports = async (req, res) => {
       /* v-img-engine-tag-owner (متابعة): مسار النصّ أراد GPT وفشل — يظهر السبب مع اسم المحرّك الفعليّ للمالك وحده (العميل يحرس عرضه). */
       if (__textRouteFailNote) engine = engine + '(gpt-text-failed:' + __textRouteFailNote + ')';
       if (__cardsNote) engine = engine + '(cards:' + __cardsNote + ')'; /* v-img-cards: لوحة بطاقات لم تكتمل — السبب للمالك */
-      if (__isOwnerReq) { try { await require('./prov-self.js').noteImage(userText || cleanPrompt); } catch (e) { /* guard-ok — فشل حفظ بناء الصورة في المخزن المشترك لا يمنع إرسالها */ } } // v-prov-one
+      if (__isOwnerReq) { try { await require('./prov-self.js').noteImage(userText || cleanPrompt); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/maha-image:250'); /* guard-ok — فشل حفظ بناء الصورة في المخزن المشترك لا يمنع إرسالها */ } } // v-prov-one
       await require('./image-hold.js').closeTicket(mahaImgCharged, mahaImgTicket); mahaImgTicket = undefined; const __holdOut = await require('./image-hold.js').holdFromRequest(body.hold, mahaImgCharged, mahaImgChargedAmount, mahaImgPay); /* v-maha-img-hold: مكالمة مها ترسل hold — الخصم يُحجز حتّى يؤكّد العميل حفظ الصورة (image-ack) وإلّا يُردّ تلقائيًّا؛ المحادثة بلا hold لا تتغيّر */
       /* v-img-report (المالك ٢٣ سبتمبر «الكلام بعد الصورة بالدقّة… لين أوصل للصورة»): التقرير يصل جاهزًا من deliver (حكم الرؤية
          على الناتج قبل التكبير)، للتعديل والتوليد، ومعه الحكم نفسه (done/partial/not_done) ليصدق العميل وأداة الوكيل. */
@@ -284,7 +284,7 @@ module.exports = async (req, res) => {
       if (!r.ok) {
         const __gb = (!mahaImgCharged && !guestImageCharge) || await require('./image-giveback.js').unchangedGiveback(guestImageCharge ? [guestImageCharge.counterKey, guestImageCharge.ipKey] : [require('./image-giveback.js').userMeterId(mahaImgCharged)]); /* v-unchanged-cap: الردّ بعد نداء مدفوع بسقف يوميّ (٢ لكلّ فاعل)؛ بعده يبقى الخصم برمز لا يدّعي «ما انحسبت»، وبلا إعادة تلقائيّة */
         if (__gb) await refundImageCharge();
-        try { await require('./log-error.js').logErrorAndFlush('maha-image:unchanged', new Error('image_unchanged'), { tried: r.tried, personSwap: isPersonSwap, charged: !__gb }); } catch (e) { /* التسجيل لا يعطّل الردّ */ }
+        try { await require('./log-error.js').logErrorAndFlush('maha-image:unchanged', new Error('image_unchanged'), { tried: r.tried, personSwap: isPersonSwap, charged: !__gb }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/maha-image:287'); /* التسجيل لا يعطّل الردّ */ }
         res.status(422).json({ error: __gb ? 'image_unchanged' : (editImageBase64 ? 'image_edit_no_change' : 'image_generation_failed'), retryable: false, __diag: process.env.IMG_DIAG === 'off' ? undefined : { tried: r.tried } });
         return;
       }
@@ -640,7 +640,7 @@ module.exports = async (req, res) => {
     if (__optForceEngine === 'gpt') {
       const __gptB64 = await openaiRescueImage();
       if (__gptB64) { await deliver({ b64: __gptB64, mime: 'image/png', engine: 'openai' }, null); return; } /* الخام خام: بلا محرّك آخر ولا رفض */
-      await refundImageCharge(); try { await require('./log-error.js').logErrorAndFlush('maha-image:gpt-forced-failed', new Error('image_generation_busy'), { openai: (lastRescueErr || 'no-rescue').replace(/sk-[A-Za-z0-9_*\-]{6,}/g, 'sk-…').slice(0, 200) }); } catch (e) { /* guard-ok — السجلّ لا يوقف الردّ */ } // v-owner-img-why: فشل GPT المفروض كان لا يُسجَّل — سببه في سجلّ الأخطاء كالمسار العاديّ
+      await refundImageCharge(); try { await require('./log-error.js').logErrorAndFlush('maha-image:gpt-forced-failed', new Error('image_generation_busy'), { openai: (lastRescueErr || 'no-rescue').replace(/sk-[A-Za-z0-9_*\-]{6,}/g, 'sk-…').slice(0, 200) }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/maha-image:643'); /* guard-ok — السجلّ لا يوقف الردّ */ } // v-owner-img-why: فشل GPT المفروض كان لا يُسجَّل — سببه في سجلّ الأخطاء كالمسار العاديّ
       res.status(502).json({ error: 'image_generation_busy', retryable: __busyOnly(), billed: __billRisk || undefined, __diag: process.env.IMG_DIAG === 'off' ? undefined : { forced: 'gpt', openai: (lastRescueErr || 'no-rescue').slice(0, 160) } });
       return;
     }
@@ -829,7 +829,7 @@ module.exports = async (req, res) => {
       if (nanoB64) {
         /* v-nano-pro-edit: فشل المحرّك الأساسي (برو غالبًا) ونجح نانو 2.5 — يُسجَّل في لوحة المالك بدل أن يختفي وراء نتيجة باهتة
            تشبه الشكوى الأصلية (مفتاح بلا برو، اسم موديل، 400 على الإعدادات…). */
-        try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' failed'), { model: primaryModel, status: upstream ? ('status=' + upstream.status) : 'no-response', creative: isCreativeEdit, detail: String((data && data.error && data.error.message) || '').slice(0, 160) }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' failed'), { model: primaryModel, status: upstream ? ('status=' + upstream.status) : 'no-response', creative: isCreativeEdit, detail: String((data && data.error && data.error.message) || '').slice(0, 160) }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/maha-image:832'); /* التسجيل لا يعطّل الرد */ }
         await deliver({ b64: nanoB64, mime: 'image/png', engine: 'gemini-nano-banana' }, __gptAlt); return;
       }
       const rescuedB64 = (__gptTried || __optForceEngine === 'nano') ? null : await openaiRescueImage(); /* الدمج جرّب GPT وفشل — لا نداء ثانٍ (مراجعة) · v-owner-solo-all: ولا GPT خفيّ لـGemini المختار */
@@ -840,7 +840,7 @@ module.exports = async (req, res) => {
       // مجانية بدل 502 كي لا يبقى المستخدم بلا نتيجة عند خلوّ الرصيد.
       const freeImg = __optForceEngine === 'nano' ? null : await freeFallbackImage();
       if (freeImg) {
-        try { await require('./log-error.js').logErrorAndFlush('maha-image:free-fallback', new Error('paid engines failed — used free'), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        try { await require('./log-error.js').logErrorAndFlush('maha-image:free-fallback', new Error('paid engines failed — used free'), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/maha-image:843'); /* التسجيل لا يعطّل الرد */ }
         await deliver({ b64: freeImg.b64, mime: freeImg.mime, engine: 'pollinations-free' }, null);
         return;
       }
@@ -850,7 +850,7 @@ module.exports = async (req, res) => {
       const errorCode = outage ? 'unavailable' : timedOut ? 'image_generation_timeout' : (busy ? 'image_generation_busy' : 'image_generation_failed'); // v-credit-out (أمر المالك ٢١ أكتوبر): نفاد الرصيد يأتي ٤٢٩ «credits are depleted» فكان «مشغولة، أعد المحاولة» — نصّه أو ٤٠١/٤٠٢/٤٠٣ = unavailable بـ503 بلا إعادة
       console.error('[maha-image] upstream image request failed after ' + imageResult.attempts + ' attempt(s)' + (upstream ? ' status=' + upstream.status : ''));
       // v-img-visible: يظهر السبب الحقيقي (رصيد/حصة/موديل) في لوحة المالك.
-      try { await require('./log-error.js').logErrorAndFlush('maha-image:both-failed', new Error(errorCode), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue', attempts: imageResult.attempts }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+      try { await require('./log-error.js').logErrorAndFlush('maha-image:both-failed', new Error(errorCode), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue', attempts: imageResult.attempts }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/maha-image:853'); /* التسجيل لا يعطّل الرد */ }
       // v-img-diag (تشخيص مؤقّت — يُزال بعد كشف السبب): يكشف الحالة الحقيقية للمزوّد
       // في ردّ الفشل نفسه (حالة برو + رسالة جوجل + سبب سقوط نانو/OpenAI + مهلة أم لا).
       const __diag = process.env.IMG_DIAG === 'off' ? undefined : {
@@ -871,7 +871,7 @@ module.exports = async (req, res) => {
     {
       const nanoB64b = await geminiNanoBananaImage();
       if (nanoB64b) {
-        try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' returned no image part'), { model: primaryModel, status: 'no-image-part', creative: isCreativeEdit }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' returned no image part'), { model: primaryModel, status: 'no-image-part', creative: isCreativeEdit }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/maha-image:874'); /* التسجيل لا يعطّل الرد */ }
         await deliver({ b64: nanoB64b, mime: 'image/png', engine: 'gemini-nano-banana' }, __gptAlt); return; }
       const rescuedB64b = (__gptTried || __optForceEngine === 'nano') ? null : await openaiRescueImage();
       if (rescuedB64b) { await deliver({ b64: rescuedB64b, mime: 'image/png', engine: 'openai' }, null); return; }
@@ -879,7 +879,7 @@ module.exports = async (req, res) => {
       if (freeImgB) { await deliver({ b64: freeImgB.b64, mime: freeImgB.mime, engine: 'pollinations-free' }, null); return; }
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
-      try { await require('./log-error.js').logErrorAndFlush('maha-image:no-image-part', new Error('gemini_no_image_part'), { nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+      try { await require('./log-error.js').logErrorAndFlush('maha-image:no-image-part', new Error('gemini_no_image_part'), { nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/maha-image:882'); /* التسجيل لا يعطّل الرد */ }
       /* v-img-diag-owner: هذا الفشل (نجح الاتصال، رجع بلا صورة — غالبًا حجب أمان أو
          finishReason) كان بلا __diag إطلاقًا خلافًا لفشل «كلا المزوّدين»، فيرى المالك
          نفس الرسالة العامّة سواء رُفض الطلب أمنيًّا أو انقطع المفتاح. */

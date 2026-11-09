@@ -94,20 +94,6 @@ module.exports = async (req, res) => {
     // natural native-sounding reply instead of the Arabic voice mangling
     // non-Arabic text. Falls back to Gulf Arabic when no language is known.
     if (voice === 'maha') {
-      // v-tts-free (المالك: «أفضل صوت يقرأ لي… بالمجان»): أفضل صوت عربيّ هنا هو فاطمة/حمدان نفسه، وهو
-      // مجّانيّ رسميًّا بباقة Azure المجّانيّة F0 (٥٠٠ ألف حرف شهريًّا، ٢٠ طلبًا في الدقيقة، ولا تُحاسِب أبدًا
-      // — تقف عند الحدّ). AZURE_SPEECH_KEY_FREE (مفتاح F0) يُجرَّب أوّلًا، ثمّ AZURE_SPEECH_KEY المدفوع إن وُجد
-      // بالصوت نفسه. المفتاح المجّانيّ وحده = مجّانيّ فقط: لا هبوط لـOpenAI المدفوع، والعميل يكمل بصوت الجهاز.
-      const azRegion = process.env.AZURE_SPEECH_REGION || 'uaenorth';
-      const azFreeKey = String(process.env.AZURE_SPEECH_KEY_FREE || '').trim();
-      const azPaidKey = String(process.env.AZURE_SPEECH_KEY || '').trim();
-      const azAccounts = [];
-      if (azFreeKey) azAccounts.push({ tier: 'free', key: azFreeKey, region: String(process.env.AZURE_SPEECH_REGION_FREE || '').trim() || azRegion });
-      if (azPaidKey) azAccounts.push({ tier: 'paid', key: azPaidKey, region: azRegion });
-      if (!azAccounts.length) {
-        res.status(500).json({ error: 'Server is missing AZURE_SPEECH_KEY' });
-        return;
-      }
       // Map detected/UI language code -> [xml:lang locale, femaleVoice, maleVoice]
       // Female voice (Maha persona) and male voice (Abdullah persona) both
       // use Microsoft's higher-quality multilingual neural voices, which
@@ -140,6 +126,44 @@ module.exports = async (req, res) => {
         urdu: 'ur', bengali: 'bn', bangla: 'bn', nepali: 'ne',
       };
       const langKey = langAliases[rawLang] || (MAHA_VOICE_MAP[rawLang] ? rawLang : rawLang.slice(0, 2));
+      // v-allah-tafkhim (المالك: «كلمة الله وليست الاه… تكون مضخمه»، وبعد العيّنة: «ابدأ لكلّ الكلام»): الكلام العربيّ كلّه
+      // بصوتَي مها وعبدالله من api/_lib/gemini-tts.js. يفخّم لفظ الجلالة في موضعه ويرقّقه بعد الكسر، وأصوات Azure الرجاليّة
+      // ترقّقه في كلّ موضع. «هلا والله» تبقى كما كُتبت فيه. أيّ تعثّر (حدّ اليوم، الرصيد، المهلة، السقف) = صوت Azure
+      // القديم تحت، كما كان حرفيًّا.
+      if (langKey === 'ar') {
+        let g = null;
+        try {
+          // سقف ٤٠٠٠ حرف كمسار Azure: لا يدفع طلب واحد ثمن نصّ ضخم
+          g = await require('./gemini-tts.js').speakMaha({ text: require('./speech-text.js').speechText(rawText, { wallah: true }).slice(0, 4000), gender, dialect, speed });
+        } catch (e) { g = null; /* guard-ok — عطل غير متوقّع في المسار الجديد = صوت Azure القديم */ }
+        if (g && g.wav) {
+          res.setHeader('Content-Type', 'audio/wav');
+          res.setHeader('Cache-Control', 'no-store');
+          res.setHeader('X-TTS-Tier', 'gemini'); // للمسبار: أيّ صوت خدم
+          res.status(200);
+          // الردّ المبثوث لا يسري عليه حدّ ٤٫٥ م.ب في Vercel (تعليق فيديو طويل بـWAV)؛ القصير كما كان دفعة واحدة
+          if (g.wav.length > 3.5 * 1024 * 1024 && typeof res.write === 'function') {
+            if (res.flushHeaders) res.flushHeaders();
+            for (let i = 0; i < g.wav.length; i += 512 * 1024) res.write(g.wav.subarray(i, i + 512 * 1024));
+            res.end();
+          } else res.send(g.wav);
+          return;
+        }
+      }
+      // v-tts-free (المالك: «أفضل صوت يقرأ لي… بالمجان»): أفضل صوت عربيّ هنا هو فاطمة/حمدان نفسه، وهو
+      // مجّانيّ رسميًّا بباقة Azure المجّانيّة F0 (٥٠٠ ألف حرف شهريًّا، ٢٠ طلبًا في الدقيقة، ولا تُحاسِب أبدًا
+      // — تقف عند الحدّ). AZURE_SPEECH_KEY_FREE (مفتاح F0) يُجرَّب أوّلًا، ثمّ AZURE_SPEECH_KEY المدفوع إن وُجد
+      // بالصوت نفسه. المفتاح المجّانيّ وحده = مجّانيّ فقط: لا هبوط لـOpenAI المدفوع، والعميل يكمل بصوت الجهاز.
+      const azRegion = process.env.AZURE_SPEECH_REGION || 'uaenorth';
+      const azFreeKey = String(process.env.AZURE_SPEECH_KEY_FREE || '').trim();
+      const azPaidKey = String(process.env.AZURE_SPEECH_KEY || '').trim();
+      const azAccounts = [];
+      if (azFreeKey) azAccounts.push({ tier: 'free', key: azFreeKey, region: String(process.env.AZURE_SPEECH_REGION_FREE || '').trim() || azRegion });
+      if (azPaidKey) azAccounts.push({ tier: 'paid', key: azPaidKey, region: azRegion });
+      if (!azAccounts.length) {
+        res.status(500).json({ error: 'Server is missing AZURE_SPEECH_KEY' });
+        return;
+      }
       // v-reply-dialect: النصّ العربيّ بلهجة يختارها المستخدم في «الصوت» (العميل يرسلها لـ«استمع» وتجربة الصوت) — أصوات
       // Azure الأصيلة لكلّ بلد، رجل وامرأة، بالمفتاح والحساب نفسيهما. غير معروفة أو غائبة = الإماراتيّ كما كان.
       const AR_DIALECT_VOICES = {
@@ -210,7 +234,7 @@ module.exports = async (req, res) => {
             res.status(200).send(Buffer.from(fbBuffer));
             return;
           }
-        } catch (e) { /* fall through to error below */ }
+        } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tts:237'); /* fall through to error below */ }
       }
       const errText = azResp ? await azResp.text() : 'network';
       res.status(azResp ? azResp.status : 502).json({ error: 'Azure TTS error: ' + errText.slice(0, 500) });
