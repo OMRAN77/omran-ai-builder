@@ -295,7 +295,9 @@ const INSTR = {
  "palette": "Recolor the outfit and accessories in {s} that flatters the person's skin tone. Keep the same person, face, pose and background. Output a single photorealistic image.",
  "seasons": "Change the outfit and styling to {s}. Keep the same person, face and pose; the identity must stay clearly recognizable. Output a single photorealistic image.",
  "iconic": "Restyle the outfit, hair and setting into {s} while keeping the same person and face clearly recognizable. Output a single photorealistic image.",
- "age": "Change the apparent age of the person to {s} while keeping the same identity, features and expression. Output a single photorealistic image."
+ /* v-studio-age (لقطة المالك ٩ نوفمبر: «مافي تغير الشكل في الاعمار»): «keeping the same identity, features» مع قفل يمنع تغيير الجلد = لا عمر.
+    صياغة ageshift المجرَّبة في أنماط الصور: العمر هو الوجه والجلد والشعر، والشخص نفسه يبقى معروفًا. */
+ "age": "Realistically change the apparent age of the person so they look like {s}: naturally adjust the facial structure and fullness, skin texture, wrinkles, hair colour and hair density to fit that age, while keeping it clearly the same recognizable person. The age change must be obvious at first glance. Keep the pose, framing, clothing, lighting and background unchanged. Output a single photorealistic image."
 };
 const FEATURE_INSTRUCTIONS = {};
 Object.keys(INSTR).forEach((k) => { FEATURE_INSTRUCTIONS[k] = (style) => INSTR[k].replace('{s}', style); });

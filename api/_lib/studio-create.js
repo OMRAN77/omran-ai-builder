@@ -53,7 +53,7 @@ async function rescueGuarded(promptText, images, apiKey, feature, verdictOf) {
   try {
     const g = await judge(first, 'image/png');
     if (passed(g)) return first;
-    const second = await openaiStudioEdit(promptText + (g.reason === 'no_change' ? NO_CHANGE_RETRY : STRONGER_LOCK), images);
+    const second = await openaiStudioEdit(promptText + (g.reason === 'no_change' ? NO_CHANGE_RETRY : strongerLockFor(feature)), images);
     if (!second) return { rejected: g };
     const g2 = await judge(second, 'image/png');
     return passed(g2) ? second : { rejected: g2 };
@@ -98,6 +98,17 @@ const EDIT_LOCK = (what) =>
 /* v-edit-no-change: الناتج جاء مطابقًا للأصل — المحاولة الثانية تطلب التنفيذ صراحةً */
 const NO_CHANGE_RETRY = '\nSECOND ATTEMPT — the previous result came back identical to the source photo: the requested change was not applied at all. You MUST visibly apply it this time, clearly and unmistakably, while still keeping the same person, pose, framing and background.';
 const STRONGER_LOCK = '\nSECOND ATTEMPT — the previous result changed the person. Preserve the reference photo exactly; apply the single requested change as a thin overlay on the original pixels only.';
+/* v-studio-age (لقطة المالك ٩ نوفمبر: «مافي تغير الشكل في الاعمار» — النتيجة نسخة الأصل): EDIT_LOCK يقول بأعلى أولويّة
+   «Keep the exact same person and face (identity, features, skin…) pixel-for-pixel… Do not regenerate anything else»، والعمر هو الوجه والجلد
+   والشعر نفسها — فيطيع الموديل القفل ولا يغيّر شيئًا. وSTRONGER_LOCK («طبقة رقيقة فوق البكسل الأصليّ») يمحو العمر في المحاولة الثانية.
+   للعمر قفله: ملامح الشخص (هويّته) تبقى، والوجه والجلد والشعر هي التعديل. */
+const AGE_LOCK =
+  '\nAGE EDIT LOCK (highest priority): the face, skin and hair ARE the edit — age or de-age them clearly and believably (skin texture, wrinkles or smoothness, facial fullness and structure, hair colour and density). ' +
+  'Keep this exact person recognizable as themselves at that age: the same eye shape and colour, eyebrows, nose, lips, skin tone and overall face proportions, ' +
+  'and the same head position, gaze direction, body pose, hands, clothing, camera angle, framing, crop, lighting and background. ' +
+  'If the person wears a head covering, keep it exactly as it is. Change nothing else, and never return the photo unchanged.';
+const AGE_RETRY = '\nSECOND ATTEMPT — the previous result did not look like the same person. Keep their own eye shape, eyebrows, nose, lips, skin tone and face proportions so they are instantly recognizable, and still show the requested age clearly — do not undo the age change.';
+function strongerLockFor(feature) { return feature === 'age' ? AGE_RETRY : STRONGER_LOCK; }
 const LOCK_WHAT = {
   hair: 'the hair', nails: 'the fingernails', makeup: 'the facial makeup', beard: 'the facial hair', skin: 'the skin finish',
   glasses: 'the glasses', tattoo: 'the tattoo', anime: 'the art style', heritage: 'the clothing/outfit',
@@ -180,7 +191,7 @@ function buildSinglePrompt(feature, style, description, multiAngle, variant) {
   const buildFn = FEATURE_INSTRUCTIONS[feature];
   if (!buildFn) return null;
   let promptText = buildFn(styleDesc);
-  if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule() + EDIT_LOCK(lockWhatOf(feature, baseDesc));
+  if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule() + (feature === 'age' ? AGE_LOCK : EDIT_LOCK(lockWhatOf(feature, baseDesc)));
   if (multiAngle && COLLAGE_FEATURES.indexOf(feature) !== -1) {
     promptText += ' ' + COLLAGE_CLAUSE;
   }
@@ -260,7 +271,7 @@ async function runEdit(o) {
      أشدّ وحرارة ٠٫١٥ قبل الإبلاغ — الفشل يبقى فشلًا إن تكرّر (٤٢٢ ← keepGuardCharge في المعالج). */
   const retryOrReject = async (guard) => {
     console.warn('[studio-create] guard rejected ' + o.feature + ' (' + guard.reason + ') — second attempt with a stronger lock');
-    const retryNote = guard.reason === 'no_change' ? NO_CHANGE_RETRY : STRONGER_LOCK;
+    const retryNote = guard.reason === 'no_change' ? NO_CHANGE_RETRY : strongerLockFor(o.feature);
     const retryParts = [{ text: o.promptText + retryNote }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
     const again = await geminiImage(o.apiKey, retryParts, o.feature, null, 0.15);
     if (again.b64 && await guardOf(again.b64, again.mime)) return finish(again.b64, again.mime, 'gemini+retry');
@@ -727,7 +738,9 @@ module.exports = async (req, res) => {
     const SUBTLE = ['skin'];
     const collage = !!(multiAngle && COLLAGE_FEATURES.indexOf(feature) !== -1);
     /* v-guard-cap: المجمّع قبل الوصف — الحارس يقصّ الطلب عند ٨٠٠ حرف، والوصف نصّ حرّ من المستخدم */
-    if (feature !== 'merge') guardOpts = { userPrompt: [feature, style, collage ? COLLAGE_CLAUSE : '', description].filter(Boolean).join(' '), allowStyleChange: feature === 'anime', requireChange: SUBTLE.indexOf(feature) === -1 };
+    /* v-studio-age: «age elder» وحدها لا تخبر الحارس أنّ الوجه نفسه هو المطلوب تغييره — العمر المطلوب بكلماته */
+    const guardAsk = feature === 'age' ? ['change the apparent age of the same person to ' + styleTextOf(feature, style)] : [feature, style];
+    if (feature !== 'merge') guardOpts = { userPrompt: guardAsk.concat([collage ? COLLAGE_CLAUSE : '', description]).filter(Boolean).join(' '), allowStyleChange: feature === 'anime', requireChange: SUBTLE.indexOf(feature) === -1 };
     try {
       const r = await runEdit({
         apiKey, openaiKey, feature, promptText, imageBase64, mimeType,
