@@ -413,7 +413,7 @@
     if(peek){ sceneTurns[key] = sceneTurn; return sc; }
     sceneTurn = (sceneTurn + 1) % list.length;
     sceneTurns[key] = sceneTurn;
-    try{ localStorage.setItem(key, String(sceneTurn)); }catch(e){ /* guard-ok — بلا تخزين يبدأ الدور من الأوّل في كلّ فتح */ }
+    try{ localStorage.setItem(key, String(sceneTurn)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:416'); /* guard-ok — بلا تخزين يبدأ الدور من الأوّل في كلّ فتح */ }
     return sc;
   }
   function pc(v, total){ return (Math.round(v / total * 100000) / 1000) + '%'; }
@@ -558,7 +558,7 @@
   function isAr(){ try{ return (typeof lang !== 'undefined' ? lang : 'ar') === 'ar'; }catch(e){ return true; } }
   /* v-audit-chatcli: نصّ بلغة الواجهة من t() بمفتاحه، وإلّا احتياطه العربيّ للعربيّ والإنجليزيّ لغيره كما كان */
   function genwTx(k, ar, en){
-    try{ if(k && typeof t === 'function'){ var v = t(k); if(typeof v === 'string' && v && v !== k) return v; } }catch(e){ /* guard-ok — بلا قاموس يبقى الاحتياط */ }
+    try{ if(k && typeof t === 'function'){ var v = t(k); if(typeof v === 'string' && v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:561'); /* guard-ok — بلا قاموس يبقى الاحتياط */ }
     return isAr() ? ar : en;
   }
   function genwOne(o){ return genwTx(o.k, o.ar, o.en); }
@@ -616,7 +616,7 @@
         if(sc.bg) root.querySelector('.genw-canvas').style.backgroundColor = sc.bg; /* v-style-scene: لون المشهد ريثما تُحمَّل صورته */
         var flows = root.querySelectorAll('.genw-tube b');
         for(var fi = 0; fi < flows.length && fi < FLOW_TILES.length; fi++) flows[fi].style.backgroundImage = flowTile(FLOW_TILES[fi][0], FLOW_TILES[fi][1], FLOW_TILES[fi][2], sc.flow);
-      }catch(e){ /* guard-ok — بلا خلفيّة أو جريان يبقى لون المشهد الداكن والعدّاد يعمل */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:619'); /* guard-ok — بلا خلفيّة أو جريان يبقى لون المشهد الداكن والعدّاد يعمل */ }
     }
     /* الرقم والقوس والشريط والنصّ (وانعكاسه) — أرقام لاتينيّة كما في تصميم المالك، بعرض حروف الأصل */
     var sceneArc = (sc && sc.ring) ? arcLen(sc) : 0;
@@ -752,7 +752,7 @@
     return false;
   }
   function stripEmoji(txt){
-    try{ if(typeof window.__noEmoji === 'function') return String(window.__noEmoji(txt)); }catch(e){ /* guard-ok — بلا منظِّف يبقى النصّ بإيموجيه والبادئة تطابق */ }
+    try{ if(typeof window.__noEmoji === 'function') return String(window.__noEmoji(txt)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:755'); /* guard-ok — بلا منظِّف يبقى النصّ بإيموجيه والبادئة تطابق */ }
     return String(txt);
   }
   function noteBusy(p, txt){ rawBusy[p.id] = txt; cleanBusy[p.id] = stripEmoji(txt); }
@@ -798,12 +798,12 @@
         var cnode = render({ t0: t0ByPanel['chatvideo'], kind: 'video' });
         cnode.setAttribute('data-genw-panel', 'chatvideo');
         chost.appendChild(cnode);
-      }catch(e){ try{ __swallow(e, 'gen-wait:chatvideo'); }catch(_){ /* العرض تجميليّ */ } }
+      }catch(e){ try{ __swallow(e, 'gen-wait:chatvideo'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:801'); /* العرض تجميليّ */ } }
     }
     if(!cvFound){
       var cvStale = document.querySelectorAll('.genw[data-genw-panel="chatvideo"]');
       for(var csi = 0; csi < cvStale.length; csi++){
-        try{ cvStale[csi].parentNode.removeChild(cvStale[csi]); }catch(e){ try{ __swallow(e, 'gen-wait:cvdone'); }catch(_){ /* تجميليّ */ } }
+        try{ cvStale[csi].parentNode.removeChild(cvStale[csi]); }catch(e){ try{ __swallow(e, 'gen-wait:cvdone'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:806'); /* تجميليّ */ } }
       }
       delete t0ByPanel['chatvideo'];
     }
@@ -832,11 +832,11 @@
           /* v-gen-steady: الإخفاء قبل التمرير — وإلّا حُسب موضع البطاقة تحت نتيجة ستختفي فيتجاوزها التمرير */
           applyHide(p, scopeEl);
           /* فوق = خارج مجال النظر (المستخدم عند زرّ «صمم» أسفل النموذج) — نصعد إليها */
-          if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
-          else if(p.scroll){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
-        }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ /* العرض تجميليّ */ } }
+          if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:835'); /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
+          else if(p.scroll){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:836'); /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
+        }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:837'); /* العرض تجميليّ */ } }
       } else if(!busy && card){
-        try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ /* العرض تجميليّ */ } }
+        try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:839'); /* العرض تجميليّ */ } }
         delete t0ByPanel[p.id];
       }
       applyHide(p, scopeEl);
@@ -855,7 +855,7 @@
         if(topCard && !hideEl.hasAttribute('data-genw-hide')) hideEl.setAttribute('data-genw-hide', '1');
         else if(!topCard && hideEl.hasAttribute('data-genw-hide')) hideEl.removeAttribute('data-genw-hide');
       }
-    }catch(e){ try{ __swallow(e, 'gen-wait:hide'); }catch(_){ /* العرض تجميليّ */ } }
+    }catch(e){ try{ __swallow(e, 'gen-wait:hide'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:858'); /* العرض تجميليّ */ } }
   }
 
   /* v-gen-scene-exact: أين تُركَّب بطاقة اللوحة — { parent, before, top }. اللوحة التي لها topSel وبدأ نصّ حالتها بإحدى
@@ -881,7 +881,7 @@
   if(typeof MutationObserver !== 'undefined' && document.documentElement){
     try{
       new MutationObserver(function(){ sample(); schedule(); }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
-    }catch(e){ try{ __swallow(e, 'gen-wait:observe'); }catch(_){ /* بلا رصد = بلا بطاقة فقط */ } }
+    }catch(e){ try{ __swallow(e, 'gen-wait:observe'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:884'); /* بلا رصد = بلا بطاقة فقط */ } }
   }
   schedule();
 
@@ -890,18 +890,18 @@
   function preloadScenes(){
     if(scenePreloaded) return;
     scenePreloaded = true;
-    for(var k = 0; k < SCENES.length; k++){ try{ (new Image()).src = SCENES[k].src; }catch(e){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+    for(var k = 0; k < SCENES.length; k++){ try{ (new Image()).src = SCENES[k].src; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:893'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
   }
   if(document.addEventListener){
     document.addEventListener('click', function(e){
       var tg = e && e.target;
       if(tg && tg.closest && tg.closest('#btnFashionAI')) preloadScenes();
       /* v-style-scene: خمسة مشاهد — يُحمَّل القادم وحده عند فتح الاستوديو وعند كلّ «ولّد» (لا الخمسة) */
-      if(tg && tg.closest && tg.closest('#btnStudioAI, #studioAiGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.studio, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
-      if(tg && tg.closest && tg.closest('#btnPortraitStyle, #portraitStyleGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.styles, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      if(tg && tg.closest && tg.closest('#btnStudioAI, #studioAiGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.studio, true).src; }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-34-gen-wait:900'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      if(tg && tg.closest && tg.closest('#btnPortraitStyle, #portraitStyleGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.styles, true).src; }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-34-gen-wait:901'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
       /* v-scene-kinds: القادم وحده لكلّ مجموعة — عند فتح الأداة وعند زرّ التوليد */
       var pre = !tg || !tg.closest ? null : (tg.closest('#btnVideoMaker, #videoMakerGenerateBtn') ? KINDS.vmaker : (tg.closest('#vtGrid, #vtGo') ? KINDS.vtrend : (tg.closest('#btnDesignAI, #designAiGenerateBtn, #designAiIdeaAI') ? KINDS.decor : null)));
-      if(pre && pre.scenes && pre.scenes.length){ try{ (new Image()).src = nextScene(pre, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      if(pre && pre.scenes && pre.scenes.length){ try{ (new Image()).src = nextScene(pre, true).src; }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-34-gen-wait:904'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
     }, true);
   }
 

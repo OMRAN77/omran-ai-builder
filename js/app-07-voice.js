@@ -276,7 +276,7 @@ async function voiceTabSpeak(text){
       });
       URL.revokeObjectURL(url);
     }
-  } catch(e){ /* silent - voice feedback is a nice-to-have, never block the UI */ }
+  } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-07-voice:279'); /* silent - voice feedback is a nice-to-have, never block the UI */ }
   if(btn) btn.classList.remove('voice-speaking');
 }
 

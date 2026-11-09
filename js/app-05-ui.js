@@ -98,7 +98,7 @@ function omranMobileUA(){
   try{
     if(/Android|HarmonyOS|HUAWEI|HONOR|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent)) return true;
     if(navigator.maxTouchPoints > 1 && /Mac|Linux/i.test(navigator.platform || '')) return true;
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:101'); /* guard-ok */ }
   return false;
 }
 /* v-ready-sheet (طلب المالك): مكوّن واحد لصندوق «الملف جاهز» يناديه مساراه (omranPdfReadySheet
@@ -111,7 +111,7 @@ function omranMobileUA(){
            size (بايت، اختياريّ)، thumbUrl (مصغّرة صورة، اختياريّ) } */
 function rsT(key, ar, en){
   let v = null;
-  try{ if(typeof t === 'function'){ const tv = t(key); if(tv && tv !== key) v = tv; } }catch(e){ /* guard-ok */ }
+  try{ if(typeof t === 'function'){ const tv = t(key); if(tv && tv !== key) v = tv; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:114'); /* guard-ok */ }
   if(v == null){ const isA = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur'); v = isA ? ar : en; }
   /* v-ready-sheet: ننزع أيّ إيموجي/رمز في صدر النصّ (المفاتيح القديمة تحمله) — الأيقونة SVG تحلّ محلّه، فلا إيموجي في الصندوق */
   try{ return String(v).replace(/^[^\p{L}\p{N}]+/u, '').trim() || String(v); }catch(e){ return String(v); }
@@ -146,13 +146,13 @@ function omranReadySheet(opts){
     if(desktop){
       const bg = document.createElement('div'); bg.id = 'omranReadyBg';
       bg.style.cssText = 'position:fixed;inset:0;z-index:2147482999;background:rgba(0,0,0,.55);';
-      bg.onclick = function(){ try{ wrap.remove(); bg.remove(); }catch(e){ /* guard-ok */ } };
+      bg.onclick = function(){ try{ wrap.remove(); bg.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:149'); /* guard-ok */ } };
       document.body.appendChild(bg);
       wrap.style.cssText = 'position:fixed;z-index:2147483000;top:50%;left:50%;transform:translate(-50%,-50%);width:min(420px,92vw);' + cardBg + 'border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.6);direction:' + (isArT ? 'rtl' : 'ltr') + ';font-family:inherit;color:#f3efe4;';
     } else {
       wrap.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;' + cardBg + 'border-left:none;border-right:none;border-bottom:none;border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.6);direction:' + (isArT ? 'rtl' : 'ltr') + ';font-family:inherit;color:#f3efe4;';
     }
-    const closeAll = function(){ try{ wrap.remove(); const b = document.getElementById('omranReadyBg'); if(b) b.remove(); }catch(e){ /* guard-ok */ } };
+    const closeAll = function(){ try{ wrap.remove(); const b = document.getElementById('omranReadyBg'); if(b) b.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:155'); /* guard-ok */ } };
     // الرأس: مصغّرة + عنوان + حجم، وزرّ إغلاق
     const head = document.createElement('div');
     head.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:14px;';
@@ -164,7 +164,7 @@ function omranReadySheet(opts){
       thumb.appendChild(im);
     } else {
       const ic = document.createElement('span'); ic.innerHTML = rsIcon(kind === 'video' ? 'video' : (kind === 'image' ? 'image' : 'file'));
-      try{ ic.firstChild.setAttribute('width', '26'); ic.firstChild.setAttribute('height', '26'); }catch(e){ /* guard-ok */ }
+      try{ ic.firstChild.setAttribute('width', '26'); ic.firstChild.setAttribute('height', '26'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:167'); /* guard-ok */ }
       thumb.appendChild(ic);
     }
     const meta = document.createElement('div'); meta.style.cssText = 'flex:1;min-width:0;';
@@ -185,7 +185,7 @@ function omranReadySheet(opts){
     const outCss = 'display:flex;align-items:center;justify-content:center;gap:7px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.22);';
     const labelSpan = function(txt){ const s = document.createElement('span'); s.textContent = txt; return s; };
     const addIcon = function(el, name){ const i = document.createElement('span'); i.style.cssText = 'display:inline-flex'; i.innerHTML = rsIcon(name); el.appendChild(i); };
-    const status = function(txt){ try{ ttl.textContent = txt; }catch(e){ /* guard-ok */ } };
+    const status = function(txt){ try{ ttl.textContent = txt; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:188'); /* guard-ok */ } };
     const buttons = [];
     const sheetBtn = function(){ /* v-share-sheet */
       const sb = document.createElement('button'); sb.type = 'button'; sb.style.cssText = outCss;
@@ -274,7 +274,7 @@ function omranReadySheet(opts){
     buttons.forEach(function(b){ row.appendChild(b); });
     wrap.appendChild(head); wrap.appendChild(row);
     document.body.appendChild(wrap);
-    setTimeout(function(){ try{ closeAll(); }catch(e){ /* guard-ok */ } }, 120000);
+    setTimeout(function(){ try{ closeAll(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:277'); /* guard-ok */ } }, 120000);
     return true;
   }catch(e){ __swallow(e, 'ready:sheet'); return false; }
 }
@@ -322,7 +322,7 @@ async function omranSaveBlob(blob, filename){
           const dfr0 = document.createElement('iframe');
           dfr0.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
           dfr0.src = url; document.body.appendChild(dfr0);
-          setTimeout(() => { try{ dfr0.remove(); }catch(e){ /* guard-ok */ } }, 60000);
+          setTimeout(() => { try{ dfr0.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:325'); /* guard-ok */ } }, 60000);
         }catch(e){ __swallow(e, 'pdf:auto-frame'); }
         return;
       }
@@ -452,7 +452,7 @@ async function omranNormalizeImageFile(file){
   }catch(e){
     /* v-heic-diag: آخر سبب فشل يُحفظ ليُعرض في رسالة الخطأ نفسها —
        سكرينشوت المستخدم يصير هو التشخيص. */
-    try{ window.__omranHeicErr = String((e && e.message) || e).slice(0, 160); }catch(e3){ /* guard-ok */ }
+    try{ window.__omranHeicErr = String((e && e.message) || e).slice(0, 160); }catch(e3){ typeof __swallow === 'function' && __swallow(e3, 'app-05-ui:455'); /* guard-ok */ }
     /* v-heic-report: فشل التحويل نفسه يجب أن يصل لوحة المالك — بدونه نعمى
        عن نكهات HEIC التي لا تفكها المكتبة. */
     try{
@@ -522,12 +522,12 @@ async function omranExportHtmlAsPdfFile(bodyHtml, opts){
   } catch(err){
     try{
       const errPill = pill; pill = null; /* يبقى ظاهرًا ٦ ثوانٍ — finally لا يزيله */
-      if(errPill){ errPill.textContent = (isArP ? '❌ تعذّر إنشاء PDF: ' : '❌ PDF failed: ') + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ /* guard-ok */ } }, 6000); }
-    }catch(e){ /* guard-ok */ }
+      if(errPill){ errPill.textContent = (isArP ? '❌ تعذّر إنشاء PDF: ' : '❌ PDF failed: ') + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:525'); /* guard-ok */ } }, 6000); }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:526'); /* guard-ok */ }
     throw err;
   } finally {
     holder.remove();
-    try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
+    try{ if(pill) pill.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:530'); /* guard-ok */ }
   }
 }
 /* v-pdf-docs (شكوى عمران: «مااقدر احمل الملفات لتحويل PDF — فقط صورة»): زرّ «PDF» كان يقبل الصور
@@ -625,12 +625,12 @@ async function omranExportPagedPdfFile(blocks, opts){
   } catch(err){
     try{
       const errPill = pill; pill = null; /* يبقى ظاهرًا ٦ ثوانٍ — finally لا يزيله */
-      if(errPill){ errPill.textContent = '❌ ' + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ /* guard-ok */ } }, 6000); }
-    }catch(e){ /* guard-ok */ }
+      if(errPill){ errPill.textContent = '❌ ' + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:628'); /* guard-ok */ } }, 6000); }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:629'); /* guard-ok */ }
     throw err;
   } finally {
-    try{ measure.remove(); }catch(e){ /* guard-ok */ }
-    try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
+    try{ measure.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:632'); /* guard-ok */ }
+    try{ if(pill) pill.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:633'); /* guard-ok */ }
   }
 }
 function msgPdfFontSpec(){
@@ -1147,7 +1147,7 @@ function omranCodeBarLabel(which){
   var key = 'codeBar' + which.charAt(0).toUpperCase() + which.slice(1);
   try{
     if(typeof t === 'function'){ var v = t(key); if(v && v !== key) return v; }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1150'); /* guard-ok */ }
   var tb = OMRAN_CODEBAR_I18N[which] || {};
   var L = (typeof lang !== 'undefined' && lang) ? String(lang).slice(0, 3) : 'ar';
   return tb[L] || tb[L.slice(0, 2)] || tb.en;
@@ -1204,7 +1204,7 @@ function omranFindTabsMenu(tabs, skip){
       if((el.textContent || '').trim().length > 1) continue;
       if(el.tagName === 'BUTTON' || el.querySelector('button, svg')) return el;
     }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1207'); /* guard-ok */ }
   return null;
 }
 function omranPlaceTabsMenu(){
@@ -1214,7 +1214,7 @@ function omranPlaceTabsMenu(){
     if(!tabs || !bar || bar.parentNode !== tabs) return;
     var dots = omranFindTabsMenu(tabs, bar);
     if(dots && dots !== tabs.lastElementChild) tabs.appendChild(dots);
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1217'); /* guard-ok */ }
 }
 function omranCodeViewerEsc(ev){ if(ev.key === 'Escape') omranCloseCodeViewer(); }
 /* v-viewer-title: «كود ملصوق · NN KB» كان يزاحم الشريط في #tabs. نخفي عنصر
@@ -1226,17 +1226,17 @@ function omranPanelTitleSuppress(hide){
     var cb = document.getElementById('waCopyBtn');
     if(el) el.style.visibility = hide ? 'hidden' : '';
     if(cb) cb.style.display = hide ? 'none' : (window.__omranPanelText ? 'flex' : 'none');
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1229'); /* guard-ok */ }
 }
 function omranCloseCodeViewer(){
-  try{ var o = document.getElementById('omranCodeViewer'); if(o) o.remove(); }catch(e){ /* guard-ok */ }
-  try{ document.removeEventListener('keydown', omranCodeViewerEsc); }catch(e){ /* guard-ok */ }
+  try{ var o = document.getElementById('omranCodeViewer'); if(o) o.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1232'); /* guard-ok */ }
+  try{ document.removeEventListener('keydown', omranCodeViewerEsc); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1233'); /* guard-ok */ }
   omranPanelTitleSuppress(false);
   try{
     var b = document.getElementById('omranCodeViewerBar');
     if(b && b._resetEdit) b._resetEdit();
-  }catch(e){ /* guard-ok */ }
-  try{ if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview(); }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1238'); /* guard-ok */ }
+  try{ if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1239'); /* guard-ok */ }
 }
 /* v-viewer-bar: الشريط دائم في #tabs، لا يظهر مع العارض ويختفي بعده.
    حين يكون العارض مفتوحًا تعمل الأزرار عليه؛ وحين يكون مغلقًا تعمل على خانة
@@ -1296,7 +1296,7 @@ function omranBuildCodeViewerBar(){
         pairs[i][0].title = lbl;
         pairs[i][0].setAttribute('aria-label', lbl);
       }
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1299'); /* guard-ok */ }
   };
   window.omranCodeBarRetitle = bar._retitle;
   if(tabs) omranPlaceTabsMenu();
@@ -1314,7 +1314,7 @@ function omranBuildCodeViewerBar(){
       if(typeof codeEl === 'undefined' || !codeEl) return;
       codeEl.style.outline = on ? '2px solid var(--accent,#c9a26a)' : '';
       codeEl.style.outlineOffset = on ? '-2px' : '';
-    }catch(e){ /* guard-ok — علامة بصريّة فقط */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1317'); /* guard-ok — علامة بصريّة فقط */ }
   };
   bar._resetEdit = function(){ setOn(edt, false); editRing(false); };
 
@@ -1343,8 +1343,8 @@ function omranBuildCodeViewerBar(){
     var p = document.getElementById('omranCodePre');
     if(!p){
       /* لا عارض: التحرير يجري في خانة الكود نفسها. */
-      try{ if(typeof switchWorkTab === 'function') switchWorkTab('code'); }catch(e){ /* guard-ok */ }
-      try{ codeEl.readOnly = false; codeEl.focus(); }catch(e){ /* guard-ok */ }
+      try{ if(typeof switchWorkTab === 'function') switchWorkTab('code'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1346'); /* guard-ok */ }
+      try{ codeEl.readOnly = false; codeEl.focus(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1347'); /* guard-ok */ }
       setOn(edt, true);
       editRing(true); // v-code-save
       return;
@@ -1368,7 +1368,7 @@ function omranBuildCodeViewerBar(){
           var n = p.innerText.split('\n').length, out = [];
           for(var i = 1; i <= n; i++) out.push(i);
           g.textContent = out.join('\n');
-        }catch(e){ /* guard-ok */ }
+        }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1371'); /* guard-ok */ }
       }, 180);
     };
   };
@@ -1383,7 +1383,7 @@ function omranBuildCodeViewerBar(){
       var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
       if(cur){ cur.code = txt; }
       if(typeof saveState === 'function') saveState();
-      try{ if(typeof settingsToast === 'function') settingsToast(t('acctSaved')); }catch(e){ /* guard-ok — التأكيد ترف */ }
+      try{ if(typeof settingsToast === 'function') settingsToast(t('acctSaved')); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1386'); /* guard-ok — التأكيد ترف */ }
       setOn(sav, true);
       setTimeout(function(){ setOn(sav, false); }, 900);
       if(p){ omranCloseCodeViewer(); return; }
@@ -1402,7 +1402,7 @@ window.omranOpenTextInCodePanel = function(text, title){
   try{
     if(typeof codeEl === 'undefined' || !codeEl || !codeEl.parentNode) return;
     var host = codeEl.parentNode;
-    try{ if(getComputedStyle(host).position === 'static') host.style.position = 'relative'; }catch(e){ /* guard-ok */ }
+    try{ if(getComputedStyle(host).position === 'static') host.style.position = 'relative'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1405'); /* guard-ok */ }
     var ov = document.getElementById('omranCodeViewer');
     if(!ov){
       ov = document.createElement('div');
@@ -1433,13 +1433,13 @@ window.omranOpenTextInCodePanel = function(text, title){
     ov.querySelector('#omranCodeGutter').textContent = nums.join('\n');
     ov.querySelector('#omranCodePre').innerHTML = omranCodeHighlight(body);
     ov.querySelector('#omranCodePre').contentEditable = 'false';
-    try{ ov.dataset.pid = (typeof state !== 'undefined' && state.currentId) || ''; }catch(e){ /* guard-ok */ }
+    try{ ov.dataset.pid = (typeof state !== 'undefined' && state.currentId) || ''; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1436'); /* guard-ok */ }
     ov.scrollTop = 0;
     if(typeof switchWorkTab === 'function') switchWorkTab('code');
     if(typeof window.waAutoExpand === 'function') window.waAutoExpand();
     if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
-      try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ /* guard-ok */ }
-      try{ workareaEl.classList.add('open'); backdropEl.classList.add('show'); }catch(e){ /* guard-ok */ }
+      try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1441'); /* guard-ok */ }
+      try{ workareaEl.classList.add('open'); backdropEl.classList.add('show'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1442'); /* guard-ok */ }
     }
   }catch(e){ __swallow(e, 'ui:code-viewer'); }
 };
@@ -1499,7 +1499,7 @@ function renderCodeAndPreview(){
       const __bar = document.getElementById('omranCodeViewerBar');
       if(__bar && __bar._resetEdit) __bar._resetEdit();
     }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1502'); /* guard-ok */ }
   if(!cur || !cur.code){
     if(previewFrame._imageView){
       pyConsole.style.display = 'none';
@@ -2274,7 +2274,7 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
           var ta = document.createElement('textarea');
           ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0';
           document.body.appendChild(ta); ta.select();
-          try{ document.execCommand('copy'); flash(); }catch(e2){ /* guard-ok */ }
+          try{ document.execCommand('copy'); flash(); }catch(e2){ typeof __swallow === 'function' && __swallow(e2, 'app-05-ui:2277'); /* guard-ok */ }
           ta.remove();
         });
       }catch(e3){ __swallow(e3, 'ui:panel-copy'); }
@@ -2343,7 +2343,7 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
         moveOne(edt, 'codeBarEdit');
         moveOne(sav, 'save');
         moveOne(copyBtn, 'copyCode');
-      }catch(e){ /* guard-ok */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:2346'); /* guard-ok */ }
     };
     setTimeout(window.omranMoveCodeActionsToMenu, 0);
     setTimeout(window.omranMoveCodeActionsToMenu, 600);
@@ -2656,7 +2656,7 @@ function relabelProviders(){
     if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
   }catch(e){ __swallow(e, "ui:app-05-ui#relabel"); }
 }
-try{ window.relabelProviders = relabelProviders; }catch(_){ /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
+try{ window.relabelProviders = relabelProviders; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-05-ui:2659'); /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
 function updateProviderQuickBarActive(){
   const current = localStorage.getItem('aiapp_provider') || omranDefaultProv();
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
@@ -2704,7 +2704,7 @@ async function refreshProviderQuickBar(){
       const label = functionalLabel(cell.dataset.provider);
       cell.title = label + ' — ' + r + '/' + limit;
     });
-  }catch(e){ /* best-effort only, ignore network errors */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:2707'); /* best-effort only, ignore network errors */ }
 }
 
 function getProviderColors(){
@@ -3645,17 +3645,17 @@ function openDialogSafe(dlg){
   /* v-settings-push (طلب المالك: «الإعدادات تدفع الدردشة، ما تغطّيها»): عند فتح
      درج الإعدادات نُزيح محتوى التطبيق جنبه على الكمبيوتر فيبقى ظاهرًا بلا تعتيم
      ولا تراكب — بدل نافذةٍ فوق المحادثة. */
-  try{ if(dlg && dlg.id === 'settingsDialog') document.documentElement.classList.add('settings-push'); }catch(e){ /* guard-ok */ }
+  try{ if(dlg && dlg.id === 'settingsDialog') document.documentElement.classList.add('settings-push'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3648'); /* guard-ok */ }
   if (typeof dlg.showModal === 'function') {
-    try { dlg.showModal(); return; } catch(e) { /* fall through to polyfill */ }
+    try { dlg.showModal(); return; } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3650'); /* fall through to polyfill */ }
   }
   dlg.setAttribute('open', '');
   dlg.style.display = 'block';
 }
 function closeDialogSafe(dlg){
-  try{ if(dlg && dlg.id === 'settingsDialog') document.documentElement.classList.remove('settings-push'); }catch(e){ /* guard-ok */ }
+  try{ if(dlg && dlg.id === 'settingsDialog') document.documentElement.classList.remove('settings-push'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3656'); /* guard-ok */ }
   if (typeof dlg.close === 'function') {
-    try { dlg.close(); } catch(e) { /* ignore */ }
+    try { dlg.close(); } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3658'); /* ignore */ }
   }
   dlg.removeAttribute('open');
   dlg.style.display = '';
@@ -3663,9 +3663,9 @@ function closeDialogSafe(dlg){
 /* شبكة أمان: إغلاق بالـESC أو backdrop يطلق حدث close دون المرور بـcloseDialogSafe */
 try{
   document.addEventListener('close', function(e){
-    if(e && e.target && e.target.id === 'settingsDialog'){ try{ document.documentElement.classList.remove('settings-push'); }catch(_){ /* guard-ok */ } }
+    if(e && e.target && e.target.id === 'settingsDialog'){ try{ document.documentElement.classList.remove('settings-push'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-05-ui:3666'); /* guard-ok */ } }
   }, true);
-}catch(e){ /* guard-ok */ }
+}catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3668'); /* guard-ok */ }
 const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','ownerSection'];
 function renderStats(){
   const projects = state.projects || [];
@@ -3723,7 +3723,7 @@ if(acctReferralCopyBtnEl){
       setTimeout(() => { acctReferralCopyBtnEl.textContent = old; }, 1500);
     } catch(e) {
       linkEl.select();
-      try { document.execCommand('copy'); } catch(e2) { /* ignore */ }
+      try { document.execCommand('copy'); } catch(e2) { typeof __swallow === 'function' && __swallow(e2, 'app-05-ui:3726'); /* ignore */ }
     }
   };
 }
@@ -3833,7 +3833,7 @@ window.acctShareApp = async function() {
   var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
   if (typeof window.omranShareSheet === 'function') { window.omranShareSheet({ url: shareUrl, text: t('acctShareText') }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45)
   if (navigator.share) {
-    try { await navigator.share({ title: 'om ai', text: t('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+    try { await navigator.share({ title: 'om ai', text: t('acctShareText'), url: shareUrl }); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3836'); /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
   } else {
     try {
       await navigator.clipboard.writeText(shareUrl);

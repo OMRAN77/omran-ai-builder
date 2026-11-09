@@ -53,11 +53,11 @@
     /* شاشة الأدوات فيها مستوى داخلي («عرض الكل»): السحب يرجع منه إلى الصفوف
        أولًا، ولا يغلق شاشة الأدوات إلى المحادثة مباشرة. */
     if(el && typeof el.__omranSwipeBackStep === 'function'){
-      try{ if(el.__omranSwipeBackStep()) return true; }catch(e){ /* guard-ok */ }
+      try{ if(el.__omranSwipeBackStep()) return true; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:56'); /* guard-ok */ }
     }
     var btn = el && document.getElementById(MAP[el.id]);
     /* v-maha-app: أثناء مكالمة مها كانت مراقبة الإغلاق تبتلع هذه النقرة البرمجيّة فتنتهي المكالمة وتبقى النافذة — السحب وEsc يغلقان النافذة وحدها */
-    if(btn){ try{ swipeClickGuardUntil = 0; if(typeof mahaActing === 'number') mahaActing++; try{ btn.click(); }finally{ if(typeof mahaActing === 'number') mahaActing--; } if(typeof mahaAppWinSync === 'function') mahaAppWinSync(); return true; }catch(e){ /* guard-ok */ } }
+    if(btn){ try{ swipeClickGuardUntil = 0; if(typeof mahaActing === 'number') mahaActing++; try{ btn.click(); }finally{ if(typeof mahaActing === 'number') mahaActing--; } if(typeof mahaAppWinSync === 'function') mahaAppWinSync(); return true; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:60'); /* guard-ok */ } }
     return false;
   }
   /* الجزء الذي يتحرك مع الإصبع: صندوق المحتوى (أول ابن كبير) وإلا الحاوية نفسها */
@@ -91,7 +91,7 @@
       try{
         var cs = getComputedStyle(e);
         if((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 4) return true;
-      }catch(err){ /* guard-ok */ }
+      }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-05-swipe-back:94'); /* guard-ok */ }
       e = e.parentElement;
     }
     return false;
@@ -112,7 +112,7 @@
       var rg = document.createRange(); rg.selectNodeContents(n);
       var rs = rg.getClientRects();
       for(var i = 0; i < rs.length; i++){ if(x >= rs[i].left && x <= rs[i].right && y >= rs[i].top && y <= rs[i].bottom) return true; }
-    }catch(err){ /* guard-ok — بلا واجهة نقطة النصّ يبقى السحب كما كان */ }
+    }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-05-swipe-back:115'); /* guard-ok — بلا واجهة نقطة النصّ يبقى السحب كما كان */ }
     return false;
   }
 
@@ -189,7 +189,7 @@
         if(dx <= 0){ m0 = null; return; }
         mDrag = true;
         document.documentElement.classList.add('omranMouseSwipe');
-        try{ var sel = window.getSelection(); if(sel && sel.removeAllRanges) sel.removeAllRanges(); }catch(err){ /* guard-ok */ }
+        try{ var sel = window.getSelection(); if(sel && sel.removeAllRanges) sel.removeAllRanges(); }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-05-swipe-back:192'); /* guard-ok */ }
       }
       e.preventDefault();
       setX(Math.max(0, dx), false);
@@ -230,16 +230,16 @@
 
   /* شاشة التعليم داخل إطار: السحب فيها يصل رسالةً من الإطار */
   window.addEventListener('message', function(e){
-    try{ if(e && e.data && e.data.omranSwipeBack){ var el = document.getElementById('omranEduModal'); if(!visible(el)) el = document.getElementById('eduHubModal'); if(visible(el)) closeTool(el); } }catch(err){ /* guard-ok */ }
+    try{ if(e && e.data && e.data.omranSwipeBack){ var el = document.getElementById('omranEduModal'); if(!visible(el)) el = document.getElementById('eduHubModal'); if(visible(el)) closeTool(el); } }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-05-swipe-back:233'); /* guard-ok */ }
   });
   /* العودة من استوديو الإعلانات (صفحة مستقلة) إلى قائمة الأدوات لا المحادثة */
   try{
     if(/[?&]tools=1(&|$)/.test(location.search)){
       var openTools = function(){ var o = document.getElementById('sectionsToolsOverlay'); if(o){ o.classList.add('show'); return true; } return false; };
       if(!openTools()) setTimeout(openTools, 800);
-      try{ history.replaceState(null, '', location.pathname + location.hash); }catch(e2){ /* guard-ok */ }
+      try{ history.replaceState(null, '', location.pathname + location.hash); }catch(e2){ typeof __swallow === 'function' && __swallow(e2, 'app-05-swipe-back:240'); /* guard-ok */ }
     }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:242'); /* guard-ok */ }
 
   /* Esc يغلق أعلى أداة مفتوحة (الكمبيوتر) */
   /* v-back-layers (تدقيق ١٨–١٩ أكتوبر): Esc طبقة واحدة. نافذة dialog مشروطة (ورقة الباقات فوق صانع الفيديو) يغلقها
@@ -268,7 +268,7 @@
   function backState(){ try{ return history.state; }catch(e){ return null; /* بيئة بلا تاريخ */ } }
   function backWatch(el, attrs){
     el.__omranBackWatch = true;
-    if(backMo){ try{ backMo.observe(el, { attributes: true, attributeFilter: attrs }); }catch(e){ /* guard-ok */ } }
+    if(backMo){ try{ backMo.observe(el, { attributes: true, attributeFilter: attrs }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:271'); /* guard-ok */ } }
     backSchedule();
   }
   function backSchedule(){ if(!backTimer) backTimer = setTimeout(function(){ backTimer = 0; backSync(); }, 0); }
@@ -307,7 +307,7 @@
   function closeLayer(id){
     var el = document.getElementById(id);
     if(id === 'settingsDialog'){
-      if(el && el.hasAttribute('open')){ try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(el); else el.close(); }catch(e){ /* guard-ok */ } }
+      if(el && el.hasAttribute('open')){ try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(el); else el.close(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:310'); /* guard-ok */ } }
       return;
     }
     if(visible(el)) closeTool(el);
@@ -330,7 +330,7 @@
     backSchedule();
   });
   /* الشاشات التي تُنشأ عند فتحها (التلفزيون، القبلة، الاقتراحات) تُلحق بـbody: نربطها ونراقبها لحظتها */
-  try{ if(backMo && document.body) new MutationObserver(function(){ ensureBound(); }).observe(document.body, { childList: true }); }catch(e){ /* guard-ok */ }
+  try{ if(backMo && document.body) new MutationObserver(function(){ ensureBound(); }).observe(document.body, { childList: true }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:333'); /* guard-ok */ }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureBound); else ensureBound();
   setInterval(ensureBound, 900);

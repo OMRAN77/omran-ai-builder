@@ -281,7 +281,7 @@
 (function () {
   'use strict';
   function tick() {
-    try { fetch('/api/check-reminders?tick=1').catch(function () { /* صامت */ }); } catch (e) { /* صامت */ }
+    try { fetch('/api/check-reminders?tick=1').catch(function () { /* صامت */ }); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-16-snapbuild:284'); /* صامت */ }
   }
   setTimeout(tick, 15000);
   setInterval(tick, 60000);
