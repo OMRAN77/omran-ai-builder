@@ -53,7 +53,9 @@ async function visibility(rows) {
       } else if (/tiktok\.com/.test(url)) {
         const r = await fetch('https://www.tiktok.com/oembed?url=' + encodeURIComponent(url));
         const j = await r.json().catch(() => ({}));
-        res = r.status === 200 && j.title !== undefined ? 'ظاهر للعامّ: ' + (j.author_name || '') + ' — ' + String(j.title || '').slice(0, 60) : 'غير ظاهر (HTTP ' + r.status + ' ' + JSON.stringify(j).slice(0, 160) + ')';
+        // oEmbed تيك توك قد يحذف العنوان ويعطي المشغّل وحده — المشغّل (type=video وiframe) = ظاهر للعامّ
+        const ok = r.status === 200 && (j.title !== undefined || j.type === 'video' || /<iframe/.test(String(j.html || '')));
+        res = ok ? 'ظاهر للعامّ: ' + (j.author_name || 'مشغّل الفيديو متاح') + (j.title ? ' — ' + String(j.title).slice(0, 60) : '') : 'غير ظاهر (HTTP ' + r.status + ' ' + JSON.stringify(j).slice(0, 160) + ')';
       } else if (url) {
         const r = await fetch(url, { redirect: 'manual', headers: { 'user-agent': 'Mozilla/5.0' } });
         res = 'HTTP ' + r.status + (r.headers.get('location') ? ' ← ' + String(r.headers.get('location')).slice(0, 80) : '');
