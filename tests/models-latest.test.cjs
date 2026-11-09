@@ -175,7 +175,10 @@ test('٩. OpenAI الصوتيّ: Realtime 2.1 والتفريغ الحي وTTS ا
   const tts = read('api/_lib/tts.js');
   assert.ok(tts.includes("model: 'gpt-4o-mini-tts'"), 'احتياط مها على أحدث TTS');
   assert.ok(tts.includes("gender === 'male' ? 'cedar' : 'marin'"), 'أفضل صوتين موصى بهما');
-  assert.ok(tts.includes("const ttsModel = body.model === 'tts-1' ? 'tts-1' : 'gpt-4o-mini-tts';"), 'العامّ حديث افتراضيًّا مع توافق صريح للقديم');
+  // v-tts-gemini: المحرّك العامّ لم يعد OpenAI (نماذجه تُحذف ٦ يناير ٢٠٢٧) — Gemini واحتياطه Azure، ولا tts-1 ولا مفتاح من العميل
+  assert.ok(tts.includes('gem.speakVoice({'), 'المحرّك العامّ على Gemini');
+  assert.ok(!tts.includes("'tts-1'") && !tts.includes('body.apiKey'), 'لا tts-1 ولا مفتاح من العميل');
+  assert.equal(tts.split('api.openai.com/v1/audio/speech').length - 1, 1, 'الباقي احتياط مها المدفوع وحده (v-allah-tafkhim)');
 });
 
 test('١٠. OpenAI مع صورة يبقى في مسار Responses والأدوات بدل الهبوط للمسار القديم', () => {

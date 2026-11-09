@@ -22,7 +22,7 @@ function captureTtsBody(file, startMark, endMark, call, extra) {
   const end = endMark === '\n}\n' ? b + 2 : b; // القوس الأخير من الدالّة
   // مساعدا الحساب يعيشان في app-02 (قبل app-07/08 في الحزمة) — يُحمَّلان مع مقاطع الملفّات الأخرى
   const app02 = read('js/app-02-tts.js');
-  const h0 = app02.indexOf('function ttsAuthToken(');
+  const h0 = app02.indexOf('function ttsSpeedSetting('); // v-tts-gemini: ومعها ttsDialectSetting (تأكيد تبويب الصوت يرسل اللهجة)
   const h1 = app02.indexOf('async function fetchCloudSpeech(');
   const helpers = (file !== 'js/app-02-tts.js' && h0 > 0 && h1 > h0) ? app02.slice(h0, h1) : '';
   const bodies = [];

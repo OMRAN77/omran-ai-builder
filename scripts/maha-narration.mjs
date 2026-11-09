@@ -1,5 +1,5 @@
 // scripts/maha-narration.mjs — توليد تعليق مها الصوتي للفيديوهات التعريفية
-// عبر /api/tts على الإنتاج (صوت فاطمة الإماراتية) — المفاتيح تبقى في الخادم.
+// عبر /api/tts على الإنتاج — المفاتيح تبقى في الخادم.
 // حساب فحص مؤقت (zzcheck…) يُحذف من لوحة الإدارة متى شئت.
 //
 //   node scripts/maha-narration.mjs [BASE_URL]
@@ -10,8 +10,10 @@ const BASE = (process.argv[2] || 'https://omran-ai-builder.vercel.app').replace(
 const t0 = Date.now();
 const el = () => String(Date.now() - t0).padStart(6, ' ') + 'ms';
 
-// v-tts-promo: أداء إعلاني متحمس عبر gpt-4o-mini-tts الموجَّه بالتعليمات —
+// v-tts-promo: أداء إعلاني متحمس عبر المحرّك الثاني الموجَّه بالتعليمات —
 // طلب عمران: «الفيديو مش محفز والصوت مش جميل».
+// v-tts-gemini: المحرّك الثاني صار Gemini ويردّ WAV، و«coral» ← Kore بأسلوب STYLE.
+// صوت Azure الاحتياطيّ (X-TTS-Tier غير gemini) ليس تعليقًا إعلانيًّا، فيُعاد الطلب ولا يُحفظ.
 const STYLE_AR = 'Energetic, exciting Arabic app-launch ad narrator. Young warm female voice, big smile in the voice, fast confident upbeat pace with punchy emphasis on key words. Natural Gulf Arabic pronunciation. Sounds thrilled, never flat or robotic.';
 const STYLE_EN = 'Energetic, exciting app-launch ad narrator. Young warm female voice, big smile in the voice, fast confident upbeat pace with punchy emphasis. Sounds thrilled, never flat.';
 const LINES = {
@@ -48,15 +50,16 @@ for (const [name, l] of Object.entries(LINES)) {
   let ok = false;
   for (let a = 1; a <= 3 && !ok; a++) {
     try {
-      const r = await post('/api/tts', { voice: 'coral', model: 'gpt-4o-mini-tts', instructions: l.style, lang: l.lang, text: l.text, token });
+      const r = await post('/api/tts', { voice: 'coral', instructions: l.style, lang: l.lang, text: l.text, token });
       const buf = Buffer.from(await r.arrayBuffer());
-      const isMp3 = r.ok && buf.length > 20000 && (buf[0] === 0x49 || buf[0] === 0xff); // ID3 أو إطار MP3
-      if (isMp3) {
-        writeFileSync('narration/' + name + '.mp3', buf);
+      const tier = r.headers.get('x-tts-tier') || '-';
+      const isWav = buf.length > 20000 && buf.toString('ascii', 0, 4) === 'RIFF';
+      if (r.ok && tier === 'gemini' && isWav) {
+        writeFileSync('narration/' + name + '.wav', buf);
         console.log(el(), '✓ ' + name + ' — ' + Math.round(buf.length / 1024) + 'KB');
         ok = true;
       } else {
-        console.log(el(), '… ' + name + ' محاولة ' + a + ' — HTTP ' + r.status + ' ' + buf.length + 'b ' + buf.toString('utf8', 0, 120).replace(/[\r\n]+/g, ' '));
+        console.log(el(), '… ' + name + ' محاولة ' + a + ' — HTTP ' + r.status + ' tier=' + tier + ' ' + buf.length + 'b ' + (isWav ? '' : buf.toString('utf8', 0, 120).replace(/[\r\n]+/g, ' ')));
         await new Promise((res) => setTimeout(res, 5000 * a));
       }
     } catch (e) {

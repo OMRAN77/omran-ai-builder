@@ -26,6 +26,23 @@ const PACE = {
   fast: 'clear, speaking a little faster than usual.',
   xfast: 'clear, speaking quickly.',
 };
+/* ───── v-tts-gemini: المحرّك الثاني — أيّ صوت غير maha (speakVoice تحت) ─────
+   - كان OpenAI ‏/v1/audio/speech، وOpenAI تحذف نماذجه كلّها من الـAPI في ٦ يناير ٢٠٢٧.
+   - اسم صوت OpenAI القديم يُترجَم إلى صوت Gemini بالجنس نفسه، واسم صوت Gemini يُقبل كما هو بلا حساسية لحالة الأحرف.
+   - onyx/cedar/echo/fable ← Charon. قيس ٩ نوفمبر على سطور «قصص الأنبياء»: «الله» مفخّمة (١٠٠٠–١١١٧ هرتز)، ومرقّقة بعد الكسر (١٤٠٣–١٤١٤).
+   - ash/verse/ballad ← Orus، صوت رجل ثانٍ، فيبقى قارئ الحديث غير الراوي. لم يُقَس بعد.
+   - الأصوات النسائيّة ← Kore.
+   - أسلوب الإلقاء من «instructions» المستدعي، والسرعة كلمات في الأسلوب. */
+const OPENAI_VOICES = {
+  onyx: 'Charon', cedar: 'Charon', echo: 'Charon', fable: 'Charon',
+  ash: 'Orus', verse: 'Orus', ballad: 'Orus',
+  nova: 'Kore', marin: 'Kore', coral: 'Kore', shimmer: 'Kore', alloy: 'Kore', sage: 'Kore',
+};
+const GEMINI_MALE = ['Puck', 'Charon', 'Fenrir', 'Orus', 'Enceladus', 'Iapetus', 'Umbriel', 'Algieba', 'Algenib', 'Rasalgethi', 'Alnilam', 'Schedar', 'Achird', 'Zubenelgenubi', 'Sadachbia', 'Sadaltager'];
+const GEMINI_FEMALE = ['Zephyr', 'Kore', 'Leda', 'Aoede', 'Callirrhoe', 'Autonoe', 'Despina', 'Erinome', 'Laomedeia', 'Achernar', 'Gacrux', 'Pulcherrima', 'Vindemiatrix', 'Sulafat'];
+const GENERIC_STYLE = 'Clear, natural and warm delivery.';
+const GENERIC_PACE = { slow: 'Speak a little slowly.', fast: 'Speak a little faster than usual.', xfast: 'Speak quickly.' };
+const STYLE_MAX = 600;
 const PART_MAX = 900;          /* حروف الطلب الواحد: ما جرّبه مخرج التطبيق (MAX_VOICE_CHARS)، نحو ٨٠ ثانية صوت */
 const PARALLEL = 2;            /* أجزاء النصّ الطويل (تعليق الفيديو) معًا — حدّ الطلبات في الدقيقة صغير */
 const COOL_KEY = 'db/maha-voice/cool';
@@ -38,6 +55,19 @@ function styleFor(dialect, speed) {
   return 'Warm, friendly and natural conversational ' + d + ' Gulf Arabic, like a helpful assistant chatting with a friend; ' + p;
 }
 function voiceFor(gender) { return gender === 'male' ? VOICES.male : VOICES.female; }
+/** اسم صوت الطلب ← {voice: صوت Gemini, male}. المجهول أو الغائب بالجنس المرسل: رجل ← Charon، وإلّا Kore. */
+function genericVoice(name, gender) {
+  const n = String(name || '').trim().toLowerCase();
+  const direct = GEMINI_MALE.concat(GEMINI_FEMALE).find((v) => v.toLowerCase() === n);
+  const voice = direct || (Object.prototype.hasOwnProperty.call(OPENAI_VOICES, n) ? OPENAI_VOICES[n] : voiceFor(gender));
+  return { voice, male: GEMINI_MALE.includes(voice) };
+}
+/** أسلوب المحرّك الثاني: «instructions» المستدعي (≤٦٠٠ حرف) أو أسلوب محايد، ثمّ كلمات السرعة إن طُلبت غير العاديّة. */
+function genericStyle(instructions, speed) {
+  const own = String(instructions || '').replace(/\s+/g, ' ').trim().slice(0, STYLE_MAX);
+  const pace = Object.prototype.hasOwnProperty.call(GENERIC_PACE, speed) ? GENERIC_PACE[speed] : '';
+  return (own || GENERIC_STYLE) + (pace ? ' ' + pace : '');
+}
 function apiKey() { return String(process.env.GEMINI_API_KEY || '').trim(); }
 function enabled() { return !!apiKey() && String(process.env.MAHA_VOICE || '').trim().toLowerCase() !== 'azure'; }
 function capCents() {
@@ -169,8 +199,9 @@ async function release(held, o) {
   if (!held) return;
   try { await kvOf(o).kvDecrBy(spentKey(held.day), held.chars); } catch (e) { /* guard-ok — الحجز يسقط بانتهاء اليوم */ }
 }
-function report(why, meta) {
-  try { require('./log-error.js').logError('tts/maha-voice', new Error(why), meta); } catch (e) { console.error('[maha-voice] ' + why); }
+function report(why, meta, scope) {
+  const where = scope || 'tts/maha-voice';
+  try { require('./log-error.js').logError(where, new Error(why), meta); } catch (e) { console.error('[' + where + '] ' + why); }
 }
 
 /** جزء واحد ← {ok, pcm, rate} أو {ok:false, status, why, text}. زحام 429 العابر أو 5xx يُعاد مرّة بعد ثانية. */
@@ -179,9 +210,9 @@ async function synthPart(text, opts) {
   const fetchImpl = o.fetchImpl || fetch;
   const body = JSON.stringify({
     model: MODEL,
-    input: [{ type: 'user_input', content: [{ type: 'text', text, annotations: [{ type: 'speech_metadata', style: styleFor(o.dialect, o.speed) }] }] }],
+    input: [{ type: 'user_input', content: [{ type: 'text', text, annotations: [{ type: 'speech_metadata', style: o.styleText || styleFor(o.dialect, o.speed) }] }] }],
     response_format: { type: 'audio' },
-    generation_config: { speech_config: [{ voice: voiceFor(o.gender) }] },
+    generation_config: { speech_config: [{ voice: o.voiceName || voiceFor(o.gender) }] }, /* voiceName/styleText للمحرّك الثاني وحده */
     store: false, /* لا يُحفظ الطلب عند المزوّد */
   });
   const timeoutMs = Math.min(45000, 8000 + 50 * text.length);
@@ -215,8 +246,24 @@ async function synthPart(text, opts) {
  * opts: {text, gender, dialect, speed, fetchImpl, kv, now, retryMs}
  */
 async function speakMaha(opts) {
-  const o = opts || {};
   if (!enabled()) return null;
+  /* الصوتان والأسلوب المعتمدة وحدها: لا voiceName ولا styleText من المستدعي */
+  return speakWith(Object.assign({}, opts || {}, { voiceName: '', styleText: '' }), 'tts/maha-voice');
+}
+
+/**
+ * v-tts-gemini — المحرّك الثاني: نصّ بأيّ لغة ← WAV بصوت Gemini وأسلوب يحدّدهما المستدعي، أو null والمستدعي يكمل بصوت Azure.
+ * - الحصّة والسقف اليوميّ والتبريد هي نفسها التي لصوت مها، فطلبات المسارين تُحسب معًا.
+ * - MAHA_VOICE=azure يخصّ صوت مها وحده، والسقف ٠ يغلق المسارين.
+ * opts: {text, voiceName, styleText, fetchImpl, kv, now, retryMs}
+ */
+async function speakVoice(opts) {
+  const o = opts || {};
+  if (!apiKey() || !o.voiceName || !o.styleText) return null;
+  return speakWith(o, 'tts/voice');
+}
+
+async function speakWith(o, scope) {
   const parts = splitText(o.text);
   if (!parts.length) return null;
   if (await cooling(o)) return null;
@@ -240,11 +287,12 @@ async function speakMaha(opts) {
     await release(held, o);
     const secs = coolFor(failed.status, failed.text, o.now);
     await cool(secs, failed.why, o);
-    report(failed.why, { status: failed.status, parts: parts.length, chars, cool: secs, msg: String(failed.text || '').slice(0, 160) });
+    report(failed.why, { status: failed.status, parts: parts.length, chars, cool: secs, msg: String(failed.text || '').slice(0, 160) }, scope);
     return null;
   }
   return { wav: wavOf(Buffer.concat(out.map((r) => r.pcm)), out[0].rate), parts: parts.length, model: MODEL };
 }
 
-module.exports = { speakMaha, enabled };
-module.exports.__test = { styleFor, voiceFor, splitText, pickAudio, pcmOf, wavOf, coolFor, capChars, centsPerChar, secondsToPacificMidnight, MODEL, VOICES, PART_MAX, COOL_KEY, spentKey };
+module.exports = { speakMaha, speakVoice, enabled, genericVoice, genericStyle };
+module.exports.__test = { styleFor, voiceFor, splitText, pickAudio, pcmOf, wavOf, coolFor, capChars, centsPerChar, secondsToPacificMidnight, MODEL, VOICES, PART_MAX, COOL_KEY, spentKey,
+  OPENAI_VOICES, GEMINI_MALE, GEMINI_FEMALE, GENERIC_STYLE, GENERIC_PACE, STYLE_MAX };
