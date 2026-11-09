@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
       res.status(200).json({ channelId: cached.id });
       return;
     }
-  } catch (e) { /* كاش معطّل — نحل مباشرة */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tv-resolve:34'); /* كاش معطّل — نحل مباشرة */ }
 
   try {
     const r = await fetch('https://www.youtube.com/@' + encodeURIComponent(handle), {
@@ -49,7 +49,7 @@ module.exports = async (req, res) => {
       || html.match(/youtube\.com\/channel\/(UC[\w-]{22})/);
     if (!m) { res.status(404).json({ error: 'no_channel_id' }); return; }
     const id = m[1];
-    try { await kvPutJSON(key, { id, ts: Date.now() }); } catch (e) { /* الكاش رفاهية */ }
+    try { await kvPutJSON(key, { id, ts: Date.now() }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tv-resolve:52'); /* الكاش رفاهية */ }
     res.setHeader('X-Cache', 'MISS');
     if (String(req.query && req.query.live) === '1') {
       const live = await liveInfo(id);
@@ -95,7 +95,7 @@ async function liveInfo(id) {
   try {
     const c = await kvGetJSON(lkey);
     if (c && (Date.now() - (c.ts || 0)) < LIVE_CACHE_MS) return { isLive: !!c.isLive, videoId: c.videoId || null, embeddable: c.embeddable !== false };
-  } catch (e) { /* كاش معطل */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tv-resolve:98'); /* كاش معطل */ }
   let out = { isLive: false, videoId: null, embeddable: true };
   try {
     const r = await fetch('https://www.youtube.com/channel/' + id + '/live', {
@@ -123,7 +123,7 @@ async function liveInfo(id) {
         };
       }
     }
-  } catch (e) { /* فشل الفحص اللحظي — يُبلغ العميل بغير حي */ }
-  try { await kvPutJSON(lkey, Object.assign({ ts: Date.now() }, out)); } catch (e) { /* الكاش رفاهية */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tv-resolve:126'); /* فشل الفحص اللحظي — يُبلغ العميل بغير حي */ }
+  try { await kvPutJSON(lkey, Object.assign({ ts: Date.now() }, out)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tv-resolve:127'); /* الكاش رفاهية */ }
   return out;
 }

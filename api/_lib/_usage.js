@@ -10,7 +10,7 @@ const { isVip } = require('./_vip.js');
 // v-sec-ip-net: عدّادات الزوّار على عنوان IP تُطبَّع إلى الشبكة (/64 لـIPv6) حتّى لا يمنح تدوير
 // عنوانٍ داخل /64 حصّةً جديدة. الحجز والاسترجاع يستعملان المفتاح نفسه عبر هذه الدالّة.
 function netOf(ip) {
-  try { const n = require('./welcome-gift.js').giftNet(ip); if (n) return n; } catch (e) { /* يسقط إلى القصّ */ }
+  try { const n = require('./welcome-gift.js').giftNet(ip); if (n) return n; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:13'); /* يسقط إلى القصّ */ }
   return (ip && String(ip).trim()) ? String(ip).trim().slice(0, 64) : null;
 }
 // v-tiers: السقف اليومي صار بحسب الطبقة (ضيف/مجاني/مشترك بباقته) لا رقمًا واحدًا،
@@ -77,7 +77,7 @@ async function addTally(key) {
     if (newVal === 1) {
       await kvExpire(k, 172800); // 2 days
     }
-  } catch (e) {
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:80');
     // Best-effort: if this fails, worst case is one extra free message slips
     // through today — never block the actual AI request over a bookkeeping write.
   }
@@ -97,10 +97,10 @@ async function takeTally(key, limit) {
     return { ok: true, count: 1 }; // عطل KV = مفتوح كما كان
   }
   if (n === 1) {
-    try { await kvExpire(k, 172800); } catch (e) { /* أفضل جهد كما في addTally: المفتاح مؤرَّخ أصلًا */ }
+    try { await kvExpire(k, 172800); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:100'); /* أفضل جهد كما في addTally: المفتاح مؤرَّخ أصلًا */ }
   }
   if (n > limit) {
-    try { await kvDecrBy(k, 1); } catch (e) { /* زيادة باقية لا تمرّر رسالة — العدّ يبدو ممتلئًا فقط حتّى انتهاء المفتاح */ }
+    try { await kvDecrBy(k, 1); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:103'); /* زيادة باقية لا تمرّر رسالة — العدّ يبدو ممتلئًا فقط حتّى انتهاء المفتاح */ }
     return { ok: false, count: n - 1 };
   }
   return { ok: true, count: n };
@@ -112,7 +112,7 @@ async function giveTally(key) {
   try {
     const n = Number(await kvDecrBy(k, 1));
     if (n < 0) { await kvIncrBy(k, -n); await kvExpire(k, 172800); } // لا عدّ يُردّ (يوم جديد أو حجز لم يقع) — لا رصيد سالب يفتح السقف
-  } catch (e) { /* أفضل جهد: عدّ باقٍ يحجب طلبًا واحدًا حتّى نهاية اليوم ولا يمرّر شيئًا */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:115'); /* أفضل جهد: عدّ باقٍ يحجب طلبًا واحدًا حتّى نهاية اليوم ولا يمرّر شيئًا */ }
 }
 
 // v-atomic-quota: سحب رصيد المكافأة تحت قفل قصير لكلّ حساب (SET NX EX) — كان قراءة سجلّ ثمّ كتابته،
@@ -204,7 +204,7 @@ async function checkAndConsume(token, guestId, provider, ip, opts) {
         if (await spendBonus(username)) {
           return { allowed: true, username, remaining: 0, usedBonus: true, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null };
         }
-      } catch (e) { /* if the bonus check fails, just fall through to blocking */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:207'); /* if the bonus check fails, just fall through to blocking */ }
       return { allowed: false, reason: 'limit', username, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null, limit,
         message: tier.subscriber ? tierLib.FREE_TEXT.subLimit(limit) : tierLib.FREE_TEXT.freeLimit };
     }
@@ -340,7 +340,7 @@ async function refundCustom(token, guestId, ip, provider) {
     const cleanIp = netOf(ip); // v-sec-ip-net
     if (cleanIp) { await giveTally('ip_' + cleanIp + '_' + todayStr() + '_' + providerKey); return; }
     if (isValidGuestId(guestId)) await giveTally('guest_' + guestId + '_' + todayStr() + '_' + providerKey);
-  } catch (e) { /* أفضل جهد — الردّ لا يُسقط ردّ المستخدم */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:343'); /* أفضل جهد — الردّ لا يُسقط ردّ المستخدم */ }
 }
 
 // Best-effort extraction of the caller's IP from Vercel's forwarded headers.
@@ -349,7 +349,7 @@ function clientIp(req) {
     const fwd = req.headers && (req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For']);
     if (fwd) return String(fwd).split(',')[0].trim();
     if (req.socket && req.socket.remoteAddress) return req.socket.remoteAddress;
-  } catch (e) { /* ignore */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:352'); /* ignore */ }
   return null;
 }
 

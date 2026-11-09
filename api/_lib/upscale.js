@@ -39,7 +39,7 @@ function imageDims(buf) {
         i += 2 + len;
       }
     }
-  } catch (e) { /* ترويسة تالفة = مجهول */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/upscale:42'); /* ترويسة تالفة = مجهول */ }
   return null;
 }
 
@@ -140,7 +140,7 @@ const handler = async (req, res) => {
     }
     res.status(200).json({ imageBase64: r.b64, mimeType: r.mime, width: r.w, height: r.h, scale: r.scale });
   } catch (e) {
-    if (charged) { try { await pointsLib.refundPoints(charged, pointsLib.COSTS.image_upscale, chargedPay); } catch (e2) { /* أفضل جهد */ } }
+    if (charged) { try { await pointsLib.refundPoints(charged, pointsLib.COSTS.image_upscale, chargedPay); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/upscale:143'); /* أفضل جهد */ } }
     res.status(500).json({ error: 'upscale_failed' });
   }
 };

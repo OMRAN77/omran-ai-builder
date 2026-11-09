@@ -236,7 +236,7 @@ module.exports = async (req, res) => {
             .map((x) => (x && x.id && updated.has(x.id) ? updated.get(x.id) : x));
           await putJson(key, merged);
         });
-      } catch (e) { /* قراءة متعذّرة أو قفل مشغول — الدورة التالية تعيد الحساب، ولا كتابة فوق ما لم يُقرأ */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/check-reminders:239'); /* قراءة متعذّرة أو قفل مشغول — الدورة التالية تعيد الحساب، ولا كتابة فوق ما لم يُقرأ */ }
     }
   }
 

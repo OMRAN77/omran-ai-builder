@@ -86,7 +86,7 @@ async function record(entry, opts) {
       await push({ title, body: user + ' · ' + (item.prov || '-') + ': ' + item.text.slice(0, 120) + (item.detail ? ' — ' + item.detail.slice(0, 60) : ''), url: '/' }, o.pushOpts);
       pushed = true;
     }
-  } catch (e) { try { require('./log-error.js').logError('owner-inbox:push', e); } catch (e2) { /* guard-ok — فشل الإشعار لا يمنع الحفظ */ } }
+  } catch (e) { try { require('./log-error.js').logError('owner-inbox:push', e); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/owner-inbox:89'); /* guard-ok — فشل الإشعار لا يمنع الحفظ */ } }
   return { saved: true, pushed, item };
 }
 /** كلام المستخدم في بداية الدور: المالك لا يُبلَّغ عن نفسه. */

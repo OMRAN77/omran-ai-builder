@@ -90,7 +90,7 @@ async function noteTurn(args, opts) {
     }
     return 'saved';
   } catch (e) {
-    try { require('./log-error.js').logError('chat-mail:note', e); } catch (e2) { /* guard-ok — فشل التسجيل لا يوقف المحادثة */ }
+    try { require('./log-error.js').logError('chat-mail:note', e); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/chat-mail:93'); /* guard-ok — فشل التسجيل لا يوقف المحادثة */ }
     return 'error';
   }
 }
@@ -101,7 +101,7 @@ function noteTurnLater(args) {
   try {
     const w = _seam.waitUntil || require('./signup-notify.js').platformWaitUntil();
     if (w) w(job);
-  } catch (e) { /* guard-ok — بلا سياق طلب يكمل الوعد وحده */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat-mail:104'); /* guard-ok — بلا سياق طلب يكمل الوعد وحده */ }
   return job;
 }
 

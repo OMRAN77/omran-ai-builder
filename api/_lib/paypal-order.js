@@ -99,7 +99,7 @@ async function safeCredit(order, username) {
   try { return await creditOrder(order, username); } catch (e) {
     // المال سُحب والشحن فشل (مثل امتلاء القاعدة) — لا صمت: سجلّ أخطاء المالك، والعميل يعيد المحاولة بـclaim.
     console.error('[paypal] credit failed after capture', order && order.id, e && e.message);
-    try { require('./log-error.js').logError('paypal:credit', e, { orderId: order && order.id, user: username }); } catch (e2) { /* guard-ok — التسجيل تحسين لا شرط */ }
+    try { require('./log-error.js').logError('paypal:credit', e, { orderId: order && order.id, user: username }); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/paypal-order:102'); /* guard-ok — التسجيل تحسين لا شرط */ }
     return { credited: false, reason: 'error' };
   }
 }

@@ -375,7 +375,7 @@ module.exports = async (req, res) => {
         timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true
       }).format(now);
       timeContext = ' CURRENT DATE/TIME: it is currently ' + dateStr + ', ' + timeStr + ', local time in the user\'s current location, which is ' + placeName + ' (timezone identifier: ' + tz + '). This is the ONLY location/timezone you know the user is in - NEVER mention, guess, or assume any other city or country as the user\'s location (for example, never say Baku, or any other city that merely shares the same UTC offset) - always refer to their location as exactly stated above, or simply state the time without naming a city if unsure. Whenever asked the current date, time, or "what time is it", ALWAYS use this exact local time above - unless the user explicitly asks for the time in a different specific country/city, in which case convert accordingly and say so clearly.';
-    } catch (e) { /* منطقة زمنية لا يعرفها Intl — يمضي بلا سياق وقت */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/realtime-session:378'); /* منطقة زمنية لا يعرفها Intl — يمضي بلا سياق وقت */ }
 
     const sessionConfig = {
       session: {
@@ -652,7 +652,7 @@ module.exports = async (req, res) => {
     }
 
     // v-cost-meter: دقيقة التجربة مجّانيّة للمستخدم لكنّها تكلّفنا — تُحسب في عدّاد الشهر (المدفوعة حسبها الخصم نفسه).
-    if (rtUser && mahaBudget && mahaBudget.prepaid === 'trial') { try { await require('./cost-meter.js').meterOp(rtUser, 'maha_minute'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } }
+    if (rtUser && mahaBudget && mahaBudget.prepaid === 'trial') { try { await require('./cost-meter.js').meterOp(rtUser, 'maha_minute'); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/realtime-session:655'); /* guard-ok — القياس لا يوقف خدمة */ } }
     res.status(200).json({ clientSecret: parsed.value, model: 'gpt-realtime-2.1', mahaBudget, turn: naturalTurn ? 'natural' : 'classic', appControl: mode !== 'builder' && appControl && clientCanAct });
   } catch (e) {
     if (undoBill) { try { await undoBill(); } catch (e2) { console.error('[realtime-session] opening refund failed:', e2 && e2.message); } }

@@ -234,7 +234,7 @@ module.exports = async (req, res) => {
             res.status(200).send(Buffer.from(fbBuffer));
             return;
           }
-        } catch (e) { /* fall through to error below */ }
+        } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tts:237'); /* fall through to error below */ }
       }
       const errText = azResp ? await azResp.text() : 'network';
       res.status(azResp ? azResp.status : 502).json({ error: 'Azure TTS error: ' + errText.slice(0, 500) });

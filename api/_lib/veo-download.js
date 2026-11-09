@@ -80,7 +80,7 @@ async function pipeBody(body, res, opt) {
     }
   } finally {
     if (typeof res.removeListener === 'function') res.removeListener('close', onClose);
-    try { await reader.cancel(); } catch (e) { /* guard-ok — المصدر انتهى أو انقطع */ }
+    try { await reader.cancel(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/veo-download:83'); /* guard-ok — المصدر انتهى أو انقطع */ }
   }
   return m.sent;
 }
@@ -97,7 +97,7 @@ async function veoBytesAdd(ref, n) {
   try {
     const kv = require('./kv.js');
     const total = Number(await kv.kvIncrBy(veoBytesKey(ref), amt));
-    if (total === amt) { try { await kv.kvExpire(veoBytesKey(ref), 2 * 86400); } catch (e) { /* guard-ok — المفتاح مؤرَّخ أصلًا */ } }
+    if (total === amt) { try { await kv.kvExpire(veoBytesKey(ref), 2 * 86400); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/veo-download:100'); /* guard-ok — المفتاح مؤرَّخ أصلًا */ } }
     return Number.isFinite(total) ? total : null;
   } catch (e) { return null; } // أفضل جهد — عطب KV لا يوقف البثّ
 }
@@ -138,7 +138,7 @@ module.exports = async (req, res) => {
     let counted = est;
     if (after !== null && after - est >= capB) {
       await veoBytesAdd(file.ref, -est);
-      try { await upstream.body?.cancel(); } catch (e) { /* guard-ok — تحرير المجرى فقط */ }
+      try { await upstream.body?.cancel(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/veo-download:141'); /* guard-ok — تحرير المجرى فقط */ }
       res.status(429).json({ error: 'daily_limit_reached' });
       return;
     }
