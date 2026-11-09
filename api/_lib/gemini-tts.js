@@ -148,7 +148,7 @@ async function cooling(o) {
 }
 async function cool(seconds, why, o) {
   if (!(seconds > 0)) return;
-  try { await kvOf(o).kvSetRaw(COOL_KEY, String(why || 'x').slice(0, 40), seconds); } catch (e) { /* guard-ok — العلم اختصار لا شرط */ }
+  try { await kvOf(o).kvSetRaw(COOL_KEY, String(why || 'x').slice(0, 40), seconds); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/gemini-tts:151'); /* guard-ok — العلم اختصار لا شرط */ }
 }
 async function reserve(chars, o) {
   const kv = kvOf(o);
@@ -157,7 +157,7 @@ async function reserve(chars, o) {
     const spent = Number(await kv.kvIncrBy(spentKey(day), chars));
     if (kv.kvExpire) await kv.kvExpire(spentKey(day), SPENT_TTL_S);
     if (!Number.isFinite(spent) || spent > capChars(o && o.now)) {
-      try { await kv.kvDecrBy(spentKey(day), chars); } catch (e) { /* guard-ok — الحجز يسقط بانتهاء اليوم */ }
+      try { await kv.kvDecrBy(spentKey(day), chars); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/gemini-tts:160'); /* guard-ok — الحجز يسقط بانتهاء اليوم */ }
       return null;
     }
     return { day, chars };
@@ -167,7 +167,7 @@ async function reserve(chars, o) {
 }
 async function release(held, o) {
   if (!held) return;
-  try { await kvOf(o).kvDecrBy(spentKey(held.day), held.chars); } catch (e) { /* guard-ok — الحجز يسقط بانتهاء اليوم */ }
+  try { await kvOf(o).kvDecrBy(spentKey(held.day), held.chars); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/gemini-tts:170'); /* guard-ok — الحجز يسقط بانتهاء اليوم */ }
 }
 function report(why, meta) {
   try { require('./log-error.js').logError('tts/maha-voice', new Error(why), meta); } catch (e) { console.error('[maha-voice] ' + why); }

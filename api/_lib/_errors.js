@@ -141,7 +141,7 @@ async function reportError(err, context) {
         require('./_owner-alert.js').alertOwnerError(entry)
           .then(() => { clearTimeout(t); resolve(); }, () => { clearTimeout(t); resolve(); });
       });
-    } catch (e) { /* الإشعار تحسين لا شرط */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_errors:144'); /* الإشعار تحسين لا شرط */ }
   }
 }
 
@@ -168,7 +168,7 @@ function withErrorCapture(routeName, handler) {
             error: 'حدث خطأ غير متوقع. تم تسجيله وسنصلحه — حاول مرة أخرى.',
           });
         }
-      } catch (e) {
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_errors:171');
         /* response already closed */
       }
     }

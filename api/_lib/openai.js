@@ -98,13 +98,13 @@ module.exports = async (req, res) => {
           if (done) break;
           res.write(value);
         }
-      } catch (e) { /* client likely disconnected */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/openai:101'); /* client likely disconnected */ }
       res.end();
       return;
     }
 
     const data = await upstream.text();
-    if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
+    if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/openai:107'); /* best-effort */ } }
     if (!upstream.ok) { require('./_videoFail.js').chatFail(res, 'openai', upstream.status, data, ownerView); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {

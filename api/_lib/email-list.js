@@ -55,7 +55,7 @@ async function getStyleProfile(accessToken, user, username) {
         fresh.emailAssist.styleProfile = { text, at: Date.now() };
         await putUser(username, fresh);
       }
-    } catch (e) { /* cache write failure is non-fatal */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/email-list:58'); /* cache write failure is non-fatal */ }
     return text;
   } catch (e) {
     return '';
@@ -247,7 +247,7 @@ async function cachedDraft(username, id) {
   } catch (e) { return null; } // محفوظ تالف = يُكتب من جديد
 }
 async function saveDraft(username, id, v) {
-  try { await kvSetRaw(draftKey(username, id), encrypt(JSON.stringify(v)), DRAFT_TTL); } catch (e) { /* الحفظ فشل = يُكتب من جديد في المرّة القادمة */ }
+  try { await kvSetRaw(draftKey(username, id), encrypt(JSON.stringify(v)), DRAFT_TTL); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/email-list:250'); /* الحفظ فشل = يُكتب من جديد في المرّة القادمة */ }
 }
 async function claudeAllowed(username) {
   if (isOwnerName(username)) return true;
@@ -314,7 +314,7 @@ async function loadConversation(accessToken, id, threadId, myAddress) {
         }
         return { msg: all[at], thread };
       }
-    } catch (e) { /* المحادثة تعذّرت — الرسالة وحدها */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/email-list:317'); /* المحادثة تعذّرت — الرسالة وحدها */ }
   }
   const r = await gmail(accessToken, 'messages/' + id + '?format=full');
   return { msg: r.ok ? await r.json().catch(() => null) : null, thread: [] };

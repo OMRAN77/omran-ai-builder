@@ -455,7 +455,7 @@ module.exports = async (req, res) => {
             res.status(200).json({ images: vimgs, remaining: vrem, dailyLimit: quota.limit || DESIGN_DAILY_LIMIT });
             return;
           }
-        } catch (e) { /* fallback to normal generation below */ }
+        } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/design-create:458'); /* fallback to normal generation below */ }
       }
       // v-decor-detail: لا نبتلع خطأ المزوّد — نكشفه منظّفًا في detail ليُشخَّص
       // (رصيد؟ اسم نموذج؟) بدل 502 صامتة. المفاتيح تُشطب دائمًا.

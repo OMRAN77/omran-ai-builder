@@ -181,7 +181,7 @@ module.exports = async (req, res) => {
           });
           const d = await r.json();
           if (r.ok && d && d.data && d.data[0] && d.data[0].b64_json) { outB64 = d.data[0].b64_json; outMime = 'image/png'; }
-        } catch (e) { /* الإنقاذ فشل — يمضي لإعلان الخطأ الأصلي */ }
+        } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/construction-view:184'); /* الإنقاذ فشل — يمضي لإعلان الخطأ الأصلي */ }
       }
     }
     /* v-provider-fail-rest (تدقيق ١٨–١٩ أكتوبر): «شاهد المبنى من زوايا أخرى» و«شاهد الغرف من الداخل» كانا يمرّران حالة المزوّد ونصّه

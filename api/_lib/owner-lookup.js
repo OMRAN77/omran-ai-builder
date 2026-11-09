@@ -135,7 +135,7 @@ async function nameAccountsFor(text, opts) {
     try {
       const live = await liveReadOnly(k, auth);
       if (live.user && !live.user.deleted && !isOwner(live.key) && !out.includes(live.key)) out.push(live.key);
-    } catch (e) { /* سجلّ مختوم أو عطب قراءة: يُترك من القائمة، والباقي يُعرض */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-lookup:138'); /* سجلّ مختوم أو عطب قراءة: يُترك من القائمة، والباقي يُعرض */ }
     if (out.length >= WEAK_MAX) break;
   }
   return out;

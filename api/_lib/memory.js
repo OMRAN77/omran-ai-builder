@@ -278,7 +278,7 @@ module.exports = async (req, res) => {
       }
       if (merged !== cur.memory || cur.pending.length) await writeMemory(username, merged, undefined, []); // v475
       // v545 — المعرفة الجماعيّة: تُستخرج من نفس المقتطف، وتفشل بصمت دائمًا.
-      try { await require('./collective.js').learn(username, __userText, body.aiText); } catch (e) { /* guard-ok: collective learning is optional; personal memory still succeeds. */ }
+      try { await require('./collective.js').learn(username, __userText, body.aiText); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/memory:281'); /* guard-ok: collective learning is optional; personal memory still succeeds. */ }
       res.status(200).json({ ok: true, memory: merged });
       return;
     }

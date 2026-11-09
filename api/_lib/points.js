@@ -82,11 +82,11 @@ async function readPoints(username) {
       const live = Number(raw);
       if (Number.isFinite(live)) return { user, points: Math.max(0, Math.floor(live)) };
     }
-  } catch (e) { /* fall through to the record */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:85'); /* fall through to the record */ }
   if (typeof user.points !== 'number' || !Number.isFinite(user.points)) {
     user.points = WELCOME_POINTS;
     user.welcomeGift = true;
-    try { await putUser(username, user); } catch (e) { /* best-effort */ }
+    try { await putUser(username, user); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:89'); /* best-effort */ }
   }
   return { user, points: Math.max(0, Math.floor(user.points)) };
 }
@@ -151,7 +151,7 @@ async function spendPoints(username, amount, reason, opts) {
     if (await require('./kv.js').kvGetRaw('db/rename-lock/' + encodeURIComponent(username))) {
       return { ok: false, reason: 'renaming', points: 0 };
     }
-  } catch (e) { /* guard-ok — تعذّر قراءة القفل لا يوقف الخصم */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:154'); /* guard-ok — تعذّر قراءة القفل لا يوقف الخصم */ }
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (amt === 0) return { ok: true, points: 0 };
 
@@ -203,7 +203,7 @@ async function spendPoints(username, amount, reason, opts) {
 
 // v-cost-meter: تكلفة العمليّة علينا (جدول الوسائط) في عدّاد الشهر لهذا الحساب — أفضل جهد، لا يوقف الخصم.
 async function meterOp(username, reason) {
-  try { await require('./cost-meter.js').meterOp(username, reason); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+  try { await require('./cost-meter.js').meterOp(username, reason); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:206'); /* guard-ok — القياس لا يوقف خدمة */ }
 }
 
 // يعيد نقاطًا للمستخدم (استرجاع عند فشل توليد بعد الخصم).
@@ -280,7 +280,7 @@ async function refundPointsOnly(username, amount, mark) {
       after = Number(r[0]);
     } else after = Number(await kvIncrBy(balanceKey(username), amt));
   } catch (e) { console.error('[points] refund failed for ' + username + ':', e && e.message); return false; }
-  try { await mirrorToUser(username, after); } catch (e) { /* guard-ok — المرآة لا تقلب نتيجة الردّ */ }
+  try { await mirrorToUser(username, after); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:283'); /* guard-ok — المرآة لا تقلب نتيجة الردّ */ }
   return true;
 }
 
@@ -338,8 +338,8 @@ module.exports = async (req, res) => {
       // لأنّه ليس مالكًا — لوحة التحكّم لا تُفتح له، الحدّ وحده يسقط.
       if (await isVip(username)) { res.status(200).json({ ok: true, authed: true, owner: false, vip: true, points: null, unlimited: true, costs: COSTS, tier: 'vip', plan: null }); return; }
       // v-maha-img-hold: صورة مها لم يؤكَّد حفظها خلال دقائق = لم تصل — تُردّ نقاطها قبل قراءة الرصيد فيظهر الرقم بعد الردّ.
-      try { await require('./image-hold.js').settleStale(username); } catch (e) { /* guard-ok — التسوية أفضل جهد ولا توقف قراءة الرصيد */ }
-      try { await require('./video-job.js').sweepStaleVideoJobs(username); } catch (e) { /* guard-ok — v-video-sweep: فيديو لم يُسلَّم تُردّ نقاطه هنا، وعطبه لا يوقف قراءة الرصيد */ }
+      try { await require('./image-hold.js').settleStale(username); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:341'); /* guard-ok — التسوية أفضل جهد ولا توقف قراءة الرصيد */ }
+      try { await require('./video-job.js').sweepStaleVideoJobs(username); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:342'); /* guard-ok — v-video-sweep: فيديو لم يُسلَّم تُردّ نقاطه هنا، وعطبه لا يوقف قراءة الرصيد */ }
       const rec = await readPoints(username);
       if (!rec) { res.status(200).json({ ok: true, authed: false, points: 0, costs: COSTS }); return; }
       // v-plan-routing: الباقة السارية مع الرصيد (الواجهة تقفل منتقي المزوّد لغير Max). عطب القراءة = مجّاني.

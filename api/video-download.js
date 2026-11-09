@@ -43,7 +43,7 @@ async function dlBytesAdd(username, n) {
   try {
     const kv = require('./_lib/kv.js');
     const total = Number(await kv.kvIncrBy(dlBytesKey(username), amt));
-    if (total === amt) { try { await kv.kvExpire(dlBytesKey(username), 2 * 86400); } catch (e) { /* مؤرَّخ أصلًا */ } }
+    if (total === amt) { try { await kv.kvExpire(dlBytesKey(username), 2 * 86400); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'video-download:46'); /* مؤرَّخ أصلًا */ } }
     return Number.isFinite(total) ? total : null;
   } catch (e) { return null; } // أفضل جهد — عطب KV لا يوقف البثّ
 }
@@ -180,14 +180,14 @@ module.exports = async (req, res) => {
   }
   try {
     if (!upstream.ok) {
-      try { await upstream.body?.cancel(); } catch (e) { /* guard-ok — تحرير المجرى فقط */ }
+      try { await upstream.body?.cancel(); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'video-download:183'); /* guard-ok — تحرير المجرى فقط */ }
       res.status(upstream.status).end(); // v-dl-refund-scope: وصل المضيف — يُعدّ
       return;
     }
     const ct = mediaType(upstream.headers.get('content-type'), url);
     const cl = Number(upstream.headers.get('content-length')) || 0;
     if (!ct || cl > MAX_BYTES) {
-      try { await upstream.body?.cancel(); } catch (e) { /* guard-ok — تحرير المجرى فقط */ }
+      try { await upstream.body?.cancel(); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'video-download:190'); /* guard-ok — تحرير المجرى فقط */ }
       res.status(ct ? 413 : 415).json({ error: ct ? 'too large' : 'not a video or image' });
       return;
     }
@@ -199,7 +199,7 @@ module.exports = async (req, res) => {
       counted = est;
       if (after !== null && after - est >= DOWNLOAD_BYTES_DAILY()) {
         await dlBytesAdd(dlUser, -est);
-        try { await upstream.body?.cancel(); } catch (e) { /* guard-ok — تحرير المجرى فقط */ }
+        try { await upstream.body?.cancel(); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'video-download:202'); /* guard-ok — تحرير المجرى فقط */ }
         res.status(429).json({ error: 'daily_limit_reached' });
         return;
       }

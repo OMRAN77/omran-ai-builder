@@ -46,7 +46,7 @@ const cents = (m) => { const v = Number(m && m.value); return Number.isFinite(v)
 const clamp01 = (x) => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0);
 
 function logError(scope, e, meta) {
-  try { require('./log-error.js').logError(scope, e, meta); } catch (e2) { /* guard-ok — التسجيل تحسين لا شرط */ }
+  try { require('./log-error.js').logError(scope, e, meta); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/pay-refund:49'); /* guard-ok — التسجيل تحسين لا شرط */ }
 }
 
 // ───────────────────────── سجلّ المنح ─────────────────────────

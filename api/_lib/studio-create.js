@@ -340,7 +340,7 @@ const MERGE_NEW_LOOK_RE = /لحي[ةه]|بلحي|ذقن|شنب|شوارب|سكس
 function mergeWantsNewLook(text) {
   const s = String(text || '');
   if (!s.trim()) return false;
-  try { if (require('./image-intent.js').detectEditIntent(s).restyle) return true; } catch (e) { /* guard-ok — بلا كاشف الأسلوب: الكلمات أدناه تكفي */ }
+  try { if (require('./image-intent.js').detectEditIntent(s).restyle) return true; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/studio-create:343'); /* guard-ok — بلا كاشف الأسلوب: الكلمات أدناه تكفي */ }
   return MERGE_NEW_LOOK_RE.test(s);
 }
 /* m: { photos, crops (faceCrops)، counts (عدد الأشخاص الرئيسيّين لكلّ صورة)، userTask، apiKey، username، t0 }.

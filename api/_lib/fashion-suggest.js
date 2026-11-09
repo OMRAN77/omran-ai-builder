@@ -173,7 +173,7 @@ module.exports = async (req, res) => {
             matchPercent: Math.max(70, Math.min(99, parseInt(s.matchPercent, 10) || 85)),
           }));
         }
-      } catch (e) {
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/fashion-suggest:176');
         // leave suggestions empty; client will show a generic error
       }
     }

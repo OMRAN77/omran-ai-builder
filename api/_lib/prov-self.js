@@ -338,7 +338,7 @@ async function absorbProjects(projects) {
 async function clearGen() {
   const rec = await readRec(true);
   const share = require('./img-share.js');
-  for (const g of Array.isArray(rec.imgs) ? rec.imgs : []) { try { await share.delImage(g && g.id); } catch (e) { /* guard-ok — صورة باقية تنتهي بعمرها */ } }
+  for (const g of Array.isArray(rec.imgs) ? rec.imgs : []) { try { await share.delImage(g && g.id); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/prov-self:341'); /* guard-ok — صورة باقية تنتهي بعمرها */ } }
   await saveRec({ items: [], marks: {}, imgs: [] });
   return { cleared: true };
 }
@@ -394,7 +394,7 @@ async function noteGenImage(img, prov) {
   const line = '[صورة معمّمة] ' + (note ? note + ' — ' : '') + 'رابطها في التطبيق: ' + url + ' (اعرضها بـ![](' + url + ')، ولوضعها في ملفّات التطبيق: write_github بملفّ {path, image: "' + url + '"})';
   const next = same ? imgs : imgs.concat({ id, h, ext: extOf(mime), at: Date.now(), note });
   const drop = next.length > GEN_IMG_MAX ? next.slice(0, next.length - GEN_IMG_MAX) : [];
-  for (const d of drop) { try { await share.delImage(d.id); } catch (e) { /* guard-ok — صورة باقية تنتهي بعمرها */ } }
+  for (const d of drop) { try { await share.delImage(d.id); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/prov-self:397'); /* guard-ok — صورة باقية تنتهي بعمرها */ } }
   const dead = drop.map((d) => '/i/' + d.id + '.');
   await absorbGroups([{ lines: [line], by: prov }], { extra: { imgs: next.slice(-GEN_IMG_MAX) }, forget: dead.length ? { has: (x) => dead.some((u) => x.text.includes(u)) } : null });
   return { id, url, reused: !!same };
@@ -671,19 +671,19 @@ async function systemBlocks(owner, prov, ctx) {
   if (owner) {
     try {
       // v-gen-fix: لا كتابة قبل الردّ (الدور يُحفظ مرّة بعده — captureOwnerTurn)، إلّا مسح «لا تعمّم» قبل أن يُحقن ما طلب مسحه.
-      if (live && isNegCmd(ctx.lastUserText)) { try { await forgetLastExchange(ctx.messages, prov); } catch (e) { /* guard-ok — فشل المسح لا يوقف الردّ */ } }
+      if (live && isNegCmd(ctx.lastUserText)) { try { await forgetLastExchange(ctx.messages, prov); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/prov-self:674'); /* guard-ok — فشل المسح لا يوقف الردّ */ } }
       // v-liked-reply: «عجبني» = الخادم يحفظ الردّ الذي قبلها الآن، قبل ردّ هذا الدور، فيصدق سطر التأكيد ولا يعتمد على استدعاء الأداة.
       if (live && ownerSaidLiked(q)) { try { liked = await captureLiked(ctx.messages, prov); } catch (e) { /* guard-ok — فشل الحفظ: الأداة طريق ثانٍ */ liked = null; } }
       out += selfBlock((await readSelf(prov)).text);
       try {
         const already = live ? new Set(dialogueLines(ctx.messages).concat(assistantTexts(ctx.messages))) : null;
         out += genBlock(await readGen(false), genBudget(ctx && ctx.messages), already, q);
-      } catch (e) { /* guard-ok — بلا تخزين يردّ بلا المعلومات المعمّمة */ }
-    } catch (e) { /* guard-ok — بلا تخزين يردّ بلا ملفّه */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/prov-self:681'); /* guard-ok — بلا تخزين يردّ بلا المعلومات المعمّمة */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/prov-self:682'); /* guard-ok — بلا تخزين يردّ بلا ملفّه */ }
   }
   // v-liked-reply: الردود المعتمدة لكلّ مستخدم على كلّ مزوّد، الأقرب لموضوع رسالته؛ وللمالك بلا ما في محادثته الحاليّة أصلًا.
-  try { out += likedBlock(await readLiked(false), q, LIKED_INJECT, owner && live ? new Set(assistantTexts(ctx.messages).map(normKey)) : null, !!owner); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الردود المعتمدة */ }
-  try { out += lessonsBlock(await readLessons(false), !!owner); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الدروس */ }
+  try { out += likedBlock(await readLiked(false), q, LIKED_INJECT, owner && live ? new Set(assistantTexts(ctx.messages).map(normKey)) : null, !!owner); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/prov-self:685'); /* guard-ok — بلا تخزين يردّ بلا الردود المعتمدة */ }
+  try { out += lessonsBlock(await readLessons(false), !!owner); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/prov-self:686'); /* guard-ok — بلا تخزين يردّ بلا الدروس */ }
   if (owner && ctx && ownerSaidGeneralize(ctx.lastUserText)) out += GEN_ORDER + (ctx.genImageUrl ? ' والصورة نفسها صارت عند العشرة برابطها في التطبيق: ' + ctx.genImageUrl + ' — اذكر الرابط في سطرك.' : '');
   else if (owner && live && ownerSaidLiked(q) && liked) out += liked.item ? likedOrder(liked.item) : LIKED_NONE;
   return out;

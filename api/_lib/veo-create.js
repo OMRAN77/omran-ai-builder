@@ -530,7 +530,7 @@ module.exports = async (req, res) => {
     try {
       if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.veo_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-    } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
+    } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/veo-create:533'); /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
     console.error('[veo-create] ' + (e && e.stack ? e.stack : e));
     res.status(500).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
   }

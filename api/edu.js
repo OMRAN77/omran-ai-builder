@@ -114,11 +114,11 @@ function extractJSON(text) {
   let s = String(text || '').trim();
   // strip ```json ... ``` fences
   s = s.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
-  try { return JSON.parse(s); } catch (e) { /* fall through */ }
+  try { return JSON.parse(s); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'edu:117'); /* fall through */ }
   const first = s.indexOf('{');
   const last = s.lastIndexOf('}');
   if (first >= 0 && last > first) {
-    try { return JSON.parse(s.slice(first, last + 1)); } catch (e) { /* fall through */ }
+    try { return JSON.parse(s.slice(first, last + 1)); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'edu:121'); /* fall through */ }
   }
   return null;
 }
@@ -139,7 +139,7 @@ async function resolveModel(apiKey) {
       RESOLVED_MODEL = ids.find((id) => /sonnet/i.test(id)) || ids.find((id) => /haiku/i.test(id)) || ids[0] || MODEL;
       return RESOLVED_MODEL;
     }
-  } catch (e) { /* fall through */ }
+  } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'edu:142'); /* fall through */ }
   return MODEL;
 }
 
@@ -466,7 +466,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // عطب القراءة = معاملة مسجّل مجاني (فشل آمن، لا يفتح ولا يقفل ظلمًا).
     let __eduCaps = username ? EDU_CAPS.free : EDU_CAPS.guest;
     let __tier = username ? { tier: 'free' } : null;
-    try { __tier = await require('./_lib/tier.js').resolveTier(username); __eduCaps = eduCapsFor(__tier); } catch (e) { /* best-effort */ }
+    try { __tier = await require('./_lib/tier.js').resolveTier(username); __eduCaps = eduCapsFor(__tier); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'edu:469'); /* best-effort */ }
     const __eduMax = (k) => (__eduCaps ? __eduCaps[k] : Infinity);
     // v-edu-econ: نموذج الطلب حسب الطبقة (null = الافتراضيّ)، وسقف الضيوف الكلّيّ اليوميّ
     // (يُفحص بعد التحقّق من المحتوى وقبل النداء مباشرة كي لا يستنزفه طلب فارغ؛ فشل KV لا يقفل).
@@ -698,7 +698,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         try {
           const cached = await kvGetJSON(labKey);
           if (cached && cached.html) { res.status(200).json({ ok: true, html: cached.html, cached: true }); return; }
-        } catch (e) { /* best-effort: الكاش رفاهية — التوليد يغطي */ }
+        } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'edu:701'); /* best-effort: الكاش رفاهية — التوليد يغطي */ }
       }
       // v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): العميل يسأل عن المحفوظ عند إعادة فتح الدرس — الغياب جواب لا بناء
       if (body.cachedOnly) { res.status(200).json({ ok: true, html: null }); return; }
@@ -768,7 +768,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         res.status(502).json({ error: 'وصلت تجربة غير مكتملة من النموذج — أعد المحاولة.', code: 'failed' });
         return;
       }
-      if (labKey) { try { await kvPutJSON(labKey, { html, at: Date.now() }); } catch (e) { /* best-effort: يبقى الرد للعميل */ } }
+      if (labKey) { try { await kvPutJSON(labKey, { html, at: Date.now() }); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'edu:771'); /* best-effort: يبقى الرد للعميل */ } }
       res.status(200).json({ ok: true, html });
       return;
     }
@@ -1183,7 +1183,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
             st.lastActive = today;
             await kvPutJSON(streakKey(username), st);
           }
-        } catch (e) { /* best-effort */ }
+        } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'edu:1186'); /* best-effort */ }
         res.status(200).json({ ok: true, id: lesson.id });
         return;
       }
@@ -1208,7 +1208,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         try {
           const lid = String(body.id || '').slice(0, 64).replace(/[^A-Za-z0-9_-]/g, '');
           if (lid) await require('./_lib/kv.js').kvDel('db/edu/labs/' + encodeURIComponent(username) + '/' + lid + '.json');
-        } catch (e) { /* best-effort: بقايا مختبر يتيمة لا تضر */ }
+        } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'edu:1211'); /* best-effort: بقايا مختبر يتيمة لا تضر */ }
         res.status(200).json({ ok: true });
         return;
       }

@@ -293,9 +293,9 @@ async function takeMonthly(user, kv, limit) {
   let n;
   try { n = Number(await kv.kvIncr(k)); }
   catch (e) { console.warn('[office] monthly take failed, allowing: ' + (e && e.message)); return { ok: true, used: 1 }; }
-  try { if (n === 1) await kv.kvExpire(k, MONTH_TTL_SEC); } catch (e) { /* guard-ok — المفتاح مؤرَّخ بالشهر فلا يتراكم */ }
+  try { if (n === 1) await kv.kvExpire(k, MONTH_TTL_SEC); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/office:296'); /* guard-ok — المفتاح مؤرَّخ بالشهر فلا يتراكم */ }
   if (n > lim) {
-    try { await kv.kvDecrBy(k, 1); } catch (e) { /* guard-ok — العدّاد فوق السقف أصلًا: لا يفتح شيئًا */ }
+    try { await kv.kvDecrBy(k, 1); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/office:298'); /* guard-ok — العدّاد فوق السقف أصلًا: لا يفتح شيئًا */ }
     return { ok: false, used: lim };
   }
   return { ok: true, used: n };
