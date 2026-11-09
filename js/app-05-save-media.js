@@ -182,7 +182,19 @@
     var lg = ''; try{ lg = String(document.documentElement.lang || ''); }catch(e){ lg = ''; }
     return /^(ar|ur)/.test(lg) || !lg ? ar : en;
   }
-  function autoNote(msg){ try{ if(typeof settingsToast === 'function') settingsToast(msg); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:autoNote'); /* guard-ok — التنبيه ترف */ } }
+  /* v-video-saved-note (المالك: «اريد فيه تنبيه تم حفظ الفيديو»): التنبيه ٤٫٥ ث لا ٢٫٢، ومن كان خارج التطبيق حين اكتمل الحفظ
+     (الفيديو يأخذ دقائق) يراه أوّل ما يرجع — لا يُعرض على صفحة مخفيّة فيضيع */
+  function autoNote(msg){
+    try{
+      var show = function(){ if(typeof settingsToast === 'function') settingsToast(msg, 4500); };
+      if(document.hidden){
+        var back = function(){ if(document.hidden) return; document.removeEventListener('visibilitychange', back); show(); };
+        document.addEventListener('visibilitychange', back);
+        return;
+      }
+      show();
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:autoNote'); /* guard-ok — التنبيه ترف */ }
+  }
   function vidName(type, name){
     var ext = /webm/i.test(type || '') ? 'webm' : (/quicktime/i.test(type || '') ? 'mov' : 'mp4');
     var nm = String(name || '').trim();
@@ -229,7 +241,7 @@
     var close = function(){ try{ bar.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:bar-close'); /* guard-ok */ } };
     go.onclick = function(){
       try{
-        navigator.share({ files: [file], title: 'om ai' }).then(close).catch(function(err){
+        navigator.share({ files: [file], title: 'om ai' }).then(function(){ close(); autoNote(autoT('vidAutoSaved', '✅ تم حفظ الفيديو — تلقاه في الاستوديو أو التنزيلات', '✅ Video saved — find it in your gallery or Downloads')); }).catch(function(err){
           if(err && err.name === 'AbortError') return; /* أغلق الورقة بنفسه — الشريط باقٍ لمحاولة ثانية */
           typeof __swallow === 'function' && __swallow(err, 'app-05-save-media:bar-share');
           close(); window.omranSaveMedia(url, nm);
@@ -253,7 +265,7 @@
       var hw = window.OmranBlobSave;
       if(hw && typeof hw.begin === 'function'){
         await bridgeSave(hw, blob, nm);
-        autoNote(autoT('vidAutoSaved', '💾 نزل الفيديو في جهازك — تلقاه في الاستوديو أو التنزيلات', '💾 Video saved to your device — find it in your gallery or Downloads'));
+        autoNote(autoT('vidAutoSaved', '✅ تم حفظ الفيديو — تلقاه في الاستوديو أو التنزيلات', '✅ Video saved — find it in your gallery or Downloads'));
         return true;
       }
       if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare') && typeof msgDownloadBlob === 'function'){
@@ -271,7 +283,7 @@
       a.href = u; a.download = nm; a.rel = 'noopener'; a.dataset.nativeDownload = '1'; a.style.display = 'none';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ try{ URL.revokeObjectURL(u); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:autosave-revoke'); /* guard-ok */ } }, 60000);
-      autoNote(autoT('vidAutoSaved', '💾 نزل الفيديو في جهازك — تلقاه في الاستوديو أو التنزيلات', '💾 Video saved to your device — find it in your gallery or Downloads'));
+      autoNote(autoT('vidAutoSaved', '✅ تم حفظ الفيديو — تلقاه في الاستوديو أو التنزيلات', '✅ Video saved — find it in your gallery or Downloads'));
       return true;
     }catch(e){
       delete autoSaved[url];

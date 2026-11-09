@@ -4062,7 +4062,7 @@ function __toastBottomPx(){
   }catch(e){ __swallow(e, 'ui:toast-bottom'); }
   return '90px';
 }
-function settingsToast(msg){
+function settingsToast(msg, ms){ /* v-video-saved-note: ms مدّة اختياريّة (تنبيه «تمّ حفظ الفيديو» أطول من ٢٫٢ ث) */
   try{
     let el = document.getElementById('settingsCmdToast');
     if(!el){
@@ -4077,7 +4077,7 @@ function settingsToast(msg){
     el.style.opacity = '1';
     clearTimeout(el._t);
     clearTimeout(el._v);
-    el._t = setTimeout(() => { el.style.opacity = '0'; el._v = setTimeout(() => { el.style.visibility = 'hidden'; }, 320); }, 2200);
+    el._t = setTimeout(() => { el.style.opacity = '0'; el._v = setTimeout(() => { el.style.visibility = 'hidden'; }, 320); }, Number(ms) > 0 ? Number(ms) : 2200);
   }catch(e){ __swallow(e, "ui:app-05-ui#32"); }
 }
 const SETTINGS_CMD_LANG_MAP = [

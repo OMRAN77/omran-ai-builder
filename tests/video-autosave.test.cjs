@@ -7,6 +7,8 @@
 //   ٥) رابط المزوّد يمرّ بالبروكسي بالجلسة في الترويسة؛ ردّ غير ناجح لا يُحفظ ولا يقفل محاولة لاحقة.
 //   ٦) كلّ نقطة اكتمال في صانع الفيديو والترندات والمحادثة وأداة الوكيل ومخرج التطبيق تناديه.
 //   ٧) نصوصه الأربعة بالـ١٤ لغة ووسم ملفّات اللغات مرفوع.
+//   ٨) v-video-saved-note (المالك: «اريد فيه تنبيه تم حفظ الفيديو»): «✅ تم حفظ الفيديو» ٤٫٥ ث، وبعد حفظ الآيفون أيضًا،
+//      ومن كان خارج التطبيق يراه أوّل ما يرجع.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,7 +27,7 @@ const UA_IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleW
 /* بيئة متصفّح مصغّرة تكفي الحافظ الموحّد: عناصر بسيطة، روابط blob: في الذاكرة، وجلب مزيّف للبروكسي */
 function env(opts) {
   opts = opts || {};
-  const clicks = []; const toasts = []; const fetches = []; const swallowed = [];
+  const clicks = []; const toasts = []; const toastMs = []; const fetches = []; const swallowed = [];
   const blobs = new Map(); let n = 0;
   const body = {
     children: [],
@@ -41,8 +43,11 @@ function env(opts) {
     };
     return e;
   }
+  const listeners = {};
   const document = {
-    body, createElement: el, addEventListener() {},
+    body, createElement: el, hidden: !!opts.hidden,
+    addEventListener(t, f) { (listeners[t] = listeners[t] || []).push(f); },
+    removeEventListener(t, f) { listeners[t] = (listeners[t] || []).filter((g) => g !== f); },
     getElementById: (id) => body.children.find((c) => c.id === id) || null,
     documentElement: { lang: opts.lang || 'ar' },
   };
@@ -68,7 +73,7 @@ function env(opts) {
     window, document, navigator, URL: TURL, Blob, File, FileReader: FR, atob, Buffer, Promise, setTimeout: () => 0,
     location: { href: 'https://omran.test/', origin: 'https://omran.test' },
     __swallow: (e, w) => { swallowed.push(w + ': ' + (e && e.message)); },
-    settingsToast: (m) => toasts.push(m),
+    settingsToast: (m, ms) => { toasts.push(m); toastMs.push(ms); },
     authGet: (k) => (k === 'aiapp_auth_token' ? (opts.token || 'tok-1') : ''),
     fetch: async (u, init) => {
       fetches.push({ u: String(u), auth: init && init.headers && init.headers.Authorization });
@@ -82,7 +87,7 @@ function env(opts) {
   if (opts.shareBridge) { sb.omranNativeBridge = (name) => (name === 'omranShare' ? { postMessage() {} } : null); sb.msgDownloadBlob = (b, name) => opts.shareBridge.push({ b, name }); }
   vm.createContext(sb);
   vm.runInContext(SAVE_SRC, sb);
-  return { sb, window, clicks, toasts, fetches, swallowed, shared, body, blobs, URL: TURL };
+  return { sb, window, document, listeners, clicks, toasts, toastMs, fetches, swallowed, shared, body, blobs, URL: TURL };
 }
 
 test('١. كروم أندرويد والكمبيوتر: الفيديو المكتمل ينزل وحده بالاسم وامتداد نوعه، ومرّة واحدة لكلّ رابط', async () => {
@@ -158,6 +163,7 @@ test('٤. سفاري الآيفون: شريط بزرّ واحد، ولمسته �
   assert.equal(f.name, 'omran-trend-x.mp4');
   assert.equal(Buffer.from(await f.arrayBuffer()).toString(), 'SAFARI');
   assert.ok(bar.removed, 'الشريط يختفي بعد الحفظ');
+  assert.deepEqual(E.toasts, ['T:vidAutoSaved'], 'v-video-saved-note: «تم حفظ الفيديو» بعد ورقة الآيفون أيضًا');
   // الآيباد بهويّة ماك (iPadOS) يُعامَل آيفون
   const P = env({ ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15', platform: 'MacIntel', touch: 5, canShare: true });
   await P.window.omranAutoSaveVideo(P.URL.createObjectURL(new Blob([Buffer.from('i')], { type: 'video/mp4' })), 'a.mp4');
@@ -241,4 +247,36 @@ test('٧. النصوص الأربعة بالـ١٤ لغة، مترجمة لا م
   // الوسم يُقرأ رقمًا لا يُثبَّت (سقّاطة البنية): مرفوع إلى رقم هذا الطلب أو بعده، وسببه في التعليق
   const tv = /\.js\?v=(\d+)'; /.exec(tag), why = /v-video-autosave \((\d+)\): /.exec(tag);
   assert.ok(tv && why && Number(tv[1]) >= Number(why[1]) && Number(why[1]) > 793, 'وسم اللغات مرفوع وسببه في التعليق');
+});
+
+test('٨. «✅ تم حفظ الفيديو»: ٤٫٥ ث لا ٢٫٢، ومن كان خارج التطبيق يراه أوّل ما يرجع؛ والتوست العامّ بمدّته القديمة', async () => {
+  const E = env({ ua: UA_ANDROID });
+  await E.window.omranAutoSaveVideo(E.URL.createObjectURL(new Blob([Buffer.from('v')], { type: 'video/mp4' })), 'a.mp4');
+  assert.deepEqual(E.toasts, ['T:vidAutoSaved']); assert.deepEqual(E.toastMs, [4500]);
+  // خارج التطبيق لحظة الاكتمال (الفيديو يأخذ دقائق): الحفظ يتمّ والتنبيه ينتظر الرجوع
+  const H = env({ ua: UA_ANDROID, hidden: true });
+  await H.window.omranAutoSaveVideo(H.URL.createObjectURL(new Blob([Buffer.from('v')], { type: 'video/mp4' })), 'a.mp4');
+  assert.equal(H.clicks.length, 1, 'الحفظ لا ينتظر');
+  assert.deepEqual(H.toasts, [], 'لا تنبيه على صفحة مخفيّة يضيع');
+  assert.equal((H.listeners.visibilitychange || []).length, 1);
+  H.listeners.visibilitychange[0](); assert.deepEqual(H.toasts, [], 'ما زال خارجها');
+  H.document.hidden = false; H.listeners.visibilitychange[0]();
+  assert.deepEqual(H.toasts, ['T:vidAutoSaved'], 'يظهر أوّل ما يرجع');
+  assert.equal((H.listeners.visibilitychange || []).length, 0, 'مرّة واحدة');
+  // settingsToast الحقيقيّ: المدّة الاختياريّة، وبلاها ٢٢٠٠ كما كانت لكلّ المنادين الآخرين
+  const ui = read('js/app-05-ui.js');
+  const fn = ui.slice(ui.indexOf('function settingsToast(msg, ms){'), ui.indexOf('\nconst SETTINGS_CMD_LANG_MAP'));
+  const delays = []; const node = { style: {} };
+  const ctx = { document: { getElementById: () => node, createElement: () => node, body: { appendChild() {} } }, __toastBottomPx: () => '90px', __swallow() {},
+    setTimeout: (f, ms) => { delays.push(ms); return 1; }, clearTimeout() {} };
+  vm.runInNewContext(fn + '\nsettingsToast("a", 4500); settingsToast("b");', ctx);
+  assert.deepEqual(delays, [4500, 2200]);
+  // النصّ بالـ١٤ لغة يبدأ بـ✅، والعربيّ كلمة المالك نفسها
+  const d = read('js/app-03-i18n-data.js');
+  const ar = /vidAutoSaved: "([^"]+)"/.exec(d.slice(0, d.indexOf('\n  en: {')))[1];
+  assert.match(ar, /^✅ تم حفظ الفيديو/);
+  for (const lg of ['fr', 'es', 'ru', 'tr', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil']) assert.match(/vidAutoSaved: "([^"]+)"/.exec(read('i18n/' + lg + '.js'))[1], /^✅ /, lg);
+  const tag = read('js/app-04-i18n-state.js').split('\n').find((l) => l.includes("sc.src = 'i18n/' + lg + '.js?v=")) || '';
+  const tv = /\.js\?v=(\d+)'; /.exec(tag), why = /v-video-saved-note \((\d+)\): /.exec(tag);
+  assert.ok(tv && why && Number(tv[1]) >= Number(why[1]) && Number(why[1]) > 794, 'وسم اللغات مرفوع لتغيّر النصّ');
 });
