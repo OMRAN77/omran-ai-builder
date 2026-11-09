@@ -157,7 +157,7 @@ const CHAP = {
 // f = نقطة التقريب (نسبة من اللقطة)، z = مقدار التقريب في آخر المشهد — أو r = مستطيل المحتوى [x0,y0,x1,y1] يملأ الإطار في آخره
 // (للشاشات القليلة المحتوى: يقرّب على ما فيها بلا قصّ)، eyes = تعبير مها بعد الجملة
 const SCENES = [
-  { k: 'intro', bars: 4, chap: 'sky', lines: ['هلا والله! أنا مها', 'تعال أوريك عمران AI كلّه… مكان مكان!'] },
+  { k: 'intro', bars: 4, chap: 'sky', lines: ['هلا والله! أنا مها', 'تعال أوريك OM Ai كلّه… مكان مكان!'] },
   { k: 'title', bars: 2, chap: 'sky' },
   { k: 'shot', shot: 'home', bars: 4, chap: 'home', title: 'الشاشة الرئيسية', line: 'اكتب طلبك عادي بالعربي… مثل ما تكلّم صاحبك', f: [0.56, 0.9], z: 1.7 },
   { k: 'shot', shot: 'built', bars: 4, chap: 'home', title: 'يبنيه قدّامك!', line: 'وخلال ثواني يصير عندك تطبيق شغّال تجرّبه على طول', f: [0.22, 0.42], z: 1.35, eyes: 'star' },
@@ -165,11 +165,18 @@ const SCENES = [
   { k: 'shot', shot: 'maha', bars: 4, chap: 'home', title: 'مها', line: 'وهذي أنا! كلّمني بصوتك وأساعدك في كلّ شي', f: [0.5, 0.45], z: 1.45, eyes: 'happy' },
   { k: 'shot', shot: 'tools', bars: 4, chap: 'home', title: 'الأدوات', line: '١٤ أداة في ٣ أقسام… يلا ندخلها وحدة وحدة!', f: [0.5, 0.4], z: 1.12 },
   { k: 'chapter', bars: 2, chap: 'create', title: 'إبداع', sub: '٥ أدوات تطلّع الفنّان اللي فيك', shout: 'يلا!' },
-  { k: 'shot', shot: 'btnPortraitStyle', bars: 4, chap: 'create', title: 'أنماط الصور', line: 'صورتك بأكثر من ٩٠ ستايل… ونفس وجهك في كلّها', f: [0.45, 0.6], z: 1.25 },
-  { k: 'shot', shot: 'btnVideoMaker', bars: 4, chap: 'create', title: 'صانع الفيديو', line: 'اكتب فكرتك، وخلّ صورتك بطل الفيلم!', f: [0.6, 0.35], z: 1.25, eyes: 'star' },
-  { k: 'shot', shot: 'btnDesignAI', bars: 4, chap: 'create', title: 'ديكور AI', line: 'صوّر غرفتك… وشوفها بتصميم جديد قبل ما تغيّر شي', f: [0.5, 0.4], z: 1.2 },
-  { k: 'shot', shot: 'btnFashionAI', bars: 4, chap: 'create', title: 'أزياء AI', line: 'صورتك + ذوقك = إطلالات تختار منها جنب بعض', f: [0.5, 0.4], z: 1.2 },
-  { k: 'shot', shot: 'btnStudioAI', bars: 4, chap: 'create', title: 'ستايل AI', line: 'جرّب الشعر والمكياج والنظارات والحنّاء على صورتك', f: [0.5, 0.45], z: 1.2, eyes: 'happy' },
+  // ex = مثال حقيقيّ بعد اللقطة: ba قبل/بعد من خطّ الإنتاج نفسه (portrait-thumbs: نفس الصورة المصدر لكلّ ستايل)، clip فيديو
+  // صنعه التطبيق (media/samples/index.json)، gallery أمثلة خيارات من التطبيق (تُسمّى «أمثلة» لا «صورتك»). الأسماء بلا علامات تجاريّة.
+  { k: 'shot', shot: 'btnPortraitStyle', bars: 6, chap: 'create', title: 'أنماط الصور', line: 'صورتك بأكثر من ٩٠ ستايل… ونفس وجهك في كلّها', f: [0.45, 0.6], z: 1.25,
+    ex: { at: 3.6, kind: 'ba', line: 'شوف: نفس الصورة… بخمس ستايلات!', before: 'assets/portrait/before.webp', items: [['assets/portrait/styles/ghibli.webp', 'أنمي'], ['assets/portrait/styles/disney.webp', 'ثلاثي الأبعاد'], ['assets/portrait/styles/figurine.webp', 'مجسّم في علبة'], ['assets/portrait/styles/ukiyoe.webp', 'فن ياباني'], ['assets/portrait/styles/neonsign.webp', 'نيون']] }, eyes: 'star' },
+  { k: 'shot', shot: 'btnVideoMaker', bars: 6, chap: 'create', title: 'صانع الفيديو', line: 'اكتب فكرتك، وخلّ صورتك بطل الفيلم!', f: [0.6, 0.35], z: 1.25,
+    ex: { at: 3.6, kind: 'clip', line: 'كتبت جملة وحدة… وهذا الفيديو طلع من التطبيق!', prompt: 'صقر يطير فوق صحراء الإمارات وقت الغروب', clip: 'media/samples/runway-1.mp4', from: 0.4 }, eyes: 'star' },
+  { k: 'shot', shot: 'btnDesignAI', bars: 5, chap: 'create', title: 'ديكور AI', line: 'صوّر غرفتك… وشوفها بتصميم جديد قبل ما تغيّر شي', f: [0.5, 0.4], z: 1.2,
+    ex: { at: 3.6, kind: 'gallery', line: 'أو اختر النمط: إماراتي، نجدي، أندلسي…', w: 210, h: 282, items: [['assets/design/styles/emirati.webp', 'إماراتي معاصر'], ['assets/design/styles/najdi.webp', 'نجدي'], ['assets/design/styles/andalusi.webp', 'أندلسي'], ['assets/design/styles/modern.webp', 'عصري'], ['assets/design/styles/luxury.webp', 'فخم']] } },
+  { k: 'shot', shot: 'btnFashionAI', bars: 5, chap: 'create', title: 'أزياء AI', line: 'صورتك + ذوقك = إطلالات تختار منها جنب بعض', f: [0.5, 0.4], z: 1.2,
+    ex: { at: 3.6, kind: 'gallery', line: 'إطلالة لكلّ مناسبة: عباية، زفاف، كاجوال…', w: 180, h: 270, items: [['assets/fashion/looks/abaya.webp', 'عباية'], ['assets/fashion/looks/wedding.webp', 'زفاف'], ['assets/fashion/looks/traditional.webp', 'تقليدي'], ['assets/fashion/looks/casual.webp', 'كاجوال']] } },
+  { k: 'shot', shot: 'btnStudioAI', bars: 5, chap: 'create', title: 'ستايل AI', line: 'جرّب الشعر والمكياج والنظارات والحنّاء على صورتك', f: [0.5, 0.45], z: 1.2, eyes: 'happy',
+    ex: { at: 3.6, kind: 'gallery', line: 'هذي بعض الخيارات… وفيه أكثر بكثير!', w: 200, h: 268, items: [['assets/studio/options/hair-red.webp', 'شعر أحمر'], ['assets/studio/options/hair-blonde.webp', 'أشقر'], ['assets/studio/options/makeup-smokey.webp', 'مكياج سموكي'], ['assets/studio/options/glasses-sunglasses.webp', 'نظارة شمسية'], ['assets/studio/options/heritage-emirati.webp', 'زيّ تراثي']] } },
   { k: 'chapter', bars: 2, chap: 'work', title: 'أعمال', sub: 'شغلك أسرع وأذكى', shout: 'يلا نشتغل!' },
   { k: 'shot', shot: 'btnAdStudio', bars: 4, chap: 'work', title: 'استوديو الإعلانات', line: 'احكِ عن إعلانك بكلامك… وتطلع لك تصاميم جاهزة تختار منها', f: [0.6, 0.4], z: 1.2 },
   { k: 'shot', shot: 'btnStocks', bars: 4, chap: 'work', title: 'سوق الأسهم', line: 'أسعار ورسم بياني… ومحفظة تتعلّم فيها التداول', f: [0.5, 0.55], z: 1.22 },
@@ -295,7 +302,7 @@ function MAHA_LIB() {
 }
 
 // ─── منطق الصفحة: R(t) حتميّة تامّة (لا Date ولا Math.random) ───
-function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
+function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
   const $ = (id) => document.getElementById(id);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const ease = (x) => { x = clamp(x, 0, 1); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
@@ -307,13 +314,24 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
   const fx = $('fx').getContext('2d');
   const CUES = [];
   const cue = (t, type, v) => CUES.push({ t: +t.toFixed(3), type, v: v || 1 });
+  // «OM Ai» كلمة واحدة في الفقاعة (مسافة غير فاصلة + اتّجاه LTR) — وإلّا يقلبها RTL إلى «Ai OM»
+  const tokens = (line) => line.replace(/OM Ai/g, 'OM\u00a0Ai').split(' ');
+  const clipAt = (e) => 0.4 + tokens(e.prompt).length * 0.12 + 0.35; // ظهور الفيديو بعد كتابة الوصف
   // أحداث الصوت تُحسب من الجدول نفسه لا من الرسم
   SC.forEach((s, i) => {
     if (s.wipe) cue(s.start - 0.3, 'whoosh');
-    const words = (line, at, per) => line.split(' ').forEach((w, j) => cue(at + j * per, 'tick', 0.5 + 0.5 * ((j * 7) % 5) / 4));
+    const words = (line, at, per) => tokens(line).forEach((w, j) => cue(at + j * per, 'tick', 0.5 + 0.5 * ((j * 7) % 5) / 4));
     if (s.k === 'shot') {
       if (!s.wipe) cue(s.start, 'drop');
       cue(s.start + 0.33, 'slam', 0.8); cue(s.start + 0.47, 'pop'); words(s.line, s.start + 0.62, 0.12);
+      const e = s.ex;
+      if (e) {
+        const a = s.start + e.at;
+        cue(a - 0.2, 'whoosh', 0.6); cue(a + 0.25, 'pop'); words(e.line, a + 0.4, 0.12);
+        if (e.kind === 'ba') { cue(a + 0.25, 'slam', 0.5); cue(a + 0.6, 'sparkle'); e.items.forEach((_, k) => cue(a + 0.8 + k * 0.3, 'pop', 0.55)); }
+        if (e.kind === 'gallery') e.items.forEach((_, k) => cue(a + 0.4 + k * 0.25, 'pop', 0.55));
+        if (e.kind === 'clip') { words(e.prompt, a + 0.4, 0.12); cue(a + clipAt(e), 'sparkle'); }
+      }
     }
     if (s.k === 'chapter') { cue(s.start + 0.36, 'impact'); cue(s.start + 0.75, 'sparkle'); }
     if (s.k === 'intro') { cue(s.start + 1.15, 'impact'); cue(s.start + 2.0, 'jump'); cue(s.start + 2.72, 'pop'); words(s.lines[0], s.start + 2.85, 0.13); cue(s.start + 4.47, 'pop'); words(s.lines[1], s.start + 4.6, 0.13); }
@@ -367,7 +385,7 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
 
   // بناء الطبقات
   const shotIdx = SC.map((s, i) => s.k === 'shot' ? i : -1).filter((i) => i >= 0);
-  function wordsHtml(line) { return line.split(' ').map((w) => `<span class="w">${w}</span>`).join(' '); }
+  function wordsHtml(line) { return tokens(line).map((w) => `<span class="w"${/[A-Za-z]/.test(w) ? ' dir="ltr"' : ''}>${w}</span>`).join(' '); }
   shotIdx.forEach((i) => {
     const s = SC[i], m = SHOTS[s.shot];
     const pn = document.createElement('div'); pn.className = 'panel'; pn.id = 'pn' + i;
@@ -379,6 +397,28 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
     const bb = document.createElement('div'); bb.className = 'bubble'; bb.id = 'bb' + i;
     bb.innerHTML = `<div class="btxt">${wordsHtml(s.line)}</div>`;
     $('bubbles').appendChild(bb);
+    const e = s.ex; if (!e) return;
+    const bx = document.createElement('div'); bx.className = 'bubble'; bx.id = 'bx' + i;
+    bx.innerHTML = `<div class="btxt">${wordsHtml(e.line)}</div>`;
+    $('bubbles').appendChild(bx);
+    const bd = document.createElement('div'); bd.className = 'board'; bd.id = 'bd' + i;
+    bd.style.background = `radial-gradient(circle at 62% 42%, ${rgba(CH[s.chap].ac, 0.32)}, transparent 62%), linear-gradient(135deg, ${CH[s.chap].a}, #09090d)`;
+    const real = e.kind === 'gallery' ? 'أمثلة من التطبيق' : 'مثال حقيقي من التطبيق';
+    let h = `<div class="bdots"></div><div class="real">${real}</div>`;
+    if (e.kind === 'ba') {
+      h += `<div class="pill" style="left:1022px;top:146px">قبل</div><div class="card before" id="bf${i}" style="left:880px;top:200px"><img src="/${e.before}" style="width:270px;height:405px"></div>`;
+      h += `<svg class="arrow" id="ar${i}" viewBox="0 0 140 90" style="left:742px;top:370px;width:140px;height:90px"><path d="M135 30 L55 30 L55 6 L5 45 L55 84 L55 60 L135 60 Z" fill="#ffd166" stroke="#111" stroke-width="6" stroke-linejoin="round"/></svg>`;
+      h += `<div class="pill" style="left:386px;top:170px">بعد</div>`;
+      e.items.forEach((it, k) => { h += `<div class="card" id="it${i}_${k}" style="left:${24 + k * 148}px;top:${255 + Math.abs(k - 2) * 14}px"><img src="/${it[0]}" style="width:132px;height:197px"><div class="lbl sm">${it[1]}</div></div>`; });
+    } else if (e.kind === 'gallery') {
+      const n = e.items.length, gap = 26, tw = n * e.w + (n - 1) * gap, x0 = (1230 - tw) / 2, y0 = Math.round((761 - e.h - 70) / 2) + 26;
+      e.items.forEach((it, k) => { h += `<div class="card" id="it${i}_${k}" style="left:${x0 + k * (e.w + gap)}px;top:${y0}px"><img src="/${it[0]}" style="width:${e.w}px;height:${e.h}px"><div class="lbl">${it[1]}</div></div>`; });
+    } else if (e.kind === 'clip') {
+      h += `<div class="prompt" id="pr${i}"><div class="btxt">${wordsHtml(e.prompt)}</div><div class="send"></div></div>`;
+      h += `<div class="card vid" id="vd${i}" style="left:215px;top:222px"><img id="cf${i}" src="/__work/clip/0001.jpg" style="width:800px;height:450px"><div class="pill vpill">النتيجة</div></div>`;
+    }
+    bd.innerHTML = h;
+    pn.appendChild(bd);
   });
   SC.forEach((s, i) => {
     if (s.k !== 'chapter') return;
@@ -428,8 +468,36 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
     const tx = clamp(PW / 2 - (x0 + x1) / 2 * PW * Z, PW - PW * Z, 0), ty = clamp(PH / 2 - (y0 + y1) / 2 * PH * Z, PH - PH * Z, 0);
     kb.style.transformOrigin = '0 0'; kb.style.transform = `translate(${tx * zp}px,${ty * zp}px) scale(${1 + (Z - 1) * zp})`;
   }
+  const ROT = [-7, -3.5, 0, 3.5, 7];
+  const CLIP = {}; // الإطار المعروض لكلّ مشهد فيديو
+  function exPose(i, s, lt, waits) {
+    const e = s.ex; if (!e) return { talking: false, end: 0, on: false };
+    const bd = $('bd' + i), el = lt - e.at, sp = eOut(el / 0.45);
+    bd.style.visibility = el > 0 ? 'visible' : 'hidden';
+    bd.style.transform = `translateX(${(1 - sp) * -105}%)`;
+    const pop = (c, at, rot) => { const p = eOut((el - at) / 0.32); c.style.opacity = clamp((el - at) / 0.12, 0, 1); c.style.transform = `translateY(${(1 - p) * 70}px) rotate(${rot}deg) scale(${0.6 + 0.4 * p})`; };
+    if (e.kind === 'ba') {
+      pop($('bf' + i), 0.25, 4);
+      const ar = $('ar' + i); ar.style.opacity = clamp((el - 0.6) / 0.2, 0, 1); ar.style.transform = `translateX(${Math.sin(lt * 7) * 9}px)`;
+      e.items.forEach((_, k) => pop($('it' + i + '_' + k), 0.8 + k * 0.3, ROT[k]));
+    } else if (e.kind === 'gallery') {
+      e.items.forEach((_, k) => pop($('it' + i + '_' + k), 0.4 + k * 0.25, k % 2 ? 2.5 : -2.5));
+    } else if (e.kind === 'clip') {
+      const pr = $('pr' + i); pr.style.opacity = clamp((el - 0.2) / 0.2, 0, 1);
+      reveal(pr, el, 0.4, 0.12);
+      const va = clipAt(e), vd = $('vd' + i), vp = eOut((el - va) / 0.4);
+      vd.style.opacity = clamp((el - va) / 0.15, 0, 1); vd.style.transform = `scale(${0.7 + 0.3 * vp})`;
+      const n = Math.max(1, Math.min(CLIP_N, 1 + Math.floor(Math.max(0, el - va) * 30)));
+      const img = $('cf' + i);
+      if (CLIP[i] !== n) { CLIP[i] = n; img.src = '/__work/clip/' + String(n).padStart(4, '0') + '.jpg'; waits.push(img.decode().catch(() => null)); }
+    }
+    const bx = $('bx' + i); bubbleIn(bx, lt, e.at + 0.25);
+    const r = reveal(bx, lt, e.at + 0.4, 0.12);
+    return { talking: r.talking, end: r.end, on: el > 0 };
+  }
   window.TOTAL = TOTAL;
   window.R = function (t) {
+    const waits = [];
     const i = sceneAt(t), s = SC[i], lt = t - s.start, c = CH[s.chap];
     drawFx(t, s, lt);
     const isSky = s.k === 'intro' || s.k === 'title' || s.k === 'outro';
@@ -448,11 +516,12 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
     const intro = s.k === 'intro';
     $('logo').style.opacity = 0; $('flash').style.opacity = 0;
     if (intro) {
-      const lp = eBack((lt - 0.95) / 0.45), up = ease((lt - 2.0) / 0.6);
+      const lp = eOut((lt - 0.95) / 0.4), up = ease((lt - 2.0) / 0.6), shake = lt > 1.3 && lt < 1.6 ? Math.sin(lt * 90) * 6 * (1.6 - lt) / 0.3 : 0;
       $('logo').style.opacity = lt > 0.95 ? 1 : 0;
-      $('logo').style.transform = `translate(-50%,-50%) translateY(${-150 * up}px) scale(${(2.4 - 1.4 * lp) * (1 - 0.28 * up)}) rotate(${(1 - lp) * -6}deg)`;
+      $('logo').style.transform = `translate(-50%,-50%) translate(${shake}px,${-150 * up}px) scale(${(0.3 + 0.7 * lp) * (1 - 0.18 * up)}) rotate(${(1 - lp) * -8}deg)`;
       $('flash').style.opacity = lt > 0.95 && lt < 1.25 ? 0.85 * (1 - (lt - 0.95) / 0.3) : 0;
     }
+    [0, 0.7, 1.4].forEach((d, k) => { const w = 0.5 + 0.5 * Math.sin((t - d) * 4.2); const st = $('ls' + k); st.style.opacity = 0.45 + 0.55 * w; st.setAttribute('transform', st.dataset.base + ` scale(${0.75 + 0.25 * w})`); });
     // ── بطاقة الحلقة ──
     const title = s.k === 'title';
     $('ep').style.opacity = title ? 1 : 0;
@@ -466,7 +535,7 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
     $('letter').style.opacity = title ? 1 : 0;
 
     // ── مشاهد اللقطات ──
-    shotIdx.forEach((j) => { $('pn' + j).style.visibility = 'hidden'; $('tt' + j).style.opacity = 0; $('bb' + j).style.opacity = 0; });
+    shotIdx.forEach((j) => { $('pn' + j).style.visibility = 'hidden'; $('tt' + j).style.opacity = 0; $('bb' + j).style.opacity = 0; if (SC[j].ex) { $('bx' + j).style.opacity = 0; $('bd' + j).style.visibility = 'hidden'; } });
     $('mM').style.opacity = 0;
     if (s.k === 'shot') {
       const prev = SC[i - 1];
@@ -476,6 +545,7 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
         pe.style.visibility = 'visible';
         pe.style.transform = `translate(${-1700 * p}px, ${120 * p}px) rotate(${-1.2 - 14 * p}deg)`;
         kbAt($('kb' + (i - 1)), prev, 1);
+        exPose(i - 1, prev, prev.dur, waits);
       }
       const pn = $('pn' + i), kb = $('kb' + i);
       pn.style.visibility = 'visible';
@@ -488,17 +558,19 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
       tt.style.transform = `scale(${2.2 - 1.2 * tp}) rotate(${-3 * tp}deg)`;
       // الفقاعة والكلمات
       const bb = $('bb' + i);
-      bubbleIn(bb, lt, 0.45);
+      bubbleIn(bb, lt, 0.45, s.ex ? s.ex.at : null);
       const r = reveal(bb, lt, 0.62, 0.12);
+      const x = exPose(i, s, lt, waits);
       // مها: تشير إلى اللوحة وهي تتكلّم، ثمّ التعبير الخاصّ بالمشهد
       $('mM').style.opacity = 1;
       const hop = !s.wipe && lt < 0.5 ? -Math.sin(clamp(lt / 0.5, 0, 1) * Math.PI) * 26 : (s.wipe ? -Math.sin(clamp(lt / 0.45, 0, 1) * Math.PI) * 40 : 0);
       $('mM').style.transform = `translateY(${hop}px)`;
-      const armT = clamp((lt - 0.5) / 0.3, 0, 1) * clamp((r.end + 0.6 - lt) / 0.3, 0, 1);
-      const after = lt > r.end + 0.2;
+      const win = (a, b) => clamp((lt - a) / 0.3, 0, 1) * clamp((b - lt) / 0.3, 0, 1);
+      const armT = Math.max(win(0.5, r.end + 0.6), s.ex ? win(s.ex.at + 0.3, x.end + 0.6) : 0);
+      const after = s.ex ? lt > x.end + 0.2 : lt > r.end + 0.2;
       let eyes = blink(t, i * 0.7) ? 'closed' : 'open';
       if (after && s.eyes) eyes = s.eyes;
-      mahaPose('mm', { t, talk: r.talking ? talkAmt(t) : 0, eyes, arm: 100 * eOut(armT) + Math.sin(t * 6) * 3 * armT, point: armT > 0.5 });
+      mahaPose('mm', { t, talk: (r.talking || x.talking) ? talkAmt(t) : 0, eyes, arm: 100 * eOut(armT) + Math.sin(t * 6) * 3 * armT, point: armT > 0.5 });
     }
 
     // ── بطاقة الفصل ──
@@ -549,9 +621,9 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
       bubbleIn(b0, lt, 1.0, 3.45); const r0 = reveal(b0, lt, 1.15, 0.13);
       bubbleIn(b1, lt, 3.6, out); const r1 = reveal(b1, lt, 3.75, 0.13);
       mahaPose('mi', { t, talk: (r0.talking || r1.talking) ? talkAmt(t) : 0, eyes: lt > 5 ? 'happy' : (blink(t, 0.9) ? 'closed' : 'open'), arm: 118 + Math.sin(t * 13) * 12 });
-      const lp = eBack((lt - 0.35) / 0.5);
+      const lp = eOut((lt - 0.35) / 0.45);
       $('logo').style.opacity = lt > 0.35 ? 1 : 0;
-      $('logo').style.transform = `translate(-50%,-50%) translate(-330px,-330px) scale(${(lt < 0.35 ? 0 : 0.2 + 0.8 * lp) * 0.62})`;
+      $('logo').style.transform = `translate(-50%,-50%) translate(-330px,-330px) scale(${lt < 0.35 ? 0 : 0.3 + 0.7 * lp})`;
       $('outroTxt').style.opacity = clamp((lt - 5.2) / 0.3, 0, 1);
       $('outroTxt').style.transform = `scale(${0.6 + 0.4 * eBack((lt - 5.2) / 0.4)})`;
       $('fade').style.opacity = clamp((lt - (s.dur - 0.7)) / 0.7, 0, 1);
@@ -568,10 +640,11 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS) {
     }
     $('wipe').style.transform = `translateX(${wx}px) skewX(-18deg)`;
     $('wipeA').style.background = wc;
+    return waits.length ? Promise.all(waits) : undefined;
   };
 }
 
-function compHtml(shotsMeta) {
+function compHtml(shotsMeta, clipN) {
   const SHOTS = Object.fromEntries(shotsMeta.map((m) => [m.id, { file: m.file }]));
   const cloud = (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})"><g class="cshade"><ellipse cx="0" cy="30" rx="210" ry="48"/></g><g class="cfill"><circle cx="-120" cy="0" r="70"/><circle cx="-40" cy="-40" r="95"/><circle cx="60" cy="-55" r="110"/><circle cx="150" cy="-5" r="75"/><ellipse cx="10" cy="20" rx="200" ry="45"/></g><g class="chi"><circle cx="40" cy="-95" r="40"/><circle cx="-60" cy="-70" r="30"/></g></g>`;
   const towers = () => { let s = ''; let x = 0; let k = 0; while (x < 3900) { const w = 60 + ((k * 37) % 70), h = 90 + ((k * 53) % 230) + (k % 7 === 0 ? 260 : 0); s += `<rect x="${x}" y="${300 - h}" width="${w}" height="${h + 10}" rx="3"/>`; if (k % 7 === 0) s += `<path d="M${x + w / 2 - 6} ${300 - h} L${x + w / 2} ${300 - h - 120} L${x + w / 2 + 6} ${300 - h} Z"/>`; x += w + 6; k++; } return s; };
@@ -591,9 +664,10 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:#000;font-family
 #sun{position:absolute;left:260px;top:120px;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,240,.95) 0,rgba(255,240,200,.55) 18%,rgba(255,230,180,0) 60%)}
 #city{position:absolute;left:-200px;bottom:-10px;fill:#173a7a;opacity:.92}
 #sky.sunset #city{fill:#2b1d55}
-#logo{position:absolute;left:960px;top:470px;width:900px;height:300px;opacity:0}
+#logo{position:absolute;left:960px;top:470px;width:488px;height:126px;opacity:0}
 #logo .plate{position:absolute;inset:-34px -70px;border-radius:90px;background:linear-gradient(135deg,#0d1238,#1b2a6b 60%,#24357f);border:7px solid #e9c46a;outline:7px solid #111;box-shadow:14px 14px 0 rgba(0,0,0,.35)}
-#logo img{position:relative;width:900px;height:300px}
+#logo img{position:absolute;left:0;top:0;width:422px;height:126px}
+#logo svg{position:absolute;left:418px;top:0;width:66px;height:126px;overflow:visible}
 #flash{position:absolute;inset:0;background:#fff;opacity:0}
 #fade{position:absolute;inset:0;background:#000;opacity:0}
 .panel{position:absolute;left:60px;top:160px;width:1250px;height:781px;border:10px solid #fff;outline:5px solid #111;box-shadow:18px 18px 0 rgba(0,0,0,.55);background:#000;overflow:hidden;visibility:hidden;transform-origin:50% 50%}
@@ -630,6 +704,22 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:#000;font-family
 #outroTxt{direction:rtl;position:absolute;left:220px;top:300px;width:820px;text-align:center;opacity:0}
 #outroTxt .made{font:800 40px 'Baloo Bhaijaan 2';color:#fff;text-shadow:3px 3px 0 #2a1d55}
 #outroTxt .cta{display:inline-block;margin-top:14px;padding:10px 60px 18px;border-radius:60px;background:linear-gradient(135deg,#fff0c2,#e9c46a 55%,#b8862f);border:6px solid #111;box-shadow:8px 8px 0 #111;font-family:Lalezar,Tajawal,sans-serif;font-size:70px;color:#111}
+/* لوحة المثال داخل إطار اللقطة */
+.board{position:absolute;inset:0;visibility:hidden;overflow:hidden;direction:ltr}
+.board .bdots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.08) 2px,transparent 2.6px);background-size:22px 22px}
+.board .real{position:absolute;right:18px;top:16px;direction:rtl;padding:4px 18px 8px;border-radius:30px;background:rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.5);color:#fff;font:800 24px 'Baloo Bhaijaan 2'}
+.board .pill{position:absolute;z-index:3;direction:rtl;padding:4px 24px 8px;background:#111;color:#fff;border:3px solid #fff;border-radius:30px;font:800 32px 'Baloo Bhaijaan 2';transform:translateX(-50%)}
+.board .card{position:absolute;background:#fff;padding:7px;outline:4px solid #111;box-shadow:10px 10px 0 rgba(0,0,0,.5);opacity:0}
+.board .card img{display:block;object-fit:cover}
+.board .card .lbl{position:absolute;left:50%;bottom:-48px;transform:translateX(-50%);white-space:nowrap;direction:rtl;font:800 28px 'Baloo Bhaijaan 2';color:#fff;-webkit-text-stroke:7px #111;paint-order:stroke fill}
+.board .card.before{box-shadow:14px 14px 0 rgba(0,0,0,.5)}
+.board .card .lbl.sm{font-size:23px;bottom:-42px;-webkit-text-stroke:6px #111}
+.board .vpill{left:auto;right:-18px;top:-30px;transform:none;z-index:2}
+.board .arrow{position:absolute;opacity:0}
+.board .prompt{position:absolute;left:60px;top:74px;width:1110px;height:100px;display:flex;align-items:center;justify-content:flex-end;padding:0 34px 0 110px;background:#fff;border:6px solid #111;border-radius:52px;box-shadow:8px 8px 0 rgba(0,0,0,.45);opacity:0}
+.board .prompt .btxt{font-size:40px}
+.board .prompt .send{position:absolute;left:18px;top:13px;width:62px;height:62px;border-radius:50%;background:linear-gradient(135deg,#fff0c2,#e9c46a 55%,#b8862f);border:4px solid #111}
+.board .vid{transform-origin:50% 40%}
 #wipe{position:absolute;top:-60px;left:0;width:3300px;height:1200px;display:flex;transform:translateX(99999px)}
 #wipe div{height:100%}
 </style></head><body>
@@ -639,13 +729,13 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:#000;font-family
   <svg width="1920" height="1080" style="position:absolute;inset:0"><g id="cl1">${cloud(300, 250, 1.1)}${cloud(1500, 200, 0.8)}${cloud(2400, 300, 1.2)}</g><g id="cl2">${cloud(800, 520, 0.9)}${cloud(2000, 600, 1.0)}${cloud(3000, 480, 0.8)}</g><g id="cl3">${cloud(200, 820, 1.4)}${cloud(1700, 900, 1.6)}${cloud(3100, 860, 1.3)}</g></svg>
   <svg id="city" width="4000" height="320" viewBox="0 0 4000 320">${towers()}</svg>
 </div>
-<div id="ep"><div id="epband"></div><div id="epnum">الحلقة ١</div><div id="eptitle">جولة في عمران AI</div><div id="epsub">كلّ مكان في التطبيق… بدقيقتين ونصّ</div></div>
+<div id="ep"><div id="epband"></div><div id="epnum">الحلقة ١</div><div id="eptitle">جولة في <bdi dir="ltr">OM Ai</bdi></div><div id="epsub">كلّ مكان في التطبيق… في أقلّ من ٣ دقائق</div></div>
 <div id="panels"></div>
 <div id="titles"></div>
 <div id="chapters"></div>
 <div class="maha" id="mB"></div>
 <div class="maha" id="mM"></div>
-<div id="logo"><div class="plate"></div><img src="/icons/brand-ar.png" alt=""></div>
+<div id="logo"><div class="plate"></div><img src="/icons/brand-om-s.png" alt="OM Ai"><svg viewBox="0 0 22 42"><g id="ls0" data-base="translate(7.5 14) scale(0.42)" transform="translate(7.5 14) scale(0.42)"><path fill="#04BAEC" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g id="ls1" data-base="translate(15 19) scale(0.62)" transform="translate(15 19) scale(0.62)"><path fill="#FEED01" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g id="ls2" data-base="translate(7.5 28) scale(0.38)" transform="translate(7.5 28) scale(0.38)"><path fill="#F049D7" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g></svg></div>
 <div class="maha" id="mI"></div>
 <div id="bubbles"></div>
 <div id="outroTxt"><div class="made">صُنع في الإمارات</div><div class="cta">ابدأ مجانًا</div></div>
@@ -654,13 +744,20 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:#000;font-family
 <div id="flash"></div>
 <div id="fade"></div>
 <script>(${MAHA_LIB.toString()})();</script>
-<script>(${PAGE_MAIN.toString()})(${JSON.stringify(SCENES)}, ${JSON.stringify(CHAP)}, ${TOTAL}, ${BAR}, ${JSON.stringify(SHOTS)});</script>
+<script>(${PAGE_MAIN.toString()})(${JSON.stringify(SCENES)}, ${JSON.stringify(CHAP)}, ${TOTAL}, ${BAR}, ${JSON.stringify(SHOTS)}, ${clipN || 1});</script>
 </body></html>`;
 }
 
 async function openComp(browser) {
   const meta = JSON.parse(fs.readFileSync(path.join(SHOTS, 'meta.json'), 'utf8'));
-  fs.writeFileSync(path.join(WORK, 'comp.html'), compHtml(meta));
+  // إطارات الفيديو الحقيقيّ للمثال (٣٠/ث بمقاسه الأصليّ ١٢٨٠×٧٢٠) — تُعرض صورةً صورة فيتزامن مع التصوير الحتميّ
+  const cs = SCENES.find((x) => x.ex && x.ex.kind === 'clip'), clipDir = path.join(WORK, 'clip');
+  if (cs && !fs.existsSync(path.join(clipDir, '0001.jpg'))) {
+    fs.mkdirSync(clipDir, { recursive: true });
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', String(cs.ex.from || 0), '-i', path.join(ROOT, cs.ex.clip), '-t', '7', '-vf', 'fps=30', '-q:v', '2', path.join(clipDir, '%04d.jpg')]);
+  }
+  const clipN = fs.existsSync(clipDir) ? fs.readdirSync(clipDir).filter((f) => f.endsWith('.jpg')).length : 0;
+  fs.writeFileSync(path.join(WORK, 'comp.html'), compHtml(meta, clipN));
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   const errs = [];

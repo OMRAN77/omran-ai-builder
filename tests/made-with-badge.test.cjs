@@ -27,7 +27,8 @@ test('٢) الشارة خارج إطار المشروع ولا تُحقن في �
 
 test('٣) معاينة الرابط (واتساب وغيره) تعرّف بالمنصّة', () => {
   assert.match(html, /<meta property="og:title" content="[^"]*OM Ai[^"]*">/);
-  assert.match(html, /<meta property="og:image" content="https:\/\/omran-ai-builder\.vercel\.app\/icons\/og-omran\.jpg">/);
-  assert.ok(fs.existsSync(path.join(__dirname, '..', 'icons', 'og-omran.jpg')), 'الصورة موجودة');
+  // v-og-om-ai: صورة المعاينة باسم «OM Ai» (القديمة og-omran.jpg كان عليها «عمران Ai»)
+  assert.match(html, /<meta property="og:image" content="https:\/\/omran-ai-builder\.vercel\.app\/icons\/og-om-ai\.jpg">/);
+  assert.ok(fs.existsSync(path.join(__dirname, '..', 'icons', 'og-om-ai.jpg')), 'الصورة موجودة');
   assert.match(html, /<meta name="twitter:card" content="summary_large_image">/);
 });
