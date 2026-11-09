@@ -60,13 +60,14 @@ test('بلا إنفاق ولا شبكة: لا مفتاح ولا نداء مزو�
   assert.ok(src.includes("if (p.startsWith('/api/')) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{}'); return; }"));
   assert.ok(src.includes("ctx.route('**/api/tools?action=stocks'") && src.includes("ctx.route('https://api.aladhan.com/**'"));
   assert.ok(src.includes("fs.writeFileSync(path.join(WORK, 'audio.wav'), buf)"));
-  assert.ok(!/\.(mp3|ogg|m4a)['"]/.test(src.replace(/\.mp4/g, '')));
+  // الموسيقى بالكود؛ الملفّات الصوتيّة الوحيدة أصوات الحوار المولَّدة (--cast duo) في video/voice/tour-duo
+  assert.ok(!/\.(mp3|ogg|m4a)['"]/.test(src.replace(/\.mp4/g, '').replace("l.key + '.mp3'", '')));
 });
 
 test('النصّ فوق الصور بـHTML لا داخلها، ومها SVG مرسومة باليد، والمخرج في video/ الذي لا يُنشر', () => {
   assert.ok(src.includes('window.mahaSVG = function (id)') && src.includes('<svg id="${id}" viewBox="0 0 400 600"'));
   assert.ok(src.includes("fonts.googleapis.com/css2?family=Lalezar"));
-  assert.ok(src.includes("opt('out', 'video/final/anime-tour-ar.mp4')"));
+  assert.ok(src.includes("opt('out', CAST === 'duo' ? 'video/final/om-ai-tour-duo-ar.mp4' : 'video/final/anime-tour-ar.mp4')"));
   assert.ok(/^video\/$/m.test(read('.vercelignore')));
   assert.ok(!/filter:\s*blur/.test(src));
 });

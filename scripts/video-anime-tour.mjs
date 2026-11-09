@@ -6,22 +6,31 @@
 //      باليد (لا صورة مولَّدة)، خطوط سرعة، نقاط هافتون، بطاقات عناوين بحدود سميكة، فقاعات كلام عربيّة بخطّ حادّ.
 //   ٣) audio: موسيقى افتتاحيّة أنمي مولَّدة بالكود (تتابع IV–V–iii–vi، ١٤٠ نبضة) ومؤثّرات (هبّة، لمعة، ضربة) على مواضع المشاهد.
 //   ٤) encode: ffmpeg ‏H.264 ‏crf 26 ‏tune animation + AAC (قِيس: نصّ اللقطة والفقاعة كما في crf 20 بنصف الحجم تقريبًا).
-// الاستعمال: node scripts/video-anime-tour.mjs [--stage all|capture|render|audio|encode] [--work DIR] [--out video/final/anime-tour-ar.mp4]
+// --cast duo (v-tour-duo، المالك ٩ نوفمبر: «فيديو كشخصيّة إماراتيّة من هذي مع المحادثة الكلام» ← «الاثنين بحوار بينهم»): بدل مها الأنمي
+//   شخصيّتا التطبيق الجاهزتان (assets/characters: c1 «شاب إماراتي» = سيف، c2 «فتاة إماراتيّة» = ميرا) في بطاقتين، يتحاوران بصوتيهما:
+//   ٥) voice: كلامهما من خدمة صوت التطبيق نفسها (/api/tts، voice=maha، لهجة إماراتيّة، رجل/امرأة) بدفعات صغيرة لكلّ شخصيّة (حتّى ٤ جمل)
+//      تُقسَم عند الوقفات بمطابقة الموضع والطول، وتُفحص نسبة مدّة كلّ جملة لطولها؛ الدفعة المشكوك فيها تُعاد جملةً جملة. المخرج
+//      video/voice/tour-duo/ (MP3 + index.json) فلا يُعاد التوليد لجملة لم تتغيّر. مدّة كلّ مشهد = كلامه مقرَّبًا لمازورة كاملة.
+// الاستعمال: node scripts/video-anime-tour.mjs [--cast maha|duo] [--stage all|capture|voice|render|audio|encode] [--work DIR] [--out …]
 //            [--from 0 --to 30]  (معاينة مقطع) [--patch] (إعادة رسم المقطع فوق الإطارات الموجودة)  [--frames 12.5,40]  (إطارات مفردة للفحص)
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
 const STAGE = opt('stage', 'all');
 const WORK = path.resolve(opt('work', path.join(os.tmpdir(), 'anime-tour')));
-const OUT = path.resolve(ROOT, opt('out', 'video/final/anime-tour-ar.mp4'));
+const CAST = opt('cast', 'maha') === 'duo' ? 'duo' : 'maha';
+const OUT = path.resolve(ROOT, opt('out', CAST === 'duo' ? 'video/final/om-ai-tour-duo-ar.mp4' : 'video/final/anime-tour-ar.mp4'));
+const VOICE_DIR = path.join(ROOT, 'video/voice/tour-duo');
+const TTS_URL = 'https://omran-ai-builder.vercel.app/api/tts';
 const FPS = 30;
 const SHOTS = path.join(WORK, 'shots');
 fs.mkdirSync(SHOTS, { recursive: true });
@@ -192,6 +201,79 @@ const SCENES = [
   // الخاتمة: باركود صفحة التحميل الرسميّ (icons/omran-qr-code.png ← /download، نفس باركود الإعدادات) ظاهر ٨ ثوانٍ ليُمسح من الشاشة
   { k: 'outro', bars: 7, chap: 'sunset', lines: ['شفت؟ كلّ هذا في تطبيق واحد!', 'امسح الباركود وحمّله… وأنا معك!'] },
 ];
+// ─── حوار سيف (s، صوت الرجل) وميرا (m، صوت المرأة) لكلّ مشهد — المفتاح: shot أو intro/outro أو ch-<الفصل>؛ «:ex» بعد المثال ───
+const DUO = {
+  intro: [['m', 'هلا والله! أنا ميرا.'], ['s', 'وأنا سيف! وين بتاخذينا اليوم؟'], ['m', 'جولة في OM Ai… مكان مكان!']],
+  home: [['s', 'من وين نبدأ؟'], ['m', 'من هنا: تكتب طلبك عادي بالعربي… مثل ما تكلّم ربعك.']],
+  built: [['m', 'وخلال ثواني يصير عندك تطبيق شغّال تجرّبه على طول!'], ['s', 'ما شاء الله!']],
+  code: [['s', 'والكود؟'], ['m', 'موجود… تعدّله وتنزّله.']],
+  maha: [['m', 'وهذي مها، المساعدة الصوتيّة… تكلّمها بصوتك وتساعدك.']],
+  tools: [['m', 'وهنا الأدوات: ١٤ أداة في ٣ أقسام.'], ['s', 'يلا ندخلها وحدة وحدة!']],
+  'ch-create': [['s', 'يلا!']],
+  btnPortraitStyle: [['m', 'أنماط الصور: صورتك بأكثر من ٩٠ ستايل.']],
+  'btnPortraitStyle:ex': [['m', 'شوف: نفس الصورة… بخمس ستايلات!'], ['s', 'خطير!']],
+  btnVideoMaker: [['s', 'وصانع الفيديو؟'], ['m', 'تكتب فكرتك، وصورتك تصير بطل الفيلم.']],
+  'btnVideoMaker:ex': [['m', 'كتبت جملة وحدة… وطلع هالفيديو!'], ['s', 'صقر فوق الصحراء… روعة!']],
+  btnDesignAI: [['s', 'وأبي أغيّر ديكور المجلس.'], ['m', 'صوّره… وشوفه بتصميم جديد قبل ما تغيّر شي.']],
+  'btnDesignAI:ex': [['m', 'أو اختر النمط: إماراتي، نجدي، أندلسي.']],
+  btnFashionAI: [['m', 'أزياء AI: صورتك وذوقك… وتشوف الإطلالات جنب بعض.']],
+  'btnFashionAI:ex': [['m', 'إطلالة لكلّ مناسبة: عباية، زفاف، كاجوال.']],
+  btnStudioAI: [['s', 'وستايل AI؟'], ['m', 'تجرّب الشعر والمكياج والنظارات على صورتك.']],
+  'btnStudioAI:ex': [['m', 'وهذي بعض الخيارات… وفيه أكثر بكثير!']],
+  'ch-work': [['s', 'يلا نشتغل!']],
+  btnAdStudio: [['s', 'عندي محل وأبي إعلان.'], ['m', 'احكِ عن إعلانك بكلامك… وتطلع لك تصاميم جاهزة تختار منها.']],
+  btnStocks: [['m', 'سوق الأسهم: أسعار ورسم بياني… ومحفظة تتعلّم فيها التداول.']],
+  btnDocs: [['s', 'وعقود الشغل؟'], ['m', 'ارفع العقد أو الفاتورة… ويحلّلها لك.']],
+  btnEmailAssist: [['m', 'ومساعد البريد يجهّز ردودك… وما يرسل شي إلا بموافقتك.']],
+  btnConstruction: [['s', 'وأبي أبني بيت!'], ['m', 'تصف المشروع بسطر… ويعطيك تصوّر وقائمة مواد وتقدير تكلفة.']],
+  'ch-life': [['m', 'يلا!']],
+  btnQibla: [['m', 'مواقيت الصلاة واتجاه القبلة… حسب موقعك.']],
+  btnOmranEdu: [['s', 'وللدراسة؟'], ['m', 'ارفع محاضرتك أو اختر درس… وذاكر بالألعاب.']],
+  btnReligion: [['m', 'تفسير آية، وبحث حديث، وتفسير الأحلام.']],
+  btnFeedback: [['s', 'وإذا عندي ملاحظة؟'], ['m', 'قيّمنا بنجمة… وكلمتك توصلنا مباشرة.']],
+  themes: [['m', 'وتغيّر شكل التطبيق بالثيمات… ويدعم ١٤ لغة.'], ['s', 'حتى أنمي!']],
+  outro: [['s', 'شفتوا؟ كلّ هذا في تطبيق واحد!'], ['m', 'امسحوا الباركود وحمّلوه… وإحنا معكم!']],
+};
+const WHO = { s: { name: 'سيف', img: 'assets/characters/c1.png', gender: 'male' }, m: { name: 'ميرا', img: 'assets/characters/c2.png', gender: 'female' } };
+// المنطوق: الاسم والأرقام كلمات (المكتوب يبقى كما هو في الفقاعة)
+const SAY = [[/OM Ai/g, 'أوم إيه آي'], [/(^|\s)AI(?=[\s؟?!.،:]|$)/g, '$1إيه آي'], [/١٤/g, 'أربع عشرة'], [/(^|\s)٣(?=\s)/g, '$1ثلاثة'], [/٩٠/g, 'تسعين']];
+const sayOf = (t) => SAY.reduce((a, [re, r]) => a.replace(re, r), t);
+const sceneKey = (s) => s.shot || (s.k === 'chapter' ? 'ch-' + s.chap : s.k);
+const lineKey = (who, say) => createHash('sha1').update(who + '|' + say).digest('hex').slice(0, 12);
+const VOICE = fs.existsSync(path.join(VOICE_DIR, 'index.json')) ? JSON.parse(fs.readFileSync(path.join(VOICE_DIR, 'index.json'), 'utf8')) : {};
+function duoLines(arr) {
+  return (arr || []).map(([w, text]) => {
+    const say = sayOf(text), key = lineKey(w, say), v = VOICE[key];
+    // بلا صوت مولَّد بعد (معاينة): مدّة تقديريّة من طول الجملة
+    return { who: w, text, say, key, dur: v ? v.dur : 0.4 + 0.075 * say.replace(/[^\p{L}]/gu, '').length, voiced: !!v };
+  });
+}
+// زمن كلّ جملة داخل مشهدها، ومدّة المشهد = آخر كلام + مهلة قراءة، مقرَّبة لمازورة (القطع على الإيقاع كما كان)
+const GAP = 0.2, HOLD = 0.55;
+if (CAST === 'duo') {
+  SCENES.forEach((s) => {
+    const key = sceneKey(s), lines = duoLines(DUO[key]);
+    let t = s.k === 'intro' ? 2.7 : s.k === 'outro' ? 1.0 : s.k === 'chapter' ? 0.7 : 0.6;
+    const place = (arr) => arr.forEach((l) => { l.start = t; t += l.dur + GAP; });
+    if (s.k === 'outro') {
+      place(lines.slice(0, 1)); s.qrAt = t + 0.1; t = s.qrAt + 0.4; place(lines.slice(1));
+      s.bars = Math.max(5, Math.ceil(Math.max(t + 0.6, s.qrAt + 6.5) / BAR)); // آخر مشهد: مازورات كاملة
+      s.talk = lines;
+    } else {
+      place(lines); s.talk = lines;
+      if (s.k === 'chapter' && lines[0]) s.shout = lines[0].text; // الصيحة هي جملة الشخصيّة نفسها
+      if (s.ex) {
+        const xl = duoLines(DUO[key + ':ex']);
+        s.ex.at = Math.max(t + 0.3, 2.6); t = s.ex.at + 0.5; place(xl); s.exTalk = xl;
+      }
+      // نصف مازورة (نبضتان) — القطع على الإيقاع ولا يطول المشهد فوق كلامه
+      if (s.k !== 'title') s.bars = Math.max(s.k === 'chapter' ? 2 : 2.5, Math.ceil((t - GAP + HOLD) / (BAR / 2)) / 2);
+    }
+  });
+  // بدايات الفصول والحلقة والخاتمة على رأس مازورة كاملة (فواصل الموسيقى فيها): يُمدّ المشهد قبلها نصف مازورة إن لزم
+  let acc = 0;
+  SCENES.forEach((s, i) => { acc += s.bars; const nx = SCENES[i + 1]; if (nx && nx.k !== 'shot' && acc % 1) { s.bars += 0.5; acc += 0.5; } });
+}
 {
   let t0 = 0; const chapIdx = {};
   SCENES.forEach((s, i) => {
@@ -303,7 +385,8 @@ function MAHA_LIB() {
 }
 
 // ─── منطق الصفحة: R(t) حتميّة تامّة (لا Date ولا Math.random) ───
-function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
+function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N, CAST, WHOS, ENV) {
+  const DUO = CAST === 'duo';
   const $ = (id) => document.getElementById(id);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const ease = (x) => { x = clamp(x, 0, 1); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
@@ -321,7 +404,8 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
   // أحداث الصوت تُحسب من الجدول نفسه لا من الرسم
   SC.forEach((s, i) => {
     if (s.wipe) cue(s.start - 0.3, 'whoosh');
-    const words = (line, at, per) => tokens(line).forEach((w, j) => cue(at + j * per, 'tick', 0.5 + 0.5 * ((j * 7) % 5) / 4));
+    const words = (line, at, per) => { if (!DUO) tokens(line).forEach((w, j) => cue(at + j * per, 'tick', 0.5 + 0.5 * ((j * 7) % 5) / 4)); };
+    if (DUO) (s.talk || []).concat(s.exTalk || []).forEach((l) => { if (s.k !== 'chapter') cue(s.start + l.start - 0.12, 'pop', 0.45); });
     if (s.k === 'shot') {
       if (!s.wipe) cue(s.start, 'drop');
       cue(s.start + 0.33, 'slam', 0.8); cue(s.start + 0.47, 'pop'); words(s.line, s.start + 0.62, 0.12);
@@ -335,9 +419,11 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
       }
     }
     if (s.k === 'chapter') { cue(s.start + 0.36, 'impact'); cue(s.start + 0.75, 'sparkle'); }
-    if (s.k === 'intro') { cue(s.start + 1.15, 'impact'); cue(s.start + 2.0, 'jump'); cue(s.start + 2.72, 'pop'); words(s.lines[0], s.start + 2.85, 0.13); cue(s.start + 4.47, 'pop'); words(s.lines[1], s.start + 4.6, 0.13); }
+    if (s.k === 'intro' && DUO) { cue(s.start + 1.15, 'impact'); cue(s.start + 2.0, 'jump'); }
+    else if (s.k === 'intro') { cue(s.start + 1.15, 'impact'); cue(s.start + 2.0, 'jump'); cue(s.start + 2.72, 'pop'); words(s.lines[0], s.start + 2.85, 0.13); cue(s.start + 4.47, 'pop'); words(s.lines[1], s.start + 4.6, 0.13); }
     if (s.k === 'title') { cue(s.start + 0.38, 'slam'); cue(s.start + 0.6, 'sparkle'); }
-    if (s.k === 'outro') { cue(s.start + 0.6, 'sparkle'); cue(s.start + 1.02, 'pop'); words(s.lines[0], s.start + 1.15, 0.13); cue(s.start + 3.3, 'slam', 0.7); cue(s.start + 3.45, 'sparkle'); cue(s.start + 3.62, 'pop'); words(s.lines[1], s.start + 3.75, 0.13); cue(s.start + 5.85, 'impact'); }
+    if (s.k === 'outro' && DUO) { cue(s.start + 0.6, 'sparkle'); cue(s.start + s.qrAt, 'slam', 0.7); cue(s.start + s.qrAt + 0.15, 'sparkle'); cue(s.start + s.talk[1].start + s.talk[1].dur + 0.3, 'impact'); }
+    else if (s.k === 'outro') { cue(s.start + 0.6, 'sparkle'); cue(s.start + 1.02, 'pop'); words(s.lines[0], s.start + 1.15, 0.13); cue(s.start + 3.3, 'slam', 0.7); cue(s.start + 3.45, 'sparkle'); cue(s.start + 3.62, 'pop'); words(s.lines[1], s.start + 3.75, 0.13); cue(s.start + 5.85, 'impact'); }
   });
   window.CUES = CUES;
   const sceneAt = (t) => { for (let i = SC.length - 1; i >= 0; i--) if (t >= SC[i].start) return i; return 0; };
@@ -434,6 +520,68 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
     s.lines.forEach((l, j) => { const b = document.createElement('div'); b.className = 'bubble big'; b.id = k + 'b' + j; b.innerHTML = `<div class="btxt">${wordsHtml(l)}</div>`; $('bubbles').appendChild(b); });
   });
   $('mM').innerHTML = mahaSVG('mm'); $('mB').innerHTML = mahaSVG('mb'); $('mI').innerHTML = mahaSVG('mi');
+  // ─ الحوار: بطاقتا سيف وميرا (صورتا التطبيق كما هما) وفقاعة لكلّ جملة ─
+  const LN = [];
+  if (DUO) {
+    ['s', 'm'].forEach((w) => {
+      const c = document.createElement('div'); c.className = 'pcard'; c.id = 'card' + w;
+      c.innerHTML = `<div class="pimg"><img src="/${WHOS[w].img}" alt=""></div><div class="peq">${'<i></i>'.repeat(5)}</div><div class="pname">${WHOS[w].name}</div>`;
+      $('pcards').appendChild(c); // الحاوية pcards: «card»+«s» = cards كان يصيب الحاوية نفسها
+    });
+    SC.forEach((s, i) => (s.talk || []).concat(s.exTalk || []).forEach((l) => {
+      if (s.k === 'chapter') return; // صيحة الفصل في النجمة
+      const b = document.createElement('div'); b.className = 'bubble' + (s.k === 'intro' || s.k === 'outro' ? ' big' : '');
+      b.innerHTML = `<div class="btxt">${wordsHtml(l.text)}</div>`; $('bubbles').appendChild(b);
+      LN.push({ i, l, el: b });
+    }));
+  }
+  // أماكن البطاقتين والفقاعة لكلّ نوع مشهد (الذيل يشير إلى المتكلّم: نسبة من عرض الفقاعة)
+  const LAY = {
+    shot: { s: [1352, 762, 250, 300, 1], m: [1628, 762, 250, 300, 1], b: [1350, 345, 520], tail: { s: 22, m: 76 } },
+    intro: { s: [640, 520, 300, 533, 0], m: [980, 520, 300, 533, 0], b: [650, 300, 620], tail: { s: 23, m: 77 } },
+    outro: { s: [1080, 520, 300, 533, 0], m: [1420, 520, 300, 533, 0], b: [1060, 300, 660], tail: { s: 26, m: 77 } },
+  };
+  const envAt = (l, lt) => { const e = ENV[l.key]; if (!e) return 0.5 + 0.5 * Math.abs(Math.sin(lt * 17)); const k = Math.floor((lt - l.start) * 30); return k >= 0 && k < e.length ? e[k] : 0; };
+  function cardPose(w, box, on, amp, t, enter) {
+    const c = $('card' + w);
+    if (!box) { c.style.opacity = 0; return; }
+    const [x, y, cw, chh, crop] = box;
+    c.style.opacity = 1; c.style.left = x + 'px'; c.style.top = y + 'px'; c.style.width = cw + 'px'; c.style.height = chh + 'px';
+    const img = c.querySelector('img'), ih = cw * 1280 / 720;
+    img.style.width = cw + 'px'; img.style.height = ih + 'px'; img.style.transform = crop ? 'translateY(-28px)' : 'none';
+    // المتكلّم: إطار ذهبيّ ويهتزّ بقدر صوته؛ الآخر أصغر قليلًا (لا تكبير فوق ١ لصورة نقطيّة)
+    const bob = on ? -amp * 14 : Math.sin(t * 2.2 + (w === 's' ? 0 : 1.7)) * 3, rot = on ? Math.sin(t * 9) * amp * 2.2 : 0;
+    c.style.transform = `translateY(${bob + (enter || 0)}px) rotate(${rot}deg) scale(${on ? 1 : 0.94})`;
+    c.classList.toggle('on', !!on);
+    c.querySelectorAll('.peq i').forEach((b, k) => { b.style.height = (on ? 5 + amp * (16 + 9 * Math.sin(t * 23 + k * 1.9)) : 4) + 'px'; });
+  }
+  function duoPose(t, i, s, lt) {
+    LN.forEach((L) => { L.el.style.opacity = 0; });
+    const lines = (s.talk || []).concat(s.exTalk || []);
+    let speak = null; lines.forEach((l) => { if (lt >= l.start && lt <= l.start + l.dur) speak = l; });
+    const amp = speak ? envAt(speak, lt) : 0;
+    if (s.k === 'chapter') {
+      const l = lines[0], w = l ? l.who : 's', p = eBack(lt / 0.45);
+      cardPose(w, [150, 250, 340, 604, 0], speak && speak.who === w, amp, t, 0);
+      $('card' + w).style.transform += ` translateX(${(1 - p) * -700}px)`;
+      cardPose(w === 's' ? 'm' : 's', null);
+      return;
+    }
+    const lay = LAY[s.k];
+    if (!lay) { cardPose('s', null); cardPose('m', null); return; }
+    const enter = (k) => s.k === 'intro' ? (1 - eOut((lt - 2.0 - k * 0.15) / 0.5)) * 700 : s.k === 'outro' ? (1 - eOut((lt - 0.15 - k * 0.15) / 0.5)) * 700 : (s.wipe ? (1 - eOut(lt / 0.45)) * 420 : 0);
+    ['s', 'm'].forEach((w, k) => cardPose(w, lay[w], speak && speak.who === w, amp, t, enter(k)));
+    // الفقاعة: الجملة الحاليّة حتّى تبدأ التالية
+    let cur = null; LN.forEach((L) => { if (L.i === i && lt >= L.l.start - 0.12) cur = L; });
+    if (cur) {
+      const el = cur.el, [bx, by, bw] = lay.b;
+      el.style.left = bx + 'px'; el.style.top = by + 'px'; el.style.width = bw + 'px';
+      el.style.setProperty('--tail', lay.tail[cur.l.who] + '%');
+      el.style.transformOrigin = lay.tail[cur.l.who] + '% 112%';
+      bubbleIn(el, lt, cur.l.start - 0.12);
+      reveal(el, lt, cur.l.start, Math.max(0.06, cur.l.dur * 0.8 / Math.max(1, el.querySelectorAll('.w').length)));
+    }
+  }
 
   // كشف الكلمات واحدة واحدة مع حركة الفم
   function reveal(el, lt, start, per) {
@@ -492,6 +640,7 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
       const img = $('cf' + i);
       if (CLIP[i] !== n) { CLIP[i] = n; img.src = '/__work/clip/' + String(n).padStart(4, '0') + '.jpg'; waits.push(img.decode().catch(() => null)); }
     }
+    if (DUO) return { talking: false, end: 0, on: el > 0 };
     const bx = $('bx' + i); bubbleIn(bx, lt, e.at + 0.25);
     const r = reveal(bx, lt, e.at + 0.4, 0.12);
     return { talking: r.talking, end: r.end, on: el > 0 };
@@ -519,7 +668,7 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
     if (intro) {
       const lp = eOut((lt - 0.95) / 0.4), up = ease((lt - 2.0) / 0.6), shake = lt > 1.3 && lt < 1.6 ? Math.sin(lt * 90) * 6 * (1.6 - lt) / 0.3 : 0;
       $('logo').style.opacity = lt > 0.95 ? 1 : 0;
-      $('logo').style.transform = `translate(-50%,-50%) translate(${shake}px,${-150 * up}px) scale(${(0.3 + 0.7 * lp) * (1 - 0.18 * up)}) rotate(${(1 - lp) * -8}deg)`;
+      $('logo').style.transform = `translate(-50%,-50%) translate(${shake}px,${(DUO ? -300 : -150) * up}px) scale(${(0.3 + 0.7 * lp) * (1 - 0.18 * up)}) rotate(${(1 - lp) * -8}deg)`;
       $('flash').style.opacity = lt > 0.95 && lt < 1.25 ? 0.85 * (1 - (lt - 0.95) / 0.3) : 0;
     }
     [0, 0.7, 1.4].forEach((d, k) => { const w = 0.5 + 0.5 * Math.sin((t - d) * 4.2); const st = $('ls' + k); st.style.opacity = 0.45 + 0.55 * w; st.setAttribute('transform', st.dataset.base + ` scale(${0.75 + 0.25 * w})`); });
@@ -558,10 +707,11 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
       tt.style.opacity = lt > 0.15 ? 1 : 0;
       tt.style.transform = `scale(${2.2 - 1.2 * tp}) rotate(${-3 * tp}deg)`;
       // الفقاعة والكلمات
+      const x = exPose(i, s, lt, waits);
+      if (!DUO) {
       const bb = $('bb' + i);
       bubbleIn(bb, lt, 0.45, s.ex ? s.ex.at : null);
       const r = reveal(bb, lt, 0.62, 0.12);
-      const x = exPose(i, s, lt, waits);
       // مها: تشير إلى اللوحة وهي تتكلّم، ثمّ التعبير الخاصّ بالمشهد
       $('mM').style.opacity = 1;
       const hop = !s.wipe && lt < 0.5 ? -Math.sin(clamp(lt / 0.5, 0, 1) * Math.PI) * 26 : (s.wipe ? -Math.sin(clamp(lt / 0.45, 0, 1) * Math.PI) * 40 : 0);
@@ -572,6 +722,7 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
       let eyes = blink(t, i * 0.7) ? 'closed' : 'open';
       if (after && s.eyes) eyes = s.eyes;
       mahaPose('mm', { t, talk: (r.talking || x.talking) ? talkAmt(t) : 0, eyes, arm: 100 * eOut(armT) + Math.sin(t * 6) * 3 * armT, point: armT > 0.5 });
+      }
     }
 
     // ── بطاقة الفصل ──
@@ -587,16 +738,18 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
       ch.querySelector('.csub span').style.opacity = clamp((lt - 0.75) / 0.2, 0, 1);
       const sh = $('sh' + i), sp = eBack((lt - 0.7) / 0.3);
       sh.style.opacity = lt > 0.7 ? 1 : 0; sh.style.transform = `scale(${lt < 0.7 ? 0 : sp}) rotate(${-8 + Math.sin(t * 20) * 1.5}deg)`;
+      if (!DUO) {
       $('mB').style.opacity = 1;
       const jin = eBack(lt / 0.45);
       $('mB').style.transform = `translateX(${(1 - jin) * -700}px)`;
       mahaPose('mb', { t, talk: lt > 0.7 && lt < 1.3 ? talkAmt(t) : 0, eyes: lt > 0.6 ? 'star' : 'open', arm: 118 + Math.sin(t * 14) * 10, tilt: Math.sin(t * 3) * 5 });
+      }
     }
 
     // ── المقدّمة والخاتمة: مها كبيرة مع فقاعتين ──
     $('mI').style.opacity = 0; $('outroTxt').style.opacity = 0; $('qr').style.opacity = 0;
     ['introb0', 'introb1', 'outrob0', 'outrob1'].forEach((id) => { $(id).style.opacity = 0; });
-    if (intro) {
+    if (intro && !DUO) {
       const jt = (lt - 2.0) / 0.55;
       if (lt > 2.0) {
         $('mI').style.opacity = 1;
@@ -611,7 +764,17 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
         mahaPose('mi', { t, talk: (r0.talking || r1.talking) ? talkAmt(t) : 0, eyes: lt < 4.3 ? 'happy' : (blink(t, 0.3) ? 'closed' : 'open'), arm: lt < 4.4 ? 118 + Math.sin(t * 14) * 10 : 100, point: lt >= 4.4 });
       }
     }
-    if (sunset) {
+    if (sunset && DUO) {
+      const qa = s.qrAt, qp = eOut((lt - qa) / 0.45), qr = $('qr'), ca = s.talk[1].start + s.talk[1].dur + 0.3;
+      qr.style.opacity = clamp((lt - qa) / 0.15, 0, 1);
+      qr.style.transform = `translate(-50%,0) scale(${0.4 + 0.6 * qp}) rotate(${(1 - qp) * -6}deg)`;
+      const lp = eOut((lt - 0.35) / 0.45);
+      $('logo').style.opacity = lt > 0.35 ? 1 : 0;
+      $('logo').style.transform = `translate(-50%,-50%) translate(-440px,-355px) scale(${lt < 0.35 ? 0 : 0.3 + 0.7 * lp})`;
+      $('outroTxt').style.opacity = clamp((lt - ca) / 0.3, 0, 1);
+      $('outroTxt').style.transform = `scale(${0.6 + 0.4 * eBack((lt - ca) / 0.4)})`;
+      $('fade').style.opacity = clamp((lt - (s.dur - 0.7)) / 0.7, 0, 1);
+    } else if (sunset) {
       $('mI').style.opacity = 1;
       const jin = eBack(lt / 0.5);
       $('mI').style.left = '1200px'; $('mI').style.top = '430px';
@@ -637,6 +800,7 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
     // دخول المقدّمة من السواد
     if (intro) $('fade').style.opacity = clamp(1 - lt / 0.6, 0, 1);
 
+    if (DUO) duoPose(t, i, s, lt);
     // ── المسح بين الأقسام: شريط مائل بثلاثة ألوان يعبر من اليمين لليسار ──
     let wx = 99999, wc = c.ac;
     for (let j = 1; j < SC.length; j++) {
@@ -650,7 +814,7 @@ function PAGE_MAIN(SC, CH, TOTAL, BAR, SHOTS, CLIP_N) {
   };
 }
 
-function compHtml(shotsMeta, clipN) {
+function compHtml(shotsMeta, clipN, env) {
   const SHOTS = Object.fromEntries(shotsMeta.map((m) => [m.id, { file: m.file }]));
   const cloud = (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})"><g class="cshade"><ellipse cx="0" cy="30" rx="210" ry="48"/></g><g class="cfill"><circle cx="-120" cy="0" r="70"/><circle cx="-40" cy="-40" r="95"/><circle cx="60" cy="-55" r="110"/><circle cx="150" cy="-5" r="75"/><ellipse cx="10" cy="20" rx="200" ry="45"/></g><g class="chi"><circle cx="40" cy="-95" r="40"/><circle cx="-60" cy="-70" r="30"/></g></g>`;
   const towers = () => { let s = ''; let x = 0; let k = 0; while (x < 3900) { const w = 60 + ((k * 37) % 70), h = 90 + ((k * 53) % 230) + (k % 7 === 0 ? 260 : 0); s += `<rect x="${x}" y="${300 - h}" width="${w}" height="${h + 10}" rx="3"/>`; if (k % 7 === 0) s += `<path d="M${x + w / 2 - 6} ${300 - h} L${x + w / 2} ${300 - h - 120} L${x + w / 2 + 6} ${300 - h} Z"/>`; x += w + 6; k++; } return s; };
@@ -683,9 +847,19 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:#000;font-family
 .tt{direction:rtl;white-space:nowrap;font-family:Lalezar,Tajawal,sans-serif;font-size:96px;line-height:1.05;color:#fff;-webkit-text-stroke:14px #111;paint-order:stroke fill;text-shadow:7px 8px 0 rgba(0,0,0,.55)}
 .tag{direction:rtl;display:inline-block;margin-top:12px;padding:4px 26px 8px;border:4px solid #111;border-radius:40px;color:#111;font:800 32px 'Baloo Bhaijaan 2';box-shadow:5px 5px 0 #111}
 .bubble{position:absolute;left:1350px;top:345px;width:520px;min-height:150px;display:flex;align-items:center;justify-content:center;background:#fff;border:6px solid #111;border-radius:42px;padding:22px 28px;box-shadow:8px 8px 0 rgba(0,0,0,.45);opacity:0;transform-origin:62% 112%}
-.bubble:after{content:"";position:absolute;bottom:-38px;left:58%;width:44px;height:44px;background:#fff;border-right:6px solid #111;border-bottom:6px solid #111;transform:skewX(25deg) rotate(45deg) translateY(-6px)}
+.bubble:after{content:"";position:absolute;bottom:-38px;left:var(--tail,58%);width:44px;height:44px;background:#fff;border-right:6px solid #111;border-bottom:6px solid #111;transform:skewX(25deg) rotate(45deg) translateY(-6px)}
 .bubble.big{width:600px;min-height:170px;transform-origin:90% 110%}
-.bubble.big:after{left:78%}
+.bubble.big:after{left:var(--tail,78%)}
+/* الحوار: بطاقتا الشخصيّتين بحدود المانغا، والمتكلّم بإطار ذهبيّ */
+.pcard{position:absolute;opacity:0;background:#fff;border:7px solid #fff;outline:5px solid #111;border-radius:22px;box-shadow:10px 10px 0 rgba(0,0,0,.45);transform-origin:50% 100%}
+.pcard .pimg{position:absolute;inset:0;overflow:hidden;border-radius:15px}
+.pcard .pimg img{display:block;position:absolute;left:0;top:0}
+.pcard.on{border-color:#ffd166;box-shadow:10px 10px 0 rgba(0,0,0,.45),0 0 0 6px rgba(255,209,102,.35),0 0 40px rgba(255,209,102,.6)}
+.pcard .pname{position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);direction:rtl;white-space:nowrap;padding:2px 22px 7px;background:#111;color:#fff;border:3px solid #fff;border-radius:24px;font:800 28px 'Baloo Bhaijaan 2'}
+.pcard.on .pname{background:#ffd166;color:#111;border-color:#111}
+.pcard .peq{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:flex-end;gap:5px;height:34px}
+.pcard .peq i{display:block;width:7px;height:4px;border-radius:4px;background:#ffd166;box-shadow:0 0 0 2px #111;opacity:0}
+.pcard.on .peq i{opacity:1}
 .btxt{direction:rtl;font-weight:800;font-size:44px;line-height:1.38;color:#151515;text-align:center}
 .bubble.big .btxt{font-size:52px}
 .btxt .w{display:inline-block;opacity:0}
@@ -746,6 +920,7 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:#000;font-family
 <div class="maha" id="mM"></div>
 <div id="logo"><div class="plate"></div><img src="/icons/brand-om-s.png" alt="OM Ai"><svg viewBox="0 0 22 42"><g id="ls0" data-base="translate(7.5 14) scale(0.42)" transform="translate(7.5 14) scale(0.42)"><path fill="#04BAEC" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g id="ls1" data-base="translate(15 19) scale(0.62)" transform="translate(15 19) scale(0.62)"><path fill="#FEED01" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g><g id="ls2" data-base="translate(7.5 28) scale(0.38)" transform="translate(7.5 28) scale(0.38)"><path fill="#F049D7" d="M0-12C1-4 4-1 12 0C4 1 1 4 0 12C-1 4-4 1-12 0C-4-1-1-4 0-12Z"/></g></svg></div>
 <div class="maha" id="mI"></div>
+<div id="pcards"></div>
 <div id="bubbles"></div>
 <div id="qr"><img src="/icons/omran-qr-code.png" alt=""><div class="qlbl">امسح وحمّل <bdi dir="ltr">OM Ai</bdi></div></div>
 <div id="outroTxt"><div class="made">صُنع في الإمارات</div><div class="cta">ابدأ مجانًا</div></div>
@@ -754,10 +929,23 @@ html,body{width:1920px;height:1080px;overflow:hidden;background:#000;font-family
 <div id="flash"></div>
 <div id="fade"></div>
 <script>(${MAHA_LIB.toString()})();</script>
-<script>(${PAGE_MAIN.toString()})(${JSON.stringify(SCENES)}, ${JSON.stringify(CHAP)}, ${TOTAL}, ${BAR}, ${JSON.stringify(SHOTS)}, ${clipN || 1});</script>
+<script>(${PAGE_MAIN.toString()})(${JSON.stringify(SCENES)}, ${JSON.stringify(CHAP)}, ${TOTAL}, ${BAR}, ${JSON.stringify(SHOTS)}, ${clipN || 1}, ${JSON.stringify(CAST)}, ${JSON.stringify(WHO)}, ${JSON.stringify(env || {})});</script>
 </body></html>`;
 }
 
+// غلاف صوت كلّ جملة (٣٠ قيمة في الثانية، ٠..١) — يحرّك بطاقة المتكلّم وأعمدة الصوت بقدر كلامه الفعليّ
+function voiceEnv() {
+  const env = {}; let peak = 0;
+  for (const sc of SCENES) for (const l of (sc.talk || []).concat(sc.exTalk || [])) {
+    const v = VOICE[l.key]; if (!v || env[l.key]) continue;
+    const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', path.join(VOICE_DIR, v.file), '-f', 's16le', '-ac', '1', '-ar', '24000', '-'], { maxBuffer: 64 << 20 });
+    const n = raw.length >> 1, win = 800, out = [];
+    for (let a = 0; a < n; a += win) { let q = 0; const b = Math.min(n, a + win); for (let k = a; k < b; k++) { const x = raw.readInt16LE(k * 2) / 32768; q += x * x; } const r = Math.sqrt(q / Math.max(1, b - a)); out.push(r); peak = Math.max(peak, r); }
+    env[l.key] = out;
+  }
+  for (const k of Object.keys(env)) env[k] = env[k].map((r) => Math.round(Math.min(1, Math.sqrt(r / (peak * 0.8))) * 100) / 100);
+  return env;
+}
 async function openComp(browser) {
   const meta = JSON.parse(fs.readFileSync(path.join(SHOTS, 'meta.json'), 'utf8'));
   // إطارات الفيديو الحقيقيّ للمثال (٣٠/ث بمقاسه الأصليّ ١٢٨٠×٧٢٠) — تُعرض صورةً صورة فيتزامن مع التصوير الحتميّ
@@ -767,7 +955,7 @@ async function openComp(browser) {
     execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', String(cs.ex.from || 0), '-i', path.join(ROOT, cs.ex.clip), '-t', '7', '-vf', 'fps=30', '-q:v', '2', path.join(clipDir, '%04d.jpg')]);
   }
   const clipN = fs.existsSync(clipDir) ? fs.readdirSync(clipDir).filter((f) => f.endsWith('.jpg')).length : 0;
-  fs.writeFileSync(path.join(WORK, 'comp.html'), compHtml(meta, clipN));
+  fs.writeFileSync(path.join(WORK, 'comp.html'), compHtml(meta, clipN, CAST === 'duo' ? voiceEnv() : null));
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   const errs = [];
@@ -806,6 +994,117 @@ async function render() {
     }
     await ctx.close();
   } finally { await browser.close(); }
+}
+
+// ───────────────────────── ٥) الأصوات (--cast duo) ─────────────────────────
+// خدمة صوت التطبيق نفسها، كما يطلبها «استمع»: voice=maha ولهجة إماراتيّة، والجنس يختار صوت الرجل أو المرأة. ضيف واحد (guestId) بلا حساب.
+// دفعات حتّى ٤ جمل للشخصيّة نفسها (لا يستهلك حدّ الطلبات اليوميّ لصوت التطبيق ٤٨ مرّة)، تفصلها «…» فتطول الوقفة بينها.
+function wavInfo(buf) { // ‎PCM 16-bit من رأس RIFF
+  let i = 12, fmt = null;
+  while (i + 8 <= buf.length) {
+    const id = buf.toString('ascii', i, i + 4), len = buf.readUInt32LE(i + 4);
+    if (id === 'fmt ') fmt = { ch: buf.readUInt16LE(i + 10), sr: buf.readUInt32LE(i + 12), bits: buf.readUInt16LE(i + 22) };
+    if (id === 'data') return { ...fmt, off: i + 8, len: Math.min(len, buf.length - i - 8) };
+    i += 8 + len + (len % 2);
+  }
+  throw new Error('WAV بلا data');
+}
+function silences(file) { // وقفات ≥ ١٢٠ مللي ثانية تحت ‎-40dB (silencedetect يكتب على stderr)
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-af', 'silencedetect=noise=-40dB:d=0.12', '-f', 'null', '-'], { encoding: 'utf8' });
+  const txt = String(r.stderr || '');
+  const st = [...txt.matchAll(/silence_start: ([\d.]+)/g)].map((m) => +m[1]), en = [...txt.matchAll(/silence_end: ([\d.]+)/g)].map((m) => +m[1]);
+  return st.map((x, k) => ({ s: x, e: en[k] != null ? en[k] : x }));
+}
+const fileDur = (f) => +execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], { encoding: 'utf8' }).trim();
+const letters = (t) => t.replace(/[^\p{L}]/gu, '').length;
+// curl لا fetch: fetch في Node لا يمرّ بوكيل HTTPS_PROXY في بيئات الوكيل، وcurl يمرّ به
+async function ttsCall(text, gender, guestId) {
+  const dir = path.join(WORK, 'voice'), body = path.join(dir, 'req.json'), out = path.join(dir, 'resp.bin'), hdr = path.join(dir, 'resp.h');
+  fs.writeFileSync(body, JSON.stringify({ text, voice: 'maha', gender, lang: 'ar', dialect: 'ae', guestId }));
+  for (let a = 1; a <= 3; a++) {
+    try {
+      fs.rmSync(out, { force: true });
+      execFileSync('curl', ['-sS', '-m', '120', '-D', hdr, '-o', out, '-X', 'POST', TTS_URL, '-H', 'content-type: application/json', '--data-binary', '@' + body]);
+      const h = fs.readFileSync(hdr, 'utf8'), codes = [...h.matchAll(/^HTTP\/[\d.]+ (\d+)/gm)].map((m) => +m[1]), code = codes[codes.length - 1];
+      const tier = ((h.match(/^x-tts-tier:\s*(\S+)/im) || [])[1] || '').trim(), buf = fs.readFileSync(out);
+      if (code === 200 && buf.length > 8000) return { buf, tier };
+      console.log('… محاولة ' + a + ' HTTP ' + code + ' ' + buf.toString('utf8', 0, 120));
+    } catch (e) { console.log('… محاولة ' + a + ' ' + String(e && e.message).slice(0, 160)); }
+    await new Promise((res) => setTimeout(res, 4000 * a));
+  }
+  throw new Error('تعذّر الصوت بعد ٣ محاولات');
+}
+// حدود الجمل: وقفة لكلّ حدّ بالترتيب، الأقرب لموضعه المتوقَّع (نسبة الحروف) والأطول وقفةً (برمجة ديناميكيّة)
+function splitPoints(cands, expected) {
+  const n = expected.length, m = cands.length; if (m < n) return null;
+  const cost = (c, k) => Math.abs((c.s + c.e) / 2 - expected[k]) - 0.8 * Math.min(c.e - c.s, 0.7);
+  const D = Array.from({ length: n }, () => new Array(m).fill(Infinity)), P = Array.from({ length: n }, () => new Array(m).fill(-1));
+  for (let j = 0; j < m; j++) D[0][j] = cost(cands[j], 0);
+  for (let k = 1; k < n; k++) for (let j = k; j < m; j++) for (let q = k - 1; q < j; q++) {
+    const v = D[k - 1][q] + cost(cands[j], k); if (v < D[k][j]) { D[k][j] = v; P[k][j] = q; }
+  }
+  let best = -1; for (let j = n - 1; j < m; j++) if (best < 0 || D[n - 1][j] < D[n - 1][best]) best = j;
+  const pick = []; for (let k = n - 1, j = best; k >= 0; j = P[k][j], k--) pick.unshift(cands[j]);
+  return pick;
+}
+async function synthVoices() {
+  fs.mkdirSync(VOICE_DIR, { recursive: true });
+  const index = { ...VOICE }, tmp = path.join(WORK, 'voice'); fs.mkdirSync(tmp, { recursive: true });
+  const all = []; const seen = new Set();
+  for (const s of SCENES) for (const l of [...(s.talk || []), ...(s.exTalk || [])]) if (!seen.has(l.key)) { seen.add(l.key); all.push(l); }
+  const need = all.filter((l) => !index[l.key] || !fs.existsSync(path.join(VOICE_DIR, index[l.key].file)));
+  console.log('🎙️ جمل: ' + all.length + '، تحتاج صوتًا: ' + need.length);
+  const guestId = 'video-tour-' + new Date().toISOString().slice(0, 10);
+  const batches = [];
+  const per = args.includes('--single') ? 1 : 4; // --single: جملة لكلّ طلب (أضمن، وأكثر طلبات)
+  for (const w of ['m', 's']) { const ls = need.filter((l) => l.who === w); for (let i = 0; i < ls.length; i += per) batches.push(ls.slice(i, i + per)); }
+  const save = (l, src, a, b, tier) => {
+    const file = l.key + '.mp3', out = path.join(VOICE_DIR, file);
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', a.toFixed(3), '-to', b.toFixed(3), '-i', src, '-af', 'afade=t=in:d=0.02,areverse,afade=t=in:d=0.04,areverse', '-ac', '1', '-ar', '24000', '-c:a', 'libmp3lame', '-b:a', '96k', out]);
+    index[l.key] = { who: l.who, say: l.say, text: l.text, file, dur: +fileDur(out).toFixed(3), tier };
+    console.log('  ✓ ' + WHO[l.who].name + ' ' + index[l.key].dur.toFixed(2) + 'ث — ' + l.text);
+  };
+  const single = async (l) => {
+    const r = await ttsCall(l.say, WHO[l.who].gender, guestId), src = path.join(tmp, l.key + '.raw');
+    fs.writeFileSync(src, r.buf);
+    const sil = silences(src), D = fileDur(src);
+    const a = sil.length && sil[0].s < 0.01 ? Math.max(0, sil[0].e - 0.04) : 0, last = sil[sil.length - 1];
+    const b = last && Math.abs(last.e - D) < 0.05 ? Math.min(D, last.s + 0.06) : D;
+    save(l, src, a, b, r.tier);
+  };
+  let k = 0;
+  for (const batch of batches) {
+    k++;
+    if (batch.length === 1) { await single(batch[0]); continue; }
+    const r = await ttsCall(batch.map((l) => l.say).join('\n\n…\n\n'), WHO[batch[0].who].gender, guestId);
+    const src = path.join(tmp, 'batch-' + k + '.wav'); fs.writeFileSync(src, r.buf);
+    const sil = silences(src), D = fileDur(src);
+    const head = sil.length && sil[0].s < 0.01 ? sil[0].e : 0, tailS = sil.length && Math.abs(sil[sil.length - 1].e - D) < 0.05 ? sil[sil.length - 1].s : D;
+    const inner = sil.filter((c) => c.s > head + 0.05 && c.e < tailS - 0.05);
+    const w = batch.map((l) => letters(l.say)), tot = w.reduce((x, y) => x + y, 0);
+    let acc = 0; const expected = w.slice(0, -1).map((x) => { acc += x; return head + (tailS - head) * acc / tot; });
+    const pick = splitPoints(inner, expected);
+    let ok = !!pick;
+    const segs = [];
+    if (ok) {
+      let a = head;
+      pick.forEach((c) => { segs.push([Math.max(0, a - 0.04), c.s + 0.06]); a = c.e; });
+      segs.push([Math.max(0, a - 0.04), Math.min(D, tailS + 0.06)]);
+      // نسبة المدّة إلى الحروف لكلّ جملة قريبة من متوسّط الدفعة — وإلّا فالقصّ مشكوك فيه
+      const rate = segs.map(([x, y], i) => (y - x) / w[i]), mean = (tailS - head) / tot;
+      ok = rate.every((v) => v > 0.6 * mean && v < 1.65 * mean);
+      if (!ok) console.log('  ⚠️ دفعة ' + k + ': نسب مريبة ' + rate.map((v) => (v / mean).toFixed(2)).join(' ') + ' — جملةً جملة');
+      // ولا تُقبل الدفعة إلّا إن كانت وقفات القصّ أطول من كلّ وقفة داخل الجمل (فاصل «…» واضح) — وإلّا قد يقع القصّ داخل جملة
+      // بنسب مقبولة (وقع: ٦ دفعات من ٨ لصوت ميرا ٩ نوفمبر)
+      const rest = inner.filter((c) => !pick.includes(c)).map((c) => c.e - c.s);
+      if (ok && rest.length && Math.min(...pick.map((c) => c.e - c.s)) <= Math.max(...rest)) { ok = false; console.log('  ⚠️ دفعة ' + k + ': وقفات القصّ غير حاسمة — جملةً جملة'); }
+    } else console.log('  ⚠️ دفعة ' + k + ': وقفات أقلّ من الجمل — جملةً جملة');
+    if (ok) batch.forEach((l, i) => save(l, src, segs[i][0], segs[i][1], r.tier));
+    else for (const l of batch) await single(l);
+  }
+  const tiers = [...new Set(all.map((l) => index[l.key] && index[l.key].tier))];
+  fs.writeFileSync(path.join(VOICE_DIR, 'index.json'), JSON.stringify(Object.fromEntries(all.map((l) => [l.key, index[l.key]])), null, 1));
+  console.log('🎙️ تمّ. مصدر الصوت: ' + tiers.join(', ') + (tiers.length > 1 ? ' ⚠️ مصدران مختلفان — صوتان مختلفان في الفيديو' : ''));
 }
 
 // ───────────────────────── ٣) الصوت ─────────────────────────
@@ -975,13 +1274,28 @@ function synthAudio() {
   const rv = [reverb(B.rev[0], 0), reverb(B.rev[1], 23)];
   const dly = Math.round(beat * 0.75 * SR);
   for (let ch = 0; ch < 2; ch++) { const L = B.lead[ch]; for (let n = dly; n < N; n++) L[n] += L[n - dly] * 0.32 * (ch ? 1 : 0.8); }
+  // الحوار: صوت كلّ جملة في موضعها، ومستوى الكلام موحَّد، والموسيقى تنخفض تحته (متتبّع غلاف: هجوم ١٠ مللي، تحرير ٣٥٠ مللي)
+  const VO = new Float32Array(N), duckV = new Float32Array(N).fill(1);
+  if (CAST === 'duo') {
+    for (const sc of SCENES) for (const l of (sc.talk || []).concat(sc.exTalk || [])) {
+      const v = VOICE[l.key]; if (!v) continue;
+      const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', path.join(VOICE_DIR, v.file), '-f', 'f32le', '-ac', '1', '-ar', String(SR), '-'], { maxBuffer: 256 << 20 });
+      const f = new Float32Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.length));
+      const i0 = Math.round((sc.start + l.start) * SR);
+      for (let k = 0; k < f.length && i0 + k < N; k++) VO[i0 + k] += f[k];
+    }
+    let q = 0, c = 0; for (let n = 0; n < N; n++) { const a = Math.abs(VO[n]); if (a > 0.01) { q += a * a; c++; } }
+    const g = c ? 0.13 / Math.sqrt(q / c) : 1;
+    const at = 1 - Math.exp(-1 / (0.01 * SR)), rl = 1 - Math.exp(-1 / (0.35 * SR)); let e = 0;
+    for (let n = 0; n < N; n++) { VO[n] *= g; const a = Math.abs(VO[n]); e += (a > e ? at : rl) * (a - e); duckV[n] = 1 - 0.62 * Math.min(1, e * 9); }
+  }
   const out = [new Float32Array(N), new Float32Array(N)];
   const fadeOut = Math.round(0.7 * SR);
   let peak = 0;
   for (let ch = 0; ch < 2; ch++) {
     for (let n = 0; n < N; n++) {
       const music = B.drums[ch][n] * 0.9 + (B.bass[ch][n] + B.pad[ch][n]) * duck[n] + B.pluck[ch][n] + B.lead[ch][n] + rv[ch][n];
-      let v = music * 0.62 + B.sfx[ch][n] * 0.85;
+      let v = CAST === 'duo' ? music * 0.62 * duckV[n] + B.sfx[ch][n] * 0.6 + VO[n] : music * 0.62 + B.sfx[ch][n] * 0.85;
       if (n > N - fadeOut) v *= (N - n) / fadeOut;
       v = Math.tanh(v * 1.1);
       out[ch][n] = v; peak = Math.max(peak, Math.abs(v));
@@ -1002,11 +1316,15 @@ function encode() {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(WORK, 'frames', '%05d.jpg'), '-i', path.join(WORK, 'audio.wav'),
     '-c:v', 'libx264', '-crf', '26', '-preset', 'slow', '-tune', 'animation', '-pix_fmt', 'yuv420p', '-af', 'loudnorm=I=-15:TP=-1.5:LRA=11', '-c:a', 'aac', '-b:a', '192k', '-ar', '44100', '-shortest', '-movflags', '+faststart', OUT]);
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', '44.4', '-i', OUT, '-frames:v', '1', '-vf', 'scale=1280:-2', '-q:v', '3', OUT.replace(/\.mp4$/, '.jpg')]);
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', CAST === 'duo' ? '6.0' : '44.4', '-i', OUT, '-frames:v', '1', '-vf', 'scale=1280:-2', '-q:v', '3', OUT.replace(/\.mp4$/, '.jpg')]);
   console.log('🎬', OUT, (fs.statSync(OUT).size / 1048576).toFixed(1) + 'MB');
 }
 
 try {
+  // الأصوات إنفاق صغير على خدمة صوت التطبيق: لا تعمل إلّا بطلبها صراحةً (--stage voice)، ولا تدخل «all»
+  if (STAGE === 'voice') { if (CAST !== 'duo') throw new Error('--stage voice لـ--cast duo وحده'); await synthVoices(); }
+  if (STAGE === 'plan') { SCENES.forEach((x) => console.log(x.start.toFixed(1).padStart(6), x.bars, sceneKey(x), (x.talk || []).concat(x.exTalk || []).map((l) => WHO[l.who].name + ':' + l.dur.toFixed(1) + (l.voiced ? '' : '~')).join(' '))); console.log('TOTAL', TOTAL.toFixed(1)); }
+  if (CAST === 'duo' && ['render', 'audio', 'all'].includes(STAGE) && SCENES.some((x) => (x.talk || []).concat(x.exTalk || []).some((l) => !l.voiced))) console.warn('⚠️ جمل بلا صوت مولَّد بعد — المدد تقديريّة (شغّل --stage voice)');
   if (STAGE === 'all' || STAGE === 'capture') await capture();
   if (STAGE === 'all' || STAGE === 'render') await render();
   if (STAGE === 'all' || STAGE === 'audio') synthAudio();
