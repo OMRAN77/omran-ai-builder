@@ -27,7 +27,7 @@ stub('api/_lib/kv.js', {
   kvSetRaw: async (k, v) => { cmds.push(['SETRAW', k]); raw.set(k, v); },
   kvSetIfAbsent: async () => { if (setIfAbsentError) throw new Error(setIfAbsentError); return true; },
 });
-stub('api/_lib/_owner.js', { isOwner: (req) => !!(req.query && req.query.owner === '1'), isOwnerName: (u) => u === 'omran', ownerList: () => ['omran'] });
+stub('api/_lib/_owner.js', { isOwner: (req) => !!(req.query && req.query.owner === '1'), isOwnerSession: (req) => !!(req.query && req.query.owner === '1'), isOwnerName: (u) => u === 'omran', ownerList: () => ['omran'] });
 const { redisUsage, groupOf } = require(rp('api/_lib/redis-usage.js'));
 const health = require(rp('api/_lib/health.js'));
 const studio = require(rp('api/_lib/studio-preview.js'));
