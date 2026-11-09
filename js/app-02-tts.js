@@ -972,7 +972,7 @@ function buildSpokenWordSpans(container, text){
         var __raw = codePre.textContent.replace(/^[ \t]*\n+/, ''); // v-md-blocks: لا أسطر فارغة أعلى صندوق الكود
         if(__raw){ var __hl = omranCodeHighlight(__raw); if(__hl) codePre.innerHTML = __hl; }
       }
-    }catch(e){ /* يبقى النصّ عاديًّا عند أيّ تعثّر */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-02-tts:975'); /* يبقى النصّ عاديًّا عند أيّ تعثّر */ }
     codePre = null; parent = container;
   };
   while((m = re.exec(text))){

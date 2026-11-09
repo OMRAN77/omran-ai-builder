@@ -121,7 +121,7 @@ async function refreshPointsWallet(){
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
       renderMediaPlanStatus(d.media);
     } else { row.style.display = 'none'; }
-  }catch(e){ /* صامت */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:124'); /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
 
@@ -190,7 +190,7 @@ async function refreshAcctPoints(){
         warn.style.display = 'block';
       } else warn.style.display = 'none';
     }
-  }catch(e){ /* صامت — الشبكة قد تنقطع، لا نكسر قائمة الحساب */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:193'); /* صامت — الشبكة قد تنقطع، لا نكسر قائمة الحساب */ }
 }
 window.refreshAcctPoints = refreshAcctPoints;
 
@@ -205,7 +205,7 @@ function omranIOSStoreApp(){
     if(window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()))) return true;
     if(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)) return true;
     if((localStorage.getItem('aiapp_store') || '') === 'apple') return true;
-  }catch(e){ /* guard-ok — بلا كشف تبقى النافذة الداخلية المعتادة */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:208'); /* guard-ok — بلا كشف تبقى النافذة الداخلية المعتادة */ }
   return false;
 }
 
@@ -214,7 +214,7 @@ function openCheckout(plan){
   if(!authGet('aiapp_auth_token')){
     window.__pendingCheckoutPlan = plan;
     const sd0 = document.getElementById('settingsDialog');
-    if (sd0 && sd0.open && typeof sd0.close === 'function') { try { sd0.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
+    if (sd0 && sd0.open && typeof sd0.close === 'function') { try { sd0.close(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:217'); /* guard-ok — cleanup: close() may throw on some browsers */ } }
     if(typeof window.requireLogin === 'function') window.requireLogin('checkout');
     else settingsToast(t('checkoutLoginFirst'));
     return;
@@ -242,7 +242,7 @@ function openCheckout(plan){
     const sd = document.getElementById('settingsDialog');
     // v-checkout-back: من أين فُتح الدفع — ✕ وحده يعيد الإعدادات على الباقات (ومن البوّابة يبقى سهم رجوعها إلى المحادثة)
     window.__ckFromSettings = (sd && sd.open) ? ((sd.dataset && sd.dataset.deepLink === '1') ? 'deep' : 'page') : '';
-    if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
+    if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:245'); /* guard-ok — cleanup: close() may throw on some browsers */ } }
     overlay.style.display = 'flex';
     // v-ios-nogpay (طلب عمران): زر Google Pay منتج أندرويد ولا معنى له على
     // الآيفون — نُخفيه على iOS ويبقى على بقية الأجهزة. البطاقة وPayPal (دفع
@@ -251,7 +251,7 @@ function openCheckout(plan){
       var __isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       var __gpay = overlay.querySelector('button[onclick="clickGooglePay()"]');
       if (__gpay) __gpay.style.display = __isIOS ? 'none' : 'flex';
-    } catch (e) { /* guard-ok */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:254'); /* guard-ok */ }
   }
   loadPaypalButtons();
   setupWalletPaymentRequest(plan);
@@ -331,7 +331,7 @@ async function ensureStripeJs(){
       stripeJsLoaded = true;
     }
     if (window.Stripe) stripeInstance = window.Stripe(STRIPE_PUBLISHABLE_KEY);
-  } catch (e) { /* Stripe.js failed to load — wallet buttons will just report unavailable */ }
+  } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:334'); /* Stripe.js failed to load — wallet buttons will just report unavailable */ }
   return stripeInstance;
 }
 
@@ -415,7 +415,7 @@ async function handleWalletPaymentMethod(ev, plan, currency){
       statusMsg.textContent = vd.error || t('checkoutError');
     }
   } catch (e) {
-    try { ev.complete('fail'); } catch (e2) { /* guard-ok */ }
+    try { ev.complete('fail'); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'app-06-checkout:418'); /* guard-ok */ }
     if (statusMsg) statusMsg.textContent = t('checkoutError');
   }
 }
@@ -834,7 +834,7 @@ __headerClockSync();
 try {
   const __btnClockEl = $('#btnClock');
   if (__btnClockEl) new MutationObserver(__headerClockSync).observe(__btnClockEl, { attributes: true, attributeFilter: ['style', 'class'] });
-} catch(e){ /* guard-ok — المراقب تحسين؛ العنصر مخفيّ افتراضيًّا فلا ضرر بغيابه */ }
+} catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:837'); /* guard-ok — المراقب تحسين؛ العنصر مخفيّ افتراضيًّا فلا ضرر بغيابه */ }
 
 function renderClockWorldStrip(){
   const box = $('#clockWorldStrip');
@@ -1664,7 +1664,7 @@ function throwProviderError(status, errText){
   /* v-audit-prov (srv-providers-5): رمز الخادم الثابت لخطأ المزوّد ({error:'provider_failed', code}) يُعرض بنصّ الواجهة (providerError)
      لا بجسمه — لا JSON في الفقاعة ولا في سطر الحالة. نصّ المزوّد الخامّ يصل المالك وحده من الخادم. */
   let __pf = null;
-  try{ const __j = JSON.parse(errText); if(__j && __j.error === 'provider_failed') __pf = __j; }catch(_){ /* guard-ok — جسم غير JSON يُعامَل كما كان */ }
+  try{ const __j = JSON.parse(errText); if(__j && __j.error === 'provider_failed') __pf = __j; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-06-checkout:1667'); /* guard-ok — جسم غير JSON يُعامَل كما كان */ }
   if(status === 402){
     // 👑 الرد الاحترافي: 402 مع reason:'points' يعني نفاد النقاط (وليس حد يومي).
     let __pointsErr = false;
@@ -1804,7 +1804,7 @@ async function readOpenAICompatibleStream(res, onDelta){
           hadReasoning = true;
           if(onDelta) onDelta('🧠 يفكر الآن…');
         }
-      }catch(e){ /* ignore partial/malformed chunk */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:1807'); /* ignore partial/malformed chunk */ }
     }
   }
   // v207: إذا انتهى البث أثناء التفكير بدون أي رد فعلي (انقطاع/مهلة) —
@@ -1845,7 +1845,7 @@ async function readGeminiStream(res, onDelta){
             if(onDelta) onDelta(full);
           }
         }
-      }catch(e){ /* ignore partial/malformed chunk */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:1848'); /* ignore partial/malformed chunk */ }
     }
   }
   return full;
@@ -1875,7 +1875,7 @@ async function readClaudeStream(res, onDelta){
           full += json.delta.text;
           if(onDelta) onDelta(full);
         }
-      }catch(e){ /* ignore partial/malformed chunk */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:1878'); /* ignore partial/malformed chunk */ }
     }
   }
   return full;
@@ -2684,7 +2684,7 @@ $('#prompt').addEventListener('input', window.__updateSendReady);
       var strip = document.getElementById('attachStrip');
       var tall = (parseInt(p.style.height, 10) || 0) > 46 || !!(strip && strip.childElementCount > 0);
       box.classList.toggle('omTall', tall);
-    }catch(e){ /* guard-ok — cosmetic */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:2687'); /* guard-ok — cosmetic */ }
   }
   window.__composerSyncTall = syncTall;
   function autoGrow(){

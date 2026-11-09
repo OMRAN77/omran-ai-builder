@@ -143,7 +143,7 @@
       try { trail = JSON.parse(localStorage.getItem('aiapp_session_notes') || '[]'); } catch (e) { trail = []; }
       trail.unshift(entry);
       localStorage.setItem('aiapp_session_notes', JSON.stringify(trail.slice(0, 5)));
-    } catch (e) { /* التشخيص ترف لا يُسقط أداة */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:146'); /* التشخيص ترف لا يُسقط أداة */ }
   }
 
   /** ينفّذ أداة واحدة ويعيد نصًّا يفهمه النموذج. */
@@ -201,7 +201,7 @@
                 im.src = ref.dataUrl;
               });
               if (dims && dims.w > 0 && dims.h > 0) ratio = dims.h >= dims.w ? '720:1280' : '1280:720';
-            } catch (e) { /* guard-ok — بلا أبعاد تبقى النسبة الافتراضيّة */ }
+            } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:204'); /* guard-ok — بلا أبعاد تبقى النسبة الافتراضيّة */ }
           }
           var token = (window.authGet && window.authGet('aiapp_auth_token')) || '';
           var payload;
@@ -327,7 +327,7 @@
           IMGS[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
           /* v-tool-chain (لقطة المالك «غير الشخصيات الي 3d» بعد صورة من الأدوات → سؤال نصي): صورة الأدوات لم تكن تدخل سلسلة
              التعديل، فالرسالة التالية تذهب للنموذج النصي. الآن هي آخر صورة وسلسلة جديدة، فتعمل عليها «3d/أقوى/غيّر…» مباشرة. */
-          try { var gcur = CHAT(); if (gcur) { gcur.lastEditedImage = { b64: j.imageBase64, mime: j.mimeType || 'image/png' }; gcur.lastMsgWasImageEdit = true; gcur.imageTurns = []; } } catch (e) { /* guard-ok — السلسلة اختيارية */ }
+          try { var gcur = CHAT(); if (gcur) { gcur.lastEditedImage = { b64: j.imageBase64, mime: j.mimeType || 'image/png' }; gcur.lastMsgWasImageEdit = true; gcur.imageTurns = []; } } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:330'); /* guard-ok — السلسلة اختيارية */ }
           // v-img-engine-tag: اسم المحرك يظهر في سطر الأثر — يحسم «أي محرك نفّذ» فورًا.
           var gLine = '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
           /* v-img-with-edit: دور لقطة + صور = احفظ رابط /i/ فورًا كي تُرفع مع التعديل بلا انتظار «عمّم» */
@@ -354,7 +354,7 @@
             try {
               var cur = CHAT();
               if (cur && cur.lastEditedImage && cur.lastEditedImage.b64) { srcB64 = cur.lastEditedImage.b64; ref = { mime: cur.lastEditedImage.mime || 'image/png' }; }
-            } catch (e) { /* guard-ok — المحادثة الحالية اختيارية هنا */ }
+            } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:357'); /* guard-ok — المحادثة الحالية اختيارية هنا */ }
           }
           if (!srcB64) return 'لا توجد صورة مرفقة في هذه الرسالة لتعديلها — اطلب من المستخدم إرفاقها.';
           /* v-image-memory: متابعة على آخر نتيجة = نرسل أدوار السلسلة السابقة كسياق */
@@ -388,7 +388,7 @@
           IMGS[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
           var eUrl = omranAgentOwner() ? await omranAgentSave(etok, ej.imageBase64, ej.mimeType || 'image/png', false, CHAT()) : ''; // v-agent-img
           /* v-tool-chain: نتيجة أداة التعديل تصير آخر صورة في السلسلة كي تعمل عليها الرسالة التالية مباشرة */
-          try { if (tcur) { tcur.lastEditedImage = { b64: ej.imageBase64, mime: ej.mimeType || 'image/png' }; tcur.lastMsgWasImageEdit = true; } } catch (e) { /* guard-ok */ }
+          try { if (tcur) { tcur.lastEditedImage = { b64: ej.imageBase64, mime: ej.mimeType || 'image/png' }; tcur.lastMsgWasImageEdit = true; } } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:391'); /* guard-ok */ }
           /* v-image-memory: نسجّل الدور هنا أيضًا (كلمات المستخدم + مصغّر النتيجة) */
           try {
             if (tcur && typeof omranShrinkForEdit === 'function') {
@@ -398,7 +398,7 @@
               if (!tcur.imageTurns.length) { var tSrc = await omranShrinkForEdit(srcB64, ref.mime || 'image/png', 768, true); tTurn.sourceBase64 = tSrc.b64; tTurn.sourceMime = tSrc.mime; }
               tcur.imageTurns = tcur.imageTurns.concat([tTurn]).slice(-4);
             }
-          } catch (e) { /* guard-ok — الذاكرة اختيارية */ }
+          } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:401'); /* guard-ok — الذاكرة اختيارية */ }
           /* v-img-honest (المالك: «يقولي شي والتنفيذ صفر»): النموذج كان يرى «✅» وحدها فيروي «تمّ تغيير كلّ شيء» مهما خرج.
              الآن يصله حكم التنفيذ (ej.verdict) وتقرير ما يُرى فعلًا، ويُطلب منه ألّا يدّعي أكثر منه. */
           var ev = ej.verdict === 'not_done' ? ' — الفحص: الطلب لم يظهر في الصورة' : (ej.verdict === 'partial' ? ' — الفحص: نُفّذ جزء فقط' : (ej.verdict === 'done' ? ' — الفحص: نُفّذ' : ''));

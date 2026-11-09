@@ -188,7 +188,7 @@
       st.textContent = '@keyframes omranTickerScroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}';
       document.head.appendChild(st);
     }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:191'); /* guard-ok */ }
   const TICKER_SYMS = (function(){
     try{ const s = JSON.parse(localStorage.getItem('stockTickerSyms')||'null'); if(Array.isArray(s) && s.length) return s.slice(0,5); }catch(e){ __swallow(e, "misc:app-13-stocks-init#1"); }
     return ['AAPL','TSLA','NVDA','MSFT','GOOGL']; /* v-no-crypto: أُزيلت BTC/USD امتثالًا لسياسة متجر هواوي (لا عملات رقمية) */
@@ -218,7 +218,7 @@
       const oneCopy = tickerTrack.scrollWidth / 2;
       const dur = (oneCopy > 0) ? (oneCopy / __TSPEED) : 30;
       tickerTrack.style.animation = 'omranTickerScroll ' + dur + 's linear infinite';
-    }catch(e){ /* guard-ok — حركة الشريط ترفٌ لا يُسقط العرض */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:221'); /* guard-ok — حركة الشريط ترفٌ لا يُسقط العرض */ }
   }
 
   // v598: تسميات الذهب تُبنى من القاموس، فتُحفظ البيانات الخام ويُعاد الوسم عند تبديل اللغة
@@ -243,7 +243,7 @@
       tickerRaw = { syms: (j && j.items) ? j.items : [], gold: g };
       window.__tickerLatest = tickerRaw; /* v-live-cards: بطاقة الأسهم الحيّة */
       renderTicker(tickerItems());
-    }catch(e){ /* keep old ticker on error */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:246'); /* keep old ticker on error */ }
   }
   window.__tickerRelabel = function(){ try{ if(tickerRaw) renderTicker(tickerItems()); }catch(e){ __swallow(e, "misc:app-13-stocks-init#relabel"); } };
 
@@ -267,7 +267,7 @@
     if(icon) icon.style.transform = collapsed ? 'rotate(180deg)' : '';
     if(collapsed){
       if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
-      try{ tickerTrack.style.animation = 'none'; }catch(e){ /* guard-ok */ } // v-ticker-css-anim
+      try{ tickerTrack.style.animation = 'none'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:270'); /* guard-ok */ } // v-ticker-css-anim
     }
   }
   function startTicker(){
@@ -279,7 +279,7 @@
   }
   function stopTicker(){
     if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
-    try{ tickerTrack.style.animation = 'none'; }catch(e){ /* guard-ok */ } // v-ticker-css-anim
+    try{ tickerTrack.style.animation = 'none'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:282'); /* guard-ok */ } // v-ticker-css-anim
     tickerWrap.style.display = 'none';
   }
   window.__tickerStart = startTicker;
@@ -714,7 +714,7 @@
   function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
-    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:717'); /* لم يجهز بعد */ }
     const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
@@ -904,7 +904,7 @@
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     a.download = 'omran-boq.csv';
     document.body.appendChild(a); a.click();
-    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){ /* guard-ok — تنظيف رابط مؤقّت بعد التنزيل؛ فشله لا يمسّ الملفّ */ } }, 1500);
+    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:907'); /* guard-ok — تنظيف رابط مؤقّت بعد التنزيل؛ فشله لا يمسّ الملفّ */ } }, 1500);
   };
 
   if(pdfBtn) pdfBtn.onclick = async function(){
@@ -953,7 +953,7 @@
       + '</body></html>');
     /* v-cons-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة الطباعة
        ميتة — نصدّر ملف PDF حقيقيًا؛ والطباعة تبقى للكمبيوتر. */
-    let __inApp = false; try{ __inApp = typeof window.omranLikelyApp === 'function' && window.omranLikelyApp(); }catch(e){ /* guard-ok — cosmetic */ }
+    let __inApp = false; try{ __inApp = typeof window.omranLikelyApp === 'function' && window.omranLikelyApp(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:956'); /* guard-ok — cosmetic */ }
     async function __fileExport(){
       if(typeof window.omranExportHtmlAsPdfFile !== 'function') return false;
       try{
@@ -972,7 +972,7 @@
     }
     w.document.write(__docHtml);
     w.document.close();
-    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){ /* guard-ok — نافذة أُغلقت قبل الطباعة؛ التقرير معروض فيها */ } }, 800);
+    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:975'); /* guard-ok — نافذة أُغلقت قبل الطباعة؛ التقرير معروض فيها */ } }, 800);
   };
 
   angleBtns.forEach((btn) => {
@@ -2279,7 +2279,7 @@
     });
   }
   injectMoreTabs();
-  try{ new MutationObserver(injectMoreTabs).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
+  try{ new MutationObserver(injectMoreTabs).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:2282'); /* guard-ok */ }
 
   let feature = 'hair';
   let selectedBase64A = '', selectedMimeA = 'image/jpeg';
@@ -2411,7 +2411,7 @@
     resultWrap.addEventListener('pointerdown', (ev) => {
       if(!beforeWrap || beforeWrap.style.display === 'none') return;
       __studioBaDragging = true;
-      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:2414'); /* guard-ok */ }
       updateSliderClip(studioBaPctFromEvent(ev));
       ev.preventDefault();
     });
@@ -2438,7 +2438,7 @@
       const isAr = !((typeof lang !== 'undefined' && lang) ? String(lang) : (localStorage.getItem('aiapp_lang') || 'ar')).startsWith('en');
       const friendly = (typeof imgErrFriendly === 'function') ? imgErrFriendly(code, isAr) : null;
       if(friendly) return '⚠️ ' + friendly;
-    }catch(err){ /* guard-ok — بلا ترجمة نعرض الكود */ }
+    }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-13-stocks-init:2441'); /* guard-ok — بلا ترجمة نعرض الكود */ }
     return (bT('❌ خطأ: ','❌ Error: ')) + code;
   }
 
@@ -2941,7 +2941,7 @@
   const slotEls = { A: $('#studioAiSlotA'), B: $('#studioAiSlotB') };
   /* v-studio-no-recent (أمر المالك «احذف آخر صوري عندما أرفع الصور»): «آخر صوري» أُزيلت — لا تُحفظ صورة على الجهاز،
      وما حُفظ سابقًا يُمسح مرّة عند الإقلاع. */
-  try{ localStorage.removeItem('omStudioRecent'); }catch(e){ /* guard-ok: تخزين محجوب = لا شيء محفوظ أصلًا */ }
+  try{ localStorage.removeItem('omStudioRecent'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:2944'); /* guard-ok: تخزين محجوب = لا شيء محفوظ أصلًا */ }
   function studioRenderSlot(which){
     const el = slotEls[which]; if(!el) return;
     const has = which === 'A' ? !!selectedBase64A : !!selectedBase64B;
@@ -3327,7 +3327,7 @@ window.updateVersionLabel = function(){
     // v-bundle-ver: بصمة البندل من وسم السكربت — تكشف أي نسخة يشغّلها الجهاز فعلًا
     // (تأكيد وصول التحديث بدل التخمين).
     var __bv = '';
-    try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ /* guard-ok */ }
+    try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:3330'); /* guard-ok */ }
     /* v-ver-label (تدقيق ١٨ أكتوبر، لقطتا ٠٢٣ و٠٤٦): العناوين كانت عربيّة في كلّ لغة، والسطر نصّ واحد يقلبه اتّجاه الفقرة
        و«رفع:» تنفصل عن قيمتها عند الالتفاف. الآن العنوان من القاموس، وكلّ «عنوان: قيمة» span لا يلتفّ ومعزول، والقيمة
        <bdi dir=ltr> (نصّ لا HTML)؛ الالتفاف بين الأزواج وحدها، وداخل القيمة الطويلة (خطأ) وحدها. */

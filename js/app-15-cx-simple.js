@@ -30,7 +30,7 @@
   function lg(){ try{ return (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
   function T(o){ return (o && (o[lg()] || o.en || o.ar)) || ''; }
 
-  function fire(el){ try{ el.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){ /* guard-ok — القيمة وُضعت */ } }
+  function fire(el){ try{ el.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-15-cx-simple:33'); /* guard-ok — القيمة وُضعت */ } }
   function setVal(id, v){ var el = $(id); if(!el || v === null || v === undefined || v === '') return; el.value = String(v); fire(el); }
   function setSelect(id, v){
     var el = $(id); if(!el || !v) return;
@@ -153,13 +153,13 @@
       more.style.display = open ? 'block' : 'none';
       $('cxMoreBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
       render();
-      if(open) try{ more.scrollIntoView({ behavior:'smooth', block:'nearest' }); }catch(e){ /* guard-ok */ }
+      if(open) try{ more.scrollIntoView({ behavior:'smooth', block:'nearest' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-15-cx-simple:156'); /* guard-ok */ }
     };
 
     modal.addEventListener('change', function(){ requestAnimationFrame(render); });
     modal.addEventListener('click', function(){ requestAnimationFrame(render); });
     render();
-    try{ new MutationObserver(render).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
+    try{ new MutationObserver(render).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-15-cx-simple:162'); /* guard-ok */ }
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   setTimeout(boot, 950);
