@@ -94,7 +94,8 @@ test('٧) المونتاج: المشهدان ثمّ بطاقة النهاية ب
 
 test('٨) ملفّ التشغيل: ميرا يوميًّا ٥ العصر في وظيفتها، والبوت كما هو ٨ المساء؛ صلاحيات ميرا وحدها، والمعاينة لـDRY_RUN', () => {
   assert.match(yml, /cron: '0 16 \* \* \*'/); assert.match(yml, /cron: '0 13 \* \* \*'/);
-  assert.match(yml, /reel:\n    if: github\.event\.schedule == '0 16 \* \* \*' \|\| \(github\.event_name == 'workflow_dispatch' && inputs\.series != 'mira'\)/);
+  // v-post-file: الخيار الثالث «file» — «!= 'mira'» كان سيشغّل حلقة البوت معه، فصار «== 'bot'»
+  assert.match(yml, /reel:\n    if: github\.event\.schedule == '0 16 \* \* \*' \|\| \(github\.event_name == 'workflow_dispatch' && inputs\.series == 'bot'\)/);
   assert.match(yml, /mira:\n    if: github\.event\.schedule == '0 13 \* \* \*' \|\| \(github\.event_name == 'workflow_dispatch' && inputs\.series == 'mira'\)/);
   assert.match(yml, /group: social-bot\n/); assert.match(yml, /group: social-bot-mira/);
   assert.match(yml, /permissions:\n  contents: read/, 'البوت الحاليّ قراءة فقط كما كان');

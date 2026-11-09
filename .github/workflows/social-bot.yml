@@ -25,10 +25,14 @@ on:
         required: false
         default: 'auto'
       series:
-        description: 'bot = «سوّها بـ OM Ai» · mira = «مسلسل ميرا»'
+        description: 'bot = «سوّها بـ OM Ai» · mira = «مسلسل ميرا» · file = نشر فيديو جاهز من المستودع (scripts/social-post-file.mjs)'
         type: choice
-        options: [bot, mira]
+        options: [bot, mira, file]
         default: bot
+      file:
+        description: 'file only: path of a ready video listed in POSTS (scripts/social-post-file.mjs)'
+        required: false
+        default: 'video/final/om-ai-tour-duo-ar.mp4'
       mira_episode:
         description: 'Mira only: empty = next due, or app:3 / uae:7'
         required: false
@@ -39,7 +43,7 @@ permissions:
 
 jobs:
   reel:
-    if: github.event.schedule == '0 16 * * *' || (github.event_name == 'workflow_dispatch' && inputs.series != 'mira')
+    if: github.event.schedule == '0 16 * * *' || (github.event_name == 'workflow_dispatch' && inputs.series == 'bot')
     concurrency:
       group: social-bot
       cancel-in-progress: false
@@ -139,3 +143,24 @@ jobs:
           path: social-out/
           retention-days: 30
           if-no-files-found: ignore
+
+  # v-post-file (المالك ٩ نوفمبر: «حمّله في التواصل الاجتماعي»): فيديو جاهز من المستودع كما هو — يدويّ فقط، والنصوص في الكود.
+  file:
+    if: github.event_name == 'workflow_dispatch' && inputs.series == 'file'
+    concurrency:
+      group: social-bot-file
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Publish the file
+        env:
+          UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
+          FILE: ${{ inputs.file }}
+          PLATFORMS: ${{ inputs.platforms || 'auto' }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: node scripts/social-post-file.mjs
