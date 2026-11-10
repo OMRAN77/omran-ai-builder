@@ -971,7 +971,15 @@ test('٢٠. أوامر الأداة: البطاقة بمقاس الملفّ وإ
   const hv = P('hevc'), hc = ctx.ecCardArgs(hv).join(' '), hj = ctx.ecJoinArgs(hv, '/ecin/input');
   assert.ok(hc.includes('anullsrc=r=48000:cl=stereo') && hc.includes('[0:v]scale=1080:1920:out_color_matrix=bt709,') && !/transpose|video_track_timescale/.test(hc));
   assert.deepEqual([...hj.slice(0, 7)], ['-hide_banner', '-y', '-i', '/ecin/input', '-i', 'ec_card.mp4', '-filter_complex']);
-  assert.equal(hj[7], '[0:0]scale=1080:1920,setsar=1,fps=30,format=yuv420p[m];[1:v]scale=1080:1920,setsar=1,fps=30,format=yuv420p[c];[0:1]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[ma];[1:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[ca];[m][ma][c][ca]concat=n=2:v=1:a=1[v][a]');
+  assert.equal(hj[7], '[0:0]scale=1080:1920:in_color_matrix=bt709:out_color_matrix=bt709,setsar=1,fps=30,format=yuv420p[m];[1:v]scale=1080:1920,setsar=1,fps=30,format=yuv420p[c];[0:1]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[ma];[1:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[ca];[m][ma][c][ca]concat=n=2:v=1:a=1[v][a]');
+  // مراجعة ثانية: مصدر RGB (Animation/PNG في mov، x264rgb) كان يُحوَّل بـ601 والبطاقة 709 فيقفز اللون — الطرفان بمصفوفة البطاقة (والمخرج وحده لا يكفي:
+  // YUV بلا وسم يصير 601←709 عبر RGB). السجلّات من نواة الأداة نفسها
+  const RGB = (wh, pix, codec) => '  Duration: 00:00:03.00, start: 0.000000, bitrate: 1001 kb/s\n  Stream #0:0[0x1]: Video: ' + codec + ', ' + pix + ', ' + wh + ', 861 kb/s, SAR 1:1 DAR 16:9, 30 fps, 30 tbr, 15360 tbn (default)\n  Stream #0:1[0x2]: Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)';
+  const mainScale = (log) => { const pl = P('', log); return [pl.why, ctx.ecJoinArgs(pl, 'x')[7].split(',')[0]]; };
+  assert.deepEqual([mainScale(RGB('1280x720', 'rgb24(progressive)', 'qtrle (rle  / 0x20656C72)')), mainScale(RGB('640x480', 'rgb24(progressive)', 'qtrle (rle  / 0x20656C72)')),
+    mainScale(RGB('1280x720 [SAR 1:1 DAR 16:9]', 'gbrp(pc, gbr/unknown/unknown, progressive)', 'h264 (High 4:4:4 Predictive) (avc1 / 0x31637661)'))],
+  [['vcodec', '[0:0]scale=1280:720:in_color_matrix=bt709:out_color_matrix=bt709'], ['vcodec', '[0:0]scale=640:480:in_color_matrix=bt601:out_color_matrix=bt601'],
+    ['pix', '[0:0]scale=1280:720:in_color_matrix=bt709:out_color_matrix=bt709']], 'RGB بمصفوفة البطاقة نفسها');
   assert.ok(hj.join(' ').endsWith('-map [v] -map [a] -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -c:a aac -b:a 160k -movflags +faststart ec_out.mp4'));
   assert.ok(!ctx.ecJoinArgs(Object.assign({}, hv, { a: null }), 'x').join(' ').includes('[a]'), 'بطيء بلا صوت');
   const h709 = ctx.ecJoinArgs(P('', EC_LOGS.hevc.replace('yuv420p(tv, progressive)', 'yuv420p(tv, bt709, progressive)')), 'x').join(' ');
@@ -982,9 +990,11 @@ test('٢٠. أوامر الأداة: البطاقة بمقاس الملفّ وإ
   const mk = v.slice(v.indexOf('async function ecMake('), v.indexOf('function ecMine('));
   assert.ok(mk.includes("'-map','0:'+au.i,'-c','copy','-frames:a','1','-f','framecrc','ec_tb.txt'") && mk.includes("info.atb=tb?+tb[1]:0;") && mk.includes('/^#tb 0: 1\\/(\\d+)\\s*$/m'),
     'مقياس زمن الصوت من حزمة واحدة إلى framecrc في ملفّ');
-  const g0 = mk.indexOf('if(pl.fast){ /* H.264');
-  assert.ok(g0 > 0 && g0 < mk.indexOf('ecGrab(url,8000)') && mk.indexOf('ecGrab(url,8000)') < mk.indexOf('if(!frame){')
-    && mk.includes("'-vf','scale=in_color_matrix='+ecMatrix(pl)+',format=rgb24','-update','1','ec_last.png'"), 'البطيء: الأداة تفكّ آخر لقطة بمصفوفة البطاقة (فكّ المتصفّح لـVP9 بلا وسم 601)');
+  assert.ok(mk.includes('if(pl.fast){ frame=await bgrab(); ecStale(my); }\n    if(!frame) frame=await ecLast(ff,input,pl,my);\n    if(!frame&&!pl.fast){ frame=await bgrab(); ecStale(my); }'),
+    'البطيء: الأداة تفكّ آخر لقطة بمصفوفة البطاقة (فكّ المتصفّح لـVP9 بلا وسم 601) والمتصفّح آخر حلّ — والترتيب يُشغَّل في ٢٤');
+  const lst = v.slice(v.indexOf('async function ecLast('), v.indexOf('async function ecMake('));
+  assert.ok(lst.includes("var vf='scale=in_color_matrix='+ecMatrix(pl)+':flags=accurate_rnd+full_chroma_int,format=rgb24,setparams=color_primaries=unknown:color_trc=unknown';")
+    && lst.includes("{colorSpaceConversion:'none'}") && lst.includes("'-vf',vf,'-update','1','ec_last.png'"), 'PNG آخر لقطة بلا وسوم ألوان (gAMA/cHRM كانت تفتّح البطاقة) ويُفكّ بلا إدارة ألوان');
   assert.ok(mk.includes('if(!pl.ok) throw {code:ecWhy(pl,info,file.size,mob)};') && mk.includes("throw {code:'big'};"), 'السبب من ecWhy، وفوق حدّ النشر «big»');
 });
 
@@ -1157,4 +1167,102 @@ test('٢٣. الخيار تحت صندوق الرفع ومربوط، والنش�
   assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && Number(tag[2]) === 796, 'وسم اللغات مرفوع وسببه في التعليق');
   const h = read('index.html');
   assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 468 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 699, 'وسما video.js وmodules.css مرفوعان');
+});
+
+// ═══ ecMake نفسه (لا المحاكى) بأداة مزيّفة تتصرّف كالمكتبة: terminate يرفض كلّ وعد معلّق (ffmpeg/lib/classes.js) — مراجعة ثانية ═══
+const PNG1 = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0]);
+const BIG_T = 9223372036854775807; /* «لا حزمة بعد» من الأداة (|INT64_MIN+1| µs) */
+function ecLive(o) {
+  const p = panel();
+  delete p.ctx.ls.aiapp_vd_endcard; p.ctx.DR.out = '';
+  p.els.vdPub.hidden = true; p.replies.accounts = { ok: true, on: ['instagram'], reauth: [] };
+  const F = { execs: [], holds: [], bitmaps: [], bgrabs: 0, holdRead: '', browser: false };
+  const enc = (s) => new TextEncoder().encode(s);
+  class FakeFF {
+    constructor() { this.cbs = { log: [], progress: [] }; this.pend = new Set(); this.alive = true; this.fs = {}; }
+    _p(get, hold) {
+      if (!this.alive) return Promise.reject(new Error('ffmpeg is not loaded'));
+      return new Promise((res, rej) => {
+        const e = { res, rej }; this.pend.add(e);
+        const go = () => { if (!this.pend.delete(e)) return; try { res(get()); } catch (x) { rej(x); } };
+        if (hold) F.holds.push(go); else setImmediate(go);
+      });
+    }
+    load() { return this._p(() => true); }
+    on(k, f) { this.cbs[k].push(f); }
+    emit(k, ev) { for (const f of this.cbs[k]) f(ev); }
+    createDir() { return this._p(() => true); }
+    mount() { return this._p(() => true); }
+    exec(args) {
+      const a = args.join(' ').replace(/^-hide_banner (-y )?/, ''); F.execs.push(a);
+      return this._p(() => {
+        if (a === '-i /ecin/input') { for (const l of EC_LOGS[o.log].split('\n')) this.emit('log', { message: l }); return 1; }
+        if (a.endsWith('-frames:a 1 -f framecrc ec_tb.txt')) { this.fs['ec_tb.txt'] = enc('#tb 0: 1/48000\n0,          0,          0,     1024,        6, 0x02a4013e\n'); return 0; }
+        if (a.endsWith('ec_last.png')) { this.emit('progress', { time: BIG_T }); this.emit('progress', { time: 300000 }); if (o.grab(a)) this.fs['ec_last.png'] = PNG1; return 0; }
+        if (a.endsWith('-c copy -f framecrc ec_vts.txt')) { if (o.vts != null) this.fs['ec_vts.txt'] = enc(o.vts); return 0; }
+        if (a.endsWith('ec_card.mp4')) { for (const t of [BIG_T, 1e6, 4e6]) this.emit('progress', { time: t }); return 0; }
+        if (a.endsWith('ec_out.mp4')) { for (const t of [BIG_T, 3e6]) this.emit('progress', { time: t }); this.fs['ec_out.mp4'] = new Uint8Array(4096); return 0; }
+        throw new Error('أمر غير متوقّع: ' + a);
+      });
+    }
+    readFile(n) { return this._p(() => { if (!(n in this.fs)) throw new Error('FS error'); return this.fs[n]; }, F.holdRead === n); }
+    writeFile(n, d) { this.fs[n] = d; return this._p(() => true); }
+    terminate() { this.alive = false; const ps = [...this.pend]; this.pend.clear(); for (const e of ps) e.rej(new Error('called FFmpeg.terminate()')); }
+  }
+  const c = p.ctx, c2d = new Proxy({}, { get: (t, k) => (k in t ? t[k] : k === 'measureText' ? () => ({ width: 10 }) : k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : () => {}),
+    set: (t, k, val) => { t[k] = val; return true; } });
+  const el0 = c.document.createElement;
+  c.document.createElement = (tag) => (tag === 'canvas' ? { getContext: () => c2d, toBlob: (cb) => cb(new Blob([PNG1], { type: 'image/png' })) } : el0(tag));
+  c.document.querySelector = (q) => (q === 'link[rel="canonical"]' ? { href: 'https://omran-ai-builder.vercel.app/' } : null);
+  Object.assign(c, { __imp: async () => ({ FFmpeg: FakeFF }), TextDecoder, TextEncoder, Blob, File, location: { origin: 'http://x' },
+    navigator: { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }, OmranQR: { matrix: () => ({ size: 29 }), draw() {} },
+    createImageBitmap: async (b, opt) => { F.bitmaps.push(J(opt || null)); return { bitmap: 1 }; },
+    ecGrab: async () => { F.bgrabs++; return F.browser ? { canvas: 1 } : null; } });
+  const v = read('js/video.js'), IMP = "await import('/ffmpeg/lib/index.js')", body = v.slice(v.indexOf('  async function ecLast('), v.indexOf('  function ecMine('));
+  assert.equal(body.split(IMP).length, 2, 'استيراد الأداة مرّة');
+  vm.runInContext(body.replace(IMP, 'await __imp()'), c); /* vm لا يستورد: الأداة المزيّفة مكانها */
+  return Object.assign(p, { F });
+}
+const VTS = '#tb 0: 1/1000\n0,          0,          0,       33,     4821, 0x1\n0,         33,       1967,       33,      812, 0x2\n0,         66,       1934,       33,      790, 0x3\n';
+const steps = (F) => F.execs.map((a) => (a === '-i /ecin/input' ? 'probe' : /ec_tb\.txt$/.test(a) ? 'atb' : /ec_vts\.txt$/.test(a) ? 'scan'
+  : /ec_last\.png$/.test(a) ? a.split(' -i ')[0] : /ec_card\.mp4$/.test(a) ? 'card' : /ec_out\.mp4$/.test(a) ? 'join' : a));
+
+test('٢٤. ecMake نفسه بأداة مزيّفة: آخر لقطة من آخر الفيديو لا الحاوية وبلا وسوم ألوان، والمتصفّح آخر حلّ للبطيء، والرقم لا يرجع ولا يكتبه عمل أُلغي', async () => {
+  // البطيء (VP9) وصوته أطول: نافذة الحاوية فارغة ← حزم الفيديو بلا فكّ ← آخر عرض ١٫٩٦٧ ث (B-frames: ليس آخر سطر) ← نافذة منه
+  let L = ecLive({ log: 'vp9', vts: VTS, grab: (a) => a.startsWith('-ss ') });
+  const ps = [], file = vfileE('v.webm', 'video/webm');
+  const out = await L.ctx.ecMake(file, L.ctx.EC.run, (x) => ps.push(Math.round(x)));
+  assert.deepEqual(steps(L.F), ['probe', 'atb', '-sseof -0.3', 'scan', '-ss 1.667', 'card', 'join'], 'كانت نوافذ الحاوية وحدها: صوت أطول = لا لقطة');
+  const g = L.F.execs.find((a) => a.startsWith('-ss '));
+  assert.ok(g.endsWith('-map 0:0 -an -sn -dn -vf scale=in_color_matrix=bt709:flags=accurate_rnd+full_chroma_int,format=rgb24,setparams=color_primaries=unknown:color_trc=unknown -update 1 ec_last.png'), g);
+  assert.ok(L.F.execs.includes('-i /ecin/input -map 0:0 -c copy -f framecrc ec_vts.txt'), 'الفيديو وحده ونسخ بلا فكّ');
+  assert.deepEqual([L.F.bitmaps, L.F.bgrabs], [[{ colorSpaceConversion: 'none' }], 0], 'PNG يُفكّ بلا إدارة ألوان، والمتصفّح لا يُسأل حين تنجح الأداة');
+  assert.deepEqual(ps, [6, 8, 12, 14, 20, 44], 'لا ٠٪ أثناء أخذ اللقطة، ولا قفزة «لا حزمة بعد» إلى آخر المرحلة ثمّ رجوع');
+  assert.deepEqual([out.name, out.type, out.size], ['v-om-ai.mp4', 'video/mp4', 4096]);
+  // كلّ نوافذ الأداة فارغة: المتصفّح آخر حلّ (كما كان قبل)، والنافذة المكرّرة لا تُعاد — ولا لقطة منه ولا منها = «frame»
+  L = ecLive({ log: 'vp9', vts: VTS, grab: () => false }); L.F.browser = true;
+  await L.ctx.ecMake(file, L.ctx.EC.run, () => {});
+  assert.deepEqual([steps(L.F).slice(2), L.F.bgrabs], [['-sseof -0.3', 'scan', '-ss 1.667', '-ss 0.000', 'card', 'join'], 1]);
+  L = ecLive({ log: 'vp9', vts: VTS, grab: () => false });
+  await assert.rejects(L.ctx.ecMake(file, L.ctx.EC.run, () => {}), (e) => e.code === 'frame');
+  // حزم لا تُقرأ: نوافذ الحاوية الأوسع كما كانت
+  L = ecLive({ log: 'vp9', vts: null, grab: (a) => a.startsWith('-sseof -15') });
+  await L.ctx.ecMake(file, L.ctx.EC.run, () => {});
+  assert.deepEqual([steps(L.F).slice(2), L.F.bgrabs], [['-sseof -0.3', 'scan', '-sseof -3', '-sseof -15', 'card', 'join'], 0]);
+  // السريع (H.264+AAC): المتصفّح أوّلًا ولا أمر لقطة؛ وإن فشل فالأداة ولا عودة للمتصفّح
+  L = ecLive({ log: 'google', vts: VTS, grab: () => true }); L.F.browser = true;
+  await L.ctx.ecMake(vfileE('g.mp4', 'video/mp4'), L.ctx.EC.run, () => {});
+  assert.deepEqual([steps(L.F), L.F.bgrabs], [['probe', 'atb', 'card', 'join'], 1]);
+  L = ecLive({ log: 'google', vts: VTS, grab: () => true });
+  await L.ctx.ecMake(vfileE('g.mp4', 'video/mp4'), L.ctx.EC.run, () => {});
+  assert.deepEqual([steps(L.F), L.F.bgrabs], [['probe', 'atb', '-sseof -0.3', 'card', 'join'], 1]);
+  // إطفاء الخيار أثناء قراءة مقياس الصوت: terminate يرفض القراءة فيبتلعها catch — كان يكمل ويكتب «٨٪» تحت الصندوق والعمل متوقّف
+  L = ecLive({ log: 'google', vts: VTS, grab: () => true }); L.F.holdRead = 'ec_tb.txt';
+  L.ctx.upPick(vfileE('h.mp4', 'video/mp4'));
+  for (let i = 0; i < 40 && !L.F.holds.length; i++) await flush();
+  assert.deepEqual([L.F.holds.length, L.els.vdUpMsg.textContent], [1, 'vdEcWork {"p":6}'], 'القراءة معلّقة');
+  L.ctx.ecToggle(false); await flush(); await flush();
+  assert.deepEqual([L.els.vdUpMsg.textContent, L.ctx.EC.busy, steps(L.F)], ['', false, ['probe', 'atb']], 'لا رسالة ولا أمر بعد الإلغاء');
+  L.F.holds[0](); await flush();
+  assert.equal(L.els.vdUpMsg.textContent, '');
 });

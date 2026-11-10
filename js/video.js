@@ -967,7 +967,8 @@
   /* الدمج: السريع بقائمة ffconcat ونسخ الدفقات (المرمّزات المختلفة تتبدّل إعداداتها داخل الدفق)، والبطيء مرشّح concat وترميز واحد */
   function ecJoinArgs(pl,input){
     if(pl.fast) return ['-hide_banner','-y','-f','concat','-safe','0','-i','/ec_list.txt','-map','0:v:0','-map','0:a:0?','-c','copy','-movflags','+faststart','ec_out.mp4'];
-    var W=pl.ow, H=pl.oh, fps=pl.fps, fc=['[0:'+pl.v.i+']scale='+W+':'+H+',setsar=1,fps='+fps+',format=yuv420p[m]','[1:v]scale='+W+':'+H+',setsar=1,fps='+fps+',format=yuv420p[c]'];
+    var W=pl.ow, H=pl.oh, fps=pl.fps, M=ecMatrix(pl); /* الأصل بمصفوفة البطاقة في الطرفين: YUV يمرّ كما هو، وRGB (Animation/PNG في mov) يُحوَّل بها لا بـ601 (مراجعة ثانية) */
+    var fc=['[0:'+pl.v.i+']scale='+W+':'+H+':in_color_matrix='+M+':out_color_matrix='+M+',setsar=1,fps='+fps+',format=yuv420p[m]','[1:v]scale='+W+':'+H+',setsar=1,fps='+fps+',format=yuv420p[c]'];
     if(pl.a) fc.push('[0:'+pl.a.i+']aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[ma]','[1:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[ca]','[m][ma][c][ca]concat=n=2:v=1:a=1[v][a]');
     else fc.push('[m][c]concat=n=2:v=1:a=0[v]');
     var args=['-hide_banner','-y','-i',input,'-i','ec_card.mp4','-filter_complex',fc.join(';'),'-map','[v]'];
@@ -1042,16 +1043,39 @@
   function ecPng(c){ return new Promise(function(res,rej){ c.toBlob(function(b){ if(!b) return rej(new Error('png')); b.arrayBuffer().then(function(ab){ res(new Uint8Array(ab)); },rej); },'image/png'); }); }
   function ecStale(my){ if(my!==EC.run) throw {code:'stale'}; }
   function ecKill(){ var f=EC.ff; EC.ff=null; if(f){ try{ f.terminate(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:ec-kill'); /* guard-ok — العامل انتهى */ } } }
+  /* آخر لقطة بالأداة بمصفوفة البطاقة (مراجعة ثانية): PNG بلا وسوم ألوان — مرمّزه ينقل وسوم الأصل إلى gAMA/cHRM فيديره المتصفّح فتبدأ
+     البطاقة أفتح بنحو ٨ درجات — وبدقّة التحويل الكاملة. النافذة من آخر الحاوية أوّلًا ثمّ من آخر دفق الفيديو نفسه: صوت أطول أو لقطة
+     أخيرة ممدودة تترك نافذة الحاوية فارغة (كانت تفشل، أو ترمّز مئات اللقطات PNG) */
+  async function ecLast(ff,input,pl,my){
+    var vf='scale=in_color_matrix='+ecMatrix(pl)+':flags=accurate_rnd+full_chroma_int,format=rgb24,setparams=color_primaries=unknown:color_trc=unknown';
+    var grab=async function(at){
+      await ff.exec(['-hide_banner','-y'].concat(at,['-i',input,'-map','0:'+pl.v.i,'-an','-sn','-dn','-vf',vf,'-update','1','ec_last.png'])); ecStale(my);
+      var bm=null;
+      try{ var png=await ff.readFile('ec_last.png'); if(png&&png.length) bm=await createImageBitmap(new Blob([png],{type:'image/png'}),{colorSpaceConversion:'none'}); }catch(e){ bm=null; /* guard-ok — لا إطار في هذا المدى */ }
+      ecStale(my); return bm;
+    };
+    var f=await grab(['-sseof','-0.3']), end=-1;
+    if(f) return f;
+    await ff.exec(['-hide_banner','-y','-i',input,'-map','0:'+pl.v.i,'-c','copy','-f','framecrc','ec_vts.txt']); ecStale(my); /* حزم الفيديو بلا فكّ: آخر توقيت عرض */
+    try{ var t=new TextDecoder().decode(await ff.readFile('ec_vts.txt')), tb=/^#tb 0: (\d+)\/(\d+)\s*$/m.exec(t); if(tb) t.replace(/^0,\s*-?\d+,\s*(-?\d+),/gm,function(m,p){ end=Math.max(end,p*tb[1]/tb[2]); return m; }); }catch(e){ end=-1; /* guard-ok — بلا قراءة: نوافذ الحاوية كما كانت */ }
+    ecStale(my);
+    for(var w=[0.3,3,15],i=end>=0?0:1,at,prev='';i<w.length&&!f;i++){ /* نافذة مكرّرة (فيديو أقصر منها) لا تُعاد */
+      at=end>=0?Math.max(0,end-w[i]).toFixed(3):''; if(at&&at===prev) continue; prev=at;
+      f=await grab(at?['-ss',at]:['-sseof','-'+w[i]]);
+    }
+    return f;
+  }
   /* المسار كلّه لملفّ واحد ← File mp4 جاهز للعرض والنشر. نسخة أداة خاصّة به تُنهى بعده (الذاكرة على الجوّال) */
   async function ecMake(file,my,pct){
+    var shown=0, up=function(v){ if(my===EC.run&&v>shown){ shown=v; pct(v); } }; /* الرقم لا يرجع، وعمل أُلغي لا يكتب (مراجعة ثانية) */
     var mod=await import('/ffmpeg/lib/index.js'); ecStale(my);
     var ff=new mod.FFmpeg(); EC.ff=ff; /* الإلغاء أثناء التحميل يُنهي هذه النسخة نفسها */
     await Promise.race([ff.load({coreURL:'/ffmpeg/core/ffmpeg-core.js',wasmURL:'/ffmpeg/core/ffmpeg-core.wasm',classWorkerURL:'/ffmpeg/lib/worker.js'}),
       new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('ffmpeg load timeout')); },120000); })]);
-    ecStale(my); pct(6);
-    var log=[], span=[0,0,1];
+    ecStale(my); up(6);
+    var log=[], span=[0,0,0]; /* قبل البطاقة لا تقدّم من الأداة: أخذ آخر لقطة كان يعيد الرقم إلى ٠٪ */
     ff.on('log',function(e){ log.push((e&&e.message)||''); if(log.length>400) log.shift(); });
-    ff.on('progress',function(e){ var t=(+(e&&e.time)||0)/1e6; if(my===EC.run&&t>0&&span[2]>0) pct(span[0]+(span[1]-span[0])*Math.min(1,t/span[2])); });
+    ff.on('progress',function(e){ var t=(+(e&&e.time)||0)/1e6; if(t>0&&t<1e9&&span[2]>0) up(span[0]+(span[1]-span[0])*Math.min(1,t/span[2])); }); /* وقت هائل = «لا حزمة بعد»: كان يقفز إلى آخر المرحلة ثمّ يرجع */
     await ff.createDir('/ecin');
     await ff.mount('WORKERFS',{blobs:[{name:'input',data:file}]},'/ecin'); /* يُقرأ من الملفّ مباشرة بلا نسخه في الذاكرة */
     var input='/ecin/input';
@@ -1061,34 +1085,28 @@
       await ff.exec(['-hide_banner','-y','-i',input,'-map','0:'+au.i,'-c','copy','-frames:a','1','-f','framecrc','ec_tb.txt']); ecStale(my);
       try{ var tb=/^#tb 0: 1\/(\d+)\s*$/m.exec(new TextDecoder().decode(await ff.readFile('ec_tb.txt'))); info.atb=tb?+tb[1]:0; }catch(e){ info.atb=0; /* guard-ok — بلا قراءة: إعادة الترميز الكاملة آمنة */ }
     }
+    ecStale(my); /* إلغاء أثناء القراءة تبتلعه القراءة: لا يكمل */
     var mob=ecMob(), pl=ecPlan(info,file.size,mob);
     if(!pl.ok) throw {code:ecWhy(pl,info,file.size,mob)};
-    pct(8);
+    up(8);
     var line=L('vdEcLine')||'حمّل تطبيق om ai';
     await Promise.all([ecQr(),ecFonts(line)]); ecStale(my);
-    var frame=null;
-    if(pl.fast){ /* H.264: المتصفّح يفكّه بالمصفوفة التي يحسبها ecMatrix (مقيسة). البطيء لا: فكّه لـVP9/HEVC بلا وسم بغيرها (VP9 = 601 مقيسًا)
-      فتقفز ألوان البطاقة — الأداة تفكّ آخر لقطته بمصفوفة البطاقة نفسها */
-      var url=URL.createObjectURL(file);
-      try{ frame=await ecGrab(url,8000); }finally{ URL.revokeObjectURL(url); }
-      ecStale(my);
-    }
-    if(!frame){ /* البطيء، أو متصفّح لا يفكّ هذا الترميز: الأداة تأخذ آخر لقطة (PNG) بمصفوفة البطاقة */
-      for(var tries=[0.3,3,15],i=0;i<tries.length&&!frame;i++){
-        await ff.exec(['-hide_banner','-y','-sseof','-'+tries[i],'-i',input,'-map','0:'+pl.v.i,'-an','-sn','-dn','-vf','scale=in_color_matrix='+ecMatrix(pl)+',format=rgb24','-update','1','ec_last.png']); ecStale(my);
-        try{ var png=await ff.readFile('ec_last.png'); if(png&&png.length) frame=await createImageBitmap(new Blob([png],{type:'image/png'})); }catch(e){ frame=null; /* guard-ok — لا إطار في هذا المدى: مدى أوسع */ }
-      }
-    }
+    var frame=null, bgrab=async function(){ var url=URL.createObjectURL(file); try{ return await ecGrab(url,8000); }finally{ URL.revokeObjectURL(url); } };
+    /* H.264: المتصفّح يفكّه بالمصفوفة التي يحسبها ecMatrix (مقيسة). البطيء لا: فكّه لـVP9/HEVC بلا وسم بغيرها (VP9 = 601 مقيسًا) فتقفز
+       ألوان البطاقة — الأداة تفكّ آخر لقطته بمصفوفة البطاقة نفسها، والمتصفّح آخر حلّ (لون يختلف قليلًا خير من لا بطاقة) */
+    if(pl.fast){ frame=await bgrab(); ecStale(my); }
+    if(!frame) frame=await ecLast(ff,input,pl,my);
+    if(!frame&&!pl.fast){ frame=await bgrab(); ecStale(my); }
     if(!frame) throw {code:'frame'};
     var dw=pl.fast?pl.dw:pl.ow, dh=pl.fast?pl.dh:pl.oh, base=document.createElement('canvas'); /* السريع: كما يُعرض (يُدار للتخزين)؛ البطيء: مقاس المخرج نفسه */
     base.width=dw; base.height=dh; base.getContext('2d').drawImage(frame,0,0,dw,dh);
     var over=ecOverlay(dw,dh,line), end=document.createElement('canvas'); end.width=dw; end.height=dh;
     var ex=end.getContext('2d'); ex.drawImage(base,0,0); ex.drawImage(over,0,0);
     await ff.writeFile('ec_last.png',await ecPng(base)); await ff.writeFile('ec_over.png',await ecPng(over)); await ff.writeFile('ec_end.png',await ecPng(end));
-    ecStale(my); pct(12);
+    ecStale(my); up(12);
     var cut=pl.fast?40:20;
     span=[12,cut,EC_SEC]; if(await ff.exec(ecCardArgs(pl))!==0) throw {code:'card',log:log.slice(-6).join(' | ')};
-    ecStale(my); pct(cut);
+    ecStale(my); up(cut);
     if(pl.fast) await ff.writeFile('/ec_list.txt',new TextEncoder().encode("ffconcat version 1.0\nfile '"+input+"'\nfile '/ec_card.mp4'\n"));
     span=[cut,99,(pl.dur||0)+EC_SEC]; if(await ff.exec(ecJoinArgs(pl,input))!==0) throw {code:'join',log:log.slice(-6).join(' | ')};
     ecStale(my);
