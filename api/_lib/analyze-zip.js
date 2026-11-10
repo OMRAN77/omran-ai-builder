@@ -90,6 +90,7 @@ function stripXmlTags(xml) {
 // (CommonJS)، فكان الرفع المباشر يفشل بـ«handler is not a function» منذ v402.
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  let refundGate = async () => {}; // v-zip-refund-await: قبل الحجز لا شيء يُردّ
   try {
     const { filename, fileBase64, token, guestId } = req.body || {};
 
@@ -101,7 +102,9 @@ module.exports = async function handler(req, res) {
       res.status(gate.reason === 'auth' ? 401 : 429).json({ error: gate.reason === 'auth' ? 'سجّل الدخول لتحليل الأرشيف.' : 'وصلت للحدّ اليوميّ لتحليل الأرشيفات.' });
       return;
     }
-    const refundGate = () => { try { usage.refundCustom(token, guestId, usage.clientIp(req), 'analyze-zip'); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/analyze-zip:104'); /* أفضل جهد */ } };
+    /* v-zip-refund-await (فحص Desloppify ٩ نوفمبر ٢٠٢٦، بند المال): refundCustom غير متزامن وكان يُنادى بلا انتظار — يُرسَل الردّ ثمّ تتجمّد
+       دالّة Vercel فيضيع الردّ وتُحسب المحاولة الفاشلة من الحصّة اليوميّة. الآن يُنتظر قبل الردّ، ويُردّ كذلك في الخطأ غير المتوقَّع (٥٠٠). */
+    refundGate = async () => { try { await usage.refundCustom(token, guestId, usage.clientIp(req), 'analyze-zip'); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/analyze-zip:104'); /* أفضل جهد */ } refundGate = async () => {}; };
 
     // مسار الرفع المباشر (fileBase64) هو الأساسي الآن.
     //
@@ -116,32 +119,32 @@ module.exports = async function handler(req, res) {
       try {
         buf = Buffer.from(String(fileBase64), 'base64');
       } catch (e) {
-        refundGate();
+        await refundGate();
         res.status(400).json({ error: 'تعذّر قراءة الملف المرسل.' });
         return;
       }
       // جسم دالة Vercel محدود بـ ~4.5 م.ب، وbase64 يزيد الحجم ~33%.
       // نرفض مبكرًا برسالة مفهومة بدل أن تفشل المنصة برسالة غامضة.
       if (buf.length > 3 * 1024 * 1024) {
-        refundGate();
+        await refundGate();
         res.status(413).json({
           error: 'الملف كبير جدًا للتحليل المباشر (الحد ~3 ميجابايت). احذف مجلدات مثل node_modules أو أرسل الملفات المهمة فقط.',
         });
         return;
       }
     } else {
-      refundGate();
+      await refundGate();
       res.status(400).json({ error: 'لم يصل الملف. حاول اختياره مجددًا.' });
       return;
     }
 
     if (!buf || !buf.length) {
-      refundGate();
+      await refundGate();
       res.status(400).json({ error: 'الملف فارغ.' });
       return;
     }
     if (buf.length > 30 * 1024 * 1024) {
-      refundGate();
+      await refundGate();
       res.status(400).json({ error: 'الأرشيف كبير جدًا للتحليل.' });
       return;
     }
@@ -150,7 +153,7 @@ module.exports = async function handler(req, res) {
     try {
       files = unzip(buf);
     } catch (err) {
-      refundGate();
+      await refundGate();
       res.status(400).json({ error: 'الملف ليس أرشيفًا صالحًا (تأكد أنه zip أو docx أو xlsx أو pptx سليم).' });
       return;
     }
@@ -197,6 +200,7 @@ module.exports = async function handler(req, res) {
       content: (`ملفات داخل الأرشيف "${filename || ''}" (${files.length} ملف):\n` + fileList.slice(0, 300).join('\n') + '\n\n=== المحتوى المستخرج ===\n' + combined + truncatedNote)
     });
   } catch (err) {
+    await refundGate(); // v-zip-refund-await: عطل بعد الحجز لا يأكل محاولة
     res.status(500).json({ error: err.message || 'Server error analyzing archive' });
   }
 }
