@@ -56,6 +56,82 @@ window.postWithConfirm = postWithConfirm;
     dismissedUntil = Date.now() + 120000; // لا إزعاج لمدة دقيقتين
   };
 
+  /* v-freeze-why (لقطة عمران ١٠ نوفمبر: الشريط طلع، وقياسي بحسابه وبعرض شاشته لم يُعِده — أطول تعليق نصف ثانية): لا أحد يعرف ماذا
+     جمّد الخيط لحظتها. الآن حين يطلع الشريط يُرسَل تقرير واحد إلى سجلّ أخطاء المالك (مصدر diag:freeze = قياس لا خطأ): مدّة التعليق،
+     الشاشة المفتوحة، آخر ٥ نقرات (معرّف الزرّ/مفتاح ترجمته لا نصّه)، وأطول إطارات الرسم ومن جمّدها — Long Animation Frames في Chrome
+     تسمّي الدالّة وموضعها في الحزمة (يُقرأ بالبصمة build). لا نصّ مستخدم ولا رمز ولا محتوى محادثة. ٣ تقارير لكلّ فتح على الأكثر. */
+  const fzClicks = [];
+  const fzFrames = [];
+  const fzLabel = (el) => {
+    if(!el || !el.closest) return '?';
+    const own = el.closest('[id],[data-i18n],[data-i18n-title]');
+    if(!own) return (el.tagName || '?').toLowerCase();
+    const key = own.getAttribute('data-i18n') || own.getAttribute('data-i18n-title') || '';
+    return ((own.id ? '#' + own.id : own.tagName.toLowerCase()) + (key ? '[' + key + ']' : '')).slice(0, 60);
+  };
+  try{
+    document.addEventListener('click', (e) => {
+      fzClicks.push({ at: Date.now(), what: fzLabel(e.target) });
+      if(fzClicks.length > 5) fzClicks.shift();
+    }, true);
+  }catch(e){ __swallow(e, 'freeze-why:clicks'); }
+  try{
+    const types = (window.PerformanceObserver && PerformanceObserver.supportedEntryTypes) || [];
+    const kind = types.indexOf('long-animation-frame') >= 0 ? 'long-animation-frame' : (types.indexOf('longtask') >= 0 ? 'longtask' : '');
+    if(kind){
+      new PerformanceObserver((list) => {
+        list.getEntries().forEach((en) => {
+          if(en.duration < 300) return;
+          const scripts = (en.scripts || []).slice().sort((a, b) => b.duration - a.duration).slice(0, 3).map((sc) =>
+            Math.round(sc.duration) + 'ms ' + String(sc.invoker || sc.invokerType || '').slice(0, 50) + ' ' + String(sc.sourceFunctionName || '').slice(0, 40)
+            + ' @' + String(sc.sourceURL || '').replace(/^.*\//, '').replace(/\?.*$/, '').slice(0, 30) + ':' + (sc.sourceCharPosition >= 0 ? sc.sourceCharPosition : '?'));
+          fzFrames.push({ at: Math.round(performance.timeOrigin + en.startTime), ms: Math.round(en.duration), scripts });
+          fzFrames.sort((a, b) => b.ms - a.ms);
+          if(fzFrames.length > 6) fzFrames.length = 6;
+        });
+      }).observe({ type: kind, buffered: true });
+    }
+  }catch(e){ __swallow(e, 'freeze-why:observer'); }
+  let fzReports = 0;
+  let fzPending = null;
+  /* المتصفّح يسلّم سجلّ الإطار الطويل بعد انتهائه بلحظات — مسبار Chromium: التقرير الفوريّ خلا من إطار الـ١٥ث الذي جمّد. فيُرسَل بعد
+     ثانيتين، وفورًا إن غادر المستخدم الصفحة (زرّ «إعادة التحميل») — keepalive يوصله. */
+  function freezeReport(delays){
+    if(fzReports >= 3 || fzPending) return;
+    fzReports++;
+    try{ // التقرير لا يكسر الشريط أبدًا
+      const at = Date.now();
+      const go = () => { if(!fzPending) return; clearTimeout(fzPending); fzPending = null; window.removeEventListener('pagehide', go); sendFreezeReport(delays, at); };
+      fzPending = setTimeout(go, 2000);
+      window.addEventListener('pagehide', go);
+    }catch(e){ __swallow(e, 'freeze-why:schedule'); }
+  }
+  function sendFreezeReport(delays, at){
+    try{
+      const now = at;
+      const settings = document.querySelector('.settingsPageActive');
+      const open = [...document.querySelectorAll('dialog[open],[id$="Modal"],[id$="modal"],[role="dialog"]')]
+        .filter((el) => el.offsetParent !== null || getComputedStyle(el).position === 'fixed' && getComputedStyle(el).display !== 'none')
+        .map((el) => el.id).filter(Boolean).slice(0, 4);
+      const screen = (settings ? 'settings:' + settings.id : 'chat') + (open.length ? ' +' + open.join(',') : '');
+      const mem = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + '/' + Math.round(performance.memory.jsHeapSizeLimit / 1048576) + 'MB' : '?';
+      const clicks = fzClicks.map((c) => c.what + ' -' + Math.round((now - c.at) / 1000) + 's').join(' · ') || 'لا نقرات';
+      const frames = fzFrames.map((f) => f.ms + 'ms -' + Math.round((now - f.at) / 1000) + 's [' + f.scripts.join(' | ') + ']').join('\n') || 'لا إطارات مقيسة';
+      const env = 'vp ' + innerWidth + 'x' + innerHeight + ' dpr ' + (window.devicePixelRatio || 1) + ' cpu ' + (navigator.hardwareConcurrency || '?')
+        + ' ram ' + (navigator.deviceMemory || '?') + 'GB heap ' + mem + ' dom ' + document.getElementsByTagName('*').length
+        + ' img ' + document.images.length + ' up ' + Math.round((now - bootAt) / 1000) + 's';
+      fetch('/api/system?action=client-errors', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'تعليق ' + Math.round(Math.max.apply(null, delays) / 1000) + 'ث — ' + screen + ' — آخر نقرة: ' + (fzClicks.length ? fzClicks[fzClicks.length - 1].what : 'لا شيء'),
+          source: 'diag:freeze', line: 0, col: 0,
+          stack: ('التأخيرات: ' + delays.map((d) => Math.round(d / 100) / 10 + 'ث').join('، ') + '\nالنقرات: ' + clicks + '\nالإطارات:\n' + frames + '\n' + env).slice(0, 1500),
+          url: location.pathname, ua: navigator.userAgent,
+          build: (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '',
+        }) }).catch((e) => { __swallow(e, 'freeze-why:send'); });
+    }catch(e){ __swallow(e, 'freeze-why:report'); }
+  }
+  window.__omranFreezeReport = freezeReport; // للاختبار والفحص اليدويّ فقط
+
   let worker = null;
   try{
     const workerSrc = "setInterval(function(){ postMessage(Date.now()); }, 1000);";
@@ -69,6 +145,7 @@ window.postWithConfirm = postWithConfirm;
      العامل نفسه (نوم الجهاز/تعليق العمليّة) ليس تجمّد الخيط الرئيسيّ. التجمّد الحقيقيّ والصفحة ظاهرة يُظهره كما كان. */
   let lastVisibleAt = 0;
   let lastBeat = 0;
+  let strikeDelays = []; // v-freeze-why
   const markVisible = () => { if(!document.hidden){ lastVisibleAt = Date.now(); strikes = 0; } };
   document.addEventListener('visibilitychange', markVisible);
   document.addEventListener('resume', markVisible);
@@ -79,18 +156,21 @@ window.postWithConfirm = postWithConfirm;
     const gap = lastBeat ? e.data - lastBeat : 0;
     lastBeat = e.data;
     // خلال فترة الإقلاع لا نحسب أي تأخّر تجمّدًا
-    if(Date.now() - bootAt < BOOT_GRACE_MS){ strikes = 0; return; }
+    if(Date.now() - bootAt < BOOT_GRACE_MS){ strikes = 0; strikeDelays = []; return; }
     // الصفحة مخفيّة، أو النبضة من قبل رجوعها، أو العامل نفسه توقّف (نوم) — ليس تجمّدًا رآه المستخدم
-    if(document.hidden || e.data < lastVisibleAt || gap > 4000){ strikes = 0; return; }
+    if(document.hidden || e.data < lastVisibleAt || gap > 4000){ strikes = 0; strikeDelays = []; return; }
     if(delay > FREEZE_THRESHOLD_MS){
       strikes++;
+      strikeDelays.push(delay);
       if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
         try{ saveState(); }catch(err){ __swallow(err, "save:app-10-features#1"); }
         shown = true;
         banner.style.display = 'flex';
+        freezeReport(strikeDelays.slice(-4)); // v-freeze-why: لماذا — للمالك
       }
     } else {
       strikes = 0; // نبضة سليمة تصفّر العدّاد
+      strikeDelays = [];
     }
   };
   window.addEventListener('beforeunload', () => { try{ worker.terminate(); }catch(e){ __swallow(e, "save:app-10-features#2"); } });
