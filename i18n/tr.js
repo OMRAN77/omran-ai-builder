@@ -322,6 +322,8 @@ I18N['tr'] = {
     "authEmailUnverified": "Bu e-posta doğrulanmadı — kullanıcı adınızla giriş yapın ve Hesabım bölümünden doğrulayın",
     "emailConfirmTitle": "E-postanızı doğrulayın",
     "emailConfirmSend": "Kodu gönder",
+    "recoveryHintTitle": "Şifrenizi unutursanız hesabınızı ve aboneliğinizi kurtarabilmek için e-postanızı ekleyin",
+    "recoveryHintAdd": "E-posta ekle",
     "acctNetError": "Sunucuya ulaşılamadı, bağlantınızı kontrol edin",
     "acctAvatarTooBig": "Görsel çok büyük, daha küçük bir tane seçin",
     "providerColorsLabel": "🤖 Her AI sağlayıcısının rengi (sohbette adının yanında gösterilir)",

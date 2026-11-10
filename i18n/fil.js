@@ -324,6 +324,8 @@ I18N['fil'] = {
     "authEmailUnverified": "Hindi pa kumpirmado ang email na ito — mag-sign in gamit ang username mo at kumpirmahin ito sa Aking account",
     "emailConfirmTitle": "Kumpirmahin ang email mo",
     "emailConfirmSend": "Ipadala ang code",
+    "recoveryHintTitle": "Idagdag ang email mo para mabawi ang account at subscription mo kung makalimutan mo ang password",
+    "recoveryHintAdd": "Idagdag ang email",
     "acctNetError": "Hindi ma-reach ang server, tingnan ang iyong koneksyon",
     "acctAvatarTooBig": "Masyadong malaki ang larawan, pumili ng mas maliit",
     "providerColorsLabel": "🤖 Kulay ng bawat AI provider (ipinapakita sa tabi ng pangalan nito sa chat)",

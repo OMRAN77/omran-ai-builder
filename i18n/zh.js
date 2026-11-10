@@ -317,6 +317,8 @@ I18N['zh'] = {
     "authEmailUnverified": "该邮箱尚未验证——请用用户名登录，并在“我的账户”中验证",
     "emailConfirmTitle": "验证你的邮箱",
     "emailConfirmSend": "发送验证码",
+    "recoveryHintTitle": "添加邮箱，忘记密码时可找回账号和订阅",
+    "recoveryHintAdd": "添加邮箱",
     "acctNetError": "无法连接到服务器，请检查您的网络连接",
     "acctAvatarTooBig": "图片太大，请选择较小的图片",
     "providerColorsLabel": "🤖 各 AI 提供商的颜色(显示在聊天界面的名称旁)",

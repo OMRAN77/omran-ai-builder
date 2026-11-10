@@ -367,6 +367,7 @@ const I18N = {
     authEmailUnverified: 'هذا الإيميل غير مؤكَّد، ادخل باسم المستخدم وأكّده من حسابي', // v-unverified-email
     emailConfirmTitle: 'أكّد إيميلك', // v-unverified-email
     emailConfirmSend: 'أرسل الكود', // v-unverified-email
+    recoveryHintTitle: 'أضف إيميلك عشان تقدر تسترجع حسابك واشتراكك لو نسيت كلمة المرور', recoveryHintAdd: 'أضف الإيميل', // v-recovery-hint
     acctNetError: 'تعذر الاتصال بالخادم، تحقق من الإنترنت',
     acctAvatarTooBig: 'الصورة كبيرة جدًا، اختر صورة أصغر',
     logout: 'خروج',
@@ -2299,6 +2300,7 @@ const I18N = {
     authEmailUnverified: 'This email is not confirmed — sign in with your username and confirm it in My account', // v-unverified-email
     emailConfirmTitle: 'Confirm your email', // v-unverified-email
     emailConfirmSend: 'Send the code', // v-unverified-email
+    recoveryHintTitle: 'Add your email so you can recover your account and subscription if you forget your password', recoveryHintAdd: 'Add email', // v-recovery-hint
     acctNetError: 'Could not reach the server, check your connection',
     acctAvatarTooBig: 'The image is too large, choose a smaller one',
     providerColorsLabel: '🤖 Each AI provider color (shown next to its name in chat)',

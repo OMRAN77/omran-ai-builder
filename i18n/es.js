@@ -323,6 +323,8 @@ I18N['es'] = {
     "authEmailUnverified": "Este correo no está confirmado: inicia sesión con tu nombre de usuario y confírmalo en Mi cuenta",
     "emailConfirmTitle": "Confirma tu correo",
     "emailConfirmSend": "Enviar el código",
+    "recoveryHintTitle": "Añade tu correo para poder recuperar tu cuenta y tu suscripción si olvidas la contraseña",
+    "recoveryHintAdd": "Añadir correo",
     "acctNetError": "No se pudo conectar con el servidor, verifica tu conexión",
     "acctAvatarTooBig": "La imagen es demasiado grande, elige una más pequeña",
     "providerColorsLabel": "🤖 Color de cada proveedor de IA (se muestra junto a su nombre en el chat)",
