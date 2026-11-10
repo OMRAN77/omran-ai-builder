@@ -48,7 +48,7 @@ async function azureVoice(text, male, lang, rate) {
         body: ssml,
       });
       if (r.ok) return { buf: Buffer.from(await r.arrayBuffer()), tier: a.tier };
-    } catch (e) { /* guard-ok — تعثّر شبكة لهذا الحساب: التالي */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tts:azure'); /* guard-ok — تعثّر شبكة لهذا الحساب: التالي */ }
   }
   return null;
 }
@@ -277,7 +277,7 @@ module.exports = async (req, res) => {
             res.status(200).send(Buffer.from(fbBuffer));
             return;
           }
-        } catch (e) { /* fall through to error below */ }
+        } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tts:237'); /* fall through to error below */ }
       }
       const errText = azResp ? await azResp.text() : 'network';
       res.status(azResp ? azResp.status : 502).json({ error: 'Azure TTS error: ' + errText.slice(0, 500) });

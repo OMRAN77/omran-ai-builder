@@ -444,7 +444,7 @@ function extractJson(text) {
   const cand = t.slice(a, b + 1);
   const tries = [cand, escapeCtrlInStrings(cand), escapeCtrlInStrings(cand).replace(/,\s*([}\]])/g, '$1')];
   for (const c of tries) {
-    try { const v = JSON.parse(c); if (v && typeof v === 'object') return v; } catch (e) { /* جرّب الصيغة التالية */ }
+    try { const v = JSON.parse(c); if (v && typeof v === 'object') return v; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:447'); /* جرّب الصيغة التالية */ }
   }
   return null;
 }
@@ -645,14 +645,14 @@ async function callPro(prompt, opts) {
       let out = '';
       try { out = await runTool(t.name, t.input); } catch (e) { out = 'تعذّرت الأداة: ' + String((e && e.message) || e).slice(0, 200); }
       out = String(out == null ? '' : out).slice(0, 200000);
-      if (o.onTool) { try { o.onTool(t.name, t.input, out.length); } catch (e) { /* الإبلاغ للواجهة لا يُسقط التحليل */ } }
+      if (o.onTool) { try { o.onTool(t.name, t.input, out.length); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:648'); /* الإبلاغ للواجهة لا يُسقط التحليل */ } }
       results.push({ type: 'tool_result', tool_use_id: t.id, content: out });
     }
     const last = round + 1 >= maxRounds || Date.now() >= readUntil;
     if (last) results.push({ type: 'text', text: '[انتهت ميزانيّة القراءة]: اكتب الآن ' + MARK_A + ' ثمّ ' + MARK_R + ' مِمّا قرأته فعلًا، وصرّح صريحًا بأيّ ملفّ لم تقرأه ولماذا. لا تطلب أداة أخرى.' });
     messages.push({ role: 'user', content: results });
   }
-  if (o.onDone) { try { o.onDone({ rounds, toolCalls }); } catch (e) { /* إحصاء للواجهة فقط */ } }
+  if (o.onDone) { try { o.onDone({ rounds, toolCalls }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:655'); /* إحصاء للواجهة فقط */ } }
   return text;
 }
 
@@ -686,9 +686,9 @@ module.exports = async function handler(req, res) {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   if (res.flushHeaders) res.flushHeaders();
-  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } };
-  const ka = setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000);
-  const finish = () => { clearInterval(ka); try { res.end(); } catch (e) { /* المجرى مُغلق أصلًا */ } };
+  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:689'); /* العميل أغلق المجرى */ } };
+  const ka = setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:690'); /* العميل أغلق المجرى */ } }, 4000);
+  const finish = () => { clearInterval(ka); try { res.end(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:691'); /* المجرى مُغلق أصلًا */ } };
 
   try {
     send({ status: '📂 يقرأ الملفّات…', k: 'stReading' });

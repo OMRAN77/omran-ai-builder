@@ -77,7 +77,7 @@ async function settleVideoJob(taskId, ok, o) {
     return null;
   }
   if (!mine) return null;
-  try { await kv.kvDel(key); } catch (e) { /* أفضل جهد — التذكرة تسقط بعد ساعتين */ }
+  try { await kv.kvDel(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-job:80'); /* أفضل جهد — التذكرة تسقط بعد ساعتين */ }
   if (ok) return { settled: true, refunded: false, username: job.u };
 
   const points = opt.points || require('./points.js');
@@ -143,7 +143,7 @@ async function sweepStaleVideoJobs(username, o) {
   try {
     if (keep.length) await kv.kvSetRaw(openKey(username), JSON.stringify(keep), TICKET_TTL_SEC);
     else await kv.kvDel(openKey(username));
-  } catch (e) { /* guard-ok — المسوّى محسوم بمفتاح التسوية، والفهرس يسقط بعد يومين */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-job:146'); /* guard-ok — المسوّى محسوم بمفتاح التسوية، والفهرس يسقط بعد يومين */ }
   return out;
 }
 

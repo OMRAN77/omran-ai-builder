@@ -73,7 +73,7 @@ async function deleteAccount(input, o) {
     try { fails = Number(await kv.kvGetRaw(failKey)) || 0; } catch (e) { fails = 0; }
     if (fails >= FAIL_MAX) return { status: 429, body: { ok: false, code: 'too_many' } };
     if (!password || !verifyPassword(password, user.salt, user.hash)) {
-      try { const c = Number(await kv.kvIncr(failKey)); if (c === 1) await kv.kvExpire(failKey, FAIL_TTL); } catch (e) { /* guard-ok — العدّاد أفضل جهد؛ الرفض قائم */ }
+      try { const c = Number(await kv.kvIncr(failKey)); if (c === 1) await kv.kvExpire(failKey, FAIL_TTL); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/account-delete:76'); /* guard-ok — العدّاد أفضل جهد؛ الرفض قائم */ }
       return { status: 401, body: { ok: false, code: 'wrong_password' } };
     }
   }
@@ -103,12 +103,12 @@ async function deleteAccount(input, o) {
   // الفهارس تُحذف إن كانت تشير إليه وحده (لا يمسّ حسابًا آخر يحمل البريد نفسه)
   const email = String(user.email || '').trim().toLowerCase();
   if (email) {
-    try { const idx = await kv.kvGetJSON('db/email-index/' + email); if (idx && String(idx.username || '').trim().toLowerCase() === key) await del('db/email-index/' + email); } catch (e) { /* guard-ok — فهرس مقروء بعطب يبقى؛ الحساب نفسه شاهد محذوف فلا يدخل به أحد */ }
-    try { const al = await kv.kvGetJSON('db/alias/g_' + email); if (al && String(al.primary || '').trim().toLowerCase() === key) await del('db/alias/g_' + email); } catch (e) { /* guard-ok — كما أعلاه */ }
+    try { const idx = await kv.kvGetJSON('db/email-index/' + email); if (idx && String(idx.username || '').trim().toLowerCase() === key) await del('db/email-index/' + email); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/account-delete:106'); /* guard-ok — فهرس مقروء بعطب يبقى؛ الحساب نفسه شاهد محذوف فلا يدخل به أحد */ }
+    try { const al = await kv.kvGetJSON('db/alias/g_' + email); if (al && String(al.primary || '').trim().toLowerCase() === key) await del('db/alias/g_' + email); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/account-delete:107'); /* guard-ok — كما أعلاه */ }
   }
   const phone = String(user.phone || '').trim();
   if (phone) {
-    try { const idx = await kv.kvGetJSON('db/phone-index/' + phone); if (idx && String(idx.username || '').trim().toLowerCase() === key) await del('db/phone-index/' + phone); } catch (e) { /* guard-ok — كما أعلاه */ }
+    try { const idx = await kv.kvGetJSON('db/phone-index/' + phone); if (idx && String(idx.username || '').trim().toLowerCase() === key) await del('db/phone-index/' + phone); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/account-delete:111'); /* guard-ok — كما أعلاه */ }
   }
   // السجلّ: شاهد بلا بيانات — والاسم محجوز (v-name-reuse)
   await auth.putUser(key, { deleted: true, deletedAt: Number(opt.now) || Date.now(), selfDeleted: true });

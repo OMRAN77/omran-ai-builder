@@ -495,3 +495,30 @@ test('٢١. العميل: فيتو الطلب الصريح في مدخل مسا�
   for (const t of ['سوي لي اكسل من هذا الجدول', 'حوّل هذا الجدول إلى اكسل', 'make an excel sheet from this table', 'سولي راجعه بي  الباور بويت']) assert.equal(h.after(t).edit, false, 'بعد صورة مولَّدة — ملفّ لا تعديل: ' + t);
   for (const t of ['سوي منها شيت ستيكرات', 'كبرها عشان السلايد', 'make it transparent for my slides', 'make it look like a presentation cover']) assert.equal(h.after(t).edit, true, 'بعد صورة مولَّدة — تعديل كما كان: ' + t);
 });
+
+// ── ٧. v-office-gulf-words (شكوى مستخدم ٩ نوفمبر: «ابا تسوي حقي مشروع عني بور بونت جكامل» ثمّ «أنا أباك أنت تسويه حقي أنا ما عندي وقت» — نصّ «انسخه في PowerPoint» مرّتين بلا ملفّ) ──
+const GULF_T0 = 'ابا تسوي حقي مشروع عني بور بونت جكامل', GULF_T1 = 'أنا أباك أنت تسويه حقي أنا ما عندي وقت';
+const GULF_OFFER = 'أكيد! هذي شريحة‑شريحة جاهزة عشان تسوي عرض بوربوينت كامل عنك، مع نصيحة بسيطة لكل شريحة';
+const afterOffer = (t) => [{ role: 'user', content: GULF_T0 }, { role: 'assistant', content: GULF_OFFER }, { role: 'user', content: t }];
+test('٢٢. «ابا» و«سوّ حقي» طلب ملفّ، والإصرار بعد عرض الملفّ («أباك أنت تسوّيه») طلبه — لا «أباك» وحدها (أبوك) ولا «ابيك تسوّي صورة»', async () => {
+  for (const t of [GULF_T0, 'سوي حقي اكسل', 'تسويه حقي بوربوينت', 'ابا اكسل للمصاريف', 'أبا عرض بوربوينت عن السلامة'])
+    assert.equal(O.isOfficeAsk(t), true, 'طلب ملفّ: ' + t);
+  for (const t of ['ابا اعرف كيف اسوي بوربوينت', 'سوي حقي القهوة', 'هذا حقي', 'ابى البوربوينت يشتغل', 'أباه يحب البوربوينت', 'أباك يشتغل على الاكسل'])
+    assert.equal(O.isOfficeAsk(t), false, 'ليس طلب ملفّ: ' + t);
+  for (const t of [GULF_T1, 'أبيك تسويها لي', 'ابيك تسوي لي الملف', 'سوه انت', 'جهزه بنفسك', 'you make it please'])
+    assert.equal(O.isOfficeAccept(t, afterOffer(t)), true, 'إصرار بعد العرض: ' + t);
+  for (const t of ['ابيك تسوي صورة وتكتب مبروك', 'ابيك تسوي لي فيديو', 'أباك تجي معي بكرة', 'الله يرحم أباك'])
+    assert.equal(O.isOfficeAccept(t, afterOffer(t)), false, 'ليس إصرارًا على الملفّ: ' + t);
+  assert.equal(O.isOfficeAccept(GULF_T1, [{ role: 'assistant', content: 'هلا والله' }, { role: 'user', content: GULF_T1 }]), false, 'بلا عرض ملفّ قبله لا شيء');
+  reset();
+  const PPT = { kind: 'pptx', title: 'عرض عني', slides: [{ layout: 'title', title: 'عرض عني' }] };
+  const first = await chatTurn('gulfu', GULF_T0, { replies: [toolReply(PPT), textReply('جهّزت العرض 👇')] });
+  assert.ok(first.sent.length && toolNames(first.sent[0]).includes('create_office_file'), 'الرسالة الأولى نفسها: أداة الملفّ — ' + (first.sent[0] ? toolNames(first.sent[0]).join(',') : 'لا نداء'));
+  assert.ok(first.cards.find((c) => c.office && c.office.spec), 'وكرت الملفّ');
+  reset();
+  const insist = await chatTurn('gulfu2', '', { body: { messages: afterOffer(GULF_T1) }, replies: [toolReply(PPT), textReply('تفضّل 👇')] });
+  assert.ok(insist.sent.length && toolNames(insist.sent[0]).includes('create_office_file'), 'الإصرار بعد العرض: أداة الملفّ');
+  assert.match(tail(insist.sent[0]), /create_office_file مرّة واحدة/, 'وملاحظة الدور الإلزاميّة');
+  const img = await chatTurn('gulfu3', '', { body: { messages: [{ role: 'user', content: GULF_T0 }, { role: 'assistant', content: GULF_OFFER }, { role: 'user', content: [{ type: 'text', text: GULF_T1 }, IMG_BLOCK] }] } });
+  assert.ok(img.sent.every((b) => !toolNames(b).includes('create_office_file')), 'مع صورة: «إيه سوّه» والإصرار كما كانا (لا مسار مدفوع للمجّانيّ)');
+});

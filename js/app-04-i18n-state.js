@@ -88,18 +88,18 @@ function omranMapFilter(text, prevUserText){
 }
 function mahaPersonaName(){
   var isAr = false;
-  try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) { /* guard-ok: unavailable language state falls back to English. */ }
+  try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:91'); /* guard-ok: unavailable language state falls back to English. */ }
   /* v-maha-pause: مها موقوفة مؤقتًا لغير المالك — كل نصوص {voice} تصير محايدة */
   /* v-maha-subs: قفل v-maha-pause أُزيل — الاسم الحقيقيّ للجميع */
   var male = false;
-  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage falls back to the default persona. */ }
+  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:95'); /* guard-ok: unavailable storage falls back to the default persona. */ }
   if (male) return isAr ? 'عبدالله' : 'Abdullah';
   return isAr ? 'مها' : 'Maha';
 }
 function __voiceFill(v){
   if (typeof v !== 'string' || v.indexOf('{voice') === -1) return v;
   var male = false;
-  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage keeps the default voice label. */ }
+  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:102'); /* guard-ok: unavailable storage keeps the default voice label. */ }
   return v.split('{voiceAdj}').join(male ? 'الصوتي' : 'الصوتية')
           .split('{voice}').join(mahaPersonaName());
 }
@@ -107,7 +107,7 @@ function t(key){
   var v = tRaw(key);
   if (typeof v === 'string' && v.indexOf('{voice') !== -1) {
     var male = false;
-    try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage keeps the default translation. */ }
+    try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:110'); /* guard-ok: unavailable storage keeps the default translation. */ }
     return v.split('{voiceAdj}').join(male ? 'الصوتي' : 'الصوتية')
             .split('{voice}').join(mahaPersonaName());
   }
@@ -144,7 +144,7 @@ function tStatus(ev){
   }catch(e){ __swallow(e, "misc:app-04-i18n-state#tStatus"); }
   return (ev && ev.status) || '';
 }
-try{ window.tStatus = tStatus; }catch(_){ /* guard-ok: تعريض عالميّ اختياريّ — فشله لا يمنع الترجمة المحلّيّة. */ }
+try{ window.tStatus = tStatus; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-04-i18n-state:147'); /* guard-ok: تعريض عالميّ اختياريّ — فشله لا يمنع الترجمة المحلّيّة. */ }
 
 function applyLanguage(){
   if(!I18N[lang] && I18N_LAZY.indexOf(lang) >= 0){
@@ -944,7 +944,7 @@ function __chatsAccountGone(){
 function __writeChatsMirror(){
   if(__chatsAccountGone()) return;
   try{ localStorage.setItem('aiapp_projects_slim', JSON.stringify(chatsSlimForServer())); }
-  catch(e){ /* guard-ok: المرآة رفاهية إقلاع — امتلاء التخزين لا يكسر الحفظ الأصلي */ }
+  catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:947'); /* guard-ok: المرآة رفاهية إقلاع — امتلاء التخزين لا يكسر الحفظ الأصلي */ }
 }
 window.__writeChatsMirror = __writeChatsMirror;
 function __saveFlush(force){
@@ -1579,7 +1579,7 @@ function renderHistory(){
       __histSorted.map(p => p.id + ':' + p.title + ':' + (p.code && p.codeType !== 'python' ? 1 : 0)).join(',');
     if(window.__renderHistSig === __sig && historyEl.childElementCount > 0) return;
     window.__renderHistSig = __sig;
-  }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أيّ خطأ نرسم كالمعتاد */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:1582'); /* guard-ok — البصمة تحسين لا شرط؛ عند أيّ خطأ نرسم كالمعتاد */ }
   if(__histThumbIO) __histThumbIO.disconnect(); // v-perf-hist-lazy: صفوف الرسم السابق لا تُراقَب بعد مسحها
   historyEl.innerHTML = '';
   // v-perf-history-guard: نافذة عرض بنفس فكرة __MSGWIN في renderMessages — أقدم ٣٠ محادثة
@@ -2055,11 +2055,11 @@ function renderMessages(keepScroll){
     __sig += '|' + (localStorage.getItem('aiapp_lang') || 'ar');
     if(window.__renderMsgSig === __sig && messagesEl.childElementCount > 0) return;
     window.__renderMsgSig = __sig;
-  }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أي خطأ نرسم كالمعتاد */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:2058'); /* guard-ok — البصمة تحسين لا شرط؛ عند أي خطأ نرسم كالمعتاد */ }
   const prevScrollTop = messagesEl.scrollTop;
   let __wasNearBottom = true;
   /* v-scroll-free: قرار الملاحقة نفسه (app-40) — محادثة أخرى تُفتح من الأسفل، وإصبع على الشاشة لا يُقفز من تحته */
-  try{ __wasNearBottom = window.omranChatFollow ? window.omranChatFollow.forRender(__cInit && __cInit.id) : (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
+  try{ __wasNearBottom = window.omranChatFollow ? window.omranChatFollow.forRender(__cInit && __cInit.id) : (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:2062'); /* guard-ok — قياس اختياري */ }
   window.__isRenderingMsgs = true;
   try{
     messagesEl.innerHTML = '';
@@ -2112,7 +2112,7 @@ function renderMessages(keepScroll){
         if(m.providerKey && typeof functionalLabel === 'function'){
           __plbl = (/^🔄\s*/.test(__plbl || '') ? '🔄 ' : '') + functionalLabel(m.providerKey);
         }
-      }catch(e){ /* الاسم المحفوظ احتياط */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:2115'); /* الاسم المحفوظ احتياط */ }
       /* v-owner-model-badge (سؤال المالك ١٩ سبتمبر «كيف أعرف الموديل اللي عندي؟»): للمالك وحده يظهر
          فوق كلّ ردّ اسم المزوّد الحقيقيّ + ما أعلنه الخادم (الموديل الذي خدم الطلب · كاش · جديد · خرج).
          كان الحدث يُلتقط ولا يُعرض في أيّ مكان. بقيّة المستخدمين: كما كان (v464 — «اسأل الكل» فقط). */
@@ -2194,7 +2194,7 @@ function renderMessages(keepScroll){
         __mc = __mc.replace(/__ACTION_VIDEO:\s*[^\n]*/g, '').replace(/\n{3,}/g, '\n\n').trim();
         if(__vidPrompt && mIdx === cur.messages.length - 1){
           setTimeout(function(){
-            try{ if(typeof window.omranOpenVideoMaker === 'function') window.omranOpenVideoMaker(__vidPrompt); }catch(e){ try{ __swallow(e,'chat:video-open'); }catch(_){ /* guard-ok */ } }
+            try{ if(typeof window.omranOpenVideoMaker === 'function') window.omranOpenVideoMaker(__vidPrompt); }catch(e){ try{ __swallow(e,'chat:video-open'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-04-i18n-state:2197'); /* guard-ok */ } }
           }, 800);
         }
       }
@@ -2883,6 +2883,6 @@ function renderMessages(keepScroll){
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
   }finally{
     window.__isRenderingMsgs = false;
-    try{ if(typeof window.syncWelcome === 'function') window.syncWelcome(); }catch(e){ /* guard-ok */ }
+    try{ if(typeof window.syncWelcome === 'function') window.syncWelcome(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:2886'); /* guard-ok */ }
   }
 }

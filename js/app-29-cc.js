@@ -12,7 +12,7 @@
   function token(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
   /* v-audit-bridge: نصوص الجسر الجديدة بمفاتيح الترجمة (رمز ثابت من الخادم ← مفتاح هنا)، والعربيّة/الإنجليزيّة احتياط. */
   function ccT(k, ar, en){
-    try{ var v = (typeof window.t === 'function') ? window.t(k) : ''; if(v && v !== k) return v; }catch(e){ /* guard-ok — الترجمة ترف والاحتياط تحتها */ }
+    try{ var v = (typeof window.t === 'function') ? window.t(k) : ''; if(v && v !== k) return v; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-29-cc:15'); /* guard-ok — الترجمة ترف والاحتياط تحتها */ }
     var lg = (typeof document !== 'undefined' && document.documentElement && document.documentElement.lang) || 'ar';
     return lg === 'ar' ? ar : en;
   }
@@ -28,13 +28,13 @@
     S.prUrl = localStorage.getItem('aiapp_cc_pr_url') || '';
     S.lastTask = localStorage.getItem('aiapp_cc_last') || '';
     localStorage.removeItem('aiapp_cc_session');
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-29-cc:31'); /* guard-ok */ }
   function save(){
     try{
       localStorage.setItem('aiapp_cc_pr', String(S.prNumber || 0));
       localStorage.setItem('aiapp_cc_pr_url', S.prUrl || '');
       localStorage.setItem('aiapp_cc_last', String(S.lastTask || '').slice(0, 200));
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-29-cc:37'); /* guard-ok */ }
   }
 
   /** الكلمة الآمرة في أوّل السطر (وحدها أو بمعطًى): {cmd, arg} أو null = مهمّة عاديّة. */
@@ -236,7 +236,7 @@
     foldCode(textDiv);
     return words;
   }
-  function say(cur, thinkingDiv, text){ try{ thinkingDiv.textContent = '🧑‍💻 ' + text; }catch(e){ /* guard-ok */ } }
+  function say(cur, thinkingDiv, text){ try{ thinkingDiv.textContent = '🧑‍💻 ' + text; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-29-cc:239'); /* guard-ok */ } }
 
   /** الأوامر الصريحة من الصندوق: تنفيذ + رسالة في المحادثة. الدمج والتراجع بتأكيد. */
   function runCommand(cur, c, thinkingDiv, status){
@@ -333,7 +333,7 @@
           thinkingDiv._omLastRender = now;
           renderStreamingAssistant(thinkingDiv, '🧑‍💻 ' + full);
         }
-        try{ smartScrollBottom(); }catch(e){ /* guard-ok — v-scroll-free: قرار الملاحقة الموحّد */ }
+        try{ smartScrollBottom(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-29-cc:336'); /* guard-ok — v-scroll-free: قرار الملاحقة الموحّد */ }
       }
       if(ev.result){ result = ev.result; if(!full && ev.result.text) full = ev.result.text; }
       if(ev.error) err = ev.error;
@@ -365,7 +365,7 @@
         return attachLoop(pEv, onRetry).catch(function(e){ if(e && e.name === 'AbortError') throw e; return false; }).then(function(){
           if(pstep) pstep.done();
           status.release();
-          try{ thinkingDiv.innerHTML = ''; thinkingDiv._omStreamHead = null; thinkingDiv._omLastRender = 0; }catch(e){ /* guard-ok */ }
+          try{ thinkingDiv.innerHTML = ''; thinkingDiv._omStreamHead = null; thinkingDiv._omLastRender = 0; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-29-cc:368'); /* guard-ok */ }
           var body = pfull.trim() || 'انتهى بلا نصّ.';
           return '▶ التشغيل السابق (اكتمل قبل رسالتك):\n' + body + (pres ? '\n— ' + (pres.turns || 0) + ' جولة' + (pres.cost != null ? ' · ' + Number(pres.cost).toFixed(3) + '$' : '') : '') + '\n\n▶ ردّ رسالتك:\n';
         });

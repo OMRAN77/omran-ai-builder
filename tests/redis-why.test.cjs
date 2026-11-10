@@ -17,7 +17,7 @@ require.cache[rp('api/_lib/kv.js')] = { id: rp('api/_lib/kv.js'), filename: rp('
   kvIncr: async () => 1, kvExpire: async () => {},
 } };
 require.cache[rp('api/_lib/_owner.js')] = { id: rp('api/_lib/_owner.js'), filename: rp('api/_lib/_owner.js'), loaded: true, exports: {
-  isOwner: () => true, isOwnerName: (u) => u === 'omran', ownerList: () => ['omran'],
+  isOwner: () => true, isOwnerSession: () => true, isOwnerName: (u) => u === 'omran', ownerList: () => ['omran'], // v-monitor-readonly
 } };
 const health = require(rp('api/_lib/health.js'));
 const call = () => new Promise((resolve) => {

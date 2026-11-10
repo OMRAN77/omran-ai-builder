@@ -141,7 +141,7 @@ async function reportError(err, context) {
         require('./_owner-alert.js').alertOwnerError(entry)
           .then(() => { clearTimeout(t); resolve(); }, () => { clearTimeout(t); resolve(); });
       });
-    } catch (e) { /* الإشعار تحسين لا شرط */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_errors:144'); /* الإشعار تحسين لا شرط */ }
   }
 }
 
@@ -155,9 +155,24 @@ const { AsyncLocalStorage } = require('node:async_hooks');
 const __reqStore = new AsyncLocalStorage();
 function currentReq() { const s = __reqStore.getStore(); return (s && s.req) || null; }
 
+// v-session-revoke: إجراءات الدخول نفسها تفحص الإصدار من سجلّ الحساب (auth.sessionCurrent) — لا يمسّها الحاجز
+const SESSION_GATE_SKIP = new Set(['auth', 'email-otp-request', 'email-otp-verify', 'auth-google-callback', 'oauth-claim']);
+/** v-session-revoke: رمز أقدم من آخر تغيير لكلمة مرور صاحبه يُرفض قبل أيّ معالج (المحادثة، الذاكرة، النقاط، البريد، النشر…). */
+async function revokedSessionGate(routeName, req, res) {
+  const action = String((req && req.query && req.query.action) || '');
+  if (routeName === 'account' && SESSION_GATE_SKIP.has(action)) return false;
+  const session = require('./_session.js');
+  const token = session.tokenOf(req);
+  if (!token || !(await session.sessionRevoked(token))) return false;
+  try { require('./cors.js').installCors(req, res); } catch (e) { require('./_swallow.js').swallow(e, '_errors:gate-cors'); }
+  res.status(401).json({ error: 'الجلسة منتهية، سجل الدخول من جديد — Session expired, please log in again', code: 'session' });
+  return true;
+}
+
 function withErrorCapture(routeName, handler) {
   return async function wrapped(req, res) {
     try {
+      if (await revokedSessionGate(routeName, req, res)) return;
       return await __reqStore.run({ req }, () => handler(req, res));
     } catch (err) {
       const action = (req && req.query && req.query.action) || null;
@@ -168,7 +183,7 @@ function withErrorCapture(routeName, handler) {
             error: 'حدث خطأ غير متوقع. تم تسجيله وسنصلحه — حاول مرة أخرى.',
           });
         }
-      } catch (e) {
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_errors:171');
         /* response already closed */
       }
     }

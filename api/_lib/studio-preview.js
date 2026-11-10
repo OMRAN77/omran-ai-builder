@@ -62,7 +62,7 @@ module.exports = async (req, res) => {
   try {
     const cached = await kvGetRaw(key);
     if (cached) { dropOld(); sendImage(res, cached); return; }
-  } catch (e) { /* بلا كاش نولّد مباشرة */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/studio-preview:65'); /* بلا كاش نولّد مباشرة */ }
 
   /* v-style-match (المالك ٢٥ أكتوبر: «استعين بنانو بي الصور، أريد الصور مش غبشه ونظيفه ومرتبه»): بطاقات الستايل من
      نانو بنانا برو؛ معاينات الترندات كما كانت */
@@ -83,7 +83,7 @@ module.exports = async (req, res) => {
   if (!got) {
     for (let i = 0; i < 12; i++) {
       await sleep(2500);
-      try { const c = await kvGetRaw(key); if (c) { sendImage(res, c); return; } } catch (e) { /* نكمل الانتظار */ }
+      try { const c = await kvGetRaw(key); if (c) { sendImage(res, c); return; } } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/studio-preview:86'); /* نكمل الانتظار */ }
     }
     res.setHeader('Retry-After', '10');
     res.status(503).json({ error: 'preview pending' });
@@ -139,7 +139,7 @@ module.exports = async (req, res) => {
        قبلها ثمّ الأصل — مؤقّتًا بلا تخزين في المتصفّح، فتأتي الجديدة لاحقًا */
     if (rev) {
       for (let i = rev - 1; i >= 0; i--) {
-        try { const old = await kvGetRaw(i ? baseKey + ':r' + i : baseKey); if (old) { sendImage(res, old, true); return; } } catch (e2) { /* نجرّب الأقدم */ }
+        try { const old = await kvGetRaw(i ? baseKey + ':r' + i : baseKey); if (old) { sendImage(res, old, true); return; } } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/studio-preview:142'); /* نجرّب الأقدم */ }
       }
     }
     res.setHeader('Retry-After', '60');

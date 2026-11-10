@@ -232,7 +232,7 @@
       bar.appendChild(head);
       bar.appendChild(det);
       document.body.appendChild(bar);
-    }catch(e){ /* فحص صامت — لا نزعج المستخدم إذا فشل */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:235'); /* فحص صامت — لا نزعج المستخدم إذا فشل */ }
   }, 6000);
 
   /* v-owner-i18n (تدقيق ١٨ أكتوبر، g14-owner): نصوص فحص النظام وكبسولة التنبيه من قاموس لغة الواجهة (كانت عربيّة ثابتة)،
@@ -440,7 +440,7 @@
   }
 
   btnOpen.onclick = () => {
-    try{ if(typeof window.__videoTrendsBoot === 'function') window.__videoTrendsBoot(); }catch(e){ try{ __swallow(e,'video:trends-boot'); }catch(_){ /* guard-ok */ } }
+    try{ if(typeof window.__videoTrendsBoot === 'function') window.__videoTrendsBoot(); }catch(e){ try{ __swallow(e,'video:trends-boot'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-11-video:443'); /* guard-ok */ } }
     modal.style.display = 'flex';
     closeHeaderMenu();
     const owner = isOwnerAccount();
@@ -453,7 +453,7 @@
 
   // v524: فتح صانع الفيديو من المحادثة — يقبل prompt اختياري + صورة hero اختيارية
   window.omranOpenVideoMaker = function(prompt, heroDataUrl, heroMimeType){
-    try{ if(typeof window.__videoTrendsBoot === 'function') window.__videoTrendsBoot(); }catch(e){ try{ __swallow(e,'video:trends-boot'); }catch(_){ /* guard-ok */ } }
+    try{ if(typeof window.__videoTrendsBoot === 'function') window.__videoTrendsBoot(); }catch(e){ try{ __swallow(e,'video:trends-boot'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-11-video:456'); /* guard-ok */ } }
     try{
       if(promptEl && prompt) promptEl.value = String(prompt).trim();
       // صورة hero — تُعرض في المعاينة وتُستخدم في الفيلم
@@ -470,21 +470,21 @@
           applyHeroRatioFromDataUrl(heroDataUrl);
           // v525: عند وجود صورة → واقعي تلقائياً لأن الأنيمي يُضيّع تفاصيل الصورة الأصلية
           if(styleEl && styleEl.value !== 'realistic') styleEl.value = 'realistic';
-        }catch(he){ try{ __swallow(he,'video:open-hero'); }catch(_){ /* guard-ok */ } }
+        }catch(he){ try{ __swallow(he,'video:open-hero'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-11-video:473'); /* guard-ok */ } }
       }
       /* v-vmk-chat-tab (تدقيق ١٨–١٩ أكتوبر): نصّ أو صورة من المحادثة مكانهما قسم الوضع (الوصف وصورة البطل) — كان يُفتح على «الترندات» وهما
          مخفيّان. video.js يقرأ العلامة عند الفتح مرّة ويمحوها؛ بلا نصّ ولا صورة (ترندات المحادثة، مها) يبقى على الترندات */
       /* v-video-durations: وضع للمالك وحده كان يفتح غير المالك على الترندات والوصف مخفيّ — قسمه الافتراضيّ «فيديو سريع» (v-five-sections) */
       if((prompt && String(prompt).trim()) || heroDataUrl){ if(modal.style.display !== 'flex'){ const om = (modeEl && modeEl.value) || 'minimax'; modal.dataset.vmkTab = (!isOwnerAccount() && { runway:1, canvas:1, omni:1, hybrid:1, actor:1 }[om]) ? 'minimax' : om; } }
       modal.style.display = 'flex';
-      try{ closeHeaderMenu(); }catch(e){ /* guard-ok — closeHeaderMenu اختيارية */ }
+      try{ closeHeaderMenu(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:480'); /* guard-ok — closeHeaderMenu اختيارية */ }
       const owner = isOwnerAccount();
       ensureLongMinutesOption(owner);
       if(!owner && durationEl.value === 'longMinutes'){
         durationEl.value = '5';
         if(typeof durationEl.onchange === 'function') durationEl.onchange();
       }
-    }catch(e){ try{ __swallow(e,'video:open-from-chat'); }catch(_){ /* guard-ok */ } }
+    }catch(e){ try{ __swallow(e,'video:open-from-chat'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-11-video:487'); /* guard-ok */ } }
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
   modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
@@ -510,14 +510,14 @@
     const want = heroRatioFor(w, h);
     if(ratioEl.value === want) return;
     ratioEl.value = want;
-    try{ ratioEl.dispatchEvent(new Event('change')); }catch(e){ /* guard-ok — مزامنة حبّات العرض ترف */ }
+    try{ ratioEl.dispatchEvent(new Event('change')); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:513'); /* guard-ok — مزامنة حبّات العرض ترف */ }
   }
   function applyHeroRatioFromDataUrl(dataUrl){
     try{
       const probe = new Image();
       probe.onload = () => applyHeroRatio(probe.naturalWidth || probe.width, probe.naturalHeight || probe.height);
       probe.src = dataUrl;
-    }catch(e){ /* guard-ok — بلا أبعاد تبقى النسبة كما اختارها المستخدم */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:520'); /* guard-ok — بلا أبعاد تبقى النسبة كما اختارها المستخدم */ }
   }
   // 📋 معاينة وتعديل السيناريو قبل التوليد
   function showScriptPreview(title, scenes){
@@ -944,7 +944,7 @@
           setStatus(bT('🎚️ جاري دمج الصوت...','🎚️ Merging narration...'));
           finalBlob = await muxNarrationAny(clipBlob, audioBlob, true);
         }
-      } catch(e){ /* keep silent clip on failure */ }
+      } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:947'); /* keep silent clip on failure */ }
     }
     const finalUrl = URL.createObjectURL(finalBlob);
     setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
@@ -1016,7 +1016,7 @@
     try{
       const rc = await ffmpeg.exec(['-i', 'final.mp4', '-i', 'main.mp4', '-filter_complex', '[1:a]adelay=2000|2000[a]', '-map', '0:v:0', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', 'final_a.mp4']);
       if(rc === 0) finalName = 'final_a.mp4';
-    } catch(e){ /* guard-ok — لقطة بلا مسار صوت: الناتج صامت كما كان في وضع الدمج */ }
+    } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:1019'); /* guard-ok — لقطة بلا مسار صوت: الناتج صامت كما كان في وضع الدمج */ }
     const data = await ffmpeg.readFile(finalName);
     let finalBlob = new Blob([data.buffer], { type: 'video/mp4' });
 
@@ -1033,7 +1033,7 @@
           setStatus(bT('🎚️ جاري دمج الصوت...','🎚️ Merging narration...'));
           finalBlob = await muxNarrationAny(finalBlob, audioBlob, false);
         }
-      } catch(e){ /* keep video without narration */ }
+      } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:1036'); /* keep video without narration */ }
     }
 
     const finalUrl = URL.createObjectURL(finalBlob);
@@ -1078,7 +1078,7 @@
       if(runSeq !== genSeq) return;
       const at = resultEl.currentTime || 0, wasPlaying = !resultEl.paused, old = resultEl.src;
       resultEl.src = player;
-      try{ resultEl.currentTime = at; }catch(e){ /* guard-ok — بعض المتصفّحات ترفض قبل التحميل؛ يبدأ من أوّله */ }
+      try{ resultEl.currentTime = at; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:1081'); /* guard-ok — بعض المتصفّحات ترفض قبل التحميل؛ يبدأ من أوّله */ }
       /* المشغّل بخاصيّة autoplay: تبديل المصدر يشغّله ولو أوقفه المستخدم أو أغلق النافذة (صوت التعليق من نافذة مغلقة) */
       if(wasPlaying) resultEl.play().catch(function(){ /* autoplay may be blocked */ }); else resultEl.pause();
       downloadEl.href = dl;
@@ -1225,8 +1225,8 @@
   (function(){
     const sel = document.getElementById('videoMakerNarrationSpeed');
     if(sel){
-      try{ const saved = localStorage.getItem(NARRATION_SPEED_KEY); if(NARRATION_SPEEDS.indexOf(saved) >= 0) sel.value = saved; }catch(e){ /* guard-ok — بلا تخزين: الافتراضيّ سريع */ }
-      sel.addEventListener('change', () => { try{ localStorage.setItem(NARRATION_SPEED_KEY, getNarrationSpeed()); }catch(e){ /* guard-ok — تفضيل فقط */ } });
+      try{ const saved = localStorage.getItem(NARRATION_SPEED_KEY); if(NARRATION_SPEEDS.indexOf(saved) >= 0) sel.value = saved; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:1228'); /* guard-ok — بلا تخزين: الافتراضيّ سريع */ }
+      sel.addEventListener('change', () => { try{ localStorage.setItem(NARRATION_SPEED_KEY, getNarrationSpeed()); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:1229'); /* guard-ok — تفضيل فقط */ } });
     }
     window.__vmkVoice = { speed: getNarrationSpeed, clean: cleanNarrationText };
   })();
@@ -1248,7 +1248,7 @@
         if(clr) clr.style.display = 'inline-block';
         applyHeroRatioFromDataUrl('data:' + savedMime + ';base64,' + savedB64);
       }
-    } catch(_){ /* استعادة صورة البطل المحفوظة ترفٌ: تخزين محجوب أو قيمة تالفة
+    } catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-11-video:1251'); /* استعادة صورة البطل المحفوظة ترفٌ: تخزين محجوب أو قيمة تالفة
          يعني بلا معاينة سابقة فقط — لا يمنع اختيار صورة جديدة. */ }
 
     btn.onclick = () => inp.click();
@@ -1258,7 +1258,7 @@
       prev.style.display = 'none';
       clr.style.display = 'none';
       try { localStorage.removeItem('omran_hero_b64'); localStorage.removeItem('omran_hero_mime'); }
-      catch(_){ /* المسح من التخزين ترفٌ — الصورة أُزيلت من الواجهة أصلًا فوقها. */ }
+      catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-11-video:1261'); /* المسح من التخزين ترفٌ — الصورة أُزيلت من الواجهة أصلًا فوقها. */ }
     };
     inp.onchange = () => {
       const f = inp.files && inp.files[0];
@@ -1294,7 +1294,7 @@
              الجلسة ولا يُحفظ عبرها — والفيديو يُبنى منه كما هو.
              v-video-photo-identity: ويُمحى المحفوظ القديم، وإلّا عاد بعد إعادة التحميل شخصٌ سابق بطلًا. */
           try { localStorage.removeItem('omran_hero_b64'); localStorage.removeItem('omran_hero_mime'); }
-          catch(__){ /* guard-ok — التخزين محجوب أصلًا */ } }
+          catch(__){ typeof __swallow === 'function' && __swallow(__, 'app-11-video:1297'); /* guard-ok — التخزين محجوب أصلًا */ } }
       };
       img.src = URL.createObjectURL(f);
     };
@@ -1383,7 +1383,7 @@
             : '⛔ رصيد Runway غير كافي (المتبقي ' + d.credits + '، المطلوب ' + needed + '). لم يُخصم أي شيء. اشحن الرصيد من runwayml.com أولًا.');
           return false;
         }
-      } catch(e){ /* balance check is best-effort; do not block on network errors */ }
+      } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:1386'); /* balance check is best-effort; do not block on network errors */ }
       return true;
     }
 
@@ -1493,7 +1493,7 @@
             });
             clearTimeout(ttsTimer);
             if(ttsRes.ok) audioBlob = await ttsRes.blob();
-          } catch(e){ /* narration is best-effort per scene */ }
+          } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:1496'); /* narration is best-effort per scene */ }
           builtScenes.push({ videoUrl, audioBlob: audioBlob || new Blob() });
         }
         // Sequential playlist fallback: plays scenes back-to-back in the player
@@ -1861,7 +1861,7 @@
             });
             clearTimeout(ttsTimer2);
             if(ttsRes.ok) audioBlob = await ttsRes.blob();
-          } catch(e){ /* narration is best-effort */ }
+          } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video:1864'); /* narration is best-effort */ }
           builtScenes.push({ videoUrl, audioBlob: audioBlob || new Blob() });
         }
 
