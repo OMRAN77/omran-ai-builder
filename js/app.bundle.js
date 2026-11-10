@@ -18983,9 +18983,10 @@ async function handleVoiceCodeIntent(promptText){
   await voiceTabSpeak(ok ? t('voiceCodeDone') : t('voiceCodeFailed'));
 }
 
-// Simple spoken confirmation used by the voice tab (cheap OpenAI TTS via our
-// own /api/tts proxy) - not the full Maha Realtime pipeline, just one short
-// line so the user gets an audible "done"/"failed" without ever seeing text.
+// Simple spoken confirmation used by the voice tab via our own /api/tts proxy -
+// not the full Maha Realtime pipeline, just one short line so the user gets an
+// audible "done"/"failed" without ever seeing text.
+/* v-tts-gemini: بصوت مها نفسه، وجنسه ولهجته من «الصوت» في الإعدادات. كان «nova» من المحرّك الثاني الذي تحذفه OpenAI في ٦ يناير ٢٠٢٧. */
 async function voiceTabSpeak(text){
   if(!text) return;
   const btn = btnVoiceTabMic;
@@ -18994,7 +18995,7 @@ async function voiceTabSpeak(text){
     const resp = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice: localStorage.getItem('aiapp_cloud_voice_name') || 'nova', text: String(text).slice(0, 300), token: ttsAuthToken(), guestId: ttsGuestId() }), // v-tts-account
+      body: JSON.stringify({ voice: 'maha', gender: localStorage.getItem('aiapp_voice_gender') || 'female', lang: detectSpeechLang(String(text)), dialect: ttsDialectSetting(), text: String(text).slice(0, 300), token: ttsAuthToken(), guestId: ttsGuestId() }), // v-tts-account
     });
     if(resp.ok){
       const blob = await resp.blob();
@@ -38660,11 +38661,14 @@ function stud2ErrText(e, prefix, fbKey){
     voiceBtn.disabled = true;
     setStatus(tr.voiceLoading);
     try{
+      /* v-tts-gemini: بصوت مها نفسه (جنسه ولهجته من «الصوت» في الإعدادات)، ويُعدّ على الحساب لا على العنوان.
+         - كان «nova» من المحرّك الثاني الذي تحذفه OpenAI في ٦ يناير ٢٠٢٧.
+         - الفشل رسالة مترجمة (__studioErrMsg) لا نصّ الخادم، فقد كان يُظهر للمستخدم «OpenAI error: …». */
       const resp = await fetch('/api/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'nova', text: text.slice(0, 4000) })
+        body: JSON.stringify({ voice: 'maha', gender: localStorage.getItem('aiapp_voice_gender') || 'female', lang: en() ? 'en' : 'ar', dialect: ttsDialectSetting(), token: ttsAuthToken(), guestId: ttsGuestId(), text: text.slice(0, 4000) })
       });
-      if(!resp.ok){ let msg = 'tts failed'; try{ const j = await resp.json(); if(j && j.error) msg = j.error; }catch(e){ __swallow(e, "misc:app-12-studios#2"); } throw new Error(msg); }
+      if(!resp.ok) throw new Error(resp.status === 402 ? 'daily_limit_reached' : resp.status === 401 ? 'auth_required' : 'tts_failed');
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       emailSummaryAudio = new Audio(url);
@@ -38673,7 +38677,7 @@ function stud2ErrText(e, prefix, fbKey){
       setStatus('');
       await emailSummaryAudio.play();
     }catch(e){
-      setStatus(tr.error + (e && e.message ? e.message : String(e)));
+      setStatus(__studioErrMsg(e, 'svcPaused')); // v-tts-gemini: الرموز المعروفة بالـ١٤ لغة، ونصّ الخطأ الخامّ للمالك وحده
     }finally{
       voiceBtn.disabled = false;
     }
