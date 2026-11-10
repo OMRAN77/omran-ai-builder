@@ -355,8 +355,8 @@ test('٨. الموجّه والواجهة: media يوزّع الإجراء، و�
   assert.match(v, /'\/api\/media\?action=social-publish&op='\+op/);
   const go = v.slice(v.indexOf('async function pbGo(){'), v.indexOf('function pbPoll('));
   assert.ok(go.includes('!drOwner()'), 'المالك وحده');
-  assert.equal((v.match(/DR\.out=URL\.createObjectURL\(/g) || []).length, 2);
-  assert.equal((v.match(/DR\.out=URL\.createObjectURL\([^)]*\); pbNewVideo\(\);/g) || []).length, 2, 'كلّ فيديو جديد يصفّر اللوحة');
+  assert.equal((v.match(/DR\.out=URL\.createObjectURL\(/g) || []).length, 3); /* v-director-upload: الثالث فيديو مرفوع من الجهاز */
+  assert.equal((v.match(/DR\.out=URL\.createObjectURL\([^)]*\); pbNewVideo\(\);/g) || []).length, 3, 'كلّ فيديو جديد يصفّر اللوحة');
   assert.match(v, /pg\.disabled=PB\.busy\|\|PB\.loading\|\|!\(PB\.plats&&PB\.plats\.length\)/);
   const css = read('css/modules.css');
   for (const c of ['.vmk-dir-acts', '.vmk-pub{', '.vmk-pub-plats label', '.vmk-pub-plats label.is-sent', '.vmk-pub-go', '.vmk-pub-res li.is-ok']) assert.ok(css.includes(c), c);
@@ -370,7 +370,7 @@ function mkEl(tag) {
     tagName: tag, children: [], value: '', checked: false, disabled: false, type: '', hidden: false, className: '',
     classList: { toggle: (c, on) => { if (on) cls.add(c); else cls.delete(c); }, add: (c) => cls.add(c), remove: (c) => cls.delete(c), contains: (c) => cls.has(c) },
     appendChild(c) { el.children.push(c); return c; },
-    focus() {},
+    focus() {}, attrs: {}, setAttribute(k, v2) { el.attrs[k] = String(v2); }, getAttribute(k) { return k in el.attrs ? el.attrs[k] : null; },
     querySelectorAll(sel) {
       const all = [];
       (function walk(n) { for (const c of n.children || []) { all.push(c); walk(c); } })(el);
@@ -384,16 +384,18 @@ function mkEl(tag) {
   return el;
 }
 function panel() {
-  const els = { vdPubCap: mkEl('textarea'), vdPubPlats: mkEl('div'), vdPubMsg: mkEl('p'), vdPubRes: mkEl('ul'), vdPub: mkEl('div') };
-  const api = [], puts = [], timers = [], replies = {};
+  const els = { vdPubCap: mkEl('textarea'), vdPubPlats: mkEl('div'), vdPubMsg: mkEl('p'), vdPubRes: mkEl('ul'), vdPub: mkEl('div'),
+    vdRes: mkEl('div'), vdVideo: mkEl('video'), vdDl: mkEl('a'), vdUpMsg: mkEl('p') }; /* v-director-upload */
+  const api = [], puts = [], timers = [], replies = {}, sent = [], blobFetches = [], urls = { made: [], revoked: [] };
   const ctx = {
     id: (k) => els[k] || null, L: (k) => k, drT: (k, o) => k + (o ? ' ' + JSON.stringify(o) : ''),
-    drTok: () => 'tok', drOwner: () => true, DR: { out: 'blob:v1' }, syncDirector() {}, __swallow() {},
+    drTok: () => 'tok', drOwner: () => true, DR: { out: 'blob:v1' }, syncDirector() {}, __swallow() {}, drMsg() {},
+    URL: { createObjectURL: (f) => { const u = 'blob:up' + (urls.made.length + 1); urls.made.push({ u, f }); return u; }, revokeObjectURL: (u) => { urls.revoked.push(u); } },
     setTimeout: (fn) => { timers.push(fn); return timers.length; }, clearTimeout() {},
     document: { createElement: mkEl, createTextNode: (s) => ({ textContent: String(s) }) },
     fetch: async (url, o) => {
       const u = String(url);
-      if (u.startsWith('blob:')) return { blob: async () => ({ size: 10, type: 'video/mp4' }) };
+      if (u.startsWith('blob:')) { blobFetches.push(u); return { blob: async () => ({ size: 10, type: ctx.blobType || 'video/mp4' }) }; }
       const op = /[?&]op=(\w+)/.exec(u)[1], body = JSON.parse(o.body);
       api.push({ op, body });
       const r = replies[op], out = typeof r === 'function' ? r(body) : r;
@@ -401,8 +403,8 @@ function panel() {
     },
     XMLHttpRequest: function () {
       const x = this; x.upload = {}; x.status = 0;
-      x.open = (m, u) => { x.u = u; }; x.setRequestHeader = () => {};
-      x.send = () => { puts.push(x.u); if (ctx.holdPut) return; x.status = 200; setImmediate(() => x.onload()); }; // holdPut: الرفع معلَّق
+      x.open = (m, u) => { x.u = u; }; x.setRequestHeader = (k, v2) => { x.ct = v2; };
+      x.send = (b) => { puts.push(x.u); sent.push({ body: b, ctype: x.ct }); if (ctx.holdPut) return; x.status = 200; setImmediate(() => x.onload()); }; // holdPut: الرفع معلَّق
       x.abort = () => { ctx.aborts = (ctx.aborts || 0) + 1; setImmediate(() => x.onabort && x.onabort()); };
     },
     confirms: [], answer: true,
@@ -411,7 +413,7 @@ function panel() {
   clientSlice('js/video.js', '  var PB={busy:false', '  function syncDirector(){', ctx);
   const boxes = () => els.vdPubPlats.children.filter((l) => l.tagName === 'label')
     .map((l) => ({ p: l.children[0].value, on: l.children[0].checked, off: l.children[0].disabled, text: l.textContent, box: l.children[0] }));
-  return { ctx, els, api, puts, timers, replies, boxes };
+  return { ctx, els, api, puts, timers, replies, boxes, sent, blobFetches, urls };
 }
 const F24 = 'f'.repeat(24);
 
@@ -712,3 +714,124 @@ test('١٥. اللوحة: انقطاع نداء النشر يُعاد مرّة (
   assert.deepEqual([ctx.PB.busy, ctx.aborts, api.map((a) => a.op)], [false, 1, ['target']]);
   assert.ok(!/vdPubFail/.test(els.vdPubMsg.textContent));
 });
+
+// ── v-director-upload (المالك ١٠ نوفمبر: «الي اريده في المخرج مثال مكان تحميل الفيديو واسوي نشر على التواصل الاجتماعي»، واختار «أرفع فيديو جاهز
+//    وأنشره»): صندوق في المخرج يأخذ فيديو جاهزًا من الجهاز فتنشره اللوحة نفسها ──
+const vfile = (name, type, size) => ({ name, type, size: size == null ? 1234 : size });
+test('١٦. رفع فيديو جاهز: النوع والحجم قبل أيّ شيء، والمرفوع يأخذ مكان فيديو المخرج واللوحة تُفتح من الصفر، وفيديو المخرج المعروض لا يُستبدل بلا سؤال، والصندوق لا يعمل أثناء التوليد ورفع النشر', async () => {
+  const { ctx, els, api, urls, replies, boxes } = panel();
+  for (const [type, name, want] of [['video/mp4', 'a.mp4', 'video/mp4'], ['video/quicktime', 'IMG_1.MOV', 'video/quicktime'], ['video/webm', 'a.webm', 'video/webm'],
+    ['video/mp4; codecs=avc1', 'a.mp4', 'video/mp4'], ['video/x-m4v', 'a.m4v', 'video/mp4'], ['', 'clip.MOV', 'video/quicktime'], ['', 'ep.mp4', 'video/mp4'], ['application/octet-stream', 'x.webm', 'video/webm'],
+    ['video/x-matroska', 'a.mkv', ''], ['', 'a.mkv', ''], ['image/png', 'a.png', ''], ['', 'noext', ''], ['text/plain', 'a.mp4', ''], ['video/3gpp', 'a.3gp', '']])
+    assert.equal(ctx.upType(vfile(name, type)), want, type + ' ' + name);
+  ctx.DR.out = ''; // لا فيديو بعد
+  ctx.upPick(vfile('a.mkv', 'video/x-matroska'));
+  assert.deepEqual([els.vdUpMsg.textContent, els.vdUpMsg.className, urls.made.length, ctx.DR.out], ['vdUpBadType', 'vmk-dir-msg err', 0, ''], 'نوع مرفوض: رسالة ولا شيء');
+  ctx.upPick(vfile('empty.mp4', 'video/mp4', 0));
+  assert.deepEqual([els.vdUpMsg.textContent, urls.made.length], ['vdUpBadType', 0], 'ملفّ فارغ');
+  ctx.upPick(vfile('big.mp4', 'video/mp4', 500 * 1048576 + 1));
+  assert.deepEqual([els.vdUpMsg.textContent, urls.made.length], ['vdPubBig {"n":500}', 0], 'فوق حدّ الخادم: يُقال قبل أيّ رفع');
+  assert.equal(api.length, 0, 'ولا نداء');
+  // فيديو صالح ولا شيء معروض: بلا سؤال — مكان الفيديو، واللوحة مفتوحة من الصفر وتسأل عن الحسابات
+  els.vdPub.hidden = true; els.vdPubCap.value = 'نصّ قديم'; replies.accounts = { ok: true, on: ['instagram', 'x'], reauth: [] };
+  const f1 = vfile('الحلقة 2: يوسف.mp4', 'video/mp4', 500 * 1048576);
+  ctx.upPick(f1); await flush();
+  assert.equal(ctx.confirms.length, 0);
+  assert.deepEqual([ctx.DR.out, ctx.DR.fileUrl, ctx.DR.file === f1, ctx.DR.fileType], ['blob:up1', 'blob:up1', true, 'video/mp4']);
+  assert.deepEqual([els.vdVideo.src, els.vdDl.href, els.vdDl.attrs.download, els.vdRes.classList.contains('has')], ['blob:up1', 'blob:up1', 'الحلقة 2_ يوسف.mp4', true]);
+  assert.deepEqual([els.vdUpMsg.textContent, els.vdPubCap.value, els.vdPub.hidden, api.map((a) => a.op)], ['', '', false, ['accounts']], 'اللوحة من الصفر ومفتوحة');
+  assert.deepEqual(boxes().map((b) => [b.p, b.on]), [['instagram', true], ['x', true]]);
+  assert.equal(ctx.upMine(), true);
+  // مرفوع فوق مرفوع: بلا سؤال (الملفّ على جهازه)، والرابط القديم يُحرَّر
+  const f2 = vfile('clip.mov', '', 99);
+  ctx.upPick(f2);
+  assert.deepEqual([ctx.confirms.length, ctx.DR.out, ctx.DR.fileType, urls.revoked], [0, 'blob:up2', 'video/quicktime', ['blob:up1']]);
+  // فيديو صنعه المخرج ومعروض: سؤال — الإلغاء يبقيه، والموافقة تستبدله
+  ctx.DR.out = 'blob:gen'; ctx.pbNewVideo();
+  assert.equal(ctx.upMine(), false, 'فيديو المخرج ليس «ملفّي»');
+  ctx.answer = false; ctx.upPick(vfile('b.mp4', 'video/mp4'));
+  assert.deepEqual([ctx.confirms, ctx.DR.out, urls.made.length], [['vdUpReplace'], 'blob:gen', 2], 'الإلغاء يبقي فيديو المخرج');
+  ctx.answer = true; ctx.upPick(vfile('b.mp4', 'video/mp4'));
+  assert.deepEqual([ctx.confirms.length, ctx.DR.out, urls.revoked.slice(-1)[0]], [2, 'blob:up3', 'blob:gen']);
+  // فيديو المخرج أخفاه توليد لاحق (لا «has»): لا سؤال عن شيء لا يُرى
+  ctx.DR.out = 'blob:gen2'; ctx.pbNewVideo(); els.vdRes.classList.remove('has');
+  ctx.upPick(vfile('c.mp4', 'video/mp4'));
+  assert.deepEqual([ctx.confirms.length, ctx.DR.out], [2, 'blob:up4']);
+  // أثناء التوليد، وأثناء رفع النشر، ولغير المالك: لا شيء
+  const n = urls.made.length;
+  ctx.DR.busy = true; ctx.upPick(vfile('d.mp4', 'video/mp4')); ctx.DR.busy = false;
+  ctx.PB.busy = true; ctx.upPick(vfile('d.mp4', 'video/mp4')); ctx.PB.busy = false;
+  ctx.drOwner = () => false; ctx.upPick(vfile('d.mp4', 'video/mp4'));
+  assert.deepEqual([urls.made.length, ctx.DR.out], [n, 'blob:up4']);
+});
+
+test('١٧. النشر يرفع ملفّ الجهاز نفسه بنوعه (لا نسخة تُقرأ من رابطه)، وفيديو المخرج كما كان يُقرأ من رابطه', async () => {
+  const { ctx, els, api, puts, replies, sent, blobFetches } = panel();
+  ctx.DR.out = ''; els.vdPub.hidden = true; /* كما تُبنى: اللوحة مطويّة حتّى يُرفع فيديو */ replies.accounts = { ok: true, on: ['tiktok', 'youtube'], reauth: [] };
+  const f = vfile('clip.MOV', '', 4321);
+  ctx.upPick(f); await flush();
+  els.vdPubCap.value = 'قصص الأنبياء';
+  replies.target = { ok: true, id: F24, up: 'https://up.example/put?sig=u', ctype: 'video/quicktime' };
+  replies.publish = { ok: true, request: 'ru', already: [] };
+  await ctx.pbGo();
+  assert.deepEqual(api.map((a) => a.op), ['accounts', 'target', 'publish']);
+  assert.deepEqual(J(api[1].body), { token: 'tok', size: 4321, type: 'video/quicktime' }, 'الحجم والنوع من الملفّ (النوع من امتداده حين يسكت المتصفّح)');
+  assert.deepEqual([blobFetches.length, sent.length, sent[0].body === f, sent[0].ctype, puts], [0, 1, true, 'video/quicktime', ['https://up.example/put?sig=u']], 'الملفّ نفسه يُرسل');
+  assert.deepEqual([api[2].body.caption, api[2].body.platforms, api[2].body.id], ['قصص الأنبياء', ['tiktok', 'youtube'], F24]);
+  // فيديو المخرج بعده: الملفّ السابق لا يُرفع مكانه — يُقرأ من رابطه ونوعه من محتواه
+  ctx.DR.out = 'blob:gen'; ctx.pbNewVideo(); ctx.blobType = 'video/webm';
+  els.vdPubCap.value = 'فيديو المخرج'; api.length = 0;
+  replies.target = { ok: true, id: 'a'.repeat(24), up: 'https://up.example/put?sig=g', ctype: 'video/webm' };
+  await ctx.pbGo();
+  assert.deepEqual([blobFetches, J(api[0].body), sent.length, sent[1].body === f, sent[1].ctype], [['blob:gen'], { token: 'tok', size: 10, type: 'video/webm' }, 2, false, 'video/webm']);
+});
+
+test('١٨. الصندوق في المخرج قبل مكان الفيديو، مربوط بالاختيار والإفلات، ومعطّل أثناء التوليد والنشر؛ والنصوص الأربعة بالـ١٤ لغة بلا اسم مزوّد، والوسوم مرفوعة', () => {
+  const v = read('js/video.js');
+  const html = v.slice(v.indexOf("box.innerHTML='<div class=\"vmk-dir-head\">"), v.indexOf('var tabs=id(\'vmkTabs\'); if(tabs&&tabs.parentNode===card)'));
+  const iMsg = html.indexOf('id="vdMsg"'), iUp = html.indexOf('<label class="vmk-cl-drop vmk-dir-up" id="vdUp"><input type="file" accept="video/*" id="vdUpFile">'), iRes = html.indexOf('id="vdRes"');
+  assert.ok(iMsg > 0 && iUp > iMsg && iRes > iUp, 'الصندوق بين رسالة المخرج ومكان الفيديو');
+  assert.ok(html.includes('<p class="vmk-dir-msg" id="vdUpMsg"></p>'));
+  assert.ok(v.includes("upBind(box.querySelector('#vdUp'),box.querySelector('#vdUpFile'));"), 'مربوط عند بناء المخرج');
+  const bind = v.slice(v.indexOf('function upBind('), v.indexOf('function syncDirector(){'));
+  assert.ok(bind.includes("e.target.value=''; if(f) upPick(f);"), 'الحقل يُصفَّر: الملفّ نفسه يُختار ثانية');
+  assert.match(bind, /zone\.addEventListener\('drop',function\(e\)\{ e\.preventDefault\(\);/, 'الإفلات للصندوق لا لمرفقات الدردشة');
+  const sync = v.slice(v.indexOf('function syncDirector(){'), v.indexOf('var ST={t0:0'));
+  assert.ok(sync.includes("uf.disabled=DR.busy||PB.busy; uz.classList.toggle('off',uf.disabled);"), 'معطّل أثناء التوليد ورفع النشر');
+  assert.ok(sync.includes("uz.querySelector('.vmk-cl-pick').textContent=um?String(DR.file.name||''):L('vdUpBtn');") && sync.includes("drT('vdUpHint',{n:UP_MAX_MB})"));
+  assert.match(v, /var UP_MAX_MB=500, UP_TYPES=\{'video\/mp4':1,'video\/webm':1,'video\/quicktime':1\};/);
+  const srv = read('api/_lib/social-publish.js');
+  assert.match(srv, /const TYPES = \{ 'video\/mp4': 'mp4', 'video\/webm': 'webm', 'video\/quicktime': 'mov' \};/, 'أنواع العميل = أنواع الخادم');
+  assert.match(srv, /const MAX_BYTES = 500 \* 1024 \* 1024;/, 'حدّ العميل = حدّ الخادم');
+  const css = read('css/modules.css');
+  assert.ok(css.includes('#videoMakerModal .vmk-dir-up{min-height:108px;padding:16px;flex-shrink:0}') && css.includes('#videoMakerModal .vmk-dir-up.off{opacity:.5'));
+  // النصوص
+  const KEYS = ['vdUpBtn', 'vdUpHint', 'vdUpBadType', 'vdUpReplace'];
+  const BANNED = /claude|anthropic|gemini|google|\bgpt|openai|runway|\bveo\b|kling|minimax|\bluma\b|\bsora\b|upload-?post|\bfal\b/i;
+  const base = { $: () => null, document: { getElementById: () => null, querySelector: () => null }, window: {}, localStorage: { getItem: () => null } }; base.window = base;
+  vm.runInNewContext(read('js/app-03-i18n-data.js'), base);
+  for (const lg of ['ar', 'en']) for (const k of KEYS) { const t = base.I18N[lg][k]; assert.ok(t && t.length > 3, lg + ' ' + k); assert.doesNotMatch(t, BANNED, lg + ' ' + k); }
+  assert.match(base.I18N.ar.vdUpBtn, /ارفع فيديو جاهز/);
+  const seen = new Set(), seenQ = new Set();
+  for (const lg of ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil']) {
+    const m = read('i18n/' + lg + '.js').match(/v-director-upload \(795\)[^\n]*Object\.assign\(I18N\["(\w+)"\], (\{.*\})\);/);
+    assert.ok(m && m[1] === lg, lg + ' كتلة الترجمة');
+    const o = JSON.parse(m[2]);
+    assert.deepEqual(Object.keys(o), KEYS, lg + ' المفاتيح');
+    for (const k of KEYS) {
+      assert.ok(o[k] && o[k].trim().length > 3, lg + ' ' + k); assert.doesNotMatch(o[k], BANNED, lg + ' ' + k);
+      assert.equal((o[k].match(/\{\w+\}/g) || []).sort().join(), (base.I18N.en[k].match(/\{\w+\}/g) || []).sort().join(), lg + ' ' + k + ' المتغيّرات');
+      assert.notEqual(o[k], base.I18N.en[k], lg + ' ' + k + ' مترجم لا منسوخ');
+    }
+    assert.match(o.vdUpHint, /mp4.*mov.*webm/, lg + ' الصيغ الثلاث');
+    seen.add(o.vdUpBtn); seenQ.add(o.vdUpReplace);
+  }
+  assert.deepEqual([seen.size, seenQ.size], [12, 12], 'ترجمات لا نسخ');
+  const used = new Set([...v.matchAll(/(?:L|drT)\('(vdUp\w+)'/g)].map((m) => m[1]));
+  assert.deepEqual([...used].sort(), [...KEYS].sort(), 'كلّ نصّ مستعمل معرَّف، وكلّ معرَّف مستعمل');
+  const tag = read('js/app-04-i18n-state.js').match(/\.js\?v=(\d+)';[^\n]* v-director-upload \((\d+)\): [^\n]*\*\//);
+  assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && Number(tag[2]) === 795, 'وسم اللغات مرفوع وسببه في التعليق');
+  const h = read('index.html');
+  assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 467 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 698, 'وسما video.js وmodules.css مرفوعان');
+});
+
