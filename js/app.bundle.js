@@ -9227,7 +9227,7 @@ function omranOptCss(){
   st.id = 'omranOptCss';
   st.textContent = '.omranOpts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px;}'
     + '.omranOpt{padding:8px 14px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.16));background:rgba(255,255,255,.05);color:var(--text,#eee);font:inherit;font-size:13.5px;cursor:pointer;transition:.15s;}'
-    + '.omranOpt:hover{border-color:var(--accent2,#a78bfa);transform:translateY(-1px);}'
+    + '.omranOpt:hover{border-color:var(--accent2,#a78bfa);}' /* v-btn-no-lift */
     + '.omranOpt.on{background:var(--accent2,#a78bfa);color:#fff;border-color:transparent;}'
     + '.omranOptDone{padding:8px 18px;border-radius:14px;border:0;background:linear-gradient(135deg,var(--accent2,#a78bfa),#06b6d4);color:#fff;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;}'
     + '.omranOptDone:disabled{opacity:.45;cursor:default;}'
@@ -13044,7 +13044,7 @@ $('#btnDeleteAll').onclick = () => {
 #fbNote{width:100%;min-height:72px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#eee;font-size:13.5px;padding:12px;resize:none;outline:none;margin-bottom:16px;font-family:inherit;}
 #fbNote:focus{border-color:#d4af37;box-shadow:0 0 0 3px rgba(212,175,55,.22);}
 #fbSendBtn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#141414;cursor:pointer;background:linear-gradient(135deg,#d4af37,#f1d98a);position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s;}
-#fbSendBtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(212,175,55,.5);}
+#fbSendBtn:hover{box-shadow:0 8px 24px rgba(212,175,55,.5);}
 #fbSendBtn::after{content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);animation:fbShine 2.8s ease-in-out infinite;}
 @keyframes fbShine{0%,60%{left:-80%}100%{left:130%}}
 #fbClose{position:absolute;top:14px;inset-inline-end:14px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.08);color:#bbb;font-size:16px;cursor:pointer;z-index:2;}
@@ -18983,9 +18983,10 @@ async function handleVoiceCodeIntent(promptText){
   await voiceTabSpeak(ok ? t('voiceCodeDone') : t('voiceCodeFailed'));
 }
 
-// Simple spoken confirmation used by the voice tab (cheap OpenAI TTS via our
-// own /api/tts proxy) - not the full Maha Realtime pipeline, just one short
-// line so the user gets an audible "done"/"failed" without ever seeing text.
+// Simple spoken confirmation used by the voice tab via our own /api/tts proxy -
+// not the full Maha Realtime pipeline, just one short line so the user gets an
+// audible "done"/"failed" without ever seeing text.
+/* v-tts-gemini: بصوت مها نفسه، وجنسه ولهجته من «الصوت» في الإعدادات. كان «nova» من المحرّك الثاني الذي تحذفه OpenAI في ٦ يناير ٢٠٢٧. */
 async function voiceTabSpeak(text){
   if(!text) return;
   const btn = btnVoiceTabMic;
@@ -18994,7 +18995,7 @@ async function voiceTabSpeak(text){
     const resp = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice: localStorage.getItem('aiapp_cloud_voice_name') || 'nova', text: String(text).slice(0, 300), token: ttsAuthToken(), guestId: ttsGuestId() }), // v-tts-account
+      body: JSON.stringify({ voice: 'maha', gender: localStorage.getItem('aiapp_voice_gender') || 'female', lang: detectSpeechLang(String(text)), dialect: ttsDialectSetting(), text: String(text).slice(0, 300), token: ttsAuthToken(), guestId: ttsGuestId() }), // v-tts-account
     });
     if(resp.ok){
       const blob = await resp.blob();
@@ -38660,11 +38661,14 @@ function stud2ErrText(e, prefix, fbKey){
     voiceBtn.disabled = true;
     setStatus(tr.voiceLoading);
     try{
+      /* v-tts-gemini: بصوت مها نفسه (جنسه ولهجته من «الصوت» في الإعدادات)، ويُعدّ على الحساب لا على العنوان.
+         - كان «nova» من المحرّك الثاني الذي تحذفه OpenAI في ٦ يناير ٢٠٢٧.
+         - الفشل رسالة مترجمة (__studioErrMsg) لا نصّ الخادم، فقد كان يُظهر للمستخدم «OpenAI error: …». */
       const resp = await fetch('/api/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'nova', text: text.slice(0, 4000) })
+        body: JSON.stringify({ voice: 'maha', gender: localStorage.getItem('aiapp_voice_gender') || 'female', lang: en() ? 'en' : 'ar', dialect: ttsDialectSetting(), token: ttsAuthToken(), guestId: ttsGuestId(), text: text.slice(0, 4000) })
       });
-      if(!resp.ok){ let msg = 'tts failed'; try{ const j = await resp.json(); if(j && j.error) msg = j.error; }catch(e){ __swallow(e, "misc:app-12-studios#2"); } throw new Error(msg); }
+      if(!resp.ok) throw new Error(resp.status === 402 ? 'daily_limit_reached' : resp.status === 401 ? 'auth_required' : 'tts_failed');
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       emailSummaryAudio = new Audio(url);
@@ -38673,7 +38677,7 @@ function stud2ErrText(e, prefix, fbKey){
       setStatus('');
       await emailSummaryAudio.play();
     }catch(e){
-      setStatus(tr.error + (e && e.message ? e.message : String(e)));
+      setStatus(__studioErrMsg(e, 'svcPaused')); // v-tts-gemini: الرموز المعروفة بالـ١٤ لغة، ونصّ الخطأ الخامّ للمالك وحده
     }finally{
       voiceBtn.disabled = false;
     }

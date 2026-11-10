@@ -571,4 +571,4 @@ async function paypalEvent(event) {
   return { status: 'done', retry, results };
 }
 
-module.exports = { recordGrant, linkGrant, priorOf, findRec, revoke, stripeEvent, paypalEvent, verifyPaypalSig, captureOf, REC_TTL_SEC };
+module.exports = { recordGrant, linkGrant, priorOf, findRec, revoke, stripeEvent, paypalEvent, verifyPaypalSig, captureOf, REC_TTL_SEC, alertOwner, money }; // v-paid-ungranted: webhook.js
