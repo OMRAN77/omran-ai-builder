@@ -67,7 +67,11 @@ async function deleteAccount(input, o) {
   const user = await auth.getUser(key);
   if (!user || user.deleted) return { status: 404, body: { ok: false, code: 'gone' } };
 
-  if (user.hash && user.salt) {
+  /* v-acct-delete-nopw (فحص الدخول ١٠ نوفمبر ٢٠٢٦): الكولباك ورمز البريد يكتبان لكلّ حساب salt/hash لكلمة عشوائيّة لا يعرفها صاحبه، فكان
+     الشرط أدناه يطلبها منه — «كلمة المرور خاطئة» دائمًا، ولا يحذف حسابه أبدًا (Apple وGoogle يطلبان الحذف). الحساب الذي دخوله بـGoogle
+     أو برمز البريد يكفيه الاسم، إلّا إن وضع كلمة مرور بنفسه برابط الاسترجاع (pwSet). */
+  const noPassword = (user.googleAuth === true || user.otpOnly === true) && user.pwSet !== true;
+  if (user.hash && user.salt && !noPassword) {
     const failKey = 'db/acct-del-fail/' + n(key);
     let fails = 0;
     try { fails = Number(await kv.kvGetRaw(failKey)) || 0; } catch (e) { fails = 0; }

@@ -235,8 +235,9 @@ function sleep(ms) { return _timing.sleep(ms); }
    كما هو بلا إعادة تشفير (الكتابة هنا قد تمحو منحًا كُتب بين القراءة والكتابة). opts.quiet — المختوم يُعدّه المسح، فلا سطر لكلّ سجلّ في كلّ بحث. */
 async function getUserOnce(key, opts) {
   const ro = !!(opts && opts.readOnly);
+  const strict = !!(opts && opts.strict);
   try {
-    const parsed = await kvGetJSON(userPath(key));
+    const parsed = await kvGetJSON(userPath(key), strict ? { strict: true } : undefined);
     if (!parsed) return null;
     if (parsed && parsed.enc === 1) {
       try {
@@ -270,6 +271,7 @@ async function getUserOnce(key, opts) {
     // الرمي المقصود يمرّ: خلطه بأعطال القراءة يعيده إلى الصمت الذي أُزيل.
     if (e && e.code === 'USER_RECORD_UNDECRYPTABLE') throw e;
     logError('auth:get-user', e);
+    if (strict) throw e; // getUserSure: العطب ليس «غير موجود»
     return null;
   }
 }
@@ -286,6 +288,12 @@ async function getUser(key, attempts) {
   }
   return null;
 }
+
+/* v-auth-absent (فحص الدخول ١٠ نوفمبر ٢٠٢٦): getUser يعيد المحاولة ٤ مرّات (٣٠٠+٦٠٠+٩٠٠ م.ث) حين يغيب السجلّ، والغياب هو الحالة
+   العاديّة في التسجيل (الاسم حرّ)، والدخول بالإيميل (الإيميل ليس اسمًا)، واسم حساب الرمز الجديد، وأوّل دخول Google — فكلّها تدفع ١٫٨ ثانية
+   بلا فائدة. وإعادة المحاولة لا تفرّق بين «غير موجود» وعطب قراءة (kvGetJSON يبتلعه null): أربعة أعطال متتالية = «الاسم حرّ» فيُكتب فوق
+   حساب قائم. هنا قراءة واحدة صارمة: null = المفتاح غير موجود فعلًا، وأيّ عطب يرمي (٥٠٠ بدل قرار خاطئ). */
+function getUserSure(key) { return getUserOnce(key, { strict: true }); }
 
 async function putUser(key, user) {
   await kvPutJSON(userPath(key), encryptUserBlob(user));
@@ -342,7 +350,7 @@ function isValidEmail(email) {
 // (أو لم يعد بريده)، فيرفض الدخول والاسترجاع برسالة المالك بدل أن يفتحا الحساب.
 async function resolveLoginUser(identifier) {
   const key = String(identifier || '').trim().toLowerCase();
-  const direct = key ? await getUser(key) : null;
+  const direct = key ? await getUserSure(key) : null; // v-auth-absent
   if ((direct && !direct.deleted) || !isValidEmail(key)) return { key, user: direct };
   try {
     const idx = await kvGetJSON('db/email-index/' + key);
@@ -506,6 +514,20 @@ async function unverifiedHolderOf(emailKey) {
     if (own && !(await emailProven(own.key, own.user))) return own.key;
   } catch (e) { logError('auth:email-unverified-holder', e); }
   return null;
+}
+
+/* v-recovery-hint (سؤال المالك ١٠ نوفمبر ٢٠٢٦: «سجّل بدون إيميل ولا هاتف ونسي كلمة المرور… وهو مسوّي اشتراك»): التسجيل لا يحفظ بريدًا
+   (v-signup-no-email)، فمشترك بلا بريد ولا هاتف إن نسي كلمته لا يسترجع حسابه بنفسه — المالك وحده يخرج له رابطًا. الدخول والتحقّق عند الفتح
+   يقولان للواجهة فتعرض «أضف إيميلك» (يُضاف بالرمز من «حسابي»). للمشترك وحده (باقة أو اشتراك وسائط سارٍ)، ولمن له كلمة مرور يعرفها. */
+function needsRecovery(user, now) {
+  try {
+    if (!user || user.deleted || user.email || user.phone) return false;
+    if ((user.googleAuth === true || user.otpOnly === true) && user.pwSet !== true) return false;
+    now = now || Date.now();
+    if (require('./tier.js').planActive(user, now)) return true;
+    const media = user.media && typeof user.media === 'object' ? user.media : {};
+    return Object.keys(media).some((k) => media[k] && Number(media[k].at) > 0 && now - Number(media[k].at) < 35 * 86400000);
+  } catch (e) { logError('auth:recovery-hint', e); return false; }
 }
 
 // «أكّد إيميلك» بعد الدخول والتحقّق عند الإقلاع: البريد إن بقي غير مؤكَّد بعد التسوية، وإلّا null. عطبٌ هنا لا يُفشل الدخول.
@@ -956,7 +978,7 @@ module.exports = async (req, res) => {
         res.status(400).json({ error: m(NAME_BAD_AR, NAME_BAD_EN), code: 'name_bad' });
         return;
       }
-      const existing = await getUser(key);
+      const existing = await getUserSure(key); // v-auth-absent: الغياب هنا هو المعتاد — وعطب القراءة لا يُقرأ «الاسم حرّ»
       if (existing) { // v-name-reuse: والمحذوف أيضًا — الاسم لا يُعاد لغير صاحبه
         res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken'), code: 'name_taken' });
         return;
@@ -1275,6 +1297,7 @@ module.exports = async (req, res) => {
       user.hash = hash;
       user.resetTokenHash = null;
       user.resetTokenExpiry = null;
+      user.pwSet = true; // v-acct-delete-nopw: صار للحساب كلمة مرور يعرفها صاحبه (حساب رمز البريد أو Google استعاد) — الحذف يطلبها
       user.sv = sessionVersion(user) + 1; // v-audit-auth (srv-auth-8): الاستعادة تُبطل كلّ جلسة سابقة
       await putUser(key, user);
       await require('./_session.js').recordSessionVersion(key, user.sv); // v-session-revoke
@@ -1310,7 +1333,7 @@ module.exports = async (req, res) => {
         res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true, code: 'banned' });
         return;
       }
-      res.status(200).json({ ok: true, token: makeToken(key, user.sv), username: user.username, avatar: user.avatar || null, emailToConfirm: await emailToConfirmFor(key, user) });
+      res.status(200).json({ ok: true, token: makeToken(key, user.sv), username: user.username, avatar: user.avatar || null, emailToConfirm: await emailToConfirmFor(key, user), addRecovery: needsRecovery(user) });
       return;
     }
 
@@ -1349,7 +1372,7 @@ module.exports = async (req, res) => {
       await markKnownNet(u, req);
       // v-unverified-email: التنبيه عند كلّ فتح ما دام البريد غير مؤكَّد. نسخة بلا الرسالة المسلَّمة: ختم حساب الرمز القديم يكتبها فلا تعود.
       const emailToConfirm = user ? await emailToConfirmFor(u, adminMessage ? Object.assign({}, user, { pendingMessage: null }) : user) : null;
-      res.status(200).json({ ok: true, token: makeToken(u, user ? user.sv : tokenVersion(token)), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage, emailToConfirm });
+      res.status(200).json({ ok: true, token: makeToken(u, user ? user.sv : tokenVersion(token)), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage, emailToConfirm, addRecovery: needsRecovery(user) });
       return;
     }
 
@@ -1562,7 +1585,7 @@ module.exports = async (req, res) => {
           const suffix = crypto.randomBytes(3).toString('hex');
           candidateKey = (prefix + '_' + suffix).slice(0, 40);
           if (RESERVED_USERNAMES.has(candidateKey)) { candidateKey = ''; continue; }
-          const clash = await getUser(candidateKey);
+          const clash = await getUserSure(candidateKey); // v-auth-absent
           if (!clash) break; // v-name-reuse: المحذوف ليس حرًّا
           candidateKey = '';
         }
@@ -1616,6 +1639,8 @@ module.exports = async (req, res) => {
 
 module.exports.getUser = getUser;
 module.exports.getUserOnce = getUserOnce;
+module.exports.getUserSure = getUserSure; // v-auth-absent: والكولباك (أوّل دخول Google)
+module.exports.needsRecovery = needsRecovery; // v-recovery-hint
 module.exports._timing = _timing; // v-time-seam: للاختبارات وحدها
 module.exports.putUser = putUser;
 module.exports.hashPassword = hashPassword;

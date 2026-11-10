@@ -353,6 +353,8 @@ I18N['fr'] = {
     authEmailUnverified: "Cet e-mail n'est pas confirmé — connectez-vous avec votre nom d'utilisateur et confirmez-le dans Mon compte",
     emailConfirmTitle: "Confirmez votre e-mail",
     emailConfirmSend: "Envoyer le code",
+    recoveryHintTitle: "Ajoutez votre e-mail pour pouvoir récupérer votre compte et votre abonnement si vous oubliez votre mot de passe",
+    recoveryHintAdd: "Ajouter l’e-mail",
     acctNetError: "Impossible de contacter le serveur, vérifiez votre connexion",
     acctAvatarTooBig: "L'image est trop grande, choisissez-en une plus petite",
     providerColorsLabel: "🤖 Couleur de chaque fournisseur IA (affichée à côté de son nom dans le chat)",

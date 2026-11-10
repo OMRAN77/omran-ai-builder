@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getUser, putUser, makeToken, markKnownNet, emailProven, liveAccount } = require('./auth.js'); // داخل _lib
+const { getUser, getUserSure, putUser, makeToken, markKnownNet, emailProven, liveAccount } = require('./auth.js'); // داخل _lib
 const { takeWelcomeGift, giftNet, clientIp } = require('./welcome-gift.js'); // v-welcome-cap · v-oauth-bind
 const { notifyNewAccount } = require('./signup-notify.js'); // v-signup-notify
 
@@ -128,7 +128,7 @@ module.exports = async (req, res) => {
     }
 
     let user = null, reclaimed = false;
-    try { user = await getUser(key); }
+    try { user = await getUserSure(key); } // v-auth-absent: الغياب = حساب جديد (المعتاد)، وعطب القراءة يرمي ← server_error لا حساب فوق قائم
     catch (e) {
       if (e && e.code === 'USER_RECORD_UNDECRYPTABLE') {
         reclaimed = true; // v-signup-notify: الشخص نفسه يستعيد حسابه — ليس حسابًا جديدًا

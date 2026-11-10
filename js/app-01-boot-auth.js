@@ -566,6 +566,7 @@ try{
       if(ok === false) return;
     }
     emailConfirmAlert(null); // v-unverified-email: تنبيه الحساب لا يبقى بعد خروجه
+    recoveryAlert(false); // v-recovery-hint
     pushDropDevice(authGet('aiapp_auth_token')); // v-audit-boot (srv-maha-6): الرمز قبل مسحه
     authRemove('aiapp_auth_token');
     authRemove('aiapp_username');
@@ -1601,6 +1602,7 @@ try{
       }
       onAuthed(data.username, data.avatar);
       emailConfirmAlert(data.emailToConfirm); // v-unverified-email
+      recoveryAlert(data.addRecovery); // v-recovery-hint
     } catch(e){
       errBox.textContent = netErr();
     } finally {
@@ -1775,6 +1777,7 @@ try{
           acctEmailCodeBox(false);
           acctEmailState = { email: emailKey, verified: true };
           emailConfirmAlert(null); // v-unverified-email: تأكّد — لا يبقى التنبيه
+          recoveryAlert(false); // v-recovery-hint: صار للحساب إيميل مؤكَّد
           say(t2.acctSaved, '#22c55e');
           return;
         }
@@ -1846,6 +1849,52 @@ try{
     document.body.appendChild(bar);
   }
   window.emailConfirmAlert = emailConfirmAlert;
+  /* v-recovery-hint (سؤال المالك ١٠ نوفمبر ٢٠٢٦): مشترك بلا إيميل ولا هاتف إن نسي كلمته لا يسترجع حسابه بنفسه. الخادم يعيد addRecovery
+     مع الدخول والتحقّق عند الفتح؛ الشريط بشكل «أكّد إيميلك» نفسه، وزرّه يفتح «حسابي» على خانة الإيميل (يُحفظ بالرمز هناك). ✕ يخفيه لهذه الجلسة. */
+  function recoveryAlert(on){
+    const old = $('#recoveryHintBar');
+    if(old) old.remove();
+    if(!on || !acctEmail || $('#emailConfirmBar')) return;
+    try{ if(sessionStorage.getItem('omran_recovery_hint_x') === '1') return; }catch(e){ __swallow(e, 'recovery-hint:read'); }
+    const t2 = curT();
+    let top = 8;
+    try{ const h = document.querySelector('header'); if(h) top = Math.max(0, h.getBoundingClientRect().bottom) + 8; }catch(e){ __swallow(e, 'recovery-hint:top'); }
+    const bar = document.createElement('div');
+    bar.id = 'recoveryHintBar';
+    bar.setAttribute('role', 'alert');
+    bar.style.cssText = 'position:fixed; top:' + top + 'px; left:50%; transform:translateX(-50%); z-index:50; width:min(460px, calc(100vw - 24px)); box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--panel2, #1c2230); color:var(--text, #eee); border:1px solid rgba(201,162,39,.45); border-radius:var(--r-3, 14px); box-shadow:var(--sh-2, 0 8px 24px rgba(0,0,0,.45)); font-size:var(--fs-3, 14px);';
+    const txt = document.createElement('div');
+    txt.style.cssText = 'flex:1; min-width:0; line-height:1.5;';
+    txt.setAttribute('data-i18n', 'recoveryHintTitle');
+    txt.textContent = t2.recoveryHintTitle || '';
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'btn primary';
+    add.style.cssText = 'flex:none; white-space:nowrap;';
+    add.setAttribute('data-i18n', 'recoveryHintAdd');
+    add.textContent = t2.recoveryHintAdd || '';
+    add.onclick = () => {
+      bar.remove();
+      const sb = document.getElementById('btnSettings');
+      if(sb) sb.click();
+      if(typeof showSettingsPage === 'function') showSettingsPage('accountSection');
+      const row = document.getElementById('acctRowEmail');
+      if(row && row.style.display === 'none' && typeof window.acctToggleRow === 'function') window.acctToggleRow('acctRowEmail', row.previousElementSibling);
+      try{ acctEmail.focus(); }catch(e){ __swallow(e, 'recovery-hint:focus'); }
+    };
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '✕';
+    x.setAttribute('aria-label', '✕');
+    x.style.cssText = 'flex:none; background:none; border:none; color:var(--muted, #999); font-size:16px; line-height:1; cursor:pointer; padding:4px;';
+    x.onclick = () => {
+      bar.remove();
+      try{ sessionStorage.setItem('omran_recovery_hint_x', '1'); }catch(e){ __swallow(e, 'recovery-hint:dismiss'); }
+    };
+    bar.append(txt, add, x);
+    document.body.appendChild(bar);
+  }
+  window.recoveryAlert = recoveryAlert;
   // v-perf-boot-defer: كان يُستدعى أيضًا عند DOMContentLoaded — نداء fetch(getProfile) إضافيّ يتزاحم
   // مع verify الحرج عند كلّ إقلاع، لحقل بريد في لوحة إعدادات لا يراها أحد قبل فتحها فعليًّا. النداء
   // الوحيد الباقي (أدناه) يُحدَّث حين يُفتح فعلًا، وهو يكفي — لا فرق مرئيّ لأنّ اللوحة مخفيّة أصلًا.
@@ -2078,6 +2127,7 @@ try{
         noteSession('تحقّق-ناجح');
         onAuthed(data.username, data.avatar);
         emailConfirmAlert(data.emailToConfirm); // v-unverified-email: عند كلّ فتح ما دام البريد غير مؤكَّد
+        recoveryAlert(data.addRecovery); // v-recovery-hint
         if(data.adminMessage && data.adminMessage.text){
           setTimeout(() => { alert('📩 ' + authMsg('axBootAdminMsg', 'Message from the administration', 'رسالة من الإدارة') + ':\n\n' + data.adminMessage.text); }, 600); // v-audit-boot (cli-boot-6)
         }
