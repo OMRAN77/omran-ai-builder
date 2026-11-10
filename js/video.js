@@ -559,7 +559,7 @@
     var clips=tlClipCount();
     if(!window.confirm(drT('vdTlConfirm',{c:clips,t:tlFmt(tlTotal()),lo:clips*2,hi:clips*5}))) return; /* إنفاق حقيقيّ: موافقة لكلّ تشغيلة */
     var my=++DR.run, res=id('vdRes');
-    DR.busy=true; syncDirector(); drMsg(''); if(res) res.classList.remove('has'); tlLinks([]);
+    DR.busy=true; upEnd(); syncDirector(); drMsg(''); if(res) res.classList.remove('has'); tlLinks([]);
     try{
       var out=await window.__vmkTimelineRun(segs.map(function(s){ return {d:s.d,n:String(s.n).trim()}; }),{
         status:function(kind,a,b){ if(my===DR.run) drMsg(kind==='join'?L('vdTlJoin'):drT('vdTlScene',{i:a,n:b})); }
@@ -610,11 +610,12 @@
   function pbUnknown(d){ return !!d&&!d.ok&&(d.error==='net'||d.error==='http'||(d.error==='retry'&&!d.detail)); } /* لا نعرف هل حجز الخادم وأرسل (انقطاع أو خطأ بعد الإرسال) */
   /* v-director-publish-guard: فيديو جديد = لوحة من الصفر — نصّ السابق ونتيجته ومنصّاته لا تُعرض تحته (كان التصفير عند فتح اللوحة وحده،
      فلوحة مفتوحة تُبقي «نزل» ونصّ الفيديو السابق تحت الجديد). يُنادى حيث يتغيّر DR.out. */
-  function pbNewVideo(){
+  function pbNewVideo(keep){
     PB.gen++; PB.reqs={}; PB.rows={}; PB.own={}; PB.sent={}; PB.vid=''; clearTimeout(PB.poll);
     if(PB.xhr){ var x=PB.xhr; PB.xhr=null; try{ x.abort(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:609'); /* guard-ok — رفع انتهى أو لا يُلغى */ } } /* رفع الفيديو القديم يُلغى: «انشر الآن» لا يبقى مقفلًا عليه */
-    pbRes([]); pbMsg(''); var c=id('vdPubCap'); if(c) c.value='';
-    var b=id('vdPubPlats'); if(b) b.textContent=''; pbPlats(); /* المنصّات كلّها مؤشَّرة من جديد */
+    pbRes([]); pbMsg(''); var c=id('vdPubCap'); if(c&&!keep) c.value='';
+    var b=id('vdPubPlats'); if(b&&!keep) b.textContent=''; pbPlats(); /* المنصّات كلّها مؤشَّرة من جديد — إلّا الفيديو نفسه بالباركود أو بدونه
+      (keep، v-director-endcard): نصّه وما شاله المالك من منصّاته يبقيان */
   }
   function pbToggle(){
     var p=id('vdPub'); if(!p) return;
@@ -788,6 +789,9 @@
   function upShown(){ var r=id('vdRes'); return !!(DR.out&&r&&r.classList.contains('has')); } /* فيديو معروض الآن (لا فيديو أخفاه توليد لاحق) */
   function upMine(){ return !!(DR.file&&DR.out===DR.fileUrl&&upShown()); }
   function upMsg(t,err){ var m=id('vdUpMsg'); if(!m) return; m.textContent=t||''; m.className='vmk-dir-msg'+(err?' err':''); }
+  /* v-director-endcard: توليد جديد في المخرج يترك المرفوع (drReset يخفيه): إضافة الباركود الجارية تُلغى (كانت تقفل «انشر الآن» على فيديو
+     المخرج ورسالتها تبقى تحت الصندوق)، وروابطه والملفّ المبنيّ في الذاكرة (حتّى ٥٠٠ ميغا) تُترك للتحرير؛ المعروض يحرّره التوليد حين ينتهي */
+  function upEnd(){ ecDrop(DR.out); upMsg(''); DR.file=null; DR.fileUrl=''; }
   function upPick(f){
     if(!f||!drOwner()||DR.busy||PB.busy) return;
     var type=upType(f);
@@ -841,6 +845,19 @@
     return out;
   }
   function ecNum(s){ var m=/^([\d.]+)(k)?$/.exec(String(s||'').trim()); return m?(+m[1])*(m[2]?1000:1):0; } /* «30k tbn» = 30000 */
+  /* ألوان الفيديو كما يطبعها «-i» بين قوسي الصيغة: «(pc, bt709/bt709/iec61966-2-1, progressive)» = المصفوفة/الأوّليّات/النقل،
+     والاسم الواحد «bt709» = الثلاثة. الأرقام رموز VUI نفسها (H.273) — تُمرَّر أرقامًا لا أسماء (اسم النقل «bt470bg» لا تقبله الأداة) */
+  var EC_SP={bt709:1,fcc:4,bt470bg:5,smpte170m:6,smpte240m:7,bt2020nc:9,bt2020c:10};
+  var EC_PRI={bt709:1,bt470m:4,bt470bg:5,smpte170m:6,smpte240m:7,film:8,bt2020:9};
+  var EC_TRC={bt709:1,bt470m:4,bt470bg:5,smpte170m:6,smpte240m:7,linear:8,'iec61966-2-4':11,bt1361e:12,'iec61966-2-1':13,'bt2020-10':14,'bt2020-12':15,smpte2084:16,'arib-std-b67':18};
+  function ecColor(s){
+    var c={sp:'',pri:'',trc:''};
+    String(s||'').split(',').forEach(function(t){
+      t=t.trim(); var m=/^([a-z0-9-]+)\/([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(t);
+      if(m){ c.sp=m[1]; c.pri=m[2]; c.trc=m[3]; } else if(EC_SP[t]) c.sp=c.pri=c.trc=t;
+    });
+    return c;
+  }
   /* سجلّ «ffmpeg -i» ← المدّة وكلّ دفق (نوعه وترميزه ومقاسه وإطاراته ومقياس زمنه وصوته) والدوران باتّجاه الساعة */
   function ecParse(log){
     var r={dur:0,streams:[],rot:0}, s=String(log||''), last=null;
@@ -853,7 +870,7 @@
         var o={i:+st[1],kind:st[2].charAt(0).toLowerCase(),codec:String(head[1]||'').toLowerCase(),profile:String(head[2]||''),pic:/attached pic/.test(st[3])};
         if(o.kind==='v'){
           var px=/^([a-z0-9_]+)(?:\(([^)]*)\))?/.exec(parts[1]||'')||[];
-          o.pix=String(px[1]||''); o.sar=1;
+          o.pix=String(px[1]||''); o.sar=1; o.color=ecColor(px[2]);
           parts.forEach(function(p){
             var d=/^(\d{2,5})x(\d{2,5})(?:\s|$)/.exec(p); if(d&&!o.w){ o.w=+d[1]; o.h=+d[2]; }
             var sar=/SAR (\d+):(\d+)/.exec(p); if(sar&&+sar[2]) o.sar=(+sar[1])/(+sar[2]);
@@ -896,15 +913,36 @@
     else if(!/^yuvj?420p$/.test(v.pix||'')) why='pix';
     else if(Math.abs((v.sar||1)-1)>0.01) why='sar';
     else if(a&&!(a.codec==='aac'&&a.profile==='LC'&&a.sr>0&&/^(mono|stereo)$/.test(a.layout||''))) why='acodec';
+    else if(a&&p.atb!==a.sr) why='atb'; /* مقياس زمن الصوت غير معدّل العيّنة (أو لم يُقرأ): اللصق يمدّ صوت البطاقة أضعافًا */
     else if(!((v.i===0&&(!a||a.i===1))||(a&&a.i===0&&v.i===1))) why='order'; /* الدمج يطابق الدفقات بترتيبها */
     else if(v.w%2||v.h%2) why='odd';
     pl.fast=!why; pl.why=why;
     var MB=1048576;
     if(pl.fast){ if(size>(mob?250:500)*MB) return {ok:false,why:'heavy'}; return pl; }
-    if(size>(mob?100:300)*MB||!(p.dur>0)||p.dur>(mob?60:180)) return {ok:false,why:'heavy'};
+    if(!(p.dur>0)) return {ok:false,why:'nodur'}; /* مدّة مجهولة (WebM سجّله متصفّح): لا حدّ يُقاس — ليس «ثقيلًا» */
+    if(size>(mob?100:300)*MB||p.dur>(mob?60:180)) return {ok:false,why:'heavy'};
     var dw=Math.abs((v.sar||1)-1)>0.01&&!swap?pl.dw*v.sar:pl.dw, k=Math.min(1,1080/Math.min(dw,pl.dh),1920/Math.max(dw,pl.dh));
     pl.ow=ecEven(dw*k); pl.oh=ecEven(pl.dh*k);
     return pl;
+  }
+  /* لماذا لا يُضاف (مراجعة مستقلّة): «ثقيل — جرّبه من الكمبيوتر» حين ينجح على الكمبيوتر فقط؛ ما فوق حدود الكمبيوتر «big» (لا جهاز يغيّره)
+     ومدّة مجهولة وغيرها «probe» — وكلاهما «ما قدرت أضيفه — تقدر تنشره بدونه» */
+  function ecWhy(pl,info,size,mob){ return pl.why!=='heavy'?'probe':((mob&&ecPlan(info,size,false).ok)?'heavy':'big'); }
+  /* البطاقة تُحوَّل من RGB بمصفوفة الفيديو نفسها (المتصفّح فكّ آخر لقطة بها) وتُوسم بوسومه — كانت الأداة تحوّلها بـBT.601 بلا وسم والمسار
+     يقول BT.709 فيقفز اللون عند الوصل. بلا وسم: تخمين Chromium مقيسًا — الارتفاع المرمَّز ٧٢٠ فأكثر = 709، وما دونه 601 */
+  function ecMatrix(pl){
+    var sp=(pl.v.color||{}).sp;
+    if(sp==='bt709'||sp==='fcc'||sp==='smpte240m') return sp;
+    if(sp==='bt470bg'||sp==='smpte170m') return 'bt601';
+    if(sp==='bt2020nc'||sp==='bt2020c') return 'bt2020';
+    return ((pl.fast?pl.h:pl.oh)>=720)?'bt709':'bt601';
+  }
+  function ecTags(pl){
+    var c=pl.v.color||{}, a=[];
+    if(EC_SP[c.sp]) a.push('-colorspace',String(EC_SP[c.sp]));
+    if(EC_PRI[c.pri]) a.push('-color_primaries',String(EC_PRI[c.pri]));
+    if(EC_TRC[c.trc]) a.push('-color_trc',String(EC_TRC[c.trc]));
+    return a;
   }
   /* البطاقة: الصور الثلاث (آخر لقطة، الطبقة بشفافيّتها، والنهائيّة) تُدار وتُحجَّم وتُحوَّل مرّة واحدة ثمّ تتكرّر (loop) —
      التركيب إطارًا إطارًا في التلاشي وحده (xfade ودمج RGBA على كلّ الإطارات كانا ٣٫٥–٨ ث للبطاقة وحدها). صوتها صمت بخصائص الأصل. */
@@ -913,14 +951,14 @@
     var a=fast?pl.a:{sr:48000,layout:'stereo'}, lp='loop=loop=-1:size=1:start=0';
     var args=['-hide_banner','-y','-framerate',fps,'-i','ec_last.png','-framerate',fps,'-i','ec_over.png','-framerate',fps,'-i','ec_end.png'];
     if(pl.a) args.push('-f','lavfi','-t',String(EC_SEC),'-i','anullsrc=r='+a.sr+':cl='+a.layout);
-    var pre=((fast&&EC_TRANS[pl.rot])?EC_TRANS[pl.rot]+',':'')+'scale='+W+':'+H+',setsar=1';
+    var pre=((fast&&EC_TRANS[pl.rot])?EC_TRANS[pl.rot]+',':'')+'scale='+W+':'+H+':out_color_matrix='+ecMatrix(pl)+',setsar=1';
     args.push('-filter_complex','[0:v]'+pre+',format=yuv420p,'+lp+',trim=duration='+EC_FADE+'[b];'
       +'[1:v]'+pre+',format=yuva420p,'+lp+',trim=duration='+EC_FADE+',fade=t=in:st=0:d='+EC_FADE+':alpha=1[o];'
       +'[b][o]overlay=format=yuv420,format='+pix+'[f];'
       +'[2:v]'+pre+',format='+pix+','+lp+',trim=duration='+(EC_SEC-EC_FADE).toFixed(2)+'[h];[f][h]concat=n=2:v=1:a=0[v]');
     if(pl.a&&fast&&pl.order==='av') args.push('-map','3:a','-map','[v]');
     else { args.push('-map','[v]'); if(pl.a) args.push('-map','3:a'); }
-    args.push('-c:v','libx264','-preset','ultrafast','-crf','20','-pix_fmt',pix,'-r',fps);
+    args.push('-c:v','libx264','-preset','ultrafast','-crf','20','-pix_fmt',pix,'-r',fps); args.push.apply(args,ecTags(pl));
     if(fast&&pl.v.tbn>0&&pl.v.tbn===Math.round(pl.v.tbn)) args.push('-video_track_timescale',String(pl.v.tbn));
     if(pl.a) args.push('-c:a','aac','-b:a','128k','-ar',String(a.sr),'-ac',a.layout==='mono'?'1':'2');
     args.push('-t',String(EC_SEC),'ec_card.mp4');
@@ -934,24 +972,25 @@
     else fc.push('[m][c]concat=n=2:v=1:a=0[v]');
     var args=['-hide_banner','-y','-i',input,'-i','ec_card.mp4','-filter_complex',fc.join(';'),'-map','[v]'];
     if(pl.a) args.push('-map','[a]');
-    args.push('-c:v','libx264','-preset','ultrafast','-crf','23','-pix_fmt','yuv420p');
+    args.push('-c:v','libx264','-preset','ultrafast','-crf','23','-pix_fmt','yuv420p'); args.push.apply(args,ecTags(pl)); /* قيم الأصل تمرّ كما هي: وسومه معها */
     if(pl.a) args.push('-c:a','aac','-b:a','160k');
     args.push('-movflags','+faststart','ec_out.mp4');
     return args;
   }
   function ecName(n){ var b=String(n||'video').replace(/\.[A-Za-z0-9]{2,4}$/,'').replace(/[\\/:*?"<>|]+/g,'_').slice(-100)||'video'; return b+'-om-ai.mp4'; }
   /* الطبقة بمقاس العرض: تعتيم وظلّ أعمق في الوسط (كتابة الفيديو الأصليّة لا تزاحم السطرين)، لوح أبيض مدوّر فيه الباركود بوحدات صحيحة
-     (بلا تنعيم)، ثمّ «حمّل تطبيق om ai» ذهبيًّا والرابط أبيض — كالنموذج الذي وافق عليه المالك */
+     (بلا تنعيم)، ثمّ «حمّل تطبيق om ai» ذهبيًّا والرابط أبيض — كالنموذج الذي وافق عليه المالك. الباركود يحمل /app
+     (صفحة التحميل) والمكتوب تحته النطاق وحده */
   function ecOverlay(dw,dh,line){
     var c=document.createElement('canvas'); c.width=dw; c.height=dh;
     var x=c.getContext('2d'), m=Math.min(dw,dh), FONT="Tajawal, 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif";
-    var U=ecUrl(), q=window.OmranQR.matrix(U), n=q.size+8, unit=Math.max(2,Math.floor(m*(dw<dh?0.5:0.42)/n)), S=unit*n;
+    var U=ecUrl(), Q=U+'/app', q=window.OmranQR.matrix(Q), n=q.size+8, unit=Math.max(2,Math.floor(m*(dw<dh?0.5:0.42)/n)), S=unit*n;
     var F1=Math.max(14,Math.round(m*0.058)), F2=Math.max(11,Math.round(m*0.036)), g1=Math.round(m*0.05), g2=Math.round(m*0.022);
     var top=Math.round((dh-(S+g1+F1+g2+F2))/2), qx=Math.round((dw-S)/2), r=Math.round(S*0.07), cy=top+(S+g1+F1+g2+F2)/2;
     x.fillStyle='rgba(0,0,0,.5)'; x.fillRect(0,0,dw,dh);
     var g=x.createRadialGradient(dw/2,cy,0,dw/2,cy,Math.max(dw,dh)*0.6); g.addColorStop(0,'rgba(0,0,0,.5)'); g.addColorStop(1,'rgba(0,0,0,0)');
     x.fillStyle=g; x.fillRect(0,0,dw,dh);
-    var qc=document.createElement('canvas'); window.OmranQR.draw(qc,U,{px:S});
+    var qc=document.createElement('canvas'); window.OmranQR.draw(qc,Q,{px:S}); /* رابط التحميل الواحد (v-qr-one): كلّ جهاز إلى متجره — لا الصفحة الرئيسيّة */
     x.save(); x.beginPath(); x.moveTo(qx+r,top); x.arcTo(qx+S,top,qx+S,top+S,r); x.arcTo(qx+S,top+S,qx,top+S,r); x.arcTo(qx,top+S,qx,top,r); x.arcTo(qx,top,qx+S,top,r); x.closePath();
     x.fillStyle='#fff'; x.fill(); x.clip(); x.imageSmoothingEnabled=false; x.drawImage(qc,qx,top,S,S); x.restore();
     x.textAlign='center'; x.textBaseline='alphabetic'; x.shadowColor='rgba(0,0,0,.7)'; x.shadowBlur=Math.round(m*0.012); x.shadowOffsetY=Math.round(m*0.003);
@@ -1017,17 +1056,26 @@
     await ff.mount('WORKERFS',{blobs:[{name:'input',data:file}]},'/ecin'); /* يُقرأ من الملفّ مباشرة بلا نسخه في الذاكرة */
     var input='/ecin/input';
     log=[]; await ff.exec(['-hide_banner','-i',input]); ecStale(my); /* بلا مخرج: يفشل عمدًا ويطبع المعلومات */
-    var pl=ecPlan(ecParse(log.join('\n')),file.size,ecMob());
-    if(!pl.ok) throw {code:pl.why==='heavy'?'heavy':'probe'};
+    var info=ecParse(log.join('\n')), au=info.streams.filter(function(x){ return x.kind==='a'; })[0];
+    if(au){ /* مقياس زمن الصوت لا يطبعه «-i»: حزمة واحدة إلى framecrc في ملفّ (لصق النسخ يفترضه معدّل العيّنة كما في البطاقة) */
+      await ff.exec(['-hide_banner','-y','-i',input,'-map','0:'+au.i,'-c','copy','-frames:a','1','-f','framecrc','ec_tb.txt']); ecStale(my);
+      try{ var tb=/^#tb 0: 1\/(\d+)\s*$/m.exec(new TextDecoder().decode(await ff.readFile('ec_tb.txt'))); info.atb=tb?+tb[1]:0; }catch(e){ info.atb=0; /* guard-ok — بلا قراءة: إعادة الترميز الكاملة آمنة */ }
+    }
+    var mob=ecMob(), pl=ecPlan(info,file.size,mob);
+    if(!pl.ok) throw {code:ecWhy(pl,info,file.size,mob)};
     pct(8);
     var line=L('vdEcLine')||'حمّل تطبيق om ai';
     await Promise.all([ecQr(),ecFonts(line)]); ecStale(my);
-    var url=URL.createObjectURL(file), frame=null;
-    try{ frame=await ecGrab(url,8000); }finally{ URL.revokeObjectURL(url); }
-    ecStale(my);
-    if(!frame){ /* المتصفّح لا يفكّ هذا الترميز: الأداة تأخذ آخر لقطة (PNG) */
+    var frame=null;
+    if(pl.fast){ /* H.264: المتصفّح يفكّه بالمصفوفة التي يحسبها ecMatrix (مقيسة). البطيء لا: فكّه لـVP9/HEVC بلا وسم بغيرها (VP9 = 601 مقيسًا)
+      فتقفز ألوان البطاقة — الأداة تفكّ آخر لقطته بمصفوفة البطاقة نفسها */
+      var url=URL.createObjectURL(file);
+      try{ frame=await ecGrab(url,8000); }finally{ URL.revokeObjectURL(url); }
+      ecStale(my);
+    }
+    if(!frame){ /* البطيء، أو متصفّح لا يفكّ هذا الترميز: الأداة تأخذ آخر لقطة (PNG) بمصفوفة البطاقة */
       for(var tries=[0.3,3,15],i=0;i<tries.length&&!frame;i++){
-        await ff.exec(['-hide_banner','-y','-sseof','-'+tries[i],'-i',input,'-map','0:'+pl.v.i,'-an','-sn','-dn','-update','1','ec_last.png']); ecStale(my);
+        await ff.exec(['-hide_banner','-y','-sseof','-'+tries[i],'-i',input,'-map','0:'+pl.v.i,'-an','-sn','-dn','-vf','scale=in_color_matrix='+ecMatrix(pl)+',format=rgb24','-update','1','ec_last.png']); ecStale(my);
         try{ var png=await ff.readFile('ec_last.png'); if(png&&png.length) frame=await createImageBitmap(new Blob([png],{type:'image/png'})); }catch(e){ frame=null; /* guard-ok — لا إطار في هذا المدى: مدى أوسع */ }
       }
     }
@@ -1046,16 +1094,15 @@
     ecStale(my);
     var data=await ff.readFile('ec_out.mp4'); ecStale(my);
     if(!(data&&data.length>1000)) throw {code:'empty'};
-    if(data.length>UP_MAX_MB*1048576) throw {code:'heavy'}; /* فوق حدّ النشر بعد الإضافة */
+    if(data.length>UP_MAX_MB*1048576) throw {code:'big'}; /* فوق حدّ النشر بعد الإضافة — ولا جهاز آخر يغيّره */
     return new File([data],ecName(file.name),{type:'video/mp4'});
   }
   function ecMine(){ return !!(EC.src&&upShown()&&(DR.out===EC.src.url||(EC.out&&DR.out===EC.out.url))); } /* المعروض هو المرفوع (أصله أو بالباركود) */
   function ecPct(p){ upMsg(drT('vdEcWork',{p:Math.max(0,Math.min(99,Math.round(p)))})); }
-  /* تبديل المعروض بين الأصل وما أُضيف له الباركود: فيديو آخر عند الخادم (pbNewVideo)، والنصّ المكتوب للفيديو نفسه يبقى */
+  /* تبديل المعروض بين الأصل وما أُضيف له الباركود: ملفّ آخر عند الخادم (pbNewVideo)، والنصّ المكتوب وما شاله المالك من المنصّات أثناء
+     الانتظار يبقيان (كانت المنصّات كلّها تُؤشَّر من جديد فيُنشر فيما شاله — مراجعة مستقلّة) */
   function ecShow(f,type,url){
-    var cap=id('vdPubCap'), keep=cap?cap.value:'';
-    DR.file=f; DR.fileType=type; DR.fileUrl=DR.out=url; pbNewVideo();
-    if(cap) cap.value=keep;
+    DR.file=f; DR.fileType=type; DR.fileUrl=DR.out=url; pbNewVideo(true);
     var vid=id('vdVideo'), dl=id('vdDl');
     if(vid) vid.src=url;
     if(dl){ dl.href=url; dl.setAttribute('download',String(f.name||'').replace(/[\\/:*?"<>|]+/g,'_').slice(-120)||'video.mp4'); }
@@ -1078,14 +1125,18 @@
       ecShow(f,'video/mp4',EC.out.url); upMsg(L('vdEcDone'));
     }catch(e){
       if(my!==EC.run||(e&&e.code==='stale')) return;
-      var heavy=!!(e&&e.code==='heavy');
+      var code=String((e&&e.code)||''), heavy=code==='heavy';
       EC.skip=src.file; upMsg(heavy?L('vdEcHeavy'):L('vdEcFail'),true); /* الأصل يبقى معروضًا والخيار يظهر مطفأً لهذا الملفّ */
-      if(!heavy){ try{ __swallow(e,'director:endcard '+String((e&&(e.code||e.message))||'')+' '+String((e&&e.log)||'')); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:ec-log'); /* guard-ok — لا مسجّل */ } }
+      if(!heavy&&code!=='big'){ try{ __swallow(e,'director:endcard '+String((e&&(e.code||e.message))||'')+' '+String((e&&e.log)||'')); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:ec-log'); /* guard-ok — لا مسجّل */ } }
     }finally{
       if(my===EC.run){ EC.busy=false; ecKill(); syncDirector(); }
     }
   }
+  /* رُفع المعروض للنشر (له اسم عند الخادم): لا تبديل بعده — التبديل يبدأ لوحة جديدة فتعود منصّات أخذته مؤشَّرة ويُرفع الملفّ نفسه باسم
+     جديد لا يمنعه حجز الخادم (نشر مكرّر). ملفّ جديد يفكّ القفل */
+  function ecLocked(){ return ecMine()&&!!PB.vid; }
   function ecToggle(on){
+    if(ecLocked()){ syncDirector(); return; }
     ecSetPref(on); EC.skip=null;
     if(!ecMine()||DR.busy||PB.busy){ syncDirector(); return; }
     if(on){ ecStart(); return; }
@@ -1122,7 +1173,7 @@
     if(eb&&ec){
       eb.querySelector('span').textContent=L('vdEcLabel');
       ec.checked=ecPref()&&!(EC.src&&EC.skip===EC.src.file); /* فشل أو ثقل لهذا الملفّ: يظهر مطفأً (التفضيل المحفوظ لا يتغيّر) */
-      ec.disabled=DR.busy||PB.busy; eb.classList.toggle('off',ec.disabled);
+      ec.disabled=DR.busy||PB.busy||ecLocked(); eb.classList.toggle('off',ec.disabled);
     }
   }
   /* v-app-director-motion (المالك: «خل فيه حركة فيديو عشان اعرف ان الفيديو يتولد»): شاشة حيّة أثناء التوليد — ضوء يتحرّك وشريط لقطات،
@@ -1293,7 +1344,7 @@
     var lang=id('vdLang').value||'ar', speaker=id('vdSpeaker').value||'female', minutes=parseInt(id('vdMin').value,10)||2;
     var voiceOn=((id('vdVoice')||{}).value!=='off'), capDir=(lang==='ar'||lang==='ur')?'rtl':'ltr', story=drStory();
     var my=++DR.run, tk=drTok();
-    DR.busy=true; DR.lang=lang; syncDirector(); drReset(); drStageStart();
+    DR.busy=true; DR.lang=lang; upEnd(); syncDirector(); drReset(); drStageStart();
     try{
       /* ٠) الجسر أوّلًا (v-app-director-bridge-check — لقطة المالك «bridge offline» بعد توليد النماذج): رمز المهمّة يُطلب قبل أيّ صرف،
          والخادم يفحص الجسر وهو يصدره؛ جسر منقطع أو بنسخة قديمة لا تعرف مسار الفيديو يُعلَن هنا لا بعد الخطّة والصوت والصور.
