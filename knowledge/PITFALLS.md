@@ -29,6 +29,14 @@
 - **resolveLoginUser يكتب:** `emailProven` ← `stampLegacyEmail` يختم بريدًا قديمًا (putUser وVIP)، و`settleUnverifiedEmail` يعلّم البريد أو يشيله.
   `dryRun` في #1303 قيل «لا يكتب» وهو يمرّ بها. وحتّى `getUser`/`getUserOnce` يعيدان تشفير سجلّ بالسرّ السابق ويكتبانه. مسار قراءة
   (فحص، بحث المالك) يقرأ بـ`getUserOnce(key, {readOnly: true})` و`emailVerifiedFor` وحدهما. (v-owner-reset-records)
+- **zoompan يرتجف وقياس البكسل الصحيح لا يراه:** zoompan يقرّب موضع القصّ ومقاسه لبكسل صحيح في كلّ إطار، فتتذبذب الصورة (+٠٫١٣ ثمّ −٠٫٦٢
+  بكسل) والانزلاق يمشي ٠ ثمّ ١٫٦ بكسل بالتناوب. قياس ٧ نوفمبر بالبكسل الصحيح قال «إزاحة ٠»، فعاد المالك في اليوم التالي: «يعور العين». قِس الحركة
+  دون البكسل (Lucas–Kanade لإزاحة كلّ إطار عن سابقه، اختبار cc-bridge-render ١٢)، وللحركة الناعمة perspective بزوايا عشريّة — و`on` فيه
+  يبدأ من ١ لا من ٠. (v-director-subpixel)
+- **ffmpeg يفتح خيوطًا بعدد أنوية المضيف:** رسم المرشّحات، وكلّ مرشّح تحجيم (sws) فيه حتّى المُدرَج تلقائيًّا، وكلّ فاكّ، ومدخل `-f lavfi`
+  (رسم ثانٍ) — كلٌّ بـ`av_cpu_count()+1` خيطًا، وعلى Railway هي أنوية المضيف لا حصّة الحاوية. مقاطع متوازية مع Chromium بلغت حدّ الخيوط فرفض
+  النظام خيطًا (EAGAIN) وفشلت التهيئة بـ«Error reinitializing filters! | Failed to inject frame into filter network: Resource temporarily
+  unavailable» — ونجحت الإعادة لأنّها وحدها. حدّد `-filter_complex_threads` و`-threads 1` قبل كلّ `-i`، والصمت `anullsrc` داخل الرسم. (v-director-threads)
 - **محاكي Stripe يقلّد Stripe لا افتراضنا:** metadata جلسة الدفع لا تنتقل إلى شحنتها ولا نيّتها (بلا `payment_intent_data`)، ومرشِّحات البريد
   تطابق الحروف كما خُزّنت. اختبار #1298 وضع `username` على الشحنة الوهميّة وطابق البريد بلا حالة أحرف، فمرّ أخضر، وفي الإنتاج بقي بريد مستخدمة
   دافعة ٤٠٤ مرّتين أمام المالك. الاسم من الجلسة (بـ`payment_intent`)، والمطابقة بلا حالة أحرف، والمحاكي بسلوك Stripe الموثَّق. (v-owner-reset-scan)
