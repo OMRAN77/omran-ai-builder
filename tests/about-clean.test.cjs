@@ -60,12 +60,13 @@ test('٦. منصّات التواصل: Instagram وX بروابط حساباته
   const about = s.slice(s.indexOf('id="aboutSection"'), s.indexOf('id="ownerSection"'));
   const social = about.slice(about.indexOf('data-i18n="socialTitle"'));
   const links = [...social.matchAll(/<a href="([^"]*)"([^>]*)>/g)];
-  assert.strictEqual(links.length, 5, 'خمس أيقونات');
+  assert.strictEqual(links.length, 6, 'ستّ أيقونات (v-social-all: Facebook)');
   const byTitle = (t) => links.find((m) => m[2].includes('title="' + t + '"'));
   const ig = byTitle('Instagram'), x = byTitle('X / Twitter');
   assert.strictEqual(ig[1], 'https://www.instagram.com/omranaibuilder/'); assert.strictEqual(x[1], 'https://x.com/omranalsamxa3p');
   for (const m of [ig, x]) assert.ok(m[2].includes('target="_blank"') && m[2].includes('rel="noopener noreferrer"'));
   /* hidden وحدها لا تكفي: style="display:flex" المضمّن يغلبها — لذلك display:none في النمط نفسه */
-  for (const t of ['TikTok', 'YouTube', 'WhatsApp']) { const m = byTitle(t); assert.ok(m && m[1] === '#' && / hidden /.test(m[2] + ' ') && /display:none/.test(m[2]), t + ' مخفيّ فعلًا'); }
+  // v-social-all (١٠ نوفمبر): TikTok وYouTube ظهرا بروابط الحسابات الحقيقيّة (tests/social-all.test.cjs)؛ WhatsApp وحده مخفيّ حتّى رقمه
+  for (const t of ['WhatsApp']) { const m = byTitle(t); assert.ok(m && m[1] === '#' && / hidden /.test(m[2] + ' ') && /display:none/.test(m[2]), t + ' مخفيّ فعلًا'); }
   assert.ok(!links.some((m) => m[1] === '#' && !/display:none/.test(m[2])), 'لا أيقونة ميتة ظاهرة');
 });
