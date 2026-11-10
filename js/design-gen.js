@@ -5,7 +5,7 @@
   var st={gender:'women',colors:[],extras:[]};
   /* v-fx-gender-pics: الفئة تُتذكَّر — كانت ترجع «نسائي» مع كلّ فتح للتطبيق («يثبت نسائي»). تُقرأ هنا قبل الحزمة فيبدأ app-12 بها. */
   var GKEY='aiapp_fashion_gender';
-  try{ var g0=localStorage.getItem(GKEY); if(g0==='men'||g0==='kids') st.gender=g0; }catch(e){ /* guard-ok: بلا تخزين تبدأ نسائيّة كما كانت */ }
+  try{ var g0=localStorage.getItem(GKEY); if(g0==='men'||g0==='kids') st.gender=g0; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'design-gen:8'); /* guard-ok: بلا تخزين تبدأ نسائيّة كما كانت */ }
   /* v603: النصوص من نطاق t() — ١٤ لغةً (كان ثنائيًا: إنجليزيٌ وإلّا عربيّ). القيم المُرسلة تبقى إنجليزيّة. */
   function T(k){ try{ return (typeof t==='function') ? t(k) : k; }catch(e){ return k; } }
   function lbl(icon,k){ var d=document.createElement('div'); d.className='optLbl f417'; d.textContent=icon+' '+T(k); return d; }
@@ -46,7 +46,7 @@
   function kindImg(kind,v){
     if(!v) return '';
     var g=KIND_LOOK[st.gender], s=g&&g[kind]&&g[kind][v];
-    return s ? LOOKS+st.gender+'/'+s+'.webp?v=3' : LOOKS+kind+'/'+v+'.webp?v=3';
+    return s ? LOOKS+st.gender+'/'+s+'.webp?v=4' : LOOKS+kind+'/'+v+'.webp?v=3'; /* v=4 لصور الأنماط كما في app-12 (v-fx-dedupe) */
   }
   var kindTriggers=[]; /* بطاقتا المناسبة والموسم — تُعاد رسمًا عند تغيّر الفئة */
   /* صور الإضافات الستّ (extras/<القطعة>) كلّها لامرأة. للرجال والأطفال صورهم من مولّد الموقع (extras/<الفئة>-<القطعة>، موافقة المالك
@@ -104,10 +104,10 @@
       c.querySelector('.oi').textContent=r[1]; c.querySelector('.ol').textContent=T(r[2]);
       photoize(c,LOOKS+GENDER_FACE[r[0]]+'.webp?v=3',true);
       c.onclick=function(){ st.gender=r[0]; Array.prototype.forEach.call(g.children,function(x,i){ x.classList.toggle('sel',GEN[i][0]===st.gender); }); kindTriggers.forEach(function(tr){ tr.refresh(); });
-        try{ localStorage.setItem(GKEY,st.gender); }catch(e){ /* guard-ok: بلا تخزين تبقى للجلسة وحدها */ }
+        try{ localStorage.setItem(GKEY,st.gender); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'design-gen:107'); /* guard-ok: بلا تخزين تبقى للجلسة وحدها */ }
         var og=document.querySelector('#fashionAiModal .fxAccGrid'); if(og) og.replaceWith(extrasRow()); /* المختار في st.extras يبقى */
         applyGenderTexts();
-        try{ window.dispatchEvent(new CustomEvent('fashion-gender-change',{detail:{gender:st.gender}})); }catch(e){ /* guard-ok: بثّ تجميلي — فشله لا يمسّ اختيار الفئة نفسه */ } };
+        try{ window.dispatchEvent(new CustomEvent('fashion-gender-change',{detail:{gender:st.gender}})); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'design-gen:110'); /* guard-ok: بثّ تجميلي — فشله لا يمسّ اختيار الفئة نفسه */ } };
       g.appendChild(c);
     });
     return g;
@@ -129,8 +129,10 @@
      وphotoize يجعل اسمها وعلامتها absolute بعد تحميل الصورة فلا يبقى في تدفّقها شيء — فانكمشت إلى عرض
      حشوها (~٣٠ بكسل) وقُصّ الاسم تحت دائرة الاختيار. الآن شبكة بطاقات: صورة مربّعة مقرّبة على الإضافة
      نفسها (الصور لقطات كاملة ٢:٣ — الساعة والحذاء والمكياج لا تُرى في قصّ الوسط) والاسم تحتها لا فوقها.
-     EXT_FOCUS: [x, y] موضع الإضافة في الصورة (نسبة) و[z] التكبير. */
-  var EXT_FOCUS={Glasses:[.56,.17,2],Watch:[.46,.53,2.4],Handbag:[.44,.49,2],Shoes:[.46,.93,2],Scarf:[.49,.37,1.6],Makeup:[.48,.11,2.4]};
+     EXT_FOCUS: [x, y] موضع الإضافة في الصورة (نسبة) و[z] التكبير.
+     v-fx-acc-ratio (المالك ٢٥ أكتوبر: «الصور لي ماتطابق الشي الي اخترته»): صور النساء صارت 1024×1371 (٣:٤) في ١٧ أكتوبر والنقاط بقيت لـ٣٦٠×٥٤٠ (٢:٣)
+     — الصورة تُمطّ ١٢٪ و«حقيبة» تُظهر العباية و«مكياج» أعلى الحجاب. النقاط مقيسة من جديد على الصور الحاليّة، والنسبة R34 كالرجال والأطفال. */
+  var EXT_FOCUS={Glasses:[.6,.28,1.8,R34],Watch:[.46,.5,2.4,R34],Handbag:[.52,.72,1.7,R34],Shoes:[.63,.71,1.4,R34],Scarf:[.49,.3,1.6,R34],Makeup:[.58,.35,1.6,R34]};
   function focusCss(f){
     var z=f[2], r=f[3]||1.5, l=.5-f[0]*z, tp=.5-f[1]*r*z; /* r: طول الصورة إلى عرضها — صور الفئات ٣:٤ بنسبتها لا ممطوطة */
     l=Math.min(0,Math.max(1-z,l)); tp=Math.min(0,Math.max(1-r*z,tp)); // لا فراغ داخل المربّع
@@ -247,9 +249,9 @@
   try{
     if (document.querySelector('script[data-media-notify]')) return;
     var s = document.createElement('script');
-    s.src = '/js/media-notify.js?v=4';
+    s.src = '/js/media-notify.js?v=5';
     s.charset = 'utf-8';
     s.setAttribute('data-media-notify', '1');
     document.head.appendChild(s);
-  }catch(e){ /* guard-ok: تعثّر محمّل التنبيهات يجب ألّا يُسقط شيئًا */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'design-gen:256'); /* guard-ok: تعثّر محمّل التنبيهات يجب ألّا يُسقط شيئًا */ }
 })();

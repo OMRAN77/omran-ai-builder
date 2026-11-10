@@ -33,6 +33,10 @@ function imgErrFriendly(err, isAr, info){
       ? 'تأخر إنشاء الصورة هذه المرة. أعد المحاولة بعد لحظة.'
       : 'Image generation took too long this time. Please try again in a moment.';
   }
+  /* v-audit-studeng (srv-studios-1-3): الاستوديو صار يرسل الرمزين بدل «تعذّر إنشاء الصورة الآن…» العربيّ لكلّ اللغات — بالـ١٤ لغة،
+     والعربيّ/الإنجليزيّ أدناه احتياطًا ما لم يُعرف المفتاح (t يعيد اسمه) */
+  if(err === 'image_generation_busy' && t('axStudengImgBusy') !== 'axStudengImgBusy') return t('axStudengImgBusy');
+  if(err === 'image_generation_failed' && t('axStudengImgFailed') !== 'axStudengImgFailed') return t('axStudengImgFailed');
   if(err === 'image_generation_busy'){
     return isAr
       ? 'خدمة الصور مشغولة الآن. أعد المحاولة بعد لحظة.'
@@ -88,6 +92,17 @@ function detectSpeechLang(text){
     if(/[\u0679\u0688\u0691\u06BA\u06BE\u06C1\u06C2\u06D2]/.test(t)) return 'ur';
     return 'ar';
   }
+  /* v-audit-voice (cli-voice-7): الخادم له لهجة لكلّ لغة من الأربع عشرة، والكشف كان يعرف سبعًا — الروسيّ والصينيّ
+     والمالايالاميّ تُكشف بكتابتها، واللاتينيّ بلغة الواجهة إن كانت إسبانيّة أو تركيّة أو إندونيسيّة أو فلبينيّة، وإلّا فالتركيّ
+     والإسبانيّ بحروفهما الخاصّة (كانت «la» تجعل الإسبانيّ فرنسيًّا و«ç» التركيّ فرنسيًّا، والإندونيسيّ والفلبينيّ إنجليزيًّا).
+     الفرنسيّة والإنجليزيّة على تخمينهما القديم كما كانتا. */
+  if(/[\u0D00-\u0D7F]/.test(t)) return 'ml';
+  if(/[\u0400-\u04FF]/.test(t)) return 'ru';
+  if(/[\u4E00-\u9FFF\u3400-\u4DBF]/.test(t)) return 'zh';
+  const uiLang = (typeof lang === 'string') ? lang : '';
+  if(['es', 'tr', 'id', 'fil'].indexOf(uiLang) !== -1) return uiLang;
+  if(/[ğışİĞŞ]/.test(t)) return 'tr';
+  if(/[ñÑ¿¡]/.test(t)) return 'es';
   const frenchHints = /[àâäæçéèêëîïôœùûüÿ]/i;
   const frenchWords = /\b(le|la|les|des|une|est|et|vous|nous|bonjour|merci|s'il|être|avec|pour|dans)\b/i;
   if(frenchHints.test(t) || frenchWords.test(t)) return 'fr';
@@ -957,7 +972,7 @@ function buildSpokenWordSpans(container, text){
         var __raw = codePre.textContent.replace(/^[ \t]*\n+/, ''); // v-md-blocks: لا أسطر فارغة أعلى صندوق الكود
         if(__raw){ var __hl = omranCodeHighlight(__raw); if(__hl) codePre.innerHTML = __hl; }
       }
-    }catch(e){ /* يبقى النصّ عاديًّا عند أيّ تعثّر */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-02-tts:975'); /* يبقى النصّ عاديًّا عند أيّ تعثّر */ }
     codePre = null; parent = container;
   };
   while((m = re.exec(text))){
@@ -1248,6 +1263,15 @@ function ttsSpeedSetting(){
 /* v-tts-account (المالك: «ابدا فيهم كلهم»): صوت القراءة كان يطلب /api/tts بلا حساب فيُعدّ على عنوان IP —
    المالك نفسه يُحدّ بستّين طلبًا في اليوم، ومن يتشاركون شبكة يتشاركونها. الحساب يُرسل الآن: المالك وVIP بلا حدّ،
    وكلّ حساب حصّته، والضيف على عنوانه كما كان. مها الأساسيّ وتأكيد تبويب الصوت يستعملان المساعدين نفسيهما. */
+/* v-reply-dialect (المالك ٢٩ أكتوبر «التطبيقات عندهم بلهجتهم العماني والإماراتي والسعودي»، ثمّ «سوّيها»): لهجة صوت الردود
+   العربيّ من «الصوت» في الإعدادات — إماراتيّ (الافتراضيّ، كما كان) وعمانيّ وسعوديّ وكويتيّ وقطريّ وبحرينيّ. قيمة تالفة = إماراتيّ. */
+const TTS_DIALECTS = ['ae', 'om', 'sa', 'kw', 'qa', 'bh'];
+function ttsDialectSetting(){
+  try{
+    const v = localStorage.getItem('aiapp_voice_dialect');
+    return TTS_DIALECTS.indexOf(v) >= 0 ? v : 'ae';
+  }catch(e){ return 'ae'; }
+}
 function ttsAuthToken(){
   try{ return (typeof authGet === 'function' ? authGet('aiapp_auth_token') : '') || ''; }catch(e){ return ''; }
 }
@@ -1263,7 +1287,7 @@ async function fetchCloudSpeech(text){
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     // v-om-voices-chat: src 'reply' = «استمع» على ردّ المحادثة؛ للمالك يقرأ الخادم بأصوات om (api/_lib/om-voices.js)
-    body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting() })
+    body: JSON.stringify({ voice: 'maha', src: 'reply', gender, lang: detected, token: ttsAuthToken(), guestId: ttsGuestId(), text: String(text).slice(0, 4000), speed: ttsSpeedSetting(), dialect: ttsDialectSetting() })
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
@@ -1315,19 +1339,6 @@ async function applyDialectForSpeech(text){
   // v248: ميزة اللهجة التجريبية أُزيلت نهائيًا — النص يُقرأ كما هو مباشرة
   // (الإعداد القديم المحفوظ في أجهزة المستخدمين كان يعلّق القراءة بطلب AI إضافي).
   return text;
-  const dialect = localStorage.getItem('aiapp_voice_dialect') || '';
-  if(!dialect) return text;
-  if(!/[\u0600-\u06FF]/.test(text)) return text; // only convert Arabic text
-  try{
-    const dialectName = dialect === 'gulf' ? 'اللهجة الخليجية' : 'اللهجة المصرية';
-    const prompt = `أعد صياغة النص التالي بالكامل باللغة العربية العامية (${dialectName}) بنفس المعنى تمامًا، بدون أي إضافات أو شرح، وأعطني النص المعاد صياغته فقط بدون مقدمات:\n\n${text}`;
-    const reply = await callAI([{ role: 'user', content: prompt }]);
-    const converted = (reply ? String(reply).trim() : '');
-    return converted || text;
-  }catch(e){
-    console.error('dialect conversion failed', e);
-    return text;
-  }
 }
 // v265: عنصر صوت واحد يُفتح (unlock) لحظة ضغطة المستخدم ثم يُعاد استخدامه —
 // آيفون وبعض المتصفحات تمنع تشغيل صوت أُنشئ بعد جلب من الشبكة خارج الضغطة.
@@ -1429,7 +1440,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
     if(base === undefined){ if(onEnd) onEnd(); return; }
     const sayText = base ? text.slice(base) : text;
     const detectedLang = detectSpeechLang(sayText);
-    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US' };
+    const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US', bn: 'bn-BD', ne: 'ne-NP', es: 'es-ES', tr: 'tr-TR', ru: 'ru-RU', zh: 'zh-CN', id: 'id-ID', fil: 'fil-PH', ml: 'ml-IN' }; // v-audit-voice (cli-voice-7): الأربع عشرة كخادم القراءة
     const utter = new SpeechSynthesisUtterance(sayText);
     utter.lang = langTags[detectedLang] || 'en-US';
     const v = pickVoice(detectedLang);
@@ -1488,6 +1499,14 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
           if(e && e.message === 'om-quota'){
             currentCloudToken = null; currentCloudAudio = null; clearWordHighlight();
             try{ if(typeof settingsToast === 'function') settingsToast(t('portraitLimitReached')); }catch(err){ __swallow(err, 'tts:om-quota-toast'); }
+            if(onEnd) onEnd();
+            return;
+          }
+          /* v-om-voices-piper: سيرفر الصوتين الخفيفين نائم (المجّانيّ ينام بعد ٤٨ ساعة ويصحى في دقيقة) ⇐ «حاول مرة ثانية»
+             المترجمة نفسها (mahaTryAgain) ويقف — لا مها ولا صوت الجهاز بدل أصواته. */
+          if(e && e.message === 'om-waking'){
+            currentCloudToken = null; currentCloudAudio = null; clearWordHighlight();
+            try{ if(typeof settingsToast === 'function') settingsToast(t('mahaTryAgain')); }catch(err){ __swallow(err, 'tts:om-waking-toast'); }
             if(onEnd) onEnd();
             return;
           }
@@ -1630,7 +1649,7 @@ function smartScrollBottom(wasNearBottom){
     /* v-scroll-free: الملاحقة يقرّرها omranChatFollow (app-40) من حركة المستخدم — لا فرق ١٦٠px يشدّ إصبعه أثناء السحب */
     const __F = window.omranChatFollow;
     const follow = (typeof wasNearBottom === 'boolean') ? wasNearBottom : (__F ? __F.follow() : chatIsNearBottom());
-    if(follow) messagesEl.scrollTop = messagesEl.scrollHeight;
+    if(follow){ messagesEl.scrollTop = messagesEl.scrollHeight; if(__F && __F.atBottom) __F.atBottom(); } // v-share-visible: في الأسفل الآن (followGrowth)
     syncChatJumpButton();
   }catch(e){ __swallow(e, "misc:app-02-tts#8"); }
 }

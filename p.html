@@ -50,7 +50,7 @@
   </div>
   <div id="frameWrap">
     <div id="state">جارِ تحميل المشروع...</div>
-    <iframe id="frame" sandbox="allow-scripts" style="display:none;"></iframe>
+    <iframe id="frame" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-presentation allow-pointer-lock" allow="autoplay; fullscreen" allowfullscreen style="display:none;"></iframe>
     <div id="chatWrap"><div id="chatInner"></div></div>
   </div>
   <div id="omMadeWith" dir="rtl"><a href="/?ref=badge" target="_top" rel="noopener"><span class="mw">صُنع بـ</span><b dir="ltr">OM Ai</b><span class="cta">سوّ موقعك ببلاش ←</span></a><button type="button" aria-label="إخفاء" title="إخفاء" onclick="this.parentNode.remove()">×</button></div>
@@ -113,6 +113,20 @@
   try { cachedTitle = (JSON.parse(localStorage.getItem('explore_title_cache') || '{}') || {})[id + '_' + lang] || ''; }
   catch(e){ cachedTitle = ''; /* ذاكرة تالفة أو تخزين محجوب — العنوان الأصليّ */ }
 
+  /* v-audit-pages (pages-static-1): الإطار كان sandbox="allow-scripts" وحده وبلا طبقة التخزين، فكلّ تطبيق مشترك يحفظ حالته
+     (localStorage يرمي SecurityError فيتوقّف سكربته) أو فيه نموذج (submit لا يُطلق) أو alert/confirm يعمل في المعاينة ويموت
+     هنا. الآن أعلام previewFrame نفسها (بلا allow-same-origin: الكود في أصل «null» لا يصل إلى توكن الموقع، وبلا
+     allow-top-navigation)، والطبقة نفسها OMRAN_PREVIEW_SHIM (js/app-05-ui.js) تُحقن بمحقن omranPreviewInject نفسه.
+     الاختبار يقارنهما حرفيًّا. وسم الافتتاح مقسوم كي لا يحسبه قارئ هذه الصفحة سكربتًا. */
+  const P_SHIM = '<scr' + 'ipt>(function(){var ok=true;try{window.localStorage.getItem("__p");}catch(e){ok=false;}if(ok)return;var mk=function(){var m={};return Object.create(Object.prototype,{getItem:{value:function(k){k=String(k);return Object.prototype.hasOwnProperty.call(m,k)?m[k]:null;}},setItem:{value:function(k,v){m[String(k)]=String(v);}},removeItem:{value:function(k){delete m[String(k)];}},clear:{value:function(){m={};}},key:{value:function(i){return Object.keys(m)[i]||null;}},length:{get:function(){return Object.keys(m).length;}}});};try{Object.defineProperty(window,"localStorage",{value:mk(),configurable:true});}catch(_){/*noop*/}try{Object.defineProperty(window,"sessionStorage",{value:mk(),configurable:true});}catch(_){/*noop*/}})();<\/script>';
+  const pInject = (code) => {
+    const s = String(code == null ? '' : code);
+    const m = s.match(/<head[^>]*>/i) || s.match(/<html[^>]*>/i) || s.match(/<!doctype[^>]*>/i);
+    if(!m) return P_SHIM + s;
+    const i = m.index + m[0].length;
+    return s.slice(0, i) + P_SHIM + s.slice(i);
+  };
+
   fetch('/api/share?id=' + encodeURIComponent(id))
     .then(r => r.ok ? r.json() : Promise.reject(r.status))
     .then(data => {
@@ -124,7 +138,7 @@
       document.title = (shownTitle || S.sharedProject) + ' — OM Ai';
       /* v-share-chat: كود → معاينة التطبيق كما كان؛ بلا كود → عرض المحادثة فقاعات. */
       if(data.code && String(data.code).trim()){
-        frame.srcdoc = data.code;
+        frame.srcdoc = pInject(data.code);
         frame.style.display = 'block';
       } else if(Array.isArray(data.messages) && data.messages.length){
         const inner = document.getElementById('chatInner');

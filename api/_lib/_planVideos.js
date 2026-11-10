@@ -77,7 +77,7 @@ async function trySpendPlanVideo(username, pts, opts) {
     try { await kvDecrBy(key, 1); } catch (e) { console.error('[plan-videos] rollback failed:', e && e.message); }
     return null;
   }
-  try { await kvExpire(key, PERIOD_TTL_SEC); } catch (e) { /* أفضل جهد — المفتاح بالفترة نفسها فلا يتداخل */ }
+  try { await kvExpire(key, PERIOD_TTL_SEC); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_planVideos:80'); /* أفضل جهد — المفتاح بالفترة نفسها فلا يتداخل */ }
   const list = await readTickets(username);
   list.push({ p: Math.floor(Number(pts) || 0), k: key });
   await writeTickets(username, list);

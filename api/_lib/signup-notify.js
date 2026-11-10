@@ -99,4 +99,4 @@ function notifyNewAccount(info) {
   }
 }
 
-module.exports = { notifyNewAccount, _seam };
+module.exports = { notifyNewAccount, platformWaitUntil, _seam }; // platformWaitUntil يشاركه chat-mail.js (v-chat-mail)

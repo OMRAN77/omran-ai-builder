@@ -242,6 +242,46 @@ try{
     const D = (typeof window.I18N === 'object' && window.I18N) || null;
     return D ? (D[lang] || D.ar || {}) : {};
   }
+  /* v-audit-boot (cli-boot-6): رسائل الدخول والتسجيل والاسترجاع وجوجل ورمز البريد كانت ثنائيّة isEn — عربيّة لاثنتي عشرة لغة.
+     الآن من قاموس لغة الواجهة (curT)، واحتياط مفتاح لم يصل بعد: العربيّ للعربيّة وحدها والإنجليزيّ لغيرها (الأرديّة لا ترى عربيًّا). */
+  function authMsg(k, en, ar, p){
+    let v = '';
+    try{ v = curT()[k]; }catch(e){ __swallow(e, 'auth:i18n'); }
+    if(!v){
+      let lg = 'ar';
+      try{ lg = document.documentElement.lang || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ __swallow(e, 'auth:i18n-lang'); }
+      v = lg === 'ar' ? ar : en;
+    }
+    v = String(v);
+    if(p) Object.keys(p).forEach(n => { v = v.split('{' + n + '}').join(String(p[n])); });
+    return v;
+  }
+  window.__authMsg = authMsg;
+
+  /* v-audit-auth (srv-auth-13): نصّ أخطاء auth من الخادم عربيّ أو إنجليزيّ فقط — الفرنسيّ والأورديّ وغيرهما كانوا يرون العربيّة.
+     الخادم يرسل code ثابتًا، وهنا يُستبدل النصّ بمفتاح القاموس بلغة الواجهة الـ١٤ قبل أيّ عرض؛ رمز بلا مفتاح = نصّ الخادم (احتياط).
+     mail_off مفتاحه الخاصّ لا «تعذّر الإرسال» العامّة: تشخيص غياب مفتاح البريد مقصود (auth.js) فلا يختفي خلف خلل عابر. */
+  const AX_AUTH_KEYS = {
+    bad_credentials: 'axAuthBadCredentials', name_taken: 'axAuthNameTaken', name_reserved: 'axAuthNameReserved', name_bad: 'axAuthNameBad',
+    name_at: 'nameNoAt', name_short: 'acctFillUsername', signup_short: 'axAuthSignupShort', session: 'axAuthSession', too_many: 'acctEmailTooMany',
+    not_found: 'axAuthNotFound', pw_short: 'axAuthPwShort', pw_wrong: 'axAuthPwWrong', avatar_bad: 'acctAvatarTooBig', bad_email: 'acctInvalidEmail',
+    mail_off: 'axAuthMailOff', mail_failed: 'axAuthMailFailed', no_email_phone: 'axAuthNoEmailPhone', no_recovery: 'axAuthNoRecovery',
+    forgot_sent: 'axAuthForgotSent', forgot_sent_to: 'axAuthForgotSentTo', reset_short: 'axAuthResetShort', reset_bad: 'axAuthResetBad',
+    banned: 'axAuthBanned', bad_otp: 'axAuthBadOtp', channel_off_wa: 'axAuthWaOff', channel_off_tg: 'axAuthTgOff',
+    email_unverified: 'authEmailUnverified', too_long: 'axAuthTooLong', server: 'acctGenericError',
+  };
+  function axAuthL10n(d){
+    try {
+      const k = d && typeof d === 'object' && AX_AUTH_KEYS[d.code];
+      const s = k && curT()[k];
+      if(s){
+        const txt = String(s).replace('{minutes}', String(Number(d.minutes) || 15)).replace('{n}', String(Number(d.min) || 8)).replace('{email}', String(d.masked || ''));
+        if(d.error) d.error = txt; else if(d.message) d.message = txt;
+      }
+    } catch(e){ __swallow(e, 'auth:l10n'); }
+    return d;
+  }
+  window.axAuthL10n = axAuthL10n;
 
   function setMode(m){
     mode = m;
@@ -451,13 +491,6 @@ try{
   }
   function memoryTopicsBlock(){
     return ''; // 🚫 v368: أوقفنا حقن مواضيع المحادثات السابقة نهائيًا — كانت تسبب تداخل المواضيع. الذاكرة الشخصية (الاسم/التفضيلات) تبقى.
-    if(!userTopics || !userTopics.length) return '';
-    const lines = userTopics.slice(0, 10).map(tp => {
-      let dt = '';
-      try{ dt = new Date(tp.at || 0).toLocaleDateString('ar-AE', { day: 'numeric', month: 'short' }); }catch(e){ __swallow(e, "misc:app-01-boot-auth#7"); }
-      return '- [' + dt + '] ' + (tp.title || '') + ': ' + (tp.snip || '');
-    }).join('\n');
-    return '\n\n🗂️ مواضيع محادثات المستخدم السابقة (مرجع فقط): إذا أشار المستخدم بنفسه لعمل سابق (مثل «كمل على اللي سويناه أمس» أو «وين تصميم الدعاية») ولا يوجد في المحادثة الحالية ما يفسره، افهم قصده من هذه القائمة وكمّل عليه بشكل طبيعي. ممنوع منعًا باتًا فتح أو ذكر أي موضوع منها من عندك بدون إشارة صريحة من المستخدم:\n' + lines;
   }
   function memorySystemMsg(){
     if(!userMemory && !(userTopics && userTopics.length)) return null;
@@ -500,6 +533,27 @@ try{
     }
   }
 
+  /* v-audit-boot (srv-maha-6): الخروج كان يُبقي اشتراك الدفع — تذكيرات الحساب الخارج (وتنبيهات المالك) تصل من يستعمل المتصفّح بعده.
+     الآن يُلغى اشتراك هذا المتصفّح (عنوانه يموت عند خدمة الدفع، فالاشتراك الجديد لمن بعده بعنوان آخر)، ويُطلب حذفه من الحساب
+     برمزه قبل مسحه — بعنوانه، فلا يُحذف اشتراك جهاز آخر للحساب نفسه. بلا رمز (حساب سابق رُفضت جلسته) الإلغاء وحده. لا يُنتظر. */
+  function pushDropDevice(token){
+    try{
+      const sw = navigator.serviceWorker;
+      if(!sw || typeof sw.getRegistration !== 'function') return;
+      sw.getRegistration().then(reg => (reg && reg.pushManager) ? reg.pushManager.getSubscription() : null).then(sub => {
+        if(!sub) return;
+        if(token){
+          fetch('/api/push-subscribe?endpoint=' + encodeURIComponent(sub.endpoint || ''), {
+            method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            body: JSON.stringify({ endpoint: sub.endpoint || '' }),
+          }).catch(e => __swallow(e, 'auth:push-delete'));
+        }
+        return sub.unsubscribe();
+      }).catch(e => __swallow(e, 'auth:push-drop'));
+    }catch(e){ __swallow(e, 'auth:push-drop'); }
+  }
+  window.__pushDropDevice = pushDropDevice;
+
   // Single header button next to ⚙️ Settings that doubles as the login/logout
   // entry point: shows "🔑 Login" for guests (opens the auth overlay) and
   // "🚪 Logout" once signed in (clears the session).
@@ -512,9 +566,12 @@ try{
       if(ok === false) return;
     }
     emailConfirmAlert(null); // v-unverified-email: تنبيه الحساب لا يبقى بعد خروجه
+    pushDropDevice(authGet('aiapp_auth_token')); // v-audit-boot (srv-maha-6): الرمز قبل مسحه
     authRemove('aiapp_auth_token');
     authRemove('aiapp_username');
     localStorage.removeItem('aiapp_avatar');
+    // v-sec-sw-token: امسح تخزين الكاش عند الخروج — لئلّا يبقى تنقّلٌ قديم يحمل رمزًا في الرابط.
+    try { if(window.caches && caches.keys) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {}); } catch(e){ __swallow(e, 'auth:logout-cache'); }
     setAuthToggleUI(false);
     const badge = $('#authUserBadge');
     if(badge) badge.style.display = 'none';
@@ -612,10 +669,64 @@ try{
       box.textContent = lines.join('\n');
       window.__adminUsersCache = data.manageableUsers || [];
       renderAdminUserTable();
+      try{ loadKnowledgeFacts(); }catch(e){ __swallow(e, 'owner:knowledge-load'); }
     }catch(e){
       box.textContent = '❌ ' + ownT('ownerLoadFailed', { e: ownErr(e) });
     }
   };
+
+  /* v-sec-knowledge-approve: حقائق «المعرفة الجماعيّة» لم تعد تُحقن في تعليمات المستخدمين إلّا بموافقة
+     المالك. هذه اللوحة تعرض المنتظِرة والمعتمَدة مع أزرار إيموجي (✅ موافقة · 🗑️ رفض) — بلا نصّ واجهة
+     مترجَم جديد: الرموز إيموجي ونصّ الحقيقة بيانات تُهرَّب. النداء محميّ بـisOwner في الخادم بالرمز. */
+  function knEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function knJs(s){ return String(s).replace(/\\/g,String.fromCharCode(92,92)).replace(/'/g,String.fromCharCode(92,39)).replace(/[\u2028\u2029]/g,' '); }
+  window.loadKnowledgeFacts = async function loadKnowledgeFacts(){
+    const box = document.getElementById('knowledgeFactsBox');
+    if(!box) return;
+    const token = authGet('aiapp_auth_token');
+    box.innerHTML = '<div style="opacity:.6;font-size:12px;padding:6px">🧠 …</div>';
+    try{
+      const res = await fetch('/api/system?action=knowledge&op=list', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token }),
+      });
+      const d = await res.json();
+      if(!res.ok){ box.innerHTML = '<div style="font-size:12px;opacity:.7;padding:6px">❌ ' + knEsc(d.error || '') + '</div>'; return; }
+      const pending = Array.isArray(d.pending) ? d.pending : [];
+      const approved = Array.isArray(d.approved) ? d.approved : [];
+      const row = (f) => {
+        const safe = knEsc(f.t);
+        const kJs = knJs(f.k);
+        return '<div style="display:flex;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border,#333)">'
+          + '<bdi style="flex:1;min-width:0;overflow-wrap:anywhere;font-size:12.5px">' + safe + '</bdi>'
+          + (f.approved
+              ? '<button type="button" title="🗑️" onclick="knowledgeReject(\'' + kJs + '\')" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:3px 8px;cursor:pointer">🗑️</button>'
+              : '<button type="button" title="✅" onclick="knowledgeApprove(\'' + kJs + '\')" style="background:none;border:1px solid #4ade80;color:#4ade80;border-radius:6px;padding:3px 8px;cursor:pointer">✅</button>'
+                + '<button type="button" title="🗑️" onclick="knowledgeReject(\'' + kJs + '\')" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:3px 8px;cursor:pointer">🗑️</button>')
+          + '</div>';
+      };
+      let html = '<div style="font-size:13px;font-weight:700;opacity:.8;margin-bottom:6px">🧠 ' + knEsc(ownT('ownerKnowledgeTitle')) + '</div>';
+      html += '<div style="background:var(--panel2);border-radius:var(--r-2);padding:6px 10px;max-height:260px;overflow-y:auto">';
+      if(!pending.length && !approved.length){
+        html += '<div style="opacity:.6;font-size:12px;padding:6px">—</div>';
+      } else {
+        if(pending.length){ html += '<div style="font-size:11px;opacity:.6;margin:4px 0">⏳ ' + pending.length + '</div>' + pending.map(row).join(''); }
+        if(approved.length){ html += '<div style="font-size:11px;opacity:.6;margin:8px 0 4px">✅ ' + approved.length + '</div>' + approved.map(row).join(''); }
+      }
+      html += '</div>';
+      box.innerHTML = html;
+    }catch(e){ box.innerHTML = '<div style="font-size:12px;opacity:.7;padding:6px">❌ ' + knEsc(ownErr(e)) + '</div>'; }
+  };
+  async function knowledgeAct(op, k){
+    const token = authGet('aiapp_auth_token');
+    try{
+      await fetch('/api/system?action=knowledge&op=' + encodeURIComponent(op), {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token, k }),
+      });
+    }catch(e){ __swallow(e, 'owner:knowledge-act'); }
+    loadKnowledgeFacts();
+  }
+  window.knowledgeApprove = (k) => knowledgeAct('approve', k);
+  window.knowledgeReject = (k) => knowledgeAct('reject', k);
   function renderAdminUserTable(){
     const wrap = document.getElementById('adminUsersTable');
     if(!wrap) return;
@@ -649,6 +760,7 @@ try{
         + '<span style="min-width:0;overflow-wrap:anywhere;font-size:11px;opacity:.6">' + (u.email ? '<bdi dir="ltr">' + escAdm(u.email) + '</bdi>' : escAdm(ownT('ownerNoEmail'))) + '</span>'
         + '</span>'
         + '<span style="display:flex;gap:6px;flex:none">'
+        + '<button type="button" onclick="adminResetLink(\'' + safeName + '\')" title="' + escAdm(ownT('ownerResetTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">🔑</button>'
         + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerMsgTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
         + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + escAdm(ownT(u.banned ? 'ownerUnbanTitle' : 'ownerBanTitle')) + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
         + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="' + escAdm(ownT('ownerDeleteTitle')) + '" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
@@ -717,6 +829,120 @@ try{
         + '\n' + ownT('ownerDiagStatus', { s: ownLtr('HTTP ' + (data.status || '?')) })
         + '\n' + (data.detail || '');
     }catch(e){ if(box) box.textContent = '❌ ' + ownT('ownerErrorLine', { e: ownErr(e) }); }
+  };
+  /* v-owner-reset-link: رابط استرجاع يسلّمه المالك بيده لصاحب الحساب (واتساب…) حين لا يصله إيميل الاسترجاع.
+     التأكيد يذكّر بالتحقّق من صاحب الحساب أوّلًا، والرابط في prompt لينسخه، ويُنسخ تلقائيًّا إن سمح المتصفّح. */
+  /* v-owner-reset-records (المراجعة المستقلّة): من خانة البحث (opts.lookup) يُسأل الخادم أوّلًا بفحص لا يكتب (dryRun)، فيرى المالك اسم
+     الحساب الذي وُجد قبل أن يؤكّد — كان التأكيد على البريد المكتوب، ثمّ يُكتب الرمز لأيّ حساب اختاره البحث. بعد التأكيد يُطلب الرابط بذلك
+     الاسم نفسه فلا يُعاد البحث. زرّ 🔑 في صفّ الجدول (اسم معروف) كما كان: تأكيد ثمّ رابط. */
+  /* v-owner-reset-records (مراجعة الواجهة): رفض الخادم بنصّ مترجم — الجلسة المنتهية «غير مصرّح»، والسجلّ المقفل برسالته، والباقي «فشل» ورقم الردّ */
+  const resetFail = (res, data) => {
+    if(data && data.error === 'forbidden') return ownT('ownerUnauthorized');
+    if(data && data.error === 'sealed_record' && data.message) return String(data.message);
+    return ownT('ownerFailed') + ' (HTTP ' + (res && res.status) + ')';
+  };
+  window.adminResetLink = async function(username, opts){
+    const lookup = !!(opts && opts.lookup);
+    if(!lookup && !confirm(ownT('ownerResetConfirm', { u: ownIso(username) }))) return;
+    try{
+      const token = authGet('aiapp_auth_token');
+      const post = async (body) => {
+        const r = await fetch('/api/admin-actions', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(Object.assign({ token, action: 'reset-link' }, body)),
+        });
+        return { res: r, data: await r.json().catch(() => ({})) }; /* صفحة خطأ نصّيّة (٥٠٤) لا ترمي خطأ JSON في وجه المالك */
+      };
+      let { res, data } = await post(lookup ? { targetUsername: username, dryRun: true } : { targetUsername: username, exact: true });
+      // v-owner-reset-find: حساب Google لا كلمة مرور له، والغائب برسالة مترجمة لا «user not found» خامًا
+      if(data && data.google){ alert(ownT('ownerResetGoogle', { u: ownIso(data.username || username) })); return; }
+      /* v-owner-reset-records: ما لا يثبت البريد يُعرض أسماءً للمالك لا رابطًا؛ والبحث الكامل بلا أثر يقول أين بحث ومن يُسأل، وغير المكتمل
+         (عطل مؤقّت أو مهلة) يقول ذلك بدل «دوّرت في كلّ شيء»؛ وPayPal المقفل يقول ما يفعّله المالك */
+      const names = (data && Array.isArray(data.candidates)) ? data.candidates.map(ownIso).join(' · ') : '';
+      const ppOff = (data && data.paypal && data.paypal.denied) ? '\n' + ownT('ownerResetPaypalOff') : '';
+      if(res.status === 404){
+        if(names){ alert('⚠️ ' + ownT(String(username).includes('@') ? 'ownerResetMaybe' : 'ownerResetNameMaybe', { list: names }) + ppOff); return; }
+        const where = (data && data.records) ? '\n' + ownT(data.complete === false ? 'ownerResetPartial' : 'ownerResetAsk') : '';
+        alert('❌ ' + ownT('ownerResetNotFound') + where + ppOff);
+        return;
+      }
+      // v-owner-reset-stripe: بريد دفع منه أكثر من حساب في Stripe — لا رابط تلقائيّ، المالك يسأل صاحبه عن اسمه ويكتبه في الخانة
+      if(res.status === 409 && names){ alert('⚠️ ' + ownT(data.kind === 'record' ? 'ownerResetManyRec' : 'ownerResetMany', { list: names })); return; }
+      if(lookup){
+        if(!res.ok || !data.ok || !data.username){ alert('❌ ' + resetFail(res, data)); return; }
+        const found = String(data.username);
+        const label = found === String(username).trim().toLowerCase() ? ownIso(found) : ownIso(found) + ' ← ' + ownIso(username);
+        if(!confirm(ownT('ownerResetConfirm', { u: label }))) return;
+        ({ res, data } = await post({ targetUsername: found, exact: true }));
+        if(data && data.google){ alert(ownT('ownerResetGoogle', { u: ownIso(data.username || found) })); return; }
+      }
+      if(!res.ok || !data.ok || !data.link){ alert('❌ ' + resetFail(res, data)); return; }
+      try{ if(navigator.clipboard) navigator.clipboard.writeText(data.link).catch(e => __swallow(e, 'reset-link clipboard')); }catch(e){ __swallow(e, 'reset-link clipboard'); }
+      prompt(ownT('ownerResetLink', { u: ownIso(data.username || username), m: data.minutes || 30 }), data.link);
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
+  };
+  /* v-owner-reset-find: خانة «إيميل أو اسم مستخدم» فوق الجدول — للحساب الذي لا صفّ له (الجدول أحدث ٦٠ تسجيلًا). */
+  window.adminResetLinkFind = async function(){
+    const el = document.getElementById('adminResetInput');
+    /* v-owner-reset-records: علامات الاتّجاه المخفيّة (اسم منسوخ من تنبيه الأسماء أو من محادثة عربيّة) تُشال قبل الإرسال */
+    const v = el ? String(el.value || '').replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '').trim() : '';
+    if(!v){ if(el) el.focus(); return; }
+    /* v-owner-reset-records: البحث قد يأخذ ثواني (Stripe ثمّ كلّ الحسابات ثمّ PayPal) — الزرّ ينشغل فلا يُضغط مرّتين ولا يبدو معلّقًا */
+    const btn = el && el.parentNode ? el.parentNode.querySelector('button') : null; /* زرّ 🔑 جار الخانة في الصفّ نفسه */
+    if(btn){ btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.style.opacity = '.55'; }
+    try{ return await window.adminResetLink(v, { lookup: true }); }
+    finally{ if(btn){ btn.disabled = false; btn.removeAttribute('aria-busy'); btn.style.opacity = ''; } }
+  };
+  /* v-owner-link-sub: ربط اشتراك Stripe دُفع بلا دخول بحساب صاحبه. فحصٌ أوّلًا (بلا confirm — لا يكتب الخادم شيئًا) يعرض للمالك
+     الحساب وإيميله وإيميل Stripe والدفعات والنقاط ويحذّر إن اختلف الإيميلان، ثمّ التنفيذ بـconfirm:true بعد موافقته وحدها. */
+  let linkSubBusy = false; // v-owner-link-sub (المراجعة): ضغطتان لا تفتحان فحصين وتأكيدين وتنفيذين
+  window.adminLinkSubscription = async function(){
+    if(linkSubBusy) return;
+    const uEl = document.getElementById('adminLinkUserInput'), sEl = document.getElementById('adminLinkSubInput');
+    const who = uEl ? String(uEl.value || '').trim() : '';
+    const sub = sEl ? String(sEl.value || '').trim() : '';
+    if(!who){ if(uEl) uEl.focus(); return; }
+    if(!/^sub_[A-Za-z0-9]{6,}$/.test(sub)){ alert(ownT('ownerLinkSubBadId')); if(sEl) sEl.focus(); return; }
+    const call = async (expect) => {
+      const body = { token: authGet('aiapp_auth_token'), action: 'link-sub', targetUsername: who, subscriptionId: sub, confirm: expect !== undefined };
+      if(expect !== undefined) body.expect = expect; // التنفيذ على الحساب الذي عرضه الفحص نفسه
+      const res = await fetch('/api/admin-actions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      let data = {};
+      try{ data = (await res.json()) || {}; }catch(e){ __swallow(e, 'link-sub json'); }
+      return { res, data };
+    };
+    const why = (d) => [d.detail || d.error || ownT('ownerFailed'), d.code, d.at, d.plan].filter(Boolean).map(ownLtr).join(' · '); // رمز العطب للتشخيص
+    const failed = (r) => {
+      const d = r.data;
+      if(d.error === 'linked_other'){ alert(ownT('ownerLinkSubTaken', { u: ownIso(d.username || '?') })); return true; }
+      if(r.res.status === 404 && d.error === 'subscription not found'){ alert('❌ ' + ownT('ownerLinkSubNoSub')); return true; }
+      if(r.res.status === 404){ alert('❌ ' + ownT('ownerResetNotFound')); return true; }
+      if(d.error === 'partial'){ alert(ownT('ownerLinkSubDone', { u: ownIso(d.username), p: d.pointsAdded || 0, n: d.granted || 0 }) + '\n❌ ' + why(d)); return true; }
+      if(!r.res.ok || !d.ok){ alert('❌ ' + why(d)); return true; }
+      return false;
+    };
+    linkSubBusy = true;
+    try{
+      const a = await call();
+      if(failed(a)) return;
+      const d = a.data;
+      const pays = Array.isArray(d.payments) ? d.payments : [];
+      const skipped = pays.filter(x => x && ['refunded', 'blocked', 'unverified', 'review', 'old'].includes(x.state)).length;
+      if(!(d.toGrant > 0) && d.linkedTo && d.linkedTo === d.username){ alert(skipped ? ownT('ownerLinkSubSkipped', { n: skipped }) : ownT('ownerLinkSubNothing')); return; } // مربوط ولا جديد: لا تأكيد
+      const ae = String(d.accountEmail || ''), se = String(d.customerEmail || '');
+      const lines = [];
+      if(d.previous) lines.push(ownT('ownerLinkSubPrev', { u: ownIso(d.previous) }));
+      if(d.accountEmailVerified === false) lines.push(ownT('ownerLinkSubUnverified'));
+      if(ae && se && ae.toLowerCase() !== se.toLowerCase()) lines.push(ownT('ownerLinkSubMismatch'));
+      lines.push(ownT('ownerLinkSubConfirm', { s: ownLtr(d.subscription), plan: ownLtr(d.planLabel || d.plan || ''), u: ownIso(d.username), ae: ae ? ownLtr(ae) : '—', se: se ? ownLtr(se) : '—', n: d.toGrant || 0, p: d.points || 0 }));
+      if(d.keepPlan && d.toGrant > 0) lines.push(ownT('ownerLinkSubKeepPlan', { plan: ownLtr(d.accountPlan || '') }));
+      if(skipped) lines.push(ownT('ownerLinkSubSkipped', { n: skipped }));
+      if(!confirm(lines.join('\n'))) return;
+      const b = await call(d.username);
+      if(failed(b)) return;
+      alert(ownT('ownerLinkSubDone', { u: ownIso(b.data.username), p: b.data.pointsAdded || 0, n: b.data.granted || 0 }));
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) }));
+    }finally{ linkSubBusy = false; }
   };
   window.adminMessageUser = async function(username){
     const text = prompt(ownT('ownerMsgPrompt', { u: ownIso(username) }));
@@ -847,7 +1073,12 @@ try{
   function setAuthToggleUI(loggedIn){
     const t = curT();
     // v214: قبل الدخول = زر «دخول» في الهيدر فقط؛ بعد الدخول = الاسم داخل قائمة ⋮ + خروج آخر خانة
-    if(authToggleBtn) authToggleBtn.style.display = 'none';
+    if(authToggleBtn){
+      authToggleBtn.style.display = 'none';
+      /* v-audit-boot (cli-boot-3): الزرّ المخفيّ بابٌ ينادي .click() عليه «سجّل مجانًا» في شارة الردّ وتقييم الكود ومراجعته و«اربط Gmail»
+         للضيف — ولم يكن له معالج، فتُغلق النافذة ولا يُفتح شيء. يفتح شاشة إنشاء الحساب كـrequireLogin('guestLimit'). */
+      authToggleBtn.onclick = () => { setMode('signup'); showOverlay(); };
+    }
     const headerLoginBtn = $('#btnHeaderLogin');
     if(headerLoginBtn){
       /* v-auth-optional-2 (أمر عمران ٢٩ أغسطس): زر «دخول» يُحذف من الهيدر
@@ -941,14 +1172,14 @@ try{
       /* v-secret-vault: خزنة الأسرار للمالك وحده — بجانب لوحة التحكّم */
       /* v-media-purge (أمر المالك ٤ أكتوبر: «فيه زر في الحساب تنظيف التطبيق… فعل هذا»): زرّ «تنظيف التطبيق» نفسه
          عند المالك ينظّف روابط المشاركة القديمة من قاعدة البيانات (appFullCleanup)، فنصّه يقول ذلك. */
-      try{ if(isAdminUI){ const __h = $('#acctCleanupHintEl'), __b = $('#acctCleanupBtnEl'); if(__h){ __h.removeAttribute('data-i18n'); __h.textContent = 'يحذف صور وملفّات المشاركة الأقدم من ٧ أيّام من قاعدة البيانات لتحرير المساحة. الحسابات والمحادثات لا تُمسّ.'; } if(__b){ __b.removeAttribute('data-i18n'); __b.textContent = 'نظّف الآن'; } } }catch(e){ /* guard-ok — نصّ المالك تجميليّ */ }
-      try{ const __vw = $('#vaultSectionWrap'); if(__vw){ __vw.style.display = isAdminUI ? '' : 'none'; if(isAdminUI && window.vaultRefresh) window.vaultRefresh(); } }catch(e){ /* guard-ok — قسم اختياريّ لا يُسقط الإعدادات */ }
+      try{ if(isAdminUI){ const __h = $('#acctCleanupHintEl'), __b = $('#acctCleanupBtnEl'); if(__h){ __h.removeAttribute('data-i18n'); __h.textContent = 'يحذف صور وملفّات المشاركة الأقدم من ٧ أيّام من قاعدة البيانات لتحرير المساحة. الحسابات والمحادثات لا تُمسّ.'; } if(__b){ __b.removeAttribute('data-i18n'); __b.textContent = 'نظّف الآن'; } } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1175'); /* guard-ok — نصّ المالك تجميليّ */ }
+      try{ const __vw = $('#vaultSectionWrap'); if(__vw){ __vw.style.display = isAdminUI ? '' : 'none'; if(isAdminUI && window.vaultRefresh) window.vaultRefresh(); } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1176'); /* guard-ok — قسم اختياريّ لا يُسقط الإعدادات */ }
       // القائمة تُملأ عند كشف القسم لا عند فتحه: زرّ «تحديث» موجود
       // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
       if(isAdminUI && window.loadVipList) window.loadVipList();
     }
     /* v-owner-page: صفّ «صفحة المالك» في قائمة الإعدادات يتبع الدخول والخروج */
-    try{ if(typeof renderSettingsNavList === 'function') renderSettingsNavList(); }catch(e){ /* guard-ok — القائمة تُبنى أيضًا عند فتح الإعدادات */ }
+    try{ if(typeof renderSettingsNavList === 'function') renderSettingsNavList(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1182'); /* guard-ok — القائمة تُبنى أيضًا عند فتح الإعدادات */ }
     // v-maha-dock: مها راسية بجانب المايك — الزر العائم لا يُظهر بعد الآن.
   }
   // Deferred (not called synchronously): I18N is declared further down in
@@ -977,7 +1208,7 @@ try{
         const cleanUrl = window.location.origin + window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
       }
-    } catch(e){ /* ignore */ }
+    } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1211'); /* ignore */ }
   })();
 
   // v-google-app-fail: عرض سبب فشل جوجل — من رابط العودة (?gerror) أو من جسر
@@ -985,21 +1216,15 @@ try{
   // فيبقى الزائر ضيفًا والرسالة في صندوق مخفيّ، فإذا فتح شاشة الدخول بنفسه
   // مسحها setMode — شاشة دخول فارغة بلا سبب (فيديو المالك ٢ أكتوبر).
   function showGoogleAuthError(gerror){
-    const isEn = (localStorage.getItem('aiapp_lang') === 'en');
     const box = $('#authError');
-    const M = {
-      google_not_configured: ['إعداد جوجل ناقص في الخادم — GOOGLE_CLIENT_ID أو GOOGLE_CLIENT_SECRET غير مضبوط', 'Google is not configured on the server (missing client id/secret)'],
-      token_exchange_failed: ['رفضت جوجل إتمام الدخول — غالبًا سرّ العميل في الخادم لا يطابق ما في Google Console', 'Google rejected the sign-in — the server\'s client secret likely does not match Google Console'],
-      missing_code:          ['عاد المتصفّح من جوجل بلا رمز — أعد المحاولة', 'Returned from Google without a code — try again'],
-      profile_fetch_failed:  ['تعذّر جلب ملفّك من جوجل — أعد المحاولة', 'Could not fetch your Google profile — try again'],
-      email_not_verified:    ['بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة', 'Your Google email is not verified'],
-      access_denied:         ['ألغيتَ الدخول من شاشة جوجل', 'You cancelled the Google sign-in'],
-      server_error:          ['خطأ في الخادم أثناء إتمام الدخول — أعد المحاولة', 'Server error while completing sign-in'],
-    };
-    const pair = M[gerror];
-    const text = pair ? (isEn ? pair[1] : pair[0])
-      : (isEn ? 'Google sign-in failed (' + gerror + ')' : 'تعذر تسجيل الدخول بجوجل (' + gerror + ')');
-    try { setMode('login'); showOverlay(); } catch(e){ /* فتح الشاشة تيسير؛ الرسالة محفوظة في الملاحظة على كلّ حال */ }
+    /* v-audit-boot (cli-boot-6): بلغة الواجهة الـ١٤، وبلا أسماء إعداد الخادم وأسراره (كانت تُعرض للمستخدم). ما يقدر المستخدم عليه
+       (ألغى، بريد غير مفعَّل) بنصّه؛ والباقي «تعذّر… أعد المحاولة» برمز السبب معزول الاتّجاه للتشخيص — والسبب في ملاحظة الجلسة (?diag=1). */
+    const code = String(gerror || '');
+    /* v-google-retry: access_denied = «إلغاء» في شاشة جوجل أو رفضها الحساب (وضع Testing) — لا نتّهم المستخدم بالإلغاء */
+    const text = code === 'access_denied' ? authMsg('axBootGoogleCancelled', 'Google sign-in was cancelled or not allowed — please try again', 'أُلغي الدخول من شاشة جوجل أو لم تسمح به — أعد المحاولة')
+      : code === 'email_not_verified' ? authMsg('axBootGoogleUnverified', 'Your Google account email is not verified — verify it, then try again', 'بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة')
+      : authMsg('axBootGoogleFailed', "Couldn't complete the Google sign-in ({code}) — please try again", 'تعذّر إكمال الدخول بجوجل ({code}) — أعد المحاولة', { code: '\u2066' + code + '\u2069' });
+    try { setMode('login'); showOverlay(); } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1227'); /* فتح الشاشة تيسير؛ الرسالة محفوظة في الملاحظة على كلّ حال */ }
     if(box){ box.style.color = ''; box.textContent = text; }
     // setMode('login') عند الإقلاع يمسح errBox — نعيد الكتابة بعده،
     // فالرسالة أهمّ من نظافة الصندوق: بدونها يعود «حاول مرة أخرى» الأعمى.
@@ -1008,6 +1233,7 @@ try{
 
   // If the page was reached via the Google login redirect
   // (?gtoken=...&guser=...&gavatar=...), finish the login immediately.
+  let __oauthPick = null; // v-audit-auth (srv-auth-10): {state, claim} من رابط العودة — يستلم بهما جسر oauth-claim أدناه
   (function checkGoogleAuthUrl(){
     try {
       const params = new URLSearchParams(window.location.search);
@@ -1015,22 +1241,38 @@ try{
       const guser = params.get('guser');
       const gavatar = params.get('gavatar');
       const gerror = params.get('gerror');
+      const gclaim = params.get('gclaim');
       const cleanUrl = window.location.origin + window.location.pathname;
       // نرفض أي جلسة لم يبدأها هذا التبويب. بلا هذا الفحص يستطيع مهاجم أن
       // يدفع متصفحك لإكمال تسجيل دخول بحسابه هو، فتعمل داخل حسابه دون أن تدري.
-      if(gtoken && guser){
+      // v-audit-auth (srv-auth-10): الويب يعود الآن بـgstate ورمز استلام لمرّة واحدة (gclaim) بدل الرمز نفسه — الفحص نفسه على gstate.
+      if((gtoken && guser) || gclaim){
         let expected = null;
         try { expected = sessionStorage.getItem('aiapp_oauth_state'); } catch(e){ console.warn('[oauth] no sessionStorage', e); }
-        const returned = params.get('state');
-        if(expected && returned !== expected){
-          console.error('[oauth] state mismatch — login refused');
+        const returned = gclaim ? params.get('gstate') : params.get('state');
+        // v-sec-oauth-state: نرفض الآن أيّ gtoken لا يحمل state يطابق ما بدأه هذا التبويب —
+        // لا «نقبل عند الغياب» كما كان. بلا هذا الشرط، رابط فيه gtoken المهاجم يُقبل في أيّ تبويب
+        // لم يبدأ دخول جوجل، فيُدخل الضحية حسابَ المهاجم وترتفع محادثاتها إليه. مسارات الأغلفة
+        // (آيفون/أندرويد) لا تمرّ من هنا أصلًا — تكمل عبر oauth-claim بالـstate المحفوظ. وإن تعذّر
+        // sessionStorage (تصفّح خاصّ) فلا دخول آمنًا بجوجل هنا، والرسالة تطلب المحاولة من جديد.
+        if(!expected || !returned || returned !== expected){
+          console.error('[oauth] missing-or-mismatched state — login refused');
           try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#10"); }
           noteSession('جوجل-تحقّق-أمني'); // اللوحة كانت عمياء عن هذا الخروج بالذات
           window.history.replaceState({}, document.title, cleanUrl);
-          alert('تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.');
+          /* v-audit-boot (cli-boot-6) + v-audit-chatcli (x-i18n-5): بلغة الواجهة — هذا الإقلاع قبل القاموس (app-03/04)، فيُؤجَّل التنبيه حتّى يجهز ملفّ اللغة */
+          const __stAlert = () => alert(authMsg('axBootSecurityCheck', "Couldn't complete sign-in (security check). Please try again.", 'تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.'));
+          setTimeout(() => { try{ window.loadLangFile(document.documentElement.lang || localStorage.getItem('aiapp_lang') || 'ar').then(__stAlert, __stAlert); }catch(e){ __stAlert(); } }, 0);
           return;
         }
         try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#11"); }
+        if(gclaim){
+          // الجسر يستلم الإيداع بـ{state, claim} فور تشغيله — لا رمز في الرابط ولا في سجلّ الزيارات
+          __oauthPick = { state: returned, claim: gclaim };
+          noteSession('جوجل-عاد');
+          window.history.replaceState({}, document.title, cleanUrl);
+          return;
+        }
         authSet('aiapp_auth_token', gtoken);
         authSet('aiapp_username', guser);
         if(gavatar){ localStorage.setItem('aiapp_avatar', gavatar); }
@@ -1050,7 +1292,7 @@ try{
         window.history.replaceState({}, document.title, cleanUrl);
         setTimeout(() => showGoogleAuthError(gerror), 700);
       }
-    } catch(e){ /* ignore */ }
+    } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1295'); /* ignore */ }
   })();
 
   /* v-google-login-help (لقطة المالك ٦ أكتوبر: بريد Gmail + كلمة مرور ← «اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة»):
@@ -1116,8 +1358,8 @@ try{
       // كاباسيتور نفسه يسجل جسر «bridge» في كل صفحة ويحقن window.Capacitor —
       // إشارتان مضمونتان لا توجدان في سفاري ولا PWA ولا أندرويد.
       let iosWrap = false;
-      try { iosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ /* guard-ok */ }
-      try { if(!iosWrap){ const mh = window.webkit && window.webkit.messageHandlers; iosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ /* guard-ok */ }
+      try { iosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1361'); /* guard-ok */ }
+      try { if(!iosWrap){ const mh = window.webkit && window.webkit.messageHandlers; iosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1362'); /* guard-ok */ }
       if (iosWrap) {
         // v-login-done: &app=1 يعلّم الخادم أن هذا مسار الغلاف — بعد نجاح
         // الدخول يعرض سفاري صفحة «✅ ارجع للتطبيق» بدل نسخة كاملة من الموقع.
@@ -1126,9 +1368,7 @@ try{
           const bx = $('#authError');
           if (bx) {
             bx.style.color = 'var(--accent, #7c6cff)';
-            bx.textContent = (localStorage.getItem('aiapp_lang') === 'en')
-              ? 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.'
-              : 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.';
+            bx.textContent = authMsg('axBootGoogleInBrowser', 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.', 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.'); // v-audit-boot (cli-boot-6)
           }
         } catch(e){ __swallow(e, 'auth:google-hint'); }
         return;
@@ -1137,15 +1377,13 @@ try{
          تبويب متصفّح منفصل (Custom Tab)، والعودة كانت تفتح الموقع كاملًا هناك فيحسب المستخدم أنّه دخل وهو خارج التطبيق.
          &app=1 = صفحة «✅ ارجع للتطبيق» هناك، وجسر oauth-claim أعلاه يكمل الدخول هنا. Chrome (TWA) والمتصفّح كما كانا. */
       let androidWrap = false;
-      try { const ua = navigator.userAgent || ''; androidWrap = /Android/i.test(ua) && /;\s*wv\)/.test(ua); } catch(e){ /* guard-ok — كشف تيسير، وغيابه = المسار العاديّ */ }
+      try { const ua = navigator.userAgent || ''; androidWrap = /Android/i.test(ua) && /;\s*wv\)/.test(ua); } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1380'); /* guard-ok — كشف تيسير، وغيابه = المسار العاديّ */ }
       if (androidWrap) {
         try {
           const bx = $('#authError');
           if (bx) {
             bx.style.color = 'var(--accent, #7c6cff)';
-            bx.textContent = (localStorage.getItem('aiapp_lang') === 'en')
-              ? 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.'
-              : 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.';
+            bx.textContent = authMsg('axBootGoogleInBrowser', 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.', 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.'); // v-audit-boot (cli-boot-6)
           }
         } catch(e){ __swallow(e, 'auth:google-hint-android'); }
         window.location.href = gStartUrl + '&app=1';
@@ -1172,21 +1410,28 @@ try{
       } catch(e){ return null; }
     }
     // v-google-app-fail: فشل الدخول في سفاري — الخادم أودع السبب فنعرضه بدل انتظار صامت.
-    function claimFail(err){
-      try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-fail'); }
+    /* v-google-retry: صفحة «تعذّر» في سفاري صار فيها «حاول مرّة ثانية» بـstate نفسها — فالانتظار يبقى (ويتجدّد عشر دقائق) بعد
+       عرض السبب، كي يُستلم نجاح المحاولة الثانية عند العودة. كان يُمحى هنا فيضيع ذاك الدخول. عودة الويب (رمز الاستلام) كما كانت. */
+    function claimFail(err, st){
+      try {
+        if(st && pending() === st) localStorage.setItem('aiapp_oauth_pending', st + ':' + Date.now());
+        else localStorage.removeItem('aiapp_oauth_pending');
+      } catch(e){ __swallow(e, 'auth:claim-fail'); }
+      __oauthPick = null;
       showGoogleAuthError(String(err));
     }
     let busy = false;
     async function claim(){
-      const st = pending();
+      const pk = __oauthPick; // v-audit-auth (srv-auth-10): عودة الويب برمز الاستلام أولى، والرمز يُرسل معها
+      const st = pk ? pk.state : pending();
       if(!st || busy) return;
-      if(authGet('aiapp_auth_token')){ try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-clear'); } return; }
+      if(authGet('aiapp_auth_token')){ __oauthPick = null; try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-clear'); } return; }
       busy = true;
       try {
         const r = await fetch('/api/account?action=oauth-claim', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ state: st }),
+          body: JSON.stringify({ state: st, claim: pk && pk.claim }),
           signal: AbortSignal.timeout(10000), // v-perf-boot-defer: تعليق الشبكة كان يبقي busy=true للأبد
         });
         if(r.ok){
@@ -1199,7 +1444,7 @@ try{
             if(d.avatar) localStorage.setItem('aiapp_avatar', d.avatar);
             noteSession('جوجل-جسر-آيفون');
             onAuthed(d.user, d.avatar || null);
-          } else if(d && d.error) claimFail(d.error);
+          } else if(d && d.error) claimFail(d.error, pk ? '' : st);
         }
       } catch(e){ __swallow(e, 'auth:oauth-claim'); }
       busy = false;
@@ -1262,7 +1507,9 @@ try{
     const username = userInput.value.trim();
     const password = passInput.value;
     errBox.textContent = '';
-    const isEn = (localStorage.getItem('aiapp_lang') === 'en');
+    // v-audit-boot (cli-boot-6): النصوص من authMsg بلغة الواجهة (كانت ثنائيّة: إنجليزيّ أو عربيّ)
+    const genericErr = () => authMsg('acctGenericError', 'Something went wrong, try again', 'حدث خطأ، حاول مرة أخرى');
+    const netErr = () => authMsg('acctNetError', 'Could not reach the server, check your connection', 'تعذر الاتصال بالخادم، تحقق من الإنترنت');
     // v-perf-boot-defer: الزرّ كان يُعطَّل بصمت بلا أيّ إشارة أنّ شيئًا يحدث (بخلاف مسار OTP في هذا
     // الملف الذي يغيّر النصّ فعلًا) — على شبكة بطيئة يبدو التطبيق معلّقًا. نلتقط النصّ الأصليّ هنا
     // ونعيده في finally كلّ فرع، بلا حاجة لمعرفة مفتاح الترجمة لكلّ وضع (forgotEmail/resetToken/login/signup).
@@ -1270,11 +1517,11 @@ try{
 
     if(mode === 'forgotEmail'){
       if(!username){
-        errBox.textContent = isEn ? 'Please enter your username or email' : 'الرجاء إدخال اسم المستخدم أو الإيميل';
+        errBox.textContent = authMsg('axBootEnterId', 'Please enter your username or email', 'الرجاء إدخال اسم المستخدم أو الإيميل');
         return;
       }
       submitBtn.disabled = true;
-      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
+      submitBtn.textContent = authMsg('axBootWait', 'Please wait…', 'جاري المعالجة…');
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
@@ -1282,15 +1529,15 @@ try{
           body: JSON.stringify({ action: 'forgotPassword', username, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
           signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
-          errBox.textContent = (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-unverified-email
+          errBox.textContent = (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || genericErr(); // v-unverified-email
           return;
         }
-        infoMsg.textContent = data.message || (isEn ? 'Check your email' : 'تحقق من بريدك');
+        infoMsg.textContent = data.message || authMsg('axBootCheckEmail', 'Check your email', 'تحقق من بريدك');
         infoMsg.style.display = 'block';
       } catch(e){
-        errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
+        errBox.textContent = netErr();
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = submitBtnLabel;
@@ -1300,28 +1547,28 @@ try{
 
     if(mode === 'resetToken'){
       if(!username || !window.__pendingResetToken || !password){
-        errBox.textContent = isEn ? 'Please fill in all fields' : 'الرجاء تعبئة جميع الحقول';
+        errBox.textContent = authMsg('axBootFillAll', 'Please fill in all fields', 'الرجاء تعبئة جميع الحقول');
         return;
       }
       submitBtn.disabled = true;
-      submitBtn.textContent = isEn ? 'Please wait…' : 'جاري المعالجة…';
+      submitBtn.textContent = authMsg('axBootWait', 'Please wait…', 'جاري المعالجة…');
       try {
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'resetWithToken', username, resetToken: window.__pendingResetToken, newPassword: password }),
+          body: JSON.stringify({ action: 'resetWithToken', username, resetToken: window.__pendingResetToken, newPassword: password, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
           signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600)
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
-          errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+          errBox.textContent = data.error || genericErr();
           return;
         }
         authSet('aiapp_auth_token', data.token);
         window.__pendingResetToken = null;
         onAuthed(data.username, data.avatar);
       } catch(e){
-        errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
+        errBox.textContent = netErr();
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = submitBtnLabel;
@@ -1330,11 +1577,11 @@ try{
     }
 
     if(!username || !password){
-      errBox.textContent = isEn ? 'Please fill in both fields' : 'الرجاء تعبئة الحقلين';
+      errBox.textContent = authMsg('axBootFillBoth', 'Please fill in both fields', 'الرجاء تعبئة الحقلين');
       return;
     }
     submitBtn.disabled = true;
-    submitBtn.textContent = isEn ? 'Please wait…' : 'جاري الدخول…';
+    submitBtn.textContent = authMsg('axBootSigningIn', 'Signing in…', 'جاري الدخول…');
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
@@ -1342,9 +1589,9 @@ try{
         body: JSON.stringify({ action: mode, username, password, lang: (localStorage.getItem('aiapp_lang') || 'ar'), ref: (mode === 'signup' ? (localStorage.getItem('aiapp_pending_ref') || undefined) : undefined) }),
         signal: AbortSignal.timeout(15000), // v-perf-boot-defer: صفر مهلة = تعليق أبديّ (v600) — «أحيانًا ما يدخل»
       });
-      const data = await res.json();
+      const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
       if(!res.ok || data.error){
-        errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى'); // v-name-no-at · v-unverified-email: بلغة الواجهة
+        errBox.textContent = (data.code === 'name_at' && curT().nameNoAt) || (data.code === 'email_unverified' && curT().authEmailUnverified) || data.error || genericErr(); // v-name-no-at · v-unverified-email: بلغة الواجهة
         if(mode === 'login' && res.status === 401 && username.indexOf('@') !== -1) googleLoginHint(); // v-google-login-help
         return;
       }
@@ -1355,7 +1602,7 @@ try{
       onAuthed(data.username, data.avatar);
       emailConfirmAlert(data.emailToConfirm); // v-unverified-email
     } catch(e){
-      errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
+      errBox.textContent = netErr();
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = submitBtnLabel;
@@ -1449,7 +1696,7 @@ try{
       const body = { action: recover ? 'phone-recover-start' : 'phone-link-start', channel };
       if(!recover) body.token = authGet('aiapp_auth_token');
       const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      data = await res.json();
+      data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
       if(!res.ok || !data || !data.link) throw Object.assign(new Error('start'), { said: (data && data.error) || t2.acctGenericError });
     } catch(e){
       if(win) try { win.close(); } catch(e2){ window.__swallow(e2, 'phone-link:close'); }
@@ -1649,9 +1896,9 @@ try{
             const res = await fetch('/api/auth', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'setAvatar', token, avatarDataUrl: dataUrl }),
+              body: JSON.stringify({ action: 'setAvatar', token, avatarDataUrl: dataUrl, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
             });
-            const data = await res.json();
+            const data = (typeof axAuthL10n === 'function' ? axAuthL10n : (x) => x)(await res.json()); // v-audit-auth (srv-auth-13) — typeof: الاختبار يشغّل المعالج وحده
             if(!res.ok || data.error){
               avatarMsg(data.error || t2.acctGenericError, '#ef4444');
               return;
@@ -1690,13 +1937,15 @@ try{
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'changeUsername', token, newUsername: newUsernameVal, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
           acctUsernameMsg.textContent = (data.code === 'name_at' && t2.nameNoAt) || data.error || t2.acctGenericError; // v-name-no-at
           acctUsernameMsg.style.color = '#ef4444';
           return;
         }
         authSet('aiapp_auth_token', data.token);
+        // v-audit-boot (cli-boot-5): بيانات الجهاز لصاحبها باسمه الجديد — وإلّا حسبها الدخول التالي بيانات حساب آخر فمسحها
+        try{ const __ow = localStorage.getItem('aiapp_data_owner'); if(__ow && __ow === String(authGet('aiapp_username') || '').trim().toLowerCase()) localStorage.setItem('aiapp_data_owner', String(data.username || '').trim().toLowerCase()); }catch(e){ __swallow(e, 'auth:rename-owner'); }
         authSet('aiapp_username', data.username);
         updateAvatarUI(); // v-formal-account: حرف الدائرة يتبع الاسم الجديد
         if(userLabel) userLabel.textContent = data.username;
@@ -1730,14 +1979,15 @@ try{
         const res = await fetch('/api/auth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'changePassword', token, currentPassword: curPass, newPassword: newPass }),
+          body: JSON.stringify({ action: 'changePassword', token, currentPassword: curPass, newPassword: newPass, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
         });
-        const data = await res.json();
+        const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
         if(!res.ok || data.error){
           acctPasswordMsg.textContent = data.error || t2.acctGenericError;
           acctPasswordMsg.style.color = '#ef4444';
           return;
         }
+        if(data.token) authSet('aiapp_auth_token', data.token); // v-audit-auth (srv-auth-8): الجلسات الأخرى تموت، وهذا الجهاز برمزه الجديد
         acctCurrentPassword.value = '';
         acctNewPassword.value = '';
         acctPasswordMsg.textContent = t2.acctSaved;
@@ -1782,7 +2032,7 @@ try{
       if(ref && /^[a-zA-Z0-9_-]{3,64}$/.test(ref)){
         localStorage.setItem('aiapp_pending_ref', ref);
       }
-    } catch(e) { /* ignore */ }
+    } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:2035'); /* ignore */ }
   })();
   window.requireLogin = (reason) => {
     setMode('login');
@@ -1820,7 +2070,7 @@ try{
         signal: AbortSignal.timeout(10000), // v-perf-boot-defer: بلا هذا، تعليق الشبكة يبقي شاشة
         // الدخول معلَّقة بلا قرار؛ التعليق الآن يسقط في مسار «تعذّر الاتّصال» أدناه (جلسة مخبَّأة).
       });
-      const data = await res.json();
+      const data = axAuthL10n(await res.json()); // v-audit-auth (srv-auth-13)
       if(res.ok && data.ok){
         // 🔄 جلسة منزلقة: الخادم يعيد توكن جديدًا مع كل تحقق ناجح، فلا
         // ينقطع المستخدم النشط أبدًا بانتهاء صلاحية الثلاثين يومًا.
@@ -1829,12 +2079,13 @@ try{
         onAuthed(data.username, data.avatar);
         emailConfirmAlert(data.emailToConfirm); // v-unverified-email: عند كلّ فتح ما دام البريد غير مؤكَّد
         if(data.adminMessage && data.adminMessage.text){
-          setTimeout(() => { alert('📩 رسالة من الإدارة:\n\n' + data.adminMessage.text); }, 600);
+          setTimeout(() => { alert('📩 ' + authMsg('axBootAdminMsg', 'Message from the administration', 'رسالة من الإدارة') + ':\n\n' + data.adminMessage.text); }, 600); // v-audit-boot (cli-boot-6)
         }
       } else if(data && data.banned){
         noteSession('حساب-موقوف');
         authRemove('aiapp_auth_token');
-        alert('🚫 ' + (data.error || 'تم إيقاف هذا الحساب من قبل الإدارة'));
+        // v-audit-boot (cli-boot-6): العلم banned ثابت — النصّ من قاموس الواجهة لا من الخادم (عربيّ لغير الإنجليزيّة)
+        alert('🚫 ' + authMsg('axBootBanned', 'This account has been suspended by the administration', 'تم إيقاف هذا الحساب من قبل الإدارة'));
         showOverlay();
       } else if(res.status === 401 || res.status === 403){
         // رفض صريح من الخادم: التوكن فعلًا غير صالح.
@@ -1884,9 +2135,9 @@ try{
   function build(){
     const tokL = get('aiapp_auth_token'), tokS = sget('aiapp_auth_token');
     let tokC = '';
-    try { const m = document.cookie.match(/(?:^|; )aiapp_auth_token=([^;]*)/); tokC = m ? m[1] : ''; } catch(e){ /* الكوكي محجوب في بعض السياقات — اللوحة تعرضه «غائبًا» وهذا صادق */ }
+    try { const m = document.cookie.match(/(?:^|; )aiapp_auth_token=([^;]*)/); tokC = m ? m[1] : ''; } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:2138'); /* الكوكي محجوب في بعض السياقات — اللوحة تعرضه «غائبًا» وهذا صادق */ }
     let note = null;
-    try { note = JSON.parse(get('aiapp_session_note') || 'null'); } catch(e){ /* قيد قديم بصيغة تالفة — تعرض اللوحة «لم يُسجَّل بعد» بدل الانهيار */ }
+    try { note = JSON.parse(get('aiapp_session_note') || 'null'); } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:2140'); /* قيد قديم بصيغة تالفة — تعرض اللوحة «لم يُسجَّل بعد» بدل الانهيار */ }
     const bundle = (document.querySelector('script[src*="app.bundle"]') || {}).src || '—';
     const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
 
@@ -2008,23 +2259,25 @@ try{
   otpSubmitBtn.onclick = async () => {
     otpError.textContent = '';
     const lang = document.documentElement.lang || localStorage.getItem('aiapp_lang') || 'ar';
-    const isEn = lang === 'en';
+    // v-audit-boot (cli-boot-6): بلغة الواجهة عبر authMsg (app-01 نفسه) — كانت ثنائيّة إنجليزيّ/عربيّ
+    const msg = (k, en, ar, p) => (typeof window.__authMsg === 'function' ? window.__authMsg(k, en, ar, p) : en);
+    const netErr = () => msg('acctNetError', 'Could not reach the server, check your connection', 'تعذر الاتصال بالخادم، تحقق من الإنترنت');
 
     if(otpStep === 'email'){
       const email = (otpEmailInput.value || '').trim();
       if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-        otpError.textContent = isEn ? 'Enter a valid email' : 'أدخل بريد إلكتروني صحيح';
+        otpError.textContent = msg('acctInvalidEmail', 'Invalid email format', 'صيغة الإيميل غير صحيحة');
         return;
       }
       otpSubmitBtn.disabled = true;
-      otpSubmitBtn.textContent = isEn ? 'Sending...' : 'جاري الإرسال...';
+      otpSubmitBtn.textContent = msg('axBootSending', 'Sending…', 'جاري الإرسال…');
       try {
         const r = await fetch('/api/account?action=email-otp-request', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ action: 'email-otp-request', email, lang })
         });
-        const d = await r.json();
+        const d = window.axAuthL10n ? window.axAuthL10n(await r.json()) : await r.json(); // v-audit-auth (srv-auth-13)
         if(d.ok){
           otpEmail = email;
           otpStep = 'code';
@@ -2032,33 +2285,32 @@ try{
           otpCodeRow.style.display = 'flex';
           otpInfo.style.display = 'block';
           const masked = email.replace(/^(.{2}).*(@.*)$/, '$1***$2');
-          otpInfo.textContent = (isEn ? 'Code sent to ' : 'تم إرسال الرمز إلى ') + masked;
-          const t = (window.curT ? window.curT() : {});
-          otpSubmitBtn.textContent = isEn ? 'Verify' : (t.authOtpVerifyBtn || 'تحقق');
+          otpInfo.textContent = msg('axBootCodeSent', 'Code sent to {email}', 'تم إرسال الرمز إلى {email}', { email: '\u2066' + masked + '\u2069' });
+          otpSubmitBtn.textContent = msg('axBootVerify', 'Verify', 'تحقق');
           otpCodeInput.focus();
         } else {
-          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || (isEn ? 'Failed to send code' : 'فشل إرسال الرمز'); // v-unverified-email
+          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || msg('axBootSendFailed', "Couldn't send the code", 'فشل إرسال الرمز'); // v-unverified-email
         }
       } catch(e){
-        otpError.textContent = isEn ? 'Connection error' : 'خطأ في الاتصال';
+        otpError.textContent = netErr();
       }
       otpSubmitBtn.disabled = false;
     } else {
       // Step: verify OTP
       const code = (otpCodeInput.value || '').trim();
       if(!code || code.length < 4){
-        otpError.textContent = isEn ? 'Enter the verification code' : 'أدخل رمز التحقق';
+        otpError.textContent = msg('axBootEnterCode', 'Enter the verification code', 'أدخل رمز التحقق');
         return;
       }
       otpSubmitBtn.disabled = true;
-      otpSubmitBtn.textContent = isEn ? 'Verifying...' : 'جاري التحقق...';
+      otpSubmitBtn.textContent = msg('axBootVerifying', 'Verifying…', 'جاري التحقق…');
       try {
         const r = await fetch('/api/account?action=email-otp-verify', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ action: 'email-otp-verify', email: otpEmail, otp: code, lang })
         });
-        const d = await r.json();
+        const d = window.axAuthL10n ? window.axAuthL10n(await r.json()) : await r.json(); // v-audit-auth (srv-auth-13)
         if(d.ok){
           // Login successful — apply session the same way the password
           // flow does, then run the shared post-login pipeline.
@@ -2067,16 +2319,13 @@ try{
           otpCodeInput.value = '';
           window.onAuthed(d.username, d.avatar || null);
         } else {
-          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || (isEn ? 'Invalid code' : 'رمز غير صحيح'); // v-unverified-email
+          otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || msg('axBootBadCode', 'Invalid code', 'رمز غير صحيح'); // v-unverified-email
         }
       } catch(e){
-        otpError.textContent = isEn ? 'Connection error' : 'خطأ في الاتصال';
+        otpError.textContent = netErr();
       }
       otpSubmitBtn.disabled = false;
-      if(otpStep === 'code'){
-        const t = (window.curT ? window.curT() : {});
-        otpSubmitBtn.textContent = isEn ? 'Verify' : (t.authOtpVerifyBtn || 'تحقق');
-      }
+      if(otpStep === 'code') otpSubmitBtn.textContent = msg('axBootVerify', 'Verify', 'تحقق');
     }
   };
 

@@ -293,9 +293,12 @@ test('ز. ختم «v … · share:no» للمالك وحده', () => {
   assert.ok(shareSheet(true).some((s) => /^v e77f4e30 · share:no$/.test(s)), 'المالك يراه للتشخيص');
 });
 
-/* ───────── (ح) ورقة الصورة عند تعذّر الرابط ───────── */
-test('ح. تعذّر الرفع: الورقة بتحميل وفتح، بلا «link unavailable» ولا نصّ الخطأ التقنيّ', async () => {
-  const made = []; const warns = [];
+/* ───────── (ح) ورقة الصورة عند تعذّر الرابط ─────────
+   v-ready-sheet: بناء الورقة انتقل للمكوّن الموحّد window.omranReadySheet (app-05-ui)؛ هنا نتجسّس عليه
+   ونتحقّق أنّ الورقة المحلّيّة تمرّر تنزيلًا من blob وملفًّا للمشاركة، بلا رابط خادم (فلا واتساب يكسر)،
+   بلا نصّ خطأ تقنيّ في أيّ عنصر، والسبب في السجلّ وحده. */
+test('ح. تعذّر الرفع: الورقة المحلّيّة تمرّ للمكوّن الموحّد (blob + ملفّ، بلا رابط)، بلا «link unavailable» ولا نصّ الخطأ', async () => {
+  const made = []; const warns = []; const sheets = [];
   const el = (tag) => { const e = { tag, dataset: {}, style: {}, children: [], attrs: {}, href: '', textContent: '', appendChild(c) { this.children.push(c); return c; }, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; }, remove() {}, click() {} }; made.push(e); return e; };
   const ctx = {
     location: { origin: 'https://app.example' },
@@ -304,6 +307,7 @@ test('ح. تعذّر الرفع: الورقة بتحميل وفتح، بلا «l
     FileReader: function () { this.readAsDataURL = (b) => { b.arrayBuffer().then((ab) => { this.result = 'data:' + b.type + ';base64,' + Buffer.from(ab).toString('base64'); this.onload(); }); }; },
     fetch: async () => { throw new TypeError('Failed to fetch'); },
     authGet: () => 'tok', localStorage: { getItem: () => 'ar' },
+    omranReadySheet: (opts) => { sheets.push(opts); return true; },
     Blob, File, URL: { createObjectURL: () => 'blob:x', revokeObjectURL() {} }, atob, encodeURIComponent, setTimeout: () => 0, String, Number, Math, Date, Error, JSON, Uint8Array, Promise,
     console: { warn: (...a) => warns.push(a.join(' ')), error() {}, log() {} },
   };
@@ -311,8 +315,12 @@ test('ح. تعذّر الرفع: الورقة بتحميل وفتح، بلا «l
   vm.createContext(ctx);
   vm.runInContext(read('js/app-05-img-save.js'), ctx);
   assert.equal(await ctx.omranSaveImage(new Blob([Buffer.from('png')], { type: 'image/png' }), 'x.png', 'share'), true);
+  assert.equal(sheets.length, 1, 'الورقة المحلّيّة استدعت المكوّن الموحّد مرّة');
+  assert.equal(sheets[0].name, 'x.png');
+  assert.ok(String(sheets[0].downloadUrl).startsWith('blob:'), 'التنزيل من blob محلّيّ');
+  assert.ok(!sheets[0].shareUrl, 'بلا رابط خادم دائم → لا واتساب/نسخ رابط');
+  assert.ok(sheets[0].shareFile, 'الملفّ ممرَّر للمشاركة بالنظام والنسخ');
   const text = made.map((e) => String(e.textContent || '')).join(' | ');
-  assert.ok(made.some((e) => e.attrs.download === 'x.png'), 'زرّ التحميل المحلّيّ باقٍ');
   assert.doesNotMatch(text, /link unavailable/);
   assert.doesNotMatch(text, /Failed to fetch/);
   assert.ok(warns.some((w) => /Failed to fetch/.test(w)), 'السبب في السجلّ للتشخيص');

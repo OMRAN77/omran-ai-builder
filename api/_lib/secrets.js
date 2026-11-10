@@ -148,8 +148,8 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'method' }); return; }
-  const { isOwner } = require('./_owner.js');
-  if (!isOwner(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
+  const { isOwnerSession } = require('./_owner.js'); // v-audit-agent (srv-core-3): الخزنة لجلسة المالك وحدها — لا MONITOR_KEY
+  if (!isOwnerSession(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
   let body = req.body;
   if (!body || typeof body === 'string') { try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; } }
   const op = String((body && body.op) || 'status');

@@ -3,7 +3,7 @@
 function __compressImg(file, onDone, MAX){
   MAX = MAX || 1024;
   if(file && !file.__omranNorm && (/hei[cf]/i.test(file.type || '') || /\.hei[cf]$/i.test(file.name || '')) && typeof omranNormalizeImageFile === 'function'){
-    omranNormalizeImageFile(file).then(function(f){ try{ f.__omranNorm = true; }catch(e){ /* guard-ok */ } __compressImg(f, onDone, MAX); }, function(){ onDone(''); });
+    omranNormalizeImageFile(file).then(function(f){ try{ f.__omranNorm = true; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:6'); /* guard-ok */ } __compressImg(f, onDone, MAX); }, function(){ onDone(''); });
     return;
   }
   const reader = new FileReader();
@@ -57,6 +57,32 @@ async function __safeJson(res){
   const txt = await res.text().catch(()=>'');
   try{ return JSON.parse(txt); }
   catch(e){ return { error: txt.slice(0,200) || ('HTTP '+res.status) }; }
+}
+/* v-audit-studcli (cli-studios-4): كتل catch في الاستوديوهات كانت تلصق e.message بعد «❌ خطأ:» — فيرى المستخدم بأيّ لغة جملة الخادم
+   العربيّة («تعذّر إنشاء الصورة الآن…»)، أو نصًّا تقنيًّا فيه اسم مزوّد ومتغيّر («Server is missing <المفتاح>»، «Proxy error: …»)، أو
+   نصّ ٤١٣ الخامّ من __safeJson. الرموز المعروفة تُحوَّل إلى مفاتيحها بالـ١٤ لغة، وما سواها رسالة عامّة مترجمة (fbKey وإلّا «تعذّر إنشاء
+   الصورة»)، والنصّ الخامّ للمالك وحده بين قوسين للتشخيص. الاحتياط العربيّ/الإنجليزيّ لا يُستعمل إلّا قبل جاهزيّة المترجم. */
+const __STUDIO_ERR_FB = {
+  voiceImageFailed: ['ما قدرت أسوي الصورة، حاول مرة ثانية.', "Couldn't create the image, please try again."],
+  designAiSuggestError: ['تعذر توليد أفكار، حاول مرة أخرى.', 'Could not generate ideas, try again.'],
+  svcPaused: ['الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.', 'This service is temporarily unavailable — please try again shortly.'],
+  portraitLimitReached: ['وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا', 'You reached the daily limit for this feature, try again tomorrow'],
+  portraitNeedLogin: ['يرجى تسجيل الدخول لاستخدام هذه الميزة', 'Please log in to use this feature'],
+  acctAvatarTooBig: ['الصورة كبيرة جدًا، اختر صورة أصغر', 'The image is too large, choose a smaller one'],
+};
+function __studioErrMsg(e, fbKey){
+  const raw = String((e && e.message) || e || '').trim();
+  let key = fbKey || 'voiceImageFailed';
+  if(raw === 'unavailable') key = 'svcPaused';
+  else if(raw === 'daily_limit_reached') key = 'portraitLimitReached';
+  else if(raw === 'auth_required') key = 'portraitNeedLogin';
+  else if(/\b413\b|Entity Too Large|PAYLOAD_TOO_LARGE/i.test(raw)) key = 'acctAvatarTooBig';
+  let msg = '';
+  try{ if(typeof window.t === 'function'){ const v = window.t(key); if(v && v !== key) msg = String(v); } }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-12-studios:81'); /* guard-ok — المترجم لم يجهز: الاحتياط أدناه */ }
+  if(!msg){ const fb = __STUDIO_ERR_FB[key] || __STUDIO_ERR_FB.voiceImageFailed; msg = (typeof window.__bT === 'function') ? window.__bT(fb[0], fb[1]) : fb[0]; }
+  msg = '❌ ' + String(msg).replace(/^\s*❌\s*/, '');
+  if(raw && !/^[a-z_]+$/.test(raw) && typeof omranOwnerUi === 'function' && omranOwnerUi()) msg += ' (' + raw.slice(0, 300) + ')';
+  return msg;
 }
 
 /* ---------- 🏠 AI Interior Design (Gemini image, server-side owner key) ---------- */
@@ -114,7 +140,7 @@ async function __safeJson(res){
   function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
-    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:143'); /* لم يجهز بعد */ }
     const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
@@ -130,7 +156,7 @@ async function __safeJson(res){
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
     /* v651: صفّ «غرفتي بكل الأنماط» يُبنى قبل وصول ملفّ اللغة الكسول فيتجمّد — يُعاد عند الفتح. */
-    try { buildCompareStyleRow(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
+    try { buildCompareStyleRow(); } catch(_e651) { typeof __swallow === 'function' && __swallow(_e651, 'app-12-studios:159'); /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -233,7 +259,12 @@ async function __safeJson(res){
         cap.textContent = name;
         /* تدقيق ١٨ أكتوبر (الدفعة ٥، من b8 في ten-a): سطر واحد بقصّ كان يقطع «Living ro…» في خانة ~٦١px على جوّال ٣٩٠ — يلتفّ سطرين (الحاسوب سطر واحد كما كان) */
         cap.style.cssText = 'position:absolute; left:50%; bottom:3%; transform:translateX(-50%); width:96%; white-space:normal; overflow-wrap:anywhere; line-height:1.1; text-align:center;' +
-          ' font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
+          ' font-size:10px; font-size:clamp(10px, 1.5cqw, 14px); font-weight:800; color:#f3d98a; text-shadow:0 1px 3px #000, 0 0 8px #000; pointer-events:none;';
+        /* v-hw-1316 (لقطة الديكور الإنجليزيّة): كلمة واحدة طويلة («Restaurant»، «Restaurante») كانت تنكسر وسط الكلمة «Restaura/nt».
+           التقطيع بشرطة (hyphens) لا قاموس له في Chromium ويندوز فتختلف اللقطة عن الهاتف، والاسم يُترجم بعد البناء (مترجم الخيارات) فلا
+           يُقاس هنا — فالعرض بقدر النصّ حتّى ١٢٤٪ يمتدّ في الفراغ بين الخانتين، وما زاد يلتفّ كما كان */
+        cap.style.width = 'max-content';
+        cap.style.maxWidth = '124%';
         b.appendChild(cap);
       }
       b.onclick = function(){ ideaPlace(o.value); };
@@ -245,15 +276,17 @@ async function __safeJson(res){
 
      if(ideaTitle){
      var __k = 'decorIdeasTitlePoster', __g = '';
-    try{ if(typeof window.t === 'function'){ var __v = window.t(__k); if(__v && __v !== __k) __g = __v; } }catch(e){ /* guard-ok */ }
+    try{ if(typeof window.t === 'function'){ var __v = window.t(__k); if(__v && __v !== __k) __g = __v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:279'); /* guard-ok */ }
       ideaTitle.textContent = '💡 ' + (__g || bT('أفكار بلا صورة — اضغط على المكان في الصورة أو اكتب ما تريد', 'Ideas without a photo — tap a place in the image or describe what you want'));
     }
-    if(ideaText) ideaText.placeholder = bT('مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
-    if(ideaGo){ ideaGo.textContent = '✨ ' + bT('أعطني أفكارًا', 'Give me ideas'); ideaGo.style.display = ''; } /* v-poster-notext: الزرّ ظاهر — لا مخ في البوستر */
+    /* v-hw-resubmit-2: مفتاح أوّلًا (decorIdeaPh/decorIdeaGo بالـ١٤ لغة)، والثنائيّ احتياطًا */
+    var __tk = function(k, ar, en){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:283'); /* guard-ok */ } return bT(ar, en); };
+    if(ideaText) ideaText.placeholder = __tk('decorIdeaPh', 'مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
+    if(ideaGo){ ideaGo.textContent = '✨ ' + __tk('decorIdeaGo', 'أعطني أفكارًا', 'Give me ideas'); ideaGo.style.display = ''; } /* v-poster-notext: الزرّ ظاهر — لا مخ في البوستر */
   }
   buildIdeaChips();
   /* v-poster-notext: الأسماء فوق البوستر HTML فتُعاد عند تبديل اللغة (applyLanguage يكتب html.lang) */
-  try{ new MutationObserver(function(){ buildIdeaChips(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); }catch(e){ /* guard-ok — المتصفّحات القديمة: تبقى لغة التحميل */ }
+  try{ new MutationObserver(function(){ buildIdeaChips(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:289'); /* guard-ok — المتصفّحات القديمة: تبقى لغة التحميل */ }
   /* v-decor-gallery: معرض صور حقيقية (عشرات) من الويب — يفتح فورًا، والتوليد بالذكاء زرّ منفصل */
   const ideaStatusEl = document.getElementById('designAiIdeaStatus');
   const ideaGallery = document.getElementById('designAiIdeaGallery');
@@ -279,7 +312,8 @@ async function __safeJson(res){
       if(!imgs.length){
         /* v-ideas-resilient: مصدر الصور متوقف (حصّة) ≠ لا نتائج — نقول الحقيقة */
         if(d && d.error === 'provider'){
-          var __dt = ''; try{ __dt = d.detail ? (' (' + Object.keys(d.detail).map(function(k){ return k + ':' + d.detail[k]; }).join(' · ') + ')') : ''; }catch(e){ __dt = ''; }
+          /* v-audit-studcli (cli-studios-3): حالة المصادر (أسماء المزوّدين، off للمفتاح الناقص، عدد المدفوع) للمالك وحده — كـv-decor-fallback في designRun */
+          var __dt = ''; try{ __dt = (d.detail && typeof omranOwnerUi === 'function' && omranOwnerUi()) ? (' (' +Object.keys(d.detail).map(function(k){ return k + ':' + d.detail[k]; }).join(' · ') + ')') : ''; }catch(e){ __dt = ''; }
           ideaStatus('⚠️ ' + bT('مصدر الصور متوقف مؤقتًا — جرّب بعد قليل، أو ولّد تصاميم بالذكاء.', 'The photo source is temporarily unavailable — try again shortly, or generate AI designs.') + __dt);
         }
         else ideaStatus(noPhotos());
@@ -308,7 +342,7 @@ async function __safeJson(res){
       ideaGallery.style.display = 'block';
       ideaStatus(galleryLine());
       if(ideaAI) ideaAI.style.display = '';
-      try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
+      try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:345'); /* guard-ok */ }
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
   }
   if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button[data-place]'), function(c){
@@ -340,7 +374,7 @@ async function __safeJson(res){
     try{
       const target = (gridEl && gridEl.style.display !== 'none') ? gridEl : ((resultEl && resultEl.style.display !== 'none') ? resultEl : statusEl);
       if(target) target.scrollIntoView({ behavior:'smooth', block:'start' });
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:377'); /* guard-ok */ }
   };
   if(ideaAI) ideaAI.textContent = '🎨 ' + bT('ولّد ٤ تصاميم بالذكاء الاصطناعي', 'Generate 4 AI designs');
   if(ideaText) ideaText.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); if(ideaGo) ideaGo.onclick(); } });
@@ -436,6 +470,8 @@ async function __safeJson(res){
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
           vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; designRun(again); };
           cell.appendChild(vb);
+          /* v-share-next: «مشاركة» تحت «زوّدني مثله» لكلّ تصميم */
+          if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', after: vb, className: 'btn', style: vb.style.cssText, name: 'omran-design-' + (i + 1) + '.webp' }); }catch(e){ __swallow(e, 'design:share-next'); } }
           gridEl.appendChild(cell);
         });
         dsReveal(gridEl); /* v-scene-kinds */
@@ -455,7 +491,7 @@ async function __safeJson(res){
       dsReveal((baWrap && baWrap.style.display !== 'none') ? baWrap : resultEl); /* v-scene-kinds */
       setStatus(t('designAiDone'));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(__studioErrMsg(e));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -542,7 +578,7 @@ async function __safeJson(res){
     baWrap.style.cursor = 'ew-resize';
     baWrap.addEventListener('pointerdown', (ev) => {
       __baDragging = true;
-      try{ baWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      try{ baWrap.setPointerCapture(ev.pointerId); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:581'); /* guard-ok — بعض المتصفحات القديمة */ }
       baSet(baPctFromEvent(ev));
       ev.preventDefault();
     });
@@ -737,7 +773,7 @@ async function __safeJson(res){
         if(i === picks.length - 1) cmpStatus(bT('✓ تم — اسحب وقارن واختر','✓ Done — swipe and pick'));
       }
     } catch(e){
-      cmpStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      cmpStatus(__studioErrMsg(e));
     } finally {
       cmpBtn.disabled = false;
     }
@@ -855,6 +891,20 @@ function stuL(ar, en){
    فاستبدال الملفّ وحده يُبقي الصورة القديمة عند من فتح التطبيق أمس. ارفع الرقم مع كلّ استبدال. */
 const PSTYLE_IMG_V = '16'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
 function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYLE_IMG_V; }
+
+/* v-audit-stud2 (srv-studios-2-8): رمز الخادم (حارس الهويّة/الأسلوب، image_generation_failed، unavailable…) بنصّ الواجهة عبر
+   imgErrFriendly كما في studioErrText (app-13) — كان «❌ خطأ: image_edit_identity_mismatch» خامًا في الأنماط والأزياء. العربيّة
+   للعربيّة وحدها (الأردو وغيرها تأخذ الإنجليزيّة لا العربيّة)، وما لا ترجمة له يبقى كما كان بالبادئة. */
+function stud2ErrText(e, prefix, fbKey){
+  const code = (e && e.message) ? String(e.message) : String(e);
+  try{
+    const lg = (typeof lang !== 'undefined' && lang) ? String(lang) : (localStorage.getItem('aiapp_lang') || 'ar');
+    const friendly = (typeof imgErrFriendly === 'function') ? imgErrFriendly(code, lg === 'ar') : null;
+    if(friendly) return '⚠️ ' + friendly;
+  }catch(err){ __swallow(err, 'stud2:err-text'); }
+  /* v-audit-studcli (cli-studios-4): ما لا ترجمة له لا يُعرض خامًّا — رسالة الاستوديو المترجمة (والخامّ للمالك وحده) */
+  return (typeof __studioErrMsg === 'function') ? __studioErrMsg(e, fbKey) : prefix + code;
+}
 
 /* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
 (function(){
@@ -975,7 +1025,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function pstyleOpts(){
     const favs = getFavs();
     const opts = Array.from(styleEl.querySelectorAll('option'))
-      .filter((o) => !(o.parentElement && o.parentElement.id === 'portraitFavGroup'));
+      .filter((o) => !(o.parentElement && o.parentElement.id === 'portraitFavGroup'))
+      .filter((o) => !(typeof omranHwHidden === 'function' && omranHwHidden('portrait', o.value))); // v-hw-resubmit-2
     opts.sort((a, b) => (favs.includes(b.value) ? 1 : 0) - (favs.includes(a.value) ? 1 : 0));
     return opts;
   }
@@ -989,7 +1040,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   }
   /* v-psheet-oneface (فكرة المالك ٥ سبتمبر: نفس الوجه عبر كل الأنماط، فلتر فئات، بطاقة «قبل»،
      لمعة عند التمرير، وزر «جرّب على صورتك»): */
-  function gt(k, ar, en){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return pstyleLang().indexOf('ar') === 0 ? ar : en; }
+  function gt(k, ar, en){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1043'); /* guard-ok */ } return pstyleLang().indexOf('ar') === 0 ? ar : en; }
   let pstyleFilter = 'all';
   function pstyleGroupOf(opt){
     const g = opt.parentElement;
@@ -1097,7 +1148,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const ci = document.createElement('img'); ci.src = 'assets/portrait/before.webp?v=2'; ci.alt = ''; ci.onerror = function(){ ci.remove(); };
       const cl = document.createElement('span'); cl.textContent = gt('psheetBefore', 'قبل', 'Before');
       c.appendChild(ci); c.appendChild(cl); hero.appendChild(c);
-      const RING = ['anime', 'pixel', 'sketch', 'mosaic', 'oil', 'comic', 'watercolor', 'cyberpunk', 'lego', 'statue', 'pop', 'ghibli'];
+      /* v-hw-resubmit-2: في نسخة هواوي تسقط أنماط العلامات من الحلقة (لا ثقب — الزوايا تُحسب من العدد الباقي) */
+      const RING = ['anime', 'pixel', 'sketch', 'mosaic', 'oil', 'comic', 'watercolor', 'cyberpunk', 'lego', 'statue', 'pop', 'ghibli']
+        .filter((v) => !(typeof omranHwHidden === 'function' && omranHwHidden('portrait', v)));
       RING.forEach((v, i) => {
         const a = (-90 + i * (360 / RING.length)) * Math.PI / 180, r = 40.5;
         const tdiv = document.createElement('div'); tdiv.className = 'pstyleHeroT'; tdiv.setAttribute('data-pstyle-ring', v);
@@ -1140,10 +1193,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       pick.appendChild(pi); pick.appendChild(pt);
       const star = document.getElementById('portraitFavStarBtn');
       const photo = document.createElement('button'); photo.type = 'button'; photo.id = 'portraitFootPhoto'; photo.className = 'btn'; photo.textContent = '📁'; photo.title = gt('fileChooseBtn', '📁 اختيار ملف', '📁 Choose file');
-      photo.onclick = function(){ window.__portraitAutoRun = false; const fi = $('#portraitStyleFileInput'); if(fi){ try{ fi.click(); }catch(e){ /* guard-ok */ } } };
+      photo.onclick = function(){ window.__portraitAutoRun = false; const fi = $('#portraitStyleFileInput'); if(fi){ try{ fi.click(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1196'); /* guard-ok */ } } };
       const cta = document.createElement('button'); cta.type = 'button'; cta.id = 'portraitStyleCta'; cta.className = 'pstyleCta';
       cta.onclick = function(){
-        if(!window.__portraitHasPhoto){ window.__portraitAutoRun = true; const fi = $('#portraitStyleFileInput'); if(fi){ try{ fi.click(); }catch(e){ /* guard-ok */ } } return; }
+        if(!window.__portraitHasPhoto){ window.__portraitAutoRun = true; const fi = $('#portraitStyleFileInput'); if(fi){ try{ fi.click(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1199'); /* guard-ok */ } } return; }
         const go = $('#portraitStyleGenerateBtn'); if(go && typeof go.onclick === 'function'){ showPortraitWork(true); go.onclick(); }
       };
       foot.appendChild(pick); if(star) foot.appendChild(star); foot.appendChild(photo); foot.appendChild(cta);
@@ -1333,19 +1386,24 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     shareBtn2.onclick = () => {
       const src = (resultEl && resultEl.src) || '';
       const nm = /gif/i.test(src.slice(0, 20)) || (downloadEl && /\.gif$/i.test(downloadEl.getAttribute('download') || '')) ? 'omran-avatar.gif' : 'omran-portrait-style.png';
+      /* v-share-next: الـGIF عبر مسار الملفّات — مسار الصور يحوّله JPEG (لقطة ثابتة) */
+      if(nm === 'omran-avatar.gif' && typeof window.omranShareMedia === 'function'){ window.omranShareMedia({ src: (downloadEl && downloadEl.getAttribute('href')) || src, name: nm, kind: 'file' }); return; }
       if(typeof window.omranSaveImage === 'function'){ window.omranSaveImage(src, nm, 'share'); return; }
-      try{ if(downloadEl) downloadEl.click(); }catch(_){ /* guard-ok — fallback */ }
+      try{ if(downloadEl) downloadEl.click(); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-12-studios:1392'); /* guard-ok — fallback */ }
     };
   }
   if(downloadEl){
     /* التحميل على الجوال/الأغلفة يمرّ بالمسار الموحّد؛ الكمبيوتر يبقى تنزيلًا مباشرًا */
     downloadEl.addEventListener('click', (ev) => {
       try{
+        /* v-audit-shell (cli-ui-shell-2): الحافظ الموحّد (app-05-save-media، التقاط على document) سبقنا بنقرة المستخدم ونادى omranSaveMedia —
+           كان هذا ينادي omranSaveImage فوقه: رفعتان وورقتان للنقرة الواحدة على متصفّح الجوّال. */
+        if(ev.defaultPrevented) return;
         const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp());
         if(!mobile || typeof window.omranSaveImage !== 'function') return;
         ev.preventDefault(); ev.stopPropagation();
         window.omranSaveImage(downloadEl.href, downloadEl.getAttribute('download') || 'omran-portrait-style.png', 'save');
-      }catch(_){ /* guard-ok — يسقط للتنزيل العادي */ }
+      }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-12-studios:1406'); /* guard-ok — يسقط للتنزيل العادي */ }
     });
   }
   /* v-compare-drag (طلب المالك ٢١ سبتمبر: «تحسّن طريقة السحب» بعد استعادة شريط قبل/بعد): السحب صار
@@ -1376,7 +1434,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     compareWrap.style.cursor = 'ew-resize';
     compareWrap.addEventListener('pointerdown', (ev) => {
       __compareDragging = true;
-      try{ compareWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok — بعض المتصفحات القديمة */ }
+      try{ compareWrap.setPointerCapture(ev.pointerId); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1437'); /* guard-ok — بعض المتصفحات القديمة */ }
       setComparePct(comparePctFromEvent(ev));
       ev.preventDefault();
     });
@@ -1389,7 +1447,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
-    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1450'); /* لم يجهز بعد */ }
     const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
@@ -1406,7 +1464,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     modal.style.display = 'none';
     /* المعرض كان ابن النافذة الأم المخفية فلا يُرسم — يُنقل إلى body مرة واحدة */
     if(styleSheet && styleSheet.parentElement !== document.body) document.body.appendChild(styleSheet);
-    try{ renderPortraitStyleCards(); }catch(e){ /* guard-ok — cosmetic */ }
+    try{ renderPortraitStyleCards(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1467'); /* guard-ok — cosmetic */ }
     if(styleSheet) styleSheet.style.display = 'flex';
     closeHeaderMenu();
   };
@@ -1426,7 +1484,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
       window.__portraitHasPhoto = true; window.__portraitPhotoUrl = dataUrl;
-      try{ setPortraitBeforeFace(dataUrl); refreshPortraitFoot(); }catch(e){ /* guard-ok — cosmetic */ }
+      try{ setPortraitBeforeFace(dataUrl); refreshPortraitFoot(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:1487'); /* guard-ok — cosmetic */ }
       if(window.__portraitAutoRun){
         window.__portraitAutoRun = false;
         showPortraitWork(true);
@@ -1442,6 +1500,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
      #portraitMulti* تخصّ أنماط الصور فقط؛ styleEl هنا هو portraitStyleSelect الصحيح (كان في
      مكانها القديم styleEl الأزياء الداخلية، فمقارنة 'merge2' لا تتحقّق أبدًا هناك). */
   let extraImagesB64 = [];
+  /* v-audit-studcli (cli-studios-2) + v-audit-stud2 (srv-studios-2-5): الصور الإضافيّة كانت تُقرأ بـreadAsDataURL بحجمها الأصليّ
+     (صورة كاميرا ٣ م.ب تكفي لتجاوز حدّ الاستضافة ٤٫٥ م.ب فيُرفض الطلب بـ٤١٣) وبلا تحويل HEIC، والقراءة غير متزامنة فكان «حوّلها»
+     قبل اكتمالها يرسل extraImages: [] فيخترع النموذج الشخص الثاني. الآن تمرّ كلّ واحدة بـ__compressImg(…, 1024) كالصورة الرئيسيّة،
+     بترتيبها، و«حوّلها» ينتظر اكتمال الدفعة (extraReady) ثمّ يرفض الإرسال بلا صورة إضافيّة؛ ودفعة أحدث تُلغي ما لم يكتمل من سابقتها. */
+  let extraReady = Promise.resolve();
+  let extraBatch = 0;
   const multiFileInput = $('#portraitMultiFileInput');
   const multiFileBtn = $('#portraitMultiFileBtn');
   const multiPreviewWrap = $('#portraitMultiPreviewWrap');
@@ -1450,23 +1514,51 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     multiFileInput.onchange = () => {
       const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
       const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
+      const batch = ++extraBatch;
+      const slots = [];
       extraImagesB64 = [];
       if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = String(reader.result || '');
-          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
-          if(multiPreviewWrap){
-            const img = document.createElement('img');
-            img.src = dataUrl;
-            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
-            multiPreviewWrap.appendChild(img);
+      extraReady = Promise.all(files.map((file, i) => new Promise((done) => {
+        __compressImg(file, (dataUrl) => {
+          if(batch === extraBatch && dataUrl){
+            slots[i] = { base64: dataUrl.split(',')[1] || '', mime: 'image/jpeg' };
+            if(multiPreviewWrap){
+              const img = document.createElement('img');
+              img.src = dataUrl;
+              img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
+              multiPreviewWrap.appendChild(img);
+            }
           }
-        };
-        reader.readAsDataURL(file);
-      });
+          done();
+        }, 1024);
+      }))).then(() => { if(batch === extraBatch) extraImagesB64 = slots.filter(Boolean); });
     };
+  }
+
+  /* v-pstyle-variety (المالك: «شكل واحد… حتى لو اخترت 1 او 2… اريد في كل شخصيه على الاقل 100 شكل»): عدّاد لكلّ نمط (وحقبة/مهنة)
+     يُرسَل مع كلّ توليد، والخادم يحوّله إلى شكل من ≥١٠٠ للنمط لا يتكرّر حتّى تنفد (api/_lib/portrait-variety.js). يبدأ من رقم
+     عشوائيّ لكلّ جهاز فلا يرى الجميع الشكل نفسه أوّلًا، ويتقدّم عند الإرسال فتعطي الضغطة التالية شكلًا آخر — كعدّاد الأزياء. */
+  const PS_VARIANT_KEY = 'aiapp_portrait_variant';
+  function psNextVariant(k){
+    let map = {};
+    try{ map = JSON.parse(localStorage.getItem(PS_VARIANT_KEY) || '{}') || {}; }catch(e){ map = {}; }
+    let n = Number(map[k]);
+    if(!Number.isSafeInteger(n) || n < 0) n = Math.floor(Math.random() * 100000);
+    map[k] = n + 1;
+    try{ localStorage.setItem(PS_VARIANT_KEY, JSON.stringify(map)); }catch(e){ __swallow(e, 'portrait:variant'); }
+    return n;
+  }
+  function psVariantKey(){
+    const v = styleEl.value;
+    if(v === 'timeshift' && $('#portraitEraSelect')) return v + ':' + $('#portraitEraSelect').value;
+    if(v === 'profession' && $('#portraitProfSelect')) return v + ':' + $('#portraitProfSelect').value;
+    return v;
+  }
+  // «التصميم رقم ٣٧ من ٣٦٠ لهذا النمط» — النصّ القائم fxDesignNo بالـ١٤ لغة؛ فارغ لخادم قديم أو تعديل أمين بلا الحقل.
+  function psLookLine(d){
+    if(!d || !(d.n > 0) || !(d.total > 0)) return '';
+    const tpl = t('fxDesignNo');
+    return (tpl && tpl !== 'fxDesignNo' ? tpl : 'Design {n} of {total}').replace('{n}', d.n).replace('{total}', d.total);
   }
 
   btnGenerate.onclick = async () => {
@@ -1477,6 +1569,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){
       setStatus(t('portraitNeedLogin'));
+      return;
+    }
+    /* v-audit-stud2 (srv-studios-2-5): الدمج والعائلي بلا صورة إضافيّة مقروءة = نصّ خانة الرفع نفسه، بلا طلب */
+    const multiStyle = styleEl.value === 'merge2' || styleEl.value === 'familystyle';
+    if(multiStyle) await extraReady; /* v-audit-studcli: الصور الإضافيّة مصغّرة وكاملة قبل الفحص والإرسال */
+    if(multiStyle && !extraImagesB64.length){
+      setStatus(t(styleEl.value === 'merge2' ? 'portraitMultiLabelMerge' : 'portraitMultiLabelFamily'));
       return;
     }
 
@@ -1491,12 +1590,13 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const res = await fetch('/api/portrait-style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, style: styleEl.value, backdrop: (backdropEl ? backdropEl.value : ''), beautify: (styleEl.value === 'beautify') ? { skin: !!(beautifySkinEl && beautifySkinEl.checked), light: !!(beautifyLightEl && beautifyLightEl.checked), teeth: !!(beautifyTeethEl && beautifyTeethEl.checked) } : null, ageTarget: (styleEl.value === 'ageshift' && $('#portraitAgeSelect')) ? $('#portraitAgeSelect').value : '', hairStyle: (styleEl.value === 'hairstyle' && $('#portraitHairSelect')) ? $('#portraitHairSelect').value : '', adText: (styleEl.value === 'adposter' && $('#portraitAdTextInput')) ? $('#portraitAdTextInput').value : '', charName: (styleEl.value === 'celebtoon' && $('#portraitCelebInput')) ? $('#portraitCelebInput').value : '', removeText: (styleEl.value === 'objectremove' && $('#portraitRemoveInput')) ? $('#portraitRemoveInput').value : '', outfit: (styleEl.value === 'outfit' && $('#portraitOutfitSelect')) ? $('#portraitOutfitSelect').value : '', profession: (styleEl.value === 'profession' && $('#portraitProfSelect')) ? $('#portraitProfSelect').value : '', era: (styleEl.value === 'timeshift' && $('#portraitEraSelect')) ? $('#portraitEraSelect').value : '', extraImages: (styleEl.value === 'familystyle' || styleEl.value === 'merge2') ? extraImagesB64.map(function(x){ return x.base64; }) : [], token }),
+        body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, style: styleEl.value, backdrop: (backdropEl ? backdropEl.value : ''), beautify: (styleEl.value === 'beautify') ? { skin: !!(beautifySkinEl && beautifySkinEl.checked), light: !!(beautifyLightEl && beautifyLightEl.checked), teeth: !!(beautifyTeethEl && beautifyTeethEl.checked) } : null, ageTarget: (styleEl.value === 'ageshift' && $('#portraitAgeSelect')) ? $('#portraitAgeSelect').value : '', hairStyle: (styleEl.value === 'hairstyle' && $('#portraitHairSelect')) ? $('#portraitHairSelect').value : '', adText: (styleEl.value === 'adposter' && $('#portraitAdTextInput')) ? $('#portraitAdTextInput').value : '', charName: (styleEl.value === 'celebtoon' && $('#portraitCelebInput')) ? $('#portraitCelebInput').value : '', removeText: (styleEl.value === 'objectremove' && $('#portraitRemoveInput')) ? $('#portraitRemoveInput').value : '', outfit: (styleEl.value === 'outfit' && $('#portraitOutfitSelect')) ? $('#portraitOutfitSelect').value : '', profession: (styleEl.value === 'profession' && $('#portraitProfSelect')) ? $('#portraitProfSelect').value : '', era: (styleEl.value === 'timeshift' && $('#portraitEraSelect')) ? $('#portraitEraSelect').value : '', extraImages: (styleEl.value === 'familystyle' || styleEl.value === 'merge2') ? extraImagesB64.map(function(x){ return x.base64; }) : [], variant: psNextVariant(psVariantKey()), token }),
       });
       const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('portraitNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('portraitLimitReached')); return; }
+        if(data.error === 'missing_extra_images'){ setStatus(t(styleEl.value === 'merge2' ? 'portraitMultiLabelMerge' : 'portraitMultiLabelFamily')); return; } /* v-audit-stud2 */
         throw new Error(data.error || 'unknown');
       }
       if(styleEl.value === 'avatargif' && Array.isArray(data.frames) && data.frames.length){
@@ -1524,7 +1624,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         downloadEl.href = gifUrl;
         downloadEl.setAttribute('download', 'omran-avatar.gif');
         downloadEl.style.display = 'block';
-        if(shareBtn2) shareBtn2.style.display = 'none';
+        if(shareBtn2) shareBtn2.style.display = 'block'; /* v-share-next: الأفاتار المتحرّك يُشارَك أيضًا (ملفًّا ليبقى متحرّكًا — انظر onclick) */
         setStatus(t('portraitDone'));
       } else {
         const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -1539,10 +1639,11 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         downloadEl.setAttribute('download', 'omran-portrait-style.png');
         downloadEl.style.display = 'block';
         if(shareBtn2) shareBtn2.style.display = 'block';
-        setStatus(t('portraitDone'));
+        const lookLine = psLookLine(data.look); /* v-pstyle-variety */
+        setStatus(t('portraitDone') + (lookLine ? ' · ' + lookLine : ''));
       }
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       btnGenerate.disabled = false;
     }
@@ -1713,7 +1814,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     /* v-art-defer: صفّ المقارنة يبني بطاقةً لكلّ نمط (نسائيّ ٣٦) داخل #fashionAiModal المغلق،
        فكانت ٣٦ صورة (٢٤ م.ب بكسلات) تُحمَّل عند كلّ إقلاع وهي غير مرئيّة. `eager` كان يتجاوز
        التأجيل، و`lazy` وحده لا ينفع داخل display:none (بلا صندوق تخطيط = بلا تقاطع). */
-    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
+    const __src = 'assets/fashion/looks/' + gender + '/' + value + '.webp?v=4'; /* الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) — v=4: v-fx-dedupe أعاد توليد ستّ صور بالمسار نفسه */
     if(window.__omranWhenSeen) window.__omranWhenSeen(img, function(){ img.src = __src; });
     else img.src = __src;
     img.onerror = function(){
@@ -1736,7 +1837,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const opt = fashionOptFor(v);
         return opt && {
           v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
-          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=3',
+          img: 'assets/fashion/looks/' + g + '/' + v + '.webp?v=4',
           img2: g === 'women' ? 'assets/fashion/looks/' + v + '.webp' : '',
         };
       }).filter(Boolean),
@@ -1787,15 +1888,17 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-fx-simple (تبسيط الأزياء): الخادم يبني التصميم من النمط («SPECIFIC DESIGN» من ≥١٠٠ للنمط) ثمّ يقول
      «مخصّص لـ{المناسبة}». فلمّا طُوي منتقي النمط تحت «خصّصها» صار افتراضه («سهرة» أوّل القائمة) يُطبَّق بصمت:
      مناسبة «كاجوال» + نمط «سهرة» = فستان سهرة لطلعة كاجوال. الآن المناسبة الظاهرة تختار النمط المطابق لها
-     في الفئة الحاليّة، والنمط الذي يختاره المستخدم بيده من المعرض يغلب (آخر فعل يغلب). */
+     في الفئة الحاليّة، والنمط الذي يختاره المستخدم بيده من المعرض يغلب (آخر فعل يغلب).
+     v-fx-occ-look (المالك ٢٥ أكتوبر: «الصور لي ماتطابق الشي الي اخترته»): للرجال والأطفال النمط هو ما في صورة بطاقة المناسبة
+     (KIND_LOOK في design-gen.js) — كان تخرّج الرجل يعرض ثلاث قطع ويولّد رسميًّا، وسفر الطفل دنيم ← كاجوال، وتخرّجه بريبي ← رسمي. */
   const FX_OCC_STYLE = {
     wedding:    { women:'wedding', men:'wedding',     kids:'wedding' },
     work:       { women:'office',  men:'office',      kids:'school' },
     casual:     { women:'casual',  men:'casual',      kids:'casual' },
     sport:      { women:'sporty',  men:'sporty',      kids:'sporty' },
-    travel:     { women:'casual',  men:'smartcasual', kids:'casual' },
+    travel:     { women:'casual',  men:'smartcasual', kids:'denim' },
     formal:     { women:'formal',  men:'formal',      kids:'formal' },
-    graduation: { women:'formal',  men:'formal',      kids:'formal' },
+    graduation: { women:'formal',  men:'threepiece',  kids:'preppy' },
     religious:  { women:'abaya',   men:'traditional', kids:'eidkids' },
   };
   function fxStyleForOccasion(){
@@ -1933,7 +2036,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       /* v-fashion-compare-rtl: صفّ التعديل داخل الحاوية — نقره ليس سحبًا للشريط (كان يُحرّك الشريط ويمنع تركيز الحقل ونقر الزرّ) */
       if(ev.target && ev.target.closest && ev.target.closest('#fashionRefineRow')) return;
       __fashionBaDragging = true;
-      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:2012'); /* guard-ok */ }
       updateSliderClip(fashionBaPctFromEvent(ev));
       ev.preventDefault();
     });
@@ -2013,7 +2116,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     modal.style.display = 'flex';
     renderStyleCards(); // تسميات الترجمة قد تكون تغيّرت بعد التهيئة
     /* v651: صفّ «قارن بين الإطلالات» كان يتجمّد على الإنجليزيّة لنفس السبب. */
-    try { buildCompareChecks(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
+    try { buildCompareChecks(); } catch(_e651) { typeof __swallow === 'function' && __swallow(_e651, 'app-12-studios:2092'); /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -2109,7 +2212,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const __dl = fxDesignLine(data.design);
       setStatus(t('fashionAiDone') + (__dl ? ' ' + __dl : ''));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       btnGenerate.disabled = false;
     }
@@ -2120,7 +2223,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
      كمصدر مع طلب التعديل، والسيرفر يقفل كل ما عداه. ---- */
   let __lastFxB64 = null, __lastFxMime = 'image/png';
   const __gt2 = (k, arFb, enFb) => {
-    try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* المترجم لم يجهز */ }
+    try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:2199'); /* المترجم لم يجهز */ }
     return isEn() ? enFb : arFb;
   };
   let refineRow = null, refineInput = null, refineBtn = null, refineStatusEl = null;
@@ -2215,7 +2318,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       refineInput.value = '';
       setStatus(t('fashionAiDone'));
     }catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '))); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     }finally{
       refineBtn.disabled = false; btnGenerate.disabled = false;
     }
@@ -2267,16 +2370,26 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       list.forEach(s => {
         const card = document.createElement('div');
         card.style.cssText = 'border:1px solid var(--border,#333); border-radius:10px; padding:10px;';
-        card.innerHTML =
-          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<strong style="font-size:13px;">' + (s.title || '') + '</strong>' +
-            '<span style="font-size:11.5px; color:#4ade80;">' + t('fashionMatchLabel') + ': ' + s.matchPercent + '%</span>' +
-          '</div>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.clothing || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0;">🎨 ' + (s.colors || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">' + (currentGender() === 'men' ? '💼 ' : '👜 ') + (s.accessories || '') + '</p>' + /* v-fx-gender-pics: كبطاقة الحقيبة */
-          '<button type="button" class="btn primary useLookBtn" style="width:100%; font-size:12px; padding:5px;">' + t('fashionUseThisLook') + '</button>';
-        card.querySelector('.useLookBtn').onclick = () => {
+        /* v-sec-card-xss: حقول النموذج تُبنى بـtextContent لا بـinnerHTML — صورةٌ نصُّها المضمَّن كانت
+           تجعل النموذج يعيد «<img onerror=…>» في title/clothing فيُنفَّذ في الصفحة الأمّ. */
+        const head = document.createElement('div');
+        head.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+        const titleEl = document.createElement('strong');
+        titleEl.style.cssText = 'font-size:13px;'; titleEl.textContent = String(s.title || '');
+        const matchEl = document.createElement('span');
+        matchEl.style.cssText = 'font-size:11.5px; color:#4ade80;'; matchEl.textContent = t('fashionMatchLabel') + ': ' + String(s.matchPercent == null ? '' : s.matchPercent) + '%';
+        head.appendChild(titleEl); head.appendChild(matchEl);
+        const pClothing = document.createElement('p');
+        pClothing.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:6px 0 2px;'; pClothing.textContent = String(s.clothing || '');
+        const pColors = document.createElement('p');
+        pColors.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:2px 0;'; pColors.textContent = '🎨 ' + String(s.colors || '');
+        const pAcc = document.createElement('p');
+        pAcc.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:2px 0 8px;'; pAcc.textContent = (currentGender() === 'men' ? '💼 ' : '👜 ') + String(s.accessories || ''); /* v-fx-gender-pics: كبطاقة الحقيبة */
+        const useBtn = document.createElement('button');
+        useBtn.type = 'button'; useBtn.className = 'btn primary useLookBtn';
+        useBtn.style.cssText = 'width:100%; font-size:12px; padding:5px;'; useBtn.textContent = t('fashionUseThisLook');
+        card.appendChild(head); card.appendChild(pClothing); card.appendChild(pColors); card.appendChild(pAcc); card.appendChild(useBtn);
+        useBtn.onclick = () => {
           /* تدقيق ١٨ أكتوبر: الوصف كان «… . Colors: … Accessories: …» بتسميات إنجليزيّة و«..» — الأجزاء الثلاثة بلا نقطتها الختاميّة مربوطة بـ«. » */
           const look = [s.clothing, s.colors, s.accessories].map((x) => String(x || '').trim().replace(/[.。।]+$/, '').trim()).filter(Boolean).join('. ');
           /* مع صورة مرفوعة يبقى الزرّ كما كان: لبس الإطلالة على صورتك (v-fashion-use-look) يحتاج أمر الخادم — مع طلب الأزياء المنفصل */
@@ -2290,7 +2403,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('fashionSuggestNeedImage'));
     } catch(e){
-      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+      setStatus(stud2ErrText(e, bT('❌ خطأ: ','❌ Error: '), 'designAiSuggestError')); /* v-audit-stud2 (srv-studios-2-8) + v-audit-studcli (cli-studios-4) */
     } finally {
       suggestBtn.disabled = false;
     }
@@ -2365,6 +2478,10 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
             resultEl.src = r.dataUrl; if(resultWrap) resultWrap.style.display = 'block'; resultEl.style.display = 'block'; /* v-fashion-show */
             downloadEl.href = r.dataUrl; downloadEl.style.display = 'block';
             favSaveBtn.style.display = 'block';
+            /* v-audit-studcli (cli-studios-6): المختارة تصير مصدر «عدّل شيئًا محددًا» — كان __lastFxB64 يبقى على التوليد السابق فيُعدَّل
+               التصميم القديم ويحلّ محلّ المختارة. __refineRemember يبني الصفّ إن لم يُبنَ ويفرّغ خانته */
+            const __pm = /^data:([^;,]+);base64,(.*)$/.exec(r.dataUrl);
+            if(__pm) __refineRemember(__pm[2], __pm[1]);
             /* v-fashion-result-inplace: النتيجة وزرّ التحميل صارا أعلى النافذة — نصعد إليهما ليرى الاختيار */
             fxRevealResult();
           };
@@ -2377,7 +2494,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = __studioErrMsg(e);
     } finally {
       compareBtn.disabled = false;
     }
@@ -2617,6 +2734,17 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   function emAiMsg(code){
     return (code === 'nokey' || code === 'badkey') ? t('emailAsst_draftNoKey') : (code === 'busy' ? t('emailAsst_draftBusy') : t('emailAsst_draftFailed'));
   }
+  /* v-audit-search (srv-search-6/7): خطأ الخادم رمز يُترجم هنا بلغة الواجهة — كان جملة عربيّة ثابتة («الجلسة منتهية…»، «لم يتم ربط
+     Gmail بعد»، «صيغة الوقت غير صحيحة») أو نصّ Gmail الخامّ بالإنجليزيّة لكلّ اللغات. صلاحيّة ناقصة/مسحوبة = «أعد الربط» وزرّ الربط ظاهر. */
+  const EM_SCOPE = { wide30: 'axSearchEmScope30', latest: 'axSearchEmScopeLatest', empty: 'axSearchEmScopeEmpty' };
+  function emErrText(d){
+    const c = String((d && (d.code || d.error)) || '');
+    if((d && (d.needsReauth || d.notConnected)) || c === 'needs_reauth' || c === 'not_connected') return T().notConnected;
+    if(c === 'session_expired') return t('axSearchSessionExpired');
+    if(c === 'bad_event') return t('axSearchEmBadEvent');
+    return t('svcPaused');
+  }
+  function emReconnect(){ connectBox.style.display = 'block'; emPrefetchTicket(); }
 
   /* v-email-cache (البندان ١ و٩): القائمة تُرسم فورًا بلا انتظار ذكاء، والمسوّدات الناقصة تُطلب رسالةً رسالة (ثلاث معًا)
      فتملأ بطاقاتها، والمحفوظ يأتي جاهزًا من الخادم. «إعادة توليد» وحدها تكتب المسوّدة من جديد، و«المزيد» يُلحق الصفحة
@@ -2730,8 +2858,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         });
         const d = await r.json();
         if(!r.ok){
-          if(d && d.needsReauth) throw new Error(tr.calReauth);
-          throw new Error((d && d.error) || 'calendar failed');
+          if(d && d.needsReauth){ emReconnect(); throw new Error(tr.calReauth); } // v-audit-search: «أعد الربط» ومعه زرّ الربط
+          throw new Error(emErrText(d)); // v-audit-search
         }
         cardStatus.textContent = tr.eventAdded;
         calBtn.textContent = tr.eventAdded;
@@ -2754,7 +2882,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
         });
         const d = await r.json();
-        if(!r.ok) throw new Error(d.error || 'send failed');
+        if(!r.ok){ if(d && d.needsReauth) emReconnect(); throw new Error(emErrText(d)); } // v-audit-search: صلاحيّة الإرسال ناقصة = زرّ الربط
         cardStatus.textContent = tr.sent;
         setTimeout(() => { card.remove(); }, 1200);
       }catch(e){
@@ -2774,7 +2902,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           body: JSON.stringify({ token, pattern }),
         });
         const d = await r.json();
-        if(!r.ok) throw new Error(d.error || 'ignore failed');
+        if(!r.ok) throw new Error(emErrText(d)); // v-audit-search
         cardStatus.textContent = tr.ignored;
         setTimeout(() => { card.remove(); }, 1000);
       }catch(e){
@@ -2870,14 +2998,14 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       const d = await r.json();
       if(run !== emRun) return;
       /* «غير مربوط» يصل ٢٠٠ (حالة طبيعيّة لا خطأ — كان ٤٠٠ يطبع طلبًا فاشلًا عند كلّ فتح) فيُفحص قبل r.ok */
-      if(d.notConnected || (!r.ok && /invalid_grant/i.test(String(d.error || '')))){
+      if(d.notConnected || d.needsReauth || (!r.ok && /invalid_grant/i.test(String(d.error || '')))){ /* v-audit-search: needsReauth = صلاحيّة ناقصة */
         connectBox.style.display = 'block';
         connectedBox.style.display = 'none';
         setStatus(d.notConnected ? '' : T().notConnected);
         emPrefetchTicket(); // v-oauth-bind
         return;
       }
-      if(!r.ok) throw new Error(d.error || 'load failed');
+      if(!r.ok) throw new Error(emErrText(d) + (d && d.aiErrorDetail ? ' (' + d.aiErrorDetail + ')' : '')); // v-audit-search: التفصيل للمالك وحده من الخادم
       gmailLabel.textContent = d.gmailAddress || '';
       if(!more){
         // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
@@ -2885,7 +3013,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
         const detail = d.aiErrorDetail ? ' (' + d.aiErrorDetail + ')' : '';
         const aiLine = d.aiError ? emAiMsg(d.aiError) + detail : (d.aiNote ? t('emailAsst_draftFallback') + detail : '');
         if(aiLine) emKeyShown = true;
-        setStatus([d.note || '', aiLine].filter(Boolean).join('\n'));
+        const scopeLine = EM_SCOPE[d.scope] ? t(EM_SCOPE[d.scope]) : (d.note || ''); // v-audit-search (srv-search-7): رمز النطاق بلغة الواجهة
+        setStatus([scopeLine, aiLine].filter(Boolean).join('\n'));
       }
       const emails = d.emails || [];
       lastLoadedEmails = lastLoadedEmails.concat(emails);
@@ -2943,11 +3072,14 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
     voiceBtn.disabled = true;
     setStatus(tr.voiceLoading);
     try{
+      /* v-tts-gemini: بصوت مها نفسه (جنسه ولهجته من «الصوت» في الإعدادات)، ويُعدّ على الحساب لا على العنوان.
+         - كان «nova» من المحرّك الثاني الذي تحذفه OpenAI في ٦ يناير ٢٠٢٧.
+         - الفشل رسالة مترجمة (__studioErrMsg) لا نصّ الخادم، فقد كان يُظهر للمستخدم «OpenAI error: …». */
       const resp = await fetch('/api/tts', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'nova', text: text.slice(0, 4000) })
+        body: JSON.stringify({ voice: 'maha', gender: localStorage.getItem('aiapp_voice_gender') || 'female', lang: en() ? 'en' : 'ar', dialect: ttsDialectSetting(), token: ttsAuthToken(), guestId: ttsGuestId(), text: text.slice(0, 4000) })
       });
-      if(!resp.ok){ let msg = 'tts failed'; try{ const j = await resp.json(); if(j && j.error) msg = j.error; }catch(e){ __swallow(e, "misc:app-12-studios#2"); } throw new Error(msg); }
+      if(!resp.ok) throw new Error(resp.status === 402 ? 'daily_limit_reached' : resp.status === 401 ? 'auth_required' : 'tts_failed');
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       emailSummaryAudio = new Audio(url);
@@ -2956,7 +3088,7 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
       setStatus('');
       await emailSummaryAudio.play();
     }catch(e){
-      setStatus(tr.error + (e && e.message ? e.message : String(e)));
+      setStatus(__studioErrMsg(e, 'svcPaused')); // v-tts-gemini: الرموز المعروفة بالـ١٤ لغة، ونصّ الخطأ الخامّ للمالك وحده
     }finally{
       voiceBtn.disabled = false;
     }
@@ -2983,7 +3115,9 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   /* v-oauth-bind: state كان رمز الجلسة نفسه (٣٠ يومًا) — يمرّ في روابط جوجل وسجلّاتها، ومن أكمل رابطًا يحمل رمز
      غيره رُبطت Gmail الخاصّة به بحساب ذلك الغير. الآن تذكرة ربط من الخادم (استعمال واحد، عشر دقائق) تُسكّ مسبقًا
      حين يظهر زرّ الربط، فيبقى فتح سفاري في غلاف الآيفون داخل لمسة المستخدم بلا انتظار شبكة قبله. */
-  const emLinkError = (err) => alert('⚠️ خطأ ربط Gmail: ' + err);
+  /* v-audit-search (srv-search-7): التنبيه كان عربيًّا دائمًا ويعرض الرمز الخامّ (session_expired، access_denied…) — الآن نصّ بلغة
+     الواجهة: الإلغاء في صفحة جوجل، والصلاحيّات الناقصة، وما سواهما «حاول مرّة ثانية» (التذكرة والشبكة والخادم علاجها واحد). */
+  const emLinkError = (err) => alert('⚠️ ' + t(err === 'access_denied' ? 'axSearchEmLinkDenied' : (err === 'missing_scopes' ? 'axSearchEmLinkScopes' : 'axSearchEmLinkFailed')));
   let emTicket = null; // { t: التذكرة، at: وقت سكّها، tok: الجلسة التي سكّتها — حساب آخر على الجهاز نفسه لا يستعملها }
   async function emMintTicket(token){
     const r = await fetch('/api/system?action=email-link-ticket', {
@@ -3020,8 +3154,8 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
          المستخدم فيظهر عند العودة والتحديث. */
       let emIosWrap = false;
       /* v-google-safari-2: الكشف بجسر كاباسيتور «bridge» — الغلاف الفعلي بلا جسور omran */
-      try { emIosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ /* guard-ok */ }
-      try { if(!emIosWrap){ const mh = window.webkit && window.webkit.messageHandlers; emIosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ /* guard-ok */ }
+      try { emIosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:3127'); /* guard-ok */ }
+      try { if(!emIosWrap){ const mh = window.webkit && window.webkit.messageHandlers; emIosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:3128'); /* guard-ok */ }
       if (emIosWrap) { window.open(location.origin + emStartUrl, '_blank'); emPrefetchTicket(); return; }
       window.location.href = emStartUrl;
     };
@@ -3034,6 +3168,12 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
   });
 
   refreshBtn.addEventListener('click', loadEmails);
+  /* v-hw-webview: في WebView حزمة هواوي تفويض جوجل يُفتح في المتصفّح (WebView يحوّل النطاقات الأخرى إليه) والربط
+     يُحفظ في الخادم، لكنّ التطبيق حين يعود يبقى على «اربط Gmail» — عند الرجوع للتطبيق يُعاد فتح الأداة فتظهر الرسائل. */
+  if(typeof document.addEventListener === 'function') document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState !== 'visible' || typeof omranHwWebView !== 'function' || !omranHwWebView()) return;
+    if(modal.style.display === 'flex' && connectBox.style.display !== 'none' && localStorage.getItem('aiapp_auth_token')) btnOpen.click();
+  });
 
   // Handle the redirect back from /api/email-callback (?emailconnected=1 or ?emailerror=...)
   (function(){
@@ -3051,6 +3191,6 @@ function pstyleImg(v){ return 'assets/portrait/styles/' + v + '.webp?v=' + PSTYL
           setTimeout(() => { emLinkError(err); }, 300);
         }
       }
-    }catch(e){ /* ignore */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-studios:3164'); /* ignore */ }
   })();
 })();

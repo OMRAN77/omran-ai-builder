@@ -51,6 +51,7 @@ mock('api/_lib/_vip.js', { isVip: async () => false });
 
 /* الشبكة: كلّ نداء خارجيّ يُعدّ بمضيفه، ويُجاب بردّ ناجح واقعيّ الشكل. */
 const calls = [];
+const TINY_PNG = (() => { const { PNG } = require('pngjs'); const p = new PNG({ width: 4, height: 6 }); p.data.fill(200); return PNG.sync.write(p).toString('base64'); })();
 const jsonRes = (obj) => ({ ok: true, status: 200, json: async () => obj, text: async () => JSON.stringify(obj) });
 global.fetch = async (url, init) => {
   const u = String(url);
@@ -61,6 +62,8 @@ global.fetch = async (url, init) => {
     return jsonRes({ items: Array.from({ length: 14 }, (_, i) => ({ link: 'https://img.example/' + encodeURIComponent(q) + '/' + i + '.jpg' })) });
   }
   if (/api\.tavily\.com/.test(u)) return jsonRes({ images: [], results: [] });
+  /* v-style-match: بطاقات الستايل من نانو بنانا برو — صورة PNG صغيرة حقيقيّة (تُصغَّر وتُكتب WebP) */
+  if (/gemini-3-pro-image:generateContent/.test(u)) return jsonRes({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: TINY_PNG } }] } }] });
   if (/generativelanguage\.googleapis\.com/.test(u)) {
     const txt = /Suggest exactly 3 short, specific/.test(String(init && init.body)) ? '["a","b","c"]' : '[{"title":"t","clothing":"c","description":"d","colors":"x","accessories":"y","matchPercent":90}]';
     return jsonRes({ candidates: [{ content: { parts: [{ text: txt }] } }] });
@@ -215,7 +218,7 @@ test('٦. معاينة الاستوديو: أسماء النموذج الأوّ�
   const n = calls.length;
   const ok = await call(preview, { method: 'GET', query: { feature: 'hair', value: 'black' } });
   assert.equal(ok.code, 200);
-  assert.equal(callsSince(n).filter((u) => /api\.openai\.com/.test(u)).length, 1);
+  assert.equal(callsSince(n).filter((u) => /gemini-3-pro-image/.test(u)).length, 1, 'v-style-match: بطاقة الستايل من نانو بنانا برو');
   const tab = await call(preview, { method: 'GET', query: { feature: 'henna', value: '__tab' } });
   assert.equal(tab.code, 200, 'صورة التبويب كما كانت');
 });

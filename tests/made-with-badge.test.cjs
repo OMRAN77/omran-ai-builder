@@ -19,7 +19,9 @@ test('٢) الشارة خارج إطار المشروع ولا تُحقن في �
   const wrapAt = html.indexOf('<div id="frameWrap">');
   const wrapEnd = html.indexOf('</div>', html.indexOf('<div id="chatWrap">') + 30);
   assert.ok(wrapAt > 0 && badgeAt > wrapEnd, 'بعد إغلاق frameWrap');
-  assert.match(html, /frame\.srcdoc = data\.code;/, 'كود المستخدم يُعرض كما هو');
+  // v-audit-pages: الكود يُعرض كما هو مع طبقة التخزين وحدها (كالمعاينة) — الشارة لا تدخله
+  assert.match(html, /frame\.srcdoc = pInject\(data\.code\);/, 'كود المستخدم يُعرض كما هو');
+  assert.doesNotMatch(html.slice(html.indexOf('const P_SHIM'), html.indexOf('const pInject')), /omMadeWith|OM Ai/, 'الشارة دخلت كود المستخدم');
   assert.match(html, /#omMadeWith\{position:fixed;[^}]*z-index:50/);
 });
 

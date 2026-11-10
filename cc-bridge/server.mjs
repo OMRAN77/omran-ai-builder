@@ -11,10 +11,11 @@
 'use strict';
 
 import { createServer } from 'node:http';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { timingSafeEqual, randomBytes } from 'node:crypto';
-import { ALLOWED_TOOLS, DENIED_TOOLS, RULES_APPEND, RunLog, decideTool, briefTool, detailTool, DETAIL_MAX, redact } from './policy.mjs';
+import { ALLOWED_TOOLS, DENIED_TOOLS, RULES_APPEND, RunLog, briefTool, detailTool, DETAIL_MAX, redact, agentEnv, bridgeDecision } from './policy.mjs';
 import { makeGit } from './git.mjs';
 import { makeWatcher, wakeMessage } from './watch.mjs';
 import { createRenderer } from './render.mjs'; // v-app-director: تصوير شاشات التطبيق ودمج فيديو «مخرج التطبيق»
@@ -43,28 +44,54 @@ if (!SECRET || SECRET.length < 24) { console.error('CC_BRIDGE_SECRET مفقود 
 if (!env.ANTHROPIC_API_KEY && !env.CLAUDE_CODE_OAUTH_TOKEN) { console.error('لا ANTHROPIC_API_KEY ولا CLAUDE_CODE_OAUTH_TOKEN في البيئة.'); process.exit(1); }
 
 const gitOps = makeGit({ cwd: REPO_DIR });
+/* v-bridge-render-tmp (بعد v-bridge-disk: الصحّة قالت «free 0 MB + 172 MB to clear of 433 MB» — قرص Railway المركّب كلّه ٤٣٣ م.ب):
+   مهمّات المخرج لا تحتاج البقاء بين النشرات (سجلّها في الذاكرة، وملفّاتها تيتم عند كلّ إعادة تشغيل)، فمكانها قرص الحاوية المؤقّت لا
+   القرص المركّب الذي تبقى فيه نسخة المستودع والجلسات والحالة. DIRECTOR_WORK_DIR يغيّره صراحةً. وما تركته المهمّات القديمة على
+   القرص المركّب يُمسح عند الإقلاع فيعود له مكانه. */
+const RENDER_DIR = env.DIRECTOR_WORK_DIR || join(tmpdir(), 'omran-render');
+const OLD_RENDER_DIR = join(STATE_DIR, 'render');
+if (RENDER_DIR !== OLD_RENDER_DIR) rm(OLD_RENDER_DIR, { recursive: true, force: true }).catch((e) => console.warn('[cc] old render dir cleanup failed', e && e.message));
 /* v-app-director: مسار /render برمز مهمّة (HMAC بالسرّ نفسه يصدره Vercel للمالك) لا بالسرّ الخام — المتصفّح يناديه مباشرة.
    DIRECTOR_APP_URL: التطبيق الذي تُصوَّر شاشاته (الإنتاج افتراضيًّا). FFMPEG_BIN/FFPROBE_BIN اختياريّان. */
 const renderer = createRenderer({
   secret: SECRET,
   appUrl: String(env.DIRECTOR_APP_URL || 'https://omran-ai-builder.vercel.app').replace(/\/+$/, ''),
-  workDir: join(STATE_DIR, 'render'),
+  workDir: RENDER_DIR,
   repoDir: REPO_DIR,
   ffmpeg: env.FFMPEG_BIN || 'ffmpeg',
   ffprobe: env.FFPROBE_BIN || 'ffprobe',
   concurrency: Math.max(0, Number(env.DIRECTOR_CONCURRENCY) || 0), /* ٠ = تلقائيّ: أنوية الجهاز ناقص واحد وما تحتمله ذاكرة الحاوية (v-app-director-watchdog)، بسقف ٤ */
 });
 
-/** بيئة Claude Code: بيئة الجسر بلا سرّه المشترك، ومفتاح GitHub باسمه عند gh (GH_TOKEN) ليعمل gh وgit push. */
+/** بيئة Claude Code: بيئة الجسر بلا سرّه المشترك ولا مفتاح الكتابة على GitHub (v-audit-bridge: كان يمرّ باسم GH_TOKEN فيدمج
+    ويدفع إلى main بأيّ صيغة تفوت السياج النصّيّ). gh يأخذ CC_AGENT_GH_TOKEN (قراءة + فتح طلبات) إن ضبطه المالك. */
 function childEnv() {
-  const e = Object.assign({}, env);
-  delete e.CC_BRIDGE_SECRET;
-  if (e.GITHUB_TOKEN && !e.GH_TOKEN) e.GH_TOKEN = e.GITHUB_TOKEN;
-  return e;
+  return agentEnv(env);
 }
 const runs = new Map();       // runId -> RunLog
 let current = null;           // التشغيل الجاري (واحد فقط)
 let state = { sessionId: '', updatedAt: 0 };
+
+/* v-audit-bridge (sat-bridges-5): قفل واحد لعمليّات git التي يجريها الجسر (انشر · ادمج · تراجع · الدمج التلقائيّ): لا تتزامن
+   فيما بينها (نقرتان = عمليّتا git معًا)، ولا تبدأ والوكيل يعمل، و/chat يردّ 409 أثناءها — الدمج كان يسحب الفرع من تحت تشغيل
+   بدأ خلال awaits الشبكة. الفحص والحجز متزامنان بلا await بينهما. */
+let gitBusy = '';
+const GIT_BUSY = { error: 'عمليّة git جارية في الجسر (انشر/ادمج/تراجع) — انتظر انتهاءها.', code: 'git_busy' };
+const RUN_BUSY = { error: 'تشغيل جارٍ — انتظر انتهاءه أو أوقفه.', code: 'run_busy' };
+async function withGit(kind, fn) {
+  if (gitBusy || (current && !current.done)) return { busy: gitBusy ? 'git' : 'run' };
+  gitBusy = kind;
+  try { return await fn(); } finally { gitBusy = ''; }
+}
+const busyBody = (r) => (r.busy === 'git' ? GIT_BUSY : RUN_BUSY);
+async function autoMerge(n) {
+  const r = await withGit('merge', () => gitOps.merge({ prNumber: n }));
+  return r.busy ? { deferred: true } : r;
+}
+
+/* v-audit-bridge (sat-bridges-1): Claude Code بلا مفتاح كتابة — «git push» الذي يجيزه السياج يجريه الجسر نفسه بمفتاحه
+   (gitOps.pushBranch: وجهة refs/heads/<فرع> صريحة، لا main ولا قسر، إلى عنوان origin المتوقّع) — bridgeDecision في policy.mjs. */
+const bridgeTool = (name, input) => bridgeDecision(name, input, gitOps.pushBranch);
 
 async function loadState() { try { state = JSON.parse(await readFile(join(STATE_DIR, 'state.json'), 'utf8')); } catch (e) { state = { sessionId: '', updatedAt: 0 }; } }
 async function saveState() { try { await mkdir(STATE_DIR, { recursive: true }); await writeFile(join(STATE_DIR, 'state.json'), JSON.stringify(state)); } catch (e) { console.warn('[cc] state save failed', e && e.message); } }
@@ -75,7 +102,7 @@ const watcher = makeWatcher({
   gh: (p) => gitOps.gh(p),
   repo: gitOps.repo,
   onNote: (n) => { if (n.wake) wakeQueue.push(n); },
-  onMergeReady: async (n) => (current && !current.done) ? { deferred: true } : gitOps.merge({ prNumber: n }),
+  onMergeReady: async (n) => (current && !current.done) ? { deferred: true } : autoMerge(n),
 });
 async function loadWatch() { try { watcher.load(JSON.parse(await readFile(join(STATE_DIR, 'watch.json'), 'utf8'))); } catch (e) { /* أوّل تشغيل */ } }
 async function saveWatch() { try { await mkdir(STATE_DIR, { recursive: true }); await writeFile(join(STATE_DIR, 'watch.json'), JSON.stringify(watcher.dump())); } catch (e) { console.warn('[cc] watch save failed', e && e.message); } }
@@ -85,7 +112,7 @@ function watchFromText(text) { for (const m of String(text || '').matchAll(PR_UR
 /** يوقظ الوكيل بما تجمّع من إشعارات إن كان الجسر فارغًا، ويحفظ ردّه على الإشعار نفسه. */
 function wakeIfIdle() {
   if (!ENABLED) { wakeQueue.length = 0; return; } // v-cc-off: لا إيقاظ ذاتيّ
-  if (!wakeQueue.length || (current && !current.done)) return;
+  if (!wakeQueue.length || (current && !current.done) || gitBusy) return;
   const batch = wakeQueue.splice(0);
   const log = new RunLog('w' + Date.now().toString(36) + randomBytes(3).toString('hex'));
   runs.set(log.id, log); current = log;
@@ -150,7 +177,7 @@ async function runMessage(log, message, opts) {
     permissionMode: 'acceptEdits',
     allowedTools: ALLOWED_TOOLS,
     disallowedTools: DENIED_TOOLS,
-    canUseTool: async (name, input) => decideTool(name, input),
+    canUseTool: async (name, input) => bridgeTool(name, input),
     includePartialMessages: true,
     systemPrompt: { type: 'append', text: RULES_APPEND },
     /* كجلسة المالك على الويب: CLAUDE.md وإعدادات المشروع من المستودع، وإعدادات المستخدم
@@ -222,7 +249,8 @@ function gc() { const now = Date.now(); for (const [id, l] of runs) if (l.done &
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/health') return json(res, 200, { ok: true, busy: !!(current && !current.done), renderJobs: renderer.jobs.size });
+  /* v-bridge-disk: القرص في الصحّة — رمز المهمّة في Vercel يرفض قبل أيّ إنفاق إن لم يكفِ لفيديو جديد حتّى بعد المسح */
+  if (url.pathname === '/health') return json(res, 200, { ok: true, busy: !!(current && !current.done), renderJobs: renderer.jobs.size, disk: await renderer.disk().catch(() => null) });
   /* v-app-director: /render يتحقّق من رمز المهمّة بنفسه (لا السرّ الخام) ويردّ على CORS لأصل التطبيق */
   if (url.pathname === '/render' || url.pathname.startsWith('/render/')) {
     try { if (await renderer.handle(req, res, url)) return; } catch (e) { return json(res, 500, { error: redact(String((e && e.message) || e).slice(0, 300)) }); }
@@ -235,6 +263,7 @@ const server = createServer(async (req, res) => {
       const message = String(b.message || '').trim();
       if (!message) return json(res, 400, { error: 'رسالة فارغة' });
       if (current && !current.done) return json(res, 409, { error: 'تشغيل جارٍ — انتظر انتهاءه أو أوقفه.', runId: current.id });
+      if (gitBusy) return json(res, 409, GIT_BUSY); // v-audit-bridge: لا تشغيل يبدأ والجسر يدمج أو يدفع أو يتراجع
       gc();
       const log = new RunLog('r' + Date.now().toString(36) + randomBytes(3).toString('hex'));
       runs.set(log.id, log); current = log;
@@ -258,7 +287,9 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/publish') {
       if (current && !current.done) return json(res, 409, { error: 'تشغيل جارٍ — انتظر انتهاءه قبل النشر.' });
-      const r = await gitOps.publish(await body(req));
+      const pb = await body(req);
+      const r = await withGit('publish', () => gitOps.publish(pb));
+      if (r.busy) return json(res, 409, busyBody(r));
       if (r.ok && r.prNumber) { watcher.watch(r.prNumber); await saveWatch(); r.watching = true; }
       return json(res, r.error ? 400 : 200, r);
     }
@@ -274,7 +305,8 @@ const server = createServer(async (req, res) => {
           return json(res, 200, { ok: true, queued: true, pending: st.pending, url: st.url });
         }
       }
-      const r = await gitOps.merge(b);
+      const r = await withGit('merge', () => gitOps.merge(b));
+      if (r.busy) return json(res, 409, busyBody(r));
       return json(res, r.error ? 400 : 200, r);
     }
     if (req.method === 'GET' && url.pathname === '/notes') {
@@ -296,7 +328,8 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/reset') {
       if (current && !current.done) return json(res, 409, { error: 'تشغيل جارٍ — أوقفه أوّلًا.' });
       const b = await body(req);
-      const st = await gitOps.resetToBase();
+      const st = await withGit('reset', () => gitOps.resetToBase());
+      if (st.busy) return json(res, 409, busyBody(st));
       if (b.newSession) { state.sessionId = ''; await saveState(); }
       return json(res, 200, Object.assign({ ok: true, sessionId: state.sessionId }, st));
     }

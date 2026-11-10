@@ -478,6 +478,8 @@ function makePoster(s, out, btn){
         out.innerHTML = '<img class="eduPosterImg" alt="" src="' + src + '"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">'
           + '<a class="eduPrimary" id="eduPosterSave" style="text-decoration:none;">⬇️ ' + esc(L('احفظ البوستر', 'Save the poster')) + '</a></div>';
         var a = $id('eduPosterSave'); a.href = src; a.download = 'poster-' + hashStr(s.topic || s.problem) + '.png';
+        /* v-share-next (المالك ٧ نوفمبر): «مشاركة» بجانب «احفظ البوستر» — النافذة الموحّدة (app-45) */
+        if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', className: 'eduPrimary', style: 'text-decoration:none;cursor:pointer;font-family:inherit;border:0;' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'edu-plus:482'); /* guard-ok — المشاركة تحسين لا يمنع الحفظ */ } }
         btn.textContent = '🔁 ' + L('صمّم نسخة أخرى', 'Design another version');
         return;
       }
@@ -600,7 +602,7 @@ function openAlgo(){
   busy(c.body());
   if(!algoLoading) algoLoading = new Promise(function(res, rej){
     var s = document.createElement('script');
-    s.src = '/js/edu-algo.js?v=2';
+    s.src = '/js/edu-algo.js?v=3';
     s.onload = res; s.onerror = function(){ algoLoading = null; rej(new Error(L('تعذّر تحميل المسار — تحقّق من الاتصال.', 'Could not load the track — check your connection.'))); };
     document.head.appendChild(s);
   });

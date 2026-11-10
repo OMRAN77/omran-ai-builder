@@ -189,7 +189,7 @@
   };
   function tr(k) {
     var lg = 'ar';
-    try { lg = String(document.documentElement.lang || 'ar').toLowerCase(); } catch (e) { /* guard-ok — العربية افتراضيّ الواجهة */ }
+    try { lg = String(document.documentElement.lang || 'ar').toLowerCase(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:192'); /* guard-ok — العربية افتراضيّ الواجهة */ }
     var d = STR[lg] || STR[lg.slice(0, 2)]; // fil ثلاثة أحرف — قصّها إلى fi كان يسقطها إلى الإنجليزيّ
     return (d && d[k]) || STR.en[k] || STR.ar[k] || k;
   }
@@ -204,7 +204,7 @@
     try { return Notification.permission; } catch (e) { return 'denied'; }
   }
   function title() {
-    try { if (typeof mahaPersonaName === 'function') return mahaPersonaName(); } catch (e) { /* guard-ok — الاسم الافتراضيّ يكفي */ }
+    try { if (typeof mahaPersonaName === 'function') return mahaPersonaName(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:207'); /* guard-ok — الاسم الافتراضيّ يكفي */ }
     return 'مها';
   }
 
@@ -219,14 +219,28 @@
       var key = ok
         ? (kind === 'video' ? 'mediaNotifReadyVideo' : 'mediaNotifReadyImage')
         : 'mediaNotifFailVideo';
-      var n = new Notification(title(), { body: tr(key), icon: ICON, tag: 'maha-media-ready' }); // وسم ثابت = لا تكديس
+      var opts = { body: tr(key), icon: ICON, tag: 'maha-media-ready' }; // وسم ثابت = لا تكديس
+      var n;
+      try { n = new Notification(title(), opts); }
+      catch (ctorErr) {
+        /* v-audit-tools: Chrome أندرويد (ومنه TWA) يرمي «Illegal constructor» على الباني ويقبل الإشعار من عامل الخدمة
+           وحده — كان الخطأ يُبتلع فلا يصل إشعار والمفتاح مفعّل. الحاسوب على الباني كما كان، والضغطة هنا يتولّاها
+           notificationclick في sw.js (يركّز النافذة القائمة). */
+        var sw = null;
+        try { sw = (typeof navigator !== 'undefined' && navigator.serviceWorker) || null; } catch (e3) { sw = null; /* guard-ok — بلا عامل خدمة يُرمى خطأ الباني أدناه */ }
+        if (!sw || !sw.ready) throw ctorErr;
+        var t = title();
+        sw.ready.then(function (reg) { return reg.showNotification(t, opts); })
+          .catch(function (e4) { try { __swallow(e4, 'misc:media-notify-sw'); } catch (e5) { typeof __swallow === 'function' && __swallow(e5, 'media-notify:234'); /* guard-ok */ } });
+        return true;
+      }
       n.onclick = function () {
-        try { window.focus(); } catch (e) { /* guard-ok */ }
-        try { n.close(); } catch (e2) { /* guard-ok */ }
+        try { window.focus(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:238'); /* guard-ok */ }
+        try { n.close(); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'media-notify:239'); /* guard-ok */ }
       };
       return true;
     } catch (e) {
-      try { __swallow(e, 'misc:media-notify'); } catch (e2) { /* guard-ok — لا استثناء من مرصدٍ جانبيّ أبدًا */ }
+      try { __swallow(e, 'misc:media-notify'); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'media-notify:243'); /* guard-ok — لا استثناء من مرصدٍ جانبيّ أبدًا */ }
       return false;
     }
   };
@@ -236,14 +250,14 @@
   function dismissBar() {
     barShown = false;
     var el = document.getElementById('mediaNotifAskBar');
-    if (el) { try { el.remove(); } catch (e) { /* guard-ok */ } }
+    if (el) { try { el.remove(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:253'); /* guard-ok */ } }
   }
   window.mediaNotifyMaybeAsk = function () {
     try {
       if (!supported() || barShown) return;
       if (permission() !== 'default') return;                    // ممنوح أو مرفوض — لا شريط
       if (!enabled()) return;
-      try { if (localStorage.getItem(LS_NEVER) === '1') return; } catch (e) { /* guard-ok */ }
+      try { if (localStorage.getItem(LS_NEVER) === '1') return; } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:260'); /* guard-ok */ }
       if (!document.body) return;
       barShown = true;
       var bar = document.createElement('div');
@@ -252,7 +266,7 @@
          (الجوّال) وبعرض الشاشة كلّها فوق القوائم (الحاسوب). الآن فوق الصندوق المقيس (window.__omranAboveComposer من الحزمة)،
          متوسّطًا عليه وبعرضه حتّى 640px؛ وبلا صندوق ظاهر احتياط متوسّط على 76px. */
       var pos = null;
-      try { pos = (typeof window.__omranAboveComposer === 'function') ? window.__omranAboveComposer(10) : null; } catch (e) { /* guard-ok — الاحتياط أدناه */ }
+      try { pos = (typeof window.__omranAboveComposer === 'function') ? window.__omranAboveComposer(10) : null; } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:269'); /* guard-ok — الاحتياط أدناه */ }
       var vw = window.innerWidth || 0;
       var bw = pos ? Math.min(640, pos.width) : (vw ? Math.min(640, vw - 24) : 0);
       bar.style.cssText = 'position:fixed; bottom:' + (pos ? pos.bottom : 76) + 'px; left:' + (pos ? pos.cx + 'px' : '50%') + '; transform:translateX(-50%);'
@@ -273,16 +287,16 @@
       no.style.cssText = 'flex:none; padding:7px 14px; border-radius:10px; border:1px solid var(--border, rgba(127,127,127,.25)); background:transparent; color:inherit; cursor:pointer; font-size:13px;';
       yes.onclick = function () {
         dismissBar();
-        try { Notification.requestPermission().then(syncToggle).catch(function () { /* guard-ok — الرفض يظهر في حالة المفتاح */ }); } catch (e) { /* guard-ok */ }
+        try { Notification.requestPermission().then(syncToggle).catch(function () { /* guard-ok — الرفض يظهر في حالة المفتاح */ }); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:290'); /* guard-ok */ }
       };
       no.onclick = function () {
-        try { localStorage.setItem(LS_NEVER, '1'); } catch (e) { /* guard-ok */ }
+        try { localStorage.setItem(LS_NEVER, '1'); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:293'); /* guard-ok */ }
         dismissBar();
       };
       bar.appendChild(txt); bar.appendChild(yes); bar.appendChild(no);
       document.body.appendChild(bar);
     } catch (e) {
-      try { __swallow(e, 'misc:media-notify-ask'); } catch (e2) { /* guard-ok */ }
+      try { __swallow(e, 'misc:media-notify-ask'); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'media-notify:299'); /* guard-ok */ }
     }
   };
 
@@ -294,14 +308,14 @@
     if (typeof origFetch === 'function') {
       window.fetch = function (input, init) {
         var url = '';
-        try { url = typeof input === 'string' ? input : String((input && input.url) || ''); } catch (e) { /* guard-ok */ }
+        try { url = typeof input === 'string' ? input : String((input && input.url) || ''); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:311'); /* guard-ok */ }
         var method = 'GET';
-        try { method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase(); } catch (e) { /* guard-ok */ }
+        try { method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:313'); /* guard-ok */ }
         var isImg = url.indexOf('maha-image') !== -1;
         var isVidStatus = url.indexOf('/api/video-status') !== -1 || url.indexOf('action=veo-status') !== -1;
         var isVidCreate = method === 'POST' && url.indexOf('/api/video') !== -1;
         if ((method === 'POST' && (isImg || isVidCreate)) && permission() === 'default') {
-          try { window.mediaNotifyMaybeAsk(); } catch (e) { /* guard-ok */ }
+          try { window.mediaNotifyMaybeAsk(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:318'); /* guard-ok */ }
         }
         var p = origFetch.apply(this, arguments);
         if (!isImg && !isVidStatus) return p;
@@ -315,15 +329,15 @@
                   if (isImg && j.imageBase64) window.mediaReadyNotify('image', true);
                   if (isVidStatus && j.status === 'SUCCEEDED') window.mediaReadyNotify('video', true);
                   if (isVidStatus && j.status === 'FAILED') window.mediaReadyNotify('video', false);
-                } catch (e) { /* guard-ok */ }
+                } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:332'); /* guard-ok */ }
               }).catch(function () { /* guard-ok — جسم غير JSON ليس شأننا */ });
-            } catch (e) { /* guard-ok */ }
+            } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:334'); /* guard-ok */ }
           }).catch(function () { /* guard-ok — فشل الشبكة يظهر في المحادثة نفسها */ });
-        } catch (e) { /* guard-ok */ }
+        } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:336'); /* guard-ok */ }
         return p;
       };
     }
-  } catch (e) { try { __swallow(e, 'misc:media-notify-fetch'); } catch (e2) { /* guard-ok */ } }
+  } catch (e) { try { __swallow(e, 'misc:media-notify-fetch'); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'media-notify:340'); /* guard-ok */ } }
 
   /* مفتاح الإعدادات — التشغيل يطلب الإذن بإيماءة المستخدم، والرفض الدائم يُفسَّر بجملة. */
   function syncToggle() {
@@ -338,21 +352,21 @@
       }
       chk.checked = enabled() && permission() === 'granted';
       if (st) st.textContent = (enabled() && permission() === 'denied') ? tr('mediaNotifDenied') : '';
-    } catch (e) { /* guard-ok */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:355'); /* guard-ok */ }
   }
   window.mediaNotifySyncToggle = syncToggle;
   document.addEventListener('change', function (e) {
     var el = e.target;
     if (!el || el.id !== 'mediaNotifToggle') return;
     if (el.checked) {
-      try { localStorage.setItem(LS_PREF, '1'); } catch (e2) { /* guard-ok */ }
-      try { if (localStorage.getItem(LS_NEVER) === '1') localStorage.removeItem(LS_NEVER); } catch (e2) { /* guard-ok */ }
+      try { localStorage.setItem(LS_PREF, '1'); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'media-notify:362'); /* guard-ok */ }
+      try { if (localStorage.getItem(LS_NEVER) === '1') localStorage.removeItem(LS_NEVER); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'media-notify:363'); /* guard-ok */ }
       if (permission() === 'default') {
         try { Notification.requestPermission().then(syncToggle).catch(function () { syncToggle(); }); } catch (e2) { syncToggle(); }
         return;
       }
     } else {
-      try { localStorage.setItem(LS_PREF, '0'); } catch (e2) { /* guard-ok */ }
+      try { localStorage.setItem(LS_PREF, '0'); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'media-notify:369'); /* guard-ok */ }
     }
     syncToggle();
   }, true);
@@ -373,7 +387,7 @@
     try {
       var nodes = (scope || document).querySelectorAll('[data-media-notif-i18n]');
       for (var i = 0; i < nodes.length; i++) nodes[i].textContent = tr(nodes[i].getAttribute('data-media-notif-i18n'));
-    } catch (e) { /* guard-ok */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:390'); /* guard-ok */ }
   }
   function injectSection() {
     try {
@@ -383,7 +397,7 @@
       mem.insertAdjacentHTML('afterend', SECTION_HTML);
       fillTexts(document.getElementById('notifSection'));
       syncToggle();
-    } catch (e) { /* guard-ok */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:400'); /* guard-ok */ }
   }
   var BELL_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
   function navRow() {
@@ -397,7 +411,7 @@
     var label = row.querySelector('.settingsNavText');
     if (label) label.textContent = tr('notifSectionLabel').replace(/^[📀-🯿☀-➿]+\s*/u, '');
     row.onclick = function () {
-      try { if (typeof window.showSettingsPage === 'function') window.showSettingsPage('notifSection'); } catch (e) { /* guard-ok */ }
+      try { if (typeof window.showSettingsPage === 'function') window.showSettingsPage('notifSection'); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:414'); /* guard-ok */ }
     };
     return row;
   }
@@ -409,18 +423,18 @@
       var group = about && about.parentNode;
       if (group && group !== list) group.insertBefore(row, about);   // داخل مجموعة «عام» قبل «حول»
       else list.appendChild(row);
-    } catch (e) { /* guard-ok */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:426'); /* guard-ok */ }
   }
   try {
     var navObserver = new MutationObserver(function () {
-      try { placeNavRow(document.getElementById('settingsNavList')); } catch (e) { /* guard-ok */ }
+      try { placeNavRow(document.getElementById('settingsNavList')); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:430'); /* guard-ok */ }
     });
     navObserver.observe(document.documentElement, { childList: true, subtree: true });
-  } catch (e) { /* guard-ok — بلا مراقب: القسم يبقى قابلًا للفتح من الصفحة مباشرة */ }
+  } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:433'); /* guard-ok — بلا مراقب: القسم يبقى قابلًا للفتح من الصفحة مباشرة */ }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectSection);
   else injectSection();
-  try { placeNavRow(document.getElementById('settingsNavList')); } catch (e) { /* guard-ok */ }
+  try { placeNavRow(document.getElementById('settingsNavList')); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:437'); /* guard-ok */ }
   /* v-notif-relang (تدقيق ١٨–١٩ أكتوبر): بعد تبديل اللغة بقي القسم وسطر الحالة بلغة لحظة الحقن — fillTexts وsyncToggle
      لا تعملان إلّا عند الحقن ونقر #btnSettings. applyLanguage تكتب html.lang، فمراقب هذه السمة يعيدهما فورًا. وعنوان
      القسم يحمل أيضًا data-i18n="notifSectionLabel" (مفتاح الحزمة بالـ١٤ لغة) فتترجمه applyLanguage نفسها قبل أن تنسخه
@@ -430,12 +444,12 @@
       fillTexts(document.getElementById('notifSection'));
       syncToggle();
     }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
-  } catch (e) { /* guard-ok — بلا مراقب: نقر الإعدادات أدناه يعيد النصوص كما كان */ }
+  } catch (e) { typeof __swallow === 'function' && __swallow(e, 'media-notify:447'); /* guard-ok — بلا مراقب: نقر الإعدادات أدناه يعيد النصوص كما كان */ }
   /* إعادة ترجمة النصوص المحقونة عند تبديل اللغة: الحدث العامّ للغة إن وُجد، وإلّا عند فتح الإعدادات. */
   document.addEventListener('click', function (e) {
     try {
       var t = e.target;
       if (t && t.closest && t.closest('#btnSettings')) fillTexts(document.getElementById('notifSection'));
-    } catch (e2) { /* guard-ok */ }
+    } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'media-notify:453'); /* guard-ok */ }
   }, true);
 })();

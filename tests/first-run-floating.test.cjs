@@ -1,9 +1,8 @@
 'use strict';
 /* v-first-run-floating (تدقيق ١٨–١٩ أكتوبر، g01 وg13): أوّل تشغيل والطبقات العائمة.
-   أ. #omranIntro يأخذ aria-label من introSkip بلغة الواجهة (كان عربيًّا ثابتًا).
-   ب. «اضغط للمتابعة» كبسولة معتمة على الشاشات الأعرض من نسبة صورة الافتتاح (كانت فوق «المرشد» المرسومة).
+   أ. شاشة الافتتاح (#omranIntro) حُذفت نهائيًّا (v-no-intro، المالك ٢٦ أكتوبر) — كان هنا اختبارا ترجمتها وكبسولتها.
    ج. زرّا الموافقة نصّهما في الوسط (‎.btn‎ ‏inline-flex بلا justify-content).
-   د. التلميح الأوّل لا يُحسب مُشاهَدًا وهو خلف الافتتاح أو الموافقة: مؤقّت الـ٢٥ ثانية يبدأ بعد زوالهما.
+   د. التلميح الأوّل لا يُحسب مُشاهَدًا وهو خلف ورقة الموافقة: مؤقّت الـ٢٥ ثانية يبدأ بعد زوالها.
    هـ. شريطا الانقطاع والتجمّد كبسولة متوسّطة على الحاسوب لا شريط يغطّي أيقونات الرأس.
    و. لوحة التشخيص لا تسمّي كروم «سفاري». */
 const test = require('node:test');
@@ -19,53 +18,12 @@ const APP10 = rd('js/app-10-features.js');
 const DIAG = rd('js/selfdiag.js');
 const LANGS = ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh'];
 
-test('أ. #omranIntro يترجم aria-label بمفتاح introSkip الموجود بالـ١٤ لغة', () => {
-  const tag = (HTML.match(/<div id="omranIntro"[^>]*>/) || [''])[0];
-  assert.ok(tag, 'وسم الشاشة موجود');
-  assert.match(tag, /data-i18n="\[aria-label\]introSkip"/, 'السمة تمرّ بالترجمة (applyLanguage تدعم [attr]key)');
-  const app03 = rd('js/app-03-i18n-data.js');
-  assert.ok((app03.match(/\bintroSkip:/g) || []).length >= 2, 'introSkip في ar وen');
-  for (const l of LANGS) assert.match(rd('i18n/' + l + '.js'), /"introSkip":/, 'introSkip في ' + l);
-  // حلقة applyLanguage نفسها على عنصر وهميّ بالقاموس الإنجليزيّ
-  const attrs = {};
-  const el = { getAttribute: () => '[aria-label]introSkip', setAttribute: (k, v) => { attrs[k] = v; } };
-  const raw = el.getAttribute('data-i18n');
-  const m = raw.match(/^\[(.+)\]([\s\S]+)$/);
-  const dict = { introSkip: 'Tap to continue' };
-  if (m && dict[m[2]] !== undefined) el.setAttribute(m[1], dict[m[2]]);
-  assert.equal(attrs['aria-label'], 'Tap to continue');
-});
-
-function jpegSize(file) {
-  const b = fs.readFileSync(path.join(ROOT, file));
-  let i = 2;
-  while (i < b.length) {
-    if (b[i] !== 0xFF) { i++; continue; }
-    const m = b[i + 1];
-    if (m === 0xC0 || m === 0xC1 || m === 0xC2) return { h: b.readUInt16BE(i + 5), w: b.readUInt16BE(i + 7) };
-    i += 2 + b.readUInt16BE(i + 2);
-  }
-  return null;
-}
-
-test('ب. «اضغط للمتابعة» كبسولة معتمة متوسّطة على الشاشة الأعرض من نسبة الصورة، والجوّال العموديّ كما هو', () => {
-  const block = (HTML.match(/<style>\/\* v-intro-splash[\s\S]*?<\/style>/) || [''])[0];
-  assert.ok(block, 'كتلة v-intro-splash');
-  const mq = block.match(/@media\s*\(min-aspect-ratio:\s*(\d+)\s*\/\s*(\d+)\)\s*\{([\s\S]*?\})\s*\}/);
-  assert.ok(mq, 'قاعدة @media (min-aspect-ratio:W/H) داخل كتلة الافتتاح');
-  const sz = jpegSize('assets/intro/splash.jpg');
-  assert.ok(sz && sz.w && sz.h, 'أبعاد الصورة من مقطع SOF');
-  assert.equal(Number(mq[1]) / Number(mq[2]), sz.w / sz.h, 'النسبة تطابق صورة الافتتاح نفسها (' + sz.w + '/' + sz.h + ')');
-  const rule = mq[3];
-  assert.match(rule, /#omranIntro \.oiSkip\s*\{/);
-  const bg = (rule.match(/background(?:-color)?:\s*([^;}]+)/) || [])[1] || '';
-  assert.ok(bg && !/transparent|rgba\([^)]*,\s*0\)/.test(bg), 'خلفيّة غير شفّافة: ' + bg);
-  assert.match(rule, /left:\s*50%/);
-  assert.match(rule, /transform:\s*translateX\(-50%\)/);
-  assert.match(rule, /width:\s*max-content/);
-  assert.match(rule, /border-radius/);
-  // القاعدة الأساس (الجوّال العموديّ) لم تتغيّر
-  assert.match(block, /#omranIntro \.oiSkip\{position:absolute;left:0;right:0;bottom:calc\(14px \+ env\(safe-area-inset-bottom,0px\)\);text-align:center;/);
+test('أ. شاشة الافتتاح حُذفت نهائيًّا (v-no-intro): لا وسم ولا أنماط ولا سكربت ولا جزء ولا مفتاح إعدادات، والصورة باقية', () => {
+  assert.doesNotMatch(HTML, /id="omranIntro"|v-intro-splash|oiOn|introSkip/);
+  assert.ok(!fs.existsSync(path.join(ROOT, 'js/app-00-intro.js')), 'جزء الحزمة حُذف');
+  assert.doesNotMatch(rd('js/partials-settings.js'), /chkIntroSplash|introSplashLabel/);
+  assert.doesNotMatch(APP10, /omranIntro/);
+  assert.ok(fs.existsSync(path.join(ROOT, 'assets/intro/splash.jpg')), 'الوسائط الكبيرة غير المستعملة تبقى (قرار مالك)');
 });
 
 test('ج. زرّا «قراءة السياسة» و«أوافق وأتابع» نصّهما في الوسط', () => {
@@ -95,7 +53,7 @@ function hintWorld(blockers) {
     now = end;
   };
   const ls = new Map();
-  const tip = { id: 'askAllHintTip', style: {}, removed: false, addEventListener() {}, remove() { tip.removed = true; } };
+  const tip = { id: 'askAllHintTip', style: {}, removed: false, attrs: {}, setAttribute(k, v) { tip.attrs[k] = v; }, addEventListener() {}, remove() { tip.removed = true; } };
   const present = new Set(blockers);
   const bar = { parentNode: { insertBefore() {} } };
   const document = {
@@ -115,8 +73,8 @@ function hintWorld(blockers) {
   return { advance, ls, tip, present };
 }
 
-test('د. التلميح خلف شاشة الموافقة أو الافتتاح لا يُحسب مُشاهَدًا؛ المؤقّت يبدأ بعد زوالهما', () => {
-  for (const blocker of ['privacyConsent', 'omranIntro']) {
+test('د. التلميح خلف شاشة الموافقة لا يُحسب مُشاهَدًا؛ المؤقّت يبدأ بعد زوالها', () => {
+  for (const blocker of ['privacyConsent']) {
     const w = hintWorld([blocker]);
     w.advance(30000);
     assert.equal(w.ls.get('askAllHintSeen'), undefined, blocker + ': بعد ٣٠ث خلفه لم يُحسب مُشاهَدًا');

@@ -190,7 +190,7 @@ module.exports = async (req, res) => {
       const pl = require('./points.js');
       if (chargedUser) await pl.refundPoints(chargedUser, pl.COSTS.omni_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-    } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
+    } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/omni-create:193'); /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
     console.error('[omni-create] ' + (e && e.stack ? e.stack : e));
     res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.', retryable: true });
   }

@@ -53,11 +53,11 @@
     /* شاشة الأدوات فيها مستوى داخلي («عرض الكل»): السحب يرجع منه إلى الصفوف
        أولًا، ولا يغلق شاشة الأدوات إلى المحادثة مباشرة. */
     if(el && typeof el.__omranSwipeBackStep === 'function'){
-      try{ if(el.__omranSwipeBackStep()) return true; }catch(e){ /* guard-ok */ }
+      try{ if(el.__omranSwipeBackStep()) return true; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:56'); /* guard-ok */ }
     }
     var btn = el && document.getElementById(MAP[el.id]);
     /* v-maha-app: أثناء مكالمة مها كانت مراقبة الإغلاق تبتلع هذه النقرة البرمجيّة فتنتهي المكالمة وتبقى النافذة — السحب وEsc يغلقان النافذة وحدها */
-    if(btn){ try{ swipeClickGuardUntil = 0; if(typeof mahaActing === 'number') mahaActing++; try{ btn.click(); }finally{ if(typeof mahaActing === 'number') mahaActing--; } if(typeof mahaAppWinSync === 'function') mahaAppWinSync(); return true; }catch(e){ /* guard-ok */ } }
+    if(btn){ try{ swipeClickGuardUntil = 0; if(typeof mahaActing === 'number') mahaActing++; try{ btn.click(); }finally{ if(typeof mahaActing === 'number') mahaActing--; } if(typeof mahaAppWinSync === 'function') mahaAppWinSync(); return true; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:60'); /* guard-ok */ } }
     return false;
   }
   /* الجزء الذي يتحرك مع الإصبع: صندوق المحتوى (أول ابن كبير) وإلا الحاوية نفسها */
@@ -91,9 +91,28 @@
       try{
         var cs = getComputedStyle(e);
         if((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 4) return true;
-      }catch(err){ /* guard-ok */ }
+      }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-05-swipe-back:94'); /* guard-ok */ }
       e = e.parentElement;
     }
+    return false;
+  }
+  /* v-audit-shell (cli-ui-shell-4): بالفأرة، الضغط فوق حروف نصّ قابل للتحديد بداية تحديد لا سحب رجوع — كان سحب الفأرة لليمين على نتيجة
+     التفسير أو الأسهم أو المستند (١٢ لغة من اليسار) يمسح التحديد (removeAllRanges) ويغلق الأداة. caret*FromPoint تُلصق النقطة بأقرب
+     نصّ حتّى في الفراغ، فالحكم صندوق سطور العقدة نفسها؛ والسحب من الفراغ والهوامش، واللمس كلّه، كما كانا. */
+  function overText(x, y){
+    try{
+      var n = null;
+      if(document.caretPositionFromPoint){ var cp = document.caretPositionFromPoint(x, y); n = cp && cp.offsetNode; }
+      else if(document.caretRangeFromPoint){ var cr = document.caretRangeFromPoint(x, y); n = cr && cr.startContainer; }
+      if(!n || n.nodeType !== 3 || !/\S/.test(n.nodeValue || '') || !n.parentElement) return false;
+      /* حروف الأزرار والروابط لا تُحدَّد بالسحب — السحب منها رجوع كما كان */
+      if(n.parentElement.closest && n.parentElement.closest('button,a[href],[role="button"],label,summary')) return false;
+      var cs = getComputedStyle(n.parentElement);
+      if((cs.userSelect || cs.webkitUserSelect) === 'none') return false;
+      var rg = document.createRange(); rg.selectNodeContents(n);
+      var rs = rg.getClientRects();
+      for(var i = 0; i < rs.length; i++){ if(x >= rs[i].left && x <= rs[i].right && y >= rs[i].top && y <= rs[i].bottom) return true; }
+    }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-05-swipe-back:115'); /* guard-ok — بلا واجهة نقطة النصّ يبقى السحب كما كان */ }
     return false;
   }
 
@@ -157,7 +176,7 @@
       return blocked(t);
     };
     el.addEventListener('mousedown', function(e){
-      if(e.button !== 0 || mouseBlocked(e.target)){ m0 = null; return; }
+      if(e.button !== 0 || mouseBlocked(e.target) || overText(e.clientX, e.clientY)){ m0 = null; return; }
       if(topTool() !== el){ m0 = null; return; }
       m0 = { x: e.clientX, y: e.clientY, ts: Date.now() };
       mDrag = false; p = panel(el); w = window.innerWidth || 360;
@@ -170,7 +189,7 @@
         if(dx <= 0){ m0 = null; return; }
         mDrag = true;
         document.documentElement.classList.add('omranMouseSwipe');
-        try{ var sel = window.getSelection(); if(sel && sel.removeAllRanges) sel.removeAllRanges(); }catch(err){ /* guard-ok */ }
+        try{ var sel = window.getSelection(); if(sel && sel.removeAllRanges) sel.removeAllRanges(); }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-05-swipe-back:192'); /* guard-ok */ }
       }
       e.preventDefault();
       setX(Math.max(0, dx), false);
@@ -211,16 +230,16 @@
 
   /* شاشة التعليم داخل إطار: السحب فيها يصل رسالةً من الإطار */
   window.addEventListener('message', function(e){
-    try{ if(e && e.data && e.data.omranSwipeBack){ var el = document.getElementById('omranEduModal'); if(!visible(el)) el = document.getElementById('eduHubModal'); if(visible(el)) closeTool(el); } }catch(err){ /* guard-ok */ }
+    try{ if(e && e.data && e.data.omranSwipeBack){ var el = document.getElementById('omranEduModal'); if(!visible(el)) el = document.getElementById('eduHubModal'); if(visible(el)) closeTool(el); } }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-05-swipe-back:233'); /* guard-ok */ }
   });
   /* العودة من استوديو الإعلانات (صفحة مستقلة) إلى قائمة الأدوات لا المحادثة */
   try{
     if(/[?&]tools=1(&|$)/.test(location.search)){
       var openTools = function(){ var o = document.getElementById('sectionsToolsOverlay'); if(o){ o.classList.add('show'); return true; } return false; };
       if(!openTools()) setTimeout(openTools, 800);
-      try{ history.replaceState(null, '', location.pathname + location.hash); }catch(e2){ /* guard-ok */ }
+      try{ history.replaceState(null, '', location.pathname + location.hash); }catch(e2){ typeof __swallow === 'function' && __swallow(e2, 'app-05-swipe-back:240'); /* guard-ok */ }
     }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:242'); /* guard-ok */ }
 
   /* Esc يغلق أعلى أداة مفتوحة (الكمبيوتر) */
   /* v-back-layers (تدقيق ١٨–١٩ أكتوبر): Esc طبقة واحدة. نافذة dialog مشروطة (ورقة الباقات فوق صانع الفيديو) يغلقها
@@ -249,7 +268,7 @@
   function backState(){ try{ return history.state; }catch(e){ return null; /* بيئة بلا تاريخ */ } }
   function backWatch(el, attrs){
     el.__omranBackWatch = true;
-    if(backMo){ try{ backMo.observe(el, { attributes: true, attributeFilter: attrs }); }catch(e){ /* guard-ok */ } }
+    if(backMo){ try{ backMo.observe(el, { attributes: true, attributeFilter: attrs }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:271'); /* guard-ok */ } }
     backSchedule();
   }
   function backSchedule(){ if(!backTimer) backTimer = setTimeout(function(){ backTimer = 0; backSync(); }, 0); }
@@ -288,7 +307,7 @@
   function closeLayer(id){
     var el = document.getElementById(id);
     if(id === 'settingsDialog'){
-      if(el && el.hasAttribute('open')){ try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(el); else el.close(); }catch(e){ /* guard-ok */ } }
+      if(el && el.hasAttribute('open')){ try{ if(typeof closeDialogSafe === 'function') closeDialogSafe(el); else el.close(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:310'); /* guard-ok */ } }
       return;
     }
     if(visible(el)) closeTool(el);
@@ -311,7 +330,7 @@
     backSchedule();
   });
   /* الشاشات التي تُنشأ عند فتحها (التلفزيون، القبلة، الاقتراحات) تُلحق بـbody: نربطها ونراقبها لحظتها */
-  try{ if(backMo && document.body) new MutationObserver(function(){ ensureBound(); }).observe(document.body, { childList: true }); }catch(e){ /* guard-ok */ }
+  try{ if(backMo && document.body) new MutationObserver(function(){ ensureBound(); }).observe(document.body, { childList: true }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-swipe-back:333'); /* guard-ok */ }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureBound); else ensureBound();
   setInterval(ensureBound, 900);

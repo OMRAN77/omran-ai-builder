@@ -53,4 +53,4 @@ const UI_SHOT_NOTE = '\n\n[لقطة من التطبيق — هذا الدور]: 
   + 'حدّد العنصر في المستودع بـread_github (ابحث بنصّه الظاهر أو معرّفه) ثمّ نفّذ التغيير بـedit_github وأعطِه رابط طلب السحب. إن لم تتعرّف على العنصر في اللقطة فصِف ما تراه واسأله سؤالًا واحدًا. '
   + 'وإن كانت صورةً حقيقيّةً لا واجهة التطبيق (سيّارة، شخص، مكان) فقل له في سطر واحد أن يعيد طلبه بكلمة «الصورة» (مثل: «غيّر لون السيّارة في الصورة») فتُعدَّل.';
 
-module.exports = { stalledPlan, CARRY_NOTE, PICS_CARRY_NOTE, INTENT_RE, ACTION_RE, uiEditTurn, UI_SHOT_NOTE, UI_VERB_RE, UI_REF_RE, IMG_WORD_RE }; // الثلاثة الأخيرة: نسختها في العميل (js/app-09-attach.js) تُطابَق في الاختبار
+module.exports = { stalledPlan, CARRY_NOTE, PICS_CARRY_NOTE, INTENT_RE, ACTION_RE, uiEditTurn, UI_SHOT_NOTE, UI_VERB_RE, UI_REF_RE, IMG_WORD_RE, ATTACH_NOTE_RE }; // الثلاثة الأخيرة: نسختها في العميل (js/app-09-attach.js) تُطابَق في الاختبار

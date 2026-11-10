@@ -225,6 +225,6 @@ test('٨. سطر التعديل واقتراح الإطلالة بعد نتيج�
   ctx.gender = 'women'; ctx.lg = 'ar'; assert.equal(ctx.g('ph', 'fashionRefinePh'), 'KEY:fashionRefinePh', 'النساء كما كنّ');
   assert.ok(src.includes("window.addEventListener('fashion-gender-change', __refineTexts);"), 'سطر ظاهر يتبع الفئة');
   assert.ok(src.includes("setStatus(__refineG('need', 'fashionRefineNeed',"));
-  assert.ok(src.includes("(currentGender() === 'men' ? '💼 ' : '👜 ') + (s.accessories || '')"));
+  assert.ok(src.includes("(currentGender() === 'men' ? '💼 ' : '👜 ') + String(s.accessories || '')")); // v-sec-card-xss: البطاقة بـtextContent
   assert.ok(read('js/app.bundle.js').includes('const FX_REFINE_G = {'), 'الحزمة مبنيّة');
 });

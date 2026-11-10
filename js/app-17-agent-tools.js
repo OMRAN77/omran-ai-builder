@@ -143,7 +143,7 @@
       try { trail = JSON.parse(localStorage.getItem('aiapp_session_notes') || '[]'); } catch (e) { trail = []; }
       trail.unshift(entry);
       localStorage.setItem('aiapp_session_notes', JSON.stringify(trail.slice(0, 5)));
-    } catch (e) { /* التشخيص ترف لا يُسقط أداة */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:146'); /* التشخيص ترف لا يُسقط أداة */ }
   }
 
   /** ينفّذ أداة واحدة ويعيد نصًّا يفهمه النموذج. */
@@ -177,11 +177,13 @@
         }
         // 🎬 إنشاء فيديو من داخل المحادثة — يستخدم نفس محركات صانع الفيديو الحالي.
         if (name === 'generate_video') {
+          var vT0 = Date.now(); /* v-audit-chatcli: مهلة الخادم (runInClient ٢٩٠ ث) تبدأ من طلب الأداة، وتأكيد النقاط منها */
           var va = args || {};
           var vp = String(va.prompt || '').trim();
           if (!vp) return 'وصف الفيديو فارغ — لم يبدأ التوليد.';
           if (typeof omranVideoWriteAsk === 'function' && omranVideoWriteAsk(UTXT, false)) return 'لم يبدأ أيّ توليد: المستخدم يطلب الكتابة على فيديو قائم، والتطبيق لا يكتب على الفيديو بعد. قل له ذلك بجملة واحدة ولا تدّعِ التنفيذ، واعرض كتابته على لقطة من الفيديو أو صورة يرسلها.'; // v-video-write-ask
           /* v-video-trends: الترند يحدد المحرك والنسبة ويُبنى أمره على الخادم */
+          if (va.trend && typeof omranHwHidden === 'function' && omranHwHidden('trend', String(va.trend))) va.trend = ''; // v-hw-resubmit-2
           var trendMeta = null;
           try { trendMeta = (window.__VIDEO_TRENDS && va.trend) ? (window.__VIDEO_TRENDS.trends || []).filter(function (t) { return t.key === va.trend; })[0] : null; } catch (e) { trendMeta = null; }
           var engine = trendMeta ? trendMeta.engine : (String(va.provider || 'runway').toLowerCase() === 'veo' ? 'veo' : 'runway');
@@ -199,7 +201,7 @@
                 im.src = ref.dataUrl;
               });
               if (dims && dims.w > 0 && dims.h > 0) ratio = dims.h >= dims.w ? '720:1280' : '1280:720';
-            } catch (e) { /* guard-ok — بلا أبعاد تبقى النسبة الافتراضيّة */ }
+            } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:204'); /* guard-ok — بلا أبعاد تبقى النسبة الافتراضيّة */ }
           }
           var token = (window.authGet && window.authGet('aiapp_auth_token')) || '';
           var payload;
@@ -234,19 +236,33 @@
           if (vrsp.status === 428) return 'لم يتم تشغيل الفيديو لأن المستخدم لم يؤكد خصم النقاط.';
           if (!vrsp.ok || !vjson) return 'تعذّر بدء الفيديو: ' + String((vjson && typeof omranVideoCodeText === 'function' && omranVideoCodeText(vjson.error, vjson.retryAfter)) || (vjson && vjson.error) || ('HTTP ' + vrsp.status)).slice(0, 160); // v-chat-video-cooldown: النموذج يرى المهلة بالدقائق لا الرمز
           var videoUrl = null;
-          var maxPoll = engine === 'veo' ? 34 : 36;
-          for (var pi = 0; pi < maxPoll; pi++) {
-            await new Promise(function (resolve) { setTimeout(resolve, engine === 'veo' ? 8000 : 5000); });
-            var sr = engine === 'veo'
-              ? await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(vjson.op || ''))
-              : await fetch('/api/video-status?id=' + encodeURIComponent(vjson.id || ''));
-            var sj = null; try { sj = await sr.json(); } catch (e2) { sj = null; }
+          /* v-audit-chatcli (cli-chat-rest-5): عثرة شبكة في استطلاع واحد كانت ترمي إلى catch العامّ («تعذّر التنفيذ: Failed to fetch») فيُترك
+             فيديو مدفوع يكتمل عند المزوّد ولا يراه أحد، وسقف Runway ‏٣٦×٥ ث = ١٨٠ ث والخادم ينتظر الأداة ٢٩٠ ث. الآن كلّ استطلاع في try يُعاد
+             بعد مهلته، والانتظار للمحرّكين حتّى ٢٨٠ ث من طلب الأداة (قبل مهلة الخادم)، ولا خروج إلّا بنتيجة أو فشل أو انتهاء الوقت. */
+          var vStep = engine === 'veo' ? 8000 : 5000;
+          /* v-cinema-omni (مراجعة ٢٧ أكتوبر): «سينمائي» على Omni متزامن — قد يستهلك الإنشاء نافذة الانتظار كلّها والناتج محفوظ لحظة الردّ
+             (omni/…)؛ استطلاع فوريّ واحد ولو انتهت النافذة، وإلّا يُردّ فيديو مكتمل مدفوع ولا يراه أحد */
+          var vReady = engine === 'veo' && /^omni\//.test(String(vjson.op || ''));
+          while (vReady || Date.now() + vStep <= vT0 + 280000) {
+            if (!vReady) await new Promise(function (resolve) { setTimeout(resolve, vStep); });
+            vReady = false;
+            var sj = null;
+            try {
+              var sr = engine === 'veo'
+                ? await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(vjson.op || ''))
+                : await fetch('/api/video-status?id=' + encodeURIComponent(vjson.id || ''));
+              try { sj = await sr.json(); } catch (e2) { sj = null; }
+            } catch (e3) { sj = null; /* guard-ok — عثرة شبكة عابرة: المهمّة قائمة عند المزوّد، نستطلعها ثانية */ }
             if (sj && sj.status === 'SUCCEEDED') { videoUrl = Array.isArray(sj.output) ? sj.output[0] : sj.output; break; }
             if (sj && sj.status === 'FAILED') return 'فشل إنشاء الفيديو: ' + String(sj.failure || sj.error || 'سبب غير معروف').slice(0, 180);
             if (sj && sj.error === 'unavailable') return 'تعذّر إكمال الفيديو: ' + t('svcPaused') + ' (رُدّت نقاط المستخدم).'; // v-credit-out: الخادم سوّى التذكرة — لا انتظار ٤٫٥ دقيقة
           }
-          if (!videoUrl) return 'انتهت مهلة انتظار الفيديو قبل وصول النتيجة. حاول مرة أخرى إذا لم يظهر خلال دقائق.';
-          window.__chatVideoResult = { url: videoUrl, name: 'chat-video.mp4', provider: engine };
+          if (!videoUrl) return 'لم يصل الفيديو خلال مهلة الانتظار هنا (نحو ٤ دقائق ونصف) والمهمّة ما زالت عند المزوّد (المعرّف: ' + String(vjson.id || vjson.op || '') + '). لا تقل إنّه فشل، ولا تستدعِ generate_video من جديد الآن — طلب جديد يُخصم مرّة ثانية ويصطدم بقفل الفيديو الجاري. قل للمستخدم بجملة واحدة إنّ الفيديو أخذ أطول من المعتاد ولم يصل إلى المحادثة.';
+          /* v-audit-chatcli (cli-chat-rest-4): الفيديو لمحادثة طلبه — كان في window.__chatVideoResult العامّ، يصفّره طلب محادثة أخرى (app-18)
+             أو يلتقطه ردّها (app-09) مع المحادثات المتوازية، كما رُبطت الصور بمحادثتها (v-img-run-bind). بلا محادثة معروفة كما كان. */
+          var vRes = { url: videoUrl, name: 'chat-video.mp4', provider: engine }, vChat = CHAT();
+          if (vChat && vChat.id != null) (window.__chatVideoByChat = window.__chatVideoByChat || {})[vChat.id] = vRes;
+          else window.__chatVideoResult = vRes;
           return '✅ تم إنشاء الفيديو بنجاح. سيظهر الآن داخل المحادثة مع زر التنزيل.';
         }
         // 🎨 صورة حقيقية بدل رابط عشوائي. تُخزَّن محليًّا ويُعاد للنموذج رمز قصير
@@ -311,7 +327,7 @@
           IMGS[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
           /* v-tool-chain (لقطة المالك «غير الشخصيات الي 3d» بعد صورة من الأدوات → سؤال نصي): صورة الأدوات لم تكن تدخل سلسلة
              التعديل، فالرسالة التالية تذهب للنموذج النصي. الآن هي آخر صورة وسلسلة جديدة، فتعمل عليها «3d/أقوى/غيّر…» مباشرة. */
-          try { var gcur = CHAT(); if (gcur) { gcur.lastEditedImage = { b64: j.imageBase64, mime: j.mimeType || 'image/png' }; gcur.lastMsgWasImageEdit = true; gcur.imageTurns = []; } } catch (e) { /* guard-ok — السلسلة اختيارية */ }
+          try { var gcur = CHAT(); if (gcur) { gcur.lastEditedImage = { b64: j.imageBase64, mime: j.mimeType || 'image/png' }; gcur.lastMsgWasImageEdit = true; gcur.imageTurns = []; } } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:330'); /* guard-ok — السلسلة اختيارية */ }
           // v-img-engine-tag: اسم المحرك يظهر في سطر الأثر — يحسم «أي محرك نفّذ» فورًا.
           var gLine = '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
           /* v-img-with-edit: دور لقطة + صور = احفظ رابط /i/ فورًا كي تُرفع مع التعديل بلا انتظار «عمّم» */
@@ -338,7 +354,7 @@
             try {
               var cur = CHAT();
               if (cur && cur.lastEditedImage && cur.lastEditedImage.b64) { srcB64 = cur.lastEditedImage.b64; ref = { mime: cur.lastEditedImage.mime || 'image/png' }; }
-            } catch (e) { /* guard-ok — المحادثة الحالية اختيارية هنا */ }
+            } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:357'); /* guard-ok — المحادثة الحالية اختيارية هنا */ }
           }
           if (!srcB64) return 'لا توجد صورة مرفقة في هذه الرسالة لتعديلها — اطلب من المستخدم إرفاقها.';
           /* v-image-memory: متابعة على آخر نتيجة = نرسل أدوار السلسلة السابقة كسياق */
@@ -372,7 +388,7 @@
           IMGS[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
           var eUrl = omranAgentOwner() ? await omranAgentSave(etok, ej.imageBase64, ej.mimeType || 'image/png', false, CHAT()) : ''; // v-agent-img
           /* v-tool-chain: نتيجة أداة التعديل تصير آخر صورة في السلسلة كي تعمل عليها الرسالة التالية مباشرة */
-          try { if (tcur) { tcur.lastEditedImage = { b64: ej.imageBase64, mime: ej.mimeType || 'image/png' }; tcur.lastMsgWasImageEdit = true; } } catch (e) { /* guard-ok */ }
+          try { if (tcur) { tcur.lastEditedImage = { b64: ej.imageBase64, mime: ej.mimeType || 'image/png' }; tcur.lastMsgWasImageEdit = true; } } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:391'); /* guard-ok */ }
           /* v-image-memory: نسجّل الدور هنا أيضًا (كلمات المستخدم + مصغّر النتيجة) */
           try {
             if (tcur && typeof omranShrinkForEdit === 'function') {
@@ -382,7 +398,7 @@
               if (!tcur.imageTurns.length) { var tSrc = await omranShrinkForEdit(srcB64, ref.mime || 'image/png', 768, true); tTurn.sourceBase64 = tSrc.b64; tTurn.sourceMime = tSrc.mime; }
               tcur.imageTurns = tcur.imageTurns.concat([tTurn]).slice(-4);
             }
-          } catch (e) { /* guard-ok — الذاكرة اختيارية */ }
+          } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:401'); /* guard-ok — الذاكرة اختيارية */ }
           /* v-img-honest (المالك: «يقولي شي والتنفيذ صفر»): النموذج كان يرى «✅» وحدها فيروي «تمّ تغيير كلّ شيء» مهما خرج.
              الآن يصله حكم التنفيذ (ej.verdict) وتقرير ما يُرى فعلًا، ويُطلب منه ألّا يدّعي أكثر منه. */
           var ev = ej.verdict === 'not_done' ? ' — الفحص: الطلب لم يظهر في الصورة' : (ej.verdict === 'partial' ? ' — الفحص: نُفّذ جزء فقط' : (ej.verdict === 'done' ? ' — الفحص: نُفّذ' : ''));

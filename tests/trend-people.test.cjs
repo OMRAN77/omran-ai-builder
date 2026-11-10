@@ -93,7 +93,7 @@ test('٣. الحمولة: الأولى تبقى imageBase64 (توافق)، وا�
   assert.match(SRC, /payload\.params = Object\.assign\(\{\}, params, \{ people: raw\.length \}\)/, 'عدد الأشخاص يصل للخادم');
   assert.match(SRC, /if\(t\.photo === 'req' && !photos\.length\)\{ status\(ui\('photoReq'\)\); return; \}/, 'الترند الذي يلزمه صورة يفحص المصفوفة');
   assert.ok(!/\bphoto\s*=\s*null\b/.test(SRC), 'لا بقايا من المتغيّر المفرد');
-  assert.match(SRC, /fi\.multiple = true/, 'اختيار عدّة صور دفعة واحدة');
+  assert.match(SRC, /fi\.multiple = cap > 1;/, 'اختيار عدّة صور دفعة واحدة (إلّا ترند الشخص الواحد — v-trends-oct-12)');
 });
 
 test('٤. النصّان الجديدان في الـ14 لغة، و«شخصية {n}» فيها المتغيّر، وبلا اسم مزوّد', () => {
@@ -121,7 +121,7 @@ test('٦. صور الشخصيّات تُصغَّر قبل الإرسال — ل�
   assert.match(SRC, /var SHRINK_MAX = 1400, SHRINK_Q = 0.85;/, 'حدّ التصغير أو الجودة تغيّرا');
   assert.match(SRC, /c\.getContext\('2d'\)\.drawImage\(img, 0, 0, w, h\)/, 'لا رسم على canvas');
   assert.match(SRC, /toDataURL\('image\/jpeg', SHRINK_Q\)/, 'لا إعادة ترميز JPEG');
-  assert.match(SRC, /photos\.push\(\{ dataUrl: dataUrl, mime: 'image\/jpeg' \}\)/, 'نوع الصورة بعد التصغير');
+  assert.match(SRC, /photos\.push\(\{ dataUrl: dataUrl, mime: 'image\/jpeg'(, file: f)? \}\)/, 'نوع الصورة بعد التصغير');
 
   // حساب الأبعاد الحقيقيّ من المصدر: ٤٠٠٠×٣٠٠٠ ⇒ ١٠٢٤×٧٦٨، والصغيرة لا تُكبَّر
   const body = SRC.slice(SRC.indexOf('function shrink(file, done){'), SRC.indexOf('\n  }', SRC.indexOf('r.readAsDataURL(file);')) + 4);

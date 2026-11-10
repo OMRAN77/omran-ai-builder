@@ -5,28 +5,17 @@
 // videos per day per account. Usage is stored as one small JSON record per
 // user (db/video-usage/<username>.json), separate from chat usage in
 // db/usage/, and resets automatically each day (UTC).
-const crypto = require('crypto');
 // v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
 const quotaTally = require('./_dailyQuota.js');
 const { isBanned } = require('./auth.js');
-
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
 // During the free testing phase, keep this small: each generated video
 // (a few seconds at Gen-4/Veo 3 pricing) costs the owner real money.
 const VIDEO_DAILY_LIMIT = 3;
 
+// v-session-dedupe: رمز الجلسة كما يصنعه auth.makeToken حرفيًّا (u نصّ، exp رقم في المستقبل) — نسخة محلّيّة كانت تقبل حمولة بلا exp
 function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
+  return require('./_session.js').sessionUser(token);
 }
 
 // Verifies the session token and checks whether the user is still under the

@@ -17,6 +17,7 @@ function load(action) {
     case 'img': return require('./_lib/img-share.js'); // v627 — رابط الصورة العامّ
     case 'pdf': return require('./_lib/pdf-share.js'); // v-pdf-link — تنزيل PDF داخل الأغلفة
     case 'file': return require('./_lib/file-share.js'); // ملفات عامّة (فيديو وغيره)
+    case 'social-publish': return require('./_lib/social-publish.js'); // v-director-publish — «انشر في حساباتي» من مخرج التطبيق (المالك وحده)
     default: return null;
   }
 }

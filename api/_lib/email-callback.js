@@ -19,6 +19,7 @@ function reqOrigin(req) {
   return siteUrl();
 }
 const emailRedirectUri = (req) => reqOrigin(req) + '/api/email-callback';
+const REQUIRED_SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/gmail.send']; // v-audit-search
 
 module.exports = async (req, res) => {
   /* v-email-alive: العودة للتطبيق بمضيف الطلب نفسه (كما redirect_uri) — لا
@@ -53,6 +54,11 @@ module.exports = async (req, res) => {
     const tokenData = await tokenRes.json();
     if (!tokenRes.ok) return fail(tokenData.error || 'token_exchange_failed');
     if (!tokenData.refresh_token) return fail('no_refresh_token_reconnect');
+    /* v-audit-search (srv-search-6): شاشة موافقة جوجل تسمح بإلغاء صلاحيّة بعينها — كان الربط يُقبل بلا قراءة أو بلا إرسال، فتفشل
+       القائمة أو الإرسال بنصّ جوجل الخامّ والصندوق «مربوط» بلا زرّ ربط. القراءة والإرسال شرط، والتقويم اختياريّ (له إعادة
+       ربط في email-calendar). ويُحفظ ما مُنح فعلًا. جوجل ترجع scope دائمًا؛ غيابه = لا نحكم (السلوك القديم). */
+    const granted = typeof tokenData.scope === 'string' ? tokenData.scope.split(/\s+/).filter(Boolean) : null;
+    if (granted && !REQUIRED_SCOPES.every((sc) => granted.includes(sc))) return fail('missing_scopes');
 
     const profRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
       headers: { Authorization: 'Bearer ' + tokenData.access_token },
@@ -66,6 +72,7 @@ module.exports = async (req, res) => {
       gmailAddress: prof.emailAddress || null,
       refreshTokenEnc: encrypt(tokenData.refresh_token),
       ignoreList: (user.emailAssist && user.emailAssist.ignoreList) || [],
+      scopes: granted || undefined,
       connectedAt: Date.now(),
     };
     await putUser(username, user);

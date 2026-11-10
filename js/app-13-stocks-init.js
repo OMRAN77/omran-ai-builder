@@ -86,7 +86,7 @@
       /* v-stocks-fail (تدقيق ١٨ أكتوبر + الدفعة ٥): الخادم يرسل رمزًا لا رسالة مزوّد الأسعار (كانت «**symbol** or **figi** … https://…» باسمه ورابطه وبالإنجليزيّ) */
       if(j.error === 'symbol_not_found') throw new Error(t('stocksSymbolNotFound'));
       if(j.error === 'unavailable') throw new Error(t('svcPaused'));
-      throw new Error(j.error || 'HTTP '+r.status);
+      throw Object.assign(new Error(j.error || 'HTTP '+r.status), { data: j }); /* v-audit-search: الرمز وحقوله لمن يترجمه (pfErrText) */
     }
     return j;
   }
@@ -188,7 +188,7 @@
       st.textContent = '@keyframes omranTickerScroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}';
       document.head.appendChild(st);
     }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:191'); /* guard-ok */ }
   const TICKER_SYMS = (function(){
     try{ const s = JSON.parse(localStorage.getItem('stockTickerSyms')||'null'); if(Array.isArray(s) && s.length) return s.slice(0,5); }catch(e){ __swallow(e, "misc:app-13-stocks-init#1"); }
     return ['AAPL','TSLA','NVDA','MSFT','GOOGL']; /* v-no-crypto: أُزيلت BTC/USD امتثالًا لسياسة متجر هواوي (لا عملات رقمية) */
@@ -218,7 +218,7 @@
       const oneCopy = tickerTrack.scrollWidth / 2;
       const dur = (oneCopy > 0) ? (oneCopy / __TSPEED) : 30;
       tickerTrack.style.animation = 'omranTickerScroll ' + dur + 's linear infinite';
-    }catch(e){ /* guard-ok — حركة الشريط ترفٌ لا يُسقط العرض */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:221'); /* guard-ok — حركة الشريط ترفٌ لا يُسقط العرض */ }
   }
 
   // v598: تسميات الذهب تُبنى من القاموس، فتُحفظ البيانات الخام ويُعاد الوسم عند تبديل اللغة
@@ -243,7 +243,7 @@
       tickerRaw = { syms: (j && j.items) ? j.items : [], gold: g };
       window.__tickerLatest = tickerRaw; /* v-live-cards: بطاقة الأسهم الحيّة */
       renderTicker(tickerItems());
-    }catch(e){ /* keep old ticker on error */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:246'); /* keep old ticker on error */ }
   }
   window.__tickerRelabel = function(){ try{ if(tickerRaw) renderTicker(tickerItems()); }catch(e){ __swallow(e, "misc:app-13-stocks-init#relabel"); } };
 
@@ -267,7 +267,7 @@
     if(icon) icon.style.transform = collapsed ? 'rotate(180deg)' : '';
     if(collapsed){
       if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
-      try{ tickerTrack.style.animation = 'none'; }catch(e){ /* guard-ok */ } // v-ticker-css-anim
+      try{ tickerTrack.style.animation = 'none'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:270'); /* guard-ok */ } // v-ticker-css-anim
     }
   }
   function startTicker(){
@@ -279,7 +279,7 @@
   }
   function stopTicker(){
     if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
-    try{ tickerTrack.style.animation = 'none'; }catch(e){ /* guard-ok */ } // v-ticker-css-anim
+    try{ tickerTrack.style.animation = 'none'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:282'); /* guard-ok */ } // v-ticker-css-anim
     tickerWrap.style.display = 'none';
   }
   window.__tickerStart = startTicker;
@@ -320,7 +320,7 @@
     analysisEl.style.display = 'block';
     analysisEl.textContent = '🤖 ...';
     try{
-      const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
+      const lang = localStorage.getItem('aiapp_lang')||'ar'; /* v-audit-search (srv-search-8): الرمز كاملًا — slice(0,2) كان يجعل fil «fi» */
       const j = await api({ mode:'analyze', symbol: currentSym, question: questionEl.value.trim(), lang: lang });
       if(j.analysis) setMd(analysisEl, j.analysis); else analysisEl.textContent = '⚠️'; // v-md-lite
     }catch(err){
@@ -346,7 +346,7 @@
     lessonEl.style.display = 'block';
     lessonEl.textContent = '🎓 ...';
     try{
-      const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
+      const lang = localStorage.getItem('aiapp_lang')||'ar'; /* v-audit-search (srv-search-8) */
       const j = await api({ mode:'learn', topic: topic||'', question: question||'', symbol: currentSym || 'AAPL', lang: lang });
       /* v-md-lite · v-stocks-fail: الفشل سطر وظيفيّ بلغة الواجهة، لا claudeError (نصّ المزوّد الخامّ) */
       if(j.lesson) setMd(lessonEl, j.lesson); else lessonEl.textContent = '⚠️ ' + t('svcPaused');
@@ -523,7 +523,9 @@
     (bd.top || []).forEach(function(r){
       h += '<div style="display:flex;gap:8px;font-size:12px;padding:4px 2px;' + '">'
         + '<span style="min-width:26px;">' + (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank + '.') + '</span>'
-        + '<span style="flex:1;">' + pfEsc(r.user) + '</span>'
+        /* v-audit-search (srv-search-1): الخادم يرسل اسمًا مقنَّعًا (لا مفتاح الحساب/البريد) وعلم me لسطرك؛ الاسم معزول FSI (اتّجاه أوّل حرف)
+           فلا تنقلب «ah***» إلى «***ah» في العربيّ */
+        + '<span style="flex:1;' + (r.me ? 'font-weight:700;' : '') + '">\u2068' + pfEsc(r.name != null ? r.name : '') + '\u2069</span>'
         + '<b style="color:' + pfCol(r.plPct) + ';">' + pfIso((r.plPct >= 0 ? '+' : '') + r.plPct + '%') + '</b></div>';
     });
     // آخر الصفقات + إعادة الضبط
@@ -542,6 +544,20 @@
   }
 
   function pfMsgShow(txt, ok){ var m = $('#pfMsg'); if(m){ m.textContent = txt; m.style.color = ok ? '#2E9E6B' : '#e05252'; } }
+  /* v-audit-search (srv-search-8): أخطاء الصفقة رموز من الخادم بأرقامها حقولًا — كانت جملًا عربيّة ثابتة يعرضها pfMsgShow كما هي.
+     المفتاح من القاموس (١٤ لغة)، وقبل وصوله stT العربيّ/الإنجليزيّ؛ الأرقام معزولة LTR (v-pf-bidi). */
+  function pfTk(k, ar, en){ var v = ''; try{ v = (typeof t === 'function') ? t(k) : ''; }catch(e){ __swallow(e, "misc:app-13-stocks-init#pfTk"); } return (v && v !== k) ? v : stT(ar, en); }
+  function pfErrText(e){
+    var d = (e && e.data) || {};
+    if(d.error === 'insufficient_cash') return pfTk('axSearchPfNoCash', 'رصيدك الافتراضي لا يكفي: عندك {cash} والصفقة تحتاج {cost}', 'Not enough virtual cash: you have {cash} and this trade needs {cost}')
+      .replace('{cash}', pfIso('$' + pfMoney(d.cash))).replace('{cost}', pfIso('$' + pfMoney(d.cost)));
+    if(d.error === 'not_enough_shares') return pfTk('axSearchPfNoShares', 'ما تملك هذه الكمية — عندك {qty} سهم من {sym}', "You don't own that many — you have {qty} shares of {sym}")
+      .replace('{qty}', pfIso(String(d.have || 0))).replace('{sym}', pfIso(String(d.symbol || '')));
+    if(d.error === 'trade_limit') return pfTk('axSearchPfLimit', 'وصلت لحدّ الصفقات اليوميّ ({limit}) — عد غدًا 🌙', "You've reached today's trade limit ({limit}) — come back tomorrow 🌙")
+      .replace('{limit}', pfIso(String(d.limit || '')));
+    if(d.error === 'bad_trade') return stT('اكتب رمز السهم والكمية أولًا','Enter a stock symbol and quantity first');
+    return (e && e.message) || stT('تعذرت الصفقة','Trade failed');
+  }
 
   function pfTrade(side, sym, qty){
     if(pfBusy) return;
@@ -561,7 +577,7 @@
           + (buy ? stT('🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.', '🎓 Lesson: don’t put all your cash in one stock — diversifying protects you.')
                  : stT('🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.', '🎓 Lesson: selling locks in a profit or stops a loss — good decisions follow a plan, not emotion.')), true);
       })
-      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || stT('تعذرت الصفقة','Trade failed')), false); });
+      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + pfErrText(e), false); });
   }
 
   function pfWire(){
@@ -569,7 +585,7 @@
     if(b1) b1.onclick = function(){ pfTrade('buy'); };
     if(b2) b2.onclick = function(){ pfTrade('sell'); };
     if(rs) rs.onclick = function(){
-      if(!confirm('تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.')) return;
+      if(!confirm(pfT('axChatcliPfResetConfirm', 'تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.'))) return; // v-audit-chatcli (x-i18n-5): بلغة الواجهة
       api({ mode:'pf-reset', token: pfTok() }).then(pfRender).catch(function(e){ pfMsgShow('⚠️ ' + e.message, false); });
     };
     pfWrap.querySelectorAll('[data-pfsell]').forEach(function(b){
@@ -579,10 +595,10 @@
       b.onclick = function(){
         var sym = b.getAttribute('data-pfwhy');
         var box = $('#pfLesson');
-        box.style.display = 'block'; box.textContent = '🎓 معلمك يجهز درسًا على ' + sym + ' بالأرقام الحية…';
+        box.style.display = 'block'; box.textContent = pfT('axChatcliPfLessonLoading', '🎓 معلمك يجهز درسًا على {sym} بالأرقام الحية…').split('{sym}').join(sym); // v-audit-chatcli
         api({ mode:'learn', symbol: sym, question: 'أنا مبتدئ وأملك هذا السهم في محفظتي التعليمية. علمني ماذا أراقب فيه الآن (الاتجاه، الدعم والمقاومة، متى أفكر بالبيع) بالأرقام الحية.', lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
-          .then(function(d){ if(d.lesson){ box.textContent = ''; box.appendChild(window.__omMdLite(d.lesson)); } else box.textContent = 'تعذر الدرس الآن — حاول بعد قليل.'; }) // v-md-lite
-          .catch(function(e){ box.textContent = '⚠️ ' + (e.message || 'تعذر الدرس'); });
+          .then(function(d){ if(d.lesson){ box.textContent = ''; box.appendChild(window.__omMdLite(d.lesson)); } else box.textContent = pfT('axChatcliPfLessonFail', 'تعذر الدرس الآن — حاول بعد قليل.'); }) // v-md-lite
+          .catch(function(e){ box.textContent = '⚠️ ' + (e.message || pfT('axChatcliPfLessonFail', 'تعذر الدرس الآن — حاول بعد قليل.')); });
       };
     });
   }
@@ -698,7 +714,7 @@
   function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
-    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:717'); /* لم يجهز بعد */ }
     const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
@@ -739,6 +755,9 @@
 
   if(libraryBtn){
     libraryBtn.onclick = async () => {
+      /* v-audit-stud2 (srv-studios-2-2): المكتبة صارت بجلسة وسقف يوميّ في الخادم — نرسل الرمز، وبلاه «سجّل الدخول» بلا طلب */
+      const libToken = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+      if(!libToken){ setStatus(t('portraitNeedLogin')); return; } /* «سجّل الدخول لاستخدام هذه الميزة» — نصّ designAiNeedLogin يسمّي الديكور */
       libraryBtn.disabled = true;
       libraryEmptyEl.style.display = 'none';
       libraryWrap.style.display = 'none';
@@ -748,9 +767,11 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           /* v-cx-lib: المكتبة مشتركة وتسميات كلّ مخطّط بلغة صاحبه — نطلب مخطّطات لغتنا وحدها */
-          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
+          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar', token: libToken }),
         });
         const data = await res.json();
+        if(res.status === 401 || (data && data.error === 'auth_required')){ setStatus(t('portraitNeedLogin')); return; }
+        if(res.status === 429 || (data && data.error === 'daily_limit_reached')){ setStatus(t('portraitLimitReached')); return; }
         const items = (data && data.items) || [];
         if(!items.length){
           libraryEmptyEl.style.display = 'block';
@@ -879,11 +900,14 @@
     const rows = boqRows();
     if(!rows){ setStatus(bT('⚠️ لا يوجد جدول كميات في هذه النتيجة.','⚠️ This result has no bill of quantities.')); return; }
     const csv = '\ufeff' + rows.map(function(r){ return r.map(csvEsc).join(','); }).join('\r\n');
+    /* v-dl-unified (فحص المالك ٩ نوفمبر): رابط blob بنقرة برمجيّة لا ينزّل شيئًا في الآيفون ولا في الغلاف — مسار الحفظ الموحّد
+       (مشاركة الهاتف ثمّ ورقة «الملف جاهز»، والحاسوب تنزيل مباشر كما كان) */
+    if(typeof msgSaveExport === 'function'){ msgSaveExport(new Blob([csv], { type: 'text/csv;charset=utf-8' }), 'omran-boq.csv'); return; }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     a.download = 'omran-boq.csv';
     document.body.appendChild(a); a.click();
-    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){} }, 1500);
+    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:907'); /* guard-ok — تنظيف رابط مؤقّت بعد التنزيل؛ فشله لا يمسّ الملفّ */ } }, 1500);
   };
 
   if(pdfBtn) pdfBtn.onclick = async function(){
@@ -891,48 +915,54 @@
     const fig = function(b64, mime, cap){
       return b64 ? ('<figure><img src="data:' + (mime || 'image/png') + ';base64,' + b64 + '"><figcaption>' + cap + '</figcaption></figure>') : '';
     };
+    /* v-audit-search (cli-tools-7): التقرير بلغة الواجهة واتّجاهها — كان dir=rtl وlang=ar وعناوينه وتسمياته وتذييله وتاريخه (ar-AE)
+       عربيّة لكلّ اللغات، ونصّ الخطّة نفسه بلغة المستخدم، فيختلط الاتّجاهان في ملفّ يُرسل لطرف ثالث. المفتاح من القاموس، وقبله bT. */
+    const cxLang = String((typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar');
+    const cxRtl = cxLang === 'ar' || cxLang === 'ur';
+    const cxT = function(k, ar, en){ const v = t(k); return (v && v !== k) ? v : bT(ar, en); };
     const rows = boqRows();
     let tbl = '';
     if(rows){
-      tbl = '<h2>📊 جدول الكميات</h2><table>' + rows.map(function(r, i){
+      tbl = '<h2>' + esc(cxT('axSearchCxBoq', '📊 جدول الكميات', '📊 Bill of quantities')) + '</h2><table>' + rows.map(function(r, i){
         const g = i === 0 ? 'th' : 'td';
         return '<tr>' + r.map(function(c){ return '<' + g + '>' + esc(c) + '</' + g + '>'; }).join('') + '</tr>';
       }).join('') + '</table>';
     }
     const oTxt = function(el){ return (el && el.options[el.selectedIndex]) ? el.options[el.selectedIndex].text : ''; };
     /* v-md-lite: «عدد الأدوار: N» بدل «N أدوار» (كان «1 أدوار») */
-    const meta = [oTxt(typeEl), 'عدد الأدوار: ' + floorsEl.value, areaEl.value + ' م² بناء',
-      (plotEl && plotEl.value ? plotEl.value + ' م² أرض' : ''), oTxt(styleEl),
+    const meta = [oTxt(typeEl), t('constructionFloors') + ': ' + floorsEl.value, cxT('axSearchCxBuiltArea', '{n} م² بناء', '{n} m² built').replace('{n}', areaEl.value),
+      (plotEl && plotEl.value ? cxT('axSearchCxPlotArea', '{n} م² أرض', '{n} m² plot').replace('{n}', plotEl.value) : ''), oTxt(styleEl),
       (emirateEl && emirateEl.value ? oTxt(emirateEl) : '')].filter(Boolean).join(' · ');
-    const __docHtml = ('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير مشروع البناء</title><style>'
+    const cxTitle = cxT('axSearchCxReportTitle', 'تقرير مشروع البناء', 'Construction project report');
+    const __docHtml = ('<!doctype html><html dir="' + (cxRtl ? 'rtl' : 'ltr') + '" lang="' + esc(cxLang) + '"><head><meta charset="utf-8"><title>' + esc(cxTitle) + '</title><style>'
       + 'body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;margin:0;padding:0 26px 26px;color:#111;}'
       + 'header{background:linear-gradient(135deg,#0f766e,#134e4a);color:#fff;margin:0 -26px 18px;padding:20px 26px;}'
       + 'header h1{margin:0;font-size:21px}header p{margin:6px 0 0;font-size:13px;opacity:.92}'
       + 'h2{font-size:16px;border-bottom:2px solid #0f766e;padding-bottom:4px;margin:20px 0 8px}'
       + 'table{width:100%;border-collapse:collapse;font-size:12px}'
-      + 'th,td{border:1px solid #bbb;padding:5px 7px;text-align:right}th{background:#e6f2f0}'
+      + 'th,td{border:1px solid #bbb;padding:5px 7px;text-align:start}th{background:#e6f2f0}'
       + 'figure{margin:0 0 12px;page-break-inside:avoid}img{width:100%;border:1px solid #ccc;border-radius:6px}'
       + 'figcaption{font-size:11.5px;color:#555;margin-top:4px;text-align:center}'
       + '.plan{white-space:pre-wrap;font-size:12.5px;line-height:1.85;margin:0}.plan hr{border:0;border-top:1px solid #ccc;margin:8px 0}' /* v-md-lite */
       + 'footer{margin-top:22px;font-size:11px;color:#666;border-top:1px solid #ddd;padding-top:8px}'
       + '@media print{header,th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
-      + '</style></head><body><header><h1>🏗️ تقرير مشروع البناء</h1><p>' + esc(meta)
-      + '</p><p>' + esc(new Date().toLocaleDateString('ar-AE')) + '</p></header>'
-      + fig(lastData.imageBase64, lastData.mimeType, 'المخطط المعماري')
-      + fig(lastData.photoImageBase64, lastData.photoMimeType, 'الواجهة الخارجية')
-      + fig(lastData.interiorImageBase64, lastData.interiorMimeType, 'التصميم الداخلي')
-      + '<h2>📋 التفاصيل والتكلفة</h2><div class="plan">' + window.__omMdLiteHtml(lastData.planText || '') + '</div>' + tbl
-      + '<footer>تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.</footer>'
+      + '</style></head><body><header><h1>🏗️ ' + esc(cxTitle) + '</h1><p>' + esc(meta)
+      + '</p><p>' + esc(new Date().toLocaleDateString(cxLang === 'ar' ? 'ar-AE' : cxLang)) + '</p></header>'
+      + fig(lastData.imageBase64, lastData.mimeType, esc(t('constructionPlanImageLabel')))
+      + fig(lastData.photoImageBase64, lastData.photoMimeType, esc(t('constructionExteriorLabel')))
+      + fig(lastData.interiorImageBase64, lastData.interiorMimeType, esc(t('constructionInteriorLabel')))
+      + '<h2>' + esc(cxT('axSearchCxDetails', '📋 التفاصيل والتكلفة', '📋 Details and cost')) + '</h2><div class="plan">' + window.__omMdLiteHtml(lastData.planText || '') + '</div>' + tbl
+      + '<footer>' + esc(cxT('axSearchCxFooter', 'تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.', 'Initial concept only — not a substitute for a licensed engineer or an official building permit. Issued by the om ai app.')) + '</footer>'
       + '</body></html>');
     /* v-cons-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة الطباعة
        ميتة — نصدّر ملف PDF حقيقيًا؛ والطباعة تبقى للكمبيوتر. */
-    let __inApp = false; try{ __inApp = typeof window.omranLikelyApp === 'function' && window.omranLikelyApp(); }catch(e){ /* guard-ok — cosmetic */ }
+    let __inApp = false; try{ __inApp = typeof window.omranLikelyApp === 'function' && window.omranLikelyApp(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:956'); /* guard-ok — cosmetic */ }
     async function __fileExport(){
       if(typeof window.omranExportHtmlAsPdfFile !== 'function') return false;
       try{
         const __st = (__docHtml.match(/<style[\s\S]*?<\/style>/gi) || []).join('');
         const __bm = __docHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-        await window.omranExportHtmlAsPdfFile(__st + (__bm ? __bm[1] : __docHtml), { rtl: true, fileName: 'omran-construction.pdf' });
+        await window.omranExportHtmlAsPdfFile(__st + (__bm ? __bm[1] : __docHtml), { rtl: cxRtl, fileName: 'omran-construction.pdf' });
         return true;
       }catch(e){ return false; }
     }
@@ -945,7 +975,7 @@
     }
     w.document.write(__docHtml);
     w.document.close();
-    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 800);
+    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:975'); /* guard-ok — نافذة أُغلقت قبل الطباعة؛ التقرير معروض فيها */ } }, 800);
   };
 
   angleBtns.forEach((btn) => {
@@ -1178,7 +1208,7 @@
       { value:'pastelpink', ar:'🌸 وردي باستيل', en:'Pastel pink' },
       { value:'peachhair', ar:'🍑 خوخي', en:'Peach' },
       { value:'minthair', ar:'🌿 نعناعي', en:'Mint' },
-      { value:'tealhair', ar:'🦚 تركوازي', en:'Teal' },
+      { value:'tealhair', ar:'🦚 بترولي', en:'Teal' },
       { value:'navyhair', ar:'🔵 أزرق كحلي', en:'Navy' },
       { value:'emeraldhair', ar:'💚 زمردي', en:'Emerald' },
       { value:'charcoalhair', ar:'🩶 رمادي فحمي', en:'Charcoal' },
@@ -1191,7 +1221,7 @@
       { value:'underlayer', ar:'🎨 الطبقة السفلية ملوّنة', en:'Coloured underlayer' },
       { value:'splitdye', ar:'🪓 لونان منفصلان', en:'Split dye' },
       { value:'ecaille', ar:'🐢 إيكاي', en:'Tortoiseshell' },
-      { value:'bronde', ar:'🌗 برونزي أشقر', en:'Bronde' },
+      { value:'bronde', ar:'🌗 بني ممزوج بالأشقر', en:'Bronde' },
       { value:'butterflycut', ar:'🦋 قصّة فراشة', en:'Butterfly cut' },
       { value:'wolfcut', ar:'🐺 وولف كت', en:'Wolf cut' },
       { value:'bluntcut', ar:'📏 قصّة مستقيمة', en:'Blunt cut' },
@@ -1326,7 +1356,7 @@
       { value:'pearlnails2', ar:'🦪 لؤلؤ ثلاثي الأبعاد', en:'3D pearls' },
       { value:'flowers3d', ar:'🌸 زهور بارزة', en:'3D flowers' },
       { value:'charmnails', ar:'🔗 تعليقات', en:'Charms' },
-      { value:'chromebutterfly', ar:'🦋 كروم لامع', en:'Chrome art' },
+      { value:'chromebutterfly', ar:'💫 كروم لامع', en:'Chrome art' },
       { value:'bridalnails', ar:'👰 نيلز عروس', en:'Bridal' },
       { value:'eidnails', ar:'🌙 نيلز العيد', en:'Eid' },
       { value:'ramadannails', ar:'🕌 نيلز رمضان', en:'Ramadan' },
@@ -1569,11 +1599,11 @@
       { value:'bdkhaleejibrn', ar:'🧔 خليجية مرتّبة — بنّي', en:'Gulf trim — dark brown' },
       { value:'bdkhaleejigrey', ar:'🧔 خليجية مرتّبة — شايب', en:'Gulf trim — salt & pepper' },
       { value:'bdkhaleejihenna', ar:'🧔 خليجية مرتّبة — محنّاة', en:'Gulf trim — henna red' },
-      { value:'bdcleannat', ar:'🧔 حلاقة كاملة — لونها', en:'clean shave — natural colour' },
-      { value:'bdcleanblk', ar:'🧔 حلاقة كاملة — أسود', en:'clean shave — black' },
-      { value:'bdcleanbrn', ar:'🧔 حلاقة كاملة — بنّي', en:'clean shave — dark brown' },
-      { value:'bdcleangrey', ar:'🧔 حلاقة كاملة — شايب', en:'clean shave — salt & pepper' },
-      { value:'bdcleanhenna', ar:'🧔 حلاقة كاملة — محنّاة', en:'clean shave — henna red' },
+      { value:'bdcleannat', ar:'🧔 حلاقة كاملة — موس', en:'clean shave — razor smooth' },
+      { value:'bdcleanblk', ar:'🧔 حلاقة كاملة — ظلّ خفيف', en:'clean shave — light shadow' },
+      { value:'bdcleanbrn', ar:'🧔 حلاقة كاملة — سوالف قصيرة', en:'clean shave — short sideburns' },
+      { value:'bdcleangrey', ar:'🧔 حلاقة كاملة — سوالف طويلة', en:'clean shave — long sideburns' },
+      { value:'bdcleanhenna', ar:'🧔 حلاقة كاملة — بلا سوالف', en:'clean shave — no sideburns' },
     ],
     skin: [
       { value:'subtle', ar:'✨ تنعيم خفيف', en:'✨ Subtle Smoothing', fr:'✨ Lissage subtil', hi:'✨ हल्का स्मूदिंग', ur:'✨ ہلکی ہمواری', bn:'✨ হালকা মসৃণতা', ne:'✨ हल्का चिल्लो' },
@@ -1599,21 +1629,21 @@
       { value:'skclearm', ar:'✨ إزالة الحبوب — مطفي', en:'clear skin — matte' },
       { value:'skclears', ar:'✨ إزالة الحبوب — ساتان', en:'clear skin — satin' },
       { value:'skcleard', ar:'✨ إزالة الحبوب — ندي', en:'clear skin — dewy' },
-      { value:'skscarsm', ar:'✨ آثار الحبوب — مطفي', en:'fade scars — matte' },
-      { value:'skscarss', ar:'✨ آثار الحبوب — ساتان', en:'fade scars — satin' },
-      { value:'skscarsd', ar:'✨ آثار الحبوب — ندي', en:'fade scars — dewy' },
-      { value:'skcirclesm', ar:'✨ الهالات — مطفي', en:'dark circles — matte' },
-      { value:'skcircless', ar:'✨ الهالات — ساتان', en:'dark circles — satin' },
-      { value:'skcirclesd', ar:'✨ الهالات — ندي', en:'dark circles — dewy' },
-      { value:'skporesm', ar:'✨ المسام — مطفي', en:'refine pores — matte' },
-      { value:'skporess', ar:'✨ المسام — ساتان', en:'refine pores — satin' },
-      { value:'skporesd', ar:'✨ المسام — ندي', en:'refine pores — dewy' },
-      { value:'skshinem', ar:'✨ اللمعة الدهنية — مطفي', en:'oil control — matte' },
-      { value:'skshines', ar:'✨ اللمعة الدهنية — ساتان', en:'oil control — satin' },
-      { value:'skshined', ar:'✨ اللمعة الدهنية — ندي', en:'oil control — dewy' },
-      { value:'skrednessm', ar:'✨ الاحمرار — مطفي', en:'calm redness — matte' },
-      { value:'skrednesss', ar:'✨ الاحمرار — ساتان', en:'calm redness — satin' },
-      { value:'skrednessd', ar:'✨ الاحمرار — ندي', en:'calm redness — dewy' },
+      { value:'skscarsm', ar:'✨ تخفيف آثار الحبوب — مطفي', en:'fade scars — matte' },
+      { value:'skscarss', ar:'✨ تخفيف آثار الحبوب — ساتان', en:'fade scars — satin' },
+      { value:'skscarsd', ar:'✨ تخفيف آثار الحبوب — ندي', en:'fade scars — dewy' },
+      { value:'skcirclesm', ar:'✨ تخفيف الهالات — مطفي', en:'reduce dark circles — matte' },
+      { value:'skcircless', ar:'✨ تخفيف الهالات — ساتان', en:'reduce dark circles — satin' },
+      { value:'skcirclesd', ar:'✨ تخفيف الهالات — ندي', en:'reduce dark circles — dewy' },
+      { value:'skporesm', ar:'✨ تصغير المسام — مطفي', en:'refine pores — matte' },
+      { value:'skporess', ar:'✨ تصغير المسام — ساتان', en:'refine pores — satin' },
+      { value:'skporesd', ar:'✨ تصغير المسام — ندي', en:'refine pores — dewy' },
+      { value:'skshinem', ar:'✨ إزالة اللمعة الدهنية — مطفي', en:'oil control — matte' },
+      { value:'skshines', ar:'✨ إزالة اللمعة الدهنية — ساتان', en:'oil control — satin' },
+      { value:'skshined', ar:'✨ إزالة اللمعة الدهنية — ندي', en:'oil control — dewy' },
+      { value:'skrednessm', ar:'✨ تهدئة الاحمرار — مطفي', en:'calm redness — matte' },
+      { value:'skrednesss', ar:'✨ تهدئة الاحمرار — ساتان', en:'calm redness — satin' },
+      { value:'skrednessd', ar:'✨ تهدئة الاحمرار — ندي', en:'calm redness — dewy' },
       { value:'sktan1m', ar:'✨ سمرة خفيفة — مطفي', en:'light tan — matte' },
       { value:'sktan1s', ar:'✨ سمرة خفيفة — ساتان', en:'light tan — satin' },
       { value:'sktan1d', ar:'✨ سمرة خفيفة — ندي', en:'light tan — dewy' },
@@ -1629,9 +1659,9 @@
       { value:'skfrecklem', ar:'✨ نمش — مطفي', en:'freckles — matte' },
       { value:'skfreckles', ar:'✨ نمش — ساتان', en:'freckles — satin' },
       { value:'skfreckled', ar:'✨ نمش — ندي', en:'freckles — dewy' },
-      { value:'skwrinklesm', ar:'✨ التجاعيد — مطفي', en:'soften lines — matte' },
-      { value:'skwrinkless', ar:'✨ التجاعيد — ساتان', en:'soften lines — satin' },
-      { value:'skwrinklesd', ar:'✨ التجاعيد — ندي', en:'soften lines — dewy' },
+      { value:'skwrinklesm', ar:'✨ تخفيف التجاعيد — مطفي', en:'soften lines — matte' },
+      { value:'skwrinkless', ar:'✨ تخفيف التجاعيد — ساتان', en:'soften lines — satin' },
+      { value:'skwrinklesd', ar:'✨ تخفيف التجاعيد — ندي', en:'soften lines — dewy' },
       { value:'skglassm', ar:'✨ بشرة زجاجية — مطفي', en:'glass skin — matte' },
       { value:'skglasss', ar:'✨ بشرة زجاجية — ساتان', en:'glass skin — satin' },
       { value:'skglassd', ar:'✨ بشرة زجاجية — ندي', en:'glass skin — dewy' },
@@ -1641,15 +1671,15 @@
       { value:'skhydram', ar:'✨ ترطيب — مطفي', en:'hydrated — matte' },
       { value:'skhydras', ar:'✨ ترطيب — ساتان', en:'hydrated — satin' },
       { value:'skhydrad', ar:'✨ ترطيب — ندي', en:'hydrated — dewy' },
-      { value:'skspotsm', ar:'✨ البقع — مطفي', en:'fade spots — matte' },
-      { value:'skspotss', ar:'✨ البقع — ساتان', en:'fade spots — satin' },
-      { value:'skspotsd', ar:'✨ البقع — ندي', en:'fade spots — dewy' },
-      { value:'sksunburnm', ar:'✨ حروق الشمس — مطفي', en:'sunburn fix — matte' },
-      { value:'sksunburns', ar:'✨ حروق الشمس — ساتان', en:'sunburn fix — satin' },
-      { value:'sksunburnd', ar:'✨ حروق الشمس — ندي', en:'sunburn fix — dewy' },
-      { value:'skbeardshadowm', ar:'✨ ظلّ اللحية — مطفي', en:'soften shadow — matte' },
-      { value:'skbeardshadows', ar:'✨ ظلّ اللحية — ساتان', en:'soften shadow — satin' },
-      { value:'skbeardshadowd', ar:'✨ ظلّ اللحية — ندي', en:'soften shadow — dewy' },
+      { value:'skspotsm', ar:'✨ تخفيف البقع — مطفي', en:'fade spots — matte' },
+      { value:'skspotss', ar:'✨ تخفيف البقع — ساتان', en:'fade spots — satin' },
+      { value:'skspotsd', ar:'✨ تخفيف البقع — ندي', en:'fade spots — dewy' },
+      { value:'sksunburnm', ar:'✨ تهدئة حروق الشمس — مطفي', en:'sunburn fix — matte' },
+      { value:'sksunburns', ar:'✨ تهدئة حروق الشمس — ساتان', en:'sunburn fix — satin' },
+      { value:'sksunburnd', ar:'✨ تهدئة حروق الشمس — ندي', en:'sunburn fix — dewy' },
+      { value:'skbeardshadowm', ar:'✨ تخفيف ظلّ اللحية — مطفي', en:'soften beard shadow — matte' },
+      { value:'skbeardshadows', ar:'✨ تخفيف ظلّ اللحية — ساتان', en:'soften beard shadow — satin' },
+      { value:'skbeardshadowd', ar:'✨ تخفيف ظلّ اللحية — ندي', en:'soften beard shadow — dewy' },
       { value:'skradiantm', ar:'✨ إشراق — مطفي', en:'radiant — matte' },
       { value:'skradiants', ar:'✨ إشراق — ساتان', en:'radiant — satin' },
       { value:'skradiantd', ar:'✨ إشراق — ندي', en:'radiant — dewy' },
@@ -2002,10 +2032,10 @@
       { value:'ancybercool', ar:'🎭 سايبربنك — بارد', en:'cyberpunk anime — cool' },
       { value:'ancybervivid', ar:'🎭 سايبربنك — ألوان قوية', en:'cyberpunk anime — vivid' },
       { value:'ancyberpastel', ar:'🎭 سايبربنك — باستيل', en:'cyberpunk anime — pastel' },
-      { value:'anmangawarm', ar:'🎭 مانجا — دافئ', en:'black-and-white manga — warm' },
-      { value:'anmangacool', ar:'🎭 مانجا — بارد', en:'black-and-white manga — cool' },
-      { value:'anmangavivid', ar:'🎭 مانجا — ألوان قوية', en:'black-and-white manga — vivid' },
-      { value:'anmangapastel', ar:'🎭 مانجا — باستيل', en:'black-and-white manga — pastel' },
+      { value:'anmangawarm', ar:'🎭 مانجا — دافئ', en:'manga — warm' },
+      { value:'anmangacool', ar:'🎭 مانجا — بارد', en:'manga — cool' },
+      { value:'anmangavivid', ar:'🎭 مانجا — ألوان قوية', en:'manga — vivid' },
+      { value:'anmangapastel', ar:'🎭 مانجا — باستيل', en:'manga — pastel' },
       { value:'anwebtoonwarm', ar:'🎭 ويبتون — دافئ', en:'webtoon — warm' },
       { value:'anwebtooncool', ar:'🎭 ويبتون — بارد', en:'webtoon — cool' },
       { value:'anwebtoonvivid', ar:'🎭 ويبتون — ألوان قوية', en:'webtoon — vivid' },
@@ -2054,10 +2084,10 @@
       { value:'anpixelcool', ar:'🎭 بكسل — بارد', en:'pixel-art anime — cool' },
       { value:'anpixelvivid', ar:'🎭 بكسل — ألوان قوية', en:'pixel-art anime — vivid' },
       { value:'anpixelpastel', ar:'🎭 بكسل — باستيل', en:'pixel-art anime — pastel' },
-      { value:'anarabicwarm', ar:'🎭 عربي — دافئ', en:'Arabian-nights anime — warm' },
-      { value:'anarabiccool', ar:'🎭 عربي — بارد', en:'Arabian-nights anime — cool' },
-      { value:'anarabicvivid', ar:'🎭 عربي — ألوان قوية', en:'Arabian-nights anime — vivid' },
-      { value:'anarabicpastel', ar:'🎭 عربي — باستيل', en:'Arabian-nights anime — pastel' },
+      { value:'anarabicwarm', ar:'🎭 عربي — دافئ', en:'Arab heritage anime — warm' },
+      { value:'anarabiccool', ar:'🎭 عربي — بارد', en:'Arab heritage anime — cool' },
+      { value:'anarabicvivid', ar:'🎭 عربي — ألوان قوية', en:'Arab heritage anime — vivid' },
+      { value:'anarabicpastel', ar:'🎭 عربي — باستيل', en:'Arab heritage anime — pastel' },
       { value:'anschoolwarm', ar:'🎭 مدرسي — دافئ', en:'school-life anime — warm' },
       { value:'anschoolcool', ar:'🎭 مدرسي — بارد', en:'school-life anime — cool' },
       { value:'anschoolvivid', ar:'🎭 مدرسي — ألوان قوية', en:'school-life anime — vivid' },
@@ -2190,7 +2220,16 @@
   /* v-studio-14: الميزات الأربع عشرة الجديدة (app-12-studio-more.js) */
   const MORE = window.__STUDIO_MORE || { features: [], options: {} };
   Object.keys(MORE.options).forEach((k) => { STUDIO_OPTIONS[k] = MORE.options[k]; });
-  const PREVIEW_API = (f, v) => '/api/studio-preview?feature=' + encodeURIComponent(f) + '&value=' + encodeURIComponent(v);
+  /* v-style-match (تدقيق ٢٥ أكتوبر، «الصور ما تطابق الشي اللي اخترته»): البطاقات المصحَّحة لها رقم مراجعة — نفس
+     REV في api/_lib/studio-card-fix.js (tests/studio-card-fix يقارنهما). الرقم في الرابط (&r=) لأنّ الصورة القديمة
+     مخزّنة «immutable» سنة كاملة في المتصفّح وكاش الشبكة؛ و__tab يأخذ مراجعة أوّل خيار (الخادم يرسمه هو). */
+  const PREVIEW_API = (f, v) => {
+    const opts = (v === '__tab' && typeof STUDIO_OPTIONS !== 'undefined') ? STUDIO_OPTIONS[f] : null;
+    const k = f + ':' + (opts && opts[0] ? opts[0].value : v);
+    const r = Object.prototype.hasOwnProperty.call(STUDIO_CARD_REV, k) ? STUDIO_CARD_REV[k] : 0;
+    return '/api/studio-preview?feature=' + encodeURIComponent(f) + '&value=' + encodeURIComponent(v) + (r ? '&r=' + r : '');
+  };
+  const STUDIO_CARD_REV = {'accessories:acbagmod':1,'accessories:acbagstat':1,'accessories:acbeanievin':1,'accessories:acbroochmod':2,'accessories:accapmin':1,'accessories:accapstat':1,'accessories:acclutchmod':2,'accessories:accufflinksmod':1,'accessories:accufflinksstat':1,'accessories:acheadbandstat':1,'accessories:acheadphonesstat':1,'accessories:acmisbahamod':1,'accessories:acmisbahastat':1,'accessories:acmisbahavin':1,'accessories:acnecklacevin':1,'accessories:acpenmod':1,'accessories:acpenstat':1,'accessories:acpenvin':1,'accessories:acsmartwatchmod':1,'accessories:acsmartwatchstat':1,'accessories:acsmartwatchvin':1,'accessories:actiaramin':1,'accessories:actiaramod':1,'accessories:actiarastat':1,'accessories:actiaravin':1,'accessories:bag':1,'age:child':1,'age:forties':1,'age:older10':2,'age:older15':2,'age:older20':2,'age:older25':2,'age:older30':2,'age:older5':2,'age:twenties':1,'age:younger10':2,'age:younger15':2,'age:younger20':2,'age:younger25':2,'age:younger30':2,'age:younger5':2,'anime:anarabiccool':2,'anime:anarabicpastel':1,'anime:anarabicvivid':1,'anime:anarabicwarm':1,'anime:ancel3dvivid':2,'anime:anchibicool':1,'anime:anchibipastel':1,'anime:anchibivivid':1,'anime:anchibiwarm':1,'anime:ancinematiccool':3,'anime:ancinematicpastel':3,'anime:ancinematicvivid':2,'anime:ancinematicwarm':1,'anime:anclassicvivid':1,'anime:anghiblicool':2,'anime:anghiblipastel':2,'anime:anghiblivivid':1,'anime:anghibliwarm':2,'anime:anhorrorvivid':1,'anime:anidolcool':1,'anime:anidolpastel':1,'anime:anidolvivid':1,'anime:anidolwarm':1,'anime:anmangacool':1,'anime:anmangapastel':2,'anime:anmangavivid':1,'anime:anmangawarm':1,'anime:anpixelcool':1,'anime:anpixelpastel':1,'anime:anpixelvivid':1,'anime:anpixelwarm':1,'anime:anretro80cool':3,'anime:anretro80pastel':2,'anime:anretro80vivid':2,'anime:anretro80warm':3,'anime:anretro90vivid':1,'anime:ansamuraivivid':1,'anime:anschoolvivid':1,'anime:anseinenvivid':1,'anime:anshonenvivid':1,'anime:anwebtoonvivid':1,'anime:cyberpunk':2,'anime:retro90s':1,'anime:shonenstudio':1,'background:bgstudiogold':1,'beard:anchor':1,'beard:bdanchorbrn':2,'beard:bdanchorgrey':2,'beard:bdanchorhenna':2,'beard:bdanchornat':3,'beard:bdbalboblk':3,'beard:bdbalbobrn':2,'beard:bdbalbogrey':2,'beard:bdbalbohenna':3,'beard:bdcircleblk':2,'beard:bdcirclebrn':2,'beard:bdcirclegrey':2,'beard:bdcirclehenna':2,'beard:bdcirclenat':2,'beard:bdcleanblk':2,'beard:bdcleanbrn':2,'beard:bdcleangrey':1,'beard:bdcleanhenna':2,'beard:bdcleannat':1,'beard:bdducktailnat':1,'beard:bdfadedhenna':1,'beard:bdfullbrn':1,'beard:bdgoateebrn':2,'beard:bdhandlebarblk':1,'beard:bdhandlebarbrn':1,'beard:bdhandlebargrey':1,'beard:bdhandlebarhenna':1,'beard:bdhandlebarnat':1,'beard:bdkhaleejibrn':1,'beard:bdstubbleblk':1,'beard:bdstubblehenna':2,'beard:bdvandykebrn':2,'body:bdabsa':2,'body:bdabsb':2,'body:bdboxera':1,'body:bdclimbera':1,'body:bdcrossfita':2,'body:bdcrossfitb':1,'body:bdcrossfitc':2,'body:bddancera':3,'body:bdflatstomacha':2,'body:bdflatstomachb':1,'body:bdflatstomachc':1,'body:bdfootballera':1,'body:bdgymnasta':2,'body:bdgymnastb':1,'body:bdgymnastc':2,'body:bdhourglassa':1,'body:bdhourglassb':1,'body:bdhourglassc':2,'body:bdmodela':1,'body:bdmodelb':1,'body:bdmodelc':1,'body:bdpilatesa':1,'body:bdpilatesb':1,'body:bdpilatesc':2,'body:bdposturea':1,'body:bdpostureb':1,'body:bdposturec':2,'body:bdrunnera':1,'body:bdrunnerb':1,'body:bdrunnerc':1,'body:bdsprintera':2,'body:bdsurfera':1,'body:bdsurferb':1,'body:bdswimmera':1,'body:bdswimmerb':1,'body:bdswimmerc':1,'body:bdwrestlera':4,'body:bdyogaa':1,'body:bdyogac':2,'body:flatstomach':1,'body:posture':2,'body:slim':1,'body:toned':2,'eyes:browlift':3,'eyes:dimples':2,'eyes:glasseyes':2,'eyes:green':1,'eyes:hazel':1,'eyes:jawsmile':1,'eyes:lashbottom':1,'eyes:lipsfull':1,'eyes:nobags':3,'eyes:nodark':2,'eyes:nored':3,'eyes:openeyes':1,'eyes:tearshine':2,'eyes:teethgap':2,'eyes:teethstraight':1,'eyes:teethwhite':1,'glasses:gbrowclr':1,'glasses:gwaygld':1,'glasses:gwayslv':2,'glasses:hexagon':3,'glasses:octagon':1,'glasses:sunglasses':1,'gulfmen:cobra':1,'gulfmen:gmcobbge':1,'gulfmen:gmcobblu':1,'gulfmen:gmcobbrn':1,'gulfmen:gmcobbshb':1,'gulfmen:gmcobchr':2,'gulfmen:gmcobgry':1,'gulfmen:gmcobnvy':1,'gulfmen:gmcobolv':1,'gulfmen:gmcobwht':2,'hair:balayage':1,'hair:braids':1,'hair:coils':1,'hair:curtainbangs':1,'hair:greyblend':1,'hair:hairbraidsgulf':1,'hair:lowlights':1,'hair:navyhair':1,'hair:twistout':1,'henna:anklecuff':1,'henna:armband':2,'henna:backfinger':1,'henna:backhand':1,'henna:bracelettassel':1,'henna:calligraphyhenna':1,'henna:crystalhenna':1,'henna:cuff':1,'henna:engagementhenna':3,'henna:falconhenna':2,'henna:feet':1,'henna:fingerbands':1,'henna:glossgel':2,'henna:glowhenna':2,'henna:handharness':1,'henna:kidshenna':1,'henna:minimal':1,'henna:neckhenna':1,'henna:shoulderhenna':1,'henna:sudanese':1,'henna:thumbmotif':1,'henna:tribalhenna':1,'henna:wristband':1,'heritage:embroidered':1,'heritage:emirati':1,'heritage:hrcnc':1,'heritage:hrcnf':1,'heritage:hrjpf':1,'heritage:hrmaMf':1,'heritage:hrmxf':2,'heritage:hromWc':1,'heritage:hromWf':1,'heritage:hrqaMc':1,'heritage:hrqaWc':1,'heritage:hrruf':1,'heritage:hrscc':1,'heritage:hrscf':1,'heritage:hrsdMc':1,'heritage:hrsdMf':1,'heritage:hrtnf':1,'heritage:hryeWc':1,'heritage:hryeWf':1,'heritage:kandora':1,'heritage:omani':1,'heritage:saudimen2':1,'hijab:hjlayblk':1,'hijab:shayla':1,'iconic:icbedouinstd':1,'iconic:icbollywoodposter':1,'iconic:icbollywoodscene':1,'iconic:icbollywoodstd':1,'iconic:icbusinessposter':1,'iconic:icbusinessscene':1,'iconic:icbusinessstd':1,'iconic:icchefposter':1,'iconic:icchefstd':2,'iconic:icdisco70sposter':2,'iconic:icdisco70sscene':1,'iconic:icdisco70sstd':1,'iconic:icdiverposter':2,'iconic:icdiverscene':1,'iconic:icdiverstd':1,'iconic:icfashionweekstd':1,'iconic:icgamerstd':2,'iconic:ichollywood50poster':1,'iconic:ichollywood50scene':1,'iconic:ichollywood50std':1,'iconic:ickpopposter':1,'iconic:ickpopscene':1,'iconic:ickpopstd':1,'iconic:icnasaposter':2,'iconic:icnasastd':2,'iconic:icoldmoneyposter':1,'iconic:icoldmoneystd':1,'iconic:icpharaohposter':1,'iconic:icpharaohscene':1,'iconic:icpharaohstd':1,'iconic:icredcarpetposter':1,'iconic:icredcarpetscene':3,'iconic:icredcarpetstd':1,'iconic:icsheikhposter':2,'iconic:icsheikhscene':1,'iconic:icsheikhstd':1,'iconic:icsuperheroposter':1,'iconic:ictennisposter':2,'iconic:ictennisstd':1,'iconic:icvintage20sposter':2,'iconic:icvintage20sscene':1,'iconic:icvintage20sstd':2,'iconic:kpop':2,'iconic:redcarpet':3,'idphoto:idbgrad':1,'idphoto:idblgrad':1,'idphoto:idcgrad':1,'idphoto:idggrad':1,'idphoto:idngrad':2,'idphoto:idrgrad':1,'idphoto:idsgrad':1,'idphoto:idwgrad':1,'idphoto:suit':1,'makeup:bridal':1,'makeup:bronzeglow':1,'makeup:lashliner':1,'makeup:puppyeye':2,'makeup:sunkissedfreckle':1,'makeup:turkishglam':1,'makeup:tvstudio':1,'menhair:mhafrowet':1,'menhair:mhburstmat':1,'menhair:mhburstmess':1,'menhair:mhburstwet':2,'menhair:mhbuzzmess':2,'menhair:mhbuzzwet':2,'menhair:mhcaesarneat':1,'menhair:mhlowfademat':1,'menhair:mhlowfademess':1,'menhair:mhlowfadeneat':2,'menhair:mhlowfadewet':1,'menhair:mhmulletneat':1,'menhair:mhtapermat':1,'menhair:mhtapermess':1,'menhair:mhtaperneat':1,'menhair:mhtaperwet':1,'nails:ballerina':1,'nails:builderclear':2,'nails:charmnails':1,'nails:diagonalfrench':1,'nails:flarenails':3,'nails:gelnatural':1,'nails:heartsnails':1,'nails:jellynails':1,'nails:lipsticknails':2,'nails:minimalline':2,'nails:peachnails':1,'palette:plautacc':1,'palette:plautaccent':1,'palette:plautblock':1,'palette:plautgrad':1,'palette:plauttone':1,'palette:plauttop':1,'palette:pldesertaccent':1,'palette:pldeserttone':1,'palette:pldeserttop':2,'palette:plearthaccent':1,'palette:plearthgrad':1,'palette:plearthtop':1,'palette:pljewelaccent':2,'palette:pljewelblock':1,'palette:pljeweltop':1,'palette:plmonoaccent':1,'palette:plmonotop':1,'palette:plneonaccent':1,'palette:plneontone':2,'palette:plneontop':1,'palette:plneutaccent':1,'palette:plneutgrad':1,'palette:plneuttop':1,'palette:ploceanacc':1,'palette:ploceanaccent':1,'palette:ploceantop':1,'palette:plpastaccent':2,'palette:plpasttone':1,'palette:plpasttop':1,'palette:plspraccent':1,'palette:plsprtone':1,'palette:plsprtop':1,'palette:plsumaccent':1,'palette:plsumtone':1,'palette:plsumtop':2,'palette:plwinacc':2,'palette:plwinaccent':2,'palette:plwintone':1,'palette:plwintop':1,'seasons:party':1,'seasons:ssautumncas':1,'seasons:ssautumnlux':1,'seasons:ssautumnmod':1,'seasons:ssbdaycas':1,'seasons:ssbdaycls':1,'seasons:ssbdaylux':2,'seasons:ssbdaymod':1,'seasons:ssbeachcas':1,'seasons:ssbeachcls':1,'seasons:ssbeachlux':2,'seasons:ssbeachmod':1,'seasons:ssbeachtrd':1,'seasons:sseidcas':1,'seasons:sseidmod':1,'seasons:sseidtrd':1,'seasons:ssgradcas':1,'seasons:ssgradlux':2,'seasons:ssgradmod':1,'seasons:ssgradtrd':1,'seasons:sshennacas':1,'seasons:sshennalux':1,'seasons:sshennamod':2,'seasons:sshennatrd':1,'seasons:ssinterviewcas':1,'seasons:ssinterviewlux':1,'seasons:ssinterviewmod':1,'seasons:ssinterviewtrd':1,'seasons:ssksalux':1,'seasons:ssksamod':1,'seasons:ssksatrd':1,'seasons:ssnewyearcls':1,'seasons:ssnewyearmod':1,'seasons:ssnewyeartrd':1,'seasons:sspartycas':1,'seasons:sspartycls':1,'seasons:sspartylux':2,'seasons:sspartymod':1,'seasons:ssqacas':1,'seasons:ssqatrd':1,'seasons:ssramadancas':2,'seasons:ssramadanmod':1,'seasons:ssramadantrd':1,'seasons:sssummercls':1,'seasons:sssummerlux':1,'seasons:ssuaecas':1,'seasons:ssuaemod':1,'seasons:ssuaetrd':1,'seasons:sswedguestcas':2,'seasons:sswintermod':1,'seasons:sswintertrd':1,'skin:circles':3,'skin:skbeardshadowd':3,'skin:skbeardshadowm':3,'skin:skbeardshadows':3,'skin:skglassm':1,'skin:skmatted':1,'skin:skneckd':2,'skin:skneckm':1,'skin:sknecks':1,'skin:sknosed':1,'skin:skporesm':1,'skin:skrednessd':1,'skin:skrednessm':1,'skin:skrednesss':1,'skin:skscarsm':1,'skin:skscarss':1,'skin:skshined':2,'skin:skspotsd':2,'skin:skspotsm':1,'skin:skspotss':1,'skin:sksunburnd':1,'skin:sksunburns':2,'skin:sktan2d':1,'skin:sktan3d':2,'tattoo:arabictattoo':1,'tattoo:back':2,'tattoo:geometric':2,'tattoo:ttarabicfa':2,'tattoo:ttarabichd':1,'tattoo:ttarabicsh':2,'tattoo:ttbutterflyfa':1,'tattoo:ttclockwr':1,'tattoo:ttdatefa':1,'tattoo:ttdatehd':1,'tattoo:ttdatesh':1,'tattoo:ttdatewr':1,'tattoo:tteaglewr':2,'tattoo:ttgeometricsh':1,'tattoo:tthearthd':1,'tattoo:ttheartwr':1,'tattoo:ttkoifa':1,'tattoo:ttkoiwr':1,'tattoo:ttlionwr':1,'tattoo:ttnamehd':1,'tattoo:ttnamesh':1,'tattoo:ttnamewr':1,'tattoo:ttrosewr':1,'tattoo:ttsnakewr':1,'tattoo:ttstarsh':1,'tattoo:ttstarwr':2,'tattoo:tttreefa':1,'tattoo:ttwolffa':1,'tattoo:ttwolfwr':1,'wedding:wdbohogld':1,'wedding:wdbohoivr':1,'wedding:wdbohopst':1,'wedding:wdbridesmaidivr':1,'wedding:wdbridesmaidpst':1,'wedding:wdbridesmaidwht':1,'wedding:wdengageivr':1,'wedding:wdengagepst':2,'wedding:wdengagewht':2,'wedding:wdguestmivr':1,'wedding:wdguestmwht':1,'wedding:wdgulfbpst':1,'wedding:wdgulfgpst':1,'wedding:wdhennabgld':1,'wedding:wdindianbgld':1,'wedding:wdindianbivr':2,'wedding:wdindianbpst':1,'wedding:wdindianbwht':1,'wedding:wdmermaidgld':3,'wedding:wdmermaidivr':3,'wedding:wdmermaidpst':1,'wedding:wdmermaidwht':3,'wedding:wdminimalivr':2,'wedding:wdminimalpst':1,'wedding:wdminimalwht':2,'wedding:wdmoroccanbgld':1,'wedding:wdmoroccangpst':1,'wedding:wdprincessgld':1,'wedding:wdprincessivr':1,'wedding:wdprincesspst':1,'wedding:wdprincesswht':1,'wedding:wdsaudibpst':1,'wedding:wdsaudiggld':1,'wedding:wdsaudigwht':1,'wedding:wdsuitgpst':1,'wedding:wdturkbgld':1,'wedding:wdturkbivr':1,'wedding:wdturkbpst':1,'wedding:wdturkbwht':1,'wedding:wdtuxgld':1,'wedding:wdtuxivr':1,'wedding:wdtuxpst':1,'wedding:wdtuxwht':1,'wedding:wdwhitesuitivr':1,'wedding:wdwhitesuitpst':1,'wedding:wdwhitesuitwht':1};
   /* v-studio-more-looks: صور خيارات المكياج الجاهزة لقطات جسم كامل لا يظهر فيها المكياج،
      فبدت العشرة صورة واحدة في المنتقي. لهذه الميزات المعاينة المولّدة (وجه قريب من
      /api/studio-preview، تُولَّد مرّة وتُخزَّن) أوّلًا، والصورة الجاهزة احتياطًا. */
@@ -2211,9 +2250,14 @@
     + ' skin-circles skin-freckles skin-glow skin-matteskin skin-subtle skin-tan'
     + ' tattoo-arabictattoo tattoo-back tattoo-custom tattoo-floraltattoo tattoo-geometric tattoo-minimalline tattoo-sleeve tattoo-tribal tattoo-wrist').split(' '));
   const STUDIO_STATIC_FEATS = new Set(['anime', 'beard', 'glasses', 'hair', 'heritage', 'makeup', 'merge', 'nails', 'skin', 'tattoo']);
+  /* v-style-match: صور جاهزة لا تطابق اسمها («شونين» صورة حقيقيّة لا أنمي، «كافتان إماراتي» النسائيّ فيه رجل…) —
+     تُترك ملفّاتها (قرار المالك: الوسائط تبقى) والبطاقة تأخذ المعاينة المولّدة من الوصف. وتبويبات الأظافر والبشرة
+     والمكياج صورتها جسم كامل لا يظهر فيه شيء منها (الأظافر والبشرة الصورة نفسها) — تأخذ معاينة أوّل خيار. */
+  const STUDIO_STATIC_WRONG = new Set(['anime-cyberpunk', 'anime-retro90s', 'anime-shonenstudio', 'beard-anchor', 'glasses-hexagon', 'glasses-sunglasses', 'heritage-embroidered', 'heritage-emirati', 'heritage-kandora', 'heritage-omani', 'heritage-saudimen2', 'skin-circles', 'tattoo-arabictattoo', 'tattoo-back', 'tattoo-geometric']);
+  const STUDIO_TAB_PREVIEW = new Set(['nails', 'makeup', 'skin']);
   function optionImgs(f, v){
     const gen = PREVIEW_API(f, v);
-    if(!STUDIO_STATIC_OPTS.has(f + '-' + v)) return { img: gen, img2: '' }; /* v-studio-static-set: لا صورة جاهزة ⇒ المعاينة وحدها */
+    if(!STUDIO_STATIC_OPTS.has(f + '-' + v) || STUDIO_STATIC_WRONG.has(f + '-' + v)) return { img: gen, img2: '' }; /* v-studio-static-set: لا صورة جاهزة ⇒ المعاينة وحدها */
     const asset = 'assets/studio/options/' + f + '-' + v + '.webp?v=3'; /* v-sharp: الصورة أُعيد توضيحها (Real-ESRGAN) — الوسم يكسر كاش العامل الخدمي والمتصفّح (يوم كامل بلا وسم) */
     return PREVIEW_FIRST.indexOf(f) !== -1 ? { img: gen, img2: asset } : { img: asset, img2: gen };
   }
@@ -2238,7 +2282,7 @@
     });
   }
   injectMoreTabs();
-  try{ new MutationObserver(injectMoreTabs).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
+  try{ new MutationObserver(injectMoreTabs).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:2282'); /* guard-ok */ }
 
   let feature = 'hair';
   let selectedBase64A = '', selectedMimeA = 'image/jpeg';
@@ -2250,7 +2294,8 @@
   }
 
   function populateStyleSelect(){
-    const opts = STUDIO_OPTIONS[feature] || [];
+    const opts = (STUDIO_OPTIONS[feature] || [])
+      .filter((o) => !(typeof omranHwHidden === 'function' && omranHwHidden('studio', feature + ':' + o.value))); // v-hw-resubmit-2
     const langKey = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
     styleEl.innerHTML = opts.map((o) => '<option value="' + o.value + '">' + (o[langKey] || (window.__bT ? window.__bT(o.ar, o.en) : o.en)) + '</option>').join('');
   }
@@ -2369,7 +2414,7 @@
     resultWrap.addEventListener('pointerdown', (ev) => {
       if(!beforeWrap || beforeWrap.style.display === 'none') return;
       __studioBaDragging = true;
-      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ /* guard-ok */ }
+      try{ resultWrap.setPointerCapture(ev.pointerId); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:2414'); /* guard-ok */ }
       updateSliderClip(studioBaPctFromEvent(ev));
       ev.preventDefault();
     });
@@ -2396,7 +2441,7 @@
       const isAr = !((typeof lang !== 'undefined' && lang) ? String(lang) : (localStorage.getItem('aiapp_lang') || 'ar')).startsWith('en');
       const friendly = (typeof imgErrFriendly === 'function') ? imgErrFriendly(code, isAr) : null;
       if(friendly) return '⚠️ ' + friendly;
-    }catch(err){ /* guard-ok — بلا ترجمة نعرض الكود */ }
+    }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-13-stocks-init:2441'); /* guard-ok — بلا ترجمة نعرض الكود */ }
     return (bT('❌ خطأ: ','❌ Error: ')) + code;
   }
 
@@ -2586,7 +2631,7 @@
       let data = {};
       try{ data = await res.json(); }catch(e){ data = { error: 'HTTP ' + res.status }; } /* guard-ok — جسم غير JSON (413/504) */
       if(!res.ok || data.error) return { combo, error: data.error || 'unknown', last, stoppedAt: it };
-      last = { b64: data.imageBase64, mime: data.mimeType || 'image/png' };
+      last = { b64: data.imageBase64, mime: data.mimeType || 'image/png', reframed: !!(data.reframed || (last && last.reframed)) }; /* v-body-reframe */
       if(i < combo.length - 1){
         const blob = await (await fetch('data:' + last.mime + ';base64,' + last.b64)).blob();
         const n = await normalizeStudioPhoto(new File([blob], 'step.png', { type: last.mime }));
@@ -2619,6 +2664,7 @@
         downloadEl.href = dataUrl; downloadEl.style.display = 'block';
         favSaveBtn.style.display = 'block'; favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
         setupBeforeAfter();
+        if(r.last.reframed) studioBaShow(false); /* v-body-reframe: صورة كاملة بإطار جديد — «قبل/بعد» فوق وجه مقرّب لا يُقارن */
         stReveal(resultWrap); /* v-style-scene */
       }
       if(r.error){
@@ -2645,6 +2691,8 @@
         const a = document.createElement('a'); a.href = url; a.download = 'omran-style.png'; a.textContent = bT('⬇️ تحميل', '⬇️ Download');
         a.style.cssText = 'display:inline-block; margin-top:5px; font-size:12px; color:#d4af37;';
         cell.appendChild(im); cell.appendChild(a);
+        /* v-share-next: «↗️ مشاركة» بجانب «⬇️ تحميل» في كلّ خانة */
+        if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(a, { kind: 'image', style: 'display:inline-block; margin-top:5px; margin-inline-start:12px; font-size:12px; color:#d4af37; background:none; border:0; padding:0; cursor:pointer; font-family:inherit;' }); }catch(e){ __swallow(e, 'studio:style-share-next'); } }
       }
       if(r.error){
         const er = document.createElement('div');
@@ -2666,7 +2714,7 @@
          مع عرض ٨٦px وoverflow:hidden يقصّ الاسم الطويل من الطرفين — يلتفّ سطرين فوق الظلّ (البطاقة ١٠٤px). */
       b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700; white-space:normal;';
       const img = document.createElement('img');
-      const staticTab = STUDIO_STATIC_FEATS.has(f) || !IS_MORE(f); /* v-studio-static-set: الميزات الإضافيّة بلا صورة جاهزة ⇒ المعاينة مباشرة */
+      const staticTab = !STUDIO_TAB_PREVIEW.has(f) && (STUDIO_STATIC_FEATS.has(f) || !IS_MORE(f)); /* v-studio-static-set: الميزات الإضافيّة بلا صورة جاهزة ⇒ المعاينة مباشرة؛ v-style-match: والتبويبات الثلاثة الخاطئة */
       img.src = staticTab ? 'assets/studio/features/' + f + '.webp' : PREVIEW_API(f, '__tab');
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;';
@@ -2805,9 +2853,45 @@
   if(fileBtnA) fileBtnA.onclick = () => fileInputA.click();
   if(fileBtnB) fileBtnB.onclick = () => fileInputB.click();
 
+  /* v-studio-bands (لقطة المالك ٧ نوفمبر «الصوره مش كامله»: سيلفي مصدَّر من CapCut — صورة طوليّة في وسط مربّع، وجانباه نسخة
+     مكبّرة مغبّشة منها؛ التعديل يحفظ ما في الصورة فخرج الناتج بحافّتين مغبّشتين): قبل القصّ إلى النسبة يُكشف «الحشو» على جانبين
+     متقابلين ويُقصّ إلى الصورة الحقيقيّة. لكلّ عمود (أو صفّ) كثافة تفاصيله: نسبة بكسلاته التي يتغيّر عندها اللون عبر المحور (فرقا الجارين
+     > ١٠)؛ الحشو المغبّش أو الأسود ≈ صفر والصورة عالية. العلامة كلّها معًا من كلّ طرف (بعد تخطّي ٣٪ أطراف الحفظ): حشو كثافته ≤ ١٥٪ من
+     كثافة الوسط ثمّ قفزة إلى ≥ ٤٥٪ عند خطّ واحد، و«درجة» إضاءة عبر هذا الخطّ في نصف الخطوط على الأقلّ (حافّة الصورة المستقيمة: الحشو
+     المكبَّر عندها من موضع آخر فيختلف لونه)، والحافّتان ≥ ٦٪ ومتناظرتان (فرق ≤ ٦٪) والوسط ≥ ٣٠٪. شخص كامل على خلفيّة ناعمة (صور
+     الجسم الأربع في تجربة ٧ نوفمبر) يجتاز القفزة لكنّ «الدرجة» عند حدّه في ٢١–٢٦٪ من الخطوط وحدها (الحشو ٧٢–٩٧٪) = لا قصّ؛ وتعذّر
+     الكشف أو حشو خفيف التغبيش = الصورة كما هي. gray: إضاءة w×h (٠–٢٥٥) ← { x0, y0, x1, y1 } نسبيّة، أو null */
+  function studioBandBox(gray, w, h){
+    const side = (cols) => {
+      const n = cols ? w : h, m = cols ? h : w;
+      const px = cols ? (i, j) => gray[j * w + i] : (i, j) => gray[i * w + j];
+      const rho = new Float64Array(n);
+      for (let i = 0; i < n; i++) { let c = 0; for (let j = 1; j + 1 < m; j++) { const v = px(i, j); if (Math.abs(px(i, j + 1) - v) + Math.abs(v - px(i, j - 1)) > 10) c++; } rho[i] = c / Math.max(1, m - 2); }
+      const mid = Array.from(rho.slice(Math.floor(n * 0.35), Math.ceil(n * 0.65))).sort((p, q) => p - q);
+      const med = mid[Math.floor(mid.length / 2)] || 0;
+      if (med < 0.08) return null;
+      const skip = Math.max(1, Math.round(n * 0.03));
+      const edgeFrom = (fromEnd) => {
+        const at = (k) => rho[fromEnd ? n - 1 - k : k], pos = (k) => fromEnd ? n - 1 - k : k;
+        let k = skip; while (k < n && at(k) < 0.45 * med) k++;
+        if (k >= n || at(Math.max(skip, k - 3)) > 0.15 * med) return null;
+        for (let q = skip; q < k - 1; q++) if (at(q) > 0.15 * med) return null;
+        let step = 0;
+        for (let j = 1; j + 1 < m; j++) if (Math.abs(px(pos(Math.max(skip, k - 3)), j) - px(pos(Math.min(n - 1, k + 1)), j)) > 12) step++;
+        return step / Math.max(1, m - 2) >= 0.5 ? k : null;
+      };
+      const a = edgeFrom(false), b = edgeFrom(true);
+      if (a == null || b == null || a < n * 0.06 || b < n * 0.06 || Math.abs(a - b) > n * 0.06 || n - a - b < n * 0.3) return null;
+      return [a / n, (n - b) / n];
+    };
+    const cx = side(true), cy = side(false);
+    if (!cx && !cy) return null;
+    return { x0: cx ? cx[0] : 0, x1: cx ? cx[1] : 1, y0: cy ? cy[0] : 0, y1: cy ? cy[1] : 1 };
+  }
   /* v-face-lock: الصورة تُعاد ترميزها في المتصفح (يثبّت اتجاه EXIF ويحدّ الحجم بـ2048)
-     حتى تتطابق إحداثيات قناع الوجه في الخادم مع البكسلات الفعلية. */
-  function normalizeStudioPhoto(file){
+     حتى تتطابق إحداثيات قناع الوجه في الخادم مع البكسلات الفعلية.
+     v-studio-bands: opts.trimBands (رفع المستخدم وحده — لا خطوات السلسلة) يقصّ حشو الحافّتين قبل النسبة */
+  function normalizeStudioPhoto(file, opts){
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -2817,15 +2901,27 @@
           const img = new Image();
           img.onload = () => {
             try{
+              const iw0 = img.naturalWidth || img.width, ih0 = img.naturalHeight || img.height;
+              let bx = 0, by = 0, iw = iw0, ih = ih0;
+              if (opts && opts.trimBands) {
+                try{
+                  const k = 240 / Math.max(iw0, ih0), gw = Math.max(1, Math.round(iw0 * k)), gh = Math.max(1, Math.round(ih0 * k));
+                  const gc = document.createElement('canvas'); gc.width = gw; gc.height = gh;
+                  const gx = gc.getContext('2d'); gx.drawImage(img, 0, 0, gw, gh);
+                  const d = gx.getImageData(0, 0, gw, gh).data, gray = new Float32Array(gw * gh);
+                  for (let i = 0; i < gray.length; i++) gray[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+                  const box = studioBandBox(gray, gw, gh);
+                  if (box) { bx = Math.round(box.x0 * iw0); by = Math.round(box.y0 * ih0); iw = Math.round((box.x1 - box.x0) * iw0); ih = Math.round((box.y1 - box.y0) * ih0); }
+                }catch(e){ __swallow(e, 'studio:bands'); } /* الكشف تعذّر = الصورة كما هي */
+              }
               /* v-face-composite: قصّ مركزي إلى أقرب نسبة يدعمها محرّك القناع (2:3، 3:2، 1:1)
                  وبأبعاد ناتجه نفسها — فالناتج يطابق الأصل بكسلًا ببكسل ويُلصق الوجه بلا انزياح */
-              const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
               const ar = iw / ih;
               const target = (ar < 0.82) ? [1024, 1536] : (ar > 1.22 ? [1536, 1024] : [1024, 1024]);
               const tw = target[0], th = target[1], tr = tw / th;
               let sw = iw, sh = ih;
               if (ar > tr) sw = Math.round(ih * tr); else sh = Math.round(iw / tr);
-              const sx = Math.round((iw - sw) / 2), sy = Math.round((ih - sh) / 2);
+              const sx = bx + Math.round((iw - sw) / 2), sy = by + Math.round((ih - sh) / 2);
               const c = document.createElement('canvas');
               c.width = tw; c.height = th;
               c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
@@ -2848,7 +2944,7 @@
   const slotEls = { A: $('#studioAiSlotA'), B: $('#studioAiSlotB') };
   /* v-studio-no-recent (أمر المالك «احذف آخر صوري عندما أرفع الصور»): «آخر صوري» أُزيلت — لا تُحفظ صورة على الجهاز،
      وما حُفظ سابقًا يُمسح مرّة عند الإقلاع. */
-  try{ localStorage.removeItem('omStudioRecent'); }catch(e){ /* guard-ok: تخزين محجوب = لا شيء محفوظ أصلًا */ }
+  try{ localStorage.removeItem('omStudioRecent'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:2944'); /* guard-ok: تخزين محجوب = لا شيء محفوظ أصلًا */ }
   function studioRenderSlot(which){
     const el = slotEls[which]; if(!el) return;
     const has = which === 'A' ? !!selectedBase64A : !!selectedBase64B;
@@ -2865,7 +2961,7 @@
   }
   function studioSetPhoto(which, file){
     if(!file || !/^image\//.test(file.type || 'image/')) return;
-    normalizeStudioPhoto(file).then((r) => {
+    normalizeStudioPhoto(file, { trimBands: true }).then((r) => { /* v-studio-bands: رفع المستخدم وحده */
       if(!r) return;
       const pv = which === 'A' ? previewA : previewB;
       if(which === 'A'){ selectedMimeA = r.mime; selectedBase64A = r.b64; if(fileNameA) fileNameA.textContent = file.name || ''; }
@@ -2899,7 +2995,9 @@
     let coarse = false; try{ coarse = window.matchMedia('(pointer:coarse)').matches; }catch(e){ coarse = false; }
     /* v-upload-art (لقطة المالك «ما يحوّلك تطلع كلمة المعرض»): على الحاسوب لا كاميرا، فالقائمة كانت زرًّا واحدًا «المعرض» يطفو
        فوق الخانة — تُفتح الملفّات مباشرةً بلا قائمة؛ اللمس يبقى بورقة الكاميرا/المعرض. */
-    if(!coarse){ (which === 'A' ? fileInputA : fileInputB).click(); return; }
+    /* v-hw-webview: داخل WebView حزمة هواوي «📷 الكاميرا» كان يفتح المنتقي نفسه لا الكاميرا (capture بلا تطبيق
+       كاميرا يُستدعى) — زرّان بنتيجة واحدة. هناك يُفتح المنتقي مباشرةً كالحاسوب. */
+    if(!coarse || (typeof omranHwWebView === 'function' && omranHwWebView())){ (which === 'A' ? fileInputA : fileInputB).click(); return; }
     if(coarse) add(t('studioSrcCamera'), () => studioCamera(which));
     add(t('studioSrcGallery'), () => (which === 'A' ? fileInputA : fileInputB).click());
     /* v-studio-sheet (لقطة المالك «شوف وين تتحرك عند الإضافة»): القائمة كانت تطفو وسط الشاشة فوق الميزات بعيدًا
@@ -3020,6 +3118,7 @@
       favSaveBtn.style.display = 'block';
       favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
       setupBeforeAfter();
+      if(data.reframed) studioBaShow(false); /* v-body-reframe: صورة كاملة بإطار جديد — «قبل/بعد» فوق وجه مقرّب لا يُقارن */
       stReveal(resultWrap); /* v-style-scene */
       setStatus(t('studioAiDone'));
     } catch(e){
@@ -3067,13 +3166,19 @@
       list.forEach(s => {
         const card = document.createElement('div');
         card.style.cssText = 'border:1px solid var(--border,#333); border-radius:10px; padding:10px;';
-        card.innerHTML =
-          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<strong style="font-size:13px;">' + (s.title || '') + '</strong>' +
-            '<span style="font-size:11.5px; color:#4ade80;">' + t2('fashionMatchLabel') + ': ' + s.matchPercent + '%</span>' +
-          '</div>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.description || '') + '</p>' +
-          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">🎨 ' + (s.colors || '') + '</p>';
+        /* v-sec-card-xss: حقول النموذج بـtextContent لا innerHTML (منع حقن وسم من ردّ النموذج). */
+        const head = document.createElement('div');
+        head.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+        const titleEl = document.createElement('strong');
+        titleEl.style.cssText = 'font-size:13px;'; titleEl.textContent = String(s.title || '');
+        const matchEl = document.createElement('span');
+        matchEl.style.cssText = 'font-size:11.5px; color:#4ade80;'; matchEl.textContent = t2('fashionMatchLabel') + ': ' + String(s.matchPercent == null ? '' : s.matchPercent) + '%';
+        head.appendChild(titleEl); head.appendChild(matchEl);
+        const pDesc = document.createElement('p');
+        pDesc.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:6px 0 2px;'; pDesc.textContent = String(s.description || '');
+        const pColors = document.createElement('p');
+        pColors.style.cssText = 'font-size:12px; color:var(--muted,#999); margin:2px 0 8px;'; pColors.textContent = '🎨 ' + String(s.colors || '');
+        card.appendChild(head); card.appendChild(pDesc); card.appendChild(pColors);
         suggestionsEl.appendChild(card);
       });
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
@@ -3129,7 +3234,9 @@
           const label = (styleEl.querySelector('option[value="' + r.styleVal + '"]') || {}).textContent || r.styleVal;
           cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
         } else {
-          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+          /* v-audit-studeng (srv-studios-1-3): الرمز بنصّ الواجهة (studioErrText) — كان «❌ image_generation_failed» أو نصّ الخادم خامًا */
+          const errP = document.createElement('p'); errP.style.cssText = 'font-size:11.5px; color:#f87171;';
+          errP.textContent = studioErrText(new Error(r.error || 'unknown')); cell.appendChild(errP);
         }
         compareResultsEl.appendChild(cell);
       });
@@ -3189,7 +3296,9 @@
         if(r.dataUrl){
           cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
         } else {
-          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+          /* v-audit-studeng (srv-studios-1-3): الرمز بنصّ الواجهة (studioErrText) — كان «❌ image_generation_failed» أو نصّ الخادم خامًا */
+          const errP = document.createElement('p'); errP.style.cssText = 'font-size:11.5px; color:#f87171;';
+          errP.textContent = studioErrText(new Error(r.error || 'unknown')); cell.appendChild(errP);
         }
         heritageCompareResultsEl.appendChild(cell);
       });
@@ -3221,7 +3330,7 @@ window.updateVersionLabel = function(){
     // v-bundle-ver: بصمة البندل من وسم السكربت — تكشف أي نسخة يشغّلها الجهاز فعلًا
     // (تأكيد وصول التحديث بدل التخمين).
     var __bv = '';
-    try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ /* guard-ok */ }
+    try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-13-stocks-init:3330'); /* guard-ok */ }
     /* v-ver-label (تدقيق ١٨ أكتوبر، لقطتا ٠٢٣ و٠٤٦): العناوين كانت عربيّة في كلّ لغة، والسطر نصّ واحد يقلبه اتّجاه الفقرة
        و«رفع:» تنفصل عن قيمتها عند الالتفاف. الآن العنوان من القاموس، وكلّ «عنوان: قيمة» span لا يلتفّ ومعزول، والقيمة
        <bdi dir=ltr> (نصّ لا HTML)؛ الالتفاف بين الأزواج وحدها، وداخل القيمة الطويلة (خطأ) وحدها. */

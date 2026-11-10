@@ -45,9 +45,11 @@ on:
         default: 'claude-sonnet-5'
         type: string
       merge:
-        description: 'دمج طلب السحب تلقائيًّا عند نجاح npm run ci (نشر مباشر) — "true" افتراضيًّا، "false" لترك المراجعة للمالك'
+        # v-sec-automerge: الافتراضيّ صار "false" — الوكيل يفتح طلب سحب والمالك يدمج بعد المراجعة.
+        # الدمج التلقائيّ كان ينشر على الإنتاج بلا مراجعة بشريّة، فنصٌّ موجّه في مهمّةٍ قد يصل main.
+        description: 'دمج طلب السحب تلقائيًّا عند نجاح npm run ci (نشر مباشر) — "false" افتراضيًّا (مراجعة المالك)، "true" للدمج التلقائيّ'
         required: false
-        default: 'true'
+        default: 'false'
         type: string
 
 permissions:
@@ -140,6 +142,18 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: node scripts/agent-context.mjs --issue "$TASK_ISSUE" --base "$TASK_BASE" --out AGENT_CONTEXT.md
 
+      # v-sec-model-arg: نتحقّق من مدخل model بمحارف معرّف نموذج فقط قبل دمجه في وسائط الأمر — فلا
+      # يُحقَن عبره علمٌ إضافيّ (مثل --allowedTools) من إطلاقٍ مباشر لسير العمل.
+      - name: Validate model input
+        if: env.KEY_OK == 'true'
+        env:
+          RAW_MODEL: ${{ inputs.model }}
+        run: |
+          if ! printf '%s' "$RAW_MODEL" | grep -qE '^[A-Za-z0-9._-]+$'; then
+            echo "::error::رُفض مدخل model: محارف غير مسموحة"; exit 1
+          fi
+          echo "MODEL=$RAW_MODEL" >> "$GITHUB_ENV"
+
       - name: Claude Code
         id: claude
         if: env.KEY_OK == 'true'
@@ -147,7 +161,7 @@ jobs:
         with:
           anthropic_api_key: ${{ env.KEY_KIND == 'api' && env.ANTHROPIC_KEY_CLEAN || '' }}
           claude_code_oauth_token: ${{ env.KEY_KIND == 'oauth' && env.ANTHROPIC_KEY_CLEAN || '' }}
-          claude_args: '--model ${{ inputs.model }} --allowedTools "Bash,Read,Edit,MultiEdit,Write,Glob,Grep,WebFetch,WebSearch,Task,Agent,TodoWrite,NotebookEdit" --max-turns 200'
+          claude_args: '--model ${{ env.MODEL }} --allowedTools "Bash,Read,Edit,MultiEdit,Write,Glob,Grep,WebFetch,WebSearch,Task,Agent,TodoWrite,NotebookEdit" --max-turns 200'
           prompt: |
             أنت Claude Code تعمل داخل GitHub Actions على مستودع «عمران AI» (${{ github.repository }})،
             مفوَّضًا من وكيل التطبيق بطلب المالك. اعمل كما يعمل مهندس زميل محترف: افهم أوّلًا، ثمّ غيّر،

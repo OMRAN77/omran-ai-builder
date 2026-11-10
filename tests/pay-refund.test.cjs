@@ -430,13 +430,13 @@ test('١٤. استرداد دفعة حلّت محلّ فترة دفعة أخرى
   fresh('jana'); // باقة الفيديو: استرداد الترقية يعيد الأساسيّة ورصيدها وقت الترقية (كان: delete user.media.video)
   await buy('jana', 'vid_basic', 'ja1', 1021);
   assert.equal((await points.spendPoints('jana', 15, 'minimax_video')).media, 'video');
-  assert.equal((await media.mediaStatus('jana')).video.left, 1097);
+  assert.equal((await media.mediaStatus('jana')).video.left, 1024); // v-minimax-h3: ١٢٠٠ − ١٧٦ (كان ١٠٩٧ بتكلفة ١٠٣)
   await buy('jana', 'vid_pro', 'ja2', 2042);
   assert.equal((await media.mediaStatus('jana')).video.left, 2400);
   await hook(refundOf('ch_ja2', 'pi_ja2', 2042, 2042));
   const st = await media.mediaStatus('jana');
   assert.equal(st.video && st.video.plan, 'vid_basic');
-  assert.equal(st.video.left, 1097);
+  assert.equal(st.video.left, 1024); // v-minimax-h3
   assert.equal(users.get('jana').media.video.payId, 'cs_ja1');
 });
 

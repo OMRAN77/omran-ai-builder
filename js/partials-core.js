@@ -98,16 +98,23 @@
 
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="videoModeLabel">وضع الإنشاء</label>
+      <!-- v-video-modes-by-result (١٠ أكتوبر ٢٠٢٦): المستخدم يختار النتيجة لا المحرّك، والقيم الداخليّة كما هي (الخادم والفيلم لا يتغيّران).
+           «جودة عالية» = المحرّك الأساسيّ (قرار المالك)، والافتراضيّ صار الاقتصاديّ. omni محذوف من القائمة فقط — كوده باقٍ
+           وإرجاعه سطر option واحد بقيمة omni ومفتاح videoModeOmni. hybrid صار مربّع «مقدّمة وخاتمة بتوقيعك» تحت.
+           شريط الأقسام (js/video.js) يأخذ اسم القسم من نصّ الخيار قبل أوّل « — »، فلا شرطة في الأسماء القصيرة. -->
       <select id="videoMakerMode" style="width:100%;">
-        <option value="canvas" data-i18n="videoModeCanvasOnly">🎨 قوالب متحرّكة (بلا ذكاء اصطناعي)</option>
-        <option value="runway" selected data-i18n="videoModeRunwayOnly">🤖 فيديو AI فقط</option>
-        <option value="minimax" data-i18n="videoModeMinimax">💸 فيديو اقتصادي — أرخص وأسرع</option>
-        <option value="omni" data-i18n="videoModeOmni">🎬 فيديو سينمائيّ — أعلى جودة (أغلى)</option>
-        <option value="hybrid" data-i18n="videoModeHybrid">🔗 دمج الاثنين (الأفضل)</option>
-        <option value="veo" data-i18n="videoModeVeo">🚀 سينمائي (أعلى جودة + صوت)</option>
+        <option value="minimax" selected data-i18n="videoModeMinimax">⚡ فيديو سريع</option>
+        <option value="runway" data-i18n="videoModeRunwayOnly">🎬 جودة عالية</option>
+        <option value="veo" data-i18n="videoModeVeo">🎬 سينمائي</option>
         <option value="actor" data-i18n="videoModeActor">🗣️ ممثل يتكلم — لهجة إماراتية</option>
+        <option value="canvas" data-i18n="videoModeCanvasOnly">🎨 بدون ذكاء (مجّانيّ)</option>
       </select>
     </div>
+    <!-- v-video-modes-by-result: بديل وضع «الدمج» — مقدّمة وخاتمة كانفا بتوقيعك حول لقطة أيّ محرّك ذكاء (يظهر لأوضاع الذكاء وحدها) -->
+    <label id="videoMakerWrapRow" style="display:none; align-items:center; gap:8px; margin-top:10px; font-size:12px; color:var(--muted); cursor:pointer;">
+      <input type="checkbox" id="videoMakerWrapToggle">
+      <span data-i18n="videoWrapSignature">🔗 مقدّمة وخاتمة بتوقيعك</span>
+    </label>
 
 
 
@@ -263,12 +270,13 @@
         <option value="entrance" data-en="🚪 Entrance" data-i18n="designAiPlaceEntrance">🚪 مدخل</option>
         <option value="garden" data-en="🌳 Garden" data-i18n="designAiPlaceGarden">🌳 حديقة</option>
         <!-- v-decor-outdoor (طلب المالك ١٥ أكتوبر ٢٠٢٦: «تقدر تحطلي افكار خارجيه في الديكور خارجي»): خيارات الديكور الخارجي -->
-        <option value="facade" data-en="🏡 House Facade">🏡 واجهة منزل</option>
-        <option value="pool" data-en="🏊 Pool &amp; Patio">🏊 مسبح وجلسة</option>
-        <option value="pergola" data-en="⛺ Pergola Seating">⛺ مظلة وبرجولا</option>
-        <option value="bbq" data-en="🔥 BBQ &amp; Firepit">🔥 شواء وجلسة نار</option>
-        <option value="rooftop" data-en="🌇 Rooftop Terrace">🌇 سطح روف</option>
-        <option value="pathway" data-en="🪴 Outdoor Pathway">🪴 ممر ومدخل خارجي</option>
+        <!-- v-audit-attach (x-i18n-6): الستّة بلا data-i18n ولا مدخل __OPT_XL فكانت إنجليزيّة لاثنتي عشرة لغة — مفاتيح الـ١٤ لغة -->
+        <option value="facade" data-en="🏡 House Facade" data-i18n="axAttachDecorFacade">🏡 واجهة منزل</option>
+        <option value="pool" data-en="🏊 Pool &amp; Patio" data-i18n="axAttachDecorPool">🏊 مسبح وجلسة</option>
+        <option value="pergola" data-en="⛺ Pergola Seating" data-i18n="axAttachDecorPergola">⛺ مظلة وبرجولا</option>
+        <option value="bbq" data-en="🔥 BBQ &amp; Firepit" data-i18n="axAttachDecorBbq">🔥 شواء وجلسة نار</option>
+        <option value="rooftop" data-en="🌇 Rooftop Terrace" data-i18n="axAttachDecorRooftop">🌇 سطح روف</option>
+        <option value="pathway" data-en="🪴 Outdoor Pathway" data-i18n="axAttachDecorPathway">🪴 ممر ومدخل خارجي</option>
       </select>
     </div>
 

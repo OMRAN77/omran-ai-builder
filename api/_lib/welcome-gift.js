@@ -55,7 +55,9 @@ async function giveBack(kv, keys) {
     على تسجيلاتها في اليوم، بهديّة أو بلا هديّة (المراجعة farm-2). */
 async function takeWelcomeGift(req, o) {
   const opt = o || {};
-  const perIp = envInt('WELCOME_GIFT_PER_IP_DAILY', 50);
+  // v-sec-gift-cap: الافتراضيّ كان ٥٠ لكلّ شبكة/يوم — شبكة واحدة تجمع ٣٥٠٠ نقطة يوميًّا تُنفَق على
+  // وسائط مدفوعة. خُفِّض إلى ٣ (يُرفع بمتغيّر البيئة عند الحاجة). السقف العامّ اليوميّ كما كان.
+  const perIp = envInt('WELCOME_GIFT_PER_IP_DAILY', 3);
   const all = envInt('WELCOME_GIFT_DAILY', 500);
   if (perIp === 0 || all === 0) return false;
   const day = new Date().toISOString().slice(0, 10);

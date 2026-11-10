@@ -514,10 +514,10 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
     /* v-recipe-card: طلب عمران — سؤال الطبخ يرجع صورة الطبق فوق + موقعا طبخ فأكثر.
        v-recipe-ideas: وكل وصفة تختم باقتراح تنويعات كأزرار تُضغط. */
     'سؤال طبخ أو وصفة: استدعِ معًا في نفس الجولة web_search عن الوصفة وgenerate_image بوصف فوتوغرافي شهي للطبق نفسه (professional food photography). ضع رمز الصورة وحده في أول سطر من ردك ثم الوصفة، ثم روابط موقعين للطبخ أو أكثر من نتائج بحثك، واختم بسؤال قصير يقترح تنويعات شهية من نفس المكوّن الرئيسي كأزرار بهذه الصيغة حرفيًّا: [[OPT]]نسخة بالباستا 🍝|نسخة بالكاري 🍛|طريقة مشوية 🔥[[/OPT]] — بدّل الاقتراحات الثلاثة بما يناسب الطبق نفسه.\n';
-    function messageSize(content) {
+    function messageSize(content) { /* v-audit-chatsrv (srv-chat-1): كتلة الصورة كانت تُحسب بطول base64 (لقطة شاشة = ٢٠٠–٥٠٠ ألف حرف) داخل ميزانيّة ٣٢ ألف حرف، فتتخطّى compactConversation كلّ ما قبلها ويصل النموذج رسالة الصورة وحدها. كلفة الصورة عند النموذج بكسلاتها لا طول ترميزها (≈ ١٦٠٠ توكن لأقصى مقاس يرسله العميل ≈ ٥٠٠٠ حرف بنسبة الميزانيّة نفسها) — حجم ثابت لكلّ صورة (IMAGE_BLOCK_CHARS)، والنصّ كما كان حرفيًّا. */
     if (typeof content === 'string') return content.length;
-    try { return JSON.stringify(content || '').length; } catch (e) { return 0; }
-    }
+    let n; try { n = JSON.stringify(content || '').length; } catch (e) { return 0; } if (Array.isArray(content)) for (const b of content) if (b && b.type === 'image') { try { n += IMAGE_BLOCK_CHARS - JSON.stringify(b).length; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:519'); /* guard-ok — كتلة لا تُسلسل: يبقى طولها الأوّل */ } } return n;
+    } const IMAGE_BLOCK_CHARS = 5000;
     function compactConversation(items, win) { // v-tokens-window: win = { histOffset, lane } من العميل الجديد — بلا histOffset السلوك القديم حرفيًّا
     const source = Array.isArray(items) ? items.filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.content) : [];
     if (win && Number.isInteger(win.histOffset) && win.histOffset >= 0) { const __aw = alignedWindow(source, win.histOffset, win.lane); if (__aw) return __aw; } if (source.length <= 16 && source.reduce((n, m) => n + messageSize(m.content), 0) <= 36000) return source;
@@ -655,7 +655,7 @@ function nowNote(tz) {
   const zone = (typeof tz === 'string' && /^[A-Za-z_]+\/[A-Za-z_\/+\-0-9]+$/.test(tz)) ? tz : 'Asia/Dubai';
   const opts = { timeZone: zone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
   let ar = '';
-  try { ar = new Intl.DateTimeFormat('ar', opts).format(new Date()); } catch (e) { try { ar = new Intl.DateTimeFormat('ar', Object.assign({}, opts, { timeZone: 'Asia/Dubai' })).format(new Date()); } catch (e2) { /* يبقى فارغًا */ } }
+  try { ar = new Intl.DateTimeFormat('ar', opts).format(new Date()); } catch (e) { try { ar = new Intl.DateTimeFormat('ar', Object.assign({}, opts, { timeZone: 'Asia/Dubai' })).format(new Date()); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/chat:658'); /* يبقى فارغًا */ } }
   return ar ? ('\n[التاريخ والوقت الآن بتوقيت جهاز المستخدم]: ' + ar + '.' + NOW_RULE) : ''; // v-tokens-tail: نصّ القاعدة ثابت واحد آخر الملفّ — الذيل يأخذ القيمة وحدها (nowLine) والقاعدة في نظام دور الأدوات (LOCATION_RULES_NOTE)
 }
 
@@ -668,7 +668,7 @@ function countryNote(code, cityRaw) {
   // v-no-region-assume: لا افتراض دولة عند غياب الرمز.
   if (!/^[A-Z]{2}$/.test(c)) return '\n[الموقع]: غير معروف' + LOC_UNKNOWN_RULE; // v-tokens-tail: القاعدة ثابت واحد آخر الملفّ
   let ar = '';
-  try { ar = new Intl.DisplayNames(['ar'], { type: 'region' }).of(c) || ''; } catch (e) { /* رمز لا يعرفه Intl */ }
+  try { ar = new Intl.DisplayNames(['ar'], { type: 'region' }).of(c) || ''; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:671'); /* رمز لا يعرفه Intl */ }
   return '\n[تلميح موقع من الشبكة — ليس مؤكّدًا]: ' + (city ? city + '، ' : '') + (ar || c)
     + '.' + LOC_HINT_RULES; // v-tokens-tail: القواعد الإلزاميّة (١)(٢)(٣) نصّها ثابت واحد آخر الملفّ — الذيل يأخذ التلميح وحده (countryLine) والقواعد في النظام المخزَّن
     // v-geo-precise: «في أي منطقة أنا؟» أُجيب من مدينة الشبكة فأخطأ ١٥-٢٠ كم —
@@ -802,7 +802,7 @@ async function liveSearch(query, foreign, countryCode, cityName, win) {
     if (isDeals) {
       let cName = '';
       if (countryCode && countryCode.length === 2) {
-        try { cName = new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode.toUpperCase()) || ''; } catch(e){ /* guard-ok — cleanup, intentional */ }
+        try { cName = new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode.toUpperCase()) || ''; } catch(e){ typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:805'); /* guard-ok — cleanup, intentional */ }
       }
       if (!cName) cName = 'United Arab Emirates'; // افتراضي إمارات
       const loc = [cityName, cName].filter(Boolean).join(' ');
@@ -965,15 +965,15 @@ async function fetchPage(url) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 12000);
     const r = await fetchPublicUrl(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OmranChat/1.0)' } });
-    clearTimeout(t);
-    if (!r.ok) return 'فشل فتح الصفحة: HTTP ' + r.status;
-    const html = await r.text();
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
-      .replace(/\s+/g, ' ').trim();
+    if (!r.ok) { clearTimeout(t); return 'فشل فتح الصفحة: HTTP ' + r.status; }
+    // v-sec-fetchpage: الجذر — fetchPage كان (١) يوقف مؤقّت القطع فور وصول الترويسة فـr.text() بلا
+    // سقف ولا مهلة (خادمٌ يبثّ بلا نهاية يعلّق الدالّة ويملأ الذاكرة)، و(٢) ينظّف الوسوم بتعابير
+    // تربيعيّة (/<[^>]+>/ و<script[\s\S]*?>) فمدخلٌ فيه كثير من «<» يأخذ دقائق. الآن قراءة محدودة
+    // الحجم (المؤقّت ساريٍ طوال القراءة عبر try/finally) وتجريد خطّيّ في _html-text.js.
+    const { readCappedText, htmlToText } = require('./_html-text.js');
+    let html;
+    try { html = await readCappedText(r); } finally { clearTimeout(t); }
+    const text = htmlToText(html);
     const links = pageLinks(html, (r && r.url) || url);
     return text ? text.slice(0, 6000) + links : 'الصفحة فارغة أو محتواها غير قابل للقراءة.' + links;
   } catch (e) { return 'فشل فتح الصفحة: ' + e.message; }
@@ -984,13 +984,13 @@ function pageLinks(html, base) {
   const out = [], seen = new Set();
   let host = '';
   try { host = new URL(base).hostname.replace(/^www\./, ''); } catch (e) { return ''; }
-  const re = /<a\b[^>]*?href\s*=\s*["']([^"'#][^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
-  let m;
-  while ((m = re.exec(String(html || ''))) && out.length < 200) {
-    const label = m[2].replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim().slice(0, 80);
+  const s = String(html || ''), openRe = /<a\b/gi, closeRe = /<\/a>/gi, hrefRe = /href\s*=\s*["']([^"'#][^"']*)["']/i; let m, gt = -1, close = -1, h; /* v-audit-chatsrv (srv-chat-2): التعبير الواحد (<a…>[\s\S]*?</a>) كان يمسح بقيّة المستند من عند كلّ «<a» بلا إغلاق — زمن تربيعيّ (صفحة ٢ م.ب ≈ ٥٠ ثانية تحجز المعالج، ومهلة الجلب لا توقف تعبيرًا متزامنًا). الآن مسح خطّيّ بالنتيجة نفسها: أقرب «>» وأقرب «</a>» يُحفظان ولا يُعاد البحث عنهما قبل تجاوزهما، وhref يُطلب داخل وسم الفتح وحده، ووسم بلا href يُتخطّى كلّه (لا «<a» داخله يجد غير ما وجده). */
+  while (out.length < 200 && (m = openRe.exec(s))) {
+    const at = m.index; if (gt < at) gt = s.indexOf('>', at); if (gt < 0) break; /* لا وسم مكتمل بعده */ h = hrefRe.exec(s.slice(at, gt)); if (!h) { openRe.lastIndex = gt + 1; continue; }
+    if (close <= gt) { closeRe.lastIndex = gt + 1; const c = closeRe.exec(s); close = c ? c.index : -1; } if (close < 0) break; /* لا «</a>» بعده */ openRe.lastIndex = close + 4; const label = s.slice(gt + 1, close).replace(/<[^<>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim().slice(0, 80);
     if (!label) continue;
     let abs;
-    try { abs = new URL(m[1].replace(/&amp;/g, '&'), base); } catch (e) { continue; } // رابط مشوّه في الصفحة — يُتخطّى
+    try { abs = new URL(h[1].replace(/&amp;/g, '&'), base); } catch (e) { continue; } // رابط مشوّه في الصفحة — يُتخطّى
     if (!/^https?:$/.test(abs.protocol)) continue;
     abs.hash = '';
     const key = abs.href;
@@ -1024,7 +1024,7 @@ function trailLine(name, input, result) {
   }
   if (name === 'fetch_page') {
     let h = s(input.url, 60);
-    try { h = new URL(String(input.url)).hostname || h; } catch (e) { /* رابط مشوّه → نعرض ما أُرسل */ }
+    try { h = new URL(String(input.url)).hostname || h; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1027'); /* رابط مشوّه → نعرض ما أُرسل */ }
     return /^فشل/.test(r)
       ? R('قرأتُ ' + h + ' — ' + r.slice(0, 60), 'trFetchFail', { h: h })
       : R('قرأتُ ' + h + ' — حصلتُ ' + r.length + ' حرفًا', 'trFetch', { h: h, n: r.length });
@@ -1056,6 +1056,7 @@ function trailLine(name, input, result) {
   if (name === 'edit_image') return /__IMG_/.test(r) ? R('عدّلتُ الصورة ✅' + engTag, 'trImgOk') : R('تعذّر التعديل — ' + s(r, 60), 'trImgFail');
   if (name === 'get_location') return /رفض|تعذّر|انتهت|لا يدعم|لم يستجب/.test(r) ? R('حاولتُ تحديد موقعك — ' + s(r, 70), 'trLocFail') : R('حدّدتُ موقعك ✅', 'trLocOk');
   if (name === 'test_html') return /^✅/.test(r) ? R('جرّبتُ الصفحة — بلا أخطاء ✅', 'trHtmlOk') : R('جرّبتُ الصفحة — ظهرت أخطاء', 'trHtmlErr');
+  if (name === 'create_office_file') return /^✓/.test(r) ? R('جهّزتُ الملفّ 📄', 'trOfficeOk') : R('لم يُجهَّز الملفّ', 'trOfficeFail'); // v-office-files
   return R('استخدمتُ ' + name, 'trTool', { name: name });
 }
 
@@ -1076,9 +1077,9 @@ async function runInClient(send, name, input, waitMs) {
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 400));
     let rec = null;
-    try { rec = await kvGetJSON(key); } catch (e) { /* شبكة متعثّرة — نعيد المحاولة */ }
+    try { rec = await kvGetJSON(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1080'); /* شبكة متعثّرة — نعيد المحاولة */ }
     if (rec && typeof rec.output === 'string') {
-      try { await kvDel(key); } catch (e) { /* TTL يتكفّل */ }
+      try { await kvDel(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1082'); /* TTL يتكفّل */ }
       return rec.output.slice(0, 4000);
     }
   }
@@ -1156,7 +1157,7 @@ function ownerFailNote(status, errText, fbErrors) {
 function ownerSwapNote(fail, nowWho) {
   const f = fail || {};
   let raw = String(f.text || '');
-  try { const j = JSON.parse(raw); raw = String((j.error && (j.error.message || j.error)) || j.message || raw); } catch (e) { /* نصّ لا JSON */ }
+  try { const j = JSON.parse(raw); raw = String((j.error && (j.error.message || j.error)) || j.message || raw); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1160'); /* نصّ لا JSON */ }
   const t = raw.replace(/[A-Za-z0-9_-]{24,}/g, '…').replace(/\s+/g, ' ').trim();
   const credit = /credit|balance|billing|insufficient|quota|payment|402/i.test(t + ' ' + (f.status || ''));
   const why = credit ? 'لا رصيد كافٍ' : ('خطأ ' + (f.status || '؟'));
@@ -1271,7 +1272,11 @@ module.exports = async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   if (res.flushHeaders) res.flushHeaders();
-  const send = (obj) => { if (res.writableEnded) return; /* v-turn-close: بعد ختام الوقت لا كتابة (كتابة بعد end = خطأ يُسقط العمليّة) */ try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } if (obj && obj.error && !__ownerReq) { try { require('./owner-inbox.js').noteFailure({ user: usage && usage.username, prov, text: lastUserText, error: obj.error }).catch((e2) => logError('chat/owner-inbox-err', e2)); } catch (e3) { /* guard-ok — قبل الحصّة لا اسم مستخدم (TDZ) فلا بلاغ */ } } /* v-owner-inbox: فشل ردّ أمام مستخدم = بلاغ للمالك */ }; const __cut = watchClientGone(res); // v-tokens-close: العميل ضغط «إيقاف» أو أغلق التبويب = نلغي نداء المزوّد الجاري ولا نبدأ جولة أدوات بعده (انظر watchClientGone)
+  /* v-chat-mail (المالك ٤ نوفمبر «الدردشه الي في التطبيق تتحول كله على الايميل لكي اطور التطبيق من المستخدمين»): نصّ الردّ يُجمع من delta (وpatch يستبدله)،
+     ودور غير المالك يُحفظ عند أوّل res.end لإيميل المالك اليوميّ (chat-mail.js). قبل الحصّة (TDZ لـusage) لا دور يُحفظ. */
+  let __mailReply = '', __mailErr = '', __mailDone = false; const __mailEnd = res.end;
+  res.end = function () { if (!__mailDone) { __mailDone = true; try { if (!__ownerReq && usage) require('./chat-mail.js').noteTurnLater({ user: usage.username, guestId, prov: reqProv || prov, text: lastUserText, reply: __mailReply, error: __mailErr, image: lastUserHasImage, country: req.headers && req.headers['x-vercel-ip-country'] }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1278'); /* guard-ok — نهاية قبل الحصّة: لا دور */ } } return __mailEnd.apply(this, arguments); };
+  const send = (obj) => { if (obj) { if (typeof obj.patch === 'string') __mailReply = obj.patch.slice(0, 4000); else if (typeof obj.delta === 'string' && __mailReply.length < 4000) __mailReply += obj.delta; if (obj.error && !__mailErr) __mailErr = String(obj.error); } if (res.writableEnded) return; /* v-turn-close: بعد ختام الوقت لا كتابة (كتابة بعد end = خطأ يُسقط العمليّة) */ try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1279'); /* العميل أغلق المجرى */ } if (obj && obj.error && !__ownerReq) { try { require('./owner-inbox.js').noteFailure({ user: usage && usage.username, prov, text: lastUserText, error: obj.error }).catch((e2) => logError('chat/owner-inbox-err', e2)); } catch (e3) { typeof require === 'function' && require('./_swallow.js').swallow(e3, '_lib/chat:1279'); /* guard-ok — قبل الحصّة لا اسم مستخدم (TDZ) فلا بلاغ */ } } /* v-owner-inbox: فشل ردّ أمام مستخدم = بلاغ للمالك */ }; const __cut = watchClientGone(res); // v-tokens-close: العميل ضغط «إيقاف» أو أغلق التبويب = نلغي نداء المزوّد الجاري ولا نبدأ جولة أدوات بعده (انظر watchClientGone)
   send({ status: '💭 يقرأ سؤالك…', k: 'stReading' });
   send({ modelId: __pick.picked ? __pick.id : '', modelLabel: __pick.picked ? __pick.label : '' }); // v-claude-models: من يجيب
 
@@ -1287,7 +1292,7 @@ module.exports = async (req, res) => {
       earlyLivingUser = String(earlyUser).toLowerCase();
       earlyLivingP = living.readFacts(earlyUser).catch(() => []); // v-living-all: رحلة Redis واحدة بالتوازي لا بعد فحص الحصّة
     }
-  } catch (e) { /* guard-ok: الذاكرة تحسين لا شرط — مسارها القديم يبقى احتياطًا */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1295'); /* guard-ok: الذاكرة تحسين لا شرط — مسارها القديم يبقى احتياطًا */ }
 
   // v-tiers: الطبقة أولًا. غير المشترك يُعدّ في سلّة «chat» واحدة (لا سلّة لكل
   // مزوّد) فسقفه اليومي رقم واحد مفهوم، والمشترك يبقى على سلّة مزوّده بسقف باقته.
@@ -1342,7 +1347,31 @@ module.exports = async (req, res) => {
   /* v-meter-atomic (المراجعة المعاكسة): حدّ الموديل داخل الباقة كان todayCount ثمّ bumpCount فتعبره المتزامنة — حجز ذرّيّ للمسار المختار قبل نداء المزوّد؛ رفضه = امتلأ للتوّ فيُعاد التوجيه للتالي (السلّة 'plan' نفسها)، وفشل النداء قبل أن يخدم يردّ الحجز */ let __meterHeld = ''; let __meterSpent = ''; /* v-pro-lanes: حجز صار استهلاكًا ببدء البثّ — يُردّ إن فشل المسار قبل أيّ حرف في الخطوة الأولى */ while (__planRoute && __planRoute.meter && __planUser && __planLane && __planLane.meter) { /* v-plan-models: Gemini لـPro وSol/Sonnet لـMax — لا كلود وحده */ const __mb = 'plan-' + __planRoute.meter; if (await takeMeter(__planUser, __mb, __planRoute.meterCap)) { __meterHeld = __mb; break; } __planUsed[__planRoute.meter] = Infinity; __applyPlan(); } const __giveMeter = async () => { if (!__meterHeld) return; const __b = __meterHeld; __meterHeld = ''; await giveMeter(__planUser, __b); };
   // مسار مجاني = طبقة معروفة وليست اشتراكًا. (غياب الطبقة — كما في الاختبارات
   // التي تحاكي الحصة — يُبقي المسار القديم.)
-  const __freeLane = !!(usage.tier && !usage.subscriber);
+  /* v-office-files (طلب المالك ٧ نوفمبر: ملفّ Excel/PowerPoint من المحادثة — المجّانيّ ملفّ واحد بالشهر والتعديل بالاشتراك): office.js.
+     طلب ملفّ (أو تعديل على ملفّ هذه المحادثة — body.office من العميل) من غير مشترك: الضيف كرت تسجيل، ومن استعمل ملفّ شهره كرت
+     اشتراك بلا نموذج؛ ومن بقيت حصّته يُخدم هذا الدور وحده على المسار المدفوع بأداة الملفّ وحدها (السلسلة المجّانيّة بلا أدوات). */
+  const __officeLib = require('./office.js');
+  const __officeCtx = __officeLib.contextSpec(body && body.office);
+  const __officeEdit = __officeLib.isOfficeEdit(lastUserText, __officeCtx);
+  const __officeAsk = (lastUserHasImage ? (!(usage.tier && !usage.subscriber) && __officeLib.isOfficeImageAsk(lastUserText, __ownerReq) && !(__ownerReq && (typeof (body && body.ownerUiShot) === 'boolean' ? body.ownerUiShot : require('./owner-carry.js').uiEditTurn(lastUserText)))) : __officeLib.isOfficeAsk(lastUserText)) || (!lastUserHasImage && (__officeEdit || __officeLib.isOfficeAccept(lastUserText, messages))); // «إيه سوّه» بعد اقتراح الملفّ = طلب ملفّ · v-office-image · v-office-explicit: مع صورة (لقطة شاشة أو جدول مصوَّر) الطلب الصريح وحده ملفّ والصورة مصدره — «سوّ لي اكسل من هذا الجدول»، «سولي راجعه بي  الباور بويت»، «حوّل هذا الجدول إلى اكسل» (office.js isOfficeImageAsk)، لا «ابي رايك في البوربوينت» ولا «صمم بوستر لدورة اكسل»؛ للمالك والمشترك؛ المجّانيّ والضيف على سلسلة الرؤية كما كانا (نداء مدفوع = إنفاق، بإذن المالك)، ولقطة المالك لتعديل الواجهة ليست طلب ملفّ، والتعديل و«إيه سوّه» مع صورة كما كانا (EDIT_RE واسع)
+  let __officeTurn = false;
+  if (__officeAsk && usage.tier && !usage.subscriber) {
+    const __og = !usage.username ? 'login' : ((await __officeLib.usedThisMonth(usage.username, require('./kv.js'))) >= __officeLib.FREE_MONTHLY ? 'plans' : '');
+    if (__og) {
+      send({ delta: __officeLib.gateText(__og, lastUserText) });
+      send(__officeLib.gateEvent(__og, __og === 'plans' ? __officeLib.FREE_MONTHLY : 0));
+      send({ done: true });
+      res.end();
+      return;
+    }
+    __officeTurn = applyRoute('claude', '', false);
+  }
+  const __officeTool = __officeTurn || __officeAsk || !!__officeCtx;
+  /* اقتراح الملفّ (سطر في آخر الردّ): ما دام العميل يقول إنّ المستخدم لم يصنع ملفًّا (body.officeHint)، والموضوع ينفعه جدول أو عرض،
+     ولم يُعرض في هذه المحادثة، وللمجّانيّ ملفّ هذا الشهر باقٍ — لا اقتراح لما لا يقدر عليه. */
+  const __officeHint = !__officeAsk && !__officeCtx && !lastUserHasImage && !!(body && body.officeHint === true) && __officeLib.isHintTopic(lastUserText) && !__officeLib.alreadyOffered(messages)
+    && (usage.subscriber || !usage.username || (await __officeLib.usedThisMonth(usage.username, require('./kv.js'))) < __officeLib.FREE_MONTHLY);
+  const __freeLane = !!(usage.tier && !usage.subscriber) && !__officeTurn;
 
   // الذاكرة تُقرأ من الحساب في الخادم لكل رسالة، لا من نسخة الجهاز. هكذا يرى
   // الكمبيوتر والجوال الملف نفسه حتى لو كان أحدهما لم يحدّث صفحته بعد.
@@ -1505,7 +1534,7 @@ module.exports = async (req, res) => {
     const __meterTurn = async () => { // v-tokens-meter: عدّادات توكنات اليوم لكلّ مسار وموديل في طلب Redis نفسه — للمالك والزائر أيضًا (التكلفة كما كانت: غير المالك بحساب)
       if (__metered) return;
       __metered = true;
-      try { const __cm = require('./cost-meter.js'); await __cm.meterTurn((usage.username && !__ownerReq) ? usage.username : '', __cm.tokenCostUsd(__usage.served || DEFAULT_MODEL, __usage), 'chat', Object.assign({ lane: __ownerReq ? 'owner' : 'paid', model: __usage.served || CHAT_MODEL }, __usage)); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+      try { const __cm = require('./cost-meter.js'); await __cm.meterTurn((usage.username && !__ownerReq) ? usage.username : '', __cm.tokenCostUsd(__usage.served || DEFAULT_MODEL, __usage), 'chat', Object.assign({ lane: __ownerReq ? 'owner' : 'paid', model: __usage.served || CHAT_MODEL }, __usage)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1537'); /* guard-ok — القياس لا يوقف خدمة */ }
     };
 
       const convoSource = stripStaleImagesFromHistory(quietSocialTurn ? [lastUser] : messages);
@@ -1536,7 +1565,7 @@ module.exports = async (req, res) => {
   if (__ownerReq && !__rawOwner && !__ownerNoRoute && !lastUserHasImage && convo[convo.length - 1].role === 'user' && !require('./prov-self.js').ownerSaidGeneralize(lastUserText)) { try { const __ps = require('./prov-self.js'), __vp = prov === 'claude' ? null : require('./owner-vision.js').visionPlan(prov, __direct ? 'direct' : (viaOR ? 'or' : ''), CHAT_MODEL, DEFAULT_MODEL), __gs = await __ps.genImagesToSee(lastUserText, { recent: prov === 'claude' || !!(__vp && !__vp.forced) }); if (__gs.length && (prov === 'claude' || __seeImage())) convo[convo.length - 1] = { role: 'user', content: __ps.withGenImages(convo[convo.length - 1].content, __gs) }; } catch (e) { logError('chat/gen-see', e); } }
 
   // ─── live-answers: استبدل رسالة المستخدم الأخيرة بالنسخة المسنودة بالمصادر ───
-  const __askNoMedia = !!(toolTurn && isClarifyTurn(lastUserText)); /* v-tokens-tools: دور السؤال كان بقائمة أدوات أقصر فتنكسر بادئة الكاش — القائمة ثابتة، و«لا رسم» تنبيه في الذيل + حارس عند التنفيذ */ const __ownerNoMedia = !!(toolTurn && __ownerReq && !__ownerNoTools && (__analyzeDoc || __ownerUiShot)), __noMedia = __askNoMedia || __ownerNoMedia; /* v-tokens-owner-tools: لقطة المالك والرسالة الطويلة كانتا بقائمة أدوات بلا الصور فيفوت الكاش كلّه (~١٦ ألف توكن) — القائمة كاملة كغيرهما، والصور تُرفض عند التنفيذ بالحارس نفسه */ const __ownerPicsOk = !!(__ownerNoMedia && __ownerUiShot && OWNER_PICS_RE.test(String(lastUserText || '').replace(/\n*\[[^\[\]\n]*\]\s*$/, '')) && require('./owner-media.js').picsReplace(lastUserText)); /* v-owner-paid-gate: «احذف/صلّح الصور» كود لا رسم */ /* v-owner-like-me: لقطة التطبيق والطلب صور فيه («غيّر هذي الصور») — generate_image مفتوحة، واللقطة نفسها لا تُعدَّل */ const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(livingBlock ? [livingBlock] : []).concat(toolTurn ? [nowLine(body && body.tz), countryLine(country, city)] : []).concat(__askNoMedia ? [ASK_NO_MEDIA_NOTE] : (__ownerNoMedia ? [__ownerPicsOk ? OWNER_PICS_NOTE : OWNER_NO_MEDIA_NOTE] : [])).concat((!lastUserHasImage && require('./reply-style.js').wantsRichReply(lastUserText)) ? [require('./reply-style.js').RICH_REPLY_NOTE.trim()] : []).concat((__ownerReq && toolTurn && lastUserHasImage) ? await require('./agent-img.js').attachmentLinks(lastUserAny && lastUserAny.content).catch(() => []) : [])); /* v-agent-img: روابط /i/ لصور رسالة المالك */ /* v-rich-reply: شكل ChatGPT لطلب المعلومات في ذيل الدور (النظام ثابت فيبقى كاشه — v-tokens-living) */ /* v-tokens-living */ // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
+  const __askNoMedia = !!(toolTurn && isClarifyTurn(lastUserText)); /* v-tokens-tools: دور السؤال كان بقائمة أدوات أقصر فتنكسر بادئة الكاش — القائمة ثابتة، و«لا رسم» تنبيه في الذيل + حارس عند التنفيذ */ const __ownerNoMedia = !!(toolTurn && __ownerReq && !__ownerNoTools && (__analyzeDoc || __ownerUiShot)), __noMedia = __askNoMedia || __ownerNoMedia; /* v-tokens-owner-tools: لقطة المالك والرسالة الطويلة كانتا بقائمة أدوات بلا الصور فيفوت الكاش كلّه (~١٦ ألف توكن) — القائمة كاملة كغيرهما، والصور تُرفض عند التنفيذ بالحارس نفسه */ const __ownerPicsOk = !!(__ownerNoMedia && __ownerUiShot && OWNER_PICS_RE.test(String(lastUserText || '').replace(/\n*\[[^\[\]\n]*\]\s*$/, '')) && require('./owner-media.js').picsReplace(lastUserText)); /* v-owner-paid-gate: «احذف/صلّح الصور» كود لا رسم */ /* v-owner-like-me: لقطة التطبيق والطلب صور فيه («غيّر هذي الصور») — generate_image مفتوحة، واللقطة نفسها لا تُعدَّل */ const __turnMsg = convo[convo.length - 1], __turnTail = __rawOwner ? '' : turnTailText(__turnNotes.concat(livingBlock ? [livingBlock] : []).concat(toolTurn ? [nowLine(body && body.tz), countryLine(country, city)] : []).concat(__askNoMedia ? [ASK_NO_MEDIA_NOTE] : (__ownerNoMedia ? [__ownerPicsOk ? OWNER_PICS_NOTE : OWNER_NO_MEDIA_NOTE] : [])).concat((!lastUserHasImage && require('./reply-style.js').wantsRichReply(lastUserText) && !__officeAsk) ? [require('./reply-style.js').RICH_REPLY_NOTE.trim()] : []).concat((toolTurn && __officeAsk) ? [__officeLib.systemNote({ ctx: __officeEdit ? __officeCtx : null, image: lastUserHasImage }).trim()] : []).concat((toolTurn && __officeHint) ? [__officeLib.HINT_NOTE] : []) /* v-office-files */.concat((__ownerReq && toolTurn && lastUserHasImage) ? await require('./agent-img.js').attachmentLinks(lastUserAny && lastUserAny.content).catch(() => []) : [])); /* v-agent-img: روابط /i/ لصور رسالة المالك */ /* v-rich-reply: شكل ChatGPT لطلب المعلومات في ذيل الدور (النظام ثابت فيبقى كاشه — v-tokens-living) */ /* v-tokens-living */ // v-tokens-cache: ذيل هذا الدور (ملاحظات العميل + الوقت + الموقع) يُلحق برسالة المستخدم هذه عند كلّ نداء — withTurnTail؛ المالك الخام بلا شيء كما كان
   // (الترويسات وsend فُتحا مبكرًا أعلاه — v-fast-headers)
   // ─── live-answers: أبلغ العميل بالمصادر المكتشفة ───
 
@@ -1566,8 +1595,8 @@ module.exports = async (req, res) => {
           const allowed = new Set();
           const urlRe = /https?:\/\/([^/\s)\]"]+)/g;
           let m;
-          while ((m = urlRe.exec(corpus || '')) !== null) {
-            try { allowed.add(m[1].replace(/^www\./, '').toLowerCase().split('/')[0]); } catch(e) { /* guard-ok — URL parsing for domain allow-list; any error means the match is malformed, skip silently */ }
+          const __src = (corpus || '') + ' ' + require('./reply-style.js').textOfMessages((Array.isArray(messages) ? messages : []).filter((x) => x && x.role === 'user')); while ((m = urlRe.exec(__src)) !== null) { /* v-audit-chatsrv (srv-chat-3): رابط كتبه المستخدم نفسه («رابط متجري https://…») كان يُمحى من الردّ النهائيّ — القائمة من ناتج الأدوات وحده، والقاعدة «الروابط من بحثك أو من المستخدم». نطاقات رسائل المستخدم في هذا الطلب تُقبل؛ ردود المساعد السابقة لا تزكّي رابطًا. */
+            try { allowed.add(m[1].replace(/^www\./, '').toLowerCase().split('/')[0]); } catch(e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1599'); /* guard-ok — URL parsing for domain allow-list; any error means the match is malformed, skip silently */ }
           }
           const ok = (url) => { try { return allowed.has(new URL(url).hostname.replace(/^www\./, '').toLowerCase()); } catch(e) { return false; } };
           return text.split(/(```[\s\S]*?(?:```|$))/).map((seg, k) => k % 2 ? seg : seg // v-chat-edit: ما داخل ``` كود يبقى كما هو
@@ -1601,17 +1630,17 @@ module.exports = async (req, res) => {
       : !!apiKey && (prov === 'claude' || (viaOR && (prov === 'gemini' || prov === 'openai'))))); if (__ownerNoRoute) { send({ error: 'ما قدرت أردّ الحين — لا طريق لهذا المزوّد على الخادم', ownerStop: true }); res.end(); return; } // v-owner-solo
     if (__freeLane || !__visionRoute) {
       if (__freeLane) send({ tier: usage.tier }); const __pre = await require('./free-read.js').preRead({ convo, send, fetchPage, trailLine }); // v-read-all
-      const __fr = await streamFreeChain({ system: __rawOwner && !__freeLane ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + __provSelfSys /* v-lessons-all (المالك ١٢ أكتوبر «اريدهم كلهم»): الدروس المنشورة للمجّانيّ وللمدفوع بصورة بلا مسار رؤية */ + (lastUserHasImage ? require('./shot-reply.js').SHOT_REPLY_NOTE : '') /* v-shot-reply: شكل ردّ اللقطة يصل السلسلة المجّانيّة أيضًا — التقييم الحيّ كشف أنّها بلا ملاحظات الصورة */, paid: !__freeLane && !!(usage && usage.subscriber) /* v-plan-models: صورة المشترك بلا مسار رؤية — بلا «النسخة الاحترافيّة» */, raw: __rawOwner && !__freeLane, convo: __pre.convo, send, requireVision: lastUserHasImage });
+      const __fr = await streamFreeChain({ system: __rawOwner && !__freeLane ? '' : PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + __provSelfSys /* v-lessons-all (المالك ١٢ أكتوبر «اريدهم كلهم»): الدروس المنشورة للمجّانيّ وللمدفوع بصورة بلا مسار رؤية */ + (__officeHint ? '\n\n' + __officeLib.HINT_NOTE : '') /* v-office-files: اقتراح الملفّ للمجّانيّ أيضًا */ + (lastUserHasImage ? require('./shot-reply.js').SHOT_REPLY_NOTE : '') /* v-shot-reply: شكل ردّ اللقطة يصل السلسلة المجّانيّة أيضًا — التقييم الحيّ كشف أنّها بلا ملاحظات الصورة */, paid: !__freeLane && !!(usage && usage.subscriber) /* v-plan-models: صورة المشترك بلا مسار رؤية — بلا «النسخة الاحترافيّة» */, raw: __rawOwner && !__freeLane, convo: __pre.convo, send, requireVision: lastUserHasImage });
       if (!__fr.ok) {
         // تشخيص للمالك (المجسّ يطبعه، والعميل يتجاهله): أي مزوّد فشل ولماذا — بلا مفاتيح.
-        try { logError('free-chain', new Error((__fr.errors || []).join(' | ').slice(0, 400))); } catch (e) { /* التسجيل تحسين */ }
+        try { logError('free-chain', new Error((__fr.errors || []).join(' | ').slice(0, 400))); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1636'); /* التسجيل تحسين */ }
         send({ tierDiag: (__fr.errors || []).slice(0, 6) });
         if ((__fr.errors || []).includes('no-provider-keys') && !lastUserHasImage) send({ error: 'Server is missing provider API keys' });
         else send({ delta: (lastUserHasImage ? tierLib.FREE_TEXT.imageBusy : tierLib.FREE_TEXT.busy) + (__ownerReq ? ownerFailNote(0, __visionRoute ? '' : 'no-vision-route', __fr.errors) : '') }); // v-img-why
       }
       // v-cost-meter: المسار المجّانيّ — تكلفة تقديريّة (دخل ثابت تقريبيّ + خرج من طول النصّ)، غير المالك.
       send({ done: true }); // tok-3: الردّ لا ينتظر القياس — الدالّة تبقى حيّة حتّى res.end()
-      if (__fr.ok) { try { const __cm = require('./cost-meter.js'); const __fu = { input: 6000, output: Math.ceil(String(__fr.text || '').length / 3.5) }; await __cm.meterTurn((usage.username && !__ownerReq) ? usage.username : '', __cm.tokenCostUsd(__fr.model, __fu), 'chat', Object.assign({ lane: 'free', model: __fr.model }, __fu)); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } } // v-tokens-meter: والمسار المجّانيّ في عدّادات اليوم (تقديريّ: السلسلة لا تعيد توكناتها بعد)
+      if (__fr.ok) { try { const __cm = require('./cost-meter.js'); const __fu = { input: 6000, output: Math.ceil(String(__fr.text || '').length / 3.5) }; await __cm.meterTurn((usage.username && !__ownerReq) ? usage.username : '', __cm.tokenCostUsd(__fr.model, __fu), 'chat', Object.assign({ lane: 'free', model: __fr.model }, __fu)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1643'); /* guard-ok — القياس لا يوقف خدمة */ } } // v-tokens-meter: والمسار المجّانيّ في عدّادات اليوم (تقديريّ: السلسلة لا تعيد توكناتها بعد)
       res.end();
       return;
     }
@@ -1633,7 +1662,7 @@ module.exports = async (req, res) => {
        الخادم وهو يعمل، وحارس العميل (٩٠ ث بلا بايت) يستسلم بلا رقم ولا سبب. نبض للدور كلّه مقيّدٌ بميزانيّة الدور (MAX_MS) وبحياة المجرى،
        فدرس #527 محفوظ: تعليق حقيقيّ بعد الميزانيّة يُسكت النبض فيقطعه العميل كما كان. CHAT_KA_MS للاختبار. */
     const __kaMs = Math.max(50, Number(process.env.CHAT_KA_MS) || 4000);
-    const __turnKa = (toolTurn || __ownerReq) ? setInterval(() => { const __pw = (res.writableEnded || __cut.gone) ? 'end' : __ol.pulse(__olS, { t0, MAX_MS }); if (__pw === 'end') { clearInterval(__turnKa); return; } if (__pw === 'close') __turnClose(); try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, __kaMs) : null;
+    const __turnKa = (toolTurn || __ownerReq) ? setInterval(() => { const __pw = (res.writableEnded || __cut.gone) ? 'end' : __ol.pulse(__olS, { t0, MAX_MS }); if (__pw === 'end') { clearInterval(__turnKa); return; } if (__pw === 'close') __turnClose(); try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1665'); /* العميل أغلق المجرى */ } }, __kaMs) : null;
     if (__turnKa && __turnKa.unref) __turnKa.unref();
     const __turnKaStop = () => { if (__turnKa) clearInterval(__turnKa); }; const __turnClose = () => { __olS.closeAt = fullText.length; const __cm = __ol.closeMark(__ownerOps.lastPush); logError('chat/owner-turn-close', new Error('tools still running at ' + (Date.now() - t0) + 'ms, step ' + steps)); send({ delta: __cm }); fullText += __cm; }; /* v-turn-close: أداة تجاوزت CLOSE_AT_MS = سطر «كمل» قبل قتل الدالّة، والمجرى مفتوح حتّى تخلص (إنهاؤه يجمّد الدالّة) — الحلقة تقف بعدها (closed) */
     if (__turnKa) { const __endRaw = res.end; res.end = function () { __turnKaStop(); return __endRaw.apply(res, arguments); }; } // كلّ خروج (done، catch، خروج مبكّر في الحلقة) يمرّ بـres.end فلا يبقى نبض حيّ بعده (chat-owner-errors يعدّ المؤقّتات)
@@ -1667,14 +1696,14 @@ module.exports = async (req, res) => {
       const callUpstream = (withImg) => __upFetch(CHAT_URL, {
         method: 'POST', // v-tokens-close: غير المالك بلا إشارة — تبقى مهلة _fetch-timeout (٣٠ ث لأوّل بايت)؛ للمالك إشارة owner-loop بحرّاسها (٧٥ ث لأوّل بايت، الصمت، سبب ظاهر) — v-claude-code-level C5
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, signal: __ol.signal(__olS, !!__direct),
-        body: JSON.stringify(__ol.think(__ol.shape(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia, __callPaid) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {}, { max_tokens: __maxTokens() } /* v-owner-cap-open: السقف آخرًا فيغلب سقوف الجهد (٣٢/٦٤ ألفًا) */), __olS, !!__direct || (viaOR && !/^anthropic\//.test(CHAT_MODEL)) /* v-owner-solo-all: الخطوة الأخيرة بلا أدوات لغير أنثروبيك على الوسيط أيضًا — الملخّص لا «انتهت الميزانيّة» */), __olT, convo, __direct ? 'x' : (viaOR ? 'or' : 'a'))), // v-claude-code-level D1: تفكير الجولة السابقة يعود كما وصل على المسار نفسه · v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم) /* cross-1: المالك الخامّ بلا نظام ولا ذيل فلا يصله تنبيه «مقفلة» — قائمته بلا أدوات الصور كما كانت (__rawOwner && __ownerNoMedia) */
+        body: JSON.stringify(__ol.think(__ol.shape(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, system: __cacheOn ? __sysBlocks : (__sysSend || undefined), messages: withTurnTail(__cacheOn ? markLastForCache(convo) : convo, convo.lastIndexOf(__turnMsg), __turnTail), tools: toolTurn ? toolsFor(__ownerReq, __rawOwner && __ownerNoMedia, __callPaid) : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {}, __quickFields(), (toolTurn && __officeTool) ? { tools: __officeTurn ? [__officeLib.TOOL] : toolsFor(__ownerReq, __rawOwner && __ownerNoMedia, __callPaid).concat([__officeLib.TOOL]) } : {} /* v-office-files: أداة الملفّ في دور يطلبه فقط؛ ومجّانيّ بحصّته بها وحدها */, (__ownerReq && body && body.noTools === true) ? { tools: undefined } : {}, { max_tokens: __maxTokens() } /* v-owner-cap-open: السقف آخرًا فيغلب سقوف الجهد (٣٢/٦٤ ألفًا) */), __olS, !!__direct || (viaOR && !/^anthropic\//.test(CHAT_MODEL)) /* v-owner-solo-all: الخطوة الأخيرة بلا أدوات لغير أنثروبيك على الوسيط أيضًا — الملخّص لا «انتهت الميزانيّة» */), __olT, convo, __direct ? 'x' : (viaOR ? 'or' : 'a'))), // v-claude-code-level D1: تفكير الجولة السابقة يعود كما وصل على المسار نفسه · v-owner-solo: المسار القديم للمالك كان بلا أدوات (دور الاستئذان لا يبني ولا يرسم) /* cross-1: المالك الخامّ بلا نظام ولا ذيل فلا يصله تنبيه «مقفلة» — قائمته بلا أدوات الصور كما كانت (__rawOwner && __ownerNoMedia) */
       }).then((r) => __ol.got(__olS, r), (e) => { const __lf = __planSoft() ? __ol.laneFail(e) : 0; if (__lf) return { ok: false, status: __lf, headers: null, text: async () => String((e && e.message) || e).slice(0, 200) }; return __ol.fetchFailed(__olS, e); }); // v-claude-code-level C5: حارس لكلّ نداء، وقطعه = فشل صريح · v-pro-lanes: انقطاع/مهلة مسار الباقة = فشل ما قبل البثّ
       let upstream = await callUpstream(true); upstream = await __ol.retryBusy(upstream, () => callUpstream(true), __olS, { direct: __ownerReq /* v-owner-solo-all: والوسيط أيضًا — مزوّد المالك لا بديل له، فزحام ٤٢٩/٥xx يُعاد مرّتين كالمباشر */, t0, MAX_MS, send }); upstream = await __ol.think400(upstream, __olT, convo, () => callUpstream(true), send); // v-claude-code-level C4: مشغول = النداء نفسه · D1: توقيع مرفوض = نزع وإعادة واحدة
       // v-img-err: أيّ فشل على إعداد دور الصورة (400 أو 404 نموذج لا يملكه المفتاح أو
       // 403 أو 429…) = إعادة فوريّة بالطلب العاديّ قبل أيّ هبوط — لا 400 وحده.
       if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) {
         let __why = '';
-        try { __why = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        try { __why = (await upstream.text()).slice(0, 300); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1706'); /* جسم غير مقروء */ }
         await logErrorAndFlush('chat/image-turn-' + upstream.status, new Error(__why || 'upstream ' + upstream.status + ' on image-turn config'), { action: 'image-turn-config' });
         upstream = await callUpstream(false);
       }
@@ -1682,7 +1711,7 @@ module.exports = async (req, res) => {
       // (نصّ مثل «effort is not supported for this model» كان سيُسقطه للافتراضيّ). الرفض يُذكَر فلا يتكرّر.
       if (!upstream.ok && upstream.status === 400 && __ownerReq && !__direct && Object.keys(__qfLast).length) {
         let __ot = '';
-        try { __ot = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        try { __ot = (await upstream.text()).slice(0, 300); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1714'); /* جسم غير مقروء */ }
         if (/effort|output_config|reasoning|thinking/i.test(__ot) && !(__qfLast.output_config && !/effort|output_config/i.test(__ot))) { // v-owner-light: حقل الجهد لا يُتّهم إلّا برفض يذكره — 400 توقيع كتلة التفكير ليس رفضًا للجهد (يمرّ لمعالجه)
           if (__qfLast.output_config) require('./owner-think.js').forgetEffort(CHAT_MODEL);
           else if (/mandatory|cannot be disabled|can ?not be turned off|must be enabled/i.test(__ot)) __mustReason.add(CHAT_MODEL); /* v-owner-solo: Grok 4.6 «Reasoning is mandatory…» */ else __orQuick.level = (__orQuick.level >= 2 && /reasoning/i.test(__ot) && !/thinking/i.test(__ot)) ? 1 : 0;
@@ -1694,7 +1723,7 @@ module.exports = async (req, res) => {
       } const __cutCap = async (up) => { /* v-cap-not-credit: GPT المباشر وبعد هبوط الوسيط — 402 حجز ≠ محفظة فاضية */
         for (;;) {
           if (up.ok || !__ownerReq || __capTries >= 2 || (up.status !== 402 && up.status !== 400 && up.status !== 404)) return up; // v-owner-cap-live: و404 «can handle»
-          let __ct = ''; try { __ct = (await up.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+          let __ct = ''; try { __ct = (await up.text()).slice(0, 300); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1726'); /* جسم غير مقروء */ }
           const __cur = __maxTokens(); let __next = 0;
           if (up.status === 402 && /max_tokens|afford/i.test(__ct)) { const __aff = Number((/afford\s+(\d{4,7})/i.exec(__ct) || [])[1] || 0); __next = (__aff >= 1024 && __aff < __cur) ? Math.min(PLAIN_MAX_TOKENS, __aff) : PLAIN_MAX_TOKENS; }
           else if (up.status === 400 && /maximum context length is \d+[^]*?requested about \d+/i.test(__ct)) { const __cx = /maximum context length is (\d+)[^]*?requested about (\d+)/i.exec(__ct); const __h = Number(__cx[1]) - (Number(__cx[2]) - __cur) - 2048; __next = __h >= 4096 ? __h : 0; } /* v-owner-cap-live: نافذة الوسيط */ else if ((up.status === 400 && /max_?(?:completion_?|output_?)?tokens|max tokens|maximum output/i.test(__ct)) || (up.status === 404 && /No endpoints found that can handle/i.test(__ct))) __next = __capFromText(__ct.replace(/(\d+)\s*\(exclusive\)/gi, (__a, __d) => String(Number(__d) - 1)), __cur) || (__cur > MID_MAX_TOKENS ? MID_MAX_TOKENS : PLAIN_MAX_TOKENS); // v-owner-cap-live: نصوص Cohere/Google/OpenAI والحدّ الحصريّ
@@ -1708,7 +1737,7 @@ module.exports = async (req, res) => {
       // عن النموذج) = رجوع فوريّ للافتراضيّ بالطلب نفسه، مع إخبار المستخدم. غير ذلك يمرّ كما هو.
       if (!upstream.ok && __ownerReq && prov === 'openrouter' && String(CHAT_MODEL).split('/')[0] !== String(DEFAULT_MODEL).split('/')[0]) __pick.picked = false; /* v-owner-solo: Grok/Qwen المرفوض لا يجيب عنه موديل شركة أخرى — يتوقّف بسببه. v-grok-first: الافتراضيّ كروك فيرجع موديل xAI إلى كروك نفسه لا لشركة أخرى */ if (!upstream.ok && __pick.picked && CHAT_MODEL !== DEFAULT_MODEL) {
         let __mt = '';
-        try { __mt = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        try { __mt = (await upstream.text()).slice(0, 300); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1740'); /* جسم غير مقروء */ }
         if (isModelErrorStatus(upstream.status, __mt)) {
           await logErrorAndFlush('chat/model-pick-' + upstream.status, new Error(__acct() + ': ' + (__mt || ('upstream ' + upstream.status))), { action: 'model-pick', model: __pick.id });
           /* v-oa-models: deadModel = المعرّف كما أرسله العميل — يمسحه من اختياره المحفوظ فلا يُرسَل مع كلّ رسالة بعدها
@@ -1731,7 +1760,7 @@ module.exports = async (req, res) => {
          فلا تتكرّر جولة الـ404 (liveDefaultOf عند اختيار الافتراضيّ). المختار يدويًّا له v-claude-models أعلاه. */
       if (!upstream.ok && viaOR && !__direct && !__pick.picked && !__liveTried && !__planRoute /* v-plan-models: موديل الباقة المرفوض يكمل بمسارها التالي لا بأحدث موديل لشركته */ && require('./provider-models.js').OR_VENDOR[prov]) {
         let __lt = '';
-        try { __lt = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        try { __lt = (await upstream.text()).slice(0, 300); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1763'); /* جسم غير مقروء */ }
         __liveTried = true;
         const __alt = (upstream.status === 404 || /model_not_found|does not exist|no longer available|not a valid model|invalid model|unknown model/i.test(__lt)) ? await require('./provider-models.js').liveDefault(prov, CHAT_MODEL) : '';
         if (__alt) {
@@ -1748,7 +1777,7 @@ module.exports = async (req, res) => {
       // v-prompt-cache: 400 يذكر cache_control (وسيط لا يمرّر العلامة) = إعادة فوريّة بلا كاش.
       if (!upstream.ok && __cacheOn && upstream.status === 400) {
         let __cc = '';
-        try { __cc = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        try { __cc = (await upstream.text()).slice(0, 300); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1780'); /* جسم غير مقروء */ }
         if (/cache_control/i.test(__cc)) {
           __cacheOn = false;
           await logErrorAndFlush('chat/prompt-cache-400', new Error(__cc), { action: 'prompt-cache' });
@@ -1762,7 +1791,7 @@ module.exports = async (req, res) => {
       // نصّ يذكر reasoning وحده → نبقي thinking؛ غير ذلك → بلا الحقلين. القرار يُذكَر للطلبات التالية.
       if (!upstream.ok && upstream.status === 400 && viaOR && prov !== 'claude' && !__ownerReq && __orQuick.level > 0) {
         let __qt = '';
-        try { __qt = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        try { __qt = (await upstream.text()).slice(0, 300); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1794'); /* جسم غير مقروء */ }
         __orQuick.level = (__orQuick.level >= 2 && /reasoning/i.test(__qt) && !/thinking/i.test(__qt)) ? 1 : 0;
         await logErrorAndFlush('chat/or-quick-400', new Error(__qt || 'upstream 400 with quick fields'), { action: 'or-quick', level: __orQuick.level });
         upstream = await callUpstream(true);
@@ -1771,7 +1800,7 @@ module.exports = async (req, res) => {
       // v-owner-memory: سياق المالك الكامل تجاوز نافذة الموديل → إعادة واحدة بالسياق المضغوط القديم (الدور الأوّل فقط).
       if (!upstream.ok && __ownerReq && (upstream.status === 400 || upstream.status === 413)) { // v-claude-code-level C7: وبعد الخطوة الأولى بقصّ نتائج الأدوات الأقدم
         let __ct = '';
-        try { __ct = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        try { __ct = (await upstream.text()).slice(0, 300); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1803'); /* جسم غير مقروء */ }
         const __small = steps === 1 ? compactConversation(convo) : __ol.shrinkOld(convo);
         if (/context|too (?:large|long)|maximum|exceed|token/i.test(__ct) && __small && __small.length && (__small.length < convo.length || steps > 1)) {
           await logErrorAndFlush('chat/owner-ctx-' + upstream.status, new Error(__ct), { action: 'owner-ctx', from: convo.length, to: __small.length });
@@ -1785,7 +1814,7 @@ module.exports = async (req, res) => {
       // v-owner-direct: المفتاح المباشر رفض قبل أوّل حرف (رصيد/401/429/5xx) → الوسيط للمزوّد نفسه، بإعلان للمالك.
       if (!upstream.ok && __direct && __ownerReq && !anyText && process.env.OPENROUTER_API_KEY && prov !== 'groq' && prov !== 'perplexity') { // v-owner-solo: Groq عبر الوسيط ليس Groq · v-pplx-agent: ولا Perplexity (لا موديل له في OR_MODELS ولا أدوات عند الوسيط)
         let __dt = '';
-        try { __dt = (await upstream.text()).slice(0, 200); } catch (e) { /* جسم غير مقروء */ }
+        try { __dt = (await upstream.text()).slice(0, 200); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1817'); /* جسم غير مقروء */ }
         __ownerFail = { who: __acct(), prov, status: upstream.status, text: __dt }; await logErrorAndFlush('chat/direct-fail-' + upstream.status, new Error(__acct() + ': ' + (__dt || ('upstream ' + upstream.status))), { action: 'owner-direct', prov });
         send({ status: '⚠️ نموذج ' + __direct.label + ' · ' + upstream.status + ' غير متاح على المفتاح الحاليّ — أكمل عبر الوسيط بالموديل نفسه.', k: 'stModelFallback', p: { model: __direct.label + ' · ' + upstream.status } });
         __direct = null; viaOR = true; apiKey = process.env.OPENROUTER_API_KEY;
@@ -1793,7 +1822,7 @@ module.exports = async (req, res) => {
         const __dmPrev = CHAT_MODEL; DEFAULT_MODEL = require('./provider-models.js').liveDefaultOf(prov) || OR_MODELS[prov]; CHAT_MODEL = ((prov === 'openai' || prov === 'kimi') && __dmPrev && __dmPrev.indexOf('/') === -1) ? ((prov === 'openai' ? 'openai/' : 'moonshotai/') + __dmPrev) : DEFAULT_MODEL; __pick.picked = false; __pick.label = ''; // v-owner-solo: الموديل المختار نفسه عند الوسيط
         if (__ownerSeen) __seeImage(); __imgCfg = (lastUserHasImage && !__ownerSeen) ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; // v-owner-vision: رؤية المزوّد نفسه على الوسيط
         upstream = await callUpstream(true);
-        if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false); if (!upstream.ok && CHAT_MODEL !== DEFAULT_MODEL) { let __om = ''; try { __om = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ } upstream = { ok: false, status: upstream.status, text: async () => __om }; if (isModelErrorStatus(upstream.status, __om)) { send({ status: '⚠️ نموذج ' + CHAT_MODEL + ' غير متاح عند الوسيط — أكمل بالنموذج الافتراضيّ.', k: 'stModelFallback', p: { model: CHAT_MODEL } }); CHAT_MODEL = DEFAULT_MODEL; if (__ownerSeen) __seeImage(); __imgCfg = (lastUserHasImage && !__ownerSeen) ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; upstream = await callUpstream(true); if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false); } } upstream = await __cutCap(upstream); // v-cap-not-credit: هبوط الوسيط بـ١٢٨ ألفًا قد 402 وهو فيه رصيد — أعد بالحدّ
+        if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false); if (!upstream.ok && CHAT_MODEL !== DEFAULT_MODEL) { let __om = ''; try { __om = (await upstream.text()).slice(0, 300); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1825'); /* جسم غير مقروء */ } upstream = { ok: false, status: upstream.status, text: async () => __om }; if (isModelErrorStatus(upstream.status, __om)) { send({ status: '⚠️ نموذج ' + CHAT_MODEL + ' غير متاح عند الوسيط — أكمل بالنموذج الافتراضيّ.', k: 'stModelFallback', p: { model: CHAT_MODEL } }); CHAT_MODEL = DEFAULT_MODEL; if (__ownerSeen) __seeImage(); __imgCfg = (lastUserHasImage && !__ownerSeen) ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; upstream = await callUpstream(true); if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false); } } upstream = await __cutCap(upstream); // v-cap-not-credit: هبوط الوسيط بـ١٢٨ ألفًا قد 402 وهو فيه رصيد — أعد بالحدّ
       }
       // v-plan-routing: تعطّل مزوّد الباقة قبل أوّل حرف (رصيد/401/429/5xx) → التالي في سلسلة الباقة (أرخص فأرخص)
       // بصمت، قبل الهبوط إلى السلسلة المجّانيّة. مزوّد بلا مفتاح يُتخطّى.
@@ -1804,10 +1833,10 @@ module.exports = async (req, res) => {
       if (!upstream.ok && __ownerReq && !__planRoute && !__ownerChainSet) { // v-claude-code-level C3: وبعد التمهيد أيضًا (غير المالك لا يدخل هنا)
         __ownerChainSet = true;
         let __f0 = '';
-        try { __f0 = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        try { __f0 = (await upstream.text()).slice(0, 300); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1836'); /* جسم غير مقروء */ }
         upstream = { ok: false, status: upstream.status, text: async () => __f0 };
         __ownerFail = __ownerFail || { who: __acct(), prov, status: upstream.status, text: __f0 };
-        try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: __f0 }); } catch (e) { /* guard-ok — الإشعار تحسين لا شرط */ }
+        try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: __f0 }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1839'); /* guard-ok — الإشعار تحسين لا شرط */ }
         // v-owner-solo (أمر المالك ٨ أكتوبر، بدل سلسلة كلود ← GPT ← Gemini ← DeepSeek): المزوّد نفسه وحده —
         // كلود المباشر يُعاد عبر الوسيط (كلود أيضًا)، ولا مزوّد آخر يجيب مكانه؛ الفشل النهائيّ رسالة ownerStopNote أدناه.
         if (prov === 'claude' && !viaOR && process.env.OPENROUTER_API_KEY) __planFallbacks.push({ prov: 'claude', model: CHAT_MODEL, forceOR: true }); if (anyText && __planFallbacks.length) { const __nx = __planFallbacks.shift(); send({ status: '⚠️ ' + __acct() + ' · ' + upstream.status + ' — أكمل عبر الوسيط بالموديل نفسه.' }); await logErrorAndFlush('chat/plan-fallback-' + upstream.status, new Error(__acct() + ': ' + (__f0 || ('upstream ' + upstream.status))), { action: 'owner-after-text', from: prov, to: __nx.prov }); if (applyRoute(__nx.prov, __nx.model, __nx.direct, __nx.forceOR)) { __imgCfg = (lastUserHasImage && !__direct && !__ownerSeen) ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; upstream = await callUpstream(true); if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false); if (upstream.ok) { send({ delta: '\n\n' }); fullText += '\n\n'; } } } // v-claude-code-level C3: بعد التمهيد (الحلقة أدناه !anyText) — بسطر كما في تبديل الصمت
@@ -1815,8 +1844,8 @@ module.exports = async (req, res) => {
       while (!upstream.ok && !anyText && __planFallbacks.length) {
         if (steps === 1) await __giveMeter(); const __nx = __planFallbacks.shift(); // v-meter-atomic: مسار المقياس لم يخدم — الحجز يُردّ قبل الالتقاط
         let __ft = '';
-        try { __ft = (await upstream.text()).slice(0, 200); } catch (e) { /* جسم غير مقروء */ } upstream = { ok: false, status: upstream.status, text: async () => __ft };
-        await logErrorAndFlush('chat/plan-fallback-' + upstream.status, new Error(__acct() + ': ' + (__ft || ('upstream ' + upstream.status))), { action: 'plan-fallback', from: prov, to: __nx.prov, plan: __planRoute && __planRoute.plan }); if (!__ol.rateLimited(__ft)) try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: __ft }); } catch (e) { /* guard-ok — حدّ الطلبات ليس رصيدًا · v-pro-lanes: رصيد مسار باقة فرغ والمشترك يُحوَّل بصمت = إشعار المالك (مرّة كلّ ٦ ساعات)؛ الإشعار تحسين لا شرط */ }
+        try { __ft = (await upstream.text()).slice(0, 200); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1847'); /* جسم غير مقروء */ } upstream = { ok: false, status: upstream.status, text: async () => __ft };
+        await logErrorAndFlush('chat/plan-fallback-' + upstream.status, new Error(__acct() + ': ' + (__ft || ('upstream ' + upstream.status))), { action: 'plan-fallback', from: prov, to: __nx.prov, plan: __planRoute && __planRoute.plan }); if (!__ol.rateLimited(__ft)) try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: __ft }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1848'); /* guard-ok — حدّ الطلبات ليس رصيدًا · v-pro-lanes: رصيد مسار باقة فرغ والمشترك يُحوَّل بصمت = إشعار المالك (مرّة كلّ ٦ ساعات)؛ الإشعار تحسين لا شرط */ }
         if (lastUserHasImage && __nx.prov !== 'gemini' && __nx.prov !== 'claude' && __nx.prov !== 'openai') continue;
         if (!applyRoute(__nx.prov, __nx.model, __nx.direct, __nx.forceOR)) continue;
         __imgCfg = (lastUserHasImage && !__direct) ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null;
@@ -1858,14 +1887,14 @@ module.exports = async (req, res) => {
           if (lastUserHasImage) {
             /* v-img-why (لقطة المالك ٣ أكتوبر: «ما قدرت أقرأ الصورة الحين» مرّتين بلا سبب ظاهر): هذا الخروج كان يسبق إشعار
                نفاد الرصيد فلا يصل المالك أبدًا في دور الصورة، والسبب الحقيقيّ في السجلّ وحده. الإشعار أوّلًا، وللمالك وحده سطر السبب. */
-            if (!__ownerFail) { try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: errText }); } catch (e) { /* guard-ok — الإشعار تحسين لا شرط */ } } // v-owner-swap: أُطلق عند الفشل الأوّل
+            if (!__ownerFail) { try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: errText }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1890'); /* guard-ok — الإشعار تحسين لا شرط */ } } // v-owner-swap: أُطلق عند الفشل الأوّل
             send({ delta: tierLib.FREE_TEXT.imageBusy + (__ownerReq ? ownerFailNote(upstream.status, errText, __fb.errors) : '') });
             send({ done: true }); res.end(); return;
           }
         }
         // v-credit-alert: نفاد رصيد المحرّك الاحترافيّ يصل المالك إشعارًا فوريًّا (مرّة كلّ ٦ ساعات)
         // بدل أن يكتشفه من شكاوى المستخدمين. داخل المعالج لا في نطاق الوحدة (بيئة عارية عند التحميل).
-        if (!__ownerFail) { try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: errText }); } catch (e) { /* guard-ok — الإشعار تحسين لا شرط */ } } // v-owner-swap: مرّة واحدة
+        if (!__ownerFail) { try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: errText }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1897'); /* guard-ok — الإشعار تحسين لا شرط */ } } // v-owner-swap: مرّة واحدة
         // لم يُكتب حرف بعد → أَبلِغ العميل ليهبط إلى مساره القديم بلا تكرار.
         send({ error: 'chat upstream ' + upstream.status + ': ' + errText, fallback: !anyText });
         res.end();
@@ -1904,7 +1933,7 @@ module.exports = async (req, res) => {
       // ويهبط الدور إلى الاحتياط القديم. النبض هنا أثناء بثّ المزوّد فقط ويُلغى فور
       // انتهائه، فدرس #527 (لا تغذية للحارس أثناء حلقة الأدوات) محفوظ.
       // v-owner-reason: تفكير الموديل للمالك قد يطول بلا حرف (لا يُبثّ منه شيء) فيأخذ النبض أيضًا — أثناء بثّ المزوّد فقط.
-      let kaTimer = (!toolTurn || __longUserMsg || lastUserHasImage || __ownerReq) ? setInterval(() => { if (res.writableEnded) return; try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000) : null;
+      let kaTimer = (!toolTurn || __longUserMsg || lastUserHasImage || __ownerReq) ? setInterval(() => { if (res.writableEnded) return; try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:1936'); /* العميل أغلق المجرى */ } }, 4000) : null;
       let streamDone = false; let __midFail = null; // v-claude-code-level C9: بثّ المزوّد انقطع في منتصفه (المالك)
       const __tokStrip = makeTokenStripper(); // v-special-tokens: لكلّ ردّ مزوّد مرشّحه (رمز منقسم بين دلتا لا يفلت)
       try {
@@ -1933,6 +1962,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ status: '🐙 يقرأ من GitHub…', k: 'stFetchPage' }); // v-chat-github-read: مفتاح ترجمة قائم، لا نصّ واجهة جديد
             else if (cb.type === 'tool_use' && cb.name === 'read_app_errors') send({ status: '🩺 يقرأ أخطاء التطبيق الحيّة…' }); // v-provider-errors: بلا مفتاح — العميل يعود لنصّ الخادم (أداة المالك وحده)
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
+            else if (cb.type === 'tool_use' && cb.name === 'create_office_file') send({ status: '📄 يجهّز ملفّك…', k: 'stOffice' }); // v-office-files
             else if (cb.type === 'tool_use' && cb.name === 'propose_call') send({ status: '📞 يجهّز كرت الاتّصال…', k: 'stCall' }); // v-call-agent · v-call-agent-r2: مفتاح ترجمة في اللغات الأربع عشرة
             else if (cb.type === 'tool_use' && cb.name === 'generate_image' && (!__noMedia || __ownerPicsOk) && (!__ownerReq || require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage))) send({ status: '🎨 يرسم صورة…', k: 'stGenImage' }); /* v-interleave-fix: لا مربّع «جارٍ إنشاء الصورة» لرسم سيرفضه الحارس */
             else if (cb.type === 'tool_use' && cb.name === 'edit_image' && !__noMedia && (!__ownerReq || require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage))) send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
@@ -1971,8 +2001,8 @@ module.exports = async (req, res) => {
       } finally {
         if (kaTimer) { clearInterval(kaTimer); kaTimer = null; } // أوقف النبض أيضًا عند فشل قراءة البثّ
         __ol.stop(__olS); // v-claude-code-level C5: الحارس للبثّ وحده، لا لتنفيذ الأدوات
-        if (!streamDone) { try { await reader.cancel(); } catch (e) { /* المجرى أغلق مع الخطأ */ } }
-        try { reader.releaseLock(); } catch (e) { /* المجرى أغلق مع الخطأ */ }
+        if (!streamDone) { try { await reader.cancel(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:2004'); /* المجرى أغلق مع الخطأ */ } }
+        try { reader.releaseLock(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:2005'); /* المجرى أغلق مع الخطأ */ }
       }
       if (__midFail) { await logErrorAndFlush('chat/mid-stream', new Error(__acct() + ': ' + __midFail.text), { action: __midFail.kind, prov }); if (__midFail.kind === 'retry') { send({ status: __midFail.status }); steps--; continue; } if (__midFail.kind === 'fail' || __midFail.kind === 'lane') { if (__midFail.kind === 'lane' && steps === 1 && __meterSpent) { __meterHeld = __meterSpent; __meterSpent = ''; } __midUp = { ok: false, status: __midFail.status, text: async () => __midFail.text }; steps--; continue; } /* v-pro-lanes: lane = مسار الباقة التالي بالفشل الجاهز (سلسلة ما قبل البثّ نفسها) */ /* v-mid-credit: رصيد داخل البثّ = الخطوة نفسها من جديد بفشل جاهز تمرّ به سلسلة ما قبل البثّ (الوسيط ثمّ «ما عندي رصيد») */ send({ error: __midFail.msg + (__midFail.msg === 'ما عندي رصيد' ? ' — ' + acctOf({ who: __acct() }) : ''), ownerStop: true }); res.end(); return; } // C9: النداء نفسه مرّة، ثمّ السبب للمالك (تحت النصّ إن وُجد)
       { const __rest = __tokStrip.flush(); if (__rest) { const __tb = blocks.filter((b) => b && b.type === 'text').pop(); if (__tb) __tb.text += __rest; fullText += __rest; anyText = true; send({ delta: __rest }); } } // v-special-tokens: ذيل محجوز لم يكتمل رمزًا
@@ -2152,11 +2182,13 @@ module.exports = async (req, res) => {
           /* v-providers-like-agent: أدوات الوكيل للمالك في المحادثة بحرّاسها نفسها — ثلاث رفعات ومهمّة مفوَّضة واحدة في الدور. */
           else if (cb.name === 'write_github') {
             if (!__ownerReq) result = '✗ الرفع إلى GitHub للمالك وحده.';
+            else if (require('./github-write.js').pushGate(input, lastUserText)) result = require('./github-write.js').pushGate(input, lastUserText); /* v-audit-agent (srv-agent-2): حارس النيّة من الخادم — لا رفع بمحتوى مقروء محقون */
             else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./agent-img.js').ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-write.js').pushFiles(input, { imgIds: __ownerOps.imgIds }))); /* v-agent-img: «__IMG_N__» */ result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4 */ if (/^✅ رُفع/.test(result)) { __ownerOps.prs = (__ownerOps.prs || 0) + 1; __ownerOps.lastPush = __ol.pushRef(result); } /* v-owner-like-me */ }
           }
           /* v-agent-surgical: كما في الوكيل — التعديل يتشارك سقف الرفعات، والدمج بإذن «ادمج» في آخر رسالة المالك يفحصه الخادم. */
           else if (cb.name === 'edit_github') {
             if (!__ownerReq) result = '✗ التعديل على GitHub للمالك وحده.';
+            else if (require('./github-write.js').pushGate(input, lastUserText)) result = require('./github-write.js').pushGate(input, lastUserText); /* v-audit-agent (srv-agent-2) */
             else { __ownerOps.pushes++; result = __ownerOps.pushes > 3 ? '✗ ثلاث رفعات في هذا الردّ حدّ مقصود — سلّم المالك آخر رابط.' : require('./github-write.js').formatPush(await require('./agent-img.js').ensureSaved(input, __ownerOps.imgIds, (t) => runInClient(send, 'save_image', { token: t }, 30000)).then(() => require('./github-edit.js').editFiles(input, { imgIds: __ownerOps.imgIds })).then((r) => { if (r && r.local) __ownerOps.pushes--; return r; })); /* v-agent-img */ result += require('./provider-level.js').bundleNote(input, result); /* v-claude-code-level E4: رفعة تمسّ js/app-NN-*.js = «الحزمة لم تُبنَ» (partials لا تُحزَم) */ if (/^✅ رُفع/.test(result)) { __ownerOps.prs = (__ownerOps.prs || 0) + 1; __ownerOps.lastPush = __ol.pushRef(result); } /* v-owner-like-me */ }
           }
           else if (cb.name === 'merge_github') {
@@ -2193,6 +2225,11 @@ module.exports = async (req, res) => {
             if (__pc.event) { send(__pc.event); __ownerCarried = true; } // v-call-agent-r2: «سوي/حط لي…» + سطر «جهّزت الكرت» ليس خطّة متوقّفة — لا «نفّذ الآن» بعد الكرت
             result = __pc.result;
           }
+          else if (cb.name === 'create_office_file') { /* v-office-files: المشترك والمالك وVIP بلا حدّ؛ غيره ملفّ واحد بالشهر يُحجز ذرّيًّا هنا */
+            const __of = await __officeLib.createFile(input, { user: usage.username || null, subscriber: !!usage.subscriber, kv: require('./kv.js') });
+            if (__of.event) send(__of.event);
+            result = __of.result;
+          }
           else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
           /* v-nano-pro-edit: كلمات المستخدم نفسها تُرافق أمر النموذج الإنجليزي — منها يقرأ الخادم نيّة «أقوى/فكرة ثانية» */
           else if (cb.name === 'generate_image') { input.userText = String(lastUserText || '').slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); /* v-quad-fix: القصّ قبل الـregex — كانت O(n²) على النصّ الطويل. مع صورة مرفقة قد يتحوّل الرسم إلى تعديل على برو (v-nano-pro-edit) فيحتاج مهلة التعديل */ if (__ownerPicsOk) input.noRef = true; /* v-owner-like-me: صورة جديدة للتطبيق — لقطة المالك ليست مصدرًا يُعدَّل */ result = await runInClient(send, 'generate_image', input, (lastUserHasImage || __ownerReq) ? 150000 : 75000); if (__ownerReq) result = require('./owner-media.js').waitNote(result); /* v-owner-paid-gate: رسم المالك + حفظه يتجاوز ٧٥ث — المهلة القصيرة كانت «لم يُنفَّذ» فيُعاد الرسم مدفوعًا */ if (__ownerReq) require('./agent-img.js').noteTokens(result, __ownerOps.imgIds); /* v-agent-img */ if (__ownerPicsOk && /__IMG_|\/i\//.test(String(result || ''))) __ownerOps.drew = true; } /* v-img-with-edit: رسم بلا رفع = يُحمَل للكتابة */
@@ -2221,7 +2258,7 @@ module.exports = async (req, res) => {
               if (__seen.has(__host)) continue;
               __seen.add(__host);
               __srcs.push({ url: __um[0], title: __host });
-            } catch (e) { /* رابط مشوّه في النص — يُتجاهل */ }
+            } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat:2261'); /* رابط مشوّه في النص — يُتجاهل */ }
           }
           if (__srcs.length) send({ sources: __srcs });
         }
@@ -2251,9 +2288,9 @@ module.exports = async (req, res) => {
     res.end();
   } catch (e) {
     await __giveMeter(); // v-meter-atomic: عطل قبل أن يقبل المزوّد الطلب — الحجز يُردّ (بعد قبوله صار استهلاكًا: لا شيء يُردّ)
-    if (__cut.gone) { await __meterTurn(); try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا */ } return; } // v-tokens-close: الإلغاء المقصود (AbortError) ليس عطلًا — يُقاس ما صُرف ولا رسالة خطأ لعميل رحل
+    if (__cut.gone) { await __meterTurn(); try { res.end(); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/chat:2291'); /* المجرى مُغلق أصلًا */ } return; } // v-tokens-close: الإلغاء المقصود (AbortError) ليس عطلًا — يُقاس ما صُرف ولا رسالة خطأ لعميل رحل
     if (!__ownerReq && __planRoute) await logErrorAndFlush('chat/plan-error', e, { action: 'plan-error', plan: __planRoute.plan }); /* v-pro-lanes: دور مشترك سقط هنا كان لا يترك أثرًا للمالك */ send(__ownerReq ? { error: 'ما قدرت أردّ الحين — عطل في الخادم: ' + String((e && e.message) || e).slice(0, 160), ownerStop: true } : { error: 'chat error: ' + String((e && e.message) || e).slice(0, 200) }); // C9: المالك يرى السبب — بلا ownerStop كان العميل يمحوه إلى «ما قدرت أردّ الحين» عارية
-    try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا */ }
+    try { res.end(); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/chat:2293'); /* المجرى مُغلق أصلًا */ }
   }
 };
 

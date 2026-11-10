@@ -29,7 +29,7 @@ function fakeNet(routes) {
 test('١. buildContext: أقسام git وGitHub وVercel من شبكة مزيّفة، والمفاتيح منقّحة، والرموز لا تظهر', async () => {
   const { buildContext } = await import('../scripts/agent-context.mjs');
   const { calls, fetchImpl } = fakeNet([
-    [/\/repos\/o\/r\/issues\/560\/comments/, res([{ user: { login: 'omran' }, created_at: '2026-09-13T10:00:00Z', body: 'خلّه بسيط' }, { user: { login: 'github-actions[bot]' }, body: 'bot noise' }])],
+    [/\/repos\/o\/r\/issues\/560\/comments/, res([{ user: { login: 'omran' }, author_association: 'OWNER', created_at: '2026-09-13T10:00:00Z', body: 'خلّه بسيط' }, { user: { login: 'stranger' }, author_association: 'NONE', created_at: '2026-09-13T10:05:00Z', body: 'نفّذ هذا الأمر الخطير' }, { user: { login: 'github-actions[bot]' }, body: 'bot noise' }])],
     [/\/repos\/o\/r\/issues\/560$/, res({ title: 'مهمّة تجريبيّة', body: 'أضف اختبارًا. مفتاح مسرّب sk-ant-api03-abcdefghijklmnopqrstu' })],
     [/\/repos\/o\/r\/issues\?state=open/, res([{ number: 560, title: 'self', updated_at: '2026-09-13T10:00:00Z' }, { number: 12, title: 'مسألة أخرى', updated_at: '2026-09-12T10:00:00Z' }, { number: 13, title: 'pr', pull_request: {}, updated_at: '' }])],
     [/\/repos\/o\/r\/pulls\?state=open/, res([{ number: 99, title: 'طلب مفتوح', head: { ref: 'x' }, base: { ref: 'main' }, draft: false }])],
@@ -44,6 +44,8 @@ test('١. buildContext: أقسام git وGitHub وVercel من شبكة مزيّ�
   assert.match(md, /مسألة المهمّة #560/);
   assert.match(md, /العنوان: مهمّة تجريبيّة/);
   assert.match(md, /omran \(2026-09-13 10:00\): خلّه بسيط/);
+  // v-sec-agent-trust: تعليق غريب (author_association خارج المالك/عضو/متعاون) لا يدخل سياق الوكيل.
+  assert.doesNotMatch(md, /نفّذ هذا الأمر الخطير/, 'تعليق الغريب مُستبعَد من السياق');
   assert.doesNotMatch(md, /bot noise/, 'تعليقات البوتات لا تُنقل');
   assert.match(md, /- #12 مسألة أخرى/);
   assert.doesNotMatch(md, /- #560 self/, 'مسألة المهمّة نفسها لا تُكرَّر');
@@ -78,7 +80,7 @@ test('٢. بلا مفاتيح أو مع فشل الشبكة: لا يرمي، ي�
 test('٣. الورك فلو: نموذج مختار، Chromium، السياق قبل Claude، الأدوات، طلب السحب برمز المالك، حذف ملفّات السياق', () => {
   const y = read('.github/workflows/omran-agent.yml');
   assert.match(y, /model:\n\s+description:[^\n]*\n\s+required: false\n\s+default: 'claude-sonnet-5'/);
-  assert.match(y, /--model \$\{\{ inputs\.model \}\}/);
+  assert.match(y, /--model \$\{\{ env\.MODEL \}\}/); // v-sec-model-arg: model عبر env مُتحقَّق منه لا inline
   assert.match(y, /npx playwright install --with-deps chromium/);
   assert.match(y, /node scripts\/agent-context\.mjs --issue "\$TASK_ISSUE" --base "\$TASK_BASE" --out AGENT_CONTEXT\.md/);
   assert.match(y, /VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_TOKEN \}\}/);
@@ -89,8 +91,8 @@ test('٣. الورك فلو: نموذج مختار، Chromium، السياق ق�
   assert.match(y, /git rm -q --cached --ignore-unmatch AGENT_SUMMARY\.md AGENT_CONTEXT\.md/);
   assert.match(y, /rm -f AGENT_SUMMARY\.md AGENT_CONTEXT\.md/);
   assert.match(y, /"pr":%s/);
-  // v-agent-automerge: مدخل merge افتراضيّه true، والدمج squash عند نجاح الفحص، والحالة في التقرير
-  assert.match(y, /merge:\n\s+description:[^\n]*\n\s+required: false\n\s+default: 'true'/);
+  // v-sec-automerge: مدخل merge افتراضيّه صار 'false' — الوكيل يفتح طلب سحب والمالك يدمج بعد المراجعة.
+  assert.match(y, /merge:\n(?:\s+#[^\n]*\n)*\s+description:[^\n]*\n\s+required: false\n\s+default: 'false'/);
   assert.match(y, /MERGE_ON_PASS="\$\{\{ inputs\.merge \}\}"/);
   assert.match(y, /willMerge = e\.CIRES === "pass" && String\(e\.MERGE_ON_PASS\) === "true"/);
   assert.match(y, /"\/merge", \{ method: "PUT"[^\n]*merge_method: "squash"/);

@@ -1,14 +1,57 @@
-// Vercel Serverless Function: proxies text-to-speech requests to OpenAI's API
-// using the site owner's own server-side API key (OPENAI_API_KEY env var), so
-// visitors can use cloud voice without entering their own key. Falls back to
-// a client-supplied apiKey only if one is explicitly sent (legacy support).
+// صوت التطبيق بمفاتيح الخادم وحدها:
+// - voice 'maha' (مها وعبدالله، وكلّ القراءة في التطبيق): العربيّ من Gemini (v-allah-tafkhim)، وغيره وأيّ تعثّر من Azure.
+// - أيّ صوت آخر (المحرّك الثاني، v-tts-gemini): Gemini بالصوت والأسلوب المطلوبين، وأيّ تعثّر من Azure.
 //
-// Metered (Azure Speech / OpenAI TTS both bill the owner's own account): logged
-// -in users and guests are capped per day; anyone without a token/guestId
-// (today's frontend calls) is metered by IP instead of blocked outright, so
-// existing calls keep working. The owner account itself is never limited.
+// Metered (every engine bills the owner's own account): logged-in users and guests are capped per day; anyone without a
+// token/guestId is metered by IP instead of blocked outright, so existing calls keep working. The owner account itself
+// is never limited.
 const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
 const TTS_DAILY_LIMIT = 60;
+
+/* v-tts-gemini: WAV المحرّك الثاني، كفرع مها: فوق ٣٫٥ م.ب يُبثّ على دفعات، لأنّ حدّ ٤٫٥ م.ب في Vercel لا يسري على المبثوث. */
+function sendWav(res, wav) {
+  res.setHeader('Content-Type', 'audio/wav');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-TTS-Tier', 'gemini');
+  res.status(200);
+  if (wav.length > 3.5 * 1024 * 1024 && typeof res.write === 'function') {
+    if (res.flushHeaders) res.flushHeaders();
+    for (let i = 0; i < wav.length; i += 512 * 1024) res.write(wav.subarray(i, i + 512 * 1024));
+    res.end();
+  } else res.send(wav);
+}
+
+/* v-tts-gemini: احتياط المحرّك الثاني بلا صمت.
+   - صوت Azure بمفتاحه المجّانيّ أوّلًا، ثمّ المدفوع إن وُجد، بجنس الصوت المطلوب.
+   - العربيّ فاطمة أو حمدان (ar-AE)، وغيره الصوتان متعدّدا اللغات.
+   - النصّ كما أُرسل، لأنّ التنظيف لصوت مها وحده (v-tts-no-markdown).
+   يعيد {buf, tier} أو null. */
+async function azureVoice(text, male, lang, rate) {
+  const region = process.env.AZURE_SPEECH_REGION || 'uaenorth';
+  const free = String(process.env.AZURE_SPEECH_KEY_FREE || '').trim();
+  const paid = String(process.env.AZURE_SPEECH_KEY || '').trim();
+  const accts = [];
+  if (free) accts.push({ tier: 'free', key: free, region: String(process.env.AZURE_SPEECH_REGION_FREE || '').trim() || region });
+  if (paid) accts.push({ tier: 'paid', key: paid, region });
+  const ar = /^ar/i.test(String(lang || '')) || /[\u0600-\u06FF]/.test(text);
+  const [locale, femaleName, maleName] = ar
+    ? ['ar-AE', 'ar-AE-FatimaNeural', 'ar-AE-HamdanNeural']
+    : ['en-US', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'];
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  const ssml = '<speak version="1.0" xml:lang="' + locale + '"><voice name="' + (male ? maleName : femaleName) + '">'
+    + '<prosody rate="' + rate + '" pitch="0%">' + esc(text) + '</prosody></voice></speak>';
+  for (const a of accts) {
+    try {
+      const r = await fetch('https://' + a.region + '.tts.speech.microsoft.com/cognitiveservices/v1', {
+        method: 'POST',
+        headers: { 'Ocp-Apim-Subscription-Key': a.key, 'Content-Type': 'application/ssml+xml', 'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3', 'User-Agent': 'omran-ai-builder-voice' },
+        body: ssml,
+      });
+      if (r.ok) return { buf: Buffer.from(await r.arrayBuffer()), tier: a.tier };
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tts:azure'); /* guard-ok — تعثّر شبكة لهذا الحساب: التالي */ }
+  }
+  return null;
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -29,7 +72,10 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { text, voice, gender, lang, token, guestId, speed } = body;
+    const { text: rawText, voice, gender, lang, token, guestId, speed, dialect } = body;
+    // v-tts-no-markdown (المالك: «يقول كل مرّة نجمة نجمة»): صوت مها وكلّ ما يمرّ به (الردود والفيديو والمكالمة) يقرأ الكلام وحده —
+    // بلا علامات التنسيق والروابط والرموز التعبيريّة (api/_lib/speech-text.js). الأصوات الأخرى تُرسل كما هي.
+    const text = voice === 'maha' ? require('./speech-text.js').speechText(rawText) : rawText;
     // v-maha-voice-speed (طلب المالك): درجات سرعة كلام مها الأربع — تُترجَم إلى معامل
     // native حقيقي لكل مزوّد (Azure SSML prosody rate% أو معامل speed الرقمي لـOpenAI
     // TTS)، لا playbackRate على العميل (ذاك يغيّر طبقة الصوت أيضًا). قيمة غير معروفة/غائبة
@@ -65,7 +111,9 @@ module.exports = async (req, res) => {
     // مكالمة مها وبقيّة الأدوات لا ترسل src فلا تتغيّر، ولغة لا ينطقها المحرّك تبقى بمها.
     if (voice === 'maha' && body.src === 'reply') {
       const om = require('./om-voices.js');
-      if (om.enabledFor(usage.username, lang)) {
+      // v-reply-dialect (المالك ٢٩ أكتوبر «٦ من ١٠ فضيحة… التطبيقات عندهم بلهجتهم»، ثمّ «سوّيها»): الصوتان المدرَّبان بالفصحى
+      // خرجا من «استمع»؛ يقرأ مها باللهجة المختارة (تحت). OM_VOICES_REPLY=1 يعيدهما (لصوت خليجيّ مدرَّب لاحقًا).
+      if (String(process.env.OM_VOICES_REPLY || '').trim() === '1' && om.enabledFor(usage.username, lang)) {
         try {
           const wav = await om.speak({ text, lang, gender });
           res.setHeader('Content-Type', 'audio/wav');
@@ -73,6 +121,8 @@ module.exports = async (req, res) => {
           res.status(200).send(wav);
         } catch (e) {
           const quota = e && e.code === 'om_quota';
+          // v-om-voices-piper: سيرفر الصوتين الخفيفين نائم ⇐ om-waking (العميل: «حاول مرة ثانية»، بلا صوت بديل)
+          if (e && e.code === 'om_waking') { res.status(503).json({ error: 'om-waking', code: 'om_waking' }); return; }
           res.status(quota ? 429 : 502).json({ error: quota ? 'om-quota' : (e && e.message) || 'om-failed', code: quota ? 'om_quota' : 'om_failed' });
         }
         return;
@@ -87,20 +137,6 @@ module.exports = async (req, res) => {
     // natural native-sounding reply instead of the Arabic voice mangling
     // non-Arabic text. Falls back to Gulf Arabic when no language is known.
     if (voice === 'maha') {
-      // v-tts-free (المالك: «أفضل صوت يقرأ لي… بالمجان»): أفضل صوت عربيّ هنا هو فاطمة/حمدان نفسه، وهو
-      // مجّانيّ رسميًّا بباقة Azure المجّانيّة F0 (٥٠٠ ألف حرف شهريًّا، ٢٠ طلبًا في الدقيقة، ولا تُحاسِب أبدًا
-      // — تقف عند الحدّ). AZURE_SPEECH_KEY_FREE (مفتاح F0) يُجرَّب أوّلًا، ثمّ AZURE_SPEECH_KEY المدفوع إن وُجد
-      // بالصوت نفسه. المفتاح المجّانيّ وحده = مجّانيّ فقط: لا هبوط لـOpenAI المدفوع، والعميل يكمل بصوت الجهاز.
-      const azRegion = process.env.AZURE_SPEECH_REGION || 'uaenorth';
-      const azFreeKey = String(process.env.AZURE_SPEECH_KEY_FREE || '').trim();
-      const azPaidKey = String(process.env.AZURE_SPEECH_KEY || '').trim();
-      const azAccounts = [];
-      if (azFreeKey) azAccounts.push({ tier: 'free', key: azFreeKey, region: String(process.env.AZURE_SPEECH_REGION_FREE || '').trim() || azRegion });
-      if (azPaidKey) azAccounts.push({ tier: 'paid', key: azPaidKey, region: azRegion });
-      if (!azAccounts.length) {
-        res.status(500).json({ error: 'Server is missing AZURE_SPEECH_KEY' });
-        return;
-      }
       // Map detected/UI language code -> [xml:lang locale, femaleVoice, maleVoice]
       // Female voice (Maha persona) and male voice (Abdullah persona) both
       // use Microsoft's higher-quality multilingual neural voices, which
@@ -133,7 +169,57 @@ module.exports = async (req, res) => {
         urdu: 'ur', bengali: 'bn', bangla: 'bn', nepali: 'ne',
       };
       const langKey = langAliases[rawLang] || (MAHA_VOICE_MAP[rawLang] ? rawLang : rawLang.slice(0, 2));
-      const voiceSet = MAHA_VOICE_MAP[langKey] || MAHA_VOICE_MAP.ar;
+      // v-allah-tafkhim (المالك: «كلمة الله وليست الاه… تكون مضخمه»، وبعد العيّنة: «ابدأ لكلّ الكلام»): الكلام العربيّ كلّه
+      // بصوتَي مها وعبدالله من api/_lib/gemini-tts.js. يفخّم لفظ الجلالة في موضعه ويرقّقه بعد الكسر، وأصوات Azure الرجاليّة
+      // ترقّقه في كلّ موضع. «هلا والله» تبقى كما كُتبت فيه. أيّ تعثّر (حدّ اليوم، الرصيد، المهلة، السقف) = صوت Azure
+      // القديم تحت، كما كان حرفيًّا.
+      if (langKey === 'ar') {
+        let g = null;
+        try {
+          // سقف ٤٠٠٠ حرف كمسار Azure: لا يدفع طلب واحد ثمن نصّ ضخم
+          g = await require('./gemini-tts.js').speakMaha({ text: require('./speech-text.js').speechText(rawText, { wallah: true }).slice(0, 4000), gender, dialect, speed });
+        } catch (e) { g = null; /* guard-ok — عطل غير متوقّع في المسار الجديد = صوت Azure القديم */ }
+        if (g && g.wav) {
+          res.setHeader('Content-Type', 'audio/wav');
+          res.setHeader('Cache-Control', 'no-store');
+          res.setHeader('X-TTS-Tier', 'gemini'); // للمسبار: أيّ صوت خدم
+          res.status(200);
+          // الردّ المبثوث لا يسري عليه حدّ ٤٫٥ م.ب في Vercel (تعليق فيديو طويل بـWAV)؛ القصير كما كان دفعة واحدة
+          if (g.wav.length > 3.5 * 1024 * 1024 && typeof res.write === 'function') {
+            if (res.flushHeaders) res.flushHeaders();
+            for (let i = 0; i < g.wav.length; i += 512 * 1024) res.write(g.wav.subarray(i, i + 512 * 1024));
+            res.end();
+          } else res.send(g.wav);
+          return;
+        }
+      }
+      // v-tts-free (المالك: «أفضل صوت يقرأ لي… بالمجان»): أفضل صوت عربيّ هنا هو فاطمة/حمدان نفسه، وهو
+      // مجّانيّ رسميًّا بباقة Azure المجّانيّة F0 (٥٠٠ ألف حرف شهريًّا، ٢٠ طلبًا في الدقيقة، ولا تُحاسِب أبدًا
+      // — تقف عند الحدّ). AZURE_SPEECH_KEY_FREE (مفتاح F0) يُجرَّب أوّلًا، ثمّ AZURE_SPEECH_KEY المدفوع إن وُجد
+      // بالصوت نفسه. المفتاح المجّانيّ وحده = مجّانيّ فقط: لا هبوط لـOpenAI المدفوع، والعميل يكمل بصوت الجهاز.
+      const azRegion = process.env.AZURE_SPEECH_REGION || 'uaenorth';
+      const azFreeKey = String(process.env.AZURE_SPEECH_KEY_FREE || '').trim();
+      const azPaidKey = String(process.env.AZURE_SPEECH_KEY || '').trim();
+      const azAccounts = [];
+      if (azFreeKey) azAccounts.push({ tier: 'free', key: azFreeKey, region: String(process.env.AZURE_SPEECH_REGION_FREE || '').trim() || azRegion });
+      if (azPaidKey) azAccounts.push({ tier: 'paid', key: azPaidKey, region: azRegion });
+      if (!azAccounts.length) {
+        res.status(500).json({ error: 'Server is missing AZURE_SPEECH_KEY' });
+        return;
+      }
+      // v-reply-dialect: النصّ العربيّ بلهجة يختارها المستخدم في «الصوت» (العميل يرسلها لـ«استمع» وتجربة الصوت) — أصوات
+      // Azure الأصيلة لكلّ بلد، رجل وامرأة، بالمفتاح والحساب نفسيهما. غير معروفة أو غائبة = الإماراتيّ كما كان.
+      const AR_DIALECT_VOICES = {
+        ae: ['ar-AE', 'ar-AE-FatimaNeural', 'ar-AE-HamdanNeural'],
+        om: ['ar-OM', 'ar-OM-AyshaNeural', 'ar-OM-AbdullahNeural'],
+        sa: ['ar-SA', 'ar-SA-ZariyahNeural', 'ar-SA-HamedNeural'],
+        kw: ['ar-KW', 'ar-KW-NouraNeural', 'ar-KW-FahedNeural'],
+        qa: ['ar-QA', 'ar-QA-AmalNeural', 'ar-QA-MoazNeural'],
+        bh: ['ar-BH', 'ar-BH-LailaNeural', 'ar-BH-AliNeural'],
+      };
+      const baseSet = MAHA_VOICE_MAP[langKey] || MAHA_VOICE_MAP.ar;
+      const voiceSet = (baseSet === MAHA_VOICE_MAP.ar && Object.prototype.hasOwnProperty.call(AR_DIALECT_VOICES, dialect)
+        && AR_DIALECT_VOICES[dialect]) || baseSet;
       // The multilingual neural voices read xml:lang to pick which
       // language/accent to speak the text in, so we still pass the actual
       // detected locale (e.g. ar-SA) even though the voice name itself is
@@ -191,49 +277,37 @@ module.exports = async (req, res) => {
             res.status(200).send(Buffer.from(fbBuffer));
             return;
           }
-        } catch (e) { /* fall through to error below */ }
+        } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tts:237'); /* fall through to error below */ }
       }
       const errText = azResp ? await azResp.text() : 'network';
       res.status(azResp ? azResp.status : 502).json({ error: 'Azure TTS error: ' + errText.slice(0, 500) });
       return;
     }
 
-    const apiKey = body.apiKey || process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing OPENAI_API_KEY' });
+    /* v-tts-gemini (المالك ٩ نوفمبر: «ابدأ… وحطهم في التطبيق»): المحرّك الثاني، أيّ صوت غير maha.
+       - من يستعمله: راوي «قصص الأنبياء» (onyx وash بتعليمات)، وتعليق الإعلانات، وسكربتات المالك.
+       - كان OpenAI ‏/v1/audio/speech. OpenAI تحذف نماذجه كلّها من الـAPI في ٦ يناير ٢٠٢٧ (صفحة deprecations الرسميّة).
+       - بديلها المقترح gpt-realtime-2.1-mini نموذج محادثة على اتّصال مفتوح، لا قارئ.
+       - الآن Gemini 3.8 Flash TTS من gemini-tts.js، بالحصّة والسقف اليوميّ والتبريد نفسها التي لصوت مها.
+       - اسم صوت OpenAI ← صوت Gemini بالجنس نفسه، أو يُرسل اسم صوت Gemini مباشرةً، و«instructions» أسلوب الإلقاء.
+       - أيّ تعثّر = صوت Azure بجنس الصوت (لا صمت)، وX-TTS-Tier يقول أيّهما خدم (gemini / free / paid).
+       - لا يُقبل بعد اليوم مفتاح يرسله العميل (كان يُقبل قديمًا)، ولا اسم مزوّد في نصّ الخطأ. */
+    const gem = require('./gemini-tts.js');
+    const pick = gem.genericVoice(voice, gender);
+    const say = String(text).slice(0, 4000);
+    let g = null;
+    try {
+      g = await gem.speakVoice({ text: say, voiceName: pick.voice, styleText: gem.genericStyle(body.instructions, speed) });
+    } catch (e) { g = null; /* guard-ok — عطل غير متوقّع في المحرّك = صوت Azure تحت */ }
+    if (g && g.wav) { sendWav(res, g.wav); return; }
+    const az = await azureVoice(say, pick.male, lang, ttsSpeed.azureRate);
+    if (az) {
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('X-TTS-Tier', az.tier);
+      res.status(200).send(az.buf);
       return;
     }
-
-    // v-openai-current: الأحدث والأوثق افتراضيًّا؛ tts-1 يبقى فقط لمن يطلبه
-    // صراحةً للتوافق. marin/cedar هما الصوتان الموصى بهما للجودة.
-    const ttsModel = body.model === 'tts-1' ? 'tts-1' : 'gpt-4o-mini-tts';
-    const upstream = await fetch('https://api.openai.com/v1/audio/speech', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Content-Type': 'application/json',
-      },
-      // v-tts-promo: نبرة موجَّهة اختياريًا — gpt-4o-mini-tts يقبل «تعليمات أداء»
-      // (حماسي، إعلاني، هادئ…) فيصلح للتعليق التسويقي. الافتراضات كما هي حرفيًا.
-      body: JSON.stringify({
-        model: ttsModel,
-        voice: voice || (gender === 'male' ? 'cedar' : 'marin'),
-        input: String(text).slice(0, 4000),
-        speed: ttsSpeed.openaiSpeed,
-        ...(ttsModel === 'gpt-4o-mini-tts' && body.instructions
-          ? { instructions: String(body.instructions).slice(0, 600) } : {}),
-      }),
-    });
-
-    if (!upstream.ok) {
-      const errText = await upstream.text();
-      res.status(upstream.status).json({ error: 'OpenAI error: ' + errText.slice(0, 500) });
-      return;
-    }
-
-    const arrayBuffer = await upstream.arrayBuffer();
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.status(200).send(Buffer.from(arrayBuffer));
+    res.status(502).json({ error: 'tts_unavailable' });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }

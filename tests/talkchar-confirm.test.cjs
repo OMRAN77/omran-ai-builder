@@ -64,9 +64,9 @@ const bal = (u) => Number(kv.get('points:' + u));
 let upstream = 0;
 const plan = []; // حالات المزوّد القادمة بالترتيب (فارغ = ٢٠٠)
 global.fetch = async (url) => {
-  if (!/predictLongRunning/.test(url)) return new Response('{}', { status: 404 });
+  if (!/\/interactions$/.test(String(url))) return new Response('{}', { status: 404 });
   const st = plan.length ? plan.shift() : 200;
-  return st === 200 ? new Response(JSON.stringify({ name: 'operations/veo-' + (++upstream) }), { status: 200 })
+  return st === 200 ? new Response(JSON.stringify({ steps: [{ type: 'model_output', content: [{ type: 'video', uri: 'https://generativelanguage.googleapis.com/v1beta/files/t' + (++upstream) + ':download?alt=media' }] }] }), { status: 200 })
     : new Response(JSON.stringify({ error: { message: 'models/veo-x: upstream ' + st } }), { status: st });
 };
 async function serve(body, action) {
@@ -80,7 +80,7 @@ const block = (src, head, end) => { const i = src.indexOf(head); assert.ok(i >= 
 const TALK = block(SRC, '    if(__wantsTalkChar){\n', '      cur.lastMsgWasImageEdit = false;\n      renderAll(); saveState();\n      return;\n    }');
 const POST = block(SRC, 'async function postWithConfirm(url, payload', '\n}\n');
 const FRIENDLY = block(SRC, 'function __friendlyErr(e){', '\n}\n');
-const HELPER = block(SRC, 'function omranVideoCodeText(', '\n}\n');
+const HELPER = block(SRC, 'function omranVideoCodeText(', '\n}\n') + '\n' + block(SRC, 'function omranAttachT(', '\n}\n'); // v-audit-attach: نصوص الشخصيّة بمفتاح الـ١٤ لغة
 const PRICE = block(SRC, 'async function omranTalkPriceCheck(', '\n}\n');
 const TD = { window: {} };
 vm.runInNewContext(fs.readFileSync(path.join(root, 'js/app-11-video-trends-data.js'), 'utf8'), TD);

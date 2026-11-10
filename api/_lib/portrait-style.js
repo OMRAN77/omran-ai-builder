@@ -8,6 +8,8 @@ const { keepGuardCharge } = require('./image-giveback.js'); /* v-guard-cap */
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const mergeIdentity = require('./merge-identity');
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
+const pVariety = require('./portrait-variety'); /* v-pstyle-variety: ≥١٠٠ شكل لكلّ نمط */
 
 // v-portrait-rescue: تعديل الصورة عبر gpt-image-1 عند رفض Gemini (نفس نمط
 // خطّ إنقاذ الأزياء). يرجع base64 أو null — لا يرمي أبدًا.
@@ -139,6 +141,29 @@ const BACKDROP_PROMPTS = {
   marble: 'a luxurious polished marble wall backdrop',
 };
 
+/* v-audit-stud2 (srv-studios-2-4): إطارات الأفاتار — عرضها بعد التصغير، وسقف base64 الإطارات الثلاثة معًا تحت حدّ ردّ الدالّة */
+const AVATAR_FRAME_W = 512;
+const AVATAR_FRAMES_MAX = 4000000;
+
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): نفاد رصيد Gemini كان يُسقط البورتريه وإطارات الأفاتار.
+   الاحتياط النموذج نفسه عند fal بجسم الطلب نفسه (الصور بعناوينها والدقّة والنسبة والحرارة)، وناتجه يُلبَس شكل ردّ Gemini فيمرّ
+   بالحارس والتصغير والاحتساب كما هو، وقبل إنقاذ OpenAI (النموذج نفسه أقرب للأمر). مهلته ما بقي من حدّ الدالّة (٣٠٠ ث) بعد
+   هامش للحارس والردّ، وتُقسَم على الإطارات الباقية. لا اسم مزوّد في الردّ: الشكل نفسه بلا engine. */
+const PORTRAIT_MODEL = 'gemini-3-pro-image';
+const FAL_BUDGET_MS = 270000;
+function falReply(fb) { return { candidates: [{ content: { parts: [{ inlineData: { mimeType: fb.mime || 'image/png', data: fb.b64 } }] } }] }; }
+function falOpts(t0, share) {
+  /* عدد صحيح: AbortSignal.timeout يرمي RangeError على الكسور */
+  return { where: 'portrait-style', timeoutMs: Math.floor(Math.max(15000, Math.min(150000, (FAL_BUDGET_MS - (Date.now() - t0)) / (share || 1)))) };
+}
+/* رصيد Gemini خلص قبل دقائق ← fal مباشرة بلا نداء فاشل قبله. tried = جُرّب fal لهذه الصورة فلا يُعاد بعد فشل Gemini
+   (محاولة واحدة لكلّ صورة)؛ data = ناتجه بشكل ردّ Gemini أو null */
+async function falFirst(body, opts) {
+  if (!(await falBackup.geminiOutRecently())) return { tried: false, data: null };
+  const fb = await falBackup.imageFromGemini(PORTRAIT_MODEL, body, opts);
+  return { tried: true, data: fb && fb.b64 ? falReply(fb) : null };
+}
+
 /* v-pstyle-closeup: عنوان لقطة الوجه وقواعدها. العنوان مكيَّف من merge-identity.js («نفس الشخص، مقرَّبًا؛
    مرجع هويّة لا شخص إضافيّ»)، والقواعد تمنع الخطر المعاكس المثبَت في PITFALLS: مرجع فوتوغرافيّ يسحب
    الناتج نحو الواقعيّة فيضعف الأسلوب الفنّيّ. */
@@ -151,6 +176,7 @@ const CLOSEUP_RULES =
   'IDENTITY (mandatory): the face in the result must be this same person\'s own face, restyled — not a new, generic or better-looking face. If the art style and their real features ever conflict, their real features win.';
 
 module.exports = async (req, res) => {
+  const t0 = Date.now(); /* v-fal-backup: بداية ميزانيّة الدالّة */
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -168,7 +194,7 @@ module.exports = async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.error('[portrait-style] image provider is not configured');
-      res.status(503).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+      res.status(503).json({ error: 'unavailable' }); /* v-audit-stud2 (srv-studios-2-8): رموز تترجمها الواجهة (imgErrFriendly) لا نصّ عربيّ لكلّ اللغات */
       return;
     }
 
@@ -176,9 +202,18 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { imageBase64, mimeType, style, backdrop, beautify, ageTarget, hairStyle, adText, era, extraImages, token, charName, removeText, outfit, profession } = body;
+    const { imageBase64, mimeType, style, backdrop, beautify, ageTarget, hairStyle, adText, era, extraImages, token, charName, removeText, outfit, profession, variant } = body;
+    /* v-pstyle-variety (المالك: «شكل واحد… حتى لو اخترت 1 او 2… اريد في كل شخصيه على الاقل 100 شكل»): الأمر الثابت للنمط كان يعيد الشكل
+       نفسه. عدّاد العميل يختار شكلًا محدّدًا من كتالوج النمط (portrait-variety.js) — null للتعديلات الأمينة فيبقى أمرها كما كان حرفيًّا. */
+    const look = pVariety.lookFor({ style, era, profession, variant });
     if (!imageBase64) {
       res.status(400).json({ error: 'Missing imageBase64' });
+      return;
+    }
+    /* v-audit-stud2 (srv-studios-2-5): «دمج شخصين» و«ستايل عائلي» بلا صورة إضافيّة كانا يرسلان صورة واحدة بأمر «two/several separate
+       photos» فيخترع النموذج الآخرين، والدمج بلا حارس فيُسلَّم ويُحتسب. رمز تترجمه الواجهة، قبل حجز الحصّة وقبل أيّ نداء */
+    if ((style === 'merge2' || style === 'familystyle') && !(Array.isArray(extraImages) ? extraImages : []).filter(Boolean).length) {
+      res.status(400).json({ error: 'missing_extra_images' });
       return;
     }
 
@@ -210,24 +245,32 @@ module.exports = async (req, res) => {
               ],
             },
           ],
-          generationConfig: { imageConfig: { imageSize: '2K' } },
+          generationConfig: { imageConfig: { imageSize: '1K' } }, /* v-audit-stud2: العميل يبني GIF بعرض ٤٨٠ — 2K كان ثلاثة أضعاف ردّ البورتريه */
         };
-        const frameUpstream = await fetch(endpointGif, {
+        /* v-fal-backup: الرصيد خلص قبل دقائق ← الإطار عند fal مباشرة بدقّة 1K نفسها */
+        const ffr = await falFirst(frameReqBody, falOpts(t0, FRAME_PROMPTS.length - i));
+        let frameData = ffr.data;
+        const frameUpstream = frameData ? null : await fetch(endpointGif, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(frameReqBody),
           signal: AbortSignal.timeout(240000), /* v-image-timeout */
         });
-        const frameData = await frameUpstream.json();
-        if (!frameUpstream.ok) {
+        if (!frameData) frameData = await frameUpstream.json();
+        if (frameUpstream && !frameUpstream.ok) {
           console.error('[portrait-style] avatar frame failed status=' + frameUpstream.status + ' detail=' + ((frameData && frameData.error && frameData.error.message) || 'unknown'));
-          res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
-          return;
+          /* v-fal-backup: نفاد الرصيد ← الإطار نفسه عند fal قبل رمز الخطأ؛ غير ذلك كما كان */
+          const fbFrame = ffr.tried ? null : await falBackup.rescueImage(frameUpstream.status, (frameData && frameData.error && frameData.error.message) || '', PORTRAIT_MODEL, frameReqBody, falOpts(t0, FRAME_PROMPTS.length - i));
+          if (!fbFrame) {
+            res.status(502).json({ error: require('./_videoFail.js').isOutage(frameUpstream.status, (frameData && frameData.error && frameData.error.message) || '') ? 'unavailable' : 'image_generation_failed' });
+            return;
+          }
+          frameData = falReply(fbFrame);
         }
         const frameParts = (((frameData.candidates || [])[0] || {}).content || {}).parts || [];
         const frameImgPart = frameParts.find((p) => p.inlineData && p.inlineData.data);
         if (!frameImgPart) {
-          res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بصورة أخرى.' });
+          res.status(500).json({ error: 'image_generation_failed' });
           return;
         }
         const frameGuard = await verifyLocalizedImageEdit({
@@ -245,7 +288,16 @@ module.exports = async (req, res) => {
           res.status(422).json({ error: publicGuardError(frameGuard), retryable: false });
           return;
         }
-        frames.push(frameImgPart.inlineData.data);
+        /* v-audit-stud2 (srv-studios-2-4): الإطار PNG بعرض ٥١٢ قبل الإرسال (العميل يصغّره إلى ٤٨٠ أصلًا)؛ تعذّر التصغير = الأصل */
+        let frameOut = frameImgPart.inlineData.data;
+        try { frameOut = await require('./img-convert.js').toPngMaxW(frameOut, AVATAR_FRAME_W); } catch (e) { console.warn('[portrait-style] avatar frame shrink ' + (e && e.message)); }
+        frames.push(frameOut);
+      }
+      /* ردّ لن يصل (فوق حدّ الدالّة) لا يُحتسب — بلا consume يُردّ الحجز قبل الردّ (v-atomic-quota) */
+      if (frames.reduce((n, f) => n + String(f).length, 0) > AVATAR_FRAMES_MAX) {
+        console.error('[portrait-style] avatar frames too large for one response');
+        res.status(502).json({ error: 'image_generation_failed' });
+        return;
       }
       const remainingGif = await consumePortrait(quota.username, quota.limit);
       res.status(200).json({
@@ -278,6 +330,7 @@ module.exports = async (req, res) => {
       const eraDesc = ERA_MAP[era] || ERA_MAP['1990s'];
       promptText =
         'Take this exact photo and transform the scene to look like it was taken in ' + eraDesc + '. ' +
+        (look ? 'Scene for this image: ' + look.text + '. ' : '') +
         'Keep the person\'s facial identity recognizable, but restyle their clothing, hair, photo style, and background to authentically match that time period. Output a single image only.';
     } else if (style === 'adposter') {
       const adLine = (adText && String(adText).trim()) ? String(adText).trim() : '';
@@ -378,6 +431,7 @@ module.exports = async (req, res) => {
       const profDesc = PROF_MAP[profession] || PROF_MAP.doctor;
       promptText =
         'Take this photo and restyle the person as ' + profDesc + '. ' +
+        (look ? 'Scene for this image: ' + look.text + '. ' : '') +
         'Keep the face and identity of the person clearly recognizable and unchanged, but replace their clothing and background so they realistically match that profession, with consistent natural lighting. Output a single image only.';
     } else if (EDIT_PROMPTS[style]) {
       promptText =
@@ -394,6 +448,7 @@ module.exports = async (req, res) => {
       promptText =
         'Take this exact photo and keep the person completely unchanged (same face, identity, clothes, pose, background). ' +
         'Only ADD a beautiful decorative photo frame/border effect around the image for ' + occasionDesc + '. ' +
+        (look ? 'Frame design for this image: ' + look.text + ', with no text or lettering. ' : '') +
         'The person and original background must remain fully visible and untouched in the center; the decoration should ' +
         'only affect the border/frame area and a subtle festive lighting glow. Output a single image only.';
     } else {
@@ -413,6 +468,7 @@ module.exports = async (req, res) => {
         'Only the drawing medium changes; who this person is never changes, and someone who knows them must ' +
         'recognize them instantly in the result.\n' +
         'TASK: redraw this same person in ' + styleDesc + '. ' +
+        (look ? 'This image\'s specific look (one of many variations of this style — follow it): ' + look.text + '. ' : '') +
         'Re-render the clothes, the background and the whole rendering technique in that art style, and keep the pose ' +
         'and general framing — but draw their own real face in that style instead of inventing a new face. ' +
         'Output a single image only.';
@@ -486,35 +542,43 @@ module.exports = async (req, res) => {
       generationConfig: { temperature: (isLocalizedEdit || isMultiSourceComposition) ? 0.15 : 0.65, imageConfig: mergeAspect ? { imageSize: '2K', aspectRatio: mergeAspect } : { imageSize: '2K' } },
     };
 
-    const upstream = await fetch(endpoint, {
+    /* v-fal-backup: الرصيد خلص قبل دقائق ← fal مباشرة، وناتجه يكمل كناتج Gemini (الحارس ثمّ الاحتساب) */
+    const ffm = await falFirst(reqBody, falOpts(t0));
+    let data = ffm.data;
+    const upstream = data ? null : await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),
       signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
 
-    const data = await upstream.json();
-    if (!upstream.ok) {
+    if (!data) data = await upstream.json();
+    if (upstream && !upstream.ok) {
       const detail = String((data && data.error && data.error.message) || 'unknown')
         .replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
       console.error('[portrait-style] upstream failed status=' + upstream.status + ' detail=' + detail);
+      /* v-fal-backup: نفاد الرصيد ← النموذج نفسه عند fal قبل إنقاذ OpenAI؛ ناتجه يكمل كناتج Gemini بعد هذه الكتلة */
+      const fb = ffm.tried ? null : await falBackup.rescueImage(upstream.status, (data && data.error && data.error.message) || '', PORTRAIT_MODEL, reqBody, falOpts(t0));
       // v-portrait-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعطّل الميزة — جرّب
       // gpt-image-1 (تعديل صورة) بمفتاح OPENAI_API_KEY. حارس التحقق نفسه على
       // Gemini فيُتجاوز في مسار الإنقاذ — سيرفض بدوره لو حاولناه.
-      const rescue = await openaiPortraitEdit(gptPrompt, imageBase64, mimeType, gptRefs);
+      const rescue = fb ? null : await openaiPortraitEdit(gptPrompt, imageBase64, mimeType, gptRefs);
       if (rescue) {
         const remR = await consumePortrait(quota.username, quota.limit);
-        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT });
+        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT, look: look ? { n: look.index + 1, total: look.total } : undefined });
         return;
       }
-      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
-      return;
+      if (!fb) {
+        res.status(502).json({ error: require('./_videoFail.js').isOutage(upstream.status, detail) ? 'unavailable' : 'image_generation_failed', upstream: upstream.status, detail });
+        return;
+      }
+      data = falReply(fb);
     }
 
     const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
     const imgPart = parts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
-      res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بصورة أو ستايل آخر.' });
+      res.status(500).json({ error: 'image_generation_failed' });
       return;
     }
 
@@ -544,10 +608,11 @@ module.exports = async (req, res) => {
       mimeType: imgPart.inlineData.mimeType || 'image/png',
       remaining,
       dailyLimit: quota.limit || PORTRAIT_DAILY_LIMIT,
+      look: look ? { n: look.index + 1, total: look.total } : undefined, /* v-pstyle-variety */
     });
   } catch (e) {
     console.error('[portrait-style] exception: ' + (e && e.stack ? e.stack : e));
-    res.status(500).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+    res.status(500).json({ error: 'image_generation_failed' });
   }
 };
 /* v-app-director: خرائط الأنماط تُقرأ من كتالوج التطبيق (app-catalog.js) — بيانات فقط، لا تغيير في المعالج */

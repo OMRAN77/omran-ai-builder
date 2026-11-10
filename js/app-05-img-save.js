@@ -9,14 +9,16 @@
    كل روابط <a download> على data:/blob: في التطبيق تُحوَّل لهذا المسار تلقائيًا. */
 (function(){
   function isAr(){ try{ const l = (typeof lang !== 'undefined' && lang) ? lang : (localStorage.getItem('aiapp_lang') || 'ar'); return l === 'ar' || l === 'ur'; }catch(e){ return true; } }
-  function gtx(k, ar, en){ try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return isAr() ? ar : en; }
+  function gtx(k, ar, en){ try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-img-save:12'); /* guard-ok */ } return isAr() ? ar : en; }
   function appish(){
     try{
+      /* v-desktop-app: تطبيق متجر ويندوز/ماك حاسوب — التنزيل مباشر، لا لوحة النظام المعلّقة */
+      if(typeof omranDesktopApp === 'function' && omranDesktopApp()) return false;
       if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare')) return true;
       if(typeof omranLikelyApp === 'function' && omranLikelyApp()) return true;
       const ua = navigator.userAgent || '';
       if(/\bwv\b/.test(ua) || /Version\/\d+\.\d+.*Chrome\//.test(ua) || !!window.OmranAndroidShare) return true;
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-img-save:21'); /* guard-ok */ }
     return false;
   }
   function dataUrlToBlob(du){
@@ -82,13 +84,8 @@
       dl: location.origin + '/i/' + j.id + '.raw.' + ext + '?dl=1&name=' + encodeURIComponent(safe + '.' + ext),
     };
   }
-  function toast(m){ try{ if(typeof settingsToast === 'function'){ settingsToast(m); return; } }catch(e){ /* guard-ok */ } try{ alert(m); }catch(e){ /* guard-ok */ } }
-  function copyText(s){ try{ if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s); }catch(e){ /* guard-ok */ } return Promise.reject(new Error('no-clipboard')); }
-  function verStamp(){
-    const d = document.createElement('div'); d.style.cssText = 'margin-top:8px;font-size:10px;opacity:.45;text-align:center;direction:ltr;';
-    try{ const sc = document.querySelector('script[src*="app.bundle.js"]'); const vv = sc ? (String(sc.getAttribute('src') || '').split('v=')[1] || '') : ''; d.textContent = 'v ' + vv.slice(0, 8) + (navigator.canShare ? ' · share:yes' : ' · share:no'); }catch(e){ /* guard-ok */ }
-    return d;
-  }
+  function toast(m){ try{ if(typeof settingsToast === 'function'){ settingsToast(m); return; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-img-save:87'); /* guard-ok */ } try{ alert(m); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-img-save:87'); /* guard-ok */ } }
+  /* v-ready-sheet: copyText وverStamp حُذفا — المكوّن الموحّد (app-05-ui) صار يبني الأزرار والنسخ بنفسه. */
   function preparingSheet(){
     try{
       const old = document.getElementById('omranImgSheet'); if(old) old.remove();
@@ -96,107 +93,34 @@
       sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;font-weight:800;font-size:15px;text-align:center;';
       sheet.textContent = gtx('imgPreparing', '⏳ جارٍ تجهيز الصورة…', '⏳ Preparing the image…');
       document.body.appendChild(sheet);
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-img-save:96'); /* guard-ok */ }
   }
+  /* v-ready-sheet: الورقة المحلّيّة (تعذّر الرفع) تمرّ للمكوّن الموحّد — تنزيل من blob محلّيّ،
+     ونسخ صورة/مشاركة بالملفّ؛ بلا رابط خادم فلا واتساب (يكسر عند المستلم). */
   function localSheet(blob, file, name, why){
-    const old = document.getElementById('omranImgSheet'); if(old) old.remove();
-    const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
-    sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;';
-    const head = document.createElement('div');
-    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-weight:800;font-size:15px;';
-    const ttl = document.createElement('span'); ttl.textContent = gtx('imgReadyTitle', '✅ الصورة جاهزة', '✅ Image ready');
-    const x = document.createElement('button'); x.textContent = '✕'; x.type = 'button';
-    x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
-    x.onclick = function(){ sheet.remove(); };
-    head.appendChild(ttl); head.appendChild(x);
-    const row = document.createElement('div');
-    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
-    const btnCss = 'display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;';
-    const u = URL.createObjectURL(blob);
-    const dl = document.createElement('a');
-    dl.href = u; dl.setAttribute('download', name); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
-    dl.style.cssText = btnCss + 'background:#d4af37;color:#111;';
-    dl.textContent = gtx('imgDlBtn', '⬇️ تحميل', '⬇️ Download');
-    row.appendChild(dl);
-    let canShareFile = false;
-    try{ canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canShareFile = false; }
-    if(canShareFile){
-      const sh = document.createElement('button'); sh.type = 'button';
-      sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
-      sh.textContent = gtx('imgShareBtn', '📤 مشاركة', '📤 Share');
-      sh.onclick = function(){ navigator.share({ files: [file], title: 'om ai' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
-      row.appendChild(sh);
-    } else {
-      const op = document.createElement('a');
-      op.href = u; op.target = '_blank'; op.rel = 'noopener';
-      op.style.cssText = btnCss + 'background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.18);';
-      op.textContent = gtx('imgOpenBtn', '🔗 فتح', '🔗 Open');
-      row.appendChild(op);
-    }
-    /* v-nav-cards-menus: سطر «link unavailable · Failed to fetch» كان إنجليزيًّا خامًّا بكلّ اللغات ويكشف نصّ الخطأ التقنيّ —
-       الورقة بزرّيها تكفي، والسبب للسجلّ */
     if(why) console.warn('[img-save] link unavailable', String(why).slice(0, 200));
-    sheet.appendChild(head); sheet.appendChild(row);
-    document.body.appendChild(sheet);
-    setTimeout(function(){ try{ sheet.remove(); URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } }, 120000);
-    return true;
+    let u = ''; try{ u = URL.createObjectURL(blob); }catch(e){ u = ''; }
+    if(typeof window.omranReadySheet === 'function'){
+      return window.omranReadySheet({ kind: 'image', name: name, downloadUrl: u, shareFile: file || null, size: (blob && blob.size) || 0, thumbUrl: u });
+    }
+    return false;
   }
+  /* v-ready-sheet: ورقة «الصورة جاهزة» ← المكوّن الموحّد (app-05-ui). links.dl رابط التنزيل (عمر ساعة في وضع الحفظ)،
+     links.open الرابط الدائم (٧ أيّام) ويُمرَّر كـshareUrl في وضع المشاركة وحده — v-save-no-wa: رابط الحفظ يموت بعد
+     ساعة فلا يُشارَك على واتساب؛ المشاركة بالرابط الدائم. المشاركة بالملفّ تبقى في الوضعين على الجوّال. */
   function readySheet(links, file, name, mode){
-    const old = document.getElementById('omranImgSheet'); if(old) old.remove();
-    const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
-    sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;';
-    const head = document.createElement('div');
-    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-weight:800;font-size:15px;';
-    const ttl = document.createElement('span'); ttl.textContent = gtx('imgReadyTitle', '✅ الصورة جاهزة', '✅ Image ready');
-    const x = document.createElement('button'); x.textContent = '✕'; x.type = 'button';
-    x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
-    x.onclick = function(){ sheet.remove(); };
-    head.appendChild(ttl); head.appendChild(x);
-    const row = document.createElement('div');
-    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
-    const btnCss = 'display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;';
-    const dl = document.createElement('a');
-    dl.href = links.dl; dl.setAttribute('download', name); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
-    dl.style.cssText = btnCss + 'background:#d4af37;color:#111;';
-    dl.textContent = gtx('imgDlBtn', '⬇️ تحميل', '⬇️ Download');
-    dl.onclick = function(){ setTimeout(function(){ ttl.textContent = gtx('imgDlStarted', '📥 بدأ التحميل — افتح الإشعارات/التنزيلات', '📥 Downloading — check notifications/Downloads'); }, 600); };
-    row.appendChild(dl);
-    /* v-save-no-wa (المراجعة الثانية): رابط «تحميل» (purpose:download) يعيش ساعة — من يستلمه على واتساب يجد 404 بعدها؛ فزرّ
-       واتساب لورقة المشاركة وحدها (رابط ٧ أيّام) */
-    if(mode === 'share'){
-      const wa = document.createElement('a');
-      wa.href = 'https://wa.me/?text=' + encodeURIComponent(links.open); wa.target = '_blank'; wa.rel = 'noopener';
-      wa.style.cssText = btnCss + 'background:#25D366;color:#0b1a12;';
-      wa.textContent = gtx('imgWaBtn', '💬 واتساب', '💬 WhatsApp');
-      wa.onclick = function(){ copyText(links.open).then(function(){ ttl.textContent = gtx('imgLinkCopied', 'نُسخ رابط الصورة — الصقه في واتساب', 'Image link copied — paste it in WhatsApp'); }).catch(function(){ /* guard-ok */ }); };
-      row.appendChild(wa);
+    let thumbUrl = ''; try{ if(file) thumbUrl = URL.createObjectURL(file); }catch(e){ thumbUrl = ''; }
+    if(typeof window.omranReadySheet === 'function'){
+      return window.omranReadySheet({ kind: 'image', name: name, downloadUrl: links.dl, shareUrl: (mode === 'share') ? links.open : '', shareFile: file || null, size: (file && file.size) || 0, thumbUrl: thumbUrl });
     }
-    let canShareFile = false;
-    try{ canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canShareFile = false; }
-    if(canShareFile){
-      const sh = document.createElement('button'); sh.type = 'button';
-      sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
-      sh.textContent = gtx('imgShareBtn', '📤 مشاركة', '📤 Share');
-      sh.onclick = function(){ navigator.share({ files: [file], title: 'om ai' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
-      row.appendChild(sh);
-    }
-    const op = document.createElement('a');
-    op.href = links.open; op.target = '_blank'; op.rel = 'noopener';
-    op.style.cssText = btnCss + 'background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.18);';
-    op.textContent = gtx('imgOpenBtn', '🔗 فتح', '🔗 Open');
-    op.onclick = function(ev){ try{ const cap2 = window.Capacitor, br2 = cap2 && cap2.Plugins && cap2.Plugins.Browser; if(br2 && typeof br2.open === 'function'){ ev.preventDefault(); br2.open({ url: links.open }); } }catch(e2){ /* guard-ok */ } };
-    row.appendChild(op);
-    sheet.appendChild(head); sheet.appendChild(row); sheet.appendChild(verStamp());
-    document.body.appendChild(sheet);
-    setTimeout(function(){ try{ sheet.remove(); }catch(e){ /* guard-ok */ } }, 120000);
-    return true;
+    return false;
   }
   function plainDownload(blob, name){
     const u = URL.createObjectURL(blob), a = document.createElement('a');
     a.href = u; a.download = name; a.rel = 'noopener'; a.dataset.nativeDownload = '1';
     a.style.cssText = 'position:fixed;left:-9999px;top:0';
     document.body.appendChild(a); a.click();
-    setTimeout(function(){ try{ a.remove(); URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } }, 60000);
+    setTimeout(function(){ try{ a.remove(); URL.revokeObjectURL(u); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-img-save:123'); /* guard-ok */ } }, 60000);
   }
   /* mode: 'save' (زر تحميل) أو 'share' (زر مشاركة) */
   window.omranSaveImage = async function(src, name, mode){
@@ -204,11 +128,18 @@
     let blob = null;
     try{ blob = await toBlob(src); }catch(e){ blob = null; }
     if(!blob) return false;
-    try{
-      if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare') && typeof msgDownloadBlob === 'function'){ msgDownloadBlob(blob, name); return true; }
-    }catch(e){ /* guard-ok */ }
     let file = null;
     try{ if(typeof File === 'function') file = new File([blob], name, { type: blob.type || 'image/png' }); }catch(e){ file = null; }
+    /* v-share-sheet (المالك ٧ نوفمبر: «نفس هذي في كل التطبيق» — لقطة نافذة يوتيوب، وتطبيق متجر ويندوز كان يفتح لوحة ويندوز المعلّقة):
+       زرّ المشاركة يفتح النافذة الموحّدة (app-45) في كلّ بيئة؛ الرابط الدائم يُرفع عند الفتح، و«المزيد» على الهاتف ورقته (أو جسر الغلاف) بالملفّ. */
+    if(mode === 'share' && typeof window.omranShareSheet === 'function'){
+      window.omranShareSheet({ file: file, getUrl: function(){ return uploadImage(blob, name, '').then(function(l){ return l && l.open; }); },
+        extras: [{ label: gtx('imgDlBtn', 'تحميل', 'Download'), icon: 'download', onClick: function(close){ close(); window.omranSaveImage(blob, name, 'save'); } }] });
+      return true;
+    }
+    try{
+      if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare') && typeof msgDownloadBlob === 'function'){ msgDownloadBlob(blob, name); return true; }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-img-save:142'); /* guard-ok */ }
     /* v-share-native-first (أمر المالك): ورقة النظام أولًا على كل الأجهزة (الكمبيوتر أيضًا) عند المشاركة؛
        وعلى الجوال عند الحفظ كذلك. رفض AbortError خلال أقل من ١.٥ ثانية = فشل اللوحة (ويندوز) لا إلغاء. */
     const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || appish();
@@ -216,17 +147,11 @@
     try{ canNative = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canNative = false; }
     if(mobile && canNative){
       const t0 = Date.now();
-      try{ await navigator.share({ files: [file], title: 'om ai' }); return true; }
+      try{ await navigator.share({ files: [file] }); return true; }
       catch(e){ if(e && e.name === 'AbortError' && (Date.now() - t0) > 1500) return true; }
     }
-    /* v-share-desktop-both: على الكمبيوتر نطلب لوحة النظام (إن وُجدت) ونعرض ورقتنا خلفها في اللحظة
-       نفسها؛ اكتمال اللوحة أو إلغاؤها يزيل ورقتنا، وفشلها الصامت يترك ورقتنا حاضرة. */
-    if(!mobile && mode === 'share' && canNative){
-      const t1 = Date.now();
-      try{
-        navigator.share({ files: [file], title: 'om ai' }).then(() => { const o = document.getElementById('omranImgSheet'); if(o) o.remove(); }, (e) => { if(e && e.name === 'AbortError' && (Date.now() - t1) > 1500){ const o = document.getElementById('omranImgSheet'); if(o) o.remove(); } });
-      }catch(e){ /* guard-ok */ }
-    }
+    /* v-ready-sheet (أمر المالك): لا لوحة مشاركة نظام على الكمبيوتر — لوحة ويندوز تفشل صامتة فيبدو الزرّ ميتًا.
+       بطاقة «الملفّ جاهز» (تحميل + نسخ الصورة + واتساب) هي تجربة الكمبيوتر كاملةً عبر المكوّن الموحّد. */
     if(mode !== 'share' && !appish()){ plainDownload(blob, name); return true; }
     /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */
     preparingSheet();
@@ -234,7 +159,7 @@
     try{ const links = await uploadImage(blob, name, mode === 'share' ? '' : 'download'); return readySheet(links, file, name, mode); }
     catch(e){ upErr = (e && e.message) ? String(e.message) : 'upload'; }
     /* تعذّر الرفع: الورقة لا تختفي — تنزيل محلي مباشر + مشاركة إن توفّرت + سبب مختصر */
-    try{ return localSheet(blob, file, name, upErr); }catch(e){ /* guard-ok */ }
+    try{ return localSheet(blob, file, name, upErr); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-img-save:162'); /* guard-ok */ }
     plainDownload(blob, name);
     return true;
   };
@@ -252,6 +177,6 @@
       if(!appish()) return;
       e.preventDefault(); e.stopPropagation();
       window.omranSaveImage(h, a.getAttribute('download') || 'omran-image.png', 'save');
-    }catch(err){ /* guard-ok */ }
+    }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-05-img-save:180'); /* guard-ok */ }
   }, true);
 })();

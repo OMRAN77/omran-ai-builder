@@ -1,12 +1,12 @@
 // رأيك يهمنا — user feedback storage (Upstash Redis)
 // POST { rating, chips, note, lang, token? } -> saved (capped list) — الاسم من الجلسة الموقّعة لا من الجسم
-// GET ?key=MONITOR_KEY أو ?token=<جلسة المالك> -> { feedback: [...] } (owner only)
+// GET ?token=<جلسة المالك> -> { feedback: [...] } (owner only) — v-audit-agent (srv-agent-3): آراء المستخدمين وبلاغاتهم بيانات مستخدمين، فلا MONITOR_KEY
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const LOG_PATH = 'db/feedback/list.json';
 const REPORTS_PATH = 'db/reports/list.json';
 const MAX_ITEMS = 200;
-const { isOwner } = require('./_owner.js');
+const { isOwnerSession: isOwner } = require('./_owner.js'); // v-audit-agent (srv-agent-3): جلسة المالك وحدها
 const { logError } = require('./log-error.js');
 const { sessionUser, tokenOf } = require('./_session.js');
 

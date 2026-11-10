@@ -2,6 +2,7 @@
 // (predictLongRunning). Owner-only for now because each 8s clip costs
 // real money. Uses GEMINI_API_KEY env var.
 const { checkOwnerBypass } = require('./_videoUsage');
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
 
 const GL = 'https://generativelanguage.googleapis.com/v1beta';
 /* v-video-photo-identity: حدود الأمر حدودنا لا حدّ المحرّك (١٠٢٤ رمزًا) — مقسّمة حسب المسار كي لا يتجاوز
@@ -51,10 +52,48 @@ async function trendSteps(username, scenes, C) {
 const OMNI_OP_PREFIX = 'omni/';
 const OMNI_OP_TTL_SEC = 2 * 86400; // كتذكرة المهمّة: يومان
 function omniOpKey(op) { return 'omni:op:' + String(op); }
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): نفاد رصيد Gemini (402، أو 429 «prepayment credits are depleted»)
+   عند نداء الفيديو ← النموذج نفسه (Omni Flash) عند fal بالطابور (fal-fallback.startVideo)، فيرجع op «fal/<id>» يتابعه veo-status بالعقد
+   نفسه، وسجلّ طابوره هنا بعمر مهامّ omni. الخصم والتذكرة كما لو أنتجه Gemini، ولا ردّ للنقاط إلّا إن رفض الاحتياط أيضًا. */
+const FAL_OP_PREFIX = falBackup.VIDEO_OP_PREFIX; /* «bk/» — بلا اسم مزوّد في رقم العمليّة */
+function falOpKey(op) { return 'fal:op:' + String(op); }
 const OMNI_FRAME_MS = 120000; // إطار المجموعة قبل Omni: يترك للمحرّك وقته داخل حدّ الدالّة (٣٠٠ث)
 function trendEngine() { return String(process.env.TREND_ENGINE || 'omni').toLowerCase() === 'veo' ? 'veo' : 'omni'; }
+function cinemaEngine() { return String(process.env.CINEMA_ENGINE || 'omni').toLowerCase() === 'veo' ? 'veo' : 'omni'; }
 const TREND_NO_CUTS = ' In a single continuous shot, no scene cuts.';
+/* v-trends-identity-audit: التفات صغير من وضعيّة الإطار (كما في withPhotoLock) — FRAME_POSE_FIRST يؤجّل النظر للعدسة والابتسام والاقتراب إلى الفيديو،
+   وFRAME_LOCK لا يقول كيف (عشرون قالبًا تطلبها). يُلحق بعد قصّ الأمر فلا يُنقص سقف القالب ولا يُسقط «اكتب اللي تبيه». لا للكشف (ينتهي بصورته) */
+const TREND_TURN_GUIDE = ' Any turn toward the camera, smile or step closer is small and slow, starting from each person\'s own head angle and expression in the first frame — never a new face for a new angle.';
+const TREND_REVEAL_DECL = '[# Sources <FIRST_FRAME>@Image1 <LAST_FRAME>@Image2] ';
+/* v-trend-hair-lock: الكشف بلا قفل الإطار (ينتهي بصورته) — فكان Omni حرًّا في إعادة رسم الوجه والشعر قبل القطع الأخير؛ الآن يثبّت وجه
+   Image1 وشعره ولحيته وجسمه حتّى القطع، والملحميّ اللبس والمكان والضوء وحدها. يبقى في MULTI_SHOT_TRENDS (القطع الأخير مقصود). */
+const TREND_REVEAL_GUIDE = ' Use Image1 as the starting frame and Image2 as the final frame: the clip ends exactly on Image2, the plain real photo.'
+  + ' Until that final cut, animate Image1 as it is in one continuous shot: the person keeps the exact face, hair (length and cut), facial hair and build shown in Image1 — never restyle, idealise or lengthen the hair; only the costume, setting and light are epic.';
+/* v-trends-identity-audit: الكشف على الاحتياط — نقطته image-to-video بلا إطار أخير (مخطّطها image_url وحده)، فلا «صورته نفسها» في الطلب ولا Image1/Image2:
+   النهاية بالشخص نفسه بلبس عاديّ، وقفل الوجه والشعر حتّى القطع الأخير كـTREND_REVEAL_GUIDE. بلا FRAME_LOCK: «اللبس كما هو» يناقض النهاية العاديّة */
+const TREND_REVEAL_GUIDE_BK = ' Animate the attached image as the opening frame: until the final cut the person keeps the exact face, hair (length and cut), facial hair and build shown in it — never restyle, idealise or lengthen the hair; only the costume, setting and light are epic.'
+  + ' The final shot shows that same face, hair and facial hair unchanged — only the clothes and background become plain and ordinary.';
 const TREND_REF_GUIDE = ' Use the given image as a reference for video generation — keep the face and identity of the person in it. The image should not be used as a literal initial frame.';
+/* v-trend-omni-refs: التوثيق يربط المرجع بالشخص داخل النصّ («a woman <IMAGE_REF_0> is walking»)، وomni-create يفعل ذلك في قفله؛
+   أوامر الترندات (مكتوبة لـVeo) تقول «the reference image» بلا وسم — فيُلحق الوسم بها حين يكون للصورة مرجع واحد. */
+function bindTrendRef(p) { return String(p).replace(/the reference image(?! <IMAGE_REF_)/g, 'the reference image <IMAGE_REF_0>'); }
+/* صورة واحدة فيها شخصان (كشفهما الإطار): مرجعها الصورة نفسها، والإرشاد بالجمع كالأمر */
+const TREND_FRAME_GUIDE_MANY = ' Use Image1 as the starting frame. Use Image2 as a reference for the video generation: it shows the same real people as Image1 — use it only to keep each person\'s own face and identity; the clothing and setting come from Image1 and the description, not from Image2.';
+/* إطار المجموعة: «the reference image shows/contains N people» (أمر Veo) ← صور المراجع، كلّ صورة شخص */
+function bindGroupRefs(p, n) {
+  const tags = Array.from({ length: n }, (_, k) => '<IMAGE_REF_' + k + '>').join(n > 2 ? ', ' : ' and ').replace(/, (<IMAGE_REF_\d>)$/, ' and $1');
+  return String(p).replace(/the reference image (shows|contains)/g, 'the reference photos ' + tags + ' show')
+    .replace(/the reference image(?! <IMAGE_REF_)/g, 'the reference photos ' + tags);
+}
+const imgList = (n) => Array.from({ length: n }, (_, k) => 'Image' + (k + 2)).join(n > 2 ? ', ' : ' and ').replace(/, (Image\d)$/, ' and $1');
+function groupRefDecl(n) { return '[# Sources <FIRST_FRAME>@Image1] [# References ' + Array.from({ length: n }, (_, k) => '<IMAGE_REF_' + k + '>@Image' + (k + 2)).join(' ') + '] '; }
+function groupRefGuide(n) {
+  return ' Use Image1 as the starting frame. Use ' + imgList(n) + ' as references for the video generation: each one shows one of the real people already in Image1'
+    + ' — use them only to keep each person\'s own face and identity, never as extra people; the clothing and setting come from Image1 and the description.';
+}
+/* v-video-identity-pose: صورة المستخدم أوّل إطار + الصورة نفسها مرجعًا (Omni يقبل الدورين معًا — FRAME_DECL في omni-create). إرشاد
+   محايد بلا «شخص حقيقيّ»: الأفاتار يبقى أفاتارًا والمنتج منتجًا، والمرجع يحفظ الشكل حين يلتفت أو يُرى من زاوية أخرى. */
+const PHOTO_REF_GUIDE = ' Use Image1 as the starting frame. Image2 is the same subject as Image1: use it only to keep its exact look — face, proportions, colours and art style — whenever it turns, moves or is seen from another angle; never redraw it more realistic, more cartoonish or generic.';
 async function trendOmni(o) {
   const omni = require('./omni-create.js');
   const input = [];
@@ -63,18 +102,34 @@ async function trendOmni(o) {
     input.push({ type: 'image', data: o.imageBase64, mime_type: o.imageMime || 'image/png' });
     /* v-trend-omni-face: Omni يصنع افتراضيًّا عدّة لقطات بقطع بينها، والقطع يعيد رسم الوجه — لقطة واحدة متّصلة (توثيقه حرفيًّا) */
     const cuts = o.multiShot ? '' : TREND_NO_CUTS; // قالب مونتاج بنصّه (عشر دول…) يبقى بلقطاته
-    if (o.framed && o.ref && (!o.ageShift || o.morph)) { /* رحلة العمر: الإطار طفل، ولقطة وجهه بعمره الحقيقيّ مرجع لما بعده */
-      /* الإطار الأوّل بوجهه في المشهد + لقطة الوجه مرجعًا — أدوار omni-create حرفيًّا */
-      input.push({ type: 'image', data: o.ref.data, mime_type: o.ref.mime || 'image/png' });
-      prompt = omni.FRAME_DECL + prompt + cuts + omni.FRAME_GUIDE;
+    const refs = o.framed ? (o.refs || []).filter((r) => r && r.data).slice(0, 3) : [];
+    const turn = o.trend ? TREND_TURN_GUIDE : ''; // v-trends-identity-audit: الترندات وحدها — الوصف الحرّ «سينمائي» كلامه هو الذي يقود الحركة
+    if (o.framed && o.lastFrame && o.lastFrame.data) {
+      /* v-trends-oct-12 («سامحوني.. هذي الحقيقة»): الإطار الأسطوريّ أوّلًا وصورته نفسها آخرًا — صيغة التوثيق حرفيًّا
+         «[# Sources <FIRST_FRAME>@Image1 <LAST_FRAME>@Image2]… the second image as the final frame» */
+      input.push({ type: 'image', data: o.lastFrame.data, mime_type: o.lastFrame.mime || 'image/png' });
+      prompt = TREND_REVEAL_DECL + prompt + cuts + TREND_REVEAL_GUIDE;
+    } else if (refs.length === 1) {
+      /* الإطار الأوّل بوجهه في المشهد + مرجع ملامحه (لقطة الوجه أو صورته) — أدوار omni-create حرفيًّا، والمرجع مربوط في النصّ */
+      input.push({ type: 'image', data: refs[0].data, mime_type: refs[0].mime || 'image/png' });
+      prompt = omni.FRAME_DECL + bindTrendRef(prompt) + cuts + (o.people > 1 ? TREND_FRAME_GUIDE_MANY : omni.FRAME_GUIDE) + turn;
+    } else if (refs.length > 1) {
+      /* إطار المجموعة + صورة كلّ شخص مرجعًا لوجهه (صيغة التوثيق لعدّة مراجع) */
+      refs.forEach((r) => input.push({ type: 'image', data: r.data, mime_type: r.mime || 'image/png' }));
+      prompt = groupRefDecl(refs.length) + bindGroupRefs(prompt, refs.length) + cuts + groupRefGuide(refs.length) + turn;
+    } else if (o.selfRef) {
+      /* «سينمائي» بالصورة كما هي، أو ترند شخص تعذّر إطاره: الصورة نفسها أوّل إطار ومرجعًا (كان التعذّر يرسم الشخص كلّه من مرجع)؛
+         والمونتاج (عشر دول، يوم في حياتي، قصّة بعدّة مشاهد) يبقى بلقطاته — cuts لا «بلا قطع» ثابتًا */
+      input.push({ type: 'image', data: o.imageBase64, mime_type: o.imageMime || 'image/png' });
+      prompt = omni.FRAME_DECL + bindTrendRef(prompt) + cuts + PHOTO_REF_GUIDE;
     } else if (o.framed || !o.person) {
-      /* إطار مبنيّ (المجموعة، أو بلا لقطة وجه، أو بعمر آخر — لقطة البالغ تشدّ الطفل إلى عمره)، أو صورة يُقصد تحريكها هي نفسها
+      /* إطار مبنيّ بلا مرجع (ترند بعمر آخر — مرجع البالغ يشدّ الطفل إلى عمره)، أو صورة يُقصد تحريكها هي نفسها
          (منتج، مكان، حيوان، «حرّك الصورة»): أوّل إطار كما كانت عند Veo (instance.image) */
-      prompt = '[# Sources <FIRST_FRAME>@Image1] ' + prompt + cuts + ' Use Image1 as the starting frame.';
+      prompt = '[# Sources <FIRST_FRAME>@Image1] ' + prompt + cuts + ' Use Image1 as the starting frame.' + (o.framed ? turn : '');
     } else {
       /* ترند شخص بلا إطار مبنيّ (بيكسار ورمضان، أو تعذّر الإطار): الصورة مرجع لا لقطة أولى — كانت تظهر خامًا في أوّل الفيديو.
          صيغة التوثيق: «Use the given image(s) as references… should not be used as literal initial frames». */
-      prompt = '[# References <IMAGE_REF_0>@Image1] ' + prompt + cuts + TREND_REF_GUIDE;
+      prompt = '[# References <IMAGE_REF_0>@Image1] ' + bindTrendRef(prompt) + cuts + TREND_REF_GUIDE;
     }
   }
   input.push({ type: 'text', text: prompt });
@@ -84,7 +139,7 @@ async function trendOmni(o) {
     body: JSON.stringify({
       model: process.env.OMNI_VIDEO_MODEL || 'gemini-omni-1.1-flash',
       input,
-      response_format: { type: 'video', resolution: o.quality === 'high' ? '1080p' : '720p', aspect_ratio: o.ratio === '720:1280' ? '9:16' : '16:9', delivery: 'uri' },
+      response_format: Object.assign({ type: 'video', resolution: o.quality === 'high' ? '1080p' : '720p', aspect_ratio: o.ratio === '720:1280' ? '9:16' : '16:9', delivery: 'uri' }, o.durationSec ? { duration: o.durationSec + 's' } : {}),
       background: false, store: true, stream: false, // v-omni-store: الرابط يشترط store:true
     }),
     signal: AbortSignal.timeout(omni.omniTimeoutFor(Date.now() - o.t0, Number(process.env.OMNI_TIMEOUT_MS || 270000))),
@@ -113,11 +168,15 @@ module.exports = async (req, res) => {
     let { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
     const rawDesc = promptText; /* v-video-first-frame: وصف المستخدم قبل الأسلوب والقفل — مشهد أوّل الإطار */
     /* v-trend-people: شخصيّتان أو ثلاث — الصور الزائدة تصل في imagesBase64 ويُبنى منها أوّل إطار واحد. */
-    const trendPeople = Array.isArray(body.imagesBase64)
+    /* v-trends-oct-12: ترند شخص واحد بطبيعته («سامحوني»، «من ينقذك؟») — الصور الزائدة تُهمل، والأولى في imageBase64 كما كانت */
+    const singleSubject = !!body.trend && require('./trend-people.js').SINGLE_SUBJECT_TRENDS.has(String(body.trend));
+    const trendPeople = (!singleSubject && Array.isArray(body.imagesBase64))
       ? body.imagesBase64.map((d, i) => ({ data: d, mime: (body.imagesMime || [])[i] })).filter((x) => x && x.data)
       : [];
     /* v-video-trends: ترند بلمسة — الأمر يُبنى على الخادم من قالب الترند ومدخلات المستخدم */
     const hasImage = !!(imageBase64 && String(imageBase64).trim());
+    /* v-trend-omni-refs: صورة المستخدم كما رفعها — الإطار يحلّ محلّها في imageBase64، وتبقى هي مرجع الملامح عند Omni */
+    const userPhoto = hasImage ? { data: String(imageBase64).trim(), mime: imageMime || 'image/png' } : null;
     /* v-video-first-frame (المالك: «كل الفيديوات»): مع صورة يُبنى أوّل إطار بوجه الشخص في مشهد الوصف أو الترند ثمّ
        يحرّكه المحرّك (trend-people.soloFirstFrame) — للوصف الحرّ، ولترندات الشخص الواحد في SOLO_FRAME_TRENDS.
        keepPhoto (شخصيّة المحادثة الكرتونيّة الجاهزة) = الصورة نفسها أوّل إطار كما كانت. */
@@ -126,16 +185,18 @@ module.exports = async (req, res) => {
        الفيديو بلحظته الأولى (OMNI_MORPH_TRENDS) — صورته الخام أوّل إطار كانت تظهر ثمّ يقطع المحرّك ويرسم وجهًا آخر. Veo كما كان. */
     const trendId = String(body.trend || '');
     const omniTrend = !!body.trend && trendEngine() === 'omni';
+    const cinemaOmni = !body.trend && cinemaEngine() === 'omni';
     const morph = omniTrend && tp.OMNI_MORPH_TRENDS.has(trendId);
+    const reveal = omniTrend && tp.OMNI_REVEAL_TRENDS.has(trendId); // v-trends-oct-12: إطار أسطوريّ أوّلًا وصورته نفسها آخرًا
     const soloWanted = hasImage && !body.keepPhoto && tp.firstFrameOn() && (body.trend
-      ? (trendPeople.length <= 1 && (tp.SOLO_FRAME_TRENDS.has(trendId) || (omniTrend && (tp.OMNI_FRAME_TRENDS.has(trendId) || morph))))
-      : !!(rawDesc && String(rawDesc).trim()));
+      ? (trendPeople.length <= 1 && (tp.SOLO_FRAME_TRENDS.has(trendId) || (omniTrend && (tp.OMNI_FRAME_TRENDS.has(trendId) || morph || reveal))))
+      : !!(rawDesc && String(rawDesc).trim()) && tp.freeFrameOn(body)); // v-photo-as-is: الوصف الحرّ بلا رسم إلّا الأنمي المختار
     /* أنمي/كرتون الواجهة: سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا) */
     if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = tp.STYLE_ANIME_VIDEO + String(promptText).trim();
     let trendParams = null; /* v-two-people: لإعادة بناء أمر الترند بصيغة الجمع إن كشف الإطار شخصين في صورة واحدة */
     if (body.trend) {
       const trendsLib = require('./video-trends.js');
-      const bParams = trendsLib.sceneParams(String(body.trend), Object.assign({}, body.params || {}, { hasImage })); /* v-trend-scenes: قبل القصّ */
+      const bParams = trendsLib.sceneParams(String(body.trend), Object.assign({}, body.params || {}, { hasImage }, singleSubject ? { people: 1 } : {})); /* v-trend-scenes: قبل القصّ */
       trendParams = bParams;
       let built = trendsLib.buildTrendPrompt(String(body.trend), bParams, TREND_OPTS);
       if (!built) { res.status(400).json({ error: 'unknown trend' }); return; }
@@ -147,10 +208,13 @@ module.exports = async (req, res) => {
       }
       promptText = built.prompt; ratio = ratio || built.ratio; if (!durationSeconds) durationSeconds = 8;
     } else if (hasImage && promptText) {
-      /* v-video-identity: الوصف الحرّ مع صورة — قفل الهويّة نفسه كالترندات */
-      promptText = require('./video-trends.js').withIdentityLock(promptText, VEO_FREE_IMAGE_MAX);
+      /* v-video-identity: الوصف الحرّ مع صورة — قفل الهويّة نفسه كالترندات.
+         v-photo-as-is: الصورة نفسها أوّل إطار (لا رسم) — قفل محايد بلا «الشخص الحقيقيّ» (الأفاتار والكرتون يبقيان كما هما) */
+      promptText = soloWanted ? require('./video-trends.js').withIdentityLock(promptText, VEO_FREE_IMAGE_MAX)
+        : require('./video-trends.js').withPhotoLock(promptText, VEO_FREE_IMAGE_MAX);
     }
     let durSec = parseInt(durationSeconds, 10);
+    const omniDur = durSec >= 3 && durSec <= 10 ? durSec : 8;
     if (![4, 6, 8].includes(durSec)) durSec = 0; // 0 = default (leave to Veo)
     if (!promptText || !String(promptText).trim()) {
       res.status(400).json({ error: 'Missing promptText' });
@@ -224,14 +288,41 @@ module.exports = async (req, res) => {
     }
 
 
+    /* v-trend-face-swap (المالك: «صلحة الاشكال الملامح»): برو يعيد رسم الوجه في الإطار وOmni يحفظ وجه الإطار — فبعد بنائه يُبدَّل وجه
+       كلّ شخص بوجه صورته (face-swap.js). مطفأ افتراضيًّا (TREND_FACE_SWAP) والإنفاق بموافقة المالك؛ لترندات الشخص على Omni وحدها، بلا
+       الفنّيّة واللعب والعمر الآخر و«فلاش باك VHS». «الزومبي» المرجع الأوّل وحده (الثاني هو المتحوّل)، و«من ينقذك؟» نسختان منه.
+       مطفأ = الخيارات كما كانت حرفيًّا. */
+    const swapTrend = omniTrend && tp.omniPersonTrend(trendId) && !tp.SOLO_FRAME_ART_TRENDS.has(trendId) && !tp.SOLO_FRAME_TOY_TRENDS.has(trendId)
+      && !tp.AGE_SHIFT_TRENDS.has(trendId) && trendId !== 'vhsflashback' && !tp.ART_STYLE_RE.test(tp.trendScene(promptText));
+    const swapOpt = (swapTrend && require('./face-swap.js').enabledFor(gate.allowed))
+      ? Object.assign({ until: t0 + OMNI_FRAME_MS, owner: !!gate.allowed }, trendId === 'zombielove' ? { only: [0] } : {}, trendId === 'saveyourself' ? { multi: true } : {},
+        tp.ALONE_SCENE_TRENDS.has(trendId) ? { alone: true } : {}, tp.HAT_SCENE_TRENDS.has(trendId) ? { hat: true } : {}) // v-trend-hair-lock
+      : null;
+    /* v-trend-hair-lock (المالك: «فعّلته وأعدت النشر» والوجه تغيّر): كلّ تخطٍّ للتبديل كان سطرًا في سجلّ Vercel وحده — الآن سطر في سجلّ
+       المالك (log-error، كما fal-fallback). منتظَر بسقف ١٫٥ث ولا يرمي؛ الرسالة بلا توقيت فيجمع _errors.js تكرارها عدًّا وتنبيهًا واحدًا لكلّ سبب. */
+    const ownerNote = (scope, msg) => require('./log-error.js').logErrorAndFlush(scope, new Error(msg));
+    if (swapTrend && gate.allowed && !swapOpt && (soloWanted || (body.trend && trendPeople.length > 1))) {
+      await ownerNote('face-swap/gate', 'trend=' + trendId + ' swap=' + require('./face-swap.js').gateWhy(true));
+    }
+
     /* v-trend-people: أوّل إطار فيه كلّ الأشخاص معًا في مشهد الترند، ثمّ يحرّكه المحرّك. بعد القفل
        عمدًا: مهلة الثلاث دقائق هي ما يحدّ نداءات الدمج. فشله = لا خصم ولا قفل (يُردّان هنا). */
     let groupFramed = false; // v-trend-omni: الصورة صارت أوّل إطار (دور Image1 عند Omni)
+    let groupRefs = null; // v-trends-identity-audit: مرجع كلّ شخص من بناء الإطار (لقطة وجهه، وإلّا صورته) — لمحرّك الفيديو
     if (body.trend && trendPeople.length > 1) {
       /* v-two-people: مشهد القالب وحده — فقرة «WHO THEY ARE» ليست مشهدًا (كانت أوّل ٧٠٠ حرف من «المشهد») */
-      const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, tp.trendScene(promptText), ratio, trendEngine() === 'omni' ? Object.assign({ timeoutMs: OMNI_FRAME_MS }, morph ? { start: true } : {}) : undefined);
+      /* v-trend-frame-look: العمر الآخر والأسلوب الفنّيّ يصلان إطار المجموعة على المحرّكين (قفل الشكل بلا عمر آخر وبصيغته الفنّيّة)؛
+         بلا خيار = undefined كما كان على Veo */
+      const gOpt = Object.assign(trendEngine() === 'omni' ? { timeoutMs: OMNI_FRAME_MS } : {}, morph ? { start: true } : {},
+        tp.AGE_SHIFT_TRENDS.has(trendId) ? { ageShift: true } : {}, tp.SOLO_FRAME_ART_TRENDS.has(trendId) ? { art: true } : {});
+      if (swapOpt) gOpt.swap = swapOpt; // v-trend-face-swap: مطفأ = الخيارات كما كانت
+      if (tp.PRESENT_SELF_TRENDS.has(trendId)) gOpt.presentSelf = true; // v-trends-identity-audit: نسخة كلّ واحد بعمره الحاليّ مقفلة (مع ageShift وحده)
+      const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, tp.trendScene(promptText), ratio, Object.keys(gOpt).length ? gOpt : undefined);
       if (frame && frame.b64) {
         imageBase64 = frame.b64; imageMime = frame.mime; groupFramed = true;
+        groupRefs = Array.isArray(frame.refs) && frame.refs.length ? frame.refs : null;
+        if (swapOpt) console.log('[veo-create] group frame ready swap=' + (frame.swapped || 0) + (frame.swapWhy ? ' (' + String(frame.swapWhy).slice(0, 60) + ')' : ''));
+        if (swapOpt && !frame.swapped) await ownerNote('face-swap/group', 'trend=' + trendId + ' swap=0 why=' + String(frame.swapWhy || '?').slice(0, 80)); // v-trend-hair-lock
         /* v-trend-identity: الإطار الأوّل بُني للتوّ بوجوه الأشخاص الحقيقيّة داخل مشهد الترند، لكنّ أمر
            الترند نفسه يبقى «Transform the person … into …» — فيعيد المحرّك تنفيذ التحويل فوق إطار
            نُفِّذ فيه أصلًا، ويرسم وجوهًا جديدة. هذا السطر يُلحق أخيرًا فيغلب: التحويل انتهى، والمطلوب
@@ -257,15 +348,20 @@ module.exports = async (req, res) => {
        كإطار المجموعة. أيّ عطب = الصورة نفسها أوّل إطار كما كانت، فلا يفشل فيديو بسبب الإطار. */
     let framed = false;
     let frameRef = null; // v-trend-omni: لقطة الوجه من الإطار الفرديّ (Image2 عند Omni)
+    let soloPeople = 0; // v-trend-omni-refs: شخصان كشفهما الإطار في صورة واحدة — إرشاد المرجع بالجمع
     if (soloWanted) {
       const solo = await tp.soloFirstFrame(apiKey, { data: String(imageBase64).trim(), mime: imageMime },
         body.trend ? tp.trendScene(promptText) : String(rawDesc), ratio,
-        { style: body.trend ? '' : body.style, artHint: !!body.trend && tp.SOLO_FRAME_ART_TRENDS.has(String(body.trend)), budgetMs: 90000,
-          start: morph, ageShift: omniTrend && tp.AGE_SHIFT_TRENDS.has(trendId) });
+        Object.assign({ style: body.trend ? '' : body.style, artHint: !!body.trend && tp.SOLO_FRAME_ART_TRENDS.has(String(body.trend)), budgetMs: 90000,
+          start: morph, ageShift: omniTrend && tp.AGE_SHIFT_TRENDS.has(trendId), single: singleSubject, /* v-video-identity-mirror: انعكاس المرآة ليس شخصًا ثانيًا */
+          /* v-trend-frame-face: Omni يحفظ وجه الإطار طوال المقطع — فالإطار 2K بوجه كبير؛ الدمية والليغو 2K وحده (لعبة صغيرة في عبوتها) */
+          detail: (omniTrend && !tp.SOLO_FRAME_TOY_TRENDS.has(trendId)) || cinemaOmni, hiRes: omniTrend || cinemaOmni }, swapOpt ? { swap: swapOpt } : {},
+          /* v-trends-identity-audit: نسخته بعمره الحاليّ بشعرها ولحيتها ووضعيّتها من الصورة (احضن نفسك الصغير، كبسولة الزمن) */
+          omniTrend && tp.PRESENT_SELF_TRENDS.has(trendId) ? { presentSelf: true } : {}));
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
         /* v-two-people: الإطار كشف شخصين في الصورة الواحدة — الأمر بصيغة الجمع (كلّ واحد بوجهه) قبل القفل */
-        if (solo.people > 1) {
+        if (solo.people > 1 && !singleSubject) {
           const vt = require('./video-trends.js');
           if (body.trend) {
             const b2 = vt.buildTrendPrompt(String(body.trend), Object.assign({}, trendParams, { people: solo.people }), TREND_OPTS);
@@ -274,19 +370,89 @@ module.exports = async (req, res) => {
             promptText = vt.withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, undefined, solo.people);
           }
         }
-        if (!morph) promptText += FRAME_LOCK; /* v-trend-omni-face: المتحوّل أثناء الفيديو — إطاره قبل التحوّل، والقفل يمنعه */
-        framed = true; frameRef = solo.ref || null;
-        console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : ''));
-      } else console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
+        /* v-trend-omni-face: المتحوّل أثناء الفيديو — إطاره قبل التحوّل، والقفل يمنعه؛ v-trends-oct-12: والكشف ينتهي بصورته لا بالإطار */
+        if (!morph && !reveal) promptText += FRAME_LOCK;
+        framed = true; frameRef = solo.ref || null; soloPeople = singleSubject ? 0 : (solo.people || 0);
+        console.log('[veo-create] first frame ready' + (solo.cached ? ' (cached)' : '') + (body.trend ? ' for trend ' + String(body.trend).slice(0, 20) : '')
+          + (swapOpt ? ' swap=' + (solo.swapped || 0) + (solo.swapWhy ? ' (' + String(solo.swapWhy).slice(0, 60) + ')' : '') : ''));
+        if (swapOpt && !solo.swapped) await ownerNote('face-swap/solo', 'trend=' + trendId + ' swap=0 why=' + String(solo.swapWhy || '?').slice(0, 80) + (solo.cached ? ' cached' : '')); // v-trend-hair-lock
+      } else {
+        console.warn('[veo-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
+        /* v-trend-hair-lock: إطار ترند الشخص سقط = المحرّك يرسم وجهًا جديدًا من المرجع بلا تبديل — يُرى في سجلّ المالك */
+        if (omniTrend && tp.omniPersonTrend(trendId)) await ownerNote('trend-frame/solo', 'trend=' + trendId + ' skipped why=' + String((solo && solo.error) || 'none').slice(0, 80));
+      }
     }
 
-    if (body.trend && trendEngine() === 'omni') {
-      const r = await trendOmni({ apiKey, prompt: String(promptText).trim().slice(0, VEO_PROMPT_MAX), imageBase64: imageBase64 && String(imageBase64).trim(),
-        imageMime, framed: framed || groupFramed, ref: frameRef, ratio, quality, t0,
-        person: tp.omniPersonTrend(trendId), ageShift: tp.AGE_SHIFT_TRENDS.has(trendId), morph,
+    /* v-fal-backup: بدء الفيديو عند الاحتياط — سجلّ الطابور (عطب كتابته لا يُسقطه: veo-status يبني الرابط من الرقم) وتذكرة الخصم
+       نفسها التي يكتبها النجاح، ثمّ {op}. رفضه = false فيكمل المتّصل مساره القديم (الردّ ورمز الخطأ) حرفيًّا. محاولة واحدة لكلّ طلب. */
+    let falTried = false;
+    const viaFal = async (spec, where) => {
+      falTried = true;
+      const s = await falBackup.startVideo(spec, { where });
+      if (!s || !s.op) return false;
+      try { await require('./kv.js').kvSetRaw(falOpKey(s.op), JSON.stringify(s.rec), OMNI_OP_TTL_SEC); }
+      catch (e) { console.error('[veo-create] backup record not saved (status rebuilds it): ' + (e && e.message)); }
+      await require('./video-job.js').rememberVideoJob(s.op, { username: chargedUser, cost: pointsLib.COSTS.veo_video, locked: !!videoLocked, pay: chargedPay });
+      chargedUser = null; videoLocked = null;
+      console.log('[veo-create] ' + (body.trend ? 'trend ' + String(body.trend).slice(0, 20) : 'cinematic') + ' started on the backup engine (' + where + ')');
+      res.status(200).json({ op: s.op });
+      return true;
+    };
+    const falRescue = (status, msg) => !falTried && falBackup.enabled() && falBackup.geminiCreditOut(status, msg);
+
+    if (omniTrend || cinemaOmni) {
+      let oPrompt = String(promptText).trim();
+      if (cinemaOmni && framed) oPrompt = require('./video-trends.js').withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, 'the reference image <IMAGE_REF_0>', soloPeople > 1 ? soloPeople : undefined) + FRAME_LOCK;
+      const oCap = body.trend ? VEO_PROMPT_MAX : (framed ? VEO_FREE_IMAGE_MAX + FRAME_LOCK.length : (hasImage ? VEO_FREE_IMAGE_MAX : VEO_FREE_MAX));
+      /* قصّة المحادثة في مقطع واحد (oneClip بعدّة مشاهد) لقطات متتالية بنصّها — كقوالب المونتاج */
+      const multiShot = tp.MULTI_SHOT_TRENDS.has(trendId) || !!(trendParams && trendParams.oneClip && Array.isArray(trendParams.scenes) && trendParams.scenes.length > 1);
+      /* v-fal-backup: مدخل الاحتياط — الأمر الخامّ بلا وسوم أدوار Interactions (Image1/Image2)، ودور الصورة كما يختاره trendOmni: إطار مبنيّ
+         أو صورة تُحرَّك = أوّل إطار؛ صورة شخص بلا إطار = مرجع ملامح بوسم <IMAGE_REF_0> وإرشاده. الإطار مع لقطة الوجه = الإطار وحده
+         (الاحتياط لا يجمع أوّل إطار ومرجعًا)، و«سامحوني» بلا صورته إطارًا أخيرًا. «بلا قطع» كما عند Omni (النموذج نفسه). */
+      const oImg = imageBase64 && String(imageBase64).trim();
+      /* v-video-identity-pose: مرجع الصورة نفسها مع أوّل إطار خامّ — «سينمائي» بلا إطار مرسوم، وترند الشخص الذي تعذّر إطاره (بيكسار ورمضان
+         يبقيان مرجعًا وحده عمدًا: شخصيّة مستوحاة لا الصورة أوّل إطار).
+         v-trends-identity-audit: يُحسب هنا قبل الاحتياط — ترند الشخص الذي تعذّر إطاره كان على الاحتياط مرجعًا وحده (يُرسم الوجه من جديد)، والآن
+         صورته أوّل إطار (asRef=false) كنجاح الإطار؛ و«حرّك الصورة» بأشخاصها والتفاتها (OMNI_SELFREF_PHOTO_TRENDS) مرجعًا أيضًا عند Omni */
+      const selfRef = !framed && !groupFramed && !!oImg && ((cinemaOmni && body.style !== 'anime') || (omniTrend && tp.omniPersonTrend(trendId) && !tp.OMNI_REF_TRENDS.has(trendId)
+        && !tp.OMNI_REVEAL_TRENDS.has(trendId) && !tp.AGE_SHIFT_TRENDS.has(trendId) /* الكشف ينتهي بصورته، والعمر الآخر لا يبدأ بالبالغ — يبقيان مرجعًا */
+        /* تحويل الأسلوب (جيبلي، صلصال، أنمي، ليغو، دمية، شخصيّة لعبة) و«أنمي» السينمائيّ: «احفظ أسلوب الصورة» يناقض الطلب — كما كانا */
+        && !tp.SOLO_FRAME_ART_TRENDS.has(trendId) && !tp.ART_STYLE_RE.test(tp.trendScene(promptText))
+        && trendPeople.length <= 1 && ((require('./video-trends.js').TRENDS[trendId] || {}).photo !== 'none')) /* ترند بلا خانة صورة (صورة المحادثة) يبقى مرجعًا */
+        || (omniTrend && tp.OMNI_SELFREF_PHOTO_TRENDS.has(trendId)));
+      const asRef = !!oImg && !(framed || groupFramed) && tp.omniPersonTrend(trendId) && !selfRef;
+      const fPlain = String(promptText).trim().slice(0, oCap);
+      const fCuts = oImg && !multiShot ? TREND_NO_CUTS : '';
+      /* v-trends-identity-audit: الكشف بإطاره على الاحتياط — «يقطع إلى الصورة المرجعيّة نفسها» بلا صورة مرجعيّة في الطلب ← الشخص نفسه بلبس عاديّ،
+         وقفل الوجه والشعر بلا وسوم Image1/Image2؛ وإطار مبنيّ (لا الكشف) يأخذ سطر الالتفات كما عند Omni */
+      const fReveal = reveal && framed && !!oImg;
+      const fBody = fReveal ? fPlain.replace('it cuts to the reference photo itself', 'it cuts to the same person in plain everyday clothes') + TREND_REVEAL_GUIDE_BK
+        : fPlain + fCuts + (body.trend && (framed || groupFramed) && !reveal ? TREND_TURN_GUIDE : '');
+      const falSpec = { prompt: asRef ? bindTrendRef(fPlain) + fCuts + TREND_REF_GUIDE : fBody, portrait: ratio === '720:1280', durationSec: body.trend ? 8 : omniDur };
+      if (asRef) falSpec.refs = [{ b64: oImg, mime: imageMime || 'image/png' }];
+      else if (oImg) falSpec.image = { b64: oImg, mime: imageMime || 'image/png' };
+      /* رصيد Gemini خلص قبل دقائق ← الاحتياط مباشرة بلا نداء فاشل قبله */
+      if (await falBackup.geminiOutRecently() && await viaFal(falSpec, 'veo-create/omni')) return;
+      const r = await trendOmni({ apiKey, prompt: oPrompt.slice(0, oCap), durationSec: body.trend ? 0 : omniDur, imageBase64: imageBase64 && String(imageBase64).trim(),
+        imageMime, framed: framed || groupFramed, ratio, quality, t0, person: tp.omniPersonTrend(trendId), trend: !!body.trend,
+        /* v-trend-omni-refs (المالك بعد v-trend-omni-face: «بعده يغيّر شكل الشخصيّة في الملامح»): مرجع الملامح مع كلّ إطار مبنيّ —
+           لقطة الوجه، وإلّا الصورة نفسها كما في omni-create (السيلفي: وجه يملأ الصورة لا تُقصّ له لقطة، فكان الإطار وحده)، وصور
+           الأشخاص مع إطار المجموعة (كان بلا أيّ مرجع). ترند العمر الآخر بلا مرجع البالغ (يشدّ الطفل إلى عمره) إلّا رحلة العمر. */
+        /* v-trends-oct-12: الكشف — صورته نفسها <LAST_FRAME> بدل المرجع */
+        lastFrame: reveal && framed ? userPhoto : null,
+        refs: ((tp.AGE_SHIFT_TRENDS.has(trendId) && !morph) || (reveal && framed)) ? []
+          : groupFramed ? (tp.omniPersonTrend(trendId) ? (groupRefs || trendPeople).map((x) => ({ data: String(x.data).trim(), mime: x.mime || 'image/png' })) : []) /* منتج أو مكان بعدّة صور: ليست وجوه أشخاص */
+            : framed ? [frameRef || userPhoto] : [],
+        people: soloPeople,
+        selfRef, /* v-video-identity-pose — محسوب أعلاه (يشترك فيه الاحتياط) */
         /* قصّة المحادثة في مقطع واحد (oneClip بعدّة مشاهد) لقطات متتالية بنصّها — كقوالب المونتاج */
-        multiShot: tp.MULTI_SHOT_TRENDS.has(trendId) || !!(trendParams && trendParams.oneClip && Array.isArray(trendParams.scenes) && trendParams.scenes.length > 1) });
+        multiShot });
       if (!r.uri) {
+        /* v-fal-backup: نفاد الرصيد وحده (لا الزحام ولا الرفض) ← الاحتياط قبل أيّ ردّ؛ قبوله {op} بخصمه وتذكرته، ورفضه المسار القديم */
+        if (r.status && falRescue(r.status, r.msg)) {
+          await falBackup.markGeminiOut();
+          if (await viaFal(falSpec, 'veo-create/omni')) return;
+        }
         if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video, chargedPay);
         if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
         chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
@@ -305,7 +471,7 @@ module.exports = async (req, res) => {
       // v-video-refund: التذكرة كـVeo — veo-status يسوّيها عند التسليم، والكنس يردّها إن لم يُسلَّم
       await require('./video-job.js').rememberVideoJob(op, { username: chargedUser, cost: pointsLib.COSTS.veo_video, locked: !!videoLocked, pay: chargedPay });
       chargedUser = null; videoLocked = null;
-      console.log('[veo-create] trend ' + String(body.trend).slice(0, 20) + ' ready on omni in ' + Math.round((Date.now() - t0) / 1000) + 's');
+      console.log('[veo-create] ' + (body.trend ? 'trend ' + String(body.trend).slice(0, 20) : 'cinematic') + ' ready on omni in ' + Math.round((Date.now() - t0) / 1000) + 's');
       res.status(200).json({ op });
       return;
     }
@@ -326,6 +492,10 @@ module.exports = async (req, res) => {
         mimeType: imageMime || 'image/png',
       };
     }
+    /* v-fal-backup: المسار القديم (TREND_ENGINE/CINEMA_ENGINE=veo) — الأمر نفسه وصورته أوّل إطار كـinstance.image */
+    const falVeo = { prompt, portrait: aspectRatio === '9:16', durationSec: body.trend ? 8 : omniDur };
+    if (instance.image) falVeo.image = { b64: instance.image.bytesBase64Encoded, mime: instance.image.mimeType };
+    if (await falBackup.geminiOutRecently() && await viaFal(falVeo, 'veo-create/veo')) return;
 
     const upstream = await fetch(GL + '/models/' + model + ':predictLongRunning', {
       method: 'POST',
@@ -338,6 +508,11 @@ module.exports = async (req, res) => {
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
       const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
+      /* v-fal-backup: نفاد الرصيد ← الاحتياط قبل الردّ، ورفضه المسار القديم */
+      if (falRescue(upstream.status, msg)) {
+        await falBackup.markGeminiOut();
+        if (await viaFal(falVeo, 'veo-create/veo')) return;
+      }
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
       chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
@@ -355,7 +530,7 @@ module.exports = async (req, res) => {
     try {
       if (chargedUser) await require('./points.js').refundPoints(chargedUser, require('./points.js').COSTS.veo_video, chargedPay);
       if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
-    } catch (e2) { /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
+    } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/veo-create:533'); /* guard-ok — فشل الاسترجاع لا يُخفي الخطأ الأصليّ، ويُسجَّل أدناه */ }
     console.error('[veo-create] ' + (e && e.stack ? e.stack : e));
     res.status(500).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.', retryable: true });
   }
@@ -363,9 +538,22 @@ module.exports = async (req, res) => {
 module.exports.VEO_PROMPT_MAX = VEO_PROMPT_MAX;
 module.exports.OMNI_OP_PREFIX = OMNI_OP_PREFIX;
 module.exports.omniOpKey = omniOpKey;
+module.exports.FAL_OP_PREFIX = FAL_OP_PREFIX; // v-fal-backup
+module.exports.falOpKey = falOpKey;
 module.exports.trendEngine = trendEngine;
+module.exports.cinemaEngine = cinemaEngine;
 module.exports.TREND_NO_CUTS = TREND_NO_CUTS;
 module.exports.TREND_REF_GUIDE = TREND_REF_GUIDE;
+module.exports.bindTrendRef = bindTrendRef;
+module.exports.groupRefDecl = groupRefDecl;
+module.exports.groupRefGuide = groupRefGuide;
+module.exports.bindGroupRefs = bindGroupRefs;
+module.exports.TREND_FRAME_GUIDE_MANY = TREND_FRAME_GUIDE_MANY;
+module.exports.TREND_REVEAL_DECL = TREND_REVEAL_DECL;
+module.exports.TREND_REVEAL_GUIDE = TREND_REVEAL_GUIDE;
 module.exports.VEO_FREE_IMAGE_MAX = VEO_FREE_IMAGE_MAX;
 module.exports.VEO_FREE_MAX = VEO_FREE_MAX;
 module.exports.FRAME_LOCK = FRAME_LOCK;
+module.exports.PHOTO_REF_GUIDE = PHOTO_REF_GUIDE; // v-video-identity-pose
+module.exports.TREND_TURN_GUIDE = TREND_TURN_GUIDE; // v-trends-identity-audit
+module.exports.TREND_REVEAL_GUIDE_BK = TREND_REVEAL_GUIDE_BK; // v-trends-identity-audit

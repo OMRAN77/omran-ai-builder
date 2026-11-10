@@ -101,6 +101,11 @@
     display:none; text-align:center; margin-top:10px; padding:10px; border-radius:10px;
     background:var(--good); color:#1a1608; font-weight:800; text-decoration:none;
   }
+  /* v-share-next (المالك ٧ نوفمبر): «مشاركة» تحت «تحميل الفيديو» — نافذة المشاركة الموحّدة في التطبيق الأمّ */
+  #shareLink{
+    display:none; width:100%; text-align:center; margin-top:8px; padding:10px; border-radius:10px; box-sizing:border-box;
+    background:var(--panel2); color:var(--text); border:1px solid var(--border); font:inherit; font-weight:800; cursor:pointer;
+  }
 
   .hidden{ display:none !important; }
   .badge{
@@ -196,6 +201,7 @@
     <div id="status2"></div>
     <video id="resultVideo" controls></video>
     <a id="downloadLink" download="lesson.mp4">⬇️ تحميل الفيديو</a>
+    <button id="shareLink" type="button">↗️ مشاركة</button>
   </div>
 
 </main>
@@ -225,7 +231,7 @@
       topicPh:'مثال: الدورة الدموية في جسم الإنسان', lblDuration:'مدة الفيديو التقريبية',
       lblLevel:'المستوى', school:'مدرسي', university:'جامعي', lblVoice:'صوت الراوي', lblUiLang:'لغة الدرس',
       btnGenScript:'✨ إنشاء سكربت الدرس', editorTitle:'📑 راجع وعدّل الشرائح',
-      btnGenVideo:'🎬 إنشاء الفيديو', download:'⬇️ تحميل الفيديو',
+      btnGenVideo:'🎬 إنشاء الفيديو', download:'⬇️ تحميل الفيديو', share:'↗️ مشاركة',
       footer:'عمران التعليمي — بدعم من الذكاء الاصطناعي',
       genScriptWorking:'✨ جاري إنشاء سكربت الدرس بالذكاء الاصطناعي...', genScriptErr:'❌ خطأ: ',
       needTopic:'⚠️ اكتب موضوع الدرس أولًا.',
@@ -243,7 +249,7 @@
       topicPh:'e.g. The human circulatory system', lblDuration:'Approximate video length',
       lblLevel:'Level', school:'School', university:'University', lblVoice:'Narrator voice', lblUiLang:'Lesson language',
       btnGenScript:'✨ Generate lesson script', editorTitle:'📑 Review & edit slides',
-      btnGenVideo:'🎬 Create the video', download:'⬇️ Download video',
+      btnGenVideo:'🎬 Create the video', download:'⬇️ Download video', share:'↗️ Share',
       footer:'Omran Edu — powered by AI',
       genScriptWorking:'✨ Generating the lesson script with AI...', genScriptErr:'❌ Error: ',
       needTopic:'⚠️ Please enter a lesson topic first.',
@@ -261,7 +267,7 @@
       topicPh:'ex. : La circulation sanguine chez l\'humain', lblDuration:'Durée approximative de la vidéo',
       lblLevel:'Niveau', school:'Scolaire', university:'Universitaire', lblVoice:'Voix du narrateur', lblUiLang:'Langue de la leçon',
       btnGenScript:'✨ Générer le script de la leçon', editorTitle:'📑 Revoir et modifier les diapositives',
-      btnGenVideo:'🎬 Créer la vidéo', download:'⬇️ Télécharger la vidéo',
+      btnGenVideo:'🎬 Créer la vidéo', download:'⬇️ Télécharger la vidéo', share:'↗️ Partager',
       footer:'Omran Éducation — propulsé par l\'IA',
       genScriptWorking:'✨ Génération du script de la leçon par IA...', genScriptErr:'❌ Erreur : ',
       needTopic:'⚠️ Veuillez entrer un sujet de leçon d\'abord.',
@@ -279,7 +285,7 @@
       topicPh:'उदा.: मानव शरीर में रक्त परिसंचरण', lblDuration:'वीडियो की अनुमानित अवधि',
       lblLevel:'स्तर', school:'स्कूल', university:'विश्वविद्यालय', lblVoice:'कथावाचक की आवाज़', lblUiLang:'पाठ की भाषा',
       btnGenScript:'✨ पाठ स्क्रिप्ट बनाएँ', editorTitle:'📑 स्लाइड्स की समीक्षा और संपादन करें',
-      btnGenVideo:'🎬 वीडियो बनाएँ', download:'⬇️ वीडियो डाउनलोड करें',
+      btnGenVideo:'🎬 वीडियो बनाएँ', download:'⬇️ वीडियो डाउनलोड करें', share:'↗️ शेयर करें',
       footer:'उमरान शिक्षा — एआई द्वारा संचालित',
       genScriptWorking:'✨ एआई द्वारा पाठ स्क्रिप्ट बनाई जा रही है...', genScriptErr:'❌ त्रुटि: ',
       needTopic:'⚠️ कृपया पहले पाठ का विषय लिखें।',
@@ -297,7 +303,7 @@
       topicPh:'مثال: انسانی جسم میں خون کی گردش', lblDuration:'ویڈیو کا تخمینی دورانیہ',
       lblLevel:'سطح', school:'اسکول', university:'یونیورسٹی', lblVoice:'راوی کی آواز', lblUiLang:'سبق کی زبان',
       btnGenScript:'✨ سبق کا اسکرپٹ بنائیں', editorTitle:'📑 سلائیڈز کا جائزہ اور ترمیم کریں',
-      btnGenVideo:'🎬 ویڈیو بنائیں', download:'⬇️ ویڈیو ڈاؤن لوڈ کریں',
+      btnGenVideo:'🎬 ویڈیو بنائیں', download:'⬇️ ویڈیو ڈاؤن لوڈ کریں', share:'↗️ شیئر کریں',
       footer:'عمران تعلیم — مصنوعی ذہانت کی مدد سے',
       genScriptWorking:'✨ مصنوعی ذہانت سبق کا اسکرپٹ بنا رہی ہے...', genScriptErr:'❌ خرابی: ',
       needTopic:'⚠️ پہلے سبق کا موضوع لکھیں۔',
@@ -315,7 +321,7 @@
       topicPh:'যেমন মানুষের সংবহনতন্ত্র', lblDuration:'আনুমানিক ভিডিও দৈর্ঘ্য', lblLevel:'স্তর',
       school:'স্কুল', university:'বিশ্ববিদ্যালয়', lblVoice:'কথক কন্ঠ', lblUiLang:'পাঠের ভাষা',
       btnGenScript:'✨ পাঠের স্ক্রিপ্ট তৈরি করুন', editorTitle:'📑 পর্যালোচনা করুন এবং স্লাইড সম্পাদনা করুন৷', btnGenVideo:'🎬 ভিডিওটি তৈরি করুন',
-      download:'⬇️ ভিডিও ডাউনলোড করুন', footer:'ওমরান শিক্ষা — AI দ্বারা চালিত', genScriptWorking:'✨ AI দিয়ে পাঠের স্ক্রিপ্ট তৈরি করা হচ্ছে...',
+      download:'⬇️ ভিডিও ডাউনলোড করুন', share:'↗️ শেয়ার', footer:'ওমরান শিক্ষা — AI দ্বারা চালিত', genScriptWorking:'✨ AI দিয়ে পাঠের স্ক্রিপ্ট তৈরি করা হচ্ছে...',
       genScriptErr:'❌ ত্রুটি: ', needTopic:'⚠️ অনুগ্রহ করে প্রথমে একটি পাঠের বিষয় লিখুন।', slideHeading:'স্লাইড শিরোনাম',
       slideBullets:'বুলেট পয়েন্ট (প্রতি লাইনে একটি)', slideNarration:'বর্ণনা পাঠ্য', slideLabel:'স্লাইড',
       genSlideImg:'🖼️ স্লাইড প্রস্তুত করা হচ্ছে ', genSlideAudio:'🔊 স্লাইডের জন্য অডিও তৈরি করা হচ্ছে ', buildingClip:'🎞️ স্লাইডের জন্য বিল্ডিং ক্লিপ ',
@@ -330,7 +336,7 @@
       topicPh:'जस्तै मानव परिसंचरण प्रणाली', lblDuration:'अनुमानित भिडियो लम्बाइ', lblLevel:'स्तर',
       school:'विद्यालय', university:'विश्वविद्यालय', lblVoice:'कथाकार आवाज', lblUiLang:'पाठको भाषा',
       btnGenScript:'✨ पाठ लिपि उत्पन्न गर्नुहोस्', editorTitle:'📑 स्लाइडहरू समीक्षा र सम्पादन गर्नुहोस्', btnGenVideo:'🎬 भिडियो बनाउनुहोस्',
-      download:'⬇️ भिडियो डाउनलोड गर्नुहोस्', footer:'ओम्रान शिक्षा — AI द्वारा संचालित', genScriptWorking:'✨ AI सँग पाठ लिपि उत्पन्न गर्दै...',
+      download:'⬇️ भिडियो डाउनलोड गर्नुहोस्', share:'↗️ सेयर', footer:'ओम्रान शिक्षा — AI द्वारा संचालित', genScriptWorking:'✨ AI सँग पाठ लिपि उत्पन्न गर्दै...',
       genScriptErr:'❌ त्रुटि: ', needTopic:'⚠️ कृपया पहिले एउटा पाठ विषय प्रविष्ट गर्नुहोस्।', slideHeading:'स्लाइड शीर्षक',
       slideBullets:'बुलेट बिन्दुहरू (प्रति लाइन एक)', slideNarration:'कथन पाठ', slideLabel:'स्लाइड',
       genSlideImg:'🖼️ स्लाइड तयारी गर्दै ', genSlideAudio:'🔊 स्लाइडको लागि अडियो उत्पन्न गर्दै ', buildingClip:'🎞️ स्लाइडको लागि निर्माण क्लिप ',
@@ -346,7 +352,7 @@
       topicPh:'ej.: El sistema circulatorio humano', lblDuration:'Duración aproximada del video',
       lblLevel:'Nivel', school:'Escolar', university:'Universitario', lblVoice:'Voz del narrador', lblUiLang:'Idioma de la lección',
       btnGenScript:'✨ Generar el guion de la lección', editorTitle:'📑 Revisa y edita las diapositivas',
-      btnGenVideo:'🎬 Crear el video', download:'⬇️ Descargar video',
+      btnGenVideo:'🎬 Crear el video', download:'⬇️ Descargar video', share:'↗️ Compartir',
       footer:'Omran Edu — impulsado por IA',
       genScriptWorking:'✨ Generando el guion de la lección con IA...', genScriptErr:'❌ Error: ',
       needTopic:'⚠️ Escribe primero el tema de la lección.',
@@ -364,7 +370,7 @@
       topicPh:'hal.: Ang sistema ng sirkulasyon ng tao', lblDuration:'Tinatayang haba ng video',
       lblLevel:'Antas', school:'Paaralan', university:'Unibersidad', lblVoice:'Boses ng tagapagsalaysay', lblUiLang:'Wika ng aralin',
       btnGenScript:'✨ Buuin ang script ng aralin', editorTitle:'📑 Suriin at i-edit ang mga slide',
-      btnGenVideo:'🎬 Gawin ang video', download:'⬇️ I-download ang video',
+      btnGenVideo:'🎬 Gawin ang video', download:'⬇️ I-download ang video', share:'↗️ Ibahagi',
       footer:'Omran Edu — pinapagana ng AI',
       genScriptWorking:'✨ Binubuo ang script ng aralin gamit ang AI...', genScriptErr:'❌ Error: ',
       needTopic:'⚠️ Isulat muna ang paksa ng aralin.',
@@ -382,7 +388,7 @@
       topicPh:'mis.: Sistem peredaran darah manusia', lblDuration:'Perkiraan durasi video',
       lblLevel:'Tingkat', school:'Sekolah', university:'Universitas', lblVoice:'Suara narator', lblUiLang:'Bahasa pelajaran',
       btnGenScript:'✨ Buat naskah pelajaran', editorTitle:'📑 Tinjau dan edit slide',
-      btnGenVideo:'🎬 Buat video', download:'⬇️ Unduh video',
+      btnGenVideo:'🎬 Buat video', download:'⬇️ Unduh video', share:'↗️ Bagikan',
       footer:'Omran Edu — didukung AI',
       genScriptWorking:'✨ Sedang membuat naskah pelajaran dengan AI...', genScriptErr:'❌ Kesalahan: ',
       needTopic:'⚠️ Tulis dulu topik pelajarannya.',
@@ -400,7 +406,7 @@
       topicPh:'ഉദാ: മനുഷ്യ രക്തചംക്രമണ വ്യവസ്ഥ', lblDuration:'വീഡിയോയുടെ ഏകദേശ ദൈർഘ്യം',
       lblLevel:'നില', school:'സ്കൂൾ', university:'സർവകലാശാല', lblVoice:'ആഖ്യാതാവിന്റെ ശബ്ദം', lblUiLang:'പാഠത്തിന്റെ ഭാഷ',
       btnGenScript:'✨ പാഠ സ്ക്രിപ്റ്റ് സൃഷ്ടിക്കുക', editorTitle:'📑 സ്ലൈഡുകൾ അവലോകനം ചെയ്ത് എഡിറ്റ് ചെയ്യുക',
-      btnGenVideo:'🎬 വീഡിയോ സൃഷ്ടിക്കുക', download:'⬇️ വീഡിയോ ഡൗൺലോഡ് ചെയ്യുക',
+      btnGenVideo:'🎬 വീഡിയോ സൃഷ്ടിക്കുക', download:'⬇️ വീഡിയോ ഡൗൺലോഡ് ചെയ്യുക', share:'↗️ പങ്കിടുക',
       footer:'ഒംറാൻ എജു — AI പിന്തുണയോടെ',
       genScriptWorking:'✨ AI ഉപയോഗിച്ച് പാഠ സ്ക്രിപ്റ്റ് സൃഷ്ടിക്കുന്നു...', genScriptErr:'❌ പിശക്: ',
       needTopic:'⚠️ ആദ്യം പാഠത്തിന്റെ വിഷയം എഴുതുക.',
@@ -418,7 +424,7 @@
       topicPh:'напр.: Кровеносная система человека', lblDuration:'Примерная длительность видео',
       lblLevel:'Уровень', school:'Школьный', university:'Университетский', lblVoice:'Голос диктора', lblUiLang:'Язык урока',
       btnGenScript:'✨ Создать сценарий урока', editorTitle:'📑 Просмотрите и отредактируйте слайды',
-      btnGenVideo:'🎬 Создать видео', download:'⬇️ Скачать видео',
+      btnGenVideo:'🎬 Создать видео', download:'⬇️ Скачать видео', share:'↗️ Поделиться',
       footer:'Omran Edu — на базе ИИ',
       genScriptWorking:'✨ ИИ создаёт сценарий урока...', genScriptErr:'❌ Ошибка: ',
       needTopic:'⚠️ Сначала введите тему урока.',
@@ -436,7 +442,7 @@
       topicPh:'örn.: İnsanda dolaşım sistemi', lblDuration:'Yaklaşık video süresi',
       lblLevel:'Seviye', school:'Okul', university:'Üniversite', lblVoice:'Anlatıcı sesi', lblUiLang:'Ders dili',
       btnGenScript:'✨ Ders senaryosu oluştur', editorTitle:'📑 Slaytları incele ve düzenle',
-      btnGenVideo:'🎬 Videoyu oluştur', download:'⬇️ Videoyu indir',
+      btnGenVideo:'🎬 Videoyu oluştur', download:'⬇️ Videoyu indir', share:'↗️ Paylaş',
       footer:'Omran Edu — yapay zekâ destekli',
       genScriptWorking:'✨ Ders senaryosu yapay zekâ ile oluşturuluyor...', genScriptErr:'❌ Hata: ',
       needTopic:'⚠️ Önce ders konusunu yazın.',
@@ -454,7 +460,7 @@
       topicPh:'例如：人体血液循环系统', lblDuration:'视频大致时长',
       lblLevel:'级别', school:'中小学', university:'大学', lblVoice:'旁白声音', lblUiLang:'课程语言',
       btnGenScript:'✨ 生成课程脚本', editorTitle:'📑 查看并编辑幻灯片',
-      btnGenVideo:'🎬 生成视频', download:'⬇️ 下载视频',
+      btnGenVideo:'🎬 生成视频', download:'⬇️ 下载视频', share:'↗️ 分享',
       footer:'Omran 教育 — AI 驱动',
       genScriptWorking:'✨ 正在用 AI 生成课程脚本…', genScriptErr:'❌ 错误：',
       needTopic:'⚠️ 请先输入课程主题。',
@@ -468,6 +474,27 @@
       voiceMale:'男声', voiceFemale:'女声', voiceNeutral:'中性',
     },
   };
+  /* v-audit-edu (pages-static-10): الخطأ كان «❌ Error: OpenAI error: {…جسم المزوّد الخامّ…}» — الآن نصّ الصفحة بلغة الدرس:
+     svcPaused (نصّ التطبيق نفسه) لأيّ عطب، وaxEduCapUser لرمز السقف daily_cap. الصفحة مستقلّة لا تحمّل قاموس التطبيق. */
+  (function(){
+    const X = {
+      ar:{ svcPaused:'الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.', axEduCapUser:'وصلت للحد اليومي — عد غدًا.' },
+      en:{ svcPaused:'This service is temporarily unavailable — please try again shortly.', axEduCapUser:'You’ve reached today’s limit — come back tomorrow.' },
+      fr:{ svcPaused:'Ce service est temporairement indisponible — réessayez dans un instant.', axEduCapUser:'Vous avez atteint la limite du jour — revenez demain.' },
+      hi:{ svcPaused:'यह सेवा अस्थायी रूप से उपलब्ध नहीं है — थोड़ी देर बाद फिर कोशिश करें।', axEduCapUser:'आप आज की सीमा तक पहुँच गए हैं — कल फिर आएँ।' },
+      ur:{ svcPaused:'یہ سروس عارضی طور پر دستیاب نہیں — تھوڑی دیر بعد دوبارہ کوشش کریں۔', axEduCapUser:'آپ آج کی حد تک پہنچ گئے ہیں — کل دوبارہ آئیں۔' },
+      bn:{ svcPaused:'এই সেবাটি সাময়িকভাবে বন্ধ আছে — একটু পরে আবার চেষ্টা করুন।', axEduCapUser:'আপনি আজকের সীমায় পৌঁছে গেছেন — আগামীকাল আবার আসুন।' },
+      ne:{ svcPaused:'यो सेवा अस्थायी रूपमा उपलब्ध छैन — केही बेरपछि फेरि प्रयास गर्नुहोस्।', axEduCapUser:'तपाईं आजको सीमामा पुग्नुभयो — भोलि फेरि आउनुहोस्।' },
+      es:{ svcPaused:'Este servicio no está disponible temporalmente — inténtalo de nuevo en un momento.', axEduCapUser:'Has alcanzado el límite de hoy — vuelve mañana.' },
+      fil:{ svcPaused:'Pansamantalang hindi available ang serbisyong ito — subukan ulit mamaya.', axEduCapUser:'Naabot mo na ang limitasyon para sa araw na ito — bumalik bukas.' },
+      id:{ svcPaused:'Layanan ini sementara tidak tersedia — coba lagi sebentar lagi.', axEduCapUser:'Anda telah mencapai batas hari ini — kembali lagi besok.' },
+      ml:{ svcPaused:'ഈ സേവനം താൽക്കാലികമായി ലഭ്യമല്ല — അൽപ്പസമയം കഴിഞ്ഞ് വീണ്ടും ശ്രമിക്കൂ.', axEduCapUser:'ഇന്നത്തെ പരിധിയിൽ നിങ്ങൾ എത്തി — നാളെ വീണ്ടും വരൂ.' },
+      ru:{ svcPaused:'Сервис временно недоступен — попробуйте чуть позже.', axEduCapUser:'Вы достигли лимита на сегодня — возвращайтесь завтра.' },
+      tr:{ svcPaused:'Bu hizmet geçici olarak kullanılamıyor — birazdan tekrar deneyin.', axEduCapUser:'Bugünkü sınıra ulaştınız — yarın tekrar gelin.' },
+      zh:{ svcPaused:'该服务暂时不可用 — 请稍后再试。', axEduCapUser:'您已达到今天的上限 — 请明天再来。' },
+    };
+    for (const k in X) { if (STR[k]) Object.assign(STR[k], X[k]); }
+  })();
 
   const RTL_LANGS = ['ar', 'ur'];
   function isEn(){ return lang !== 'ar' && lang !== 'ur'; } // used for LTR canvas/text layout
@@ -501,6 +528,7 @@
     $('#editorTitle').textContent = T('editorTitle');
     $('#btnGenerateVideo').textContent = T('btnGenVideo');
     $('#downloadLink').textContent = T('download');
+    $('#shareLink').textContent = T('share');
     $('#footerText').textContent = T('footer');
     const uiDd = $('#uiLang');
     if (uiDd) uiDd.value = lang;
@@ -593,21 +621,33 @@
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ action: 'lesson-script', topic, durationMinutes: duration, lang, level })
       });
-      const data = await res.json();
-      if(!res.ok || data.error) throw new Error(data.error || 'unknown');
+      const data = await res.json().catch(() => null);
+      /* v-audit-edu: نصّ الخادم لا يُعرض (عربيّ وحده، وكان فيه نصّ المزوّد الخامّ) — رمزه يختار نصّ الصفحة بلغة الدرس */
+      if(!res.ok || !data || data.error){
+        const er = new Error('lesson-script ' + res.status);
+        er.eduMsg = (data && data.code === 'daily_cap') ? T('axEduCapUser') : T('svcPaused');
+        throw er;
+      }
       lessonData = data;
       renderSlides();
       $('#editorCard').classList.remove('hidden');
       $('#editorCard').scrollIntoView({behavior:'smooth'});
       setStatus1('');
     } catch(e){
-      setStatus1(T('genScriptErr') + (e.message || e));
+      console.warn('lesson-script', e);
+      setStatus1(T('genScriptErr') + ((e && e.eduMsg) || T('svcPaused')));
     } finally {
       $('#btnGenerateScript').disabled = false;
     }
   };
 
   // ---------- Video building (client-side, via ffmpeg.wasm) ----------
+  let lastLessonBlob = null; /* v-share-next: آخر درس مبنيّ — للمشاركة */
+  document.addEventListener('click', function(e){
+    const b = e.target && e.target.closest ? e.target.closest('#shareLink') : null;
+    if(!b || !lastLessonBlob) return;
+    try{ window.parent.omranShareMedia({ src: lastLessonBlob, name: 'lesson.mp4', kind: 'video' }); }catch(err){ /* guard-ok — بلا نافذة المشاركة في الأمّ يبقى التحميل */ }
+  });
   let ffmpegInstance = null;
   function withTimeout(promise, ms, label){
     return Promise.race([
@@ -621,11 +661,15 @@
     setStatus2(T('loadingFFmpeg'));
     // Self-hosted (same-origin) ffmpeg.wasm assets — avoids cross-origin Worker
     // restrictions that cause ffmpeg.load() to hang forever when loaded from a CDN.
+    /* v-audit-edu (pages-static-2): ffmpeg-core.wasm غير متتبَّع في edu-old/ffmpeg-assets/core/esm (لا يُنشر) فكان الطلب 404
+       صفحة HTML ويفشل التحميل («expected magic word… 3c 21 64 6f»). النسخة المتتبَّعة على الأصل نفسه /ffmpeg/core/ (نفس
+       ffmpeg-core.js حرفًا — md5 eaefa8c3…)، والمحرّر الرئيسيّ يحمّلها من هناك (app-11-video). */
     const cdns = [
       {
         ffmpegPkg: '/edu-old/ffmpeg-assets/ffmpeg/esm/index.js',
         utilPkg: '/edu-old/ffmpeg-assets/util/esm/index.js',
         core: '/edu-old/ffmpeg-assets/core/esm',
+        wasm: '/ffmpeg/core/ffmpeg-core.wasm',
         pkgBase: '/edu-old/ffmpeg-assets/ffmpeg/esm',
       },
     ];
@@ -639,7 +683,7 @@
           const ffmpeg = new FFmpeg();
           await ffmpeg.load({
             coreURL: await toBlobURL(c.core + '/ffmpeg-core.js', 'text/javascript'),
-            wasmURL: await toBlobURL(c.core + '/ffmpeg-core.wasm', 'application/wasm'),
+            wasmURL: await toBlobURL(c.wasm, 'application/wasm'),
           });
           return ffmpeg;
         })();
@@ -745,6 +789,7 @@
     progressBar.style.width = '0%';
     $('#resultVideo').style.display = 'none';
     $('#downloadLink').style.display = 'none';
+    $('#shareLink').style.display = 'none';
     const voice = $('#voice').value;
 
     try{
@@ -805,6 +850,9 @@
       $('#resultVideo').style.display = 'block';
       $('#downloadLink').href = url;
       $('#downloadLink').style.display = 'block';
+      /* v-share-next: الفيديو نفسه عبر نافذة المشاركة في التطبيق الأمّ (الإطار من الأصل نفسه) — يظهر الزرّ حيث توجد */
+      lastLessonBlob = finalBlob;
+      try{ if(window.parent && window.parent !== window && typeof window.parent.omranShareMedia === 'function') $('#shareLink').style.display = 'block'; }catch(e){ /* guard-ok — إطار بلا أمّ من الأصل نفسه: يبقى التحميل وحده */ }
     } catch(e){
       setStatus2(T('videoErr') + (e.message || e));
     } finally {

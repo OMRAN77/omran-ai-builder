@@ -1215,6 +1215,14 @@ export function platformResults(st) {
 }
 
 async function gate() {
+  // v-bot-pause (أمر المالك ٢٦ أكتوبر «وقف البوت مؤقتًا»): وجود scripts/social-bot.paused يوقف الحلقات المجدولة؛
+  // التشغيل اليدوي يبقى كما هو. للاستئناف: احذف الملف.
+  if (process.env.GITHUB_EVENT_NAME === 'schedule' && fs.existsSync(path.join(ROOT, 'scripts/social-bot.paused'))) {
+    log('gate: go=0 · paused (scripts/social-bot.paused)');
+    gh('notice', 'bot paused — delete scripts/social-bot.paused to resume');
+    if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, 'go=0\n');
+    return;
+  }
   let go = true, why = 'manual run';
   if (process.env.GITHUB_EVENT_NAME === 'schedule' && UP_KEY) {
     try {

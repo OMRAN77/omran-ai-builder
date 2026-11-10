@@ -8,7 +8,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { writeFile, chmod, mkdtemp } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { slugBranch } from './policy.mjs';
 
@@ -21,6 +21,9 @@ export function makeGit(opts) {
   const base = String(env.CC_BASE_BRANCH || 'main');
   const token = String(env.GITHUB_TOKEN || '').trim();
   const fetchImpl = opts.fetchImpl || fetch;
+  // v-audit-bridge: العنوان الوحيد الذي يدفع إليه الجسر بمفتاحه (opts.originUrl للاختبار بمستودع محلّيّ).
+  const originUrl = String(opts.originUrl || ('https://github.com/' + repo + '.git'));
+  const sameUrl = (u) => String(u || '').trim().replace(/\.git$/i, '').toLowerCase() === originUrl.replace(/\.git$/i, '').toLowerCase();
 
   async function git(args, extraEnv) {
     const { stdout } = await execFileP('git', args, { cwd, env: Object.assign({}, env, { GIT_TERMINAL_PROMPT: '0' }, extraEnv || {}), maxBuffer: 8 * 1024 * 1024 });
@@ -56,6 +59,26 @@ export function makeGit(opts) {
     return { repo, base, branch, dirty, ahead, head };
   }
 
+  /* v-audit-bridge (sat-bridges-1): الدفع الوحيد بمفتاح الكتابة — لـ«انشر» ولـ«git push» الذي يكتبه Claude Code (بيئته بلا
+     مفتاح). الوجهة refs/heads/<فرع> صريحة (لا تخمين git ولا remote.origin.push)، لا قسر (git يرفض غير التقدّم السريع)، لا
+     الأساس ولا main/master، من نسخة المستودع وحدها، وإلى عنوان origin المتوقّع وحده (pushurl/insteadOf المحوَّل = لا دفع، فلا
+     يذهب المفتاح لغير مستودع المالك). خطّافات المستودع ومساعدات الاعتماد المضبوطة فيه لا تعمل بمفتاح الجسر. */
+  async function pushBranch(input) {
+    const i = input && typeof input === 'object' ? input : {};
+    const branch = String(i.branch || '').trim(), src = String(i.src || branch).trim();
+    if (i.dir && resolve(cwd, String(i.dir)) !== resolve(cwd)) return { error: 'الدفع من نسخة المستودع وحدها (' + cwd + ').' };
+    if (!branch || branch.startsWith('-') || /^(main|master)$/i.test(branch) || branch === base) return { error: 'الدفع إلى ' + base + ' ممنوع: ادفع فرعًا وافتح طلب سحب، والمالك يدمج بأمر «ادمج».' };
+    if (!(await git(['check-ref-format', '--branch', branch]).then(() => true, () => false))) return { error: 'اسم فرع غير صالح: ' + branch };
+    const from = src === 'HEAD' ? 'HEAD' : 'refs/heads/' + src;
+    const sha = src.startsWith('-') ? '' : await git(['rev-parse', '--verify', '--quiet', from + '^{commit}']).catch(() => '');
+    if (!sha) return { error: 'لا فرع محلّيّ بهذا الاسم: ' + src };
+    const urls = (await git(['remote', 'get-url', '--push', '--all', 'origin']).catch(() => '')).split('\n').filter(Boolean);
+    if (urls.length !== 1 || !sameUrl(urls[0])) return { error: 'عنوان الدفع لـorigin ليس مستودع المالك — لا دفع.' };
+    const creds = await askpass();
+    await git(['-c', 'core.hooksPath=/dev/null', '-c', 'credential.helper=', 'push', ...(i.upstream ? ['-u'] : []), 'origin', from + ':refs/heads/' + branch], Object.assign({ GITHUB_TOKEN: '', GH_TOKEN: '' }, creds));
+    return { ok: true, src, branch, sha: sha.slice(0, 12) };
+  }
+
   /** «انشر»: فرع عمل إن كنّا على الأساس، التزام لما بقي، دفع، وطلب سحب (أو الموجود). */
   async function publish(input) {
     const i = input && typeof input === 'object' ? input : {};
@@ -72,8 +95,8 @@ export function makeGit(opts) {
     }
     const ahead = Number(await git(['rev-list', '--count', 'origin/' + base + '..HEAD']).catch(() => '0')) || 0;
     if (!ahead) return { error: 'لا التزامات جديدة فوق ' + base + ' — لا شيء يُنشر.' };
-    const creds = await askpass();
-    await git(['push', '-u', 'origin', branch + ':refs/heads/' + branch], creds);
+    const pushed = await pushBranch({ src: branch, branch, upstream: true });
+    if (pushed.error) return pushed;
     const sha = await git(['rev-parse', 'HEAD']);
     // طلب السحب: الموجود المفتوح لهذا الفرع، وإلّا جديد
     const owner = repo.split('/')[0];
@@ -97,7 +120,7 @@ export function makeGit(opts) {
     const p = pr.json;
     const checks = await gh('/repos/' + repo + '/commits/' + p.head.sha + '/check-runs?per_page=30');
     const runs = checks.ok && checks.json && Array.isArray(checks.json.check_runs) ? checks.json.check_runs.map((c) => ({ name: c.name, status: c.status, conclusion: c.conclusion || null })) : [];
-    return { number, state: p.state, merged: !!p.merged_at, mergeable_state: p.mergeable_state, head: p.head.sha, url: p.html_url, checks: runs,
+    return { number, state: p.state, merged: !!p.merged_at, mergeable_state: p.mergeable_state, head: p.head.sha, headRef: p.head.ref || '', url: p.html_url, checks: runs,
       failing: runs.filter((c) => c.status === 'completed' && !['success', 'skipped', 'neutral'].includes(c.conclusion)).map((c) => c.name),
       pending: runs.filter((c) => c.status !== 'completed').map((c) => c.name) };
   }
@@ -115,8 +138,20 @@ export function makeGit(opts) {
     if (st.failing.length && !i.force) return { error: 'فحوص حمراء: ' + st.failing.join('، ') + ' — أصلحها أو أرسل «ادمج بالقوّة».', pr: st };
     const done = await gh('/repos/' + repo + '/pulls/' + n + '/merge', { method: 'PUT', body: JSON.stringify({ merge_method: 'merge', sha: st.head }) });
     if (!done.ok) return { error: 'رفض GitHub الدمج: HTTP ' + done.status + ' ' + String(done.json && done.json.message || '').slice(0, 160), pr: st };
-    await resetToBase().catch(() => {});
-    return { ok: true, sha: done.json && done.json.sha, url: st.url, pendingChecks: st.pending };
+    // v-audit-bridge (sat-bridges-5): كان resetToBase بلا شرط يمسح عملًا لم يُنشر (الدمج التلقائيّ في الخلفيّة أثناء مهمّة جديدة).
+    const kept = !(await cleanAfterMerge(st).catch(() => false));
+    if (!kept) await resetToBase().catch(() => {});
+    return { ok: true, sha: done.json && done.json.sha, url: st.url, pendingChecks: st.pending, kept };
+  }
+
+  /** نسخة العمل تعود إلى الأساس بعد الدمج فقط إن كانت نظيفة وعلى فرع الطلب المدموج نفسه بلا التزامات غير مدفوعة
+      (أو على الأساس بلا التزامات محلّيّة)؛ غير ذلك عمل آخر يبقى كما هو. */
+  async function cleanAfterMerge(pr) {
+    const s = await status();
+    if (s.dirty) return false;
+    if (s.branch === base) return !s.ahead;
+    if (!pr.headRef || s.branch !== pr.headRef) return false;
+    return git(['merge-base', '--is-ancestor', 'HEAD', pr.head]).then(() => true, () => false);
   }
 
   /** «تراجع»: إسقاط التغييرات المحلّيّة والعودة إلى أحدث الأساس. */
@@ -130,5 +165,5 @@ export function makeGit(opts) {
     return status();
   }
 
-  return { git, gh, status, publish, prState, merge, resetToBase, repo, base };
+  return { git, gh, status, publish, pushBranch, prState, merge, resetToBase, repo, base };
 }

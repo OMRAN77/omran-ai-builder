@@ -26,9 +26,10 @@ on:
         default: 'kimi-k3'
         type: string
       merge:
-        description: 'دمج طلب السحب تلقائيًّا عند نجاح npm run ci — "true" افتراضيًّا، "false" لترك المراجعة للمالك'
+        # v-sec-automerge: الافتراضيّ صار "false" — المالك يدمج بعد المراجعة (كان ينشر بلا مراجعة).
+        description: 'دمج طلب السحب تلقائيًّا عند نجاح npm run ci — "false" افتراضيًّا (مراجعة المالك)، "true" للدمج التلقائيّ'
         required: false
-        default: 'true'
+        default: 'false'
         type: string
 
 permissions:

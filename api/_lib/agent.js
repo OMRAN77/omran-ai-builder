@@ -152,7 +152,7 @@ function trailDid(name, input) {
   if (name === 'web_search') return 'بحثتُ عن «' + (s(input.query, 60) || '؟') + '»';
   if (name === 'fetch_page') {
     let h = s(input.url, 80);
-    try { h = new URL(String(input.url)).hostname || h; } catch (e) { /* رابط مشوّه → نعرض ما أُرسل */ }
+    try { h = new URL(String(input.url)).hostname || h; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:155'); /* رابط مشوّه → نعرض ما أُرسل */ }
     return 'قرأتُ ' + h;
   }
   if (name === 'write_github') return 'رفعتُ إلى GitHub ' + (s(input.repo, 50) || '') + ' (' + (Array.isArray(input.files) ? input.files.length : 0) + ' ملفًّا)';
@@ -338,18 +338,18 @@ async function fetchPage(url) {
       signal: ctrl.signal,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OmranAgent/1.0)' },
     });
-    clearTimeout(t);
-    if (!r.ok) return 'فشل فتح الصفحة: HTTP ' + r.status;
-    const html = await r.text();
-    // Strip scripts/styles/tags → plain text.
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/\s+/g, ' ')
-      .trim();
+    if (!r.ok) { clearTimeout(t); return 'فشل فتح الصفحة: HTTP ' + r.status; }
+    // v-sec-fetchpage: الجذر — fetchPage كان (١) يوقف مؤقّت القطع فور وصول الترويسة، فقراءة الجسم
+    // r.text() بلا سقف حجم ولا مهلة: خادمٌ يبثّ بلا نهاية يعلّق هذه الدالّة (وهي داخل حلقة أدوات
+    // الوكيل) ويملأ الذاكرة. و(٢) ينظّف الوسوم بتعابير تربيعيّة (/<[^>]+>/ و<script[\s\S]*?>) فمدخلٌ
+    // فيه عشرات الكيلوبايتات من «<» يأخذ دقائق تتجاوز مهلة الدالّة. الآن:
+    //   • readCappedText — قراءة من التدفّق حتّى سقف بايت ثمّ قطع، والمؤقّت ساريٍ طوال القراءة (try/finally).
+    //   • htmlToText — إزالة script/style بالبحث لا بالتعبير، ووسم واحد بـ/<[^<>]*>/ الخطّيّ.
+    // الوحدة المشتركة api/_lib/_html-text.js (نفسها في chat.js وlive-deps.js).
+    const { readCappedText, htmlToText } = require('./_html-text.js');
+    let html;
+    try { html = await readCappedText(r); } finally { clearTimeout(t); }
+    const text = htmlToText(html);
     return text ? text.slice(0, 6000) : 'الصفحة فارغة أو محتواها غير قابل للقراءة.';
   } catch (e) {
     return 'فشل فتح الصفحة: ' + e.message;
@@ -393,9 +393,9 @@ async function runInClient(send, name, input) {
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 400));
     let rec = null;
-    try { rec = await kvGetJSON(key); } catch (e) { /* شبكة متعثّرة — نعيد المحاولة */ }
+    try { rec = await kvGetJSON(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:396'); /* شبكة متعثّرة — نعيد المحاولة */ }
     if (rec && typeof rec.output === 'string') {
-      try { await kvDel(key); } catch (e) { /* التنظيف اختياري، وTTL يتكفّل */ }
+      try { await kvDel(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:398'); /* التنظيف اختياري، وTTL يتكفّل */ }
       return rec.output.slice(0, 4000);
     }
   }
@@ -485,7 +485,7 @@ module.exports = async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   if (res.flushHeaders) res.flushHeaders();
-  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق مجرى SSE — لا وجهة للكتابة، والمحاولة التالية ستكتشف ذلك */ } };
+  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:488'); /* العميل أغلق مجرى SSE — لا وجهة للكتابة، والمحاولة التالية ستكتشف ذلك */ } };
 
   const runUser = usage.username || ''; if (runUser && !isOwner(runUser)) { try { await require('./owner-inbox.js').scanTurn({ user: runUser, prov: 'claude', via: 'agent', text: living.lastUserText(messages) }); } catch (e) { console.warn('[agent] owner-inbox', e && e.message); } } // v-owner-inbox: كلام غير المالك في الوكيل أيضًا
   const run = { runId: 'r' + Date.now().toString(36), startedAt: Date.now(), updatedAt: Date.now(), step: 0,
@@ -518,7 +518,7 @@ module.exports = async (req, res) => {
   }
 
   // v545 — المعرفة الجماعيّة (لا تُحقن لمها الصوتيّة: شخصيّتها ومعلوماتها لا تُمَسّ).
-  try { system += await require('./collective.js').blockAsync(); } catch (e) { /* guard-ok: collective enrichment is optional; the chat request must continue. */ }
+  try { system += await require('./collective.js').blockAsync(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:521'); /* guard-ok: collective enrichment is optional; the chat request must continue. */ }
 
   if (currentCode) {
     // v-chat-edit: الكود كاملًا (كان يُقصّ عند ٦٠ ألفًا فيعدّل الوكيل ما لم يره)، والتصميم الكبير يُعدَّل برقع لا بملفّ كامل ينقطع
@@ -528,7 +528,7 @@ module.exports = async (req, res) => {
   /* v-gen-image-agent (أمر المالك ١٣ أكتوبر «اربط صورة عمّم بالوكيل»): كالمحادثة — «عمّم» ومعها صورة (genImage من الواجهة) تُحفظ برابط في التطبيق ويصل رابطها العشرة. */
   let __genImg = null;
   if (isOwner(runUser) && body.genImage && require('./prov-self.js').ownerSaidGeneralize(living.lastUserText(messages))) { try { __genImg = await require('./prov-self.js').noteGenImage(body.genImage, 'claude'); } catch (e) { console.warn('[agent] gen image failed', e && e.message); } }
-  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude', isOwner(runUser) ? { messages: messages, lastUserText: living.lastUserText(messages), genImageUrl: (__genImg && __genImg.url) || '' } : { lastUserText: living.lastUserText(messages) } /* v-liked-reply */); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all · v-owner-gen
+  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude', isOwner(runUser) ? { messages: messages, lastUserText: living.lastUserText(messages), genImageUrl: (__genImg && __genImg.url) || '' } : { lastUserText: living.lastUserText(messages) } /* v-liked-reply */); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:531'); /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all · v-owner-gen
   if (isOwner(runUser)) system += OWNER_ENGINEERING_NOTE + OWNER_COMMAND_NOTE; // v-owner-obey: آخر النظام فيعلو على ما قبله · v-agent-surgical
 
   const convoAll = messages
@@ -588,6 +588,9 @@ module.exports = async (req, res) => {
     let steps = 0;
     let ownerCarried = false; // v-owner-carry
     let timeoutClose = false; // v-prov-close-read: خطوة جواب بعد مهلة الأدوات
+    /* v-audit-agent (srv-agent-1): ختام بـFINAL_EDIT_NOTE («نفّذ التعديل الآن بـedit_github») كان يقطع الأداة نفسها التي أمر بها — نداء Opus
+       مدفوع بلا رفعة ثمّ «انتهت المهلة». الآن كـeditClose في owner-loop: رفعة واحدة (edit_github/write_github) تُنفَّذ ثمّ يُختم التشغيل. */
+    let editClose = false, closeEdits = 0;
 
     // 4 خطوات لا تكفي «اقرأ ← افهم ← جرّب ← أخطأت ← صحّح ← تحقّق». المهام
     // الحقيقية تحتاج عشرات الجولات، وكان الوكيل يتوقف في منتصف عمله فيبدو
@@ -624,7 +627,7 @@ module.exports = async (req, res) => {
     meterRun = async () => {
       if (runMetered || !runUser || isOwner(runUser)) return;
       runMetered = true;
-      try { const cm = require('./cost-meter.js'); await cm.addCost(runUser, cm.tokenCostUsd(runServed || model, runUse), 'chat'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+      try { const cm = require('./cost-meter.js'); await cm.addCost(runUser, cm.tokenCostUsd(runServed || model, runUse), 'chat'); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:630'); /* guard-ok — القياس لا يوقف خدمة */ }
     };
     const orModel = (m) => 'anthropic/' + String(m || '').replace(/-(\d+)-(\d+)$/, '-$1.$2');
     /* v-or-display: على الوسيط كان الوكيل بلا عرض — كتل التفكير فارغة فيبدو صامتًا بعد الهبوط. للمالك العرض نفسه؛ ورفضه (400 بأيّ نصّ)
@@ -645,7 +648,7 @@ module.exports = async (req, res) => {
     const swapNote = (nowWho) => {
       const f = agentFail || {};
       let raw = String(f.text || '');
-      try { const j = JSON.parse(raw); raw = String((j.error && (j.error.message || j.error)) || j.message || raw); } catch (e) { /* نصّ لا JSON */ }
+      try { const j = JSON.parse(raw); raw = String((j.error && (j.error.message || j.error)) || j.message || raw); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:651'); /* نصّ لا JSON */ }
       const t = raw.replace(/[A-Za-z0-9_-]{24,}/g, '…').replace(/\s+/g, ' ').trim();
       const credit = /credit|balance|billing|insufficient|quota|payment|402/i.test(t + ' ' + (f.status || ''));
       return '\n\n🔧 للمالك فقط — ' + (f.who || 'Anthropic مباشر') + ' فشل: ' + (credit ? 'لا رصيد كافٍ' : 'خطأ ' + (f.status || '؟')) + (t ? ' (' + t.slice(0, 140) + ')' : '') + ' · أجاب بدله: ' + nowWho;
@@ -663,6 +666,7 @@ module.exports = async (req, res) => {
         const oc = require('./owner-carry.js');
         const asked = isOwner(runUser) && oc.ACTION_RE.test(String(living.lastUserText(messages) || ''));
         const note = (asked && !(run.pushes > 0)) ? ol.FINAL_EDIT_NOTE : ol.FINAL_NOTE;
+        editClose = note === ol.FINAL_EDIT_NOTE; // v-audit-agent (srv-agent-1)
         const last = convo[convo.length - 1];
         if (last && last.role === 'user' && Array.isArray(last.content)) {
           last.content = last.content.concat([{ type: 'text', text: note }]);
@@ -718,7 +722,7 @@ module.exports = async (req, res) => {
         const why0 = (await upstream.text().catch(() => '')).slice(0, 300);
         agentFail = { who: 'Anthropic مباشر · ' + modelLabel(model), status: upstream.status, text: why0 };
         logError('agent/owner-swap', new Error(upstream.status + ' ' + why0));
-        try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: why0 }); } catch (e) { /* guard-ok — الإشعار تحسين لا شرط */ }
+        try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: why0 }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:725'); /* guard-ok — الإشعار تحسين لا شرط */ }
         agentViaOR = true;
         convo.forEach((c) => { if (Array.isArray(c.content)) c.content = c.content.filter((b) => !(b && (b.type === 'thinking' || b.type === 'redacted_thinking'))); }); // توقيعات المباشر لا تُقبل عند الوسيط
         upstream = await doCallOR(model);
@@ -782,7 +786,7 @@ module.exports = async (req, res) => {
             send({ phase: 'reporting', done: true });
             res.end();
             return;
-          } catch (e) { /* جرّب التالي */ }
+          } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:789'); /* جرّب التالي */ }
         }
         await meterRun();
         const credRe = /credit|balance|billing|insufficient|quota|payment/i;
@@ -877,7 +881,7 @@ module.exports = async (req, res) => {
       await journal(runUser, run);
 
       if (stopReason === 'tool_use') {
-        if (timeoutClose) {
+        if (timeoutClose && !editClose) { // v-audit-agent (srv-agent-1): ختام السؤال وحده يقطع؛ ختام التعديل ينفّذ رفعته أدناه
           send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' });
           run.status = 'timeout';
           break;
@@ -898,11 +902,12 @@ module.exports = async (req, res) => {
         convo.push({ role: 'assistant', content: assistantContent });
 
         const toolResults = [];
+        const seeImgs = []; // v-audit-agent (srv-agent-6): لقطتا الفرع صورًا بعد نتائج الخطوة — كـ__seeImgs في chat.js
         /* v-owner-paid-gate: رسمات الخطوة الواحدة تبدأ معًا في المتصفّح (كما في المحادثة) — متتابعةً كانت أربع رسمات (حتّى ١٥٠ث لكلّ واحدة)
            تتجاوز مهلة التشغيل فيسقط الرفع بعدها وقد دُفع ثمنها. الحارس والحدّ يُقرَّران هنا مرّة لكلّ أداة. */
         const __draws = {};
         for (const cb of contentBlocks.filter(Boolean)) {
-          if (cb.type !== 'tool_use' || (cb.name !== 'generate_image' && cb.name !== 'edit_image')) continue;
+          if (cb.type !== 'tool_use' || (cb.name !== 'generate_image' && cb.name !== 'edit_image') || timeoutClose) continue; // v-audit-agent: لا رسم مدفوع في ختام التعديل
           let di = {}; try { di = JSON.parse(cb.inputJson || '{}'); } catch (e) { di = {}; /* guard-ok — يُرفض في الحلقة بسببه */ }
           if (!isOwner(runUser)) __draws[cb.id] = { result: '✗ الرسم في الوكيل للمالك وحده.' };
           else if (!require('./owner-media.js').askedMedia(living.lastUserText(messages), false)) __draws[cb.id] = { result: require('./owner-media.js').REFUSAL };
@@ -920,13 +925,16 @@ module.exports = async (req, res) => {
           // v-agent-log: سطر الخطوة يظهر قبل تنفيذها (جارية)، ثمّ يكتمل بناتجها — كما في Claude Code
           const stepTitle = String(input.step_title || '').replace(/\s+/g, ' ').trim().slice(0, 90) || trailDid(cb.name, input);
           send({ act: { k: 'tool', id: cb.id, name: cb.name, t: stepTitle, cmd: stepCmd(cb.name, input), g: (cb.name === 'read_github' && !input.query && input.what !== 'commits' && input.what !== 'commit') ? 1 : 0 } });
-          if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
+          if (timeoutClose && ((cb.name !== 'edit_github' && cb.name !== 'write_github') || closeEdits++ > 0)) result = '✗ انتهت مهلة المهمة — لم تُنفَّذ: ختام التعديل ينفّذ رفعة واحدة فقط.'; // v-audit-agent (srv-agent-1)
+          else if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
           /* v-owner-token: مفتاح GitHub (البيئة أو الخزنة) للمالك وحده — غيره يقرأ العامّ بلا مفتاح. */
           else if (cb.name === 'read_github') result = await readGithub(input, isOwner(runUser) ? { deep: true } : { anonymous: true }); // v-agent-deep: قراءة عميقة للمالك
           else if (cb.name === 'write_github') {
             // للمالك وحده، وبسقف ثلاث رفعات في التشغيل: حلقة ترفع بلا حدّ تُغرق المستودع بالفروع.
+            const gate = githubWrite.pushGate(input, living.lastUserText(messages)); // v-audit-agent (srv-agent-2): حارس النيّة من الخادم لا النموذج
             if (!isOwner(runUser)) result = '✗ الرفع إلى GitHub للمالك وحده.';
+            else if (gate) result = gate;
             else {
               run.pushes = (run.pushes || 0) + 1;
               result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await require('./agent-img.js').ensureSaved(input, imgIds, (t) => runInClient(send, 'save_image', { token: t })).then(() => githubWrite.pushFiles(input, { imgIds }))); // v-agent-img-mode: «__IMG_N__»
@@ -935,7 +943,9 @@ module.exports = async (req, res) => {
           /* v-agent-surgical: التعديل الجراحيّ يتشارك سقف الرفعات مع write_github، والدمج بإذن «ادمج» في آخر رسالة المالك
              يفحصه الخادم هنا لا النموذج — ونصّ يدّعي الإذن داخل ملفّ أو صفحة لا يمرّ. */
           else if (cb.name === 'edit_github') {
+            const gate = githubWrite.pushGate(input, living.lastUserText(messages)); // v-audit-agent (srv-agent-2)
             if (!isOwner(runUser)) result = '✗ التعديل على GitHub للمالك وحده.';
+            else if (gate) result = gate;
             else {
               run.pushes = (run.pushes || 0) + 1;
               result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await require('./agent-img.js').ensureSaved(input, imgIds, (t) => runInClient(send, 'save_image', { token: t })).then(() => githubEdit.editFiles(input, { imgIds }))); // v-agent-img-mode
@@ -951,7 +961,7 @@ module.exports = async (req, res) => {
             const act = String((input && input.action) || '');
             if (!isOwner(runUser)) result = '✗ إدارة GitHub للمالك وحده.';
             else if (!githubManage.ownerAllows(act, living.lastUserText(messages))) result = '✗ «' + act + '» يحتاج أن يقولها المالك صراحةً في رسالته الأخيرة («سكّر» · «افتح» · «احذف» · «وقّف») — اعرض عليه ما ستفعله واسأله.';
-            else { run.manages = (run.manages || 0) + 1; result = run.manages > 8 ? '✗ ثمانية استدعاءات إدارة في التشغيل الواحد حدّ مقصود.' : githubManage.formatManage(await githubManage.manage(input)); }
+            else { run.manages = (run.manages || 0) + 1; const mr = run.manages > 8 ? null : await githubManage.manage(input); result = mr ? githubManage.formatManage(mr) : '✗ ثمانية استدعاءات إدارة في التشغيل الواحد حدّ مقصود.'; if (mr && Array.isArray(mr.images)) seeImgs.push(...mr.images.slice(0, 2)); } // v-audit-agent (srv-agent-6): الوكيل كلود يرى
           }
           else if (cb.name === 'delegate_code_task') {
             // v-agent-delegate: للمالك وحده، ومهمّة واحدة في التشغيل — كلّ تسليم يشغّل Claude Code على حساب المالك.
@@ -1006,6 +1016,15 @@ module.exports = async (req, res) => {
           if (run.trail.length > 24) run.trail.splice(0, run.trail.length - 24);
         }
         run.updatedAt = Date.now();
+        /* v-audit-agent (srv-agent-6): نتائج الأدوات أوّلًا (شرط أنثروبيك) ثمّ اللقطة باسمها — كان النصّ يقول «مرفقتان» والصور تُرمى */
+        for (const im of seeImgs.filter((x) => x && x.b64).slice(0, 4)) toolResults.push({ type: 'text', text: '[' + (im.label || im.path || 'لقطة') + ']' }, { type: 'image', source: { type: 'base64', media_type: im.mime || 'image/png', data: im.b64 } });
+        /* v-audit-agent (srv-agent-1): ختام التعديل نفّذ رفعته — يُختم هنا برابطها (لا خطوة بعده)، وبلا رفعة = المهلة كما كانت */
+        if (timeoutClose) {
+          const ref = toolResults.map((t) => (t.type === 'tool_result' && /^✅ رُفع/.test(String(t.content)) ? require('./owner-loop.js').pushRef(t.content) : '')).filter(Boolean).pop() || '';
+          if (ref) { send({ phase: 'reporting', delta: '\n\n' + ref }); run.text = (run.text + '\n\n' + ref).slice(-60000); run.status = 'done'; }
+          else { send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' }); run.status = 'timeout'; }
+          break;
+        }
         await journal(runUser, run);
         convo.push({ role: 'user', content: toolResults });
         send({ phase: 'planning', status: '🧠 الوكيل يراجع النتائج ويكمل العمل…' });
@@ -1045,7 +1064,7 @@ module.exports = async (req, res) => {
         }
       }
       // Finished normally.
-      if (isOwner(runUser)) { try { const __ps = require('./prov-self.js'); await __ps.captureOwnerTurn(messages, run.text, 'claude', living.lastUserText(messages)); } catch (e) { /* guard-ok — فشل حفظ المحادثة المشتركة لا يوقف الردّ */ } } // v-prov-one
+      if (isOwner(runUser)) { try { const __ps = require('./prov-self.js'); await __ps.captureOwnerTurn(messages, run.text, 'claude', living.lastUserText(messages)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:1067'); /* guard-ok — فشل حفظ المحادثة المشتركة لا يوقف الردّ */ } } // v-prov-one
       run.status = 'done'; await journal(runUser, run); await meterRun(); // v-tokens-agent-cache: التكلفة الفعليّة قبل إغلاق المجرى (بعده قد تتجمّد الدالّة)
       if (agentFail && isOwner(runUser)) send({ phase: 'reporting', delta: swapNote('كلود عبر الوسيط · ' + orModel(model)) }); // v-owner-swap: للمالك وحده، تحت الردّ
       send({ phase: 'reporting', done: true });
@@ -1060,7 +1079,7 @@ module.exports = async (req, res) => {
     run.status = 'error'; run.error = String((e && e.message) || e).slice(0, 200);
     await journal(runUser, run); await meterRun();
     send({ error: 'Agent error: ' + e.message });
-    try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا — لا شيء يُنهى */ }
+    try { res.end(); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/agent:1082'); /* المجرى مُغلق أصلًا — لا شيء يُنهى */ }
   }
 };
 

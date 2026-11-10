@@ -91,9 +91,9 @@ test('٤. كلّ خصم ناجح يُسجَّل بتكلفتنا من جدول �
   await points.spendPoints('bo', 15, 'maha_minute');
   assert.equal(micros('bo', 'voice'), Math.round(55 / 100 / 3.6725 * 1e6));
   users.set('pv', { username: 'pv', points: 0, plan: 'pro', planUpdatedAt: Date.now() });
-  const r = await points.spendPoints('pv', 40, 'minimax_video', { planVideoOnly: true });
+  const r = await points.spendPoints('pv', points.COSTS.minimax_video, 'minimax_video', { planVideoOnly: true }); // v-minimax-h3: ٥٥
   assert.equal(r.planVideo, true);
-  assert.equal(micros('pv', 'media'), Math.round(103 / 100 / 3.6725 * 1e6), 'فيديو الباقة مجّانيّ له لا لنا');
+  assert.equal(micros('pv', 'media'), Math.round(176 / 100 / 3.6725 * 1e6), 'فيديو الباقة مجّانيّ له لا لنا'); // v-minimax-h3
   assert.equal(micros('omran', 'media'), 0, 'المالك لا يُقاس هنا');
 });
 

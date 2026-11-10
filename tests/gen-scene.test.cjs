@@ -245,6 +245,7 @@ test('٩. «فيه وميض قويّ»: سطر الوقت يُبنى مرّة م
       root: { closest: (sel) => (sel === '.msg' && inMsg ? {} : null) }, stripEmoji: (t) => clean(t), timerEl,
       document: { createElement: (tag) => mkNode(tag), createTextNode: (t) => ({ kind: 'text', textContent: String(t) }) },
       fmt: (n) => String(n).replace(/[0-9]/g, (d) => AR[+d]), isAr: () => true, expect: 'الإطلالات تاخذ ~٤٠ ثانية', SEC_DIGIT_EM: W0._secDigitEm,
+      secUnit: 'ث', /* v-audit-chatcli: وحدة الثانية بلغة الواجهة (axChatcliGenwSec) تُحسب مرّة في render */
     };
     vm.runInNewContext(body + ';this.uiText = uiText; this.paintTimer = paintTimer;', ctx);
     return { uiText: ctx.uiText, paintTimer: ctx.paintTimer, timerEl, writes };

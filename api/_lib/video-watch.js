@@ -11,13 +11,19 @@
              مرّتين — وقفل ذرّيّ يمنع تشغيلين متزامنين للمهمّة نفسها. رسائل الخطأ بلا اسم مزوّد (قاعدة المالك). */
 const crypto = require('node:crypto');
 const pointsLib = require('./points.js');
-const { kvGetJSON, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
+const { kvGetJSON, kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
 
 const BASE = 'https://generativelanguage.googleapis.com';
 const MAX_BYTES = 100 * 1024 * 1024;
 const MAX_SEC = 600;
 const CHUNK = 10 * 256 * 1024; // 2.5MB: مضاعف ٢٥٦ ك.ب، وbase64 ≈ ٣٫٥MB تحت حدّ الجسم
 const JOB_TTL = 3600;
+/* v-audit-video (srv-video-4): start وchunk كانا بلا حدّ ولا خصم (الخصم وحذف الملفّ في run وحده)، فحساب بثلاث نقاط يفتح رفعات
+   ١٠٠ م.ب بلا نهاية ولا يشغّلها، وملفّاتها تبقى عند المزوّد ٤٨ ساعة حتّى يمتلئ مخزن المشروع على الجميع. الآن حدّ يوميّ لفتح الرفع
+   (checkAndConsumeCustom كالتحسين الشقيق؛ يُردّ إن تعذّر فتح الجلسة، والمالك وVIP معفيّان)، ومهمّة رفع واحدة مفتوحة للحساب: بدء
+   أخرى يُغلق السابقة غير المشغّلة ويحذف ملفّها عند المزوّد — فلا يبقى للحساب أكثر من ملفّ متروك واحد. */
+const DAILY = 20;
+const openKey = (user) => 'vwatch:open:' + String(user || '').toLowerCase();
 const RUN_LOCK_SEC = 300;
 const GEN_TIMEOUT_MS = 240000; // التحليل غير المتدفّق لا يرسل رأسًا قبل اكتماله — مهلة الثلاثين ثانية العامّة تقطعه
 const MIME = {
@@ -65,7 +71,19 @@ async function readJob(id, user) {
 const saveJob = (id, j) => kvSetRaw(jobKey(id), JSON.stringify(j), JOB_TTL);
 async function dropFile(key, j) { // أفضل جهد — الملفّ عند المزوّد ينتهي وحده بعد يومين
   if (!j || !j.file || !/^files\/[a-z0-9-]+$/i.test(j.file.name)) return;
-  try { await fetch(BASE + '/v1beta/' + j.file.name, { method: 'DELETE', headers: { 'x-goog-api-key': key } }); } catch (e) { /* guard-ok — التنظيف لا يُسقط الردّ */ }
+  try { await fetch(BASE + '/v1beta/' + j.file.name, { method: 'DELETE', headers: { 'x-goog-api-key': key } }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-watch:74'); /* guard-ok — التنظيف لا يُسقط الردّ */ }
+}
+/* v-audit-video (srv-video-4): المهمّة المفتوحة السابقة للحساب — تُغلق ويُحذف ملفّها ما لم تُشغَّل (نتيجة)، أو تُدفع (paid: تُعاد بلا
+   خصم ثانٍ)، أو يجري تشغيلها الآن (القفل). أفضل جهد: عطب KV لا يمنع رفعًا جديدًا. */
+async function closeOpen(user, key) {
+  try {
+    const prev = await kvGetRaw(openKey(user));
+    if (!prev) return;
+    const j = await readJob(prev, user);
+    if (!j || j.result || Number.isFinite(j.paid) || (await kvGetRaw(lockKey(prev)))) return;
+    await dropFile(key, j);
+    await kvDel(jobKey(prev));
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-watch:86'); /* guard-ok — التنظيف لا يمنع رفعًا جديدًا، والملفّ ينتهي وحده بعد يومين */ }
 }
 async function isFree(user) {
   if (pointsLib.isOwnerUsername(user)) return true;
@@ -86,7 +104,7 @@ async function upstreamText(step, r) {
    المستخدم ولا يُصلحه اشتراكه، فلا «أعد المحاولة» ولا تحويل للباقات: unavailable (503) ونصّ «الخدمة متوقّفة مؤقّتًا». */
 const OUTAGE_RE = / 402\b|prepay|billing|credits? (?:are |is )?(?:depleted|exhausted)/i;
 async function failUp(res, user, detail, extra) {
-  try { await require('./log-error.js').logErrorAndFlush('video-watch', new Error(detail), { action: 'video-watch', user: String(user || '').slice(0, 40) }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
+  try { await require('./log-error.js').logErrorAndFlush('video-watch', new Error(detail), { action: 'video-watch', user: String(user || '').slice(0, 40) }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-watch:107'); /* guard-ok — التسجيل تحسين لا شرط */ }
   const outage = OUTAGE_RE.test(String(detail || ''));
   return fail(res, outage ? 503 : 502, outage ? 'unavailable' : 'failed', Object.assign({}, extra || {}, pointsLib.isOwnerUsername(user) ? { __diag: detail } : {}));
 }
@@ -106,19 +124,32 @@ async function start(req, res, body, user, key) {
     const have = rec ? Number(rec.points) || 0 : 0;
     if (have < need) return fail(res, 402, 'points_insufficient', { needed: need, points: have });
   }
-  const r = await fetch(BASE + '/upload/v1beta/files', {
-    method: 'POST',
-    headers: {
-      'x-goog-api-key': key, 'X-Goog-Upload-Protocol': 'resumable', 'X-Goog-Upload-Command': 'start',
-      'X-Goog-Upload-Header-Content-Length': String(size), 'X-Goog-Upload-Header-Content-Type': mime, 'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ file: { display_name: 'chat-video' } }),
-  });
+  // v-audit-video (srv-video-4): حدّ اليوم قبل فتح أيّ جلسة عند المزوّد — 429 limit (حدّ لا تفكّه ترقية، كالتحسين)
+  const usage = require('./_usage.js');
+  const ip = usage.clientIp(req);
+  const q = await usage.checkAndConsumeCustom(body.token, null, ip, 'video-watch', DAILY);
+  if (!q.allowed) return q.banned ? fail(res, 403, 'banned') : fail(res, q.reason === 'limit' ? 429 : 401, q.reason === 'limit' ? 'limit' : 'auth');
+  await closeOpen(user, key);
+  let r;
+  try {
+    r = await fetch(BASE + '/upload/v1beta/files', {
+      method: 'POST',
+      headers: {
+        'x-goog-api-key': key, 'X-Goog-Upload-Protocol': 'resumable', 'X-Goog-Upload-Command': 'start',
+        'X-Goog-Upload-Header-Content-Length': String(size), 'X-Goog-Upload-Header-Content-Type': mime, 'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ file: { display_name: 'chat-video' } }),
+    });
+  } catch (e) { await usage.refundCustom(body.token, null, ip, 'video-watch'); throw e; }
   const url = r.ok ? r.headers.get('x-goog-upload-url') : '';
-  if (!url) return failUp(res, user, r.ok ? 'start: no upload url' : await upstreamText('start', r));
+  if (!url) {
+    await usage.refundCustom(body.token, null, ip, 'video-watch'); // لم تُفتح جلسة — الفتحة تعود لحدّ اليوم
+    return failUp(res, user, r.ok ? 'start: no upload url' : await upstreamText('start', r));
+  }
   const gran = Number(r.headers.get('x-goog-upload-chunk-granularity')) || 0; // للتشخيص إن رُفضت قطعة
   const id = crypto.randomBytes(12).toString('hex');
   await saveJob(id, { u: user, url, size, mime, off: 0, dur, gran, at: Date.now() });
+  try { await kvSetRaw(openKey(user), id, JOB_TTL); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-watch:152'); /* guard-ok — بلا العلامة لا تُغلق هذه المهمّة عند التالية فقط */ }
   return res.status(200).json({ ok: true, id, chunk: CHUNK });
 }
 
@@ -212,7 +243,7 @@ async function run(req, res, body, user, key) {
       const u = d.usageMetadata || {};
       const cm = require('./cost-meter.js');
       await cm.addCost(user, cm.tokenCostUsd(model(), { input: u.promptTokenCount, output: (Number(u.candidatesTokenCount) || 0) + (Number(u.thoughtsTokenCount) || 0) }), 'media');
-    } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-watch:246'); /* guard-ok — القياس لا يوقف خدمة */ }
     j.result = { result: text, cost: charged, sec: Math.round(sec), points: Number.isFinite(pay.points) ? pay.points : null };
     await saveJob(id, j);
     await dropFile(key, j);
@@ -222,7 +253,7 @@ async function run(req, res, body, user, key) {
     console.error('[video-watch] analysis failed:', e && (e.diag || e.message));
     if (charged) { try { await pointsLib.refundPoints(user, charged, payHere ? pay : undefined); } catch (e2) { console.error('[video-watch] refund failed:', e2 && e2.message); } }
     j.paid = null; // رُدّ — المحاولة التالية تخصم من جديد
-    try { await saveJob(id, j); } catch (e3) { /* guard-ok — المهمّة تنتهي وحدها بعد ساعة */ }
+    try { await saveJob(id, j); } catch (e3) { typeof require === 'function' && require('./_swallow.js').swallow(e3, '_lib/video-watch:256'); /* guard-ok — المهمّة تنتهي وحدها بعد ساعة */ }
     await kvDel(lockKey(id));
     return failUp(res, user, e.diag || ('gen: ' + (e && e.message)), { refunded: charged });
   }
@@ -255,3 +286,4 @@ module.exports.instruction = instruction;
 module.exports.CHUNK = CHUNK;
 module.exports.MAX_BYTES = MAX_BYTES;
 module.exports.MAX_SEC = MAX_SEC;
+module.exports.DAILY = DAILY;

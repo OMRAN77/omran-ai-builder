@@ -156,7 +156,7 @@ async function discoverModel(spec, opts) {
       const hit = ids.find((id) => spec.pick.test(id));
       if (hit) return hit;
     }
-  } catch (e) { /* الاستكشاف تحسين لا شرط */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/free-chain:159'); /* الاستكشاف تحسين لا شرط */ }
   return null;
 }
 
@@ -189,7 +189,7 @@ async function streamFreeChain(args) {
     ? all.filter((s) => s.vision).concat(all.filter((s) => !s.vision && Array.isArray(s.visionModels) && s.visionModels.length)
       .map((s) => Object.assign({}, s, { vision: true, visionOnly: true, models: s.visionModels.slice(), model: s.visionModels[0], cacheId: s.id + ':vision', reqExtra: { reasoning: { enabled: false } }, firstTextMs: visionFirstMs })))
     : all;
-  const log = args.log || ((m) => { try { console.warn('[free-chain] ' + m); } catch (e) { /* لا شيء */ } });
+  const log = args.log || ((m) => { try { console.warn('[free-chain] ' + m); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/free-chain:192'); /* لا شيء */ } });
   const now = typeof args.now === 'number' ? args.now : Date.now();
   const system = args.raw ? '' : String(args.system || '') + (args.paid ? PAID_NOTE : FREE_NOTE); // v-owner-free: raw للمالك المتحقَّق منه فقط (chat.js)؛ v-plan-models: paid = مشترك/VIP
   let attempts = 0;

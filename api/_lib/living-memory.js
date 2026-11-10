@@ -260,9 +260,10 @@ function lastUserText(messages) {
 
 // ── التخزين: Redis، للمالك وحده (البوّابة في المستدعي) ───────────────────────────────────────────
 const keyOf = (user) => 'db/living/' + encodeURIComponent(String(user).toLowerCase()) + '.json';
-async function readRecord(user) {
+// v-strict-rmw: opts.strict للقراءة التي تسبق كتابة — عطل لحظيّ لا يُقرأ «لا حقائق» فتُكتب الجديدة وحدها فوق القديمة
+async function readRecord(user, opts) {
   const kv = require('./kv.js');
-  const d = await kv.kvGetJSON(keyOf(user));
+  const d = await kv.kvGetJSON(keyOf(user), opts && opts.strict ? { strict: true } : undefined);
   return { facts: clean(d && d.facts), updatedAt: Number((d && d.updatedAt) || 0) };
 }
 async function readFacts(user) { return (await readRecord(user)).facts; }
@@ -270,7 +271,7 @@ async function writeFacts(user, facts) {
   await require('./kv.js').kvPutJSON(keyOf(user), { facts: clean(facts), updatedAt: Date.now() });
 }
 async function removeFact(user, id) {
-  const facts = await readFacts(user);
+  const facts = (await readRecord(user, { strict: true })).facts; // v-strict-rmw
   const rest = facts.filter((f) => f.id !== id);
   if (rest.length !== facts.length) await writeFacts(user, rest);
   return rest;
@@ -317,7 +318,9 @@ async function learn(user, messages, opts) {
   const rec = await readRecord(user);
   const fresh = await extractFacts(messages, Object.assign({}, opts, { known: rec.facts }));
   if (!fresh.length) return { facts: rec.facts, learned: 0 };
-  const merged = mergeFacts(rec.facts, fresh);
+  /* v-audit-chatsrv (srv-chat-5): القراءة أعلاه قبل نداء النموذج (ثوانٍ) — «مسح الكلّ» أو حذف حقيقة أثناءه كان يُلغى بكتابة الدمج فوق
+     النسخة القديمة. الحقائق الجديدة وحدها تُدمج فوق قراءة طازجة بعد الاستخراج. */
+  const merged = mergeFacts((await readRecord(user, { strict: true })).facts, fresh); // v-strict-rmw
   await writeFacts(user, merged);
   return { facts: merged, learned: fresh.length };
 }

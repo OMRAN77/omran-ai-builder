@@ -311,8 +311,10 @@ test('١٢. (مراجعة النقض ٢) الترقية مرّة لكلّ إيم
   const r = await call({ action: 'email-otp-verify', email: 'lina@gmail.com', otp: mail['lina@gmail.com'].code, lang: 'ar' });
   assert.equal(r.status, 200);
   const second = auth.verifyToken(r.body.token);
-  assert.notEqual(second, 'g_lina@gmail.com');
-  assert.equal(await isVip(second), false, 'لا VIP بلا عدد من إيميل واحد');
+  // v-audit-auth (srv-auth-4): رمز البريد لبريد حساب Google يدخل حسابها نفسه — لا حساب ثانٍ فارغ (كان gina_xxxxxx جديدًا كلّ مرّة)،
+  // ولا حساب آخر يثبت البريد نفسه بعدها (verifiedHolderOf)؛ فلا VIP ثانٍ من إيميل واحد.
+  assert.equal(second, 'g_lina@gmail.com');
+  assert.equal(r.body.isNew, false);
   // المالك يزيل المرقّى — دخول Google التالي لا يعيده
   assert.equal((await vip('DELETE', { token: OWNER, id: 'g_lina@gmail.com' })).status, 200);
   assert.equal(await isVip('g_lina@gmail.com'), false);

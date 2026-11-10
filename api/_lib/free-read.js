@@ -22,9 +22,11 @@ function readableUrl(u) {
 
 function extractUrls(text) {
   const out = [];
-  const re = /https?:\/\/[^\s<>"'`()\[\]{}]+/gi;
+  // v-sec-fetchpage: نقصّ المدخل (آخر رسالة قد تكون ضخمة) ونتخطّى الروابط المفرطة الطول — رابط من
+  // عشرات الكيلوبايت كان يذهب كاملًا إلى جلب الصفحة. ٢٠٠٠ حرف تكفي لأطول رابط حقيقيّ.
+  const re = /https?:\/\/[^\s<>"'`()\[\]{}]{1,2000}/gi;
   let m;
-  while ((m = re.exec(String(text || ''))) && out.length < MAX_URLS) {
+  while ((m = re.exec(String(text || '').slice(0, 20000))) && out.length < MAX_URLS) {
     const u = m[0].replace(/[.,;:!?؟،]+$/, '');
     if (!out.includes(u)) out.push(u);
   }

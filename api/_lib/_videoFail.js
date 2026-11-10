@@ -47,4 +47,23 @@ function toolFail(status, tech) {
   return { code: 502, body: { error: 'failed' } };
 }
 
-module.exports = { startFail, toolFail, isOutage, TEMP, OURS, BAD };
+/* v-audit-prov (srv-providers-5): روابط المحادثة المباشرة القديمة (/api/gemini · groq · mistral · cohere · deepseek · perplexity ·
+   openrouter · openai · claude) كانت تمرّر جسم خطأ المزوّد خامًا («Gemini (400): …» برقم مشروع جوجل، «The model `openai/gpt-oss-20b` …»)،
+   والعميل يعرضه في سطر الحالة والفقاعة لكلّ مستخدم — قاعدة المالك: لا اسم مزوّد ولا موديل في نصّ يراه المستخدم.
+   لغير المالك رمز بلا نصّ، والحالة نفسها لأنّ احتياط العميل يقرّر بها (429 «انتهت مؤقتًا»، 5xx تحويل):
+   - خطأ النموذج (free-chain.isModelError) = model_not_found — به يهبط دور صورة Groq إلى «الوصف ثمّ النصّ» في العميل.
+   - عطب عندنا (٤٠١/٤٠٢/٤٠٣ أو نصّ رصيد/مفتاح — isOutage) = unavailable بـ503: 402 رصيد مزوّدنا كان يُقرأ «وصلت حدّك اليوميّ»
+     و401 «مفتاحك غير صحيح» للمستخدم (رصيد مزوّدنا ليس رصيد المستخدم — PITFALLS).
+   - ما بقي = upstream_error بحالته.
+   النصّ التقنيّ للسجلّ، والمالك يراه كما هو للتشخيص. */
+function chatFail(res, tag, status, tech, owner) {
+  const st = Number(status) || 502;
+  const raw = String(tech || '');
+  if (owner) { res.status(st).setHeader('Content-Type', 'application/json').send(raw || '{"error":"provider_failed"}'); return; }
+  console.error('[' + tag + '] upstream ' + st + ': ' + raw.slice(0, 300));
+  if (require('./free-chain.js').isModelErrorStatus(st, raw)) { res.status(st).json({ error: 'provider_failed', code: 'model_not_found' }); return; }
+  if (isOutage(st, raw)) { res.status(503).json({ error: 'provider_failed', code: 'unavailable' }); return; }
+  res.status(st).json({ error: 'provider_failed', code: 'upstream_error' });
+}
+
+module.exports = { startFail, toolFail, chatFail, isOutage, TEMP, OURS, BAD };

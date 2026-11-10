@@ -21,7 +21,7 @@
     try{
       var u = new URL(url, location.href);
       if(u.origin === location.origin && u.pathname === '/api/video-download'){ var raw = u.searchParams.get('url') || ''; if(/^https:\/\//.test(raw)) return raw; }
-    }catch(e){ /* guard-ok — رابط لا يُحلَّل يبقى كما هو */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:24'); /* guard-ok — رابط لا يُحلَّل يبقى كما هو */ }
     return url;
   }
   function proxied(url){
@@ -54,12 +54,12 @@
         dlTickets[url] = { link: link, exp: Date.now() + (Number(d.ttl) || 0) * 1000 };
         return link;
       }
-    }catch(e){ /* guard-ok — بلا تذكرة يُفتح الرابط الأصليّ */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:57'); /* guard-ok — بلا تذكرة يُفتح الرابط الأصليّ */ }
     return url;
   }
   /* v-media-save: حدّ التنزيل اليوميّ — نصّ الحدّ القائم بالـ١٤ لغة */
   function limitNote(){
-    try{ var m = (typeof window.t === 'function') ? window.t('portraitLimitReached') : ''; if(m && m !== 'portraitLimitReached' && typeof settingsToast === 'function') settingsToast(m); }catch(e){ /* guard-ok — التنبيه ترف */ }
+    try{ var m = (typeof window.t === 'function') ? window.t('portraitLimitReached') : ''; if(m && m !== 'portraitLimitReached' && typeof settingsToast === 'function') settingsToast(m); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:62'); /* guard-ok — التنبيه ترف */ }
   }
   function guessName(url, name){
     if(name) return name;
@@ -68,10 +68,11 @@
   }
   function isMobile(){
     try{
+      if(typeof omranDesktopApp === 'function' && omranDesktopApp()) return false; /* v-desktop-app: تطبيق ويندوز/ماك حاسوب — تنزيل مباشر لا لوحة النظام */
       if(typeof omranLikelyApp === 'function' && omranLikelyApp()) return true;
       if(/Android|HarmonyOS|HUAWEI|HONOR|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent)) return true;
       if(navigator.maxTouchPoints > 1 && /Mac|Linux/i.test(navigator.platform || '')) return true;
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:75'); /* guard-ok */ }
     return false;
   }
   function isVideoUrl(url, name){
@@ -125,7 +126,7 @@
             var vb = /^data:/i.test(url) ? dataUrlToBlob(url) : await (await fetch(url)).blob();
             var vf = new File([vb], nm, { type: vb.type || 'video/mp4' });
             if(navigator.canShare && navigator.canShare({ files: [vf] })){
-              try{ await navigator.share({ files: [vf], title: 'om ai' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
+              try{ await navigator.share({ files: [vf] }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
             }
             if(showSheet(URL.createObjectURL(vb), vf, nm, 'video')) return true;
           } else {
@@ -139,11 +140,11 @@
           if(link && showSheet(link.dl, ifile, link.name, 'image', link.open)) return true;
           /* تعذّر الرفع: المشاركة بالملف ثم الفتح */
           if(ifile && navigator.canShare && navigator.canShare({ files: [ifile] })){
-            try{ await navigator.share({ files: [ifile], title: 'om ai' }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
+            try{ await navigator.share({ files: [ifile] }); return true; }catch(err){ if(err && err.name === 'AbortError') return true; }
           }
           if(showSheet(URL.createObjectURL(ib), ifile, nm, 'image')) return true;
         }
-      }catch(e){ /* guard-ok — نكمل بالمسار العام */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:147'); /* guard-ok — نكمل بالمسار العام */ }
     }
     /* ── الكمبيوتر والمسار العام ── */
     var blob;
@@ -153,24 +154,27 @@
       try{
         var file = new File([blob], nm, { type: blob.type || 'application/octet-stream' });
         if(isMobile() && navigator.canShare && navigator.canShare({ files: [file] })){
-          try{ await navigator.share({ files: [file], title: 'om ai' }); return true; }
+          try{ await navigator.share({ files: [file] }); return true; }
           catch(err){ if(err && err.name === 'AbortError') return true; }
         }
-      }catch(e){ /* guard-ok — نكمل بالرابط */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:160'); /* guard-ok — نكمل بالرابط */ }
       try{
         var u = URL.createObjectURL(blob), a = document.createElement('a');
         a.href = u; a.download = nm; a.rel = 'noopener'; a.dataset.nativeDownload = '1'; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(function(){ URL.revokeObjectURL(u); }, 15000);
         return true;
-      }catch(e){ /* guard-ok */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-save-media:166'); /* guard-ok */ }
     }
     /* v-dl-ticket: فشل البروكسي (401/429) يفتح الرابط الأصليّ — كان يفتح ردّ JSON خامًّا، وصار الضيف لا يحفظ أيّ صورة خارجيّة */
     try{ window.open(url, '_blank', 'noopener'); return true; }catch(e){ return false; }
   };
   /* كل روابط التحميل في التطبيق تمرّ من الحافظ الموحّد — نقرة المستخدم فقط
      (v-pdf-loop: النقرات البرمجية من مصدّر الـPDF ومن هذا الحافظ لا تُلتقط) */
+  /* v-audit-shell (cli-ui-shell-2): مصيدة app-05-img-save تُسجَّل قبل هذه على document نفسه وتملك صور data:/blob: داخل الأغلفة —
+     stopPropagation فيها لا يوقف مستمعًا آخر على العقدة نفسها، فكانت النقرة الواحدة ترفع الصورة مرّتين (سلّة media-save-img) وتفتح ورقتين.
+     نقرة منعها مستمع قبلنا = لها مالك: لا نلمسها. */
   document.addEventListener('click', function(e){
-    if(!e.isTrusted) return;
+    if(!e.isTrusted || e.defaultPrevented) return;
     var a = e.target && e.target.closest ? e.target.closest('a[download]') : null;
     if(!a || a.dataset.nativeDownload === '1') return;
     var href = a.getAttribute('href') || '';

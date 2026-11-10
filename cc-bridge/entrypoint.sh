@@ -29,8 +29,9 @@ fi
 if [ -n "$PW_VERSION" ] && [ ! -d "$CC_REPO_DIR/node_modules/playwright" ]; then
   (cd "$CC_REPO_DIR" && npm i --no-save --no-audit --no-fund "playwright@${PW_VERSION}" >/dev/null 2>&1 || true)
 fi
-# بيانات الدخول لدفع Claude Code فروعه بنفسه (git push إلى غير main، وgh): مساعد اعتماد يقرأ
-# الرمز من البيئة وقت الدفع — لا رمز في العنوان ولا في ملفّ.
+# بيانات الدخول لعمليّات git التي يجريها الجسر نفسه: مساعد اعتماد يقرأ الرمز من البيئة وقت الطلب — لا رمز في
+# العنوان ولا في ملفّ. v-audit-bridge: بيئة Claude Code بلا GITHUB_TOKEN (agentEnv)، فلا يجد المساعد عنده رمزًا،
+# ودفع فرعه يجريه الجسر (pushBranch بـGIT_ASKPASS ومساعدات الاعتماد معطّلة لذلك الأمر).
 if [ -n "$GITHUB_TOKEN" ]; then
   git config --global credential.https://github.com.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
   git config --global user.name "${CC_GIT_NAME:-Claude Code (omran-cc)}"

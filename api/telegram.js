@@ -9,6 +9,12 @@ const { withErrorCapture } = require('./_lib/_errors.js');
 
 const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv');
 const { logError } = require('./_lib/log-error.js');
+const crypto = require('crypto');
+// v-sec-timing: مقارنة ثابتة الزمن لسرّ طوله غير سرّيّ — طولان مختلفان = لا تطابق بلا تسريب.
+function tsEqual(a, b) {
+  const x = Buffer.from(String(a == null ? '' : a)); const y = Buffer.from(String(b == null ? '' : b));
+  return x.length > 0 && x.length === y.length && crypto.timingSafeEqual(x, y);
+}
 
 const APP_URL = 'https://omran-ai-builder.vercel.app';
 const DAILY_LIMIT = 10;
@@ -50,12 +56,13 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
     res.status(503).json({ error: 'webhook not configured' });
     return;
   }
-  if (req.headers['x-telegram-bot-api-secret-token'] !== secret) {
+  // v-sec-timing: مقارنة ثابتة الزمن للسرّ (كانت !== تُفشي الفرق زمنيًّا).
+  if (!tsEqual(req.headers['x-telegram-bot-api-secret-token'], secret)) {
     res.status(401).json({ ok: false }); return;
   }
 
   // Always ACK Telegram quickly so it doesn't retry.
-  const ack = () => { try { res.status(200).json({ ok: true }); } catch (e) { /* تلغرام أغلق الاتصال أو رُدَّ عليه مرّتين — لا شيء يُفعل */ } };
+  const ack = () => { try { res.status(200).json({ ok: true }); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'telegram:65'); /* تلغرام أغلق الاتصال أو رُدَّ عليه مرّتين — لا شيء يُفعل */ } };
 
   try {
     let body = req.body;
@@ -73,7 +80,7 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
     if (__start) {
       const pk = 'db/phone-link/tg/' + chatId;
       await kvPutJSON(pk, { code: __start[1].toUpperCase(), at: Date.now() });
-      try { await kvExpire(pk, __pl.CODE_TTL_SEC); } catch (e) { /* guard-ok — الرمز نفسه يسقط بعد ١٠ دقائق */ }
+      try { await kvExpire(pk, __pl.CODE_TTL_SEC); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'telegram:83'); /* guard-ok — الرمز نفسه يسقط بعد ١٠ دقائق */ }
       await tg(token, 'sendMessage', {
         chat_id: chatId,
         text: 'لتأكيد رقمك في om ai اضغط الزرّ بالأسفل «📱 شارك رقمي».\n\nلا تضغطه إن لم تطلب الربط أو الاسترجاع بنفسك من التطبيق.',
@@ -87,7 +94,7 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
       if (!pend || !pend.code) { await done('افتح رابط الربط من التطبيق أوّلًا (حسابي ← رقم الهاتف).'); ack(); return; }
       if (!msg.from || msg.contact.user_id !== msg.from.id) { await done('شارك رقمك أنت من زرّ «📱 شارك رقمي».'); ack(); return; }
       const r = await __pl.complete(pend.code, msg.contact.phone_number, 'telegram');
-      try { await kvPutJSON('db/phone-link/tg/' + chatId, {}); } catch (e) { /* guard-ok — الرمز صار غير «pending» فلا يُعاد استعماله */ }
+      try { await kvPutJSON('db/phone-link/tg/' + chatId, {}); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'telegram:97'); /* guard-ok — الرمز صار غير «pending» فلا يُعاد استعماله */ }
       await done(__pl.replyText(r)); // الاسترجاع: رابط إعادة كلمة المرور هنا في محادثة الرقم نفسه
       ack(); return;
     }

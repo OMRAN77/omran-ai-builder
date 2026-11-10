@@ -218,7 +218,7 @@ async function plusMode(prompt) {
   sb.window = sb;
   Object.assign(sb, { __parseImageTextSpec: parser.parseImageTextSpec, __fixKnownPhrases: parser.fixKnownPhrases, getGuestId: () => 'g' });
   vm.createContext(sb);
-  vm.runInContext([slice('const __SPELL_PHRASES', 'async function omranSpellFix'), fnSrc('async function omranSpellFix('), fnSrc('function __textScale('), fnSrc('function __textPosArg('), fnSrc('function __omranImgWait('), fnSrc('async function omModeGenerateImage(')] /* v-img-dots-plus: انتظار «+» المشترك — بلا فقاعة يبقى سطر النصّ */.join('\n') + ';this.run=omModeGenerateImage;', sb);
+  vm.runInContext([fnSrc('function omranAttachT(') /* v-audit-attach: نصوص الصور بمفتاح الـ١٤ لغة */, slice('const __SPELL_PHRASES', 'async function omranSpellFix'), fnSrc('async function omranSpellFix('), fnSrc('function __textScale('), fnSrc('function __textPosArg('), fnSrc('function __omranImgWait('), fnSrc('async function omModeGenerateImage(')] /* v-img-dots-plus: انتظار «+» المشترك — بلا فقاعة يبقى سطر النصّ */.join('\n') + ';this.run=omModeGenerateImage;', sb);
   const cur = { messages: [] };
   await sb.run(cur, prompt, null);
   return { cur, calls, layer: plain(cur.imageTextLayer) };

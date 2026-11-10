@@ -444,7 +444,7 @@ function extractJson(text) {
   const cand = t.slice(a, b + 1);
   const tries = [cand, escapeCtrlInStrings(cand), escapeCtrlInStrings(cand).replace(/,\s*([}\]])/g, '$1')];
   for (const c of tries) {
-    try { const v = JSON.parse(c); if (v && typeof v === 'object') return v; } catch (e) { /* جرّب الصيغة التالية */ }
+    try { const v = JSON.parse(c); if (v && typeof v === 'object') return v; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:447'); /* جرّب الصيغة التالية */ }
   }
   return null;
 }
@@ -645,14 +645,14 @@ async function callPro(prompt, opts) {
       let out = '';
       try { out = await runTool(t.name, t.input); } catch (e) { out = 'تعذّرت الأداة: ' + String((e && e.message) || e).slice(0, 200); }
       out = String(out == null ? '' : out).slice(0, 200000);
-      if (o.onTool) { try { o.onTool(t.name, t.input, out.length); } catch (e) { /* الإبلاغ للواجهة لا يُسقط التحليل */ } }
+      if (o.onTool) { try { o.onTool(t.name, t.input, out.length); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:648'); /* الإبلاغ للواجهة لا يُسقط التحليل */ } }
       results.push({ type: 'tool_result', tool_use_id: t.id, content: out });
     }
     const last = round + 1 >= maxRounds || Date.now() >= readUntil;
     if (last) results.push({ type: 'text', text: '[انتهت ميزانيّة القراءة]: اكتب الآن ' + MARK_A + ' ثمّ ' + MARK_R + ' مِمّا قرأته فعلًا، وصرّح صريحًا بأيّ ملفّ لم تقرأه ولماذا. لا تطلب أداة أخرى.' });
     messages.push({ role: 'user', content: results });
   }
-  if (o.onDone) { try { o.onDone({ rounds, toolCalls }); } catch (e) { /* إحصاء للواجهة فقط */ } }
+  if (o.onDone) { try { o.onDone({ rounds, toolCalls }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:655'); /* إحصاء للواجهة فقط */ } }
   return text;
 }
 
@@ -686,9 +686,9 @@ module.exports = async function handler(req, res) {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   if (res.flushHeaders) res.flushHeaders();
-  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } };
-  const ka = setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000);
-  const finish = () => { clearInterval(ka); try { res.end(); } catch (e) { /* المجرى مُغلق أصلًا */ } };
+  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:689'); /* العميل أغلق المجرى */ } };
+  const ka = setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:690'); /* العميل أغلق المجرى */ } }, 4000);
+  const finish = () => { clearInterval(ka); try { res.end(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/code-analyze:691'); /* المجرى مُغلق أصلًا */ } };
 
   try {
     send({ status: '📂 يقرأ الملفّات…', k: 'stReading' });
@@ -714,16 +714,20 @@ module.exports = async function handler(req, res) {
       const t = gh.parseTarget({ url: body.githubUrl, ref: body.githubRef });
       if (!t) { send({ error: 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ.' }); finish(); return; }
       if (t.kind === 'pr' || t.kind === 'issue') { send({ error: 'أعطِ رابط مستودع أو مجلّد أو ملفّ على GitHub — لا طلب سحب أو مسألة.' }); finish(); return; }
-      send({ status: '🐙 يحمّل من GitHub: ' + t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') + '…', k: 'stGithub' });
+      /* v-audit-chatcli (x-i18n-2): أرقام الحالة وأسماؤها بارامترات (p) فيترجم العميل السطر كاملًا بـtStatus بالـ١٤ لغة */
+      send({ status: '🐙 يحمّل من GitHub: ' + t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') + '…', k: 'stGithub', p: { repo: t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') } });
       try {
         let asFile = null;
+        // v-sec-gh-token: مفتاح المالك (GITHUB_TOKEN/الخزنة) يُرسَل فقط حين يكون المنادي المالكَ نفسه.
+        // كان {} يُرسله لكلّ منادٍ، فيقرأ أيّ زائرٍ أيَّ مستودعٍ خاصّ يصل إليه المفتاح. غير المالك: anonymous.
+        const ghOpt = { anonymous: !owner };
         if (t.kind === 'file' || t.kind === 'path') {
-          const c = await gh.getContents(t, {});
+          const c = await gh.getContents(t, ghOpt);
           if (c.error && t.kind === 'file') { send({ error: c.error }); finish(); return; }
           if (c.type === 'file') asFile = c;
         }
         if (asFile) { body.files = (Array.isArray(body.files) ? body.files : []).concat([{ name: asFile.name || t.path, content: asFile.content }]); }
-        else { const z = await gh.fetchRepoZip(t, {}); body._zipEntries = z.entries; }
+        else { const z = await gh.fetchRepoZip(t, ghOpt); body._zipEntries = z.entries; }
       } catch (e) {
         logError('code-analyze/github', e);
         send({ error: 'تعذّر جلب GitHub: ' + String((e && e.message) || e).slice(0, 200) }); finish(); return;
@@ -741,7 +745,7 @@ module.exports = async function handler(req, res) {
       finish(); return;
     }
     const metrics = metricsOf(col.files);
-    send({ status: '🔎 يقرأ ' + col.files.length + ' ملفًّا · ' + metrics.totals.lines + ' سطرًا ويفكّر…', k: 'stAnalyze', tier: usage.tier });
+    send({ status: '🔎 يقرأ ' + col.files.length + ' ملفًّا · ' + metrics.totals.lines + ' سطرًا ويفكّر…', k: 'stAnalyze', p: { n: col.files.length, lines: metrics.totals.lines }, tier: usage.tier });
     /* v-provider-errors: للمالك وحده — أخطاء الإنتاج الحيّة ترافق الكود، فيفحص بما وقع فعلًا لا بما قد يقع. */
     let live = '';
     if (owner) {
@@ -754,7 +758,7 @@ module.exports = async function handler(req, res) {
     const prompt = buildPrompt(col.files, metrics, body.ask, body.lang, live,
       reader ? { index: deepIndex(col.pool, col.files) } : null);
     let lastSent = 0;
-    const onProgress = (n) => { if (n - lastSent >= 1500) { lastSent = n; send({ status: '✍️ يكتب التحليل… ' + n + ' حرفًا', k: 'stWriting' }); } };
+    const onProgress = (n) => { if (n - lastSent >= 1500) { lastSent = n; send({ status: '✍️ يكتب التحليل… ' + n + ' حرفًا', k: 'axChatcliStAnalyzeWriting', p: { n } }); } }; // v-audit-chatcli: مفتاحه — stWriting نصّ المحادثة بلا عدد
     let text = '';
     let readStats = null;
     try {

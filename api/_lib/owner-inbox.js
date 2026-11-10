@@ -40,8 +40,18 @@ function excerpt(t, n) {
   return (typeof cut.toWellFormed === 'function' ? cut.toWellFormed() : cut) + (s.length > cut.length ? '…' : '');
 }
 /** نوع البلاغ لكلام المستخدم: 'insult' · 'complaint' · null. الشتيمة أوّلًا. */
+/* v-inbox-own-words (لقطة المالك ٥ نوفمبر: مواصفات تطبيق GameTracker ملصوقة من luki صارت «متضايق من التطبيق»): العميل (app-09) يحوّل
+   اللصق فوق ١٠٠٠ حرف والملفّات النصّيّة إلى مرفق يُلحق بعد كلام المستخدم «📄 الاسم:\n```…```» — مادّة (كود، مواصفات، سجلّ) لا كلامه،
+   وفيها «errors/crash/slow» مع «the app» دائمًا. المصنّف يقرأ ما قبل أوّل مرفق وحده. ليس استثناء «طلب صنع» (PITFALLS): ما يكتبه
+   المستخدم بنفسه يُقرأ كلّه كما كان. */
+const ATTACH_HEAD = /(?:^|\n\n)📄 [^\n]{1,200}:\n```/;
+function ownWords(text) {
+  const s = String(text || '');
+  const m = ATTACH_HEAD.exec(s);
+  return m ? s.slice(0, m.index) : s;
+}
 function classify(text) {
-  const s = String(text || '').slice(0, SCAN_MAX);
+  const s = ownWords(text).slice(0, SCAN_MAX);
   if (!s.trim()) return null;
   if (INSULT_AR.test(s) || OBSCENE_AR.test(s) || INSULT_EN.test(s) || OBSCENE_EN.test(s)) return 'insult';
   if (STRONG_AR.test(s) || STRONG_EN.test(s)) return 'complaint';
@@ -76,7 +86,7 @@ async function record(entry, opts) {
       await push({ title, body: user + ' · ' + (item.prov || '-') + ': ' + item.text.slice(0, 120) + (item.detail ? ' — ' + item.detail.slice(0, 60) : ''), url: '/' }, o.pushOpts);
       pushed = true;
     }
-  } catch (e) { try { require('./log-error.js').logError('owner-inbox:push', e); } catch (e2) { /* guard-ok — فشل الإشعار لا يمنع الحفظ */ } }
+  } catch (e) { try { require('./log-error.js').logError('owner-inbox:push', e); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/owner-inbox:89'); /* guard-ok — فشل الإشعار لا يمنع الحفظ */ } }
   return { saved: true, pushed, item };
 }
 /** كلام المستخدم في بداية الدور: المالك لا يُبلَّغ عن نفسه. */
@@ -120,7 +130,7 @@ async function dailyDigest(opts) {
     + items.slice().reverse().map((x) => '<tr><td style="padding:6px 8px;border-bottom:1px solid #ddd;white-space:nowrap;color:#666">' + esc(uaeTime(x.at)) + '</td>'
       + '<td style="padding:6px 8px;border-bottom:1px solid #ddd;white-space:nowrap"><b>' + esc(x.user) + '</b><br><span style="color:#888">' + esc(x.prov || '') + '</span></td>'
       + '<td style="padding:6px 8px;border-bottom:1px solid #ddd;white-space:nowrap">' + esc(KIND_LABEL[x.kind] || x.kind) + '</td>'
-      + '<td style="padding:6px 8px;border-bottom:1px solid #ddd">' + esc(x.text) + (x.detail ? '<br><span style="color:#a33">' + esc(x.detail) + '</span>' : '') + '</td></tr>').join('')
+      + '<td style="padding:6px 8px;border-bottom:1px solid #ddd"><div dir="auto">' + esc(x.text) + '</div>' + (x.detail ? '<br><span style="color:#a33">' + esc(x.detail) + '</span>' : '') + '</td></tr>').join('')
     + '</table></div>';
   const send = o.sendMail || auth.sendMail;
   const ok = await send(to, ('صندوق المالك: ' + items.length + ' بلاغًا جديدًا من المستخدمين').slice(0, 120), html);
@@ -130,8 +140,8 @@ async function dailyDigest(opts) {
 /** /api/system?action=owner-inbox — GET القائمة (الأحدث أوّلًا) للمالك وحده؛ POST {action:'clear'} يمسحها. */
 async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
-  const { isOwner } = require('./_owner.js');
-  if (!isOwner(req)) { res.status(403).json({ error: 'owner only' }); return; }
+  const { isOwnerSession } = require('./_owner.js'); // v-audit-agent (srv-agent-3): مقاطع رسائل المستخدمين بأسمائهم — لا MONITOR_KEY
+  if (!isOwnerSession(req)) { res.status(403).json({ error: 'owner only' }); return; }
   const kv = require('./kv.js');
   if (req.method === 'POST') {
     const b = (req.body && typeof req.body === 'object') ? req.body : {};
@@ -143,4 +153,4 @@ async function handler(req, res) {
   res.status(200).json({ items, count: items.length });
 }
 module.exports = handler;
-Object.assign(module.exports, { classify, excerpt, scanTurn, noteFailure, record, dailyDigest, readList, KIND_LABEL, LIST_KEY, DIGEST_KEY, MAX_ITEMS, EXCERPT, PUSH_TTL_S, DEDUPE_MS });
+Object.assign(module.exports, { classify, ownWords, excerpt, scanTurn, noteFailure, record, dailyDigest, readList, KIND_LABEL, LIST_KEY, DIGEST_KEY, MAX_ITEMS, EXCERPT, PUSH_TTL_S, DEDUPE_MS });

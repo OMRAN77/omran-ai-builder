@@ -29,6 +29,7 @@ function harness(file, loadImpl) {
     console: { warn: (...a) => logs.push(a.map(String).join(' ')), error: (...a) => logs.push(a.map(String).join(' ')), log() {} },
     document: { createElement() { throw new Error('لا تحميل سكربت في الاختبار'); }, head: { appendChild() {} } },
     __swallow() {},
+    setTimeout, clearTimeout, // v-audit-uicore: مهلة تحميل البيئة (٦٠ ث) تحتاج مؤقّتات المتصفّح
   };
   ctx.window = ctx;
   vm.createContext(ctx);

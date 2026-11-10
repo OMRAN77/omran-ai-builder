@@ -121,7 +121,7 @@ async function refreshPointsWallet(){
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
       renderMediaPlanStatus(d.media);
     } else { row.style.display = 'none'; }
-  }catch(e){ /* صامت */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:124'); /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
 
@@ -190,7 +190,7 @@ async function refreshAcctPoints(){
         warn.style.display = 'block';
       } else warn.style.display = 'none';
     }
-  }catch(e){ /* صامت — الشبكة قد تنقطع، لا نكسر قائمة الحساب */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:193'); /* صامت — الشبكة قد تنقطع، لا نكسر قائمة الحساب */ }
 }
 window.refreshAcctPoints = refreshAcctPoints;
 
@@ -205,7 +205,7 @@ function omranIOSStoreApp(){
     if(window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()))) return true;
     if(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)) return true;
     if((localStorage.getItem('aiapp_store') || '') === 'apple') return true;
-  }catch(e){ /* guard-ok — بلا كشف تبقى النافذة الداخلية المعتادة */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:208'); /* guard-ok — بلا كشف تبقى النافذة الداخلية المعتادة */ }
   return false;
 }
 
@@ -214,7 +214,7 @@ function openCheckout(plan){
   if(!authGet('aiapp_auth_token')){
     window.__pendingCheckoutPlan = plan;
     const sd0 = document.getElementById('settingsDialog');
-    if (sd0 && sd0.open && typeof sd0.close === 'function') { try { sd0.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
+    if (sd0 && sd0.open && typeof sd0.close === 'function') { try { sd0.close(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:217'); /* guard-ok — cleanup: close() may throw on some browsers */ } }
     if(typeof window.requireLogin === 'function') window.requireLogin('checkout');
     else settingsToast(t('checkoutLoginFirst'));
     return;
@@ -242,7 +242,7 @@ function openCheckout(plan){
     const sd = document.getElementById('settingsDialog');
     // v-checkout-back: من أين فُتح الدفع — ✕ وحده يعيد الإعدادات على الباقات (ومن البوّابة يبقى سهم رجوعها إلى المحادثة)
     window.__ckFromSettings = (sd && sd.open) ? ((sd.dataset && sd.dataset.deepLink === '1') ? 'deep' : 'page') : '';
-    if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
+    if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:245'); /* guard-ok — cleanup: close() may throw on some browsers */ } }
     overlay.style.display = 'flex';
     // v-ios-nogpay (طلب عمران): زر Google Pay منتج أندرويد ولا معنى له على
     // الآيفون — نُخفيه على iOS ويبقى على بقية الأجهزة. البطاقة وPayPal (دفع
@@ -251,7 +251,7 @@ function openCheckout(plan){
       var __isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       var __gpay = overlay.querySelector('button[onclick="clickGooglePay()"]');
       if (__gpay) __gpay.style.display = __isIOS ? 'none' : 'flex';
-    } catch (e) { /* guard-ok */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:254'); /* guard-ok */ }
   }
   loadPaypalButtons();
   setupWalletPaymentRequest(plan);
@@ -331,7 +331,7 @@ async function ensureStripeJs(){
       stripeJsLoaded = true;
     }
     if (window.Stripe) stripeInstance = window.Stripe(STRIPE_PUBLISHABLE_KEY);
-  } catch (e) { /* Stripe.js failed to load — wallet buttons will just report unavailable */ }
+  } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:334'); /* Stripe.js failed to load — wallet buttons will just report unavailable */ }
   return stripeInstance;
 }
 
@@ -415,7 +415,7 @@ async function handleWalletPaymentMethod(ev, plan, currency){
       statusMsg.textContent = vd.error || t('checkoutError');
     }
   } catch (e) {
-    try { ev.complete('fail'); } catch (e2) { /* guard-ok */ }
+    try { ev.complete('fail'); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'app-06-checkout:418'); /* guard-ok */ }
     if (statusMsg) statusMsg.textContent = t('checkoutError');
   }
 }
@@ -692,6 +692,7 @@ $('#btnSettings').onclick = () => {
   try { syncAutoRenewUI(); } catch(e) { console.error(e); }
   try { if (window.omranApplyFontTuner) window.omranApplyFontTuner(); } catch(e) { console.error(e); } // v-font-tuner: الأسماء بلغة الواجهة
   try { setVoiceSpeedUI(typeof mahaReadVoiceSpeed === 'function' ? mahaReadVoiceSpeed() : 'normal'); } catch(e) { console.error(e); }
+  try { setVoiceDialectUI(ttsDialectSetting()); } catch(e) { console.error(e); } // v-reply-dialect
   try { loadThemeToForm(); } catch(e) { console.error(e); }
   try { populateVoicePicker(); } catch(e) { console.error(e); }
   } catch(e) { console.error('settings populate error', e); }
@@ -833,7 +834,7 @@ __headerClockSync();
 try {
   const __btnClockEl = $('#btnClock');
   if (__btnClockEl) new MutationObserver(__headerClockSync).observe(__btnClockEl, { attributes: true, attributeFilter: ['style', 'class'] });
-} catch(e){ /* guard-ok — المراقب تحسين؛ العنصر مخفيّ افتراضيًّا فلا ضرر بغيابه */ }
+} catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:837'); /* guard-ok — المراقب تحسين؛ العنصر مخفيّ افتراضيًّا فلا ضرر بغيابه */ }
 
 function renderClockWorldStrip(){
   const box = $('#clockWorldStrip');
@@ -1026,7 +1027,7 @@ codeEl.addEventListener('input', () => {
       runPythonCode(cur.code);
     } else {
       previewFrame._lastSrc = cur.code; previewFrame._imageView = false;
-      previewFrame.srcdoc = cur.code;
+      omranSetPreview(previewFrame, cur.code);
     }
   }, 500);
 });
@@ -1053,7 +1054,7 @@ $('#btnRunCode').onclick = () => {
     runPythonCode(cur.code);
   } else {
     previewFrame._lastSrc = cur.code; previewFrame._imageView = false;
-    previewFrame.srcdoc = cur.code;
+    omranSetPreview(previewFrame, cur.code);
   }
   switchWorkTab('preview');
 };
@@ -1114,12 +1115,16 @@ $('#codeUploadInput').addEventListener('change', (e) => {
    على iOS Safari (يفتح تبويبًا أو لا شيء). على الجوّال نستخدم مشاركة الملف (navigator.share)
    فيظهر «حفظ في الملفات»؛ على الحاسوب يبقى التنزيل المباشر. */
 async function omranSaveOrShareFile(blob, fname){
-  const isMobile = document.documentElement.classList.contains('mobile-ui');
+  /* v-dl-unified (فحص المالك ٩ نوفمبر «كل ملفات التحميل»): مسار الحفظ الموحّد أوّلًا (app-05 omranSaveBlob) — جسر التطبيق، ثمّ مشاركة
+     الهاتف، وإن رُفضت (ZIP ينتظر تحميل مكتبته من الشبكة فتنتهي «لمسة المستخدم» في الآيفون) رابط خادم بورقة «الملف جاهز» بلمسة جديدة.
+     كان السقوط هنا على رابط blob الذي لا ينزّله الآيفون ولا الغلاف — «ما يطلع شي». والجهاز من نوعه لا من عرض النافذة (mobile-ui). */
+  if(typeof omranSaveBlob === 'function') return omranSaveBlob(blob, fname);
+  const isMobile = document.documentElement.classList.contains('mobile-ui') && !(typeof omranDesktopApp === 'function' && omranDesktopApp()); /* v-desktop-app: تطبيق ويندوز في نافذة ضيّقة يبقى حاسوبًا — لا لوحة النظام */
   if(isMobile){
     try{
       const file = new File([blob], fname, { type: blob.type || 'application/octet-stream' });
       if(navigator.canShare && navigator.canShare({ files: [file] })){
-        await navigator.share({ files: [file], title: fname });
+        await navigator.share({ files: [file] });
         return;
       }
     }catch(e){ if(e && e.name === 'AbortError') return; /* غير الإلغاء: ننزّل عاديًّا أدناه */ }
@@ -1660,6 +1665,10 @@ function throwProviderError(status, errText){
   // (429) or daily-quota (402) failure apart from a hard failure worth surfacing
   // immediately (auth, bad request, etc.).
   let err;
+  /* v-audit-prov (srv-providers-5): رمز الخادم الثابت لخطأ المزوّد ({error:'provider_failed', code}) يُعرض بنصّ الواجهة (providerError)
+     لا بجسمه — لا JSON في الفقاعة ولا في سطر الحالة. نصّ المزوّد الخامّ يصل المالك وحده من الخادم. */
+  let __pf = null;
+  try{ const __j = JSON.parse(errText); if(__j && __j.error === 'provider_failed') __pf = __j; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-06-checkout:1667'); /* guard-ok — جسم غير JSON يُعامَل كما كان */ }
   if(status === 402){
     // 👑 الرد الاحترافي: 402 مع reason:'points' يعني نفاد النقاط (وليس حد يومي).
     let __pointsErr = false;
@@ -1694,12 +1703,13 @@ function throwProviderError(status, errText){
     }catch(e){ __swallow(e, "auth:app-06-checkout#10"); }
     err = sessionMsg ? new Error('🔒 ' + sessionMsg) : new Error(t('authError'));
   } else {
-    err = new Error(t('providerError') + status + ' - ' + (errText || '').slice(0, 200));
+    err = new Error(t('providerError') + status + (__pf ? '' : ' - ' + (errText || '').slice(0, 200)));
   }
   err.status = status;
   // v-claude-shape: مقتطف خطأ المزود الأصلي يظهر في سطر الحالة — «HTTP 400»
   // وحدها كانت تخفي السبب الحقيقي (شكل رسائل مرفوض، مفتاح، نموذج...).
   err.upstreamText = String(errText || '').replace(/\s+/g, ' ').slice(0, 160);
+  if(__pf) err.upstreamText = __pf.code === 'model_not_found' ? 'model_not_found' : ''; // v-audit-prov: model_not_found يُهبط callGroq إلى «الوصف ثمّ النصّ»
   throw err;
 }
 
@@ -1798,7 +1808,7 @@ async function readOpenAICompatibleStream(res, onDelta){
           hadReasoning = true;
           if(onDelta) onDelta('🧠 يفكر الآن…');
         }
-      }catch(e){ /* ignore partial/malformed chunk */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:1807'); /* ignore partial/malformed chunk */ }
     }
   }
   // v207: إذا انتهى البث أثناء التفكير بدون أي رد فعلي (انقطاع/مهلة) —
@@ -1839,7 +1849,7 @@ async function readGeminiStream(res, onDelta){
             if(onDelta) onDelta(full);
           }
         }
-      }catch(e){ /* ignore partial/malformed chunk */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:1848'); /* ignore partial/malformed chunk */ }
     }
   }
   return full;
@@ -1869,7 +1879,7 @@ async function readClaudeStream(res, onDelta){
           full += json.delta.text;
           if(onDelta) onDelta(full);
         }
-      }catch(e){ /* ignore partial/malformed chunk */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:1878'); /* ignore partial/malformed chunk */ }
     }
   }
   return full;
@@ -2678,7 +2688,7 @@ $('#prompt').addEventListener('input', window.__updateSendReady);
       var strip = document.getElementById('attachStrip');
       var tall = (parseInt(p.style.height, 10) || 0) > 46 || !!(strip && strip.childElementCount > 0);
       box.classList.toggle('omTall', tall);
-    }catch(e){ /* guard-ok — cosmetic */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:2687'); /* guard-ok — cosmetic */ }
   }
   window.__composerSyncTall = syncTall;
   function autoGrow(){

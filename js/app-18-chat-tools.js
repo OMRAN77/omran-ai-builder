@@ -20,14 +20,14 @@
       if (!s || (typeof s.isReleased === 'function' && s.isReleased()) || typeof s.step !== 'function') return;
       if (s.__toolStep && typeof s.__toolStep.done === 'function') s.__toolStep.done();
       s.__toolStep = s.step('•', String(txt).replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/, '').trim() || String(txt));
-    } catch (e) { /* شريط الحالة ترفٌ لا يُسقط ردًّا */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-18-chat-tools:23'); /* شريط الحالة ترفٌ لا يُسقط ردًّا */ }
   }
   function noteEnd(st) {
     try {
       var s = st || window.__chatStatus;
       if (s && s.__toolStep && typeof s.__toolStep.done === 'function') s.__toolStep.done();
       if (s) s.__toolStep = null;
-    } catch (e) { /* كسابقه */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-18-chat-tools:30'); /* كسابقه */ }
   }
 
   /** ينفّذ أداة طلبها الخادم داخل متصفّح المستخدم ويعيد ناتجها عبر نقطة منفصلة. */
@@ -70,7 +70,7 @@
   function __raceIdle(p, ms, tag) {
     return new Promise(function (resolve, reject) {
       var idle = 0, last = Date.now(), done = false, to = null;
-      function finish(fn, v) { if (done) return; done = true; try { clearTimeout(to); } catch (e) { /* guard-ok — تنظيف المؤقّت */ } fn(v); }
+      function finish(fn, v) { if (done) return; done = true; try { clearTimeout(to); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-18-chat-tools:73'); /* guard-ok — تنظيف المؤقّت */ } fn(v); }
       function tick() {
         var now = Date.now(), dt = now - last;
         last = now;
@@ -142,8 +142,7 @@
 
   window.callChatWithTools = async function (messages, onDelta, provider, opts) {
     var __rcChat = (onDelta && onDelta.__chat) || ((typeof getCurrent === 'function') ? getCurrent() : null); /* v-img-run-bind: محادثة هذا الطلب (app-09 __sigFn) */
-    window.__chatVideoResult = null;
-    window.__chatCardsResult = null; /* v-cards */
+    window.__chatVideoResult = null; /* v-audit-chatcli: فيديو أداة المحادثة صار لمحادثته (__chatVideoByChat في app-17)، والبطاقات في ناتج هذه الدالّة وحده */
     window.__chatVideoReference = null;
     window.__chatLastUserText = '';
     try {
@@ -165,7 +164,7 @@
         window.__chatLastUserText = String(ut || '').slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 600); /* v-quad-fix: القصّ قبل الـregex — كانت O(n²) على اللصق الطويل */
         break;
       }
-    } catch (e) { /* guard-ok — مرجع الصورة اختياري ولا يجب أن يمنع المحادثة */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-18-chat-tools:167'); /* guard-ok — مرجع الصورة اختياري ولا يجب أن يمنع المحادثة */ }
     // صور هذا الردّ فقط: تُمسح عند كلّ طلب جديد فلا يتراكم عشرات الميغابايت في
     // الذاكرة، وحدّ الأربع يبقى حدَّ ردٍّ لا حدَّ جلسة. الكود المبنيّ يُستبدل فيه
     // الرمز فور وصوله، فلا يضرّه المسح لاحقًا.
@@ -210,11 +209,13 @@
         guestId: window.getGuestId ? window.getGuestId() : '',
         // v-custom-instructions: تعليمات المستخدم من الإعدادات — الخادم ينظّفها ويحقنها.
         customInstructions: (function () { try { return window.getCustomInstructions ? window.getCustomInstructions() : ''; } catch (e) { return ''; } })(),
+        office: (function () { try { return window.omranOfficeLast ? window.omranOfficeLast(__rcChat) : undefined; } catch (e) { return undefined; } })(), /* v-office-files: آخر ملفّ Excel/PowerPoint في هذه المحادثة — يعدّل عليه النموذج (app-44) */
+        officeHint: (function () { try { return (window.omranOfficeHintWanted && window.omranOfficeHintWanted()) ? true : undefined; } catch (e) { return undefined; } })(), /* v-office-files: لم يصنع ملفًّا بعد — النموذج يعرضه بسطر حين يناسب */
       }),
     }), __CHAT_IDLE_MS, '__chat_no_headers__');
     if (!res.ok || !res.body) {
       var errText = '';
-      try { errText = await res.text(); } catch (e) { /* لا جسم للخطأ */ }
+      try { errText = await res.text(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-18-chat-tools:218'); /* لا جسم للخطأ */ }
       throw new Error('chat ' + res.status + ': ' + String(errText).slice(0, 200));
     }
 
@@ -259,8 +260,8 @@
       var chunk;
       try { chunk = await __raceIdle(reader.read(), __toolBusy ? __CHAT_TOOL_MS : __CHAT_IDLE_MS, '__chat_idle__'); }
       catch (e) {
-        if (e && e.name === 'AbortError') { try { e.log = __logNow(); } catch (_l) { /* guard-ok — السجلّ ترف */ } throw e; } /* إيقاف المستخدم أو الحارس الصلب — يمرّ كما هو، ومعه سجلّ العمل (v-interleave-fix) */
-        try { var __cp = reader.cancel(); if (__cp && __cp.catch) __cp.catch(function () { /* guard-ok — المجرى انقطع أصلًا: إلغاؤه يرفض، وبلا هذا رفضٌ غير معالَج (v-turn-close) */ }); } catch (_e) { /* guard-ok — تحرير المجرى */ }
+        if (e && e.name === 'AbortError') { try { e.log = __logNow(); } catch (_l) { typeof __swallow === 'function' && __swallow(_l, 'app-18-chat-tools:263'); /* guard-ok — السجلّ ترف */ } throw e; } /* إيقاف المستخدم أو الحارس الصلب — يمرّ كما هو، ومعه سجلّ العمل (v-interleave-fix) */
+        try { var __cp = reader.cancel(); if (__cp && __cp.catch) __cp.catch(function () { /* guard-ok — المجرى انقطع أصلًا: إلغاؤه يرفض، وبلا هذا رفضٌ غير معالَج (v-turn-close) */ }); } catch (_e) { typeof __swallow === 'function' && __swallow(_e, 'app-18-chat-tools:264'); /* guard-ok — تحرير المجرى */ }
         if (full.trim()) break; /* عندنا نصّ جزئيّ — نعرضه بدل تضييعه */
         /* v-turn-close (لقطة المالك ١٥ أكتوبر: طلب السحب انفتح والفقاعة «ما وصل شي من الخادم» بلا شيء): انقطاع المقبس كان يُقرأ «صمتًا»،
            ويضيع معه سجلّ العمل (الخطوات والجمل المنقولة إليه) وعلامة سبب الخادم. الآن: الصمت الظاهر ٩٠ ث «stalled» كما كان (#527)، والانقطاع
@@ -271,7 +272,7 @@
       }
       if (chunk.done) break;
       __toolBusy = false; /* وصلت بايتات جديدة من الخادم → لم نعد بانتظار أداة */
-      if (__sig) { try { __sig.__omLastByte = Date.now(); } catch (e) { /* guard-ok — إشارة مجمّدة: حارس الرجوع يقطع كما كان */ } } /* v-stall-resume: آخر بايت على إشارة الطلب — حارس الرجوع (app-09) لا يقطع بثًّا حيًّا */
+      if (__sig) { try { __sig.__omLastByte = Date.now(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-18-chat-tools:275'); /* guard-ok — إشارة مجمّدة: حارس الرجوع يقطع كما كان */ } } /* v-stall-resume: آخر بايت على إشارة الطلب — حارس الرجوع (app-09) لا يقطع بثًّا حيًّا */
       buf += dec.decode(chunk.value, { stream: true });
       var lines = buf.split('\n');
       buf = lines.pop();

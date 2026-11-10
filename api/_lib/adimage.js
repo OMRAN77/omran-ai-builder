@@ -11,22 +11,56 @@ const LANGN = { ar:'العربيّة', en:'English', fr:'French', hi:'Hindi', ur
 const pickLang = (b) => { const l = String((b && b.lang) || 'ar').slice(0, 3); return LANGN[l] ? l : 'ar'; };
 
 const DAILY = 8; // صورة/يوم للمستخدم المسجَّل (المالك وVIP معفيان داخل الدالّة)
+/* v-audit-stud2 (srv-studios-2-9): نصوص الخطأ لغير العربيّة (كما في adchat) — ad-studio.html يعرض مفتاح قاموسه أوّلًا وبلاه هذه.
+   «unavailable» كان بلا أيّ نصّ فتعرض الصفحة الكلمة حرفيًّا */
+const AD_FAIL_EN = 'Could not generate the ad right now — please try again.';
+const adPaused = (lg) => ({ error: 'unavailable', message_ar: 'الخدمة متوقّفة مؤقّتًا — جرّب بعد قليل.',
+  message: lg === 'ar' ? undefined : 'This service is temporarily unavailable — please try again shortly.' });
+
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): إنقاذ Gemini أدناه كان يسقط هو أيضًا عند نفاد رصيده فيصل المستخدم
+   «الخدمة متوقّفة». الاحتياط النموذج نفسه عند fal بجسم الطلب نفسه (2K، القالب وصورة المستخدم بترتيبهما)، وناتجه يُسلَّم كناتج Gemini
+   (المحرّك «gemini»). مهلته ما بقي من حدّ الدالّة (٣٠٠ ث) محسوبًا من بداية الطلب (نداء OpenAI قبله قد يأكل معظمه)، مرّة واحدة. */
+const falBackup = require('./fal-fallback.js');
+const AD_GEMINI_MODEL = 'gemini-3-pro-image';
+const FAL_BUDGET_MS = 270000;
+function falOpts(t0) {
+  const left = FAL_BUDGET_MS - (Date.now() - (t0 || Date.now()));
+  return left >= 15000 ? { where: 'adimage', timeoutMs: Math.min(150000, left) } : null;
+}
 
 // v-ad-rescue: توليد الإعلان عبر Gemini عند رفض OpenAI — يرجع {data,mime} أو null، لا يرمي أبدًا.
-async function geminiAdImage(promptText, images) {
+async function geminiAdImage(promptText, images, t0) {
   const gkey = (process.env.GEMINI_API_KEY || '').trim();
   if (!gkey) return null;
   try {
     const parts = [{ text: String(promptText).slice(0, 7000) }];
     for (const [b64, mime] of images || []) parts.push({ inlineData: { mimeType: mime, data: b64 } });
+    const reqBody = { contents: [{ parts }], generationConfig: { imageConfig: { imageSize: '2K' } } };
+    /* v-fal-backup: الرصيد خلص قبل دقائق ← النموذج نفسه عند fal مباشرة بلا نداء فاشل قبله */
+    let falTried = false;
+    if (await falBackup.geminiOutRecently()) {
+      const fo = falOpts(t0);
+      if (fo) {
+        falTried = true;
+        const f0 = await falBackup.imageFromGemini(AD_GEMINI_MODEL, reqBody, fo);
+        if (f0 && f0.b64) return { data: f0.b64, mime: f0.mime };
+      }
+    }
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + gkey, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { imageConfig: { imageSize: '2K' } } }),
+      body: JSON.stringify(reqBody),
       signal: AbortSignal.timeout(240000),
     });
     const d = await r.json().catch(() => null);
-    if (!r.ok) { console.warn('[adimage] gemini HTTP ' + r.status + ' ' + String((d && d.error && d.error.message) || '').slice(0, 120)); return null; }
+    if (!r.ok) {
+      const tech = String((d && d.error && d.error.message) || '');
+      console.warn('[adimage] gemini HTTP ' + r.status + ' ' + tech.slice(0, 120));
+      /* v-fal-backup: نفاد الرصيد ← fal بالنموذج نفسه؛ غير ذلك null كما كان */
+      const fo = falTried ? null : falOpts(t0);
+      const fb = fo ? await falBackup.rescueImage(r.status, tech, AD_GEMINI_MODEL, reqBody, fo) : null;
+      return fb ? { data: fb.b64, mime: fb.mime } : null;
+    }
     const ps = ((((d && d.candidates) || [])[0] || {}).content || {}).parts || [];
     const ip = ps.find((x) => x.inlineData && x.inlineData.data);
     return ip ? { data: ip.inlineData.data, mime: ip.inlineData.mimeType || 'image/png' } : null;
@@ -89,9 +123,11 @@ const SCENES = {
 };
 
 module.exports = async (req, res) => {
+  const t0 = Date.now(); /* v-fal-backup: بداية ميزانيّة الدالّة */
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   if (req.method !== 'POST') { res.status(405).end('{"error":"POST only"}'); return; }
   let giveQuota = async () => {}; // v-quota-giveback
+  let adLang = 'ar'; // v-audit-stud2: لغة الطالب لنصّ الاستثناء أدناه
   try {
     let b = req.body;
     if (typeof b === 'string') b = JSON.parse(b);
@@ -99,6 +135,7 @@ module.exports = async (req, res) => {
 
     // ① الهويّة قبل المفتاح.
     const lg = pickLang(b);
+    adLang = lg;
     const username = verifyPointsToken(typeof b.token === 'string' ? b.token : '');
     if (!username) {
       res.status(401).end(JSON.stringify({ error: 'auth', message_ar: 'سجّل الدخول أوّلًا لتوليد الإعلان صورةً.',
@@ -108,7 +145,9 @@ module.exports = async (req, res) => {
     // ② سقف يوميّ مستقلّ — الصورة أغلى من الرسالة.
     const gate = await checkAndConsumePlanCustom(b.token, null, null, 'adimage', DAILY);
     if (!gate.allowed) {
-      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' صور) لتوليد الإعلانات. جرّب غدًا.' }));
+      /* v-audit-stud2 (srv-studios-2-9): message لغير العربيّة كما في adchat، والحدّ رقمًا لنصّ الصفحة — كان message_ar وحده فيراه الكلّ عربيًّا */
+      res.status(429).end(JSON.stringify({ error: 'limit', limit: gate.limit, message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' صور) لتوليد الإعلانات. جرّب غدًا.',
+        message: lg === 'ar' ? undefined : 'You have reached today\'s limit (' + gate.limit + ' images) for ad images. Try again tomorrow.' }));
       return;
     }
     /* v-quota-giveback (أمر المالك ٢١ أكتوبر: «الطوابع والإعلان: المحاولة الفاشلة ما تنحسب من الحصة المجانية»): الحصّة تُحجز قبل النداء
@@ -116,7 +155,7 @@ module.exports = async (req, res) => {
     giveQuota = async () => { giveQuota = async () => {}; await require('./_usage.js').refundCustom(b.token, null, null, 'adimage'); };
 
     const key = process.env.OPENAI_API_KEY;
-    if (!key) { await giveQuota(); res.status(500).end(JSON.stringify({ error: 'no key' })); return; }
+    if (!key) { await giveQuota(); res.status(503).end(JSON.stringify(adPaused(lg))); return; } /* v-audit-stud2: كان «no key» حرفيًّا في الصفحة */
 
     const cut = (x, n) => String(x == null ? '' : x).slice(0, n).replace(/["\n\r]/g, ' ').trim();
     const look = LOOKS[b.look] || LOOKS.neon;
@@ -229,7 +268,7 @@ module.exports = async (req, res) => {
       const gImgs = [];
       if (tplB64) gImgs.push([tplB64, 'image/jpeg']);
       if (hasImg) gImgs.push([b.imageBase64, /^image\/(png|jpeg|webp)$/.test(String(b.mimeType || '')) ? b.mimeType : 'image/jpeg']);
-      const g = await geminiAdImage(p, gImgs);
+      const g = await geminiAdImage(p, gImgs, t0);
       if (g) {
         res.status(200).end(JSON.stringify({ imageBase64: g.data, mimeType: g.mime, dailyLimit: gate.limit || DAILY, engine: 'gemini' }));
         return;
@@ -237,9 +276,9 @@ module.exports = async (req, res) => {
       const m = String((data && data.error && data.error.message) || ('HTTP ' + upstream.status)).replace(/key=[^&\s"']+/g, 'key=***');
       /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد المزوّد نفد أو مفتاحه — رمز unavailable («الخدمة متوقّفة مؤقّتًا» بلغة الواجهة)، لا نصّ فوترة المزوّد بالإنجليزيّة داخل message_ar */
       await giveQuota();
-      if (require('./_videoFail.js').isOutage(upstream.ok ? 0 : upstream.status, m)) { console.error('[adimage] upstream ' + upstream.status + ': ' + m.slice(0, 200)); res.status(503).end(JSON.stringify({ error: 'unavailable' })); return; }
+      if (require('./_videoFail.js').isOutage(upstream.ok ? 0 : upstream.status, m)) { console.error('[adimage] upstream ' + upstream.status + ': ' + m.slice(0, 200)); res.status(503).end(JSON.stringify(adPaused(lg))); return; }
       console.error('[adimage] upstream ' + upstream.status + ': ' + m.slice(0, 300)); // v-rest-fixes: نصّ المزوّد للسجلّ لا للمستخدم
-      res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان الآن — حاول مرّة أخرى.' }));
+      res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان الآن — حاول مرّة أخرى.', message: lg === 'ar' ? undefined : AD_FAIL_EN }));
       return;
     }
     res.status(200).end(JSON.stringify({ imageBase64: oaOut, mimeType: 'image/webp', dailyLimit: gate.limit || DAILY }));
@@ -247,6 +286,6 @@ module.exports = async (req, res) => {
     await giveQuota();
     console.error('[adimage] ' + (e && e.message ? e.message : String(e)));
     const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : 'تعذّر توليد الإعلان الآن — حاول مرّة أخرى.'; // v-rest-fixes: لا نصّ تقنيّ للمستخدم
-    res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg }));
+    res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg, message: adLang === 'ar' ? undefined : (e && e.name === 'TimeoutError' ? 'Generation took longer than allowed. Please try again.' : AD_FAIL_EN) }));
   }
 };

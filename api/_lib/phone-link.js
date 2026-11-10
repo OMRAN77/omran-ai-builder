@@ -79,10 +79,15 @@ async function phoneOwner(phone, o) {
   try {
     const idx = await kvOf(o).kvGetJSON('db/phone-index/' + phone);
     if (!idx || !idx.username) return null;
-    const key = String(idx.username).trim().toLowerCase();
-    const user = await authOf(o).getUser(key);
+    let key = String(idx.username).trim().toLowerCase();
+    let user = await authOf(o).getUser(key);
+    // v-audit-auth (srv-auth-5): تغيير الاسم يترك الفهرس على الاسم القديم (شاهد {deleted, movedTo}) — يُتبع إلى الحساب الحيّ (٣٢ قفزة كالشحن)
+    for (let i = 0; i < 32 && user && user.deleted && user.movedTo; i++) {
+      key = String(user.movedTo).trim().toLowerCase();
+      user = await authOf(o).getUser(key);
+    }
     if (user && !user.deleted && user.phone === phone) return { key, user };
-  } catch (e) { /* فهرس متعثّر = لا مالك */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/phone-link:90'); /* فهرس متعثّر = لا مالك */ }
   return null;
 }
 
@@ -112,7 +117,7 @@ async function complete(code, rawPhone, channel, o) {
     user.phone = phone;
     await auth.putUser(rec.username, user);
     await kvOf(o).kvPutJSON('db/phone-index/' + phone, { username: rec.username, at: Date.now() });
-    if (old && old !== phone) { try { await kvOf(o).kvDel('db/phone-index/' + old); } catch (e) { /* القديم يسقط وحده: phoneOwner يشترط user.phone نفسه */ } }
+    if (old && old !== phone) { try { await kvOf(o).kvDel('db/phone-index/' + old); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/phone-link:120'); /* القديم يسقط وحده: phoneOwner يشترط user.phone نفسه */ } }
     rec.status = 'linked'; await writeRec(c, rec, o);
     return { ok: true, purpose: 'link', status: 'linked' };
   }

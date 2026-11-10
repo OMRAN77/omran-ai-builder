@@ -48,11 +48,19 @@ module.exports = async (req, res) => {
     }
     const safeTexts = texts.slice(0, 60).map((t) => String(t || '').slice(0, 120));
 
+    // v-audit-prov (srv-providers-4): لغات الواجهة الأربع عشرة كلّها (EXPLORE_STR في explore.html) — السبع الأخيرة كانت تُترجم
+    // إلى الإنجليزيّة فيحفظها العميل تحت id_<lang> إلى الأبد.
     const LANG_NAMES = {
       ar: 'Arabic', en: 'English', fr: 'French', hi: 'Hindi',
       ur: 'Urdu', bn: 'Bengali', ne: 'Nepali',
+      es: 'Spanish', tr: 'Turkish', ru: 'Russian', zh: 'Chinese (Simplified)',
+      id: 'Indonesian', fil: 'Filipino', ml: 'Malayalam',
     };
-    const langName = LANG_NAMES[targetLang] || 'English';
+    const langName = Object.prototype.hasOwnProperty.call(LANG_NAMES, targetLang) ? LANG_NAMES[targetLang] : '';
+    if (!langName) { // لغة غير معروفة: العناوين كما هي، لا إنجليزيّة تُحفظ بدلها
+      res.status(200).json({ translations: safeTexts });
+      return;
+    }
 
     const upstream = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',

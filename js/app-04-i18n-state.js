@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=771'; /* v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */
+    sc.src = 'i18n/' + lg + '.js?v=793'; /* v-hw-resubmit-2 (774): أسطر «أفكار بلا صورة» في الديكور (١٤ لغة) · v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج · v-director-story (778): نوع «قصة» في «مخرج التطبيق» — تسعة نصوص (١٤ لغة) · v-reply-dialect (779): «لهجة الصوت العربي» وأسماء اللهجات الستّ (١٤ لغة) · v-hw-1316 (781): نائب صندوق الكتابة «اكتب رسالتك هنا» في ١٢ لغة كان «ابنِ تطبيقًا أو لعبة» · v-google-retry (782): نصّ access_denied «أُلغي أو لم تسمح به» لا اتّهام المستخدم بالإلغاء (١٢ لغة) · v-play-invite (783): بطاقة دعوة مختبري Google Play (١٤ لغة) */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */ /* v-audit-fixes (775): نصوص إصلاحات الفحص الشامل — رسائل الدخول والأخطاء الودّيّة والاستوديوهات والتعليم والأدوات والتصدير والمحادثة والصوت (١٤ لغة)؛ ٧٧٤ نشره main بنصوص هواوي فارتفع الوسم مرّة أخرى · v-video-modes-by-result (776): أسماء الأوضاع بالنتيجة ومربّع «مقدّمة وخاتمة بتوقيعك» (١٤ لغة) · v-video-durations (777): «فيلم متكامل» بلا «سريع» (١٤ لغة) · v-office-files (784): كرت ملفّ Excel/PowerPoint في المحادثة (١٤ لغة) · v-director-timed (785): ثلاثة وعشرون نصًّا لـ«بتوقيتي» في مخرج التطبيق (١٤ لغة) · v-share-next (786): أمثلة خانة الكتابة ونافذة المشاركة و«مشاركة» بجانب كلّ تحميل (١٤ لغة) · v-owner-reset-link (787): «رابط استرجاع الحساب» للمالك (١٤ لغة) · v-owner-reset-find (788): رسالتا حساب Google والحساب الغائب (١٤ لغة) · v-director-publish (789): «انشر في حساباتي» في مخرج التطبيق (١٤ لغة) · v-bridge-disk (790): «مساحة قرص الجسر» في المخرج (١٤ لغة) · v-owner-reset-records (792): «حسابات محتملة» و«أين بحثت» و«ما اكتمل البحث» و«بحث PayPal الكامل مقفل» لرابط الاسترجاع (١٤ لغة) · v-owner-link-sub (793): ١٣ نصًّا لـ«ربط اشتراك Stripe» في لوحة المالك (١٤ لغة) — ٧٩٢ أخذه main لـv-owner-reset-records قبل الدمج */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -30,7 +30,17 @@ function loadLangFile(lg){
   });
 }
 
-let lang = localStorage.getItem('aiapp_lang') || (function(){
+/* v-hw-lang-follow (رفض هواوي 1.3.15 بالقاعدة 1.14 «اللقطات لا تطابق التطبيق»، في «بيئة متعدّدة اللغات»): applyLanguage يحفظ
+   aiapp_lang في كلّ إقلاع، فاللغة المكتشفة في أوّل تشغيل تُحفظ كأنّها اختيار — مراجعٌ بدّل لغة هاتفه ليقارن لقطات لغة أخرى يبقى
+   على الأولى (وتخزين WebView يعيش مع التحديثات). داخل حزمة هواوي (علم الجلسة من selfdiag.js، يُحمَّل قبل الحزمة) تتبع اللغة
+   الهاتف في كلّ تشغيل ما لم يكن aiapp_lang_manual='1' — يُكتب في setLang وحده (الإعدادات، أمر الإعدادات، مها). الموقع كما كان.
+   وفي عارض WebView الحزمة وحده (جسر OmranRender يُحقن قبل سكربتات الصفحة — هاتف المراجع بلا Chrome): في TWA داخل Chrome التخزين
+   مشترك مع الموقع، فكان إقلاع الحزمة يمحو لغة اختارها الموقع (/ar أو ?hl= أو اختيار قبل هذا العلم). */
+function omranLangAuto(){
+  try { return sessionStorage.getItem('aiapp_store') === 'huawei' && !!window.OmranRender && localStorage.getItem('aiapp_lang_manual') !== '1'; }
+  catch(e){ __swallow(e, 'i18n:hw-lang-auto'); return false; }
+}
+let lang = (!omranLangAuto() && localStorage.getItem('aiapp_lang')) || (function(){
   // 🌍 كشف لغة الهاتف تلقائيًا عند أول زيارة — الاختيار اليدوي المحفوظ له الأولوية دائمًا
   try {
     const navs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en']).map(x => String(x).toLowerCase());
@@ -41,6 +51,8 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
   } catch(e){ __swallow(e, "misc:app-04-i18n-state#2"); }
   return 'en';
 })();
+/* v-hw-lang-follow: يُحفظ فورًا — أجزاء تقرأ aiapp_lang عند التحميل قبل applyLanguage (جولة التعريف) تأخذ لغة الهاتف لا القديمة */
+if(omranLangAuto()){ try { localStorage.setItem('aiapp_lang', lang); } catch(e){ __swallow(e, 'i18n:hw-lang-save'); } }
 // Language-specific shareable links: /ar, /en, /fr, /hi, /ur, /bn, /ne
 // Opening one of these paths forces that language immediately (no need to
 // open settings and switch manually) — meant for sending direct links to
@@ -51,6 +63,11 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
     if(urlLangMatch){
       lang = urlLangMatch[1].toLowerCase();
       localStorage.setItem('aiapp_lang', lang);
+    } else {
+      /* v-tool-pages: ?hl=ar|en من صفحات الأدوات — زائر بلا لغة محفوظة يأخذ لغة الصفحة التي قرأها بدل لغة جهازه (العربيّ بهاتف
+         إنجليزيّ كان يفتح التطبيق إنجليزيًّا). المحفوظة لا تُمسّ؛ وapplyLanguage يحفظ ما يُعرض كما يفعل مع كشف الجهاز. */
+      const hl = String(new URLSearchParams(location.search).get('hl') || '').toLowerCase();
+      if((hl === 'ar' || hl === 'en') && !localStorage.getItem('aiapp_lang')) lang = hl;
     }
   } catch(e){ __swallow(e, "save:app-04-i18n-state#3"); }
 })();
@@ -71,18 +88,18 @@ function omranMapFilter(text, prevUserText){
 }
 function mahaPersonaName(){
   var isAr = false;
-  try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) { /* guard-ok: unavailable language state falls back to English. */ }
+  try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:91'); /* guard-ok: unavailable language state falls back to English. */ }
   /* v-maha-pause: مها موقوفة مؤقتًا لغير المالك — كل نصوص {voice} تصير محايدة */
   /* v-maha-subs: قفل v-maha-pause أُزيل — الاسم الحقيقيّ للجميع */
   var male = false;
-  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage falls back to the default persona. */ }
+  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:95'); /* guard-ok: unavailable storage falls back to the default persona. */ }
   if (male) return isAr ? 'عبدالله' : 'Abdullah';
   return isAr ? 'مها' : 'Maha';
 }
 function __voiceFill(v){
   if (typeof v !== 'string' || v.indexOf('{voice') === -1) return v;
   var male = false;
-  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage keeps the default voice label. */ }
+  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:102'); /* guard-ok: unavailable storage keeps the default voice label. */ }
   return v.split('{voiceAdj}').join(male ? 'الصوتي' : 'الصوتية')
           .split('{voice}').join(mahaPersonaName());
 }
@@ -90,7 +107,7 @@ function t(key){
   var v = tRaw(key);
   if (typeof v === 'string' && v.indexOf('{voice') !== -1) {
     var male = false;
-    try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage keeps the default translation. */ }
+    try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:110'); /* guard-ok: unavailable storage keeps the default translation. */ }
     return v.split('{voiceAdj}').join(male ? 'الصوتي' : 'الصوتية')
             .split('{voice}').join(mahaPersonaName());
   }
@@ -127,7 +144,7 @@ function tStatus(ev){
   }catch(e){ __swallow(e, "misc:app-04-i18n-state#tStatus"); }
   return (ev && ev.status) || '';
 }
-try{ window.tStatus = tStatus; }catch(_){ /* guard-ok: تعريض عالميّ اختياريّ — فشله لا يمنع الترجمة المحلّيّة. */ }
+try{ window.tStatus = tStatus; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-04-i18n-state:147'); /* guard-ok: تعريض عالميّ اختياريّ — فشله لا يمنع الترجمة المحلّيّة. */ }
 
 function applyLanguage(){
   if(!I18N[lang] && I18N_LAZY.indexOf(lang) >= 0){
@@ -383,6 +400,8 @@ function toggleLang(){
   renderAll();
 }
 function setLang(newLang){ try{ setTimeout(()=>{ if(typeof markActiveLang==="function") markActiveLang(); },0); }catch(e){ __swallow(e, "misc:app-04-i18n-state#8"); }
+  /* v-hw-lang-follow: اختيار باليد (ولو للّغة الظاهرة) — حزمة هواوي لا تعود تتبع الهاتف بعده */
+  try { localStorage.setItem('aiapp_lang_manual', '1'); } catch(e){ __swallow(e, 'i18n:lang-manual'); }
   if(lang === newLang) return;
   lang = newLang;
   applyLanguage();
@@ -916,14 +935,22 @@ let __slimCache = null;
 // الملف والاستدعاء يحدث بعد اكتمال التحميل، فالمرجع آمن وقت التنفيذ.
 let __mirrorAt = 0;
 let __idbSavedAt = 0; /* v-no-purge: آخر حفظ فعلي في IndexedDB — للتباعد مع كبر السجل */
+/* v-audit-boot (cli-boot-4): تبويب حمّل محادثات حساب ثمّ خرج الحساب من تبويب آخر (فمسح الجهاز) — لم يعد في هذا التبويب رمز، والذاكرة
+   ما زالت محادثات الحساب. إغلاقه كان يكتبها من جديد في المرآة وIndexedDB فتظهر للضيف التالي ويرفعها أوّل حساب يدخل. لا كتابة حينها. */
+function __chatsAccountGone(){
+  try{ return !!__chatsLoadedFor && !chatsAuthToken(); }
+  catch(e){ return false; } /* guard-ok — قبل تعريف __chatsLoadedFor (لا نداء متوقَّع قبله): لا حساب محمَّل بعد */
+}
 function __writeChatsMirror(){
+  if(__chatsAccountGone()) return;
   try{ localStorage.setItem('aiapp_projects_slim', JSON.stringify(chatsSlimForServer())); }
-  catch(e){ /* guard-ok: المرآة رفاهية إقلاع — امتلاء التخزين لا يكسر الحفظ الأصلي */ }
+  catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:947'); /* guard-ok: المرآة رفاهية إقلاع — امتلاء التخزين لا يكسر الحفظ الأصلي */ }
 }
 window.__writeChatsMirror = __writeChatsMirror;
 function __saveFlush(force){
   if(!__saveDirty) return;
   __saveDirty = false;
+  if(__chatsAccountGone()) return; // v-audit-boot (cli-boot-4): لا تُعاد محادثات حساب خرج من تبويب آخر إلى IndexedDB
   try{ clearTimeout(__saveTimer); }catch(e){ __swallow(e, "save:app-04-i18n-state#11"); }
   __saveTimer = null;
   if(!__idbBroken && window.indexedDB){
@@ -1310,6 +1337,30 @@ function scheduleChatsServerSync(){
   try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, "sync:app-04-i18n-state#32"); }
   __chatsSyncTimer = setTimeout(chatsServerSave, 4000);
 }
+/* v-audit-boot (cli-boot-5): بيانات الجهاز بلا صاحب كانت تُدمج في أيّ حساب يدخل: جلسة (أ) رُفضت عند الإقلاع (٣٠ يومًا أو إيقاف) أو جلسة
+   «لا تتذكّرني» انتهت، فيُحذف الرمز وحده وتبقى محادثاته — ثمّ يدخل (ب) فيضمّ __chatsMergeServer كلّ مشروع محلّيّ إلى حسابه ويرفعه.
+   الآن صاحب البيانات موسوم (DATA_OWNER_KEY): دخول اسم آخر يمسح بيانات السابق بصمت قبل الدمج (المحادثات وIndexedDB والمفضّلة وصورة
+   البطل وما في الذاكرة — ونسخة محادثاته في حسابه على الخادم)، ويُلغي اشتراك الدفع لهذا المتصفّح (تذكيراته). بيانات الضيف (بلا وسم)
+   تُدمج كما كانت، وصاحب البيانات نفسه إن عاد لا يُمسح له شيء (وما لم يُرفع يُرفع). يرجع true إن تولّى المسح ثمّ استأنف بعده. */
+function __chatsOwnerSwitch(resume){
+  let me = '';
+  try{ me = String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase(); }catch(e){ __swallow(e, 'sync:owner-me'); }
+  if(!me) return false;
+  let owner = '';
+  try{ owner = localStorage.getItem(DATA_OWNER_KEY) || ''; }catch(e){ __swallow(e, 'sync:owner-read'); }
+  const mark = () => { try{ localStorage.setItem(DATA_OWNER_KEY, me); }catch(e){ __swallow(e, 'sync:owner-write'); } };
+  if(!owner){ mark(); return false; }
+  if(owner === me) return false;
+  try{ if(typeof window.__pushDropDevice === 'function') window.__pushDropDevice(''); }catch(e){ __swallow(e, 'sync:owner-push'); }
+  Promise.resolve().then(() => window.chatsLogoutWipe({ silent: true })).catch(e => __swallow(e, 'sync:owner-wipe')).then(() => {
+    const tk = chatsAuthToken();
+    if(!tk) return; // خرج أثناء المسح
+    __chatsLoadedFor = tk; // المسح يصفّره
+    mark();
+    resume();
+  });
+  return true;
+}
 window.chatsSyncOnAuth = function(){
   const token = chatsAuthToken();
   if(!token || __chatsLoadedFor === token) return;
@@ -1318,6 +1369,7 @@ window.chatsSyncOnAuth = function(){
   var __waited = 0;
   var __tick = function(){
     if(!window.__localChatsLoaded && __waited < 10000){ __waited += 200; setTimeout(__tick, 200); return; }
+    if(__chatsOwnerSwitch(__tick)) return; // v-audit-boot (cli-boot-5): بعد تحميل IndexedDB (وإلّا عادت بيانات السابق فوق المسح) وقبل الدمج
     chatsServerPull(ok => {
       // v378: فشل التنزيل (شبكة/خطأ سيرفر) → إعادة المحاولة تلقائيًا بعد 8 ثواني.
       if(ok === false){ __chatsLoadedFor = null; setTimeout(function(){ try{ window.chatsSyncOnAuth(); }catch(e){ __swallow(e, "sync:app-04-i18n-state#33"); } }, 8000); return; }
@@ -1341,6 +1393,9 @@ var __chatsLastPull = 0;
    الإعدادات والتعليمات والثيم تبقى (ليست محادثات ولا صورًا). يرجع false إن ألغى. */
 const LOGOUT_WIPE_KEYS = ['aiapp_projects', 'aiapp_projects_slim', 'aiapp_current_id', 'aiapp_provider_projects', 'aiapp_deleted_chats',
   'aiapp_studio_favorites', 'aiapp_fashion_favorites', 'omran_hero_b64', 'omran_hero_mime'];
+/* v-audit-boot (cli-boot-5): صاحب بيانات الجهاز (اسمه بحروف صغيرة) — يُكتب حين تُحمَّل بيانات حساب، ويُزال بالخروج. خارج LOGOUT_WIPE_KEYS
+   لأنّ وجوده وحده ليس «بيانات على الجهاز» تستدعي سؤال الخروج. */
+const DATA_OWNER_KEY = 'aiapp_data_owner';
 function __chatsFlushNow(ms){
   return new Promise(res => {
     let done = false;
@@ -1362,23 +1417,38 @@ function __chatsFlushNow(ms){
     }catch(e){ __swallow(e, 'logout:flush'); fin(false); }
   });
 }
+/* v-audit-boot (cli-video-1): الخروج والدخول لا يعيدان تحميل الصفحة، والمسح كان للتخزين وحده — فصورة بطل الفيلم في المتغيّر والمعاينة
+   تُرسل مع فيديو من يدخل بعده في الجلسة نفسها، وكذا صور الأشخاص في لوحة الترند المفتوحة وملفّ محرّر «كتابة وصوت». يُفرَّغ ما في الذاكرة. */
+function __logoutClearMemory(){
+  try{ if(typeof mahaClearImageRef === 'function') mahaClearImageRef(); }catch(e){ __swallow(e, 'logout:maha'); }
+  try{ if(typeof window.__clearFilmHero === 'function') window.__clearFilmHero(); }catch(e){ __swallow(e, 'logout:hero'); }
+  try{ if(window.omranVideoTrends && typeof window.omranVideoTrends.reset === 'function') window.omranVideoTrends.reset(); }catch(e){ __swallow(e, 'logout:trends'); }
+  try{ if(window.omranVideoEdit && typeof window.omranVideoEdit.reset === 'function') window.omranVideoEdit.reset(); }catch(e){ __swallow(e, 'logout:ved'); }
+}
 function __hasLocalAccountData(){
   if((state.projects || []).some(p => p && Array.isArray(p.messages) && p.messages.length)) return true;
   try{ return LOGOUT_WIPE_KEYS.slice(5).some(k => { const v = localStorage.getItem(k); return !!v && v !== '[]'; }); }catch(e){ return false; }
 }
+/* v-audit-boot: ما ينتهي بانتهاء جلسة الحساب في هذا التبويب — المؤقّتات، وعلم «حساب محمَّل» (بقاؤه بعد خروج بلا محادثات كان سيمنع حفظ
+   الضيف بحارس cli-boot-4)، وما في الذاكرة (cli-video-1). */
+function __chatsForgetSession(){
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, 'logout:sync-timer'); }
+  try{ if(__chatsLivePollTimer){ clearInterval(__chatsLivePollTimer); __chatsLivePollTimer = null; } }catch(e){ __swallow(e, 'logout:live-timer'); }
+  __chatsLoadedFor = null; window.__chatsMergeDone = false; window.__usingSlimProjects = false; __slimCache = null;
+  __logoutClearMemory();
+}
+function __chatsDropOwner(){ try{ localStorage.removeItem(DATA_OWNER_KEY); }catch(e){ __swallow(e, 'logout:owner'); } } // v-audit-boot (cli-boot-5): الجهاز بعده للضيف
 window.chatsLogoutWipe = async function(opts){
   const silent = !!(opts && opts.silent); // v-acct-delete: الحساب حُذف — لا حساب يُرفع إليه ولا سؤال ثانٍ
   if(!silent){
-    if(!__hasLocalAccountData()) return true;
+    if(!__hasLocalAccountData()){ __chatsForgetSession(); __chatsDropOwner(); return true; }
     if(!confirm(t('logoutWipeConfirm'))) return false;
     const synced = await __chatsFlushNow(8000);
     if(!synced && !confirm(t('logoutWipeOffline'))) return false;
   }
-  try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, 'logout:sync-timer'); }
-  try{ if(__chatsLivePollTimer){ clearInterval(__chatsLivePollTimer); __chatsLivePollTimer = null; } }catch(e){ __swallow(e, 'logout:live-timer'); }
-  __chatsLoadedFor = null; window.__chatsMergeDone = false; window.__usingSlimProjects = false; __slimCache = null;
+  __chatsForgetSession();
+  __chatsDropOwner();
   LOGOUT_WIPE_KEYS.forEach(k => { try{ localStorage.removeItem(k); }catch(e){ __swallow(e, 'logout:ls'); } });
-  try{ if(typeof mahaClearImageRef === 'function') mahaClearImageRef(); }catch(e){ __swallow(e, 'logout:maha'); }
   // IndexedDB كلّها (المحادثات ومخزن الصور) — الفتح التالي (حفظ المحادثة الفارغة) يُنتظر خلف الحذف حسب المعيار فيُنشئها جديدة
   await new Promise(res => {
     try{
@@ -1415,6 +1485,22 @@ function __chatsStartLiveSync(){
   try{ document.addEventListener('visibilitychange', onFocus); }catch(e){ __swallow(e, "sync:app-04-i18n-state#35"); }
   try{ window.addEventListener('focus', onFocus); }catch(e){ __swallow(e, "sync:app-04-i18n-state#36"); }
 }
+/* v-audit-boot (cli-boot-4): خروج من تبويب آخر — الرمز أُزيل (أو ظهر رمز بعد غيابه: دخول بعد خروج فاتنا) — وهذا التبويب يحمل محادثات
+   حساب بلا جلسة خاصّة به (sessionStorage): تُفرَّغ من الذاكرة بلا أيّ كتابة (التبويب الآخر مسح الجهاز)، ومعها صورة البطل وما يشبهها.
+   تجديد الجلسة (رمز يحلّ محلّ رمز) لا يمسّ شيئًا. */
+window.addEventListener('storage', function(e){
+  try{
+    if(!e || e.key !== 'aiapp_auth_token' || (e.oldValue && e.newValue) || !__chatsLoadedFor) return;
+    try{ if(sessionStorage.getItem('aiapp_auth_token')) return; }catch(e2){ __swallow(e2, 'logout:other-tab-ss'); }
+    try{ clearTimeout(__saveTimer); }catch(e2){ __swallow(e2, 'logout:other-tab-save'); }
+    __saveTimer = null; __saveDirty = false;
+    __chatsForgetSession();
+    const nid = 'p_' + Date.now();
+    state.projects = [{ id: nid, title: (typeof t === 'function' ? t('defaultProjectTitle') : '') || 'محادثة جديدة', messages: [], code: '' }];
+    state.currentId = nid;
+    try{ renderAll(); }catch(e2){ __swallow(e2, 'logout:other-tab-render'); }
+  }catch(err){ __swallow(err, 'logout:other-tab'); }
+});
 
 function getCurrent(){
   return state.projects.find(p => p.id === state.currentId);
@@ -1493,7 +1579,7 @@ function renderHistory(){
       __histSorted.map(p => p.id + ':' + p.title + ':' + (p.code && p.codeType !== 'python' ? 1 : 0)).join(',');
     if(window.__renderHistSig === __sig && historyEl.childElementCount > 0) return;
     window.__renderHistSig = __sig;
-  }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أيّ خطأ نرسم كالمعتاد */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:1582'); /* guard-ok — البصمة تحسين لا شرط؛ عند أيّ خطأ نرسم كالمعتاد */ }
   if(__histThumbIO) __histThumbIO.disconnect(); // v-perf-hist-lazy: صفوف الرسم السابق لا تُراقَب بعد مسحها
   historyEl.innerHTML = '';
   // v-perf-history-guard: نافذة عرض بنفس فكرة __MSGWIN في renderMessages — أقدم ٣٠ محادثة
@@ -1608,8 +1694,9 @@ function ensureHistItemMenu(){
   return m;
 }
 function histRenameProject(p){
-  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
-  const nv = prompt(isAr ? 'الاسم الجديد للمشروع:' : 'New project name:', p.title);
+  /* v-audit-attach (x-i18n-6): كانت الأورديّة تُعامَل عربيّة وبقيّة اللغات إنجليزيّة — مفتاح الـ١٤ لغة، وبلا مفتاح العربيّة للعربيّة وحدها */
+  const __k = t('axAttachHistNewName');
+  const nv = prompt((__k && __k !== 'axAttachHistNewName') ? __k : (lang === 'ar' ? 'الاسم الجديد للمشروع:' : 'New project name:'), p.title);
   if(nv === null) return;
   const clean = String(nv).trim();
   if(!clean) return;
@@ -1648,7 +1735,6 @@ function histDeleteProject(p, provKey){
 }
 function openHistItemMenu(anchorBtn, p, provKey){
   const m = ensureHistItemMenu();
-  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
   m.innerHTML = '';
   const mkBtn = (label, svg, cls, fn) => {
     const b = document.createElement('button');
@@ -1659,13 +1745,15 @@ function openHistItemMenu(anchorBtn, p, provKey){
     m.appendChild(b);
   };
   const svgPre = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
-  mkBtn(isAr ? 'إعادة تسمية' : 'Rename',
+  /* v-audit-attach (x-i18n-6): قائمة ⋮ كانت «Rename/Delete» لاثنتي عشرة لغة والعربيّة للأورديّة — مفاتيح الـ١٤ لغة */
+  const __rn = t('axAttachHistRename');
+  mkBtn((__rn && __rn !== 'axAttachHistRename') ? __rn : (lang === 'ar' ? 'إعادة تسمية' : 'Rename'),
     svgPre + '<path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"></path></svg>',
     '', () => histRenameProject(p));
-  mkBtn(t('shareProjectBtnTitle') || (isAr ? 'مشاركة' : 'Share'),
+  mkBtn(t('shareProjectBtnTitle'),
     svgPre + '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>',
     '', () => { if(typeof openShareModal === 'function') openShareModal(p); });
-  mkBtn(isAr ? 'حذف' : 'Delete',
+  mkBtn(t('bgImgDelete'), /* «حذف/Delete» العامّ نفسه بالـ١٤ لغة */
     svgPre + '<polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
     'danger', () => histDeleteProject(p, provKey));
   // موضع القائمة بجانب زر ⋮ مع البقاء داخل الشاشة
@@ -1967,11 +2055,11 @@ function renderMessages(keepScroll){
     __sig += '|' + (localStorage.getItem('aiapp_lang') || 'ar');
     if(window.__renderMsgSig === __sig && messagesEl.childElementCount > 0) return;
     window.__renderMsgSig = __sig;
-  }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أي خطأ نرسم كالمعتاد */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:2058'); /* guard-ok — البصمة تحسين لا شرط؛ عند أي خطأ نرسم كالمعتاد */ }
   const prevScrollTop = messagesEl.scrollTop;
   let __wasNearBottom = true;
   /* v-scroll-free: قرار الملاحقة نفسه (app-40) — محادثة أخرى تُفتح من الأسفل، وإصبع على الشاشة لا يُقفز من تحته */
-  try{ __wasNearBottom = window.omranChatFollow ? window.omranChatFollow.forRender(__cInit && __cInit.id) : (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
+  try{ __wasNearBottom = window.omranChatFollow ? window.omranChatFollow.forRender(__cInit && __cInit.id) : (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:2062'); /* guard-ok — قياس اختياري */ }
   window.__isRenderingMsgs = true;
   try{
     messagesEl.innerHTML = '';
@@ -2024,7 +2112,7 @@ function renderMessages(keepScroll){
         if(m.providerKey && typeof functionalLabel === 'function'){
           __plbl = (/^🔄\s*/.test(__plbl || '') ? '🔄 ' : '') + functionalLabel(m.providerKey);
         }
-      }catch(e){ /* الاسم المحفوظ احتياط */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:2115'); /* الاسم المحفوظ احتياط */ }
       /* v-owner-model-badge (سؤال المالك ١٩ سبتمبر «كيف أعرف الموديل اللي عندي؟»): للمالك وحده يظهر
          فوق كلّ ردّ اسم المزوّد الحقيقيّ + ما أعلنه الخادم (الموديل الذي خدم الطلب · كاش · جديد · خرج).
          كان الحدث يُلتقط ولا يُعرض في أيّ مكان. بقيّة المستخدمين: كما كان (v464 — «اسأل الكل» فقط). */
@@ -2106,7 +2194,7 @@ function renderMessages(keepScroll){
         __mc = __mc.replace(/__ACTION_VIDEO:\s*[^\n]*/g, '').replace(/\n{3,}/g, '\n\n').trim();
         if(__vidPrompt && mIdx === cur.messages.length - 1){
           setTimeout(function(){
-            try{ if(typeof window.omranOpenVideoMaker === 'function') window.omranOpenVideoMaker(__vidPrompt); }catch(e){ try{ __swallow(e,'chat:video-open'); }catch(_){ /* guard-ok */ } }
+            try{ if(typeof window.omranOpenVideoMaker === 'function') window.omranOpenVideoMaker(__vidPrompt); }catch(e){ try{ __swallow(e,'chat:video-open'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-04-i18n-state:2197'); /* guard-ok */ } }
           }, 800);
         }
       }
@@ -2158,15 +2246,21 @@ function renderMessages(keepScroll){
     if(__genShown && __genShown.length){
       const genStrip = document.createElement('div');
       genStrip.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin:6px 0';
+      div.appendChild(genStrip); // v-share-visible: قبل أدوات الصورة — فيجد وسمُها (‎.oImgMsg‎) فقاعتَه فورًا، لا بعد تمرير الرسم للأسفل
       __genShown.slice(0, 4).forEach((url) => {
         const gimg = document.createElement('img');
         gimg.src = url; gimg.alt = ''; gimg.loading = 'lazy';
         gimg.style.cssText = 'max-width:min(100%,320px);border-radius:12px';
         gimg.onerror = () => { gimg.remove(); };
-        if(window.__omranImgTools){ const gb = document.createElement('div'); gb.style.cssText = 'position:relative;display:inline-block;max-width:100%'; gb.appendChild(gimg); window.__omranImgTools(gb, url); genStrip.appendChild(gb); }
+        /* v-share-visible (فحص المتصفّح ٧ نوفمبر): صورة أداة التوليد ارتفاعها صفر حتّى يُفكّ ترميزها، والتمرير للأسفل يسبقها — فيبقى
+           آخر الردّ (الشرح وزرّ «مشاركة») تحت صندوق الكتابة. عند تحميلها تلحق الأسفل إن كان القارئ ملاحِقًا ولم يصعد منذ كان في الأسفل
+           (followGrowth في app-40): بحث Ctrl+F وscrollIntoView يصعدان بلا عجلة ولا إصبع فيبقى follow() صحيحًا — وحدود الارتفاع
+           (الصورة، الشريط، الرسالة) فشلت كلّها في فحص ما. وصورة مخزّنة (إعادة رسم، فتح المحادثة ثانيةً) مقاسة لحظة إدراجها ويُطلق
+           load مع ذلك بلا نموّ — فلا مستمع لها، وإلّا شدّت قارئًا أبقته إعادة الرسم مكانه. */
+        if(!(gimg.complete && gimg.naturalHeight)) gimg.addEventListener('load', () => { try{ if(gimg.isConnected && window.omranChatFollow && window.omranChatFollow.followGrowth()) smartScrollBottom(true); }catch(e){ __swallow(e, 'gen:follow'); } });
+        if(window.__omranImgTools){ const gb = document.createElement('div'); gb.style.cssText = 'position:relative;display:inline-block;max-width:100%'; gb.appendChild(gimg); genStrip.appendChild(gb); window.__omranImgTools(gb, url); }
         else genStrip.appendChild(gimg);
       });
-      div.appendChild(genStrip);
     }
     // 🖼️ Feature ② — image strip ABOVE the reply text: up to 4 live images
     // returned by the search backend, ChatGPT-style horizontal scroller.
@@ -2337,6 +2431,8 @@ function renderMessages(keepScroll){
           dl.style.textDecoration = 'none';
           dl.style.alignSelf = 'center';
           wrap.appendChild(dl);
+          /* v-share-next (المالك ٧ نوفمبر: «فقط تحميل في التطبيق كامل»): «مشاركة» بجانب «تنزيل الفيديو» — النافذة الموحّدة (app-45) */
+          if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(dl, { kind: 'video', className: 'file-chip', mirrorColor: true, style: 'text-decoration:none;align-self:center;cursor:pointer;font-family:inherit;' }); }catch(e){ __swallow(e, 'ui:video-share-next'); } }
         } else if(a.isImage && a.purged && !a.vaultId){
           const chip = document.createElement('div');
           chip.className = 'file-chip';
@@ -2787,6 +2883,6 @@ function renderMessages(keepScroll){
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
   }finally{
     window.__isRenderingMsgs = false;
-    try{ if(typeof window.syncWelcome === 'function') window.syncWelcome(); }catch(e){ /* guard-ok */ }
+    try{ if(typeof window.syncWelcome === 'function') window.syncWelcome(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-04-i18n-state:2886'); /* guard-ok */ }
   }
 }

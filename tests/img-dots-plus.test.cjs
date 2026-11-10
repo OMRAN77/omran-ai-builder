@@ -64,7 +64,7 @@ function makeEnv(opt = {}) {
   sb.getGuestId = () => 'g';
   if (opt.parse) sb.__parseImageTextSpec = opt.parse;
   vm.createContext(sb);
-  vm.runInContext([top('__omranImgDots'), top('__omranImgWait'), top('omModeGenerateImage'), top('omModeRawImage')].concat(opt.extra || []).join('\n'), sb);
+  vm.runInContext([top('omranAttachT') /* v-audit-attach: نصوص الصور بمفتاح الـ١٤ لغة */, top('__omranImgDots'), top('__omranImgWait'), top('omModeGenerateImage'), top('omModeRawImage')].concat(opt.extra || []).join('\n'), sb);
   return { sb, dom, calls, pending };
 }
 function thinking(env) {

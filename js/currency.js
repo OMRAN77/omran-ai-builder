@@ -239,7 +239,7 @@ NC|كاليدونيا الجديدة|🇳🇨|USD|$|1|أوقيانوسيا
     var Lg = curLang(); if(Lg === 'ar') return x.n;
     try{ var d = new Intl.DisplayNames([Lg, 'en'], { type: 'region' });
       var nm = d.of(x.c); if(nm && nm !== x.c) return nm; }
-    catch(_){ /* guard-ok: unsupported locale falls back to the Arabic table. */ }
+    catch(_){ typeof __swallow === 'function' && __swallow(_, 'currency:242'); /* guard-ok: unsupported locale falls back to the Arabic table. */ }
     return x.n;
   }
   function relabelCur(sel){

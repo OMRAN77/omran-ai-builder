@@ -49,6 +49,8 @@ function env() {
   sb.window = sb;
   sb.window.open = () => { log.open++; return {}; };
   vm.createContext(sb);
+  const at = AST.body.find((x) => x.type === 'FunctionDeclaration' && x.id && x.id.name === 'omranAttachT'); // v-audit-attach: نصوص الورقة بمفتاح الـ١٤ لغة
+  if (at) vm.runInContext(SRC.slice(at.start, at.end), sb);
   sb.copyImg = vm.runInContext('(' + copyImgSrc() + ')', sb);
   return { sb, log };
 }

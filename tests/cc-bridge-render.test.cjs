@@ -50,7 +50,7 @@ test('٢. المانيفست: الأنواع الثلاثة بحقولها، ا�
   assert.ok(M.LIMITS.scenes >= 75 && M.LIMITS.bodyBytes >= 100e6 && M.LIMITS.ttlMs === 24 * 3600 * 1000 && M.LIMITS.jobTimeoutMs >= 45 * 60 * 1000);
 });
 
-test('٣. buildFfmpegArgs: الانتقال مخبوز في المقطع (صورته + صورة تاليه)، zoompan يتبدّل اتّجاهه ويتّصل عبر الحدّ، الصوت عليه أو صمت، والدمج لصق بلا إعادة ترميز الفيديو', async () => {
+test('٣. buildFfmpegArgs: الانتقال مخبوز في المقطع (صورته + صورة تاليه)، الحركة يتبدّل اتّجاهها وتتّصل عبر الحدّ، الصوت عليه أو صمت، والدمج لصق بلا إعادة ترميز الفيديو', async () => {
   const M = await R();
   const manifest = { lang: 'ar', dir: 'rtl', scenes: [
     { type: 'title', text: 'مرحبا', seconds: 4, audio: 'file' },
@@ -67,21 +67,24 @@ test('٣. buildFfmpegArgs: الانتقال مخبوز في المقطع (صور
   // المدخلات: صورة المشهد ثمّ صورة التالي ثمّ الصوت (الأخير بلا تالٍ)
   assert.deepEqual(inputs(a0), [J('shot_0.png'), J('shot_1.png'), J('audio_0.mp3')]);
   assert.deepEqual(inputs(a1), [J('shot_1.png'), J('img_2.jpg'), J('audio_1.mp3')]);
-  assert.deepEqual(inputs(a2), [J('img_2.jpg'), J('shot_3.png'), 'anullsrc=r=44100:cl=stereo'], 'نموذج النمط jpg بلا صوت → صمت');
+  assert.deepEqual(inputs(a2), [J('img_2.jpg'), J('shot_3.png')], 'نموذج النمط jpg بلا صوت: لا مدخل صوت');
+  assert.ok(fc(a2).endsWith(';anullsrc=r=44100:cl=stereo,aformat=sample_fmts=fltp:channel_layouts=stereo[a]') && !a2.includes('lavfi'), 'v-director-threads: الصمت مرشّح داخل الرسم لا مدخل lavfi');
   assert.deepEqual(inputs(a3), [J('shot_3.png'), J('audio_3.mp3')]);
   assert.deepEqual(plan.segments.map((s) => s.needs), [[0, 1], [1, 2], [2, 3], [3]], 'المقطع يُرمَّز حين تتوفّر صورته وصورة تاليه');
   assert.equal(a0[a0.length - 1], J('seg_0.mp4'));
   // المشهد الأوّل: حركته من الإطار ٠ على ١٢٠ إطارًا، ثمّ ذوبان في أوّل ١٥ إطارًا من حركة التالي (مقامها ١٩٥+١٥)
-  assert.ok(fc(a0).includes("[0:v]scale=2560:1440:force_original_aspect_ratio=decrease,pad=2560:1440") && fc(a0).includes("zoompan=z='1+0.08*(on+0)/120'") && fc(a0).includes(':d=120:s=1920x1080:fps=30'));
-  assert.ok(fc(a0).includes("[1:v]") && fc(a0).includes("zoompan=z='1.08-0.08*(on+0)/210'") && fc(a0).includes(':d=15:s=1920x1080:fps=30'), 'مقدّمة التالي بسرعة حركته نفسها');
+  // v-director-subpixel: perspective بزوايا عشريّة بدل zoompan — المقادير تُحسب بالأرقام في الاختبار ١١
+  assert.ok(fc(a0).includes("[0:v]scale=2112:1188:force_original_aspect_ratio=decrease,pad=2112:1188") && fc(a0).includes(',format=yuv420p,fps=30,tpad=stop_mode=clone:stop=120,trim=end_frame=120,perspective=') && fc(a0).includes('(1+0.08*((on-1+0)/120))'));
+  assert.ok(fc(a0).includes("[1:v]") && fc(a0).includes('tpad=stop_mode=clone:stop=15,trim=end_frame=15,perspective=') && fc(a0).includes('(1.08-0.08*((on-1+0)/210))'), 'مقدّمة التالي بسرعة حركته نفسها');
+  assert.ok(!plan.segments.some((s) => fc(s.args).includes('zoompan')), 'لا zoompan (يقرّب القصّ لبكسل صحيح فترتجّ الصورة)');
   assert.ok(fc(a0).includes('[own][nx]xfade=transition=fade:duration=0.5:offset=3.500[v]'), 'الذوبان في آخر نصف ثانية من الخانة');
   assert.ok(fc(a0).includes('[2:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,apad[a]'), 'الصوت المدخل الثالث حين يوجد تالٍ');
   // المشهد الثاني يكمل حركته من الإطار ١٥ (ما ظهر في ذوبان سابقه) — اتّصال بلا قفزة
-  assert.ok(fc(a1).includes("zoompan=z='1.08-0.08*(on+15)/210'") && fc(a1).includes(':d=195:'), 'يبتعد، ويبدأ من حيث انتهى الذوبان');
-  assert.ok(fc(a1).includes('[1:v]split[bgb][fgb]') && fc(a1).includes('gblur=sigma=40') && fc(a1).includes("x='(iw-iw/zoom)*(on+0)/165'"), 'التالي نموذج نمط: خلفيّة مموّهة وتحريك جانبيّ');
+  assert.ok(fc(a1).includes('(1.08-0.08*((on-1+15)/210))') && fc(a1).includes('tpad=stop_mode=clone:stop=195,trim=end_frame=195,'), 'يبتعد، ويبدأ من حيث انتهى الذوبان');
+  assert.ok(fc(a1).includes('[1:v]split[bgb][fgb]') && fc(a1).includes('gblur=sigma=33') && fc(a1).includes('((W-W/1.06)*((on-1+0)/165)'), 'التالي نموذج نمط: خلفيّة مموّهة وتحريك جانبيّ');
   assert.ok(fc(a1).includes('xfade=transition=fade:duration=0.5:offset=6.000[v]'));
-  assert.ok(fc(a2).includes('[0:v]split[bga][fga]') && fc(a2).includes("x='(iw-iw/zoom)*(on+15)/165'") && fc(a2).includes("x='(iw-iw/zoom)*(1-(on+0)/225)'"));
-  assert.ok(fc(a3).includes("x='(iw-iw/zoom)*(1-(on+15)/225)'") && fc(a3).endsWith('format=yuv420p[v];[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,apad[a]') && !fc(a3).includes('xfade'), 'الأخير بلا ذوبان');
+  assert.ok(fc(a2).includes('[0:v]split[bga][fga]') && fc(a2).includes('((W-W/1.06)*((on-1+15)/165)') && fc(a2).includes('((W-W/1.06)*(1-((on-1+0)/225))'));
+  assert.ok(fc(a3).includes('((W-W/1.06)*(1-((on-1+15)/225))') && fc(a3).endsWith('crop=1920:1080:0:0,format=yuv420p[v];[1:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,apad[a]') && !fc(a3).includes('xfade'), 'الأخير بلا ذوبان');
   manifest.scenes.forEach((s, i) => {
     const a = plan.segments[i].args;
     assert.equal(a[a.indexOf('-t') + 1], s.seconds.toFixed(3), 'طول المقطع = خانته بالضبط');
@@ -249,7 +252,7 @@ function fakeFfmpeg(dir, failIndex, failTimes) {
     "const seg = /seg_(\\d+)\\.mp4$/.exec(out) ? Number(RegExp.$1) : -1;",
     "const cnt = path.join(dir, 'fail_' + seg + '.n'); let n = 0; try { n = Number(fs.readFileSync(cnt, 'utf8')) || 0; } catch (e) { n = 0; }",
     'setTimeout(() => {',
-    "  const rec = { seg, light: args.includes('-threads') && args[args.indexOf('-threads') + 1] === '1', t0, t1: Date.now() };",
+    "  const rec = { seg, light: args[args.lastIndexOf('-threads') + 1] === '1', t0, t1: Date.now() };", // آخر -threads = خيوط x264 (ما قبله خيوط الفاكّات)
     "  fs.appendFileSync(path.join(dir, 'calls.jsonl'), JSON.stringify(rec) + '\\n');",
     "  if (seg === failIndex && n < failTimes) { fs.writeFileSync(cnt, String(n + 1)); process.stderr.write('x264 [error]: simulated kill\\n'); process.exit(1); }",
     "  fs.writeFileSync(out, 'mp4'); process.exit(0);",
@@ -283,14 +286,15 @@ test('٨. v-app-director-watchdog (الجسر، بلا متصفّح): سبب ا�
   for (const seg of plan.segments) {
     const a = seg.args, l = seg.light;
     assert.ok(Array.isArray(l) && l[l.length - 1] === a[a.length - 1], 'الإعادة تكتب الملفّ نفسه');
-    assert.ok(!fc(l).includes('zoompan') && !fc(l).includes('xfade') && fc(l).includes(',scale=1920:1080,fps=30,tpad=stop_mode=clone:stop_duration=' + a[a.indexOf('-t') + 1] + ',format=yuv420p[v]') && fc(l).includes('[1:a]aresample'), 'ثابتة بمدخلين فقط');
-    assert.equal(l[l.indexOf('-threads') + 1], '1'); assert.equal(l[l.indexOf('-x264-params') + 1], 'rc-lookahead=5:ref=1');
-    assert.equal(a[a.indexOf('-threads') + 1], '2'); assert.equal(a[a.indexOf('-x264-params') + 1], 'rc-lookahead=10:ref=1');
+    assert.ok(!fc(l).includes('zoompan') && !fc(l).includes('perspective') && !fc(l).includes('xfade') && fc(l).includes(',scale=1920:1080,fps=30,tpad=stop_mode=clone:stop_duration=' + a[a.indexOf('-t') + 1] + ',format=yuv420p[v]') && (fc(l).includes('[1:a]aresample') || fc(l).includes(';anullsrc=r=44100:cl=stereo,')), 'ثابتة بمدخلين على الأكثر');
+    assert.equal(l[l.lastIndexOf('-threads') + 1], '1'); assert.equal(l[l.indexOf('-x264-params') + 1], 'rc-lookahead=5:ref=1');
+    assert.equal(a[a.lastIndexOf('-threads') + 1], '2'); assert.equal(a[a.indexOf('-x264-params') + 1], 'rc-lookahead=10:ref=1');
+    assert.equal(l[l.indexOf('-filter_complex_threads') + 1], '1'); assert.equal(a[a.indexOf('-filter_complex_threads') + 1], '2');
     for (const x of ['-preset', '-crf', '-profile:v', '-level:v', '-pix_fmt', '-r', '-g', '-c:a', '-b:a']) assert.equal(l[l.indexOf(x) + 1], a[a.indexOf(x) + 1], x + ' واحد في الصيغتين (اللصق بلا إعادة ترميز)');
     assert.equal(l[l.indexOf('-t') + 1], a[a.indexOf('-t') + 1]);
   }
   assert.deepEqual(inputs(plan.segments[0].light), [J('shot_0.png'), J('audio_0.mp3')]);
-  assert.deepEqual(inputs(plan.segments[1].light), [J('img_1.png'), 'anullsrc=r=44100:cl=stereo']);
+  assert.deepEqual(inputs(plan.segments[1].light), [J('img_1.png')], 'بلا صوت: الصمت داخل الرسم');
   assert.ok(fc(plan.segments[1].light).includes('gblur'), 'نموذج مربّع يبقى على خلفيّته المموّهة');
   // الحالة العامّة: آخر سطرين من سجلّ المهمّة، وزمن بدء الخطوة ومنقضيها بساعة الخادم
   const os = require('node:os');
@@ -478,4 +482,115 @@ test('١٠. v-app-director-watchdog (الواجهة): المنقضي وآخر س
   assert.ok(tm && Number(tm[1]) >= Number(tm[2]) && Number(tm[2]) >= 764, 'وسم اللغات مرفوع وسبب المخرج في التعليق: ' + tagLine.slice(0, 120));
   const h = read('index.html');
   assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 454 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 689);
+});
+
+/* ───────── v-director-subpixel + v-director-threads (٨ نوفمبر: «الفيديو فيه حركه … يعور العين»، و٥ من ١٧ مقطعًا صارت صورًا ثابتة) ───────── */
+const near = (a, b, eps) => Math.abs(a - b) < (eps || 1e-9);
+/** يقرأ مرشّحات perspective من سلسلة ويعيد لكلّ منها دالّة on → مستطيل القصّ بإحداثيّات صورة العمل (حوافّ البكسلات) */
+function perspCrops(fc, W, H) {
+  const out = [];
+  const re = /perspective=x0='([^']+)':y0='([^']+)':x1='([^']+)':y1='([^']+)':x2='([^']+)':y2='([^']+)':x3='([^']+)':y3='([^']+)':interpolation=cubic:eval=frame,crop=1920:1080:0:0/g;
+  let m;
+  while ((m = re.exec(fc))) {
+    const f = m.slice(1).map((e) => { assert.match(e, /^[0-9.+\-*/() onWH]+$/, 'تعبير حسابيّ فقط'); return new Function('on', 'W', 'H', 'return ' + e); });
+    out.push((on) => {
+      const [x0, y0, x1, y1, x2, y2, x3, y3] = f.map((g) => g(on, W, H));
+      assert.ok(y1 === y0 && x2 === x0 && x3 === x1 && y3 === y2, 'مستطيل بلا ميل');
+      const sx = (x1 - x0) / W, sy = (y2 - y0) / H; // بكسل عمل لكلّ بكسل إخراج (أوّل ١٩٢٠×١٠٨٠ من الإطار هو الإخراج)
+      return { left: x0 + 0.5 - 0.5 * sx, top: y0 + 0.5 - 0.5 * sy, width: 1920 * sx, height: 1080 * sy };
+    });
+  }
+  return out;
+}
+
+test('١١. v-director-subpixel: القصّ بزوايا عشريّة لا تُقرَّب، متمركز، بخطوة ثابتة، ويتّصل عبر حدّ المقطعين؛ وv-director-threads: الخيوط محدودة صراحةً والصمت داخل الرسم', async () => {
+  const M = await R();
+  assert.deepEqual([M.WORK_W, M.WORK_H], [2112, 1188]);
+  assert.ok(M.WORK_W >= M.OUT_W * 1.08 && M.WORK_H >= M.OUT_H * 1.08, 'أكبر زوم (١٫٠٨) تصغيرٌ من صورة العمل لا تكبير');
+  const W = M.WORK_W, H = M.WORK_H;
+  const scenes = [{ type: 'screen', seconds: 4 }, { type: 'screen', seconds: 7 }, { type: 'screen', seconds: 5 }, { type: 'screen', seconds: 6 }, { type: 'screen', seconds: 5 }];
+  const fc = (i) => M.sceneVideoFilter(scenes, i, 'rtl');
+  // in: ١٢٠ إطارًا، Z(k) = 1 + 0.08·k/120 — المقاس W/Z بالضبط والمركز في الوسط بالضبط
+  const [own0, nx0] = perspCrops(fc(0), W, H);
+  for (const k of [0, 1, 37, 60, 119]) {
+    const c = own0(k + 1), Z = 1 + 0.08 * k / 120;
+    assert.ok(near(c.width, W / Z) && near(c.height, H / Z), 'المقاس W/Z بلا تقريب (k=' + k + ')');
+    assert.ok(near(c.left + c.width / 2, W / 2) && near(c.top + c.height / 2, H / 2), 'متمركز بدقّة (k=' + k + ')');
+  }
+  assert.ok(near(own0(1).left, 0) && near(own0(1).top, 0) && near(own0(1).width, W), 'الإطار الأوّل الصورة كلّها');
+  const frac = (x) => Math.abs(x - Math.round(x));
+  assert.ok(frac(own0(2).left) > 0.01 && frac(own0(61).left) > 0.01, 'موضع عشريّ لا يُقرَّب لبكسل صحيح: ' + own0(2).left + ' / ' + own0(61).left);
+  for (let k = 1; k < 120; k++) assert.ok(near(W / own0(k + 1).width - W / own0(k).width, 0.08 / 120, 1e-12), 'خطوة الزوم بين كلّ إطارين واحدة بالضبط (لا ٠ ثمّ بكسل) k=' + k);
+  // الاتّصال: آخر إطار من مقدّمة التالي في ذوبان المقطع ٠، ثمّ أوّل إطار في المقطع ١ = إطار واحد من المسار نفسه
+  const [own1] = perspCrops(fc(1), W, H);
+  const T1 = M.slotFrames(scenes[1]) + M.XF, zOut = (k) => 1.08 - 0.08 * k / T1;
+  assert.ok(near(nx0(1).width, W / zOut(0)) && near(nx0(15).width, W / zOut(14)) && near(own1(1).width, W / zOut(15)), 'المقطع ١ يكمل من حيث انتهى ذوبان المقطع ٠');
+  // الانزلاق: right ثمّ left بزوم ثابت ١٫٠٦، يبدأ كلّ منهما من حيث انتهى ذوبانه
+  const [own2] = perspCrops(fc(2), W, H), [own3] = perspCrops(fc(3), W, H);
+  const T2 = M.slotFrames(scenes[2]) + M.XF, T3 = M.slotFrames(scenes[3]) + M.XF;
+  assert.ok(near(own2(1).width, W / 1.06) && near(own2(1).left, (W - W / 1.06) * 15 / T2) && own2(30).left > own2(1).left, 'right');
+  assert.ok(near(own3(1).left, (W - W / 1.06) * (1 - 15 / T3)) && own3(30).left < own3(1).left && near(own3(1).top + own3(1).height / 2, H / 2), 'left');
+  // v-director-threads: لا مدخل lavfi، خيوط المرشّحات قبل المدخلات، كلّ فاكّ بخيط، وآخر -threads لـx264
+  const plan = M.buildFfmpegArgs({ lang: 'ar', dir: 'rtl', scenes: [{ type: 'screen', seconds: 4, audio: 'file' }, { type: 'style_sample', mime: 'image/png', seconds: 4 }, { type: 'title', text: 'x', seconds: 3 }] }, '/w');
+  for (const seg of plan.segments) for (const a of [seg.args, seg.light]) {
+    assert.ok(!a.includes('lavfi'), 'لا مدخل lavfi (رسم مرشّحات ثانٍ بخيوط تلقائيّة)');
+    const fct = a.indexOf('-filter_complex_threads');
+    assert.ok(fct > 0 && fct < a.indexOf('-i') && ['1', '2'].includes(a[fct + 1]), 'خيوط المرشّحات محدودة قبل المدخلات');
+    a.forEach((x, i) => { if (x === '-i') assert.deepEqual(a.slice(i - 2, i), ['-threads', '1'], 'فاكّ كلّ مدخل بخيط واحد'); });
+    assert.equal(a.filter((x) => x === '-threads').length, a.filter((x) => x === '-i').length + 1, 'و-threads الأخير لـx264');
+  }
+  assert.ok(!/zoompan=/.test(read('cc-bridge/render.mjs')), 'لا zoompan في الجسر');
+});
+
+test('١٢. v-director-subpixel (ffmpeg حقيقيّ إن وُجد): إزاحة الإطار عن سابقه ثابتة بلا تذبذب، والقياس نفسه يمسك تذبذب zoompan القديم', async (t) => {
+  const { spawnSync } = require('node:child_process');
+  if (spawnSync('ffmpeg', ['-hide_banner', '-version']).status !== 0) { t.skip('ffmpeg غير موجود هنا (يُجرى محلّيًّا)'); return; }
+  const M = await R();
+  const os = require('node:os');
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'dir-sub-'));
+  try {
+    const shot = path.join(work, 'shot.png'); // لقطة ٣٨٤٠×٢١٦٠ كما يلتقطها الجسر، من صورة مفصّلة في المستودع
+    const r = spawnSync('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', '-i', path.join(root, 'assets/design/decor-opts/flooring-persianrug.webp'), '-vf', 'scale=3840:2160:flags=lanczos', '-frames:v', '1', shot]);
+    assert.equal(r.status, 0, String(r.stderr));
+    const OW = M.OUT_W, OH = M.OUT_H, N = 40;
+    const frames = (g, inputs) => {
+      const a = ['-hide_banner', '-loglevel', 'error', '-filter_complex_threads', '2'];
+      for (let i = 0; i < inputs; i++) a.push('-i', shot);
+      const x = spawnSync('ffmpeg', a.concat(['-filter_complex', g.replace(/,format=yuv420p/g, ',format=gray'), '-map', '[v]', '-frames:v', String(N), '-f', 'rawvideo', '-pix_fmt', 'gray', 'pipe:1']), { maxBuffer: 1 << 30 });
+      assert.equal(x.status, 0, String(x.stderr).slice(-400));
+      assert.equal(x.stdout.length, OW * OH * N, 'عدد الإطارات');
+      return x.stdout;
+    };
+    /** Lucas–Kanade دون البكسل: إزاحة كلّ إطار عن سابقه في رقعة ٣٦٠×٢٢٠ قرب الزاوية العليا اليسرى */
+    const shifts = (buf) => {
+      const at = (f, x, y) => buf[f * OW * OH + y * OW + x];
+      const bil = (f, x, y) => { const x0 = Math.floor(x), y0 = Math.floor(y), ax = x - x0, ay = y - y0; return (1 - ay) * ((1 - ax) * at(f, x0, y0) + ax * at(f, x0 + 1, y0)) + ay * ((1 - ax) * at(f, x0, y0 + 1) + ax * at(f, x0 + 1, y0 + 1)); };
+      const us = [], vs = [];
+      for (let f = 1; f < N; f++) {
+        let u = 0, v = 0;
+        for (let it = 0; it < 6; it++) {
+          let a = 0, b = 0, c = 0, p = 0, q = 0;
+          for (let y = 100; y < 320; y += 2) for (let x = 120; x < 480; x += 2) {
+            const ix = (at(f - 1, x + 1, y) - at(f - 1, x - 1, y)) / 2, iy = (at(f - 1, x, y + 1) - at(f - 1, x, y - 1)) / 2, it2 = bil(f, x + u, y + v) - at(f - 1, x, y);
+            a += ix * ix; b += ix * iy; c += iy * iy; p += ix * it2; q += iy * it2;
+          }
+          const det = a * c - b * b; if (Math.abs(det) < 1e-6) break;
+          const du = -(c * p - b * q) / det, dv = -(a * q - b * p) / det; u += du; v += dv;
+          if (Math.abs(du) + Math.abs(dv) < 0.002) break;
+        }
+        us.push(u); vs.push(v);
+      }
+      return { us, vs };
+    };
+    const jerk = (a) => a.slice(1).reduce((s, x, i) => s + Math.abs(x - a[i]), 0) / (a.length - 1);
+    const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+    const scenes = [{ type: 'screen', seconds: 8 }, { type: 'screen', seconds: 8 }];
+    const now = shifts(frames(M.sceneVideoFilter(scenes, 0, 'rtl'), 2));
+    // المرجع: zoompan القديم بالمسار نفسه (in: ١ → ١٫٠٨ على ٢٤٠ إطارًا) على صورة عمل ٢٥٦٠×١٤٤٠ كما كان
+    const old = shifts(frames("[0:v]scale=2560:1440:force_original_aspect_ratio=decrease,pad=2560:1440:(ow-iw)/2:(oh-ih)/2,setsar=1,zoompan=z='1+0.08*(on+0)/240':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=240:s=1920x1080:fps=30,format=yuv420p[v]", 1));
+    const got = { nowU: jerk(now.us), nowV: jerk(now.vs), oldU: jerk(old.us), meanU: mean(now.us), meanV: mean(now.vs) };
+    assert.ok(got.oldU > 0.2, 'القياس يمسك رجفة zoompan (كانت ٠٫٦٣): ' + JSON.stringify(got));
+    assert.ok(got.nowU < 0.05 && got.nowV < 0.05, 'بلا تذبذب: ' + JSON.stringify(got));
+    assert.ok(got.meanU < -0.15 && got.meanV < -0.05, 'زوم للداخل: الزاوية العليا اليسرى تبتعد عن المركز بثبات: ' + JSON.stringify(got));
+  } finally { fs.rmSync(work, { recursive: true, force: true }); }
 });

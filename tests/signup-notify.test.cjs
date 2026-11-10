@@ -178,7 +178,7 @@ test('٣. Google: حساب جديد = إيميل بالبريد وطريقة Goo
   try {
     const rr = await google({ email: 'sealed@gmail.com', name: 'S' });
     assert.equal(rr.code, 302);
-    assert.match(rr.headers.Location, /gtoken=/, 'استُعيد فعلًا (لا تحويل خطأ)');
+    assert.match(rr.headers.Location, /gclaim=/, 'استُعيد فعلًا (لا تحويل خطأ)'); // v-audit-auth (srv-auth-10): الويب يعود برمز استلام لا بالرمز نفسه
     assert.doesNotMatch(rr.headers.Location, /gerror=|error=/);
     await drain();
     assert.equal(mails.length, 0, 'الاستعادة لا ترسل ولو غابت علامة «أُبلغ»');

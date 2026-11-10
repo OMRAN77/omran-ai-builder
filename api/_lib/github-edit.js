@@ -154,10 +154,23 @@ async function editFiles(input, opts) {
    كانت تُقبل إذنًا لأنّ النفي ليس ملاصقًا للفعل. الآن الهمزات الثلاث، والنفي قبل الفعل بثلاث كلمات أو أقلّ (ومنه «مااريد/مابي» الملصوقة) يمنع. */
 const MERGE_NEG_TOK = '(?:لا|ما|مو|مب|مش|بدون|بلا|ماا?(?:ريد|بي|بغى|بغي))';
 const MERGE_NEG_RE = new RegExp('(?:^|[\\s،.,!؟?])' + MERGE_NEG_TOK + '(?:\\s+\\S+){0,3}?\\s*(?:ت|ن|ي)?[اأإ]?دمج|don\'?t\\s+merge|do\\s+not\\s+merge', 'i');
+/* v-audit-agent (تدقيق ٢٦ أكتوبر، srv-agent-5): «متى ادمج؟» و«نشوف ادمج او لا» و«فيه merge conflict… صلحه» كانت تُقبل إذنًا بالدمج والنشر.
+   «ادمج» حرفيّة وأمر صريح: «merge conflict» ليست فعلًا، والجملة التي فيها الفعل لا تكون سؤالًا (تنتهي بـ؟) ولا يسبقه فيها شرط أو تأجيل
+   أو سؤال (متى، إذا، لو، نشوف، بعدين، ليش…)، ولا يتلوه «او لا». الجمل بالنقطة والسطر والاستفهام، والفاصلة داخل الجملة. */
+const MERGE_VERB_RE = /[اأإ]دمج|\bmerge\b/i;
+const MERGE_ASK_RE = /(?:^|[\s،,!«(])(?:و|ف)?(?:متى|متي|وقت\s+ما|إذا|اذا|لو|هل|نشوف|بنشوف|بعدين|بعد\s+ما|عقب\s+ما|لين|لما|يمكن|ليش|ليه|لماذا)(?=$|[\s،,!»)])|\b(?:when|if|whether|should|shall|maybe|later|why)\b/i;
+const MERGE_OR_NOT_RE = /(?:^|\s)(?:[اأ]و|ولا)\s+(?:لا|ما)(?=$|[\s،,.!؟?])|\bor\s+not\b/i;
 function ownerSaidMerge(text) {
-  const s = String(text || '');
+  const s = String(text || '').replace(/\n*\[[^\[\]\n]*\]\s*$/, '').replace(/\bmerge[\s_-]*conflicts?\b/gi, ' ').replace(/لو\s+سمحت|لو\s+تكرّ?مت/g, ' ');
   if (MERGE_NEG_RE.test(s)) return false;
-  return /[اأإ]دمج|\bmerge\b/i.test(s);
+  const parts = s.split(/([.!؟?\n؛;]+)/);
+  for (let k = 0; k < parts.length; k += 2) {
+    const c = parts[k] || '', at = c.search(MERGE_VERB_RE);
+    if (at === -1 || /[؟?]/.test(parts[k + 1] || '')) continue; // بلا فعل، أو سؤال
+    if (MERGE_ASK_RE.test(c.slice(0, at)) || MERGE_OR_NOT_RE.test(c.slice(at))) continue; // شرط أو تأجيل قبله، أو «ادمج او لا»
+    return true;
+  }
+  return false;
 }
 
 /* v-img-with-edit (المالك ١٣ أكتوبر «ويختبر قبل ما يدمج»): الدمج بلا فحص أخضر كان يمرّ حتى والفحوص حمراء أو ما بدأت. صرف بلا شبكة. */

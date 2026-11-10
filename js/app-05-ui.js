@@ -28,12 +28,26 @@ function omranNativeBridge(name){
 /* v-pdf-link: هل نعمل داخل غلاف تطبيق (TWA/متجر/PWA مثبّت)؟ الأغلفة لا
    تنفّذ تنزيل blob المحلي — نرفع الملف للسيرفر ونفتح رابط تنزيل حقيقي
    يمرّ عبر منزّل النظام نفسه فيعمل في كل غلاف. */
+/* v-hw-webview (رفض هواوي ٣٠ أكتوبر): غلاف WebView الاحتياطيّ لحزمة هواوي (MahaWebViewFallbackActivity —
+   أجهزة بلا متصفّح يدعم TWA) وحده يحقن جسر OmranRender؛ في Chrome/TWA والموقع لا يوجد. */
+function omranHwWebView(){
+  try{ return !!(window.OmranRender && typeof window.OmranRender.mode === 'function'); }
+  catch(e){ __swallow(e, 'hw:webview-detect'); return false; }
+}
 function omranLikelyApp(){
   try{
     if(document.referrer && document.referrer.indexOf('android-app://') === 0) localStorage.setItem('aiapp_twa', '1');
     if(localStorage.getItem('aiapp_twa') === '1') return true;
     if(localStorage.getItem('aiapp_store')) return true;
-    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
+    /* v-hw-webview: علم المتجر انتقل إلى sessionStorage (v-store-flag-session) فلم يعد السطر أعلاه يراه، وWebView
+       الاحتياطيّ لا يرسل android-app:// في document.referrer — فكانت حزمة هواوي تُعامَل موقعًا: تقرير المقاولات
+       وجدول الكمّيّات وحفظ الملفّات تنزّل blob محلّيًّا يسقط صامتًا بدل رابط الخادم الذي ينزّله النظام. */
+    if(sessionStorage.getItem('aiapp_store')) return true;
+    if(omranHwWebView()) return true;
+    /* v-desk-pwa-save (لقطة المالك ٧ نوفمبر: «تحميل الصور في الأنماط لي الكمبيوتر … ما يشتغل» — لوحة «مشاركة» ويندوز تدور بلا نهاية):
+       التطبيق المثبّت على الكمبيوتر (PWA متجر مايكروسوفت/كروم، standalone) ليس غلاف جوّال — التنزيل المباشر يعمل فيه، ولوحة مشاركة
+       النظام هناك تفشل. وضع standalone يُحسب «تطبيقًا» على الجوّال وحده. */
+    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches && omranMobileUA()) return true;
     if(navigator.standalone === true) return true;
     /* v-cap-detect (شكوى عمران «PDF عند + ما يشتغل» على TestFlight): غلاف
        كاباسيتور يحمّل الموقع الحي بلا أي علامة — جسره المحقون هو العلامة. */
@@ -41,6 +55,20 @@ function omranLikelyApp(){
     if(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)) return true;
   }catch(e){ __swallow(e, 'share:app-detect'); }
   return false;
+}
+/* v-desktop-app (لقطات المالك ٧ نوفمبر: «مشاركة» تدور فوق صفحة الصور الشخصيّة بعد «تحميل الصورة» في تطبيق ويندوز): تطبيق المتجر على
+   ويندوز/ماك standalone فيصدق فيه omranLikelyApp — لكنّه حاسوب: <a download> يعمل فيه، وnavigator.share هي لوحة النظام التي تعلق. مسارات
+   الحفظ والمشاركة تعامله حاسوبًا (تنزيل مباشر + النافذة الموحّدة)، والهواتف وأغلفة أندرويد/آيفون كما كانت. */
+function omranDesktopApp(){
+  try{
+    if(omranMobileUA() || omranNativeBridge('omranShare') || omranHwWebView()) return false;
+    const ua = navigator.userAgent || '';
+    if(/Android|\bwv\b/i.test(ua) || window.OmranAndroidShare || (window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform())))) return false;
+    /* standalone نفسه لا omranLikelyApp: v-desk-pwa-save (main) جعل omranLikelyApp لا يعدّ standalone إلّا على الهاتف، فكان التطبيق المثبّت
+       على الحاسوب يخرج من هنا «لا» ودفع ويندوز الضيّق (mobile-ui) يرجع للوحة النظام؛ وأعلام المتجر/TWA تبقى «تطبيقًا» على أيّ جهاز (قراره) */
+    const standalone = !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    return standalone && /Windows NT|Macintosh|CrOS|X11|Linux x86_64/i.test(ua);
+  }catch(e){ __swallow(e, 'share:desktop-app'); return false; }
 }
 async function omranBlobToServerLink(blob, filename){
   const b64 = await new Promise((resolve, reject) => {
@@ -70,70 +98,194 @@ function omranMobileUA(){
   try{
     if(/Android|HarmonyOS|HUAWEI|HONOR|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent)) return true;
     if(navigator.maxTouchPoints > 1 && /Mac|Linux/i.test(navigator.platform || '')) return true;
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:101'); /* guard-ok */ }
   return false;
 }
-function omranPdfReadySheet(url, file, filename, kind, openUrl){
+/* v-ready-sheet (طلب المالك): مكوّن واحد لصندوق «الملف جاهز» يناديه مساراه (omranPdfReadySheet
+   وreadySheet في app-05-img-save). الكمبيوتر: بطاقة وسط الشاشة بأزرار تحميل/نسخ/واتساب (لا زرّ
+   مشاركة — لوحة ويندوز تفشل صامتة)؛ الجوّال: ورقة أسفل بزرّ مشاركة النظام، وإن فشلت رسالة واضحة.
+   أيقونات SVG خطّية بلا إيموجي، مصغّرة + حجم، تحميل ذهبيّ والباقي بإطار وبنفس الحجم.
+   opts: { kind:'image'|'pdf'|'video'|'file', name, downloadUrl (زرّ التحميل — قد يعيش ساعة، تُنقر فورًا),
+           shareUrl (رابط دائم ٧ أيّام للواتساب/نسخ الرابط — يُمرَّر فقط حين يكون دائمًا؛ غيابه يُخفي واتساب/النسخ
+           كيلا يُشارَك رابطٌ يموت بعد ساعة: v-save-no-wa)، shareFile (File للمشاركة بالنظام والنسخ كصورة)،
+           size (بايت، اختياريّ)، thumbUrl (مصغّرة صورة، اختياريّ) } */
+function rsT(key, ar, en){
+  let v = null;
+  try{ if(typeof t === 'function'){ const tv = t(key); if(tv && tv !== key) v = tv; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:114'); /* guard-ok */ }
+  if(v == null){ const isA = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur'); v = isA ? ar : en; }
+  /* v-ready-sheet: ننزع أيّ إيموجي/رمز في صدر النصّ (المفاتيح القديمة تحمله) — الأيقونة SVG تحلّ محلّه، فلا إيموجي في الصندوق */
+  try{ return String(v).replace(/^[^\p{L}\p{N}]+/u, '').trim() || String(v); }catch(e){ return String(v); }
+}
+function rsBytes(n){ n = Number(n) || 0; if(n <= 0) return ''; if(n < 1024) return n + ' B'; if(n < 1048576) return (n / 1024).toFixed(0) + ' KB'; return (n / 1048576).toFixed(1) + ' MB'; }
+function rsIcon(name){
+  const P = {
+    download: '<path d="M12 3v11m0 0l-4-4m4 4l4-4M5 17v2a2 2 0 002 2h10a2 2 0 002-2v-2"/>',
+    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/>',
+    link: '<path d="M10 13a5 5 0 007.1 0l2-2a5 5 0 00-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 00-7.1 0l-2 2a5 5 0 007.1 7.1l1.1-1.1"/>',
+    whatsapp: '<path d="M4 20l1.4-4A8 8 0 1112 20a8 8 0 01-4.6-1.5L4 20z"/><path d="M9 9.5c.3 2.5 3 5.2 5.5 5.5l1-1.3 2 .8-.3 1.8c-3.9.6-8.6-4.1-8-8l1.8-.3.8 2L9 9.5z"/>',
+    share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.4l6.8 4M15.4 6.6l-6.8 4"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    file: '<path d="M7 3h7l5 5v12a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M14 3v5h5"/>',
+    video: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M4 18l5-5 4 4 3-2 4 4"/>',
+  };
+  return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (P[name] || '') + '</svg>';
+}
+function omranReadySheet(opts){
   try{
+    const o = opts || {};
+    const kind = o.kind || 'file';
     const isArT = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
-    const old = document.getElementById('omranPdfSheet'); if(old) old.remove();
-    const sheet = document.createElement('div');
-    sheet.id = 'omranPdfSheet';
-    sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.6);direction:' + (isArT ? 'rtl' : 'ltr') + ';font-family:inherit;';
-    const head = document.createElement('div');
-    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;color:#f3efe4;font-weight:800;font-size:15px;';
-    const ttl = document.createElement('span');
-    const fileTtl = (typeof t === 'function' && t('fileReadyTitle') !== 'fileReadyTitle' && t('fileReadyTitle')) || (isArT ? '✅ الملف جاهز' : '✅ File ready');
-    ttl.textContent = kind === 'video' ? (isArT ? '✅ الفيديو جاهز' : '✅ Video ready') : (kind === 'image' ? (isArT ? '✅ الصورة جاهزة' : '✅ Image ready') : (kind === 'file' ? fileTtl : (isArT ? '✅ ملف PDF جاهز' : '✅ PDF ready')));
-    const x = document.createElement('button'); x.textContent = '✕';
-    x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
-    x.onclick = function(){ sheet.remove(); };
-    head.appendChild(ttl); head.appendChild(x);
-    const row = document.createElement('div');
-    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;';
-    const btnCss = 'display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;';
-    /* تحميل: رابط حقيقي بلمسة المستخدم — يمرّ عبر منزّل النظام في TWA/WebView/هواوي */
-    const dl = document.createElement('a');
-    dl.href = url; dl.setAttribute('download', filename || 'omran-ai.pdf'); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
-    dl.style.cssText = btnCss + 'background:#d4af37;color:#111;';
-    dl.textContent = isArT ? '⬇️ تحميل' : '⬇️ Download';
-    dl.onclick = function(){ setTimeout(function(){ try{ ttl.textContent = isArT ? '📥 بدأ التحميل — افتح الإشعارات/التنزيلات' : '📥 Downloading — check notifications/Downloads'; }catch(e){ /* guard-ok */ } }, 400); };
-    row.appendChild(dl);
-    /* مشاركة: ورقة النظام (تحفظ في الملفات/المعرض) — بلمسة جديدة فلا يرفضها المتصفح */
-    let canShareFile = false;
-    try{ canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canShareFile = false; }
-    if(canShareFile){
-      const sh = document.createElement('button');
-      sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
-      sh.textContent = isArT ? '📤 مشاركة' : '📤 Share';
-      sh.onclick = function(){
-        navigator.share({ files: [file], title: filename }).then(function(){ sheet.remove(); }).catch(function(e3){
-          if(e3 && e3.name === 'AbortError') return;
-          __swallow(e3, 'pdf:sheet-share');
-          ttl.textContent = isArT ? '⚠️ المشاركة غير متاحة — استخدم تحميل أو فتح' : '⚠️ Share unavailable — use Download or Open';
-        });
-      };
-      row.appendChild(sh);
+    const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())); /* v-desktop-app: تطبيق ويندوز حاسوب */
+    const desktop = !mobile;
+    // رابط دائم يصحّ إرساله للغير — واتساب/نسخ الرابط فقط حين يكون موجودًا (لا رابط تنزيل عمره ساعة ولا blob محلّيّ)
+    const canLink = /^https?:/i.test(String(o.shareUrl || ''));
+    ['omranReadySheet', 'omranReadyBg', 'omranImgSheet', 'omranPdfSheet'].forEach(function(id){ const el = document.getElementById(id); if(el) el.remove(); });
+    const wrap = document.createElement('div'); wrap.id = 'omranReadySheet';
+    const cardBg = 'background:rgba(20,20,26,.99);border:1px solid rgba(212,175,55,.45);';
+    if(desktop){
+      const bg = document.createElement('div'); bg.id = 'omranReadyBg';
+      bg.style.cssText = 'position:fixed;inset:0;z-index:2147482999;background:rgba(0,0,0,.55);';
+      bg.onclick = function(){ try{ wrap.remove(); bg.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:149'); /* guard-ok */ } };
+      document.body.appendChild(bg);
+      wrap.style.cssText = 'position:fixed;z-index:2147483000;top:50%;left:50%;transform:translate(-50%,-50%);width:min(420px,92vw);' + cardBg + 'border-radius:18px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.6);direction:' + (isArT ? 'rtl' : 'ltr') + ';font-family:inherit;color:#f3efe4;';
+    } else {
+      wrap.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;' + cardBg + 'border-left:none;border-right:none;border-bottom:none;border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.6);direction:' + (isArT ? 'rtl' : 'ltr') + ';font-family:inherit;color:#f3efe4;';
     }
-    /* فتح: تبويب/عارض خارجي */
-    const op = document.createElement('a');
-    op.href = openUrl || url; op.target = '_blank'; op.rel = 'noopener';
-    op.style.cssText = btnCss + 'background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.18);';
-    op.textContent = isArT ? '🔗 فتح' : '🔗 Open';
-    op.onclick = function(ev){
-      try{
-        const cap2 = window.Capacitor;
-        const br2 = cap2 && cap2.Plugins && cap2.Plugins.Browser;
-        if(br2 && typeof br2.open === 'function'){ ev.preventDefault(); br2.open({ url: openUrl || url }); }
-      }catch(e2){ __swallow(e2, 'pdf:sheet-open'); }
+    const closeAll = function(){ try{ wrap.remove(); const b = document.getElementById('omranReadyBg'); if(b) b.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:155'); /* guard-ok */ } };
+    // الرأس: مصغّرة + عنوان + حجم، وزرّ إغلاق
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:14px;';
+    const thumb = document.createElement('div');
+    thumb.style.cssText = 'flex:0 0 auto;width:48px;height:48px;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);color:#d4af37;';
+    if(kind === 'image' && o.thumbUrl){
+      const im = document.createElement('img'); im.src = o.thumbUrl; im.alt = '';
+      im.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      thumb.appendChild(im);
+    } else {
+      const ic = document.createElement('span'); ic.innerHTML = rsIcon(kind === 'video' ? 'video' : (kind === 'image' ? 'image' : 'file'));
+      try{ ic.firstChild.setAttribute('width', '26'); ic.firstChild.setAttribute('height', '26'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:167'); /* guard-ok */ }
+      thumb.appendChild(ic);
+    }
+    const meta = document.createElement('div'); meta.style.cssText = 'flex:1;min-width:0;';
+    const ttl = document.createElement('div'); ttl.style.cssText = 'font-weight:800;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    // صورة لها عنوانها، وغيرها (PDF/فيديو/ملفّ) «الملفّ جاهز» العامّ — بلا مفاتيح عنوان جديدة
+    const fileTtl = rsT('fileReadyTitle', 'الملفّ جاهز', 'File ready');
+    ttl.textContent = (kind === 'image') ? rsT('imgReadyTitle', 'الصورة جاهزة', 'Image ready') : fileTtl;
+    const sub = document.createElement('div'); sub.style.cssText = 'font-size:12px;opacity:.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;text-align:' + (isArT ? 'right' : 'left') + ';';
+    const szTxt = rsBytes(o.size);
+    sub.textContent = [String(o.name || ''), szTxt].filter(Boolean).join(' · ');
+    meta.appendChild(ttl); meta.appendChild(sub);
+    const x = document.createElement('button'); x.type = 'button'; x.setAttribute('aria-label', rsT('closeTitle', 'إغلاق', 'Close'));
+    x.innerHTML = rsIcon('close'); x.style.cssText = 'flex:0 0 auto;background:none;border:none;color:#9a9a9e;cursor:pointer;padding:4px;';
+    x.onclick = closeAll;
+    head.appendChild(thumb); head.appendChild(meta); head.appendChild(x);
+    // الأزرار: تحميل ذهبيّ، والباقي بإطار وبنفس الحجم
+    const goldCss = 'display:flex;align-items:center;justify-content:center;gap:7px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;border:1px solid transparent;background:#d4af37;color:#111;';
+    const outCss = 'display:flex;align-items:center;justify-content:center;gap:7px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.22);';
+    const labelSpan = function(txt){ const s = document.createElement('span'); s.textContent = txt; return s; };
+    const addIcon = function(el, name){ const i = document.createElement('span'); i.style.cssText = 'display:inline-flex'; i.innerHTML = rsIcon(name); el.appendChild(i); };
+    const status = function(txt){ try{ ttl.textContent = txt; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:188'); /* guard-ok */ } };
+    const buttons = [];
+    const sheetBtn = function(){ /* v-share-sheet */
+      const sb = document.createElement('button'); sb.type = 'button'; sb.style.cssText = outCss;
+      addIcon(sb, 'share'); sb.appendChild(labelSpan(rsT('imgShareBtn', 'مشاركة', 'Share')));
+      sb.onclick = function(){ try{ window.omranShareSheet({ url: canLink ? o.shareUrl : '', file: o.shareFile || null }); }catch(e){ __swallow(e, 'ready:share-sheet'); } };
+      return sb;
     };
-    row.appendChild(op);
-    if(!canShareFile) row.style.gridTemplateColumns = '1fr 1fr';
-    sheet.appendChild(head); sheet.appendChild(row);
-    document.body.appendChild(sheet);
-    setTimeout(function(){ try{ sheet.remove(); }catch(e){ /* guard-ok */ } }, 120000);
+    // تحميل (الكلّ)
+    const dl = document.createElement('a');
+    dl.href = o.downloadUrl; dl.setAttribute('download', o.name || 'omran-ai'); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
+    dl.style.cssText = goldCss; addIcon(dl, 'download'); dl.appendChild(labelSpan(rsT('imgDlBtn', 'تحميل', 'Download')));
+    dl.onclick = function(){ setTimeout(function(){ status(desktop ? rsT('sheetDlDesktop', 'تمّ التحميل — تلقاها في مجلّد التنزيلات', 'Downloaded — find it in your Downloads folder') : rsT('imgDlStarted', 'بدأ التحميل — افتح الإشعارات/التنزيلات', 'Downloading — check notifications/Downloads')); }, 400); };
+    buttons.push(dl);
+    if(desktop){
+      // نسخ: صورة → الحافظة؛ غيرها → نسخ الرابط (إن وُجد رابط خادم)
+      const canCopyImg = (kind === 'image' && !!o.shareFile);
+      if(canCopyImg || canLink){
+        const cp = document.createElement('button'); cp.type = 'button'; cp.style.cssText = outCss;
+        if(canCopyImg){
+          addIcon(cp, 'copy'); cp.appendChild(labelSpan(rsT('sheetCopyImg', 'نسخ الصورة', 'Copy image')));
+          cp.onclick = function(){
+            try{
+              const toPng = new Promise(function(res, rej){
+                try{ const u = URL.createObjectURL(o.shareFile); const im = new Image();
+                  im.onload = function(){ try{ const c = document.createElement('canvas'); c.width = im.naturalWidth || 1; c.height = im.naturalHeight || 1; c.getContext('2d').drawImage(im, 0, 0); URL.revokeObjectURL(u); c.toBlob(function(b){ b ? res(b) : rej(new Error('png')); }, 'image/png'); }catch(e2){ rej(e2); } };
+                  im.onerror = function(){ URL.revokeObjectURL(u); rej(new Error('img')); }; im.src = u;
+                }catch(e3){ rej(e3); }
+              });
+              if(navigator.clipboard && typeof ClipboardItem === 'function'){
+                navigator.clipboard.write([new ClipboardItem({ 'image/png': toPng })])
+                  .then(function(){ status(rsT('sheetCopied', 'تمّ النسخ', 'Copied')); })
+                  .catch(function(e4){ __swallow(e4, 'sheet:copy-img'); status(rsT('sheetCopyFail', 'تعذّر النسخ', 'Copy failed')); });
+              } else { status(rsT('sheetCopyFail', 'تعذّر النسخ', 'Copy failed')); }
+            }catch(e){ __swallow(e, 'sheet:copy-img2'); status(rsT('sheetCopyFail', 'تعذّر النسخ', 'Copy failed')); }
+          };
+        } else {
+          addIcon(cp, 'link'); cp.appendChild(labelSpan(rsT('sheetCopyLink', 'نسخ الرابط', 'Copy link')));
+          cp.onclick = function(){
+            const link = o.shareUrl;
+            try{
+              if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(link).then(function(){ status(rsT('sheetCopied', 'تمّ النسخ', 'Copied')); }).catch(function(e5){ __swallow(e5, 'sheet:copy-link'); status(rsT('sheetCopyFail', 'تعذّر النسخ', 'Copy failed')); }); }
+              else status(rsT('sheetCopyFail', 'تعذّر النسخ', 'Copy failed'));
+            }catch(e){ __swallow(e, 'sheet:copy-link2'); status(rsT('sheetCopyFail', 'تعذّر النسخ', 'Copy failed')); }
+          };
+        }
+        buttons.push(cp);
+      }
+      // v-share-sheet: زرّ «مشاركة» واحد يفتح نافذة المشاركة الموحّدة (app-45) — الرابط الدائم وحده (v-save-no-wa)
+      if(typeof window.omranShareSheet === 'function'){ if(canLink) buttons.push(sheetBtn()); }
+      // واتساب: الرابط الدائم (٧ أيّام) وحده، لا رابط التنزيل ذي الساعة
+      else if(canLink){
+        const waLink = o.shareUrl;
+        const wa = document.createElement('a'); wa.href = 'https://wa.me/?text=' + encodeURIComponent(waLink); wa.target = '_blank'; wa.rel = 'noopener';
+        wa.style.cssText = outCss; addIcon(wa, 'whatsapp'); wa.appendChild(labelSpan(rsT('imgWaBtn', 'واتساب', 'WhatsApp')));
+        buttons.push(wa);
+      }
+    } else {
+      // v-share-sheet: النافذة الموحّدة — «المزيد» فيها ورقة الهاتف بالملفّ نفسه
+      if(typeof window.omranShareSheet === 'function' && (canLink || o.shareFile)){ buttons.push(sheetBtn()); }
+      else {
+      // الجوّال: مشاركة النظام، وإن فشلت رسالة واضحة (لا صمت)
+      let canShareFile = false;
+      try{ canShareFile = !!(o.shareFile && navigator.canShare && navigator.canShare({ files: [o.shareFile] })); }catch(e){ canShareFile = false; }
+      if(canShareFile){
+        const sh = document.createElement('button'); sh.type = 'button'; sh.style.cssText = outCss;
+        addIcon(sh, 'share'); sh.appendChild(labelSpan(rsT('imgShareBtn', 'مشاركة', 'Share')));
+        sh.onclick = function(){
+          navigator.share({ files: [o.shareFile] }).then(function(){ closeAll(); }).catch(function(e3){
+            if(e3 && e3.name === 'AbortError') return;
+            __swallow(e3, 'sheet:share');
+            status(rsT('sheetShareFail', 'تعذّرت المشاركة — جرّب التحميل', 'Share failed — try Download'));
+          });
+        };
+        buttons.push(sh);
+      } else if(canLink){
+        // لا مشاركة ملفّات: واتساب (الرابط الدائم) بديلًا
+        const waLink = o.shareUrl;
+        const wa = document.createElement('a'); wa.href = 'https://wa.me/?text=' + encodeURIComponent(waLink); wa.target = '_blank'; wa.rel = 'noopener';
+        wa.style.cssText = outCss; addIcon(wa, 'whatsapp'); wa.appendChild(labelSpan(rsT('imgWaBtn', 'واتساب', 'WhatsApp')));
+        buttons.push(wa);
+      }
+      }
+    }
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:repeat(' + buttons.length + ',1fr);gap:8px;';
+    buttons.forEach(function(b){ row.appendChild(b); });
+    wrap.appendChild(head); wrap.appendChild(row);
+    document.body.appendChild(wrap);
+    setTimeout(function(){ try{ closeAll(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:277'); /* guard-ok */ } }, 120000);
     return true;
-  }catch(e){ __swallow(e, 'pdf:sheet'); return false; }
+  }catch(e){ __swallow(e, 'ready:sheet'); return false; }
+}
+window.omranReadySheet = omranReadySheet;
+/* غلاف التوافق: النداءات القديمة تمرّ للمكوّن الموحّد. url=رابط التنزيل. مناديو هذا الغلاف (PDF/ملفّ/فيديو عبر
+   omranSaveBlob وsave-media) يرفعون بـpurpose:download (عمر ساعة) أو blob محلّيّ — لا رابط دائمًا يصحّ إرساله،
+   فلا shareUrl (واتساب/نسخ الرابط يظهران فقط حين يكون الرابط دائمًا ٧ أيّام). المشاركة بالملفّ تبقى على الجوّال. */
+function omranPdfReadySheet(url, file, filename, kind){
+  let size = 0; try{ size = (file && typeof file.size === 'number') ? file.size : 0; }catch(e){ size = 0; }
+  let thumbUrl = ''; try{ if(kind === 'image' && file && typeof URL !== 'undefined' && URL.createObjectURL) thumbUrl = URL.createObjectURL(file); }catch(e){ thumbUrl = ''; }
+  return omranReadySheet({ kind: kind || 'pdf', name: filename, downloadUrl: url, shareFile: file || null, size: size, thumbUrl: thumbUrl });
 }
 async function omranSaveBlob(blob, filename){
   const isPdfFile = !!(blob && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || '')));
@@ -141,11 +293,14 @@ async function omranSaveBlob(blob, filename){
   const sheetKind = isPdfFile ? 'pdf' : (/^image\//i.test((blob && blob.type) || '') ? 'image' : 'file');
   const sheetMime = isPdfFile ? 'application/pdf' : ((blob && blob.type) || 'application/octet-stream');
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
+  /* v-audit-uicore: مشاركة النظام على الجوّال والأغلفة وحدها (قرار v-ready-sheet، كما في img-save وsave-media) — على الكمبيوتر
+     كانت تفتح لوحة ويندوز/ماك بلا «حفظ»، وإغلاقها (AbortError) يُنهي الدالّة بلا تنزيل. الكمبيوتر ينزّل مباشرة في الأسفل. */
+  const mobileish = (omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())) || omranMobileUA(); /* v-desktop-app: تطبيق ويندوز ينزّل مباشرة — لا لوحة ويندوز */
   try{
-    if(navigator.canShare && typeof File === 'function'){
+    if(mobileish && navigator.canShare && typeof File === 'function'){
       const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
       if(navigator.canShare({ files: [f] })){
-        try{ await navigator.share({ files: [f], title: filename }); return; }
+        try{ await navigator.share({ files: [f] }); return; }
         catch(e){
           if(e && e.name === 'AbortError') return;
           /* v-reply-export: رفض المشاركة (انتهاء «ضغطة المستخدم» في الآيفون، أو نوع خارج قائمة كروم
@@ -156,7 +311,7 @@ async function omranSaveBlob(blob, filename){
   }catch(e){ __swallow(e, 'share:universal'); }
   /* داخل الأغلفة وعلى أي جوال: رابط سيرفر حقيقي لكلّ الأنواع (v-reply-export: كان PDF فقط، فكان
      Word/TXT يسقطان على تنزيل blob الذي تخطفه مصيدة الصور وترفعه «صورة» مكسورة) */
-  if(omranLikelyApp() || omranMobileUA()){
+  if(mobileish){
     try{
       const url = await omranBlobToServerLink(blob, filename);
       let fileForShare = null;
@@ -167,7 +322,7 @@ async function omranSaveBlob(blob, filename){
           const dfr0 = document.createElement('iframe');
           dfr0.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
           dfr0.src = url; document.body.appendChild(dfr0);
-          setTimeout(() => { try{ dfr0.remove(); }catch(e){ /* guard-ok */ } }, 60000);
+          setTimeout(() => { try{ dfr0.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:325'); /* guard-ok */ } }, 60000);
         }catch(e){ __swallow(e, 'pdf:auto-frame'); }
         return;
       }
@@ -297,7 +452,7 @@ async function omranNormalizeImageFile(file){
   }catch(e){
     /* v-heic-diag: آخر سبب فشل يُحفظ ليُعرض في رسالة الخطأ نفسها —
        سكرينشوت المستخدم يصير هو التشخيص. */
-    try{ window.__omranHeicErr = String((e && e.message) || e).slice(0, 160); }catch(e3){ /* guard-ok */ }
+    try{ window.__omranHeicErr = String((e && e.message) || e).slice(0, 160); }catch(e3){ typeof __swallow === 'function' && __swallow(e3, 'app-05-ui:455'); /* guard-ok */ }
     /* v-heic-report: فشل التحويل نفسه يجب أن يصل لوحة المالك — بدونه نعمى
        عن نكهات HEIC التي لا تفكها المكتبة. */
     try{
@@ -367,12 +522,12 @@ async function omranExportHtmlAsPdfFile(bodyHtml, opts){
   } catch(err){
     try{
       const errPill = pill; pill = null; /* يبقى ظاهرًا ٦ ثوانٍ — finally لا يزيله */
-      if(errPill){ errPill.textContent = (isArP ? '❌ تعذّر إنشاء PDF: ' : '❌ PDF failed: ') + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ /* guard-ok */ } }, 6000); }
-    }catch(e){ /* guard-ok */ }
+      if(errPill){ errPill.textContent = (isArP ? '❌ تعذّر إنشاء PDF: ' : '❌ PDF failed: ') + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:525'); /* guard-ok */ } }, 6000); }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:526'); /* guard-ok */ }
     throw err;
   } finally {
     holder.remove();
-    try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
+    try{ if(pill) pill.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:530'); /* guard-ok */ }
   }
 }
 /* v-pdf-docs (شكوى عمران: «مااقدر احمل الملفات لتحويل PDF — فقط صورة»): زرّ «PDF» كان يقبل الصور
@@ -394,11 +549,12 @@ function omranLoadMammoth(){
 }
 /* heights: ارتفاع كلّ كتلة (px)، pageH: ارتفاع محتوى الصفحة، breaks[i]: الكتلة i تبدأ صفحة جديدة.
    الناتج: [{items:[فهارس الكتل]}] أو لكتلة أطول من صفحة شرائح [{items:[i], clipTop, clipH}]. */
-function omranPaginateBlocks(heights, pageH, breaks){
+function omranPaginateBlocks(heights, pageH0, breaks){
   const pages = [];
   let cur = null, used = 0;
   heights.forEach((h0, i) => {
     const h = Math.max(0, Number(h0) || 0);
+    const pageH = typeof pageH0 === 'function' ? pageH0(i) : pageH0; /* v-xlsx-pdf-calc: ارتفاع الصفحة لكلّ كتلة (الأفقيّة أقصر) */
     if(h > pageH){
       for(let top = 0; top < h; top += pageH) pages.push({ items: [i], clipTop: top, clipH: pageH });
       cur = null; used = 0;
@@ -415,10 +571,15 @@ async function omranExportPagedPdfFile(blocks, opts){
   const contentH = PH - PADV * 2 - 6;
   const maxPages = opts.maxPages || 80;
   const css = '<style>p{margin:0 0 .6em}h1,h2,h3,h4,h5,h6{margin:.4em 0 .3em;line-height:1.5}h1{font-size:24px}h2{font-size:20px}h3{font-size:17px}ul,ol{margin:0 0 .6em;padding-inline-start:1.6em}table{border-collapse:collapse;width:100%;margin:0 0 .6em}td,th{border:1px solid #999;padding:3px 8px;vertical-align:top}img{max-width:100%;max-height:' + (contentH - 20) + 'px;display:block;margin:0 auto}</style>';
-  const mk = () => {
+  /* v-xlsx-pdf-calc: كتلة landscape:true تُرسم في صفحة A4 أفقيّة (شبكة أيّام الشهر في PDF الطباعة كما يطبعها Excel). اختياريّ لكلّ كتلة —
+     بلاه كلّ شيء عموديّ كما كان؛ وتغيّر الاتّجاه يبدأ صفحة جديدة. */
+  const landAt = (i) => !!(blocks[i] && blocks[i].landscape);
+  const anyLand = blocks.some((b) => b && b.landscape);
+  const contentOf = (land) => (land ? PW : PH) - PADV * 2 - 6;
+  const mk = (land) => {
     const h = document.createElement('div');
     h.dir = opts.rtl === false ? 'ltr' : 'rtl';
-    h.style.cssText = 'position:fixed; left:-12000px; top:0; width:' + PW + 'px; background:#ffffff; color:#111; padding:' + PADV + 'px ' + PADH + 'px; box-sizing:border-box; line-height:1.9; font-size:15px;';
+    h.style.cssText = 'position:fixed; left:-12000px; top:0; width:' + (land ? PH : PW) + 'px; background:#ffffff; color:#111; padding:' + PADV + 'px ' + PADH + 'px; box-sizing:border-box; line-height:1.9; font-size:15px;';
     h.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
     return h;
   };
@@ -430,7 +591,7 @@ async function omranExportPagedPdfFile(blocks, opts){
     pill.textContent = '⏳ …';
     document.body.appendChild(pill);
   }catch(e){ pill = null; }
-  const measure = mk();
+  const measure = mk(false), measureL = anyLand ? mk(true) : null;
   try{
     await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
     try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
@@ -438,44 +599,52 @@ async function omranExportPagedPdfFile(blocks, opts){
     measure.innerHTML = css + blocks.map((b) => wrap(b.html)).join('');
     document.body.appendChild(measure);
     await Promise.all(Array.from(measure.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
-    const heights = Array.from(measure.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
+    let heights = Array.from(measure.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
     measure.remove();
-    const breaks = blocks.map((b, i) => !!(b.newpage || (i > 0 && blocks[i - 1].alone)));
-    let pages = omranPaginateBlocks(heights, contentH, breaks);
+    if(measureL){
+      measureL.innerHTML = css + blocks.map((b) => wrap(b.html)).join('');
+      document.body.appendChild(measureL);
+      const hl = Array.from(measureL.children).filter((el) => el.tagName === 'DIV').map((el) => el.getBoundingClientRect().height + 1);
+      measureL.remove();
+      heights = heights.map((h, i) => (landAt(i) ? hl[i] : h));
+    }
+    const breaks = blocks.map((b, i) => !!(b.newpage || (i > 0 && blocks[i - 1].alone) || (i > 0 && landAt(i) !== landAt(i - 1))));
+    let pages = omranPaginateBlocks(heights, anyLand ? (i) => contentOf(landAt(i)) : contentH, breaks);
     const total = pages.length;
     if(!total) throw new Error('empty-doc');
     if(total > maxPages) pages = pages.slice(0, maxPages);
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pw = pdf.internal.pageSize.getWidth();
+    const pageLand = (pg) => landAt(pg.items[0]);
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: pageLand(pages[0]) ? 'landscape' : 'portrait' });
     for(let k = 0; k < pages.length; k++){
       if(pill) pill.textContent = String(t('pdfDocPage')).replace('{i}', k + 1).replace('{n}', pages.length);
       await new Promise((r) => setTimeout(r, 0));
       const pg = pages[k];
       const inner = pg.items.map((i) => wrap(blocks[i].html)).join('');
-      const holder = mk();
+      const holder = mk(pageLand(pg));
       holder.innerHTML = css + (pg.clipH ? '<div style="height:' + pg.clipH + 'px;overflow:hidden"><div style="margin-top:-' + pg.clipTop + 'px">' + inner + '</div></div>' : inner);
       document.body.appendChild(holder);
       let canvas;
       try{
         await Promise.all(Array.from(holder.querySelectorAll('img')).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
-        canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 1.3, style: { position: 'static', left: '0', top: '0' } });
+        canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: opts.pixelRatio || 1.3, style: { position: 'static', left: '0', top: '0' } });
       } finally { holder.remove(); }
       if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
-      if(k > 0) pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.72), 'JPEG', 0, 0, pw, (canvas.height / canvas.width) * pw); /* ٠٫٧٢ وx١٫٣: ٨٠ صفحة نصّ ≈٧ م.ب لا ١٦ — رابط الخادم حدّه ٤ م.ب والمشاركة تتعثّر بالكبير */
+      if(k > 0) pdf.addPage('a4', pageLand(pg) ? 'landscape' : 'portrait');
+      const pw = pdf.internal.pageSize.getWidth();
+      pdf.addImage(canvas.toDataURL('image/jpeg', opts.jpegQuality || 0.72), 'JPEG', 0, 0, pw, (canvas.height / canvas.width) * pw); /* ٠٫٧٢ وx١٫٣: ٨٠ صفحة نصّ ≈٧ م.ب لا ١٦ — رابط الخادم حدّه ٤ م.ب والمشاركة تتعثّر بالكبير (PDF الردّ يمرّر دقّته السابقة x٢ و٠٫٩٢: v-audit-uicore) */
     }
     await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-docs.pdf');
     return { pages: pages.length, total, truncated: total > pages.length };
   } catch(err){
     try{
       const errPill = pill; pill = null; /* يبقى ظاهرًا ٦ ثوانٍ — finally لا يزيله */
-      if(errPill){ errPill.textContent = '❌ ' + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ /* guard-ok */ } }, 6000); }
-    }catch(e){ /* guard-ok */ }
+      if(errPill){ errPill.textContent = '❌ ' + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:628'); /* guard-ok */ } }, 6000); }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:629'); /* guard-ok */ }
     throw err;
   } finally {
-    try{ measure.remove(); }catch(e){ /* guard-ok */ }
-    try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
+    try{ measure.remove(); if(measureL) measureL.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:632'); /* guard-ok */ }
+    try{ if(pill) pill.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:633'); /* guard-ok */ }
   }
 }
 function msgPdfFontSpec(){
@@ -521,18 +690,128 @@ function msgPrintAfterFont(view, family, ctx){
     else wait();
   }catch(e){ __swallow(e, ctx + ':font-link'); wait(); }
 }
+/* v-audit-uicore (فحص التطبيق: تصدير الردّ كان يكتب ** و### و``` خامًا، ويفرض rtl في كلّ اللغات، ويقطع PDF الطويل وسط
+   السطر): محلّل ماركداون صغير واحد لمصدّري الردّ الثلاثة (PDF/Word/صورة) — TXT يبقى خامًا كما هو.
+   الاتّجاه بقاعدة الشاشة نفسها (omranMdBlocks في app-02): الردّ عربيّ إن غلب العربيّ (الكود لا يُحسب)، وفي الردّ العربيّ
+   السطر الإنجليزيّ الخالص يسار، وفي غيره السطر العربيّ الخالص يمين؛ الكود يسار دائمًا.
+   الناتج عنصر لكلّ سطر — فمصدّر PDF المقسَّم يوزّع الأسطر على الصفحات ولا يقطع سطرًا عند حدّها. */
+function msgExportParse(text){
+  const AR = /[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/;
+  const src = String(text || '').replace(/\r\n?/g, '\n');
+  const prose = src.replace(/(```|~~~)[\s\S]*?(\1|$)/g, ' ').replace(/`[^`\n]*`/g, ' ');
+  const arN = (prose.match(/[ؠ-يٮ-ۓۺ-ۿݐ-ݿ]/g) || []).length;
+  const laN = (prose.match(/[A-Za-z]/g) || []).length;
+  const rtl = arN > 0 && arN * 2 >= laN;
+  const lineRtl = (s) => { const la = (String(s).match(/[A-Za-z]/g) || []).length; return rtl ? (AR.test(s) || la < 12) : (AR.test(s) && !la); };
+  const items = [];
+  let fence = null;
+  src.split('\n').forEach((ln) => {
+    const fm = /^\s*(```|~~~)/.exec(ln);
+    if(fence){
+      if(fm && fm[1] === fence && !ln.trim().slice(3).trim()){ fence = null; return; }
+      items.push({ type: 'code', text: ln.replace(/\t/g, '    ') });
+      return;
+    }
+    if(fm){ fence = fm[1]; return; }
+    const s = ln.trim();
+    const depth = Math.min(3, Math.floor(((/^\s*/.exec(ln) || [''])[0].replace(/\t/g, '  ').length) / 2));
+    let m;
+    if(!s) items.push({ type: 'blank', text: '' });
+    else if(/^([-*_])(\s*\1){2,}$/.test(s)) items.push({ type: 'hr', text: '' });
+    else if((m = /^(#{1,6})\s+(.*?)(\s+#+)?$/.exec(s))) items.push({ type: 'h', level: m[1].length, text: m[2] });
+    else if(/^\|?(\s*:?-{2,}:?\s*\|)+\s*(:?-{2,}:?\s*)?\|?$/.test(s)){ const prev = items[items.length - 1]; if(prev && prev.type === 'row') prev.head = true; }
+    else if(/^\|.*\|$/.test(s)) items.push({ type: 'row', cells: s.slice(1, -1).split('|').map((c) => c.trim()), text: s });
+    else if((m = /^[-*+•]\s+(.*)$/.exec(s))) items.push({ type: 'li', depth: depth, text: m[1] });
+    else if((m = /^(\d{1,4})[.)]\s+(.*)$/.exec(s))) items.push({ type: 'li', depth: depth, num: m[1], text: m[2] });
+    else if((m = /^>\s?(.*)$/.exec(s))) items.push({ type: 'quote', text: m[1] });
+    else items.push({ type: 'p', text: s });
+  });
+  items.forEach((it) => { it.rtl = (it.type === 'code') ? false : lineRtl(it.text); });
+  /* v-audit-uicore: الجدول كلّه باتّجاه واحد بقاعدة الشاشة (omranMdTableEl في app-02: يمين إن كان فيه حرف عربيّ) — لا اتّجاه
+     لكلّ صفّ، وإلّا انعكس ترتيب أعمدة صفّ إنجليزيّ خالص في جدول عربيّ (أو العكس) فوقعت قيمه تحت عمود غير عمودها. */
+  for(let i = 0, j; i < items.length; i = j){
+    j = i + 1;
+    if(items[i].type !== 'row') continue;
+    while(j < items.length && items[j].type === 'row') j++;
+    const run = items.slice(i, j), tr = run.some((x) => AR.test(x.text));
+    run.forEach((x) => { x.rtl = tr; });
+  }
+  return { rtl: rtl, items: items };
+}
+/* العريض والمائل والمشطوب والروابط والكود داخل السطر — HTML مهرَّب، أو نصّ مجرّد للصورة (plain) */
+function msgExportInline(s, plain){
+  const codes = [];
+  let h = String(s || '').replace(/`([^`\n]+)`/g, (m0, c) => { codes.push(c); return '\ue000' + (codes.length - 1) + '\ue001'; });
+  if(!plain) h = msgEscapeHtml(h);
+  const W = (tag, x) => plain ? x : '<' + tag + '>' + x + '</' + tag + '>';
+  h = h.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (m0, a, u) => plain ? a + ' (' + u + ')' : a + ' <span dir="ltr" style="color:#555">(' + u + ')</span>')
+    .replace(/\*\*(?!\s)([^\n]+?)\*\*/g, (m0, x) => W('b', x))
+    .replace(/(^|[^*\w])\*(?![\s*])([^*\n]+?)\*(?!\w)/g, (m0, p, x) => p + W('i', x))
+    .replace(/~~(?!\s)([^\n]+?)~~/g, (m0, x) => W('s', x));
+  return h.replace(/\ue000(\d+)\ue001/g, (m0, i) => plain ? codes[+i] : '<code dir="ltr" style="font-family:Consolas,\'Courier New\',monospace;font-size:.9em;background:#f1f1f1;border-radius:3px;padding:0 4px">' + msgEscapeHtml(codes[+i]) + '</code>');
+}
+/* كتل HTML (سطر لكلّ كتلة) لـPDF وWord، كلّ كتلة باتّجاهها الصريح */
+function msgExportBlocks(text, lineH){
+  const P = msgExportParse(text);
+  const lh = lineH ? 'line-height:' + lineH + ';' : '';
+  const D = (it) => ' dir="' + (it.rtl ? 'rtl' : 'ltr') + '"';
+  const blocks = P.items.map((it, i) => {
+    const prev = P.items[i - 1], next = P.items[i + 1];
+    if(it.type === 'blank') return '<div style="' + lh + '">&nbsp;</div>';
+    if(it.type === 'hr') return '<hr style="border:0;border-top:1px solid #ccc;margin:.5em 0">';
+    if(it.type === 'h'){ const L = Math.min(6, it.level); return '<h' + L + D(it) + '>' + msgExportInline(it.text) + '</h' + L + '>'; }
+    if(it.type === 'li'){
+      const pad = 'margin:0;padding-inline-start:' + (1.6 + 1.4 * (it.depth || 0)) + 'em;' + lh;
+      return it.num ? '<ol start="' + it.num + '"' + D(it) + ' style="' + pad + '"><li>' + msgExportInline(it.text) + '</li></ol>'
+                    : '<ul' + D(it) + ' style="' + pad + '"><li>' + msgExportInline(it.text) + '</li></ul>';
+    }
+    if(it.type === 'quote') return '<div' + D(it) + ' style="' + lh + 'border-inline-start:3px solid #ccc;padding-inline-start:10px;color:#444;white-space:pre-wrap;word-break:break-word">' + msgExportInline(it.text) + '</div>';
+    if(it.type === 'row'){
+      const top = (prev && prev.type === 'row') ? 'border-top:0;' : '';
+      return '<table' + D(it) + ' style="table-layout:fixed;width:100%;border-collapse:collapse;margin:0"><tr>' + it.cells.map((c) => '<td style="border:1px solid #999;' + top + 'padding:3px 8px;vertical-align:top;word-break:break-word' + (it.head ? ';font-weight:700;background:#f3f3f3' : '') + '">' + msgExportInline(c) + '</td>').join('') + '</tr></table>';
+    }
+    if(it.type === 'code'){
+      const first = !(prev && prev.type === 'code'), last = !(next && next.type === 'code');
+      return '<div dir="ltr" style="font-family:Consolas,\'Courier New\',monospace;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-all;text-align:left;background:#f4f4f4;padding:' + (first ? '6px' : '0') + ' 10px ' + (last ? '6px' : '0') + '">' + (it.text ? msgEscapeHtml(it.text) : '&nbsp;') + '</div>';
+    }
+    return '<div' + D(it) + ' style="' + lh + 'white-space:pre-wrap;word-break:break-word">' + msgExportInline(it.text) + '</div>';
+  });
+  return { rtl: P.rtl, blocks: blocks };
+}
+/* التفاف سطر الصورة: عند المسافات، وبالحرف حين لا تتّسع الكلمة وحدها (رابط، سطر كود) أو النصّ بلا مسافات (الصينيّة) */
+function msgExportWrap(ctx, text, maxWidth){
+  const out = [];
+  const fits = (s) => ctx.measureText(s).width <= maxWidth;
+  let line = null;
+  String(text || '').split(' ').forEach((word) => {
+    const test = (line === null) ? word : line + ' ' + word;
+    if(fits(test)){ line = test; return; }
+    if(line !== null && line.trim() && fits(word)){ out.push(line); line = word; return; }
+    let cur = (line === null) ? '' : line + ' ';
+    Array.from(word).forEach((ch) => {
+      if(cur.trim() && !fits(cur + ch)){ out.push(cur.replace(/\s+$/, '')); cur = ch; }
+      else cur += ch;
+    });
+    line = cur;
+  });
+  out.push(line === null ? '' : line);
+  return out;
+}
 function exportReplyAsPdf(text){
   const font = msgPdfFontSpec();
   const pdfFont = msgPdfFontHead(font);
-  const html = '<html><head><meta charset="utf-8"><title>om ai</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
+  const doc = msgExportBlocks(text, font.line); /* v-audit-uicore: ماركداون محوَّل واتّجاه من النصّ */
+  const dir = doc.rtl ? 'rtl' : 'ltr';
+  const html = '<html><head><meta charset="utf-8"><title>om ai</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:' + dir + ';padding:28px;line-height:' + font.line + ';color:#111;word-break:break-word;}</style></head><body dir="' + dir + '">' + doc.blocks.join('') + '</body></html>';
   /* v-app-share: window.open داخل تطبيق المتجر يرجع null — نرسل للجسر مباشرة */
   const pdfBridge = omranNativeBridge('omranPdf');
   if(pdfBridge){
     try{ pdfBridge.postMessage({ html, name: 'omran-ai.pdf' }); return; }catch(e){ __swallow(e, 'ui:app-05-ui#1-app'); }
   }
-  /* v-pdf-file: ملف PDF ينزل مباشرة بدل نافذة الطباعة — الطباعة احتياط أخير */
-  const inner = '<div style="white-space:pre-wrap; word-break:break-word; line-height:' + font.line + ';">' + msgEscapeHtml(text) + '</div>';
-  omranExportHtmlAsPdfFile(inner, { fontFamily: pdfFont.family, fileName: 'omran-ai.pdf' }).catch((e) => {
+  /* v-pdf-file: ملف PDF ينزل مباشرة بدل نافذة الطباعة — الطباعة احتياط أخير.
+     v-audit-uicore: المصدّر المقسَّم (كمسار المستندات) لا اللوحة الواحدة المقصوصة بارتفاع ثابت — لا سطر يُقطع بين صفحتين،
+     ولا لوحة تتجاوز حدّ سفاري الآيفون (~١٦ ميغابكسل) فيخرج الملفّ أبيض؛ بدقّة الردّ السابقة (x٢، JPEG ٠٫٩٢). */
+  omranExportPagedPdfFile(doc.blocks.map((h) => ({ html: h })), { rtl: doc.rtl, fontFamily: pdfFont.family, fileName: 'omran-ai.pdf', pixelRatio: 2, jpegQuality: 0.92 }).catch((e) => {
     __swallow(e, 'ui:app-05-ui#1-file');
     const w = window.open('', '_blank');
     if(!w) return;
@@ -540,10 +819,138 @@ function exportReplyAsPdf(text){
     msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
   });
 }
+/* v-docx (فحص المالك ٩ نوفمبر «كل ملفات التحميل»): «تحويل إلى Word» كان HTML باسم ‎.doc‎ — Word على الحاسوب يفتحه، لكنّ الآيفون
+   (المعاينة وPages) وGoogle Docs وLibreOffice يقرؤونه صيغة Word 97 فيفشل أو يتشوّه: الجدول أعمدة بحرفين والعربيّ يسارًا (لقطة
+   LibreOffice). الآن ‎.docx‎ حقيقيّ (WordprocessingML) من محلّل الردّ نفسه (msgExportParse): فقرة لكلّ سطر باتّجاهه (w:bidi)،
+   عريض ومائل ومشطوب وكود، قوائم، اقتباس، كود أحاديّ الخطّ يسارًا، وجدول Word حقيقيّ باتّجاه واحد (bidiVisual) ورأس يتكرّر.
+   الحزمة ZIP مخزّنة بلا ضغط (omranZipStore) — لا مكتبة تُحمَّل. */
+function omranCrc32(u8){
+  let t = omranCrc32.table;
+  if(!t){
+    t = omranCrc32.table = new Uint32Array(256);
+    for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; }
+  }
+  let crc = -1;
+  for(let i = 0; i < u8.length; i++) crc = t[(crc ^ u8[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ -1) >>> 0;
+}
+/* ZIP بلا ضغط (stored) بأسماء UTF-8: [{ name, data: نصّ أو Uint8Array }] → أجزاء Uint8Array لـBlob */
+function omranZipStore(files){
+  const enc = new TextEncoder(), parts = [], central = [];
+  let off = 0;
+  files.forEach((f) => {
+    const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = omranCrc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(12, 0x21, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(14, 0x21, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    off += 30 + name.length + data.length;
+  });
+  const cd = central.reduce((n, u) => n + u.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cd, true); end.setUint32(16, off, true);
+  return parts.concat(central, [new Uint8Array(end.buffer)]);
+}
+/* التنسيق داخل السطر (كـmsgExportInline) إلى مقاطع: { t, b, i, s, c } */
+function msgDocxRuns(str, base){
+  const runs = [];
+  const add = (t, f) => { if(t) runs.push({ t: t, b: !!f.b, i: !!f.i, s: !!f.s, c: !!f.c }); };
+  const walk = (x, f) => {
+    const re = /`([^`\n]+)`|\*\*(?!\s)([^\n]+?)\*\*|~~(?!\s)([^\n]+?)~~|\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|\*(?![\s*])([^*\n]+?)\*(?!\w)/g;
+    let last = 0, m;
+    while((m = re.exec(x))){
+      add(x.slice(last, m.index), f);
+      if(m[1] != null) add(m[1], Object.assign({}, f, { c: true }));
+      else if(m[2] != null) walk(m[2], Object.assign({}, f, { b: true }));
+      else if(m[3] != null) walk(m[3], Object.assign({}, f, { s: true }));
+      else if(m[4] != null){ walk(m[4], f); add(' (' + m[5] + ')', f); }
+      else walk(m[6], Object.assign({}, f, { i: true }));
+      last = re.lastIndex;
+    }
+    add(x.slice(last), f);
+  };
+  walk(String(str || ''), base || {});
+  return runs;
+}
+function msgDocxXml(text){
+  const P = msgExportParse(text);
+  const AR = /[֐-ࣿיִ-﷿ﹰ-﻿]/;
+  const X = (v) => String(v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const run = (r, o) => {
+    const mono = r.c || o.mono, f = mono ? 'Consolas' : 'Arial', sz = o.sz || 24;
+    let p = '<w:rFonts w:ascii="' + f + '" w:hAnsi="' + f + '" w:cs="' + f + '"/>';
+    if(r.b || o.b) p += '<w:b/><w:bCs/>';
+    if(r.i || o.i) p += '<w:i/><w:iCs/>';
+    if(r.s) p += '<w:strike/>';
+    if(o.color) p += '<w:color w:val="' + o.color + '"/>';
+    p += '<w:sz w:val="' + sz + '"/><w:szCs w:val="' + sz + '"/>';
+    if(r.c && !o.mono) p += '<w:shd w:val="clear" w:color="auto" w:fill="F1F1F1"/>';
+    if(AR.test(r.t)) p += '<w:rtl/>';
+    return '<w:r><w:rPr>' + p + '</w:rPr><w:t xml:space="preserve">' + X(r.t) + '</w:t></w:r>';
+  };
+  const para = (runsXml, o) => {
+    let pp = '';
+    if(o.keepNext) pp += '<w:keepNext/>';
+    if(o.border) pp += '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="CCCCCC"/></w:pBdr>';
+    if(o.shd) pp += '<w:shd w:val="clear" w:color="auto" w:fill="' + o.shd + '"/>';
+    if(o.rtl) pp += '<w:bidi/>';
+    pp += '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after == null ? 120 : o.after) + '"/>';
+    if(o.jc) pp += '<w:jc w:val="' + o.jc + '"/>';
+    return '<w:p><w:pPr>' + pp + '</w:pPr>' + runsXml + '</w:p>';
+  };
+  const inline = (t, o, base) => msgDocxRuns(t, base).map((r) => run(r, o)).join('');
+  const table = (rows) => {
+    const n = Math.max.apply(null, rows.map((r) => r.cells.length)), W = 9638, cw = Math.floor(W / n), rtl = rows[0].rtl;
+    let x = '<w:tbl><w:tblPr>' + (rtl ? '<w:bidiVisual/>' : '') + '<w:tblW w:w="' + (cw * n) + '" w:type="dxa"/><w:tblBorders>'
+      + ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map((k) => '<w:' + k + ' w:val="single" w:sz="4" w:space="0" w:color="999999"/>').join('')
+      + '</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>'
+      + new Array(n + 1).join('<w:gridCol w:w="' + cw + '"/>') + '</w:tblGrid>';
+    rows.forEach((r) => {
+      x += '<w:tr>' + (r.head ? '<w:trPr><w:tblHeader/></w:trPr>' : '');
+      for(let k = 0; k < n; k++){
+        x += '<w:tc><w:tcPr><w:tcW w:w="' + cw + '" w:type="dxa"/>' + (r.head ? '<w:shd w:val="clear" w:color="auto" w:fill="F3F3F3"/>' : '') + '</w:tcPr>'
+          + para(inline(r.cells[k] || '', { b: r.head }), { rtl: rtl, after: 40, before: 40 }) + '</w:tc>';
+      }
+      x += '</w:tr>';
+    });
+    return x + '</w:tbl>' + para('', { after: 120 });
+  };
+  const body = [];
+  for(let i = 0; i < P.items.length; i++){
+    const it = P.items[i];
+    if(it.type === 'blank') continue;
+    if(it.type === 'row'){ let j = i; while(j < P.items.length && P.items[j].type === 'row') j++; body.push(table(P.items.slice(i, j))); i = j - 1; continue; }
+    if(it.type === 'hr'){ body.push(para('', { border: true, after: 120 })); continue; }
+    if(it.type === 'h'){ const L = Math.min(6, it.level); body.push(para(inline(it.text, { b: true, sz: [0, 36, 32, 28, 26, 24, 24][L] }), { rtl: it.rtl, keepNext: true, before: 200, after: 100 })); continue; }
+    if(it.type === 'li'){ body.push(para(run({ t: ' '.repeat(2 * (it.depth || 0)) + (it.num ? it.num + '. ' : '• ') }, {}) + inline(it.text, {}), { rtl: it.rtl, after: 60 })); continue; }
+    if(it.type === 'quote'){ body.push(para(inline(it.text, { i: true, color: '444444' }), { rtl: it.rtl, shd: 'F5F5F5', after: 60 })); continue; }
+    if(it.type === 'code'){
+      const next = P.items[i + 1];
+      body.push(para(run({ t: it.text || ' ' }, { mono: true, sz: 20 }), { shd: 'F4F4F4', after: (next && next.type === 'code') ? 0 : 120, jc: 'left' }));
+      continue;
+    }
+    body.push(para(inline(it.text, {}), { rtl: it.rtl }));
+  }
+  if(!body.length) body.push(para('', {}));
+  return { rtl: P.rtl, xml: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+    + body.join('') + '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/>' + (P.rtl ? '<w:bidi/>' : '') + '</w:sectPr></w:body></w:document>' };
+}
+function msgDocxBlob(text){
+  const d = msgDocxXml(text), W = 'http://schemas.openxmlformats.org/', R = W + 'officeDocument/2006/relationships';
+  const files = [
+    { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="' + W + 'package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>' },
+    { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="' + W + 'package/2006/relationships"><Relationship Id="rId1" Type="' + R + '/officeDocument" Target="word/document.xml"/></Relationships>' },
+    { name: 'word/_rels/document.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="' + W + 'package/2006/relationships"><Relationship Id="rId1" Type="' + R + '/styles" Target="styles.xml"/></Relationships>' },
+    { name: 'word/styles.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:styles xmlns:w="' + W + 'wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US" w:eastAsia="en-US" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="300" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style></w:styles>' },
+    { name: 'word/document.xml', data: d.xml },
+  ];
+  return new Blob(omranZipStore(files), { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
 function exportReplyAsWord(text){
-  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>om ai</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
-  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-  msgSaveExport(blob, 'omran-ai-reply.doc');
+  msgSaveExport(msgDocxBlob(text), 'omran-ai-reply.docx');
 }
 function exportReplyAsImage(text){
   const width = 900;
@@ -551,29 +958,48 @@ function exportReplyAsImage(text){
   const ctx = canvas.getContext('2d');
   const padding = 40;
   const fontSize = 22;
-  ctx.font = fontSize + 'px Tahoma, Arial, sans-serif';
+  const FP = fontSize + 'px Tahoma, Arial, sans-serif', FB = 'bold ' + FP, FC = (fontSize - 3) + "px Consolas, 'Courier New', monospace";
   const maxWidth = width - 2 * padding;
+  /* v-audit-uicore: نصّ نظيف من رموز الماركداون، واتّجاه كلّ سطر من حروفه (الكود يسار)، والتفاف بالحرف */
   const lines = [];
-  String(text || '').split('\n').forEach(paragraph => {
-    const words = paragraph.split(' ');
-    let line = '';
-    words.forEach(word => {
-      const test = line ? line + ' ' + word : word;
-      if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = word; }
-      else line = test;
-    });
-    lines.push(line);
+  msgExportParse(text).items.forEach((it) => {
+    if(it.type === 'hr'){ lines.push({ hr: true }); return; }
+    let s = '', f = FP;
+    if(it.type === 'code'){ s = it.text; f = FC; }
+    else if(it.type === 'h'){ s = msgExportInline(it.text, true); f = FB; }
+    else if(it.type === 'li') s = '    '.repeat(it.depth || 0) + (it.num ? it.num + '. ' : '• ') + msgExportInline(it.text, true);
+    else if(it.type === 'row'){
+      /* علامة اتّجاه قويّة (RLM/LRM) حول الفاصل: بدونها يندمج صفّ إنجليزيّ في جدول عربيّ مقطعًا يساريًّا واحدًا، فيُرسم عموده الأوّل يسارًا */
+      const mk = it.rtl ? '\u200f' : '\u200e';
+      s = it.cells.map((c) => msgExportInline(c, true)).join(mk + '   |   ' + mk); if(it.head) f = FB;
+    }
+    else if(it.type === 'quote') s = '    ' + msgExportInline(it.text, true);
+    else if(it.type === 'p') s = msgExportInline(it.text, true);
+    ctx.font = f;
+    msgExportWrap(ctx, s, maxWidth).forEach((w) => lines.push({ s: w, f: f, rtl: it.rtl }));
   });
   const lineHeight = Math.round(fontSize * 1.55);
+  const height = padding * 2 + lines.length * lineHeight;
+  /* سقف اللوحة ١٦٠٠٠ بكسل (٩٠٠×١٦٠٠٠ ≈ ١٤٫٤ ميغابكسل: تحت حدّ سفاري الآيفون ~١٦٫٧ وحدّ كروم ٣٢٧٦٧ للارتفاع). الأطول، أو
+     toBlob=null، كان يضيع بصمت — الآن رسالة مترجمة وPDF المقسَّم بدل الصورة (لا سقف لطوله). */
+  const asPdf = () => {
+    try{ const m = t('axUicoreImgAsPdf'); if(m && m !== 'axUicoreImgAsPdf') settingsToast(m); }catch(e){ __swallow(e, 'export:img-as-pdf'); }
+    exportReplyAsPdf(text);
+  };
+  if(height > 16000){ asPdf(); return; }
   canvas.width = width;
-  canvas.height = padding * 2 + lines.length * lineHeight;
+  canvas.height = height;
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#111111';
-  ctx.direction = 'rtl';
-  ctx.textAlign = 'right';
-  ctx.font = fontSize + 'px Tahoma, Arial, sans-serif';
-  lines.forEach((line, i) => { ctx.fillText(line, canvas.width - padding, padding + (i + 1) * lineHeight - Math.round(fontSize * 0.4)); });
-  canvas.toBlob(blob => { if(blob) msgSaveExport(blob, 'omran-ai-reply.png'); }, 'image/png');
+  lines.forEach((ln, i) => {
+    const y = padding + (i + 1) * lineHeight - Math.round(fontSize * 0.4);
+    if(ln.hr){ ctx.fillStyle = '#cccccc'; ctx.fillRect(padding, y - Math.round(fontSize * 0.35), maxWidth, 1); ctx.fillStyle = '#111111'; return; }
+    ctx.font = ln.f;
+    ctx.direction = ln.rtl ? 'rtl' : 'ltr';
+    ctx.textAlign = ln.rtl ? 'right' : 'left';
+    ctx.fillText(ln.s, ln.rtl ? canvas.width - padding : padding, y);
+  });
+  canvas.toBlob(blob => { if(blob) msgSaveExport(blob, 'omran-ai-reply.png'); else asPdf(); }, 'image/png');
 }
 function exportReplyAsTxt(text){
   const blob = new Blob([text || ''], { type: 'text/plain;charset=utf-8' });
@@ -585,12 +1011,13 @@ function exportReplyAsTxt(text){
    الكمبيوتر ينزّل مباشرة كما كان. */
 function msgSaveExport(blob, filename){
   let viaSheet = false;
-  try{ viaSheet = !!(omranNativeBridge('omranShare') || omranLikelyApp() || omranMobileUA()); }catch(e){ viaSheet = false; }
+  try{ viaSheet = !!(omranNativeBridge('omranShare') || (omranLikelyApp() && !(typeof omranDesktopApp === 'function' && omranDesktopApp())) || omranMobileUA()); }catch(e){ viaSheet = false; } /* v-desktop-app */
   if(viaSheet){
     omranSaveBlob(blob, filename).catch((e) => { __swallow(e, 'export:save-blob'); msgDownloadBlob(blob, filename); });
-    return;
+    return true; /* v-audit-uicore: المسار الموحّد — ورقته هي التأكيد، فلا رسالة «تمّ» من المنادي */
   }
   msgDownloadBlob(blob, filename);
+  return false;
 }
 let __msgMoreMenuOpen = null;
 let __msgMoreMenuAnchor = null;
@@ -627,11 +1054,61 @@ document.addEventListener('click', closeMsgMoreMenu);
 /* v-tools-pause (المالك ١٠ أكتوبر: «اخفاء محلل المصاريف والسيرة الذاتية»، ثمّ «التلفزيون والاقتراحات»): أدوات مخفيّة مؤقّتًا —
    لا بطاقة في شاشة الأدوات (app-10-features) ولا اقتراح في المحادثة. الكود والنوافذ والخادم باقية كما هي؛
    الإرجاع = حذف المعرّف من هذه القائمة. */
-var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'];
+/* v-tv-owner (المالك ٣ نوفمبر: «ضيفه فقط لي المالك»): التلفزيون يبقى موقوفًا للجميع ويظهر للمالك وحده — حساب omran
+   (omranOwnerUi، يُقرأ عند التحميل). الإرجاع للجميع = حذف btnOmranTV من القائمتين؛ والإخفاء عن المالك أيضًا = حذفه من قائمة المالك وحدها. */
+var OMRAN_PAUSED_TOOLS = ['btnExpense', 'btnCV', 'btnOmranTV', 'btnQuickTemplates'].filter(function(id){ return !(['btnOmranTV'].indexOf(id) >= 0 && typeof omranOwnerUi === 'function' && omranOwnerUi()); }); /* قائمة المالك: ['btnOmranTV'] */
+/* v-hw-resubmit-2 (رفض هواوي ٢٦ أكتوبر؛ القاعدة 1.15: لا أسماء علامات أو امتيازات تجاريّة لطرف ثالث بلا ترخيص): داخل تطبيق هواوي
+   وحده (html.store-safe ومعه علم الحزمة ?store=huawei في الجلسة — ui-wiring يضع store-safe أيضًا لمتصفّح هواوي على الموقع، وذاك يبقى
+   كما هو) تُخفى الخيارات المسمّاة بعلامة أو امتياز تجاريّ — أنماط الصور، ترندات الفيديو، الستايل، الطوابع. الموقع والمتاجر الأخرى كما هي؛
+   الأسماء العامّة (هوليوود، كي-بوب، رسمي = أنيق) باقية. الإرجاع = حذف القيمة من القائمة. */
+var OMRAN_HW_BRAND_HIDE = {
+  portrait: ['disney', 'ghibli', 'lego', 'linkedin', 'stickerpack', 'polaroid', 'celebtoon'],
+  trend: ['pixarstory', 'pixarsketch', 'ghibli', 'legofy'],
+  studio: ['anime:ghibli', 'anime:anghibliwarm', 'anime:anghiblicool', 'anime:anghiblivivid', 'anime:anghiblipastel', 'idphoto:linkedin',
+    'iconic:icracerstd', 'iconic:icracerscene', 'iconic:icracerposter', 'body:bdcrossfita', 'body:bdcrossfitb', 'body:bdcrossfitc'],
+  stamps: ['كرومي', 'ماي ملدي', 'هالو كاتي', 'الدببة الثلاثة', 'سبونج بوب', 'توم وجيري', 'ميكي ماوس', 'فروزن', 'سبايدرمان', 'باو باترول', 'بيبا', 'بوكيمون', 'ماريو', 'مينيونز', 'باربي', 'كارز']
+};
+function omranHwPackage(){
+  try{ return document.documentElement.classList.contains('store-safe') && sessionStorage.getItem('aiapp_store') === 'huawei'; }
+  catch(e){ __swallow(e, 'ui:hw-package'); return false; }
+}
+function omranHwHidden(kind, v){
+  try{ return omranHwPackage() && (OMRAN_HW_BRAND_HIDE[kind] || []).indexOf(v) >= 0; }
+  catch(e){ __swallow(e, 'ui:hw-brand-hide'); return false; }
+}
+/* ورقة ثيمات الطوابع (app-09 __stPickTheme): تسقط الشخصيّات المخفيّة، والمجموعة التي تفرغ تسقط بعنوانها — خارج __sendPromptCore (سقّاطة البنية) */
+function omranHwStampGroups(groups){
+  return groups.map(function(g){ return { t: g.t, th: g.th.filter(function(th){ return !omranHwHidden('stamps', th.k); }) }; })
+    .filter(function(g){ return g.th.length > 0; });
+}
 /* بطاقة «اقتراحات» في الصفحة الرئيسيّة (هواوي) تتبع زرّها المخفيّ */
 if(OMRAN_PAUSED_TOOLS.indexOf('btnQuickTemplates') >= 0){
   try{ var __hwSug = document.getElementById('hwCardSuggestions'); if(__hwSug){ __hwSug.hidden = true; __hwSug.style.setProperty('display', 'none', 'important'); } }
   catch(e){ __swallow(e, 'ui:paused-hw-card'); }
+  /* v-hw-1316: البطاقة الفرديّة الأخيرة قبل المخفيّة تتوسّط بصنف لا بـ:has() (Chromium 105+، وWebView هواوي ≈ 99) */
+  try{
+    var __hwPrev = __hwSug && __hwSug.previousElementSibling;
+    if(__hwPrev && __hwPrev.classList.contains('hwToolCard') && Array.prototype.indexOf.call(__hwPrev.parentNode.children, __hwPrev) % 2 === 0) __hwPrev.classList.add('hwOddLast');
+  }catch(e){ __swallow(e, 'ui:hw-odd-last'); }
+}
+/* v-hw-1316 (رفض هواوي 1.3.15 بالقاعدة 1.14 «المعلومات واللقطات لا تطابق التطبيق»): داخل تطبيق هواوي لا يَعِد نصٌّ ظاهر ببناء
+   تطبيقات وألعاب ومواقع — وصف المتجر ولقطاته أدوات ومحادثة. في «عن التطبيق»: السطر التعريفيّ، وبطاقة «بناء تطبيقات بالمحادثة»، والنبذة.
+   :has() للحاضنات (Chromium 105+)، والنصوص نفسها احتياط لـWebView 99 في قاعدة مستقلّة (محدِّد غير مفهوم يُسقط قاعدته وحدها). */
+if(omranHwPackage()){
+  try{
+    var __hwNb = document.createElement('style');
+    __hwNb.id = 'hwNoBuilderCss';
+    __hwNb.textContent = '[data-i18n="aboutTagline"],[data-i18n="aboutFeatChat"],[data-i18n="aboutMoreSummary"],[data-i18n="aboutText"]{display:none !important;}'
+      + 'details:has(> [data-i18n="aboutText"]),div:has(> [data-i18n="aboutFeatChat"]){display:none !important;}';
+    (document.head || document.documentElement).appendChild(__hwNb);
+    var __hwNbBox = function(){
+      try{
+        document.querySelectorAll('[data-i18n="aboutFeatChat"]').forEach(function(e){ if(e.parentElement) e.parentElement.style.display = 'none'; });
+        document.querySelectorAll('[data-i18n="aboutText"]').forEach(function(e){ var d = e.closest('details'); if(d) d.style.display = 'none'; });
+      }catch(e){ __swallow(e, 'ui:hw-no-builder-box'); }
+    };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', __hwNbBox, { once: true }); else __hwNbBox();
+  }catch(e){ __swallow(e, 'ui:hw-no-builder'); }
 }
 var APP_CAPABILITIES = [
   { id:'btnCV',       icon:'💼', key:'cvTitle', ar:'مولّد السيرة الذاتية', en:'CV Builder',
@@ -811,7 +1288,7 @@ function omranCodeBarLabel(which){
   var key = 'codeBar' + which.charAt(0).toUpperCase() + which.slice(1);
   try{
     if(typeof t === 'function'){ var v = t(key); if(v && v !== key) return v; }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1150'); /* guard-ok */ }
   var tb = OMRAN_CODEBAR_I18N[which] || {};
   var L = (typeof lang !== 'undefined' && lang) ? String(lang).slice(0, 3) : 'ar';
   return tb[L] || tb[L.slice(0, 2)] || tb.en;
@@ -868,7 +1345,7 @@ function omranFindTabsMenu(tabs, skip){
       if((el.textContent || '').trim().length > 1) continue;
       if(el.tagName === 'BUTTON' || el.querySelector('button, svg')) return el;
     }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1207'); /* guard-ok */ }
   return null;
 }
 function omranPlaceTabsMenu(){
@@ -878,7 +1355,7 @@ function omranPlaceTabsMenu(){
     if(!tabs || !bar || bar.parentNode !== tabs) return;
     var dots = omranFindTabsMenu(tabs, bar);
     if(dots && dots !== tabs.lastElementChild) tabs.appendChild(dots);
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1217'); /* guard-ok */ }
 }
 function omranCodeViewerEsc(ev){ if(ev.key === 'Escape') omranCloseCodeViewer(); }
 /* v-viewer-title: «كود ملصوق · NN KB» كان يزاحم الشريط في #tabs. نخفي عنصر
@@ -890,17 +1367,17 @@ function omranPanelTitleSuppress(hide){
     var cb = document.getElementById('waCopyBtn');
     if(el) el.style.visibility = hide ? 'hidden' : '';
     if(cb) cb.style.display = hide ? 'none' : (window.__omranPanelText ? 'flex' : 'none');
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1229'); /* guard-ok */ }
 }
 function omranCloseCodeViewer(){
-  try{ var o = document.getElementById('omranCodeViewer'); if(o) o.remove(); }catch(e){ /* guard-ok */ }
-  try{ document.removeEventListener('keydown', omranCodeViewerEsc); }catch(e){ /* guard-ok */ }
+  try{ var o = document.getElementById('omranCodeViewer'); if(o) o.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1232'); /* guard-ok */ }
+  try{ document.removeEventListener('keydown', omranCodeViewerEsc); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1233'); /* guard-ok */ }
   omranPanelTitleSuppress(false);
   try{
     var b = document.getElementById('omranCodeViewerBar');
     if(b && b._resetEdit) b._resetEdit();
-  }catch(e){ /* guard-ok */ }
-  try{ if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview(); }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1238'); /* guard-ok */ }
+  try{ if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1239'); /* guard-ok */ }
 }
 /* v-viewer-bar: الشريط دائم في #tabs، لا يظهر مع العارض ويختفي بعده.
    حين يكون العارض مفتوحًا تعمل الأزرار عليه؛ وحين يكون مغلقًا تعمل على خانة
@@ -960,7 +1437,7 @@ function omranBuildCodeViewerBar(){
         pairs[i][0].title = lbl;
         pairs[i][0].setAttribute('aria-label', lbl);
       }
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1299'); /* guard-ok */ }
   };
   window.omranCodeBarRetitle = bar._retitle;
   if(tabs) omranPlaceTabsMenu();
@@ -978,7 +1455,7 @@ function omranBuildCodeViewerBar(){
       if(typeof codeEl === 'undefined' || !codeEl) return;
       codeEl.style.outline = on ? '2px solid var(--accent,#c9a26a)' : '';
       codeEl.style.outlineOffset = on ? '-2px' : '';
-    }catch(e){ /* guard-ok — علامة بصريّة فقط */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1317'); /* guard-ok — علامة بصريّة فقط */ }
   };
   bar._resetEdit = function(){ setOn(edt, false); editRing(false); };
 
@@ -1007,8 +1484,8 @@ function omranBuildCodeViewerBar(){
     var p = document.getElementById('omranCodePre');
     if(!p){
       /* لا عارض: التحرير يجري في خانة الكود نفسها. */
-      try{ if(typeof switchWorkTab === 'function') switchWorkTab('code'); }catch(e){ /* guard-ok */ }
-      try{ codeEl.readOnly = false; codeEl.focus(); }catch(e){ /* guard-ok */ }
+      try{ if(typeof switchWorkTab === 'function') switchWorkTab('code'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1346'); /* guard-ok */ }
+      try{ codeEl.readOnly = false; codeEl.focus(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1347'); /* guard-ok */ }
       setOn(edt, true);
       editRing(true); // v-code-save
       return;
@@ -1032,7 +1509,7 @@ function omranBuildCodeViewerBar(){
           var n = p.innerText.split('\n').length, out = [];
           for(var i = 1; i <= n; i++) out.push(i);
           g.textContent = out.join('\n');
-        }catch(e){ /* guard-ok */ }
+        }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1371'); /* guard-ok */ }
       }, 180);
     };
   };
@@ -1047,7 +1524,7 @@ function omranBuildCodeViewerBar(){
       var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
       if(cur){ cur.code = txt; }
       if(typeof saveState === 'function') saveState();
-      try{ if(typeof settingsToast === 'function') settingsToast(t('acctSaved')); }catch(e){ /* guard-ok — التأكيد ترف */ }
+      try{ if(typeof settingsToast === 'function') settingsToast(t('acctSaved')); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1386'); /* guard-ok — التأكيد ترف */ }
       setOn(sav, true);
       setTimeout(function(){ setOn(sav, false); }, 900);
       if(p){ omranCloseCodeViewer(); return; }
@@ -1066,7 +1543,7 @@ window.omranOpenTextInCodePanel = function(text, title){
   try{
     if(typeof codeEl === 'undefined' || !codeEl || !codeEl.parentNode) return;
     var host = codeEl.parentNode;
-    try{ if(getComputedStyle(host).position === 'static') host.style.position = 'relative'; }catch(e){ /* guard-ok */ }
+    try{ if(getComputedStyle(host).position === 'static') host.style.position = 'relative'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1405'); /* guard-ok */ }
     var ov = document.getElementById('omranCodeViewer');
     if(!ov){
       ov = document.createElement('div');
@@ -1097,13 +1574,13 @@ window.omranOpenTextInCodePanel = function(text, title){
     ov.querySelector('#omranCodeGutter').textContent = nums.join('\n');
     ov.querySelector('#omranCodePre').innerHTML = omranCodeHighlight(body);
     ov.querySelector('#omranCodePre').contentEditable = 'false';
-    try{ ov.dataset.pid = (typeof state !== 'undefined' && state.currentId) || ''; }catch(e){ /* guard-ok */ }
+    try{ ov.dataset.pid = (typeof state !== 'undefined' && state.currentId) || ''; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1436'); /* guard-ok */ }
     ov.scrollTop = 0;
     if(typeof switchWorkTab === 'function') switchWorkTab('code');
     if(typeof window.waAutoExpand === 'function') window.waAutoExpand();
     if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
-      try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ /* guard-ok */ }
-      try{ workareaEl.classList.add('open'); backdropEl.classList.add('show'); }catch(e){ /* guard-ok */ }
+      try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1441'); /* guard-ok */ }
+      try{ workareaEl.classList.add('open'); backdropEl.classList.add('show'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1442'); /* guard-ok */ }
     }
   }catch(e){ __swallow(e, 'ui:code-viewer'); }
 };
@@ -1128,6 +1605,24 @@ function omranPanelReopen(){
   }catch(e){ __swallow(e, 'ui:panel-reopen'); }
 }
 window.omranPanelReopen = omranPanelReopen;
+/* v-sec-sandbox: المعاينة صارت iframe معزولًا (sandbox بلا allow-same-origin)، فأصلها «null»
+   وlocalStorage/sessionStorage يرميان فيه. تطبيقات المستخدم التي تحفظ حالتها كانت تنكسر، فنحقن
+   طبقة تخزين بديلة في الذاكرة أوّلَ <head> (أو <html> أو بعد <!doctype>): تعمل أثناء الجلسة ولا
+   تبقى بعد إعادة التحميل — وهي لا تفعل شيئًا إن كان التخزين الحقيقيّ متاحًا (معاينة غير معزولة). */
+const OMRAN_PREVIEW_SHIM = '<script>(function(){var ok=true;try{window.localStorage.getItem("__p");}catch(e){ok=false;}if(ok)return;var mk=function(){var m={};return Object.create(Object.prototype,{getItem:{value:function(k){k=String(k);return Object.prototype.hasOwnProperty.call(m,k)?m[k]:null;}},setItem:{value:function(k,v){m[String(k)]=String(v);}},removeItem:{value:function(k){delete m[String(k)];}},clear:{value:function(){m={};}},key:{value:function(i){return Object.keys(m)[i]||null;}},length:{get:function(){return Object.keys(m).length;}}});};try{Object.defineProperty(window,"localStorage",{value:mk(),configurable:true});}catch(_){/*noop*/}try{Object.defineProperty(window,"sessionStorage",{value:mk(),configurable:true});}catch(_){/*noop*/}})();<\/script>';
+function omranPreviewInject(code){
+  const s = String(code == null ? '' : code);
+  let m = s.match(/<head[^>]*>/i);
+  if(m){ const i = m.index + m[0].length; return s.slice(0, i) + OMRAN_PREVIEW_SHIM + s.slice(i); }
+  m = s.match(/<html[^>]*>/i);
+  if(m){ const i = m.index + m[0].length; return s.slice(0, i) + OMRAN_PREVIEW_SHIM + s.slice(i); }
+  m = s.match(/<!doctype[^>]*>/i);
+  if(m){ const i = m.index + m[0].length; return s.slice(0, i) + OMRAN_PREVIEW_SHIM + s.slice(i); }
+  return OMRAN_PREVIEW_SHIM + s;
+}
+function omranSetPreview(frame, code){ frame.srcdoc = omranPreviewInject(code); }
+window.omranSetPreview = omranSetPreview;
+
 function renderCodeAndPreview(){
   const cur = getCurrent();
   const pyConsole = $('#pyConsole');
@@ -1145,7 +1640,7 @@ function renderCodeAndPreview(){
       const __bar = document.getElementById('omranCodeViewerBar');
       if(__bar && __bar._resetEdit) __bar._resetEdit();
     }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:1502'); /* guard-ok */ }
   if(!cur || !cur.code){
     if(previewFrame._imageView){
       pyConsole.style.display = 'none';
@@ -1209,7 +1704,7 @@ function renderCodeAndPreview(){
     if(previewFrame._lastSrc !== cur.code){
       previewFrame._lastSrc = cur.code;
       previewFrame._imageView = false;
-      previewFrame.srcdoc = cur.code;
+      omranSetPreview(previewFrame, cur.code);
     }
   }
 }
@@ -1226,7 +1721,7 @@ async function getPyodideInstance(){
           const s = document.createElement('script');
           s.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js';
           s.onload = resolve;
-          s.onerror = reject;
+          s.onerror = (e) => { try{ s.remove(); }catch(e2){ __swallow(e2, 'py:script-rm'); } reject(e); }; /* v-audit-uicore: وسم فاشل لا يبقى — المحاولة التالية تضيف جديدًا */
           document.head.appendChild(s);
         });
       }
@@ -1248,8 +1743,18 @@ async function getPyodideInstance(){
         Date.prototype.toLocaleTimeString = __tlt;
       }
     })();
+    /* v-audit-uicore: الوعد المرفوض كان يُخزَّن للأبد — انقطاع عابر واحد يكسر بايثون حتّى إعادة تحميل الصفحة.
+       الفشل يصفّره فيعيد التشغيلُ التالي المحاولة. */
+    pyodideLoadingPromise.catch(() => { pyodideLoadingPromise = null; });
   }
-  return pyodideLoadingPromise;
+  /* v-audit-uicore: مهلة ٦٠ ث — CDN معلّق بلا خطأ كان يترك الزرّ معطّلًا و«جاري تحميل البيئة» للأبد. التحميل الجاري لا يُلغى
+     ولا يُكرَّر: التشغيل التالي ينتظر الوعد نفسه (فلا يُلفّ toLocaleTimeString مرّتين). */
+  let __pyTimer = null;
+  try{
+    return await Promise.race([pyodideLoadingPromise, new Promise((_, reject) => { __pyTimer = setTimeout(() => reject(new Error('pyodide-timeout')), 60000); })]);
+  }finally{
+    clearTimeout(__pyTimer);
+  }
 }
 
 async function runPythonCode(code){
@@ -1270,7 +1775,12 @@ async function runPythonCode(code){
   }catch(err){
     /* v-py-locale: فشل تحميل البيئة نفسها نصّه إنجليزيّ تقنيّ («Program terminated with exit(1)») لا يخصّ كود المستخدم —
        يذهب للكونسول وحده ويرى المستخدم سطر الحالة بلغته. خطأ كود المستخدم (Traceback) يبقى ظاهرًا: هو ناتج البرنامج. */
-    if(__pyStage === 'load') console.warn('[python] runtime load failed:', (err && err.message) || err);
+    if(__pyStage === 'load'){
+      console.warn('[python] runtime load failed:', (err && err.message) || err);
+      /* v-audit-uicore: سطر يشرح بلغته أنّ البيئة لم تُحمَّل وأنّ «تشغيل» يعيد المحاولة (لا «خطأ» بلا سبب) */
+      const __pyMsg = t('axUicorePyLoadFail');
+      if(__pyMsg && __pyMsg !== 'axUicorePyLoadFail') outputEl.textContent = __pyMsg;
+    }
     else outputEl.textContent += '\n⚠️ ' + (err.message || err);
     statusEl.textContent = t('pythonError');
   }finally{
@@ -1905,7 +2415,7 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
           var ta = document.createElement('textarea');
           ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0';
           document.body.appendChild(ta); ta.select();
-          try{ document.execCommand('copy'); flash(); }catch(e2){ /* guard-ok */ }
+          try{ document.execCommand('copy'); flash(); }catch(e2){ typeof __swallow === 'function' && __swallow(e2, 'app-05-ui:2277'); /* guard-ok */ }
           ta.remove();
         });
       }catch(e3){ __swallow(e3, 'ui:panel-copy'); }
@@ -1974,7 +2484,7 @@ const FT_WEIGHT_KEYS = ['fontWeightThin', 'fontSizeNormal', 'fontSizeMedium', 'f
         moveOne(edt, 'codeBarEdit');
         moveOne(sav, 'save');
         moveOne(copyBtn, 'copyCode');
-      }catch(e){ /* guard-ok */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:2346'); /* guard-ok */ }
     };
     setTimeout(window.omranMoveCodeActionsToMenu, 0);
     setTimeout(window.omranMoveCodeActionsToMenu, 600);
@@ -2287,7 +2797,7 @@ function relabelProviders(){
     if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
   }catch(e){ __swallow(e, "ui:app-05-ui#relabel"); }
 }
-try{ window.relabelProviders = relabelProviders; }catch(_){ /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
+try{ window.relabelProviders = relabelProviders; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-05-ui:2659'); /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
 function updateProviderQuickBarActive(){
   const current = localStorage.getItem('aiapp_provider') || omranDefaultProv();
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
@@ -2335,7 +2845,7 @@ async function refreshProviderQuickBar(){
       const label = functionalLabel(cell.dataset.provider);
       cell.title = label + ' — ' + r + '/' + limit;
     });
-  }catch(e){ /* best-effort only, ignore network errors */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:2707'); /* best-effort only, ignore network errors */ }
 }
 
 function getProviderColors(){
@@ -2525,6 +3035,7 @@ async function ensureVantaEffectScript(id){
   await loadScriptOnce('https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.' + id + '.min.js');
 }
 let currentVantaEffect = null;
+let bg3dGen = 0; /* v-audit-uicore: جيل الاختيار — نداء applyBg3D أقدم ينتظر سكربتاته لا يُنشئ أثره فوق اختيار أحدث */
 let bg3dAutoTimer = null;
 let currentCustomBg = null; // {raf, resizeHandler, canvas}
 function destroyBg3D(){
@@ -3147,6 +3658,7 @@ function getBg3DAccentColorHex(){
   } catch(e){ return 0x6b7280; }
 }
 async function applyBg3D(id, save){
+  const gen = ++bg3dGen;
   if(save !== false) localStorage.setItem('aiapp_bg3d', id);
   destroyBg3D();
   document.body.classList.toggle('vantaActive', id !== 'none');
@@ -3161,7 +3673,11 @@ async function applyBg3D(id, save){
   }
   try {
     await ensureBg3DDeps(eff.lib);
+    if(gen !== bg3dGen) return;
     await ensureVantaEffectScript(id);
+    /* v-audit-uicore: اختيار أحدث جاء أثناء التحميل («أمواج» ثمّ «ضباب»، أو «أمواج» ثمّ «محيط») — لا إنشاء: كان الأبطأ يكتب
+       currentVantaEffect فيُعرض غير المختار، ويبقى الآخر بحلقة rAF وسياق WebGL بلا destroy حتّى إعادة التحميل */
+    if(gen !== bg3dGen) return;
     if(!window.VANTA || !window.VANTA[id.toUpperCase()]) return;
     const color = getBg3DAccentColorHex();
     const P = bg3dPalette();
@@ -3270,17 +3786,17 @@ function openDialogSafe(dlg){
   /* v-settings-push (طلب المالك: «الإعدادات تدفع الدردشة، ما تغطّيها»): عند فتح
      درج الإعدادات نُزيح محتوى التطبيق جنبه على الكمبيوتر فيبقى ظاهرًا بلا تعتيم
      ولا تراكب — بدل نافذةٍ فوق المحادثة. */
-  try{ if(dlg && dlg.id === 'settingsDialog') document.documentElement.classList.add('settings-push'); }catch(e){ /* guard-ok */ }
+  try{ if(dlg && dlg.id === 'settingsDialog') document.documentElement.classList.add('settings-push'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3648'); /* guard-ok */ }
   if (typeof dlg.showModal === 'function') {
-    try { dlg.showModal(); return; } catch(e) { /* fall through to polyfill */ }
+    try { dlg.showModal(); return; } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3650'); /* fall through to polyfill */ }
   }
   dlg.setAttribute('open', '');
   dlg.style.display = 'block';
 }
 function closeDialogSafe(dlg){
-  try{ if(dlg && dlg.id === 'settingsDialog') document.documentElement.classList.remove('settings-push'); }catch(e){ /* guard-ok */ }
+  try{ if(dlg && dlg.id === 'settingsDialog') document.documentElement.classList.remove('settings-push'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3656'); /* guard-ok */ }
   if (typeof dlg.close === 'function') {
-    try { dlg.close(); } catch(e) { /* ignore */ }
+    try { dlg.close(); } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3658'); /* ignore */ }
   }
   dlg.removeAttribute('open');
   dlg.style.display = '';
@@ -3288,9 +3804,9 @@ function closeDialogSafe(dlg){
 /* شبكة أمان: إغلاق بالـESC أو backdrop يطلق حدث close دون المرور بـcloseDialogSafe */
 try{
   document.addEventListener('close', function(e){
-    if(e && e.target && e.target.id === 'settingsDialog'){ try{ document.documentElement.classList.remove('settings-push'); }catch(_){ /* guard-ok */ } }
+    if(e && e.target && e.target.id === 'settingsDialog'){ try{ document.documentElement.classList.remove('settings-push'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-05-ui:3666'); /* guard-ok */ } }
   }, true);
-}catch(e){ /* guard-ok */ }
+}catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3668'); /* guard-ok */ }
 const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','ownerSection'];
 function renderStats(){
   const projects = state.projects || [];
@@ -3348,7 +3864,7 @@ if(acctReferralCopyBtnEl){
       setTimeout(() => { acctReferralCopyBtnEl.textContent = old; }, 1500);
     } catch(e) {
       linkEl.select();
-      try { document.execCommand('copy'); } catch(e2) { /* ignore */ }
+      try { document.execCommand('copy'); } catch(e2) { typeof __swallow === 'function' && __swallow(e2, 'app-05-ui:3726'); /* ignore */ }
     }
   };
 }
@@ -3360,16 +3876,11 @@ function exportProjects(){
       projects: state.projects || []
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
     const dateStr = new Date().toISOString().slice(0, 10);
-    a.href = url;
-    a.download = `omran-ai-builder-projects-${dateStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    alert(t('exportProjectsSuccess'));
+    /* v-audit-uicore: كان <a download> لـblob مباشرة — ميّت داخل الأغلفة (هواوي/آيفون) ثمّ alert «تمّ التصدير» فيظنّ المستخدم
+       أنّ نسخته محفوظة. المسار الموحّد (جسر التطبيق ← المشاركة ← رابط خادم بورقة «الملف جاهز»)؛ الكمبيوتر ينزّل مباشرة كما
+       كان، ورسالة النجاح له وحده — في الأغلفة الورقة نفسها هي التأكيد. */
+    if(!msgSaveExport(blob, `omran-ai-builder-projects-${dateStr}.json`)) alert(t('exportProjectsSuccess'));
   }catch(err){
     console.error('exportProjects failed', err);
   }
@@ -3461,8 +3972,9 @@ window.acctToggleQr = function() {
 window.acctShareApp = async function() {
   var u = document.getElementById('acctReferralLink');
   var shareUrl = window.acctQrLink ? window.acctQrLink(u && u.value) : ((u && u.value) ? u.value : 'https://omran-ai-builder.vercel.app/app');
+  if (typeof window.omranShareSheet === 'function') { window.omranShareSheet({ url: shareUrl, text: t('acctShareText') }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45)
   if (navigator.share) {
-    try { await navigator.share({ title: 'om ai', text: t('acctShareText'), url: shareUrl }); } catch (e) { /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
+    try { await navigator.share({ title: 'om ai', text: t('acctShareText'), url: shareUrl }); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-05-ui:3836'); /* guard-ok — إلغاء نافذة المشاركة من المستخدم طبيعي */ }
   } else {
     try {
       await navigator.clipboard.writeText(shareUrl);

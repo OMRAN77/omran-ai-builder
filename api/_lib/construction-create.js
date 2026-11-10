@@ -10,8 +10,19 @@ const { saveDesign } = require('./_constructionLibrary');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 const { kvSetIfAbsent, kvDel } = require('./kv');
+const falBackup = require('./fal-fallback.js'); /* v-fal-backup */
 
 const TEXT_TIMEOUT_MS = 60000;
+
+/* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): نفاد رصيد Gemini كان يُعاد مرّتين (fetchImageWithRetry يعيد كلّ 429)
+   ثمّ يسقط إلى بديل OpenAI أو يمرّر حالة المزوّد. الآن 429 «الرصيد خلص» لا يُعاد، وكلّ صورة ناقصة تُطلب من النموذج نفسه عند fal بجسم
+   الطلب نفسه (الدقّة نفسها 1K/2K، نصّ ← صورة) داخل requestImage، وناتجه يُلبَس شكل ردّ Gemini فيمرّ بالاستخراج والاستهلاك والحفظ كما
+   هو؛ بديل OpenAI يبقى بعده. مهلة fal ما بقي من حدّ الدالّة (٣٠٠ ث) بعد هامش للردّ، مرّة واحدة لكلّ صورة. */
+const CX_IMAGE_MODEL = 'gemini-3-pro-image';
+const FAL_BUDGET_MS = 270000;
+function falAsGemini(fb) {
+  return { response: { ok: true, status: 200 }, data: { candidates: [{ content: { parts: [{ inlineData: { mimeType: fb.mime || 'image/png', data: fb.b64 } }] } }] }, error: null, attempts: 1 };
+}
 
 // v-construction-rescue: خط الإنقاذ السابع — رفض/سقوط Gemini يهبط تلقائيًا إلى
 // OpenAI (صور gpt-image-1 ونص gpt-4o-mini) مثل بقية الاستوديوهات الستة، فأي
@@ -245,6 +256,7 @@ const ANGLE_LABELS_EN = {
 };
 
 module.exports = async (req, res) => {
+  const t0 = Date.now(); /* v-fal-backup: بداية ميزانيّة الدالّة */
   let claimKey = null;
   const releaseClaim = async () => {
     if (!claimKey) return;
@@ -408,14 +420,41 @@ module.exports = async (req, res) => {
     const textModel = 'gemini-flash-latest'; const textEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + textModel + ':generateContent?key=' + apiKey; // v-dead-models-2: gemini-2.0-flash ميّت في فحص ١٦ أكتوبر الحيّ (كان داخل الرابط فيتخطّاه الفحص) فكان النصّ يسقط كلّ مرّة إلى إنقاذ OpenAI المدفوع
     const textReqBody = { contents: [{ parts: [{ text: textPrompt }] }], generationConfig: { thinkingConfig: { thinkingBudget: 0 } } }; // بلا تفكير كـ2.0 Flash الذي حلّ محلّه — سرعته ضمن مهلة TEXT_TIMEOUT_MS
 
-    const requestImage = (requestBody) => fetchImageWithRetry({
-      url: imgEndpoint,
-      makeInit: () => ({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      }),
-    });
+    const falOpts = () => {
+      const left = FAL_BUDGET_MS - (Date.now() - t0);
+      return left >= 15000 ? { where: 'construction-create', timeoutMs: Math.min(150000, left) } : null;
+    };
+    const requestImage = async (requestBody) => {
+      /* v-fal-backup: الرصيد خلص قبل دقائق ← النموذج نفسه عند fal مباشرة بلا نداء فاشل قبله */
+      let falTried = false;
+      if (await falBackup.geminiOutRecently()) {
+        const fo = falOpts();
+        if (fo) {
+          falTried = true;
+          const f0 = await falBackup.imageFromGemini(CX_IMAGE_MODEL, requestBody, fo);
+          if (f0 && f0.b64) return falAsGemini(f0);
+        }
+      }
+      const result = await fetchImageWithRetry({
+        url: imgEndpoint,
+        makeInit: () => ({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+        }),
+        /* v-fal-backup: 429 «الرصيد خلص» لن ينجح بالإعادة ويؤخّر الاحتياط — لا يُعاد؛ الزحام و5xx يُعادان كما كانا */
+        shouldRetryResponse: (response, data) => (response.status === 429 || response.status >= 500)
+          && !falBackup.geminiCreditOut(response.status, data && data.error && data.error.message),
+      });
+      /* v-fal-backup: نفاد الرصيد ← fal بالنموذج نفسه قبل بديل OpenAI (والباقي كما كان) */
+      if (!falTried && result.response && !result.response.ok) {
+        const fo = falOpts();
+        const tech = String((result.data && result.data.error && result.data.error.message) || '');
+        const fb = fo ? await falBackup.rescueImage(result.response.status, tech, CX_IMAGE_MODEL, requestBody, fo) : null;
+        if (fb) return falAsGemini(fb);
+      }
+      return result;
+    };
     // The image model accepts only a small number of simultaneous generations.
     // Queue plan/photo/interior so the first long request cannot make the others
     // exhaust their retries against an in-flight generation.
@@ -558,9 +597,11 @@ module.exports = async (req, res) => {
 
     // Best-effort: save this generated design into the shared library so
     // future users with similar requirements can browse it before generating
-    // a brand-new one. Fire-and-forget — never blocks or fails the response.
+    // a brand-new one. Never fails the response.
+    /* v-audit-stud2 (srv-studios-2-1): الحفظ صار يصغّر المخطّط WebP قبل الكتابة (أقلّ من ثانية) — يُنتظر قبل الردّ، فالدالّة قد
+       تُجمَّد بعد الردّ فيضيع الحفظ؛ saveDesign لا يرمي أبدًا */
     if (planImageBase64) {
-      saveDesign({
+      await saveDesign({
         buildingType,
         floors,
         area,

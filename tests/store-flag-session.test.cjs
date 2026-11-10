@@ -13,18 +13,19 @@ const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
 test('selfdiag.js: العلم في sessionStorage، والقديم في localStorage يُمسح، والفرع يقرأ sessionStorage', () => {
   const sd = read('js/selfdiag.js');
   assert.ok(sd.includes("if(sp) sessionStorage.setItem('aiapp_store', String(sp).slice(0, 20));"), 'الحفظ في sessionStorage');
-  assert.ok(sd.includes("try{ localStorage.removeItem('aiapp_store'); }catch(e){ /* guard-ok */ }"), 'مسح العلم القديم');
+  assert.match(sd, /try\{ localStorage\.removeItem\('aiapp_store'\); \}catch\(e\)\{ (typeof __swallow === 'function' && __swallow\(e, 'selfdiag:\d+'\); )?\/\* guard-ok \*\/ \}/, 'مسح العلم القديم'); // v-standalone-swallow: الخطأ يُسجَّل
   assert.ok(sd.includes("if((sessionStorage.getItem('aiapp_store') || '') === 'huawei'){"), 'الفرع يقرأ sessionStorage');
   assert.ok(!sd.includes("localStorage.setItem('aiapp_store'"), 'لا حفظ دائم للعلم');
-  // جولة الأدوات (مرّة واحدة) تبقى دائمة كما كانت
-  assert.ok(sd.includes("localStorage.getItem('aiapp_store_tour')") && sd.includes("localStorage.setItem('aiapp_store_tour', '1')"));
+  // جولة الأدوات صارت لكلّ فتح للتطبيق (v-hw-tools-home) — في sessionStorage لا localStorage
+  assert.ok(sd.includes("sessionStorage.getItem('aiapp_store_tour_s')") && sd.includes("sessionStorage.setItem('aiapp_store_tour_s', '1')"));
+  assert.ok(!sd.includes("localStorage.setItem('aiapp_store_tour'"), 'لا علم دائم يمنعها في الفتح التالي');
   // ترتيب الفرع: العلم → store-safe → تبديل البيان (كما يثبته tests/store-huawei.test.cjs)
   assert.ok(sd.indexOf("sessionStorage.getItem('aiapp_store')") < sd.indexOf("classList.add('store-safe')"));
   assert.ok(sd.indexOf("classList.add('store-safe')") < sd.indexOf('/manifest-huawei.json'));
 });
 
 test('index.html: وسم selfdiag رُفع فلا يبقى متصفّح على النسخة الملتصقة', () => {
-  assert.ok(read('index.html').includes('/js/selfdiag.js?v=hw-twa-10'));
+  assert.ok(read('index.html').includes('/js/selfdiag.js?v=hw-twa-12'));
 });
 
 test('tokens.css: v-store-safe-revert — الأسهم لم تعد تُخفى تحت store-safe (أمر عمران ٢٢ سبتمبر)', () => {

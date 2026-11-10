@@ -28,6 +28,7 @@
     patches: [],
     busy: false,
     ask: '',          /* v-code-review-limit: الطلب يبقى بعد النتيجة وإعادة الفتح */
+    crlf: false,      /* v-audit-chatcli: الملفّ رُفع بأسطر ويندوز — يُنزَّل بها */
   };
 
   function $id(x) { return document.getElementById(x); }
@@ -202,14 +203,32 @@
     return list;
   }
 
-  /* ---------- فحص الصياغة قبل الحفظ ---------- */
-  function syntaxCheck(name, code) {
+  /* v-audit-chatcli (cli-chat-rest-3): ملفّ ويندوز (CRLF) — النموذج يكتب @@OLD بفواصل \n فلا تطابق رقعةٌ من سطرين أبدًا. النصّ يُوحَّد
+     بـ\n عند القراءة (الجهاز، والتسليم من «تحليل الكود»، والمشروع)، ويُعاد CRLF عند التنزيل كما رُفع. */
+  function setText(name, raw) {
+    var s = String(raw || '');
+    S.crlf = /\r\n/.test(s);
+    S.name = name; S.text = s.replace(/\r\n?/g, '\n'); S.original = null;
+  }
+
+  /* ---------- فحص الصياغة قبل الحفظ ----------
+     v-audit-chatcli (cli-chat-rest-2): new Function يفهم السكربت العاديّ وحده — ES Module (‎.mjs، أو import/export، أو import.meta)
+     وJSX وTS ترمي فيه دائمًا، فكانت كلّ رقعة عليها «لم يُحفظ». هذه لا تُفحص هنا (cfxNoCheck)، وسطر #! يُحذف قبل الفحص، وملفّ لا يجتاز
+     الفحص قبل الرقع (JSX داخل ‎.js مثلًا) لا يُحكم عليه بعدها. رقعة تكسر سكربتًا سليمًا تُرفض كما كانت. */
+  function jsErr(code) {
+    try { new Function(String(code).replace(/^#![^\n]*/, '')); return null; } // eslint-disable-line no-new-func
+    catch (e) { return e; }
+  }
+  function syntaxCheck(name, code, before) {
     var n = String(name || '').toLowerCase();
     try {
-      if (/\.(mjs|cjs|jsx?|ts x?)$/.test(n) || /\.js$/.test(n)) {
-        /* eslint-disable no-new-func */
-        new Function(code);
-        return { ok: true, msg: tx('cfxSyntaxOk') };
+      if (/\.(mjs|jsx|tsx?)$/.test(n)) return { ok: true, msg: tx('cfxNoCheck') };
+      if (/\.c?js$/.test(n)) {
+        if (/^[ \t]*(?:import\b[ \t]*[\w{*'"$]|export\b)|\bimport\.meta\b/m.test(code)) return { ok: true, msg: tx('cfxNoCheck') };
+        var err = jsErr(code);
+        if (!err) return { ok: true, msg: tx('cfxSyntaxOk') };
+        if (before != null && jsErr(before)) return { ok: true, msg: tx('cfxNoCheck') };
+        throw err;
       }
       if (/\.json$/.test(n)) { JSON.parse(code); return { ok: true, msg: tx('cfxJsonOk') }; }
       if (/\.html?$/.test(n)) {
@@ -290,7 +309,7 @@
       if (f.size > MAX_BYTES) { setStatus(tx('cfxTooBig', { n: Math.round(MAX_BYTES / 1024) })); return; }
       var fr = new FileReader();
       fr.onload = function () {
-        S.name = f.name; S.text = String(fr.result || ''); S.original = null;
+        setText(f.name, fr.result);
         $id('cfxFileName').textContent = f.name + ' · ' + tx('cfxLines', { n: S.text.split('\n').length });
         setStatus('');
       };
@@ -299,8 +318,7 @@
     $id('cfxCurBtn').onclick = function () {
       var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
       if (!cur || !cur.code) { setStatus(tx('cfxNoCode')); return; }
-      S.name = (cur.codeType === 'python') ? 'project.py' : 'project.html';
-      S.text = String(cur.code); S.original = null;
+      setText((cur.codeType === 'python') ? 'project.py' : 'project.html', cur.code);
       $id('cfxFileName').textContent = S.name + ' · ' + tx('cfxLines', { n: S.text.split('\n').length });
       setStatus('');
     };
@@ -428,7 +446,7 @@
       text = text.replace(p.old, function () { return p.neu; });
       done++;
     }
-    var chk = syntaxCheck(S.name, text);
+    var chk = syntaxCheck(S.name, text, before);
     if (!chk.ok) {
       render('<div style="font-size:13px;line-height:1.9;">'
         + '<div style="color:#e88;font-weight:700;">' + esc(tx('cfxNotSaved')) + '</div>'
@@ -452,7 +470,7 @@
       + '</div></div>');
 
     $id('cfxDl').onclick = function () {
-      var blob = new Blob([S.text], { type: 'text/plain;charset=utf-8' });
+      var blob = new Blob([S.crlf ? S.text.replace(/\n/g, '\r\n') : S.text], { type: 'text/plain;charset=utf-8' }); /* v-audit-chatcli */
       if (typeof omranSaveBlob === 'function') { omranSaveBlob(blob, S.name); return; }
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = S.name;
@@ -514,7 +532,7 @@
   /* v-code-score: وحدة «تحليل الكود وتقييمه» (app-27) تسلّم الملفّ الواحد وطلب الإصلاح
      المبنيّ من أعلى المشاكل، فيبدأ المستخدم من شاشة الرقع مباشرةً. */
   window.omranCodeFixOpenWith = function (name, text, ask) {
-    S.name = String(name || 'file.txt'); S.text = String(text || ''); S.original = null; S.patches = [];
+    setText(String(name || 'file.txt'), text); S.patches = [];
     S.ask = String(ask || '');
     open();
     var a = $id('cfxAsk');

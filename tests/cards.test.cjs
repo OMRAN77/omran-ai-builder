@@ -172,10 +172,10 @@ test('٥. العميل: callChatWithTools يرجع cards من البثّ، وا�
   const a18 = read('js/app-18-chat-tools.js');
   assert.ok(a18.includes("if (ev.cards && typeof ev.cards === 'object') __cards = ev.cards;"), 'التقاط حدث cards');
   assert.ok(a18.includes('cards: __cards || undefined'), 'يرجع للمُرسِل');
-  assert.ok(a18.includes('window.__chatCardsResult = null;'), 'يُصفَّر مع كلّ نداء');
   const a09 = read('js/app-09-attach.js');
-  assert.ok(a09.includes('window.__chatCardsResult = __ct.cards || null;'), 'يُمرَّر عبر نافذة (لا سطر جديد في __sendPromptCore — السقّاطة)');
-  assert.ok(a09.includes('return c || undefined; })(window.__chatCardsResult)'), 'يُحفظ في الرسالة ويُصفَّر');
+  /* v-audit-chatcli (cli-chat-rest-4): البطاقات في متغيّر الطلب لا window.__chatCardsResult العامّ (المحادثات المتوازية) — وبلا سطر جديد في __sendPromptCore (السقّاطة) */
+  assert.ok(a09.includes('let __ctLog = null, __ctCards = null;') && a09.includes('__ctCards = __ct.cards || null;'), 'يُمرَّر في متغيّر الطلب');
+  assert.ok(a09.includes('cards: __ctCards || undefined'), 'يُحفظ في رسالة طلبه');
   const a04 = read('js/app-04-i18n-state.js');
   assert.ok(a04.includes("if (m.cards && typeof window.omranRenderCards === 'function')"), 'renderMessages يرسم البطاقات');
   const part = read('js/app-37-cards.js');

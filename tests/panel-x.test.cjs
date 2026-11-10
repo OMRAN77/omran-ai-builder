@@ -31,7 +31,8 @@ function loadPanel() {
   vm.runInContext(a5.slice(start, end), ctx);
   return ctx;
 }
-const shows = (c) => ({ frame: c.previewFrame.style.display, empty: c.emptyState.style.display, img: !!c.previewFrame._imageView, doc: c.previewFrame.srcdoc });
+// v-sec-sandbox: المعاينة تُحقن فيها طبقة تخزين (shim) أوّل srcdoc — نجرّدها لنوازن محتوى التطبيق وحده.
+const shows = (c) => ({ frame: c.previewFrame.style.display, empty: c.emptyState.style.display, img: !!c.previewFrame._imageView, doc: String(c.previewFrame.srcdoc || '').replace(/^<script>[\s\S]*?<\/script>/, '') });
 
 test('١. صورة محادثة لا تبقى في معاينة محادثة أخرى', () => {
   const c = loadPanel();

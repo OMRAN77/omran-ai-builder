@@ -25,8 +25,38 @@
   async function api(action, payload){
     var r=await fetch('/api/edu',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({action:action,token:TK(),lang:AL()},payload))});
     var d=await r.json().catch(function(){return{};});
+    /* v-audit-tools: 413 تأتي من حافّة Vercel (٤٫٥ م.ب) قبل الخادم بجسم ليس JSON — كانت تظهر «HTTP 413» خامًّا */
+    if(r.status===413) throw new Error(docTooBig());
     if(!r.ok) throw new Error(d.error||('HTTP '+r.status));
     return d;
+  }
+  /* v-audit-tools: سقف الملفّ قبل الإرسال — base64 يكبّر الملفّ الثلث، و٣ م.ب ← ~٤٫٢ م.ب تحت حدّ جسم الطلب في Vercel
+     (٤٫٥ م.ب؛ PITFALLS). رسالة الخادم «حوالي 10 ميغابايت» لا تصل أبدًا لأنّ الحافّة ترفض قبله. */
+  var DOC_MAX_MB=3, DOC_MAX_BYTES=DOC_MAX_MB*1024*1024;
+  function docK(k, ar, en){ try{ if(typeof window.t==='function'){ var v=window.t(k); if(v && v!==k) return String(v); } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'ui-docs:36'); /* guard-ok — الاحتياط العربيّ/الإنجليزيّ أدناه */ } return T(ar,en); }
+  function docTooBig(){ return docK('axToolsDocTooBig','الملفّ أكبر من {n} ميغابايت — صغّره أو قسّمه ثمّ ارفعه من جديد.','The file is larger than {n} MB — compress or split it, then upload it again.').split('{n}').join(String(DOC_MAX_MB)); }
+  /* v-hw-doc-shrink (رفض هواوي ٣٠ أكتوبر «حلّل المستند ← لا يمكن تحميل ملف»): صورة كاميرا الهاتف ٣–٨ م.ب فتُرفض
+     بسقف ٣ م.ب قبل أيّ إرسال، وهي أكثر ما يرفعه المستخدم هنا. الصورة فوق ١٫٥ م.ب تُصغَّر على الجهاز (JPEG ≤١٦٠٠ بكسل
+     بجودة ٠٫٨٢، كتصغير صور التعليم) — تبقى مقروءة للنصّ. صورة لا يفكّها المتصفّح (HEIC مثلًا) تُرسل كما هي إن وسعها السقف. */
+  var DOC_SHRINK_FROM=1.5*1024*1024;
+  function docShrinkImage(f){
+    return new Promise(function(res){
+      try{
+        var u=URL.createObjectURL(f), im=new Image();
+        im.onload=function(){
+          try{
+            var k=Math.min(1,1600/Math.max(im.naturalWidth||1,im.naturalHeight||1));
+            var c=document.createElement('canvas'); c.width=Math.max(1,Math.round((im.naturalWidth||1)*k)); c.height=Math.max(1,Math.round((im.naturalHeight||1)*k));
+            var cx=c.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,c.width,c.height); cx.drawImage(im,0,0,c.width,c.height);
+            URL.revokeObjectURL(u);
+            var b64=String(c.toDataURL('image/jpeg',0.82)).split(',')[1]||'';
+            res(b64 ? {base64:b64,mime:'image/jpeg'} : null);
+          }catch(e){ res(null); /* guard-ok — لوحة معطوبة: يُرسل الأصل إن وسعه السقف */ }
+        };
+        im.onerror=function(){ try{ URL.revokeObjectURL(u); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'ui-docs:56'); /* guard-ok */ } res(null); };
+        im.src=u;
+      }catch(e){ res(null); /* guard-ok — بلا تصغير يُرسل الأصل إن وسعه السقف */ }
+    });
   }
   /* v-tools-i18n-full: ترجمات لكل اللغات — المفتاح النص العربي الأصلي حرفيًا */
   var DOC_XL = {
@@ -698,7 +728,7 @@
   function docL(ar, en){
     /* v657: كل لغة بنصّها عبر القاموس الثنائيّ __BI؛ الرجوع ar/en عند غيابه. */
     try{ if(typeof window.__bT === 'function'){ var v = window.__bT(ar, en); if(v) return v; } }
-    catch(_){ /* guard-ok: tool label lookup is cosmetic — falls back below. */ }
+    catch(_){ typeof __swallow === 'function' && __swallow(_, 'ui-docs:731'); /* guard-ok: tool label lookup is cosmetic — falls back below. */ }
     var l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
     if(l === 'ar' || l === 'ur') return ar;
     if(l === 'en') return en;
@@ -736,10 +766,16 @@
     async function run(){
       var txt=(document.getElementById('docPaste')||{}).value||'';
       if(!curFile && !txt.trim()){ document.getElementById('docErr').innerHTML='<div class="xmErr">'+T('ارفع ملفًا أو الصق نصًا أولًا.','Upload a file or paste text first.')+'</div>'; return; }
+      /* v-hw-doc-shrink: الزرّ يبقى ظاهرًا أثناء التصغير — بلا تعطيله كانت ضغطة ثانية ترسل الصورة مرّتين (Bugbot) */
+      var go=document.getElementById('docGo'); if(go) go.disabled=true;
+      var shrunk=(curFile && !/pdf/i.test(curFile.type) && curFile.size > DOC_SHRINK_FROM) ? await docShrinkImage(curFile) : null; /* v-hw-doc-shrink */
+      if(go) go.disabled=false;
+      if(curFile && !shrunk && curFile.size > DOC_MAX_BYTES){ document.getElementById('docErr').innerHTML='<div class="xmErr">'+E(docTooBig())+'</div>'; return; } /* v-audit-tools */
       body.innerHTML='<div class="xmBusy"><div class="xmSpin"></div><div>'+T('يقرأ مستندك…','Reading your document…')+'</div></div>';
       try{
         var payload={text:txt};
-        if(curFile){ var b64=await fileToB64(curFile); if(/pdf/i.test(curFile.type)) { payload.fileBase64=b64; payload.mime='application/pdf'; } else { payload.fileBase64=b64; payload.mime=curFile.type||'image/jpeg'; } }
+        if(shrunk){ payload.fileBase64=shrunk.base64; payload.mime=shrunk.mime; }
+        else if(curFile){ var b64=await fileToB64(curFile); if(/pdf/i.test(curFile.type)) { payload.fileBase64=b64; payload.mime='application/pdf'; } else { payload.fileBase64=b64; payload.mime=curFile.type||'image/jpeg'; } }
         var d=await api('docqa',payload);
         docText=d.doc.docText||txt||''; history=[];
         render(d.doc);
@@ -870,7 +906,7 @@
       document.getElementById('cvPdf').onclick=async function(){
         /* v-cv-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة
            الطباعة ميتة — نصدّر ملف PDF حقيقيًا عبر سلسلة الجسر/المشاركة/الرابط. */
-        var inApp=false; try{ inApp = typeof window.omranLikelyApp==='function' && window.omranLikelyApp(); }catch(e){ /* guard-ok */ }
+        var inApp=false; try{ inApp = typeof window.omranLikelyApp==='function' && window.omranLikelyApp(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'ui-docs:909'); /* guard-ok */ }
         async function fileExport(){
           if(typeof window.omranExportHtmlAsPdfFile!=='function') return false;
           try{

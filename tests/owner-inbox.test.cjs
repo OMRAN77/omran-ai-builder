@@ -67,6 +67,38 @@ test('١ — المصنّف: شتيمة وتذمّر عن التطبيق يُل�
   assert.equal(IB.excerpt('سطر\nثانٍ\t  ثالث'), 'سطر ثانٍ ثالث');
 });
 
+/* v-inbox-near أُلغي قبل الدمج (PR #1265): بلاغ «grace» الكاذب (طلب صنع فيه «broken» و«you») حاول أربعة استثناءات — كلّ مراجعة عدائيّة
+   وجدت شكاوى حقيقيّة أسكتها الاستثناء (٣٠٠+ نصّ: «can you make it again the last one was terrible»، «سوّ لي صورة ثانية الاولى طلعت زبالة»،
+   «can you make the broken voice button work»…). في هذا التطبيق الطلب والشكوى يأتيان في جملة واحدة، وقائمة الكلمات لا تفرّقهما.
+   القرار: بلاغ كاذب أحيانًا أهون من شكوى ضائعة. هذا الحارس يمنع أيّ استثناء قادم يُسكت هذه النصوص. */
+test('١ب — حارس: شكاوى حقيقيّة من مراجعات PR #1265 بلاغ كلّها، وبلاغ «grace» الكاذب مقبول عمدًا (لا استثناء بقوائم الكلمات)', () => {
+  for (const t of ["the app can't even generate an image, useless", 'I tried to create a video 3 times and it failed, your app is a joke', 'I asked you to write code and you failed',
+    'make it work! the app is broken', 'ارسم لي قطة. التطبيق ما يرد من ساعة', 'قلت لك سوي لي صورة وما سويت، التطبيق خربان', 'صمّم لي شعار — بس التطبيق اليوم بطيء مرة',
+    'شو اعمل التطبيق ما يفتح', 'كل ما اكتب لك سؤال انت ما ترد', 'ابني يقول التطبيق ما يفتح عنده', 'عندي ولد صغير يقول التطبيق ما يفتح عنده', 'تخيل التطبيق ما يشتغل من امس',
+    'your design is terrible', "I can't make your app work, it's useless", 'you generate terrible images',
+    'التطبيق من يوم ما نزلت التحديث الجديد امس وهو ما يشتغل', 'I paid for the subscription and your assistant still gives me the same wrong answers, terrible', "The app keeps crashing. It's useless.",
+    'مها كل ما اكتب لها ما ترد', 'المساعد كل ما اكتب له سؤال ما يرد علي', 'التطبيق كل ما اعمل له تحديث يعلق', 'اكتب ليه ما يرد المساعد',
+    'Build failed on your site again', "Generate button doesn't work in your app", 'Render is so slow on your site', 'Make video button is broken in your app', '«ارسم» ما يشتغل في التطبيق',
+    'I asked you to make a video and it failed', 'I told you to make it faster and it is still slow', 'can you make one image without an error for once', 'I want to create an account but it fails every time on your site',
+    'التطبيق من امس وانا احاول ادخل حسابي\nما يفتح', 'I love your app. But today when I opened it to check my old projects everything was slow',
+    'can you make it again the last one was terrible', 'can you make the video again its stuck', 'can you make the chat less slow', 'can you make an image the upload is broken',
+    'can you make a new image because the last one was bad', 'hey bot, make me a better image this one is terrible', 'can you make it again same bad result',
+    'يا مها ارسم لي قطة الحين صار لي ساعة انتظر بطيء مرة', 'يا مها اكتب لي ملخص الزر خربان ما اقدر انسخ', 'ارسم لي قطة ولا تتأخر خايس هالتطبيق',
+    'يا مها ارسم لي قطة والتطبيق بطيء', 'يا مها سوّ لي صورة وللحين معلق', 'قلت لك يا مها ارسم لي قطة وطلعت زفت', 'يا مها كل ما اقول ارسم لي شي يطلع زفت',
+    'يا مها سوّ لي صورة ثانية الاولى طلعت زبالة', 'يا مها ارسم لي قطة ثانية اللي قبل زبالة', 'ارسم لي قطه زين لا تطلعها زباله مثل كل مره يا مها',
+    /* المراجعة الرابعة */
+    'can you make the broken voice button work', 'can you make my broken project open', 'can you write working code instead of broken junk',
+    'can you make a video without broken audio for once', 'can you make me a logo it keeps giving me terrible results']) {
+    assert.equal(IB.classify(t), 'complaint', t);
+  }
+  assert.equal(IB.classify('i want you to build for me the Dandora community filled with litters broken drainge systems and a dumpsite with sick villagers'), 'complaint', 'مقبول عمدًا: انظر التعليق');
+  for (const s of ['bad '.repeat(495) + 'x x x x x x x ' + 'you '.repeat(495), 'your app is broken ok' + '❤️'.repeat(1985) + 'ok', 'you bad a' + '\u200d'.repeat(3989) + 'b']) {
+    const t0 = process.hrtime.bigint();
+    IB.classify(s);
+    assert.ok(Number(process.hrtime.bigint() - t0) / 1e6 < 100, 'classify ≤ ١٠٠م.ث قبل كلّ دور: ' + s.slice(0, 12));
+  }
+});
+
 test('٢ — المحادثة الحقيقيّة: كلام مستخدم بشتيمة يصير بلاغًا ويدفع للمالك مرّة في الساعة؛ المالك لا يُبلَّغ عن نفسه؛ الكلام العاديّ لا يُحفظ', async () => {
   db.clear(); pushes.length = 0;
   await turn('vipuser', 'gemini', 'التطبيق خايس ما يرد عليّ', [() => textTurn('أعتذر…')]);
@@ -155,4 +187,25 @@ test('٦ — الربط والواجهة: المحادثة والوكيل يمر
   const tag = st4.match(/v-owner-inbox \((\d+)\): خمسة مفاتيح لصندوق المالك/);
   assert.ok(tag && cur >= Number(tag[1]), 'الوسم مرفوع وسببه في التعليق');
   assert.ok(read('js/app.bundle.js').includes('inboxOwnerBtn'), 'الحزمة مبنيّة');
+});
+
+/* v-inbox-own-words (لقطة المالك ٥ نوفمبر): مواصفات GameTracker ملصوقة من luki (مرفق «📄 Pasted code · 4 KB») صارت «متضايق من التطبيق»
+   لأنّ المواصفات فيها crash/errors/slow مع «the app». المرفق مادّة لا كلام المستخدم — المصنّف يقرأ ما كتبه هو قبل أوّل مرفق. */
+test('٧ — المرفق الملصوق ليس كلام المستخدم: مواصفات فيها crash/errors لا بلاغ، وما يكتبه هو يُقرأ كما كان', async () => {
+  const spec = 'Build a complete app called GameTracker\nCreate a modern, professional gaming statistics app called GameTracker. The app should allow users to track how much time they spend playing each game.\n\nRequirements:\n- Show clear errors if a save fails\n- No slow screens; the app must never crash\n- Your app is useless without charts, so add charts';
+  const att = (name, body) => '📄 ' + name + ':\n```\n' + body + '\n```';
+  assert.equal(IB.classify(att('Pasted code · 4 KB', spec)), null, 'مرفق وحده');
+  assert.equal(IB.classify('ابني لي هذا\n\n' + att('Pasted text · 2 KB', spec)), null, 'طلب + مرفق');
+  assert.equal(IB.classify('التطبيق خايس ما يرد\n\n' + att('app.js', 'throw new Error("failed")')), 'complaint', 'كلامه قبل المرفق يُقرأ');
+  assert.equal(IB.classify('No slow screens; the app must never crash'), 'complaint', 'الكلمات نفسها مكتوبةً = كما كانت');
+  assert.equal(IB.classify('يا غبي\n\n' + att('a.txt', 'x')), 'insult');
+  assert.equal(IB.ownWords('سؤال\n\n' + att('a.txt', 'x') + '\n\n' + att('b.txt', 'y')), 'سؤال');
+  db.clear(); pushes.length = 0;
+  await turn('vipuser', 'gemini', att('Pasted code · 4 KB', spec), [() => textTurn('تفضّل…')]);
+  assert.equal(items().length, 0, 'المحادثة الحقيقيّة: لا بلاغ');
+  assert.equal(pushes.length, 0);
+  const mails = [];
+  await IB.record({ user: 'luki', prov: 'openai', kind: 'complaint', text: 'how do I cancel?' }, { kv: kvStub, now: Date.now(), push: async () => ({}) });
+  await IB.dailyDigest({ kv: kvStub, env: { OWNER_NOTIFY_EMAIL: 'o@x.com', RESEND_API_KEY: 'k' }, sendMail: async (to, subject, html) => { mails.push(html); return true; } });
+  assert.ok(mails[0] && mails[0].includes('<div dir="auto">how do I cancel?</div>'), 'النصّ الإنجليزيّ في سطره بلا قلب ترتيبه');
 });

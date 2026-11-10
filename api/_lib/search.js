@@ -276,7 +276,7 @@ async function fetchSocial(apiKey, query) {
         const picked = pickSocial(j.results, true);
         if (picked.length) return picked;
       }
-    } catch (e) { /* نكمل للبديل */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:279'); /* نكمل للبديل */ }
     // بديل Google CSE
     try {
       const q = socialQuery(query) + ' site:instagram.com OR site:tiktok.com';
@@ -317,7 +317,10 @@ function webAltOrGoogle(query, latestNews, googleUrl) {
 
 // 📍 v617 — كاشف أسئلة الأماكن ورمز الدولة: رُفِعا إلى مستوى الوحدة لتستعملهما
 // الدردشة أيضًا. قبلها كان سؤال أماكن خارج الإمارات لا يستدعي الخرائط أصلًا.
-const PLACES_RE = /مطعم|مطاعم|مطاعمه|مقهى|مقاهي|كافيه|كافيهات|كوفي|بوفيه|مخبز|مخابز|حلويات|صيدلي(ة|ات)|مستشفى|مستشفيات|عياد(ة|ات)|طبيب|أطباء|دكتور|أسنان|صالون|حلاق|مشغل|سبا|جيم|نادي رياضي|صالة رياضية|مول|مولات|أسواق|متجر|بقالة|سوبرماركت|هايبر|محطة وقود|بنزين|حديق(ة|ات)|متحف|متاحف|شاطئ|شواطئ|ملاهي|معلم سياحي|معالم|أماكن سياحية|وين أروح|وين اروح|أماكن|مسجد|مساجد|كنيسة|مدرسة|مدارس|حضانة|مغسلة|كراج|ورشة|restaurant|cafe|coffee shop|bakery|pharmacy|hospital|clinic|dentist|salon|barber|spa|gym|mall|supermarket|grocery|gas station|park|museum|beach|attraction|things to do|near me|قريب مني|قريبة مني|بالقرب/i;
+// v-audit-search (srv-search-3): كلمات كاملة لا أجزاء كلمات — «سبا» كانت تطابق أسباب وسباق وإسبانيا، و«مول» مولود ومحمول، و«دكتور» دكتوراه،
+// وspa/mall/park تطابق space/small/parking، فيُنادى Places المدفوع وتُدفن نتائج الويب. السوابق (و/ف، ب/ك/ل، ال، لل) واللواحق
+// الشائعة (ات/ة/ه/ها/ي/ك/كم/نا/ين) مسموحة، وما سواها من حروف عربيّة حولها = كلمة أخرى؛ و«ورشة عمل/تدريب» ليست ورشة سيارات.
+const PLACES_RE = /(?<![\u0621-\u064A\u066E-\u06D3])(?:[وف]?(?:لل|[بكل]?ال|[بكل])?)(?:مطعم|مطاعم|مطاعمه|مقهى|مقاهي|كافيه|كافيهات|كوفي|بوفيه|مخبز|مخابز|حلويات|صيدلي(?:ة|ات)|مستشفى|مستشفيات|عياد(?:ة|ات)|طبيب|أطباء|دكتور|أسنان|صالون|حلاق|مشغل|سبا|جيم|نادي رياضي|صالة رياضية|مول|مولات|أسواق|متجر|بقالة|سوبرماركت|هايبر|محطة وقود|بنزين|حديق(?:ة|ات)|متحف|متاحف|شاطئ|شواطئ|ملاهي|معلم سياحي|معالم|أماكن سياحية|وين أروح|وين اروح|أماكن|مسجد|مساجد|كنيسة|مدرسة|مدارس|حضانة|مغسلة|كراج|ورشة(?!\s*(?:عمل|تدريب))|قريب مني|قريبة مني|بالقرب)(?:ات|ة|ه|ها|هم|ي|ك|كم|نا|ين)?(?![\u0621-\u064A\u066E-\u06D3])|\b(?:restaurants?|cafes?|coffee shops?|bakery|bakeries|pharmacy|pharmacies|hospitals?|clinics?|dentists?|salons?|barbers?|barbershops?|spas?|gyms?|malls?|supermarkets?|grocery|groceries|gas stations?|parks?|museums?|beach|beaches|attractions?|things to do|near me)\b/i;
 const HOTEL_RE = /فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i;
 function isPlacesAsk(q) { const t = String(q || ''); return !!t && (PLACES_RE.test(t) || HOTEL_RE.test(t)); }
 
@@ -546,8 +549,8 @@ module.exports = async (req, res) => {
     try { geoCity = decodeURIComponent((req.headers && req.headers['x-vercel-ip-city'] || '').toString()).trim(); } catch (e) { geoCity = ''; }
     let geoNameEn = '', geoNameAr = '';
     if (/^[A-Z]{2}$/.test(geoCode)) {
-      try { geoNameEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(geoCode) || ''; } catch (e) { /* Intl لا يعرف رمز الدولة — يبقى الاسم فارغًا وهذا مقبول */ }
-      try { geoNameAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(geoCode) || ''; } catch (e) { /* كسابقه */ }
+      try { geoNameEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(geoCode) || ''; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:552'); /* Intl لا يعرف رمز الدولة — يبقى الاسم فارغًا وهذا مقبول */ }
+      try { geoNameAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(geoCode) || ''; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:553'); /* كسابقه */ }
     }
     const wantImages = !!(body && body.images);
     const wantDeep = !!(body && body.deep);
@@ -580,7 +583,7 @@ module.exports = async (req, res) => {
             if (Array.isArray(parsed) && parsed.length) subQueries = [query, ...parsed.filter(q => typeof q === 'string').slice(0, 4)];
           }
         }
-      } catch (e) { /* fallback: just original query */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:586'); /* fallback: just original query */ }
 
       // 2) بحث بالتوازي
       const deepSocialP = fetchSocial(apiKey, geoSuffix ? (query + ' ' + geoSuffix) : query);
@@ -859,7 +862,7 @@ module.exports = async (req, res) => {
             .filter((u) => typeof u === 'string' && /^https:\/\//.test(u))
             .slice(0, 4);
         }
-      } catch (e) { /* شريط الصور غير حرج — يُترك فارغًا عند الفشل */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:865'); /* شريط الصور غير حرج — يُترك فارغًا عند الفشل */ }
     }
 
     let googleItems = [];
@@ -878,7 +881,7 @@ module.exports = async (req, res) => {
           content: withoutRemovedSourceMentions((it.snippet || '').slice(0, 350)),
         })) : []);
       }
-    } catch (e) { /* ignore Google Search parse errors, non-critical */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:884'); /* ignore Google Search parse errors, non-critical */ }
 
     // v611 — نداء واحد للمغذّي البديل يسدّ ثلاث فجوات معًا: نتائج عند سقوط
     // Tavily، وصور عند خلوّ الشريط، وجوابًا عند غياب جواب Tavily.
@@ -936,7 +939,7 @@ module.exports = async (req, res) => {
         seenHosts.add(host);
         sources.push({ title: (r.title || host).replace(/^📌\s*إعلان مباشر:\s*|^🔍\s*صفحة بحث:\s*/, ''), url: r.url });
       });
-    } catch (e) { /* non-critical, sources stay whatever was collected so far */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:942'); /* non-critical, sources stay whatever was collected so far */ }
 
     const socialAll = mergeSocial(socialItems, pickSocial(data.results));
     const socialHosts = new Set(socialAll.map(sc => { try { return new URL(sc.url).hostname.replace(/^www\./, ''); } catch (e) { return ''; } }));

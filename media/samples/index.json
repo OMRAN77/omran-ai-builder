@@ -10,5 +10,9 @@
   "title": "صقر يطير فوق صحراء الإمارات وقت الغروب"
  },
  "runway-tut": true,
- "canvas-tut": true
+ "canvas-tut": true,
+ "tab-trend": true,
+ "tab-minimax": true,
+ "tab-edit": true,
+ "tab-veo": true
 }

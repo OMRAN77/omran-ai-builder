@@ -10,24 +10,8 @@ const { oaLightFetch } = require('./_oa-light.js'); // v-models-latest
 const { safeTz, decodeEntities, extractBodyText } = require('./_mail.js'); // v-email-safe
 const { isOwnerName } = require('./_owner.js');
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-
-async function getAccessToken(refreshToken) {
-  const r = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error || 'refresh_failed');
-  return d.access_token;
-}
+// v-google-token: رمز وصول Gmail من النسخة الواحدة (تقرأ السرّين عند النداء لا في نطاق الوحدة)
+const { refreshGoogleAccessToken: getAccessToken } = require('./_google-token.js');
 
 // ✍️ Style learning: builds (and caches for 7 days) a short profile of how the
 // user writes, based on their recent SENT emails, so drafts match their style.
@@ -71,7 +55,7 @@ async function getStyleProfile(accessToken, user, username) {
         fresh.emailAssist.styleProfile = { text, at: Date.now() };
         await putUser(username, fresh);
       }
-    } catch (e) { /* cache write failure is non-fatal */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/email-list:58'); /* cache write failure is non-fatal */ }
     return text;
   } catch (e) {
     return '';
@@ -263,7 +247,7 @@ async function cachedDraft(username, id) {
   } catch (e) { return null; } // محفوظ تالف = يُكتب من جديد
 }
 async function saveDraft(username, id, v) {
-  try { await kvSetRaw(draftKey(username, id), encrypt(JSON.stringify(v)), DRAFT_TTL); } catch (e) { /* الحفظ فشل = يُكتب من جديد في المرّة القادمة */ }
+  try { await kvSetRaw(draftKey(username, id), encrypt(JSON.stringify(v)), DRAFT_TTL); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/email-list:250'); /* الحفظ فشل = يُكتب من جديد في المرّة القادمة */ }
 }
 async function claudeAllowed(username) {
   if (isOwnerName(username)) return true;
@@ -276,6 +260,20 @@ async function claudeAllowed(username) {
 }
 
 const header = (headers, ...names) => ((headers || []).find((h) => names.includes(h.name)) || {}).value || '';
+/* v-audit-search (srv-search-5): العنوان من ترويسة From (ما بين < > وإلّا أوّل عنوان في النصّ)، والمطابقة بالتساوي —
+   كانت بالاحتواء، فتجاهل ali@gmail.com يُخفي mohammedali@gmail.com بصمت ونهائيًّا، ورسالة الطرف الآخر تُعلَّم (me).
+   نمط يبدأ بـ@ (صريح) يطابق نطاق العنوان كاملًا. */
+function fromAddress(from) {
+  const s = String(from || '');
+  const m = s.match(/<([^<>]+)>/) || s.match(/[^\s<>"',;]+@[^\s<>"',;]+/);
+  return String(m ? (m[1] || m[0]) : s).trim().toLowerCase();
+}
+function senderIs(from, pattern) {
+  const p = String(pattern || '').trim().toLowerCase();
+  const addr = fromAddress(from);
+  if (!p || !addr) return false;
+  return p[0] === '@' ? addr.endsWith(p) : addr === fromAddress(p);
+}
 const gmail = (accessToken, path) => fetch('https://gmail.googleapis.com/gmail/v1/users/me/' + path, { headers: { Authorization: 'Bearer ' + accessToken } });
 
 /* v-email-cache (البند ٩ «القائمة تطلع أوّل»): القائمة لا تنتظر أيّ ذكاء — رؤوس الرسائل (format=metadata) والمحفوظ من
@@ -312,11 +310,11 @@ async function loadConversation(accessToken, id, threadId, myAddress) {
           if (!text) continue;
           if (text.length > budget) break;
           budget -= text.length;
-          thread.unshift({ from, date: header(h, 'Date'), text, me: !!me && from.toLowerCase().includes(me) });
+          thread.unshift({ from, date: header(h, 'Date'), text, me: !!me && senderIs(from, me) });
         }
         return { msg: all[at], thread };
       }
-    } catch (e) { /* المحادثة تعذّرت — الرسالة وحدها */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/email-list:317'); /* المحادثة تعذّرت — الرسالة وحدها */ }
   }
   const r = await gmail(accessToken, 'messages/' + id + '?format=full');
   return { msg: r.ok ? await r.json().catch(() => null) : null, thread: [] };
@@ -361,7 +359,7 @@ module.exports = async (req, res) => {
     const { token } = body;
     const username = verifyToken(token);
     const tz = safeTz(body.tz); // v-email-safe: منطقة جهاز المستخدم (دبي إن غابت أو لم تصحّ)
-    if (!username) { res.status(401).json({ error: 'الجلسة منتهية، سجل الدخول من جديد' }); return; }
+    if (!username) { res.status(401).json({ error: 'الجلسة منتهية، سجل الدخول من جديد', code: 'session_expired' }); return; } // v-audit-search: الواجهة تترجم الرمز
 
     const user = await getUser(username);
     /* تدقيق ١٨ أكتوبر: «غير مربوط» حالة طبيعيّة لا خطأ — كان ٤٠٠ يطبع طلبًا فاشلًا في الكونسول عند كلّ فتح للنافذة. العميل يفحص notConnected أوّلًا. */
@@ -390,11 +388,17 @@ module.exports = async (req, res) => {
     if (!listRes.ok || (listData && listData.error)) {
       const gm = String((listData && listData.error && listData.error.message) || ('HTTP ' + listRes.status));
       const disabled = /has not been used|is disabled|not enabled|accessNotConfigured|SERVICE_DISABLED/i.test(gm);
+      /* v-audit-search (srv-search-6/7): رمز لا نصّ جوجل الخامّ — صلاحيّة القراءة ناقصة (موافقة جزئيّة قبل فحص الكولباك) = needsReauth
+         فتُظهر الواجهة زرّ الربط بدل خطأ إنجليزيّ يعلق فيه المستخدم؛ ورابط تفعيل Gmail API ونصّ الخطأ للمالك وحده. */
+      if (!disabled && (listRes.status === 403 || /insufficient/i.test(gm))) {
+        res.status(403).json({ error: 'needs_reauth', code: 'needs_reauth', needsReauth: true });
+        return;
+      }
+      const code = disabled ? 'gmail_api_disabled' : 'gmail_failed';
       res.status(502).json({
-        error: disabled
-          ? 'Gmail API غير مفعّل في مشروع Google Cloud — فعّله من: https://console.cloud.google.com/apis/library/gmail.googleapis.com ثم أعد المحاولة بعد دقيقة.'
-          : 'Gmail: ' + gm.slice(0, 200),
+        error: code, code,
         gmailApiDisabled: disabled,
+        aiErrorDetail: isOwnerName(username) ? (disabled ? 'https://console.cloud.google.com/apis/library/gmail.googleapis.com' : gm.slice(0, 200)) : undefined,
       });
       return;
     }
@@ -405,18 +409,17 @@ module.exports = async (req, res) => {
        (الأساسي فقط، آخر ٧ أيام، بلا عروض/اجتماعي) يرجع فارغًا عند كثيرين
        فتبدو الأداة معطّلة بلا تفسير. نوسّع تلقائيًا: ٣٠ يومًا بكل الفئات، ثم
        آخر رسائل الوارد كلها — ونخبر المستخدم بالنطاق المعروض بدل الصمت. */
-    const uiLang = String((body && body.lang) || 'ar').toLowerCase().startsWith('ar') ? 'ar' : 'en';
-    let scopeNote = '';
+    /* v-audit-search (srv-search-7): النطاق رمز (wide30 · latest · empty) تترجمه الواجهة بلغتها — كانت جملة عربيّة أو إنجليزيّة
+       فقط (uiLang يُحصر في ar/en)، فالفرنسيّ والمليالم والصينيّ يقرؤون الإنجليزيّة. */
+    let scopeCode = '';
     if (!msgs.length && !page) {
       let w = await listPage(accessToken, QUERIES[1], '');
       msgs = w.messages; next = w.next;
-      if (msgs.length) scopeNote = uiLang === 'ar' ? 'لا رسائل أساسية خلال آخر ٧ أيام — عرضتُ رسائل الوارد خلال ٣٠ يومًا (بكل الفئات).' : 'No primary mail in the last 7 days — showing all inbox mail from the last 30 days.';
+      if (msgs.length) scopeCode = 'wide30';
       else {
         w = await listPage(accessToken, QUERIES[2], '');
         msgs = w.messages; next = w.next;
-        scopeNote = msgs.length
-          ? (uiLang === 'ar' ? 'لا رسائل خلال آخر ٣٠ يومًا — عرضتُ آخر رسائل الوارد.' : 'No mail in the last 30 days — showing the latest inbox mail.')
-          : (uiLang === 'ar' ? 'الربط سليم ✅ لكن صندوق الوارد فارغ تمامًا في هذا الحساب.' : 'Connected ✅ but this inbox is completely empty.');
+        scopeCode = msgs.length ? 'latest' : 'empty';
       }
     }
 
@@ -433,7 +436,7 @@ module.exports = async (req, res) => {
       if (!msg || !msg.payload) return null;
       const headers = msg.payload.headers || [];
       const from = header(headers, 'From');
-      if (ignoreList.some((pattern) => from.toLowerCase().includes(String(pattern).toLowerCase()))) return null;
+      if (ignoreList.some((pattern) => senderIs(from, pattern))) return null;
       const base = {
         id: msg.id, threadId: msg.threadId, messageIdHeader: header(headers, 'Message-ID', 'Message-Id'), from,
         subject: header(headers, 'Subject') || '(بدون عنوان)',
@@ -448,11 +451,13 @@ module.exports = async (req, res) => {
     const owner = isOwnerName(username);
     const aiNote = !aiError && owner && !hasClaude ? 'fallback' : undefined;
     res.status(200).json({
-      ok: true, gmailAddress: user.emailAssist.gmailAddress, emails: results, note: scopeNote || undefined, next: next || undefined,
+      ok: true, gmailAddress: user.emailAssist.gmailAddress, emails: results, scope: scopeCode || undefined, next: next || undefined,
       aiError, aiNote,
       aiErrorDetail: owner ? (aiError ? 'ANTHROPIC_API_KEY · OPENAI_API_KEY' : (aiNote ? 'ANTHROPIC_API_KEY' : undefined)) : undefined,
     });
   } catch (e) {
-    res.status(500).json({ error: 'Email list error: ' + (e && e.message ? e.message : String(e)) });
+    // v-audit-search: رمز لا نصّ الاستثناء — صلاحيّة مسحوبة (invalid_grant) = إعادة ربط
+    const reauth = /invalid_grant/i.test(String(e && e.message || e));
+    res.status(500).json(reauth ? { error: 'needs_reauth', code: 'needs_reauth', needsReauth: true } : { error: 'failed', code: 'failed' });
   }
 };

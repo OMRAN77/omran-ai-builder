@@ -2,14 +2,15 @@
  * طلب المالك (٢٣ سبتمبر): «أكثر شي تعليم خوارزميات الألعاب وكيف طريقتها… هل باستطاعتي التغلّب عليها».
  * ثمانية دروس جاهزة بلا أيّ نداء نموذج: شرح (ماركداون بكود وجداول ومعادلات) + لعبة حيّة على canvas
  * تلمس فيها الخوارزميّة بيدك + تحدٍّ + اختبار قصير + «اسأل المعلّم» عن الدرس.
- * المحتوى بالعربيّة (وللأرديّة) والإنجليزيّة لبقيّة اللغات؛ أزرار الواجهة بالـ14 لغة (edu-plus.js).
+ * المحتوى بالعربيّة والإنجليزيّة لبقيّة اللغات (والأرديّة منها — v-audit-edu)؛ أزرار الواجهة بالـ14 لغة (edu-plus.js).
  * الخوارزميّات نفسها دوالّ نقيّة في window.__eduAlgo.lib ومختبَرة في tests/edu-algo.test.cjs. */
 (function(){
 'use strict';
 function C(){ return window.__eduCore; }
 function L(a, e){ var c = C(); return c ? c.eduL(a, e) : a; }
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function isAr(){ var c = C(); var l = c ? c.appLang() : 'ar'; return l === 'ar' || l === 'ur'; }
+/* v-audit-edu (x-i18n-3): الأرديّة لغتها لا العربيّة — المحتوى عربيّ/إنجليزيّ، فالأرديّة تأخذ الإنجليزيّ كبقيّة اللغات */
+function isAr(){ var c = C(); var l = c ? c.appLang() : 'ar'; return l === 'ar'; }
 function tx(o){ return o ? (isAr() ? o.ar : o.en) : ''; }
 function lsGet(k, def){ try{ var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? def : v; }catch(e){ return def; } }
 function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ __swallow(e, 'save:edu-algo'); } }

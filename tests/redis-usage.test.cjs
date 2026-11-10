@@ -8,6 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.OPENAI_API_KEY = 'test-openai-key';
+process.env.GEMINI_API_KEY = 'test-gemini-key'; // v-style-match: بطاقات الستايل من نانو بنانا برو
 const root = path.resolve(__dirname, '..');
 const rp = (f) => require.resolve(path.join(root, f));
 const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
@@ -26,7 +27,7 @@ stub('api/_lib/kv.js', {
   kvSetRaw: async (k, v) => { cmds.push(['SETRAW', k]); raw.set(k, v); },
   kvSetIfAbsent: async () => { if (setIfAbsentError) throw new Error(setIfAbsentError); return true; },
 });
-stub('api/_lib/_owner.js', { isOwner: (req) => !!(req.query && req.query.owner === '1'), isOwnerName: (u) => u === 'omran', ownerList: () => ['omran'] });
+stub('api/_lib/_owner.js', { isOwner: (req) => !!(req.query && req.query.owner === '1'), isOwnerSession: (req) => !!(req.query && req.query.owner === '1'), isOwnerName: (u) => u === 'omran', ownerList: () => ['omran'] });
 const { redisUsage, groupOf } = require(rp('api/_lib/redis-usage.js'));
 const health = require(rp('api/_lib/health.js'));
 const studio = require(rp('api/_lib/studio-preview.js'));
@@ -89,7 +90,7 @@ test('٤. زرّ «ما يملأ القاعدة» في لوحة المالك ي�
   const a3 = read('js/app-03-i18n-data.js');
   assert.ok(a3.includes('ownerUsageGroups: "العائلات الأكبر:"') && a3.includes('ownerUsageBiggest: "أكبر المفاتيح:"'));
   assert.ok(read('js/app.bundle.js').includes('window.redisUsageCheck'));
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=705'));
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=713'));
   const h = read('api/_lib/health.js');
   assert.ok(h.indexOf('if (!isOwner(req))') < h.indexOf("req.query.usage === '1'"), 'التحقّق من المالك قبل القياس');
 });

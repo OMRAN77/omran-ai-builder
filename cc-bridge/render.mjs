@@ -4,14 +4,14 @@
 // التعليق وصور الأنماط، ثمّ يرسل مانيفست المشاهد إلى هنا برمز مهمّة قصير العمر (HMAC بسرّ الجسر نفسه — السرّ لا
 // يبلغ المتصفّح). الجسر: يصوّر كلّ شاشة مطلوبة من التطبيق المنشور بـChromium (١٩٢٠×١٠٨٠، دقّة مضاعفة، ثيم داكن،
 // بلا نوافذ منبثقة)، يرسم بطاقات العناوين صفحةً بخطّ عربيّ واضح (لا drawtext)، ثمّ ffmpeg: كلّ مشهد صورة ثابتة
-// بحركة كاميرا بطيئة (zoompan، يتبدّل اتّجاهها)، صوته عليه وخانته = مدّة صوته + نصف ثانية، وانتقال xfade مخبوز في آخر كلّ مقطع
+// بحركة كاميرا بطيئة دون البكسل (perspective، يتبدّل اتّجاهها)، صوته عليه وخانته = مدّة صوته + نصف ثانية، وانتقال xfade مخبوز في آخر كلّ مقطع
 // (من صورته وصورة تاليه) فيكون الدمج لصقًا بلا إعادة ترميز؛ الإخراج 1080p30 H.264 + AAC. الناتج يبقى ٢٤ ساعة ثمّ يُحذف.
 //
 // بناء أوامر ffmpeg دوالّ نقيّة (buildFfmpegArgs) تُختبر بلا ffmpeg. لا يطبع الرمز ولا السرّ في السجلّ.
 'use strict';
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { mkdir, writeFile, rm, readdir, stat } from 'node:fs/promises';
+import { mkdir, writeFile, rm, readdir, stat, statfs } from 'node:fs/promises';
 import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { availableParallelism, totalmem as os_totalmem } from 'node:os';
@@ -24,14 +24,24 @@ export const OUT_W = 1920, OUT_H = 1080;
 /* نافذة التصوير ١٢٨٠×٧٢٠ بدقّة ×٣ (= ٣٨٤٠×٢١٦٠): نوافذ الأدوات (≤ ١٠٠٠ بكسل عرضًا) تملأ الإطار ونصّها يُقرأ في الفيديو،
    بينما ١٩٢٠ تترك النافذة عمودًا ضيّقًا وسط فراغ. بطاقات العناوين تُرسم ١٩٢٠×١٠٨٠ ×٢. */
 export const VIEW_W = 1280, VIEW_H = 720, VIEW_SCALE = 3;
-export const WORK_W = 2560, WORK_H = 1440;   // مقاس العمل قبل zoompan: أكبر من الإخراج فلا يفقد الزوم حدّته، وأصغر من ٤K فلا يبطئ
+/* مقاس العمل قبل الحركة: ١٫١ من الإخراج — أكبر زوم (١٫٠٨) يبقى تصغيرًا من الصورة لا تكبيرًا فلا تفقد الحدّة، وأصغر من ٢٥٦٠ لأنّ
+   perspective يرسم كلّ بكسل بالاستيفاء التكعيبيّ (قيس: حدّة نصّ لقطة التطبيق كما كانت عند ٢٥٦٠، ووقت المرشّح أقلّ بالثلث) — v-director-subpixel */
+export const WORK_W = 2112, WORK_H = 1188;
 export const XFADE = 0.5;                    // ثانية الانتقال
 export const TAIL = 0.5;                     // ما يُضاف بعد نهاية الصوت
 export const LIMITS = {
   scenes: 90, steps: 8, imageChars: 9e6, audioChars: 4e6, bodyBytes: 160e6, textChars: 180, subChars: 200,
   minSec: 2.5, maxSec: 40, ttlMs: 24 * 3600 * 1000, jobTimeoutMs: 55 * 60 * 1000, segmentTimeoutMs: 6 * 60 * 1000, joinTimeoutMs: 25 * 60 * 1000,
   sceneTimeoutMs: 3 * 60 * 1000, /* v-app-director-watchdog: مشهد بمحاولتيه فوق ٣ دقائق يُقطع ويصير بطاقة عنوان (page.evaluate بلا مهلة في Playwright) */
+  /* v-bridge-disk: فيديو ناجح نُزّل يبقى ساعة ثمّ تمسحه المهمّة التالية (١٠ دقائق إن ضاق القرص)، والدمج يحتاج حجم المقاطع وهامشًا */
+  doneKeepMs: 60 * 60 * 1000, pressKeepMs: 10 * 60 * 1000, joinSlackBytes: 64 * 1048576,
 };
+const ENOSPC = /No space left on device|ENOSPC/i;
+const toMB = (b) => (Number.isFinite(b) ? Math.max(0, Math.round(b / 1048576)) : -1);
+/** رسالة القرص الممتلئ: عربيّة بالأرقام (اللوحة للمالك وحده تعرضها كما هي)، ومفتاحها disk_full للآلة */
+export function diskFullMessage(free, need) {
+  return 'disk_full: مساحة القرص على الجسر ما تكفي لتجميع الفيديو — المتاح ' + toMB(free) + ' م.ب' + (need > 0 ? ' ويلزم نحو ' + toMB(need) + ' م.ب' : '') + '. كبّر قرص Railway (Volume) أو أعد المحاولة بعد قليل.';
+}
 const RTL = new Set(['ar', 'ur']);
 const STEP_CLICK = /^#[A-Za-z0-9_-]{1,60}$/, STEP_TAB = /^[a-z]{2,20}$/, STEP_SETTINGS = /^[A-Za-z]{2,40}Section$/, STEP_FOCUS = /^[#.][A-Za-z0-9_ .#>-]{1,80}$/;
 
@@ -126,21 +136,32 @@ const MOTIONS = ['in', 'out', 'right', 'left'];
 export const XF = Math.round(XFADE * FPS); // إطارات الانتقال
 /** إطارات خانة المشهد (عدد صحيح: كلّ مقطع يبدأ وينتهي على حدّ إطار) */
 export function slotFrames(scene) { return Math.max(XF * 2, Math.round(scene.seconds * FPS)); }
-/** حركة الكاميرا لـd إطارًا تبدأ من الإطار on0 من أصل total — المقام ثابت فسرعة الحركة واحدة بين مقدّمة المشهد (في ذوبان سابقه) وبقيّته */
+/** حركة الكاميرا لـd إطارًا تبدأ من الإطار on0 من أصل total — المقام ثابت فسرعة الحركة واحدة بين مقدّمة المشهد (في ذوبان سابقه) وبقيّته.
+    v-director-subpixel (المالك ٨ نوفمبر عن فيديو «قصة»: «الفيديو فيه حركه … يعور العين»): كانت zoompan، وهي تقرّب موضع القصّ ومقاسه إلى بكسل
+    صحيح في كلّ إطار، فتتذبذب الصورة ذهابًا وإيابًا (قيس دون البكسل: إزاحة زاوية الإطار تتناوب +٠٫١٣ ثمّ −٠٫٦٢ بكسل، تذبذب ٠٫٦٣ بكسل/إطار؛ الآن ٠٫٠٠٤).
+    الآن: الصورة الواحدة تُكرَّر إطاراتها (tpad، نسخ بلا ذاكرة)، وperspective يرسم القصّ (W/Z × H/Z بزواياه العشريّة، دقّة ١/٢٥٦ بكسل، استيفاء
+    تكعيبيّ) على أوّل OUT_W×OUT_H من إطار العمل، ثمّ crop — استيفاء واحد بلا تصغير بعده. بكسل الإخراج x ← بداية القصّ + (x+½)·(W/Z)/OUT_W − ½
+    (مراكز البكسلات، فالزوم متمركز بدقّة). المسار نفسه (in/out/right/left وسرعته) كما كان؛ on في perspective يبدأ من ١. */
 function zoomFilter(kind, total, on0, d) {
-  const n = '(on+' + on0 + ')/' + Math.max(1, total);
-  let z, x = "x='iw/2-(iw/zoom/2)'";
-  const y = "y='ih/2-(ih/zoom/2)'";
-  if (kind === 'in') z = "z='1+0.08*" + n + "'";
-  else if (kind === 'out') z = "z='1.08-0.08*" + n + "'";
-  else if (kind === 'right') { z = "z='1.06'"; x = "x='(iw-iw/zoom)*" + n + "'"; }
-  else { z = "z='1.06'"; x = "x='(iw-iw/zoom)*(1-" + n + ")'"; }
-  return 'zoompan=' + z + ':' + x + ':' + y + ':d=' + Math.max(1, d) + ':s=' + OUT_W + 'x' + OUT_H + ':fps=' + FPS;
+  const n = '((on-1+' + on0 + ')/' + Math.max(1, total) + ')';
+  let Z, PX = '0.5';
+  if (kind === 'in') Z = '(1+0.08*' + n + ')';
+  else if (kind === 'out') Z = '(1.08-0.08*' + n + ')';
+  else if (kind === 'right') { Z = '1.06'; PX = n; }
+  else { Z = '1.06'; PX = '(1-' + n + ')'; }
+  const sx = '(W/' + Z + '/' + OUT_W + ')', sy = '(H/' + Z + '/' + OUT_H + ')'; // بكسل عمل لكلّ بكسل إخراج
+  const L = '((W-W/' + Z + ')*' + PX + '+0.5*' + sx + '-0.5)', T = '((H-H/' + Z + ')*0.5+0.5*' + sy + '-0.5)';
+  const R = '(' + L + '+W*' + sx + ')', B = '(' + T + '+H*' + sy + ')';
+  const D = Math.max(1, d);
+  return 'fps=' + FPS + ',tpad=stop_mode=clone:stop=' + D + ',trim=end_frame=' + D +
+    ",perspective=x0='" + L + "':y0='" + T + "':x1='" + R + "':y1='" + T + "':x2='" + L + "':y2='" + B + "':x3='" + R + "':y3='" + B + "':interpolation=cubic:eval=frame" +
+    ',crop=' + OUT_W + ':' + OUT_H + ':0:0';
 }
-/** ملء الإطار: لقطة ١٦:٩ تُحشى، وصورة ليست ١٦:٩ (نموذج نمط مربّع) على خلفيّة مموّهة من نفسها بدل شريطين أسودين */
+/** ملء الإطار: لقطة ١٦:٩ تُحشى، وصورة ليست ١٦:٩ (نموذج نمط مربّع) على خلفيّة مموّهة من نفسها بدل شريطين أسودين
+    (التمويه ٣٣ على مقاس العمل ٢١١٢ = ٤٠ على ٢٥٦٠ السابق: الشكل نفسه) */
 function fitFilter(type, tag) {
   return type === 'style_sample'
-    ? 'split[bg' + tag + '][fg' + tag + '];[bg' + tag + ']scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=increase,crop=' + WORK_W + ':' + WORK_H + ',gblur=sigma=40,eq=brightness=-0.12[bgb' + tag + '];[fg' + tag + ']scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=decrease[fgs' + tag + '];[bgb' + tag + '][fgs' + tag + ']overlay=(W-w)/2:(H-h)/2,setsar=1'
+    ? 'split[bg' + tag + '][fg' + tag + '];[bg' + tag + ']scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=increase,crop=' + WORK_W + ':' + WORK_H + ',gblur=sigma=33,eq=brightness=-0.12[bgb' + tag + '];[fg' + tag + ']scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=decrease[fgs' + tag + '];[bgb' + tag + '][fgs' + tag + ']overlay=(W-w)/2:(H-h)/2,setsar=1'
     : 'scale=' + WORK_W + ':' + WORK_H + ':force_original_aspect_ratio=decrease,pad=' + WORK_W + ':' + WORK_H + ':(ow-iw)/2:(oh-ih)/2:color=0x07080c,setsar=1';
 }
 /** نموذج نمط وصل بنسبة ١٦:٩ (التعليق مرسوم عليه في المتصفّح) يُعامل كلقطة: بلا خلفيّة مموّهة (أسرع) */
@@ -154,26 +175,33 @@ function transitionFor(i, scenes, dir) {
   if (i % 3 === 1) return dir === 'rtl' ? 'smoothright' : 'smoothleft';
   return 'fade';
 }
-/** مرشّح فيديو المقطع i: حركته من الإطار lead (مقدّمته ظهرت في ذوبان سابقه) ثمّ ذوبان في مقدّمة التالي إن وُجد */
+/** مرشّح فيديو المقطع i: حركته من الإطار lead (مقدّمته ظهرت في ذوبان سابقه) ثمّ ذوبان في مقدّمة التالي إن وُجد.
+    التحويل إلى yuv420p مرّة على الصورة الواحدة قبل تكرارها (perspective لا يقبل RGB المرصوص، ويرسم 4:2:0 بنصف كلفة RGB المستويّ) */
 export function sceneVideoFilter(scenes, index, dir) {
   const s = scenes[index], next = scenes[index + 1];
   const F = slotFrames(s), lead = index > 0 ? XF : 0;
-  const own = '[0:v]' + fitFilter(fitType(s), 'a') + ',' + zoomFilter(MOTIONS[index % MOTIONS.length], F + lead, lead, F) + ',format=yuv420p';
+  const own = '[0:v]' + fitFilter(fitType(s), 'a') + ',format=yuv420p,' + zoomFilter(MOTIONS[index % MOTIONS.length], F + lead, lead, F) + ',format=yuv420p';
   if (!next) return own + '[v]';
-  const nx = '[1:v]' + fitFilter(fitType(next), 'b') + ',' + zoomFilter(MOTIONS[(index + 1) % MOTIONS.length], slotFrames(next) + XF, 0, XF) + ',format=yuv420p';
+  const nx = '[1:v]' + fitFilter(fitType(next), 'b') + ',format=yuv420p,' + zoomFilter(MOTIONS[(index + 1) % MOTIONS.length], slotFrames(next) + XF, 0, XF) + ',format=yuv420p';
   return own + '[own];' + nx + '[nx];[own][nx]xfade=transition=' + transitionFor(index + 1, scenes, dir) + ':duration=' + XFADE + ':offset=' + ((F - XF) / FPS).toFixed(3) + '[v]';
 }
 /** أمر مقطع واحد: صورته (+ صورة التالي للذوبان) + صوته أو صمت → مقطع 1080p30 بطول خانته بالضبط.
-    v-app-director-watchdog — opts.light: إعادة خفيفة بعد قتل المقطع (الذاكرة): صورته ثابتة بلا zoompan ولا ذوبان (مدخل واحد)، وخيط واحد
+    v-app-director-watchdog — opts.light: إعادة خفيفة بعد قتل المقطع (الذاكرة): صورته ثابتة بلا حركة ولا ذوبان (مدخل واحد)، وخيط واحد
     ونظر أقصر؛ الترميز نفسه (الملفّ الشخصيّ والمستوى وB-frames وCABAC من veryfast) كي يُلصق مع البقيّة بلا إعادة ترميز. */
 export function sceneArgs(scenes, index, files, dir, opts) {
   const s = scenes[index], light = !!(opts && opts.light), hasNext = !light && index < scenes.length - 1;
-  const args = ['-y', '-hide_banner', '-loglevel', 'error', '-i', files.image];
-  if (hasNext) args.push('-i', files.nextImage);
-  if (files.audio) args.push('-i', files.audio); else args.push('-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo');
+  /* v-director-threads (قصّة الحمرية ٨ نوفمبر: ٥ من ١٧ مقطعًا «Error reinitializing filters! | Failed to inject frame into filter network:
+     Resource temporarily unavailable» فصارت صورًا ثابتة): ffmpeg يفتح لرسم المرشّحات ولكلّ مرشّح تحجيم فيه (sws) ولكلّ فاكّ ترميز خيوطًا بعدد
+     أنوية الجهاز كلّه (av_cpu_count()+1 — على Railway أنوية المضيف لا حصّة الحاوية)، فمقاطع متوازية مع Chromium تبلغ مئات الخيوط؛ وحين يرفض
+     النظام خيطًا (pthread_create = EAGAIN) تفشل تهيئة sws فتهيئة المرشّحات بهذا الخطأ حرفيًّا (ثبت من مصدر ffmpeg 5.1 وأُعيد إنتاجه محلّيًّا)،
+     وتنجح الإعادة لأنّها وحدها. الخيوط الآن محدودة صراحةً: خيطان للمرشّحات (واحد للخفيفة)، وخيط لكلّ فاكّ، وخيطا x264 كما كانا؛ والصمت
+     مرشّح داخل الرسم نفسه لا مدخل lavfi (ذاك رسم ثانٍ بخيوطه التلقائيّة). قيس على ffmpeg 6.1 بـ-cpucount 64: ١٣٢–١٤٧ خيطًا للمقطع ← ١٤–١٧. */
+  const args = ['-y', '-hide_banner', '-loglevel', 'error', '-filter_complex_threads', light ? '1' : '2', '-threads', '1', '-i', files.image];
+  if (hasNext) args.push('-threads', '1', '-i', files.nextImage);
+  if (files.audio) args.push('-threads', '1', '-i', files.audio);
   /* الصورة تُصغَّر مرّة ثمّ تُنسخ إطاراتها بطول الخانة (tpad) — بلا هذا يخرج المقطع إطارًا واحدًا (ثبت بالتشغيل: nb_frames=1) */
   const vf = light ? '[0:v]' + fitFilter(fitType(s), 'a') + ',scale=' + OUT_W + ':' + OUT_H + ',fps=' + FPS + ',tpad=stop_mode=clone:stop_duration=' + (slotFrames(s) / FPS).toFixed(3) + ',format=yuv420p[v]' : sceneVideoFilter(scenes, index, dir);
-  const fc = vf + ';[' + (hasNext ? 2 : 1) + ':a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,apad[a]';
+  const fc = vf + ';' + (files.audio ? '[' + (hasNext ? 2 : 1) + ':a]aresample=44100,' : 'anullsrc=r=44100:cl=stereo,') + 'aformat=sample_fmts=fltp:channel_layouts=stereo' + (files.audio ? ',apad' : '') + '[a]';
   /* الإعدادات واحدة في كلّ المقاطع (الملفّ الشخصيّ والمستوى وطول المجموعة) كي يصحّ لصقها بلا إعادة ترميز.
      خيطان ونظر ١٠ ومرجع واحد (قيس محلّيًّا على لقطة ٣٨٤٠×٢١٦٠: −١٧٪ ذاكرة و−٤٠٪ وقتًا بلا فرق مرئيّ على صور ثابتة) */
   args.push('-filter_complex', fc, '-map', '[v]', '-map', '[a]', '-t', (slotFrames(s) / FPS).toFixed(3),
@@ -198,7 +226,7 @@ export function buildFfmpegArgs(manifest, dir) {
   const segs = sc.map((s, i) => {
     const out = join(d, 'seg_' + i + '.mp4');
     const files = { image: sceneImage(s, i, d), nextImage: i < sc.length - 1 ? sceneImage(sc[i + 1], i + 1, d) : '', audio: s.audio ? join(d, 'audio_' + i + '.' + (s.audioExt || 'mp3')) : '', out };
-    return { index: i, out, needs: [i].concat(i < sc.length - 1 ? [i + 1] : []), args: sceneArgs(sc, i, files, manifest.dir), light: sceneArgs(sc, i, files, manifest.dir, { light: true }) };
+    return { index: i, out, needs: [i].concat(i < sc.length - 1 ? [i + 1] : []), inputs: { image: files.image, audio: files.audio }, args: sceneArgs(sc, i, files, manifest.dir), light: sceneArgs(sc, i, files, manifest.dir, { light: true }) };
   });
   const out = join(d, 'video.mp4'), list = join(d, 'concat.txt');
   return { segments: segs, list, listText: concatList(segs.map((x) => x.out)), join: { out, args: concatArgs(list, out, false) }, fallback: { out, args: concatArgs(list, out, true) }, total: totalSeconds(sc) };
@@ -327,6 +355,60 @@ export function createRenderer(cfg) {
   let running = null;
   const jobDir = (id) => join(c.workDir, 'jobs', id);
   const appOrigin = (() => { try { return new URL(c.appUrl).origin; } catch (e) { return ''; } })();
+
+  /* v-bridge-disk (لقطة المالك ٨ نوفمبر: «render join failed: … No space left on device» بعد أن رُسمت مشاهد القصّة وسُجّل صوتها): القرص
+     نفسه (/work على Railway) يحمل نسخة المستودع وجلسات Claude Code وكلّ مهمّات المخرج، ومهمّة فشلت كانت تُبقي لقطاتها ٤K وصوتها ومقاطعها
+     ٢٤ ساعة، والناجحة فيديوها ٢٤ ساعة — فامتلأ القرص بالمحاولات. الآن: الفاشلة تُمسح فورًا، والمدخلات تُمسح أوّلًا بأوّل، ومهمّة جديدة تمسح
+     ما بقي من غيرها (والفيديو الذي نُزّل قبل ساعة)، وقبل الدمج يُحسب المتاح ويُفرَّغ ما يمكن — وإن لم يكفِ فرسالة بالأرقام لا خطأ ffmpeg. */
+  async function workStat() { await mkdir(c.workDir, { recursive: true }).catch(() => null); return statfs(c.workDir); }
+  async function freeBytes() {
+    if (typeof c.diskFree === 'function') return c.diskFree(); /* الاختبار */
+    try { const s = await workStat(); return Number(s.bavail) * Number(s.bsize); } catch (e) { return Infinity; } /* لا يُعرف = لا يُمنع */
+  }
+  /** ما تستطيع المهمّة التالية مسحه (الفاشلة واليتيمة والناجحة التي مضت عليها ساعة) بالبايت — للصحّة، قراءة فقط */
+  async function reclaimable() {
+    const now = Date.now(), base = join(c.workDir, 'jobs');
+    let bytes = 0;
+    try {
+      if (!existsSync(base)) return 0;
+      for (const name of await readdir(base)) {
+        const j = jobs.get(name);
+        if (j && (j === running || j.state === 'queued' || j.state === 'running' || (j.state === 'done' && now - (j.doneAt || 0) <= LIMITS.doneKeepMs))) continue;
+        for (const f of await readdir(join(base, name)).catch(() => [])) bytes += await stat(join(base, name, f)).then((s) => s.size, () => 0);
+      }
+    } catch (e) { /* لا مجلّد */ }
+    return bytes;
+  }
+  /** يمسح مجلّدات المهمّات الأخرى: الفاشلة، والناجحة التي مضى على تمامها keepDoneMs، واليتيمة (من تشغيل سابق) — لا يمسّ keepId */
+  async function reclaim(keepId, keepDoneMs) {
+    const now = Date.now();
+    let n = 0;
+    for (const [id, j] of jobs) {
+      if (id === keepId) continue;
+      const old = j.state === 'done' && !!j.file && now - (j.doneAt || 0) > keepDoneMs;
+      if (j.state !== 'error' && !old) continue;
+      if (old) { j.file = ''; j.purged = true; }
+      if (existsSync(jobDir(id))) { await rm(jobDir(id), { recursive: true, force: true }).catch(() => null); n++; }
+    }
+    try {
+      const base = join(c.workDir, 'jobs');
+      if (existsSync(base)) for (const name of await readdir(base)) {
+        if (name === keepId || jobs.has(name)) continue;
+        await rm(join(base, name), { recursive: true, force: true }).catch(() => null); n++;
+      }
+    } catch (e) { /* لا مجلّد */ }
+    return n;
+  }
+  /** يكفي القرص لخطوة تحتاج need؟ وإلّا يمسح ما يمكن ويقيس ثانية، وإن بقي ضيّقًا فالمهمّة تفشل برسالة واضحة */
+  async function ensureSpace(j, need, what) {
+    let free = await freeBytes();
+    if (free >= need) return free;
+    const n = await reclaim(j.id, LIMITS.pressKeepMs);
+    free = await freeBytes();
+    jlog(j, 'disk: ' + toMB(free) + ' MB free after clearing ' + n + ' old job folder(s); ' + what + ' needs ~' + toMB(need) + ' MB');
+    if (free < need) throw new Error(diskFullMessage(free, need));
+    return free;
+  }
 
   function corsAllowed(origin) {
     if (!origin) return false;
@@ -510,9 +592,26 @@ export function createRenderer(cfg) {
     const ready = new Set(), started = new Set(), retry = [];
     let active = 0, done = 0, capturing = true, failed = null, wake = null, retrying = false;
     const limit = () => (capturing ? 1 : c.concurrency);
+    /* v-bridge-disk: صورة المشهد k يحتاجها مقطعه وسابقه (الانتقال)، وصوته مقطعه وحده — تُمسح فور ألّا يحتاجها مقطع باقٍ، فلا تتراكم لقطات
+       ٤K حتّى الدمج. المقطع الفاشل لا يُنقص عدّاده حتّى تنجح إعادته، فمدخلاته باقية لها. */
+    const refs = new Map();
+    for (const s of plan.segments) for (const k of s.needs) refs.set(k, (refs.get(k) || 0) + 1);
+    function release(seg) {
+      if (seg.inputs && seg.inputs.audio) rm(seg.inputs.audio, { force: true }).catch(() => null);
+      for (const k of seg.needs) {
+        const left = (refs.get(k) || 0) - 1;
+        refs.set(k, left);
+        const img = left <= 0 && plan.segments[k] && plan.segments[k].inputs && plan.segments[k].inputs.image;
+        if (img) rm(img, { force: true }).catch(() => null);
+      }
+    }
     async function encode(seg, args, what) {
       const r = await run(c.ffmpeg, args, { timeoutMs: LIMITS.segmentTimeoutMs });
-      if (r.code !== 0) throw new Error('segment ' + seg.index + what + ' failed: ' + runWhy(r));
+      if (r.code !== 0) {
+        if (ENOSPC.test(r.err)) { const n = await reclaim(j.id, LIMITS.pressKeepMs); jlog(j, 'disk full while encoding segment ' + seg.index + ': cleared ' + n + ' old job folder(s)'); }
+        throw new Error('segment ' + seg.index + what + ' failed: ' + runWhy(r));
+      }
+      release(seg);
     }
     function pump() {
       if (failed || retrying) return;
@@ -541,12 +640,28 @@ export function createRenderer(cfg) {
 
   async function joinSegments(j, plan) {
     const d = jobDir(j.id);
+    /* v-bridge-disk: الفيديو المدموج بحجم مقاطعه تقريبًا والمقاطع باقية حتّى ينجح — يُتأكّد من المساحة قبله لا بعد فشل ffmpeg */
+    let segBytes = 0;
+    for (const s of plan.segments) { try { segBytes += (await stat(s.out)).size; } catch (e) { /* مقطع غائب: ffmpeg يقول السبب */ } }
+    const need = Math.round(segBytes * 1.05) + LIMITS.joinSlackBytes;
+    await ensureSpace(j, need, 'the join');
     await writeFile(plan.list, plan.listText);
     let r = await run(c.ffmpeg, plan.join.args, { timeoutMs: LIMITS.joinTimeoutMs });
+    if (r.code !== 0 && ENOSPC.test(r.err)) { /* امتلأ أثناء الدمج (كتب غيرنا): يُمسح الناقص ويُفرَّغ ما يمكن ثمّ محاولة واحدة */
+      await rm(plan.join.out, { force: true }).catch(() => null);
+      jlog(j, 'join ran out of disk (' + runWhy(r) + ') — clearing old jobs and retrying once');
+      await reclaim(j.id, LIMITS.pressKeepMs);
+      await ensureSpace(j, need, 'the join retry');
+      r = await run(c.ffmpeg, plan.join.args, { timeoutMs: LIMITS.joinTimeoutMs });
+    }
     if (r.code !== 0) {
       jlog(j, 'join with audio re-encode failed (' + runWhy(r) + '), copying both streams');
+      await rm(plan.join.out, { force: true }).catch(() => null);
       r = await run(c.ffmpeg, plan.fallback.args, { timeoutMs: LIMITS.joinTimeoutMs });
-      if (r.code !== 0) throw new Error('join failed: ' + runWhy(r));
+      if (r.code !== 0) {
+        if (ENOSPC.test(r.err)) throw new Error(diskFullMessage(await freeBytes(), need));
+        throw new Error('join failed: ' + runWhy(r));
+      }
     }
     for (const s of plan.segments) rm(s.out, { force: true }).catch(() => null);
     rm(plan.list, { force: true }).catch(() => null);
@@ -559,7 +674,9 @@ export function createRenderer(cfg) {
     const guard = setTimeout(() => { set(j, { state: 'error', step: 'timeout', message: 'انتهت مهلة الإخراج.' }); }, LIMITS.jobTimeoutMs);
     try {
       set(j, { state: 'running', step: 'assets', total: j.manifest.scenes.length, done: 0 });
-      jlog(j, 'job ' + j.id + ' started: ' + j.manifest.scenes.length + ' scenes, concurrency ' + c.concurrency + ', memory limit ' + (memLimit ? Math.round(memLimit / 1048576) + ' MB' : 'unknown'));
+      const cleared = await reclaim(j.id, LIMITS.doneKeepMs); /* v-bridge-disk: ما بقي من المحاولات السابقة قبل أن نكتب شيئًا */
+      const free = await freeBytes();
+      jlog(j, 'job ' + j.id + ' started: ' + j.manifest.scenes.length + ' scenes, concurrency ' + c.concurrency + ', memory limit ' + (memLimit ? Math.round(memLimit / 1048576) + ' MB' : 'unknown') + ', disk free ' + (Number.isFinite(free) ? toMB(free) + ' MB' : 'unknown') + (cleared ? ' (cleared ' + cleared + ' old job folder(s))' : ''));
       await writeAssets(j);
       const plan = buildFfmpegArgs(j.manifest, jobDir(j.id));
       const enc = makeEncoder(j, plan);
@@ -572,14 +689,19 @@ export function createRenderer(cfg) {
       const out = await joinSegments(j, plan);
       j.done = 1;
       if (j.state === 'error') return;
-      set(j, { state: 'done', step: 'done', file: out, expiresAt: Date.now() + c.ttlMs, message: '' });
+      set(j, { state: 'done', step: 'done', file: out, doneAt: Date.now(), expiresAt: Date.now() + c.ttlMs, message: '' });
       jlog(j, 'job ' + j.id + ' done in ' + Math.round((Date.now() - started) / 1000) + 's, ' + j.seconds + 's of video, ' + j.manifest.scenes.length + ' scenes' + (j.fallbacks ? ', ' + j.fallbacks + ' title card(s) instead of screens' : '') + (j.stills ? ', ' + j.stills + ' still segment(s)' : ''));
       j.manifest = { lang: j.manifest.lang, dir: j.manifest.dir, scenes: [] };
     } catch (e) {
-      const msg = String(e && e.message || e).replace(/\u001b\[[0-9;]*m/g, '').split('\n')[0].slice(0, 300); /* سطر واحد بلا ألوان الطرفيّة */
+      let msg = String(e && e.message || e).replace(/\u001b\[[0-9;]*m/g, '').split('\n')[0].slice(0, 300); /* سطر واحد بلا ألوان الطرفيّة */
+      if (ENOSPC.test(msg) && !/^disk_full/.test(msg)) msg = diskFullMessage(await freeBytes(), 0); /* v-bridge-disk: القرص لا ffmpeg */
       jlog(j, 'job ' + j.id + ' failed at ' + j.step + ': ' + msg);
       set(j, { state: 'error', message: msg });
-    } finally { clearTimeout(guard); }
+    } finally {
+      clearTimeout(guard);
+      /* v-bridge-disk: مهمّة فشلت لا يُنزَّل منها شيء — لقطاتها وصوتها ومقاطعها تُمسح الآن لا بعد ٢٤ ساعة (سجلّها في الذاكرة يبقى للحالة) */
+      if (j.state === 'error') await rm(jobDir(j.id), { recursive: true, force: true }).catch(() => null);
+    }
   }
   async function drain() {
     if (running || !queue.length) return;
@@ -626,6 +748,7 @@ export function createRenderer(cfg) {
       const j = jobs.get(m[1]);
       if (!j || j.id !== auth.jobId) { json(res, 404, { error: 'no_such_job' }); return true; }
       if (!m[2]) { json(res, 200, publicState(j)); return true; }
+      if (j.purged) { json(res, 410, { error: 'gone', state: j.state }); return true; } /* v-bridge-disk: نُزّل ومضت ساعة فمسحته مهمّة لاحقة */
       if (j.state !== 'done' || !j.file || !existsSync(j.file)) { json(res, 409, { error: 'not_ready', state: j.state }); return true; }
       const size = (await stat(j.file)).size;
       res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': String(size), 'Content-Disposition': 'attachment; filename="omran-director.mp4"', 'Cache-Control': 'private, max-age=0' });
@@ -639,5 +762,11 @@ export function createRenderer(cfg) {
   const timer = setInterval(sweep, 3600 * 1000);
   if (timer.unref) timer.unref();
   sweep().catch(() => null);
-  return { handle, jobs, sweep, corsAllowed, _execute: execute, _capture: capture, _makeEncoder: makeEncoder, _joinSegments: joinSegments, _publicState: publicState, _log: jlog, concurrency: c.concurrency };
+  /** للصحّة (/health): المتاح والكلّيّ وما يمكن مسحه من قرص المهمّات بالميغابايت — قراءة فقط (‎-1 = لا يُعرف) */
+  async function disk() {
+    const reclaimMB = toMB(await reclaimable());
+    if (typeof c.diskFree === 'function') return { freeMB: toMB(await c.diskFree()), totalMB: -1, reclaimMB };
+    try { const s = await workStat(); return { freeMB: toMB(Number(s.bavail) * Number(s.bsize)), totalMB: toMB(Number(s.blocks) * Number(s.bsize)), reclaimMB }; } catch (e) { return { freeMB: -1, totalMB: -1, reclaimMB }; }
+  }
+  return { handle, jobs, sweep, corsAllowed, disk, _execute: execute, _capture: capture, _makeEncoder: makeEncoder, _joinSegments: joinSegments, _publicState: publicState, _log: jlog, _reclaim: reclaim, concurrency: c.concurrency };
 }

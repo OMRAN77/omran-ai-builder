@@ -1,5 +1,13 @@
 # عمران AI في Microsoft Store (ويندوز) — تطبيق PWA
 
+> **v-ms-shots (٦ نوفمبر ٢٠٢٦):** المنتج في Partner Center اسمه **«Om ai»** (معرّف المتجر `9NZLQM4G1X3D`)، والمتجر ما زال يعرض
+> «Omran AI Builder» لأنّ تحديث ٢٢ أكتوبر (Submission 4) رُفض في Certification بالقاعدة **10.1.1.3 Inaccurate Representation**:
+> لقطات القائمة الإنجليزيّة «show non-Windows UI or devices» (كانت لقطات جوّال). الإصلاح:
+> 1. `node store/microsoft/shots.mjs` — ستّ لقطات حاسوب ١٩٢٠×١٠٨٠ PNG في `screenshots/en/` و`screenshots/ar/` (المحادثة، الأدوات،
+>    الأزياء، الديكور، البناء، القبلة)، حساب غير المالك، بلا إطار جهاز.
+> 2. Partner Center ← Om ai ← **Store listings** ← لكلّ لغة: احذف كلّ لقطة قديمة وارفع لقطات لغتها (اللغات الأخرى: الإنجليزيّة).
+> 3. **Resubmit for certification**.
+
 ويندوز يثبّت الموقع نفسه كتطبيق (نافذة مستقلّة، أيقونة في قائمة ابدأ، يتحدّث تلقائيًّا مع كلّ نشر على Vercel).
 لا شيفرة جديدة: الحزمة تُولَّد من البيان العامّ `manifest.json` عبر PWABuilder (أداة مايكروسوفت الرسميّة).
 

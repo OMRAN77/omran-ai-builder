@@ -4,24 +4,8 @@
 const { getUser, verifyToken } = require('./auth.js');
 const { decrypt } = require('./_emailCrypto.js');
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-
-async function getAccessToken(refreshToken) {
-  const r = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error || 'refresh_failed');
-  return d.access_token;
-}
+// v-google-token: رمز وصول Gmail من النسخة الواحدة (تقرأ السرّين عند النداء لا في نطاق الوحدة)
+const { refreshGoogleAccessToken: getAccessToken } = require('./_google-token.js');
 
 function encodeSubject(subject) {
   return '=?UTF-8?B?' + Buffer.from(String(subject), 'utf8').toString('base64') + '?=';
@@ -51,12 +35,12 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     const { token, threadId, to, subject, text, messageIdHeader } = body;
     const username = verifyToken(token);
-    if (!username) { res.status(401).json({ error: 'الجلسة منتهية، سجل الدخول من جديد' }); return; }
-    if (!to || !text) { res.status(400).json({ error: 'الرد أو المستلم ناقص' }); return; }
+    if (!username) { res.status(401).json({ error: 'الجلسة منتهية، سجل الدخول من جديد', code: 'session_expired' }); return; } // v-audit-search: الواجهة تترجم الرمز
+    if (!to || !text) { res.status(400).json({ error: 'الرد أو المستلم ناقص', code: 'bad_request' }); return; }
 
     const user = await getUser(username);
     if (!user || !user.emailAssist || !user.emailAssist.connected) {
-      res.status(400).json({ error: 'لم يتم ربط Gmail بعد', notConnected: true });
+      res.status(400).json({ error: 'لم يتم ربط Gmail بعد', code: 'not_connected', notConnected: true });
       return;
     }
     const refreshToken = decrypt(user.emailAssist.refreshTokenEnc);
@@ -69,9 +53,17 @@ module.exports = async (req, res) => {
       body: JSON.stringify({ raw, threadId: threadId || undefined }),
     });
     const sendData = await sendRes.json();
-    if (!sendRes.ok) { res.status(500).json({ error: sendData.error && sendData.error.message ? sendData.error.message : 'تعذر إرسال الرد' }); return; }
+    /* v-audit-search (srv-search-6/7): نصّ جوجل الخامّ («Request had insufficient authentication scopes.») كان يُعرض للمستخدم بلا طريق
+       للخروج — صلاحيّة الإرسال الناقصة needsReauth كالتقويم (الواجهة تُظهر زرّ الربط)، وغيرها رمز. */
+    if (!sendRes.ok) {
+      const gm = String((sendData && sendData.error && sendData.error.message) || '');
+      if (sendRes.status === 403 || /insufficient/i.test(gm)) { res.status(403).json({ error: 'needs_reauth', code: 'needs_reauth', needsReauth: true }); return; }
+      res.status(500).json({ error: 'send_failed', code: 'send_failed' });
+      return;
+    }
     res.status(200).json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: 'Email send error: ' + (e && e.message ? e.message : String(e)) });
+    const reauth = /invalid_grant/i.test(String(e && e.message || e)); // صلاحيّة مسحوبة = إعادة ربط
+    res.status(500).json(reauth ? { error: 'needs_reauth', code: 'needs_reauth', needsReauth: true } : { error: 'failed', code: 'failed' });
   }
 };

@@ -92,11 +92,12 @@ test('١ج. الواجهة: لا تحوّل كائن خطأ نصًّا أبدً�
   const m = read('js/app-08-maha.js');
   assert.match(m, /throw new Error\(\(tokenData && typeof tokenData\.error === 'string'\) \? tokenData\.error : /, 'جلسة مها');
   assert.doesNotMatch(m, /throw new Error\(\(tokenData && tokenData\.error\) \? tokenData\.error/, 'الصيغة القديمة');
-  assert.match(m, /const detail = \(data && typeof data\.error === 'string'\) \? data\.error : \('HTTP ' \+ res\.status\);/, 'تفريغ مها');
-  assert.match(m, /detail === 'unavailable' \? t\('svcPaused'\)/);
+  // v-audit-voice (cli-voice-8): نصّ الفشل من الحالة والرمز (voiceSttErrorText في app-07) — لا نصّ الخادم الخامّ ولا بين قوسين
+  assert.match(m, /mahaSetState\('error', voiceSttErrorText\(res\.status, data\)\);/, 'تفريغ مها');
   assert.doesNotMatch(m, /String\(data\.error\)/, 'String(كائن) = [object Object]');
   const v = read('js/app-07-voice.js');
-  assert.equal((v.match(/data\.error === 'unavailable' \? t\('svcPaused'\) : \(data && typeof data\.error === 'string' && data\.error !== 'failed'\) \? data\.error : t\('micNotSupported'\)/g) || []).length, 2, 'تبويب الصوت');
+  assert.match(v, /if\(code === 'unavailable'\) return t\('svcPaused'\);/, 'unavailable = svcPaused');
+  assert.equal((v.match(/alert\(voiceSttErrorText\(res\.status, data\)\);/g) || []).length, 2, 'تبويب الصوت');
   assert.doesNotMatch(v, /alert\(data && data\.error \? data\.error : /);
 });
 

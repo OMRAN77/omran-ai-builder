@@ -54,6 +54,12 @@
 
         <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
 
+    <!-- v-hw-geo (رفض هواوي ٣٠ أكتوبر — مراجعة WebView على مسارات المراجع): القبلة والمواقيت تطلب الموقع،
+         وMahaWebViewFallbackActivity.onGeolocationPermissionsShowPrompt يطلب هذي الصلاحيّة وقت التشغيل.
+         التقريبيّ يكفي (الصفحة تطلب enableHighAccuracy:false)، فلا ACCESS_FINE_LOCATION. -->
+
+        <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
 
 
     

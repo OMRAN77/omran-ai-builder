@@ -106,47 +106,53 @@
       hideSel: '#designAiIdeas, #designBAWrap, #designAiResult, #designAiGrid, #designAiDownloadLink' }
   ];
 
-  /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء */
+  /* لكلّ نوع: مدّة التقدير، التلميح، التوقّع الصريح، المراحل، ونصّ البطء.
+     v-audit-chatcli (cli-chat-rest-7): لكلّ نصّ مفتاح (k) يُقرأ بلغة الواجهة من t() بالـ١٤ لغة، وar/en احتياطه — كان isAr() وحدها، فيرى
+     الأرديّ والفرنسيّ وأخواتهما الإنجليزيّة. نصوص الرسمة نفسها (COMPLETE وكاملة) كما هي بقرار المالك. */
   var KINDS = {
     image: {
       est: 30,
-      hint: { ar: 'جاري توليد الصورة', en: 'Generating image' },
-      expect: { ar: 'الصور تاخذ ~٣٠ ثانية', en: 'images usually take ~30s' },
+      hint: { k: 'axChatcliGenwImageHint', ar: 'جاري توليد الصورة', en: 'Generating image' },
+      expect: { k: 'axChatcliGenwImageExpect', ar: 'الصور تاخذ ~٣٠ ثانية', en: 'images usually take ~30s' },
       stages: {
+        k: ['axChatcliGenwImageS1', 'axChatcliGenwImageS2', 'axChatcliGenwImageS3', 'axChatcliGenwFinal'],
         ar: ['نفهم طلبك…', 'نرسم التفاصيل…', 'نلوّن المشهد…', 'اللمسات الأخيرة ✨'],
         en: ['Understanding your request…', 'Drawing the details…', 'Coloring the scene…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     video: {
       est: 120, wide: true, film: true,
-      hint: { ar: 'جاري توليد الفيديو', en: 'Generating video' },
-      expect: { ar: 'الفيديو ياخذ ١-٣ دقائق', en: 'video usually takes 1-3 min' },
+      hint: { k: 'axChatcliGenwVideoHint', ar: 'جاري توليد الفيديو', en: 'Generating video' },
+      expect: { k: 'axChatcliGenwVideoExpect', ar: 'الفيديو ياخذ ١-٣ دقائق', en: 'video usually takes 1-3 min' },
       stages: {
+        k: ['axChatcliGenwVideoS1', 'axChatcliGenwVideoS2', 'axChatcliGenwVideoS3', 'axChatcliGenwFinal'],
         ar: ['نبني المشاهد…', 'نحرّك الإطارات…', 'نركّب الحركة…', 'اللمسات الأخيرة ✨'],
         en: ['Building the scenes…', 'Animating the frames…', 'Compositing the motion…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — المشاهد السينمائيّة تاخذ وقتًا…', en: 'Still rendering — cinematic scenes take time…' }
+      slow: { k: 'axChatcliGenwVideoSlow', ar: 'ما زال يتولّد — المشاهد السينمائيّة تاخذ وقتًا…', en: 'Still rendering — cinematic scenes take time…' }
     },
     styles: {
       est: 45,
-      hint: { ar: 'جاري توليد الأنماط', en: 'Generating styles' },
-      expect: { ar: 'الأنماط تاخذ ~٤٥ ثانية', en: 'styles usually take ~45s' },
+      hint: { k: 'axChatcliGenwStylesHint', ar: 'جاري توليد الأنماط', en: 'Generating styles' },
+      expect: { k: 'axChatcliGenwStylesExpect', ar: 'الأنماط تاخذ ~٤٥ ثانية', en: 'styles usually take ~45s' },
       stages: {
+        k: ['axChatcliGenwStylesS1', 'axChatcliGenwStylesS2', 'axChatcliGenwStylesS3', 'axChatcliGenwFinal'],
         ar: ['نحلّل ملامح الصورة…', 'نطبّق الأنماط…', 'نضبط الإضاءة…', 'اللمسات الأخيرة ✨'],
         en: ['Reading your features…', 'Applying the styles…', 'Tuning the light…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     },
     fashion: {
       est: 40, /* v-gen-scene-exact: scenes تُربط أدناه بعد تعريف SCENES */
-      hint: { ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
-      expect: { ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
+      hint: { k: 'axChatcliGenwFashionHint', ar: 'جاري تصميم الإطلالة', en: 'Designing the look' },
+      expect: { k: 'axChatcliGenwFashionExpect', ar: 'الإطلالات تاخذ ~٤٠ ثانية', en: 'looks usually take ~40s' },
       stages: {
+        k: ['axChatcliGenwFashionS1', 'axChatcliGenwFashionS2', 'axChatcliGenwFashionS3', 'axChatcliGenwFinal'],
         ar: ['نفهم ذوقك…', 'نرسم القطع…', 'ننسّق الإطلالة…', 'اللمسات الأخيرة ✨'],
         en: ['Reading your taste…', 'Sketching the pieces…', 'Styling the look…', 'Final touches ✨']
       },
-      slow: { ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
+      slow: { k: 'axChatcliGenwSlow', ar: 'ما زال يتولّد — الاتصال أبطأ من المعتاد…', en: 'Still generating — slower than usual…' }
     }
   };
   /* v-style-scene: الستايل — بلا نصّ جديد: مراحله وتوقّعه مركّبة من نصوص الأنواع القائمة (scenes تُربط أدناه) */
@@ -155,6 +161,7 @@
     hint: KINDS.image.hint,
     expect: KINDS.image.expect,
     stages: {
+      k: [KINDS.styles.stages.k[0], KINDS.image.stages.k[1], KINDS.styles.stages.k[2], KINDS.image.stages.k[3]],
       ar: [KINDS.styles.stages.ar[0], KINDS.image.stages.ar[1], KINDS.styles.stages.ar[2], KINDS.image.stages.ar[3]],
       en: [KINDS.styles.stages.en[0], KINDS.image.stages.en[1], KINDS.styles.stages.en[2], KINDS.image.stages.en[3]]
     },
@@ -406,7 +413,7 @@
     if(peek){ sceneTurns[key] = sceneTurn; return sc; }
     sceneTurn = (sceneTurn + 1) % list.length;
     sceneTurns[key] = sceneTurn;
-    try{ localStorage.setItem(key, String(sceneTurn)); }catch(e){ /* guard-ok — بلا تخزين يبدأ الدور من الأوّل في كلّ فتح */ }
+    try{ localStorage.setItem(key, String(sceneTurn)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:416'); /* guard-ok — بلا تخزين يبدأ الدور من الأوّل في كلّ فتح */ }
     return sc;
   }
   function pc(v, total){ return (Math.round(v / total * 100000) / 1000) + '%'; }
@@ -549,6 +556,13 @@
   /* أعرض رقم مقيس بخطّ سطر الوقت: ٠٫٥٧٤em عربيًّا و٠٫٦em لاتينيًّا (مسبار الأرقام، ١٢ بكسل) */
   var SEC_DIGIT_EM = 0.62;
   function isAr(){ try{ return (typeof lang !== 'undefined' ? lang : 'ar') === 'ar'; }catch(e){ return true; } }
+  /* v-audit-chatcli: نصّ بلغة الواجهة من t() بمفتاحه، وإلّا احتياطه العربيّ للعربيّ والإنجليزيّ لغيره كما كان */
+  function genwTx(k, ar, en){
+    try{ if(k && typeof t === 'function'){ var v = t(k); if(typeof v === 'string' && v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:561'); /* guard-ok — بلا قاموس يبقى الاحتياط */ }
+    return isAr() ? ar : en;
+  }
+  function genwOne(o){ return genwTx(o.k, o.ar, o.en); }
+  function genwList(o){ return o.en.map(function(en, i){ return genwTx(o.k && o.k[i], o.ar[i], en); }); }
 
   /* منحنى التقدّم: يتسارع ثمّ يهدأ — لا يتجاوز ٩٢٪ مهما طال الانتظار (النتيجة تستبدل البطاقة) */
   function eased(p){ return p >= 1 ? 0.92 : (1 - Math.pow(1 - Math.min(p, 1), 2.2)) * 0.92; }
@@ -567,10 +581,11 @@
     var t0 = (opts && Number(opts.t0)) || Date.now();
     var kind = (opts && opts.kind && KINDS[opts.kind]) ? opts.kind : 'image';
     var cfg = KINDS[kind];
-    var stages = cfg.stages[isAr() ? 'ar' : 'en'];
-    var hint = cfg.hint[isAr() ? 'ar' : 'en'];
-    var expect = cfg.expect[isAr() ? 'ar' : 'en'];
-    var slowTxt = cfg.slow[isAr() ? 'ar' : 'en'];
+    var stages = genwList(cfg.stages);
+    var hint = genwOne(cfg.hint);
+    var expect = genwOne(cfg.expect);
+    var slowTxt = genwOne(cfg.slow);
+    var secUnit = genwTx('axChatcliGenwSec', 'ث', 's');
 
     var sc = cfg.scenes ? nextScene(cfg) : null; /* v-gen-scene-exact: مشهد هذا التوليد (بالدور) — v-style-scene: بدور نوعه */
     var root = document.createElement('div');
@@ -601,7 +616,7 @@
         if(sc.bg) root.querySelector('.genw-canvas').style.backgroundColor = sc.bg; /* v-style-scene: لون المشهد ريثما تُحمَّل صورته */
         var flows = root.querySelectorAll('.genw-tube b');
         for(var fi = 0; fi < flows.length && fi < FLOW_TILES.length; fi++) flows[fi].style.backgroundImage = flowTile(FLOW_TILES[fi][0], FLOW_TILES[fi][1], FLOW_TILES[fi][2], sc.flow);
-      }catch(e){ /* guard-ok — بلا خلفيّة أو جريان يبقى لون المشهد الداكن والعدّاد يعمل */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:619'); /* guard-ok — بلا خلفيّة أو جريان يبقى لون المشهد الداكن والعدّاد يعمل */ }
     }
     /* الرقم والقوس والشريط والنصّ (وانعكاسه) — أرقام لاتينيّة كما في تصميم المالك، بعرض حروف الأصل */
     var sceneArc = (sc && sc.ring) ? arcLen(sc) : 0;
@@ -660,13 +675,13 @@
         timerEl.textContent = uiText('⏱ ');
         secEl = document.createElement('b');
         timerEl.appendChild(secEl);
-        timerEl.appendChild(document.createTextNode((isAr() ? 'ث' : 's') + ' — ' + expect));
+        timerEl.appendChild(document.createTextNode(secUnit + ' — ' + expect));
       }
       secEl.style.minWidth = (num.length * SEC_DIGIT_EM) + 'em';
       secEl.textContent = num;
     }
     /* قبل أوّل نبضة موصولة (≤١٥٠ مث) السطر نصّ عاديّ يحفظ ارتفاعه؛ بعدها يبنيه paintTimer بخانته */
-    timerEl.textContent = '⏱ ' + fmt(0) + (isAr() ? 'ث' : 's') + ' — ' + expect;
+    timerEl.textContent = '⏱ ' + fmt(0) + secUnit + ' — ' + expect;
     /* الساعة تبدأ بعد ما تُركّب البطاقة: أول نبضة قد تأتي والعنصر لم يُلحق بعد
        (render يُستدعى ثمّ يُلحق الناتج) فلا نطفئها إلا بعد اتصالٍ سابق. */
     var wasConnected = false;
@@ -705,6 +720,20 @@
      فقاعة التفكير («🎬 جاري إنشاء الفيديو…») فبقي بلا بطاقة. نرصد السطر الجاري ونركّب
      بطاقة الفيديو العريضة في الفقاعة نفسها؛ تُرفع معها عند وصول النتيجة. */
   var CHAT_VIDEO_RE = /🎬 (?:جاري إنشاء الفيديو|Creating video)/;
+  /* v-audit-attach (x-i18n-6): سطرا فيديو المحادثة صارا بمفتاح الـ١٤ لغة في app-09 (axAttachVidCreating/axAttachVidCreatingShort) —
+     التعبير الحرفيّ وحده يُسقط البطاقة عن الفرنسيّة والهنديّة وغيرهما، فيُطابَق نصّ اللغة الحاليّة أيضًا (بلا نقاط الختام). */
+  function chatVideoLine(s){
+    if(CHAT_VIDEO_RE.test(s)) return true;
+    if(s.indexOf('🎬') < 0 || typeof t !== 'function') return false;
+    var ks = ['axAttachVidCreating', 'axAttachVidCreatingShort'];
+    for(var i = 0; i < ks.length; i++){
+      var v = '';
+      try{ v = String(t(ks[i]) || ''); }catch(e){ v = ''; }
+      v = v.replace(/[\s….]+$/, '');
+      if(v && v !== ks[i] && s.indexOf(v) !== -1) return true;
+    }
+    return false;
+  }
 
   /* ١٥ أكتوبر ٢٠٢٦ — طلب المالك إرجاع انتظار صور المحادثة لما قبل البطاقة:
      تبقى رسالة «أرسم لك الصورة…» من العارض، بلا عدّاد إضافي. بقية اللوحات كما هي. */
@@ -723,7 +752,7 @@
     return false;
   }
   function stripEmoji(txt){
-    try{ if(typeof window.__noEmoji === 'function') return String(window.__noEmoji(txt)); }catch(e){ /* guard-ok — بلا منظِّف يبقى النصّ بإيموجيه والبادئة تطابق */ }
+    try{ if(typeof window.__noEmoji === 'function') return String(window.__noEmoji(txt)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:755'); /* guard-ok — بلا منظِّف يبقى النصّ بإيموجيه والبادئة تطابق */ }
     return String(txt);
   }
   function noteBusy(p, txt){ rawBusy[p.id] = txt; cleanBusy[p.id] = stripEmoji(txt); }
@@ -759,7 +788,7 @@
     for(var ci = 0; ci < cvEls.length; ci++){
       var ctxt = '';
       try{ ctxt = String(cvEls[ci].textContent || ''); }catch(e){ continue; }
-      if(!CHAT_VIDEO_RE.test(ctxt)) continue;
+      if(!chatVideoLine(ctxt)) continue;
       var chost = cvEls[ci].closest ? cvEls[ci].closest('.msg.assistant') : null;
       if(!chost) continue;
       cvFound = true;
@@ -769,12 +798,12 @@
         var cnode = render({ t0: t0ByPanel['chatvideo'], kind: 'video' });
         cnode.setAttribute('data-genw-panel', 'chatvideo');
         chost.appendChild(cnode);
-      }catch(e){ try{ __swallow(e, 'gen-wait:chatvideo'); }catch(_){ /* العرض تجميليّ */ } }
+      }catch(e){ try{ __swallow(e, 'gen-wait:chatvideo'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:801'); /* العرض تجميليّ */ } }
     }
     if(!cvFound){
       var cvStale = document.querySelectorAll('.genw[data-genw-panel="chatvideo"]');
       for(var csi = 0; csi < cvStale.length; csi++){
-        try{ cvStale[csi].parentNode.removeChild(cvStale[csi]); }catch(e){ try{ __swallow(e, 'gen-wait:cvdone'); }catch(_){ /* تجميليّ */ } }
+        try{ cvStale[csi].parentNode.removeChild(cvStale[csi]); }catch(e){ try{ __swallow(e, 'gen-wait:cvdone'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:806'); /* تجميليّ */ } }
       }
       delete t0ByPanel['chatvideo'];
     }
@@ -803,11 +832,11 @@
           /* v-gen-steady: الإخفاء قبل التمرير — وإلّا حُسب موضع البطاقة تحت نتيجة ستختفي فيتجاوزها التمرير */
           applyHide(p, scopeEl);
           /* فوق = خارج مجال النظر (المستخدم عند زرّ «صمم» أسفل النموذج) — نصعد إليها */
-          if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
-          else if(p.scroll){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
-        }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ /* العرض تجميليّ */ } }
+          if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:835'); /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
+          else if(p.scroll){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:836'); /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
+        }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:837'); /* العرض تجميليّ */ } }
       } else if(!busy && card){
-        try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ /* العرض تجميليّ */ } }
+        try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:839'); /* العرض تجميليّ */ } }
         delete t0ByPanel[p.id];
       }
       applyHide(p, scopeEl);
@@ -826,7 +855,7 @@
         if(topCard && !hideEl.hasAttribute('data-genw-hide')) hideEl.setAttribute('data-genw-hide', '1');
         else if(!topCard && hideEl.hasAttribute('data-genw-hide')) hideEl.removeAttribute('data-genw-hide');
       }
-    }catch(e){ try{ __swallow(e, 'gen-wait:hide'); }catch(_){ /* العرض تجميليّ */ } }
+    }catch(e){ try{ __swallow(e, 'gen-wait:hide'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:858'); /* العرض تجميليّ */ } }
   }
 
   /* v-gen-scene-exact: أين تُركَّب بطاقة اللوحة — { parent, before, top }. اللوحة التي لها topSel وبدأ نصّ حالتها بإحدى
@@ -852,7 +881,7 @@
   if(typeof MutationObserver !== 'undefined' && document.documentElement){
     try{
       new MutationObserver(function(){ sample(); schedule(); }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
-    }catch(e){ try{ __swallow(e, 'gen-wait:observe'); }catch(_){ /* بلا رصد = بلا بطاقة فقط */ } }
+    }catch(e){ try{ __swallow(e, 'gen-wait:observe'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:884'); /* بلا رصد = بلا بطاقة فقط */ } }
   }
   schedule();
 
@@ -861,18 +890,18 @@
   function preloadScenes(){
     if(scenePreloaded) return;
     scenePreloaded = true;
-    for(var k = 0; k < SCENES.length; k++){ try{ (new Image()).src = SCENES[k].src; }catch(e){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+    for(var k = 0; k < SCENES.length; k++){ try{ (new Image()).src = SCENES[k].src; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:893'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
   }
   if(document.addEventListener){
     document.addEventListener('click', function(e){
       var tg = e && e.target;
       if(tg && tg.closest && tg.closest('#btnFashionAI')) preloadScenes();
       /* v-style-scene: خمسة مشاهد — يُحمَّل القادم وحده عند فتح الاستوديو وعند كلّ «ولّد» (لا الخمسة) */
-      if(tg && tg.closest && tg.closest('#btnStudioAI, #studioAiGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.studio, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
-      if(tg && tg.closest && tg.closest('#btnPortraitStyle, #portraitStyleGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.styles, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      if(tg && tg.closest && tg.closest('#btnStudioAI, #studioAiGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.studio, true).src; }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-34-gen-wait:900'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      if(tg && tg.closest && tg.closest('#btnPortraitStyle, #portraitStyleGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.styles, true).src; }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-34-gen-wait:901'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
       /* v-scene-kinds: القادم وحده لكلّ مجموعة — عند فتح الأداة وعند زرّ التوليد */
       var pre = !tg || !tg.closest ? null : (tg.closest('#btnVideoMaker, #videoMakerGenerateBtn') ? KINDS.vmaker : (tg.closest('#vtGrid, #vtGo') ? KINDS.vtrend : (tg.closest('#btnDesignAI, #designAiGenerateBtn, #designAiIdeaAI') ? KINDS.decor : null)));
-      if(pre && pre.scenes && pre.scenes.length){ try{ (new Image()).src = nextScene(pre, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      if(pre && pre.scenes && pre.scenes.length){ try{ (new Image()).src = nextScene(pre, true).src; }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-34-gen-wait:904'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
     }, true);
   }
 

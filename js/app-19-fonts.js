@@ -31,7 +31,7 @@
 
   function report(e, ctx){
     try{ if(typeof window.__swallow === 'function') window.__swallow(e, ctx); else console.warn(ctx, e); }
-    catch(_){ /* guard-ok: تعذّر التسجيل نفسه؛ لا نُسقط الواجهة. */ }
+    catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-19-fonts:34'); /* guard-ok: تعذّر التسجيل نفسه؛ لا نُسقط الواجهة. */ }
   }
   function byId(id){
     for(var i=0;i<fonts.length;i++) if(fonts[i].id === id) return fonts[i];

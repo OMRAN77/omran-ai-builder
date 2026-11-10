@@ -34,7 +34,8 @@ test('٢. الخمسة نداءات في تدفّق الدخول كلّها بم
 
 test('٣. زرّ الدخول يعرض نصّ انتظار ويعيد النصّ الأصليّ في كلّ فرع (لا يبقى ساكنًا بصمت)', () => {
   assert.match(SRC, /const submitBtnLabel = submitBtn\.textContent;/, 'النصّ الأصليّ يُحفَظ مرّة واحدة');
-  const setCount = (SRC.match(/submitBtn\.textContent = isEn \? '[^']*' : '[^']*…';/g) || []).length;
+  // v-audit-boot (cli-boot-6): نصّ الانتظار بمفتاح لغة الواجهة (كان ثنائيّة isEn)
+  const setCount = (SRC.match(/submitBtn\.textContent = authMsg\('axBoot\w+', '[^']*…', '[^']*…'\);/g) || []).length;
   const restoreCount = (SRC.match(/submitBtn\.textContent = submitBtnLabel;/g) || []).length;
   assert.equal(setCount, 3, 'نصّ الانتظار في الفروع الثلاثة (forgotEmail/resetToken/login-signup)');
   assert.equal(restoreCount, 3, 'واستعادة النصّ في finally الثلاثة كلّها');

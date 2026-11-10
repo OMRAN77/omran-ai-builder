@@ -38,9 +38,18 @@ function resolveTaskId(id) {
   if (m) {
     const idx = parseInt(m[1], 10);
     const key = keys[idx] || keys[0] || null;
-    return { key, rawId: m[2] };
+    // v-sec-video-canon: نعيد الفهرس كما حُسم (keys[idx] موجود → idx، وإلّا 0) فيُبنى المعرّف
+    // القانونيّ الوحيد (canonicalId) ويُسوّى به دائمًا — لا تترك تهجئةٌ بديلة تذكرةً مفتوحةً.
+    const index = (keys[idx] != null) ? idx : 0;
+    return { key, rawId: m[2], index };
   }
-  return { key: keys[0] || null, rawId: str };
+  return { key: keys[0] || null, rawId: str, index: 0 };
+}
+
+// المعرّف القانونيّ «الفهرس:المعرّف‑الخام» — نفس ما يسكّه encodeTaskId عند الإنشاء.
+function canonicalId(id) {
+  const { rawId, index } = resolveTaskId(id);
+  return index + ':' + rawId;
 }
 
 // --- Stuck-task auto-cleanup -------------------------------------------
@@ -79,7 +88,7 @@ async function saveLastTask(index, taskId) {
   try {
     const prev = await readSlot(index);
     await kvPutJSON(lastTaskPath(index), Object.assign({ id: taskId }, prev.hold ? { hold: prev.hold } : {}));
-  } catch (e) {
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/runway-keys:91');
     // best-effort only
   }
 }
@@ -120,8 +129,8 @@ async function clearStuckTask(index, apiKey) {
   const live = (id) => ids.indexOf(id) >= 0 && states[ids.indexOf(id)] === 'live';
   const hold = live(slot.hold) ? slot.hold : (live(slot.id) ? slot.id : null);
   if ((hold || null) !== (slot.hold || null) && process.env.UPSTASH_REDIS_REST_URL) {
-    try { await kvPutJSON(lastTaskPath(index), Object.assign({ id: slot.id }, hold ? { hold } : {})); } catch (e) { /* guard-ok — أفضل جهد */ }
+    try { await kvPutJSON(lastTaskPath(index), Object.assign({ id: slot.id }, hold ? { hold } : {})); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/runway-keys:132'); /* guard-ok — أفضل جهد */ }
   }
 }
 
-module.exports = { getKeys, pickKey, encodeTaskId, resolveTaskId, getLastTask, saveLastTask, clearStuckTask, RUNWAY_API_BASE, STUCK_MS };
+module.exports = { getKeys, pickKey, encodeTaskId, resolveTaskId, canonicalId, getLastTask, saveLastTask, clearStuckTask, RUNWAY_API_BASE, RUNWAY_VERSION, STUCK_MS };

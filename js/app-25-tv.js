@@ -850,7 +850,7 @@
         if(typeof v === 'string' && v) return v;
         if(L !== 'ar'){ var ve = D.en && D.en[key]; if(typeof ve === 'string' && ve) return ve; }
       }
-    }catch(e){ /* guard-ok: القاموس لم يُحمّل بعد — نرجع للنصّ المضمّن */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-25-tv:853'); /* guard-ok: القاموس لم يُحمّل بعد — نرجع للنصّ المضمّن */ }
     return (L === 'ar') ? ar : en;
   }
   function tt(ar, en){ return tvIsAr() ? ar : en; }
@@ -862,7 +862,7 @@
     try{
       var D = window.I18N && I18N[L] && I18N[L].tvCountries;
       if(D && D[code]) return D[code];
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-25-tv:865'); /* guard-ok */ }
     if(L === 'en') return meta[1];
     try{
       var iso = code.replace(/_$/, '').toUpperCase();
@@ -870,7 +870,7 @@
         var dn = new Intl.DisplayNames([L], { type: 'region' }).of(iso);
         if(dn && dn !== iso) return dn;
       }
-    }catch(e){ /* guard-ok: بيئة بلا CLDR — الإنجليزية بديلًا */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-25-tv:873'); /* guard-ok: بيئة بلا CLDR — الإنجليزية بديلًا */ }
     return meta[1];
   }
   var TV_CAT_KEY = { news: 'tvCatNews', sports: 'tvCatSports', general: 'tvCatGeneral', religion: 'tvCatReligion', kids: 'tvCatKids', biz: 'tvCatBiz' };

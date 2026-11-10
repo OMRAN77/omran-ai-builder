@@ -29,7 +29,7 @@ function makeWorld(contentH = 3000) {
     get scrollHeight() { return this._h; },
     get scrollTop() { return this._top; },
     set scrollTop(v) { this._setTop(v); this.writes++; },
-    _setTop(v) { const nt = Math.max(0, Math.min(v, this._h - this.clientHeight)); if (nt !== this._top) { this._top = nt; fire(L, 'scroll', {}); } },
+    _setTop(v) { const nt = Math.max(0, Math.min(v, this._h - this.clientHeight)); if (nt !== this._top) { this._top = nt; if (!this._mute) fire(L, 'scroll', {}); } },
     addEventListener: on(L),
     scrollTo(o) { this.scrollTop = o.top; },
   };
@@ -56,6 +56,10 @@ function makeWorld(contentH = 3000) {
     key(k, tag = 'BODY') { fire(docL, 'keydown', { key: k, target: { tagName: tag } }); },
     wait(ms) { clock += ms; },
     gap() { return el._h - el._top - el.clientHeight; },
+    grow(px) { el._h += px; },                                // محتوى كبر تحت القارئ (صورة فُكّت) بلا تمرير ولا حدث
+    quiet(v) { el._top = Math.max(0, Math.min(v, el._h - el.clientHeight)); }, // تمرير وقع وحدثه لم يُرسل بعد (يُرسل في الإطار التالي)
+    dispatch() { fire(L, 'scroll', {}); },
+    mute(on) { el._mute = on; },                              // حدث scroll يتأخّر إلى الإطار التالي (dispatch)
   };
   return w;
 }
@@ -190,4 +194,56 @@ test('١٠. نهاية الردّ لا تقذف القارئ: الرسائل ت�
   assert.ok(rm.includes("__cvAll.forEach(__m => { __m.style.contentVisibility = 'visible'; });"));
   assert.ok(rm.includes("requestAnimationFrame(() => requestAnimationFrame(() => __cvAll.forEach(__m => { if(__m.style.contentVisibility === 'visible') __m.style.contentVisibility = ''; })))"), 'تعود القاعدة بعد أن تُحفظ الأحجام (auto)');
   assert.ok(read('css/tokens.css').includes('html.cv-ok .msg{content-visibility:auto; contain-intrinsic-size:auto 160px;}'), 'القاعدة التي تحفظ الحجم الأخير باقية كما هي');
+});
+
+test('١١. نموّ متأخّر (صورة تُفكّ بعد التمرير — v-share-visible): يلحق من لم يصعد منذ كان في الأسفل، ولا يشدّ من صعد بلا عجلة ولا إصبع (Ctrl+F، scrollIntoView)', () => {
+  const w = makeWorld();
+  assert.equal(w.F.followGrowth(), true, 'في الأسفل');
+  w.grow(320);
+  assert.equal(w.F.followGrowth(), true, 'صورة كبرت تحته ولم يتحرّك: يلحق');
+  w.ctx.smart(true); assert.equal(w.gap(), 0);
+  // بحث الصفحة يصعد بلا عجلة ولا إصبع: البثّ يبقى ملاحقًا كما قرّر v-scroll-free، والنموّ المتأخّر لا يشدّه
+  w.user(-900);
+  assert.equal(w.F.follow(), true, 'follow() لم يتغيّر (قرار البثّ كما هو)');
+  assert.equal(w.F.followGrowth(), false, 'صعد بنفسه: الصورة لا تشدّه');
+  w.grow(320);
+  assert.equal(w.F.followGrowth(), false, 'ولو كبرت صورة بعدها');
+  w.user(w.gap());
+  assert.equal(w.F.followGrowth(), true, 'رجع إلى الأسفل: يلحق من جديد');
+  // صعود لم يصل حدثه بعد (التحميل سبق إطار الحدث): يُحسب صعودًا، ثمّ يثبت بالحدث
+  w.quiet(w.el.scrollTop - 700); w.grow(320);
+  assert.equal(w.F.followGrowth(), false, 'صعود معلّق');
+  w.dispatch();
+  assert.equal(w.F._state().away, true);
+  // صورة فوق القارئ يعوّضها التثبيت (scroll anchoring): scrollTop يزيد بقدر نموّها كأنّه نزل — ليس عودة إلى الأسفل
+  // (فحص المتصفّح: سحب التحديد فوق شريط ٤ صور قديم شُدّ إلى الآخر حين قيس «بلغ الأسفل القديم» من الحدث)
+  const g0 = w.gap();
+  w.el._h += g0 + 500; w.el._setTop(w.el._top + g0 + 500);
+  assert.equal(w.gap(), g0, 'المسافة تحته كما هي');
+  assert.equal(w.F.followGrowth(), false, 'التعويض ليس نزولًا');
+  // البثّ أعاده للأسفل (smartScrollBottom) وكبر المحتوى قبل أن يصل الحدث: في الأسفل بالكتابة نفسها لا بالحدث
+  w.mute(true); w.ctx.smart(true); w.grow(300); w.mute(false); w.dispatch();
+  assert.equal(w.gap(), 300);
+  assert.equal(w.F._state().away, false, 'كتبنا الأسفل ثمّ كبر المحتوى قبل الحدث');
+  assert.equal(w.F.followGrowth(), true);
+});
+
+test('١٢. لا إبعاد كاذب: صندوق الكتابة يصغر (مساحة القائمة تكبر فيُقيَّد scrollTop)، تقلّص المحتوى، خطوة داخل حدّ الأسفل؛ والإرسال ومحادثة أخرى يعيدانه', () => {
+  const w = makeWorld();
+  w.el.clientHeight += 200; w.el._setTop(w.el._top); // المتصفّح يقيّد scrollTop للأعلى والقارئ في الأسفل
+  assert.equal(w.gap(), 0);
+  assert.equal(w.F.followGrowth(), true, 'التقييد ليس ابتعادًا');
+  w.el._h -= 300; w.el._setTop(w.el._top);
+  assert.equal(w.F.followGrowth(), true, 'التقلّص ليس صعودًا');
+  w.user(-40);
+  assert.equal(w.F.followGrowth(), true, '٤٠px داخل حدّ الأسفل (٤٨)');
+  w.user(-800);
+  assert.equal(w.F.followGrowth(), false);
+  w.ctx.anchor();
+  assert.equal(w.F.followGrowth(), true, 'إرسال رسالة');
+  w.user(-800);
+  assert.equal(w.F.forRender('x'), true);
+  assert.equal(w.F.followGrowth(), true, 'محادثة أخرى تُفتح من الأسفل');
+  w.wheel(-300);
+  assert.equal(w.F.followGrowth(), false, 'عجلة للأعلى: follow() نفسه خطأ');
 });

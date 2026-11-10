@@ -44,6 +44,31 @@
     r.onerror = function(){ done(''); };
     r.readAsDataURL(file);
   }
+  /* v-trends-identity-audit: صورة واحدة = حتّى ٢٠٤٨ (WORK_MAX عند الخادم) بجودة ٠٫٩، فلقطة الوجه ومرجع تبديل الرأس من بكسلات حقيقيّة لا من نسخة
+     ١٤٠٠ مضغوطة (صورة واقف كامل وجهها ~١٧٠ بكسل، والإطار 2K يطلب وجهًا ~٤٦٠). تُحسب مرّة وتبقى للقصّة كلّها (البايتات نفسها = FRAME_CACHE يصيب).
+     أكبر من SOLO_B64_MAX أو أيّ عطب = نسخة ١٤٠٠ كما كانت. عدّة صور كما كانت حرفيًّا (حدّ ٤٫٥م للطلب، v-trend-413). */
+  var SOLO_MAX = 2048, SOLO_Q = 0.9, SOLO_B64_MAX = 3500000;
+  function soloHi(file){
+    return new Promise(function(res){
+      var r = new FileReader();
+      r.onload = function(){
+        var img = new Image();
+        img.onload = function(){
+          try{
+            var k = Math.min(1, SOLO_MAX / Math.max(img.width, img.height)), w = Math.round(img.width * k), h = Math.round(img.height * k);
+            var c = document.createElement('canvas'); c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            var u = c.toDataURL('image/jpeg', SOLO_Q);
+            res(u.length <= SOLO_B64_MAX ? u : '');
+          }catch(e){ res(''); }
+        };
+        img.onerror = function(){ res(''); };
+        img.src = String(r.result || '');
+      };
+      r.onerror = function(){ res(''); };
+      r.readAsDataURL(file);
+    });
+  }
 
   /* بطاقة نظيفة: المعاينة تملأها والاسم فوقها في أسفلها — لا شيء تحتها، ولا أيقونة، ولا سطر وصف */
   function card(t){
@@ -65,7 +90,10 @@
   function renderGrid(){
     if(!grid) return;
     grid.innerHTML = '';
-    D.trends.forEach(function(t){ grid.appendChild(card(t)); });
+    D.trends.forEach(function(t){
+      if(typeof omranHwHidden === 'function' && omranHwHidden('trend', t.key)) return; // v-hw-resubmit-2: ترندات بأسماء علامات تُخفى في هواوي
+      grid.appendChild(card(t));
+    });
     $('vtTitle').textContent = ui('title');
     $('vtSub').textContent = ui('sub');
   }
@@ -94,7 +122,8 @@
       s.appendChild(im); s.appendChild(tag(i)); s.appendChild(x);
       strip.appendChild(s);
     });
-    if(photos.length >= MAX_PEOPLE) return;
+    var cap = t.maxPeople || MAX_PEOPLE; /* v-trends-oct-12: ترند بصورة واحدة («سامحوني»، «من ينقذك؟») */
+    if(photos.length >= cap) return;
     var add = slot();
     add.style.cssText += 'border:1px dashed rgba(255,255,255,.28);background:rgba(255,255,255,.03);cursor:pointer;display:flex;align-items:center;justify-content:center;';
     /* صورة شخصيّة (ظلّ رأس وكتفين) + ＋ صغيرة — يُفهم من المربّع أنّه مكان إنسان لا ملفّ */
@@ -106,13 +135,13 @@
     var plus = document.createElement('div'); plus.textContent = '＋'; plus.style.cssText = 'font-size:15px;line-height:1;color:var(--omGold,#d4af37);margin-top:-2px;';
     ghost.appendChild(plus);
     add.appendChild(ghost); add.appendChild(tag(photos.length));
-    var fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = true; fi.style.display = 'none';
+    var fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = cap > 1; fi.style.display = 'none';
     fi.onchange = function(){
-      var files = Array.prototype.slice.call(fi.files || []).slice(0, MAX_PEOPLE - photos.length);
+      var files = Array.prototype.slice.call(fi.files || []).slice(0, cap - photos.length);
       var left = files.length; if(!left) return;
       files.forEach(function(f){
         shrink(f, function(dataUrl){
-          if(dataUrl) photos.push({ dataUrl: dataUrl, mime: 'image/jpeg' });
+          if(dataUrl) photos.push({ dataUrl: dataUrl, mime: 'image/jpeg', file: f });
           if(!--left) renderPeople(strip, t);
         });
       });
@@ -209,7 +238,7 @@
       var cs = getComputedStyle(ta);
       var adj = cs.boxSizing === 'border-box' ? (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0) : -((parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0));
       if(ta.scrollHeight) ta.style.height = (ta.scrollHeight + adj) + 'px';
-    }catch(e){ /* guard-ok — بلا قياس: ارتفاع الخانة الافتراضيّ */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:241'); /* guard-ok — بلا قياس: ارتفاع الخانة الافتراضيّ */ }
   }
   function defaultScenes(t){ return t.sceneText.map(function(x, i){ return { text: noEmoji(T(x)), def: i }; }); }
   /* «المشهد الأول: …» في «اكتب اللي تبيه» ← الخانات، وما قبل أوّل علامة يبقى توجيهًا عامًّا لكلّ المشاهد */
@@ -277,7 +306,7 @@
     head.appendChild(im); head.appendChild(ht); panel.appendChild(head);
     if(t.photo !== 'none'){
       var plab = document.createElement('div'); plab.style.cssText = 'font-size:12px;color:#9a9a9e;margin:2px 0 7px;line-height:1.6;';
-      plab.textContent = ui('people') + (t.photo === 'opt' ? '' : ' *');
+      plab.textContent = (t.maxPeople === 1 ? ui('photo') : ui('people')) + (t.photo === 'opt' ? '' : ' *');
       var strip = document.createElement('div'); strip.id = 'vtPeople'; strip.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
       panel.appendChild(plab); panel.appendChild(strip);
       renderPeople(strip, t);
@@ -313,7 +342,7 @@
     /* v-scene-kinds: مشهد التوليد يُركَّب تحت سطر الحالة — حيث تظهر النتيجة — فالنتيجة بعرضه (٧٦٠ موسَّطة) */
     var out = document.createElement('div'); out.id = 'vtOut'; out.style.cssText = 'margin-top:10px;max-width:760px;margin-inline:auto;';
     panel.appendChild(st); panel.appendChild(out);
-    try{ panel.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
+    try{ panel.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:345'); /* guard-ok */ }
   }
 
   function status(txt){ var s = $('vtStatus'); if(!s) return; s.textContent = txt || ''; s.style.display = txt ? 'block' : 'none'; }
@@ -343,7 +372,9 @@
     if(preConfirmed) payload.confirmed = true; // v-trend-one-confirm: وافق على مجموع القصّة مرّة واحدة
     /* v-trend-people: الأولى في imageBase64 كما كانت (توافق)، وما زاد عنها في imagesBase64 للخادم. */
     if(photos.length){
-      var raw = photos.map(function(p){ return { b64: p.dataUrl.slice(p.dataUrl.indexOf(',') + 1), mime: p.mime }; });
+      if(photos.length === 1 && photos[0].file && photos[0].hi === undefined) photos[0].hi = await soloHi(photos[0].file); // مرّة واحدة: كلّ مشاهد القصّة بالبايتات نفسها
+      var src = (photos.length === 1 && photos[0].hi) ? [{ dataUrl: photos[0].hi, mime: 'image/jpeg' }] : photos;
+      var raw = src.map(function(p){ return { b64: p.dataUrl.slice(p.dataUrl.indexOf(',') + 1), mime: p.mime }; });
       payload.imageBase64 = raw[0].b64; payload.imageMime = raw[0].mime;
       if(raw.length > 1){ payload.imagesBase64 = raw.map(function(x){ return x.b64; }); payload.imagesMime = raw.map(function(x){ return x.mime; }); }
       payload.params = Object.assign({}, params, { people: raw.length });
@@ -441,6 +472,9 @@
       params.bg = (parseInt(localStorage.getItem(bk) || '0', 10) || 0) + 1;
       localStorage.setItem(bk, String(params.bg));
     }catch(e){ params.bg = Math.floor(Math.random() * 100000); } /* guard-ok — بلا تخزين: عشوائيّ */
+    /* v-audit-video (cli-video-4): «أعد المحاولة» كانت تمحو الفيديو المدفوع السابق قبل سؤال السعر — فإلغاء نافذة الخصم أو المهلة
+       أو نفاد النقاط يُضيّعه بلا تحميل ولا سجلّ. الناتج السابق يُحفظ ويعود مكانه ما لم يصل ناتج جديد. */
+    var outEl = $('vtOut'), prevOut = outEl ? Array.prototype.slice.call(outEl.childNodes) : [];
     busy = true; $('vtGo').disabled = true; $('vtOut').innerHTML = '';
     setBusyFlag(true);
     status(ui('working'));
@@ -456,9 +490,11 @@
       status(ui('done'));
     }catch(e){
       setBusyFlag(false);
+      /* v-audit-video (cli-video-4): لا ناتج جديد — الناتج السابق يعود مكانه */
+      if(!urls.length && outEl && $('vtOut') === outEl && !outEl.childNodes.length) prevOut.forEach(function(nd){ outEl.appendChild(nd); });
       /* v-trend-one-confirm: المشاهد التي اكتملت (ودُفعت) قبل العطب تُعرض ولا تضيع — مع سبب التوقّف وعدد ما اكتمل */
       if(urls.length){
-        try{ await show(t, urls); }catch(e2){ /* guard-ok — العرض أفضل جهد، والسطر يقول ما حدث */ }
+        try{ await show(t, urls); }catch(e2){ typeof __swallow === 'function' && __swallow(e2, 'app-11-video-trends:497'); /* guard-ok — العرض أفضل جهد، والسطر يقول ما حدث */ }
         status((String(e && e.message) !== 'cancelled' ? errText(e) + ' ' : '') + ui('partial').replace('{k}', String(urls.length)).replace('{n}', String(n)));
       }
       else if(String(e && e.message) !== 'cancelled') status(errText(e));
@@ -487,10 +523,12 @@
       dl.download = 'omran-trend-' + t.key + '.mp4'; dl.className = 'btn'; dl.style.cssText = 'display:block;text-align:center;margin-top:6px;';
       dl.textContent = ui('download');
       out.appendChild(dl);
+      /* v-share-next: «مشاركة» بجانب التحميل — رابط الفيديو الأصليّ لا رابط تنزيله */
+      if(typeof window.omranAddShareNextTo === 'function'){ try{ window.omranAddShareNextTo(dl, { kind: 'video', className: 'btn', getSrc: function(){ return u; } }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:527'); /* guard-ok — المشاركة تحسين لا يمنع التحميل */ } }
     });
     var again = document.createElement('button'); again.type = 'button'; again.className = 'btn'; again.style.cssText = 'width:100%;margin-top:8px;'; again.textContent = ui('retry'); again.onclick = function(){ make(t); };
     out.appendChild(again);
-    try{ window.__chatVideoResult = { url: finalUrl || urls[0] }; }catch(e){ /* guard-ok */ }
+    try{ window.__chatVideoResult = { url: finalUrl || urls[0] }; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:531'); /* guard-ok */ }
   }
 
   function boot(){
@@ -504,8 +542,10 @@
     desc.insertAdjacentElement('afterend', root);
     grid = $('vtGrid'); panel = $('vtPanel');
     renderGrid();
-    try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
-    window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key; })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } } };
+    try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:545'); /* guard-ok */ }
+    window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key && !(typeof omranHwHidden === 'function' && omranHwHidden('trend', x.key)); })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } },
+      /* v-audit-boot (cli-video-1): الخروج (app-04) يفرّغ صور الأشخاص ويغلق اللوحة المفتوحة — لا تُرسل صور الحساب السابق مع ترند من يدخل بعده */
+      reset: function(){ photos = []; cur = null; if(panel){ panel.innerHTML = ''; panel.style.display = 'none'; } if(grid) grid.style.display = 'grid'; } };
   }
   // v-perf-idle-timers: boot() كانت تُستدعى عند DOMContentLoaded (مرّتين: فورًا و٩٠٠مل ثانية لاحقًا) فتبني
   // شبكة ٤٥ بطاقة (٤٥ صورة معاينة) داخل نافذة صانع الفيديو حتّى لو لم يفتحها المستخدم إطلاقًا في تلك

@@ -75,7 +75,9 @@ test('mahaStartRealtimeCall يرسل voiceSpeed عاديًّا ثابتًا — 
   assert.ok(!/mahaReadVoiceSpeed\(\)/.test(body));
 });
 
-test('api/_lib/tts.js: خريطة السرعة الأربع صحيحة (Azure % وOpenAI رقمي)، وvoice آخر بلا speed لا ينكسر', async () => {
+/* v-tts-gemini: المحرّك الثاني صار Gemini (السرعة كلمات في الأسلوب — tests/tts-gemini.test.cjs)، واحتياطه Azure بمعامل prosody نفسه.
+   بلا مفتاح Gemini هنا يخدم الاحتياط، فتُفحص النسب الأربع على صوت آخر (onyx) كما كان المعامل الرقميّ يُفحص. */
+test('api/_lib/tts.js: خريطة السرعة الأربع صحيحة (Azure %)، وvoice آخر بلا speed لا ينكسر', async () => {
   process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'test-secret';
   const rp = (f) => require.resolve(path.join(root, f));
   require.cache[rp('api/_lib/_usage.js')] = { id: rp('api/_lib/_usage.js'), filename: rp('api/_lib/_usage.js'), loaded: true, exports: {
@@ -85,22 +87,26 @@ test('api/_lib/tts.js: خريطة السرعة الأربع صحيحة (Azure % 
   const handler = require(rp('api/_lib/tts.js'));
   const calls = [];
   const savedFetch = global.fetch;
-  const savedKey = process.env.OPENAI_API_KEY;
-  process.env.OPENAI_API_KEY = 'k';
+  const saved = { free: process.env.AZURE_SPEECH_KEY_FREE, paid: process.env.AZURE_SPEECH_KEY, gem: process.env.GEMINI_API_KEY };
+  process.env.AZURE_SPEECH_KEY_FREE = 'k'; delete process.env.AZURE_SPEECH_KEY; delete process.env.GEMINI_API_KEY;
   global.fetch = async (url, init) => {
-    calls.push({ url, body: init && init.body ? JSON.parse(init.body) : null });
+    calls.push({ url: String(url), body: init && init.body ? String(init.body) : '' });
     return new Response(new Uint8Array([1, 2, 3]).buffer, { status: 200 });
   };
   try {
-    for (const [speed, openaiSpeed] of [['slow', 0.9], ['normal', 1], ['fast', 1.1], ['xfast', 1.2], [undefined, 1]]) { // v-maha-pace: مدى هادئ
+    for (const [speed, rate] of [['slow', '-10%'], ['normal', '0%'], ['fast', '+10%'], ['xfast', '+20%'], [undefined, '0%']]) { // v-maha-pace: مدى هادئ
       calls.length = 0;
       const res = fakeRes();
       await handler({ method: 'POST', body: { text: 'hi', voice: 'onyx', speed }, headers: {}, socket: {} }, res);
       assert.equal(res.code, 200, 'speed=' + speed);
-      assert.equal(calls[0].body.speed, openaiSpeed, 'معامل OpenAI الرقميّ لـ' + speed);
+      assert.equal(calls.length, 1, 'نداء واحد');
+      assert.match(calls[0].url, /tts\.speech\.microsoft\.com/);
+      assert.ok(calls[0].body.includes('<prosody rate="' + rate + '"'), 'نسبة Azure لـ' + speed + ': ' + calls[0].body);
+      assert.ok(calls[0].body.includes('en-US-AndrewMultilingualNeural'), 'onyx رجل ← صوت رجل');
     }
   } finally {
-    global.fetch = savedFetch; process.env.OPENAI_API_KEY = savedKey;
+    global.fetch = savedFetch;
+    for (const [k, v] of [['AZURE_SPEECH_KEY_FREE', saved.free], ['AZURE_SPEECH_KEY', saved.paid], ['GEMINI_API_KEY', saved.gem]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
     delete require.cache[rp('api/_lib/_usage.js')]; delete require.cache[rp('api/_lib/tts.js')];
   }
 });

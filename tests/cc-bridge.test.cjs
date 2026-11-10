@@ -16,7 +16,7 @@ const R = (p) => path.join(__dirname, '..', p);
   const bash = (cmd) => P.decideTool('Bash', { command: cmd }).behavior;
   const ALLOWED_CMDS = [
     'npm run ci', 'git commit -m "x"', 'git push -u origin cc/x', 'git push origin feature:refs/heads/feature', 'git push origin main:other',
-    'git push -u origin cc/x && gh pr create --title x --body y', 'gh pr create --title x', 'gh pr view 571 --json state', 'gh pr checks 571',
+    'gh pr create --title x', 'gh pr view 571 --json state', 'gh pr checks 571',
     'gh run view 1 --log', 'gh run rerun 1', 'gh api repos/x/y/pulls/5', 'gh api -X GET repos/x', 'gh repo view', 'gh workflow list', 'gh release view v1',
     'curl https://api.github.com/repos/x', 'wget https://x/y', 'git fetch origin main', 'git pull origin main', 'git remote -v',
     'git reset --soft HEAD~1', 'git checkout -- js/x.js', 'git restore js/x.js', 'git branch -D cc/x',
@@ -27,6 +27,7 @@ const R = (p) => path.join(__dirname, '..', p);
   const DENIED_CMDS = [
     'git push origin main', 'git push -u origin main', 'git push origin HEAD:main', 'git push origin x:refs/heads/master', 'cd x && git push origin main',
     'git push', 'git push origin', 'git push origin HEAD', 'git push origin $BR', 'git push --force origin cc/x', 'git push -f origin cc/x',
+    'git push -u origin cc/x && gh pr create --title x --body y', // v-audit-bridge: الدفع أمر مستقلّ يجريه الجسر بمفتاحه
     'git push --force-with-lease origin cc/x', 'git push origin +cc/x', 'git push origin :cc/x', 'git push --delete origin cc/x', 'git push --all origin',
     'gh pr merge 5', 'gh pr merge --auto 5', 'gh api -X PUT repos/x/y/pulls/5/merge', 'gh api --method DELETE repos/x', 'gh api -f title=x repos/x/issues',
     'gh auth token', 'gh secret set X', 'gh repo delete x', 'gh workflow run ci', 'gh release create v1',
@@ -67,11 +68,11 @@ const R = (p) => path.join(__dirname, '..', p);
   const srv = fs.readFileSync(R('cc-bridge/server.mjs'), 'utf8');
   assert.ok(srv.includes("await import('@anthropic-ai/claude-agent-sdk')") && srv.includes('query({ prompt: promptFor(message, opts.images), options })'), 'query() من الحزمة الرسميّة');
   assert.ok(!/api\.anthropic\.com\/v1\/messages/.test(srv), 'لا نداء مباشر لواجهة الرسائل — لا وكيل مركّب');
-  for (const k of ["permissionMode: 'acceptEdits'", 'canUseTool: async (name, input) => decideTool(name, input)', 'includePartialMessages: true', "systemPrompt: { type: 'append', text: RULES_APPEND }", 'options.resume = opts.sessionId', 'allowedTools: ALLOWED_TOOLS', 'disallowedTools: DENIED_TOOLS', "settingSources: ['user', 'project', 'local']"]) {
+  for (const k of ["permissionMode: 'acceptEdits'", 'canUseTool: async (name, input) => bridgeTool(name, input)', 'includePartialMessages: true', "systemPrompt: { type: 'append', text: RULES_APPEND }", 'options.resume = opts.sessionId', 'allowedTools: ALLOWED_TOOLS', 'disallowedTools: DENIED_TOOLS', "settingSources: ['user', 'project', 'local']"]) {
     assert.ok(srv.includes(k), 'خيار الحزمة: ' + k);
   }
   assert.ok(srv.includes('timingSafeEqual') && srv.includes("'/publish'") && srv.includes("'/merge'") && srv.includes("'/reset'"), 'السرّ والأوامر الثلاثة');
-  assert.ok(srv.includes('delete e.CC_BRIDGE_SECRET') && srv.includes('e.GH_TOKEN = e.GITHUB_TOKEN') && srv.includes('env: childEnv()'), 'بيئة Claude Code بلا سرّ الجسر ومع مفتاح gh');
+  assert.ok(srv.includes('return agentEnv(env);') && !srv.includes('e.GH_TOKEN = e.GITHUB_TOKEN') && srv.includes('env: childEnv()'), 'بيئة Claude Code بلا سرّ الجسر ولا مفتاح الكتابة (v-audit-bridge)');
   assert.ok(/CC_MAX_TURNS\) \|\| 1000\)/.test(srv), 'سقف الجولات ١٠٠٠ — بلا سقف عمليّ كجلسة الويب');
   // v-cc-raw-full: Chromium/Playwright في الحاوية، والمتابعة بلا سقف للمهمّة الطويلة
   const docker2 = fs.readFileSync(R('cc-bridge/Dockerfile'), 'utf8');

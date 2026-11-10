@@ -20,9 +20,10 @@ function fnSrc(src, head) {
 
 test('١. api(): ردّ 413 نصّيّ من Vercel = رسالة «الملف كبير» لا خطأ تحليل غامض؛ والنجاح كما كان', async () => {
   const src = read('js/edu.js');
-  const ctx = { T: (k) => ({ tooBig: 'TOO_BIG', err: 'ERR' }[k]), getToken: () => '', AbortController, setTimeout, clearTimeout, JSON, Error };
+  /* v-audit-edu: api() تختار نصّ الخطأ بـeduErrText (رمز الخادم ولغة الواجهة) — الواجهة هنا عربيّة كما كانت */
+  const ctx = { T: (k) => ({ tooBig: 'TOO_BIG', err: 'ERR' }[k]), getToken: () => '', appLang: () => 'ar', AbortController, setTimeout, clearTimeout, JSON, Error };
   vm.createContext(ctx);
-  vm.runInContext(fnSrc(src, 'function api(payload){'), ctx);
+  vm.runInContext(fnSrc(src, 'function eduErrText(j,status){') + '\n' + fnSrc(src, 'function api(payload){'), ctx);
   ctx.fetch = async () => new Response('Request Entity Too Large', { status: 413 });
   await assert.rejects(() => vm.runInContext('api({action:"process"})', ctx), /TOO_BIG/);
   ctx.fetch = async () => new Response('<html>oops</html>', { status: 502 });

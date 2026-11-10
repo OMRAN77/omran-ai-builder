@@ -126,7 +126,7 @@ test('١. (اختبار المالك) زارع بإيميل غير مؤكَّد�
     let loc = '';
     await googleCb({ method: 'GET', headers: { 'x-forwarded-for': '9.0.0.4' }, query: { code: 'c', state: 'a'.repeat(32) } },
       { setHeader() {}, writeHead(s, h) { loc = (h && h.Location) || ''; }, end() {}, status() { return this; }, json() {} });
-    const tok = new URL(loc, 'https://x.test').searchParams.get('gtoken');
+    const tok = new URL(loc, 'https://x.test').searchParams.get('gclaim') && JSON.parse(store.get('db/oauth-claim/' + 'a'.repeat(32))).token; // v-audit-auth (srv-auth-10): الويب يعود برمز استلام لا بالرمز نفسه — الرمز من الإيداع
     assert.equal(auth.verifyToken(tok), 'g_owner@real.com', 'حساب Google الخاصّ لا الزارع');
   } finally { delete process.env.ALLOW_EMAIL_AUTOLINK; }
   // الحساب المزروع كما هو

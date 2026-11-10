@@ -36,6 +36,7 @@ test('١. تنبيه الممثل يُمرَّر إلى العين (nearest — 
 
 test('٢. تنبيها صندوق الممثل (خانة الكلام فارغة، والمحرّك للمالك وحده) يمرّان بالمُظهِر', () => {
   assert.match(SRC, /showNotice\(bT\('🗣️ اكتب أول شي وش يقول الممثل\.','🗣️ Write what the actor should say first\.'\)\);/);
-  assert.match(SRC, /if\(creationMode === 'veo' \|\| creationMode === 'actor'\)\{\n\s+try\{\n\s+if\(!isOwnerAccount\(\)\)\{\n\s+showNotice\(bT\('🔒 المحرّك السينمائيّ مقتصر/);
+  /* v-cinema-omni: «سينمائي» على محرّك شغّال صار للجميع — قفل المالك على «ممثل يتكلم» وحده، والتنبيه بالمُظهِر كما كان */
+  assert.match(SRC, /if\(creationMode === 'veo' \|\| creationMode === 'actor'\)\{\n\s+try\{\n(?:\s+\/\*[\s\S]*?\*\/\n)?\s+if\(creationMode === 'actor' && !isOwnerAccount\(\)\)\{\n\s+showNotice\(bT\('🔒 المحرّك السينمائيّ مقتصر/);
   assert.doesNotMatch(SRC, /setStatus\(bT\('🗣️ اكتب أول شي وش يقول الممثل/);
 });

@@ -63,10 +63,25 @@ window.postWithConfirm = postWithConfirm;
     worker = new Worker(URL.createObjectURL(blob));
   }catch(e){ return; }
 
+  /* v-freeze-bg (لقطة عمران ٤ نوفمبر: البانر فوق محادثة عن إكسل — النافذة كانت خلف إكسل): الصفحة المخفيّة يخنقها
+     المتصفّح، فكان أيّ انشغال وهي مخفيّة يُحسب «تجمّدًا» ويطلع البانر عند الرجوع وما رأى المستخدم شيئًا (مسبار:
+     مخفيّة + ٨ث انشغال ← البانر). الآن: لا يُحسب إلّا ما جرى والصفحة ظاهرة — نبضة أُرسلت قبل آخر ظهور تُهمل، وتوقّف
+     العامل نفسه (نوم الجهاز/تعليق العمليّة) ليس تجمّد الخيط الرئيسيّ. التجمّد الحقيقيّ والصفحة ظاهرة يُظهره كما كان. */
+  let lastVisibleAt = 0;
+  let lastBeat = 0;
+  const markVisible = () => { if(!document.hidden){ lastVisibleAt = Date.now(); strikes = 0; } };
+  document.addEventListener('visibilitychange', markVisible);
+  document.addEventListener('resume', markVisible);
+  window.addEventListener('pageshow', markVisible);
+
   worker.onmessage = (e) => {
     const delay = Date.now() - e.data;
+    const gap = lastBeat ? e.data - lastBeat : 0;
+    lastBeat = e.data;
     // خلال فترة الإقلاع لا نحسب أي تأخّر تجمّدًا
     if(Date.now() - bootAt < BOOT_GRACE_MS){ strikes = 0; return; }
+    // الصفحة مخفيّة، أو النبضة من قبل رجوعها، أو العامل نفسه توقّف (نوم) — ليس تجمّدًا رآه المستخدم
+    if(document.hidden || e.data < lastVisibleAt || gap > 4000){ strikes = 0; return; }
     if(delay > FREEZE_THRESHOLD_MS){
       strikes++;
       if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
@@ -275,6 +290,154 @@ window.addEventListener('appinstalled', () => {
   } catch(e){ __swallow(e, "misc:app-10-features#install-pill"); }
 })();
 
+/* v-play-invite (المالك ٣٠ أكتوبر: «ماعندي احد… حطّ الدعوة في التطبيق»): Google Play يشترط ١٢ مختبِرًا ١٤ يومًا متواصلة قبل
+   النشر للعموم، والاختبار المغلق لا يقبل إلّا من في قائمته. بطاقة فوق صندوق الكتابة لمن يفتح الموقع في متصفّح أندرويد عاديّ:
+   ١) الانضمام لمجموعة Google المضافة للاختبار ٢) رابط الاشتراك في بلي ثمّ التثبيت. لا تظهر داخل أيّ تطبيق (هواوي، TWA، PWA مثبّت،
+   WebView)، ولا على آيفون أو الحاسوب أو متصفّح هواوي، ولا ما دام أحد الرابطين فارغًا. تنتظر ٨ ثوانٍ وتتأخّر ما دامت نافذة أخرى
+   ظاهرة؛ مرّة في الجلسة على الأكثر. ✕ أو الخطوة الثانية = لا تعود على هذا الجهاز؛ التركيز على الكتابة يخفيها بلا حفظ.
+   ألوانها من الثيم (--panel2 و--text و--muted)، وفي الوضع الأسود لون صندوق الكتابة #101013: --panel2 هناك أسود صافٍ والحدّ يُمسح
+   (v-no-lines-2) فكانت البطاقة أسود على أسود. مع صورة خلفيّة (bgimg) لون الكتابة على html يتبع الصورة لا البطاقة (كان ١٫١:١) —
+   فالبطاقة سطح معتم بألوان وضعها (كـ v-bgimg-surface-text). القواعد في <style> واحد لا inline، كي تتبع تبديل الوضع وهي ظاهرة.
+   والخطوتان زرّان أساسيّان — .btn العاديّ في الوضع الأسود نصّ بلا صندوق. */
+(function(){
+  // المالك ٦ نوفمبر: المجموعة om-ai-testers (أيّ أحد ينضمّ) مضافة لمسار Alpha المغلق، والتطبيق في بلي com.omran.aibuilder
+  const PLAY_TEST = { group: 'https://groups.google.com/g/om-ai-testers', optIn: 'https://play.google.com/apps/testing/com.omran.aibuilder' };
+  const SEEN = 'aiapp_play_invite_x', SESSION = 'aiapp_play_invite_s';
+  try {
+    if(!PLAY_TEST.group || !PLAY_TEST.optIn) return;
+    const ua = navigator.userAgent || '';
+    if(!/Android/i.test(ua) || /HUAWEI|HarmonyOS|HONOR|HuaweiBrowser|HMSCore/i.test(ua) || /;\s*wv\)/.test(ua)) return;
+    if(localStorage.getItem(SEEN) === '1' || sessionStorage.getItem(SESSION) === '1') return;
+  } catch(e){ __swallow(e, 'play-invite:gate'); return; }
+  // يُعاد عند العرض: store-safe من ui-wiring (مؤجَّل) وomranLikelyApp من الجزء ٠٥
+  const inApp = () => {
+    const root = document.documentElement;
+    if(root && root.classList.contains('store-safe')) return true;
+    if(isStandalone() || (typeof omranLikelyApp === 'function' && omranLikelyApp())) return true;
+    return !!(window.matchMedia && (window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: minimal-ui)').matches));
+  };
+  const inCall = () => {
+    const c = document.getElementById('mahaCallScreen');
+    return !!(c && c.style.display === 'flex') || !!(document.body && document.body.classList.contains('maha-band-on'));
+  };
+  const blocked = () => {
+    if(document.visibilityState && document.visibilityState !== 'visible') return true;
+    if(['privacyConsent', 'introTourOverlay', 'installPill', 'mediaNotifAskBar', 'sessToast', 'askAllHintTip'].some(id => document.getElementById(id))) return true;
+    if(inCall() || document.querySelector('#sectionsToolsOverlay.show, #sidebar.open, #workarea.open')) return true;
+    const p = document.getElementById('prompt');
+    return !!(p && document.activeElement === p);
+  };
+  const mount = () => {
+    if(document.getElementById('playInvite')) return;
+    const d = (typeof window.curT === 'function') ? window.curT() : {};
+    const tx = (k) => d[k] || (I18N.en || {})[k] || '';
+    if(!document.getElementById('playInviteCss')){
+      const st = document.createElement('style');
+      st.id = 'playInviteCss';
+      st.textContent = '#playInvite{background:var(--panel2, #1c2230); color:var(--text, #eee); border:1px solid rgba(201,162,39,.45); box-shadow:var(--sh-2, 0 8px 24px rgba(0,0,0,.45));}'
+        + '#playInvite .omPiMuted{color:var(--muted, #999);}'
+        + 'html:not([data-mode="light"]):not(.skin):not(.skin-wood) #playInvite, html.bgimg:not([data-mode="light"]) #playInvite{background:#101013; --text:#eef0f6; --muted:#9a9a9e;}'
+        + 'html.bgimg[data-mode="light"] #playInvite{background:#fbf5e9; --text:#1d1a16; --muted:#5f574c;}';
+      document.head.appendChild(st);
+    }
+    const card = document.createElement('div');
+    card.id = 'playInvite';
+    card.style.cssText = 'position:fixed; transform:translateX(-50%); max-width:440px; box-sizing:border-box; z-index:50; padding:12px 14px; border-radius:var(--r-3, 14px); line-height:1.5;';
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex; align-items:flex-start; gap:8px;';
+    const title = document.createElement('div');
+    title.style.cssText = 'flex:1; min-width:0; font-weight:700;';
+    title.setAttribute('data-i18n', 'playTestTitle');
+    title.textContent = tx('playTestTitle');
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '✕';
+    x.setAttribute('data-i18n', '[aria-label]closeTitle');
+    x.setAttribute('aria-label', tx('closeTitle') || '✕');
+    x.className = 'omPiMuted';
+    x.style.cssText = 'flex:none; background:none; border:none; font-size:16px; line-height:1; cursor:pointer; padding:4px;';
+    head.append(title, x);
+    const hint = document.createElement('div');
+    hint.className = 'omPiMuted';
+    hint.style.cssText = 'margin:4px 0 10px; font-size:var(--fs-4, 12.5px);';
+    hint.setAttribute('data-i18n', 'playTestHint');
+    hint.textContent = tx('playTestHint');
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px;';
+    const step = (key, href) => {
+      const a = document.createElement('a');
+      a.className = 'btn primary';
+      a.href = href;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.style.cssText = 'flex:1 1 140px; display:inline-flex; align-items:center; justify-content:center; text-align:center; text-decoration:none; white-space:normal;';
+      const s = document.createElement('span');
+      s.setAttribute('data-i18n', key);
+      s.textContent = tx(key);
+      a.appendChild(s);
+      return a;
+    };
+    const join = step('playTestStep1', PLAY_TEST.group);
+    const install = step('playTestStep2', PLAY_TEST.optIn);
+    row.append(join, install);
+    card.append(head, hint, row);
+    const offs = [];
+    const close = (forever) => {
+      card.remove();
+      offs.splice(0).forEach(off => { try { off(); } catch(e){ __swallow(e, 'play-invite:unwatch'); } });
+      if(forever){ try { localStorage.setItem(SEEN, '1'); } catch(e){ __swallow(e, 'play-invite:dismiss'); } }
+    };
+    /* فوق الصندوق المقيس، وفوق شريط ملاحظات المالك إن ظهر؛ يُعاد مع كبر الصندوق (مرفقات) والتدوير وفتح الجوّال المطويّ.
+       مكالمة مها أو شريط الإشعارات (نفس الموضع، z أعلى) = تُخفى بلا حفظ، وكذا إن لم يبقَ لها مكان في الشاشة. */
+    const place = () => {
+      if(inCall() || document.getElementById('mediaNotifAskBar')){ close(false); return; }
+      let pos = null, bottom = 0;
+      try { pos = (typeof window.__omranAboveComposer === 'function') ? window.__omranAboveComposer(10) : null; } catch(e){ __swallow(e, 'play-invite:pos'); }
+      if(pos) bottom = pos.bottom;
+      try {
+        const hb = document.getElementById('ownerHealthBar'), ih = window.innerHeight || 0;
+        const r = hb && hb.getBoundingClientRect();
+        if(r && r.height > 0 && r.top > 0 && r.top < ih) bottom = Math.max(bottom, Math.round(ih - r.top + 10));
+      } catch(e){ __swallow(e, 'play-invite:health'); }
+      card.style.bottom = bottom ? bottom + 'px' : 'calc(76px + env(safe-area-inset-bottom, 0px))';
+      card.style.left = pos ? pos.cx + 'px' : '50%';
+      card.style.width = pos ? Math.min(440, pos.width) + 'px' : 'calc(100% - 24px)';
+      const r = card.getBoundingClientRect();
+      if(r && r.height > 0 && r.top < 0) close(false);
+    };
+    x.onclick = () => close(true);
+    install.addEventListener('click', () => close(true));
+    const p = document.getElementById('prompt');
+    if(p) p.addEventListener('focus', () => close(false), { once: true });
+    document.body.appendChild(card);
+    try { sessionStorage.setItem(SESSION, '1'); } catch(e){ __swallow(e, 'play-invite:session'); }
+    place();
+    if(!card.isConnected) return;
+    window.addEventListener('resize', place);
+    offs.push(() => window.removeEventListener('resize', place));
+    const box = document.getElementById('composerBox') || document.getElementById('inputbar');
+    if(box && typeof window.ResizeObserver === 'function'){ const ro = new window.ResizeObserver(place); ro.observe(box); offs.push(() => ro.disconnect()); }
+    if(typeof window.MutationObserver === 'function'){
+      const mo = new window.MutationObserver(place);
+      mo.observe(document.body, { childList: true, attributes: true, attributeFilter: ['class'] });
+      const call = document.getElementById('mahaCallScreen');
+      if(call) mo.observe(call, { attributes: true, attributeFilter: ['style'] });
+      offs.push(() => mo.disconnect());
+    }
+  };
+  let tries = 0;
+  const arm = () => {
+    try {
+      if(inApp()) return;
+      if(blocked()){ if(++tries < 300) setTimeout(arm, 1000); return; }
+      mount();
+    } catch(e){ __swallow(e, 'play-invite:arm'); }
+  };
+  const start = () => setTimeout(arm, 8000);
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
+})();
+
 /* v-browser-install: /?q=نصّ (بحث المتصفّح عبر opensearch.xml، وقائمة إضافة المتصفّح) يعبّئ صندوق
    المحادثة ولا يرسل — الإرسال بيد المستخدم. يُحذف q من الرابط كي لا يعود مع التحديث. */
 (function(){
@@ -296,6 +459,45 @@ window.addEventListener('appinstalled', () => {
   } catch(e){ __swallow(e, "misc:app-10-features#q"); }
 })();
 
+/* v-tool-pages (المالك ١ نوفمبر «ابدأ»: Search Console يعرف الصفحة الرئيسيّة وحدها — ٤٣ ظهورًا في ٣ أشهر): صفحات الأدوات الثابتة
+   (/tools/<slug> و/en/tools/<slug>) تفتح أداتها بـ/?open=<slug>. قائمة ثابتة لا معرّف حرّ من الرابط؛ يُحذف open قبل الفتح (الرجوع
+   يغلق الأداة ثمّ يعود للصفحة)؛ يُنتظر DOMContentLoaded لأنّ المستندات والتعليم يُربطان في سكربتات مؤجَّلة بعد الحزمة، وتُنتظر
+   موافقة الخصوصيّة بلا سقف (من يقرأ السياسة دقائق لا يفقد أداته)، ثمّ قاموس اللغة الكسول (بدونه تُبنى الأداة بالإنجليزيّة لمستخدم
+   الفرنسيّة والأرديّة…)؛ والأداة الموقوفة أو المخفيّة لا تُفتح. hl (لغة الصفحة، app-04) يُحذف معه. الإعلانات صفحة مستقلّة: رابطها مباشر. */
+(function(){
+  const OPEN = { portrait: 'btnPortraitStyle', video: 'btnVideoMaker', decor: 'btnDesignAI', fashion: 'btnFashionAI', style: 'btnStudioAI',
+    docs: 'btnDocs', email: 'btnEmailAssist', construction: 'btnConstruction', education: 'btnOmranEdu', qibla: 'btnQibla', religion: 'btnReligion' };
+  try {
+    const u = new URL(location.href);
+    const slug = String(u.searchParams.get('open') || '').trim().toLowerCase();
+    if(!slug) return;
+    u.searchParams.delete('open');
+    u.searchParams.delete('hl');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    const id = Object.prototype.hasOwnProperty.call(OPEN, slug) ? OPEN[slug] : '';
+    if(!id) return;
+    let started = false;
+    const click = () => {
+      try {
+        const b = document.getElementById(id);
+        const paused = (typeof OMRAN_PAUSED_TOOLS !== 'undefined' && Array.isArray(OMRAN_PAUSED_TOOLS)) ? OMRAN_PAUSED_TOOLS : [];
+        if(!b || paused.indexOf(id) >= 0 || getComputedStyle(b).display === 'none') return;
+        b.click();
+      } catch(e){ __swallow(e, 'misc:app-10-features#open-tool'); }
+    };
+    const go = () => {
+      try {
+        if(document.getElementById('privacyConsent')){ setTimeout(go, 1000); return; }
+        const ready = (typeof loadLangFile === 'function' && typeof lang === 'string') ? loadLangFile(lang) : null;
+        if(ready && typeof ready.then === 'function') ready.then(click, click); else click();
+      } catch(e){ __swallow(e, 'misc:app-10-features#open-wait'); }
+    };
+    const start = () => { if(started) return; started = true; setTimeout(go, 0); };
+    if(document.readyState === 'complete') start();
+    else { document.addEventListener('DOMContentLoaded', start, { once: true }); window.addEventListener('load', start, { once: true }); }
+  } catch(e){ __swallow(e, 'misc:app-10-features#open'); }
+})();
+
 /* ---------- Share App button ---------- */
 const btnShareApp = $('#btnShareApp');
 if(btnShareApp){
@@ -313,17 +515,19 @@ if(btnShareApp){
       ne: 'निःशुल्क AI ले एप बनाउन om ai प्रयोग गर्नुहोस्:'
     };
     const shareText = texts[currentLang] || texts.ar;
+    if(typeof window.omranShareSheet === 'function'){ window.omranShareSheet({ url: shareUrl, text: shareText }); return; } // v-share-sheet: نافذة المشاركة الموحّدة (app-45)
     if(navigator.share){
       try {
         await navigator.share({ title: titles[currentLang] || titles.ar, text: shareText, url: shareUrl });
-      } catch(e){ /* user cancelled share, ignore */ }
+      } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:522'); /* user cancelled share, ignore */ }
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
         const copiedMsg = { ar:'تم نسخ رابط التطبيق!', en:'App link copied!', fr:"Lien de l'application copié !", hi:'ऐप लिंक कॉपी हो गया!', ur:'ایپ کا لنک کاپی ہو گیا!', bn:'অ্যাপ লিঙ্ক কপি হয়েছে!', ne:'एप लिंक कपी भयो!' };
         alert(copiedMsg[currentLang] || copiedMsg.ar);
       } catch(e){
-        prompt('انسخ الرابط:', shareUrl);
+        const cp = (typeof t === 'function') ? t('axChatcliCopyLinkPrompt') : '';
+        prompt((cp && cp !== 'axChatcliCopyLinkPrompt') ? cp : 'انسخ الرابط:', shareUrl); // v-audit-chatcli (x-i18n-5): بلغة الواجهة
       }
     }
   };
@@ -444,9 +648,10 @@ btnToggleHistory.onclick = () => {
   // مفعّلًا فيتجاهل اختيار المستخدم ✅ للمزود في الرسائل التالية.
   window.__resetAskAllToggle = () => { window.__askAllToggleOn = false; paint(); };
   try{
-    if(!localStorage.getItem('askAllHintSeen')){
+    /* v-hw-1316: داخل تطبيق هواوي لا حبّة «الذكاء الاصطناعي يبني تطبيقك فورًا» — زرّها مخفيّ للكلّ أصلًا، ووصف المتجر أدوات ومحادثة (رفض 1.14) */
+    if(!localStorage.getItem('askAllHintSeen') && !(typeof omranHwPackage === 'function' && omranHwPackage())){
       const tip = document.createElement('div');
-      tip.id = 'askAllHintTip';
+      tip.id = 'askAllHintTip'; tip.setAttribute('data-i18n', 'askAllHintText'); // v-hw-resubmit-2: يُعاد مع وصول القاموس (zh كان يبقى إنجليزيًّا)
       const txt = (typeof t === 'function') ? t('askAllHintText') : '';
       tip.textContent = (txt && txt !== 'askAllHintText') ? txt : "💡 اكتب طلبك عادي — والذكاء الاصطناعي يبني تطبيقك فورًا";
       tip.style.cssText = 'margin:4px 12px 0; padding:8px 12px; border-radius:12px; background:rgba(var(--accent-rgb),.14); color:inherit; font-size:12.5px; cursor:pointer; text-align:center;';
@@ -455,9 +660,9 @@ btnToggleHistory.onclick = () => {
         bar.parentNode.insertBefore(tip, bar);
         const dismiss = () => { try{ tip.remove(); localStorage.setItem('askAllHintSeen','1'); }catch(e){ __swallow(e, "save:app-10-features#7"); } };
         tip.addEventListener('click', dismiss);
-        /* v-hint-visible (تدقيق ١٨–١٩ أكتوبر): المؤقّت كان يبدأ مع الحزمة، فمن بقي على شاشة الافتتاح أو ورقة الموافقة
-           ٢٥ ثانية لا يرى التلميح أبدًا (dismiss يحفظه مُشاهَدًا). الآن يبدأ بعد زوالهما. */
-        const blocked = () => !!(document.getElementById('omranIntro') || document.getElementById('privacyConsent'));
+        /* v-hint-visible (تدقيق ١٨–١٩ أكتوبر): المؤقّت كان يبدأ مع الحزمة، فمن بقي على ورقة الموافقة
+           ٢٥ ثانية لا يرى التلميح أبدًا (dismiss يحفظه مُشاهَدًا). الآن يبدأ بعد زوالها. (شاشة الافتتاح حُذفت — v-no-intro) */
+        const blocked = () => !!document.getElementById('privacyConsent');
         const arm = () => { if(blocked()){ setTimeout(arm, 1000); return; } setTimeout(dismiss, 25000); };
         arm();
       }
@@ -503,13 +708,13 @@ btnToggleHistory.onclick = () => {
       /* v-nav-cards-menus: في العربيّ ⋮ قرب يسار الشاشة، والقائمة المحاذاة لحافّته اليمنى كانت تبدأ خارجها (-11px) — تُحصر بهامش ٦px */
       const edge = window.innerWidth - parseFloat(dd.style.right);
       if(edge - (dd.offsetWidth || 0) < 6){ dd.style.left = '6px'; dd.style.right = 'auto'; }
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:711'); /* guard-ok */ }
   }
   function restore(){
     try{
       if(wrap && dd.parentNode !== wrap) wrap.appendChild(dd);
       dd.style.position=''; dd.style.top=''; dd.style.right=''; dd.style.left=''; dd.style.insetInlineEnd=''; dd.style.zIndex='';
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:717'); /* guard-ok */ }
   }
   function close(){ dd.classList.remove('show'); btn.classList.remove('active'); restore(); }
   // v-review-menu-close: «مراجعة» و«تحليل» (app-24/app-27) يوقفان انتشار نقرتهما فلا يصل مستمع الإغلاق أدناه — يناديان هذا قبل فتح نافذتيهما
@@ -1055,7 +1260,7 @@ btnToggleHistory.onclick = () => {
       failed.push(String((err && err.message) || err).slice(0, 120));
     }
     btn.disabled = false;
-    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+    try{ input.value = ''; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1263'); /* guard-ok — cleanup */ }
     const notes = [];
     if(outcome && outcome.truncated) notes.push(fmtPdf('pdfDocTruncated', { n: outcome.pages }));
     if(skipped.length) notes.push(fmtPdf('pdfDocSkipped', { n: skipped.length, names: skipped.slice(0, 3).join('، ') }));
@@ -1070,7 +1275,7 @@ btnToggleHistory.onclick = () => {
     /* v-attach-picker-v3: مسح input.value يُؤجَّل إلى ما بعد قراءة الصور.
        مسحه هنا (قبل القراءة) يفصل الملفّ عن مصدره داخل غلاف أندرويد
        (content://) فتفشل كلّ الصور بصمت ولا يُنتَج PDF — نفس فخّ v405. */
-    if(!files.length){ try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } return; }
+    if(!files.length){ try{ input.value = ''; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1278'); /* guard-ok — cleanup */ } return; }
     const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
     btn.disabled = true;
     /* v-img2pdf-heic (لقطة عمران ١ سبتمبر): صورة واحدة بصيغة لا يفكها
@@ -1143,7 +1348,7 @@ btnToggleHistory.onclick = () => {
         + '\n' + (isAr ? 'التفاصيل: ' : 'Details: ') + detParts.filter(Boolean).join(' | '));
     }
     btn.disabled = false;
-    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+    try{ input.value = ''; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1351'); /* guard-ok — cleanup */ }
   }
   // v-attach-picker-v3: تُعاد الوعدة للمراقب فلا يُمسح input.value قبل أن
   // تنتهي قراءة الصور فعلًا (فصل الملفّ عن مصدره يُفشل القراءة بصمت).
@@ -1163,8 +1368,8 @@ btnToggleHistory.onclick = () => {
      يقفل الأدراج ويرجع لأعلى المحادثة فقط. محادثة جديدة = زر + أو الرئيسية. */
   if(h1) h1.onclick = () => {
     try{ saveState(); }catch(_){ __swallow(_, "save:app-10-features#16"); }
-    try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(_){ /* guard-ok */ }
-    try{ window.scrollTo(0, 0); const m = document.getElementById('messages'); if(m) m.scrollTop = 0; }catch(_){ /* guard-ok */ }
+    try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1371'); /* guard-ok */ }
+    try{ window.scrollTo(0, 0); const m = document.getElementById('messages'); if(m) m.scrollTop = 0; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1372'); /* guard-ok */ }
   };
   /* v-om-brand (طلب عمران ٢٥ سبتمبر): شعار «OM Ai» بنجومه الثلاث واحد لكلّ اللغات
      ومكتوب في index.html بأبعاده (لا قفزة)، فلا تبديل صورة حسب اللغة — بدّل شعار
@@ -1181,52 +1386,6 @@ btnToggleHistory.onclick = () => {
 })();
 btnToggleProjects.onclick = () => { openDrawer(sidebarEl); closeHeaderMenu(); };
 
-// One-time onboarding hint for new/mobile users who don't know ☰ opens the
-// code + live-preview drawer: a pulsing glow + tooltip pointing at it, shown
-// only once (localStorage flag), dismissed on tap/close/timeout.
-(function initCodeHint(){
-  try{
-    return; // hint retired — code button now lives in the ⚙️ menu
-    if(localStorage.getItem('aiapp_seen_code_hint')) return;
-    if(window.innerWidth > 860) return; // mobile-only nudge
-    const tip = $('#codeHintTip');
-    const promptEl = $('#prompt');
-    if(!btnToggleHistory || !tip || !promptEl) return;
-    function position(){
-      const r = btnToggleHistory.getBoundingClientRect();
-      tip.style.top = (r.bottom + 10) + 'px';
-      const left = Math.max(8, Math.min(window.innerWidth - tip.offsetWidth - 8, r.left + r.width / 2 - tip.offsetWidth / 2));
-      tip.style.left = left + 'px';
-    }
-    function dismiss(){
-      try{ localStorage.setItem('aiapp_seen_code_hint', '1'); }catch(e){ __swallow(e, "save:app-10-features#17"); }
-      btnToggleHistory.classList.remove('code-hint-pulse');
-      tip.style.display = 'none';
-      window.removeEventListener('resize', position);
-    }
-    function show(){
-      btnToggleHistory.classList.add('code-hint-pulse');
-      tip.style.display = 'block';
-      position();
-      window.addEventListener('resize', position);
-      btnToggleHistory.addEventListener('click', dismiss, {once: true});
-      const closeBtn = $('#codeHintCloseBtn');
-      if(closeBtn) closeBtn.addEventListener('click', dismiss);
-      // dismiss automatically once the user sends the message, or after a timeout
-      promptEl.removeEventListener('keydown', onFirstKey);
-      setTimeout(dismiss, 9000);
-    }
-    function onFirstKey(){
-      promptEl.removeEventListener('input', onFirstKey);
-      promptEl.removeEventListener('keydown', onFirstKey);
-      show();
-    }
-    // Wait until the user actually starts typing their request before nudging
-    // them toward ☰ — this is the moment the tip is most relevant.
-    promptEl.addEventListener('input', onFirstKey, {once: true});
-    promptEl.addEventListener('keydown', onFirstKey, {once: true});
-  }catch(e){ console.error('codeHint init', e); }
-})();
 backdropEl.onclick = closeDrawers;
 // v-drawer-close + v-sb-collapse (طلب المالك): سهم القائمة الجانبيّة —
 // على الجوّال يسكر الدرج، وعلى سطح المكتب يطوي العمود (مثل طيّ لوحة العمل) مع مقبض إعادة فتح.
@@ -1418,7 +1577,7 @@ $('#history').addEventListener('click', () => {
       /* v-edu-selfhost: مستودع omran-edu غير موصول بالنشر التلقائي — الصفحة
          المحدثة تُستضاف هنا (edu-old/) فتنشر مع التطبيق، والخلفية تبقى على
          النشر القديم الشغال (CORS مفتوح). */
-      frame.src = '/edu-old/index.html?v=15j'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
+      frame.src = '/edu-old/index.html?v=15k'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
     }
     /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): العنوان «التعليم» كان يتكرّر فوق رأس الإطار — نأخذ اسم صفّه المترجم في المركز،
        ونرفع data-i18n كي لا تعيده الترجمة. الفتح المباشر بلا مركز يبقى كما هو. */
@@ -1494,6 +1653,7 @@ function openShareModal(project){
     const __shareSig = String(shareModalProject.title || '') + '|' + String(shareModalProject.code || '').length + '|' + __shareMsgs.length;
     const __shareOld = __shareKey ? __shareMade[__shareKey] : null;
     if(__shareOld && __shareOld.sig === __shareSig){
+      if(typeof window.omranShareSheet === 'function'){ const __ttl0 = String(shareModalProject.title || ''); closeModal(); window.omranShareSheet({ url: __shareOld.url, text: __ttl0 }); return; } // v-share-sheet: الرابط الموجود في النافذة الموحّدة (العنوان قبل الإغلاق — closeModal يصفّر المشروع)
       resultUrl.value = __shareOld.url;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
@@ -1521,6 +1681,8 @@ function openShareModal(project){
       if(!resp.ok || !data.id) throw new Error(data.error || 'error');
       const fullUrl = location.origin + '/p.html?id=' + data.id;
       if(__shareKey) __shareMade[__shareKey] = { sig: __shareSig, url: fullUrl };
+      /* v-share-sheet (المالك ٧ نوفمبر: نافذة يوتيوب في كلّ التطبيق): الرابط العامّ يُرسَل من النافذة الموحّدة (app-45) بدل صندوق النسخ وحده */
+      if(typeof window.omranShareSheet === 'function'){ const __ttl = String((shareModalProject && shareModalProject.title) || ''); closeModal(); window.omranShareSheet({ url: fullUrl, text: __ttl }); return; }
       resultUrl.value = fullUrl;
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
@@ -1590,13 +1752,16 @@ function openShareModal(project){
       for(var i = 0; i < imgs.length; i++){
         var im = imgs[i];
         if(!im.__omHold) continue;
+        /* v-audit-tools: مصدر كُتب والنافذة مغلقة (نتيجة توليد اكتمل بعد الإغلاق) أحدث من المحجوز — لا يُكتب فوقه
+           (كانت إعادة الفتح تعرض القديمة وزرّ التحميل يشير إلى الجديدة) */
+        if(im.getAttribute('src') !== null){ im.__omHold = null; continue; }
         im.src = im.__omHold;
         im.__omHold = null;
       }
     }catch(e){ __swallow(e, 'modal-img-restore'); }
   }
   /* أيّ كود يقرأ .src ونافذته مغلقة يجد الفراغ — لذلك مُتاح استرجاعها صراحةً. */
-  window.omranModalImgSrc = function(img){ return (img && (img.__omHold || img.getAttribute('src'))) || ''; };
+  window.omranModalImgSrc = function(img){ return (img && (img.getAttribute('src') || img.__omHold)) || ''; }; /* v-audit-tools: المكتوب بعد الإغلاق أوّلًا */
 
   function watch(id){
     var m = document.getElementById(id);
@@ -1638,8 +1803,8 @@ function openShareModal(project){
       var closeBtn = document.getElementById(p[1]);
       if(!modal || !closeBtn || modal.__omranBC) return;
       modal.__omranBC = 1;
-      try{ modal.style.paddingTop = 'calc(20px + max(env(safe-area-inset-top, 0px), 30px))'; }catch(e){ /* guard-ok — cosmetic */ }
-      try{ closeBtn.style.minWidth = '44px'; closeBtn.style.minHeight = '40px'; closeBtn.style.fontSize = '16px'; }catch(e){ /* guard-ok — cosmetic */ }
+      try{ modal.style.paddingTop = 'calc(20px + max(env(safe-area-inset-top, 0px), 30px))'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:1806'); /* guard-ok — cosmetic */ }
+      try{ closeBtn.style.minWidth = '44px'; closeBtn.style.minHeight = '40px'; closeBtn.style.fontSize = '16px'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:1807'); /* guard-ok — cosmetic */ }
     });
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ arm(); setTimeout(arm, 1200); });

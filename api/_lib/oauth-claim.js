@@ -22,6 +22,12 @@ const netBindOn = () => !OFF.includes(String(process.env.OAUTH_CLAIM_NET_BIND ||
 const netMatches = (recNet, req) => !!recNet && recNet === netOf(req);
 /** هل يُسلَّم إيداع الدخول المربوط بـrecNet لهذا الطلب؟ مفتاح الطوارئ يوقفه. */
 const sameNet = (recNet, req) => !netBindOn() || netMatches(recNet, req);
+/** رمز استلام الويب (gclaim) يطابق مجزوءه المودع؟ بلا مجزوء أو بلا رمز = لا. */
+function claimMatches(recHash, claim) {
+  if (typeof recHash !== 'string' || !/^[0-9a-f]{64}$/.test(recHash) || typeof claim !== 'string' || !/^[0-9a-f]{32}$/.test(claim)) return false;
+  const a = Buffer.from(require('crypto').createHash('sha256').update(claim).digest('hex'));
+  return require('crypto').timingSafeEqual(a, Buffer.from(recHash));
+}
 
 module.exports = async (req, res) => {
   try {
@@ -42,7 +48,9 @@ module.exports = async (req, res) => {
       res.status(404).json({ error: 'pending' });
       return;
     }
-    if (!sameNet(rec.net, req)) {
+    // v-audit-auth (srv-auth-10): الويب يحمل رمز الاستلام الذي وصل متصفّحه في رابط العودة وحده — يثبت الطالب فلا يُشترط تطابق الشبكة.
+    // رمز خاطئ أو غائب = الطريق القديم كما هو (الشبكة نفسها).
+    if (!claimMatches(rec.claim, body.claim) && !sameNet(rec.net, req)) {
       await kvDel(key); // الجلسة لا تبقى في KV لمن يسأل من شبكة أخرى، والاستطلاع التالي 404
       res.status(200).json({ error: 'network_changed' });
       return;

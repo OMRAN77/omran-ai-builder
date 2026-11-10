@@ -32,6 +32,7 @@ function load(action) {
     case 'email-sweep': return require('./_lib/email-sweep.js'); // v-unverified-email: الجرد اليوميّ (Vercel Cron) — الإيميل غير المؤكَّد يُشال بعد ٣٠ يومًا
     case 'feedback': return require('./_lib/feedback.js');
     case 'owner-inbox': return require('./_lib/owner-inbox.js'); // v-owner-inbox: بلاغات كلام المستخدمين (شتيمة · تذمّر · فشل ردّ) — للمالك
+    case 'knowledge': return require('./_lib/collective.js').handle; // v-sec-knowledge-approve: عرض/موافقة/رفض حقائق المعرفة الجماعيّة — المالك وحده
     case 'revgeo': return require('./_lib/revgeo.js');
     case 'maps-key': return require('./_lib/maps-key.js'); // v-real3d: مفتاح المباني الحقيقيّة
     case 'car3d': return require('./_lib/car3d.js'); // v-car3d: سيّارة ثلاثيّة الأبعاد من وصف أو صورة (المالك)

@@ -109,7 +109,8 @@ export function makeWatcher(o) {
       const r = await onMergeReady(w.number);
       if (r && r.deferred) return;
       w.mergeWhenGreen = false;
-      if (r && r.ok) { note(w.number, 'merged', '✅ دُمج #' + w.number + ' بأمرك بعد ما خضرّت الفحوص — Vercel ينشر', '', p.html_url); unwatch(w.number); return; }
+      // v-audit-bridge: kept = نسخة العمل فيها عمل لم يُنشر فبقيت كما هي (لا مسح بعد الدمج) — العميل يذكرها بمفتاح ترجمة.
+      if (r && r.ok) { note(w.number, 'merged', '✅ دُمج #' + w.number + ' بأمرك بعد ما خضرّت الفحوص — Vercel ينشر', '', p.html_url, r.kept ? { kept: true } : undefined); unwatch(w.number); return; }
       note(w.number, 'merge_failed', '✗ تعذّر الدمج التلقائيّ لـ#' + w.number, clip(r && r.error, 400), p.html_url);
     }
 

@@ -41,7 +41,7 @@ async function pushToOwners(payload, opts) {
     try { sub = await kv.kvGetJSON(subPath(u)); } catch (e) { sub = null; }
     if (!sub || !sub.endpoint) continue;
     try { await webpush.sendNotification(sub, JSON.stringify(payload)); sent++; }
-    catch (e) { /* اشتراك منتهٍ — نتابع للمالك التالي */ }
+    catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_owner-alert:44'); /* اشتراك منتهٍ — نتابع للمالك التالي */ }
   }
   return { sent, reason: sent ? 'ok' : 'no-subscription' };
 }
@@ -60,11 +60,37 @@ async function alertOwnerCredit(opts) {
   }, o);
 }
 
+/* v-fal-backup (أمر المالك ٣ نوفمبر: «تنبيه… أو مزوّد احتياطي — موجود خارجي وصله»): إشعار الصور والفيديو مستقلّ عن إشعار المحادثة
+   (مفتاحه ونصّه للردود). ثلاث حالات، لكلّ واحدة مهلة ٦ ساعات بنفسها. الإشعار للمالك وحده فيسمّي المزوّدَين كما يسمّيهما هو. */
+const MEDIA_ALERTS = {
+  'gemini-out': { key: 'db/alerts/media-gemini-out', title: '⚠️ رصيد Gemini للصور والفيديو خلص', body: 'الصور والفيديو شغّالة الحين على fal بنفس النماذج. اشحن رصيد Gemini.' },
+  'fal-out': { key: 'db/alerts/media-fal-out', title: '🛑 الاحتياط (fal) رفض بعد', body: 'Gemini وfal الاثنين موقوفين (رصيد أو مفتاح): الصور والفيديو متوقّفة للمستخدمين.' },
+  cap: { key: 'db/alerts/media-fal-cap', title: '🛑 سقف الاحتياط اليوميّ اكتمل', body: 'fal وصل سقف صرفه اليوميّ (FAL_BACKUP_CAP_CENTS): الصور والفيديو متوقّفة لين ينشحن Gemini أو يرتفع السقف.' },
+};
+async function alertOwnerMedia(kind, opts) {
+  const a = Object.prototype.hasOwnProperty.call(MEDIA_ALERTS, kind) ? MEDIA_ALERTS[kind] : null;
+  if (!a) return { sent: 0, reason: 'unknown-kind' };
+  const o = opts || {};
+  const kv = o.kv || require('./kv.js');
+  const fresh = await kv.kvSetIfAbsent(a.key, String(o.now || Date.now()), ALERT_TTL_S);
+  if (!fresh) return { sent: 0, reason: 'recent' };
+  const r = await pushToOwners({ title: a.title, body: a.body, url: '/' }, o);
+  /* بلا VAPID أو بلا اشتراك = لا يصل شيء: يُكتب في سجلّ المالك حتّى يظهر في لوحة الصحّة (نمط pay-refund) */
+  if (!r.sent) { try { require('./log-error.js').logError('owner-alert:media-' + kind, new Error(a.title + ' — ' + a.body)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_owner-alert:79'); /* guard-ok — السجلّ تحسين */ } }
+  return r;
+}
+/* نصّ نفاد رصيد Gemini يغطّيه alertOwnerMedia — حين الاحتياط شغّال فقط (بدونه «خطأ جديد» هو إشعار المالك الوحيد).
+   ورصيد fal للممثّل والتحسين وغيرهما يبقى يصل كما كان. */
+const MEDIA_OUT_RE = /prepay|credits? (?:are |is )?(?:depleted|exhausted)/i;
+
 // v-error-push: يُنادى من `_errors.js#reportError` لكلّ خطأ خادم جديد (لا تكرار). entry
 // كما يبنيه reportError: { route, action, method, message, name }.
 async function alertOwnerError(entry, opts) {
   const e = entry || {};
   if (isCreditFailure(null, e.message)) return { sent: 0, reason: 'not-credit' }; // v-credit-alert يغطّيها بمسارها الخاصّ
+  /* v-fal-backup: سجلّ الاحتياط نفسه له إشعاراته الثلاثة (السقف ورفض fal) — بلا «خطأ جديد» مكرّر لكلّ نقطة نداء */
+  if (/^swallowed:fal-backup\//.test(String(e.route || ''))) return { sent: 0, reason: 'media-backup' };
+  if (MEDIA_OUT_RE.test(String(e.message || '')) && require('./fal-fallback.js').enabled()) return { sent: 0, reason: 'media-credit' };
   const where = e.route + (e.action ? '?' + e.action : '');
   return pushToOwners({
     title: '🛑 خطأ جديد في الخادم',
@@ -73,4 +99,4 @@ async function alertOwnerError(entry, opts) {
   }, opts);
 }
 
-module.exports = { alertOwnerCredit, alertOwnerError, pushToOwners, isCreditFailure, ALERT_KEY, ALERT_TTL_S };
+module.exports = { alertOwnerCredit, alertOwnerError, alertOwnerMedia, pushToOwners, isCreditFailure, ALERT_KEY, ALERT_TTL_S, MEDIA_ALERTS };

@@ -77,8 +77,8 @@ test('checkTask: يقرأ حالة kimi-agent ويفتح الطلب باسم Kim
   const n = net([
     ['GET', /\/issues\/45$/, res(issue)],
     ['GET', /\/issues\/45\/comments/, res([
-      { body: '🏃 بدأ\n<!-- kimi-agent {"phase":"start","run_id":"9","run_url":"https://x/runs/9"} -->' },
-      { body: '✅ دُفع\n<!-- kimi-agent {"phase":"done","pushed":true,"changed":1,"ci":"pass","sha":"abc1234567","kimi":"success","run_id":"9","run_url":"https://x/runs/9"} -->' },
+      { user: { login: 'github-actions[bot]', type: 'Bot' }, body: '🏃 بدأ\n<!-- kimi-agent {"phase":"start","run_id":"9","run_url":"https://x/runs/9"} -->' },
+      { user: { login: 'github-actions[bot]', type: 'Bot' }, body: '✅ دُفع\n<!-- kimi-agent {"phase":"done","pushed":true,"changed":1,"ci":"pass","sha":"abc1234567","kimi":"success","run_id":"9","run_url":"https://x/runs/9"} -->' },
     ])],
     ['GET', /\/pulls\?state=all/, res([{ number: 100, html_url: 'https://github.com/OMRAN77/omran-ai-builder/pull/100', state: 'open', head: { sha: 'abc1234567' } }])],
     ['GET', /\/commits\/abc1234567\/check-runs/, res({ check_runs: [{ name: 'test', status: 'completed', conclusion: 'success' }] })],

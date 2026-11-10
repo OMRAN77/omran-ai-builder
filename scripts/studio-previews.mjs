@@ -3,7 +3,9 @@
 // يطلب /api/studio-preview لكلّ ميزة وكلّ خيار؛ الموجود في الكاش يرجع فورًا بلا توليد،
 // والجديد يُولَّد على الخادم ويُحفظ في Redis فيُقدَّم للجميع بعدها فورًا.
 //
-//   node scripts/studio-previews.mjs [BASE_URL] [feature|all]
+//   node scripts/studio-previews.mjs [BASE_URL] [feature|all|revised]
+//   revised — البطاقات المصحَّحة وحدها (REV في api/_lib/studio-card-fix.js، v-style-match): تُولَّد بمفتاحها الجديد،
+//             ويكفي تشغيله على رابط معاينة طلب السحب (نفس Redis) فيراها الإنتاج جاهزة بعد الدمج.
 //
 // ملاحظة: كلّ خيار جديد = صورة واحدة تُولَّد مرّة واحدة في العمر (مفتاح المالك).
 import { readFileSync, existsSync } from 'node:fs';
@@ -30,14 +32,17 @@ for (const [feature, list] of Object.entries(win.__STUDIO_MORE.options)) {
 /* لا نُنفق على خيار له صورة جاهزة أصلًا — إلّا المكياج، فصوره الجاهزة جسم كامل
    لا يظهر فيها المكياج والواجهة تطلب المولّدة أوّلًا (PREVIEW_FIRST في app-13). */
 const PREVIEW_FIRST = ['makeup'];
+const { REV } = await import('../api/_lib/studio-card-fix.js').then((m) => m.default || m);
 const hasAsset = (f, v) => existsSync(new URL('../assets/studio/options/' + f + '-' + v + '.webp', import.meta.url));
-const todo = jobs.filter((j) => (ONLY === 'all' || j.feature === ONLY)
-  && (PREVIEW_FIRST.includes(j.feature) || !hasAsset(j.feature, j.value)));
+const todo = ONLY === 'revised'
+  ? Object.keys(REV).map((k) => ({ feature: k.split(':')[0], value: k.split(':')[1], r: REV[k] }))
+  : jobs.filter((j) => (ONLY === 'all' || j.feature === ONLY)
+    && (PREVIEW_FIRST.includes(j.feature) || !hasAsset(j.feature, j.value)));
 console.log('المعاينات المطلوبة: ' + todo.length + ' على ' + BASE + ' (تُخطّى الخيارات التي لها صورة جاهزة)');
 
 let done = 0; let made = 0; let failed = 0;
 async function run(job) {
-  const url = BASE + '/api/studio-preview?feature=' + encodeURIComponent(job.feature) + '&value=' + encodeURIComponent(job.value);
+  const url = BASE + '/api/studio-preview?feature=' + encodeURIComponent(job.feature) + '&value=' + encodeURIComponent(job.value) + (job.r ? '&r=' + job.r : '');
   const t0 = Date.now();
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(300000) });

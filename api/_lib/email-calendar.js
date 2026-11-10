@@ -4,24 +4,8 @@ const { getUser, verifyToken } = require('./auth.js');
 const { decrypt } = require('./_emailCrypto.js');
 const { safeTz } = require('./_mail.js'); // v-email-safe
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-
-async function getAccessToken(refreshToken) {
-  const r = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d.error || 'refresh_failed');
-  return d.access_token;
-}
+// v-google-token: رمز وصول Gmail من النسخة الواحدة (تقرأ السرّين عند النداء لا في نطاق الوحدة)
+const { refreshGoogleAccessToken: getAccessToken } = require('./_google-token.js');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -35,8 +19,9 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     const { token, title, start, durationMin, description } = body;
     const username = verifyToken(token);
-    if (!username) { res.status(401).json({ error: 'الجلسة منتهية، سجل الدخول من جديد' }); return; }
-    if (!title || !start) { res.status(400).json({ error: 'بيانات الموعد ناقصة' }); return; }
+    // v-audit-search (srv-search-7): كلّ ردّ خطأ يحمل رمزًا تترجمه الواجهة بلغتها — النصّ العربيّ لم يعد يُعرض، ونصّ جوجل الخامّ لا يُرسل
+    if (!username) { res.status(401).json({ error: 'الجلسة منتهية، سجل الدخول من جديد', code: 'session_expired' }); return; }
+    if (!title || !start) { res.status(400).json({ error: 'بيانات الموعد ناقصة', code: 'bad_event' }); return; }
 
     /* v-email-safe: الوقت كان يُقرأ بتوقيت دبي دائمًا (+04:00) — مستخدم في الرياض أو لندن يُحجز موعده بساعة خطأ.
        الآن ساعة الحائط كما كتبها الموديل بمنطقة المستخدم نفسها (التي أُعطيت للموديل في email-list)، وجوجل
@@ -45,16 +30,16 @@ module.exports = async (req, res) => {
     const sm = String(start).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
     const wall = sm ? Date.UTC(+sm[1], +sm[2] - 1, +sm[3], +sm[4], +sm[5]) : NaN;
     const wallStr = (ms) => new Date(ms).toISOString().slice(0, 19);
-    if (!sm || isNaN(wall) || wallStr(wall).slice(0, 16) !== sm[0]) { res.status(400).json({ error: 'صيغة الوقت غير صحيحة' }); return; }
+    if (!sm || isNaN(wall) || wallStr(wall).slice(0, 16) !== sm[0]) { res.status(400).json({ error: 'صيغة الوقت غير صحيحة', code: 'bad_event' }); return; }
     const mins = Math.min(Number(durationMin) > 0 ? Number(durationMin) : 60, 24 * 60);
 
     const user = await getUser(username);
     if (!user || !user.emailAssist || !user.emailAssist.connected) {
-      res.status(400).json({ error: 'لم يتم ربط Gmail بعد', notConnected: true });
+      res.status(400).json({ error: 'لم يتم ربط Gmail بعد', code: 'not_connected', notConnected: true });
       return;
     }
     const refreshToken = decrypt(user.emailAssist.refreshTokenEnc);
-    if (!refreshToken) { res.status(400).json({ error: 'تعذر قراءة صلاحية Gmail، أعد الربط', notConnected: true }); return; }
+    if (!refreshToken) { res.status(400).json({ error: 'تعذر قراءة صلاحية Gmail، أعد الربط', code: 'not_connected', notConnected: true }); return; }
 
     const accessToken = await getAccessToken(refreshToken);
 
@@ -73,11 +58,11 @@ module.exports = async (req, res) => {
     if (!evRes.ok) {
       const msg = (ev.error && ev.error.message) || 'calendar_error';
       const needsReauth = evRes.status === 403 || /insufficient/i.test(msg);
-      res.status(evRes.status).json({ error: msg, needsReauth });
+      res.status(evRes.status).json({ error: needsReauth ? 'needs_reauth' : 'calendar_failed', code: needsReauth ? 'needs_reauth' : 'calendar_failed', needsReauth });
       return;
     }
     res.status(200).json({ ok: true, eventLink: ev.htmlLink || '' });
   } catch (e) {
-    res.status(500).json({ error: 'Calendar error: ' + (e && e.message ? e.message : String(e)) });
+    res.status(500).json({ error: 'failed', code: 'failed' });
   }
 };

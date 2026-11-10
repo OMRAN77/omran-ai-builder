@@ -201,9 +201,9 @@ window.updateVersionLabel();
 
   function extractJSON(text) {
     var s = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
-    try { return JSON.parse(s); } catch (e) { /* keep going */ }
+    try { return JSON.parse(s); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-14-tester:204'); /* keep going */ }
     var a = s.indexOf('{'), b = s.lastIndexOf('}');
-    if (a >= 0 && b > a) { try { return JSON.parse(s.slice(a, b + 1)); } catch (e) { /* give up */ } }
+    if (a >= 0 && b > a) { try { return JSON.parse(s.slice(a, b + 1)); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-14-tester:206'); /* give up */ } }
     return null;
   }
 
