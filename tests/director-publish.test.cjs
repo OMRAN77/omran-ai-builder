@@ -4,6 +4,7 @@
 // رابط الملفّ، نشر واحد لكلّ فيديو ومنصّة، الحالة لكلّ منصّة، ولا مفتاح ولا رابط في ردّ أو سجلّ. ثمّ اللوحة نفسها في vm والنصوص بالـ١٤ لغة.
 // v-director-publish-guard (مراجعة مستقلّة ٨ نوفمبر): المجموعة المتداخلة لا تنشر مرّتين، والمنصّة تتحرّر بإثبات أنّها لم تنشر وحده،
 // و«في الطابور» ليس «نزل»، والطلب الضائع يُعلَن ويُعاد، والملفّ المنتهي يُرفع من جديد، وفيديو جديد يصفّر اللوحة.
+// v-director-endcard (١٩–٢٣): «أضف باركود التطبيق في آخر الفيديو» — المحلّل والخطّة وأوامر الأداة على سجلّات النواة الحقيقيّة، والخيار في اللوحة.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -408,6 +409,8 @@ function panel() {
       x.abort = () => { ctx.aborts = (ctx.aborts || 0) + 1; setImmediate(() => x.onabort && x.onabort()); };
     },
     confirms: [], answer: true,
+    ls: { aiapp_vd_endcard: '0' }, /* v-director-endcard: الخيار مطفأ هنا — اختباراته (١٩–٢٣) تشغّله بنفسها */
+    localStorage: { getItem: (k) => (k in ctx.ls ? ctx.ls[k] : null), setItem: (k, v2) => { ctx.ls[k] = String(v2); } },
   };
   ctx.window = ctx; ctx.confirm = (q) => { ctx.confirms.push(q); return ctx.answer; };
   clientSlice('js/video.js', '  var PB={busy:false', '  function syncDirector(){', ctx);
@@ -835,3 +838,232 @@ test('١٨. الصندوق في المخرج قبل مكان الفيديو، م
   assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 467 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 698, 'وسما video.js وmodules.css مرفوعان');
 });
 
+
+// ═══ v-director-endcard: «أضف باركود التطبيق في آخر الفيديو» — السجلّات أدناه من نواة الأداة المنشورة نفسها (ffmpeg.wasm 5.1) على ملفّات
+// حقيقيّة: فيديو المالك من جوّاله (الصوت أوّلًا، مدى كامل، معدّل متغيّر)، وفيديو من مولّد آخر، ودوران الجوّال بالاتّجاهين، وHEVC وWebM… ═══
+const EC_LOGS = {
+ "phone": "  Duration: 00:02:14.41, start: 0.000000, bitrate: 2191 kb/s\n  Stream #0:0[0x1](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 112 kb/s (default)\n  Stream #0:1[0x2](und): Video: h264 (High) (avc1 / 0x31637661), yuvj420p(pc, bt709/bt709/iec61966-2-1, progressive), 720x1280, 2075 kb/s, SAR 1:1 DAR 9:16, 30.02 fps, 30k tbr, 30k tbn (default)",
+ "google": "  Duration: 00:00:08.00, start: 0.000000, bitrate: 2427 kb/s\n  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(progressive), 1280x720, 2155 kb/s, 24 fps, 24 tbr, 12288 tbn (default)\n  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 256 kb/s (default)",
+ "rot90": "  Duration: 00:00:08.00, start: 0.000000, bitrate: 3174 kb/s\n  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(progressive), 1280x720 [SAR 1:1 DAR 16:9], 3036 kb/s, 30 fps, 30 tbr, 15360 tbn (default)\n    Side data:\n      displaymatrix: rotation of 90.00 degrees\n  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)",
+ "rotm90": "  Duration: 00:00:08.00, start: 0.000000, bitrate: 3174 kb/s\n  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(progressive), 1280x720 [SAR 1:1 DAR 16:9], 3036 kb/s, 30 fps, 30 tbr, 15360 tbn (default)\n    Side data:\n      displaymatrix: rotation of -90.00 degrees\n  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)",
+ "hevc": "  Duration: 00:00:06.00, start: 0.000000, bitrate: 4050 kb/s\n  Stream #0:0[0x1](und): Video: hevc (Main) (hvc1 / 0x31637668), yuv420p(tv, progressive), 1080x1920 [SAR 1:1 DAR 9:16], 3907 kb/s, 30 fps, 30 tbr, 15360 tbn (default)\n  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 127 kb/s (default)",
+ "vp9": "  Duration: 00:00:06.01, start: -0.007000, bitrate: 1078 kb/s\n  Stream #0:0: Video: vp9 (Profile 0), yuv420p(tv, progressive), 720x1280, SAR 1:1 DAR 9:16, 30 fps, 30 tbr, 1k tbn\n  Stream #0:1: Audio: opus, 48000 Hz, mono, fltp",
+ "noaudio": "  Duration: 00:00:07.00, start: 0.000000, bitrate: 6715 kb/s\n  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(progressive), 1080x1920 [SAR 1:1 DAR 9:16], 6712 kb/s, 30 fps, 30 tbr, 15360 tbn (default)",
+ "baseline": "  Duration: 00:00:07.00, start: 0.000000, bitrate: 1011 kb/s\n  Stream #0:0[0x1]: Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 640x480 [SAR 1:1 DAR 4:3], 934 kb/s, 25 fps, 25 tbr, 600 tbn (default)\n  Stream #0:1[0x2]: Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, mono, fltp, 69 kb/s (default)",
+ "film4min": "  Duration: 00:03:58.80, start: 0.000000, bitrate: 2652 kb/s\n  Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuvj420p(pc, bt470bg/unknown/unknown, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 2444 kb/s, 30 fps, 30 tbr, 15360 tbn (default)\n    Side data:\n  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 199 kb/s (default)"
+};
+function ecCtx() {
+  const p = panel();
+  delete p.ctx.ls.aiapp_vd_endcard; /* بلا تفضيل محفوظ = مشغَّل (طلب المالك) */
+  p.ctx.DR.out = ''; /* لا فيديو قبل الرفع */
+  const calls = [];
+  p.ctx.ecMake = (file, my, pct) => new Promise((res, rej) => { calls.push({ file, my, pct, res, rej }); });
+  p.els.vdPub.hidden = true; p.replies.accounts = { ok: true, on: ['instagram', 'tiktok'], reauth: [] };
+  return Object.assign(p, { calls });
+}
+const vfileE = (name, type, size) => ({ name, type, size: size == null ? 4321 : size });
+const outFile = (name) => ({ name, type: 'video/mp4', size: 5555 });
+
+test('١٩. المحلّل والخطّة على سجلّات النواة الحقيقيّة: السريع لـH.264+AAC بترتيب الدفقات ودورانها ومداها، والبطيء لغيرها بحدود الجهاز', () => {
+  const { ctx } = panel();
+  const P = (k, size, mob) => ctx.ecPlan(ctx.ecParse(EC_LOGS[k]), size == null ? 30 * 1048576 : size, !!mob);
+  const ph = ctx.ecParse(EC_LOGS.phone);
+  assert.equal(ph.dur, 134.41);
+  assert.deepEqual(J(ph.streams.map((x) => [x.i, x.kind, x.codec, x.profile, x.pix || null, x.w || null, x.h || null, x.fps || null, x.tbr || null, x.tbn || null, x.sr || null, x.layout || null])),
+    [[0, 'a', 'aac', 'LC', null, null, null, null, null, null, 48000, 'stereo'], [1, 'v', 'h264', 'High', 'yuvj420p', 720, 1280, 30.02, 30000, 30000, null, null]], 'جوّال المالك: الصوت أوّلًا و«30k»');
+  const want = {
+    phone: [true, '', 'av', '30', 0, 720, 1280, 720, 1280],
+    google: [true, '', 'va', '24', 0, 1280, 720, 1280, 720],
+    rot90: [true, '', 'va', '30', 270, 1280, 720, 720, 1280], /* «rotation of 90» = ٢٧٠ باتّجاه الساعة: العرض طوليّ */
+    rotm90: [true, '', 'va', '30', 90, 1280, 720, 720, 1280],
+    hevc: [false, 'vcodec', 'va', '30', 0, 1080, 1920, 1080, 1920],
+    vp9: [false, 'vcodec', 'va', '30', 0, 720, 1280, 720, 1280],
+    noaudio: [true, '', 'va', '30', 0, 1080, 1920, 1080, 1920],
+    baseline: [true, '', 'va', '25', 0, 640, 480, 640, 480],
+    film4min: [true, '', 'va', '30', 0, 1920, 1080, 1920, 1080],
+  };
+  for (const [k, w] of Object.entries(want)) {
+    const pl = P(k);
+    assert.deepEqual([pl.ok, pl.fast, pl.why, pl.order, pl.fps, pl.rot, pl.w, pl.h, pl.dw, pl.dh], [true, ...w], k);
+  }
+  assert.deepEqual([P('hevc').ow, P('hevc').oh, P('vp9').ow, P('vp9').oh], [1080, 1920, 720, 1280], 'البطيء بمقاس العرض (سقف ١٠٨٠ على الضلع الأقصر)');
+  assert.deepEqual([P('noaudio').a, P('baseline').a.sr, P('baseline').a.layout, P('baseline').v.tbn, P('film4min').v.pix], [null, 44100, 'mono', 600, 'yuvj420p']);
+  // ما يمنع اللصق: كلّ سبب وحده
+  const mut = (k, from, to) => ctx.ecPlan(ctx.ecParse(EC_LOGS[k].replace(from, to)), 1e6, false);
+  assert.equal(mut('google', 'aac (LC)', 'aac (HE-AAC)').why, 'acodec', 'HE-AAC لا يطابق صمت البطاقة');
+  assert.equal(mut('google', 'stereo', '5.1(side)').why, 'acodec');
+  assert.equal(mut('google', 'yuv420p(progressive)', 'yuv420p10le(tv, progressive)').why, 'pix');
+  assert.equal(mut('google', '1280x720,', '1280x720 [SAR 4:3 DAR 16:9],').why, 'sar');
+  assert.equal(mut('google', '1280x720,', '1279x720,').why, 'odd');
+  assert.equal(mut('google', 'Stream #0:1[0x2](und): Audio', 'Stream #0:2[0x3](und): Audio').why, 'order', 'دفق بين الصورة والصوت: لا مطابقة بالترتيب');
+  const pic = ctx.ecPlan(ctx.ecParse(EC_LOGS.google.replace('  Stream #0:0[0x1]', '  Stream #0:2[0x3](und): Video: mjpeg (Baseline), yuvj420p(pc), 600x600, 90k tbr, 90k tbn (attached pic)\n  Stream #0:0[0x1]')), 1e6, false);
+  assert.deepEqual([pic.fast, pic.v.i, pic.w], [true, 0, 1280], 'صورة الغلاف ليست الفيديو');
+  assert.equal(ctx.ecParse('Duration: 00:00:05.00\n  Stream #0:0: Video: h264 (High), yuv420p, 1920x1080, 30 fps, 30 tbr, 600 tbn\n    Metadata:\n      rotate          : 90').rot, 90, 'وسم rotate القديم');
+  assert.deepEqual([ctx.ecFps({ fps: 29.97 }), ctx.ecFps({ fps: 30 }), ctx.ecFps({ fps: 23.98 }), ctx.ecFps({ fps: 59.94 }), ctx.ecFps({ fps: 0, tbr: 25 }), ctx.ecFps({ fps: 12.5 }), ctx.ecFps({})],
+    ['30000/1001', '30', '24000/1001', '60000/1001', '25', '13', '30'], '٢٩٫٩٧ ليست ٣٠');
+  // حدود الجهاز: السريع ٢٥٠/٥٠٠ ميغا، والبطيء ١٠٠/٣٠٠ ميغا و٦٠/١٨٠ ثانية ومدّة معروفة
+  const MB = 1048576;
+  assert.deepEqual([P('phone', 251 * MB, true).why, P('phone', 249 * MB, true).fast, P('phone', 499 * MB, false).fast, P('phone', 501 * MB, false).why], ['heavy', true, true, 'heavy']);
+  assert.deepEqual([P('hevc', 101 * MB, true).why, P('hevc', 99 * MB, true).ok, P('hevc', 301 * MB, false).why], ['heavy', true, 'heavy']);
+  const long = (sec) => ctx.ecPlan(ctx.ecParse(EC_LOGS.hevc.replace('00:00:06.00', '00:0' + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0') + '.00')), MB, false);
+  assert.deepEqual([long(179).ok, long(181).why], [true, 'heavy']);
+  assert.equal(ctx.ecPlan(ctx.ecParse(EC_LOGS.vp9.replace('00:00:06.01', '00:01:01.00')), MB, true).why, 'heavy', 'الجوّال ٦٠ ث للبطيء');
+  assert.equal(ctx.ecPlan(ctx.ecParse(EC_LOGS.vp9.replace(/ {2}Duration[^\n]*\n/, '')), MB, false).why, 'heavy', 'مدّة غير معروفة لا تُعاد ترميزًا بلا نهاية');
+  assert.equal(ctx.ecPlan(ctx.ecParse('  Stream #0:0: Audio: aac (LC), 48000 Hz, stereo'), MB, false).why, 'novideo');
+});
+
+test('٢٠. أوامر الأداة: البطاقة بمقاس الملفّ وإطاراته ومقياس زمنه وترتيب دفقاته ودورانه ومداه، والدمج نسخ بلا ترميز؛ والبطيء ترميز واحد', () => {
+  const { ctx } = panel();
+  const P = (k) => ctx.ecPlan(ctx.ecParse(EC_LOGS[k]), 30 * 1048576, false);
+  const ph = ctx.ecCardArgs(P('phone')), j = ph.join(' ');
+  assert.deepEqual([...ph.slice(0, 14)], ['-hide_banner', '-y', '-framerate', '30', '-i', 'ec_last.png', '-framerate', '30', '-i', 'ec_over.png', '-framerate', '30', '-i', 'ec_end.png']);
+  assert.ok(j.includes('-f lavfi -t 4 -i anullsrc=r=48000:cl=stereo'), 'صمت بخصائص صوت الأصل');
+  const fc = ph[ph.indexOf('-filter_complex') + 1];
+  assert.equal(fc, '[0:v]scale=720:1280,setsar=1,format=yuv420p,loop=loop=-1:size=1:start=0,trim=duration=0.6[b];'
+    + '[1:v]scale=720:1280,setsar=1,format=yuva420p,loop=loop=-1:size=1:start=0,trim=duration=0.6,fade=t=in:st=0:d=0.6:alpha=1[o];'
+    + '[b][o]overlay=format=yuv420,format=yuvj420p[f];[2:v]scale=720:1280,setsar=1,format=yuvj420p,loop=loop=-1:size=1:start=0,trim=duration=3.40[h];[f][h]concat=n=2:v=1:a=0[v]',
+    'كلّ صورة تُحوَّل مرّة ثمّ تتكرّر، والتركيب في التلاشي وحده (xfade ودمج RGBA على كلّ إطار كانا ٣٫٥–٨ ث)');
+  assert.deepEqual([...ph.slice(ph.indexOf('-map'), ph.indexOf('-map') + 4)], ['-map', '3:a', '-map', '[v]'], 'الصوت أوّلًا كما في ملفّ الجوّال');
+  assert.ok(j.includes('-c:v libx264 -preset ultrafast -crf 20 -pix_fmt yuvj420p -r 30 -video_track_timescale 30000 -c:a aac -b:a 128k -ar 48000 -ac 2 -t 4 ec_card.mp4'));
+  assert.ok(!/mjpeg|\.jpg|xfade/.test(j), 'لا JPEG (يُسقط النواة) ولا xfade');
+  const g = ctx.ecCardArgs(P('google'));
+  assert.deepEqual([...g.slice(g.indexOf('-map'), g.indexOf('-map') + 4)], ['-map', '[v]', '-map', '3:a']);
+  assert.ok(g.join(' ').includes('-pix_fmt yuv420p -r 24 -video_track_timescale 12288'));
+  assert.ok(ctx.ecCardArgs(P('rotm90'))[ctx.ecCardArgs(P('rotm90')).indexOf('-filter_complex') + 1].startsWith('[0:v]transpose=cclock,scale=1280:720,'), 'الجوّال الطوليّ (-90): البطاقة تُدار إلى وضع التخزين');
+  assert.ok(ctx.ecCardArgs(P('rot90'))[ctx.ecCardArgs(P('rot90')).indexOf('-filter_complex') + 1].startsWith('[0:v]transpose=clock,scale=1280:720,'));
+  const na = ctx.ecCardArgs(P('noaudio')).join(' ');
+  assert.ok(!/anullsrc|-c:a|3:a/.test(na) && na.includes('-map [v] -c:v libx264'), 'بلا صوت في الأصل = بلا صوت في البطاقة');
+  assert.ok(ctx.ecCardArgs(P('baseline')).join(' ').includes('anullsrc=r=44100:cl=mono') && ctx.ecCardArgs(P('baseline')).join(' ').includes('-video_track_timescale 600 -c:a aac -b:a 128k -ar 44100 -ac 1'));
+  assert.deepEqual([...ctx.ecJoinArgs(P('phone'), '/ecin/input')], ['-hide_banner', '-y', '-f', 'concat', '-safe', '0', '-i', '/ec_list.txt', '-map', '0:v:0', '-map', '0:a:0?', '-c', 'copy', '-movflags', '+faststart', 'ec_out.mp4']);
+  // البطيء: البطاقة بمقاس المخرج بلا دوران وصوتها 48k ستيريو، والدمج مرشّح concat وترميز واحد
+  const hv = P('hevc'), hc = ctx.ecCardArgs(hv).join(' '), hj = ctx.ecJoinArgs(hv, '/ecin/input');
+  assert.ok(hc.includes('anullsrc=r=48000:cl=stereo') && hc.includes('[0:v]scale=1080:1920,') && !/transpose|video_track_timescale/.test(hc));
+  assert.deepEqual([...hj.slice(0, 7)], ['-hide_banner', '-y', '-i', '/ecin/input', '-i', 'ec_card.mp4', '-filter_complex']);
+  assert.equal(hj[7], '[0:0]scale=1080:1920,setsar=1,fps=30,format=yuv420p[m];[1:v]scale=1080:1920,setsar=1,fps=30,format=yuv420p[c];[0:1]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[ma];[1:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[ca];[m][ma][c][ca]concat=n=2:v=1:a=1[v][a]');
+  assert.ok(hj.join(' ').endsWith('-map [v] -map [a] -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -c:a aac -b:a 160k -movflags +faststart ec_out.mp4'));
+  assert.ok(!ctx.ecJoinArgs(Object.assign({}, hv, { a: null }), 'x').join(' ').includes('[a]'), 'بطيء بلا صوت');
+  assert.deepEqual([ctx.ecName('الحلقة 2: يوسف.MOV'), ctx.ecName('clip.mp4'), ctx.ecName(''), ctx.ecName('a.b.webm')], ['الحلقة 2_ يوسف-om-ai.mp4', 'clip-om-ai.mp4', 'video-om-ai.mp4', 'a.b-om-ai.mp4']);
+  const v = read('js/video.js');
+  assert.ok(v.includes("\"ffconcat version 1.0\\nfile '\"+input+\"'\\nfile '/ec_card.mp4'\\n\"") && v.includes("'-update','1','ec_last.png'"), 'قائمة الدمج، واحتياط آخر لقطة PNG');
+});
+
+test('٢١. الخيار مشغَّل: الرفع يضيف الباركود فورًا والنشر ينتظره، ثمّ المعروض والمنشور هو الناتج والنصّ المكتوب يبقى؛ والإطفاء يعيد الأصل بلا إعادة عمل', async () => {
+  const { ctx, els, api, calls, urls, replies } = ecCtx();
+  const f = vfileE('حلقة.mp4', 'video/mp4');
+  ctx.upPick(f); await flush();
+  assert.equal(calls.length, 1, 'الإضافة بدأت مع الرفع');
+  assert.equal(calls[0].file, f);
+  assert.deepEqual([ctx.EC.busy, ctx.DR.out, ctx.DR.file === f, els.vdVideo.src], [true, 'blob:up1', true, 'blob:up1'], 'الأصل معروض أثناء العمل');
+  assert.equal(els.vdUpMsg.textContent, 'vdEcWork {"p":0}');
+  calls[0].pct(41.6); assert.equal(els.vdUpMsg.textContent, 'vdEcWork {"p":42}');
+  // النشر أثناء العمل مرفوض: لا هدف ولا رفع (كان سيُرفع الأصل)
+  els.vdPubCap.value = 'نصّ كتبه المالك أثناء الإضافة';
+  await ctx.pbGo();
+  assert.deepEqual(api.map((a) => a.op), ['accounts'], 'لا نشر أثناء الإضافة');
+  const out = outFile('حلقة-om-ai.mp4');
+  calls[0].res(out); await flush();
+  assert.deepEqual([ctx.EC.busy, ctx.DR.file === out, ctx.DR.fileType, ctx.DR.out, ctx.DR.fileUrl, els.vdVideo.src, els.vdDl.href, els.vdDl.attrs.download],
+    [false, true, 'video/mp4', 'blob:up2', 'blob:up2', 'blob:up2', 'blob:up2', 'حلقة-om-ai.mp4']);
+  assert.deepEqual([els.vdUpMsg.textContent, els.vdUpMsg.className, els.vdPubCap.value, ctx.upMine()], ['vdEcDone', 'vmk-dir-msg', 'نصّ كتبه المالك أثناء الإضافة', true], 'النصّ نفسه للفيديو نفسه');
+  // النشر الآن يرفع الناتج نفسه بنوعه
+  replies.target = { ok: true, id: F24, up: 'https://up.example/put?sig=e', ctype: 'video/mp4' };
+  replies.publish = { ok: true, request: 're', already: [] };
+  await ctx.pbGo();
+  assert.deepEqual(J(api.find((a) => a.op === 'target').body), { token: 'tok', size: 5555, type: 'video/mp4' }, 'يُرفع الفيديو بالباركود');
+  // الإطفاء: الأصل يعود (بلا إعادة رفع للجهاز ولا تحرير لرابطه)، والتشغيل ثانية يعيد الناتج المحفوظ بلا عمل جديد
+  const pubs = api.length;
+  ctx.ecToggle(false);
+  assert.deepEqual([ctx.ls.aiapp_vd_endcard, ctx.DR.out, ctx.DR.file === f, ctx.DR.fileType, els.vdVideo.src, els.vdUpMsg.textContent], ['0', 'blob:up1', true, 'video/mp4', 'blob:up1', '']);
+  ctx.ecToggle(true); await flush();
+  assert.deepEqual([calls.length, ctx.ls.aiapp_vd_endcard, ctx.DR.out, ctx.DR.file === out, els.vdUpMsg.textContent], [1, '1', 'blob:up2', true, 'vdEcDone'], 'محفوظ: بلا إعادة');
+  assert.deepEqual([urls.revoked, api.length], [[], pubs], 'لا رابط حُرِّر والمعروض حيّ، ولا نداء');
+});
+
+test('٢٢. الفشل والثقل يبقيان الأصل والخيار مطفأً لهذا الملفّ، وملفّ جديد يلغي السابق ويحرّر روابطه، وفيديو المخرج المعروض لا يمسّه الخيار، والمطفأ لا يعمل شيئًا', async () => {
+  const { ctx, els, calls, urls } = ecCtx();
+  const f1 = vfileE('a.mp4', 'video/mp4');
+  ctx.upPick(f1); await flush();
+  calls[0].rej({ code: 'card', log: 'x' }); await flush();
+  assert.deepEqual([ctx.EC.busy, ctx.DR.out, ctx.DR.file === f1, els.vdUpMsg.textContent, els.vdUpMsg.className, ctx.EC.skip === f1], [false, 'blob:up1', true, 'vdEcFail', 'vmk-dir-msg err', true]);
+  assert.equal(ctx.ls.aiapp_vd_endcard, undefined, 'التفضيل المحفوظ لا يتغيّر بالفشل');
+  // ثقيل على الجهاز
+  ctx.ecToggle(true); await flush();
+  assert.equal(calls.length, 2, 'إعادة المحاولة بالضغط');
+  calls[1].rej({ code: 'heavy' }); await flush();
+  assert.deepEqual([els.vdUpMsg.textContent, ctx.DR.out], ['vdEcHeavy', 'blob:up1']);
+  // ملفّ جديد أثناء العمل: السابق يُلغى (نتيجته المتأخّرة لا تُعرض) وروابطه تُحرَّر مرّة واحدة
+  ctx.ecToggle(true); await flush();
+  const late = calls[2];
+  const f2 = vfileE('b.mov', '');
+  ctx.upPick(f2); await flush();
+  assert.deepEqual([urls.revoked, ctx.DR.out, calls.length, calls[3].file === f2], [['blob:up1'], 'blob:up2', 4, true]);
+  late.res(outFile('a-om-ai.mp4')); await flush();
+  assert.deepEqual([ctx.DR.out, ctx.DR.file === f2, urls.made.length], ['blob:up2', true, 2], 'نتيجة الملفّ القديم تُرمى');
+  calls[3].res(outFile('b-om-ai.mp4')); await flush();
+  assert.deepEqual([ctx.DR.out, ctx.DR.fileType, ctx.DR.file.name], ['blob:up3', 'video/mp4', 'b-om-ai.mp4']);
+  // ملفّ ثالث بعد اكتمال الثاني: أصله وناتجه يُحرَّران (الناتج المعروض يحرّره الرفع نفسه — مرّة واحدة)
+  ctx.upPick(vfileE('c.mp4', 'video/mp4')); await flush();
+  assert.deepEqual(urls.revoked, ['blob:up1', 'blob:up2', 'blob:up3']);
+  // فيديو صنعه المخرج معروض: الخيار يحفظ التفضيل ولا يمسّ الفيديو
+  calls[4].res(outFile('c-om-ai.mp4')); await flush();
+  ctx.DR.out = 'blob:gen'; ctx.pbNewVideo();
+  const n = calls.length;
+  ctx.ecToggle(false); ctx.ecToggle(true); await flush();
+  assert.deepEqual([ctx.DR.out, calls.length, ctx.ls.aiapp_vd_endcard], ['blob:gen', n, '1'], 'لا عمل على فيديو ليس مرفوعًا');
+  // مطفأ: الرفع لا يبدأ شيئًا
+  ctx.ls.aiapp_vd_endcard = '0';
+  ctx.answer = true; ctx.upPick(vfileE('d.mp4', 'video/mp4')); await flush();
+  assert.deepEqual([calls.length, ctx.EC.busy, els.vdUpMsg.textContent], [n, false, '']);
+  // أثناء رفع النشر: لا تبديل للمعروض
+  ctx.ls.aiapp_vd_endcard = '1'; ctx.PB.busy = true; ctx.ecToggle(true); ctx.PB.busy = false; await flush();
+  assert.equal(calls.length, n, 'لا تبديل تحت رفع جارٍ');
+});
+
+test('٢٣. الخيار تحت صندوق الرفع ومربوط، والنشر معطّل أثناء الإضافة، والرابط من canonical لا مكتوبًا، والنصوص الستّة بالـ١٤ لغة والوسوم مرفوعة', () => {
+  const v = read('js/video.js');
+  const html = v.slice(v.indexOf("box.innerHTML='<div class=\"vmk-dir-head\">"), v.indexOf('var tabs=id(\'vmkTabs\'); if(tabs&&tabs.parentNode===card)'));
+  const iUp = html.indexOf('id="vdUp"'), iEc = html.indexOf('<label class="vmk-dir-ec" id="vdEcBox"><input type="checkbox" id="vdEc"><span></span></label>'), iMsg = html.indexOf('id="vdUpMsg"');
+  assert.ok(iUp > 0 && iEc > iUp && iMsg > iEc, 'الخيار بين الصندوق ورسالته');
+  assert.ok(v.includes("box.querySelector('#vdEc').addEventListener('change',function(e){ ecToggle(!!e.target.checked); });"));
+  const sync = v.slice(v.indexOf('function syncDirector(){'), v.indexOf('var ST={t0:0'));
+  assert.ok(sync.includes("pg.disabled=PB.busy||PB.loading||!(PB.plats&&PB.plats.length)||EC.busy;"), 'زرّ النشر معطّل أثناء الإضافة');
+  assert.ok(sync.includes("ec.checked=ecPref()&&!(EC.src&&EC.skip===EC.src.file);") && sync.includes("ec.disabled=DR.busy||PB.busy; eb.classList.toggle('off',ec.disabled);") && sync.includes("eb.querySelector('span').textContent=L('vdEcLabel');"));
+  const pick = v.slice(v.indexOf('function upPick(f){'), v.indexOf('function upBind('));
+  assert.ok(pick.indexOf("ecDrop(DR.out);") > pick.indexOf("window.confirm(L('vdUpReplace'))") && pick.indexOf('ecDrop(DR.out);') < pick.indexOf('URL.revokeObjectURL(DR.out)'), 'الإلغاء بعد السؤال وقبل التحرير');
+  assert.ok(pick.includes('if(ecPref()) ecStart();'));
+  assert.ok(v.includes("document.querySelector('link[rel=\"canonical\"]')") && !/vercel\.app/.test(v), 'الرابط من الصفحة');
+  assert.ok(read('index.html').includes('<link rel="canonical" href="https://omran-ai-builder.vercel.app/">'), 'canonical هو الرابط العامّ');
+  const qtag = (/'\/js\/qr\.js(\?v=\w+)'/.exec(read('js/partials-settings.js')) || [])[1]; /* الوسم من الإعدادات لا مثبَّتًا (سقّاطة البنية) */
+  assert.ok(qtag && v.includes("s.src='/js/qr.js" + qtag + "'") && v.includes('window.OmranQR.draw(qc,U,{px:S})'), 'باركود التطبيق نفسه (qr.js بوسم الإعدادات)');
+  assert.ok(v.includes("await ff.mount('WORKERFS',{blobs:[{name:'input',data:file}]},'/ecin');"), 'الملفّ لا يُنسخ في الذاكرة');
+  const css = read('css/modules.css');
+  for (const c of ['#videoMakerModal .vmk-dir-ec{', '#videoMakerModal .vmk-dir-ec.off{', 'html:not(.mobile-ui) #videoMakerModal .vmk-dir-ec input[type=checkbox]:not(:checked){box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5)}']) assert.ok(css.includes(c), c);
+  // النصوص
+  const KEYS = ['vdEcLabel', 'vdEcWork', 'vdEcDone', 'vdEcFail', 'vdEcHeavy', 'vdEcLine'];
+  const BANNED = /claude|anthropic|gemini|google|\bgpt|openai|runway|\bveo\b|kling|minimax|\bluma\b|\bsora\b|upload-?post|\bfal\b/i;
+  const base = { $: () => null, document: { getElementById: () => null, querySelector: () => null }, window: {}, localStorage: { getItem: () => null } }; base.window = base;
+  vm.runInNewContext(read('js/app-03-i18n-data.js'), base);
+  for (const lg of ['ar', 'en']) for (const k of KEYS) { const t = base.I18N[lg][k]; assert.ok(t && t.length > 3, lg + ' ' + k); assert.doesNotMatch(t, BANNED, lg + ' ' + k); }
+  assert.deepEqual([base.I18N.ar.vdEcLabel, base.I18N.ar.vdEcLine], ['أضف باركود التطبيق في آخر الفيديو (٤ ثواني)', 'حمّل تطبيق om ai'], 'كلمة المالك «الباركود» وسطر النموذج الذي وافق عليه');
+  const seen = new Set();
+  for (const lg of ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil']) {
+    const m = read('i18n/' + lg + '.js').match(/v-director-endcard \(796\)[^\n]*Object\.assign\(I18N\["(\w+)"\], (\{.*\})\);/);
+    assert.ok(m && m[1] === lg, lg + ' كتلة الترجمة');
+    const o = JSON.parse(m[2]);
+    assert.deepEqual(Object.keys(o), KEYS, lg + ' المفاتيح');
+    for (const k of KEYS) {
+      assert.ok(o[k] && o[k].trim().length > 3, lg + ' ' + k); assert.doesNotMatch(o[k], BANNED, lg + ' ' + k);
+      assert.equal((o[k].match(/\{\w+\}/g) || []).sort().join(), (base.I18N.en[k].match(/\{\w+\}/g) || []).sort().join(), lg + ' ' + k + ' المتغيّرات');
+      assert.notEqual(o[k], base.I18N.en[k], lg + ' ' + k + ' مترجم لا منسوخ');
+    }
+    assert.ok(o.vdEcLine.includes('om ai'), lg + ' اسم التطبيق في سطر الفيديو');
+    seen.add(o.vdEcLabel);
+  }
+  assert.equal(seen.size, 12, 'ترجمات لا نسخ');
+  const used = new Set([...v.matchAll(/(?:L|drT)\('(vdEc\w+)'/g)].map((m) => m[1]));
+  assert.deepEqual([...used].sort(), [...KEYS].sort(), 'كلّ نصّ مستعمل معرَّف، وكلّ معرَّف مستعمل');
+  const tag = read('js/app-04-i18n-state.js').match(/\.js\?v=(\d+)';[^\n]* v-director-endcard \((\d+)\): [^\n]*\*\//);
+  assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && Number(tag[2]) === 796, 'وسم اللغات مرفوع وسببه في التعليق');
+  const h = read('index.html');
+  assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 468 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 699, 'وسما video.js وmodules.css مرفوعان');
+});
