@@ -125,6 +125,18 @@ async function renewalMeta(obj) {
   return live.username ? withName(live) : base;
 }
 
+/* v-paid-ungranted (فحص Desloppify ٩ نوفمبر ٢٠٢٦، بند المال): دفعة وصلت ولم تُمنح كانت سطرًا في سجلّ Vercel وردّ 200 لـStripe — لا أحد يراها:
+   حساب محذوف أو غير موجود (g.error)، جلسة مدفوعة بلا اسم (رابط دفع بلا دخول) أو بباقة لا نعرفها، أو تجديد لا يحمل اسمًا. الآن تنبيه المالك
+   (دفع + سجلّ الأخطاء) بالقناة نفسها التي ينبّه بها الاسترداد. لا يغيّر المنح ولا الردّ: Stripe لا يعيد حدثًا لا تصلحه الإعادة. لا يرمي. */
+async function alertUngranted(kind, obj, md, why) {
+  try {
+    const pr = require('./_lib/pay-refund.js');
+    const amount = kind === 'renewal' ? obj.amount_paid : obj.amount_total;
+    await pr.alertOwner('⚠️ دفعة وصلت ولم تُمنح — راجعها', [kind === 'renewal' ? 'تجديد' : 'دفع', String((md && md.username) || 'بلا اسم').slice(0, 40),
+      String((md && md.plan) || 'بلا باقة').slice(0, 30), pr.money(amount, obj.currency), String(why || '').slice(0, 80), 'Stripe ' + String(obj.id || '?').slice(0, 40)].join(' · '));
+  } catch (e) { console.error('[webhook] alert failed', e && e.message); }
+}
+
 module.exports = async (req, res) => {
   if (req.query && req.query.src === 'wa') return waWebhook(req, res); // v-phone-link
   if (req.query && req.query.src === 'paypal') return paypalWebhook(req, res); // v-pay-refund
@@ -154,6 +166,9 @@ module.exports = async (req, res) => {
         const g = await grantPlanToUser(md.username, md.plan, 'lastStripeSessionId', obj.id,
           { refs: [obj.payment_intent, obj.invoice], amount: obj.amount_total, currency: obj.currency }); // v-pay-refund: سجلّ المنح
         console.log('[webhook] checkout ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
+        if (g.error) await alertUngranted('checkout', obj, md, g.error);
+      } else if (obj.payment_status === 'paid') {
+        await alertUngranted('checkout', obj, md, !md.username ? 'الجلسة بلا اسم مستخدم' : 'باقة غير معروفة');
       }
     } else if (event.type === 'invoice.paid') {
       // تجديد شهري فقط — فاتورة الإنشاء الأولى غطّاها حدث الجلسة أعلاه.
@@ -163,6 +178,9 @@ module.exports = async (req, res) => {
         const g = await grantPlanToUser(md.username, md.plan, 'lastStripeInvoiceId', obj.id, { // v-pay-refund: سجلّ المنح بأرقام دفعته
           refs: [obj.payment_intent, obj.charge].concat(pays.map((x) => x.payment_intent), pays.map((x) => x.charge)), amount: obj.amount_paid, currency: obj.currency });
         console.log('[webhook] renewal ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
+        if (g.error) await alertUngranted('renewal', obj, md, g.error);
+      } else if (obj.billing_reason === 'subscription_cycle' && Number(obj.amount_paid) > 0) {
+        await alertUngranted('renewal', obj, md, !md.username ? 'التجديد بلا اسم مستخدم' : 'باقة غير معروفة');
       }
     } else if (event.type === 'charge.refunded' || event.type === 'charge.dispute.created') {
       // v-pay-refund: الاسترداد (بنسبة المسترد) والاعتراض البنكيّ (مع تنبيه المالك) يسحبان ما منحته الدفعة، مرّة واحدة لكلّ حدث.
