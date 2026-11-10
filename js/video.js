@@ -453,6 +453,9 @@
         +'<div class="vmk-dir-stage-cap" id="vdStageCap"></div><div class="vmk-dir-stage-hud"><span id="vdStageStep"></span><b id="vdStageTime">0:00</b></div><div class="vmk-dir-stage-bar"><i id="vdStageBar"></i></div></div>'
       +'<ol class="vmk-dir-steps" id="vdSteps">'+['plan','voice','samples','shots','join'].map(function(k){ return '<li data-step="'+k+'"><b></b><small></small><i class="vmk-dir-log" dir="ltr"></i></li>'; }).join('')+'</ol>'
       +'<p class="vmk-dir-msg" id="vdMsg"></p>'
+      /* v-director-upload: صندوق «ارفع فيديو جاهز» — بشكل صندوق «تحسين الفيديو»، والفيديو المرفوع يأخذ مكان فيديو المخرج تحته */
+      +'<label class="vmk-cl-drop vmk-dir-up" id="vdUp"><input type="file" accept="video/*" id="vdUpFile"><span class="vmk-cl-plus">+</span><span class="vmk-cl-pick"></span><small class="vmk-cl-lim"></small></label>'
+      +'<p class="vmk-dir-msg" id="vdUpMsg"></p>'
       +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><div class="vmk-dir-acts"><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a><button type="button" class="vmk-dir-dl vmk-pub-btn" id="vdPubBtn"></button></div>'
         /* v-director-publish: لوحة «انشر في حساباتي» — النصّ والمنصّات الموصولة ثمّ «انشر الآن» */
         +'<div class="vmk-pub" id="vdPub" hidden><label class="vmk-pub-cap"><span></span><textarea id="vdPubCap" rows="3" maxlength="2200"></textarea></label>'
@@ -468,6 +471,7 @@
     var kT=document.createElement('option'); kT.value='timed'; box.querySelector('#vdKind').appendChild(kT); /* v-director-timed: النوع الثالث «بتوقيتي» */
     tlInit(box.querySelector('#vdTl'));
     box.querySelector('#vdPubBtn').addEventListener('click',pbToggle); box.querySelector('#vdPubGo').addEventListener('click',pbGo); /* v-director-publish */
+    upBind(box.querySelector('#vdUp'),box.querySelector('#vdUpFile')); /* v-director-upload */
     box.querySelector('#vdKind').addEventListener('change',syncDirector); /* v-director-story: القصّة حدّها ٣٠٠٠ حرف وبلا مدّة ولا صورة مرجع */
   }
   function drStory(){ return ((id('vdKind')||{}).value==='story'); }
@@ -678,9 +682,10 @@
         var up=PB.src!==at||!PB.id||!(Date.now()-PB.at<PB_FRESH);
         if(up){ /* فيديو جديد أو ملفّ قارب عمره = رفع؛ الفيديو نفسه لمنصّات أخرى لا يُرفع مرّتين */
           pbMsg(drT('vdPubUp',{p:0}));
-          var blob=await fetch(at).then(function(r){ return r.blob(); });
+          var mine=(DR.file&&DR.fileUrl===at)?DR.file:null; /* v-director-upload: ملفّ الجهاز يُرفع نفسه — لا نسخة تُقرأ من رابطه (٥٠٠ ميغا على جوّال) */
+          var blob=mine||await fetch(at).then(function(r){ return r.blob(); });
           if(at!==DR.out) return;
-          var type=/webm/i.test(blob.type||'')?'video/webm':(/quicktime/i.test(blob.type||'')?'video/quicktime':'video/mp4');
+          var type=mine?DR.fileType:(/webm/i.test(blob.type||'')?'video/webm':(/quicktime/i.test(blob.type||'')?'video/quicktime':'video/mp4'));
           var t=await pbApi('target',{size:blob.size,type:type});
           if(at!==DR.out) return;
           if(!t||!t.ok) throw (t||{error:'target'});
@@ -766,6 +771,46 @@
     var order=Object.keys(PB_NAMES), rank=function(p){ var i=order.indexOf(p); return i<0?99:i; };
     return Object.keys(PB.rows).sort(function(a,b){ return rank(a)-rank(b); }).map(function(p){ return PB.rows[p]; });
   }
+  /* ═══ v-director-upload (المالك ١٠ نوفمبر: «الي اريده في المخرج مثال مكان تحميل الفيديو واسوي نشر على التواصل الاجتماعي»، واختار «أرفع فيديو
+     جاهز وأنشره»): صندوق في المخرج يأخذ فيديو جاهزًا من الجهاز ويضعه مكان فيديو المخرج، فتنشره لوحة «انشر في حساباتي» نفسها — الخادم كما هو
+     (mp4/mov/webm حتّى ٥٠٠ ميغا). النوع من امتداد الملفّ حين يسكت المتصفّح عنه، والمرفوض يُقال قبل أيّ رفع. فيديو صنعه المخرج ومعروض لا
+     يُستبدل بلا سؤال (مدفوع ولا مكتبة تحفظه)، والصندوق معطّل أثناء التوليد وأثناء رفع النشر (فيديو جديد يلغي رفع القديم). ═══ */
+  var UP_MAX_MB=500, UP_TYPES={'video/mp4':1,'video/webm':1,'video/quicktime':1};
+  function upType(f){
+    var t=String((f&&f.type)||'').toLowerCase().split(';')[0].trim(), n=String((f&&f.name)||'').toLowerCase();
+    if(UP_TYPES[t]) return t;
+    if(t==='video/x-m4v') return 'video/mp4';
+    if(!t||t==='application/octet-stream'){ if(/\.(mp4|m4v)$/.test(n)) return 'video/mp4'; if(/\.mov$/.test(n)) return 'video/quicktime'; if(/\.webm$/.test(n)) return 'video/webm'; }
+    return '';
+  }
+  function upShown(){ var r=id('vdRes'); return !!(DR.out&&r&&r.classList.contains('has')); } /* فيديو معروض الآن (لا فيديو أخفاه توليد لاحق) */
+  function upMine(){ return !!(DR.file&&DR.out===DR.fileUrl&&upShown()); }
+  function upMsg(t,err){ var m=id('vdUpMsg'); if(!m) return; m.textContent=t||''; m.className='vmk-dir-msg'+(err?' err':''); }
+  function upPick(f){
+    if(!f||!drOwner()||DR.busy||PB.busy) return;
+    var type=upType(f);
+    if(!type||!(f.size>0)){ upMsg(L('vdUpBadType'),true); return; }
+    if(f.size>UP_MAX_MB*1048576){ upMsg(drT('vdPubBig',{n:UP_MAX_MB}),true); return; }
+    if(upShown()&&DR.out!==DR.fileUrl&&!window.confirm(L('vdUpReplace'))) return; /* فيديو المخرج المعروض: يُحمَّل أوّلًا */
+    if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:up-revoke'); /* guard-ok — رابط زال */ } }
+    DR.file=f; DR.fileType=type; DR.fileUrl=DR.out=URL.createObjectURL(f); pbNewVideo();
+    var vid=id('vdVideo'), dl=id('vdDl'), res=id('vdRes'), pub=id('vdPub');
+    if(vid) vid.src=DR.out;
+    if(dl){ dl.href=DR.out; dl.setAttribute('download',String(f.name||'').replace(/[\\/:*?"<>|]+/g,'_').slice(-120)||'video.mp4'); }
+    if(res) res.classList.add('has');
+    drMsg(''); upMsg('');
+    if(pub&&pub.hidden){ pub.hidden=false; pbLoad(); } /* المقصود النشر: اللوحة تُفتح مع الفيديو (بلا تركيز — لوحة مفاتيح الجوّال تغطّي الفيديو) */
+    syncDirector();
+    try{ if(res&&res.scrollIntoView) res.scrollIntoView({block:'nearest'}); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:up-scroll'); /* guard-ok — متصفّح بلا خيارات التمرير */ }
+  }
+  function upBind(zone,input){
+    if(!zone||!input) return;
+    input.addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0]; e.target.value=''; if(f) upPick(f); }); /* التصفير: الملفّ نفسه يُختار مرّة ثانية */
+    /* الإفلات على الصندوق له لا لمرفقات الدردشة (ملتقط الصفحة في app-09 يترك ما أُخذ — defaultPrevented) */
+    zone.addEventListener('dragover',function(e){ e.preventDefault(); if(!input.disabled) zone.classList.add('over'); });
+    zone.addEventListener('dragleave',function(){ zone.classList.remove('over'); });
+    zone.addEventListener('drop',function(e){ e.preventDefault(); zone.classList.remove('over'); var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) upPick(f); });
+  }
   function syncDirector(){
     var box=id('vmkDirector'); if(!box) return;
     box.querySelector('.vmk-dir-head b').textContent=L('vdTab'); box.querySelector('.vmk-dir-head p').textContent=drStory()?L('vdSubStory'):L('vdSub'); /* v-director-story: وصف القصّة لا «يصوّر شاشات التطبيق» */
@@ -787,6 +832,11 @@
     tlSync();
     box.querySelector('#vdPubBtn').textContent=L('vdPubBtn'); box.querySelector('.vmk-pub-cap>span').textContent=L('vdPubCap'); /* v-director-publish */
     box.querySelector('#vdPubCap').placeholder=L('vdPubPh'); var pg=box.querySelector('#vdPubGo'); pg.textContent=L('vdPubGo'); pg.disabled=PB.busy||PB.loading||!(PB.plats&&PB.plats.length);
+    var uz=box.querySelector('#vdUp'), uf=box.querySelector('#vdUpFile'); /* v-director-upload */
+    if(uz&&uf){
+      var um=upMine(); uz.classList.toggle('has',um); uz.querySelector('.vmk-cl-pick').textContent=um?String(DR.file.name||''):L('vdUpBtn'); uz.querySelector('.vmk-cl-lim').textContent=drT('vdUpHint',{n:UP_MAX_MB});
+      uf.disabled=DR.busy||PB.busy; uz.classList.toggle('off',uf.disabled); uf.setAttribute('aria-label',L('vdUpBtn'));
+    }
   }
   /* v-app-director-motion (المالك: «خل فيه حركة فيديو عشان اعرف ان الفيديو يتولد»): شاشة حيّة أثناء التوليد — ضوء يتحرّك وشريط لقطات،
      وما يكتبه المخرج مشهدًا مشهدًا، ونماذج الأنماط تظهر فيها بحركة كاميرا فور توليدها، مع عدّاد وقت وشريط تقدّم كلّيّ. تعمل أثناء التوليد فقط. */
