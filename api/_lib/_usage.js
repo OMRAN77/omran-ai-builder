@@ -4,24 +4,18 @@
 // tracked as one Redis counter per user+day+provider (db/usage/tally/<key>/<date>),
 // separate from the account record in db/users/, and resets automatically each
 // day (UTC) via a 2-day TTL on the counter key.
-const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
 const { kvIncr, kvIncrBy, kvExpire, kvGetJSON, kvDecrBy, kvSetIfAbsent, kvDel } = require('./kv.js');
 const { isVip } = require('./_vip.js');
 // v-sec-ip-net: عدّادات الزوّار على عنوان IP تُطبَّع إلى الشبكة (/64 لـIPv6) حتّى لا يمنح تدوير
 // عنوانٍ داخل /64 حصّةً جديدة. الحجز والاسترجاع يستعملان المفتاح نفسه عبر هذه الدالّة.
 function netOf(ip) {
-  try { const n = require('./welcome-gift.js').giftNet(ip); if (n) return n; } catch (e) { /* يسقط إلى القصّ */ }
+  try { const n = require('./welcome-gift.js').giftNet(ip); if (n) return n; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:13'); /* يسقط إلى القصّ */ }
   return (ip && String(ip).trim()) ? String(ip).trim().slice(0, 64) : null;
 }
 // v-tiers: السقف اليومي صار بحسب الطبقة (ضيف/مجاني/مشترك بباقته) لا رقمًا واحدًا،
 // والمزوّدات المدفوعة للمشتركين فقط. انظر tier.js.
 const tierLib = require('./tier.js');
-
-// ⏳ مؤجَّلة: قراءة السرّ في نطاق الوحدة تحوّل متغيّرًا مفقودًا إلى انهيار
-// عند الإقلاع البارد بلا سجلّ (حدث في /api/edu). انظر api/_lib/auth.js.
-const __secrets = require('./_secrets.js');
-const authSecret = () => __secrets.AUTH_SECRET;
 
 // Combined daily limit shared across all three free server-proxied providers
 // (Groq + OpenAI + Claude), per logged-in account.
@@ -44,17 +38,9 @@ function isOwnerUsername(username) {
 // الباقين يمرّ من ذاكرة ٣٠ ثانية داخل العملية لا من نداء لكل رسالة.
 // isVip لا ترمي أبدًا: عطبٌ في القائمة = «ليس VIP» = الحدّ كما كان.
 
+// v-session-dedupe: رمز الجلسة كما يصنعه auth.makeToken حرفيًّا (u نصّ، exp رقم في المستقبل) — نسخة محلّيّة كانت تقبل حمولة بلا exp
 function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', authSecret()).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
+  return require('./_session.js').sessionUser(token);
 }
 
 function tallyKey(key) {
@@ -91,7 +77,7 @@ async function addTally(key) {
     if (newVal === 1) {
       await kvExpire(k, 172800); // 2 days
     }
-  } catch (e) {
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:80');
     // Best-effort: if this fails, worst case is one extra free message slips
     // through today — never block the actual AI request over a bookkeeping write.
   }
@@ -111,10 +97,10 @@ async function takeTally(key, limit) {
     return { ok: true, count: 1 }; // عطل KV = مفتوح كما كان
   }
   if (n === 1) {
-    try { await kvExpire(k, 172800); } catch (e) { /* أفضل جهد كما في addTally: المفتاح مؤرَّخ أصلًا */ }
+    try { await kvExpire(k, 172800); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:100'); /* أفضل جهد كما في addTally: المفتاح مؤرَّخ أصلًا */ }
   }
   if (n > limit) {
-    try { await kvDecrBy(k, 1); } catch (e) { /* زيادة باقية لا تمرّر رسالة — العدّ يبدو ممتلئًا فقط حتّى انتهاء المفتاح */ }
+    try { await kvDecrBy(k, 1); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:103'); /* زيادة باقية لا تمرّر رسالة — العدّ يبدو ممتلئًا فقط حتّى انتهاء المفتاح */ }
     return { ok: false, count: n - 1 };
   }
   return { ok: true, count: n };
@@ -126,7 +112,7 @@ async function giveTally(key) {
   try {
     const n = Number(await kvDecrBy(k, 1));
     if (n < 0) { await kvIncrBy(k, -n); await kvExpire(k, 172800); } // لا عدّ يُردّ (يوم جديد أو حجز لم يقع) — لا رصيد سالب يفتح السقف
-  } catch (e) { /* أفضل جهد: عدّ باقٍ يحجب طلبًا واحدًا حتّى نهاية اليوم ولا يمرّر شيئًا */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:115'); /* أفضل جهد: عدّ باقٍ يحجب طلبًا واحدًا حتّى نهاية اليوم ولا يمرّر شيئًا */ }
 }
 
 // v-atomic-quota: سحب رصيد المكافأة تحت قفل قصير لكلّ حساب (SET NX EX) — كان قراءة سجلّ ثمّ كتابته،
@@ -218,7 +204,7 @@ async function checkAndConsume(token, guestId, provider, ip, opts) {
         if (await spendBonus(username)) {
           return { allowed: true, username, remaining: 0, usedBonus: true, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null };
         }
-      } catch (e) { /* if the bonus check fails, just fall through to blocking */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:207'); /* if the bonus check fails, just fall through to blocking */ }
       return { allowed: false, reason: 'limit', username, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null, limit,
         message: tier.subscriber ? tierLib.FREE_TEXT.subLimit(limit) : tierLib.FREE_TEXT.freeLimit };
     }
@@ -354,7 +340,7 @@ async function refundCustom(token, guestId, ip, provider) {
     const cleanIp = netOf(ip); // v-sec-ip-net
     if (cleanIp) { await giveTally('ip_' + cleanIp + '_' + todayStr() + '_' + providerKey); return; }
     if (isValidGuestId(guestId)) await giveTally('guest_' + guestId + '_' + todayStr() + '_' + providerKey);
-  } catch (e) { /* أفضل جهد — الردّ لا يُسقط ردّ المستخدم */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:343'); /* أفضل جهد — الردّ لا يُسقط ردّ المستخدم */ }
 }
 
 // Best-effort extraction of the caller's IP from Vercel's forwarded headers.
@@ -363,7 +349,7 @@ function clientIp(req) {
     const fwd = req.headers && (req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For']);
     if (fwd) return String(fwd).split(',')[0].trim();
     if (req.socket && req.socket.remoteAddress) return req.socket.remoteAddress;
-  } catch (e) { /* ignore */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_usage:352'); /* ignore */ }
   return null;
 }
 

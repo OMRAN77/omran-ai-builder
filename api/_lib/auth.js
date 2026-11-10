@@ -231,7 +231,10 @@ function verifyToken(token) {
 const _timing = { sleep(ms) { return new Promise((r) => setTimeout(r, process.env.OMRAN_TEST_FAST_SLEEP === '1' ? 0 : ms)); } };
 function sleep(ms) { return _timing.sleep(ms); }
 
-async function getUserOnce(key) {
+/* v-owner-reset-records: opts.readOnly — بحث المالك وفحصه (dryRun) يقرآن كلّ السجلّات ولا يكتبان: السجلّ المفكوك بالسرّ السابق يُعاد
+   كما هو بلا إعادة تشفير (الكتابة هنا قد تمحو منحًا كُتب بين القراءة والكتابة). opts.quiet — المختوم يُعدّه المسح، فلا سطر لكلّ سجلّ في كلّ بحث. */
+async function getUserOnce(key, opts) {
+  const ro = !!(opts && opts.readOnly);
   try {
     const parsed = await kvGetJSON(userPath(key));
     if (!parsed) return null;
@@ -246,14 +249,16 @@ async function getUserOnce(key) {
           let migrated = null;
           try { migrated = decryptUserBlob(parsed, pk); } catch (e2) { migrated = null; }
           if (migrated) {
-            try { await putUser(key, migrated); }
-            catch (e3) { logError('auth:rekey', e3, { key: String(key).slice(0, 40) }); }
+            if (!ro) {
+              try { await putUser(key, migrated); }
+              catch (e3) { logError('auth:rekey', e3, { key: String(key).slice(0, 40) }); }
+            }
             return migrated;
           }
         }
         // لا مفتاح يفكّه. هذا ليس «حسابًا غير موجود» — وإعادته null كانت تخفي
         // السبب خلف «كلمة المرور خاطئة»، وتتيح لـsignup الكتابة فوق السجلّ.
-        logError('auth:decrypt', e, { key: String(key).slice(0, 40), hasPrev: Boolean(pk) });
+        if (!(opts && opts.quiet)) logError('auth:decrypt', e, { key: String(key).slice(0, 40), hasPrev: Boolean(pk) });
         throw new UndecryptableUserRecord(key);
       }
     }
@@ -1106,6 +1111,7 @@ module.exports = async (req, res) => {
       user.hash = hash;
       user.sv = sessionVersion(user) + 1; // v-audit-auth (srv-auth-8): كلّ جلسة سابقة تموت — وهذا الجهاز يأخذ رمزه الجديد
       await putUser(u, user);
+      await require('./_session.js').recordSessionVersion(u, user.sv); // v-session-revoke: والرفض في كلّ الخدمات لا هنا وحده
       res.status(200).json({ ok: true, token: makeToken(u, user.sv) });
       return;
     }
@@ -1271,6 +1277,7 @@ module.exports = async (req, res) => {
       user.resetTokenExpiry = null;
       user.sv = sessionVersion(user) + 1; // v-audit-auth (srv-auth-8): الاستعادة تُبطل كلّ جلسة سابقة
       await putUser(key, user);
+      await require('./_session.js').recordSessionVersion(key, user.sv); // v-session-revoke
       await markKnownNet(key, req);
       res.status(200).json({ ok: true, token: makeToken(key, user.sv), username: user.username, avatar: user.avatar || null });
       return;
@@ -1326,6 +1333,8 @@ module.exports = async (req, res) => {
         res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true, code: 'banned' });
         return;
       }
+      // v-session-revoke: من غيّر كلمته قبل هذا القرار يُنسخ إصداره إلى الجدول عند أوّل فتح (يكتب فقط إذا كان الجدول أقدم)
+      if (user && sessionVersion(user) > 0) await require('./_session.js').recordSessionVersion(u, user.sv);
       let adminMessage = null;
       if (user && user.pendingMessage) {
         adminMessage = user.pendingMessage;
@@ -1660,6 +1669,7 @@ module.exports.isBanned = isBanned;
 module.exports.emailVerifiedFor = emailVerifiedFor; // v-vip-verified: vip.js يحوّل الإيميل إلى حساب أثبته وحده
 module.exports.resolveLoginUser = resolveLoginUser; // v-owner-reset-find: رابط استرجاع المالك بالإيميل
 module.exports.googleAccountFor = googleAccountFor; // v-owner-reset-find
+module.exports.verifiedHolderOf = verifiedHolderOf; // v-owner-link-sub: البريد ← من أثبته (رمز أو Google) قبل أيّ مطابقة غير مؤكَّدة
 module.exports.emailProven = emailProven; // v-unverified-email: والكولباك (الربط التلقائيّ بالبريد)
 module.exports.settleUnverifiedEmail = settleUnverifiedEmail;
 module.exports.sweepUnverifiedEmails = sweepUnverifiedEmails; // email-sweep.js

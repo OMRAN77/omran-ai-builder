@@ -84,6 +84,9 @@ const SPEC = {
   RUNWAY_API_KEY_3:       ['tunable', 'الفيديو — مفتاح احتياطي'],
   AZURE_SPEECH_KEY:       ['feature', 'الصوت'],
   AZURE_SPEECH_REGION:    ['feature', 'الصوت'],
+  // v-allah-tafkhim: الكلام العربيّ بصوتَي مها وعبدالله من Gemini (يفخّم لفظ الجلالة)، وصوت Azure احتياط تلقائيّ
+  MAHA_VOICE:             ['tunable', 'azure يرجع صوت مها/عبدالله العربيّ إلى Azure القديم — بلا ضبط شغّال ما دام GEMINI_API_KEY موجودًا'],
+  MAHA_VOICE_CAP_CENTS:   ['tunable', 'بديل: ٣٠٠ — سقف صرف صوت مها العربيّ اليوميّ بالسنت (يوم UTC)؛ بعده صوت Azure، و٠ يغلقه'],
   FINNHUB_API_KEY:        ['feature', 'شريط الأسهم'],
   TWELVEDATA_API_KEY:     ['feature', 'شريط الأسهم — بديل'],
   RESEND_API_KEY:         ['feature', 'البريد'],

@@ -152,7 +152,7 @@ function trailDid(name, input) {
   if (name === 'web_search') return 'بحثتُ عن «' + (s(input.query, 60) || '؟') + '»';
   if (name === 'fetch_page') {
     let h = s(input.url, 80);
-    try { h = new URL(String(input.url)).hostname || h; } catch (e) { /* رابط مشوّه → نعرض ما أُرسل */ }
+    try { h = new URL(String(input.url)).hostname || h; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:155'); /* رابط مشوّه → نعرض ما أُرسل */ }
     return 'قرأتُ ' + h;
   }
   if (name === 'write_github') return 'رفعتُ إلى GitHub ' + (s(input.repo, 50) || '') + ' (' + (Array.isArray(input.files) ? input.files.length : 0) + ' ملفًّا)';
@@ -393,9 +393,9 @@ async function runInClient(send, name, input) {
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 400));
     let rec = null;
-    try { rec = await kvGetJSON(key); } catch (e) { /* شبكة متعثّرة — نعيد المحاولة */ }
+    try { rec = await kvGetJSON(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:396'); /* شبكة متعثّرة — نعيد المحاولة */ }
     if (rec && typeof rec.output === 'string') {
-      try { await kvDel(key); } catch (e) { /* التنظيف اختياري، وTTL يتكفّل */ }
+      try { await kvDel(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:398'); /* التنظيف اختياري، وTTL يتكفّل */ }
       return rec.output.slice(0, 4000);
     }
   }
@@ -485,7 +485,7 @@ module.exports = async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   if (res.flushHeaders) res.flushHeaders();
-  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق مجرى SSE — لا وجهة للكتابة، والمحاولة التالية ستكتشف ذلك */ } };
+  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:488'); /* العميل أغلق مجرى SSE — لا وجهة للكتابة، والمحاولة التالية ستكتشف ذلك */ } };
 
   const runUser = usage.username || ''; if (runUser && !isOwner(runUser)) { try { await require('./owner-inbox.js').scanTurn({ user: runUser, prov: 'claude', via: 'agent', text: living.lastUserText(messages) }); } catch (e) { console.warn('[agent] owner-inbox', e && e.message); } } // v-owner-inbox: كلام غير المالك في الوكيل أيضًا
   const run = { runId: 'r' + Date.now().toString(36), startedAt: Date.now(), updatedAt: Date.now(), step: 0,
@@ -518,7 +518,7 @@ module.exports = async (req, res) => {
   }
 
   // v545 — المعرفة الجماعيّة (لا تُحقن لمها الصوتيّة: شخصيّتها ومعلوماتها لا تُمَسّ).
-  try { system += await require('./collective.js').blockAsync(); } catch (e) { /* guard-ok: collective enrichment is optional; the chat request must continue. */ }
+  try { system += await require('./collective.js').blockAsync(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:521'); /* guard-ok: collective enrichment is optional; the chat request must continue. */ }
 
   if (currentCode) {
     // v-chat-edit: الكود كاملًا (كان يُقصّ عند ٦٠ ألفًا فيعدّل الوكيل ما لم يره)، والتصميم الكبير يُعدَّل برقع لا بملفّ كامل ينقطع
@@ -528,7 +528,7 @@ module.exports = async (req, res) => {
   /* v-gen-image-agent (أمر المالك ١٣ أكتوبر «اربط صورة عمّم بالوكيل»): كالمحادثة — «عمّم» ومعها صورة (genImage من الواجهة) تُحفظ برابط في التطبيق ويصل رابطها العشرة. */
   let __genImg = null;
   if (isOwner(runUser) && body.genImage && require('./prov-self.js').ownerSaidGeneralize(living.lastUserText(messages))) { try { __genImg = await require('./prov-self.js').noteGenImage(body.genImage, 'claude'); } catch (e) { console.warn('[agent] gen image failed', e && e.message); } }
-  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude', isOwner(runUser) ? { messages: messages, lastUserText: living.lastUserText(messages), genImageUrl: (__genImg && __genImg.url) || '' } : { lastUserText: living.lastUserText(messages) } /* v-liked-reply */); } catch (e) { /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all · v-owner-gen
+  try { system += await require('./prov-self.js').systemBlocks(isOwner(runUser), 'claude', isOwner(runUser) ? { messages: messages, lastUserText: living.lastUserText(messages), genImageUrl: (__genImg && __genImg.url) || '' } : { lastUserText: living.lastUserText(messages) } /* v-liked-reply */); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:531'); /* guard-ok — بلا تخزين يعمل بلا ملفّه */ } // v-prov-self · v-lessons-all · v-owner-gen
   if (isOwner(runUser)) system += OWNER_ENGINEERING_NOTE + OWNER_COMMAND_NOTE; // v-owner-obey: آخر النظام فيعلو على ما قبله · v-agent-surgical
 
   const convoAll = messages
@@ -627,7 +627,7 @@ module.exports = async (req, res) => {
     meterRun = async () => {
       if (runMetered || !runUser || isOwner(runUser)) return;
       runMetered = true;
-      try { const cm = require('./cost-meter.js'); await cm.addCost(runUser, cm.tokenCostUsd(runServed || model, runUse), 'chat'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+      try { const cm = require('./cost-meter.js'); await cm.addCost(runUser, cm.tokenCostUsd(runServed || model, runUse), 'chat'); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:630'); /* guard-ok — القياس لا يوقف خدمة */ }
     };
     const orModel = (m) => 'anthropic/' + String(m || '').replace(/-(\d+)-(\d+)$/, '-$1.$2');
     /* v-or-display: على الوسيط كان الوكيل بلا عرض — كتل التفكير فارغة فيبدو صامتًا بعد الهبوط. للمالك العرض نفسه؛ ورفضه (400 بأيّ نصّ)
@@ -648,7 +648,7 @@ module.exports = async (req, res) => {
     const swapNote = (nowWho) => {
       const f = agentFail || {};
       let raw = String(f.text || '');
-      try { const j = JSON.parse(raw); raw = String((j.error && (j.error.message || j.error)) || j.message || raw); } catch (e) { /* نصّ لا JSON */ }
+      try { const j = JSON.parse(raw); raw = String((j.error && (j.error.message || j.error)) || j.message || raw); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:651'); /* نصّ لا JSON */ }
       const t = raw.replace(/[A-Za-z0-9_-]{24,}/g, '…').replace(/\s+/g, ' ').trim();
       const credit = /credit|balance|billing|insufficient|quota|payment|402/i.test(t + ' ' + (f.status || ''));
       return '\n\n🔧 للمالك فقط — ' + (f.who || 'Anthropic مباشر') + ' فشل: ' + (credit ? 'لا رصيد كافٍ' : 'خطأ ' + (f.status || '؟')) + (t ? ' (' + t.slice(0, 140) + ')' : '') + ' · أجاب بدله: ' + nowWho;
@@ -722,7 +722,7 @@ module.exports = async (req, res) => {
         const why0 = (await upstream.text().catch(() => '')).slice(0, 300);
         agentFail = { who: 'Anthropic مباشر · ' + modelLabel(model), status: upstream.status, text: why0 };
         logError('agent/owner-swap', new Error(upstream.status + ' ' + why0));
-        try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: why0 }); } catch (e) { /* guard-ok — الإشعار تحسين لا شرط */ }
+        try { await require('./_owner-alert.js').alertOwnerCredit({ status: upstream.status, text: why0 }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:725'); /* guard-ok — الإشعار تحسين لا شرط */ }
         agentViaOR = true;
         convo.forEach((c) => { if (Array.isArray(c.content)) c.content = c.content.filter((b) => !(b && (b.type === 'thinking' || b.type === 'redacted_thinking'))); }); // توقيعات المباشر لا تُقبل عند الوسيط
         upstream = await doCallOR(model);
@@ -786,7 +786,7 @@ module.exports = async (req, res) => {
             send({ phase: 'reporting', done: true });
             res.end();
             return;
-          } catch (e) { /* جرّب التالي */ }
+          } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:789'); /* جرّب التالي */ }
         }
         await meterRun();
         const credRe = /credit|balance|billing|insufficient|quota|payment/i;
@@ -1064,7 +1064,7 @@ module.exports = async (req, res) => {
         }
       }
       // Finished normally.
-      if (isOwner(runUser)) { try { const __ps = require('./prov-self.js'); await __ps.captureOwnerTurn(messages, run.text, 'claude', living.lastUserText(messages)); } catch (e) { /* guard-ok — فشل حفظ المحادثة المشتركة لا يوقف الردّ */ } } // v-prov-one
+      if (isOwner(runUser)) { try { const __ps = require('./prov-self.js'); await __ps.captureOwnerTurn(messages, run.text, 'claude', living.lastUserText(messages)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent:1067'); /* guard-ok — فشل حفظ المحادثة المشتركة لا يوقف الردّ */ } } // v-prov-one
       run.status = 'done'; await journal(runUser, run); await meterRun(); // v-tokens-agent-cache: التكلفة الفعليّة قبل إغلاق المجرى (بعده قد تتجمّد الدالّة)
       if (agentFail && isOwner(runUser)) send({ phase: 'reporting', delta: swapNote('كلود عبر الوسيط · ' + orModel(model)) }); // v-owner-swap: للمالك وحده، تحت الردّ
       send({ phase: 'reporting', done: true });
@@ -1079,7 +1079,7 @@ module.exports = async (req, res) => {
     run.status = 'error'; run.error = String((e && e.message) || e).slice(0, 200);
     await journal(runUser, run); await meterRun();
     send({ error: 'Agent error: ' + e.message });
-    try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا — لا شيء يُنهى */ }
+    try { res.end(); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/agent:1082'); /* المجرى مُغلق أصلًا — لا شيء يُنهى */ }
   }
 };
 

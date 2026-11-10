@@ -80,7 +80,7 @@ module.exports = async (req, res) => {
       try {
         const parsed = JSON.parse(rawErr);
         detail = (parsed && parsed.error && parsed.error.message) || '';
-      } catch (e2) { /* non-JSON error body */ }
+      } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/gemini:83'); /* non-JSON error body */ }
       console.error('[gemini] stream ' + upstream.status + ' (' + useModel + '): ' + detail);
       if (usage.tier !== 'owner') { require('./_videoFail.js').chatFail(res, 'gemini', upstream.status, rawErr, false); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
       res.status(upstream.status).json({
@@ -104,13 +104,13 @@ module.exports = async (req, res) => {
           if (done) break;
           res.write(value);
         }
-      } catch (e) { /* client likely disconnected */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/gemini:107'); /* client likely disconnected */ }
       res.end();
       return;
     }
 
     const data = await upstream.text();
-    if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
+    if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/gemini:113'); /* best-effort */ } }
 
     // Gemini's own error text is the only thing that says WHY it refused —
     // "contents must end with a user turn", "model not found", "quota". It used

@@ -1409,7 +1409,26 @@ const I18N = {
     ownerResetLink: "🔑 رابط استرجاع \"{u}\" (صالح {m} دقيقة) — انسخه وأرسله له وحده:",
     ownerResetGoogle: "🔑 الحساب \"{u}\" مسجَّل بزرّ Google ولا كلمة مرور له — يدخل بزرّ «المتابعة عبر Google» بالإيميل نفسه.", // v-owner-reset-find
     ownerResetNotFound: "ما في حساب بهذا الإيميل أو الاسم.",
+    ownerLinkSubBtn: "ربط اشتراك Stripe", // v-owner-link-sub
+    ownerLinkSubPh: "رقم الاشتراك (sub_…)",
+    ownerLinkSubConfirm: "🔗 ربط الاشتراك {s} ({plan}) بحساب \"{u}\"؟\nإيميل الحساب: {ae}\nإيميل Stripe: {se}\nدفعات تُضاف الآن: {n} ← +{p} نقطة\nوالتجديدات القادمة تُضاف للحساب تلقائيًّا.",
+    ownerLinkSubMismatch: "⚠️ إيميل الحساب يختلف عن إيميل Stripe — تأكّد أنّه صاحب الاشتراك.",
+    ownerLinkSubPrev: "⚠️ الاشتراك كان باسم \"{u}\" وهذا الحساب محذوف أو غير موجود.",
+    ownerLinkSubSkipped: "{n} دفعة مستردّة أو عليها اعتراض أو لم تُعرف شحنتها — لن تُضاف.",
+    ownerLinkSubDone: "✅ رُبط الاشتراك بحساب \"{u}\": +{p} نقطة عن {n} دفعة، والتجديدات القادمة تُضاف تلقائيًّا.",
+    ownerLinkSubTaken: "❌ هذا الاشتراك مربوط من قبل بحساب \"{u}\".",
+    ownerLinkSubNoSub: "لم أجد هذا الاشتراك في Stripe.",
+    ownerLinkSubBadId: "❌ اكتب رقم الاشتراك من Stripe (يبدأ بـ sub_).",
+    ownerLinkSubNothing: "✅ الاشتراك مربوط بهذا الحساب وكلّ دفعاته مضافة من قبل.",
+    ownerLinkSubUnverified: "⚠️ هذا الإيميل يصل الحساب بلا تأكيد — تأكّد أنّه صاحب الاشتراك قبل الربط.",
+    ownerLinkSubKeepPlan: "ℹ️ الحساب على باقة {plan} سارية — تبقى كما هي وتُضاف النقاط وحدها.",
     ownerResetMany: "دفع بهذا الإيميل أكثر من حساب: {list} — اسأل صاحبه عن اسم حسابه واكتبه في الخانة.", // v-owner-reset-stripe
+    ownerResetMaybe: "ما لقيت حساب يثبت هذا الإيميل. حسابات محتملة: {list} — تأكّد من صاحبها واكتب اسم حسابه في الخانة.", // v-owner-reset-records
+    ownerResetAsk: "دوّرت في الحسابات وGoogle وStripe وPayPal. اسأل صاحبه عن اسم المستخدم.", // v-owner-reset-records
+    ownerResetPaypalOff: "بحث PayPal الكامل مقفل: في developer.paypal.com افتح Apps & Credentials ثمّ Live ثمّ تطبيقك ثمّ Features، وفعّل «Transaction search»، وقد يأخذ ساعات حتى يشتغل.", // v-owner-reset-records
+    ownerResetPartial: "ما اكتمل البحث (عطل مؤقّت أو مهلة في أحد المصادر) — جرّب بعد دقائق، أو اسأل صاحبه عن اسم المستخدم.", // v-owner-reset-records
+    ownerResetNameMaybe: "ما في حساب بهذا الاسم بالضبط. أسماء قريبة: {list} — تأكّد من صاحبه واكتب اسم حسابه في الخانة.", // v-owner-reset-records
+    ownerResetManyRec: "أكثر من حساب أثبت هذا الإيميل: {list} — اسأل صاحبه عن اسم حسابه واكتبه في الخانة.", // v-owner-reset-records
     ownerDiagRunning: "⏳ يفحص مفتاح كلود على أنثروبيك…",
     ownerDiagKey: "المفتاح: {k}",
     ownerDiagStatus: "الحالة: {s}",
@@ -2065,7 +2084,26 @@ const I18N = {
     ownerResetLink: "🔑 Recovery link for “{u}” (valid {m} min) — copy it and send it to them only:",
     ownerResetGoogle: "🔑 The account “{u}” signed up with Google and has no password — they sign in with “Continue with Google” using that same email.", // v-owner-reset-find
     ownerResetNotFound: "No account with this email or username.",
+    ownerLinkSubBtn: "Link Stripe subscription", // v-owner-link-sub
+    ownerLinkSubPh: "Subscription ID (sub_…)",
+    ownerLinkSubConfirm: "🔗 Link subscription {s} ({plan}) to the account “{u}”?\nAccount email: {ae}\nStripe email: {se}\nPayments added now: {n} → +{p} points\nFuture renewals will be added to the account automatically.",
+    ownerLinkSubMismatch: "⚠️ The account email differs from the Stripe email — make sure they own the subscription.",
+    ownerLinkSubPrev: "⚠️ The subscription was under the name “{u}”, and that account is deleted or does not exist.",
+    ownerLinkSubSkipped: "{n} payment(s) refunded, disputed or with an unknown charge — they will not be added.",
+    ownerLinkSubDone: "✅ Subscription linked to “{u}”: +{p} points for {n} payment(s). Future renewals will be added automatically.",
+    ownerLinkSubTaken: "❌ This subscription is already linked to the account “{u}”.",
+    ownerLinkSubNoSub: "Could not find this subscription in Stripe.",
+    ownerLinkSubBadId: "❌ Enter the Stripe subscription ID (it starts with sub_).",
+    ownerLinkSubNothing: "✅ The subscription is linked to this account and all its payments were already added.",
+    ownerLinkSubUnverified: "⚠️ This email reaches the account without verification — make sure they own the subscription before linking.",
+    ownerLinkSubKeepPlan: "ℹ️ The account has an active {plan} plan — it stays as is and only the points are added.",
     ownerResetMany: "More than one account paid with this email: {list} — ask the person for their account name and type it in the box.", // v-owner-reset-stripe
+    ownerResetMaybe: "No account proves this email. Possible accounts: {list} — confirm with the person, then type the name in the box.", // v-owner-reset-records
+    ownerResetAsk: "Searched the accounts, Google, Stripe and PayPal. Ask the person for their username.", // v-owner-reset-records
+    ownerResetPaypalOff: "Full PayPal search is off: enable “Transaction search” for your app on developer.paypal.com (Apps & Credentials → Live → your app → Features); it can take a few hours to start working.", // v-owner-reset-records
+    ownerResetPartial: "The search did not finish (a temporary error or timeout in one source) — try again in a few minutes, or ask the person for their username.", // v-owner-reset-records
+    ownerResetNameMaybe: "No account has exactly this name. Close names: {list} — confirm with the person, then type the account name in the box.", // v-owner-reset-records
+    ownerResetManyRec: "More than one account has proven this email: {list} — ask the person for their account name and type it in the box.", // v-owner-reset-records
     ownerDiagRunning: "⏳ Checking the Claude key with Anthropic…",
     ownerDiagKey: "Key: {k}",
     ownerDiagStatus: "Status: {s}",
@@ -3082,16 +3120,16 @@ Object.assign(I18N.en, {"decorIdeasTitlePoster":"Ideas without a photo — tap a
 /* v-play-invite — بطاقة دعوة مختبري الاختبار المغلق في Google Play لمتصفّح أندرويد (١٤ لغة) */
 Object.assign(I18N.ar, {"playTestTitle": "جرّب تطبيقنا على Google Play قبل الجميع", "playTestHint": "خطوتان بحساب Google نفسه الذي في جوّالك، ثمّ أبقِ التطبيق مثبّتًا ١٤ يومًا لنستطيع نشره.", "playTestStep1": "١. انضمّ للمختبرين", "playTestStep2": "٢. فعّل الاختبار وثبّت"});
 Object.assign(I18N.en, {"playTestTitle": "Try our app on Google Play before everyone", "playTestHint": "Two steps with the same Google account as on your phone, then keep the app installed for 14 days so we can publish it.", "playTestStep1": "1. Join the testers", "playTestStep2": "2. Opt in and install"});
-/* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
+/* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-03-i18n-data:3123'); /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
 /* v-opt-xl (طلب عمران: «في الديكور كلهم» بغير لغتهم): جدول __OPT_XL يترجم
    خيارات القوائم لكل اللغات بمفتاح النص العربي — يُفحص قبل السقوط للإنجليزية. */
 window.__optXlLang=function(){try{var l=(typeof lang!=='undefined'&&lang)||localStorage.getItem('aiapp_lang')||'ar';return l==='ur'?'ar':l;}catch(_){ /* guard-ok: cosmetic. */ return 'ar';}};
 window.__optT=function(o){try{if(!o)return '';var tx=((o.textContent||'')+'').trim();var k=o.getAttribute('data-i18n');if(k&&typeof window.t==='function'){var v=window.t(k);if(v&&v!==k)return String(v).trim();}var ar0=o.getAttribute('data-ar')||tx;var l0=window.__optXlLang();if(l0!=='ar'&&l0!=='en'&&window.__OPT_XL){var r0=window.__OPT_XL[ar0];if(r0&&r0[l0])return r0[l0];}var en=o.getAttribute('data-en');if(en&&typeof window.__bT==='function')return window.__bT(ar0,String(en).trim());return tx;}catch(_){ /* guard-ok: option label lookup is cosmetic — falls back to raw text. */ return ((o&&o.textContent)||'')+''; }};
 /* v658: نصّ الخيار داخل الـDOM نفسه — كل مستهلك يقرأ textContent (بطاقات المقارنة، منتقي الاستوديو، مصغّرة البورتريه) كان يرى العربيّة في كلّ اللغات. */
-window.__optSync=function(root){try{var ns=(root||document).querySelectorAll('select option');var lx=window.__optXlLang?window.__optXlLang():'ar';for(var i=0;i<ns.length;i++){var o=ns[i];var k=o.getAttribute('data-i18n'),en=o.getAttribute('data-en');if(!k&&!en)continue;var cur=((o.textContent||'')+'').trim();if(!o.hasAttribute('data-ar')&&/[\u0621-\u064A]/.test(cur))o.setAttribute('data-ar',cur);var ar=o.getAttribute('data-ar')||cur;var out='';if(k&&typeof window.t==='function'){var v=window.t(k);if(v&&v!==k)out=String(v).trim();}if(!out&&lx!=='ar'&&lx!=='en'&&window.__OPT_XL){var rx=window.__OPT_XL[ar];if(rx&&rx[lx])out=rx[lx];}if(!out&&en&&typeof window.__bT==='function')out=window.__bT(ar,String(en).trim());if(!out)out=ar;if(out&&out!==cur)o.textContent=out;}}catch(_){ /* guard-ok: option label sync is cosmetic — the raw label stays. */ }};
+window.__optSync=function(root){try{var ns=(root||document).querySelectorAll('select option');var lx=window.__optXlLang?window.__optXlLang():'ar';for(var i=0;i<ns.length;i++){var o=ns[i];var k=o.getAttribute('data-i18n'),en=o.getAttribute('data-en');if(!k&&!en)continue;var cur=((o.textContent||'')+'').trim();if(!o.hasAttribute('data-ar')&&/[\u0621-\u064A]/.test(cur))o.setAttribute('data-ar',cur);var ar=o.getAttribute('data-ar')||cur;var out='';if(k&&typeof window.t==='function'){var v=window.t(k);if(v&&v!==k)out=String(v).trim();}if(!out&&lx!=='ar'&&lx!=='en'&&window.__OPT_XL){var rx=window.__OPT_XL[ar];if(rx&&rx[lx])out=rx[lx];}if(!out&&en&&typeof window.__bT==='function')out=window.__bT(ar,String(en).trim());if(!out)out=ar;if(out&&out!==cur)o.textContent=out;}}catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-03-i18n-data:3130'); /* guard-ok: option label sync is cosmetic — the raw label stays. */ }};
 /* v658: أي عنصر يحمل data-bi (نصّه الإنجليزيّ) يُترجم من القاموس الثنائيّ __BI. */
-window.__biSync=function(root){try{var ns=(root||document).querySelectorAll('[data-bi]');for(var i=0;i<ns.length;i++){var e=ns[i];var cur=((e.textContent||'')+'').trim();if(!e.hasAttribute('data-ar'))e.setAttribute('data-ar',cur);var ar=e.getAttribute('data-ar')||cur;var en=e.getAttribute('data-bi')||'';var out=(typeof window.__bT==='function')?window.__bT(ar,en):ar;if(!out)out=ar;if(e.hasAttribute('data-bi-space')&&out!==ar)out=' '+out+' ';if(out!==e.textContent)e.textContent=out;}}catch(_){ /* guard-ok: label sync is cosmetic — the raw label stays. */ }};
+window.__biSync=function(root){try{var ns=(root||document).querySelectorAll('[data-bi]');for(var i=0;i<ns.length;i++){var e=ns[i];var cur=((e.textContent||'')+'').trim();if(!e.hasAttribute('data-ar'))e.setAttribute('data-ar',cur);var ar=e.getAttribute('data-ar')||cur;var en=e.getAttribute('data-bi')||'';var out=(typeof window.__bT==='function')?window.__bT(ar,en):ar;if(!out)out=ar;if(e.hasAttribute('data-bi-space')&&out!==ar)out=' '+out+' ';if(out!==e.textContent)e.textContent=out;}}catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-03-i18n-data:3132'); /* guard-ok: label sync is cosmetic — the raw label stays. */ }};
 /* v658: نداء واحد يجمع الثلاثة — يُستدعى بعد applyLanguage وعند تغيّر lang. */
-window.__langSync=function(){try{if(window.__optSync)window.__optSync();}catch(_){ /* guard-ok: cosmetic. */ }try{if(window.__biSync)window.__biSync();}catch(_){ /* guard-ok: cosmetic. */ }try{if(window.__curRelabel)window.__curRelabel();}catch(_){ /* guard-ok: cosmetic. */ }};
-try{(function(){function go(){try{window.__langSync();}catch(_){ /* guard-ok: cosmetic. */ }}function arm(){setTimeout(go,600);setTimeout(go,1800);}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm();try{new MutationObserver(go).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});}catch(_){ /* guard-ok: observer is a safety net, not the main path. */ }})();}catch(_){ /* guard-ok: bootstrap is a safety net. */ }
+window.__langSync=function(){try{if(window.__optSync)window.__optSync();}catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-03-i18n-data:3134'); /* guard-ok: cosmetic. */ }try{if(window.__biSync)window.__biSync();}catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-03-i18n-data:3134'); /* guard-ok: cosmetic. */ }try{if(window.__curRelabel)window.__curRelabel();}catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-03-i18n-data:3134'); /* guard-ok: cosmetic. */ }};
+try{(function(){function go(){try{window.__langSync();}catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-03-i18n-data:3135'); /* guard-ok: cosmetic. */ }}function arm(){setTimeout(go,600);setTimeout(go,1800);}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm();try{new MutationObserver(go).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});}catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-03-i18n-data:3135'); /* guard-ok: observer is a safety net, not the main path. */ }})();}catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-03-i18n-data:3135'); /* guard-ok: bootstrap is a safety net. */ }

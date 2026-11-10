@@ -28,7 +28,7 @@ async function displayNameOf(key) {
   try {
     const u = await require('./auth.js').getUser(key);
     if (u && !u.deleted && u.username) return shownName(u.username);
-  } catch (e) { /* سجلّ مقفل أو عطل قراءة — الاسم الآمن من المفتاح نفسه */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/share:31'); /* سجلّ مقفل أو عطل قراءة — الاسم الآمن من المفتاح نفسه */ }
   return shownName(key);
 }
 // v-share-pages-i18n (تدقيق ١٨ أكتوبر): الاسم الافتراضيّ العربيّ كان يخرج كما هو فيظهر «By زائر» في الإنجليزيّة. عند القراءة
@@ -53,7 +53,7 @@ async function putBlob(path, obj) {
 async function deleteBlobs(paths) {
   try {
     await Promise.all(paths.map((p) => kvDel(p)));
-  } catch (e) {
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/share:56');
     // best-effort; ignore
   }
 }

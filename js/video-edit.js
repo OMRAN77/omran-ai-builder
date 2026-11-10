@@ -606,14 +606,14 @@
       needAudio: 'ആദ്യം ഓഡിയോ ഫയൽ തിരഞ്ഞെടുക്കുക അല്ലെങ്കിൽ ശബ്ദം തയ്യാറാക്കുക.', sec: 'സെ.'
     }
   };
-  function lang(){ var l = 'ar'; try{ l = localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ /* guard-ok — بلا تخزين = عربي */ } return l; }
+  function lang(){ var l = 'ar'; try{ l = localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video-edit:609'); /* guard-ok — بلا تخزين = عربي */ } return l; }
   function T_(k, rep){
     var d = S[lang()] || S.en, s = (d[k] != null ? d[k] : S.en[k]) || k;
     if(rep) Object.keys(rep).forEach(function(r){ s = s.split('{' + r + '}').join(String(rep[r])); });
     return s;
   }
   function dirRtl(){ var l = lang(); return l === 'ar' || l === 'ur'; }
-  function sw(e, tag){ try{ if(typeof window.__swallow === 'function') window.__swallow(e, tag); }catch(x){ /* guard-ok — المسجّل نفسه ترف */ } }
+  function sw(e, tag){ try{ if(typeof window.__swallow === 'function') window.__swallow(e, tag); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video-edit:616'); /* guard-ok — المسجّل نفسه ترف */ } }
   function tok(){ try{ return (typeof window.authGet === 'function' && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
   function gid(){ try{ return (typeof window.getGuestId === 'function' && window.getGuestId()) || ''; }catch(e){ return ''; } }
   function isMobile(){ return /Android|iPhone|iPad|iPod|Mobile|HarmonyOS/i.test(navigator.userAgent || ''); }
@@ -764,7 +764,7 @@
     return ffLoading;
   }
   function killFF(){ try{ if(ff) ff.terminate(); }catch(e){ sw(e, 'ved:kill'); } ff = null; ffLoading = null; st.written = false; }
-  async function rmf(n){ try{ await ff.deleteFile(n); }catch(e){ /* guard-ok — ملف غير موجود */ } }
+  async function rmf(n){ try{ await ff.deleteFile(n); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video-edit:767'); /* guard-ok — ملف غير موجود */ } }
   async function u8(blob){
     if(blob.arrayBuffer) return new Uint8Array(await blob.arrayBuffer());
     return await new Promise(function(res, rej){ var fr = new FileReader(); fr.onload = function(){ res(new Uint8Array(fr.result)); }; fr.onerror = rej; fr.readAsArrayBuffer(blob); });
@@ -1004,7 +1004,7 @@
     var v = vid(); if(!v || !st.file) return;
     if(v.paused || v.ended){ var p = v.play(); if(p && p.catch) p.catch(function(e){ sw(e, 'ved:play'); }); } else v.pause();
   }
-  function seekTo(t){ var v = vid(); try{ v.currentTime = Math.max(0, Math.min(st.dur || 0, t)); }catch(e){ /* guard-ok — قبل البيانات */ } }
+  function seekTo(t){ var v = vid(); try{ v.currentTime = Math.max(0, Math.min(st.dur || 0, t)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video-edit:1007'); /* guard-ok — قبل البيانات */ } }
   function syncCtl(){
     var v = vid(), b = K('play'); if(!v || !b) return;
     var playing = !v.paused && !v.ended, want = playing ? 'pause' : 'play';
@@ -1051,7 +1051,7 @@
     M.setAttribute('dir', dirRtl() ? 'rtl' : 'ltr');
     M.classList.add('open');
     pickTexts();
-    try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitPick); }catch(e){ /* guard-ok — الحجم الأوّل يكفي */ }
+    try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitPick); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video-edit:1054'); /* guard-ok — الحجم الأوّل يكفي */ }
     loadFont('default').then(redraw);
     if(st.file) sizeStage();
   }
@@ -1059,7 +1059,7 @@
     if(!M) return;
     if(st.busy) cancel();
     setDrawMode(false);
-    var v = vid(); try{ v.pause(); }catch(e){ /* guard-ok */ }
+    var v = vid(); try{ v.pause(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video-edit:1062'); /* guard-ok */ }
     M.classList.remove('open');
   }
   /* v-audit-boot (cli-video-1): الخروج (chatsLogoutWipe في app-04) يفرّغ المحرّر — فيديو الحساب السابق ونصوصه وصوته ونتيجته لا تبقى
@@ -1180,7 +1180,7 @@
           if(!v.paused) v.pause();
         }
       }
-      try{ c.setPointerCapture(e.pointerId); }catch(x){ /* guard-ok */ }
+      try{ c.setPointerCapture(e.pointerId); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video-edit:1183'); /* guard-ok */ }
       e.preventDefault();
     });
     c.addEventListener('pointermove', function(e){
@@ -1212,7 +1212,7 @@
         if(e && e.type === 'pointerup') togglePlay();
       } else if(!d.moved && d.obj){
         var cardEl = Q('[data-' + (d.type === 'r' ? 'rid' : 'id') + '="' + d.obj.id + '"]');
-        if(cardEl){ try{ cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(x){ /* guard-ok */ } }
+        if(cardEl){ try{ cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video-edit:1215'); /* guard-ok */ } }
       }
       redraw();
     }
@@ -1473,7 +1473,7 @@
       K('outVid').src = st.outUrl; K('result').hidden = false;
       K('share').hidden = !(typeof window.omranShareMedia === 'function' || (navigator.canShare && navigator.share)); /* v-share-sheet: النافذة الموحّدة على كلّ جهاز */
       setBar(100); setStatus(T_('done'));
-      try{ K('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(e){ /* guard-ok */ }
+      try{ K('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video-edit:1476'); /* guard-ok */ }
     }catch(e){
       if(st.busy) setStatus(T_('fail', { e: (e && e.message) || e }));
       setBar(null);
@@ -1492,7 +1492,7 @@
     if(typeof window.omranShareMedia === 'function'){ window.omranShareMedia({ src: st.outBlob, name: OUT_NAME, kind: 'video', download: saveOut }); return; }
     try{
       var file = new File([st.outBlob], OUT_NAME, { type: 'video/mp4' });
-      if(navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'om ai' });
+      if(navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file] });
       else saveOut();
     }catch(e){ if(!(e && e.name === 'AbortError')) sw(e, 'ved:share'); }
   }

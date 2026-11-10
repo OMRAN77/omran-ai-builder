@@ -100,6 +100,31 @@ async function paypalWebhook(req, res) {
   }
 }
 
+/* v-owner-link-sub: metadata التجديد. نسخة الاشتراك على الفاتورة تُجمَّد عند إصدارها — قبل basil في subscription_details، وفي basil
+   وما بعده في parent.subscription_details (كان يُقرأ الأوّل وحده، ثمّ metadata أوّل سطر). اشتراكٌ ربطه المالك بحساب بعد أن دُفع بلا دخول
+   (sub-link.js) تحمل فاتورته المُصدَرة قبل الربط نسخةً بلا اسم، فكانت تُتجاهل والمشتركة تدفع. الآن: النسخة كما هي إن حملت الاسم (كما
+   كان حرفيًّا)؛ وإلّا metadata السطر (تعكس الاشتراك الحاليّ)؛ وإلّا metadata الاشتراك نفسه الآن من Stripe. الخطّة من النسخة أوّلًا.
+   عطب Stripe العابر يرمي ⇒ 500 فيعيد Stripe الحدث (لا نبتلع الشحن)؛ ٤٠٤ أو بلا مفتاح = لا اسم كما كان. */
+async function renewalMeta(obj) {
+  const parent = (obj.parent && obj.parent.subscription_details) || null;
+  const snap = (obj.subscription_details && obj.subscription_details.metadata) || (parent && parent.metadata) || null;
+  const line = (obj.lines && obj.lines.data && obj.lines.data[0] && obj.lines.data[0].metadata) || null;
+  const base = snap || line || {};
+  if (base.username) return base;
+  const withName = (m) => Object.assign({}, base, { username: m.username, plan: base.plan || m.plan });
+  if (line && line.username) return withName(line);
+  const idOf = (x) => (typeof x === 'string' ? x : (x && typeof x.id === 'string' ? x.id : ''));
+  const sub = idOf(obj.subscription) || idOf(parent && parent.subscription);
+  const key = String(process.env.STRIPE_SECRET_KEY || '').trim();
+  if (!sub || !key) return base;
+  const r = await fetch('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(sub), { headers: { Authorization: 'Bearer ' + key }, signal: AbortSignal.timeout(8000) });
+  if (r.status === 404) return base;
+  const d = r.ok ? await r.json().catch(() => null) : null;
+  if (!d) throw new Error('stripe ' + r.status + ' subscriptions'); // عابر: 500 فيُعاد الحدث
+  const live = d.metadata || {};
+  return live.username ? withName(live) : base;
+}
+
 module.exports = async (req, res) => {
   if (req.query && req.query.src === 'wa') return waWebhook(req, res); // v-phone-link
   if (req.query && req.query.src === 'paypal') return paypalWebhook(req, res); // v-pay-refund
@@ -132,8 +157,7 @@ module.exports = async (req, res) => {
       }
     } else if (event.type === 'invoice.paid') {
       // تجديد شهري فقط — فاتورة الإنشاء الأولى غطّاها حدث الجلسة أعلاه.
-      const md = (obj.subscription_details && obj.subscription_details.metadata)
-        || (obj.lines && obj.lines.data && obj.lines.data[0] && obj.lines.data[0].metadata) || {};
+      const md = obj.billing_reason === 'subscription_cycle' ? await renewalMeta(obj) : {};
       if (obj.billing_reason === 'subscription_cycle' && md.username && PLANS[md.plan]) {
         const pays = (obj.payments && Array.isArray(obj.payments.data)) ? obj.payments.data.map((x) => x && x.payment).filter(Boolean) : [];
         const g = await grantPlanToUser(md.username, md.plan, 'lastStripeInvoiceId', obj.id, { // v-pay-refund: سجلّ المنح بأرقام دفعته

@@ -491,13 +491,6 @@ try{
   }
   function memoryTopicsBlock(){
     return ''; // 🚫 v368: أوقفنا حقن مواضيع المحادثات السابقة نهائيًا — كانت تسبب تداخل المواضيع. الذاكرة الشخصية (الاسم/التفضيلات) تبقى.
-    if(!userTopics || !userTopics.length) return '';
-    const lines = userTopics.slice(0, 10).map(tp => {
-      let dt = '';
-      try{ dt = new Date(tp.at || 0).toLocaleDateString('ar-AE', { day: 'numeric', month: 'short' }); }catch(e){ __swallow(e, "misc:app-01-boot-auth#7"); }
-      return '- [' + dt + '] ' + (tp.title || '') + ': ' + (tp.snip || '');
-    }).join('\n');
-    return '\n\n🗂️ مواضيع محادثات المستخدم السابقة (مرجع فقط): إذا أشار المستخدم بنفسه لعمل سابق (مثل «كمل على اللي سويناه أمس» أو «وين تصميم الدعاية») ولا يوجد في المحادثة الحالية ما يفسره، افهم قصده من هذه القائمة وكمّل عليه بشكل طبيعي. ممنوع منعًا باتًا فتح أو ذكر أي موضوع منها من عندك بدون إشارة صريحة من المستخدم:\n' + lines;
   }
   function memorySystemMsg(){
     if(!userMemory && !(userTopics && userTopics.length)) return null;
@@ -839,31 +832,117 @@ try{
   };
   /* v-owner-reset-link: رابط استرجاع يسلّمه المالك بيده لصاحب الحساب (واتساب…) حين لا يصله إيميل الاسترجاع.
      التأكيد يذكّر بالتحقّق من صاحب الحساب أوّلًا، والرابط في prompt لينسخه، ويُنسخ تلقائيًّا إن سمح المتصفّح. */
-  window.adminResetLink = async function(username){
-    if(!confirm(ownT('ownerResetConfirm', { u: ownIso(username) }))) return;
+  /* v-owner-reset-records (المراجعة المستقلّة): من خانة البحث (opts.lookup) يُسأل الخادم أوّلًا بفحص لا يكتب (dryRun)، فيرى المالك اسم
+     الحساب الذي وُجد قبل أن يؤكّد — كان التأكيد على البريد المكتوب، ثمّ يُكتب الرمز لأيّ حساب اختاره البحث. بعد التأكيد يُطلب الرابط بذلك
+     الاسم نفسه فلا يُعاد البحث. زرّ 🔑 في صفّ الجدول (اسم معروف) كما كان: تأكيد ثمّ رابط. */
+  /* v-owner-reset-records (مراجعة الواجهة): رفض الخادم بنصّ مترجم — الجلسة المنتهية «غير مصرّح»، والسجلّ المقفل برسالته، والباقي «فشل» ورقم الردّ */
+  const resetFail = (res, data) => {
+    if(data && data.error === 'forbidden') return ownT('ownerUnauthorized');
+    if(data && data.error === 'sealed_record' && data.message) return String(data.message);
+    return ownT('ownerFailed') + ' (HTTP ' + (res && res.status) + ')';
+  };
+  window.adminResetLink = async function(username, opts){
+    const lookup = !!(opts && opts.lookup);
+    if(!lookup && !confirm(ownT('ownerResetConfirm', { u: ownIso(username) }))) return;
     try{
       const token = authGet('aiapp_auth_token');
-      const res = await fetch('/api/admin-actions', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ token, action: 'reset-link', targetUsername: username }),
-      });
-      const data = await res.json();
+      const post = async (body) => {
+        const r = await fetch('/api/admin-actions', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(Object.assign({ token, action: 'reset-link' }, body)),
+        });
+        return { res: r, data: await r.json().catch(() => ({})) }; /* صفحة خطأ نصّيّة (٥٠٤) لا ترمي خطأ JSON في وجه المالك */
+      };
+      let { res, data } = await post(lookup ? { targetUsername: username, dryRun: true } : { targetUsername: username, exact: true });
       // v-owner-reset-find: حساب Google لا كلمة مرور له، والغائب برسالة مترجمة لا «user not found» خامًا
       if(data && data.google){ alert(ownT('ownerResetGoogle', { u: ownIso(data.username || username) })); return; }
-      if(res.status === 404){ alert('❌ ' + ownT('ownerResetNotFound')); return; }
+      /* v-owner-reset-records: ما لا يثبت البريد يُعرض أسماءً للمالك لا رابطًا؛ والبحث الكامل بلا أثر يقول أين بحث ومن يُسأل، وغير المكتمل
+         (عطل مؤقّت أو مهلة) يقول ذلك بدل «دوّرت في كلّ شيء»؛ وPayPal المقفل يقول ما يفعّله المالك */
+      const names = (data && Array.isArray(data.candidates)) ? data.candidates.map(ownIso).join(' · ') : '';
+      const ppOff = (data && data.paypal && data.paypal.denied) ? '\n' + ownT('ownerResetPaypalOff') : '';
+      if(res.status === 404){
+        if(names){ alert('⚠️ ' + ownT(String(username).includes('@') ? 'ownerResetMaybe' : 'ownerResetNameMaybe', { list: names }) + ppOff); return; }
+        const where = (data && data.records) ? '\n' + ownT(data.complete === false ? 'ownerResetPartial' : 'ownerResetAsk') : '';
+        alert('❌ ' + ownT('ownerResetNotFound') + where + ppOff);
+        return;
+      }
       // v-owner-reset-stripe: بريد دفع منه أكثر من حساب في Stripe — لا رابط تلقائيّ، المالك يسأل صاحبه عن اسمه ويكتبه في الخانة
-      if(res.status === 409 && data && Array.isArray(data.candidates) && data.candidates.length){ alert('⚠️ ' + ownT('ownerResetMany', { list: data.candidates.map(ownIso).join(' · ') })); return; }
-      if(!res.ok || !data.ok || !data.link){ alert('❌ ' + (data.error || ownT('ownerFailed'))); return; }
+      if(res.status === 409 && names){ alert('⚠️ ' + ownT(data.kind === 'record' ? 'ownerResetManyRec' : 'ownerResetMany', { list: names })); return; }
+      if(lookup){
+        if(!res.ok || !data.ok || !data.username){ alert('❌ ' + resetFail(res, data)); return; }
+        const found = String(data.username);
+        const label = found === String(username).trim().toLowerCase() ? ownIso(found) : ownIso(found) + ' ← ' + ownIso(username);
+        if(!confirm(ownT('ownerResetConfirm', { u: label }))) return;
+        ({ res, data } = await post({ targetUsername: found, exact: true }));
+        if(data && data.google){ alert(ownT('ownerResetGoogle', { u: ownIso(data.username || found) })); return; }
+      }
+      if(!res.ok || !data.ok || !data.link){ alert('❌ ' + resetFail(res, data)); return; }
       try{ if(navigator.clipboard) navigator.clipboard.writeText(data.link).catch(e => __swallow(e, 'reset-link clipboard')); }catch(e){ __swallow(e, 'reset-link clipboard'); }
       prompt(ownT('ownerResetLink', { u: ownIso(data.username || username), m: data.minutes || 30 }), data.link);
     }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) })); }
   };
   /* v-owner-reset-find: خانة «إيميل أو اسم مستخدم» فوق الجدول — للحساب الذي لا صفّ له (الجدول أحدث ٦٠ تسجيلًا). */
-  window.adminResetLinkFind = function(){
+  window.adminResetLinkFind = async function(){
     const el = document.getElementById('adminResetInput');
-    const v = el ? String(el.value || '').trim() : '';
+    /* v-owner-reset-records: علامات الاتّجاه المخفيّة (اسم منسوخ من تنبيه الأسماء أو من محادثة عربيّة) تُشال قبل الإرسال */
+    const v = el ? String(el.value || '').replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '').trim() : '';
     if(!v){ if(el) el.focus(); return; }
-    return window.adminResetLink(v);
+    /* v-owner-reset-records: البحث قد يأخذ ثواني (Stripe ثمّ كلّ الحسابات ثمّ PayPal) — الزرّ ينشغل فلا يُضغط مرّتين ولا يبدو معلّقًا */
+    const btn = el && el.parentNode ? el.parentNode.querySelector('button') : null; /* زرّ 🔑 جار الخانة في الصفّ نفسه */
+    if(btn){ btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.style.opacity = '.55'; }
+    try{ return await window.adminResetLink(v, { lookup: true }); }
+    finally{ if(btn){ btn.disabled = false; btn.removeAttribute('aria-busy'); btn.style.opacity = ''; } }
+  };
+  /* v-owner-link-sub: ربط اشتراك Stripe دُفع بلا دخول بحساب صاحبه. فحصٌ أوّلًا (بلا confirm — لا يكتب الخادم شيئًا) يعرض للمالك
+     الحساب وإيميله وإيميل Stripe والدفعات والنقاط ويحذّر إن اختلف الإيميلان، ثمّ التنفيذ بـconfirm:true بعد موافقته وحدها. */
+  let linkSubBusy = false; // v-owner-link-sub (المراجعة): ضغطتان لا تفتحان فحصين وتأكيدين وتنفيذين
+  window.adminLinkSubscription = async function(){
+    if(linkSubBusy) return;
+    const uEl = document.getElementById('adminLinkUserInput'), sEl = document.getElementById('adminLinkSubInput');
+    const who = uEl ? String(uEl.value || '').trim() : '';
+    const sub = sEl ? String(sEl.value || '').trim() : '';
+    if(!who){ if(uEl) uEl.focus(); return; }
+    if(!/^sub_[A-Za-z0-9]{6,}$/.test(sub)){ alert(ownT('ownerLinkSubBadId')); if(sEl) sEl.focus(); return; }
+    const call = async (expect) => {
+      const body = { token: authGet('aiapp_auth_token'), action: 'link-sub', targetUsername: who, subscriptionId: sub, confirm: expect !== undefined };
+      if(expect !== undefined) body.expect = expect; // التنفيذ على الحساب الذي عرضه الفحص نفسه
+      const res = await fetch('/api/admin-actions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      let data = {};
+      try{ data = (await res.json()) || {}; }catch(e){ __swallow(e, 'link-sub json'); }
+      return { res, data };
+    };
+    const why = (d) => [d.detail || d.error || ownT('ownerFailed'), d.code, d.at, d.plan].filter(Boolean).map(ownLtr).join(' · '); // رمز العطب للتشخيص
+    const failed = (r) => {
+      const d = r.data;
+      if(d.error === 'linked_other'){ alert(ownT('ownerLinkSubTaken', { u: ownIso(d.username || '?') })); return true; }
+      if(r.res.status === 404 && d.error === 'subscription not found'){ alert('❌ ' + ownT('ownerLinkSubNoSub')); return true; }
+      if(r.res.status === 404){ alert('❌ ' + ownT('ownerResetNotFound')); return true; }
+      if(d.error === 'partial'){ alert(ownT('ownerLinkSubDone', { u: ownIso(d.username), p: d.pointsAdded || 0, n: d.granted || 0 }) + '\n❌ ' + why(d)); return true; }
+      if(!r.res.ok || !d.ok){ alert('❌ ' + why(d)); return true; }
+      return false;
+    };
+    linkSubBusy = true;
+    try{
+      const a = await call();
+      if(failed(a)) return;
+      const d = a.data;
+      const pays = Array.isArray(d.payments) ? d.payments : [];
+      const skipped = pays.filter(x => x && ['refunded', 'blocked', 'unverified', 'review', 'old'].includes(x.state)).length;
+      if(!(d.toGrant > 0) && d.linkedTo && d.linkedTo === d.username){ alert(skipped ? ownT('ownerLinkSubSkipped', { n: skipped }) : ownT('ownerLinkSubNothing')); return; } // مربوط ولا جديد: لا تأكيد
+      const ae = String(d.accountEmail || ''), se = String(d.customerEmail || '');
+      const lines = [];
+      if(d.previous) lines.push(ownT('ownerLinkSubPrev', { u: ownIso(d.previous) }));
+      if(d.accountEmailVerified === false) lines.push(ownT('ownerLinkSubUnverified'));
+      if(ae && se && ae.toLowerCase() !== se.toLowerCase()) lines.push(ownT('ownerLinkSubMismatch'));
+      lines.push(ownT('ownerLinkSubConfirm', { s: ownLtr(d.subscription), plan: ownLtr(d.planLabel || d.plan || ''), u: ownIso(d.username), ae: ae ? ownLtr(ae) : '—', se: se ? ownLtr(se) : '—', n: d.toGrant || 0, p: d.points || 0 }));
+      if(d.keepPlan && d.toGrant > 0) lines.push(ownT('ownerLinkSubKeepPlan', { plan: ownLtr(d.accountPlan || '') }));
+      if(skipped) lines.push(ownT('ownerLinkSubSkipped', { n: skipped }));
+      if(!confirm(lines.join('\n'))) return;
+      const b = await call(d.username);
+      if(failed(b)) return;
+      alert(ownT('ownerLinkSubDone', { u: ownIso(b.data.username), p: b.data.pointsAdded || 0, n: b.data.granted || 0 }));
+    }catch(e){ alert('❌ ' + ownT('ownerErrorLine', { e: ownErr(e) }));
+    }finally{ linkSubBusy = false; }
   };
   window.adminMessageUser = async function(username){
     const text = prompt(ownT('ownerMsgPrompt', { u: ownIso(username) }));
@@ -1093,14 +1172,14 @@ try{
       /* v-secret-vault: خزنة الأسرار للمالك وحده — بجانب لوحة التحكّم */
       /* v-media-purge (أمر المالك ٤ أكتوبر: «فيه زر في الحساب تنظيف التطبيق… فعل هذا»): زرّ «تنظيف التطبيق» نفسه
          عند المالك ينظّف روابط المشاركة القديمة من قاعدة البيانات (appFullCleanup)، فنصّه يقول ذلك. */
-      try{ if(isAdminUI){ const __h = $('#acctCleanupHintEl'), __b = $('#acctCleanupBtnEl'); if(__h){ __h.removeAttribute('data-i18n'); __h.textContent = 'يحذف صور وملفّات المشاركة الأقدم من ٧ أيّام من قاعدة البيانات لتحرير المساحة. الحسابات والمحادثات لا تُمسّ.'; } if(__b){ __b.removeAttribute('data-i18n'); __b.textContent = 'نظّف الآن'; } } }catch(e){ /* guard-ok — نصّ المالك تجميليّ */ }
-      try{ const __vw = $('#vaultSectionWrap'); if(__vw){ __vw.style.display = isAdminUI ? '' : 'none'; if(isAdminUI && window.vaultRefresh) window.vaultRefresh(); } }catch(e){ /* guard-ok — قسم اختياريّ لا يُسقط الإعدادات */ }
+      try{ if(isAdminUI){ const __h = $('#acctCleanupHintEl'), __b = $('#acctCleanupBtnEl'); if(__h){ __h.removeAttribute('data-i18n'); __h.textContent = 'يحذف صور وملفّات المشاركة الأقدم من ٧ أيّام من قاعدة البيانات لتحرير المساحة. الحسابات والمحادثات لا تُمسّ.'; } if(__b){ __b.removeAttribute('data-i18n'); __b.textContent = 'نظّف الآن'; } } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1175'); /* guard-ok — نصّ المالك تجميليّ */ }
+      try{ const __vw = $('#vaultSectionWrap'); if(__vw){ __vw.style.display = isAdminUI ? '' : 'none'; if(isAdminUI && window.vaultRefresh) window.vaultRefresh(); } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1176'); /* guard-ok — قسم اختياريّ لا يُسقط الإعدادات */ }
       // القائمة تُملأ عند كشف القسم لا عند فتحه: زرّ «تحديث» موجود
       // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
       if(isAdminUI && window.loadVipList) window.loadVipList();
     }
     /* v-owner-page: صفّ «صفحة المالك» في قائمة الإعدادات يتبع الدخول والخروج */
-    try{ if(typeof renderSettingsNavList === 'function') renderSettingsNavList(); }catch(e){ /* guard-ok — القائمة تُبنى أيضًا عند فتح الإعدادات */ }
+    try{ if(typeof renderSettingsNavList === 'function') renderSettingsNavList(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1182'); /* guard-ok — القائمة تُبنى أيضًا عند فتح الإعدادات */ }
     // v-maha-dock: مها راسية بجانب المايك — الزر العائم لا يُظهر بعد الآن.
   }
   // Deferred (not called synchronously): I18N is declared further down in
@@ -1129,7 +1208,7 @@ try{
         const cleanUrl = window.location.origin + window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
       }
-    } catch(e){ /* ignore */ }
+    } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1211'); /* ignore */ }
   })();
 
   // v-google-app-fail: عرض سبب فشل جوجل — من رابط العودة (?gerror) أو من جسر
@@ -1145,7 +1224,7 @@ try{
     const text = code === 'access_denied' ? authMsg('axBootGoogleCancelled', 'Google sign-in was cancelled or not allowed — please try again', 'أُلغي الدخول من شاشة جوجل أو لم تسمح به — أعد المحاولة')
       : code === 'email_not_verified' ? authMsg('axBootGoogleUnverified', 'Your Google account email is not verified — verify it, then try again', 'بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة')
       : authMsg('axBootGoogleFailed', "Couldn't complete the Google sign-in ({code}) — please try again", 'تعذّر إكمال الدخول بجوجل ({code}) — أعد المحاولة', { code: '\u2066' + code + '\u2069' });
-    try { setMode('login'); showOverlay(); } catch(e){ /* فتح الشاشة تيسير؛ الرسالة محفوظة في الملاحظة على كلّ حال */ }
+    try { setMode('login'); showOverlay(); } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1227'); /* فتح الشاشة تيسير؛ الرسالة محفوظة في الملاحظة على كلّ حال */ }
     if(box){ box.style.color = ''; box.textContent = text; }
     // setMode('login') عند الإقلاع يمسح errBox — نعيد الكتابة بعده،
     // فالرسالة أهمّ من نظافة الصندوق: بدونها يعود «حاول مرة أخرى» الأعمى.
@@ -1213,7 +1292,7 @@ try{
         window.history.replaceState({}, document.title, cleanUrl);
         setTimeout(() => showGoogleAuthError(gerror), 700);
       }
-    } catch(e){ /* ignore */ }
+    } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1295'); /* ignore */ }
   })();
 
   /* v-google-login-help (لقطة المالك ٦ أكتوبر: بريد Gmail + كلمة مرور ← «اسم المستخدم أو الإيميل أو كلمة المرور غير صحيحة»):
@@ -1279,8 +1358,8 @@ try{
       // كاباسيتور نفسه يسجل جسر «bridge» في كل صفحة ويحقن window.Capacitor —
       // إشارتان مضمونتان لا توجدان في سفاري ولا PWA ولا أندرويد.
       let iosWrap = false;
-      try { iosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ /* guard-ok */ }
-      try { if(!iosWrap){ const mh = window.webkit && window.webkit.messageHandlers; iosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ /* guard-ok */ }
+      try { iosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1361'); /* guard-ok */ }
+      try { if(!iosWrap){ const mh = window.webkit && window.webkit.messageHandlers; iosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1362'); /* guard-ok */ }
       if (iosWrap) {
         // v-login-done: &app=1 يعلّم الخادم أن هذا مسار الغلاف — بعد نجاح
         // الدخول يعرض سفاري صفحة «✅ ارجع للتطبيق» بدل نسخة كاملة من الموقع.
@@ -1298,7 +1377,7 @@ try{
          تبويب متصفّح منفصل (Custom Tab)، والعودة كانت تفتح الموقع كاملًا هناك فيحسب المستخدم أنّه دخل وهو خارج التطبيق.
          &app=1 = صفحة «✅ ارجع للتطبيق» هناك، وجسر oauth-claim أعلاه يكمل الدخول هنا. Chrome (TWA) والمتصفّح كما كانا. */
       let androidWrap = false;
-      try { const ua = navigator.userAgent || ''; androidWrap = /Android/i.test(ua) && /;\s*wv\)/.test(ua); } catch(e){ /* guard-ok — كشف تيسير، وغيابه = المسار العاديّ */ }
+      try { const ua = navigator.userAgent || ''; androidWrap = /Android/i.test(ua) && /;\s*wv\)/.test(ua); } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:1380'); /* guard-ok — كشف تيسير، وغيابه = المسار العاديّ */ }
       if (androidWrap) {
         try {
           const bx = $('#authError');
@@ -1953,7 +2032,7 @@ try{
       if(ref && /^[a-zA-Z0-9_-]{3,64}$/.test(ref)){
         localStorage.setItem('aiapp_pending_ref', ref);
       }
-    } catch(e) { /* ignore */ }
+    } catch(e) { typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:2035'); /* ignore */ }
   })();
   window.requireLogin = (reason) => {
     setMode('login');
@@ -2056,9 +2135,9 @@ try{
   function build(){
     const tokL = get('aiapp_auth_token'), tokS = sget('aiapp_auth_token');
     let tokC = '';
-    try { const m = document.cookie.match(/(?:^|; )aiapp_auth_token=([^;]*)/); tokC = m ? m[1] : ''; } catch(e){ /* الكوكي محجوب في بعض السياقات — اللوحة تعرضه «غائبًا» وهذا صادق */ }
+    try { const m = document.cookie.match(/(?:^|; )aiapp_auth_token=([^;]*)/); tokC = m ? m[1] : ''; } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:2138'); /* الكوكي محجوب في بعض السياقات — اللوحة تعرضه «غائبًا» وهذا صادق */ }
     let note = null;
-    try { note = JSON.parse(get('aiapp_session_note') || 'null'); } catch(e){ /* قيد قديم بصيغة تالفة — تعرض اللوحة «لم يُسجَّل بعد» بدل الانهيار */ }
+    try { note = JSON.parse(get('aiapp_session_note') || 'null'); } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-01-boot-auth:2140'); /* قيد قديم بصيغة تالفة — تعرض اللوحة «لم يُسجَّل بعد» بدل الانهيار */ }
     const bundle = (document.querySelector('script[src*="app.bundle"]') || {}).src || '—';
     const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
 

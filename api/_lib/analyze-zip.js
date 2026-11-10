@@ -101,7 +101,7 @@ module.exports = async function handler(req, res) {
       res.status(gate.reason === 'auth' ? 401 : 429).json({ error: gate.reason === 'auth' ? 'سجّل الدخول لتحليل الأرشيف.' : 'وصلت للحدّ اليوميّ لتحليل الأرشيفات.' });
       return;
     }
-    const refundGate = () => { try { usage.refundCustom(token, guestId, usage.clientIp(req), 'analyze-zip'); } catch (e) { /* أفضل جهد */ } };
+    const refundGate = () => { try { usage.refundCustom(token, guestId, usage.clientIp(req), 'analyze-zip'); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/analyze-zip:104'); /* أفضل جهد */ } };
 
     // مسار الرفع المباشر (fileBase64) هو الأساسي الآن.
     //

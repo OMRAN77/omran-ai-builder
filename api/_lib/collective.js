@@ -71,7 +71,7 @@ async function readBank() {
   try {
     const d = await kvGetJSON(KEY);
     if (d && Array.isArray(d.facts)) return d;
-  } catch (e) { /* الصمت مقصود: البنك كماليّ، لا يُسقط طلبًا */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/collective:74'); /* الصمت مقصود: البنك كماليّ، لا يُسقط طلبًا */ }
   return { facts: [] };
 }
 
@@ -144,7 +144,7 @@ async function learn(username, userText, aiText) {
   for (const fact of parseFacts(raw)) {
     const t = String(fact).trim();
     if (!mechanicalOk(t, username)) continue;
-    try { await addFact(username, t); } catch (e) { /* صمت */ }
+    try { await addFact(username, t); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/collective:147'); /* صمت */ }
   }
 }
 

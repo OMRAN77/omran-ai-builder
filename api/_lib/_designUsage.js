@@ -3,14 +3,11 @@
 // runs on the owner's key, so it requires a logged-in account and has its
 // own small daily counter, completely separate from chat usage (db/usage/)
 // and video usage (db/video-usage/). Resets automatically each day (UTC).
-const crypto = require('crypto');
 // v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
 const quotaTally = require('./_dailyQuota.js');
 // v-plan-caps: الحدّ أدناه للمجّانيّ، والمشترك بباقة سارية بنسبة سقف محادثته (_planCap.js).
 const { planScaledLimit, planLimitInfo } = require('./_planCap.js');
 const { isBanned } = require('./auth.js');
-
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
 // v-owner-open: المالك (بأي من أسمائه في OWNER_USERNAMES أو OWNER_USERNAME)
 // وقائمة VIP بلا حدود — كان المالك نفسه محدودًا هنا.
@@ -25,17 +22,9 @@ async function __unlimitedUser(username) {
 
 const DESIGN_DAILY_LIMIT = 3;
 
+// v-session-dedupe: رمز الجلسة كما يصنعه auth.makeToken حرفيًّا (u نصّ، exp رقم في المستقبل) — نسخة محلّيّة كانت تقبل حمولة بلا exp
 function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
+  return require('./_session.js').sessionUser(token);
 }
 
 // Verifies the session token and checks the daily quota.
