@@ -993,8 +993,9 @@ test('٢٠. أوامر الأداة: البطاقة بمقاس الملفّ وإ
   assert.ok(mk.includes('if(pl.fast){ frame=await bgrab(); ecStale(my); }\n    if(!frame) frame=await ecLast(ff,input,pl,my);\n    if(!frame&&!pl.fast){ frame=await bgrab(); ecStale(my); }'),
     'البطيء: الأداة تفكّ آخر لقطة بمصفوفة البطاقة (فكّ المتصفّح لـVP9 بلا وسم 601) والمتصفّح آخر حلّ — والترتيب يُشغَّل في ٢٤');
   const lst = v.slice(v.indexOf('async function ecLast('), v.indexOf('async function ecMake('));
-  assert.ok(lst.includes("var vf='scale=in_color_matrix='+ecMatrix(pl)+':flags=accurate_rnd+full_chroma_int,format=rgb24,setparams=color_primaries=unknown:color_trc=unknown';")
-    && lst.includes("{colorSpaceConversion:'none'}") && lst.includes("'-vf',vf,'-update','1','ec_last.png'"), 'PNG آخر لقطة بلا وسوم ألوان (gAMA/cHRM كانت تفتّح البطاقة) ويُفكّ بلا إدارة ألوان');
+  assert.ok(lst.includes("var vf='scale=in_color_matrix='+ecMatrix(pl)+':flags=accurate_rnd+full_chroma_int,format=rgb24,setparams=color_primaries=unknown:color_trc=unknown,sidedata=mode=delete';")
+    && lst.includes("{colorSpaceConversion:'none'}") && lst.includes("'-vf',vf,'-update','1','ec_last.png'"),
+    'PNG آخر لقطة بلا وسوم ألوان (gAMA/cHRM كانت تفتّح البطاقة) ولا ICC من بيانات الإطار (iCCP — سفاري يتجاهل colorSpaceConversion)، ويُفكّ بلا إدارة ألوان');
   assert.ok(mk.includes('if(!pl.ok) throw {code:ecWhy(pl,info,file.size,mob)};') && mk.includes("throw {code:'big'};"), 'السبب من ecWhy، وفوق حدّ النشر «big»');
 });
 
@@ -1224,8 +1225,13 @@ function ecLive(o) {
   return Object.assign(p, { F });
 }
 const VTS = '#tb 0: 1/1000\n0,          0,          0,       33,     4821, 0x1\n0,         33,       1967,       33,      812, 0x2\n0,         66,       1934,       33,      790, 0x3\n';
+/* MP4 قُصّ آخره بقائمة التحرير (مراجعة ثالثة): الحزم بعد القصّ تبقى حتّى المفتاح التالي بعلامة DISCARD ‏(F=0x4) — تُفكّ ولا تُعرض.
+   آخر عرض ١٩٫٩٦٧ ث لا ٤٠ ث؛ والمفتاح بلا F= (framecrc لا يكتبها لمفتاح عاديّ)، وS= بعد F= */
+const VTS_EDIT = '#tb 0: 1/1000\n0,          0,          0,       33,     4821, 0x1\n0,         33,      19934,       33,      812, 0x2, F=0x0\n'
+  + '0,         66,      19967,       33,      790, 0x3, F=0x0, S=1,        8\n0,        100,      20000,       33,     9585, 0x4, F=0x5\n'
+  + '0,        133,      30000,       33,     1340, 0x5, F=0x14\n0,        166,      40000,       33,     1340, 0x6, F=0x4, S=1,        8\n';
 const steps = (F) => F.execs.map((a) => (a === '-i /ecin/input' ? 'probe' : /ec_tb\.txt$/.test(a) ? 'atb' : /ec_vts\.txt$/.test(a) ? 'scan'
-  : /ec_last\.png$/.test(a) ? a.split(' -i ')[0] : /ec_card\.mp4$/.test(a) ? 'card' : /ec_out\.mp4$/.test(a) ? 'join' : a));
+  : /ec_last\.png$/.test(a) ? (a.startsWith('-i ') ? 'start' : a.split(' -i ')[0]) : /ec_card\.mp4$/.test(a) ? 'card' : /ec_out\.mp4$/.test(a) ? 'join' : a));
 
 test('٢٤. ecMake نفسه بأداة مزيّفة: آخر لقطة من آخر الفيديو لا الحاوية وبلا وسوم ألوان، والمتصفّح آخر حلّ للبطيء، والرقم لا يرجع ولا يكتبه عمل أُلغي', async () => {
   // البطيء (VP9) وصوته أطول: نافذة الحاوية فارغة ← حزم الفيديو بلا فكّ ← آخر عرض ١٫٩٦٧ ث (B-frames: ليس آخر سطر) ← نافذة منه
@@ -1234,15 +1240,24 @@ test('٢٤. ecMake نفسه بأداة مزيّفة: آخر لقطة من آخر
   const out = await L.ctx.ecMake(file, L.ctx.EC.run, (x) => ps.push(Math.round(x)));
   assert.deepEqual(steps(L.F), ['probe', 'atb', '-sseof -0.3', 'scan', '-ss 1.667', 'card', 'join'], 'كانت نوافذ الحاوية وحدها: صوت أطول = لا لقطة');
   const g = L.F.execs.find((a) => a.startsWith('-ss '));
-  assert.ok(g.endsWith('-map 0:0 -an -sn -dn -vf scale=in_color_matrix=bt709:flags=accurate_rnd+full_chroma_int,format=rgb24,setparams=color_primaries=unknown:color_trc=unknown -update 1 ec_last.png'), g);
+  assert.ok(g.endsWith('-map 0:0 -an -sn -dn -vf scale=in_color_matrix=bt709:flags=accurate_rnd+full_chroma_int,format=rgb24,setparams=color_primaries=unknown:color_trc=unknown,sidedata=mode=delete -update 1 ec_last.png'), g);
   assert.ok(L.F.execs.includes('-i /ecin/input -map 0:0 -c copy -f framecrc ec_vts.txt'), 'الفيديو وحده ونسخ بلا فكّ');
   assert.deepEqual([L.F.bitmaps, L.F.bgrabs], [[{ colorSpaceConversion: 'none' }], 0], 'PNG يُفكّ بلا إدارة ألوان، والمتصفّح لا يُسأل حين تنجح الأداة');
   assert.deepEqual(ps, [6, 8, 12, 14, 20, 44], 'لا ٠٪ أثناء أخذ اللقطة، ولا قفزة «لا حزمة بعد» إلى آخر المرحلة ثمّ رجوع');
   assert.deepEqual([out.name, out.type, out.size], ['v-om-ai.mp4', 'video/mp4', 4096]);
-  // كلّ نوافذ الأداة فارغة: المتصفّح آخر حلّ (كما كان قبل)، والنافذة المكرّرة لا تُعاد — ولا لقطة منه ولا منها = «frame»
+  // كلّ نوافذ الأداة فارغة: الفيديو الأقصر من النافذة من أوّله بلا قفز (القفز إلى ٠ لا يُخرج شيئًا من WebM بتوقيت سالب)، ثمّ نوافذ
+  // الحاوية كما كانت قبل المراجعتين، ثمّ المتصفّح آخر حلّ؛ والمكرّر لا يُعاد — ولا لقطة منه ولا منها = «frame»
   L = ecLive({ log: 'vp9', vts: VTS, grab: () => false }); L.F.browser = true;
   await L.ctx.ecMake(file, L.ctx.EC.run, () => {});
-  assert.deepEqual([steps(L.F).slice(2), L.F.bgrabs], [['-sseof -0.3', 'scan', '-ss 1.667', '-ss 0.000', 'card', 'join'], 1]);
+  assert.deepEqual([steps(L.F).slice(2), L.F.bgrabs], [['-sseof -0.3', 'scan', '-ss 1.667', 'start', '-sseof -3', '-sseof -15', 'card', 'join'], 1]);
+  // قائمة التحرير: حزم DISCARD لا تُحسب — كانت آخر توقيت ٤٠ ث فكلّ النوافذ بعد آخر لقطة معروضة (فارغة) و«ما قدرت أضيفه» حيث نجح 2d06e7a1
+  L = ecLive({ log: 'vp9', vts: VTS_EDIT, grab: (a) => a.startsWith('-ss 19.667 ') });
+  await L.ctx.ecMake(file, L.ctx.EC.run, () => {});
+  assert.deepEqual([steps(L.F).slice(2), L.F.bgrabs], [['-sseof -0.3', 'scan', '-ss 19.667', 'card', 'join'], 0], 'آخر عرض ١٩٫٩٦٧ لا ٤٠');
+  // وما وجده 2d06e7a1 (نوافذ الحاوية) يُجرَّب بعد نوافذ الحزم ولا يضيع
+  L = ecLive({ log: 'vp9', vts: VTS_EDIT, grab: (a) => a.startsWith('-sseof -15 ') });
+  await L.ctx.ecMake(file, L.ctx.EC.run, () => {});
+  assert.deepEqual([steps(L.F).slice(2), L.F.bgrabs], [['-sseof -0.3', 'scan', '-ss 19.667', '-ss 16.967', '-ss 4.967', '-sseof -3', '-sseof -15', 'card', 'join'], 0]);
   L = ecLive({ log: 'vp9', vts: VTS, grab: () => false });
   await assert.rejects(L.ctx.ecMake(file, L.ctx.EC.run, () => {}), (e) => e.code === 'frame');
   // حزم لا تُقرأ: نوافذ الحاوية الأوسع كما كانت

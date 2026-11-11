@@ -1045,9 +1045,10 @@
   function ecKill(){ var f=EC.ff; EC.ff=null; if(f){ try{ f.terminate(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:ec-kill'); /* guard-ok — العامل انتهى */ } } }
   /* آخر لقطة بالأداة بمصفوفة البطاقة (مراجعة ثانية): PNG بلا وسوم ألوان — مرمّزه ينقل وسوم الأصل إلى gAMA/cHRM فيديره المتصفّح فتبدأ
      البطاقة أفتح بنحو ٨ درجات — وبدقّة التحويل الكاملة. النافذة من آخر الحاوية أوّلًا ثمّ من آخر دفق الفيديو نفسه: صوت أطول أو لقطة
-     أخيرة ممدودة تترك نافذة الحاوية فارغة (كانت تفشل، أو ترمّز مئات اللقطات PNG) */
+     أخيرة ممدودة تترك نافذة الحاوية فارغة (كانت تفشل، أو ترمّز مئات اللقطات PNG). ولا ICC (iCCP) من بيانات الإطار: سفاري يتجاهل
+     colorSpaceConversion (مراجعة ثالثة) */
   async function ecLast(ff,input,pl,my){
-    var vf='scale=in_color_matrix='+ecMatrix(pl)+':flags=accurate_rnd+full_chroma_int,format=rgb24,setparams=color_primaries=unknown:color_trc=unknown';
+    var vf='scale=in_color_matrix='+ecMatrix(pl)+':flags=accurate_rnd+full_chroma_int,format=rgb24,setparams=color_primaries=unknown:color_trc=unknown,sidedata=mode=delete';
     var grab=async function(at){
       await ff.exec(['-hide_banner','-y'].concat(at,['-i',input,'-map','0:'+pl.v.i,'-an','-sn','-dn','-vf',vf,'-update','1','ec_last.png'])); ecStale(my);
       var bm=null;
@@ -1057,12 +1058,12 @@
     var f=await grab(['-sseof','-0.3']), end=-1;
     if(f) return f;
     await ff.exec(['-hide_banner','-y','-i',input,'-map','0:'+pl.v.i,'-c','copy','-f','framecrc','ec_vts.txt']); ecStale(my); /* حزم الفيديو بلا فكّ: آخر توقيت عرض */
-    try{ var t=new TextDecoder().decode(await ff.readFile('ec_vts.txt')), tb=/^#tb 0: (\d+)\/(\d+)\s*$/m.exec(t); if(tb) t.replace(/^0,\s*-?\d+,\s*(-?\d+),/gm,function(m,p){ end=Math.max(end,p*tb[1]/tb[2]); return m; }); }catch(e){ end=-1; /* guard-ok — بلا قراءة: نوافذ الحاوية كما كانت */ }
-    ecStale(my);
-    for(var w=[0.3,3,15],i=end>=0?0:1,at,prev='';i<w.length&&!f;i++){ /* نافذة مكرّرة (فيديو أقصر منها) لا تُعاد */
-      at=end>=0?Math.max(0,end-w[i]).toFixed(3):''; if(at&&at===prev) continue; prev=at;
-      f=await grab(at?['-ss',at]:['-sseof','-'+w[i]]);
-    }
+    try{ var t=new TextDecoder().decode(await ff.readFile('ec_vts.txt')), tb=/^#tb 0: (\d+)\/(\d+)\s*$/m.exec(t); if(tb) t.replace(/^0,\s*-?\d+,\s*(-?\d+),.*$/gm,function(m,p){ var fl=/F=0x([0-9a-f]+)/i.exec(m); if(!(fl&&parseInt(fl[1],16)&4)) end=Math.max(end,p*tb[1]/tb[2]); return m; }); }catch(e){ end=-1; /* guard-ok — بلا قراءة: نوافذ الحاوية كما كانت */ }
+    ecStale(my); /* حزمة F=0x4 (مقصوصة بقائمة التحرير) يُفكّ إطارها ولا يُعرض: لا تُحسب */
+    /* من آخر عرض ٠٫٣ و٣ و١٥ ث (الفيديو الأقصر منها من أوّله بلا قفز)، ثمّ نوافذ الحاوية كما كانت قبل المراجعتين؛ المكرّر لا يُعاد */
+    for(var w=[0.3,3,15],tries=[],seen={},i=0,k;i<w.length&&end>=0;i++) tries.push(end>w[i]?['-ss',(end-w[i]).toFixed(3)]:[]);
+    tries.push(['-sseof','-3'],['-sseof','-15']);
+    for(i=0;i<tries.length&&!f;i++){ k=tries[i].join(' '); if(seen[k]) continue; seen[k]=1; f=await grab(tries[i]); }
     return f;
   }
   /* المسار كلّه لملفّ واحد ← File mp4 جاهز للعرض والنشر. نسخة أداة خاصّة به تُنهى بعده (الذاكرة على الجوّال) */
