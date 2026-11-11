@@ -68,6 +68,8 @@ const SPEC = {
   VIDEO_ENHANCE_CAP_CENTS:['tunable', 'بديل: ١٠٠٠ — سقف صرفنا اليوميّ عند المزوّد بالسنت (يوم UTC)؛ ٠ يغلق'],
   VIDEO_ENHANCE_TALL_OK:  ['tunable', 'طبقات (بفواصل) تحقّق المالك من سعر مخرجها الطوليّ — بدونها المخرج الطوليّ للمالك وحده'],
   VIDEO_ENHANCE_UNTRIP:   ['tunable', 'الرمز المكتوب في سجلّ المالك لإعادة الفتح بعد القاطع (مهمّة فاقت تقديرها ثلاث مرّات)'],
+  // v-director-erase: «امسح اسم أو كتابة» بالذكاء في مخرج التطبيق (المالك وحده) — بمفتاح FAL_KEY نفسه، ٥ سنتات للمقطع
+  VIDEO_ERASE_CAP_CENTS:  ['tunable', 'بديل: ٢٠٠ — سقف صرف مسح الكتابة اليوميّ عند المزوّد بالسنت (يوم UTC، ٥ للمقطع)؛ ٠ يغلقه'],
   // v-trend-face-swap: تبديل وجه إطار ترندات Omni بوجه صورة الشخص — بمفتاح FAL_KEY نفسه؛ الأربعة لها بديل آمن في face-swap.js. تشغيله إنفاق بموافقة المالك
   TREND_FACE_SWAP:        ['tunable', 'بديل: off — off لا أحد · owner المالك وحده · on الجميع'],
   FACE_SWAP_MODEL:        ['tunable', 'بديل: fal-ai/flux-2/klein/9b/edit/lora (وبلا LoRA: fal-ai/flux-2/klein/9b/edit)'],

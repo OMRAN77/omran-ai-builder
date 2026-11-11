@@ -12,7 +12,8 @@
   و`colorSpaceConversion:'none'` عند الفكّ، وYUV→RGB الافتراضيّ يُعتم درجة أو اثنتين (`accurate_rnd+full_chroma_int`). و`-sseof` يُعدّ من آخر
   الحاوية لا الفيديو: صوت أطول = نافذة فارغة — آخر توقيت عرض من حزم الفيديو (framecrc بلا فكّ) ثمّ `-ss`؛ وframecrc يكتب حزم قائمة التحرير
   المقصوصة بـ`F=0x4` (تُفكّ ولا تُعرض: لا تُحسب) ولا يكتب `F=` لمفتاح عاديّ. وICC الإطار يصير iCCP في PNG (`sidedata=mode=delete`)، وWebKit يتجاهل
-  `colorSpaceConversion`. (v-director-endcard)
+  `colorSpaceConversion`. (v-director-endcard) وdelogo على حافّة الإطار نفسها يرفض السلسلة كلّها (بكسل من كلّ جهة)، وoverlay يكمل حتّى ينتهي آخر
+  مدخلَيه: قناع صورة متكرّرة مدّ الفيديو ثانيتين (`alphamerge=shortest=1` و`-frames:v`). (v-director-erase)
 - **`min-height:0` داخل عمود مرن محدود ينضغط:** `#vmkDirector` (flex عموديّ بـ`max-height` وتمرير) ضغط صفّ
   «الملفّ المختار» (`.vmk-cl-drop.has` بـ`min-height:0`) إلى ٢٦px فخرج زرّ «+» من حدوده حين طال المحتوى (فيديو + لوحة النشر). الصنف نفسه سليم
   في «تحسين الفيديو» لأنّ حاويته ليست مرنة محدودة. أيّ عنصر يُعاد استعماله داخل المخرج: `flex-shrink:0`، وتُفحص لقطته بمحتوى طويل. (v-director-upload)

@@ -456,8 +456,13 @@
       /* v-director-upload: صندوق «ارفع فيديو جاهز» — بشكل صندوق «تحسين الفيديو»، والفيديو المرفوع يأخذ مكان فيديو المخرج تحته */
       +'<label class="vmk-cl-drop vmk-dir-up" id="vdUp"><input type="file" accept="video/*" id="vdUpFile"><span class="vmk-cl-plus">+</span><span class="vmk-cl-pick"></span><small class="vmk-cl-lim"></small></label>'
       +'<label class="vmk-dir-ec" id="vdEcBox"><input type="checkbox" id="vdEc"><span></span></label>' /* v-director-endcard: «أضف باركود التطبيق في آخر الفيديو» */
+      +'<div class="vmk-dir-er" id="vdErRow" hidden><button type="button" id="vdErBtn"></button><button type="button" id="vdErUndo" hidden></button></div>' /* v-director-erase */
       +'<p class="vmk-dir-msg" id="vdUpMsg"></p>'
-      +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video><div class="vmk-dir-acts"><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a><button type="button" class="vmk-dir-dl vmk-pub-btn" id="vdPubBtn"></button></div>'
+      +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video>'
+        /* v-director-erase: محرّر المربّعات — لقطة من الأصل يُرسم عليها، وشريط لاختيار اللقطة */
+        +'<div class="vmk-er" id="vdEr" hidden><p class="vmk-er-hint" id="vdErHint"></p><canvas id="vdErCv" width="16" height="9"></canvas><input type="range" id="vdErT" min="0" max="1000" value="0">'
+        +'<div class="vmk-er-acts"><button type="button" class="vmk-er-go" id="vdErFree"></button><button type="button" class="vmk-er-go" id="vdErAi"></button><button type="button" id="vdErClear"></button><button type="button" id="vdErClose"></button></div></div>'
+        +'<div class="vmk-dir-acts"><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a><button type="button" class="vmk-dir-dl vmk-pub-btn" id="vdPubBtn"></button></div>'
         /* v-director-publish: لوحة «انشر في حساباتي» — النصّ والمنصّات الموصولة ثمّ «انشر الآن» */
         +'<div class="vmk-pub" id="vdPub" hidden><label class="vmk-pub-cap"><span></span><textarea id="vdPubCap" rows="3" maxlength="2200"></textarea></label>'
         +'<div class="vmk-pub-plats" id="vdPubPlats"></div><button type="button" class="vmk-pub-go" id="vdPubGo"></button><p class="vmk-pub-msg" id="vdPubMsg"></p><ul class="vmk-pub-res" id="vdPubRes"></ul></div></div>';
@@ -474,6 +479,7 @@
     box.querySelector('#vdPubBtn').addEventListener('click',pbToggle); box.querySelector('#vdPubGo').addEventListener('click',pbGo); /* v-director-publish */
     upBind(box.querySelector('#vdUp'),box.querySelector('#vdUpFile')); /* v-director-upload */
     box.querySelector('#vdEc').addEventListener('change',function(e){ ecToggle(!!e.target.checked); }); /* v-director-endcard */
+    erBind(box); /* v-director-erase */
     box.querySelector('#vdKind').addEventListener('change',syncDirector); /* v-director-story: القصّة حدّها ٣٠٠٠ حرف وبلا مدّة ولا صورة مرجع */
   }
   function drStory(){ return ((id('vdKind')||{}).value==='story'); }
@@ -671,7 +677,7 @@
     });
   }
   async function pbGo(){
-    if(PB.busy||EC.busy||!drOwner()||!DR.out) return; /* v-director-endcard: لا نشر أثناء إضافة الباركود (يُرفع الأصل بدلها) */
+    if(PB.busy||EC.busy||ER.busy||!drOwner()||!DR.out) return; /* v-director-endcard: لا نشر أثناء إضافة الباركود (يُرفع الأصل بدلها) — ولا أثناء مسح الكتابة (v-director-erase) */
     var capEl=id('vdPubCap'), cap=String((capEl||{}).value||'').trim();
     var picked=[].map.call((id('vdPubPlats')||document).querySelectorAll('input:checked'),function(c){ return c.value; }).filter(function(p){ return !PB.sent[p]; });
     if(!cap){ pbMsg(L('vdPubNeedCap'),true); if(capEl) capEl.focus(); return; }
@@ -791,13 +797,15 @@
   function upMsg(t,err){ var m=id('vdUpMsg'); if(!m) return; m.textContent=t||''; m.className='vmk-dir-msg'+(err?' err':''); }
   /* v-director-endcard: توليد جديد في المخرج يترك المرفوع (drReset يخفيه): إضافة الباركود الجارية تُلغى (كانت تقفل «انشر الآن» على فيديو
      المخرج ورسالتها تبقى تحت الصندوق)، وروابطه والملفّ المبنيّ في الذاكرة (حتّى ٥٠٠ ميغا) تُترك للتحرير؛ المعروض يحرّره التوليد حين ينتهي */
-  function upEnd(){ ecDrop(DR.out); upMsg(''); DR.file=null; DR.fileUrl=''; }
+  function upEnd(){ erDrop(DR.out); ecDrop(DR.out); upMsg(''); DR.file=null; DR.fileUrl=''; } /* v-director-erase: المسح الجاري يُلغى والأصل المحفوظ يُحرَّر */
   function upPick(f){
     if(!f||!drOwner()||DR.busy||PB.busy) return;
     var type=upType(f);
     if(!type||!(f.size>0)){ upMsg(L('vdUpBadType'),true); return; }
     if(f.size>UP_MAX_MB*1048576){ upMsg(drT('vdPubBig',{n:UP_MAX_MB}),true); return; }
     if(upShown()&&DR.out!==DR.fileUrl&&!window.confirm(L('vdUpReplace'))) return; /* فيديو المخرج المعروض: يُحمَّل أوّلًا */
+    if(ER.busy&&ER.paid&&!window.confirm(L('vdErLose'))) return; /* v-director-erase: مسح بالذكاء مدفوع وجارٍ لا يضيع بلا سؤال */
+    erDrop(DR.out); /* v-director-erase: المسح الجاري يُلغى والأصل المحفوظ يُحرَّر */
     ecDrop(DR.out); /* v-director-endcard: إضافة جارية لملفّ سابق تُلغى وروابطه تُحرَّر */
     if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:up-revoke'); /* guard-ok — رابط زال */ } }
     DR.file=f; DR.fileType=type; DR.fileUrl=DR.out=URL.createObjectURL(f); pbNewVideo();
@@ -808,6 +816,7 @@
     drMsg(''); upMsg('');
     if(pub&&pub.hidden){ pub.hidden=false; pbLoad(); } /* المقصود النشر: اللوحة تُفتح مع الفيديو (بلا تركيز — لوحة مفاتيح الجوّال تغطّي الفيديو) */
     EC.src={file:f,type:type,url:DR.out}; /* v-director-endcard: الأصل محفوظ — إطفاء الخيار يعيده */
+    ER.orig=EC.src; /* v-director-erase: المسح من الأصل دائمًا، و«رجّع الأصل» يعيده */
     syncDirector();
     try{ if(res&&res.scrollIntoView) res.scrollIntoView({block:'nearest'}); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:up-scroll'); /* guard-ok — متصفّح بلا خيارات التمرير */ }
     if(ecPref()) ecStart(); /* v-director-endcard: الخيار مشغَّل = يُضاف الباركود فورًا والنشر ينتظره */
@@ -904,7 +913,7 @@
   }
   function ecEven(n){ n=Math.round(n); return Math.max(2,n-(n%2)); }
   /* الخطّة: «سريع» = لصق بلا إعادة ترميز حين تطابق البطاقة الملفّ تمامًا، وإلّا إعادة ترميز كاملة بحدود الجهاز */
-  function ecPlan(p,size,mob){
+  function ecPlan(p,size,mob,slow){ /* slow (v-director-erase): المسح يعيد الترميز دائمًا — حدود البطيء ومقاس مخرجه */
     var v=p.streams.filter(function(x){ return x.kind==='v'&&!x.pic; })[0], a=p.streams.filter(function(x){ return x.kind==='a'; })[0]||null;
     if(!v||!v.w||!v.h) return {ok:false,why:'novideo'};
     var swap=(p.rot===90||p.rot===270), pl={ok:true,dur:p.dur,rot:p.rot,v:v,a:a,fps:ecFps(v),w:v.w,h:v.h,dw:swap?v.h:v.w,dh:swap?v.w:v.h,order:(a&&a.i<v.i)?'av':'va'};
@@ -916,6 +925,7 @@
     else if(a&&p.atb!==a.sr) why='atb'; /* مقياس زمن الصوت غير معدّل العيّنة (أو لم يُقرأ): اللصق يمدّ صوت البطاقة أضعافًا */
     else if(!((v.i===0&&(!a||a.i===1))||(a&&a.i===0&&v.i===1))) why='order'; /* الدمج يطابق الدفقات بترتيبها */
     else if(v.w%2||v.h%2) why='odd';
+    if(!why&&slow) why='erase';
     pl.fast=!why; pl.why=why;
     var MB=1048576;
     if(pl.fast){ if(size>(mob?250:500)*MB) return {ok:false,why:'heavy'}; return pl; }
@@ -1134,7 +1144,7 @@
     EC.src=null; EC.out=null; EC.skip=null;
   }
   async function ecStart(){
-    var src=EC.src; if(!src||!drOwner()||!ecMine()||DR.busy||PB.busy) return;
+    var src=EC.src; if(!src||!drOwner()||!ecMine()||DR.busy||PB.busy||ER.busy) return; /* أثناء مسح الكتابة لا: يبدأ بعده على الممسوح */
     if(EC.out&&EC.out.of===src.file){ ecShow(EC.out.file,'video/mp4',EC.out.url); upMsg(L('vdEcDone')); return; } /* أُضيف قبل: بلا إعادة */
     ecCancel(); var my=++EC.run; EC.busy=true; EC.skip=null; ecPct(0); syncDirector();
     try{
@@ -1157,10 +1167,362 @@
   function ecToggle(on){
     if(ecLocked()){ syncDirector(); return; }
     ecSetPref(on); EC.skip=null;
-    if(!ecMine()||DR.busy||PB.busy){ syncDirector(); return; }
+    if(!ecMine()||DR.busy||PB.busy||ER.busy){ syncDirector(); return; } /* أثناء المسح: التفضيل وحده، والمسح يبدأ الباركود بعده إن كان مشغَّلًا */
     if(on){ ecStart(); return; }
     ecCancel(); upMsg('');
     if(DR.out!==EC.src.url) ecShow(EC.src.file,EC.src.type,EC.src.url); else syncDirector();
+  }
+  /* ═══ v-director-erase (المالك ١١ نوفمبر: «تنضيف الفيديو قبل النشر يعني علي اسم ولا كتابه اي شي اقدر اشيلها»، ثمّ «شوف الارخص» و«ابد»):
+     «امسح اسم أو كتابة» تحت صندوق الرفع: لقطة من الفيديو المرفوع يرسم عليها المالك مربّعات، فتُمسح من الفيديو كلّه قبل النشر —
+     «مجانًا» في الجهاز (delogo يملأ المربّع من حوافه، بأداة الفيديو نفسها وفي ترميز واحد)، أو «بالذكاء»: شريط حول المربّعات يُقطَّع
+     مقاطع ≤١٩٧ إطارًا ويُرفع مع قناعه (أسود = امسح) إلى نموذج مسح عند المزوّد بمفتاح التطبيق (٥ سنت للمقطع، بموافقة لكلّ تشغيل وسقف
+     يوميّ في الخادم — api/_lib/video-erase.js)، ثمّ تُركَّب النتيجة داخل المربّعات وحدها بحواف ناعمة (النموذج يعيد رسم الشريط كلّه)،
+     والمقطع الذي لا يرجع يُمسح مجانًا. الناتج H.264/AAC يصير مصدر الباركود (مساره السريع)، والأصل يبقى: «رجّع الأصل» يعيده. ═══ */
+  var ER={run:0,busy:false,ff:null,xhr:null,boxes:[],orig:null,out:null,v:null,drag:null,t:0,dur:0,paid:false};
+  var ER_MAXB=8, ER_CH=197, ER_CENTS=5, ER_MAXCH=30;
+  function erStale(my){ if(my!==ER.run) throw {code:'stale'}; }
+  function erKill(){
+    var f=ER.ff, x=ER.xhr; ER.ff=null; ER.xhr=null;
+    if(x){ try{ x.abort(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:er-abort'); /* guard-ok — رفع انتهى */ } }
+    if(f){ try{ f.terminate(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:er-kill'); /* guard-ok — العامل انتهى */ } }
+  }
+  function erCancel(){ ER.run++; erKill(); ER.busy=false; ER.paid=false; }
+  function erRevoke(u,keep){ if(u&&u!==keep){ try{ URL.revokeObjectURL(u); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:er-revoke'); /* guard-ok — رابط زال */ } } }
+  /* ملفّ جديد أو توليد: المسح الجاري يُلغى والمحرّر يُغلق، والأصل المحفوظ يُحرَّر إن لم يكن مصدر الباركود (ecDrop يحرّر ذاك والممسوح) */
+  function erDrop(keep){
+    erCancel(); erShut();
+    if(ER.orig&&!(EC.src&&EC.src.url===ER.orig.url)) erRevoke(ER.orig.url,keep);
+    ER.orig=null; ER.out=null; ER.boxes=[]; ER.dur=0;
+  }
+  function erShown(){ return !!(ER.orig&&ecMine()); } /* المعروض فيديو مرفوع: أصله أو ممسوحه، بالباركود أو بدونه */
+  function erLock(){ return DR.busy||PB.busy||ER.busy||ecLocked(); } /* رُفع المعروض للنشر: لا تبديل بعده (كالباركود) */
+  function erSay(k,p,x){ upMsg(drT(k,Object.assign({p:Math.max(0,Math.min(99,Math.round(p)))},x||{}))); }
+  function erName(n){ var b=String(n||'video').replace(/\.[A-Za-z0-9]{2,4}$/,'').replace(/[\\/:*?"<>|]+/g,'_').slice(-100)||'video'; return b+'-clean.mp4'; }
+  function erFpsNum(f){ var m=/^(\d+)\/(\d+)$/.exec(String(f)); return m?(+m[1])/(+m[2]):(+f||30); }
+  function erPad(i){ return ('00'+i).slice(-3); }
+  function erSleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+  /* مربّع (نسب من اللقطة) ← بكسلات الإطار كما يدخل المرشّحات (بعد الدوران، قبل SAR) بهامش صغير يغطّي حواف الحروف المنعَّمة،
+     وداخل الإطار ببكسل على الأقلّ من كلّ جهة — delogo على الحافّة نفسها يرفض السلسلة كلّها («Logo area is outside of the frame») */
+  function erPx(b,W,H){
+    var p=Math.max(2,Math.round(Math.min(W,H)*0.006));
+    var x=Math.floor(b.x*W+1e-6)-p, y=Math.floor(b.y*H+1e-6)-p, x2=Math.ceil((b.x+b.w)*W-1e-6)+p, y2=Math.ceil((b.y+b.h)*H-1e-6)+p; /* ٠٫٥٥×٧٢٠ = ٣٩٦٫٠٠٠٠٠٠١ لا يصير ٣٩٧ */
+    x=Math.max(1,Math.min(W-3,x)); y=Math.max(1,Math.min(H-3,y)); x2=Math.max(x+2,Math.min(W-1,x2)); y2=Math.max(y+2,Math.min(H-1,y2));
+    return {x:x,y:y,w:x2-x,h:y2-y};
+  }
+  function erDelogo(rects){ return rects.map(function(r){ return 'delogo=x='+r.x+':y='+r.y+':w='+r.w+':h='+r.h; }).join(','); }
+  /* المجّانيّ: ترميز واحد بمقاس البطيء ومصفوفته ووسومه (كالباركود)، والصوت AAC ستيريو ٤٨ك — فيأخذ الباركود بعده مساره السريع */
+  function erFreeArgs(pl,input,boxes){
+    var M=ecMatrix(pl), rects=boxes.map(function(b){ return erPx(b,pl.dw,pl.dh); });
+    var args=['-hide_banner','-y','-i',input,'-filter_complex','[0:'+pl.v.i+']'+erDelogo(rects)+',scale='+pl.ow+':'+pl.oh+':in_color_matrix='+M+':out_color_matrix='+M+',setsar=1,fps='+pl.fps+',format=yuv420p[v]','-map','[v]'];
+    if(pl.a) args.push('-map','0:'+pl.a.i);
+    args.push('-c:v','libx264','-preset','ultrafast','-crf','20','-pix_fmt','yuv420p'); args.push.apply(args,ecTags(pl));
+    if(pl.a) args.push('-c:a','aac','-b:a','160k','-ar','48000','-ac','2');
+    args.push('-movflags','+faststart','er_out.mp4');
+    return args;
+  }
+  /* الشريط للذكاء: حول المربّعات بهامش سياق، بنسبة مقاس النموذج (٦٧٢×٣٨٤ أو مقلوبه) وأدنى ٤٤٨×٢٥٦، داخل الإطار وبأبعاد زوجيّة؛
+     ومقاس الإرسال مضاعفات ١٦ بلا تكبير. المربّعات داخله بنسبه هو */
+  function erBand(boxes,W,H){
+    var px=boxes.map(function(b){ return erPx(b,W,H); });
+    var x0=Math.min.apply(null,px.map(function(r){ return r.x; })), y0=Math.min.apply(null,px.map(function(r){ return r.y; }));
+    var x1=Math.max.apply(null,px.map(function(r){ return r.x+r.w; })), y1=Math.max.apply(null,px.map(function(r){ return r.y+r.h; }));
+    var tall=(y1-y0)>(x1-x0), ar=tall?384/672:672/384, m=Math.round(Math.max(24,0.06*Math.max(x1-x0,y1-y0))); /* هامش صغير: الشريط العريض تمدّه النسبة نفسها، وكلّ هامش زائد يصغّر ما يرجع داخل المربّع */
+    var w=Math.max(x1-x0+2*m,tall?256:448), h=Math.max(y1-y0+2*m,tall?448:256);
+    if(w/h<ar) w=Math.round(h*ar); else h=Math.round(w/ar);
+    w=Math.min(W-(W%2),ecEven(w)); h=Math.min(H-(H%2),ecEven(h));
+    var x=Math.round((x0+x1)/2-w/2), y=Math.round((y0+y1)/2-h/2);
+    x=Math.max(0,Math.min(W-w,x)); y=Math.max(0,Math.min(H-h,y)); x-=x%2; y-=y%2;
+    var k=Math.min(1,(tall?384:672)/w,(tall?672:384)/h), SW=Math.max(64,Math.round(w*k/16)*16), SH=Math.max(64,Math.round(h*k/16)*16);
+    return {x:x,y:y,w:w,h:h,SW:SW,SH:SH,rects:px.map(function(r){ return {x:(r.x-x)/w,y:(r.y-y)/h,w:r.w/w,h:r.h/h}; })};
+  }
+  /* الشريط مقاطع بالضبط: مفتاح كلّ ١٩٧ إطارًا والمقسِّم يقطع عنده (هامش زمنيّ يمنع ضياع القطع بتقريب الوقت) */
+  function erBandArgs(pl,input,B){
+    var M=ecMatrix(pl), k=ER_CH;
+    return ['-hide_banner','-y','-i',input,'-filter_complex','[0:'+pl.v.i+']crop='+B.w+':'+B.h+':'+B.x+':'+B.y+',scale='+B.SW+':'+B.SH+':in_color_matrix='+M+':out_color_matrix='+M+',setsar=1,fps='+pl.fps+',format=yuv420p[v]',
+      '-map','[v]','-an','-c:v','libx264','-preset','ultrafast','-crf','12','-pix_fmt','yuv420p','-g',String(k),'-keyint_min',String(k),'-sc_threshold','0',
+      '-force_key_frames','expr:eq(mod(n,'+k+'),0)','-f','segment','-segment_time',(k/erFpsNum(pl.fps)).toFixed(6),'-segment_time_delta','0.05','-reset_timestamps','1','erb_%03d.mp4'];
+  }
+  function erSnap(n){ return Math.min(197,Math.max(69,69+Math.ceil(Math.max(0,n-69)/8)*8)); } /* قيم النموذج: ٦٩، ٧٧ … ١٩٧ */
+  /* قناع المقطع (أسود = امسح، أبيض = يبقى): صورة واحدة بمقاس الإرسال تتكرّر بعدد إطاراته، بلا فقد (qp 0) — رماديّ الحواف يقرؤه
+     النموذج «منطقة متأثّرة» */
+  function erMaskPng(B){
+    var c=document.createElement('canvas'); c.width=B.SW; c.height=B.SH; var x=c.getContext('2d');
+    x.fillStyle='#fff'; x.fillRect(0,0,B.SW,B.SH); x.fillStyle='#000';
+    B.rects.forEach(function(r){ x.fillRect(Math.floor(r.x*B.SW),Math.floor(r.y*B.SH),Math.ceil(r.w*B.SW)+1,Math.ceil(r.h*B.SH)+1); });
+    return ecPng(c);
+  }
+  function erMaskArgs(pl,L,name){ return ['-hide_banner','-y','-loop','1','-framerate',pl.fps,'-i','erm.png','-frames:v',String(L),'-vf','format=yuv420p','-c:v','libx264','-preset','ultrafast','-qp','0','-pix_fmt','yuv420p','-r',pl.fps,name]; }
+  /* نتائج المقاطع شريطًا واحدًا بعدد إطارات الأصل: كلّ نتيجة تُقصّ إلى طول مقطعها (النموذج يكمّل القصير بتكرار آخر إطار)، والأقصر منه
+     يُمدّ زمنيًّا؛ والمقطع الذي لم يرجع شريطه الأصليّ ممسوحًا مجانًا */
+  function erJoinArgs(pl,segs,B){
+    var args=['-hide_banner','-y'], fc=[], fpsN=erFpsNum(pl.fps);
+    segs.forEach(function(s){ args.push('-i',s.r||s.n); });
+    segs.forEach(function(s,j){
+      var pre='['+j+':v]scale='+B.SW+':'+B.SH+',setsar=1,format=yuv420p,';
+      if(!s.r) pre+=erDelogo(B.rects.map(function(r){ return erPx(r,B.SW,B.SH); }))+',';
+      else if(s.rf<s.f) pre+='setpts=N*'+(s.f/s.rf/fpsN).toFixed(6)+'/TB,fps='+pl.fps+',';
+      fc.push(pre+'trim=end_frame='+s.f+',setpts=PTS-STARTPTS[s'+j+']');
+    });
+    fc.push(segs.map(function(s,j){ return '[s'+j+']'; }).join('')+'concat=n='+segs.length+':v=1:a=0,setpts=N/('+fpsN.toFixed(6)+'*TB)[v]');
+    return args.concat(['-filter_complex',fc.join(';'),'-map','[v]','-c:v','libx264','-preset','ultrafast','-crf','12','-pix_fmt','yuv420p','-r',pl.fps,'erj.mp4']);
+  }
+  /* التركيب: الأصل بمقاس المخرج، والشريط فوقه بقناع ناعم داخل المربّعات وحدها (era.png — قناة الأخضر كاملة المدى ٠–٢٥٥ بلا تحويل) */
+  /* القناع صورة تتكرّر أطول من الفيديو، وoverlay يكمل حتّى ينتهي آخر مدخلَيه (مقيس: ١٥ ث لفيديو ١٣) — alphamerge ينتهي بالشريط،
+     والمخرج بعدد إطارات الأصل (n = مجموع المقاطع، من السلسلة نفسها) */
+  function erCompArgs(pl,input,B,n){
+    var qx=pl.ow/pl.dw, qy=pl.oh/pl.dh, bw=ecEven(B.w*qx), bh=ecEven(B.h*qy), bx=Math.round(B.x*qx), by=Math.round(B.y*qy), M=ecMatrix(pl);
+    bx=Math.max(0,Math.min(pl.ow-bw,bx)); by=Math.max(0,Math.min(pl.oh-bh,by));
+    var fc=['[0:'+pl.v.i+']scale='+pl.ow+':'+pl.oh+':in_color_matrix='+M+':out_color_matrix='+M+',setsar=1,fps='+pl.fps+',format=yuv420p[base]',
+      '[1:v]scale='+bw+':'+bh+',setsar=1,format=yuva420p[b]','[2:v]scale='+bw+':'+bh+',format=gbrp,extractplanes=g[al]','[b][al]alphamerge=shortest=1[ba]',
+      '[base][ba]overlay=x='+bx+':y='+by+':format=yuv420:eof_action=repeat,format=yuv420p[v]'];
+    var args=['-hide_banner','-y','-i',input,'-i','erj.mp4','-loop','1','-framerate',pl.fps,'-t',String(Math.ceil((pl.dur||0)+1)),'-i','era.png','-filter_complex',fc.join(';'),'-map','[v]','-frames:v',String(n)];
+    if(pl.a) args.push('-map','0:'+pl.a.i);
+    args.push('-c:v','libx264','-preset','ultrafast','-crf','20','-pix_fmt','yuv420p'); args.push.apply(args,ecTags(pl));
+    if(pl.a) args.push('-c:a','aac','-b:a','160k','-ar','48000','-ac','2');
+    args.push('-movflags','+faststart','er_out.mp4'); /* المخرج ينتهي بنهاية الأصل (overlay)، والصوت الأقصر لا يقصّ الصورة */
+    return {args:args,w:bw,h:bh};
+  }
+  function erAlphaPng(B,w,h){
+    var c=document.createElement('canvas'); c.width=w; c.height=h; var x=c.getContext('2d'), f=Math.max(1,Math.round(Math.min(w,h)*0.012));
+    x.fillStyle='#000'; x.fillRect(0,0,w,h); x.filter='blur('+f+'px)'; x.fillStyle='#fff';
+    B.rects.forEach(function(r){ x.fillRect(r.x*w-f,r.y*h-f,r.w*w+2*f,r.h*h+2*f); }); /* الحافّة الناعمة خارج المربّع لا داخله: الكتابة لا تطلّ */
+    return ecPng(c);
+  }
+  function erApi(op,body){
+    return fetch('/api/media?action=video-erase&op='+op,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({token:drTok()},body||{}))})
+      .then(function(r){ return r.json().catch(function(){ return {ok:false,error:'http',status:r.status}; }); });
+  }
+  function erPut(url,ctype,data,prog){
+    return new Promise(function(res,rej){
+      var x=new XMLHttpRequest(), bad=function(){ rej({code:'upload',status:x.status}); };
+      x.open('PUT',url,true); x.timeout=600000; x.setRequestHeader('Content-Type',ctype);
+      x.upload.onprogress=function(e){ if(e.lengthComputable) prog(e.loaded); };
+      x.onload=function(){ if(x.status>=200&&x.status<300) res(); else bad(); };
+      x.onerror=bad; x.ontimeout=bad; x.onabort=bad;
+      ER.xhr=x; x.send(new Blob([data],{type:ctype}));
+    });
+  }
+  async function erFetch(u){ /* عبر وسيط التنزيل عندنا (كالتحسين الاحترافيّ): جلب رابط المزوّد مباشرة يخزّنه عامل الخدمة */
+    var px=(typeof window.__omranProxyVideoUrl==='function')?window.__omranProxyVideoUrl(String(u||'')):'';
+    if(!/^\/api\//.test(px||'')) throw new Error('no proxy');
+    var tk=drTok(), r=await fetch(px,tk?{headers:{Authorization:'Bearer '+tk}}:undefined);
+    if(!r.ok) throw new Error('proxy '+r.status);
+    return new Uint8Array(await (await r.blob()).arrayBuffer());
+  }
+  /* عدد إطارات ملفّ بحزمه بلا فكّ. ملفّ تالف يفشل أمره فيبقى erc.txt السابق — كان يُعدّ إطاراته فيدخل التالف الدمج ويُسقطه (مقيس في
+     التطبيق نفسه): الفشل صفر، والسطر المرفوض (DISCARD) لا يُعدّ */
+  async function erFrames(ff,name,my){
+    try{ await ff.deleteFile('erc.txt'); }catch(e){ e=null; /* guard-ok — أوّل عدّ: لا ملفّ سابق (لا يُسجَّل في ملاحظات النظام) */ }
+    erStale(my);
+    var ret=await ff.exec(['-hide_banner','-y','-i',name,'-map','0:v:0','-c','copy','-f','framecrc','erc.txt']); erStale(my);
+    var n=0;
+    if(ret===0){ try{ (new TextDecoder().decode(await ff.readFile('erc.txt')).match(/^0,.*$/gm)||[]).forEach(function(l){ var fl=/F=0x([0-9a-f]+)/i.exec(l); if(!(fl&&parseInt(fl[1],16)&4)) n++; }); }catch(e){ n=0; /* guard-ok — بلا إطارات */ } }
+    erStale(my); return n;
+  }
+  async function erAi(ff,input,pl,boxes,my,up,setSpan,log){
+    var B=erBand(boxes,pl.dw,pl.dh), segs=[], i;
+    setSpan([6,14,pl.dur||0,'vdErWork']);
+    if(await ff.exec(erBandArgs(pl,input,B))!==0) throw {code:'band',log:log.slice(-6).join(' | ')};
+    erStale(my);
+    var names=((await ff.listDir('/'))||[]).map(function(d){ return d.name; }).filter(function(n){ return /^erb_\d{3}\.mp4$/.test(n); }).sort();
+    erStale(my);
+    for(i=0;i<names.length;i++){ var fr=await erFrames(ff,names[i],my); if(fr>0) segs.push({n:names[i],f:fr}); }
+    if(!segs.length) throw {code:'band'};
+    if(segs.length>ER_MAXCH) throw {code:'big'};
+    var n=segs.length, cents=n*ER_CENTS;
+    if(!window.confirm(drT('vdErConfirm',{n:n,c:cents}))) throw {code:'declined'}; /* إنفاق: موافقة لكلّ تشغيل بالعدد والسعر */
+    erStale(my);
+    await ff.writeFile('erm.png',await erMaskPng(B)); erStale(my);
+    var masks={}, files=segs.map(function(s){ return s.n; }), mi={};
+    for(i=0;i<segs.length;i++){ var L=segs[i].f; if(masks[L]) continue; masks[L]='erm_'+L+'.mp4'; if(await ff.exec(erMaskArgs(pl,L,masks[L]))!==0) throw {code:'mask'}; erStale(my); mi[L]=files.length; files.push(masks[L]); }
+    var datas=[]; for(i=0;i<files.length;i++){ datas.push(await ff.readFile(files[i])); erStale(my); }
+    var st=await erApi('start',{files:datas.map(function(d){ return {size:d.length,type:'video/mp4'}; }),chunks:segs.map(function(s,j){ return {v:j,m:mi[s.f],frames:s.f}; })});
+    erStale(my);
+    if(!st||!st.ok||!st.ups||st.ups.length!==datas.length) throw {code:(st&&st.error==='cap')?'cap':'ai',why:pbWhy(st)};
+    var total=datas.reduce(function(a,d){ return a+d.length; },0)||1, sent=0;
+    for(i=0;i<datas.length;i++){ await erPut(st.ups[i].put,st.ups[i].ctype||'video/mp4',datas[i],function(l){ up('vdErUp',15+20*(sent+l)/total); }); ER.xhr=null; sent+=datas[i].length; erStale(my); }
+    var res=await erApi('submit',{id:st.id}); erStale(my);
+    if(res&&res.error==='not_uploaded'){ await erSleep(3000); erStale(my); res=await erApi('submit',{id:st.id}); erStale(my); } /* المرفوع للتوّ قد يتأخّر ظهوره عند المزوّد: مرّة ثانية (لا خصم قبل الإرسال) */
+    if(!res||!res.ok) throw {code:(res&&res.error==='cap')?'cap':'ai',why:pbWhy(res)};
+    ER.paid=true; /* أُرسل: ملفّ جديد أثناءه يسأل قبل أن يضيّعه */
+    var t0=Date.now();
+    while(!/^(done|partial|failed)$/.test(String(res&&res.state))&&Date.now()-t0<1800000){ /* نصف ساعة حدّ الانتظار: ما رجع يُستعمل والباقي يُمسح مجانًا */
+      await erSleep(4000); erStale(my);
+      var r2=await erApi('status',{id:st.id}).catch(function(){ return null; }); erStale(my);
+      if(r2&&r2.ok) res=r2;
+      var fin=((res&&res.chunks)||[]).filter(function(c){ return c.state!=='running'&&c.state!=='unknown'; }).length;
+      up('vdErWait',35+40*fin/n,{d:fin,n:n});
+    }
+    var urls={}; ((res&&res.chunks)||[]).forEach(function(c){ if(c&&c.state==='done'&&c.url) urls[c.i]=c.url; });
+    for(i=0;i<n;i++){
+      if(urls[i]){
+        try{
+          var nm='err_'+erPad(i)+'.mp4'; await ff.writeFile(nm,await erFetch(urls[i])); erStale(my);
+          var rf=await erFrames(ff,nm,my); if(rf>0){ segs[i].r=nm; segs[i].rf=rf; }
+        }catch(e){ if(e&&e.code==='stale') throw e; typeof __swallow === 'function' && __swallow(e, 'video:er-fetch'); /* guard-ok — هذا المقطع يُمسح مجانًا */ }
+      }
+      up('vdErJoin',75+5*(i+1)/n);
+    }
+    setSpan([80,86,pl.dur||0,'vdErJoin']);
+    if(await ff.exec(erJoinArgs(pl,segs,B))!==0) throw {code:'join',log:log.slice(-6).join(' | ')};
+    erStale(my);
+    var cp=erCompArgs(pl,input,B,segs.reduce(function(a,s){ return a+s.f; },0));
+    await ff.writeFile('era.png',await erAlphaPng(B,cp.w,cp.h)); erStale(my);
+    setSpan([86,99,pl.dur||0,'vdErJoin']);
+    if(await ff.exec(cp.args)!==0) throw {code:'comp',log:log.slice(-6).join(' | ')};
+    return {some:segs.filter(function(s){ return !s.r; }).length,n:n};
+  }
+  /* المسار كلّه لملفّ واحد ← File mp4 ممسوح. نسخة أداة خاصّة به تُنهى بعده */
+  async function erMake(file,boxes,mode,my,say){
+    var shown=0, up=function(k,v,x){ if(my===ER.run&&v>=shown){ shown=v; say(k,v,x); } };
+    var mod=await import('/ffmpeg/lib/index.js'); erStale(my);
+    var ff=new mod.FFmpeg(); ER.ff=ff;
+    await Promise.race([ff.load({coreURL:'/ffmpeg/core/ffmpeg-core.js',wasmURL:'/ffmpeg/core/ffmpeg-core.wasm',classWorkerURL:'/ffmpeg/lib/worker.js'}),
+      new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('ffmpeg load timeout')); },120000); })]);
+    erStale(my); up('vdErWork',3);
+    var log=[], span=[0,0,0,'vdErWork'];
+    ff.on('log',function(e){ log.push((e&&e.message)||''); if(log.length>400) log.shift(); });
+    ff.on('progress',function(e){ var t=(+(e&&e.time)||0)/1e6; if(t>0&&t<1e9&&span[2]>0) up(span[3],span[0]+(span[1]-span[0])*Math.min(1,t/span[2])); });
+    await ff.createDir('/erin');
+    await ff.mount('WORKERFS',{blobs:[{name:'input',data:file}]},'/erin');
+    var input='/erin/input';
+    log=[]; await ff.exec(['-hide_banner','-i',input]); erStale(my);
+    var info=ecParse(log.join('\n')), mob=ecMob(), pl=ecPlan(info,file.size,mob,true);
+    if(!pl.ok) throw {code:pl.why!=='heavy'?'probe':((mob&&ecPlan(info,file.size,false,true).ok)?'heavy':'big')};
+    up('vdErWork',5);
+    var r={some:0,n:0};
+    if(mode==='ai') r=await erAi(ff,input,pl,boxes,my,up,function(s){ span=s; },log);
+    else { span=[5,99,pl.dur||0,'vdErWork']; if(await ff.exec(erFreeArgs(pl,input,boxes))!==0) throw {code:'enc',log:log.slice(-6).join(' | ')}; }
+    erStale(my);
+    var data=await ff.readFile('er_out.mp4'); erStale(my);
+    if(!(data&&data.length>1000)) throw {code:'empty'};
+    if(data.length>UP_MAX_MB*1048576) throw {code:'big'};
+    return {file:new File([data],erName(file.name),{type:'video/mp4'}),some:r.some,n:r.n};
+  }
+  async function erStart(mode){
+    var o=ER.orig; if(!o||!drOwner()||!erShown()||erLock()) return;
+    if(!ER.boxes.length){ upMsg(L('vdErNeedBox'),true); return; }
+    var boxes=ER.boxes.map(function(b){ return {x:b.x,y:b.y,w:b.w,h:b.h}; });
+    ecCancel(); erCancel(); var my=++ER.run; ER.busy=true; erShut(); erSay('vdErWork',0); syncDirector(); /* الباركود الجاري يتوقّف: يُضاف بعد المسح على الممسوح */
+    try{
+      var r=await erMake(o.file,boxes,mode,my,erSay);
+      if(my!==ER.run||ER.orig!==o) return;
+      var url=URL.createObjectURL(r.file), prev=ER.out, card=EC.out;
+      ER.out={of:o.file,file:r.file,url:url}; EC.out=null; EC.src={file:r.file,type:'video/mp4',url:url}; EC.skip=null; /* الممسوح مصدر الباركود */
+      ER.busy=false; erKill();
+      ecShow(r.file,'video/mp4',url);
+      if(prev) erRevoke(prev.url,url); if(card) erRevoke(card.url,url);
+      upMsg(r.some?drT('vdErSome',{f:r.some,n:r.n}):L('vdErDone'));
+      if(ecPref()) ecStart();
+    }catch(e){
+      if(my!==ER.run||(e&&e.code==='stale')) return;
+      var code=String((e&&e.code)||'');
+      upMsg(code==='declined'?'':(code==='heavy'?L('vdErHeavy'):(code==='cap'?L('vdErCap'):L('vdErFail'))),code!=='declined');
+      if(!/^(declined|heavy|big|cap)$/.test(code)){ try{ __swallow(e,'director:erase '+code+' '+String((e&&(e.why||e.message))||'')+' '+String((e&&e.log)||'')); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:er-log'); /* guard-ok — لا مسجّل */ } }
+    }finally{
+      if(my===ER.run){ ER.busy=false; ER.paid=false; erKill(); syncDirector(); }
+    }
+  }
+  function erUndo(){ /* «رجّع الأصل»: الأصل مصدر الباركود من جديد، والمربّعات تبقى لتعديلها */
+    var o=ER.orig, cl=ER.out; if(!o||!cl||!erShown()||erLock()) return;
+    ecCancel(); var card=EC.out; ER.out=null; EC.out=null; EC.src=o; EC.skip=null; upMsg('');
+    ecShow(o.file,o.type,o.url); erRevoke(cl.url,o.url); if(card) erRevoke(card.url,o.url);
+    if(ecPref()) ecStart();
+  }
+  /* المحرّر: لقطة من الأصل (مشغّل خاصّ به لا المعروض — قد يتبدّل تحته) على لوحة، يُرسم عليها بالسحب، وزرّ الحذف في ركن كلّ مربّع */
+  function erOpen(){
+    var p=id('vdEr'); if(!p||!erShown()||erLock()) return;
+    var vid=id('vdVideo'); try{ if(vid){ vid.pause(); ER.t=+vid.currentTime||0; } }catch(e){ ER.t=0; /* guard-ok — مشغّل بلا وقت */ }
+    var h=id('vdErHint'); if(h) h.classList.remove('err');
+    p.hidden=false; erFrame(); syncDirector();
+  }
+  function erShut(){
+    var p=id('vdEr'); if(p) p.hidden=true; ER.drag=null;
+    var v=ER.v; ER.v=null;
+    if(v){ v.onseeked=v.onloadedmetadata=v.onerror=null; v.removeAttribute('src'); try{ v.load(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:er-shut'); /* guard-ok — بلا مصدر */ } if(v.parentNode) v.parentNode.removeChild(v); }
+  }
+  function erFrame(){
+    var o=ER.orig; if(!o) return;
+    var v=ER.v;
+    var seek=function(){
+      var d=+v.duration||0, t=Math.max(0,Math.min(Math.max(0,d-0.05),ER.t||0));
+      v.onseeked=function(){ erPaint(0); };
+      try{ v.currentTime=t; }catch(e){ erPaint(0); /* guard-ok — يرسم الحاضر */ }
+    };
+    if(v&&v.__src===o.url){ seek(); return; }
+    if(v) erShut();
+    v=ER.v=document.createElement('video'); v.__src=o.url; v.muted=true; v.playsInline=true; v.preload='auto';
+    v.onloadedmetadata=function(){ if(ER.v!==v) return; ER.dur=+v.duration||0; var rg=id('vdErT'); if(rg) rg.value=String(Math.round(Math.min(1,(ER.t||0)/(ER.dur||1))*1000)); syncDirector(); seek(); };
+    v.onerror=function(){ if(ER.v===v){ var h=id('vdErHint'); if(h){ h.textContent=L('vdErNoFrame'); h.classList.add('err'); } } };
+    var p=id('vdEr'); if(p) p.appendChild(v); v.style.display='none'; /* بعض المتصفّحات لا تفكّ إطارًا لمشغّل خارج الصفحة */
+    v.src=o.url;
+  }
+  function erPaint(tries){
+    var cv=id('vdErCv'), v=ER.v; if(!cv||!v) return;
+    var vw=v.videoWidth||0, vh=v.videoHeight||0; if(!vw||!vh) return;
+    var k=Math.min(1,960/vw), cw=Math.max(2,Math.round(vw*k)), ch=Math.max(2,Math.round(vh*k));
+    if(cv.width!==cw||cv.height!==ch){ cv.width=cw; cv.height=ch; }
+    var x=cv.getContext('2d'); x.clearRect(0,0,cw,ch);
+    try{ x.drawImage(v,0,0,cw,ch); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:er-draw'); /* guard-ok — لا إطار بعد */ }
+    var ok=true; try{ ok=x.getImageData(cw>>1,ch>>1,1,1).data[3]>0; }catch(e){ ok=true; /* guard-ok — لوحة لا تُقرأ: يكفي ما رُسم */ }
+    if(!ok&&(tries||0)<40){ setTimeout(function(){ erPaint((tries||0)+1); },50); return; } /* إطار لم يجهز يُرسم شفّافًا (درس الباركود) */
+    erBoxes(x,cw,ch);
+  }
+  function erBoxes(x,cw,ch){
+    var all=ER.boxes.slice(); if(ER.drag) all.push(erNorm(ER.drag));
+    x.lineWidth=Math.max(2,Math.round(cw/320));
+    all.forEach(function(b,i){
+      var bx=b.x*cw, by=b.y*ch, bw=b.w*cw, bh=b.h*ch;
+      x.fillStyle='rgba(232,194,122,.28)'; x.fillRect(bx,by,bw,bh);
+      x.setLineDash([8,5]); x.strokeStyle='#f2d164'; x.strokeRect(bx,by,bw,bh); x.setLineDash([]);
+      if(i<ER.boxes.length){ var r=erHandle(cw), hx=bx+bw, hy=by; /* زرّ الحذف: دائرة في الركن العلويّ */
+        x.fillStyle='rgba(20,16,8,.85)'; x.beginPath(); x.arc(hx,hy,r,0,Math.PI*2); x.fill();
+        x.strokeStyle='#fff'; x.beginPath(); x.moveTo(hx-r*0.45,hy-r*0.45); x.lineTo(hx+r*0.45,hy+r*0.45); x.moveTo(hx+r*0.45,hy-r*0.45); x.lineTo(hx-r*0.45,hy+r*0.45); x.stroke(); }
+    });
+  }
+  function erHandle(cw){ return Math.max(9,Math.round(cw/48)); }
+  function erNorm(d){ return {x:Math.min(d.x0,d.x1),y:Math.min(d.y0,d.y1),w:Math.abs(d.x1-d.x0),h:Math.abs(d.y1-d.y0)}; }
+  function erPt(cv,e){ var r=cv.getBoundingClientRect(); return {x:Math.max(0,Math.min(1,(e.clientX-r.left)/(r.width||1))),y:Math.max(0,Math.min(1,(e.clientY-r.top)/(r.height||1))),px:r.width||1}; }
+  /* لمسة على زرّ حذف مربّع ← رقمه، وإلّا -1 (بنسب اللوحة؛ نصف القطر بالبكسل المعروض) */
+  function erHit(pt,cw,ch){
+    var r=erHandle(cw)*1.4;
+    for(var i=ER.boxes.length-1;i>=0;i--){ var b=ER.boxes[i], dx=(pt.x-(b.x+b.w))*cw, dy=(pt.y-b.y)*ch; if(dx*dx+dy*dy<=r*r) return i; }
+    return -1;
+  }
+  function erRedraw(){ var cv=id('vdErCv'); if(cv&&ER.v&&ER.v.videoWidth) erPaint(40); }
+  function erBind(box){
+    var cv=box.querySelector('#vdErCv'), rg=box.querySelector('#vdErT');
+    box.querySelector('#vdErBtn').addEventListener('click',function(){ var p=id('vdEr'); if(p&&!p.hidden){ erShut(); syncDirector(); } else erOpen(); });
+    box.querySelector('#vdErUndo').addEventListener('click',erUndo);
+    box.querySelector('#vdErFree').addEventListener('click',function(){ erStart('free'); });
+    box.querySelector('#vdErAi').addEventListener('click',function(){ erStart('ai'); });
+    box.querySelector('#vdErClear').addEventListener('click',function(){ ER.boxes=[]; erRedraw(); syncDirector(); });
+    box.querySelector('#vdErClose').addEventListener('click',function(){ erShut(); syncDirector(); });
+    var tm=0; rg.addEventListener('input',function(){ ER.t=(+rg.value||0)/1000*(ER.dur||0); clearTimeout(tm); tm=setTimeout(erFrame,80); });
+    cv.addEventListener('pointerdown',function(e){
+      if(e.button>0||erLock()||!ER.v) return;
+      var pt=erPt(cv,e), hit=erHit(pt,cv.width,cv.height);
+      if(hit>=0){ ER.boxes.splice(hit,1); erRedraw(); syncDirector(); e.preventDefault(); return; }
+      if(ER.boxes.length>=ER_MAXB) return;
+      ER.drag={x0:pt.x,y0:pt.y,x1:pt.x,y1:pt.y}; try{ cv.setPointerCapture(e.pointerId); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:er-cap'); /* guard-ok — بلا التقاط */ }
+      e.preventDefault();
+    });
+    cv.addEventListener('pointermove',function(e){ if(!ER.drag) return; var pt=erPt(cv,e); ER.drag.x1=pt.x; ER.drag.y1=pt.y; erRedraw(); });
+    var end=function(){ var d=ER.drag; if(!d) return; ER.drag=null; var b=erNorm(d); if(b.w>0.01&&b.h>0.01&&ER.boxes.length<ER_MAXB) ER.boxes.push(b); erRedraw(); syncDirector(); };
+    cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',function(){ ER.drag=null; erRedraw(); });
+  }
+  function erSync(box){
+    var row=box.querySelector('#vdErRow'), ed=box.querySelector('#vdEr'); if(!row||!ed) return;
+    var shown=erShown(), lock=erLock(); row.hidden=!shown;
+    if(!shown&&!ed.hidden) erShut();
+    var b=box.querySelector('#vdErBtn'), u=box.querySelector('#vdErUndo');
+    b.textContent=L('vdErBtn'); b.disabled=lock; u.textContent=L('vdErUndo'); u.hidden=!(ER.out&&EC.src&&EC.src.url===ER.out.url); u.disabled=lock;
+    var h=box.querySelector('#vdErHint'); if(!h.classList.contains('err')) h.textContent=L('vdErHint');
+    var nb=!ER.boxes.length, est=Math.max(1,Math.ceil(Math.round((ER.dur||0)*30)/ER_CH))*ER_CENTS;
+    var fr=box.querySelector('#vdErFree'), ai=box.querySelector('#vdErAi');
+    fr.textContent=L('vdErFree'); fr.disabled=lock||nb; ai.textContent=drT('vdErAi',{c:est}); ai.disabled=lock||nb;
+    box.querySelector('#vdErClear').textContent=L('vdErClear'); box.querySelector('#vdErClear').disabled=nb||lock;
+    box.querySelector('#vdErClose').textContent=L('vdErClose');
   }
   function syncDirector(){
     var box=id('vmkDirector'); if(!box) return;
@@ -1194,6 +1556,8 @@
       ec.checked=ecPref()&&!(EC.src&&EC.skip===EC.src.file); /* فشل أو ثقل لهذا الملفّ: يظهر مطفأً (التفضيل المحفوظ لا يتغيّر) */
       ec.disabled=DR.busy||PB.busy||ecLocked(); eb.classList.toggle('off',ec.disabled);
     }
+    if(ER.busy){ pg.disabled=true; if(ec){ ec.disabled=true; eb.classList.add('off'); } } /* v-director-erase: لا نشر ولا تبديل أثناء المسح */
+    erSync(box);
   }
   /* v-app-director-motion (المالك: «خل فيه حركة فيديو عشان اعرف ان الفيديو يتولد»): شاشة حيّة أثناء التوليد — ضوء يتحرّك وشريط لقطات،
      وما يكتبه المخرج مشهدًا مشهدًا، ونماذج الأنماط تظهر فيها بحركة كاميرا فور توليدها، مع عدّاد وقت وشريط تقدّم كلّيّ. تعمل أثناء التوليد فقط. */
