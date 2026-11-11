@@ -98,6 +98,8 @@ test('٣. الشريط للذكاء: حول المربّعات بنسبة الن
   assert.ok(wide.SW <= 672 && wide.SH <= 384 && wide.SW % 16 === 0 && wide.SH % 16 === 0, J(wide));
   const tall = ctx.erBand([{ x: 0.05, y: 0.2, w: 0.08, h: 0.6 }], 1080, 1920);
   assert.ok(tall.h > tall.w && tall.SW <= 384 && tall.SH <= 672, J(tall));
+  const odd = ctx.erBand([{ x: 0.2, y: 0.4, w: 0.5, h: 0.1 }], 1000, 700); /* شريط ٥٦٨×٣٢٤: ليس مضاعف ١٦ من نفسه (الحالات فوق كانت كذلك صدفةً) */
+  assert.deepEqual([odd.w, odd.h, odd.SW, odd.SH], [568, 324, 576, 320], J(odd));
   assert.deepEqual([1, 69, 70, 77, 78, 196, 197, 250].map(ctx.erSnap), [69, 69, 77, 77, 85, 197, 197, 197], 'قيم النموذج ٨ك−٣');
   const b = ctx.erBandArgs(PLAIN, '/erin/input', wide);
   const s = b.join(' ');
