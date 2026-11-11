@@ -15,7 +15,7 @@ const BARE_DRAW_RE = new RegExp(B + 'رسم' + E, 'i');
 // فعل عامّ لا يكفي وحده: سوّي/اعمل/اصنع/make/create/design — يحتاج اسم وسيط مرئيّ («سوّ لي صورة»، «make a logo»)
 const MAKE_RE = new RegExp(B + '(?:ت|ي)?(?:سوّ?ي|سوّ?يها|سوّ?يلي|سولي|سوّ?ها|سوّ?\\s*لي|اعمل|اعملي|اصنع|انشئ|أنشئ|make|create|design)' + E, 'i');
 // اسم وسيط مرئيّ: صورة/صور/رسمة/فيديو/شعار…
-const MEDIA_NOUN_RE = /(صور[ةه]?|الصور|رسم[ةه]|رسومات|فيديو|مقطع|لوجو|شعار|بوستر|بنر|خلفي[ةه]|أيقون[ةه]|ايقون[ةه]|\bimages?\b|\bpictures?\b|\bphotos?\b|\bvideos?\b|\blogos?\b|\bposters?\b|\bbanners?\b|\bicons?\b|\billustrations?\b)/i;
+const MEDIA_NOUN_RE = /(صور[ةه]?|الصور|رسم[ةه]|رسومات|فيديو|مقطع|لوجو|شعار|بوستر|بنر|خلفي[ةه]|خريط[ةه]|خرائط|\bmaps?\b|أيقون[ةه]|ايقون[ةه]|\bimages?\b|\bpictures?\b|\bphotos?\b|\bvideos?\b|\blogos?\b|\bposters?\b|\bbanners?\b|\bicons?\b|\billustrations?\b)/i;
 // تعديل على صورة بأيّ سابقة مضارعة ولاحقة («تغيرها»، «يبدّلها»)؛ الحذف تعديلٌ للمرفق وحده (EDIT_ATTACH_RE)
 const EDIT_RE = new RegExp(B + '(?:ت|ي|ن|أ|ا)?(?:عدّ?ل|غيّ?ر|بدّ?ل|حوّ?ل|لوّ?ن|كبّ?ر|صغّ?ر|حسّ?ن|اجعل|edit|change|turn|convert|recolor|enhance|replace)', 'i');
 const EDIT_ATTACH_RE = new RegExp(B + '(?:ت|ي|ن|أ|ا)?(?:عدّ?ل|غيّ?ر|بدّ?ل|حوّ?ل|لوّ?ن|كبّ?ر|صغّ?ر|حسّ?ن|اجعل|خلّ?ي|خلها|ضيف|أضف|اضف|احذف|امسح|شيل|سوّ?ها|سوها|edit|change|turn|convert|recolor|enhance|remove|add|replace)', 'i');
