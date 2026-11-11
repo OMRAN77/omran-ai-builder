@@ -456,7 +456,7 @@
       /* v-director-upload: صندوق «ارفع فيديو جاهز» — بشكل صندوق «تحسين الفيديو»، والفيديو المرفوع يأخذ مكان فيديو المخرج تحته */
       +'<label class="vmk-cl-drop vmk-dir-up" id="vdUp"><input type="file" accept="video/*" id="vdUpFile"><span class="vmk-cl-plus">+</span><span class="vmk-cl-pick"></span><small class="vmk-cl-lim"></small></label>'
       +'<label class="vmk-dir-ec" id="vdEcBox"><input type="checkbox" id="vdEc"><span></span></label>' /* v-director-endcard: «أضف باركود التطبيق في آخر الفيديو» */
-      +'<div class="vmk-dir-er" id="vdErRow" hidden><button type="button" id="vdErBtn"></button><button type="button" id="vdErUndo" hidden></button></div>' /* v-director-erase */
+      +'<div class="vmk-dir-er" id="vdErRow" hidden><button type="button" id="vdErBtn"></button><button type="button" id="vdErUndo" hidden></button><small class="vmk-er-note" id="vdErNote"></small></div>' /* v-director-erase */
       +'<p class="vmk-dir-msg" id="vdUpMsg"></p>'
       +'<div class="vmk-dir-res" id="vdRes"><video id="vdVideo" controls playsinline></video>'
         /* v-director-erase: محرّر المربّعات — لقطة من الأصل يُرسم عليها، وشريط لاختيار اللقطة */
@@ -563,6 +563,7 @@
     if(tlTotal()>TL_MAX){ tlErr(L('vdTlOver')); return; }
     if(typeof window.__vmkTimelineRun!=='function'){ drMsg(L('vdFail'),true,'timeline engine missing'); return; }
     var clips=tlClipCount();
+    if(ER.busy&&ER.paid&&!window.confirm(L('vdErLose'))) return; /* v-director-erase: التوليد يلغي المسح — والمدفوع الجاري لا يضيع بلا سؤال (مراجعة) */
     if(!window.confirm(drT('vdTlConfirm',{c:clips,t:tlFmt(tlTotal()),lo:clips*2,hi:clips*5}))) return; /* إنفاق حقيقيّ: موافقة لكلّ تشغيلة */
     var my=++DR.run, res=id('vdRes');
     DR.busy=true; upEnd(); syncDirector(); drMsg(''); if(res) res.classList.remove('has'); tlLinks([]);
@@ -1178,7 +1179,7 @@
      مقاطع ≤١٩٧ إطارًا ويُرفع مع قناعه (أسود = امسح) إلى نموذج مسح عند المزوّد بمفتاح التطبيق (٥ سنت للمقطع، بموافقة لكلّ تشغيل وسقف
      يوميّ في الخادم — api/_lib/video-erase.js)، ثمّ تُركَّب النتيجة داخل المربّعات وحدها بحواف ناعمة (النموذج يعيد رسم الشريط كلّه)،
      والمقطع الذي لا يرجع يُمسح مجانًا. الناتج H.264/AAC يصير مصدر الباركود (مساره السريع)، والأصل يبقى: «رجّع الأصل» يعيده. ═══ */
-  var ER={run:0,busy:false,ff:null,xhr:null,boxes:[],orig:null,out:null,v:null,drag:null,t:0,dur:0,paid:false};
+  var ER={run:0,busy:false,ff:null,xhr:null,boxes:[],orig:null,out:null,v:null,drag:null,t:0,dur:0,paid:false,note:null};
   var ER_MAXB=8, ER_CH=197, ER_CENTS=5, ER_MAXCH=30;
   function erStale(my){ if(my!==ER.run) throw {code:'stale'}; }
   function erKill(){
@@ -1192,7 +1193,7 @@
   function erDrop(keep){
     erCancel(); erShut();
     if(ER.orig&&!(EC.src&&EC.src.url===ER.orig.url)) erRevoke(ER.orig.url,keep);
-    ER.orig=null; ER.out=null; ER.boxes=[]; ER.dur=0;
+    ER.orig=null; ER.out=null; ER.boxes=[]; ER.dur=0; ER.note=null;
   }
   function erShown(){ return !!(ER.orig&&ecMine()); } /* المعروض فيديو مرفوع: أصله أو ممسوحه، بالباركود أو بدونه */
   function erLock(){ return DR.busy||PB.busy||ER.busy||ecLocked(); } /* رُفع المعروض للنشر: لا تبديل بعده (كالباركود) */
@@ -1263,7 +1264,9 @@
       else if(s.rf<s.f) pre+='setpts=N*'+(s.f/s.rf/fpsN).toFixed(6)+'/TB,fps='+pl.fps+',';
       fc.push(pre+'trim=end_frame='+s.f+',setpts=PTS-STARTPTS[s'+j+']');
     });
-    fc.push(segs.map(function(s,j){ return '[s'+j+']'; }).join('')+'concat=n='+segs.length+':v=1:a=0,setpts=N/('+fpsN.toFixed(6)+'*TB)[v]');
+    /* fps بعد setpts: concat يحمل معدّل مدخلاته إلى الوصلة (نتائج بـ١٢ إطارًا تبقى «١٢» بعد setpts) فيكرّر ‎-r‎ أوّل الإطارات ويتأخّر الممسوح
+       ٢–٤ إطارات عن الفيديو كلّه — مقيس على النواة الحقيقيّة (مراجعة مستقلّة) */
+    fc.push(segs.map(function(s,j){ return '[s'+j+']'; }).join('')+'concat=n='+segs.length+':v=1:a=0,setpts=N/('+fpsN.toFixed(6)+'*TB),fps='+pl.fps+'[v]');
     return args.concat(['-filter_complex',fc.join(';'),'-map','[v]','-c:v','libx264','-preset','ultrafast','-crf','12','-pix_fmt','yuv420p','-r',pl.fps,'erj.mp4']);
   }
   /* التركيب: الأصل بمقاس المخرج، والشريط فوقه بقناع ناعم داخل المربّعات وحدها (era.png — قناة الأخضر كاملة المدى ٠–٢٥٥ بلا تحويل) */
@@ -1283,9 +1286,10 @@
     return {args:args,w:bw,h:bh};
   }
   function erAlphaPng(B,w,h){
-    var c=document.createElement('canvas'); c.width=w; c.height=h; var x=c.getContext('2d'), f=Math.max(1,Math.round(Math.min(w,h)*0.012));
+    var c=document.createElement('canvas'); c.width=w; c.height=h; var x=c.getContext('2d'), f=Math.max(1,Math.round(Math.min(w,h)*0.012)), g=Math.ceil(f*2.5);
     x.fillStyle='#000'; x.fillRect(0,0,w,h); x.filter='blur('+f+'px)'; x.fillStyle='#fff';
-    B.rects.forEach(function(r){ x.fillRect(r.x*w-f,r.y*h-f,r.w*w+2*f,r.h*h+2*f); }); /* الحافّة الناعمة خارج المربّع لا داخله: الكتابة لا تطلّ */
+    /* الحافّة الناعمة كلّها خارج المربّع: التعبئة تكبر ٢٫٥σ فأضلاع المربّع ≥ ٩٩٪ (وزواياه ≥ ٩٨٪) — كانت تكبر σ وحدها فحافّته ٨٤٪ وحرف عليها يطلّ (مراجعة) */
+    B.rects.forEach(function(r){ x.fillRect(r.x*w-g,r.y*h-g,r.w*w+2*g,r.h*h+2*g); });
     return ecPng(c);
   }
   function erApi(op,body){
@@ -1321,6 +1325,8 @@
   }
   async function erAi(ff,input,pl,boxes,my,up,setSpan,log){
     var B=erBand(boxes,pl.dw,pl.dh), segs=[], i;
+    /* أكثر من ٣٠ مقطعًا (حدّ الخادم): قبل أيّ ترميز وبرسالته — كانت «ما قدرت» عامّة بعد ترميز الشريط، و٦٠ إطارًا تبلغه عند ٩٩ ث (مراجعة) */
+    if(Math.ceil(Math.round((pl.dur||0)*erFpsNum(pl.fps))/ER_CH)>ER_MAXCH) throw {code:'long'};
     setSpan([6,14,pl.dur||0,'vdErWork']);
     if(await ff.exec(erBandArgs(pl,input,B))!==0) throw {code:'band',log:log.slice(-6).join(' | ')};
     erStale(my);
@@ -1328,7 +1334,7 @@
     erStale(my);
     for(i=0;i<names.length;i++){ var fr=await erFrames(ff,names[i],my); if(fr>0) segs.push({n:names[i],f:fr}); }
     if(!segs.length) throw {code:'band'};
-    if(segs.length>ER_MAXCH) throw {code:'big'};
+    if(segs.length>ER_MAXCH) throw {code:'long'};
     var n=segs.length, cents=n*ER_CENTS;
     if(!window.confirm(drT('vdErConfirm',{n:n,c:cents}))) throw {code:'declined'}; /* إنفاق: موافقة لكلّ تشغيل بالعدد والسعر */
     erStale(my);
@@ -1341,15 +1347,26 @@
     if(!st||!st.ok||!st.ups||st.ups.length!==datas.length) throw {code:(st&&st.error==='cap')?'cap':'ai',why:pbWhy(st)};
     var total=datas.reduce(function(a,d){ return a+d.length; },0)||1, sent=0;
     for(i=0;i<datas.length;i++){ await erPut(st.ups[i].put,st.ups[i].ctype||'video/mp4',datas[i],function(l){ up('vdErUp',15+20*(sent+l)/total); }); ER.xhr=null; sent+=datas[i].length; erStale(my); }
-    var res=await erApi('submit',{id:st.id}); erStale(my);
-    if(res&&res.error==='not_uploaded'){ await erSleep(3000); erStale(my); res=await erApi('submit',{id:st.id}); erStale(my); } /* المرفوع للتوّ قد يتأخّر ظهوره عند المزوّد: مرّة ثانية (لا خصم قبل الإرسال) */
-    if(!res||!res.ok) throw {code:(res&&res.error==='cap')?'cap':'ai',why:pbWhy(res)};
-    ER.paid=true; /* أُرسل: ملفّ جديد أثناءه يسأل قبل أن يضيّعه */
+    /* الإرسال آمن تكراره: الخادم يحفظ «يُرسل» قبل الإرسال ويعيد حالته بعده بلا إرسال ثانٍ. فالجواب الضائع (انقطاع، صفحة خطأ، retry،
+       busy) يُعاد، وما لم يُحسم يدخل الاستطلاع الذي يعيد الإرسال ما دامت «لم تُرسل» — كان يُرمى فيضيع ما دُفع (مراجعة مستقلّة).
+       الحاسم بلا صرف (السقف، الملفّات لم تظهر بعد إعادة، وما لا يُعاد) يُقال ويرجع «غير مدفوع» */
+    ER.paid=true; /* من هنا قد يُصرف: ملفّ جديد أو توليد في المخرج يسأل قبل أن يضيّعه */
+    var res=null, tries=0, nu=0, dead=function(r){ ER.paid=false; return {code:(r&&r.error==='cap')?'cap':'ai',why:pbWhy(r)}; };
+    for(;;){
+      res=await erApi('submit',{id:st.id}).catch(function(){ return null; }); erStale(my);
+      if(res&&res.ok) break;
+      var ee=String((res&&res.error)||'');
+      if(ee==='not_uploaded'?++nu>=2:(ee&&!/^(retry|busy|http)$/.test(ee))) throw dead(res); /* حاسم: لم يُرسل شيء */
+      if(++tries>4){ res={ok:true,state:'upload'}; break; } /* لم يُحسم: الاستطلاع يسأل */
+      await erSleep(ee==='not_uploaded'?3000:2500*tries); erStale(my); /* المرفوع للتوّ قد يتأخّر ظهوره عند المزوّد */
+    }
     var t0=Date.now();
     while(!/^(done|partial|failed)$/.test(String(res&&res.state))&&Date.now()-t0<1800000){ /* نصف ساعة حدّ الانتظار: ما رجع يُستعمل والباقي يُمسح مجانًا */
       await erSleep(4000); erStale(my);
-      var r2=await erApi('status',{id:st.id}).catch(function(){ return null; }); erStale(my);
+      var op=String(res&&res.state)==='upload'?'submit':'status'; /* لم يصل الإرسال بعد: يُعاد (آمن) */
+      var r2=await erApi(op,{id:st.id}).catch(function(){ return null; }); erStale(my);
       if(r2&&r2.ok) res=r2;
+      else if(op==='submit'&&r2&&r2.error&&!/^(retry|busy|http)$/.test(String(r2.error))) throw dead(r2); /* حاسم أثناء الانتظار (سقف، مهمّة زالت، رمز): لا نصف ساعة على عمًى */
       var fin=((res&&res.chunks)||[]).filter(function(c){ return c.state!=='running'&&c.state!=='unknown'; }).length;
       up('vdErWait',35+40*fin/n,{d:fin,n:n});
     }
@@ -1403,29 +1420,33 @@
     var o=ER.orig; if(!o||!drOwner()||!erShown()||erLock()) return;
     if(!ER.boxes.length){ upMsg(L('vdErNeedBox'),true); return; }
     var boxes=ER.boxes.map(function(b){ return {x:b.x,y:b.y,w:b.w,h:b.h}; });
-    ecCancel(); erCancel(); var my=++ER.run; ER.busy=true; erShut(); erSay('vdErWork',0); syncDirector(); /* الباركود الجاري يتوقّف: يُضاف بعد المسح على الممسوح */
+    ecCancel(); erCancel(); var my=++ER.run; ER.busy=true; ER.note=null; erShut(); erSay('vdErWork',0); syncDirector(); /* الباركود الجاري يتوقّف: يُضاف بعد المسح على الممسوح */
     try{
       var r=await erMake(o.file,boxes,mode,my,erSay);
       if(my!==ER.run||ER.orig!==o) return;
       var url=URL.createObjectURL(r.file), prev=ER.out, card=EC.out;
       ER.out={of:o.file,file:r.file,url:url}; EC.out=null; EC.src={file:r.file,type:'video/mp4',url:url}; EC.skip=null; /* الممسوح مصدر الباركود */
       ER.busy=false; erKill();
+      ER.note=r.some?{t:drT('vdErSome',{f:r.some,n:r.n}),err:false}:null; /* الملاحظة تبقى تحت الزرّ: رسالة الباركود تغطّي رسالة المسح فورًا */
       ecShow(r.file,'video/mp4',url);
       if(prev) erRevoke(prev.url,url); if(card) erRevoke(card.url,url);
-      upMsg(r.some?drT('vdErSome',{f:r.some,n:r.n}):L('vdErDone'));
+      upMsg(r.some?ER.note.t:L('vdErDone'));
       if(ecPref()) ecStart();
     }catch(e){
       if(my!==ER.run||(e&&e.code==='stale')) return;
-      var code=String((e&&e.code)||'');
-      upMsg(code==='declined'?'':(code==='heavy'?L('vdErHeavy'):(code==='cap'?L('vdErCap'):L('vdErFail'))),code!=='declined');
-      if(!/^(declined|heavy|big|cap)$/.test(code)){ try{ __swallow(e,'director:erase '+code+' '+String((e&&(e.why||e.message))||'')+' '+String((e&&e.log)||'')); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:er-log'); /* guard-ok — لا مسجّل */ } }
+      var code=String((e&&e.code)||''), msg=code==='declined'?'':(code==='heavy'?L('vdErHeavy'):(code==='cap'?L('vdErCap'):(code==='long'?L('vdErLong'):L('vdErFail'))));
+      ER.note=msg?{t:msg,err:true}:null; upMsg(msg,!!msg);
+      if(!/^(declined|heavy|big|cap|long)$/.test(code)){ try{ __swallow(e,'director:erase '+code+' '+String((e&&(e.why||e.message))||'')+' '+String((e&&e.log)||'')); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:er-log'); /* guard-ok — لا مسجّل */ } }
+      /* المسح أوقف الباركود الجاري (ecCancel أعلاه): يرجع على المعروض — كان يُنسى بعد الرفض أو الفشل والخيار مؤشَّر فيُنشر بدونه (مراجعة) */
+      ER.busy=false; ER.paid=false; erKill();
+      if(ecPref()&&EC.src&&!(EC.out&&EC.out.of===EC.src.file)&&EC.skip!==EC.src.file) ecStart();
     }finally{
       if(my===ER.run){ ER.busy=false; ER.paid=false; erKill(); syncDirector(); }
     }
   }
   function erUndo(){ /* «رجّع الأصل»: الأصل مصدر الباركود من جديد، والمربّعات تبقى لتعديلها */
     var o=ER.orig, cl=ER.out; if(!o||!cl||!erShown()||erLock()) return;
-    ecCancel(); var card=EC.out; ER.out=null; EC.out=null; EC.src=o; EC.skip=null; upMsg('');
+    ecCancel(); var card=EC.out; ER.out=null; ER.note=null; EC.out=null; EC.src=o; EC.skip=null; upMsg('');
     ecShow(o.file,o.type,o.url); erRevoke(cl.url,o.url); if(card) erRevoke(card.url,o.url);
     if(ecPref()) ecStart();
   }
@@ -1518,9 +1539,10 @@
     var b=box.querySelector('#vdErBtn'), u=box.querySelector('#vdErUndo');
     b.textContent=L('vdErBtn'); b.disabled=lock; u.textContent=L('vdErUndo'); u.hidden=!(ER.out&&EC.src&&EC.src.url===ER.out.url); u.disabled=lock;
     var h=box.querySelector('#vdErHint'); if(!h.classList.contains('err')) h.textContent=L('vdErHint');
-    var nb=!ER.boxes.length, est=Math.max(1,Math.ceil(Math.round((ER.dur||0)*30)/ER_CH))*ER_CENTS;
-    var fr=box.querySelector('#vdErFree'), ai=box.querySelector('#vdErAi');
-    fr.textContent=L('vdErFree'); fr.disabled=lock||nb; ai.textContent=drT('vdErAi',{c:est}); ai.disabled=lock||nb;
+    var nt=box.querySelector('#vdErNote'); if(nt){ nt.textContent=ER.note?ER.note.t:''; nt.className='vmk-er-note'+(ER.note&&ER.note.err?' err':''); }
+    /* بلا سعر على الزرّ: الإطارات لا تُعرف قبل الفحص (٦٠ إطارًا = ضعف تقدير ٣٠)، والموافقة تقول العدد والسعر الحقيقيّين قبل أيّ صرف (مراجعة) */
+    var nb=!ER.boxes.length, fr=box.querySelector('#vdErFree'), ai=box.querySelector('#vdErAi');
+    fr.textContent=L('vdErFree'); fr.disabled=lock||nb; ai.textContent=L('vdErAi'); ai.disabled=lock||nb;
     box.querySelector('#vdErClear').textContent=L('vdErClear'); box.querySelector('#vdErClear').disabled=nb||lock;
     box.querySelector('#vdErClose').textContent=L('vdErClose');
   }
@@ -1726,6 +1748,7 @@
     if(!drStory()&&req.length>600){ drMsg(L('vdTooLong'),true); return; } /* «عرض التطبيق» طلب قصير — الطويل قصّة، لا قصّ صامت عند ٦٠٠ */
     var lang=id('vdLang').value||'ar', speaker=id('vdSpeaker').value||'female', minutes=parseInt(id('vdMin').value,10)||2;
     var voiceOn=((id('vdVoice')||{}).value!=='off'), capDir=(lang==='ar'||lang==='ur')?'rtl':'ltr', story=drStory();
+    if(ER.busy&&ER.paid&&!window.confirm(L('vdErLose'))) return; /* v-director-erase: الزرّ وCtrl+Enter — المسح المدفوع الجاري لا يضيع بلا سؤال (مراجعة) */
     var my=++DR.run, tk=drTok();
     DR.busy=true; DR.lang=lang; upEnd(); syncDirector(); drReset(); drStageStart();
     try{

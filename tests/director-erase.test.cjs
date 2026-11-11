@@ -33,7 +33,7 @@ function mkEl(tag) {
   return el;
 }
 const IDS = ['vdPubCap', 'vdPubPlats', 'vdPubMsg', 'vdPubRes', 'vdPub', 'vdRes', 'vdVideo', 'vdDl', 'vdUpMsg',
-  'vdErRow', 'vdErBtn', 'vdErUndo', 'vdEr', 'vdErHint', 'vdErCv', 'vdErT', 'vdErFree', 'vdErAi', 'vdErClear', 'vdErClose'];
+  'vdErRow', 'vdErBtn', 'vdErUndo', 'vdErNote', 'vdEr', 'vdErHint', 'vdErCv', 'vdErT', 'vdErFree', 'vdErAi', 'vdErClear', 'vdErClose'];
 function panel(o = {}) {
   const els = {}; for (const k of IDS) els[k] = mkEl(k === 'vdErCv' ? 'canvas' : 'div');
   els.vdRes.classList.add('has');
@@ -118,7 +118,7 @@ test('٤. التركيب: النتائج تُقصّ لطول مقاطعها (و�
   assert.equal(fc[0], '[0:v]scale=' + B.SW + ':' + B.SH + ',setsar=1,format=yuv420p,trim=end_frame=197,setpts=PTS-STARTPTS[s0]', 'النتيجة تُقصّ إلى مقطعها (النموذج يكمّل إلى num_frames)');
   assert.ok(/^\[1:v\]scale=\d+:\d+,setsar=1,format=yuv420p,delogo=x=\d+:y=\d+:w=\d+:h=\d+,trim=end_frame=197,setpts=PTS-STARTPTS\[s1\]$/.test(fc[1]), fc[1]);
   assert.equal(fc[2], '[2:v]scale=' + B.SW + ':' + B.SH + ',setsar=1,format=yuv420p,setpts=N*0.083333/TB,fps=30,trim=end_frame=100,setpts=PTS-STARTPTS[s2]', 'أقلّ من مقطعه: يُمدّ زمنيًّا');
-  assert.equal(fc[3], '[s0][s1][s2]concat=n=3:v=1:a=0,setpts=N/(30.000000*TB)[v]');
+  assert.equal(fc[3], '[s0][s1][s2]concat=n=3:v=1:a=0,setpts=N/(30.000000*TB),fps=30[v]', 'fps بعد setpts: concat يحمل معدّل مدخلاته (نتائج بـ١٢ إطارًا تأخّرت إطارين في النواة الحقيقيّة)');
   const cp = ctx.erCompArgs(Object.assign({}, PLAIN, { ow: 1920, oh: 1080, dur: 13 }), '/erin/input', B, 390), s = cp.args.join(' ');
   assert.equal(cp.w, ctx.ecEven(B.w * 1.5)); assert.equal(cp.h, ctx.ecEven(B.h * 1.5));
   assert.ok(s.includes('-i /erin/input -i erj.mp4 -loop 1 -framerate 30 -t 14 -i era.png'), s);
@@ -145,7 +145,7 @@ function live(o = {}) {
     exec(args) {
       const a = args.join(' ').replace(/^-hide_banner (-y )?/, ''); F.execs.push(a);
       return this._p(() => {
-        if (a === '-i /erin/input') { for (const l of PROBE.split('\n')) for (const f of this.cbs.log) f({ message: l }); return 1; }
+        if (a === '-i /erin/input') { for (const l of (o.probe || PROBE).split('\n')) for (const f of this.cbs.log) f({ message: l }); return 1; }
         if (a.endsWith('erb_%03d.mp4')) { for (const n of Object.keys(F.frames)) F.fs[n] = new Uint8Array(1000); return 0; }
         if (a.endsWith('-f framecrc erc.txt')) { const n = a.split(' ')[1]; if ((o.broken || []).includes(n)) return 1; /* ملفّ تالف: الأمر يفشل ولا يكتب */
           F.fs['erc.txt'] = enc('#tb 0: 1/30\n' + '0, 0, 0, 1, 10, 0x1\n'.repeat(F.frames[n] || 0) + (o.discard ? '0, 9, 9, 1, 10, 0x9, F=0x4\n'.repeat(o.discard) : '')); return 0; }
@@ -175,7 +175,9 @@ function live(o = {}) {
       if (u.startsWith('/api/video-download')) { F.fetched.push({ u, auth: opt && opt.headers && opt.headers.Authorization }); return { ok: true, blob: async () => new Blob([new Uint8Array(900)]) }; }
       const op = /[?&]op=(\w+)/.exec(u)[1], body = JSON.parse(opt.body); F.api.push({ u, op, body });
       let r = replies[op]; if (op === 'status') { r = Array.isArray(r) ? r[Math.min(polls, r.length - 1)] : r; polls++; }
-      return { json: async () => J(typeof r === 'function' ? r(body) : r) };
+      const v = typeof r === 'function' ? r(body) : r;
+      if (v === 'NET') throw new TypeError('Failed to fetch'); /* انقطاع: الطلب نفسه يفشل — لا جواب يُقرأ */
+      return { json: async () => J(v) };
     },
     XMLHttpRequest: function () {
       const x = this; x.upload = {}; x.status = 0;
@@ -336,14 +338,18 @@ test('٩. الأقفال: لا مسح بلا مربّع، ولا أثناء نش
   assert.ok(ctx.ER.run !== run && ctx.EC.src.file.name === 'd.mp4');
 });
 
-test('١٠. الفشل يبقي الأصل برسالة (والثقيل والسقف برسائلهما والرفض بلا رسالة)، والتوليد في المخرج يلغي المسح', async () => {
+test('١٠. الفشل يبقي الأصل برسالة (والثقيل والسقف والطويل برسائلها والرفض بلا رسالة) تبقى تحت الزرّ، والمتوقَّع لا يُسجَّل خطأً، والتوليد في المخرج يلغي المسح', async () => {
   const { ctx, calls, els } = flow();
+  const logged = []; ctx.__swallow = (e, w) => logged.push(w);
   ctx.upPick(vfile('a.mp4', 'video/mp4')); await flush();
   const orig = ctx.DR.out;
   ctx.ER.boxes = [{ x: 0.2, y: 0.2, w: 0.2, h: 0.2 }];
-  for (const [code, msg, err] of [['enc', 'vdErFail', true], ['heavy', 'vdErHeavy', true], ['cap', 'vdErCap', true], ['declined', '', false]]) {
+  for (const [code, msg, err, log] of [['enc', 'vdErFail', true, true], ['heavy', 'vdErHeavy', true, false], ['cap', 'vdErCap', true, false], ['long', 'vdErLong', true, false], ['declined', '', false, false]]) {
+    const n = logged.length;
     const p = ctx.erStart('ai'); await flush(); calls.shift().rej({ code }); await p;
-    assert.deepEqual([ctx.DR.out, els.vdUpMsg.textContent, els.vdUpMsg.className.includes('err'), ctx.ER.busy], [orig, msg, err, false], code);
+    assert.deepEqual([ctx.DR.out, els.vdUpMsg.textContent, els.vdUpMsg.className.includes('err'), ctx.ER.busy, ctx.ER.paid], [orig, msg, err, false, false], code);
+    assert.deepEqual(J(ctx.ER.note), msg ? { t: msg, err: true } : null, code + ': الملاحظة تحت الزرّ');
+    assert.equal(logged.length > n, log, code + ': ' + logged.slice(n).join());
   }
   ctx.erStart('free'); await flush();
   const my = calls[0].my;
@@ -362,15 +368,35 @@ test('١٠ب. الإرسال يُعاد مرّة إن لم يظهر المرفو
   assert.equal(L.ctx.ER.paid, false, 'لم يُرسل شيء: غير مدفوع');
 });
 
-test('١٠ج. الأزرار: الصفّ للمرفوع المعروض وحده، والمسح معطّل بلا مربّع أو أثناء عمل أو بعد رفعه للنشر، و«رجّع الأصل» للممسوح وحده، والتقدير بعدد المقاطع؛ والنشر والباركود معطّلان أثناء المسح', async () => {
+test('١٠د. جواب الإرسال الضائع لا يضيّع ما دُفع: الانقطاع وصفحة الخطأ وretry/busy تُعاد (الخادم لا يرسل مرّتين)، وما لم يُحسم يستطلعه الإرسال حتّى يُعرف (كان يُرمى بعد الأولى)؛ والحاسم بلا صرف يُقال ويرجع غير مدفوع', async () => {
+  const RUN = { ok: true, state: 'running', chunks: [{ i: 0, state: 'running' }, { i: 1, state: 'running' }] };
+  const go = (L) => L.ctx.erMake(vfile('a.mp4', 'video/mp4', 5000), [{ x: 0.1, y: 0.1, w: 0.2, h: 0.1 }], 'ai', ++L.ctx.ER.run, () => {});
+  const ops = (L) => L.F.api.map((x) => x.op);
+  let n = 0, L = live({ replies: { submit: () => (++n === 1 ? 'NET' : n === 2 ? { ok: false, error: 'http', status: 504 } : RUN) } });
+  let r = await go(L);
+  assert.deepEqual([ops(L), r.n, r.some, L.ctx.ER.paid], [['start', 'submit', 'submit', 'submit', 'status', 'status'], 2, 0, true], 'انقطاع ثمّ صفحة خطأ ثمّ يصل');
+  n = 0; L = live({ replies: { submit: () => (++n <= 6 ? (n % 2 ? { ok: false, error: 'busy' } : { ok: false, error: 'retry' }) : RUN) } });
+  r = await go(L);
+  assert.deepEqual([ops(L), r.n, L.ctx.ER.paid], [['start', 'submit', 'submit', 'submit', 'submit', 'submit', 'submit', 'submit', 'status', 'status'], 2, true], 'خمس بلا حسم ثمّ الاستطلاع يعيد الإرسال حتّى يُعرف ثمّ يسأل الحالة');
+  L = live({ replies: { submit: { ok: false, error: 'cap', left: 0 } } });
+  await assert.rejects(go(L), (e) => e.code === 'cap');
+  assert.deepEqual([ops(L), L.ctx.ER.paid], [['start', 'submit'], false], 'السقف عند الإرسال: حاسم بلا صرف (الخادم ردّ حجزه)');
+  n = 0; L = live({ replies: { submit: () => (++n <= 5 ? 'NET' : { ok: false, error: 'not_found' }) } });
+  await assert.rejects(go(L), (e) => e.code === 'ai');
+  assert.deepEqual([ops(L), L.ctx.ER.paid], [['start', 'submit', 'submit', 'submit', 'submit', 'submit', 'submit'], false], 'زالت المهمّة أثناء الانتظار: يُقال لا نصف ساعة على عمًى');
+  L = live({ replies: { submit: { ok: false, error: 'auth' } } });
+  await assert.rejects(go(L), (e) => e.code === 'ai');
+  assert.deepEqual(ops(L), ['start', 'submit'], 'ما لا يُعاد يُقال فورًا');
+});
+
+test('١٠ج. الأزرار: الصفّ للمرفوع المعروض وحده، والمسح معطّل بلا مربّع أو أثناء عمل أو بعد رفعه للنشر، و«رجّع الأصل» للممسوح وحده، وزرّ الذكاء بلا سعر (الموافقة تقوله)؛ والنشر والباركود معطّلان أثناء المسح', async () => {
   const { ctx, els, calls } = flow();
   const box = { querySelector: (q) => els[q.slice(1)] };
   ctx.upPick(vfile('a.mp4', 'video/mp4')); await flush();
   ctx.erSync(box);
   assert.deepEqual([els.vdErRow.hidden, els.vdErBtn.disabled, els.vdErFree.disabled, els.vdErAi.disabled, els.vdErUndo.hidden], [false, false, true, true, true]);
   ctx.ER.dur = 13; ctx.ER.boxes = [{ x: 0.1, y: 0.1, w: 0.2, h: 0.1 }]; ctx.erSync(box);
-  assert.deepEqual([els.vdErFree.disabled, els.vdErAi.disabled, els.vdErAi.textContent], [false, false, 'vdErAi {"c":10}'], '١٣ ث = مقطعان × ٥');
-  ctx.ER.dur = 60; ctx.erSync(box); assert.equal(els.vdErAi.textContent, 'vdErAi {"c":50}', 'دقيقة = ١٠ مقاطع');
+  assert.deepEqual([els.vdErFree.disabled, els.vdErAi.disabled, els.vdErAi.textContent], [false, false, 'vdErAi'], 'بلا سعر: الإطارات لا تُعرف قبل الفحص (٦٠ إطارًا = ضعف تقدير ٣٠) — الموافقة تقول العدد والسعر الحقيقيّين');
   ctx.PB.vid = 'x'; ctx.erSync(box); assert.deepEqual([els.vdErBtn.disabled, els.vdErFree.disabled], [true, true], 'رُفع للنشر'); ctx.PB.vid = '';
   ctx.erStart('free'); await flush(); ctx.erSync(box);
   assert.deepEqual([els.vdErBtn.disabled, els.vdErFree.disabled, els.vdErAi.disabled], [true, true, true], 'أثناء المسح');
@@ -382,17 +408,18 @@ test('١٠ج. الأزرار: الصفّ للمرفوع المعروض وحده�
   assert.ok(sync.includes("if(ER.busy){ pg.disabled=true; if(ec){ ec.disabled=true; eb.classList.add('off'); } }") && sync.includes('erSync(box);'), 'النشر والباركود معطّلان أثناء المسح');
 });
 
-test('١١. الواجهة: الصفّ بين خيار الباركود ورسالته والمحرّر داخل الفيديو قبل أزراره، والأزرار مربوطة، والنصوص العشرون بالـ١٤ لغة بلا اسم مزوّد، والوسوم مرفوعة', () => {
+test('١١. الواجهة: الصفّ بين خيار الباركود ورسالته والمحرّر داخل الفيديو قبل أزراره، والأزرار مربوطة، والنصوص الـ٢١ بالـ١٤ لغة بلا اسم مزوّد، والوسوم مرفوعة', () => {
   const html = V.slice(V.indexOf("box.innerHTML='<div class=\"vmk-dir-head\">"), V.indexOf("var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card)"));
   const iEc = html.indexOf('id="vdEcBox"'), iEr = html.indexOf('<div class="vmk-dir-er" id="vdErRow" hidden>'), iMsg = html.indexOf('id="vdUpMsg"');
   assert.ok(iEc > 0 && iEr > iEc && iMsg > iEr, 'بين الخيار ورسالته');
   const iVid = html.indexOf('<video id="vdVideo" controls playsinline></video>'), iEd = html.indexOf('<div class="vmk-er" id="vdEr" hidden>'), iActs = html.indexOf('<div class="vmk-dir-acts">');
   assert.ok(iVid > 0 && iEd > iVid && iActs > iEd, 'المحرّر بين الفيديو وأزراره');
   for (const k of ['vdErBtn', 'vdErUndo', 'vdErFree', 'vdErAi', 'vdErClear', 'vdErClose', 'vdErCv', 'vdErT']) assert.ok(html.includes('id="' + k + '"'), k);
+  assert.ok(html.includes('<button type="button" id="vdErUndo" hidden></button><small class="vmk-er-note" id="vdErNote"></small></div>'), 'الملاحظة في الصفّ تحت الزرّ');
   assert.ok(V.includes("erBind(box); /* v-director-erase */"));
   const css = read('css/modules.css');
-  for (const c of ['#videoMakerModal .vmk-dir-er{', '#videoMakerModal .vmk-er canvas{display:block;width:100%;max-width:760px;height:auto;', 'touch-action:none', 'html[data-mode="light"] #videoMakerModal .vmk-er{']) assert.ok(css.includes(c), c);
-  const KEYS = ['vdErBtn', 'vdErUndo', 'vdErHint', 'vdErFree', 'vdErAi', 'vdErClear', 'vdErClose', 'vdErNeedBox', 'vdErWork', 'vdErUp', 'vdErWait', 'vdErJoin', 'vdErDone', 'vdErSome', 'vdErFail', 'vdErHeavy', 'vdErCap', 'vdErConfirm', 'vdErLose', 'vdErNoFrame'];
+  for (const c of ['#videoMakerModal .vmk-dir-er{', '#videoMakerModal .vmk-er canvas{display:block;width:100%;max-width:760px;height:auto;', 'touch-action:none', 'html[data-mode="light"] #videoMakerModal .vmk-er{', '#videoMakerModal .vmk-er-note{', '#videoMakerModal .vmk-er-note:empty{display:none}', 'html[data-mode="light"] #videoMakerModal .vmk-er-note.err{']) assert.ok(css.includes(c), c);
+  const KEYS = ['vdErBtn', 'vdErUndo', 'vdErHint', 'vdErFree', 'vdErAi', 'vdErClear', 'vdErClose', 'vdErNeedBox', 'vdErWork', 'vdErUp', 'vdErWait', 'vdErJoin', 'vdErDone', 'vdErSome', 'vdErFail', 'vdErHeavy', 'vdErCap', 'vdErConfirm', 'vdErLose', 'vdErNoFrame', 'vdErLong'];
   const BANNED = /claude|anthropic|gemini|google|\bgpt|openai|runway|\bveo\b|kling|minimax|\bluma\b|\bsora\b|upload-?post|\bfal\b|\bvoid\b|netflix|bria/i;
   const base = { $: () => null, document: { getElementById: () => null, querySelector: () => null }, window: {}, localStorage: { getItem: () => null } }; base.window = base;
   vm.runInNewContext(read('js/app-03-i18n-data.js'), base);
@@ -423,7 +450,116 @@ test('١١. الواجهة: الصفّ بين خيار الباركود ورسا
 
 test('١٢. العميل والخادم على عقد واحد: /api/media?action=video-erase بثلاث عمليّات، والموجِّه يعرفه، والنتيجة عبر وسيط التنزيل لا مباشرة', () => {
   assert.ok(V.includes("fetch('/api/media?action=video-erase&op='+op"), 'الموجّه');
-  for (const op of ["erApi('start'", "erApi('submit'", "erApi('status'"]) assert.ok(V.includes(op), op);
+  for (const op of ["erApi('start'", "erApi('submit'", "var op=String(res&&res.state)==='upload'?'submit':'status';", 'var r2=await erApi(op,{id:st.id})']) assert.ok(V.includes(op), op); /* الاستطلاع: الحالة، أو الإرسال ما دام لم يُحسم (٥ و١٠د سلوكًا) */
   assert.ok(/case 'video-erase':\s*return require\('\.\/_lib\/video-erase\.js'\)/.test(read('api/media.js')), 'api/media.js يوجّه video-erase');
   assert.ok(!/fetch\(\s*(urls\[i\]|u)\s*[,)]/.test(V.slice(V.indexOf('async function erFetch('), V.indexOf('async function erFrames('))), 'لا جلب لرابط المزوّد مباشرة');
+});
+
+// ── مراجعة مستقلّة قبل الدمج (٧ ثبتت) ──
+test('١٣. الرفض أو الفشل يعيد الباركود الذي أوقفه المسح (كان يُنسى والخيار مؤشَّر فيُنشر بدونه)، والمضاف قبل المسح لا يُعاد', async () => {
+  for (const code of ['declined', 'enc']) {
+    const { ctx, calls } = flow({ card: true });
+    const f = vfile('a.mp4', 'video/mp4');
+    ctx.upPick(f); await flush();
+    assert.deepEqual(calls.map((c) => !!c.ec), [true], 'الباركود بدأ');
+    ctx.ER.boxes = [{ x: 0.2, y: 0.2, w: 0.2, h: 0.2 }];
+    const p = ctx.erStart('ai'); await flush();
+    assert.deepEqual(calls.map((c) => !!c.ec), [true, false], 'المسح بدأ');
+    const stale = calls.shift();
+    assert.notEqual(stale.my, ctx.EC.run, 'وأوقف الباركود');
+    calls.shift().rej({ code }); await p; await flush();
+    assert.deepEqual(calls.map((c) => !!c.ec), [true], code + ': الباركود يرجع');
+    assert.equal(calls[0].file, f, 'على الأصل'); assert.equal(calls[0].my, ctx.EC.run, 'تشغيلة جديدة');
+    calls.shift().res(vfile('a-om-ai.mp4', 'video/mp4')); await flush();
+    assert.equal(ctx.DR.out, ctx.EC.out.url, 'وانتهى فصار المعروض');
+  }
+  const { ctx, calls, els } = flow({ card: true });
+  ctx.upPick(vfile('b.mp4', 'video/mp4')); await flush();
+  calls.shift().res(vfile('b-om-ai.mp4', 'video/mp4')); await flush();
+  const card = ctx.DR.out;
+  ctx.ER.boxes = [{ x: 0.2, y: 0.2, w: 0.2, h: 0.2 }];
+  const p = ctx.erStart('free'); await flush();
+  calls.shift().rej({ code: 'enc' }); await p; await flush();
+  assert.deepEqual([calls.length, ctx.DR.out, els.vdUpMsg.textContent], [0, card, 'vdErFail'], 'المعروض بباركوده بلا إعادة، ورسالة الفشل لا تغطّيها «أُضيف»');
+});
+
+test('١٤. ملاحظة المسح تبقى تحت الزرّ: «ما رجع كلّه» لا تمحوها رسالة الباركود بعدها، والخطأ أحمر، و«رجّع الأصل» والمسح الجديد والملفّ الجديد يمسحونها', async () => {
+  const { ctx, els, calls } = flow({ card: true });
+  const box = { querySelector: (q) => els[q.slice(1)] };
+  const take = (ec) => calls.splice(calls.findIndex((c) => !!c.ec === ec), 1)[0];
+  const note = () => { ctx.erSync(box); return [els.vdErNote.textContent, els.vdErNote.className]; };
+  ctx.upPick(vfile('a.mp4', 'video/mp4')); await flush();
+  take(true).res(vfile('a-om-ai.mp4', 'video/mp4')); await flush();
+  ctx.ER.boxes = [{ x: 0.2, y: 0.2, w: 0.2, h: 0.2 }];
+  let p = ctx.erStart('ai'); await flush();
+  take(false).res({ file: vfile('a-clean.mp4', 'video/mp4'), some: 1, n: 3 }); await p; await flush();
+  assert.equal(els.vdUpMsg.textContent, 'vdEcWork {"p":0}', 'رسالة الباركود غطّت رسالة المسح فورًا');
+  assert.deepEqual(note(), ['vdErSome {"f":1,"n":3}', 'vmk-er-note'], 'والملاحظة باقية تحت الزرّ');
+  take(true).res(vfile('a-clean-om-ai.mp4', 'video/mp4')); await flush();
+  assert.deepEqual(note()[0], 'vdErSome {"f":1,"n":3}', 'وبعد انتهاء الباركود');
+  ctx.erUndo(); await flush();
+  assert.deepEqual(note(), ['', 'vmk-er-note'], '«رجّع الأصل» يمسحها');
+  p = ctx.erStart('ai'); await flush();
+  take(false).rej({ code: 'cap' }); await p; await flush();
+  assert.deepEqual(note(), ['vdErCap', 'vmk-er-note err'], 'الخطأ أحمر');
+  p = ctx.erStart('free'); await flush();
+  assert.deepEqual(note()[0], '', 'مسح جديد يمسحها');
+  take(false).rej({ code: 'enc' }); await p; await flush();
+  assert.deepEqual(note()[0], 'vdErFail');
+  ctx.upPick(vfile('b.mp4', 'video/mp4')); await flush();
+  assert.deepEqual(note()[0], '', 'ملفّ جديد يمسحها');
+});
+
+const probe = (dur, fps) => "Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/erin/input':\n  Duration: " + dur + ", start: 0.000000, bitrate: 1000 kb/s\n"
+  + '  Stream #0:0[0x1](und): Video: hevc (Main) (hvc1 / 0x31637668), yuv420p(tv, progressive), 1280x720 [SAR 1:1 DAR 16:9], 900 kb/s, ' + fps + ' fps, ' + fps + ' tbr, 15360 tbn (default)\n'
+  + '  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)\n';
+test('١٥. فوق حدّ المقاطع (٣٠) يُقال قبل أيّ ترميز وبرسالته، بمعدّل إطارات الفيديو الحقيقيّ (٦٠ إطارًا تبلغه عند ٩٩ ث — كان «ما قدرت» عامّة بعد ترميز الشريط)؛ والمجّانيّ بلا حدّ مقاطع', async () => {
+  const boxes = [{ x: 0.1, y: 0.1, w: 0.2, h: 0.1 }];
+  let L = live({ probe: probe('00:01:39.00', 60) });
+  await assert.rejects(L.ctx.erMake(vfile('a.mp4', 'video/mp4', 5000), boxes, 'ai', ++L.ctx.ER.run, () => {}), (e) => e.code === 'long');
+  assert.deepEqual([steps(L.F), L.F.api.length, L.ctx.confirms.length], [['probe'], 0, 0], 'لا شريط ولا شبكة ولا موافقة');
+  L = live({ probe: probe('00:01:38.00', 60) });
+  await L.ctx.erMake(vfile('a.mp4', 'video/mp4', 5000), boxes, 'ai', ++L.ctx.ER.run, () => {});
+  assert.equal(steps(L.F)[1], 'band', '٩٨ ث بـ٦٠ = ٣٠ مقطعًا: يمضي');
+  L = live({ probe: probe('00:02:59.00', 30) });
+  await L.ctx.erMake(vfile('a.mp4', 'video/mp4', 5000), boxes, 'ai', ++L.ctx.ER.run, () => {});
+  assert.equal(steps(L.F)[1], 'band', '٣٠ إطارًا: حدّ الحاسوب (١٨٠ ث) قبل حدّ المقاطع');
+  L = live({ probe: probe('00:01:39.00', 60) });
+  const r = await L.ctx.erMake(vfile('a.mp4', 'video/mp4', 5000), boxes, 'free', ++L.ctx.ER.run, () => {});
+  assert.deepEqual([L.F.execs.length, r.file.name], [2, 'a-clean.mp4']);
+  assert.ok(L.ctx.L('vdErLong') === 'vdErLong' && V.includes("code==='long'?L('vdErLong')"), 'رسالته');
+});
+
+test('١٦. القناع الناعم: الحافّة كلّها خارج المربّع — التعبئة تكبر ٢٫٥σ فأضلاع المربّع ≥ ٩٩٪ (كانت σ وحدها: ٨٤٪ وحرف عليها يطلّ)', async () => {
+  const { ctx } = panel();
+  const ops = [];
+  ctx.document.createElement = (tag) => {
+    const el = mkEl(tag);
+    el.getContext = () => new Proxy({}, { get: (t, k) => (k in t ? t[k] : (...a) => ops.push([k, ...a, t.filter || '', t.fillStyle])), set: (t, k, v) => { t[k] = v; return true; } });
+    return el;
+  };
+  ctx.ecPng = async (c) => c;
+  for (const [W, H, boxes] of [[640, 360, [{ x: 0.3, y: 0.4, w: 0.3, h: 0.15 }]], [1080, 1920, [{ x: 0.05, y: 0.85, w: 0.9, h: 0.06 }, { x: 0.7, y: 0.02, w: 0.25, h: 0.05 }]]]) {
+    ops.length = 0;
+    const B = ctx.erBand(boxes, W, H), c = await ctx.erAlphaPng(B, W, H);
+    assert.deepEqual([c.width, c.height], [W, H]);
+    const sigma = Math.max(1, Math.round(Math.min(W, H) * 0.012));
+    const fills = ops.filter((o) => o[0] === 'fillRect' && o[6] === '#fff');
+    assert.equal(fills.length, B.rects.length);
+    fills.forEach((o, i) => {
+      const r = B.rects[i];
+      assert.equal(o[5], 'blur(' + sigma + 'px)');
+      for (const e of [r.x * W - o[1], r.y * H - o[2], o[1] + o[3] - (r.x + r.w) * W, o[2] + o[4] - (r.y + r.h) * H]) assert.ok(e >= 2.5 * sigma - 1e-9, W + 'x' + H + ' هامش ' + e + ' < ٢٫٥σ=' + 2.5 * sigma);
+    });
+  }
+});
+
+test('١٧. التوليد في المخرج (الزرّ وCtrl+Enter والمخطّط الزمنيّ) لا يضيّع مسحًا مدفوعًا جاريًا بلا سؤال — السؤال قبل أيّ أثر', () => {
+  for (const [from, to] of [['async function drRun(){', 'var my=++DR.run, tk=drTok();'], ['async function drTimedRun(){', "if(!window.confirm(drT('vdTlConfirm'"]]) {
+    const a = V.indexOf(from), b = V.indexOf(to, a), body = V.slice(a, b);
+    assert.ok(a > 0 && b > a, from);
+    const g = body.indexOf("if(ER.busy&&ER.paid&&!window.confirm(L('vdErLose'))) return;");
+    assert.ok(g > 0, from + ': السؤال');
+    assert.doesNotMatch(body.slice(g), /DR\.run|upEnd\(|DR\.busy=true|drReset\(/, from + ': قبل أيّ أثر');
+  }
 });
