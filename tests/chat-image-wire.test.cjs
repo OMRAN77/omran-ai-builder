@@ -19,8 +19,13 @@ test('image with no text is sent to the model, never answered by a canned local 
   const i = client.indexOf("if(__srcImg && !(text || '').trim()){");
   assert.ok(i > 0, 'فرع الصورة بلا نصّ موجود');
   const block = client.slice(i, i + 3500);
-  assert.ok(block.includes('حلّل هذه الصورة بالتفصيل') && block.includes('Analyze this image in detail'), 'طلب تحليل كامل بلا سياق');
+  assert.ok(block.includes('حلّل هذه الصورة وأعطني الجواب العمليّ مباشرة') && block.includes('Analyze this image and give me the practical answer directly'), 'طلب تحليل كامل بلا سياق');
   assert.ok(block.includes('استكمالًا لكلامنا أعلاه') && block.includes('follow-up to our conversation above'), 'ومع سياق: تُقرأ في ضوئه');
+  /* v-shot-prompt (ملخّص محادثات ١٢ نوفمبر: لقطات ورقة اختبار ← «لا توجد أي رسالة خطأ…» وأزرار عارض الصور منسوخة بلا جواب): الأسئلة يُجاب عنها،
+     ولا أمر بنسخ النصّ حرفيًّا ولا بذكر الخطأ قبل غيره (وهو في صوت المستخدم يغلب SHOT_REPLY_NOTE) */
+  assert.ok(block.includes('إن كانت أسئلة أو تمرينًا فأجب عنها') && block.includes('if it contains questions or an exercise, answer them'), 'الأسئلة يُجاب عنها');
+  assert.ok(block.includes('لا تسرد نصوصها ولا تصف أزرار الجوال أو التطبيق') && block.includes('Do not list its text or describe phone/app buttons'), 'لا سرد ولا وصف أزرار');
+  assert.ok(!/حرفيًّا|verbatim|قبل غيره|before anything else/.test(block.slice(block.indexOf('text = __imgCtx.length'))), 'لا نسخ حرفيّ ولا «الخطأ قبل غيره»');
   assert.ok(!block.includes('return;'), 'الفرع لا يقطع الدور — يكمل إلى النموذج');
   assert.ok(!block.includes("'(ملاحظة للنظام") && !block.includes("'(System note"), 'بصوت المستخدم لا «ملاحظة للنظام»');
 });
