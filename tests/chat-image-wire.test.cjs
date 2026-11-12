@@ -24,7 +24,17 @@ test('image with no text is sent to the model, never answered by a canned local 
   /* v-shot-prompt (ملخّص محادثات ١٢ نوفمبر: لقطات ورقة اختبار ← «لا توجد أي رسالة خطأ…» وأزرار عارض الصور منسوخة بلا جواب): الأسئلة يُجاب عنها،
      ولا أمر بنسخ النصّ حرفيًّا ولا بذكر الخطأ قبل غيره (وهو في صوت المستخدم يغلب SHOT_REPLY_NOTE) */
   assert.ok(block.includes('إن كانت أسئلة أو تمرينًا فأجب عنها') && block.includes('if it contains questions or an exercise, answer them'), 'الأسئلة يُجاب عنها');
-  assert.ok(block.includes('لا تسرد نصوصها ولا تصف أزرار الجوال أو التطبيق') && block.includes('Do not list its text or describe phone/app buttons'), 'لا سرد ولا وصف أزرار');
+  assert.ok(block.includes('لا تسرد نصوصها ولا تصف أزرار الشاشة') && block.includes('Do not list its text or describe on-screen buttons'), 'لا سرد ولا وصف أزرار');
+  /* v-shot-prompt (تجربة حيّة ١٢ نوفمبر على ثلاثة نماذج: الطلب الجديد يصل كلامَ المستخدم، فمصنّف صندوق الشكاوى (api/_lib/owner-inbox)
+     بلّغ «مستخدم متضايق من التطبيق» على «التطبيق»+«خطأ»، وكاشف الإرشاد (api/_lib/site-guide) اشتعل على «الخطوة التالية/next step»؛
+     كلاهما معفيّ للمالك فما ظهر في تجربته. الطلب لا يُشعل أيًّا منهما — مقيس على المصنّفين نفسيهما لا على نصّ ثابت) */
+  const __oi = require('../api/_lib/owner-inbox.js'), { SITE_GUIDE_RE: __sgRe } = require('../api/_lib/site-guide.js');
+  const __shotPrompts = (block.match(/'[^']{80,}'/g) || []).map((q) => q.slice(1, -1)).filter((q) => /الجواب العمليّ|practical answer/.test(q));
+  assert.equal(__shotPrompts.length, 4, 'الطلبات الأربعة (عربيّ/إنجليزيّ، بسياق وبلا) مُستخرَجة');
+  for (const __q of __shotPrompts) {
+    assert.equal(__oi.classify(__q + '\n\n[مرفقات: a.png]'), null, 'الطلب لا يُبلّغ شكوى: ' + __q.slice(0, 28));
+    assert.ok(!__sgRe.test(__q), 'الطلب لا يُشعل الإرشاد بين الصفحات: ' + __q.slice(0, 28));
+  }
   assert.ok(!/حرفيًّا|verbatim|قبل غيره|before anything else/.test(block.slice(block.indexOf('text = __imgCtx.length'))), 'لا نسخ حرفيّ ولا «الخطأ قبل غيره»');
   assert.ok(!block.includes('return;'), 'الفرع لا يقطع الدور — يكمل إلى النموذج');
   assert.ok(!block.includes("'(ملاحظة للنظام") && !block.includes("'(System note"), 'بصوت المستخدم لا «ملاحظة للنظام»');

@@ -5277,11 +5277,11 @@ function __friendlyErr(e){
       });
       text = __imgCtx.length
         ? ((lang === 'ar')
-          ? 'أرفقت هذه الصورة استكمالًا لكلامنا أعلاه: حلّلها في ضوء آخر موضوع بيننا وأعطني الجواب العمليّ مباشرة — إن كانت أسئلة أو تمرينًا فأجب عنها، وإن كان فيها خطأ أو تنبيه فسببه وحلّه. لا تسرد نصوصها ولا تصف أزرار الجوال أو التطبيق، ولا تسألني ماذا أريد أن أفعل بها.'
-          : 'I attached this image as a follow-up to our conversation above: analyze it in the context of our last topic and give me the practical answer directly — if it contains questions or an exercise, answer them; if it shows an error or alert, give its cause and fix. Do not list its text or describe phone/app buttons, and do not ask what I want to do with it.')
+          ? 'أرفقت هذه الصورة استكمالًا لكلامنا أعلاه: حلّلها في ضوء آخر موضوع بيننا وأعطني الجواب العمليّ مباشرة — إن كانت أسئلة أو تمرينًا فأجب عنها، وإن كان فيها خطأ أو تنبيه فسببه وحلّه. لا تسرد نصوصها ولا تصف أزرار الشاشة، ولا تسألني ماذا أريد أن أفعل بها.'
+          : 'I attached this image as a follow-up to our conversation above: analyze it in the context of our last topic and give me the practical answer directly — if it contains questions or an exercise, answer them; if it shows an error or alert, give its cause and fix. Do not list its text or describe on-screen buttons, and do not ask what I want to do with it.')
         : ((lang === 'ar')
-          ? 'حلّل هذه الصورة وأعطني الجواب العمليّ مباشرة: إن كان فيها خطأ أو تنبيه فابدأ بسببه وحلّه، وإن كانت أسئلة أو تمرينًا فأجب عنها، وإلّا فاشرح المهمّ فيها والخطوة التالية. لا تسرد نصوصها ولا تصف أزرار الجوال أو التطبيق، ولا تسألني ماذا أريد أن أفعل بها.'
-          : 'Analyze this image and give me the practical answer directly: if it shows an error or alert, start with its cause and fix; if it contains questions or an exercise, answer them; otherwise explain what matters in it and the next step. Do not list its text or describe phone/app buttons, and do not ask what I want to do with it.');
+          ? 'حلّل هذه الصورة وأعطني الجواب العمليّ مباشرة: إن كان فيها خطأ أو تنبيه فابدأ بسببه وحلّه، وإن كانت أسئلة أو تمرينًا فأجب عنها، وإلّا فاشرح المهمّ فيها وما أفعله بعدها. لا تسرد نصوصها ولا تصف أزرار الشاشة، ولا تسألني ماذا أريد أن أفعل بها.'
+          : 'Analyze this image and give me the practical answer directly: if it shows an error or alert, start with its cause and fix; if it contains questions or an exercise, answer them; otherwise explain what matters in it and what to do next. Do not list its text or describe on-screen buttons, and do not ask what I want to do with it.');
     }
     // 🎬 v363: شخصية كرتونية تتكلم من الدردشة مباشرة — صورة → كرتون (Gemini) → فيديو ناطق (Runway)
     let __charImg = __srcImg
