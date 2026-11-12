@@ -148,7 +148,9 @@ function live(o = {}) {
         if (a === '-i /erin/input') { for (const l of (o.probe || PROBE).split('\n')) for (const f of this.cbs.log) f({ message: l }); return 1; }
         if (a.endsWith('erb_%03d.mp4')) { for (const n of Object.keys(F.frames)) F.fs[n] = new Uint8Array(1000); return 0; }
         if (a.endsWith('-f framecrc erc.txt')) { const n = a.split(' ')[1]; if ((o.broken || []).includes(n)) return 1; /* ملفّ تالف: الأمر يفشل ولا يكتب */
-          F.fs['erc.txt'] = enc('#tb 0: 1/30\n' + '0, 0, 0, 1, 10, 0x1\n'.repeat(F.frames[n] || 0) + (o.discard ? '0, 9, 9, 1, 10, 0x9, F=0x4\n'.repeat(o.discard) : '')); return 0; }
+          const inp = n === '/erin/input', k = inp ? (o.inputFrames || 0) : (F.frames[n] || 0); /* الأصل: حزم بتوقيت متزايد بمعدّله (مدّة الفيديو وحده) */
+          F.fs['erc.txt'] = enc('#tb 0: 1/' + (inp ? (o.inputFps || 30) : 30) + '\n' + Array.from({ length: k }, (_, i) => '0, ' + (inp ? i : 0) + ', ' + (inp ? i : 0) + ', 1, 10, 0x1\n').join('')
+            + (o.discard ? '0, 9, 9, 1, 10, 0x9, F=0x4\n'.repeat(o.discard) : '')); return 0; }
         if (/erm_\d+\.mp4$/.test(a)) { F.fs[a.split(' ').pop()] = new Uint8Array(300); return 0; }
         if (a.endsWith('erj.mp4')) { if (o.joinFail) return 1; F.fs['erj.mp4'] = new Uint8Array(2000); return 0; }
         if (a.endsWith('er_out.mp4')) { F.fs['er_out.mp4'] = new Uint8Array(4096); return 0; }
@@ -338,7 +340,7 @@ test('٩. الأقفال: لا مسح بلا مربّع، ولا أثناء نش
   assert.ok(ctx.ER.run !== run && ctx.EC.src.file.name === 'd.mp4');
 });
 
-test('١٠. الفشل يبقي الأصل برسالة (والثقيل والسقف والطويل برسائلها والرفض بلا رسالة) تبقى تحت الزرّ، والمتوقَّع لا يُسجَّل خطأً، والتوليد في المخرج يلغي المسح', async () => {
+test('١٠. الفشل يبقي الأصل برسالة (والثقيل والسقف والطويل برسائلها والرفض بلا رسالة) في الملاحظة تحت الزرّ وحدها (كانت مرّتين — مراجعة ثانية)، والمتوقَّع لا يُسجَّل خطأً، والتوليد في المخرج يلغي المسح', async () => {
   const { ctx, calls, els } = flow();
   const logged = []; ctx.__swallow = (e, w) => logged.push(w);
   ctx.upPick(vfile('a.mp4', 'video/mp4')); await flush();
@@ -347,8 +349,8 @@ test('١٠. الفشل يبقي الأصل برسالة (والثقيل والس
   for (const [code, msg, err, log] of [['enc', 'vdErFail', true, true], ['heavy', 'vdErHeavy', true, false], ['cap', 'vdErCap', true, false], ['long', 'vdErLong', true, false], ['declined', '', false, false]]) {
     const n = logged.length;
     const p = ctx.erStart('ai'); await flush(); calls.shift().rej({ code }); await p;
-    assert.deepEqual([ctx.DR.out, els.vdUpMsg.textContent, els.vdUpMsg.className.includes('err'), ctx.ER.busy, ctx.ER.paid], [orig, msg, err, false, false], code);
-    assert.deepEqual(J(ctx.ER.note), msg ? { t: msg, err: true } : null, code + ': الملاحظة تحت الزرّ');
+    assert.deepEqual([ctx.DR.out, els.vdUpMsg.textContent, ctx.ER.busy, ctx.ER.paid], [orig, '', false, false], code + ': رسالة الصندوق فارغة');
+    assert.deepEqual(J(ctx.ER.note), msg ? { t: msg, err } : null, code + ': الملاحظة تحت الزرّ');
     assert.equal(logged.length > n, log, code + ': ' + logged.slice(n).join());
   }
   ctx.erStart('free'); await flush();
@@ -386,7 +388,30 @@ test('١٠د. جواب الإرسال الضائع لا يضيّع ما دُفع
   assert.deepEqual([ops(L), L.ctx.ER.paid], [['start', 'submit', 'submit', 'submit', 'submit', 'submit', 'submit'], false], 'زالت المهمّة أثناء الانتظار: يُقال لا نصف ساعة على عمًى');
   L = live({ replies: { submit: { ok: false, error: 'auth' } } });
   await assert.rejects(go(L), (e) => e.code === 'ai');
-  assert.deepEqual(ops(L), ['start', 'submit'], 'ما لا يُعاد يُقال فورًا');
+  assert.deepEqual(ops(L), ['start', 'submit'], 'رفض الرمز بلا جواب ضائع قبله: لم يُرسل شيء — يُقال فورًا');
+  n = 0; L = live({ replies: { submit: () => (++n === 1 ? 'NET' : n === 2 ? { ok: false, error: 'auth' } : n === 3 ? { ok: false, error: 'owner_only' } : n === 4 ? { ok: false, error: 'unavailable' } : RUN) } });
+  r = await go(L);
+  assert.deepEqual([ops(L), r.n, r.some, L.ctx.ER.paid], [['start', 'submit', 'submit', 'submit', 'submit', 'submit', 'status', 'status'], 2, 0, true], 'بعد جواب ضائع: رفض الرمز لا يقول شيئًا عن المهمّة (ربّما أرسلها الضائع) — يُعاد ولا يُترك ما دُفع (مراجعة ثانية)');
+  n = 0; L = live({ replies: { submit: () => (++n === 1 ? 'NET' : n === 2 ? { ok: false, error: 'not_uploaded' } : { ok: false, error: 'auth' }) } });
+  await assert.rejects(go(L), (e) => e.code === 'ai');
+  assert.deepEqual([ops(L), L.ctx.ER.paid], [['start', 'submit', 'submit', 'submit'], false], '«لم تُرفع» تثبت أنّ الضائع لم يرسل: الرمز بعدها حاسم');
+});
+
+test('١٠هـ. نصف ساعة الانتظار من الإرسال لا من قبله: انقطاع ٦ د ثمّ إرسال ثمّ نموذج يأخذ ٢٦ د — النتائج تُجلب (كانت تُترك عند ٣٠ د من قبل الإرسال وقد دُفعت — مراجعة ثانية)، والحدّ نصف ساعة بعد الإرسال', async () => {
+  const RUN = { ok: true, state: 'running', chunks: [{ i: 0, state: 'running' }, { i: 1, state: 'running' }] };
+  const DONE = { ok: true, state: 'done', chunks: [{ i: 0, state: 'done', url: 'https://cdn.example/r0.mp4' }, { i: 1, state: 'done', url: 'https://cdn.example/r1.mp4' }] };
+  for (const [late, takes, some] of [[6, 26, 0], [29.9, 1, 0], [6, 31, 2]]) {
+    let clock = 0, sentAt = -1;
+    const L = live({ replies: {
+      submit: () => (clock < late * 60000 ? 'NET' : ((sentAt < 0 ? (sentAt = clock) : 0), RUN)),
+      status: () => (clock - sentAt < takes * 60000 ? RUN : DONE),
+    } });
+    L.ctx.Date = { now: () => clock }; /* ساعة افتراضيّة: الانتظار يمضي بها */
+    const st = L.ctx.setTimeout; L.ctx.setTimeout = (fn, ms) => { if (ms < 60000) clock += ms || 0; return st(fn, ms); }; /* انتظارات المسح وحدها: مهلة تحميل الأداة (١٢٠ ث) تُسجَّل ولا تمضي — كانت تزيح البدء دقيقتين فينجح القديم صدفةً (طفرة) */
+    const r = await L.ctx.erMake(vfile('a.mp4', 'video/mp4', 5000), [{ x: 0.1, y: 0.1, w: 0.2, h: 0.1 }], 'ai', ++L.ctx.ER.run, () => {});
+    assert.deepEqual([r.some, r.n, L.F.fetched.length], [some, 2, 2 - some], 'إرسال عند ' + late + ' د ونموذج ' + takes + ' د');
+    assert.ok(sentAt >= late * 60000 && clock - sentAt <= 30 * 60000 + 8000, 'الحدّ نصف ساعة بعد الإرسال: ' + (clock - sentAt));
+  }
 });
 
 test('١٠ج. الأزرار: الصفّ للمرفوع المعروض وحده، والمسح معطّل بلا مربّع أو أثناء عمل أو بعد رفعه للنشر، و«رجّع الأصل» للممسوح وحده، وزرّ الذكاء بلا سعر (الموافقة تقوله)؛ والنشر والباركود معطّلان أثناء المسح', async () => {
@@ -480,7 +505,7 @@ test('١٣. الرفض أو الفشل يعيد الباركود الذي أوق
   ctx.ER.boxes = [{ x: 0.2, y: 0.2, w: 0.2, h: 0.2 }];
   const p = ctx.erStart('free'); await flush();
   calls.shift().rej({ code: 'enc' }); await p; await flush();
-  assert.deepEqual([calls.length, ctx.DR.out, els.vdUpMsg.textContent], [0, card, 'vdErFail'], 'المعروض بباركوده بلا إعادة، ورسالة الفشل لا تغطّيها «أُضيف»');
+  assert.deepEqual([calls.length, ctx.DR.out, els.vdUpMsg.textContent, ctx.ER.note && ctx.ER.note.t], [0, card, '', 'vdErFail'], 'المعروض بباركوده بلا إعادة، و«أُضيف» لا يغطّي الفشل، والفشل في الملاحظة وحدها');
 });
 
 test('١٤. ملاحظة المسح تبقى تحت الزرّ: «ما رجع كلّه» لا تمحوها رسالة الباركود بعدها، والخطأ أحمر، و«رجّع الأصل» والمسح الجديد والملفّ الجديد يمسحونها', async () => {
@@ -508,26 +533,51 @@ test('١٤. ملاحظة المسح تبقى تحت الزرّ: «ما رجع ك
   assert.deepEqual(note()[0], 'vdErFail');
   ctx.upPick(vfile('b.mp4', 'video/mp4')); await flush();
   assert.deepEqual(note()[0], '', 'ملفّ جديد يمسحها');
+  // بلا باركود: النتيجة لا تتكرّر — الجزئيّ والخطأ في الملاحظة وحدها، والكامل في رسالة الصندوق وحدها (كانت مرّتين — مراجعة ثانية)
+  const F2 = flow(), e2 = F2.els, b2 = { querySelector: (q) => e2[q.slice(1)] };
+  F2.ctx.upPick(vfile('c.mp4', 'video/mp4')); await flush();
+  F2.ctx.ER.boxes = [{ x: 0.2, y: 0.2, w: 0.2, h: 0.2 }];
+  for (const [res, msg, nt] of [[{ some: 1, n: 3 }, '', 'vdErSome {"f":1,"n":3}'], [{ some: 0, n: 3 }, 'vdErDone', ''], [null, '', 'vdErFail']]) {
+    p = F2.ctx.erStart('ai'); await flush();
+    const c = F2.calls.splice(F2.calls.findIndex((x) => !x.ec), 1)[0];
+    if (res) c.res(Object.assign({ file: vfile('c-clean.mp4', 'video/mp4') }, res)); else c.rej({ code: 'enc' });
+    await p; await flush(); F2.ctx.erSync(b2);
+    assert.deepEqual([e2.vdUpMsg.textContent, e2.vdErNote.textContent], [msg, nt], JSON.stringify(res));
+    if (F2.ctx.ER.out) { F2.ctx.erUndo(); await flush(); }
+  }
 });
 
 const probe = (dur, fps) => "Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/erin/input':\n  Duration: " + dur + ", start: 0.000000, bitrate: 1000 kb/s\n"
   + '  Stream #0:0[0x1](und): Video: hevc (Main) (hvc1 / 0x31637668), yuv420p(tv, progressive), 1280x720 [SAR 1:1 DAR 16:9], 900 kb/s, ' + fps + ' fps, ' + fps + ' tbr, 15360 tbn (default)\n'
   + '  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)\n';
-test('١٥. فوق حدّ المقاطع (٣٠) يُقال قبل أيّ ترميز وبرسالته، بمعدّل إطارات الفيديو الحقيقيّ (٦٠ إطارًا تبلغه عند ٩٩ ث — كان «ما قدرت» عامّة بعد ترميز الشريط)؛ والمجّانيّ بلا حدّ مقاطع', async () => {
-  const boxes = [{ x: 0.1, y: 0.1, w: 0.2, h: 0.1 }];
-  let L = live({ probe: probe('00:01:39.00', 60) });
-  await assert.rejects(L.ctx.erMake(vfile('a.mp4', 'video/mp4', 5000), boxes, 'ai', ++L.ctx.ER.run, () => {}), (e) => e.code === 'long');
-  assert.deepEqual([steps(L.F), L.F.api.length, L.ctx.confirms.length], [['probe'], 0, 0], 'لا شريط ولا شبكة ولا موافقة');
+test('١٥. فوق حدّ المقاطع (٣٠) يُقال قبل ترميز الشريط وبرسالته، بمدّة دفق الفيديو نفسه لا الحاوية (صوت أطول كان يرفض فيديو يسعه الحدّ — مراجعة ثانية) وبلا تمريرة زائدة ما دامت الحاوية تحت الحدّ؛ والمجّانيّ بلا حدّ مقاطع', async () => {
+  const boxes = [{ x: 0.1, y: 0.1, w: 0.2, h: 0.1 }], go = (L, mode) => L.ctx.erMake(vfile('a.mp4', 'video/mp4', 5000), boxes, mode || 'ai', ++L.ctx.ER.run, () => {});
+  let L = live({ probe: probe('00:01:40.00', 60), inputFrames: 6000, inputFps: 60 });
+  await assert.rejects(go(L), (e) => e.code === 'long');
+  assert.deepEqual([steps(L.F), L.F.api.length, L.ctx.confirms.length], [['probe', 'count:/erin/input'], 0, 0], 'الفيديو نفسه ١٠٠ ث بـ٦٠ (٣١ مقطعًا): تمريرة عدّ بلا فكّ ثمّ الرسالة — لا شريط ولا شبكة ولا موافقة');
+  L = live({ probe: probe('00:01:40.00', 60), inputFrames: 5400, inputFps: 60 });
+  await go(L);
+  assert.deepEqual([steps(L.F).slice(0, 3), L.ctx.confirms.length], [['probe', 'count:/erin/input', 'band'], 1], 'الحاوية ١٠٠ ث (صوت أطول) والفيديو ٩٠ ث (٢٨ مقطعًا): يمضي إلى الموافقة');
+  for (const [k, early] of [[5913, true], [5912, false]]) { /* الطرف: المدّة حتّى نهاية آخر حزمة (٥٩١٣ = ٣١ مقطعًا يُقال مبكّرًا؛ ٥٩١٢ في سماح الإطارين يمضي) */
+    L = live({ probe: probe('00:01:38.55', 60), inputFrames: k, inputFps: 60 });
+    if (early) { await assert.rejects(go(L), (e) => e.code === 'long'); assert.deepEqual(steps(L.F), ['probe', 'count:/erin/input'], k); } else { await go(L); assert.equal(steps(L.F)[2], 'band', k); }
+  }
+  L = live({ probe: probe('00:01:38.52', 60), inputFrames: 5910, inputFps: 60 });
+  await go(L);
+  assert.equal(steps(L.F)[1], 'band', 'عند الحدّ بالضبط (٣٠×١٩٧) وصوت أطول بـ٢٠ م.ث: سماح إطارين — بلا تمريرة');
   L = live({ probe: probe('00:01:38.00', 60) });
-  await L.ctx.erMake(vfile('a.mp4', 'video/mp4', 5000), boxes, 'ai', ++L.ctx.ER.run, () => {});
-  assert.equal(steps(L.F)[1], 'band', '٩٨ ث بـ٦٠ = ٣٠ مقطعًا: يمضي');
+  await go(L);
+  assert.equal(steps(L.F)[1], 'band', '٩٨ ث بـ٦٠: الحاوية تحت الحدّ — بلا تمريرة عدّ');
   L = live({ probe: probe('00:02:59.00', 30) });
-  await L.ctx.erMake(vfile('a.mp4', 'video/mp4', 5000), boxes, 'ai', ++L.ctx.ER.run, () => {});
+  await go(L);
   assert.equal(steps(L.F)[1], 'band', '٣٠ إطارًا: حدّ الحاسوب (١٨٠ ث) قبل حدّ المقاطع');
-  L = live({ probe: probe('00:01:39.00', 60) });
-  const r = await L.ctx.erMake(vfile('a.mp4', 'video/mp4', 5000), boxes, 'free', ++L.ctx.ER.run, () => {});
-  assert.deepEqual([L.F.execs.length, r.file.name], [2, 'a-clean.mp4']);
-  assert.ok(L.ctx.L('vdErLong') === 'vdErLong' && V.includes("code==='long'?L('vdErLong')"), 'رسالته');
+  L = live({ probe: probe('00:01:40.00', 60), broken: ['/erin/input'] });
+  await go(L);
+  assert.deepEqual(steps(L.F).slice(0, 3), ['probe', 'count:/erin/input', 'band'], 'تعذّر العدّ: لا رفض مبكّر — الفحص بعد الترميز يكفي');
+  L = live({ probe: probe('00:01:40.00', 60), inputFrames: 6000, inputFps: 60 });
+  const r = await go(L, 'free');
+  assert.deepEqual([L.F.execs.length, r.file.name], [2, 'a-clean.mp4'], 'المجّانيّ بلا حدّ مقاطع ولا تمريرة');
+  assert.ok(V.includes("code==='long'?L('vdErLong')"), 'رسالته');
 });
 
 test('١٦. القناع الناعم: الحافّة كلّها خارج المربّع — التعبئة تكبر ٢٫٥σ فأضلاع المربّع ≥ ٩٩٪ (كانت σ وحدها: ٨٤٪ وحرف عليها يطلّ)', async () => {

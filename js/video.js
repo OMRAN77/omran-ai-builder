@@ -1323,10 +1323,32 @@
     if(ret===0){ try{ (new TextDecoder().decode(await ff.readFile('erc.txt')).match(/^0,.*$/gm)||[]).forEach(function(l){ var fl=/F=0x([0-9a-f]+)/i.exec(l); if(!(fl&&parseInt(fl[1],16)&4)) n++; }); }catch(e){ n=0; /* guard-ok — بلا إطارات */ } }
     erStale(my); return n;
   }
+  /* مدّة دفق الفيديو وحده بلا فكّ (framecrc): Duration الحاوية يمتدّ بأطول دفق — صوت أطول من الفيديو كان يرفض فيديو يسعه الحدّ
+     (مراجعة ثانية). 0 = لم تُعرف: الفحص بعد ترميز الشريط يكفي */
+  async function erVidSpan(ff,input,vi,my){ /* vi: دفق الفيديو الذي يرمَّز منه الشريط (لا صورة غلاف) */
+    try{ await ff.deleteFile('erc.txt'); }catch(e){ e=null; /* guard-ok — لا ملفّ سابق (لا يُسجَّل في ملاحظات النظام) */ }
+    erStale(my);
+    var ret=await ff.exec(['-hide_banner','-y','-i',input,'-map','0:'+vi,'-c','copy','-f','framecrc','erc.txt']); erStale(my);
+    var tb=null, lo=Infinity, hi=-Infinity;
+    if(ret===0){ try{
+      var txt=new TextDecoder().decode(await ff.readFile('erc.txt'));
+      tb=/^#tb 0: (\d+)\/(\d+)/m.exec(txt);
+      (txt.match(/^0,.*$/gm)||[]).forEach(function(l){
+        var fl=/F=0x([0-9a-f]+)/i.exec(l); if(fl&&parseInt(fl[1],16)&4) return; /* حزم القصّ لا تُعرض */
+        var q=l.split(','), pts=+q[2], d=+q[3]; if(!isFinite(pts)||Math.abs(pts)>9e15) return; /* بلا توقيت */
+        lo=Math.min(lo,pts); hi=Math.max(hi,pts+(d>0?d:0));
+      });
+    }catch(e){ tb=null; /* guard-ok — بلا عدّ: الفحص بعد الترميز */ } }
+    erStale(my);
+    return (tb&&+tb[2]>0&&hi>lo)?(hi-lo)*(+tb[1])/(+tb[2]):0;
+  }
   async function erAi(ff,input,pl,boxes,my,up,setSpan,log){
     var B=erBand(boxes,pl.dw,pl.dh), segs=[], i;
-    /* أكثر من ٣٠ مقطعًا (حدّ الخادم): قبل أيّ ترميز وبرسالته — كانت «ما قدرت» عامّة بعد ترميز الشريط، و٦٠ إطارًا تبلغه عند ٩٩ ث (مراجعة) */
-    if(Math.ceil(Math.round((pl.dur||0)*erFpsNum(pl.fps))/ER_CH)>ER_MAXCH) throw {code:'long'};
+    /* أكثر من ٣٠ مقطعًا (حدّ الخادم): يُقال قبل ترميز الشريط وبرسالته — كانت «ما قدرت» عامّة بعده (مراجعة). مدّة الحاوية حدّ أعلى بلا
+       تكلفة، وإن تجاوزته فمدّة دفق الفيديو نفسه (الحاوية تمتدّ بأطول دفق — مراجعة ثانية)؛ وإطاران سماحًا لتقريب الطرفين: ما فات يقوله
+       الفحص بعد الترميز */
+    var fpsN=erFpsNum(pl.fps), over=function(sec){ return Math.ceil((Math.round(sec*fpsN)-2)/ER_CH)>ER_MAXCH; };
+    if(over(pl.dur||0)&&over(await erVidSpan(ff,input,pl.v.i,my))) throw {code:'long'};
     setSpan([6,14,pl.dur||0,'vdErWork']);
     if(await ff.exec(erBandArgs(pl,input,B))!==0) throw {code:'band',log:log.slice(-6).join(' | ')};
     erStale(my);
@@ -1349,24 +1371,34 @@
     for(i=0;i<datas.length;i++){ await erPut(st.ups[i].put,st.ups[i].ctype||'video/mp4',datas[i],function(l){ up('vdErUp',15+20*(sent+l)/total); }); ER.xhr=null; sent+=datas[i].length; erStale(my); }
     /* الإرسال آمن تكراره: الخادم يحفظ «يُرسل» قبل الإرسال ويعيد حالته بعده بلا إرسال ثانٍ. فالجواب الضائع (انقطاع، صفحة خطأ، retry،
        busy) يُعاد، وما لم يُحسم يدخل الاستطلاع الذي يعيد الإرسال ما دامت «لم تُرسل» — كان يُرمى فيضيع ما دُفع (مراجعة مستقلّة).
-       الحاسم بلا صرف (السقف، الملفّات لم تظهر بعد إعادة، وما لا يُعاد) يُقال ويرجع «غير مدفوع» */
+       الحاسم بلا صرف يُقال ويرجع «غير مدفوع»: السقف والملفّات الغائبة (بعد إعادة) لا تصدر إلّا لمهمّة لم تُرسل، والمهمّة الغائبة لا شيء
+       يُنتظر منها. ورفض الرمز أو الحساب أو الخدمة يصدر قبل قراءة المهمّة: حاسم ما لم يسبقه جواب ضائع، وبعده ربّما أرسلها الضائع فيُعاد
+       كالانقطاع (مراجعة ثانية) */
     ER.paid=true; /* من هنا قد يُصرف: ملفّ جديد أو توليد في المخرج يسأل قبل أن يضيّعه */
-    var res=null, tries=0, nu=0, dead=function(r){ ER.paid=false; return {code:(r&&r.error==='cap')?'cap':'ai',why:pbWhy(r)}; };
+    var res=null, tries=0, nu=0, unsure=false, dead=function(r){ ER.paid=false; return {code:(r&&r.error==='cap')?'cap':'ai',why:pbWhy(r)}; };
+    var final=function(r){
+      var e=String((r&&r.error)||'');
+      if(e==='cap'||e==='not_found') return true;
+      if(e==='not_uploaded'){ unsure=false; return ++nu>=2; } /* المهمّة لم تُرسل بعد: الضائع قبلها لم يرسل */
+      if(!e||/^(retry|busy|http)$/.test(e)){ unsure=true; return false; }
+      return !unsure;
+    };
     for(;;){
       res=await erApi('submit',{id:st.id}).catch(function(){ return null; }); erStale(my);
       if(res&&res.ok) break;
-      var ee=String((res&&res.error)||'');
-      if(ee==='not_uploaded'?++nu>=2:(ee&&!/^(retry|busy|http)$/.test(ee))) throw dead(res); /* حاسم: لم يُرسل شيء */
+      if(final(res)) throw dead(res);
       if(++tries>4){ res={ok:true,state:'upload'}; break; } /* لم يُحسم: الاستطلاع يسأل */
-      await erSleep(ee==='not_uploaded'?3000:2500*tries); erStale(my); /* المرفوع للتوّ قد يتأخّر ظهوره عند المزوّد */
+      await erSleep(String((res&&res.error)||'')==='not_uploaded'?3000:2500*tries); erStale(my); /* المرفوع للتوّ قد يتأخّر ظهوره عند المزوّد */
     }
     var t0=Date.now();
     while(!/^(done|partial|failed)$/.test(String(res&&res.state))&&Date.now()-t0<1800000){ /* نصف ساعة حدّ الانتظار: ما رجع يُستعمل والباقي يُمسح مجانًا */
       await erSleep(4000); erStale(my);
       var op=String(res&&res.state)==='upload'?'submit':'status'; /* لم يصل الإرسال بعد: يُعاد (آمن) */
       var r2=await erApi(op,{id:st.id}).catch(function(){ return null; }); erStale(my);
-      if(r2&&r2.ok) res=r2;
-      else if(op==='submit'&&r2&&r2.error&&!/^(retry|busy|http)$/.test(String(r2.error))) throw dead(r2); /* حاسم أثناء الانتظار (سقف، مهمّة زالت، رمز): لا نصف ساعة على عمًى */
+      /* أُرسل الآن (أو أرسله جواب ضائع قبله): نصف الساعة من الإرسال لا من قبله — المزوّد يكمل خلال ٣٠ د منه، وما أُرسل متأخّرًا كان يُدفع
+         ثمّ يُترك (مراجعة ثانية) */
+      if(r2&&r2.ok){ if(op==='submit') t0=Date.now(); res=r2; }
+      else if(op==='submit'&&final(r2)) throw dead(r2);
       var fin=((res&&res.chunks)||[]).filter(function(c){ return c.state!=='running'&&c.state!=='unknown'; }).length;
       up('vdErWait',35+40*fin/n,{d:fin,n:n});
     }
@@ -1430,12 +1462,12 @@
       ER.note=r.some?{t:drT('vdErSome',{f:r.some,n:r.n}),err:false}:null; /* الملاحظة تبقى تحت الزرّ: رسالة الباركود تغطّي رسالة المسح فورًا */
       ecShow(r.file,'video/mp4',url);
       if(prev) erRevoke(prev.url,url); if(card) erRevoke(card.url,url);
-      upMsg(r.some?ER.note.t:L('vdErDone'));
+      upMsg(r.some?'':L('vdErDone')); /* النتيجة في الملاحظة وحدها — كانت مرّتين تحت الزرّ حين لا يغطّيها الباركود (مراجعة ثانية) */
       if(ecPref()) ecStart();
     }catch(e){
       if(my!==ER.run||(e&&e.code==='stale')) return;
       var code=String((e&&e.code)||''), msg=code==='declined'?'':(code==='heavy'?L('vdErHeavy'):(code==='cap'?L('vdErCap'):(code==='long'?L('vdErLong'):L('vdErFail'))));
-      ER.note=msg?{t:msg,err:true}:null; upMsg(msg,!!msg);
+      ER.note=msg?{t:msg,err:true}:null; upMsg(''); /* الخطأ في الملاحظة وحدها (مراجعة ثانية) */
       if(!/^(declined|heavy|big|cap|long)$/.test(code)){ try{ __swallow(e,'director:erase '+code+' '+String((e&&(e.why||e.message))||'')+' '+String((e&&e.log)||'')); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:er-log'); /* guard-ok — لا مسجّل */ } }
       /* المسح أوقف الباركود الجاري (ecCancel أعلاه): يرجع على المعروض — كان يُنسى بعد الرفض أو الفشل والخيار مؤشَّر فيُنشر بدونه (مراجعة) */
       ER.busy=false; ER.paid=false; erKill();
