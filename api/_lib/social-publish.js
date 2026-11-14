@@ -16,7 +16,8 @@
    v-director-upload-fix (مراجعة مستقلّة ١٤ نوفمبر): الإثبات يُحفظ حين يُرى. اللوحة تقول «ما وصل — جرّب مرّة ثانية» أو «ما نزل» من عمليّة
    الحالة، والحجز كان يتحرّر في الضغطة التالية وحدها بسؤال الخدمة من جديد — فبعد يوم، أو حين تنسى الخدمة الطلب، لا إثبات ويبقى الحجز
    أسبوعًا. وملفّ الجهاز صار اسمه ثابتًا (هويّته)، فإعادة اختياره لا تفلت من الحجز كما كانت. الآن ما رأته الحالة يُعلَّم (socpub:dead)،
-   والنشر يأخذ بالعلامة حين لا تعرف الخدمة الطلب وحده: دليلها الحيّ يغلب المحفوظ دائمًا. */
+   والنشر يأخذ بالعلامة حين لا تعرف الخدمة الطلب وحده: دليلها الحيّ يغلب المحفوظ، ورؤيتها للطلب — للحالة أو لضغطة نشر — تُحفظ (seenKey) فتغلبه
+   بعد أن تنساه (المراجعة الثالثة: كانت الحالة وحدها تحفظها)؛ والرؤية ردّ يصف الطلب (shown)، لا أيّ ردّ 200. */
 const crypto = require('node:crypto');
 const { kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
 const { sessionUser, tokenOf } = require('./_session.js');
@@ -40,7 +41,7 @@ const PRE_SEND = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENE
 const fileKey = (id) => 'socpub:file:' + id;
 const sentKey = (v, p) => 'socpub:sent:' + v + ':' + p; // المنصّة p أخذت الفيديو v بالطلب المخزَّن قيمةً
 const reqKey = (r) => 'socpub:req:' + r; // وقت الطلب وقبول الخدمة له: «لا طلب» في المهلة = ينتظر، وبعدها = ما وصل
-const seenKey = (r) => 'socpub:seen:' + r; // الخدمة أرت الطلب حيًّا مرّة: غيابه بعدها نسيان لا ضياع
+const seenKey = (r) => 'socpub:seen:' + r; // الخدمة أرت الطلب حيًّا مرّة (للحالة أو للنشر): غيابه بعدها نسيان لا ضياع
 const relKey = (r, p) => 'socpub:rel:' + r + ':' + p; // تحرير حجز منصّة من طلب ميّت: محرِّر واحد في الدقيقة، ولا يمسح حجزًا جديدًا لغيره
 const deadKey = (r, p) => 'socpub:dead:' + r + ':' + p; // إثبات محفوظ رأته الحالة: المنصّة p لم تنشر في الطلب r («*» = الطلب كلّه ما وصل الخدمة)
 const logErr = (where, e) => console.error('[social-publish] ' + where + ': ' + String((e && e.message) || e).replace(/https?:\/\/\S+/g, '<url>').slice(0, 200));
@@ -147,6 +148,9 @@ async function lostReq(r) {
   return !(await kvGetRaw(seenKey(r)));
 }
 const notFound = (st) => !!st && (st.status === 404 || lc(st.j && st.j.status) === 'not_found');
+/** الخدمة أرت الطلب فعلًا: ردّ 2xx يصفه (حالة مهمّة أو صفوف). جسم فارغ أو صفحة عطل بردّ 200 (upFetch يقرؤها {}) ليست رؤية — كانت تُعدّ
+    «أرته حيًّا» فتلغي إثبات «ما وصل» المحفوظ وتُبقي الحجز أسبوعًا لطلب ما وصل (المراجعة الثالثة). */
+const shown = (st) => !!st && st.ok === true && !notFound(st) && (rowsOf(st.j).length > 0 || !!lc(st.j && st.j.status));
 /** الحالة رأت منصّات لم تنشر يقينًا (deadRow نفسه الذي يحرّر به النشر): تُعلَّم، فلا يعتمد تحريرها لاحقًا على أنّ الخدمة ما زالت تذكر الطلب.
     منصّة بلا صفّ في مهمّة أعلنت فشلها تُعرف من سجلّ الطلب. */
 async function keepDead(reqId, j) {
@@ -155,6 +159,14 @@ async function keepDead(reqId, j) {
   if (top === 'failed') { const rec = readRec(await kvGetRaw(reqKey(reqId))); if (rec && Array.isArray(rec.p)) plats = plats.concat(rec.p.map(norm)); }
   for (const p of [...new Set(plats)]) {
     if (PLATFORMS.includes(p) && deadRow(rows.find((x) => norm(x.platform) === p), top)) await kvSetIfAbsent(deadKey(reqId, p), '1', SENT_TTL);
+  }
+}
+
+/** سجلّ القبول لا يحتمل الضياع: بدونه يُعدّ طلب قبلته الخدمة «ما وصل» بعد المهلة (حين لا تعرفه بمعرّفنا) فتُنشر منصّاته ثانية — خطأ تخزين
+    عابر واحد كان يضيّعه، والإثبات المحفوظ مدّ أثره من يوم إلى أسبوع (المراجعة الثالثة). ثلاث محاولات، ثمّ الخطأ كما كان. */
+async function kvKeep(k, v, t) {
+  for (let i = 0; ; i++) {
+    try { return await kvSetRaw(k, v, t); } catch (e) { if (i >= 2) throw e; await new Promise((go) => setTimeout(go, 150 * (i + 1))); }
   }
 }
 
@@ -222,10 +234,13 @@ async function publish(res, body, key) {
         const st = await upStatus(key, q).catch(() => null);
         if (notFound(st)) {
           // الخدمة لا تعرف الطلب: ما وصلها (في مهلته)، أو إثبات حفظته الحالة يوم رأته («ما وصل» للطلب كلّه، أو صفّ ميّت لهذه المنصّة)
-          // وما أرته الخدمة حيًّا بعد أن قيل «ما وصل» (وصل متأخّرًا) لا تحرّره العلامة — قاعدة seenKey نفسها
+          // وما أرته الخدمة حيًّا — للحالة أو لضغطة نشر — بعد أن قيل «ما وصل» (وصل متأخّرًا) لا تحرّره العلامة — قاعدة seenKey نفسها
           if ((await lostReq(q)) || ((await kvGetRaw(deadKey(q, '*'))) && !(await kvGetRaw(seenKey(q))))) free = byReq[q];
           else for (const p of byReq[q]) { if (await kvGetRaw(deadKey(q, p))) free.push(p); }
         } else if (st && st.ok) {
+          // رآه النشر نفسه حيًّا: يُعلَّم كما تعلّمه الحالة — كانت «أرته حيًّا» تُكتب من عمليّة الحالة وحدها، فطلب قيل عنه «ما وصل» ثمّ وصل
+          // متأخّرًا ورأته ضغطة (ورُفضت) بلا استطلاع بعدها يحرّره «*» حين تنساه الخدمة ← نشر ثانٍ (المراجعة الثالثة)
+          if (shown(st)) await kvSetIfAbsent(seenKey(q), '1', SENT_TTL);
           const top = lc(st.j.status), rows = rowsOf(st.j);
           free = byReq[q].filter((p) => deadRow(rows.find((x) => norm(x.platform) === p), top));
         }
@@ -286,7 +301,7 @@ async function publish(res, body, key) {
   }
   // قبلته الخدمة صراحةً: غيابه عندها لاحقًا (نسيان) لا يحرّر حجوزه أبدًا
   const accepted = JSON.stringify({ at, id, v: vid, p: send, ok: 1 });
-  await kvSetRaw(reqKey(reqId), accepted, SENT_TTL);
+  await kvKeep(reqKey(reqId), accepted, SENT_TTL);
   const got = String(r.j.request_id || '');
   const request = REQ_RE.test(got) ? got : reqId;
   if (request !== reqId) {
@@ -308,7 +323,7 @@ async function status(res, body, key) {
     return res.status(200).json(lost ? { ok: true, state: 'fail', lost: true, results: [] } : { ok: true, state: 'wait', results: [] });
   }
   if (!r.ok) return fail(res, 502, 'status', { status: r.status });
-  await kvSetIfAbsent(seenKey(reqId), '1', SENT_TTL); // رأته الخدمة حيًّا: غيابه بعدها لا يحرّر
+  if (shown(r)) await kvSetIfAbsent(seenKey(reqId), '1', SENT_TTL); // رأته الخدمة حيًّا: غيابه بعدها لا يحرّر
   await keepDead(reqId, r.j);
   return res.status(200).json(Object.assign({ ok: true }, statusOf(r.j)));
 }
@@ -338,4 +353,4 @@ module.exports = async (req, res) => {
     return fail(res, 503, 'retry');
   }
 };
-Object.assign(module.exports, { PLATFORMS, MAX_BYTES, FILE_TTL, GRACE_MS, LOST_MAX_MS, accountsOf, captions, statusOf, deadRow, xLen, threadsLen });
+Object.assign(module.exports, { PLATFORMS, MAX_BYTES, FILE_TTL, GRACE_MS, LOST_MAX_MS, accountsOf, captions, statusOf, deadRow, shown, xLen, threadsLen });

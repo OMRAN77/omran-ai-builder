@@ -819,9 +819,11 @@
     var type=upType(f);
     if(!type||!(f.size>0)){ upMsg(L('vdUpBadType'),true); return; }
     if(f.size>UP_MAX_MB*1048576){ upMsg(drT('vdPubBig',{n:UP_MAX_MB}),true); return; }
-    /* سؤال واحد قبل تبديل المعروض: فيديو صنعه المخرج يُحمَّل أوّلًا؛ وإلّا فيديو نشرُه ما زالت منصّاته «ينتظر» (v-director-upload-fix: كان
-       التبديل يمسح صفوفه ومتابعته بلا كلمة — منصّة تفشل بعدها لا تُرى؛ النشر نفسه يكمل عند المنصّات) */
-    var ask=!upShown()?'':(DR.out!==DR.fileUrl?L('vdUpReplace'):(Object.keys(PB.reqs).length?L('vdUpWait'):''));
+    /* سؤال واحد قبل تبديل المعروض: فيديو صنعه المخرج يُحمَّل أوّلًا، وفيديو نشرُه ما زالت منصّاته «ينتظر» (v-director-upload-fix: كان
+       التبديل يمسح صفوفه ومتابعته بلا كلمة — منصّة تفشل بعدها لا تُرى؛ النشر نفسه يكمل عند المنصّات). وفيديو المخرج ونشره ينتظر: نصّ واحد
+       يقول الاثنين (المراجعة الثالثة: سؤاله القديم ما كان يذكر النشر) */
+    var wait=Object.keys(PB.reqs).length>0;
+    var ask=!upShown()?'':(DR.out!==DR.fileUrl?(wait?L('vdUpBoth'):L('vdUpReplace')):(wait?L('vdUpWait'):''));
     if(ask&&!window.confirm(ask)) return;
     if(ER.busy&&ER.paid&&!window.confirm(L('vdErLose'))) return; /* v-director-erase: مسح بالذكاء مدفوع وجارٍ لا يضيع بلا سؤال */
     erDrop(DR.out); /* v-director-erase: المسح الجاري يُلغى والأصل المحفوظ يُحرَّر */
