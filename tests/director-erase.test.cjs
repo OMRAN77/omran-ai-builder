@@ -149,7 +149,7 @@ function live(o = {}) {
         if (a.endsWith('erb_%03d.mp4')) { for (const n of Object.keys(F.frames)) F.fs[n] = new Uint8Array(1000); return 0; }
         if (a.endsWith('-f framecrc erc.txt')) { const n = a.split(' ')[1]; if ((o.broken || []).includes(n)) return 1; /* ملفّ تالف: الأمر يفشل ولا يكتب */
           const inp = n === '/erin/input', k = inp ? (o.inputFrames || 0) : (F.frames[n] || 0); /* الأصل: حزم بتوقيت متزايد بمعدّله (مدّة الفيديو وحده) */
-          F.fs['erc.txt'] = enc('#tb 0: 1/' + (inp ? (o.inputFps || 30) : 30) + '\n' + Array.from({ length: k }, (_, i) => '0, ' + (inp ? i : 0) + ', ' + (inp ? i : 0) + ', 1, 10, 0x1\n').join('')
+          F.fs['erc.txt'] = enc('#tb 0: 1/' + (inp ? (o.inputFps || 30) : 30) + '\n' + Array.from({ length: k }, (_, i) => '0, ' + (inp ? i + (o.inputStart || 0) : 0) + ', ' + (inp ? i + (o.inputStart || 0) : 0) + ', 1, 10, 0x1\n').join('')
             + (o.discard ? '0, 9, 9, 1, 10, 0x9, F=0x4\n'.repeat(o.discard) : '')); return 0; }
         if (/erm_\d+\.mp4$/.test(a)) { F.fs[a.split(' ').pop()] = new Uint8Array(300); return 0; }
         if (a.endsWith('erj.mp4')) { if (o.joinFail) return 1; F.fs['erj.mp4'] = new Uint8Array(2000); return 0; }
@@ -562,6 +562,14 @@ test('١٥. فوق حدّ المقاطع (٣٠) يُقال قبل ترميز ا�
     L = live({ probe: probe('00:01:38.55', 60), inputFrames: k, inputFps: 60 });
     if (early) { await assert.rejects(go(L), (e) => e.code === 'long'); assert.deepEqual(steps(L.F), ['probe', 'count:/erin/input'], k); } else { await go(L); assert.equal(steps(L.F)[2], 'band', k); }
   }
+  /* من صفر الحاوية كما يعدّ الشريط (مراجعة ثالثة): فيديو يبدأ بعد ٦ إطارات (٥٩٠٨ حزمة تنتهي عند ٥٩١٤ = ٣١ مقطعًا) يُقال مبكّرًا — كان يُحسب
+     ٥٩٠٨ فيُرمَّز الشريط كلّه ثمّ يُقال؛ وحزم قبل الصفر لا تدخل الشريط فلا تُعدّ (٥٩١٤ حزمة من −٤ تنتهي عند ٥٩١٠ = ٣٠ مقطعًا يمضي) */
+  L = live({ probe: probe('00:01:38.57', 60), inputFrames: 5908, inputFps: 60, inputStart: 6 });
+  await assert.rejects(go(L), (e) => e.code === 'long');
+  assert.deepEqual(steps(L.F), ['probe', 'count:/erin/input'], 'يبدأ متأخّرًا: يُقال قبل الشريط');
+  L = live({ probe: probe('00:01:40.00', 60), inputFrames: 5914, inputFps: 60, inputStart: -4 });
+  await go(L);
+  assert.equal(steps(L.F)[2], 'band', 'حزم قبل الصفر لا تُعدّ: يمضي');
   L = live({ probe: probe('00:01:38.52', 60), inputFrames: 5910, inputFps: 60 });
   await go(L);
   assert.equal(steps(L.F)[1], 'band', 'عند الحدّ بالضبط (٣٠×١٩٧) وصوت أطول بـ٢٠ م.ث: سماح إطارين — بلا تمريرة');

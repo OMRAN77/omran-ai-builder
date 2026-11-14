@@ -1324,23 +1324,25 @@
     erStale(my); return n;
   }
   /* مدّة دفق الفيديو وحده بلا فكّ (framecrc): Duration الحاوية يمتدّ بأطول دفق — صوت أطول من الفيديو كان يرفض فيديو يسعه الحدّ
-     (مراجعة ثانية). 0 = لم تُعرف: الفحص بعد ترميز الشريط يكفي */
+     (مراجعة ثانية). تُقاس من صفر الحاوية حتّى نهاية آخر حزمة معروضة، كما يعدّ الشريط: فيديو يبدأ متأخّرًا (جوّال يبدأ صوته أوّلًا) يكرّر
+     الشريط أوّل إطاره عبر الفجوة، وما قبل الصفر لا يدخله — كانت من أوّل حزمة فيفوت المتأخّر حتّى بعد الترميز (مراجعة ثالثة).
+     0 = لم تُعرف: الفحص بعد ترميز الشريط يكفي */
   async function erVidSpan(ff,input,vi,my){ /* vi: دفق الفيديو الذي يرمَّز منه الشريط (لا صورة غلاف) */
     try{ await ff.deleteFile('erc.txt'); }catch(e){ e=null; /* guard-ok — لا ملفّ سابق (لا يُسجَّل في ملاحظات النظام) */ }
     erStale(my);
     var ret=await ff.exec(['-hide_banner','-y','-i',input,'-map','0:'+vi,'-c','copy','-f','framecrc','erc.txt']); erStale(my);
-    var tb=null, lo=Infinity, hi=-Infinity;
+    var tb=null, hi=-Infinity;
     if(ret===0){ try{
       var txt=new TextDecoder().decode(await ff.readFile('erc.txt'));
       tb=/^#tb 0: (\d+)\/(\d+)/m.exec(txt);
       (txt.match(/^0,.*$/gm)||[]).forEach(function(l){
         var fl=/F=0x([0-9a-f]+)/i.exec(l); if(fl&&parseInt(fl[1],16)&4) return; /* حزم القصّ لا تُعرض */
         var q=l.split(','), pts=+q[2], d=+q[3]; if(!isFinite(pts)||Math.abs(pts)>9e15) return; /* بلا توقيت */
-        lo=Math.min(lo,pts); hi=Math.max(hi,pts+(d>0?d:0));
+        hi=Math.max(hi,pts+(d>0?d:0));
       });
     }catch(e){ tb=null; /* guard-ok — بلا عدّ: الفحص بعد الترميز */ } }
     erStale(my);
-    return (tb&&+tb[2]>0&&hi>lo)?(hi-lo)*(+tb[1])/(+tb[2]):0;
+    return (tb&&+tb[2]>0&&hi>0)?hi*(+tb[1])/(+tb[2]):0;
   }
   async function erAi(ff,input,pl,boxes,my,up,setSpan,log){
     var B=erBand(boxes,pl.dw,pl.dh), segs=[], i;
