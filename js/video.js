@@ -622,18 +622,19 @@
     p.hidden=!p.hidden;
     if(!p.hidden){ pbLoad(); var c=id('vdPubCap'); if(c&&!PB.busy) c.focus(); }
   }
-  function pbLoad(){
+  function pbLoad(bg){ /* bg (v-director-upload-fix): تحديث عند اختيار ملفّ — فشله لا يكتب «ما قدر ينشر» تحت فيديو لم يُنشر ما دامت قائمة حاضرة تصلح للنشر */
     if(PB.loading) return; /* سؤال واحد في الطريق */
     /* كلّ فتح يسأل من جديد: حساب أُعيد ربطه أو وُصل يظهر بلا إعادة تحميل (إعادة التحميل تضيّع الفيديو). القائمة الحاضرة تبقى أثناء السؤال */
     PB.loading=true; if(!PB.plats){ if(!pbKeep()) pbMsg(''); pbPlats(); } syncDirector();
     pbApi('accounts').then(function(d){
       PB.loading=false; var keep=pbKeep(); /* رسالة رفع أو نشر قائم أو منتهٍ لا تُمسح */
       if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; if(!keep) pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
-      else if(!keep) pbMsg(pbErr(d),true,pbWhy(d)); /* القائمة السابقة تبقى؛ وبلا قائمة يعيد الفتح التالي السؤال (مفتاح أُضيف بعدها) */
+      else if(!keep&&!pbQuiet(bg)) pbMsg(pbErr(d),true,pbWhy(d)); /* القائمة السابقة تبقى؛ وبلا قائمة يعيد الفتح التالي السؤال (مفتاح أُضيف بعدها) */
       pbPlats(); syncDirector();
-    }).catch(function(e){ PB.loading=false; if(!pbKeep()) pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); syncDirector(); });
+    }).catch(function(e){ PB.loading=false; if(!pbKeep()&&!pbQuiet(bg)) pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); syncDirector(); });
   }
   function pbKeep(){ return PB.busy||Object.keys(PB.reqs).length>0||Object.keys(PB.rows).length>0; }
+  function pbQuiet(bg){ return !!(bg&&PB.plats&&PB.plats.length); }
   function pbPlats(){
     var box=id('vdPubPlats'); if(!box) return;
     var off={}; [].forEach.call(box.querySelectorAll('input[type=checkbox]'),function(c){ if(!c.checked) off[c.value]=1; }); /* ما شاله المالك يبقى مشالًا بعد التحديث */
@@ -823,7 +824,7 @@
     if(dl){ dl.href=DR.out; dl.setAttribute('download',String(f.name||'').replace(/[\\/:*?"<>|]+/g,'_').slice(-120)||'video.mp4'); }
     if(res) res.classList.add('has');
     drMsg(''); upMsg('');
-    if(pub){ pub.hidden=false; pbLoad(); } /* المقصود النشر: اللوحة تُفتح مع الفيديو (بلا تركيز — لوحة مفاتيح الجوّال تغطّي الفيديو) · v-director-upload-fix: والحسابات تُسأل عند كلّ اختيار — بعد خطأ في السؤال أو «لا حسابات» كانت اللوحة المفتوحة تبقى فارغة ومعطّلة (pbLoad لا يكرّر سؤالًا في الطريق) */
+    if(pub){ pub.hidden=false; pbLoad(true); } /* المقصود النشر: اللوحة تُفتح مع الفيديو (بلا تركيز — لوحة مفاتيح الجوّال تغطّي الفيديو) · v-director-upload-fix: والحسابات تُسأل عند كلّ اختيار — بعد خطأ في السؤال أو «لا حسابات» كانت اللوحة المفتوحة تبقى فارغة ومعطّلة (pbLoad لا يكرّر سؤالًا في الطريق) */
     EC.src={file:f,type:type,url:DR.out}; /* v-director-endcard: الأصل محفوظ — إطفاء الخيار يعيده */
     syncDirector();
     try{ if(res&&res.scrollIntoView) res.scrollIntoView({block:'nearest'}); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:up-scroll'); /* guard-ok — متصفّح بلا خيارات التمرير */ }

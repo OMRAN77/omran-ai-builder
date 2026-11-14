@@ -908,13 +908,15 @@ html[data-mode="light"] #videoMakerModal .vmk-pub-plats .off{border-color:rgba(0
 #videoMakerModal .vmk-dir-up{min-height:108px;padding:16px;flex-shrink:0} /* عمود المخرج مرن بحدّ ارتفاع: صفّ الملفّ المختار (min-height:0) كان ينضغط إلى ٢٦px وزرّ «+» يخرج منه — ثبت باللقطة */
 #videoMakerModal .vmk-dir-up.off{opacity:.5;cursor:default}
 #videoMakerModal .vmk-dir-up.off input{cursor:default}
-/* v-director-upload-fix (مراجعة مستقلّة بالمتصفّح): ثلاثة في الصندوق نفسه — الدائرة تبقى دائرة حين يلتفّ اسم طويل (كانت ٢٢×٣٢ على الجوّال)،
+/* v-director-upload-fix (مراجعة مستقلّة بالمتصفّح): أربعة في الصندوق نفسه — الدائرة تبقى دائرة حين يلتفّ اسم طويل (كانت ٢٢×٣٢ على الجوّال)،
    وحلقة لوحة المفاتيح داخل الحافّة (عمود المخرج منطقة تمرير تقصّ ما خرج منها: ٠px يمينًا)، وخطّ يُرى عند سحب ملفّ فوقه (طبقة الثيم تسطّح
    الحدود والخلفيّة فلا يتغيّر شيء؛ الخطّ الخارجيّ لا تمسّه) */
 #videoMakerModal .vmk-dir-up .vmk-cl-plus{flex:0 0 auto}
 #videoMakerModal .vmk-dir-up:focus-within{outline-offset:-3px}
 #videoMakerModal .vmk-dir-up.over{outline:2px dashed #e8c27a;outline-offset:-5px}
 html[data-mode="light"] #videoMakerModal .vmk-dir-up.over{outline-color:#8a5a12}
+#videoMakerModal .vmk-dir-up .vmk-cl-pick{word-break:normal;overflow-wrap:anywhere} /* اسم الملفّ يلتفّ عند المسافات: break-all المشترك كان يكسر «السلا/م» في نصف
+   الكلمة على الجوّال (ثبت بالقياس على ٣٦٠–٤٣٠px)؛ واسم بلا مسافات ما زال ينكسر حيث يلزم ولا يخرج من الصندوق */
 /* v-director-endcard: خيار «أضف باركود التطبيق في آخر الفيديو» تحت صندوق الرفع — المربّع غير المؤشَّر بحلقة داخليّة كمنصّات النشر
    (في الأسود يختفي حدّه وإلّا)، ومعتم أثناء التوليد ورفع النشر */
 #videoMakerModal .vmk-dir-ec{display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.5;cursor:pointer;flex-shrink:0;margin:-2px 2px 0}

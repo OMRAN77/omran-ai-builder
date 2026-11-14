@@ -12,7 +12,11 @@
    v-director-publish-guard (مراجعة مستقلّة ٨ نوفمبر): القفل كان على «مجموعة المنصّات»، فمجموعة تتداخل مع سابقتها (إنستغرام ثمّ إنستغرام +
    يوتيوب) تنشر الفيديو مرّة ثانية علنًا في المنصّة المشتركة. الآن كلّ (فيديو، منصّة) يُحجز وحده، ولا يتحرّر الحجز إلّا بإثبات من الخدمة أنّ
    المنصّة لم تنشر (فشل نهائيّ، أو طلب ما وصلها بعد مهلة أطول من عمر الدالّة). «في الطابور» ليس «نزل»، ومسوّدة صندوق تيك توك ليست منشورًا،
-   ونصّ X بوزن X ونصّ Threads ببايتات الإيموجي. */
+   ونصّ X بوزن X ونصّ Threads ببايتات الإيموجي.
+   v-director-upload-fix (مراجعة مستقلّة ١٤ نوفمبر): الإثبات يُحفظ حين يُرى. اللوحة تقول «ما وصل — جرّب مرّة ثانية» أو «ما نزل» من عمليّة
+   الحالة، والحجز كان يتحرّر في الضغطة التالية وحدها بسؤال الخدمة من جديد — فبعد يوم، أو حين تنسى الخدمة الطلب، لا إثبات ويبقى الحجز
+   أسبوعًا. وملفّ الجهاز صار اسمه ثابتًا (هويّته)، فإعادة اختياره لا تفلت من الحجز كما كانت. الآن ما رأته الحالة يُعلَّم (socpub:dead)،
+   والنشر يأخذ بالعلامة حين لا تعرف الخدمة الطلب وحده: دليلها الحيّ يغلب المحفوظ دائمًا. */
 const crypto = require('node:crypto');
 const { kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
 const { sessionUser, tokenOf } = require('./_session.js');
@@ -38,6 +42,7 @@ const sentKey = (v, p) => 'socpub:sent:' + v + ':' + p; // المنصّة p أخ
 const reqKey = (r) => 'socpub:req:' + r; // وقت الطلب وقبول الخدمة له: «لا طلب» في المهلة = ينتظر، وبعدها = ما وصل
 const seenKey = (r) => 'socpub:seen:' + r; // الخدمة أرت الطلب حيًّا مرّة: غيابه بعدها نسيان لا ضياع
 const relKey = (r, p) => 'socpub:rel:' + r + ':' + p; // تحرير حجز منصّة من طلب ميّت: محرِّر واحد في الدقيقة، ولا يمسح حجزًا جديدًا لغيره
+const deadKey = (r, p) => 'socpub:dead:' + r + ':' + p; // إثبات محفوظ رأته الحالة: المنصّة p لم تنشر في الطلب r («*» = الطلب كلّه ما وصل الخدمة)
 const logErr = (where, e) => console.error('[social-publish] ' + where + ': ' + String((e && e.message) || e).replace(/https?:\/\/\S+/g, '<url>').slice(0, 200));
 const isHttps = (u) => typeof u === 'string' && u.startsWith('https://');
 const lc = (v) => String(v == null ? '' : v).trim().toLowerCase();
@@ -142,6 +147,16 @@ async function lostReq(r) {
   return !(await kvGetRaw(seenKey(r)));
 }
 const notFound = (st) => !!st && (st.status === 404 || lc(st.j && st.j.status) === 'not_found');
+/** الحالة رأت منصّات لم تنشر يقينًا (deadRow نفسه الذي يحرّر به النشر): تُعلَّم، فلا يعتمد تحريرها لاحقًا على أنّ الخدمة ما زالت تذكر الطلب.
+    منصّة بلا صفّ في مهمّة أعلنت فشلها تُعرف من سجلّ الطلب. */
+async function keepDead(reqId, j) {
+  const top = lc(j && j.status), rows = rowsOf(j);
+  let plats = rows.map((x) => norm(x.platform));
+  if (top === 'failed') { const rec = readRec(await kvGetRaw(reqKey(reqId))); if (rec && Array.isArray(rec.p)) plats = plats.concat(rec.p.map(norm)); }
+  for (const p of [...new Set(plats)]) {
+    if (PLATFORMS.includes(p) && deadRow(rows.find((x) => norm(x.platform) === p), top)) await kvSetIfAbsent(deadKey(reqId, p), '1', SENT_TTL);
+  }
+}
 
 async function accounts(res, key) {
   const r = await upFetch(key, '/uploadposts/users');
@@ -205,8 +220,12 @@ async function publish(res, body, key) {
       if (!q) free = byReq[q]; // انتهى الحجز بين الخطوتين
       else {
         const st = await upStatus(key, q).catch(() => null);
-        if (notFound(st)) { if (await lostReq(q)) free = byReq[q]; }
-        else if (st && st.ok) {
+        if (notFound(st)) {
+          // الخدمة لا تعرف الطلب: ما وصلها (في مهلته)، أو إثبات حفظته الحالة يوم رأته («ما وصل» للطلب كلّه، أو صفّ ميّت لهذه المنصّة)
+          // وما أرته الخدمة حيًّا بعد أن قيل «ما وصل» (وصل متأخّرًا) لا تحرّره العلامة — قاعدة seenKey نفسها
+          if ((await lostReq(q)) || ((await kvGetRaw(deadKey(q, '*'))) && !(await kvGetRaw(seenKey(q))))) free = byReq[q];
+          else for (const p of byReq[q]) { if (await kvGetRaw(deadKey(q, p))) free.push(p); }
+        } else if (st && st.ok) {
           const top = lc(st.j.status), rows = rowsOf(st.j);
           free = byReq[q].filter((p) => deadRow(rows.find((x) => norm(x.platform) === p), top));
         }
@@ -283,9 +302,14 @@ async function status(res, body, key) {
   if (!REQ_RE.test(reqId)) return fail(res, 400, 'bad_request');
   const r = await upStatus(key, reqId);
   // لا طلب بهذا المعرّف: في المهلة يُنتظر (قد يكون في الطريق)، وبعدها ما وصل أبدًا — اللوحة تقول ذلك والنشر التالي يرسله من جديد
-  if (notFound(r)) return res.status(200).json((await lostReq(reqId)) ? { ok: true, state: 'fail', lost: true, results: [] } : { ok: true, state: 'wait', results: [] });
+  if (notFound(r)) {
+    const lost = await lostReq(reqId);
+    if (lost) await kvSetIfAbsent(deadKey(reqId, '*'), '1', SENT_TTL); // قيل «ما وصل»: يبقى صحيحًا بعد يومه الأوّل
+    return res.status(200).json(lost ? { ok: true, state: 'fail', lost: true, results: [] } : { ok: true, state: 'wait', results: [] });
+  }
   if (!r.ok) return fail(res, 502, 'status', { status: r.status });
   await kvSetIfAbsent(seenKey(reqId), '1', SENT_TTL); // رأته الخدمة حيًّا: غيابه بعدها لا يحرّر
+  await keepDead(reqId, r.j);
   return res.status(200).json(Object.assign({ ok: true }, statusOf(r.j)));
 }
 
