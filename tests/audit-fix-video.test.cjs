@@ -265,6 +265,7 @@ test('cli-video-2 (أ): فيديو القوالب بتعليق صوتيّ يرس
     muxNarrationAny: async (b) => b, cleanNarrationText: (x) => x, getNarrationGender: () => 'female', getNarrationSpeed: () => 'fast',
     URL: { createObjectURL: () => 'blob:x' }, resultEl: { style: {} }, downloadEl: { style: {} }, autoSaveVideo() {}, dlName: () => 'v.webm', JSON,
     authGet: (k) => (k === 'aiapp_auth_token' ? 'tok-sub-1' : null), window: { getGuestId: () => 'g_guest_9' },
+    narrLang: () => 'ar', // v-trends-lang: لغة الراوي (الدالّة تُقتطع وحدها هنا)
   };
   vm.createContext(ctx);
   vm.runInContext(TTS_HELPERS + '\n' + extractBlock(VIDEO, 'async function runCanvasOnly('), ctx);
@@ -333,6 +334,7 @@ function trendsMake(clip) {
     ui: (k) => k, status: (s) => statuses.push(s), setBusyFlag() {}, priceOnce: async () => {}, clipInSequence: clip,
     show: async (t, urls) => { urls.forEach((u) => els.vtOut.appendChild({ kind: 'video', src: u })); },
     errText: (e) => 'ERR:' + (e.code || e.message), localStorage: { getItem: () => null, setItem() {} }, busy: false, preConfirmed: false, Object, String, parseInt, Math,
+    lg: () => 'ar', // v-trends-lang: لغة الواجهة تُرسل مع الترند
   };
   vm.createContext(ctx);
   vm.runInContext(extractBlock(TRENDS, 'async function make(t){'), ctx);
