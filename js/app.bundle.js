@@ -33297,7 +33297,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     if(!token){ status(ui('login')); return; }
     if(t.photo === 'req' && !photos.length){ status(ui('photoReq')); return; }
     var txt = ($('vtText') ? $('vtText').value.trim() : '');
-    var params = { name: txt, text: txt };
+    var params = { name: txt, text: txt, lang: lg() }; /* v-trends-lang: كلام الفيديو بلغة الواجهة (الخادم: speechLang) */
     pullScenes(t); /* v-trend-scenes: مشاهد مكتوبة في «اكتب اللي تبيه» ← الخانات قبل قراءتها */
     /* v-trend-extra + v-trend-backdrops: ما كتبه المستخدم، ورقم خلفيّة جديد لكلّ فيديو من هذا الترند */
     var extra = ($('vtExtra') ? $('vtExtra').value.trim() : '');
@@ -33391,7 +33391,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     desc.insertAdjacentElement('afterend', root);
     grid = $('vtGrid'); panel = $('vtPanel');
     renderGrid();
-    try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:545'); /* guard-ok */ }
+    /* v-trends-lang (المالك ١٤ نوفمبر بلقطة: الواجهة إنجليزيّة وأسماء البطاقات «قصة بيكسار من ٣ مشاهد»…): تبديل اللغة وترند مفتوح
+       كان يحدّث العنوانين وحدهما، فتبقى البطاقات (المخفيّة خلف اللوحة) بلغة قبل التبديل وتظهر هكذا بعد «كل الترندات».
+       الشبكة تُبنى من جديد دائمًا — renderGrid لا يمسّ اللوحة ولا إظهار الشبكة. */
+    try{ new MutationObserver(function(){ renderGrid(); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:545'); /* guard-ok */ }
     window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key && !(typeof omranHwHidden === 'function' && omranHwHidden('trend', x.key)); })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } },
       /* v-audit-boot (cli-video-1): الخروج (app-04) يفرّغ صور الأشخاص ويغلق اللوحة المفتوحة — لا تُرسل صور الحساب السابق مع ترند من يدخل بعده */
       reset: function(){ photos = []; cur = null; if(panel){ panel.innerHTML = ''; panel.style.display = 'none'; } if(grid) grid.style.display = 'grid'; } };
@@ -33544,6 +33547,11 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
   function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
+  /* v-trends-lang (المالك ١٤ نوفمبر: «إذا أسوّي أيّ فيديو فقط بالعربي… أريده بكلّ اللغات الموجودة»): لغة الراوي وسيناريو الفيلم
+     كانت bT('ar','en') — عربيّ أو إنجليزيّ فقط، فالفرنسيّ يُكتب سيناريوه بالإنجليزيّة ويُقرأ نصّه بصوت إنجليزيّ. الآن لغة الواجهة
+     الأربع عشرة كما هي (الخادم يعرفها كلّها)، والراوي بلغة نصّه: حروف عربيّة = الصوت العربيّ (أو الأردو في واجهتها). */
+  function uiLangCode(){ try{ return String((typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar').split('-')[0].toLowerCase(); }catch(e){ return 'ar'; } }
+  function narrLang(text){ const L = uiLangCode(); return /[؀-ۿ]/.test(String(text || '')) ? (L === 'ur' ? 'ur' : 'ar') : L; }
   function isOwnerAccount(){
     const u = (typeof authGet === 'function') ? (authGet('aiapp_username') || '') : '';
     const key = String(u).trim().toLowerCase();
@@ -34341,7 +34349,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: narrLang(narrationInput), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -34430,7 +34438,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: narrLang(narrationInput), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -34848,7 +34856,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (bT('ar','en')), hero: !!filmHeroBase64, token }),
+          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: uiLangCode(), hero: !!filmHeroBase64, token }),
         });
         const scriptData = await scriptRes.json();
         if(scriptRes.status === 401){ const e = new Error('auth'); e.code = 'auth_required'; throw e; }
@@ -34892,7 +34900,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: narrLang(sc.narration || text), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -35224,7 +35232,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, minutes: mins, style, lang: (bT('ar','en')), token }),
+          body: JSON.stringify({ topic: text, minutes: mins, style, lang: uiLangCode(), token }),
         });
         const scriptData = await scriptRes.json();
         if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
@@ -35260,7 +35268,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: narrLang(sc.narration || text), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -35300,7 +35308,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         ttsEarly = fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: narrLang((narrationText.value || '').trim() || text), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
         getFFmpeg().catch(() => null);
       };
@@ -51028,29 +51036,33 @@ if(document.readyState === 'loading'){
   ];
   KINDS.styles.scenes = PORTRAIT_SCENES;
   KINDS.styles.sceneKey = 'aiapp_ps_scene';
+  /* v-trends-lang (المالك ١٤ نوفمبر بلقطة: الواجهة إنجليزيّة وصورة الانتظار فيها «انتاج_الرسوم_المكتمل» و«THE ANIMATION PRODUCTION TREND»):
+     الصور الثماني عشرة كان في كلّ منها نصّ محروق بالعربيّة أو الإنجليزيّة فيظهر بأيّ لغة واجهة (ومخالف لقاعدة «لا كتابة داخل صورة»).
+     ‎<الاسم>-clean.webp نسخها بلا نصّ: حروف الوسم وحدها تُرمَّم من محيطها، والأشرطة السفليّة تُزال كاملة؛ نفس المقاس فإحداثيّات المشهد كما هي.
+     الأصول باقية بأسمائها. حالة التوليد تحت الصورة نصّ حيّ بلغة الواجهة كما كانت. */
   /* @vd-scenes:start — مولَّد من قياسات الصور (لا يُحرَّر يدويًّا: يُعاد توليده مع أيّ صورة جديدة) */
   var VD_FONT = { family: "'Bahnschrift','Segoe UI','Helvetica Neue','Roboto',Arial,sans-serif", weight: 300 };
   var VIDEO_SCENES = [
-    { id: 'vdMain', src: '/assets/videos/scenes/main.webp?v=1', w: 1365, h: 768, bg: '#2c2f29', tube: { x: 446, y: 70, w: 484, h: 500, blend: 'screen', gap: [402, 474] }, flow: '#d4fcf3', bar: { x: 575.2, y: 411.3, w: 228.6, h: 12.9, grad: ['#93f7e2', '#d6fdf0'] }, sprite: true, font: VD_FONT, ring: { cx: 687.6, cy: 319.2, hole: 79.5, img: { src: '/assets/videos/scenes/main-r1.webp?v=1', x: 613, y: 244.5, w: 149, h: 149 } }, num: { x: 690.8, y: 334.5, size: 45.5, dw: 22.4, pw: 31.2 }, ink: '#d6fbf9' },
-    { id: 'vdDesign', src: '/assets/videos/scenes/design.webp?v=1', w: 692, h: 384, bg: '#2a2d27', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#d9fbf4', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.9, grad: ['#a0f5e4', '#8dfae3'] }, sprite: true, font: VD_FONT, ring: { cx: 346.8, cy: 165.8, hole: 40.5, img: { src: '/assets/videos/scenes/design-r1.webp?v=1', x: 308, y: 127, w: 77, h: 77 } }, num: { x: 347.3, y: 174, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#d6f8ec' },
-    { id: 'vdQuantum', src: '/assets/videos/scenes/quantum.webp?v=1', w: 692, h: 384, bg: '#2c201b', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#fccfc6', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.4, grad: ['#f78671', '#fb987e'] } },
-    { id: 'vd2050', src: '/assets/videos/scenes/world2050.webp?v=1', w: 673, h: 384, bg: '#3b4948', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d3fbfb', bar: { x: 290.2, y: 215.8, w: 113.4, h: 6.9, grad: ['#91f5f5', '#98f8f7'] } },
-    { id: 'vdMain2', src: '/assets/videos/scenes/main2.webp?v=1', w: 1000, h: 563, bg: '#282a24', tube: { x: 322, y: 52, w: 356, h: 372, blend: 'screen', gap: [293, 346] }, flow: '#d2fff4', bar: { x: 417.7, y: 300.8, w: 162.9, h: 9.9, grad: ['#8efee4', '#d3fef2'] }, sprite: true, font: VD_FONT, ring: { cx: 498.7, cy: 235, hole: 60, img: { src: '/assets/videos/scenes/main2-r1.webp?v=1', x: 442.5, y: 179, w: 112, h: 112 } }, num: { x: 502, y: 245.5, size: 33.1, dw: 16.5, pw: 22.9 }, ink: '#dffbf9' },
-    { id: 'vdNet', src: '/assets/videos/scenes/network.webp?v=1', w: 673, h: 384, bg: '#1c2d3a', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#dff7ff', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.9, grad: ['#afecff', '#ccf5ff'] }, sprite: true, font: VD_FONT, ring: { cx: 346.4, cy: 165.7, hole: 42, img: { src: '/assets/videos/scenes/network-r1.webp?v=1', x: 306, y: 125.5, w: 80, h: 80 } }, num: { x: 348.8, y: 175, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#c9f1f8' },
-    { id: 'vdSea', src: '/assets/videos/scenes/sea.webp?v=1', w: 692, h: 384, bg: '#11242c', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c3edf9', bar: { x: 288.7, y: 213.8, w: 106.4, h: 6.9, grad: ['#68d3f1', '#e5ede0'] } },
-    { id: 'vdPortal', src: '/assets/videos/scenes/portal.webp?v=1', w: 692, h: 384, bg: '#15242d', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c5e9f4', bar: { x: 289.2, y: 213.8, w: 105.9, h: 7.4, grad: ['#6fc7e4', '#e0ddd8'] } },
-    { id: 'vdGalaxy', src: '/assets/videos/scenes/galaxy.webp?v=1', w: 692, h: 384, bg: '#1d1e23', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c6f2fd', bar: { x: 288.2, y: 213.8, w: 106.9, h: 6.9, grad: ['#71defa', '#c2f7ff'] } },
-    { id: 'vdGreen', src: '/assets/videos/scenes/green.webp?v=1', w: 673, h: 384, bg: '#3d4b49', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d7fefe', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.4, grad: ['#9afcfc', '#c4fefe'] } },
-    { id: 'vdMind', src: '/assets/videos/scenes/mind.webp?v=1', w: 692, h: 384, bg: '#2d231f', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#f5cfc5', bar: { x: 289.7, y: 214.8, w: 110.9, h: 6.9, grad: ['#e6866e', '#ea8e76'] } },
-    { id: 'vdDna', src: '/assets/videos/scenes/dna.webp?v=1', w: 673, h: 384, bg: '#3e4b49', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d0faf5', bar: { x: 291.7, y: 214.3, w: 105.9, h: 7.4, grad: ['#8af2e5', '#b0fbed'] } },
-    { id: 'vdHeritage', src: '/assets/videos/scenes/heritage.webp?v=1', w: 673, h: 384, bg: '#3e4845', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cdf8f3', bar: { x: 291.2, y: 214.3, w: 105.9, h: 6.9, grad: ['#83ede1', '#d3f8e3'] } },
-    { id: 'vdBrief', src: '/assets/videos/scenes/brief.webp?v=1', w: 673, h: 384, bg: '#394544', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cff6f5', bar: { x: 291.7, y: 214.3, w: 104.9, h: 6.9, grad: ['#88e8e5', '#def3e7'] } }
+    { id: 'vdMain', src: '/assets/videos/scenes/main-clean.webp?v=1', w: 1365, h: 768, bg: '#2c2f29', tube: { x: 446, y: 70, w: 484, h: 500, blend: 'screen', gap: [402, 474] }, flow: '#d4fcf3', bar: { x: 575.2, y: 411.3, w: 228.6, h: 12.9, grad: ['#93f7e2', '#d6fdf0'] }, sprite: true, font: VD_FONT, ring: { cx: 687.6, cy: 319.2, hole: 79.5, img: { src: '/assets/videos/scenes/main-r1.webp?v=1', x: 613, y: 244.5, w: 149, h: 149 } }, num: { x: 690.8, y: 334.5, size: 45.5, dw: 22.4, pw: 31.2 }, ink: '#d6fbf9' },
+    { id: 'vdDesign', src: '/assets/videos/scenes/design-clean.webp?v=1', w: 692, h: 384, bg: '#2a2d27', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#d9fbf4', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.9, grad: ['#a0f5e4', '#8dfae3'] }, sprite: true, font: VD_FONT, ring: { cx: 346.8, cy: 165.8, hole: 40.5, img: { src: '/assets/videos/scenes/design-r1.webp?v=1', x: 308, y: 127, w: 77, h: 77 } }, num: { x: 347.3, y: 174, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#d6f8ec' },
+    { id: 'vdQuantum', src: '/assets/videos/scenes/quantum-clean.webp?v=1', w: 692, h: 384, bg: '#2c201b', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#fccfc6', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.4, grad: ['#f78671', '#fb987e'] } },
+    { id: 'vd2050', src: '/assets/videos/scenes/world2050-clean.webp?v=1', w: 673, h: 384, bg: '#3b4948', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d3fbfb', bar: { x: 290.2, y: 215.8, w: 113.4, h: 6.9, grad: ['#91f5f5', '#98f8f7'] } },
+    { id: 'vdMain2', src: '/assets/videos/scenes/main2-clean.webp?v=1', w: 1000, h: 563, bg: '#282a24', tube: { x: 322, y: 52, w: 356, h: 372, blend: 'screen', gap: [293, 346] }, flow: '#d2fff4', bar: { x: 417.7, y: 300.8, w: 162.9, h: 9.9, grad: ['#8efee4', '#d3fef2'] }, sprite: true, font: VD_FONT, ring: { cx: 498.7, cy: 235, hole: 60, img: { src: '/assets/videos/scenes/main2-r1.webp?v=1', x: 442.5, y: 179, w: 112, h: 112 } }, num: { x: 502, y: 245.5, size: 33.1, dw: 16.5, pw: 22.9 }, ink: '#dffbf9' },
+    { id: 'vdNet', src: '/assets/videos/scenes/network-clean.webp?v=1', w: 673, h: 384, bg: '#1c2d3a', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#dff7ff', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.9, grad: ['#afecff', '#ccf5ff'] }, sprite: true, font: VD_FONT, ring: { cx: 346.4, cy: 165.7, hole: 42, img: { src: '/assets/videos/scenes/network-r1.webp?v=1', x: 306, y: 125.5, w: 80, h: 80 } }, num: { x: 348.8, y: 175, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#c9f1f8' },
+    { id: 'vdSea', src: '/assets/videos/scenes/sea-clean.webp?v=1', w: 692, h: 384, bg: '#11242c', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c3edf9', bar: { x: 288.7, y: 213.8, w: 106.4, h: 6.9, grad: ['#68d3f1', '#e5ede0'] } },
+    { id: 'vdPortal', src: '/assets/videos/scenes/portal-clean.webp?v=1', w: 692, h: 384, bg: '#15242d', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c5e9f4', bar: { x: 289.2, y: 213.8, w: 105.9, h: 7.4, grad: ['#6fc7e4', '#e0ddd8'] } },
+    { id: 'vdGalaxy', src: '/assets/videos/scenes/galaxy-clean.webp?v=1', w: 692, h: 384, bg: '#1d1e23', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c6f2fd', bar: { x: 288.2, y: 213.8, w: 106.9, h: 6.9, grad: ['#71defa', '#c2f7ff'] } },
+    { id: 'vdGreen', src: '/assets/videos/scenes/green-clean.webp?v=1', w: 673, h: 384, bg: '#3d4b49', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d7fefe', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.4, grad: ['#9afcfc', '#c4fefe'] } },
+    { id: 'vdMind', src: '/assets/videos/scenes/mind-clean.webp?v=1', w: 692, h: 384, bg: '#2d231f', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#f5cfc5', bar: { x: 289.7, y: 214.8, w: 110.9, h: 6.9, grad: ['#e6866e', '#ea8e76'] } },
+    { id: 'vdDna', src: '/assets/videos/scenes/dna-clean.webp?v=1', w: 673, h: 384, bg: '#3e4b49', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d0faf5', bar: { x: 291.7, y: 214.3, w: 105.9, h: 7.4, grad: ['#8af2e5', '#b0fbed'] } },
+    { id: 'vdHeritage', src: '/assets/videos/scenes/heritage-clean.webp?v=1', w: 673, h: 384, bg: '#3e4845', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cdf8f3', bar: { x: 291.2, y: 214.3, w: 105.9, h: 6.9, grad: ['#83ede1', '#d3f8e3'] } },
+    { id: 'vdBrief', src: '/assets/videos/scenes/brief-clean.webp?v=1', w: 673, h: 384, bg: '#394544', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cff6f5', bar: { x: 291.7, y: 214.3, w: 104.9, h: 6.9, grad: ['#88e8e5', '#def3e7'] } }
   ];
   var TREND_SCENES = [
-    { id: 'vtStory', src: '/assets/videos/scenes/trend-story.webp?v=1', w: 692, h: 384, bg: '#2e2e33', tube: { x: 228, y: 36, w: 236, h: 254, blend: 'screen' }, flow: '#e5f6ff', sprite: true, font: VD_FONT, ring: { cx: 443.4, cy: 92.4, hole: 21.2, img: { src: '/assets/videos/scenes/trend-story-r1.webp?v=1', x: 425.5, y: 72, w: 35.5, h: 40.5 } }, num: { x: 444.8, y: 95.6, size: 8.8, dw: 5, pw: 7 }, ink: '#f0f4f6' },
-    { id: 'vtAnime', src: '/assets/videos/scenes/trend-anime.webp?v=1', w: 673, h: 384, bg: '#404d50', tube: { x: 230, y: 36, w: 236, h: 254, blend: 'multiply' }, flow: '#567886', sprite: true, font: VD_FONT, ring: { cx: 200.3, cy: 150.4, hole: 20.6, img: { src: '/assets/videos/scenes/trend-anime-r1.webp?v=1', x: 182, y: 130.5, w: 37, h: 39.5 } }, num: { x: 200.3, y: 154.6, size: 10.2, dw: 6, pw: 8.3 }, ink: '#eef4f4' },
-    { id: 'vtVoice', src: '/assets/videos/scenes/trend-voice.webp?v=1', w: 692, h: 384, bg: '#152432', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [207, 251] }, flow: '#c9ebfa', bar: { x: 289.2, y: 213.3, w: 105.4, h: 7.9, grad: ['#78cef2', '#b2b9cd'] } },
-    { id: 'vtAnim', src: '/assets/videos/scenes/trend-animation.webp?v=1', w: 673, h: 384, bg: '#3a474a', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d1f9fa', bar: { x: 292.2, y: 214.3, w: 104.9, h: 6.9, grad: ['#8cf0f2', '#e6f8f3'] } }
+    { id: 'vtStory', src: '/assets/videos/scenes/trend-story-clean.webp?v=1', w: 692, h: 384, bg: '#2e2e33', tube: { x: 228, y: 36, w: 236, h: 254, blend: 'screen' }, flow: '#e5f6ff', sprite: true, font: VD_FONT, ring: { cx: 443.4, cy: 92.4, hole: 21.2, img: { src: '/assets/videos/scenes/trend-story-r1.webp?v=1', x: 425.5, y: 72, w: 35.5, h: 40.5 } }, num: { x: 444.8, y: 95.6, size: 8.8, dw: 5, pw: 7 }, ink: '#f0f4f6' },
+    { id: 'vtAnime', src: '/assets/videos/scenes/trend-anime-clean.webp?v=1', w: 673, h: 384, bg: '#404d50', tube: { x: 230, y: 36, w: 236, h: 254, blend: 'multiply' }, flow: '#567886', sprite: true, font: VD_FONT, ring: { cx: 200.3, cy: 150.4, hole: 20.6, img: { src: '/assets/videos/scenes/trend-anime-r1.webp?v=1', x: 182, y: 130.5, w: 37, h: 39.5 } }, num: { x: 200.3, y: 154.6, size: 10.2, dw: 6, pw: 8.3 }, ink: '#eef4f4' },
+    { id: 'vtVoice', src: '/assets/videos/scenes/trend-voice-clean.webp?v=1', w: 692, h: 384, bg: '#152432', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [207, 251] }, flow: '#c9ebfa', bar: { x: 289.2, y: 213.3, w: 105.4, h: 7.9, grad: ['#78cef2', '#b2b9cd'] } },
+    { id: 'vtAnim', src: '/assets/videos/scenes/trend-animation-clean.webp?v=1', w: 673, h: 384, bg: '#3a474a', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d1f9fa', bar: { x: 292.2, y: 214.3, w: 104.9, h: 6.9, grad: ['#8cf0f2', '#e6f8f3'] } }
   ];
   var DECOR_SCENES = [
     { id: 'dcBed', src: '/assets/decor/scenes/bedroom.webp?v=1', w: 689, h: 382, bg: '#342c28', tube: { x: 232, y: 34, w: 226, h: 246, blend: 'screen' }, flow: '#e5f6ff' },

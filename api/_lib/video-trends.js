@@ -934,7 +934,22 @@ function sceneParams(key, params) {
   else if (p.oneClip && !(Array.isArray(p.scenes) && p.scenes.length) && clean(p.extra)) { p.scenes = [p.extra]; p.extra = ''; }
   return p;
 }
-/** يبني أمر الفيديو لترند معيّن. params: {name, text, sceneIndex, scenes, oneClip, extra, hasImage, people, bg}
+/* v-trends-lang (المالك ١٤ نوفمبر: «إذا أسوّي أيّ فيديو فقط بالعربي… أريده بكلّ اللغات الموجودة»): القوالب تقول «says in Arabic»
+   و«Gulf Arabic dialect» و«Arabic narration» حرفًا، فيتكلّم الفيديو عربيًّا بأيّ لغة واجهة ولو كتب المستخدم كلامه بالإنجليزيّة.
+   params.lang (لغة الواجهة من العميل) من اللغات الثلاث عشرة الأخرى = الكلام المسموع بها؛ والتهنئتان المكتوبتان بالعربيّة بصيغتهما
+   العالميّة. بلا لغة أو بالعربيّة = القالب كما كان حرفيًّا (المحادثة لا ترسلها). الخطّ العربيّ موضوعه الحروف العربيّة فلا يُمسّ. */
+const SPEECH_LANGS = { en: 'English', fr: 'French', es: 'Spanish', tr: 'Turkish', ru: 'Russian', zh: 'Mandarin Chinese', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali', ml: 'Malayalam', id: 'Indonesian', fil: 'Filipino' };
+function speechLang(key, prompt, lang) {
+  const L = SPEECH_LANGS[String(lang || '').toLowerCase()];
+  if (!L || key === 'calligraphy') return prompt;
+  return prompt
+    .replace(/\bin Gulf Arabic dialect\b/g, 'in ' + L)
+    .replace(/\bin Arabic\b/g, 'in ' + L)
+    .replace(/\bArabic narration\b/g, L + ' narration')
+    .replace(/'عيد مبارك \{name\}'/g, "'Eid Mubarak, {name}'")
+    .replace(/'رمضان مبارك \{name\}'/g, "'Ramadan Mubarak, {name}'");
+}
+/** يبني أمر الفيديو لترند معيّن. params: {name, text, sceneIndex, scenes, oneClip, extra, hasImage, people, bg, lang}
  *  scenes (ترند المشاهد): نصّ المستخدم لكلّ مشهد، أو رقم مشهد افتراضيّ لم يُعدَّل (فيبقى أمره الإنجليزيّ).
  *  oneClip (المحادثة): مشاهد المستخدم كلّها لقطات في مقطع واحد (sceneCount ١) — بلاها المشهد الأوّل الافتراضيّ.
  *  opts.cap (من الخادم وحده): سقف الأمر الذي تُحسب منه مساحة «اكتب اللي تبيه» — veo-create يمرّر حدّه الحقيقيّ. */
@@ -944,7 +959,7 @@ function buildTrendPrompt(key, params, opts) {
   const p = sceneParams(key, params);
   const name = clean(p.name) || clean(p.text) || '';
   const text = clean(p.text) || clean(p.name) || '';
-  let prompt = t.prompt;
+  let prompt = speechLang(key, t.prompt, p.lang);
   let n = 1;
   if (t.scenes && t.scenes.length) {
     const list = Array.isArray(p.scenes) ? p.scenes.slice(0, 50).map((e) => (Number.isInteger(e) && e >= 0 && e < t.scenes.length) ? t.scenes[e]
@@ -1090,4 +1105,4 @@ function withPhotoLock(promptText, max, subject) {
   const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
   return pre + body + post;
 }
-module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, withPhotoLock, splitScenes, sceneParams, MAX_SCENES };
+module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, withPhotoLock, splitScenes, sceneParams, MAX_SCENES, SPEECH_LANGS };

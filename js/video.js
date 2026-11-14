@@ -469,6 +469,7 @@
     var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
     var ls=box.querySelector('#vdLang'); DR_LANGS.forEach(function(l){ var o=document.createElement('option'); o.value=l[0]; o.textContent=l[1]; ls.appendChild(o); });
     ls.value=DR_LANGS.some(function(l){ return l[0]===drUiLang(); })?drUiLang():'ar';
+    ls.addEventListener('change',function(){ ls.dataset.picked='1'; }); /* v-trends-lang: اختيار المالك يثبت، وإلّا تتبع لغة الواجهة (syncDirector) */
     var ms=box.querySelector('#vdMin'); for(var i=1;i<=10;i++){ var o=document.createElement('option'); o.value=String(i); o.textContent=String(i); ms.appendChild(o); } ms.value='2';
     box.querySelector('#vdRef').addEventListener('change',function(e){ var f=e.target.files&&e.target.files[0]; if(f) drPickRef(f); });
     box.querySelector('#vdGo').addEventListener('click',drRun);
@@ -1586,6 +1587,9 @@
     var story=drStory(), rq=box.querySelector('#vdReq');
     rq.placeholder=story?L('vdPhStory'):L('vdPh'); /* v-director-story: الحقل ٣٠٠٠ في النوعين — لصق قصّة قبل اختيار «قصة» كان يُقصّ عند ٦٠٠ ولا يرجع */
     var labs=box.querySelectorAll('.vmk-dir-row label>span'); labs[0].textContent=L('vdLang'); labs[1].textContent=L('vdSpeaker'); labs[2].textContent=L('vdMinutes'); labs[3].textContent=L('vdVoiceLabel');
+    /* v-trends-lang (المالك ١٤ نوفمبر: «أريده بكلّ اللغات»): لغة الفيديو كانت تُضبط مرّة عند أوّل فتح — تبديل الواجهة بعدها يتركها
+       على القديمة فيخرج الفيديو عربيًّا بواجهة إنجليزيّة. تتبع الواجهة ما لم يخترها المالك بنفسه ولا تتغيّر أثناء التوليد. */
+    var dl=box.querySelector('#vdLang'), dul=uiLang(); if(!DR.busy&&!dl.dataset.picked&&dl.value!==dul&&DR_LANGS.some(function(l){ return l[0]===dul; })) dl.value=dul;
     var vo=box.querySelector('#vdVoice'); vo.options[0].textContent=L('vdVoiceOn'); vo.options[1].textContent=L('vdVoiceOff'); box.querySelector('#vdSpeaker').disabled=(vo.value==='off');
     var sp=box.querySelector('#vdSpeaker'); sp.options[0].textContent=L('vdMaha')||'مها'; sp.options[1].textContent=L('vdAbdullah')||'عبدالله';
     box.querySelector('.vmk-dir-ref span').textContent=L('vdRef');
@@ -2521,5 +2525,8 @@
     wasOpen=open;
     if(open) enhance();
   }).observe(M,{attributes:true,attributeFilter:['style']});
+  /* v-trends-lang: تبديل اللغة والصانع مفتوح كان يترك نصوصه (الأقسام، «شاهد: كيف تسوي فيديو»، المخرج) بالقديمة حتّى يُغلق ويُفتح.
+     enhance تُعاد عند كلّ تغيّر في إظهاره أصلًا — فتُعاد هنا أيضًا. */
+  try{ new MutationObserver(function(){ if(M.style.display&&M.style.display!=='none') enhance(); }).observe(document.documentElement,{attributes:true,attributeFilter:['lang']}); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:lang'); /* guard-ok — بلا مراقب تُحدَّث النصوص عند الفتح التالي */ }
   G.forEach(function(d){ var s=id(d[0]); if(s) s.addEventListener('change',sync); });
 })();

@@ -448,7 +448,7 @@
     if(!token){ status(ui('login')); return; }
     if(t.photo === 'req' && !photos.length){ status(ui('photoReq')); return; }
     var txt = ($('vtText') ? $('vtText').value.trim() : '');
-    var params = { name: txt, text: txt };
+    var params = { name: txt, text: txt, lang: lg() }; /* v-trends-lang: كلام الفيديو بلغة الواجهة (الخادم: speechLang) */
     pullScenes(t); /* v-trend-scenes: مشاهد مكتوبة في «اكتب اللي تبيه» ← الخانات قبل قراءتها */
     /* v-trend-extra + v-trend-backdrops: ما كتبه المستخدم، ورقم خلفيّة جديد لكلّ فيديو من هذا الترند */
     var extra = ($('vtExtra') ? $('vtExtra').value.trim() : '');
@@ -542,7 +542,10 @@
     desc.insertAdjacentElement('afterend', root);
     grid = $('vtGrid'); panel = $('vtPanel');
     renderGrid();
-    try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:545'); /* guard-ok */ }
+    /* v-trends-lang (المالك ١٤ نوفمبر بلقطة: الواجهة إنجليزيّة وأسماء البطاقات «قصة بيكسار من ٣ مشاهد»…): تبديل اللغة وترند مفتوح
+       كان يحدّث العنوانين وحدهما، فتبقى البطاقات (المخفيّة خلف اللوحة) بلغة قبل التبديل وتظهر هكذا بعد «كل الترندات».
+       الشبكة تُبنى من جديد دائمًا — renderGrid لا يمسّ اللوحة ولا إظهار الشبكة. */
+    try{ new MutationObserver(function(){ renderGrid(); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:545'); /* guard-ok */ }
     window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key && !(typeof omranHwHidden === 'function' && omranHwHidden('trend', x.key)); })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } },
       /* v-audit-boot (cli-video-1): الخروج (app-04) يفرّغ صور الأشخاص ويغلق اللوحة المفتوحة — لا تُرسل صور الحساب السابق مع ترند من يدخل بعده */
       reset: function(){ photos = []; cur = null; if(panel){ panel.innerHTML = ''; panel.style.display = 'none'; } if(grid) grid.style.display = 'grid'; } };

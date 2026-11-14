@@ -140,6 +140,11 @@
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
   function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
+  /* v-trends-lang (المالك ١٤ نوفمبر: «إذا أسوّي أيّ فيديو فقط بالعربي… أريده بكلّ اللغات الموجودة»): لغة الراوي وسيناريو الفيلم
+     كانت bT('ar','en') — عربيّ أو إنجليزيّ فقط، فالفرنسيّ يُكتب سيناريوه بالإنجليزيّة ويُقرأ نصّه بصوت إنجليزيّ. الآن لغة الواجهة
+     الأربع عشرة كما هي (الخادم يعرفها كلّها)، والراوي بلغة نصّه: حروف عربيّة = الصوت العربيّ (أو الأردو في واجهتها). */
+  function uiLangCode(){ try{ return String((typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar').split('-')[0].toLowerCase(); }catch(e){ return 'ar'; } }
+  function narrLang(text){ const L = uiLangCode(); return /[؀-ۿ]/.test(String(text || '')) ? (L === 'ur' ? 'ur' : 'ar') : L; }
   function isOwnerAccount(){
     const u = (typeof authGet === 'function') ? (authGet('aiapp_username') || '') : '';
     const key = String(u).trim().toLowerCase();
@@ -937,7 +942,7 @@
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: narrLang(narrationInput), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -1026,7 +1031,7 @@
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: narrLang(narrationInput), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -1444,7 +1449,7 @@
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (bT('ar','en')), hero: !!filmHeroBase64, token }),
+          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: uiLangCode(), hero: !!filmHeroBase64, token }),
         });
         const scriptData = await scriptRes.json();
         if(scriptRes.status === 401){ const e = new Error('auth'); e.code = 'auth_required'; throw e; }
@@ -1488,7 +1493,7 @@
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: narrLang(sc.narration || text), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -1820,7 +1825,7 @@
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, minutes: mins, style, lang: (bT('ar','en')), token }),
+          body: JSON.stringify({ topic: text, minutes: mins, style, lang: uiLangCode(), token }),
         });
         const scriptData = await scriptRes.json();
         if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
@@ -1856,7 +1861,7 @@
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: narrLang(sc.narration || text), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -1896,7 +1901,7 @@
         ttsEarly = fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: narrLang((narrationText.value || '').trim() || text), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
         getFFmpeg().catch(() => null);
       };
