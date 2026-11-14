@@ -19,7 +19,7 @@
    والنشر يأخذ بالعلامة حين لا تعرف الخدمة الطلب وحده: دليلها الحيّ يغلب المحفوظ، ورؤيتها للطلب — للحالة أو لضغطة نشر — تُحفظ (seenKey) فتغلبه
    بعد أن تنساه (المراجعة الثالثة: كانت الحالة وحدها تحفظها)؛ والرؤية (shown) أيّ ردّ 2xx غير فارغ ليس «لا أعرفه» — الفارغ وحده لا يُعدّ. */
 /* v-director-photo (المالك ١٤ نوفمبر، على لقطة صندوق الرفع: «اريد مش فيديو فقط ارفع حتى الصور… الصور والفيديو الارسال في التواصل
-   الاجتماعي»): الهدف يقبل صورة (jpg/png/webp حتّى ٨ ميغا) ونوعها يُحفظ مع ملفّها، والنشر يرسلها إلى مسار الصور في خدمة النشر
+   الاجتماعي»): الهدف يقبل صورة (jpg/png/webp حتّى ٨ ميغا) ونوعها يُحفظ مع رابطها في المفتاح نفسه، والنشر يرسلها إلى مسار الصور في خدمة النشر
    (photos[] رابطًا، كما في مكتبتها الرسميّة) للمنصّات التي تأخذ صورًا — يوتيوب فيديو فقط. الحجز والمتابعة والإثبات كما للفيديو. */
 const crypto = require('node:crypto');
 const { kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
@@ -44,8 +44,8 @@ const HEX24 = /^[0-9a-f]{24}$/;
 const REQ_RE = /^[A-Za-z0-9_-]{6,80}$/;
 const PENDING = ['queued', 'pending', 'processing', 'retryable']; // retryable: فشل والخدمة تعيد المحاولة بنفسها — لم يُحسم
 const PRE_SEND = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH', 'UND_ERR_CONNECT_TIMEOUT']; // الطلب ما خرج أصلًا
-const fileKey = (id) => 'socpub:file:' + id;
-const kindKey = (id) => 'socpub:kind:' + id; // «image» لملفّ صورة؛ غيابه = فيديو (ما رُفع قبل الميزة)
+const fileKey = (id) => 'socpub:file:' + id; // رابط الملفّ؛ ورابط الصورة تسبقه «image|» (v-director-photo) — النوع والرابط كتابة واحدة وقراءة واحدة
+const IMG_MARK = 'image|'; // مفتاح نوع منفصل كان ينتهي قبل الملفّ بلحظة أو يُقرأ فارغًا فتُنشر الصورة فيديو (مراجعة مستقلّة)
 const sentKey = (v, p) => 'socpub:sent:' + v + ':' + p; // المنصّة p أخذت الفيديو v بالطلب المخزَّن قيمةً
 const reqKey = (r) => 'socpub:req:' + r; // وقت الطلب وقبول الخدمة له: «لا طلب» في المهلة = ينتظر، وبعدها = ما وصل
 const seenKey = (r) => 'socpub:seen:' + r; // الخدمة أرت الطلب حيًّا مرّة (للحالة أو للنشر): غيابه بعدها نسيان لا ضياع
@@ -207,8 +207,7 @@ async function target(res, body) {
   const d = r.ok ? await r.json().catch(() => null) : null;
   if (!d || !isHttps(d.upload_url) || !isHttps(d.file_url)) return fail(res, 502, 'storage', { status: r.status });
   const id = crypto.randomBytes(12).toString('hex');
-  if (img) await kvSetRaw(kindKey(id), 'image', FILE_TTL); // النوع قبل الملفّ: لا ملفّ صورة يُقرأ فيديو إن فشلت الكتابة الثانية
-  await kvSetRaw(fileKey(id), d.file_url, FILE_TTL);
+  await kvSetRaw(fileKey(id), (img ? IMG_MARK : '') + d.file_url, FILE_TTL);
   return res.status(200).json({ ok: true, id, up: d.upload_url, ctype });
 }
 
@@ -220,9 +219,10 @@ async function publish(res, body, key) {
   if (!plats.length) return fail(res, 400, 'no_platforms');
   const c = captions(body.caption);
   if (!c.cap) return fail(res, 400, 'no_caption');
-  const file = await kvGetRaw(fileKey(id));
+  const stored = String((await kvGetRaw(fileKey(id))) || '');
+  const img = stored.startsWith(IMG_MARK); // v-director-photo: الصورة لمنصّات الصور وحدها — قبل أيّ سجلّ أو حجز
+  const file = img ? stored.slice(IMG_MARK.length) : stored;
   if (!isHttps(file)) return fail(res, 404, 'no_file');
-  const img = (await kvGetRaw(kindKey(id))) === 'image'; // v-director-photo: الصورة لمنصّات الصور وحدها — قبل أيّ سجلّ أو حجز
   if (img) plats = plats.filter((p) => IMG_PLATFORMS.includes(p));
   if (!plats.length) return fail(res, 400, 'no_platforms');
   // نشر واحد لكلّ فيديو ومنصّة: كلّ منصّة تُحجز وحدها (SET NX)، فالضغطة الثانية وانقطاع الردّ ومجموعة تتداخل مع سابقتها لا تنشر في منصّة

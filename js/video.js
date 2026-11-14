@@ -827,9 +827,17 @@
   function upFrame(img){
     var vid=id('vdVideo'), pic=id('vdPic'), dl=id('vdDl');
     if(vid){ vid.hidden=!!img; if(img){ try{ vid.pause(); vid.removeAttribute('src'); vid.load(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:up-frame'); /* guard-ok — مشغّل بلا مصدر */ } } }
-    if(pic){ pic.hidden=!img; if(!img) pic.removeAttribute('src'); }
+    if(pic){ pic.hidden=!img; if(!img){ pic.onload=pic.onerror=null; pic.removeAttribute('src'); pic.alt=''; } }
     if(dl) dl.hidden=!!img;
   }
+  /* ملفّ باسم صورة لا يُفكّ (تالف): كان يبقى نقطة فارغة تحتها لوحة نشر جاهزة لخمس منصّات (مراجعة مستقلّة) — يُترك ويُقال */
+  function upBroken(){
+    var u=DR.out; upEnd();
+    if(u){ try{ URL.revokeObjectURL(u); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:up-broken'); /* guard-ok — رابط زال */ } }
+    DR.out=''; pbNewVideo(); var r=id('vdRes'); if(r) r.classList.remove('has');
+    upMsg(L('vdUpBadType'),true); syncDirector();
+  }
+  function upScroll(){ var r=id('vdRes'); try{ if(r&&r.scrollIntoView) r.scrollIntoView({block:'nearest'}); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:up-scroll'); /* guard-ok — متصفّح بلا خيارات التمرير */ } }
   function upMsg(t,err){ var m=id('vdUpMsg'); if(!m) return; m.textContent=t||''; m.className='vmk-dir-msg'+(err?' err':''); }
   /* v-director-endcard: توليد جديد في المخرج يترك المرفوع (drReset يخفيه): إضافة الباركود الجارية تُلغى (كانت تقفل «انشر الآن» على فيديو
      المخرج ورسالتها تبقى تحت الصندوق)، وروابطه والملفّ المبنيّ في الذاكرة (حتّى ٥٠٠ ميغا) تُترك للتحرير؛ المعروض يحرّره التوليد حين ينتهي */
@@ -853,7 +861,11 @@
     DR.file=f; DR.fileType=type; DR.fileKind=img?'image':'video'; DR.fileVid=upVid(f); DR.fileUrl=DR.out=URL.createObjectURL(f); pbNewVideo();
     var vid=id('vdVideo'), pic=id('vdPic'), dl=id('vdDl'), res=id('vdRes'), pub=id('vdPub');
     upFrame(img);
-    if(img){ if(pic) pic.src=DR.out; } else if(vid) vid.src=DR.out;
+    if(img){ if(pic){ var shown=DR.out; pic.alt=String(f.name||''); /* اسم الملفّ لقارئ الشاشة: الصورة هي المنشور */
+        pic.onload=function(){ if(DR.out===shown) upScroll(); }; /* التمرير بعد أن يصير للصورة مقاس (للفيديو إطار ثابت فيكفيه الآن) */
+        pic.onerror=function(){ if(DR.out===shown) upBroken(); };
+        pic.src=shown; } }
+    else if(vid) vid.src=DR.out;
     if(dl){ dl.href=DR.out; dl.setAttribute('download',String(f.name||'').replace(/[\\/:*?"<>|]+/g,'_').slice(-120)||'video.mp4'); }
     if(res) res.classList.add('has');
     if(img) pbPlats(); /* v-director-photo: المنصّات رُسمت في pbNewVideo قبل أن يصير المعروض صورة — يوتيوب يخرج من الخيارات الآن */
@@ -864,7 +876,7 @@
       ER.orig=EC.src; /* v-director-erase: المسح من الأصل دائمًا، و«رجّع الأصل» يعيده */
     }
     syncDirector();
-    try{ if(res&&res.scrollIntoView) res.scrollIntoView({block:'nearest'}); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:up-scroll'); /* guard-ok — متصفّح بلا خيارات التمرير */ }
+    if(!img) upScroll();
     if(!img&&ecPref()) ecStart(); /* v-director-endcard: الخيار مشغَّل = يُضاف الباركود فورًا والنشر ينتظره */
   }
   function upBind(zone,input){
@@ -1646,6 +1658,7 @@
     tlSync();
     box.querySelector('#vdPubBtn').textContent=L('vdPubBtn'); box.querySelector('.vmk-pub-cap>span').textContent=upImg()?L('vdImgCap'):L('vdPubCap'); /* v-director-publish */
     box.querySelector('#vdPubCap').placeholder=L('vdPubPh'); var pg=box.querySelector('#vdPubGo'); pg.textContent=L('vdPubGo'); pg.disabled=PB.busy||PB.loading||!(PB.plats&&PB.plats.length)||EC.busy;
+    if(upImg()&&!(PB.plats||[]).some(function(p){ return p!=='youtube'; })) pg.disabled=true; /* v-director-photo: صورة ولا حساب موصول يأخذ صورًا (يوتيوب وحده) — لا زرّ يعمل بلا منصّة تُختار */
     var uz=box.querySelector('#vdUp'), uf=box.querySelector('#vdUpFile'); /* v-director-upload */
     if(uz&&uf){
       var um=upMine(); uz.classList.toggle('has',um); uz.querySelector('.vmk-cl-pick').textContent=um?String(DR.file.name||''):L('vdUpBtn'); uz.querySelector('.vmk-cl-lim').textContent=drT('vdUpHint',{n:UP_MAX_MB,m:UP_IMG_MB});
