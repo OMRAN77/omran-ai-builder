@@ -916,6 +916,26 @@ html[data-mode="light"] #videoMakerModal .vmk-pub-plats .off{border-color:rgba(0
 #videoMakerModal .vmk-dir-ec.off input{cursor:default}
 html:not(.mobile-ui) #videoMakerModal .vmk-dir-ec input[type=checkbox]:not(:checked){box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5)}
 html[data-mode="light"]:not(.mobile-ui) #videoMakerModal .vmk-dir-ec input[type=checkbox]:not(:checked){background:rgba(0,0,0,.08);box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.32)}
+/* v-director-erase: «امسح اسم أو كتابة» تحت خيار الباركود، ومحرّر المربّعات بين الفيديو وأزراره — اللوحة بنسبة اللقطة نفسها (لا ١٦:٩
+   المشغّل: أشرطة جانبيّة تبتلع السحب)، والسحب لا يمرّر الصفحة */
+#videoMakerModal .vmk-dir-er{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0}
+#videoMakerModal .vmk-dir-er[hidden],#videoMakerModal .vmk-dir-er button[hidden],#videoMakerModal .vmk-er[hidden]{display:none}
+#videoMakerModal .vmk-dir-er button,#videoMakerModal .vmk-er-acts button{font:inherit;font-size:13px;font-weight:700;padding:8px 16px;border-radius:999px;border:1px solid rgba(232,194,122,.6);background:transparent;color:var(--accent-light,#f0be7a);cursor:pointer}
+#videoMakerModal .vmk-dir-er button:disabled,#videoMakerModal .vmk-er-acts button:disabled{opacity:.5;cursor:default}
+#videoMakerModal .vmk-er{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:14px;border:1px solid rgba(232,194,122,.25);background:rgba(232,194,122,.05)}
+#videoMakerModal .vmk-er-hint{margin:0;font-size:13px;line-height:1.6;color:var(--muted,#9a9a9e)}
+#videoMakerModal .vmk-er-hint.err{color:#ff8a80}
+#videoMakerModal .vmk-er-note{font-size:12.5px;line-height:1.6;color:var(--muted,#9a9a9e);flex-basis:100%} /* ملاحظة المسح الأخير تبقى تحت الزرّ (رسالة الباركود تغطّي رسالته) */
+#videoMakerModal .vmk-er-note:empty{display:none}
+#videoMakerModal .vmk-er-note.err{color:#ff8a80}
+html[data-mode="light"] #videoMakerModal .vmk-er-note.err{color:#b42318}
+#videoMakerModal .vmk-er canvas{display:block;width:100%;max-width:760px;height:auto;align-self:center;border-radius:10px;background:#000;touch-action:none;cursor:crosshair}
+#videoMakerModal .vmk-er input[type=range]{width:100%;max-width:760px;align-self:center;accent-color:#c9964a;margin:0}
+#videoMakerModal .vmk-er-acts{display:flex;flex-wrap:wrap;gap:8px}
+#videoMakerModal .vmk-er-acts .vmk-er-go{border:0;color:#1a1408;background:linear-gradient(135deg,#f6dca2,#c9964a)}
+html[data-mode="light"] #videoMakerModal .vmk-dir-er button,html[data-mode="light"] #videoMakerModal .vmk-er-acts button:not(.vmk-er-go){color:#8a5a12;background:#fff}
+html[data-mode="light"] #videoMakerModal .vmk-er{background:#fff;border-color:rgba(0,0,0,.12)}
+html[data-mode="light"] #videoMakerModal .vmk-er-hint.err{color:#b42318}
 @media (max-width:860px){
   #videoMakerModal #vmkDirector{max-height:none;overflow:visible}
   #videoMakerModal .vmk-dir-row{grid-template-columns:1fr 1fr}
