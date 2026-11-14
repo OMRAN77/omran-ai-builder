@@ -1479,7 +1479,7 @@ test('٢٨. نصّ السؤال بالـ١٤ لغة بلا اسم مزوّد و�
   assert.match(base.I18N.en.vdUpWait, /posting carries on/);
   const seen = new Set();
   for (const lg of ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil']) {
-    const m = read('i18n/' + lg + '.js').match(/v-director-upload-fix \(797\)[^\n]*Object\.assign\(I18N\["(\w+)"\], (\{.*\})\);/);
+    const m = read('i18n/' + lg + '.js').match(/v-director-upload-fix \(798\)[^\n]*Object\.assign\(I18N\["(\w+)"\], (\{.*\})\);/);
     assert.ok(m && m[1] === lg, lg + ' كتلة الترجمة');
     const o = JSON.parse(m[2]);
     assert.deepEqual(Object.keys(o), ['vdUpWait'], lg + ' المفاتيح');
@@ -1491,9 +1491,9 @@ test('٢٨. نصّ السؤال بالـ١٤ لغة بلا اسم مزوّد و�
   }
   assert.equal(seen.size, 12, 'ترجمات لا نسخ');
   const tag = read('js/app-04-i18n-state.js').match(/\.js\?v=(\d+)';[^\n]* v-director-upload-fix \((\d+)\): [^\n]*\*\//);
-  assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && Number(tag[2]) === 797, 'وسم اللغات مرفوع وسببه في التعليق');
+  assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && Number(tag[2]) === 798, 'وسم اللغات مرفوع وسببه في التعليق');
   const h = read('index.html');
-  assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 469 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 700, 'وسما video.js وmodules.css مرفوعان');
+  assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 470 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 701, 'وسما video.js وmodules.css مرفوعان');
   const css = read('css/modules.css');
   const RULES = ['#videoMakerModal .vmk-dir-up .vmk-cl-plus{flex:0 0 auto}', '#videoMakerModal .vmk-dir-up:focus-within{outline-offset:-3px}',
     '#videoMakerModal .vmk-dir-up.over{outline:2px dashed #e8c27a;outline-offset:-5px}', 'html[data-mode="light"] #videoMakerModal .vmk-dir-up.over{outline-color:#8a5a12}',
