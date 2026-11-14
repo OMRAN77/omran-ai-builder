@@ -916,6 +916,10 @@ html[data-mode="light"] #videoMakerModal .vmk-pub-plats .off{border-color:rgba(0
 #videoMakerModal .vmk-dir-up.over{outline:2px dashed #e8c27a;outline-offset:-5px}
 html[data-mode="light"] #videoMakerModal .vmk-dir-up.over{outline-color:#8a5a12}
 #videoMakerModal .vmk-dir-up .vmk-cl-pick{word-break:normal;overflow-wrap:anywhere} /* اسم الملفّ يلتفّ عند المسافات: break-all المشترك كان يكسر «السلا/م» في نصف
+/* v-director-photo: الصورة المرفوعة مكان الفيديو — بمقاسها ونسبتها (لا تكبير ولا مطّ)، وبحدّ ارتفاع كي لا تدفع لوحة النشر خارج الشاشة؛ وسطر الحدود سطران (فيديو / صورة) */
+#videoMakerModal .vmk-dir-res img.vmk-dir-pic{display:block;max-width:min(760px,100%);max-height:70vh;width:auto;height:auto;object-fit:contain;align-self:center;border-radius:14px;background:#000;border:1px solid rgba(232,194,122,.25)}
+#videoMakerModal .vmk-dir-res img.vmk-dir-pic[hidden],#videoMakerModal .vmk-dir-res video[hidden],#videoMakerModal .vmk-dir-acts a.vmk-dir-dl[hidden],#videoMakerModal .vmk-dir-ec[hidden]{display:none}
+#videoMakerModal .vmk-dir-up .vmk-cl-lim{white-space:pre-line;line-height:1.7}
    الكلمة على الجوّال (ثبت بالقياس على ٣٦٠–٤٣٠px)؛ واسم بلا مسافات ما زال ينكسر حيث يلزم ولا يخرج من الصندوق */
 /* v-director-endcard: خيار «أضف باركود التطبيق في آخر الفيديو» تحت صندوق الرفع — المربّع غير المؤشَّر بحلقة داخليّة كمنصّات النشر
    (في الأسود يختفي حدّه وإلّا)، ومعتم أثناء التوليد ورفع النشر */

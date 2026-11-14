@@ -18,6 +18,9 @@
    أسبوعًا. وملفّ الجهاز صار اسمه ثابتًا (هويّته)، فإعادة اختياره لا تفلت من الحجز كما كانت. الآن ما رأته الحالة يُعلَّم (socpub:dead)،
    والنشر يأخذ بالعلامة حين لا تعرف الخدمة الطلب وحده: دليلها الحيّ يغلب المحفوظ، ورؤيتها للطلب — للحالة أو لضغطة نشر — تُحفظ (seenKey) فتغلبه
    بعد أن تنساه (المراجعة الثالثة: كانت الحالة وحدها تحفظها)؛ والرؤية (shown) أيّ ردّ 2xx غير فارغ ليس «لا أعرفه» — الفارغ وحده لا يُعدّ. */
+/* v-director-photo (المالك ١٤ نوفمبر، على لقطة صندوق الرفع: «اريد مش فيديو فقط ارفع حتى الصور… الصور والفيديو الارسال في التواصل
+   الاجتماعي»): الهدف يقبل صورة (jpg/png/webp حتّى ٨ ميغا) ونوعها يُحفظ مع ملفّها، والنشر يرسلها إلى مسار الصور في خدمة النشر
+   (photos[] رابطًا، كما في مكتبتها الرسميّة) للمنصّات التي تأخذ صورًا — يوتيوب فيديو فقط. الحجز والمتابعة والإثبات كما للفيديو. */
 const crypto = require('node:crypto');
 const { kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
 const { sessionUser, tokenOf } = require('./_session.js');
@@ -27,7 +30,10 @@ const UP_API = 'https://api.upload-post.com/api';
 const INITIATE = 'https://rest.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3';
 const PLATFORMS = ['instagram', 'facebook', 'tiktok', 'youtube', 'x', 'threads'];
 const TYPES = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' };
+const IMG_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }; // ما تقبله خدمة النشر من الصور الثابتة (HEIC لا)
+const IMG_PLATFORMS = ['instagram', 'facebook', 'tiktok', 'x', 'threads']; // يوتيوب لا يأخذ صورًا
 const MAX_BYTES = 500 * 1024 * 1024;
+const IMG_MAX_BYTES = 8 * 1024 * 1024; // حدّ إنستغرام وThreads للصورة
 const FILE_TTL = 6 * 3600; // خدمة النشر تجلب الملفّ في الخلفيّة وقد تعيد المحاولة — يبقى ستّ ساعات ثمّ يُحذف عند المزوّد
 const SENT_TTL = 7 * 86400;
 const GRACE_MS = 10 * 60 * 1000; // أطول من أقصى عمر للدالّة (٣٠٠ ث): «لا طلب بهذا المعرّف» بعدها = ما وصلهم أبدًا
@@ -39,6 +45,7 @@ const REQ_RE = /^[A-Za-z0-9_-]{6,80}$/;
 const PENDING = ['queued', 'pending', 'processing', 'retryable']; // retryable: فشل والخدمة تعيد المحاولة بنفسها — لم يُحسم
 const PRE_SEND = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH', 'UND_ERR_CONNECT_TIMEOUT']; // الطلب ما خرج أصلًا
 const fileKey = (id) => 'socpub:file:' + id;
+const kindKey = (id) => 'socpub:kind:' + id; // «image» لملفّ صورة؛ غيابه = فيديو (ما رُفع قبل الميزة)
 const sentKey = (v, p) => 'socpub:sent:' + v + ':' + p; // المنصّة p أخذت الفيديو v بالطلب المخزَّن قيمةً
 const reqKey = (r) => 'socpub:req:' + r; // وقت الطلب وقبول الخدمة له: «لا طلب» في المهلة = ينتظر، وبعدها = ما وصل
 const seenKey = (r) => 'socpub:seen:' + r; // الخدمة أرت الطلب حيًّا مرّة (للحالة أو للنشر): غيابه بعدها نسيان لا ضياع
@@ -89,11 +96,11 @@ function cutBy(s, n, len) {
   return out.trimEnd() + '…';
 }
 const cut = (s, n) => cutBy(s, n, u16);
-/** نصّ كلّ منصّة بحدّها: يوتيوب عنوان سطر واحد ≤١٠٠، وX ≤٢٨٠ بوزنه، وThreads ≤٥٠٠ بمقياسه. */
+/** نصّ كلّ منصّة بحدّها: يوتيوب عنوان سطر واحد ≤١٠٠، وعنوان منشور صور تيك توك سطر ≤٩٠ (وصفه النصّ كلّه)، وX ≤٢٨٠ بوزنه، وThreads ≤٥٠٠ بمقياسه. */
 function captions(raw) {
   const cap = cut(String(raw || '').replace(/\r\n?/g, '\n'), CAP_MAX);
   const first = (cap.split('\n').find((l) => l.trim()) || cap).trim();
-  return { cap, yt: cut(first, 100), x: cutBy(cap, 280, xLen), threads: cutBy(cap, 500, threadsLen) };
+  return { cap, yt: cut(first, 100), tt: cut(first, 90), x: cutBy(cap, 280, xLen), threads: cutBy(cap, 500, threadsLen) };
 }
 
 function rowsOf(j) {
@@ -184,10 +191,13 @@ async function target(res, body) {
   const fk = falKey();
   if (!fk) return fail(res, 503, 'no_storage');
   const ctype = String(body.type || '').toLowerCase().split(';')[0].trim();
-  const ext = TYPES[ctype];
+  const own = (o) => Object.prototype.hasOwnProperty.call(o, ctype); // لا مفاتيح موروثة («constructor» كان يمرّ نوعًا)
+  const img = own(IMG_TYPES);
+  const ext = img ? IMG_TYPES[ctype] : (own(TYPES) ? TYPES[ctype] : '');
+  const max = img ? IMG_MAX_BYTES : MAX_BYTES;
   const size = Number(body.size);
   if (!ext) return fail(res, 400, 'bad_type');
-  if (!(size > 0) || size > MAX_BYTES) return fail(res, 413, 'too_big', { maxMB: MAX_BYTES / 1048576 });
+  if (!(size > 0) || size > max) return fail(res, 413, 'too_big', { maxMB: max / 1048576 });
   const life = JSON.stringify({ expiration_duration_seconds: FILE_TTL });
   const r = await fetch(INITIATE, {
     method: 'POST',
@@ -197,6 +207,7 @@ async function target(res, body) {
   const d = r.ok ? await r.json().catch(() => null) : null;
   if (!d || !isHttps(d.upload_url) || !isHttps(d.file_url)) return fail(res, 502, 'storage', { status: r.status });
   const id = crypto.randomBytes(12).toString('hex');
+  if (img) await kvSetRaw(kindKey(id), 'image', FILE_TTL); // النوع قبل الملفّ: لا ملفّ صورة يُقرأ فيديو إن فشلت الكتابة الثانية
   await kvSetRaw(fileKey(id), d.file_url, FILE_TTL);
   return res.status(200).json({ ok: true, id, up: d.upload_url, ctype });
 }
@@ -205,12 +216,15 @@ async function publish(res, body, key) {
   const id = String(body.id || '');
   if (!HEX24.test(id)) return fail(res, 400, 'bad_id');
   const vid = HEX24.test(String(body.vid || '')) ? String(body.vid) : id; // الفيديو نفسه وإن أُعيد رفعه بعد عمر الملفّ: حجوزاته تبقى عليه
-  const plats = [...new Set((Array.isArray(body.platforms) ? body.platforms : []).map((p) => String(p).toLowerCase()))].filter((p) => PLATFORMS.includes(p));
+  let plats = [...new Set((Array.isArray(body.platforms) ? body.platforms : []).map((p) => String(p).toLowerCase()))].filter((p) => PLATFORMS.includes(p));
   if (!plats.length) return fail(res, 400, 'no_platforms');
   const c = captions(body.caption);
   if (!c.cap) return fail(res, 400, 'no_caption');
   const file = await kvGetRaw(fileKey(id));
   if (!isHttps(file)) return fail(res, 404, 'no_file');
+  const img = (await kvGetRaw(kindKey(id))) === 'image'; // v-director-photo: الصورة لمنصّات الصور وحدها — قبل أيّ سجلّ أو حجز
+  if (img) plats = plats.filter((p) => IMG_PLATFORMS.includes(p));
+  if (!plats.length) return fail(res, 400, 'no_platforms');
   // نشر واحد لكلّ فيديو ومنصّة: كلّ منصّة تُحجز وحدها (SET NX)، فالضغطة الثانية وانقطاع الردّ ومجموعة تتداخل مع سابقتها لا تنشر في منصّة
   // أخذت الفيديو. السجلّ (ووقته) قبل الحجز: من يجد الحجز يجد وقت طلبه.
   const reqId = 'omdir-' + id + '-' + crypto.randomBytes(4).toString('hex');
@@ -263,18 +277,20 @@ async function publish(res, body, key) {
     fd.append('user', upUser());
     for (const p of send) fd.append('platform[]', p);
     fd.append('title', c.cap);
-    fd.append('video', file);
-    if (send.includes('instagram')) { fd.append('media_type', 'REELS'); fd.append('share_to_feed', 'true'); }
+    fd.append(img ? 'photos[]' : 'video', file); // الصورة رابطًا في photos[] (منشور بصورة واحدة)
+    if (send.includes('instagram')) { if (img) fd.append('media_type', 'IMAGE'); else { fd.append('media_type', 'REELS'); fd.append('share_to_feed', 'true'); } }
     if (send.includes('facebook')) {
       const pg = await upFetch(key, '/uploadposts/facebook/pages?profile=' + encodeURIComponent(upUser())).catch(() => ({ j: {} }));
       const pages = (pg.j && pg.j.pages) || [];
       const page = pages.find((x) => /om\s*ai/i.test((x && x.name) || '')) || pages[0];
       if (page && page.id) fd.append('facebook_page_id', String(page.id));
-      fd.append('facebook_title', c.yt); fd.append('facebook_description', c.cap); fd.append('facebook_media_type', 'VIDEO'); // VIDEO: أيّ نسبة وأيّ طول (الريلز حدّها أقصر)
+      if (!img) { fd.append('facebook_title', c.yt); fd.append('facebook_description', c.cap); fd.append('facebook_media_type', 'VIDEO'); } // VIDEO: أيّ نسبة وأيّ طول (الريلز حدّها أقصر) · الصورة: نصّها العنوان العامّ، ومكانها الافتراضيّ الصفحة
     }
     if (send.includes('tiktok')) {
-      fd.append('tiktok_title', c.cap); fd.append('privacy_level', 'PUBLIC_TO_EVERYONE');
-      fd.append('disable_inbox_fallback', 'true'); // حدّ تيك توك اليوميّ = فشل معلَن، لا مسوّدة بلا نصّ في صندوقه لا تُحذف
+      if (img) { fd.append('tiktok_title', c.tt); fd.append('tiktok_description', c.cap); } // منشور الصور: عنوان قصير ووصف — تيك توك لا يقرأ الوصف العامّ
+      else fd.append('tiktok_title', c.cap);
+      fd.append('privacy_level', 'PUBLIC_TO_EVERYONE');
+      if (!img) fd.append('disable_inbox_fallback', 'true'); // حدّ تيك توك اليوميّ = فشل معلَن، لا مسوّدة بلا نصّ في صندوقه لا تُحذف
     }
     if (send.includes('youtube')) { fd.append('youtube_title', c.yt); fd.append('youtube_description', c.cap); }
     if (send.includes('x')) fd.append('x_title', c.x);
@@ -283,7 +299,7 @@ async function publish(res, body, key) {
     fd.append('async_upload', 'true');
     fd.append('external_id', 'director-' + vid);
     posting = true;
-    r = await upFetch(key, '/upload', { method: 'POST', body: fd, headers: { 'Idempotency-Key': reqId } });
+    r = await upFetch(key, img ? '/upload_photos' : '/upload', { method: 'POST', body: fd, headers: { 'Idempotency-Key': reqId } });
   } catch (e) {
     // قبل خروج الطلب (خطأ في الحجز أو التحضير): ما حُجز يتحرّر، والمعالج يقول «أعد» — لا «انرسل قبل» كاذبة عشر دقائق
     if (!posting) { await release().catch((er) => logErr('release', er)); throw e; }
@@ -354,4 +370,4 @@ module.exports = async (req, res) => {
     return fail(res, 503, 'retry');
   }
 };
-Object.assign(module.exports, { PLATFORMS, MAX_BYTES, FILE_TTL, GRACE_MS, LOST_MAX_MS, accountsOf, captions, statusOf, deadRow, shown, xLen, threadsLen });
+Object.assign(module.exports, { PLATFORMS, IMG_PLATFORMS, MAX_BYTES, IMG_MAX_BYTES, FILE_TTL, GRACE_MS, LOST_MAX_MS, accountsOf, captions, statusOf, deadRow, shown, xLen, threadsLen });
