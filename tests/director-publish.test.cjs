@@ -1574,7 +1574,7 @@ test('٢٩. ربط الصندوق يعمل: السحب فوقه يُؤخذ دا�
 //    الخدمة من جديد — إعادة اختيار الملفّ كانت تأخذ اسمًا جديدًا فتفلت. الآن الإثبات يُحفظ حين تراه عمليّة الحالة. ──
 test('٣٠. الإثبات يُحفظ حين يُرى: ما قالت عنه الحالة «ما وصل» أو «ما نزل» يتحرّر في ضغطة لاحقة ولو مضى يوم أو نسيت الخدمة الطلب — والدليل الحيّ يغلب المحفوظ، وما لم يُرَ يبقى محجوزًا', async () => {
   calls.length = 0; kv.clear();
-  const ids = ['1', '2', '3', '4', '5'].map((c) => c.repeat(24));
+  const ids = ['1', '2', '3', '4', '5', '6', '8', '9'].map((c) => c.repeat(24));
   ids.forEach((id, i) => kv.set('socpub:file:' + id, 'https://v3.fal.media/files/om-3' + i + '.mp4'));
   const st = {}, sent = [];
   const statusRoute = (url) => { const q = new URL(url).searchParams.get('request_id'); return st[q] ? { status: 200, body: st[q] } : { status: 404, body: { status: 'not_found' } }; };
@@ -1659,7 +1659,7 @@ test('٣٠. الإثبات يُحفظ حين يُرى: ما قالت عنه ال
   age(h.request, sp.GRACE_MS + 1000);
   assert.deepEqual([(await stat(h.request)).lost, marks(h.request)], [true, [h.request + ':*']]);
   st[h.request] = { results: [{ platform: 'threads', status: 'processing' }] }; // صفوف بلا حالة مهمّة: رؤية أيضًا
-  assert.deepEqual([(await stat(h.request)).state, kv.has('socpub:seen:' + h.request)], ['wait', true]);
+  assert.deepEqual([(await stat(h.request)).state, kv.has('socpub:seen:' + h.request), ttl.get('socpub:seen:' + h.request)], ['wait', true, 7 * 86400], 'الرؤية بعمر الحجز');
   delete st[h.request];
   routes['/api/upload'] = okUpload; n = sent.length;
   const h2 = await pub(ids[1], ['threads']);
@@ -1719,24 +1719,79 @@ test('٣٠. الإثبات يُحفظ حين يُرى: ما قالت عنه ال
   routes['/api/upload'] = (url, o) => { sent.push(o.body.getAll('platform[]')); return { status: 200, body: {} }; }; // قبول بلا معرّف من الخدمة: معرّفنا يبقى
   let fails = 2; const blip = (key, v) => { if (key.startsWith('socpub:req:') && /"ok":1/.test(v) && fails-- > 0) throw new Error('kv blip'); };
   hook.set = blip; n = sent.length;
-  const y = await call('publish', { token: owner(), id: ids[1], caption: 'x', platforms: ['facebook'] });
-  hook.set = null;
+  const waits = [], realTimeout = global.setTimeout; global.setTimeout = (fn, ms) => { waits.push(ms); return realTimeout(fn, 0); }; // المهلتان تُسجَّلان ولا تُنتظران
+  let y;
+  try { y = await call('publish', { token: owner(), id: ids[1], caption: 'x', platforms: ['facebook'] }); } finally { global.setTimeout = realTimeout; hook.set = null; }
   assert.deepEqual([y.status, y.body.ok, sent.length, JSON.parse(kv.get('socpub:req:' + y.body.request)).ok], [200, true, n + 1, 1]);
+  assert.deepEqual([ttl.get('socpub:req:' + y.body.request), waits], [7 * 86400, [150, 300]], 'سجلّ القبول بعمر الحجز، وبين المحاولات مهلة قصيرة');
   age(y.body.request, sp.GRACE_MS + 1000);
   assert.deepEqual(await stat(y.body.request), { ok: true, state: 'wait', results: [] }, 'مقبول: غيابه عند الخدمة ليس «ما وصل»');
   assert.deepEqual([(await pub(ids[1], ['facebook'])).again, sent.length], [true, n + 1], 'ولا نشر ثانٍ');
   // وعطل تخزين يدوم: ثلاث محاولات ثمّ الخطأ كما كان («أعد»)، والحجز باقٍ
-  fails = 9; hook.set = blip;
-  const z = await call('publish', { token: owner(), id: ids[1], caption: 'x', platforms: ['youtube'] });
-  hook.set = null;
+  fails = 9; hook.set = blip; global.setTimeout = (fn) => realTimeout(fn, 0);
+  let z;
+  try { z = await call('publish', { token: owner(), id: ids[1], caption: 'x', platforms: ['youtube'] }); } finally { global.setTimeout = realTimeout; hook.set = null; }
   assert.deepEqual([z.status, z.body.error, 9 - fails, kv.has('socpub:sent:' + ids[1] + ':youtube')], [503, 'retry', 3, true]);
-  // القاعدة نفسها مباشرة: «الخدمة أرت الطلب» = ردّ 2xx يصفه؛ «لا أعرفه» (ولو بردّ 200) وردّ الخطأ (ولو حمل حالة) والجسم الفارغ ليست رؤية
-  assert.deepEqual([{ ok: true, status: 200, j: { status: 'pending' } }, { ok: true, status: 202, j: { results: [{ platform: 'x' }] } }, { ok: true, status: 200, j: { data: { tiktok: { status: 'queued' } } } },
-    { ok: true, status: 200, j: {} }, { ok: true, status: 200, j: { status: 'not_found' } }, { ok: false, status: 404, j: { results: [{ platform: 'x' }] } },
-    { ok: false, status: 500, j: { status: 'failed', results: [{ platform: 'x', status: 'failed' }] } }, { ok: true, status: 200, j: { results: [] } }, null].map(sp.shown),
-  [true, true, true, false, false, false, false, false, false]);
+  // ١٤) ردّ 2xx بلا حالة ولا صفوف لطلب حيّ ({success:true, message:'Queued'}) رؤية: «لا أعرفه» بعده نسيان لا ضياع — لا «ما وصل» ولا إرسال ثانٍ
+  //     (المراجعة الرابعة: تضييق الرؤية إلى «حالة أو صفوف» أسقط هذه الحماية، وكانت على main)
+  routes['/api/upload'] = cut;
+  const q1 = await pub(ids[5], ['tiktok']);
+  st[q1.request] = { success: true, message: 'Queued', request_id: 'svc-123456' };
+  assert.deepEqual([(await stat(q1.request)).state, kv.has('socpub:seen:' + q1.request), ttl.get('socpub:seen:' + q1.request)], ['wait', true, 7 * 86400]);
+  delete st[q1.request]; age(q1.request, sp.GRACE_MS + 1000);
+  routes['/api/upload'] = okUpload; n = sent.length;
+  assert.deepEqual([await stat(q1.request), (await pub(ids[5], ['tiktok'])).again, sent.length, marks(q1.request)], [{ ok: true, state: 'wait', results: [] }, true, n, []]);
+  // ١٥) والرؤية من النشر تحمي يوم الطلب الأوّل أيضًا (بلا علامة محفوظة): «غير متأكّد» لم يُستطلَع، رأته ضغطة حيًّا بعد المهلة، ثمّ نسيته الخدمة
+  //     في يومه ← ليس «ما وصل» ولا إرسال ثانٍ
+  routes['/api/upload'] = cut;
+  const q2 = await pub(ids[5], ['youtube']);
+  age(q2.request, sp.GRACE_MS + 1000);
+  st[q2.request] = { status: 'in_progress', results: [{ platform: 'youtube', status: 'processing' }] };
+  routes['/api/upload'] = okUpload; n = sent.length;
+  assert.deepEqual([(await pub(ids[5], ['youtube'])).again, kv.has('socpub:seen:' + q2.request), marks(q2.request)], [true, true, []]);
+  delete st[q2.request]; age(q2.request, 19 * 3600 * 1000);
+  assert.deepEqual([(await pub(ids[5], ['youtube'])).again, sent.length, (await stat(q2.request)).state], [true, n, 'wait']);
+  // ١٦) ضغطة تحرّر منصّة فشلت من الطلب تحفظ رؤيته أيضًا: قيل «ما وصل»، ثمّ ظهر وفيه تيك توك فشل ويوتيوب نزل — تيك توك وحده يُعاد، وفي اليوم
+  //     التالي والخدمة نسيته يوتيوب لا يُنشر ثانية
+  routes['/api/upload'] = cut;
+  const q3 = await pub(ids[6], ['tiktok', 'youtube']);
+  age(q3.request, sp.GRACE_MS + 1000);
+  assert.equal((await stat(q3.request)).lost, true);
+  st[q3.request] = { status: 'completed', results: [{ platform: 'tiktok', success: false, status: 'failed', error: 'limit' }, { platform: 'youtube', success: true, post_url: 'https://youtu.be/3' }] };
+  routes['/api/upload'] = okUpload; n = sent.length;
+  const q3b = await pub(ids[6], ['tiktok']);
+  assert.deepEqual([q3b.again, sent[sent.length - 1], sent.length, kv.has('socpub:seen:' + q3.request)], [undefined, ['tiktok'], n + 1, true]);
+  delete st[q3.request]; age(q3.request, sp.LOST_MAX_MS);
+  assert.deepEqual([(await pub(ids[6], ['youtube'])).again, sent.length], [true, n + 1]);
+  // ١٧) والحالة تحفظ الرؤية لمهمّة منتهية أيضًا: قيل «ما وصل» ثمّ رأتها مكتملة برابط منشور ثمّ نسيتها الخدمة ← لا إرسال ثانٍ
+  routes['/api/upload'] = cut;
+  const q4 = await pub(ids[6], ['instagram']);
+  age(q4.request, sp.GRACE_MS + 1000);
+  assert.equal((await stat(q4.request)).lost, true);
+  st[q4.request] = { status: 'completed', results: [{ platform: 'instagram', success: true, post_url: 'https://www.instagram.com/reel/7/' }] };
+  assert.deepEqual([(await stat(q4.request)).state, kv.has('socpub:seen:' + q4.request)], ['done', true]);
+  delete st[q4.request]; age(q4.request, sp.LOST_MAX_MS);
+  routes['/api/upload'] = okUpload; n = sent.length;
+  assert.deepEqual([(await pub(ids[6], ['instagram'])).again, sent.length], [true, n]);
+  // ١٨) خطأ تخزين عند حفظ الرؤية (قبل أيّ إرسال): «أعد» — ما حجزته هذه الضغطة يتحرّر، وحجز الطلب السابق باقٍ، ولا إرسال بلا رؤية محفوظة
+  const q5 = await pub(ids[7], ['x']);
+  st[q5.request] = { status: 'in_progress', results: [{ platform: 'x', status: 'processing' }] };
+  hook.setnx = (key) => { if (key === 'socpub:seen:' + q5.request) throw new Error('kv down'); };
+  n = sent.length;
+  const q5b = await call('publish', { token: owner(), id: ids[7], caption: 'x', platforms: ['x', 'threads'] });
+  hook.setnx = null;
+  assert.deepEqual([q5b.status, q5b.body.error, sent.length, kv.get('socpub:sent:' + ids[7] + ':x'), kv.has('socpub:sent:' + ids[7] + ':threads')], [503, 'retry', n, q5.request, false]);
+  // القاعدة نفسها مباشرة: «الخدمة أرت الطلب» = ردّ 2xx غير فارغ ليس «لا أعرفه» — أيّ جسم فيه شيء (جهة الأمان واسعة: حتّى {status:'error'} رؤية،
+  // وثمنها رفض لا تكرار)؛ والجسم الفارغ، و«لا أعرفه» ولو بردّ 200، وردّ الخطأ ولو وصف الطلب ليست رؤية
+  const SHOWN = [[{ ok: true, status: 200, j: { status: 'pending' } }, true], [{ ok: true, status: 202, j: { results: [{ platform: 'x' }] } }, true],
+    [{ ok: true, status: 200, j: { data: { tiktok: { status: 'queued' } } } }, true], [{ ok: true, status: 200, j: { success: true, message: 'Queued', request_id: 'svc-1' } }, true],
+    [{ ok: true, status: 200, j: { results: [] } }, true], [{ ok: true, status: 200, j: { status: 'error', message: 'Service unavailable' } }, true], [{ ok: true, status: 200, j: [{ platform: 'x' }] }, true],
+    [{ ok: true, status: 200, j: {} }, false], [{ ok: true, status: 200, j: [] }, false], [{ ok: true, status: 200, j: 'ok' }, false], [{ ok: true, status: 200, j: null }, false], [{ ok: true, status: 200 }, false],
+    [{ ok: true, status: 200, j: { status: 'not_found' } }, false], [{ ok: false, status: 404, j: { results: [{ platform: 'x' }] } }, false],
+    [{ ok: false, status: 500, j: { status: 'failed', results: [{ platform: 'x', status: 'failed' }] } }, false], [{ status: 200, j: { status: 'pending' } }, false], [null, false]];
+  assert.deepEqual(SHOWN.map((x) => sp.shown(x[0])), SHOWN.map((x) => x[1]));
   // ولا مفتاح ولا رابط في أيّ ردّ
-  for (const o of [a, a2, b2, c2, d2, e2, g2, h2, k2, k3, m2, bad.body, r2, u2, seen]) leaks(o);
+  for (const o of [a, a2, b2, c2, d2, e2, g2, h2, k2, k3, m2, bad.body, r2, u2, q3b, q5b.body, seen]) leaks(o);
 });
 
 test('٣١. اللوحة مع الخادم الحقيقيّ: «ما وصل» ثمّ الملفّ نفسه في اليوم التالي ينشر، ومنصّة فشلت تُعاد وحدها بعد أن نسيت الخدمة الطلب — والتي نزلت لا تُنشر ثانية', async () => {

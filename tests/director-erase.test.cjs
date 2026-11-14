@@ -326,6 +326,7 @@ test('٩. الأقفال: لا مسح بلا مربّع، ولا أثناء نش
   const first = calls[0];
   ctx.upPick(vfile('b.mp4', 'video/mp4')); await flush();
   assert.notEqual(ctx.ER.run, first.my, 'ملفّ جديد يلغي المسح');
+  assert.deepEqual(ctx.confirms, [], 'مسح مجّانيّ جارٍ: لا سؤال (سؤال «المسح المدفوع يضيع» للمدفوع وحده)');
   assert.deepEqual([ctx.ER.busy, ctx.ER.boxes.length], [false, 0]);
   first.res({ file: vfile('a-clean.mp4', 'video/mp4'), some: 0, n: 0 }); await flush();
   assert.ok(ctx.EC.src.file.name === 'b.mp4' && !ctx.ER.out, 'نتيجة الملغى لا تُعرض');
