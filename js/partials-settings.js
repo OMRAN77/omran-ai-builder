@@ -869,7 +869,7 @@
       var sc = document.querySelector('script[data-omran-cur]');
       if (!sc) {
         sc = document.createElement('script');
-        sc.src = '/js/currency.js?v=4'; /* v-cur-display */
+        sc.src = '/js/currency.js?v=5'; /* v-cur-display · v-i18n-14: أسماء الدول بالنيباليّة */
         sc.charset = 'utf-8';
         sc.setAttribute('data-omran-cur', '1');
         sc.addEventListener('load', go);

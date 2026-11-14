@@ -5811,6 +5811,7 @@ const I18N = {
     emailAsst_notConnected: "لم يتم ربط Gmail، يرجى إعادة الربط.", emailAsst_send: "✅ إرسال", emailAsst_ignore: "🚫 تجاهل هذا المرسل", emailAsst_sending: "جارٍ الإرسال…", emailAsst_sent: "✅ تم الإرسال", emailAsst_ignored: "🚫 تم التجاهل — لن يظهر مرة أخرى", emailAsst_error: "❌ خطأ: ", emailAsst_voiceBtn: "ملخص صوتي", emailAsst_addToCalendar: "📅 أضف للتقويم", emailAsst_addingEvent: "جارٍ إضافة الموعد…",
     emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض", /* v-email-safe: مفتاح ناقص/مشغول/فشل بدل مسوّدة فارغة */ emailAsst_draftNoKey: "المسوّدات متوقّفة الآن: خدمة الكتابة غير مضبوطة في الخادم.", emailAsst_draftBusy: "خدمة الكتابة مشغولة أو بلغت حدّها الآن — حاول بعد قليل.", emailAsst_draftFailed: "تعذّرت كتابة مسوّدة لهذه الرسالة — اضغط «تحديث» وحاول مرّة ثانية.", /* v-email-cache: إعادة توليد / المزيد / جارٍ الكتابة / الاحتياط (للمالك) */ emailAsst_regen: "إعادة توليد", emailAsst_more: "المزيد", emailAsst_drafting: "جارٍ كتابة المسوّدة…", emailAsst_draftFallback: "المسوّدات بالمحرّك الاحتياطيّ الآن: مفتاح الكتابة الأساسيّ ناقص أو مرفوض.", /* v-email-thread: الترجمة / معنى الردّ */ emailAsst_translation: "الترجمة:", emailAsst_draftMeaning: "معنى الردّ:",
     /* v-app-director: قسم «مخرج التطبيق» للمالك وحده — ٢٦ نصًّا (١٤ لغة) */ vdTab: "مخرج التطبيق", vdSub: "اكتب ما تريد فيديو عنه واختر اللغة والمتحدّث والمدّة — يكتب الفكرة والسيناريو، يصوّر شاشات التطبيق الحقيقيّة، يجهّز نماذج الأنماط، يسجّل التعليق ويجمّع الفيديو كاملًا.", vdPh: "مثال: فيديو عن أنماط الصور بصوت مها", vdLang: "اللغة", vdSpeaker: "المتحدّث", vdMinutes: "المدّة بالدقائق", vdRef: "صورتك مرجعًا لنماذج الأنماط (اختياريّ)", vdGo: "سوّ الفيديو", vdStepPlan: "يكتب الفكرة والسيناريو", vdStepShots: "يصوّر شاشات التطبيق", vdStepSamples: "يجهّز نماذج الأنماط", vdStepVoice: "يسجّل التعليق", vdStepJoin: "يجمّع الفيديو", vdScene: "المشهد {i} من {n}", vdQueued: "في الانتظار على الجسر", vdDone: "جاهز — {m} دقيقة و{s} ثانية", vdDownload: "تحميل الفيديو", vdFail: "ما قدرت أكمل الفيديو", vdFailPlan: "تعذّر كتابة السيناريو — تحقّق من مفتاح المخرج في الخادم", vdFailBridge: "تعذّر الوصول إلى الجسر — تحقّق من عنوان الجسر وسرّه في الخادم", vdFailRender: "فشل التصوير أو الدمج على الجسر", vdSaved: "حُفظ في فيديوهاتي", vdWarnSamples: "{n} نموذج لم يُولَّد فصار لقطة شاشة", vdEmpty: "اكتب الطلب أوّلًا", vdMaha: "مها", vdAbdullah: "عبدالله", /* v-app-director-voice: مع صوت/بدون صوت + الصوت الاحتياطيّ */ vdVoiceLabel: "التعليق الصوتيّ", vdVoiceOn: "مع صوت", vdVoiceOff: "بدون صوت", vdVoiceBackup: "صوت احتياطيّ (غير صوت مها وعبدالله)", vdFailVoice: "تعذّر تسجيل التعليق — اختر «بدون صوت» ليكتمل الفيديو بنصّ على الشاشة", vdFailBridgeOld: "الجسر يعمل بنسخة قديمة لا تعرف مسار الفيديو — أعد نشره من الفرع الرئيسيّ", /* v-bridge-disk */ vdFailDisk: "مساحة القرص على الجسر ما تكفي لفيديو جديد — كبّر قرص Railway (Volume) ثمّ أعد المحاولة", /* v-app-director-watchdog: ما صار بطاقة عنوان أو مقطعًا ثابتًا يُعلَن لا يُخفى */ vdWarnShots: "{n} مشهد تعذّر تصويره فصار بطاقة عنوان", vdWarnStills: "{n} مقطع أُعيد صورةً ثابتة بلا حركة كاميرا", /* v-director-story: نوع «قصة» (٧ نصوص) */ vdKind: "النوع", vdKindApp: "عرض التطبيق", vdKindStory: "قصة", /* v-director-timed: «بتوقيتي» — خطّ زمنيّ بمقاطع ومدد وملاحظات حتّى ٥ دقائق */ vdKindTimed: "بتوقيتي", vdSubTimed: "اكتب فيديوك بالتوقيت: لكلّ مقطع مدّته ووش يصير فيه، لين ٥ دقائق. كلّ مقطع يتولّد بمحرّك الفيديو ثمّ تندمج كلّها في فيديو واحد.", vdTlLeft: "باقي {r} من {max}", vdTlTime: "الوقت", vdTlNote: "وش يصير في هالمقطع", vdTlDur: "المدّة", vdTlPh: "مثال: البطل يمشي في السوق القديم وقت الغروب", vdTlAdd: "أضف مقطع", vdTlSplit: "المقطع الطويل يتقسّم مشاهد ويندمج تلقائيًّا", vdTlSec: "{n} ثانية", vdTlSum: "{k} مقاطع · {t} · {c} مشهد يتولّد ويندمج", vdTlFull: "وصلت ٥ دقائق، وهذا الحدّ", vdTlOver: "المجموع يتعدّى ٥ دقائق. قصّر مقطعًا أو احذفه", vdTlEmpty: "أضف مقطعًا واحدًا على الأقلّ", vdTlNeedNote: "اكتب وش يصير في المقطع {i} أوّلًا", vdTlDel: "احذف المقطع", vdTlScene: "يولّد المشهد {i} من {n}", vdTlJoin: "يدمج المشاهد في فيديو واحد", vdTlDone: "جاهز: {t}", vdTlConfirm: "هذا الفيديو راح يولّد {c} مشهد ({t}). التكلفة التقديريّة الحقيقيّة: {lo}–{hi}$ من رصيد محرّك الفيديو. نكمل؟", vdTlCredits: "رصيد الفيديو ما يكفي ({c} من {n} مطلوبة). ما انخصم شي.", vdTlNoJoin: "تعذّر دمج المشاهد في فيديو واحد. حمّلها من الروابط تحت.", vdTlScenePart: "مشهد {i}", /* v-director-publish: «انشر في حساباتي» تحت فيديو المخرج */ vdPubBtn: "انشر في حساباتي", vdPubCap: "النصّ اللي ينزل مع الفيديو", vdPubPh: "اكتب الوصف والهاشتاقات…", vdPubGo: "انشر الآن", vdPubLoading: "يجيب حساباتك الموصولة…", vdPubNoAcc: "ما فيه حسابات موصولة بخدمة النشر", vdPubReauth: "{p} يحتاج إعادة ربط", vdPubNoKey: "خدمة النشر غير مفعّلة: أضف مفتاحها UPLOAD_POST_API_KEY في Vercel", vdPubNeedCap: "اكتب النصّ اللي ينزل مع الفيديو", vdPubPick: "اختر منصّة وحدة على الأقلّ", vdPubConfirm: "الفيديو بينزل للعامّة في: {p}. متأكّد؟", vdPubUp: "يرفع الفيديو… {p}%", vdPubSent: "انرسل — المنصّات تنشره خلال دقائق", vdPubOk: "نزل", vdPubNo: "ما نزل", vdPubWait: "ينتظر", vdPubOpen: "افتح المنشور", vdPubDone: "خلص النشر: {ok} من {n}", vdPubSlow: "النشر طوّل — شوف حساباتك بعد شوي", vdPubFail: "ما قدر ينشر", vdPubLimit: "خلص حدّ النشر لهذا الشهر", vdPubBig: "الفيديو أكبر من {n} ميغا", vdPubAgain: "انرسل قبل إلى {p}، فما انرسل له مرّة ثانية", vdPubUnsure: "ما تأكّدنا إنّه وصل — نتابع حالته تحت", vdPubLost: "ما وصل للمنصّات وما نزل شي — جرّب النشر مرّة ثانية", /* v-director-upload */ vdUpBtn: "ارفع فيديو أو صورة وانشرها في حساباتك", vdUpHint: "فيديو: mp4 أو mov أو webm — حتّى {n} ميغا\nصورة: jpg أو png أو webp — حتّى {m} ميغا", vdUpBadType: "هذا الملفّ ما ينشر — اختر فيديو (mp4 أو mov أو webm) أو صورة (jpg أو png أو webp)", vdUpReplace: "الفيديو اللي سوّاه المخرج بيختفي من هنا — حمّله أوّل إذا تبيه. تكمل؟", /* v-director-upload-fix */ vdUpWait: "نشر هذا الفيديو لسّه ما خلص — إذا بدّلته يكمل النشر بس نتيجته ما بتظهر هنا. تكمل؟", vdUpBoth: "الفيديو اللي سوّاه المخرج بيختفي من هنا ونشره لسّه ما خلص — حمّله أوّل إذا تبيه؛ النشر يكمل بس نتيجته ما بتظهر هنا. تكمل؟", /* v-director-photo: الصندوق يأخذ الصور أيضًا — نصوص الصورة */ vdImgCap: "النصّ اللي ينزل مع الصورة", vdImgNeedCap: "اكتب النصّ اللي ينزل مع الصورة", vdImgConfirm: "الصورة بتنزل للعامّة في: {p}. متأكّد؟", vdImgUp: "يرفع الصورة… {p}%", vdImgBig: "الصورة أكبر من {n} ميغا", vdImgWait: "نشر هذه الصورة لسّه ما خلص — إذا بدّلتها يكمل النشر بس نتيجته ما بتظهر هنا. تكمل؟", vdImgVidOnly: "{p} ياخذ فيديو فقط", /* v-director-endcard */ vdEcLabel: "أضف باركود التطبيق في آخر الفيديو (٤ ثواني)", vdEcWork: "يضيف باركود التطبيق… {p}%", vdEcDone: "انضاف باركود التطبيق في آخر الفيديو", vdEcFail: "ما قدرت أضيف الباركود لهذا الفيديو — تقدر تنشره بدونه", vdEcHeavy: "الفيديو ثقيل على هذا الجهاز لإضافة الباركود — جرّبه من الكمبيوتر أو انشره بدونه", vdEcLine: "حمّل تطبيق om ai", /* v-director-erase: «امسح اسم أو كتابة» قبل النشر */ vdErBtn: "امسح اسم أو كتابة من الفيديو", vdErUndo: "رجّع الأصل", vdErHint: "ارسم مربّعًا على الاسم أو الكتابة (تقدر أكثر من واحد)، وحرّك الشريط للّقطة اللي تبان فيها. الدائرة في ركن المربّع تحذفه.", vdErFree: "امسح مجانًا", vdErAi: "امسح بالذكاء (مدفوع)", vdErClear: "شيل المربّعات", vdErClose: "إغلاق", vdErNeedBox: "ارسم مربّعًا على الكتابة أوّل", vdErWork: "يمسح الكتابة… {p}%", vdErUp: "يرفع المقاطع للمسح بالذكاء… {p}%", vdErWait: "الذكاء يمسح… {d} من {n} مقاطع", vdErJoin: "يركّب الفيديو… {p}%", vdErDone: "انمسحت الكتابة — تقدر تنشره", vdErSome: "انمسحت الكتابة — {f} من {n} مقاطع ما رجعت من الذكاء فانمسحت مجانًا", vdErFail: "ما قدرت أمسح الكتابة — الأصل باقي", vdErHeavy: "الفيديو ثقيل على هذا الجهاز للمسح — جرّبه من الكمبيوتر", vdErCap: "وصلت حدّ اليوم للمسح بالذكاء — جرّب «امسح مجانًا»", vdErConfirm: "المسح بالذكاء: {n} مقطع × ٥ سنت = حوالي {c} سنت. نكمل؟", vdErLose: "المسح بالذكاء شغّال وانخصم — تلغيه؟", vdErNoFrame: "ما قدرت أعرض لقطة من هذا الفيديو في هذا المتصفّح", vdErLong: "الفيديو أطول من حدّ المسح بالذكاء — جرّب «امسح مجانًا»", vdTooLong: "الطلب أطول من ٦٠٠ حرف — للنصّ الطويل اختر النوع «قصة».", vdSubStory: "الصق قصّتك واختر اللغة والراوي — تُقرأ بكلامك كما هي، وتُرسم لكلّ مقطع لقطة بشخصيّات ثابتة، ثمّ يُجمَّع الفيديو كاملًا.", vdPhStory: "الصق قصّتك هنا — تُقرأ بكلامك كما هي (حتى ٣٠٠٠ حرف)", vdStepDraw: "يرسم مشاهد القصة", vdStepFrames: "يجهّز المشاهد", vdWarnDraw: "{n} مشهد تعذّر رسمه فصار بطاقة نصّ",
+    /* v-i18n-14: مفاتيح التلفزيون كانت تُستدعى بلا مدخل في القاموس فتظهر إنجليزيّة في ١٢ لغة */ tvDramaWorld: "دراما ومنوّعات", tvUnavailable: "لا يوجد بث مباشر داخل التطبيق", tvDiagNativeHls: "HLS أصلي", tvDiagLinks: "روابط",
   },
   en: {
     /* v-decor-18: أسماء خيارات الديكور الجديدة (الأثاث، الأرضيات، الأقمشة، الحوائط، الستائر). */
@@ -6092,7 +6093,7 @@ const I18N = {
     feedbackPlaceholder: 'Write your feedback or suggestion here...',
     feedbackSubmitBtn: '📤 Submit',
     feedbackIdeasTitle: '🗳️ Top suggestions (vote for what you like)',
-    aboutText: '<b>om ai</b> is a fully Arabic-first AI app-building platform, developed by the om ai team (فريق om ai). Chat with AI in Arabic or English to instantly get a complete app’s code, with a live side-by-side code editor and preview.<br><br>The app brings together 3 powerful AI models in one place: 👑 King for building, editing and diagnosing, ⚡ Fast for instant replies and chat, and 🧠 Deep for analysis, search and documents — plus live search, image generation, a voice assistant and specialized sections.<br><br>It works as an installable PWA on Android and iPhone just like a native app, supports voice chat (speech-to-text and reading replies aloud), has a full account system (sign up / log in / password recovery), and a guest mode offering 20 free messages with no sign-up required.<br><br>All appearance and color settings are fully customizable, and your privacy always comes first.',
+    aboutText: '<b>om ai</b> is a fully Arabic-first AI app-building platform, developed by the om ai team. Chat with AI in Arabic or English to instantly get a complete app’s code, with a live side-by-side code editor and preview.<br><br>The app brings together 3 powerful AI models in one place: 👑 King for building, editing and diagnosing, ⚡ Fast for instant replies and chat, and 🧠 Deep for analysis, search and documents — plus live search, image generation, a voice assistant and specialized sections.<br><br>It works as an installable PWA on Android and iPhone just like a native app, supports voice chat (speech-to-text and reading replies aloud), has a full account system (sign up / log in / password recovery), and a guest mode offering 20 free messages with no sign-up required.<br><br>All appearance and color settings are fully customizable, and your privacy always comes first.',
     videoArShortTitle: '🎬 Arabic intro video (short)',
     videoArLongTitle: '🎬 Arabic intro video (full)',
     videoEnShortTitle: '🎬 English intro video (short)',
@@ -7356,6 +7357,7 @@ Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic 
     emailAsst_empty: "No new emails need a reply right now.", emailAsst_notConnected: "Gmail is not connected, please reconnect.", emailAsst_send: "✅ Send", emailAsst_ignore: "🚫 Ignore this sender", emailAsst_sending: "Sending…", emailAsst_sent: "✅ Sent", emailAsst_ignored: "🚫 Ignored — won't show again", emailAsst_error: "❌ Error: ", emailAsst_voiceBtn: "Voice summary", emailAsst_addToCalendar: "📅 Add to Calendar",
     emailAsst_addingEvent: "Adding event…", emailAsst_eventAdded: "✅ Added to your calendar", emailAsst_calReauth: "Reconnect Gmail to allow calendar access", emailAsst_voiceLoading: "🔊 Preparing voice summary…", emailAsst_voiceEmpty: "No emails to summarize.", emailAsst_urgent: "🔴 Urgent", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Low", /* v-email-safe: مفتاح ناقص/مشغول/فشل بدل مسوّدة فارغة */ emailAsst_draftNoKey: "Drafts are paused: the writing service is not set up on the server.", emailAsst_draftBusy: "The writing service is busy or at its limit right now — try again shortly.", emailAsst_draftFailed: "Couldn’t write a draft for this email — tap Refresh and try again.", /* v-email-cache: إعادة توليد / المزيد / جارٍ الكتابة / الاحتياط (للمالك) */ emailAsst_regen: "Regenerate", emailAsst_more: "Load more", emailAsst_drafting: "Writing the draft…", emailAsst_draftFallback: "Drafts are using the backup engine: the main writing key is missing or rejected.", /* v-email-thread: الترجمة / معنى الردّ */ emailAsst_translation: "Translation:", emailAsst_draftMeaning: "What the reply says:",
     /* v-app-director: قسم «مخرج التطبيق» للمالك وحده — ٢٦ نصًّا (١٤ لغة) */ vdTab: "App Director", vdSub: "Describe the video you want, pick the language, the speaker and the length — it writes the idea and script, captures real app screens, prepares style samples, records the narration and assembles the full video.", vdPh: "Example: a video about portrait styles narrated by Maha", vdLang: "Language", vdSpeaker: "Speaker", vdMinutes: "Length in minutes", vdRef: "Your photo as a reference for style samples (optional)", vdGo: "Make the video", vdStepPlan: "Writing the idea and script", vdStepShots: "Capturing app screens", vdStepSamples: "Preparing style samples", vdStepVoice: "Recording the narration", vdStepJoin: "Assembling the video", vdScene: "Scene {i} of {n}", vdQueued: "Waiting on the bridge", vdDone: "Ready — {m} min {s} s", vdDownload: "Download video", vdFail: "Could not finish the video", vdFailPlan: "Could not write the script — check the director key on the server", vdFailBridge: "Could not reach the bridge — check the bridge URL and secret on the server", vdFailRender: "Capture or assembly failed on the bridge", vdSaved: "Saved to My videos", vdWarnSamples: "{n} sample(s) could not be generated and became screenshots", vdEmpty: "Write the request first", vdMaha: "Maha", vdAbdullah: "Abdullah", /* v-app-director-voice: مع صوت/بدون صوت + الصوت الاحتياطيّ */ vdVoiceLabel: "Narration", vdVoiceOn: "With voice", vdVoiceOff: "No voice", vdVoiceBackup: "Backup voice (not Maha/Abdullah)", vdFailVoice: "The narration could not be recorded — choose “No voice” to finish the video with on-screen text", vdFailBridgeOld: "The bridge is running an old version without the video route — redeploy it from the main branch", /* v-bridge-disk */ vdFailDisk: "The bridge's disk doesn't have room for a new video — enlarge the Railway volume, then try again", /* v-app-director-watchdog: ما صار بطاقة عنوان أو مقطعًا ثابتًا يُعلَن لا يُخفى */ vdWarnShots: "{n} screen(s) could not be captured and became title cards", vdWarnStills: "{n} segment(s) were re-encoded as still frames without camera motion", /* v-director-story: نوع «قصة» (٧ نصوص) */ vdKind: "Type", vdKindApp: "App showcase", vdKindStory: "Story", /* v-director-timed: «بتوقيتي» — خطّ زمنيّ بمقاطع ومدد وملاحظات حتّى ٥ دقائق */ vdKindTimed: "My timeline", vdSubTimed: "Write your video on a timeline: give each part a length and what happens in it, up to 5 minutes. Each part is generated by the video engine, then all are joined into one video.", vdTlLeft: "{r} left of {max}", vdTlTime: "Time", vdTlNote: "What happens in this part", vdTlDur: "Length", vdTlPh: "Example: the hero walks through the old market at sunset", vdTlAdd: "Add part", vdTlSplit: "Long parts are split into scenes and joined automatically", vdTlSec: "{n} sec", vdTlSum: "{k} parts · {t} · {c} scenes to generate and join", vdTlFull: "You've reached 5 minutes, the limit", vdTlOver: "That goes past 5 minutes. Shorten or remove a part", vdTlEmpty: "Add at least one part", vdTlNeedNote: "Write what happens in part {i} first", vdTlDel: "Remove part", vdTlScene: "Generating scene {i} of {n}", vdTlJoin: "Joining the scenes into one video", vdTlDone: "Ready: {t}", vdTlConfirm: "This video will generate {c} scenes ({t}). Estimated real cost: ${lo}–${hi} from the video engine credits. Continue?", vdTlCredits: "Not enough video credits ({c} of {n} needed). Nothing was charged.", vdTlNoJoin: "Couldn't join the scenes into one video. Download them from the links below.", vdTlScenePart: "Scene {i}", /* v-director-publish: «انشر في حساباتي» تحت فيديو المخرج */ vdPubBtn: "Post to my accounts", vdPubCap: "Text posted with the video", vdPubPh: "Write the caption and hashtags…", vdPubGo: "Post now", vdPubLoading: "Loading your connected accounts…", vdPubNoAcc: "No accounts are connected to the posting service", vdPubReauth: "{p} needs reconnecting", vdPubNoKey: "Posting service is off: add its key UPLOAD_POST_API_KEY in Vercel", vdPubNeedCap: "Write the text to post with the video", vdPubPick: "Pick at least one platform", vdPubConfirm: "The video will go public on: {p}. Are you sure?", vdPubUp: "Uploading the video… {p}%", vdPubSent: "Sent — the platforms will post it within minutes", vdPubOk: "Posted", vdPubNo: "Not posted", vdPubWait: "Waiting", vdPubOpen: "Open post", vdPubDone: "Posting finished: {ok} of {n}", vdPubSlow: "Posting is taking long — check your accounts shortly", vdPubFail: "Couldn't post", vdPubLimit: "This month's posting limit is used up", vdPubBig: "The video is larger than {n} MB", vdPubAgain: "Already sent to {p}, so it wasn't sent there again", vdPubUnsure: "Couldn't confirm it arrived — checking its status below", vdPubLost: "It never reached the platforms and nothing was posted — try posting again", /* v-director-upload */ vdUpBtn: "Upload a video or an image and post it to your accounts", vdUpHint: "Video: mp4, mov or webm — up to {n} MB\nImage: jpg, png or webp — up to {m} MB", vdUpBadType: "This file can't be posted — choose a video (mp4, mov or webm) or an image (jpg, png or webp)", vdUpReplace: "The video the director made will be removed from here — download it first if you want to keep it. Continue?", /* v-director-upload-fix */ vdUpWait: "This video is still being posted — if you replace it, posting carries on but its result won\'t show here. Continue?", vdUpBoth: "The video the director made will be removed from here and is still being posted — download it first if you want to keep it; posting carries on but its result won\'t show here. Continue?", /* v-director-photo: the upload box takes images too — image texts */ vdImgCap: "Text posted with the image", vdImgNeedCap: "Write the text to post with the image", vdImgConfirm: "The image will go public on: {p}. Are you sure?", vdImgUp: "Uploading the image… {p}%", vdImgBig: "The image is larger than {n} MB", vdImgWait: "This image is still being posted — if you replace it, posting carries on but its result won\'t show here. Continue?", vdImgVidOnly: "{p} takes video only", /* v-director-endcard */ vdEcLabel: "Add the app's QR code at the end of the video (4 s)", vdEcWork: "Adding the app's QR code… {p}%", vdEcDone: "The app's QR code was added at the end of the video", vdEcFail: "Couldn't add the QR code to this video — you can post it without it", vdEcHeavy: "This video is too heavy for this device to add the QR code — try a computer or post it without it", vdEcLine: "Get the om ai app", /* v-director-erase: «امسح اسم أو كتابة» قبل النشر */ vdErBtn: "Erase a name or text from the video", vdErUndo: "Restore the original", vdErHint: "Draw a box over the name or text (you can draw several), and move the slider to a frame where it shows. The circle on a box's corner deletes it.", vdErFree: "Erase for free", vdErAi: "Erase with AI (paid)", vdErClear: "Clear boxes", vdErClose: "Close", vdErNeedBox: "Draw a box over the text first", vdErWork: "Erasing the text… {p}%", vdErUp: "Uploading the clips for AI erasing… {p}%", vdErWait: "AI is erasing… {d} of {n} clips", vdErJoin: "Putting the video together… {p}%", vdErDone: "The text was erased — you can post it", vdErSome: "The text was erased — {f} of {n} clips didn't come back from the AI and were erased for free", vdErFail: "Couldn't erase the text — the original is kept", vdErHeavy: "This video is too heavy for this device to erase — try a computer", vdErCap: "Today's AI erasing limit is reached — try “Erase for free”", vdErConfirm: "AI erasing: {n} clip(s) × 5¢ = about {c}¢. Continue?", vdErLose: "AI erasing is running and already paid — cancel it?", vdErNoFrame: "Couldn't show a frame of this video in this browser", vdErLong: "This video is longer than the AI erase limit — try “Erase for free”", vdTooLong: "The request is longer than 600 characters — choose the type “Story” for long text.", vdSubStory: "Paste your story and pick the language and narrator — it is read word for word, each passage gets a shot with consistent characters, then the full video is assembled.", vdPhStory: "Paste your story here — it is narrated word for word (up to 3,000 characters)", vdStepDraw: "Draws the story scenes", vdStepFrames: "Prepares the scenes", vdWarnDraw: "{n} scene(s) could not be drawn and became text cards",
+    /* v-i18n-14 */ tvDramaWorld: "Drama & Shows", tvUnavailable: "No in-app live stream", tvDiagNativeHls: "native HLS", tvDiagLinks: "links",
   }
 };window.I18N = I18N;
 /* v649 — لوحة المحفظة التعليميّة (كانت عربيّة ثابتة في كلّ اللغات) */
@@ -7422,6 +7424,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
+    /* v-i18n-14 (798): ترجمات فحص اللغات الـ١٤ (bT وقوائم الساعة والشعر والمعاملات وآلة الزمن ومفاتيح التلفزيون) */
     sc.src = 'i18n/' + lg + '.js?v=799'; /* v-hw-resubmit-2 (774): أسطر «أفكار بلا صورة» في الديكور (١٤ لغة) · v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج · v-director-story (778): نوع «قصة» في «مخرج التطبيق» — تسعة نصوص (١٤ لغة) · v-reply-dialect (779): «لهجة الصوت العربي» وأسماء اللهجات الستّ (١٤ لغة) · v-hw-1316 (781): نائب صندوق الكتابة «اكتب رسالتك هنا» في ١٢ لغة كان «ابنِ تطبيقًا أو لعبة» · v-google-retry (782): نصّ access_denied «أُلغي أو لم تسمح به» لا اتّهام المستخدم بالإلغاء (١٢ لغة) · v-play-invite (783): بطاقة دعوة مختبري Google Play (١٤ لغة) */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */ /* v-audit-fixes (775): نصوص إصلاحات الفحص الشامل — رسائل الدخول والأخطاء الودّيّة والاستوديوهات والتعليم والأدوات والتصدير والمحادثة والصوت (١٤ لغة)؛ ٧٧٤ نشره main بنصوص هواوي فارتفع الوسم مرّة أخرى · v-video-modes-by-result (776): أسماء الأوضاع بالنتيجة ومربّع «مقدّمة وخاتمة بتوقيعك» (١٤ لغة) · v-video-durations (777): «فيلم متكامل» بلا «سريع» (١٤ لغة) · v-office-files (784): كرت ملفّ Excel/PowerPoint في المحادثة (١٤ لغة) · v-director-timed (785): ثلاثة وعشرون نصًّا لـ«بتوقيتي» في مخرج التطبيق (١٤ لغة) · v-share-next (786): أمثلة خانة الكتابة ونافذة المشاركة و«مشاركة» بجانب كلّ تحميل (١٤ لغة) · v-owner-reset-link (787): «رابط استرجاع الحساب» للمالك (١٤ لغة) · v-owner-reset-find (788): رسالتا حساب Google والحساب الغائب (١٤ لغة) · v-director-publish (789): «انشر في حساباتي» في مخرج التطبيق (١٤ لغة) · v-bridge-disk (790): «مساحة قرص الجسر» في المخرج (١٤ لغة) · v-owner-reset-records (792): «حسابات محتملة» و«أين بحثت» و«ما اكتمل البحث» و«بحث PayPal الكامل مقفل» لرابط الاسترجاع (١٤ لغة) · v-owner-link-sub (793): ١٣ نصًّا لـ«ربط اشتراك Stripe» في لوحة المالك (١٤ لغة) — ٧٩٢ أخذه main لـv-owner-reset-records قبل الدمج · v-director-upload (795): «ارفع فيديو جاهز» في مخرج التطبيق (١٤ لغة) · v-director-endcard (796): «باركود التطبيق في آخر الفيديو» في مخرج التطبيق — ٦ نصوص (١٤ لغة) · v-director-erase (797): «امسح اسم أو كتابة» في مخرج التطبيق (١٤ لغة) · v-director-upload-fix (798): سؤال قبل تبديل فيديو نشرُه لم ينتهِ في مخرج التطبيق — نصّان (١٤ لغة)، وصيغ الملفّات في الأوردو بترتيبها — ٧٩٧ أخذه main لـv-director-erase قبل الدمج · v-director-photo (799): صندوق الرفع في مخرج التطبيق يأخذ الصور — ٧ نصوص للصورة وثلاثة الصندوق معدّلة (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
@@ -13457,7 +13460,8 @@ $('#btnDeleteAll').onclick = () => {
   const previewWrap = $('#templatePreviewWrap');
   const previewFrame = $('#templatePreviewFrame');
   let pendingTpl = null;
-  function currentLang(){ const L = (typeof lang !== 'undefined') ? lang : 'ar'; return ['ar','en','fr','hi','ur','bn','ne'].includes(L) ? L : 'en'; }
+  /* v-i18n-14: القوالب كانت سبع لغات والباقي إنجليزيّ — templates-data.js صار بالأربع عشرة */
+  function currentLang(){ const L = (typeof lang !== 'undefined') ? lang : 'ar'; return ['ar','en','fr','es','tr','ru','zh','hi','ur','bn','ne','ml','id','fil'].includes(L) ? L : 'en'; }
   function renderTemplates(){
     if(typeof TEMPLATES === 'undefined') return;
     const L = currentLang();
@@ -16787,9 +16791,17 @@ function clockGmtOffset(tz){
   } catch(e) { return ''; }
 }
 
+/* v-i18n-14 (المالك ١٤ نوفمبر: «افحص التطبيق كامل عن اللغات 14»): الساعة كانت عربيّة أو إنجليزيّة فقط — التاريخ «Saturday, November 14»
+   وأسماء المدن بالإنجليزيّة في اللغات الاثنتي عشرة. الآن التاريخ والوقت بلغة الواجهة، والمدن عبر __bT (القاموس __BI). الأرقام لاتينيّة كما كانت. */
+function clockLocale(cal){
+  const L = (typeof lang !== 'undefined' && lang) || 'ar';
+  const base = L === 'ar' ? 'ar-SA' : (({ zh:'zh-CN', fil:'fil-PH' })[L] || L);
+  return base + '-u-' + (cal ? 'ca-islamic-umalqura-' : '') + 'nu-latn';
+}
+function clockCityName(z){ return (typeof window.__bT === 'function') ? window.__bT(z.ar, z.en) : (lang === 'ar' ? z.ar : z.en); }
 function clockFormatTime(tz){
   try {
-    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
+    return new Intl.DateTimeFormat(clockLocale(), {
       timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
     }).format(new Date());
   } catch(e) { return '--:--:--'; }
@@ -16799,7 +16811,7 @@ function populateClockTZSelect(){
   const sel = $('#clockTZSelect');
   if (!sel) return;
   const saved = localStorage.getItem('aiapp_clock_tz');
-  sel.innerHTML = CLOCK_TIMEZONES.map(z => `<option value="${z.tz}">${lang === 'ar' ? z.ar : z.en}</option>`).join('');
+  sel.innerHTML = CLOCK_TIMEZONES.map(z => `<option value="${z.tz}">${clockCityName(z)}</option>`).join('');
   const guess = Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (saved && CLOCK_TIMEZONES.some(z => z.tz === saved)) sel.value = saved;
   else if (CLOCK_TIMEZONES.some(z => z.tz === guess)) sel.value = guess;
@@ -16834,7 +16846,7 @@ function renderClockWorldStrip(){
   if (!box) return;
   box.innerHTML = CLOCK_WORLD_STRIP.map(tz => {
     const meta = CLOCK_TIMEZONES.find(z => z.tz === tz);
-    const label = meta ? (lang === 'ar' ? meta.ar : meta.en) : tz;
+    const label = meta ? clockCityName(meta) : tz;
     return `<div class="clockStripRow" data-tz="${tz}" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:10px; background:var(--bg); border:1px solid var(--border);">
       <span style="font-size:13px; font-weight:500;">${label}</span>
       <span class="clockStripTime" style="font-size:15px; font-weight:700; direction:ltr;">--:--:--</span>
@@ -16849,13 +16861,13 @@ function updateClockDialog(){
   const hEl = $('#clockHijriDate');
   if (gEl) gEl.textContent = clockFormatTime(Intl.DateTimeFormat().resolvedOptions().timeZone);
   if (gdEl) {
-    gdEl.textContent = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
+    gdEl.textContent = new Intl.DateTimeFormat(clockLocale(), {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     }).format(now);
   }
   if (hEl) {
     try {
-      const hijriStr = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-ca-islamic-umalqura-nu-latn' : 'en-US-u-ca-islamic-umalqura', {
+      const hijriStr = new Intl.DateTimeFormat(clockLocale(true), {
         year: 'numeric', month: 'long', day: 'numeric',
       }).format(now);
       hEl.textContent = '🕌 ' + hijriStr;
@@ -18740,7 +18752,8 @@ function autoRenewHintText(on){ return t(on ? 'autoRenewOnHint' : 'autoRenewOffH
 function setAutoRenewUI(on){
   const chk = document.getElementById('chkAutoRenew'), hint = document.getElementById('autoRenewHint');
   if (chk) chk.checked = !!on;
-  if (hint) hint.textContent = autoRenewHintText(!!on);
+  /* v-i18n-14: النصّ كان يُكتب مرّة قبل وصول ملفّ اللغة فيبقى إنجليزيًّا (مسح اللغات: ١٢ لغة) — data-i18n تجعل applyLanguage يحدّثه */
+  if (hint) { hint.setAttribute('data-i18n', on ? 'autoRenewOnHint' : 'autoRenewOffHint'); hint.textContent = autoRenewHintText(!!on); }
 }
 async function autoRenewCall(on){
   const tk = authGet('aiapp_auth_token');
@@ -32109,7 +32122,9 @@ btnToggleHistory.onclick = () => {
     box.style.cssText = 'background:#12151d; border-radius:14px; max-width:560px; width:100%; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;';
     const head = document.createElement('div');
     head.style.cssText = 'display:flex; align-items:center; gap:10px; padding:14px 16px; font-size:14px; font-weight:700;';
-    head.innerHTML = '<span>🕰️ ' + (isAr ? 'آلة الزمن — إصدارات المشروع' : 'Time Machine — project versions') + '</span><span style="flex:1;"></span>';
+    /* v-i18n-14: آلة الزمن كانت عربيّ/إنجليزيّ فقط — نصوصها عبر __bT (القاموس __BI) وتاريخها بلغة الواجهة */
+    const __tmT = (a, e) => ((typeof window.__bT === 'function') ? window.__bT(a, e) : (isAr ? a : e));
+    head.innerHTML = '<span>🕰️ ' + __tmT('آلة الزمن — إصدارات المشروع', 'Time Machine — project versions') + '</span><span style="flex:1;"></span>';
     const closeBtn = document.createElement('button');
     closeBtn.textContent = '✖';
     closeBtn.style.cssText = 'background:none; border:none; color:#fff; cursor:pointer; font-size:15px;';
@@ -32119,14 +32134,14 @@ btnToggleHistory.onclick = () => {
     const body = document.createElement('div');
     body.style.cssText = 'overflow:auto; flex:1; padding:0 16px 16px;';
     if(!hist.length){
-      body.innerHTML = '<div style="color:#98a0b3; padding:12px 0;">' + (isAr ? 'لا توجد إصدارات محفوظة بعد — كل تعديل على الكود ينحفظ هنا تلقائيًا.' : 'No saved versions yet — every code change is saved here automatically.') + '</div>';
+      body.innerHTML = '<div style="color:#98a0b3; padding:12px 0;">' + __tmT('لا توجد إصدارات محفوظة بعد — كل تعديل على الكود ينحفظ هنا تلقائيًا.', 'No saved versions yet — every code change is saved here automatically.') + '</div>';
     }
     hist.forEach((h, idx) => {
       const isCurrent = cur.code === h.code;
       const row = document.createElement('div');
       row.style.cssText = 'display:flex; align-items:center; gap:10px; padding:10px 0; font-size:13px;';
       const d = new Date(h.ts);
-      const when = d.toLocaleString(isAr ? 'ar-AE' : 'en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      const when = d.toLocaleString(isAr ? 'ar-AE' : ((typeof lang !== 'undefined' && lang && lang !== 'en') ? (({ zh:'zh-CN', fil:'fil-PH' })[lang] || lang) : 'en-GB'), { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       const info = document.createElement('span');
       info.style.cssText = 'flex:1; color:' + (isCurrent ? 'var(--accent2,#00e0b8)' : '#e8eaf1') + ';';
       info.textContent = (isCurrent ? '✅ ' : '') + when + ' — ' + Math.round(h.code.length / 1024) + 'KB';
@@ -32136,13 +32151,13 @@ btnToggleHistory.onclick = () => {
         diffB.className = 'btn';
         diffB.style.cssText = 'font-size:12px; padding:5px 10px;';
         diffB.textContent = '🔀';
-        diffB.title = isAr ? 'الفروقات' : 'Diff';
+        diffB.title = __tmT('الفروقات', 'Diff');
         diffB.onclick = () => showCodeDiff(cur.code, h.code, when);
         row.appendChild(diffB);
         const restB = document.createElement('button');
         restB.className = 'btn';
         restB.style.cssText = 'font-size:12px; padding:5px 10px;';
-        restB.textContent = isAr ? '↩️ استرجاع' : '↩️ Restore';
+        restB.textContent = __tmT('↩️ استرجاع', '↩️ Restore');
         restB.onclick = () => {
           cur.code = h.code;
           cur.codeType = h.codeType || 'html';
@@ -33297,7 +33312,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     if(!token){ status(ui('login')); return; }
     if(t.photo === 'req' && !photos.length){ status(ui('photoReq')); return; }
     var txt = ($('vtText') ? $('vtText').value.trim() : '');
-    var params = { name: txt, text: txt };
+    var params = { name: txt, text: txt, lang: lg() }; /* v-trends-lang: كلام الفيديو بلغة الواجهة (الخادم: speechLang) */
     pullScenes(t); /* v-trend-scenes: مشاهد مكتوبة في «اكتب اللي تبيه» ← الخانات قبل قراءتها */
     /* v-trend-extra + v-trend-backdrops: ما كتبه المستخدم، ورقم خلفيّة جديد لكلّ فيديو من هذا الترند */
     var extra = ($('vtExtra') ? $('vtExtra').value.trim() : '');
@@ -33391,7 +33406,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     desc.insertAdjacentElement('afterend', root);
     grid = $('vtGrid'); panel = $('vtPanel');
     renderGrid();
-    try{ new MutationObserver(function(){ if(panel.style.display === 'none') renderGrid(); else { $('vtTitle').textContent = ui('title'); $('vtSub').textContent = ui('sub'); } }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:545'); /* guard-ok */ }
+    /* v-trends-lang (المالك ١٤ نوفمبر بلقطة: الواجهة إنجليزيّة وأسماء البطاقات «قصة بيكسار من ٣ مشاهد»…): تبديل اللغة وترند مفتوح
+       كان يحدّث العنوانين وحدهما، فتبقى البطاقات (المخفيّة خلف اللوحة) بلغة قبل التبديل وتظهر هكذا بعد «كل الترندات».
+       الشبكة تُبنى من جديد دائمًا — renderGrid لا يمسّ اللوحة ولا إظهار الشبكة. */
+    try{ new MutationObserver(function(){ renderGrid(); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-11-video-trends:545'); /* guard-ok */ }
     window.omranVideoTrends = { open: function(key){ var t = D.trends.filter(function(x){ return x.key === key && !(typeof omranHwHidden === 'function' && omranHwHidden('trend', x.key)); })[0]; if(t){ if(window.omranOpenVideoMaker) window.omranOpenVideoMaker(''); openTrend(t); } },
       /* v-audit-boot (cli-video-1): الخروج (app-04) يفرّغ صور الأشخاص ويغلق اللوحة المفتوحة — لا تُرسل صور الحساب السابق مع ترند من يدخل بعده */
       reset: function(){ photos = []; cur = null; if(panel){ panel.innerHTML = ''; panel.style.display = 'none'; } if(grid) grid.style.display = 'grid'; } };
@@ -33544,6 +33562,11 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
   function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
+  /* v-trends-lang (المالك ١٤ نوفمبر: «إذا أسوّي أيّ فيديو فقط بالعربي… أريده بكلّ اللغات الموجودة»): لغة الراوي وسيناريو الفيلم
+     كانت bT('ar','en') — عربيّ أو إنجليزيّ فقط، فالفرنسيّ يُكتب سيناريوه بالإنجليزيّة ويُقرأ نصّه بصوت إنجليزيّ. الآن لغة الواجهة
+     الأربع عشرة كما هي (الخادم يعرفها كلّها)، والراوي بلغة نصّه: حروف عربيّة = الصوت العربيّ (أو الأردو في واجهتها). */
+  function uiLangCode(){ try{ return String((typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar').split('-')[0].toLowerCase(); }catch(e){ return 'ar'; } }
+  function narrLang(text){ const L = uiLangCode(); return /[؀-ۿ]/.test(String(text || '')) ? (L === 'ur' ? 'ur' : 'ar') : L; }
   function isOwnerAccount(){
     const u = (typeof authGet === 'function') ? (authGet('aiapp_username') || '') : '';
     const key = String(u).trim().toLowerCase();
@@ -34341,7 +34364,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: narrLang(narrationInput), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -34430,7 +34453,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+          body: JSON.stringify({ text: cleanNarrationText(narrationInput), voice: 'maha', lang: narrLang(narrationInput), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -34848,7 +34871,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (bT('ar','en')), hero: !!filmHeroBase64, token }),
+          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: uiLangCode(), hero: !!filmHeroBase64, token }),
         });
         const scriptData = await scriptRes.json();
         if(scriptRes.status === 401){ const e = new Error('auth'); e.code = 'auth_required'; throw e; }
@@ -34892,7 +34915,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: narrLang(sc.narration || text), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -35224,7 +35247,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, minutes: mins, style, lang: (bT('ar','en')), token }),
+          body: JSON.stringify({ topic: text, minutes: mins, style, lang: uiLangCode(), token }),
         });
         const scriptData = await scriptRes.json();
         if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
@@ -35260,7 +35283,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+              body: JSON.stringify({ text: cleanNarrationText(sc.narration || text), voice: 'maha', lang: narrLang(sc.narration || text), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -35300,7 +35323,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         ttsEarly = fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
+          body: JSON.stringify({ text: cleanNarrationText((narrationText.value || '').trim() || text), voice: 'maha', lang: narrLang((narrationText.value || '').trim() || text), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }), /* v-audit-video (cli-video-2): الحساب لا عنوان IP */
         }).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
         getFFmpeg().catch(() => null);
       };
@@ -47099,6 +47122,8 @@ if(document.readyState === 'loading'){
     "الظفرة": "Al Dhafra TV",
     "عجمان": "Ajman TV",
     "الوسطى": "Al Wousta TV",
+    "الشارقة 2": "Sharjah 2", /* v-i18n-14: كانا يظهران بالعربيّة في كلّ اللغات */
+    "الفجيرة": "Fujairah TV",
     "الشرقية من كلباء": "Al Sharqiya from Kalba",
     "برامج العربية": "Al Arabiya Programs",
     "السعودية": "Saudi TV",
@@ -47552,8 +47577,9 @@ if(document.readyState === 'loading'){
     /* v-tv-diag: سطر تشخيص ظاهر يكسر حلقة «ما تغيّر شي» — يقول للمالك النسخة،
        ونوع تشغيل HLS على جهازه، وهل حُمّلت روابط البثّ فعلًا. */
     var __links = (TV_M3U && TV_M3U.byHandle) ? Object.keys(TV_M3U.byHandle).length : 0;
-    var __hls = TV_NATIVE_HLS ? 'HLS أصلي' : 'hls.js';
-    if(meta) meta.textContent = '⚙︎ TV-12 · ' + __hls + ' · روابط:' + __links
+    /* v-i18n-14: السطر كان «HLS أصلي · روابط:» بالعربيّة في كلّ اللغات — كلمتاه بلغة الواجهة */
+    var __hls = TV_NATIVE_HLS ? tvT('tvDiagNativeHls', 'HLS أصلي', 'native HLS') : 'hls.js';
+    if(meta) meta.textContent = '⚙︎ TV-12 · ' + __hls + ' · ' + tvT('tvDiagLinks', 'روابط', 'links') + ':' + __links
       + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '');
     if(!list.length){
       var empty = document.createElement('div');
@@ -51028,29 +51054,33 @@ if(document.readyState === 'loading'){
   ];
   KINDS.styles.scenes = PORTRAIT_SCENES;
   KINDS.styles.sceneKey = 'aiapp_ps_scene';
+  /* v-trends-lang (المالك ١٤ نوفمبر بلقطة: الواجهة إنجليزيّة وصورة الانتظار فيها «انتاج_الرسوم_المكتمل» و«THE ANIMATION PRODUCTION TREND»):
+     الصور الثماني عشرة كان في كلّ منها نصّ محروق بالعربيّة أو الإنجليزيّة فيظهر بأيّ لغة واجهة (ومخالف لقاعدة «لا كتابة داخل صورة»).
+     ‎<الاسم>-clean.webp نسخها بلا نصّ: حروف الوسم وحدها تُرمَّم من محيطها، والأشرطة السفليّة تُزال كاملة؛ نفس المقاس فإحداثيّات المشهد كما هي.
+     الأصول باقية بأسمائها. حالة التوليد تحت الصورة نصّ حيّ بلغة الواجهة كما كانت. */
   /* @vd-scenes:start — مولَّد من قياسات الصور (لا يُحرَّر يدويًّا: يُعاد توليده مع أيّ صورة جديدة) */
   var VD_FONT = { family: "'Bahnschrift','Segoe UI','Helvetica Neue','Roboto',Arial,sans-serif", weight: 300 };
   var VIDEO_SCENES = [
-    { id: 'vdMain', src: '/assets/videos/scenes/main.webp?v=1', w: 1365, h: 768, bg: '#2c2f29', tube: { x: 446, y: 70, w: 484, h: 500, blend: 'screen', gap: [402, 474] }, flow: '#d4fcf3', bar: { x: 575.2, y: 411.3, w: 228.6, h: 12.9, grad: ['#93f7e2', '#d6fdf0'] }, sprite: true, font: VD_FONT, ring: { cx: 687.6, cy: 319.2, hole: 79.5, img: { src: '/assets/videos/scenes/main-r1.webp?v=1', x: 613, y: 244.5, w: 149, h: 149 } }, num: { x: 690.8, y: 334.5, size: 45.5, dw: 22.4, pw: 31.2 }, ink: '#d6fbf9' },
-    { id: 'vdDesign', src: '/assets/videos/scenes/design.webp?v=1', w: 692, h: 384, bg: '#2a2d27', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#d9fbf4', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.9, grad: ['#a0f5e4', '#8dfae3'] }, sprite: true, font: VD_FONT, ring: { cx: 346.8, cy: 165.8, hole: 40.5, img: { src: '/assets/videos/scenes/design-r1.webp?v=1', x: 308, y: 127, w: 77, h: 77 } }, num: { x: 347.3, y: 174, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#d6f8ec' },
-    { id: 'vdQuantum', src: '/assets/videos/scenes/quantum.webp?v=1', w: 692, h: 384, bg: '#2c201b', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#fccfc6', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.4, grad: ['#f78671', '#fb987e'] } },
-    { id: 'vd2050', src: '/assets/videos/scenes/world2050.webp?v=1', w: 673, h: 384, bg: '#3b4948', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d3fbfb', bar: { x: 290.2, y: 215.8, w: 113.4, h: 6.9, grad: ['#91f5f5', '#98f8f7'] } },
-    { id: 'vdMain2', src: '/assets/videos/scenes/main2.webp?v=1', w: 1000, h: 563, bg: '#282a24', tube: { x: 322, y: 52, w: 356, h: 372, blend: 'screen', gap: [293, 346] }, flow: '#d2fff4', bar: { x: 417.7, y: 300.8, w: 162.9, h: 9.9, grad: ['#8efee4', '#d3fef2'] }, sprite: true, font: VD_FONT, ring: { cx: 498.7, cy: 235, hole: 60, img: { src: '/assets/videos/scenes/main2-r1.webp?v=1', x: 442.5, y: 179, w: 112, h: 112 } }, num: { x: 502, y: 245.5, size: 33.1, dw: 16.5, pw: 22.9 }, ink: '#dffbf9' },
-    { id: 'vdNet', src: '/assets/videos/scenes/network.webp?v=1', w: 673, h: 384, bg: '#1c2d3a', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#dff7ff', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.9, grad: ['#afecff', '#ccf5ff'] }, sprite: true, font: VD_FONT, ring: { cx: 346.4, cy: 165.7, hole: 42, img: { src: '/assets/videos/scenes/network-r1.webp?v=1', x: 306, y: 125.5, w: 80, h: 80 } }, num: { x: 348.8, y: 175, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#c9f1f8' },
-    { id: 'vdSea', src: '/assets/videos/scenes/sea.webp?v=1', w: 692, h: 384, bg: '#11242c', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c3edf9', bar: { x: 288.7, y: 213.8, w: 106.4, h: 6.9, grad: ['#68d3f1', '#e5ede0'] } },
-    { id: 'vdPortal', src: '/assets/videos/scenes/portal.webp?v=1', w: 692, h: 384, bg: '#15242d', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c5e9f4', bar: { x: 289.2, y: 213.8, w: 105.9, h: 7.4, grad: ['#6fc7e4', '#e0ddd8'] } },
-    { id: 'vdGalaxy', src: '/assets/videos/scenes/galaxy.webp?v=1', w: 692, h: 384, bg: '#1d1e23', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c6f2fd', bar: { x: 288.2, y: 213.8, w: 106.9, h: 6.9, grad: ['#71defa', '#c2f7ff'] } },
-    { id: 'vdGreen', src: '/assets/videos/scenes/green.webp?v=1', w: 673, h: 384, bg: '#3d4b49', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d7fefe', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.4, grad: ['#9afcfc', '#c4fefe'] } },
-    { id: 'vdMind', src: '/assets/videos/scenes/mind.webp?v=1', w: 692, h: 384, bg: '#2d231f', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#f5cfc5', bar: { x: 289.7, y: 214.8, w: 110.9, h: 6.9, grad: ['#e6866e', '#ea8e76'] } },
-    { id: 'vdDna', src: '/assets/videos/scenes/dna.webp?v=1', w: 673, h: 384, bg: '#3e4b49', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d0faf5', bar: { x: 291.7, y: 214.3, w: 105.9, h: 7.4, grad: ['#8af2e5', '#b0fbed'] } },
-    { id: 'vdHeritage', src: '/assets/videos/scenes/heritage.webp?v=1', w: 673, h: 384, bg: '#3e4845', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cdf8f3', bar: { x: 291.2, y: 214.3, w: 105.9, h: 6.9, grad: ['#83ede1', '#d3f8e3'] } },
-    { id: 'vdBrief', src: '/assets/videos/scenes/brief.webp?v=1', w: 673, h: 384, bg: '#394544', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cff6f5', bar: { x: 291.7, y: 214.3, w: 104.9, h: 6.9, grad: ['#88e8e5', '#def3e7'] } }
+    { id: 'vdMain', src: '/assets/videos/scenes/main-clean.webp?v=1', w: 1365, h: 768, bg: '#2c2f29', tube: { x: 446, y: 70, w: 484, h: 500, blend: 'screen', gap: [402, 474] }, flow: '#d4fcf3', bar: { x: 575.2, y: 411.3, w: 228.6, h: 12.9, grad: ['#93f7e2', '#d6fdf0'] }, sprite: true, font: VD_FONT, ring: { cx: 687.6, cy: 319.2, hole: 79.5, img: { src: '/assets/videos/scenes/main-r1.webp?v=1', x: 613, y: 244.5, w: 149, h: 149 } }, num: { x: 690.8, y: 334.5, size: 45.5, dw: 22.4, pw: 31.2 }, ink: '#d6fbf9' },
+    { id: 'vdDesign', src: '/assets/videos/scenes/design-clean.webp?v=1', w: 692, h: 384, bg: '#2a2d27', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#d9fbf4', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.9, grad: ['#a0f5e4', '#8dfae3'] }, sprite: true, font: VD_FONT, ring: { cx: 346.8, cy: 165.8, hole: 40.5, img: { src: '/assets/videos/scenes/design-r1.webp?v=1', x: 308, y: 127, w: 77, h: 77 } }, num: { x: 347.3, y: 174, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#d6f8ec' },
+    { id: 'vdQuantum', src: '/assets/videos/scenes/quantum-clean.webp?v=1', w: 692, h: 384, bg: '#2c201b', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#fccfc6', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.4, grad: ['#f78671', '#fb987e'] } },
+    { id: 'vd2050', src: '/assets/videos/scenes/world2050-clean.webp?v=1', w: 673, h: 384, bg: '#3b4948', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d3fbfb', bar: { x: 290.2, y: 215.8, w: 113.4, h: 6.9, grad: ['#91f5f5', '#98f8f7'] } },
+    { id: 'vdMain2', src: '/assets/videos/scenes/main2-clean.webp?v=1', w: 1000, h: 563, bg: '#282a24', tube: { x: 322, y: 52, w: 356, h: 372, blend: 'screen', gap: [293, 346] }, flow: '#d2fff4', bar: { x: 417.7, y: 300.8, w: 162.9, h: 9.9, grad: ['#8efee4', '#d3fef2'] }, sprite: true, font: VD_FONT, ring: { cx: 498.7, cy: 235, hole: 60, img: { src: '/assets/videos/scenes/main2-r1.webp?v=1', x: 442.5, y: 179, w: 112, h: 112 } }, num: { x: 502, y: 245.5, size: 33.1, dw: 16.5, pw: 22.9 }, ink: '#dffbf9' },
+    { id: 'vdNet', src: '/assets/videos/scenes/network-clean.webp?v=1', w: 673, h: 384, bg: '#1c2d3a', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#dff7ff', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.9, grad: ['#afecff', '#ccf5ff'] }, sprite: true, font: VD_FONT, ring: { cx: 346.4, cy: 165.7, hole: 42, img: { src: '/assets/videos/scenes/network-r1.webp?v=1', x: 306, y: 125.5, w: 80, h: 80 } }, num: { x: 348.8, y: 175, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#c9f1f8' },
+    { id: 'vdSea', src: '/assets/videos/scenes/sea-clean.webp?v=1', w: 692, h: 384, bg: '#11242c', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c3edf9', bar: { x: 288.7, y: 213.8, w: 106.4, h: 6.9, grad: ['#68d3f1', '#e5ede0'] } },
+    { id: 'vdPortal', src: '/assets/videos/scenes/portal-clean.webp?v=1', w: 692, h: 384, bg: '#15242d', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c5e9f4', bar: { x: 289.2, y: 213.8, w: 105.9, h: 7.4, grad: ['#6fc7e4', '#e0ddd8'] } },
+    { id: 'vdGalaxy', src: '/assets/videos/scenes/galaxy-clean.webp?v=1', w: 692, h: 384, bg: '#1d1e23', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c6f2fd', bar: { x: 288.2, y: 213.8, w: 106.9, h: 6.9, grad: ['#71defa', '#c2f7ff'] } },
+    { id: 'vdGreen', src: '/assets/videos/scenes/green-clean.webp?v=1', w: 673, h: 384, bg: '#3d4b49', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d7fefe', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.4, grad: ['#9afcfc', '#c4fefe'] } },
+    { id: 'vdMind', src: '/assets/videos/scenes/mind-clean.webp?v=1', w: 692, h: 384, bg: '#2d231f', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#f5cfc5', bar: { x: 289.7, y: 214.8, w: 110.9, h: 6.9, grad: ['#e6866e', '#ea8e76'] } },
+    { id: 'vdDna', src: '/assets/videos/scenes/dna-clean.webp?v=1', w: 673, h: 384, bg: '#3e4b49', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d0faf5', bar: { x: 291.7, y: 214.3, w: 105.9, h: 7.4, grad: ['#8af2e5', '#b0fbed'] } },
+    { id: 'vdHeritage', src: '/assets/videos/scenes/heritage-clean.webp?v=1', w: 673, h: 384, bg: '#3e4845', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cdf8f3', bar: { x: 291.2, y: 214.3, w: 105.9, h: 6.9, grad: ['#83ede1', '#d3f8e3'] } },
+    { id: 'vdBrief', src: '/assets/videos/scenes/brief-clean.webp?v=1', w: 673, h: 384, bg: '#394544', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cff6f5', bar: { x: 291.7, y: 214.3, w: 104.9, h: 6.9, grad: ['#88e8e5', '#def3e7'] } }
   ];
   var TREND_SCENES = [
-    { id: 'vtStory', src: '/assets/videos/scenes/trend-story.webp?v=1', w: 692, h: 384, bg: '#2e2e33', tube: { x: 228, y: 36, w: 236, h: 254, blend: 'screen' }, flow: '#e5f6ff', sprite: true, font: VD_FONT, ring: { cx: 443.4, cy: 92.4, hole: 21.2, img: { src: '/assets/videos/scenes/trend-story-r1.webp?v=1', x: 425.5, y: 72, w: 35.5, h: 40.5 } }, num: { x: 444.8, y: 95.6, size: 8.8, dw: 5, pw: 7 }, ink: '#f0f4f6' },
-    { id: 'vtAnime', src: '/assets/videos/scenes/trend-anime.webp?v=1', w: 673, h: 384, bg: '#404d50', tube: { x: 230, y: 36, w: 236, h: 254, blend: 'multiply' }, flow: '#567886', sprite: true, font: VD_FONT, ring: { cx: 200.3, cy: 150.4, hole: 20.6, img: { src: '/assets/videos/scenes/trend-anime-r1.webp?v=1', x: 182, y: 130.5, w: 37, h: 39.5 } }, num: { x: 200.3, y: 154.6, size: 10.2, dw: 6, pw: 8.3 }, ink: '#eef4f4' },
-    { id: 'vtVoice', src: '/assets/videos/scenes/trend-voice.webp?v=1', w: 692, h: 384, bg: '#152432', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [207, 251] }, flow: '#c9ebfa', bar: { x: 289.2, y: 213.3, w: 105.4, h: 7.9, grad: ['#78cef2', '#b2b9cd'] } },
-    { id: 'vtAnim', src: '/assets/videos/scenes/trend-animation.webp?v=1', w: 673, h: 384, bg: '#3a474a', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d1f9fa', bar: { x: 292.2, y: 214.3, w: 104.9, h: 6.9, grad: ['#8cf0f2', '#e6f8f3'] } }
+    { id: 'vtStory', src: '/assets/videos/scenes/trend-story-clean.webp?v=1', w: 692, h: 384, bg: '#2e2e33', tube: { x: 228, y: 36, w: 236, h: 254, blend: 'screen' }, flow: '#e5f6ff', sprite: true, font: VD_FONT, ring: { cx: 443.4, cy: 92.4, hole: 21.2, img: { src: '/assets/videos/scenes/trend-story-r1.webp?v=1', x: 425.5, y: 72, w: 35.5, h: 40.5 } }, num: { x: 444.8, y: 95.6, size: 8.8, dw: 5, pw: 7 }, ink: '#f0f4f6' },
+    { id: 'vtAnime', src: '/assets/videos/scenes/trend-anime-clean.webp?v=1', w: 673, h: 384, bg: '#404d50', tube: { x: 230, y: 36, w: 236, h: 254, blend: 'multiply' }, flow: '#567886', sprite: true, font: VD_FONT, ring: { cx: 200.3, cy: 150.4, hole: 20.6, img: { src: '/assets/videos/scenes/trend-anime-r1.webp?v=1', x: 182, y: 130.5, w: 37, h: 39.5 } }, num: { x: 200.3, y: 154.6, size: 10.2, dw: 6, pw: 8.3 }, ink: '#eef4f4' },
+    { id: 'vtVoice', src: '/assets/videos/scenes/trend-voice-clean.webp?v=1', w: 692, h: 384, bg: '#152432', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [207, 251] }, flow: '#c9ebfa', bar: { x: 289.2, y: 213.3, w: 105.4, h: 7.9, grad: ['#78cef2', '#b2b9cd'] } },
+    { id: 'vtAnim', src: '/assets/videos/scenes/trend-animation-clean.webp?v=1', w: 673, h: 384, bg: '#3a474a', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d1f9fa', bar: { x: 292.2, y: 214.3, w: 104.9, h: 6.9, grad: ['#8cf0f2', '#e6f8f3'] } }
   ];
   var DECOR_SCENES = [
     { id: 'dcBed', src: '/assets/decor/scenes/bedroom.webp?v=1', w: 689, h: 382, bg: '#342c28', tube: { x: 232, y: 34, w: 226, h: 246, blend: 'screen' }, flow: '#e5f6ff' },

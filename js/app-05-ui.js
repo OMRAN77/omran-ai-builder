@@ -2220,7 +2220,8 @@ $('#btnDeleteAll').onclick = () => {
   const previewWrap = $('#templatePreviewWrap');
   const previewFrame = $('#templatePreviewFrame');
   let pendingTpl = null;
-  function currentLang(){ const L = (typeof lang !== 'undefined') ? lang : 'ar'; return ['ar','en','fr','hi','ur','bn','ne'].includes(L) ? L : 'en'; }
+  /* v-i18n-14: القوالب كانت سبع لغات والباقي إنجليزيّ — templates-data.js صار بالأربع عشرة */
+  function currentLang(){ const L = (typeof lang !== 'undefined') ? lang : 'ar'; return ['ar','en','fr','es','tr','ru','zh','hi','ur','bn','ne','ml','id','fil'].includes(L) ? L : 'en'; }
   function renderTemplates(){
     if(typeof TEMPLATES === 'undefined') return;
     const L = currentLang();

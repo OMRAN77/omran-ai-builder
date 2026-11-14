@@ -4,8 +4,8 @@ const TEMPLATES = [
   {
     id: 'landing',
     icon: '🚀',
-    title: { ar: 'صفحة هبوط لمنتج', en: 'Product Landing Page' , fr: 'Page de destination produit', hi: 'उत्पाद लैंडिंग पेज', ur: 'پروڈکٹ لینڈنگ پیج', bn: 'প্রোডাক্ট ল্যান্ডিং পেজ', ne: 'प्रोडक्ट ल्यान्डिङ पेज' },
-    desc: { ar: 'صفحة تسويقية أنيقة لعرض منتج أو خدمة', en: 'A sleek marketing page to showcase a product or service' , fr: 'Une page marketing élégante pour présenter un produit ou un service', hi: 'किसी उत्पाद या सेवा को प्रदर्शित करने के लिए एक आकर्षक मार्केटिंग पेज', ur: 'کسی پروڈکٹ یا سروس کو دکھانے کے لیے ایک خوبصورت مارکیٹنگ پیج', bn: 'একটি পণ্য বা সেবা প্রদর্শনের জন্য একটি মার্জিত মার্কেটিং পেজ', ne: 'उत्पादन वा सेवा प्रदर्शन गर्न एक सुरुचिपूर्ण मार्केटिङ पेज' },
+    title: { ar: 'صفحة هبوط لمنتج', en: 'Product Landing Page' , fr: 'Page de destination produit', hi: 'उत्पाद लैंडिंग पेज', ur: 'پروڈکٹ لینڈنگ پیج', bn: 'প্রোডাক্ট ল্যান্ডিং পেজ', ne: 'प्रोडक्ट ल्यान्डिङ पेज', es: 'Página de aterrizaje de producto', tr: 'Ürün tanıtım sayfası', ru: 'Лендинг продукта', zh: '产品落地页', ml: 'ഉൽപ്പന്ന ലാൻഡിംഗ് പേജ്', id: 'Halaman arahan produk', fil: 'Landing page ng produkto' },
+    desc: { ar: 'صفحة تسويقية أنيقة لعرض منتج أو خدمة', en: 'A sleek marketing page to showcase a product or service' , fr: 'Une page marketing élégante pour présenter un produit ou un service', hi: 'किसी उत्पाद या सेवा को प्रदर्शित करने के लिए एक आकर्षक मार्केटिंग पेज', ur: 'کسی پروڈکٹ یا سروس کو دکھانے کے لیے ایک خوبصورت مارکیٹنگ پیج', bn: 'একটি পণ্য বা সেবা প্রদর্শনের জন্য একটি মার্জিত মার্কেটিং পেজ', ne: 'उत्पादन वा सेवा प्रदर्शन गर्न एक सुरुचिपूर्ण मार्केटिङ पेज', es: 'Una página de marketing elegante para mostrar un producto o servicio', tr: 'Bir ürünü veya hizmeti tanıtmak için şık bir pazarlama sayfası', ru: 'Стильная маркетинговая страница для продукта или услуги', zh: '展示产品或服务的精美营销页面', ml: 'ഒരു ഉൽപ്പന്നമോ സേവനമോ അവതരിപ്പിക്കാനുള്ള മനോഹരമായ മാർക്കറ്റിംഗ് പേജ്', id: 'Halaman pemasaran yang rapi untuk menampilkan produk atau layanan', fil: 'Makinis na marketing page para ipakita ang produkto o serbisyo' },
     code: `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
@@ -44,8 +44,8 @@ footer{text-align:center;padding:30px;color:#6b7280;font-size:13px}
   {
     id: 'restaurant',
     icon: '🍽️',
-    title: { ar: 'قائمة مطعم', en: 'Restaurant Menu' , fr: 'Menu de restaurant', hi: 'रेस्टोरेंट मेनू', ur: 'ریسٹورنٹ مینو', bn: 'রেস্টুরেন্ট মেনু', ne: 'रेस्टुरेन्ट मेनु' },
-    desc: { ar: 'صفحة قائمة طعام أنيقة مع أسعار وصور تعبيرية', en: 'An elegant food menu page with prices and emoji visuals' , fr: 'Une page de menu élégante avec prix et visuels emoji', hi: 'कीमतों और इमोजी विज़ुअल के साथ एक स्टाइलिश फूड मेनू पेज', ur: 'قیمتوں اور ایموجی تصاویر کے ساتھ ایک خوبصورت فوڈ مینو پیج', bn: 'দাম ও ইমোজি ভিজ্যুয়ালসহ একটি এলিগ্যান্ট ফুড মেনু পেজ', ne: 'मूल्य र इमोजी भिजुअलसहितको एक सुन्दर खाना मेनु पेज' },
+    title: { ar: 'قائمة مطعم', en: 'Restaurant Menu' , fr: 'Menu de restaurant', hi: 'रेस्टोरेंट मेनू', ur: 'ریسٹورنٹ مینو', bn: 'রেস্টুরেন্ট মেনু', ne: 'रेस्टुरेन्ट मेनु', es: 'Menú de restaurante', tr: 'Restoran menüsü', ru: 'Меню ресторана', zh: '餐厅菜单', ml: 'റസ്റ്റോറന്റ് മെനു', id: 'Menu restoran', fil: 'Menu ng restawran' },
+    desc: { ar: 'صفحة قائمة طعام أنيقة مع أسعار وصور تعبيرية', en: 'An elegant food menu page with prices and emoji visuals' , fr: 'Une page de menu élégante avec prix et visuels emoji', hi: 'कीमतों और इमोजी विज़ुअल के साथ एक स्टाइलिश फूड मेनू पेज', ur: 'قیمتوں اور ایموجی تصاویر کے ساتھ ایک خوبصورت فوڈ مینو پیج', bn: 'দাম ও ইমোজি ভিজ্যুয়ালসহ একটি এলিগ্যান্ট ফুড মেনু পেজ', ne: 'मूल्य र इमोजी भिजुअलसहितको एक सुन्दर खाना मेनु पेज', es: 'Una elegante página de menú con precios e iconos', tr: 'Fiyatlar ve emojilerle zarif bir yemek menüsü sayfası', ru: 'Элегантная страница меню с ценами и эмодзи', zh: '带价格和表情图标的精美菜单页面', ml: 'വിലകളും ഇമോജികളുമുള്ള മനോഹരമായ മെനു പേജ്', id: 'Halaman menu elegan dengan harga dan ikon emoji', fil: 'Eleganteng menu page na may mga presyo at emoji' },
     code: `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
@@ -78,8 +78,8 @@ footer{text-align:center;padding:30px;color:#8a725c;font-size:13px}
   {
     id: 'portfolio',
     icon: '💼',
-    title: { ar: 'بورتفوليو شخصي', en: 'Personal Portfolio' , fr: 'Portfolio personnel', hi: 'व्यक्तिगत पोर्टफोलियो', ur: 'ذاتی پورٹ فولیو', bn: 'ব্যক্তিগত পোর্টফোলিও', ne: 'व्यक्तिगत पोर्टफोलियो' },
-    desc: { ar: 'صفحة تعريفية بمهاراتك وأعمالك السابقة', en: 'A profile page to showcase your skills and past work' , fr: 'Une page de profil pour présenter vos compétences et travaux passés', hi: 'अपने कौशल और पिछले कार्यों को प्रदर्शित करने के लिए एक प्रोफ़ाइल पेज', ur: 'اپنی مہارتیں اور سابقہ کام دکھانے کے لیے ایک پروفائل پیج', bn: 'আপনার দক্ষতা ও পূর্ববর্তী কাজ প্রদর্শনের জন্য একটি প্রোফাইল পেজ', ne: 'तपाईंको सीप र विगतको कामलाई प्रदर्शन गर्ने प्रोफाइल पेज' },
+    title: { ar: 'بورتفوليو شخصي', en: 'Personal Portfolio' , fr: 'Portfolio personnel', hi: 'व्यक्तिगत पोर्टफोलियो', ur: 'ذاتی پورٹ فولیو', bn: 'ব্যক্তিগত পোর্টফোলিও', ne: 'व्यक्तिगत पोर्टफोलियो', es: 'Portafolio personal', tr: 'Kişisel portfolyo', ru: 'Личное портфолио', zh: '个人作品集', ml: 'വ്യക്തിഗത പോർട്ട്‌ഫോളിയോ', id: 'Portofolio pribadi', fil: 'Personal na portfolio' },
+    desc: { ar: 'صفحة تعريفية بمهاراتك وأعمالك السابقة', en: 'A profile page to showcase your skills and past work' , fr: 'Une page de profil pour présenter vos compétences et travaux passés', hi: 'अपने कौशल और पिछले कार्यों को प्रदर्शित करने के लिए एक प्रोफ़ाइल पेज', ur: 'اپنی مہارتیں اور سابقہ کام دکھانے کے لیے ایک پروفائل پیج', bn: 'আপনার দক্ষতা ও পূর্ববর্তী কাজ প্রদর্শনের জন্য একটি প্রোফাইল পেজ', ne: 'तपाईंको सीप र विगतको कामलाई प्रदर्शन गर्ने प्रोफाइल पेज', es: 'Una página de perfil para mostrar tus habilidades y trabajos', tr: 'Becerilerinizi ve önceki işlerinizi gösteren bir profil sayfası', ru: 'Страница профиля с вашими навыками и работами', zh: '展示你的技能和过往作品的个人主页', ml: 'നിങ്ങളുടെ കഴിവുകളും മുൻ ജോലികളും കാണിക്കുന്ന പ്രൊഫൈൽ പേജ്', id: 'Halaman profil untuk menampilkan keahlian dan karya Anda', fil: 'Profile page para ipakita ang iyong mga kasanayan at nagawa' },
     code: `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
@@ -124,8 +124,8 @@ body{background:#0d0f14;color:#eef0f6}
   {
     id: 'calculator',
     icon: '🧮',
-    title: { ar: 'آلة حاسبة', en: 'Calculator App' , fr: 'Application calculatrice', hi: 'कैलकुलेटर ऐप', ur: 'کیلکولیٹر ایپ', bn: 'ক্যালকুলেটর অ্যাপ', ne: 'क्यालकुलेटर एप' },
-    desc: { ar: 'آلة حاسبة تفاعلية تدعم العمليات الأساسية', en: 'An interactive calculator supporting basic operations' , fr: 'Une calculatrice interactive prenant en charge les opérations de base', hi: 'बुनियादी संचालन का समर्थन करने वाला एक इंटरैक्टिव कैलकुलेटर', ur: 'بنیادی حسابات کے لیے ایک انٹرایکٹو کیلکولیٹر', bn: 'মৌলিক গাণিতিক অপারেশন সমর্থনকারী একটি ইন্টারেক্টিভ ক্যালকুলেটর', ne: 'आधारभूत गणितीय सञ्चालनहरू समर्थन गर्ने अन्तरक्रियात्मक क्यालकुलेटर' },
+    title: { ar: 'آلة حاسبة', en: 'Calculator App' , fr: 'Application calculatrice', hi: 'कैलकुलेटर ऐप', ur: 'کیلکولیٹر ایپ', bn: 'ক্যালকুলেটর অ্যাপ', ne: 'क्यालकुलेटर एप', es: 'Calculadora', tr: 'Hesap makinesi', ru: 'Калькулятор', zh: '计算器', ml: 'കാൽക്കുലേറ്റർ', id: 'Kalkulator', fil: 'Calculator' },
+    desc: { ar: 'آلة حاسبة تفاعلية تدعم العمليات الأساسية', en: 'An interactive calculator supporting basic operations' , fr: 'Une calculatrice interactive prenant en charge les opérations de base', hi: 'बुनियादी संचालन का समर्थन करने वाला एक इंटरैक्टिव कैलकुलेटर', ur: 'بنیادی حسابات کے لیے ایک انٹرایکٹو کیلکولیٹر', bn: 'মৌলিক গাণিতিক অপারেশন সমর্থনকারী একটি ইন্টারেক্টিভ ক্যালকুলেটর', ne: 'आधारभूत गणितीय सञ्चालनहरू समर्थन गर्ने अन्तरक्रियात्मक क्यालकुलेटर', es: 'Una calculadora interactiva con operaciones básicas', tr: 'Temel işlemleri yapan etkileşimli bir hesap makinesi', ru: 'Интерактивный калькулятор с базовыми операциями', zh: '支持基本运算的交互式计算器', ml: 'അടിസ്ഥാന ക്രിയകൾ ചെയ്യുന്ന ഇന്ററാക്ടീവ് കാൽക്കുലേറ്റർ', id: 'Kalkulator interaktif untuk operasi dasar', fil: 'Interactive na calculator para sa mga pangunahing operasyon' },
     code: `<!DOCTYPE html><html lang="ar" dir="ltr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
@@ -170,8 +170,8 @@ function calc(){
   {
     id: 'todo',
     icon: '✅',
-    title: { ar: 'تطبيق مهام', en: 'To-Do List App' , fr: 'Application de tâches', hi: 'टू-डू लिस्ट ऐप', ur: 'ٹو ڈو لسٹ ایپ', bn: 'টু-ডু লিস্ট অ্যাপ', ne: 'टु-डु लिस्ट एप' },
-    desc: { ar: 'قائمة مهام تفاعلية مع إضافة وحذف وتحديد كمكتمل', en: 'An interactive task list with add, delete and complete features' , fr: 'Une liste de tâches interactive avec ajout, suppression et complétion', hi: 'जोड़ने, हटाने और पूर्ण करने की सुविधाओं वाली एक इंटरैक्टिव टास्क लिस्ट', ur: 'شامل کرنے، حذف کرنے اور مکمل کرنے کی خصوصیات کے ساتھ ایک انٹرایکٹو ٹاسک لسٹ', bn: 'যোগ, মুছে ফেলা ও সম্পন্ন করার বৈশিষ্ট্যসহ একটি ইন্টারেক্টিভ টাস্ক লিস্ট', ne: 'थप्ने, मेटाउने र पूरा गर्ने सुविधाहरूसहितको अन्तरक्रियात्मक कार्य सूची' },
+    title: { ar: 'تطبيق مهام', en: 'To-Do List App' , fr: 'Application de tâches', hi: 'टू-डू लिस्ट ऐप', ur: 'ٹو ڈو لسٹ ایپ', bn: 'টু-ডু লিস্ট অ্যাপ', ne: 'टु-डु लिस्ट एप', es: 'Lista de tareas', tr: 'Yapılacaklar listesi', ru: 'Список дел', zh: '待办清单', ml: 'ചെയ്യേണ്ടവയുടെ പട്ടിക', id: 'Daftar tugas', fil: 'Listahan ng gagawin' },
+    desc: { ar: 'قائمة مهام تفاعلية مع إضافة وحذف وتحديد كمكتمل', en: 'An interactive task list with add, delete and complete features' , fr: 'Une liste de tâches interactive avec ajout, suppression et complétion', hi: 'जोड़ने, हटाने और पूर्ण करने की सुविधाओं वाली एक इंटरैक्टिव टास्क लिस्ट', ur: 'شامل کرنے، حذف کرنے اور مکمل کرنے کی خصوصیات کے ساتھ ایک انٹرایکٹو ٹاسک لسٹ', bn: 'যোগ, মুছে ফেলা ও সম্পন্ন করার বৈশিষ্ট্যসহ একটি ইন্টারেক্টিভ টাস্ক লিস্ট', ne: 'थप्ने, मेटाउने र पूरा गर्ने सुविधाहरूसहितको अन्तरक्रियात्मक कार्य सूची', es: 'Una lista de tareas interactiva para añadir, borrar y completar', tr: 'Ekleme, silme ve tamamlama özellikli etkileşimli görev listesi', ru: 'Интерактивный список задач: добавление, удаление и отметка выполнения', zh: '可添加、删除和完成任务的交互式清单', ml: 'ചേർക്കാനും ഇല്ലാതാക്കാനും പൂർത്തിയാക്കാനുമുള്ള ഇന്ററാക്ടീവ് ടാസ്ക് പട്ടിക', id: 'Daftar tugas interaktif dengan fitur tambah, hapus, dan selesai', fil: 'Interactive na listahan ng gawain na may dagdag, bura at tapos' },
     code: `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
@@ -228,8 +228,8 @@ render();
   {
     id: 'guessgame',
     icon: '🎯',
-    title: { ar: 'لعبة تخمين الرقم', en: 'Number Guessing Game' , fr: 'Jeu de devinette de nombre', hi: 'नंबर गेसिंग गेम', ur: 'نمبر گیسنگ گیم', bn: 'নাম্বার গেসিং গেম', ne: 'नम्बर अनुमान खेल' },
-    desc: { ar: 'لعبة بسيطة وممتعة لتخمين رقم عشوائي', en: 'A fun simple game to guess a random number' , fr: 'Un jeu simple et amusant pour deviner un nombre aléatoire', hi: 'एक यादृच्छिक संख्या का अनुमान लगाने के लिए एक मज़ेदार सरल खेल', ur: 'بے ترتیب نمبر کا اندازہ لگانے کے لیے ایک مزیدار سادہ گیم', bn: 'একটি এলোমেলো সংখ্যা অনুমান করার মজার সহজ খেলা', ne: 'अनियमित संख्या अनुमान गर्ने रमाइलो सरल खेल' },
+    title: { ar: 'لعبة تخمين الرقم', en: 'Number Guessing Game' , fr: 'Jeu de devinette de nombre', hi: 'नंबर गेसिंग गेम', ur: 'نمبر گیسنگ گیم', bn: 'নাম্বার গেসিং গেম', ne: 'नम्बर अनुमान खेल', es: 'Adivina el número', tr: 'Sayı tahmin oyunu', ru: 'Угадай число', zh: '猜数字游戏', ml: 'നമ്പർ ഊഹിക്കൽ കളി', id: 'Tebak angka', fil: 'Hulaan ang numero' },
+    desc: { ar: 'لعبة بسيطة وممتعة لتخمين رقم عشوائي', en: 'A fun simple game to guess a random number' , fr: 'Un jeu simple et amusant pour deviner un nombre aléatoire', hi: 'एक यादृच्छिक संख्या का अनुमान लगाने के लिए एक मज़ेदार सरल खेल', ur: 'بے ترتیب نمبر کا اندازہ لگانے کے لیے ایک مزیدار سادہ گیم', bn: 'একটি এলোমেলো সংখ্যা অনুমান করার মজার সহজ খেলা', ne: 'अनियमित संख्या अनुमान गर्ने रमाइलो सरल खेल', es: 'Un juego sencillo y divertido para adivinar un número al azar', tr: 'Rastgele bir sayıyı tahmin etmek için eğlenceli basit bir oyun', ru: 'Простая весёлая игра — угадать случайное число', zh: '猜随机数字的简单趣味游戏', ml: 'ഒരു ക്രമരഹിത നമ്പർ ഊഹിക്കാനുള്ള ലളിതമായ രസകരമായ കളി', id: 'Permainan sederhana yang seru untuk menebak angka acak', fil: 'Simple at masayang laro para hulaan ang random na numero' },
     code: `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
@@ -279,8 +279,8 @@ function checkGuess(){
   {
     id: 'countdown',
     icon: '⏳',
-    title: { ar: 'مؤقّت عد تنازلي', en: 'Countdown Timer' , fr: 'Minuteur compte à rebours', hi: 'काउंटडाउन टाइमर', ur: 'کاؤنٹ ڈاؤن ٹائمر', bn: 'কাউন্টডাউন টাইমার', ne: 'काउन्टडाउन टाइमर' },
-    desc: { ar: 'عداد تنازلي لمناسبة أو حدث قادم', en: 'A countdown timer for an upcoming event' , fr: 'Un compte à rebours pour un événement à venir', hi: 'आगामी कार्यक्रम के लिए एक काउंटडाउन टाइमर', ur: 'آنے والے ایونٹ کے لیے ایک کاؤنٹ ڈاؤن ٹائمر', bn: 'আসন্ন অনুষ্ঠান বা ইভেন্টের জন্য একটি কাউন্টডাউন টাইমার', ne: 'आगामी कार्यक्रम वा घटनाको लागि काउन्टडाउन टाइमर' },
+    title: { ar: 'مؤقّت عد تنازلي', en: 'Countdown Timer' , fr: 'Minuteur compte à rebours', hi: 'काउंटडाउन टाइमर', ur: 'کاؤنٹ ڈاؤن ٹائمر', bn: 'কাউন্টডাউন টাইমার', ne: 'काउन्टडाउन टाइमर', es: 'Cuenta regresiva', tr: 'Geri sayım sayacı', ru: 'Таймер обратного отсчёта', zh: '倒计时器', ml: 'കൗണ്ട്ഡൗൺ ടൈമർ', id: 'Hitung mundur', fil: 'Countdown timer' },
+    desc: { ar: 'عداد تنازلي لمناسبة أو حدث قادم', en: 'A countdown timer for an upcoming event' , fr: 'Un compte à rebours pour un événement à venir', hi: 'आगामी कार्यक्रम के लिए एक काउंटडाउन टाइमर', ur: 'آنے والے ایونٹ کے لیے ایک کاؤنٹ ڈاؤن ٹائمر', bn: 'আসন্ন অনুষ্ঠান বা ইভেন্টের জন্য একটি কাউন্টডাউন টাইমার', ne: 'आगामी कार्यक्रम वा घटनाको लागि काउन्टडाउन टाइमर', es: 'Un temporizador de cuenta regresiva para un próximo evento', tr: 'Yaklaşan bir etkinlik için geri sayım sayacı', ru: 'Обратный отсчёт до предстоящего события', zh: '为即将到来的活动倒计时', ml: 'വരാനിരിക്കുന്ന പരിപാടിക്കുള്ള കൗണ്ട്ഡൗൺ ടൈമർ', id: 'Penghitung mundur untuk acara mendatang', fil: 'Countdown para sa paparating na event' },
     code: `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
@@ -324,8 +324,8 @@ setInterval(update, 1000); update();
   {
     id: 'pricing',
     icon: '💳',
-    title: { ar: 'صفحة تسعير', en: 'Pricing Page' , fr: 'Page de tarification', hi: 'प्राइसिंग पेज', ur: 'پرائسنگ پیج', bn: 'প্রাইসিং পেজ', ne: 'मूल्य निर्धारण पेज' },
-    desc: { ar: 'صفحة عرض خطط اشتراك بأسلوب احترافي', en: 'A professional pricing plans page' , fr: 'Une page professionnelle de plans tarifaires', hi: 'एक पेशेवर मूल्य निर्धारण योजना पेज', ur: 'ایک پیشہ ورانہ پرائسنگ پلانز پیج', bn: 'একটি পেশাদার মূল্য পরিকল্পনা পেজ', ne: 'एक व्यावसायिक मूल्य योजना पेज' },
+    title: { ar: 'صفحة تسعير', en: 'Pricing Page' , fr: 'Page de tarification', hi: 'प्राइसिंग पेज', ur: 'پرائسنگ پیج', bn: 'প্রাইসিং পেজ', ne: 'मूल्य निर्धारण पेज', es: 'Página de precios', tr: 'Fiyatlandırma sayfası', ru: 'Страница тарифов', zh: '价格页面', ml: 'വിലനിർണ്ണയ പേജ്', id: 'Halaman harga', fil: 'Pahina ng presyo' },
+    desc: { ar: 'صفحة عرض خطط اشتراك بأسلوب احترافي', en: 'A professional pricing plans page' , fr: 'Une page professionnelle de plans tarifaires', hi: 'एक पेशेवर मूल्य निर्धारण योजना पेज', ur: 'ایک پیشہ ورانہ پرائسنگ پلانز پیج', bn: 'একটি পেশাদার মূল্য পরিকল্পনা পেজ', ne: 'एक व्यावसायिक मूल्य योजना पेज', es: 'Una página profesional de planes y precios', tr: 'Profesyonel bir fiyat planları sayfası', ru: 'Профессиональная страница тарифных планов', zh: '专业的价格方案页面', ml: 'പ്രൊഫഷണൽ വില പ്ലാനുകളുടെ പേജ്', id: 'Halaman paket harga yang profesional', fil: 'Propesyonal na pahina ng mga plano at presyo' },
     code: `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
@@ -356,8 +356,8 @@ p.sub{text-align:center;color:#a7adc0;margin-bottom:40px}
   {
     id: 'contact',
     icon: '📬',
-    title: { ar: 'نموذج تواصل', en: 'Contact Form' , fr: 'Formulaire de contact', hi: 'संपर्क फ़ॉर्म', ur: 'رابطہ فارم', bn: 'যোগাযোগ ফর্ম', ne: 'सम्पर्क फारम' },
-    desc: { ar: 'نموذج تواصل بسيط وأنيق لجمع الرسائل', en: 'A simple, elegant contact form to collect messages' , fr: 'Un formulaire de contact simple et élégant pour recueillir des messages', hi: 'संदेश एकत्र करने के लिए एक सरल, सुरुचिपूर्ण संपर्क फ़ॉर्म', ur: 'پیغامات جمع کرنے کے لیے ایک سادہ اور خوبصورت رابطہ فارم', bn: 'বার্তা সংগ্রহের জন্য একটি সহজ ও মার্জিত যোগাযোগ ফর্ম', ne: 'सन्देशहरू सङ्कलन गर्न सरल र सुरुचिपूर्ण सम्पर्क फारम' },
+    title: { ar: 'نموذج تواصل', en: 'Contact Form' , fr: 'Formulaire de contact', hi: 'संपर्क फ़ॉर्म', ur: 'رابطہ فارم', bn: 'যোগাযোগ ফর্ম', ne: 'सम्पर्क फारम', es: 'Formulario de contacto', tr: 'İletişim formu', ru: 'Форма обратной связи', zh: '联系表单', ml: 'ബന്ധപ്പെടാനുള്ള ഫോം', id: 'Formulir kontak', fil: 'Contact form' },
+    desc: { ar: 'نموذج تواصل بسيط وأنيق لجمع الرسائل', en: 'A simple, elegant contact form to collect messages' , fr: 'Un formulaire de contact simple et élégant pour recueillir des messages', hi: 'संदेश एकत्र करने के लिए एक सरल, सुरुचिपूर्ण संपर्क फ़ॉर्म', ur: 'پیغامات جمع کرنے کے لیے ایک سادہ اور خوبصورت رابطہ فارم', bn: 'বার্তা সংগ্রহের জন্য একটি সহজ ও মার্জিত যোগাযোগ ফর্ম', ne: 'सन्देशहरू सङ्कलन गर्न सरल र सुरुचिपूर्ण सम्पर्क फारम', es: 'Un formulario de contacto sencillo y elegante para recibir mensajes', tr: 'Mesaj toplamak için sade ve şık bir iletişim formu', ru: 'Простая и элегантная форма для сбора сообщений', zh: '收集留言的简洁优雅联系表单', ml: 'സന്ദേശങ്ങൾ ശേഖരിക്കാനുള്ള ലളിതവും മനോഹരവുമായ ഫോം', id: 'Formulir kontak sederhana dan elegan untuk menerima pesan', fil: 'Simple at eleganteng form para tumanggap ng mga mensahe' },
     code: `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
@@ -393,8 +393,8 @@ function sendForm(e){
   {
     id: 'blog',
     icon: '📝',
-    title: { ar: 'مدونة بسيطة', en: 'Simple Blog' , fr: 'Blog simple', hi: 'सरल ब्लॉग', ur: 'سادہ بلاگ', bn: 'সাধারণ ব্লগ', ne: 'साधारण ब्लग' },
-    desc: { ar: 'صفحة مدونة بمقالات وتصميم نظيف', en: 'A blog page with articles and clean design' , fr: 'Une page de blog avec des articles et un design épuré', hi: 'लेखों और स्वच्छ डिज़ाइन वाला एक ब्लॉग पेज', ur: 'مضامین اور صاف ستھرے ڈیزائن کے ساتھ ایک بلاگ پیج', bn: 'নিবন্ধ ও পরিষ্কার ডিজাইনসহ একটি ব্লগ পেজ', ne: 'लेख र सफा डिजाइनसहितको ब्लग पेज' },
+    title: { ar: 'مدونة بسيطة', en: 'Simple Blog' , fr: 'Blog simple', hi: 'सरल ब्लॉग', ur: 'سادہ بلاگ', bn: 'সাধারণ ব্লগ', ne: 'साधारण ब्लग', es: 'Blog sencillo', tr: 'Basit blog', ru: 'Простой блог', zh: '简易博客', ml: 'ലളിതമായ ബ്ലോഗ്', id: 'Blog sederhana', fil: 'Simpleng blog' },
+    desc: { ar: 'صفحة مدونة بمقالات وتصميم نظيف', en: 'A blog page with articles and clean design' , fr: 'Une page de blog avec des articles et un design épuré', hi: 'लेखों और स्वच्छ डिज़ाइन वाला एक ब्लॉग पेज', ur: 'مضامین اور صاف ستھرے ڈیزائن کے ساتھ ایک بلاگ پیج', bn: 'নিবন্ধ ও পরিষ্কার ডিজাইনসহ একটি ব্লগ পেজ', ne: 'लेख र सफा डिजाइनसहितको ब्लग पेज', es: 'Una página de blog con artículos y diseño limpio', tr: 'Makaleler ve temiz tasarımlı bir blog sayfası', ru: 'Страница блога со статьями и чистым дизайном', zh: '文章清晰、设计简洁的博客页面', ml: 'ലേഖനങ്ങളും വൃത്തിയുള്ള ഡിസൈനുമുള്ള ബ്ലോഗ് പേജ്', id: 'Halaman blog dengan artikel dan desain bersih', fil: 'Blog page na may mga artikulo at malinis na disenyo' },
     code: `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
@@ -420,8 +420,8 @@ header p{color:#a7adc0}
   {
     id: 'memory',
     icon: '🧠',
-    title: { ar: 'لعبة الذاكرة', en: 'Memory Game' , fr: 'Jeu de mémoire', hi: 'मेमोरी गेम', ur: 'میموری گیم', bn: 'মেমরি গেম', ne: 'मेमोरी खेल' },
-    desc: { ar: 'لعبة بطاقات لتحدي الذاكرة والتركيز', en: 'A card matching game to test memory and focus' , fr: 'Un jeu de cartes pour tester la mémoire et la concentration', hi: 'स्मृति और एकाग्रता परखने के लिए एक कार्ड मिलान खेल', ur: 'یادداشت اور توجہ کو جانچنے کے لیے ایک کارڈ میچنگ گیم', bn: 'স্মৃতি ও মনোযোগ পরীক্ষা করার একটি কার্ড মিলানোর খেলা', ne: 'स्मृति र एकाग्रता जाँच गर्ने कार्ड मिलान खेल' },
+    title: { ar: 'لعبة الذاكرة', en: 'Memory Game' , fr: 'Jeu de mémoire', hi: 'मेमोरी गेम', ur: 'میموری گیم', bn: 'মেমরি গেম', ne: 'मेमोरी खेल', es: 'Juego de memoria', tr: 'Hafıza oyunu', ru: 'Игра на память', zh: '记忆游戏', ml: 'ഓർമ്മക്കളി', id: 'Permainan memori', fil: 'Larong memorya' },
+    desc: { ar: 'لعبة بطاقات لتحدي الذاكرة والتركيز', en: 'A card matching game to test memory and focus' , fr: 'Un jeu de cartes pour tester la mémoire et la concentration', hi: 'स्मृति और एकाग्रता परखने के लिए एक कार्ड मिलान खेल', ur: 'یادداشت اور توجہ کو جانچنے کے لیے ایک کارڈ میچنگ گیم', bn: 'স্মৃতি ও মনোযোগ পরীক্ষা করার একটি কার্ড মিলানোর খেলা', ne: 'स्मृति र एकाग्रता जाँच गर्ने कार्ड मिलान खेल', es: 'Un juego de parejas de cartas para poner a prueba la memoria y la concentración', tr: 'Hafızayı ve dikkati sınayan bir kart eşleştirme oyunu', ru: 'Игра на поиск пар карточек для тренировки памяти и внимания', zh: '考验记忆力和专注力的翻牌配对游戏', ml: 'ഓർമ്മയും ശ്രദ്ധയും പരീക്ഷിക്കുന്ന കാർഡ് ജോടി കളി', id: 'Permainan mencocokkan kartu untuk melatih ingatan dan fokus', fil: 'Larong pagtutugma ng card para subukin ang memorya at pokus' },
     code: `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
@@ -488,8 +488,8 @@ init();
   {
     id: 'resume',
     icon: '📄',
-    title: { ar: 'سيرة ذاتية', en: 'Resume / CV Page' , fr: 'Page de CV', hi: 'रिज़्यूमे / सीवी पेज', ur: 'ریزیومے / سی وی پیج', bn: 'রিজিউমে / সিভি পেজ', ne: 'रिजुमे / सीभी पेज' },
-    desc: { ar: 'صفحة سيرة ذاتية رقمية جاهزة للمشاركة', en: 'A ready-to-share digital resume page' , fr: 'Une page de CV numérique prête à être partagée', hi: 'साझा करने के लिए तैयार एक डिजिटल रिज़्यूमे पेज', ur: 'شیئر کرنے کے لیے تیار ایک ڈیجیٹل ریزیومے پیج', bn: 'শেয়ার করার জন্য প্রস্তুত একটি ডিজিটাল রিজিউমে পেজ', ne: 'साझा गर्न तयार डिजिटल रिजुमे पेज' },
+    title: { ar: 'سيرة ذاتية', en: 'Resume / CV Page' , fr: 'Page de CV', hi: 'रिज़्यूमे / सीवी पेज', ur: 'ریزیومے / سی وی پیج', bn: 'রিজিউমে / সিভি পেজ', ne: 'रिजुमे / सीभी पेज', es: 'Página de currículum', tr: 'Özgeçmiş sayfası', ru: 'Страница резюме', zh: '简历页面', ml: 'ബയോഡാറ്റ പേജ്', id: 'Halaman CV', fil: 'Pahina ng resume' },
+    desc: { ar: 'صفحة سيرة ذاتية رقمية جاهزة للمشاركة', en: 'A ready-to-share digital resume page' , fr: 'Une page de CV numérique prête à être partagée', hi: 'साझा करने के लिए तैयार एक डिजिटल रिज़्यूमे पेज', ur: 'شیئر کرنے کے لیے تیار ایک ڈیجیٹل ریزیومے پیج', bn: 'শেয়ার করার জন্য প্রস্তুত একটি ডিজিটাল রিজিউমে পেজ', ne: 'साझा गर्न तयार डिजिटल रिजुमे पेज', es: 'Un currículum digital listo para compartir', tr: 'Paylaşıma hazır dijital özgeçmiş sayfası', ru: 'Цифровое резюме, готовое к отправке', zh: '可直接分享的电子简历页面', ml: 'പങ്കിടാൻ തയ്യാറായ ഡിജിറ്റൽ ബയോഡാറ്റ പേജ്', id: 'Halaman CV digital yang siap dibagikan', fil: 'Digital na resume na handang ibahagi' },
     code: `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}

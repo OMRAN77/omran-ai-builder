@@ -1157,7 +1157,9 @@ btnToggleHistory.onclick = () => {
     box.style.cssText = 'background:#12151d; border-radius:14px; max-width:560px; width:100%; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;';
     const head = document.createElement('div');
     head.style.cssText = 'display:flex; align-items:center; gap:10px; padding:14px 16px; font-size:14px; font-weight:700;';
-    head.innerHTML = '<span>🕰️ ' + (isAr ? 'آلة الزمن — إصدارات المشروع' : 'Time Machine — project versions') + '</span><span style="flex:1;"></span>';
+    /* v-i18n-14: آلة الزمن كانت عربيّ/إنجليزيّ فقط — نصوصها عبر __bT (القاموس __BI) وتاريخها بلغة الواجهة */
+    const __tmT = (a, e) => ((typeof window.__bT === 'function') ? window.__bT(a, e) : (isAr ? a : e));
+    head.innerHTML = '<span>🕰️ ' + __tmT('آلة الزمن — إصدارات المشروع', 'Time Machine — project versions') + '</span><span style="flex:1;"></span>';
     const closeBtn = document.createElement('button');
     closeBtn.textContent = '✖';
     closeBtn.style.cssText = 'background:none; border:none; color:#fff; cursor:pointer; font-size:15px;';
@@ -1167,14 +1169,14 @@ btnToggleHistory.onclick = () => {
     const body = document.createElement('div');
     body.style.cssText = 'overflow:auto; flex:1; padding:0 16px 16px;';
     if(!hist.length){
-      body.innerHTML = '<div style="color:#98a0b3; padding:12px 0;">' + (isAr ? 'لا توجد إصدارات محفوظة بعد — كل تعديل على الكود ينحفظ هنا تلقائيًا.' : 'No saved versions yet — every code change is saved here automatically.') + '</div>';
+      body.innerHTML = '<div style="color:#98a0b3; padding:12px 0;">' + __tmT('لا توجد إصدارات محفوظة بعد — كل تعديل على الكود ينحفظ هنا تلقائيًا.', 'No saved versions yet — every code change is saved here automatically.') + '</div>';
     }
     hist.forEach((h, idx) => {
       const isCurrent = cur.code === h.code;
       const row = document.createElement('div');
       row.style.cssText = 'display:flex; align-items:center; gap:10px; padding:10px 0; font-size:13px;';
       const d = new Date(h.ts);
-      const when = d.toLocaleString(isAr ? 'ar-AE' : 'en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      const when = d.toLocaleString(isAr ? 'ar-AE' : ((typeof lang !== 'undefined' && lang && lang !== 'en') ? (({ zh:'zh-CN', fil:'fil-PH' })[lang] || lang) : 'en-GB'), { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       const info = document.createElement('span');
       info.style.cssText = 'flex:1; color:' + (isCurrent ? 'var(--accent2,#00e0b8)' : '#e8eaf1') + ';';
       info.textContent = (isCurrent ? '✅ ' : '') + when + ' — ' + Math.round(h.code.length / 1024) + 'KB';
@@ -1184,13 +1186,13 @@ btnToggleHistory.onclick = () => {
         diffB.className = 'btn';
         diffB.style.cssText = 'font-size:12px; padding:5px 10px;';
         diffB.textContent = '🔀';
-        diffB.title = isAr ? 'الفروقات' : 'Diff';
+        diffB.title = __tmT('الفروقات', 'Diff');
         diffB.onclick = () => showCodeDiff(cur.code, h.code, when);
         row.appendChild(diffB);
         const restB = document.createElement('button');
         restB.className = 'btn';
         restB.style.cssText = 'font-size:12px; padding:5px 10px;';
-        restB.textContent = isAr ? '↩️ استرجاع' : '↩️ Restore';
+        restB.textContent = __tmT('↩️ استرجاع', '↩️ Restore');
         restB.onclick = () => {
           cur.code = h.code;
           cur.codeType = h.codeType || 'html';
