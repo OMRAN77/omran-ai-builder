@@ -794,9 +794,17 @@ function clockGmtOffset(tz){
   } catch(e) { return ''; }
 }
 
+/* v-i18n-14 (المالك ١٤ نوفمبر: «افحص التطبيق كامل عن اللغات 14»): الساعة كانت عربيّة أو إنجليزيّة فقط — التاريخ «Saturday, November 14»
+   وأسماء المدن بالإنجليزيّة في اللغات الاثنتي عشرة. الآن التاريخ والوقت بلغة الواجهة، والمدن عبر __bT (القاموس __BI). الأرقام لاتينيّة كما كانت. */
+function clockLocale(cal){
+  const L = (typeof lang !== 'undefined' && lang) || 'ar';
+  const base = L === 'ar' ? 'ar-SA' : (({ zh:'zh-CN', fil:'fil-PH' })[L] || L);
+  return base + '-u-' + (cal ? 'ca-islamic-umalqura-' : '') + 'nu-latn';
+}
+function clockCityName(z){ return (typeof window.__bT === 'function') ? window.__bT(z.ar, z.en) : (lang === 'ar' ? z.ar : z.en); }
 function clockFormatTime(tz){
   try {
-    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
+    return new Intl.DateTimeFormat(clockLocale(), {
       timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
     }).format(new Date());
   } catch(e) { return '--:--:--'; }
@@ -806,7 +814,7 @@ function populateClockTZSelect(){
   const sel = $('#clockTZSelect');
   if (!sel) return;
   const saved = localStorage.getItem('aiapp_clock_tz');
-  sel.innerHTML = CLOCK_TIMEZONES.map(z => `<option value="${z.tz}">${lang === 'ar' ? z.ar : z.en}</option>`).join('');
+  sel.innerHTML = CLOCK_TIMEZONES.map(z => `<option value="${z.tz}">${clockCityName(z)}</option>`).join('');
   const guess = Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (saved && CLOCK_TIMEZONES.some(z => z.tz === saved)) sel.value = saved;
   else if (CLOCK_TIMEZONES.some(z => z.tz === guess)) sel.value = guess;
@@ -841,7 +849,7 @@ function renderClockWorldStrip(){
   if (!box) return;
   box.innerHTML = CLOCK_WORLD_STRIP.map(tz => {
     const meta = CLOCK_TIMEZONES.find(z => z.tz === tz);
-    const label = meta ? (lang === 'ar' ? meta.ar : meta.en) : tz;
+    const label = meta ? clockCityName(meta) : tz;
     return `<div class="clockStripRow" data-tz="${tz}" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:10px; background:var(--bg); border:1px solid var(--border);">
       <span style="font-size:13px; font-weight:500;">${label}</span>
       <span class="clockStripTime" style="font-size:15px; font-weight:700; direction:ltr;">--:--:--</span>
@@ -856,13 +864,13 @@ function updateClockDialog(){
   const hEl = $('#clockHijriDate');
   if (gEl) gEl.textContent = clockFormatTime(Intl.DateTimeFormat().resolvedOptions().timeZone);
   if (gdEl) {
-    gdEl.textContent = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
+    gdEl.textContent = new Intl.DateTimeFormat(clockLocale(), {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     }).format(now);
   }
   if (hEl) {
     try {
-      const hijriStr = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-ca-islamic-umalqura-nu-latn' : 'en-US-u-ca-islamic-umalqura', {
+      const hijriStr = new Intl.DateTimeFormat(clockLocale(true), {
         year: 'numeric', month: 'long', day: 'numeric',
       }).format(now);
       hEl.textContent = '🕌 ' + hijriStr;
@@ -2747,7 +2755,8 @@ function autoRenewHintText(on){ return t(on ? 'autoRenewOnHint' : 'autoRenewOffH
 function setAutoRenewUI(on){
   const chk = document.getElementById('chkAutoRenew'), hint = document.getElementById('autoRenewHint');
   if (chk) chk.checked = !!on;
-  if (hint) hint.textContent = autoRenewHintText(!!on);
+  /* v-i18n-14: النصّ كان يُكتب مرّة قبل وصول ملفّ اللغة فيبقى إنجليزيًّا (مسح اللغات: ١٢ لغة) — data-i18n تجعل applyLanguage يحدّثه */
+  if (hint) { hint.setAttribute('data-i18n', on ? 'autoRenewOnHint' : 'autoRenewOffHint'); hint.textContent = autoRenewHintText(!!on); }
 }
 async function autoRenewCall(on){
   const tk = authGet('aiapp_auth_token');

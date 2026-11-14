@@ -795,6 +795,8 @@
     "الظفرة": "Al Dhafra TV",
     "عجمان": "Ajman TV",
     "الوسطى": "Al Wousta TV",
+    "الشارقة 2": "Sharjah 2", /* v-i18n-14: كانا يظهران بالعربيّة في كلّ اللغات */
+    "الفجيرة": "Fujairah TV",
     "الشرقية من كلباء": "Al Sharqiya from Kalba",
     "برامج العربية": "Al Arabiya Programs",
     "السعودية": "Saudi TV",
@@ -1248,8 +1250,9 @@
     /* v-tv-diag: سطر تشخيص ظاهر يكسر حلقة «ما تغيّر شي» — يقول للمالك النسخة،
        ونوع تشغيل HLS على جهازه، وهل حُمّلت روابط البثّ فعلًا. */
     var __links = (TV_M3U && TV_M3U.byHandle) ? Object.keys(TV_M3U.byHandle).length : 0;
-    var __hls = TV_NATIVE_HLS ? 'HLS أصلي' : 'hls.js';
-    if(meta) meta.textContent = '⚙︎ TV-12 · ' + __hls + ' · روابط:' + __links
+    /* v-i18n-14: السطر كان «HLS أصلي · روابط:» بالعربيّة في كلّ اللغات — كلمتاه بلغة الواجهة */
+    var __hls = TV_NATIVE_HLS ? tvT('tvDiagNativeHls', 'HLS أصلي', 'native HLS') : 'hls.js';
+    if(meta) meta.textContent = '⚙︎ TV-12 · ' + __hls + ' · ' + tvT('tvDiagLinks', 'روابط', 'links') + ':' + __links
       + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '');
     if(!list.length){
       var empty = document.createElement('div');
