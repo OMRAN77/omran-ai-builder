@@ -725,7 +725,10 @@ test('١٦. رفع فيديو جاهز: النوع والحجم قبل أيّ ش
   const { ctx, els, api, urls, replies, boxes } = panel();
   for (const [type, name, want] of [['video/mp4', 'a.mp4', 'video/mp4'], ['video/quicktime', 'IMG_1.MOV', 'video/quicktime'], ['video/webm', 'a.webm', 'video/webm'],
     ['video/mp4; codecs=avc1', 'a.mp4', 'video/mp4'], ['video/x-m4v', 'a.m4v', 'video/mp4'], ['', 'clip.MOV', 'video/quicktime'], ['', 'ep.mp4', 'video/mp4'], ['application/octet-stream', 'x.webm', 'video/webm'],
-    ['video/x-matroska', 'a.mkv', ''], ['', 'a.mkv', ''], ['image/png', 'a.png', ''], ['', 'noext', ''], ['text/plain', 'a.mp4', ''], ['video/3gpp', 'a.3gp', '']])
+    ['video/x-matroska', 'a.mkv', ''], ['', 'a.mkv', ''], ['image/png', 'a.png', ''], ['', 'noext', ''], ['text/plain', 'a.mp4', ''], ['video/3gpp', 'a.3gp', ''],
+    /* v-director-upload-fix (طفرات نجت من المراجعة): حروف النوع الكبيرة، والامتداد في آخر الاسم وبنقطته، ومفاتيح الكائن الموروثة ليست أنواعًا */
+    ['VIDEO/MP4', 'a.bin', 'video/mp4'], [' Video/QuickTime ; x=1', 'a.bin', 'video/quicktime'], ['', 'a.mov.txt', ''], ['', 'clip.mp4.exe', ''], ['', 'a.webm.part', ''],
+    ['', 'mymp4', ''], ['', 'xmov', ''], ['', 'awebm', ''], ['application/octet-stream', 'a.m4v', 'video/mp4'], ['constructor', 'a.bin', ''], ['__proto__', 'a.bin', ''], ['toString', 'a.bin', '']])
     assert.equal(ctx.upType(vfile(name, type)), want, type + ' ' + name);
   ctx.DR.out = ''; // لا فيديو بعد
   ctx.upPick(vfile('a.mkv', 'video/x-matroska'));
@@ -738,7 +741,9 @@ test('١٦. رفع فيديو جاهز: النوع والحجم قبل أيّ ش
   // فيديو صالح ولا شيء معروض: بلا سؤال — مكان الفيديو، واللوحة مفتوحة من الصفر وتسأل عن الحسابات
   els.vdPub.hidden = true; els.vdPubCap.value = 'نصّ قديم'; replies.accounts = { ok: true, on: ['instagram', 'x'], reauth: [] };
   const f1 = vfile('الحلقة 2: يوسف.mp4', 'video/mp4', 500 * 1048576);
+  const dmsgs = []; ctx.drMsg = (t) => { dmsgs.push(t); }; let syncs = 0; ctx.syncDirector = () => { syncs++; };
   ctx.upPick(f1); await flush();
+  assert.deepEqual([dmsgs.includes(''), syncs > 0], [true, true], 'رسالة توليد سابق تُمسح، والصندوق يُحدَّث');
   assert.equal(ctx.confirms.length, 0);
   assert.deepEqual([ctx.DR.out, ctx.DR.fileUrl, ctx.DR.file === f1, ctx.DR.fileType], ['blob:up1', 'blob:up1', true, 'video/mp4']);
   assert.deepEqual([els.vdVideo.src, els.vdDl.href, els.vdDl.attrs.download, els.vdRes.classList.contains('has')], ['blob:up1', 'blob:up1', 'الحلقة 2_ يوسف.mp4', true]);
@@ -753,7 +758,7 @@ test('١٦. رفع فيديو جاهز: النوع والحجم قبل أيّ ش
   ctx.DR.out = 'blob:gen'; ctx.pbNewVideo();
   assert.equal(ctx.upMine(), false, 'فيديو المخرج ليس «ملفّي»');
   ctx.answer = false; ctx.upPick(vfile('b.mp4', 'video/mp4'));
-  assert.deepEqual([ctx.confirms, ctx.DR.out, urls.made.length], [['vdUpReplace'], 'blob:gen', 2], 'الإلغاء يبقي فيديو المخرج');
+  assert.deepEqual([ctx.confirms, ctx.DR.out, urls.made.length, urls.revoked.includes('blob:gen'), els.vdVideo.src], [['vdUpReplace'], 'blob:gen', 2, false, 'blob:up2'], 'الإلغاء يبقي فيديو المخرج ورابطه حيًّا (السؤال قبل التحرير)');
   ctx.answer = true; ctx.upPick(vfile('b.mp4', 'video/mp4'));
   assert.deepEqual([ctx.confirms.length, ctx.DR.out, urls.revoked.slice(-1)[0]], [2, 'blob:up3', 'blob:gen']);
   // فيديو المخرج أخفاه توليد لاحق (لا «has»): لا سؤال عن شيء لا يُرى
@@ -764,8 +769,16 @@ test('١٦. رفع فيديو جاهز: النوع والحجم قبل أيّ ش
   const n = urls.made.length;
   ctx.DR.busy = true; ctx.upPick(vfile('d.mp4', 'video/mp4')); ctx.DR.busy = false;
   ctx.PB.busy = true; ctx.upPick(vfile('d.mp4', 'video/mp4')); ctx.PB.busy = false;
-  ctx.drOwner = () => false; ctx.upPick(vfile('d.mp4', 'video/mp4'));
-  assert.deepEqual([urls.made.length, ctx.DR.out], [n, 'blob:up4']);
+  ctx.DR.busy = true; ctx.upPick(vfile('bad.mkv', 'video/x-matroska')); ctx.DR.busy = false;
+  ctx.PB.busy = true; ctx.upPick(vfile('big.mp4', 'video/mp4', 500 * 1048576 + 1)); ctx.PB.busy = false;
+  assert.equal(els.vdUpMsg.textContent, '', 'صندوق معطّل لا يكتب رفضًا تحت توليد جارٍ');
+  ctx.drOwner = () => false; ctx.upPick(vfile('d.mp4', 'video/mp4')); ctx.upPick(vfile('bad.mkv', 'video/x-matroska'));
+  assert.deepEqual([urls.made.length, ctx.DR.out, els.vdUpMsg.textContent], [n, 'blob:up4', '']);
+  // اسم طويل: آخره يبقى (الامتداد)، والمرفوع الذي أخفاه توليد لاحق ليس «ملفّي» (الصندوق يعود لنصّه)
+  ctx.drOwner = () => true; ctx.upPick(vfile('ط'.repeat(200) + '.mp4', 'video/mp4'));
+  assert.deepEqual([els.vdDl.attrs.download.length, els.vdDl.attrs.download.endsWith('ططط.mp4'), ctx.upMine()], [120, true, true]);
+  els.vdRes.classList.remove('has'); assert.equal(ctx.upMine(), false);
+  els.vdRes.classList.add('has'); assert.equal(ctx.upMine(), true);
 });
 
 test('١٧. النشر يرفع ملفّ الجهاز نفسه بنوعه (لا نسخة تُقرأ من رابطه)، وفيديو المخرج كما كان يُقرأ من رابطه', async () => {
@@ -787,6 +800,14 @@ test('١٧. النشر يرفع ملفّ الجهاز نفسه بنوعه (لا 
   replies.target = { ok: true, id: 'a'.repeat(24), up: 'https://up.example/put?sig=g', ctype: 'video/webm' };
   await ctx.pbGo();
   assert.deepEqual([blobFetches, J(api[0].body), sent.length, sent[1].body === f, sent[1].ctype], [['blob:gen'], { token: 'tok', size: 10, type: 'video/webm' }, 2, false, 'video/webm']);
+  // انتهى عمر ملفّه عند الخادم (no_file): الرفع الثاني في الضغطة نفسها يقرأ فيديو المخرج من رابطه أيضًا — لا ملفّ الجهاز السابق
+  ctx.PB.plats = ['tiktok', 'youtube', 'x']; ctx.pbPlats();
+  let k = 0; api.length = 0;
+  replies.publish = () => (k++ ? { ok: true, request: 'rg2', already: [] } : { ok: false, error: 'no_file' });
+  replies.target = { ok: true, id: 'b'.repeat(24), up: 'https://up.example/put?sig=g2', ctype: 'video/webm' };
+  await ctx.pbGo();
+  assert.deepEqual([api.map((a) => a.op), api[2].body.platforms, api[2].body.vid, blobFetches, sent.length, sent[2].body === f, sent[2].body.size],
+    [['publish', 'target', 'publish'], ['x'], 'a'.repeat(24), ['blob:gen', 'blob:gen'], 3, false, 10]);
 });
 
 test('١٨. الصندوق في المخرج قبل مكان الفيديو، مربوط بالاختيار والإفلات، ومعطّل أثناء التوليد والنشر؛ والنصوص الأربعة بالـ١٤ لغة بلا اسم مزوّد، والوسوم مرفوعة', () => {
@@ -802,6 +823,7 @@ test('١٨. الصندوق في المخرج قبل مكان الفيديو، م
   const sync = v.slice(v.indexOf('function syncDirector(){'), v.indexOf('var ST={t0:0'));
   assert.ok(sync.includes("uf.disabled=DR.busy||PB.busy; uz.classList.toggle('off',uf.disabled);"), 'معطّل أثناء التوليد ورفع النشر');
   assert.ok(sync.includes("uz.querySelector('.vmk-cl-pick').textContent=um?String(DR.file.name||''):L('vdUpBtn');") && sync.includes("drT('vdUpHint',{n:UP_MAX_MB})"));
+  assert.ok(sync.includes("var um=upMine(); uz.classList.toggle('has',um);"), 'اسم الملفّ وشكله المضغوط للمرفوع المعروض وحده (لا لملفّ سابق فوقه فيديو المخرج)');
   assert.match(v, /var UP_MAX_MB=500, UP_TYPES=\{'video\/mp4':1,'video\/webm':1,'video\/quicktime':1\};/);
   const srv = read('api/_lib/social-publish.js');
   assert.match(srv, /const TYPES = \{ 'video\/mp4': 'mp4', 'video\/webm': 'webm', 'video\/quicktime': 'mov' \};/, 'أنواع العميل = أنواع الخادم');
@@ -831,7 +853,7 @@ test('١٨. الصندوق في المخرج قبل مكان الفيديو، م
   }
   assert.deepEqual([seen.size, seenQ.size], [12, 12], 'ترجمات لا نسخ');
   const used = new Set([...v.matchAll(/(?:L|drT)\('(vdUp\w+)'/g)].map((m) => m[1]));
-  assert.deepEqual([...used].sort(), [...KEYS].sort(), 'كلّ نصّ مستعمل معرَّف، وكلّ معرَّف مستعمل');
+  assert.deepEqual([...used].sort(), [...KEYS, 'vdUpWait'].sort(), 'كلّ نصّ مستعمل معرَّف، وكلّ معرَّف مستعمل (vdUpWait: v-director-upload-fix، اختبار ٢٨)');
   const tag = read('js/app-04-i18n-state.js').match(/\.js\?v=(\d+)';[^\n]* v-director-upload \((\d+)\): [^\n]*\*\//);
   assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && Number(tag[2]) === 795, 'وسم اللغات مرفوع وسببه في التعليق');
   const h = read('index.html');
@@ -1037,7 +1059,9 @@ test('٢١. الخيار مشغَّل: الرفع يضيف الباركود فو
   assert.equal(ctx.ecLocked(), true);
   const n = api.length;
   ctx.ecToggle(false); ctx.ecToggle(true); await flush();
-  assert.deepEqual([ctx.ls.aiapp_vd_endcard, ctx.DR.out, ctx.PB.vid, boxes().find((x) => x.p === 'instagram').off, api.length, calls.length], ['1', 'blob:up2', F24, true, n, 1], 'المقفل لا يتبدّل ولا يغيّر التفضيل');
+  // v-director-upload-fix: اسم الفيديو عند الخادم من هويّة الملفّ الأصل (لا من رفعه) — ونسخته بالباركود تحمله
+  assert.deepEqual([ctx.PB.vid, ctx.PB.id, J(api.find((x) => x.op === 'publish').body.vid)], [ctx.upVid(f), F24, ctx.upVid(f)]);
+  assert.deepEqual([ctx.ls.aiapp_vd_endcard, ctx.DR.out, ctx.PB.vid, boxes().find((x) => x.p === 'instagram').off, api.length, calls.length], ['1', 'blob:up2', ctx.upVid(f), true, n, 1], 'المقفل لا يتبدّل ولا يغيّر التفضيل');
   // ملفّ جديد يفكّ القفل
   ctx.upPick(vfileE('ثانية.mp4', 'video/mp4')); await flush();
   assert.deepEqual([ctx.ecLocked(), ctx.PB.vid, calls.length], [false, '', 2]);
@@ -1281,4 +1305,211 @@ test('٢٤. ecMake نفسه بأداة مزيّفة: آخر لقطة من آخر
   assert.deepEqual([L.els.vdUpMsg.textContent, L.ctx.EC.busy, steps(L.F)], ['', false, ['probe', 'atb']], 'لا رسالة ولا أمر بعد الإلغاء');
   L.F.holds[0](); await flush();
   assert.equal(L.els.vdUpMsg.textContent, '');
+});
+
+// ── v-director-upload-fix (مراجعة مستقلّة على «ارفع فيديو جاهز» بعد دمجه، ١٠–١٤ نوفمبر): عيبان ثبتا بإعادة الإنتاج ──
+// الأوّل: الملفّ نفسه إذا اختير ثانية يأخذ اسمًا جديدًا عند الخادم (اسم الرفع)، فحجز «منصّة واحدة لكلّ فيديو» لا يطابقه ← نشر علنيّ ثانٍ.
+// الثاني: خطأ في سؤال الحسابات ثمّ اختيار ملفّ ← اللوحة مفتوحة فارغة بلا رسالة و«انشر الآن» معطّل.
+const dfile = (name, size, lastModified, type) => ({ name, size, lastModified, type: type == null ? 'video/mp4' : type });
+/* اللوحة موصولة بالخادم الحقيقيّ (social-publish.js) — والخدمة الخارجيّة مقلَّدة: كلّ نشر يصلها يُسجَّل */
+function wired() {
+  const P = panel(), posts = [], st = {};
+  calls.length = 0; kv.clear(); let n = 0;
+  routes = {
+    '/uploadposts/users': { status: 200, body: { profiles: [{ username: 'omranaibuilder', social_accounts: { instagram: { username: 'om.ai' }, tiktok: { username: 'o' } } }] } },
+    '/storage/upload/initiate': () => { n++; return { status: 200, body: { upload_url: 'https://up.example/put?n=' + n, file_url: 'https://v3.fal.media/files/om-' + n + '.mp4' } }; },
+    '/api/upload': (url, o) => { posts.push({ platforms: o.body.getAll('platform[]'), video: o.body.get('video') }); const r = 'srv-' + posts.length; st[r] = { status: 'completed', results: o.body.getAll('platform[]').map((pl) => ({ platform: pl, success: true, post_url: 'https://example.com/' + pl })) }; return { status: 200, body: { request_id: r } }; },
+    '/uploadposts/status': (url) => { const q = new URL(url).searchParams.get('request_id'); return st[q] ? { status: 200, body: st[q] } : { status: 404, body: { status: 'not_found' } }; },
+  };
+  P.ctx.drTok = () => owner();
+  for (const op of ['accounts', 'target', 'publish', 'status']) P.replies[op] = (b) => call(op, b).then((r) => r.body);
+  P.ctx.DR.out = ''; P.els.vdPub.hidden = true;
+  return Object.assign(P, { posts });
+}
+test('٢٥. الملفّ نفسه لا يُنشر مرّتين: اسمه عند الخادم من هويّته (الاسم والحجم وتاريخ التعديل) لا من رفعه — اختياره ثانية، أو نسخته بالباركود، يردّه حجز الخادم «انرسل قبل»؛ وملفّ آخر ينشر', async () => {
+  const { ctx, els, api, posts, timers } = wired();
+  const f = dfile('الحلقة 2.mp4', 5000, 1731400000000);
+  ctx.upPick(f); await flush();
+  els.vdPubCap.value = 'قصص الأنبياء'; await ctx.pbGo();
+  assert.deepEqual(posts.map((x) => x.platforms), [['instagram', 'tiktok']], 'النشر الأوّل وصل الخدمة مرّة');
+  const vid1 = api.filter((a) => a.op === 'publish')[0].body.vid;
+  assert.match(vid1, /^[0-9a-f]{24}$/);
+  assert.notEqual(vid1, api.filter((a) => a.op === 'publish')[0].body.id, 'الاسم من الملفّ لا من الرفع');
+  // الملفّ نفسه يُختار ثانية (كائن جديد من القرص بالهويّة نفسها): اللوحة من الصفر، و«انشر الآن» لا يصل الخدمة
+  ctx.upPick(dfile('الحلقة 2.mp4', 5000, 1731400000000)); await flush();
+  els.vdPubCap.value = 'قصص الأنبياء'; await ctx.pbGo();
+  const pubs = api.filter((a) => a.op === 'publish');
+  assert.deepEqual([posts.length, pubs.length, pubs[1].body.vid === vid1], [1, 2, true], 'الخدمة لم تُسأل ثانية — حجز الخادم طابق الاسم');
+  assert.match(els.vdPubMsg.textContent, /^vdPubAgain/, '«انرسل قبل» لا «انرسل»');
+  // ملفّ آخر (حجم آخر، أو تاريخ تعديل آخر، أو اسم آخر): اسم آخر، وينشر
+  const vids = [dfile('الحلقة 2.mp4', 5001, 1731400000000), dfile('الحلقة 2.mp4', 5000, 1731400000001), dfile('الحلقة 3.mp4', 5000, 1731400000000)].map((x) => ctx.upVid(x));
+  assert.equal(new Set(vids.concat([vid1])).size, 4, 'هويّة مختلفة = اسم مختلف');
+  for (const v of vids) assert.match(v, /^[0-9a-f]{24}$/);
+  assert.equal(ctx.upVid(dfile('الحلقة 2.mp4', 5000, 1731400000000, 'video/quicktime')), vid1, 'النوع الذي يذكره المتصفّح ليس من الهويّة');
+  ctx.upPick(dfile('الحلقة 3.mp4', 5000, 1731400000000)); await flush();
+  els.vdPubCap.value = 'حلقة ثالثة'; await ctx.pbGo();
+  assert.deepEqual(posts.map((x) => x.platforms), [['instagram', 'tiktok'], ['instagram', 'tiktok']], 'ملفّ آخر ينشر');
+  // النسخة بالباركود من الملفّ نفسه (ecShow يبدّل المعروض): الاسم اسم الأصل، فلا تُنشر فوق أصلها
+  ctx.upPick(dfile('الحلقة 2.mp4', 5000, 1731400000000)); await flush();
+  ctx.ecShow(dfile('الحلقة 2-om-ai.mp4', 6000, 1731409999999), 'video/mp4', 'blob:ec1'); await flush();
+  els.vdPubCap.value = 'بالباركود'; await ctx.pbGo();
+  assert.deepEqual([posts.length, api.filter((a) => a.op === 'publish').pop().body.vid === vid1], [2, true], 'الأصل وباركوده فيديو واحد عند الخادم');
+  // فيديو المخرج بعد مرفوع: اسمه من رفعه كما كان (لا يرث اسم الملفّ السابق)
+  ctx.upEnd(); ctx.DR.out = 'blob:gen'; ctx.pbNewVideo(); els.vdRes.classList.add('has');
+  els.vdPubCap.value = 'فيديو المخرج'; await ctx.pbGo();
+  const last = api.filter((a) => a.op === 'publish').pop().body;
+  assert.deepEqual([last.vid === last.id, last.vid !== vid1, posts.length], [true, true, 3]);
+  void timers;
+});
+
+test('٢٦. اختيار ملفّ يسأل عن الحسابات دائمًا: بعد خطأ في السؤال أو «لا حسابات» لا تبقى اللوحة فارغة ومعطّلة', async () => {
+  const { ctx, els, api, replies, boxes } = panel();
+  ctx.DR.out = ''; els.vdPub.hidden = true;
+  replies.accounts = { ok: false, error: 'accounts', status: 502 };
+  ctx.upPick(vfile('a.mp4', 'video/mp4')); await flush();
+  assert.deepEqual([els.vdPub.hidden, boxes().length, /^vdPubFail/.test(els.vdPubMsg.textContent)], [false, 0, true], 'الخطأ يُقال');
+  // الخادم عاد: اختيار ملفّ (اللوحة مفتوحة) يسأل من جديد فتظهر المنصّات
+  replies.accounts = { ok: true, on: ['instagram', 'x'], reauth: [] };
+  ctx.upPick(vfile('b.mp4', 'video/mp4')); await flush();
+  assert.deepEqual([api.filter((a) => a.op === 'accounts').length, boxes().map((b) => b.p), els.vdPubMsg.textContent], [2, ['instagram', 'x'], '']);
+  // «لا حسابات» ثمّ وُصل حساب: الاختيار التالي يُظهره
+  replies.accounts = { ok: true, on: [], reauth: [] };
+  ctx.upPick(vfile('c.mp4', 'video/mp4')); await flush();
+  assert.deepEqual([boxes().length, els.vdPubMsg.textContent], [0, 'vdPubNoAcc']);
+  replies.accounts = { ok: true, on: ['tiktok'], reauth: [] };
+  ctx.upPick(vfile('d.mp4', 'video/mp4')); await flush();
+  assert.deepEqual([boxes().map((b) => b.p), els.vdPubMsg.textContent], [['tiktok'], '']);
+  // سؤال واحد في الطريق: اختياران متتاليان لا يضاعفانه
+  const n = api.filter((a) => a.op === 'accounts').length;
+  let syncs = 0; ctx.syncDirector = () => { syncs++; };
+  ctx.upPick(vfile('e.mp4', 'video/mp4')); const s1 = syncs; ctx.upPick(vfile('f.mp4', 'video/mp4'));
+  assert.ok(syncs > s1, 'والاختيار الثاني يحدّث الصندوق بنفسه (السؤال في الطريق: pbLoad يرجع بلا تحديث)');
+  await flush();
+  assert.equal(api.filter((a) => a.op === 'accounts').length, n + 1);
+});
+
+
+test('٢٧. تبديل فيديو نشرُه لم ينتهِ: سؤال واحد — الإلغاء يبقي الفيديو وصفوفه ومتابعته، وبعد أن تقول المنصّات كلمتها لا سؤال، وفيديو المخرج له سؤاله وحده، وما لا يُرى بلا سؤال', async () => {
+  const { ctx, els, urls, timers, replies } = panel();
+  ctx.DR.out = ''; els.vdPub.hidden = true; replies.accounts = { ok: true, on: ['instagram', 'x'], reauth: [] };
+  const rows = () => els.vdPubRes.children.map((li) => li.className);
+  const f1 = vfile('a.mp4', 'video/mp4');
+  ctx.upPick(f1); await flush();
+  els.vdPubCap.value = 'الحلقة الأولى';
+  replies.target = { ok: true, id: F24, up: 'https://up.example/put?sig=w', ctype: 'video/mp4' };
+  replies.publish = { ok: true, request: 'rw', already: [] };
+  await ctx.pbGo();
+  assert.deepEqual([Object.keys(ctx.PB.reqs), rows()], [['rw'], ['is-wait', 'is-wait']]);
+  // ملفّ آخر والمنصّات ما زالت «ينتظر»: سؤال — والإلغاء لا يمسّ شيئًا (لا رابط جديد، لا رابط محرَّر، الصفوف والنصّ والمتابعة باقية)
+  ctx.confirms.length = 0; ctx.answer = false;
+  ctx.upPick(vfile('b.mp4', 'video/mp4'));
+  assert.deepEqual([ctx.confirms, ctx.DR.out, ctx.DR.file === f1, urls.made.length, urls.revoked, Object.keys(ctx.PB.reqs), rows(), els.vdPubCap.value, ctx.PB.vid, els.vdUpMsg.textContent],
+    [['vdUpWait'], 'blob:up1', true, 1, [], ['rw'], ['is-wait', 'is-wait'], 'الحلقة الأولى', ctx.upVid(f1), ''], 'الإلغاء: كلّ شيء كما هو');
+  // المتابعة تكمل: إنستغرام نزل وX ما نزل — النتيجة التي كان التبديل يخفيها
+  replies.status = { ok: true, state: 'done', results: [{ platform: 'instagram', state: 'ok', url: 'https://example.com/p', error: '' }, { platform: 'x', state: 'fail', url: '', error: 'too long' }] };
+  timers.pop()(); await flush();
+  assert.deepEqual([Object.keys(ctx.PB.reqs), rows(), els.vdPubMsg.textContent], [[], ['is-ok', 'is-fail'], 'vdPubDone {"ok":1,"n":2}']);
+  // حُسم النشر: التبديل بلا سؤال (ولو كان الجواب «لا») واللوحة من الصفر
+  ctx.confirms.length = 0;
+  const f2 = vfile('b.mp4', 'video/mp4');
+  ctx.upPick(f2); await flush();
+  assert.deepEqual([ctx.confirms, ctx.DR.out, ctx.DR.file === f2, rows(), els.vdPubCap.value], [[], 'blob:up2', true, [], '']);
+  // الموافقة تبدّل: الفيديو الجديد مكانه، ومتابعة السابق تتوقّف هنا (النشر نفسه يكمل عند المنصّات)
+  els.vdPubCap.value = 'الحلقة الثانية'; replies.publish = { ok: true, request: 'rw2', already: [] };
+  ctx.answer = true; await ctx.pbGo();
+  assert.deepEqual(Object.keys(ctx.PB.reqs), ['rw2']);
+  ctx.confirms.length = 0;
+  const f3 = vfile('c.mp4', 'video/mp4');
+  ctx.upPick(f3); await flush();
+  assert.deepEqual([ctx.confirms, ctx.DR.out, ctx.DR.file === f3, Object.keys(ctx.PB.reqs), rows(), urls.revoked], [['vdUpWait'], 'blob:up3', true, [], [], ['blob:up1', 'blob:up2']]);
+  // فيديو صنعه المخرج، معروض ونشره ينتظر: سؤاله هو وحده («بيختفي — حمّله أوّل»)، لا سؤالان
+  ctx.DR.out = 'blob:gen'; ctx.pbNewVideo();
+  els.vdPubCap.value = 'فيديو المخرج'; replies.publish = { ok: true, request: 'rw3', already: [] };
+  await ctx.pbGo();
+  assert.deepEqual(Object.keys(ctx.PB.reqs), ['rw3']);
+  ctx.confirms.length = 0; ctx.answer = false;
+  ctx.upPick(vfile('d.mp4', 'video/mp4'));
+  assert.deepEqual([ctx.confirms, ctx.DR.out, Object.keys(ctx.PB.reqs)], [['vdUpReplace'], 'blob:gen', ['rw3']]);
+  ctx.confirms.length = 0; ctx.answer = true;
+  const f4 = vfile('d.mp4', 'video/mp4');
+  ctx.upPick(f4); await flush();
+  assert.deepEqual([ctx.confirms, ctx.DR.out, ctx.DR.file === f4, Object.keys(ctx.PB.reqs)], [['vdUpReplace'], 'blob:up4', true, []], 'والموافقة سؤال واحد');
+  // مرفوع أخفاه توليد لاحق (لا «has») ومتابعة نشره ما زالت في الذاكرة: لا سؤال عن شيء لا يُرى
+  els.vdPubCap.value = 'الحلقة الرابعة'; replies.publish = { ok: true, request: 'rw4', already: [] };
+  await ctx.pbGo();
+  assert.deepEqual(Object.keys(ctx.PB.reqs), ['rw4']);
+  els.vdRes.classList.remove('has'); ctx.confirms.length = 0; ctx.answer = false;
+  ctx.upPick(vfile('e.mp4', 'video/mp4')); await flush();
+  assert.deepEqual([ctx.confirms, ctx.DR.out, Object.keys(ctx.PB.reqs)], [[], 'blob:up5', []]);
+});
+
+test('٢٨. نصّ السؤال بالـ١٤ لغة بلا اسم مزوّد ولا نسخ، والوسوم مرفوعة، وأسلوب الصندوق: الدائرة لا تنضغط والحلقة داخل الحافّة وخطّ السحب يُرى', () => {
+  const BANNED = /claude|anthropic|gemini|google|\bgpt|openai|runway|\bveo\b|kling|minimax|\bluma\b|\bsora\b|upload-?post|\bfal\b/i;
+  const base = { $: () => null, document: { getElementById: () => null, querySelector: () => null }, window: {}, localStorage: { getItem: () => null } }; base.window = base;
+  vm.runInNewContext(read('js/app-03-i18n-data.js'), base);
+  for (const lg of ['ar', 'en']) { const t = base.I18N[lg].vdUpWait; assert.ok(t && t.length > 20, lg); assert.doesNotMatch(t, BANNED, lg); assert.match(t, /[?؟]\s*$/, lg + ' سؤال'); }
+  assert.match(base.I18N.ar.vdUpWait, /يكمل النشر/, 'يقول إنّ النشر نفسه لا يُلغى');
+  assert.match(base.I18N.en.vdUpWait, /posting carries on/);
+  const seen = new Set();
+  for (const lg of ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil']) {
+    const m = read('i18n/' + lg + '.js').match(/v-director-upload-fix \(797\)[^\n]*Object\.assign\(I18N\["(\w+)"\], (\{.*\})\);/);
+    assert.ok(m && m[1] === lg, lg + ' كتلة الترجمة');
+    const o = JSON.parse(m[2]);
+    assert.deepEqual(Object.keys(o), ['vdUpWait'], lg + ' المفاتيح');
+    assert.ok(o.vdUpWait.trim().length > 20, lg); assert.doesNotMatch(o.vdUpWait, BANNED, lg);
+    assert.equal((o.vdUpWait.match(/\{\w+\}/g) || []).length, 0, lg + ' بلا متغيّرات');
+    assert.match(o.vdUpWait, /[?？؟]\s*$/, lg + ' سؤال');
+    assert.notEqual(o.vdUpWait, base.I18N.en.vdUpWait, lg + ' مترجم لا منسوخ');
+    seen.add(o.vdUpWait);
+  }
+  assert.equal(seen.size, 12, 'ترجمات لا نسخ');
+  const tag = read('js/app-04-i18n-state.js').match(/\.js\?v=(\d+)';[^\n]* v-director-upload-fix \((\d+)\): [^\n]*\*\//);
+  assert.ok(tag && Number(tag[1]) >= Number(tag[2]) && Number(tag[2]) === 797, 'وسم اللغات مرفوع وسببه في التعليق');
+  const h = read('index.html');
+  assert.ok(Number((/\/js\/video\.js\?v=(\d+)"/.exec(h) || [])[1]) >= 469 && Number((/css\/modules\.css\?v=(\d+)"/.exec(h) || [])[1]) >= 700, 'وسما video.js وmodules.css مرفوعان');
+  const css = read('css/modules.css');
+  const RULES = ['#videoMakerModal .vmk-dir-up .vmk-cl-plus{flex:0 0 auto}', '#videoMakerModal .vmk-dir-up:focus-within{outline-offset:-3px}',
+    '#videoMakerModal .vmk-dir-up.over{outline:2px dashed #e8c27a;outline-offset:-5px}', 'html[data-mode="light"] #videoMakerModal .vmk-dir-up.over{outline-color:#8a5a12}'];
+  for (const r of RULES) assert.ok(css.includes(r), r);
+  // الترتيب عند تساوي الوزن: قاعدة الصندوق بعد قاعدة التركيز المشتركة، وخطّ السحب بعد حلقة التركيز (سحب فوق صندوق مركَّز = خطّ السحب)
+  assert.ok(css.indexOf(RULES[1]) > css.indexOf('#videoMakerModal .vmk-cl-drop:focus-within{outline:2px solid #e8c27a;outline-offset:3px}'));
+  assert.ok(css.indexOf(RULES[2]) > css.indexOf(RULES[1]));
+  // الصندوق وحده: القواعد المشتركة (صندوق «تحسين الفيديو») كما هي
+  assert.ok(css.includes('#videoMakerModal .vmk-cl-drop:hover,#videoMakerModal .vmk-cl-drop.over{background:rgba(232,194,122,.12);border-color:#e8c27a}'));
+});
+
+test('٢٩. ربط الصندوق يعمل: السحب فوقه يُؤخذ دائمًا ولا يُظلَّل وهو معطّل، والإفلات له لا لمرفقات الدردشة ولو كان معطّلًا، والاختيار يصفّر الحقل ويأخذ أوّل ملفّ', async () => {
+  const { ctx, els, urls, replies } = panel();
+  ctx.DR.out = ''; els.vdPub.hidden = true; replies.accounts = { ok: true, on: ['instagram'], reauth: [] };
+  const wire = () => { const h = {}, el = mkEl('x'); el.addEventListener = (t, fn) => { h[t] = fn; }; return { el, h }; };
+  const z = wire(), i = wire();
+  ctx.upBind(null, i.el); ctx.upBind(z.el, null); // صندوق بلا حقل أو العكس: لا شيء ولا خطأ
+  assert.deepEqual([Object.keys(z.h), Object.keys(i.h)], [[], []]);
+  ctx.upBind(z.el, i.el);
+  assert.deepEqual([Object.keys(z.h).sort(), Object.keys(i.h)], [['dragleave', 'dragover', 'drop'], ['change']]);
+  let pd = 0; const ev = (x) => Object.assign({ preventDefault() { pd++; } }, x);
+  // السحب فوقه: يُؤخذ دائمًا (وإلّا عرض المتصفّح «ممنوع» أو أخذته الصفحة)، والتظليل للصندوق العامل وحده
+  i.el.disabled = true; z.h.dragover(ev());
+  assert.deepEqual([pd, z.el.classList.contains('over')], [1, false], 'معطّل: لا تظليل');
+  i.el.disabled = false; z.h.dragover(ev());
+  assert.deepEqual([pd, z.el.classList.contains('over')], [2, true]);
+  z.h.dragleave(); assert.equal(z.el.classList.contains('over'), false);
+  // الإفلات: أوّل ملفّ يُؤخذ، والتظليل يزول
+  const f1 = vfile('a.mp4', 'video/mp4'), f2 = vfile('b.mp4', 'video/mp4');
+  z.h.dragover(ev()); z.h.drop(ev({ dataTransfer: { files: [f1, f2] } })); await flush();
+  assert.deepEqual([pd, z.el.classList.contains('over'), ctx.DR.file === f1, urls.made.length], [4, false, true, 1]);
+  // معطّل (توليد جارٍ): الإفلات يُؤخذ أيضًا — وإلّا صار الفيديو مرفقًا في الدردشة — ولا يُبدَّل شيء
+  i.el.disabled = true; ctx.DR.busy = true;
+  z.h.drop(ev({ dataTransfer: { files: [f2] } }));
+  assert.deepEqual([pd, ctx.DR.file === f1, urls.made.length], [5, true, 1]);
+  i.el.disabled = false; ctx.DR.busy = false;
+  // إفلات بلا ملفّات (نصّ مسحوب): يُؤخذ ولا شيء
+  z.h.drop(ev({ dataTransfer: { files: [] } })); z.h.drop(ev({}));
+  assert.deepEqual([pd, urls.made.length], [7, 1]);
+  // الاختيار: الحقل يُصفَّر (الملفّ نفسه يُختار ثانية فيصل حدثه)، وأوّل ملفّ يُؤخذ؛ والإلغاء (لا ملفّ) لا شيء
+  const t = { files: [f2], value: 'C:\\fakepath\\b.mp4' };
+  i.h.change({ target: t }); await flush();
+  assert.deepEqual([t.value, ctx.DR.file === f2, urls.made.length], ['', true, 2]);
+  const t2 = { files: [], value: '' }; i.h.change({ target: t2 }); i.h.change({ target: { value: 'x' } });
+  assert.deepEqual([ctx.DR.file === f2, urls.made.length], [true, 2]);
 });

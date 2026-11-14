@@ -695,7 +695,7 @@
           var t0=Date.now();
           await pbPut(t.up,t.ctype||type,blob,at);
           if(at!==DR.out) return;
-          if(PB.src!==at||!PB.vid) PB.vid=t.id; /* أوّل رفع يسمّي الفيديو؛ إعادة رفعه تبقي اسمه فتبقى حجوزات منصّاته عند الخادم */
+          if(PB.src!==at||!PB.vid) PB.vid=(mine&&DR.fileVid)||t.id; /* أوّل رفع يسمّي الفيديو؛ إعادة رفعه تبقي اسمه فتبقى حجوزات منصّاته عند الخادم · v-director-upload-fix: ملفّ الجهاز اسمه من هويّته (upVid) — اختياره ثانية لا يفلت من الحجز */
           PB.src=at; PB.id=t.id; PB.at=t0;
         }
         var pub=function(){ return pbApi('publish',{id:PB.id,vid:PB.vid||PB.id,caption:cap,platforms:picked}).catch(function(e){ return {ok:false,error:'net',detail:String((e&&e.message)||e)}; }); };
@@ -781,10 +781,24 @@
   var UP_MAX_MB=500, UP_TYPES={'video/mp4':1,'video/webm':1,'video/quicktime':1};
   function upType(f){
     var t=String((f&&f.type)||'').toLowerCase().split(';')[0].trim(), n=String((f&&f.name)||'').toLowerCase();
-    if(UP_TYPES[t]) return t;
+    if(Object.prototype.hasOwnProperty.call(UP_TYPES,t)) return t; /* لا مفاتيح موروثة («constructor») */
     if(t==='video/x-m4v') return 'video/mp4';
     if(!t||t==='application/octet-stream'){ if(/\.(mp4|m4v)$/.test(n)) return 'video/mp4'; if(/\.mov$/.test(n)) return 'video/quicktime'; if(/\.webm$/.test(n)) return 'video/webm'; }
     return '';
+  }
+  /* v-director-upload-fix (مراجعة مستقلّة بعد الدمج): اسم الفيديو عند الخادم كان اسم رفعه، فالملفّ نفسه إذا اختير ثانية (اللوحة تبدأ من الصفر)
+     يُرفع باسم جديد لا يطابقه حجز «نشر واحد لكلّ فيديو ومنصّة» ← نشر علنيّ ثانٍ (أُعيد إنتاجه بالخادم الحقيقيّ). الاسم الآن من هويّة الملفّ
+     (الاسم والحجم وتاريخ التعديل — ٢٤ خانة ستّ عشريّة كما يقبل الخادم)، ونسخته بالباركود تحمل اسم أصلها: الخادم يردّ «انرسل قبل» ويتابع
+     الطلب السابق. إعادة نشر مقصودة للملفّ نفسه = ملفّ بهويّة أخرى (اسم آخر مثلًا) أو بعد انقضاء الحجز. */
+  function upVid(f){
+    var t=String((f&&f.name)||'')+'|'+String((f&&f.size)||0)+'|'+String((f&&f.lastModified)||0), o='';
+    for(var k=1;k<=3;k++){
+      var q=k+'|'+t+'|'+k, h=(0x811c9dc5^Math.imul(k,0x9e3779b1))>>>0;
+      for(var i=0;i<q.length;i++){ h^=q.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0; }
+      h^=h>>>15; h=Math.imul(h,0x2c1b3c6d)>>>0; h^=h>>>12; h=Math.imul(h,0x297a2d39)>>>0; h^=h>>>15;
+      o+=('0000000'+(h>>>0).toString(16)).slice(-8);
+    }
+    return o;
   }
   function upShown(){ var r=id('vdRes'); return !!(DR.out&&r&&r.classList.contains('has')); } /* فيديو معروض الآن (لا فيديو أخفاه توليد لاحق) */
   function upMine(){ return !!(DR.file&&DR.out===DR.fileUrl&&upShown()); }
@@ -797,16 +811,19 @@
     var type=upType(f);
     if(!type||!(f.size>0)){ upMsg(L('vdUpBadType'),true); return; }
     if(f.size>UP_MAX_MB*1048576){ upMsg(drT('vdPubBig',{n:UP_MAX_MB}),true); return; }
-    if(upShown()&&DR.out!==DR.fileUrl&&!window.confirm(L('vdUpReplace'))) return; /* فيديو المخرج المعروض: يُحمَّل أوّلًا */
+    /* سؤال واحد قبل تبديل المعروض: فيديو صنعه المخرج يُحمَّل أوّلًا؛ وإلّا فيديو نشرُه ما زالت منصّاته «ينتظر» (v-director-upload-fix: كان
+       التبديل يمسح صفوفه ومتابعته بلا كلمة — منصّة تفشل بعدها لا تُرى؛ النشر نفسه يكمل عند المنصّات) */
+    var ask=!upShown()?'':(DR.out!==DR.fileUrl?L('vdUpReplace'):(Object.keys(PB.reqs).length?L('vdUpWait'):''));
+    if(ask&&!window.confirm(ask)) return;
     ecDrop(DR.out); /* v-director-endcard: إضافة جارية لملفّ سابق تُلغى وروابطه تُحرَّر */
     if(DR.out){ try{ URL.revokeObjectURL(DR.out); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:up-revoke'); /* guard-ok — رابط زال */ } }
-    DR.file=f; DR.fileType=type; DR.fileUrl=DR.out=URL.createObjectURL(f); pbNewVideo();
+    DR.file=f; DR.fileType=type; DR.fileVid=upVid(f); DR.fileUrl=DR.out=URL.createObjectURL(f); pbNewVideo();
     var vid=id('vdVideo'), dl=id('vdDl'), res=id('vdRes'), pub=id('vdPub');
     if(vid) vid.src=DR.out;
     if(dl){ dl.href=DR.out; dl.setAttribute('download',String(f.name||'').replace(/[\\/:*?"<>|]+/g,'_').slice(-120)||'video.mp4'); }
     if(res) res.classList.add('has');
     drMsg(''); upMsg('');
-    if(pub&&pub.hidden){ pub.hidden=false; pbLoad(); } /* المقصود النشر: اللوحة تُفتح مع الفيديو (بلا تركيز — لوحة مفاتيح الجوّال تغطّي الفيديو) */
+    if(pub){ pub.hidden=false; pbLoad(); } /* المقصود النشر: اللوحة تُفتح مع الفيديو (بلا تركيز — لوحة مفاتيح الجوّال تغطّي الفيديو) · v-director-upload-fix: والحسابات تُسأل عند كلّ اختيار — بعد خطأ في السؤال أو «لا حسابات» كانت اللوحة المفتوحة تبقى فارغة ومعطّلة (pbLoad لا يكرّر سؤالًا في الطريق) */
     EC.src={file:f,type:type,url:DR.out}; /* v-director-endcard: الأصل محفوظ — إطفاء الخيار يعيده */
     syncDirector();
     try{ if(res&&res.scrollIntoView) res.scrollIntoView({block:'nearest'}); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:up-scroll'); /* guard-ok — متصفّح بلا خيارات التمرير */ }
