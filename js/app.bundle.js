@@ -28288,18 +28288,18 @@ function __friendlyErr(e){
          لكلّ محادثة بلا سياق نصّيّ حديث — وهي الحالة الغالبة عند إرسال لقطة شاشة —
          فلا يرى النموذج الصورة أصلًا. الآن الصورة بلا نصّ = طلب تحليل كامل يُرسل
          للنموذج دائمًا؛ ومع سياق نصّيّ حديث تُقرأ في ضوئه (v716). النصّ بصوت
-         المستخدم لا «ملاحظة للنظام» حتّى يبقى السجلّ طبيعيًّا عند أيّ مزوّد. */
+         المستخدم لا «ملاحظة للنظام» حتّى يبقى السجلّ طبيعيًّا عند أيّ مزوّد. v-shot-prompt: لا «اقرأ كلّ نصّ حرفيًّا… الخطأ قبل غيره» — كان الردّ يبدأ «لا توجد رسالة خطأ» ويسرد أزرار عارض الصور وينسخ الورقة بلا جواب (ملخّص محادثات ١٢ نوفمبر)؛ الأسئلة يُجاب عنها. */
       var __imgCtx = (cur.messages || []).slice(-6).filter(function(m){
         return m && m !== __nextUserMessage && typeof m.content === 'string' && m.content.trim().length >= 12
           && m.content.indexOf('وصلتني الصورة') === -1 && m.content.indexOf('Got the image') === -1;
       });
       text = __imgCtx.length
         ? ((lang === 'ar')
-          ? 'أرفقت هذه الصورة استكمالًا لكلامنا أعلاه: اقرأها كاملة أوّلًا (كلّ نصّ فيها حرفيًّا، وأيّ تنبيه أو رسالة خطأ قبل غيره)، ثمّ حلّلها في ضوء آخر موضوع بيننا وأعطني الجواب العمليّ مباشرة — لا تسألني ماذا أريد أن أفعل بها.'
-          : 'I attached this image as a follow-up to our conversation above: read it fully first (every text verbatim, any alert or error message before anything else), then analyze it in the context of our last topic and give me the practical answer directly. Do not ask what I want to do with it.')
+          ? 'أرفقت هذه الصورة استكمالًا لكلامنا أعلاه: حلّلها في ضوء آخر موضوع بيننا وأعطني الجواب العمليّ مباشرة — إن كانت أسئلة أو تمرينًا فأجب عنها، وإن كان فيها خطأ أو تنبيه فسببه وحلّه. لا تسرد نصوصها ولا تصف أزرار الشاشة، ولا تسألني ماذا أريد أن أفعل بها.'
+          : 'I attached this image as a follow-up to our conversation above: analyze it in the context of our last topic and give me the practical answer directly — if it contains questions or an exercise, answer them; if it shows an error or alert, give its cause and fix. Do not list its text or describe on-screen buttons, and do not ask what I want to do with it.')
         : ((lang === 'ar')
-          ? 'حلّل هذه الصورة بالتفصيل: اقرأ كلّ نصّ فيها حرفيًّا، وإن كان فيها تنبيه أو رسالة خطأ فابدأ به واشرح سببه وحلّه، ثمّ اشرح ما يظهر فيها وما الخطوة العمليّة التالية — لا تسألني ماذا أريد أن أفعل بها.'
-          : 'Analyze this image in detail: read every text in it verbatim; if it shows an alert or error message, start with it and explain its cause and solution; then explain what is shown and the practical next step. Do not ask what I want to do with it.');
+          ? 'حلّل هذه الصورة وأعطني الجواب العمليّ مباشرة: إن كان فيها خطأ أو تنبيه فابدأ بسببه وحلّه، وإن كانت أسئلة أو تمرينًا فأجب عنها، وإلّا فاشرح المهمّ فيها وما أفعله بعدها. لا تسرد نصوصها ولا تصف أزرار الشاشة، ولا تسألني ماذا أريد أن أفعل بها.'
+          : 'Analyze this image and give me the practical answer directly: if it shows an error or alert, start with its cause and fix; if it contains questions or an exercise, answer them; otherwise explain what matters in it and what to do next. Do not list its text or describe on-screen buttons, and do not ask what I want to do with it.');
     }
     // 🎬 v363: شخصية كرتونية تتكلم من الدردشة مباشرة — صورة → كرتون (Gemini) → فيديو ناطق (Runway)
     let __charImg = __srcImg
