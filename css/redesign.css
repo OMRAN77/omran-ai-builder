@@ -65,17 +65,9 @@ body:not(.omranWelcome) #omranHero,
 body:not(.omranWelcome) #huaweiHeroWrap{
   display:none !important;
 }
-html.store-safe body.omranWelcome #huaweiHeroWrap{
-  display:flex !important;
-  flex-direction:column;
-  align-items:center;
-  gap:12px;
-  width:100%;
-  max-width:540px;
-  margin:0 auto;
-  padding:8px 6px;
-  box-sizing:border-box;
-}
+/* v-hw-same (المالك ١٥ نوفمبر: «رجعلي تطبيق هواوي نفس التطبيقات الباقية — شي من المحادثة الصور»): قاعدة إظهار البطاقات في محادثة
+   هواوي (html.store-safe body.omranWelcome) حُذفت — المحادثة في هواوي مثل غيرها بلا صور التعليم وأنماط الصور والقبلة. مربّع الأدوات
+   عند الفتح لهاتف هواوي باقٍ (v-hw-tour-phone، طلبه ٦ نوفمبر). */
 html.store-safe body.omranWelcome.hwChatting #huaweiHeroWrap{display:none !important;}
 /* v-hw-cards-once: بعد أوّل مغادرة لشاشة الدخول في هذا الفتح لا تعود البطاقات (ui-wiring يضع hwCardsDone) */
 html.store-safe.hwCardsDone body.omranWelcome #huaweiHeroWrap{display:none !important;}
