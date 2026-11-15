@@ -162,6 +162,30 @@ function varietyLine(feature, variant, style, text) {
 
 /* v-guard-cap: سطر «المجمّع من ثلاث زوايا» نفسه يصل المولّد والحارس — بدونه يرى الحارس ثلاث لوحات لم يطلبها أحد
    فيحكم «تغيّر النطاق»، ورفض الحارس صار يُحتسب بعد اثنين في اليوم: لا يدفع الأمين ثمن تناقض أمرنا. */
+/* v-style-card-ref (لقطة المالك ١٥ نوفمبر: «فستان منفوش — عاجي» ← «مايختار الي نفس الي في الصوره»): الخيار كان يُرسَل وصفًا قصيرًا وحده
+   («ball-gown bride — ivory») فيخرج فستانٌ يشبهه لا هو. ميزات الإطلالة الكاملة ترسل بطاقة الخيار نفسها «صورة ٢» (كالجسم v-body-card-ref):
+   الثوب نفسه بتفاصيله على المستخدم، ووجهه وجسمه وخلفيّته من صورته. */
+const CARD_FEATURES = ['wedding', 'heritage'];
+function cardClause(feature) {
+  return '\nPhoto 2 is the option card the user picked: an example photo of a different, generic model — never the user. Dress the person from Photo 1 in exactly the outfit shown in Photo 2: the same garment design, cut and silhouette, the same colours, fabric, lace, embroidery and beading, the same veil, headpiece and jewellery' +
+    (feature === 'wedding' ? ', and the same hair styling and makeup' : '') +
+    '. Fit it naturally to the user\'s own body, pose and framing. From Photo 1 keep exactly: the face and every facial feature, the skin tone, the identity, the body build and the background. Never copy the model\'s face, skin tone, body or background from Photo 2. If the person in Photo 1 wears a hijab or headscarf, the hair stays fully covered (any veil is worn over it).';
+}
+/* v-style-card-ref (لقطة المالك نفسها: «الجسم — مشدود» رجعت صورته نفسها، ورصيد Gemini نافد): الحارس يحتاج Gemini، وتعطّله كان يمرّر أيّ ناتج
+   (v-guard-fail-open) — فالصورة نفسها تُسلَّم وتُخصم. ميزات التغيير الواسع تُقاس بالبكسل حينها (image-diff: تطابق إعادة الرسم بلا تنفيذ). */
+const PIXEL_BIG = ['wedding', 'heritage', 'body', 'anime', 'gulfmen', 'hijab', 'iconic', 'seasons', 'background'];
+function pixelVerdict(v, o, b64) {
+  if (!v || v.reason !== 'validation_unavailable') return v;
+  if (!(o.guard && o.guard.requireChange) || PIXEL_BIG.indexOf(o.feature) === -1) return v;
+  try {
+    const diff = require('./image-diff.js');
+    if (diff.looksUnchanged(diff.compareImages(o.imageBase64, b64), true)) {
+      console.warn('[studio-create] guard unavailable — ' + o.feature + ' result unchanged by pixels');
+      return { ok: false, reason: 'no_change' };
+    }
+  } catch (e) { console.warn('[studio-create] pixel check skipped: ' + (e && e.message)); } /* القياس اختياريّ: تعذّره = الحكم كما كان */
+  return v;
+}
 const COLLAGE_FEATURES = ['hair', 'heritage', 'beard'];
 const COLLAGE_CLAUSE = 'Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
 
@@ -255,14 +279,20 @@ async function runEdit(o) {
     if (fixed && fixed.b64) return { b64: fixed.b64, mime: fixed.mime, engine: engine + '+restore' };
     return { b64, mime, engine };
   };
-  const parts = [{ text: o.promptText }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
+  /* v-style-card-ref: بطاقة الخيار «صورة ٢» بعد صورة المستخدم «صورة ١» — في الرسم الأوّل وفي المحاولة الثانية */
+  const partsFor = (text) => (o.card
+    ? [{ text: text + cardClause(o.feature) }, { text: 'Photo 1 of 2 — the user:' }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } },
+      { text: 'Photo 2 of 2 — the chosen look (the option card: a different, generic model — never the user):' }, { inlineData: { mimeType: o.card.mime || 'image/webp', data: o.card.data } }]
+    : [{ text }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }]);
+  const parts = partsFor(o.promptText);
   /* v-image-duo: مع قفل الوجه يعمل Gemini بالتوازي مع تعديل gpt-image بالقناع، والحكم يختار */
   const duo = duoEnabled() && !!o.openaiKey;
   let gemP = null;
   /* v-audit-studeng: الحكم نفسه (لا نعم/لا فقط) — سبب الرفض يختار سطر المحاولة الثانية ورمز ٤٢٢ في مسارَي القناع والإنقاذ أيضًا */
   const verdictOf = async (b64, mime) => {
     if (o.skipGuard) return { ok: true, reason: 'skipped' };
-    return verifyLocalizedImageEdit({ apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg', resultBase64: b64, resultMime: mime, userPrompt: (o.guard && o.guard.userPrompt) || o.feature, allowStyleChange: !!(o.guard && o.guard.allowStyleChange), requireChange: !!(o.guard && o.guard.requireChange) });
+    const v = await verifyLocalizedImageEdit({ apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg', resultBase64: b64, resultMime: mime, userPrompt: (o.guard && o.guard.userPrompt) || o.feature, allowStyleChange: !!(o.guard && o.guard.allowStyleChange), requireChange: !!(o.guard && o.guard.requireChange) });
+    return pixelVerdict(v, o, b64);
   };
   const passes = (g) => !!(g && (g.ok || g.reason === 'validation_unavailable'));
   const guardOf = async (b64, mime) => passes(await verdictOf(b64, mime));
@@ -272,12 +302,13 @@ async function runEdit(o) {
   const retryOrReject = async (guard) => {
     console.warn('[studio-create] guard rejected ' + o.feature + ' (' + guard.reason + ') — second attempt with a stronger lock');
     const retryNote = guard.reason === 'no_change' ? NO_CHANGE_RETRY : strongerLockFor(o.feature);
-    const retryParts = [{ text: o.promptText + retryNote }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
+    const retryParts = partsFor(o.promptText + retryNote);
     const again = await geminiImage(o.apiKey, retryParts, o.feature, null, 0.15);
     if (again.b64 && await guardOf(again.b64, again.mime)) return finish(again.b64, again.mime, 'gemini+retry');
     throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
   };
-  if (prep) {
+  /* v-style-card-ref: تعديل القناع (gpt-image) لا يرى البطاقة — مع البطاقة يرسم Gemini وحده، وقفل الوجه يبقى بإعادة بكسلاته (finish) */
+  if (prep && !o.card) {
     if (duo) gemP = geminiImage(o.apiKey, parts, o.feature).catch(function () { return {}; });
     const masked = await faceLock.maskedEdit(prep, o.openaiKey, o.promptText);
     if (masked) {
@@ -297,7 +328,7 @@ async function runEdit(o) {
       return retryOrReject(mv);
     }
     console.warn('[studio-create] masked edit unavailable for ' + o.feature + ' — falling back to gemini');
-  } else if (o.lockLevel && o.lockLevel !== 'none') {
+  } else if (!prep && o.lockLevel && o.lockLevel !== 'none') {
     console.warn('[studio-create] face-lock prepare failed for ' + o.feature + ' — no pixel restore');
   }
   const out = gemP ? await gemP : await geminiImage(o.apiKey, parts, o.feature);
@@ -311,13 +342,7 @@ async function runEdit(o) {
     throw { status: out.status || 502, payload: { error: out.error || 'image_generation_failed' } };
   }
   if (!o.skipGuard) {
-    const guard = await verifyLocalizedImageEdit({
-      apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg',
-      resultBase64: out.b64, resultMime: out.mime,
-      userPrompt: (o.guard && o.guard.userPrompt) || o.feature,
-      allowStyleChange: !!(o.guard && o.guard.allowStyleChange),
-      requireChange: !!(o.guard && o.guard.requireChange), /* v-edit-no-change */
-    });
+    const guard = await verdictOf(out.b64, out.mime); /* v-edit-no-change؛ v-style-card-ref: وبالبكسل حين يتعطّل الحارس */
     /* v-guard-fail-open: تعطّل الحارس نفسه لا يُسقط صورةً جاهزة */
     if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[studio-create] guard unavailable — passing result through');
     else if (!guard.ok) return retryOrReject(guard);
@@ -509,20 +534,23 @@ function bodyCardTraits(style) {
   };
 }
 /* البطاقة المخزّنة (مفتاح studio-preview نفسه: المراجعة الحاليّة ثمّ الأقدم) ← { data, mime } أو null — لا توليد بطاقة هنا أبدًا */
-async function bodyCardRef(style) {
-  const fk = 'body:' + style;
+/* v-style-card-ref: بطاقة الخيار المخزّنة (معاينة الأداة، آخر مراجعة لها في studio-card-fix) — لأيّ ميزة، لا للجسم وحده */
+async function cardRef(feature, style) {
+  if (!feature || !style || !/^[a-z0-9_-]{1,60}$/i.test(String(style))) return null;
+  const fk = feature + ':' + style;
   const CARD = require('./studio-card-fix.js');
   const rev = Object.prototype.hasOwnProperty.call(CARD.REV, fk) ? Number(CARD.REV[fk]) || 0 : 0;
-  const base = 'studio:preview:v2:body:' + style;
+  const base = 'studio:preview:v2:' + feature + ':' + style;
   try {
     const kv = require('./kv.js');
     for (let i = rev; i >= 0; i--) {
       const b64 = await kv.kvGetRaw(i ? base + ':r' + i : base);
       if (b64) return { data: String(b64), mime: 'image/webp' };
     }
-  } catch (e) { console.warn('[studio-create] body card read ' + (e && e.message)); } /* تعذّرت القراءة = الوصف النصّيّ */
+  } catch (e) { console.warn('[studio-create] card read ' + feature + ' ' + (e && e.message)); } /* تعذّرت القراءة = الوصف النصّيّ */
   return null;
 }
+async function bodyCardRef(style) { return cardRef('body', style); }
 function bodyCardTask(style, description, variant, traits, look) {
   const cw = bodyColorway(variant);
   const t = traits || {};
@@ -741,9 +769,12 @@ module.exports = async (req, res) => {
     /* v-studio-age: «age elder» وحدها لا تخبر الحارس أنّ الوجه نفسه هو المطلوب تغييره — العمر المطلوب بكلماته */
     const guardAsk = feature === 'age' ? ['change the apparent age of the same person to ' + styleTextOf(feature, style)] : [feature, style];
     if (feature !== 'merge') guardOpts = { userPrompt: guardAsk.concat([collage ? COLLAGE_CLAUSE : '', description]).filter(Boolean).join(' '), allowStyleChange: feature === 'anime', requireChange: SUBTLE.indexOf(feature) === -1 };
+    /* v-style-card-ref: بطاقة الخيار نفسها لميزات الإطلالة الكاملة (لا في الكولاج: ثلاث لقطات) */
+    const card = (CARD_FEATURES.indexOf(feature) !== -1 && !collage) ? await cardRef(feature, style) : null;
+    if (CARD_FEATURES.indexOf(feature) !== -1) console.log('[studio-create] ' + feature + ' ' + style + ': card ' + (card ? 'reference' : 'missing — text only'));
     try {
       const r = await runEdit({
-        apiKey, openaiKey, feature, promptText, imageBase64, mimeType,
+        apiKey, openaiKey, feature, promptText, imageBase64, mimeType, card,
         lockLevel: faceLock.protectLevel(feature, null, styleTextOf(feature, style)), /* v-style-match: غطاء الرأس المسمّى في الخيار لا يُقفل */
         collage,
         guard: guardOpts, skipGuard: !guardOpts,
