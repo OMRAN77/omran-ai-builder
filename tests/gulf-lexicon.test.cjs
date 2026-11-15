@@ -85,3 +85,16 @@ test('٥ الربط في chat.js، والقاموس كسول', () => {
   assert.ok(!/^const .*require\('\.\/gulf-lexicon\.json'\)/m.test(src), 'لا تحميل للقاموس في نطاق الوحدة');
   assert.ok(src.includes("if (!LEX) LEX = require('./gulf-lexicon.json');"));
 });
+
+/* v-gulf-owner (المالك ١٥ نوفمبر بعد الدمج: «ما معنى كلمة روشن — هذا البضاعة اللي يشترونها للبيت من الطعام والشراب»): معنى أكّده المالك
+   (src: owner) يتقدّم على المعاني المنشورة، ويبقى التراثيّ بعده لا محذوفًا. */
+test('٦ تصحيح المالك أوّلًا: روشن = مقاضي البيت، والتراثيّ بعده', () => {
+  const es = g.lookup('روشن');
+  assert.equal(es[0].src, 'owner');
+  assert.match(es[0].ar, /مقاضي البيت/);
+  assert.ok(es[0].c.includes('ae'));
+  assert.ok(es.slice(1).some((e) => /كوّ?[ةه]|تجويف/.test(e.ar)), 'معنى الكوّة باقٍ بعده');
+  const n = g.turnNote('ما معنى كلمة روشن');
+  assert.ok(n.indexOf('مقاضي البيت') > 0 && n.indexOf('مقاضي البيت') < n.indexOf('كوّة'), 'مقاضي البيت قبل الكوّة في الملاحظة');
+  assert.match(n, /وإن تعدّدت المعاني فابدأ بالأوّل/);
+});
