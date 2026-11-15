@@ -134,8 +134,8 @@ function entryLine(e) {
     + (e.ex ? ' · مثال: «' + e.ex + '»' : '') + (e.note ? ' · ملاحظة: ' + e.note : '');
 }
 
-/** ملاحظة ذيل الدور: مداخل القاموس للكلمة المسؤول عنها، أو تنبيه بلا تخمين إن لم تكن فيه؛ '' إن لم يكن سؤال معنى. */
-function turnNote(text) {
+/** مداخل القاموس للكلمة المسؤول عنها، أو تنبيه بلا تخمين إن لم تكن فيه؛ '' إن لم يكن سؤال معنى. */
+function wordNote(text) {
   let words, strong;
   try { ({ words, strong } = ask(text)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/gulf-dialect:ask'); return ''; }
   if (!words.length) return '';
@@ -156,4 +156,78 @@ function turnNote(text) {
   return parts.join('\n');
 }
 
-module.exports = { norm, forms, load, lookup, ask, askedWords, turnNote, entryLine, COUNTRY };
+/* ── الأمثال الشعبيّة (v-gulf-proverbs — المالك ١٥ نوفمبر: «الأمثال القديمة كلها… أبي الناس تعرفها»): gulf-proverbs.json كسول.
+   ١) «شو معنى مثل إذا طاح الجمل…» أو المثل نفسه مع سؤال معنى ← مدخله (المعنى، ومتى يُقال)؛ تكفي أوّل ثلاث كلمات منه.
+   ٢) «عطني أمثال عن الصبر / مثل شعبي عن الجار» ← حتّى ثمانية أمثال موضوعها فيها، فلا يخترع النموذج أمثالًا. */
+let PROV = null, PKEYS = null;
+function loadProverbs(data) {
+  if (data) { PROV = data; PKEYS = null; }
+  if (!PROV) PROV = require('./gulf-proverbs.json');
+  if (!PKEYS) {
+    const strip = (x) => norm(x).replace(/[^ء-يچگڤ ]/g, ' ').replace(/\s+/g, ' ').trim();
+    PKEYS = PROV.map((e) => [e.p].concat(e.alt || []).map(strip).filter((k) => k.split(' ').length >= 2));
+  }
+  return { PROV, PKEYS };
+}
+const pstrip = (x) => norm(x).replace(/[^ء-يچگڤ ]/g, ' ').replace(/\s+/g, ' ').trim();
+/** الأمثال المذكورة في النصّ: الكاملة وحدها إن وُجدت، وإلّا ما طابق أوّله ثلاث كلمات فأكثر (الأطول تطابقًا أوّلًا). */
+function proverbsIn(text) {
+  const t = ' ' + pstrip(String(text || '').slice(0, 500)) + ' ';
+  const { PROV: P, PKEYS: K } = loadProverbs(), hits = [];
+  K.forEach((keys, i) => {
+    let best = 0;
+    for (const k of keys) {
+      const w = k.split(' ');
+      if (t.includes(' ' + k + ' ')) { best = Math.max(best, 100 + w.length); continue; }
+      for (let n = w.length - 1; n >= 3; n--) if (t.includes(' ' + w.slice(0, n).join(' ') + ' ')) { best = Math.max(best, n); break; }
+    }
+    if (best) hits.push([best, P[i]]);
+  });
+  if (!hits.length) return [];
+  const top = Math.max.apply(null, hits.map((h) => h[0]));
+  return hits.filter((h) => h[0] === top || (top < 100 && h[0] >= top - 1)).map((h) => h[1]).slice(0, 3);
+}
+const TOPIC_RE = /(?:امثال|أمثال|الامثال|الأمثال|مثل|مثال)\s+(?:شعبي[ةه]?\s+|شعبيّ[ةه]?\s+|قديم[ةه]?\s+|خليجي[ةه]?\s+|اماراتي[ةه]?\s+|إماراتيّ?[ةه]?\s+){0,3}(?:عن|على|في|تخص|تخصّ|حول)\s+([ء-ي]{2,})/;
+/** أمثال موضوعها الكلمة المطلوبة («عن الصبر» ← كلمة من جذرها في المثل أوّلًا، ثمّ في معناه أو متى يُقال) — كلمةً لا جزء كلمة. */
+function proverbsAbout(text) {
+  const m = TOPIC_RE.exec(String(text || '').slice(0, 300));
+  if (!m) return { topic: '', list: [] };
+  const topic = m[1], k = norm(topic).replace(/^ال(?=\S{2,})/, '');
+  const stem = k.length > 3 ? k.replace(/[هي]$/, '') : k;
+  const toks = (x) => pstrip(x).split(' ').map((w) => w.replace(/^(?:وال|بال|فال|كال|لل|ال|و|ب|ف|ل)(?=\S{2,})/, ''));
+  const hit = (x) => toks(x).some((w) => w.startsWith(stem) && w.length <= stem.length + 2);
+  const { PROV: P } = loadProverbs();
+  const inP = P.filter((e) => hit(e.p)), inM = P.filter((e) => !inP.includes(e) && (hit(e.ar) || hit(e.use || '')));
+  return { topic, list: inP.concat(inM).slice(0, 8) };
+}
+function proverbLine(e) {
+  const c = (e.c || []).map((k) => COUNTRY[k]).filter(Boolean).join('، ');
+  return '• «' + e.p + '»' + ((e.alt && e.alt.length) ? ' (ويُقال: ' + e.alt.slice(0, 2).join('؛ ') + ')' : '') + ': ' + e.ar + (e.en ? ' — EN: ' + e.en : '')
+    + (e.use ? ' · متى يُقال: ' + e.use : '') + (c ? ' · معروف في: ' + c : '');
+}
+function proverbNote(text) {
+  const t = String(text || '');
+  const asksMeaning = /معن|يعني|تعني|يقصد|قصده|قصدهم|مقصود|شرح|اشرح|mean/i.test(t);
+  if (asksMeaning || /مثل|المثل|يقولون|قالوا/.test(t)) {
+    const hits = proverbsIn(t);
+    if (hits.length && (asksMeaning || /المثل|مثل يقول|يقولون|قالوا/.test(t))) {
+      return '[الأمثال الشعبيّة الخليجيّة — مرجع هذا الدور]: ذكر المستخدم هذا المثل؛ هذا معناه:\n' + hits.map(proverbLine).join('\n')
+        + '\nاشرح المثل من هذا المدخل بلهجة المستخدم وبإيجاز (المعنى، ومتى يُقال، ومثال من الحياة إن أفاد)، ولا تخمّن معنًى آخر، ولا تذكر هذا المرجع ولا هذه الملاحظة.';
+    }
+  }
+  const ab = proverbsAbout(t);
+  if (ab.list.length) {
+    return '[الأمثال الشعبيّة الخليجيّة — مرجع هذا الدور]: طلب المستخدم أمثالًا عن «' + ab.topic + '». هذه أمثال خليجيّة حقيقيّة بمعانيها:\n' + ab.list.map(proverbLine).join('\n')
+      + '\nاختر منها ما يناسب واشرح كلّ مثل بسطر، ولا تخترع أمثالًا ليست مأثورة، ولا تذكر هذا المرجع ولا هذه الملاحظة.';
+  }
+  return '';
+}
+
+/** ملاحظة ذيل الدور: المثل المذكور أو أمثال الموضوع أوّلًا، وإلّا معنى الكلمة؛ '' لغير ذلك. */
+function turnNote(text) {
+  let p = '';
+  try { p = proverbNote(text); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/gulf-dialect:proverb'); }
+  return p || wordNote(text);
+}
+
+module.exports = { norm, forms, load, lookup, ask, askedWords, turnNote, wordNote, entryLine, COUNTRY, loadProverbs, proverbsIn, proverbsAbout, proverbNote };
