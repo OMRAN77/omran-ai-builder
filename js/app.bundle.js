@@ -33709,6 +33709,14 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         const __fmtD = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
         d.clientErrors.slice(0,10).forEach(e => {
           lines.push('   • ' + '\u2066' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtD(e.lastSeen) ? ' — ' + __fmtD(e.lastSeen) : '') + '\u2069'); /* v-err-ltr */
+          /* v-err-src (المالك ١٥ نوفمبر بلقطة «Uncaught TypeError: Cannot set properties of null (setting 'onclick')» وحده): الملفّ والسطر
+             يصلان الخادم مع كلّ خطأ ويظهران في شريط البدء، لكنّ هذه القائمة كانت تعرض الرسالة وحدها فلا يُعرف أين وقع. سطر تحته:
+             الملفّ:السطر:العمود وأوّل إطار من المكدّس. */
+          if(!/android/i.test(String(e.source || ''))){
+            const __src = String(e.source || '').split('/').pop().split('?')[0].slice(0, 50);
+            const __fr = String(e.stack || '').split('\n').map(l => l.trim()).filter(l => /^at |@/.test(l))[0] || ''; /* إطار: «at …» (كروم) أو «دالّة@ملفّ» (سفاري) */
+            if(__src || __fr) lines.push('     ' + '\u2066' + (__src ? '📍 ' + __src + (e.line ? ':' + e.line + (e.col ? ':' + e.col : '') : '') : '') + (__fr ? (__src ? ' · ' : '') + __fr.slice(0, 120) : '') + '\u2069');
+          }
           /* v-crash-stack: انهيارات غلاف الأندرويد تُعرض بمكدسها — التشخيص
              يحتاج اسم الصنف والسطر لا الرسالة وحدها. */
           if(/android/i.test(String(e.source || '')) && e.stack){

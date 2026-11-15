@@ -136,3 +136,19 @@ test('٥. «مسح سجل الأخطاء» يمسح السجلّين (المست
   assert.deepEqual(db.get('db/client-errors/log.json'), []);
   assert.deepEqual(db.get('db/server-errors/log.json'), []);
 });
+
+// v-err-src (المالك ١٥ نوفمبر بلقطة الخطأ وحده بلا مكانه): تحت كلّ خطأ مستخدم سطر بملفّه وسطره وأوّل إطار من مكدّسه
+test('٦. خطأ المستخدم يُعرض بملفّه وسطره وأوّل إطار من المكدّس (لا الرسالة وحدها)', async () => {
+  const p = panel(Object.assign({}, BASE, {
+    clientErrorsCount: 1,
+    clientErrors: [{ message: "Uncaught TypeError: Cannot set properties of null (setting 'onclick')", source: 'https://x.app/js/app.bundle.js?b=ab12', line: 4021, col: 33,
+      stack: "TypeError: Cannot set properties of null (setting 'onclick')\n    at openGov (https://x.app/js/app.bundle.js?b=ab12:4021:33)\n    at HTMLButtonElement.<anonymous>", count: 1, lastSeen: '2026-11-14T21:25:00Z' }],
+  }));
+  await p.run();
+  const t = p.box.textContent;
+  assert.match(t, /• ⁦Uncaught TypeError: Cannot set properties of null \(setting 'onclick'\)[^\n]*⁩\n     ⁦📍 app\.bundle\.js:4021:33 · at openGov \(https:\/\/x\.app\/js\/app\.bundle\.js\?b=ab12:4021:33\)⁩/);
+  /* خطأ بلا ملفّ ولا مكدّس: لا سطر فارغ */
+  const q = panel(Object.assign({}, BASE, { clientErrorsCount: 1, clientErrors: [{ message: 'boom', count: 1 }] }));
+  await q.run();
+  assert.ok(!/📍/.test(q.box.textContent) && !/\n     ⁦⁩/.test(q.box.textContent));
+});
