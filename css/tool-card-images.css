@@ -43,6 +43,14 @@ html[dir="rtl"] #sectionsToolsPopup .ptShelfArrow{transform:translateY(-50%) sca
 #sectionsToolsPopup .ptHwGrid .ptTrack{display:grid!important; grid-template-columns:1fr!important; width:100%; min-width:0; gap:12px!important;}
 #sectionsToolsPopup .ptHwGrid .ptTrack > .btn{width:100%; min-width:0; flex:none;}
 #sectionsToolsPopup .ptHwGrid :is(.ptShelfArrow,.ptViewAll,.ptSentinel){display:none!important;}
+/* v-hw-tools-smooth (المالك ١٥ نوفمبر: «ليش ثقيل زيادة عند المرور في الأدوات»): مسبار Chromium برسم برمجيّ وجسر «cpu» ومعالج ×٤ وسحب
+   حقيقيّ بالإصبع — الإصبع يحطّ على بطاقة فيبدأ انتقال خلفيّتها (:active)، وعند نهايته يعيد مصنّف الألوان الثلاثة (app-41) تصنيفها فتبدأ
+   انتقالات الحشو والفجوة والارتفاع، وكلّ نهاية تعيد التصنيف: ٨ جولات لكلّ بطاقة في كلّ سحبة، وكلّ جولة إعادة حساب أسلوب وإعادة رسم.
+   تحت رسم هواوي البرمجيّ وحده لا انتقالات داخل المربّع: رسم ٨٣←١٧ م‌ث، طلاء ١٨٠←٢٤، إطارات ساقطة ٢٤←١٢. الحالة تتبدّل فورًا بلا حركة. */
+html.omCpu #sectionsToolsPopup,
+html.omCpu #sectionsToolsPopup *,
+html.omCpu #sectionsToolsPopup *::before,
+html.omCpu #sectionsToolsPopup *::after{transition:none!important;}
 /* v-tools-two-col (المالك: «التابلت سطرين والهواتف العاديّة سطر»): الهاتف بطاقة في الصفّ،
    والتابلت بطاقتان. الحاسوب فوق ١٠٢٤ خارج الشبكة أصلًا (البوّابة في app-10-features).
    التخصيص `html[lang] body` ضروريّ: tokens.css يفرض `minmax(190px,1fr)` على `.ptGrid` فوق ٧٦١
