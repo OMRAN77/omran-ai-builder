@@ -92,6 +92,12 @@ module.exports = async (req, res) => {
       ? `أنت مخرج فيديو محترف. تقسّم موضوعًا إلى سلسلة مشاهد فيديو قصيرة متتابعة (كل مشهد حوالي ${SCENE_SECONDS} ثوانٍ فقط) بأسلوب ${styleLabel}، بحيث تحكي كل المشاهد مجتمعة قصة أو عرضًا تسويقيًا متماسكًا ومتصاعدًا لموضوع الفيديو. أعد فقط JSON بدون أي نص خارجه.`
       : `You are a professional video director. Break a topic down into a sequence of short consecutive video scenes (each only about ${SCENE_SECONDS} seconds) in a ${styleLabel} style, so that all scenes together tell a coherent, flowing story or marketing pitch about the topic. Return ONLY JSON, no text outside it.`;
 
+    /* v-trends-lang (المالك ١٤ نوفمبر: «أريده بكلّ اللغات الموجودة»): غير العربيّة كانت الإنجليزيّة دائمًا — فيلم بواجهة فرنسيّة
+       يُكتب عنوانه وكلام راويه بالإنجليزيّة. لغات الواجهة الأخرى: العنوان والراوي بها، والوصف البصريّ بالإنجليزيّة لمولّد الفيديو. */
+    const LANG_NAMES = { fr: 'French', es: 'Spanish', tr: 'Turkish', ru: 'Russian', zh: 'Mandarin Chinese', hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali', ml: 'Malayalam', id: 'Indonesian', fil: 'Filipino' };
+    const langName = isAr ? '' : LANG_NAMES[String(lang || '').toLowerCase()];
+    const langNote = langName ? '\n\nLANGUAGE: write "title" and every "narration" in ' + langName + '; keep every "visual" in English.' : '';
+
     const heroNote = hero
       ? (isAr
         ? '\n\nمهم جدًا: بطل هذا الفيلم هو الشخص الظاهر في صورة مرجعية سيبدأ منها كل مشهد. اجعل كل وصف بصري يبدأ بـ "The person in the image" ويصف حركته وما يفعله وحركة الكاميرا (بالإنجليزية)، بدون وصف ملامحه أو ملابسه — الصورة تحددها.'
@@ -100,7 +106,7 @@ module.exports = async (req, res) => {
 
     const userMsg = (isAr
       ? `الموضوع: "${topic}"\n\nأنشئ بالضبط ${scenesWanted} مشهدًا متتابعًا. أعد فقط JSON بهذا الشكل بالضبط:\n{\n  "title": "عنوان الفيديو",\n  "scenes": [\n    { "visual": "وصف بصري مختصر ودقيق لما يظهر في هذا المشهد تحديدًا (بالإنجليزية لتوليد أفضل نتيجة من نموذج الفيديو)", "narration": "نص السرد بالعربية الذي سيُقرأ بصوت طبيعي فوق هذا المشهد تحديدًا (جملة أو جملتين قصيرتين تناسب ${SCENE_SECONDS} ثوانٍ)" }\n  ]\n}\nالمشهد الأول يفتتح الفكرة، والمشهد الأخير يختمها بشكل مؤثر.`
-      : `Topic: "${topic}"\n\nGenerate exactly ${scenesWanted} consecutive scenes. Return ONLY JSON in exactly this shape:\n{\n  "title": "Video title",\n  "scenes": [\n    { "visual": "Short precise visual description of exactly what appears in this specific scene (for the video generation model)", "narration": "Narration text that will be read aloud over this specific scene (one or two short sentences fitting about ${SCENE_SECONDS} seconds)" }\n  ]\n}\nThe first scene opens the idea, the last scene closes it with impact.`) + heroNote;
+      : `Topic: "${topic}"\n\nGenerate exactly ${scenesWanted} consecutive scenes. Return ONLY JSON in exactly this shape:\n{\n  "title": "Video title",\n  "scenes": [\n    { "visual": "Short precise visual description of exactly what appears in this specific scene (for the video generation model)", "narration": "Narration text that will be read aloud over this specific scene (one or two short sentences fitting about ${SCENE_SECONDS} seconds)" }\n  ]\n}\nThe first scene opens the idea, the last scene closes it with impact.`) + heroNote + langNote;
 
     const upstream = await oaLightFetch(apiKey, { // v-models-latest
         store: false,
