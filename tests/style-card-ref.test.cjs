@@ -54,6 +54,10 @@ const CARD = 'Q0FSRC1XRURESU5HLUJBTEwtR09XTi1JVk9SWQ'; // بطاقة مخزّن�
 
 const auth = require(rp('api/_lib/auth.js'));
 const studio = require(rp('api/_lib/studio-create.js'));
+const faceLock = require(rp('api/_lib/face-lock.js'));
+let levels = [];
+const realPrepare = faceLock.prepare;
+faceLock.prepare = async (opts) => { levels.push(opts.level); return realPrepare(opts); };
 
 const PASS = { sourceIsPhotograph: true, resultIsPhotograph: true, sameVisualMedium: true, identityPreserved: true, onlyRequestedChange: true, requestedChangeApplied: true };
 // guard: 'pass' | 'down' (Gemini بلا رصيد: ٤٠٢) | 'nochange' (الحارس يرى «ما تغيّر»). out(): ناتج الرسم لكلّ نداء.
@@ -83,7 +87,7 @@ async function call(user, body) {
   const [r] = await Promise.all([sent, studio({ method: 'POST', headers: {}, query: {}, body: Object.assign({ token: auth.makeToken(user) }, body) }, res)]);
   return { code: r.code, body: r.body || {} };
 }
-const reset = () => { store.clear(); guard = 'pass'; out = () => CHANGED; gen = []; oai = []; };
+const reset = () => { store.clear(); guard = 'pass'; out = () => CHANGED; gen = []; oai = []; levels = []; };
 const genText = (g) => g.contents[0].parts.map((p) => p.text || '').join('\n');
 const genImages = (g) => g.contents[0].parts.filter((p) => p.inlineData).map((p) => p.inlineData.data);
 const day = new Date().toISOString().slice(0, 10);
@@ -104,6 +108,7 @@ test('١. فستان منفوش — عاجي: بطاقة الخيار المخز
   assert.match(t, /Never copy the model's face, skin tone, body or background from Photo 2/);
   assert.match(t, /hair stays fully covered/);
   assert.equal(oai.filter((x) => /edits/.test(x)).length, 0, 'تعديل القناع لا يرى البطاقة فلا يُستعمل معها');
+  assert.equal(gen[0].generationConfig.imageConfig.aspectRatio, '3:4', 'نسبة صورة المستخدم (٩٦×١٢٨) لا نسبة البطاقة ٢:٣');
 });
 
 test('٢. بلا بطاقة مخزّنة: الوصف وحده كما كان؛ والتراث يقرأ آخر مراجعة للبطاقة (studio-card-fix)، والكولاج بلا بطاقة', async () => {
@@ -151,4 +156,22 @@ test('٥. القياس بالبكسل لميزات التغيير الواسع �
   const style = Object.keys(studio.STYLE_TEXT.eyes || {})[0] || 'green';
   const r = await call('eyes1', { feature: 'eyes', style, imageBase64: MINE, mimeType: 'image/png' });
   assert.equal(r.code, 200, JSON.stringify(r.body)); assert.equal(gen.length, 1);
+});
+
+test('٦. المراجعة المستقلّة: بلا قفل وجه (Gemini بلا رصيد) لا بطاقة — الوصف وحده؛ والتراث مع البطاقة يُقفل الوجه وحده (غطاء رأسها جزء منها)', async () => {
+  reset(); guard = 'down';
+  store.set('studio:preview:v2:wedding:wdballgownivr', CARD);
+  const r = await call('bride6', WEDDING);
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  assert.deepEqual(genImages(gen[0]), [MINE], 'بلا قفل الوجه لا تُرسَل عارضة البطاقة');
+  reset();
+  store.set('studio:preview:v2:heritage:bisht', CARD);
+  assert.equal(faceLock.protectLevel('heritage', null, studio.styleTextOf('heritage', 'bisht')), 'body', 'خيارٌ لا يسمّي غطاء رأس');
+  const h = await call('her6', { feature: 'heritage', style: 'bisht', imageBase64: MINE, mimeType: 'image/png' });
+  assert.equal(h.code, 200, JSON.stringify(h.body));
+  assert.deepEqual(levels, ['face'], 'مع البطاقة: الوجه وحده');
+  assert.deepEqual(genImages(gen[0]), [MINE, CARD]);
+  reset();
+  await call('her7', { feature: 'heritage', style: 'bisht', imageBase64: MINE, mimeType: 'image/png' });
+  assert.deepEqual(levels, ['body'], 'بلا بطاقة: كما كان');
 });

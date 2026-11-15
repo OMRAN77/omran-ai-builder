@@ -279,10 +279,15 @@ async function runEdit(o) {
     if (fixed && fixed.b64) return { b64: fixed.b64, mime: fixed.mime, engine: engine + '+restore' };
     return { b64, mime, engine };
   };
-  /* v-style-card-ref: بطاقة الخيار «صورة ٢» بعد صورة المستخدم «صورة ١» — في الرسم الأوّل وفي المحاولة الثانية */
-  const partsFor = (text) => (o.card
+  /* v-style-card-ref: بطاقة الخيار «صورة ٢» بعد صورة المستخدم «صورة ١» — في الرسم الأوّل وفي المحاولة الثانية. وحدها حين يُعاد وجه
+     المستخدم بالبكسل (قفل الوجه جاهز): بلا القفل (Gemini بلا رصيد) قد ينسخ الرسمُ وجه عارضة البطاقة ولا حارس يراه (المراجعة المستقلّة) —
+     فالوصف وحده كما كان. والنسبة نسبة صورة المستخدم: بلا نسبة صريحة يتبع الناتج آخر صورة مرفقة (البطاقة ٢:٣). */
+  const card = (o.card && (prep || !o.lockLevel || o.lockLevel === 'none')) ? o.card : null;
+  if (o.card && !card) console.warn('[studio-create] ' + o.feature + ' card skipped — no face lock (text only)');
+  const aspect = card ? mergeIdentity.mergeAspect({ data: o.imageBase64, mime: o.mimeType }, '') : null;
+  const partsFor = (text) => (card
     ? [{ text: text + cardClause(o.feature) }, { text: 'Photo 1 of 2 — the user:' }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } },
-      { text: 'Photo 2 of 2 — the chosen look (the option card: a different, generic model — never the user):' }, { inlineData: { mimeType: o.card.mime || 'image/webp', data: o.card.data } }]
+      { text: 'Photo 2 of 2 — the chosen look (the option card: a different, generic model — never the user):' }, { inlineData: { mimeType: card.mime || 'image/webp', data: card.data } }]
     : [{ text }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }]);
   const parts = partsFor(o.promptText);
   /* v-image-duo: مع قفل الوجه يعمل Gemini بالتوازي مع تعديل gpt-image بالقناع، والحكم يختار */
@@ -303,12 +308,12 @@ async function runEdit(o) {
     console.warn('[studio-create] guard rejected ' + o.feature + ' (' + guard.reason + ') — second attempt with a stronger lock');
     const retryNote = guard.reason === 'no_change' ? NO_CHANGE_RETRY : strongerLockFor(o.feature);
     const retryParts = partsFor(o.promptText + retryNote);
-    const again = await geminiImage(o.apiKey, retryParts, o.feature, null, 0.15);
+    const again = await geminiImage(o.apiKey, retryParts, o.feature, aspect, 0.15);
     if (again.b64 && await guardOf(again.b64, again.mime)) return finish(again.b64, again.mime, 'gemini+retry');
     throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
   };
   /* v-style-card-ref: تعديل القناع (gpt-image) لا يرى البطاقة — مع البطاقة يرسم Gemini وحده، وقفل الوجه يبقى بإعادة بكسلاته (finish) */
-  if (prep && !o.card) {
+  if (prep && !card) {
     if (duo) gemP = geminiImage(o.apiKey, parts, o.feature).catch(function () { return {}; });
     const masked = await faceLock.maskedEdit(prep, o.openaiKey, o.promptText);
     if (masked) {
@@ -331,7 +336,7 @@ async function runEdit(o) {
   } else if (!prep && o.lockLevel && o.lockLevel !== 'none') {
     console.warn('[studio-create] face-lock prepare failed for ' + o.feature + ' — no pixel restore');
   }
-  const out = gemP ? await gemP : await geminiImage(o.apiKey, parts, o.feature);
+  const out = gemP ? await gemP : await geminiImage(o.apiKey, parts, o.feature, aspect);
   if (!out.b64) {
     /* v-studio-rescue / v-studio-noimg-rescue: gpt-image-1 قبل إبلاغ الفشل */
     const rescue = await rescueGuarded(o.promptText, [[o.imageBase64, o.mimeType]], o.apiKey, o.feature, verdictOf);
@@ -775,7 +780,9 @@ module.exports = async (req, res) => {
     try {
       const r = await runEdit({
         apiKey, openaiKey, feature, promptText, imageBase64, mimeType, card,
-        lockLevel: faceLock.protectLevel(feature, null, styleTextOf(feature, style)), /* v-style-match: غطاء الرأس المسمّى في الخيار لا يُقفل */
+        /* v-style-match: غطاء الرأس المسمّى في الخيار لا يُقفل. v-style-card-ref: مع البطاقة يُقفل الوجه وحده — غطاء رأسها جزء من الإطلالة
+           (قفل «body» كان يلصق ما فوق الرقبة من صورة المستخدم فوق شيلة البطاقة، فينقطع عند العنق) */
+        lockLevel: (function (lvl) { return (card && lvl === 'body') ? 'face' : lvl; })(faceLock.protectLevel(feature, null, styleTextOf(feature, style))),
         collage,
         guard: guardOpts, skipGuard: !guardOpts,
       });
