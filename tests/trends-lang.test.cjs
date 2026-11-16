@@ -98,7 +98,7 @@ test('٣. الخادم: كلام الفيديو بلغة الواجهة في ا�
 test('٤. صانع الفيديو: الراوي والسيناريو بلغة الواجهة الأربع عشرة لا عربيّ/إنجليزيّ فقط', () => {
   const s = read('js/app-11-video.js');
   assert.ok(!/lang: \(?bT\('ar','en'\)/.test(s), 'لا lang من bT');
-  assert.equal((s.match(/voice: 'maha', lang: narrLang\(/g) || []).length, 5, 'كلّ نداءات الراوي');
+  assert.equal((s.match(/voice: 'maha', lang: narrLang\(/g) || []).length, 6, 'كلّ نداءات الراوي (السادس: تعليق إعلان المحادثة — v-chat-ad-video)');
   assert.equal((s.match(/style, lang: uiLangCode\(\)/g) || []).length, 2, 'الفيلم والفيديو الطويل');
   const ctx = { lang: 'fr', localStorage: { getItem: () => null } };
   vm.createContext(ctx);
