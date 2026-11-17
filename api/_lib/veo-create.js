@@ -487,7 +487,7 @@ module.exports = async (req, res) => {
         if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
         chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
         if (r.status) {
-          console.error('[veo-create] omni upstream ' + r.status + ': ' + String(r.msg).slice(0, 300));
+          console.error('[veo-create] omni upstream ' + r.status + ' (image=' + (oImg ? (body.keepPhoto ? 'kept-frame' : 'yes') : 'none') + '): ' + String(r.msg).slice(0, 300)); /* v-video-dialogue-reject: هل رُفض ومعه لقطة مرجعيّة؟ */
           const fail = require('./_videoFail.js').startFail(r.status, r.msg); /* نفاد الرصيد unavailable · زحام video_busy · رفض video_rejected */
           res.status(fail.code).json(fail.body);
         } else {
