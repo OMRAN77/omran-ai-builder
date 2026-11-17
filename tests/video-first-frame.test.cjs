@@ -258,9 +258,9 @@ test('١٠. الواجهة: التوقيع لا يقصّ الفيديو، وال
   assert.match(V, /'-filter_complex', 'overlay=0:H-h', '-c:a', 'copy', 'main_wm\.mp4'/, 'أمر التوقيع بلا shortest');
   assert.doesNotMatch(V, /'overlay=[^']*shortest=1/, 'shortest=1 مع صورة ثابتة يقصّ الفيديو إلى إطار واحد (قيس: ١٢٠ ← ١)');
   assert.match(V, /quality: wantQuality \? 'high' : 'fast', style \}; \/\* v-video-first-frame: الأسلوب كان لا يصل \*\/\n\s+if\(filmHeroBase64\)[^\n]*\n\s+const cr = await \(window\.postWithConfirm\n\s+\? window\.postWithConfirm\('\/api\/video\?action=omni-create'/);
-  assert.match(V, /quality: wantQuality \? 'high' : 'fast', style, durationSeconds: durSecs \|\| undefined \}; \/\* v-video-first-frame: الأسلوب كان لا يصل · v-video-durations: والمدّة \*\/\n\s+if\(filmHeroBase64\)[^\n]*\n\s+const cr = await \(window\.postWithConfirm\n\s+\? window\.postWithConfirm\('\/api\/video\?action=minimax-create'/);
+  assert.match(V, /quality: wantQuality \? 'high' : 'fast', style, durationSeconds: Math\.max\(durSecs, dlg\.need\) \|\| undefined \}; \/\* v-video-first-frame: الأسلوب كان لا يصل · v-video-durations: والمدّة \*\/\n\s+if\(filmHeroBase64\)[^\n]*\n\s+const cr = await \(window\.postWithConfirm\n\s+\? window\.postWithConfirm\('\/api\/video\?action=minimax-create'/);
   /* v-video-durations: والمدّة المختارة تصل الاقتصاديّ و«سينمائي» (مشهد الفيلم ٨ ثوانٍ) */
-  assert.match(V, /const veoPayload = \{ promptText: veoPrompt, ratio, token, quality: wantQuality \? 'high' : 'fast', style, durationSeconds: \(creationMode === 'veo' && durSecs\) \|\| undefined \};/);
+  assert.match(V, /const veoPayload = \{ promptText: veoPrompt, ratio, token, quality: wantQuality \? 'high' : 'fast', style, durationSeconds: \(creationMode === 'veo' && Math\.max\(durSecs, dlg\.need\)\) \|\| undefined \};/); // v-video-dialogue-clips: ولا تقلّ عن حاجة كلام الحوار
   assert.match(V, /async function createVeoScene\([^)]*\)\{\n\s+const payload = \{[^}]*style: styleEl\.value, durationSeconds: 8 \};/);
   const A = read('js/app-09-attach.js');
   assert.match(A, /imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true, confirmed: true \};/); // v-talkchar-confirm: الموافقة سبقت (priceCheck)

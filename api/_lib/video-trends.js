@@ -1163,36 +1163,41 @@ function fitPace(text, pace, cap) {
    تنبيه»): أدوار الحوار في الوصف — سطر «اسم: كلام»، أو كلام بين تنصيص — تُعدّ كلماتها، ويصل المحرّك منها بالترتيب ما تتّسع له المدّة
    (wordBudget، والأوّل دائمًا)، والباقي يُحذف من الوصف (السطر كلّه، أو الجملة التي فيها التنصيص). المشهد والوصف كما هما.
    الدالّة نفسها حرفيًّا في js/app-11-video.js — العميل ينبّه بها قبل الخصم («سيُقال إلى: …») — واختبار video-dialogue-fit يقارن النصّين. */
-function fitDialogue(desc, seconds) {
+/* v-video-dialogue-clips: قارئ أدوار الحوار وحده — يشترك فيه القصّ (fitDialogue) وتوزيع الحوار على مقاطع (planDialogue في العميل).
+   كلّ دور: موضعه في الوصف (a..b)، وكلماته w، ونصّه said، وما يسبقه lead («الأم: » أو «والأم ترد: ») وعلامتا تنصيصه. */
+function dialogueTurns(desc) {
   const s = String(desc || '');
-  const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
-  const budget = Math.max(4, Math.floor((sec - 1) * 1.7));
+  const turns = [];
+  if (/saying exactly these (?:Arabic )?words/i.test(s)) return turns; // «ممثل يتكلم»: كلامه بالحرف
   const words = (x) => String(x || '').split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
   const notSpeaker = /^(?:المكان|المشهد|الزمان|الوقت|الكاميرا|التصوير|الأسلوب|الستايل|الإضاءة|الموسيقى|الخلفية|ملاحظة|scene|setting|location|place|time|camera|shot|style|lighting|music|background|note)$/i;
-  const res = { text: s, budget, turns: 0, kept: 0, dropped: 0, words: 0, keptWords: 0, last: '' };
-  if (/saying exactly these (?:Arabic )?words/i.test(s)) return res; // «ممثل يتكلم»: كلامه بالحرف
-  const turns = [];
   let off = 0;
   for (const line of s.split('\n')) {
     /* سطر فيه تنصيصان فأكثر («البنت تسأل: «…» والأم ترد: «…»») = عدّة أدوار تُعدّ بتنصيصاتها، لا دور واحد باسم قبل النقطتين */
     const m = (line.match(/«[^»]+»|"[^"]+"|“[^”]+”/g) || []).length < 2 && /^\s*([^\s:：][^:：]{0,24}?)\s*[:：]\s*(\S.*)$/.exec(line);
     if (m && !/\d$/.test(m[1]) && !notSpeaker.test(m[1].trim())) {
-      turns.push({ a: off, b: Math.min(s.length, off + line.length + 1), w: words(m[2].replace(/[«»"“”]/g, ' ')), said: m[2].trim() });
+      turns.push({ a: off, b: Math.min(s.length, off + line.length + 1), w: words(m[2].replace(/[«»"“”]/g, ' ')), said: m[2].trim(), lead: m[1].trim() + ': ', open: '', close: '', line: true });
     } else {
       const re = /«([^»]+)»|"([^"]+)"|“([^”]+)”/g;
       let q, prev = off;
       while ((q = re.exec(line))) {
         const qa = off + q.index, before = s.slice(prev, qa);
         const cut = Math.max(before.lastIndexOf('.'), before.lastIndexOf('؟'), before.lastIndexOf('?'), before.lastIndexOf('!'), before.lastIndexOf('،'));
-        const said = (q[1] || q[2] || q[3]).trim();
-        turns.push({ a: cut >= 0 ? prev + cut + 1 : prev, b: qa + q[0].length, w: words(said), said });
+        const said = (q[1] || q[2] || q[3]).trim(), from = cut >= 0 ? prev + cut + 1 : prev;
+        turns.push({ a: from, b: qa + q[0].length, w: words(said), said, lead: s.slice(from, qa).replace(/^\s+/, ''), open: q[0][0], close: q[0][q[0].length - 1], line: false });
         prev = qa + q[0].length;
       }
     }
     off += line.length + 1;
   }
-  res.turns = turns.length;
-  res.words = turns.reduce((n, t) => n + t.w, 0);
+  return turns;
+}
+function fitDialogue(desc, seconds) {
+  const s = String(desc || '');
+  const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
+  const budget = Math.max(4, Math.floor((sec - 1) * 1.7));
+  const turns = dialogueTurns(s);
+  const res = { text: s, budget, turns: turns.length, kept: 0, dropped: 0, words: turns.reduce((n, t) => n + t.w, 0), keptWords: 0, last: '' };
   let used = 0, kept = 0;
   for (const t of turns) { if (kept && used + t.w > budget) break; used += t.w; kept++; }
   res.kept = kept; res.keptWords = used; res.last = kept ? turns[kept - 1].said : '';
@@ -1205,4 +1210,4 @@ function fitDialogue(desc, seconds) {
 }
 
 module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, withPhotoLock, splitScenes, sceneParams, MAX_SCENES, SPEECH_LANGS,
-  hasSpeech, speechPace, wordBudget, fitPace, fitDialogue }; // v-video-speech-pace · v-video-dialogue-fit
+  hasSpeech, speechPace, wordBudget, fitPace, fitDialogue, dialogueTurns }; // v-video-speech-pace · v-video-dialogue-fit · v-video-dialogue-clips

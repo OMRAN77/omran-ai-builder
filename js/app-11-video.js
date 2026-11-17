@@ -1162,39 +1162,42 @@
   }
   /* v-audit-video (cli-video-6): نصوص حدّ اليوم والمهلة و«المحرّك مزدحم» كانت isEn() — فكلّ لغة غير الإنجليزيّة تأخذ العربيّة.
      الآن مفتاح I18N بالـ١٤ لغة، والاحتياط bT (القاموس الثنائيّ ثمّ الإنجليزيّة — لا عربيّة لغير العربيّة). */
-  /* v-video-dialogue-fit (المالك ١٧ نوفمبر بعد #1341: «كأنّي في سوق السمك… الحوار سريع» ثمّ اختار «مقطع واحد مع تنبيه»): نسخة حرفيّة
-     من fitDialogue في api/_lib/video-trends.js — الخادم يقصّ بها الحوار لما يتّسع له المقطع، والعميل ينبّه بها قبل الخصم بالحساب نفسه.
-     اختبار video-dialogue-fit يقارن النصّين: عدّل الاثنين معًا. */
-  function fitDialogue(desc, seconds) {
+  /* v-video-dialogue-fit · v-video-dialogue-clips: نسختان حرفيّتان من dialogueTurns وfitDialogue في api/_lib/video-trends.js — الخادم يقصّ
+     بهما ما لا يتّسع له المقطع (شبكة أمان)، والعميل يبني بالقارئ نفسه خطّة المقاطع فلا يُقصّ شيء. اختبار video-dialogue-fit يقارن
+     النصّين: عدّل الاثنين معًا. */
+  function dialogueTurns(desc) {
     const s = String(desc || '');
-    const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
-    const budget = Math.max(4, Math.floor((sec - 1) * 1.7));
+    const turns = [];
+    if (/saying exactly these (?:Arabic )?words/i.test(s)) return turns; // «ممثل يتكلم»: كلامه بالحرف
     const words = (x) => String(x || '').split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
     const notSpeaker = /^(?:المكان|المشهد|الزمان|الوقت|الكاميرا|التصوير|الأسلوب|الستايل|الإضاءة|الموسيقى|الخلفية|ملاحظة|scene|setting|location|place|time|camera|shot|style|lighting|music|background|note)$/i;
-    const res = { text: s, budget, turns: 0, kept: 0, dropped: 0, words: 0, keptWords: 0, last: '' };
-    if (/saying exactly these (?:Arabic )?words/i.test(s)) return res; // «ممثل يتكلم»: كلامه بالحرف
-    const turns = [];
     let off = 0;
     for (const line of s.split('\n')) {
       /* سطر فيه تنصيصان فأكثر («البنت تسأل: «…» والأم ترد: «…»») = عدّة أدوار تُعدّ بتنصيصاتها، لا دور واحد باسم قبل النقطتين */
       const m = (line.match(/«[^»]+»|"[^"]+"|“[^”]+”/g) || []).length < 2 && /^\s*([^\s:：][^:：]{0,24}?)\s*[:：]\s*(\S.*)$/.exec(line);
       if (m && !/\d$/.test(m[1]) && !notSpeaker.test(m[1].trim())) {
-        turns.push({ a: off, b: Math.min(s.length, off + line.length + 1), w: words(m[2].replace(/[«»"“”]/g, ' ')), said: m[2].trim() });
+        turns.push({ a: off, b: Math.min(s.length, off + line.length + 1), w: words(m[2].replace(/[«»"“”]/g, ' ')), said: m[2].trim(), lead: m[1].trim() + ': ', open: '', close: '', line: true });
       } else {
         const re = /«([^»]+)»|"([^"]+)"|“([^”]+)”/g;
         let q, prev = off;
         while ((q = re.exec(line))) {
           const qa = off + q.index, before = s.slice(prev, qa);
           const cut = Math.max(before.lastIndexOf('.'), before.lastIndexOf('؟'), before.lastIndexOf('?'), before.lastIndexOf('!'), before.lastIndexOf('،'));
-          const said = (q[1] || q[2] || q[3]).trim();
-          turns.push({ a: cut >= 0 ? prev + cut + 1 : prev, b: qa + q[0].length, w: words(said), said });
+          const said = (q[1] || q[2] || q[3]).trim(), from = cut >= 0 ? prev + cut + 1 : prev;
+          turns.push({ a: from, b: qa + q[0].length, w: words(said), said, lead: s.slice(from, qa).replace(/^\s+/, ''), open: q[0][0], close: q[0][q[0].length - 1], line: false });
           prev = qa + q[0].length;
         }
       }
       off += line.length + 1;
     }
-    res.turns = turns.length;
-    res.words = turns.reduce((n, t) => n + t.w, 0);
+    return turns;
+  }
+  function fitDialogue(desc, seconds) {
+    const s = String(desc || '');
+    const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
+    const budget = Math.max(4, Math.floor((sec - 1) * 1.7));
+    const turns = dialogueTurns(s);
+    const res = { text: s, budget, turns: turns.length, kept: 0, dropped: 0, words: turns.reduce((n, t) => n + t.w, 0), keptWords: 0, last: '' };
     let used = 0, kept = 0;
     for (const t of turns) { if (kept && used + t.w > budget) break; used += t.w; kept++; }
     res.kept = kept; res.keptWords = used; res.last = kept ? turns[kept - 1].said : '';
@@ -1205,15 +1208,130 @@
     res.dropped = turns.length - kept;
     return res;
   }
-  /* v-video-dialogue-fit: «سريع» و«سينمائي» — حوار أطول من المقطع يُنبَّه عليه قبل أيّ نداء أو خصم: «سيُقال إلى …» ويُحذف الباقي.
-     الإلغاء = لا طلب ولا خصم والوصف كما هو ليقصّره صاحبه. المدّة كما يحسبها الخادم (سريع ٤–١٠ وبلاها ٦؛ سينمائي ٣–١٠ وغيرها ٨). */
-  function dialogFitOk(text, mode, secs){
-    const sec = mode === 'minimax' ? (secs ? Math.min(10, Math.max(4, secs)) : 6) : ((secs >= 3 && secs <= 10) ? secs : 8);
-    const f = fitDialogue(text, sec);
-    if(!f.dropped) return true;
-    const last = f.last.length > 80 ? f.last.slice(0, 80) + '…' : f.last;
-    const msg = String(vmkT('vmkDialogLong', '⚠️ الحوار أطول من مدّة الفيديو ({s} ثوانٍ): لو قيل كلّه صار سريعًا والأصوات متداخلة.\nسيُقال إلى: «{last}» — ويُحذف الباقي.\nمتابعة؟ أو ألغِ وقصّر الحوار.', '⚠️ The dialogue is longer than the video ({s} seconds): said in full it would be rushed, with voices overlapping.\nIt will be spoken up to: “{last}” — the rest is left out.\nContinue? Or cancel and shorten the dialogue.')).split('{s}').join(String(sec)).split('{last}').join(last);
-    try{ return window.confirm(msg) !== false; }catch(e){ __swallow(e, 'vmk:dialog-fit'); return true; /* guard-ok — بلا نافذة تأكيد: الخادم يقصّ الحوار على كلّ حال */ }
+  /* v-video-dialogue-clips (المالك ١٧ نوفمبر: «اريد فيديو يبني اقصى حده على نفس الكلمات مرتب ويكون على مستوى مش شغل عشوائي»): الحوار
+     لا يُقصّ — يُوزَّع بكلماته وترتيبه على مقاطع متتالية، كلّ مقطع بما يتّسع له بنطق متّزن (١٥ كلمة في ١٠ث = wordBudget) ومدّته على قدّ
+     كلامه، ثمّ تُلصق. التوزيع متوازن (أقلّ «أطول مقطع») لا «املأ الأوّل واترك للأخير جملة»، ودور أطول من مقطع يُقسم عند نهاية جملة ثمّ
+     فاصلة. المشهد (كلّ ما ليس حوارًا) يتكرّر حول كلام كلّ مقطع. فوق DIALOGUE_CLIPS_MAX مقاطع = يُقال ما تتّسع له ويُنبَّه على الباقي. */
+  const DIALOGUE_CLIPS_MAX = 4;
+  function planDialogue(desc, maxClips) {
+    const s = String(desc || '');
+    const B = 15, cap = Math.max(1, maxClips || DIALOGUE_CLIPS_MAX);
+    const budgetOf = (sec) => Math.max(4, Math.floor((sec - 1) * 1.7));
+    const secFor = (w, floor) => { for (let k = floor; k < 10; k++) if (budgetOf(k) >= w) return k; return 10; };
+    const turns = dialogueTurns(s);
+    const res = { clips: [], turns: turns.length, words: turns.reduce((n, t) => n + t.w, 0), dropped: 0, last: '', seconds: 0, need: 0 };
+    if (!turns.length) return res;
+    res.need = secFor(res.words, 4);
+    /* المشهد: ما قبل أوّل دور وما بعده من غير الأدوار — يحيطان بكلام كلّ مقطع في مكانهما */
+    const tidy = (x) => x.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
+    const t0 = turns[0].a;
+    let rest = s.slice(t0);
+    for (let i = turns.length - 1; i >= 0; i--) rest = rest.slice(0, turns[i].a - t0) + rest.slice(turns[i].b - t0);
+    const before = tidy(s.slice(0, t0)), after = tidy(rest);
+    /* دور أطول من مقطع: يُقسم جملًا (. ! ? ؟ …)، والجملة الأطول من مقطع عند فواصلها، ثمّ بالكلمات إن لزم — الكلمات نفسها بترتيبها،
+       والتوزيع بعده يجمع الجمل في مقاطع فلا ينقطع الكلام وسط جملة ما أمكن */
+    const count = (toks) => toks.filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+    const cutAt = (toks, re) => { const out = []; let cur = []; for (const x of toks) { cur.push(x); if (re.test(x)) { out.push(cur); cur = []; } } if (cur.length) out.push(cur); return out; };
+    const parts = [];
+    turns.forEach((t, src) => {
+      if (t.w <= B) { parts.push(Object.assign({ src }, t)); return; }
+      let pieces = cutAt((t.line ? t.said.replace(/[«»"“”]/g, '') : t.said).split(/\s+/).filter(Boolean), /[.!?؟…]$/);
+      pieces = [].concat(...pieces.map((x) => (count(x) > B ? cutAt(x, /[،,؛;]$/) : [x])));
+      pieces = [].concat(...pieces.map((x) => {
+        const w = count(x);
+        if (w <= B) return [x];
+        const size = Math.ceil(w / Math.ceil(w / B)), out = [];
+        let cur = [], n = 0;
+        for (const tok of x) { cur.push(tok); if (/[\p{L}\p{N}]/u.test(tok) && ++n >= size) { out.push(cur); cur = []; n = 0; } }
+        if (cur.length) out.push(cur);
+        return out;
+      }));
+      for (const x of pieces) {
+        const w = count(x), last = parts[parts.length - 1];
+        if (w) parts.push({ w, said: x.join(' '), lead: t.lead, open: t.open, close: t.close, line: t.line, src });
+        else if (last && last.src === src) last.said += ' ' + x.join(' ');
+      }
+    });
+    let kept = parts.length, K = 1, sum = 0;
+    for (let i = 0; i < parts.length; i++) {
+      if (sum && sum + parts[i].w > B) { if (K === cap) { kept = i; break; } K++; sum = 0; }
+      sum += parts[i].w;
+    }
+    const keep = parts.slice(0, kept), n = keep.length;
+    res.dropped = parts.length - kept;
+    res.last = keep[n - 1].said;
+    const pre = [0]; for (const p of keep) pre.push(pre[pre.length - 1] + p.w);
+    const best = [], cut = [];
+    for (let k = 0; k <= K; k++) { best.push(new Array(n + 1).fill(Infinity)); cut.push(new Array(n + 1).fill(0)); }
+    best[0][0] = 0;
+    for (let k = 1; k <= K; k++) for (let i = k; i <= n; i++) for (let j = k - 1; j < i; j++) {
+      const w = pre[i] - pre[j];
+      if (w > B) continue;
+      const v = Math.max(best[k - 1][j], w);
+      if (v < best[k][i]) { best[k][i] = v; cut[k][i] = j; }
+    }
+    const bounds = [];
+    for (let k = K, i = n; k >= 1; k--) { bounds.unshift([cut[k][i], i]); i = cut[k][i]; }
+    res.clips = bounds.map(([a, b]) => {
+      const g = keep.slice(a, b), w = pre[b] - pre[a];
+      let said = '';
+      g.forEach((p, i) => {
+        const prev = g[i - 1];
+        /* جملتان متتاليتان من الدور نفسه: كلام واحد بمتكلّمه مرّة واحدة */
+        if (prev && prev.src === p.src) { said = (p.close ? said.slice(0, -p.close.length) : said) + ' ' + p.said + p.close; return; }
+        said += (prev ? ((p.line || prev.line) ? '\n' : ' ') : '') + p.lead + p.open + p.said + p.close;
+      });
+      const text = (before ? before + (g[0].line ? '\n' : ' ') : '') + said + (after ? (g[g.length - 1].line ? '\n' : ' ') + after : '');
+      return { text, words: w, sec: secFor(w, 6), last: g[g.length - 1].said };
+    });
+    res.seconds = res.clips.reduce((x, c) => x + c.sec, 0);
+    return res;
+  }
+  /* v-video-dialogue-clips: حوار لا تتّسع له المقاطع كلّها (فوق DIALOGUE_CLIPS_MAX) — يُنبَّه قبل أيّ نداء أو خصم: «سيُقال إلى …» */
+  function dialogCapOk(plan){
+    if(!plan.dropped) return true;
+    const last = plan.last.length > 80 ? plan.last.slice(0, 80) + '…' : plan.last;
+    const msg = String(vmkT('vmkDialogLong', '⚠️ الحوار أطول من أقصى مدّة للفيديو ({s} ثانية).\nسيُقال إلى: «{last}» — ويُحذف الباقي.\nمتابعة؟ أو ألغِ وقصّر الحوار.', '⚠️ The dialogue is longer than the longest video ({s} seconds).\nIt will be spoken up to: “{last}” — the rest is left out.\nContinue? Or cancel and shorten the dialogue.')).split('{s}').join(String(plan.seconds)).split('{last}').join(last);
+    try{ return window.confirm(msg) !== false; }catch(e){ __swallow(e, 'vmk:dialog-cap'); return true; /* guard-ok — بلا نافذة تأكيد: يُقال ما تتّسع له المقاطع */ }
+  }
+  function dialogClipsText(i, n, secs){
+    return String(vmkT('vmkDialogClips', '🎬 الحوار كامل على {n} مقاطع متتالية (~{s} ثانية) — يولّد المقطع {i} من {n}...', '🎬 The full dialogue runs across {n} back-to-back clips (~{s} seconds) — generating clip {i} of {n}...')).split('{i}').join(String(i)).split('{n}').join(String(n)).split('{s}').join(String(secs));
+  }
+  /* آخر لقطة من مقطع (JPEG base64) ليبدأ منها المقطع التالي — الوجوه والمكان نفسها. إطار لم يُرسم بعد يُرسم شفّافًا (PITFALLS):
+     ننتظر أوّل بكسل معتم. null عند أيّ عطب = المقطع التالي بلا لقطة (يكمل بالوصف وحده). */
+  function lastFrameB64(blob, ms){
+    return new Promise((res) => {
+      const v = document.createElement('video'), url = URL.createObjectURL(blob);
+      let done = false, tm = 0;
+      const fin = (out) => { if(done) return; done = true; clearTimeout(tm); v.onseeked = v.onerror = v.onloadedmetadata = null; v.removeAttribute('src'); try{ v.load(); }catch(e){ __swallow(e, 'vmk:frame-unload'); } URL.revokeObjectURL(url); res(out); };
+      tm = setTimeout(() => fin(null), ms || 8000);
+      v.muted = true; v.playsInline = true; v.preload = 'auto';
+      v.onerror = () => fin(null);
+      v.onloadedmetadata = () => {
+        const d = v.duration;
+        if(!(isFinite(d) && d > 0) || !v.videoWidth){ fin(null); return; }
+        v.onseeked = () => {
+          let tries = 0;
+          const pc = document.createElement('canvas'); pc.width = pc.height = 8;
+          const px = pc.getContext('2d', { willReadFrequently: true });
+          (function look(){
+            try{
+              px.clearRect(0, 0, 8, 8); px.drawImage(v, 0, 0, 8, 8);
+              const a = px.getImageData(0, 0, 8, 8).data;
+              for(let i = 3; i < a.length; i += 4) if(a[i]){
+                const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+                c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+                fin(String(c.toDataURL('image/jpeg', 0.92)).split(',')[1] || null); return;
+              }
+            }catch(e){ __swallow(e, 'vmk:frame-read'); fin(null); return; }
+            if(++tries > 40){ fin(null); return; }
+            setTimeout(look, 50);
+          })();
+        };
+        v.currentTime = Math.max(0, d - 0.02);
+      };
+      v.src = url;
+    });
   }
   function vmkT(key, ar, en){
     const v = (typeof window.t === 'function') ? window.t(key) : key;
@@ -1475,6 +1593,81 @@
       });
     }
 
+    /* v-video-dialogue-clips: مقطع واحد عند المحرّك («سريع» أو «سينمائي») — إنشاء ثمّ استطلاع حتّى رابطه. confirmed:true يحمله المتّصل بعد
+       سؤال السعر بالمجموع. الأخطاء برموزها (المهلة بين الفيديوهات، النقاط…) كما في المسار المفرد. */
+    async function engineClip(mode, payload, onTick){
+      const mm = mode === 'minimax';
+      const cr = await fetch('/api/video?action=' + (mm ? 'minimax-create' : 'veo-create'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const c0 = await cr.json().catch(() => ({}));
+      const id = mm ? c0.task_id : c0.op;
+      if(!cr.ok || c0.error || !id) throw Object.assign(new Error(c0.error || 'create failed'), { code: c0.error, retryAfter: c0.retryAfter || 0 });
+      return await new Promise((resolve, reject) => {
+        const guard = makePollGuard(reject, 8000);
+        const iv = setInterval(async () => {
+          if(!guard.tick(iv)) return;
+          try{
+            const st = await fetch('/api/video?action=' + (mm ? 'minimax-status&task_id=' : 'veo-status&op=') + encodeURIComponent(id));
+            const d = await st.json();
+            if(d.error && (st.status === 429 || st.status >= 500) && d.error !== 'unavailable'){ guard.fail(iv, d.error); return; }
+            guard.ok();
+            if(d.error){ clearInterval(iv); reject(Object.assign(new Error(d.error), { code: d.error })); return; }
+            if(d.status === 'SUCCEEDED' && d.output && d.output[0]){ clearInterval(iv); resolve(d.output[0]); }
+            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error(bT('فشل توليد الفيديو — أعد المحاولة.','Video generation failed — try again.'))); }
+            else if(onTick) onTick();
+          } catch(e){ guard.fail(iv); }
+        }, 8000);
+      });
+    }
+    /* v-video-dialogue-clips: الحوار كلّه على مقاطع متتالية — السعر يُسأل مرّة بالمجموع قبل الأوّل (veo-price: لا خصم ولا قفل)، ثمّ كلّ مقطع
+       بجمله ومدّته، والتالي يبدأ من آخر لقطة في سابقه (keepPhoto: الصورة نفسها أوّل إطار) بأمر «أكمل المشهد نفسه»، ثمّ تُلصق. توقّف
+       مقطع لاحق = المكتمل المدفوع يُعرض بروابطه (v-video-partial). */
+    async function runDialogueClips(plan, mode){
+      const n = plan.clips.length;
+      if(!dialogCapOk(plan)){ setStatus(''); return; }
+      const price = { clips: n, engine: mode, promptText: 'dialogue', token };
+      const pr = await (window.postWithConfirm ? window.postWithConfirm('/api/video?action=veo-price', price)
+        : fetch('/api/video?action=veo-price', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(price) }));
+      throwIfDeclined(pr);
+      const pj = await pr.json().catch(() => ({}));
+      if(!pr.ok || pj.priceOk !== true) throw Object.assign(new Error(pj.error || ('HTTP ' + pr.status)), { code: pj.error, retryAfter: pj.retryAfter || 0 });
+      /* سطر مستقلّ أوّل الوصف وبلا نقطتين ولا تنصيص: ملتصقًا بآخر سطر حوار كان الخادم يعدّه من كلام المتكلّم فيحذف الجملة الأخيرة (كشفه المسبار) */
+      const CONT = 'Continue the same scene from the attached first frame — the same people, voices, clothes and place; the conversation simply carries on.';
+      const urls = [], local = [];
+      let frame = null;
+      try{
+        for(let i = 0; i < n; i++){
+          const clip = plan.clips[i];
+          const say = () => setStatus(dialogClipsText(i + 1, n, plan.seconds));
+          say();
+          const payload = { promptText: (frame ? CONT + '\n' : '') + clip.text, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: clip.sec, confirmed: true };
+          if(frame){ payload.imageBase64 = frame; payload.imageMime = 'image/jpeg'; payload.keepPhoto = true; }
+          else if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; } /* المقطع الأوّل، ومقطع لاحق تعذّرت لقطته: صورة البطل تحفظ الوجه */
+          const url = await sceneInSequence(i + 1, n, () => engineClip(mode, payload, say));
+          urls.push(url); scenesDone++;
+          let blob = null;
+          try{ blob = await proxyBlob(url); }catch(e){ __swallow(e, 'vmk:dialog-clip-dl'); }
+          local.push(blob ? URL.createObjectURL(blob) : url);
+          frame = (blob && i < n - 1) ? await lastFrameB64(blob) : null;
+        }
+      }catch(e){
+        if(!urls.length) throw e;
+        showPartialScenes(urls, n, friendlyError(e));
+        return;
+      }
+      setStatus(bT('🔗 جاري دمج المشاهد معًا...','🔗 Joining scenes together...'));
+      let joined = null;
+      try{ joined = await concatScenes(local); }catch(e){ __swallow(e, 'vmk:dialog-join'); }
+      if(!joined){ showPartialScenes(urls, n, '⚠️'); return; }
+      if(wantCanvasWrap()){ await wrapWithCanvas(joined, text, ratio, signature, wantNarration, (narrationText.value || '').trim()); return; }
+      const out = URL.createObjectURL(joined);
+      setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
+      resultEl.src = out;
+      resultEl.style.display = 'block';
+      downloadEl.href = out;
+      downloadEl.download = dlName('omran-ai-video', joined.type);
+      downloadEl.style.display = 'block';
+    }
+
     if(durVal === 'film'){
       let filmPartial = null, filmTotal = 0; /* v-video-partial */
       try{
@@ -1675,9 +1868,11 @@
 
     if(creationMode === 'minimax'){
       try{
-        if(!dialogFitOk(text, 'minimax', durSecs)){ setStatus(''); return; } /* v-video-dialogue-fit: قبل أيّ نداء أو خصم */
+        /* v-video-dialogue-clips: الحوار كامل — مقطع واحد إن اتّسع له (ومدّته لا تقلّ عن حاجة كلامه)، وإلّا مقاطع متتالية */
+        const dlg = planDialogue(text);
+        if(dlg.clips.length > 1){ await runDialogueClips(dlg, 'minimax'); return; }
         setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو...','🚀 Sending the request to the video engine...'));
-        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: durSecs || undefined }; /* v-video-first-frame: الأسلوب كان لا يصل · v-video-durations: والمدّة */
+        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: Math.max(durSecs, dlg.need) || undefined }; /* v-video-first-frame: الأسلوب كان لا يصل · v-video-durations: والمدّة */
         if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=minimax-create', payload)
@@ -1783,9 +1978,11 @@
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting' + (filmHeroBase64 ? '' : ', realistic') + '. No subtitles, no captions, no text on screen.';
         }
-        if(creationMode === 'veo' && !dialogFitOk(veoPrompt, 'veo', durSecs)){ setStatus(''); return; } /* v-video-dialogue-fit: قبل أيّ نداء أو خصم (الممثّل كلامه بالحرف) */
+        /* v-video-dialogue-clips: كـ«سريع» — والممثّل كلامه بالحرف فلا خطّة له */
+        const dlg = creationMode === 'veo' ? planDialogue(veoPrompt) : { clips: [], need: 0 };
+        if(dlg.clips.length > 1){ await runDialogueClips(dlg, 'veo'); return; }
         setStatus(bT('🚀 جاري الإرسال إلى المحرّك السينمائيّ...','🚀 Sending to the cinematic engine...')); /* v-no-provider-names */
-        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: (creationMode === 'veo' && durSecs) || undefined }; /* v-video-first-frame · v-video-durations: مدّة «سينمائي» المختارة (الممثّل على قدّ كلامه) */
+        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: (creationMode === 'veo' && Math.max(durSecs, dlg.need)) || undefined }; /* v-video-first-frame · v-video-durations: مدّة «سينمائي» المختارة (الممثّل على قدّ كلامه) */
         if(filmHeroBase64){ veoPayload.imageBase64 = filmHeroBase64; veoPayload.imageMime = filmHeroMime || 'image/jpeg'; } /* v-video-photo-identity */
         /* v-cinema-omni (مراجعة ٢٧ أكتوبر): «سينمائي» صار للزبون — الطلب يمرّ بنافذة الخصم (١٧٥) كالاقتصاديّ؛ كان fetch خامًا بلا confirmed
            فيقف كلّ غير المالك عند ٤٢٨ «confirm_required». والرموز تُحفظ (المهلة، النقاط، المشتركون) لرسائلها. */

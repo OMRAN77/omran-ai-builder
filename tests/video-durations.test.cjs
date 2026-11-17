@@ -65,8 +65,8 @@ test('٣. المدّة تصل كلّ محرّك من متغيّر واحد، و�
   const gen = V.slice(g0, V.indexOf('/* v-audit-video (cli-video-4)', g0));
   assert.doesNotMatch(gen, /durationEl\.value\s*=/, 'لا كتابة فوق القائمة داخل الإنشاء');
   assert.doesNotMatch(gen, /durationEl\.value/, 'القراءة من durVal وحده');
-  assert.match(gen, /durationSeconds: durSecs \|\| undefined/, 'الاقتصاديّ');
-  assert.match(gen, /durationSeconds: \(creationMode === 'veo' && durSecs\) \|\| undefined/, '«سينمائي» (والممثّل على قدّ كلامه)');
+  assert.match(gen, /durationSeconds: Math\.max\(durSecs, dlg\.need\) \|\| undefined/, 'الاقتصاديّ (v-video-dialogue-clips: ولا تقلّ عن حاجة كلام الحوار)');
+  assert.match(gen, /durationSeconds: \(creationMode === 'veo' && Math\.max\(durSecs, dlg\.need\)\) \|\| undefined/, '«سينمائي» (والممثّل على قدّ كلامه)');
   assert.match(V, /style: styleEl\.value, durationSeconds: 8 \}/, 'مشهد فيلم «سينمائي»');
   /* الخوادم: Runway ٢–١٠ كما هي (كانت ٥/١٠)، والاقتصاديّ ٤–١٥ (مختبَر في minimax-video ١٠)، و«سينمائي» ٣–١٠ (cinema-omni ٢) */
   assert.match(read('api/_lib/video-create.js'), /finalDuration = Math\.min\(10, Math\.max\(2, finalDuration\)\);/);
@@ -91,7 +91,7 @@ test('٤. طول الانتظار وانقطاع الشبكة لا يطلبان 
 
 test('٥. الزحام العابر (٤٢٩/٥xx) لا يُنهي انتظار «سريع» و«سينمائي» والممثّل؛ «unavailable» نهائيّ', () => {
   const n = (V.match(/if\(d\.error && \(st\.status === 429 \|\| st\.status >= 500\) && d\.error !== 'unavailable'\)\{ guard\.fail\(iv, d\.error\); return; \}/g) || []).length; // بنصّ الخادم (مراجعة ٢٧ أكتوبر)
-  assert.equal(n, 4, 'الحلقات الأربع: الاقتصاديّ، «سينمائي»، مشهد الفيلم، الممثّل');
+  assert.equal(n, 5, 'الحلقات الخمس: الاقتصاديّ، «سينمائي»، مشهد الفيلم، الممثّل، مقطع الحوار (v-video-dialogue-clips)');
   for (const action of ['minimax-status', 'veo-status', 'actor-status']) {
     const at = V.indexOf("action=" + action);
     const seg = V.slice(at, at + 700);
