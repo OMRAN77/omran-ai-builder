@@ -269,7 +269,8 @@ module.exports = async (req, res) => {
       /* v-video-dialogue-clips: حوار الوصف الحرّ على مقاطع متتالية (clips ٢–٤، engine=minimax لـ«سريع») — المجموع كالقصّة، ولا تُرفض بالمهلة */
       const dClips = Math.min(DIALOGUE_CLIPS_MAX, Math.max(0, parseInt(body.clips, 10) || 0)); // الترند بمشاهده (tScenes ≥ ١) فلا يُقرأ له
       const story = tScenes ? await trendSteps(pcUser, tScenes, pointsLib.COSTS)
-        : (dClips > 1 ? await dialogueSteps(pcUser, dClips, body.engine === 'minimax', pointsLib.COSTS) : null);
+        /* v-video-dialogue-merge: استئناف سلسلة توقّفت (resume) — الباقي وحده ولو مقطعًا واحدًا، بسعر محرّكه لا بسعر «سينمائي» المفرد */
+        : ((dClips > 1 || (dClips === 1 && body.resume === true)) ? await dialogueSteps(pcUser, dClips, body.engine === 'minimax', pointsLib.COSTS) : null);
       const pcSteps = story || await talkSteps(pcUser, withCartoon, pointsLib.COSTS);
       const pcCost = pcSteps.reduce((a, s) => a + s[1], 0);
       const pcLeft = story ? 0 : await require('./abuse-guard.js').videoCooldownLeft(pcUser); // VIP خارج المهلة كما في videoLock أدناه (pay.owner)

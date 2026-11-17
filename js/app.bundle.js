@@ -7394,6 +7394,9 @@ Object.assign(I18N.en, {"vmkDialogLong":"⚠️ The dialogue is longer than the 
 /* v-video-dialogue-reject (801): حوار المقاطع — إعادة المقطع المرفوض بمرجع آخر، مقطع بلا لقطة مرجعيّة، وتسليم ما اكتمل «والباقي لم يُخصم» (١٤ لغة) */
 Object.assign(I18N.ar, {"vmkDialogRetry":"⏳ المقطع {i} من {n}: المحرّك رفض اللقطة المرجعيّة — يُعاد بمرجع آخر، والمرفوض لا يُخصم...","vmkDialogNoRef":"⚠️ المقطع {i} بلا لقطة مرجعيّة (رفضها المحرّك أو تعذّرت) — قد يختلف شكل الشخصيّات فيه.","vmkDialogPart":"اكتمل {k} من {n} مقاطع في فيديو واحد — والباقي لم يُخصم."});
 Object.assign(I18N.en, {"vmkDialogRetry":"⏳ Clip {i} of {n}: the engine refused the reference frame — retrying with another reference; the refused attempt is not charged...","vmkDialogNoRef":"⚠️ Clip {i} has no reference frame (refused by the engine or unavailable) — the characters may look different in it.","vmkDialogPart":"Finished {k} of {n} clips as one video — the rest was not charged."});
+/* v-video-dialogue-merge (802): حوار المقاطع — «اكتمل k من n» يقول كيف يُكمَل، واستئناف المكتمل بلا خصم ثانٍ، وتعذّر الدمج على الجهاز (١٤ لغة) */
+Object.assign(I18N.ar, {"vmkDialogPart":"اكتمل {k} من {n} مقاطع في فيديو واحد — والباقي لم يُخصم. اضغط زرّ الإنشاء مرّة ثانية ليكمل الباقي وحده.","vmkDialogResume":"✅ {k} من {n} مقاطع جاهزة من المحاولة السابقة — بلا خصم ثانٍ. يكمل الباقي...","vmkDialogJoin":"⚠️ تعذّر دمج المقاطع على هذا الجهاز — اضغط زرّ الإنشاء مرّة ثانية ليُعاد الدمج بلا خصم."});
+Object.assign(I18N.en, {"vmkDialogPart":"Finished {k} of {n} clips as one video — the rest was not charged. Press the create button again to finish only the rest.","vmkDialogResume":"✅ {k} of {n} clips are ready from the previous attempt — not charged again. Finishing the rest...","vmkDialogJoin":"⚠️ The clips could not be merged on this device — press the create button again to retry the merge at no charge."});
 /* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-03-i18n-data:3123'); /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
 /* v-opt-xl (طلب عمران: «في الديكور كلهم» بغير لغتهم): جدول __OPT_XL يترجم
@@ -7430,11 +7433,12 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
+    /* v-video-dialogue-merge (802): حوار المقاطع — استئناف المكتمل بلا خصم ثانٍ وتعذّر الدمج (١٤ لغة) */
     /* v-video-dialogue-reject (801): حوار المقاطع — إعادة المرفوض بمرجع آخر وتسليم ما اكتمل (١٤ لغة) */
     /* v-video-dialogue-clips (800): الحوار كامل على مقاطع متتالية — سطر التوليد وتنبيه «أطول من أقصى مدّة» (١٤ لغة) */
     /* v-video-dialogue-fit (799): تنبيه «الحوار أطول من مدّة الفيديو» في «سريع» و«سينمائي» (١٤ لغة) */
     /* v-i18n-14 (798): ترجمات فحص اللغات الـ١٤ (bT وقوائم الساعة والشعر والمعاملات وآلة الزمن ومفاتيح التلفزيون) */
-    sc.src = 'i18n/' + lg + '.js?v=801'; /* v-hw-resubmit-2 (774): أسطر «أفكار بلا صورة» في الديكور (١٤ لغة) · v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج · v-director-story (778): نوع «قصة» في «مخرج التطبيق» — تسعة نصوص (١٤ لغة) · v-reply-dialect (779): «لهجة الصوت العربي» وأسماء اللهجات الستّ (١٤ لغة) · v-hw-1316 (781): نائب صندوق الكتابة «اكتب رسالتك هنا» في ١٢ لغة كان «ابنِ تطبيقًا أو لعبة» · v-google-retry (782): نصّ access_denied «أُلغي أو لم تسمح به» لا اتّهام المستخدم بالإلغاء (١٢ لغة) · v-play-invite (783): بطاقة دعوة مختبري Google Play (١٤ لغة) */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */ /* v-audit-fixes (775): نصوص إصلاحات الفحص الشامل — رسائل الدخول والأخطاء الودّيّة والاستوديوهات والتعليم والأدوات والتصدير والمحادثة والصوت (١٤ لغة)؛ ٧٧٤ نشره main بنصوص هواوي فارتفع الوسم مرّة أخرى · v-video-modes-by-result (776): أسماء الأوضاع بالنتيجة ومربّع «مقدّمة وخاتمة بتوقيعك» (١٤ لغة) · v-video-durations (777): «فيلم متكامل» بلا «سريع» (١٤ لغة) · v-office-files (784): كرت ملفّ Excel/PowerPoint في المحادثة (١٤ لغة) · v-director-timed (785): ثلاثة وعشرون نصًّا لـ«بتوقيتي» في مخرج التطبيق (١٤ لغة) · v-share-next (786): أمثلة خانة الكتابة ونافذة المشاركة و«مشاركة» بجانب كلّ تحميل (١٤ لغة) · v-owner-reset-link (787): «رابط استرجاع الحساب» للمالك (١٤ لغة) · v-owner-reset-find (788): رسالتا حساب Google والحساب الغائب (١٤ لغة) · v-director-publish (789): «انشر في حساباتي» في مخرج التطبيق (١٤ لغة) · v-bridge-disk (790): «مساحة قرص الجسر» في المخرج (١٤ لغة) · v-owner-reset-records (792): «حسابات محتملة» و«أين بحثت» و«ما اكتمل البحث» و«بحث PayPal الكامل مقفل» لرابط الاسترجاع (١٤ لغة) · v-owner-link-sub (793): ١٣ نصًّا لـ«ربط اشتراك Stripe» في لوحة المالك (١٤ لغة) — ٧٩٢ أخذه main لـv-owner-reset-records قبل الدمج · v-director-upload (795): «ارفع فيديو جاهز» في مخرج التطبيق (١٤ لغة) · v-director-endcard (796): «باركود التطبيق في آخر الفيديو» في مخرج التطبيق — ٦ نصوص (١٤ لغة) · v-director-erase (797): «امسح اسم أو كتابة» في مخرج التطبيق (١٤ لغة) */
+    sc.src = 'i18n/' + lg + '.js?v=802'; /* v-hw-resubmit-2 (774): أسطر «أفكار بلا صورة» في الديكور (١٤ لغة) · v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج · v-director-story (778): نوع «قصة» في «مخرج التطبيق» — تسعة نصوص (١٤ لغة) · v-reply-dialect (779): «لهجة الصوت العربي» وأسماء اللهجات الستّ (١٤ لغة) · v-hw-1316 (781): نائب صندوق الكتابة «اكتب رسالتك هنا» في ١٢ لغة كان «ابنِ تطبيقًا أو لعبة» · v-google-retry (782): نصّ access_denied «أُلغي أو لم تسمح به» لا اتّهام المستخدم بالإلغاء (١٢ لغة) · v-play-invite (783): بطاقة دعوة مختبري Google Play (١٤ لغة) */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */ /* v-audit-fixes (775): نصوص إصلاحات الفحص الشامل — رسائل الدخول والأخطاء الودّيّة والاستوديوهات والتعليم والأدوات والتصدير والمحادثة والصوت (١٤ لغة)؛ ٧٧٤ نشره main بنصوص هواوي فارتفع الوسم مرّة أخرى · v-video-modes-by-result (776): أسماء الأوضاع بالنتيجة ومربّع «مقدّمة وخاتمة بتوقيعك» (١٤ لغة) · v-video-durations (777): «فيلم متكامل» بلا «سريع» (١٤ لغة) · v-office-files (784): كرت ملفّ Excel/PowerPoint في المحادثة (١٤ لغة) · v-director-timed (785): ثلاثة وعشرون نصًّا لـ«بتوقيتي» في مخرج التطبيق (١٤ لغة) · v-share-next (786): أمثلة خانة الكتابة ونافذة المشاركة و«مشاركة» بجانب كلّ تحميل (١٤ لغة) · v-owner-reset-link (787): «رابط استرجاع الحساب» للمالك (١٤ لغة) · v-owner-reset-find (788): رسالتا حساب Google والحساب الغائب (١٤ لغة) · v-director-publish (789): «انشر في حساباتي» في مخرج التطبيق (١٤ لغة) · v-bridge-disk (790): «مساحة قرص الجسر» في المخرج (١٤ لغة) · v-owner-reset-records (792): «حسابات محتملة» و«أين بحثت» و«ما اكتمل البحث» و«بحث PayPal الكامل مقفل» لرابط الاسترجاع (١٤ لغة) · v-owner-link-sub (793): ١٣ نصًّا لـ«ربط اشتراك Stripe» في لوحة المالك (١٤ لغة) — ٧٩٢ أخذه main لـv-owner-reset-records قبل الدمج · v-director-upload (795): «ارفع فيديو جاهز» في مخرج التطبيق (١٤ لغة) · v-director-endcard (796): «باركود التطبيق في آخر الفيديو» في مخرج التطبيق — ٦ نصوص (١٤ لغة) · v-director-erase (797): «امسح اسم أو كتابة» في مخرج التطبيق (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -34736,7 +34740,90 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   }
   function dialogRetryText(i, n){ return dialogNoteText('vmkDialogRetry', '⏳ المقطع {i} من {n}: المحرّك رفض اللقطة المرجعيّة — يُعاد بمرجع آخر، والمرفوض لا يُخصم...', '⏳ Clip {i} of {n}: the engine refused the reference frame — retrying with another reference; the refused attempt is not charged...', { i, n }); }
   function dialogNoRefText(i){ return dialogNoteText('vmkDialogNoRef', '⚠️ المقطع {i} بلا لقطة مرجعيّة (رفضها المحرّك أو تعذّرت) — قد يختلف شكل الشخصيّات فيه.', '⚠️ Clip {i} has no reference frame (refused by the engine or unavailable) — the characters may look different in it.', { i }); }
-  function dialogPartText(k, n){ return dialogNoteText('vmkDialogPart', 'اكتمل {k} من {n} مقاطع في فيديو واحد — والباقي لم يُخصم.', 'Finished {k} of {n} clips as one video — the rest was not charged.', { k, n }); }
+  function dialogPartText(k, n){ return dialogNoteText('vmkDialogPart', 'اكتمل {k} من {n} مقاطع في فيديو واحد — والباقي لم يُخصم. اضغط زرّ الإنشاء مرّة ثانية ليكمل الباقي وحده.', 'Finished {k} of {n} clips as one video — the rest was not charged. Press the create button again to finish only the rest.', { k, n }); }
+  /* v-video-dialogue-merge: استئناف سلسلة توقّفت، وتعذّر الدمج على الجهاز */
+  function dialogResumeText(k, n){ return dialogNoteText('vmkDialogResume', '✅ {k} من {n} مقاطع جاهزة من المحاولة السابقة — بلا خصم ثانٍ. يكمل الباقي...', '✅ {k} of {n} clips are ready from the previous attempt — not charged again. Finishing the rest...', { k, n }); }
+  function dialogJoinFailText(){ return dialogNoteText('vmkDialogJoin', '⚠️ تعذّر دمج المقاطع على هذا الجهاز — اضغط زرّ الإنشاء مرّة ثانية ليُعاد الدمج بلا خصم.', '⚠️ The clips could not be merged on this device — press the create button again to retry the merge at no charge.', {}); }
+  /* v-video-dialogue-merge (المالك ١٧ نوفمبر: «الي اريده فيديو مدموج وليس مقاطع» — أمامه مشهدان متفرّقان من تشغيلة دُفع ثمنها ثمّ توقّفت):
+     سلسلة الحوار تُحفظ في المتصفّح بعد كلّ مقطع (بصمة الخطّة والوضع والنسبة والأسلوب + روابط المقاطع المكتملة). إعادة الضغط بالحوار نفسه
+     خلال ٢٠ ساعة تحمّل المكتمل (ما لا يُحمَّل يُسقط هو وما بعده) وتولّد الناقص وحده ثمّ تدمج — لا يُدفع مقطع مرّتين، وتعذّر الدمج يُعاد
+     بلا خصم. تُمحى عند اكتمال الفيديو. */
+  const DLG_CHAIN_KEY = 'omran_vmk_dlg_chain', DLG_CHAIN_TTL = 20 * 3600 * 1000;
+  function dlgChainSig(parts){
+    const s = parts.join('\u0001');
+    let h = 5381;
+    for(let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return String(h >>> 0) + ':' + s.length;
+  }
+  function dlgChainLoad(sig){
+    try{
+      const j = JSON.parse(localStorage.getItem(DLG_CHAIN_KEY) || 'null');
+      if(j && j.sig === sig && Array.isArray(j.urls) && (Date.now() - Number(j.at)) < DLG_CHAIN_TTL) return j.urls.filter((u) => typeof u === 'string' && u);
+    }catch(e){ __swallow(e, 'vmk:chain-load'); }
+    return [];
+  }
+  function dlgChainSave(sig, urls){
+    try{
+      if(urls.length) localStorage.setItem(DLG_CHAIN_KEY, JSON.stringify({ sig, at: Date.now(), urls }));
+      else localStorage.removeItem(DLG_CHAIN_KEY);
+    }catch(e){ __swallow(e, 'vmk:chain-save'); }
+  }
+  /* مقاس مقطع (من بياناته الوصفيّة) — null إن تعذّر */
+  function clipDims(blob, ms){
+    return new Promise((res) => {
+      const v = document.createElement('video'), url = URL.createObjectURL(blob);
+      let done = false;
+      const fin = (out) => { if(done) return; done = true; clearTimeout(tm); v.onloadedmetadata = v.onerror = null; v.removeAttribute('src'); try{ v.load(); }catch(e){ __swallow(e, 'vmk:dims-unload'); } URL.revokeObjectURL(url); res(out); };
+      const tm = setTimeout(() => fin(null), ms || 6000);
+      v.muted = true; v.preload = 'metadata';
+      v.onerror = () => fin(null);
+      v.onloadedmetadata = () => fin(v.videoWidth ? { w: v.videoWidth, h: v.videoHeight } : null);
+      v.src = url;
+    });
+  }
+  /* لصق بإعادة الترميز: مقاطع اختلف مقاسها أو فشل لصقها بالنسخ — كلّها إلى مقاس الأوّل و٣٠ إطارًا وصوت ٤٨ك ستيريو، ملفّ واحد */
+  async function concatScenesEncode(urls, w, h){
+    const ffmpeg = await getFFmpeg();
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
+    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); } catch(e){ __swallow(e, 'vmk:join-enc-clean'); } };
+    const args = [];
+    let fc = '', tail = '';
+    for(let i = 0; i < urls.length; i++){
+      await ffmpeg.writeFile('enc' + i + '.mp4', await fetchFile(await proxyBlob(urls[i])));
+      args.push('-i', 'enc' + i + '.mp4');
+      fc += '[' + i + ':v]scale=' + w + ':' + h + ':force_original_aspect_ratio=decrease:force_divisible_by=2,pad=' + w + ':' + h + ':(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p[v' + i + '];'
+        + '[' + i + ':a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[a' + i + '];';
+      tail += '[v' + i + '][a' + i + ']';
+    }
+    let rc = 1;
+    try{
+      rc = await ffmpeg.exec([...args, '-filter_complex', fc + tail + 'concat=n=' + urls.length + ':v=1:a=1[v][a]', '-map', '[v]', '-map', '[a]',
+        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-c:a', 'aac', 'encout.mp4'], 480000);
+    } finally { for(let i = 0; i < urls.length; i++) await rm('enc' + i + '.mp4'); }
+    if(rc !== 0){ await rm('encout.mp4'); throw new Error('join encode failed'); }
+    const data = await ffmpeg.readFile('encout.mp4');
+    await rm('encout.mp4');
+    return new Blob([data.buffer], { type: 'video/mp4' });
+  }
+  /* دمج مقاطع الحوار في ملفّ واحد: النسخ السريع حين تتطابق المقاسات ويخرج الملفّ بحجم مدخلاته، وإلّا إعادة الترميز. null = تعذّر الاثنان */
+  async function joinDialogClips(list, blobs){
+    let dims = [];
+    try{ dims = await Promise.all(blobs.map((b) => (b ? clipDims(b) : null))); }catch(e){ __swallow(e, 'vmk:join-dims'); dims = []; }
+    const d0 = dims[0];
+    const same = !dims.length || dims.every((d) => !d || !d0 || (d.w === d0.w && d.h === d0.h));
+    const total = blobs.reduce((s, b) => s + (b ? b.size : 0), 0), known = blobs.every((b) => !!b);
+    if(same){
+      try{
+        const out = await concatScenes(list);
+        if(out && out.size > 1000 && (!known || out.size >= total * 0.9)) return out;
+      }catch(e){ __swallow(e, 'vmk:join-copy'); }
+    }
+    try{
+      const out = await concatScenesEncode(list, (d0 && d0.w) || 1280, (d0 && d0.h) || 720);
+      if(out && out.size > 1000) return out;
+    }catch(e){ __swallow(e, 'vmk:join-encode'); }
+    return null;
+  }
   /* لقطة من مقطع (JPEG base64) ليبدأ منها المقطع التالي — الوجوه والمكان نفسها: آخر لقطة ('last')، أو أوّل لقطة ('first') حين يرفض
      المحرّك الأخيرة (v-video-dialogue-reject). إطار لم يُرسم بعد يُرسم شفّافًا (PITFALLS): ننتظر أوّل بكسل معتم. null عند أيّ عطب. */
   function clipFrameB64(blob, where, ms){
@@ -35064,15 +35151,13 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     async function runDialogueClips(plan, mode){
       const n = plan.clips.length;
       if(!dialogCapOk(plan)){ setStatus(''); return; }
-      const price = { clips: n, engine: mode, promptText: 'dialogue', token };
-      const pr = await (window.postWithConfirm ? window.postWithConfirm('/api/video?action=veo-price', price)
-        : fetch('/api/video?action=veo-price', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(price) }));
-      throwIfDeclined(pr);
-      const pj = await pr.json().catch(() => ({}));
-      if(!pr.ok || pj.priceOk !== true) throw Object.assign(new Error(pj.error || ('HTTP ' + pr.status)), { code: pj.error, retryAfter: pj.retryAfter || 0 });
       /* سطر مستقلّ أوّل الوصف وبلا نقطتين ولا تنصيص: ملتصقًا بآخر سطر حوار كان الخادم يعدّه من كلام المتكلّم فيحذف الجملة الأخيرة (كشفه المسبار) */
       const CONT = 'Continue the same scene from the attached first frame — the same people, voices, clothes and place; the conversation simply carries on.';
-      const urls = [], local = [];
+      /* v-video-dialogue-merge: «واقعي» بلا صورة بطل يُقال للمحرّك في كلّ مقطع — مقطع يُعاد بلا لقطة مرجعيّة لا ينقلب رسمًا بين مقاطع مصوَّرة.
+         سطر مستقلّ بلا نقطتين ولا تنصيص (كـCONT). الأنمي له سطره على الخادم، وصورة البطل تبقى بأسلوبها */
+      const LOOK = (!filmHeroBase64 && style === 'realistic') ? '\nPhotorealistic live-action footage with real-looking people, not animation.' : '';
+      const sig = dlgChainSig([mode, ratio, style, wantQuality ? 'hq' : 'fast', filmHeroBase64 ? 'hero' + filmHeroBase64.length : ''].concat(plan.clips.map((x) => x.sec + '|' + x.text)));
+      const urls = [], local = [], blobs = [];
       let last = null, prevBlob = null, noRef = 0;
       const show = (blob) => {
         const out = URL.createObjectURL(blob);
@@ -35082,8 +35167,30 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         downloadEl.download = dlName('omran-ai-video', blob.type);
         downloadEl.style.display = 'block';
       };
+      /* مقاطع اكتملت في محاولة سابقة للحوار نفسه: تُحمَّل ولا تُولَّد (ولا تُدفع) ثانيةً */
+      for(const u of dlgChainLoad(sig).slice(0, n)){
+        let b = null;
+        try{ b = await proxyBlob(u); }catch(e){ __swallow(e, 'vmk:chain-fetch'); }
+        if(!b || !(b.size > 1000)) break;
+        urls.push(u); local.push(URL.createObjectURL(b)); blobs.push(b);
+      }
+      const done = urls.length;
+      if(done){
+        setStatus(dialogResumeText(done, n));
+        prevBlob = done < n ? blobs[done - 1] : null;
+        last = prevBlob ? await clipFrameB64(prevBlob, 'last') : null;
+      }
+      if(done < n){
+        const price = { clips: n - done, engine: mode, promptText: 'dialogue', token };
+        if(done) price.resume = true;
+        const pr = await (window.postWithConfirm ? window.postWithConfirm('/api/video?action=veo-price', price)
+          : fetch('/api/video?action=veo-price', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(price) }));
+        throwIfDeclined(pr);
+        const pj = await pr.json().catch(() => ({}));
+        if(!pr.ok || pj.priceOk !== true) throw Object.assign(new Error(pj.error || ('HTTP ' + pr.status)), { code: pj.error, retryAfter: pj.retryAfter || 0 });
+      }
       try{
-        for(let i = 0; i < n; i++){
+        for(let i = done; i < n; i++){
           const clip = plan.clips[i];
           const say = () => setStatus(dialogClipsText(i + 1, n, plan.seconds));
           say();
@@ -35101,7 +35208,7 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           for(let k = 0; k < refs.length && !url; k++){
             const r = refs[k];
             if(r.first){ r.img = await clipFrameB64(prevBlob, 'first'); if(!r.img || r.img === last) continue; }
-            const payload = { promptText: (r.cont ? CONT + '\n' : '') + clip.text, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: clip.sec, confirmed: true };
+            const payload = { promptText: (r.cont ? CONT + '\n' : '') + clip.text + LOOK, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: clip.sec, confirmed: true };
             if(r.img){ payload.imageBase64 = r.img; payload.imageMime = r.mime || 'image/jpeg'; if(r.cont) payload.keepPhoto = true; }
             try{ url = await sceneInSequence(i + 1, n, () => engineClip(mode, payload, say)); }
             catch(e){
@@ -35112,27 +35219,27 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
             if(i > 0 && !r.img && !noRef) noRef = i + 1;
           }
           urls.push(url); scenesDone++;
+          dlgChainSave(sig, urls); /* v-video-dialogue-merge: المكتمل محفوظ من لحظته — توقّف لاحق لا يُدفع له ثانيةً */
           let blob = null;
           try{ blob = await proxyBlob(url); }catch(e){ __swallow(e, 'vmk:dialog-clip-dl'); }
-          local.push(blob ? URL.createObjectURL(blob) : url);
+          local.push(blob ? URL.createObjectURL(blob) : url); blobs.push(blob);
           prevBlob = (blob && i < n - 1) ? blob : null;
           last = prevBlob ? await clipFrameB64(prevBlob, 'last') : null;
         }
       }catch(e){
         if(!urls.length) throw e;
-        /* ما اكتمل يُسلَّم فيديو واحدًا ملصوقًا لا مشاهد متفرّقة، مع السبب و«اكتمل k من n — والباقي لم يُخصم» */
+        /* ما اكتمل يُسلَّم فيديو واحدًا ملصوقًا لا مشاهد متفرّقة، مع السبب و«اكتمل k من n — والباقي لم يُخصم»، ويبقى محفوظًا ليُكمَل */
         const why = friendlyError(e);
-        let part = null;
-        if(local.length > 1){ try{ part = await concatScenes(local); }catch(e2){ __swallow(e2, 'vmk:dialog-part-join'); } }
+        const part = local.length > 1 ? await joinDialogClips(local, blobs) : null;
         if(!part){ showPartialScenes(urls, n, why); return; }
         show(part);
         setStatus(why + ' ' + dialogPartText(urls.length, n));
         return;
       }
       setStatus(bT('🔗 جاري دمج المشاهد معًا...','🔗 Joining scenes together...'));
-      let joined = null;
-      try{ joined = await concatScenes(local); }catch(e){ __swallow(e, 'vmk:dialog-join'); }
-      if(!joined){ showPartialScenes(urls, n, '⚠️'); return; }
+      const joined = await joinDialogClips(local, blobs);
+      if(!joined){ showPartialScenes(urls, n, dialogJoinFailText()); return; } /* السلسلة باقية محفوظة: إعادة الضغط تعيد الدمج بلا خصم */
+      dlgChainSave(sig, []);
       if(wantCanvasWrap()){ await wrapWithCanvas(joined, text, ratio, signature, wantNarration, (narrationText.value || '').trim()); return; }
       show(joined);
       setStatus(bT('✅ تم الانتهاء!','✅ Done!') + (noRef ? ' ' + dialogNoRefText(noRef) : ''));
