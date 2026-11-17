@@ -41,7 +41,8 @@ mock('api/_lib/auth.js', {
   isBanned: async () => false, verifyToken: () => null,
 });
 mock('api/_lib/_vip.js', { isVip: async (u) => vip.has(u) });
-mock('api/_lib/abuse-guard.js', { videoLock: async () => ({ ok: true }), releaseVideoLock: async () => {}, videoCooldownLeft: async () => 150, imageHourlyGuard: async () => ({ ok: true }) });
+const lockLog = [];
+mock('api/_lib/abuse-guard.js', { videoLock: async (u) => { lockLog.push('lock:' + u); return { ok: true }; }, releaseVideoLock: async (u) => { lockLog.push('release:' + u); }, videoCooldownLeft: async () => 150, imageHourlyGuard: async () => ({ ok: true }) });
 mock('api/_lib/_videoSubs.js', { CODE: 'video_subscribers', videoAllowed: async () => true, denyFree: async () => false });
 
 const VT = require(rp('api/_lib/video-trends.js'));
@@ -56,7 +57,13 @@ account('plus1', 'basic', 1000);  // صلاحيّة فيديو واحد
 account('poor1', 'free', 100);
 account('vip1', 'free', 0); vip.add('vip1');
 let upstream = 0;
-global.fetch = async () => { upstream++; return new Response('{}', { status: 200 }); };
+let omniBlocked = false; // v-video-dialogue-reject: المحرّك يرفض المدخل (٤٠٠ «Input blocked») كما في سجلّ الإنتاج
+const BLOCKED = "Input blocked: Sorry, we can't create videos with real people's names or likenesses. Please remove the reference and try again.";
+global.fetch = async (url) => {
+  upstream++;
+  if (omniBlocked && /\/interactions$/.test(String(url))) return new Response(JSON.stringify({ error: { code: 400, message: BLOCKED } }), { status: 400 });
+  return new Response('{}', { status: 200 });
+};
 
 /* كتلة دالّة من ملفّ بعدّ الأقواس */
 function block(src, needle) {
@@ -158,7 +165,7 @@ test('٤. فوق أربعة مقاطع: يُقال ما تتّسع له الأر
 function flow(opts) {
   const o = opts || {};
   const net = [], status = [], partial = [], joined = [];
-  let made = 0;
+  let made = 0, okd = 0;
   const ctx = {
     window: { postWithConfirm: async (url, payload) => { net.push(['price', url, payload]); return o.price ? o.price() : { ok: true, status: 200, json: async () => ({ ok: true, priceOk: true }) }; } },
     fetch: async (url, init) => {
@@ -167,7 +174,10 @@ function flow(opts) {
         const body = JSON.parse(init.body); made++;
         net.push(['create', u, body]);
         if (o.failAt === made) return { ok: false, status: 402, json: async () => ({ error: 'points_insufficient' }) };
-        return { ok: true, status: 200, json: async () => (/minimax/.test(u) ? { task_id: 'T' + made } : { op: 'omni/' + made }) };
+        /* v-video-dialogue-reject: رفض المحرّك للطلب نفسه — ٤٠٠ video_rejected كما يردّه الخادم (_videoFail) */
+        if (o.reject && o.reject(body, okd + 1)) return { ok: false, status: 400, json: async () => ({ error: 'video_rejected', message_ar: 'تعذّر بدء الفيديو بهذا الطلب', retryable: false }) };
+        okd++;
+        return { ok: true, status: 200, json: async () => (/minimax/.test(u) ? { task_id: 'T' + okd } : { op: 'omni/' + okd }) };
       }
       const id = decodeURIComponent(u.split('=').pop());
       net.push(['status', u]);
@@ -179,7 +189,8 @@ function flow(opts) {
     throwIfDeclined: (r) => { if (r && r.status === 428) throw Object.assign(new Error('cancelled'), { code: 'confirm_declined' }); },
     sceneInSequence: async (i, n, run) => run(),
     proxyBlob: async (u) => { if (o.noBlob) throw new Error('proxy'); return { of: u }; },
-    lastFrameB64: async (b) => (o.noFrame ? null : 'FRAME<' + b.of + '>'),
+    clipFrameB64: async (b, where) => (o.noFrame ? null : (where === 'first' ? 'FIRST<' : 'FRAME<') + b.of + '>'),
+    dialogRetryText: (i, n) => 'retry ' + i + '/' + n, dialogNoRefText: (i) => 'noref ' + i, dialogPartText: (k, n) => 'part ' + k + '/' + n,
     concatScenes: async (list) => { if (o.noJoin) throw new Error('join'); joined.push(list.slice()); return { type: 'video/mp4' }; },
     showPartialScenes: (urls, n, why) => partial.push([urls.slice(), n, why]),
     friendlyError: (e) => 'ERR:' + (e.code || e.message),
@@ -267,7 +278,8 @@ test('٧. الربط: «سريع» و«سينمائي» يبنيان الخطّ�
   const veoPlan = CLIENT.indexOf("const dlg = creationMode === 'veo' ? planDialogue(veoPrompt) : { clips: [], need: 0 };\n        if(dlg.clips.length > 1){ await runDialogueClips(dlg, 'veo'); return; }");
   assert.ok(veoPlan > CLIENT.indexOf("const ac = await fetch('/api/video?action=actor-create'") && veoPlan < CLIENT.indexOf("window.postWithConfirm('/api/video?action=veo-create', veoPayload)"));
   assert.ok(CLIENT.includes("durationSeconds: (creationMode === 'veo' && Math.max(durSecs, dlg.need)) || undefined };"));
-  assert.match(block(CLIENT, 'function lastFrameB64(blob, ms){'), /for\(let i = 3; i < a\.length; i \+= 4\) if\(a\[i\]\)/, 'ينتظر أوّل بكسل معتم (PITFALLS)');
+  assert.match(block(CLIENT, 'function clipFrameB64(blob, where, ms){'), /for\(let i = 3; i < a\.length; i \+= 4\) if\(a\[i\]\)/, 'ينتظر أوّل بكسل معتم (PITFALLS)');
+  assert.ok(block(CLIENT, 'function clipFrameB64(blob, where, ms){').includes("v.currentTime = where === 'first' ? Math.min(0.05, d / 2) : Math.max(0, d - 0.02);"), 'أوّل لقطة أو آخرها');
   const B = read('js/app.bundle.js');
   assert.ok(B.includes("await runDialogueClips(dlg, 'veo')") && B.includes('function planDialogue(desc, maxClips) {'), 'الحزمة مبنيّة');
 });
@@ -332,4 +344,127 @@ test('٩. نصّا الواجهة بالـ١٤ لغة بعناصرهما، بل�
   }
   const st = read('js/app-04-i18n-state.js');
   assert.ok(Number((/\.js\?v=(\d+)'/.exec(st) || [])[1]) >= 800 && st.includes('v-video-dialogue-clips (800)'), 'وسم اللغات مرفوع وسببه في التعليق');
+});
+
+/* ── v-video-dialogue-reject (المالك ١٧ نوفمبر بعد #1344: مقطعان تولّدا والثالث رفضه المحرّك «Input blocked… real people's names or
+   likenesses» فرأى مشهدين متفرّقين ورسالة رفض — «انته غبي ولا تريد ان تخسرني فقط»). المقطع المرفوض يُعاد بمرجع آخر (أوّل لقطة في
+   سابقه، ثمّ صورة البطل، ثمّ بلا صورة)، وما اكتمل يُسلَّم فيديو واحدًا، والمرفوض لا يُخصم. ── */
+const LINES3 = ['البنت: أمي لماذا نحتفل باليوم الوطني؟', 'الأم: نحتفل باتحاد الإمارات السبع ووطننا الغالي', 'البنت: ومن الذي أسّس اتحاد الإمارات؟',
+  'الأم: الشيخ زايد بن سلطان آل نهيان رحمه الله', 'البنت: مع إخوانه حكّام الإمارات', 'الاثنتان: كل عام والإمارات بخير'];
+const D3 = [SCENE].concat(LINES3).join('\n');
+const has = (b, tag) => String(b.imageBase64 || '').startsWith(tag);
+
+test('١٠. حالة المالك: المقطع الثالث يرفضه المحرّك بآخر لقطة — يُعاد بأوّل لقطة في سابقه فيكتمل الفيديو كلّه ملصوقًا، بلا مشاهد متفرّقة', async () => {
+  const p = plan(D3);
+  assert.equal(p.clips.length, 3, 'حواره الأطول على ثلاثة مقاطع'); assert.equal(p.dropped, 0);
+  const f = flow({ reject: (b, clipNo) => clipNo === 3 && has(b, 'FRAME<') });
+  await f.ctx.run(p, 'veo');
+  const c = f.creates();
+  assert.equal(c.length, 4, 'ثلاثة مقاطع + إعادة واحدة');
+  assert.deepEqual([c[2].imageBase64, c[2].keepPhoto, c[2].promptText], ['FRAME<https://cdn/omni-2.mp4>', true, CONT + '\n' + p.clips[2].text], 'المحاولة الأولى بآخر لقطة');
+  assert.deepEqual([c[3].imageBase64, c[3].keepPhoto, c[3].promptText, c[3].confirmed, c[3].durationSeconds],
+    ['FIRST<https://cdn/omni-2.mp4>', true, CONT + '\n' + p.clips[2].text, true, p.clips[2].sec], 'الإعادة بأوّل لقطة في المقطع السابق — الكلام نفسه');
+  assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-2.mp4', 'blob:https://cdn/omni-3.mp4']], 'الثلاثة ملصوقة بترتيبها');
+  assert.equal(f.partial.length, 0, 'لا مشاهد متفرّقة');
+  assert.equal(f.ctx.resultEl.src, 'blob:joined');
+  assert.ok(f.status.includes('retry 3/3'), 'سطر الإعادة');
+  assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء!', 'بمرجع = بلا تنبيه شكل');
+  assert.equal(f.ctx.scenesDone, 3);
+});
+
+test('١١. ترتيب المراجع عند الرفض: آخر لقطة ← أوّل لقطة ← صورة البطل ← بلا صورة (وبلا «أكمل من اللقطة»)، وينبَّه أنّ شكل الشخصيّات قد يختلف', async () => {
+  const p = plan(D3);
+  /* المحرّك يرفض كلّ لقطة من الفيديو: يسقط إلى صورة البطل */
+  let f = flow({ hero: 'HERO', reject: (b, clipNo) => clipNo > 1 && (has(b, 'FRAME<') || has(b, 'FIRST<')) });
+  await f.ctx.run(p, 'veo');
+  let c = f.creates();
+  assert.deepEqual(c.map((x) => String(x.imageBase64).slice(0, 5)), ['HERO', 'FRAME', 'FIRST', 'HERO', 'FRAME', 'FIRST', 'HERO']);
+  assert.deepEqual([c[3].keepPhoto, c[3].imageMime, c[3].promptText], [undefined, 'image/png', p.clips[1].text], 'صورة البطل كالمقطع الأوّل');
+  assert.equal(f.joined[0].length, 3); assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء!');
+  /* بلا بطل ويرفض كلّ صورة: بلا صورة — الوصف وحده كما كان يمرّ قبل #1344 */
+  f = flow({ reject: (b, clipNo) => clipNo > 1 && !!b.imageBase64 });
+  await f.ctx.run(p, 'minimax');
+  c = f.creates();
+  assert.equal(c.length, 7);
+  assert.deepEqual([c[3].imageBase64, c[3].keepPhoto, c[3].promptText], [undefined, undefined, p.clips[1].text]);
+  assert.equal(f.joined[0].length, 3, 'الفيديو كامل');
+  assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء! noref 2', 'أوّل مقطع بلا لقطة مرجعيّة يُذكر');
+  for (const x of c) assert.equal(VT.fitDialogue(x.promptText, x.durationSeconds).dropped, 0, 'الخادم لا يقصّ من أيّ محاولة');
+  /* اللقطة تعذّرت أصلًا (لا رفض): بلا صورة ويُنبَّه كذلك */
+  f = flow({ noFrame: true });
+  await f.ctx.run(plan(DIALOGUE), 'minimax');
+  assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء! noref 2');
+});
+
+test('١٢. ما اكتمل لا يضيع: رفض نهائيّ أو عطب في مقطع لاحق = المكتمل ملصوقًا في فيديو واحد مع السبب و«الباقي لم يُخصم»؛ وغير الرفض لا يُعاد', async () => {
+  const p = plan(D3);
+  /* المحرّك يرفض المقطع الثالث بكلّ مرجع وبلاه */
+  let f = flow({ reject: (b, clipNo) => clipNo === 3 });
+  await f.ctx.run(p, 'veo');
+  assert.equal(f.creates().length, 5, 'مقطعان + ثلاث محاولات للثالث');
+  assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-2.mp4']], 'المكتملان ملصوقان');
+  assert.equal(f.partial.length, 0, 'فيديو واحد لا مشاهد متفرّقة');
+  assert.equal(f.ctx.resultEl.src, 'blob:joined'); assert.equal(f.ctx.downloadEl.style.display, 'block');
+  assert.equal(f.status[f.status.length - 1], 'ERR:video_rejected part 2/3');
+  /* عطب غير الرفض (رصيد، انقطاع): لا إعادة — يُسلَّم المكتمل */
+  f = flow({ failAt: 3 });
+  await f.ctx.run(p, 'minimax');
+  assert.equal(f.creates().length, 3, 'لا محاولة ثانية لغير الرفض');
+  assert.equal(f.joined[0].length, 2); assert.equal(f.status[f.status.length - 1], 'ERR:points_insufficient part 2/3');
+  /* تعذّر لصق المكتمل: المشاهد بروابطها كما كان */
+  f = flow({ failAt: 3, noJoin: true });
+  await f.ctx.run(p, 'minimax');
+  assert.deepEqual(f.partial, [[['https://cdn/T1.mp4', 'https://cdn/T2.mp4'], 3, 'ERR:points_insufficient']]);
+  /* المقطع الأوّل مرفوض: خطأ عاديّ بمحاولة واحدة — صورة البطل المرفوضة لا تُستبدل بفيديو بلا وجه صاحبها */
+  f = flow({ hero: 'HERO', reject: (b, clipNo) => clipNo === 1 });
+  await assert.rejects(f.ctx.run(p, 'veo'), (e) => e.code === 'video_rejected');
+  assert.equal(f.creates().length, 1); assert.equal(f.partial.length, 0); assert.equal(f.joined.length, 0);
+});
+
+test('١٣. الخادم: المقطع الذي يرفضه المحرّك لا يُخصم — النقاط تُردّ والقفل يُفكّ والردّ video_rejected، والسجلّ يقول هل كان معه لقطة', async () => {
+  account('cust1', 'free', 1000);
+  const res = { code: 200, body: null, setHeader() {}, status(c) { this.code = c; return this; }, end() { return this; }, json(v) { this.body = v; return this; } };
+  const errs = []; const realErr = console.error; console.error = (m) => errs.push(String(m));
+  omniBlocked = true; lockLog.length = 0;
+  try {
+    await veo({ method: 'POST', query: { action: 'veo-create' }, body: { promptText: CONT + '\n' + plan(D3).clips[2].text, ratio: '1280:720', token: token('cust1'), quality: 'fast', style: 'realistic',
+      durationSeconds: 8, confirmed: true, imageBase64: 'RlJBTUU=', imageMime: 'image/jpeg', keepPhoto: true } }, res);
+  } finally { omniBlocked = false; console.error = realErr; }
+  assert.deepEqual([res.code, res.body.error, res.body.retryable], [400, 'video_rejected', false], JSON.stringify(res.body));
+  assert.equal(kv.get('points:cust1'), '1000', 'خُصم ثمّ رُدّ كاملًا');
+  assert.deepEqual(lockLog, ['lock:cust1', 'release:cust1'], 'القفل فُكّ — الإعادة لا تنتظر مهلة الثلاث دقائق');
+  assert.ok(errs.some((m) => /omni upstream 400 \(image=kept-frame\): Input blocked/.test(m)), errs.join(' | '));
+});
+
+test('١٤. نصوص الإعادة والمقطع بلا مرجع وتسليم المكتمل بالـ١٤ لغة بعناصرها، وسقوط العميل = نصّ القاموس، ووسم اللغات مرفوع', () => {
+  const ctx = { console, localStorage: { getItem: () => null }, document: { getElementById: () => null, querySelector: () => null, documentElement: {} }, $: () => null };
+  ctx.window = ctx; vm.createContext(ctx);
+  const src = read('js/app-03-i18n-data.js');
+  const a = src.indexOf('const I18N = {'), b = src.indexOf('};window.I18N = I18N;') + 2;
+  vm.runInContext('var I18N=' + src.slice(a + 'const I18N = '.length, b) + ';', ctx);
+  const add = src.slice(src.indexOf('/* v-video-dialogue-reject (801)')).split('\n').slice(1, 3).join('\n');
+  assert.match(add, /^Object\.assign\(I18N\.ar, \{"vmkDialogRetry":/);
+  vm.runInContext(add, ctx);
+  const LANGS = ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil'];
+  for (const L of LANGS) vm.runInContext(read('i18n/' + L + '.js'), ctx);
+  const NEED = { vmkDialogRetry: ['{i}', '{n}'], vmkDialogNoRef: ['{i}'], vmkDialogPart: ['{k}', '{n}'] };
+  for (const L of ['ar', 'en'].concat(LANGS)) {
+    const d = ctx.I18N[L] || {};
+    for (const [key, ph] of Object.entries(NEED)) {
+      assert.ok(d[key] && ph.every((x) => d[key].includes(x)) && !d[key].includes('\n'), L + ' ' + key);
+      if (L !== 'ar' && L !== 'ur') assert.ok(!/[؀-ۿ]/.test(d[key]), L + ' ' + key + ': عربيّة');
+    }
+  }
+  for (const [lang, en] of [['ar', 0], ['en', 1]]) {
+    const c = { vmkT: (k, ar, e) => (en ? e : ar) };
+    vm.runInNewContext(['function dialogNoteText(key, ar, en, vals){', 'function dialogRetryText(i, n){', 'function dialogNoRefText(i){', 'function dialogPartText(k, n){'].map((n) => block(CLIENT, n)).join('\n')
+      + '\nthis.r = dialogRetryText; this.x = dialogNoRefText; this.p = dialogPartText;', c);
+    const D = ctx.I18N[lang];
+    assert.equal(c.r(3, 3), D.vmkDialogRetry.replace('{i}', '3').replace('{n}', '3'), lang);
+    assert.equal(c.x(2), D.vmkDialogNoRef.replace('{i}', '2'), lang);
+    assert.equal(c.p(2, 3), D.vmkDialogPart.replace('{k}', '2').replace('{n}', '3'), lang);
+  }
+  const st = read('js/app-04-i18n-state.js');
+  assert.ok(Number((/\.js\?v=(\d+)'/.exec(st) || [])[1]) >= 801 && st.includes('v-video-dialogue-reject (801)'), 'وسم اللغات مرفوع وسببه في التعليق');
+  assert.ok(read('js/app.bundle.js').includes('function dialogPartText(k, n){'), 'الحزمة مبنيّة');
 });
