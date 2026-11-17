@@ -1080,8 +1080,10 @@ function buildTrendPrompt(key, params, opts) {
    <IMAGE_REF_0> داخل النصّ (بلا وسم «يقرّر النموذج كيف يستعملها» — توثيق المزوّد). الافتراضيّ كما كان. */
 /* v-two-people: `people` (اختياريّ) — صورة فيها شخصان أو أكثر (عدّهم كشف الوجوه في أوّل الإطار): القفلان بصيغة الجمع،
    كلّ واحد بوجهه ولا تبادل بينهم. بلا عدد = المفرد كما كان حرفيًّا. */
-function withIdentityLock(promptText, max, subject, people) {
+/* v-video-speech-pace: tail (اختياريّ) = قاعدة توقيت الكلام — بعد الوصف وقبل سطر القفل (القفل آخرًا كما كان)، ويُقصّ الوصف لا هي، والطول ≤ الحدّ */
+function withIdentityLock(promptText, max, subject, people, tail) {
   const cap = max || 1500;
+  const t = String(tail || '');
   const n = Math.max(1, Math.min(3, parseInt(people, 10) || 1));
   const pre = n > 1
     ? 'MAIN CHARACTERS: the ' + n + ' real people in ' + (subject || 'the attached reference photo') + ' — keep each person\'s own exact face (face shape, eyes, eyebrows, nose, lips, jawline, beard, skin tone, hair) in every shot, never swapped or merged. '
@@ -1089,20 +1091,118 @@ function withIdentityLock(promptText, max, subject, people) {
   const post = n > 1
     ? ' IDENTITY (mandatory): every person who appears is one of these same ' + n + ' real people from the photo, each with their own face — never a different, prettier or generic face; someone who knows them must recognize every one of them instantly.'
     : ' IDENTITY (mandatory): whenever a person appears, it is this same real person from the photo — never a different, prettier or generic face; someone who knows them must recognize them instantly.';
-  const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
+  const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length - t.length)) + t;
   return pre + body + post;
 }
 /* v-photo-as-is: الصورة نفسها أوّل إطار — قفل محايد بلا «شخص حقيقيّ» ولا «واقعيّ» (كانا يحوّلان الكرتون والأفاتار إنسانًا):
    الصورة تبقى صورة، والرسم يبقى رسمًا، والمنتج يبقى منتجًا؛ والوصف يحدّد الحركة والمكان والكاميرا وحدها لا الشكل. */
-function withPhotoLock(promptText, max, subject) {
+function withPhotoLock(promptText, max, subject, tail) {
   const cap = max || 1500;
+  const t = String(tail || ''); // v-video-speech-pace: كقفل الهويّة
   /* مراجعة ٢٧ أكتوبر: بطول قفل الهويّة أو أقصر (حدود VEO_FREE_IMAGE_MAX قيست عليه — كلام الممثّل و«بلا ترجمة» لا يُقصّان)، وبلا «وجه» ولا
      «IDENTITY» (صورة منتج لا يُخترع لها شخص — v-ai-video-speed) */
   /* v-video-identity-pose (المالك ٣ نوفمبر: «تغير ملامح الشخصية» — صورته ووجهه نازل للجوال و«يطالع الكاميرا» فاخترع المحرّك وجهًا أماميًّا):
      أيّ التفات نحو الكاميرا صغير وبطيء من زاوية الصورة نفسها — ما لم تُظهره الصورة لا يُرسم من جديد دفعة واحدة. والطول كما كان ≤ قفل الهويّة. */
   const pre = 'MAIN SUBJECT: whoever or whatever is in ' + (subject || 'the attached image') + ' — keep it exactly as shown (look, proportions, colours, clothes, art style) in every shot; the description sets action, place, camera — any turn to the camera is small and slow. ';
   const post = ' SUBJECT (mandatory): the same throughout — a photo stays a photo, a drawing a drawing, never more realistic or generic.';
-  const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length));
+  const body = String(promptText || '').trim().slice(0, Math.max(0, cap - pre.length - post.length - t.length)) + t;
   return pre + body + post;
 }
-module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, withPhotoLock, splitScenes, sceneParams, MAX_SCENES, SPEECH_LANGS };
+/* v-video-speech-pace (المالك ١٧ نوفمبر ٢٠٢٦: «اصلح مسار الفيديوهات السينمائي وفيديو سريع — الاصوات تتراكب على بعضها، وثاني شي
+   الكلام غير متناسق»): المقطعان اللذان صنعهما صباحها («سينمائي» ١٠ث و٨ث، حوار أمّ وبنت عن اليوم الوطني) فُرّغا بـWhisper محلّيًّا:
+   ستّة أدوار في ١٠ ثوانٍ بلا وقفة بين المتكلّمين والصوتان معًا عند ١٫٧ث، وآخر جملة مقطوعة عند نهاية المقطع في الاثنين.
+   الجذر: الوصف الحرّ يصل المحرّك (Omni في «سينمائي»، H3 في «سريع» — كلاهما يولّد الكلام بنفسه) بلا أيّ قاعدة لتوقيت الكلام،
+   والمقطع ٥–١٠ ثوانٍ، فيحشر الحوار كلّه فيه. هنا قاعدة قصيرة تُلحق بالوصف حين يطلب كلامًا: صوت واحد في كلّ لحظة ووقفة بين
+   الأدوار، والجملة كاملة بنطق متّزن ومتزامنة مع شفتي المتكلّم، والكلام ينتهي قبل آخر ثانية بقدر ما تتّسع له المدّة — وإن لم يتّسع
+   فجمل أقلّ كاملة لا جمل مسرعة أو مقطوعة. بلا كلام في الوصف = الأمر كما كان حرفيًّا. الترندات لها قوالبها فلا تمرّ هنا. */
+
+/* (v-video-speech-pace) التشكيل والتطويل يُحذفان قبل البحث («يتكلّم» = «يتكلم») */
+function speechPlain(s) { return String(s || '').replace(/[\u064B-\u065F\u0670\u0640]/g, ''); }
+
+/* كلام بين علامتي تنصيص (حرفان فأكثر)، أو سطر يبدأ باسم متكلّم ونقطتين («الأم: …»، «Mom: …») */
+const QUOTED = /«[^»]{2,}»|"[^"]{2,}"|“[^”]{2,}”|'[^'\n]{2,}'/;
+const SPEAKER_LINE = /(^|\n)\s*[^\s:：\n][^:：\n]{0,24}[:：]\s*\S/;
+/* أفعال الكلام وأسماؤه — بالعربيّة بلا تشكيل، وبالإنجليزيّة كلمةً كاملة (الغناء ليس حوارًا فلا يدخل). الإيجاب الكاذب لا يضرّ: القاعدة
+   مشروطة «إن تكلّم أحد» */
+const AR_SPEECH = /(يقول|تقول|قال|قالت|يسأل|تسأل|سأل|يجيب|تجيب|أجاب|يرد|ترد|يتكلم|تتكلم|يتحدث|تتحدث|يتحاور|تتحاور|حوار|محادثة|دردشة|يسولف|تسولف|سوالف|يحكي|تحكي|يخاطب|تخاطب|ينادي|تنادي|يهمس|تهمس|يرحب|ترحب|كلام|ينطق|تنطق|بصوت)/;
+const EN_SPEECH = /\b(say|says|said|saying|asks?|asked|answers?|answered|repl(?:y|ies|ied)|talks?|talking|speaks?|speaking|spoken|dialog(?:ue)?|conversation|chat(?:s|ting)?|narrat\w*|voice-?over|whispers?|shouts?|greets?)\b/i;
+
+function hasSpeech(desc) {
+  const s = speechPlain(desc);
+  if (!s.trim()) return false;
+  return QUOTED.test(s) || SPEAKER_LINE.test(s) || AR_SPEECH.test(s) || EN_SPEECH.test(s);
+}
+
+/* كم كلمة تتّسع لها المدّة بنطق متّزن مع وقفات بين الأدوار: ~١٫٧ كلمة في الثانية، وثانية أخيرة بلا كلام
+   (المقطع ٨ث اليوم: ثلاث جمل ١٣ كلمة لم تتّسع وقُطعت آخرها) */
+function wordBudget(seconds) { return Math.max(4, Math.floor((seconds - 1) * 1.7)); }
+
+/* «ممثل يتكلم» (احتياطه يمرّ بـveo-create): كلامه بالحرف ومدّته كلامه — قالبه في app-11-video.js («saying exactly these Arabic words»)
+   لا يمرّ بالقاعدة: «جمل أقلّ» تناقض «بالحرف»، ولا يُقصّ له شيء (video-photo-identity ٥ب) */
+const ACTOR_EXACT = /saying exactly these (?:Arabic )?words/i;
+
+/* القاعدة نفسها لكلّ محرّك؛ بالإنجليزيّة (المحرّكات تطيع أوامر التوقيت بها أدقّ) وقصيرة (< ٤٨٠ حرفًا) لأنّها تدخل حدّ الوصف القديم
+   نفسه (١٥٠٠/٢٠٠٠) فيُقصّ لها من وصف طويل */
+function speechPace(desc, seconds) {
+  if (!hasSpeech(desc) || ACTOR_EXACT.test(String(desc || ''))) return '';
+  const s = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
+  return ' If anyone speaks in this ' + s + '-second clip: one voice at a time — each speaker finishes before the next starts,'
+    + ' with a short pause (and any camera cut) between turns; no narrator or background voices over them.'
+    + ' Each line is spoken complete, clear and unhurried, as written, lip-synced to the speaker on screen.'
+    + ' All speech ends before the last second (about ' + wordBudget(s) + ' words at most): if the lines do not fit, say fewer lines — never rush, overlap or cut one off.';
+}
+
+/* بلا صورة (لا قفل): الوصف ثمّ القاعدة داخل حدّ الوصف نفسه — يُقصّ الوصف لا هي (مع صورة تدخل القفل نفسه: withIdentityLock/withPhotoLock tail) */
+function fitPace(text, pace, cap) {
+  const t = String(text || '').trim();
+  return pace ? t.slice(0, Math.max(0, cap - pace.length)) + pace : t;
+}
+
+/* v-video-dialogue-fit (المالك ١٧ نوفمبر بعد #1341: «كأنّي في سوق السمك… الحوار ليس بالدقّة والحوار سريع» — مقطعه «سريع» من النسخة
+   الجديدة: ست جمل (~٢٦ كلمة) في ١٠ث بلا وقفة. القاعدة في الأمر لا تكفي: المحرّك يقرأ كلّ حوار يجده في الوصف. اختار «مقطع واحد مع
+   تنبيه»): أدوار الحوار في الوصف — سطر «اسم: كلام»، أو كلام بين تنصيص — تُعدّ كلماتها، ويصل المحرّك منها بالترتيب ما تتّسع له المدّة
+   (wordBudget، والأوّل دائمًا)، والباقي يُحذف من الوصف (السطر كلّه، أو الجملة التي فيها التنصيص). المشهد والوصف كما هما.
+   الدالّة نفسها حرفيًّا في js/app-11-video.js — العميل ينبّه بها قبل الخصم («سيُقال إلى: …») — واختبار video-dialogue-fit يقارن النصّين. */
+function fitDialogue(desc, seconds) {
+  const s = String(desc || '');
+  const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
+  const budget = Math.max(4, Math.floor((sec - 1) * 1.7));
+  const words = (x) => String(x || '').split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+  const notSpeaker = /^(?:المكان|المشهد|الزمان|الوقت|الكاميرا|التصوير|الأسلوب|الستايل|الإضاءة|الموسيقى|الخلفية|ملاحظة|scene|setting|location|place|time|camera|shot|style|lighting|music|background|note)$/i;
+  const res = { text: s, budget, turns: 0, kept: 0, dropped: 0, words: 0, keptWords: 0, last: '' };
+  if (/saying exactly these (?:Arabic )?words/i.test(s)) return res; // «ممثل يتكلم»: كلامه بالحرف
+  const turns = [];
+  let off = 0;
+  for (const line of s.split('\n')) {
+    /* سطر فيه تنصيصان فأكثر («البنت تسأل: «…» والأم ترد: «…»») = عدّة أدوار تُعدّ بتنصيصاتها، لا دور واحد باسم قبل النقطتين */
+    const m = (line.match(/«[^»]+»|"[^"]+"|“[^”]+”/g) || []).length < 2 && /^\s*([^\s:：][^:：]{0,24}?)\s*[:：]\s*(\S.*)$/.exec(line);
+    if (m && !/\d$/.test(m[1]) && !notSpeaker.test(m[1].trim())) {
+      turns.push({ a: off, b: Math.min(s.length, off + line.length + 1), w: words(m[2].replace(/[«»"“”]/g, ' ')), said: m[2].trim() });
+    } else {
+      const re = /«([^»]+)»|"([^"]+)"|“([^”]+)”/g;
+      let q, prev = off;
+      while ((q = re.exec(line))) {
+        const qa = off + q.index, before = s.slice(prev, qa);
+        const cut = Math.max(before.lastIndexOf('.'), before.lastIndexOf('؟'), before.lastIndexOf('?'), before.lastIndexOf('!'), before.lastIndexOf('،'));
+        const said = (q[1] || q[2] || q[3]).trim();
+        turns.push({ a: cut >= 0 ? prev + cut + 1 : prev, b: qa + q[0].length, w: words(said), said });
+        prev = qa + q[0].length;
+      }
+    }
+    off += line.length + 1;
+  }
+  res.turns = turns.length;
+  res.words = turns.reduce((n, t) => n + t.w, 0);
+  let used = 0, kept = 0;
+  for (const t of turns) { if (kept && used + t.w > budget) break; used += t.w; kept++; }
+  res.kept = kept; res.keptWords = used; res.last = kept ? turns[kept - 1].said : '';
+  if (kept === turns.length) return res;
+  let out = s;
+  for (let i = turns.length - 1; i >= kept; i--) out = out.slice(0, turns[i].a) + out.slice(turns[i].b);
+  res.text = out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
+  res.dropped = turns.length - kept;
+  return res;
+}
+
+module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, withPhotoLock, splitScenes, sceneParams, MAX_SCENES, SPEECH_LANGS,
+  hasSpeech, speechPace, wordBudget, fitPace, fitDialogue }; // v-video-speech-pace · v-video-dialogue-fit

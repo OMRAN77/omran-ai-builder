@@ -1162,6 +1162,59 @@
   }
   /* v-audit-video (cli-video-6): نصوص حدّ اليوم والمهلة و«المحرّك مزدحم» كانت isEn() — فكلّ لغة غير الإنجليزيّة تأخذ العربيّة.
      الآن مفتاح I18N بالـ١٤ لغة، والاحتياط bT (القاموس الثنائيّ ثمّ الإنجليزيّة — لا عربيّة لغير العربيّة). */
+  /* v-video-dialogue-fit (المالك ١٧ نوفمبر بعد #1341: «كأنّي في سوق السمك… الحوار سريع» ثمّ اختار «مقطع واحد مع تنبيه»): نسخة حرفيّة
+     من fitDialogue في api/_lib/video-trends.js — الخادم يقصّ بها الحوار لما يتّسع له المقطع، والعميل ينبّه بها قبل الخصم بالحساب نفسه.
+     اختبار video-dialogue-fit يقارن النصّين: عدّل الاثنين معًا. */
+  function fitDialogue(desc, seconds) {
+    const s = String(desc || '');
+    const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
+    const budget = Math.max(4, Math.floor((sec - 1) * 1.7));
+    const words = (x) => String(x || '').split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+    const notSpeaker = /^(?:المكان|المشهد|الزمان|الوقت|الكاميرا|التصوير|الأسلوب|الستايل|الإضاءة|الموسيقى|الخلفية|ملاحظة|scene|setting|location|place|time|camera|shot|style|lighting|music|background|note)$/i;
+    const res = { text: s, budget, turns: 0, kept: 0, dropped: 0, words: 0, keptWords: 0, last: '' };
+    if (/saying exactly these (?:Arabic )?words/i.test(s)) return res; // «ممثل يتكلم»: كلامه بالحرف
+    const turns = [];
+    let off = 0;
+    for (const line of s.split('\n')) {
+      /* سطر فيه تنصيصان فأكثر («البنت تسأل: «…» والأم ترد: «…»») = عدّة أدوار تُعدّ بتنصيصاتها، لا دور واحد باسم قبل النقطتين */
+      const m = (line.match(/«[^»]+»|"[^"]+"|“[^”]+”/g) || []).length < 2 && /^\s*([^\s:：][^:：]{0,24}?)\s*[:：]\s*(\S.*)$/.exec(line);
+      if (m && !/\d$/.test(m[1]) && !notSpeaker.test(m[1].trim())) {
+        turns.push({ a: off, b: Math.min(s.length, off + line.length + 1), w: words(m[2].replace(/[«»"“”]/g, ' ')), said: m[2].trim() });
+      } else {
+        const re = /«([^»]+)»|"([^"]+)"|“([^”]+)”/g;
+        let q, prev = off;
+        while ((q = re.exec(line))) {
+          const qa = off + q.index, before = s.slice(prev, qa);
+          const cut = Math.max(before.lastIndexOf('.'), before.lastIndexOf('؟'), before.lastIndexOf('?'), before.lastIndexOf('!'), before.lastIndexOf('،'));
+          const said = (q[1] || q[2] || q[3]).trim();
+          turns.push({ a: cut >= 0 ? prev + cut + 1 : prev, b: qa + q[0].length, w: words(said), said });
+          prev = qa + q[0].length;
+        }
+      }
+      off += line.length + 1;
+    }
+    res.turns = turns.length;
+    res.words = turns.reduce((n, t) => n + t.w, 0);
+    let used = 0, kept = 0;
+    for (const t of turns) { if (kept && used + t.w > budget) break; used += t.w; kept++; }
+    res.kept = kept; res.keptWords = used; res.last = kept ? turns[kept - 1].said : '';
+    if (kept === turns.length) return res;
+    let out = s;
+    for (let i = turns.length - 1; i >= kept; i--) out = out.slice(0, turns[i].a) + out.slice(turns[i].b);
+    res.text = out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
+    res.dropped = turns.length - kept;
+    return res;
+  }
+  /* v-video-dialogue-fit: «سريع» و«سينمائي» — حوار أطول من المقطع يُنبَّه عليه قبل أيّ نداء أو خصم: «سيُقال إلى …» ويُحذف الباقي.
+     الإلغاء = لا طلب ولا خصم والوصف كما هو ليقصّره صاحبه. المدّة كما يحسبها الخادم (سريع ٤–١٠ وبلاها ٦؛ سينمائي ٣–١٠ وغيرها ٨). */
+  function dialogFitOk(text, mode, secs){
+    const sec = mode === 'minimax' ? (secs ? Math.min(10, Math.max(4, secs)) : 6) : ((secs >= 3 && secs <= 10) ? secs : 8);
+    const f = fitDialogue(text, sec);
+    if(!f.dropped) return true;
+    const last = f.last.length > 80 ? f.last.slice(0, 80) + '…' : f.last;
+    const msg = String(vmkT('vmkDialogLong', '⚠️ الحوار أطول من مدّة الفيديو ({s} ثوانٍ): لو قيل كلّه صار سريعًا والأصوات متداخلة.\nسيُقال إلى: «{last}» — ويُحذف الباقي.\nمتابعة؟ أو ألغِ وقصّر الحوار.', '⚠️ The dialogue is longer than the video ({s} seconds): said in full it would be rushed, with voices overlapping.\nIt will be spoken up to: “{last}” — the rest is left out.\nContinue? Or cancel and shorten the dialogue.')).split('{s}').join(String(sec)).split('{last}').join(last);
+    try{ return window.confirm(msg) !== false; }catch(e){ __swallow(e, 'vmk:dialog-fit'); return true; /* guard-ok — بلا نافذة تأكيد: الخادم يقصّ الحوار على كلّ حال */ }
+  }
   function vmkT(key, ar, en){
     const v = (typeof window.t === 'function') ? window.t(key) : key;
     return (v && v !== key) ? String(v) : bT(ar, en);
@@ -1622,6 +1675,7 @@
 
     if(creationMode === 'minimax'){
       try{
+        if(!dialogFitOk(text, 'minimax', durSecs)){ setStatus(''); return; } /* v-video-dialogue-fit: قبل أيّ نداء أو خصم */
         setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو...','🚀 Sending the request to the video engine...'));
         const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: durSecs || undefined }; /* v-video-first-frame: الأسلوب كان لا يصل · v-video-durations: والمدّة */
         if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
@@ -1729,6 +1783,7 @@
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting' + (filmHeroBase64 ? '' : ', realistic') + '. No subtitles, no captions, no text on screen.';
         }
+        if(creationMode === 'veo' && !dialogFitOk(veoPrompt, 'veo', durSecs)){ setStatus(''); return; } /* v-video-dialogue-fit: قبل أيّ نداء أو خصم (الممثّل كلامه بالحرف) */
         setStatus(bT('🚀 جاري الإرسال إلى المحرّك السينمائيّ...','🚀 Sending to the cinematic engine...')); /* v-no-provider-names */
         const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: (creationMode === 'veo' && durSecs) || undefined }; /* v-video-first-frame · v-video-durations: مدّة «سينمائي» المختارة (الممثّل على قدّ كلامه) */
         if(filmHeroBase64){ veoPayload.imageBase64 = filmHeroBase64; veoPayload.imageMime = filmHeroMime || 'image/jpeg'; } /* v-video-photo-identity */
