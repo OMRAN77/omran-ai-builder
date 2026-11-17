@@ -5,10 +5,11 @@
 // بين سطرين، ونصّ خارج دائرة الحلقة أو لوحة الرفع، وتلاصق تسميات تذييل الشريط. ويصوّر كلّ موضع مع قصّ مكبّر لكلّ نصّ.
 //
 //   node scripts/lang-fit-probe.mjs --lang ml --out <dir> [--pw <playwright-core>] [--scale 3] [--only home,style]
-//        [--mobile]      تخطيط الجوّال (٤٠٠×٨٦٠ لمس) بدل الحاسوب — للتقرير وحده: الجوّال لا يُلمس بلا أمر المالك
+//        [--mobile]      تخطيط الجوّال (٤٠٠×٨٦٠ لمس) بدل الحاسوب: الشريط السفليّ بدل تذييل الجانبيّ (v-ml-fit-mobile)
+//        [--width <px>]  عرض الجوّال بدل ٤٠٠ (هاتف المالك المطويّ ~٣٥٤، والمفتوح ~٧٣٢)
 //        [--android]     خطّ Noto Sans Malayalam (خطّ أندرويد) بدل خطّ النظام (ويندوز: Nirmala UI) — من Google Fonts بنسخة مخبَّأة
 //        [--fonts <dir>] مجلّد الخطوط المخبَّأة (الافتراضيّ <out>/../gfonts-cache)
-// يحفظ <out>/<lang>[-mobile][-android]/report.json ولقطة لكلّ موضع وقصًّا لكلّ نصّ، وينتهي بالرمز 1 إن بقيت علّة أو خطأ في الصفحة.
+// يحفظ <out>/<lang>[-mobile[<width>]][-android]/report.json ولقطة لكلّ موضع وقصًّا لكلّ نصّ، وينتهي بالرمز 1 إن بقيت علّة أو خطأ في الصفحة.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,20 +22,32 @@ const opt = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? (args[
 const LANG = /^[a-z]{2,3}$/.test(String(opt('lang', 'ml'))) ? String(opt('lang', 'ml')) : 'ml';
 const ANDROID = !!opt('android', false);
 const MOBILE = !!opt('mobile', false);
+const MW = Math.max(280, Math.min(860, Number(opt('width', 400)) || 400));
 const OUT = path.resolve(String(opt('out', path.join(ROOT, '.shots', 'lang-fit'))));
-const DIR = path.join(OUT, LANG + (MOBILE ? '-mobile' : '') + (ANDROID ? '-android' : ''));
+const DIR = path.join(OUT, LANG + (MOBILE ? '-mobile' + (MW !== 400 ? MW : '') : '') + (ANDROID ? '-android' : ''));
 const SCALE = Number(opt('scale', 2)) || 2;
 const ONLY = opt('only', '') ? String(opt('only')).split(',') : null;
 const FCACHE = path.resolve(String(opt('fonts', path.join(OUT, '..', 'gfonts-cache'))));
 
 // المواضع: كلّ نصّ (sel) يُقاس مقابل صندوقه — العنصر نفسه إن كان يقصّ (overflow أو «…»)، وclip = سلفٌ يقصّه أو يجاوره؛
 // circle = سلف دائريّ يقصّ بنصف قطره، plate = مستطيل بنسب من سلف (لوحة الرفع في الصورة)، row = تسميات صفّ واحد يُقاس ما بينها.
+// واجهة اللوحة الذهبيّة في style.webp: ٣٨–٦٢٪ عرضًا و٦٧–٨٣٪ ارتفاعًا (css/رفع-الصور.css، v-style-plate-fit) — نِسب من الصورة نفسها
+// (٢:١، background:center/cover): الخانة الأطول من ٢:١ (المالايالاميّة على الهاتف ٧:٥) تقصّ جانبَي الصورة فتتّسع اللوحة فيها
+const STYLE_PLATE = { of: '.omUpStyle', img: 2, x: [0.38, 0.62], y: [0.67, 0.83] };
+const NAV_ROWS = [
+  { sel: '#omranSidebarFoot .omNavBtn > span, #omranSidebarFoot .omModeNavLabel', clip: 'button', row: true },
+  // الجوّال: تبويبات الشريط السفليّ الخمسة (#omranBottomNav، وزرّ الوضع يُلحق به خامسًا — app-05-ui.js v-mode-nav)
+  // وتسميته سطر واحد: الشريط ثابت الارتفاع والتفاف تسمية يطيله كلّه فوق المحتوى (تذييل الحاسوب يلفّ «ലൈറ്റ് / മോഡ്» عمدًا، #1343)
+  { sel: '#omranBottomNav .omNavBtn > span, #omranBottomNav .omModeNavLabel', clip: 'button', row: true, oneLine: true }];
 const JOBS = [
-  { name: 'home', vp: [900, 581], targets: [
-    { sel: '#omranSidebarFoot .omNavBtn > span, #omranSidebarFoot .omModeNavLabel', clip: 'button', row: true }] },
+  { name: 'home', vp: [900, 581], targets: NAV_ROWS },
+  // الوضع الفاتح: زرّ الوضع يقول «الوضع الداكن» — أطول بالمالايالاميّة («ഡാർക്ക് മോഡ്» ٨em مقابل «ലൈറ്റ് മോഡ്» ٧em)
+  { name: 'homeLight', vp: [900, 581], eval: 'window.omToggleMode()', settle: 900, targets: NAV_ROWS },
   { name: 'style', vp: [900, 581], eval: "document.getElementById('btnStudioAI').click()", settle: 3000, targets: [
-    // واجهة اللوحة الذهبيّة في style.webp: ٣٨–٦٢٪ عرضًا و٦٧–٨٣٪ ارتفاعًا (css/رفع-الصور.css، v-style-plate-fit)
-    { sel: '.omUpStyle .omUpB', plate: { of: '.omUpStyle', x: [0.38, 0.62], y: [0.67, 0.83] } }] },
+    { sel: '.omUpStyle .omUpB', plate: STYLE_PLATE }] },
+  // «دمج صور»: الخانتان جنبًا إلى جنب (#studioAiSlots.two) — كلّ لوحة نصف عرضها
+  { name: 'merge', vp: [900, 581], eval: "document.getElementById('btnStudioAI').click(); setTimeout(() => document.querySelector('.studioAiTabBtn[data-feature=\"merge\"]').click(), 1200)", settle: 3200, targets: [
+    { sel: '#studioAiSlots.two .omUpStyle .omUpB', plate: STYLE_PLATE }] },
   { name: 'portrait', vp: [900, 581], eval: "document.getElementById('btnPortraitStyle').click()", settle: 3000, targets: [
     { sel: '#portraitStyleHero .pstyleHeroT > i', circle: '.pstyleHeroT' }] },
   { name: 'video', vp: [900, 581], eval: "document.getElementById('btnVideoMaker').click()", settle: 3000, targets: [
@@ -90,20 +103,24 @@ function measurePage(targets) {
           const half = Math.sqrt(Math.max(0, R * R - dy * dy)); circleOut = Math.max(circleOut, cx - half - r.left, r.right - (cx + half)); });
         circleOut = r2(Math.max(0, circleOut));
       }
-      if (t.plate) {
+      if (t.plate) { // نِسب اللوحة من الصورة؛ الصورة مغطّية (cover) موسّطة: تُقصّ من الجانبين أو من فوق وتحت بحسب نسبة الخانة
         const pr = el.closest(t.plate.of).getBoundingClientRect();
-        const P = { l: pr.left + pr.width * t.plate.x[0], r: pr.left + pr.width * t.plate.x[1], t: pr.top + pr.height * t.plate.y[0], b: pr.top + pr.height * t.plate.y[1] };
+        const iw = Math.max(pr.width, pr.height * (t.plate.img || pr.width / pr.height)), ih = iw / (t.plate.img || pr.width / pr.height);
+        const il = pr.left + (pr.width - iw) / 2, it = pr.top + (pr.height - ih) / 2;
+        const P = { l: il + iw * t.plate.x[0], r: il + iw * t.plate.x[1], t: it + ih * t.plate.y[0], b: it + ih * t.plate.y[1] };
         plateOut = r2(Math.max(0, P.l - tx.l, tx.r - P.r, P.t - tx.t, tx.b - P.b));
       }
       const B = boxes[boxes.length - 1] || content;
       out.push({ sel: t.sel, i: idx, text: nodes.map((n) => n.nodeValue).join('').trim().slice(0, 60), fs: cs.fontSize, lh: cs.lineHeight,
         lines: ys.length, hidden, cutX: r2(cutX), broken, circleOut, plateOut,
-        box: [r2(B.l), r2(B.t), r2(B.r - B.l), r2(B.b - B.t)], tx: [r2(tx.l), r2(tx.t), r2(tx.r - tx.l), r2(tx.b - tx.t)], row: !!t.row });
+        box: [r2(B.l), r2(B.t), r2(B.r - B.l), r2(B.b - B.t)], tx: [r2(tx.l), r2(tx.t), r2(tx.r - tx.l), r2(tx.b - tx.t)], row: !!t.row, oneLine: !!t.oneLine });
     });
   }
-  // تسميات الصفّ الواحد: المسافة بين نصّ كلّ تسمية والتالية بترتيبها البصريّ (سالبة = تداخل)
-  const rows = out.filter((m) => m.row).sort((a, b) => a.tx[0] - b.tx[0]);
-  for (let k = 1; k < rows.length; k++) rows[k].gapBefore = r2(rows[k].tx[0] - (rows[k - 1].tx[0] + rows[k - 1].tx[2]));
+  // تسميات الصفّ الواحد (كلّ محدِّد صفّ وحده): المسافة بين نصّ كلّ تسمية والتالية بترتيبها البصريّ (سالبة = تداخل)
+  new Set(out.filter((m) => m.row).map((m) => m.sel)).forEach((sel) => {
+    const rows = out.filter((m) => m.row && m.sel === sel).sort((a, b) => a.tx[0] - b.tx[0]);
+    for (let k = 1; k < rows.length; k++) rows[k].gapBefore = r2(rows[k].tx[0] - (rows[k - 1].tx[0] + rows[k - 1].tx[2]));
+  });
   return out;
 }
 
@@ -160,7 +177,7 @@ fs.mkdirSync(DIR, { recursive: true });
 const report = { lang: LANG, mobile: MOBILE, android: ANDROID, base, out: DIR, jobs: {}, pageErrors: [], bad: 0 };
 try {
   for (const job of JOBS) {
-    const vp = MOBILE ? [400, 860] : job.vp;
+    const vp = MOBILE ? [MW, 860] : job.vp;
     const ctx = await browser.newContext(Object.assign({ viewport: { width: vp[0], height: vp[1] }, deviceScaleFactor: SCALE, locale: LANG === 'ar' ? 'ar' : 'en-US' },
       MOBILE ? { isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36' } : {}));
     await ctx.addInitScript(({ l }) => {
@@ -190,7 +207,11 @@ try {
       const x = Math.max(0, Math.min(m.box[0], m.tx[0]) - 6), y = Math.max(0, Math.min(m.box[1], m.tx[1]) - 6);
       const x2 = Math.min(vp[0], Math.max(m.box[0] + m.box[2], m.tx[0] + m.tx[2]) + 6), y2 = Math.min(vp[1], Math.max(m.box[1] + m.box[3], m.tx[1] + m.tx[3]) + 6);
       if (x2 - x > 2 && y2 - y > 2) { m.crop = job.name + '-' + String(k).padStart(2, '0') + '.png'; await page.screenshot({ path: path.join(DIR, m.crop), clip: { x, y, width: x2 - x, height: y2 - y } }); }
-      m.bad = m.cutX > 0.5 || m.hidden > 0 || m.broken.length > 0 || (m.circleOut || 0) > 0.5 || (m.plateOut || 0) > 0.5 || (m.gapBefore != null && m.gapBefore < 4);
+      // الفجوة بين تسميتين متجاورتين أقلّ من ٠٫٨em (نحو ثلاثة فراغات بين كلمتين) تُقرأ معها جملة واحدة: «ക്രമീകരണങ്ങൾ ലൈറ്റ് മോഡ്»؛
+      // وتسمية الشريط السفليّ سطر واحد: «ഡാർക്ക് മോഡ്» ملتفّة سطرين على ٣٥٤ أطالت الشريط كلّه ٤٤←٥٦px
+      m.gapMin = Math.round(Math.max(4, 0.8 * parseFloat(m.fs)) * 10) / 10;
+      m.bad = m.cutX > 0.5 || m.hidden > 0 || m.broken.length > 0 || (m.circleOut || 0) > 0.5 || (m.plateOut || 0) > 0.5 ||
+        (m.gapBefore != null && m.gapBefore < m.gapMin) || (m.oneLine && m.lines > 1);
       if (m.bad) report.bad++;
     }
     report.jobs[job.name] = ms;
