@@ -1297,9 +1297,18 @@
   function dialogClipsText(i, n, secs){
     return String(vmkT('vmkDialogClips', '🎬 الحوار كامل على {n} مقاطع متتالية (~{s} ثانية) — يولّد المقطع {i} من {n}...', '🎬 The full dialogue runs across {n} back-to-back clips (~{s} seconds) — generating clip {i} of {n}...')).split('{i}').join(String(i)).split('{n}').join(String(n)).split('{s}').join(String(secs));
   }
-  /* آخر لقطة من مقطع (JPEG base64) ليبدأ منها المقطع التالي — الوجوه والمكان نفسها. إطار لم يُرسم بعد يُرسم شفّافًا (PITFALLS):
-     ننتظر أوّل بكسل معتم. null عند أيّ عطب = المقطع التالي بلا لقطة (يكمل بالوصف وحده). */
-  function lastFrameB64(blob, ms){
+  /* v-video-dialogue-reject: أسطر الإعادة بمرجع آخر، والمقطع بلا لقطة مرجعيّة، وتسليم ما اكتمل */
+  function dialogNoteText(key, ar, en, vals){
+    let s = String(vmkT(key, ar, en));
+    for(const k of Object.keys(vals)) s = s.split('{' + k + '}').join(String(vals[k]));
+    return s;
+  }
+  function dialogRetryText(i, n){ return dialogNoteText('vmkDialogRetry', '⏳ المقطع {i} من {n}: المحرّك رفض اللقطة المرجعيّة — يُعاد بمرجع آخر، والمرفوض لا يُخصم...', '⏳ Clip {i} of {n}: the engine refused the reference frame — retrying with another reference; the refused attempt is not charged...', { i, n }); }
+  function dialogNoRefText(i){ return dialogNoteText('vmkDialogNoRef', '⚠️ المقطع {i} بلا لقطة مرجعيّة (رفضها المحرّك أو تعذّرت) — قد يختلف شكل الشخصيّات فيه.', '⚠️ Clip {i} has no reference frame (refused by the engine or unavailable) — the characters may look different in it.', { i }); }
+  function dialogPartText(k, n){ return dialogNoteText('vmkDialogPart', 'اكتمل {k} من {n} مقاطع في فيديو واحد — والباقي لم يُخصم.', 'Finished {k} of {n} clips as one video — the rest was not charged.', { k, n }); }
+  /* لقطة من مقطع (JPEG base64) ليبدأ منها المقطع التالي — الوجوه والمكان نفسها: آخر لقطة ('last')، أو أوّل لقطة ('first') حين يرفض
+     المحرّك الأخيرة (v-video-dialogue-reject). إطار لم يُرسم بعد يُرسم شفّافًا (PITFALLS): ننتظر أوّل بكسل معتم. null عند أيّ عطب. */
+  function clipFrameB64(blob, where, ms){
     return new Promise((res) => {
       const v = document.createElement('video'), url = URL.createObjectURL(blob);
       let done = false, tm = 0;
@@ -1328,7 +1337,7 @@
             setTimeout(look, 50);
           })();
         };
-        v.currentTime = Math.max(0, d - 0.02);
+        v.currentTime = where === 'first' ? Math.min(0.05, d / 2) : Math.max(0, d - 0.02);
       };
       v.src = url;
     });
@@ -1633,25 +1642,60 @@
       /* سطر مستقلّ أوّل الوصف وبلا نقطتين ولا تنصيص: ملتصقًا بآخر سطر حوار كان الخادم يعدّه من كلام المتكلّم فيحذف الجملة الأخيرة (كشفه المسبار) */
       const CONT = 'Continue the same scene from the attached first frame — the same people, voices, clothes and place; the conversation simply carries on.';
       const urls = [], local = [];
-      let frame = null;
+      let last = null, prevBlob = null, noRef = 0;
+      const show = (blob) => {
+        const out = URL.createObjectURL(blob);
+        resultEl.src = out;
+        resultEl.style.display = 'block';
+        downloadEl.href = out;
+        downloadEl.download = dlName('omran-ai-video', blob.type);
+        downloadEl.style.display = 'block';
+      };
       try{
         for(let i = 0; i < n; i++){
           const clip = plan.clips[i];
           const say = () => setStatus(dialogClipsText(i + 1, n, plan.seconds));
           say();
-          const payload = { promptText: (frame ? CONT + '\n' : '') + clip.text, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: clip.sec, confirmed: true };
-          if(frame){ payload.imageBase64 = frame; payload.imageMime = 'image/jpeg'; payload.keepPhoto = true; }
-          else if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; } /* المقطع الأوّل، ومقطع لاحق تعذّرت لقطته: صورة البطل تحفظ الوجه */
-          const url = await sceneInSequence(i + 1, n, () => engineClip(mode, payload, say));
+          /* v-video-dialogue-reject (المالك ١٧ نوفمبر بعد #1344: مقطعان تولّدا والثالث رفضه المحرّك «أسماء أو ملامح أشخاص حقيقيّين»، فرأى
+             مشهدين متفرّقين ورسالة رفض — «تريد ان تخسرني فقط»): الرفض جاء مع لقطة مرجعيّة (الوصف نفسه بلا صورة كان يمرّ). مراجع المقطع
+             اللاحق بالترتيب: آخر لقطة في سابقه، ثمّ أوّل لقطة فيه (قبِلها المحرّك مدخلًا، أو هي افتتاح المشهد)، ثمّ صورة البطل، ثمّ بلا
+             صورة. رفض المحرّك للطلب (video_rejected) لا يولّد ولا يُخصم (الخادم يردّ النقاط ويفكّ القفل) فيُعاد المقطع بالمرجع التالي؛
+             وأيّ خطأ آخر يوقف كما كان. المقطع الأوّل بمحاولته الواحدة: صورة البطل المرفوضة لا تُستبدل بفيديو بلا وجه صاحبها. */
+          const refs = [];
+          if(i > 0 && last) refs.push({ img: last, cont: true });
+          if(i > 0 && prevBlob) refs.push({ first: true, cont: true });
+          if(filmHeroBase64) refs.push({ img: filmHeroBase64, mime: filmHeroMime || 'image/jpeg' });
+          if(i > 0 || !refs.length) refs.push({});
+          let url = null;
+          for(let k = 0; k < refs.length && !url; k++){
+            const r = refs[k];
+            if(r.first){ r.img = await clipFrameB64(prevBlob, 'first'); if(!r.img || r.img === last) continue; }
+            const payload = { promptText: (r.cont ? CONT + '\n' : '') + clip.text, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: clip.sec, confirmed: true };
+            if(r.img){ payload.imageBase64 = r.img; payload.imageMime = r.mime || 'image/jpeg'; if(r.cont) payload.keepPhoto = true; }
+            try{ url = await sceneInSequence(i + 1, n, () => engineClip(mode, payload, say)); }
+            catch(e){
+              if(!(e && e.code === 'video_rejected') || k === refs.length - 1) throw e;
+              setStatus(dialogRetryText(i + 1, n));
+              continue;
+            }
+            if(i > 0 && !r.img && !noRef) noRef = i + 1;
+          }
           urls.push(url); scenesDone++;
           let blob = null;
           try{ blob = await proxyBlob(url); }catch(e){ __swallow(e, 'vmk:dialog-clip-dl'); }
           local.push(blob ? URL.createObjectURL(blob) : url);
-          frame = (blob && i < n - 1) ? await lastFrameB64(blob) : null;
+          prevBlob = (blob && i < n - 1) ? blob : null;
+          last = prevBlob ? await clipFrameB64(prevBlob, 'last') : null;
         }
       }catch(e){
         if(!urls.length) throw e;
-        showPartialScenes(urls, n, friendlyError(e));
+        /* ما اكتمل يُسلَّم فيديو واحدًا ملصوقًا لا مشاهد متفرّقة، مع السبب و«اكتمل k من n — والباقي لم يُخصم» */
+        const why = friendlyError(e);
+        let part = null;
+        if(local.length > 1){ try{ part = await concatScenes(local); }catch(e2){ __swallow(e2, 'vmk:dialog-part-join'); } }
+        if(!part){ showPartialScenes(urls, n, why); return; }
+        show(part);
+        setStatus(why + ' ' + dialogPartText(urls.length, n));
         return;
       }
       setStatus(bT('🔗 جاري دمج المشاهد معًا...','🔗 Joining scenes together...'));
@@ -1659,13 +1703,8 @@
       try{ joined = await concatScenes(local); }catch(e){ __swallow(e, 'vmk:dialog-join'); }
       if(!joined){ showPartialScenes(urls, n, '⚠️'); return; }
       if(wantCanvasWrap()){ await wrapWithCanvas(joined, text, ratio, signature, wantNarration, (narrationText.value || '').trim()); return; }
-      const out = URL.createObjectURL(joined);
-      setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
-      resultEl.src = out;
-      resultEl.style.display = 'block';
-      downloadEl.href = out;
-      downloadEl.download = dlName('omran-ai-video', joined.type);
-      downloadEl.style.display = 'block';
+      show(joined);
+      setStatus(bT('✅ تم الانتهاء!','✅ Done!') + (noRef ? ' ' + dialogNoRefText(noRef) : ''));
     }
 
     if(durVal === 'film'){
