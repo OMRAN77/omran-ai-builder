@@ -1305,7 +1305,90 @@
   }
   function dialogRetryText(i, n){ return dialogNoteText('vmkDialogRetry', '⏳ المقطع {i} من {n}: المحرّك رفض اللقطة المرجعيّة — يُعاد بمرجع آخر، والمرفوض لا يُخصم...', '⏳ Clip {i} of {n}: the engine refused the reference frame — retrying with another reference; the refused attempt is not charged...', { i, n }); }
   function dialogNoRefText(i){ return dialogNoteText('vmkDialogNoRef', '⚠️ المقطع {i} بلا لقطة مرجعيّة (رفضها المحرّك أو تعذّرت) — قد يختلف شكل الشخصيّات فيه.', '⚠️ Clip {i} has no reference frame (refused by the engine or unavailable) — the characters may look different in it.', { i }); }
-  function dialogPartText(k, n){ return dialogNoteText('vmkDialogPart', 'اكتمل {k} من {n} مقاطع في فيديو واحد — والباقي لم يُخصم.', 'Finished {k} of {n} clips as one video — the rest was not charged.', { k, n }); }
+  function dialogPartText(k, n){ return dialogNoteText('vmkDialogPart', 'اكتمل {k} من {n} مقاطع في فيديو واحد — والباقي لم يُخصم. اضغط زرّ الإنشاء مرّة ثانية ليكمل الباقي وحده.', 'Finished {k} of {n} clips as one video — the rest was not charged. Press the create button again to finish only the rest.', { k, n }); }
+  /* v-video-dialogue-merge: استئناف سلسلة توقّفت، وتعذّر الدمج على الجهاز */
+  function dialogResumeText(k, n){ return dialogNoteText('vmkDialogResume', '✅ {k} من {n} مقاطع جاهزة من المحاولة السابقة — بلا خصم ثانٍ. يكمل الباقي...', '✅ {k} of {n} clips are ready from the previous attempt — not charged again. Finishing the rest...', { k, n }); }
+  function dialogJoinFailText(){ return dialogNoteText('vmkDialogJoin', '⚠️ تعذّر دمج المقاطع على هذا الجهاز — اضغط زرّ الإنشاء مرّة ثانية ليُعاد الدمج بلا خصم.', '⚠️ The clips could not be merged on this device — press the create button again to retry the merge at no charge.', {}); }
+  /* v-video-dialogue-merge (المالك ١٧ نوفمبر: «الي اريده فيديو مدموج وليس مقاطع» — أمامه مشهدان متفرّقان من تشغيلة دُفع ثمنها ثمّ توقّفت):
+     سلسلة الحوار تُحفظ في المتصفّح بعد كلّ مقطع (بصمة الخطّة والوضع والنسبة والأسلوب + روابط المقاطع المكتملة). إعادة الضغط بالحوار نفسه
+     خلال ٢٠ ساعة تحمّل المكتمل (ما لا يُحمَّل يُسقط هو وما بعده) وتولّد الناقص وحده ثمّ تدمج — لا يُدفع مقطع مرّتين، وتعذّر الدمج يُعاد
+     بلا خصم. تُمحى عند اكتمال الفيديو. */
+  const DLG_CHAIN_KEY = 'omran_vmk_dlg_chain', DLG_CHAIN_TTL = 20 * 3600 * 1000;
+  function dlgChainSig(parts){
+    const s = parts.join('\u0001');
+    let h = 5381;
+    for(let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return String(h >>> 0) + ':' + s.length;
+  }
+  function dlgChainLoad(sig){
+    try{
+      const j = JSON.parse(localStorage.getItem(DLG_CHAIN_KEY) || 'null');
+      if(j && j.sig === sig && Array.isArray(j.urls) && (Date.now() - Number(j.at)) < DLG_CHAIN_TTL) return j.urls.filter((u) => typeof u === 'string' && u);
+    }catch(e){ __swallow(e, 'vmk:chain-load'); }
+    return [];
+  }
+  function dlgChainSave(sig, urls){
+    try{
+      if(urls.length) localStorage.setItem(DLG_CHAIN_KEY, JSON.stringify({ sig, at: Date.now(), urls }));
+      else localStorage.removeItem(DLG_CHAIN_KEY);
+    }catch(e){ __swallow(e, 'vmk:chain-save'); }
+  }
+  /* مقاس مقطع (من بياناته الوصفيّة) — null إن تعذّر */
+  function clipDims(blob, ms){
+    return new Promise((res) => {
+      const v = document.createElement('video'), url = URL.createObjectURL(blob);
+      let done = false;
+      const fin = (out) => { if(done) return; done = true; clearTimeout(tm); v.onloadedmetadata = v.onerror = null; v.removeAttribute('src'); try{ v.load(); }catch(e){ __swallow(e, 'vmk:dims-unload'); } URL.revokeObjectURL(url); res(out); };
+      const tm = setTimeout(() => fin(null), ms || 6000);
+      v.muted = true; v.preload = 'metadata';
+      v.onerror = () => fin(null);
+      v.onloadedmetadata = () => fin(v.videoWidth ? { w: v.videoWidth, h: v.videoHeight } : null);
+      v.src = url;
+    });
+  }
+  /* لصق بإعادة الترميز: مقاطع اختلف مقاسها أو فشل لصقها بالنسخ — كلّها إلى مقاس الأوّل و٣٠ إطارًا وصوت ٤٨ك ستيريو، ملفّ واحد */
+  async function concatScenesEncode(urls, w, h){
+    const ffmpeg = await getFFmpeg();
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
+    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); } catch(e){ __swallow(e, 'vmk:join-enc-clean'); } };
+    const args = [];
+    let fc = '', tail = '';
+    for(let i = 0; i < urls.length; i++){
+      await ffmpeg.writeFile('enc' + i + '.mp4', await fetchFile(await proxyBlob(urls[i])));
+      args.push('-i', 'enc' + i + '.mp4');
+      fc += '[' + i + ':v]scale=' + w + ':' + h + ':force_original_aspect_ratio=decrease:force_divisible_by=2,pad=' + w + ':' + h + ':(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,format=yuv420p[v' + i + '];'
+        + '[' + i + ':a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[a' + i + '];';
+      tail += '[v' + i + '][a' + i + ']';
+    }
+    let rc = 1;
+    try{
+      rc = await ffmpeg.exec([...args, '-filter_complex', fc + tail + 'concat=n=' + urls.length + ':v=1:a=1[v][a]', '-map', '[v]', '-map', '[a]',
+        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-c:a', 'aac', 'encout.mp4'], 480000);
+    } finally { for(let i = 0; i < urls.length; i++) await rm('enc' + i + '.mp4'); }
+    if(rc !== 0){ await rm('encout.mp4'); throw new Error('join encode failed'); }
+    const data = await ffmpeg.readFile('encout.mp4');
+    await rm('encout.mp4');
+    return new Blob([data.buffer], { type: 'video/mp4' });
+  }
+  /* دمج مقاطع الحوار في ملفّ واحد: النسخ السريع حين تتطابق المقاسات ويخرج الملفّ بحجم مدخلاته، وإلّا إعادة الترميز. null = تعذّر الاثنان */
+  async function joinDialogClips(list, blobs){
+    let dims = [];
+    try{ dims = await Promise.all(blobs.map((b) => (b ? clipDims(b) : null))); }catch(e){ __swallow(e, 'vmk:join-dims'); dims = []; }
+    const d0 = dims[0];
+    const same = !dims.length || dims.every((d) => !d || !d0 || (d.w === d0.w && d.h === d0.h));
+    const total = blobs.reduce((s, b) => s + (b ? b.size : 0), 0), known = blobs.every((b) => !!b);
+    if(same){
+      try{
+        const out = await concatScenes(list);
+        if(out && out.size > 1000 && (!known || out.size >= total * 0.9)) return out;
+      }catch(e){ __swallow(e, 'vmk:join-copy'); }
+    }
+    try{
+      const out = await concatScenesEncode(list, (d0 && d0.w) || 1280, (d0 && d0.h) || 720);
+      if(out && out.size > 1000) return out;
+    }catch(e){ __swallow(e, 'vmk:join-encode'); }
+    return null;
+  }
   /* لقطة من مقطع (JPEG base64) ليبدأ منها المقطع التالي — الوجوه والمكان نفسها: آخر لقطة ('last')، أو أوّل لقطة ('first') حين يرفض
      المحرّك الأخيرة (v-video-dialogue-reject). إطار لم يُرسم بعد يُرسم شفّافًا (PITFALLS): ننتظر أوّل بكسل معتم. null عند أيّ عطب. */
   function clipFrameB64(blob, where, ms){
@@ -1633,15 +1716,13 @@
     async function runDialogueClips(plan, mode){
       const n = plan.clips.length;
       if(!dialogCapOk(plan)){ setStatus(''); return; }
-      const price = { clips: n, engine: mode, promptText: 'dialogue', token };
-      const pr = await (window.postWithConfirm ? window.postWithConfirm('/api/video?action=veo-price', price)
-        : fetch('/api/video?action=veo-price', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(price) }));
-      throwIfDeclined(pr);
-      const pj = await pr.json().catch(() => ({}));
-      if(!pr.ok || pj.priceOk !== true) throw Object.assign(new Error(pj.error || ('HTTP ' + pr.status)), { code: pj.error, retryAfter: pj.retryAfter || 0 });
       /* سطر مستقلّ أوّل الوصف وبلا نقطتين ولا تنصيص: ملتصقًا بآخر سطر حوار كان الخادم يعدّه من كلام المتكلّم فيحذف الجملة الأخيرة (كشفه المسبار) */
       const CONT = 'Continue the same scene from the attached first frame — the same people, voices, clothes and place; the conversation simply carries on.';
-      const urls = [], local = [];
+      /* v-video-dialogue-merge: «واقعي» بلا صورة بطل يُقال للمحرّك في كلّ مقطع — مقطع يُعاد بلا لقطة مرجعيّة لا ينقلب رسمًا بين مقاطع مصوَّرة.
+         سطر مستقلّ بلا نقطتين ولا تنصيص (كـCONT). الأنمي له سطره على الخادم، وصورة البطل تبقى بأسلوبها */
+      const LOOK = (!filmHeroBase64 && style === 'realistic') ? '\nPhotorealistic live-action footage with real-looking people, not animation.' : '';
+      const sig = dlgChainSig([mode, ratio, style, wantQuality ? 'hq' : 'fast', filmHeroBase64 ? 'hero' + filmHeroBase64.length : ''].concat(plan.clips.map((x) => x.sec + '|' + x.text)));
+      const urls = [], local = [], blobs = [];
       let last = null, prevBlob = null, noRef = 0;
       const show = (blob) => {
         const out = URL.createObjectURL(blob);
@@ -1651,8 +1732,30 @@
         downloadEl.download = dlName('omran-ai-video', blob.type);
         downloadEl.style.display = 'block';
       };
+      /* مقاطع اكتملت في محاولة سابقة للحوار نفسه: تُحمَّل ولا تُولَّد (ولا تُدفع) ثانيةً */
+      for(const u of dlgChainLoad(sig).slice(0, n)){
+        let b = null;
+        try{ b = await proxyBlob(u); }catch(e){ __swallow(e, 'vmk:chain-fetch'); }
+        if(!b || !(b.size > 1000)) break;
+        urls.push(u); local.push(URL.createObjectURL(b)); blobs.push(b);
+      }
+      const done = urls.length;
+      if(done){
+        setStatus(dialogResumeText(done, n));
+        prevBlob = done < n ? blobs[done - 1] : null;
+        last = prevBlob ? await clipFrameB64(prevBlob, 'last') : null;
+      }
+      if(done < n){
+        const price = { clips: n - done, engine: mode, promptText: 'dialogue', token };
+        if(done) price.resume = true;
+        const pr = await (window.postWithConfirm ? window.postWithConfirm('/api/video?action=veo-price', price)
+          : fetch('/api/video?action=veo-price', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(price) }));
+        throwIfDeclined(pr);
+        const pj = await pr.json().catch(() => ({}));
+        if(!pr.ok || pj.priceOk !== true) throw Object.assign(new Error(pj.error || ('HTTP ' + pr.status)), { code: pj.error, retryAfter: pj.retryAfter || 0 });
+      }
       try{
-        for(let i = 0; i < n; i++){
+        for(let i = done; i < n; i++){
           const clip = plan.clips[i];
           const say = () => setStatus(dialogClipsText(i + 1, n, plan.seconds));
           say();
@@ -1670,7 +1773,7 @@
           for(let k = 0; k < refs.length && !url; k++){
             const r = refs[k];
             if(r.first){ r.img = await clipFrameB64(prevBlob, 'first'); if(!r.img || r.img === last) continue; }
-            const payload = { promptText: (r.cont ? CONT + '\n' : '') + clip.text, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: clip.sec, confirmed: true };
+            const payload = { promptText: (r.cont ? CONT + '\n' : '') + clip.text + LOOK, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: clip.sec, confirmed: true };
             if(r.img){ payload.imageBase64 = r.img; payload.imageMime = r.mime || 'image/jpeg'; if(r.cont) payload.keepPhoto = true; }
             try{ url = await sceneInSequence(i + 1, n, () => engineClip(mode, payload, say)); }
             catch(e){
@@ -1681,27 +1784,27 @@
             if(i > 0 && !r.img && !noRef) noRef = i + 1;
           }
           urls.push(url); scenesDone++;
+          dlgChainSave(sig, urls); /* v-video-dialogue-merge: المكتمل محفوظ من لحظته — توقّف لاحق لا يُدفع له ثانيةً */
           let blob = null;
           try{ blob = await proxyBlob(url); }catch(e){ __swallow(e, 'vmk:dialog-clip-dl'); }
-          local.push(blob ? URL.createObjectURL(blob) : url);
+          local.push(blob ? URL.createObjectURL(blob) : url); blobs.push(blob);
           prevBlob = (blob && i < n - 1) ? blob : null;
           last = prevBlob ? await clipFrameB64(prevBlob, 'last') : null;
         }
       }catch(e){
         if(!urls.length) throw e;
-        /* ما اكتمل يُسلَّم فيديو واحدًا ملصوقًا لا مشاهد متفرّقة، مع السبب و«اكتمل k من n — والباقي لم يُخصم» */
+        /* ما اكتمل يُسلَّم فيديو واحدًا ملصوقًا لا مشاهد متفرّقة، مع السبب و«اكتمل k من n — والباقي لم يُخصم»، ويبقى محفوظًا ليُكمَل */
         const why = friendlyError(e);
-        let part = null;
-        if(local.length > 1){ try{ part = await concatScenes(local); }catch(e2){ __swallow(e2, 'vmk:dialog-part-join'); } }
+        const part = local.length > 1 ? await joinDialogClips(local, blobs) : null;
         if(!part){ showPartialScenes(urls, n, why); return; }
         show(part);
         setStatus(why + ' ' + dialogPartText(urls.length, n));
         return;
       }
       setStatus(bT('🔗 جاري دمج المشاهد معًا...','🔗 Joining scenes together...'));
-      let joined = null;
-      try{ joined = await concatScenes(local); }catch(e){ __swallow(e, 'vmk:dialog-join'); }
-      if(!joined){ showPartialScenes(urls, n, '⚠️'); return; }
+      const joined = await joinDialogClips(local, blobs);
+      if(!joined){ showPartialScenes(urls, n, dialogJoinFailText()); return; } /* السلسلة باقية محفوظة: إعادة الضغط تعيد الدمج بلا خصم */
+      dlgChainSave(sig, []);
       if(wantCanvasWrap()){ await wrapWithCanvas(joined, text, ratio, signature, wantNarration, (narrationText.value || '').trim()); return; }
       show(joined);
       setStatus(bT('✅ تم الانتهاء!','✅ Done!') + (noRef ? ' ' + dialogNoRefText(noRef) : ''));
