@@ -80,6 +80,16 @@ const LOOKS = {
   royal:    'prestigious real-estate branding, deep navy-blue and metallic gold palette, bright daylight, luxury interior with floor-to-ceiling windows overlooking a city skyline or waterfront',
 };
 
+/* v-ad-fx (طلب المالك ١٧ نوفمبر: «ضيفلي هذي التاثيرات لي بناء الاعلانات سموك ريفيل واكسبلودد فيو دون شوت اوربت شوت»، واختار
+   «صور في الاستوديو»): تأثير لقطة اختياريّ يضاف إلى أمر صورة الإعلان. الصورة ثابتة، فالأوربت لحظة مجمّدة من دوران الكاميرا
+   (ضبابيّة دائريّة حول منتج حادّ) لا فيديو. مفتاح مجهول = بلا تأثير (السلوك القديم حرفيًّا). */
+const FX = {
+  smoke: 'SMOKE REVEAL — the hero product emerges from thick, swirling, volumetric smoke: soft wisps curl around it and veil its lower edges and the background, while the product itself stays tack-sharp, clean and fully visible, cut out of the smoke by a strong back/rim light — a dramatic, mysterious reveal moment frozen in time',
+  exploded: 'EXPLODED VIEW — the hero product shown as a clean technical exploded view: its real components are pulled apart along one axis and float in mid-air in precise order with small even gaps, perfectly aligned as if disassembled in zero gravity, every part keeping its true shape, material and colour so the whole product is still instantly recognisable; studio product-photography lighting with soft shadows under the floating parts; use only parts that really belong to this product, never invent parts (for a building or property: an architectural exploded axonometric with the floors separated vertically)',
+  topdown: 'TOP-DOWN SHOT — the camera looks straight down from directly above (90-degree overhead flat-lay / bird\'s-eye view) at the hero product resting on a styled surface, neatly arranged complementary props around it, clean geometric composition, soft even shadows (for a car or a building: a high aerial drone view from straight above)',
+  orbit: 'ORBIT SHOT — a frozen frame from a camera circling the hero product: dynamic three-quarter low angle, the product tack-sharp in the centre while the background is swept by smooth circular rotational motion blur and curved light streaks wrapping around it, conveying a 360-degree camera move in one still image',
+};
+
 // v708: تنويعات مشاهد لكل فئة — التخطيط ثابت من القالب، المشهد يتغيّر عشوائياً كل طلب
 const SCENES = {
   car: [
@@ -159,6 +169,7 @@ module.exports = async (req, res) => {
 
     const cut = (x, n) => String(x == null ? '' : x).slice(0, n).replace(/["\n\r]/g, ' ').trim();
     const look = LOOKS[b.look] || LOOKS.neon;
+    const fx = Object.prototype.hasOwnProperty.call(FX, b.fx) ? FX[b.fx] : ''; // v-ad-fx
     const title = cut(b.title, 60), spec = cut(b.spec, 120), kick = cut(b.kick, 40);
     const price = cut(b.price, 30), unit = cut(b.unit, 20), tel = cut(b.tel, 30);
     const note = cut(b.note, 40), foot = cut(b.foot, 50), bg = cut(b.bg, 80);
@@ -202,6 +213,9 @@ module.exports = async (req, res) => {
     p += p0hint
        + (bg ? 'Art direction: ' + look + '.\n' : hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Art direction: ' + look + '. Accent/glow colour: ' + accent + '.\n'
                  : 'Scene and mood for THIS poster (unique per request): ' + scene + '. Accent/glow colour: ' + accent + '.\n')
+       + (fx ? 'SHOT EFFECT (the customer chose it — apply it clearly to the hero subject): ' + fx + '.'
+             + (hasImg ? ' The effect changes only the camera angle and the staging around the photographed subject, never its real design, colours or details.' : '')
+             + ' The effect never covers or distorts the text, cards, price plaque or contact button.\n' : '')
        + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
        + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
               : 'left-to-right, with clean modern bold typography') + ':\n'
@@ -222,6 +236,7 @@ module.exports = async (req, res) => {
     p += 'The hero subject sits in the middle of the poster between the info cards and the price plaque, photorealistic'
       + (hasImg ? ', keeping the customer photo\'s own lighting and time of day. '
                 : (bg ? ', lit to match the requested background scene. '
+                      : fx ? ', staged exactly as the SHOT EFFECT above describes. ' /* v-ad-fx: لا «أرض مبلّلة ليلًا» تناقض اللقطة من فوق */
                       : ', lit by warm golden street light, on wet reflective ground at night. '))
        + 'Do not add any other text, no watermark, no logo, no invented or misspelled letters. '
        + 'Composition must be clean, balanced, symmetric and ready to publish — premium classifieds-ad style, black and gold.';
