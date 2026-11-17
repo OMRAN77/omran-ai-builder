@@ -157,15 +157,15 @@ test('٦. v2: failed/cancelled وخطأ نهائيّ (٤٠٤ بجسم error) = F
   assert.deepEqual(settled, []);
 });
 
-test('٧. حلقات الاستطلاع (خمس منذ v-actor-lipsync) محروسة بعمر وبأخطاء متتالية، ولا ابتلاع صامت', () => {
+test('٧. حلقات الاستطلاع (ستّ منذ v-video-dialogue-clips: مقطع الحوار) محروسة بعمر وبأخطاء متتالية، ولا ابتلاع صامت', () => {
   const src = read('js/app-11-video.js');
-  assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 5, 'حلقة استطلاع بلا حارس');
+  assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 6, 'حلقة استطلاع بلا حارس');
   /* v-video-poll-transient: والزحام العابر (٤٢٩/٥xx) في حلقات الاقتصاديّ والسينمائيّ (اثنتان) والممثّل يمرّ بالحارس بنصّ الخادم
      guard.fail(iv, d.error) — مختبَر في video-durations ٥ */
-  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 5, 'خطأ شبكة ما زال يُبتلع بصمت'); // v-ai-video-speed: وpollTaskOnce يعدّ خطأ الخادم ٥xx عابرًا بنصّه guard.fail(iv, data.error)
-  assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 5, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
+  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 6, 'خطأ شبكة ما زال يُبتلع بصمت'); // v-ai-video-speed: وpollTaskOnce يعدّ خطأ الخادم ٥xx عابرًا بنصّه guard.fail(iv, data.error)
+  assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 6, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
   assert.doesNotMatch(src, /catch\(e\)\{ \/\* keep polling \*\/ \}/, 'بقي ابتلاع صامت');
-  assert.equal((src.match(/setInterval\(async \(\) => \{/g) || []).length, 5, /* v-actor-lipsync: حلقة الممثّل */ 'عدد الحلقات تغيّر — راجع الحراسة');
+  assert.equal((src.match(/setInterval\(async \(\) => \{/g) || []).length, 6, /* v-actor-lipsync: حلقة الممثّل · v-video-dialogue-clips: مقطع الحوار (engineClip) */ 'عدد الحلقات تغيّر — راجع الحراسة');
   assert.match(src, /function makePollGuard\(reject, everyMs, maxMs\)/);
   assert.ok(read('js/app.bundle.js').includes('function makePollGuard('), 'الحارس ليس في الحزمة — شغّل npm run bundle');
   // سلوك الحارس نفسه: العمر ينتهي، والأخطاء المتتالية تُنهي، والنجاح يصفّرها

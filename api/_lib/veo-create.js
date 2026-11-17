@@ -44,6 +44,18 @@ async function trendSteps(username, scenes, C) {
   return Array.from({ length: paid }, () => ['veo_video', C.veo_video]);
 }
 
+/* v-video-dialogue-clips (المالك ١٧ نوفمبر: «اريد فيديو يبني اقصى حده على نفس الكلمات مرتب ويكون على مستوى مش شغل عشوائي»): حوار الوصف
+   الحرّ الأطول من مقطع يوزّعه العميل على مقاطع متتالية (حتّى ٤، كلّ مقطع بجمله ويكمل من آخر لقطة) — كلّ مقطع فيديو مستقلّ بسعره كما هو،
+   والسؤال مرّة واحدة بالمجموع قبل الأوّل كقصّة الترند. «سينمائي» بسعره لكلّ مقطع؛ «سريع» تغطّي صلاحيّة فيديوهات الباقة ما تتّسع له منه
+   (كما يصرفها minimax-create) والباقي بسعره. لا سعر تغيّر. */
+const DIALOGUE_CLIPS_MAX = 4;
+async function dialogueSteps(username, clips, fast, C) {
+  if (!fast) return Array.from({ length: clips }, () => ['veo_video', C.veo_video]);
+  let planLeft = 0;
+  try { planLeft = Math.max(0, Number(await require('./_planVideos.js').planVideoLeft(username)) || 0); } catch (e) { planLeft = 0; }
+  return Array.from({ length: Math.max(0, clips - planLeft) }, () => ['minimax_video', C.minimax_video]);
+}
+
 /* v-trend-omni (المالك ٢٤ أكتوبر: «ننقل الترندات لمحرّك Gemini Omni Flash» — «السعر يبقى ١٧٥»): أوقفت جوجل Veo 3.1 Preview في ٢٢ أكتوبر
    (فحص الموديلات #1225: veo-3.1-fast-generate-preview وveo-3.1-generate-preview غير موجودين)، فكانت الترندات كلّها «الخدمة متوقّفة».
    الترند يمرّ هنا كما كان — الأمر والإطار الأوّل والخصم (veo_video ١٧٥ وصلاحيّة الباقة) والمهلة والتذكرة — والمحرّك وحده Omni، بنداء
@@ -254,7 +266,10 @@ module.exports = async (req, res) => {
       const withCartoon = body.withCartoon === true;
       /* v-trend-one-confirm: قصّة ترند (trend + scenes) — المجموع، ومهلة الثلاث دقائق يتولّاها العميل بين المشاهد (لا تُرفض القصّة هنا) */
       const tScenes = body.trend ? Math.min(TREND_SCENES_MAX, Math.max(1, parseInt(body.scenes, 10) || 1)) : 0;
-      const story = tScenes ? await trendSteps(pcUser, tScenes, pointsLib.COSTS) : null;
+      /* v-video-dialogue-clips: حوار الوصف الحرّ على مقاطع متتالية (clips ٢–٤، engine=minimax لـ«سريع») — المجموع كالقصّة، ولا تُرفض بالمهلة */
+      const dClips = Math.min(DIALOGUE_CLIPS_MAX, Math.max(0, parseInt(body.clips, 10) || 0)); // الترند بمشاهده (tScenes ≥ ١) فلا يُقرأ له
+      const story = tScenes ? await trendSteps(pcUser, tScenes, pointsLib.COSTS)
+        : (dClips > 1 ? await dialogueSteps(pcUser, dClips, body.engine === 'minimax', pointsLib.COSTS) : null);
       const pcSteps = story || await talkSteps(pcUser, withCartoon, pointsLib.COSTS);
       const pcCost = pcSteps.reduce((a, s) => a + s[1], 0);
       const pcLeft = story ? 0 : await require('./abuse-guard.js').videoCooldownLeft(pcUser); // VIP خارج المهلة كما في videoLock أدناه (pay.owner)
@@ -262,9 +277,11 @@ module.exports = async (req, res) => {
       if (!(await pointsLib.canAfford(pcUser, pcSteps))) { res.status(402).json({ error: 'points_insufficient', needed: pcCost }); return; }
       /* لا خصم على القصّة كلّها (صلاحيّة الباقة) أو على VIP (spendPoints لا يخصم منه) = لا سؤال */
       if (story && (!pcCost || await require('./_vip.js').isVip(pcUser))) { res.status(200).json({ ok: true, priceOk: true }); return; }
-      const pcGate = story
-        ? pointsLib.requireConfirmation(body, pcCost, 'قصّة ترند بعدّة مشاهد — فيديو بالصوت لكلّ مشهد') /* حرفيّ (video-names): المجموع في النصّ نفسه */
-        : withCartoon ? pointsLib.requireConfirmation(body, pcCost, 'شخصيّة كرتونيّة ناطقة') : pointsLib.requireConfirmation(body, pcCost, 'فيديو سينمائي بالصوت');
+      const pcGate = !story
+        ? (withCartoon ? pointsLib.requireConfirmation(body, pcCost, 'شخصيّة كرتونيّة ناطقة') : pointsLib.requireConfirmation(body, pcCost, 'فيديو سينمائي بالصوت'))
+        : tScenes
+          ? pointsLib.requireConfirmation(body, pcCost, 'قصّة ترند بعدّة مشاهد — فيديو بالصوت لكلّ مشهد') /* حرفيّ (video-names): المجموع في النصّ نفسه */
+          : pointsLib.requireConfirmation(body, pcCost, 'فيديو حوار بعدّة مقاطع متتالية — فيديو بالصوت لكلّ مقطع'); /* v-video-dialogue-clips */
       if (pcGate) { res.status(pcGate.status).json(pcGate.payload); return; }
       res.status(200).json({ ok: true, priceOk: true });
       return;
@@ -470,7 +487,7 @@ module.exports = async (req, res) => {
         if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
         chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
         if (r.status) {
-          console.error('[veo-create] omni upstream ' + r.status + ': ' + String(r.msg).slice(0, 300));
+          console.error('[veo-create] omni upstream ' + r.status + ' (image=' + (oImg ? (body.keepPhoto ? 'kept-frame' : 'yes') : 'none') + '): ' + String(r.msg).slice(0, 300)); /* v-video-dialogue-reject: هل رُفض ومعه لقطة مرجعيّة؟ */
           const fail = require('./_videoFail.js').startFail(r.status, r.msg); /* نفاد الرصيد unavailable · زحام video_busy · رفض video_rejected */
           res.status(fail.code).json(fail.body);
         } else {
@@ -549,6 +566,7 @@ module.exports = async (req, res) => {
   }
 };
 module.exports.VEO_PROMPT_MAX = VEO_PROMPT_MAX;
+module.exports.DIALOGUE_CLIPS_MAX = DIALOGUE_CLIPS_MAX; // v-video-dialogue-clips
 module.exports.OMNI_OP_PREFIX = OMNI_OP_PREFIX;
 module.exports.omniOpKey = omniOpKey;
 module.exports.FAL_OP_PREFIX = FAL_OP_PREFIX; // v-fal-backup
