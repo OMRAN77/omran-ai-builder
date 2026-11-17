@@ -52,9 +52,13 @@ function measurePage(targets) {
   const textNodes = (el) => { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); const a = []; let n; while ((n = w.nextNode())) if (n.nodeValue.trim()) a.push(n); return a; };
   const rectsOf = (node, s, e) => { const rg = document.createRange(); rg.setStart(node, s); rg.setEnd(node, e); return Array.from(rg.getClientRects()).filter((r) => r.width > 0.5 && r.height > 0.5); };
   const lineYs = (rs) => { const ys = []; rs.forEach((r) => { const c = r.top + r.height / 2; if (!ys.some((y) => Math.abs(y - c) < Math.max(3, r.height * 0.4))) ys.push(c); }); return ys; };
-  // الكلمات: ما بين الفراغات والفاصل الصفريّ U+200B (موضع كسر مقصود، كـ«Comic/Manga» في الحلقة)
-  const words = (s) => { const out = []; let st = -1; for (let i = 0; i <= s.length; i++) { const ch = s.charAt(i); const sep = i === s.length || ch.trim() === '' || ch.charCodeAt(0) === 0x200B;
-    if (!sep && st < 0) st = i; if (sep && st >= 0) { out.push([st, i]); st = -1; } } return out; };
+  // الكلمات: ما بين مواضع الكسر المشروعة — الفراغ، والفاصل الصفريّ U+200B (موضع كسر مقصود، كـ«Comic/Manga» في الحلقة)، وبعد الشرطة
+  // («Киберпанк-/неон»)، وقبل كلّ حرف صينيّ أو يابانيّ وبعده: الصينيّة بلا مسافات والكسر بين حرفيها سليم في طباعتها (v-lang-fit)
+  const cjk = (c) => /[⺀-⿿　-ヿ㄀-ㄯ㆐-ㇿ㐀-䶿一-鿿豈-﫿＀-￯]/.test(c);
+  const words = (s) => { const out = []; let st = -1; for (let i = 0; i <= s.length; i++) { const ch = s.charAt(i), pv = s.charAt(i - 1);
+    const sep = i === s.length || ch.trim() === '' || ch.charCodeAt(0) === 0x200B;
+    if (st >= 0 && (sep || /[-‐–]/.test(pv) || cjk(ch) || cjk(pv))) { out.push([st, i]); st = -1; }
+    if (!sep && st < 0) st = i; } return out; };
   const r2 = (v) => Math.round(v * 10) / 10;
   const out = [];
   for (const t of targets) {
