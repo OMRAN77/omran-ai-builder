@@ -385,11 +385,18 @@ test('١٢. لوحة الستايل في المربّع الضيّق (≤560px):
   }
   /* الخطّ: ١٢px في المربّع المفرد (٣٠٢–٣٤٨) كما كان، وينزل حتّى ٩px في مربّعَي الدمج الضيّقين */
   assert.equal(val(W(slot('span.omUpB'), 'font-size', { mobile: true, cw: 348 })), 'max(9px,min(12px,4.2cqw))');
-  /* المربّع العريض (الحاسوب، والجوّال المفتوح) كما كان */
+  /* المربّع العريض على الجوّال المفتوح كما كان، وكلمة «ستايل» كما كانت */
   for (const q of ['span.omUpB', 'span.omUpL']) {
-    assert.equal(val(W(slot(q), 'white-space', { cw: 900 })), 'nowrap');
-    assert.equal(val(W(slot(q), 'left', { cw: 900 })), '42%');
+    assert.equal(val(W(slot(q), 'white-space', { mobile: true, vw: 900, cw: 900 })), 'nowrap');
+    assert.equal(val(W(slot(q), 'left', { mobile: true, vw: 900, cw: 900 })), '42%');
   }
+  assert.equal(val(W(slot('span.omUpL'), 'white-space', { cw: 900 })), 'nowrap');
+  assert.equal(val(W(slot('span.omUpL'), 'left', { cw: 900 })), '42%');
+  /* v-lang-fit: زرّ الملفّ في المربّع العريض على الحاسوب بعرض واجهة اللوحة ويلتفّ («Choisir un fi…» بالفرنسيّة)، وخطّه كما كان */
+  assert.equal(val(W(slot('span.omUpB'), 'white-space', { cw: 900 })), 'normal');
+  assert.equal(val(W(slot('span.omUpB'), 'left', { cw: 900 })), '38.5%');
+  assert.equal(val(W(slot('span.omUpB'), 'overflow', { cw: 900 })), 'hidden');
+  assert.equal(val(W(slot('span.omUpB'), 'font-size', { cw: 900 })), 'max(12px,var(--bs,1.7cqw))');
   /* الديكور والأزياء لم يُلمسا */
   assert.equal(val(W(['div', 'div.omUpArt.omUpFashion', 'div', 'span.omUpB'], 'white-space', { mobile: true, cw: 348 })), 'nowrap');
 });
