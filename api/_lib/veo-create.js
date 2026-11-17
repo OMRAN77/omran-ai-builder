@@ -166,6 +166,13 @@ module.exports = async (req, res) => {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     let { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
+    /* v-video-dialogue-fit: الحوار الأطول من المقطع يصل المحرّك بما يتّسع له وحده (المدّة ٣–١٠ كما يصل Omni، وغيرها ٨) — قبل حفظ
+       الوصف فيبني الإطار والقفل منه؛ العميل نبّه قبل الخصم بالدالّة نفسها. الترند بقالبه */
+    if (!body.trend && promptText) {
+      const fitSec0 = parseInt(durationSeconds, 10);
+      const fit = require('./video-trends.js').fitDialogue(promptText, fitSec0 >= 3 && fitSec0 <= 10 ? fitSec0 : 8);
+      if (fit.dropped) { promptText = fit.text; console.log('[veo-create] dialogue fitted to the clip: ' + fit.kept + '/' + fit.turns + ' lines, ' + fit.keptWords + '/' + fit.words + ' words'); }
+    }
     const rawDesc = promptText; /* v-video-first-frame: وصف المستخدم قبل الأسلوب والقفل — مشهد أوّل الإطار */
     /* v-trend-people: شخصيّتان أو ثلاث — الصور الزائدة تصل في imagesBase64 ويُبنى منها أوّل إطار واحد. */
     /* v-trends-oct-12: ترند شخص واحد بطبيعته («سامحوني»، «من ينقذك؟») — الصور الزائدة تُهمل، والأولى في imageBase64 كما كانت */

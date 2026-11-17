@@ -68,6 +68,8 @@ const mmBody = () => { const c = calls.find((x) => /minimax\.io/.test(x.url)); a
 /* الوصف كما كتبه المالك تقريبًا — حوار أمّ وبنت بسطر لكلّ متكلّم (فرّغه Whisper من مقطعيه) */
 const DIALOGUE = 'البنت: أمي لماذا نحتفل باليوم الوطني؟\nالأم: نحتفل باتحاد الإمارات يا بنتي\nالبنت: ومن أسّس الاتحاد؟\nالأم: الشيخ زايد وإخوانه حكّام الإمارات\nالبنت: أنا فخورة بوطني\nالاثنتان: كل عام والإمارات بخير';
 const SILENT = 'صقر يحلّق فوق الكثبان عند الغروب';
+/* v-video-dialogue-fit: الحوار الأطول من المقطع يصل مقصوصًا بما يتّسع له (اختبار video-dialogue-fit) — القاعدة بعده كما هي */
+const FIT = (d, sec) => VT.fitDialogue(d, sec).text;
 
 test('١. كشف الكلام: الحوار بأسماء المتكلّمين، والتنصيص، وأفعال الكلام (بتشكيل وبلاه، عربيّ وإنجليزيّ) — والمشهد الصامت لا', () => {
   for (const d of [DIALOGUE, 'أم وبنتها تتحاوران عن اليوم الوطني', 'رجل يقول «هلا والله» للكاميرا', 'طفل يتكلّم مع أبوه في المجلس',
@@ -100,7 +102,7 @@ test('٢. القاعدة: صوت واحد ووقفة بين الأدوار، و�
 test('٣. «سينمائي» (Omni): الحوار يصل بقاعدة التوقيت بمدّة المقطع المختارة، والمشهد الصامت حرفيًّا كما كان', async () => {
   let r = await run(veo, { promptText: DIALOGUE, ratio: '1280:720', durationSeconds: 10 });
   assert.equal(r.code, 200, JSON.stringify(r.body));
-  assert.equal(omniText(), DIALOGUE + SP.speechPace(DIALOGUE, 10));
+  assert.equal(omniText(), FIT(DIALOGUE, 10) + SP.speechPace(DIALOGUE, 10));
   assert.equal(calls.find((x) => /\/interactions$/.test(x.url)).body.response_format.duration, '10s');
   r = await run(veo, { promptText: DIALOGUE, ratio: '720:1280', durationSeconds: 8 });
   assert.ok(omniText().endsWith(SP.speechPace(DIALOGUE, 8)));
@@ -163,21 +165,21 @@ test('٥. «سينمائي» على الاحتياط (نفاد Gemini) وعلى 
     assert.equal(r.code, 200, JSON.stringify(r.body));
     assert.equal(r.body.op, 'bk/req-1');
     assert.equal(falSpecs.length, 1);
-    assert.equal(falSpecs[0].prompt, DIALOGUE + SP.speechPace(DIALOGUE, 10));
+    assert.equal(falSpecs[0].prompt, FIT(DIALOGUE, 10) + SP.speechPace(DIALOGUE, 10));
     assert.equal(falSpecs[0].durationSec, 10);
   } finally { omniStatus = 200; }
   process.env.CINEMA_ENGINE = 'veo';
   try {
     await run(veo, { promptText: DIALOGUE, ratio: '1280:720', durationSeconds: 8 });
     const c = calls.find((x) => /predictLongRunning/.test(x.url));
-    assert.equal(c.body.instances[0].prompt, DIALOGUE + SP.speechPace(DIALOGUE, 8));
+    assert.equal(c.body.instances[0].prompt, FIT(DIALOGUE, 8) + SP.speechPace(DIALOGUE, 8));
   } finally { delete process.env.CINEMA_ENGINE; }
 });
 
 test('٦. «فيديو سريع» (H3): الحوار بقاعدة التوقيت بمدّته (٨، وبلا مدّة ٦)، والمشهد الصامت والترند كما كانا', async () => {
   let r = await run(mm, { promptText: DIALOGUE, ratio: '1280:720', durationSeconds: 8 });
   assert.equal(r.code, 200, JSON.stringify(r.body));
-  assert.equal(mmBody().content[0].text, DIALOGUE + SP.speechPace(DIALOGUE, 8));
+  assert.equal(mmBody().content[0].text, FIT(DIALOGUE, 8) + SP.speechPace(DIALOGUE, 8));
   assert.equal(mmBody().duration, 8);
   await run(mm, { promptText: DIALOGUE });
   assert.ok(mmBody().content[0].text.endsWith(SP.speechPace(DIALOGUE, 6)));
@@ -190,7 +192,7 @@ test('٦. «فيديو سريع» (H3): الحوار بقاعدة التوقيت
   assert.ok(mmBody().content[0].text.endsWith(SP.speechPace(long, 10)), 'يُقصّ الوصف لا القاعدة');
   /* صورة بلا إطار مرسوم: القفل المحايد، والقاعدة قبل سطره */
   await run(mm, { promptText: DIALOGUE, durationSeconds: 8, imageBase64: 'PHOTO', imageMime: 'image/jpeg' });
-  assert.equal(mmBody().content[0].text, VT.withPhotoLock(DIALOGUE, 1500, undefined, SP.speechPace(DIALOGUE, 8)));
+  assert.equal(mmBody().content[0].text, VT.withPhotoLock(FIT(DIALOGUE, 8), 1500, undefined, SP.speechPace(DIALOGUE, 8)));
   /* الترند بقالبه: «الحيوان يتكلّم» يقول كلامه — بلا القاعدة */
   await run(mm, { trend: 'talkingpet', params: { text: 'هلا والله' }, promptText: 'القطّة تقول «هلا والله»', imageBase64: 'PHOTO', imageMime: 'image/jpeg' });
   assert.ok(!/If anyone speaks in this/.test(mmBody().content[0].text), 'الترند لا يمرّ بالقاعدة');

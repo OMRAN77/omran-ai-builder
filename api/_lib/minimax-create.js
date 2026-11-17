@@ -30,16 +30,22 @@ module.exports = async (req, res) => {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     let { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
-    const rawDesc = promptText; /* v-video-first-frame: وصف المستخدم قبل الأسلوب والقفل — مشهد أوّل الإطار */
-    const tp = require('./trend-people.js');
-    /* v-video-first-frame: أنمي/كرتون الواجهة — سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا) */
-    if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = tp.STYLE_ANIME_VIDEO + String(promptText).trim();
-    const styledDesc = promptText;
     /* v-video-durations (المالك ٢٧ أكتوبر): العميل لم يكن يرسل المدّة فكان كلّ فيديو ٦ ثوانٍ. H3 على v2 يقبل ٤–١٥ ثانية عددًا
        صحيحًا بالدقّتين (مستودع MiniMax-H3 الرسميّ: "duration":8) — المختارة كما هي، وبلا قيمة ٦ كما كانت. السقف ١٠ = أطول زرّ في الواجهة
        (مراجعة ٢٧ أكتوبر: ١٥ ثانية بسعر ٥٥ الثابت ≈ ٤ أضعاف تكلفة الجدول لمن ينادي الخادم مباشرة — باب المال). */
     let durSec = parseInt(durationSeconds, 10);
     durSec = Number.isFinite(durSec) ? Math.min(10, Math.max(4, durSec)) : 6;
+    /* v-video-dialogue-fit: الحوار الأطول من المقطع يصل المحرّك بما يتّسع له وحده — قبل حفظ الوصف فيبني الإطار والقفل منه؛
+       العميل نبّه قبل الخصم بالدالّة نفسها. الترند بقالبه */
+    if (!body.trend && promptText) {
+      const fit = require('./video-trends.js').fitDialogue(promptText, durSec);
+      if (fit.dropped) { promptText = fit.text; console.log('[minimax-create] dialogue fitted to the clip: ' + fit.kept + '/' + fit.turns + ' lines, ' + fit.keptWords + '/' + fit.words + ' words'); }
+    }
+    const rawDesc = promptText; /* v-video-first-frame: وصف المستخدم قبل الأسلوب والقفل — مشهد أوّل الإطار */
+    const tp = require('./trend-people.js');
+    /* v-video-first-frame: أنمي/كرتون الواجهة — سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا) */
+    if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = tp.STYLE_ANIME_VIDEO + String(promptText).trim();
+    const styledDesc = promptText;
     /* v-video-speech-pace: «فيديو سريع» يولّد الكلام بنفسه كـ«سينمائي» — الوصف الذي يطلب كلامًا يحمل قاعدة توقيت الكلام بمدّة المقطع
        داخل القفل قبل سطره الأخير، وبلا صورة بعد الوصف داخل حدّ ١٥٠٠؛ يُقصّ الوصف لا هي. الترند بقالبه */
     const pace = body.trend ? '' : require('./video-trends.js').speechPace(rawDesc, durSec);

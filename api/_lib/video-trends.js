@@ -1158,5 +1158,51 @@ function fitPace(text, pace, cap) {
   return pace ? t.slice(0, Math.max(0, cap - pace.length)) + pace : t;
 }
 
+/* v-video-dialogue-fit (المالك ١٧ نوفمبر بعد #1341: «كأنّي في سوق السمك… الحوار ليس بالدقّة والحوار سريع» — مقطعه «سريع» من النسخة
+   الجديدة: ست جمل (~٢٦ كلمة) في ١٠ث بلا وقفة. القاعدة في الأمر لا تكفي: المحرّك يقرأ كلّ حوار يجده في الوصف. اختار «مقطع واحد مع
+   تنبيه»): أدوار الحوار في الوصف — سطر «اسم: كلام»، أو كلام بين تنصيص — تُعدّ كلماتها، ويصل المحرّك منها بالترتيب ما تتّسع له المدّة
+   (wordBudget، والأوّل دائمًا)، والباقي يُحذف من الوصف (السطر كلّه، أو الجملة التي فيها التنصيص). المشهد والوصف كما هما.
+   الدالّة نفسها حرفيًّا في js/app-11-video.js — العميل ينبّه بها قبل الخصم («سيُقال إلى: …») — واختبار video-dialogue-fit يقارن النصّين. */
+function fitDialogue(desc, seconds) {
+  const s = String(desc || '');
+  const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
+  const budget = Math.max(4, Math.floor((sec - 1) * 1.7));
+  const words = (x) => String(x || '').split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+  const notSpeaker = /^(?:المكان|المشهد|الزمان|الوقت|الكاميرا|التصوير|الأسلوب|الستايل|الإضاءة|الموسيقى|الخلفية|ملاحظة|scene|setting|location|place|time|camera|shot|style|lighting|music|background|note)$/i;
+  const res = { text: s, budget, turns: 0, kept: 0, dropped: 0, words: 0, keptWords: 0, last: '' };
+  if (/saying exactly these (?:Arabic )?words/i.test(s)) return res; // «ممثل يتكلم»: كلامه بالحرف
+  const turns = [];
+  let off = 0;
+  for (const line of s.split('\n')) {
+    /* سطر فيه تنصيصان فأكثر («البنت تسأل: «…» والأم ترد: «…»») = عدّة أدوار تُعدّ بتنصيصاتها، لا دور واحد باسم قبل النقطتين */
+    const m = (line.match(/«[^»]+»|"[^"]+"|“[^”]+”/g) || []).length < 2 && /^\s*([^\s:：][^:：]{0,24}?)\s*[:：]\s*(\S.*)$/.exec(line);
+    if (m && !/\d$/.test(m[1]) && !notSpeaker.test(m[1].trim())) {
+      turns.push({ a: off, b: Math.min(s.length, off + line.length + 1), w: words(m[2].replace(/[«»"“”]/g, ' ')), said: m[2].trim() });
+    } else {
+      const re = /«([^»]+)»|"([^"]+)"|“([^”]+)”/g;
+      let q, prev = off;
+      while ((q = re.exec(line))) {
+        const qa = off + q.index, before = s.slice(prev, qa);
+        const cut = Math.max(before.lastIndexOf('.'), before.lastIndexOf('؟'), before.lastIndexOf('?'), before.lastIndexOf('!'), before.lastIndexOf('،'));
+        const said = (q[1] || q[2] || q[3]).trim();
+        turns.push({ a: cut >= 0 ? prev + cut + 1 : prev, b: qa + q[0].length, w: words(said), said });
+        prev = qa + q[0].length;
+      }
+    }
+    off += line.length + 1;
+  }
+  res.turns = turns.length;
+  res.words = turns.reduce((n, t) => n + t.w, 0);
+  let used = 0, kept = 0;
+  for (const t of turns) { if (kept && used + t.w > budget) break; used += t.w; kept++; }
+  res.kept = kept; res.keptWords = used; res.last = kept ? turns[kept - 1].said : '';
+  if (kept === turns.length) return res;
+  let out = s;
+  for (let i = turns.length - 1; i >= kept; i--) out = out.slice(0, turns[i].a) + out.slice(turns[i].b);
+  res.text = out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
+  res.dropped = turns.length - kept;
+  return res;
+}
+
 module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, withPhotoLock, splitScenes, sceneParams, MAX_SCENES, SPEECH_LANGS,
-  hasSpeech, speechPace, wordBudget, fitPace }; // v-video-speech-pace
+  hasSpeech, speechPace, wordBudget, fitPace, fitDialogue }; // v-video-speech-pace · v-video-dialogue-fit
