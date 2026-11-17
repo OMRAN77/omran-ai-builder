@@ -34,8 +34,12 @@ async function azureVoice(text, male, lang, rate) {
   if (free) accts.push({ tier: 'free', key: free, region: String(process.env.AZURE_SPEECH_REGION_FREE || '').trim() || region });
   if (paid) accts.push({ tier: 'paid', key: paid, region });
   const ar = /^ar/i.test(String(lang || '')) || /[\u0600-\u06FF]/.test(text);
+  // v-ml-voice: المالايالام صوت Azure أصليّ (ml-IN)؛ الصوتان المتعدّدا اللغات (en-US) لا ينطقانه
+  const ml = /^ml/i.test(String(lang || '')) || /[\u0D00-\u0D7F]/.test(text);
   const [locale, femaleName, maleName] = ar
     ? ['ar-AE', 'ar-AE-FatimaNeural', 'ar-AE-HamdanNeural']
+    : ml
+    ? ['ml-IN', 'ml-IN-SobhanaNeural', 'ml-IN-MidhunNeural']
     : ['en-US', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'];
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
   const ssml = '<speak version="1.0" xml:lang="' + locale + '"><voice name="' + (male ? maleName : femaleName) + '">'
@@ -160,7 +164,7 @@ module.exports = async (req, res) => {
         zh: ['zh-CN', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
         id: ['id-ID', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
         fil: ['fil-PH', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
-        ml: ['ml-IN', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
+        ml: ['ml-IN', 'ml-IN-SobhanaNeural', 'ml-IN-MidhunNeural'], // v-ml-voice: صوت مالايالاميّ أصليّ لا en-US
       };
       // Normalize possible variants Whisper may return (e.g. "urdu", "nepali").
       const rawLang = String(lang || 'ar').toLowerCase();
