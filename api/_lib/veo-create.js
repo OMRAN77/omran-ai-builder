@@ -62,6 +62,10 @@ async function dialogueSteps(username, clips, fast, C) {
    متزامن كـomni-create (الواجهة نفسها وأدواره)، ويُحفظ ناتجه بمعرّف مهمّة omni/… يقرؤه veo-status: العملاء كلّهم كما هم (op ثمّ استطلاع)،
    والتذكرة تُسوّى عند التسليم كـVeo. TREND_ENGINE=veo يعيد المسار القديم بلا نشر (لنموذج Veo حيّ لاحقًا). */
 const OMNI_OP_PREFIX = 'omni/';
+/* v-video-one-shot: أقصى توليدة واحدة ١٥ ثانية، والتمديد ٣–١٠ للمرّة (توثيق المحرّك). أمر التمديد سطر مستقلّ بلا نقطتين ولا تنصيص
+   (ملتصقًا بسطر حوار يُعدّ كلامًا — PITFALLS) */
+const OMNI_ONE_MAX = 15, OMNI_EXTEND_MAX = 10;
+const OMNI_EXTEND_LEAD = 'Extend this video — the same scene continues in one unbroken take with the same people, voices, clothes and place, and the conversation simply carries on.\n';
 const OMNI_OP_TTL_SEC = 2 * 86400; // كتذكرة المهمّة: يومان
 function omniOpKey(op) { return 'omni:op:' + String(op); }
 /* v-fal-backup (أمر المالك ٣ نوفمبر ٢٠٢٦: «موجود خارجي وصله»): نفاد رصيد Gemini (402، أو 429 «prepayment credits are depleted»)
@@ -145,22 +149,24 @@ async function trendOmni(o) {
     }
   }
   input.push({ type: 'text', text: prompt });
+  const rf = Object.assign({ type: 'video', resolution: o.quality === 'high' ? '1080p' : '720p', aspect_ratio: o.ratio === '720:1280' ? '9:16' : '16:9', delivery: 'uri' }, o.durationSec ? { duration: o.durationSec + 's' } : {});
+  if (o.previous) delete rf.aspect_ratio; /* v-video-one-shot: التمديد يرث نسبة الفيديو الممدود */
   const upstream = await fetch((process.env.GEMINI_API_BASE || GL).replace(/\/+$/, '') + '/interactions', {
     method: 'POST',
     headers: { 'x-goog-api-key': o.apiKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: process.env.OMNI_VIDEO_MODEL || 'gemini-omni-1.1-flash',
+    body: JSON.stringify(Object.assign({
+      model: o.model || process.env.OMNI_VIDEO_MODEL || 'gemini-omni-1.1-flash',
       input,
-      response_format: Object.assign({ type: 'video', resolution: o.quality === 'high' ? '1080p' : '720p', aspect_ratio: o.ratio === '720:1280' ? '9:16' : '16:9', delivery: 'uri' }, o.durationSec ? { duration: o.durationSec + 's' } : {}),
-      background: false, store: true, stream: false, // v-omni-store: الرابط يشترط store:true
-    }),
+      response_format: rf,
+      background: false, store: true, stream: false, // v-omni-store: الرابط يشترط store:true (وبه يُمدّ الفيديو لاحقًا بمعرّف تفاعله)
+    }, o.previous ? { previous_interaction_id: o.previous, generation_config: { video_config: { task: 'extend' } } } : {})),
     signal: AbortSignal.timeout(omni.omniTimeoutFor(Date.now() - o.t0, Number(process.env.OMNI_TIMEOUT_MS || 270000))),
   });
   const data = await upstream.json().catch(() => ({}));
   if (!upstream.ok) return { status: upstream.status, msg: (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data) };
   for (const s of (data.steps || [])) {
     if (!s || s.type !== 'model_output') continue;
-    for (const c of (s.content || [])) if (c && c.type === 'video' && c.uri) return { uri: c.uri };
+    for (const c of (s.content || [])) if (c && c.type === 'video' && c.uri) return { uri: c.uri, id: typeof data.id === 'string' ? data.id : '' };
   }
   return { empty: true }; // اكتمل بلا فيديو (غالبًا فلاتر الأمان)
 }
@@ -178,11 +184,17 @@ module.exports = async (req, res) => {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     let { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
+    /* v-video-one-shot (المالك ١٧ نوفمبر: «اريده فيديو كامل مره وحده مااريد فيديو مقاطع»): extendOp = رقم عمليّة «سينمائي» سابقة يمدّها
+       المحرّك نفسه (تكملة متّصلة في آخر الفيديو، ٣–١٠ ثوانٍ للمرّة وحتّى ٣٠ ثانية للفيديو كلّه — توثيق المحرّك) فيخرج فيديو واحد لا مقاطع
+       تُلصق. بلا صور (سياقه الفيديو نفسه). والتوليدة الواحدة حتّى ١٥ ثانية (أقصى ما يصنعه المحرّك في مرّة) بدل ١٠. */
+    const extOp = (!body.trend && typeof body.extendOp === 'string' && body.extendOp.indexOf(OMNI_OP_PREFIX) === 0) ? body.extendOp : '';
+    if (extOp) { imageBase64 = ''; imageMime = ''; }
+    const SEC_MAX = extOp ? OMNI_EXTEND_MAX : OMNI_ONE_MAX;
     /* v-video-dialogue-fit: الحوار الأطول من المقطع يصل المحرّك بما يتّسع له وحده (المدّة ٣–١٠ كما يصل Omni، وغيرها ٨) — قبل حفظ
        الوصف فيبني الإطار والقفل منه؛ العميل نبّه قبل الخصم بالدالّة نفسها. الترند بقالبه */
     if (!body.trend && promptText) {
       const fitSec0 = parseInt(durationSeconds, 10);
-      const fit = require('./video-trends.js').fitDialogue(promptText, fitSec0 >= 3 && fitSec0 <= 10 ? fitSec0 : 8);
+      const fit = require('./video-trends.js').fitDialogue(promptText, fitSec0 >= 3 && fitSec0 <= SEC_MAX ? fitSec0 : 8);
       if (fit.dropped) { promptText = fit.text; console.log('[veo-create] dialogue fitted to the clip: ' + fit.kept + '/' + fit.turns + ' lines, ' + fit.keptWords + '/' + fit.words + ' words'); }
     }
     const rawDesc = promptText; /* v-video-first-frame: وصف المستخدم قبل الأسلوب والقفل — مشهد أوّل الإطار */
@@ -216,7 +228,7 @@ module.exports = async (req, res) => {
     /* v-video-speech-pace: الوصف الحرّ الذي يطلب كلامًا يحمل قاعدة توقيت الكلام بمدّة المقطع (٣–١٠ كما يصل Omni، وغيرها ٨) — داخل
        القفل قبل سطره الأخير، وبلا صورة بعد الوصف داخل حدّه؛ يُقصّ الوصف لا هي. الترند بقالبه */
     const freeSec = parseInt(durationSeconds, 10);
-    const pace = body.trend ? '' : require('./video-trends.js').speechPace(rawDesc, freeSec >= 3 && freeSec <= 10 ? freeSec : 8);
+    const pace = body.trend ? '' : require('./video-trends.js').speechPace(rawDesc, freeSec >= 3 && freeSec <= SEC_MAX ? freeSec : 8);
     if (body.trend) {
       const trendsLib = require('./video-trends.js');
       const bParams = trendsLib.sceneParams(String(body.trend), Object.assign({}, body.params || {}, { hasImage }, singleSubject ? { people: 1 } : {})); /* v-trend-scenes: قبل القصّ */
@@ -239,7 +251,7 @@ module.exports = async (req, res) => {
       promptText = require('./video-trends.js').fitPace(promptText, pace, VEO_FREE_MAX); // v-video-speech-pace
     }
     let durSec = parseInt(durationSeconds, 10);
-    const omniDur = durSec >= 3 && durSec <= 10 ? durSec : 8;
+    const omniDur = durSec >= 3 && durSec <= SEC_MAX ? durSec : 8;
     if (![4, 6, 8].includes(durSec)) durSec = 0; // 0 = default (leave to Veo)
     if (!promptText || !String(promptText).trim()) {
       res.status(400).json({ error: 'Missing promptText' });
@@ -287,6 +299,17 @@ module.exports = async (req, res) => {
       res.status(200).json({ ok: true, priceOk: true });
       return;
     }
+    /* v-video-one-shot: قبل أيّ خصم أو قفل — لا يُمدّ إلّا فيديو أنتجه المحرّك نفسه وحُفظ معرّف تفاعله (ما أنتجه الاحتياط أو انتهى عمره
+       لا يُمدّ): رفضٌ بلا خصم، والعميل يكمل بلقطة مرجعيّة كما كان */
+    let ext = null;
+    if (extOp) {
+      let rec = null;
+      try { rec = JSON.parse((await require('./kv.js').kvGetRaw(omniOpKey(extOp))) || 'null'); } catch (e) { rec = null; /* سجلّ لا يُقرأ = لا يُمدّ */ }
+      if (!cinemaOmni || !rec || !rec.iid) { const no = require('./_videoFail.js').startFail(409, 'extend source missing'); res.status(no.code).json(no.body); return; }
+      ext = { iid: String(rec.iid) };
+    }
+    /* التوليدة الأطول من ١٠ ثوانٍ والتمديد وما سيُمدّ (extendable) على إصدار المحرّك الذي يصنعها؛ غيرها على إصداره كما كان */
+    const longOmni = cinemaOmni && (!!ext || omniDur > 10 || body.extendable === true);
     if (!gate.allowed) {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
@@ -463,8 +486,9 @@ module.exports = async (req, res) => {
       if (asRef) falSpec.refs = [{ b64: oImg, mime: imageMime || 'image/png' }];
       else if (oImg) falSpec.image = { b64: oImg, mime: imageMime || 'image/png' };
       /* رصيد Gemini خلص قبل دقائق ← الاحتياط مباشرة بلا نداء فاشل قبله */
-      if (await falBackup.geminiOutRecently() && await viaFal(falSpec, 'veo-create/omni')) return;
-      const r = await trendOmni({ apiKey, prompt: oPrompt.slice(0, oCap), durationSec: body.trend ? 0 : omniDur, imageBase64: imageBase64 && String(imageBase64).trim(),
+      if (!ext && await falBackup.geminiOutRecently() && await viaFal(falSpec, 'veo-create/omni')) return; /* الاحتياط لا يمدّ فيديو */
+      const r = await trendOmni({ apiKey, prompt: (ext ? OMNI_EXTEND_LEAD : '') + oPrompt.slice(0, oCap), durationSec: body.trend ? 0 : omniDur,
+        previous: ext ? ext.iid : '', model: longOmni ? (process.env.OMNI_LONG_MODEL || 'gemini-omni-1.2-flash') : '', imageBase64: imageBase64 && String(imageBase64).trim(),
         imageMime, framed: framed || groupFramed, ratio, quality, t0, person: tp.omniPersonTrend(trendId), trend: !!body.trend,
         /* v-trend-omni-refs (المالك بعد v-trend-omni-face: «بعده يغيّر شكل الشخصيّة في الملامح»): مرجع الملامح مع كلّ إطار مبنيّ —
            لقطة الوجه، وإلّا الصورة نفسها كما في omni-create (السيلفي: وجه يملأ الصورة لا تُقصّ له لقطة، فكان الإطار وحده)، وصور
@@ -480,7 +504,7 @@ module.exports = async (req, res) => {
         multiShot });
       if (!r.uri) {
         /* v-fal-backup: نفاد الرصيد وحده (لا الزحام ولا الرفض) ← الاحتياط قبل أيّ ردّ؛ قبوله {op} بخصمه وتذكرته، ورفضه المسار القديم */
-        if (r.status && falRescue(r.status, r.msg)) {
+        if (!ext && r.status && falRescue(r.status, r.msg)) {
           await falBackup.markGeminiOut();
           if (await viaFal(falSpec, 'veo-create/omni')) return;
         }
@@ -488,7 +512,7 @@ module.exports = async (req, res) => {
         if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
         chargedUser = null; videoLocked = null; /* v-video-giveback: رُدّ هنا — catch لا يردّ ثانيةً */
         if (r.status) {
-          console.error('[veo-create] omni upstream ' + r.status + ' (image=' + (oImg ? (body.keepPhoto ? 'kept-frame' : 'yes') : 'none') + '): ' + String(r.msg).slice(0, 300)); /* v-video-dialogue-reject: هل رُفض ومعه لقطة مرجعيّة؟ */
+          console.error('[veo-create] omni upstream ' + r.status + ' (image=' + (ext ? 'extension' : oImg ? (body.keepPhoto ? 'kept-frame' : 'yes') : 'none') + (longOmni ? ', long ' + omniDur + 's' : '') + '): ' + String(r.msg).slice(0, 300)); /* v-video-dialogue-reject: هل رُفض ومعه لقطة مرجعيّة؟ */
           const fail = require('./_videoFail.js').startFail(r.status, r.msg); /* نفاد الرصيد unavailable · زحام video_busy · رفض video_rejected */
           res.status(fail.code).json(fail.body);
         } else {
@@ -498,11 +522,11 @@ module.exports = async (req, res) => {
         return;
       }
       const op = OMNI_OP_PREFIX + require('crypto').randomUUID();
-      await require('./kv.js').kvSetRaw(omniOpKey(op), JSON.stringify({ uri: r.uri }), OMNI_OP_TTL_SEC);
+      await require('./kv.js').kvSetRaw(omniOpKey(op), JSON.stringify(Object.assign({ uri: r.uri }, r.id ? { iid: r.id } : {})), OMNI_OP_TTL_SEC); /* v-video-one-shot: معرّف التفاعل — به يُمدّ */
       // v-video-refund: التذكرة كـVeo — veo-status يسوّيها عند التسليم، والكنس يردّها إن لم يُسلَّم
       await require('./video-job.js').rememberVideoJob(op, { username: chargedUser, cost: pointsLib.COSTS.veo_video, locked: !!videoLocked, pay: chargedPay });
       chargedUser = null; videoLocked = null;
-      console.log('[veo-create] ' + (body.trend ? 'trend ' + String(body.trend).slice(0, 20) : 'cinematic') + ' ready on omni in ' + Math.round((Date.now() - t0) / 1000) + 's');
+      console.log('[veo-create] ' + (body.trend ? 'trend ' + String(body.trend).slice(0, 20) : 'cinematic') + ' ready on omni' + (ext ? ' (extension +' + omniDur + 's)' : longOmni ? ' (long ' + omniDur + 's)' : '') + ' in ' + Math.round((Date.now() - t0) / 1000) + 's');
       res.status(200).json({ op });
       return;
     }
@@ -569,6 +593,8 @@ module.exports = async (req, res) => {
 module.exports.VEO_PROMPT_MAX = VEO_PROMPT_MAX;
 module.exports.DIALOGUE_CLIPS_MAX = DIALOGUE_CLIPS_MAX; // v-video-dialogue-clips
 module.exports.OMNI_OP_PREFIX = OMNI_OP_PREFIX;
+module.exports.OMNI_ONE_MAX = OMNI_ONE_MAX; // v-video-one-shot
+module.exports.OMNI_EXTEND_MAX = OMNI_EXTEND_MAX;
 module.exports.omniOpKey = omniOpKey;
 module.exports.FAL_OP_PREFIX = FAL_OP_PREFIX; // v-fal-backup
 module.exports.falOpKey = falOpKey;
