@@ -32,9 +32,12 @@ module.exports = async (req, res) => {
     let { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
     /* v-video-durations (المالك ٢٧ أكتوبر): العميل لم يكن يرسل المدّة فكان كلّ فيديو ٦ ثوانٍ. H3 على v2 يقبل ٤–١٥ ثانية عددًا
        صحيحًا بالدقّتين (مستودع MiniMax-H3 الرسميّ: "duration":8) — المختارة كما هي، وبلا قيمة ٦ كما كانت. السقف ١٠ = أطول زرّ في الواجهة
-       (مراجعة ٢٧ أكتوبر: ١٥ ثانية بسعر ٥٥ الثابت ≈ ٤ أضعاف تكلفة الجدول لمن ينادي الخادم مباشرة — باب المال). */
+       (مراجعة ٢٧ أكتوبر: ١٥ ثانية بسعر ٥٥ الثابت ≈ ٤ أضعاف تكلفة الجدول لمن ينادي الخادم مباشرة — باب المال).
+       v-video-one-shot (المالك ١٧ نوفمبر: «اريده فيديو كامل مره وحده… الفيديو مش على حسابك»): حساب المالك (بلا نقاط) حتّى ١٥ — أقصى
+       توليدة واحدة عند المحرّك، فحواره يخرج فيديو واحدًا؛ غيره ١٠ كما كان (السعر الثابت باب مال لا يُفتح بلا أمره). */
     let durSec = parseInt(durationSeconds, 10);
-    durSec = Number.isFinite(durSec) ? Math.min(10, Math.max(4, durSec)) : 6;
+    const durMax = (durSec > 10 && (await checkOwnerBypass(token)).allowed) ? 15 : 10;
+    durSec = Number.isFinite(durSec) ? Math.min(durMax, Math.max(4, durSec)) : 6;
     /* v-video-dialogue-fit: الحوار الأطول من المقطع يصل المحرّك بما يتّسع له وحده — قبل حفظ الوصف فيبني الإطار والقفل منه؛
        العميل نبّه قبل الخصم بالدالّة نفسها. الترند بقالبه */
     if (!body.trend && promptText) {

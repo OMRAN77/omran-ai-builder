@@ -253,7 +253,8 @@ test('١٠. الإنشاء (v2): المسار والترويسة والجسم �
   await create({ promptText: 'x', ratio: '1280:720', token: 't', quality: 'high', durationSeconds: 10 }, c.fetch);
   assert.equal(c.body.resolution, '2K');
   assert.equal(c.body.duration, 10);
-  for (const [d, want] of [[5, 5], [8, 8], ['10', 10], [2, 4], [30, 10], [undefined, 6]]) { // السقف ١٠ = أطول زرّ (باب المال)
+  /* v-video-one-shot: هذا المعالج هنا بتجاوز المالك — له حتّى ١٥ (أقصى توليدة عند المحرّك)؛ غير المالك ١٠ كما كان (video-dialogue-clips ٢٦) */
+  for (const [d, want] of [[5, 5], [8, 8], ['10', 10], [2, 4], [12, 12], [30, 15], [undefined, 6]]) {
     c = capture();
     await create({ promptText: 'x', token: 't', durationSeconds: d }, c.fetch);
     assert.equal(c.body.duration, want, 'المدّة ' + d);

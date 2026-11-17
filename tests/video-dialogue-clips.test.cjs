@@ -59,9 +59,17 @@ account('vip1', 'free', 0); vip.add('vip1');
 let upstream = 0;
 let omniBlocked = false; // v-video-dialogue-reject: المحرّك يرفض المدخل (٤٠٠ «Input blocked») كما في سجلّ الإنتاج
 const BLOCKED = "Input blocked: Sorry, we can't create videos with real people's names or likenesses. Please remove the reference and try again.";
-global.fetch = async (url) => {
-  upstream++;
+let omniCalls = null; // v-video-one-shot: أجسام نداءات المحرّك (ومعرّف تفاعل لكلّ ردّ)
+const seenUrls = [];
+let mmCalls = null;
+global.fetch = async (url, init) => {
+  upstream++; seenUrls.push(String(url));
   if (omniBlocked && /\/interactions$/.test(String(url))) return new Response(JSON.stringify({ error: { code: 400, message: BLOCKED } }), { status: 400 });
+  if (omniCalls && /\/interactions$/.test(String(url))) {
+    omniCalls.push(JSON.parse(init.body));
+    return new Response(JSON.stringify({ id: 'v1_' + omniCalls.length, status: 'completed', steps: [{ type: 'model_output', content: [{ type: 'video', mime_type: 'video/mp4', uri: 'https://g/files/v' + omniCalls.length }] }] }), { status: 200 });
+  }
+  if (mmCalls && /\/v2\/video_generation$/.test(String(url))) { mmCalls.push(JSON.parse(init.body)); return new Response(JSON.stringify({ task_id: 'mm-' + mmCalls.length }), { status: 200 }); }
   return new Response('{}', { status: 200 });
 };
 
@@ -73,9 +81,10 @@ function block(src, needle) {
   return src.slice(a, i + 1);
 }
 const CLIENT = read('js/app-11-video.js');
-const PLAN_SRC = 'const DIALOGUE_CLIPS_MAX = 4;\n' + block(CLIENT, 'function dialogueTurns(desc) {') + '\n' + block(CLIENT, 'function planDialogue(desc, maxClips) {');
-const P = {}; vm.runInNewContext(PLAN_SRC + '\nthis.plan = planDialogue;', P);
-const plan = (d, n) => JSON.parse(JSON.stringify(P.plan(d, n)));
+const PLAN_SRC = 'const DIALOGUE_CLIPS_MAX = 4;\n' + block(CLIENT, 'function dialogueTurns(desc) {') + '\n' + block(CLIENT, 'function planDialogue(desc, maxClips, caps) {') + '\n' + block(CLIENT, 'function planDialogueOne(desc) {');
+const P = {}; vm.runInNewContext(PLAN_SRC + '\nthis.plan = planDialogue; this.one = planDialogueOne;', P);
+const plan = (d, n, caps) => JSON.parse(JSON.stringify(P.plan(d, n, caps)));
+const planOne = (d) => JSON.parse(JSON.stringify(P.one(d))); // v-video-one-shot: خطّة «سينمائي» (توليدة ثمّ تمديدات المحرّك)
 const wordsOf = (s) => String(s).split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).map((w) => w.replace(/[«»"“”]/g, ''));
 
 /* حوار المالك كما سمعه Whisper من مقاطعه (أمّ وبنت عن اليوم الوطني) */
@@ -177,6 +186,7 @@ function flow(opts) {
         if (o.failAt === made) return { ok: false, status: 402, json: async () => ({ error: 'points_insufficient' }) };
         /* v-video-dialogue-reject: رفض المحرّك للطلب نفسه — ٤٠٠ video_rejected كما يردّه الخادم (_videoFail) */
         if (o.reject && o.reject(body, okd + 1)) return { ok: false, status: 400, json: async () => ({ error: 'video_rejected', message_ar: 'تعذّر بدء الفيديو بهذا الطلب', retryable: false }) };
+        if (o.unavail && o.unavail(body, okd + 1)) return { ok: false, status: 503, json: async () => ({ error: 'unavailable', retryable: false }) }; // v-video-one-shot
         okd++;
         return { ok: true, status: 200, json: async () => (/minimax/.test(u) ? { task_id: 'T' + okd } : { op: 'omni/' + okd }) };
       }
@@ -194,6 +204,9 @@ function flow(opts) {
     dialogRetryText: (i, n) => 'retry ' + i + '/' + n, dialogNoRefText: (i) => 'noref ' + i, dialogPartText: (k, n) => 'part ' + k + '/' + n,
     joinDialogClips: async (list) => { if (o.noJoin) return null; joined.push(list.slice()); return { type: 'video/mp4' }; },
     dialogResumeText: (k, n) => 'resume ' + k + '/' + n, dialogJoinFailText: () => 'joinfail',
+    /* v-video-one-shot: سطرا «فيديو واحد متّصل»، ومدّة الفيديو (الافتراضيّ أطول من أيّ تكملة = الفيديو كلّه) */
+    dialogOneText: (i, n, s) => 'one ' + i + '/' + n + ' ~' + s, dialogOnePartText: (k, n) => 'onepart ' + k + '/' + n,
+    clipDims: async (b) => (o.dims ? o.dims(b) : { w: 1280, h: 720, d: 60 }),
     localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } },
     showPartialScenes: (urls, n, why) => partial.push([urls.slice(), n, why]),
     friendlyError: (e) => 'ERR:' + (e.code || e.message),
@@ -204,7 +217,7 @@ function flow(opts) {
     ratio: '1280:720', token: 'tok', wantQuality: false, style: 'realistic', filmHeroBase64: o.hero || null, filmHeroMime: 'image/png',
     scenesDone: 0, text: DIALOGUE, signature: '', wantNarration: false, __swallow: () => {},
   };
-  vm.runInNewContext(CHAIN_SRC + '\n' + block(CLIENT, 'async function engineClip(mode, payload, onTick){') + '\n' + block(CLIENT, 'async function runDialogueClips(plan, mode){') + '\nthis.run = runDialogueClips;', ctx);
+  vm.runInNewContext(CHAIN_SRC + '\n' + block(CLIENT, 'async function engineClip(mode, payload, onTick, meta){') + '\n' + block(CLIENT, 'async function runDialogueClips(plan, mode){') + '\nthis.run = runDialogueClips;', ctx);
   /* كائنات الـvm من نطاق آخر: تُطبَّع بـJSON للمقارنة */
   const plain = (x) => JSON.parse(JSON.stringify(x));
   return { ctx, status, store, get net() { return plain(net); }, get partial() { return plain(partial); }, get joined() { return plain(joined); },
@@ -213,7 +226,7 @@ function flow(opts) {
 const CONT = 'Continue the same scene from the attached first frame — the same people, voices, clothes and place; the conversation simply carries on.';
 /* v-video-dialogue-merge: «واقعي» بلا صورة بطل يُقال في كلّ مقطع (سطر مستقلّ آخر الوصف)، والسلسلة المحفوظة بدوالّها الحقيقيّة */
 const LOOK = '\nPhotorealistic live-action footage with real-looking people, not animation.';
-const CHAIN_SRC = (/const DLG_CHAIN_KEY = [^\n]+/.exec(CLIENT) || [''])[0] + '\n' + ['function dlgChainSig(parts){', 'function dlgChainLoad(sig){', 'function dlgChainSave(sig, urls){'].map((n) => block(CLIENT, n)).join('\n');
+const CHAIN_SRC = (/const DLG_CHAIN_KEY = [^\n]+/.exec(CLIENT) || [''])[0] + '\n' + ['function dlgChainSig(parts){', 'function dlgChainLoad(sig, more){', 'function dlgChainSave(sig, urls, ops, base){'].map((n) => block(CLIENT, n)).join('\n');
 
 test('٥. التسلسل: السعر مرّة بالمجموع قبل الأوّل، ثمّ كلّ مقطع بجمله ومدّته، والتالي من آخر لقطة في سابقه بأمر «أكمل»، ثمّ اللصق والعرض', async () => {
   const p = plan(DIALOGUE);
@@ -243,14 +256,14 @@ test('٥. التسلسل: السعر مرّة بالمجموع قبل الأوّ
   assert.equal(f.net[0][2].engine, 'veo');
   assert.ok(f.net.filter((x) => x[0] === 'create').every((x) => x[1] === '/api/video?action=veo-create'));
   assert.deepEqual([f.creates()[0].imageBase64, f.creates()[0].imageMime, f.creates()[0].keepPhoto], ['HERO', 'image/png', undefined]);
-  assert.deepEqual([f.creates()[1].imageBase64, f.creates()[1].keepPhoto], ['FRAME<https://cdn/omni-1.mp4>', true]);
+  assert.deepEqual([f.creates()[1].imageBase64, f.creates()[1].extendOp], [undefined, 'omni/1'], 'v-video-one-shot: التالي يمدّه المحرّك نفسه — لا لقطة مرجعيّة (الحالة ٢١)');
   /* تعذّرت اللقطة: المقطع التالي يكمل بالوصف وحده (بلا صورة ولا «أكمل من اللقطة») */
   f = flow({ noFrame: true });
   await f.ctx.run(p, 'minimax');
   assert.deepEqual([f.creates()[1].promptText, f.creates()[1].imageBase64], [p.clips[1].text + LOOK, undefined]);
   /* ومع صورة بطل: المقطع الذي تعذّرت لقطته يبدأ من صورة البطل (الوجه نفسه) لا بلا صورة */
   f = flow({ noFrame: true, hero: 'HERO' });
-  await f.ctx.run(p, 'veo');
+  await f.ctx.run(p, 'minimax');
   assert.deepEqual([f.creates()[1].promptText, f.creates()[1].imageBase64, f.creates()[1].keepPhoto], [p.clips[1].text, 'HERO', undefined]);
 });
 
@@ -279,16 +292,16 @@ test('٦. لا صرف بلا موافقة ولا ضياع مدفوع: إلغاء
 });
 
 test('٧. الربط: «سريع» و«سينمائي» يبنيان الخطّة قبل أيّ نداء، والمقطع الواحد مدّته لا تقلّ عن حاجة كلامه، والممثّل بلا خطّة، والحزمة مبنيّة', () => {
-  const mmPlan = CLIENT.indexOf("const dlg = planDialogue(text);\n        if(dlg.clips.length > 1){ await runDialogueClips(dlg, 'minimax'); return; }");
+  const mmPlan = CLIENT.search(/const dlg = planDialogue\(text, 0, isOwnerAccount\(\) \? \[15\] : \[10\]\);[^\n]*\n        if\(dlg\.clips\.length > 1\)\{ await runDialogueClips\(dlg, 'minimax'\); return; \}/);
   assert.ok(mmPlan > 0 && mmPlan < CLIENT.indexOf("window.postWithConfirm('/api/video?action=minimax-create', payload)"));
   assert.ok(CLIENT.includes("style, durationSeconds: Math.max(durSecs, dlg.need) || undefined };"));
-  const veoPlan = CLIENT.indexOf("const dlg = creationMode === 'veo' ? planDialogue(veoPrompt) : { clips: [], need: 0 };\n        if(dlg.clips.length > 1){ await runDialogueClips(dlg, 'veo'); return; }");
+  const veoPlan = CLIENT.search(/const dlg = creationMode === 'veo' \? planDialogueOne\(veoPrompt\) : \{ clips: \[\], need: 0 \};[^\n]*\n        if\(dlg\.clips\.length > 1\)\{ await runDialogueClips\(dlg, 'veo'\); return; \}/);
   assert.ok(veoPlan > CLIENT.indexOf("const ac = await fetch('/api/video?action=actor-create'") && veoPlan < CLIENT.indexOf("window.postWithConfirm('/api/video?action=veo-create', veoPayload)"));
   assert.ok(CLIENT.includes("durationSeconds: (creationMode === 'veo' && Math.max(durSecs, dlg.need)) || undefined };"));
   assert.match(block(CLIENT, 'function clipFrameB64(blob, where, ms){'), /for\(let i = 3; i < a\.length; i \+= 4\) if\(a\[i\]\)/, 'ينتظر أوّل بكسل معتم (PITFALLS)');
   assert.ok(block(CLIENT, 'function clipFrameB64(blob, where, ms){').includes("v.currentTime = where === 'first' ? Math.min(0.05, d / 2) : Math.max(0, d - 0.02);"), 'أوّل لقطة أو آخرها');
   const B = read('js/app.bundle.js');
-  assert.ok(B.includes("await runDialogueClips(dlg, 'veo')") && B.includes('function planDialogue(desc, maxClips) {'), 'الحزمة مبنيّة');
+  assert.ok(B.includes("await runDialogueClips(dlg, 'veo')") && B.includes('function planDialogue(desc, maxClips, caps) {'), 'الحزمة مبنيّة');
 });
 
 async function price(u, body) {
@@ -365,13 +378,13 @@ test('١٠. حالة المالك: المقطع الثالث يرفضه المح
   const p = plan(D3);
   assert.equal(p.clips.length, 3, 'حواره الأطول على ثلاثة مقاطع'); assert.equal(p.dropped, 0);
   const f = flow({ reject: (b, clipNo) => clipNo === 3 && has(b, 'FRAME<') });
-  await f.ctx.run(p, 'veo');
+  await f.ctx.run(p, 'minimax');
   const c = f.creates();
   assert.equal(c.length, 4, 'ثلاثة مقاطع + إعادة واحدة');
-  assert.deepEqual([c[2].imageBase64, c[2].keepPhoto, c[2].promptText], ['FRAME<https://cdn/omni-2.mp4>', true, CONT + '\n' + p.clips[2].text + LOOK], 'المحاولة الأولى بآخر لقطة');
+  assert.deepEqual([c[2].imageBase64, c[2].keepPhoto, c[2].promptText], ['FRAME<https://cdn/T2.mp4>', true, CONT + '\n' + p.clips[2].text + LOOK], 'المحاولة الأولى بآخر لقطة');
   assert.deepEqual([c[3].imageBase64, c[3].keepPhoto, c[3].promptText, c[3].confirmed, c[3].durationSeconds],
-    ['FIRST<https://cdn/omni-2.mp4>', true, CONT + '\n' + p.clips[2].text + LOOK, true, p.clips[2].sec], 'الإعادة بأوّل لقطة في المقطع السابق — الكلام نفسه');
-  assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-2.mp4', 'blob:https://cdn/omni-3.mp4']], 'الثلاثة ملصوقة بترتيبها');
+    ['FIRST<https://cdn/T2.mp4>', true, CONT + '\n' + p.clips[2].text + LOOK, true, p.clips[2].sec], 'الإعادة بأوّل لقطة في المقطع السابق — الكلام نفسه');
+  assert.deepEqual(f.joined, [['blob:https://cdn/T1.mp4', 'blob:https://cdn/T2.mp4', 'blob:https://cdn/T3.mp4']], 'الثلاثة ملصوقة بترتيبها');
   assert.equal(f.partial.length, 0, 'لا مشاهد متفرّقة');
   assert.equal(f.ctx.resultEl.src, 'blob:joined');
   assert.ok(f.status.includes('retry 3/3'), 'سطر الإعادة');
@@ -383,7 +396,7 @@ test('١١. ترتيب المراجع عند الرفض: آخر لقطة ← أ�
   const p = plan(D3);
   /* المحرّك يرفض كلّ لقطة من الفيديو: يسقط إلى صورة البطل */
   let f = flow({ hero: 'HERO', reject: (b, clipNo) => clipNo > 1 && (has(b, 'FRAME<') || has(b, 'FIRST<')) });
-  await f.ctx.run(p, 'veo');
+  await f.ctx.run(p, 'minimax');
   let c = f.creates();
   assert.deepEqual(c.map((x) => String(x.imageBase64).slice(0, 5)), ['HERO', 'FRAME', 'FIRST', 'HERO', 'FRAME', 'FIRST', 'HERO']);
   assert.deepEqual([c[3].keepPhoto, c[3].imageMime, c[3].promptText], [undefined, 'image/png', p.clips[1].text], 'صورة البطل كالمقطع الأوّل');
@@ -407,9 +420,9 @@ test('١٢. ما اكتمل لا يضيع: رفض نهائيّ أو عطب في 
   const p = plan(D3);
   /* المحرّك يرفض المقطع الثالث بكلّ مرجع وبلاه */
   let f = flow({ reject: (b, clipNo) => clipNo === 3 });
-  await f.ctx.run(p, 'veo');
+  await f.ctx.run(p, 'minimax');
   assert.equal(f.creates().length, 5, 'مقطعان + ثلاث محاولات للثالث');
-  assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-2.mp4']], 'المكتملان ملصوقان');
+  assert.deepEqual(f.joined, [['blob:https://cdn/T1.mp4', 'blob:https://cdn/T2.mp4']], 'المكتملان ملصوقان');
   assert.equal(f.partial.length, 0, 'فيديو واحد لا مشاهد متفرّقة');
   assert.equal(f.ctx.resultEl.src, 'blob:joined'); assert.equal(f.ctx.downloadEl.style.display, 'block');
   assert.equal(f.status[f.status.length - 1], 'ERR:video_rejected part 2/3');
@@ -424,7 +437,7 @@ test('١٢. ما اكتمل لا يضيع: رفض نهائيّ أو عطب في 
   assert.deepEqual(f.partial, [[['https://cdn/T1.mp4', 'https://cdn/T2.mp4'], 3, 'ERR:points_insufficient']]);
   /* المقطع الأوّل مرفوض: خطأ عاديّ بمحاولة واحدة — صورة البطل المرفوضة لا تُستبدل بفيديو بلا وجه صاحبها */
   f = flow({ hero: 'HERO', reject: (b, clipNo) => clipNo === 1 });
-  await assert.rejects(f.ctx.run(p, 'veo'), (e) => e.code === 'video_rejected');
+  await assert.rejects(f.ctx.run(p, 'minimax'), (e) => e.code === 'video_rejected');
   assert.equal(f.creates().length, 1); assert.equal(f.partial.length, 0); assert.equal(f.joined.length, 0);
 });
 
@@ -487,18 +500,18 @@ test('١٥. الاستئناف: سلسلة توقّفت عند المقطع ال
   const p = plan(D3);
   const store = {};
   let f = flow({ store, failAt: 3 });
-  await f.ctx.run(p, 'veo');
+  await f.ctx.run(p, 'minimax');
   assert.equal(f.status[f.status.length - 1], 'ERR:points_insufficient part 2/3');
   const saved = JSON.parse(Object.values(store)[0]);
-  assert.deepEqual(saved.urls, ['https://cdn/omni-1.mp4', 'https://cdn/omni-2.mp4'], 'المكتملان محفوظان');
+  assert.deepEqual(saved.urls, ['https://cdn/T1.mp4', 'https://cdn/T2.mp4'], 'المكتملان محفوظان');
   /* إعادة الضغط بالحوار نفسه */
   f = flow({ store, idBase: 2 });
-  await f.ctx.run(p, 'veo');
-  assert.deepEqual(f.net[0], ['price', '/api/video?action=veo-price', { clips: 1, engine: 'veo', promptText: 'dialogue', token: 'tok', resume: true }], 'سعر المقطع الباقي وحده');
+  await f.ctx.run(p, 'minimax');
+  assert.deepEqual(f.net[0], ['price', '/api/video?action=veo-price', { clips: 1, engine: 'minimax', promptText: 'dialogue', token: 'tok', resume: true }], 'سعر المقطع الباقي وحده');
   const c = f.creates();
   assert.equal(c.length, 1, 'مقطع واحد يُولَّد');
-  assert.deepEqual([c[0].promptText, c[0].imageBase64, c[0].keepPhoto], [CONT + '\n' + p.clips[2].text + LOOK, 'FRAME<https://cdn/omni-2.mp4>', true], 'يكمل من آخر لقطة في المقطع المحفوظ');
-  assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-2.mp4', 'blob:https://cdn/omni-3.mp4']], 'الثلاثة في فيديو واحد');
+  assert.deepEqual([c[0].promptText, c[0].imageBase64, c[0].keepPhoto], [CONT + '\n' + p.clips[2].text + LOOK, 'FRAME<https://cdn/T2.mp4>', true], 'يكمل من آخر لقطة في المقطع المحفوظ');
+  assert.deepEqual(f.joined, [['blob:https://cdn/T1.mp4', 'blob:https://cdn/T2.mp4', 'blob:https://cdn/T3.mp4']], 'الثلاثة في فيديو واحد');
   assert.ok(f.status.includes('resume 2/3'));
   assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء!');
   assert.deepEqual(Object.keys(store), [], 'اكتمل الفيديو = تُمحى السلسلة (الضغطة التالية توليد جديد)');
@@ -518,31 +531,31 @@ test('١٦. الاستئناف بحدوده: تعذّر الدمج يُعاد ب
   assert.deepEqual(Object.keys(store), []);
   /* حوار آخر، أو الوضع الآخر، لا يستعير مقاطع غيره */
   store = {};
-  f = flow({ store, failAt: 3 }); await f.ctx.run(p, 'veo');
-  f = flow({ store, idBase: 5 }); await f.ctx.run(plan(DIALOGUE), 'veo');
+  f = flow({ store, failAt: 3 }); await f.ctx.run(p, 'minimax');
+  f = flow({ store, idBase: 5 }); await f.ctx.run(plan(DIALOGUE), 'minimax');
   assert.deepEqual([f.net[0][2].clips, f.net[0][2].resume, f.creates().length], [2, undefined, 2], 'حوار آخر = من أوّله');
   store = {};
-  f = flow({ store, failAt: 3 }); await f.ctx.run(p, 'veo');
-  f = flow({ store, idBase: 5 }); await f.ctx.run(p, 'minimax');
+  f = flow({ store, failAt: 3 }); await f.ctx.run(p, 'minimax');
+  f = flow({ store, idBase: 5 }); await f.ctx.run(p, 'veo');
   assert.equal(f.creates().length, 3, 'الوضع الآخر = من أوّله');
   /* المقطع الثاني المحفوظ لم يعد يُحمَّل: يُستعار الأوّل وحده */
   store = {};
-  f = flow({ store, failAt: 3 }); await f.ctx.run(p, 'veo');
-  f = flow({ store, idBase: 5, gone: (u) => /omni-2\.mp4$/.test(u) }); await f.ctx.run(p, 'veo');
+  f = flow({ store, failAt: 3 }); await f.ctx.run(p, 'minimax');
+  f = flow({ store, idBase: 5, gone: (u) => /T2\.mp4$/.test(u) }); await f.ctx.run(p, 'minimax');
   assert.deepEqual([f.net[0][2].clips, f.net[0][2].resume, f.creates().length], [2, true, 2]);
-  assert.equal(f.creates()[0].imageBase64, 'FRAME<https://cdn/omni-1.mp4>');
+  assert.equal(f.creates()[0].imageBase64, 'FRAME<https://cdn/T1.mp4>');
   /* ثلاثة محفوظة والأوسط لم يعد يُحمَّل: يُسقط هو وما بعده — لا يُلصق الثالث بعد الأوّل بترتيب مكسور */
   store = {};
-  f = flow({ store, noJoin: true }); await f.ctx.run(p, 'veo');
+  f = flow({ store, noJoin: true }); await f.ctx.run(p, 'minimax');
   assert.equal(JSON.parse(Object.values(store)[0]).urls.length, 3);
-  f = flow({ store, idBase: 5, gone: (u) => /omni-2\.mp4$/.test(u) }); await f.ctx.run(p, 'veo');
+  f = flow({ store, idBase: 5, gone: (u) => /T2\.mp4$/.test(u) }); await f.ctx.run(p, 'minimax');
   assert.deepEqual([f.net[0][2].clips, f.creates().length], [2, 2], 'الثاني والثالث يُولَّدان');
-  assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-6.mp4', 'blob:https://cdn/omni-7.mp4']]);
+  assert.deepEqual(f.joined, [['blob:https://cdn/T1.mp4', 'blob:https://cdn/T6.mp4', 'blob:https://cdn/T7.mp4']]);
   /* بعد ٢٠ ساعة يسقط المحفوظ */
   store = {};
-  f = flow({ store, failAt: 3 }); await f.ctx.run(p, 'veo');
+  f = flow({ store, failAt: 3 }); await f.ctx.run(p, 'minimax');
   const k = Object.keys(store)[0], j = JSON.parse(store[k]); j.at = Date.now() - 21 * 3600 * 1000; store[k] = JSON.stringify(j);
-  f = flow({ store, idBase: 5 }); await f.ctx.run(p, 'veo');
+  f = flow({ store, idBase: 5 }); await f.ctx.run(p, 'minimax');
   assert.deepEqual([f.net[0][2].clips, f.creates().length], [3, 3]);
 });
 
@@ -598,15 +611,341 @@ test('١٨. الخادم: سعر الاستئناف = الباقي وحده ول
 test('١٩. «واقعي» يُقال في كلّ مقطع بلا صورة بطل (سطر مستقلّ لا يُعدّ كلامًا)، وصورة البطل والأنمي بلا السطر', async () => {
   const p = plan(D3);
   let f = flow();
-  await f.ctx.run(p, 'veo');
+  await f.ctx.run(p, 'minimax');
   for (const x of f.creates()) { assert.ok(x.promptText.endsWith(LOOK)); assert.equal(VT.dialogueTurns(x.promptText).length, VT.dialogueTurns(x.promptText.replace(LOOK, '')).length); }
   assert.equal(VT.dialogueTurns(LOOK).length, 0); assert.ok(!/[:：«»"“”]/.test(LOOK));
   f = flow({ hero: 'HERO' });
-  await f.ctx.run(p, 'veo');
+  await f.ctx.run(p, 'minimax');
   assert.ok(f.creates().every((x) => !x.promptText.includes('Photorealistic')), 'صورة البطل بأسلوبها');
   f = flow();
   f.ctx.style = 'anime';
-  await f.ctx.run(p, 'veo');
+  await f.ctx.run(p, 'minimax');
   assert.ok(f.creates().every((x) => !x.promptText.includes('Photorealistic')), 'الأنمي له سطره على الخادم');
-  assert.ok(read('js/app.bundle.js').includes('async function joinDialogClips(list, blobs){') && read('js/app.bundle.js').includes('function dlgChainLoad(sig){'), 'الحزمة مبنيّة');
+  assert.ok(read('js/app.bundle.js').includes('async function joinDialogClips(list, blobs){') && read('js/app.bundle.js').includes('function dlgChainLoad(sig, more){'), 'الحزمة مبنيّة');
+});
+
+/* ── v-video-one-shot (المالك ١٧ نوفمبر بعد #1348: «الي اريده فيديو كامل مره وحده مااريد فيديو مقاطع… الفيديو مش على حسابك»). التوليدة
+   الواحدة حتّى ١٥ ثانية (أقصى ما يصنعه المحرّكان في مرّة)، و«سينمائي» ما زاد يمدّه المحرّك نفسه في آخر الفيديو (٣–١٠ث للمرّة، ≤ ٣٠ث)
+   فيخرج فيديو واحد متّصل بلا لصق؛ تعذّر التمديد = اللقطة المرجعيّة واللصق كما كانا. ── */
+const LONG3 = planOne(D3);
+const D21 = [SCENE].concat(LINES.slice(0, 5)).join('\n');           // ٢١ كلمة
+const D23 = D21 + '\nالأم: نعم صحيح';                                // ٢٣ كلمة — آخر ما تتّسع له توليدة واحدة
+const D24 = D21 + '\nالأم: نعم هذا صحيح';                            // ٢٤ كلمة
+
+test('٢٠. الخطّة: توليدة واحدة حتّى ١٥ ثانية (٢٣ كلمة) بمدّة كلامها، و«سينمائي» ما زاد يمدّه المحرّك — الفيديو كلّه ≤ ٣٠ ثانية وبلا كلمة ناقصة', () => {
+  assert.equal(plan(D21).clips.length, 2, 'بحدّ ١٠ ثوانٍ (الافتراضيّ كما كان): مقطعان');
+  let p = plan(D21, 0, [15]);
+  assert.deepEqual([p.clips.length, p.words, p.need, p.dropped], [1, 21, 14, 0], 'بحدّ ١٥: توليدة واحدة بمدّة كلامها');
+  assert.ok(p.words <= VT.wordBudget(p.need) && p.words > VT.wordBudget(p.need - 1), 'أقلّ مدّة تتّسع لكلامها');
+  assert.equal(VT.fitDialogue(D21, p.need).dropped, 0, 'الخادم لا يقصّ منها شيئًا');
+  assert.equal(VT.wordBudget(15), 23);
+  assert.deepEqual([plan(D23, 0, [15]).clips.length, plan(D23, 0, [15]).need], [1, 15]);
+  assert.equal(plan(D24, 0, [15]).clips.length, 2, 'فوق متّسع التوليدة الواحدة: لا يُحشر');
+  /* «سينمائي»: ما تتّسع له توليدة = توليدة واحدة */
+  for (const d of [D21, D23]) { p = planOne(d); assert.deepEqual([p.clips.length, p.dropped, p.need <= 15], [1, 0, true]); }
+  /* حوار المالك الأقصر (٢٥ كلمة): توليدة ثمّ تمديد واحد */
+  p = planOne(DIALOGUE);
+  assert.deepEqual(p.clips.map((c) => [c.words, c.sec]), [[13, 9], [12, 9]]);
+  assert.equal(p.clips[1].text, [SCENE].concat(LINES.slice(3)).join('\n'));
+  /* حواره الأطول (٣٢ كلمة): توليدة ثمّ تمديدان — ١٥ ثمّ ١٠ ثمّ ٥ على الأكثر */
+  p = LONG3;
+  assert.deepEqual([p.words, p.dropped, p.seconds], [32, 0, 25]);
+  assert.deepEqual(p.clips.map((c) => [c.words, c.sec]), [[16, 11], [12, 9], [4, 5]]);
+  assert.deepEqual(p.clips.map((c) => c.text), [[SCENE].concat(LINES3.slice(0, 3)).join('\n'), [SCENE].concat(LINES3.slice(3, 5)).join('\n'), [SCENE].concat(LINES3.slice(5)).join('\n')]);
+  p.clips.forEach((c, i) => {
+    assert.ok(c.sec <= [15, 10, 5][i] && c.words <= VT.wordBudget(c.sec), 'جزء ' + (i + 1) + ' داخل حدّه');
+    assert.equal(VT.fitDialogue(c.text, c.sec).dropped, 0);
+  });
+  assert.deepEqual([].concat(...p.clips.map((c) => wordsOf(c.text.replace(SCENE, '')))), wordsOf(LINES3.join('\n')), 'الكلمات نفسها بترتيبها');
+  /* أطول من ٣٠ ثانية: يُقال ما يتّسع ويُنبَّه (dropped) — ولا يتجاوز الفيديو ٣٠ ثانية في أيّ توزيع */
+  const long = [SCENE].concat(Array.from({ length: 14 }, (_, i) => (i % 2 ? 'الأم' : 'البنت') + ': هذي جملة رقم ' + (i + 1) + ' في الحوار الطويل جدًّا')).join('\n');
+  p = planOne(long);
+  assert.ok(p.dropped > 0 && p.clips.length >= 2 && p.seconds <= 30, JSON.stringify([p.dropped, p.seconds]));
+  for (const n of [5, 6, 7, 9, 12]) {
+    const q = planOne([SCENE].concat(Array.from({ length: n }, (_, i) => (i % 2 ? 'الأم' : 'البنت') + ': كلمة كلمة كلمة كلمة كلمة ' + i)).join('\n'));
+    assert.ok(q.seconds <= 30 && q.clips.every((c, i) => c.sec <= (i ? 10 : 15) && c.words <= VT.wordBudget(c.sec)), n + ' أدوار: ' + JSON.stringify(q.clips.map((c) => [c.words, c.sec])));
+  }
+  assert.deepEqual([planOne('صقر يحلّق فوق الكثبان').clips.length, planOne('').need], [0, 0], 'بلا حوار لا خطّة');
+  /* «سريع» بحساب المالك: مقاطع حتّى ١٥ ثانية (مقطعان بدل ثلاثة)، وغيره كما كان */
+  assert.deepEqual(plan(D3, 0, [15]).clips.map((c) => [c.words, c.sec]), [[16, 11], [16, 11]]);
+  assert.deepEqual(plan(D3, 0, [10]).clips.map((c) => [c.words, c.sec]), plan(D3).clips.map((c) => [c.words, c.sec]));
+  assert.equal(plan(D3).clips.length, 3);
+});
+
+test('٢١. «سينمائي»: الجزء التالي يمدّه المحرّك نفسه (extendOp) — بلا لقطة مرجعيّة ولا لصق، والناتج آخر فيديو كما هو', async () => {
+  const p = LONG3;
+  let f = flow();
+  await f.ctx.run(p, 'veo');
+  assert.deepEqual(f.net[0], ['price', '/api/video?action=veo-price', { clips: 3, engine: 'veo', promptText: 'dialogue', token: 'tok' }]);
+  const c = f.creates();
+  assert.equal(c.length, 3);
+  assert.deepEqual(c[0], { promptText: p.clips[0].text + LOOK, ratio: '1280:720', token: 'tok', quality: 'fast', style: 'realistic', durationSeconds: 11, confirmed: true, extendable: true });
+  assert.deepEqual(c[1], { promptText: p.clips[1].text, ratio: '1280:720', token: 'tok', quality: 'fast', style: 'realistic', durationSeconds: 9, confirmed: true, extendOp: 'omni/1' });
+  assert.deepEqual(c[2], { promptText: p.clips[2].text, ratio: '1280:720', token: 'tok', quality: 'fast', style: 'realistic', durationSeconds: 5, confirmed: true, extendOp: 'omni/2' });
+  for (const x of c) assert.equal(VT.fitDialogue(x.promptText, x.durationSeconds).dropped, 0, 'الخادم لا يقصّ من أيّ جزء');
+  assert.deepEqual(f.joined, [], 'بلا لصق');
+  assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-3.mp4', 'آخر فيديو يحوي كلّ ما قبله');
+  assert.equal(f.ctx.downloadEl.style.display, 'block'); assert.equal(f.partial.length, 0);
+  assert.ok(f.status.includes('one 1/3 ~25') && f.status.includes('one 3/3 ~25'), f.status.join(' | '));
+  assert.ok(!f.status.some((s) => /^clip /.test(s) || s.includes('دمج')), 'لا «مقاطع» ولا «دمج» في الحالة');
+  assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء!');
+  assert.equal(f.ctx.scenesDone, 3);
+  assert.deepEqual(Object.keys(f.store), [], 'اكتمل = لا سلسلة محفوظة');
+  /* صورة البطل للجزء الأوّل وحده */
+  f = flow({ hero: 'HERO' });
+  await f.ctx.run(p, 'veo');
+  assert.deepEqual(f.creates().map((x) => [x.imageBase64, x.extendOp, x.extendable]), [['HERO', undefined, true], [undefined, 'omni/1', undefined], [undefined, 'omni/2', undefined]]);
+  /* «سريع» لا تمديد عنده: مقاطعه ولصقها كما كانت */
+  f = flow();
+  await f.ctx.run(plan(D3), 'minimax');
+  assert.ok(f.creates().every((x) => !x.extendOp && !x.extendable)); assert.equal(f.joined[0].length, 3);
+});
+
+test('٢٢. تعذّر التمديد لا يضيّع شيئًا: رفضه أو تعذّره = لقطة مرجعيّة ولصق كما كان، وغير ذلك يسلّم ما وصل إليه الفيديو', async () => {
+  const p = LONG3;
+  /* المحرّك يرفض تمديد الجزء الثالث: يُعاد بآخر لقطة في الفيديو، ويُلصق بالفيديو الممدود قبله (الجزءان الأوّلان فيديو واحد لا يُكرَّر) */
+  let f = flow({ reject: (b, no) => !!b.extendOp && no === 3 });
+  await f.ctx.run(p, 'veo');
+  let c = f.creates();
+  assert.equal(c.length, 4);
+  assert.deepEqual([c[2].extendOp, c[2].imageBase64], ['omni/2', undefined]);
+  assert.deepEqual([c[3].extendOp, c[3].imageBase64, c[3].keepPhoto, c[3].promptText, c[3].extendable], [undefined, 'FRAME<https://cdn/omni-2.mp4>', true, CONT + '\n' + p.clips[2].text + LOOK, undefined]);
+  assert.deepEqual(f.joined, [['blob:https://cdn/omni-2.mp4', 'blob:https://cdn/omni-3.mp4']]);
+  assert.ok(f.status.includes('retry 3/3')); assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء!');
+  /* التمديد متعذّر عندنا (unavailable): الجزء الثاني بلقطة مرجعيّة، والثالث يمدّ فيديو الثاني */
+  f = flow({ unavail: (b, no) => !!b.extendOp && no === 2 });
+  await f.ctx.run(p, 'veo');
+  c = f.creates();
+  assert.deepEqual(c.map((x) => [x.extendOp, String(x.imageBase64 || '').slice(0, 5), x.extendable]), [[undefined, '', true], ['omni/1', '', undefined], [undefined, 'FRAME', true], ['omni/2', '', undefined]]);
+  assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-3.mp4']], 'الأوّل ثمّ فيديو الثاني ممدودًا بالثالث');
+  assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء!');
+  /* unavailable على غير التمديد لا يُعاد: يُسلَّم ما وصل إليه الفيديو، بلا مشاهد متفرّقة */
+  f = flow({ unavail: (b, no) => no === 2 });
+  await f.ctx.run(p, 'veo');
+  assert.equal(f.creates().length, 3, 'التمديد ثمّ اللقطة — ثمّ يقف');
+  assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-1.mp4');
+  assert.equal(f.status[f.status.length - 1], 'ERR:unavailable onepart 1/3');
+  assert.deepEqual([f.partial.length, f.joined.length], [0, 0]);
+  /* الجزء الثالث مرفوض بكلّ طريق: الفيديو بما وصل إليه (جزءان في فيديو واحد بلا لصق)، ومحفوظ ليُكمَل */
+  f = flow({ reject: (b, no) => no === 3 });
+  await f.ctx.run(p, 'veo');
+  assert.equal(f.creates().length, 6, 'جزءان + تمديد ولقطتان وبلا صورة');
+  assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-2.mp4');
+  assert.deepEqual([f.partial.length, f.joined.length], [0, 0]);
+  assert.equal(f.status[f.status.length - 1], 'ERR:video_rejected onepart 2/3');
+  assert.equal(JSON.parse(Object.values(f.store)[0]).urls.length, 2);
+  /* الجزء الأوّل مرفوض: خطأ عاديّ بمحاولة واحدة */
+  f = flow({ reject: (b, no) => no === 1 });
+  await assert.rejects(f.ctx.run(p, 'veo'), (e) => e.code === 'video_rejected');
+  assert.equal(f.creates().length, 1);
+});
+
+test('٢٣. تأمين: لو أعاد المحرّك التكملة وحدها (مدّتها مدّة التكملة) تُلصق بما قبلها؛ والأطول منها = الفيديو كلّه كما هو', async () => {
+  const p = LONG3; // ١١ث ثمّ +٩ ثمّ +٥
+  const dur = (m) => (b) => ({ w: 1280, h: 720, d: m[(/omni-(\d)/.exec(b.of) || [])[1]] });
+  let f = flow({ dims: dur({ 1: 11, 2: 9, 3: 5 }) });
+  await f.ctx.run(p, 'veo');
+  assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-2.mp4', 'blob:https://cdn/omni-3.mp4']], 'ثلاث تكملات منفردة: تُلصق الثلاثة');
+  assert.equal(f.ctx.resultEl.src, 'blob:joined');
+  f = flow({ dims: dur({ 1: 11, 2: 20, 3: 5 }) });
+  await f.ctx.run(p, 'veo');
+  assert.deepEqual(f.joined, [['blob:https://cdn/omni-2.mp4', 'blob:https://cdn/omni-3.mp4']], 'الثاني كامل والثالث تكملة');
+  f = flow({ dims: dur({ 1: 11, 2: 20, 3: 25 }) });
+  await f.ctx.run(p, 'veo');
+  assert.deepEqual(f.joined, []); assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-3.mp4');
+  /* الحدّ: التكملة + ٢٫٥ث — وعنده تكملة، وفوقه الفيديو كلّه */
+  f = flow({ dims: dur({ 1: 11, 2: 11.5, 3: 7.6 }) });
+  await f.ctx.run(p, 'veo');
+  assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-3.mp4']]);
+  /* مدّة لا تُقرأ = الفيديو كلّه (توثيق المحرّك) */
+  for (const unknown of [() => null, () => ({ w: 1280, h: 720, d: 0 })]) {
+    f = flow({ dims: unknown });
+    await f.ctx.run(p, 'veo');
+    assert.deepEqual(f.joined, []); assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-3.mp4');
+  }
+});
+
+test('٢٤. الاستئناف في «سينمائي»: إعادة الضغط تمدّ الفيديو المحفوظ من حيث وقف — سعر الباقي وحده، وبلا لصق؛ وسلسلة بلا معرّفات تكمل بلقطة', async () => {
+  const p = LONG3;
+  let store = {};
+  let f = flow({ store, failAt: 3 });
+  await f.ctx.run(p, 'veo');
+  assert.equal(f.status[f.status.length - 1], 'ERR:points_insufficient onepart 2/3');
+  assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-2.mp4', 'ما وصل إليه الفيديو — لا مشاهد متفرّقة');
+  const saved = JSON.parse(Object.values(store)[0]);
+  assert.deepEqual([saved.urls, saved.ops, saved.base], [['https://cdn/omni-1.mp4', 'https://cdn/omni-2.mp4'], ['omni/1', 'omni/2'], [0, 0]]);
+  f = flow({ store, idBase: 2 });
+  await f.ctx.run(p, 'veo');
+  assert.deepEqual(f.net[0], ['price', '/api/video?action=veo-price', { clips: 1, engine: 'veo', promptText: 'dialogue', token: 'tok', resume: true }]);
+  let c = f.creates();
+  assert.equal(c.length, 1);
+  assert.deepEqual([c[0].extendOp, c[0].promptText, c[0].imageBase64, c[0].durationSeconds], ['omni/2', p.clips[2].text, undefined, 5]);
+  assert.deepEqual(f.joined, []); assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-3.mp4');
+  assert.ok(f.status.includes('resume 2/3')); assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء!');
+  assert.deepEqual(Object.keys(store), []);
+  /* سجلّ بلا معرّفات ولا base: يكمل بآخر لقطة ويلصق الثلاثة */
+  store = {};
+  f = flow({ store, failAt: 3 }); await f.ctx.run(p, 'veo');
+  const k = Object.keys(store)[0], j = JSON.parse(store[k]); delete j.ops; delete j.base; store[k] = JSON.stringify(j);
+  f = flow({ store, idBase: 2 }); await f.ctx.run(p, 'veo');
+  c = f.creates();
+  assert.deepEqual([c.length, c[0].extendOp, c[0].imageBase64], [1, undefined, 'FRAME<https://cdn/omni-2.mp4>']);
+  assert.equal(f.joined[0].length, 3);
+  /* تكملة منفردة محفوظة (base) تبقى جزءًا يُلصق بعد الاستئناف */
+  store = {};
+  f = flow({ store, failAt: 3, dims: (b) => ({ w: 1280, h: 720, d: /omni-2/.test(b.of) ? 9 : 30 }) }); await f.ctx.run(p, 'veo');
+  assert.deepEqual(JSON.parse(Object.values(store)[0]).base, [0, 1]);
+  assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-2.mp4']], 'المكتمل ملصوقًا عند التوقّف');
+  f = flow({ store, idBase: 2 }); await f.ctx.run(p, 'veo');
+  assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-3.mp4']], 'الثالث يمدّ الثاني (فيحويه) ويُلصق بعد الأوّل');
+});
+
+async function createVeo(u, body) {
+  const res = { code: 200, body: null, setHeader() {}, status(c) { this.code = c; return this; }, end() { return this; }, json(v) { this.body = v; return this; } };
+  await veo({ method: 'POST', query: { action: 'veo-create' }, body: Object.assign({ ratio: '1280:720', token: token(u), quality: 'fast', style: 'realistic', confirmed: true }, body) }, res);
+  return res;
+}
+
+test('٢٥. الخادم «سينمائي»: التوليدة حتّى ١٥ ثانية على إصدار المحرّك الذي يصنعها، والتمديد بمعرّف التفاعل (٣–١٠ث، بلا صور، مهمّة extend)، وما لا يُمدّ يُرفض بلا خصم', async () => {
+  omniCalls = [];
+  const realLog = console.log; const logs = []; console.log = (m) => logs.push(String(m));
+  try {
+    let r = await createVeo('omran', { promptText: D23, durationSeconds: 15 });
+    assert.equal(r.code, 200, JSON.stringify(r.body));
+    let q = omniCalls[0];
+    assert.equal(q.model, 'gemini-omni-1.2-flash');
+    assert.deepEqual(q.response_format, { type: 'video', resolution: '720p', aspect_ratio: '16:9', delivery: 'uri', duration: '15s' });
+    assert.ok(!('previous_interaction_id' in q) && !('generation_config' in q)); assert.equal(q.store, true);
+    assert.deepEqual(q.input.map((x) => x.type), ['text']);
+    for (const l of D23.split('\n')) assert.ok(q.input[0].text.includes(l), 'لا يُقصّ: ' + l);
+    assert.match(q.input[0].text, /in this 15-second clip/);
+    const op1 = r.body.op;
+    assert.deepEqual(JSON.parse(kv.get(veo.omniOpKey(op1))), { uri: 'https://g/files/v1', iid: 'v1_1' }, 'معرّف التفاعل محفوظ — به يُمدّ');
+    assert.ok(logs.some((m) => /cinematic ready on omni \(long 15s\) in /.test(m)), logs.join(' | '));
+    /* ١٠ ثوانٍ وأقلّ على إصداره كما كان؛ وما سيُمدّ على إصدار التمديد ولو قصر */
+    r = await createVeo('omran', { promptText: D21, durationSeconds: 8 });
+    assert.deepEqual([omniCalls[1].model, omniCalls[1].response_format.duration], ['gemini-omni-1.1-flash', '8s']);
+    r = await createVeo('omran', { promptText: LONG3.clips[0].text, durationSeconds: 9, extendable: true });
+    assert.deepEqual([omniCalls[2].model, omniCalls[2].response_format.duration], ['gemini-omni-1.2-flash', '9s']);
+    r = await createVeo('omran', { promptText: 'صقر يحلّق فوق الكثبان', durationSeconds: 20 });
+    assert.deepEqual([omniCalls[3].model, omniCalls[3].response_format.duration], ['gemini-omni-1.1-flash', '8s'], 'فوق ١٥ ليست مدّة');
+    /* التمديد: معرّف تفاعل السابق + مهمّة extend، بلا صور ولا نسبة، وأمره سطر مستقلّ لا يُعدّ كلامًا */
+    const part = LONG3.clips[1];
+    r = await createVeo('omran', { promptText: part.text, durationSeconds: part.sec, extendOp: op1, imageBase64: 'RlJBTUU=', imageMime: 'image/jpeg', keepPhoto: true });
+    assert.equal(r.code, 200, JSON.stringify(r.body));
+    q = omniCalls[4];
+    assert.deepEqual([q.model, q.previous_interaction_id, q.generation_config], ['gemini-omni-1.2-flash', 'v1_1', { video_config: { task: 'extend' } }]);
+    assert.deepEqual(q.response_format, { type: 'video', resolution: '720p', delivery: 'uri', duration: '9s' });
+    assert.deepEqual(q.input.map((x) => x.type), ['text'], 'بلا صور');
+    const lead = q.input[0].text.split('\n')[0];
+    assert.match(lead, /^Extend this video — /);
+    assert.ok(!/[:：«»"“”]/.test(lead) && VT.dialogueTurns(lead).length === 0, 'سطر مستقلّ لا يُعدّ كلامًا');
+    for (const l of part.text.split('\n')) assert.ok(q.input[0].text.includes(l), 'لا يُقصّ: ' + l);
+    assert.match(q.input[0].text, /in this 9-second clip/);
+    assert.equal(JSON.parse(kv.get(veo.omniOpKey(r.body.op))).iid, 'v1_5', 'الممدود يُمدّ بعده');
+    assert.ok(logs.some((m) => /cinematic ready on omni \(extension \+9s\) in /.test(m)));
+    r = await createVeo('omran', { promptText: part.text, durationSeconds: 15, extendOp: op1 });
+    assert.equal(omniCalls[5].response_format.duration, '8s', 'التمديد ٣–١٠ ثوانٍ');
+    /* ما لا يُمدّ: رقم مجهول، أو سجلّ بلا معرّف (أنتجه الاحتياط أو قبل هذا الإصدار) — رفض بلا مزوّد ولا خصم ولا قفل */
+    account('cust2', 'free', 1000); lockLog.length = 0;
+    kv.set(veo.omniOpKey('omni/old'), JSON.stringify({ uri: 'https://g/files/old' }));
+    const before = omniCalls.length;
+    for (const op of ['omni/none', 'omni/old']) {
+      r = await createVeo('cust2', { promptText: part.text, durationSeconds: 9, extendOp: op });
+      assert.deepEqual([r.code, r.body.error, r.body.retryable], [409, 'video_rejected', false], op);
+    }
+    assert.equal(omniCalls.length, before); assert.equal(kv.get('points:cust2'), '1000'); assert.deepEqual(lockLog, []);
+    /* العميل الدافع: التمديد خطوة بسعر الفيديو المفرد، بخصمها وقفلها */
+    r = await createVeo('cust2', { promptText: part.text, durationSeconds: 9, extendOp: op1 });
+    assert.equal(r.code, 200, JSON.stringify(r.body));
+    assert.equal(kv.get('points:cust2'), String(1000 - COSTS.veo_video)); assert.deepEqual(lockLog, ['lock:cust2']);
+    assert.equal(omniCalls[omniCalls.length - 1].previous_interaction_id, 'v1_1');
+    /* رفض المحرّك للتمديد: يُردّ الخصم ويُفكّ القفل والردّ video_rejected (العميل يكمل بلقطة) */
+    account('cust3', 'free', 1000); lockLog.length = 0; omniBlocked = true;
+    const realErr = console.error; const errs = []; console.error = (m) => errs.push(String(m));
+    try { r = await createVeo('cust3', { promptText: part.text, durationSeconds: 9, extendOp: op1 }); } finally { omniBlocked = false; console.error = realErr; }
+    assert.deepEqual([r.code, r.body.error], [400, 'video_rejected']);
+    assert.equal(kv.get('points:cust3'), '1000'); assert.deepEqual(lockLog, ['lock:cust3', 'release:cust3']);
+    assert.ok(errs.some((m) => /omni upstream 400 \(image=extension, long 9s\): Input blocked/.test(m)), errs.join(' | '));
+    assert.deepEqual([veo.OMNI_ONE_MAX, veo.OMNI_EXTEND_MAX], [15, 10]);
+    /* الاحتياط لا يمدّ فيديو: رصيد المزوّد «نافد» والاحتياط مفعّل — التمديد لا يذهب إليه، والتوليدة العاديّة تذهب كما كانت */
+    process.env.FAL_KEY = 'fal-test';
+    try {
+      await require(rp('api/_lib/fal-fallback.js')).markGeminiOut();
+      seenUrls.length = 0;
+      r = await createVeo('omran', { promptText: part.text, durationSeconds: 9, extendOp: op1 });
+      assert.ok(seenUrls.length > 0 && seenUrls.every((u) => /\/interactions$/.test(u)), 'التمديد عند المحرّك نفسه: ' + seenUrls.join(' '));
+      seenUrls.length = 0;
+      r = await createVeo('omran', { promptText: D21, durationSeconds: 8 });
+      assert.ok(seenUrls.some((u) => !/\/interactions$/.test(u)), 'التوليدة العاديّة تجرّب الاحتياط أوّلًا كما كانت');
+    } finally { delete process.env.FAL_KEY; }
+  } finally { omniCalls = null; console.log = realLog; }
+});
+
+test('٢٦. الخادم «سريع»: حساب المالك حتّى ١٥ ثانية للتوليدة (حواره كلّه بلا قصّ)، وغيره ١٠ كما كان — السعر الثابت باب مال لا يُفتح', async () => {
+  const mm = require(rp('api/_lib/minimax-create.js'));
+  const run = async (u, body) => {
+    const res = { code: 200, body: null, setHeader() {}, status(c) { this.code = c; return this; }, end() { return this; }, json(v) { this.body = v; return this; } };
+    await mm({ method: 'POST', query: { action: 'minimax-create' }, body: Object.assign({ ratio: '1280:720', token: token(u), quality: 'fast', style: 'realistic', confirmed: true }, body) }, res);
+    return res;
+  };
+  const savedKey = process.env.MINIMAX_API_KEY; process.env.MINIMAX_API_KEY = 'mm-test';
+  mmCalls = [];
+  const realLog = console.log; console.log = () => {};
+  try {
+    let r = await run('omran', { promptText: D23, durationSeconds: 15 });
+    assert.equal(r.code, 200, JSON.stringify(r.body));
+    assert.equal(mmCalls[0].duration, 15);
+    for (const l of D23.split('\n')) assert.ok(mmCalls[0].content[0].text.includes(l), 'لا يُقصّ: ' + l);
+    r = await run('omran', { promptText: D21, durationSeconds: 30 });
+    assert.equal(mmCalls[1].duration, 15, 'أقصى توليدة عند المحرّك');
+    account('cust4', 'free', 1000);
+    r = await run('cust4', { promptText: D23, durationSeconds: 15 });
+    assert.equal(r.code, 200, JSON.stringify(r.body));
+    assert.equal(mmCalls[2].duration, 10, 'غير المالك: ١٠ كما كان');
+    assert.equal(kv.get('points:cust4'), String(1000 - COSTS.minimax_video), 'والسعر كما كان');
+    r = await run('cust4', { promptText: D21, durationSeconds: 8, confirmed: true });
+    assert.ok(r.code === 429 || mmCalls[mmCalls.length - 1].duration === 8, 'المدّة المختارة كما هي');
+  } finally { mmCalls = null; console.log = realLog; if (savedKey === undefined) delete process.env.MINIMAX_API_KEY; else process.env.MINIMAX_API_KEY = savedKey; }
+});
+
+test('٢٧. نصّا «فيديو واحد متّصل» بالـ١٤ لغة بعناصرهما وبلا «مقاطع»، ووسم اللغات مرفوع، والربط والحزمة', () => {
+  const ctx = { console, localStorage: { getItem: () => null }, document: { getElementById: () => null, querySelector: () => null, documentElement: {} }, $: () => null };
+  ctx.window = ctx; vm.createContext(ctx);
+  const src = read('js/app-03-i18n-data.js');
+  const a = src.indexOf('const I18N = {'), b = src.indexOf('};window.I18N = I18N;') + 2;
+  vm.runInContext('var I18N=' + src.slice(a + 'const I18N = '.length, b) + ';', ctx);
+  const add = src.slice(src.indexOf('/* v-video-one-shot (803)')).split('\n').slice(1, 3).join('\n');
+  assert.match(add, /^Object\.assign\(I18N\.ar, \{"vmkDialogOne":/);
+  vm.runInContext(add, ctx);
+  const LANGS = ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil'];
+  for (const L of LANGS) vm.runInContext(read('i18n/' + L + '.js'), ctx);
+  const NEED = { vmkDialogOne: ['{s}', '{i}', '{n}'], vmkDialogOnePart: ['{k}', '{n}'] };
+  for (const L of ['ar', 'en'].concat(LANGS)) {
+    const d = ctx.I18N[L] || {};
+    for (const [key, ph] of Object.entries(NEED)) {
+      assert.ok(d[key] && ph.every((x) => d[key].includes(x)) && !d[key].includes('\n'), L + ' ' + key);
+      if (L !== 'ar' && L !== 'ur') assert.ok(!/[؀-ۿ]/.test(d[key]), L + ' ' + key + ': عربيّة');
+    }
+  }
+  assert.ok(!/مقطع|مقاطع/.test(ctx.I18N.ar.vmkDialogOne + ctx.I18N.ar.vmkDialogOnePart) && !/clip/i.test(ctx.I18N.en.vmkDialogOne + ctx.I18N.en.vmkDialogOnePart), 'فيديو واحد لا مقاطع');
+  for (const [lang, en] of [['ar', 0], ['en', 1]]) {
+    const c = { vmkT: (k, ar, e) => (en ? e : ar) };
+    vm.runInNewContext(['function dialogNoteText(key, ar, en, vals){', 'function dialogOneText(i, n, secs){', 'function dialogOnePartText(k, n){'].map((n) => block(CLIENT, n)).join('\n') + '\nthis.o = dialogOneText; this.p = dialogOnePartText;', c);
+    const D = ctx.I18N[lang];
+    assert.equal(c.o(2, 3, 25), D.vmkDialogOne.replace('{s}', '25').replace('{i}', '2').replace('{n}', '3'), lang);
+    assert.equal(c.p(2, 3), D.vmkDialogOnePart.replace('{k}', '2').replace('{n}', '3'), lang);
+  }
+  const st = read('js/app-04-i18n-state.js');
+  assert.ok(Number((/\.js\?v=(\d+)'/.exec(st) || [])[1]) >= 803 && st.includes('v-video-one-shot (803)'), 'وسم اللغات مرفوع وسببه في التعليق');
+  /* الربط: «سريع» بحدّ حساب المالك، و«سينمائي» بخطّة الفيديو الواحد، والمدّة المفردة على قدّ الكلام حتّى ١٥ */
+  assert.ok(CLIENT.includes('const dlg = planDialogue(text, 0, isOwnerAccount() ? [15] : [10]);'));
+  assert.ok(CLIENT.includes("const dlg = creationMode === 'veo' ? planDialogueOne(veoPrompt) : { clips: [], need: 0 };"));
+  const run = block(CLIENT, 'async function runDialogueClips(plan, mode){');
+  assert.ok(run.indexOf('refs.push({ ext: ops[i - 1] })') > 0 && run.indexOf('refs.push({ ext: ops[i - 1] })') < run.indexOf('refs.push({ img: last, cont: true })'), 'التمديد قبل أيّ لقطة مرجعيّة');
+  assert.match(block(CLIENT, 'function clipDims(blob, ms){'), /d: isFinite\(v\.duration\) \? v\.duration : 0/);
+  const B = read('js/app.bundle.js');
+  assert.ok(B.includes('function planDialogueOne(desc) {') && B.includes('payload.extendOp = r.ext') && B.includes('function dialogOneText(i, n, secs){'), 'الحزمة مبنيّة');
+  const srv = read('api/_lib/minimax-create.js');
+  assert.ok(srv.includes('const durMax = (durSec > 10 && (await checkOwnerBypass(token)).allowed) ? 15 : 10;'));
 });

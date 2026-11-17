@@ -141,5 +141,5 @@ test('٤. العميل يحمل قارئ الأدوار والقصّ نفسيه�
 
 test('٥. القصّ شبكة أمان لا المسار: العميل يوزّع الحوار على مقاطع (video-dialogue-clips) فلا يصل الخادم ما يُقصّ — والتنبيه القديم «يُحذف الباقي عند مدّة المقطع» أُزيل', () => {
   assert.ok(!CLIENT.includes('dialogFitOk'), 'تنبيه القصّ عند مدّة المقطع الواحد أُزيل');
-  assert.ok(CLIENT.includes('const dlg = planDialogue(text);') && CLIENT.includes("const dlg = creationMode === 'veo' ? planDialogue(veoPrompt) : { clips: [], need: 0 };"));
+  assert.ok(CLIENT.includes('const dlg = planDialogue(text, 0, isOwnerAccount() ? [15] : [10]);') && CLIENT.includes("const dlg = creationMode === 'veo' ? planDialogueOne(veoPrompt) : { clips: [], need: 0 };"));
 });
