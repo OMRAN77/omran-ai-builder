@@ -194,6 +194,10 @@ module.exports = async (req, res) => {
     /* أنمي/كرتون الواجهة: سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا) */
     if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = tp.STYLE_ANIME_VIDEO + String(promptText).trim();
     let trendParams = null; /* v-two-people: لإعادة بناء أمر الترند بصيغة الجمع إن كشف الإطار شخصين في صورة واحدة */
+    /* v-video-speech-pace: الوصف الحرّ الذي يطلب كلامًا يحمل قاعدة توقيت الكلام بمدّة المقطع (٣–١٠ كما يصل Omni، وغيرها ٨) — داخل
+       القفل قبل سطره الأخير، وبلا صورة بعد الوصف داخل حدّه؛ يُقصّ الوصف لا هي. الترند بقالبه */
+    const freeSec = parseInt(durationSeconds, 10);
+    const pace = body.trend ? '' : require('./video-trends.js').speechPace(rawDesc, freeSec >= 3 && freeSec <= 10 ? freeSec : 8);
     if (body.trend) {
       const trendsLib = require('./video-trends.js');
       const bParams = trendsLib.sceneParams(String(body.trend), Object.assign({}, body.params || {}, { hasImage }, singleSubject ? { people: 1 } : {})); /* v-trend-scenes: قبل القصّ */
@@ -210,8 +214,10 @@ module.exports = async (req, res) => {
     } else if (hasImage && promptText) {
       /* v-video-identity: الوصف الحرّ مع صورة — قفل الهويّة نفسه كالترندات.
          v-photo-as-is: الصورة نفسها أوّل إطار (لا رسم) — قفل محايد بلا «الشخص الحقيقيّ» (الأفاتار والكرتون يبقيان كما هما) */
-      promptText = soloWanted ? require('./video-trends.js').withIdentityLock(promptText, VEO_FREE_IMAGE_MAX)
-        : require('./video-trends.js').withPhotoLock(promptText, VEO_FREE_IMAGE_MAX);
+      promptText = soloWanted ? require('./video-trends.js').withIdentityLock(promptText, VEO_FREE_IMAGE_MAX, undefined, undefined, pace)
+        : require('./video-trends.js').withPhotoLock(promptText, VEO_FREE_IMAGE_MAX, undefined, pace);
+    } else if (pace && promptText) {
+      promptText = require('./video-trends.js').fitPace(promptText, pace, VEO_FREE_MAX); // v-video-speech-pace
     }
     let durSec = parseInt(durationSeconds, 10);
     const omniDur = durSec >= 3 && durSec <= 10 ? durSec : 8;
@@ -367,7 +373,7 @@ module.exports = async (req, res) => {
             const b2 = vt.buildTrendPrompt(String(body.trend), Object.assign({}, trendParams, { people: solo.people }), TREND_OPTS);
             if (b2 && b2.prompt.length + FRAME_LOCK.length <= VEO_PROMPT_MAX) promptText = b2.prompt;
           } else {
-            promptText = vt.withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, undefined, solo.people);
+            promptText = vt.withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, undefined, solo.people, pace);
           }
         }
         /* v-trend-omni-face: المتحوّل أثناء الفيديو — إطاره قبل التحوّل، والقفل يمنعه؛ v-trends-oct-12: والكشف ينتهي بصورته لا بالإطار */
@@ -402,7 +408,7 @@ module.exports = async (req, res) => {
 
     if (omniTrend || cinemaOmni) {
       let oPrompt = String(promptText).trim();
-      if (cinemaOmni && framed) oPrompt = require('./video-trends.js').withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, 'the reference image <IMAGE_REF_0>', soloPeople > 1 ? soloPeople : undefined) + FRAME_LOCK;
+      if (cinemaOmni && framed) oPrompt = require('./video-trends.js').withIdentityLock((body.style === 'anime' ? tp.STYLE_ANIME_VIDEO : '') + String(rawDesc).trim(), VEO_FREE_IMAGE_MAX, 'the reference image <IMAGE_REF_0>', soloPeople > 1 ? soloPeople : undefined, pace) + FRAME_LOCK;
       const oCap = body.trend ? VEO_PROMPT_MAX : (framed ? VEO_FREE_IMAGE_MAX + FRAME_LOCK.length : (hasImage ? VEO_FREE_IMAGE_MAX : VEO_FREE_MAX));
       /* قصّة المحادثة في مقطع واحد (oneClip بعدّة مشاهد) لقطات متتالية بنصّها — كقوالب المونتاج */
       const multiShot = tp.MULTI_SHOT_TRENDS.has(trendId) || !!(trendParams && trendParams.oneClip && Array.isArray(trendParams.scenes) && trendParams.scenes.length > 1);
