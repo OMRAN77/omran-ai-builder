@@ -3,6 +3,9 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **ملفّ api/_lib جديد يكسر npm run bundle:** `scripts/repo-map.mjs` يسرد اسم كلّ `api/_lib/*.js` في خريطة سقفها ٧٠٠٠ حرف، وكانت ٦٩٩٢
+  (١٧ نوفمبر): ملفّ `video-speech.js` جديد رفعها إلى ٧٠٠٧ فرفض الكتابة (exit 1) — وكان سيوقف `npm run bundle` لكلّ جلسة بعده، و`npm run ci` لا يكشفه
+  (لا يبني الحزمة). ضع الدالّة المساعدة في ملفّ قائم قريب أو قصّر `LIB_PURPOSE`، وشغّل `node scripts/repo-map.mjs` قبل الالتزام. (v-video-speech-pace)
 - **مرمّز JPEG يُسقط نواة ffmpeg.wasm:** أيّ مخرج mjpeg (`-q:v 3 x.jpg`، حتّى `-frames:v 1`) ينهي العامل بـ«RuntimeError: memory access out of bounds»
   ويقتل النسخة كلّها؛ PNG يعمل. وفكّ الصورة من المتصفّح أسرع: `drawImage(video)` عند `seeked` قد يرسم شفّافًا قبل أن يجهز الإطار (خرج أسود) —
   انتظر أوّل بكسل معتم. وxfade/دمج RGBA على كلّ إطار بطيء جدًّا في الخيط الواحد: حوّل الصورة مرّة ثمّ `loop`. وتحويل RGB إلى YUV فيها BT.601
