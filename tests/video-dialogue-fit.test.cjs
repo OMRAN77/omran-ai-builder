@@ -2,7 +2,9 @@
 /* v-video-dialogue-fit (المالك ١٧ نوفمبر ٢٠٢٦ بعد #1341: «اسمع الاصوات يعني كاني في سوق السمك والحوار ليس بي الدقة المطلوبه والحوار
    سريع» — مقطعه «سريع» من النسخة الجديدة: ست جمل (~٢٦ كلمة) في ١٠ ثوانٍ بلا وقفة. ثمّ اختار «مقطع واحد مع تنبيه»).
    يثبت: (١) fitDialogue تُبقي من أدوار الحوار ما تتّسع له المدّة بالترتيب وتحذف الباقي، والمشهد والوصف كما هما؛ (٢) «سريع» و«سينمائي»
-   يرسلان للمحرّك الحوار المقصوص؛ (٣) العميل ينبّه قبل أيّ نداء أو خصم بالدالّة نفسها حرفيًّا؛ (٤) نصّ التنبيه بالـ١٤ لغة. */
+   يرسلان للمحرّك الحوار المقصوص؛ (٣) العميل يحمل القارئ والقصّ نفسيهما حرفيًّا.
+   v-video-dialogue-clips (المالك بعدها: «اريد فيديو يبني اقصى حده على نفس الكلمات»): القصّ صار شبكة أمان — العميل يوزّع الحوار كلّه على
+   مقاطع متتالية (اختبار video-dialogue-clips)، والتنبيه ونصوصه هناك. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -119,72 +121,25 @@ function block(src, needle) {
 const norm = (s) => s.split('\n').map((l) => l.trim()).join('\n');
 const CLIENT = read('js/app-11-video.js');
 
-test('٤. العميل يحمل fitDialogue نفسها حرفيًّا (عدّل الاثنين معًا)، ونتائجها مطابقة', () => {
-  const srv = block(read('api/_lib/video-trends.js'), 'function fitDialogue(desc, seconds) {');
-  const cli = block(CLIENT, 'function fitDialogue(desc, seconds) {');
-  assert.equal(norm(cli), norm(srv));
-  const ctx = {}; vm.runInNewContext(cli + '\nthis.f = fitDialogue;', ctx);
-  for (const d of [DIALOGUE, INLINE, 'صقر', LINES.join('\n')]) for (const s of [5, 6, 8, 10, undefined]) {
-    assert.deepEqual(JSON.parse(JSON.stringify(ctx.f(d, s))), JSON.parse(JSON.stringify(VT.fitDialogue(d, s))));
+test('٤. العميل يحمل قارئ الأدوار والقصّ نفسيهما حرفيًّا (عدّل الاثنين معًا)، ونتائجهما مطابقة', () => {
+  const SRV = read('api/_lib/video-trends.js');
+  const cli = {};
+  for (const fn of ['function dialogueTurns(desc) {', 'function fitDialogue(desc, seconds) {']) {
+    cli[fn] = block(CLIENT, fn);
+    assert.equal(norm(cli[fn]), norm(block(SRV, fn)), fn);
   }
-});
-
-function clientFit(confirmAnswer, lang) {
-  const asked = [];
-  const ctx = { window: { confirm: (m) => { asked.push(m); return confirmAnswer; } }, __swallow: () => {}, String };
-  ctx.vmkT = (key, ar, en) => (lang === 'en' ? en : ar);
-  vm.runInNewContext(block(CLIENT, 'function fitDialogue(desc, seconds) {') + '\n' + block(CLIENT, 'function dialogFitOk(text, mode, secs){') + '\nthis.ok = dialogFitOk;', ctx);
-  return { ok: ctx.ok, asked };
-}
-
-test('٥. التنبيه: حوار أطول = سؤال قبل الإرسال بمدّة المقطع وآخر جملة تُقال، والجواب يقرّر؛ حوار يتّسع = بلا سؤال', () => {
-  let c = clientFit(true);
-  assert.equal(c.ok(DIALOGUE, 'minimax', 10), true);
-  assert.equal(c.asked.length, 1);
-  assert.match(c.asked[0], /^⚠️ الحوار أطول من مدّة الفيديو \(10 ثوانٍ\)/);
-  assert.ok(c.asked[0].includes('سيُقال إلى: «ومن أسّس الاتحاد؟»'), c.asked[0]);
-  c = clientFit(false);
-  assert.equal(c.ok(DIALOGUE, 'veo', 8), false, 'الإلغاء يوقف الطلب');
-  assert.ok(c.asked[0].includes('(8 ثوانٍ)') && c.asked[0].includes('«نحتفل باتحاد الإمارات يا بنتي»'));
-  /* المدّة كما يحسبها الخادم: سريع بلا مدّة ٦، سينمائي بلا مدّة ٨ */
-  c = clientFit(true); c.ok(DIALOGUE, 'minimax', 0); assert.ok(c.asked[0].includes('(6 ثوانٍ)'));
-  c = clientFit(true); c.ok(DIALOGUE, 'veo', 0); assert.ok(c.asked[0].includes('(8 ثوانٍ)'));
-  c = clientFit(true);
-  assert.equal(c.ok([SCENE].concat(LINES.slice(0, 2)).join('\n'), 'veo', 10), true);
-  assert.equal(c.ok('صقر يحلّق', 'minimax', 5), true);
-  assert.equal(c.asked.length, 0, 'لا سؤال حين يتّسع');
-  c = clientFit(true, 'en'); c.ok(DIALOGUE, 'veo', 10);
-  assert.ok(c.asked[0].includes('It will be spoken up to: “ومن أسّس الاتحاد؟”'));
-});
-
-test('٦. السؤال قبل أيّ نداء أو خصم في «سريع» و«سينمائي» (لا في الممثّل)، والإلغاء يرجع بلا طلب', () => {
-  const mmCall = CLIENT.indexOf("if(!dialogFitOk(text, 'minimax', durSecs)){ setStatus(''); return; }");
-  assert.ok(mmCall > 0 && mmCall < CLIENT.indexOf("window.postWithConfirm('/api/video?action=minimax-create', payload)"));
-  const veoCall = CLIENT.indexOf("if(creationMode === 'veo' && !dialogFitOk(veoPrompt, 'veo', durSecs)){ setStatus(''); return; }");
-  assert.ok(veoCall > CLIENT.indexOf("const ac = await fetch('/api/video?action=actor-create'") && veoCall < CLIENT.indexOf("window.postWithConfirm('/api/video?action=veo-create', veoPayload)"));
-  assert.ok(read('js/app.bundle.js').includes("dialogFitOk(veoPrompt, 'veo', durSecs)"), 'الحزمة مبنيّة');
-});
-
-test('٧. نصّ التنبيه بالـ١٤ لغة بعنصريه، بلا عربيّة في غير العربيّة والأرديّة، والعميل يسقط على النصّ نفسه، ووسم اللغات مرفوع', () => {
-  const ctx = { console, localStorage: { getItem: () => null }, document: { getElementById: () => null, querySelector: () => null, documentElement: {} }, $: () => null };
-  ctx.window = ctx; vm.createContext(ctx);
-  const src = read('js/app-03-i18n-data.js');
-  const a = src.indexOf('const I18N = {'), b = src.indexOf('};window.I18N = I18N;') + 2;
-  vm.runInContext('var I18N=' + src.slice(a + 'const I18N = '.length, b) + ';', ctx);
-  const add = src.slice(src.indexOf('/* v-video-dialogue-fit (799)')).split('\n').slice(1, 3).join('\n');
-  assert.match(add, /^Object\.assign\(I18N\.ar, \{"vmkDialogLong":/);
-  vm.runInContext(add, ctx);
-  const LANGS = ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil'];
-  for (const L of LANGS) vm.runInContext(read('i18n/' + L + '.js'), ctx);
-  for (const L of ['ar', 'en'].concat(LANGS)) {
-    const v = ctx.I18N[L] && ctx.I18N[L].vmkDialogLong;
-    assert.ok(v && v.includes('{s}') && v.includes('{last}') && v.split('\n').length === 3, L);
-    if (L !== 'ar' && L !== 'ur') assert.ok(!/[؀-ۿ]/.test(v), L + ': عربيّة');
+  const ctx = {}; vm.runInNewContext(Object.values(cli).join('\n') + '\nthis.f = fitDialogue; this.t = dialogueTurns;', ctx);
+  const plain = (x) => JSON.parse(JSON.stringify(x));
+  for (const d of [DIALOGUE, INLINE, 'صقر', LINES.join('\n')]) {
+    assert.deepEqual(plain(ctx.t(d)), plain(VT.dialogueTurns(d)));
+    for (const s of [5, 6, 8, 10, undefined]) assert.deepEqual(plain(ctx.f(d, s)), plain(VT.fitDialogue(d, s)));
   }
-  const c = clientFit(true); c.ok(DIALOGUE, 'veo', 10);
-  assert.equal(c.asked[0], ctx.I18N.ar.vmkDialogLong.replace('{s}', '10').replace('{last}', 'ومن أسّس الاتحاد؟'), 'سقوط العميل = نصّ القاموس');
-  const e = clientFit(true, 'en'); e.ok(DIALOGUE, 'veo', 10);
-  assert.equal(e.asked[0], ctx.I18N.en.vmkDialogLong.replace('{s}', '10').replace('{last}', 'ومن أسّس الاتحاد؟'));
-  const st = read('js/app-04-i18n-state.js');
-  assert.ok(Number((/\.js\?v=(\d+)'/.exec(st) || [])[1]) >= 799 && st.includes('v-video-dialogue-fit (799)'), 'وسم اللغات مرفوع وسببه في التعليق');
+  /* الدور يحمل ما يلزم لإعادة كتابته في مقطعه: المتكلّم وعلامتا التنصيص */
+  assert.deepEqual(plain(VT.dialogueTurns(LINES[1]).map((t) => [t.lead, t.said, t.open, t.close, t.line])), [['الأم: ', 'نحتفل باتحاد الإمارات يا بنتي', '', '', true]]);
+  assert.deepEqual(plain(VT.dialogueTurns(INLINE).map((t) => [t.lead, t.open, t.close, t.line])), [['البنت تسأل أمها: ', '«', '»', false], ['والأم ترد: ', '«', '»', false], ['ثمّ البنت تقول ', '«', '»', false]]);
+});
+
+test('٥. القصّ شبكة أمان لا المسار: العميل يوزّع الحوار على مقاطع (video-dialogue-clips) فلا يصل الخادم ما يُقصّ — والتنبيه القديم «يُحذف الباقي عند مدّة المقطع» أُزيل', () => {
+  assert.ok(!CLIENT.includes('dialogFitOk'), 'تنبيه القصّ عند مدّة المقطع الواحد أُزيل');
+  assert.ok(CLIENT.includes('const dlg = planDialogue(text);') && CLIENT.includes("const dlg = creationMode === 'veo' ? planDialogue(veoPrompt) : { clips: [], need: 0 };"));
 });
