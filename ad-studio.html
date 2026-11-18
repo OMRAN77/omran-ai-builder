@@ -801,8 +801,13 @@ async function turn(text){
 
 const SKIPW=(T('skipWords')+','+(ADE.skipWords||'')+',تخط,بدون,بلا').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
 const isSkip=t=>{ const lo=String(t).toLowerCase(); return SKIPW.some(w=>lo.indexOf(w)>=0); };
+/* v-ad-fx-chat (المالك ١٨ نوفمبر: «حطه في المحادثة بعد»): اسم التأثير في كلام المستخدم يختاره في الشريط ويؤكّده بسطر —
+   القائمة نفسها حرفيًّا في js/app-09-attach.js (اختبار ad-fx يقارنهما). بعد ظهور التصاميم يكفي التأكيد بلا «ابدأ من جديد» */
+const AD_FX_WORDS=[['exploded',/[اإأ]كسبلود|تفكيك\s*(?:ال)?قطع|قطع(?:ه|ها)?\s*تتفكّ?ك|exploded/i],['smoke',/سموك|(?:من\s*(?:بين\s*)?|وسط\s*)(?:ال)?دخان|smoke[\s-]*reveal|(?:from|through|in)\s+(?:the\s+)?smoke/i],['topdown',/(?:دون|داون)\s*شوت|لقط[ةه]\s*(?:من\s*)?(?:فوق|الأعلى|علوي[ةه])|تصوير\s*من\s*فوق|top[\s-]?down|down[\s-]?shot|flat[\s-]?lay|bird'?s?[\s-]?eye/i],['orbit',/[اأ]وربي?ت|لقط[ةه]\s*دوّ?ار[ةه]|الكاميرا\s*تدور|orbit/i]];
+const fxOf=t=>{ const w=AD_FX_WORDS.find(w=>w[1].test(t)); return w?w[0]:''; };
 function send(){
   const t=inp.value.trim(); if(!t||busy) return; inp.value=''; push('u',t);
+  const fk=fxOf(t); if(fk){ setFx(fk); push('a',esc(T('fxTitle'))+': <b>'+esc(T('fx_'+fk))+'</b>'); if(S.step>=4) return; }
   if(S.step===3){ if(isSkip(t)){ S.img=null; done(); } else say(T('uploadHint')); return; }
   if(S.step>=4){ say(T('restartHint')); return; }
   if(!S.cat){ const k=detect(t); if(k){ S.cat=k; S.unit=CATS[k].unit; } }
@@ -1063,9 +1068,9 @@ rtEl.onclick=e=>{ const b=e.target.closest('button[data-r]'); if(!b) return;
 
 /* v-ad-fx (طلب المالك ١٧ نوفمبر): تأثير لقطة لصورة الإعلان المولَّدة — الضغط مرّة ثانية يلغيه، وبلا اختيار يبقى الأمر كما كان */
 const fxEl=document.getElementById('fxBar');
+function setFx(k){ S.fx=k||''; [...fxEl.querySelectorAll('button[data-fx]')].forEach(n=>n.classList.toggle('on',n.dataset.fx===S.fx)); }
 fxEl.onclick=e=>{ const b=e.target.closest('button[data-fx]'); if(!b) return;
-  S.fx=(S.fx===b.dataset.fx)?'':b.dataset.fx;
-  [...fxEl.querySelectorAll('button[data-fx]')].forEach(n=>n.classList.toggle('on',n.dataset.fx===S.fx)); };
+  setFx(S.fx===b.dataset.fx?'':b.dataset.fx); };
 
 /* ============ توليد الإعلان صورةً كاملة (OpenAI gpt-image-1) ============ */
 const LOOKMAP=['cinema','layers','poster','elegant','bold','luxe','minimal','magazine','neon'];

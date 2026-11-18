@@ -79,7 +79,8 @@ test('٤. الصفحة: أربعة أزرار بمفاتيح الخادم نفس
   const keys = [...html.matchAll(/data-fx="([a-z]+)"/g)].map((m) => m[1]);
   assert.deepEqual(keys, ['smoke', 'exploded', 'topdown', 'orbit']);
   for (const k of keys) assert.match(adimage, new RegExp('\\n  ' + k + ": '"), 'مفتاح الخادم ' + k);
-  assert.match(html, /S\.fx=\(S\.fx===b\.dataset\.fx\)\?'':b\.dataset\.fx;/);
+  assert.match(html, /setFx\(S\.fx===b\.dataset\.fx\?'':b\.dataset\.fx\);/);
+  assert.match(html, /function setFx\(k\)\{ S\.fx=k\|\|''; \[\.\.\.fxEl\.querySelectorAll\('button\[data-fx\]'\)\]\.forEach\(n=>n\.classList\.toggle\('on',n\.dataset\.fx===S\.fx\)\); \}/);
   assert.match(html, /fetch\('\/api\/adimage'[\s\S]{0,300}fx:S\.fx\|\|''/);
   assert.match(adimage, /Object\.prototype\.hasOwnProperty\.call\(FX, b\.fx\)/);
   // الشريط داخل المعرض قبل ناتج التوليد، وأزراره على نظام الألوان الثلاثة
@@ -103,4 +104,34 @@ test('٥. الأسماء بالـ١٤ لغة بلا اسم مزوّد أو نم�
   }
   const v = /\/i18n\/ad-studio\.js\?v=(\d+)/.exec(html);
   assert.ok(v && Number(v[1]) >= 610, 'وسم القاموس مرفوع');
+});
+
+/* v-ad-fx-chat (المالك ١٨ نوفمبر: «حطه في المحادثة بعد»): اسم التأثير في كلام المحادثة يختاره — في محادثة التطبيق (مسار صورة الإعلان)
+   وفي محادثة مساعد الإعلانات بالاستوديو. القائمة واحدة حرفيًّا في الملفّين. */
+const app09 = fs.readFileSync('js/app-09-attach.js', 'utf8');
+const WRE = /const AD_FX_WORDS=\[.*\];/;
+const WORDS = eval('(' + WRE.exec(app09)[0].replace(/^const AD_FX_WORDS=/, '').replace(/;$/, '') + ')');
+const pick = (t) => { const w = WORDS.find((x) => x[1].test(t)); return w ? w[0] : ''; };
+
+test('٦. كلمات المحادثة: صيغ المالك نفسها وصيغ عربيّة وإنجليزيّة، وكلام إعلان عاديّ بلا تأثير', () => {
+  assert.equal(WRE.exec(html)[0], WRE.exec(app09)[0], 'القائمة نفسها حرفيًّا في الاستوديو ومحادثة التطبيق');
+  const YES = {
+    smoke: ['سوّلي إعلان عطر سموك ريفيل', 'المنتج يطلع من بين الدخان', 'smoke reveal ad for my watch', 'the bottle rising from the smoke'],
+    exploded: ['إعلان ساعة اكسبلودد فيو', 'إعلان سمّاعة بتفكيك القطع', 'exploded view of the headphones'],
+    topdown: ['إعلان قهوة دون شوت', 'إعلان كيك لقطة من فوق', 'top-down shot of the burger', 'flat lay ad'],
+    orbit: ['إعلان عطر اوربت شوت', 'إعلان سيارة أوربيت', 'إعلان ساعة لقطة دوّارة', 'orbit shot ad'],
+  };
+  for (const k of Object.keys(YES)) for (const t of YES[k]) assert.equal(pick(t), k, t);
+  for (const t of ['إعلان شقة للبيع في الشارقة ٣ غرف', 'سوّلي إعلان لاندكروزر ٢٠٠٤ للبيع ٤٩ ألف', 'إعلان مطعم مشاوي توصيل', 'ad for my bakery', 'ad for my smoke shop', 'إعلان محل دخان وشيشة'])
+    assert.equal(pick(t), '', t);
+});
+
+test('٧. محادثة التطبيق ترسل fx مع طلب صورة الإعلان، والاستوديو يختار الزرّ ويؤكّد بلا «ابدأ من جديد» بعد التصاميم', () => {
+  assert.match(app09, /const __adBody = \{[^\n]*cat:__adCat, bg:__adBg, fx:omranAdFx\(text\), token:/);
+  assert.match(app09, /\nfunction omranAdFx\(text\)\{ const w=AD_FX_WORDS\.find\(function\(x\)\{ return x\[1\]\.test\(String\(text\|\|''\)\); \}\); return w\?w\[0\]:''; \}\n/);
+  assert.ok(app09.indexOf('function omranAdFx(') < app09.indexOf('async function __sendPromptCore('), 'خارج __sendPromptCore (سقّاطة البنية)');
+  assert.match(html, /const fk=fxOf\(t\); if\(fk\)\{ setFx\(fk\); push\('a',esc\(T\('fxTitle'\)\)\+': <b>'\+esc\(T\('fx_'\+fk\)\)\+'<\/b>'\); if\(S\.step>=4\) return; \}/);
+  // التأكيد قبل سطر «ابدأ من جديد»
+  const s = html.indexOf('function send(){');
+  assert.ok(html.indexOf('const fk=fxOf(t)', s) < html.indexOf("if(S.step>=4){ say(T('restartHint'))", s));
 });
