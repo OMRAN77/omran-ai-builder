@@ -2263,6 +2263,12 @@ async function mahaEnsurePushSubscribed(){
     });
   }catch(e){ console.error('[maha] push subscribe failed:', e); }
 }
+/* v-owner-live (المالك ١٨ نوفمبر: «أيّ محادثة… وأيّ شخص يسجّل يوصل في نفس الوقت»): إشعارات المالك الفوريّة تذهب لآخر جهاز سجّل اشتراك
+   الدفع، والاشتراك لا يُسجَّل إلّا مع تذكير من مها. جهاز المالك الذي سمح بالإشعارات من قبل يجدّد اشتراكه عند كلّ فتح — بلا نافذة إذن جديدة. */
+setTimeout(function(){
+  try{ if(typeof omranOwnerUi === 'function' && omranOwnerUi() && window.Notification && Notification.permission === 'granted') mahaEnsurePushSubscribed(); }
+  catch(e){ __swallow(e, 'maha:owner-live-push'); }
+}, 4000);
 
 function urlBase64ToUint8Array(base64String){
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
