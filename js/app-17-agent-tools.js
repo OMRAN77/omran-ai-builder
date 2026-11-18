@@ -261,8 +261,15 @@
           /* v-audit-chatcli (cli-chat-rest-4): الفيديو لمحادثة طلبه — كان في window.__chatVideoResult العامّ، يصفّره طلب محادثة أخرى (app-18)
              أو يلتقطه ردّها (app-09) مع المحادثات المتوازية، كما رُبطت الصور بمحادثتها (v-img-run-bind). بلا محادثة معروفة كما كان. */
           var vRes = { url: videoUrl, name: 'chat-video.mp4', provider: engine }, vChat = CHAT();
+          /* v-chat-ad-video (المالك ١٦ نوفمبر: «سوّها مع الصوت وضيف الكتابة والاسم»): فيديو الإعلان يُكمَل في المتصفّح بعد جاهزيّته — الاسم
+             والسطر مرسومان فوق الفيديو (لا داخل التوليد: نموذج الفيديو يخربط الحروف)، والتعليق بصوت مها. لا ينتظره الخادم (مهلته ٢٩٠ ث من بدء
+             الأداة)، فالفيديو الأصليّ يظهر أوّلًا والكامل يحلّ محلّه (app-09 omranAdAttach). */
+          var adT = String(va.ad_title || '').trim(), adL = String(va.ad_text || '').trim(), adV = String(va.ad_voice || '').trim();
+          var adOn = !!(adT || adL || adV) && typeof window.__omranAdFinish === 'function';
+          if (adOn) vRes.adJob = window.__omranAdFinish(videoUrl, { title: adT, text: adL, voice: adV });
           if (vChat && vChat.id != null) (window.__chatVideoByChat = window.__chatVideoByChat || {})[vChat.id] = vRes;
           else window.__chatVideoResult = vRes;
+          if (adOn) return '✅ تم إنشاء فيديو الإعلان. يظهر الآن في المحادثة، والتطبيق يضيف عليه خلال ثوانٍ' + (adT || adL ? ' الكتابة (' + [adT, adL].filter(Boolean).join(' · ') + ')' : '') + (adV ? (adT || adL ? ' و' : ' ') + 'التعليق الصوتيّ' : '') + ' ثمّ تحلّ النسخة الكاملة محلّه. قل للمستخدم ذلك بسطر، ولا تقل إنّها جاهزة الآن.';
           return '✅ تم إنشاء الفيديو بنجاح. سيظهر الآن داخل المحادثة مع زر التنزيل.';
         }
         // 🎨 صورة حقيقية بدل رابط عشوائي. تُخزَّن محليًّا ويُعاد للنموذج رمز قصير

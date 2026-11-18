@@ -3,6 +3,7 @@
 // لا يوقف التسجيل ولا يؤخّره؛ ولا كلمة مرور ولا رمز في الرسالة. على معالج auth الحقيقيّ وكولباك Google الحقيقيّ وsendMail الحقيقيّ
 // (Resend مزيّف بـfetch)؛ Redis وحده في الذاكرة. العنوان هنا وهميّ — عنوان المالك الحقيقيّ في Vercel وحده (المستودع عامّ).
 'use strict';
+process.env.OWNER_LIVE = 'off'; // v-owner-live: إشعار الدور والتسجيل الفوريّ له اختباره (owner-live) — هنا يُعدّ ما يخصّ هذا الملفّ وحده
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
