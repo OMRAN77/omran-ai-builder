@@ -30,11 +30,28 @@ module.exports = async (req, res) => {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     let { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
+    /* v-video-durations (المالك ٢٧ أكتوبر): العميل لم يكن يرسل المدّة فكان كلّ فيديو ٦ ثوانٍ. H3 على v2 يقبل ٤–١٥ ثانية عددًا
+       صحيحًا بالدقّتين (مستودع MiniMax-H3 الرسميّ: "duration":8) — المختارة كما هي، وبلا قيمة ٦ كما كانت. السقف ١٠ = أطول زرّ في الواجهة
+       (مراجعة ٢٧ أكتوبر: ١٥ ثانية بسعر ٥٥ الثابت ≈ ٤ أضعاف تكلفة الجدول لمن ينادي الخادم مباشرة — باب المال).
+       v-video-one-shot (المالك ١٧ نوفمبر: «اريده فيديو كامل مره وحده… الفيديو مش على حسابك»): حساب المالك (بلا نقاط) حتّى ١٥ — أقصى
+       توليدة واحدة عند المحرّك، فحواره يخرج فيديو واحدًا؛ غيره ١٠ كما كان (السعر الثابت باب مال لا يُفتح بلا أمره). */
+    let durSec = parseInt(durationSeconds, 10);
+    const durMax = (durSec > 10 && (await checkOwnerBypass(token)).allowed) ? 15 : 10;
+    durSec = Number.isFinite(durSec) ? Math.min(durMax, Math.max(4, durSec)) : 6;
+    /* v-video-dialogue-fit: الحوار الأطول من المقطع يصل المحرّك بما يتّسع له وحده — قبل حفظ الوصف فيبني الإطار والقفل منه؛
+       العميل نبّه قبل الخصم بالدالّة نفسها. الترند بقالبه */
+    if (!body.trend && promptText) {
+      const fit = require('./video-trends.js').fitDialogue(promptText, durSec);
+      if (fit.dropped) { promptText = fit.text; console.log('[minimax-create] dialogue fitted to the clip: ' + fit.kept + '/' + fit.turns + ' lines, ' + fit.keptWords + '/' + fit.words + ' words'); }
+    }
     const rawDesc = promptText; /* v-video-first-frame: وصف المستخدم قبل الأسلوب والقفل — مشهد أوّل الإطار */
     const tp = require('./trend-people.js');
     /* v-video-first-frame: أنمي/كرتون الواجهة — سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا) */
     if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = tp.STYLE_ANIME_VIDEO + String(promptText).trim();
     const styledDesc = promptText;
+    /* v-video-speech-pace: «فيديو سريع» يولّد الكلام بنفسه كـ«سينمائي» — الوصف الذي يطلب كلامًا يحمل قاعدة توقيت الكلام بمدّة المقطع
+       داخل القفل قبل سطره الأخير، وبلا صورة بعد الوصف داخل حدّ ١٥٠٠؛ يُقصّ الوصف لا هي. الترند بقالبه */
+    const pace = body.trend ? '' : require('./video-trends.js').speechPace(rawDesc, durSec);
     /* v-video-trends: ترند بلمسة — الأمر يُبنى على الخادم من قالب الترند */
     if (body.trend) {
       const built = require('./video-trends.js').buildTrendPrompt(String(body.trend), Object.assign({}, body.params || {}, { hasImage: !!(imageBase64 && String(imageBase64).trim()) }));
@@ -45,18 +62,14 @@ module.exports = async (req, res) => {
          يعيد المحرّك رسمه مع الحركة. نفس قفل Omni وVeo (مرساة أوّلًا وقفل أخيرًا).
          v-photo-as-is: الصورة نفسها أوّل إطار — قفل محايد (لا «الشخص الحقيقيّ»: الأفاتار يبقى أفاتارًا) */
       const vt = require('./video-trends.js');
-      promptText = (tp.freeFrameOn(body) && !body.keepPhoto) ? vt.withIdentityLock(promptText, 1500) : vt.withPhotoLock(promptText, 1500);
+      promptText = (tp.freeFrameOn(body) && !body.keepPhoto) ? vt.withIdentityLock(promptText, 1500, undefined, undefined, pace) : vt.withPhotoLock(promptText, 1500, undefined, pace);
+    } else if (pace && promptText) {
+      promptText = require('./video-trends.js').fitPace(promptText, pace, 1500); // v-video-speech-pace
     }
     if (!promptText || !String(promptText).trim()) {
       res.status(400).json({ error: 'Missing promptText' });
       return;
     }
-    /* v-video-durations (المالك ٢٧ أكتوبر): العميل لم يكن يرسل المدّة فكان كلّ فيديو ٦ ثوانٍ. H3 على v2 يقبل ٤–١٥ ثانية عددًا
-       صحيحًا بالدقّتين (مستودع MiniMax-H3 الرسميّ: "duration":8) — المختارة كما هي، وبلا قيمة ٦ كما كانت. السقف ١٠ = أطول زرّ في الواجهة
-       (مراجعة ٢٧ أكتوبر: ١٥ ثانية بسعر ٥٥ الثابت ≈ ٤ أضعاف تكلفة الجدول لمن ينادي الخادم مباشرة — باب المال). */
-    let durSec = parseInt(durationSeconds, 10);
-    durSec = Number.isFinite(durSec) ? Math.min(10, Math.max(4, durSec)) : 6;
-
     /* v-video-giveback: فحص المفتاح قبل أيّ خصم (كـveo-create) — كان بعد الخصم والقفل ويردّ اسم المفتاح للمستخدم */
     const apiKey = process.env.MINIMAX_API_KEY;
     if (!apiKey) { console.error('[minimax-create] missing provider key'); res.status(500).json({ error: 'تعذّر توليد الفيديو الآن. أعد المحاولة.' }); return; }
@@ -102,7 +115,7 @@ module.exports = async (req, res) => {
       const solo = await tp.soloFirstFrame(process.env.GEMINI_API_KEY, { data: String(imageBase64).trim(), mime: imageMime }, String(rawDesc), ratio, { style: body.style, budgetMs: 90000 });
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
-        promptText = require('./video-trends.js').withIdentityLock(styledDesc, 1500 - tp.FRAME_LOCK.length, undefined, solo.people) + tp.FRAME_LOCK; /* v-two-people: الجمع إن كُشف شخصان */
+        promptText = require('./video-trends.js').withIdentityLock(styledDesc, 1500 - tp.FRAME_LOCK.length, undefined, solo.people, pace) + tp.FRAME_LOCK; /* v-two-people: الجمع إن كُشف شخصان */
         console.log('[minimax-create] first frame ready' + (solo.cached ? ' (cached)' : ''));
       } else console.warn('[minimax-create] first frame skipped: ' + ((solo && solo.error) || 'none'));
     }

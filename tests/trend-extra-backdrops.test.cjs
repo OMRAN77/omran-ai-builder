@@ -75,5 +75,5 @@ test('صانع الفيديو الحرّ مع صورة: قفل الهويّة أ
   assert.match(omni, /withIdentityLock\(promptText, 1500, 'the reference image <IMAGE_REF_0>'\)/);
   const veo = fs.readFileSync(path.join(root, 'api/_lib/veo-create.js'), 'utf8');
   assert.match(veo, /\} else if \(hasImage && promptText\) \{\n\s+\/\* v-video-identity/, 'veo: المسار الحرّ بلا قفل هويّة');
-  assert.match(veo, /withIdentityLock\(promptText, VEO_FREE_IMAGE_MAX\)/);
+  assert.match(veo, /withIdentityLock\(promptText, VEO_FREE_IMAGE_MAX[,)]/); // v-video-speech-pace: وبعده قاعدة الكلام (tail) اختياريًّا
 });

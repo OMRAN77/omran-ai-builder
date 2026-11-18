@@ -236,7 +236,8 @@ test('ميزات الرسم: قفل الجلد يمنع استبدال اليد 
 test('رفض الحارس يُعاد مرّة بقفل أشدّ قبل الخطأ الأحمر', () => {
   const src = fs.readFileSync(path.join(root, 'api/_lib/studio-create.js'), 'utf8');
   assert.match(src, /second attempt with a stronger lock/, 'لا محاولة ثانية بعد رفض الحارس');
-  assert.match(src, /geminiImage\(o\.apiKey, retryParts, o\.feature, null, 0\.15\)/, 'المحاولة الثانية يجب أن تكون بحرارة ٠٫١٥ مفروضة');
+  /* v-style-card-ref: النسبة aspect (null بلا بطاقة كما كان؛ نسبة صورة المستخدم مع البطاقة) */
+  assert.match(src, /geminiImage\(o\.apiKey, retryParts, o\.feature, aspect, 0\.15\)/, 'المحاولة الثانية يجب أن تكون بحرارة ٠٫١٥ مفروضة');
   assert.match(src, /if \(again\.b64 && await guardOf\(again\.b64, again\.mime\)\) return finish/, 'نتيجة المحاولة الثانية لا تمرّ بالحارس');
   assert.match(src, /throw \{ status: 422, payload: \{ error: publicGuardError\(guard\)/, 'الفشل المتكرّر يجب أن يبقى فشلًا');
   assert.match(src, /async function geminiImage\(apiKey, parts, feature, aspectRatio, tempOverride\)/, 'لا تجاوز للحرارة');
