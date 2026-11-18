@@ -109,11 +109,24 @@ function groupRefGuide(n) {
 }
 /* v-video-identity-pose: صورة المستخدم أوّل إطار + الصورة نفسها مرجعًا (Omni يقبل الدورين معًا — FRAME_DECL في omni-create). إرشاد
    محايد بلا «شخص حقيقيّ»: الأفاتار يبقى أفاتارًا والمنتج منتجًا، والمرجع يحفظ الشكل حين يلتفت أو يُرى من زاوية أخرى. */
+/* v-omni-role-words (توثيق المحرّك ١٧ نوفمبر ٢٠٢٦: وسوم التحكّم داخل النصّ مهجورة في الإصدار الجديد وغير مدعومة فيما بعده — «صِف دور كلّ
+   صورة بلغة طبيعيّة»): للإصدار الجديد (omni-create.roleWords) سطر أوّل يعرّف دور كلّ صورة بترتيبها في input بدل سطر الوسوم — «exact
+   opening frame» هو ما كان يفعله <FIRST_FRAME> حرفيًّا — ويسمّي «the reference image» التي تقولها القوالب. الباقي هو أمر الوسوم نفسه
+   بعد حذف كلّ وسم وتسمية Image1/Image2 بترتيبهما (trendOmni)، فالقوالب وأقفال الوجه حرفيًّا. الإصدار الحاليّ بوسومه كما هو. */
+const FIRST_DECL_WORDS = 'One image is attached, the reference image: it is the exact opening frame of the video. ';
+const REF_DECL_WORDS = 'One image is attached: it is the reference image — a reference only, never a frame of the video. ';
+const REVEAL_DECL_WORDS = 'Two images are attached: the first image is the exact opening frame of the video and the second image, the reference photo, is its exact final frame. ';
+function groupRefDeclWords(n) {
+  return (n > 2 ? 'Four' : 'Three') + ' images are attached: the first image is the exact opening frame of the video; the '
+    + (n > 2 ? 'second, third and fourth' : 'second and third') + ' images are the reference photos, one person in each. ';
+}
 const PHOTO_REF_GUIDE = ' Use Image1 as the starting frame. Image2 is the same subject as Image1: use it only to keep its exact look — face, proportions, colours and art style — whenever it turns, moves or is seen from another angle; never redraw it more realistic, more cartoonish or generic.';
 async function trendOmni(o) {
   const omni = require('./omni-create.js');
   const input = [];
   let prompt = o.prompt;
+  /* v-omni-role-words: wd = سطر تعريف الأدوار بالكلمات لهذا الفرع؛ role = دور الصور إن كان واحدًا (task الاحتياطيّ) */
+  let wd = '', role = '';
   if (o.imageBase64) {
     input.push({ type: 'image', data: o.imageBase64, mime_type: o.imageMime || 'image/png' });
     /* v-trend-omni-face: Omni يصنع افتراضيًّا عدّة لقطات بقطع بينها، والقطع يعيد رسم الوجه — لقطة واحدة متّصلة (توثيقه حرفيًّا) */
@@ -125,29 +138,39 @@ async function trendOmni(o) {
          «[# Sources <FIRST_FRAME>@Image1 <LAST_FRAME>@Image2]… the second image as the final frame» */
       input.push({ type: 'image', data: o.lastFrame.data, mime_type: o.lastFrame.mime || 'image/png' });
       prompt = TREND_REVEAL_DECL + prompt + cuts + TREND_REVEAL_GUIDE;
+      wd = REVEAL_DECL_WORDS; role = 'frames';
     } else if (refs.length === 1) {
       /* الإطار الأوّل بوجهه في المشهد + مرجع ملامحه (لقطة الوجه أو صورته) — أدوار omni-create حرفيًّا، والمرجع مربوط في النصّ */
       input.push({ type: 'image', data: refs[0].data, mime_type: refs[0].mime || 'image/png' });
       prompt = omni.FRAME_DECL + bindTrendRef(prompt) + cuts + (o.people > 1 ? TREND_FRAME_GUIDE_MANY : omni.FRAME_GUIDE) + turn;
+      wd = omni.FRAME_DECL_WORDS;
     } else if (refs.length > 1) {
       /* إطار المجموعة + صورة كلّ شخص مرجعًا لوجهه (صيغة التوثيق لعدّة مراجع) */
       refs.forEach((r) => input.push({ type: 'image', data: r.data, mime_type: r.mime || 'image/png' }));
       prompt = groupRefDecl(refs.length) + bindGroupRefs(prompt, refs.length) + cuts + groupRefGuide(refs.length) + turn;
+      wd = groupRefDeclWords(refs.length);
     } else if (o.selfRef) {
       /* «سينمائي» بالصورة كما هي، أو ترند شخص تعذّر إطاره: الصورة نفسها أوّل إطار ومرجعًا (كان التعذّر يرسم الشخص كلّه من مرجع)؛
          والمونتاج (عشر دول، يوم في حياتي، قصّة بعدّة مشاهد) يبقى بلقطاته — cuts لا «بلا قطع» ثابتًا */
       input.push({ type: 'image', data: o.imageBase64, mime_type: o.imageMime || 'image/png' });
       prompt = omni.FRAME_DECL + bindTrendRef(prompt) + cuts + PHOTO_REF_GUIDE;
+      wd = omni.FRAME_DECL_WORDS;
     } else if (o.framed || !o.person) {
       /* إطار مبنيّ بلا مرجع (ترند بعمر آخر — مرجع البالغ يشدّ الطفل إلى عمره)، أو صورة يُقصد تحريكها هي نفسها
          (منتج، مكان، حيوان، «حرّك الصورة»): أوّل إطار كما كانت عند Veo (instance.image) */
       prompt = '[# Sources <FIRST_FRAME>@Image1] ' + prompt + cuts + ' Use Image1 as the starting frame.' + (o.framed ? turn : '');
+      wd = FIRST_DECL_WORDS; role = 'frame';
     } else {
       /* ترند شخص بلا إطار مبنيّ (بيكسار ورمضان، أو تعذّر الإطار): الصورة مرجع لا لقطة أولى — كانت تظهر خامًا في أوّل الفيديو.
          صيغة التوثيق: «Use the given image(s) as references… should not be used as literal initial frames». */
       prompt = '[# References <IMAGE_REF_0>@Image1] ' + bindTrendRef(prompt) + cuts + TREND_REF_GUIDE;
+      wd = REF_DECL_WORDS; role = 'ref';
     }
   }
+  /* v-omni-role-words: الإصدار المرسَل إليه هو الحكم — الجديد يأخذ الأمر نفسه بلا أيّ وسم (ولو كتبه المستخدم) وبسطر تعريف الأدوار */
+  const model = o.model || process.env.OMNI_VIDEO_MODEL || 'gemini-omni-1.1-flash';
+  const W = omni.roleWords(model);
+  if (W) prompt = wd ? wd + omni.imageWords(omni.stripRoleTags(prompt)) : omni.stripRoleTags(prompt);
   input.push({ type: 'text', text: prompt });
   const rf = Object.assign({ type: 'video', resolution: o.quality === 'high' ? '1080p' : '720p', aspect_ratio: o.ratio === '720:1280' ? '9:16' : '16:9', delivery: 'uri' }, o.durationSec ? { duration: o.durationSec + 's' } : {});
   if (o.previous) delete rf.aspect_ratio; /* v-video-one-shot: التمديد يرث نسبة الفيديو الممدود */
@@ -155,11 +178,11 @@ async function trendOmni(o) {
     method: 'POST',
     headers: { 'x-goog-api-key': o.apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify(Object.assign({
-      model: o.model || process.env.OMNI_VIDEO_MODEL || 'gemini-omni-1.1-flash',
+      model,
       input,
       response_format: rf,
       background: false, store: true, stream: false, // v-omni-store: الرابط يشترط store:true (وبه يُمدّ الفيديو لاحقًا بمعرّف تفاعله)
-    }, o.previous ? { previous_interaction_id: o.previous, generation_config: { video_config: { task: 'extend' } } } : {})),
+    }, o.previous ? { previous_interaction_id: o.previous, generation_config: { video_config: { task: 'extend' } } } : omni.roleTask(role, W))),
     signal: AbortSignal.timeout(omni.omniTimeoutFor(Date.now() - o.t0, Number(process.env.OMNI_TIMEOUT_MS || 270000))),
   });
   const data = await upstream.json().catch(() => ({}));
@@ -482,6 +505,7 @@ module.exports = async (req, res) => {
       const fReveal = reveal && framed && !!oImg;
       const fBody = fReveal ? fPlain.replace('it cuts to the reference photo itself', 'it cuts to the same person in plain everyday clothes') + TREND_REVEAL_GUIDE_BK
         : fPlain + fCuts + (body.trend && (framed || groupFramed) && !reveal ? TREND_TURN_GUIDE : '');
+      /* v-omni-role-words: الاحتياط بوسمه كما هو — صفحة نقطته (قُرئت ١٧ نوفمبر ٢٠٢٦) ما زالت توثّق ربط المرجع بـ<IMAGE_REF_0> داخل النصّ */
       const falSpec = { prompt: asRef ? bindTrendRef(fPlain) + fCuts + TREND_REF_GUIDE : fBody, portrait: ratio === '720:1280', durationSec: body.trend ? 8 : omniDur };
       if (asRef) falSpec.refs = [{ b64: oImg, mime: imageMime || 'image/png' }];
       else if (oImg) falSpec.image = { b64: oImg, mime: imageMime || 'image/png' };
@@ -615,3 +639,7 @@ module.exports.FRAME_LOCK = FRAME_LOCK;
 module.exports.PHOTO_REF_GUIDE = PHOTO_REF_GUIDE; // v-video-identity-pose
 module.exports.TREND_TURN_GUIDE = TREND_TURN_GUIDE; // v-trends-identity-audit
 module.exports.TREND_REVEAL_GUIDE_BK = TREND_REVEAL_GUIDE_BK; // v-trends-identity-audit
+module.exports.FIRST_DECL_WORDS = FIRST_DECL_WORDS; // v-omni-role-words
+module.exports.REF_DECL_WORDS = REF_DECL_WORDS;
+module.exports.REVEAL_DECL_WORDS = REVEAL_DECL_WORDS;
+module.exports.groupRefDeclWords = groupRefDeclWords;

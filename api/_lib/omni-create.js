@@ -16,10 +16,44 @@ const GL = (process.env.GEMINI_API_BASE || 'https://generativelanguage.googleapi
    Use Image2 as a reference for the video generation.» — Image1 الإطار، وImage2 لقطة الوجه (أو الصورة نفسها). */
 const FRAME_DECL = '[# Sources <FIRST_FRAME>@Image1] [# References <IMAGE_REF_0>@Image2] ';
 const FRAME_GUIDE = ' Use Image1 as the starting frame. Use Image2 as a reference for the video generation: it shows the same real person as Image1 — use it only to keep their face and identity; the clothing and setting come from Image1 and the description, not from Image2.';
-function framedPrompt(desc, people) {
+/* v-omni-role-words (توثيق المحرّك ١٧ نوفمبر ٢٠٢٦): وسوم التحكّم داخل النصّ (<FIRST_FRAME> <LAST_FRAME> <IMAGE_REF_n> <VIDEO_REF_n>)
+   مهجورة في الإصدار الجديد وغير مدعومة فيما بعده، والبديل وصف دور كلّ صورة بلغة طبيعيّة — «النموذج يستنتج وضع التوليد وأدوار الوسائط من
+   نصّ الأمر». فالأدوار نفسها تُكتب بصيغتين: الوسوم للإصدار الحاليّ كما هي حرفيًّا، والكلمات لكلّ اسم إصدار غيره (الجديد وما بعده).
+   الاسم المرسَل هو الحكم: في ٣ ديسمبر ٢٠٢٦ يحوّل المزوّد طلبات الاسم الحاليّ إلى الجديد بلا تغيير عندنا، وهي تبقى بوسومها حتّى يُحسم
+   بتشغيلة حيّة — لا تبديل بالتاريخ (يغيّر الترندات بلا دليل). OMNI_ROLE_STYLE=words|tags يفرض إحداهما على الكلّ بلا نشر. */
+function roleWords(model) {
+  const force = String(process.env.OMNI_ROLE_STYLE || '').toLowerCase();
+  if (force === 'tags') return false;
+  if (force === 'words') return true;
+  return !/omni-1\.1-|omni-flash-preview/i.test(String(model || ''));
+}
+/* إرشاد الأدوار مكتوب أصلًا بلغة طبيعيّة على اسمَي Image1/Image2 اللذين يعرّفهما سطر الوسوم — بلا ذلك السطر يصيران «the first image»
+   و«the second image» (ترتيب الصور في input)، وبقيّة الجملة — أقفال الوجه والشعر — كما هي حرفيًّا فلا تفترق الصيغتان مع الوقت. */
+const ROLE_ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'];
+function imageWords(s) {
+  return String(s).replace(/(^|\. )?\bImage([1-6])(?!\d)/g, (m, lead, d) => (lead === undefined ? 'the ' : lead + 'The ') + ROLE_ORDINALS[d - 1] + ' image');
+}
+/* صيغة الكلمات تُشتقّ من أمر الوسوم نفسه: يُحذف كلّ وسم تحكّم وسطر التصريح (قائمة «<A>, <B> and <C>» كلّها) — فلا وسم يصل الإصدار
+   الجديد مهما بنى المتّصل أو كتب المستخدم */
+const ROLE_TAG = '<(?:FIRST_FRAME|LAST_FRAME|IMAGE_REF_\\d+|VIDEO_REF_\\d+)>';
+const ROLE_TAG_RUN = new RegExp(' ?' + ROLE_TAG + '(?:(?:,| and|, and)? ' + ROLE_TAG + ')*', 'g');
+function stripRoleTags(s) {
+  return String(s).replace(/\[# (?:Sources|References)[^\]]*\] ?/g, '').replace(ROLE_TAG_RUN, '');
+}
+const FRAME_DECL_WORDS = 'Two images are attached: the first image is the exact opening frame of the video and the second image is the reference image. ';
+/* generation_config.video_config.task احتياطًا (التوثيق: «جرّب اللغة الطبيعيّة بلا task أوّلًا» — يقيّد عدد الصور وطريقة جمعها): مطفأ،
+   وOMNI_ROLE_TASK=on يرسله لصيغة الكلمات حين للصور دور واحد (أوّل إطار، أو أوّل وآخر، أو مرجع). الإطار مع مرجع بلا task: لا قيمة تجمعهما. */
+const ROLE_TASKS = { frame: 'image_to_video', frames: 'image_to_video', ref: 'reference_to_video' };
+function roleTask(kind, words) {
+  const task = words && String(process.env.OMNI_ROLE_TASK || 'off').toLowerCase() === 'on' ? ROLE_TASKS[kind] : '';
+  return task ? { generation_config: { video_config: { task } } } : {};
+}
+function framedPrompt(desc, people, words) {
   /* v-two-people: people > 1 = صورة فيها شخصان كشفهما أوّل الإطار — القفل بصيغة الجمع */
-  const lock = require('./video-trends.js').withIdentityLock(desc, 1500 - FRAME_DECL.length - FRAME_GUIDE.length, 'the reference image <IMAGE_REF_0>', people);
-  return FRAME_DECL + lock + FRAME_GUIDE;
+  const decl = words ? FRAME_DECL_WORDS : FRAME_DECL;
+  const guide = words ? imageWords(FRAME_GUIDE) : FRAME_GUIDE;
+  const lock = require('./video-trends.js').withIdentityLock(desc, 1500 - decl.length - guide.length, words ? 'the reference image' : 'the reference image <IMAGE_REF_0>', people);
+  return decl + lock + guide;
 }
 /* الإطار والمحرّك داخل نداء واحد متزامن: maxDuration لـapi/*.js في vercel.json ٣٠٠ث. الإطار (كشف + توليد) ≤ ٩٠ث،
    والمحرّك يأخذ ما بقي ناقص هامش — فلا تقتل المنصّة الدالّة قبل أن يُستردّ رصيد مستخدم عند المهلة. */
@@ -48,6 +82,8 @@ module.exports = async (req, res) => {
     /* v-video-first-frame: أنمي/كرتون الواجهة — سطر الأسلوب أوّل الوصف (كان لا يصل هذا المحرّك أصلًا)، والإطار يُرسم به */
     if (!body.trend && body.style === 'anime' && promptText && String(promptText).trim()) promptText = require('./trend-people.js').STYLE_ANIME_VIDEO + String(promptText).trim();
     const styledDesc = promptText;
+    const model = process.env.OMNI_VIDEO_MODEL || 'gemini-omni-1.1-flash';
+    const words = roleWords(model); /* v-omni-role-words: الإصدار الجديد يأخذ دور الصورة بالكلمات لا بالوسم */
     /* v-video-trends: ترند بلمسة — الأمر يُبنى على الخادم من قالب الترند */
     if (body.trend) {
       const built = require('./video-trends.js').buildTrendPrompt(String(body.trend), Object.assign({}, body.params || {}, { hasImage: !!(imageBase64 && String(imageBase64).trim()) }));
@@ -102,7 +138,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const model = process.env.OMNI_VIDEO_MODEL || 'gemini-omni-1.1-flash';
     const resolution = quality === 'high' ? '1080p' : '720p';
     const aspect = ratio === '720:1280' ? '9:16' : '16:9';
     let prompt = String(promptText).trim().slice(0, 1500);
@@ -125,10 +160,12 @@ module.exports = async (req, res) => {
       input.push(frame.ref
         ? { type: 'image', data: frame.ref.data, mime_type: frame.ref.mime }
         : { type: 'image', data: String(imageBase64).trim(), mime_type: imageMime || 'image/png' });
-      prompt = framedPrompt(String(styledDesc), frame.people);
+      prompt = framedPrompt(String(styledDesc), frame.people, words);
     } else if (hasImage) {
       input.push({ type: 'image', data: String(imageBase64).trim(), mime_type: imageMime || 'image/png' });
     }
+    /* v-omni-role-words: الإصدار الجديد بلا أيّ وسم (ولو كتبه المستخدم) — صورة الوصف الحرّ بلا إطار تبقى «the reference image» وحدها */
+    if (words) prompt = stripRoleTags(prompt);
     input.push({ type: 'text', text: prompt });
 
     /* v-omni-store: النداء متزامن ويحجب دقيقة إلى ثلاث حتّى ينتهي التوليد، وحارس المهلة العامّ
@@ -139,7 +176,7 @@ module.exports = async (req, res) => {
     const upstream = await fetch(GL + '/interactions', {
       method: 'POST',
       headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: JSON.stringify(Object.assign({
         model,
         input,
         response_format: { type: 'video', resolution, aspect_ratio: aspect, delivery: 'uri' },
@@ -148,7 +185,7 @@ module.exports = async (req, res) => {
            when response format has video delivery set to URI»). توصية store:false في التوثيق
            تخصّ التسليم المضمَّن، وهو محجوب علينا: سقفه ٤م ومقاطعنا 720p/1080p أكبر منه. */
         background: false, store: true, stream: false,
-      }),
+      }, roleTask(!body.trend && hasImage && !(frame && frame.b64) ? 'ref' : '', words))), /* v-omni-role-words: صورة الوصف الحرّ بلا إطار = مرجع ملامح */
       signal: AbortSignal.timeout(OMNI_TIMEOUT_MS),
     });
     const data = await upstream.json().catch(() => ({}));
@@ -199,6 +236,11 @@ module.exports = async (req, res) => {
 module.exports.FRAME_DECL = FRAME_DECL;
 module.exports.FRAME_GUIDE = FRAME_GUIDE;
 module.exports.framedPrompt = framedPrompt;
+module.exports.roleWords = roleWords; // v-omni-role-words
+module.exports.imageWords = imageWords;
+module.exports.stripRoleTags = stripRoleTags;
+module.exports.roleTask = roleTask;
+module.exports.FRAME_DECL_WORDS = FRAME_DECL_WORDS;
 module.exports.omniTimeoutFor = omniTimeoutFor;
 module.exports.FN_MAX_MS = FN_MAX_MS;
 module.exports.FRAME_BUDGET_MS = FRAME_BUDGET_MS;
