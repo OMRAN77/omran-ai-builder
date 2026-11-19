@@ -133,7 +133,7 @@ test('١٢. ١٤ لغة بلا مفتاح ناقص، والوسم مرفوع', (
   }
   ['cTitle', 'cm0', 'cm1', 'cm2', 'brandTitle', 'mTitle', 'amenDefault', 'dlPrint', 'copyBtn', 'resumeBtn']
     .forEach((k) => assert.ok(base.includes(k), 'مفتاح جديد ناقص: ' + k));
-  assert.match(html, /i18n\/ad-studio\.js\?v=609/);
+  assert.ok(Number(/i18n\/ad-studio\.js\?v=(\d+)/.exec(html)[1]) >= 609, 'وسم القاموس'); /* v-ad-fx: بالنمط لا حرفيًّا */
 });
 
 test('١٣. «بطاقة مواصفات» تتصدّر العشرة، ومفاتيح السحب تتبع رقم التصميم لا ترتيبه', () => {
