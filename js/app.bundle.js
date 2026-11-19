@@ -35414,12 +35414,15 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     const turns = [];
     if (/saying exactly these (?:Arabic )?words/i.test(s)) return turns; // «ممثل يتكلم»: كلامه بالحرف
     const words = (x) => String(x || '').split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
-    const notSpeaker = /^(?:المكان|المشهد|الزمان|الوقت|الكاميرا|التصوير|الأسلوب|الستايل|الإضاءة|الموسيقى|الخلفية|ملاحظة|scene|setting|location|place|time|camera|shot|style|lighting|music|background|note)$/i;
+    /* v-video-full-dialogue: عناوين المشهد («🇦🇪 مشهد قصير: أحب وطني»، «الشخصيات: طفلة وأمها») ليست كلامًا — كانت تُحسب أدوارًا فتأكل من
+       ميزانيّة الكلام وتطيل التوليدة. العنوان يُقارن بحروفه وحدها (بلا رموز ولا تشكيل) */
+    const notSpeaker = /^(?:المكان|(?:ال)?مشهد(?: \S+){0,2}|الزمان|الوقت|الكاميرا|التصوير|الأسلوب|الستايل|الإضاءة|الموسيقى|الخلفية|ملاحظة|(?:ال)?شخصيات|العنوان|الوصف|الفكرة|scene(?: \S+){0,2}|setting|location|place|time|camera|shot|style|lighting|music|background|note|characters?|cast|title|description)$/i;
+    const label = (x) => String(x).replace(/\p{M}/gu, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
     let off = 0;
     for (const line of s.split('\n')) {
       /* سطر فيه تنصيصان فأكثر («البنت تسأل: «…» والأم ترد: «…»») = عدّة أدوار تُعدّ بتنصيصاتها، لا دور واحد باسم قبل النقطتين */
       const m = (line.match(/«[^»]+»|"[^"]+"|“[^”]+”/g) || []).length < 2 && /^\s*([^\s:：][^:：]{0,24}?)\s*[:：]\s*(\S.*)$/.exec(line);
-      if (m && !/\d$/.test(m[1]) && !notSpeaker.test(m[1].trim())) {
+      if (m && !/\d$/.test(m[1]) && !notSpeaker.test(label(m[1]))) {
         turns.push({ a: off, b: Math.min(s.length, off + line.length + 1), w: words(m[2].replace(/[«»"“”]/g, ' ')), said: m[2].trim(), lead: m[1].trim() + ': ', open: '', close: '', line: true });
       } else {
         const re = /«([^»]+)»|"([^"]+)"|“([^”]+)”/g;
@@ -35436,10 +35439,10 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
     }
     return turns;
   }
-  function fitDialogue(desc, seconds) {
+  function fitDialogue(desc, seconds, lead) {
     const s = String(desc || '');
     const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
-    const budget = Math.max(4, Math.floor((sec - 1) * 1.7));
+    const budget = Math.max(4, Math.floor((sec - (lead > 0 ? lead : 1)) * 1.7));
     const turns = dialogueTurns(s);
     const res = { text: s, budget, turns: turns.length, kept: 0, dropped: 0, words: turns.reduce((n, t) => n + t.w, 0), keptWords: 0, last: '' };
     let used = 0, kept = 0;
@@ -35460,14 +35463,19 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
   /* v-video-one-shot (المالك ١٧ نوفمبر: «اريده فيديو كامل مره وحده مااريد فيديو مقاطع»): caps = أقصى ثواني كلّ مقطع بترتيبه (آخر قيمة
      تتكرّر). الافتراضيّ [10] كما كان؛ [15] = أقصى توليدة واحدة عند المحرّك (٢٣ كلمة) فالحوار الذي تتّسع له يخرج فيديو واحدًا بتوليدة واحدة؛
      و«سينمائي» [15, 10, …] = التوليدة ثمّ تمديدات المحرّك نفسه (planDialogueOne). */
-  function planDialogue(desc, maxClips, caps) {
+  /* v-video-full-dialogue (المالك ١٩ نوفمبر: «الفيديو بني ١٤ ثانية ما كمل الي اخر شي» — حواره ٤٤ كلمة في سبعة أدوار، والخطّة كانت
+     تُسقط آخر دورين حتّى لو مدّ المحرّك): one = فيديو واحد يمدّه المحرّك — توليدة حتّى first ثانية ثمّ تمديدات حتّى step ثانية، والفيديو
+     كلّه حتّى total. التمديد يكمل مشهدًا جاريًا بلا ثانية افتتاح فميزانيّته بـlead صمتًا (١٦ كلمة في ١٠ث — كالخادم EXTEND_SAY_LEAD).
+     التوزيع: أقلّ خطوات تقول الحوار كلّه داخل المجموع، ثمّ أكثرها توازنًا (السؤال مع جوابه)؛ وما لا يتّسع كلّه يُقال أطول ما يتّسع. */
+  const DIALOGUE_ONE = { first: 15, step: 10, total: 30, lead: 0.5 };
+  function planDialogue(desc, maxClips, caps, one) {
     const s = String(desc || '');
-    const capS = (Array.isArray(caps) && caps.length) ? caps : [10];
+    const capS = one ? [one.first, one.step] : ((Array.isArray(caps) && caps.length) ? caps : [10]);
     const secCap = (k) => capS[Math.min(k, capS.length - 1)];
-    const budgetOf = (sec) => Math.max(4, Math.floor((sec - 1) * 1.7));
-    const wordCap = (k) => budgetOf(secCap(k));
+    const budgetOf = (sec, k) => Math.max(4, Math.floor((sec - ((one && k) ? one.lead : 1)) * 1.7));
+    const wordCap = (k) => budgetOf(secCap(k), k);
     const B = Math.min(wordCap(0), wordCap(1)), cap = Math.max(1, maxClips || DIALOGUE_CLIPS_MAX);
-    const secFor = (w, floor, max) => { for (let k = floor; k < max; k++) if (budgetOf(k) >= w) return k; return max; };
+    const secFor = (w, floor, max, k) => { for (let x = floor; x < max; x++) if (budgetOf(x, k) >= w) return x; return max; };
     const turns = dialogueTurns(s);
     const res = { clips: [], turns: turns.length, words: turns.reduce((n, t) => n + t.w, 0), dropped: 0, last: '', seconds: 0, need: 0 };
     if (!turns.length) return res;
@@ -35503,27 +35511,53 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
       }
     });
     let kept = parts.length, K = 1, sum = 0;
-    for (let i = 0; i < parts.length; i++) {
-      let k = K, cur = sum;
-      if (cur && cur + parts[i].w > wordCap(k - 1)) { if (k === cap) { kept = i; break; } k++; cur = 0; }
-      if (parts[i].w > wordCap(k - 1)) { kept = i; break; } /* مقطع لاحق أقصر لا يتّسع للجملة كاملةً: تقف الخطّة قبلها */
-      K = k; sum = cur + parts[i].w;
+    const pre = [0]; for (const p of parts) pre.push(pre[pre.length - 1] + p.w);
+    let bounds = [];
+    if (one) {
+      /* كلّ تقسيم متتالٍ لأوّل m جملة: كلّ خطوة داخل ميزانيّتها، ومجموع الثواني داخل حدّ المحرّك */
+      const fitOne = (m) => {
+        let got = null;
+        const walk = (from, cuts, secs, top) => {
+          const k = cuts.length;
+          for (let to = from + 1; to <= m; to++) {
+            const w = pre[to] - pre[from];
+            if (w > wordCap(k)) break;
+            const total = secs + secFor(w, k ? 3 : 6, secCap(k), k);
+            if (total > one.total) break;
+            const next = cuts.concat([[from, to]]), t = Math.max(top, w);
+            if (to < m) { if (next.length < cap) walk(to, next, total, t); }
+            else if (!got || next.length < got.cuts.length || (next.length === got.cuts.length && t < got.top)) got = { cuts: next, top: t };
+          }
+        };
+        walk(0, [], 0, 0);
+        return got;
+      };
+      let got = null;
+      while (kept > 1 && !(got = fitOne(kept))) kept--;
+      bounds = (got || fitOne(1)).cuts;
+    } else {
+      for (let i = 0; i < parts.length; i++) {
+        let k = K, cur = sum;
+        if (cur && cur + parts[i].w > wordCap(k - 1)) { if (k === cap) { kept = i; break; } k++; cur = 0; }
+        if (parts[i].w > wordCap(k - 1)) { kept = i; break; } /* مقطع لاحق أقصر لا يتّسع للجملة كاملةً: تقف الخطّة قبلها */
+        K = k; sum = cur + parts[i].w;
+      }
     }
     const keep = parts.slice(0, kept), n = keep.length;
     res.dropped = parts.length - kept;
     res.last = keep[n - 1].said;
-    const pre = [0]; for (const p of keep) pre.push(pre[pre.length - 1] + p.w);
-    const best = [], cut = [];
-    for (let k = 0; k <= K; k++) { best.push(new Array(n + 1).fill(Infinity)); cut.push(new Array(n + 1).fill(0)); }
-    best[0][0] = 0;
-    for (let k = 1; k <= K; k++) for (let i = k; i <= n; i++) for (let j = k - 1; j < i; j++) {
-      const w = pre[i] - pre[j];
-      if (w > wordCap(k - 1)) continue;
-      const v = Math.max(best[k - 1][j], w);
-      if (v < best[k][i]) { best[k][i] = v; cut[k][i] = j; }
+    if (!one) {
+      const best = [], cut = [];
+      for (let k = 0; k <= K; k++) { best.push(new Array(n + 1).fill(Infinity)); cut.push(new Array(n + 1).fill(0)); }
+      best[0][0] = 0;
+      for (let k = 1; k <= K; k++) for (let i = k; i <= n; i++) for (let j = k - 1; j < i; j++) {
+        const w = pre[i] - pre[j];
+        if (w > wordCap(k - 1)) continue;
+        const v = Math.max(best[k - 1][j], w);
+        if (v < best[k][i]) { best[k][i] = v; cut[k][i] = j; }
+      }
+      for (let k = K, i = n; k >= 1; k--) { bounds.unshift([cut[k][i], i]); i = cut[k][i]; }
     }
-    const bounds = [];
-    for (let k = K, i = n; k >= 1; k--) { bounds.unshift([cut[k][i], i]); i = cut[k][i]; }
     res.clips = bounds.map(([a, b], at) => {
       const g = keep.slice(a, b), w = pre[b] - pre[a];
       let said = '';
@@ -35534,22 +35568,17 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
         said += (prev ? ((p.line || prev.line) ? '\n' : ' ') : '') + p.lead + p.open + p.said + p.close;
       });
       const text = (before ? before + (g[0].line ? '\n' : ' ') : '') + said + (after ? (g[g.length - 1].line ? '\n' : ' ') + after : '');
-      return { text, words: w, sec: secFor(w, 6, secCap(at)), last: g[g.length - 1].said };
+      /* fresh = مدّة الجزء نفسه مقطعًا جديدًا (ثانية افتتاح) — حين يُرفض التمديد فيُولَّد بلقطة مرجعيّة، فلا يقصّ الخادم آخر سطر فيه */
+      return (one && at) ? { text, words: w, sec: secFor(w, 3, secCap(at), at), fresh: secFor(w, 6, one.first), last: g[g.length - 1].said }
+        : { text, words: w, sec: secFor(w, 6, secCap(at)), last: g[g.length - 1].said };
     });
     res.seconds = res.clips.reduce((x, c) => x + c.sec, 0);
     return res;
   }
   /* v-video-one-shot: خطّة «سينمائي» — فيديو واحد: توليدة واحدة حتّى ١٥ ثانية، وما زاد يمدّه المحرّك نفسه في آخر الفيديو (٣–١٠ ثوانٍ
-     للمرّة، والفيديو كلّه حتّى ٣٠ ثانية — توثيق المحرّك). أوّل توزيع يقول الحوار كلّه بأقلّ خطوات، وإلّا الذي يُسقط أقلّ. */
-  function planDialogueOne(desc) {
-    let best = null;
-    for (const caps of [[15, 10], [15, 10, 5], [10, 10, 10]]) {
-      const plan = planDialogue(desc, caps.length, caps);
-      if (!plan.dropped) return plan;
-      if (!best || plan.dropped < best.dropped) best = plan;
-    }
-    return best;
-  }
+     للمرّة، والفيديو كلّه حتّى ٣٠ ثانية — توثيق المحرّك). v-video-full-dialogue: التوزيع بحدّ المجموع نفسه لا بثلاثة قوالب ثابتة
+     (كانت تُسقط آخر دورين من حوار يتّسع له الفيديو). */
+  function planDialogueOne(desc) { return planDialogue(desc, 0, null, DIALOGUE_ONE); }
   /* v-video-dialogue-clips: حوار لا تتّسع له المقاطع كلّها (فوق DIALOGUE_CLIPS_MAX) — يُنبَّه قبل أيّ نداء أو خصم: «سيُقال إلى …» */
   function dialogCapOk(plan){
     if(!plan.dropped) return true;
@@ -36052,7 +36081,8 @@ window.__VIDEO_TRENDS = {"trends":[{"key":"pixarstory","em":"🎬","photo":"opt"
           for(let k = 0; k < refs.length && !url; k++){
             const r = refs[k];
             if(r.first){ r.img = await clipFrameB64(prevBlob, 'first'); if(!r.img || r.img === last) continue; }
-            const payload = { promptText: r.ext ? clip.text : (r.cont ? CONT + '\n' : '') + clip.text + LOOK, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: clip.sec, confirmed: true };
+            /* v-video-full-dialogue: جزء خُطّط تمديدًا ويُولَّد مقطعًا جديدًا (رُفض تمديده) بمدّته مقطعًا — ثانية الافتتاح */
+            const payload = { promptText: r.ext ? clip.text : (r.cont ? CONT + '\n' : '') + clip.text + LOOK, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: r.ext ? clip.sec : (clip.fresh || clip.sec), confirmed: true };
             if(r.ext) payload.extendOp = r.ext;
             else if(ext && i < n - 1) payload.extendable = true; /* سيُمدّ: على إصدار المحرّك الذي يمدّ */
             if(r.img){ payload.imageBase64 = r.img; payload.imageMime = r.mime || 'image/jpeg'; if(r.cont) payload.keepPhoto = true; }

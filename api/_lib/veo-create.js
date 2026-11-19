@@ -150,7 +150,9 @@ async function trendOmni(o) {
   }
   input.push({ type: 'text', text: prompt });
   const rf = Object.assign({ type: 'video', resolution: o.quality === 'high' ? '1080p' : '720p', aspect_ratio: o.ratio === '720:1280' ? '9:16' : '16:9', delivery: 'uri' }, o.durationSec ? { duration: o.durationSec + 's' } : {});
-  if (o.previous) delete rf.aspect_ratio; /* v-video-one-shot: التمديد يرث نسبة الفيديو الممدود */
+  /* v-video-one-shot: التمديد يرث نسبة الفيديو الممدود. v-video-full-dialogue: ودقّته الافتراضيّة (٧٢٠) لا تُرسل — طلب التمديد بأقلّ ما
+     يوثّقه المحرّك (معرّف التفاعل السابق والنصّ والمدّة)، فلا يُرفض لحقل زائد */
+  if (o.previous) { delete rf.aspect_ratio; if (rf.resolution === '720p') delete rf.resolution; }
   const upstream = await fetch((process.env.GEMINI_API_BASE || GL).replace(/\/+$/, '') + '/interactions', {
     method: 'POST',
     headers: { 'x-goog-api-key': o.apiKey, 'Content-Type': 'application/json' },
@@ -159,7 +161,9 @@ async function trendOmni(o) {
       input,
       response_format: rf,
       background: false, store: true, stream: false, // v-omni-store: الرابط يشترط store:true (وبه يُمدّ الفيديو لاحقًا بمعرّف تفاعله)
-    }, o.previous ? { previous_interaction_id: o.previous, generation_config: { video_config: { task: 'extend' } } } : {})),
+      /* v-video-full-dialogue (تشغيلة المالك ١٩ نوفمبر: المحرّك ردّ ٤٠٠ «previous_interaction_id is not allowed when video task is set»
+         فلم يُمدّ فيديوه): التمديد بمعرّف التفاعل السابق وحده، ونوعه من نصّ الأمر («Extend this video…» — توثيق المحرّك)، بلا task */
+    }, o.previous ? { previous_interaction_id: o.previous } : {})),
     signal: AbortSignal.timeout(omni.omniTimeoutFor(Date.now() - o.t0, Number(process.env.OMNI_TIMEOUT_MS || 270000))),
   });
   const data = await upstream.json().catch(() => ({}));
@@ -190,11 +194,13 @@ module.exports = async (req, res) => {
     const extOp = (!body.trend && typeof body.extendOp === 'string' && body.extendOp.indexOf(OMNI_OP_PREFIX) === 0) ? body.extendOp : '';
     if (extOp) { imageBase64 = ''; imageMime = ''; }
     const SEC_MAX = extOp ? OMNI_EXTEND_MAX : OMNI_ONE_MAX;
+    /* v-video-full-dialogue: التمديد يكمل مشهدًا جاريًا بلا ثانية افتتاح — ميزانيّة كلامه بنصف ثانية صمت (١٦ كلمة في ١٠ث) كخطّة العميل */
+    const sayLead = extOp ? require('./video-trends.js').EXTEND_SAY_LEAD : 1;
     /* v-video-dialogue-fit: الحوار الأطول من المقطع يصل المحرّك بما يتّسع له وحده (المدّة ٣–١٠ كما يصل Omni، وغيرها ٨) — قبل حفظ
        الوصف فيبني الإطار والقفل منه؛ العميل نبّه قبل الخصم بالدالّة نفسها. الترند بقالبه */
     if (!body.trend && promptText) {
       const fitSec0 = parseInt(durationSeconds, 10);
-      const fit = require('./video-trends.js').fitDialogue(promptText, fitSec0 >= 3 && fitSec0 <= SEC_MAX ? fitSec0 : 8);
+      const fit = require('./video-trends.js').fitDialogue(promptText, fitSec0 >= 3 && fitSec0 <= SEC_MAX ? fitSec0 : 8, sayLead);
       if (fit.dropped) { promptText = fit.text; console.log('[veo-create] dialogue fitted to the clip: ' + fit.kept + '/' + fit.turns + ' lines, ' + fit.keptWords + '/' + fit.words + ' words'); }
     }
     const rawDesc = promptText; /* v-video-first-frame: وصف المستخدم قبل الأسلوب والقفل — مشهد أوّل الإطار */
@@ -228,7 +234,7 @@ module.exports = async (req, res) => {
     /* v-video-speech-pace: الوصف الحرّ الذي يطلب كلامًا يحمل قاعدة توقيت الكلام بمدّة المقطع (٣–١٠ كما يصل Omni، وغيرها ٨) — داخل
        القفل قبل سطره الأخير، وبلا صورة بعد الوصف داخل حدّه؛ يُقصّ الوصف لا هي. الترند بقالبه */
     const freeSec = parseInt(durationSeconds, 10);
-    const pace = body.trend ? '' : require('./video-trends.js').speechPace(rawDesc, freeSec >= 3 && freeSec <= SEC_MAX ? freeSec : 8);
+    const pace = body.trend ? '' : require('./video-trends.js').speechPace(rawDesc, freeSec >= 3 && freeSec <= SEC_MAX ? freeSec : 8, sayLead);
     if (body.trend) {
       const trendsLib = require('./video-trends.js');
       const bParams = trendsLib.sceneParams(String(body.trend), Object.assign({}, body.params || {}, { hasImage }, singleSubject ? { people: 1 } : {})); /* v-trend-scenes: قبل القصّ */
