@@ -67,6 +67,11 @@ global.fetch = async (url, init) => {
   if (omniBlocked && /\/interactions$/.test(String(url))) return new Response(JSON.stringify({ error: { code: 400, message: BLOCKED } }), { status: 400 });
   if (omniCalls && /\/interactions$/.test(String(url))) {
     omniCalls.push(JSON.parse(init.body));
+    /* v-video-full-dialogue: قاعدة المحرّك كما ردّها في تشغيلة المالك ١٩ نوفمبر — معرّف التفاعل السابق مع مهمّة فيديو = ٤٠٠ */
+    const sent = omniCalls[omniCalls.length - 1];
+    if (sent.previous_interaction_id && sent.generation_config && sent.generation_config.video_config && sent.generation_config.video_config.task) {
+      return new Response(JSON.stringify({ error: { code: 400, message: 'previous_interaction_id is not allowed when video task is set.' } }), { status: 400 });
+    }
     return new Response(JSON.stringify({ id: 'v1_' + omniCalls.length, status: 'completed', steps: [{ type: 'model_output', content: [{ type: 'video', mime_type: 'video/mp4', uri: 'https://g/files/v' + omniCalls.length }] }] }), { status: 200 });
   }
   if (mmCalls && /\/v2\/video_generation$/.test(String(url))) { mmCalls.push(JSON.parse(init.body)); return new Response(JSON.stringify({ task_id: 'mm-' + mmCalls.length }), { status: 200 }); }
@@ -81,7 +86,7 @@ function block(src, needle) {
   return src.slice(a, i + 1);
 }
 const CLIENT = read('js/app-11-video.js');
-const PLAN_SRC = 'const DIALOGUE_CLIPS_MAX = 4;\n' + block(CLIENT, 'function dialogueTurns(desc) {') + '\n' + block(CLIENT, 'function planDialogue(desc, maxClips, caps) {') + '\n' + block(CLIENT, 'function planDialogueOne(desc) {');
+const PLAN_SRC = 'const DIALOGUE_CLIPS_MAX = 4;\n' + (/const DIALOGUE_ONE = [^\n]+/.exec(CLIENT) || [''])[0] + '\n' + block(CLIENT, 'function dialogueTurns(desc) {') + '\n' + block(CLIENT, 'function planDialogue(desc, maxClips, caps, one) {') + '\n' + block(CLIENT, 'function planDialogueOne(desc) {');
 const P = {}; vm.runInNewContext(PLAN_SRC + '\nthis.plan = planDialogue; this.one = planDialogueOne;', P);
 const plan = (d, n, caps) => JSON.parse(JSON.stringify(P.plan(d, n, caps)));
 const planOne = (d) => JSON.parse(JSON.stringify(P.one(d))); // v-video-one-shot: خطّة «سينمائي» (توليدة ثمّ تمديدات المحرّك)
@@ -301,7 +306,7 @@ test('٧. الربط: «سريع» و«سينمائي» يبنيان الخطّ�
   assert.match(block(CLIENT, 'function clipFrameB64(blob, where, ms){'), /for\(let i = 3; i < a\.length; i \+= 4\) if\(a\[i\]\)/, 'ينتظر أوّل بكسل معتم (PITFALLS)');
   assert.ok(block(CLIENT, 'function clipFrameB64(blob, where, ms){').includes("v.currentTime = where === 'first' ? Math.min(0.05, d / 2) : Math.max(0, d - 0.02);"), 'أوّل لقطة أو آخرها');
   const B = read('js/app.bundle.js');
-  assert.ok(B.includes("await runDialogueClips(dlg, 'veo')") && B.includes('function planDialogue(desc, maxClips, caps) {'), 'الحزمة مبنيّة');
+  assert.ok(B.includes("await runDialogueClips(dlg, 'veo')") && B.includes('function planDialogue(desc, maxClips, caps, one) {'), 'الحزمة مبنيّة');
 });
 
 async function price(u, body) {
@@ -627,8 +632,15 @@ test('١٩. «واقعي» يُقال في كلّ مقطع بلا صورة بط�
 /* ── v-video-one-shot (المالك ١٧ نوفمبر بعد #1348: «الي اريده فيديو كامل مره وحده مااريد فيديو مقاطع… الفيديو مش على حسابك»). التوليدة
    الواحدة حتّى ١٥ ثانية (أقصى ما يصنعه المحرّكان في مرّة)، و«سينمائي» ما زاد يمدّه المحرّك نفسه في آخر الفيديو (٣–١٠ث للمرّة، ≤ ٣٠ث)
    فيخرج فيديو واحد متّصل بلا لصق؛ تعذّر التمديد = اللقطة المرجعيّة واللصق كما كانا. ── */
-const LONG3 = planOne(D3);
-const D21 = [SCENE].concat(LINES.slice(0, 5)).join('\n');           // ٢١ كلمة
+/* v-video-full-dialogue: نصّ المالك الحرفيّ في تشغيلة ١٩ نوفمبر («الفيديو بني ١٤ ثانية ما كمل الي اخر شي») — عنوانان ثمّ سبعة أدوار (٤٤ كلمة).
+   خطّته ثلاث خطوات (توليدة ثمّ تمديدان) فهي مثال الخطوات الثلاث في الحالات ٢١–٢٥ */
+const RUN19_HEAD = ['🇦🇪 مشهد قصير: أحب وطني', 'الشخصيات: طفلة وأمها.'];
+const RUN19_LINES = ['الطفلة: أمي، لماذا نحتفل باليوم الوطني؟', 'الأم: لأننا نحتفل باتحاد الإمارات السبع ووطننا الغالي.', 'الطفلة: ومن الذي أسس اتحاد الإمارات؟',
+  'الأم: الشيخ زايد بن سلطان آل نهيان، رحمه الله، مع إخوانه الحكام.', 'الطفلة: أنا فخورة بوطننا، وأحب علم الإمارات!', 'الأم: حفظ الله الإمارات وأدام عزها.', 'معاً: كل عام والإمارات عز وفخر! 🇦🇪'];
+const RUN19 = RUN19_HEAD.concat(RUN19_LINES).join('\n') + '\n';
+const LONG3 = planOne(RUN19);
+const EXT_LEAD = (i) => (i ? VT.EXTEND_SAY_LEAD : 1); // ميزانيّة كلام الخطوة: التمديد بلا ثانية افتتاح
+const D21 =[SCENE].concat(LINES.slice(0, 5)).join('\n');           // ٢١ كلمة
 const D23 = D21 + '\nالأم: نعم صحيح';                                // ٢٣ كلمة — آخر ما تتّسع له توليدة واحدة
 const D24 = D21 + '\nالأم: نعم هذا صحيح';                            // ٢٤ كلمة
 
@@ -645,26 +657,66 @@ test('٢٠. الخطّة: توليدة واحدة حتّى ١٥ ثانية (٢٣
   for (const d of [D21, D23]) { p = planOne(d); assert.deepEqual([p.clips.length, p.dropped, p.need <= 15], [1, 0, true]); }
   /* حوار المالك الأقصر (٢٥ كلمة): توليدة ثمّ تمديد واحد */
   p = planOne(DIALOGUE);
-  assert.deepEqual(p.clips.map((c) => [c.words, c.sec]), [[13, 9], [12, 9]]);
+  assert.deepEqual(p.clips.map((c) => [c.words, c.sec, c.fresh]), [[13, 9, undefined], [12, 8, 9]]);
   assert.equal(p.clips[1].text, [SCENE].concat(LINES.slice(3)).join('\n'));
-  /* حواره الأطول (٣٢ كلمة): توليدة ثمّ تمديدان — ١٥ ثمّ ١٠ ثمّ ٥ على الأكثر */
+  /* حواره الأطول يومها (٣٢ كلمة): توليدة ثمّ تمديد واحد — خطوتان متوازنتان بدل ثلاث */
+  p = planOne(D3);
+  assert.deepEqual([p.words, p.dropped, p.seconds], [32, 0, 21]);
+  assert.deepEqual(p.clips.map((c) => [c.words, c.sec, c.fresh]), [[16, 11, undefined], [16, 10, 11]]);
+  assert.deepEqual(p.clips.map((c) => c.text), [[SCENE].concat(LINES3.slice(0, 3)).join('\n'), [SCENE].concat(LINES3.slice(3)).join('\n')]);
+  /* v-video-full-dialogue — نصّ تشغيلة ١٩ نوفمبر: الحوار كلّه (٤٤ كلمة، سبعة أدوار) في فيديو واحد ٢٩ ثانية بلا سطر ناقص؛ كانت الخطّة
+     تُسقط آخر دورين. العنوانان ليسا كلامًا (لا يُعدّان) ويبقيان وصفًا أوّل كلّ جزء، والسؤال مع جوابه في جزء واحد */
   p = LONG3;
-  assert.deepEqual([p.words, p.dropped, p.seconds], [32, 0, 25]);
-  assert.deepEqual(p.clips.map((c) => [c.words, c.sec]), [[16, 11], [12, 9], [4, 5]]);
-  assert.deepEqual(p.clips.map((c) => c.text), [[SCENE].concat(LINES3.slice(0, 3)).join('\n'), [SCENE].concat(LINES3.slice(3, 5)).join('\n'), [SCENE].concat(LINES3.slice(5)).join('\n')]);
+  assert.deepEqual([p.turns, p.words, p.dropped, p.seconds], [7, 44, 0, 29]);
+  assert.deepEqual(p.clips.map((c) => [c.words, c.sec, c.fresh]), [[12, 9, undefined], [16, 10, 11], [16, 10, 11]]);
+  assert.deepEqual(p.clips.map((c) => c.text), [[0, 2], [2, 4], [4, 7]].map(([a, b]) => RUN19_HEAD.concat(RUN19_LINES.slice(a, b)).join('\n')));
+  assert.equal(p.last, 'كل عام والإمارات عز وفخر! 🇦🇪', 'آخر ما يُقال آخر سطر في حواره');
+  assert.deepEqual([].concat(...p.clips.map((c) => wordsOf(c.text.split('\n').slice(2).join('\n')))), wordsOf(RUN19_LINES.join('\n')), 'الكلمات نفسها بترتيبها');
   p.clips.forEach((c, i) => {
-    assert.ok(c.sec <= [15, 10, 5][i] && c.words <= VT.wordBudget(c.sec), 'جزء ' + (i + 1) + ' داخل حدّه');
-    assert.equal(VT.fitDialogue(c.text, c.sec).dropped, 0);
+    assert.ok(c.sec <= (i ? 10 : 15) && c.words <= VT.wordBudget(c.sec, EXT_LEAD(i)), 'جزء ' + (i + 1) + ' داخل حدّه');
+    assert.equal(VT.fitDialogue(c.text, c.sec, EXT_LEAD(i)).dropped, 0, 'الخادم لا يقصّ منه');
+    if (i) assert.equal(VT.fitDialogue(c.text, c.fresh).dropped, 0, 'ولا حين يُولَّد مقطعًا جديدًا بمدّته مقطعًا');
   });
-  assert.deepEqual([].concat(...p.clips.map((c) => wordsOf(c.text.replace(SCENE, '')))), wordsOf(LINES3.join('\n')), 'الكلمات نفسها بترتيبها');
+  assert.equal(VT.fitDialogue(p.clips[1].text, p.clips[1].sec).dropped, 1, 'بمدّة التمديد مقطعًا جديدًا كان الخادم يقصّ آخر سطر — لذلك fresh');
+  assert.deepEqual([VT.wordBudget(10), VT.wordBudget(10, VT.EXTEND_SAY_LEAD), VT.wordBudget(3, VT.EXTEND_SAY_LEAD), VT.EXTEND_SAY_LEAD], [15, 16, 4, 0.5]);
+  assert.equal(P.one.toString().includes('DIALOGUE_ONE'), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(vm.runInNewContext((/const DIALOGUE_ONE = [^\n]+/.exec(CLIENT) || [''])[0] + '\nDIALOGUE_ONE'))), { first: 15, step: 10, total: 30, lead: VT.EXTEND_SAY_LEAD }, 'حدود المحرّك وميزانيّة التمديد كالخادم');
   /* أطول من ٣٠ ثانية: يُقال ما يتّسع ويُنبَّه (dropped) — ولا يتجاوز الفيديو ٣٠ ثانية في أيّ توزيع */
   const long = [SCENE].concat(Array.from({ length: 14 }, (_, i) => (i % 2 ? 'الأم' : 'البنت') + ': هذي جملة رقم ' + (i + 1) + ' في الحوار الطويل جدًّا')).join('\n');
   p = planOne(long);
   assert.ok(p.dropped > 0 && p.clips.length >= 2 && p.seconds <= 30, JSON.stringify([p.dropped, p.seconds]));
   for (const n of [5, 6, 7, 9, 12]) {
     const q = planOne([SCENE].concat(Array.from({ length: n }, (_, i) => (i % 2 ? 'الأم' : 'البنت') + ': كلمة كلمة كلمة كلمة كلمة ' + i)).join('\n'));
-    assert.ok(q.seconds <= 30 && q.clips.every((c, i) => c.sec <= (i ? 10 : 15) && c.words <= VT.wordBudget(c.sec)), n + ' أدوار: ' + JSON.stringify(q.clips.map((c) => [c.words, c.sec])));
+    assert.ok(q.seconds <= 30 && q.clips.every((c, i) => c.sec <= (i ? 10 : 15) && c.words <= VT.wordBudget(c.sec, EXT_LEAD(i))), n + ' أدوار: ' + JSON.stringify(q.clips.map((c) => [c.words, c.sec])));
   }
+  /* لا سطر يسقط ما دام الحوار يتّسع له الفيديو: مقارنة بعدّ مستقلّ لكلّ تقسيم ممكن (≤ ٤ خطوات، ≤ ٣٠ث) — وأقلّ خطوات */
+  const secOf = (w, k) => { for (let s = k ? 3 : 6; s <= (k ? 10 : 15); s++) if (VT.wordBudget(s, EXT_LEAD(k)) >= w) return s; return 99; };
+  const fewest = (ws) => {
+    let min = 0;
+    const go = (at, k, secs) => {
+      if (at === ws.length) { if (!min || k < min) min = k; return; }
+      if (k === 4) return;
+      for (let to = at + 1, w = 0; to <= ws.length; to++) { w += ws[to - 1]; const t = secs + secOf(w, k); if (t > 30) break; go(to, k + 1, t); }
+    };
+    go(0, 0, 0);
+    return min;
+  };
+  let seed = 19, whole = 0, cut = 0;
+  const rnd = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+  for (let t = 0; t < 400; t++) {
+    const ws = Array.from({ length: 2 + rnd(9) }, () => 2 + rnd(11));
+    const d = [SCENE].concat(ws.map((w, i) => (i % 2 ? 'الأم' : 'البنت') + ': ' + Array.from({ length: w }, (_, j) => 'كلمة' + j).join(' '))).join('\n');
+    const q = planOne(d), min = fewest(ws);
+    if (min) { whole++; assert.deepEqual([q.dropped, q.clips.length], [0, min], JSON.stringify(ws)); }
+    else {
+      /* لا يتّسع كلّه: يُقال أطول ما يتّسع من أوّله — لا سطر يسقط فوق اللازم */
+      cut++;
+      let m = ws.length - 1; while (m > 1 && !fewest(ws.slice(0, m))) m--;
+      assert.deepEqual([q.dropped, q.clips.length], [ws.length - m, fewest(ws.slice(0, m))], JSON.stringify(ws));
+    }
+    assert.ok(q.seconds <= 30 && q.clips.length <= 4, JSON.stringify(ws));
+  }
+  assert.ok(whole > 100 && cut > 50, 'العيّنة تغطّي الحالتين: ' + whole + '/' + cut);
   assert.deepEqual([planOne('صقر يحلّق فوق الكثبان').clips.length, planOne('').need], [0, 0], 'بلا حوار لا خطّة');
   /* «سريع» بحساب المالك: مقاطع حتّى ١٥ ثانية (مقطعان بدل ثلاثة)، وغيره كما كان */
   assert.deepEqual(plan(D3, 0, [15]).clips.map((c) => [c.words, c.sec]), [[16, 11], [16, 11]]);
@@ -679,14 +731,15 @@ test('٢١. «سينمائي»: الجزء التالي يمدّه المحرّ�
   assert.deepEqual(f.net[0], ['price', '/api/video?action=veo-price', { clips: 3, engine: 'veo', promptText: 'dialogue', token: 'tok' }]);
   const c = f.creates();
   assert.equal(c.length, 3);
-  assert.deepEqual(c[0], { promptText: p.clips[0].text + LOOK, ratio: '1280:720', token: 'tok', quality: 'fast', style: 'realistic', durationSeconds: 11, confirmed: true, extendable: true });
-  assert.deepEqual(c[1], { promptText: p.clips[1].text, ratio: '1280:720', token: 'tok', quality: 'fast', style: 'realistic', durationSeconds: 9, confirmed: true, extendOp: 'omni/1' });
-  assert.deepEqual(c[2], { promptText: p.clips[2].text, ratio: '1280:720', token: 'tok', quality: 'fast', style: 'realistic', durationSeconds: 5, confirmed: true, extendOp: 'omni/2' });
-  for (const x of c) assert.equal(VT.fitDialogue(x.promptText, x.durationSeconds).dropped, 0, 'الخادم لا يقصّ من أيّ جزء');
+  assert.deepEqual(c[0], { promptText: p.clips[0].text + LOOK, ratio: '1280:720', token: 'tok', quality: 'fast', style: 'realistic', durationSeconds: 9, confirmed: true, extendable: true });
+  assert.deepEqual(c[1], { promptText: p.clips[1].text, ratio: '1280:720', token: 'tok', quality: 'fast', style: 'realistic', durationSeconds: 10, confirmed: true, extendOp: 'omni/1' });
+  assert.deepEqual(c[2], { promptText: p.clips[2].text, ratio: '1280:720', token: 'tok', quality: 'fast', style: 'realistic', durationSeconds: 10, confirmed: true, extendOp: 'omni/2' });
+  for (const x of c) assert.equal(VT.fitDialogue(x.promptText, x.durationSeconds, EXT_LEAD(x.extendOp ? 1 : 0)).dropped, 0, 'الخادم لا يقصّ من أيّ جزء');
+  assert.ok(c[2].promptText.endsWith(RUN19_LINES[6]), 'آخر سطر في حواره يصل المحرّك');
   assert.deepEqual(f.joined, [], 'بلا لصق');
   assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-3.mp4', 'آخر فيديو يحوي كلّ ما قبله');
   assert.equal(f.ctx.downloadEl.style.display, 'block'); assert.equal(f.partial.length, 0);
-  assert.ok(f.status.includes('one 1/3 ~25') && f.status.includes('one 3/3 ~25'), f.status.join(' | '));
+  assert.ok(f.status.includes('one 1/3 ~29') && f.status.includes('one 3/3 ~29'), f.status.join(' | '));
   assert.ok(!f.status.some((s) => /^clip /.test(s) || s.includes('دمج')), 'لا «مقاطع» ولا «دمج» في الحالة');
   assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء!');
   assert.equal(f.ctx.scenesDone, 3);
@@ -710,6 +763,9 @@ test('٢٢. تعذّر التمديد لا يضيّع شيئًا: رفضه أو 
   assert.equal(c.length, 4);
   assert.deepEqual([c[2].extendOp, c[2].imageBase64], ['omni/2', undefined]);
   assert.deepEqual([c[3].extendOp, c[3].imageBase64, c[3].keepPhoto, c[3].promptText, c[3].extendable], [undefined, 'FRAME<https://cdn/omni-2.mp4>', true, CONT + '\n' + p.clips[2].text + LOOK, undefined]);
+  /* v-video-full-dialogue: التمديد بمدّته (١٠ث)، والجزء نفسه مقطعًا جديدًا بثانية افتتاحه (١١ث) — فلا يقصّ الخادم آخر سطر فيه */
+  assert.deepEqual([c[2].durationSeconds, c[3].durationSeconds], [10, 11]);
+  assert.equal(VT.fitDialogue(c[3].promptText, c[3].durationSeconds).dropped, 0);
   assert.deepEqual(f.joined, [['blob:https://cdn/omni-2.mp4', 'blob:https://cdn/omni-3.mp4']]);
   assert.ok(f.status.includes('retry 3/3')); assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء!');
   /* التمديد متعذّر عندنا (unavailable): الجزء الثاني بلقطة مرجعيّة، والثالث يمدّ فيديو الثاني */
@@ -741,7 +797,7 @@ test('٢٢. تعذّر التمديد لا يضيّع شيئًا: رفضه أو 
 });
 
 test('٢٣. تأمين: لو أعاد المحرّك التكملة وحدها (مدّتها مدّة التكملة) تُلصق بما قبلها؛ والأطول منها = الفيديو كلّه كما هو', async () => {
-  const p = LONG3; // ١١ث ثمّ +٩ ثمّ +٥
+  const p = LONG3; // ٩ث ثمّ +١٠ ثمّ +١٠
   const dur = (m) => (b) => ({ w: 1280, h: 720, d: m[(/omni-(\d)/.exec(b.of) || [])[1]] });
   let f = flow({ dims: dur({ 1: 11, 2: 9, 3: 5 }) });
   await f.ctx.run(p, 'veo');
@@ -754,7 +810,7 @@ test('٢٣. تأمين: لو أعاد المحرّك التكملة وحدها (
   await f.ctx.run(p, 'veo');
   assert.deepEqual(f.joined, []); assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-3.mp4');
   /* الحدّ: التكملة + ٢٫٥ث — وعنده تكملة، وفوقه الفيديو كلّه */
-  f = flow({ dims: dur({ 1: 11, 2: 11.5, 3: 7.6 }) });
+  f = flow({ dims: dur({ 1: 11, 2: 12.5, 3: 12.6 }) });
   await f.ctx.run(p, 'veo');
   assert.deepEqual(f.joined, [['blob:https://cdn/omni-1.mp4', 'blob:https://cdn/omni-3.mp4']]);
   /* مدّة لا تُقرأ = الفيديو كلّه (توثيق المحرّك) */
@@ -779,7 +835,7 @@ test('٢٤. الاستئناف في «سينمائي»: إعادة الضغط ت
   assert.deepEqual(f.net[0], ['price', '/api/video?action=veo-price', { clips: 1, engine: 'veo', promptText: 'dialogue', token: 'tok', resume: true }]);
   let c = f.creates();
   assert.equal(c.length, 1);
-  assert.deepEqual([c[0].extendOp, c[0].promptText, c[0].imageBase64, c[0].durationSeconds], ['omni/2', p.clips[2].text, undefined, 5]);
+  assert.deepEqual([c[0].extendOp, c[0].promptText, c[0].imageBase64, c[0].durationSeconds], ['omni/2', p.clips[2].text, undefined, 10]);
   assert.deepEqual(f.joined, []); assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-3.mp4');
   assert.ok(f.status.includes('resume 2/3')); assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء!');
   assert.deepEqual(Object.keys(store), []);
@@ -806,7 +862,7 @@ async function createVeo(u, body) {
   return res;
 }
 
-test('٢٥. الخادم «سينمائي»: التوليدة حتّى ١٥ ثانية على إصدار المحرّك الذي يصنعها، والتمديد بمعرّف التفاعل (٣–١٠ث، بلا صور، مهمّة extend)، وما لا يُمدّ يُرفض بلا خصم', async () => {
+test('٢٥. الخادم «سينمائي»: التوليدة حتّى ١٥ ثانية على إصدار المحرّك الذي يصنعها، والتمديد بمعرّف التفاعل وحده (٣–١٠ث، بلا صور ولا مهمّة فيديو — المحرّك يرفضهما معًا)، وما لا يُمدّ يُرفض بلا خصم', async () => {
   omniCalls = [];
   const realLog = console.log; const logs = []; console.log = (m) => logs.push(String(m));
   try {
@@ -829,21 +885,39 @@ test('٢٥. الخادم «سينمائي»: التوليدة حتّى ١٥ ثا
     assert.deepEqual([omniCalls[2].model, omniCalls[2].response_format.duration], ['gemini-omni-1.2-flash', '9s']);
     r = await createVeo('omran', { promptText: 'صقر يحلّق فوق الكثبان', durationSeconds: 20 });
     assert.deepEqual([omniCalls[3].model, omniCalls[3].response_format.duration], ['gemini-omni-1.1-flash', '8s'], 'فوق ١٥ ليست مدّة');
-    /* التمديد: معرّف تفاعل السابق + مهمّة extend، بلا صور ولا نسبة، وأمره سطر مستقلّ لا يُعدّ كلامًا */
+    /* التمديد: معرّف تفاعل السابق وحده — بلا مهمّة فيديو (v-video-full-dialogue: المحرّك ردّ ٤٠٠ «previous_interaction_id is not allowed
+       when video task is set» في تشغيلة المالك، والمحاكاة أعلاه تردّه مثله)، بلا صور ولا نسبة ولا الدقّة الافتراضيّة، وأمره سطر مستقلّ
+       لا يُعدّ كلامًا. الجزء: السؤال وجوابه (١٦ كلمة في ١٠ث) — ميزانيّة التمديد تتّسع له فلا يُقصّ سطره الأخير */
     const part = LONG3.clips[1];
+    assert.deepEqual([part.words, part.sec], [16, 10]);
+    const seen = logs.length;
     r = await createVeo('omran', { promptText: part.text, durationSeconds: part.sec, extendOp: op1, imageBase64: 'RlJBTUU=', imageMime: 'image/jpeg', keepPhoto: true });
     assert.equal(r.code, 200, JSON.stringify(r.body));
     q = omniCalls[4];
-    assert.deepEqual([q.model, q.previous_interaction_id, q.generation_config], ['gemini-omni-1.2-flash', 'v1_1', { video_config: { task: 'extend' } }]);
-    assert.deepEqual(q.response_format, { type: 'video', resolution: '720p', delivery: 'uri', duration: '9s' });
+    assert.deepEqual([q.model, q.previous_interaction_id, 'generation_config' in q], ['gemini-omni-1.2-flash', 'v1_1', false]);
+    assert.deepEqual(q.response_format, { type: 'video', delivery: 'uri', duration: '10s' });
+    assert.deepEqual([q.store, q.background, q.stream], [true, false, false]);
     assert.deepEqual(q.input.map((x) => x.type), ['text'], 'بلا صور');
     const lead = q.input[0].text.split('\n')[0];
     assert.match(lead, /^Extend this video — /);
     assert.ok(!/[:：«»"“”]/.test(lead) && VT.dialogueTurns(lead).length === 0, 'سطر مستقلّ لا يُعدّ كلامًا');
     for (const l of part.text.split('\n')) assert.ok(q.input[0].text.includes(l), 'لا يُقصّ: ' + l);
-    assert.match(q.input[0].text, /in this 9-second clip/);
+    assert.match(q.input[0].text, /in this 10-second clip/);
+    assert.match(q.input[0].text, /\(about 16 words at most\)/, 'قاعدة الإيقاع بميزانيّة التمديد لا تطلب «جملًا أقلّ»');
+    assert.ok(!logs.slice(seen).some((m) => /dialogue fitted to the clip/.test(m)), 'لم يُقصّ شيء: ' + logs.slice(seen).join(' | '));
     assert.equal(JSON.parse(kv.get(veo.omniOpKey(r.body.op))).iid, 'v1_5', 'الممدود يُمدّ بعده');
-    assert.ok(logs.some((m) => /cinematic ready on omni \(extension \+9s\) in /.test(m)));
+    assert.ok(logs.some((m) => /cinematic ready on omni \(extension \+10s\) in /.test(m)));
+    /* الجودة العالية وحدها تُرسل دقّتها مع التمديد (الافتراضيّة تُورَّث) */
+    r = await createVeo('omran', { promptText: part.text, durationSeconds: part.sec, extendOp: op1, quality: 'high' });
+    assert.deepEqual(omniCalls[5].response_format, { type: 'video', resolution: '1080p', delivery: 'uri', duration: '10s' });
+    /* الجزء نفسه مقطعًا جديدًا (رُفض تمديده): بمدّته مقطعًا (١١ث) لا يُقصّ، وبمدّة التمديد كان يُقصّ آخر سطر فيه */
+    r = await createVeo('omran', { promptText: part.text, durationSeconds: part.fresh });
+    assert.deepEqual([omniCalls[6].model, omniCalls[6].response_format.duration], ['gemini-omni-1.2-flash', '11s']);
+    for (const l of part.text.split('\n')) assert.ok(omniCalls[6].input[0].text.includes(l), 'لا يُقصّ: ' + l);
+    assert.ok(!logs.slice(seen).some((m) => /dialogue fitted to the clip/.test(m)));
+    r = await createVeo('omran', { promptText: part.text, durationSeconds: part.sec });
+    assert.ok(!omniCalls[7].input[0].text.includes(RUN19_LINES[3]) && logs.slice(seen).some((m) => /dialogue fitted to the clip: 1\/2 lines/.test(m)), 'شبكة الأمان كما كانت للمقطع الجديد');
+    omniCalls.splice(5, 3);
     r = await createVeo('omran', { promptText: part.text, durationSeconds: 15, extendOp: op1 });
     assert.equal(omniCalls[5].response_format.duration, '8s', 'التمديد ٣–١٠ ثوانٍ');
     /* ما لا يُمدّ: رقم مجهول، أو سجلّ بلا معرّف (أنتجه الاحتياط أو قبل هذا الإصدار) — رفض بلا مزوّد ولا خصم ولا قفل */
@@ -867,6 +941,10 @@ test('٢٥. الخادم «سينمائي»: التوليدة حتّى ١٥ ثا
     assert.deepEqual([r.code, r.body.error], [400, 'video_rejected']);
     assert.equal(kv.get('points:cust3'), '1000'); assert.deepEqual(lockLog, ['lock:cust3', 'release:cust3']);
     assert.ok(errs.some((m) => /omni upstream 400 \(image=extension, long 9s\): Input blocked/.test(m)), errs.join(' | '));
+    /* المحاكاة تحمل قاعدة المحرّك: نداء بمعرّف سابق ومهمّة فيديو معًا = ٤٠٠ — فلو عادت المهمّة إلى طلب التمديد احمرّ ما فوق */
+    const probe = await fetch('https://g/v1beta/interactions', { method: 'POST', body: JSON.stringify({ previous_interaction_id: 'v1_1', generation_config: { video_config: { task: 'extend' } } }) });
+    assert.deepEqual([probe.status, (await probe.json()).error.message], [400, 'previous_interaction_id is not allowed when video task is set.']);
+    omniCalls.pop();
     assert.deepEqual([veo.OMNI_ONE_MAX, veo.OMNI_EXTEND_MAX], [15, 10]);
     /* الاحتياط لا يمدّ فيديو: رصيد المزوّد «نافد» والاحتياط مفعّل — التمديد لا يذهب إليه، والتوليدة العاديّة تذهب كما كانت */
     process.env.FAL_KEY = 'fal-test';
