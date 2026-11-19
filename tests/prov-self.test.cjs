@@ -83,7 +83,7 @@ test('client: for the owner with a tool provider, no media path runs before the 
     // قبل المصنّف: لا نداء media-intent
     const gate = s.slice(i, s.indexOf('window.__mediaGate = __mediaLane;', i));
     assert.match(gate, /if\(__ownerProvTurn\) __mediaLane = 'none';\n\s+else if\(text && !__mediaHasImg && __MEDIA_WORD_RE\.test\(text\)\)\{/);
-    assert.ok(s.includes("const __blockAutoImage = !!(__ownerProvTurn /* v-prov-self */ || (__pastedLike && !__srcImg && !__explicitImgReq));"), f + ': كلّ فروع التعديل/الرسم/الإعلان التلقائيّة');
+    assert.ok(s.includes("const __blockAutoImage = !!(__ownerProvTurn /* v-prov-self */ || __adVideoTurn /* v-chat-ad-video */ || (__pastedLike && !__srcImg && !__explicitImgReq));"), f + ': كلّ فروع التعديل/الرسم/الإعلان التلقائيّة (ومعها إعلان الفيديو: v-chat-ad-video)');
     assert.ok(s.includes('const __talkCharIntent = !__ownerProvTurn /* v-prov-self */ &&'), f + ': الشخصيّة المتكلّمة');
     assert.ok(s.includes("if(window.__agentModeOn && !imageAttachments.length && (localStorage.getItem('aiapp_provider') || 'openai') === 'claude'){"), f + ': الوكيل مع Claude وحده');
   }

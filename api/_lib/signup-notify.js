@@ -83,6 +83,7 @@ async function send(info) {
 
 /** يُنادى مرّة بعد كتابة حساب جديد ناجحة. لا يرمي أبدًا، ولا ينتظر الإرسال إن وُجد waitUntil (وإلّا ١٫٢ ث حدًّا). */
 function notifyNewAccount(info) {
+  try { require('./owner-live.js').signupLater(info); } catch (e) { logError('signup-notify:live', e); } // v-owner-live: إشعار فوريّ للهاتف، مستقلّ عن الإيميل وشروطه
   try {
     const to = String(process.env.OWNER_NOTIFY_EMAIL || '').trim();
     if (!to || !process.env.RESEND_API_KEY) return Promise.resolve('off');

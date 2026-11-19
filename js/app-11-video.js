@@ -675,6 +675,84 @@
   }
 
   window.__omranConcatScenes = function(urls){ return concatScenes(urls); }; /* v-video-trends: دمج مشاهد القصة */
+
+  /* v-chat-ad-video (المالك ١٦ نوفمبر: «أحطّ حذاء ويطلع تصميم ٥ أو ١٠ ثواني… مع الصوت، وضيف الكتابة والاسم»): يُكمل فيديو إعلان المحادثة.
+     الاسم والسطر يُرسمان على لوحة بمقاس الفيديو نفسه (حروف حادّة بأيّ لغة — CLAUDE.md: لا كتابة داخل الصورة المولَّدة) ويُركَّبان بـffmpeg
+     من ٠٫٤ ث، والتعليق بصوت مها (/api/tts كتعليق صانع الفيديو، بجنسه وسرعته) يُدمج بطول الفيديو. كلّ خطوة مستقلّة: فشل الصوت يُبقي
+     الكتابة، وفشل الكتابة يُبقي الصوت؛ لا شيء منهما = null فيبقى الأصليّ. يعيد { url, blob, text, voice }. */
+  function adClip(s, n){ return String(s == null ? '' : s).replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n); }
+  function videoDims(blob){
+    return new Promise((resolve) => {
+      const v = document.createElement('video'), u = URL.createObjectURL(blob);
+      const done = (d) => { try{ URL.revokeObjectURL(u); }catch(e){ __swallow(e, 'video:ad-dims-revoke'); } resolve(d); };
+      v.preload = 'metadata'; v.muted = true;
+      v.onloadedmetadata = () => done({ w: v.videoWidth || 1280, h: v.videoHeight || 720 });
+      v.onerror = () => done({ w: 1280, h: 720 });
+      setTimeout(() => done({ w: v.videoWidth || 1280, h: v.videoHeight || 720 }), 8000);
+      v.src = u;
+    });
+  }
+  /** لوحة شفّافة بمقاس الفيديو: تدرّج داكن في الأسفل، الاسم عريض أبيض، والسطر ذهبيّ تحته؛ يصغر الخطّ حتّى يتّسع، وسطران للاسم الطويل. */
+  async function makeAdOverlayPng(title, line, w, h){
+    try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){ __swallow(e, 'video:ad-fonts'); }
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    const base = Math.min(w, h), maxW = w * 0.88, rtl = /[؀-ۿ]/.test(title + line);
+    x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+    const fit = (txt, size, min, weight) => { let s = size; x.font = weight + ' ' + s + 'px ' + CANVAS_FONT; while(s > min && x.measureText(txt).width > maxW){ s -= 2; x.font = weight + ' ' + s + 'px ' + CANVAS_FONT; } return s; };
+    const wrap = (txt) => { const ws = txt.split(' '); if(ws.length < 2 || x.measureText(txt).width <= maxW) return [txt]; let best = 1, bw = Infinity; for(let i = 1; i < ws.length; i++){ const m = Math.max(x.measureText(ws.slice(0, i).join(' ')).width, x.measureText(ws.slice(i).join(' ')).width); if(m < bw){ bw = m; best = i; } } return [ws.slice(0, best).join(' '), ws.slice(best).join(' ')]; };
+    let tSize = 0, tLines = [], lSize = 0;
+    if(title){ tSize = fit(title, Math.round(base * 0.095), Math.round(base * 0.06), '800'); tLines = wrap(title); if(tLines.length > 1) tSize = Math.max(Math.round(base * 0.06), Math.min(...tLines.map((l) => fit(l, tSize, Math.round(base * 0.05), '800')))); }
+    if(line){ lSize = fit(line, Math.round(base * 0.055), Math.round(base * 0.035), '700'); }
+    const gap = Math.round(base * 0.025), pad = Math.round(h * 0.06);
+    const blockH = tLines.length * tSize * 1.15 + (line ? lSize * 1.2 + (title ? gap : 0) : 0);
+    const top = h - pad - blockH;
+    const g = x.createLinearGradient(0, Math.max(0, top - h * 0.12), 0, h);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.45, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0.8)');
+    x.fillStyle = g; x.fillRect(0, Math.max(0, top - h * 0.12), w, h - Math.max(0, top - h * 0.12));
+    x.shadowColor = 'rgba(0,0,0,0.6)'; x.shadowBlur = Math.round(base * 0.012); x.shadowOffsetY = Math.round(base * 0.004);
+    let y = top;
+    if(title){ x.font = '800 ' + tSize + 'px ' + CANVAS_FONT; x.fillStyle = '#ffffff'; for(const l of tLines){ y += tSize * 1.15; x.fillText(l, w / 2, y - tSize * 0.15); } }
+    if(line){ y += (title ? gap : 0) + lSize * 1.2; x.font = '700 ' + lSize + 'px ' + CANVAS_FONT; x.fillStyle = '#FFD36B'; x.fillText(line, w / 2, y - lSize * 0.2); }
+    return await new Promise((resolve) => c.toBlob((b) => resolve(b), 'image/png'));
+  }
+  async function overlayAdText(videoBlob, pngBlob){
+    const ffmpeg = await getFFmpeg();
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
+    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); }catch(e){ __swallow(e, 'video:ad-clean'); } };
+    try{
+      await ffmpeg.writeFile('adin.mp4', await fetchFile(videoBlob));
+      await ffmpeg.writeFile('adov.png', await fetchFile(pngBlob));
+      if(await ffmpeg.exec(['-i', 'adin.mp4', '-i', 'adov.png', '-filter_complex', "[0:v][1:v]overlay=0:0:enable='gte(t,0.4)'", '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'copy', 'adout.mp4'], 180000) !== 0) throw new Error('ad overlay failed');
+      const data = await ffmpeg.readFile('adout.mp4');
+      return new Blob([data.buffer], { type: 'video/mp4' });
+    } finally {
+      for(const f of ['adin.mp4', 'adov.png', 'adout.mp4']) await rm(f);
+    }
+  }
+  window.__omranAdFinish = async function(videoUrl, o){
+    o = o || {};
+    const title = adClip(o.title, 60), line = adClip(o.text, 90), voice = cleanNarrationText(adClip(o.voice, 260));
+    if(!title && !line && !voice) return null;
+    let blob = await proxyBlob(videoUrl), text = false, voiced = false;
+    if(title || line){
+      try{
+        const d = await videoDims(blob);
+        blob = await overlayAdText(blob, await makeAdOverlayPng(title, line, d.w, d.h));
+        text = true;
+      }catch(e){ __swallow(e, 'video:ad-text'); }
+    }
+    if(voice){
+      try{
+        const r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: voice, voice: 'maha', lang: narrLang(voice), gender: getNarrationGender(), speed: getNarrationSpeed(), token: ttsAuthToken(), guestId: ttsGuestId() }) });
+        if(r.ok){ blob = await muxNarrationAny(blob, await r.blob(), false); voiced = true; }
+      }catch(e){ __swallow(e, 'video:ad-voice'); }
+    }
+    if(!text && !voiced) return null;
+    return { url: URL.createObjectURL(blob), blob, text, voice: voiced };
+  };
+  window.__omranAdOverlayPng = makeAdOverlayPng; /* للتحقّق البصريّ (scripts/ui-shot.mjs --eval) */
   async function concatScenes(urls){
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');

@@ -3965,6 +3965,41 @@ function omranVideoWriteAsk(text, hasVideo){
   const t = String(text || '');
   return !!t && __VW_PUT_RE.test(t) && !__VW_ABOUT_RE.test(t) && !__VW_MAKE_RE.test(t) && (__VW_ON_RE.test(t) || (!!hasVideo && __VW_PLACE_RE.test(t)));
 }
+/* v-chat-ad-video (المالك ١٦ نوفمبر: «أحطّ أيّ شي، يعني حذاء، ويطلع تصميم ٥ أو ١٠ ثواني… سوّها مع الصوت وضيف الكتابة والاسم»):
+   طلب «دعاية/إعلان» فيديو يذهب للمحادثة نفسها (أداة generate_video بحقول الإعلان: الاسم والسطر والتعليق الصوتيّ)، لا لمسارات الواجهة
+   الثابتة (فيديو ٥ ثوانٍ بأمر المستخدم الخام، أو صورة إعلان، أو تعديل الصورة المرفقة). فيديو = كلمة فيديو/مقطع/ريلز أو مدّة بالثواني،
+   أو منتج مرفق بلا كلمة صورة/بوستر. إعلان البيع والإيجار (سيّارة، شقّة) يبقى تصميم صورة كما كان (v695)، والسؤال والكتابة كلام. */
+const __AD_WORD_RE = /(?:^|[^ء-ي])(?:[وب]?(?:ال)?(?:دعاي[ةه]|دعايات|إعلان|اعلان|أعلان|ترويج|ترويجي[ةه]?))(?![ء-ي])|\b(?:ads?|advert\w*|commercials?|promo)\b/i;
+const __AD_VID_RE = /فيديو|ڤيديو|مقطع|كليب|ريلز|\bvideo\b|\bclip\b|\breels?\b|(?:\d+|[٠-٩]+|خمس|عشر)\s*(?:ثواني|ثوان|ثانية|ثانيه|ثانيتين|sec\b|secs\b|seconds?\b)/i;
+const __AD_STILL_RE = /صور[ةه]|بوستر|منشور|بنر|بانر|ملصق|poster|banner|\bimage\b|\bpost\b|للبيع|للإيجار|للايجار|مطلوب|عقار|شق[ةه]|فيلا|سيار[ةه]/i;
+function omranAdVideoAsk(text, hasImage){
+  const t = String(text || '').slice(0, 600).trim();
+  if(!t || !__AD_WORD_RE.test(t)) return false;
+  if(/^(?:كيف|ليش|وش|شو|ايش|أيش|هل|متى|why|how|what)(?=$|[\s،,])/i.test(t) || /[؟?]\s*$/.test(t)) return false; // سؤال لا طلب
+  if(/(?:^|[\s،,])(?:اكتب|أكتب|اكتبلي|اكتبي|ترجم|ترجملي|لخص|لخّص)(?=$|[\s،,:])/.test(t)) return false; // نصّ إعلان مكتوب
+  if(__AD_VID_RE.test(t)) return true;
+  return !!hasImage && !__AD_STILL_RE.test(t);
+}
+/* v-chat-ad-video: الفيديو يظهر فور جاهزيّته، والكتابة والصوت تُضاف عليه في المتصفّح (app-11 __omranAdFinish) ثمّ تحلّ النسخة الكاملة
+   محلّه. الرابط الأصليّ يبقى rawUrl (رابط blob لا يعيش بعد إعادة التحميل — العرض يرجع إليه). تعذّر الإضافة = سطر صادق في الردّ نفسه. */
+function omranAdAttach(att, job, chat){
+  if(!att || !job || typeof job.then !== 'function') return;
+  att.adPending = true;
+  job.then(function(r){
+    if(r && r.url){ att.rawUrl = att.url; att.url = r.url; att.name = 'ad-video.mp4'; }
+    else att.adFail = true;
+  }, function(e){ __swallow(e, 'ui:ad-finish'); att.adFail = true; }).then(function(){
+    delete att.adPending;
+    try{
+      if(att.adFail){
+        const m = (chat && Array.isArray(chat.messages)) ? chat.messages.find(x => x && Array.isArray(x.attachments) && x.attachments.indexOf(att) !== -1) : null;
+        if(m) m.content = String(m.content || '') + '\n\n⚠️ ' + omranAttachT('axAdFinishFail', 'ما قدرت أضيف الكتابة والصوت على الفيديو — هذا الفيديو بدونها.', 'Could not add the text and voice to the video — here it is without them.');
+      }
+      if(typeof getCurrent === 'function' && getCurrent() === chat) renderMessages(true);
+      saveState();
+    }catch(e){ __swallow(e, 'ui:ad-finish-render'); }
+  });
+}
 /* مراجعة النقض: يُعترض فقط حين يوجد فيديو فعلًا — مرفق، أو في آخر ٨ رسائل — ولا صورة مرفقة (لقطة الفيديو = مسار الكتابة على الصورة،
    وهو ما يقترحه الجواب)، ولا مشروع كود مفتوح ولا وضع cc/agent (فيديو في صفحة يُعدَّل بالكود). «مقطع» قصيدة بلا فيديو = كلام عاديّ. */
 function omranRecentVideo(c){
@@ -4181,7 +4216,7 @@ async function __sendPromptCore(){
     }catch(e){ return []; }
   })();
   const __ownerUiShot = omranOwnerUiShotTurn(text, __gateAtts.filter(a => a && a.isImage).slice(-1)[0]);
-  if(__ownerUiShot) __mediaLane = 'none';
+  if(__ownerUiShot) __mediaLane = 'none'; const __adVideoTurn = !__ownerUiShot && omranAdVideoAsk(text, __gateAtts.some(a => a && a.isImage)); if(__adVideoTurn) __mediaLane = 'none'; /* v-chat-ad-video: إعلان الفيديو للمحادثة وأداتها — لا مسار وسائط في الواجهة */
   window.__ownerUiShotTurn = __ownerUiShot; /* يُرسل مع طلب المحادثة (app-18) */
   window.__mediaGate = __mediaLane; /* للتشخيص */
   // 🎬 v525: اكتشاف طلب إنشاء فيديو → فتح صانع الفيديو مباشرة
@@ -4870,7 +4905,7 @@ function __friendlyErr(e){
       /[📋⬜☐🔹▪•✔️]/.test(text) ||
       /^\s*(?:[-*]|\d+[.)])\s+\S.*\n\s*(?:[-*]|\d+[.)])\s+\S/m.test(text)
     ));
-    const __blockAutoImage = !!(__ownerProvTurn /* v-prov-self */ || (__pastedLike && !__srcImg && !__explicitImgReq));
+    const __blockAutoImage = !!(__ownerProvTurn /* v-prov-self */ || __adVideoTurn /* v-chat-ad-video */ || (__pastedLike && !__srcImg && !__explicitImgReq));
     /* v-support-q (لقطة عمران ١ سبتمبر: «عندي مشكلة في الطباعة تصور خارج
        الصورة... كيف اسوي الإعدادات» راحت لتعديل صورة قديمة): سؤال مساعدة
        يحوي كلمات صور عرضًا (تصور/الصورة/تعديل) — نمنع توجيهه للصور حين لا
@@ -7611,7 +7646,7 @@ DESIGN RULES (non-negotiable):
       let __chatVidAtt;
       try{
         const __cv = (window.__chatVideoByChat && window.__chatVideoByChat[cur.id]) || window.__chatVideoResult; /* v-audit-chatcli: فيديو محادثة هذا الطلب (app-17) — العامّ لما بلا محادثة */
-        if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; if(window.__chatVideoByChat && window.__chatVideoByChat[cur.id] === __cv) delete window.__chatVideoByChat[cur.id]; else window.__chatVideoResult = null; }
+        if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; if(__cv.adJob) omranAdAttach(__chatVidAtt[0], __cv.adJob, cur); /* v-chat-ad-video */ if(window.__chatVideoByChat && window.__chatVideoByChat[cur.id] === __cv) delete window.__chatVideoByChat[cur.id]; else window.__chatVideoResult = null; }
       }catch(e){ __swallow(e, 'ui:chat-video-attach'); }
       cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, model: __ctModel || undefined /* v-owner-model-badge */, askAllReply: false, attachments: __chatVidAtt,
         tier: __ctTier || undefined, /* v-tiers */

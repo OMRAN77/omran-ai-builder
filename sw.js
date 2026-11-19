@@ -89,10 +89,11 @@ self.addEventListener('push', (event) => {
       body: data.body || 'تذكير',
       icon: './icons/icon-192-v2.png?icon=black-20261022',
       badge: './icons/icon-192-v2.png?icon=black-20261022',
-      tag: 'maha-reminder-' + Date.now(),
+      tag: data.tag || ('maha-reminder-' + Date.now()), // v-owner-live: وسم ثابت لكلّ مستخدم = رسالته الجديدة تحلّ محلّ القديمة
+      renotify: !!data.tag,
       silent: false,
       vibrate: [300, 150, 300, 150, 300],
-      requireInteraction: true,
+      requireInteraction: data.sticky !== false,
       data: { url: data.url || '' },
     })
   );
