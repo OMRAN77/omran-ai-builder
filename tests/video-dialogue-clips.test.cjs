@@ -190,6 +190,8 @@ function flow(opts) {
         net.push(['create', u, body]);
         if (o.failAt === made) return { ok: false, status: 402, json: async () => ({ error: 'points_insufficient' }) };
         /* v-video-dialogue-reject: رفض المحرّك للطلب نفسه — ٤٠٠ video_rejected كما يردّه الخادم (_videoFail) */
+        /* v-video-real-person: المحرّك يرفض كلّ طلب في نصّه اسم شخص حقيقيّ — كما ردّ في تشغيلتَي المالك ١٩ نوفمبر (reason من الخادم) */
+        if (o.realName && body.promptText.includes(o.realName)) return { ok: false, status: 400, json: async () => ({ error: 'video_rejected', reason: 'real_person', message_ar: 'محرّك الفيديو لا يقبل أسماء الأشخاص الحقيقيّين', retryable: false }) };
         if (o.reject && o.reject(body, okd + 1)) return { ok: false, status: 400, json: async () => ({ error: 'video_rejected', message_ar: 'تعذّر بدء الفيديو بهذا الطلب', retryable: false }) };
         if (o.unavail && o.unavail(body, okd + 1)) return { ok: false, status: 503, json: async () => ({ error: 'unavailable', retryable: false }) }; // v-video-one-shot
         okd++;
@@ -214,7 +216,8 @@ function flow(opts) {
     clipDims: async (b) => (o.dims ? o.dims(b) : { w: 1280, h: 720, d: 60 }),
     localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } },
     showPartialScenes: (urls, n, why) => partial.push([urls.slice(), n, why]),
-    friendlyError: (e) => 'ERR:' + (e.code || e.message),
+    friendlyError: (e) => 'ERR:' + (e.code || e.message) + (e.reason ? '/' + e.reason : ''),
+    dialogRefusedText: (say) => 'refused<' + say.split('\n').join(' / ') + '>', // v-video-real-person
     wantCanvasWrap: () => false, wrapWithCanvas: async () => {},
     dialogCapOk: () => o.cap !== false, dialogClipsText: (i, n, s) => 'clip ' + i + '/' + n + ' ~' + s,
     dlName: (b) => b + '.mp4', URL: { createObjectURL: (b) => 'blob:' + (b.of || 'joined') },
@@ -231,7 +234,7 @@ function flow(opts) {
 const CONT = 'Continue the same scene from the attached first frame — the same people, voices, clothes and place; the conversation simply carries on.';
 /* v-video-dialogue-merge: «واقعي» بلا صورة بطل يُقال في كلّ مقطع (سطر مستقلّ آخر الوصف)، والسلسلة المحفوظة بدوالّها الحقيقيّة */
 const LOOK = '\nPhotorealistic live-action footage with real-looking people, not animation.';
-const CHAIN_SRC = (/const DLG_CHAIN_KEY = [^\n]+/.exec(CLIENT) || [''])[0] + '\n' + ['function dlgChainSig(parts){', 'function dlgChainLoad(sig, more){', 'function dlgChainSave(sig, urls, ops, base){'].map((n) => block(CLIENT, n)).join('\n');
+const CHAIN_SRC = (/const DLG_CHAIN_KEY = [^\n]+/.exec(CLIENT) || [''])[0] + '\n' + ['function dlgChainSig(parts){', 'function dlgChainLoad(sig, more){', 'function dlgChainSave(sig, urls, ops, base, more){'].map((n) => block(CLIENT, n)).join('\n');
 
 test('٥. التسلسل: السعر مرّة بالمجموع قبل الأوّل، ثمّ كلّ مقطع بجمله ومدّته، والتالي من آخر لقطة في سابقه بأمر «أكمل»، ثمّ اللصق والعرض', async () => {
   const p = plan(DIALOGUE);
@@ -1026,4 +1029,163 @@ test('٢٧. نصّا «فيديو واحد متّصل» بالـ١٤ لغة بع
   assert.ok(B.includes('function planDialogueOne(desc) {') && B.includes('payload.extendOp = r.ext') && B.includes('function dialogOneText(i, n, secs){'), 'الحزمة مبنيّة');
   const srv = read('api/_lib/minimax-create.js');
   assert.ok(srv.includes('const durMax = (durSec > 10 && (await checkOwnerBypass(token)).allowed) ? 15 : 10;'));
+});
+
+/* ── v-video-real-person (المالك ١٩ نوفمبر بعد #1352: «شوف التوقيت يعني ماعطاني الكلام الي كتبته بالضبط» — فيديو ٩ ثوانٍ ورسالة «غيّر الوصف
+   أو الصورة»). سجلّ الإنتاج: طلب التمديد قُبلت صيغته، والمحرّك رفض الجزء الثاني بكلّ طريق (تمديد، لقطتان، بلا صورة) «Input blocked… real
+   people's names or likenesses» — في كلامه «الشيخ زايد بن سلطان آل نهيان». قاعدة المحرّك لا تُلتفّ؛ الذي عندنا: يُقال السبب والكلام المرفوض،
+   وبعد تعديل السطر يُكمَل الفيديو من الجزء المكتمل بلا توليد ولا خصم ثانٍ له. ── */
+const REAL_NAME = 'الشيخ زايد بن سلطان آل نهيان';
+const RUN19_FIXED = RUN19.replace(REAL_NAME + '،', 'الوالد المؤسّس،');
+const REAL_MSG = "Input blocked: Sorry, we can't create videos with real people's names or likenesses. Please remove the reference and try again. If you think this was an error, [send feedback](https://aistudio.google.com/docs/troubleshooting).";
+
+test('٢٨. الخادم: رفض المحرّك لاسم شخص حقيقيّ يُعلَّم بسببه (reason) ونصّه، بلا خصم؛ وأيّ رفض آخر كما كان', async () => {
+  const { startFail, BAD } = require(rp('api/_lib/_videoFail.js'));
+  const real = startFail(400, REAL_MSG);
+  assert.deepEqual([real.code, real.body.error, real.body.reason, real.body.retryable], [400, 'video_rejected', 'real_person', false]);
+  assert.ok(/أسماء الأشخاص الحقيقيّين/.test(real.body.message_ar) && real.body.message_ar !== BAD);
+  assert.ok(!/gemini|omni|google|veo|minimax/i.test(real.body.message_ar), 'بلا اسم مزوّد');
+  for (const other of ['Your prompt was flagged by our content moderation system.', 'previous_interaction_id is not allowed when video task is set.', 'Invalid argument: duration']) {
+    assert.deepEqual(startFail(400, other).body, { error: 'video_rejected', message_ar: BAD, retryable: false }, other);
+  }
+  assert.equal(startFail(429, REAL_MSG).body.error, 'video_busy', 'الزحام أوّلًا كما كان');
+  assert.equal(startFail(402, REAL_MSG).body.error, 'unavailable', 'وعطبنا أوّلًا كما كان');
+  /* عبر «سينمائي»: الردّ يحمل السبب، والنقاط تُردّ والقفل يُفكّ */
+  account('cust5', 'free', 1000); lockLog.length = 0; omniBlocked = true;
+  const realErr = console.error; console.error = () => {};
+  let r;
+  try { r = await createVeo('cust5', { promptText: LONG3.clips[1].text, durationSeconds: 10 }); } finally { omniBlocked = false; console.error = realErr; }
+  assert.deepEqual([r.code, r.body.error, r.body.reason], [400, 'video_rejected', 'real_person']);
+  assert.equal(kv.get('points:cust5'), '1000'); assert.deepEqual(lockLog, ['lock:cust5', 'release:cust5']);
+});
+
+test('٢٩. تشغيلة المالك: المحرّك يرفض الجزء الذي فيه الاسم بكلّ طريق — الفيديو بما وصل إليه، والسبب نفسه والكلام المرفوض كما كتبه (لا «غيّر الوصف أو الصورة»)', async () => {
+  const p = LONG3;
+  assert.equal(p.clips[1].say, RUN19_LINES.slice(2, 4).join('\n'), 'كلام الجزء وحده بلا وصف المشهد');
+  const store = {};
+  const f = flow({ store, realName: REAL_NAME });
+  await f.ctx.run(p, 'veo');
+  const c = f.creates();
+  assert.deepEqual(c.map((x) => [x.extendOp || '', String(x.imageBase64 || '').slice(0, 5), x.durationSeconds]), [['', '', 9], ['omni/1', '', 10], ['', 'FRAME', 11], ['', 'FIRST', 11], ['', '', 11]], 'الأوّل، ثمّ التمديد واللقطتان وبلا صورة — كلّها مرفوضة');
+  assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-1.mp4');
+  assert.equal(f.status[f.status.length - 1], 'ERR:video_rejected/real_person refused<' + RUN19_LINES[2] + ' / ' + RUN19_LINES[3] + '> onepart 1/3');
+  assert.deepEqual([f.partial.length, f.joined.length], [0, 0]);
+  /* رفض بلا هذا السبب: الحالة كما كانت بلا «الكلام المرفوض» */
+  const g = flow({ reject: (b, no) => no === 2 });
+  await g.ctx.run(p, 'veo');
+  assert.equal(g.status[g.status.length - 1], 'ERR:video_rejected onepart 1/3');
+  /* نصّ السبب في رسالة الخطأ الحقيقيّة: قبل النصّ العامّ، وبلغة الواجهة، وللفيديو المفرد أيضًا (reason يُحمل من ردّ الإنشاء) */
+  for (const [lang, word] of [['ar', 'أسماء الأشخاص الحقيقيّين'], ['en', "real people's names"]]) {
+    const ctx = { window: { t: (k) => 'T:' + k }, vmkT: (k, ar, en) => (lang === 'ar' ? ar : en), bT: (a) => a, scenesDone: 0 };
+    vm.runInNewContext(block(CLIENT, 'function friendlyError(err){') + '\nthis.fe = friendlyError;', ctx);
+    assert.ok(ctx.fe({ code: 'video_rejected', reason: 'real_person' }).startsWith('⚠️ ') && ctx.fe({ code: 'video_rejected', reason: 'real_person' }).includes(word), lang);
+    assert.equal(ctx.fe({ code: 'video_rejected' }), '⚠️ T:vidRejected');
+    assert.equal(ctx.fe({ code: 'video_busy', reason: 'real_person' }), '⚠️ T:vidBusy');
+  }
+  assert.equal(CLIENT.split('reason: crData.reason').length - 1, 2, 'الفيديو المفرد («سينمائي» و«سريع») يحمل السبب');
+  assert.ok(CLIENT.includes("{ code: c0.error, reason: c0.reason, retryAfter: c0.retryAfter || 0 }"), 'وأجزاء الحوار');
+  /* سطر «الكلام المرفوض»: في سطر واحد وبحدّ */
+  const d = { vmkT: (k, ar) => ar };
+  vm.runInNewContext(['function dialogNoteText(key, ar, en, vals){', 'function dialogRefusedText(say){'].map((n) => block(CLIENT, n)).join('\n') + '\nthis.r = dialogRefusedText;', d);
+  assert.equal(d.r(p.clips[1].say), 'الكلام المرفوض: «' + RUN19_LINES[2] + ' / ' + RUN19_LINES[3] + '»');
+  assert.ok(d.r('كلمة '.repeat(200)).length < 260 && d.r('كلمة '.repeat(200)).endsWith('…»'));
+});
+
+test('٣٠. بعد تعديل السطر المرفوض: الجزء المكتمل لا يُولَّد ولا يُدفع ثانيةً — سعر الباقي وحده، والمحرّك يمدّ الفيديو نفسه إلى آخر الحوار', async () => {
+  const p = LONG3, q = planOne(RUN19_FIXED);
+  assert.deepEqual([q.dropped, q.clips.length, q.clips[0].text === p.clips[0].text, q.clips[1].text === p.clips[1].text], [0, 3, true, false], 'الجزء الأوّل لم يتغيّر، والثاني تغيّر كلامه');
+  const store = {};
+  let f = flow({ store, realName: REAL_NAME });
+  await f.ctx.run(p, 'veo');
+  const saved = JSON.parse(Object.values(store)[0]);
+  assert.deepEqual([saved.urls, saved.ops, saved.base, saved.keys.length, typeof saved.ctx], [['https://cdn/omni-1.mp4'], ['omni/1'], [0], 1, 'string']);
+  f = flow({ store, idBase: 1, realName: REAL_NAME });
+  await f.ctx.run(q, 'veo');
+  assert.deepEqual(f.net[0], ['price', '/api/video?action=veo-price', { clips: 2, engine: 'veo', promptText: 'dialogue', token: 'tok', resume: true }], 'سعر الجزأين الباقيين وحدهما');
+  let c = f.creates();
+  assert.deepEqual(c.map((x) => [x.extendOp, x.promptText, x.durationSeconds]), [['omni/1', q.clips[1].text, q.clips[1].sec], ['omni/2', q.clips[2].text, q.clips[2].sec]], 'تمديد الفيديو المحفوظ — بلا توليد الجزء الأوّل');
+  assert.ok(f.status.includes('resume 1/3')); assert.equal(f.status[f.status.length - 1], '✅ تم الانتهاء!');
+  assert.deepEqual(f.joined, [], 'فيديو واحد بلا لصق'); assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-3.mp4');
+  assert.deepEqual(Object.keys(store), []);
+  /* حدود الاستعارة: إعدادات أخرى (الوضع، النسبة، الأسلوب، الجودة، صورة البطل) = من أوّله */
+  const stuck = async () => { const s = {}; const x = flow({ store: s, realName: REAL_NAME }); await x.ctx.run(p, 'veo'); return s; };
+  for (const [name, o, mode] of [['الوضع', {}, 'minimax'], ['صورة البطل', { hero: 'HERO' }, 'veo']]) {
+    f = flow(Object.assign({ store: await stuck(), idBase: 1 }, o));
+    await f.ctx.run(mode === 'veo' ? q : plan(RUN19_FIXED, 0, [15]), mode);
+    assert.deepEqual([f.net[0][2].resume, f.creates()[0].extendOp], [undefined, undefined], name);
+  }
+  for (const [name, key, val] of [['النسبة', 'ratio', '720:1280'], ['الأسلوب', 'style', 'anime'], ['الجودة', 'wantQuality', true]]) {
+    f = flow({ store: await stuck(), idBase: 1 }); f.ctx[key] = val;
+    await f.ctx.run(q, 'veo');
+    assert.deepEqual([f.net[0][2].clips, f.net[0][2].resume], [3, undefined], name);
+  }
+  /* الجزء الأوّل نفسه تغيّر كلامه = من أوّله؛ وسجلّ قديم بلا keys لا يُستعار منه ببصمة أخرى (كما كان)؛ وبعد ٢٠ ساعة يسقط */
+  f = flow({ store: await stuck(), idBase: 1 });
+  await f.ctx.run(planOne(RUN19_FIXED.replace('أمي، لماذا', 'ماما، لماذا')), 'veo');
+  assert.deepEqual([f.net[0][2].clips, f.net[0][2].resume, f.creates().length], [3, undefined, 3]);
+  for (const edit of [(j) => { delete j.keys; }, (j) => { delete j.ctx; }, (j) => { j.at = Date.now() - 21 * 3600 * 1000; }, (j) => { j.keys = ['x']; }]) {
+    const s = await stuck(); const k = Object.keys(s)[0], j = JSON.parse(s[k]); edit(j); s[k] = JSON.stringify(j);
+    f = flow({ store: s, idBase: 1 });
+    await f.ctx.run(q, 'veo');
+    assert.deepEqual([f.net[0][2].clips, f.net[0][2].resume], [3, undefined], edit.toString());
+  }
+  /* جزءان مكتملان والتعديل في الثالث: يُستعار الاثنان (الثاني يحوي الأوّل) ويُمدّ الثاني */
+  const s2 = {};
+  f = flow({ store: s2, failAt: 3 }); await f.ctx.run(p, 'veo');
+  assert.equal(JSON.parse(Object.values(s2)[0]).keys.length, 2);
+  const q3 = planOne(RUN19.replace('عز وفخر!', 'عز ومجد!'));
+  assert.deepEqual([q3.clips[0].text === p.clips[0].text, q3.clips[1].text === p.clips[1].text, q3.clips[2].text === p.clips[2].text], [true, true, false]);
+  f = flow({ store: s2, idBase: 2 }); await f.ctx.run(q3, 'veo');
+  c = f.creates();
+  assert.deepEqual([f.net[0][2].clips, f.net[0][2].resume, c.length, c[0].extendOp, c[0].promptText], [1, true, 1, 'omni/2', q3.clips[2].text]);
+  assert.deepEqual(f.joined, []); assert.equal(f.ctx.resultEl.src, 'blob:https://cdn/omni-3.mp4');
+  /* جزءان مكتملان والتعديل في الثاني: يُستعار الأوّل وحده (لا الثاني بكلامه القديم)، ويُمدّ الأوّل */
+  const s4 = {};
+  f = flow({ store: s4, failAt: 3 }); await f.ctx.run(p, 'veo');
+  const q2 = planOne(RUN19.replace('ومن الذي أسس', 'ومن الذي وحّد'));
+  assert.deepEqual([q2.clips[0].text === p.clips[0].text, q2.clips[1].text === p.clips[1].text], [true, false]);
+  f = flow({ store: s4, idBase: 2 }); await f.ctx.run(q2, 'veo');
+  c = f.creates();
+  assert.deepEqual([f.net[0][2].clips, f.net[0][2].resume, c.length, c[0].extendOp, c[0].promptText, c[1].extendOp], [2, true, 2, 'omni/1', q2.clips[1].text, 'omni/3']);
+  assert.ok(f.status.includes('resume 1/3'));
+  /* تكملة منفردة (التأمين) تُحفظ ببصمات أجزائها كذلك — فتُستعار بعد التعديل */
+  const s5 = {};
+  f = flow({ store: s5, failAt: 3, dims: (b) => ({ w: 1280, h: 720, d: /omni-2/.test(b.of) ? 9 : 30 }) }); await f.ctx.run(p, 'veo');
+  const j5 = JSON.parse(Object.values(s5)[0]);
+  assert.deepEqual([j5.base, j5.keys.length, typeof j5.ctx], [[0, 1], 2, 'string']);
+  f = flow({ store: s5, idBase: 2 }); await f.ctx.run(q3, 'veo');
+  assert.deepEqual([f.net[0][2].clips, f.net[0][2].resume, f.creates()[0].extendOp], [1, true, 'omni/2']);
+  /* البصمة الكاملة كما كانت: الحوار نفسه يُستأنف من سجلّ قديم بلا keys */
+  const s3 = {};
+  f = flow({ store: s3, failAt: 3 }); await f.ctx.run(p, 'veo');
+  const k3 = Object.keys(s3)[0], j3 = JSON.parse(s3[k3]); delete j3.keys; delete j3.ctx; s3[k3] = JSON.stringify(j3);
+  f = flow({ store: s3, idBase: 2 }); await f.ctx.run(p, 'veo');
+  assert.deepEqual([f.net[0][2].clips, f.net[0][2].resume, f.creates()[0].extendOp], [1, true, 'omni/2']);
+});
+
+test('٣١. نصّا «المحرّك لا يقبل أسماء الأشخاص الحقيقيّين» و«الكلام المرفوض» بالـ١٤ لغة بعناصرهما وبلا اسم مزوّد، ووسم اللغات مرفوع، والحزمة مبنيّة', () => {
+  const ctx = { console, localStorage: { getItem: () => null }, document: { getElementById: () => null, querySelector: () => null, documentElement: {} }, $: () => null };
+  ctx.window = ctx; vm.createContext(ctx);
+  const src = read('js/app-03-i18n-data.js');
+  const a = src.indexOf('const I18N = {'), b = src.indexOf('};window.I18N = I18N;') + 2;
+  vm.runInContext('var I18N=' + src.slice(a + 'const I18N = '.length, b) + ';', ctx);
+  const add = src.slice(src.indexOf('/* v-video-real-person (805)')).split('\n').slice(1, 3).join('\n');
+  assert.match(add, /^Object\.assign\(I18N\.ar, \{"vidRealPerson":/);
+  vm.runInContext(add, ctx);
+  const LANGS = ['fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil'];
+  for (const L of LANGS) vm.runInContext(read('i18n/' + L + '.js'), ctx);
+  for (const L of ['ar', 'en'].concat(LANGS)) {
+    const d = ctx.I18N[L] || {};
+    assert.ok(d.vidRealPerson && d.vidRealPerson.length > 30 && !d.vidRealPerson.includes('{') && !d.vidRealPerson.includes('\n'), L + ' vidRealPerson');
+    assert.ok(d.vmkDialogRefused && d.vmkDialogRefused.split('{lines}').length === 2 && !d.vmkDialogRefused.includes('\n'), L + ' vmkDialogRefused');
+    for (const key of ['vidRealPerson', 'vmkDialogRefused']) {
+      if (L !== 'ar' && L !== 'ur') assert.ok(!/[؀-ۿ]/.test(d[key]), L + ' ' + key + ': عربيّة');
+      assert.ok(!/gemini|omni\b|google|veo\b|minimax|hailuo|fal\b/i.test(d[key]), L + ' ' + key + ': اسم مزوّد');
+    }
+  }
+  assert.equal(ctx.I18N.ar.vidRealPerson, require(rp('api/_lib/_videoFail.js')).startFail(400, REAL_MSG).body.message_ar, 'نصّ الخادم العربيّ هو نصّ الواجهة');
+  const st = read('js/app-04-i18n-state.js');
+  assert.ok(Number((/\.js\?v=(\d+)'/.exec(st) || [])[1]) >= 805 && st.includes('v-video-real-person (805)'), 'وسم اللغات مرفوع وسببه في التعليق');
+  const B = read('js/app.bundle.js');
+  assert.ok(B.includes('function dialogRefusedText(say){') && B.includes('function dlgChainSave(sig, urls, ops, base, more){') && B.includes("err.reason === 'real_person'") && B.includes('"vidRealPerson"'), 'الحزمة مبنيّة');
 });

@@ -1403,8 +1403,9 @@
       });
       const text = (before ? before + (g[0].line ? '\n' : ' ') : '') + said + (after ? (g[g.length - 1].line ? '\n' : ' ') + after : '');
       /* fresh = مدّة الجزء نفسه مقطعًا جديدًا (ثانية افتتاح) — حين يُرفض التمديد فيُولَّد بلقطة مرجعيّة، فلا يقصّ الخادم آخر سطر فيه */
-      return (one && at) ? { text, words: w, sec: secFor(w, 3, secCap(at), at), fresh: secFor(w, 6, one.first), last: g[g.length - 1].said }
-        : { text, words: w, sec: secFor(w, 6, secCap(at)), last: g[g.length - 1].said };
+      /* say = كلام الجزء وحده (بلا وصف المشهد) — يُعرض إن رفضه المحرّك (v-video-real-person) */
+      return (one && at) ? { text, say: said, words: w, sec: secFor(w, 3, secCap(at), at), fresh: secFor(w, 6, one.first), last: g[g.length - 1].said }
+        : { text, say: said, words: w, sec: secFor(w, 6, secCap(at)), last: g[g.length - 1].said };
     });
     res.seconds = res.clips.reduce((x, c) => x + c.sec, 0);
     return res;
@@ -1434,6 +1435,11 @@
   function dialogPartText(k, n){ return dialogNoteText('vmkDialogPart', 'اكتمل {k} من {n} مقاطع في فيديو واحد — والباقي لم يُخصم. اضغط زرّ الإنشاء مرّة ثانية ليكمل الباقي وحده.', 'Finished {k} of {n} clips as one video — the rest was not charged. Press the create button again to finish only the rest.', { k, n }); }
   /* v-video-one-shot: «سينمائي» — فيديو واحد يمدّه المحرّك: سطر التقدّم وسطر ما وصل إليه عند التوقّف (بلا «مقاطع») */
   function dialogOneText(i, n, secs){ return dialogNoteText('vmkDialogOne', '🎬 فيديو واحد متّصل بالحوار كاملًا (~{s} ثانية) — يُبنى الجزء {i} من {n}...', '🎬 One continuous video with the full dialogue (~{s} seconds) — building part {i} of {n}...', { i, n, s: secs }); }
+  /* v-video-real-person: الكلام الذي رفضه المحرّك (اسم شخص حقيقيّ) كما كتبه المستخدم — في سطر واحد وبحدّ */
+  function dialogRefusedText(say){
+    const one = String(say || '').split('\n').map((l) => l.trim()).filter(Boolean).join(' / ');
+    return dialogNoteText('vmkDialogRefused', 'الكلام المرفوض: {lines}', 'Refused lines: {lines}', { lines: '«' + (one.length > 220 ? one.slice(0, 220) + '…' : one) + '»' });
+  }
   function dialogOnePartText(k, n){ return dialogNoteText('vmkDialogOnePart', 'الفيديو وصل إلى الجزء {k} من {n} — والباقي لم يُخصم. اضغط زرّ الإنشاء مرّة ثانية ليكمل الباقي وحده.', 'The video reached part {k} of {n} — the rest was not charged. Press the create button again to finish only the rest.', { k, n }); }
   /* v-video-dialogue-merge: استئناف سلسلة توقّفت، وتعذّر الدمج على الجهاز */
   function dialogResumeText(k, n){ return dialogNoteText('vmkDialogResume', '✅ {k} من {n} مقاطع جاهزة من المحاولة السابقة — بلا خصم ثانٍ. يكمل الباقي...', '✅ {k} of {n} clips are ready from the previous attempt — not charged again. Finishing the rest...', { k, n }); }
@@ -1452,15 +1458,25 @@
   function dlgChainLoad(sig, more){
     try{
       const j = JSON.parse(localStorage.getItem(DLG_CHAIN_KEY) || 'null');
+      const live = !!j && Array.isArray(j.urls) && (Date.now() - Number(j.at)) < DLG_CHAIN_TTL;
+      /* v-video-real-person: الحوار عُدّل بعد أن رفض المحرّك جزءًا منه (اسم شخص حقيقيّ) — البصمة كلّها تغيّرت، لكنّ الأجزاء الأولى التي لم
+         يتغيّر كلامها ولا مدّتها (keys) بالإعدادات نفسها (ctx) هي هي: تُحمَّل ولا تُدفع ثانيةً، والفيديو يُكمَل من بعدها. سجلّ قديم بلا keys
+         = البصمة الكاملة وحدها كما كان */
+      let k = 0;
+      if(live && j.sig === sig) k = j.urls.length;
+      else if(live && more && more.ctx && j.ctx === more.ctx && Array.isArray(j.keys) && Array.isArray(more.keys)){
+        while(k < j.urls.length && k < j.keys.length && j.keys[k] === more.keys[k]) k++;
+      }
       /* v-video-one-shot: more = معرّف كلّ خطوة عند المحرّك (يُمدّ منه) وأوّل خطوة يحويها فيديوها */
-      if(more){ more.ops = (j && j.sig === sig && Array.isArray(j.ops)) ? j.ops : []; more.base = (j && j.sig === sig && Array.isArray(j.base)) ? j.base : []; }
-      if(j && j.sig === sig && Array.isArray(j.urls) && (Date.now() - Number(j.at)) < DLG_CHAIN_TTL) return j.urls.filter((u) => typeof u === 'string' && u);
+      if(more){ more.ops = (k && Array.isArray(j.ops)) ? j.ops : []; more.base = (k && Array.isArray(j.base)) ? j.base : []; }
+      if(k) return j.urls.slice(0, k).filter((u) => typeof u === 'string' && u);
     }catch(e){ __swallow(e, 'vmk:chain-load'); }
     return [];
   }
-  function dlgChainSave(sig, urls, ops, base){
+  function dlgChainSave(sig, urls, ops, base, more){
     try{
-      if(urls.length) localStorage.setItem(DLG_CHAIN_KEY, JSON.stringify(Object.assign({ sig, at: Date.now(), urls }, ops ? { ops, base } : {})));
+      if(urls.length) localStorage.setItem(DLG_CHAIN_KEY, JSON.stringify(Object.assign({ sig, at: Date.now(), urls }, ops ? { ops, base } : {},
+        (more && more.ctx && Array.isArray(more.keys)) ? { ctx: more.ctx, keys: more.keys.slice(0, urls.length) } : {})));
       else localStorage.removeItem(DLG_CHAIN_KEY);
     }catch(e){ __swallow(e, 'vmk:chain-save'); }
   }
@@ -1740,6 +1756,8 @@
       /* v-credit-out (أمر المالك ٢١ أكتوبر): رصيد مزوّد الفيديو نفد أو عطب عندنا — النصّ القائم بالـ14 لغة، والنقاط رُدّت في الخادم */
       if(code === 'unavailable' && typeof window.t === 'function') return '⚠️ ' + window.t('svcPaused');
       if(code === 'video_subscribers' && typeof window.t === 'function') return '⚠️ ' + window.t('plansWhyVideoSubs'); // v-video-subs: الفيديو للمشتركين (والباقات تُفتح من app-33)
+      /* v-video-real-person: المحرّك رفض الطلب لاسم شخص حقيقيّ أو ملامحه — يُقال السبب نفسه لا «غيّر الوصف أو الصورة» */
+      if(code === 'video_rejected' && err && err.reason === 'real_person') return '⚠️ ' + vmkT('vidRealPerson', 'محرّك الفيديو لا يقبل أسماء الأشخاص الحقيقيّين ولا ملامحهم — غيّر الاسم في الوصف (أو الصورة) وأعد المحاولة.', "The video engine does not accept real people's names or likenesses — change the name in the description (or the photo) and try again.");
       if((code === 'video_busy' || code === 'video_rejected') && typeof window.t === 'function') return '⚠️ ' + window.t(code === 'video_busy' ? 'vidBusy' : 'vidRejected'); // v-vid-codes
       if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
       /* v-ai-video-speed: ⏳ «مشغول» في بطاقة الانتظار — رسالة الخطأ به كانت تُبقي بطاقة «يتولّد» وعدّادها فوق المشهد بلا نهاية → 🕒 */
@@ -1823,7 +1841,7 @@
       const cr = await fetch('/api/video?action=' + (mm ? 'minimax-create' : 'veo-create'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const c0 = await cr.json().catch(() => ({}));
       const id = mm ? c0.task_id : c0.op;
-      if(!cr.ok || c0.error || !id) throw Object.assign(new Error(c0.error || 'create failed'), { code: c0.error, retryAfter: c0.retryAfter || 0 });
+      if(!cr.ok || c0.error || !id) throw Object.assign(new Error(c0.error || 'create failed'), { code: c0.error, reason: c0.reason, retryAfter: c0.retryAfter || 0 });
       if(meta) meta.id = id; /* v-video-one-shot: رقم العمليّة — منه يُمدّ الفيديو */
       return await new Promise((resolve, reject) => {
         const guard = makePollGuard(reject, 8000);
@@ -1858,7 +1876,10 @@
          مرجعيّة. base[i] = أوّل خطوة يحويها فيديو الخطوة i (التمديد يحوي ما قبله)؛ رفض التمديد أو تعذّره = المراجع القديمة بترتيبها
          (لقطة ثمّ لصق) فلا يضيع المدفوع. «سريع» لا تمديد عنده: مقاطعه كما كانت. */
       const ext = mode === 'veo';
-      const sig = dlgChainSig([mode, ratio, style, wantQuality ? 'hq' : 'fast', filmHeroBase64 ? 'hero' + filmHeroBase64.length : ''].concat(plan.clips.map((x) => x.sec + '|' + x.text)));
+      const ctxParts = [mode, ratio, style, wantQuality ? 'hq' : 'fast', filmHeroBase64 ? 'hero' + filmHeroBase64.length : ''];
+      const sig = dlgChainSig(ctxParts.concat(plan.clips.map((x) => x.sec + '|' + x.text)));
+      /* v-video-real-person: بصمة الإعدادات وبصمة كلّ جزء — ليُكمَل الفيديو بعد تعديل سطر رفضه المحرّك من حيث وقف */
+      const more = { ctx: dlgChainSig(ctxParts), keys: plan.clips.map((x) => dlgChainSig([x.sec + '|' + x.text])) };
       const urls = [], local = [], blobs = [], ops = [], base = [];
       let last = null, prevBlob = null, noRef = 0;
       const segs = () => { const idx = []; for(let k = urls.length - 1; k >= 0; k = base[k] - 1) idx.unshift(k); return idx; };
@@ -1872,7 +1893,6 @@
         downloadEl.style.display = 'block';
       };
       /* مقاطع اكتملت في محاولة سابقة للحوار نفسه: تُحمَّل ولا تُولَّد (ولا تُدفع) ثانيةً */
-      const more = {};
       for(const u of dlgChainLoad(sig, more).slice(0, n)){
         let b = null;
         try{ b = await proxyBlob(u); }catch(e){ __swallow(e, 'vmk:chain-fetch'); }
@@ -1932,13 +1952,13 @@
           }
           urls.push(url); scenesDone++;
           ops.push(String(meta.id || '')); base.push((got && got.ext) ? base[i - 1] : i);
-          dlgChainSave(sig, urls, ops, base); /* v-video-dialogue-merge: المكتمل محفوظ من لحظته — توقّف لاحق لا يُدفع له ثانيةً */
+          dlgChainSave(sig, urls, ops, base, more); /* v-video-dialogue-merge: المكتمل محفوظ من لحظته — توقّف لاحق لا يُدفع له ثانيةً */
           let blob = null;
           try{ blob = await proxyBlob(url); }catch(e){ __swallow(e, 'vmk:dialog-clip-dl'); }
           if(got && got.ext && blob){
             /* التمديد يعيد الفيديو كلّه (ما قبله + التكملة) فمدّته أطول من التكملة؛ بمدّة التكملة وحدها = يُلصق بما قبله كمقطع */
             const dm = await clipDims(blob);
-            if(dm && dm.d > 0 && dm.d <= clip.sec + 2.5){ base[i] = i; dlgChainSave(sig, urls, ops, base); }
+            if(dm && dm.d > 0 && dm.d <= clip.sec + 2.5){ base[i] = i; dlgChainSave(sig, urls, ops, base, more); }
           }
           local.push(blob ? URL.createObjectURL(blob) : url); blobs.push(blob);
           prevBlob = (blob && i < n - 1) ? blob : null;
@@ -1947,7 +1967,9 @@
       }catch(e){
         if(!urls.length) throw e;
         /* ما اكتمل يُسلَّم فيديو واحدًا ملصوقًا لا مشاهد متفرّقة، مع السبب و«اكتمل k من n — والباقي لم يُخصم»، ويبقى محفوظًا ليُكمَل */
-        const why = friendlyError(e);
+        /* v-video-real-person: المحرّك رفض الجزء لاسم شخص حقيقيّ — يُقال السبب والكلام المرفوض نفسه ليُعدَّل، ثمّ يُكمَل الفيديو من حيث وقف */
+        const stuck = plan.clips[urls.length];
+        const why = friendlyError(e) + ((e && e.reason === 'real_person' && stuck && stuck.say) ? ' ' + dialogRefusedText(stuck.say) : '');
         const part = (local.length > 1 || (ext && blobs[0])) ? await whole() : null;
         if(!part){ showPartialScenes(urls, n, why); return; }
         show(part);
@@ -2174,7 +2196,7 @@
           : fetch('/api/video?action=minimax-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }));
         throwIfDeclined(cr);
         const crData = await cr.json();
-        if(!cr.ok || crData.error || !crData.task_id) throw Object.assign(new Error(crData.error || 'create failed'), { code: crData.error });
+        if(!cr.ok || crData.error || !crData.task_id) throw Object.assign(new Error(crData.error || 'create failed'), { code: crData.error, reason: crData.reason });
         const videoUrl = await new Promise((resolve, reject) => {
           const guard = makePollGuard(reject, 8000);
           const iv = setInterval(async () => {
@@ -2286,7 +2308,7 @@
           : fetch('/api/video?action=veo-create', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(veoPayload) }));
         throwIfDeclined(cr);
         const crData = await cr.json();
-        if(!cr.ok || crData.error || !crData.op) throw Object.assign(new Error(crData.error || 'veo create failed'), { code: crData.error, retryAfter: crData.retryAfter || 0 });
+        if(!cr.ok || crData.error || !crData.op) throw Object.assign(new Error(crData.error || 'veo create failed'), { code: crData.error, retryAfter: crData.retryAfter || 0 }, { reason: crData.reason }); /* v-video-real-person: سبب الرفض */
         const videoUrl = await new Promise((resolve, reject) => {
           const guard = makePollGuard(reject, 8000);
           const iv = setInterval(async () => {
