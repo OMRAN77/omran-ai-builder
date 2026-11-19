@@ -65,8 +65,9 @@ test('٣. المدّة تصل كلّ محرّك من متغيّر واحد، و�
   const gen = V.slice(g0, V.indexOf('/* v-audit-video (cli-video-4)', g0));
   assert.doesNotMatch(gen, /durationEl\.value\s*=/, 'لا كتابة فوق القائمة داخل الإنشاء');
   assert.doesNotMatch(gen, /durationEl\.value/, 'القراءة من durVal وحده');
-  assert.match(gen, /durationSeconds: Math\.max\(durSecs, dlg\.need\) \|\| undefined/, 'الاقتصاديّ (v-video-dialogue-clips: ولا تقلّ عن حاجة كلام الحوار)');
-  assert.match(gen, /durationSeconds: \(creationMode === 'veo' && Math\.max\(durSecs, dlg\.need\)\) \|\| undefined/, '«سينمائي» (والممثّل على قدّ كلامه)');
+  /* v-video-say-natural (المالك: «التوقيت على حسب الكلام مش محدد»): حوار مكتوب أسطرًا = حاجة كلامه لا المدّة المختارة (الأطول تمطّ النطق) */
+  assert.match(gen, /durationSeconds: \(dlg\.script \? dlg\.need : Math\.max\(durSecs, dlg\.need\)\) \|\| undefined/, 'الاقتصاديّ (v-video-dialogue-clips: ولا تقلّ عن حاجة كلام الحوار)');
+  assert.match(gen, /durationSeconds: \(creationMode === 'veo' && \(dlg\.script \? dlg\.need : Math\.max\(durSecs, dlg\.need\)\)\) \|\| undefined/, '«سينمائي» (والممثّل على قدّ كلامه)');
   assert.match(V, /style: styleEl\.value, durationSeconds: 8 \}/, 'مشهد فيلم «سينمائي»');
   /* الخوادم: Runway ٢–١٠ كما هي (كانت ٥/١٠)، والاقتصاديّ ٤–١٥ (مختبَر في minimax-video ١٠)، و«سينمائي» ٣–١٠ (cinema-omni ٢) */
   assert.match(read('api/_lib/video-create.js'), /finalDuration = Math\.min\(10, Math\.max\(2, finalDuration\)\);/);
