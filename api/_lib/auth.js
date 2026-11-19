@@ -181,32 +181,124 @@ function verifyPassword(password, salt, hash) {
    القديم يعيد الرصيد كاملًا بعد صرفه (٩٨٠ ← صرف ٨٢٥ ← رجوع ← ٩٨٠، أُثبت بهذا الكود)، والاسم الجديد يبدأ بفيديوهات باقة
    وحصص يوم جديدة، ورصيد اشتراك الوسائط يختفي عنه. الآن كلّ عدّاد يتبع الحساب ولا يبقى منه شيء تحت الاسم القديم،
    وعدّاد يتيم تحت الاسم الجديد (من صاحب سابق) يُمحى بدل أن يُبعث. */
+const COUNTER_MEDIA_KINDS = ['image', 'video', 'maha', 'mix']; // رصيد اشتراك الوسائط — mix: «صور وفيديو» (v-media-merge، MEDIA_KINDS)
+const renameKey = (u) => encodeURIComponent(String(u).trim().toLowerCase());
+// فيديوهات الباقة للفترة الحاليّة (_planVideos.js). v-lock-subs (srv-money-4): وفترات planNext (أدنى مدفوعة تسري بعد الأعلى بعدّاد فترتها)
+const planVideoAts = (user) => [...new Set([user.planUpdatedAt].concat(Array.isArray(user.planNext) ? user.planNext.map((x) => x && x.at) : [])
+  .map((v) => Math.floor(Number(v) || 0)))].filter((at) => at > 0);
+
+/* v-r3 (r3-4): قبل كتابة السجلّ الجديد والشاهد (والقفلان ممسوكان، ولا كاتب يصل الاسم الجديد بعد: الردّ والمنح يتبعان الشاهد ولم يُكتب) — عدّادات
+   الاسم الجديد تُصفَّر: اليتيم من صاحب سابق لا يُبعث (كما كان النقل بالكتابة فوقه)، والنقاط '0' لا غائبة، فردٌّ يصل الاسم الجديد بعد الشاهد لا
+   يبذر عدّاده من مرآة السجلّ (ensureBalance) ثمّ يُضاف إليه العدّاد القديم مرّة ثانية. وعدّاد القديم يُبذر من سجلّه إن غاب (حساب لم يلمس محفظته)
+   فلا تضيع نقاط المرآة. عطلٌ هنا يرمي قبل أيّ كتابة: لا تغيير. */
+async function prepareCounterMove(oldKey, newKey, user) {
+  const { kvSetRaw, kvDel } = require('./kv.js');
+  const n = renameKey;
+  if (n(oldKey) === n(newKey)) return;
+  await require('./points.js').ensureBalance(oldKey);
+  await kvSetRaw('points:' + n(newKey), '0');
+  for (const kind of COUNTER_MEDIA_KINDS) await kvDel('media:' + kind + ':' + n(newKey), { strict: true });
+  for (const at of planVideoAts(user)) await kvDel('planvid:' + n(newKey) + ':' + at, { strict: true });
+}
+
+/* v-r3 (r3-rv6): التحضير يكتب نقاط الاسم الجديد '0' قبل سجلّه — فشلُ التحضير أو كتابة السجلّ الجديد (التغيير يردّ 500 ولا شيء انتقل) كان يترك
+   عدّادًا يتيمًا '0' تحت اسمٍ لم يُسجَّل، فمن يسجّله بعدُ يقرأ صفرًا بدل هديّة ترحيبه (readPoints يقدّم العدّاد الحيّ على السجلّ). يُمحى الصفر إن
+   لم يصل السجلّ الجديد يقينًا (قراءة صارمة بلا سجلّ)؛ وصلَ وضاع ردّه، أو الاسم شاهدٌ سابق ⇒ يبقى الصفر (يحمي من بذر المرآة). لا يرمي. */
+async function undoCounterPrep(newKey) {
+  try {
+    const { kvGetRaw, kvDel } = require('./kv.js');
+    const k = 'points:' + renameKey(newKey);
+    if ((await getUserOnce(newKey, { strict: true })) !== null) return;
+    if (String(await kvGetRaw(k, { strict: true })) === '0') await kvDel(k, { strict: true });
+  } catch (e) { logError('auth:rename-undo', e, { to: String(newKey).slice(0, 40) }); }
+}
+
+/* v-r3 (r3-rv7): شاهد الاسم القديم وصل وضاع ردّه — كان التغيير يردّ 500 قبل نقل العدّادات، والحساب صار تحت الاسم الجديد بنقاط '0' (التحضير r3-4)
+   ورصيدُ وسائطه تحت الاسم الميّت، وإعادة العميل برمزه القديم لا تنقل شيئًا (٤٢٩): ٩٩٠ نقطة ⇒ ٠، وعلى 36e1841b كانت تعود من المرآة. يُقرأ الاسم
+   القديم صارمًا: الشاهد وصل ⇒ يكمل التغيير والنقل كأنّ الردّ وصل؛ لم يصل أو تعذّرت القراءة ⇒ يُرمى الخطأ الأصليّ كما كان. لا يرمي. */
+async function tombLanded(oldKey, newKey) {
+  try {
+    const t = await getUserOnce(oldKey, { strict: true });
+    return !!(t && t.deleted && t.movedTo === newKey);
+  } catch (e) { logError('auth:rename-tomb', e, { from: String(oldKey).slice(0, 40) }); return false; }
+}
+
 async function moveLiveCounters(oldKey, newKey, user) {
-  const { kvGetRaw, kvSetRaw, kvDel } = require('./kv.js');
-  const n = (u) => encodeURIComponent(String(u).trim().toLowerCase());
+  const { kvGetRaw, kvSetRaw, kvDel, kvExpire, kvPipeline } = require('./kv.js');
+  const n = renameKey;
   if (n(oldKey) === n(newKey)) return; // النقل إلى المفتاح نفسه = نسخ ثمّ حذف — يمحو الرصيد
-  const move = async (from, to, ttlSec) => {
-    const v = await kvGetRaw(from);
-    if (v !== null && v !== undefined && String(v) !== '') await kvSetRaw(to, v, ttlSec);
-    else await kvDel(to);
-    await kvDel(from);
+  /* v-r3 (r3-4 · r3-5): النقل كان كتابةً فوق الجديد (GET القديم ثمّ SET الجديد) — ردٌّ يتبع الشاهد إلى الاسم الجديد (points.js liveName) أو منحٌ
+     يقفل الجديد بعد الشاهد ويصل قبل النقل كان يُمحى بالكتابة فوقه (٥٠٠ ← ٣٨٠، و١٧٠ ← ٧٠). الآن جمعٌ: INCRBY على الجديد بقيمة القديم
+     (الجديد مصفَّر قبل الشاهد في prepareCounterMove، فما فيه الآن وصل بعده)، ثمّ حذف القديم. والإعادة لا تجمع مرّتين: علامة لهذا التغيير
+     وهذا العدّاد تُكتب مع INCRBY في طلب واحد (pipeline، كـrefundPointsOnly)، فردٌّ ضاع بعد التنفيذ تجد إعادته العلامة فلا تجمع ثانيةً.
+     هويّة التغيير: وقته في renameLog (آخر مدخل يكتبه changeUsername). */
+  const log = Array.isArray(user.renameLog) ? user.renameLog : [];
+  const stamp = n(oldKey) + '>' + n(newKey) + '@' + (Number(log[log.length - 1]) || 0);
+  const moveAdd = async (from, to, ttlSec) => {
+    const mark = 'rename-moved:' + stamp + ':' + from;
+    let err = null;
+    for (let i = 0; i < 3; i++) {
+      try {
+        if (!(await kvGetRaw(mark, { strict: true }))) {
+          const raw = await kvGetRaw(from, { strict: true });
+          const v = Math.trunc(Number(raw));
+          if (raw !== null && raw !== undefined && String(raw) !== '' && Number.isFinite(v) && v !== 0) {
+            const cmds = [['INCRBY', to, String(v)], ['SET', mark, String(v), 'EX', '3600']];
+            if (ttlSec) cmds.push(['EXPIRE', to, String(ttlSec)]);
+            const r = await kvPipeline(cmds);
+            if (!Array.isArray(r) || r[0] === null || r[0] === undefined || !Number.isFinite(Number(r[0]))) {
+              // INCRBY لم يقع والعلامة ربّما كُتبت (الأوامر تُنفَّذ بالترتيب لا ذرّيًّا): تُمحى، وإن تعذّر محوها يُترك القديم مكانه ولا يُعاد
+              try { await kvDel(mark, { strict: true }); } catch (e2) { throw Object.assign(new Error('counter move not applied, mark stuck: ' + from), { stop: true }); }
+              throw new Error('counter move not applied: ' + from);
+            }
+          }
+        } else if (ttlSec) await kvExpire(to, ttlSec);
+        await kvDel(from, { strict: true });
+        return;
+      } catch (e) {
+        err = e;
+        if (e && e.stop) break;
+        if (i < 2) await sleep(150 * (i + 1));
+      }
+    }
+    throw err;
   };
-  await move('points:' + n(oldKey), 'points:' + n(newKey));
-  for (const kind of ['image', 'video', 'maha', 'mix']) { // رصيد اشتراك الوسائط بما بقي من نافذته (٣٥ يومًا) — mix: «صور وفيديو» (v-media-merge، MEDIA_KINDS)
+  // عطل نقلٍ لا يوقف البقيّة؛ ويُرمى في الآخر فيسجّله changeUsername للمالك (auth:rename-move).
+  const failed = [];
+  const counter = async (from, to, ttlSec) => { try { await moveAdd(from, to, ttlSec); } catch (e) { failed.push(from + ': ' + String((e && e.message) || e).slice(0, 80)); } };
+  await counter('points:' + n(oldKey), 'points:' + n(newKey));
+  for (const kind of COUNTER_MEDIA_KINDS) { // رصيد اشتراك الوسائط بما بقي من نافذته (٣٥ يومًا)؛ الجديد صُفّر قبل الشاهد
     const m = user.media && user.media[kind];
     const left = m ? Math.floor((Number(m.at || 0) + 35 * 86400000 - Date.now()) / 1000) : 0;
-    if (left > 0) await move('media:' + kind + ':' + n(oldKey), 'media:' + kind + ':' + n(newKey), left);
-    else await kvDel('media:' + kind + ':' + n(newKey));
+    if (left > 0) await counter('media:' + kind + ':' + n(oldKey), 'media:' + kind + ':' + n(newKey), left);
   }
-  const at = Math.floor(Number(user.planUpdatedAt) || 0); // فيديوهات الباقة للفترة الحاليّة (_planVideos.js)
-  if (at > 0) await move('planvid:' + n(oldKey) + ':' + at, 'planvid:' + n(newKey) + ':' + at, 40 * 86400);
+  for (const at of planVideoAts(user)) await counter('planvid:' + n(oldKey) + ':' + at, 'planvid:' + n(newKey) + ':' + at, 40 * 86400);
   // كلّ نقل مستقلّ: عطل في واحد لا يترك البقيّة على الاسم القديم (فتتجدّد مع الاسم الجديد).
   const step = async (label, fn) => { try { await fn(); } catch (e) { console.warn('[rename] move ' + label + ' failed: ' + (e && e.message)); } };
+  /* v-lock-r2 (money-invariants-9): تذاكر الخصم المعلَّق باسم وقت الخصم — حجوز صور مها (imghold)، وفهرس مهامّ الفيديو المفتوحة للكنس
+     (vidjob:open)، وتذاكر صلاحيّة الباقة ورصيد الوسائط التي يطابقها الردّ — كانت تبقى تحت الاسم القديم: الكنس يقرأ قائمة الاسم الحاليّ وحده
+     فلا يُردّ حجزٌ لم تصل صورته، والردّ لا يجد تذكرته. تُدمج في قوائم الاسم الجديد بمدّتها (الردّ نفسه يتبع الشاهد — points.js liveName). */
+  const moveList = async (from, to, ttlSec, max) => {
+    const a = await kvGetRaw(from);
+    if (a === null || a === undefined || String(a) === '') return;
+    let list = JSON.parse(a);
+    if (!Array.isArray(list)) return;
+    const b = await kvGetRaw(to);
+    const had = b ? JSON.parse(b) : [];
+    if (Array.isArray(had) && had.length) list = had.concat(list.filter((x) => !had.some((y) => y && x && y.id !== undefined && y.id === x.id)));
+    await kvSetRaw(to, JSON.stringify(list.slice(-max)), ttlSec);
+    await kvDel(from);
+  };
+  await step('image-holds', () => moveList('imghold:' + n(oldKey), 'imghold:' + n(newKey), 2 * 86400, 20));
+  await step('video-open', () => moveList('vidjob:open:' + n(oldKey), 'vidjob:open:' + n(newKey), 2 * 86400, 30));
+  await step('plan-video-tix', () => moveList('planvid:tix:' + n(oldKey), 'planvid:tix:' + n(newKey), 7200, 10));
+  await step('media-tix', () => moveList('media:tix:' + n(oldKey), 'media:tix:' + n(newKey), 3600, 20));
   await step('usage', () => require('./_usage.js').moveTodayTallies(oldKey, newKey));
   await step('daily-quota', () => require('./_dailyQuota.js').moveToday(oldKey, newKey)); // v-farm-gate: حصص أدوات الصور والفيديو اليوميّة كانت تتصفّر بتغيير الاسم
   await step('image-giveback', () => require('./image-giveback.js').moveToday(oldKey, newKey)); // ردود الحارس و«لم يُنفَّذ» اليوم — كانت تتجدّد مع كلّ اسم
   await step('cost-meter', () => require('./cost-meter.js').moveMonthCosts(oldKey, newKey));
   await step('office-month', () => require('./office.js').moveMonth(oldKey, newKey, require('./kv.js'))); // v-office-files: ملفّ الشهر المجّانيّ لا يتجدّد بتغيير الاسم
+  if (failed.length) throw new Error('counters not moved — ' + failed.join(' · ')); // v-r3 (r3-4): القديم باقٍ مكانه (لم يُحذف) فيُنقل يدويًّا
 }
 
 function makeToken(username, sv) {
@@ -231,6 +323,7 @@ function verifyToken(token) {
 const _timing = { sleep(ms) { return new Promise((r) => setTimeout(r, process.env.OMRAN_TEST_FAST_SLEEP === '1' ? 0 : ms)); } };
 function sleep(ms) { return _timing.sleep(ms); }
 
+// v-lock-r2 (userdata-2): opts.strict — عطل النقل (مهلة، ٤٢٩، ردّ لا يُقرأ) يرمي بدل null «غير موجود»؛ لمن يقرّر من null أنّ السجلّ ليس له.
 /* v-owner-reset-records: opts.readOnly — بحث المالك وفحصه (dryRun) يقرآن كلّ السجلّات ولا يكتبان: السجلّ المفكوك بالسرّ السابق يُعاد
    كما هو بلا إعادة تشفير (الكتابة هنا قد تمحو منحًا كُتب بين القراءة والكتابة). opts.quiet — المختوم يُعدّه المسح، فلا سطر لكلّ سجلّ في كلّ بحث. */
 async function getUserOnce(key, opts) {
@@ -423,6 +516,21 @@ function promoteVip(emailKey, key) {
       const vip = require('./_vip.js');
       if (typeof vip.promoteVerifiedEmail === 'function') await vip.promoteVerifiedEmail(emailKey, key);
     } catch (e) { logError('auth:vip-promote', e); }
+  });
+  vipPromoteChain = Promise.race([run.catch(() => {}), new Promise((r) => { const t = setTimeout(r, 5000); if (t && t.unref) t.unref(); })]);
+  return run;
+}
+
+/* v-lock-acct (srv-auth-12، باب المال بموافقة المالك ٢٧ أكتوبر): قائمة VIP بالأسماء، والاسم يتغيّر — من أضافه المالك كان يفقد الإعفاء
+   بأوّل تغيير لاسمه (يُخصم منه وتنطبق الحدود) والقائمة تعرض اسمًا ميّتًا. الآن مدخل الاسم القديم يصير الاسم الجديد في كتابة واحدة،
+   على سلسلة الترقية نفسها (قراءة القائمة ثمّ كتابتها). لا يرمي: التغيير تمّ قبله ولا يُفشله عطب القائمة — renameVip يرمي عطبه
+   (قراءة صارمة أو كتابة) فيُسجَّل هنا auth:vip-rename، لا يسقط VIP بصمت. */
+function moveVip(oldKey, newKey) {
+  const run = vipPromoteChain.then(async () => {
+    try {
+      const vip = require('./_vip.js');
+      if (typeof vip.renameVip === 'function') await vip.renameVip(oldKey, newKey);
+    } catch (e) { logError('auth:vip-rename', e); }
   });
   vipPromoteChain = Promise.race([run.catch(() => {}), new Promise((r) => { const t = setTimeout(r, 5000); if (t && t.unref) t.unref(); })]);
   return run;
@@ -819,6 +927,20 @@ const EMAIL_CHANGE_NET_MAX = 30;
 const EMAIL_CHANGE_NET_WINDOW_MS = 15 * 60 * 1000;
 function emailChangeKey(u) { return 'db/otp-change/' + encodeURIComponent(u); }
 
+/* v-lock-r2 (userdata-4): البريد والهاتف قناتا استرجاع كلمة المرور — والجلسة وحدها كانت تعيد ربطهما: رمز جلسة مسروق ينقل البريد إلى صندوق
+   المهاجم (أو يربط هاتفه)، ثمّ forgotPassword يرسل الرابط إليه، وresetWithToken يضع كلمته ويُميت جلسات صاحبه، ثمّ يحذف الحساب بكلمته —
+   فيسقط شرط الحذف «رمز الجلسة والاسم لا يكفيان» (srv-auth-3) ويصير استيلاءً كاملًا. من وضع كلمة مروره بنفسه (needsPassword، معيار الحذف
+   نفسه) يكتبها لربط بريد أو هاتف؛ حساب Google/رمز البريد بلا كلمة يعرفها كما كان. يردّ ٤٠١ بـcode تعرضه الواجهة بلغتها. */
+function recoveryPasswordOk(user, body, res, m) {
+  if (!require('./account-delete.js').needsPassword(user)) return true;
+  const pw = body && typeof body.password === 'string' ? body.password : '';
+  if (pw && verifyPassword(pw, user.salt, user.hash)) return true;
+  res.status(401).json(pw
+    ? { error: m('كلمة المرور غير صحيحة', 'Incorrect password'), code: 'wrong_password' }
+    : { error: m('اكتب كلمة المرور الحالية', 'Enter your current password'), code: 'password_required' });
+  return false;
+}
+
 async function emailChangeRequest(req, res, body, m) {
   const u = verifyToken(body.token);
   if (!u) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; }
@@ -837,6 +959,7 @@ async function emailChangeRequest(req, res, body, m) {
     || (await rateWait('mail-change-to', u + '|' + key, 3, 15 * 60 * 1000))
     || (user.email === key ? 0 : await rateWait('mail-change-all', key, 10, 60 * 60 * 1000));
   if (mins) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins }); return; }
+  if (!recoveryPasswordOk(user, body, res, m)) return; // v-lock-r2 (userdata-4) — بعد الحدود: تخمين الكلمة من هنا ٥ في ربع ساعة
   if (await verifiedHolderOf(key, u)) { res.status(409).json({ error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'), code: 'email_taken' }); return; }
   if (!RESEND_API_KEY) { res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin'), code: 'mail_off' }); return; }
   const otpCode = genNumericOtp();
@@ -1001,6 +1124,7 @@ module.exports = async (req, res) => {
         points: gift ? 70 : 0,
         welcomeGift: gift,
         giftCapped: giftOut.capped === true,
+        passwordSet: true, // v-lock-r2 (r2-6): كلمة وضعها صاحبها — حذف الحساب يطلبها (account-delete.js needsPassword)
       };
       await putUser(key, user); // v-signup-no-email: ولا فهرس بريد — يكتبه تأكيد «حسابي» وحده
       await notifyNewAccount({ key, user, method: 'password', req }); // v-signup-notify: بعد الكتابة الناجحة وحدها — في الخلفيّة
@@ -1042,58 +1166,81 @@ module.exports = async (req, res) => {
         res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + 1 + ' دقيقة', 'Too many attempts, try again in ' + 1 + ' min'), code: 'too_many', minutes: 1 });
         return;
       }
+      /* v-lock-r2 (money-invariants-8): التغيير يكتب السجلّ الجديد والشاهد وينقل العدّادات — وكان بقفله وحده (rename-lock) لا بقفل الحساب الذي
+         يكتب تحته المنح والسحب ومرآة الصرف من نسخة طازجة (v-acct-lock). منحٌ قرأ السجلّ قبل التغيير يكتبه بعده فوق الشاهد: الاسم الميّت حيّ
+         بالباقة ونقاطها، والجديد بلا شيء. الآن تحت قفل الحساب نفسه وعلى نسخته الطازجة: المنح الجاري ينتهي أوّلًا، ومن ينتظر بعده يجد الاسم
+         تغيّر (withAccount يرمي BUSY فيُعاد إلى الاسم الجديد). لم يُنل القفل ⇒ ٤٢٩ القائم. الردّ يُرسل بعد فكّ القفلين (out) — كما كان بعد فكّ قفل
+         التغيير — فطلبٌ يتبعه فورًا لا يجدهما قائمين. */
+      const ck = require('./create-checkout-session.js');
+      let out = null;
+      const held = { status(c) { out = [c, null]; return this; }, json(b) { if (out) out[1] = b; return this; } };
+      /* v-r3 (r3-5): وقفل الاسم الجديد أيضًا، بترتيب ثابت (القديم ثمّ الجديد) وانتظار محدود — منحٌ يصل بعد الشاهد يتبعه إلى الاسم الجديد ويقفله،
+         وكان قفله حرًّا فيجري مع نقل العدّادات وتُكتب نقاطه فوقها. الآن ينتظر حتّى يكتمل التغيير. لم يُنل ⇒ BUSY ⇒ ٤٢٩ القائم أدناه. اسمٌ يساوي
+         القديم بعد التطبيع قفلُه هو الممسوك نفسه. */
+      const sameLock = String(oldKey).trim().toLowerCase() === newKey;
+      const newNameLock = (fn) => (sameLock ? fn() : ck.withNameLock(newKey, fn));
       try {
-        // v-name-reuse: رمز اسم ميّت (غيّره صاحبه أو حذفه المالك) لا ينقل شيئًا.
-        const user = await getUser(oldKey);
-        if (!user || user.deleted) {
-          res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account'), code: 'not_found' });
-          return;
-        }
-        if (!sessionCurrent(user, token)) { // v-audit-auth (srv-auth-8): رمز أقدم من آخر تغيير لكلمة المرور لا ينقل الحساب
-          res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' });
-          return;
-        }
-        const clash = await getUser(newKey);
-        const ownPrev = Boolean(clash && await tombstoneLeadsTo(clash, oldKey));
-        // مفتاح Google لصاحبه وحده: حسابه (googleAuth) ببريده نفسه، راجعًا إلى مفتاحه بسلسلة شواهده.
-        const ownGoogleKey = ownPrev && user.googleAuth === true && newKey === 'g_' + String(user.email || '').trim().toLowerCase();
-        if (isGoogleKey(newKey) && !ownGoogleKey) {
-          res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved'), code: 'name_reserved' });
-          return;
-        }
-        if (clash && !ownPrev) {
-          res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken'), code: 'name_taken' });
-          return;
-        }
-        // v-name-no-at: الاسم الجديد وحده — الاسم القائم (newKey === oldKey أعلاه) والعودة إلى اسمك القديم بسلسلة شواهده (ownPrev) لا يُمسّان.
-        // مساحة Google (g_…) على ردّها أعلاه.
-        if (newKey.includes('@') && !isGoogleKey(newKey) && !ownPrev) {
-          res.status(400).json({ error: m(NAME_AT_AR, NAME_AT_EN), code: 'name_at' });
-          return;
-        }
-        // المراجعة العدائيّة (img422-1، farm-6، INT-1): التغيير بالرمز وحده وبلا حدّ كان يصفّر في حلقةٍ كلَّ ما يُعدّ بالاسم ولم يُنقل.
-        // حدّان في ٢٤ ساعة متحرّكة لكلّ حساب، في السجلّ نفسه (renameLog — النسخ أدناه ينقله مع الحساب)؛ الثالث ٤٢٩ القائم والسجلّ
-        // لا يُمسّ. المالك معفى.
-        const now = Date.now();
-        const renameLog = (Array.isArray(user.renameLog) ? user.renameLog : []).map(Number).filter((t) => Number.isFinite(t) && now - t < RENAME_WINDOW_MS);
-        if (renameLog.length >= RENAME_MAX && !require('./_owner.js').isOwnerName(oldKey)) {
-          const mins = Math.max(1, Math.ceil((Math.min(...renameLog) + RENAME_WINDOW_MS - now) / 60000));
-          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins });
-          return;
-        }
-        const movedUser = Object.assign({}, user, { username: String(newUsername).trim() });
-        // v-rename-move: الأسماء السابقة — اشتراك أو جلسة دفع بدأت بالاسم القديم تُعرف لصاحبها بعد التغيير.
-        movedUser.prevUsernames = (Array.isArray(user.prevUsernames) ? user.prevUsernames : []).filter((x) => x !== newKey).concat([oldKey]).slice(-10);
-        movedUser.renameLog = renameLog.concat([now]);
-        await putUser(newKey, movedUser);
-        // Free up the old key so it can't be logged into or re-claimed while pointing here.
-        await putUser(oldKey, { deleted: true, movedTo: newKey });
-        try { await moveLiveCounters(oldKey, newKey, movedUser); } catch (e) { logError('auth:rename-move', e, { from: String(oldKey).slice(0, 40) }); }
-        _banMemo.delete(oldKey); _banMemo.delete(newKey); // الشاهد جلسة ميّتة الآن (isBanned) — لا ينتظر ذاكرة الخمس ثوانٍ
-        res.status(200).json({ ok: true, token: makeToken(newKey, movedUser.sv), username: movedUser.username, avatar: movedUser.avatar || null });
+        await ck.withAccount(oldKey, (lockedName, user) => newNameLock(async () => {
+          const res = held; // الردّ بعد فكّ القفلين — انظر out أعلاه
+          // v-name-reuse: رمز اسم ميّت (غيّره صاحبه أو حذفه المالك) لا ينقل شيئًا.
+          if (lockedName !== oldKey || !user || user.deleted) {
+            res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account'), code: 'not_found' });
+            return;
+          }
+          if (!sessionCurrent(user, token)) { // v-audit-auth (srv-auth-8): رمز أقدم من آخر تغيير لكلمة المرور لا ينقل الحساب
+            res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' });
+            return;
+          }
+          const clash = await getUserSure(newKey); // v-audit-main-b (v-auth-absent × r3-4): عطب القراءة يرمي (٥٠٠ بلا كتابة) — لا «الاسم حرّ» فوق حساب حيّ قبل نقل العدّادات
+          const ownPrev = Boolean(clash && await tombstoneLeadsTo(clash, oldKey));
+          // مفتاح Google لصاحبه وحده: حسابه (googleAuth) ببريده نفسه، راجعًا إلى مفتاحه بسلسلة شواهده.
+          const ownGoogleKey = ownPrev && user.googleAuth === true && newKey === 'g_' + String(user.email || '').trim().toLowerCase();
+          if (isGoogleKey(newKey) && !ownGoogleKey) {
+            res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved'), code: 'name_reserved' });
+            return;
+          }
+          if (clash && !ownPrev) {
+            res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken'), code: 'name_taken' });
+            return;
+          }
+          // v-name-no-at: الاسم الجديد وحده — الاسم القائم (newKey === oldKey أعلاه) والعودة إلى اسمك القديم بسلسلة شواهده (ownPrev) لا يُمسّان.
+          // مساحة Google (g_…) على ردّها أعلاه.
+          if (newKey.includes('@') && !isGoogleKey(newKey) && !ownPrev) {
+            res.status(400).json({ error: m(NAME_AT_AR, NAME_AT_EN), code: 'name_at' });
+            return;
+          }
+          // المراجعة العدائيّة (img422-1، farm-6، INT-1): التغيير بالرمز وحده وبلا حدّ كان يصفّر في حلقةٍ كلَّ ما يُعدّ بالاسم ولم يُنقل.
+          // حدّان في ٢٤ ساعة متحرّكة لكلّ حساب، في السجلّ نفسه (renameLog — النسخ أدناه ينقله مع الحساب)؛ الثالث ٤٢٩ القائم والسجلّ
+          // لا يُمسّ. المالك معفى.
+          const now = Date.now();
+          const renameLog = (Array.isArray(user.renameLog) ? user.renameLog : []).map(Number).filter((t) => Number.isFinite(t) && now - t < RENAME_WINDOW_MS);
+          if (renameLog.length >= RENAME_MAX && !require('./_owner.js').isOwnerName(oldKey)) {
+            const mins = Math.max(1, Math.ceil((Math.min(...renameLog) + RENAME_WINDOW_MS - now) / 60000));
+            res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min'), code: 'too_many', minutes: mins });
+            return;
+          }
+          const movedUser = Object.assign({}, user, { username: String(newUsername).trim() });
+          // v-rename-move: الأسماء السابقة — اشتراك أو جلسة دفع بدأت بالاسم القديم تُعرف لصاحبها بعد التغيير.
+          movedUser.prevUsernames = (Array.isArray(user.prevUsernames) ? user.prevUsernames : []).filter((x) => x !== newKey).concat([oldKey]).slice(-10);
+          movedUser.renameLog = renameLog.concat([now]);
+          try {
+            await prepareCounterMove(oldKey, newKey, user); // v-r3 (r3-4): قبل الشاهد — عطله يرمي ولا شيء كُتب
+            await putUser(newKey, movedUser);
+          } catch (e) { await undoCounterPrep(newKey); throw e; } // v-r3 (r3-rv6): لا عدّاد '0' يتيم تحت اسمٍ لم يُسجَّل
+          // Free up the old key so it can't be logged into or re-claimed while pointing here.
+          try { await putUser(oldKey, { deleted: true, movedTo: newKey }); } catch (e) { if (!(await tombLanded(oldKey, newKey))) throw e; } // v-r3 (r3-rv7): وصل وضاع ردّه ⇒ ينقل
+          try { await moveLiveCounters(oldKey, newKey, movedUser); } catch (e) { logError('auth:rename-move', e, { from: String(oldKey).slice(0, 40) }); }
+          await moveVip(oldKey, newKey); // v-lock-acct (srv-auth-12): VIP يتبع الحساب لا الاسم — لا يرمي
+          _banMemo.delete(oldKey); _banMemo.delete(newKey); // الشاهد جلسة ميّتة الآن (isBanned) — لا ينتظر ذاكرة الخمس ثوانٍ
+          res.status(200).json({ ok: true, token: makeToken(newKey, movedUser.sv), username: movedUser.username, avatar: movedUser.avatar || null });
+        }));
+      } catch (e) {
+        if (!(e && e.message === ck.BUSY)) throw e;
+        out = [429, { error: m('محاولات كثيرة، حاول بعد ' + 1 + ' دقيقة', 'Too many attempts, try again in ' + 1 + ' min'), code: 'too_many', minutes: 1 }];
       } finally {
         try { await kvDel(lockKey); } catch (e) { logError('auth:rename-unlock', e); }
       }
+      if (out) res.status(out[0]).json(out[1]);
       return;
     }
 
@@ -1132,6 +1279,7 @@ module.exports = async (req, res) => {
       user.salt = salt;
       user.hash = hash;
       user.sv = sessionVersion(user) + 1; // v-audit-auth (srv-auth-8): كلّ جلسة سابقة تموت — وهذا الجهاز يأخذ رمزه الجديد
+      user.passwordSet = true; // v-lock-acct (srv-auth-3): كلمة مرور وضعها صاحبها — حذف الحساب يطلبها (account-delete.js needsPassword)
       await putUser(u, user);
       await require('./_session.js').recordSessionVersion(u, user.sv); // v-session-revoke: والرفض في كلّ الخدمات لا هنا وحده
       res.status(200).json({ ok: true, token: makeToken(u, user.sv) });
@@ -1299,6 +1447,7 @@ module.exports = async (req, res) => {
       user.resetTokenExpiry = null;
       user.pwSet = true; // v-acct-delete-nopw: صار للحساب كلمة مرور يعرفها صاحبه (حساب رمز البريد أو Google استعاد) — الحذف يطلبها
       user.sv = sessionVersion(user) + 1; // v-audit-auth (srv-auth-8): الاستعادة تُبطل كلّ جلسة سابقة
+      user.passwordSet = true; // v-lock-acct (srv-auth-3): حساب Google/رمز البريد صار بكلمة مرور يعرفها صاحبه
       await putUser(key, user);
       await require('./_session.js').recordSessionVersion(key, user.sv); // v-session-revoke
       await markKnownNet(key, req);
@@ -1386,16 +1535,19 @@ module.exports = async (req, res) => {
         return;
       }
       const channel = body.channel === 'whatsapp' ? 'whatsapp' : 'telegram';
-      let me = null;
+      let me = null, meUser = null;
       if (action === 'phone-link-start') {
         me = verifyToken(token);
         if (!me) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; }
         // v-audit-auth (srv-auth-8): رمز أقدم من آخر تغيير لكلمة المرور لا يربط هاتفًا (ثمّ يستعيد به الحساب)
-        if (!sessionCurrent(await getUser(me, 1), token)) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; }
+        meUser = await getUser(me, 1);
+        if (!sessionCurrent(meUser, token)) { res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' }); return; }
       }
       const ip = String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || '').split(',')[0].trim().slice(0, 64);
       const wait = await rateWait('phone-start-rate', me ? 'u/' + me : 'ip/' + (ip || 'none'), 5, 15 * 60 * 1000);
       if (wait) { res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + wait + ' دقيقة', 'Too many attempts, try again in ' + wait + ' min'), code: 'too_many', minutes: wait }); return; }
+      if (me && !meUser) { res.status(503).json({ error: m('تعذّر التحقّق من الحساب، حاول بعد لحظات', 'Could not verify the account, try again shortly'), code: 'retry' }); return; } // v-lock-r2 (userdata-4): عطل القراءة لا يتخطّى كلمة المرور
+      if (meUser && !recoveryPasswordOk(meUser, body, res, m)) return; // v-lock-r2 (userdata-4): الهاتف قناة استرجاع — كالبريد
       const r = await pl.start({ purpose: me ? 'link' : 'recover', channel, username: me });
       if (r.error === 'channel_unavailable') {
         res.status(503).json(channel === 'whatsapp'
@@ -1603,6 +1755,7 @@ module.exports = async (req, res) => {
           welcomeGift: !!gift,
           giftCapped: giftOut.capped === true,
           otpOnly: true,
+          passwordSet: false, // v-lock-r2 (r2-6): كلمة عشوائيّة لا يعرفها صاحبها — العلامة الصريحة لا يمحوها طلب استرجاع (needsPassword)
         };
         userKey = candidateKey;
         await putUser(userKey, user);
@@ -1644,6 +1797,8 @@ module.exports.needsRecovery = needsRecovery; // v-recovery-hint
 module.exports._timing = _timing; // v-time-seam: للاختبارات وحدها
 module.exports.putUser = putUser;
 module.exports.hashPassword = hashPassword;
+module.exports.verifyPassword = verifyPassword; // v-audit-main-b (userdata-4): تذكرة ربط Gmail تطلب الكلمة كالبريد والهاتف
+module.exports.rateWait = rateWait; // v-audit-main-b: وتخمينها من هناك محدود كهنا
 module.exports.makeToken = makeToken;
 module.exports.markKnownNet = markKnownNet; // v-known-net: والكولباك (auth-google-callback.js)
 module.exports.liveAccount = liveAccount; // v-audit-auth (srv-auth-2): الكولباك يتبع شاهد تغيير الاسم

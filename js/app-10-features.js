@@ -48,7 +48,14 @@ window.postWithConfirm = postWithConfirm;
   let dismissedUntil = 0;
   let strikes = 0;
 
-  reloadBtn.onclick = () => location.reload();
+  /* v-r3 (r3-f2): «تم حفظ عملك تلقائيًا» صادقة — إعادة التحميل تنتظر كتابة ما ينتظر في الحفظ المجمّع (مهلة ٥ث لانتظار IndexedDB)؛
+     كانت تعيد فورًا فيضيع تغيير لم يمرّ عليه الحفظ بعد (١٫٥–٣٠ث حسب حجم السجلّ) */
+  reloadBtn.onclick = () => {
+    reloadBtn.disabled = true;
+    let wait = null;
+    try{ if(typeof window.__saveFlushWait === 'function') wait = window.__saveFlushWait(5000); }catch(e){ __swallow(e, 'freeze:flush'); }
+    Promise.resolve(wait).then(() => location.reload(), () => location.reload());
+  };
   dismissBtn.onclick = () => {
     banner.style.display = 'none';
     shown = false;
@@ -163,7 +170,10 @@ window.postWithConfirm = postWithConfirm;
       strikes++;
       strikeDelays.push(delay);
       if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
-        try{ saveState(); }catch(err){ __swallow(err, "save:app-10-features#1"); }
+        /* v-freeze-fix: لا إعادة حفظ هنا — كانت تُبطل النسخة المنحّفة وتجدول رفعها وحفظ السجلّ كاملًا في IndexedDB لحظة التجمّد نفسها
+           (مسبار سجلّ المالك الثقيل: تجمّد ثانٍ ١٤ث بعد البانر). أيّ تغيير ينتظر أصلًا في الحفظ المجمّع (١٫٥ث)، و«إعادة التحميل» =
+           pagehide ← __saveFlush والمرآة؛ فـ«تم حفظ عملك تلقائيًا» صادقة بلا هذه الكلفة.
+           v-r3 (r3-f2): pagehide وحده لا يكمل حفظه بعد المغادرة — فزرّ «إعادة التحميل» ينتظر الحفظ (__saveFlushWait) قبل أن يعيد. */
         shown = true;
         banner.style.display = 'flex';
         freezeReport(strikeDelays.slice(-4)); // v-freeze-why: لماذا — للمالك
@@ -1659,7 +1669,7 @@ $('#history').addEventListener('click', () => {
       /* v-edu-selfhost: مستودع omran-edu غير موصول بالنشر التلقائي — الصفحة
          المحدثة تُستضاف هنا (edu-old/) فتنشر مع التطبيق، والخلفية تبقى على
          النشر القديم الشغال (CORS مفتوح). */
-      frame.src = '/edu-old/index.html?v=15k'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
+      frame.src = '/edu-old/index.html?v=15l'; /* الدفعة ٥: بلا أسماء الأصوات وEsc يغلقه */ /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
     }
     /* v-edu-hub-polish (تدقيق ١٨–١٩ أكتوبر): العنوان «التعليم» كان يتكرّر فوق رأس الإطار — نأخذ اسم صفّه المترجم في المركز،
        ونرفع data-i18n كي لا تعيده الترجمة. الفتح المباشر بلا مركز يبقى كما هو. */

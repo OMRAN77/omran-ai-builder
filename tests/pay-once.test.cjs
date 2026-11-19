@@ -138,7 +138,7 @@ test('٧. إيقاف التجديد يجد الاشتراك بالاسم الس�
     if (/subscriptions\/search/.test(url)) {
       const q = decodeURIComponent(String(url).split('query=')[1]);
       searches.push(q);
-      const data = /'oldname'/.test(q) ? [{ id: 'sub_1', metadata: { username: 'oldname' }, current_period_end: 1, cancel_at_period_end: false }] : [];
+      const data = /'oldname'/.test(q) ? [{ id: 'sub_1', status: 'active', metadata: { username: 'oldname' }, current_period_end: 1, cancel_at_period_end: false }] : [];
       return { ok: true, json: async () => ({ data }) };
     }
     return { ok: true, json: async () => ({}) };

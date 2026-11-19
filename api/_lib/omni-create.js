@@ -179,6 +179,21 @@ module.exports = async (req, res) => {
     }
 
     if (uri) {
+      /* v-lock-vid (srv-video-5، باب المال بموافقة المالك ٢٧ أكتوبر): الرابط كان يُرسل في الردّ المتزامن نفسه بلا تذكرة — من أغلق التطبيق
+         أثناء الدقيقة إلى الثلاث يخسر ١٢٠ نقطة ولا يسترجع الفيديو (خلاف v-video-sweep). الآن كمسار ترند Omni في veo-create: الناتج بمعرّف
+         omni/… مع تذكرة، ويسلّمه veo-status فيسوّيها، والكنس يردّ ما لم يُسلَّم (ولا تسليم بعده — srv-video-1). تعذّر حفظ الناتج = الرابط
+         مباشرة كما كان (بلا تذكرة: لا ردّ لمن استلم). */
+      const vc = require('./veo-create.js');
+      const op = vc.OMNI_OP_PREFIX + require('crypto').randomUUID();
+      let stored = false;
+      try { await require('./kv.js').kvSetRaw(vc.omniOpKey(op), JSON.stringify({ uri }), vc.OMNI_OP_TTL_SEC); stored = true; }
+      catch (e) { console.error('[omni-create] result store failed: ' + (e && e.message)); }
+      if (stored) {
+        await require('./video-job.js').rememberVideoJob(op, { username: chargedUser, cost: pointsLib.COSTS.omni_video, locked: !!videoLocked, pay: chargedPay });
+        chargedUser = null; videoLocked = null; /* v-video-giveback: التذكرة تملك الردّ من هنا — catch لا يردّ مرّتين */
+        res.status(200).json({ op });
+        return;
+      }
       // نمرّره عبر بروكسي veo-download (يضيف مفتاح Google لتنزيل ملفّ generativelanguage).
       res.status(200).json({ url: require('./veo-download.js').downloadUrl(uri) }); // v-video-open-lock: موقّع على الملفّ
     } else {

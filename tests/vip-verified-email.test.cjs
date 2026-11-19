@@ -80,9 +80,10 @@ async function legacyEmail(name, email) {
   await auth.putUser(name, Object.assign({}, rec, { email }));
   store.set('db/email-index/' + email, JSON.stringify({ username: name, at: Date.now() }));
 }
+// v-lock-r2 (userdata-4): ربط بريد الاسترجاع يطلب كلمة المرور الحاليّة ممّن وضعها (حسابات التسجيل هنا بـpass12345)
 async function changeEmail(token, email, code) {
   if (code === undefined) {
-    const r = await call({ action: 'email-otp-request', purpose: 'change', token, email, lang: 'ar' });
+    const r = await call({ action: 'email-otp-request', purpose: 'change', token, email, lang: 'ar', password: 'pass12345' });
     return r;
   }
   return call({ action: 'email-otp-verify', purpose: 'change', token, email, otp: code, lang: 'ar' });

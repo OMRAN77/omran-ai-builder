@@ -97,7 +97,7 @@ async function paymentOf(get, inv) {
 
 /* القراءة كلّها: الاشتراك، والربط الحاليّ، وبريد العميل، والدفعات المرشّحة بحالاتها. ترمي StripeFail عند العطب. */
 async function survey(get, subId, acct) {
-  const { PLANS, claimKey } = require('./create-checkout-session.js');
+  const { PLANS, claimKey, creditMarkKey, surelyMissing } = require('./create-checkout-session.js');
   const sub = await get('subscriptions/' + encodeURIComponent(subId));
   if (!sub || (sub.object && sub.object !== 'subscription') || (sub.id && sub.id !== subId)) return { error: 'no_sub' };
   const md = sub.metadata || {};
@@ -109,6 +109,10 @@ async function survey(get, subId, acct) {
   if (linkedTo) {
     const a = await require('./auth.js').liveAccount(linkedTo);
     if (a && a.user && !a.user.deleted) linkedLive = a.key;
+    /* v-audit-main-b (r3-6 · r3-8): liveAccount يعيد null للمفقود ولعطل القراءة معًا — عطلٌ على سجلّ صاحب الاشتراك كان يُقرأ «لا حساب حيّ»
+       فلا ٤٠٩، ويكتب التأكيد اسمًا آخر فوق اشتراكه فتُشحن تجديداته لغيره. «سابق» (اسم بلا حساب) فقط بقراءة صارمة نجحت ولم تجد سجلًّا؛
+       وإلّا رمي قبل أيّ كتابة (٥٠٣ account_unreadable يُعاد). */
+    else if (!(a && a.user) && !(await surelyMissing((a && a.key) || linkedTo))) throw new StripeFail('account', 'unreadable');
   }
 
   let customerEmail = '';
@@ -179,7 +183,15 @@ async function survey(get, subId, acct) {
     const claimed = await kvGetRaw(claimKey(c.field, c.id)); // حجز v-pay-once: شُحنت من قبل، أو سُحب حجزها قبل شحنها
     if (claimed) {
       if (String(claimed).startsWith('!revoked:')) c.state = 'blocked';
-      else { c.state = 'already'; c.holder = (await liveKey(String(claimed))) || null; }
+      else {
+        c.holder = (await liveKey(String(claimed))) || null;
+        /* v-audit-main-b (× v-lock-credit): منحٌ شحن لهذا الحساب ثمّ فشلت كتابة سجلّه يبقى حجزه بعلامة إكمال — كان «مضافة» فلا يُنادى المنح
+           ثانيةً: نقاط بلا باقة ولا سجلّ منح (فالاسترداد لا يسحب شيئًا)، ولا ويب هوك يعيدها (تجاهلها بلا اسم). الضغط الثاني هو الإعادة: تُعاد إلى
+           grantPlanToUser فيكملها finishGrant بلا شحن ثانٍ (pending: نقاطها شُحنت). قراءة العلامة صارمة: عطبها يرمي (٥٠٠ يُعاد) لا «مضافة». */
+        const pend = !!c.holder && !!acct && c.holder === acct.key && (await kvGetRaw(creditMarkKey(c.field, c.id), { strict: true })) != null;
+        c.state = pend ? 'grant' : 'already';
+        if (pend) c.pending = true;
+      }
       continue;
     }
     const rec = await findRec([c.id]); // سجلّ منح بلا حجز (أو أقدم من الحجز)
@@ -225,6 +237,7 @@ async function linkSub(input, opts) {
   catch (e) {
     if (!(e instanceof StripeFail)) throw e;
     console.warn('[sub-link] read failed ' + e.where + ' ' + e.code);
+    if (e.where === 'account') return { status: 503, body: { error: 'account_unreadable' } }; // v-audit-main-b: عطل KV لا Stripe — يُعاد بعد لحظات
     return { status: 502, body: { error: 'stripe_error', at: e.where, code: e.code } };
   }
   if (sv.error === 'no_sub') return { status: 404, body: { error: 'subscription not found' } };
@@ -234,8 +247,10 @@ async function linkSub(input, opts) {
   if (other) return { status: 409, body: { error: 'linked_other', username: other.holder, payment: other.id } }; // لا يُقسَم اشتراك بين حسابين
 
   const grants = sv.cands.filter((c) => c.state === 'grant');
-  const { planActive } = require('./tier.js');
-  const curPlan = planActive(acct.user) ? String(acct.user.plan) : '';
+  // v-audit-main-b: الفترة الفعليّة نفسها التي يقرّر بها grantLocked (port-1، tier.chatPeriod) — planActive يشمل planNext وuser.plan قد تكون منتهية أو غائبة،
+  // فكان الفحص يقول «الباقة تبقى» والتأكيد يركّب الجديدة (أو العكس، وaccountPlan «undefined»)
+  const cpNow = require('./tier.js').chatPeriod(acct.user);
+  const curPlan = cpNow ? String(cpNow.plan) : '';
   const summary = {
     username: acct.key,
     accountEmail: String(acct.user.email || (acct.key.startsWith('g_') ? acct.key.slice(2) : '')),
@@ -246,10 +261,17 @@ async function linkSub(input, opts) {
     subscription: subId, status: sv.sub.status, plan: sv.sub.plan, planLabel: sv.sub.planLabel,
     linkedTo: sv.sub.linkedLive || null,
     previous: (sv.sub.linkedTo && !sv.sub.linkedLive) ? sv.sub.linkedTo : null, // اسم على الاشتراك لا حساب حيّ له
-    payments: sv.cands.map((c) => ({ id: c.id, kind: c.kind, amount: c.amount, currency: c.currency, created: c.created, state: c.state, holder: c.holder || null })),
-    toGrant: grants.length, points: grants.length * sv.points,
+    payments: sv.cands.map((c) => Object.assign({ id: c.id, kind: c.kind, amount: c.amount, currency: c.currency, created: c.created, state: c.state, holder: c.holder || null }, c.pending ? { pending: true } : {})),
+    toGrant: grants.length, points: grants.filter((c) => !c.pending).length * sv.points, // المعلَّقة (v-audit-main-b) شُحنت نقاطها: تُكمَل ولا تُعدّ ثانيةً
   };
-  if (!(input && input.confirm === true)) return { status: 200, body: Object.assign({ ok: true, dryRun: true }, summary) };
+  if (!(input && input.confirm === true)) {
+    /* v-audit-main-b: ما سيُلغيه التأكيد (اشتراك حيّ واحد لكلّ خانة، supersedeLinked) — قراءة فقط. إلغاءٌ فشل بعد منحٍ تمّ لا يجعل الفحص يقول
+       «لا جديد» (الواجهة توقف بلا دفعات) واشتراكان حيّان؛ عطب القراءة هنا لا يُفشل الفحص (null: غير معروف). */
+    let supersede = null;
+    try { supersede = (await require('./create-checkout-session.js').planSupersede(acct.key, sv.sub.plan, subId, o.fetchImpl)).length; }
+    catch (e) { require('./_swallow.js').swallow(e, '_lib/sub-link:dry-supersede'); }
+    return { status: 200, body: Object.assign({ ok: true, dryRun: true }, summary, { supersede }) };
+  }
   // التأكيد على الحساب نفسه الذي عرضه الفحص ووافق عليه المالك — تغيّر بينهما (حساب Google أُنشئ، فهرس تغيّر) = لا تنفيذ
   if (input.expect !== undefined && String(input.expect || '') !== acct.key) return { status: 409, body: { error: 'target_changed', username: acct.key } };
 
@@ -273,12 +295,20 @@ async function linkSub(input, opts) {
     try {
       const g = await grantPlanToUser(acct.key, sv.sub.plan, c.field, c.id, { refs: c.refs, amount: c.amount, currency: c.currency, keepHigherPlan: true });
       if (g && g.error) { failed = String(g.error); break; }
-      if (g && !g.alreadyGranted) { granted++; pointsAdded += Number(g.pointsAdded) || 0; }
+      if (g && !g.alreadyGranted) { granted++; pointsAdded += g.completed ? 0 : (Number(g.pointsAdded) || 0); } // الإكمال (completed) لا يشحن: نقاطه من الضغطة الأولى
       if (g && g.balance !== undefined) balance = g.balance;
     } catch (e) { failed = String((e && e.message) || e); break; }
   }
-  console.log('[sub-link] ' + subId + ' → ' + (writeMeta ? 'linked' : 'kept') + ' +' + pointsAdded + ' (' + granted + '/' + grants.length + ')' + (failed ? ' FAILED' : ''));
-  const out = Object.assign({ ok: !failed, linked: writeMeta || sv.sub.linkedLive === acct.key, granted, pointsAdded, balance }, summary);
+  /* v-audit-main-b (srv-money-3 · r2-3 · r3-1): الربط طريق ثانٍ يُدخل اشتراكًا حيًّا إلى الحساب (اسمه عليه فيُشحن تجديده) ولا يمرّ بـsupersedeSubs —
+     فحسابٌ له اشتراك حيّ في الخانة نفسها يُخصم مرّتين كلّ شهر. بعد المنح (الدفعات المضافة باقية): اشتراك حيّ واحد في الخانة (supersedeLinked).
+     عطب Stripe = جزئيّ ٥٠٠، والضغط ثانيةً يكمل (المنح لا يتكرّر). */
+  let superseded = 0;
+  if (!failed && (writeMeta || sv.sub.linkedLive === acct.key)) {
+    try { superseded = await require('./create-checkout-session.js').supersedeLinked(acct.key, sv.sub.plan, subId, o.fetchImpl); }
+    catch (e) { failed = 'supersede: ' + String((e && e.message) || e); }
+  }
+  console.log('[sub-link] ' + subId + ' → ' + (writeMeta ? 'linked' : 'kept') + ' +' + pointsAdded + ' (' + granted + '/' + grants.length + ')' + (superseded ? ' -' + superseded + ' sub' : '') + (failed ? ' FAILED' : ''));
+  const out = Object.assign({ ok: !failed, linked: writeMeta || sv.sub.linkedLive === acct.key, granted, pointsAdded, balance, superseded }, summary);
   if (failed) Object.assign(out, { error: 'partial', detail: failed });
   return { status: failed ? 500 : 200, body: out };
 }

@@ -20,10 +20,15 @@ function sanitizeGeminiContents(list){
 // Stripe Payment Request Button API + PayPal) =====
 let checkoutCurrentPlan = null;
 let paypalSdkLoaded = false;
+let paypalLoadState = ''; // v-lock-ckui (cli-money-11): '' مفعّل أو غير مفعّل · 'loading' تحميل جارٍ · 'fail' تعثّر تحميله
+let paypalLoadSeq = 0; // v-lock-ckui (cli-money-11): رقم آخر تحميل — نتيجة تحميل أقدم تُرمى فلا تُرسم أزرار PayPal مرّتين
 let stripeJsLoaded = false;
 let stripeInstance = null;
 let currentPaymentRequest = null;
 let currentWalletAvailability = null; // { applePay, googlePay } | null while unknown/unsupported
+// v-lock-gpay (cli-money-9): رقم آخر إعداد للمحفظة — إعداد نافذة أقدم ينتهي بعد أحدث فلا يكتب فوقه؛ والفحص الجاري «جارٍ التجهيز» لا «غير متوفر».
+let walletSetupGen = 0;
+let walletSetupPending = false;
 
 // Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
 // v-plan-routing: رزم النقاط (pack<n>) بنفس أسعار أزرار «باقات النقاط» — الخادم يضيف النقاط ولا يغيّر الباقة.
@@ -68,6 +73,31 @@ function showPriceTab(tab){
 }
 window.showPriceTab = showPriceTab;
 
+/* v-audit-shell (cli-ui-shell-5): «باقتك الحالية» كانت ثابتة على بطاقة «مجاني» في الجزء (partials-settings)، و«اشترك الآن» على باقة المشترك
+   نفسها — فيُدعى المشترك لشراء باقته مرّة ثانية. بطاقة الباقة الفعليّة (__omranPlan) تأخذ الزرّ المعطّل بمفتاحه، وزرّ «مجاني» يُخفى لمن ليس
+   مجّانيًّا أو ضيفًا، وكلّ زرّ يعود كما كان حين تتغيّر الباقة. عرض فقط: الأسعار والدفع (openCheckout) والخادم كما هي. */
+/* v-lock-r2 (r2-5): بطاقة الباقة الحاليّة المعطّلة مع منع الأدنى (lower_plan) وشريط «قارب الانتهاء — جدّد» (app-33) = طريق مسدود: مشترك Max بدفعة
+   لشهر يُدعى للتجديد ولا شيء يُشترى، فينتظر السقوط إلى المجّانيّ. في نافذة ذلك الشريط نفسها (٣ أيّام قبل نهاية الفترة، NOTICE_DAYS في
+   app-33، من subs ردّ الرصيد) تصير بطاقته «جدّد» وتفتح دفع الباقة نفسها؛ قبلها تبقى «باقتك الحالية» (لا شراء مبكّر يقصّر الفترة)، والأدنى ممنوعة كما كانت. */
+function pricingMarkCurrentPlan(plan){
+  const p = String(plan || '').toLowerCase();
+  const cur = (!p || p === 'free' || p === 'guest') ? 'free' : p;
+  const subs = Array.isArray(window.__omranSubs) ? window.__omranSubs : [];
+  const renew = cur !== 'free' && subs.some(function(s){ return s && s.kind === 'chat' && s.active && String(s.plan || '').toLowerCase() === cur && Number(s.endsAt) - Date.now() <= 3 * 86400000; });
+  document.querySelectorAll('#pricingSection .priceTab[data-tab="chat"] .pcard .pbtn').forEach(function(b){
+    if(b.dataset.planCard === undefined){
+      b.dataset.planCard = ((b.getAttribute('onclick') || '').match(/openCheckout\('(\w+)'\)/) || [])[1] || 'free';
+      b.dataset.planCls = b.className;
+      b.dataset.planKey = b.getAttribute('data-i18n') || '';
+    }
+    const id = b.dataset.planCard, on = id === cur, key = on ? (renew ? 'plansRenew' : 'planCurrentBtn') : b.dataset.planKey;
+    b.className = (on && !renew) ? 'pbtn ghost' : b.dataset.planCls;
+    b.disabled = (on && !renew) || id === 'free';
+    b.style.visibility = (id === 'free' && !on) ? 'hidden' : '';
+    if(key && b.getAttribute('data-i18n') !== key){ b.setAttribute('data-i18n', key); b.textContent = t(key); }
+  });
+}
+
 // v-media-plans: المتبقّي من اشتراك الصور/الفيديو تحت عنوان قسمها — يختفي بلا اشتراك.
 // v-media-merge: قسم «صور وفيديو» يعرض رصيد المدموجة، ومتبقّي باقة الصور أو الفيديو القديمة ما دامت سارية.
 function renderMediaPlanStatus(media){
@@ -109,6 +139,7 @@ async function refreshPointsWallet(){
   const val = document.getElementById('pricingWalletValue');
   if(!row || !val) return;
   const token = authGet('aiapp_auth_token');
+  pricingMarkCurrentPlan(token ? window.__omranPlan : 'guest'); // v-audit-shell: فورًا بالمعروف، ثمّ بردّ الرصيد
   if(!token){ row.style.display = 'none'; return; }
   try{
     const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
@@ -120,7 +151,10 @@ async function refreshPointsWallet(){
       window.__pointsBalance = d.unlimited ? Infinity : d.points;
       if(typeof applyPlanGate === 'function') applyPlanGate(d); // v-plan-routing: الباقة مع الرصيد
       renderMediaPlanStatus(d.media);
-    } else { row.style.display = 'none'; }
+      window.__omranMediaStatus = d.media || {}; // v-lock-subs (srv-money-4): checkoutLowerThanCurrent
+      window.__omranSubs = Array.isArray(d.subs) ? d.subs : []; // v-lock-r2 (r2-5): نهاية الفترة لبطاقة «جدّد»
+      pricingMarkCurrentPlan(window.__omranPlan); // v-audit-shell
+    } else { row.style.display = 'none'; window.__omranMediaStatus = {}; window.__omranSubs = []; pricingMarkCurrentPlan('guest'); }
   }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:124'); /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
@@ -204,7 +238,9 @@ function omranIOSStoreApp(){
     if(!/iPad|iPhone|iPod/.test(navigator.userAgent || '')) return false;
     if(window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()))) return true;
     if(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)) return true;
-    if((localStorage.getItem('aiapp_store') || '') === 'apple') return true;
+    /* v-lock-ckui (cli-money-8): selfdiag.js (قبل الحزمة) ينقل علم ?store= إلى sessionStorage ويمسح localStorage (v-store-flag-session)،
+       فقراءة localStorage هنا كانت ميّتة: غلاف ?store=apple بلا جسر يرى Google Pay والبطاقة داخله. القراءة من حيث يُحفظ العلم. */
+    if((sessionStorage.getItem('aiapp_store') || '') === 'apple') return true;
   }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:208'); /* guard-ok — بلا كشف تبقى النافذة الداخلية المعتادة */ }
   return false;
 }
@@ -219,6 +255,7 @@ function openCheckout(plan){
     else settingsToast(t('checkoutLoginFirst'));
     return;
   }
+  if(checkoutLowerThanCurrent(plan)){ checkoutSayLowerPlan(); return; } // v-lock-subs (srv-money-4)
   checkoutCurrentPlan = plan;
   // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
   if(omranIOSStoreApp()){ startStripeCheckout(); return; }
@@ -278,11 +315,46 @@ function closeCheckout(back){
 }
 window.closeCheckout = closeCheckout;
 
+/* v-lock-subs (srv-money-4، موافقة المالك ٢٧ أكتوبر): «اشترك الآن» على باقة أدنى من الحاليّة السارية كان يفتح دفعًا يُسقط الأعلى فورًا
+   (سقف Max وبقيّة أيّامه، أو رصيد «صور وفيديو»/مها المتبقّي). الخادم يرفضه (409 lower_plan)، وهنا يُقال قبل النافذة: المحادثة من الباقة
+   السارية (__omranPlan)، والوسائط من ردّ الرصيد (__omranMediaStatus) ما دام في الأعلى رصيد. الترقية والباقة نفسها والرزم كما كانت. */
+const CHECKOUT_PLAN_RANK = { basic: 1, pro: 2, max: 3 };
+function checkoutLowerThanCurrent(plan){
+  const p = String(plan || ''), m = /^(media|maha)_(basic|pro|max)$/.exec(p);
+  if (m){
+    const s = (window.__omranMediaStatus || {})[m[1] === 'media' ? 'mix' : 'maha'];
+    const cur = s && /_(basic|pro|max)$/.exec(String(s.plan || ''));
+    return !!(cur && Number(s.left) > 0 && CHECKOUT_PLAN_RANK[cur[1]] > CHECKOUT_PLAN_RANK[m[2]]);
+  }
+  return !!(CHECKOUT_PLAN_RANK[p] && CHECKOUT_PLAN_RANK[String(window.__omranPlan || '')] > CHECKOUT_PLAN_RANK[p]);
+}
+// التوست يُرسم تحت نافذة الإعدادات (showModal في الطبقة العليا) فلا يُرى فوق بطاقات الباقات — السبب في سطر «لماذا» داخل القسم نفسه (app-33).
+function checkoutSayLowerPlan(){
+  const sd = document.getElementById('settingsDialog'), g = window.__omranPlansGate;
+  if (sd && sd.open && g && typeof g.showWhy === 'function'){
+    g.showWhy(t('axLkSubsLowerPlan'));
+    const w = document.getElementById('plansWhy');
+    if (w && typeof w.scrollIntoView === 'function') w.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return;
+  }
+  settingsToast(t('axLkSubsLowerPlan'));
+}
+
 // "بطاقة" — opens the Stripe-hosted Checkout page (redirect). Creates a real
 // recurring Stripe subscription; see the KNOWN LIMITATION note in
 // api/_lib/create-checkout-session.js about renewal re-crediting.
+/* v-lock-ckui (cli-money-4): نقرة «اشترك» واحدة = جلسة دفع واحدة. النقرة المكرّرة أثناء الطلب (أو أثناء انتظار خروج التطبيق لسفاري)
+   كانت تنشئ جلسة Stripe ثانية وتفتح سفاري مرّتين، ويبقى رقم الأخيرة وحده في aiapp_ck_pending فلا يتحقّق جسر العودة من الأولى. */
+let stripeCheckoutBusy = false;
 async function startStripeCheckout(){
+  if (stripeCheckoutBusy) return;
+  stripeCheckoutBusy = true;
   const statusMsg = document.getElementById('checkoutStatusMsg');
+  /* v-lock-ckui (cli-money-4): في غلاف آبل لا تظهر نافذة الدفع (openCheckout يتخطّاها، v-ios-external-pay)، فما يُكتب في statusMsg
+     لا يراه أحد — «اشترك» كان يصمت عند 401 (رمز منتهٍ) و500 وانقطاع الشبكة. هناك يصل الخطأ بتنبيه النظام (alert، كما يبشّر جسر
+     العودة بالنجاح) بمفتاح مترجم لا بنصّ الخادم الخامّ. خارج الغلاف كما كان. */
+  const ext = omranIOSStoreApp();
+  const fail = (txt, key) => { if (statusMsg) statusMsg.textContent = txt; if (ext) alert(t(key)); };
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t('checkoutRedirecting'); }
   try {
     const r = await fetch('/api/account?action=create-checkout-session', {
@@ -292,7 +364,8 @@ async function startStripeCheckout(){
     });
     const data = await r.json();
     if (!r.ok || !data.url) {
-      if (statusMsg) statusMsg.textContent = data.error || t('checkoutNotConfigured');
+      if (data.code === 'lower_plan') fail(t('axLkSubsLowerPlan'), 'axLkSubsLowerPlan'); // v-lock-subs: رمز الخادم ← نصّ مترجم (ومعه تنبيه الغلاف، v-lock-ckui)
+      else fail(data.error || t('checkoutNotConfigured'), r.status === 401 ? 'checkoutLoginFirst' : 'checkoutError');
       return;
     }
     // v-ios-bridge: على آيفون المثبَّت يهبط نجاح الدفع في ورقة متصفح منفصلة
@@ -303,14 +376,28 @@ async function startStripeCheckout(){
        النظام (Apple Pay خارجي) — والعودة للتطبيق تُكمل التحقق عبر
        aiapp_ck_pending (v-ios-bridge، آمن التكرار). لو منع الغلاف
        window.open نهبط للتحويل المعتاد فلا يضيع الدفع بأي حال. */
-    if (omranIOSStoreApp()){
+    if (ext){
+      /* v-lock-ckui (cli-money-3): 'noopener' يجعل window.open يعيد null دائمًا (المواصفة) ولو فُتحت النافذة، فكان التحويل الاحتياطيّ
+         يجري بعد كلّ فتح ناجح: صفحة الدفع مرّتين، أو داخل الغلاف نفسه. الآن بلا noopener، والصلة تُقطع يدويًّا (opener = null).
+         وغلاف كاباسيتور يسلّم window.open لسفاري ويعيد null عمدًا (createWebViewWith ← nil): دليل الفتح هناك خروج التطبيق للخلفيّة
+         (visibilitychange). لا نافذة ولا خروج خلال ٣ ثوانٍ = مُنعت فعلًا، فالتحويل المعتاد مرّة واحدة. */
       let w = null;
-      try{ w = window.open(data.url, '_blank', 'noopener'); }catch(e){ __swallow(e, 'checkout:extopen'); }
+      try{ w = window.open(data.url, '_blank'); if (w) w.opener = null; }catch(e){ __swallow(e, 'checkout:extopen'); }
+      if (!w) w = await new Promise((resolve) => {
+        const done = (v) => { document.removeEventListener('visibilitychange', onVis); window.removeEventListener('pagehide', onHide); resolve(v); };
+        const onVis = () => { if (document.visibilityState === 'hidden') done(true); };
+        const onHide = () => done(true);
+        document.addEventListener('visibilitychange', onVis);
+        window.addEventListener('pagehide', onHide);
+        setTimeout(() => done(document.visibilityState === 'hidden'), 3000);
+      });
       if (w){ closeCheckout(); return; }
     }
     window.location.href = data.url;
   } catch (e) {
-    if (statusMsg) statusMsg.textContent = t('checkoutError');
+    fail(t('checkoutError'), 'checkoutError');
+  } finally {
+    stripeCheckoutBusy = false;
   }
 }
 window.startStripeCheckout = startStripeCheckout;
@@ -340,14 +427,17 @@ async function ensureStripeJs(){
 // remain visible either way — clicking an unavailable one just shows a
 // "not available on this device" message (per design).
 async function setupWalletPaymentRequest(plan){
+  const gen = ++walletSetupGen; // v-lock-gpay (cli-money-9)
   currentWalletAvailability = null;
   currentPaymentRequest = null;
+  walletSetupPending = false;
   const cur = checkoutCurrency(); // v-aed-checkout — الورقة والعمليّة في الخادم بالعملة والمبلغ نفسيهما
   const amount = cur === 'aed' ? CHECKOUT_AED_FILS[plan] : CHECKOUT_PLAN_AMOUNTS[plan];
   if (!amount) return;
+  walletSetupPending = true;
   try {
     const stripe = await ensureStripeJs();
-    if (!stripe) return;
+    if (!stripe || gen !== walletSetupGen) return;
     const pr = stripe.paymentRequest({
       country: 'AE',
       currency: cur,
@@ -356,14 +446,55 @@ async function setupWalletPaymentRequest(plan){
       requestPayerEmail: true,
     });
     const availability = await pr.canMakePayment();
+    if (gen !== walletSetupGen) return; // فُتحت النافذة لباقة أخرى أثناء الفحص: لا تُعرض ورقة بمبلغ هذه ولا تُمنح هي
     currentWalletAvailability = availability || null;
     pr.on('paymentmethod', (ev) => { handleWalletPaymentMethod(ev, plan, cur); });
     currentPaymentRequest = pr;
-  } catch (e) { currentWalletAvailability = null; currentPaymentRequest = null; }
+  } catch (e) { if (gen === walletSetupGen) { currentWalletAvailability = null; currentPaymentRequest = null; } }
+  finally { if (gen === walletSetupGen) walletSetupPending = false; }
+}
+
+/* v-lock-gpay (cli-money-1، موافقة المالك ٢٧ أكتوبر): عمليّة Apple/Google Pay كانت تُشحن بطلب تحقّق واحد بعد ev.complete('success') —
+   انقطاع الشبكة أو 500 (قفل الحساب مشغول) = مبلغ مسحوب بلا شحن ولا أثر يعيده، ثمّ «حاول مرة أخرى» تقود إلى خصم ثانٍ. الآن رقم
+   العمليّة يُحفظ قبل التأكيد (كـaiapp_ck_pending وaiapp_pp_pending، قائمة صغيرة بنافذة الخادم ٧٢ ساعة) ويُعاد تحقّقه عند العودة
+   للتطبيق حتّى يُشحن؛ verify-payment-intent آمن التكرار بالحجز الذرّيّ (v-pay-once)، والويب هوك يشحنه من الخادم أيضًا. */
+const WALLET_PI_KEY = 'aiapp_pi_pending';
+const WALLET_PI_TTL_MS = 72 * 3600 * 1000; // VERIFY_WINDOW_SEC في create-checkout-session.js — بعدها 410 من الخادم
+const walletPiBusy = new Set(); // أرقام يتحقّق منها مسار الآن (نافذة الدفع أو العودة) — لا تحقّقان معًا ولا رسالتا نجاح
+function walletPiList(){
+  try {
+    const a = JSON.parse(localStorage.getItem(WALLET_PI_KEY) || '[]');
+    return Array.isArray(a) ? a.filter((x) => x && typeof x.id === 'string' && x.id && (Date.now() - Number(x.ts || 0)) < WALLET_PI_TTL_MS) : [];
+  } catch (e) { return []; }
+}
+function walletPiSave(list){
+  try {
+    if (list.length) localStorage.setItem(WALLET_PI_KEY, JSON.stringify(list.slice(-5)));
+    else localStorage.removeItem(WALLET_PI_KEY);
+  } catch (e) { __swallow(e, 'checkout:pi-save'); }
+}
+function walletPiAdd(id){ walletPiSave(walletPiList().filter((x) => x.id !== id).concat([{ id, ts: Date.now() }])); }
+function walletPiDrop(id){ walletPiSave(walletPiList().filter((x) => x.id !== id)); }
+// 'ok' شُحنت (أو سبق شحنها) · 'stop' لا فائدة من الإعادة (ليست لهذا الحساب، قديمة، فاسدة) · 'retry' عطل عابر أو لم تكتمل بعد
+async function walletPiVerify(id){
+  const token = authGet('aiapp_auth_token');
+  if (!id || !token) return 'retry';
+  try {
+    const r = await fetch('/api/account?action=verify-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payment_intent_id: id, token }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) { walletPiDrop(id); return 'ok'; }
+    if (r.status === 400 || r.status === 403 || r.status === 410) { walletPiDrop(id); return 'stop'; }
+  } catch (e) { __swallow(e, 'checkout:pi-verify'); }
+  return 'retry';
 }
 
 async function handleWalletPaymentMethod(ev, plan, currency){
   const statusMsg = document.getElementById('checkoutStatusMsg');
+  let piId = '', charged = false; // v-lock-gpay (cli-money-1): charged = الورقة قالت «تمّ» — بعدها لا «حاول مرة أخرى»
   try {
     const stripe = await ensureStripeJs();
     const cr = await fetch('/api/account?action=create-payment-intent', {
@@ -374,9 +505,11 @@ async function handleWalletPaymentMethod(ev, plan, currency){
     const cd = await cr.json();
     if (!cr.ok || !cd.clientSecret) {
       ev.complete('fail');
-      if (statusMsg) statusMsg.textContent = cd.error || t('checkoutNotConfigured');
+      if (statusMsg) statusMsg.textContent = cd.code === 'lower_plan' ? t('axLkSubsLowerPlan') : (cd.error || t('checkoutNotConfigured')); // v-lock-subs
       return;
     }
+    piId = String(cd.id || '');
+    if (piId) { walletPiBusy.add(piId); walletPiAdd(piId); } // v-lock-gpay: قبل التأكيد — إغلاق التطبيق بعده لا يُضيع الدفعة
 
     const { paymentIntent, error } = await stripe.confirmCardPayment(
       cd.clientSecret,
@@ -385,10 +518,12 @@ async function handleWalletPaymentMethod(ev, plan, currency){
     );
     if (error) {
       ev.complete('fail');
+      if (piId && error.type === 'card_error') walletPiDrop(piId); // رفضٌ صريح من البنك: لم يُسحب شيء
       if (statusMsg) statusMsg.textContent = t('checkoutError');
       return;
     }
     ev.complete('success');
+    charged = true;
 
     let finalIntent = paymentIntent;
     if (finalIntent && finalIntent.status === 'requires_action') {
@@ -400,23 +535,25 @@ async function handleWalletPaymentMethod(ev, plan, currency){
       finalIntent = confirmResult.paymentIntent;
     }
 
-    const vr = await fetch('/api/account?action=verify-payment-intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payment_intent_id: cd.id, token: authGet('aiapp_auth_token') }),
-    });
-    const vd = await vr.json();
-    if (vr.ok && vd.ok) {
+    // v-lock-gpay: التحقّق يُعاد ثلاثًا (كالتقاط PayPal)، وإلّا رسالة صادقة والرقم معلّق يُستكمل عند العودة (claimWallet).
+    let v = await walletPiVerify(piId);
+    for (let i = 0; v === 'retry' && i < 3; i++) {
+      await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+      v = await walletPiVerify(piId);
+    }
+    if (v === 'ok') {
       if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
       if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
       setTimeout(closeCheckout, 2500);
     } else if (statusMsg) {
       statusMsg.style.color = '';
-      statusMsg.textContent = vd.error || t('checkoutError');
+      statusMsg.textContent = t('checkoutPaidPending');
     }
   } catch (e) {
-    try { ev.complete('fail'); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'app-06-checkout:418'); /* guard-ok */ }
-    if (statusMsg) statusMsg.textContent = t('checkoutError');
+    if (!charged) { try { ev.complete('fail'); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'app-06-checkout:418'); /* guard-ok */ } }
+    if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t(charged ? 'checkoutPaidPending' : 'checkoutError'); }
+  } finally {
+    if (piId) walletPiBusy.delete(piId);
   }
 }
 
@@ -425,9 +562,20 @@ function showWalletUnavailableMsg(){
   if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t('checkoutWalletUnavailable'); }
 }
 
+// v-lock-gpay (cli-money-9): الضغط قبل أن ينتهي فحص التوفّر كان يقول «غير متوفر» ويبقى. show() يلزمها ضغطة المستخدم نفسها فلا تُنتظر.
+function showWalletPreparingMsg(){
+  const statusMsg = document.getElementById('checkoutStatusMsg');
+  if (!statusMsg) return;
+  const k = 'axLkGpayPreparing', v = t(k);
+  statusMsg.style.color = '';
+  statusMsg.textContent = v !== k ? v : (lang === 'ar' ? 'جارٍ تجهيز الدفع… اضغط مرّة ثانية بعد لحظة' : 'Getting the payment ready… tap again in a moment');
+}
+
 function clickApplePay(){
   if (currentPaymentRequest && currentWalletAvailability && currentWalletAvailability.applePay) {
     currentPaymentRequest.show();
+  } else if (walletSetupPending) {
+    showWalletPreparingMsg();
   } else {
     showWalletUnavailableMsg();
   }
@@ -437,6 +585,8 @@ window.clickApplePay = clickApplePay;
 function clickGooglePay(){
   if (currentPaymentRequest && currentWalletAvailability && currentWalletAvailability.googlePay) {
     currentPaymentRequest.show();
+  } else if (walletSetupPending) {
+    showWalletPreparingMsg();
   } else {
     showWalletUnavailableMsg();
   }
@@ -452,6 +602,7 @@ async function paypalClaim(orderId){
     const r = await fetch('/api/account?action=paypal-order', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'claim', orderId, token }) });
     const d = await r.json().catch(() => ({}));
     if(r.ok && d.credited === true) return 'ok';
+    if(r.status === 409 && d.reason === 'not_completed') return 'none'; // v-lock-gpay: لم يُلتقط — لم يُسحب شيء (كـ'stop' لمن لا يميّز)
     if(r.status === 404 || r.status === 409 || (r.ok && /^(not_owner|no_plan|account)$/.test(String(d.reason || '')))) return 'stop';
   }catch(e){ __swallow(e, 'checkout:pp-claim'); }
   return 'retry';
@@ -460,11 +611,21 @@ async function loadPaypalButtons(){
   const container = document.getElementById('paypalButtonContainer');
   const fallbackBtn = document.getElementById('paypalFallbackBtn');
   if (!container) return;
+  /* v-lock-ckui (cli-money-11): تحميلان متداخلان (فتح الدفع ثانيةً أثناء إعادة المحاولة، أو نقرة على احتياطيّ قديم أثناء الفتح)
+     كانا يرسمان أزرار PayPal مرّتين ويُظهران الاحتياطيّ ورسالة التعثّر فوقها. كلّ تحميل يأخذ رقمًا، وبعد كلّ انتظار يتوقّف إن جاء
+     بعده أحدث؛ والاحتياطيّ يُخفى لحظة البدء (الحالة 'loading') فلا يُنقر احتياطيّ قديم أثناءه. */
+  const seq = ++paypalLoadSeq;
+  paypalLoadState = 'loading';
+  if (fallbackBtn) fallbackBtn.style.display = 'none';
   container.innerHTML = '';
   try {
     const r = await fetch('/api/account?action=paypal-client-id');
+    if (seq !== paypalLoadSeq) return;
+    if (!r.ok) throw new Error('paypal-client-id ' + r.status); // v-lock-ckui (cli-money-11): عطل الخادم تعثّر تحميل، لا «غير مفعّل»
     const data = await r.json();
+    if (seq !== paypalLoadSeq) return;
     if (!data.configured) {
+      paypalLoadState = '';
       if (fallbackBtn) fallbackBtn.style.display = 'flex';
       return;
     }
@@ -477,30 +638,39 @@ async function loadPaypalButtons(){
         s.onerror = reject;
         document.head.appendChild(s);
       });
-      paypalSdkLoaded = true;
+      paypalSdkLoaded = !!window.paypal; // v-lock-ckui (cli-money-11): سكربت فارغ (حاجب) لا يُحسب محمّلًا، فتعيده المحاولة
     }
+    if (seq !== paypalLoadSeq) return;
+    if (!window.paypal) throw new Error('paypal-sdk-empty'); // v-lock-ckui (cli-money-11): كان لا يُرسم شيء ولا يظهر الاحتياطيّ
+    paypalLoadState = '';
     if (window.paypal) {
+      let ppLowerPlan = false; // v-lock-subs (srv-money-4): رفض الأدنى من create يُقال بنصّه لا «حدث خطأ»
       window.paypal.Buttons({
         style: { color: 'blue', shape: 'rect', label: 'paypal', height: 45 },
         createOrder: async () => {
+          ppLowerPlan = false;
           const cr = await fetch('/api/account?action=paypal-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan, token: authGet('aiapp_auth_token') }),
           });
           const cd = await cr.json();
-          if (!cr.ok) throw new Error(cd.error || 'error');
+          if (!cr.ok) { ppLowerPlan = cd.code === 'lower_plan'; throw new Error(cd.error || 'error'); }
           return cd.id;
         },
         onApprove: async (data) => {
           const statusMsg = document.getElementById('checkoutStatusMsg');
-          const cap = await fetch('/api/account?action=paypal-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'capture', orderId: data.orderID, token: authGet('aiapp_auth_token') }),
-          });
-          const capData = await cap.json().catch(() => ({}));
-          if (cap.ok && capData.status === 'COMPLETED') {
+          // v-lock-gpay (cli-money-5): ردّ الالتقاط قد يضيع بعد أن سحب PayPal المبلغ (شبكة، مهلة الدالّة) — لا يُرمى إلى onError.
+          let cap = null, capData = {};
+          try {
+            cap = await fetch('/api/account?action=paypal-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'capture', orderId: data.orderID, token: authGet('aiapp_auth_token') }),
+            });
+            capData = await cap.json().catch(() => ({}));
+          } catch (e) { __swallow(e, 'checkout:pp-capture'); }
+          if (cap && cap.ok && capData.status === 'COMPLETED') {
             /* v-paypal-honest: «تمّ» كانت تظهر بحالة الدفع وحدها ولو فشل الشحن بعد السحب. الآن بالشحن نفسه، ومحاولات
                إعادة على الخادم (claim آمن التكرار)، وإلّا رسالة صادقة ويبقى الطلب معلّقًا يُستكمل عند العودة للتطبيق. */
             let credited = capData.credited === true;
@@ -516,6 +686,28 @@ async function loadPaypalButtons(){
               try { localStorage.setItem('aiapp_pp_pending', data.orderID + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:pp-pending'); }
               if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t('checkoutPaidPending'); }
             }
+          } else if (!cap || cap.status >= 500 || cap.ok) {
+            /* v-lock-gpay (cli-money-5): لا ردّ، أو عطل بعد طلب الالتقاط، أو حالة غير مكتملة — قد يكون المبلغ سُحب، فـ«حاول مرة أخرى»
+               تقود إلى دفع ثانٍ. PayPal نفسه يُسأل (claim آمن التكرار): لم يُلتقط ⇒ الخطأ كما كان؛ لا يُعرف ⇒ معلّق يُستكمل عند العودة. */
+            let res = await paypalClaim(data.orderID);
+            for (let i = 0; res === 'retry' && i < 2; i++) {
+              await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+              res = await paypalClaim(data.orderID);
+            }
+            if (res === 'ok') {
+              if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
+              if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
+              setTimeout(closeCheckout, 2500);
+            } else if (res === 'none') {
+              if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = capData.error || t('checkoutError'); }
+            } else {
+              if (res === 'retry') { try { localStorage.setItem('aiapp_pp_pending', data.orderID + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:pp-pending'); } }
+              if (statusMsg) {
+                const k = res === 'retry' ? 'axLkGpayPayCheck' : 'checkoutPaidPending', v = t(k);
+                statusMsg.style.color = '';
+                statusMsg.textContent = v !== k ? v : (lang === 'ar' ? 'نتأكّد من دفعك الآن — لا تدفع مرّة ثانية. إن خُصم المبلغ يُضاف لحسابك تلقائيًّا.' : 'We are confirming your payment — please do not pay again. If the amount was taken, it will be added to your account automatically.');
+              }
+            }
           } else if (statusMsg) {
             statusMsg.style.color = '';
             statusMsg.textContent = capData.error || t('checkoutError');
@@ -523,17 +715,31 @@ async function loadPaypalButtons(){
         },
         onError: () => {
           const statusMsg = document.getElementById('checkoutStatusMsg');
-          if (statusMsg) statusMsg.textContent = t('checkoutError');
+          if (statusMsg) statusMsg.textContent = t(ppLowerPlan ? 'axLkSubsLowerPlan' : 'checkoutError');
         },
       }).render('#paypalButtonContainer');
     }
   } catch (e) {
+    if (seq !== paypalLoadSeq) return; // v-lock-ckui (cli-money-11): تعثّر تحميل قديم لا يُظهر الاحتياطيّ فوق أزرار رسمها الأحدث
+    paypalLoadState = 'fail';
     if (fallbackBtn) fallbackBtn.style.display = 'flex';
   }
 }
 
+/* v-lock-ckui (cli-money-11): الزرّ الاحتياطيّ يظهر لسببين — PayPal غير مفعّل فعلًا (configured:false)، أو مفعّل وتعثّر تحميله على
+   الجهاز (شبكة، حاجب إعلانات، عطل الخادم). الثاني كان يقول «الدفع غير مفعّل من الإدارة بعد» فيظنّ المستخدم أنّ الموقع لا يقبل PayPal.
+   الآن يقول «تعذّر التحميل» ويعيد المحاولة مرّة لكلّ نقرة (الزرّ يختفي أثناءها، وأيّ نقرة أثناء تحميل جارٍ — إعادةً كان أو فتحًا — تُتجاهل). */
 async function startPaypalCheckout(){
   const statusMsg = document.getElementById('checkoutStatusMsg');
+  if (paypalLoadState === 'loading') return;
+  if (paypalLoadState === 'fail') {
+    const k = 'axLkCkuiPaypalLoadFail', m = t(k);
+    const msg = m && m !== k ? m : t('checkoutError');
+    if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = msg; }
+    await loadPaypalButtons(); // تُخفي الاحتياطيّ وتضع 'loading' فورًا، ثمّ '' إن نجحت أو 'fail' إن تعثّرت ثانيةً
+    if (paypalLoadState === '' && statusMsg && statusMsg.textContent === msg) statusMsg.textContent = '';
+    return;
+  }
   if (statusMsg) statusMsg.textContent = t('checkoutNotConfigured');
 }
 window.startPaypalCheckout = startPaypalCheckout;
@@ -546,19 +752,32 @@ window.startPaypalCheckout = startPaypalCheckout;
     const checkoutResult = params.get('checkout');
     if (checkoutResult === 'success' || checkoutResult === 'cancel') {
       const sessionId = params.get('session_id');
+      /* v-lock-gpay (cli-money-5): صفحة النجاح بعد دفع مكتمل كانت تقول «حدث خطأ ما، حاول مرة أخرى» إن تعذّر التحقّق (Safari الغلاف
+         بلا رمز ⇒ 401، أو شبكة أو 500)، وتمسح aiapp_ck_pending قبل النتيجة — فيدفع المستخدم ثانيةً. الآن تبقى الجلسة معلّقة حتّى يُشحن
+         (claim أدناه يكملها، والويب هوك يشحنها من الخادم)، والرسالة «وصلنا دفعك…» لا «حاول مرة أخرى». العلم يمنع claim من تحقّق ثانٍ معًا. */
+      const verifying = !!(checkoutResult === 'success' && sessionId);
+      if (verifying) {
+        window.__ckRedirectVerify = sessionId;
+        try { localStorage.setItem('aiapp_ck_pending', sessionId + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:keep'); }
+      }
       window.addEventListener('DOMContentLoaded', () => {
         setTimeout(async () => {
-          if (checkoutResult === 'success' && sessionId) {
+          if (verifying) {
+            let vr = null, vd = {};
             try {
-              const vr = await fetch('/api/account?action=verify-checkout', {
+              vr = await fetch('/api/account?action=verify-checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'verify-checkout', session_id: sessionId, token: authGet('aiapp_auth_token') }),
               });
-              const vd = await vr.json();
-              alert(vr.ok && vd.ok ? t('checkoutSuccessMsg') : t('checkoutError'));
-              if (vr.ok && vd.ok && typeof refreshPointsWallet === 'function') refreshPointsWallet();
-            } catch (e) { alert(t('checkoutError')); }
+              vd = await vr.json().catch(() => ({}));
+            } catch (e) { __swallow(e, 'checkout:redirect-verify'); }
+            const ok = !!(vr && vr.ok && vd.ok);
+            // شُحنت، أو لا فائدة من الإعادة (ليست لهذا الحساب، قديمة، فاسدة) — الويب هوك يشحن صاحبها
+            if (ok || (vr && (vr.status === 400 || vr.status === 403 || vr.status === 410))) { try { localStorage.removeItem('aiapp_ck_pending'); } catch(e){ __swallow(e, 'checkout:clear'); } }
+            window.__ckRedirectVerify = '';
+            alert(ok ? t('checkoutSuccessMsg') : t('checkoutPaidPending'));
+            if (ok && typeof refreshPointsWallet === 'function') refreshPointsWallet();
           } else {
             alert(checkoutResult === 'success' ? t('checkoutSuccessMsg') : t('checkoutCancelMsg'));
           }
@@ -569,8 +788,8 @@ window.startPaypalCheckout = startPaypalCheckout;
       params.delete('session_id');
       const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
       window.history.replaceState({}, '', newUrl);
-      // نفس السياق أكمل بنفسه — لا حاجة لجسر الآيفون.
-      try { localStorage.removeItem('aiapp_ck_pending'); } catch(e){ __swallow(e, 'checkout:clear'); }
+      // نفس السياق أكمل بنفسه — لا حاجة لجسر الآيفون. (v-lock-gpay: صفحة نجاح بجلسة تمسحها بعد الشحن وحده — أعلاه.)
+      if (!verifying) { try { localStorage.removeItem('aiapp_ck_pending'); } catch(e){ __swallow(e, 'checkout:clear'); } }
     }
   } catch(e){ __swallow(e, "auth:app-06-checkout#1"); }
 })();
@@ -592,7 +811,7 @@ window.startPaypalCheckout = startPaypalCheckout;
   let busy = false;
   async function claim(){
     const id = pending();
-    if(!id || busy) return;
+    if(!id || busy || window.__ckRedirectVerify === id) return; // v-lock-gpay: صفحة النجاح تتحقّق منها الآن
     const token = authGet('aiapp_auth_token');
     if(!token) return;
     busy = true;
@@ -631,11 +850,29 @@ window.startPaypalCheckout = startPaypalCheckout;
     drop();
     if(res === 'ok'){ alert(t('checkoutSuccessMsg')); if(typeof refreshPointsWallet === 'function') refreshPointsWallet(); }
   }
+  // v-lock-gpay (cli-money-1): عمليّة Apple/Google Pay سُحب مبلغها ولم يُؤكَّد شحنها — يُعاد تحقّقها عند كلّ عودة حتّى ٧٢ ساعة.
+  let piBusy = false;
+  async function claimWallet(){
+    if(piBusy) return;
+    const list = walletPiList();
+    if(!list.length || !authGet('aiapp_auth_token')) return;
+    piBusy = true;
+    let ok = false;
+    for(const x of list){
+      if(walletPiBusy.has(x.id)) continue; // نافذة الدفع تتحقّق منها الآن
+      walletPiBusy.add(x.id);
+      try { if(await walletPiVerify(x.id) === 'ok') ok = true; } finally { walletPiBusy.delete(x.id); }
+    }
+    piBusy = false;
+    if(ok){ alert(t('checkoutSuccessMsg')); if(typeof refreshPointsWallet === 'function') refreshPointsWallet(); }
+  }
   window.addEventListener('focus', () => { claim(); claimPaypal(); });
-  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ claim(); claimPaypal(); } });
+  window.addEventListener('focus', claimWallet);
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ claim(); claimPaypal(); claimWallet(); } });
   const iv = setInterval(() => { if(!pending()){ clearInterval(iv); return; } claim(); }, 5000);
   claim();
   claimPaypal();
+  claimWallet();
 })();
 const btnExportProjectsEl = $('#btnExportProjects');
 if(btnExportProjectsEl) btnExportProjectsEl.onclick = exportProjects;
@@ -1237,14 +1474,12 @@ const TOPIC_FOLLOW_RULE = '\nTOPIC FOLLOW RULE (mandatory, highest priority): th
 const CHAT_STYLE_RULE = '\nCHAT STYLE RULE (mandatory): outside the single fenced code block, use 1 to 3 short natural sentences in the user\'s language to state what was built or changed. Add a question or next step only when a real choice, blocker or unfinished action remains; never append suggestions automatically. NEVER put code, HTML tags, CSS, function names in backticks, or technical snippets in the conversational text. All code goes ONLY inside one fenced ``` block. The chat must read like a discussion between two people, never like documentation.'
 // ✅ v303: ممنوع «أنا موديل نصي لا أرسم» + ممنوع سلسلة الاستيضاحات + الرد القصير الموافق = تنفيذ فوري.
 const APP_CAPABILITY_RULE = '\nAPP CAPABILITY RULE (mandatory): This app AUTOMATICALLY generates real images (floor plans, facades, posters, photos) around your text replies. NEVER say you are a text-only model, that you cannot draw, or tell the user to type a different command to get an image — the app already handles image generation. FORBIDDEN: asking more than ONE clarifying question in a conversation thread. If the user replies with a short affirmative (نعم / ابدأ / يلا / تمام / ok / yes) or names a part of your own previous proposal (المخطط / الواجهة / الشكل الخارجي...), that IS full approval of your last proposal — execute it completely and immediately, never ask what they mean.';
-+ '\nADDRESSING RULE (mandatory): NEVER call the user by any name (like عبدالله or أحمد) unless the user explicitly told you their name in THIS conversation. If you do not know the name, use no name at all.'
-+ '\nGREETING RULE (mandatory): greet AT MOST ONCE per conversation — only if the user greeted you in their CURRENT message AND you have not greeted before in this conversation. NEVER open a reply with هلا/أهلاً/مرحبا/وعليكم السلام otherwise. Go straight to the answer.'
-+ '\nPERSONA RULE (mandatory): you are a warm, sharp Gulf-Arabic assistant. Never call the user "كابتن" or any nickname. Keep replies SHORT (2-4 sentences), human and direct. Add ONE concrete next-step suggestion or question only when a real choice, blocker or unfinished action remains; otherwise end after the answer. No generic filler, no lecture-style advice, no bullet lists in casual chat.'
-+ '\nTOPIC RULE (mandatory): each user message may be a completely NEW topic. Detect topic switches instantly and answer the NEW topic only — never drag the previous topic into the reply or re-answer it.'
-+ '\nQUESTION RULE (mandatory): if the user asks a question or wants a discussion, ONLY answer it. Do NOT offer to build an app, do NOT produce code, and do NOT list app screens unless the user explicitly commanded you to build something.'
-+ '\nCONSULTATION RULE (mandatory): when the user explicitly asks for your opinion, advice or a discussion (شو رايك، وش تنصح، ناقشني، عطني رايك، أيهما أفضل، استشارة), switch to a thoughtful consultant style: give a clear honest opinion, 2-3 concrete reasons, mention one trade-off, and end with a short conclusion (خلاصة). This is the ONLY case where a longer structured reply is allowed — still no code and no offering to build.'
-+ '\nLANGUAGE PURITY RULE (mandatory): reply ENTIRELY in the user\'s language. If the user writes Arabic, the whole reply must be Arabic — never mix English sentences or phrases into an Arabic reply (technical proper nouns like HTML are fine).'
-+ '\nNO VISIBLE THINKING RULE (mandatory, highest priority): NEVER print your internal reasoning, chain-of-thought, self-analysis, rule-checking or planning process in the reply (e.g. "Okay, let me unpack this", "First, checking the system rules", "Final check"). All thinking stays silent and internal — output ONLY the final polished answer itself, nothing else.';
+/* v-lock-ckui (cli-money-7): كانت بعد الفاصلة المنقوطة أعلاه ثمانية أسطر «+ '…RULE…'» (ADDRESSING · GREETING · PERSONA · TOPIC · QUESTION ·
+   CONSULTATION · LANGUAGE PURITY · NO VISIBLE THINKING) — عبارة مستقلّة تُحسب وتُرمى، فلم تصل أيّ رسالة نظام قطّ (والحزمة المنشورة مثلها).
+   حُذفت ولم تُفعَّل: تفعيلها يغيّر ما يصل النموذج في كلّ طلب بناء (أسلوب مختبَر على حاله، وقيد المالك في v-openai-pick «لا تغيير لأسلوب
+   المحادثة»)، وبعضها يناقض قواعد البناء هنا (QUESTION «لا كود» مقابل NO_FAKE_EDIT «الملفّ كاملًا»). ونيّاتها قائمة في مواضعها:
+   CONVERSATION_QUALITY_RULE (٢ التحية · ٤ الطول · ٥ اللغة · ٦ بلا تفكير ظاهر)، TOPIC_FOLLOW_RULE، REPLY LANGUAGE RULE، وقاعدة الاسم
+   في بروم المحادثة العاديّة (app-09-attach.js). */
 
 // تنظيف نص المحادثة: يشيل أي كود متبقي (مسيّج أو خام) حتى لا يظهر في الدردشة.
 // 🔒 أثناء البث الحي: أول ما يبدأ المزود يكتب كودًا (سياج ``` أو HTML خام)
@@ -2752,11 +2987,15 @@ async function postWithConfirm(url, payload){
    حالة الزرّ تُقرأ من Stripe عند فتح الإعدادات إن وُجد اشتراك، وإلّا من التفضيل المحفوظ. */
 function autoRenewPref(){ try{ return localStorage.getItem('aiapp_autorenew') === '1'; }catch(e){ return false; } }
 function autoRenewHintText(on){ return t(on ? 'autoRenewOnHint' : 'autoRenewOffHint'); }
-function setAutoRenewUI(on){
+/* v-lock-subs (cli-money-10): مفعّل ولا اشتراك متجدّد عند Stripe (اشترى بـApple/Google Pay أو PayPal — دفعة لشهر) كان يقول «يتجدّد اشتراكك»
+   فتسقط باقته بعد ٣٥ يومًا وهو يظنّها تتجدّد. noSub = ردّ الخادم subs=0: النصّ يقول إنّ التجديد للشراء القادم بالبطاقة وحدها. */
+function setAutoRenewUI(on, noSub){
   const chk = document.getElementById('chkAutoRenew'), hint = document.getElementById('autoRenewHint');
   if (chk) chk.checked = !!on;
   /* v-i18n-14: النصّ كان يُكتب مرّة قبل وصول ملفّ اللغة فيبقى إنجليزيًّا (مسح اللغات: ١٢ لغة) — data-i18n تجعل applyLanguage يحدّثه */
   if (hint) { hint.setAttribute('data-i18n', on ? 'autoRenewOnHint' : 'autoRenewOffHint'); hint.textContent = autoRenewHintText(!!on); }
+  /* v-lock-subs (cli-money-10) × v-i18n-14 (v-audit-main): مفعّل ولا اشتراك متجدّد — نصّ «للشراء القادم بالبطاقة» بمفتاحه، فيحدّثه applyLanguage بالمفتاح نفسه */
+  if (hint && on && noSub) { hint.setAttribute('data-i18n', 'axLkSubsRenewCardOnly'); hint.textContent = t('axLkSubsRenewCardOnly'); }
 }
 async function autoRenewCall(on){
   const tk = authGet('aiapp_auth_token');
@@ -2771,6 +3010,7 @@ async function syncAutoRenewUI(){
   try{
     const j = await autoRenewCall();
     if (j && j.subs > 0){ localStorage.setItem('aiapp_autorenew', j.on ? '1' : '0'); setAutoRenewUI(j.on); }
+    else if (j && autoRenewPref()) setAutoRenewUI(true, true); // v-lock-subs (cli-money-10)
   }catch(e){ __swallow(e, 'checkout:autorenew-sync'); }
 }
 (function wireAutoRenew(){
@@ -2788,7 +3028,7 @@ async function syncAutoRenewUI(){
       if (j && j.subs > 0){
         const d = j.periodEnd ? new Date(j.periodEnd * 1000).toLocaleDateString(lang === 'ar' ? 'ar-AE' : undefined) : '';
         settingsToast(on ? t('autoRenewResumed') : t('autoRenewStopped').replace('{date}', d));
-      }
+      } else if (j && on) setAutoRenewUI(true, true); // v-lock-subs (cli-money-10): لا اشتراك يتجدّد الآن — التجديد للشراء القادم بالبطاقة
     }catch(e){
       __swallow(e, 'checkout:autorenew-set');
       try{ localStorage.setItem('aiapp_autorenew', prev ? '1' : '0'); }catch(e2){ __swallow(e2, 'checkout:autorenew-revert'); }

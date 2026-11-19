@@ -217,7 +217,7 @@ test('٧. شريط حالة الطلب يُفكّ قبل مسارَي «+» — 
 });
 
 test('٨. رسم كامل للمحادثة نفسها أثناء الانتظار («عرض الرسائل الأقدم»، اللغة) يعيد المربّع، وبعد النتيجة لا يعيده فوقها', async () => {
-  const runCode = ['var __OMRAN_WD_HARD_MS = 300000;', 'var __omranRuns = {};', 'var __omranRunViewPid = null, __omranRunViewLive = false;',
+  const runCode = ['var __OMRAN_WD_HARD_MS = 300000;', 'var __omranRuns = {};', 'var __omranSendPending = {};' /* v-lock-chatvid: بدء الدور يفكّ علَم الإرسال */, 'var __omranRunViewPid = null, __omranRunViewLive = false;',
     top('__omranRunStart'), top('__omranRunEnd'), top('__omranAbortRun'), top('__omranSyncRunView')];
   const env = makeEnv({ extra: runCode });
   const sb = env.sb;

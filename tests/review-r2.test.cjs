@@ -141,8 +141,8 @@ test('أ. نواتج خادمنا (Runway · الاقتصاديّ · الممث�
   assert.equal((await dl({ url: 'https://img.example/over.jpg' }, bearer(tk))).code, 429, 'السقف الخارجيّ كما كان');
   for (const u of [RUNWAY_OUT, MINIMAX_OUT, ACTOR_OUT]) assert.equal((await dl({ url: u }, bearer(tk))).code, 429, 'قبل أن يسلّمه خادمنا: وسيط عاديّ');
   assert.equal((await run(videoStatus, { method: 'GET', query: { id: '0:T9' } })).body.status, 'SUCCEEDED');
-  assert.equal((await run(minimaxStatus, { method: 'GET', query: { task_id: 'mm-task-1' } })).body.status, 'SUCCEEDED');
-  assert.equal((await run(actorStatus, { method: 'GET', query: { id: 'actor-req-0001' } })).body.status, 'SUCCEEDED');
+  assert.equal((await run(minimaxStatus, { method: 'GET', query: { task_id: '106916112212001' } })).body.status, 'SUCCEEDED');
+  assert.equal((await run(actorStatus, { method: 'GET', query: { id: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' } })).body.status, 'SUCCEEDED');
   for (const u of [RUNWAY_OUT, MINIMAX_OUT, ACTOR_OUT]) {
     const r = await dl({ url: u }, bearer(tk));
     assert.equal(r.code, 200, 'ناتج مدفوع يُحفظ: ' + u);

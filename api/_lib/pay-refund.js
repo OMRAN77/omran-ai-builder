@@ -21,8 +21,10 @@
 // ٥. دفعة قديمة بلا سجلّ: تُستخرج خطّتها وصاحبها من Stripe/PayPal، ولا يُسحب إلّا بدليل منح (حجز v-pay-once أو أثر الدفعة على
 //    الحساب)؛ وإلّا تنبيه للمالك بلا سحب — لا يُسحب ما لم يُثبت أنّه مُنح. واسترداد كامل أو اعتراض لدفعة لم تُشحن بعد يُشغل
 //    حجزها بعلامة السحب فلا يشحنها شيء بعده. عطل Stripe/PayPal العابر يرمي (500 فيُعاد الحدث) لا «لا سجلّ».
+//    ودفعةٌ شُحنت ولم يُكتب سجلّها بعد (علامة إكمال معلَّقة) يُكمَل منحها أوّلًا ثمّ يُسحب منه (v-lock-credit، completeFirst).
 // ٦. v-acct-lock: السحب كلّه (والمنح في grantPlanToUser) تحت قفل الحساب على نسخته الطازجة — كلّ كاتب يكتب السجلّ كاملًا (KV بلا
-//    CAS)، فسحبان على خانتين أو سحب مع منح كان أحدهما يعيد ما كتبه الآخر. صرف النقاط خارج القفل: (د) في applyRevoke تضيّق نافذته.
+//    CAS)، فسحبان على خانتين أو سحب مع منح كان أحدهما يعيد ما كتبه الآخر. ومرآة صرف النقاط تحته أيضًا (v-lock-credit)؛ وكتّاب
+//    السجلّ الآخرون خارجه: (د) في applyRevoke تضيّق نافذتهم.
 const { kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel, kvIncrBy, kvDecrBy } = require('./kv.js');
 const { MEDIA_PLANS, MEDIA_WINDOW_DAYS } = require('./_mediaPlans.js');
 
@@ -79,6 +81,44 @@ async function linkGrant(id, extra) {
   } catch (e) { logError('pay-refund:link', e, { id: cut(id).slice(0, 40) }); }
 }
 
+/* v-lock-credit (المراجعة المعاكسة الثانية، #3): إكمالُ منحٍ معلَّق (create-checkout-session finishGrant) وجد فترة أحدث حلّت محلّ ما كانت
+   دفعته ستحلّ محلّه (شراء في النافذة بين الشحن والإكمال). لو كُتب المنح في وقته لكانت سابقةُ الأحدث فترةَ تلك الدفعة، وسجلّ الأحدث يقول
+   «ما قبلها» — فاستردادُه كاملًا يُسقط فترتها المدفوعة غير المستردّة. يُعاد الربط في أوّل سجلّ في سلسلة السوابق من الأحدث (حتّى ٥) سابقتُه
+   رقمها fromId: تصير period(سابقته القديمة) — فترة الدفعة toId. تحت قفل سحب ذلك السجلّ (كـrevoke) فلا يمحو علامة سحبٍ جارٍ؛ مشغول ⇒ رمي
+   فيُعاد الإكمال. سلسلة تمرّ بـtoId = رُبطت قبلُ (إكمالٌ معاد). القراءة صارمة (عطلها يرمي). سجلّ مسحوب كاملًا أو لا سجلّ ⇒ لا ربط. يرجع هل رُبط. */
+async function relinkPrev(newerId, fromId, toId, period, isMedia) {
+  const from = String(fromId || '');
+  const to = String(toId || '');
+  const pidOf = (p) => String((p && (isMedia ? p.payId : p.planPayId)) || '');
+  const strictRec = async (id) => {
+    const raw = await kvGetRaw(recKey(id), { strict: true });
+    if (raw === null || raw === undefined || raw === '') return null;
+    try { return JSON.parse(raw); } catch (e) { return null; } // سجلّ تالف: لا ربط عليه (كـreadRec)
+  };
+  // كلّ سجلّ يُقرأ تحت قفل سحبه: revoke يعلّم السجلّ «مسحوبًا» قبل أن يسحب الفترة تحت قفل الحساب (الذي يحمله الإكمال الآن)، فقراءةٌ
+  // بلا القفل ترى سحبًا لم يقع بعد فتترك الربط، ثمّ يُسقط السحب الأحدث إلى «ما قبلها» وتضيع فترة هذه الدفعة (أُثبت بسباق ٣٠ حسابًا).
+  let id = String(newerId || '');
+  for (let i = 0; id && to && i < 5; i++) {
+    if (id === to) return true;
+    if (!(await kvSetIfAbsent(lockKey(id), 'relink', LOCK_TTL_SEC))) throw new Error('payrec busy, retry: ' + cut(id).slice(0, 40));
+    let next = '';
+    try {
+      const rec = await strictRec(id);
+      if (!rec || (rec.revoked && rec.revoked.plan)) return false;
+      const pp = pidOf(rec.prev);
+      if (pp === to) return true;
+      if (pp !== from) next = pp;
+      else {
+        rec.prev = period(rec.prev || null);
+        await kvSetRaw(recKey(id), JSON.stringify(rec), REC_TTL_SEC);
+        return true;
+      }
+    } finally { await kvDel(lockKey(id)); }
+    id = next;
+  }
+  return false;
+}
+
 /** الفترة التي ستحلّ هذه الدفعة محلّها (قبل المنح) — تُحفظ في سجلّها (prev) فتعود إن سُحبت هي كاملة. للوسائط مع رصيدها وقتها. لا يرمي. */
 async function priorOf(user, username, p) {
   try {
@@ -88,13 +128,16 @@ async function priorOf(user, username, p) {
       if (!m || !m.plan) return null;
       return Object.assign({}, m, { budget: Math.max(0, Number(await kvGetRaw(budgetKey(username, p.media))) || 0) });
     }
+    // v-lock-subs (srv-money-4): الفترة الفعليّة — وقد تكون فترة أدنى من planNext بعد انتهاء الأعلى (tier.chatPeriod)
+    const cp = require('./tier.js').chatPeriod(user);
+    if (cp) return { plan: cp.plan, planUpdatedAt: cp.at, planPayId: cp.payId };
     return user.plan ? { plan: String(user.plan), planUpdatedAt: Number(user.planUpdatedAt) || null, planPayId: user.planPayId ? String(user.planPayId) : null } : null;
   } catch (e) { logError('pay-refund:prior', e); return null; }
 }
 
 // القراءة ترمي عند عطب KV (لا «لا سجلّ» كاذبة تُسقط حدثًا مدفوعًا) — المستدعي يردّ 500 فيعيد المرسل.
-async function readRec(id) {
-  const raw = await kvGetRaw(recKey(id));
+async function readRec(id, opts) {
+  const raw = await kvGetRaw(recKey(id), opts); /* v-r3 (r4-back): opts = { strict } لمن يكتب على ما يقرؤه (completeDropped) */
   if (raw === null || raw === undefined || raw === '') return null;
   try { return JSON.parse(raw); } catch (e) { return null; }
 }
@@ -154,10 +197,41 @@ async function priorPeriod(rec) {
   return null;
 }
 
+/* v-r3 (r3-rv6): الفترة التي أعادها سحبٌ سابق لـr لم يصل سجلّه (رقم دفعتها في علامة media-back:<r>) — تُطلب في سلسلة سوابق r ولو سُحبت
+   دفعتها بعده، فيُكمَل السحب كما بدأ (إعادة الحساب كانت تختار سابقتَها وتُبقي رصيدها هي في العدّاد). منتهية أو غائبة ⇒ null. القراءة صارمة:
+   يُكتب عليها، وnull كاذبة تُسقط إلى priorPeriod فتعود العلّة نفسها. */
+async function periodOf(r, id) {
+  let p = r.prev;
+  for (let i = 0; p && i < 5; i++) {
+    if (String(p.payId || '') === id) return require('./_mediaPlans.js').mediaActive({ media: { [r.media]: p } }, r.media) ? { p, frac: 0 } : null;
+    const x = p.payId ? await readRec(p.payId, { strict: true }) : null;
+    p = x && x.prev;
+  }
+  return null;
+}
+
 // هل الفترة الحاليّة على u (فترة المحادثة، أو باقة الوسائط من نوع r) من الدفعة r؟
+const holdsMain = (u, r) => CHAT_PLANS.includes(r.plan) && String(u.plan || '') === r.plan && sameGrant(u.planUpdatedAt, r, u.planPayId);
+// v-lock-subs (srv-money-4): دفعة أدنى وصلت تحت أعلى سارية — فترتها في planNext برقمها (create-checkout-session.js)، تسري بعد الأعلى
+const isNextOf = (n, r) => !!(n && String(n.plan || '') === r.plan && n.payId && String(n.payId) === String(r.id));
+const holdsNext = (u, r) => !r.media && CHAT_PLANS.includes(r.plan) && Array.isArray(u.planNext) && u.planNext.some((n) => isNextOf(n, r));
+// v-r3 (r3-2): دفعة وسائط أدنى وصلت تحت أعلى سارية — مؤجَّلة في user.mediaNext برقمها (_mediaPlans deferNext) حتّى تخلو خانتها، ثمّ فترةٌ برقمها
+const isNextMedia = (n, r) => !!(n && n.media === r.media && String(n.plan || '') === r.plan && n.payId && String(n.payId) === String(r.id));
+const holdsNextMedia = (u, r) => !!r.media && Array.isArray(u.mediaNext) && u.mediaNext.some((n) => isNextMedia(n, r));
 function holds(u, r) {
-  if (r.media) { const x = u.media && u.media[r.media]; return !!(x && x.plan === r.plan && sameGrant(x.at, r, x.payId)); }
-  return CHAT_PLANS.includes(r.plan) && String(u.plan || '') === r.plan && sameGrant(u.planUpdatedAt, r, u.planPayId);
+  if (r.media) { const x = u.media && u.media[r.media]; return !!(x && x.plan === r.plan && sameGrant(x.at, r, x.payId)) || holdsNextMedia(u, r); }
+  return holdsMain(u, r) || holdsNext(u, r);
+}
+// v-r3 (r3-2): استرداد جزئيّ لمؤجَّلة لم تسرِ — ينقص رصيدها حين تسري بالنسبة التراكميّة (cut)؛ تكرار السحب بالنسبة نفسها لا يأخذ مرّتين. يرجع ما أُخذ.
+async function trimNext(name, u, r, fraction) {
+  const n = u.mediaNext.find((x) => isNextMedia(x, r));
+  const was = Math.min(1, Math.max(0, Number(n.cut) || 0));
+  const cut = Math.max(was, clamp01(Number(fraction) || 0));
+  if (!(cut > was)) return 0;
+  const budget = Math.max(0, Number(n.budget) || 0);
+  n.cut = cut;
+  await require('./auth.js').putUser(name, u);
+  return Math.round(budget * cut) - Math.round(budget * was);
 }
 
 // الدفعة التي فتحت الفترة الحاليّة في خانة rec إن كان سجلّها مسحوبًا كاملًا (revoked.plan) — فترة لا يجوز أن تبقى على الحساب.
@@ -173,7 +247,17 @@ async function revokedHolder(u, rec) {
 // يترك رصيد الباقة المستردّة كاملًا تحت الباقة الأدنى ولا تطابق الإعادة شيئًا). رصيد العائدة: ما بقي لها وقت حلّت r محلّها،
 // ولا يزيد على ما لم يُستردّ من دفعتها.
 async function dropPeriod(name, u, r) {
-  const prior = await priorPeriod(r);
+  if (holdsNextMedia(u, r)) { // v-r3 (r3-2): مؤجَّلة لم تسرِ — تخرج من mediaNext، والفترة الحاليّة ورصيدها لا تُمسّ
+    u.mediaNext = u.mediaNext.filter((n) => !isNextMedia(n, r));
+    if (!u.mediaNext.length) delete u.mediaNext;
+    await require('./auth.js').putUser(name, u);
+    return null;
+  }
+  /* v-r3 (r3-rv6): نصف حالة — علامة media-back:<r> تحمل الفترة التي أعادها الملء الأوّل؛ الإكمال يعيدها هي (بلا ملء: العلامة)، وسحبُ دفعتها
+     (إن كان هو الكاتب الذي يُكمل) يسحبها بعده من رصيدها. كانت تُختار من جديد: سُحبت X كاملًا قبل الإكمال ⇒ عادت P ورصيد X تحتها (٩٠٠٠ بدل ٢٠٠٠).
+     علامة قديمة (وقت الملء لا رقم فترة) أو فترة انتهت ⇒ priorPeriod كما كان. */
+  const was = r.media ? await kvGetRaw(('media-back:' + cut(r.id)).slice(0, 220), { strict: true }) : null;
+  const prior = (was && await periodOf(r, String(was))) || await priorPeriod(r);
   const back = prior ? Object.assign({}, prior.p) : null;
   if (back) delete back.budget;
   if (r.media) {
@@ -183,11 +267,48 @@ async function dropPeriod(name, u, r) {
       const mp = MEDIA_PLANS[back.plan];
       const left = Math.min(Math.max(0, Number(prior.p.budget) || 0), mp ? Math.round(mp.budget * (1 - prior.frac)) : 0);
       const ttl = Math.max(60, Math.ceil((Number(back.at) + MEDIA_WINDOW_DAYS * 86400000 - Date.now()) / 1000));
-      await kvSetRaw(budgetKey(name, r.media), left, ttl);
-    } else await kvDel(budgetKey(name, r.media));
-  } else if (back) { u.plan = back.plan; u.planUpdatedAt = back.planUpdatedAt; u.planPayId = back.planPayId; } else { u.plan = null; delete u.planUpdatedAt; delete u.planPayId; }
+      /* v-r3 (r3-rv4): مرّة واحدة لسحب هذه الدفعة — فشلُ السجلّ بعده يُبقي فترتها فيُصرف الرصيد العائد تحتها، وكانت الإعادة تعيده كاملًا
+         (ما بقي ١٠٠٠ ⇒ ٢٠٠٠). وكذلك (ج) حين تعيد كتابةٌ متأخّرة فترتها: العدّاد لم تمسّه، فلا يُكتب فوق ما صُرف منه. */
+      await require('./_mediaPlans.js').fillOnce('media-back:' + cut(r.id), budgetKey(name, r.media), left, ttl, undefined, back.payId);
+    } else {
+      // v-r3 (r3-2): خلت الخانة — المؤجَّلة تحتها (أدنى دُفعت أثناء الأعلى) تسري الآن برصيدها ونافذتها كاملين؛ كان العدّاد يُحذف فيضيع ثمنها
+      await require('./_mediaPlans.js').activateDue(u, name);
+      if (!(u.media && u.media[r.media])) await kvDel(budgetKey(name, r.media));
+    }
+  } else {
+    const main = holdsMain(u, r);
+    if (holdsNext(u, r)) { // v-lock-subs (srv-money-4): فترة planNext لهذه الدفعة تخرج — لا تسري بعد الأعلى وثمنها مُستردّ
+      u.planNext = u.planNext.filter((n) => !isNextOf(n, r));
+      if (!u.planNext.length) delete u.planNext;
+    }
+    if (!main) { await require('./auth.js').putUser(name, u); return null; }
+    if (back) { u.plan = back.plan; u.planUpdatedAt = back.planUpdatedAt; u.planPayId = back.planPayId; } else { u.plan = null; delete u.planUpdatedAt; delete u.planPayId; }
+  }
   await require('./auth.js').putUser(name, u);
+  if (!back && r.media && u.media && u.media[r.media]) return u.media[r.media].plan; // v-r3 (r3-2): المؤجَّلة التي سرت مكانها
   return back ? back.plan : null;
+}
+
+/* v-r3 (r4-back): توأم r3-rv2-stale في جهة السحب — استردادٌ كامل أعاد رصيد الفترة السابقة (fillOnce 'media-back:<الدفعة>') ثمّ فشلت كتابة
+   السجلّ، فيفكّ revoke علامته ويردّ 500. حتّى إعادة الحدث يبقى السجلّ على الفترة المستردّة ورصيدُ السابقة في العدّاد، وكلّ كاتب يأخذ القفل قبلها
+   يعمل عليها: استرداد جزئيّ لها يصل بعد الكامل يأخذ الرصيد العائد (والإعادة لا تملأ: العلامة)، ومنحٌ جديد يحفظ سابقتَه الفترةَ المستردّة فيعيد
+   استردادُه رصيدَ الأقدم ثانيةً، واسترداد جزئيّ للعائدة لا يجد فترتها، وتجديد العائدة يُؤجَّل تحت المستردّة. يُكمَل السحب هنا مرّة تحت قفل الحساب
+   (create-checkout-session withAccount) قبل أيّ كاتب: فترةٌ لدفعتها علامة إعادة = سُحبت كاملًا ولم يصل سجلّها. fillOnce يجد العلامة فلا يملأ
+   ثانية، وdropPeriod يكتب السجلّ (فشله يرمي قبل أثر الكاتب فيُعاد). القراءتان صارمتان: العطل يرمي لا «لا علامة». الكلفة قراءة لكلّ خانة وسائط. */
+async function completeDropped(name, u) {
+  if (!u || u.deleted || !u.media) return false;
+  let done = false;
+  for (const kind of Object.keys(u.media)) {
+    const x = u.media[kind];
+    if (!x || !x.payId) continue;
+    const was = await kvGetRaw(('media-back:' + cut(x.payId)).slice(0, 220), { strict: true });
+    if (was === null || was === undefined || String(was) === '') continue;
+    const rec = await readRec(String(x.payId), { strict: true });
+    if (!rec || rec.media !== kind || !holds(u, rec)) continue;
+    await dropPeriod(name, u, rec);
+    done = true;
+  }
+  return done;
 }
 
 async function applyRevoke(rec, step) {
@@ -223,9 +344,14 @@ async function applyRevoke(rec, step) {
   // (خانة أخرى، أو رزمة نقاط، أو جزئيّ) ومنحٌ جديد لا يكتبان نسختهما القديمة فوق هذا السحب ولا هذا فوقهما. لم يُنل القفل ⇒
   // رمي قبل أيّ أثر فيعيد المرسل الحدث. v-rename-move: الحساب بعد تغيير اسمه.
   await withAccount(rec.username, async (name, user) => {
+    /* v-r3 (r3-8): getUser يعيد null عند عطل القراءة — كان السحب يعود هنا بلا أثر والحدث معلَّم «تمّ» قبله (revoke)، فاسترداد في عطل KV لا يأخذ
+       شيئًا ولا يُعاد أبدًا (توأم r2-1 في جهة السحب). الآن المفقود يقينًا (قراءة صارمة بلا سجلّ) وحده لا شيء يُسحب منه؛ والعطل يرمي قبل أيّ
+       أثر فيفكّ revoke علامته (non-2xx فيُعاد الحدث)، والإعادة بعد التعافي تسحب مرّة واحدة. */
+    if (!user && !(await require('./create-checkout-session.js').surelyMissing(name))) throw new Error('account unreadable, retry: ' + cut(rec.username).slice(0, 40));
     if (!user || user.deleted) return;
     out.account = name;
-    const mediaCurrent = !!(rec.media && holds(user, rec));
+    const mediaCurrent = !!(rec.media && holds(user, rec)); // v-r3 (r3-2): الفترة الحاليّة أو مؤجَّلة لم تسرِ
+    const deferred = !!(rec.media && holdsNextMedia(user, rec));
 
     // (أ) الباقة نفسها عند بلوغ المبلغ كاملًا — يتكرّر بلا أثر (بعد السحب لا تطابق الفترة)، فيُعاد بأمان بعد فشل لاحق
     //     وبعد كتابة متزامنة. الفترة التي حلّت هذه الدفعة محلّها تعود إن بقيت سارية غير مسحوبة (priorPeriod)، وإلّا لا باقة.
@@ -236,7 +362,17 @@ async function applyRevoke(rec, step) {
 
     // (ب) عدّاد واحد غير متكرّر الأثر: رصيد الوسائط (باقة الوسائط بلا نقاط) أو النقاط.
     if (rec.media) {
-      if (!out.mediaRevoked && mediaCurrent && step.budget > 0) out.budgetTaken = await floorDecr(budgetKey(name, rec.media), step.budget);
+      // v-r3 (r3-2): المؤجَّلة لا عدّاد لها بعد — ينقص رصيدها حين تسري (trimNext بالنسبة التراكميّة)، والسارية من عدّادها كما كان
+      if (!out.mediaRevoked && deferred && step.budget > 0) out.budgetTaken = await trimNext(name, user, rec, step.fraction);
+      else if (!out.mediaRevoked && mediaCurrent && step.budget > 0) {
+        /* v-r3 (r3-rv7): trimNext كتب cut ووصل وضاع ردّه، ففكّ revoke علامته (500)، ثمّ سرت المؤجَّلة بما بعد القصّ — إعادة الحدث تجدها الفترة
+           الحاليّة فكان floorDecr يأخذ القصّ نفسه ثانيةً من عدّادها (٦٢٤ ⇒ ٠). ما قُصّ عند السريان (cut على الفترة) ولا يعرفه سجلّ الدفعة يُطرح ممّا يُؤخذ. */
+        const x = user.media && user.media[rec.media];
+        const mp = MEDIA_PLANS[rec.plan];
+        const pre = x && mp && String(x.payId || '') === String(rec.id) ? Math.round(mp.budget * clamp01(Number(x.cut) || 0)) : 0;
+        const want = step.budget - Math.max(0, pre - (Number(rec.revoked && rec.revoked.budget) || 0));
+        if (want > 0) out.budgetTaken = await floorDecr(budgetKey(name, rec.media), want);
+      }
     } else if (step.points > 0) {
       await require('./points.js').ensureBalance(name); // عدّاد غائب يُبذر من السجلّ (v-pay-seed)
       out.pointsTaken = await floorDecr(pointsKey(name), step.points);
@@ -249,9 +385,10 @@ async function applyRevoke(rec, step) {
     if (periods) await recheck(name, 'pay-refund:recheck');
   });
 
-  // (د) صرف النقاط لا يأخذ قفل الحساب (المسار الساخن): مرآته (mirrorToUser) تقرأ السجلّ ثمّ تكتبه كاملًا، فقراءةٌ سبقت السحب
-  //     تصل كتابتها بعد (ج) فتعود الفترة المسحوبة والحدث «تمّ». تضييق النافذة: (ج) مرّة أخيرة تحت القفل بعد مهلة قصيرة تكفي
-  //     لوصول كتابةٍ بدأت قبل السحب (قراءة + كتابة KV). لا يسدّها كلّها: كتابةٌ أبطأ من المهلة تبقى ممكنة.
+  // (د) كتّاب السجلّ خارج قفل الحساب يقرؤونه ثمّ يكتبونه كاملًا، فقراءةٌ سبقت السحب تصل كتابتها بعد (ج) فتعود الفترة المسحوبة
+  //     والحدث «تمّ». تضييق النافذة: (ج) مرّة أخيرة تحت القفل بعد مهلة قصيرة تكفي لوصول كتابةٍ بدأت قبل السحب (قراءة + كتابة KV).
+  //     لا يسدّها كلّها. v-lock-credit (x-build-1): مرآة صرف النقاط (mirrorToUser) صارت تحت القفل فلا تمرّ من هنا؛ تبقى (د)
+  //     للكتّاب الآخرين (تغيير الاسم، الإعدادات، هديّة الترحيب).
   if (periods && out[slot] && out.account) {
     await new Promise((r) => setTimeout(r, SETTLE_MS));
     try {
@@ -290,7 +427,7 @@ async function revoke(recId, ev) {
       fraction: f, refunded, disputed, points: Math.max(rv.points, tPoints), budget: Math.max(rv.budget, tBudget), plan: rv.plan || full,
       ids: rv.ids.concat(ev.key).slice(-20), reason: ev.reason, at: Date.now(),
     };
-    const step = { full: full && !rv.plan, points: next.points - rv.points, budget: next.budget - rv.budget };
+    const step = { full: full && !rv.plan, points: next.points - rv.points, budget: next.budget - rv.budget, fraction: f }; // fraction: v-r3 (r3-2) للمؤجَّلة
     // العلامة قبل الأثر: إن مات الطلب بعد الخصم فالإعادة ترى الحدث مسجَّلًا ولا تخصم ثانية.
     await kvSetRaw(recKey(recId), JSON.stringify(Object.assign({}, rec, { revoked: next })), REC_TTL_SEC);
     let out;
@@ -324,6 +461,22 @@ async function alertOwner(title, body) {
       .then(() => require('./_owner-alert.js').pushToOwners({ title, body: String(body).slice(0, 220), url: '/' }))
       .then(() => { clearTimeout(t); resolve(); }, (e) => { clearTimeout(t); logError('pay-refund:alert', e); resolve(); });
   });
+}
+
+/* v-r3 (r3-7): «تنبيه مرّة لكلّ دفعة» (دفعة لحساب محذوف: payorphan:<رقمها>) كان SET NX غير صارم — ردّ 200 لا يُقرأ يعود false «سبق التنبيه»،
+   فيُجاب PayPal أو Stripe 200 بلا أيّ تنبيه والمال مأخوذ. الآن الحجز صارم (الردّ الغامض يرمي ⇒ non-2xx فيُعاد الحدث)، وبمرحلتين: 'pending'
+   قبل التنبيه ثمّ 'sent' بعده — فحجزٌ كُتب وضاع ردّه، أو مات الطلب بعده قبل التنبيه، تجده الإعادة 'pending' فتنبّه. القيمة القديمة '1' = أُرسل.
+   الثمن: تنبيه مكرّر نادر (تسليمان متزامنان، أو تعذّر كتابة 'sent') بدل تنبيه ضائع. يرمي عطب KV للمستدعي. */
+const ORPHAN_ALERT_TTL_SEC = 400 * 86400;
+async function alertOnce(key, title, body) {
+  const k = String(key).slice(0, 220);
+  if (!(await kvSetIfAbsent(k, 'pending', ORPHAN_ALERT_TTL_SEC, { strict: true }))) {
+    const v = await kvGetRaw(k, { strict: true });
+    if (v !== null && v !== undefined && String(v) !== 'pending') return false;
+  }
+  await alertOwner(title, body); // لا يرمي
+  try { await kvSetRaw(k, 'sent', ORPHAN_ALERT_TTL_SEC); } catch (e) { logError('pay-refund:alert-once', e, { key: k.slice(0, 60) }); } // فشلها = تنبيه مكرّر في الإعادة لا ضائع
+  return true;
 }
 
 const money = (amount, currency) => (Number(amount) > 0 ? (Number(amount) / 100).toFixed(2) + ' ' + String(currency || '').toUpperCase() : '?');
@@ -381,6 +534,18 @@ async function legacyRecord(cand, extra) {
   return now ? { id: rec.id, rec: now } : null;
 }
 
+// v-lock-credit (srv-money-2، المراجعة المعاكسة): دفعة بلا سجلّ وحجزها لحساب — ربّما شُحنت ولم يُكتب سجلّها بعد (علامة إكمال معلَّقة).
+// تُكمَل أوّلًا (create-checkout-session completeCredit، تحت قفل الحساب) فيسحب الاسترداد ما يسحبه من منحٍ مكتمل، لا من سجلّ قديم
+// يبنيه من الحجز: ذاك لا يأخذ رصيد الوسائط المملوء ويمنع تسليم الباقة بعد سحبٍ جزئيّ. يرجع سجلّ المنح إن صار له سجلّ.
+async function completeFirst(cand, meta) {
+  const { claimKey, completeCredit } = require('./create-checkout-session.js');
+  // المراجعة المعاكسة الثانية (#4): قراءة صارمة — null كاذبة (ردّ 200 لا يُقرأ) كانت تُسقط السحب إلى السجلّ القديم الذي لا يرى ملء الوسائط
+  const owner = await kvGetRaw(claimKey(cand.field, cand.id), { strict: true });
+  if (!owner || String(owner).startsWith(REVOKED_CLAIM)) return null;
+  await completeCredit(String(owner), cand.field, cand.id, cand.md && cand.md.plan, meta);
+  return findRec([cand.id]);
+}
+
 // دفعة عُرفت ولا دليل على شحنها، وقد استُردّت كاملة أو اعتُرض عليها: كان يُردّ 200 بلا أثر فيشحنها ما يأتي بعده (التحقّق من
 // العميل ٧٢ ساعة — الـPaymentIntent يبقى succeeded، أو حدث الدفع يُعاد). الآن يُشغل حجزها (v-pay-once) بعلامة السحب، فيرى كلّ شحن
 // بعدها «سبق الشحن». حجزٌ سبقنا إليه شحنٌ متزامن ⇒ retry: يُعاد الحدث فيجد سجلّ ذلك المنح ويسحبه.
@@ -433,7 +598,7 @@ async function stripeLegacy(obj, dispute, o, ctx) {
     }
   }
   if (!cand) return null;
-  const hit = await findRec([cand.id]);
+  const hit = (await findRec([cand.id])) || (await completeFirst(cand, { refs: [pi, charge.id, invoice], amount: charge.amount, currency: charge.currency })); // v-lock-credit
   if (hit) return hit;
   const found = await legacyRecord(cand, { approxAt: (Number(charge.created) || 0) * 1000, amount: charge.amount, currency: charge.currency, refs: [pi, charge.id, invoice] });
   if (!found && ctx.block) await blockGrant(cand, ctx);
@@ -523,6 +688,8 @@ async function paypalLegacy(captureId, ctx) {
   if (!m || !m.plan) return null;
   // v-media-merge (المراجعة المعاكسة): طلب img_/vid_ بعد الإيقاف مُنح media_<الدرجة> (grantablePlan) — يُبنى سجلّه بالخطّة الممنوحة لا custom_id الخامّ.
   const cand = { field: 'lastPaypalOrderId', id: orderId, md: { username: m.ref, plan: pp.grantablePlan(m.plan, order) } };
+  const done = await completeFirst(cand, { refs: [captureId], amount: cents(cap.amount), currency: 'usd' }); // v-lock-credit
+  if (done) return done;
   const found = await legacyRecord(cand, { approxAt: Date.parse(cap.create_time) || 0, amount: cents(cap.amount), currency: 'usd', refs: [captureId] });
   if (!found && ctx.block(cents(cap.amount))) await blockGrant(cand, ctx); // الطلب يبقى COMPLETED بعد الاسترداد: claim كان سيشحنه
   return found;
@@ -571,4 +738,7 @@ async function paypalEvent(event) {
   return { status: 'done', retry, results };
 }
 
-module.exports = { recordGrant, linkGrant, priorOf, findRec, revoke, stripeEvent, paypalEvent, verifyPaypalSig, captureOf, REC_TTL_SEC, alertOwner, money }; // v-paid-ungranted: webhook.js
+module.exports = { recordGrant, linkGrant, relinkPrev, priorOf, findRec, revoke, stripeEvent, paypalEvent, verifyPaypalSig, captureOf, REC_TTL_SEC, alertOwner, money }; // v-paid-ungranted: webhook.js (alertOwner, money)
+module.exports.alertOwner = alertOwner; // v-lock-subs (srv-money-5): الويب هوك ينبّه المالك بدفعة لحساب محذوف بالمسار نفسه (سجلّ أخطائه + الإشعار بمهلة)
+module.exports.alertOnce = alertOnce; // v-r3 (r3-7): تنبيه مرّة لكلّ دفعة بحجز صارم — PayPal وStripe معًا
+module.exports.completeDropped = completeDropped; /* v-r3 (r4-back): قفل الحساب يكمل سحبًا أعاد رصيد السابقة ولم يصل سجلّه */

@@ -191,7 +191,7 @@ async function monthReport(month, deps) {
     try {
       if (tier.isOwnerUsername(e.user)) plan = 'owner';
       else if (await isVip(e.user)) plan = 'vip';
-      else { const rec = await getUser(e.user); if (tier.planActive(rec, d.now)) plan = String(rec.plan).toLowerCase(); }
+      else { const rec = await getUser(e.user); const cp = tier.chatPeriod(rec, d.now); if (cp) plan = cp.plan; } // v-lock-subs (srv-money-4): الفترة الفعليّة
     } catch (err) { plan = 'free'; }
     e.plan = plan;
   }

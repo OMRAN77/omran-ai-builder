@@ -24,8 +24,12 @@ process.env.SITE_URL = 'https://example.test';
 delete process.env.OAUTH_CLAIM_NET_BIND;
 
 const store = new Map();
+const faults = { userRead: null }; // v-audit-main-b: re — قراءة سجلّ حساب بعينه تتعطّل (الصارمة ترمي كعقد kv.js)
 const kvImpl = {
-  kvGetJSON: async (k) => { if (!store.has(k)) return null; try { return JSON.parse(store.get(k)); } catch (e) { return null; } },
+  kvGetJSON: async (k, o) => {
+    if (faults.userRead && faults.userRead.test(k)) { if (o && o.strict) throw new Error('upstash timeout'); return null; }
+    if (!store.has(k)) return null; try { return JSON.parse(store.get(k)); } catch (e) { return null; }
+  },
   kvPutJSON: async (k, v) => { store.set(k, JSON.stringify(v)); },
   kvGetRaw: async (k) => (store.has(k) ? String(store.get(k)) : null),
   kvSetRaw: async (k, v) => { store.set(k, String(v)); },
@@ -338,6 +342,61 @@ test('١٢. العميل يعرض network_changed بلا تعديل ولا نص�
   // v-audit-search (srv-search-7): تنبيه ربط Gmail صار نصًّا بلغة الواجهة لا الرمز الخامّ — network_changed وغيره «حاول مرّة ثانية» (بلا مفتاح خاصّ)
   for (const f of ['js/app-12-studios.js', 'js/app.bundle.js']) {
     assert.ok(fs.readFileSync(path.join(root, f), 'utf8').includes("const emLinkError = (err) => alert('⚠️ ' + t(err === 'access_denied' ? 'axSearchEmLinkDenied' : (err === 'missing_scopes' ? 'axSearchEmLinkScopes' : 'axSearchEmLinkFailed')));"), f);
+  }
+});
+
+// v-audit-main-b (userdata-4 × v-owner-reset-records): صندوق Gmail المربوط صار إثبات استرجاع «قويًّا» عند المالك (رابط تلقائيّ)، وربطه كان بالجلسة
+// وحدها — رمز مسروق يربط Gmail المهاجم ثمّ «نسيت كلمتي، بريدي …» فيأخذ رابط حساب الضحيّة ويضع كلمته ويحذفه بها. كالبريد والهاتف: من وضع كلمته يكتبها.
+async function mintPw(token, ip, password) {
+  const r = mkRes();
+  await system({ method: 'POST', query: { action: 'email-link-ticket' }, body: { token, password }, headers: xff(ip) }, r);
+  return r;
+}
+const tickets = () => [...store.keys()].filter((k) => k.startsWith('db/gmail-link/')).length;
+test('١٣. حساب بكلمة مرور: سكّ تذكرة Gmail يطلب كلمته (password_required ثمّ wrong_password، ٥ محاولات في ربع ساعة)، والصحيحة تربط؛ وحساب Google بلا كلمة كما كان؛ وعطل القراءة لا يتخطّاها', async () => {
+  store.clear();
+  const { salt, hash } = auth.hashPassword('VictimPass123');
+  await auth.putUser('pwacct', { username: 'pwacct', salt, hash, passwordSet: true, createdAt: Date.now() });
+  const stolen = auth.makeToken('pwacct');
+  const r0 = await mint(stolen, ATTACKER);
+  assert.equal(r0.code, 401, JSON.stringify(r0.j));
+  assert.equal(r0.j.code, 'password_required');
+  const bad = await mintPw(stolen, ATTACKER, 'guess-1');
+  assert.equal(bad.code, 401);
+  assert.equal(bad.j.code, 'wrong_password');
+  assert.equal(tickets(), 0, 'الرمز وحده أو كلمة خاطئة: لا تذكرة');
+  const ok = await mintPw(stolen, OFFICE, 'VictimPass123');
+  assert.equal(ok.code, 200, JSON.stringify(ok.j));
+  assert.match(String(ok.j.ticket), /^[0-9a-f]{32}$/);
+  ACCOUNTS['pw-code'] = 'pwacct';
+  const cbr = await gmailCallback(ok.j.ticket, 'pw-code', OFFICE);
+  assert.equal(cbr.headers.Location, 'https://example.test/?emailconnected=1', 'بالكلمة الصحيحة يربط كما كان');
+  assert.equal((await auth.getUser('pwacct')).emailAssist.gmailAddress, 'pwacct@gmail.com');
+  for (let i = 2; i <= 4; i++) assert.equal((await mintPw(stolen, ATTACKER, 'guess-' + i)).j.code, 'wrong_password');
+  const lim = await mintPw(stolen, OFFICE, 'VictimPass123');
+  assert.equal(lim.code, 429, 'السادسة في ربع ساعة: تخمين الكلمة من هنا محدود');
+  assert.equal(lim.j.code, 'too_many');
+  // حساب Google وضع كلمة بلا علامة (needsPassword=false): لا كلمة يعرفها — كما كان
+  await auth.putUser('g_nopw@gmail.com', { username: 'g_nopw@gmail.com', email: 'nopw@gmail.com', googleAuth: true, salt, hash, createdAt: Date.now() });
+  assert.equal((await mint(auth.makeToken('g_nopw@gmail.com'), OFFICE)).code, 200);
+  // عطل قراءة السجلّ لا يُقرأ «لا كلمة» — لا تذكرة
+  await auth.putUser('pwacct2', { username: 'pwacct2', salt, hash, passwordSet: true, createdAt: Date.now() });
+  const before = tickets();
+  faults.userRead = /pwacct2/;
+  let f;
+  try { f = await mint(auth.makeToken('pwacct2'), OFFICE); } finally { faults.userRead = null; }
+  assert.ok(f.code >= 500, 'عطل يُعاد: ' + f.code);
+  assert.equal(tickets(), before, 'لا تذكرة في العطل');
+});
+
+test('١٤. الواجهة والحزمة: خانة كلمة المرور في صندوق ربط Gmail بنصوص القائمة (acctCurrentPasswordLabel · acctDeleteWrongPass · acctDeleteTooMany) وتُرسل مع السكّ', () => {
+  for (const f of ['js/app-12-studios.js', 'js/app.bundle.js']) {
+    const s = fs.readFileSync(path.join(root, f), 'utf8');
+    const i = s.indexOf('async function emMintTicket(token, password)');
+    assert.ok(i > 0, f + ': السكّ يأخذ الكلمة');
+    assert.ok(s.slice(i, i + 400).includes('if(password) body.password = password;'), f + ': تُرسل حين تُكتب');
+    assert.ok(s.includes("emPassBox(true, e && e.code)") && s.includes("'acctCurrentPasswordLabel'") && s.includes("'acctDeleteWrongPass'") && s.includes("'acctDeleteTooMany'"), f + ': الخانة ونصوصها القائمة');
+    assert.ok(s.includes("emPassBox(true, 'password_required')"), f + ': السكّ المسبق يُظهر الخانة لمن يحتاجها');
   }
 });
 

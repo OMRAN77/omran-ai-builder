@@ -170,13 +170,13 @@ function isOwnerUsername(username) {
 
 // خطة مدفوعة سارية: اسم خطة معروف + تاريخ آخر دفع/تجديد خلال ٣٥ يومًا.
 function planActive(user, now) {
-  if (!user || user.deleted) return false;
-  const plan = String(user.plan || '').toLowerCase();
-  if (!PLAN_KEYS.includes(plan)) return false;
-  const at = Number(user.planUpdatedAt || 0);
-  if (!(at > 0)) return false;
-  const t = typeof now === 'number' ? now : Date.now();
-  return t - at <= SUB_WINDOW_MS && at <= t + 60000;
+  // v-lock-subs (srv-money-4، موافقة المالك ٢٧ أكتوبر): بالفترة الفعليّة (chatPeriod تحت freeChain أدناه) — الرئيسيّة
+  // (plan · planUpdatedAt)، أو فترة باقة أدنى دُفعت تحت أعلى سارية (user.planNext) فتسري حين تنتهي الأعلى. كانت تلك
+  // الفترة تُرمى: يسقط إلى المجّانيّ حتّى التجديد التالي وهو يدفعها. النافذة كما كانت: ٣٥ يومًا من الدفع، ولا تاريخ
+  // في المستقبل أبعد من دقيقة. يقرؤها أيضًا resolveTier و_planVideos وpoints.subsOf وcost-meter وpay-refund.priorOf.
+  // (هذا السطر وresolveTier بعده مرساتان في knowledge/ROUTING.md، فالتعريف نفسه تحت freeChain.)
+  // النتيجة للمنتهية والمحذوف وغير المعروفة كما كانت: false.
+  return !!chatPeriod(user, now);
 }
 
 // ذاكرة قصيرة داخل العملية: قراءة سجلّ الحساب لكل رسالة نداء Redis إضافي —
@@ -209,7 +209,7 @@ async function resolveTier(username, opts) {
       user = await getUser(uname);
     } catch (e) { user = null; }
     if (planActive(user, now)) {
-      const plan = String(user.plan).toLowerCase();
+      const plan = chatPeriod(user, now).plan; // v-lock-subs (srv-money-4): الفعليّة — بعد انتهاء الأعلى تسري الأدنى المدفوعة تحتها
       value = { tier: 'sub', plan, cap: c[plan], subscriber: true };
     } else {
       // v-free-first-day (قرار المالك ٢٦ سبتمبر): يوم التسجيل (بتوقيت UTC كعدّاد اليوم) FREE_FIRST_DAY رسالة، ثمّ FREE_DAILY.
@@ -248,6 +248,27 @@ function freeChain(env) {
   return out;
 }
 
+/* v-lock-subs (srv-money-4، موافقة المالك ٢٧ أكتوبر): دفعة باقة أدنى تصل وأعلى سارية (تجديد اشتراك Plus بعد شراء Max لمرّة بـApple/Google Pay
+   أو PayPal، أو جلسة قديمة) لا تُنزل الأعلى، وفترتها كانت تُرمى — فحين تنتهي الأعلى يسقط إلى المجّانيّ حتّى التجديد التالي (~٣٠ يومًا) وهو
+   يدفع Plus. فترتها الآن في user.planNext (قائمة { plan, at, payId }، create-checkout-session.js). الفعليّة: أعلى درجة سارية بين الرئيسيّة
+   (plan · planUpdatedAt · planPayId) وفترات planNext، والتعادل للرئيسيّة ثمّ للأحدث. يرجع { plan, at, payId, next } أو null.
+   تحت freeChain لأنّ أسطر ما فوقها مراسٍ في knowledge/ROUTING.md (الدالّة مرفوعة، والثابت يُقرأ عند النداء لا عند التحميل). */
+const CHAT_RANK = { basic: 1, pro: 2, max: 3 };
+function chatPeriod(user, now) {
+  if (!user || user.deleted) return null;
+  const t = typeof now === 'number' ? now : Date.now();
+  const live = (p) => PLAN_KEYS.includes(p.plan) && p.at > 0 && t - p.at <= SUB_WINDOW_MS && p.at <= t + 60000;
+  const all = [{ plan: String(user.plan || '').toLowerCase(), at: Number(user.planUpdatedAt || 0), payId: user.planPayId ? String(user.planPayId) : null, next: false }]
+    .concat((Array.isArray(user.planNext) ? user.planNext : []).filter(Boolean)
+      .map((n) => ({ plan: String(n.plan || '').toLowerCase(), at: Number(n.at || 0), payId: n.payId ? String(n.payId) : null, next: true })));
+  let best = null;
+  for (const p of all) {
+    if (!live(p)) continue;
+    if (!best || CHAT_RANK[p.plan] > CHAT_RANK[best.plan] || (CHAT_RANK[p.plan] === CHAT_RANK[best.plan] && best.next && p.at > best.at)) best = p;
+  }
+  return best;
+}
+
 // نصوص تراها الطبقة المجانية — بلا اسم أي مزوّد (قرار المالك: «بدون اسم كلاود»).
 const FREE_TEXT = {
   // v-honest-cards (فحص الاشتراكات ٥ أكتوبر): كانت «بلا حدود» والباقات لها سقف يوميّ.
@@ -276,6 +297,6 @@ async function planUsedCounts(user, plan, todayCount) {
 
 module.exports = {
   PLAN_KEYS, SUB_WINDOW_DAYS, PAID_PROVIDERS, FREE_PROVIDER_SPECS, DEFAULT_CHAIN, FREE_TEXT,
-  caps, planActive, resolveTier, invalidateTier, isPaidProvider, freeChain, isOwnerUsername,
+  caps, planActive, chatPeriod /* v-lock-subs (srv-money-4) */, resolveTier, invalidateTier, isPaidProvider, freeChain, isOwnerUsername,
   PLAN_ROUTING, LANES, isStrongTurn, turnJob, planRoute, planUsedCounts, // v-plan-routing · v-plan-jobs · v-plan-models
 };
