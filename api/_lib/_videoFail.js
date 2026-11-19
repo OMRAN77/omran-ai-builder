@@ -8,6 +8,8 @@
 const TEMP = 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات.';
 const OURS = 'تعذّر توليد الفيديو الآن. أعد المحاولة لاحقًا.';
 const BAD = 'تعذّر بدء الفيديو بهذا الطلب — غيّر الوصف أو الصورة وأعد المحاولة.';
+const REAL = 'محرّك الفيديو لا يقبل أسماء الأشخاص الحقيقيّين ولا ملامحهم — غيّر الاسم في الوصف (أو الصورة) وأعد المحاولة.';
+const REAL_PERSON_RE = /real (?:people|person)|names? or likeness/i;
 const OURS_RE = /api[ _-]?key|unauthori[sz]ed|permission|forbidden|billing|credits?\b|insufficient balance|deprecated|unknown model|invalid model|model\b.{0,60}?\b(?:not (?:found|available|supported)|unavailable)/i;
 
 /* v-credit-out (أمر المالك ٢١ أكتوبر: «إذا رصيد مزوّد الصور أو الفيديو خلصان، المستخدم يشوف رسالة واضحة «الخدمة متوقفة مؤقتاً» وما تنخصم
@@ -29,6 +31,10 @@ function startFail(status, tech) {
   /* v-vid-codes (تدقيق ١٨ أكتوبر: الواجهة الإنجليزيّة تعرض «❌ Error: تعذّر بدء الفيديو…» عربيًّا): رمز في error يترجمه العميل (vidBusy · vidRejected،
      ١٤ لغة) والنصّ العربيّ نفسه في message_ar لمن يقرؤه. */
   if (busy) return { code: st, body: { error: 'video_busy', message_ar: TEMP, retryable: true } };
+  /* v-video-real-person (تشغيلتا المالك ١٩ نوفمبر: المحرّك رفض سبع مرّات كلّ طلب في نصّه «الشيخ زايد بن سلطان آل نهيان» — «Input blocked…
+     real people's names or likenesses» — والواجهة تقول «غيّر الوصف أو الصورة» فلا يعرف ماذا يغيّر): سبب الرفض يُعلَّم في reason فيعرض
+     العميل نصّه (vidRealPerson، ١٤ لغة). الرمز والحالة كما هما — من لا يقرأ reason كما كان. */
+  if (REAL_PERSON_RE.test(String(tech || ''))) return { code: st || 502, body: { error: 'video_rejected', reason: 'real_person', message_ar: REAL, retryable: false } };
   return { code: st || 502, body: { error: 'video_rejected', message_ar: BAD, retryable: false } };
 }
 
