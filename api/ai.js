@@ -55,8 +55,8 @@ function noteDate() {
   const now = new Date();
   const opts = { timeZone: 'Asia/Dubai', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
   let ar = '', en = '';
-  try { ar = new Intl.DateTimeFormat('ar-AE', opts).format(now); } catch (e) { /* locale unavailable */ }
-  try { en = new Intl.DateTimeFormat('en-GB', opts).format(now); } catch (e) { /* locale unavailable */ }
+  try { ar = new Intl.DateTimeFormat('ar-AE', opts).format(now); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'ai:58'); /* locale unavailable */ }
+  try { en = new Intl.DateTimeFormat('en-GB', opts).format(now); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'ai:59'); /* locale unavailable */ }
   return '\n\n[التاريخ الحقيقي الآن — توقيت الإمارات]: ' + ar + ' — ' + en + '. أجب بالتاريخ الكامل إذا سُئلت (اسم اليوم + الرقم + الشهر + السنة). تجاهل أي تاريخ من بيانات تدريبك.';
 }
 
@@ -64,8 +64,8 @@ function noteCountry(country) {
   const code = (typeof country === 'string' ? country.trim().toUpperCase() : '');
   let cAr = '', cEn = '';
   if (code && /^[A-Z]{2}$/.test(code)) {
-    try { cAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(code) || ''; } catch (e) { /* region unavailable */ }
-    try { cEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || ''; } catch (e) { /* region unavailable */ }
+    try { cAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(code) || ''; } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'ai:67'); /* region unavailable */ }
+    try { cEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || ''; } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'ai:68'); /* region unavailable */ }
   }
   return (cAr || code)
     ? '\n[قاعدة الدولة — مطلقة]: المستخدم يتصفّح الآن من دولة: ' + (cAr || code) + (cEn ? ' (' + cEn + ')' : '') + '. أي سؤال عن خدمات أو عقارات أو قوانين أو أسعار أو جهات حكومية أو أرقام تواصل أو منصات محلية = أجب بمعلومات هذه الدولة تحديدًا (مفتاح هاتفها الدولي، جهاتها الحكومية الرسمية، منصاتها المحلية المعروفة فيها). ممنوع منعًا باتًا افتراض أي دولة أخرى أو اقتراح جهات/منصات/أرقام من دولة مختلفة. الاستثناء الوحيد: إذا ذكر المستخدم دولة أخرى صراحةً في رسالته فاتبع الدولة التي ذكرها.'
@@ -96,15 +96,15 @@ function serverNote(country) {
   const now = new Date();
   const opts = { timeZone: 'Asia/Dubai', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
   let ar = '', en = '';
-  try { ar = new Intl.DateTimeFormat('ar-AE', opts).format(now); } catch (e) { /* لغة لا يعرفها Intl — يبقى النصّ فارغًا ويُستكمل من الطرف الآخر */ }
-  try { en = new Intl.DateTimeFormat('en-GB', opts).format(now); } catch (e) { /* كسابقه */ }
+  try { ar = new Intl.DateTimeFormat('ar-AE', opts).format(now); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'ai:99'); /* لغة لا يعرفها Intl — يبقى النصّ فارغًا ويُستكمل من الطرف الآخر */ }
+  try { en = new Intl.DateTimeFormat('en-GB', opts).format(now); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'ai:100'); /* كسابقه */ }
   // v360 — 🌍 كشف دولة المستخدم من الشبكة (ترويسة Vercel x-vercel-ip-country) عالميًا.
   // نحوّل رمز الدولة (ISO-2) إلى اسمها العربي والإنجليزي تلقائيًا بلا قوائم ثابتة.
   const code = (typeof country === 'string' ? country.trim().toUpperCase() : '');
   let cAr = '', cEn = '';
   if (code && /^[A-Z]{2}$/.test(code)) {
-    try { cAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(code) || ''; } catch (e) { /* Intl لا يعرف رمز الدولة — اسم فارغ مقبول */ }
-    try { cEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || ''; } catch (e) { /* كسابقه */ }
+    try { cAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(code) || ''; } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'ai:106'); /* Intl لا يعرف رمز الدولة — اسم فارغ مقبول */ }
+    try { cEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || ''; } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'ai:107'); /* كسابقه */ }
   }
   const countryLine = (cAr || code)
     ? '\n[قاعدة الدولة — مطلقة]: المستخدم يتصفّح الآن من دولة: ' + (cAr || code) + (cEn ? ' (' + cEn + ')' : '') + '. أي سؤال عن خدمات أو عقارات أو قوانين أو أسعار أو جهات حكومية أو أرقام تواصل أو منصات محلية = أجب بمعلومات هذه الدولة تحديدًا (مفتاح هاتفها الدولي، جهاتها الحكومية الرسمية، منصاتها المحلية المعروفة فيها). ممنوع منعًا باتًا افتراض أي دولة أخرى أو اقتراح جهات/منصات/أرقام من دولة مختلفة. الاستثناء الوحيد: إذا ذكر المستخدم دولة أخرى صراحةً في رسالته فاتبع الدولة التي ذكرها.'
@@ -366,7 +366,7 @@ function injectNote(action, body, country) {
     if (ownerReq) {
       applyNote(action, body, OWNER_DIRECT_NOTE);
       // v-site-guide3: قاعدة الإرشاد تعود في دور الإرشاد حتّى لو نُزع نظام العميل (raw:true)
-      try { if (SITE_GUIDE_RE.test(String(lastUserText(action, body) || '')) && JSON.stringify(body).indexOf(SITE_GUIDE_MARK) === -1) applyNote(action, body, SITE_GUIDE_NOTE); } catch (e) { /* guard-ok — الإرشاد إضافة لا شرط */ }
+      try { if (SITE_GUIDE_RE.test(String(lastUserText(action, body) || '')) && JSON.stringify(body).indexOf(SITE_GUIDE_MARK) === -1) applyNote(action, body, SITE_GUIDE_NOTE); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'ai:369'); /* guard-ok — الإرشاد إضافة لا شرط */ }
     }
     return;
   }
@@ -510,13 +510,13 @@ module.exports = withErrorCapture('ai', async (req, res) => {
         if (b.__ownerFactory && b.raw === true) stripAppSystem(action, b);
         /* v-prov-self: المسارات القديمة لكلّ مزوّد — الدروس المنشورة بـ«عمّم» لكلّ مستخدم، وللمالك ملفّ المزوّد وتجارب الدروس. بعد ملاحظة الخادم. */
         let __provSelf = '';
-        if (!(b.__ownerFactory && b.raw === true)) { try { __provSelf = await require('./_lib/prov-self.js').systemBlocks(!!b.__ownerFactory, action, { lastUserText: lastUserText(action, b) } /* v-liked-reply: صلة الردود المعتمدة بالسؤال */); } catch (e) { /* guard-ok — بلا تخزين يردّ بلا الدروس */ } }
+        if (!(b.__ownerFactory && b.raw === true)) { try { __provSelf = await require('./_lib/prov-self.js').systemBlocks(!!b.__ownerFactory, action, { lastUserText: lastUserText(action, b) } /* v-liked-reply: صلة الردود المعتمدة بالسؤال */); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'ai:513'); /* guard-ok — بلا تخزين يردّ بلا الدروس */ } }
         injectNote(action, b, geoCountry);
         if (__provSelf) applyNote(action, b, __provSelf);
         delete b.__ownerFactory;
         req.body = b;
       }
-    } catch (e) { /* never block the request over the note */ }
+    } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'ai:519'); /* never block the request over the note */ }
   }
   return handler(req, res);
 });

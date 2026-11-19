@@ -276,7 +276,7 @@ async function fetchSocial(apiKey, query) {
         const picked = pickSocial(j.results, true);
         if (picked.length) return picked;
       }
-    } catch (e) { /* نكمل للبديل */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:279'); /* نكمل للبديل */ }
     // بديل Google CSE
     try {
       const q = socialQuery(query) + ' site:instagram.com OR site:tiktok.com';
@@ -549,8 +549,8 @@ module.exports = async (req, res) => {
     try { geoCity = decodeURIComponent((req.headers && req.headers['x-vercel-ip-city'] || '').toString()).trim(); } catch (e) { geoCity = ''; }
     let geoNameEn = '', geoNameAr = '';
     if (/^[A-Z]{2}$/.test(geoCode)) {
-      try { geoNameEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(geoCode) || ''; } catch (e) { /* Intl لا يعرف رمز الدولة — يبقى الاسم فارغًا وهذا مقبول */ }
-      try { geoNameAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(geoCode) || ''; } catch (e) { /* كسابقه */ }
+      try { geoNameEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(geoCode) || ''; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:552'); /* Intl لا يعرف رمز الدولة — يبقى الاسم فارغًا وهذا مقبول */ }
+      try { geoNameAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(geoCode) || ''; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:553'); /* كسابقه */ }
     }
     const wantImages = !!(body && body.images);
     const wantDeep = !!(body && body.deep);
@@ -583,7 +583,7 @@ module.exports = async (req, res) => {
             if (Array.isArray(parsed) && parsed.length) subQueries = [query, ...parsed.filter(q => typeof q === 'string').slice(0, 4)];
           }
         }
-      } catch (e) { /* fallback: just original query */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:586'); /* fallback: just original query */ }
 
       // 2) بحث بالتوازي
       const deepSocialP = fetchSocial(apiKey, geoSuffix ? (query + ' ' + geoSuffix) : query);
@@ -862,7 +862,7 @@ module.exports = async (req, res) => {
             .filter((u) => typeof u === 'string' && /^https:\/\//.test(u))
             .slice(0, 4);
         }
-      } catch (e) { /* شريط الصور غير حرج — يُترك فارغًا عند الفشل */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:865'); /* شريط الصور غير حرج — يُترك فارغًا عند الفشل */ }
     }
 
     let googleItems = [];
@@ -881,7 +881,7 @@ module.exports = async (req, res) => {
           content: withoutRemovedSourceMentions((it.snippet || '').slice(0, 350)),
         })) : []);
       }
-    } catch (e) { /* ignore Google Search parse errors, non-critical */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:884'); /* ignore Google Search parse errors, non-critical */ }
 
     // v611 — نداء واحد للمغذّي البديل يسدّ ثلاث فجوات معًا: نتائج عند سقوط
     // Tavily، وصور عند خلوّ الشريط، وجوابًا عند غياب جواب Tavily.
@@ -939,7 +939,7 @@ module.exports = async (req, res) => {
         seenHosts.add(host);
         sources.push({ title: (r.title || host).replace(/^📌\s*إعلان مباشر:\s*|^🔍\s*صفحة بحث:\s*/, ''), url: r.url });
       });
-    } catch (e) { /* non-critical, sources stay whatever was collected so far */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/search:942'); /* non-critical, sources stay whatever was collected so far */ }
 
     const socialAll = mergeSocial(socialItems, pickSocial(data.results));
     const socialHosts = new Set(socialAll.map(sc => { try { return new URL(sc.url).hostname.replace(/^www\./, ''); } catch (e) { return ''; } }));

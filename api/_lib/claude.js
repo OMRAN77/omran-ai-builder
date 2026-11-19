@@ -140,7 +140,7 @@ module.exports = async (req, res) => {
     let upstream = await doRequestSafe(useModel, wantStream);
     // 🔁 إعادة محاولة تلقائية عند تحميل/تأخر أنثروبيك (529/503/502/500/429) قبل بدء البث
     for (let attempt = 0; attempt < 2 && !upstream.ok && [429, 500, 502, 503, 529].includes(upstream.status); attempt++) {
-      try { await upstream.text(); } catch (e) { /* drain */ }
+      try { await upstream.text(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/claude:143'); /* drain */ }
       await new Promise((r) => setTimeout(r, 2500 * (attempt + 1)));
       upstream = await doRequest(useModel, wantStream);
     }
@@ -197,8 +197,8 @@ module.exports = async (req, res) => {
           res.write(value);
           if (tap) tap.push(dec.decode(value, { stream: true }));
         }
-      } catch (e) { /* client likely disconnected */ }
-      if (tap) { try { const cm = require('./cost-meter.js'); const tu = tap.usage(); await cm.meterTurn(meterUser || '', meterUser ? cm.tokenCostUsd(useModel, tu) : 0, 'chat', Object.assign({ lane: 'pro', model: useModel }, tu)); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ } } // v-tokens-meter: وعدّادات التوكنات في الطلب نفسه
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/claude:200'); /* client likely disconnected */ }
+      if (tap) { try { const cm = require('./cost-meter.js'); const tu = tap.usage(); await cm.meterTurn(meterUser || '', meterUser ? cm.tokenCostUsd(useModel, tu) : 0, 'chat', Object.assign({ lane: 'pro', model: useModel }, tu)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/claude:201'); /* guard-ok — القياس لا يوقف خدمة */ } } // v-tokens-meter: وعدّادات التوكنات في الطلب نفسه
       res.end();
       return;
     }
@@ -210,9 +210,9 @@ module.exports = async (req, res) => {
         const cm = require('./cost-meter.js');
         const tu = { input: u.input_tokens, cacheRead: u.cache_read_input_tokens, cacheWrite: u.cache_creation_input_tokens, output: u.output_tokens };
         await cm.meterTurn(meterUser || '', meterUser ? cm.tokenCostUsd(useModel, tu) : 0, 'chat', Object.assign({ lane: 'pro', model: useModel }, tu)); // v-tokens-meter
-      } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/claude:213'); /* guard-ok — القياس لا يوقف خدمة */ }
     }
-    if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
+    if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/claude:215'); /* best-effort */ } }
     if (!upstream.ok) { require('./_videoFail.js').chatFail(res, 'claude', upstream.status, data, usage.tier === 'owner'); return; } // v-audit-prov (srv-providers-5): خطأ المزوّد لغير المالك رمز بلا اسم مزوّد ولا موديل (_videoFail.chatFail)
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {

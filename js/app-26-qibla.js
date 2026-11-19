@@ -133,7 +133,7 @@
         var cached = JSON.parse(localStorage.getItem('aiapp_last_geo') || 'null');
         /* v-pray-fresh (شكوى المالك: «التوقيت يثبت على آخر منطقة»): الذاكرة دقيقتان لا ساعة */
         if(!S.forceFresh && cached && (Date.now() - cached.ts) < 120000){ res({ lat: cached.lat, lng: cached.lng }); return; }
-      }catch(e){ /* guard-ok */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:136'); /* guard-ok */ }
       if(!navigator.geolocation){ res(null); return; }
       var done = false;
       var finish = function(v){ if(done) return; done = true; res(v); };
@@ -142,7 +142,7 @@
       navigator.geolocation.getCurrentPosition(
         function(p){
           var l = { lat: p.coords.latitude, lng: p.coords.longitude };
-          try{ localStorage.setItem('aiapp_last_geo', JSON.stringify(Object.assign({ ts: Date.now() }, l))); }catch(e){ /* guard-ok */ }
+          try{ localStorage.setItem('aiapp_last_geo', JSON.stringify(Object.assign({ ts: Date.now() }, l))); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:145'); /* guard-ok */ }
           finish(l);
         },
         function(){ finish(null); },
@@ -293,7 +293,7 @@
       '<div id="qAlertStatus" style="display:none;font-size:12.5px;margin-top:8px;line-height:1.7;padding:8px 10px;border-radius:10px;background:rgba(212,175,55,.08);border:1px solid var(--omGoldSoft,rgba(212,175,55,.35));"></div>';
 
     body.querySelector('#qMethod').onchange = function(){
-      try{ localStorage.setItem('aiapp_pray_method', this.value); }catch(e){ /* guard-ok */ }
+      try{ localStorage.setItem('aiapp_pray_method', this.value); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:296'); /* guard-ok */ }
       S.timings = null; renderTimes();
     };
     Array.prototype.forEach.call(body.querySelectorAll('.qBell'), function(b){
@@ -365,13 +365,13 @@
       t.textContent = msg;
       t.onclick = function(){ t.remove(); };
       document.body.appendChild(t);
-      setTimeout(function(){ try{ t.remove(); }catch(e){ /* guard-ok */ } }, 60000);
-      try{ var ctx = new (window.AudioContext || window.webkitAudioContext)(); [880, 660, 880].forEach(function(hz, i){ var o = ctx.createOscillator(), g = ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.frequency.value = hz; g.gain.value = .25; o.start(ctx.currentTime + i * .3); o.stop(ctx.currentTime + i * .3 + .22); }); }catch(e){ /* guard-ok */ }
-      if(navigator.vibrate) try{ navigator.vibrate([300, 150, 300]); }catch(e){ /* guard-ok */ }
-    }catch(e){ /* guard-ok */ }
+      setTimeout(function(){ try{ t.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:368'); /* guard-ok */ } }, 60000);
+      try{ var ctx = new (window.AudioContext || window.webkitAudioContext)(); [880, 660, 880].forEach(function(hz, i){ var o = ctx.createOscillator(), g = ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.frequency.value = hz; g.gain.value = .25; o.start(ctx.currentTime + i * .3); o.stop(ctx.currentTime + i * .3 + .22); }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:369'); /* guard-ok */ }
+      if(navigator.vibrate) try{ navigator.vibrate([300, 150, 300]); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:370'); /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:371'); /* guard-ok */ }
   }
   function firedMap(){ try{ return JSON.parse(localStorage.getItem('aiapp_pray_fired') || '{}'); }catch(e){ return {}; } }
-  function markFired(key){ var f = firedMap(); var ds = new Date().toDateString(); Object.keys(f).forEach(function(x){ if(x.indexOf(ds) !== 0) delete f[x]; }); f[key] = 1; try{ localStorage.setItem('aiapp_pray_fired', JSON.stringify(f)); }catch(e){ /* guard-ok */ } }
+  function markFired(key){ var f = firedMap(); var ds = new Date().toDateString(); Object.keys(f).forEach(function(x){ if(x.indexOf(ds) !== 0) delete f[x]; }); f[key] = 1; try{ localStorage.setItem('aiapp_pray_fired', JSON.stringify(f)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:374'); /* guard-ok */ } }
   function localTargets(){
     if(!S.timings) return [];
     var m = alertsMap(), out = [];
@@ -386,14 +386,14 @@
   function notifyLocal(x){
     var title = tx('localTitle');
     var body = x.off > 0 ? qt('باقي ' + x.off + ' دقيقة على ' + prName(x.k), x.off + ' min to ' + prName(x.k)) : qt('حان وقت ' + prName(x.k), prName(x.k) + ' time');
-    try{ if(navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]); }catch(e){ /* guard-ok */ }
+    try{ if(navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:389'); /* guard-ok */ }
     try{
       if(!('Notification' in window) || Notification.permission !== 'granted'){ localToast('🕌 ' + body); return; }
       var opts = { body: body, icon: './icons/icon-192-v2.png?icon=black-20261022', badge: './icons/icon-192-v2.png?icon=black-20261022', tag: 'prayer-local-' + x.k, vibrate: [300, 150, 300, 150, 300], requireInteraction: true };
       if('serviceWorker' in navigator){
         navigator.serviceWorker.ready.then(function(reg){ return reg.showNotification(title, opts); }).catch(function(){ try{ new Notification(title, opts); }catch(e){ localToast('🕌 ' + body); } });
       } else { new Notification(title, opts); }
-    }catch(e){ try{ localToast('🕌 ' + body); }catch(_){ /* guard-ok */ } }
+    }catch(e){ try{ localToast('🕌 ' + body); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-26-qibla:396'); /* guard-ok */ } }
   }
   function checkLocal(){
     var now = Date.now(), ds = new Date().toDateString(), f = firedMap();
@@ -406,7 +406,7 @@
   }
   function quietLoc(){
     if(S.loc) return Promise.resolve(S.loc);
-    try{ var c = JSON.parse(localStorage.getItem('aiapp_last_geo') || 'null'); if(c && typeof c.lat === 'number'){ S.loc = { lat:c.lat, lng:c.lng }; return Promise.resolve(S.loc); } }catch(e){ /* guard-ok */ }
+    try{ var c = JSON.parse(localStorage.getItem('aiapp_last_geo') || 'null'); if(c && typeof c.lat === 'number'){ S.loc = { lat:c.lat, lng:c.lng }; return Promise.resolve(S.loc); } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:409'); /* guard-ok */ }
     return ipLoc().then(function(ip){ if(ip) S.loc = ip; return ip; });
   }
   var localBooted = false;
@@ -429,7 +429,7 @@
     if(m[k]){ // إيقاف
       var id = alertId(m[k]);
       delete m[k];
-      try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(m)); }catch(e){ /* guard-ok */ }
+      try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(m)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:432'); /* guard-ok */ }
       if(btn) btn.textContent = '🔕';
       setAlertStatus('');
       fetch('/api/reminders?id=' + encodeURIComponent(id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } })
@@ -473,7 +473,7 @@
     if(btn) btn.textContent = '⏳';
     loc().then(function(l){
       if(!l){ if(btn) btn.textContent = '🔕'; setAlertStatus(tx('locUnavail')); return; }
-      try{ localStorage.setItem('aiapp_pray_alert_loc', JSON.stringify({ lat: l.lat, lng: l.lng })); }catch(e){ /* guard-ok */ }
+      try{ localStorage.setItem('aiapp_pray_alert_loc', JSON.stringify({ lat: l.lat, lng: l.lng })); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:476'); /* guard-ok */ }
       return fetch('/api/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
@@ -484,7 +484,7 @@
       }).then(function(r){ return r.json(); }).then(function(d){
         if(d && d.ok && d.reminder){
           var mm = alertsMap(); mm[k] = { id: d.reminder.id, off: off };
-          try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(mm)); }catch(e){ /* guard-ok */ }
+          try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(mm)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:487'); /* guard-ok */ }
           if(btn) btn.textContent = '🔔';
           setAlertStatus('⏳');
           ensurePush().then(function(st){ setAlertStatus(pushStatusText(st)); });
@@ -592,7 +592,7 @@
         .then(function(r){ return r.json(); }).then(function(d){
           if(d && d.ok && d.reminder){
             var mm = alertsMap(); mm[k] = { id: d.reminder.id, off: off };
-            try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(mm)); }catch(e){ /* guard-ok */ }
+            try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(mm)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:595'); /* guard-ok */ }
             if(oldId) fetch('/api/reminders?id=' + encodeURIComponent(oldId), { method:'DELETE', headers:{ Authorization:'Bearer ' + token } }).catch(function(){ /* guard-ok: حذف التذكير القديم تحسين لا شرط */ });
           }
         }).catch(function(e){ __swallow(e, 'qibla:move-alert'); });
@@ -610,7 +610,7 @@
     try{ setTab('times'); }
     catch(err){
       __swallow(err, 'qibla:open-render');
-      try{ var body = el.querySelector('#qBody'); if(body) body.innerHTML = '<div style="text-align:center;color:var(--muted,#98a0b3);padding:30px 0;">⚠️ ' + String((err && err.message) || err) + '<br><br><button id="qRetry" style="padding:8px 16px;border-radius:10px;border:1px solid var(--omGoldSoft,rgba(212,175,55,.5));background:none;color:inherit;cursor:pointer;">↻</button></div>'; var rb = body && body.querySelector('#qRetry'); if(rb) rb.onclick = function(){ S.loc = null; S.timings = null; setTab('times'); }; }catch(e2){ /* guard-ok */ }
+      try{ var body = el.querySelector('#qBody'); if(body) body.innerHTML = '<div style="text-align:center;color:var(--muted,#98a0b3);padding:30px 0;">⚠️ ' + String((err && err.message) || err) + '<br><br><button id="qRetry" style="padding:8px 16px;border-radius:10px;border:1px solid var(--omGoldSoft,rgba(212,175,55,.5));background:none;color:inherit;cursor:pointer;">↻</button></div>'; var rb = body && body.querySelector('#qRetry'); if(rb) rb.onclick = function(){ S.loc = null; S.timings = null; setTab('times'); }; }catch(e2){ typeof __swallow === 'function' && __swallow(e2, 'app-26-qibla:613'); /* guard-ok */ }
     }
     /* بعد الرسم: لو تغيّر الموقع فعليًا ننقل التنبيهات معه */
     loc().then(function(l){
@@ -618,7 +618,7 @@
       var last = null; try{ last = JSON.parse(localStorage.getItem('aiapp_pray_alert_loc') || 'null'); }catch(e){ last = null; }
       var moved = !last || distKm(last, l) > 3;
       if(moved){
-        try{ localStorage.setItem('aiapp_pray_alert_loc', JSON.stringify({ lat: l.lat, lng: l.lng })); }catch(e){ /* guard-ok */ }
+        try{ localStorage.setItem('aiapp_pray_alert_loc', JSON.stringify({ lat: l.lat, lng: l.lng })); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:621'); /* guard-ok */ }
         if(last) moveAlertsTo(l);
       }
     }).catch(function(e){ __swallow(e, 'qibla:open-loc'); });
@@ -631,14 +631,14 @@
   }
 
   var btn = document.getElementById('btnQibla');
-  if(btn) btn.onclick = function(){ try{ openQibla(); }catch(e){ __swallow(e, 'qibla:open'); try{ var el = shell(); el.style.display = 'flex'; }catch(_){ /* guard-ok */ } } };
+  if(btn) btn.onclick = function(){ try{ openQibla(); }catch(e){ __swallow(e, 'qibla:open'); try{ var el = shell(); el.style.display = 'flex'; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-26-qibla:634'); /* guard-ok */ } } };
   /* v-live-cards (فكرة المالك ٥ سبتمبر: بطاقة القبلة حيّة): الصلاة القادمة ووقتها واتجاه القبلة للبطاقة */
   function live(){
     var today = new Date().toDateString();
     var pr = (S.timings && S.dateStr === today) ? Promise.resolve(S.timings) : fetchTimings();
     return pr.then(function(){
       var n = nextPrayer(), l = S.loc, lg = 'ar';
-      try{ lg = localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ /* guard-ok */ }
+      try{ lg = localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-26-qibla:641'); /* guard-ok */ }
       var nm = n ? (((PR[n.key] || {})[lg]) || (PR[n.key] || {}).en || n.key) : '';
       return { key: n && n.key, name: nm, time: n ? (String(n.at.getHours()).padStart(2, '0') + ':' + String(n.at.getMinutes()).padStart(2, '0')) : '', bearing: l ? Math.round(qiblaBearing(l)) : null };
     });

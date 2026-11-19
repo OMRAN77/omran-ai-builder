@@ -63,7 +63,7 @@ function ownPrefixKey(prefix, k) {
 function needsPassword(user) {
   if (!(user.hash && user.salt)) return false;
   if (!(user.googleAuth === true || user.otpOnly === true)) return true; // حساب التسجيل بكلمة مرور
-  if (user.passwordSet === true || Number(user.sv) > 0) return true;
+  if (user.passwordSet === true || user.pwSet === true || Number(user.sv) > 0) return true; // pwSet: علامة main (v-acct-delete-nopw) لكلمة وضعها صاحبها برابط الاسترجاع
   if (user.passwordSet === false) return false;
   return Object.prototype.hasOwnProperty.call(user, 'resetTokenHash');
 }
@@ -163,13 +163,19 @@ async function deleteAccount(input, o) {
   const typed = String(confirmUsername || '').trim().toLowerCase();
   if (!typed || (typed !== key && typed !== String(user.username || '').trim().toLowerCase())) return { status: 400, body: { ok: false, code: 'name_mismatch' } };
 
-  if (needsPassword(user)) {
+  /* v-acct-delete-nopw (فحص الدخول ١٠ نوفمبر ٢٠٢٦): الكولباك ورمز البريد يكتبان لكلّ حساب salt/hash لكلمة عشوائيّة لا يعرفها صاحبه، فكان
+     الشرط أدناه يطلبها منه — «كلمة المرور خاطئة» دائمًا، ولا يحذف حسابه أبدًا (Apple وGoogle يطلبان الحذف). الحساب الذي دخوله بـGoogle
+     أو برمز البريد يكفيه الاسم، إلّا إن وضع كلمة مرور بنفسه برابط الاسترجاع (pwSet).
+     v-audit-main: المعيار واحد — needsPassword (v-lock-acct/v-lock-r2: passwordSet وsv وأثر resetTokenHash للسجلّ القديم) ويقبل pwSet من main أيضًا؛
+     needsPassword لا يطلب كلمة لسجلّ بلا salt/hash، فالشرط أدناه هو needsPassword نفسه بصيغة main. */
+  const noPassword = !needsPassword(user);
+  if (user.hash && user.salt && !noPassword) {
     const failKey = 'db/acct-del-fail/' + n(key);
     let fails = 0;
     try { fails = Number(await kv.kvGetRaw(failKey)) || 0; } catch (e) { fails = 0; }
     if (fails >= FAIL_MAX) return { status: 429, body: { ok: false, code: 'too_many' } };
     if (!password || !verifyPassword(password, user.salt, user.hash)) {
-      try { const c = Number(await kv.kvIncr(failKey)); if (c === 1) await kv.kvExpire(failKey, FAIL_TTL); } catch (e) { /* guard-ok — العدّاد أفضل جهد؛ الرفض قائم */ }
+      try { const c = Number(await kv.kvIncr(failKey)); if (c === 1) await kv.kvExpire(failKey, FAIL_TTL); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/account-delete:76'); /* guard-ok — العدّاد أفضل جهد؛ الرفض قائم */ }
       return { status: 401, body: { ok: false, code: 'wrong_password' } };
     }
   }
@@ -201,12 +207,12 @@ async function deleteAccount(input, o) {
   const mine = (v) => keys.has(String(v || '').trim().toLowerCase());
   const email = String(user.email || '').trim().toLowerCase();
   if (email) {
-    try { const idx = await kv.kvGetJSON('db/email-index/' + email); if (idx && mine(idx.username)) await del('db/email-index/' + email); } catch (e) { /* guard-ok — فهرس مقروء بعطب يبقى؛ الحساب نفسه شاهد محذوف فلا يدخل به أحد */ }
-    try { const al = await kv.kvGetJSON('db/alias/g_' + email); if (al && mine(al.primary)) await del('db/alias/g_' + email); } catch (e) { /* guard-ok — كما أعلاه */ }
+    try { const idx = await kv.kvGetJSON('db/email-index/' + email); if (idx && mine(idx.username)) await del('db/email-index/' + email); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/account-delete:106'); /* guard-ok — فهرس مقروء بعطب يبقى؛ الحساب نفسه شاهد محذوف فلا يدخل به أحد */ }
+    try { const al = await kv.kvGetJSON('db/alias/g_' + email); if (al && mine(al.primary)) await del('db/alias/g_' + email); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/account-delete:107'); /* guard-ok — كما أعلاه */ }
   }
   const phone = String(user.phone || '').trim();
   if (phone) {
-    try { const idx = await kv.kvGetJSON('db/phone-index/' + phone); if (idx && mine(idx.username)) await del('db/phone-index/' + phone); } catch (e) { /* guard-ok — كما أعلاه */ }
+    try { const idx = await kv.kvGetJSON('db/phone-index/' + phone); if (idx && mine(idx.username)) await del('db/phone-index/' + phone); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/account-delete:111'); /* guard-ok — كما أعلاه */ }
   }
   // السجلّ: شاهد بلا بيانات — والاسم محجوز (v-name-reuse)
   await auth.putUser(key, { deleted: true, deletedAt: Number(opt.now) || Date.now(), selfDeleted: true });

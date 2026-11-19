@@ -23,9 +23,9 @@ async function takeBytes(username, bytes) {
   const key = 'db/usage/share-bytes/' + encodeURIComponent(username) + '/' + new Date().toISOString().slice(0, 10);
   let total;
   try { total = Number(await kvIncrBy(key, n)); } catch (e) { return true; } // عطل KV = مفتوح كبقيّة العدّادات
-  if (total === n) { try { await kvExpire(key, 172800); } catch (e) { /* أفضل جهد: المفتاح مؤرَّخ أصلًا */ } }
+  if (total === n) { try { await kvExpire(key, 172800); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/share-gate:26'); /* أفضل جهد: المفتاح مؤرَّخ أصلًا */ } }
   if (total > SHARE_BYTES_DAILY()) {
-    try { await kvDecrBy(key, n); } catch (e) { /* زيادة باقية تجعل الميزانيّة تبدو ممتلئة حتّى الغد فقط */ }
+    try { await kvDecrBy(key, n); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/share-gate:28'); /* زيادة باقية تجعل الميزانيّة تبدو ممتلئة حتّى الغد فقط */ }
     return false;
   }
   return true;

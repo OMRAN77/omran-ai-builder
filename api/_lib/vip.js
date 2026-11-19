@@ -86,7 +86,7 @@ module.exports = async (req, res) => {
       // v-vip-verified: لا يتحوّل إلّا إلى حساب أثبت البريد؛ وإلّا يبقى خامًا (pending) حتّى يثبته صاحبه (_vip.promoteVerifiedEmail).
       const raw = normalizeId(rawId);
       // إضافة الإيميل من جديد تعيد فرصة الترقية مرّة (_vip.promoteVerifiedEmail يرقّي أوّل من يثبته فقط)
-      if (raw.indexOf('@') !== -1) { try { await require('./kv.js').kvDel(promotedKey(raw)); } catch (e) { /* عطب KV: تبقى العلامة، والإضافة تمضي */ } }
+      if (raw.indexOf('@') !== -1) { try { await require('./kv.js').kvDel(promotedKey(raw)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/vip:89'); /* عطب KV: تبقى العلامة، والإضافة تمضي */ } }
       const id = await resolveToUsername(raw);
       const list = await addVip(id);
       send(res, 200, { ok: true, id, list, pending: id === raw && raw.indexOf('@') !== -1 });

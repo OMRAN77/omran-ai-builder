@@ -118,7 +118,7 @@ test('٤. مربّع «مقدّمة وخاتمة بتوقيعك»: يظهر لأ
 
 test('٥. الالتفاف بعد نجاح كلّ محرّك ذكاء (الاقتصاديّ/الأساسيّ/السينمائيّ لا الممثّل)، مستخرج من runHybrid، ويحفظ صوت اللقطة', () => {
   assert.ok(VIDEO.includes('async function wrapWithCanvas(mainSrc, text, ratio, signature, wantNarration, narrationVal){'));
-  assert.equal((VIDEO.match(/await wrapWithCanvas\(/g) || []).length, 4, 'runHybrid + الاقتصاديّ + السينمائيّ + الأساسيّ');
+  assert.equal((VIDEO.match(/await wrapWithCanvas\(/g) || []).length, 5, 'runHybrid + الاقتصاديّ + السينمائيّ + الأساسيّ + حوار المقاطع الملصوق (v-video-dialogue-clips)');
   assert.ok(VIDEO.includes("if(wantCanvasWrap()){ await wrapWithCanvas(vurl, text, ratio, signature, wantNarration, (narrationText.value || '').trim()); return; }"), 'الاقتصاديّ');
   assert.ok(VIDEO.includes("if(creationMode === 'veo' && wantCanvasWrap()){ await wrapWithCanvas(vblob, text, ratio, signature, wantNarration, (narrationText.value || '').trim()); return; }"), 'السينمائيّ لا الممثّل');
   assert.ok(VIDEO.includes("if(wantCanvasWrap()){ await wrapWithCanvas(finalIsBlob ? finalSrc : playerUrl, text, ratio, signature, false, ''); return; }"), 'الأساسيّ (التعليق دُمج قبله فلا يُعاد)');

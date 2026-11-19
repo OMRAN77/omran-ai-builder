@@ -231,7 +231,7 @@ function ldObjects(html) {
   const re = /<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   let m;
   const walk = (v, d) => { if (!v || d > 6) return; if (Array.isArray(v)) { v.forEach((x) => walk(x, d + 1)); return; } if (typeof v !== 'object') return; out.push(v); if (v['@graph']) walk(v['@graph'], d + 1); };
-  while ((m = re.exec(html))) { try { walk(JSON.parse(m[1].trim()), 0); } catch (e) { /* JSON-LD مكسور في صفحة المتجر — يُتجاهل كأنّه غير موجود */ } }
+  while ((m = re.exec(html))) { try { walk(JSON.parse(m[1].trim()), 0); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/cards-search:234'); /* JSON-LD مكسور في صفحة المتجر — يُتجاهل كأنّه غير موجود */ } }
   return out;
 }
 const isType = (o, t) => { const v = o && o['@type']; return Array.isArray(v) ? v.some((x) => String(x).toLowerCase() === t) : String(v || '').toLowerCase() === t; };
@@ -288,7 +288,7 @@ async function pageMeta(url, o) {
   if (r.body && typeof r.body.getReader === 'function') {
     const rd = r.body.getReader(), dec = new TextDecoder();
     let n = 0;
-    for (;;) { const c = await rd.read(); if (c.done) break; n += c.value.length; html += dec.decode(c.value, { stream: true }); if (n >= PAGE_MAX_BYTES) { try { rd.cancel(); } catch (e) { /* القطع عند السقف — ما قُرئ يكفي */ } break; } }
+    for (;;) { const c = await rd.read(); if (c.done) break; n += c.value.length; html += dec.decode(c.value, { stream: true }); if (n >= PAGE_MAX_BYTES) { try { rd.cancel(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/cards-search:291'); /* القطع عند السقف — ما قُرئ يكفي */ } break; } }
   } else html = String(await r.text()).slice(0, PAGE_MAX_BYTES);
   return pageMetaFrom(html, r.url || u);
 }
@@ -408,7 +408,7 @@ function nameMatches(name, c) {
   const req = normWords(name).filter((w) => !ITEM_STOP.has(w));
   if (!req.length) return true;
   let url = String(c && c.url || '');
-  try { url = decodeURIComponent(url); } catch (e) { /* رابط بترميز مكسور — يُقارَن كما هو */ }
+  try { url = decodeURIComponent(url); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/cards-search:411'); /* رابط بترميز مكسور — يُقارَن كما هو */ }
   const set = new Set(normWords(String(c && c.title || '') + ' ' + url));
   const found = req.map((w) => {
     if (set.has(w)) return true;

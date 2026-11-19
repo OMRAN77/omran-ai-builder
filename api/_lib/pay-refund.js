@@ -48,7 +48,7 @@ const cents = (m) => { const v = Number(m && m.value); return Number.isFinite(v)
 const clamp01 = (x) => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0);
 
 function logError(scope, e, meta) {
-  try { require('./log-error.js').logError(scope, e, meta); } catch (e2) { /* guard-ok — التسجيل تحسين لا شرط */ }
+  try { require('./log-error.js').logError(scope, e, meta); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/pay-refund:49'); /* guard-ok — التسجيل تحسين لا شرط */ }
 }
 
 // ───────────────────────── سجلّ المنح ─────────────────────────
@@ -738,7 +738,7 @@ async function paypalEvent(event) {
   return { status: 'done', retry, results };
 }
 
-module.exports = { recordGrant, linkGrant, relinkPrev, priorOf, findRec, revoke, stripeEvent, paypalEvent, verifyPaypalSig, captureOf, REC_TTL_SEC };
+module.exports = { recordGrant, linkGrant, relinkPrev, priorOf, findRec, revoke, stripeEvent, paypalEvent, verifyPaypalSig, captureOf, REC_TTL_SEC, alertOwner, money }; // v-paid-ungranted: webhook.js (alertOwner, money)
 module.exports.alertOwner = alertOwner; // v-lock-subs (srv-money-5): الويب هوك ينبّه المالك بدفعة لحساب محذوف بالمسار نفسه (سجلّ أخطائه + الإشعار بمهلة)
 module.exports.alertOnce = alertOnce; // v-r3 (r3-7): تنبيه مرّة لكلّ دفعة بحجز صارم — PayPal وStripe معًا
 module.exports.completeDropped = completeDropped; /* v-r3 (r4-back): قفل الحساب يكمل سحبًا أعاد رصيد السابقة ولم يصل سجلّه */

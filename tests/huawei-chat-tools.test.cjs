@@ -38,7 +38,8 @@ test('index.html: وجود عنصر #huaweiHeroWrap والبطاقات الأر�
 test('css/redesign.css: إخفاء البطاقات افتراضيًا وعرضها فقط تحت html.store-safe و body.omranWelcome', () => {
   const css = read('css/redesign.css');
   assert.ok(css.includes('#huaweiHeroWrap{display:none !important;}'), 'مخفي افتراضيًا على الويب العادي');
-  assert.ok(css.includes('html.store-safe body.omranWelcome #huaweiHeroWrap{'), 'يظهر فقط في متجر هواوي وعند خلو المحادثة');
+  // v-hw-same (١٥ نوفمبر): قاعدة الإظهار في هواوي حُذفت — المحادثة مثل بقيّة التطبيقات (tests/hw-same.test.cjs)
+  assert.ok(!css.includes('html.store-safe body.omranWelcome #huaweiHeroWrap{'), 'لا قاعدة تُظهر البطاقات في هواوي');
   assert.ok(css.includes('.hwToolCard{'), 'تنسيق بطاقات الأدوات موجود');
   assert.ok(css.includes('.huawei-tools-grid{'), 'تنسيق الشبكة موجود');
 });
@@ -63,9 +64,8 @@ test('البطاقات تختفي عند دخول صندوق الكتابة', ()
 
 test('v-hw-cards-once: البطاقات مرّة واحدة لكلّ فتح — أوّل مغادرة للدخول تضع html.hwCardsDone وقاعدة CSS تعلو على قاعدة الإظهار', () => {
   const css = read('css/redesign.css');
-  const show = css.indexOf('html.store-safe body.omranWelcome #huaweiHeroWrap{');
   const done = css.indexOf('html.store-safe.hwCardsDone body.omranWelcome #huaweiHeroWrap{display:none !important;}');
-  assert.ok(show > 0 && done > show, 'قاعدة hwCardsDone موجودة وبعد قاعدة الإظهار (وأعلى تخصيصًا منها)');
+  assert.ok(done > 0, 'قاعدة hwCardsDone باقية (لا ضرر، والبطاقات لا تظهر أصلًا بعد v-hw-same)');
 
   const wiring = read('js/ui-wiring.js');
   const i = wiring.indexOf('v-hw-cards-once');
@@ -84,7 +84,7 @@ test('v-hw-cards-once: البطاقات مرّة واحدة لكلّ فتح — 
   assert.ok(inl > 0 && inl < early.indexOf('<link rel="stylesheet"'), 'سكربت مبكّر في الرأس قبل أيّ ورقة أنماط — بلا وميض');
 
   const html = read('index.html');
-  assert.ok(html.includes('css/redesign.css?v=699') && html.includes('/js/ui-wiring.js?v=669'), 'وسما الكاش ارتفعا');
+  assert.ok(html.includes('css/redesign.css?v=701') && html.includes('/js/ui-wiring.js?v=670'), 'وسما الكاش ارتفعا');
 });
 
 test('زرّ «جرّبه لي» 🧪 محذوف من الواجهة', () => {

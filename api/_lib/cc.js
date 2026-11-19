@@ -115,9 +115,9 @@ module.exports = async (req, res) => {
       if (res.flush) res.flush();
     }
   } catch (e) {
-    try { res.write('data: ' + JSON.stringify({ error: 'انقطع البثّ من الجسر — أعد الاتّصال (attach).' }) + '\n\n'); } catch (e2) { /* مغلق */ }
+    try { res.write('data: ' + JSON.stringify({ error: 'انقطع البثّ من الجسر — أعد الاتّصال (attach).' }) + '\n\n'); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/cc:118'); /* مغلق */ }
   }
-  try { res.end(); } catch (e) { /* مغلق */ }
+  try { res.end(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/cc:120'); /* مغلق */ }
 };
 
 module.exports.__test = { OPS, config, forwardBody, cleanImages, ccEnabled, LIVE_OPS, CC_OFF };

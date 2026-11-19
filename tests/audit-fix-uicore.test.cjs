@@ -91,7 +91,7 @@ function exportEnv({ nullBlob = false } = {}) {
     return cv;
   };
   const ctx = {
-    console, Blob, setTimeout: () => 0, clearTimeout() {}, __swallow: () => {},
+    console, Blob, TextEncoder, setTimeout: () => 0, clearTimeout() {}, __swallow: () => {},
     t: (k) => 'T:' + k,
     settingsToast: (m) => log.toasts.push(m),
     omranNativeBridge: () => null,
@@ -106,6 +106,20 @@ function exportEnv({ nullBlob = false } = {}) {
   vm.runInContext('omranExportPagedPdfFile = __stubPaged; omranExportHtmlAsPdfFile = __stubSingle;', ctx);
   return { ctx, log };
 }
+/* v-docx: Word صار ‎.docx‎ حقيقيًّا (ZIP مخزّن) — نقرأ word/document.xml من الحزمة نفسها */
+async function docxXml(blob) {
+  assert.equal(blob.type, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  const u = Buffer.from(await blob.arrayBuffer());
+  for (let i = 0; u.readUInt32LE(i) === 0x04034b50;) {
+    const n = u.readUInt16LE(i + 26), x = u.readUInt16LE(i + 28), size = u.readUInt32LE(i + 18);
+    const name = u.slice(i + 30, i + 30 + n).toString('utf8');
+    if (name === 'word/document.xml') return u.slice(i + 30 + n + x, i + 30 + n + x + size).toString('utf8');
+    i += 30 + n + x + size;
+  }
+  throw new Error('لا word/document.xml');
+}
+const paras = (xml) => xml.match(/<w:p>.*?<\/w:p>/g) || [];
+const paraWith = (xml, s) => paras(xml).find((p) => p.includes(s));
 /* أيّ مصدّر PDF نودي: نصّ HTML كامل + اتّجاهه */
 function pdfCall(log) {
   if (log.paged.length) return { html: log.paged[0].blocks.map((b) => b.html).join('\n'), opts: log.paged[0].opts, blocks: log.paged[0].blocks };
@@ -145,9 +159,12 @@ test('cli-ui-core-3: الاتّجاه من النصّ — الإنجليزيّ �
     assert.doesNotMatch(p.html, rtl ? /dir="ltr"/ : /dir="rtl"|direction:\s*rtl/, tag + ': PDF');
     e = exportEnv();
     e.ctx.exportReplyAsWord(text);
-    const html = await e.log.saved[0].blob.text();
-    assert.match(html, new RegExp('<body dir="' + (rtl ? 'rtl' : 'ltr') + '"'), tag + ': Word body');
-    assert.doesNotMatch(html, rtl ? /dir="ltr"/ : /dir="rtl"/, tag + ': Word');
+    assert.equal(e.log.saved[0].name, 'omran-ai-reply.docx');
+    const xml = await docxXml(e.log.saved[0].blob);
+    const ps = paras(xml);
+    assert.ok(ps.length >= 2, tag + ': فقرات Word');
+    for (const p of ps) assert.equal(p.includes('<w:bidi/>'), rtl, tag + ': اتّجاه فقرة Word: ' + p.slice(0, 120));
+    assert.equal(/<w:sectPr>.*<w:bidi\/><\/w:sectPr>/.test(xml), rtl, tag + ': اتّجاه صفحة Word');
     e = exportEnv();
     e.ctx.exportReplyAsImage(text);
     const fills = e.log.fills.filter((f) => f.s.trim());
@@ -164,9 +181,10 @@ test('cli-ui-core-3: ردّ عربيّ فيه كود — الكود يسار و�
   const text = 'هذا مثال على الكود:\n```js\nconst x = 1;\n```\nانتهى المثال.';
   const e = exportEnv();
   e.ctx.exportReplyAsWord(text);
-  const html = await e.log.saved[0].blob.text();
-  assert.match(html, /<body dir="rtl"/);
-  assert.match(html, /dir="ltr"[^>]*>const x = 1;/, 'سطر الكود ltr');
+  const xml = await docxXml(e.log.saved[0].blob);
+  const codeP = paraWith(xml, 'const x = 1;'), arP = paraWith(xml, 'انتهى');
+  assert.ok(!codeP.includes('<w:bidi/>') && codeP.includes('w:ascii="Consolas"'), 'سطر الكود ltr وأحاديّ الخطّ');
+  assert.ok(arP.includes('<w:bidi/>'), 'النصّ العربيّ rtl');
   const img = exportEnv();
   img.ctx.exportReplyAsImage(text);
   const code = img.log.fills.find((f) => f.s.includes('const x = 1;'));
@@ -178,12 +196,24 @@ test('cli-ui-core-3: ردّ عربيّ فيه كود — الكود يسار و�
 test('cli-ui-core-4: الماركداون يُحوَّل في PDF وWord والصورة — لا ** ولا ### ولا ``` ولا |---| خامًا، وTXT يبقى كما هو', async () => {
   let e = exportEnv();
   e.ctx.exportReplyAsWord(MD);
-  const word = await e.log.saved[0].blob.text();
+  const word = await docxXml(e.log.saved[0].blob);
+  /* Word (‎.docx‎): التنسيق نفسه بعناصر WordprocessingML */
+  assert.doesNotMatch(word, /\*\*|###|```|\|---/, 'Word: رموز خامّة');
+  const runOf = (s) => (word.match(new RegExp('<w:r><w:rPr>((?:(?!</w:rPr>).)*)</w:rPr><w:t xml:space="preserve">' + s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '</w:t></w:r>')) || [])[1] || null;
+  assert.ok(runOf('world') && runOf('world').includes('<w:b/>'), 'Word: عريض');
+  assert.ok(runOf('Title') && runOf('Title').includes('<w:b/>') && runOf('Title').includes('<w:sz w:val="28"/>'), 'Word: عنوان');
+  assert.ok(paraWith(word, 'first item').includes('•'), 'Word: قائمة');
+  assert.ok(/1\.\u00a0/.test(paraWith(word, 'numbered')), 'Word: قائمة مرقّمة');
+  assert.ok(runOf('x = 1') && runOf('x = 1').includes('Consolas') && runOf('x = 1').includes('w:fill="F1F1F1"'), 'Word: كود داخل السطر');
+  assert.ok(runOf('const x = 1;') && runOf('const x = 1;').includes('Consolas'), 'Word: كتلة كود أحاديّة الخطّ');
+  assert.ok(runOf('  return x;'), 'Word: مسافات الكود محفوظة');
+  assert.ok(/<w:tbl>.*Name.*Age.*Ali.*<\/w:tbl>/.test(word), 'Word: جدول حقيقيّ');
+  assert.ok(/<w:tr><w:trPr><w:tblHeader\/><\/w:trPr>.*?Name/.test(word), 'Word: رأس الجدول يتكرّر');
   e = exportEnv();
   e.ctx.exportReplyAsPdf(MD);
   await settle();
   const pdf = pdfCall(e.log).html;
-  for (const [tag, html] of [['Word', word], ['PDF', pdf]]) {
+  for (const [tag, html] of [['PDF', pdf]]) {
     assert.doesNotMatch(html, /\*\*|###|```|\|---/, tag + ': رموز خامّة');
     assert.match(html, /<b>world<\/b>/, tag + ': عريض');
     assert.match(html, /<h3[^>]*>Title<\/h3>/, tag + ': عنوان');
@@ -198,10 +228,10 @@ test('cli-ui-core-4: الماركداون يُحوَّل في PDF وWord وال�
   /* الهروب ما زال قائمًا: لا وسم من نصّ الردّ يصل للمستند */
   e = exportEnv();
   e.ctx.exportReplyAsWord('**<img src=x onerror=alert(1)>**\n`<b>`');
-  const esc = await e.log.saved[0].blob.text();
-  assert.doesNotMatch(esc, /<img/);
-  assert.match(esc, /<b>&lt;img src=x onerror=alert\(1\)&gt;<\/b>/);
-  assert.match(esc, /<code[^>]*>&lt;b&gt;<\/code>/);
+  const esc = await docxXml(e.log.saved[0].blob);
+  assert.doesNotMatch(esc, /<img|<b>/);
+  assert.match(esc, /<w:b\/>(?:(?!<\/w:rPr>).)*<\/w:rPr><w:t xml:space="preserve">&lt;img src=x onerror=alert\(1\)&gt;<\/w:t>/);
+  assert.match(esc, /Consolas(?:(?!<\/w:rPr>).)*<\/w:rPr><w:t xml:space="preserve">&lt;b&gt;<\/w:t>/);
   /* الصورة: نصّ نظيف */
   e = exportEnv();
   e.ctx.exportReplyAsImage(MD);
@@ -227,12 +257,17 @@ test('cli-ui-core-4: جدول مختلط (عربيّ فيه صفّ إنجليز�
     const want = rtl ? 'rtl' : 'ltr';
     let e = exportEnv();
     e.ctx.exportReplyAsWord(text);
-    const word = await e.log.saved[0].blob.text();
+    const word = await docxXml(e.log.saved[0].blob);
+    const tbls = word.match(/<w:tbl>.*?<\/w:tbl>/g) || [];
+    assert.equal(tbls.length, 1, tag + ' Word: جدول واحد');
+    assert.equal((tbls[0].match(/<w:tr>/g) || []).length, 3, tag + ' Word: ثلاثة صفوف');
+    assert.equal(tbls[0].includes('<w:bidiVisual/>'), rtl, tag + ' Word: الجدول كلّه باتّجاه واحد (قاعدة الشاشة)');
+    for (const p of paras(tbls[0])) assert.equal(p.includes('<w:bidi/>'), rtl, tag + ' Word: خليّة باتّجاه الجدول');
     e = exportEnv();
     e.ctx.exportReplyAsPdf(text);
     await settle();
     const pdf = pdfCall(e.log).html;
-    for (const [fmt, html] of [['Word', word], ['PDF', pdf]]) {
+    for (const [fmt, html] of [['PDF', pdf]]) {
       const dirs = [...html.matchAll(/<table dir="(rtl|ltr)"/g)].map((m) => m[1]);
       assert.equal(dirs.length, 3, tag + ' ' + fmt + ': ثلاثة صفوف جدول: ' + dirs.length);
       assert.deepEqual(dirs, [want, want, want], tag + ' ' + fmt + ': كلّ صفوف الجدول باتّجاه واحد (قاعدة الشاشة)');

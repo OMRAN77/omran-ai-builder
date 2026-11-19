@@ -100,7 +100,7 @@ function parseStatuses(text) {
   let m;
   STATUS_RE.lastIndex = 0;
   while ((m = STATUS_RE.exec(String(text || ''))) !== null) {
-    try { out.push(JSON.parse(m[1])); } catch (e) { /* سطر حالة تالف — يُتجاهل */ }
+    try { out.push(JSON.parse(m[1])); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent-delegate:103'); /* سطر حالة تالف — يُتجاهل */ }
   }
   return out;
 }

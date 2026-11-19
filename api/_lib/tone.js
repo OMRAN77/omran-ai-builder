@@ -124,7 +124,7 @@ function extractUserMessages(action, body) {
         }
       });
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/tone:127'); /* ignore */ }
   return texts;
 }
 

@@ -102,7 +102,7 @@ async function safeCredit(order, username) {
   try { return await creditOrder(order, username); } catch (e) {
     // المال سُحب والشحن فشل (مثل امتلاء القاعدة) — لا صمت: سجلّ أخطاء المالك، والعميل يعيد المحاولة بـclaim.
     console.error('[paypal] credit failed after capture', order && order.id, e && e.message);
-    try { require('./log-error.js').logError('paypal:credit', e, { orderId: order && order.id, user: username }); } catch (e2) { /* guard-ok — التسجيل تحسين لا شرط */ }
+    try { require('./log-error.js').logError('paypal:credit', e, { orderId: order && order.id, user: username }); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/paypal-order:102'); /* guard-ok — التسجيل تحسين لا شرط */ }
     return { credited: false, reason: 'error' };
   }
 }
@@ -126,7 +126,7 @@ const ppoKey = (id) => 'ppo:' + String(id).slice(0, 200);
 async function captureCompleted(event) {
   const r0 = (event && event.resource) || {};
   const orderId = String((r0.supplementary_data && r0.supplementary_data.related_ids && r0.supplementary_data.related_ids.order_id) || '');
-  const note = (reason) => { try { require('./log-error.js').logError('paypal:capture-completed', new Error(reason), { orderId: orderId.slice(0, 60), capture: String(r0.id || '').slice(0, 60) }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ } };
+  const note = (reason) => { try { require('./log-error.js').logError('paypal:capture-completed', new Error(reason), { orderId: orderId.slice(0, 60), capture: String(r0.id || '').slice(0, 60) }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/paypal-order:129'); /* guard-ok — التسجيل تحسين لا شرط */ } };
   if (!orderId) { note('no_order'); return { status: 'ignored' }; }
   const buyer = await kvGetRaw(ppoKey(orderId)); // يرمي عند عطب KV ⇒ 500 فيُعاد (لا «ليس لنا» كاذبة)
   if (!buyer) { note('not_our_order'); return { status: 'foreign' }; }
@@ -212,7 +212,7 @@ module.exports = async (req, res) => {
       // v-lock-credit (srv-money-6): علامة صاحب الطلب لويب هوك الاكتمال. أفضل جهد: فشلها لا يمنع الدفع — الالتقاط من المتصفّح وclaim
       // يشحنان كما كانا، والويب هوك وحده يترك هذا الطلب مع سطر للمالك.
       try { await kvSetRaw(ppoKey(data.id), String(buyer).slice(0, 256), PPO_TTL_SEC); } catch (e) {
-        try { require('./log-error.js').logError('paypal:order-mark', e, { orderId: String(data.id || '').slice(0, 60) }); } catch (e2) { /* guard-ok — التسجيل تحسين لا شرط */ }
+        try { require('./log-error.js').logError('paypal:order-mark', e, { orderId: String(data.id || '').slice(0, 60) }); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/paypal-order:215'); /* guard-ok — التسجيل تحسين لا شرط */ }
       }
       res.status(200).json({ id: data.id });
       return;

@@ -87,7 +87,7 @@ async function phoneOwner(phone, o) {
       user = await authOf(o).getUser(key);
     }
     if (user && !user.deleted && user.phone === phone) return { key, user };
-  } catch (e) { /* فهرس متعثّر = لا مالك */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/phone-link:90'); /* فهرس متعثّر = لا مالك */ }
   return null;
 }
 
@@ -117,7 +117,7 @@ async function complete(code, rawPhone, channel, o) {
     user.phone = phone;
     await auth.putUser(rec.username, user);
     await kvOf(o).kvPutJSON('db/phone-index/' + phone, { username: rec.username, at: Date.now() });
-    if (old && old !== phone) { try { await kvOf(o).kvDel('db/phone-index/' + old); } catch (e) { /* القديم يسقط وحده: phoneOwner يشترط user.phone نفسه */ } }
+    if (old && old !== phone) { try { await kvOf(o).kvDel('db/phone-index/' + old); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/phone-link:120'); /* القديم يسقط وحده: phoneOwner يشترط user.phone نفسه */ } }
     rec.status = 'linked'; await writeRec(c, rec, o);
     return { ok: true, purpose: 'link', status: 'linked' };
   }

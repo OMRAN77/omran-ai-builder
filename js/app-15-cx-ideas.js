@@ -102,7 +102,7 @@
     $('cxIdeaGo').onclick = load;
     input.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); load(); } });
     render();
-    try{ new MutationObserver(render).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
+    try{ new MutationObserver(render).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-15-cx-ideas:105'); /* guard-ok */ }
     window.__cxIdeasLoad = load;
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

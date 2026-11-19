@@ -125,7 +125,7 @@ var redisCache = {
       // But kvGetRaw returns raw. Let's store as JSON string value via kvPutJSON
       await kvPutJSON(key, value);
       if (ttlSeconds > 0) await kvExpire(key, ttlSeconds);
-    } catch (e) {
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/live-deps:128');
       // best-effort
     }
   },

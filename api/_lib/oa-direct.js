@@ -652,7 +652,7 @@ async function directFetch(route, anthropicBody, opts) {
       }
       if (r.status === 400 && rb.reasoning && ownerEff && /reasoning|effort/i.test(t)) {
         ownerEff = false;
-        try { require('./owner-think.js').forgetEffort(anthropicBody.model); } catch (e) { /* guard-ok — الذاكرة تحسين */ }
+        try { require('./owner-think.js').forgetEffort(anthropicBody.model); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/oa-direct:655'); /* guard-ok — الذاكرة تحسين */ }
         rb = Object.assign({}, rb); delete rb.reasoning;
         continue;
       }
@@ -675,7 +675,7 @@ async function directFetch(route, anthropicBody, opts) {
     // (المسار القديم بالمفتاح نفسه سيرفض مثله). غير ذلك (400/404 على شكل الطلب) = المسار القديم أدناه، ويُسجَّل السبب.
     const rt = await rl.text();
     if (OA_MODEL_MISSING_RE.test(rt) || (rl.status !== 400 && rl.status !== 404)) return rl;
-    try { require('./log-error.js').logError('oa-direct/responses-' + rl.status, new Error(rt.slice(0, 280) || ('responses ' + rl.status)), { action: 'responses-fallback', model: rb.model }); } catch (e) { /* التسجيل تحسين */ }
+    try { require('./log-error.js').logError('oa-direct/responses-' + rl.status, new Error(rt.slice(0, 280) || ('responses ' + rl.status)), { action: 'responses-fallback', model: rb.model }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/oa-direct:678'); /* التسجيل تحسين */ }
   }
   const gSigs = route.prov === 'gemini' ? (o.sigs || null) : null; // v-pro-lanes
   const base = toOpenAIBody(anthropicBody, route.prov, gSigs);
@@ -720,7 +720,7 @@ const QUICK_EFFORTS = ['none', 'minimal', 'low'];
 const quickRejected = new Map();
 function quickEffortFor(model) {
   const bad = quickRejected.get(String(model || '')) || [];
-  let ok = null; try { ok = require('./owner-think.js').gptEfforts(model); } catch (e) { /* guard-ok — بلا الجدول السلّم كما كان */ }
+  let ok = null; try { ok = require('./owner-think.js').gptEfforts(model); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/oa-direct:723'); /* guard-ok — بلا الجدول السلّم كما كان */ }
   return QUICK_EFFORTS.find((e) => bad.indexOf(e) === -1 && (!ok || ok.indexOf(e) !== -1)) || ''; // v-owner-gpt-all: Astra و6.1 Sol يبدآن من low (none/minimal = 400 موثَّق)
 }
 function quickEffortRejected(model, effort) {

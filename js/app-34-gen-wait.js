@@ -367,29 +367,33 @@
   ];
   KINDS.styles.scenes = PORTRAIT_SCENES;
   KINDS.styles.sceneKey = 'aiapp_ps_scene';
+  /* v-trends-lang (المالك ١٤ نوفمبر بلقطة: الواجهة إنجليزيّة وصورة الانتظار فيها «انتاج_الرسوم_المكتمل» و«THE ANIMATION PRODUCTION TREND»):
+     الصور الثماني عشرة كان في كلّ منها نصّ محروق بالعربيّة أو الإنجليزيّة فيظهر بأيّ لغة واجهة (ومخالف لقاعدة «لا كتابة داخل صورة»).
+     ‎<الاسم>-clean.webp نسخها بلا نصّ: حروف الوسم وحدها تُرمَّم من محيطها، والأشرطة السفليّة تُزال كاملة؛ نفس المقاس فإحداثيّات المشهد كما هي.
+     الأصول باقية بأسمائها. حالة التوليد تحت الصورة نصّ حيّ بلغة الواجهة كما كانت. */
   /* @vd-scenes:start — مولَّد من قياسات الصور (لا يُحرَّر يدويًّا: يُعاد توليده مع أيّ صورة جديدة) */
   var VD_FONT = { family: "'Bahnschrift','Segoe UI','Helvetica Neue','Roboto',Arial,sans-serif", weight: 300 };
   var VIDEO_SCENES = [
-    { id: 'vdMain', src: '/assets/videos/scenes/main.webp?v=1', w: 1365, h: 768, bg: '#2c2f29', tube: { x: 446, y: 70, w: 484, h: 500, blend: 'screen', gap: [402, 474] }, flow: '#d4fcf3', bar: { x: 575.2, y: 411.3, w: 228.6, h: 12.9, grad: ['#93f7e2', '#d6fdf0'] }, sprite: true, font: VD_FONT, ring: { cx: 687.6, cy: 319.2, hole: 79.5, img: { src: '/assets/videos/scenes/main-r1.webp?v=1', x: 613, y: 244.5, w: 149, h: 149 } }, num: { x: 690.8, y: 334.5, size: 45.5, dw: 22.4, pw: 31.2 }, ink: '#d6fbf9' },
-    { id: 'vdDesign', src: '/assets/videos/scenes/design.webp?v=1', w: 692, h: 384, bg: '#2a2d27', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#d9fbf4', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.9, grad: ['#a0f5e4', '#8dfae3'] }, sprite: true, font: VD_FONT, ring: { cx: 346.8, cy: 165.8, hole: 40.5, img: { src: '/assets/videos/scenes/design-r1.webp?v=1', x: 308, y: 127, w: 77, h: 77 } }, num: { x: 347.3, y: 174, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#d6f8ec' },
-    { id: 'vdQuantum', src: '/assets/videos/scenes/quantum.webp?v=1', w: 692, h: 384, bg: '#2c201b', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#fccfc6', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.4, grad: ['#f78671', '#fb987e'] } },
-    { id: 'vd2050', src: '/assets/videos/scenes/world2050.webp?v=1', w: 673, h: 384, bg: '#3b4948', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d3fbfb', bar: { x: 290.2, y: 215.8, w: 113.4, h: 6.9, grad: ['#91f5f5', '#98f8f7'] } },
-    { id: 'vdMain2', src: '/assets/videos/scenes/main2.webp?v=1', w: 1000, h: 563, bg: '#282a24', tube: { x: 322, y: 52, w: 356, h: 372, blend: 'screen', gap: [293, 346] }, flow: '#d2fff4', bar: { x: 417.7, y: 300.8, w: 162.9, h: 9.9, grad: ['#8efee4', '#d3fef2'] }, sprite: true, font: VD_FONT, ring: { cx: 498.7, cy: 235, hole: 60, img: { src: '/assets/videos/scenes/main2-r1.webp?v=1', x: 442.5, y: 179, w: 112, h: 112 } }, num: { x: 502, y: 245.5, size: 33.1, dw: 16.5, pw: 22.9 }, ink: '#dffbf9' },
-    { id: 'vdNet', src: '/assets/videos/scenes/network.webp?v=1', w: 673, h: 384, bg: '#1c2d3a', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#dff7ff', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.9, grad: ['#afecff', '#ccf5ff'] }, sprite: true, font: VD_FONT, ring: { cx: 346.4, cy: 165.7, hole: 42, img: { src: '/assets/videos/scenes/network-r1.webp?v=1', x: 306, y: 125.5, w: 80, h: 80 } }, num: { x: 348.8, y: 175, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#c9f1f8' },
-    { id: 'vdSea', src: '/assets/videos/scenes/sea.webp?v=1', w: 692, h: 384, bg: '#11242c', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c3edf9', bar: { x: 288.7, y: 213.8, w: 106.4, h: 6.9, grad: ['#68d3f1', '#e5ede0'] } },
-    { id: 'vdPortal', src: '/assets/videos/scenes/portal.webp?v=1', w: 692, h: 384, bg: '#15242d', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c5e9f4', bar: { x: 289.2, y: 213.8, w: 105.9, h: 7.4, grad: ['#6fc7e4', '#e0ddd8'] } },
-    { id: 'vdGalaxy', src: '/assets/videos/scenes/galaxy.webp?v=1', w: 692, h: 384, bg: '#1d1e23', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c6f2fd', bar: { x: 288.2, y: 213.8, w: 106.9, h: 6.9, grad: ['#71defa', '#c2f7ff'] } },
-    { id: 'vdGreen', src: '/assets/videos/scenes/green.webp?v=1', w: 673, h: 384, bg: '#3d4b49', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d7fefe', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.4, grad: ['#9afcfc', '#c4fefe'] } },
-    { id: 'vdMind', src: '/assets/videos/scenes/mind.webp?v=1', w: 692, h: 384, bg: '#2d231f', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#f5cfc5', bar: { x: 289.7, y: 214.8, w: 110.9, h: 6.9, grad: ['#e6866e', '#ea8e76'] } },
-    { id: 'vdDna', src: '/assets/videos/scenes/dna.webp?v=1', w: 673, h: 384, bg: '#3e4b49', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d0faf5', bar: { x: 291.7, y: 214.3, w: 105.9, h: 7.4, grad: ['#8af2e5', '#b0fbed'] } },
-    { id: 'vdHeritage', src: '/assets/videos/scenes/heritage.webp?v=1', w: 673, h: 384, bg: '#3e4845', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cdf8f3', bar: { x: 291.2, y: 214.3, w: 105.9, h: 6.9, grad: ['#83ede1', '#d3f8e3'] } },
-    { id: 'vdBrief', src: '/assets/videos/scenes/brief.webp?v=1', w: 673, h: 384, bg: '#394544', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cff6f5', bar: { x: 291.7, y: 214.3, w: 104.9, h: 6.9, grad: ['#88e8e5', '#def3e7'] } }
+    { id: 'vdMain', src: '/assets/videos/scenes/main-clean.webp?v=1', w: 1365, h: 768, bg: '#2c2f29', tube: { x: 446, y: 70, w: 484, h: 500, blend: 'screen', gap: [402, 474] }, flow: '#d4fcf3', bar: { x: 575.2, y: 411.3, w: 228.6, h: 12.9, grad: ['#93f7e2', '#d6fdf0'] }, sprite: true, font: VD_FONT, ring: { cx: 687.6, cy: 319.2, hole: 79.5, img: { src: '/assets/videos/scenes/main-r1.webp?v=1', x: 613, y: 244.5, w: 149, h: 149 } }, num: { x: 690.8, y: 334.5, size: 45.5, dw: 22.4, pw: 31.2 }, ink: '#d6fbf9' },
+    { id: 'vdDesign', src: '/assets/videos/scenes/design-clean.webp?v=1', w: 692, h: 384, bg: '#2a2d27', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#d9fbf4', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.9, grad: ['#a0f5e4', '#8dfae3'] }, sprite: true, font: VD_FONT, ring: { cx: 346.8, cy: 165.8, hole: 40.5, img: { src: '/assets/videos/scenes/design-r1.webp?v=1', x: 308, y: 127, w: 77, h: 77 } }, num: { x: 347.3, y: 174, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#d6f8ec' },
+    { id: 'vdQuantum', src: '/assets/videos/scenes/quantum-clean.webp?v=1', w: 692, h: 384, bg: '#2c201b', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#fccfc6', bar: { x: 289.7, y: 215.3, w: 111.4, h: 6.4, grad: ['#f78671', '#fb987e'] } },
+    { id: 'vd2050', src: '/assets/videos/scenes/world2050-clean.webp?v=1', w: 673, h: 384, bg: '#3b4948', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d3fbfb', bar: { x: 290.2, y: 215.8, w: 113.4, h: 6.9, grad: ['#91f5f5', '#98f8f7'] } },
+    { id: 'vdMain2', src: '/assets/videos/scenes/main2-clean.webp?v=1', w: 1000, h: 563, bg: '#282a24', tube: { x: 322, y: 52, w: 356, h: 372, blend: 'screen', gap: [293, 346] }, flow: '#d2fff4', bar: { x: 417.7, y: 300.8, w: 162.9, h: 9.9, grad: ['#8efee4', '#d3fef2'] }, sprite: true, font: VD_FONT, ring: { cx: 498.7, cy: 235, hole: 60, img: { src: '/assets/videos/scenes/main2-r1.webp?v=1', x: 442.5, y: 179, w: 112, h: 112 } }, num: { x: 502, y: 245.5, size: 33.1, dw: 16.5, pw: 22.9 }, ink: '#dffbf9' },
+    { id: 'vdNet', src: '/assets/videos/scenes/network-clean.webp?v=1', w: 673, h: 384, bg: '#1c2d3a', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#dff7ff', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.9, grad: ['#afecff', '#ccf5ff'] }, sprite: true, font: VD_FONT, ring: { cx: 346.4, cy: 165.7, hole: 42, img: { src: '/assets/videos/scenes/network-r1.webp?v=1', x: 306, y: 125.5, w: 80, h: 80 } }, num: { x: 348.8, y: 175, size: 23.4, dw: 11.1, pw: 15.5 }, ink: '#c9f1f8' },
+    { id: 'vdSea', src: '/assets/videos/scenes/sea-clean.webp?v=1', w: 692, h: 384, bg: '#11242c', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c3edf9', bar: { x: 288.7, y: 213.8, w: 106.4, h: 6.9, grad: ['#68d3f1', '#e5ede0'] } },
+    { id: 'vdPortal', src: '/assets/videos/scenes/portal-clean.webp?v=1', w: 692, h: 384, bg: '#15242d', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c5e9f4', bar: { x: 289.2, y: 213.8, w: 105.9, h: 7.4, grad: ['#6fc7e4', '#e0ddd8'] } },
+    { id: 'vdGalaxy', src: '/assets/videos/scenes/galaxy-clean.webp?v=1', w: 692, h: 384, bg: '#1d1e23', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#c6f2fd', bar: { x: 288.2, y: 213.8, w: 106.9, h: 6.9, grad: ['#71defa', '#c2f7ff'] } },
+    { id: 'vdGreen', src: '/assets/videos/scenes/green-clean.webp?v=1', w: 673, h: 384, bg: '#3d4b49', tube: { x: 229, y: 36, w: 236, h: 254, blend: 'screen', gap: [210, 254] }, flow: '#d7fefe', bar: { x: 290.2, y: 216.3, w: 113.4, h: 6.4, grad: ['#9afcfc', '#c4fefe'] } },
+    { id: 'vdMind', src: '/assets/videos/scenes/mind-clean.webp?v=1', w: 692, h: 384, bg: '#2d231f', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [209, 253] }, flow: '#f5cfc5', bar: { x: 289.7, y: 214.8, w: 110.9, h: 6.9, grad: ['#e6866e', '#ea8e76'] } },
+    { id: 'vdDna', src: '/assets/videos/scenes/dna-clean.webp?v=1', w: 673, h: 384, bg: '#3e4b49', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d0faf5', bar: { x: 291.7, y: 214.3, w: 105.9, h: 7.4, grad: ['#8af2e5', '#b0fbed'] } },
+    { id: 'vdHeritage', src: '/assets/videos/scenes/heritage-clean.webp?v=1', w: 673, h: 384, bg: '#3e4845', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cdf8f3', bar: { x: 291.2, y: 214.3, w: 105.9, h: 6.9, grad: ['#83ede1', '#d3f8e3'] } },
+    { id: 'vdBrief', src: '/assets/videos/scenes/brief-clean.webp?v=1', w: 673, h: 384, bg: '#394544', tube: { x: 226, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#cff6f5', bar: { x: 291.7, y: 214.3, w: 104.9, h: 6.9, grad: ['#88e8e5', '#def3e7'] } }
   ];
   var TREND_SCENES = [
-    { id: 'vtStory', src: '/assets/videos/scenes/trend-story.webp?v=1', w: 692, h: 384, bg: '#2e2e33', tube: { x: 228, y: 36, w: 236, h: 254, blend: 'screen' }, flow: '#e5f6ff', sprite: true, font: VD_FONT, ring: { cx: 443.4, cy: 92.4, hole: 21.2, img: { src: '/assets/videos/scenes/trend-story-r1.webp?v=1', x: 425.5, y: 72, w: 35.5, h: 40.5 } }, num: { x: 444.8, y: 95.6, size: 8.8, dw: 5, pw: 7 }, ink: '#f0f4f6' },
-    { id: 'vtAnime', src: '/assets/videos/scenes/trend-anime.webp?v=1', w: 673, h: 384, bg: '#404d50', tube: { x: 230, y: 36, w: 236, h: 254, blend: 'multiply' }, flow: '#567886', sprite: true, font: VD_FONT, ring: { cx: 200.3, cy: 150.4, hole: 20.6, img: { src: '/assets/videos/scenes/trend-anime-r1.webp?v=1', x: 182, y: 130.5, w: 37, h: 39.5 } }, num: { x: 200.3, y: 154.6, size: 10.2, dw: 6, pw: 8.3 }, ink: '#eef4f4' },
-    { id: 'vtVoice', src: '/assets/videos/scenes/trend-voice.webp?v=1', w: 692, h: 384, bg: '#152432', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [207, 251] }, flow: '#c9ebfa', bar: { x: 289.2, y: 213.3, w: 105.4, h: 7.9, grad: ['#78cef2', '#b2b9cd'] } },
-    { id: 'vtAnim', src: '/assets/videos/scenes/trend-animation.webp?v=1', w: 673, h: 384, bg: '#3a474a', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d1f9fa', bar: { x: 292.2, y: 214.3, w: 104.9, h: 6.9, grad: ['#8cf0f2', '#e6f8f3'] } }
+    { id: 'vtStory', src: '/assets/videos/scenes/trend-story-clean.webp?v=1', w: 692, h: 384, bg: '#2e2e33', tube: { x: 228, y: 36, w: 236, h: 254, blend: 'screen' }, flow: '#e5f6ff', sprite: true, font: VD_FONT, ring: { cx: 443.4, cy: 92.4, hole: 21.2, img: { src: '/assets/videos/scenes/trend-story-r1.webp?v=1', x: 425.5, y: 72, w: 35.5, h: 40.5 } }, num: { x: 444.8, y: 95.6, size: 8.8, dw: 5, pw: 7 }, ink: '#f0f4f6' },
+    { id: 'vtAnime', src: '/assets/videos/scenes/trend-anime-clean.webp?v=1', w: 673, h: 384, bg: '#404d50', tube: { x: 230, y: 36, w: 236, h: 254, blend: 'multiply' }, flow: '#567886', sprite: true, font: VD_FONT, ring: { cx: 200.3, cy: 150.4, hole: 20.6, img: { src: '/assets/videos/scenes/trend-anime-r1.webp?v=1', x: 182, y: 130.5, w: 37, h: 39.5 } }, num: { x: 200.3, y: 154.6, size: 10.2, dw: 6, pw: 8.3 }, ink: '#eef4f4' },
+    { id: 'vtVoice', src: '/assets/videos/scenes/trend-voice-clean.webp?v=1', w: 692, h: 384, bg: '#152432', tube: { x: 224, y: 36, w: 236, h: 254, blend: 'screen', gap: [207, 251] }, flow: '#c9ebfa', bar: { x: 289.2, y: 213.3, w: 105.4, h: 7.9, grad: ['#78cef2', '#b2b9cd'] } },
+    { id: 'vtAnim', src: '/assets/videos/scenes/trend-animation-clean.webp?v=1', w: 673, h: 384, bg: '#3a474a', tube: { x: 227, y: 36, w: 236, h: 254, blend: 'screen', gap: [208, 252] }, flow: '#d1f9fa', bar: { x: 292.2, y: 214.3, w: 104.9, h: 6.9, grad: ['#8cf0f2', '#e6f8f3'] } }
   ];
   var DECOR_SCENES = [
     { id: 'dcBed', src: '/assets/decor/scenes/bedroom.webp?v=1', w: 689, h: 382, bg: '#342c28', tube: { x: 232, y: 34, w: 226, h: 246, blend: 'screen' }, flow: '#e5f6ff' },
@@ -413,7 +417,7 @@
     if(peek){ sceneTurns[key] = sceneTurn; return sc; }
     sceneTurn = (sceneTurn + 1) % list.length;
     sceneTurns[key] = sceneTurn;
-    try{ localStorage.setItem(key, String(sceneTurn)); }catch(e){ /* guard-ok — بلا تخزين يبدأ الدور من الأوّل في كلّ فتح */ }
+    try{ localStorage.setItem(key, String(sceneTurn)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:416'); /* guard-ok — بلا تخزين يبدأ الدور من الأوّل في كلّ فتح */ }
     return sc;
   }
   function pc(v, total){ return (Math.round(v / total * 100000) / 1000) + '%'; }
@@ -558,7 +562,7 @@
   function isAr(){ try{ return (typeof lang !== 'undefined' ? lang : 'ar') === 'ar'; }catch(e){ return true; } }
   /* v-audit-chatcli: نصّ بلغة الواجهة من t() بمفتاحه، وإلّا احتياطه العربيّ للعربيّ والإنجليزيّ لغيره كما كان */
   function genwTx(k, ar, en){
-    try{ if(k && typeof t === 'function'){ var v = t(k); if(typeof v === 'string' && v && v !== k) return v; } }catch(e){ /* guard-ok — بلا قاموس يبقى الاحتياط */ }
+    try{ if(k && typeof t === 'function'){ var v = t(k); if(typeof v === 'string' && v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:561'); /* guard-ok — بلا قاموس يبقى الاحتياط */ }
     return isAr() ? ar : en;
   }
   function genwOne(o){ return genwTx(o.k, o.ar, o.en); }
@@ -616,7 +620,7 @@
         if(sc.bg) root.querySelector('.genw-canvas').style.backgroundColor = sc.bg; /* v-style-scene: لون المشهد ريثما تُحمَّل صورته */
         var flows = root.querySelectorAll('.genw-tube b');
         for(var fi = 0; fi < flows.length && fi < FLOW_TILES.length; fi++) flows[fi].style.backgroundImage = flowTile(FLOW_TILES[fi][0], FLOW_TILES[fi][1], FLOW_TILES[fi][2], sc.flow);
-      }catch(e){ /* guard-ok — بلا خلفيّة أو جريان يبقى لون المشهد الداكن والعدّاد يعمل */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:619'); /* guard-ok — بلا خلفيّة أو جريان يبقى لون المشهد الداكن والعدّاد يعمل */ }
     }
     /* الرقم والقوس والشريط والنصّ (وانعكاسه) — أرقام لاتينيّة كما في تصميم المالك، بعرض حروف الأصل */
     var sceneArc = (sc && sc.ring) ? arcLen(sc) : 0;
@@ -752,7 +756,7 @@
     return false;
   }
   function stripEmoji(txt){
-    try{ if(typeof window.__noEmoji === 'function') return String(window.__noEmoji(txt)); }catch(e){ /* guard-ok — بلا منظِّف يبقى النصّ بإيموجيه والبادئة تطابق */ }
+    try{ if(typeof window.__noEmoji === 'function') return String(window.__noEmoji(txt)); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:755'); /* guard-ok — بلا منظِّف يبقى النصّ بإيموجيه والبادئة تطابق */ }
     return String(txt);
   }
   function noteBusy(p, txt){ rawBusy[p.id] = txt; cleanBusy[p.id] = stripEmoji(txt); }
@@ -798,12 +802,12 @@
         var cnode = render({ t0: t0ByPanel['chatvideo'], kind: 'video' });
         cnode.setAttribute('data-genw-panel', 'chatvideo');
         chost.appendChild(cnode);
-      }catch(e){ try{ __swallow(e, 'gen-wait:chatvideo'); }catch(_){ /* العرض تجميليّ */ } }
+      }catch(e){ try{ __swallow(e, 'gen-wait:chatvideo'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:801'); /* العرض تجميليّ */ } }
     }
     if(!cvFound){
       var cvStale = document.querySelectorAll('.genw[data-genw-panel="chatvideo"]');
       for(var csi = 0; csi < cvStale.length; csi++){
-        try{ cvStale[csi].parentNode.removeChild(cvStale[csi]); }catch(e){ try{ __swallow(e, 'gen-wait:cvdone'); }catch(_){ /* تجميليّ */ } }
+        try{ cvStale[csi].parentNode.removeChild(cvStale[csi]); }catch(e){ try{ __swallow(e, 'gen-wait:cvdone'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:806'); /* تجميليّ */ } }
       }
       delete t0ByPanel['chatvideo'];
     }
@@ -832,11 +836,11 @@
           /* v-gen-steady: الإخفاء قبل التمرير — وإلّا حُسب موضع البطاقة تحت نتيجة ستختفي فيتجاوزها التمرير */
           applyHide(p, scopeEl);
           /* فوق = خارج مجال النظر (المستخدم عند زرّ «صمم» أسفل النموذج) — نصعد إليها */
-          if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
-          else if(p.scroll){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
-        }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ /* العرض تجميليّ */ } }
+          if(mp.top){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:835'); /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
+          else if(p.scroll){ try{ node.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:836'); /* guard-ok — التمرير ترف؛ البطاقة مركّبة */ } }
+        }catch(e){ try{ __swallow(e, 'gen-wait:panel'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:837'); /* العرض تجميليّ */ } }
       } else if(!busy && card){
-        try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ /* العرض تجميليّ */ } }
+        try{ card.parentNode.removeChild(card); }catch(e){ try{ __swallow(e, 'gen-wait:done'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:839'); /* العرض تجميليّ */ } }
         delete t0ByPanel[p.id];
       }
       applyHide(p, scopeEl);
@@ -855,7 +859,7 @@
         if(topCard && !hideEl.hasAttribute('data-genw-hide')) hideEl.setAttribute('data-genw-hide', '1');
         else if(!topCard && hideEl.hasAttribute('data-genw-hide')) hideEl.removeAttribute('data-genw-hide');
       }
-    }catch(e){ try{ __swallow(e, 'gen-wait:hide'); }catch(_){ /* العرض تجميليّ */ } }
+    }catch(e){ try{ __swallow(e, 'gen-wait:hide'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:858'); /* العرض تجميليّ */ } }
   }
 
   /* v-gen-scene-exact: أين تُركَّب بطاقة اللوحة — { parent, before, top }. اللوحة التي لها topSel وبدأ نصّ حالتها بإحدى
@@ -881,7 +885,7 @@
   if(typeof MutationObserver !== 'undefined' && document.documentElement){
     try{
       new MutationObserver(function(){ sample(); schedule(); }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
-    }catch(e){ try{ __swallow(e, 'gen-wait:observe'); }catch(_){ /* بلا رصد = بلا بطاقة فقط */ } }
+    }catch(e){ try{ __swallow(e, 'gen-wait:observe'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-34-gen-wait:884'); /* بلا رصد = بلا بطاقة فقط */ } }
   }
   schedule();
 
@@ -890,18 +894,18 @@
   function preloadScenes(){
     if(scenePreloaded) return;
     scenePreloaded = true;
-    for(var k = 0; k < SCENES.length; k++){ try{ (new Image()).src = SCENES[k].src; }catch(e){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+    for(var k = 0; k < SCENES.length; k++){ try{ (new Image()).src = SCENES[k].src; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-34-gen-wait:893'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
   }
   if(document.addEventListener){
     document.addEventListener('click', function(e){
       var tg = e && e.target;
       if(tg && tg.closest && tg.closest('#btnFashionAI')) preloadScenes();
       /* v-style-scene: خمسة مشاهد — يُحمَّل القادم وحده عند فتح الاستوديو وعند كلّ «ولّد» (لا الخمسة) */
-      if(tg && tg.closest && tg.closest('#btnStudioAI, #studioAiGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.studio, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
-      if(tg && tg.closest && tg.closest('#btnPortraitStyle, #portraitStyleGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.styles, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      if(tg && tg.closest && tg.closest('#btnStudioAI, #studioAiGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.studio, true).src; }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-34-gen-wait:900'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      if(tg && tg.closest && tg.closest('#btnPortraitStyle, #portraitStyleGenerateBtn')){ try{ (new Image()).src = nextScene(KINDS.styles, true).src; }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-34-gen-wait:901'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
       /* v-scene-kinds: القادم وحده لكلّ مجموعة — عند فتح الأداة وعند زرّ التوليد */
       var pre = !tg || !tg.closest ? null : (tg.closest('#btnVideoMaker, #videoMakerGenerateBtn') ? KINDS.vmaker : (tg.closest('#vtGrid, #vtGo') ? KINDS.vtrend : (tg.closest('#btnDesignAI, #designAiGenerateBtn, #designAiIdeaAI') ? KINDS.decor : null)));
-      if(pre && pre.scenes && pre.scenes.length){ try{ (new Image()).src = nextScene(pre, true).src; }catch(err){ /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
+      if(pre && pre.scenes && pre.scenes.length){ try{ (new Image()).src = nextScene(pre, true).src; }catch(err){ typeof __swallow === 'function' && __swallow(err, 'app-34-gen-wait:904'); /* guard-ok — بلا تحميل مسبق تُحمَّل مع البطاقة */ } }
     }, true);
   }
 

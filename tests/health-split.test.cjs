@@ -18,7 +18,7 @@ require.cache[rp('api/_lib/kv.js')] = { id: rp('api/_lib/kv.js'), filename: rp('
   kvIncr: async () => 1, kvExpire: async () => {},
 } };
 require.cache[rp('api/_lib/_owner.js')] = { id: rp('api/_lib/_owner.js'), filename: rp('api/_lib/_owner.js'), loaded: true, exports: {
-  isOwner: () => true, isOwnerName: (u) => u === 'omran', ownerList: () => ['omran'],
+  isOwner: () => true, isOwnerSession: () => true, isOwnerName: (u) => u === 'omran', ownerList: () => ['omran'], // v-monitor-readonly
 } };
 require.cache[rp('api/_lib/_owner-alert.js')] = { id: rp('api/_lib/_owner-alert.js'), filename: rp('api/_lib/_owner-alert.js'), loaded: true, exports: {
   alertOwnerError: async () => {}, isCreditFailure: () => false,

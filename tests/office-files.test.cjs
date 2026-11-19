@@ -374,3 +374,151 @@ test('١٧. العميل: أمثلة خانة الكتابة تتبدّل حتّ
   assert.match(read('js/app-18-chat-tools.js'), /officeHint: \(function \(\) \{ try \{ return \(window\.omranOfficeHintWanted && window\.omranOfficeHintWanted\(\)\) \? true : undefined;/);
 });
 
+// ── ٦. v-office-image / v-office-spell / v-office-explicit (رسالة المالك ٨ نوفمبر «سولي راجعه بي  الباور بويت» مع لقطة شاشة: سؤال «قصدك…؟» بلا ملفّ؛ ومراجعة الإصلاح) ──
+const SPELL_YES = ["سولي راجعه بي  الباور بويت", "ابي بوربويت عن السلامة المرورية", "سولي باوربويت عن اليوم الوطني", "سوي لي باور بويت للدرس الثالث", "جهز لي بور بويت عن الطاقة الشمسية", "سوي لي باور  بويت عن الماء", "ابي بوربونت عن الصحة النفسية", "سوي لي باوربونت فيه صور", "اريد بووربوينت عن الفضاء", "سوي لي باوور بوينت للمشروع", "ابغى بوير بوينت عن التلوث", "سويلي باوربوينط عن القراءة", "أبي ملف باور-بوينت للاجتماع", "سوي لي بوربوانت عن الذكاء الاصطناعي", "اعمل لي البوربويت", "ودي بالبوربونت مراجعة للوحدة الثانية", "جهزلي البور بوينت للمحاضرة", "سولي مراجعة بالباوربوينت", "سوي لي عرض بوربويت عن السلامة", "ابي ملف ايكسيل فيه اسماء الفريق", "سوي لي جدول بالإيكسل", "سوي لي ملف بالإكسل", "ابي الاكسيل للحسابات", "make me a powerpont about climate change", "create a powerpoit about AI", "make me a power poit on road safety", "i want a pwerpoint about space", "can you make a powepoint for my class", "make me a powerpiont about history", "make me an exel sheet for expenses", "I need an exel file with the team names", "سوي لي برزنتيشن عن الامن السيبراني", "ابي بريزنتيشن للمشروع", "make me a ppt about AI"];
+const SPELL_NO = ["ابي اعرف كيف افتح البوربويت", "كيف أسترجع ملف بوربويت انحذف", "وين البوربويت في الكمبيوتر", "البوربويت ما يفتح عندي", "افتح لي البوربويت", "عندي بوربونت بكرة في الجامعة", "ارسلت لك البوربويت", "راجع لي البوربوينت", "راجعه لي ملف الاكسل", "مراجعة بالباوربويت للدرس الثالث", "سولي بيت", "ابي بور بيت", "ابي باور بانك", "عطني باوربانك زين", "سولي باور بانك من الكرتون", "ابي بوابة دفع لموقعي", "سولي بويضة مسلوقة", "سولي راي بالبور", "ابي رحلة الى بور سعيد", "ابي اعرف عن بورصة دبي", "سوي لي سبورة ذكية", "ابي سيارة بورش", "ابي كاس بوربون", "ابي بوت تيليجرام", "سوي لي باور بوت للديسكورد", "ابي صور طيارات بوينغ", "سولي طابور بنات", "ابي ابني يكون صبور بيني وبينه", "ابي فيلم عن العبور بين الحدود", "سوي لي سكربت PowerShell ينظف الجهاز", "ابي افتح powershell بدون ما يقفل", "انا أكسل واحد في البيت، ابي نصيحة", "هو الأكسل بيننا، ابي حل معاه", "ابي اصلح الخلل بالأكسل", "ابي ابدأ بالأكسل فيهم", "ابي صور أكسيل فيتسل", "ابي شي يخلي ولدي مايكسل", "ابي ولدي لايكسل عن الدراسة", "ابي صورة 4000 بيكسل", "ابي اكبر البكسل في الصورة", "ابي تاكسي للمطار", "ابي اكسسوارات للجوال", "ابي تلخص التقرير old-report.xls", "ابي شرايح لحم للشوي", "ابي شرايح بيانات زين", "I want photos from pexels of the sea", "give me a pexels link for a beach photo", "make me a power bank guide", "I want a powerful speech for graduation", "create a power plant diagram", "I want to make my point clear", "build me a pixel art image", "make me a PowerShell script to clean my disk"];
+// نيّة الملفّ نصًّا (بلا صورة): البرنامج مفعول الفعل لا الفعل في أيّ مكان، والنصيحة ليست ملفًّا، والتحويل طلب ملفّ
+const ASK_YES = ['ابي ملف اكسل اثبت فيه حضور الطلاب', 'ابي كشف اثبت فيه الحضور والانصراف للموظفين', 'اريد سجل أثبت فيه غياب الطلاب', 'ابي جدول حضور اكسل ثبت الصف الاول', 'ابي شيت مصاريف ارجع له نهاية الشهر', 'ابي ملف اكسل ارجع له كل شهر', 'create a powerpoint about backup and restore strategies', 'I want a powerpoint about backup and restore', 'make an excel checklist to install new servers', 'ابي بوربوينت: استعيد ثقتك بنفسك', 'ابي بوربوينت عن ارجع لربك', 'سوي لي بوربوينت يشرح كيف افتح حساب بنكي', 'make me a powerpoint on how to install python', 'سوي لي بوربوينت عشان افتح البوربوينت بالاجتماع', 'ابي بوربوينت فيه نصايح للمذاكرة', 'سوي لي بوربوينت فيه نصايح', 'ابي ملف بالشيت حق المصاريف', 'حوّل هذا الجدول إلى اكسل', 'convert this table to excel', 'turn this into a powerpoint'];
+const ASK_NO = ['ابي نصايح للبرزنتيشن', 'ابي اتدرب على البرزنتيشن حقي بكره', 'عندي بوربويت بكرة ابي نصايح', 'give me tips for my presentation', 'ابي افكار لبوربوينت عن البيئة', 'make me an exelent essay about my mom', 'make me an exellent essay', 'تمشيت اليوم مع ابوي ابي اكتب عنها قصة', 'مشيت هنا امس ابي اعرف وين هذا المكان', 'كيف احول الملف الى اكسل', 'سؤال حول تحويل الملف الى اكسل', 'how to convert pdf to excel', 'حولت الملف الى اكسل امس', 'ابي انزل برنامج الاكسل', 'i want to install excel', 'ابي احمل البوربوينت مجانا'];
+// مع صورة: الطلب الصريح وحده (الفعل مفعوله الملفّ، أو الملفّ صيغته، أو تحويل إليه)
+const IMG_YES = ['سولي راجعه بي  الباور بويت', 'سوي لي اكسل من هذا الجدول', 'سولي اكسل من هالجدول', 'ابي ملف اكسل من هذي الصورة', 'make an excel sheet from this table', 'سولي مراجعة بالباوربوينت', 'سوي لي شيت للحضور', 'create a powerpoint from this', 'سوّ لي ملف إكسل من هذا الجدول', 'ابي عرض بوربوينت من هذي الصورة', 'سوي لي جدول بالإيكسل', 'سوي لي جدول حضور من هذي الصورة', 'سوي لي كشف درجات من هالصورة', 'سوي لي ملف للحضور من هالصورة', 'حوّل هذا الجدول إلى اكسل', 'حول الجدول لملف اكسل', 'convert this table to excel', 'turn this into a powerpoint', 'انقل الجدول اللي في الصورة الى اكسل', 'make me a powerpont about this', 'سوي لي برزنتيشن من هذي الصورة', 'سوي لي جدول باكسل من هالصورة', 'سوي لي عرض ببوربوينت عن هذي الصورة', 'make me an exel sheet from this photo', 'سوي لي بوربوينت فيه شعار الشركة', 'تقدر تسوي لي اكسل من هذا الجدول؟', 'can you make an excel from this?', 'ابي جدول مصاريف مثل هذا', 'اعمل لي عرض تقديمي عن الصورة', 'سوي لي بوربوينت بنفس ستايل هذي الصورة', 'سوي لي بوربوينت بخلفية زرقاء', 'ابي هذا الجدول بالاكسل', 'ابي الجدول هذا اكسل', 'سوي لي نفس هذا بالاكسل', 'I want this table in excel', 'make it in excel', 'حوّل الصورة الى اكسل', 'سوي لي اكسل من هذا الجدول\n\n[مرفقات: IMG_2231.jpg]'];
+const IMG_NO = ['شيل الخلفية عشان احطها في البوربوينت', 'remove the background so I can paste it into powerpoint', 'make this logo transparent for my slides', 'سوي لي شيت ستيكر من صورتي', 'صمم بوستر لدورة اكسل من هالصورة', 'كبر الصورة عشان تناسب السلايد', 'اكتب على الصورة دورة الاكسل', 'add the text "PowerPoint Workshop" to this image', 'كبرها عشان السلايد', 'make it transparent for my slides', 'سوي منها شيت ستيكرات', 'make it look like a presentation cover', 'اكتب كلمة Excel على الصورة', 'شيل شعار PowerPoint من الصورة', 'remove the excel logo from this image', 'خل شرائح الطماطم أكبر في الصورة', 'غير لون الشيت للأزرق', 'خل السلايد أحمر في الصورة', 'make this photo look like a presentation slide', 'شيل الخلفية ابيها للبوربوينت', 'ابي اشيل الخلفية عشان احطها بالبوربوينت', 'remove the background, I need it for my presentation', 'سوي لي صورة احطها في البوربوينت', 'make me a picture for my presentation', 'صمم لي شعار للبوربوينت', 'make the slide background blue in this photo', 'الاكسل يطلع لي هالخطأ ابي حل', 'I need help with this excel error', 'I need help in excel', 'ابي رايك في البوربوينت حقي', 'مشيت هنا امس ابي اعرف وين هذا المكان', 'ابي شرائح زين مثل هذي', 'ابي اعرف وش المشكلة في الاكسل', 'ابي نصايح للبرزنتيشن', 'ابي اعرف وش هذا', 'ابي اعرف كم واحد غاب\n\n[مرفقات: جدول الحضور.jpg]', 'ابي هذا البوربوينت يكون احلى', 'ابي المساعدة بالاكسل', 'I want my logo in the presentation', 'make me a slideshow from these photos', 'حطها في سلايد'];
+// لقطة المالك من تطبيقه: «ابي/ودي» كلام عن الواجهة، وعنصر واجهة في الطلب (زرّ، أيقونة، كرت، تبويب) ليس ملفًّا
+const OWNER_NO = ['ابي زر اكسل هنا', 'ابي زر تصدير اكسل جنب المشاركة', 'ابي هنا خيار بوربوينت', 'ابي ايقونة اكسل فوق', 'ابي الاكسل يطلع في القائمة هنا', 'ودي زر بوربوينت في الشريط', 'ابي زر الباوربوينت يكون هنا', 'سو لي زر اكسل هنا', 'ابي شيت هنا بدال الجدول', 'ابي عرض بوربوينت لهذا القسم', 'ابي زر تحميل الاكسل يكون أوضح', 'ابي كرت الاكسل يكون اكبر', 'سوي زر بوربوينت هنا', 'سوي زر تصدير بالاكسل', 'سوي كرت الاكسل اكبر', 'حوّل الزر الى اكسل'];
+const OWNER_YES = ['سولي راجعه بي  الباور بويت', 'سوي لي اكسل من هذا الجدول', 'حوّل هذا الجدول إلى اكسل', 'سوي لي بوربوينت يشرح التطبيق للمستثمرين', 'make me a powerpoint from this screenshot'];
+
+test('١٨. كتابة الناس لـPowerPoint/Excel تُعرف (٣٤ نعم و٥٣ لا)، وذيل «[مرفقات: …]» ليس كلام المستخدم، و«افتح/استرجع البرنامج» (البرنامج مفعوله) ليس طلب ملفّ ولا النصيحة، والتحويل طلب، وسطر الصورة في ملاحظة الدور', () => {
+  for (const t of SPELL_YES) assert.equal(O.isOfficeAsk(t), true, 'طلب ملفّ: ' + t);
+  for (const t of SPELL_NO) assert.equal(O.isOfficeAsk(t), false, 'ليس طلب ملفّ: ' + t);
+  assert.equal(O.isOfficeAsk('سولي راجعه بي  الباور بويت\n\n[مرفقات: screen.png]'), true, 'رسالة المالك ومعها لقطة');
+  assert.equal(O.isOfficeAsk('ابي اعرف كم واحد غاب\n\n[مرفقات: جدول الحضور.jpg]'), false, 'اسم المرفق ليس طلبًا');
+  assert.equal(O.isOfficeAsk('ابي رايك\n\n[Attachments: presentation.png]'), false);
+  assert.equal(O.isOfficeAsk('سوي لي اكسل من هذا الجدول\n\n[مرفقات: IMG_2231.jpg]'), true);
+  for (const t of ['ابي افتح البوربوينت', 'ابغى استرجع ملف الاكسل اللي انحذف', 'ابي اثبت الاكسل', 'أبي أشغّل الباوربوينت', 'i want to recover my powerpoint']) assert.equal(O.isOfficeAsk(t), false, 'البرنامج نفسه: ' + t);
+  for (const t of ['ابي عرض بوربوينت عن فتح مكة', 'ابي عرض بوربوينت عن شغل الفريق', 'ابي ملف اكسل احفظ فيه مصاريفي', 'i want a powerpoint for the open day', 'سوي لي بوربويت وافتحه']) assert.equal(O.isOfficeAsk(t), true, 'اسم لا فعل برنامج: ' + t);
+  for (const t of ASK_YES) assert.equal(O.isOfficeAsk(t), true, 'طلب ملفّ (الفعل ليس مفعوله البرنامج): ' + t);
+  for (const t of ASK_NO) assert.equal(O.isOfficeAsk(t), false, 'ليس طلب ملفّ: ' + t);
+  assert.match(O.systemNote({ image: true }), /\[صورة مرفقة مع طلب الملفّ\]/);
+  assert.match(O.systemNote({ image: true }), /لا edit_image ولا generate_image/);
+  assert.doesNotMatch(O.systemNote({}), /صورة مرفقة/);
+  // ذيل المرفقات يُحذف بعد القصّ: \n* في أوّل تعبيره تربيعيّ على سطور جديدة طويلة (المراجعة: ٨٠ ألفًا = ٥ ث لكلّ دور)
+  const big = 'a' + '\n'.repeat(80000) + 'x', t0 = Date.now();
+  const r = [O.isOfficeAsk(big), O.isOfficeAccept(big, []), O.isHintTopic(big), O.isOfficeEdit(big, { kind: 'xlsx' }), O.isOfficeImageAsk(big, false)];
+  assert.ok(Date.now() - t0 < 300, 'أقلّ من ٣٠٠ م.ث — ' + (Date.now() - t0));
+  assert.deepEqual(r, [false, false, false, false, false]);
+});
+
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+const IMG_BLOCK = { type: 'image', source: { type: 'base64', media_type: 'image/png', data: PNG } };
+const withImg = (text) => ({ messages: [{ role: 'user', content: [{ type: 'text', text }, IMG_BLOCK] }] });
+const OWNER = { tier: 'owner', subscriber: true };
+const SUB = { tier: 'sub', subscriber: true, plan: 'basic' };
+const tail = (b) => JSON.stringify(b && b.messages);
+const forced = (r) => r.sent.some((b) => /create_office_file مرّة واحدة/.test(tail(b)));
+
+test('١٩. طلب ملفّ صريح مع صورة: المالك والمشترك يأخذان الأداة وملاحظة الدور وسطر الصورة؛ و«ابي» مع صورة أو مفعول غير الملفّ (بوستر، شعار، سؤال) ليس ملفًّا؛ والمجّانيّ والضيف كما كانا', async () => {
+  for (const t of IMG_YES) assert.equal(O.isOfficeImageAsk(t, false), true, 'صريح مع صورة: ' + t);
+  for (const t of IMG_NO) { assert.equal(O.isOfficeImageAsk(t, false), false, 'ليس ملفًّا مع صورة: ' + t); assert.equal(O.isOfficeImageAsk(t, true), false, 'المالك: ' + t); }
+  reset();
+  const own = await chatTurn('omran', '', { usage: OWNER, body: withImg('سولي راجعه بي  الباور بويت'), replies: [toolReply({ kind: 'pptx', title: 'مراجعة', slides: [{ layout: 'title', title: 'مراجعة' }] }), textReply('جهّزت العرض 👇')] });
+  assert.ok(own.sent.length >= 1, 'نُودي النموذج');
+  assert.ok(toolNames(own.sent[0]).includes('create_office_file'), 'المالك: أداة الملفّ مع الصورة — ' + toolNames(own.sent[0]).join(','));
+  assert.match(tail(own.sent[0]), /create_office_file مرّة واحدة/, 'ملاحظة الدور الإلزاميّة');
+  assert.match(tail(own.sent[0]), /صورة مرفقة مع طلب الملفّ/, 'سطر الصورة');
+  assert.ok(own.cards.find((c) => c.office && c.office.spec), 'كرت الملفّ');
+  const sub = await chatTurn('subimg', '', { usage: SUB, body: withImg('سوي لي ملف اكسل من هذا الجدول'), replies: [toolReply(XL), textReply('تفضّل 👇')] });
+  assert.ok(toolNames(sub.sent[0]).includes('create_office_file'), 'المشترك: ' + toolNames(sub.sent[0]).join(','));
+  assert.match(tail(sub.sent[0]), /صورة مرفقة مع طلب الملفّ/);
+  const conv = await chatTurn('subimg', '', { usage: SUB, body: withImg('حوّل هذا الجدول إلى اكسل'), replies: [toolReply(XL), textReply('تفضّل 👇')] });
+  assert.ok(forced(conv), 'التحويل إلى اكسل مع صورة الجدول = ملفّ');
+  for (const t of ['صمم بوستر لدورة اكسل من هالصورة', 'ابي رايك في البوربوينت حقي', 'I need help with this excel error', 'سوي لي شيت ستيكر من صورتي']) {
+    const r = await chatTurn('subimg', '', { usage: SUB, body: withImg(t) });
+    assert.equal(forced(r), false, 'المشترك مع صورة — ليس ملفًّا إجباريًّا: ' + t);
+  }
+  const free = await chatTurn('freeimg', '', { body: withImg('سوي لي ملف اكسل من هذا الجدول') });
+  assert.ok(free.sent.every((b) => !toolNames(b).includes('create_office_file')), 'المجّانيّ مع صورة: لا مسار مدفوع (إنفاق — بإذن المالك)');
+  assert.equal(free.cards.filter((c) => c.office).length, 0, 'ولا كرت حصّة');
+  assert.equal(await O.usedThisMonth('freeimg', kv), 0, 'ولا يُعدّ من ملفّ شهره');
+  const guest = await chatTurn(null, '', { body: withImg('ابي عرض بوربوينت من هذي الصورة') });
+  assert.equal(guest.cards.filter((c) => c.office).length, 0, 'الضيف مع صورة: لا كرت تسجيل، المحادثة كما كانت');
+});
+
+test('٢٠. حراسة الصورة بما يرسله العميل فعلًا: لقطة المالك لواجهة تطبيقه (ownerUiShot:false كما يرسله app-18 لـ«ابي زر اكسل هنا»)، وسؤال عن الصورة، و«إيه سوّه» مع صورة — لا ملفّ إجباريّ', async () => {
+  for (const t of OWNER_NO) assert.equal(O.isOfficeImageAsk(t, true), false, 'لقطة المالك: ' + t);
+  for (const t of OWNER_YES) assert.equal(O.isOfficeImageAsk(t, true), true, 'طلب المالك الصريح: ' + t);
+  reset();
+  for (const t of ['ابي زر اكسل هنا', 'سو لي زر اكسل هنا', 'ابي شيت هنا بدال الجدول']) {
+    const r = await chatTurn('omran', '', { usage: OWNER, body: Object.assign(withImg(t + '\n\n[مرفقات: Screenshot 2026-11-08.png]'), { ownerUiShot: false }) });
+    assert.equal(forced(r), false, 'لقطة واجهة التطبيق ليست طلب ملفّ: ' + t);
+  }
+  // بلا علامة العميل يُقرأ النصّ (uiEditTurn): «وضيفه هنا» تعديل واجهة — ومع ownerUiShot:false قرار العميل يغلب
+  const noFlag = await chatTurn('omran', '', { usage: OWNER, body: withImg('سوي لي اكسل من هذا الجدول وضيفه هنا') });
+  assert.equal(forced(noFlag), false, 'بلا علامة: تعابير الخادم (uiEditTurn) تمنع الملفّ');
+  const flagFalse = await chatTurn('omran', '', { usage: OWNER, body: Object.assign(withImg('سوي لي اكسل من هذا الجدول وضيفه هنا'), { ownerUiShot: false }) });
+  assert.equal(forced(flagFalse), true, 'قرار العميل (ليست لقطة واجهة) يغلب التعابير');
+  const ask = await chatTurn('omran', '', { usage: OWNER, body: withImg('ابي اعرف وش هذا') });
+  assert.equal(forced(ask), false, 'سؤال عن الصورة');
+  const named = await chatTurn('omran', '', { usage: OWNER, body: withImg('ابي اعرف كم واحد غاب\n\n[مرفقات: جدول الحضور.jpg]') });
+  assert.equal(forced(named), false, 'اسم المرفق ليس طلبًا');
+  store.set(O.monthKey('editimg'), '1');
+  const edit = await chatTurn('editimg', '', { body: Object.assign(withImg('ابي اعرف وش هذا'), { office: XL }) });
+  assert.equal(edit.cards.filter((c) => c.office && c.office.gate).length, 0, 'المجّانيّ مع صورة وملفّ في المحادثة: لا كرت اشتراك على سؤال');
+  const offer = [{ role: 'user', content: 'كيف أرتّب رواتب الموظفين' }, { role: 'assistant', content: 'أقدر أسوي لك ملف Excel جاهز للطباعة إذا تبي 📄' }, { role: 'user', content: [{ type: 'text', text: 'ايه سوه' }, IMG_BLOCK] }];
+  const acc = await chatTurn('acceptimg', '', { body: { messages: offer } });
+  assert.ok(acc.sent.every((b) => !toolNames(b).includes('create_office_file')), '«إيه سوّه» مع صورة: لا مسار الملفّ المدفوع للمجّانيّ');
+  assert.equal(await O.usedThisMonth('acceptimg', kv), 0);
+});
+
+test('٢١. العميل: فيتو الطلب الصريح في مدخل مسار تعديل الصورة نسخة حرفيّة من الخادم — صورة + «سوّ لي اكسل من هذا الجدول» للمحادثة، و«شيل الخلفية عشان احطها في البوربوينت» تعديل', () => {
+  const src = read('js/app-09-attach.js');
+  const names = { STICKER_RE: 'OMRAN_OFFICE_STICKER_RE', CONV_RE: 'OMRAN_OFFICE_CONV_RE', NOT_OBJ_RE: 'OMRAN_OFFICE_NOT_RE', OBJ_RE: 'OMRAN_OFFICE_OBJ_RE', MED_RE: 'OMRAN_OFFICE_MED_RE' };
+  const lines = [];
+  for (const [k, n] of Object.entries(names)) {
+    const line = src.split('\n').find((l) => l.startsWith('const ' + n + ' = '));
+    assert.ok(line, 'تعبير العميل خارج __sendPromptCore: ' + n);
+    const re = vm.runInNewContext(line.replace('const ' + n + ' = ', '').replace(/;\s*$/, ''));
+    assert.equal(re.source, O.EXPLICIT[k].source, 'نسخة حرفيّة من office.js: ' + n);
+    assert.equal(re.flags, O.EXPLICIT[k].flags);
+    assert.doesNotMatch(line, /\(\?<[=!]/, 'بلا lookbehind (سفاري قبل 16.4)');
+    lines.push(line);
+  }
+  const fnLine = src.split('\n').find((l) => l.startsWith('function omranOfficeFileAsk(text){'));
+  assert.ok(fnLine, 'الدالّة خارج __sendPromptCore');
+  const C = {}; vm.runInNewContext(lines.join('\n') + '\n' + fnLine + '\nthis.ask = omranOfficeFileAsk;', C);
+  const all = [].concat(IMG_YES, IMG_NO, ASK_YES, ASK_NO, SPELL_YES, SPELL_NO);
+  for (const t of all) assert.equal(C.ask(t), O.explicitFileAsk(t, false), 'العميل = الخادم: ' + t);
+  for (const t of IMG_YES.filter((x) => x.indexOf('[مرفقات') === -1)) assert.equal(C.ask(t), true, 'فيتو: ' + t);
+  for (const t of IMG_NO.filter((x) => x.indexOf('[مرفقات') === -1 && !/وش هذا|حل$|error|help|رايك|اعرف|مشكلة|زين|نصايح|احلى|المساعدة/.test(x))) assert.equal(C.ask(t), false, 'تعديل صورة: ' + t);
+  assert.ok(src.includes('&& !__codeWordRe.test(text) && !omranOfficeFileAsk(text) && !__ATT_VISION_RE.test(text)'), 'الفيتو في مدخل مسار التعديل نفسه');
+  // السلوك نفسه من سطر المدخل الحقيقيّ (tests/_route-src.cjs يستخرج الدالّة وتعابيرها ويعرف الفيتو بوجوده في السطر)
+  const h = require('./_route-src.cjs').load(path.join(__dirname, '..'));
+  for (const t of ['سوي لي اكسل من هذا الجدول', 'حوّل هذا الجدول إلى اكسل', 'make an excel sheet from this table', 'سولي راجعه بي  الباور بويت']) assert.equal(h.after(t).edit, false, 'بعد صورة مولَّدة — ملفّ لا تعديل: ' + t);
+  for (const t of ['سوي منها شيت ستيكرات', 'كبرها عشان السلايد', 'make it transparent for my slides', 'make it look like a presentation cover']) assert.equal(h.after(t).edit, true, 'بعد صورة مولَّدة — تعديل كما كان: ' + t);
+});
+
+// ── ٧. v-office-gulf-words (شكوى مستخدم ٩ نوفمبر: «ابا تسوي حقي مشروع عني بور بونت جكامل» ثمّ «أنا أباك أنت تسويه حقي أنا ما عندي وقت» — نصّ «انسخه في PowerPoint» مرّتين بلا ملفّ) ──
+const GULF_T0 = 'ابا تسوي حقي مشروع عني بور بونت جكامل', GULF_T1 = 'أنا أباك أنت تسويه حقي أنا ما عندي وقت';
+const GULF_OFFER = 'أكيد! هذي شريحة‑شريحة جاهزة عشان تسوي عرض بوربوينت كامل عنك، مع نصيحة بسيطة لكل شريحة';
+const afterOffer = (t) => [{ role: 'user', content: GULF_T0 }, { role: 'assistant', content: GULF_OFFER }, { role: 'user', content: t }];
+test('٢٢. «ابا» و«سوّ حقي» طلب ملفّ، والإصرار بعد عرض الملفّ («أباك أنت تسوّيه») طلبه — لا «أباك» وحدها (أبوك) ولا «ابيك تسوّي صورة»', async () => {
+  for (const t of [GULF_T0, 'سوي حقي اكسل', 'تسويه حقي بوربوينت', 'ابا اكسل للمصاريف', 'أبا عرض بوربوينت عن السلامة'])
+    assert.equal(O.isOfficeAsk(t), true, 'طلب ملفّ: ' + t);
+  for (const t of ['ابا اعرف كيف اسوي بوربوينت', 'سوي حقي القهوة', 'هذا حقي', 'ابى البوربوينت يشتغل', 'أباه يحب البوربوينت', 'أباك يشتغل على الاكسل'])
+    assert.equal(O.isOfficeAsk(t), false, 'ليس طلب ملفّ: ' + t);
+  for (const t of [GULF_T1, 'أبيك تسويها لي', 'ابيك تسوي لي الملف', 'سوه انت', 'جهزه بنفسك', 'you make it please'])
+    assert.equal(O.isOfficeAccept(t, afterOffer(t)), true, 'إصرار بعد العرض: ' + t);
+  for (const t of ['ابيك تسوي صورة وتكتب مبروك', 'ابيك تسوي لي فيديو', 'أباك تجي معي بكرة', 'الله يرحم أباك'])
+    assert.equal(O.isOfficeAccept(t, afterOffer(t)), false, 'ليس إصرارًا على الملفّ: ' + t);
+  assert.equal(O.isOfficeAccept(GULF_T1, [{ role: 'assistant', content: 'هلا والله' }, { role: 'user', content: GULF_T1 }]), false, 'بلا عرض ملفّ قبله لا شيء');
+  reset();
+  const PPT = { kind: 'pptx', title: 'عرض عني', slides: [{ layout: 'title', title: 'عرض عني' }] };
+  const first = await chatTurn('gulfu', GULF_T0, { replies: [toolReply(PPT), textReply('جهّزت العرض 👇')] });
+  assert.ok(first.sent.length && toolNames(first.sent[0]).includes('create_office_file'), 'الرسالة الأولى نفسها: أداة الملفّ — ' + (first.sent[0] ? toolNames(first.sent[0]).join(',') : 'لا نداء'));
+  assert.ok(first.cards.find((c) => c.office && c.office.spec), 'وكرت الملفّ');
+  reset();
+  const insist = await chatTurn('gulfu2', '', { body: { messages: afterOffer(GULF_T1) }, replies: [toolReply(PPT), textReply('تفضّل 👇')] });
+  assert.ok(insist.sent.length && toolNames(insist.sent[0]).includes('create_office_file'), 'الإصرار بعد العرض: أداة الملفّ');
+  assert.match(tail(insist.sent[0]), /create_office_file مرّة واحدة/, 'وملاحظة الدور الإلزاميّة');
+  const img = await chatTurn('gulfu3', '', { body: { messages: [{ role: 'user', content: GULF_T0 }, { role: 'assistant', content: GULF_OFFER }, { role: 'user', content: [{ type: 'text', text: GULF_T1 }, IMG_BLOCK] }] } });
+  assert.ok(img.sent.every((b) => !toolNames(b).includes('create_office_file')), 'مع صورة: «إيه سوّه» والإصرار كما كانا (لا مسار مدفوع للمجّانيّ)');
+});

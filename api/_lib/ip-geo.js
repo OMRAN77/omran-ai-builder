@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
         return;
       }
     }
-  } catch (e) { /* المزوّد الأول فشل — جرّب الثاني */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/ip-geo:24'); /* المزوّد الأول فشل — جرّب الثاني */ }
 
   try {
     const r2 = await fetch('https://ipwho.is/' + encodeURIComponent(ip), { signal: AbortSignal.timeout(6000) });
@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
         return;
       }
     }
-  } catch (e) { /* كلاهما فشل */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/ip-geo:35'); /* كلاهما فشل */ }
 
   res.status(502).json({ error: 'ip_geo_failed' });
 };

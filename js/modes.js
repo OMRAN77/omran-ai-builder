@@ -35,9 +35,9 @@
     try{
       if(which === 'opus'){ localStorage.setItem('aiapp_claude_model','claude-opus-5-5'); localStorage.setItem('aiapp_agent_model','opus-5-5'); } /* v-models-latest: Opus 5.5 */
       else { localStorage.setItem('aiapp_claude_model','claude-sonnet-5'); localStorage.setItem('aiapp_agent_model','sonnet-5'); }
-    }catch(e){ /* guard-ok: التخزين المحلّيّ قد يكون مقفلًا */ }
-    try{ if(window.claudeModelSync) window.claudeModelSync(); }catch(e){ /* guard-ok */ }
-    try{ if(window.omModelChipSync) window.omModelChipSync(); }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:38'); /* guard-ok: التخزين المحلّيّ قد يكون مقفلًا */ }
+    try{ if(window.claudeModelSync) window.claudeModelSync(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:39'); /* guard-ok */ }
+    try{ if(window.omModelChipSync) window.omModelChipSync(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:40'); /* guard-ok */ }
   }
   function modelName(){ return curModel() === 'opus' ? 'Opus 5.5' : 'Sonnet 5'; }
   function isOwner(){ try{ return String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; } }
@@ -49,10 +49,10 @@
       for(var i = 0; i < items.length; i++) items[i].style.display = on ? '' : 'none';
       /* v-img-cards: «دمج نانو + GPT» يبقى بعد إعادة فتح التطبيق للمالك حتّى يُزال بـ× */
       /* مراجعة: مرّة واحدة لكلّ تحميل (لا يغلق قائمة + ولا يعود بعد ×)، وخلال ٣ ساعات فقط — لا نصّ عاديّ يصير عمل صور مدفوعًا بعد أيّام */
-      try{ if(on && !stickyTried){ stickyTried = true; var sv = String(localStorage.getItem('omStickyMode') || '').split('|'); if(!window.__omMode && sv[0] === 'image_mix' && Date.now() - (+sv[1] || 0) < 3 * 3600000) pick('image_mix', true); } } /* بلا تركيز: لا لوحة مفاتيح عند فتح التطبيق */catch(e){ /* guard-ok: تخزين محجوب = بلا تذكّر */ }
+      try{ if(on && !stickyTried){ stickyTried = true; var sv = String(localStorage.getItem('omStickyMode') || '').split('|'); if(!window.__omMode && sv[0] === 'image_mix' && Date.now() - (+sv[1] || 0) < 3 * 3600000) pick('image_mix', true); } } /* بلا تركيز: لا لوحة مفاتيح عند فتح التطبيق */catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:52'); /* guard-ok: تخزين محجوب = بلا تذكّر */ }
       var bar = document.getElementById('omBottomBar');
       if(bar) bar.style.display = on ? 'flex' : 'none';
-    }catch(e){ /* guard-ok: optional owner items */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:55'); /* guard-ok: optional owner items */ }
   }
   /* v-bottom-bar: شريط أسفل الصندوق يجمع الوكيل + Claude Code + مؤشّر النموذج (نفس فكرة
      قائمة نماذج Claude Code التي أشار إليها المالك) — للمالك وحده، ظاهر دائمًا. */
@@ -80,7 +80,7 @@
       var pop = document.createElement('div');
       pop.id = 'omModelPopup';
       pop.style.cssText = 'display:none; position:absolute; bottom:calc(100% + 6px); inset-inline-end:0; z-index:2200; max-height:70vh; overflow-y:auto; background:var(--panel,#161513); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.5); padding:5px; min-width:210px;';
-      function agentLabel(){ try{ if(typeof t === 'function'){ var v = t('premiumToggleLabel'); if(v && v !== 'premiumToggleLabel') return v; } }catch(e){ /* i18n لم يجهز — الاحتياط */ } return AR ? 'الوكيل' : 'Agent'; }
+      function agentLabel(){ try{ if(typeof t === 'function'){ var v = t('premiumToggleLabel'); if(v && v !== 'premiumToggleLabel') return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:83'); /* i18n لم يجهز — الاحتياط */ } return AR ? 'الوكيل' : 'Agent'; }
 
       /* v-provider-arrow (أمر عمران «كل المزودين ٩، كل شركة تفتح موديلاتها»): قائمة
          متداخلة للمالك وحده — كلّ مزوّد يفتح موديلاته، والاختيار يضبط aiapp_provider +
@@ -111,7 +111,7 @@
       /* v-owner-gpt-all (مراجعة): اختيار GPT محفوظ من القائمة الحيّة القديمة وليس في المنسّقة يُضاف لـ«نماذج أخرى» باسمه —
          كان يُرسل ولا يظهر في الشريحة ولا يُعلَّم ولا يُعاد اختياره. */
       try{ for(var pi=0;pi<PROVS.length;pi++){ var pp = PROVS[pi], psv = pp.or && pp.effort ? (localStorage.getItem(pp.store) || '') : '';
-        if(psv && psv.indexOf('/') > 0 && !pp.models.some(function(m){ return m[0] === psv; })) pp.models.push([psv, psv.split('/')[1], 1]); } }catch(e){ /* guard-ok: تخزين محجوب */ }
+        if(psv && psv.indexOf('/') > 0 && !pp.models.some(function(m){ return m[0] === psv; })) pp.models.push([psv, psv.split('/')[1], 1]); } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:114'); /* guard-ok: تخزين محجوب */ }
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || (isOwner() ? 'openrouter' : 'openai'); }catch(e){ return isOwner() ? 'openrouter' : 'openai'; } } /* v-grok-first: المالك بلا اختيار = كروك */
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
       /* v-owner-gpt-all (أمر المالك ١١ أكتوبر «Astra»): odef = افتراضيّ المالك وحده (GPT-6 Astra)؛ غير المالك على def كما كان (طلبه لا يتغيّر). */
@@ -125,9 +125,9 @@
       window.omranForgetModel = function(k, id){
         try{ var pv = provOf(k); if(!pv || !id) return false;
           /* افتراضيّ المالك (odef) رفضه المفتاح ولا اختيار محفوظ = يُثبَّت الافتراضيّ العامّ فلا يُجرَّب الميّت في كلّ رسالة */
-          if(!localStorage.getItem(pv.store) && pv.odef && String(id) === pv.odef){ localStorage.setItem(pv.store, pv.def); try{ refresh(); }catch(e3){ /* guard-ok */ } return true; }
+          if(!localStorage.getItem(pv.store) && pv.odef && String(id) === pv.odef){ localStorage.setItem(pv.store, pv.def); try{ refresh(); }catch(e3){ typeof __swallow === 'function' && __swallow(e3, 'modes:128'); /* guard-ok */ } return true; }
           if((localStorage.getItem(pv.store) || '') !== String(id)) return false;
-          localStorage.removeItem(pv.store); try{ refresh(); }catch(e2){ /* guard-ok: الشريط لم يُبنَ بعد */ } return true; }
+          localStorage.removeItem(pv.store); try{ refresh(); }catch(e2){ typeof __swallow === 'function' && __swallow(e2, 'modes:130'); /* guard-ok: الشريط لم يُبنَ بعد */ } return true; }
         catch(e){ return false; /* guard-ok: بلا تخزين يبقى الرجوع للافتراضيّ على الخادم */ }
       };
       /* v-chip-func-name (أمر المالك ٢٣ سبتمبر «أبدله باسم وظيفي»): الشريحة تحت صندوق الكتابة كانت تعرض اسم النموذج
@@ -135,7 +135,7 @@
          نفس خريطة PROVIDER_NICK_KEYS في app-05). القائمة المنسدلة تبقى بأسماء النماذج (أمر المالك «كلّ واحد وموديله بالضبط»). */
       var NICK = { claude:'provNickKing', gemini:'provNickFast', groq:'provNickFast', mistral:'provNickFast', openai:'provNickDeep', deepseek:'provNickDeep', perplexity:'provNickDeep', cohere:'provNickDeep', openrouter:'provNickDeep', kimi:'provNickDeep' /* v-kimi */ };
       var NICK_FB = { provNickKing:(AR?'الكينج':'The King'), provNickFast:(AR?'السريع':'The Fast'), provNickDeep:(AR?'العميق':'The Deep') };
-      function curProvFuncLabel(){ var k = NICK[curProv()] || 'provNickDeep'; try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok: i18n لم يجهز — الاحتياط */ } return NICK_FB[k]; }
+      function curProvFuncLabel(){ var k = NICK[curProv()] || 'provNickDeep'; try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:138'); /* guard-ok: i18n لم يجهز — الاحتياط */ } return NICK_FB[k]; }
       /* v-chip-own-name (أمر المالك ٤ أكتوبر «المزوّدين اللي تحت… أريد كلّ واحد واسمه»): الشريط للمالك وحده، واللقب الوظيفيّ
          كان يجمع ستّة مزوّدين تحت «العميق» وثلاثة تحت «السريع» — فأيّ اختيار يظهر بالكلمة نفسها. صارت الشريحة باسم المزوّد
          المختار نفسه (الجزء الأوّل من اسمه في القائمة: Claude، GPT، Kimi، DeepSeek…)، وصفّ الوسيط باسم موديله (Grok/Qwen). */
@@ -155,7 +155,7 @@
       function optRow(act, label, key){ var a = key ? ' data-i18n="' + key + '"' : ''; return '<button type="button" class="omModelOpt" data-act="' + act + '" style="' + ROW + '"><span' + a + '>' + label + '</span></button>'; }
       var divider = '<div style="height:1px; margin:5px 6px; background:var(--border,rgba(255,255,255,.12));"></div>';
       /* v-owner-claude-all: نصوص المنتقي الجديدة بمفاتيح ترجمة (١٤ لغة) واحتياط عربيّ/إنجليزيّ إن لم يجهز i18n. */
-      function tr(key, ar, en){ try{ if(typeof t === 'function'){ var v = t(key); if(v && v !== key) return v; } }catch(e){ /* guard-ok: i18n لم يجهز — الاحتياط */ } return AR ? ar : en; }
+      function tr(key, ar, en){ try{ if(typeof t === 'function'){ var v = t(key); if(v && v !== key) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:158'); /* guard-ok: i18n لم يجهز — الاحتياط */ } return AR ? ar : en; }
       var EFFORT_OPTS = [['', 'effortAuto', 'تلقائي', 'Auto'], ['low', 'effortLow', 'منخفض', 'Low'], ['medium', 'effortMedium', 'متوسّط', 'Medium'], ['high', 'effortHigh', 'عالٍ', 'High'], ['xhigh', 'effortExtra', 'إضافيّ', 'Extra'], ['max', 'effortMax', 'أقصى', 'Max']];
       function effortLabel(v){ for(var i=0;i<EFFORT_OPTS.length;i++){ if(EFFORT_OPTS[i][0] === v) return tr(EFFORT_OPTS[i][1], EFFORT_OPTS[i][2], EFFORT_OPTS[i][3]); } return tr('effortAuto', 'تلقائي', 'Auto'); }
       var SUB = ROW + ' display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:500; opacity:.9;';
@@ -190,7 +190,7 @@
       // داخله فلا يُرى أبدًا) لكنّ renderPop() كانت تُستدعى فورًا للجميع — بناء DOM كامل لتسعة مزوّدين
       // وعشرات الأزرار غير مستخدَم أصلًا. الآن تُبنى فقط للمالك؛ لا فرق مرئيّ لغير المالك (كان مخفيًّا دومًا).
       /* v-owner-gpt-all: مرّة واحدة على جهاز المالك — اختيار GPT المحفوظ قبل اليوم يُمسح فيسري Astra (أمره ١١ أكتوبر)، وما يختاره بعدها يبقى */
-      if(isOwner()){ try{ if(!localStorage.getItem('aiapp_owner_astra_v1')){ localStorage.removeItem('aiapp_model'); localStorage.setItem('aiapp_owner_astra_v1', '1'); } }catch(e){ /* guard-ok: تخزين محجوب */ } }
+      if(isOwner()){ try{ if(!localStorage.getItem('aiapp_owner_astra_v1')){ localStorage.removeItem('aiapp_model'); localStorage.setItem('aiapp_owner_astra_v1', '1'); } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:193'); /* guard-ok: تخزين محجوب */ } }
       if(isOwner()) renderPop(); /* v-claude-back (المالك ١٧ أكتوبر «خلهم مكانهم… رجعهم نفس ماكانو»): صفوف Claude رجعت للمنتقي؛ الإيقاف في الخادم وحده (OWNER_CLAUDE_CHAT) */
       /* v-provider-models: القائمة الحيّة من الخادم تُلحق بالافتراضيّ الثابت؛ OpenAI يرتّب الثلاثة العامّة أولًا. */
       if(isOwner()){
@@ -208,7 +208,7 @@
               }
               if(changed){ renderPop(); refresh(); }
             }).catch(function(){ /* guard-ok: القائمة الحيّة تحسينيّة — الافتراضيّ الثابت يبقى */ });
-        }catch(e){ /* guard-ok */ }
+        }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:211'); /* guard-ok */ }
       }
       wrap.appendChild(pop); wrap.appendChild(chip);
       bar.appendChild(wrap);
@@ -240,7 +240,7 @@
           var ag = pop.querySelector('.omModelOpt[data-act="agent"]');
           if(ag){ var agOk = pk === 'claude'; ag.style.display = agOk ? 'block' : 'none'; mark(ag, agOk && window.__agentModeOn === true, '600');
             var agDiv = ag.nextElementSibling; if(agDiv && !agDiv.className) agDiv.style.display = agOk ? '' : 'none'; }
-        }catch(e){ /* guard-ok */ }
+        }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:243'); /* guard-ok */ }
         /* v-owner-claude-all + v-owner-gpt-all: صفّ الجهد لكلّ مزوّد يتبع موديله المحفوظ — موديل بلا جهد يُخفي الصفّ، ومستوى ينزل عند
            الموديل (Extra على Opus/Sonnet 4.6، Max على GPT-5.5/5.4/5.2) يُخفى؛ والقيمة المعروضة هي المرسَلة فعلًا. */
         try{
@@ -256,7 +256,7 @@
             var vl = eh.querySelector('.omEffortVal'); if(vl) vl.textContent = effortLabel(ev);
             var eo = eb ? eb.querySelectorAll('.omEffortOpt') : []; for(var q=0;q<eo.length;q++){ var v = eo[q].getAttribute('data-effort'); mark(eo[q], v === ev, '500'); eo[q].style.display = (v && forFn && forFn(cm, v) !== v) ? 'none' : 'block'; }
           }
-        }catch(e){ /* guard-ok: صفّ الجهد تحسينيّ */ }
+        }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:259'); /* guard-ok: صفّ الجهد تحسينيّ */ }
       }
       function setAgent(on){ if((window.__agentModeOn === true) !== on){ var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); } }
       function collapseAll(){ var g = pop.querySelectorAll('.omProvModels, .omProvMore, .omEffortBox'); for(var i=0;i<g.length;i++) g[i].hidden = true; var c = pop.querySelectorAll('.omProvChev, .omMoreChev, .omEffortChev'); for(i=0;i<c.length;i++) c[i].textContent = '▸'; }
@@ -277,7 +277,7 @@
         if(ehd){ e.stopPropagation(); var ebx = pop.querySelector('.omEffortBox[data-for="' + ehd.getAttribute('data-for') + '"]'); if(ebx){ ebx.hidden = !ebx.hidden; var ec = ehd.querySelector('.omEffortChev'); if(ec) ec.textContent = ebx.hidden ? '▸' : '▾'; } return; }
         var eopt = e.target.closest('.omEffortOpt');
         if(eopt){ e.stopPropagation(); var ebx2 = eopt.closest('.omEffortBox'), efor = ebx2 ? ebx2.getAttribute('data-for') : 'claude';
-          try{ var setFn = (efor === 'openai') ? window.gptEffortSet : window.claudeEffortSet; if(setFn) setFn(eopt.getAttribute('data-effort') || ''); }catch(e4){ /* guard-ok */ }
+          try{ var setFn = (efor === 'openai') ? window.gptEffortSet : window.claudeEffortSet; if(setFn) setFn(eopt.getAttribute('data-effort') || ''); }catch(e4){ typeof __swallow === 'function' && __swallow(e4, 'modes:280'); /* guard-ok */ }
           if(ebx2) ebx2.hidden = true; var ehd2 = pop.querySelector('.omEffortHead[data-for="' + efor + '"]'), ec2 = ehd2 && ehd2.querySelector('.omEffortChev'); if(ec2) ec2.textContent = '▸'; refresh(); return; }
         var head = e.target.closest('.omProvHead');
         if(head){ e.stopPropagation(); var key = head.getAttribute('data-prov'); var box = pop.querySelector('.omProvModels[data-for="' + key + '"]'); var open = box && !box.hidden; collapseAll(); if(box){ box.hidden = open; head.querySelector('.omProvChev').textContent = open ? '▸' : '▾'; } return; }
@@ -287,16 +287,16 @@
           setAgent(false); if(window.__omMode === 'cc') pick(null);
           // موديل الوكيل يُزامَن مع Opus/Sonnet فقط (الوكيل يدعمهما)؛ Haiku/Fable موديلا محادثة.
           if(prov === 'claude'){ if(model === 'claude-opus-5-5') setModel('opus'); else if(model === 'claude-sonnet-5') setModel('sonnet'); }
-          try{ if(window.omranPickProviderModel) window.omranPickProviderModel(prov, store, model); }catch(e2){ /* guard-ok */ }
-          try{ if(prov === 'claude' && window.claudeModelSync) window.claudeModelSync(); }catch(e3){ /* guard-ok */ }
+          try{ if(window.omranPickProviderModel) window.omranPickProviderModel(prov, store, model); }catch(e2){ typeof __swallow === 'function' && __swallow(e2, 'modes:290'); /* guard-ok */ }
+          try{ if(prov === 'claude' && window.claudeModelSync) window.claudeModelSync(); }catch(e3){ typeof __swallow === 'function' && __swallow(e3, 'modes:291'); /* guard-ok */ }
           refresh(); pop.style.display = 'none'; return;
         }
       });
-      document.addEventListener('click', function(){ try{ pop.style.display = 'none'; }catch(e){ /* guard-ok */ } });
+      document.addEventListener('click', function(){ try{ pop.style.display = 'none'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:295'); /* guard-ok */ } });
       window.omModelChipSync = refresh;
       window.omBottomSync = refresh;
       refresh();
-    }catch(e){ /* guard-ok: الشريط السفليّ تحسينيّ */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:299'); /* guard-ok: الشريط السفليّ تحسينيّ */ }
   }
   var chipWrap, popup, ta;
   /* v-modes-i18n (شكوى المالك ٢٩ أغسطس): البنود كانت تُبنى مرة واحدة بلغة
@@ -306,7 +306,7 @@
   function lbl(m){
     try{
       if(MODE_KEYS[m.id] && typeof t === 'function'){ var v = t(MODE_KEYS[m.id]); if(v && v !== MODE_KEYS[m.id]) return v; }
-    }catch(e){ /* i18n لم يجهز بعد — الاحتياط أدناه */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:309'); /* i18n لم يجهز بعد — الاحتياط أدناه */ }
     return AR ? m.ar : m.en;
   }
   function build(){
@@ -331,7 +331,7 @@
       popup.insertBefore(b, anchor);
     });
     /* الدخول قد يتمّ بعد التحميل — نعيد فحص المالك والشريط عند كلّ فتح للقائمة. */
-    try{ if(window.MutationObserver) new MutationObserver(function(){ refreshOwnerItems(); try{ if(window.omBottomSync) window.omBottomSync(); }catch(e){ /* guard-ok */ } }).observe(popup, { attributes: true, attributeFilter: ['class'] }); }catch(e){ /* guard-ok */ }
+    try{ if(window.MutationObserver) new MutationObserver(function(){ refreshOwnerItems(); try{ if(window.omBottomSync) window.omBottomSync(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:334'); /* guard-ok */ } }).observe(popup, { attributes: true, attributeFilter: ['class'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:334'); /* guard-ok */ }
     var sep = document.createElement('div');
     sep.className = 'omModeSep';
     popup.insertBefore(sep, anchor);
@@ -351,12 +351,12 @@
     /* الدخول قد يتمّ بعد بناء الصندوق — نعيد فحص المالك مرّاتٍ قصيرة وعند عودة التركيز
        كي يظهر الشريط والبنود الخاصّة بلا انتظار فتح قائمة «+». */
     [500, 1500, 3500, 7000].forEach(function(ms){ setTimeout(refreshOwnerItems, ms); });
-    try{ window.addEventListener('focus', refreshOwnerItems); }catch(e){ /* guard-ok */ }
+    try{ window.addEventListener('focus', refreshOwnerItems); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:354'); /* guard-ok */ }
   }
   function pick(id, quiet){
-    try{ popup.classList.remove('show'); }catch(e){ /* guard-ok: an absent optional popup needs no cleanup. */ }
+    try{ popup.classList.remove('show'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:357'); /* guard-ok: an absent optional popup needs no cleanup. */ }
     window.__omMode = id;
-    try{ if(id === 'image_mix') localStorage.setItem('omStickyMode', 'image_mix|' + Date.now()); else localStorage.removeItem('omStickyMode'); }catch(e){ /* guard-ok: تخزين محجوب = بلا تذكّر */ }
+    try{ if(id === 'image_mix') localStorage.setItem('omStickyMode', 'image_mix|' + Date.now()); else localStorage.removeItem('omStickyMode'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:359'); /* guard-ok: تخزين محجوب = بلا تذكّر */ }
     var m = null; for(var i=0;i<MODES.length;i++){ if(MODES[i].id === id) m = MODES[i]; }
     /* v-cc-nopill (أمر عمران «مااريد كودي يطلع هذا المكان، الصفحة نظيفة»): وضع
        Claude Code يشتغل من قائمة السهم فقط — بلا فقاعة داخل صندوق الكتابة؛
@@ -377,9 +377,9 @@
         if(id === 'web' && !on) w.click();
         else if(id !== 'web' && on) w.click();
       }
-    }catch(e){ /* guard-ok: optional web-mode mirroring must not block mode selection. */ }
-    try{ if(ta && !quiet){ ta.focus(); } }catch(e){ /* guard-ok: focus restoration is best-effort. */ }
-    try{ if(window.omBottomSync) window.omBottomSync(); }catch(e){ /* guard-ok: تحديث تجميليّ للشريط */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:380'); /* guard-ok: optional web-mode mirroring must not block mode selection. */ }
+    try{ if(ta && !quiet){ ta.focus(); } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:381'); /* guard-ok: focus restoration is best-effort. */ }
+    try{ if(window.omBottomSync) window.omBottomSync(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'modes:382'); /* guard-ok: تحديث تجميليّ للشريط */ }
   }
   window.__omSetMode = pick;
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);

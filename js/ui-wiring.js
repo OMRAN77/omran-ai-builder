@@ -338,7 +338,7 @@
 // v-boot-watchdog: إشارة اكتمال الإقلاع — وصول التنفيذ هنا يعني الحزمة
 // والأسلاك اشتغلت، فيسكت رقيب selfdiag ويُمحى حارس إعادة المحاولة.
 window.__omranBootOk = true;
-try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا تخزين لا حارس أصلًا */ }
+try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'ui-wiring:341'); /* guard-ok: بلا تخزين لا حارس أصلًا */ }
 
 /* v-toolphotos-1: visual-only photo cards for the seven creative tools. */
 (function(){
@@ -346,7 +346,7 @@ try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا
   if(!document.querySelector('link[data-omran-tool-photos]')){
     var css = document.createElement('link');
     css.rel = 'stylesheet';
-    css.href = '/css/tool-card-images.css?v=25';
+    css.href = '/css/tool-card-images.css?v=26';
     css.setAttribute('data-omran-tool-photos', '');
     document.head.appendChild(css);
   }

@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
   let premiumRefund = null;
   const refundPremium = async () => {
     const p = premiumRefund; premiumRefund = null;
-    if (p) { try { await refundPoints(p.user, p.amt, p.how); } catch (e2) { /* best-effort */ } }
+    if (p) { try { await refundPoints(p.user, p.amt, p.how); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/openai:107'); /* best-effort */ } }
   };
   try {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -104,7 +104,7 @@ module.exports = async (req, res) => {
           if (done) break;
           res.write(value);
         }
-      } catch (e) { /* client likely disconnected */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/openai:101'); /* client likely disconnected */ }
       res.end();
       return;
     }

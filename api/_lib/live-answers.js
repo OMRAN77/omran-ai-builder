@@ -91,7 +91,7 @@ async function planQueries(userText, deps, year) {
     if (Array.isArray(arr) && arr.length) {
       return arr.filter(function (q) { return typeof q === 'string'; }).slice(0, 6);
     }
-  } catch (e) {
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/live-answers:94');
     // تجاهل — نرجع للاحتياطي
   }
   return [userText.slice(0, 80)];
@@ -109,7 +109,7 @@ async function gather(queries, deps, fetchTop) {
       var key = cacheKey('q', q);
       if (cache) {
         var hit = await cache.get(key);
-        if (hit) { try { return JSON.parse(hit); } catch (e) { /* cache مفسد — نبحث */ } }
+        if (hit) { try { return JSON.parse(hit); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/live-answers:112'); /* cache مفسد — نبحث */ } }
       }
       try {
         var res = await deps.search(q);

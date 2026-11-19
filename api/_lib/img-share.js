@@ -59,7 +59,7 @@ async function getImage(id) {
 // v-agent-img: fixedId (بصمة المحتوى) = الصورة نفسها مفتاح واحد — موجودة تُرجَع بلا كتابة ثانية.
 async function putImage(data, mime, w, h, ttlSec, fixedId) {
   const id = /^[a-f0-9]{12,24}$/.test(String(fixedId || '')) ? String(fixedId) : crypto.randomBytes(6).toString('hex');
-  if (fixedId && id === fixedId) { try { if (await kvGetRaw(KEY(id))) return id; } catch (e) { /* guard-ok — القراءة تحسين؛ الكتابة بعدها تحسم */ } }
+  if (fixedId && id === fixedId) { try { if (await kvGetRaw(KEY(id))) return id; } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/img-share:62'); /* guard-ok — القراءة تحسين؛ الكتابة بعدها تحسم */ } }
   const W = Math.max(0, parseInt(w, 10) || 0), H = Math.max(0, parseInt(h, 10) || 0);
   const prefix = (W && H) ? (mime + ':' + W + ':' + H + ':') : (mime + ':');
   let ok;

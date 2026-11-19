@@ -157,16 +157,17 @@ test('٦. v2: failed/cancelled وخطأ نهائيّ (٤٠٤ بجسم error) = F
   assert.deepEqual(settled, []);
 });
 
-test('٧. حلقات الاستطلاع (خمس منذ v-actor-lipsync) محروسة بعمر وبأخطاء متتالية، ولا ابتلاع صامت', () => {
+test('٧. حلقات الاستطلاع (سبع منذ دمج v-lock-vid: omni-create مع v-video-dialogue-clips: مقطع الحوار) محروسة بعمر وبأخطاء متتالية، ولا ابتلاع صامت', () => {
   const src = read('js/app-11-video.js');
-  /* v-lock-vid (srv-video-5): حلقة سادسة — استلام «omni-create» (الوضع المخفيّ) من veo-status بمعرّف omni/… (كان ردًّا متزامنًا بلا تذكرة).
-     v-video-poll-transient: والزحام العابر (٤٢٩/٥xx) في حلقات الاقتصاديّ والسينمائيّ والممثّل يمرّ بالحارس بنصّ الخادم
+  /* v-lock-vid (srv-video-5): حلقة — استلام «omni-create» (الوضع المخفيّ) من veo-status بمعرّف omni/… (كان ردًّا متزامنًا بلا تذكرة).
+     v-video-dialogue-clips (main): حلقة — مقطع الحوار (engineClip). بعد الدمج v-audit-main: سبع حلقات.
+     v-video-poll-transient: والزحام العابر (٤٢٩/٥xx) في حلقات الاقتصاديّ والسينمائيّ (اثنتان) والممثّل يمرّ بالحارس بنصّ الخادم
      guard.fail(iv, d.error) — مختبَر في video-durations ٥ */
-  assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 6, 'حلقة استطلاع بلا حارس');
-  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 6, 'خطأ شبكة ما زال يُبتلع بصمت'); // v-ai-video-speed: وpollTaskOnce يعدّ خطأ الخادم ٥xx عابرًا بنصّه guard.fail(iv, data.error)
-  assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 6, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
+  assert.equal((src.match(/guard\.tick\(iv\)/g) || []).length, 7, 'حلقة استطلاع بلا حارس');
+  assert.equal((src.match(/guard\.fail\(iv\)/g) || []).length, 7, 'خطأ شبكة ما زال يُبتلع بصمت'); // v-ai-video-speed: وpollTaskOnce يعدّ خطأ الخادم ٥xx عابرًا بنصّه guard.fail(iv, data.error)
+  assert.equal((src.match(/guard\.ok\(\)/g) || []).length, 7, 'عدّاد الأخطاء لا يُصفَّر عند نجاح دورة');
   assert.doesNotMatch(src, /catch\(e\)\{ \/\* keep polling \*\/ \}/, 'بقي ابتلاع صامت');
-  assert.equal((src.match(/setInterval\(async \(\) => \{/g) || []).length, 6, /* v-actor-lipsync: حلقة الممثّل */ 'عدد الحلقات تغيّر — راجع الحراسة');
+  assert.equal((src.match(/setInterval\(async \(\) => \{/g) || []).length, 7, /* v-actor-lipsync: حلقة الممثّل · v-lock-vid: omni-create · v-video-dialogue-clips: مقطع الحوار (engineClip) */ 'عدد الحلقات تغيّر — راجع الحراسة');
   assert.match(src, /function makePollGuard\(reject, everyMs, maxMs\)/);
   assert.ok(read('js/app.bundle.js').includes('function makePollGuard('), 'الحارس ليس في الحزمة — شغّل npm run bundle');
   // سلوك الحارس نفسه: العمر ينتهي، والأخطاء المتتالية تُنهي، والنجاح يصفّرها
@@ -254,7 +255,8 @@ test('١٠. الإنشاء (v2): المسار والترويسة والجسم �
   await create({ promptText: 'x', ratio: '1280:720', token: 't', quality: 'high', durationSeconds: 10 }, c.fetch);
   assert.equal(c.body.resolution, '2K');
   assert.equal(c.body.duration, 10);
-  for (const [d, want] of [[5, 5], [8, 8], ['10', 10], [2, 4], [30, 10], [undefined, 6]]) { // السقف ١٠ = أطول زرّ (باب المال)
+  /* v-video-one-shot: هذا المعالج هنا بتجاوز المالك — له حتّى ١٥ (أقصى توليدة عند المحرّك)؛ غير المالك ١٠ كما كان (video-dialogue-clips ٢٦) */
+  for (const [d, want] of [[5, 5], [8, 8], ['10', 10], [2, 4], [12, 12], [30, 15], [undefined, 6]]) {
     c = capture();
     await create({ promptText: 'x', token: 't', durationSeconds: d }, c.fetch);
     assert.equal(c.body.duration, want, 'المدّة ' + d);

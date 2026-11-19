@@ -15,7 +15,8 @@ const BARE_DRAW_RE = new RegExp(B + 'رسم' + E, 'i');
 // فعل عامّ لا يكفي وحده: سوّي/اعمل/اصنع/make/create/design — يحتاج اسم وسيط مرئيّ («سوّ لي صورة»، «make a logo»)
 const MAKE_RE = new RegExp(B + '(?:ت|ي)?(?:سوّ?ي|سوّ?يها|سوّ?يلي|سولي|سوّ?ها|سوّ?\\s*لي|اعمل|اعملي|اصنع|انشئ|أنشئ|make|create|design)' + E, 'i');
 // اسم وسيط مرئيّ: صورة/صور/رسمة/فيديو/شعار…
-const MEDIA_NOUN_RE = /(صور[ةه]?|الصور|رسم[ةه]|رسومات|فيديو|مقطع|لوجو|شعار|بوستر|بنر|خلفي[ةه]|أيقون[ةه]|ايقون[ةه]|\bimages?\b|\bpictures?\b|\bphotos?\b|\bvideos?\b|\blogos?\b|\bposters?\b|\bbanners?\b|\bicons?\b|\billustrations?\b)/i;
+/* v-chat-ad-video: «سوّ دعاية لهذا الحذاء» طلب وسائط (فيديو إعلان) — لا «سوّ إعلان في الكود» (CODE_RE يمنعه كما يمنع غيره) */
+const MEDIA_NOUN_RE = /(صور[ةه]?|الصور|رسم[ةه]|رسومات|فيديو|مقطع|دعاي[ةه]|دعايات|إعلان|اعلان|لوجو|شعار|بوستر|بنر|خلفي[ةه]|خريط[ةه]|خرائط|\bmaps?\b|أيقون[ةه]|ايقون[ةه]|\bimages?\b|\bpictures?\b|\bphotos?\b|\bvideos?\b|\blogos?\b|\bposters?\b|\bbanners?\b|\bicons?\b|\billustrations?\b)/i;
 // تعديل على صورة بأيّ سابقة مضارعة ولاحقة («تغيرها»، «يبدّلها»)؛ الحذف تعديلٌ للمرفق وحده (EDIT_ATTACH_RE)
 const EDIT_RE = new RegExp(B + '(?:ت|ي|ن|أ|ا)?(?:عدّ?ل|غيّ?ر|بدّ?ل|حوّ?ل|لوّ?ن|كبّ?ر|صغّ?ر|حسّ?ن|اجعل|edit|change|turn|convert|recolor|enhance|replace)', 'i');
 const EDIT_ATTACH_RE = new RegExp(B + '(?:ت|ي|ن|أ|ا)?(?:عدّ?ل|غيّ?ر|بدّ?ل|حوّ?ل|لوّ?ن|كبّ?ر|صغّ?ر|حسّ?ن|اجعل|خلّ?ي|خلها|ضيف|أضف|اضف|احذف|امسح|شيل|سوّ?ها|سوها|edit|change|turn|convert|recolor|enhance|remove|add|replace)', 'i');
@@ -38,6 +39,7 @@ function askedMedia(text, hasImage) {
   if (DRAW_RE.test(t)) return true; // «ارسم…»، «صمّم…» — طلب صريح ولو مع كود («ارسم صورة وارفعها للمستودع»)
   if (noun && BARE_DRAW_RE.test(t) && (!code || UPLOAD_RE.test(t))) return true; // v-bare-draw: «رسم صور الستائر وارفعها» (بلا ألف) — لا «رسم الصور في الصفحة ما يطلع»
   if (MAKE_RE.test(t) && noun && !code) return true; // «سوّ لي صورة»، «make a logo» — لا «سوّها في طلب سحب»
+  if (!code && new RegExp(B + 'سوّ?\\s+(?:لي\\s+)?(?:ال)?(?:دعاي[ةه]|إعلان|اعلان)' + E).test(t)) return true; // v-chat-ad-video: «سو دعاية لهذا الحذاء» (سوّ بلا «لي»)
   if (hasImage && !code && EDIT_ATTACH_RE.test(t)) return true; // تعديل الصورة المرفقة («سوّها 3D»، «احذف الخلفية»)
   if (noun && !code && EDIT_RE.test(t)) return true; // «غيّر الصورة»، «اريدك ان تغيرها» — لا «غيّر الكود عشان الصور»
   if (noun && !code && !UPLOAD_RE.test(t) && /(?:^|\s)(?:أبي|ابي|أبغى|ابغى|أريد|اريد|ابغي|أبغي|بدي|عطني|اعطني|هات|want|need|give\s+me)/i.test(t)) return true; // «أبي صورة لـ…»

@@ -131,7 +131,7 @@
         var keep = selected;
         render();
         selected = keep;
-        try { $(id).focus(); } catch (e) { /* أُعيد الرسم */ }
+        try { $(id).focus(); } catch (e) { typeof __swallow === 'function' && __swallow(e, '_floorplan-editor-client:134'); /* أُعيد الرسم */ }
       };
     });
     $('fDel').onclick = function () {

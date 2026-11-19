@@ -255,6 +255,13 @@
         nc.alignment = { horizontal: rtl ? 'right' : 'left', wrapText: true, readingOrder: rtl ? 'rtl' : 'ltr' }; ws.getRow(r).height = 30;
       }
       ws.pageSetup.printArea = 'A1:' + colLetter(N) + r;
+      /* v-xlsx-onepage (فحص المالك ٩ نوفمبر): كشف ٢٥ صفًّا مع الترويسة والتواقيع أطول من A4 بقليل، فكانت التواقيع والملاحظة وحدها في
+         صفحة ثانية. إن كانت الورقة (بعد تصغير العرض لعرض الصفحة) حتّى ١٫٣ صفحة، فصفحة واحدة؛ والأطول صفحات برأس متكرّر كما كانت. */
+      var land = plan.orient === 'landscape', hPt = 0, wPt = 0;
+      for(var hr = 1; hr <= r; hr++) hPt += ws.getRow(hr).height || 15;
+      cols.forEach(function(c){ wPt += (colWidth(c) * 7 + 5) * 0.75; });
+      var useH = (land ? 595 : 842) - 0.95 * 72, useW = (land ? 842 : 595) - 0.6 * 72;
+      if(hPt * Math.min(1, useW / Math.max(1, wPt)) <= useH * 1.3) ws.pageSetup.fitToHeight = 1;
     });
     var buf = await wb.xlsx.writeBuffer();
     return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -272,32 +279,188 @@
       var wsum = cols.reduce(function(a, c){ return a + colWidth(c); }, 0) || 1; /* نسب من عرض الصفحة: مجموع العرض بالحروف كان يتجاوزها فيُقصّ الجدول */
       var colgroup = '<colgroup>' + cols.map(function(c){ return '<col style="width:' + (colWidth(c) * 100 / wsum).toFixed(2) + '%">'; }).join('') + '</colgroup>';
       var thead = '<tr>' + cols.map(function(c){ return '<th style="overflow:hidden;background:#' + (c.weekend ? '6b7280' : (c.type === 'count' ? th.dark : th.main)) + ';color:#fff;border:1px solid #bfc5cc;padding:3px 2px;font-size:' + fs + 'px;line-height:1.25">' + esc(c.header) + (c.sub ? '<br><span style="font-weight:400;font-size:' + (fs - 1) + 'px">' + esc(c.sub) + '</span>' : '') + '</th>'; }).join('') + '</tr>';
+      /* v-xlsx-pdf-calc (فحص المالك ٩ نوفمبر): كان PDF يطبع القيم خامًا — عمود المعادلة («الإجمالي» = الكمّيّة × السعر) فارغًا،
+         وسطر المجاميع غائبًا، والعملة «15.5» لا «15.50 ر.س». الآن القيمة كما يعرضها Excel: المعادلة تُحسب (fxEval)، والتنسيق نفسه،
+         وسطر المجاميع بعمليّاته. والورقة العريضة (شبكة أيّام الشهر) صفحة أفقيّة كما يطبعها Excel. */
+      var headRow = 3 + (sh.subtitle ? 1 : 0) + Math.ceil((sh.fields || []).length / 2);
+      var nCols = (sh.columns || []).length;
+      var valueAt = function(ri, n, depth){
+        var c = cols[n - 1], row = data[ri] || null;
+        if(!c) return '';
+        var v = row && n <= nCols ? row[n - 1] : '';
+        if(v == null) v = '';
+        if(c.type === 'index') return v === '' ? ri + 1 : v;
+        if(c.type === 'hours' && v === ''){
+          if(!row || plan.times.length !== 2) return '';
+          var t1 = timeVal(row[plan.times[0] - 1]), t2 = timeVal(row[plan.times[1] - 1]);
+          return (typeof t1 === 'number' && typeof t2 === 'number') ? ((t2 - t1 + 1) % 1) * 24 : '';
+        }
+        if(c.type === 'formula' && c.formula){
+          if(depth > 4) return '';
+          try{ return fxEval(String(c.formula).replace(/\{r\}/gi, String(headRow + 1 + ri)), function(k){ return valueAt(ri, k, depth + 1); }); }catch(e){ return ''; }
+        }
+        if(c.type === 'count') return row ? 0 : '';
+        if(v === '') return '';
+        if(c.type === 'time') return timeVal(v);
+        if(c.type === 'number' || c.type === 'currency' || c.type === 'percent') return numVal(v);
+        return v;
+      };
+      var cellText = function(c, ri, n){
+        var raw = data[ri] && n <= nCols ? data[ri][n - 1] : '';
+        if((c.type === 'time' || c.type === 'date') && raw != null) return String(raw); /* الوقت والتاريخ كما كتبهما */
+        var v = valueAt(ri, n, 0);
+        return c.type === 'count' ? '' : fmtCell(c, v, '');
+      };
       var trs = [];
       for(var ri = 0; ri < plan.rows; ri++){
-        var row = data[ri] || null;
         trs.push('<tr>' + cols.map(function(c, ci){
-          var v = row && ci < (sh.columns || []).length ? row[ci] : '';
-          if(c.type === 'index' && (v === '' || v == null)) v = ri + 1;
-          if(c.type === 'hours' && (v === '' || v == null) && row && plan.times.length === 2){ /* الساعات كما يحسبها Excel للصفوف المعبّأة */
-            var t1 = timeVal(row[plan.times[0] - 1]), t2 = timeVal(row[plan.times[1] - 1]);
-            v = (typeof t1 === 'number' && typeof t2 === 'number') ? (((t2 - t1 + 1) % 1) * 24).toFixed(1) : '';
+          var bg = c.weekend ? '#e5e7eb' : (ri % 2 ? '#' + th.soft : '#fff'), txt = cellText(c, ri, ci + 1), fg = '';
+          if((c.type === 'choice' || c.type === 'day' || c.type === 'check') && txt){ /* الألوان الشرطيّة نفسها التي في Excel */
+            plan.hl.some(function(h){ if(String(h.value) !== txt) return false; var hc = HL[h.color] || HL.gray; bg = '#' + hc[0]; fg = ';color:#' + hc[1] + ';font-weight:700'; return true; });
           }
-          if(c.type === 'formula' || c.type === 'count' || c.type === 'hours') v = (v == null ? '' : v);
-          var bg = c.weekend ? '#e5e7eb' : (ri % 2 ? '#' + th.soft : '#fff');
-          return '<td style="overflow:hidden;border:1px solid #bfc5cc;padding:' + (small ? '2px 1px' : '5px 4px') + ';height:' + (small ? 16 : 20) + 'px;font-size:' + fs + 'px;text-align:' + (c.type === 'text' ? 'start' : 'center') + ';background:' + bg + '">' + esc(v) + '</td>';
+          return '<td style="overflow:hidden;border:1px solid #bfc5cc;padding:' + (small ? '2px 1px' : '5px 4px') + ';height:' + (small ? 16 : 20) + 'px;font-size:' + fs + 'px;text-align:' + (c.type === 'text' ? 'start' : 'center') + ';background:' + bg + fg + '">' + esc(txt) + '</td>';
         }).join('') + '</tr>');
       }
+      if(sh.totals && sh.totals.ops){ /* كما في Excel: العنوان على الأعمدة الأولى حتّى أوّل مجموع */
+        var ops = sh.totals.ops, opCols = Object.keys(ops).map(Number).filter(function(x){ return x > 1; });
+        var labelTo = opCols.length ? Math.min.apply(null, opCols) - 1 : 1;
+        var tcell = function(txt, span){ return '<td' + (span > 1 ? ' colspan="' + span + '"' : '') + ' style="overflow:hidden;border:1px solid #bfc5cc;padding:' + (small ? '2px 1px' : '5px 4px') + ';height:' + (small ? 16 : 20) + 'px;font-size:' + fs + 'px;text-align:center;font-weight:700;color:#' + th.dark + ';background:#' + th.light + '">' + esc(txt) + '</td>'; };
+        var tds = [];
+        for(var cn = 1; cn <= cols.length; cn++){
+          var op = ops[cn];
+          if(!op && cn === 1 && labelTo > 1){ tds.push(tcell(sh.totals.label || tt('officeTotal'), labelTo)); cn = labelTo; continue; }
+          if(!op){ tds.push(tcell(cn === 1 ? (sh.totals.label || tt('officeTotal')) : '', 1)); continue; }
+          var vals = [];
+          for(var rj = 0; rj < plan.rows; rj++) vals.push(valueAt(rj, cn, 0));
+          var nums = vals.filter(function(x){ return typeof x === 'number' && isFinite(x); });
+          var res = op === 'sum' ? nums.reduce(function(a, b){ return a + b; }, 0)
+            : op === 'avg' ? (nums.length ? nums.reduce(function(a, b){ return a + b; }, 0) / nums.length : '')
+            : op === 'count' ? vals.filter(function(x){ return x !== '' && x != null; }).length
+            : op === 'min' ? (nums.length ? Math.min.apply(null, nums) : 0) : (nums.length ? Math.max.apply(null, nums) : 0);
+          tds.push(tcell(fmtCell(cols[cn - 1], res, op), 1));
+        }
+        trs.push('<tr>' + tds.join('') + '</tr>');
+      }
       var tbl = function(rows){ return '<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0">' + colgroup + thead + rows.join('') + '</table>'; };
-      var CH = 30;
+      var land = plan.orient === 'landscape', CH = land ? 24 : 30;
       for(var k = 0; k < trs.length; k += CH){
-        blocks.push({ html: (k === 0 ? head : '') + tbl(trs.slice(k, k + CH)), newpage: k === 0 && si > 0 });
+        blocks.push({ html: (k === 0 ? head : '') + tbl(trs.slice(k, k + CH)), newpage: k === 0 && si > 0, landscape: land });
       }
       var foot = '';
       if(sh.signatures && sh.signatures.length) foot += '<div style="display:flex;justify-content:space-around;gap:12px;margin-top:22px;font-weight:700;font-size:12px">' + sh.signatures.map(function(s){ return '<span>' + esc(s) + ': ………………</span>'; }).join('') + '</div>';
       if(sh.note) foot += '<div style="margin-top:10px;color:#6b7280;font-size:10px">' + esc(sh.note) + '</div>';
-      if(foot) blocks.push({ html: foot });
+      if(foot) blocks.push({ html: foot, landscape: land });
     });
     return blocks;
+  }
+  /* القيمة كما يعرضها تنسيق Excel للعمود (buildXlsx)، وop = سطر المجاميع (تنسيقه بلا رمز العملة كما في الملفّ) */
+  function fmtCell(c, v, op){
+    if(v === '' || v == null) return '';
+    if(typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+    if(typeof v !== 'number' || !isFinite(v)) return String(v);
+    var cur = c.type === 'currency' || c.format === 'currency', pct = c.type === 'percent' || c.format === 'percent';
+    var dec1 = c.type === 'hours' || c.format === 'hours' || c.format === 'decimal' || op === 'avg';
+    if(op){
+      if(cur) return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return dec1 ? v.toFixed(1) : v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    }
+    if(dec1) return v.toFixed(1);
+    if(cur) return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (c.currency ? ' ' + c.currency : '');
+    if(pct) return Math.round(v * 100) + '%';
+    if(c.type === 'number' || c.format === 'number') return v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    return String(Math.round(v * 10000) / 10000);
+  }
+  /* حاسبة صغيرة لمعادلات العمود (التي مرّت من مرشّح الخادم office.js formula): أرقام ونصوص و{cN} و+ - * / ^ & % والمقارنات،
+     ودوالّ IF IFERROR AND OR NOT SUM AVERAGE MIN MAX ROUND ROUNDUP ROUNDDOWN ABS INT MOD LEN CONCAT(ENATE) COUNT COUNTA.
+     ما لا تعرفه يرمي فتبقى الخليّة فارغة كما كانت. IF وIFERROR كسولتان (شجرة ثمّ تقييم) كـExcel. */
+  function fxEval(src, cellOf){
+    var s = String(src).replace(/^\s*=/, ''), i = 0;
+    var bad = function(){ throw new Error('fx'); };
+    var sp = function(){ while(i < s.length && /\s/.test(s.charAt(i))) i++; };
+    var eat = function(t){ sp(); if(s.substr(i, t.length).toUpperCase() === t){ i += t.length; return true; } return false; };
+    function cmpOp(){ sp(); var two = s.substr(i, 2); if(two === '<>' || two === '<=' || two === '>='){ i += 2; return two; } var one = s.charAt(i); if(one === '=' || one === '<' || one === '>'){ i++; return one; } return null; }
+    function expr(){ var a = cat(), op; while((op = cmpOp())) a = { t: 'cmp', op: op, a: a, b: cat() }; return a; }
+    function cat(){ var a = add(); while(eat('&')) a = { t: '&', a: a, b: add() }; return a; }
+    function add(){ var a = mul(); for(;;){ if(eat('+')) a = { t: '+', a: a, b: mul() }; else if(eat('-')) a = { t: '-', a: a, b: mul() }; else return a; } }
+    function mul(){ var a = pw(); for(;;){ if(eat('*')) a = { t: '*', a: a, b: pw() }; else if(eat('/')) a = { t: '/', a: a, b: pw() }; else return a; } }
+    function pw(){ var a = un(); while(eat('^')) a = { t: '^', a: a, b: un() }; return a; }
+    function un(){ if(eat('-')) return { t: 'neg', a: un() }; if(eat('+')) return un(); var v = prim(); while(eat('%')) v = { t: '%', a: v }; return v; }
+    function prim(){
+      sp();
+      var rest = s.slice(i), m;
+      if((m = /^\{c(\d+)\}/i.exec(rest))){ i += m[0].length; return { t: 'c', n: Number(m[1]) }; }
+      if((m = /^\d+(?:\.\d+)?/.exec(rest))){ i += m[0].length; return { t: 'v', v: Number(m[0]) }; }
+      if(rest.charAt(0) === '"'){
+        var j = i + 1, out = '';
+        for(;;){ if(j >= s.length) bad(); var ch = s.charAt(j); if(ch === '"'){ if(s.charAt(j + 1) === '"'){ out += '"'; j += 2; continue; } break; } out += ch; j++; }
+        i = j + 1; return { t: 'v', v: out };
+      }
+      if(eat('(')){ var e = expr(); if(!eat(')')) bad(); return e; }
+      if((m = /^[A-Za-z][A-Za-z0-9.]*/.exec(rest))){
+        var name = m[0].toUpperCase(); i += m[0].length;
+        if(name === 'TRUE' || name === 'FALSE'){ if(eat('(')){ if(!eat(')')) bad(); } return { t: 'v', v: name === 'TRUE' }; }
+        if(!eat('(')) bad();
+        var args = [];
+        if(!eat(')')){ for(;;){ sp(); args.push((s.charAt(i) === ',' || s.charAt(i) === ';' || s.charAt(i) === ')') ? { t: 'v', v: '' } : expr()); if(eat(')')) break; if(!(eat(',') || eat(';'))) bad(); } }
+        return { t: 'f', name: name, args: args };
+      }
+      return bad();
+    }
+    var tree = expr(); sp(); if(i < s.length) bad();
+    var num = function(v){ if(v === '' || v == null) return 0; if(typeof v === 'number') return v; if(typeof v === 'boolean') return v ? 1 : 0; var n = Number(String(v).replace(/,/g, '')); return isFinite(n) && String(v).trim() !== '' ? n : bad(); };
+    var str = function(v){ return v == null ? '' : typeof v === 'boolean' ? (v ? 'TRUE' : 'FALSE') : typeof v === 'number' ? String(Math.round(v * 1e10) / 1e10) : String(v); };
+    var bool = function(v){ if(typeof v === 'string'){ if(v === '') return false; if(/^true$/i.test(v)) return true; if(/^false$/i.test(v)) return false; return bad(); } return !!num(v); };
+    var nums = function(list){ var o = []; list.forEach(function(v){ if(typeof v === 'number' && isFinite(v)) o.push(v); }); return o; };
+    var rnd = function(v, d, mode){ var f = Math.pow(10, d), x = Math.abs(v) * f, r = mode === 'up' ? Math.ceil(x - 1e-9) : mode === 'down' ? Math.floor(x + 1e-9) : Math.round(x); return (v < 0 ? -r : r) / f; };
+    function ev(n){
+      switch(n.t){
+        case 'v': return n.v;
+        case 'c': return cellOf(n.n);
+        case 'neg': return -num(ev(n.a));
+        case '%': return num(ev(n.a)) / 100;
+        case '+': return num(ev(n.a)) + num(ev(n.b));
+        case '-': return num(ev(n.a)) - num(ev(n.b));
+        case '*': return num(ev(n.a)) * num(ev(n.b));
+        case '/': { var d = num(ev(n.b)); return d ? num(ev(n.a)) / d : bad(); }
+        case '^': return Math.pow(num(ev(n.a)), num(ev(n.b)));
+        case '&': return str(ev(n.a)) + str(ev(n.b));
+        case 'cmp': {
+          var a = ev(n.a), b = ev(n.b);
+          if(a === '' && typeof b === 'number') a = 0; if(b === '' && typeof a === 'number') b = 0;
+          if(typeof a === 'string' && typeof b === 'string'){ a = a.toLowerCase(); b = b.toLowerCase(); }
+          else if(typeof a !== typeof b){ var rank = function(x){ return typeof x === 'number' ? 0 : typeof x === 'string' ? 1 : 2; }; a = rank(a); b = rank(b); }
+          return n.op === '=' ? a === b : n.op === '<>' ? a !== b : n.op === '<' ? a < b : n.op === '>' ? a > b : n.op === '<=' ? a <= b : a >= b;
+        }
+        case 'f': {
+          var A = n.args, F = n.name;
+          if(F === 'IF') return bool(ev(A[0] || { t: 'v', v: false })) ? (A[1] ? ev(A[1]) : true) : (A[2] ? ev(A[2]) : false);
+          if(F === 'IFERROR'){ try{ return ev(A[0]); }catch(e){ return A[1] ? ev(A[1]) : ''; } }
+          var V = A.map(ev);
+          switch(F){
+            case 'AND': return V.every(bool);
+            case 'OR': return V.some(bool);
+            case 'NOT': return !bool(V[0]);
+            case 'SUM': return nums(V).reduce(function(x, y){ return x + y; }, 0);
+            case 'AVERAGE': { var q = nums(V); return q.length ? q.reduce(function(x, y){ return x + y; }, 0) / q.length : bad(); }
+            case 'MIN': { var q1 = nums(V); return q1.length ? Math.min.apply(null, q1) : 0; }
+            case 'MAX': { var q2 = nums(V); return q2.length ? Math.max.apply(null, q2) : 0; }
+            case 'ROUND': return rnd(num(V[0]), num(V[1]), '');
+            case 'ROUNDUP': return rnd(num(V[0]), num(V[1]), 'up');
+            case 'ROUNDDOWN': return rnd(num(V[0]), num(V[1]), 'down');
+            case 'ABS': return Math.abs(num(V[0]));
+            case 'INT': return Math.floor(num(V[0]));
+            case 'MOD': { var dv = num(V[1]); if(!dv) bad(); var mv = num(V[0]); return mv - dv * Math.floor(mv / dv); }
+            case 'LEN': return str(V[0]).length;
+            case 'CONCAT': case 'CONCATENATE': return V.map(str).join('');
+            case 'COUNT': return nums(V).length;
+            case 'COUNTA': return V.filter(function(x){ return x !== ''; }).length;
+          }
+          return bad();
+        }
+      }
+      return bad();
+    }
+    return ev(tree);
   }
 
   /* ── PowerPoint ── */
@@ -324,26 +487,54 @@
     var W = 13.333, H = 7.5, M = 0.6;
     var X = function(x, w){ return rtl ? (W - x - w) : x; };
     var AL = rtl ? 'right' : 'left';
-    var T = function(o){ return Object.assign({ fontFace: 'Arial', rtlMode: rtl, isTextBox: true, margin: 0, valign: 'top', align: AL, color: '1F2937' }, o); };
+    /* v-pptx-audit (فحص المالك ٩ نوفمبر «افحص الباور بوينت كامل… من أ إلى ي»):
+       • لغة النصّ (lang) بلغة الملفّ — كانت en-US لكلّ نصّ فيدقّق PowerPoint العربيّة إملاءً إنجليزيًّا (خطوط حمراء تحت كلّ كلمة).
+       • rtlMode على كلّ سطر نقطة، لا على الصندوق وحده: PptxGenJS يأخذ اتّجاه الفقرة من خيارات سطرها، فكانت نقاط العرض العربيّ
+         فقرات يساريّة محاذاة يمينًا (العنوان وحده rtl) — في PowerPoint وKeynote تقفز النقطة يسارًا وتنقلب علامات الترقيم.
+       • حجم الخطّ يُحسب من طول النصّ قبل الرسم (fitSize): النصّ الطويل في حدود المخطّط كان يخرج من أسفل الشريحة والعنوان من سطرين
+         يركب العنوان الفرعيّ. لا autofit: PowerPoint لا يطبّقه حتّى يُحرَّر النصّ. */
+    var LANG_TAG = { ar: 'ar-SA', ur: 'ur-PK', fa: 'fa-IR', he: 'he-IL', en: 'en-US', hi: 'hi-IN', bn: 'bn-BD', fil: 'fil-PH', id: 'id-ID', ml: 'ml-IN', ne: 'ne-NP', zh: 'zh-CN', es: 'es-ES', fr: 'fr-FR', ru: 'ru-RU', tr: 'tr-TR' }[spec.lang] || 'en-US';
+    var T = function(o){ return Object.assign({ fontFace: 'Arial', rtlMode: rtl, lang: LANG_TAG, isTextBox: true, margin: 0, valign: 'top', align: AL, color: '1F2937' }, o); };
     var total = (spec.slides || []).length;
-    function titleOf(s, sl){ s.addText(sl.title || '', T({ x: M, y: 0.4, w: W - 2 * M, h: 0.9, fontSize: 30, bold: true, color: th.dark, valign: 'middle' })); }
+    /* تقدير التفاف السطور: عرض الحرف ≈ ٠٫٥٥ من حجم الخطّ (Arial، عربيّ ولاتينيّ، بهامش)، وارتفاع السطر ١٫٢ */
+    var CHW = 0.55, LNH = 1.2;
+    function linesOf(text, size, wIn){
+      var per = Math.max(1, Math.floor((wIn * 72) / (size * CHW)));
+      return String(text == null ? '' : text).split('\n').reduce(function(n, part){ return n + Math.max(1, Math.ceil(part.length / per)); }, 0);
+    }
+    function fitSize(texts, wIn, hIn, max, min, gap){
+      for(var sz = max; sz > min; sz--){
+        var hPt = 0;
+        for(var i = 0; i < texts.length; i++) hPt += linesOf(texts[i], sz, wIn) * sz * LNH + (i ? (gap ? gap(sz) : 0) : 0);
+        if(hPt <= hIn * 72) return sz;
+      }
+      return min;
+    }
+    function oneLine(text, wIn, max, min, chw){ return Math.max(min, Math.min(max, Math.floor((wIn * 72) / (Math.max(1, String(text || '').length) * (chw || CHW))))); }
+    var paraGap = function(sz){ return Math.round(sz * 0.5); };
+    function titleOf(s, sl){ var t = sl.title || ''; s.addText(t, T({ x: M, y: 0.4, w: W - 2 * M, h: 0.9, fontSize: fitSize([t], W - 2 * M, 0.9, 30, 18), bold: true, color: th.dark, valign: 'middle' })); }
     function bulletsBox(s, list, x, y, w, h, size){
       if(!list || !list.length) return;
-      s.addText(list.map(function(b, i){ return { text: b, options: { bullet: rtl ? { code: '25C0' } : { code: '25B6' }, breakLine: i < list.length - 1, paraSpaceAfter: 10 } }; }),
-        T({ x: x, y: y, w: w, h: h, fontSize: size || (list.length > 5 ? 17 : 20), color: '374151' }));
+      var sz = fitSize(list, w - 0.4, h, size || (list.length > 5 ? 17 : 20), 10, paraGap); /* ٠٫٤ بوصة: مسافة النقطة */
+      s.addText(list.map(function(b, i){ return { text: b, options: { bullet: rtl ? { code: '25C0' } : { code: '25B6' }, breakLine: i < list.length - 1, paraSpaceAfter: paraGap(sz), rtlMode: rtl, lang: LANG_TAG } }; }),
+        T({ x: x, y: y, w: w, h: h, fontSize: sz, color: '374151' }));
     }
     function iconCircle(s, icon, x, y, d, bg){
       s.addShape(pres.shapes.OVAL, { x: x, y: y, w: d, h: d, fill: { color: bg || th.main }, line: { color: bg || th.main } });
       var img = emojiPng(icon); if(img) s.addImage({ data: img, x: x + d * 0.22, y: y + d * 0.22, w: d * 0.56, h: d * 0.56 });
     }
-    function tableOf(s, tb, x, y, w){
+    function tableOf(s, tb, x, y, w, hMax){
       var headers = tb.headers.slice(), rows = tb.rows.map(function(r){ var o = r.slice(); while(o.length < headers.length) o.push(''); return o; });
       if(rtl){ headers.reverse(); rows = rows.map(function(r){ return r.slice().reverse(); }); }
-      var fs = rows.length > 8 || headers.length > 6 ? 12 : 15;
-      var opt = function(v, extra){ return { text: String(v == null ? '' : v), options: Object.assign({ align: 'center', valign: 'middle', rtlMode: rtl, fontFace: 'Arial', fontSize: fs, color: '1F2937' }, extra || {}) }; };
+      /* v-pptx-audit: ارتفاع كلّ صفّ من أطول خليّة فيه بعد الالتفاف، والخطّ يصغر حتّى يدخل الجدول كلّه فوق أسفل الشريحة (كان صفّ ١٢ يُقصّ) */
+      var cw = w / Math.max(1, headers.length), base = rows.length > 8 ? 0.38 : 0.48, all = [headers].concat(rows);
+      var heights = function(f){ return all.map(function(r){ var ln = 1; r.forEach(function(v){ ln = Math.max(ln, linesOf(v, f, cw - 0.2)); }); return Math.max(base, ln * f * LNH / 72 + 0.14); }); };
+      var fs = rows.length > 8 || headers.length > 6 ? 12 : 15, hs = heights(fs);
+      while(fs > 8 && hs.reduce(function(a, b){ return a + b; }, 0) > hMax){ fs--; base = Math.max(0.3, base - 0.02); hs = heights(fs); }
+      var opt = function(v, extra){ return { text: String(v == null ? '' : v), options: Object.assign({ align: 'center', valign: 'middle', rtlMode: rtl, lang: LANG_TAG, fontFace: 'Arial', fontSize: fs, color: '1F2937' }, extra || {}) }; };
       var body = [headers.map(function(h){ return opt(h, { bold: true, color: 'FFFFFF', fill: { color: th.main } }); })]
         .concat(rows.map(function(r, i){ return r.map(function(v){ return opt(v, { fill: { color: i % 2 ? 'FFFFFF' : th.soft } }); }); }));
-      s.addTable(body, { x: x, y: y, w: w, rowH: rows.length > 8 ? 0.38 : 0.48, border: { type: 'solid', pt: 0.75, color: 'D1D5DB' } });
+      s.addTable(body, { x: x, y: y, w: w, rowH: hs, border: { type: 'solid', pt: 0.75, color: 'D1D5DB' } });
     }
     (spec.slides || []).forEach(function(sl, idx){
       var dark = sl.layout === 'title' || sl.layout === 'closing' || sl.layout === 'section';
@@ -353,14 +544,15 @@
       var L = sl.layout;
       if(L === 'title' || L === 'closing'){
         iconCircle(s, sl.icon || (L === 'closing' ? 'star' : 'idea'), X(1.0, 2.4), 2.45, 2.4, th.main);
-        s.addText(sl.title || spec.title || '', T({ x: X(3.9, 8.6), y: 2.3, w: 8.6, h: 1.6, fontSize: L === 'title' ? 42 : 40, bold: true, color: 'FFFFFF', valign: 'bottom' }));
-        if(sl.subtitle) s.addText(sl.subtitle, T({ x: X(3.9, 8.6), y: 4.05, w: 8.6, h: 1.0, fontSize: 20, color: th.light }));
+        var tt0 = sl.title || spec.title || '';
+        s.addText(tt0, T({ x: X(3.9, 8.6), y: 2.3, w: 8.6, h: 1.6, fontSize: fitSize([tt0], 8.6, 1.6, L === 'title' ? 42 : 40, 22), bold: true, color: 'FFFFFF', valign: 'bottom' }));
+        if(sl.subtitle) s.addText(sl.subtitle, T({ x: X(3.9, 8.6), y: 4.05, w: 8.6, h: 1.0, fontSize: fitSize([sl.subtitle], 8.6, 1.0, 20, 12), color: th.light }));
       } else if(L === 'section'){
-        s.addText(sl.title || '', T({ x: M, y: 2.6, w: W - 2 * M, h: 1.3, fontSize: 40, bold: true, color: 'FFFFFF', align: 'center', valign: 'middle' }));
-        if(sl.subtitle) s.addText(sl.subtitle, T({ x: M, y: 3.95, w: W - 2 * M, h: 0.8, fontSize: 20, color: th.light, align: 'center' }));
+        s.addText(sl.title || '', T({ x: M, y: 2.6, w: W - 2 * M, h: 1.3, fontSize: fitSize([sl.title || ''], W - 2 * M, 1.3, 40, 22), bold: true, color: 'FFFFFF', align: 'center', valign: 'middle' }));
+        if(sl.subtitle) s.addText(sl.subtitle, T({ x: M, y: 3.95, w: W - 2 * M, h: 0.8, fontSize: fitSize([sl.subtitle], W - 2 * M, 0.8, 20, 12), color: th.light, align: 'center' }));
       } else if(L === 'table' && sl.table){
         titleOf(s, sl);
-        tableOf(s, sl.table, M, 1.55, W - 2 * M);
+        tableOf(s, sl.table, M, 1.55, W - 2 * M, (sl.subtitle ? H - 1.05 : H - 0.6) - 1.55);
         if(sl.subtitle) s.addText(sl.subtitle, T({ x: M, y: H - 0.95, w: W - 2 * M, h: 0.4, fontSize: 12, color: '6B7280' }));
       } else if(L === 'stats' && sl.stats){
         titleOf(s, sl);
@@ -368,21 +560,27 @@
         sl.stats.forEach(function(st, i){
           var x = X(M + i * (cw + gap), cw);
           s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: x, y: 1.9, w: cw, h: 3.4, fill: { color: th.soft }, line: { color: th.light }, rectRadius: 0.15 });
-          s.addText(st.value, T({ x: x, y: 2.35, w: cw, h: 1.4, fontSize: n > 3 ? 44 : 54, bold: true, color: [th.main, th.dark, th.accent, '6B7280'][i % 4], align: 'center', valign: 'middle', rtlMode: false }));
-          s.addText(st.label, T({ x: x + 0.2, y: 3.85, w: cw - 0.4, h: 1.1, fontSize: 17, color: '374151', align: 'center' }));
+          /* v-pptx-audit: الرقم سطر واحد يدخل البطاقة («1,250,000» كان يلمس حدّيها)، و«24 ساعة» بنصّ عربيّ اتّجاهه يمين (كانت تُقرأ «ساعة 24») */
+          var arVal = rtl && /[\u0621-\u064A\u0671-\u06D3]/.test(st.value);
+          s.addText(st.value, T({ x: x + 0.1, y: 2.35, w: cw - 0.2, h: 1.4, fontSize: oneLine(st.value, cw - 0.3, n > 3 ? 44 : 54, 20, 0.62), bold: true, color: [th.main, th.dark, th.accent, '6B7280'][i % 4], align: 'center', valign: 'middle', rtlMode: arVal }));
+          s.addText(st.label, T({ x: x + 0.2, y: 3.85, w: cw - 0.4, h: 1.1, fontSize: fitSize([st.label], cw - 0.4, 1.1, 17, 11), color: '374151', align: 'center' }));
         });
         bulletsBox(s, sl.bullets, M, 5.6, W - 2 * M, 1.2, 15);
       } else if(L === 'chart' && sl.chart){
         titleOf(s, sl);
         var C = sl.chart, typ = { bar: pres.charts.BAR, column: pres.charts.BAR, line: pres.charts.LINE, pie: pres.charts.PIE, doughnut: pres.charts.DOUGHNUT }[C.type] || pres.charts.BAR;
         var data = C.series.map(function(se){ return { name: se.name || ' ', labels: C.labels, values: se.values }; });
+        /* v-pptx-audit: الأعمدة الأفقيّة يرسمها PowerPoint من الأسفل — أوّل بند كان آخر سطر؛ القلب يضعه في الأعلى والمحور يبقى أسفل */
+        if(C.type === 'bar') data = data.map(function(d){ return { name: d.name, labels: d.labels.slice().reverse(), values: d.values.slice().reverse() }; });
         var pie = C.type === 'pie' || C.type === 'doughnut';
         if(pie) data = data.slice(0, 1);
         var hasSide = sl.bullets && sl.bullets.length, cwid = hasSide ? 8.0 : W - 2 * M;
         s.addChart(typ, data, { x: X(M, cwid), y: 1.5, w: cwid, h: 5.3, barDir: C.type === 'bar' ? 'bar' : 'col',
           chartColors: [th.main, th.accent, th.dark, 'F59E0B', '6B7280', 'EF4444', '8B5CF6', '10B981', '3B82F6', 'EC4899', '84CC16', '06B6D4'],
           showLegend: pie || data.length > 1, legendPos: 'b', legendFontSize: 12, legendFontFace: 'Arial',
-          showValue: !pie, showPercent: pie, dataLabelFontSize: 11, dataLabelFontFace: 'Arial', dataLabelColor: '374151', dataLabelPosition: pie ? 'bestFit' : 'outEnd',
+          showValue: !pie, showPercent: pie, dataLabelFontSize: pie ? 13 : 11, dataLabelFontFace: 'Arial', dataLabelFontBold: pie,
+          /* v-pptx-audit: النسب داخل شرائح ألوان الثيم الداكنة — كانت رماديّة داكنة على الكحليّ فلا تُقرأ؛ أبيض في وسط الشريحة */
+          dataLabelColor: pie ? 'FFFFFF' : '374151', dataLabelPosition: pie ? 'ctr' : 'outEnd',
           catAxisLabelFontSize: 12, catAxisLabelFontFace: 'Arial', catAxisLabelColor: '4B5563', valAxisLabelFontSize: 11, valAxisLabelColor: '6B7280',
           valGridLine: { color: 'E5E7EB', size: 0.75 }, catGridLine: { style: 'none' }, holeSize: 55,
           catAxisOrientation: (rtl && C.type !== 'bar') ? 'maxMin' : 'minMax', /* العربيّة: الأسبوع الأوّل يمينًا */
@@ -395,7 +593,7 @@
           if(!col) return;
           var x = X(M + i * (cw2 + 0.4), cw2);
           s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: x, y: 1.55, w: cw2, h: 5.2, fill: { color: i ? 'FFFFFF' : th.soft }, line: { color: th.light, width: 1.25 }, rectRadius: 0.15 });
-          if(col.heading) s.addText(col.heading, T({ x: x + 0.35, y: 1.8, w: cw2 - 0.7, h: 0.6, fontSize: 21, bold: true, color: i ? th.dark : th.main }));
+          if(col.heading) s.addText(col.heading, T({ x: x + 0.35, y: 1.8, w: cw2 - 0.7, h: 0.6, fontSize: fitSize([col.heading], cw2 - 0.7, 0.6, 21, 13), bold: true, color: i ? th.dark : th.main }));
           bulletsBox(s, col.bullets, x + 0.35, 2.55, cw2 - 0.7, 3.9, 16);
         });
       } else if(L === 'timeline' && sl.steps){
@@ -406,8 +604,8 @@
           var cxp = rtl ? (W - M - sw * (i + 0.5)) : (M + sw * (i + 0.5));
           s.addShape(pres.shapes.OVAL, { x: cxp - 0.45, y: 2.6, w: 0.9, h: 0.9, fill: { color: i % 2 ? th.accent : th.main }, line: { color: 'FFFFFF', width: 2 } });
           s.addText(String(i + 1), T({ x: cxp - 0.45, y: 2.6, w: 0.9, h: 0.9, fontSize: 22, bold: true, color: 'FFFFFF', align: 'center', valign: 'middle', rtlMode: false }));
-          s.addText(stp.title || '', T({ x: cxp - sw / 2 + 0.1, y: 3.75, w: sw - 0.2, h: 0.6, fontSize: 17, bold: true, color: th.dark, align: 'center' }));
-          if(stp.text) s.addText(stp.text, T({ x: cxp - sw / 2 + 0.1, y: 4.4, w: sw - 0.2, h: 1.9, fontSize: 13, color: '4B5563', align: 'center' }));
+          s.addText(stp.title || '', T({ x: cxp - sw / 2 + 0.1, y: 3.75, w: sw - 0.2, h: 0.6, fontSize: fitSize([stp.title || ''], sw - 0.2, 0.6, 17, 10), bold: true, color: th.dark, align: 'center' }));
+          if(stp.text) s.addText(stp.text, T({ x: cxp - sw / 2 + 0.1, y: 4.4, w: sw - 0.2, h: 1.9, fontSize: fitSize([stp.text], sw - 0.2, 1.9, 13, 9), color: '4B5563', align: 'center' }));
         });
       } else if(L === 'quote' && sl.quote){
         s.background = { color: th.soft };
@@ -419,12 +617,12 @@
         var pw = 4.9;
         s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: X(M, pw), y: 1.55, w: pw, h: 5.2, fill: { color: th.light }, line: { color: th.light }, rectRadius: 0.2 });
         var img = emojiPng(sl.icon || 'image'); if(img) s.addImage({ data: img, x: X(M + (pw - 2.4) / 2, 2.4), y: 2.3, w: 2.4, h: 2.4 });
-        if(sl.imageCaption) s.addText(sl.imageCaption, T({ x: X(M + 0.3, pw - 0.6), y: 5.2, w: pw - 0.6, h: 1.2, fontSize: 14, color: th.dark, align: 'center' }));
+        if(sl.imageCaption) s.addText(sl.imageCaption, T({ x: X(M + 0.3, pw - 0.6), y: 5.2, w: pw - 0.6, h: 1.2, fontSize: fitSize([sl.imageCaption], pw - 0.6, 1.2, 14, 10), color: th.dark, align: 'center' }));
         bulletsBox(s, sl.bullets, X(M + pw + 0.5, W - 2 * M - pw - 0.5), 1.75, W - 2 * M - pw - 0.5, 4.9);
       } else {
         titleOf(s, sl);
         var side = !!sl.icon, bw = side ? W - 2 * M - 3.6 : W - 2 * M;
-        if(sl.subtitle) s.addText(sl.subtitle, T({ x: X(M, bw), y: 1.35, w: bw, h: 0.55, fontSize: 16, color: '6B7280' }));
+        if(sl.subtitle) s.addText(sl.subtitle, T({ x: X(M, bw), y: 1.35, w: bw, h: 0.55, fontSize: fitSize([sl.subtitle], bw, 0.55, 16, 10), color: '6B7280' }));
         bulletsBox(s, sl.bullets, X(M, bw), sl.subtitle ? 2.0 : 1.65, bw, 4.9);
         if(side){
           s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: X(W - M - 3.2, 3.2), y: 1.65, w: 3.2, h: 4.6, fill: { color: th.soft }, line: { color: th.light }, rectRadius: 0.2 });
@@ -433,7 +631,10 @@
       }
       if(sl.notes) s.addNotes(sl.notes);
     });
-    return await pres.write({ outputType: 'blob' });
+    /* v-pptx-ios (فيديو المالك ٩ نوفمبر: «في الباور بوينت اذا يحمل ملف مايطلع اي شي»): المكتبة تعطي blob بنوع application/zip
+       (افتراض JSZip)، فيصل الملفّ للمشاركة والرابط «zip» باسم .pptx — النوع الحقيقيّ كما في Excel */
+    var pb = await pres.write({ outputType: 'blob' });
+    return new Blob([pb], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
   }
 
   /* ── البطاقة ── */
@@ -497,7 +698,9 @@
     var head = el('div', 'omOfHead');
     head.appendChild(el('div', 'omOfIco ' + (isX ? 'omOfX' : 'omOfP'), isX ? 'X' : 'P'));
     var ht = el('div', 'omOfHeadTxt');
-    ht.appendChild(el('div', 'omOfName', spec.fileName + '\u2066' + (isX ? '.xlsx' : '.pptx') + '\u2069')); /* الامتداد معزول يسارًا-يمينًا: «.xlsx» لا «xlsx.» في الاسم العربيّ */
+    var nameEl = el('div', 'omOfName', spec.fileName + '\u2066' + (isX ? '.xlsx' : '.pptx') + '\u2069'); /* الامتداد معزول يسارًا-يمينًا: «.xlsx» لا «xlsx.» في الاسم العربيّ */
+    nameEl.dir = 'auto'; /* v-pptx-audit: اتّجاه السطر من الاسم نفسه — اسم إنجليزيّ في واجهة عربيّة كان «.pptxCrisis Management» */
+    ht.appendChild(nameEl);
     ht.appendChild(el('div', 'omOfMeta', (isX ? 'Excel · ' + fill(tt('officeSheets'), { n: spec.sheets.length }) : 'PowerPoint · ' + fill(tt('officeSlides'), { n: spec.slides.length }))));
     head.appendChild(ht); box.appendChild(head);
     if(spec.free) box.appendChild(el('div', 'omOfFree', tt('officeFreeBadge')));
@@ -589,5 +792,5 @@
     return undefined;
   };
   /* للاختبار والمسابر: البناء نفسه بلا بطاقة */
-  window.omranOffice = { buildXlsx: buildXlsx, buildPptx: buildPptx, xlsxPdfBlocks: xlsxPdfBlocks, sheetPlan: sheetPlan, hintTick: hintTick, stopHint: stopHint };
+  window.omranOffice = { buildXlsx: buildXlsx, buildPptx: buildPptx, xlsxPdfBlocks: xlsxPdfBlocks, sheetPlan: sheetPlan, hintTick: hintTick, stopHint: stopHint, fxEval: fxEval, fmtCell: fmtCell };
 })();

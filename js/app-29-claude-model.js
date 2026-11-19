@@ -22,7 +22,7 @@
   /* مرّة واحدة على جهاز المالك (أمره «خلّه Opus 5.5 لي»): المحفوظ قبل اليوم — ومنه Sonnet 5 الذي كان إغلاق الإعدادات يكتبه
      بلا اختيار منه (app-06) — يُمسح فيسري الافتراضيّ الجديد؛ وأيّ اختيار بعدها يبقى كما هو. */
   var MIGRATED = 'aiapp_owner_opus55_v1';
-  function migrate() { try { if (!localStorage.getItem(MIGRATED)) { localStorage.removeItem(KEY); localStorage.setItem(MIGRATED, '1'); } } catch (e) { /* guard-ok — بلا تخزين لا شيء يُرحَّل */ } }
+  function migrate() { try { if (!localStorage.getItem(MIGRATED)) { localStorage.removeItem(KEY); localStorage.setItem(MIGRATED, '1'); } } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-29-claude-model:25'); /* guard-ok — بلا تخزين لا شيء يُرحَّل */ } }
   function ids() { return owner() ? OWNER_IDS : IDS; }
   function isAr() { try { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; } catch (e) { return true; } }
   var HINTS = {
@@ -38,7 +38,7 @@
   }
   function set(v) {
     v = ids().indexOf(v) === -1 ? '' : v;
-    try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) { /* guard-ok — التخزين المحلّيّ قد يكون مقفلًا */ }
+    try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-29-claude-model:41'); /* guard-ok — التخزين المحلّيّ قد يكون مقفلًا */ }
     return v;
   }
   function hint() {
@@ -73,7 +73,7 @@
   }
   function effortSet(v) {
     v = EFFORTS.indexOf(v) === -1 ? '' : v;
-    try { if (v) localStorage.setItem(EFFORT_KEY, v); else localStorage.removeItem(EFFORT_KEY); } catch (e) { /* guard-ok — التخزين المحلّيّ قد يكون مقفلًا */ }
+    try { if (v) localStorage.setItem(EFFORT_KEY, v); else localStorage.removeItem(EFFORT_KEY); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-29-claude-model:76'); /* guard-ok — التخزين المحلّيّ قد يكون مقفلًا */ }
     return v;
   }
   function effortSaved() { try { var v = localStorage.getItem(EFFORT_KEY) || ''; return EFFORTS.indexOf(v) === -1 ? '' : v; } catch (e) { return ''; } }
@@ -100,7 +100,7 @@
   function gptEffortSaved() { try { var v = localStorage.getItem(GPT_EFFORT_KEY) || ''; return EFFORTS.indexOf(v) === -1 ? '' : v; } catch (e) { return ''; } }
   function gptEffortSet(v) {
     v = EFFORTS.indexOf(v) === -1 ? '' : v;
-    try { if (v) localStorage.setItem(GPT_EFFORT_KEY, v); else localStorage.removeItem(GPT_EFFORT_KEY); } catch (e) { /* guard-ok — التخزين المحلّيّ قد يكون مقفلًا */ }
+    try { if (v) localStorage.setItem(GPT_EFFORT_KEY, v); else localStorage.removeItem(GPT_EFFORT_KEY); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-29-claude-model:103'); /* guard-ok — التخزين المحلّيّ قد يكون مقفلًا */ }
     return v;
   }
   function gptEffortGet() {

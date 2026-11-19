@@ -32,11 +32,11 @@
   var $ = function(id){ return document.getElementById(id); };
   function lg(){ try{ return (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
   function T(o){ return (o && (o[lg()] || o.en || o.ar)) || ''; }
-  function gt(k){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return ''; }
+  function gt(k){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-fx-simple:35'); /* guard-ok */ } return ''; }
   function optText(sel){
     if(!sel || sel.selectedIndex < 0) return '';
     var o = sel.options[sel.selectedIndex];
-    try{ if(typeof window.__optT === 'function') return String(window.__optT(o) || '').trim(); }catch(e){ /* guard-ok */ }
+    try{ if(typeof window.__optT === 'function') return String(window.__optT(o) || '').trim(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-fx-simple:39'); /* guard-ok */ }
     return String(o.textContent || '').trim();
   }
   function modal(){ return $('fashionAiModal'); }
@@ -77,7 +77,7 @@
     var c = $('fxCustom'), b = $('fxCustomBtn'); if(!c || !b) return;
     c.style.display = open ? 'block' : 'none';
     b.setAttribute('aria-expanded', open ? 'true' : 'false');
-    if(byUser){ try{ localStorage.setItem(KEY, open ? '1' : '0'); }catch(e){ /* guard-ok */ } }
+    if(byUser){ try{ localStorage.setItem(KEY, open ? '1' : '0'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-fx-simple:80'); /* guard-ok */ } }
     refresh();
   }
   /* أوّل زيارة مفتوح، وبعدها مطويّ ما لم يكن آخر فعل يدويّ «فتح» */
@@ -86,7 +86,7 @@
     if(firstApplied || !$('fxCustom')) return;
     firstApplied = true;
     var v = null; try{ v = localStorage.getItem(KEY); }catch(e){ v = 'seen'; }
-    if(v === null){ setOpen(true, false); try{ localStorage.setItem(KEY, 'seen'); }catch(e){ /* guard-ok */ } }
+    if(v === null){ setOpen(true, false); try{ localStorage.setItem(KEY, 'seen'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-fx-simple:89'); /* guard-ok */ } }
     else setOpen(v === '1', false);
   }
 
@@ -134,7 +134,7 @@
   function openAt(key){
     setOpen(true, true);
     var card = q('.fxAccCard[data-ext="' + key + '"]'); if(!card) return;
-    try{ card.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(e){ /* guard-ok */ }
+    try{ card.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-fx-simple:137'); /* guard-ok */ }
     var old = card.style.outline;
     card.style.outline = '2px solid #d4af37'; card.style.outlineOffset = '2px';
     setTimeout(function(){ card.style.outline = old || ''; }, 1400);
@@ -171,7 +171,7 @@
     var sea = $('fashionAiSeason');
     if(sea){
       var to = sea.value === 'winter' ? 'summer' : 'winter';
-      box.appendChild(chip(T(TX[to]), function(){ sea.value = to; try{ sea.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){ /* guard-ok */ } }));
+      box.appendChild(chip(T(TX[to]), function(){ sea.value = to; try{ sea.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-fx-simple:174'); /* guard-ok */ } }));
     }
     var ma = $('fashionAiMultiAngle');
     if(ma && !ma.checked) box.appendChild(chip(T(TX.angles), function(){ ma.checked = true; }));
@@ -225,8 +225,8 @@
       var tr = document.createElement('div'); tr.id = 'fxTry';
       tr.style.cssText = 'display:none;flex-wrap:wrap;gap:6px;margin-top:10px;max-width:760px;margin-inline:auto;'; /* v-fashion-result-inplace: بعرض النتيجة */
       rw.insertAdjacentElement('afterend', tr);
-      try{ new MutationObserver(renderTry).observe(rw, { attributes:true, attributeFilter:['style'] }); }catch(e){ /* guard-ok */ }
-      try{ new MutationObserver(renderTry).observe(gen, { attributes:true, attributeFilter:['disabled'] }); }catch(e){ /* guard-ok */ }
+      try{ new MutationObserver(renderTry).observe(rw, { attributes:true, attributeFilter:['style'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-fx-simple:228'); /* guard-ok */ }
+      try{ new MutationObserver(renderTry).observe(gen, { attributes:true, attributeFilter:['disabled'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-fx-simple:229'); /* guard-ok */ }
     }
     relabelStyle();
     syncEngine();
@@ -245,7 +245,7 @@
     var open = $('btnFashionAI');
     if(open) open.addEventListener('click', function(){ setTimeout(function(){ layout(); applyFirstVisit(); }, 0); });
     /* design-gen يعيد بناء عقده عند تغيير اللغة — نعيد التخطيط بعده */
-    try{ new MutationObserver(function(){ setTimeout(layout, 0); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
+    try{ new MutationObserver(function(){ setTimeout(layout, 0); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-12-fx-simple:248'); /* guard-ok */ }
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   setTimeout(boot, 700);

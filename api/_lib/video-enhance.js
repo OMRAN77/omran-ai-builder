@@ -182,7 +182,7 @@ function clean(s) {
 async function note(user, detail) {
   const d = clean(detail);
   console.error('[video-enhance] ' + d);
-  try { await require('./log-error.js').logErrorAndFlush('video-enhance', new Error(d), { action: 'video-enhance', user: String(user || '').slice(0, 40) }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
+  try { await require('./log-error.js').logErrorAndFlush('video-enhance', new Error(d), { action: 'video-enhance', user: String(user || '').slice(0, 40) }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-enhance:185'); /* guard-ok — التسجيل تحسين لا شرط */ }
 }
 async function upText(step, r) {
   let msg = '';
@@ -297,7 +297,7 @@ async function measure(key, url, ms) {
   const rs = md.resolution || {};
   return { ok: true, m: { dur: md.duration, frames: md.frame_count, w: rs.width, h: rs.height } };
 }
-const discard = async (r) => { try { if (r && r.body) await r.body.cancel(); } catch (e) { /* guard-ok — إغلاق الجسم أفضل جهد */ } };
+const discard = async (r) => { try { if (r && r.body) await r.body.cancel(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-enhance:300'); /* guard-ok — إغلاق الجسم أفضل جهد */ } };
 const measured = (m) => !!m && pos(m.dur) && pos(m.frames) && pos(m.w) && pos(m.h);
 /** يقرأ الجسم قطعًا ويعدّ: null حين يتجاوز السقف (ويقطع القراءة). يرمي عند انقطاع الشبكة. */
 async function readCapped(r, max) {
@@ -312,7 +312,7 @@ async function readCapped(r, max) {
     const { done, value } = await rd.read();
     if (done) break;
     n += value.byteLength;
-    if (n > max) { try { await rd.cancel(); } catch (e) { /* guard-ok — قطع القراءة أفضل جهد */ } return null; }
+    if (n > max) { try { await rd.cancel(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-enhance:315'); /* guard-ok — قطع القراءة أفضل جهد */ } return null; }
     chunks.push(Buffer.from(value.buffer, value.byteOffset, value.byteLength));
   }
   return Buffer.concat(chunks, n);
@@ -392,7 +392,7 @@ async function failJob(id, j, why, detail) {
       }
       if (v === '0d') return finishFailed(id, j, why, detail); // القيد والختم وقعا وضاع الجواب وحده
       await kvDel(claim); // لم يقع القيد: المطالبة تُفكّ ليعيد الاستطلاع التالي الردّ
-      try { await saveJob(id, j, PAID_TTL); } catch (e) { /* guard-ok — السجلّ المدفوع باقٍ على حاله إن كان محفوظًا */ }
+      try { await saveJob(id, j, PAID_TTL); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-enhance:395'); /* guard-ok — السجلّ المدفوع باقٍ على حاله إن كان محفوظًا */ }
       await note(j.u, 'job ' + id + ' refund-failed (' + why + '), ' + j.paid + ' points still owed: ' + detail);
       return running(id);
     }
@@ -434,7 +434,7 @@ async function succeed(id, j, url, key) {
     } else if (real > 1.25 * j.cap) {
       await note(j.u, 'job ' + id + ' cost ' + real + 'c vs estimate ' + j.cap + 'c (' + j.tier + ')');
     }
-    try { await require('./cost-meter.js').addCost(j.u, (real || j.cap) / 100, 'media'); } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+    try { await require('./cost-meter.js').addCost(j.u, (real || j.cap) / 100, 'media'); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-enhance:437'); /* guard-ok — القياس لا يوقف خدمة */ }
   } else {
     const v = String((await kvGetRaw(claim)) || '');
     if (v.startsWith('0')) return failJob(id, j, 'settled', 'result arrived after the refund'); // رُدّت قبل وصول النتيجة — لا تسليم فوق ردّ
@@ -658,7 +658,7 @@ async function pinAndQuote(res, user, key, id) {
 async function undoPaid(res, user, id, j, f) {
   let out = null;
   try { out = await failJob(id, j, f.why, f.detail); } catch (e) {
-    try { await saveJob(id, j, PAID_TTL); } catch (e2) { /* guard-ok — قاعدة اليتيم تردّ إن كان السجلّ المدفوع محفوظًا */ }
+    try { await saveJob(id, j, PAID_TTL); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/video-enhance:661'); /* guard-ok — قاعدة اليتيم تردّ إن كان السجلّ المدفوع محفوظًا */ }
     await note(user, 'job ' + id + ' undo interrupted, ' + j.paid + ' points pending refund: ' + msgOf(e));
   }
   if (!out || out.state !== 'failed') return res.status(200).json(running(id)); // الردّ لم يقع بعد — قاعدة اليتيم تعيده

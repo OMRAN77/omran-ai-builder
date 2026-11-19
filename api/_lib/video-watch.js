@@ -71,7 +71,7 @@ async function readJob(id, user) {
 const saveJob = (id, j) => kvSetRaw(jobKey(id), JSON.stringify(j), JOB_TTL);
 async function dropFile(key, j) { // أفضل جهد — الملفّ عند المزوّد ينتهي وحده بعد يومين
   if (!j || !j.file || !/^files\/[a-z0-9-]+$/i.test(j.file.name)) return;
-  try { await fetch(BASE + '/v1beta/' + j.file.name, { method: 'DELETE', headers: { 'x-goog-api-key': key } }); } catch (e) { /* guard-ok — التنظيف لا يُسقط الردّ */ }
+  try { await fetch(BASE + '/v1beta/' + j.file.name, { method: 'DELETE', headers: { 'x-goog-api-key': key } }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-watch:74'); /* guard-ok — التنظيف لا يُسقط الردّ */ }
 }
 /* v-audit-video (srv-video-4): المهمّة المفتوحة السابقة للحساب — تُغلق ويُحذف ملفّها ما لم تُشغَّل (نتيجة)، أو تُدفع (paid: تُعاد بلا
    خصم ثانٍ)، أو يجري تشغيلها الآن (القفل). أفضل جهد: عطب KV لا يمنع رفعًا جديدًا. */
@@ -83,7 +83,7 @@ async function closeOpen(user, key) {
     if (!j || j.result || Number.isFinite(j.paid) || (await kvGetRaw(lockKey(prev)))) return;
     await dropFile(key, j);
     await kvDel(jobKey(prev));
-  } catch (e) { /* guard-ok — التنظيف لا يمنع رفعًا جديدًا، والملفّ ينتهي وحده بعد يومين */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-watch:86'); /* guard-ok — التنظيف لا يمنع رفعًا جديدًا، والملفّ ينتهي وحده بعد يومين */ }
 }
 async function isFree(user) {
   if (pointsLib.isOwnerUsername(user)) return true;
@@ -104,7 +104,7 @@ async function upstreamText(step, r) {
    المستخدم ولا يُصلحه اشتراكه، فلا «أعد المحاولة» ولا تحويل للباقات: unavailable (503) ونصّ «الخدمة متوقّفة مؤقّتًا». */
 const OUTAGE_RE = / 402\b|prepay|billing|credits? (?:are |is )?(?:depleted|exhausted)/i;
 async function failUp(res, user, detail, extra) {
-  try { await require('./log-error.js').logErrorAndFlush('video-watch', new Error(detail), { action: 'video-watch', user: String(user || '').slice(0, 40) }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
+  try { await require('./log-error.js').logErrorAndFlush('video-watch', new Error(detail), { action: 'video-watch', user: String(user || '').slice(0, 40) }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-watch:107'); /* guard-ok — التسجيل تحسين لا شرط */ }
   const outage = OUTAGE_RE.test(String(detail || ''));
   return fail(res, outage ? 503 : 502, outage ? 'unavailable' : 'failed', Object.assign({}, extra || {}, pointsLib.isOwnerUsername(user) ? { __diag: detail } : {}));
 }
@@ -149,7 +149,7 @@ async function start(req, res, body, user, key) {
   const gran = Number(r.headers.get('x-goog-upload-chunk-granularity')) || 0; // للتشخيص إن رُفضت قطعة
   const id = crypto.randomBytes(12).toString('hex');
   await saveJob(id, { u: user, url, size, mime, off: 0, dur, gran, at: Date.now() });
-  try { await kvSetRaw(openKey(user), id, JOB_TTL); } catch (e) { /* guard-ok — بلا العلامة لا تُغلق هذه المهمّة عند التالية فقط */ }
+  try { await kvSetRaw(openKey(user), id, JOB_TTL); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-watch:152'); /* guard-ok — بلا العلامة لا تُغلق هذه المهمّة عند التالية فقط */ }
   return res.status(200).json({ ok: true, id, chunk: CHUNK });
 }
 
@@ -243,7 +243,7 @@ async function run(req, res, body, user, key) {
       const u = d.usageMetadata || {};
       const cm = require('./cost-meter.js');
       await cm.addCost(user, cm.tokenCostUsd(model(), { input: u.promptTokenCount, output: (Number(u.candidatesTokenCount) || 0) + (Number(u.thoughtsTokenCount) || 0) }), 'media');
-    } catch (e) { /* guard-ok — القياس لا يوقف خدمة */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-watch:246'); /* guard-ok — القياس لا يوقف خدمة */ }
     j.result = { result: text, cost: charged, sec: Math.round(sec), points: Number.isFinite(pay.points) ? pay.points : null };
     await saveJob(id, j);
     await dropFile(key, j);
@@ -253,7 +253,7 @@ async function run(req, res, body, user, key) {
     console.error('[video-watch] analysis failed:', e && (e.diag || e.message));
     if (charged) { try { await pointsLib.refundPoints(user, charged, payHere ? pay : undefined); } catch (e2) { console.error('[video-watch] refund failed:', e2 && e2.message); } }
     j.paid = null; // رُدّ — المحاولة التالية تخصم من جديد
-    try { await saveJob(id, j); } catch (e3) { /* guard-ok — المهمّة تنتهي وحدها بعد ساعة */ }
+    try { await saveJob(id, j); } catch (e3) { typeof require === 'function' && require('./_swallow.js').swallow(e3, '_lib/video-watch:256'); /* guard-ok — المهمّة تنتهي وحدها بعد ساعة */ }
     await kvDel(lockKey(id));
     return failUp(res, user, e.diag || ('gen: ' + (e && e.message)), { refunded: charged });
   }

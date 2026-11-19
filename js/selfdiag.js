@@ -10,7 +10,7 @@
     if(/Chrome\/\d+/.test(ua) || /Firefox\/\d+/.test(ua)){
       document.documentElement.classList.add('cv-ok');
     }
-  }catch(e){ /* guard-ok: بلا الصنف يبقى الرسم التقليدي — آمن دائمًا */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:13'); /* guard-ok: بلا الصنف يبقى الرسم التقليدي — آمن دائمًا */ }
 })();
 /* v-store-safe: رفض AppGallery (قاعدة 11.4 — عملات أجنبية وكريبتو تتطلب
    حساب شركة وتراخيص). حزمة متجر هواوي تدخل برابط ?store=huawei فتُخفى
@@ -25,7 +25,7 @@
        sessionStorage: يدوم طوال جلسة التبويب أو الحزمة (وحزمة المتجر تنطلق دائمًا برابط يحمل العلم)
        ويزول بإغلاقها. علم قديم عالق في localStorage يُمسح مرّة واحدة فيتعافى المتصفّح المتأثّر. */
     if(sp) sessionStorage.setItem('aiapp_store', String(sp).slice(0, 20));
-    try{ localStorage.removeItem('aiapp_store'); }catch(e){ /* guard-ok */ }
+    try{ localStorage.removeItem('aiapp_store'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:28'); /* guard-ok */ }
     if((sessionStorage.getItem('aiapp_store') || '') === 'huawei'){
       document.documentElement.classList.add('store-safe');
       /* v-hw-nomarkets (رفض هواوي ٢٩ سبتمبر بقاعدة 11.4 «عملات أجنبيّة وكريبتو» — بعد v-store-safe-revert؛ قرار المالك
@@ -41,7 +41,7 @@
           __st.textContent = 'html.store-nomarkets #stockTicker, html.store-nomarkets #stockTickerToggle, html.store-nomarkets #btnStocks, html.store-nomarkets #stocksModal, html.store-nomarkets #aboutStocksCard{display:none !important;}';
           (document.head || document.documentElement).appendChild(__st);
         }
-      }catch(e){ /* guard-ok: بلا الإخفاء تبقى النسخة الكاملة */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:44'); /* guard-ok: بلا الإخفاء تبقى النسخة الكاملة */ }
       /* v-store-twa (رفض هواوي 4.1 مرة ثانية — 1.3.9): مدخل المتجر يحمل بيان
          الحزمة الخاص به (manifest-huawei.json: start_url = /?store=huawei) حتى
          يبقى العلم بعد التثبيت من المتصفح ويقرأه مولّد الحزمة من الصفحة نفسها. */
@@ -84,13 +84,13 @@
             if(__toast) __toast.remove();
             o.classList.add('show');
             sessionStorage.setItem('aiapp_store_tour_s', '1');
-          }catch(e){ /* guard-ok */ }
+          }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:87'); /* guard-ok */ }
         };
         if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(__openTour, 1800); });
         else setTimeout(__openTour, 1800);
       }
     }
-  }catch(e){ /* guard-ok: بلا العلامة تبقى النسخة الكاملة */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:93'); /* guard-ok: بلا العلامة تبقى النسخة الكاملة */ }
 })();
 /* v-sat-revert (لقطة Asma ٢٨ أغسطس): افتراض v-sat-measure كان خاطئًا —
    innerHeight أقل من ارتفاع الشاشة بسبب حاشية «القاع» (شريط الهوم)، فصفّرنا
@@ -100,7 +100,7 @@
    دائمًا (بسقف 62px في CSS) كما كانت طوال عمر التطبيق قبل اليوم. */
 (function(){
   try{ document.documentElement.style.setProperty('--omran-sat', 'env(safe-area-inset-top, 0px)'); }
-  catch(e){ /* guard-ok: CSS يملك نفس القيمة احتياطيًا في var() */ }
+  catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:103'); /* guard-ok: CSS يملك نفس القيمة احتياطيًا في var() */ }
 })();
 /* v-diag-ua (تدقيق ١٨–١٩ أكتوبر، لوحة ?diag=2): فحص /Safari/ كان يعدّ كروم سفاري — كروم أندرويد وويندوز يحملان «Safari/537.36».
    مصنّف واحد للموضعين: سفاري الحقيقيّ وحده يحمل Version/… Safari/ بلا اسم متصفّح آخر؛ غلاف WebView بلا Safari أصلًا. */
@@ -122,7 +122,7 @@ window.__omranIsSafariUA = function(ua){
        التطبيق: ٥ نقرات متتالية (خلال ٢.٥ ثانية) على خلفية الهيدر (وليس
        الشعار — نقرته ريلود) تفتح الحبة فورًا وتثبتها لبقية الجلسة. */
     var tapAllowed = false;
-    try{ tapAllowed = sessionStorage.getItem('omranDiagTap') === '1'; }catch(e){ /* guard-ok: بلا تخزين تكفي النقرات مجددًا */ }
+    try{ tapAllowed = sessionStorage.getItem('omranDiagTap') === '1'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:125'); /* guard-ok: بلا تخزين تكفي النقرات مجددًا */ }
     var urlAllowed = /[?&#]diag=1(?:[&#]|$)/.test(location.search + location.hash);
     var start = function(){
       try{
@@ -130,11 +130,11 @@ window.__omranIsSafariUA = function(ua){
         var d = document.createElement('div');
         d.id = 'omranDiagPill';
         d.style.cssText = 'position:fixed;left:8px;right:8px;bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:2147483645;background:rgba(8,14,28,.88);border:1px solid rgba(212,175,55,.5);color:#ffe9a8;font:10.5px/1.6 -apple-system,Menlo,monospace;padding:7px 10px;border-radius:12px;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;pointer-events:auto;';
-        d.addEventListener('click', function(){ try{ d.remove(); clearInterval(t); }catch(e){ /* guard-ok: إغلاق الحبة لا يفشل بصوت */ } });
+        d.addEventListener('click', function(){ try{ d.remove(); clearInterval(t); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:133'); /* guard-ok: إغلاق الحبة لا يفشل بصوت */ } });
         var probe = document.createElement('div');
         probe.style.cssText = 'position:fixed;top:0;left:-9999px;padding-top:env(safe-area-inset-top,0px);visibility:hidden;';
         document.body.appendChild(probe);
-        var bsrc = ''; try{ bsrc = (document.querySelector('script[src*="app.bundle.js"]') || {}).src || ''; }catch(e){ /* guard-ok: زينة تشخيصية */ }
+        var bsrc = ''; try{ bsrc = (document.querySelector('script[src*="app.bundle.js"]') || {}).src || ''; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:137'); /* guard-ok: زينة تشخيصية */ }
         var build = (bsrc.match(/v=([0-9a-f]+)/) || [])[1] || '?';
         var mxEnv = 0, mxHd = 0;
         var cssv = function(n){ try{ return ((document.querySelector('link[href*="' + n + '.css"]') || {}).href || '').replace(/^.*v=/, '') || '?'; }catch(e){ return '?'; } };
@@ -144,14 +144,14 @@ window.__omranIsSafariUA = function(ua){
             var hr = h ? h.getBoundingClientRect() : null;
             var vv = window.visualViewport;
             var sat = '';
-            try{ sat = getComputedStyle(document.documentElement).getPropertyValue('--omran-sat').trim(); }catch(e){ /* guard-ok: زينة تشخيصية */ }
+            try{ sat = getComputedStyle(document.documentElement).getPropertyValue('--omran-sat').trim(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:147'); /* guard-ok: زينة تشخيصية */ }
             var envNow = Math.round(parseFloat(getComputedStyle(probe).paddingTop) || 0);
             if(envNow > mxEnv) mxEnv = envNow;
             if(hr && Math.round(hr.top) > mxHd) mxHd = Math.round(hr.top);
             var pwa = false;
-            try{ pwa = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); }catch(e){ /* guard-ok: زينة تشخيصية */ }
+            try{ pwa = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:152'); /* guard-ok: زينة تشخيصية */ }
             var bd = '—';
-            try{ bd = Math.round(document.body.getBoundingClientRect().top) + (getComputedStyle(document.body).position || '?').charAt(0); }catch(e){ /* guard-ok: زينة تشخيصية */ }
+            try{ bd = Math.round(document.body.getBoundingClientRect().top) + (getComputedStyle(document.body).position || '?').charAt(0); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:154'); /* guard-ok: زينة تشخيصية */ }
             d.textContent = '🩺 صوّر الشاشة كاملة مع هذا الصندوق\n'
               + 'b:' + build + ' css:' + cssv('tokens') + '/' + cssv('redesign')
               + ' sw:' + ((navigator.serviceWorker && navigator.serviceWorker.controller) ? 1 : 0)
@@ -165,13 +165,13 @@ window.__omranIsSafariUA = function(ua){
               + ' bd:' + bd
               + ' hd:' + (hr ? Math.round(hr.top) + '/' + Math.round(hr.height) : '—') + ' mx:' + mxHd
               + ' hp:' + (h ? Math.round(parseFloat(getComputedStyle(h).paddingTop) || 0) : '—');
-          }catch(e){ /* guard-ok */ }
+          }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:168'); /* guard-ok */ }
         };
         var t = setInterval(upd, 1000);
         upd();
         (document.body || document.documentElement).appendChild(d);
-        setTimeout(function(){ try{ d.remove(); probe.remove(); clearInterval(t); }catch(e){ /* guard-ok: تنظيف الحبة ترف */ } }, 420000);
-      }catch(e){ /* guard-ok: الحبة ترف تشخيصي */ }
+        setTimeout(function(){ try{ d.remove(); probe.remove(); clearInterval(t); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:173'); /* guard-ok: تنظيف الحبة ترف */ } }, 420000);
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:174'); /* guard-ok: الحبة ترف تشخيصي */ }
     };
     if(urlAllowed || tapAllowed){
       if(document.body) setTimeout(start, 2500);
@@ -190,12 +190,12 @@ window.__omranIsSafariUA = function(ua){
         while(taps.length && now - taps[0] > 2500) taps.shift();
         if(taps.length >= 5){
           taps = [];
-          try{ sessionStorage.setItem('omranDiagTap', '1'); }catch(err){ /* guard-ok: بلا تخزين تعمل هذه الجلسة فقط */ }
+          try{ sessionStorage.setItem('omranDiagTap', '1'); }catch(err){ typeof __swallow === 'function' && __swallow(err, 'selfdiag:193'); /* guard-ok: بلا تخزين تعمل هذه الجلسة فقط */ }
           start();
         }
-      }catch(err){ /* guard-ok: العدّاد ترف تشخيصي */ }
+      }catch(err){ typeof __swallow === 'function' && __swallow(err, 'selfdiag:196'); /* guard-ok: العدّاد ترف تشخيصي */ }
     }, true);
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:198'); /* guard-ok */ }
 })();
 /* v-err-build (تنبيه المالك ٢٣ سبتمبر بأخطاء منها «Unexpected token» من نسخة أُصلحت):
    سجلّ الأخطاء لا ينتهي — خطأ النسخة المكسورة يبقى ينذر المالك بعد إصلاحه. كلّ بلاغ
@@ -239,7 +239,7 @@ window.__omranErrLive = function(e, build, now){
       // ضجيج لا يستحق شريطًا: أخطاء سكربتات خارجية مبهمة (Script error) وأعطال
       // الشبكة والإضافات — نفس فلتر الخادم، فلا إنذارات كاذبة على شاشة المستخدم.
       if(/Script error\.?$|Failed to fetch|NetworkError|Load failed|ResizeObserver|extension/i.test(String(msg || ''))) return;
-      var bsrc = ''; try{ bsrc = (document.querySelector('script[src*="app.bundle.js"]') || {}).src || ''; }catch(e){ /* guard-ok: رقم البنية زينة تشخيصية */ }
+      var bsrc = ''; try{ bsrc = (document.querySelector('script[src*="app.bundle.js"]') || {}).src || ''; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:242'); /* guard-ok: رقم البنية زينة تشخيصية */ }
       var build = (bsrc.match(/v=([0-9a-f]+)/) || [])[1] || '؟';
       var d = document.createElement('div');
       d.id = 'omranErrBanner';
@@ -247,10 +247,10 @@ window.__omranErrLive = function(e, build, now){
       d.textContent = '⚠️ خطأ تقني (بنية ' + build + '): ' + String(msg || '').slice(0, 150)
         + ' — ' + String(src || '').split('/').pop().split('?')[0].slice(0, 40) + ':' + (line || 0)
         + ' · صوّر هذا الشريط وأرسله، واضغط عليه للإغلاق';
-      d.onclick = function(){ try{ d.remove(); }catch(e){ /* guard-ok: إغلاق الشريط لا يفشل بصوت */ } };
-      var mount = function(){ try{ (document.body || document.documentElement).appendChild(d); }catch(e){ /* guard-ok: إن تعذّر العرض يبقى الإبلاغ للخادم */ } };
+      d.onclick = function(){ try{ d.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:250'); /* guard-ok: إغلاق الشريط لا يفشل بصوت */ } };
+      var mount = function(){ try{ (document.body || document.documentElement).appendChild(d); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:251'); /* guard-ok: إن تعذّر العرض يبقى الإبلاغ للخادم */ } };
       if(document.body) mount(); else window.addEventListener('DOMContentLoaded', mount);
-    }catch(e){ /* الشريط ترف تشخيصي — لا يُسقط المُبلِّغ */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:253'); /* الشريط ترف تشخيصي — لا يُسقط المُبلِّغ */ }
   }
   window.addEventListener('error', function(e){
     report(e.message, e.filename, e.lineno, e.colno, e.error && e.error.stack);
@@ -302,7 +302,7 @@ window.__omranErrLive = function(e, build, now){
           (window.__omrS && window.__omrS.projects || []).forEach(function(p){ (p && p.messages || []).forEach(function(m){
             (m && m.attachments || []).concat(m && m.apiImages || []).forEach(function(a){ var L = (a && typeof a.dataUrl === 'string') ? a.dataUrl.length : 0; if(L > 20000){ st += L; stN++; } });
           }); });
-        }catch(e){ /* guard-ok: الحالة لم تجهز بعد */ }
+        }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:305'); /* guard-ok: الحالة لم تجهز بعد */ }
         report('v-mem-probe ' + tag + ': heap ' + heap + ' · جهاز ' + (navigator.deviceMemory || '؟') + 'GB · شاشة '
           + window.innerWidth + 'x' + window.innerHeight + '@' + (Math.round((window.devicePixelRatio || 1) * 100) / 100)
           + ' · صور ظاهرة ' + vis + ' (' + MB(visMB) + 'MB) كلّ ' + all + ' (' + MB(allMB) + 'MB)'
@@ -328,7 +328,7 @@ window.__omranErrLive = function(e, build, now){
             })()
           + ' · صور بالذاكرة ' + stN + ' (' + MB(st) + 'MB نصّ) · عناصر ' + document.getElementsByTagName('*').length
           + ' · ' + (document.documentElement.classList.contains('omAndroid') ? 'omAndroid' : 'غير أندرويد'), 'selfdiag.js', 0, 0, '');
-      }catch(e){ /* guard-ok: المسبار ترف تشخيصيّ */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:331'); /* guard-ok: المسبار ترف تشخيصيّ */ }
     }
     [[20000, '٢٠ث'], [120000, 'دقيقتان'], [300000, '٥ دقائق']].forEach(function(x){ setTimeout(function(){ sample(x[1]); }, x[0]); });
   })();
@@ -339,7 +339,7 @@ window.__omranErrLive = function(e, build, now){
   function diagPanel(){
     try{
       var lines = [];
-      var bsrc = ''; try{ bsrc = (document.querySelector('script[src*="app.bundle.js"]') || {}).src || ''; }catch(e){ /* guard-ok: زينة */ }
+      var bsrc = ''; try{ bsrc = (document.querySelector('script[src*="app.bundle.js"]') || {}).src || ''; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:342'); /* guard-ok: زينة */ }
       lines.push('بنية: ' + ((bsrc.match(/v=([0-9a-f]+)/) || [])[1] || '؟')
         + ' · مثبّت: ' + (navigator.standalone === true ? 'نعم' : 'لا')
         + ' · شاشة: ' + window.innerWidth + 'x' + window.innerHeight
@@ -395,9 +395,9 @@ window.__omranErrLive = function(e, build, now){
           var el = document.elementFromPoint(t.clientX, t.clientY);
           if(el && el.closest && el.closest('.omNavBtn')) return;
           counts.textContent = '⚠️ لمسة على منطقة الشريط ذهبت إلى: ' + (el ? (el.id || String(el.className).slice(0, 25) || el.tagName) : 'خارج الصفحة') + ' — صوّر الشاشة';
-        }catch(err){ /* guard-ok: التشخيص لا يعطّل */ }
+        }catch(err){ typeof __swallow === 'function' && __swallow(err, 'selfdiag:398'); /* guard-ok: التشخيص لا يعطّل */ }
       }, true);
-    }catch(e){ /* guard-ok: لوحة التشخيص ترف — لا تُسقط الصفحة */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:400'); /* guard-ok: لوحة التشخيص ترف — لا تُسقط الصفحة */ }
   }
   // v-boot-watchdog3: التحديث اليومي كان يترك أول فتحة على الآيفون نصف نسخة
   // قديمة عالقة — وأمر إعادة التحميل من عامل الخدمة (client.navigate) لا يدعمه
@@ -424,7 +424,7 @@ window.__omranErrLive = function(e, build, now){
         return false;
       };
           var __v653Go = function(){
-            try{ sessionStorage.setItem('omranHealed', '1'); }catch(e){ /* guard-ok */ }
+            try{ sessionStorage.setItem('omranHealed', '1'); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:427'); /* guard-ok */ }
             location.reload();
           };
           if(document.visibilityState === 'hidden' && !__v653Busy()) return __v653Go();
@@ -434,10 +434,10 @@ window.__omranErrLive = function(e, build, now){
               __v653Go();
             }
           });
-        }catch(e){ /* guard-ok: قناة الإنقاذ لا تكسر شيئًا */ }
+        }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:437'); /* guard-ok: قناة الإنقاذ لا تكسر شيئًا */ }
       });
     }
-  }catch(e){ /* guard-ok: بلا عامل خدمة لا حاجة للقناة */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:440'); /* guard-ok: بلا عامل خدمة لا حاجة للقناة */ }
   // توست «تم التحديث تلقائيًا» بعد أي إنقاذ — يشوف عمران أن الرقيب اشتغل.
   try{
     if(sessionStorage.getItem('omranHealed') === '1'){
@@ -448,12 +448,12 @@ window.__omranErrLive = function(e, build, now){
           h.style.cssText = 'position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:2147483646;background:rgba(10,20,10,.92);border:1.5px solid #4ade80;color:#d9ffe3;font:13px/1.6 -apple-system,Tahoma,sans-serif;padding:8px 16px;border-radius:999px;direction:rtl;box-shadow:0 8px 26px rgba(0,0,0,.5);';
           h.textContent = '✓ تم تحديث التطبيق تلقائيًا';
           (document.body || document.documentElement).appendChild(h);
-          setTimeout(function(){ try{ h.remove(); }catch(e){ /* guard-ok */ } }, 2800);
-        }catch(e){ /* guard-ok: التوست زينة */ }
+          setTimeout(function(){ try{ h.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:451'); /* guard-ok */ } }, 2800);
+        }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:452'); /* guard-ok: التوست زينة */ }
       };
       if(document.body) __showHeal(); else window.addEventListener('DOMContentLoaded', __showHeal);
     }
-  }catch(e){ /* guard-ok */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:456'); /* guard-ok */ }
   // v-boot-watchdog: شكوى عمران ٢٧ أغسطس — آيفون أول ما يفتح «يعلق» ويصلحه
   // الضغط على اسم عمران (وهو إعادة تحميل كاملة). الرقيب يسوي نفس العلاج
   // تلقائيًا: إن لم يكتمل الإقلاع (__omranBootOk من ui-wiring) خلال ٥ ثوانٍ
@@ -478,7 +478,7 @@ window.__omranErrLive = function(e, build, now){
               var __ms = document.getElementById('mahaCallScreen');
               if((typeof mahaCallActive !== 'undefined' && mahaCallActive) || (typeof mahaCallStarting !== 'undefined' && mahaCallStarting)
                  || (__ms && getComputedStyle(__ms).display !== 'none')) return;
-            }catch(e){ /* guard-ok: فحص المكالمة ترف — الرقيب يكمل كما كان */ }
+            }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:481'); /* guard-ok: فحص المكالمة ترف — الرقيب يكمل كما كان */ }
             if(bootDone){
               try{
                 var me = document.getElementById('messages');
@@ -487,27 +487,27 @@ window.__omranErrLive = function(e, build, now){
                 var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
                 var want = (cur && cur.messages && cur.messages.length) || 0;
                 if(me && !me.childNodes.length && !heroVis){
-                  try{ if(typeof renderAll === 'function') renderAll(); }catch(e){ /* guard-ok: الرسم قد يفشل بنفس العلة */ }
+                  try{ if(typeof renderAll === 'function') renderAll(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:490'); /* guard-ok: الرسم قد يفشل بنفس العلة */ }
                   heroVis = !!(hero && hero.offsetParent !== null);
                   blackHome = !me.childNodes.length && !heroVis;
                   report('v-boot-heal: msgs=' + want + ' hero=' + heroVis + ' — إعادة الرسم ' + (blackHome ? 'فشلت، ريلود' : 'نجحت'), 'selfdiag.js', 0, 0, '');
                 }
-              }catch(e){ /* guard-ok: فحص المحتوى ترف — لا يعطّل */ }
+              }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:495'); /* guard-ok: فحص المحتوى ترف — لا يعطّل */ }
             }
             if(bootDone && !blackHome) return;
             if(!bootDone) report('v-boot-heal: إقلاع ناقص bundle=' + (window.__omranBundleOk === true) + ' wiring=' + (window.__omranBootOk === true) + ' — ريلود', 'selfdiag.js', 0, 0, '');
             sessionStorage.setItem('omranBootRetry', '1');
             sessionStorage.setItem('omranHealed', '1');
             location.replace(location.pathname + location.search);
-          }catch(e){ /* guard-ok: فشل الرقيب لا يزيد العطل */ }
+          }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:502'); /* guard-ok: فشل الرقيب لا يزيد العطل */ }
         }, 5000);
       }
     }
-  }catch(e){ /* guard-ok: الرقيب ترف أمان */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:506'); /* guard-ok: الرقيب ترف أمان */ }
   try{
     if(/[?&#]diag=2/.test(location.search + location.hash)){
       if(document.readyState === 'complete') setTimeout(diagPanel, 1500);
       else window.addEventListener('load', function(){ setTimeout(diagPanel, 1500); });
     }
-  }catch(e){ /* guard-ok: قراءة الرابط آمنة */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'selfdiag:512'); /* guard-ok: قراءة الرابط آمنة */ }
 })();

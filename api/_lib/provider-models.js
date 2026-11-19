@@ -124,7 +124,7 @@ async function loadModels(opts) {
     try {
       const c = await kv.kvGetJSON(KV_KEY);
       if (c && c.models && now - (Number(c.at) || 0) < TTL_MS) { __mem = { at: c.at, models: c.models, meta: c.meta || null }; return { models: c.models, source: 'kv', at: c.at }; }
-    } catch (e) { /* KV غائب أو متعثّر — نكمل من الشبكة */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/provider-models:127'); /* KV غائب أو متعثّر — نكمل من الشبكة */ }
   }
   const f = o.fetch || fetch;
   const headers = {};
@@ -143,7 +143,7 @@ async function loadModels(opts) {
       const g = await f(GROQ_MODELS_URL, { headers: { Authorization: 'Bearer ' + gk } });
       const gl = g && g.ok ? parseGroqModels(await g.json()) : [];
       if (gl.length) models.groq = gl;
-    } catch (e) { /* قائمة الوسيط تبقى */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/provider-models:146'); /* قائمة الوسيط تبقى */ }
   }
   // v-oa-models: بمفتاح OpenAI قائمة GPT من OpenAI نفسه (ما يملكه المفتاح فقط)؛ تعثّرها يبقي قائمة الوسيط.
   const ok = String(process.env.OPENAI_API_KEY || '').trim();
@@ -152,10 +152,10 @@ async function loadModels(opts) {
       const g = await f(OPENAI_MODELS_URL, { headers: { Authorization: 'Bearer ' + ok } });
       const ol = g && g.ok ? parseOpenAIModels(await g.json()) : [];
       if (ol.length) models.openai = ol;
-    } catch (e) { /* قائمة الوسيط تبقى */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/provider-models:155'); /* قائمة الوسيط تبقى */ }
   }
   __mem = { at: now, models, meta };
-  if (kv) { try { await kv.kvPutJSON(KV_KEY, { at: now, models, meta }); } catch (e) { /* التخزين تحسينيّ */ } }
+  if (kv) { try { await kv.kvPutJSON(KV_KEY, { at: now, models, meta }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/provider-models:158'); /* التخزين تحسينيّ */ } }
   return { models, source: 'network', at: now };
 }
 

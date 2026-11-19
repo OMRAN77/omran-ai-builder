@@ -58,7 +58,7 @@ async function withRemindersLock(username, fn, waitMs) {
   try {
     return await fn();
   } finally {
-    try { if ((await kvGetRaw(key)) === mine) await kvDel(key); } catch (e) { /* القفل ينتهي وحده بعد LOCK_TTL_SEC */ }
+    try { if ((await kvGetRaw(key)) === mine) await kvDel(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/reminders:61'); /* القفل ينتهي وحده بعد LOCK_TTL_SEC */ }
   }
 }
 

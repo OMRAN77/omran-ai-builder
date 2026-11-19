@@ -42,8 +42,9 @@ function fakeRes() {
 }
 
 test('الخادم: SSML مها بلا نجوم (والردّ للمالك كذلك)، والأصوات الأخرى تُرسل كما هي، ونصّ رموز فقط = ناقص', async () => {
-  const saved = { a: process.env.AZURE_SPEECH_KEY_FREE, b: process.env.AZURE_SPEECH_KEY, o: process.env.OPENAI_API_KEY };
+  const saved = { a: process.env.AZURE_SPEECH_KEY_FREE, b: process.env.AZURE_SPEECH_KEY, o: process.env.OPENAI_API_KEY, g: process.env.GEMINI_API_KEY };
   process.env.AZURE_SPEECH_KEY_FREE = 'free-key'; delete process.env.AZURE_SPEECH_KEY; process.env.OPENAI_API_KEY = 'k';
+  delete process.env.GEMINI_API_KEY; // v-tts-gemini: مسار Azure وحده هنا، مهما كانت بيئة المطوّر
   require.cache[rp('api/_lib/_usage.js')] = { id: rp('api/_lib/_usage.js'), filename: rp('api/_lib/_usage.js'), loaded: true, exports: {
     checkAndConsumeCustom: async () => ({ allowed: true, username: 'omran' }), clientIp: () => '127.0.0.1',
   } };
@@ -58,13 +59,15 @@ test('الخادم: SSML مها بلا نجوم (والردّ للمالك كذ�
     assert.match(calls[0].url, /tts\.speech\.microsoft\.com/);
     assert.ok(calls[0].body.includes('>من تطبيق مسجّل الصوت نفسه<'), calls[0].body);
     await speak({ text: '**bold** text', voice: 'nova' });
-    assert.equal(JSON.parse(calls[1].body).input, '**bold** text', 'صوت الاستوديو كما هو');
+    // v-tts-gemini: بلا مفتاح Gemini هنا يخدم احتياط المحرّك الثاني (Azure) — والنصّ كما أُرسل
+    assert.match(calls[1].url, /tts\.speech\.microsoft\.com/);
+    assert.ok(calls[1].body.includes('>**bold** text<'), 'صوت الاستوديو كما هو');
     const empty = await speak({ text: '** 👍 **', voice: 'maha', lang: 'ar' });
     assert.equal(empty.code, 400);
     assert.equal(calls.length, 2);
   } finally {
     global.fetch = realFetch;
-    for (const [k, v] of [['AZURE_SPEECH_KEY_FREE', saved.a], ['AZURE_SPEECH_KEY', saved.b], ['OPENAI_API_KEY', saved.o]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    for (const [k, v] of [['AZURE_SPEECH_KEY_FREE', saved.a], ['AZURE_SPEECH_KEY', saved.b], ['OPENAI_API_KEY', saved.o], ['GEMINI_API_KEY', saved.g]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
     delete require.cache[rp('api/_lib/_usage.js')]; delete require.cache[rp('api/_lib/tts.js')];
   }
 });

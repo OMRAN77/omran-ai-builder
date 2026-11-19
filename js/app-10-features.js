@@ -63,6 +63,82 @@ window.postWithConfirm = postWithConfirm;
     dismissedUntil = Date.now() + 120000; // لا إزعاج لمدة دقيقتين
   };
 
+  /* v-freeze-why (لقطة عمران ١٠ نوفمبر: الشريط طلع، وقياسي بحسابه وبعرض شاشته لم يُعِده — أطول تعليق نصف ثانية): لا أحد يعرف ماذا
+     جمّد الخيط لحظتها. الآن حين يطلع الشريط يُرسَل تقرير واحد إلى سجلّ أخطاء المالك (مصدر diag:freeze = قياس لا خطأ): مدّة التعليق،
+     الشاشة المفتوحة، آخر ٥ نقرات (معرّف الزرّ/مفتاح ترجمته لا نصّه)، وأطول إطارات الرسم ومن جمّدها — Long Animation Frames في Chrome
+     تسمّي الدالّة وموضعها في الحزمة (يُقرأ بالبصمة build). لا نصّ مستخدم ولا رمز ولا محتوى محادثة. ٣ تقارير لكلّ فتح على الأكثر. */
+  const fzClicks = [];
+  const fzFrames = [];
+  const fzLabel = (el) => {
+    if(!el || !el.closest) return '?';
+    const own = el.closest('[id],[data-i18n],[data-i18n-title]');
+    if(!own) return (el.tagName || '?').toLowerCase();
+    const key = own.getAttribute('data-i18n') || own.getAttribute('data-i18n-title') || '';
+    return ((own.id ? '#' + own.id : own.tagName.toLowerCase()) + (key ? '[' + key + ']' : '')).slice(0, 60);
+  };
+  try{
+    document.addEventListener('click', (e) => {
+      fzClicks.push({ at: Date.now(), what: fzLabel(e.target) });
+      if(fzClicks.length > 5) fzClicks.shift();
+    }, true);
+  }catch(e){ __swallow(e, 'freeze-why:clicks'); }
+  try{
+    const types = (window.PerformanceObserver && PerformanceObserver.supportedEntryTypes) || [];
+    const kind = types.indexOf('long-animation-frame') >= 0 ? 'long-animation-frame' : (types.indexOf('longtask') >= 0 ? 'longtask' : '');
+    if(kind){
+      new PerformanceObserver((list) => {
+        list.getEntries().forEach((en) => {
+          if(en.duration < 300) return;
+          const scripts = (en.scripts || []).slice().sort((a, b) => b.duration - a.duration).slice(0, 3).map((sc) =>
+            Math.round(sc.duration) + 'ms ' + String(sc.invoker || sc.invokerType || '').slice(0, 50) + ' ' + String(sc.sourceFunctionName || '').slice(0, 40)
+            + ' @' + String(sc.sourceURL || '').replace(/^.*\//, '').replace(/\?.*$/, '').slice(0, 30) + ':' + (sc.sourceCharPosition >= 0 ? sc.sourceCharPosition : '?'));
+          fzFrames.push({ at: Math.round(performance.timeOrigin + en.startTime), ms: Math.round(en.duration), scripts });
+          fzFrames.sort((a, b) => b.ms - a.ms);
+          if(fzFrames.length > 6) fzFrames.length = 6;
+        });
+      }).observe({ type: kind, buffered: true });
+    }
+  }catch(e){ __swallow(e, 'freeze-why:observer'); }
+  let fzReports = 0;
+  let fzPending = null;
+  /* المتصفّح يسلّم سجلّ الإطار الطويل بعد انتهائه بلحظات — مسبار Chromium: التقرير الفوريّ خلا من إطار الـ١٥ث الذي جمّد. فيُرسَل بعد
+     ثانيتين، وفورًا إن غادر المستخدم الصفحة (زرّ «إعادة التحميل») — keepalive يوصله. */
+  function freezeReport(delays){
+    if(fzReports >= 3 || fzPending) return;
+    fzReports++;
+    try{ // التقرير لا يكسر الشريط أبدًا
+      const at = Date.now();
+      const go = () => { if(!fzPending) return; clearTimeout(fzPending); fzPending = null; window.removeEventListener('pagehide', go); sendFreezeReport(delays, at); };
+      fzPending = setTimeout(go, 2000);
+      window.addEventListener('pagehide', go);
+    }catch(e){ __swallow(e, 'freeze-why:schedule'); }
+  }
+  function sendFreezeReport(delays, at){
+    try{
+      const now = at;
+      const settings = document.querySelector('.settingsPageActive');
+      const open = [...document.querySelectorAll('dialog[open],[id$="Modal"],[id$="modal"],[role="dialog"]')]
+        .filter((el) => el.offsetParent !== null || getComputedStyle(el).position === 'fixed' && getComputedStyle(el).display !== 'none')
+        .map((el) => el.id).filter(Boolean).slice(0, 4);
+      const screen = (settings ? 'settings:' + settings.id : 'chat') + (open.length ? ' +' + open.join(',') : '');
+      const mem = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + '/' + Math.round(performance.memory.jsHeapSizeLimit / 1048576) + 'MB' : '?';
+      const clicks = fzClicks.map((c) => c.what + ' -' + Math.round((now - c.at) / 1000) + 's').join(' · ') || 'لا نقرات';
+      const frames = fzFrames.map((f) => f.ms + 'ms -' + Math.round((now - f.at) / 1000) + 's [' + f.scripts.join(' | ') + ']').join('\n') || 'لا إطارات مقيسة';
+      const env = 'vp ' + innerWidth + 'x' + innerHeight + ' dpr ' + (window.devicePixelRatio || 1) + ' cpu ' + (navigator.hardwareConcurrency || '?')
+        + ' ram ' + (navigator.deviceMemory || '?') + 'GB heap ' + mem + ' dom ' + document.getElementsByTagName('*').length
+        + ' img ' + document.images.length + ' up ' + Math.round((now - bootAt) / 1000) + 's';
+      fetch('/api/system?action=client-errors', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'تعليق ' + Math.round(Math.max.apply(null, delays) / 1000) + 'ث — ' + screen + ' — آخر نقرة: ' + (fzClicks.length ? fzClicks[fzClicks.length - 1].what : 'لا شيء'),
+          source: 'diag:freeze', line: 0, col: 0,
+          stack: ('التأخيرات: ' + delays.map((d) => Math.round(d / 100) / 10 + 'ث').join('، ') + '\nالنقرات: ' + clicks + '\nالإطارات:\n' + frames + '\n' + env).slice(0, 1500),
+          url: location.pathname, ua: navigator.userAgent,
+          build: (typeof window.__omranBuild === 'function') ? window.__omranBuild() : '',
+        }) }).catch((e) => { __swallow(e, 'freeze-why:send'); });
+    }catch(e){ __swallow(e, 'freeze-why:report'); }
+  }
+  window.__omranFreezeReport = freezeReport; // للاختبار والفحص اليدويّ فقط
+
   let worker = null;
   try{
     const workerSrc = "setInterval(function(){ postMessage(Date.now()); }, 1000);";
@@ -76,6 +152,7 @@ window.postWithConfirm = postWithConfirm;
      العامل نفسه (نوم الجهاز/تعليق العمليّة) ليس تجمّد الخيط الرئيسيّ. التجمّد الحقيقيّ والصفحة ظاهرة يُظهره كما كان. */
   let lastVisibleAt = 0;
   let lastBeat = 0;
+  let strikeDelays = []; // v-freeze-why
   const markVisible = () => { if(!document.hidden){ lastVisibleAt = Date.now(); strikes = 0; } };
   document.addEventListener('visibilitychange', markVisible);
   document.addEventListener('resume', markVisible);
@@ -86,11 +163,12 @@ window.postWithConfirm = postWithConfirm;
     const gap = lastBeat ? e.data - lastBeat : 0;
     lastBeat = e.data;
     // خلال فترة الإقلاع لا نحسب أي تأخّر تجمّدًا
-    if(Date.now() - bootAt < BOOT_GRACE_MS){ strikes = 0; return; }
+    if(Date.now() - bootAt < BOOT_GRACE_MS){ strikes = 0; strikeDelays = []; return; }
     // الصفحة مخفيّة، أو النبضة من قبل رجوعها، أو العامل نفسه توقّف (نوم) — ليس تجمّدًا رآه المستخدم
-    if(document.hidden || e.data < lastVisibleAt || gap > 4000){ strikes = 0; return; }
+    if(document.hidden || e.data < lastVisibleAt || gap > 4000){ strikes = 0; strikeDelays = []; return; }
     if(delay > FREEZE_THRESHOLD_MS){
       strikes++;
+      strikeDelays.push(delay);
       if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
         /* v-freeze-fix: لا إعادة حفظ هنا — كانت تُبطل النسخة المنحّفة وتجدول رفعها وحفظ السجلّ كاملًا في IndexedDB لحظة التجمّد نفسها
            (مسبار سجلّ المالك الثقيل: تجمّد ثانٍ ١٤ث بعد البانر). أيّ تغيير ينتظر أصلًا في الحفظ المجمّع (١٫٥ث)، و«إعادة التحميل» =
@@ -98,9 +176,11 @@ window.postWithConfirm = postWithConfirm;
            v-r3 (r3-f2): pagehide وحده لا يكمل حفظه بعد المغادرة — فزرّ «إعادة التحميل» ينتظر الحفظ (__saveFlushWait) قبل أن يعيد. */
         shown = true;
         banner.style.display = 'flex';
+        freezeReport(strikeDelays.slice(-4)); // v-freeze-why: لماذا — للمالك
       }
     } else {
       strikes = 0; // نبضة سليمة تصفّر العدّاد
+      strikeDelays = [];
     }
   };
   window.addEventListener('beforeunload', () => { try{ worker.terminate(); }catch(e){ __swallow(e, "save:app-10-features#2"); } });
@@ -529,7 +609,7 @@ if(btnShareApp){
     if(navigator.share){
       try {
         await navigator.share({ title: titles[currentLang] || titles.ar, text: shareText, url: shareUrl });
-      } catch(e){ /* user cancelled share, ignore */ }
+      } catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:522'); /* user cancelled share, ignore */ }
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
@@ -718,13 +798,13 @@ btnToggleHistory.onclick = () => {
       /* v-nav-cards-menus: في العربيّ ⋮ قرب يسار الشاشة، والقائمة المحاذاة لحافّته اليمنى كانت تبدأ خارجها (-11px) — تُحصر بهامش ٦px */
       const edge = window.innerWidth - parseFloat(dd.style.right);
       if(edge - (dd.offsetWidth || 0) < 6){ dd.style.left = '6px'; dd.style.right = 'auto'; }
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:711'); /* guard-ok */ }
   }
   function restore(){
     try{
       if(wrap && dd.parentNode !== wrap) wrap.appendChild(dd);
       dd.style.position=''; dd.style.top=''; dd.style.right=''; dd.style.left=''; dd.style.insetInlineEnd=''; dd.style.zIndex='';
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:717'); /* guard-ok */ }
   }
   function close(){ dd.classList.remove('show'); btn.classList.remove('active'); restore(); }
   // v-review-menu-close: «مراجعة» و«تحليل» (app-24/app-27) يوقفان انتشار نقرتهما فلا يصل مستمع الإغلاق أدناه — يناديان هذا قبل فتح نافذتيهما
@@ -1087,7 +1167,9 @@ btnToggleHistory.onclick = () => {
     box.style.cssText = 'background:#12151d; border-radius:14px; max-width:560px; width:100%; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;';
     const head = document.createElement('div');
     head.style.cssText = 'display:flex; align-items:center; gap:10px; padding:14px 16px; font-size:14px; font-weight:700;';
-    head.innerHTML = '<span>🕰️ ' + (isAr ? 'آلة الزمن — إصدارات المشروع' : 'Time Machine — project versions') + '</span><span style="flex:1;"></span>';
+    /* v-i18n-14: آلة الزمن كانت عربيّ/إنجليزيّ فقط — نصوصها عبر __bT (القاموس __BI) وتاريخها بلغة الواجهة */
+    const __tmT = (a, e) => ((typeof window.__bT === 'function') ? window.__bT(a, e) : (isAr ? a : e));
+    head.innerHTML = '<span>🕰️ ' + __tmT('آلة الزمن — إصدارات المشروع', 'Time Machine — project versions') + '</span><span style="flex:1;"></span>';
     const closeBtn = document.createElement('button');
     closeBtn.textContent = '✖';
     closeBtn.style.cssText = 'background:none; border:none; color:#fff; cursor:pointer; font-size:15px;';
@@ -1097,14 +1179,14 @@ btnToggleHistory.onclick = () => {
     const body = document.createElement('div');
     body.style.cssText = 'overflow:auto; flex:1; padding:0 16px 16px;';
     if(!hist.length){
-      body.innerHTML = '<div style="color:#98a0b3; padding:12px 0;">' + (isAr ? 'لا توجد إصدارات محفوظة بعد — كل تعديل على الكود ينحفظ هنا تلقائيًا.' : 'No saved versions yet — every code change is saved here automatically.') + '</div>';
+      body.innerHTML = '<div style="color:#98a0b3; padding:12px 0;">' + __tmT('لا توجد إصدارات محفوظة بعد — كل تعديل على الكود ينحفظ هنا تلقائيًا.', 'No saved versions yet — every code change is saved here automatically.') + '</div>';
     }
     hist.forEach((h, idx) => {
       const isCurrent = cur.code === h.code;
       const row = document.createElement('div');
       row.style.cssText = 'display:flex; align-items:center; gap:10px; padding:10px 0; font-size:13px;';
       const d = new Date(h.ts);
-      const when = d.toLocaleString(isAr ? 'ar-AE' : 'en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      const when = d.toLocaleString(isAr ? 'ar-AE' : ((typeof lang !== 'undefined' && lang && lang !== 'en') ? (({ zh:'zh-CN', fil:'fil-PH' })[lang] || lang) : 'en-GB'), { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       const info = document.createElement('span');
       info.style.cssText = 'flex:1; color:' + (isCurrent ? 'var(--accent2,#00e0b8)' : '#e8eaf1') + ';';
       info.textContent = (isCurrent ? '✅ ' : '') + when + ' — ' + Math.round(h.code.length / 1024) + 'KB';
@@ -1114,13 +1196,13 @@ btnToggleHistory.onclick = () => {
         diffB.className = 'btn';
         diffB.style.cssText = 'font-size:12px; padding:5px 10px;';
         diffB.textContent = '🔀';
-        diffB.title = isAr ? 'الفروقات' : 'Diff';
+        diffB.title = __tmT('الفروقات', 'Diff');
         diffB.onclick = () => showCodeDiff(cur.code, h.code, when);
         row.appendChild(diffB);
         const restB = document.createElement('button');
         restB.className = 'btn';
         restB.style.cssText = 'font-size:12px; padding:5px 10px;';
-        restB.textContent = isAr ? '↩️ استرجاع' : '↩️ Restore';
+        restB.textContent = __tmT('↩️ استرجاع', '↩️ Restore');
         restB.onclick = () => {
           cur.code = h.code;
           cur.codeType = h.codeType || 'html';
@@ -1270,7 +1352,7 @@ btnToggleHistory.onclick = () => {
       failed.push(String((err && err.message) || err).slice(0, 120));
     }
     btn.disabled = false;
-    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+    try{ input.value = ''; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1263'); /* guard-ok — cleanup */ }
     const notes = [];
     if(outcome && outcome.truncated) notes.push(fmtPdf('pdfDocTruncated', { n: outcome.pages }));
     if(skipped.length) notes.push(fmtPdf('pdfDocSkipped', { n: skipped.length, names: skipped.slice(0, 3).join('، ') }));
@@ -1285,7 +1367,7 @@ btnToggleHistory.onclick = () => {
     /* v-attach-picker-v3: مسح input.value يُؤجَّل إلى ما بعد قراءة الصور.
        مسحه هنا (قبل القراءة) يفصل الملفّ عن مصدره داخل غلاف أندرويد
        (content://) فتفشل كلّ الصور بصمت ولا يُنتَج PDF — نفس فخّ v405. */
-    if(!files.length){ try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } return; }
+    if(!files.length){ try{ input.value = ''; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1278'); /* guard-ok — cleanup */ } return; }
     const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
     btn.disabled = true;
     /* v-img2pdf-heic (لقطة عمران ١ سبتمبر): صورة واحدة بصيغة لا يفكها
@@ -1358,7 +1440,7 @@ btnToggleHistory.onclick = () => {
         + '\n' + (isAr ? 'التفاصيل: ' : 'Details: ') + detParts.filter(Boolean).join(' | '));
     }
     btn.disabled = false;
-    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+    try{ input.value = ''; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1351'); /* guard-ok — cleanup */ }
   }
   // v-attach-picker-v3: تُعاد الوعدة للمراقب فلا يُمسح input.value قبل أن
   // تنتهي قراءة الصور فعلًا (فصل الملفّ عن مصدره يُفشل القراءة بصمت).
@@ -1378,8 +1460,8 @@ btnToggleHistory.onclick = () => {
      يقفل الأدراج ويرجع لأعلى المحادثة فقط. محادثة جديدة = زر + أو الرئيسية. */
   if(h1) h1.onclick = () => {
     try{ saveState(); }catch(_){ __swallow(_, "save:app-10-features#16"); }
-    try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(_){ /* guard-ok */ }
-    try{ window.scrollTo(0, 0); const m = document.getElementById('messages'); if(m) m.scrollTop = 0; }catch(_){ /* guard-ok */ }
+    try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1371'); /* guard-ok */ }
+    try{ window.scrollTo(0, 0); const m = document.getElementById('messages'); if(m) m.scrollTop = 0; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-10-features:1372'); /* guard-ok */ }
   };
   /* v-om-brand (طلب عمران ٢٥ سبتمبر): شعار «OM Ai» بنجومه الثلاث واحد لكلّ اللغات
      ومكتوب في index.html بأبعاده (لا قفزة)، فلا تبديل صورة حسب اللغة — بدّل شعار
@@ -1396,52 +1478,6 @@ btnToggleHistory.onclick = () => {
 })();
 btnToggleProjects.onclick = () => { openDrawer(sidebarEl); closeHeaderMenu(); };
 
-// One-time onboarding hint for new/mobile users who don't know ☰ opens the
-// code + live-preview drawer: a pulsing glow + tooltip pointing at it, shown
-// only once (localStorage flag), dismissed on tap/close/timeout.
-(function initCodeHint(){
-  try{
-    return; // hint retired — code button now lives in the ⚙️ menu
-    if(localStorage.getItem('aiapp_seen_code_hint')) return;
-    if(window.innerWidth > 860) return; // mobile-only nudge
-    const tip = $('#codeHintTip');
-    const promptEl = $('#prompt');
-    if(!btnToggleHistory || !tip || !promptEl) return;
-    function position(){
-      const r = btnToggleHistory.getBoundingClientRect();
-      tip.style.top = (r.bottom + 10) + 'px';
-      const left = Math.max(8, Math.min(window.innerWidth - tip.offsetWidth - 8, r.left + r.width / 2 - tip.offsetWidth / 2));
-      tip.style.left = left + 'px';
-    }
-    function dismiss(){
-      try{ localStorage.setItem('aiapp_seen_code_hint', '1'); }catch(e){ __swallow(e, "save:app-10-features#17"); }
-      btnToggleHistory.classList.remove('code-hint-pulse');
-      tip.style.display = 'none';
-      window.removeEventListener('resize', position);
-    }
-    function show(){
-      btnToggleHistory.classList.add('code-hint-pulse');
-      tip.style.display = 'block';
-      position();
-      window.addEventListener('resize', position);
-      btnToggleHistory.addEventListener('click', dismiss, {once: true});
-      const closeBtn = $('#codeHintCloseBtn');
-      if(closeBtn) closeBtn.addEventListener('click', dismiss);
-      // dismiss automatically once the user sends the message, or after a timeout
-      promptEl.removeEventListener('keydown', onFirstKey);
-      setTimeout(dismiss, 9000);
-    }
-    function onFirstKey(){
-      promptEl.removeEventListener('input', onFirstKey);
-      promptEl.removeEventListener('keydown', onFirstKey);
-      show();
-    }
-    // Wait until the user actually starts typing their request before nudging
-    // them toward ☰ — this is the moment the tip is most relevant.
-    promptEl.addEventListener('input', onFirstKey, {once: true});
-    promptEl.addEventListener('keydown', onFirstKey, {once: true});
-  }catch(e){ console.error('codeHint init', e); }
-})();
 backdropEl.onclick = closeDrawers;
 // v-drawer-close + v-sb-collapse (طلب المالك): سهم القائمة الجانبيّة —
 // على الجوّال يسكر الدرج، وعلى سطح المكتب يطوي العمود (مثل طيّ لوحة العمل) مع مقبض إعادة فتح.
@@ -1859,8 +1895,8 @@ function openShareModal(project){
       var closeBtn = document.getElementById(p[1]);
       if(!modal || !closeBtn || modal.__omranBC) return;
       modal.__omranBC = 1;
-      try{ modal.style.paddingTop = 'calc(20px + max(env(safe-area-inset-top, 0px), 30px))'; }catch(e){ /* guard-ok — cosmetic */ }
-      try{ closeBtn.style.minWidth = '44px'; closeBtn.style.minHeight = '40px'; closeBtn.style.fontSize = '16px'; }catch(e){ /* guard-ok — cosmetic */ }
+      try{ modal.style.paddingTop = 'calc(20px + max(env(safe-area-inset-top, 0px), 30px))'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:1806'); /* guard-ok — cosmetic */ }
+      try{ closeBtn.style.minWidth = '44px'; closeBtn.style.minHeight = '40px'; closeBtn.style.fontSize = '16px'; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-10-features:1807'); /* guard-ok — cosmetic */ }
     });
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ arm(); setTimeout(arm, 1200); });

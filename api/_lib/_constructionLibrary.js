@@ -44,7 +44,7 @@ async function saveDesign(entry) {
   try { /* v-audit-stud2: مصغّر WebP بدل الصورة الكاملة — حين يصغر فعلًا */
     const w = await require('./img-convert.js').toCardWebp(record.planImageBase64, 1024, 85);
     if (w && w.b64 && w.b64.length < String(record.planImageBase64 || '').length) { record.planImageBase64 = w.b64; record.planMimeType = 'image/webp'; }
-  } catch (e) { /* ليست PNG/JPEG/WebP أو تعذّر الترميز: يبقى الأصل، وسقف الحجم أدناه يحدّه */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_constructionLibrary:47'); /* ليست PNG/JPEG/WebP أو تعذّر الترميز: يبقى الأصل، وسقف الحجم أدناه يحدّه */ }
   if (String(record.planImageBase64 || '').length > LIB_IMG_MAX) return null;
   const meta = JSON.stringify({ id, t: record.createdAt, b: record.buildingType, f: record.floors, a: record.area, l: record.lang });
   try {

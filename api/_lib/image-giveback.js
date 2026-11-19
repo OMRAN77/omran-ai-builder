@@ -34,7 +34,7 @@ async function unchangedGiveback(ids, o) {
       const n = Number(await kv.kvIncr(key));
       taken.push(key);
       if (n > limit) {
-        for (const k of taken) { try { await kv.kvDecrBy(k, 1); } catch (e) { /* أفضل جهد — العدّاد يسقط مع اليوم */ } }
+        for (const k of taken) { try { await kv.kvDecrBy(k, 1); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/image-giveback:37'); /* أفضل جهد — العدّاد يسقط مع اليوم */ } }
         return false;
       }
     }

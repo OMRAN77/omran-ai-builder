@@ -30,7 +30,7 @@ try{
     sessionStorage.setItem(SESS_KEY, '1');
     isNewSession = true;
   }
-}catch(e){ /* guard-ok — إذا فشل sessionStorage نتجاهل الميزة بهدوء */ }
+}catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-22-session-new:33'); /* guard-ok — إذا فشل sessionStorage نتجاهل الميزة بهدوء */ }
 
 if(!isNewSession) return; // نفس التبويب / تحديث الصفحة — لا تغيير
 
@@ -56,7 +56,7 @@ function onHistoryReady(){
     try{
       var inp = document.getElementById('prompt') || document.getElementById('msgInput');
       if(inp && String(inp.value || '').trim()) return;
-    }catch(e){ /* guard-ok — فحص اختياري */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-22-session-new:59'); /* guard-ok — فحص اختياري */ }
 
     // ── أنشئ محادثة جديدة ──────────────────────────────────────────────────
     var newId = 'p_' + Date.now();
@@ -67,14 +67,14 @@ function onHistoryReady(){
 
     s.projects.push({ id: newId, title: title, messages: [], code: '', provider: provKey });
     s.currentId = newId;
-    try{ if(typeof mahaClearImageRef === 'function') mahaClearImageRef(); }catch(e){ /* guard-ok — تنظيف اختياري */ }
-    try{ if(typeof saveState === 'function') saveState(); }catch(e){ /* guard-ok — فشل الحفظ لا يوقف الميزة */ }
-    try{ if(typeof renderAll === 'function') renderAll(); }catch(e){ /* guard-ok — فشل الرسم لا يوقف الميزة */ }
+    try{ if(typeof mahaClearImageRef === 'function') mahaClearImageRef(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-22-session-new:70'); /* guard-ok — تنظيف اختياري */ }
+    try{ if(typeof saveState === 'function') saveState(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-22-session-new:71'); /* guard-ok — فشل الحفظ لا يوقف الميزة */ }
+    try{ if(typeof renderAll === 'function') renderAll(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-22-session-new:72'); /* guard-ok — فشل الرسم لا يوقف الميزة */ }
 
     // ── إشعار خفيف ──────────────────────────────────────────────────────────
     showSessionToast();
 
-  }catch(e){ try{ __swallow(e,'session-new#3'); }catch(_){ /* guard-ok */ } }
+  }catch(e){ try{ __swallow(e,'session-new#3'); }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-22-session-new:77'); /* guard-ok */ } }
 }
 
 function waitForHistory(){
@@ -93,11 +93,11 @@ function waitForHistory(){
       onHistoryReady();
     }
   });
-  try{ obs.observe(histEl, { childList: true }); }catch(e){ /* guard-ok — بيئة قديمة */ }
+  try{ obs.observe(histEl, { childList: true }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-22-session-new:96'); /* guard-ok — بيئة قديمة */ }
 
   // حد أقصى 4 ثانية — نحاول حتى لو ما جاء MutationObserver
   setTimeout(function(){
-    if(!done){ done = true; try{ obs.disconnect(); }catch(e){ /* guard-ok */ } onHistoryReady(); }
+    if(!done){ done = true; try{ obs.disconnect(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-22-session-new:100'); /* guard-ok */ } onHistoryReady(); }
   }, 4000);
 }
 
@@ -124,9 +124,9 @@ function showSessionToast(){
     requestAnimationFrame(function(){ el.style.opacity = '1'; });
     setTimeout(function(){
       el.style.opacity = '0';
-      setTimeout(function(){ try{ el.remove(); }catch(e){ /* guard-ok — عنصر ربما أُزيل */ } }, 400);
+      setTimeout(function(){ try{ el.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-22-session-new:127'); /* guard-ok — عنصر ربما أُزيل */ } }, 400);
     }, 3500);
-  }catch(e){ /* guard-ok — Toast زينة فقط، فشله لا يضر */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-22-session-new:129'); /* guard-ok — Toast زينة فقط، فشله لا يضر */ }
 }
 
 // ── ابدأ بعد بناء DOM ──────────────────────────────────────────────────────

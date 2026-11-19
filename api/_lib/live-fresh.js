@@ -63,7 +63,7 @@ function todayIn(tz, now) {
   const d = now || new Date();
   const zone = (typeof tz === 'string' && /^[A-Za-z_]+\/[A-Za-z_\/+\-0-9]+$/.test(tz)) ? tz : '';
   if (zone) {
-    try { return new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); } catch (e) { /* منطقة لا يعرفها Intl — UTC أدناه */ }
+    try { return new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/live-fresh:66'); /* منطقة لا يعرفها Intl — UTC أدناه */ }
   }
   return d.toISOString().slice(0, 10);
 }

@@ -25,7 +25,7 @@
 
   function tell(e, ctx){
     try{ if(typeof window.__swallow === 'function') window.__swallow(e, ctx); else console.warn(ctx, e); }
-    catch(_){ /* guard-ok: تعذّر التسجيل نفسه؛ لا نُسقط الواجهة. */ }
+    catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-20-signature:28'); /* guard-ok: تعذّر التسجيل نفسه؛ لا نُسقط الواجهة. */ }
   }
   /* v-audit-studcli (cli-studios-5): isAr() كان true لكلّ لغة سوى en فالأداة كلّها عربيّة لـ١٢ لغة. النصوص الآن من t() بالـ١٤ لغة،
      والاحتياط (مترجم لم يجهز أو مفتاح ناقص) عربيّ للعربيّة وحدها وإنجليزيّ لغيرها — لا عربيّة للأرديّة؛ والاتّجاه RTL للعربيّة والأرديّة. */

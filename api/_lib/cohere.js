@@ -110,7 +110,7 @@ module.exports = async (req, res) => {
           if (done) break;
           res.write(value);
         }
-      } catch (e) { /* client likely disconnected */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/cohere:113'); /* client likely disconnected */ }
       res.end();
       return;
     }

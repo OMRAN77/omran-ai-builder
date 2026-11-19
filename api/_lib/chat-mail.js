@@ -90,18 +90,19 @@ async function noteTurn(args, opts) {
     }
     return 'saved';
   } catch (e) {
-    try { require('./log-error.js').logError('chat-mail:note', e); } catch (e2) { /* guard-ok — فشل التسجيل لا يوقف المحادثة */ }
+    try { require('./log-error.js').logError('chat-mail:note', e); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/chat-mail:93'); /* guard-ok — فشل التسجيل لا يوقف المحادثة */ }
     return 'error';
   }
 }
 
 /** من chat.js عند نهاية الردّ: الحفظ يكمل بعد الردّ بـwaitUntil المنصّة ولا يؤخّره. */
 function noteTurnLater(args) {
+  try { require('./owner-live.js').turnLater(args); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat-mail:live'); /* guard-ok — v-owner-live: الإشعار الفوريّ مستقلّ عن الإيميل اليوميّ، وفشله لا يمسّه */ }
   const job = noteTurn(args);
   try {
     const w = _seam.waitUntil || require('./signup-notify.js').platformWaitUntil();
     if (w) w(job);
-  } catch (e) { /* guard-ok — بلا سياق طلب يكمل الوعد وحده */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chat-mail:104'); /* guard-ok — بلا سياق طلب يكمل الوعد وحده */ }
   return job;
 }
 

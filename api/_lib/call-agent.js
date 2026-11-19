@@ -393,7 +393,7 @@ function lockKey(user) { return 'call/active/' + user; }
 async function releaseLock(kv, user, callId, key) {
   const k = key || lockKey(user);
   try { if ((await kv.kvGetRaw(k)) === callId) await kv.kvDel(k); }
-  catch (e) { /* guard-ok — عطل KV: القفل ينتهي بمدّته */ }
+  catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/call-agent:396'); /* guard-ok — عطل KV: القفل ينتهي بمدّته */ }
 }
 
 /* v-call-agent-paid: من يبدأ مكالمة (تجربة أو حقيقيّة)؟ المالك، أو صاحب باقة محادثة سارية — السجلّ يُقرأ طازجًا لحظة المال لا من
@@ -425,7 +425,7 @@ async function settleHold(kv, pts, h, durationSec, now) {
     const v = await readRaw(kv, key);
     if (v && v.startsWith('d:')) return doneOf(v);
     if (v && v.startsWith('c:') && t - (Number(v.slice(2)) || 0) >= CLAIM_STALE_MS) {
-      try { await kv.kvDel(key); } catch (e) { /* guard-ok — المطالبة تنتهي بمدّتها */ }
+      try { await kv.kvDel(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/call-agent:428'); /* guard-ok — المطالبة تنتهي بمدّتها */ }
     }
     return null;
   }
@@ -435,11 +435,11 @@ async function settleHold(kv, pts, h, durationSec, now) {
     if (!ok) {
       const v = await readRaw(kv, key);
       if (v && v.startsWith('d:')) return doneOf(v); // وقع الردّ وضاع جوابه
-      if (v && v.startsWith('c:')) { try { await kv.kvDel(key); } catch (e) { /* guard-ok — المطالبة تنتهي بمدّتها */ } } // ثبت أنّه لم يقع ← يُعاد
+      if (v && v.startsWith('c:')) { try { await kv.kvDel(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/call-agent:438'); /* guard-ok — المطالبة تنتهي بمدّتها */ } } // ثبت أنّه لم يقع ← يُعاد
       return null;
     }
   }
-  try { await kv.kvSetRaw(key, done, SETTLE_TTL_SEC); } catch (e) { /* guard-ok — الختم كُتب مع القيد، أو لا باقي يُردّ */ }
+  try { await kv.kvSetRaw(key, done, SETTLE_TTL_SEC); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/call-agent:442'); /* guard-ok — الختم كُتب مع القيد، أو لا باقي يُردّ */ }
   return { charged, refunded: rest };
 }
 
@@ -475,7 +475,7 @@ async function settleOpenIds(kv, user) {
   try { const v = JSON.parse((await kv.kvGetRaw(openKey(user))) || '[]'); return Array.isArray(v) ? v.map(String).slice(-5) : []; } catch (e) { return null; } // تعذّرت = null
 }
 async function trackOpen(kv, user, ids) {
-  try { await kv.kvSetRaw(openKey(user), JSON.stringify(ids.slice(-5)), REC_TTL_SEC); } catch (e) { /* guard-ok — استطلاع الكرت يسوّي أيضًا */ }
+  try { await kv.kvSetRaw(openKey(user), JSON.stringify(ids.slice(-5)), REC_TTL_SEC); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/call-agent:478'); /* guard-ok — استطلاع الكرت يسوّي أيضًا */ }
 }
 /* المدّة المحسوبة من حالة الخدمة: إعادة تشغيلها أثناء المكالمة تحسب المدّة إلى وقت عودتها (يشمل التوقّف) — فشل من جهتنا = صفر */
 function billedSec(s) { return String((s && s.endReason) || '') === 'relay_restart' ? 0 : Math.max(0, Math.floor(Number(s && s.durationSec) || 0)); }
@@ -549,7 +549,7 @@ async function handler(req, res, deps) {
         if (!reserved) { await releaseLock(kv, user, id, trialLockKey(user)); return send(res, 409, { error: 'trial_exists' }); }
         const h = await hold(q);
         if (Array.isArray(h)) {
-          try { await kv.kvSetRaw('call/trial/' + id, JSON.stringify({ id, user, state: 'void', mintedAt: now }), TRIAL_TTL_SEC); } catch (e) { /* guard-ok — لم يُخصم شيء */ }
+          try { await kv.kvSetRaw('call/trial/' + id, JSON.stringify({ id, user, state: 'void', mintedAt: now }), TRIAL_TTL_SEC); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/call-agent:552'); /* guard-ok — لم يُخصم شيء */ }
           await releaseLock(kv, user, id, trialLockKey(user));
           return send(res, h[0], h[1]);
         }
@@ -627,9 +627,9 @@ async function handler(req, res, deps) {
       // السجلّ والقفل والحجز ويتابع العميل الحالة — 404 من الخدمة يُنهيها «فشلت» بردّ كامل (call-status تحت).
       if (r.status >= 400 && r.json && typeof r.json === 'object') {
         // العلامة قبل التسوية (المراجعة الثالثة): ردّ لم يُحسم ويُسوّى بعد ٢٣ ساعة كان يُقرأ «نسيتها» فيُخصم كاملًا
-        try { await kv.kvSetRaw('call/rec/' + callId, JSON.stringify(Object.assign({}, rec, { refused: true })), REC_TTL_SEC); } catch (e) { /* guard-ok — بلا العلامة يُردّ كاملًا ما سُوّي خلال ٢٣ ساعة */ }
+        try { await kv.kvSetRaw('call/rec/' + callId, JSON.stringify(Object.assign({}, rec, { refused: true })), REC_TTL_SEC); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/call-agent:630'); /* guard-ok — بلا العلامة يُردّ كاملًا ما سُوّي خلال ٢٣ ساعة */ }
         const b = await settleHold(kv, pts, holdOf(rec), 0, now);
-        if (b) { try { await kv.kvDel('call/rec/' + callId); } catch (e) { /* guard-ok — السجلّ ينتهي بمدّته */ } }
+        if (b) { try { await kv.kvDel('call/rec/' + callId); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/call-agent:632'); /* guard-ok — السجلّ ينتهي بمدّته */ } }
         await releaseLock(kv, user, callId);
         // لم يُحسم الردّ: رقم المكالمة يعود للعميل فيسأل حالتها (الخدمة لا تعرفها ← ردّ كامل) بلا انتظار مكالمة تالية
         return send(res, 502, Object.assign({ error: 'relay_error', status: r.status }, b ? {} : { callId, unsettled: true }));

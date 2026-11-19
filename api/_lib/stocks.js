@@ -186,7 +186,7 @@ module.exports = async (req, res) => {
         const sj = await sr.json();
         const sp = sj && Number(sj.price);
         if (sp > 100 && Math.abs(sp - ozUsd) / ozUsd < 0.1) { prev = sp * (prev / ozUsd); ozUsd = sp; }
-      } catch (_e) { /* spot unavailable -> keep futures price */ }
+      } catch (_e) { typeof require === 'function' && require('./_swallow.js').swallow(_e, '_lib/stocks:189'); /* spot unavailable -> keep futures price */ }
       const g24 = ozUsd / 31.1034768 * 3.6725;
       const out = {
         ozUsd: +ozUsd.toFixed(2), change: +(ozUsd - prev).toFixed(2), changePct: +(((ozUsd - prev) / prev) * 100).toFixed(2),
@@ -391,7 +391,7 @@ module.exports = async (req, res) => {
       for (const s of syms) {
         const p = pf.positions[s];
         let cur = p.avgCost;
-        try { cur = await livePrice(s); } catch (e) { /* سعر قديم خير من انهيار المحفظة */ }
+        try { cur = await livePrice(s); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/stocks:394'); /* سعر قديم خير من انهيار المحفظة */ }
         const val = cur * p.qty;
         marketValue += val;
         positions.push({ symbol: s, qty: p.qty, avgCost: +p.avgCost.toFixed(2), price: +cur.toFixed(2), value: +val.toFixed(2), pl: +((cur - p.avgCost) * p.qty).toFixed(2), plPct: p.avgCost ? +((cur / p.avgCost - 1) * 100).toFixed(2) : 0 });
@@ -476,7 +476,7 @@ module.exports = async (req, res) => {
           const nj = await nr.json();
           news = (nj.results || []).map(x => ({ title: x.title, snippet: (x.content || '').slice(0, 200) }));
         }
-      } catch (_) { /* أخبار السهم إضافة اختيارية — غيابها لا يعطّل التسعير */ }
+      } catch (_) { typeof require === 'function' && require('./_swallow.js').swallow(_, '_lib/stocks:479'); /* أخبار السهم إضافة اختيارية — غيابها لا يعطّل التسعير */ }
 
       const closes = (series && series.values || []).map(v => +v.close).reverse();
       const sma20 = closes.length >= 20 ? (closes.slice(-20).reduce((a, b) => a + b, 0) / 20).toFixed(2) : null;

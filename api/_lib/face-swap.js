@@ -374,7 +374,7 @@ async function lockFaces(frame, refs, opts) {
       const kv0 = o.kv || require('./kv.js');
       const s0 = typeof kv0.kvGetRaw === 'function' ? Number(await kv0.kvGetRaw(spentKey(new Date().toISOString().slice(0, 10)))) : NaN;
       if (Number.isFinite(s0) && s0 + COST_CENTS * only.length > capCents()) return same('cap');
-    } catch (e) { /* guard-ok — تعذّرت قراءة التلميح: يكمل إلى الحجز الذرّيّ */ }
+    } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/face-swap:377'); /* guard-ok — تعذّرت قراءة التلميح: يكمل إلى الحجز الذرّيّ */ }
     const img = decodeImage(Buffer.from(String(frame.b64), 'base64'));
     if (!img) return same('decode');
     const prepared = list.map(prepRef);

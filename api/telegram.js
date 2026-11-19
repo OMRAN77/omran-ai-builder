@@ -62,7 +62,7 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
   }
 
   // Always ACK Telegram quickly so it doesn't retry.
-  const ack = () => { try { res.status(200).json({ ok: true }); } catch (e) { /* تلغرام أغلق الاتصال أو رُدَّ عليه مرّتين — لا شيء يُفعل */ } };
+  const ack = () => { try { res.status(200).json({ ok: true }); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'telegram:65'); /* تلغرام أغلق الاتصال أو رُدَّ عليه مرّتين — لا شيء يُفعل */ } };
 
   try {
     let body = req.body;
@@ -80,7 +80,7 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
     if (__start) {
       const pk = 'db/phone-link/tg/' + chatId;
       await kvPutJSON(pk, { code: __start[1].toUpperCase(), at: Date.now() });
-      try { await kvExpire(pk, __pl.CODE_TTL_SEC); } catch (e) { /* guard-ok — الرمز نفسه يسقط بعد ١٠ دقائق */ }
+      try { await kvExpire(pk, __pl.CODE_TTL_SEC); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'telegram:83'); /* guard-ok — الرمز نفسه يسقط بعد ١٠ دقائق */ }
       await tg(token, 'sendMessage', {
         chat_id: chatId,
         text: 'لتأكيد رقمك في om ai اضغط الزرّ بالأسفل «📱 شارك رقمي».\n\nلا تضغطه إن لم تطلب الربط أو الاسترجاع بنفسك من التطبيق.',
@@ -94,7 +94,7 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
       if (!pend || !pend.code) { await done('افتح رابط الربط من التطبيق أوّلًا (حسابي ← رقم الهاتف).'); ack(); return; }
       if (!msg.from || msg.contact.user_id !== msg.from.id) { await done('شارك رقمك أنت من زرّ «📱 شارك رقمي».'); ack(); return; }
       const r = await __pl.complete(pend.code, msg.contact.phone_number, 'telegram');
-      try { await kvPutJSON('db/phone-link/tg/' + chatId, {}); } catch (e) { /* guard-ok — الرمز صار غير «pending» فلا يُعاد استعماله */ }
+      try { await kvPutJSON('db/phone-link/tg/' + chatId, {}); } catch (e) { typeof require === 'function' && require('./_lib/_swallow.js').swallow(e, 'telegram:97'); /* guard-ok — الرمز صار غير «pending» فلا يُعاد استعماله */ }
       await done(__pl.replyText(r)); // الاسترجاع: رابط إعادة كلمة المرور هنا في محادثة الرقم نفسه
       ack(); return;
     }

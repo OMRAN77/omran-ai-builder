@@ -68,7 +68,7 @@ async function ensureSaved(input, map, ask, getImage) {
   const get = getImage || ((id) => require('./img-share.js').getImage(id));
   for (const t of toks) { if (map && map[t]) { let ok = true; try { ok = !!(await get(map[t])); } catch (e) { ok = true; /* guard-ok — عطل القراءة لا يُسقط معرّفًا صالحًا */ } if (!ok) delete map[t]; } }
   const want = toks.filter((t) => !(map && map[t]));
-  for (const t of want) { try { noteTokens(await ask(t), map); } catch (e) { /* guard-ok — يرفضه الرفع بعدها بسببه */ } }
+  for (const t of want) { try { noteTokens(await ask(t), map); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/agent-img:71'); /* guard-ok — يرفضه الرفع بعدها بسببه */ } }
   return map;
 }
 

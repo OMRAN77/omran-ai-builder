@@ -1630,3 +1630,97 @@ test('r3-rv7-C: نصف المؤجَّلة بلا عطل، ثمّ تسري، ثم
   assert.equal((await hook(refundOf('cs_rv7c4_mb', 1021, 766))).code, 200);
   assert.equal(mix('rv7c4'), 1250 - Math.round(1250 * 766 / 1021), 'الربع الزائد وحده');
 });
+
+// ───────────────────────── v-audit-main: دمج main (b36e038a) فوق جولات الأبواب المقفلة ─────────────────────────
+// port-1: ربط اشتراك Stripe دُفع بلا دخول (v-owner-link-sub، sub-link.js) يمنح بـgrantPlanToUser وmeta.keepHigherPlan — داخل قفل الحساب والحجز
+//   الصارم وعلامة الإكمال (grantLocked). القرار keep (النقاط وحدها تحت فترة فعليّة أعلى أو مساوية) يُحمل في علامة الإكمال: إكمالٌ بلا
+//   القرار كان يكتب الدفعة المتأخّرة رئيسيّةً (cur.at أقدم من وقت المنح) فينزل Pro إلى Plus. وkeep بالفترة الفعليّة (chatPeriod) لا user.plan وحده.
+// port-2: v-paid-ungranted (main) ينبّه لكلّ g.error، وorphanPaid (v-lock-subs/r3-7) ينبّه مرّة بحجز صارم ويلغي الاشتراك — تنبيه واحد للدفعة.
+// port-3: علامة main لكلمة وضعها صاحبها برابط الاسترجاع (pwSet) يقبلها needsPassword (معيار الحذف الواحد).
+const ccsLib = require(rp('api/_lib/create-checkout-session.js'));
+const lateMeta = (id) => ({ refs: ['pi_' + id, 'ch_' + id], amount: 1000, currency: 'usd', keepHigherPlan: true });
+
+test('port-1أ: دفعة Plus متأخّرة (keepHigherPlan) تحت Pro سارية ⇒ +٣٦٠ وحدها، Pro كما هي بلا planNext، والإعادة لا شيء، واستردادها يسحب نقاطها ولا يُسقط Pro', async () => {
+  const at = Date.now() - DAY;
+  await fresh('lp1', { plan: 'pro', planUpdatedAt: at, planPayId: 'cs_lp1_pro', points: 920 });
+  const g = await ccsLib.grantPlanToUser('lp1', 'basic', 'lastStripeInvoiceId', 'in_lp1_1', lateMeta('in_lp1_1'));
+  assert.equal(g.pointsAdded, 360);
+  assert.equal(g.planKept, true);
+  let u = await user('lp1');
+  assert.deepEqual([u.plan, u.planUpdatedAt, u.planPayId, u.planNext], ['pro', at, 'cs_lp1_pro', undefined], 'الفترة الحاليّة ورقم دفعتها كما هما، ولا فترة Plus في planNext');
+  assert.equal(pts('lp1'), 1280);
+  const again = await ccsLib.grantPlanToUser('lp1', 'basic', 'lastStripeInvoiceId', 'in_lp1_1', lateMeta('in_lp1_1'));
+  assert.equal(again.alreadyGranted, true);
+  assert.equal(pts('lp1'), 1280);
+  const hit = await swPayRefund.findRec(['in_lp1_1']);
+  assert.ok(hit && hit.rec.at === null, 'سجلّ المنح بلا وقت فترة (keptPlan)');
+  assert.equal((await hook(refundOf('in_lp1_1', 1000, 1000))).code, 200);
+  u = await user('lp1');
+  assert.equal(tier.chatPeriod(u).plan, 'pro', 'Pro سارية بعد الاسترداد');
+  assert.equal(pts('lp1'), 920, 'نقاط الدفعة المستردّة وحدها');
+});
+
+test('port-1ب: الدفعة المتأخّرة شحنت ثمّ فشلت كتابة السجلّ ⇒ الإكمال بعلامته لا ينزل Pro إلى Plus (كان يكتبها رئيسيّةً) ولا يشحن ثانيةً', async () => {
+  const at = Date.now() - DAY;
+  await fresh('lp2', { plan: 'pro', planUpdatedAt: at, planPayId: 'cs_lp2_pro', points: 920 });
+  fail.userPut = 1;
+  await assert.rejects(ccsLib.grantPlanToUser('lp2', 'basic', 'lastStripeInvoiceId', 'in_lp2_1', lateMeta('in_lp2_1')));
+  fail.userPut = 0;
+  assert.equal(pts('lp2'), 1280, 'شُحنت مرّة');
+  assert.ok(JSON.parse(store.get('paid-credit:lastStripeInvoiceId:in_lp2_1')).keep, 'العلامة تحمل القرار');
+  const g = await ccsLib.grantPlanToUser('lp2', 'basic', 'lastStripeInvoiceId', 'in_lp2_1', lateMeta('in_lp2_1'));
+  assert.equal(g.completed, true);
+  const u = await user('lp2');
+  assert.deepEqual([u.plan, u.planUpdatedAt, u.planPayId, u.planNext], ['pro', at, 'cs_lp2_pro', undefined], 'Pro كما هي بعد الإكمال');
+  assert.equal(u.lastStripeInvoiceId, 'in_lp2_1');
+  assert.equal(pts('lp2'), 1280, 'لا شحن ثانٍ');
+  assert.equal(store.has('paid-credit:lastStripeInvoiceId:in_lp2_1'), false, 'العلامة مُحيت');
+  const hit = await swPayRefund.findRec(['in_lp2_1']);
+  assert.ok(hit && hit.rec.at === null && !hit.rec.prev, 'سجلّ المنح بلا فترة ولا سابقة كالمنح المباشر');
+});
+
+test('port-1ج: keep بالفترة الفعليّة — الرئيسيّة انتهت وفترة Pro في planNext سارية ⇒ دفعة Pro متأخّرة نقاط وحدها (شرط main بـuser.plan كان يفتح Pro من الآن ويُخرج planNext)', async () => {
+  const old = Date.now() - 40 * DAY, nextAt = Date.now() - 2 * DAY;
+  await fresh('lp3', { plan: 'basic', planUpdatedAt: old, planPayId: 'cs_lp3_b', planNext: [{ plan: 'pro', at: nextAt, payId: 'cs_lp3_p' }], points: 0 });
+  assert.equal(tier.chatPeriod(await user('lp3')).plan, 'pro');
+  const g = await ccsLib.grantPlanToUser('lp3', 'pro', 'lastStripeInvoiceId', 'in_lp3_1', Object.assign(lateMeta('in_lp3_1'), { amount: 2000 }));
+  assert.equal(g.pointsAdded, 920);
+  assert.equal(g.planKept, true);
+  const u = await user('lp3');
+  assert.deepEqual([u.plan, u.planUpdatedAt], ['basic', old], 'لا فترة جديدة من الآن');
+  assert.deepEqual(u.planNext, [{ plan: 'pro', at: nextAt, payId: 'cs_lp3_p' }], 'فترة Pro المدفوعة باقية كما هي');
+  // بلا keepHigherPlan (دفعة حاليّة لا متأخّرة) القاعدة كما كانت: Pro بالدرجة نفسها تفتح فترتها
+  const g2 = await ccsLib.grantPlanToUser('lp3', 'pro', 'lastStripeSessionId', 'cs_lp3_now', { refs: [], amount: 2000, currency: 'usd' });
+  assert.equal(g2.plan, 'pro');
+  assert.equal((await user('lp3')).planPayId, 'cs_lp3_now');
+});
+
+test('port-2: تجديد لحساب محذوف ⇒ تنبيه واحد «دفعة وصلت ولم تُمنح … محذوف» مرّة لكلّ دفعة، وإلغاء الاشتراك؛ والتجديد بلا اسم تنبيه main وحده', async () => {
+  await auth.putUser('gonep2', { deleted: true, deletedAt: Date.now(), selfDeleted: true });
+  sub('sub_gonep2', 'gonep2', 'pro', 'active');
+  const before = alerts.length;
+  const ev = renewal('in_gonep2_1', 'gonep2', 'pro', 2000, 'sub_gonep2');
+  assert.equal((await hook(ev)).code, 200);
+  const mine = alerts.slice(before);
+  assert.equal(mine.length, 1, 'تنبيه واحد لا اثنان (orphanPaid + alertUngranted)');
+  assert.match(mine[0].title, /دفعة وصلت ولم تُمنح/);
+  assert.match(mine[0].title, /محذوف/);
+  assert.match(mine[0].body, /in_gonep2_1/);
+  assert.equal(net.subs.sub_gonep2.status, 'canceled');
+  assert.equal((await hook(ev)).code, 200);
+  assert.equal(alerts.length, before + 1, 'الإعادة لا تنبّه ثانية');
+  const b2 = alerts.length;
+  const noName = evt('invoice.paid', { id: 'in_noname_p2', object: 'invoice', billing_reason: 'subscription_cycle', subscription: 'sub_none_p2', amount_paid: 1000, currency: 'usd', lines: { data: [{ metadata: {} }] } });
+  assert.equal((await hook(noName)).code, 200);
+  assert.equal(alerts.length, b2 + 1);
+  assert.match(alerts[alerts.length - 1].body, /بلا اسم/);
+});
+
+test('port-3: needsPassword يقبل pwSet (علامة main من رابط الاسترجاع) — حساب Google/رمز البريد وضع كلمته لا يُحذف بالاسم وحده', async () => {
+  const { needsPassword } = require(rp('api/_lib/account-delete.js'));
+  const h = { hash: 'h', salt: 's' };
+  assert.equal(needsPassword(Object.assign({ googleAuth: true, pwSet: true }, h)), true, 'كان false: لا passwordSet ولا مفتاح resetTokenHash');
+  assert.equal(needsPassword(Object.assign({ otpOnly: true, pwSet: true }, h)), true);
+  assert.equal(needsPassword(Object.assign({ googleAuth: true }, h)), false, 'بلا علامة ولا رمز استرجاع قطّ: كما كان');
+  assert.equal(needsPassword(Object.assign({ googleAuth: true, pwSet: true })), false, 'بلا salt/hash لا كلمة تُطلب');
+});

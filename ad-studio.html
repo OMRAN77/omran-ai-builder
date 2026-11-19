@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>استوديو الإعلانات — om ai</title>
-<script src="/i18n/ad-studio.js?v=609"></script>
-<script defer src="/js/share-sheet.js?v=2"></script><!-- v-share-next: نافذة المشاركة نفسها التي في التطبيق -->
+<script src="/i18n/ad-studio.js?v=610"></script>
+<script defer src="/js/share-sheet.js?v=4"></script><!-- v-share-next: نافذة المشاركة نفسها التي في التطبيق -->
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -97,6 +97,10 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
 .rtb{display:inline-flex;gap:4px;margin:0 6px;vertical-align:middle}
 .rtb button{background:#1c1f25;border:1px solid #2b3038;color:#8b939d;font:700 11px 'Tajawal';padding:4px 10px;border-radius:99px;cursor:pointer}
 .rtb button.on{background:rgba(212,175,55,.14);border-color:#d4af37;color:#eef0f6}
+/* v-ad-fx: تأثير لقطة الصورة المولَّدة — واحد أو لا شيء */
+.fxbar{display:flex;align-items:center;gap:6px;margin:10px 0 0;font:700 12px 'Tajawal';color:#8b939d;flex-wrap:wrap}
+.fxbar button{background:#1c1f25;border:1px solid #2b3038;color:#cbd2da;font:700 11.5px 'Tajawal';padding:5px 12px;border-radius:99px;cursor:pointer}
+.fxbar button.on{background:rgba(212,175,55,.14);border-color:#d4af37;color:#eef0f6}
 #genOut{display:none;margin-top:18px}
 #genOut.on{display:block}
 #genOut h3{font-size:13px;font-weight:700;color:#c9d1d9;margin-bottom:9px}
@@ -480,8 +484,8 @@ body{background:#000 !important}
 .chat{background:#000 !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;border-color:rgba(212,175,55,.6) !important}
 .chead,.comp{border-color:rgba(212,175,55,.6) !important}
 .m.u span{background:#000 !important;border:1px solid rgba(212,175,55,.6)}
-.chip,.comp input,.rst,.rstAll,.rtb button,#genOut a,#genOut .genSh,.pick,a.back{background:#000 !important;border-color:rgba(212,175,55,.6) !important}
-.chip:hover,.comp input:focus,.rst:hover,.rstAll:hover,.rtb button:hover,.rtb button.on,#genOut a:hover,#genOut .genSh:hover,.pick:hover,a.back:hover{background:#000 !important;border-color:#c9c9c9 !important}
+.chip,.comp input,.rst,.rstAll,.rtb button,.fxbar button,#genOut a,#genOut .genSh,.pick,a.back{background:#000 !important;border-color:rgba(212,175,55,.6) !important}
+.chip:hover,.comp input:focus,.rst:hover,.rstAll:hover,.rtb button:hover,.rtb button.on,.fxbar button:hover,.fxbar button.on,#genOut a:hover,#genOut .genSh:hover,.pick:hover,a.back:hover{background:#000 !important;border-color:#c9c9c9 !important}
 .gwait{border-color:rgba(212,175,55,.6) !important}
 .note{background:#000 !important;border-color:rgba(212,175,55,.6) !important;color:#c9c9c9 !important}
 </style>
@@ -521,6 +525,7 @@ body{background:#000 !important}
   <div class="gwrap" id="gwrap">
     <div class="gtitle" data-i18n="gTitle">عشرة تصاميم — اختر واحدًا</div>
     <div class="dragbar"><span data-i18n="dragHint">اسحب أيّ نصّ — والمسه ثمّ كبّره أو صغّره</span><span class="szb"><button id="szM">−</button><button id="szP">+</button></span><span class="swat" id="sw"></span><span class="rtb" id="rt" data-i18n="[title]ratioTitle"><button data-r="square" data-i18n="rSquare">◻ مربّع</button><button data-r="tall" class="on" data-i18n="rTall">▯ طولي</button><button data-r="wide" data-i18n="rWide">▭ عرضي</button></span><button class="genB" id="genB"></button><button class="rstAll" id="inkT"></button><button class="rstAll" data-i18n="resetAll">أعِد الكلّ لأصله</button></div>
+    <div class="fxbar" id="fxBar" data-i18n="[title]fxHint"><span data-i18n="fxTitle">تأثير اللقطة</span><button type="button" data-fx="smoke" data-i18n="fx_smoke"></button><button type="button" data-fx="exploded" data-i18n="fx_exploded"></button><button type="button" data-fx="topdown" data-i18n="fx_topdown"></button><button type="button" data-fx="orbit" data-i18n="fx_orbit"></button></div>
     <div id="genOut"></div>
     <div class="grid" id="grid"></div>
   </div>
@@ -796,8 +801,13 @@ async function turn(text){
 
 const SKIPW=(T('skipWords')+','+(ADE.skipWords||'')+',تخط,بدون,بلا').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
 const isSkip=t=>{ const lo=String(t).toLowerCase(); return SKIPW.some(w=>lo.indexOf(w)>=0); };
+/* v-ad-fx-chat (المالك ١٨ نوفمبر: «حطه في المحادثة بعد»): اسم التأثير في كلام المستخدم يختاره في الشريط ويؤكّده بسطر —
+   القائمة نفسها حرفيًّا في js/app-09-attach.js (اختبار ad-fx يقارنهما). بعد ظهور التصاميم يكفي التأكيد بلا «ابدأ من جديد» */
+const AD_FX_WORDS=[['exploded',/[اإأ]كسبلود|تفكيك\s*(?:ال)?قطع|قطع(?:ه|ها)?\s*تتفكّ?ك|exploded/i],['smoke',/سموك|(?:من\s*(?:بين\s*)?|وسط\s*)(?:ال)?دخان|smoke[\s-]*reveal|(?:from|through|in)\s+(?:the\s+)?smoke/i],['topdown',/(?:دون|داون)\s*شوت|لقط[ةه]\s*(?:من\s*)?(?:فوق|الأعلى|علوي[ةه])|تصوير\s*من\s*فوق|top[\s-]?down|down[\s-]?shot|flat[\s-]?lay|bird'?s?[\s-]?eye/i],['orbit',/[اأ]وربي?ت|لقط[ةه]\s*دوّ?ار[ةه]|الكاميرا\s*تدور|orbit/i]];
+const fxOf=t=>{ const w=AD_FX_WORDS.find(w=>w[1].test(t)); return w?w[0]:''; };
 function send(){
   const t=inp.value.trim(); if(!t||busy) return; inp.value=''; push('u',t);
+  const fk=fxOf(t); if(fk){ setFx(fk); push('a',esc(T('fxTitle'))+': <b>'+esc(T('fx_'+fk))+'</b>'); if(S.step>=4) return; }
   if(S.step===3){ if(isSkip(t)){ S.img=null; done(); } else say(T('uploadHint')); return; }
   if(S.step>=4){ say(T('restartHint')); return; }
   if(!S.cat){ const k=detect(t); if(k){ S.cat=k; S.unit=CATS[k].unit; } }
@@ -1056,6 +1066,12 @@ rtEl.onclick=e=>{ const b=e.target.closest('button[data-r]'); if(!b) return;
   [...rtEl.querySelectorAll('button')].forEach(n=>n.classList.toggle('on',n===b));
   renderComp(); };
 
+/* v-ad-fx (طلب المالك ١٧ نوفمبر): تأثير لقطة لصورة الإعلان المولَّدة — الضغط مرّة ثانية يلغيه، وبلا اختيار يبقى الأمر كما كان */
+const fxEl=document.getElementById('fxBar');
+function setFx(k){ S.fx=k||''; [...fxEl.querySelectorAll('button[data-fx]')].forEach(n=>n.classList.toggle('on',n.dataset.fx===S.fx)); }
+fxEl.onclick=e=>{ const b=e.target.closest('button[data-fx]'); if(!b) return;
+  setFx(S.fx===b.dataset.fx?'':b.dataset.fx); };
+
 /* ============ توليد الإعلان صورةً كاملة (OpenAI gpt-image-1) ============ */
 const LOOKMAP=['cinema','layers','poster','elegant','bold','luxe','minimal','magazine','neon'];
 /* v-audit-stud2 (srv-studios-2-9): رموز الخادم بنصّ الصفحة بلغة AL — نفاد رصيد المزوّد كان «⚠️ unavailable» حرفيًّا، و«بلغتَ حدّ اليوم…»
@@ -1072,7 +1088,7 @@ genB.onclick=async()=>{
   genOut.scrollIntoView({behavior:'smooth',block:'nearest'});
   try{
     const r=await fetch('/api/adimage',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({token:TOKEN,lang:AL,ratio:S.ratio||'tall',look:LOOKMAP[S.chosen||0]||'neon',ac:S.ac||'',
+      body:JSON.stringify({token:TOKEN,lang:AL,ratio:S.ratio||'tall',look:LOOKMAP[S.chosen||0]||'neon',fx:S.fx||'',ac:S.ac||'',
         cat:S.cat||'',                                  // بدونها لا يُستعمل القالب المعتمد إطلاقًا
         chips:(S.features&&S.features.length?S.features:(S.facts&&S.facts.length?S.facts:S.chips))||[],
         note:S.note||'', foot:S.place||'', bg:S.bg||'',

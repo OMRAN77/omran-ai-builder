@@ -20,7 +20,7 @@
      من main: عربي/أردو ← عربي، وغيرهما ← إنجليزي. */
   function eT(k){
     /* دمج: مفاتيح المترجم العام (exp_*) أولًا، ثم جدول اللغات الـ15 المحلي */
-    try{ if(typeof window.t==='function'){ var g=window.t('exp_'+k); if(g && g!=='exp_'+k) return g; } }catch(e){ /* i18n لم يجهز */ }
+    try{ if(typeof window.t==='function'){ var g=window.t('exp_'+k); if(g && g!=='exp_'+k) return g; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'exp:23'); /* i18n لم يجهز */ }
     var l = eLang();
     if (l === 'ar' || l === 'ur') {
       return EXP_I18N.ar[k] || EXP_I18N.en[k] || k;

@@ -2,7 +2,7 @@
 // GET ?key=MONITOR_KEY أو ?token=<جلسة المالك> -> runs server-side checks and returns JSON summary.
 const { kvPutJSON, kvGetJSON } = require('./kv.js');
 
-const { isOwner } = require('./_owner.js');
+const { isOwner, isOwnerSession } = require('./_owner.js');
 const { envReport } = require('./env.js');
 
 /* v-redis-why (تنبيه المالك ٤ أكتوبر «قاعدة البيانات (Redis) لا تستجيب» بلا سبب): الفحص كان يبتلع الخطأ ويعيد false، فلا
@@ -64,6 +64,14 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'GET') { res.status(405).json({ error: 'method' }); return; }
   if (!isOwner(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
+  /* v-monitor-readonly (فحص Desloppify ٩ نوفمبر ٢٠٢٦): MONITOR_KEY تحمله ورك فلوهات مستودع علنيّ ويمرّ في الرابط، وكان يمسح سجلّ الأخطاء
+     ويحذف روابط مشاركة المستخدمين ويقرأ تكلفة كلّ حساب وأكبر مفاتيح القاعدة. الآن المفتاح للفحص وحده؛ المسح والحذف والتقارير
+     لجلسة المالك (لوحته ترسل ?token= أصلًا — app-11-video.js). */
+  const __q = req.query || {};
+  if ((__q.clear === 'errors' || __q.clear === '1' || __q.purge === 'media' || __q.usage === '1' || __q.costs === '1') && !isOwnerSession(req)) {
+    res.status(403).json({ error: 'owner_session_required' });
+    return;
+  }
 
   // v-clear-log: مسح سجلّ الأخطاء القديم بطلب المالك (مثل أخطاء ميزةٍ حُذفت).
   // للمالك فقط (محميّ بـ isOwner أعلاه). الاستعمال: ...&clear=errors

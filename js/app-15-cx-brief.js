@@ -28,7 +28,7 @@
   function setVal(id, v){
     var el = $(id); if(!el || v === null || v === undefined || v === '') return false;
     el.value = String(v);
-    try{ el.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){ /* guard-ok — القيمة وُضعت */ }
+    try{ el.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-15-cx-brief:31'); /* guard-ok — القيمة وُضعت */ }
     return true;
   }
   function setSelect(id, v){
@@ -42,7 +42,7 @@
     var on = [];
     (list || []).forEach(function(k){
       var box = document.querySelector('.constructionAnnex[value="' + k + '"]');
-      if(box && !box.checked){ box.checked = true; try{ box.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){ /* guard-ok */ } }
+      if(box && !box.checked){ box.checked = true; try{ box.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-15-cx-brief:45'); /* guard-ok */ } }
       if(box) on.push(box);
     });
     return on.length;
@@ -125,7 +125,7 @@
     $('cxBriefGo').onclick = function(){ run(input, st); };
     input.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); run(input, st); } });
     render();
-    try{ new MutationObserver(render).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
+    try{ new MutationObserver(render).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-15-cx-brief:128'); /* guard-ok */ }
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   setTimeout(boot, 900);

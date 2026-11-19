@@ -46,7 +46,7 @@ module.exports = async (req, res) => {
         answered = true;
         const c = Number(data && data.creditBalance) || 0;
         if (c > best) best = c;
-      } catch (e) { /* guard-ok — مفتاح لا يجيب لا يوقف الباقين */ }
+      } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-balance:49'); /* guard-ok — مفتاح لا يجيب لا يوقف الباقين */ }
     }));
     // v-balance-unknown (المراجعة الثانية): لم يُجب أيّ مفتاح (429/5xx/شبكة) — الصفر هنا جهل لا رصيد: كان يُخزَّن رصيدًا ستّين ثانية
     // فيأخذ كلّ غير مالك {enough:false} ويفشل كلّ فيلم. الآن يُخزَّن «مجهولًا» ٣٠ ثانية، وغير المالك يمرّ (أفضل جهد)، والمالك credits:-1.

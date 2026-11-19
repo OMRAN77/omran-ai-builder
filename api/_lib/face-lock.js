@@ -31,7 +31,7 @@ function imageSize(buf) {
       if (fmt === 'VP8L') { const b = buf.readUInt32LE(21); return { w: 1 + (b & 0x3FFF), h: 1 + ((b >> 14) & 0x3FFF), type: 'webp' }; }
       if (fmt === 'VP8 ') return { w: buf.readUInt16LE(26) & 0x3FFF, h: buf.readUInt16LE(28) & 0x3FFF, type: 'webp' };
     }
-  } catch (e) { /* guard-ok */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/face-lock:34'); /* guard-ok */ }
   return null;
 }
 
@@ -61,7 +61,7 @@ function jpegOrientation(buf) {
       if (m === 0xDA) break;
       i += 2 + len;
     }
-  } catch (e) { /* guard-ok */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/face-lock:64'); /* guard-ok */ }
   return 1;
 }
 

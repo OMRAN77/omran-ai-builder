@@ -72,6 +72,7 @@ async function kvDel(key, opts) {
     await command(['DEL', key]);
   } catch (e) {
     if (opts && opts.strict) throw e;
+    typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/kv:71');
     // best-effort
   }
 }
@@ -108,7 +109,7 @@ async function kvIncr(key) {
 async function kvExpire(key, seconds) {
   try {
     await command(['EXPIRE', key, String(seconds)]);
-  } catch (e) {
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/kv:108');
     // best-effort
   }
 }

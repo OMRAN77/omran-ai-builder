@@ -518,7 +518,8 @@ test('srv-money-5 ٤. حدث الحساب المحذوف يصل مرّتين م�
 // ── أجزاء الواجهة (app-06) في Function: النصّ من الملفّ نفسه ──
 const A6 = read('js/app-06-checkout.js');
 function slice(src, from, to) { const a = src.indexOf(from); const b = src.indexOf(to, a); assert.ok(a >= 0 && b > a, from); return src.slice(a, b); }
-function el(id) { return { id, style: {}, dataset: {}, textContent: '', parentElement: null, querySelector: () => null, children: [], appendChild(c) { c.parentElement = this; this.children.push(c); } }; }
+// v-audit-main: setAttribute — نصّ التجديد يحمل data-i18n منذ v-i18n-14 (main)
+function el(id) { return { id, style: {}, dataset: {}, attrs: {}, textContent: '', parentElement: null, querySelector: () => null, children: [], setAttribute(k, v) { this.attrs[k] = String(v); }, appendChild(c) { c.parentElement = this; this.children.push(c); } }; }
 
 function checkoutUi(opts) {
   const o = opts || {};
@@ -668,9 +669,11 @@ test('cli-money-10 ١. التفضيل «مفعّل» ولا اشتراك متج�
   await u.ctx.syncAutoRenewUI();
   assert.equal(u.els.chkAutoRenew.checked, true, 'التفضيل للشراء القادم باقٍ');
   assert.equal(u.els.autoRenewHint.textContent, 'axLkSubsRenewCardOnly', 'كان autoRenewOnHint «يتجدّد اشتراكك» وهو لا يتجدّد');
+  assert.equal(u.els.autoRenewHint.attrs['data-i18n'], 'axLkSubsRenewCardOnly', 'v-audit-main: مفتاح data-i18n (v-i18n-14) يطابق النصّ — تبديل اللغة لا يعيده «يتجدّد اشتراكك»');
   u = renewUi('1', { ok: true, subs: 1, on: true, periodEnd: 1 });
   await u.ctx.syncAutoRenewUI();
   assert.equal(u.els.autoRenewHint.textContent, 'autoRenewOnHint', 'اشتراك يتجدّد فعلًا');
+  assert.equal(u.els.autoRenewHint.attrs['data-i18n'], 'autoRenewOnHint');
   u = renewUi('0', { ok: true, subs: 0, on: false, periodEnd: 0 });
   await u.ctx.syncAutoRenewUI();
   assert.equal(u.els.autoRenewHint.textContent, 'autoRenewOffHint');

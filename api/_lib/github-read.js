@@ -601,7 +601,7 @@ async function fetchRepoZip(target, opts) {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.length;
-    if (size > ZIP_MAX) { try { await reader.cancel(); } catch (e) { /* المجرى أُغلق */ } throw new Error('المستودع أكبر من ' + b(ZIP_MAX) + ' — أعطِ رابط مجلّد أو ملفّ بدل المستودع كلّه.'); }
+    if (size > ZIP_MAX) { try { await reader.cancel(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/github-read:604'); /* المجرى أُغلق */ } throw new Error('المستودع أكبر من ' + b(ZIP_MAX) + ' — أعطِ رابط مجلّد أو ملفّ بدل المستودع كلّه.'); }
     chunks.push(Buffer.from(value));
   }
   const all = zipLib.unzip(Buffer.concat(chunks)).map((e) => ({ name: e.name.replace(/^[^/]+\//, ''), data: e.data })).filter((e) => e.name);

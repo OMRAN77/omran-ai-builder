@@ -258,9 +258,9 @@ test('١٠. الواجهة: التوقيع لا يقصّ الفيديو، وال
   assert.match(V, /'-filter_complex', 'overlay=0:H-h', '-c:a', 'copy', 'main_wm\.mp4'/, 'أمر التوقيع بلا shortest');
   assert.doesNotMatch(V, /'overlay=[^']*shortest=1/, 'shortest=1 مع صورة ثابتة يقصّ الفيديو إلى إطار واحد (قيس: ١٢٠ ← ١)');
   assert.match(V, /quality: wantQuality \? 'high' : 'fast', style \}; \/\* v-video-first-frame: الأسلوب كان لا يصل \*\/\n\s+if\(filmHeroBase64\)[^\n]*\n\s+const cr = await \(window\.postWithConfirm\n\s+\? window\.postWithConfirm\('\/api\/video\?action=omni-create'/);
-  assert.match(V, /quality: wantQuality \? 'high' : 'fast', style, durationSeconds: durSecs \|\| undefined \}; \/\* v-video-first-frame: الأسلوب كان لا يصل · v-video-durations: والمدّة \*\/\n\s+if\(filmHeroBase64\)[^\n]*\n\s+const cr = await \(window\.postWithConfirm\n\s+\? window\.postWithConfirm\('\/api\/video\?action=minimax-create'/);
+  assert.match(V, /quality: wantQuality \? 'high' : 'fast', style, durationSeconds: Math\.max\(durSecs, dlg\.need\) \|\| undefined \}; \/\* v-video-first-frame: الأسلوب كان لا يصل · v-video-durations: والمدّة \*\/\n\s+if\(filmHeroBase64\)[^\n]*\n\s+const cr = await \(window\.postWithConfirm\n\s+\? window\.postWithConfirm\('\/api\/video\?action=minimax-create'/);
   /* v-video-durations: والمدّة المختارة تصل الاقتصاديّ و«سينمائي» (مشهد الفيلم ٨ ثوانٍ) */
-  assert.match(V, /const veoPayload = \{ promptText: veoPrompt, ratio, token, quality: wantQuality \? 'high' : 'fast', style, durationSeconds: \(creationMode === 'veo' && durSecs\) \|\| undefined \};/);
+  assert.match(V, /const veoPayload = \{ promptText: veoPrompt, ratio, token, quality: wantQuality \? 'high' : 'fast', style, durationSeconds: \(creationMode === 'veo' && Math\.max\(durSecs, dlg\.need\)\) \|\| undefined \};/); // v-video-dialogue-clips: ولا تقلّ عن حاجة كلام الحوار
   assert.match(V, /async function createVeoScene\([^)]*\)\{\n\s+const payload = \{[^}]*style: styleEl\.value, durationSeconds: 8 \};/);
   const A = read('js/app-09-attach.js');
   assert.match(A, /imageBase64: __cartoonB64, imageMime: __cartoonMime, keepPhoto: true, confirmed: true \};/); // v-talkchar-confirm: الموافقة سبقت (priceCheck)
@@ -286,7 +286,7 @@ test('١١. الترندات فوق والصانع تحتها: الوصف بوس
   assert.match(C, /#videoMakerModal \.vmk-studio\.vmk-trends-top\{overflow-y:auto;/);
   assert.match(C, /#videoMakerModal \.vmk-studio\.vmk-trends-top \.vmk-main\{max-height:none;overflow:visible\}/);
   const H = read('index.html');
-  assert.ok(H.includes('src="/js/video.js?v=466"'), 'وسم video.js رُفع');
+  assert.ok(H.includes('src="/js/video.js?v=470"'), 'وسم video.js رُفع');
   assert.ok(Number((H.match(/css\/modules\.css\?v=(\d+)/) || [])[1]) >= 663, 'وسم modules رُفع');
   // تشغيل build الحقيقيّ على بطاقة مصغّرة: الترندات بُنيت قبل الاستوديو (الترتيب الذي أنزلها للأسفل)
   const el = (id, cls) => ({ id: id || '', className: cls || '', classList: { _s: new Set((cls || '').split(' ').filter(Boolean)), add(c) { this._s.add(c); }, contains(c) { return this._s.has(c); }, toggle(c, on) { if (on === false || (on === undefined && this._s.has(c))) this._s.delete(c); else this._s.add(c); } }, children: [], parentElement: null, dataset: {}, style: { setProperty() {} }, attrs: {}, getAttribute(k) { return this.attrs[k]; }, setAttribute(k, v) { this.attrs[k] = v; }, addEventListener() {} });

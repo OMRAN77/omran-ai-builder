@@ -41,7 +41,7 @@ async function pushToOwners(payload, opts) {
     try { sub = await kv.kvGetJSON(subPath(u)); } catch (e) { sub = null; }
     if (!sub || !sub.endpoint) continue;
     try { await webpush.sendNotification(sub, JSON.stringify(payload)); sent++; }
-    catch (e) { /* اشتراك منتهٍ — نتابع للمالك التالي */ }
+    catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_owner-alert:44'); /* اشتراك منتهٍ — نتابع للمالك التالي */ }
   }
   return { sent, reason: sent ? 'ok' : 'no-subscription' };
 }
@@ -76,7 +76,7 @@ async function alertOwnerMedia(kind, opts) {
   if (!fresh) return { sent: 0, reason: 'recent' };
   const r = await pushToOwners({ title: a.title, body: a.body, url: '/' }, o);
   /* بلا VAPID أو بلا اشتراك = لا يصل شيء: يُكتب في سجلّ المالك حتّى يظهر في لوحة الصحّة (نمط pay-refund) */
-  if (!r.sent) { try { require('./log-error.js').logError('owner-alert:media-' + kind, new Error(a.title + ' — ' + a.body)); } catch (e) { /* guard-ok — السجلّ تحسين */ } }
+  if (!r.sent) { try { require('./log-error.js').logError('owner-alert:media-' + kind, new Error(a.title + ' — ' + a.body)); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/_owner-alert:79'); /* guard-ok — السجلّ تحسين */ } }
   return r;
 }
 /* نصّ نفاد رصيد Gemini يغطّيه alertOwnerMedia — حين الاحتياط شغّال فقط (بدونه «خطأ جديد» هو إشعار المالك الوحيد).

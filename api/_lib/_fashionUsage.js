@@ -2,14 +2,11 @@
 // site owner's own Gemini API key. Same pattern as _designUsage.js but with
 // its own completely separate daily counter (db/fashion-usage/), so it does
 // not share quota with chat usage, video usage, or interior design usage.
-const crypto = require('crypto');
 // v-atomic-quota: العدّ في _dailyQuota.js — حجز ذرّيّ قبل التوليد يُردّ إن فشل (كان قراءة JSON ثمّ كتابة).
 const quotaTally = require('./_dailyQuota.js');
 // v-plan-caps: الحدّ أدناه للمجّانيّ، والمشترك بباقة سارية بنسبة سقف محادثته (_planCap.js).
 const { planScaledLimit, planLimitInfo } = require('./_planCap.js');
 const { isBanned } = require('./auth.js');
-
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
 // v-owner-open: المالك (بأي من أسمائه في OWNER_USERNAMES أو OWNER_USERNAME)
 // وقائمة VIP بلا حدود — كان المالك نفسه محدودًا هنا.
@@ -24,17 +21,9 @@ async function __unlimitedUser(username) {
 
 const FASHION_DAILY_LIMIT = 3;
 
+// v-session-dedupe: رمز الجلسة كما يصنعه auth.makeToken حرفيًّا (u نصّ، exp رقم في المستقبل) — نسخة محلّيّة كانت تقبل حمولة بلا exp
 function verifyToken(token) {
-  try {
-    const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (data.exp < Date.now()) return null;
-    return data.u;
-  } catch (e) {
-    return null;
-  }
+  return require('./_session.js').sessionUser(token);
 }
 
 // v-atomic-quota: مع res (ردّ طلب التوليد) يحجز مقعدًا ذرّيًّا يُردّ قبل خروج الردّ ما لم يُستهلك؛ بلا res قراءة مجرّدة.

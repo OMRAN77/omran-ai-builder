@@ -25,7 +25,9 @@ const { grantPlanToUser, PLANS, supersedeSubs, cancelSub, subIdOf } = require('.
 async function orphanPaid(obj, md, kind) {
   // v-r3 (r3-7): الحجز نفسه في PayPal — كان غير صارم فردٌّ لا يُقرأ يعني «سبق التنبيه» و200 بلا تنبيه. alertOnce صارم بمرحلتين (pay-refund.js)، وعطبه يرمي ⇒ 500 فيُعاد.
   const amount = Number(obj.amount_total || obj.amount_paid || obj.amount_received || obj.amount) || 0;
-  await require('./_lib/pay-refund.js').alertOnce('payorphan:' + String(obj.id).slice(0, 200), '⚠️ دفعة لحساب محذوف — ردّ المبلغ',
+  /* v-audit-main (port-2): v-paid-ungranted في main ينبّه «دفعة وصلت ولم تُمنح» لكلّ g.error — هنا تنبيه واحد بالعنوان نفسه (ومعه «محذوف»)، مرّة
+     لكلّ دفعة بالحجز الصارم، مع إلغاء الاشتراك؛ لا تنبيهان للدفعة نفسها. الجلسة بلا اسم والباقة المجهولة والتجديد بلا اسم بـalertUngranted (main). */
+  await require('./_lib/pay-refund.js').alertOnce('payorphan:' + String(obj.id).slice(0, 200), '⚠️ دفعة وصلت ولم تُمنح — حساب محذوف، ردّ المبلغ',
     String(md.username || '?') + ' · ' + String(md.plan || '?') + ' · ' + (amount > 0 ? (amount / 100).toFixed(2) + ' ' + String(obj.currency || '').toUpperCase() : '?')
     + ' · ' + kind + ' ' + String(obj.id).slice(0, 60) + (obj.payment_intent ? ' · ' + String(obj.payment_intent).slice(0, 40) : ''));
   const sub = subIdOf(obj);
@@ -118,6 +120,43 @@ async function paypalWebhook(req, res) {
   }
 }
 
+/* v-owner-link-sub: metadata التجديد. نسخة الاشتراك على الفاتورة تُجمَّد عند إصدارها — قبل basil في subscription_details، وفي basil
+   وما بعده في parent.subscription_details (كان يُقرأ الأوّل وحده، ثمّ metadata أوّل سطر). اشتراكٌ ربطه المالك بحساب بعد أن دُفع بلا دخول
+   (sub-link.js) تحمل فاتورته المُصدَرة قبل الربط نسخةً بلا اسم، فكانت تُتجاهل والمشتركة تدفع. الآن: النسخة كما هي إن حملت الاسم (كما
+   كان حرفيًّا)؛ وإلّا metadata السطر (تعكس الاشتراك الحاليّ)؛ وإلّا metadata الاشتراك نفسه الآن من Stripe. الخطّة من النسخة أوّلًا.
+   عطب Stripe العابر يرمي ⇒ 500 فيعيد Stripe الحدث (لا نبتلع الشحن)؛ ٤٠٤ أو بلا مفتاح = لا اسم كما كان. */
+async function renewalMeta(obj) {
+  const parent = (obj.parent && obj.parent.subscription_details) || null;
+  const snap = (obj.subscription_details && obj.subscription_details.metadata) || (parent && parent.metadata) || null;
+  const line = (obj.lines && obj.lines.data && obj.lines.data[0] && obj.lines.data[0].metadata) || null;
+  const base = snap || line || {};
+  if (base.username) return base;
+  const withName = (m) => Object.assign({}, base, { username: m.username, plan: base.plan || m.plan });
+  if (line && line.username) return withName(line);
+  const idOf = (x) => (typeof x === 'string' ? x : (x && typeof x.id === 'string' ? x.id : ''));
+  const sub = idOf(obj.subscription) || idOf(parent && parent.subscription);
+  const key = String(process.env.STRIPE_SECRET_KEY || '').trim();
+  if (!sub || !key) return base;
+  const r = await fetch('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(sub), { headers: { Authorization: 'Bearer ' + key }, signal: AbortSignal.timeout(8000) });
+  if (r.status === 404) return base;
+  const d = r.ok ? await r.json().catch(() => null) : null;
+  if (!d) throw new Error('stripe ' + r.status + ' subscriptions'); // عابر: 500 فيُعاد الحدث
+  const live = d.metadata || {};
+  return live.username ? withName(live) : base;
+}
+
+/* v-paid-ungranted (فحص Desloppify ٩ نوفمبر ٢٠٢٦، بند المال): دفعة وصلت ولم تُمنح كانت سطرًا في سجلّ Vercel وردّ 200 لـStripe — لا أحد يراها:
+   حساب محذوف أو غير موجود (g.error)، جلسة مدفوعة بلا اسم (رابط دفع بلا دخول) أو بباقة لا نعرفها، أو تجديد لا يحمل اسمًا. الآن تنبيه المالك
+   (دفع + سجلّ الأخطاء) بالقناة نفسها التي ينبّه بها الاسترداد. لا يغيّر المنح ولا الردّ: Stripe لا يعيد حدثًا لا تصلحه الإعادة. لا يرمي. */
+async function alertUngranted(kind, obj, md, why) {
+  try {
+    const pr = require('./_lib/pay-refund.js');
+    const amount = kind === 'renewal' ? obj.amount_paid : obj.amount_total;
+    await pr.alertOwner('⚠️ دفعة وصلت ولم تُمنح — راجعها', [kind === 'renewal' ? 'تجديد' : 'دفع', String((md && md.username) || 'بلا اسم').slice(0, 40),
+      String((md && md.plan) || 'بلا باقة').slice(0, 30), pr.money(amount, obj.currency), String(why || '').slice(0, 80), 'Stripe ' + String(obj.id || '?').slice(0, 40)].join(' · '));
+  } catch (e) { console.error('[webhook] alert failed', e && e.message); }
+}
+
 module.exports = async (req, res) => {
   if (req.query && req.query.src === 'wa') return waWebhook(req, res); // v-phone-link
   if (req.query && req.query.src === 'paypal') return paypalWebhook(req, res); // v-pay-refund
@@ -150,17 +189,20 @@ module.exports = async (req, res) => {
         if (g.error) await orphanPaid(obj, md, 'جلسة'); // v-lock-subs (srv-money-5)
         // v-lock-subs (srv-money-3): اشتراك جديد يلغي القديم من خانته — بعد المنح وبعد «سبق المنح» أيضًا (إعادة بعد إلغاء تعذّر). يرمي ⇒ 500 فيُعاد.
         else if (obj.mode === 'subscription' && subIdOf(obj)) await supersedeSubs(md.username, md.plan, subIdOf(obj));
+      } else if (obj.payment_status === 'paid') {
+        await alertUngranted('checkout', obj, md, !md.username ? 'الجلسة بلا اسم مستخدم' : 'باقة غير معروفة');
       }
     } else if (event.type === 'invoice.paid') {
       // تجديد شهري فقط — فاتورة الإنشاء الأولى غطّاها حدث الجلسة أعلاه.
-      const md = (obj.subscription_details && obj.subscription_details.metadata)
-        || (obj.lines && obj.lines.data && obj.lines.data[0] && obj.lines.data[0].metadata) || {};
+      const md = obj.billing_reason === 'subscription_cycle' ? await renewalMeta(obj) : {};
       if (obj.billing_reason === 'subscription_cycle' && md.username && PLANS[md.plan]) {
         const pays = (obj.payments && Array.isArray(obj.payments.data)) ? obj.payments.data.map((x) => x && x.payment).filter(Boolean) : [];
         const g = await grantPlanToUser(md.username, md.plan, 'lastStripeInvoiceId', obj.id, { // v-pay-refund: سجلّ المنح بأرقام دفعته
           refs: [obj.payment_intent, obj.charge].concat(pays.map((x) => x.payment_intent), pays.map((x) => x.charge)), amount: obj.amount_paid, currency: obj.currency });
         console.log('[webhook] renewal ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
         if (g.error) await orphanPaid(obj, md, 'تجديد'); // v-lock-subs (srv-money-5)
+      } else if (obj.billing_reason === 'subscription_cycle' && Number(obj.amount_paid) > 0) {
+        await alertUngranted('renewal', obj, md, !md.username ? 'التجديد بلا اسم مستخدم' : 'باقة غير معروفة');
       }
     } else if (event.type === 'payment_intent.succeeded') {
       /* v-lock-gpay (srv-money-1، موافقة المالك ٢٧ أكتوبر): Apple Pay / Google Pay كان يُشحن بطلب verify-payment-intent واحد من

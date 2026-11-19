@@ -146,7 +146,7 @@ async function settleOne(taskId, ok, opt) {
       return DELIVERY_PENDING;
     }
     if (!mine) return deliveryVerdict(kv, key, true);
-    try { await kv.kvDel(key); } catch (e) { /* أفضل جهد — علامة التسليم تحسم، والتذكرة تسقط بعد يومين */ }
+    try { await kv.kvDel(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-job:149'); /* أفضل جهد — علامة التسليم تحسم، والتذكرة تسقط بعد يومين */ }
     return { settled: true, refunded: false, username: job.u };
   }
   // v-lock-vid-r: «رُدّت» بلا مدّة — لا تسليم بعدها أبدًا. v-lock-port-vid-r: بالرمز يُعرف الحاجز إن ضاع ردّ SET NX.
@@ -176,7 +176,7 @@ async function settleOne(taskId, ok, opt) {
     try { await kv.kvDel(key + ':done'); } catch (e2) { console.error('[video-job] claim release failed: ' + (e2 && e2.message)); }
     return REFUND_RETRY;
   }
-  try { await kv.kvDel(key); } catch (e) { /* أفضل جهد — علامة الردّ تحسم (من يرى رمزًا غير رمزه لا يردّ)، والتذكرة تسقط بعد يومين */ }
+  try { await kv.kvDel(key); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-job:179'); /* أفضل جهد — علامة الردّ تحسم (من يرى رمزًا غير رمزه لا يردّ)، والتذكرة تسقط بعد يومين */ }
   if (job.l) {
     try { await guard.releaseVideoLock(job.u); } catch (e) { console.error('[video-job] unlock failed: ' + (e && e.message)); }
   }
@@ -236,7 +236,7 @@ async function sweepStaleVideoJobs(username, o) {
   try {
     if (keep.length) await kv.kvSetRaw(openKey(username), JSON.stringify(keep), TICKET_TTL_SEC);
     else await kv.kvDel(openKey(username));
-  } catch (e) { /* guard-ok — المسوّى محسوم بمفتاح التسوية، والفهرس يسقط بعد يومين */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/video-job:146'); /* guard-ok — المسوّى محسوم بمفتاح التسوية، والفهرس يسقط بعد يومين */ }
   return out;
 }
 

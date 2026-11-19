@@ -16,7 +16,7 @@ function buildMediaIntentPrompt(text) {
   return [
     'You classify ONE chat message (Arabic dialects are common). Decide whether the user is explicitly commanding the assistant to CREATE a NEW image or a NEW video right now, versus merely talking about images/videos.',
     'Reply with JSON only: {"lane":"image"|"video"|"none","confidence":<0..1>}.',
-    'lane=image: a direct command to draw/generate/design a picture, poster, logo, card, certificate, banner ("ارسم لي", "سوّ لي بوستر", "generate an image of").',
+    'lane=image: a direct command to draw/generate/design a picture, poster, logo, card, certificate, banner, or a drawn/old/historical map ("ارسم لي", "سوّ لي بوستر", "ابغي خريطة قديمة بدون كتابة", "generate an image of").',
     'lane=video: a direct command to produce a video/clip/animation ("سوّ لي فيديو عن مطعمي", "animate this", "make a 10s clip of").',
     'lane=none: everything else — questions, how-to, advice, tips, best apps/tools, platforms (YouTube, TikTok, Instagram), scripts, captions, titles, ideas, editing text, uploading, downloading, watching, quality/format, or any sentence that only mentions the words image/video/picture.',
     'Asking for examples, samples or a showcase, or for several kinds at once (images and videos, styles, patterns, fashion), is none: the chat model answers it.',
@@ -72,7 +72,7 @@ async function handler(req, res) {
   try {
     const gate = await checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'media-intent', DAILY_LIMIT);
     if (!gate || !gate.allowed) { res.status(200).json({ lane: null, source: 'limit' }); return; }
-  } catch (e) { /* العدّاد تحسين لا شرط */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/media-intent:75'); /* العدّاد تحسين لا شرط */ }
   const r = await classifyMediaIntentLLM({ apiKey, text, timeoutMs: 2200 }); /* v-chat-fast: تحت مهلة العميل (٢٫٥ث) */
   if (!r) { res.status(200).json({ lane: null, source: 'unavailable' }); return; }
   res.status(200).json({ lane: r.lane, confidence: r.confidence, source: 'llm' });

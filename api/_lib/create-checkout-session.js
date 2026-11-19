@@ -61,7 +61,7 @@ const LOWER_PLAN = 'عندك باقة أعلى سارية — الأدنى تُ�
 
 /* v-lock-subs (موافقة المالك ٢٧ أكتوبر «صلح الخطير وابدا فيهم كلهم» على بنود الأبواب المقفلة): خانة كلّ خطّة ودرجتها.
    المحادثة خانة واحدة، وكلّ نوع وسائط خانته (mix · maha · image · video)، والدرجات basic < pro < max؛ رزم النقاط بلا خانة. */
-const PLAN_RANK = { basic: 1, pro: 2, max: 3 };
+const PLAN_RANK = { basic: 1, pro: 2, max: 3 }; // v-owner-link-sub يقرؤه أيضًا (منحٌ متأخّر لا ينزل بالباقة — rankOf)
 const rankOf = (plan) => PLAN_RANK[String(plan || '').split('_').pop()] || 0;
 function planSlot(plan) { const p = PLANS[plan]; return !p || p.pack ? null : (p.media ? 'media:' + p.media : 'chat'); }
 
@@ -203,7 +203,8 @@ async function noteGrant(username, plan, sourceField, sourceId, meta, user, prev
   const p = PLANS[plan];
   const m = meta || {};
   // keptAt (v-lock-subs، srv-money-4): أدنى تحت أعلى سارية — فترته في planNext بوقتها، فاسترداده الكامل يسحبها هي (pay-refund.js) ولا يمسّ الأعلى
-  const at = p.media ? (user.media && user.media[p.media] && user.media[p.media].at) : (p.pack ? null : (keptAt || user.planUpdatedAt));
+  // v-owner-link-sub: منحٌ متأخّر أبقى الباقة الأعلى أو المساوية كما هي (keptPlan) لم يفتح فترة — كرزمة النقاط بلا وقت فترة
+  const at = p.media ? (user.media && user.media[p.media] && user.media[p.media].at) : ((p.pack || m.keptPlan) ? null : (keptAt || user.planUpdatedAt));
   await require('./pay-refund.js').recordGrant({
     id: String(sourceId), field: sourceField || null, username, plan, points: p.points, media: p.media || null, at: Number(at) || null,
     amount: Number(m.amount) > 0 ? Math.round(Number(m.amount)) : null, currency: m.currency ? String(m.currency).toLowerCase() : null,
@@ -264,11 +265,15 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
   let prior = null; // تلك الفترة كاملة (ورصيد الوسائط قبل ملئه) — priorOf وقت الإكمال يقرأ الرصيد بعد الملء
   let kept = false; // v-lock-subs (srv-money-4): أدنى تحت أعلى سارية — فترته في planNext والأعلى لا تُمسّ، في المنح وفي إكماله
   let drop = null; // v-lock-subs: فترة planNext التي حلّ محلّها هذا المنح (الفعليّة قبله) — تخرج منها في المنح وفي إكماله
+  let keep = false; // v-owner-link-sub × v-audit-main: منحٌ متأخّر تحت فترة فعليّة أعلى أو مساوية — النقاط وحدها، بلا فترة ولا planNext، في المنح وفي إكماله
   try {
     kept = !!keepsHigherChat(user, plan); // v-lock-subs (srv-money-4): الأعلى السارية تبقى، وفترة الأدنى في planNext (داخل try: رميٌ يفكّ الحجز)
     const cp = (PLANS[plan].pack || PLANS[plan].media) ? null : require('./tier.js').chatPeriod(user); // الفترة الفعليّة قبل المنح
-    drop = !kept && cp && cp.next ? { plan: cp.plan, at: cp.at } : null;
-    const prev = kept ? null : await require('./pay-refund.js').priorOf(user, username, PLANS[plan]); // v-pay-refund: قبل أن تُستبدل الفترة. لا يرمي
+    // v-audit-main: شرط main (planActive وuser.plan) بالفترة الفعليّة نفسها التي يقرؤها kept — فترة planNext السارية بعد انتهاء الرئيسيّة تُحسب أيضًا
+    keep = !!(meta && meta.keepHigherPlan) && !!cp && rankOf(cp.plan) >= rankOf(plan);
+    if (keep) kept = false; // لا تُحفظ في planNext: دفعة فترة مضت تُضاف نقاطها وحدها (قرار v-owner-link-sub)
+    drop = !kept && !keep && cp && cp.next ? { plan: cp.plan, at: cp.at } : null;
+    const prev = (kept || keep) ? null : await require('./pay-refund.js').priorOf(user, username, PLANS[plan]); // v-pay-refund: قبل أن تُستبدل الفترة. لا يرمي
     prior = prev;
     was = String((prev && (PLANS[plan].media ? prev.payId : prev.planPayId)) || '');
     if (PLANS[plan].media) {
@@ -296,13 +301,18 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     }
 
     // v-plan-routing: رزمة نقاط لا تمسّ الباقة ولا تاريخ تجديدها — النقاط فقط.
-    if (!PLANS[plan].pack && !kept) { user.plan = plan; user.planUpdatedAt = Date.now(); }
-    if (!PLANS[plan].pack && !kept) user.planPayId = sourceId ? String(sourceId) : undefined; // v-pay-refund: كالسطر أعلاه للوسائط
+    /* v-owner-link-sub: دفعة قديمة يُضيفها المالك متأخّرًا (meta.keepHigherPlan) لا تستبدل باقةً سارية أعلى أو مساوية دُفعت بعدها
+       (كانت Pro اشتُريت أمس تصير Plus ٣٥ يومًا): النقاط وحدها، والفترة الحاليّة ورقم دفعتها كما هما — فاستردادها لاحقًا يسحب نقاطها ولا يُسقط الباقة.
+       v-audit-main: keep محسوب أعلى داخل try (بالفترة الفعليّة chatPeriod)، ولا يفتح فترة ولا يدخل planNext — والعلامة تحمله فيكمل الإكمال بالقرار نفسه. */
+    if (!keep) { // PITFALLS: السطران كما هما حرفيًّا (تثبّتهما plan-routing) — اللفّ لا الحشر
+      if (!PLANS[plan].pack && !kept) { user.plan = plan; user.planUpdatedAt = Date.now(); }
+      if (!PLANS[plan].pack && !kept) user.planPayId = sourceId ? String(sourceId) : undefined; // v-pay-refund: كالسطر أعلاه للوسائط
+    }
     // v-lock-subs (srv-money-4): فترة الأدنى تُحفظ في planNext (kept)، وفترة planNext التي حلّ محلّها هذا المنح تخرج منها (هي prev في سجلّه)
     const keptAt = kept ? Date.now() : 0;
-    if (!PLANS[plan].pack) setNext(user, nextPeriods(user, kept ? { plan, at: keptAt, payId: sourceId ? String(sourceId) : null } : null, drop));
-    // v-lock-credit: وقت فترة هذا المنح (planNext للأدنى تحت أعلى، وإلّا الرئيسيّة؛ الرزمة بلا فترة) — العلامة تحمله فيكمل الإكمال بالوقت نفسه لا بوقت الإعادة
-    const grantAt = keptAt || (!PLANS[plan].pack && Number(user.planUpdatedAt)) || Date.now();
+    if (!PLANS[plan].pack && !keep) setNext(user, nextPeriods(user, kept ? { plan, at: keptAt, payId: sourceId ? String(sourceId) : null } : null, drop));
+    // v-lock-credit: وقت فترة هذا المنح (planNext للأدنى تحت أعلى، وإلّا الرئيسيّة؛ الرزمة والمنح المتأخّر بلا فترة) — العلامة تحمله فيكمل الإكمال بالوقت نفسه لا بوقت الإعادة
+    const grantAt = keptAt || (!PLANS[plan].pack && !keep && Number(user.planUpdatedAt)) || Date.now();
     if (sourceField) user[sourceField] = sourceId;
 
     // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في points.js
@@ -317,8 +327,8 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
     user.points = Number(newBalance);
 
     await putUser(username, user);
-    await noteGrant(username, plan, sourceField, sourceId, meta, user, prev, keptAt); // v-pay-refund
-    return Object.assign({ ok: true, plan: (PLANS[plan].pack || kept) ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, pointsAdded: PLANS[plan].points, balance: Number(newBalance) }, kept ? { kept: true } : {});
+    await noteGrant(username, plan, sourceField, sourceId, keep ? Object.assign({}, meta, { keptPlan: true }) : meta, user, keep ? null : prev, keptAt); // v-pay-refund
+    return Object.assign({ ok: true, plan: (PLANS[plan].pack || kept || keep) ? (user.plan || null) : plan, pack: !!PLANS[plan].pack, planKept: keep || undefined, pointsAdded: PLANS[plan].points, balance: Number(newBalance) }, kept ? { kept: true } : {});
   } catch (e) {
     /* v-lock-credit (srv-money-2) — القاعدة الواحدة لفشلٍ بعد أثرٍ لا يُعاد، تحلّ محلّ ردّ v-lock-gpay (srv-money-1):
        قبل الأثر ⇒ يُفكّ الحجز فتمنح الإعادة كاملًا. بعده ⇒ لا فكّ أبدًا: علامة الإكمال (markCredited) بوقت الأثر والفترة السابقة وقرار
@@ -327,7 +337,7 @@ async function grantLocked(username, user, plan, sourceField, sourceId, meta) {
        عطل، وkvDel يبتلع فشله — ردٌّ نجح وفكٌّ لم يصل يترك الدافع بلا نقاط ولا باقة ولا ما يكملها؛ والإكمال يغطّي ما كان يحميه (شحنة واحدة،
        والإعادة تسلّم الباقة) ويغطّي معه «لا يُعرف» (getUser يعيد null عند العطل) بلا تخمين وملء رصيد الوسائط الذي لا يُردّ أصلًا. */
     if (claim && !creditedAt) await releaseClaim(claim, sourceField, sourceId, username, plan); // لم يقع أثر — يُفكّ الحجز فتنجح المحاولة التالية
-    else if (claim) await markCredited(sourceField, sourceId, { at: creditedAt, was, prev: prior, kept, drop, meta }, username, plan); // الحجز باقٍ، والإعادة تكمل
+    else if (claim) await markCredited(sourceField, sourceId, { at: creditedAt, was, prev: prior, kept, drop, meta, keep }, username, plan); // الحجز باقٍ، والإعادة تكمل
     throw e;
   }
 }
@@ -351,11 +361,11 @@ async function settleWrite(fn) {
 const payRef = (field, id) => String(field) + ':' + String(id).slice(0, 120);
 // سطر في سجلّ أخطاء المالك يُنتظر حفظه (بمهلة log-error) وفيه رقم الدفعة — فلا يُسقَط بعد الردّ ولا تكتم دفعةٌ أخرى سطرها. لا يرمي.
 async function ownerLog(scope, message, meta) {
-  try { await require('./log-error.js').logErrorAndFlush(scope, new Error(message), meta); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
+  try { await require('./log-error.js').logErrorAndFlush(scope, new Error(message), meta); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/create-checkout-session:364'); /* guard-ok — التسجيل تحسين لا شرط */ }
 }
 // وإشعار المالك (pay-refund alertOwner: سجلّه + الدفع بمهلة) — لحجزٍ لا يحسمه شيء وحده بعد الآن. لا يرمي.
 async function ownerAlert(title, body) {
-  try { await require('./pay-refund.js').alertOwner(title, body); } catch (e) { /* guard-ok — التنبيه تحسين لا شرط */ }
+  try { await require('./pay-refund.js').alertOwner(title, body); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/create-checkout-session:368'); /* guard-ok — التنبيه تحسين لا شرط */ }
 }
 
 /* v-lock-r2 (money-invariants-7): الحجز كان SET NX غير صارم خارج الـtry — ردّ 200 لا يُقرأ يعود false «مشغول» فيُجاب «سبق الشحن» 2xx والدفعة
@@ -404,6 +414,7 @@ async function releaseClaim(claim, field, id, username, plan, checkFirst) {
 // المراجعة المعاكسة الثانية (#2): الكتابة تُعاد (settleWrite)، والسطران برقم الدفعة ويُنتظر حفظهما، والفشل الأخير إشعارٌ للمالك أيضًا.
 async function markCredited(field, id, w, username, plan) {
   const body = { at: Number(w.at) || Date.now(), was: String(w.was || ''), prev: w.prev || null, kept: !!w.kept, drop: w.drop || null };
+  if (w.keep) body.keep = true; // v-audit-main (port-1): منح متأخّر أبقى الأعلى أو المساوية (keepHigherPlan) — الإكمال لا يفتح فترة
   if (w.meta && typeof w.meta === 'object') body.meta = { refs: Array.isArray(w.meta.refs) ? w.meta.refs : [], amount: w.meta.amount || null, currency: w.meta.currency || null }; // v-r3 (r3-rv6): لإكمال المنح تحت القفل بلا إعادة حدثه
   const ref = payRef(field, id);
   const meta = { user: username, plan, id: String(id).slice(0, 60) };
@@ -447,6 +458,7 @@ async function finishGrant(username, user, plan, sourceField, sourceId, meta, pe
      وإلّا تُكتب كما كان المنح سيكتبها، بوقته الأصليّ. */
   let newer = false;
   let kept = false; // v-lock-subs: فترة هذه الدفعة في planNext والأعلى السارية باقية
+  let keepPlan = false; // v-audit-main (port-1): منح متأخّر بلا فترة (keepHigherPlan) — كرزمة النقاط في سجلّه
   const view = {}; // وقت الفترة كما فتحها المنح الأصليّ — يقرؤه سجلّ المنح
   if (p.media) {
     const cur = user.media && user.media[p.media];
@@ -475,7 +487,8 @@ async function finishGrant(username, user, plan, sourceField, sourceId, meta, pe
     const inNext = Array.isArray(user.planNext) && user.planNext.some((n) => n && String(n.payId || '') === sid);
     const install = () => { user.plan = plan; user.planUpdatedAt = at; user.planPayId = sid; };
     const landed = (!!cur && cur.payId === sid) || inNext;
-    if (landed) kept = !(cur && cur.payId === sid); // وصل في planNext (أدنى تحت أعلى) أو رئيسيّةً
+    if (w.keep) keepPlan = true; // v-audit-main (port-1): منح متأخّر (keepHigherPlan) لم يفتح فترة — النقاط شُحنت، والفترة الحاليّة لا تُمسّ ولو انتهت قبل الإعادة
+    else if (landed) kept = !(cur && cur.payId === sid); // وصل في planNext (أدنى تحت أعلى) أو رئيسيّةً
     else if (w.kept) {
       // v-lock-subs (srv-money-4): كان أدنى تحت أعلى سارية وقت المنح ⇒ فترته في planNext بوقته، والرئيسيّة لا تُمسّ (كان الإكمال يكتب
       // الأدنى رئيسيّةً فينزل Max إلى Plus ويضيع ما بقي من أيّامها). وإن انتهت الأعلى قبل الإعادة فالفترة نفسها تسري (tier.chatPeriod).
@@ -510,10 +523,10 @@ async function finishGrant(username, user, plan, sourceField, sourceId, meta, pe
       : () => ({ plan, planUpdatedAt: at, planPayId: sid }), !!p.media);
   }
   // سجلّ المنح: prev الفترة التي حلّ محلّها (لا شيء إن حُفظ تحت أعلى، أو حلّ محلّه أحدث لم يُربط بها)، وkeptAt وقت فترته في planNext
-  if (!hit) await noteGrant(username, plan, sourceField, sourceId, meta, view, ((newer && !linked) || kept) ? null : prev, kept ? at : 0);
+  if (!hit) await noteGrant(username, plan, sourceField, sourceId, keepPlan ? Object.assign({}, meta, { keptPlan: true }) : meta, view, ((newer && !linked) || kept || keepPlan) ? null : prev, kept ? at : 0);
   await kvDel(mark);
   if (p.media) return { ok: true, plan: user.plan || null, media: p.media, mediaPlan: plan, pointsAdded: 0, balance: Number(user.points || 0), completed: true };
-  return Object.assign({ ok: true, plan: (p.pack || newer || kept) ? (user.plan || null) : plan, pack: !!p.pack, pointsAdded: p.points, balance: Number(user.points || 0), completed: true }, kept ? { kept: true } : {});
+  return Object.assign({ ok: true, plan: (p.pack || newer || kept || keepPlan) ? (user.plan || null) : plan, pack: !!p.pack, planKept: keepPlan || undefined, pointsAdded: p.points, balance: Number(user.points || 0), completed: true }, kept ? { kept: true } : {});
 }
 
 /* v-r3 (r3-rv6): توأم media-on وmedia-back في المنح — منح وسائط ملأ رصيده (grantMedia) ثمّ فشلت كتابة السجلّ: الحجز باقٍ وعلامة الإكمال، والسجلّ
@@ -701,7 +714,7 @@ async function verifyCheckout(req, res) {
     if (data.mode === 'subscription' && subIdOf(data)) {
       try { await supersedeSubs(username, plan, subIdOf(data)); } catch (e) {
         console.error('[checkout] supersede after verify failed:', e && e.message);
-        try { require('./log-error.js').logError('checkout:supersede', e, { session: String(session_id).slice(0, 60) }); } catch (e2) { /* guard-ok — التسجيل تحسين لا شرط */ }
+        try { require('./log-error.js').logError('checkout:supersede', e, { session: String(session_id).slice(0, 60) }); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/create-checkout-session:717'); /* guard-ok — التسجيل تحسين لا شرط */ }
       }
     }
     res.status(200).json(grant);

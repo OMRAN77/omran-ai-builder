@@ -5,7 +5,7 @@
   var st={gender:'women',colors:[],extras:[]};
   /* v-fx-gender-pics: الفئة تُتذكَّر — كانت ترجع «نسائي» مع كلّ فتح للتطبيق («يثبت نسائي»). تُقرأ هنا قبل الحزمة فيبدأ app-12 بها. */
   var GKEY='aiapp_fashion_gender';
-  try{ var g0=localStorage.getItem(GKEY); if(g0==='men'||g0==='kids') st.gender=g0; }catch(e){ /* guard-ok: بلا تخزين تبدأ نسائيّة كما كانت */ }
+  try{ var g0=localStorage.getItem(GKEY); if(g0==='men'||g0==='kids') st.gender=g0; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'design-gen:8'); /* guard-ok: بلا تخزين تبدأ نسائيّة كما كانت */ }
   /* v603: النصوص من نطاق t() — ١٤ لغةً (كان ثنائيًا: إنجليزيٌ وإلّا عربيّ). القيم المُرسلة تبقى إنجليزيّة. */
   function T(k){ try{ return (typeof t==='function') ? t(k) : k; }catch(e){ return k; } }
   function lbl(icon,k){ var d=document.createElement('div'); d.className='optLbl f417'; d.textContent=icon+' '+T(k); return d; }
@@ -104,10 +104,10 @@
       c.querySelector('.oi').textContent=r[1]; c.querySelector('.ol').textContent=T(r[2]);
       photoize(c,LOOKS+GENDER_FACE[r[0]]+'.webp?v=3',true);
       c.onclick=function(){ st.gender=r[0]; Array.prototype.forEach.call(g.children,function(x,i){ x.classList.toggle('sel',GEN[i][0]===st.gender); }); kindTriggers.forEach(function(tr){ tr.refresh(); });
-        try{ localStorage.setItem(GKEY,st.gender); }catch(e){ /* guard-ok: بلا تخزين تبقى للجلسة وحدها */ }
+        try{ localStorage.setItem(GKEY,st.gender); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'design-gen:107'); /* guard-ok: بلا تخزين تبقى للجلسة وحدها */ }
         var og=document.querySelector('#fashionAiModal .fxAccGrid'); if(og) og.replaceWith(extrasRow()); /* المختار في st.extras يبقى */
         applyGenderTexts();
-        try{ window.dispatchEvent(new CustomEvent('fashion-gender-change',{detail:{gender:st.gender}})); }catch(e){ /* guard-ok: بثّ تجميلي — فشله لا يمسّ اختيار الفئة نفسه */ } };
+        try{ window.dispatchEvent(new CustomEvent('fashion-gender-change',{detail:{gender:st.gender}})); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'design-gen:110'); /* guard-ok: بثّ تجميلي — فشله لا يمسّ اختيار الفئة نفسه */ } };
       g.appendChild(c);
     });
     return g;
@@ -253,5 +253,5 @@
     s.charset = 'utf-8';
     s.setAttribute('data-media-notify', '1');
     document.head.appendChild(s);
-  }catch(e){ /* guard-ok: تعثّر محمّل التنبيهات يجب ألّا يُسقط شيئًا */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'design-gen:256'); /* guard-ok: تعثّر محمّل التنبيهات يجب ألّا يُسقط شيئًا */ }
 })();

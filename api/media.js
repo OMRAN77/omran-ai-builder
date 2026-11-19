@@ -18,6 +18,7 @@ function load(action) {
     case 'pdf': return require('./_lib/pdf-share.js'); // v-pdf-link — تنزيل PDF داخل الأغلفة
     case 'file': return require('./_lib/file-share.js'); // ملفات عامّة (فيديو وغيره)
     case 'social-publish': return require('./_lib/social-publish.js'); // v-director-publish — «انشر في حساباتي» من مخرج التطبيق (المالك وحده)
+    case 'video-erase': return require('./_lib/video-erase.js'); // v-director-erase — «امسح اسم أو كتابة» بالذكاء في المخرج (المالك وحده)
     default: return null;
   }
 }

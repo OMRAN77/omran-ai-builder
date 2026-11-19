@@ -3,6 +3,8 @@
 // chats_delete removes specific chat ids without touching others.
 // chats_wipe explicitly clears all.
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
+// v-strict-rmw (فحص Desloppify ٩ نوفمبر ٢٠٢٦): «اقرأ ثمّ اكتب كاملًا» يقرأ صارمًا — العطل يرمي (٥٠٠) ولا يُقرأ «فارغ»
+const STRICT = { strict: true };
 
 const MAX_BYTES = 900 * 1024;
 
@@ -135,15 +137,16 @@ module.exports = async (req, res) => {
     if (action === 'chats_save') {
       const incoming = slimProjects(body.projects);
       // Get existing server data
-      const rec = await kvGetJSON(chatsKey(username));
+      // v-strict-rmw: قراءة صارمة — عطل لحظيّ كان يُقرأ «لا محادثات ولا محذوفات» فيُكتب فوقها ما في هذا الجهاز وحده
+      const rec = await kvGetJSON(chatsKey(username), STRICT);
       const serverProjects = (rec && Array.isArray(rec.projects)) ? rec.projects : [];
       // Get deleted set
-      const delRec = await kvGetJSON(deletedKey(username));
+      const delRec = await kvGetJSON(deletedKey(username), STRICT);
       const deletedSet = new Set((delRec && Array.isArray(delRec.ids)) ? delRec.ids : []);
       // Merge: server + client, respecting deletions
       const merged = slimProjects(mergeProjects(serverProjects, incoming, deletedSet));
       await kvPutJSON(chatsKey(username), { projects: merged, updatedAt: Date.now() });
-      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').absorbProjects(merged); } catch (e) { /* guard-ok — فشل ربط المحادثات بالمخزن المشترك لا يوقف الحفظ */ } } // v-prov-one
+      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').absorbProjects(merged); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chats:146'); /* guard-ok — فشل ربط المحادثات بالمخزن المشترك لا يوقف الحفظ */ } } // v-prov-one
       res.status(200).json({ ok: true, count: merged.length, merged: true });
       return;
     }
@@ -153,12 +156,12 @@ module.exports = async (req, res) => {
       const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : [];
       if (ids.length === 0) { res.status(400).json({ error: 'no ids' }); return; }
       // Add to deleted set (keep last 500 tombstones)
-      const delRec = await kvGetJSON(deletedKey(username));
+      const delRec = await kvGetJSON(deletedKey(username), STRICT); // v-strict-rmw: لا تُكتب المحذوفات السابقة فوقها فتعود
       const deletedIds = (delRec && Array.isArray(delRec.ids)) ? delRec.ids : [];
       const newDeleted = Array.from(new Set([...deletedIds, ...ids])).slice(-500);
       await kvPutJSON(deletedKey(username), { ids: newDeleted, updatedAt: Date.now() });
       // Remove from projects
-      const rec = await kvGetJSON(chatsKey(username));
+      const rec = await kvGetJSON(chatsKey(username), STRICT);
       if (rec && Array.isArray(rec.projects)) {
         const filtered = rec.projects.filter(p => !ids.includes(p.id));
         await kvPutJSON(chatsKey(username), { projects: filtered, updatedAt: Date.now() });
@@ -171,13 +174,13 @@ module.exports = async (req, res) => {
       /* v-audit-chatsrv (srv-chat-4): المسح الكامل كان يفرّغ سجلّ المحذوفات أيضًا، فالجهاز الآخر (chats_load بلا deletedIds) يرفع نسخته
          المحلّيّة في مزامنته التالية وتقبلها mergeProjects كلّها — فتعود المحادثات «المحذوفة نهائيًّا». الآن كلّ مشروع مخزَّن يُضاف إلى
          السجلّ (مع القديم) فيحذفه كلّ جهاز عند مزامنته ولا يُقبل رفعه ثانية؛ والسقف ٥٠٠ كحذف المحادثة لا يُسقط أيّ معرّف من هذا المسح. */
-      const rec = await kvGetJSON(chatsKey(username));
+      const rec = await kvGetJSON(chatsKey(username), STRICT); // v-strict-rmw
       const wipedIds = ((rec && Array.isArray(rec.projects)) ? rec.projects : []).map((p) => p && p.id).filter(Boolean);
-      const delRec = await kvGetJSON(deletedKey(username));
+      const delRec = await kvGetJSON(deletedKey(username), STRICT);
       const wipedSet = new Set(wipedIds);
       const tomb = ((delRec && Array.isArray(delRec.ids)) ? delRec.ids : []).filter((id) => !wipedSet.has(id)).concat(Array.from(wipedSet)); // معرّفات المسح آخرًا فلا يقصّها السقف
       await kvPutJSON(chatsKey(username), { projects: [], updatedAt: Date.now(), wiped: true });
-      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').clearGen(); } catch (e) { /* guard-ok — فشل مسح المخزن المشترك لا يوقف المسح */ } } // v-prov-one
+      if (require('./_owner.js').isOwnerName(username)) { try { await require('./prov-self.js').clearGen(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/chats:180'); /* guard-ok — فشل مسح المخزن المشترك لا يوقف المسح */ } } // v-prov-one
       await kvPutJSON(deletedKey(username), { ids: tomb.slice(-Math.max(500, wipedSet.size)), updatedAt: Date.now() });
       res.status(200).json({ ok: true, wiped: true });
       return;

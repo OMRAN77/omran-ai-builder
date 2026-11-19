@@ -80,8 +80,8 @@
      نفسها نصًّا مترجمًا — العنوان، الوصف، والسهم — بدل عنوان وحيد وفراغ. */
   function subFor(id){
     var k = 'tcSub_' + id;
-    try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ }
-    try{ var I = window.I18N, L = document.documentElement.lang || 'en'; if(I){ if(I[L] && I[L][k]) return I[L][k]; if(I.en && I.en[k]) return I.en[k]; } }catch(e){ /* guard-ok */ }
+    try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'tool-card-images:83'); /* guard-ok */ }
+    try{ var I = window.I18N, L = document.documentElement.lang || 'en'; if(I){ if(I[L] && I[L][k]) return I[L][k]; if(I.en && I.en[k]) return I.en[k]; } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'tool-card-images:84'); /* guard-ok */ }
     return '';
   }
   /* v-tools-accent (المالك ٥ سبتمبر): لون تمييزي لكل أداة + أيقونة مسطّحة صغيرة في زاوية الصورة */
@@ -95,7 +95,7 @@
     var b = document.getElementById(id); if(!b) return;
     var lab = b.querySelector('.btnLabel'); if(!lab) return;
     /* v-clean-cards (المالك: «أنا عاطنك صور نظيفة ليش حطيت أشياء من عندك»): لا شارة أيقونة ولا لون تمييزي فوق الصورة */
-    try{ b.style.removeProperty('--tc'); var oldIco = b.querySelector('.tcIco'); if(oldIco) oldIco.remove(); }catch(e){ /* guard-ok */ }
+    try{ b.style.removeProperty('--tc'); var oldIco = b.querySelector('.tcIco'); if(oldIco) oldIco.remove(); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'tool-card-images:98'); /* guard-ok */ }
     var meta = b.querySelector('.tcMeta');
     if(!meta){
       meta = document.createElement('span'); meta.className = 'tcMeta';
@@ -106,7 +106,7 @@
     }
     var s = meta.querySelector('.tcSub'); if(s){ var v = subFor(id); if(v) s.textContent = v; }
     /* العنوان نظيف بلا إيموجي في أوله (بعض المفاتيح تبدأ برمز) */
-    try{ var clean = String(lab.textContent || '').replace(/^[^\p{L}\p{N}]+/u, '').trim(); if(clean && clean !== lab.textContent) lab.textContent = clean; }catch(e){ /* guard-ok */ }
+    try{ var clean = String(lab.textContent || '').replace(/^[^\p{L}\p{N}]+/u, '').trim(); if(clean && clean !== lab.textContent) lab.textContent = clean; }catch(e){ typeof __swallow === 'function' && __swallow(e, 'tool-card-images:109'); /* guard-ok */ }
     b.classList.add('tcTxt');
   }
   /* v-live-cards: بيانات حيّة على البطاقة — القبلة (الصلاة القادمة ووقتها واتجاه القبلة) والأسهم (أول سهم في الشريط) */
@@ -132,13 +132,13 @@
         liveChip('btnStocks', it.symbol + ' ' + (up ? '▲' : '▼') + ' ' + fmtNum(it.price));
         var lb = document.querySelector('#btnStocks .tcLive'); if(lb) lb.style.color = up ? '#34d399' : '#f87171';
       }
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'tool-card-images:135'); /* guard-ok */ }
   }
   var liveTimer = null;
   function watchOverlay(){
     var o = document.getElementById('sectionsToolsOverlay'); if(!o || o.__tcLive) return; o.__tcLive = 1;
     var tick = function(){ if(o.classList.contains('show')){ liveCards(); if(!liveTimer) liveTimer = setInterval(function(){ if(o.classList.contains('show')) liveCards(); }, 60000); } };
-    try{ new MutationObserver(tick).observe(o, { attributes: true, attributeFilter: ['class'] }); }catch(e){ /* guard-ok */ }
+    try{ new MutationObserver(tick).observe(o, { attributes: true, attributeFilter: ['class'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'tool-card-images:141'); /* guard-ok */ }
     tick();
   }
   /* v-art-defer (المالك ٢٤ سبتمبر «… والأدوات»): الثماني عشرة بطاقة داخل #sectionsToolsOverlay
@@ -156,7 +156,7 @@
       else upgradeButton(id, srcFor(id));
     });
   }
-  try{ new MutationObserver(function(){ applyToolPhotos(); setTimeout(applyToolPhotos, 400); setTimeout(applyToolPhotos, 1600); setTimeout(applyToolPhotos, 3200); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* بلا مراقب: تُطبَّق عند التحميل فقط */ }
+  try{ new MutationObserver(function(){ applyToolPhotos(); setTimeout(applyToolPhotos, 400); setTimeout(applyToolPhotos, 1600); setTimeout(applyToolPhotos, 3200); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'tool-card-images:159'); /* بلا مراقب: تُطبَّق عند التحميل فقط */ }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyToolPhotos, { once:true });
   else applyToolPhotos();

@@ -68,6 +68,8 @@ const SPEC = {
   VIDEO_ENHANCE_CAP_CENTS:['tunable', 'بديل: ١٠٠٠ — سقف صرفنا اليوميّ عند المزوّد بالسنت (يوم UTC)؛ ٠ يغلق'],
   VIDEO_ENHANCE_TALL_OK:  ['tunable', 'طبقات (بفواصل) تحقّق المالك من سعر مخرجها الطوليّ — بدونها المخرج الطوليّ للمالك وحده'],
   VIDEO_ENHANCE_UNTRIP:   ['tunable', 'الرمز المكتوب في سجلّ المالك لإعادة الفتح بعد القاطع (مهمّة فاقت تقديرها ثلاث مرّات)'],
+  // v-director-erase: «امسح اسم أو كتابة» بالذكاء في مخرج التطبيق (المالك وحده) — بمفتاح FAL_KEY نفسه، ٥ سنتات للمقطع
+  VIDEO_ERASE_CAP_CENTS:  ['tunable', 'بديل: ٢٠٠ — سقف صرف مسح الكتابة اليوميّ عند المزوّد بالسنت (يوم UTC، ٥ للمقطع)؛ ٠ يغلقه'],
   // v-trend-face-swap: تبديل وجه إطار ترندات Omni بوجه صورة الشخص — بمفتاح FAL_KEY نفسه؛ الأربعة لها بديل آمن في face-swap.js. تشغيله إنفاق بموافقة المالك
   TREND_FACE_SWAP:        ['tunable', 'بديل: off — off لا أحد · owner المالك وحده · on الجميع'],
   FACE_SWAP_MODEL:        ['tunable', 'بديل: fal-ai/flux-2/klein/9b/edit/lora (وبلا LoRA: fal-ai/flux-2/klein/9b/edit)'],
@@ -84,6 +86,9 @@ const SPEC = {
   RUNWAY_API_KEY_3:       ['tunable', 'الفيديو — مفتاح احتياطي'],
   AZURE_SPEECH_KEY:       ['feature', 'الصوت'],
   AZURE_SPEECH_REGION:    ['feature', 'الصوت'],
+  // v-allah-tafkhim: الكلام العربيّ بصوتَي مها وعبدالله من Gemini (يفخّم لفظ الجلالة)، وصوت Azure احتياط تلقائيّ
+  MAHA_VOICE:             ['tunable', 'azure يرجع صوت مها/عبدالله العربيّ إلى Azure القديم — بلا ضبط شغّال ما دام GEMINI_API_KEY موجودًا'],
+  MAHA_VOICE_CAP_CENTS:   ['tunable', 'بديل: ٣٠٠ — سقف صرف صوت مها العربيّ اليوميّ بالسنت (يوم UTC)؛ بعده صوت Azure، و٠ يغلقه'],
   FINNHUB_API_KEY:        ['feature', 'شريط الأسهم'],
   TWELVEDATA_API_KEY:     ['feature', 'شريط الأسهم — بديل'],
   RESEND_API_KEY:         ['feature', 'البريد'],

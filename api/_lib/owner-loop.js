@@ -75,10 +75,10 @@ function upstreamWhy(text) {
     const j = JSON.parse(t), e = (j && (j.error || j.errors && j.errors[0])) || j;
     msg = errMsg(e) || t;
     const raw = e && e.metadata && e.metadata.raw;
-    if (raw && (!errMsg(e) || /provider returned error/i.test(msg))) { let r = String(raw); try { r = errMsg(JSON.parse(raw)) || r; } catch (x) { /* guard-ok — نصّ المزوّد كما هو */ } msg = r; }
+    if (raw && (!errMsg(e) || /provider returned error/i.test(msg))) { let r = String(raw); try { r = errMsg(JSON.parse(raw)) || r; } catch (x) { typeof require === 'function' && require('./_swallow.js').swallow(x, '_lib/owner-loop:78'); /* guard-ok — نصّ المزوّد كما هو */ } msg = r; }
     const pn = e && e.metadata && e.metadata.provider_name;
     if (pn && msg.indexOf(pn) === -1) msg = pn + ': ' + msg;
-  } catch (x) { /* guard-ok — ليس JSON: النصّ نفسه */ }
+  } catch (x) { typeof require === 'function' && require('./_swallow.js').swallow(x, '_lib/owner-loop:81'); /* guard-ok — ليس JSON: النصّ نفسه */ }
   msg = msg.replace(SECRET_RE, '***').replace(/\s+/g, ' ').trim();
   return msg.length > WHY_MAX ? msg.slice(0, WHY_MAX - 1) + '…' : msg;
 }
@@ -156,8 +156,8 @@ function closeTail(s, fullText, ref) {
 function fire(s, b) {
   clear(s);
   s.stalled = b.why || ('المزوّد ما ردّ خلال ' + Math.max(1, Math.round(b.ms / 1000)) + ' ث');
-  try { const p = s.reader && s.reader.cancel(new Error('stall')); if (p && p.catch) p.catch((e) => { /* guard-ok — القارئ أُغلق أصلًا */ }); } catch (e) { /* guard-ok — القارئ أُغلق أصلًا */ }
-  try { if (s.ac) s.ac.abort(); } catch (e) { /* guard-ok — القطع أفضل جهد */ }
+  try { const p = s.reader && s.reader.cancel(new Error('stall')); if (p && p.catch) p.catch((e) => { /* guard-ok — القارئ أُغلق أصلًا */ }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-loop:159'); /* guard-ok — القارئ أُغلق أصلًا */ }
+  try { if (s.ac) s.ac.abort(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-loop:160'); /* guard-ok — القطع أفضل جهد */ }
 }
 function arm(s) {
   clear(s);
@@ -215,7 +215,7 @@ function fetchFailed(s, e) {
     const why = s.stalled;
     s.lastStall = why;
     clear(s);
-    try { if (s.send) s.send({ status: '⏳ ' + why + '…' }); } catch (e2) { /* guard-ok — العميل أغلق المجرى */ }
+    try { if (s.send) s.send({ status: '⏳ ' + why + '…' }); } catch (e2) { typeof require === 'function' && require('./_swallow.js').swallow(e2, '_lib/owner-loop:218'); /* guard-ok — العميل أغلق المجرى */ }
     return { ok: false, status: 504, headers: null, stall: true, text: async () => 'stall: ' + why };
   }
   throw e;
@@ -225,7 +225,7 @@ function fetchFailed(s, e) {
 async function read(reader, s) {
   if (!s || !s.on) return reader.read();
   s.reader = reader;
-  if (s.stalled) { try { await reader.cancel(); } catch (e) { /* guard-ok — أُغلق أصلًا */ } return { done: true, value: undefined }; }
+  if (s.stalled) { try { await reader.cancel(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-loop:228'); /* guard-ok — أُغلق أصلًا */ } return { done: true, value: undefined }; }
   try {
     const r = await reader.read();
     if (!r.done && !s.stalled) poke(s);
@@ -496,22 +496,22 @@ async function think400(up, t, convo, again, send) {
   if (t.orDisp && !blk && !CAP_WHY_RE.test(why)) { // السقف والنافذة والرصيد لمعالجاتها كما كانت
     t.noDisplay = true;
     if (t.talkModel) NO_TALK.set(t.talkModel, Date.now());
-    try { await require('./log-error.js').logErrorAndFlush('chat/thinking-or-display', new Error(why || 'upstream 400'), { action: 'thinking-or-display' }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
+    try { await require('./log-error.js').logErrorAndFlush('chat/thinking-or-display', new Error(why || 'upstream 400'), { action: 'thinking-or-display' }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-loop:499'); /* guard-ok — التسجيل تحسين لا شرط */ }
     return again();
   }
   if (t.talk && !t.disp && !blk && !CAP_WHY_RE.test(why)) { // v-owner-cap-live: رفض السقف/النافذة/الرصيد لمعالجه — كان يُهدر نداءً ويطفئ تفكير الموديل ٦ ساعات
     t.noTalk = true;
     if (t.talkModel) NO_TALK.set(t.talkModel, Date.now());
     if (t.effort && t.talkModel && /effort|output_config|reasoning|provider returned/i.test(why)) require('./owner-think.js').forgetEffort(t.talkModel); // v-owner-light: الرفض لا يميّز بين الحقلين (الوسيط يترجمهما معًا إلى reasoning) — يسقطان معًا في إعادة واحدة ويُذكران
-    try { await require('./log-error.js').logErrorAndFlush('chat/thinking-talk', new Error(why || 'upstream 400'), { action: 'thinking-talk' }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
+    try { await require('./log-error.js').logErrorAndFlush('chat/thinking-talk', new Error(why || 'upstream 400'), { action: 'thinking-talk' }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-loop:506'); /* guard-ok — التسجيل تحسين لا شرط */ }
     return again();
   }
   if (!/thinking|signature|display/i.test(why) || (!t.disp && !blk)) return synth(up, why);
   const n = stripThink(convo, t);
   const off = t.disp && !blk;
   if (off) t.noDisplay = true;
-  try { await require('./log-error.js').logErrorAndFlush('chat/thinking-replay', new Error(why || 'upstream 400'), { action: 'thinking-replay', stripped: n }); } catch (e) { /* guard-ok — التسجيل تحسين لا شرط */ }
-  try { if (typeof send === 'function' && (n || off)) send({ status: n ? '↳ ⚠️ رُفض تفكير الجولات السابقة (400) — نُزع وأُعيد الطلب بدونه' : '↳ ⚠️ ملخّص التفكير غير متاح هنا (400) — يكمل بدونه' }); } catch (e) { /* guard-ok — العميل أغلق المجرى */ }
+  try { await require('./log-error.js').logErrorAndFlush('chat/thinking-replay', new Error(why || 'upstream 400'), { action: 'thinking-replay', stripped: n }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-loop:513'); /* guard-ok — التسجيل تحسين لا شرط */ }
+  try { if (typeof send === 'function' && (n || off)) send({ status: n ? '↳ ⚠️ رُفض تفكير الجولات السابقة (400) — نُزع وأُعيد الطلب بدونه' : '↳ ⚠️ ملخّص التفكير غير متاح هنا (400) — يكمل بدونه' }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-loop:514'); /* guard-ok — العميل أغلق المجرى */ }
   return again();
 }
 // البثّ: content_block_start ثمّ الدلتا — نصّ التفكير (فارغ بلا display) وتوقيعه كما وصلا.
@@ -540,7 +540,7 @@ function thinkStop(t, blk, send) {
   if (!talk.first) return;
   t.shown++;
   const line = talk.first.length > 160 ? talk.first.slice(0, 159) + '…' : talk.first;
-  try { send({ status: '↳ 💭 ' + line, think: { s: talk.body } }); } catch (e) { /* guard-ok — العميل أغلق المجرى */ }
+  try { send({ status: '↳ 💭 ' + line, think: { s: talk.body } }); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-loop:543'); /* guard-ok — العميل أغلق المجرى */ }
 }
 // ردّ المساعد: كتلة التفكير كما وصلت (undefined = ليست تفكيرًا، null = لا تُعاد: مسار آخر أو بلا توقيع).
 function thinkOut(t, cb) {
@@ -592,7 +592,7 @@ async function isDeadPick(model) {
   try {
     const v = await require('./kv.js').kvGetJSON(deadKey(m));
     if (v && Number(v.until) > Date.now()) { deadPicks.set(m, Number(v.until)); return true; }
-  } catch (e) { /* guard-ok — الذاكرة تحسين لا شرط: بلاها يُجرَّب الموديل كما كان */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-loop:595'); /* guard-ok — الذاكرة تحسين لا شرط: بلاها يُجرَّب الموديل كما كان */ }
   return false;
 }
 async function rememberDeadPick(model, status, text, gone) {
@@ -604,7 +604,7 @@ async function rememberDeadPick(model, status, text, gone) {
     const kv = require('./kv.js');
     await kv.kvPutJSON(deadKey(m), { until, status: Number(status) || 0 });
     await kv.kvExpire(deadKey(m), DEAD_TTL_S);
-  } catch (e) { /* guard-ok — الذاكرة الدافئة تكفي هذه النسخة */ }
+  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/owner-loop:607'); /* guard-ok — الذاكرة الدافئة تكفي هذه النسخة */ }
   return true;
 }
 

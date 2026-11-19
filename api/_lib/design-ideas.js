@@ -80,7 +80,7 @@ function norm(q) { return String(q || '').replace(/\s+/g, ' ').trim(); }
 const CACHE_TTL = 24 * 3600;
 function cacheKey(parts) { return 'ideas:v3:' + crypto.createHash('sha1').update(JSON.stringify(parts)).digest('hex'); }
 async function cacheGet(key) { try { const { kvGetRaw } = require('./kv.js'); const raw = await kvGetRaw(key); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
-async function cacheSet(key, obj) { try { const { kvSetRaw } = require('./kv.js'); await kvSetRaw(key, JSON.stringify(obj), CACHE_TTL); } catch (e) { /* guard-ok */ } }
+async function cacheSet(key, obj) { try { const { kvSetRaw } = require('./kv.js'); await kvSetRaw(key, JSON.stringify(obj), CACHE_TTL); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/design-ideas:83'); /* guard-ok */ } }
 
 /* ── جمع الصور: Tavily أولًا، وGoogle صور بديلًا/تكملة ── */
 async function tavilyImages(queries, apiKey, state) {
@@ -250,7 +250,7 @@ async function gather(apiKey, wave1, wave2, gq) {
     /* لا نستهلك حصص البدائل إلا عند قلّة الصور الحقيقية بعد Google/Tavily */
     if (images.length >= 12) break;
     let got = [];
-    try { got = await fn(); } catch (e) { /* guard-ok */ }
+    try { got = await fn(); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/design-ideas:253'); /* guard-ok */ }
     if (got.length) { dedupe(got, seen, images); source = images.length && source === 'google' ? 'mixed' : name; }
   }
   const out = { images: images.slice(0, 80), count: Math.min(images.length, 80), source };

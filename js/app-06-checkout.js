@@ -155,7 +155,7 @@ async function refreshPointsWallet(){
       window.__omranSubs = Array.isArray(d.subs) ? d.subs : []; // v-lock-r2 (r2-5): نهاية الفترة لبطاقة «جدّد»
       pricingMarkCurrentPlan(window.__omranPlan); // v-audit-shell
     } else { row.style.display = 'none'; window.__omranMediaStatus = {}; window.__omranSubs = []; pricingMarkCurrentPlan('guest'); }
-  }catch(e){ /* صامت */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:124'); /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
 
@@ -224,7 +224,7 @@ async function refreshAcctPoints(){
         warn.style.display = 'block';
       } else warn.style.display = 'none';
     }
-  }catch(e){ /* صامت — الشبكة قد تنقطع، لا نكسر قائمة الحساب */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:193'); /* صامت — الشبكة قد تنقطع، لا نكسر قائمة الحساب */ }
 }
 window.refreshAcctPoints = refreshAcctPoints;
 
@@ -241,7 +241,7 @@ function omranIOSStoreApp(){
     /* v-lock-ckui (cli-money-8): selfdiag.js (قبل الحزمة) ينقل علم ?store= إلى sessionStorage ويمسح localStorage (v-store-flag-session)،
        فقراءة localStorage هنا كانت ميّتة: غلاف ?store=apple بلا جسر يرى Google Pay والبطاقة داخله. القراءة من حيث يُحفظ العلم. */
     if((sessionStorage.getItem('aiapp_store') || '') === 'apple') return true;
-  }catch(e){ /* guard-ok — بلا كشف تبقى النافذة الداخلية المعتادة */ }
+  }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:208'); /* guard-ok — بلا كشف تبقى النافذة الداخلية المعتادة */ }
   return false;
 }
 
@@ -250,7 +250,7 @@ function openCheckout(plan){
   if(!authGet('aiapp_auth_token')){
     window.__pendingCheckoutPlan = plan;
     const sd0 = document.getElementById('settingsDialog');
-    if (sd0 && sd0.open && typeof sd0.close === 'function') { try { sd0.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
+    if (sd0 && sd0.open && typeof sd0.close === 'function') { try { sd0.close(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:217'); /* guard-ok — cleanup: close() may throw on some browsers */ } }
     if(typeof window.requireLogin === 'function') window.requireLogin('checkout');
     else settingsToast(t('checkoutLoginFirst'));
     return;
@@ -279,7 +279,7 @@ function openCheckout(plan){
     const sd = document.getElementById('settingsDialog');
     // v-checkout-back: من أين فُتح الدفع — ✕ وحده يعيد الإعدادات على الباقات (ومن البوّابة يبقى سهم رجوعها إلى المحادثة)
     window.__ckFromSettings = (sd && sd.open) ? ((sd.dataset && sd.dataset.deepLink === '1') ? 'deep' : 'page') : '';
-    if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
+    if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:245'); /* guard-ok — cleanup: close() may throw on some browsers */ } }
     overlay.style.display = 'flex';
     // v-ios-nogpay (طلب عمران): زر Google Pay منتج أندرويد ولا معنى له على
     // الآيفون — نُخفيه على iOS ويبقى على بقية الأجهزة. البطاقة وPayPal (دفع
@@ -288,7 +288,7 @@ function openCheckout(plan){
       var __isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       var __gpay = overlay.querySelector('button[onclick="clickGooglePay()"]');
       if (__gpay) __gpay.style.display = __isIOS ? 'none' : 'flex';
-    } catch (e) { /* guard-ok */ }
+    } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:254'); /* guard-ok */ }
   }
   loadPaypalButtons();
   setupWalletPaymentRequest(plan);
@@ -418,7 +418,7 @@ async function ensureStripeJs(){
       stripeJsLoaded = true;
     }
     if (window.Stripe) stripeInstance = window.Stripe(STRIPE_PUBLISHABLE_KEY);
-  } catch (e) { /* Stripe.js failed to load — wallet buttons will just report unavailable */ }
+  } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:334'); /* Stripe.js failed to load — wallet buttons will just report unavailable */ }
   return stripeInstance;
 }
 
@@ -550,7 +550,7 @@ async function handleWalletPaymentMethod(ev, plan, currency){
       statusMsg.textContent = t('checkoutPaidPending');
     }
   } catch (e) {
-    if (!charged) { try { ev.complete('fail'); } catch (e2) { /* guard-ok */ } }
+    if (!charged) { try { ev.complete('fail'); } catch (e2) { typeof __swallow === 'function' && __swallow(e2, 'app-06-checkout:418'); /* guard-ok */ } }
     if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t(charged ? 'checkoutPaidPending' : 'checkoutError'); }
   } finally {
     if (piId) walletPiBusy.delete(piId);
@@ -1031,9 +1031,17 @@ function clockGmtOffset(tz){
   } catch(e) { return ''; }
 }
 
+/* v-i18n-14 (المالك ١٤ نوفمبر: «افحص التطبيق كامل عن اللغات 14»): الساعة كانت عربيّة أو إنجليزيّة فقط — التاريخ «Saturday, November 14»
+   وأسماء المدن بالإنجليزيّة في اللغات الاثنتي عشرة. الآن التاريخ والوقت بلغة الواجهة، والمدن عبر __bT (القاموس __BI). الأرقام لاتينيّة كما كانت. */
+function clockLocale(cal){
+  const L = (typeof lang !== 'undefined' && lang) || 'ar';
+  const base = L === 'ar' ? 'ar-SA' : (({ zh:'zh-CN', fil:'fil-PH' })[L] || L);
+  return base + '-u-' + (cal ? 'ca-islamic-umalqura-' : '') + 'nu-latn';
+}
+function clockCityName(z){ return (typeof window.__bT === 'function') ? window.__bT(z.ar, z.en) : (lang === 'ar' ? z.ar : z.en); }
 function clockFormatTime(tz){
   try {
-    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
+    return new Intl.DateTimeFormat(clockLocale(), {
       timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
     }).format(new Date());
   } catch(e) { return '--:--:--'; }
@@ -1043,7 +1051,7 @@ function populateClockTZSelect(){
   const sel = $('#clockTZSelect');
   if (!sel) return;
   const saved = localStorage.getItem('aiapp_clock_tz');
-  sel.innerHTML = CLOCK_TIMEZONES.map(z => `<option value="${z.tz}">${lang === 'ar' ? z.ar : z.en}</option>`).join('');
+  sel.innerHTML = CLOCK_TIMEZONES.map(z => `<option value="${z.tz}">${clockCityName(z)}</option>`).join('');
   const guess = Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (saved && CLOCK_TIMEZONES.some(z => z.tz === saved)) sel.value = saved;
   else if (CLOCK_TIMEZONES.some(z => z.tz === guess)) sel.value = guess;
@@ -1071,14 +1079,14 @@ __headerClockSync();
 try {
   const __btnClockEl = $('#btnClock');
   if (__btnClockEl) new MutationObserver(__headerClockSync).observe(__btnClockEl, { attributes: true, attributeFilter: ['style', 'class'] });
-} catch(e){ /* guard-ok — المراقب تحسين؛ العنصر مخفيّ افتراضيًّا فلا ضرر بغيابه */ }
+} catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:837'); /* guard-ok — المراقب تحسين؛ العنصر مخفيّ افتراضيًّا فلا ضرر بغيابه */ }
 
 function renderClockWorldStrip(){
   const box = $('#clockWorldStrip');
   if (!box) return;
   box.innerHTML = CLOCK_WORLD_STRIP.map(tz => {
     const meta = CLOCK_TIMEZONES.find(z => z.tz === tz);
-    const label = meta ? (lang === 'ar' ? meta.ar : meta.en) : tz;
+    const label = meta ? clockCityName(meta) : tz;
     return `<div class="clockStripRow" data-tz="${tz}" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:10px; background:var(--bg); border:1px solid var(--border);">
       <span style="font-size:13px; font-weight:500;">${label}</span>
       <span class="clockStripTime" style="font-size:15px; font-weight:700; direction:ltr;">--:--:--</span>
@@ -1093,13 +1101,13 @@ function updateClockDialog(){
   const hEl = $('#clockHijriDate');
   if (gEl) gEl.textContent = clockFormatTime(Intl.DateTimeFormat().resolvedOptions().timeZone);
   if (gdEl) {
-    gdEl.textContent = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
+    gdEl.textContent = new Intl.DateTimeFormat(clockLocale(), {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     }).format(now);
   }
   if (hEl) {
     try {
-      const hijriStr = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-ca-islamic-umalqura-nu-latn' : 'en-US-u-ca-islamic-umalqura', {
+      const hijriStr = new Intl.DateTimeFormat(clockLocale(true), {
         year: 'numeric', month: 'long', day: 'numeric',
       }).format(now);
       hEl.textContent = '🕌 ' + hijriStr;
@@ -1352,12 +1360,16 @@ $('#codeUploadInput').addEventListener('change', (e) => {
    على iOS Safari (يفتح تبويبًا أو لا شيء). على الجوّال نستخدم مشاركة الملف (navigator.share)
    فيظهر «حفظ في الملفات»؛ على الحاسوب يبقى التنزيل المباشر. */
 async function omranSaveOrShareFile(blob, fname){
+  /* v-dl-unified (فحص المالك ٩ نوفمبر «كل ملفات التحميل»): مسار الحفظ الموحّد أوّلًا (app-05 omranSaveBlob) — جسر التطبيق، ثمّ مشاركة
+     الهاتف، وإن رُفضت (ZIP ينتظر تحميل مكتبته من الشبكة فتنتهي «لمسة المستخدم» في الآيفون) رابط خادم بورقة «الملف جاهز» بلمسة جديدة.
+     كان السقوط هنا على رابط blob الذي لا ينزّله الآيفون ولا الغلاف — «ما يطلع شي». والجهاز من نوعه لا من عرض النافذة (mobile-ui). */
+  if(typeof omranSaveBlob === 'function') return omranSaveBlob(blob, fname);
   const isMobile = document.documentElement.classList.contains('mobile-ui') && !(typeof omranDesktopApp === 'function' && omranDesktopApp()); /* v-desktop-app: تطبيق ويندوز في نافذة ضيّقة يبقى حاسوبًا — لا لوحة النظام */
   if(isMobile){
     try{
       const file = new File([blob], fname, { type: blob.type || 'application/octet-stream' });
       if(navigator.canShare && navigator.canShare({ files: [file] })){
-        await navigator.share({ files: [file], title: fname });
+        await navigator.share({ files: [file] });
         return;
       }
     }catch(e){ if(e && e.name === 'AbortError') return; /* غير الإلغاء: ننزّل عاديًّا أدناه */ }
@@ -1899,7 +1911,7 @@ function throwProviderError(status, errText){
   /* v-audit-prov (srv-providers-5): رمز الخادم الثابت لخطأ المزوّد ({error:'provider_failed', code}) يُعرض بنصّ الواجهة (providerError)
      لا بجسمه — لا JSON في الفقاعة ولا في سطر الحالة. نصّ المزوّد الخامّ يصل المالك وحده من الخادم. */
   let __pf = null;
-  try{ const __j = JSON.parse(errText); if(__j && __j.error === 'provider_failed') __pf = __j; }catch(_){ /* guard-ok — جسم غير JSON يُعامَل كما كان */ }
+  try{ const __j = JSON.parse(errText); if(__j && __j.error === 'provider_failed') __pf = __j; }catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-06-checkout:1667'); /* guard-ok — جسم غير JSON يُعامَل كما كان */ }
   if(status === 402){
     // 👑 الرد الاحترافي: 402 مع reason:'points' يعني نفاد النقاط (وليس حد يومي).
     let __pointsErr = false;
@@ -2039,7 +2051,7 @@ async function readOpenAICompatibleStream(res, onDelta){
           hadReasoning = true;
           if(onDelta) onDelta('🧠 يفكر الآن…');
         }
-      }catch(e){ /* ignore partial/malformed chunk */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:1807'); /* ignore partial/malformed chunk */ }
     }
   }
   // v207: إذا انتهى البث أثناء التفكير بدون أي رد فعلي (انقطاع/مهلة) —
@@ -2080,7 +2092,7 @@ async function readGeminiStream(res, onDelta){
             if(onDelta) onDelta(full);
           }
         }
-      }catch(e){ /* ignore partial/malformed chunk */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:1848'); /* ignore partial/malformed chunk */ }
     }
   }
   return full;
@@ -2110,7 +2122,7 @@ async function readClaudeStream(res, onDelta){
           full += json.delta.text;
           if(onDelta) onDelta(full);
         }
-      }catch(e){ /* ignore partial/malformed chunk */ }
+      }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:1878'); /* ignore partial/malformed chunk */ }
     }
   }
   return full;
@@ -2919,7 +2931,7 @@ $('#prompt').addEventListener('input', window.__updateSendReady);
       var strip = document.getElementById('attachStrip');
       var tall = (parseInt(p.style.height, 10) || 0) > 46 || !!(strip && strip.childElementCount > 0);
       box.classList.toggle('omTall', tall);
-    }catch(e){ /* guard-ok — cosmetic */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-06-checkout:2687'); /* guard-ok — cosmetic */ }
   }
   window.__composerSyncTall = syncTall;
   function autoGrow(){
@@ -2980,7 +2992,10 @@ function autoRenewHintText(on){ return t(on ? 'autoRenewOnHint' : 'autoRenewOffH
 function setAutoRenewUI(on, noSub){
   const chk = document.getElementById('chkAutoRenew'), hint = document.getElementById('autoRenewHint');
   if (chk) chk.checked = !!on;
-  if (hint) hint.textContent = (on && noSub) ? t('axLkSubsRenewCardOnly') : autoRenewHintText(!!on);
+  /* v-i18n-14: النصّ كان يُكتب مرّة قبل وصول ملفّ اللغة فيبقى إنجليزيًّا (مسح اللغات: ١٢ لغة) — data-i18n تجعل applyLanguage يحدّثه */
+  if (hint) { hint.setAttribute('data-i18n', on ? 'autoRenewOnHint' : 'autoRenewOffHint'); hint.textContent = autoRenewHintText(!!on); }
+  /* v-lock-subs (cli-money-10) × v-i18n-14 (v-audit-main): مفعّل ولا اشتراك متجدّد — نصّ «للشراء القادم بالبطاقة» بمفتاحه، فيحدّثه applyLanguage بالمفتاح نفسه */
+  if (hint && on && noSub) { hint.setAttribute('data-i18n', 'axLkSubsRenewCardOnly'); hint.textContent = t('axLkSubsRenewCardOnly'); }
 }
 async function autoRenewCall(on){
   const tk = authGet('aiapp_auth_token');

@@ -795,6 +795,8 @@
     "الظفرة": "Al Dhafra TV",
     "عجمان": "Ajman TV",
     "الوسطى": "Al Wousta TV",
+    "الشارقة 2": "Sharjah 2", /* v-i18n-14: كانا يظهران بالعربيّة في كلّ اللغات */
+    "الفجيرة": "Fujairah TV",
     "الشرقية من كلباء": "Al Sharqiya from Kalba",
     "برامج العربية": "Al Arabiya Programs",
     "السعودية": "Saudi TV",
@@ -850,7 +852,7 @@
         if(typeof v === 'string' && v) return v;
         if(L !== 'ar'){ var ve = D.en && D.en[key]; if(typeof ve === 'string' && ve) return ve; }
       }
-    }catch(e){ /* guard-ok: القاموس لم يُحمّل بعد — نرجع للنصّ المضمّن */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-25-tv:853'); /* guard-ok: القاموس لم يُحمّل بعد — نرجع للنصّ المضمّن */ }
     return (L === 'ar') ? ar : en;
   }
   function tt(ar, en){ return tvIsAr() ? ar : en; }
@@ -862,7 +864,7 @@
     try{
       var D = window.I18N && I18N[L] && I18N[L].tvCountries;
       if(D && D[code]) return D[code];
-    }catch(e){ /* guard-ok */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-25-tv:865'); /* guard-ok */ }
     if(L === 'en') return meta[1];
     try{
       var iso = code.replace(/_$/, '').toUpperCase();
@@ -870,7 +872,7 @@
         var dn = new Intl.DisplayNames([L], { type: 'region' }).of(iso);
         if(dn && dn !== iso) return dn;
       }
-    }catch(e){ /* guard-ok: بيئة بلا CLDR — الإنجليزية بديلًا */ }
+    }catch(e){ typeof __swallow === 'function' && __swallow(e, 'app-25-tv:873'); /* guard-ok: بيئة بلا CLDR — الإنجليزية بديلًا */ }
     return meta[1];
   }
   var TV_CAT_KEY = { news: 'tvCatNews', sports: 'tvCatSports', general: 'tvCatGeneral', religion: 'tvCatReligion', kids: 'tvCatKids', biz: 'tvCatBiz' };
@@ -1248,8 +1250,9 @@
     /* v-tv-diag: سطر تشخيص ظاهر يكسر حلقة «ما تغيّر شي» — يقول للمالك النسخة،
        ونوع تشغيل HLS على جهازه، وهل حُمّلت روابط البثّ فعلًا. */
     var __links = (TV_M3U && TV_M3U.byHandle) ? Object.keys(TV_M3U.byHandle).length : 0;
-    var __hls = TV_NATIVE_HLS ? 'HLS أصلي' : 'hls.js';
-    if(meta) meta.textContent = '⚙︎ TV-12 · ' + __hls + ' · روابط:' + __links
+    /* v-i18n-14: السطر كان «HLS أصلي · روابط:» بالعربيّة في كلّ اللغات — كلمتاه بلغة الواجهة */
+    var __hls = TV_NATIVE_HLS ? tvT('tvDiagNativeHls', 'HLS أصلي', 'native HLS') : 'hls.js';
+    if(meta) meta.textContent = '⚙︎ TV-12 · ' + __hls + ' · ' + tvT('tvDiagLinks', 'روابط', 'links') + ':' + __links
       + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '');
     if(!list.length){
       var empty = document.createElement('div');

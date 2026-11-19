@@ -163,7 +163,9 @@ test('٥. واقف كامل: لقطة الوجه تُرسل مرجعًا ثان�
 });
 
 test('٦. الإطفاء والفشل الآمن وحدود المسار: كلّ حالة ترجع للسلوك السابق حرفيًّا', async () => {
-  const base = (await run('anime')).gen;
+  /* v-pstyle-variety: بلا عدّاد يُختار شكل عشوائيّ في كلّ نداء (عميل قديم) — عدّاد ثابت يقارن الشيء بمثله */
+  const V7 = { variant: 7 };
+  const base = (await run('anime', V7)).gen;
   const same = (g, why) => {
     assert.equal(g.parts.filter((x) => x.inlineData).length, 1, why + ': أُرسلت لقطة');
     assert.equal(g.cfg.imageConfig.aspectRatio, undefined, why + ': فُرضت نسبة');
@@ -171,19 +173,19 @@ test('٦. الإطفاء والفشل الآمن وحدود المسار: كلّ
   };
   // مفتاح الإطفاء: صفر نداء كشف وصفر كلفة
   process.env.PSTYLE_FACE_CROP = 'off';
-  const off = await run('anime', null, FULL_BODY_FACE);
+  const off = await run('anime', V7, FULL_BODY_FACE);
   delete process.env.PSTYLE_FACE_CROP;
   same(off.gen, 'الإطفاء');
   assert.ok(off.calls.every((c) => c.kind !== 'detect'), 'الإطفاء: نودي الكاشف');
   // تعطّل الكشف (٥٠٣) أو لا وجه: السلوك السابق حرفيًّا
-  same((await run('anime', null, 'http503')).gen, 'تعطّل الكشف');
-  same((await run('anime', null, [])).gen, 'لا وجه');
+  same((await run('anime', V7, 'http503')).gen, 'تعطّل الكشف');
+  same((await run('anime', V7, [])).gen, 'لا وجه');
   // صورة جماعيّة (٣ وجوه متقاربة) — بوّابة faceCrops
-  same((await run('anime', null, [[60, 200, 180, 304], [60, 448, 180, 552], [60, 700, 180, 804]])).gen, 'جماعيّة');
+  same((await run('anime', V7, [[60, 200, 180, 304], [60, 448, 180, 552], [60, 700, 180, 804]])).gen, 'جماعيّة');
   // وجهان: لقطة أحدهما تسحب ملامحه إلى الآخر — لا لقطة
-  same((await run('anime', null, [[60, 300, 180, 404], [60, 600, 180, 704]])).gen, 'وجهان');
+  same((await run('anime', V7, [[60, 300, 180, 404], [60, 600, 180, 704]])).gen, 'وجهان');
   // وجه يملأ الصورة (≥٤٥٪): الموديل يراه أصلًا
-  same((await run('anime', null, [[100, 200, 900, 800]])).gen, 'وجه قريب');
+  same((await run('anime', V7, [[100, 200, 900, 800]])).gen, 'وجه قريب');
   // المسارات الأخرى لا تدفع كلفة كشف إطلاقًا
   for (const style of ['bokeh', 'eid', 'removebg']) {
     const r = await run(style, { backdrop: 'studio_white' }, FULL_BODY_FACE);
