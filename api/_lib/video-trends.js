@@ -1135,7 +1135,9 @@ function hasSpeech(desc) {
 
 /* كم كلمة تتّسع لها المدّة بنطق متّزن مع وقفات بين الأدوار: ~١٫٧ كلمة في الثانية، وثانية أخيرة بلا كلام
    (المقطع ٨ث اليوم: ثلاث جمل ١٣ كلمة لم تتّسع وقُطعت آخرها) */
-function wordBudget(seconds) { return Math.max(4, Math.floor((seconds - 1) * 1.7)); }
+/* v-video-full-dialogue: lead = ثواني الصمت المحجوزة (ثانية للمقطع الجديد؛ تمديد فيديو جارٍ بلا افتتاح = EXTEND_SAY_LEAD: ١٦ كلمة في ١٠ث) */
+const EXTEND_SAY_LEAD = 0.5;
+function wordBudget(seconds, lead) { return Math.max(4, Math.floor((seconds - (lead > 0 ? lead : 1)) * 1.7)); }
 
 /* «ممثل يتكلم» (احتياطه يمرّ بـveo-create): كلامه بالحرف ومدّته كلامه — قالبه في app-11-video.js («saying exactly these Arabic words»)
    لا يمرّ بالقاعدة: «جمل أقلّ» تناقض «بالحرف»، ولا يُقصّ له شيء (video-photo-identity ٥ب) */
@@ -1143,13 +1145,13 @@ const ACTOR_EXACT = /saying exactly these (?:Arabic )?words/i;
 
 /* القاعدة نفسها لكلّ محرّك؛ بالإنجليزيّة (المحرّكات تطيع أوامر التوقيت بها أدقّ) وقصيرة (< ٤٨٠ حرفًا) لأنّها تدخل حدّ الوصف القديم
    نفسه (١٥٠٠/٢٠٠٠) فيُقصّ لها من وصف طويل */
-function speechPace(desc, seconds) {
+function speechPace(desc, seconds, lead) {
   if (!hasSpeech(desc) || ACTOR_EXACT.test(String(desc || ''))) return '';
   const s = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
   return ' If anyone speaks in this ' + s + '-second clip: one voice at a time — each speaker finishes before the next starts,'
     + ' with a short pause (and any camera cut) between turns; no narrator or background voices over them.'
     + ' Each line is spoken complete, clear and unhurried, as written, lip-synced to the speaker on screen.'
-    + ' All speech ends before the last second (about ' + wordBudget(s) + ' words at most): if the lines do not fit, say fewer lines — never rush, overlap or cut one off.';
+    + ' All speech ends before the last second (about ' + wordBudget(s, lead) + ' words at most): if the lines do not fit, say fewer lines — never rush, overlap or cut one off.';
 }
 
 /* بلا صورة (لا قفل): الوصف ثمّ القاعدة داخل حدّ الوصف نفسه — يُقصّ الوصف لا هي (مع صورة تدخل القفل نفسه: withIdentityLock/withPhotoLock tail) */
@@ -1170,12 +1172,15 @@ function dialogueTurns(desc) {
   const turns = [];
   if (/saying exactly these (?:Arabic )?words/i.test(s)) return turns; // «ممثل يتكلم»: كلامه بالحرف
   const words = (x) => String(x || '').split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
-  const notSpeaker = /^(?:المكان|المشهد|الزمان|الوقت|الكاميرا|التصوير|الأسلوب|الستايل|الإضاءة|الموسيقى|الخلفية|ملاحظة|scene|setting|location|place|time|camera|shot|style|lighting|music|background|note)$/i;
+  /* v-video-full-dialogue: عناوين المشهد («🇦🇪 مشهد قصير: أحب وطني»، «الشخصيات: طفلة وأمها») ليست كلامًا — كانت تُحسب أدوارًا فتأكل من
+     ميزانيّة الكلام وتطيل التوليدة. العنوان يُقارن بحروفه وحدها (بلا رموز ولا تشكيل) */
+  const notSpeaker = /^(?:المكان|(?:ال)?مشهد(?: \S+){0,2}|الزمان|الوقت|الكاميرا|التصوير|الأسلوب|الستايل|الإضاءة|الموسيقى|الخلفية|ملاحظة|(?:ال)?شخصيات|العنوان|الوصف|الفكرة|scene(?: \S+){0,2}|setting|location|place|time|camera|shot|style|lighting|music|background|note|characters?|cast|title|description)$/i;
+  const label = (x) => String(x).replace(/\p{M}/gu, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   let off = 0;
   for (const line of s.split('\n')) {
     /* سطر فيه تنصيصان فأكثر («البنت تسأل: «…» والأم ترد: «…»») = عدّة أدوار تُعدّ بتنصيصاتها، لا دور واحد باسم قبل النقطتين */
     const m = (line.match(/«[^»]+»|"[^"]+"|“[^”]+”/g) || []).length < 2 && /^\s*([^\s:：][^:：]{0,24}?)\s*[:：]\s*(\S.*)$/.exec(line);
-    if (m && !/\d$/.test(m[1]) && !notSpeaker.test(m[1].trim())) {
+    if (m && !/\d$/.test(m[1]) && !notSpeaker.test(label(m[1]))) {
       turns.push({ a: off, b: Math.min(s.length, off + line.length + 1), w: words(m[2].replace(/[«»"“”]/g, ' ')), said: m[2].trim(), lead: m[1].trim() + ': ', open: '', close: '', line: true });
     } else {
       const re = /«([^»]+)»|"([^"]+)"|“([^”]+)”/g;
@@ -1192,10 +1197,10 @@ function dialogueTurns(desc) {
   }
   return turns;
 }
-function fitDialogue(desc, seconds) {
+function fitDialogue(desc, seconds, lead) {
   const s = String(desc || '');
   const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
-  const budget = Math.max(4, Math.floor((sec - 1) * 1.7));
+  const budget = Math.max(4, Math.floor((sec - (lead > 0 ? lead : 1)) * 1.7));
   const turns = dialogueTurns(s);
   const res = { text: s, budget, turns: turns.length, kept: 0, dropped: 0, words: turns.reduce((n, t) => n + t.w, 0), keptWords: 0, last: '' };
   let used = 0, kept = 0;
@@ -1210,4 +1215,4 @@ function fitDialogue(desc, seconds) {
 }
 
 module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, withPhotoLock, splitScenes, sceneParams, MAX_SCENES, SPEECH_LANGS,
-  hasSpeech, speechPace, wordBudget, fitPace, fitDialogue, dialogueTurns }; // v-video-speech-pace · v-video-dialogue-fit · v-video-dialogue-clips
+  hasSpeech, speechPace, wordBudget, EXTEND_SAY_LEAD, fitPace, fitDialogue, dialogueTurns }; // v-video-speech-pace · v-video-dialogue-fit · v-video-dialogue-clips

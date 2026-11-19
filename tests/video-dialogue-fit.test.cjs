@@ -124,16 +124,32 @@ const CLIENT = read('js/app-11-video.js');
 test('٤. العميل يحمل قارئ الأدوار والقصّ نفسيهما حرفيًّا (عدّل الاثنين معًا)، ونتائجهما مطابقة', () => {
   const SRV = read('api/_lib/video-trends.js');
   const cli = {};
-  for (const fn of ['function dialogueTurns(desc) {', 'function fitDialogue(desc, seconds) {']) {
+  for (const fn of ['function dialogueTurns(desc) {', 'function fitDialogue(desc, seconds, lead) {']) {
     cli[fn] = block(CLIENT, fn);
     assert.equal(norm(cli[fn]), norm(block(SRV, fn)), fn);
   }
   const ctx = {}; vm.runInNewContext(Object.values(cli).join('\n') + '\nthis.f = fitDialogue; this.t = dialogueTurns;', ctx);
   const plain = (x) => JSON.parse(JSON.stringify(x));
-  for (const d of [DIALOGUE, INLINE, 'صقر', LINES.join('\n')]) {
+  /* v-video-full-dialogue: نصّ المالك في تشغيلة ١٩ نوفمبر — عنوانان («مشهد قصير: …»، «الشخصيات: …») ثمّ سبعة أدوار */
+  const RUN19 = '🇦🇪 مشهد قصير: أحب وطني\nالشخصيات: طفلة وأمها.\nالطفلة: أمي، لماذا نحتفل باليوم الوطني؟\nالأم: لأننا نحتفل باتحاد الإمارات السبع ووطننا الغالي.\nالطفلة: ومن الذي أسس اتحاد الإمارات؟\n'
+    + 'الأم: الشيخ زايد بن سلطان آل نهيان، رحمه الله، مع إخوانه الحكام.\nالطفلة: أنا فخورة بوطننا، وأحب علم الإمارات!\nالأم: حفظ الله الإمارات وأدام عزها.\nمعاً: كل عام والإمارات عز وفخر! 🇦🇪\n';
+  for (const d of [DIALOGUE, INLINE, 'صقر', LINES.join('\n'), RUN19]) {
     assert.deepEqual(plain(ctx.t(d)), plain(VT.dialogueTurns(d)));
-    for (const s of [5, 6, 8, 10, undefined]) assert.deepEqual(plain(ctx.f(d, s)), plain(VT.fitDialogue(d, s)));
+    for (const s of [5, 6, 8, 10, undefined]) for (const lead of [undefined, 0.5]) assert.deepEqual(plain(ctx.f(d, s, lead)), plain(VT.fitDialogue(d, s, lead)));
   }
+  /* العناوين ليست كلامًا: لا تُعدّ أدوارًا (كانت تأكل ٤ كلمات من الميزانيّة وتطيل التوليدة)، وتبقى في الوصف حين يُقصّ ما بعدها */
+  assert.deepEqual(plain(VT.dialogueTurns(RUN19).map((t) => [t.lead, t.w])), [['الطفلة: ', 5], ['الأم: ', 7], ['الطفلة: ', 5], ['الأم: ', 11], ['الطفلة: ', 6], ['الأم: ', 5], ['معاً: ', 5]]);
+  const cut19 = VT.fitDialogue(RUN19, 10);
+  assert.deepEqual([cut19.kept, cut19.keptWords, cut19.words], [2, 12, 44]);
+  assert.ok(cut19.text.startsWith('🇦🇪 مشهد قصير: أحب وطني\nالشخصيات: طفلة وأمها.\nالطفلة: أمي'), cut19.text);
+  for (const head of ['المشهد: حديقة', 'مشهد ليليّ هادئ: حديقة', 'الشخصيّات: أم وبنتها', 'العنوان: أحب وطني', '🎬 Scene one: a garden', 'Characters: a girl and her mother', 'Title: My homeland']) {
+    assert.deepEqual(plain(VT.dialogueTurns(head + '\nالأم: حيّاك الله').map((t) => t.lead)), ['الأم: '], head);
+  }
+  for (const speaker of ['مشاهد: أين الكرة؟', 'المشهدانيّ: تفضّل', 'شخصيّة مرحة: أهلًا', 'Scenester: hello there']) {
+    assert.equal(VT.dialogueTurns(speaker).length, 1, 'متكلّم لا عنوان: ' + speaker);
+  }
+  /* ميزانيّة التمديد (نصف ثانية صمت): كلمة زائدة في ١٠ث — والافتراضيّ ثانية كما كان */
+  assert.deepEqual([VT.fitDialogue(RUN19, 10, 0.5).budget, VT.fitDialogue(RUN19, 10).budget, VT.fitDialogue(RUN19, 10, 0).budget, VT.fitDialogue(RUN19, 10, -3).budget], [16, 15, 15, 15]);
   /* الدور يحمل ما يلزم لإعادة كتابته في مقطعه: المتكلّم وعلامتا التنصيص */
   assert.deepEqual(plain(VT.dialogueTurns(LINES[1]).map((t) => [t.lead, t.said, t.open, t.close, t.line])), [['الأم: ', 'نحتفل باتحاد الإمارات يا بنتي', '', '', true]]);
   assert.deepEqual(plain(VT.dialogueTurns(INLINE).map((t) => [t.lead, t.open, t.close, t.line])), [['البنت تسأل أمها: ', '«', '»', false], ['والأم ترد: ', '«', '»', false], ['ثمّ البنت تقول ', '«', '»', false]]);
