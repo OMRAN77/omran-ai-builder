@@ -1191,7 +1191,7 @@ module.exports = async (req, res) => {
             res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again'), code: 'session' });
             return;
           }
-          const clash = await getUser(newKey);
+          const clash = await getUserSure(newKey); // v-audit-main-b (v-auth-absent × r3-4): عطب القراءة يرمي (٥٠٠ بلا كتابة) — لا «الاسم حرّ» فوق حساب حيّ قبل نقل العدّادات
           const ownPrev = Boolean(clash && await tombstoneLeadsTo(clash, oldKey));
           // مفتاح Google لصاحبه وحده: حسابه (googleAuth) ببريده نفسه، راجعًا إلى مفتاحه بسلسلة شواهده.
           const ownGoogleKey = ownPrev && user.googleAuth === true && newKey === 'g_' + String(user.email || '').trim().toLowerCase();
@@ -1797,6 +1797,8 @@ module.exports.needsRecovery = needsRecovery; // v-recovery-hint
 module.exports._timing = _timing; // v-time-seam: للاختبارات وحدها
 module.exports.putUser = putUser;
 module.exports.hashPassword = hashPassword;
+module.exports.verifyPassword = verifyPassword; // v-audit-main-b (userdata-4): تذكرة ربط Gmail تطلب الكلمة كالبريد والهاتف
+module.exports.rateWait = rateWait; // v-audit-main-b: وتخمينها من هناك محدود كهنا
 module.exports.makeToken = makeToken;
 module.exports.markKnownNet = markKnownNet; // v-known-net: والكولباك (auth-google-callback.js)
 module.exports.liveAccount = liveAccount; // v-audit-auth (srv-auth-2): الكولباك يتبع شاهد تغيير الاسم

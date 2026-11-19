@@ -950,6 +950,37 @@ async function supersedeSubs(username, plan, keepId, fetchImpl) {
   return n;
 }
 
+/* v-audit-main-b (srv-money-3 · r2-3 · r3-1 × v-owner-link-sub): ربط المالك اشتراكًا دُفع بلا دخول (sub-link) يُدخل إلى الحساب اشتراكًا حيًّا بلا جلسة
+   دفع فلا يمرّ بـsupersedeSubs — وحسابٌ له اشتراك حيّ في الخانة نفسها يُخصم مرّتين كلّ شهر (Pro وPlus، أو Plus مرّتين)، وتجديد الأدنى يُحفظ تحت
+   الأعلى. القاعدة نفسها: اشتراك حيّ واحد لكلّ خانة. المربوط أقدم (قبل v-checkout-login)، فهو الزائد ما دام في الخانة حيٌّ بدرجته أو أعلى؛ وإن كان
+   أعلى من كلّ ما فيها فالأدنى هو الزائد (r2-3 · r3-1). دفعاته المضافة باقية (الإلغاء فوريّ بلا استرجاع، كـsupersedeSubs). البحث قد يتأخّر عن
+   كتابة الاسم على المربوط، فيُقرأ بنفسه ولا يُنتظر ظهوره. حساب لا يُقرأ = BUSY، وعطل Stripe يرمي — والضغط ثانيةً يكمل (الفحص يعدّ ما سيُلغى:
+   planSupersede بلا كتابة، فلا يقول «لا جديد» واشتراكان حيّان). */
+async function planSupersede(username, plan, linkedId, fetchImpl) {
+  const slot = planSlot(plan);
+  if (!slot || !linkedId || !process.env.STRIPE_SECRET_KEY) return [];
+  const f = fetchImpl || fetch;
+  const auth = stripeAuth();
+  const kr = await f('https://api.stripe.com/v1/subscriptions/' + encodeURIComponent(String(linkedId)), { headers: auth });
+  if (kr.status === 404) return [];
+  const linked = await kr.json().catch(() => ({}));
+  if (!kr.ok) throw new Error((linked.error && linked.error.message) || 'stripe read failed');
+  if (!LIVE_SUB.includes(linked.status)) return []; // ملغًى أو منتهٍ: لا يُخصم منه شيء
+  const acct = await liveAccount(username);
+  if (!acct.user) throw new Error(BUSY);
+  const prev = Array.isArray(acct.user.prevUsernames) ? acct.user.prevUsernames.slice(-3) : [];
+  const names = [...new Set([acct.name, String(username)].concat(prev).filter(Boolean))];
+  const others = (await liveSubs(names, f, auth)).filter((x) => x.id !== String(linkedId) && planSlot(x.metadata && x.metadata.plan) === slot);
+  if (!others.length) return [];
+  if (others.some((x) => rankOf(x.metadata.plan) >= rankOf(plan))) return [String(linkedId)];
+  return others.map((x) => String(x.id));
+}
+async function supersedeLinked(username, plan, linkedId, fetchImpl) {
+  const ids = await planSupersede(username, plan, linkedId, fetchImpl);
+  for (const id of ids) await cancelSubNow(id, fetchImpl || fetch, stripeAuth());
+  return ids.length;
+}
+
 async function autoRenewToggle(req, res, fetchImpl) {
   const f = fetchImpl || fetch;
   try {
@@ -1028,6 +1059,7 @@ module.exports.autoRenewToggle = autoRenewToggle; // v-autorenew-toggle — لل
 // v-pay-refund: الاسترداد يتبع الحساب بعد تغيير اسمه، ويعرف الدفعة القديمة الممنوحة بحجزها.
 module.exports.liveAccount = liveAccount;
 module.exports.claimKey = claimKey;
+module.exports.creditMarkKey = creditMarkKey; // v-audit-main-b: sub-link يعرف دفعةً شُحنت ولم يُكتب سجلّها فيعيدها للإكمال
 module.exports.completeCredit = completeCredit; // v-lock-credit (srv-money-2): الاسترداد يكمل منحًا معلَّقًا قبل أن يسحبه
 module.exports.withAccount = withAccount; // v-acct-lock — السحب يأخذ قفل الحساب نفسه
 module.exports.BUSY = BUSY; // v-lock-r2 (money-invariants-8): تغيير الاسم يأخذ قفل الحساب نفسه ويعرف رميه
@@ -1035,6 +1067,8 @@ module.exports.withNameLock = withNameLock; // v-r3 (r3-5): وقفل الاسم 
 module.exports.surelyMissing = surelyMissing; // v-r3 (r3-8): السحب يفصل المفقود يقينًا عن عطل القراءة كالمنح
 // v-lock-subs: الويب هوك يلغي الاشتراك القديم من خانته (srv-money-3) واشتراك الحساب المحذوف (srv-money-5)، وPayPal يرفض الأدنى (srv-money-4)
 module.exports.supersedeSubs = supersedeSubs;
+module.exports.supersedeLinked = supersedeLinked; // v-audit-main-b: ربط الاشتراك (sub-link) باشتراك حيّ واحد لكلّ خانة
+module.exports.planSupersede = planSupersede; // v-audit-main-b: وفحصه يعدّ ما سيُلغى بلا كتابة
 module.exports.cancelSub = cancelSub;
 module.exports.subIdOf = subIdOf;
 module.exports.lowerPlanBlock = lowerPlanBlock;

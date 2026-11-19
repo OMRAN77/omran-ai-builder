@@ -37,6 +37,7 @@ const mock = (f, exports) => { require.cache[rp(f)] = { id: rp(f), filename: rp(
 // setNX: { re, mode } — SET NX التالي على مفتاح يطابق re: 'unreadable' كُتب وردّه لا يُقرأ.
 // pipeLost: re — أوّل pipeline يمسّ مفتاحًا يطابقه يُنفَّذ ثمّ يرمي (ضاع الردّ بعد التنفيذ).
 // userPutLost (r3-rv5): كتابات السجلّ التالية تصل ثمّ يضيع ردّها. strictGet (r3-rv5): re — أوّل قراءة لمفتاح يطابقه تتعطّل (الصارمة ترمي).
+// userReads (v-audit-main-b): true = كلّ سجلّات الحسابات، أو re = سجلّ بعينه (عطل على حساب واحد).
 const store = new Map();
 const ttl = new Map();
 const fail = { userReads: false, userPut: 0, userPutLost: 0, setNX: null, pipeLost: null, strictGet: null };
@@ -50,7 +51,7 @@ const pipeSet = (op, k, a, rest) => {
   return null;
 };
 const kvImpl = {
-  kvGetJSON: async (k, o) => { if (fail.userReads && /^db\/users\//.test(k)) { if (o && o.strict) throw new Error('upstash timeout'); return null; } return (store.has(k) ? JSON.parse(store.get(k)) : null); },
+  kvGetJSON: async (k, o) => { if (fail.userReads && (fail.userReads instanceof RegExp ? fail.userReads : /^db\/users\//).test(k)) { if (o && o.strict) throw new Error('upstash timeout'); return null; } return (store.has(k) ? JSON.parse(store.get(k)) : null); },
   kvPutJSON: async (k, v) => { if (fail.userPut > 0 && /^db\/users\//.test(k)) { fail.userPut--; throw new Error('upstash write failed'); } store.set(k, JSON.stringify(v)); if (fail.userPutLost > 0 && /^db\/users\//.test(k)) { fail.userPutLost--; throw new Error('ETIMEDOUT after write'); } },
   kvGetRaw: async (k, o) => { if (hooks.get) await hooks.get(k); if (fail.strictGet && fail.strictGet.test(k)) { fail.strictGet = null; if (o && o.strict) throw new Error('upstash timeout'); return null; } return (store.has(k) ? String(store.get(k)) : null); },
   kvSetRaw: async (k, v, t) => { store.set(k, String(v)); if (t) ttl.set(k, Number(t)); },
@@ -84,7 +85,7 @@ const alerts = [];
 mock('api/_lib/_owner-alert.js', { pushToOwners: async (p) => { alerts.push(p); return { sent: 1 }; }, alertOwnerError: async () => ({}), alertOwnerCredit: async () => ({}), isCreditFailure: () => false });
 
 // ── شبكة مزيّفة واحدة: Stripe (الجلسات، العمليّات، الاشتراكات وبحثها) وPayPal ──
-const net = { subs: {}, sessions: {}, orders: {}, pis: {}, calls: [], seq: 0 };
+const net = { subs: {}, sessions: {}, orders: {}, pis: {}, calls: [], seq: 0, customers: {}, invoices: [], charges: {}, failDelete: 0 }; // v-audit-main-b: عملاء وفواتير وشحنات لـsub-link
 const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 const unq = (s) => s.replace(/\\'/g, "'").replace(/\\\\/g, '\\');
 global.fetch = async (url, init) => {
@@ -105,12 +106,25 @@ global.fetch = async (url, init) => {
       const s = net.subs[decodeURIComponent(m[1])];
       if (!s) return reply(404, { error: { code: 'resource_missing', message: 'No such subscription' } });
       if (method === 'DELETE') {
+        if (net.failDelete > 0) { net.failDelete--; return reply(500, { error: { type: 'api_error', message: 'An unknown error occurred' } }); } // v-audit-main-b
         if (s.status === 'canceled') return reply(400, { error: { message: 'This subscription has already been canceled' } });
         s.status = 'canceled';
         return reply(200, structuredClone(s));
       }
+      if (method === 'POST') { // v-audit-main-b: sub-link يكتب metadata[username] على الاشتراك
+        for (const [k, v] of new URLSearchParams(body)) { const mm = k.match(/^metadata\[(.+)\]$/); if (mm) s.metadata[mm[1]] = v; }
+      }
       return reply(200, structuredClone(s));
     }
+    // v-audit-main-b: ما يقرؤه sub-link (العميل، جلسة الدفع الأولى، الفواتير المدفوعة، الشحنة) بشكل ما قبل basil
+    if (p === 'checkout/sessions') {
+      const sid = u.searchParams.get('subscription'), pid = u.searchParams.get('payment_intent');
+      return reply(200, { data: Object.values(net.sessions).filter((x) => (sid && x.subscription === sid) || (pid && x.payment_intent === pid)), has_more: false });
+    }
+    if ((m = p.match(/^customers\/([^/]+)$/))) return net.customers[m[1]] ? reply(200, net.customers[m[1]]) : reply(404, { error: { message: 'No such customer' } });
+    if (p === 'invoices') return reply(200, { data: net.invoices.filter((i) => i.subscription === u.searchParams.get('subscription') && (!u.searchParams.get('status') || i.status === u.searchParams.get('status'))), has_more: false });
+    if (p === 'invoice_payments') return reply(200, { data: [] });
+    if ((m = p.match(/^charges\/([^/]+)$/))) return net.charges[m[1]] ? reply(200, net.charges[m[1]]) : reply(404, { error: { message: 'No such charge' } });
     if ((m = p.match(/^payment_intents\/(.+)$/))) return net.pis[m[1]] ? reply(200, net.pis[m[1]]) : reply(404, { error: { message: 'No such payment_intent' } });
     if ((m = p.match(/^checkout\/sessions\/(.+)$/))) return net.sessions[m[1]] ? reply(200, net.sessions[m[1]]) : reply(404, { error: { message: 'No such session' } });
     return reply(404, { error: { message: 'unknown' } });
@@ -1723,4 +1737,205 @@ test('port-3: needsPassword يقبل pwSet (علامة main من رابط الا
   assert.equal(needsPassword(Object.assign({ otpOnly: true, pwSet: true }, h)), true);
   assert.equal(needsPassword(Object.assign({ googleAuth: true }, h)), false, 'بلا علامة ولا رمز استرجاع قطّ: كما كان');
   assert.equal(needsPassword(Object.assign({ googleAuth: true, pwSet: true })), false, 'بلا salt/hash لا كلمة تُطلب');
+});
+
+// ───────────────────────── v-audit-main-b: مراجعة الدمج — ربط الاشتراك (sub-link) × ثوابت الأبواب المقفلة ─────────────────────────
+// port-rv1: منحٌ شحن ثمّ فشلت كتابة سجلّه يبقى حجزه بعلامة إكمال (v-lock-credit)، وفحص sub-link كان يعدّ كلّ حجز «مضافة» فلا ينادي المنح ثانيةً:
+//   نقاط بلا باقة ولا سجلّ منح (فالاسترداد لا يسحب شيئًا) والعلامة معلَّقة ٤٠٠ يوم. الضغط الثاني هو الإعادة (الويب هوك تجاهلها بلا اسم).
+// port-rv2: الربط طريق ثانٍ يُدخل اشتراكًا حيًّا إلى الحساب ولا يمرّ بـsupersedeSubs (srv-money-3 · r2-3 · r3-1) — اشتراكان حيّان في خانة.
+// port-rv3: صاحب الاشتراك الحاليّ لا يُقرأ (عطل KV) كان يُقرأ «لا حساب حيّ» فيُكتب اسم آخر فوق اشتراكه (r3-6 · r3-8: العطل ليس غيابًا).
+// port-rv4: فحص الربط (ما يوافق عليه المالك) يقرأ الفترة الفعليّة نفسها التي يقرّر بها المنح (port-1)، لا user.plan بعد planActive.
+// port-rv5: تغيير الاسم يفحص الاسم الجديد بقراءة صارمة — عطل عابر لا يُقرأ «الاسم حرّ» فوق حساب حيّ قبل نقل العدّادات (r3-4).
+const subLink = require(rp('api/_lib/sub-link.js'));
+const linkSub = (target, subId, confirm) => subLink.linkSub(Object.assign({ target, subscriptionId: subId }, confirm ? { confirm: true, expect: target } : {}));
+/* اشتراك دُفع بلا دخول (قبل v-checkout-login): جلسة أولى بلا اسم وتجديدات اختياريّة (أيّام مضت)، بشكل ما قبل basil — كمسبار المراجعة. */
+function seedUnlinked(subId, plan, o) {
+  const opt = o || {};
+  const created = opt.created || (nowSec() - 44 * 86400);
+  const amount = opt.amount || 1000;
+  net.subs[subId] = { id: subId, object: 'subscription', status: opt.status || 'active', created, cancel_at_period_end: false, customer: 'cus_' + subId, metadata: { plan }, items: { data: [{ current_period_end: nowSec() + 20 * 86400 }] } };
+  net.customers['cus_' + subId] = { id: 'cus_' + subId, email: 'payer@example.com' };
+  net.sessions['cs_' + subId] = { id: 'cs_' + subId, object: 'checkout.session', status: 'complete', payment_status: 'paid', mode: 'subscription', subscription: subId, invoice: 'in_' + subId + '_1', payment_intent: null, amount_total: amount, currency: 'usd', created, metadata: { plan }, customer_details: { email: 'payer@example.com' } };
+  const inv = (n, reason, t) => {
+    const id = 'in_' + subId + '_' + n, ch = 'ch_' + subId + '_' + n, pi = 'pi_' + subId + '_' + n;
+    net.invoices.push({ id, object: 'invoice', status: 'paid', subscription: subId, billing_reason: reason, amount_paid: amount, currency: 'usd', created: t, payment_intent: pi, charge: ch, subscription_details: { metadata: { plan } } });
+    net.charges[ch] = { id: ch, object: 'charge', amount, amount_refunded: 0, refunded: false, disputed: false, payment_intent: pi, invoice: id, currency: 'usd', created: t };
+  };
+  inv(1, 'subscription_create', created);
+  (opt.renewals || []).forEach((ago, i) => inv(i + 2, 'subscription_cycle', nowSec() - ago * 86400));
+}
+const chargeRefund = (ch, refunded) => evt('charge.refunded', Object.assign({}, net.charges[ch], { amount_refunded: refunded, refunded: refunded >= net.charges[ch].amount }));
+const liveIn = (username, plans) => Object.values(net.subs).filter((s) => s.metadata.username === username && ['active', 'trialing', 'past_due', 'unpaid'].includes(s.status) && plans.includes(s.metadata.plan)).map((s) => s.id).sort();
+const CHAT = ['basic', 'pro', 'max'];
+
+test('port-rv1أ: ربط شُحنت دفعته ثمّ فشلت كتابة السجلّ ⇒ الضغط الثاني يكمل الباقة وسجلّ المنح بلا شحن ثانٍ، والاسترداد يسحبها (كان «مضافة» للأبد: نقاط بلا باقة ولا سجلّ)', async () => {
+  await fresh('lkrv1');
+  seedUnlinked('sub_LKRV1aaaa', 'basic', { created: nowSec() - 10 * 86400 });
+  const mark = 'paid-credit:lastStripeSessionId:cs_sub_LKRV1aaaa';
+  fail.userPut = 1; // سجلّ الحساب لا يُكتب بعد زيادة العدّاد (عطل Upstash عابر)
+  const first = await linkSub('lkrv1', 'sub_LKRV1aaaa', true);
+  fail.userPut = 0;
+  assert.equal(first.status, 500, JSON.stringify(first.body));
+  assert.equal(first.body.error, 'partial');
+  assert.equal(pts('lkrv1'), 430, 'شُحنت مرّة');
+  assert.ok(store.has(mark), 'علامة الإكمال قائمة');
+  assert.equal(net.subs.sub_LKRV1aaaa.metadata.username, 'lkrv1', 'الاسم على الاشتراك من الضغطة الأولى');
+  const dry = await linkSub('lkrv1', 'sub_LKRV1aaaa');
+  assert.equal(dry.status, 200, JSON.stringify(dry.body));
+  assert.deepEqual(dry.body.payments.map((p) => [p.state, p.pending]), [['grant', true]], 'المعلَّقة تُعاد للإكمال لا «مضافة»');
+  assert.equal(dry.body.toGrant, 1);
+  assert.equal(dry.body.points, 0, 'نقاطها شُحنت: الفحص لا يعد بها ثانيةً');
+  const again = await linkSub('lkrv1', 'sub_LKRV1aaaa', true);
+  assert.equal(again.status, 200, JSON.stringify(again.body));
+  assert.equal(again.body.granted, 1);
+  assert.equal(again.body.pointsAdded, 0, 'الإكمال لا يُعرض نقاطًا جديدة');
+  const u = await user('lkrv1');
+  assert.equal(tier.chatPeriod(u).plan, 'basic', 'الباقة المدفوعة سُلّمت');
+  assert.equal(u.lastStripeSessionId, 'cs_sub_LKRV1aaaa');
+  assert.equal(pts('lkrv1'), 430, 'لا شحن ثانٍ');
+  assert.equal(store.has(mark), false, 'العلامة مُحيت');
+  assert.ok(await swPayRefund.findRec(['cs_sub_LKRV1aaaa']), 'سجلّ المنح كُتب');
+  assert.deepEqual((await linkSub('lkrv1', 'sub_LKRV1aaaa')).body.payments.map((p) => p.state), ['already'], 'بعد الإكمال: مضافة');
+  assert.equal((await hook(chargeRefund('ch_sub_LKRV1aaaa_1', 1000))).code, 200);
+  assert.equal(pts('lkrv1'), 70, 'الاسترداد الكامل يسحب نقاطها');
+  assert.equal(tier.chatPeriod(await user('lkrv1')), null, 'وفترتها');
+});
+
+test('port-rv1ب: media_basic قديم يُربط تحت media_max سارية وتفشل كتابة السجلّ بعد التأجيل ⇒ الضغط الثاني يكتب المؤجَّلة مرّة، والأعلى ورصيدها لا تُمسّ', async () => {
+  await fresh('lkrv1m', { media: { mix: { plan: 'media_max', at: Date.now() - 2 * DAY, payId: 'cs_lkrv1m_max' } } });
+  store.set('media:mix:lkrv1m', '9000');
+  seedUnlinked('sub_LKRV1media', 'media_basic', { created: nowSec() - 10 * 86400, amount: 1021 });
+  fail.userPut = 1;
+  const first = await linkSub('lkrv1m', 'sub_LKRV1media', true);
+  fail.userPut = 0;
+  assert.equal(first.status, 500, JSON.stringify(first.body));
+  assert.ok(store.has('paid-credit:lastStripeSessionId:cs_sub_LKRV1media'), 'علامة الإكمال (kept) قائمة');
+  assert.equal((await user('lkrv1m')).mediaNext, undefined, 'المؤجَّلة لم تُكتب');
+  const again = await linkSub('lkrv1m', 'sub_LKRV1media', true);
+  assert.equal(again.status, 200, JSON.stringify(again.body));
+  let u = await user('lkrv1m');
+  assert.equal((u.mediaNext || []).length, 1, 'المؤجَّلة المدفوعة كُتبت');
+  assert.equal(u.media.mix.plan, 'media_max');
+  assert.equal(Number(store.get('media:mix:lkrv1m')), 9000, 'رصيد الأعلى لا يُمسّ');
+  assert.equal((await linkSub('lkrv1m', 'sub_LKRV1media', true)).status, 200);
+  u = await user('lkrv1m');
+  assert.equal((u.mediaNext || []).length, 1, 'والضغط الثالث لا يكرّرها');
+});
+
+test('port-rv2أ: حساب باشتراك Pro حيّ + ربط اشتراك Plus قديم حيّ ⇒ اشتراك حيّ واحد في الخانة (Pro)، ودفعات Plus المضافة باقية', async () => {
+  await fresh('lkrv2a', { plan: 'pro', planUpdatedAt: Date.now() - 5 * DAY, planPayId: 'cs_lkrv2a_pro', points: 920 });
+  sub('sub_lkrv2a_pro', 'lkrv2a', 'pro', 'active');
+  seedUnlinked('sub_LKRV2plus', 'basic', { renewals: [14] });
+  const r = await linkSub('lkrv2a', 'sub_LKRV2plus', true);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.granted, 2);
+  assert.equal(r.body.superseded, 1);
+  assert.deepEqual(liveIn('lkrv2a', CHAT), ['sub_lkrv2a_pro'], 'Plus الزائد أُلغي، وPro باقٍ');
+  assert.equal(pts('lkrv2a'), 920 + 720, 'الدفعتان المضافتان باقيتان');
+  assert.equal(tier.chatPeriod(await user('lkrv2a')).plan, 'pro');
+});
+
+test('port-rv2ب: حساب باشتراك Plus حيّ + ربط اشتراك Plus قديم ⇒ اشتراك Plus واحد (الأحدث) — لا خصمان كلّ شهر', async () => {
+  await fresh('lkrv2b', { plan: 'basic', planUpdatedAt: Date.now() - 3 * DAY, planPayId: 'cs_lkrv2b_b', points: 360 });
+  sub('sub_lkrv2b_new', 'lkrv2b', 'basic', 'active');
+  seedUnlinked('sub_LKRV2old', 'basic', { renewals: [14] });
+  const r = await linkSub('lkrv2b', 'sub_LKRV2old', true);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.deepEqual(liveIn('lkrv2b', CHAT), ['sub_lkrv2b_new']);
+});
+
+test('port-rv2ج: المربوط أعلى من كلّ ما في الخانة (Max فوق اشتراك Plus) ⇒ الأدنى هو الزائد (r2-3)، وبلا اشتراك آخر لا يُلغى شيء (ضابط)', async () => {
+  await fresh('lkrv2c', { plan: 'basic', planUpdatedAt: Date.now() - 3 * DAY, planPayId: 'cs_lkrv2c_b', points: 360 });
+  sub('sub_lkrv2c_plus', 'lkrv2c', 'basic', 'active');
+  sub('sub_lkrv2c_maha', 'lkrv2c', 'media_basic', 'active'); // خانة أخرى لا تُمسّ
+  seedUnlinked('sub_LKRV2max', 'max', { created: nowSec() - 10 * 86400, amount: 10000 });
+  const r = await linkSub('lkrv2c', 'sub_LKRV2max', true);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.deepEqual(liveIn('lkrv2c', CHAT), ['sub_LKRV2max']);
+  assert.equal(net.subs.sub_lkrv2c_maha.status, 'active', 'خانة الوسائط لا تُمسّ');
+  await fresh('lkrv2z');
+  seedUnlinked('sub_LKRV2solo', 'basic', { created: nowSec() - 10 * 86400 });
+  const z = await linkSub('lkrv2z', 'sub_LKRV2solo', true);
+  assert.equal(z.status, 200, JSON.stringify(z.body));
+  assert.equal(z.body.superseded, 0);
+  assert.equal((await linkSub('lkrv2z', 'sub_LKRV2solo')).body.supersede, 0, 'الفحص: لا شيء يُلغى');
+  assert.deepEqual(liveIn('lkrv2z', CHAT), ['sub_LKRV2solo']);
+});
+
+test('port-rv2د: عطل Stripe عند إلغاء الزائد ⇒ ٥٠٠ جزئيّ والدفعات مضافة مرّة، والضغط ثانيةً يكمل الإلغاء بلا شحن ثانٍ', async () => {
+  await fresh('lkrv2d', { plan: 'pro', planUpdatedAt: Date.now() - 5 * DAY, planPayId: 'cs_lkrv2d_pro', points: 920 });
+  sub('sub_lkrv2d_pro', 'lkrv2d', 'pro', 'active');
+  seedUnlinked('sub_LKRV2fail', 'basic', { created: nowSec() - 10 * 86400 });
+  net.failDelete = 1;
+  const r = await linkSub('lkrv2d', 'sub_LKRV2fail', true);
+  net.failDelete = 0;
+  assert.equal(r.status, 500, JSON.stringify(r.body));
+  assert.equal(r.body.error, 'partial');
+  assert.equal(pts('lkrv2d'), 920 + 360);
+  assert.equal(liveIn('lkrv2d', CHAT).length, 2, 'لم يُلغَ بعد');
+  const dry = await linkSub('lkrv2d', 'sub_LKRV2fail');
+  assert.deepEqual([dry.body.toGrant, dry.body.linkedTo, dry.body.supersede], [0, 'lkrv2d', 1], 'الفحص يعدّ الإلغاء الباقي (فلا تقول الواجهة «لا جديد»)');
+  assert.equal(liveIn('lkrv2d', CHAT).length, 2, 'الفحص لا يلغي شيئًا');
+  const again = await linkSub('lkrv2d', 'sub_LKRV2fail', true);
+  assert.equal(again.status, 200, JSON.stringify(again.body));
+  assert.deepEqual(liveIn('lkrv2d', CHAT), ['sub_lkrv2d_pro']);
+  assert.equal(pts('lkrv2d'), 920 + 360, 'لا شحن ثانٍ');
+});
+
+test('port-rv3: اشتراك مربوط بحساب حيّ لا يُقرأ سجلّه لحظة الربط بحساب آخر ⇒ لا كتابة على الاشتراك ولا منح (كان «غير مربوط» فتُشحن تجديداته لغيره)', async () => {
+  await fresh('lkrv3x', { plan: 'basic', planUpdatedAt: Date.now() - 10 * DAY, points: 360 });
+  await fresh('lkrv3y');
+  seedUnlinked('sub_LKRV3own', 'basic', { created: nowSec() - 10 * 86400 });
+  net.subs.sub_LKRV3own.metadata.username = 'lkrv3x';
+  net.sessions.cs_sub_LKRV3own.metadata.username = 'lkrv3x';
+  net.invoices.find((i) => i.id === 'in_sub_LKRV3own_1').subscription_details.metadata.username = 'lkrv3x';
+  assert.equal((await linkSub('lkrv3y', 'sub_LKRV3own')).status, 409, 'ضابط: بلا عطل ⇒ مربوط بغيره');
+  fail.userReads = /^db\/users\/lkrv3x(\.json)?$/;
+  let r;
+  try { r = await linkSub('lkrv3y', 'sub_LKRV3own', true); } finally { fail.userReads = false; }
+  assert.notEqual(r.status, 200, JSON.stringify(r.body));
+  assert.ok(r.status >= 500, 'عطل يُعاد لا قرار: ' + r.status);
+  assert.equal(net.subs.sub_LKRV3own.metadata.username, 'lkrv3x', 'الاسم على الاشتراك لم يُكتب فوقه');
+  assert.equal(pts('lkrv3y'), 70, 'لا منح للآخر');
+  // اسمٌ على الاشتراك لا سجلّ له يقينًا (قراءة صارمة نجحت) ما زال «سابق» يُربط كما كان
+  seedUnlinked('sub_LKRV3gone', 'basic', { created: nowSec() - 10 * 86400 });
+  net.subs.sub_LKRV3gone.metadata.username = 'lkrv3_never';
+  const g = await linkSub('lkrv3y', 'sub_LKRV3gone');
+  assert.equal(g.status, 200, JSON.stringify(g.body));
+  assert.equal(g.body.previous, 'lkrv3_never');
+});
+
+test('port-rv4: فحص الربط يقرأ الفترة الفعليّة — رئيسيّة Max منتهية وPlus في planNext ثمّ ربط Pro: الفحص لا يقول «تبقى» والتأكيد يركّب Pro؛ والعكس (لا رئيسيّة وPlus سارية) يقول «تبقى» والتأكيد نقاط وحدها', async () => {
+  await fresh('lkrv4a', { plan: 'max', planUpdatedAt: Date.now() - 40 * DAY, planPayId: 'cs_lkrv4a_max', planNext: [{ plan: 'basic', at: Date.now() - 10 * DAY, payId: 'in_lkrv4a_plus' }] });
+  seedUnlinked('sub_LKRV4pro', 'pro', { created: nowSec() - 10 * 86400, amount: 2000 });
+  const d = await linkSub('lkrv4a', 'sub_LKRV4pro');
+  assert.equal(d.body.accountPlan, 'basic', 'الفترة الفعليّة لا Max المنتهية');
+  assert.equal(d.body.keepPlan, false);
+  assert.equal((await linkSub('lkrv4a', 'sub_LKRV4pro', true)).status, 200);
+  assert.equal((await user('lkrv4a')).plan, 'pro', 'التأكيد ركّب Pro كما قال الفحص');
+  await fresh('lkrv4b', { planNext: [{ plan: 'basic', at: Date.now() - 10 * DAY, payId: 'in_lkrv4b_plus' }] });
+  seedUnlinked('sub_LKRV4plus', 'basic', { created: nowSec() - 10 * 86400 });
+  const d2 = await linkSub('lkrv4b', 'sub_LKRV4plus');
+  assert.equal(d2.body.accountPlan, 'basic', 'لا «undefined»');
+  assert.equal(d2.body.keepPlan, true);
+  assert.equal((await linkSub('lkrv4b', 'sub_LKRV4plus', true)).status, 200);
+  const u = await user('lkrv4b');
+  assert.equal(u.plan, undefined, 'نقاط وحدها كما قال الفحص');
+  assert.equal(pts('lkrv4b'), 430);
+});
+
+test('port-rv5: تغيير الاسم والاسم الجديد لحساب حيّ لا يُقرأ سجلّه (عطل عابر) ⇒ لا كتابة فوقه ولا تصفير نقاطه ولا محو رصيده (كان ٢٠٠ فوق الحساب)', async () => {
+  await fresh('rvalice');
+  await fresh('rvbob', { email: 'bob@x.test', plan: 'pro', planUpdatedAt: Date.now() - DAY, points: 990 });
+  store.set('media:video:rvbob', '12');
+  fail.userReads = /^db\/users\/rvbob(\.json)?$/;
+  let r;
+  try { r = await rename('rvalice', 'rvbob'); } finally { fail.userReads = false; }
+  assert.notEqual(r.code, 200, JSON.stringify(r.body));
+  const bob = await user('rvbob');
+  assert.equal(bob.email, 'bob@x.test', 'سجلّ الحساب لم يُكتب فوقه');
+  assert.equal(store.get('points:rvbob'), '990', 'نقاطه كما هي');
+  assert.equal(store.get('media:video:rvbob'), '12', 'رصيد وسائطه كما هو');
+  assert.equal((await user('rvalice')).deleted, undefined, 'الاسم القديم حيّ');
+  assert.equal((await rename('rvalice', 'rvbob')).code, 409, 'ضابط: بلا عطل ⇒ الاسم محجوز');
 });

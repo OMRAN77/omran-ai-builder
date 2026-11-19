@@ -929,7 +929,7 @@ try{
       const d = a.data;
       const pays = Array.isArray(d.payments) ? d.payments : [];
       const skipped = pays.filter(x => x && ['refunded', 'blocked', 'unverified', 'review', 'old'].includes(x.state)).length;
-      if(!(d.toGrant > 0) && d.linkedTo && d.linkedTo === d.username){ alert(skipped ? ownT('ownerLinkSubSkipped', { n: skipped }) : ownT('ownerLinkSubNothing')); return; } // مربوط ولا جديد: لا تأكيد
+      if(!(d.toGrant > 0) && !(d.supersede > 0) && d.linkedTo && d.linkedTo === d.username){ alert(skipped ? ownT('ownerLinkSubSkipped', { n: skipped }) : ownT('ownerLinkSubNothing')); return; } // مربوط ولا جديد: لا تأكيد — v-audit-main-b: ولا اشتراك زائد يُلغى (إلغاء فشل في ضغطة سابقة)
       const ae = String(d.accountEmail || ''), se = String(d.customerEmail || '');
       const lines = [];
       if(d.previous) lines.push(ownT('ownerLinkSubPrev', { u: ownIso(d.previous) }));

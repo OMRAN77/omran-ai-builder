@@ -1027,7 +1027,7 @@ try{
       const d = a.data;
       const pays = Array.isArray(d.payments) ? d.payments : [];
       const skipped = pays.filter(x => x && ['refunded', 'blocked', 'unverified', 'review', 'old'].includes(x.state)).length;
-      if(!(d.toGrant > 0) && d.linkedTo && d.linkedTo === d.username){ alert(skipped ? ownT('ownerLinkSubSkipped', { n: skipped }) : ownT('ownerLinkSubNothing')); return; } // مربوط ولا جديد: لا تأكيد
+      if(!(d.toGrant > 0) && !(d.supersede > 0) && d.linkedTo && d.linkedTo === d.username){ alert(skipped ? ownT('ownerLinkSubSkipped', { n: skipped }) : ownT('ownerLinkSubNothing')); return; } // مربوط ولا جديد: لا تأكيد — v-audit-main-b: ولا اشتراك زائد يُلغى (إلغاء فشل في ضغطة سابقة)
       const ae = String(d.accountEmail || ''), se = String(d.customerEmail || '');
       const lines = [];
       if(d.previous) lines.push(ownT('ownerLinkSubPrev', { u: ownIso(d.previous) }));
@@ -40142,20 +40142,54 @@ function stud2ErrText(e, prefix, fbKey){
      الواجهة: الإلغاء في صفحة جوجل، والصلاحيّات الناقصة، وما سواهما «حاول مرّة ثانية» (التذكرة والشبكة والخادم علاجها واحد). */
   const emLinkError = (err) => alert('⚠️ ' + t(err === 'access_denied' ? 'axSearchEmLinkDenied' : (err === 'missing_scopes' ? 'axSearchEmLinkScopes' : 'axSearchEmLinkFailed')));
   let emTicket = null; // { t: التذكرة، at: وقت سكّها، tok: الجلسة التي سكّتها — حساب آخر على الجهاز نفسه لا يستعملها }
-  async function emMintTicket(token){
+  /* v-audit-main-b (userdata-4 × v-owner-reset-records): Gmail المربوط صار إثبات استرجاع عند المالك، فمن وضع كلمة مروره يكتبها لسكّ التذكرة (الخادم
+     يردّ password_required · wrong_password · too_many). خانة كلمة مرور تظهر فوق زرّ الربط لمن يحتاجها وحده (السكّ المسبق يكشفه)، بنصوص قائمة بالـ١٤
+     لغة كخانة ربط الهاتف في «حسابي»: acctCurrentPasswordLabel · acctDeleteWrongPass · acctDeleteTooMany. Enter فيها = الربط. */
+  let emPass = null, emPassMsg = null;
+  function emPassBox(show, code){
+    if(!emPass && show){
+      emPass = document.createElement('input');
+      emPass.type = 'password';
+      emPass.id = 'emailAssistPassword';
+      emPass.setAttribute('autocomplete', 'current-password');
+      emPass.setAttribute('dir', 'auto');
+      emPass.style.cssText = 'display:block; width:100%; box-sizing:border-box; height:44px; margin-top:12px; padding:0 10px; border-radius:var(--r-2);';
+      emPass.addEventListener('keydown', (ev) => { if(ev.key === 'Enter'){ ev.preventDefault(); connectBtn.click(); } });
+      emPassMsg = document.createElement('p');
+      emPassMsg.id = 'emailAssistPasswordMsg';
+      emPassMsg.style.cssText = 'margin:8px 0 0; font-size:12.5px;';
+      connectBox.insertBefore(emPass, connectBtn);
+      connectBox.insertBefore(emPassMsg, connectBtn);
+    }
+    if(!emPass) return;
+    const bad = !!show && (code === 'wrong_password' || code === 'too_many'); // سطر أحمر للخطأ وحده — «كلمة المرور الحالية» في الخانة نفسها
+    emPass.style.display = show ? 'block' : 'none';
+    emPassMsg.style.display = bad ? 'block' : 'none';
+    emPass.placeholder = t('acctCurrentPasswordLabel');
+    emPassMsg.textContent = bad ? t(code === 'wrong_password' ? 'acctDeleteWrongPass' : 'acctDeleteTooMany') : '';
+    emPassMsg.style.color = '#ef4444';
+    if(!show) emPass.value = '';
+  }
+  async function emMintTicket(token, password){
+    const body = { token };
+    if(password) body.password = password;
     const r = await fetch('/api/system?action=email-link-ticket', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify(body),
     });
     let d = null;
     try{ d = await r.json(); }catch(e){ __swallow(e, "misc:app-12-studios#3"); }
-    if(!r.ok || !d || !d.ticket) throw new Error((d && d.error) || ('HTTP ' + r.status));
+    if(!r.ok || !d || !d.ticket) throw Object.assign(new Error((d && d.error) || ('HTTP ' + r.status)), { code: d && d.code });
     return d.ticket;
   }
   function emPrefetchTicket(){
     const tok = localStorage.getItem('aiapp_auth_token');
     if(!tok) return;
-    emMintTicket(tok).then((tk) => { emTicket = { t: tk, at: Date.now(), tok }; }, (e) => { emTicket = null; __swallow(e, "misc:app-12-studios#4"); });
+    emMintTicket(tok).then((tk) => { emTicket = { t: tk, at: Date.now(), tok }; emPassBox(false); }, (e) => {
+      emTicket = null;
+      if(e && e.code === 'password_required') emPassBox(true, 'password_required'); // v-audit-main-b: الخانة قبل النقر لمن وضع كلمته
+      else __swallow(e, "misc:app-12-studios#4");
+    });
   }
 
   connectBtn.addEventListener('click', () => {
@@ -40186,8 +40220,12 @@ function stud2ErrText(e, prefix, fbKey){
     const fresh = (emTicket && emTicket.tok === token && Date.now() - emTicket.at < 8 * 60 * 1000) ? emTicket.t : '';
     emTicket = null;
     if(fresh){ go(fresh); return; }
+    const pw = (emPass && emPass.style.display !== 'none') ? emPass.value : ''; // v-audit-main-b (userdata-4)
     connectBtn.disabled = true;
-    emMintTicket(token).then(go, (e) => emLinkError(e && e.message ? e.message : String(e))).finally(() => { connectBtn.disabled = false; });
+    emMintTicket(token, pw).then((tk) => { emPassBox(false); go(tk); }, (e) => {
+      if(e && (e.code === 'password_required' || e.code === 'wrong_password' || e.code === 'too_many')){ emPassBox(true, e && e.code); if(emPass) emPass.focus(); return; }
+      emLinkError(e && e.message ? e.message : String(e));
+    }).finally(() => { connectBtn.disabled = false; });
   });
 
   refreshBtn.addEventListener('click', loadEmails);
