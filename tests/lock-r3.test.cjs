@@ -1939,3 +1939,43 @@ test('port-rv5: تغيير الاسم والاسم الجديد لحساب حي�
   assert.equal((await user('rvalice')).deleted, undefined, 'الاسم القديم حيّ');
   assert.equal((await rename('rvalice', 'rvbob')).code, 409, 'ضابط: بلا عطل ⇒ الاسم محجوز');
 });
+
+// port-rv6: المربوط الأعلى رتبةً كان يُبقى ويُلغى اشتراك الحساب العامل ولو لم يُمنح منه شيء ولا يُحصِّل (unpaid/past_due) — supersedeSubs (r2-3 · r3-1)
+// لا يُبقي الأعلى إلّا وفترته في يد الحساب (heldHigher). الآن: المربوط الأعلى يُبقى وحده إن لم يكن مستحقًّا غير مدفوع والحساب يحمل فترته بعد المنح.
+test('port-rv6أ: Max قديم unpaid (فواتيره المدفوعة أقدم من النافذة، لا منح) يُربط فوق اشتراك Plus عامل ⇒ Plus باقٍ وMax هو الزائد', async () => {
+  await fresh('lkrv6a', { plan: 'basic', planUpdatedAt: Date.now() - 3 * DAY, planPayId: 'cs_lkrv6a_b', points: 360 });
+  sub('sub_lkrv6a_plus', 'lkrv6a', 'basic', 'active');
+  seedUnlinked('sub_LKRV6maxU', 'max', { created: nowSec() - 430 * 86400, renewals: [400], status: 'unpaid', amount: 10000 });
+  const dry = await linkSub('lkrv6a', 'sub_LKRV6maxU');
+  assert.equal(dry.status, 200, JSON.stringify(dry.body));
+  assert.equal(dry.body.toGrant, 0, 'لا دفعة في النافذة');
+  const r = await linkSub('lkrv6a', 'sub_LKRV6maxU', true);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(net.subs.sub_lkrv6a_plus.status, 'active', 'اشتراك الحساب العامل لا يُلغى لأجل Max لم يُمنح منه شيء');
+  assert.deepEqual(liveIn('lkrv6a', CHAT), ['sub_lkrv6a_plus'], 'اشتراك حيّ واحد في الخانة');
+  assert.equal(tier.chatPeriod(await user('lkrv6a')).plan, 'basic');
+  assert.equal(pts('lkrv6a'), 360, 'لا منح');
+});
+
+test('port-rv6ب: Max past_due رُدّت دفعاته كلّها يُربط فوق Plus عامل ⇒ Plus باقٍ، وMax المستحقّ هو الزائد', async () => {
+  await fresh('lkrv6b', { plan: 'basic', planUpdatedAt: Date.now() - 3 * DAY, planPayId: 'cs_lkrv6b_b', points: 360 });
+  sub('sub_lkrv6b_plus', 'lkrv6b', 'basic', 'active');
+  seedUnlinked('sub_LKRV6maxP', 'max', { created: nowSec() - 60 * 86400, renewals: [30], status: 'past_due', amount: 10000 });
+  for (const n of [1, 2]) { const c = net.charges['ch_sub_LKRV6maxP_' + n]; c.refunded = true; c.amount_refunded = c.amount; }
+  const r = await linkSub('lkrv6b', 'sub_LKRV6maxP', true);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(net.subs.sub_lkrv6b_plus.status, 'active', 'العامل باقٍ');
+  assert.deepEqual(liveIn('lkrv6b', CHAT), ['sub_lkrv6b_plus']);
+  assert.equal(pts('lkrv6b'), 360, 'المردودة لا تُمنح');
+});
+
+test('port-rv6ج: Max حيّ مُنح فعلًا (الحساب يحمل فترته) فوق Plus ⇒ Plus هو الزائد كما في port-rv2ج (ضابط)', async () => {
+  await fresh('lkrv6c', { plan: 'basic', planUpdatedAt: Date.now() - 3 * DAY, planPayId: 'cs_lkrv6c_b', points: 360 });
+  sub('sub_lkrv6c_plus', 'lkrv6c', 'basic', 'active');
+  seedUnlinked('sub_LKRV6maxA', 'max', { created: nowSec() - 10 * 86400, amount: 10000 });
+  const r = await linkSub('lkrv6c', 'sub_LKRV6maxA', true);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.superseded, 1);
+  assert.deepEqual(liveIn('lkrv6c', CHAT), ['sub_LKRV6maxA']);
+  assert.equal(tier.chatPeriod(await user('lkrv6c')).plan, 'max');
+});

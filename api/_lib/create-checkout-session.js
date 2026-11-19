@@ -973,6 +973,13 @@ async function planSupersede(username, plan, linkedId, fetchImpl) {
   const others = (await liveSubs(names, f, auth)).filter((x) => x.id !== String(linkedId) && planSlot(x.metadata && x.metadata.plan) === slot);
   if (!others.length) return [];
   if (others.some((x) => rankOf(x.metadata.plan) >= rankOf(plan))) return [String(linkedId)];
+  /* v-audit-main-b (port-rv6): الأعلى رتبةً وحدها لا تكفي — كـheldHigher في supersedeSubs (r2-3 · r3-1): المربوط يُبقى وحده إن كان يُحصِّل
+     (لا past_due/unpaid) والحساب يحمل فترته بعد المنح؛ وإلّا فهو الزائد ويبقى اشتراك الحساب العامل (كان يُلغى لأجل Max لم يُمنح منه شيء). */
+  const pl = PLANS[plan];
+  const mm = pl.media ? (acct.user.media && acct.user.media[pl.media]) : null;
+  const cpH = pl.media ? null : require('./tier.js').chatPeriod(acct.user);
+  const held = pl.media ? !!(mm && mediaActive(acct.user, pl.media) && rankOf(mm.plan) >= rankOf(plan)) : !!(cpH && rankOf(cpH.plan) >= rankOf(plan));
+  if (DUE_SUB.includes(linked.status) || !held) return [String(linkedId)];
   return others.map((x) => String(x.id));
 }
 async function supersedeLinked(username, plan, linkedId, fetchImpl) {
