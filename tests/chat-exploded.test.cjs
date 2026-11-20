@@ -235,8 +235,8 @@ test('٩. تفكيك بلا صورة يُرفض قبل أيّ حجز أو خصم
 
 test('١٠. الربط في المحادثة: النيّة قبل صانع الفيديو وإعلان الفيديو وصورة الإعلان، وللمالك، وصورته نفسها بلا إطار', () => {
   assert.ok(A9.indexOf('function omranExplodedAsk(') < A9.indexOf('async function __sendPromptCore('), 'خارج __sendPromptCore');
-  assert.match(A9, /if\(pendingAttachments\.some\(a => a && a\.isImage\) && omranExplodedAsk\(text, true\)\) return false;/, 'دور المالك لا يُسلَّم للمزوّد');
-  assert.match(A9, /const __explodedTurn = !__ownerUiShot && omranExplodedAsk\(text, __gateAtts\.some\(a => a && a\.isImage\)\);/);
+  assert.match(A9, /if\(omranExplodedAsk\(text, pendingAttachments\.some\(a => a && a\.isImage\) \|\| !!omranExplodedPrevImage\(getCurrent\(\)\)\)\) return false;/, 'دور المالك لا يُسلَّم للمزوّد (صورة الآن أو في رسالة قريبة — v-chat-exploded-prev)');
+  assert.match(A9, /const __explodedTurn = !__ownerUiShot && omranExplodedAsk\(text, __gateAtts\.some\(a => a && a\.isImage\) \|\| !!omranExplodedPrevImage\(getCurrent\(\)\)\);/);
   assert.match(A9, /const __adVideoTurn = !__ownerUiShot && !__explodedTurn && omranAdVideoAsk\(/);
   assert.match(A9, /if\(text && !__explodedTurn \/\*[^*]*\*\/ && __VID_MAKE_RE\.test\(text\)/, 'لا يفتح صانع الفيديو');
   assert.match(A9, /&& __rtAdOk \/\* v-route-ad \*\/ && !__explodedTurn \/\* v-chat-exploded \*\/ && !cur\.adMode/, 'لا صورة إعلان');
@@ -321,6 +321,47 @@ test('١٣. إعادة الفحص: طلب شرح/خطوات، و«؟» بلا ع
   const h = require('./_route-src.cjs').load(root);
   for (const t of ['خطوات تفكيك الجوال', 'فكك الفاتورة', 'يتفكك؟', 'تشريح المباراة']) assert.equal(h.wantsVideo(t, true, null), false, 'لا فيديو: ' + t);
   assert.equal(h.wantsVideo('فكك السيارة', true, null), true, 'فكك السيارة = فيديو');
+});
+
+
+/* ── لقطة المالك: الصورة في رسالة و«فككه» في التالية — آخر صورة رفعها في المحادثة نفسها تكفي ── */
+function loadPrev() {
+  const from = A9.indexOf('function omranExplodedPrevImage(');
+  const to = A9.indexOf('\n}\n', A9.indexOf('async function omranExplodedPrevSrc(')) + 3;
+  assert.ok(from > 0 && to > from, 'مساعدا الصورة السابقة متجاوران');
+  const reads = [];
+  const ctx = { __swallow() {}, __vaultRead: async (a) => { reads.push(a.vaultId); return 'data:image/jpeg;base64,' + 'V'.repeat(200); } };
+  vm.createContext(ctx);
+  vm.runInContext(A9.slice(from, to) + '\nthis.prev = omranExplodedPrevImage; this.src = omranExplodedPrevSrc;', ctx);
+  return { prev: ctx.prev, src: ctx.src, reads };
+}
+
+test('١٤. لقطة المالك: صورة في رسالة ثمّ «فككه» بلا مرفق = فيديو التفكيك من تلك الصورة (ولو كُنست من الذاكرة)، وما عداه كما كان', async () => {
+  const { prev, src, reads } = loadPrev();
+  const img = (tag) => ({ isImage: true, mime: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,' + tag.repeat(200) });
+  const U = (atts, content) => ({ role: 'user', content: content || 'x', attachments: atts });
+  const A = (content) => ({ role: 'assistant', content: content || 'ok' });
+  // آخر صورة رفعها هو (لا أقدم منها)، في آخر ٦ رسائل
+  const car = img('C');
+  assert.equal(prev({ messages: [U([img('O')]), A(), U([car]), A('وصف السيارة')] }), car);
+  assert.equal(prev({ messages: [U([car]), A(), U(null, 'سؤال'), A(), U(null), A()] }), car, 'خمس رسائل بعدها: ما زالت قريبة');
+  assert.equal(prev({ messages: [U([car]), A(), U(null), A(), U(null), A(), U(null)] }), null, 'أبعد من ٦ رسائل: لا');
+  assert.equal(prev({ messages: [A(), { role: 'assistant', attachments: [img('G')] }] }), null, 'صورة من المساعد ليست صورته');
+  assert.equal(prev({ messages: [U([{ isImage: false, name: 'a.pdf' }])] }), null, 'ملف ليس صورة');
+  assert.equal(prev({}), null); assert.equal(prev(null), null);
+  // مكنوسة من الذاكرة (dataUrl فارغ) ولها vaultId = تُستعاد من المخزن
+  const purged = { isImage: true, mime: 'image/png', dataUrl: '', purged: true, vaultId: 'v1' };
+  assert.equal(prev({ messages: [U([purged])] }), purged);
+  const got = await src(purged);
+  assert.deepEqual(reads, ['v1']); assert.equal(got.b64, 'V'.repeat(200)); assert.equal(got.mime, 'image/png');
+  const gc = await src(car); assert.equal(gc.b64, 'C'.repeat(200)); assert.equal(gc.mime, 'image/jpeg'); assert.equal(await src(null), null);
+  // الربط: البوّابة واستثناء مزوّد المالك يقبلان الصورة السابقة، ومصدر الفيديو يأخذها لدور التفكيك وحده
+  assert.match(A9, /if\(omranExplodedAsk\(text, pendingAttachments\.some\(a => a && a\.isImage\) \|\| !!omranExplodedPrevImage\(getCurrent\(\)\)\)\) return false;/);
+  assert.match(A9, /const __explodedTurn = !__ownerUiShot && omranExplodedAsk\(text, __gateAtts\.some\(a => a && a\.isImage\) \|\| !!omranExplodedPrevImage\(getCurrent\(\)\)\);/);
+  assert.match(A9, /: \(__explodedTurn && omranExplodedPrevImage\(cur\)\) \? await omranExplodedPrevSrc\(omranExplodedPrevImage\(cur\)\)/);
+  assert.match(A9, /if\(__vidSrc && __vidSrc\.b64 && \(__srcImg \|\| __explodedTurn \|\|/);
+  // النيّة نفسها: «فكك الفاتورة» لا تطلقه ولو كانت هناك صورة سابقة
+  assert.equal(ask('فكك الفاتورة', true), false); assert.equal(ask('فككه', true), true);
 });
 
 console.log('✓ chat-exploded: صورة + «فكّكه» = فيديو تفكيك ٥ث من صورته نفسها، بأمر واحد وتلميح فئة، وسؤال الخصم نفسه، والنفي والمعاني الأخرى لا تطلقه');

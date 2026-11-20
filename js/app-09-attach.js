@@ -4188,6 +4188,28 @@ function omranExplodedAsk(text, hasImage){
   const n = __EXPL_NOUNV_RE.exec(t); if(n && __explObjOk(n[1], true)) return true;
   return show && (__EXPL_AR_RE.test(t) || __EXPL_EN_RE.test(t) || __EXPL_CUT_RE.test(t) || __EXPL_ASK_RE.test(t) || /(?:^|[^ء-ي])(?:قطع|اجزاء|أجزاء|مكونات)(?:ه|ها)(?![ء-ي])/.test(t));
 }
+/* v-chat-exploded-prev (لقطة المالك ٢٠ نوفمبر): رفع صورة السيارة في رسالة ثمّ كتب «فككه» في التالية — بلا مرفق في الرسالة نفسها لم ينطلق،
+   فذهب لمزوّده فاستدعى أداة تعديل الصورة («الأداة تحتاج طلب أوضح»). آخر صورة رفعها هو في آخر ٦ رسائل من المحادثة نفسها تكفي، وتُستعاد من
+   المخزن إن كُنست من الذاكرة (vaultId). لا تمسّ غير طلب التفكيك الصريح. */
+function omranExplodedPrevImage(cur){
+  try{
+    const ms = (cur && Array.isArray(cur.messages)) ? cur.messages : [];
+    for(let i = ms.length - 1, n = 0; i >= 0 && n < 6; i--, n++){
+      const m = ms[i];
+      if(!m || m.role !== 'user' || !Array.isArray(m.attachments)) continue;
+      const a = m.attachments.filter(function(x){ return x && x.isImage; }).slice(-1)[0];
+      if(a && ((typeof a.dataUrl === 'string' && a.dataUrl.length > 100) || a.vaultId)) return a;
+    }
+  }catch(e){ __swallow(e, 'ui:expl-prev'); }
+  return null;
+}
+async function omranExplodedPrevSrc(a){
+  if(!a) return null;
+  let d = a.dataUrl;
+  if((typeof d !== 'string' || d.length <= 100) && a.vaultId && typeof __vaultRead === 'function'){ try{ d = await __vaultRead(a); }catch(e){ __swallow(e, 'ui:expl-prev-read'); } }
+  const b64 = String(d || '').split(',')[1] || '';
+  return b64 ? { b64: b64, mime: a.mime || 'image/png' } : null;
+}
 async function __sendPromptCore(){
   /* v-parallel-chats: هذا الطلب يخصّ المحادثة التي بدأ فيها. الرسم باسمَي renderAll/renderMessages مظلَّل هنا:
      يرسم فقط إن كانت محادثته هي المعروضة، وإلّا يحدّث القائمة الجانبيّة وحدها — فلا يكتب طلب في الخلفيّة
@@ -4263,7 +4285,7 @@ async function __sendPromptCore(){
       const __p = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
       if(window.__agentModeOn === true && __p === 'claude') return false;
       if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(__p) === -1) return false;
-      if(pendingAttachments.some(a => a && a.isImage) && __imgFormatIntent(text)) return false; if(pendingAttachments.some(a => a && a.isImage) && omranExplodedAsk(text, true)) return false; /* v-chat-exploded: صورة + «فكّكه» = فيديو التفكيك نفسه للمالك أيضًا (أمره ٢٠ نوفمبر «في المحادثة»)، لا وصف يخمّنه المزوّد */
+      if(pendingAttachments.some(a => a && a.isImage) && __imgFormatIntent(text)) return false; if(omranExplodedAsk(text, pendingAttachments.some(a => a && a.isImage) || !!omranExplodedPrevImage(getCurrent()))) return false; /* v-chat-exploded: صورة + «فكّكه» = فيديو التفكيك نفسه للمالك أيضًا (أمره ٢٠ نوفمبر «في المحادثة»)، لا وصف يخمّنه المزوّد */
       return true;
     }catch(e){ __swallow(e, 'ui:prov-self'); return false; }
   })();
@@ -4285,7 +4307,7 @@ async function __sendPromptCore(){
     }catch(e){ return []; }
   })();
   const __ownerUiShot = omranOwnerUiShotTurn(text, __gateAtts.filter(a => a && a.isImage).slice(-1)[0]);
-  if(__ownerUiShot) __mediaLane = 'none'; const __explodedTurn = !__ownerUiShot && omranExplodedAsk(text, __gateAtts.some(a => a && a.isImage)); /* v-chat-exploded: صورة + طلب تفكيك = فيديو التفكيك في المحادثة (يغلب إعلان الفيديو وصانع الفيديو وصورة الإعلان) */ const __adVideoTurn = !__ownerUiShot && !__explodedTurn && omranAdVideoAsk(text, __gateAtts.some(a => a && a.isImage)); if(__adVideoTurn) __mediaLane = 'none'; /* v-chat-ad-video: إعلان الفيديو للمحادثة وأداتها — لا مسار وسائط في الواجهة */
+  if(__ownerUiShot) __mediaLane = 'none'; const __explodedTurn = !__ownerUiShot && omranExplodedAsk(text, __gateAtts.some(a => a && a.isImage) || !!omranExplodedPrevImage(getCurrent())); /* v-chat-exploded-prev: أو صورته في رسالة سابقة قريبة */ /* v-chat-exploded: صورة + طلب تفكيك = فيديو التفكيك في المحادثة (يغلب إعلان الفيديو وصانع الفيديو وصورة الإعلان) */ const __adVideoTurn = !__ownerUiShot && !__explodedTurn && omranAdVideoAsk(text, __gateAtts.some(a => a && a.isImage)); if(__adVideoTurn) __mediaLane = 'none'; /* v-chat-ad-video: إعلان الفيديو للمحادثة وأداتها — لا مسار وسائط في الواجهة */
   window.__ownerUiShotTurn = __ownerUiShot; /* يُرسل مع طلب المحادثة (app-18) */
   window.__mediaGate = __mediaLane; /* للتشخيص */
   // 🎬 v525: اكتشاف طلب إنشاء فيديو → فتح صانع الفيديو مباشرة
@@ -5580,7 +5602,7 @@ function __friendlyErr(e){
     const __animateRe = /(?:^|[^\u0600-\u06FF])[وف]?(?:حرك|حرّك)|(?:^|[^\u0600-\u06FF])(?:خل|خلي|خلّي|خلها|خلّها|خليها|خلّيها|خله|خلّه|خليه|ابيها|أبيها|ابغاها|أبغاها|ابغيها|أبغيها|اريدها|أريدها|اجعلها|اجعله)\s+(?:(?:ال)?صور[ةه]\s+)?(?:تتحرك|تتحرّك|يتحرك|يتحرّك|متحرك[ةه]?|متحرّك[ةه]?)|(?:^|[^\u0600-\u06FF])(?:سوها|سوّها|سويها|سوّيها|حولها|حوّلها|خلها|خلّها|خليها|اجعلها)\s+(?:لي\s+)?(?:لـ?|الى\s+|إلى\s+)?(?:فيديو|ڤيديو|مقطع|كليب)|\banimate/i;
     const __vidSrc = __srcImg
       ? { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }
-      : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
+      : (__explodedTurn && omranExplodedPrevImage(cur)) ? await omranExplodedPrevSrc(omranExplodedPrevImage(cur)) /* v-chat-exploded-prev */ : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
     const __wantsVideo = __explodedTurn /* v-chat-exploded */ || !!text && !__codeWordRe.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && (
       (__videoWordRe.test(text) && (__routeCmdRe.test(text) || /(حول|حوّل|حوله|حوّله|ولد|ولّد|انتج|أنتج|اطلع لي|طلع لي|generate|convert|turn)/i.test(text) || /(فيديو|ڤيديو|video)\s+(عن|يظهر|فيه|about|of|showing)\s+\S/i.test(text))) ||
       (!!__vidSrc && (__srcImg || cur.lastMsgWasImageEdit) && __animateRe.test(text))
@@ -5613,7 +5635,7 @@ function __friendlyErr(e){
       chatPhase('🎬', omranAttachT('axAttachVidCreating', 'جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق', 'Creating video… this can take 1–3 minutes'), thinkingDiv);
       try{
         const __vp = { promptText: text.slice(0, 900), duration: 5, ratio: '1280:720', token: authGet('aiapp_auth_token') }; if(__explodedTurn) __vp.fx = 'exploded'; /* v-chat-exploded: بلا صورة تصل يرفضه الخادم قبل الخصم — لا فيديو نصّيّ لكلمة «فكّكه» */
-        if(__vidSrc && __vidSrc.b64 && (__srcImg || __animateRe.test(text) || /منها|عليها|الصورة|صورتي|this image|the image|it/i.test(text))){
+        if(__vidSrc && __vidSrc.b64 && (__srcImg || __explodedTurn || __animateRe.test(text) || /منها|عليها|الصورة|صورتي|this image|the image|it/i.test(text))){
           // Runway requires w/h ratio 0.5–2: pad the image if needed
           try{
             const __fixed = await new Promise((resolve) => {
