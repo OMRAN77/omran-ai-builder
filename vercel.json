@@ -386,6 +386,10 @@
       "destination": "/download.html"
     },
     {
+      "source": "/v",
+      "destination": "/v.html"
+    },
+    {
       "source": "/tools",
       "destination": "/tools/index.html"
     },
