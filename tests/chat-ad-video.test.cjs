@@ -33,7 +33,8 @@ test('١ التوجيه: إعلان الفيديو للمحادثة، والبا
 });
 
 test('٢ الواجهة: مسارات الوسائط تُتخطّى في دور إعلان الفيديو', () => {
-  assert.ok(A9.includes("if(__ownerUiShot) __mediaLane = 'none'; const __adVideoTurn = !__ownerUiShot && omranAdVideoAsk(text, __gateAtts.some(a => a && a.isImage)); if(__adVideoTurn) __mediaLane = 'none';"));
+  assert.ok(A9.includes("if(__ownerUiShot) __mediaLane = 'none'; const __explodedTurn = ")); /* v-chat-exploded: صورة + «فكّكه» يسبق إعلان الفيديو */
+  assert.ok(A9.includes("const __adVideoTurn = !__ownerUiShot && !__explodedTurn && omranAdVideoAsk(text, __gateAtts.some(a => a && a.isImage)); if(__adVideoTurn) __mediaLane = 'none';"));
   assert.ok(A9.includes('const __blockAutoImage = !!(__ownerProvTurn /* v-prov-self */ || __adVideoTurn /* v-chat-ad-video */ ||'));
   const adImg = A9.indexOf('&& __rtAdOk /* v-route-ad */');
   assert.ok(/!__blockAutoImage && __mediaLane !== 'none'/.test(A9.slice(A9.lastIndexOf('} else if(', adImg), adImg)), 'صورة الإعلان تحترم الحاجزين');
