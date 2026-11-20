@@ -27186,7 +27186,7 @@ function omranAdFx(text){ const w=AD_FX_WORDS.find(function(x){ return x[1].test
    «اشرحه»، «كيف أفكّكها؟») لا تطلقه. «إعلان» مع «صورة/بوستر» بلا كلمة فيديو يبقى صورة الإعلان بتأثيرها (v-ad-fx-chat). الشدّة تُقرأ قبل
    حذف التشكيل: «شرّحه» تشريح و«شرحه» شرح. خارج __sendPromptCore عمدًا (سقّاطة البنية)، وبثوابته وحدها (اختبار chat-exploded يشغّلها معزولة). */
 const __EXPL_AR_CORE = '(?:[يتن]?ت?فكك(?:ه|ها|هم|ي|يه|يها|يهم|وه|وها|وهم|لي|يلي)?|فك(?:ه|ها)(?!\\s*(?:عني|عنا|عنّا|مني|منه|منها|منا|منّا))|فك\\s+(?:ال)?(?:قطع|اجزاء|أجزاء|قطعه|قطعها|اجزاءه|أجزاءه|اجزاءها|أجزاءها)|(?:ال|بال|وال|و|ب)?تفكيك(?:ه|ها|هم)?|[اإأ]كسبلود[ء-ي]*|(?:ال|و)?تشريح(?:ه|ها)?)(?![ء-ي])';
-const __EXPL_EN_CORE = '(?:explod(?:e|ed|ing)(?:[\\s-]+view)?|disassembl(?:e|ed|ing|y)|tear[\\s-]?down|tear\\s+(?:it|this|them)\\s+down|take\\s+(?:it|this|them|the\\s+\\w+)\\s+apart|take\\s+apart|pull\\s+(?:it|this)\\s+apart|break\\s+(?:it\\s+|this\\s+)?down\\s+into\\s+(?:its\\s+)?(?:parts|pieces|components))\\b';
+const __EXPL_EN_CORE = '(?:explod(?:e|ed|ing)[\\s-]+view|explode(?=\\s+(?:it|this|that|them|the|my|into|apart)\\b|\\s*[.!]*\\s*$)|disassembl(?:e|ed|ing|y)|tear[\\s-]?down|tear\\s+(?:it|this|them)\\s+down|take\\s+(?:it|this|them|the\\s+\\w+)\\s+apart|take\\s+apart|pull\\s+(?:it|this)\\s+apart|break\\s+(?:it\\s+|this\\s+)?down\\s+into\\s+(?:its\\s+)?(?:parts|pieces|components))\\b';
 const __EXPL_AR_RE = new RegExp('(?:^|[^ء-ي])[وف]?' + __EXPL_AR_CORE);
 const __EXPL_EN_RE = new RegExp('\\b' + __EXPL_EN_CORE, 'i');
 const __EXPL_CUT_RE = /(?:^|[^ء-ي])[وف]?(?:ي|ت)?شر[\u064E]?\u0651[\u064E]?ح(?:ه|ها|هم|لي)?(?![ء-ي])/; // «شرّحه» بالشدّة وحدها
@@ -27198,14 +27198,19 @@ const __EXPL_NEG_CUT_RE = new RegExp(__EXPL_NEG + '(?:ي|ت)?شر[\\u064E]?\\u06
 const __EXPL_NEG_EN_RE = new RegExp("\\b(?:don[’']?t|do\\s+not|no|not|without|never|stop)\\s+(?:\\w+\\s+){0,2}" + __EXPL_EN_CORE, 'i');
 const __EXPL_HOW_RE = /^(?:كيف|ليش|لماذا|لمَ|متى|وين|how|why|when|where)(?=$|[\s،,])/i;
 const __EXPL_CODE_RE = /كود|الكود|سكربت|سكريبت|برمج|\bcode\b|\bscript\b|\bfunction\b|\brepo\b/i;
+/* v-chat-exploded (المراجعة): سؤال أو قلق في أيّ موضع («هل يمكن تفكيكه؟»، «خايف يتفكك»، «وش اسوي») بلا طلب عرض = جواب بالكلام؛ وواجب مجرّد
+   («فكك المعادلة/الجملة/العدد لعوامله»، «تفكك الأسرة») أو انفجار («بالنار»، fire) ليس قطعًا تتفكّك — بحدود كلمة: «النارية/الرقمية» تبقى. */
+const __EXPL_Q_ANY_RE = /(?:^|[^ء-ي])[وف]?(?:كيف|شلون|[اإ]شلون|ليش|لماذا|هل|(?:وش|شو|[اإأ]يش)\s*[اأ]سوي|شسوي|خاي?ف[ةه]?|[اأ]خاف|[اأ]خشى)(?![ء-ي])|\b(?:how|why|is\s+it\s+(?:possible|safe)|can\s+it\s+be)\b/i;
+const __EXPL_ABSTRACT_RE = /(?:^|[^ء-ي])[وفبل]?(?:ال|هال|ها|ل)?(?:معادل[ةه]|معادلات|مس[أا]ل[ةه]|مساله|مسائل|جمل[ةه]|كلم[ةه]|كلمات|حروف|رقم|[اأ]رقام|عدد|[اأ]عداد|عوامل|[اإ]عرابي?[اًة]?|[اأ]قواس|فكر[ةه]|مشكل[ةه]|سؤال|[اأ]سئل[ةه]|[اأ]سر[ةه]|مجتمع|انفجار|[يت]نفجر|نار|نيران|لهب)(?:ه|ها|هم|ي|ات)?(?![ء-ي])|\b(?:equations?|sentences?|words?|numbers?|problems?|questions?|math|server|database|text|polynomials?|factors?|brackets?|fire|flames?|blast|bomb|boom|explosions?)\b/i;
+const __EXPL_SALE_RE = /للبيع|للإيجار|للايجار|\bfor\s+(?:sale|rent)\b/i; // إعلان بيع/إيجار (كما يعدّه __adIntentRe) بلا كلمة فيديو = صورة الإعلان كما في main
 const __EXPL_AD_STILL_RE = /(?:إعلان|اعلان|أعلان|دعاي[ةه]|\bads?\b|advert)[\s\S]*?(?:صور[ةه]|بوستر|منشور|بنر|بانر|ملصق|poster|banner|\bimage\b|\bpost\b)|(?:صور[ةه]|بوستر|منشور|بنر|بانر|ملصق|poster|banner|\bimage\b|\bpost\b)[\s\S]*?(?:إعلان|اعلان|أعلان|دعاي[ةه]|\bads?\b|advert)/i;
 function omranExplodedAsk(text, hasImage){
   if(!hasImage) return false;
   const raw = String(text || '').slice(0, 600).trim();
   if(!raw) return false;
   const t = raw.replace(/[\u064B-\u0652\u0640]/g, ''); // «فكّكها» = «فككها»
-  if(__EXPL_HOW_RE.test(t) || __EXPL_CODE_RE.test(t)) return false;
-  if(__EXPL_AD_STILL_RE.test(t) && !__EXPL_SHOW_RE.test(t)) return false; // صورة إعلان بتأثير التفكيك كما كانت
+  if(__EXPL_HOW_RE.test(t) || __EXPL_CODE_RE.test(t) || __EXPL_ABSTRACT_RE.test(t)) return false;
+  if((__EXPL_Q_ANY_RE.test(t) || __EXPL_AD_STILL_RE.test(t) || __EXPL_SALE_RE.test(t)) && !__EXPL_SHOW_RE.test(t)) return false; // سؤال/قلق، أو صورة إعلان بتأثير التفكيك كما كانت
   if(__EXPL_NEG_AR_RE.test(t) || __EXPL_NEG_EN_RE.test(t) || __EXPL_NEG_CUT_RE.test(raw)) return false;
   return __EXPL_AR_RE.test(t) || __EXPL_EN_RE.test(t) || __EXPL_CUT_RE.test(raw) || (__EXPL_ASK_RE.test(t) && __EXPL_SHOW_RE.test(t));
 }

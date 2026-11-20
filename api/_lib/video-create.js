@@ -56,11 +56,15 @@ const EXPLODED_KINDS = {
 };
 const EXPLODED_KIND_RE = [
   ['body', /جسم\s*(?:ال)?(?:[اإ]نسان|بشري?)|تشريح|شر\u064E?\u0651\u064E?ح|[اأ]عضاء|هيكل\s*عظمي|عظام|القلب|الدماغ|human\s+body|anatom|skeleton|organs/i],
-  ['aircraft', /طي?ار[ةه]|طيارات|طائر[ةه]|طائرات|هليكوبتر|مروحي[ةه]|درون|\b(?:air)?planes?\b|aircraft|airliner|\bjets?\b|helicopter|drone/i],
+  ['aircraft', /طيار(?:[ةه]|ات|ت)|طائر(?:[ةه]|ات|ت)|هليكوبتر|مروحي[ةه]|درون|\b(?:air)?planes?\b|aircraft|airliner|\bjets?\b|helicopter|drone/i],
   ['vehicle', /سيار[ةه]|سيارات|موتر|دراج[ةه]|دباب[ةه]|شاحن[ةه]|باص|محرك|موتور|\bcars?\b|truck|motorcycle|motorbike|vehicle|\bengine\b/i],
-  ['watch', /ساع[ةه]|ساعات|\bwatch(?:es)?\b|\bclock\b/i],
+  ['watch', /ساع[ةه]|ساعات|(?<!\b(?:to|can|could|i|we|you|me|and)\s)\bwatch(?:es)?\b(?!\s+(?:it|this|that|them|how|me|us|as|while|the))|\bclock\b/i],
   ['electronics', /جوال|هاتف|تلفون|موبايل|[اآ]يفون|سامسونج|لابتوب|كمبيوتر|حاسوب|تابلت|[اآ]يباد|سما?عة|سماعات|كاميرا|بلايستيشن|تلفزيون|[اإ]لكترون|phone|laptop|computer|tablet|ipad|headphones?|earbuds|camera|console|electronic/i],
 ];
+/* v-chat-exploded (المراجعة): «طيار» بياء لازمة («الطارة» مقود و«إطارها» إطار، لا طيّارة)، و«watch» الفعل («to watch»، «watch how») ليس ساعة —
+   تلميح فئة خاطئ يخترع قطعًا. والأمر العامّ قد يكون صورة إنسان بلا كلمة «جسم» («فككه»، «فكك الجسم»): شرط السلامة فيه وحده (الفئات الأخرى لا
+   تحتاجه، والجسم له جملته، وإضافته للكلّ تأكل كلامه من حدّ ١٠٠٠). */
+const EXPLODED_SAFE = ' If it is a person or animal, show a clean educational model only: no blood, no gore, no injury.';
 const EXPLODED_TAIL = ' EXPLODED VIEW (mandatory): only the real parts of this exact object, unchanged; nothing invented, never a different or generic object.';
 function explodedKind(text) {
   const t = String(text || '');
@@ -70,7 +74,7 @@ function explodedKind(text) {
 function buildExplodedPrompt(promptText) {
   const kind = explodedKind(promptText);
   const hint = kind ? ' ' + EXPLODED_KINDS[kind] : '';
-  const head = EXPLODED_PRE + EXPLODED_MOVE + hint;
+  const head = EXPLODED_PRE + EXPLODED_MOVE + (hint || EXPLODED_SAFE);
   const room = Math.max(0, RUNWAY_PROMPT_MAX - head.length - EXPLODED_TAIL.length - 12);
   const words = String(promptText || '').replace(/\s+/g, ' ').trim().slice(0, room);
   return head + (words ? ' Request: ' + words + '.' : '') + EXPLODED_TAIL;

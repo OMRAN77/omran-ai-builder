@@ -255,4 +255,59 @@ test('١٠. الربط في المحادثة: النيّة قبل صانع ال�
   assert.ok(A9.indexOf('const __wantsVideo = ') < A9.indexOf('const __ATT_EDIT = '));
 });
 
+/* ── المراجعة: إيجابيّات كاذبة (صورة + كلام ليس طلب تفكيك = كان يصير فيديو مدفوعًا) وثغرتا الأمر ── */
+const FALSE_POS = [
+  // سؤال في وسط الكلام لا في أوّله
+  'هل يمكن تفكيكه؟', 'ممكن تشرح لي كيف يتفكك المحرك؟', 'الكرسي تفكك كيف اركبه؟', 'وهل يتفكك؟',
+  // واجب رياضيّات/نحو أو شيء مجرّد في الصورة
+  'فكك المعادلة', 'فكك لي هالمسألة خطوة خطوة', 'فكك الجملة اعرابيا', 'فكك هالكلمة', 'فكك الرقم لعوامله', 'فكك لي هالمشكلة',
+  'فكك السؤال', 'فكك الفكرة', 'فكّك الأقواس في هالمسألة', 'فكك العدد 360 إلى عوامله الأولية', 'تفكيك العدد إلى جداء عوامل أولية',
+  'فكك الجملة وأعربها', 'فكك الكلمة إلى حروف', 'اكتب مقال عن تفكك الأسرة عن هذي الصورة', 'teardown the server', 'disassemble this equation',
+  // انفجار لا تفكيك، وماضٍ إنجليزيّ
+  'make it explode with fire', 'خله ينفجر', 'تفكيك وانفجار بالنار', 'خله يتفكك وسط النار', 'my phone battery exploded, is it safe to charge?',
+  'the screen exploded after it fell, can it be fixed', 'this post will explode on instagram, write a caption', 'it exploded',
+  // إعلان بيع/إيجار بلا كلمة فيديو = صورة الإعلان كما في main
+  'اعلان للبيع ساعة رولكس تفكيك القطع', 'سيارة للإيجار تفكيك القطع',
+  // ماضٍ وقلق وطلب مساعدة
+  'الجوال تفكك بيدي وش اسوي', 'خايف يتفكك', 'اخاف تتفكك القطع',
+];
+const STILL_YES = [
+  // لا يكسرها الإصلاح: الأشياء الحقيقيّة، و«النارية/الرقمية» كلمة لا جزء كلمة، وسؤال مع طلب عرض
+  'فكك الدراجة النارية', 'فكك الساعة الرقمية', 'فككها وريني كيف تتركب', 'هل تقدر تسوي فيديو يفككها؟', 'تقدر تفككها؟',
+  'explode it', 'explode this watch', 'exploded view of my phone', 'explode.', 'سوّي فيديو يفكك المنتج', 'فكك العطر',
+];
+
+test('١١. المراجعة: سؤال في أيّ موضع، وواجب مجرّد، وانفجار، وماضٍ، وإعلان بيع، وقلق — لا تطلقه؛ والأشياء الحقيقيّة تبقى', () => {
+  for (const t of FALSE_POS) assert.equal(ask(t, true), false, 'ليس طلب تفكيك: ' + t);
+  for (const t of STILL_YES) assert.equal(ask(t, true), true, 'تفكيك: ' + t);
+  const h = require('./_route-src.cjs').load(root);
+  for (const t of ['فكك المعادلة', 'هل يمكن تفكيكه؟', 'my phone battery exploded, is it safe to charge?']) assert.equal(h.wantsVideo(t, true, null), false, 'لا فيديو: ' + t);
+});
+
+test('١٢. المراجعة: صورة إنسان بلا كلمة «جسم» = نموذج تعليميّ بلا دم أيضًا، ولا تلميح فئة خاطئ يخترع قطعًا', () => {
+  const VC = require(rp('api/_lib/video-create.js'));
+  // الأمر العامّ (أيّ صورة، وقد تكون شخصًا) يحمل شرط السلامة؛ والفئات الأخرى كما هي
+  for (const t of ['فككه', 'فكك الجسم', 'explode the body', 'تفكيك الكرسي']) {
+    const p = VC.buildExplodedPrompt(t);
+    assert.equal(VC.explodedKind(t), '', t);
+    assert.match(p, /If it is a person or animal, show a clean educational model only: no blood, no gore, no injury\./, t);
+    assert.ok(p.length <= VC.RUNWAY_PROMPT_MAX, t);
+    assert.ok(p.includes('Request: ' + t + '.'), 'كلامه يتّسع: ' + t);
+  }
+  const gen = VC.buildExplodedPrompt('x'.repeat(5000));
+  assert.ok(gen.length <= VC.RUNWAY_PROMPT_MAX, String(gen.length));
+  assert.ok(/Request: (x+)\./.exec(gen)[1].length >= 100, 'يبقى لكلامه ١٠٠ حرف على الأقلّ');
+  for (const t of ['فكك السيارة', 'فكك الطيارة', 'فككها الساعة', 'فككلي الجوال', 'شرّح جسم الانسان'])
+    assert.doesNotMatch(VC.buildExplodedPrompt(t), /If it is a person or animal/, 'الفئات الأخرى بلا زيادة: ' + t);
+  // «الطارة» (المقود) و«إطارها» ليست طيّارة، و«watch» الفعل ليس ساعة
+  const K = {
+    '': ['فكك الطارة', 'explode it so we can watch how it works', 'فكك الطيار'],
+    vehicle: ['فكّك السيارة وإطارها'],
+    electronics: ['take this phone apart, I want to watch', 'teardown of this laptop, watch it come apart'],
+    watch: ['disassemble this watch', 'take the watch apart', 'explode my smart watch', 'فككها الساعة', 'watches teardown'],
+    aircraft: ['فكك الطيارة', 'طيارتي فككها', 'تفكيك الطائرة', 'فكك الطيارات'],
+  };
+  for (const [k, list] of Object.entries(K)) for (const t of list) assert.equal(VC.explodedKind(t), k, t);
+});
+
 console.log('✓ chat-exploded: صورة + «فكّكه» = فيديو تفكيك ٥ث من صورته نفسها، بأمر واحد وتلميح فئة، وسؤال الخصم نفسه، والنفي والمعاني الأخرى لا تطلقه');
