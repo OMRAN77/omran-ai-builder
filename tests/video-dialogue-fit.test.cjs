@@ -56,28 +56,32 @@ const LINES = ['البنت: أمي لماذا نحتفل باليوم الوطن
 const DIALOGUE = [SCENE].concat(LINES).join('\n');
 const INLINE = 'البنت تسأل أمها: «ليش نحتفل باليوم الوطني يا أمي؟» والأم ترد: «عشان اتحاد الإمارات السبع يا بنتي» ثمّ البنت تقول «أنا فخورة بوطني وبالشيخ زايد» وتضحك.';
 
-test('١. الحوار في السطور: ما تتّسع له المدّة بالترتيب (١٠ث ثلاث جمل، ٨ث اثنتان، ٥ث الأولى) والمشهد باقٍ والباقي محذوف', () => {
-  for (const [sec, keep] of [[10, 3], [8, 2], [5, 1], [6, 1]]) {
+test('١. الحوار في السطور: ما تتّسع له المدّة بالترتيب (١٢ث أربع جمل، ١٠ و٨ث ثلاث، ٦ث اثنتان، ٥ث الأولى) والمشهد باقٍ والباقي محذوف', () => {
+  /* v-video-say-natural: المتّسع بنطق طبيعيّ ووقفة بين الأدوار — (المدّة − ثانية + ٠٫٤) × ٢٫٢ بوحدة «كلمات + ٠٫٨٨ لكلّ دور» */
+  for (const [sec, keep] of [[12, 4], [10, 3], [8, 3], [6, 2], [5, 1], [4, 1]]) {
     const f = VT.fitDialogue(DIALOGUE, sec);
     assert.equal(f.turns, 6); assert.equal(f.kept, keep, sec + 'ث'); assert.equal(f.dropped, 6 - keep);
     assert.equal(f.text, [SCENE].concat(LINES.slice(0, keep)).join('\n'), sec + 'ث');
-    assert.ok(f.keptWords <= f.budget, 'داخل المتّسع');
+    assert.ok(f.keptWords + keep * 0.4 * 2.2 <= f.budget + 1e-9, 'داخل المتّسع');
     assert.equal(f.last, LINES[keep - 1].replace(/^[^:]+:\s*/, ''));
   }
-  assert.equal(VT.fitDialogue(DIALOGUE, 10).budget, 15);
+  assert.ok(Math.abs(VT.fitDialogue(DIALOGUE, 10).budget - (10 - 1 + 0.4) * 2.2) < 1e-9 && Math.abs(VT.fitDialogue(DIALOGUE, 10).budget - VT.sayRoom(10)) < 1e-9);
+  assert.equal(VT.fitDialogue(DIALOGUE, 15).dropped, 0, 'الحوار كلّه (٢٥ كلمة، ستّة أدوار) في ١٥ث');
   /* يتّسع كلّه = النصّ كما هو حرفيًّا */
   const two = [SCENE].concat(LINES.slice(0, 2)).join('\n');
   assert.deepEqual([VT.fitDialogue(two, 10).text, VT.fitDialogue(two, 10).dropped], [two, 0]);
 });
 
 test('٢. الحوار داخل الجملة بالتنصيص، والإنجليزيّ، وما ليس حوارًا', () => {
-  let f = VT.fitDialogue(INLINE, 10);
+  let f = VT.fitDialogue(INLINE, 8);
   assert.equal(f.turns, 3); assert.equal(f.kept, 2);
   assert.equal(f.text, 'البنت تسأل أمها: «ليش نحتفل باليوم الوطني يا أمي؟» والأم ترد: «عشان اتحاد الإمارات السبع يا بنتي» وتضحك.');
+  assert.deepEqual([VT.fitDialogue(INLINE, 10).dropped, VT.fitDialogue(INLINE, 10).text], [0, INLINE], '١٠ث تتّسع للثلاثة');
   f = VT.fitDialogue(INLINE, 5);
   assert.equal(f.text, 'البنت تسأل أمها: «ليش نحتفل باليوم الوطني يا أمي؟» وتضحك.');
   const EN = 'Mom and daughter in a park.\nGirl: Mom, why do we celebrate National Day?\nMom: We celebrate the union of the seven emirates.\nGirl: Who founded it?';
   assert.equal(VT.fitDialogue(EN, 8).text, 'Mom and daughter in a park.\nGirl: Mom, why do we celebrate National Day?');
+  assert.equal(VT.fitDialogue(EN, 10).dropped, 0);
   /* ليس حوارًا: سطر وصف بنقطتين، وساعة، ومشهد صامت، ودور واحد طويل (يبقى كاملًا) */
   for (const d of ['المكان: حديقة واسعة فيها أعلام\nالكاميرا: لقطة واسعة بطيئة\nصقر يطير', 'الساعة 10:30 مساءً في السوق', 'صقر يحلّق فوق الكثبان',
     'رجل يقول: ' + 'هلا والله '.repeat(30)]) {
@@ -95,12 +99,12 @@ test('٣. «سينمائي» و«سريع»: المحرّك يستلم الحو�
   assert.equal(omniText(), VT.fitDialogue(DIALOGUE, 10).text + VT.speechPace(DIALOGUE, 10));
   assert.ok(!omniText().includes('أنا فخورة بوطني'), 'الجمل الزائدة لا تصل المحرّك');
   await run(veo, { promptText: DIALOGUE, ratio: '1280:720' }); // بلا مدّة = ٨ كما يصل Omni
-  assert.ok(omniText().startsWith(VT.fitDialogue(DIALOGUE, 8).text) && !omniText().includes('ومن أسّس الاتحاد'), 'جملتان في ٨ ثوانٍ');
+  assert.ok(omniText().startsWith(VT.fitDialogue(DIALOGUE, 8).text) && omniText().includes('ومن أسّس الاتحاد') && !omniText().includes('الشيخ زايد وإخوانه'), 'ثلاث جمل في ٨ ثوانٍ');
   r = await run(mm, { promptText: DIALOGUE, durationSeconds: 10 });
   assert.equal(r.code, 200, JSON.stringify(r.body));
   assert.equal(mmText(), VT.fitDialogue(DIALOGUE, 10).text + VT.speechPace(DIALOGUE, 10));
   await run(mm, { promptText: DIALOGUE }); // بلا مدّة = ٦
-  assert.ok(mmText().startsWith(VT.fitDialogue(DIALOGUE, 6).text) && !mmText().includes('نحتفل باتحاد'));
+  assert.ok(mmText().startsWith(VT.fitDialogue(DIALOGUE, 6).text) && mmText().includes('نحتفل باتحاد') && !mmText().includes('ومن أسّس الاتحاد'), 'جملتان في ٦ ثوانٍ');
   /* مع صورة: الوصف المقصوص داخل القفل */
   await run(mm, { promptText: DIALOGUE, durationSeconds: 8, imageBase64: 'PHOTO', imageMime: 'image/jpeg' });
   assert.equal(mmText(), VT.withPhotoLock(VT.fitDialogue(DIALOGUE, 8).text, 1500, undefined, VT.speechPace(DIALOGUE, 8)));
@@ -140,7 +144,7 @@ test('٤. العميل يحمل قارئ الأدوار والقصّ نفسيه�
   /* العناوين ليست كلامًا: لا تُعدّ أدوارًا (كانت تأكل ٤ كلمات من الميزانيّة وتطيل التوليدة)، وتبقى في الوصف حين يُقصّ ما بعدها */
   assert.deepEqual(plain(VT.dialogueTurns(RUN19).map((t) => [t.lead, t.w])), [['الطفلة: ', 5], ['الأم: ', 7], ['الطفلة: ', 5], ['الأم: ', 11], ['الطفلة: ', 6], ['الأم: ', 5], ['معاً: ', 5]]);
   const cut19 = VT.fitDialogue(RUN19, 10);
-  assert.deepEqual([cut19.kept, cut19.keptWords, cut19.words], [2, 12, 44]);
+  assert.deepEqual([cut19.kept, cut19.keptWords, cut19.words], [3, 17, 44]);
   assert.ok(cut19.text.startsWith('🇦🇪 مشهد قصير: أحب وطني\nالشخصيات: طفلة وأمها.\nالطفلة: أمي'), cut19.text);
   for (const head of ['المشهد: حديقة', 'مشهد ليليّ هادئ: حديقة', 'الشخصيّات: أم وبنتها', 'العنوان: أحب وطني', '🎬 Scene one: a garden', 'Characters: a girl and her mother', 'Title: My homeland']) {
     assert.deepEqual(plain(VT.dialogueTurns(head + '\nالأم: حيّاك الله').map((t) => t.lead)), ['الأم: '], head);
@@ -149,7 +153,7 @@ test('٤. العميل يحمل قارئ الأدوار والقصّ نفسيه�
     assert.equal(VT.dialogueTurns(speaker).length, 1, 'متكلّم لا عنوان: ' + speaker);
   }
   /* ميزانيّة التمديد (نصف ثانية صمت): كلمة زائدة في ١٠ث — والافتراضيّ ثانية كما كان */
-  assert.deepEqual([VT.fitDialogue(RUN19, 10, 0.5).budget, VT.fitDialogue(RUN19, 10).budget, VT.fitDialogue(RUN19, 10, 0).budget, VT.fitDialogue(RUN19, 10, -3).budget], [16, 15, 15, 15]);
+  assert.deepEqual([VT.fitDialogue(RUN19, 10, 0.5).budget, VT.fitDialogue(RUN19, 10).budget, VT.fitDialogue(RUN19, 10, 0).budget, VT.fitDialogue(RUN19, 10, -3).budget].map((x) => x.toFixed(2)), ['21.78', '20.68', '20.68', '20.68']);
   /* الدور يحمل ما يلزم لإعادة كتابته في مقطعه: المتكلّم وعلامتا التنصيص */
   assert.deepEqual(plain(VT.dialogueTurns(LINES[1]).map((t) => [t.lead, t.said, t.open, t.close, t.line])), [['الأم: ', 'نحتفل باتحاد الإمارات يا بنتي', '', '', true]]);
   assert.deepEqual(plain(VT.dialogueTurns(INLINE).map((t) => [t.lead, t.open, t.close, t.line])), [['البنت تسأل أمها: ', '«', '»', false], ['والأم ترد: ', '«', '»', false], ['ثمّ البنت تقول ', '«', '»', false]]);

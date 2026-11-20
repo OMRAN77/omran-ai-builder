@@ -1276,11 +1276,12 @@
   function fitDialogue(desc, seconds, lead) {
     const s = String(desc || '');
     const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
-    const budget = Math.max(4, Math.floor((sec - (lead > 0 ? lead : 1)) * 1.7));
+    /* v-video-say-natural: نطق طبيعيّ (٢٫٢ كلمة/ث) ووقفة ٠٫٤ث بين الأدوار — budget بوحدة «كلمات + ٠٫٨٨ لكلّ دور» */
+    const budget = (sec - (lead > 0 ? lead : 1) + 0.4) * 2.2;
     const turns = dialogueTurns(s);
     const res = { text: s, budget, turns: turns.length, kept: 0, dropped: 0, words: turns.reduce((n, t) => n + t.w, 0), keptWords: 0, last: '' };
-    let used = 0, kept = 0;
-    for (const t of turns) { if (kept && used + t.w > budget) break; used += t.w; kept++; }
+    let used = 0, kept = 0, room = 0;
+    for (const t of turns) { if (kept && room + t.w + 0.4 * 2.2 > budget + 1e-9) break; room += t.w + 0.4 * 2.2; used += t.w; kept++; }
     res.kept = kept; res.keptWords = used; res.last = kept ? turns[kept - 1].said : '';
     if (kept === turns.length) return res;
     let out = s;
@@ -1306,14 +1307,19 @@
     const s = String(desc || '');
     const capS = one ? [one.first, one.step] : ((Array.isArray(caps) && caps.length) ? caps : [10]);
     const secCap = (k) => capS[Math.min(k, capS.length - 1)];
-    const budgetOf = (sec, k) => Math.max(4, Math.floor((sec - ((one && k) ? one.lead : 1)) * 1.7));
+    /* v-video-say-natural (المالك ١٩ نوفمبر: «التوقيت خل التوقيت على حسب الكلام مش محدد» — الكلمة تُمطّ قرابة ثانية): المحرّك يملأ المدّة
+       المطلوبة بالكلام، فالمدّة تُحسب بنطق طبيعيّ — RATE كلمة/ث داخل الدور و GAP ثانية بين كلّ دورين (كالخادم SAY_RATE/SAY_GAP) — لا
+       ١٫٧ كلمة/ث للكلّ. الحساب بوحدة «كلمات + وقفة لكلّ دور» (e)، وأدنى المقطع ٤ ثوانٍ (كان ٦ فيُمطّ السطر القصير). */
+    const RATE = 2.2, GAP = 0.4, EPS = 1e-9;
+    const budgetOf = (sec, k) => (sec - ((one && k) ? one.lead : 1) + GAP) * RATE;
     const wordCap = (k) => budgetOf(secCap(k), k);
-    const B = Math.min(wordCap(0), wordCap(1)), cap = Math.max(1, maxClips || DIALOGUE_CLIPS_MAX);
-    const secFor = (w, floor, max, k) => { for (let x = floor; x < max; x++) if (budgetOf(x, k) >= w) return x; return max; };
+    const B = Math.max(4, Math.floor(Math.min(wordCap(0), wordCap(1)) - GAP * RATE + EPS)), cap = Math.max(1, maxClips || DIALOGUE_CLIPS_MAX);
+    const secFor = (e, floor, max, k) => { for (let x = floor; x < max; x++) if (budgetOf(x, k) + EPS >= e) return x; return max; };
     const turns = dialogueTurns(s);
-    const res = { clips: [], turns: turns.length, words: turns.reduce((n, t) => n + t.w, 0), dropped: 0, last: '', seconds: 0, need: 0 };
+    /* script = الوصف حوار مكتوب أسطرًا («اسم: كلام») — مدّة الفيديو المفرد حاجة كلامه لا المدّة المختارة */
+    const res = { clips: [], turns: turns.length, words: turns.reduce((n, t) => n + t.w, 0), dropped: 0, last: '', seconds: 0, need: 0, script: turns.length > 0 && turns.every((t) => t.line) };
     if (!turns.length) return res;
-    res.need = secFor(res.words, 4, secCap(0));
+    res.need = secFor(res.words + turns.length * GAP * RATE, 4, secCap(0));
     /* المشهد: ما قبل أوّل دور وما بعده من غير الأدوار — يحيطان بكلام كلّ مقطع في مكانهما */
     const tidy = (x) => x.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
     const t0 = turns[0].a;
@@ -1345,7 +1351,9 @@
       }
     });
     let kept = parts.length, K = 1, sum = 0;
-    const pre = [0]; for (const p of parts) pre.push(pre[pre.length - 1] + p.w);
+    /* pre = مجموع «كلمات + وقفة» (e) للحساب، و prw = مجموع الكلمات للعرض */
+    for (const p of parts) p.e = p.w + GAP * RATE;
+    const pre = [0], prw = [0]; for (const p of parts) { pre.push(pre[pre.length - 1] + p.e); prw.push(prw[prw.length - 1] + p.w); }
     let bounds = [];
     if (one) {
       /* كلّ تقسيم متتالٍ لأوّل m جملة: كلّ خطوة داخل ميزانيّتها، ومجموع الثواني داخل حدّ المحرّك */
@@ -1355,12 +1363,12 @@
           const k = cuts.length;
           for (let to = from + 1; to <= m; to++) {
             const w = pre[to] - pre[from];
-            if (w > wordCap(k)) break;
-            const total = secs + secFor(w, k ? 3 : 6, secCap(k), k);
+            if (w > wordCap(k) + EPS) break;
+            const total = secs + secFor(w, k ? 3 : 4, secCap(k), k);
             if (total > one.total) break;
             const next = cuts.concat([[from, to]]), t = Math.max(top, w);
             if (to < m) { if (next.length < cap) walk(to, next, total, t); }
-            else if (!got || next.length < got.cuts.length || (next.length === got.cuts.length && t < got.top)) got = { cuts: next, top: t };
+            else if (!got || next.length < got.cuts.length || (next.length === got.cuts.length && t < got.top - EPS)) got = { cuts: next, top: t };
           }
         };
         walk(0, [], 0, 0);
@@ -1372,9 +1380,9 @@
     } else {
       for (let i = 0; i < parts.length; i++) {
         let k = K, cur = sum;
-        if (cur && cur + parts[i].w > wordCap(k - 1)) { if (k === cap) { kept = i; break; } k++; cur = 0; }
-        if (parts[i].w > wordCap(k - 1)) { kept = i; break; } /* مقطع لاحق أقصر لا يتّسع للجملة كاملةً: تقف الخطّة قبلها */
-        K = k; sum = cur + parts[i].w;
+        if (cur && cur + parts[i].e > wordCap(k - 1) + EPS) { if (k === cap) { kept = i; break; } k++; cur = 0; }
+        if (parts[i].e > wordCap(k - 1) + EPS) { kept = i; break; } /* مقطع لاحق أقصر لا يتّسع للجملة كاملةً: تقف الخطّة قبلها */
+        K = k; sum = cur + parts[i].e;
       }
     }
     const keep = parts.slice(0, kept), n = keep.length;
@@ -1386,14 +1394,14 @@
       best[0][0] = 0;
       for (let k = 1; k <= K; k++) for (let i = k; i <= n; i++) for (let j = k - 1; j < i; j++) {
         const w = pre[i] - pre[j];
-        if (w > wordCap(k - 1)) continue;
+        if (w > wordCap(k - 1) + EPS) continue;
         const v = Math.max(best[k - 1][j], w);
-        if (v < best[k][i]) { best[k][i] = v; cut[k][i] = j; }
+        if (v < best[k][i] - EPS) { best[k][i] = v; cut[k][i] = j; }
       }
       for (let k = K, i = n; k >= 1; k--) { bounds.unshift([cut[k][i], i]); i = cut[k][i]; }
     }
     res.clips = bounds.map(([a, b], at) => {
-      const g = keep.slice(a, b), w = pre[b] - pre[a];
+      const g = keep.slice(a, b), w = prw[b] - prw[a], e = pre[b] - pre[a];
       let said = '';
       g.forEach((p, i) => {
         const prev = g[i - 1];
@@ -1404,8 +1412,8 @@
       const text = (before ? before + (g[0].line ? '\n' : ' ') : '') + said + (after ? (g[g.length - 1].line ? '\n' : ' ') + after : '');
       /* fresh = مدّة الجزء نفسه مقطعًا جديدًا (ثانية افتتاح) — حين يُرفض التمديد فيُولَّد بلقطة مرجعيّة، فلا يقصّ الخادم آخر سطر فيه */
       /* say = كلام الجزء وحده (بلا وصف المشهد) — يُعرض إن رفضه المحرّك (v-video-real-person) */
-      return (one && at) ? { text, say: said, words: w, sec: secFor(w, 3, secCap(at), at), fresh: secFor(w, 6, one.first), last: g[g.length - 1].said }
-        : { text, say: said, words: w, sec: secFor(w, 6, secCap(at)), last: g[g.length - 1].said };
+      return (one && at) ? { text, say: said, words: w, sec: secFor(e, 3, secCap(at), at), fresh: secFor(e, 4, one.first), last: g[g.length - 1].said }
+        : { text, say: said, words: w, sec: secFor(e, 4, secCap(at)), last: g[g.length - 1].said };
     });
     res.seconds = res.clips.reduce((x, c) => x + c.sec, 0);
     return res;
@@ -2189,7 +2197,8 @@
         const dlg = planDialogue(text, 0, isOwnerAccount() ? [15] : [10]); /* v-video-one-shot: حساب المالك حتّى ١٥ ثانية للتوليدة (الخادم يقبلها له وحده) */
         if(dlg.clips.length > 1){ await runDialogueClips(dlg, 'minimax'); return; }
         setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو...','🚀 Sending the request to the video engine...'));
-        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: Math.max(durSecs, dlg.need) || undefined }; /* v-video-first-frame: الأسلوب كان لا يصل · v-video-durations: والمدّة */
+        /* v-video-say-natural: حوار مكتوب أسطرًا = مدّة الفيديو حاجة كلامه (لا المدّة المختارة — الأطول منها يمطّ النطق) */
+        const payload = { promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: (dlg.script ? dlg.need : Math.max(durSecs, dlg.need)) || undefined }; /* v-video-first-frame: الأسلوب كان لا يصل · v-video-durations: والمدّة */
         if(filmHeroBase64){ payload.imageBase64 = filmHeroBase64; payload.imageMime = filmHeroMime || 'image/jpeg'; }
         const cr = await (window.postWithConfirm
           ? window.postWithConfirm('/api/video?action=minimax-create', payload)
@@ -2299,7 +2308,7 @@
         const dlg = creationMode === 'veo' ? planDialogueOne(veoPrompt) : { clips: [], need: 0 }; /* v-video-one-shot: توليدة واحدة حتّى ١٥ ثانية، وما زاد يمدّه المحرّك */
         if(dlg.clips.length > 1){ await runDialogueClips(dlg, 'veo'); return; }
         setStatus(bT('🚀 جاري الإرسال إلى المحرّك السينمائيّ...','🚀 Sending to the cinematic engine...')); /* v-no-provider-names */
-        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: (creationMode === 'veo' && Math.max(durSecs, dlg.need)) || undefined }; /* v-video-first-frame · v-video-durations: مدّة «سينمائي» المختارة (الممثّل على قدّ كلامه) */
+        const veoPayload = { promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast', style, durationSeconds: (creationMode === 'veo' && (dlg.script ? dlg.need : Math.max(durSecs, dlg.need))) || undefined }; /* v-video-first-frame · v-video-durations: مدّة «سينمائي» المختارة (الممثّل على قدّ كلامه) */
         if(filmHeroBase64){ veoPayload.imageBase64 = filmHeroBase64; veoPayload.imageMime = filmHeroMime || 'image/jpeg'; } /* v-video-photo-identity */
         /* v-cinema-omni (مراجعة ٢٧ أكتوبر): «سينمائي» صار للزبون — الطلب يمرّ بنافذة الخصم (١٧٥) كالاقتصاديّ؛ كان fetch خامًا بلا confirmed
            فيقف كلّ غير المالك عند ٤٢٨ «confirm_required». والرموز تُحفظ (المهلة، النقاط، المشتركون) لرسائلها. */

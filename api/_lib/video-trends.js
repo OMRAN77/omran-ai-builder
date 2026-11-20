@@ -1137,7 +1137,17 @@ function hasSpeech(desc) {
    (المقطع ٨ث اليوم: ثلاث جمل ١٣ كلمة لم تتّسع وقُطعت آخرها) */
 /* v-video-full-dialogue: lead = ثواني الصمت المحجوزة (ثانية للمقطع الجديد؛ تمديد فيديو جارٍ بلا افتتاح = EXTEND_SAY_LEAD: ١٦ كلمة في ١٠ث) */
 const EXTEND_SAY_LEAD = 0.5;
-function wordBudget(seconds, lead) { return Math.max(4, Math.floor((seconds - (lead > 0 ? lead : 1)) * 1.7)); }
+/* v-video-say-natural (المالك ١٩ نوفمبر عن فيديو «سريع» بحواره كاملًا: «التوقيت خل التوقيت على حسب الكلام مش محدد» — الكلمة تُمطّ قرابة
+   ثانية: ٤٤ كلمة في ٣٢ث): المحرّك يملأ المدّة التي نطلبها بالكلام، فمدّة أطول من حاجته = نطق ممطوط. الحساب بنطق طبيعيّ ووقفة بين
+   الأدوار: SAY_RATE كلمة في الثانية داخل الدور، و SAY_GAP ثانية بين كلّ دورين، و lead صمت الأوّل والآخر (كان ١٫٧ كلمة/ث للكلّ بلا
+   عدّ للأدوار). sayRoom = ما تتّسع له المدّة بوحدة «كلمات + وقفة لكلّ دور»؛ ودور بكلماته يأخذ منها w + SAY_GAP × SAY_RATE. */
+const SAY_RATE = 2.2, SAY_GAP = 0.4;
+function sayRoom(seconds, lead) { return (seconds - (lead > 0 ? lead : 1) + SAY_GAP) * SAY_RATE; }
+/* أقصى كلمات دور واحد تتّسع لها المدّة (للقاعدة في الأمر وللاختبارات) */
+function wordBudget(seconds, lead) { return Math.max(4, Math.floor(sayRoom(seconds, lead) - SAY_GAP * SAY_RATE + 1e-9)); }
+/* v-video-say-natural (المالك: «اللهجه مش امارتيه»): الكلام العربيّ بلكنة إماراتيّة ما لم يطلب الوصف لهجة أو لكنة بعينها */
+const HAS_ARABIC = /[ء-ي]/;
+const ASKS_ACCENT = /لهج|لكنة|فصح|accent|dialect/i;
 
 /* «ممثل يتكلم» (احتياطه يمرّ بـveo-create): كلامه بالحرف ومدّته كلامه — قالبه في app-11-video.js («saying exactly these Arabic words»)
    لا يمرّ بالقاعدة: «جمل أقلّ» تناقض «بالحرف»، ولا يُقصّ له شيء (video-photo-identity ٥ب) */
@@ -1150,8 +1160,9 @@ function speechPace(desc, seconds, lead) {
   const s = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
   return ' If anyone speaks in this ' + s + '-second clip: one voice at a time — each speaker finishes before the next starts,'
     + ' with a short pause (and any camera cut) between turns; no narrator or background voices over them.'
-    + ' Each line is spoken complete, clear and unhurried, as written, lip-synced to the speaker on screen.'
-    + ' All speech ends before the last second (about ' + wordBudget(s, lead) + ' words at most): if the lines do not fit, say fewer lines — never rush, overlap or cut one off.';
+    + ' Each line is spoken complete and clear at a natural pace, as written, lip-synced to the speaker on screen.'
+    + ((HAS_ARABIC.test(String(desc)) && !ASKS_ACCENT.test(speechPlain(desc))) ? ' Arabic in an Emirati Gulf accent, word for word.' : '')
+    + ' All speech ends before the last second: every line is said, in order — never overlap two voices or cut a line off.';
 }
 
 /* بلا صورة (لا قفل): الوصف ثمّ القاعدة داخل حدّ الوصف نفسه — يُقصّ الوصف لا هي (مع صورة تدخل القفل نفسه: withIdentityLock/withPhotoLock tail) */
@@ -1200,11 +1211,12 @@ function dialogueTurns(desc) {
 function fitDialogue(desc, seconds, lead) {
   const s = String(desc || '');
   const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
-  const budget = Math.max(4, Math.floor((sec - (lead > 0 ? lead : 1)) * 1.7));
+  /* v-video-say-natural: نطق طبيعيّ (٢٫٢ كلمة/ث) ووقفة ٠٫٤ث بين الأدوار — budget بوحدة «كلمات + ٠٫٨٨ لكلّ دور» */
+  const budget = (sec - (lead > 0 ? lead : 1) + 0.4) * 2.2;
   const turns = dialogueTurns(s);
   const res = { text: s, budget, turns: turns.length, kept: 0, dropped: 0, words: turns.reduce((n, t) => n + t.w, 0), keptWords: 0, last: '' };
-  let used = 0, kept = 0;
-  for (const t of turns) { if (kept && used + t.w > budget) break; used += t.w; kept++; }
+  let used = 0, kept = 0, room = 0;
+  for (const t of turns) { if (kept && room + t.w + 0.4 * 2.2 > budget + 1e-9) break; room += t.w + 0.4 * 2.2; used += t.w; kept++; }
   res.kept = kept; res.keptWords = used; res.last = kept ? turns[kept - 1].said : '';
   if (kept === turns.length) return res;
   let out = s;
@@ -1215,4 +1227,4 @@ function fitDialogue(desc, seconds, lead) {
 }
 
 module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, withPhotoLock, splitScenes, sceneParams, MAX_SCENES, SPEECH_LANGS,
-  hasSpeech, speechPace, wordBudget, EXTEND_SAY_LEAD, fitPace, fitDialogue, dialogueTurns }; // v-video-speech-pace · v-video-dialogue-fit · v-video-dialogue-clips
+  hasSpeech, speechPace, wordBudget, sayRoom, SAY_RATE, SAY_GAP, EXTEND_SAY_LEAD, fitPace, fitDialogue, dialogueTurns }; // v-video-speech-pace · v-video-dialogue-fit · v-video-dialogue-clips
