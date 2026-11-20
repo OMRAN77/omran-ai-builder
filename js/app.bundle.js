@@ -27189,30 +27189,65 @@ const __EXPL_AR_CORE = '(?:[يتن]?ت?فكك(?:ه|ها|هم|ي|يه|يها|يه
 const __EXPL_EN_CORE = '(?:explod(?:e|ed|ing)[\\s-]+view|explode(?=\\s+(?:it|this|that|them|the|my|into|apart)\\b|\\s*[.!]*\\s*$)|disassembl(?:e|ed|ing|y)|tear[\\s-]?down|tear\\s+(?:it|this|them)\\s+down|take\\s+(?:it|this|them|the\\s+\\w+)\\s+apart|take\\s+apart|pull\\s+(?:it|this)\\s+apart|break\\s+(?:it\\s+|this\\s+)?down\\s+into\\s+(?:its\\s+)?(?:parts|pieces|components))\\b';
 const __EXPL_AR_RE = new RegExp('(?:^|[^ء-ي])[وف]?' + __EXPL_AR_CORE);
 const __EXPL_EN_RE = new RegExp('\\b' + __EXPL_EN_CORE, 'i');
-const __EXPL_CUT_RE = /(?:^|[^ء-ي])[وف]?(?:ي|ت)?شر[\u064E]?\u0651[\u064E]?ح(?:ه|ها|هم|لي)?(?![ء-ي])/; // «شرّحه» بالشدّة وحدها
+const __EXPL_CUT_RE = /(?:^|[^ء-ي])[وف]?(?:ي|ت)?شررح(?:ه|ها|هم|لي)?(?![ء-ي])/; // «شرّحه» بالشدّة وحدها (تُعلَّم «شررح» قبل حذف التشكيل)
 const __EXPL_ASK_RE = /(?:شو|ايش|إيش|أيش|وش|ويش|ماذا|مم)\s+(?:ي|ت)(?:تركب|تكون)(?:ون)?(?![ء-ي])/;
 const __EXPL_SHOW_RE = /فيديو|ڤيديو|مقطع|كليب|وريني|ورني|اعرض|\bvideo\b|\bshow\s+me\b/i;
 const __EXPL_NEG = '(?:^|[^ء-ي])(?:لا|ما|مو|مب|مش|بدون|بلا|دون|من\\s+غير)\\s+(?:[^\\s،,.!؟?]+\\s+)?[وف]?';
 const __EXPL_NEG_AR_RE = new RegExp(__EXPL_NEG + __EXPL_AR_CORE);
-const __EXPL_NEG_CUT_RE = new RegExp(__EXPL_NEG + '(?:ي|ت)?شر[\\u064E]?\\u0651[\\u064E]?ح'); // «لا تشرّحه» على النصّ الخام
+const __EXPL_NEG_CUT_RE = new RegExp(__EXPL_NEG + '(?:ي|ت)?شررح'); // «لا تشرّحه»
 const __EXPL_NEG_EN_RE = new RegExp("\\b(?:don[’']?t|do\\s+not|no|not|without|never|stop)\\s+(?:\\w+\\s+){0,2}" + __EXPL_EN_CORE, 'i');
 const __EXPL_HOW_RE = /^(?:كيف|ليش|لماذا|لمَ|متى|وين|how|why|when|where)(?=$|[\s،,])/i;
 const __EXPL_CODE_RE = /كود|الكود|سكربت|سكريبت|برمج|\bcode\b|\bscript\b|\bfunction\b|\brepo\b/i;
-/* v-chat-exploded (المراجعة): سؤال أو قلق في أيّ موضع («هل يمكن تفكيكه؟»، «خايف يتفكك»، «وش اسوي») بلا طلب عرض = جواب بالكلام؛ وواجب مجرّد
-   («فكك المعادلة/الجملة/العدد لعوامله»، «تفكك الأسرة») أو انفجار («بالنار»، fire) ليس قطعًا تتفكّك — بحدود كلمة: «النارية/الرقمية» تبقى. */
 const __EXPL_Q_ANY_RE = /(?:^|[^ء-ي])[وف]?(?:كيف|شلون|[اإ]شلون|ليش|لماذا|هل|(?:وش|شو|[اإأ]يش)\s*[اأ]سوي|شسوي|خاي?ف[ةه]?|[اأ]خاف|[اأ]خشى)(?![ء-ي])|\b(?:how|why|is\s+it\s+(?:possible|safe)|can\s+it\s+be)\b/i;
-const __EXPL_ABSTRACT_RE = /(?:^|[^ء-ي])[وفبل]?(?:ال|هال|ها|ل)?(?:معادل[ةه]|معادلات|مس[أا]ل[ةه]|مساله|مسائل|جمل[ةه]|كلم[ةه]|كلمات|حروف|رقم|[اأ]رقام|عدد|[اأ]عداد|عوامل|[اإ]عرابي?[اًة]?|[اأ]قواس|فكر[ةه]|مشكل[ةه]|سؤال|[اأ]سئل[ةه]|[اأ]سر[ةه]|مجتمع|انفجار|[يت]نفجر|نار|نيران|لهب)(?:ه|ها|هم|ي|ات)?(?![ء-ي])|\b(?:equations?|sentences?|words?|numbers?|problems?|questions?|math|server|database|text|polynomials?|factors?|brackets?|fire|flames?|blast|bomb|boom|explosions?)\b/i;
+const __EXPL_ABSTRACT_RE = /(?:^|[^ء-ي])[وفبل]?(?:ال|هال|ها|ل)?(?:معادل[ةه]|معادلات|مس[أا]ل[ةه]|مساله|مسائل|جمل[ةه]|كلم[ةه]|كلمات|حروف|رقم|[اأ]رقام|عدد|[اأ]عداد|عوامل|[اإ]عرابي?[اًة]?|[اأ]قواس|فكر[ةه]|مشكل[ةه]|سؤال|[اأ]سئل[ةه]|[اأ]سر[ةه]|مجتمع|انفجار|[يت]نفجر|نار|نيران|لهب|فوتوشوب|تشفير|شفر[ةه]|فاتور[ةه]|نص|كلام)(?:ه|ها|هم|ي|ات)?(?![ء-ي])|\b(?:equations?|sentences?|words?|numbers?|problems?|questions?|math|server|database|text|polynomials?|factors?|brackets?|fire|flames?|blast|bomb|boom|explosions?|photoshop)\b/i;
 const __EXPL_SALE_RE = /للبيع|للإيجار|للايجار|\bfor\s+(?:sale|rent)\b/i; // إعلان بيع/إيجار (كما يعدّه __adIntentRe) بلا كلمة فيديو = صورة الإعلان كما في main
 const __EXPL_AD_STILL_RE = /(?:إعلان|اعلان|أعلان|دعاي[ةه]|\bads?\b|advert)[\s\S]*?(?:صور[ةه]|بوستر|منشور|بنر|بانر|ملصق|poster|banner|\bimage\b|\bpost\b)|(?:صور[ةه]|بوستر|منشور|بنر|بانر|ملصق|poster|banner|\bimage\b|\bpost\b)[\s\S]*?(?:إعلان|اعلان|أعلان|دعاي[ةه]|\bads?\b|advert)/i;
+/* v-chat-exploded (إعادة الفحص): القائمة السوداء لا تُغلق الباب («فكك الفاتورة»، «خطوات تفكيك الجوال»، «يتفكك؟»)، فالقاعدة صارت إيجابيّة:
+   يُطلقه أمر صريح وحده — «فكّكه/فككها» بضمير، أو «فكّك/شرّح/تفكيك» + اسم شيء مادّيّ من قائمة (سيارة، طيارة، ساعة، جوال، جسم…) أو «هذا» —
+   أو «خله يتفكك/ابيه يتفكك/ابي تفكيكه»، أو «اكسبلودد/exploded view»، أو طلب مهذّب «تقدر تفككه؟». وما عدا ذلك («تفكيك»، «يتفكك»، «فكه»
+   مع كلام) لا يكفي إلّا مع كلمة عرض (فيديو/وريني). وطلب الشرح (طريقة/خطوات/اشرح/steps/can I) أو «؟» بلا كلمة عرض = جواب بالكلام.
+   الفوت رخيص (جواب عاديّ)، والإطلاق الكاذب فيديو مدفوع لم يطلبه. */
+const __EXPL_EXPLAIN_RE = /(?:^|[^ء-ي])[وفب]?(?:ال)?(?:طريق[ةه]|خطوات|[اإ]شرح|شرح|تعليمات|دليل|نصائح|سبب|علمني|[اأ]قدر|[اأ]عرف)(?![ء-ي])|[؟?]|\b(?:steps?|instructions?|guide|tutorial|explain|how\s+to|can\s+i|is\s+it|should\s+i|tips?)\b/i;
+const __EXPL_NOUN = '(?:سيار(?:[ةه]|ات|ت)|عربي[ةه]|شاحن[ةه]|طيار(?:[ةه]|ات|ت)|طائر(?:[ةه]|ات|ت)|هليكوبتر|ساع(?:[ةه]|ات|ت)|جوال(?:ات)?|موبايل|تلفون|تليفون|هاتف|[اآأ]يفون|[اآأ]يباد|تابلت|لابتوب|كمبيوتر|حاسوب|حاسب|جهاز|[اأ]جهز[ةه]|محرك|ماطور|موتور|مكين(?:[ةه]|ت)|ماكين(?:[ةه]|ت)|آل(?:[ةه]|ت)|[اأ]دا(?:[ةه]|ت)|كاميرا|دراج(?:[ةه]|ات|ت)|دباب(?:[ةه]|ات|ت)|سيكل|موتوسيكل|قطار|سفين(?:[ةه]|ت)|قارب|يخت|صاروخ|روبوت|درون|طابع(?:[ةه]|ت)|شاش(?:[ةه]|ت)|تلفزيون|تلفاز|سماع(?:[ةه]|ات|ت)|ماوس|كيبورد|بلايستيشن|يد(?:[ةه]) تحكم|قلم|كرسي|طاول(?:[ةه]|ت)|عطر|قارور(?:[ةه]|ت)|علب(?:[ةه]|ت)|منتج|قطع(?:[ةه]|ت)?|شي|شيء|جسم|[اإ]نسان|قلب|دماغ|مخ|هيكل|جمجم(?:[ةه]|ت)|شاحن|بطاري(?:[ةه]|ت)|ثلاج(?:[ةه]|ت)|مكيف|غسال(?:[ةه]|ت)|خلاط|مروح(?:[ةه]|ت)|لعب(?:[ةه]|ت))';
+const __EXPL_OBJ_RE = new RegExp('^(?:[وفب]|لل|ل)?(?:ال|هال|ها)?' + __EXPL_NOUN + '(?:ي|ك|ه|ها|نا|هم)?(?![ء-ي])');
+const __EXPL_DEM_RE = /^(?:هذا|هذي|هاذا|هاذي|هذه|ذا|ذي)(?![ء-ي])\s*/;
+const __EXPL_END_RE = /^(?:$|[.!،,؛:…\-]|(?:بعد|الحين|بليز|لو\s+سمحت|يا)(?![ء-ي])|(?:please|pls)\b)/i;
+const __EXPL_IMP_RE = /(?:^|[^ء-ي])[وف]?(?:فكك|شررح)(ه|ها|هم|يه|يها|يهم|وه|وها|وهم|هالي|ي)?(?:لي|لنا|يلي)?(?![ء-ي])(?:\s+(?:لي|لنا)(?![ء-ي]))?([\s\S]*)$/;
+const __EXPL_NOUNV_RE = /(?:^|[^ء-ي])[وف]?(?:ال)?(?:تفكيك|تشريح)(?![ء-ي])\s*([\s\S]*)$/;
+const __EXPL_PARTS_RE = /(?:^|[^ء-ي])[وف]?فك\s+(?:ال)?(?:قطع|اجزاء|أجزاء)(?:ه|ها)?(?![ء-ي])/;
+const __EXPL_ALONE_RE = /^[وف]?(?:فك(?:ه|ها|يه|يها|هم)|(?:ال)?(?:تفكيك|تشريح)(?:ه|ها)?)(?:\s*(?:لي|بليز))?\s*[.!]*\s*$/;
+const __EXPL_LET_RE = /(?:^|[^ء-ي])(?:خل(?:ه|ها|يه|يها|هم)?|(?:ابي|أبي|ابغى|أبغى|ابغي|اريد|أريد|ودي|بغيت)(?:ه|ها|هم)|اشوف(?:ه|ها))\s+(?:[يت]تفكك|مفكك)(?![ء-ي])|(?:^|[^ء-ي])(?:نبي|نبغى|نريد)\s+نفكك(?![ء-ي])|(?:^|[^ء-ي])(?:سو|سوي|اعمل)(?:\s+(?:له|لها|لي))?\s+(?:ال)?(?:تفكيك|تشريح)(?![ء-ي])|(?:^|[^ء-ي])(?:ابي|أبي|ابغى|أبغى|ابغي|اريد|أريد|ودي|بغيت)\s+(?:(?:ال)?(?:تفكيك|تشريح)(?:ه|ها)?|اشوف(?:ه|ها)\s+مفكك)(?![ء-ي])/;
+const __EXPL_POLITE_AR_RE = /^(?:لو\s+سمحت\s+)?(?:تقدر|تقدرين|ممكن|بليز)\s+(?:ت?فكك|تشررح)(?:ه|ها|هم|يه|يها|يهم)(?:\s*لي)?(?![ء-ي])\s*[؟?!.]*\s*$/;
+const __EXPL_EN_N = '(?:car|cars|truck|vehicle|bike|motorcycle|motorbike|bicycle|scooter|plane|airplane|aeroplane|aircraft|jet|helicopter|drone|rocket|ship|boat|train|watch|watches|clock|phone|iphone|smartphone|tablet|ipad|laptop|computer|pc|console|controller|camera|headphones|earbuds|airpods|speaker|tv|monitor|keyboard|mouse|printer|robot|engine|motor|machine|device|gadget|product|bottle|perfume|chair|toy|body|heart|brain|skull|skeleton|human|appliance|fridge|blender|fan)';
+const __EXPL_EN_V = '(?:explode|disassemble|dismantle|tear\\s*down|teardown)';
+const __EXPL_EN_DET = '(?:the|my|this|that|our|your|these|those)\\s+(?:[\\w-]+\\s+){0,2}' + __EXPL_EN_N + '\\b';
+const __EXPL_EN_STEM = '(?:' + __EXPL_EN_V + '(?:\\s+(?:it|them)\\b|\\s+' + __EXPL_EN_DET + '|(?:\\s+(?:this|that|these|those))?(?:\\s+(?:please|pls|now|for\\s+me))?\\s*[.!?]*\\s*$)'
+  + '|(?:take|pull)\\s+(?:(?:it|this|that|them)|' + __EXPL_EN_DET + ')\\s+apart\\b|(?:take|pull)\\s+apart\\s+(?:(?:it|this|that|them)\\b|' + __EXPL_EN_DET + ')'
+  + '|tear\\s+(?:it|this|that|them)\\s+down\\b|break\\s+(?:it|this|that|them)\\s+(?:down\\s+)?into\\s+(?:its\\s+)?(?:parts|pieces|components)\\b)';
+const __EXPL_EN_IMP_RE = new RegExp('^(?:(?:please|pls|plz|ok|okay|now|hey|so|just)\\s+)*' + __EXPL_EN_STEM, 'i');
+const __EXPL_POLITE_EN_RE = new RegExp('^(?:can|could|would|will)\\s+you\\s+(?:please\\s+)?' + __EXPL_EN_STEM, 'i');
+const __EXPL_TERM_RE = /(?:^|[^ء-ي])[اإأ]كسبلود[ء-ي]*|\bexploded[\s-]+view\b/i;
+function __explObjOk(rest, needObj){
+  const r = String(rest || '').replace(/^\s+/, '');
+  if(!needObj && __EXPL_END_RE.test(r)) return true;
+  const d = __EXPL_DEM_RE.exec(r); const r2 = d ? r.slice(d[0].length) : r;
+  if(d && __EXPL_END_RE.test(r2)) return true;
+  return __EXPL_OBJ_RE.test(r2);
+}
 function omranExplodedAsk(text, hasImage){
   if(!hasImage) return false;
   const raw = String(text || '').slice(0, 600).trim();
   if(!raw) return false;
-  const t = raw.replace(/[\u064B-\u0652\u0640]/g, ''); // «فكّكها» = «فككها»
+  const t = raw.replace(/شرَ?َّ?ح/g, 'شررح').replace(/[ً-ْـ]/g, '').trim(); // «فكّكها» = «فككها»، و«شرّح» ≠ «شرح»
   if(__EXPL_HOW_RE.test(t) || __EXPL_CODE_RE.test(t) || __EXPL_ABSTRACT_RE.test(t)) return false;
-  if((__EXPL_Q_ANY_RE.test(t) || __EXPL_AD_STILL_RE.test(t) || __EXPL_SALE_RE.test(t)) && !__EXPL_SHOW_RE.test(t)) return false; // سؤال/قلق، أو صورة إعلان بتأثير التفكيك كما كانت
-  if(__EXPL_NEG_AR_RE.test(t) || __EXPL_NEG_EN_RE.test(t) || __EXPL_NEG_CUT_RE.test(raw)) return false;
-  return __EXPL_AR_RE.test(t) || __EXPL_EN_RE.test(t) || __EXPL_CUT_RE.test(raw) || (__EXPL_ASK_RE.test(t) && __EXPL_SHOW_RE.test(t));
+  if(__EXPL_NEG_AR_RE.test(t) || __EXPL_NEG_EN_RE.test(t) || __EXPL_NEG_CUT_RE.test(t)) return false;
+  const show = __EXPL_SHOW_RE.test(t), polite = __EXPL_POLITE_AR_RE.test(t) || __EXPL_POLITE_EN_RE.test(t);
+  if(!show && (__EXPL_AD_STILL_RE.test(t) || __EXPL_SALE_RE.test(t))) return false; // صورة إعلان بتأثير التفكيك كما كانت
+  if(!show && !polite && (__EXPL_Q_ANY_RE.test(t) || __EXPL_EXPLAIN_RE.test(t))) return false; // سؤال/قلق/طلب شرح = جواب بالكلام
+  if(polite || __EXPL_LET_RE.test(t) || __EXPL_TERM_RE.test(t) || __EXPL_ALONE_RE.test(t) || __EXPL_PARTS_RE.test(t) || __EXPL_EN_IMP_RE.test(t)) return true;
+  const m = __EXPL_IMP_RE.exec(t); if(m && (m[1] || __explObjOk(m[2], false))) return true;
+  const n = __EXPL_NOUNV_RE.exec(t); if(n && __explObjOk(n[1], true)) return true;
+  return show && (__EXPL_AR_RE.test(t) || __EXPL_EN_RE.test(t) || __EXPL_CUT_RE.test(t) || __EXPL_ASK_RE.test(t) || /(?:^|[^ء-ي])(?:قطع|اجزاء|أجزاء|مكونات)(?:ه|ها)(?![ء-ي])/.test(t));
 }
 async function __sendPromptCore(){
   /* v-parallel-chats: هذا الطلب يخصّ المحادثة التي بدأ فيها. الرسم باسمَي renderAll/renderMessages مظلَّل هنا:
