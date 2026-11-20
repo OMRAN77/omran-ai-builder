@@ -33,6 +33,7 @@ function load(root) {
     block('    function __isVagueMediaRequest(raw){', '\n    }'),
     line('const __unifiedBuildRe = '), line('const __txtOnlyImgRe = '), line('const __rtDesignMakeRe = '), line('const __rtDesignWantRe = '),
     optional('const __rtLaneImgRe = '), // مراجعة الدفعة A (rel-1 · rel-5): ما يُبنى صورةً فقط إن قال المصنّف image (omranLaneImgAsk)
+    (has('const __EXPL_AR_CORE') ? SRC.slice(SRC.indexOf('const __EXPL_AR_CORE'), SRC.indexOf('\n}\n', SRC.indexOf('function omranExplodedAsk(')) + 3) : ''), // v-chat-exploded
     line('const __bareDraw = ').replace(/\.test\(text\);\s*$/, ';').replace('const __bareDraw = ', 'const __bareDrawRe = '),
     'this.R = { MEDIA_WORD: __MEDIA_WORD_RE, MEDIA_MAKE: __MEDIA_MAKE_RE, MEDIA_TALK: __MEDIA_TALK_RE, VID_MAKE: __VID_MAKE_RE, VID_Q: __VID_Q_RE,',
     '  routeCmd: __routeCmdRe, questionStart: __questionStartRe, codeWord: __codeWordRe, attVision: __ATT_VISION_RE, nanoQ: __nanoQ, imgEdit: __imgEditRe,',
@@ -43,6 +44,8 @@ function load(root) {
     /* __wantsVideo بنصّه: الصورة مرفقة (photo) أو لا */
     'this.wantsVideo = function(text, photo, lane, afterImg){',
     '  const __mediaLane = lane || null, __srcImg = photo ? { isImage: true } : null, __vidSrc = (photo || afterImg) ? { b64: "x" } : null, cur = { lastMsgWasImageEdit: !!afterImg };',
+    /* v-chat-exploded: صورة + «فكّكه» = فيديو التفكيك (النيّة الحقيقيّة إن وُجدت في النسخة) */
+    '  const __explodedTurn = (typeof omranExplodedAsk === "function") ? omranExplodedAsk(text, !!photo) : false;',
     '  ' + stmt('const __wantsVideo = '),
     '  return __wantsVideo;',
     '};',

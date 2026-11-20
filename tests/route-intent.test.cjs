@@ -127,7 +127,8 @@ vm.runInNewContext([
   line('const __adIntentRe = '), line('const __rtAdNoRe = '), line('const __rtAdListing = '), line('const __rtAdMake = '),
   line('const __rtAdHardNo = '), line('const __rtAdImg = '), line('const __rtAdOk = '),
   line('const __codeWordRe = '),
-  '  const __blockAutoImage = false, cur = {};',
+  '  const __blockAutoImage = false, cur = {}, __explodedTurn = false;', // v-chat-exploded: دور التفكيك (صورة + «فكّكه») له اختباره
+
   '  return !!(text && __adIntentRe.test(text) && !__blockAutoImage' + cond(AD_HEAD) + ');',
   '};',
 ].join('\n'), A);
@@ -229,7 +230,7 @@ test('١١. الحزمة مبنيّة من الجزء (الشروط الجديد
   for (const head of ['const __strongBuildRe = ', 'const GATE_BUILD_RE = ', 'const __rtAdOk = ', 'const __rtDesignImg = ', 'const __rtWriteAsk = ', 'const __logoDesignRe = ', 'const __MEDIA_WORD_RE = ']) {
     assert.ok(bundle.includes(line(head)), head);
   }
-  assert.ok(bundle.includes("&& __rtAdOk /* v-route-ad */ && !cur.adMode"), 'شرط الإعلان');
+  assert.ok(bundle.includes("&& __rtAdOk /* v-route-ad */ && !__explodedTurn /* v-chat-exploded */ && !cur.adMode"), 'شرط الإعلان');
   assert.ok(bundle.includes('(__rtDesignImg /* v-route-design */ || __explicitImageTextRequest'), 'شرط البانِي');
   // لا lookbehind في الحزمة: سفاري قبل 16.4 يرفض السكربت كلّه فيموت التطبيق على الآيفونات الأقدم (main بلا أيّ واحد)
   assert.ok(!/\(\?<[!=]/.test(bundle), 'لا (?<! ولا (?<= في app.bundle.js');

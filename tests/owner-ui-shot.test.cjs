@@ -75,7 +75,7 @@ test('الربط: بوّابة الوسائط تُقفل لدور اللقطة �
   assert.ok(src.includes("window.__ownerUiShotTurn = __ownerUiShot;"));
   assert.ok(read('js/app-18-chat-tools.js').includes("ownerUiShot: (typeof window.__ownerUiShotTurn === 'boolean') ? window.__ownerUiShotTurn : undefined,"));
   assert.ok(gate > 0, 'البوّابة موجودة');
-  assert.ok(gate < src.indexOf('if(text && __VID_MAKE_RE.test(text)'), 'قبل مسار الفيديو');
+  assert.ok(gate < src.indexOf('__VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && __mediaLane'), 'قبل مسار الفيديو'); // v-chat-exploded: «!__explodedTurn» صار أوّل الشرط
   assert.ok(gate < src.indexOf('const __ATT_EDIT = '), 'قبل مسار تعديل الصورة');
   assert.ok(src.includes("if(imageAttachments.length && !cur.adMode && !__ownerUiShot && imageAttachments.some(a => a && a._screenshot)){"));
   const bundle = read('js/app.bundle.js');
