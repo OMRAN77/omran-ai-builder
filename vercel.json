@@ -390,6 +390,10 @@
       "destination": "/v.html"
     },
     {
+      "source": "/s",
+      "destination": "/s.html"
+    },
+    {
       "source": "/tools",
       "destination": "/tools/index.html"
     },
