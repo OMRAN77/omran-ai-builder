@@ -27180,6 +27180,97 @@ function __omranImgsThatLoad(urls, ms){
    الأولى المطابقة تغلب، ولا كلمة = '' فيبقى الأمر كما كان. خارج __sendPromptCore عمدًا (سقّاطة البنية). */
 const AD_FX_WORDS=[['exploded',/[اإأ]كسبلود|تفكيك\s*(?:ال)?قطع|قطع(?:ه|ها)?\s*تتفكّ?ك|exploded/i],['smoke',/سموك|(?:من\s*(?:بين\s*)?|وسط\s*)(?:ال)?دخان|smoke[\s-]*reveal|(?:from|through|in)\s+(?:the\s+)?smoke/i],['topdown',/(?:دون|داون)\s*شوت|لقط[ةه]\s*(?:من\s*)?(?:فوق|الأعلى|علوي[ةه])|تصوير\s*من\s*فوق|top[\s-]?down|down[\s-]?shot|flat[\s-]?lay|bird'?s?[\s-]?eye/i],['orbit',/[اأ]وربي?ت|لقط[ةه]\s*دوّ?ار[ةه]|الكاميرا\s*تدور|orbit/i]];
 function omranAdFx(text){ const w=AD_FX_WORDS.find(function(x){ return x[1].test(String(text||'')); }); return w?w[0]:''; }
+/* v-chat-exploded (المالك ٢٠ نوفمبر: «كل الاشياء… السيارات والطيارات والساعات وجسم الانسان والاكترونيات… في المحادثة… فيديو قصير اكثر
+   شي 10 ثواني يفكك المنتج الي مرفوعه صورته»): صورة مرفقة + طلب تفكيك = فيديو تفكيك قصير في المحادثة نفسها (مسار الفيديو الثابت بـfx:'exploded'،
+   وصورته نفسها أوّل إطار). بلا صورة = لا شيء جديد. النفي («لا تفككه»، «بدون تفكيك») والمعاني الأخرى («فك الحجز»، «فكّني منه»، «فكرة»،
+   «اشرحه»، «كيف أفكّكها؟») لا تطلقه. «إعلان» مع «صورة/بوستر» بلا كلمة فيديو يبقى صورة الإعلان بتأثيرها (v-ad-fx-chat). الشدّة تُقرأ قبل
+   حذف التشكيل: «شرّحه» تشريح و«شرحه» شرح. خارج __sendPromptCore عمدًا (سقّاطة البنية)، وبثوابته وحدها (اختبار chat-exploded يشغّلها معزولة). */
+const __EXPL_AR_CORE = '(?:[يتن]?ت?فكك(?:ه|ها|هم|ي|يه|يها|يهم|وه|وها|وهم|لي|يلي)?|فك(?:ه|ها)(?!\\s*(?:عني|عنا|عنّا|مني|منه|منها|منا|منّا))|فك\\s+(?:ال)?(?:قطع|اجزاء|أجزاء|قطعه|قطعها|اجزاءه|أجزاءه|اجزاءها|أجزاءها)|(?:ال|بال|وال|و|ب)?تفكيك(?:ه|ها|هم)?|[اإأ]كسبلود[ء-ي]*|(?:ال|و)?تشريح(?:ه|ها)?)(?![ء-ي])';
+const __EXPL_EN_CORE = '(?:explod(?:e|ed|ing)[\\s-]+view|explode(?=\\s+(?:it|this|that|them|the|my|into|apart)\\b|\\s*[.!]*\\s*$)|disassembl(?:e|ed|ing|y)|tear[\\s-]?down|tear\\s+(?:it|this|them)\\s+down|take\\s+(?:it|this|them|the\\s+\\w+)\\s+apart|take\\s+apart|pull\\s+(?:it|this)\\s+apart|break\\s+(?:it\\s+|this\\s+)?down\\s+into\\s+(?:its\\s+)?(?:parts|pieces|components))\\b';
+const __EXPL_AR_RE = new RegExp('(?:^|[^ء-ي])[وف]?' + __EXPL_AR_CORE);
+const __EXPL_EN_RE = new RegExp('\\b' + __EXPL_EN_CORE, 'i');
+const __EXPL_CUT_RE = /(?:^|[^ء-ي])[وف]?(?:ي|ت)?شررح(?:ه|ها|هم|لي)?(?![ء-ي])/; // «شرّحه» بالشدّة وحدها (تُعلَّم «شررح» قبل حذف التشكيل)
+const __EXPL_ASK_RE = /(?:شو|ايش|إيش|أيش|وش|ويش|ماذا|مم)\s+(?:ي|ت)(?:تركب|تكون)(?:ون)?(?![ء-ي])/;
+const __EXPL_SHOW_RE = /فيديو|ڤيديو|مقطع|كليب|وريني|ورني|اعرض|\bvideo\b|\bshow\s+me\b/i;
+const __EXPL_NEG = '(?:^|[^ء-ي])(?:لا|ما|مو|مب|مش|بدون|بلا|دون|من\\s+غير)\\s+(?:[^\\s،,.!؟?]+\\s+)?[وف]?';
+const __EXPL_NEG_AR_RE = new RegExp(__EXPL_NEG + __EXPL_AR_CORE);
+const __EXPL_NEG_CUT_RE = new RegExp(__EXPL_NEG + '(?:ي|ت)?شررح'); // «لا تشرّحه»
+const __EXPL_NEG_EN_RE = new RegExp("\\b(?:don[’']?t|do\\s+not|no|not|without|never|stop)\\s+(?:\\w+\\s+){0,2}" + __EXPL_EN_CORE, 'i');
+const __EXPL_HOW_RE = /^(?:كيف|ليش|لماذا|لمَ|متى|وين|how|why|when|where)(?=$|[\s،,])/i;
+const __EXPL_CODE_RE = /كود|الكود|سكربت|سكريبت|برمج|\bcode\b|\bscript\b|\bfunction\b|\brepo\b/i;
+const __EXPL_Q_ANY_RE = /(?:^|[^ء-ي])[وف]?(?:كيف|شلون|[اإ]شلون|ليش|لماذا|هل|(?:وش|شو|[اإأ]يش)\s*[اأ]سوي|شسوي|خاي?ف[ةه]?|[اأ]خاف|[اأ]خشى)(?![ء-ي])|\b(?:how|why|is\s+it\s+(?:possible|safe)|can\s+it\s+be)\b/i;
+const __EXPL_ABSTRACT_RE = /(?:^|[^ء-ي])[وفبل]?(?:ال|هال|ها|ل)?(?:معادل[ةه]|معادلات|مس[أا]ل[ةه]|مساله|مسائل|جمل[ةه]|كلم[ةه]|كلمات|حروف|رقم|[اأ]رقام|عدد|[اأ]عداد|عوامل|[اإ]عرابي?[اًة]?|[اأ]قواس|فكر[ةه]|مشكل[ةه]|سؤال|[اأ]سئل[ةه]|[اأ]سر[ةه]|مجتمع|انفجار|[يت]نفجر|نار|نيران|لهب|فوتوشوب|تشفير|شفر[ةه]|فاتور[ةه]|نص|كلام)(?:ه|ها|هم|ي|ات)?(?![ء-ي])|\b(?:equations?|sentences?|words?|numbers?|problems?|questions?|math|server|database|text|polynomials?|factors?|brackets?|fire|flames?|blast|bomb|boom|explosions?|photoshop)\b/i;
+const __EXPL_SALE_RE = /للبيع|للإيجار|للايجار|\bfor\s+(?:sale|rent)\b/i; // إعلان بيع/إيجار (كما يعدّه __adIntentRe) بلا كلمة فيديو = صورة الإعلان كما في main
+const __EXPL_AD_STILL_RE = /(?:إعلان|اعلان|أعلان|دعاي[ةه]|\bads?\b|advert)[\s\S]*?(?:صور[ةه]|بوستر|منشور|بنر|بانر|ملصق|poster|banner|\bimage\b|\bpost\b)|(?:صور[ةه]|بوستر|منشور|بنر|بانر|ملصق|poster|banner|\bimage\b|\bpost\b)[\s\S]*?(?:إعلان|اعلان|أعلان|دعاي[ةه]|\bads?\b|advert)/i;
+/* v-chat-exploded (إعادة الفحص): القائمة السوداء لا تُغلق الباب («فكك الفاتورة»، «خطوات تفكيك الجوال»، «يتفكك؟»)، فالقاعدة صارت إيجابيّة:
+   يُطلقه أمر صريح وحده — «فكّكه/فككها» بضمير، أو «فكّك/شرّح/تفكيك» + اسم شيء مادّيّ من قائمة (سيارة، طيارة، ساعة، جوال، جسم…) أو «هذا» —
+   أو «خله يتفكك/ابيه يتفكك/ابي تفكيكه»، أو «اكسبلودد/exploded view»، أو طلب مهذّب «تقدر تفككه؟». وما عدا ذلك («تفكيك»، «يتفكك»، «فكه»
+   مع كلام) لا يكفي إلّا مع كلمة عرض (فيديو/وريني). وطلب الشرح (طريقة/خطوات/اشرح/steps/can I) أو «؟» بلا كلمة عرض = جواب بالكلام.
+   الفوت رخيص (جواب عاديّ)، والإطلاق الكاذب فيديو مدفوع لم يطلبه. */
+const __EXPL_EXPLAIN_RE = /(?:^|[^ء-ي])[وفب]?(?:ال)?(?:طريق[ةه]|خطوات|[اإ]شرح|شرح|تعليمات|دليل|نصائح|سبب|علمني|[اأ]قدر|[اأ]عرف)(?![ء-ي])|[؟?]|\b(?:steps?|instructions?|guide|tutorial|explain|how\s+to|can\s+i|is\s+it|should\s+i|tips?)\b/i;
+const __EXPL_NOUN = '(?:سيار(?:[ةه]|ات|ت)|عربي[ةه]|شاحن[ةه]|طيار(?:[ةه]|ات|ت)|طائر(?:[ةه]|ات|ت)|هليكوبتر|ساع(?:[ةه]|ات|ت)|جوال(?:ات)?|موبايل|تلفون|تليفون|هاتف|[اآأ]يفون|[اآأ]يباد|تابلت|لابتوب|كمبيوتر|حاسوب|حاسب|جهاز|[اأ]جهز[ةه]|محرك|ماطور|موتور|مكين(?:[ةه]|ت)|ماكين(?:[ةه]|ت)|آل(?:[ةه]|ت)|[اأ]دا(?:[ةه]|ت)|كاميرا|دراج(?:[ةه]|ات|ت)|دباب(?:[ةه]|ات|ت)|سيكل|موتوسيكل|قطار|سفين(?:[ةه]|ت)|قارب|يخت|صاروخ|روبوت|درون|طابع(?:[ةه]|ت)|شاش(?:[ةه]|ت)|تلفزيون|تلفاز|سماع(?:[ةه]|ات|ت)|ماوس|كيبورد|بلايستيشن|يد(?:[ةه]) تحكم|قلم|كرسي|طاول(?:[ةه]|ت)|عطر|قارور(?:[ةه]|ت)|علب(?:[ةه]|ت)|منتج|قطع(?:[ةه]|ت)?|شي|شيء|جسم|[اإ]نسان|قلب|دماغ|مخ|هيكل|جمجم(?:[ةه]|ت)|شاحن|بطاري(?:[ةه]|ت)|ثلاج(?:[ةه]|ت)|مكيف|غسال(?:[ةه]|ت)|خلاط|مروح(?:[ةه]|ت)|لعب(?:[ةه]|ت))';
+const __EXPL_OBJ_RE = new RegExp('^(?:[وفب]|لل|ل)?(?:ال|هال|ها)?' + __EXPL_NOUN + '(?:ي|ك|ه|ها|نا|هم)?(?![ء-ي])');
+const __EXPL_DEM_RE = /^(?:هذا|هذي|هاذا|هاذي|هذه|ذا|ذي)(?![ء-ي])\s*/;
+const __EXPL_END_RE = /^(?:$|[.!،,؛:…\-]|(?:بعد|الحين|بليز|لو\s+سمحت|يا)(?![ء-ي])|(?:please|pls)\b)/i;
+const __EXPL_IMP_RE = /(?:^|[^ء-ي])[وف]?(?:فكك|شررح)(ه|ها|هم|يه|يها|يهم|وه|وها|وهم|هالي|ي)?(?:لي|لنا|يلي)?(?![ء-ي])(?:\s+(?:لي|لنا)(?![ء-ي]))?([\s\S]*)$/;
+const __EXPL_NOUNV_RE = /(?:^|[^ء-ي])[وف]?(?:ال)?(?:تفكيك|تشريح)(?![ء-ي])\s*([\s\S]*)$/;
+const __EXPL_PARTS_RE = /(?:^|[^ء-ي])[وف]?فك\s+(?:ال)?(?:قطع|اجزاء|أجزاء)(?:ه|ها)?(?![ء-ي])/;
+const __EXPL_ALONE_RE = /^[وف]?(?:فك(?:ه|ها|يه|يها|هم)|(?:ال)?(?:تفكيك|تشريح)(?:ه|ها)?)(?:\s*(?:لي|بليز))?\s*[.!]*\s*$/;
+const __EXPL_LET_RE = /(?:^|[^ء-ي])(?:خل(?:ه|ها|يه|يها|هم)?|(?:ابي|أبي|ابغى|أبغى|ابغي|اريد|أريد|ودي|بغيت)(?:ه|ها|هم)|اشوف(?:ه|ها))\s+(?:[يت]تفكك|مفكك)(?![ء-ي])|(?:^|[^ء-ي])(?:نبي|نبغى|نريد)\s+نفكك(?![ء-ي])|(?:^|[^ء-ي])(?:سو|سوي|اعمل)(?:\s+(?:له|لها|لي))?\s+(?:ال)?(?:تفكيك|تشريح)(?![ء-ي])|(?:^|[^ء-ي])(?:ابي|أبي|ابغى|أبغى|ابغي|اريد|أريد|ودي|بغيت)\s+(?:(?:ال)?(?:تفكيك|تشريح)(?:ه|ها)?|اشوف(?:ه|ها)\s+مفكك)(?![ء-ي])/;
+const __EXPL_POLITE_AR_RE = /^(?:لو\s+سمحت\s+)?(?:تقدر|تقدرين|ممكن|بليز)\s+(?:ت?فكك|تشررح)(?:ه|ها|هم|يه|يها|يهم)(?:\s*لي)?(?![ء-ي])\s*[؟?!.]*\s*$/;
+const __EXPL_EN_N = '(?:car|cars|truck|vehicle|bike|motorcycle|motorbike|bicycle|scooter|plane|airplane|aeroplane|aircraft|jet|helicopter|drone|rocket|ship|boat|train|watch|watches|clock|phone|iphone|smartphone|tablet|ipad|laptop|computer|pc|console|controller|camera|headphones|earbuds|airpods|speaker|tv|monitor|keyboard|mouse|printer|robot|engine|motor|machine|device|gadget|product|bottle|perfume|chair|toy|body|heart|brain|skull|skeleton|human|appliance|fridge|blender|fan)';
+const __EXPL_EN_V = '(?:explode|disassemble|dismantle|tear\\s*down|teardown)';
+const __EXPL_EN_DET = '(?:the|my|this|that|our|your|these|those)\\s+(?:[\\w-]+\\s+){0,2}' + __EXPL_EN_N + '\\b';
+const __EXPL_EN_STEM = '(?:' + __EXPL_EN_V + '(?:\\s+(?:it|them)\\b|\\s+' + __EXPL_EN_DET + '|(?:\\s+(?:this|that|these|those))?(?:\\s+(?:please|pls|now|for\\s+me))?\\s*[.!?]*\\s*$)'
+  + '|(?:take|pull)\\s+(?:(?:it|this|that|them)|' + __EXPL_EN_DET + ')\\s+apart\\b|(?:take|pull)\\s+apart\\s+(?:(?:it|this|that|them)\\b|' + __EXPL_EN_DET + ')'
+  + '|tear\\s+(?:it|this|that|them)\\s+down\\b|break\\s+(?:it|this|that|them)\\s+(?:down\\s+)?into\\s+(?:its\\s+)?(?:parts|pieces|components)\\b)';
+const __EXPL_EN_IMP_RE = new RegExp('^(?:(?:please|pls|plz|ok|okay|now|hey|so|just)\\s+)*' + __EXPL_EN_STEM, 'i');
+const __EXPL_POLITE_EN_RE = new RegExp('^(?:can|could|would|will)\\s+you\\s+(?:please\\s+)?' + __EXPL_EN_STEM, 'i');
+const __EXPL_TERM_RE = /(?:^|[^ء-ي])[اإأ]كسبلود[ء-ي]*|\bexploded[\s-]+view\b/i;
+function __explObjOk(rest, needObj){
+  const r = String(rest || '').replace(/^\s+/, '');
+  if(!needObj && __EXPL_END_RE.test(r)) return true;
+  const d = __EXPL_DEM_RE.exec(r); const r2 = d ? r.slice(d[0].length) : r;
+  if(d && __EXPL_END_RE.test(r2)) return true;
+  return __EXPL_OBJ_RE.test(r2);
+}
+function omranExplodedAsk(text, hasImage){
+  if(!hasImage) return false;
+  const raw = String(text || '').slice(0, 600).trim();
+  if(!raw) return false;
+  const t = raw.replace(/شرَ?َّ?ح/g, 'شررح').replace(/[ً-ْـ]/g, '').trim(); // «فكّكها» = «فككها»، و«شرّح» ≠ «شرح»
+  if(__EXPL_HOW_RE.test(t) || __EXPL_CODE_RE.test(t) || __EXPL_ABSTRACT_RE.test(t)) return false;
+  if(__EXPL_NEG_AR_RE.test(t) || __EXPL_NEG_EN_RE.test(t) || __EXPL_NEG_CUT_RE.test(t)) return false;
+  const show = __EXPL_SHOW_RE.test(t), polite = __EXPL_POLITE_AR_RE.test(t) || __EXPL_POLITE_EN_RE.test(t);
+  if(!show && (__EXPL_AD_STILL_RE.test(t) || __EXPL_SALE_RE.test(t))) return false; // صورة إعلان بتأثير التفكيك كما كانت
+  if(!show && !polite && (__EXPL_Q_ANY_RE.test(t) || __EXPL_EXPLAIN_RE.test(t))) return false; // سؤال/قلق/طلب شرح = جواب بالكلام
+  if(polite || __EXPL_LET_RE.test(t) || __EXPL_TERM_RE.test(t) || __EXPL_ALONE_RE.test(t) || __EXPL_PARTS_RE.test(t) || __EXPL_EN_IMP_RE.test(t)) return true;
+  const m = __EXPL_IMP_RE.exec(t); if(m && (m[1] || __explObjOk(m[2], false))) return true;
+  const n = __EXPL_NOUNV_RE.exec(t); if(n && __explObjOk(n[1], true)) return true;
+  return show && (__EXPL_AR_RE.test(t) || __EXPL_EN_RE.test(t) || __EXPL_CUT_RE.test(t) || __EXPL_ASK_RE.test(t) || /(?:^|[^ء-ي])(?:قطع|اجزاء|أجزاء|مكونات)(?:ه|ها)(?![ء-ي])/.test(t));
+}
+/* v-chat-exploded-prev (لقطة المالك ٢٠ نوفمبر): رفع صورة السيارة في رسالة ثمّ كتب «فككه» في التالية — بلا مرفق في الرسالة نفسها لم ينطلق،
+   فذهب لمزوّده فاستدعى أداة تعديل الصورة («الأداة تحتاج طلب أوضح»). آخر صورة رفعها هو في آخر ٦ رسائل من المحادثة نفسها تكفي، وتُستعاد من
+   المخزن إن كُنست من الذاكرة (vaultId). لا تمسّ غير طلب التفكيك الصريح. */
+function omranExplodedPrevImage(cur){
+  try{
+    const ms = (cur && Array.isArray(cur.messages)) ? cur.messages : [];
+    for(let i = ms.length - 1, n = 0; i >= 0 && n < 6; i--, n++){
+      const m = ms[i];
+      if(!m || m.role !== 'user' || !Array.isArray(m.attachments)) continue;
+      const a = m.attachments.filter(function(x){ return x && x.isImage; }).slice(-1)[0];
+      if(a && ((typeof a.dataUrl === 'string' && a.dataUrl.length > 100) || a.vaultId)) return a;
+    }
+  }catch(e){ __swallow(e, 'ui:expl-prev'); }
+  return null;
+}
+async function omranExplodedPrevSrc(a){
+  if(!a) return null;
+  let d = a.dataUrl;
+  if((typeof d !== 'string' || d.length <= 100) && a.vaultId && typeof __vaultRead === 'function'){ try{ d = await __vaultRead(a); }catch(e){ __swallow(e, 'ui:expl-prev-read'); } }
+  const b64 = String(d || '').split(',')[1] || '';
+  return b64 ? { b64: b64, mime: a.mime || 'image/png' } : null;
+}
 async function __sendPromptCore(){
   /* v-parallel-chats: هذا الطلب يخصّ المحادثة التي بدأ فيها. الرسم باسمَي renderAll/renderMessages مظلَّل هنا:
      يرسم فقط إن كانت محادثته هي المعروضة، وإلّا يحدّث القائمة الجانبيّة وحدها — فلا يكتب طلب في الخلفيّة
@@ -27255,7 +27346,7 @@ async function __sendPromptCore(){
       const __p = localStorage.getItem('aiapp_provider') || (typeof omranDefaultProv === 'function' ? omranDefaultProv() : 'openai'); /* v-grok-first */
       if(window.__agentModeOn === true && __p === 'claude') return false;
       if(typeof TOOL_PROVIDERS === 'undefined' || TOOL_PROVIDERS.indexOf(__p) === -1) return false;
-      if(pendingAttachments.some(a => a && a.isImage) && __imgFormatIntent(text)) return false;
+      if(pendingAttachments.some(a => a && a.isImage) && __imgFormatIntent(text)) return false; if(omranExplodedAsk(text, pendingAttachments.some(a => a && a.isImage) || !!omranExplodedPrevImage(getCurrent()))) return false; /* v-chat-exploded: صورة + «فكّكه» = فيديو التفكيك نفسه للمالك أيضًا (أمره ٢٠ نوفمبر «في المحادثة»)، لا وصف يخمّنه المزوّد */
       return true;
     }catch(e){ __swallow(e, 'ui:prov-self'); return false; }
   })();
@@ -27277,7 +27368,7 @@ async function __sendPromptCore(){
     }catch(e){ return []; }
   })();
   const __ownerUiShot = omranOwnerUiShotTurn(text, __gateAtts.filter(a => a && a.isImage).slice(-1)[0]);
-  if(__ownerUiShot) __mediaLane = 'none'; const __adVideoTurn = !__ownerUiShot && omranAdVideoAsk(text, __gateAtts.some(a => a && a.isImage)); if(__adVideoTurn) __mediaLane = 'none'; /* v-chat-ad-video: إعلان الفيديو للمحادثة وأداتها — لا مسار وسائط في الواجهة */
+  if(__ownerUiShot) __mediaLane = 'none'; const __explodedTurn = !__ownerUiShot && omranExplodedAsk(text, __gateAtts.some(a => a && a.isImage) || !!omranExplodedPrevImage(getCurrent())); /* v-chat-exploded-prev: أو صورته في رسالة سابقة قريبة */ /* v-chat-exploded: صورة + طلب تفكيك = فيديو التفكيك في المحادثة (يغلب إعلان الفيديو وصانع الفيديو وصورة الإعلان) */ const __adVideoTurn = !__ownerUiShot && !__explodedTurn && omranAdVideoAsk(text, __gateAtts.some(a => a && a.isImage)); if(__adVideoTurn) __mediaLane = 'none'; /* v-chat-ad-video: إعلان الفيديو للمحادثة وأداتها — لا مسار وسائط في الواجهة */
   window.__ownerUiShotTurn = __ownerUiShot; /* يُرسل مع طلب المحادثة (app-18) */
   window.__mediaGate = __mediaLane; /* للتشخيص */
   // 🎬 v525: اكتشاف طلب إنشاء فيديو → فتح صانع الفيديو مباشرة
@@ -27290,7 +27381,7 @@ async function __sendPromptCore(){
      لا يطابق أبدًا): صار بعد أداة طلب («ممكن فيديو قصير لشخص…»)، لا وسط أيّ جملة («رأيك في فيلم عن الحرب» ليست طلب فيديو). v-vid-make-en (تدقيق ١٨–١٩ أكتوبر): «Make me a video of…» بدأ فيديو مدفوعًا بدل الصانع — الفرع الإنجليزيّ الأوّل يشترط الاسم بعد الفعل مباشرة، فالأخير يقبل me/us وأداة التعريف وصفة قصيرة. */
   const __VID_MAKE_RE = /(?:^|[\s،,.!؟?()\"'«»:؛-])(?:(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|طلعلي|طلع\s+لي|صنعلي|(?:ممكن|تقدر|تقدرين|تكفى|تكفين|لو\s*سمحت|من\s*فضلك|يا\s*ليت|ياليت|يا\s*ريت|ياريت)\s+(?:تسوي|تسوّي|تسويلي|تسوّيلي|تعمل|تعملي|تصنع|تولد|تولّد)|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|(?:أبغى|ابغى|أبغي|ابغي|ابغا|أبغا|بغيت|أريد|اريد|ابي|أبي|ابا|أبا|ودي|ودّي|نبي|نبغى|نبغي|بدي|حاب|أحتاج|احتاج)\s*(?:لي\s*)?(?:فيديو|فيديوهات|كليب|أنيميشن|انيميشن|animation|video|clip|reel|short|(?:فيلم|مقطع|مقاطع|film)(?![^،,.!؟?]*(?:من\s+(?:ال)?(?:قصيد|رواي|سور[ةه]|كتاب|اغني|أغني)|اشوف|أشوف|نشوف|انصحني|أنصحني|صوتي))))|(?:^|[\s،,.!؟?])(?:ممكن|تكفى|تكفين|لو\s*سمحت|من\s*فضلك|يا\s*ليت|ياليت|يا\s*ريت|ياريت)\s+(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}|(?:^|[\s،,.!؟?()\"'«»:؛-])(?:سوّ|سو)\s*(?:لي\s*)?(?:مقطع\s+|مقاطع\s+)?(?:فيديو|فيديوهات|فيلم|كليب|أنيميشن|انيميشن)|(?:^|[\s,.!?()\"'«»:;-])(?:create|make|generate|produce)\s+(?:(?:me|us)\s+)?(?:(?:an?|the)\s+)?(?:(?:short|quick|cinematic)\s+)?(?:video|clip|film|reel|animation)\b/i;
   const __VID_Q_RE    = /^(?:كيف|ما|وش|ايش|أيش|هل|لماذا|why|how|what|can\s+i|where)\s|[؟?]\s*$/;
-  if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && typeof window.omranOpenVideoMaker === 'function'){
+  if(text && !__explodedTurn /* v-chat-exploded: «سوّ فيديو يفكّكه» في المحادثة لا في الصانع */ && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && typeof window.omranOpenVideoMaker === 'function'){
     promptEl.value = '';
     /* v-video-photo-identity: «سوّي فيديو لي وأنا أمشي في دبي» + صورة كان يُرمى فيها كلام المستخدم كلّه
        ويُستبدل بوصف آليّ للصورة من عشرين كلمة — فيخرج فيديو لا يطلبه، وأمره يصف الشخص نصًّا بدل أن يحرّكه.
@@ -28300,7 +28391,7 @@ function __friendlyErr(e){
       }
       renderAll(); saveState();
       return;
-    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !(__mediaLane === 'video' || /(?:إعلان|اعلان)\s*(?:فيديو|ڤيديو)|(?:فيديو|ڤيديو)\s*(?:إعلان|اعلان|إعلاني|اعلاني|دعائي|ترويجي)|\bvideo\s+ad\b|\bad\s+video\b/i.test(text)) /* v-video-ad-route: «إعلان فيديو» ليس صورة إعلان؛ «للبيع ايفون يصور فيديو 4K» تبقى إعلانًا */ && __rtAdOk /* v-route-ad */ && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
+    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && __mediaLane !== 'none' /* v-media-gate */ && !(__mediaLane === 'video' || /(?:إعلان|اعلان)\s*(?:فيديو|ڤيديو)|(?:فيديو|ڤيديو)\s*(?:إعلان|اعلان|إعلاني|اعلاني|دعائي|ترويجي)|\bvideo\s+ad\b|\bad\s+video\b/i.test(text)) /* v-video-ad-route: «إعلان فيديو» ليس صورة إعلان؛ «للبيع ايفون يصور فيديو 4K» تبقى إعلانًا */ && __rtAdOk /* v-route-ad */ && !__explodedTurn /* v-chat-exploded */ && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
       // v695: إعلان → /api/tools?action=adimage (gpt-image-2) بجودة احترافية حقيقية
       const __wM  = text.match(/(?:مطلوب|السعر|ب\s*(?:فقط)?)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
       const __mmM = text.match(/(?:الممشى|ممشى)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
@@ -28572,8 +28663,8 @@ function __friendlyErr(e){
     const __animateRe = /(?:^|[^\u0600-\u06FF])[وف]?(?:حرك|حرّك)|(?:^|[^\u0600-\u06FF])(?:خل|خلي|خلّي|خلها|خلّها|خليها|خلّيها|خله|خلّه|خليه|ابيها|أبيها|ابغاها|أبغاها|ابغيها|أبغيها|اريدها|أريدها|اجعلها|اجعله)\s+(?:(?:ال)?صور[ةه]\s+)?(?:تتحرك|تتحرّك|يتحرك|يتحرّك|متحرك[ةه]?|متحرّك[ةه]?)|(?:^|[^\u0600-\u06FF])(?:سوها|سوّها|سويها|سوّيها|حولها|حوّلها|خلها|خلّها|خليها|اجعلها)\s+(?:لي\s+)?(?:لـ?|الى\s+|إلى\s+)?(?:فيديو|ڤيديو|مقطع|كليب)|\banimate/i;
     const __vidSrc = __srcImg
       ? { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }
-      : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
-    const __wantsVideo = !!text && !__codeWordRe.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && (
+      : (__explodedTurn && omranExplodedPrevImage(cur)) ? await omranExplodedPrevSrc(omranExplodedPrevImage(cur)) /* v-chat-exploded-prev */ : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
+    const __wantsVideo = __explodedTurn /* v-chat-exploded */ || !!text && !__codeWordRe.test(text) && __mediaLane !== 'none' && __mediaLane !== 'image' /* v-media-gate */ && (
       (__videoWordRe.test(text) && (__routeCmdRe.test(text) || /(حول|حوّل|حوله|حوّله|ولد|ولّد|انتج|أنتج|اطلع لي|طلع لي|generate|convert|turn)/i.test(text) || /(فيديو|ڤيديو|video)\s+(عن|يظهر|فيه|about|of|showing)\s+\S/i.test(text))) ||
       (!!__vidSrc && (__srcImg || cur.lastMsgWasImageEdit) && __animateRe.test(text))
     );
@@ -28604,8 +28695,8 @@ function __friendlyErr(e){
     if(__wantsVideo){
       chatPhase('🎬', omranAttachT('axAttachVidCreating', 'جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق', 'Creating video… this can take 1–3 minutes'), thinkingDiv);
       try{
-        const __vp = { promptText: text.slice(0, 900), duration: 5, ratio: '1280:720', token: authGet('aiapp_auth_token') };
-        if(__vidSrc && __vidSrc.b64 && (__srcImg || __animateRe.test(text) || /منها|عليها|الصورة|صورتي|this image|the image|it/i.test(text))){
+        const __vp = { promptText: text.slice(0, 900), duration: 5, ratio: '1280:720', token: authGet('aiapp_auth_token') }; if(__explodedTurn) __vp.fx = 'exploded'; /* v-chat-exploded: بلا صورة تصل يرفضه الخادم قبل الخصم — لا فيديو نصّيّ لكلمة «فكّكه» */
+        if(__vidSrc && __vidSrc.b64 && (__srcImg || __explodedTurn || __animateRe.test(text) || /منها|عليها|الصورة|صورتي|this image|the image|it/i.test(text))){
           // Runway requires w/h ratio 0.5–2: pad the image if needed
           try{
             const __fixed = await new Promise((resolve) => {
@@ -28635,7 +28726,7 @@ function __friendlyErr(e){
           /* v-video-first-frame: «حرّكها» وحدها (بلا مشهد ولا وصف) = حرّك الصورة كما هي — صورتك نفسها أوّل إطار، لا إطار
              مرسوم (أدقّ ما يكون وبلا كلفة). كلمة مشهد واحدة («حرّكها وهي ترقص في السوق») = يُبنى أوّل إطار بوجهك فيه. */
           const __ANIM_ONLY_RE = /^(?:[وف]?(?:حرك|حرّك)\S*|animate\S*|خل|خلي|خلّي|خلها|خلّها|خليها|خلّيها|خله|خليه|ابيها|أبيها|ابغاها|أبغاها|اريدها|أريدها|اجعلها|سوها|سوّها|سويها|سوّيها|حولها|حوّلها|تتحرك|تتحرّك|يتحرك|متحرك[ةه]?|متحرّك[ةه]?|مقطع|كليب|لفيديو|شوي|شوية|سوي|سوّي|سويلي|سوّيلي|سولي|اعمل|اصنع|فيديو|ڤيديو|video|لي|منها|من|هذي|هذه|هذا|هاي|الصور[ةه]|صورتي|هالصور[ةه]|this|the|image|photo|picture|it|please|لو|سمحت|ممكن|تكفى|بليز)$/i;
-          __vp.keepPhoto = String(text || '').split(/[\s،,.!؟?()"'«»:؛\-]+/).filter(Boolean).every(function(w){ return __ANIM_ONLY_RE.test(w); });
+          __vp.keepPhoto = String(text || '').split(/[\s،,.!؟?()"'«»:؛\-]+/).filter(Boolean).every(function(w){ return __ANIM_ONLY_RE.test(w); }); if(__explodedTurn) __vp.keepPhoto = true; /* v-chat-exploded: صورته نفسها أوّل إطار بلا رسم ولا صورة وسيطة؛ الأمر والمدّة (٥ث) على الخادم، وسؤال الخصم نفسه */
         }
         let __vid = null, __verr = '', __vra = 0;
         for(let __a = 0; __a < 2 && !__vid; __a++){
