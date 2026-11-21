@@ -27180,6 +27180,29 @@ function __omranImgsThatLoad(urls, ms){
    الأولى المطابقة تغلب، ولا كلمة = '' فيبقى الأمر كما كان. خارج __sendPromptCore عمدًا (سقّاطة البنية). */
 const AD_FX_WORDS=[['exploded',/[اإأ]كسبلود|تفكيك\s*(?:ال)?قطع|قطع(?:ه|ها)?\s*تتفكّ?ك|exploded/i],['smoke',/سموك|(?:من\s*(?:بين\s*)?|وسط\s*)(?:ال)?دخان|smoke[\s-]*reveal|(?:from|through|in)\s+(?:the\s+)?smoke/i],['topdown',/(?:دون|داون)\s*شوت|لقط[ةه]\s*(?:من\s*)?(?:فوق|الأعلى|علوي[ةه])|تصوير\s*من\s*فوق|top[\s-]?down|down[\s-]?shot|flat[\s-]?lay|bird'?s?[\s-]?eye/i],['orbit',/[اأ]وربي?ت|لقط[ةه]\s*دوّ?ار[ةه]|الكاميرا\s*تدور|orbit/i]];
 function omranAdFx(text){ const w=AD_FX_WORDS.find(function(x){ return x[1].test(String(text||'')); }); return w?w[0]:''; }
+/* v-chat-ad-fx (المالك ٢١ نوفمبر: «فيديو في الدردشه يعني مال ثواني… فيديوهات متنوعه مش نوع واحد»): أسلوب لقطة فيديو المنتج في المحادثة
+   (generate_video مع صورته). الاسم في كلامه يغلب (الأربعة كما في الصور + أربعة للتنويع)؛ وفيديو الإعلان بلا اسم يأخذ أسلوبًا لم يأخذه في
+   دورته (localStorage omranAdVidFx: الثمانية كلّها قبل أيّ تكرار) فلا يتكرّر نوع واحد. فيديو عاديّ بلا اسم أسلوب = '' كما كان. المفاتيح نفسها في FX_VIDEO
+   (api/_lib/video-create.js) + exploded. */
+const AD_VID_FX_POOL=['smoke','orbit','topdown','lightsweep','splash','float','macro','exploded'];
+const AD_VID_FX_MORE=[['lightsweep',/شعاع|ضوء\s*يمر|light[\s-]*sweep/i],['splash',/سبلاش|رذاذ|splash/i],['float',/يطفو|يطير\s*في\s*الهوا|طاير\s*في\s*الهوا|float|levitat/i],['macro',/ماكرو|macro|close[\s-]?up/i]];
+const AD_VID_FX_STRONG=/سموك|smoke[\s-]*reveal|[اإأ]كسبلود|exploded|(?:دون|داون)\s*شوت|top[\s-]?down|down[\s-]?shot|flat[\s-]?lay|[اأ]وربي?ت|orbit/i;
+function omranAdVideoFx(text, isAd){
+  const t=String(text||'');
+  if(!isAd) return AD_VID_FX_STRONG.test(t) ? omranAdFx(t) : ''; // فيديو عاديّ: اسم التأثير الصريح وحده («طاير في الهوا» لشخص ليس أسلوب منتج)
+  const named=omranAdFx(t)||((AD_VID_FX_MORE.find(function(x){ return x[1].test(t); })||[])[0]||'');
+  if(named) return named;
+  /* كيس: الدورة تمرّ على الثمانية كلّها بترتيب عشوائيّ قبل أن يتكرّر أحدها، وأوّل الدورة الجديدة غير آخر سابقتها */
+  let used=[]; try{ used=JSON.parse(localStorage.getItem('omranAdVidFx')||'[]'); }catch(e){ used=[]; /* guard-ok — تخزين تالف أو محظور: دورة جديدة */ }
+  if(!Array.isArray(used)) used=[];
+  used=used.filter(function(k){ return AD_VID_FX_POOL.indexOf(k)>=0; });
+  let free=AD_VID_FX_POOL.filter(function(k){ return used.indexOf(k)<0; });
+  if(!free.length){ const prev=used[used.length-1]; used=[]; free=AD_VID_FX_POOL.filter(function(k){ return k!==prev; }); }
+  const pick=free[Math.floor(Math.random()*free.length)];
+  try{ localStorage.setItem('omranAdVidFx', JSON.stringify(used.concat(pick))); }catch(e){ if(typeof __swallow==='function') __swallow(e, 'ui:ad-vid-fx-save'); /* بلا تخزين يبقى الاختيار عشوائيًّا */ }
+  return pick;
+}
+const AD_VID_FX_AR={smoke:'ظهور من الدخان',exploded:'تفكيك القطع',topdown:'لقطة من فوق',orbit:'لقطة دوّارة',lightsweep:'شعاع ضوء يكشفه',splash:'رذاذ حوله',float:'يطفو في الهوا',macro:'تفاصيل قريبة'};
 /* v-chat-exploded (المالك ٢٠ نوفمبر: «كل الاشياء… السيارات والطيارات والساعات وجسم الانسان والاكترونيات… في المحادثة… فيديو قصير اكثر
    شي 10 ثواني يفكك المنتج الي مرفوعه صورته»): صورة مرفقة + طلب تفكيك = فيديو تفكيك قصير في المحادثة نفسها (مسار الفيديو الثابت بـfx:'exploded'،
    وصورته نفسها أوّل إطار). بلا صورة = لا شيء جديد. النفي («لا تفككه»، «بدون تفكيك») والمعاني الأخرى («فك الحجز»، «فكّني منه»، «فكرة»،
@@ -45069,6 +45092,9 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
               if (dims && dims.w > 0 && dims.h > 0) ratio = dims.h >= dims.w ? '720:1280' : '1280:720';
             } catch (e) { typeof __swallow === 'function' && __swallow(e, 'app-17-agent-tools:204'); /* guard-ok — بلا أبعاد تبقى النسبة الافتراضيّة */ }
           }
+          /* v-chat-ad-fx: فيديو منتج بصورته = أسلوب لقطة (بالاسم، أو متبدّل لفيديو الإعلان) على مسار التفكيك نفسه (runway، صورته أوّل إطار) */
+          var adFx = (ref && ref.dataUrl && !trendMeta && typeof omranAdVideoFx === 'function') ? omranAdVideoFx(UTXT, !!(va.ad_title || va.ad_text || va.ad_voice)) : '';
+          if (adFx) engine = 'runway';
           var token = (window.authGet && window.authGet('aiapp_auth_token')) || '';
           var payload;
           var endpoint;
@@ -45081,6 +45107,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
             endpoint = '/api/video?action=video-create';
             payload = { promptText: vp, ratio: ratio, token: token, duration: parseInt(va.durationSeconds, 10) >= 8 ? 10 : 5, style: va.style === 'anime' ? 'anime' : 'realistic', longMode: false };
           }
+          if (adFx) payload.fx = adFx; // v-chat-ad-fx
           if (trendMeta) { payload.trend = va.trend; payload.params = { name: va.trend_name || '', text: va.trend_text || '' }; if (engine === 'veo') payload.durationSeconds = 8; }
           /* v-chat-trend-scenes (المالك، الخيار «أ»): ترند المشاهد (قصّة بيكسار) كان يصل باسم ونصّ فقط فتُرمى قصّة المستخدم ويخرج
              مشهد الصباح الافتراضيّ. الآن مقطع واحد يجمع مشاهده بالترتيب (oneClip): trend_scenes، أو trend_text يقسمه الخادم
@@ -45127,6 +45154,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           /* v-audit-chatcli (cli-chat-rest-4): الفيديو لمحادثة طلبه — كان في window.__chatVideoResult العامّ، يصفّره طلب محادثة أخرى (app-18)
              أو يلتقطه ردّها (app-09) مع المحادثات المتوازية، كما رُبطت الصور بمحادثتها (v-img-run-bind). بلا محادثة معروفة كما كان. */
           var vRes = { url: videoUrl, name: 'chat-video.mp4', provider: engine }, vChat = CHAT();
+          var fxNote = adFx && typeof AD_VID_FX_AR === 'object' ? ' — أسلوب اللقطة: ' + (AD_VID_FX_AR[adFx] || adFx) + '.' : ''; // v-chat-ad-fx: يذكره للمستخدم بلغته
           /* v-chat-ad-video (المالك ١٦ نوفمبر: «سوّها مع الصوت وضيف الكتابة والاسم»): فيديو الإعلان يُكمَل في المتصفّح بعد جاهزيّته — الاسم
              والسطر مرسومان فوق الفيديو (لا داخل التوليد: نموذج الفيديو يخربط الحروف)، والتعليق بصوت مها. لا ينتظره الخادم (مهلته ٢٩٠ ث من بدء
              الأداة)، فالفيديو الأصليّ يظهر أوّلًا والكامل يحلّ محلّه (app-09 omranAdAttach). */
@@ -45135,8 +45163,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           if (adOn) vRes.adJob = window.__omranAdFinish(videoUrl, { title: adT, text: adL, voice: adV });
           if (vChat && vChat.id != null) (window.__chatVideoByChat = window.__chatVideoByChat || {})[vChat.id] = vRes;
           else window.__chatVideoResult = vRes;
-          if (adOn) return '✅ تم إنشاء فيديو الإعلان. يظهر الآن في المحادثة، والتطبيق يضيف عليه خلال ثوانٍ' + (adT || adL ? ' الكتابة (' + [adT, adL].filter(Boolean).join(' · ') + ')' : '') + (adV ? (adT || adL ? ' و' : ' ') + 'التعليق الصوتيّ' : '') + ' ثمّ تحلّ النسخة الكاملة محلّه. قل للمستخدم ذلك بسطر، ولا تقل إنّها جاهزة الآن.';
-          return '✅ تم إنشاء الفيديو بنجاح. سيظهر الآن داخل المحادثة مع زر التنزيل.';
+          if (adOn) return '✅ تم إنشاء فيديو الإعلان. يظهر الآن في المحادثة، والتطبيق يضيف عليه خلال ثوانٍ' + (adT || adL ? ' الكتابة (' + [adT, adL].filter(Boolean).join(' · ') + ')' : '') + (adV ? (adT || adL ? ' و' : ' ') + 'التعليق الصوتيّ' : '') + ' ثمّ تحلّ النسخة الكاملة محلّه. قل للمستخدم ذلك بسطر، ولا تقل إنّها جاهزة الآن.' + fxNote;
+          return '✅ تم إنشاء الفيديو بنجاح. سيظهر الآن داخل المحادثة مع زر التنزيل.' + fxNote;
         }
         // 🎨 صورة حقيقية بدل رابط عشوائي. تُخزَّن محليًّا ويُعاد للنموذج رمز قصير
         // (__IMG_n__) يضعه في src؛ العميل يستبدله بـdata URI قبل العرض — فلا

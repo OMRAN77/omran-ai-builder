@@ -4119,6 +4119,29 @@ function __omranImgsThatLoad(urls, ms){
    الأولى المطابقة تغلب، ولا كلمة = '' فيبقى الأمر كما كان. خارج __sendPromptCore عمدًا (سقّاطة البنية). */
 const AD_FX_WORDS=[['exploded',/[اإأ]كسبلود|تفكيك\s*(?:ال)?قطع|قطع(?:ه|ها)?\s*تتفكّ?ك|exploded/i],['smoke',/سموك|(?:من\s*(?:بين\s*)?|وسط\s*)(?:ال)?دخان|smoke[\s-]*reveal|(?:from|through|in)\s+(?:the\s+)?smoke/i],['topdown',/(?:دون|داون)\s*شوت|لقط[ةه]\s*(?:من\s*)?(?:فوق|الأعلى|علوي[ةه])|تصوير\s*من\s*فوق|top[\s-]?down|down[\s-]?shot|flat[\s-]?lay|bird'?s?[\s-]?eye/i],['orbit',/[اأ]وربي?ت|لقط[ةه]\s*دوّ?ار[ةه]|الكاميرا\s*تدور|orbit/i]];
 function omranAdFx(text){ const w=AD_FX_WORDS.find(function(x){ return x[1].test(String(text||'')); }); return w?w[0]:''; }
+/* v-chat-ad-fx (المالك ٢١ نوفمبر: «فيديو في الدردشه يعني مال ثواني… فيديوهات متنوعه مش نوع واحد»): أسلوب لقطة فيديو المنتج في المحادثة
+   (generate_video مع صورته). الاسم في كلامه يغلب (الأربعة كما في الصور + أربعة للتنويع)؛ وفيديو الإعلان بلا اسم يأخذ أسلوبًا لم يأخذه في
+   دورته (localStorage omranAdVidFx: الثمانية كلّها قبل أيّ تكرار) فلا يتكرّر نوع واحد. فيديو عاديّ بلا اسم أسلوب = '' كما كان. المفاتيح نفسها في FX_VIDEO
+   (api/_lib/video-create.js) + exploded. */
+const AD_VID_FX_POOL=['smoke','orbit','topdown','lightsweep','splash','float','macro','exploded'];
+const AD_VID_FX_MORE=[['lightsweep',/شعاع|ضوء\s*يمر|light[\s-]*sweep/i],['splash',/سبلاش|رذاذ|splash/i],['float',/يطفو|يطير\s*في\s*الهوا|طاير\s*في\s*الهوا|float|levitat/i],['macro',/ماكرو|macro|close[\s-]?up/i]];
+const AD_VID_FX_STRONG=/سموك|smoke[\s-]*reveal|[اإأ]كسبلود|exploded|(?:دون|داون)\s*شوت|top[\s-]?down|down[\s-]?shot|flat[\s-]?lay|[اأ]وربي?ت|orbit/i;
+function omranAdVideoFx(text, isAd){
+  const t=String(text||'');
+  if(!isAd) return AD_VID_FX_STRONG.test(t) ? omranAdFx(t) : ''; // فيديو عاديّ: اسم التأثير الصريح وحده («طاير في الهوا» لشخص ليس أسلوب منتج)
+  const named=omranAdFx(t)||((AD_VID_FX_MORE.find(function(x){ return x[1].test(t); })||[])[0]||'');
+  if(named) return named;
+  /* كيس: الدورة تمرّ على الثمانية كلّها بترتيب عشوائيّ قبل أن يتكرّر أحدها، وأوّل الدورة الجديدة غير آخر سابقتها */
+  let used=[]; try{ used=JSON.parse(localStorage.getItem('omranAdVidFx')||'[]'); }catch(e){ used=[]; /* guard-ok — تخزين تالف أو محظور: دورة جديدة */ }
+  if(!Array.isArray(used)) used=[];
+  used=used.filter(function(k){ return AD_VID_FX_POOL.indexOf(k)>=0; });
+  let free=AD_VID_FX_POOL.filter(function(k){ return used.indexOf(k)<0; });
+  if(!free.length){ const prev=used[used.length-1]; used=[]; free=AD_VID_FX_POOL.filter(function(k){ return k!==prev; }); }
+  const pick=free[Math.floor(Math.random()*free.length)];
+  try{ localStorage.setItem('omranAdVidFx', JSON.stringify(used.concat(pick))); }catch(e){ if(typeof __swallow==='function') __swallow(e, 'ui:ad-vid-fx-save'); /* بلا تخزين يبقى الاختيار عشوائيًّا */ }
+  return pick;
+}
+const AD_VID_FX_AR={smoke:'ظهور من الدخان',exploded:'تفكيك القطع',topdown:'لقطة من فوق',orbit:'لقطة دوّارة',lightsweep:'شعاع ضوء يكشفه',splash:'رذاذ حوله',float:'يطفو في الهوا',macro:'تفاصيل قريبة'};
 /* v-chat-exploded (المالك ٢٠ نوفمبر: «كل الاشياء… السيارات والطيارات والساعات وجسم الانسان والاكترونيات… في المحادثة… فيديو قصير اكثر
    شي 10 ثواني يفكك المنتج الي مرفوعه صورته»): صورة مرفقة + طلب تفكيك = فيديو تفكيك قصير في المحادثة نفسها (مسار الفيديو الثابت بـfx:'exploded'،
    وصورته نفسها أوّل إطار). بلا صورة = لا شيء جديد. النفي («لا تفككه»، «بدون تفكيك») والمعاني الأخرى («فك الحجز»، «فكّني منه»، «فكرة»،

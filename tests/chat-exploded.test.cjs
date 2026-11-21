@@ -221,7 +221,7 @@ test('٩. تفكيك بلا صورة يُرفض قبل أيّ حجز أو خصم
   assert.equal(r.res.body.retryable, false);
   assert.equal(r.log.quota, 0, 'لا حجز حصّة'); assert.equal(r.log.spent.length, 0, 'لا خصم'); assert.equal(r.runway.length, 0);
   const VC = require(rp('api/_lib/video-create.js'));
-  for (const fx of [undefined, '', 'smoke', '__proto__']) {
+  for (const fx of [undefined, '', 'bogus', '__proto__']) { /* v-chat-ad-fx: «smoke» صار أسلوب لقطة مقصودًا (chat-ad-fx-video) — المجهول يبقى القديم */
     const p = await run(CHAT({ fx, promptText: 'حرّكها وهي تلمع' }));
     assert.equal(p.runway[0].promptText, VC.buildRunwayPrompt('حرّكها وهي تلمع', undefined, true, false, 0, false, true), String(fx));
     assert.doesNotMatch(p.runway[0].promptText, /exploded/i);
