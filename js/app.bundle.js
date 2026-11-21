@@ -27227,6 +27227,11 @@ const __EXPL_EN_STEM = '(?:' + __EXPL_EN_V + '(?:\\s+(?:it|them)\\b|\\s+' + __EX
 const __EXPL_EN_IMP_RE = new RegExp('^(?:(?:please|pls|plz|ok|okay|now|hey|so|just)\\s+)*' + __EXPL_EN_STEM, 'i');
 const __EXPL_POLITE_EN_RE = new RegExp('^(?:can|could|would|will)\\s+you\\s+(?:please\\s+)?' + __EXPL_EN_STEM, 'i');
 const __EXPL_TERM_RE = /(?:^|[^ء-ي])[اإأ]كسبلود[ء-ي]*|\bexploded[\s-]+view\b/i;
+/* v-chat-exploded (لقطة المالك الثانية: «عدّل الصورة وخلّ السيارة مفككة إلى قطع متباعدة» + صورة ← صورة معدّلة، وهو يريد فيديو): حالة التفكيك
+   المطلوبة («خلّها/خلّ السيارة/اجعلها/ابيها… مفكّكة»، «مفكّكة إلى قطع»، «قطع متباعدة») أمر تفكيك صريح كـ«فكّكه» — فيديو لا صورة. والنفي قبلها
+   («لا تخليها مفككة») يمنعه. */
+const __EXPL_STATE_RE = /(?:^|[^ء-ي])[وف]?(?:خل|خلي|خليها|خلها|خله|خليه|اجعل|اجعلها|اجعله|ابيها|أبيها|ابيه|أبيه|ابغاها|أبغاها|اريدها|أريدها|سوها|سويها|حولها|خلهم|خليهم)\s+(?:[^\s،,.!؟?]+\s+){0,2}مفكك(?:[ةه]|ين)?(?![ء-ي])|(?:^|[^ء-ي])مفكك(?:[ةه])?\s+(?:الى|إلى|ل|لل)\s*(?:ال)?(?:قطع|اجزاء|أجزاء|مكونات)|(?:^|[^ء-ي])(?:ال)?قطع\s+(?:ال)?متباعد[ةه]/;
+const __EXPL_NEG_STATE_RE = /(?:^|[^ء-ي])(?:لا|ما|مو|مب|مش|بدون|بلا|دون|من\s+غير)\s+(?:[^\s،,.!؟?]+\s+){0,3}(?:مفكك|متباعد)/;
 function __explObjOk(rest, needObj){
   const r = String(rest || '').replace(/^\s+/, '');
   if(!needObj && __EXPL_END_RE.test(r)) return true;
@@ -27240,11 +27245,11 @@ function omranExplodedAsk(text, hasImage){
   if(!raw) return false;
   const t = raw.replace(/شرَ?َّ?ح/g, 'شررح').replace(/[ً-ْـ]/g, '').trim(); // «فكّكها» = «فككها»، و«شرّح» ≠ «شرح»
   if(__EXPL_HOW_RE.test(t) || __EXPL_CODE_RE.test(t) || __EXPL_ABSTRACT_RE.test(t)) return false;
-  if(__EXPL_NEG_AR_RE.test(t) || __EXPL_NEG_EN_RE.test(t) || __EXPL_NEG_CUT_RE.test(t)) return false;
+  if(__EXPL_NEG_AR_RE.test(t) || __EXPL_NEG_EN_RE.test(t) || __EXPL_NEG_CUT_RE.test(t) || __EXPL_NEG_STATE_RE.test(t)) return false;
   const show = __EXPL_SHOW_RE.test(t), polite = __EXPL_POLITE_AR_RE.test(t) || __EXPL_POLITE_EN_RE.test(t);
   if(!show && (__EXPL_AD_STILL_RE.test(t) || __EXPL_SALE_RE.test(t))) return false; // صورة إعلان بتأثير التفكيك كما كانت
   if(!show && !polite && (__EXPL_Q_ANY_RE.test(t) || __EXPL_EXPLAIN_RE.test(t))) return false; // سؤال/قلق/طلب شرح = جواب بالكلام
-  if(polite || __EXPL_LET_RE.test(t) || __EXPL_TERM_RE.test(t) || __EXPL_ALONE_RE.test(t) || __EXPL_PARTS_RE.test(t) || __EXPL_EN_IMP_RE.test(t)) return true;
+  if(polite || __EXPL_LET_RE.test(t) || __EXPL_STATE_RE.test(t) || __EXPL_TERM_RE.test(t) || __EXPL_ALONE_RE.test(t) || __EXPL_PARTS_RE.test(t) || __EXPL_EN_IMP_RE.test(t)) return true;
   const m = __EXPL_IMP_RE.exec(t); if(m && (m[1] || __explObjOk(m[2], false))) return true;
   const n = __EXPL_NOUNV_RE.exec(t); if(n && __explObjOk(n[1], true)) return true;
   return show && (__EXPL_AR_RE.test(t) || __EXPL_EN_RE.test(t) || __EXPL_CUT_RE.test(t) || __EXPL_ASK_RE.test(t) || /(?:^|[^ء-ي])(?:قطع|اجزاء|أجزاء|مكونات)(?:ه|ها)(?![ء-ي])/.test(t));
