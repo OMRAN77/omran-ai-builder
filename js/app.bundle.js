@@ -27294,6 +27294,19 @@ async function omranExplodedPrevSrc(a){
   const b64 = String(d || '').split(',')[1] || '';
   return b64 ? { b64: b64, mime: a.mime || 'image/png' } : null;
 }
+/* v-gate-attach (المالك ٢١ نوفمبر: «وسّع البوّابة… المستخدم ينبهر من التعديلات»): صورة سيّارة + «ركّب سبويلر» أو «نزّل السيارة وظلّل القزاز» كانت تذهب
+   للمحادثة — والمجّانيّ هناك بلا أدوات فيردّ عليه كلامًا بلا تعديل؛ «حط» و«سولي» وحدهما كانا يصلان محرّر الصور. فعل تركيب/تنزيل/تظليل بمفعول بعده
+   مع صورة مرفقة = تعديل عليها. لا «ركب السيارة/الخيل» (ركوب) ولا «نزّل» لغير مركبة (نزل السوق، نزّل الصورة = تحميل) ولا «حطها/نزّلها» بالضمير ولا النفي ولا السؤال. التعبيران نسخة حرفيّة من
+   api/_lib/owner-media.js (اختبار owner-paid-gate يثبت التطابق). خارج __sendPromptCore (سقّاطة البنية). */
+const OMRAN_ATTMOD_RE = /(?:^|[\s،,.!؟?«"'(])(?:و|ف)?(?:ت?حطّ?(?:ي)?(?:\s*ل(?:ي|نا|ها|ه|هم))?\s+\S|ت?ركّ?ب(?:ي)?(?:\s*ل(?:ي|نا|ها|ه|هم))?\s+(?!(?:ال|لل)?(?:سيار|طيار|باص|حافل|قطار|مترو|تاكسي|خيل|حصان|فرس|جمل|ناق|بعير|حمار|دراج|سيكل|دباب|موتر|سفين|قارب|يخت|مركب|طراد|موج|بحر)|مع(?:ي|ك|ه|ها|هم|نا)?(?=$|[\s،,.!؟?»"')]))\S|ت?نزّ?ل(?:ي)?(?:لي|لنا)?\s+(?:ل(?:ي|نا|ها|ه|هم)\s+)?(?:ال)?(?:سيار|موتر|جيب|مركب|عربي|شاص|وانيت|ارتفاع)|ت?ظلّ?ل(?:ي|ها|ه|هم)?(?=$|[\s،,.!؟?»"')])|(?:put|install|lower|tint)\s+\S)/i;
+const OMRAN_ATTMOD_NEG_RE = /(?:^|[\s،,.!؟?«"'(])(?:لا|ما|بدون|بلا|مو|مب|مش|وقف|وقّف|don'?t|do\s+not|no|stop|without)\s+(?:\S+\s+)?(?:ت|ي|ن|أ|ا)?(?:حطّ?|ركّ?ب|نزّ?ل|ظلّ?ل|سوّ?ي|سوّ?\s*لي|سولي|اعمل|اصنع|[أا]شكال|put|install|lower|tint|make)/i;
+function omranAttachModAsk(text){
+  try{
+    const s = String(text || '').trim();
+    if(!s || s.length > 220 || /[?؟]\s*$/.test(s)) return false; // سؤال («تقدر تنزّل السيارة؟») يُجاب بالكلام
+    return OMRAN_ATTMOD_RE.test(s) && !OMRAN_ATTMOD_NEG_RE.test(s);
+  }catch(e){ return false; }
+}
 async function __sendPromptCore(){
   /* v-parallel-chats: هذا الطلب يخصّ المحادثة التي بدأ فيها. الرسم باسمَي renderAll/renderMessages مظلَّل هنا:
      يرسم فقط إن كانت محادثته هي المعروضة، وإلّا يحدّث القائمة الجانبيّة وحدها — فلا يكتب طلب في الخلفيّة
@@ -28800,7 +28813,7 @@ function __showImgLoading(el, ar, en, key){ /* v-img-edit-label: key = مفتا�
 }
 
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
-    const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && __imgEditRe.test(text) && (!__IMGF_NOT_RE.test(text) || __IMG_EDIT_VERB_RE.test(text)) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
+    const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && (__imgEditRe.test(text) || omranAttachModAsk(text) /* v-gate-attach */) && (!__IMGF_NOT_RE.test(text) || __IMG_EDIT_VERB_RE.test(text)) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
     /* v-nano-chat (المالك: «نفس فكرة نانو»): كتطبيق Gemini — صورة مرفقة مع أي طلب قصير ليس سؤالًا ولا كودًا
        = صورة جديدة من الفكرة نفسها؛ وأي رسالة قصيرة بعد صورة أنتجناها = تعديل عليها بلا إعادة رفع. */
     // صورة بلا طلب، أو معها سؤال/طلب قراءة = تحليل. أي أمر غير استفهامي يعدّل

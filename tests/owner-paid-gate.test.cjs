@@ -45,14 +45,16 @@ const R = {
     return resp([{ type: 'response.created', response: { model: 'gpt-6-astra' } }, { type: 'response.output_item.added', output_index: 0, item: { type: 'function_call', call_id: id, name, arguments: '' } },
       { type: 'response.function_call_arguments.delta', output_index: 0, delta: args }, { type: 'response.output_item.done', output_index: 0, item: { type: 'function_call', call_id: id, name, arguments: args, status: 'completed' } }, done]); },
 };
-async function run(ask, script) {
+async function run(ask, script, img) {
   const calls = [], out = [];
   const save = global.fetch; let n = 0;
   global.fetch = async (url, init) => {
     if (!/api\.openai\.com\/v1\/responses/.test(String(url))) return new Response('{}', { status: 404 });
     calls.push(JSON.parse(init.body)); return script[Math.min(n++, script.length - 1)]();
   };
-  const req = { method: 'POST', headers: {}, body: { token: token('omran'), provider: 'openai', model: 'openai/gpt-6-astra', messages: [{ role: 'user', content: 'ارسم صور الإضاءة' }, { role: 'assistant', content: 'تمام.' }, { role: 'user', content: ask }] } };
+  // img: الرسالة الأخيرة تحمل صورة مرفقة كما يرسلها العميل (كتلة صورة + ملحق «[مرفقات: …]» في آخر النصّ)
+  const last = img ? [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'iVBORw0KGgo=' } }, { type: 'text', text: ask + '\n\n[مرفقات: car.jpg]' }] : ask;
+  const req = { method: 'POST', headers: {}, body: { token: token('omran'), provider: 'openai', model: 'openai/gpt-6-astra', messages: [{ role: 'user', content: 'ارسم صور الإضاءة' }, { role: 'assistant', content: 'تمام.' }, { role: 'user', content: last }] } };
   const res = { setHeader() {}, status() { return this; }, json(v) { out.push(JSON.stringify(v)); return this; }, write(c) { out.push(String(c)); return true; }, end() {}, flushHeaders() {} };
   process.env.OPENAI_API_KEY = 'sk-openai-test';
   try { await chat(req, res); } finally { global.fetch = save; delete process.env.OPENAI_API_KEY; }
@@ -87,14 +89,15 @@ test('٢. المحادثة: «كمّل» بعد طلب رسم قديم ← gener
 });
 
 test('٣. الحارس في الخادم للمحادثة والوكيل، والتعليمة المشتركة تمنع إكمال القديم والرسم للتشخيص', () => {
-  assert.ok(read('api/_lib/chat.js').includes("if (__ownerReq && require('./owner-media.js').PAID_MEDIA_TOOLS.indexOf(cb.name) !== -1 && !require('./owner-media.js').askedMedia(lastUserText, lastUserHasImage)) result = require('./owner-media.js').REFUSAL;"));
+  assert.ok(read('api/_lib/chat.js').includes("if (__ownerReq && require('./owner-media.js').PAID_MEDIA_TOOLS.indexOf(cb.name) !== -1 && !require('./owner-media.js').askedTool(cb.name, lastUserText, lastUserHasImage)) result = require('./owner-media.js').REFUSAL;")); // v-gate-attach: الحارس باسم الأداة
   assert.ok(read('api/_lib/agent.js').includes("else if (!require('./owner-media.js').askedMedia(living.lastUserText(messages), false)) __draws[cb.id] = { result: require('./owner-media.js').REFUSAL };"));
   assert.ok(read('api/_lib/agent.js').includes('__draws[cb.id] = { p: runInClient(send, cb.name, di) };'), 'رسمات الخطوة متوازية في الوكيل');
   const w = require(rp('api/_lib/github-edit.js')).WORK_NOTE;
   assert.ok(w.includes('لا تكمل طلبًا قديمًا من السجلّ، ولا ترسم لتجرّب أو تشخّص') && !w.includes('ارسم كلّ المطلوب أوّلًا'));
   // v-interleave-fix: لا سطر «🎨 يرسم صورة…» لرسمة يرفضها الحارس (كان يظهر ثمّ يأتي الرفض)
   const C = read('api/_lib/chat.js');
-  for (const n of ['generate_image', 'edit_image', 'generate_video']) assert.ok(new RegExp("cb\\.name === '" + n + "' &&[^\\n]*\\(!__ownerReq \\|\\| require\\('\\./owner-media\\.js'\\)\\.askedMedia\\(lastUserText, lastUserHasImage\\)\\)\\) send\\(\\{ status").test(C), n);
+  // v-gate-attach: سطر كلّ أداة يسأل الحارس الذي يحكم تنفيذها — edit_image بحارسها الموسّع، والرسم والفيديو بـaskedMedia كما كانا
+  for (const n of ['generate_image', 'edit_image', 'generate_video']) assert.ok(new RegExp("cb\\.name === '" + n + "' &&[^\\n]*\\(!__ownerReq \\|\\| require\\('\\./owner-media\\.js'\\)\\." + (n === 'edit_image' ? "askedTool\\('edit_image', " : 'askedMedia\\(') + "lastUserText, lastUserHasImage\\)\\)\\) send\\(\\{ status").test(C), n);
   assert.ok(JSON.parse(read('package.json')).scripts.test.includes('node tests/owner-paid-gate.test.cjs'));
 });
 
@@ -132,4 +135,87 @@ test('٦. الرفع: content فارغ مع image لا يُرفع ملفًّا �
   const map2 = { __IMG_3__: 'cccccccccccc' }, asked2 = [];
   await AI.ensureSaved({ files: [{ path: 'x.webp', image: '__IMG_3__' }] }, map2, async (t) => { asked2.push(t); return ''; }, async () => ({ b64: 'x' }));
   assert.deepEqual(asked2, [], 'الموجود لا يُطلب');
+});
+
+test('٧. v-gate-attach: صورة مرفقة + «حط/ركّب/نزّل/ظلّل/سولي…/عطني أشكال» تفتح edit_image وحدها — وبلا صورة أو بسياق كود أو منتج غير الصورة تبقى مقفلة', async () => {
+  const A = (t, img) => OM.askedTool('edit_image', img ? t + '\n\n[مرفقات: car.jpg]' : t, !!img);
+  // جدول المالك ٢١ نوفمبر (العمود الذي كان يُرفض) وأخواته القريبة
+  const yes = ['حط جنوط سوداء', 'ركّب سبويلر', 'ركب سبويلر', 'سولي جنوط سوداء', 'نزّل السيارة وظلّل القزاز', 'ظلل القزاز', 'عطني ٣ أشكال للسيارة', 'عطني أشكال لسيارتي',
+    'وحط جنوط سوداء', 'حطلي جنوط ذهبية', 'حط لي سبويلر خلفي', 'ممكن تحط جنوط سوداء', 'ركب لها دعامية', 'ابيك تركب بودي كت', 'نزّل لي السيارة شوي', 'نزل الموتر', 'ظلّلها',
+    'سو لي بودي كت رياضي', 'سوي لي السيارة مرفوعة', 'تسوي لي جنوط', 'اعمل لي فتحة سقف', 'سولي قصة شعر جديدة',
+    'حط إطار ذهبي', 'ركّب شاشة في السيارة', 'حط جنوط على هذي السيارة',
+    'أبي أشوف سيارتي بلون ثاني', 'عطني السيارة بألوان مختلفة', 'عطني شكل ثاني', 'أبي تصميمين مختلفين', 'هات ٤ ستايلات', 'أبي نسخة ثانية', 'put black rims on it', 'lower the car and tint the windows'];
+  for (const t of yes) {
+    assert.equal(A(t, true), true, 'مع صورة يُسمح: ' + t);
+    assert.equal(A(t, false), false, 'بلا صورة يُمنع: ' + t);
+    assert.equal(OM.askedMedia(t + '\n\n[مرفقات: car.jpg]', true), false, 'الرسم والفيديو لا يُفتحان بها: ' + t);
+    assert.equal(OM.askedTool('generate_image', t + '\n\n[مرفقات: car.jpg]', true), false, 'generate_image: ' + t);
+    assert.equal(OM.askedTool('generate_video', t + '\n\n[مرفقات: car.jpg]', true), false, 'generate_video: ' + t);
+  }
+  // مع صورة مرفقة وتبقى مقفلة: كود/واجهة، منتج غير الصورة، نفي، سؤال، شكوى، وكلمات تشبه الأفعال
+  const no = ['حط زر جديد في الإعدادات', 'حط أيقونة فوق', 'حط الشريط فوق', 'ركّب القسم الجديد', 'سولي الشاشة أغمق', 'حط الإطار ذهبي', 'ركّب المكتبة في الكود', 'نزّل التطبيق', 'نزل الملف', 'سولي صفحة هبوط', 'سولي موقع لمطعم', 'سولي ملخص', 'سولي جدول بالأسعار',
+    'سو لي تقرير عن السيارة', 'اعمل لي خطة تسويق', 'اعمل نسخة احتياطية', 'سويها كلها في طلب سحب واحد', 'لا تحط جنوط', 'ما أبي أشكال', 'بدون ما تركب سبويلر', 'لا تسوي شي', 'ليش حط جنوط', 'كيف أركب سبويلر؟', 'تقدر تنزل السيارة؟',
+    'ركبتي تعورني', 'منزل جميل', 'حطام السفينة', 'نزلة برد', 'حطيت جنوط', 'الذكاء يسوي أخطاء', 'اللي يسوي كذا غلطان', 'شكلها حلو', 'عطني رأيك في الشكل', 'أبي شرح بشكل مبسط', 'عطني أفكار', 'هاتف جديد بأشكال',
+    'خل المزودين يشتغلون', 'كمّل', 'شو المشكلة', 'اقرأ النص', 'ترجم الصورة'];
+  for (const t of no) assert.equal(A(t, true), false, 'مع صورة يُمنع: ' + t);
+  // بلا تشكيل «ركّب» = «ركِب» و«نزّل» = «نزَل»: المفعول يفرّق — ركوب، ونزول لغير مركبة، وتحميل الصورة/الملف تبقى مقفلة
+  for (const t of ['ركب السيارة', 'ابوي ركب السيارة', 'ركب الخيل', 'بنتي تركب الدراجة', 'ركب معي', 'اركب السيارة', 'نزل السوق جديد', 'نزل تحديث جديد', 'نزل المطر', 'نزّل شوي',
+    'نزل الصورة', 'نزّل لي الصورة', 'نزللي الصورة', 'نزل هذي الصورة', 'نزل الفيديو']) assert.equal(A(t, true), false, 'مع صورة يُمنع: ' + t);
+  // الضمير يعود على الصورة نفسها (حطها خلفيّة، نزّلها لي = حمّلها) — تبقى مقفلة
+  for (const t of ['حطها خلفية', 'حطها في الانستقرام', 'حطه', 'ركبها', 'نزلها شوي', 'نزّلها لي']) assert.equal(A(t, true), false, 'مع صورة يُمنع: ' + t);
+  // ما كان مسموحًا يبقى، والأدوات الأخرى على حكم askedMedia كما هو
+  for (const [t, img] of [['احذف الخلفية', true], ['سوّها 3D', true], ['غيّر لون السيارة أسود مطفي', true], ['ارسم صورة عماني بكمة'], ['سولي فيديو للمنتج']]) {
+    for (const n of OM.PAID_MEDIA_TOOLS) assert.equal(OM.askedTool(n, t, !!img), OM.askedMedia(t, !!img), n + ': ' + t);
+    assert.equal(OM.askedMedia(t, !!img), true, t);
+  }
+  // chat.js الحقيقيّ: صورة + «حط جنوط سوداء» ← edit_image تُنفَّذ في المتصفّح؛ بلا صورة ← رفض؛ ومع الصورة generate_image وgenerate_video مرفوضتان
+  const NOTE_A = 'أمّا صورة حقيقيّة لا لقطة واجهة (سيّارة، شخص، مكان، منتج) ومعها أمر على ما فيها', NOTE_B = 'ولعدّة أشكال استدعِها مرّة لكلّ شكل (حتّى ٤ في الردّ)';
+  // ملفّ المالك حاضر كما في الإنتاج (المستعار أعلاه فارغ): به يأخذ دور الصورة فرع المالك من التعليمة
+  const KN = require.cache[rp('api/_lib/_knowledge.js')].exports, kn0 = KN.ownerKnowledge;
+  KN.ownerKnowledge = () => '\n\n[ملفّ المالك للاختبار]';
+  let r;
+  try {
+    r = await run('حط جنوط سوداء', [() => R.call('edit_image', { instruction: 'Fit black alloy wheels; keep the same car, angle and background.' }), () => R.text('عدّلت.')], true);
+    assert.ok(r.events.some((e) => e.clientTool && e.clientTool.name === 'edit_image'), 'صورة + حط = تعديل يُنفَّذ');
+    assert.ok(r.events.some((e) => /يعدّل الصورة/.test(String(e.status || ''))), 'سطر «يعدّل الصورة» يظهر مع التنفيذ');
+    assert.ok(!outputs(r.calls[1]).some((o) => o.startsWith('✗ لم يُنفَّذ')), JSON.stringify(outputs(r.calls[1])));
+    // تعليمة دور الصورة للمالك تصل المزوّد وتطابق الحارس: صورة حقيقيّة + أمر عليها = edit_image مباشرةً، وعدّة أشكال = مرّة لكلّ شكل
+    assert.ok(JSON.stringify(r.calls[0]).includes(NOTE_A) && JSON.stringify(r.calls[0]).includes(NOTE_B), 'التعليمة في طلب المزوّد حين تُرفق صورة');
+    r = await run('حط جنوط سوداء', [() => R.call('edit_image', { instruction: 'Fit black alloy wheels.' }), () => R.text('ما عدّلت.')]);
+    assert.ok(!r.events.some((e) => e.clientTool), 'بلا صورة مرفقة لا تعديل');
+    assert.ok(outputs(r.calls[1]).some((o) => o.startsWith('✗ لم يُنفَّذ: المالك لم يطلب رسمًا')), JSON.stringify(outputs(r.calls[1])));
+    assert.ok(!JSON.stringify(r.calls[0]).includes(NOTE_A), 'بلا صورة لا تعليمة');
+    for (const n of ['generate_image', 'generate_video']) {
+      r = await run('حط جنوط سوداء', [() => R.call(n, { prompt: 'a car with black rims' }), () => R.text('ما رسمت.')], true);
+      assert.ok(!r.events.some((e) => e.clientTool), n + ' لا تُنفَّذ بأمر تعديل المرفق');
+      assert.ok(outputs(r.calls[1]).some((o) => o.startsWith('✗ لم يُنفَّذ: المالك لم يطلب رسمًا')), n);
+    }
+  } finally { KN.ownerKnowledge = kn0; }
+  const C = read('api/_lib/chat.js');
+  assert.ok(C.includes("وgenerate_image فقط إن طلب رسم صورة صراحةً.' + ' " + NOTE_A), 'التعليمة ملحقة بفرع المالك وحده، على سطره');
+  assert.equal(C.split(NOTE_A).length - 1, 1, 'مرّة واحدة — لا تصل المستخدم العاديّ');
+  assert.ok(C.includes("askedTool(cb.name, lastUserText, lastUserHasImage)) result = require('./owner-media.js').REFUSAL;"), 'الحارس يسأل عن الأداة نفسها');
+});
+
+test('٨. v-gate-attach (الواجهة): المستخدم العاديّ — صورة + «ركّب/نزّل/ظلّل» تعديل على المرفق كـ«حط»، بالتعبيرين نفسيهما في الخادم', () => {
+  const vm = require('node:vm');
+  const A9 = read('js/app-09-attach.js');
+  const from = A9.indexOf('const OMRAN_ATTMOD_RE = '), to = A9.indexOf('\n}\n', A9.indexOf('function omranAttachModAsk(')) + 3;
+  assert.ok(from > 0 && to > from, 'omranAttachModAsk وثابتاها متجاورة');
+  assert.ok(A9.indexOf('function omranAttachModAsk(') < A9.indexOf('async function __sendPromptCore('), 'خارج __sendPromptCore (سقّاطة البنية)');
+  const ctx = vm.createContext({});
+  vm.runInContext(A9.slice(from, to) + '\nthis.f = omranAttachModAsk; this.re = OMRAN_ATTMOD_RE; this.neg = OMRAN_ATTMOD_NEG_RE;', ctx);
+  assert.equal(ctx.re.source, OM.ATTACH_MOD_RE.source, 'تعبير الأفعال نسخة حرفيّة من الخادم');
+  assert.equal(ctx.neg.source, OM.NEG_ATTACH_RE.source, 'تعبير النفي نسخة حرفيّة من الخادم');
+  assert.equal(ctx.re.flags, OM.ATTACH_MOD_RE.flags);
+  for (const t of ['ركّب سبويلر', 'ركب سبويلر', 'نزّل السيارة وظلّل القزاز', 'ظلل القزاز', 'حط جنوط سوداء', 'ابيك تركب بودي كت', 'نزّل لي السيارة شوي', 'lower the car']) assert.equal(ctx.f(t), true, 'تعديل: ' + t);
+  for (const t of ['', 'نزل الصورة', 'نزّل لي الصورة', 'نزل هذا الملف', 'نزل السوق جديد', 'نزلها', 'حطها خلفية', 'ركب السيارة', 'ركب معي', 'لا تركب سبويلر', 'بدون ما تركب سبويلر', 'تقدر تنزل السيارة؟', 'كيف أركب سبويلر؟',
+    'ركبتي تعورني', 'منزل جميل', 'شو يناسب سيارتي', 'ركّب سبويلر ' + 'و'.repeat(230)]) assert.equal(ctx.f(t), false, 'ليس تعديلًا: ' + t.slice(0, 40));
+  // «سولي» و«عطني أشكال» خارج هذه الدالّة: الأولى في __imgEditRe أصلًا، والثانية تبقى للمحادثة (عدّة أشكال = عدّة تعديلات مدفوعة — قرار مالك)
+  for (const t of ['سولي جنوط سوداء', 'عطني ٣ أشكال للسيارة']) assert.equal(ctx.f(t), false, t);
+  // القرار نفسه في الواجهة: الدالّة داخل شرط «صورة مرفقة الآن» وحده، بحرّاسه كما هي (لا كود، لا قراءة/وصف، لا صورة جديدة)
+  assert.ok(A9.includes("const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && (__imgEditRe.test(text) || omranAttachModAsk(text) /* v-gate-attach */) && (!__IMGF_NOT_RE.test(text) || __IMG_EDIT_VERB_RE.test(text)) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));"));
+  assert.equal(A9.split('omranAttachModAsk(').length - 1, 2, 'تعريف واحد واستعمال واحد');
+  const B = read('js/app.bundle.js');
+  assert.ok(B.includes('function omranAttachModAsk(') && B.includes('|| omranAttachModAsk(text) /* v-gate-attach */)'), 'الحزمة تحمل التعديل');
 });
