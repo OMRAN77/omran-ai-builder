@@ -296,7 +296,7 @@ test('١٠. المتحوّل أثناء الفيديو (بطل خارق، تبد
     assert.equal(r.omniSolo[0].o.ageShift, TP.AGE_SHIFT_TRENDS.has(trend), trend);
     /* رحلة العمر أيضًا: الإطار طفل، ولقطة وجهه بعمره الحقيقيّ مرجع لما بعده (كانت لا تصل المحرّك أبدًا) */
     assert.deepEqual(images(r.omni), ['SOLOFRAME', 'FACEREF'], trend);
-    assert.equal(text(r.omni), DECL(r.veoPrompt), trend);
+    assert.equal(text(r.omni), DECL(r.veoPrompt, trend), trend); // v-trends-nov-4: «من الغرفة للشارع» متحوّل بقطع مقصود — بلا «بلا قطع»
   }
   assert.ok(TP.OMNI_MORPH_TRENDS.has('superhero'), 'الترند الذي جرّبه المالك');
   /* صورتان: إطار المجموعة بلحظته الأولى وبلا قفل على Omni؛ Veo كما كان (بالقفل) */

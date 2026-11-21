@@ -138,7 +138,7 @@ const OCT4 = ['bbywow', 'invisiblebike', 'ceilingfan', 'slowmoentry'];
 test('٩. ترندات آخر أكتوبر الأربعة: آخر القائمة، ١٤ لغة، صورة واحدة، تصنيفها على Omni، وبلا أسماء حقيقيّة', () => {
   const keys = D.trends.map((t) => t.key);
   assert.ok(keys.length >= 71, 'عدد الترندات: ' + keys.length);
-  assert.deepEqual(keys.slice(-4), OCT4, 'آخر القائمة بالترتيب');
+  assert.deepEqual(keys.slice(keys.indexOf(OCT4[0]), keys.indexOf(OCT4[0]) + 4), OCT4, 'متتالية بالترتيب'); // v-trends-nov-4: دفعة بعدها
   const TP = require('../api/_lib/trend-people.js');
   const BANNED = /\b(Crazy Frog|Axel|Weeknd|Kendrick|Pray For Me|ChatGPT|TikTok|CapCut|Viggle|Shaba|LOS MENOR3S|STAFF)\b/i;
   for (const k of OCT4) {
@@ -163,4 +163,48 @@ test('٩. ترندات آخر أكتوبر الأربعة: آخر القائمة
   assert.match(TRENDS.bbywow.prompt, /bite of the bun on the beat/); assert.match(TRENDS.bbywow.prompt, /deadpan stare/);
   assert.match(TRENDS.invisiblebike.prompt, /invisible handlebars, nothing at all beneath them/);
   assert.match(TRENDS.slowmoentry.prompt, /slow-motion entrance/);
+});
+
+/* v-trends-nov-4 (المالك ٢١ نوفمبر بعد بحث ترندات الأسبوع: «نعم سوها وضيفهم في الترندات»): +٤ بالمحرّك نفسه، كلّ قالب من وصف مصادره
+   لا مشهد مخترع، وبلا اسم أغنية أو فنّان أو علامة. عيد الاتحاد له قالب قائم (nationalday) فلم يُكرَّر. */
+const NOV4 = ['lonelywalk', 'chestroll', 'babysway', 'panelcut'];
+test('١٠. ترندات نوفمبر الأربعة: آخر القائمة، ١٤ لغة، صورة واحدة، تصنيفها، على وصف مصادرها، وبلا أسماء حقيقيّة', () => {
+  const keys = D.trends.map((t) => t.key);
+  assert.ok(keys.length >= 75, 'عدد الترندات: ' + keys.length);
+  assert.deepEqual(keys.slice(-4), NOV4, 'آخر القائمة بالترتيب');
+  const TP = require('../api/_lib/trend-people.js');
+  /* أسماء تحرّكت عليها هذه الموجات (أغانٍ، فنّانون، علامات، أدوات) — لا تُكتب في قالب ولا بطاقة */
+  const BANNED = /\b(Mi Chico|Michico|Goja|Derulo|Melody|Prada|Kai Angel|KANA|Kunwaro|Last Call|Yordan|Viggle|Kling|Seedance|CapCut|TikTok|devil)\b/i;
+  for (const k of NOV4) {
+    const c = D.trends.find((t) => t.key === k);
+    assert.ok(TRENDS[k], k + ': قالب الخادم');
+    assert.equal(c.engine, 'veo'); assert.equal(c.scenes, 1); assert.equal(c.photo, 'req'); assert.equal(c.maxPeople, 1, k + ': صورة واحدة');
+    assert.ok(TP.SINGLE_SUBJECT_TRENDS.has(k), k + ': شخص واحد على الخادم');
+    assert.doesNotMatch(TRENDS[k].prompt + ' ' + TRENDS[k].preview.frame, BANNED, k);
+    assert.ok(TRENDS[k].prompt.length <= 700, k + ': طول القالب ' + TRENDS[k].prompt.length);
+    for (const l of LANGS) {
+      assert.ok(c.title[l] && c.sub[l], k + '/' + l + ': نصّ ناقص');
+      assert.doesNotMatch(c.title[l] + ' ' + c.sub[l], BANNED, k + '/' + l);
+      assert.doesNotMatch(c.title[l] + c.sub[l], /[\u200c\u200d]/, k + '/' + l + ': حرف رابط خفيّ');
+      /* قاعدة المالك لنصوص الترويج: بلا مال ولا مجّانيّة */
+      assert.doesNotMatch(c.title[l] + ' ' + c.sub[l], /مجّان|مجان|ببلاش|\bfree\b|\$/i, k + '/' + l);
+    }
+    assert.doesNotMatch(c.title.hi + c.sub.hi, /तुम/); assert.doesNotMatch(c.title.ur + c.sub.ur, /تم(?:ہیں|ہارا|ہاری)?(?=\s|$)/);
+    assert.doesNotMatch(c.title.bn + c.sub.bn, /তুমি|তোমা/); assert.doesNotMatch(c.title.ne + c.sub.ne, /तिमी|तिम्रो/);
+    assert.doesNotMatch(c.title.ml + c.sub.ml, /(^|\s)നീ(\s|$)|നിന്റെ|നിന്നെ/);
+  }
+  /* الماشي والراقص = إطار شخص في مشهد بعمره؛ الأزواج حول النار من المشهد فـ«الأعزب» ليس مشهد شخص وحده */
+  for (const k of ['lonelywalk', 'chestroll']) assert.ok(TP.SOLO_FRAME_TRENDS.has(k), k);
+  assert.ok(!TP.ALONE_SCENE_TRENDS.has('lonelywalk') && TP.ALONE_SCENE_TRENDS.has('chestroll') && TP.ALONE_SCENE_TRENDS.has('panelcut'));
+  /* البيبي = عمر آخر يبقى عليه (إطار مبنيّ، بلا مرجع البالغ ولا تبديل الوجه) */
+  assert.ok(TP.OMNI_FRAME_TRENDS.has('babysway') && TP.AGE_SHIFT_TRENDS.has('babysway') && !TP.SOLO_FRAME_TRENDS.has('babysway'));
+  /* الغرفة ← الشارع = اللبس والمكان يتبدّلان أثناء الفيديو بقطع مقصود (بلا قفل الإطار، ولا يُطلب «بلا قطع») */
+  assert.ok(TP.OMNI_MORPH_TRENDS.has('panelcut') && TP.MULTI_SHOT_TRENDS.has('panelcut') && !TP.SOLO_FRAME_TRENDS.has('panelcut'));
+  /* كلّ قالب على وصف مصادره */
+  for (const re of [/cold village lane/, /couples sit close together around small fires/, /worn, torn grey coat/, /shivering/, /dry, resigned expression/, /keep walking/]) assert.match(TRENDS.lonelywalk.prompt, re);
+  for (const re of [/rolls both hands over each other in front of the chest/, /rolls the arms out to each side/, /raises both hands up beside the head/, /sways the hips lightly/]) assert.match(TRENDS.chestroll.prompt, re);
+  for (const re of [/toddler version of themselves with the same facial features/, /bright-yellow puffer jacket/, /gold chain necklace/, /wobbling sway dance/, /sunglasses pushed up on the forehead/]) assert.match(TRENDS.babysway.prompt, re);
+  for (const re of [/selfie in a bedroom at home/, /lip-syncs/, /both index fingers beside the top of the head/, /two plain white panels shut/, /cuts to part two and their outfit changes/, /windy city street at night/, /oversized black leather jacket over modest clothes/]) assert.match(TRENDS.panelcut.prompt, re);
+  /* عيد الاتحاد قائم ولم يُكرَّر */
+  assert.ok(TRENDS.nationalday && keys.filter((k) => /national/i.test(k)).length === 1);
 });
