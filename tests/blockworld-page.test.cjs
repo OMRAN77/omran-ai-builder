@@ -228,3 +228,17 @@ test('v-blockworld-sharp: الصورة لا تُغبَّش للسرعة إلّا
   assert.match(play, /const floor = res\.base \* res\.min;/, 'الحدّ نسبة من دقّة الشاشة لا رقمًا مطلقًا');
 });
 
+test('v-blockworld-vitals: الصحّة وحاجة كلّ عالم أرقام حيّة لا ثابتة', () => {
+  const vit = read('shared/vitals.js');
+  for (const how of ["'fire'", "'water'", "'home'", "'rest'"]) assert.ok(vit.includes('n.how === ' + how), 'قاعدة: ' + how);
+  assert.match(vit, /fallV < -15/, 'السقوط الطويل يؤذي');
+  assert.match(vit, /if \(v\.hp <= 0\) die\(\);/);
+  const need = { kawkab: ["key: 'o2'", "key: 'pw'"], waha: ["key: 'wt'"], dhalam: ["key: 'warm'"] };
+  for (const k of WORLDS) {
+    const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
+    assert.match(src, /vitals = createVitals\(/, k);
+    assert.match(src, /if \(vitals\) vitals\.update\(dt\);/, k + ': تُحدَّث كلّ إطار، وبأمان قبل إنشائها');
+    for (const key of need[k]) assert.ok(src.includes(key), `${k}: ${key}`);
+  }
+});
+

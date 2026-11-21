@@ -332,6 +332,50 @@ function serve(root, prefix) {
       await page.evaluate((f) => { const p = window.__play, s = p.state; s.pos.set(f.bx + 0.5, f.by + 1, f.bz + 4.4); s.vel.set(0, 0, 0); s.yaw = 0; s.pitch = -0.42; p.advance(0); p.tick(1); }, floor);
       await shot('6-kit');
     }
+    // ---- living vitals (worlds that have them): needs run down, a fall hurts, the need's own cure works, death respawns
+    if (await page.evaluate(() => !!(window.__game && window.__game.vitals))) {
+      const sim2 = (n) => page.evaluate((k) => { const p = window.__play; for (let i = 0; i < k; i++) p.advance(1 / 60); }, n);
+      const vals = () => page.evaluate(() => ({ ...window.__game.vitals.values }));
+      await page.evaluate(() => { const g = window.__game, s = g.play.state; g.play.setFlying(false); s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); for (const k of Object.keys(g.vitals.values)) g.vitals.values[k] = 60; });
+      await sim2(30);
+      const v0 = await vals();
+      await sim2(900);
+      const v1 = await vals();
+      const need = await page.evaluate(() => window.__game.vitals.needs.filter((n) => n.hurts !== false).map((n) => ({ key: n.key, how: n.how, home: n.home || null }))[0]);
+      check('the need runs down over time', v1[need.key] < v0[need.key] - 2, { need: need.key, before: v0[need.key], after: v1[need.key] });
+      // the cure
+      const cured = await page.evaluate((n) => {
+        const g = window.__game, p = g.play, s = p.state, w = g.world, before = g.vitals.values[n.key];
+        const x = Math.floor(s.pos.x), y = Math.floor(s.pos.y + 0.01), z = Math.floor(s.pos.z);
+        if (n.how === 'fire') { g.terrain.setBlock(x + 1, y, z, 151); g.kit.placed(x + 1, y, z, 151, 0); }
+        else if (n.how === 'water') { g.terrain.setBlock(x, y, z, 150); }
+        else if (n.how === 'home') { s.pos.x = n.home.x; s.pos.z = n.home.z; s.pos.y = w.sy - 6; s.vel.set(0, 0, 0); p.setFlying(true); }
+        g.terrain.flush();
+        for (let i = 0; i < 240; i++) p.advance(1 / 60);
+        const after = g.vitals.values[n.key];
+        if (n.how === 'fire') g.terrain.setBlock(x + 1, y, z, 0); else if (n.how === 'water') g.terrain.setBlock(x, y, z, 0); else p.setFlying(false);
+        g.terrain.flush();
+        return { before, after };
+      }, need);
+      check('the cure for it works (fire / water / home)', cured.after > cured.before + 10, { need, cured });
+      // a long fall hurts
+      const fall = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state;
+        p.setFlying(false); s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y + 16, g.vitals.spawn.z); s.vel.set(0, 0, 0); g.vitals.values.hp = 90;
+        for (let i = 0; i < 200; i++) p.advance(1 / 60);
+        return { hp: g.vitals.values.hp, onGround: s.onGround };
+      });
+      check('a long fall costs health', fall.onGround && fall.hp < 88 && fall.hp > 0, fall);
+      // an empty need drains health, and at zero the player is sent back with health restored
+      const death = await page.evaluate((key) => {
+        const g = window.__game, p = g.play, s = p.state, d0 = g.vitals.deaths;
+        s.pos.x += 3; g.vitals.values[key] = 0; g.vitals.values.hp = 3;
+        for (let i = 0; i < 400 && g.vitals.deaths === d0; i++) { g.vitals.values[key] = 0; p.advance(1 / 60); }
+        return { deaths: g.vitals.deaths - d0, hp: g.vitals.values.hp, back: Math.hypot(s.pos.x - g.vitals.spawn.x, s.pos.z - g.vitals.spawn.z) < 0.6 };
+      }, need.key);
+      check('at zero health the player returns to the start with health restored', death.deaths === 1 && death.hp > 90 && death.back, death);
+      check('the HUD shows the live numbers', await page.evaluate(() => { const hp = Math.round(window.__game.vitals.values.hp); return [...document.querySelectorAll('.num, .v-num')].some((el) => el.textContent.trim().replace('%', '') === String(hp)); }));
+    }
     const snd = await page.evaluate(() => { const s = window.__GAME_SOUND; return s ? { played: s.stats.played, muted: s.muted } : null; });
     check('sounds were played for digging, placing and walking', !!snd && snd.played >= 6, snd);
     report.final = await snap();

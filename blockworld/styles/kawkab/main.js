@@ -10,6 +10,7 @@ import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
 import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
 import { createHeld } from '../../shared/held.js';
+import { createVitals, bars } from '../../shared/vitals.js';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
 import { B, BLOCKS } from './blocks.js';
 import { tileMaterial, setGlow, tileSpan } from './tiles.js';
@@ -511,6 +512,7 @@ async function startGame() {
   const isCrystal = (id) => id === B.CRYSTAL_C || id === B.CRYSTAL_V;
   let aimed = null, hintTimer = 0;
 
+  let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
     camera, canvas: stage.canvas, world, blocks: BLOCKS, terrain,
     spawn: { x: camera.position.x, y: camera.position.y - 1.62, z: camera.position.z, yaw: eu.y, pitch: eu.x },
@@ -534,6 +536,7 @@ async function startGame() {
       const d = st.dig, p = st.pos;
       hud.setProgress(d.on ? d.progress : 0);
       kit.update(p, dt, st.time);
+      if (vitals) vitals.update(dt);
       // the mining beam, from the emitter to the point where the view ray meets the block
       if (d.on && st.hit && toolInHand) {
         const h = st.hit, a = fp.localToWorld(v1.set(0, 0, -0.262));
@@ -574,12 +577,24 @@ async function startGame() {
   const panel = createPlayPanel({
     title: 'كوكب', tagline: 'احفر، اجمع البلّور، وابنِ قاعدتك على كوكب غريب.',
     fontFamily: "'Plex Arabic', sans-serif", accent: '#7df1ff', line: 'rgba(125, 241, 255, .4)', touch: hud.touch,
-    note: 'نسخة تجريبية: الحركة والحفر والبناء شغّالة. الوحوش والصحة والأكسجين لسا ما تتحرك.',
+    note: 'نسخة تجريبية: الصحة والأكسجين والطاقة تتغيّر الحين. الوحوش لسا ما تتحرك، والوقت ثابت، والتقدّم ما ينحفظ.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   panel.show('start');
+  // health, oxygen and suit power are real: oxygen runs down away from the habitat and refills near it,
+  // power is spent by the drill and by flying and recovers at rest
+  const vq = (sel) => document.querySelector('#hud .vit.' + sel);
+  const write = { hp: bars.width(vq('hp .bar i'), vq('hp .num')), o2: bars.width(vq('o2 .bar i'), vq('o2 .num'), '%'), pw: bars.width(vq('pw .bar i'), vq('pw .num'), '%') };
+  vitals = createVitals({
+    play, kit, world, hp: 86,
+    needs: [
+      { key: 'o2', start: 72, drain: 0.3, how: 'home', home: { x: SITE.hab.x, z: SITE.hab.z }, range: 18, gain: 12, low: 'الأكسجين قليل. ارجع صوب القاعدة يتعبّى.' },
+      { key: 'pw', start: 34, how: 'rest', gain: 1.6, hurts: false, use: (s) => (s.dig.on && toolInHand ? 3 : 0) + (s.flying ? 2.2 : 0), low: 'طاقة البدلة قليلة. وقّف الحفر والطيران شوي.', onEmpty: (s) => { if (s.flying) play.setFlying(false); } },
+    ],
+    render(v) { write.hp(v.hp); write.o2(v.o2); write.pw(v.pw); vq('pw').classList.toggle('warn', v.pw < 40); vq('o2').classList.toggle('warn', v.o2 < 25); },
+  });
   window.__play = play;
-  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera };
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera, vitals };
 }
 
 installShotApi(stage);

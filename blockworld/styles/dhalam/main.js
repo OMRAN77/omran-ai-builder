@@ -4,6 +4,7 @@ import { createStage, defineShot, installShotApi, markReady } from '../../shared
 import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
 import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
+import { createVitals, bars } from '../../shared/vitals.js';
 import { buildTiles, buildDetailTextures, buildSpriteTextures, buildBoughTexture, buildVoxelDetail, buildCardTextures } from './texgen.js';
 import { buildForest } from './trees.js';
 import { buildShelterProps, makeTorch } from './props.js';
@@ -864,6 +865,7 @@ async function startGame() {
     else { U.uFogColor.value.copy(air.fog); U.uFogSunColor.value.copy(air.sun); U.uFogParams.value.copy(air.params); U.uFogMisc.value.copy(air.misc); }
   }
 
+  let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
     camera, canvas: stage.canvas, world, blocks: BLOCKS, terrain,
     spawn: { x: camera.position.x, y: camera.position.y - 1.62, z: camera.position.z, yaw: eu.y, pitch: eu.x },
@@ -912,6 +914,7 @@ async function startGame() {
       // the nearest lamps and fires get the kit's two real lights; flames flicker. Every lamp also has its baked
       // glow here (world.js), so the real lights burn at half strength: the two nearest lamps do not outshine the rest
       kit.update(p, dt, st.time);
+      if (vitals) vitals.update(dt);
       for (const l of kit.lights) l.intensity = (l.userData.flicker ? l.intensity : l.userData.base || 0) * KIT_LIGHT;
       // cracks spread over the face being dug
       if (d.on && h && kindOf(h.id) !== 'cross') {
@@ -1035,12 +1038,22 @@ async function startGame() {
   const panel = createPlayPanel({
     title: 'ظلام', tagline: 'احفر واجمع وحصّن ملجأك قبل أن يهبط الليل على الأطلال.',
     fontFamily: "'Plex Arabic', system-ui, sans-serif", accent: '#e9853a', line: 'rgba(233, 133, 58, .4)', touch: hud.touch,
-    note: 'نسخة تجريبية: الحركة والحفر والبناء شغّالة. المخلوقات ما تتحرك، والصحة والدفء والوقت لسا ما تتغيّر، والمشعل واللحم والضماد لسا ما تُستعمل.',
+    note: 'نسخة تجريبية: الصحة والدفء يتغيّرون الحين. المخلوقات لسا ما تتحرك، والوقت ثابت، والمشعل واللحم والضمادة للحمل فقط.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   panel.show('start');
   window.__play = play;
-  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera: stage.camera };
+  // health and warmth are real: warmth runs down in the cold (faster in the lake) and comes back beside a fire
+  const vq = (sel) => document.querySelector('.vital.' + sel);
+  const write = { hp: bars.cssVar(vq('v-health .v-bar i'), vq('v-health .v-num')), warm: bars.cssVar(vq('v-warm .v-bar i'), vq('v-warm .v-num')) };
+  const camp = meta.shelter;
+  const heat = [...camp.torches.map((t) => ({ x: t.x, y: t.y, z: t.z })), { x: camp.fire.x, y: camp.fire.y, z: camp.fire.z }];
+  vitals = createVitals({
+    play, kit, world, hp: 82,
+    needs: [{ key: 'warm', start: 46, drain: 0.3, wet: 3, how: 'fire', gain: 9, range: 4.5, heat, low: 'بردت. اقرب من نار المأوى أو مشعل، أو ولّع نار من الحقيبة.' }],
+    render(v) { write.hp(v.hp); write.warm(v.warm); },
+  });
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera: stage.camera, vitals };
 }
 
 installShotApi(stage);

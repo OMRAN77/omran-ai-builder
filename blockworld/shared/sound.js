@@ -85,6 +85,7 @@ export function createSound() {
     land(hard) { noise(0.13, { type: 'lowpass', f: 480, f2: 110, gain: hard ? 0.36 : 0.22 }); tone(0.09, { f: 95, f2: 55, gain: hard ? 0.24 : 0.13 }); },
     splash() { noise(0.4, { f: 1200, f2: 300, q: 0.6, gain: 0.24 }); noise(0.25, { type: 'highpass', f: 2800, f2: 1800, gain: 0.07, when: 0.03 }); },
     fly(on) { noise(0.38, { f: on ? 300 : 1100, f2: on ? 1300 : 260, q: 1.6, gain: 0.14 }); },
+    hurt() { tone(0.16, { type: 'sawtooth', f: 190, f2: 90, gain: 0.2 }); noise(0.1, { type: 'lowpass', f: 600, f2: 150, gain: 0.22 }); },
     ui() { tone(0.05, { f: 720, f2: 860, gain: 0.08 }); },
     pick() { tone(0.045, { type: 'triangle', f: 540, f2: 500, gain: 0.07 }); },
   };

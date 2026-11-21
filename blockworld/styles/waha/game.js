@@ -6,6 +6,7 @@ import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
 import { KIT_GROUPS, createKit } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
 import { createHeld } from '../../shared/held.js';
+import { createVitals, bars } from '../../shared/vitals.js';
 import { B, BLOCKS, X0, X1, Z0, Z1, SX, SY, SZ, colIndex, cornerIndex } from './world.js';
 import { SLOTS } from './hud.js';
 import { buildLantern } from './props.js';
@@ -306,6 +307,7 @@ export async function startGame(ctx) {
   const sun0 = rig.sun.target.position;              // where the play shot centred the shadow map
   let swing = 0, push = 0, stride = 0, sway = 0, hintT = 0, shadowAt = { x: sun0.x, y: sun0.y, z: sun0.z };
 
+  let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
     camera: eyes, canvas: stage.canvas, world: pworld, blocks: BLOCKS, terrain: pterrain,
     spawn: { x: sx - OX, y: fy, z: sz - OZ, yaw: Math.atan2(-ax, -az), pitch: Math.atan2(ay, Math.hypot(ax, az)) },
@@ -371,6 +373,7 @@ export async function startGame(ctx) {
       camera.updateMatrixWorld(true);
       hud.setProgress(st.dig.on ? st.dig.progress : 0);
       kit.update(p, dt, st.time);
+      if (vitals) vitals.update(dt);
       hud.setHeading(((Math.round(-st.yaw * 360 / Math.PI) / 2) % 360 + 360) % 360);
       // the mattock: raised, brought down on the block, and back, for as long as the dig is held; a short
       // dip when a block goes down. `a` turns the forearm about the elbow: + up and back, - forward and down.
@@ -452,12 +455,20 @@ export async function startGame(ctx) {
   const panel = createPlayPanel({
     title: 'واحة', tagline: 'احفر الرمل، ابنِ بالطوب، وعمّر حصنك عند الواحة.',
     fontFamily: BODY, accent: '#efd9a0', line: 'rgba(201, 163, 90, .85)', touch: hud.touch,
-    note: 'نسخة تجريبية: المشي والحفر والبناء والحقيبة شغّالة. الحيوانات ما تتحرك، والصحة والماء والوقت لسا ما تتغيّر.',
+    note: 'نسخة تجريبية: الصحة والماء يتغيّرون الحين. الحيوانات لسا ما تتحرك، والوقت ثابت، والتقدّم ما ينحفظ.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   for (const el of panel.el.querySelectorAll('h1, button')) el.style.fontFamily = KUFI;      // headings in the HUD's kufi
   panel.show('start');
   window.__play = play;
   // world and terrain are the controller's (zero-based) view; W is the world itself and origin the shift between them
-  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, origin: [OX, OZ], bag, kit, camera: stage.camera };
+  // health and water are real: thirst grows in the heat (faster running) and standing in water quenches it
+  const vq = (sel) => document.querySelector('#hud .vital.' + sel);
+  const write = { hp: bars.segments([...vq('hp').querySelectorAll('.v-bar i')], vq('hp .v-num')), wt: bars.segments([...vq('wt').querySelectorAll('.v-bar i')], vq('wt .v-num')) };
+  vitals = createVitals({
+    play, kit, world: pworld, hp: 82,
+    needs: [{ key: 'wt', start: 57, drain: 0.28, run: 1.9, how: 'water', gain: 14, low: 'عطشت. انزل بركة الواحة أو أي ماي واشرب.' }],
+    render(v) { write.hp(v.hp); write.wt(v.wt); },
+  });
+  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, origin: [OX, OZ], bag, kit, camera: stage.camera, vitals };
 }
