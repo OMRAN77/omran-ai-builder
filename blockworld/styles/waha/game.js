@@ -7,6 +7,8 @@ import { KIT_GROUPS, createKit } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
 import { createHeld } from '../../shared/held.js';
 import { createVitals, bars } from '../../shared/vitals.js';
+import { createLife } from '../../shared/life.js';
+import { buildOryx, buildWraith, buildScorpion } from './actors.js';
 import { B, BLOCKS, X0, X1, Z0, Z1, SX, SY, SZ, colIndex, cornerIndex } from './world.js';
 import { SLOTS } from './hud.js';
 import { buildLantern } from './props.js';
@@ -307,6 +309,7 @@ export async function startGame(ctx) {
   const sun0 = rig.sun.target.position;              // where the play shot centred the shadow map
   let swing = 0, push = 0, stride = 0, sway = 0, hintT = 0, shadowAt = { x: sun0.x, y: sun0.y, z: sun0.z };
 
+  let life = null;
   let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
     camera: eyes, canvas: stage.canvas, world: pworld, blocks: BLOCKS, terrain: pterrain,
@@ -359,10 +362,11 @@ export async function startGame(ctx) {
     },
     onInventory(list, sel) {
       hud.setSlots(list, sel);
-      const it = list[sel], block = it && !it.tool && it.id && BLOCKS[it.id] ? it.id : 0;      // a block in the selected square is what the hand shows
+      const it = list[sel], block = it && it.id && ((!it.tool && BLOCKS[it.id]) || it.weapon) ? it.id : 0;      // a block in the selected square is what the hand shows
       arm.visible = !heldBlock.show(block);
     },
     onBag() { bag.toggle(); },
+    onUse: (item) => (life ? life.use(item) : false),
     onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
     onFirstLook() { hud.els.look.hidden = true; },
@@ -374,6 +378,7 @@ export async function startGame(ctx) {
       hud.setProgress(st.dig.on ? st.dig.progress : 0);
       kit.update(p, dt, st.time);
       if (vitals) vitals.update(dt);
+      if (life) life.update(dt);
       hud.setHeading(((Math.round(-st.yaw * 360 / Math.PI) / 2) % 360 + 360) % 360);
       // the mattock: raised, brought down on the block, and back, for as long as the dig is held; a short
       // dip when a block goes down. `a` turns the forearm about the elbow: + up and back, - forward and down.
@@ -455,7 +460,7 @@ export async function startGame(ctx) {
   const panel = createPlayPanel({
     title: 'واحة', tagline: 'احفر الرمل، ابنِ بالطوب، وعمّر حصنك عند الواحة.',
     fontFamily: BODY, accent: '#efd9a0', line: 'rgba(201, 163, 90, .85)', touch: hud.touch,
-    note: 'نسخة تجريبية: الصحة والماء يتغيّرون الحين. الحيوانات لسا ما تتحرك، والوقت ثابت، والتقدّم ما ينحفظ.',
+    note: 'نسخة تجريبية: الحيوانات والوحوش تتحرك الحين، والصيد يعطي لحم. الوقت ثابت، والتقدّم ما ينحفظ.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   for (const el of panel.el.querySelectorAll('h1, button')) el.style.fontFamily = KUFI;      // headings in the HUD's kufi
@@ -470,5 +475,14 @@ export async function startGame(ctx) {
     needs: [{ key: 'wt', start: 57, drain: 0.28, run: 1.9, how: 'water', gain: 14, low: 'عطشت. انزل بركة الواحة أو أي ماي واشرب.' }],
     render(v) { write.hp(v.hp); write.wt(v.wt); },
   });
-  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, origin: [OX, OZ], bag, kit, camera: stage.camera, vitals };
+  // creatures: oryx graze and can be hunted; sand wraiths and rock scorpions come for the player
+  life = createLife({
+    scene: stage.scene, camera: stage.camera, play, world: pworld, vitals: () => vitals, offset: { x: OX, z: OZ },
+    kinds: [
+      { key: 'oryx', name: 'المها', kind: 'animal', make: () => buildOryx(), hp: 12, speed: 2.0, radius: 0.8, height: 1.5, max: 3, meat: 2 },
+      { key: 'wraith', name: 'غول الرمال', kind: 'monster', make: () => buildWraith(2), hp: 16, speed: 2.6, radius: 0.8, height: 2.1, max: 2, dmg: 8 },
+      { key: 'scorpion', name: 'عقرب الصخر', kind: 'monster', make: () => buildScorpion(), hp: 18, speed: 2.2, radius: 1.1, height: 1.0, max: 1, dmg: 10 },
+    ],
+  });
+  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, origin: [OX, OZ], bag, kit, camera: stage.camera, vitals, life };
 }

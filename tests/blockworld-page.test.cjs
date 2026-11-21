@@ -242,3 +242,25 @@ test('v-blockworld-vitals: الصحّة وحاجة كلّ عالم أرقام ح
   }
 });
 
+test('v-blockworld-life: حيوانات تُصاد ووحوش تهاجم، بمجسّمات وأسماء كلّ عالم', () => {
+  const life = read('shared/life.js'), play = read('shared/play.js'), kit = read('shared/kit.js');
+  assert.match(life, /kind === 'monster' && monsters && dist < 20/, 'الوحش يطارد حين يقترب اللاعب');
+  assert.match(life, /v\.hurt\(k\.dmg \* \(1 - armor\)\)/, 'ضربته تنقص الصحّة، والدرع يخفّفها');
+  assert.match(life, /if \(e\.k\.meat\) giveMeat\(e\.k\.meat\)/, 'الصيد يعطي لحمًا');
+  assert.match(life, /item\.use === 'eat'/);
+  assert.match(life, /st\.noDig = !!aimed/, 'المخلوق تحت المؤشّر يُضرب بدل المكعب خلفه');
+  assert.match(play, /if \(st\.noDig\)/);
+  assert.match(play, /if \(s && s\.use\) return o\.onUse/);
+  for (const name of ['لحم', 'سيف ألماس', 'درع ألماس']) assert.ok(kit.includes(name), name);
+  const want = { kawkab: ['الحمّال', 'الزاحف', 'الطيف'], waha: ['المها', 'غول الرمال', 'عقرب الصخر'], dhalam: ['الوعل', 'المتربّص', 'ذئب العظم'] };
+  for (const k of WORLDS) {
+    const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
+    assert.match(src, /life = createLife\(/, k);
+    assert.match(src, /if \(life\) life\.update\(dt\);/, k);
+    assert.match(src, /onUse: \(item\) => \(life \? life\.use\(item\) : false\)/, k);
+    for (const n of want[k]) assert.ok(src.includes(`name: '${n}'`), `${k}: ${n}`);
+    assert.ok(/kind: 'animal'/.test(src) && /kind: 'monster'/.test(src), k + ': حيوان ووحش');
+  }
+  assert.ok(!/zombie|creeper|enderman|زومبي/i.test(life + kit), 'لا أسماء منقولة من لعبة أخرى');
+});
+

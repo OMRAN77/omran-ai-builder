@@ -30,7 +30,7 @@ export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151 };
 /** Block definitions, in the same shape the worlds use (see voxel.js). */
 export const KIT_BLOCKS = {};
 const INFO = {};                                 // id -> { name, key, group, icon }
-const GROUP_NAMES = { paint: 'مكعبات ملوّنة', slab: 'أنصاف مكعبات', light: 'إضاءة', gem: 'ذهب وجواهر', nature: 'ماء ونار', bed: 'أسرّة' };
+const GROUP_NAMES = { gear: 'سلاح ولبس', paint: 'مكعبات ملوّنة', slab: 'أنصاف مكعبات', light: 'إضاءة', gem: 'ذهب وجواهر', nature: 'ماء ونار', bed: 'أسرّة' };
 function add(id, def, info) { KIT_BLOCKS[id] = def; INFO[id] = { id, ...info }; }
 
 COLORS.forEach(([key, name, hex], i) => add(100 + i, { tiles: 'x:paint:' + hex }, { key: 'paint-' + key, name: 'مكعب ' + name, group: 'paint', icon: ['cube', hex] }));
@@ -47,6 +47,11 @@ BEDS.forEach(([key, name, hex], i) => {
   KIT_BLOCKS[foot] = { tiles: { top: 'x:quilt:' + hex, side, bottom: 'x:wood' }, kind: 'slab', height: 0.5625, mate: head, part: true };
   INFO[foot] = { id: foot, key: 'bed-' + key + '-foot', name, group: null };
 });
+
+// Things that are carried and used, not placed (no block definition): the world gives or uses them.
+INFO[200] = { id: 200, key: 'meat', name: 'لحم', group: null, icon: ['meat', '#b5523d'], item: { use: 'eat' } };
+INFO[210] = { id: 210, key: 'sword', name: 'سيف ألماس', group: 'gear', icon: ['sword', '#7fe6f5'], item: { n: 1, tool: true, weapon: true } };
+INFO[211] = { id: 211, key: 'armor', name: 'درع ألماس', group: 'gear', icon: ['armor', '#7fe6f5'], item: { n: 1, tool: true, use: 'wear' } };
 
 // ---------------------------------------------------------------------- materials
 const rnd = (seed) => { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
@@ -142,6 +147,9 @@ function svgIcon([shape, hex, extra]) {
   else if (shape === 'drop') body = `<path d="M16 3c5 7 9 11 9 16a9 9 0 0 1-18 0c0-5 4-9 9-16z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M11.500 19a4.500 4.500 0 0 0 3 4.300" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round"/>`;
   else if (shape === 'flame') body = `<path d="M16 3c1 6 8 8 8 16a8 8 0 0 1-16 0c0-4 2-6 3-9 1 3 2 4 3 4 0-4 0-7 2-11z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M16 15c.500 3 4 4 4 7a4 4 0 0 1-8 0c0-2 1-3 1.500-4.500.500 1.500 1 2 1.500 2 0-2 0-3 1-4.500z" fill="#ffe28a"/>`;
   else if (shape === 'bed') body = `<path d="M3 21l9-5 17 9-9 5z" fill="${top}" stroke="${line}" stroke-width=".7"/><path d="M3 21v3l17 9v-3z" fill="${left}" stroke="${line}" stroke-width=".7"/><path d="M29 25v3l-9 5v-3z" fill="${right}" stroke="${line}" stroke-width=".7"/><path d="M4.500 20l6-3.300 5 2.600-6 3.300z" fill="#f6f4ee" stroke="${line}" stroke-width=".7"/><path d="M3 21v-6l9-5v6" fill="#6a4629" stroke="${line}" stroke-width=".7"/>`;
+  else if (shape === 'meat') body = `<path d="M9 8c5-4 13-2 15 4s-2 12-8 13-10-3-10-8 1-7 3-9z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M13 12c3-2 7-1 8 2s-1 6-4 7" fill="none" stroke="#e9b9a6" stroke-width="1.6" stroke-linecap="round"/><path d="M8 22l-4 4M6.500 20.500l-3.500 1M9.500 23.500l-1 3.500" stroke="#efe7d8" stroke-width="2.4" stroke-linecap="round"/>`;
+  else if (shape === 'sword') body = `<path d="M25.500 3.500l3 3-13.500 13.500-4.500 1.500 1.500-4.500z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M24 5l3 3" stroke="#fff" stroke-opacity=".7" stroke-width="1.2"/><path d="M8.500 15.500l8 8" stroke="#c9a35a" stroke-width="2.600" stroke-linecap="round"/><path d="M10.500 21.500l-5 5" stroke="#6a4629" stroke-width="3" stroke-linecap="round"/>`;
+  else if (shape === 'armor') body = `<path d="M10 5l6 3 6-3 5 4-3 5-2-1.500V27H10V12.500L8 14 5 9z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M16 8v19M11 16h10" stroke="rgba(0,0,0,.25)" stroke-width="1"/><path d="M12 10.500l3 1.500" stroke="#fff" stroke-opacity=".8" stroke-width="1.400" stroke-linecap="round"/>`;
   else body = cube(4);
   if (extra === 'shine') body += '<path d="M9 13.500l5-2.700M8.500 16.500l2.500-1.300" stroke="#fff" stroke-opacity=".8" stroke-width="1.5" stroke-linecap="round"/>';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${body}</svg>`;
@@ -156,7 +164,7 @@ export function kitIcon(id, className = 'ic') {
 
 /** The bag's contents: [{ title, items: [{ id, key, name, n, kit: true }] }]. A slot holding one of these is a kit slot. */
 export const KIT_GROUPS = Object.entries(GROUP_NAMES).map(([g, title]) => ({
-  title, items: Object.values(INFO).filter((i) => i.group === g).map((i) => ({ id: i.id, key: i.key, name: i.name, n: 64, kit: true })),
+  title, items: Object.values(INFO).filter((i) => i.group === g).map((i) => ({ id: i.id, key: i.key, name: i.name, n: 64, kit: true, ...(i.item || {}) })),
 }));
 export const isKit = (id) => id >= 100 && !!KIT_BLOCKS[id];
 export const kitName = (id) => (INFO[id] ? INFO[id].name : '');

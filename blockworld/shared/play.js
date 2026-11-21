@@ -8,6 +8,7 @@
 //     touch: { stick, knob, jump, dig, place } | null,        // HUD elements for touch play
 //     isLiquid(id), pickable(id), canBreak(id, x, y, z), canPlace(x, y, z, id), hardness(id), dropOf(id),
 //     heightOf(id),                                   // collision height of a block, 0..1 (half blocks, beds); default 1
+//     onUse(item, slot),                              // the place button on an item with `use` (food, clothing)
 //     onBag(), onFly(on),                             // E was pressed; flying was switched on or off
 //     onTarget(hit | null), onBreak(hit), onPlace(x, y, z, id), onInventory(slots, sel),
 //     onFrame(state, dt), render(), setPixelRatio(pr),
@@ -200,6 +201,7 @@ export function createPlay(o) {
   }
   function digTick(dt) {
     const d = st.dig, h = st.hit;
+    if (st.noDig) { d.on = false; d.t = 0; d.progress = 0; return; }        // a creature is under the crosshair: the world handles the hit
     const can = inp.dig && h && h.y > 0 && (!o.canBreak || o.canBreak(h.id, h.x, h.y, h.z) !== false);
     if (!can) {
       // hitting the air, or something that cannot be dug: the swing is still heard
@@ -214,7 +216,8 @@ export function createPlay(o) {
   }
   function placeNow() {
     const h = st.hit, s = st.slots[st.sel];
-    if (!h || !s || !s.id || !(s.n > 0)) return false;
+    if (s && s.use) return o.onUse ? !!o.onUse(s, st.sel) : false;          // food, clothing: used, not placed
+    if (!h || !s || !s.id || !(s.n > 0) || !blocks[s.id]) return false;
     const onPlant = kindOf(h.id) === 'cross';
     const x = onPlant ? h.x : h.x + h.nx, y = onPlant ? h.y : h.y + h.ny, z = onPlant ? h.z : h.z + h.nz;
     if (!world.inb(x, y, z) || y >= sy - 1) return false;
@@ -607,6 +610,11 @@ export function createPlayPanel(o) {
   const qualText = () => { const q = window.__GAME_QUALITY; qual.hidden = !q; if (q) qual.textContent = QN[q.mode]; };
   qual.addEventListener('click', () => { const q = window.__GAME_QUALITY; if (q) q.set(QO[(QO.indexOf(q.mode) + 1) % QO.length]); qualText(); });
   box.appendChild(qual);
+  const mon = document.createElement('button');
+  mon.type = 'button'; mon.className = 'menu';
+  const monText = () => { const l = window.__GAME_LIFE; mon.hidden = !l; if (l) mon.textContent = l.monsters ? 'الوحوش: موجودة' : 'الوحوش: بدون'; };
+  mon.addEventListener('click', () => { const l = window.__GAME_LIFE; if (l) l.setMonsters(!l.monsters); monText(); });
+  box.appendChild(mon);
   box.appendChild(note);
   const gpuEl = document.createElement('div'); gpuEl.className = 'gpu';
   box.appendChild(gpuEl);
@@ -618,7 +626,7 @@ export function createPlayPanel(o) {
   b.addEventListener('click', () => { el.hidden = true; o.onStart(); });
   return {
     el,
-    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; sndText(); qualText(); el.hidden = false; },
+    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; sndText(); qualText(); monText(); el.hidden = false; },
     hide() { el.hidden = true; },
   };
 }

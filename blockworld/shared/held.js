@@ -21,6 +21,11 @@ export function createHeld({ camera, blocks, materialFor, at = [0.4, -0.34, -0.7
   cg.setIndex([0, 1, 2, 2, 1, 3, 0, 2, 1, 2, 3, 1, 4, 5, 6, 6, 5, 7, 4, 6, 5, 6, 7, 5]);
   const cross = new THREE.Mesh(white(cg), null);
   for (const m of [box, cross]) { m.frustumCulled = false; m.castShadow = false; m.receiveShadow = false; m.visible = false; group.add(m); }
+  // the diamond sword (item 210): a blade, a guard and a grip
+  const sword = new THREE.Group();
+  { const mk = (w, h, d, y, c, e = 0) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: c, roughness: 0.3, metalness: 0.3, emissive: e, emissiveIntensity: 0.5 })); m.position.y = y; m.frustumCulled = false; sword.add(m); };
+    mk(0.05, 0.5, 0.012, 0.33, 0x8fe9f7, 0x1c6f80); mk(0.03, 0.08, 0.012, 0.61, 0xc9f6fc, 0x1c6f80); mk(0.17, 0.03, 0.035, 0.07, 0xc9a35a); mk(0.032, 0.13, 0.032, -0.01, 0x5a3a22); mk(0.045, 0.03, 0.045, -0.085, 0xc9a35a); }
+  sword.position.set(0.02, -0.12, 0.04); sword.rotation.set(-0.5, -0.5, -0.32); sword.visible = false; group.add(sword);
   let shown = -1;
   const tile = (def, face) => (typeof def.tiles === 'string' ? def.tiles : def.tiles[face] ?? def.tiles.side ?? def.tiles.top);
   return {
@@ -29,7 +34,8 @@ export function createHeld({ camera, blocks, materialFor, at = [0.4, -0.34, -0.7
       if (id === shown) return !!id;
       shown = id;
       const def = id ? blocks[id] : null;
-      group.visible = !!def; box.visible = cross.visible = false;
+      group.visible = !!def || id === 210; box.visible = cross.visible = false; sword.visible = id === 210;
+      if (id === 210) return true;
       if (!def) return false;
       const kind = def.kind ?? 'solid';
       if (kind === 'cross') { cross.material = materialFor(tile(def, 'side'), kind); cross.scale.setScalar(size); cross.position.set(0, 0, 0); cross.visible = true; return true; }

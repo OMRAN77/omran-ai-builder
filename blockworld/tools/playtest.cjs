@@ -107,6 +107,8 @@ function serve(root, prefix) {
     check('start panel is hidden', !(await page.isVisible('#playPanel')));
     // drive the simulation by hand from here on: frames are very slow in software rendering
     const snap = () => page.evaluate(() => { const s = window.__play.state; return { x: s.pos.x, y: s.pos.y, z: s.pos.z, yaw: s.yaw, pitch: s.pitch, onGround: s.onGround, hit: s.hit && { x: s.hit.x, y: s.hit.y, z: s.hit.z, id: s.hit.id, nx: s.hit.nx, ny: s.hit.ny, nz: s.hit.nz }, sel: s.sel, slots: s.slots.map((q) => ({ id: q.id || 0, n: q.n ?? null })), broken: s.broken, placed: s.placed }; });
+    // creatures stay out of the way until their own section: a monster attack would disturb the other checks
+    await page.evaluate(() => { if (window.__GAME_LIFE) window.__GAME_LIFE.setMonsters(false); if (window.__game && window.__game.life) { const l = window.__game.life; l.kinds.forEach((k) => { k.max0 = k.max; k.max = 0; }); } });
     report.pointerLock = await page.evaluate(() => !!document.pointerLockElement);
     await page.evaluate(() => { window.__play.tick(30); });     // settle on the ground
     const a = await snap();
@@ -375,6 +377,58 @@ function serve(root, prefix) {
       }, need.key);
       check('at zero health the player returns to the start with health restored', death.deaths === 1 && death.hp > 90 && death.back, death);
       check('the HUD shows the live numbers', await page.evaluate(() => { const hp = Math.round(window.__game.vitals.values.hp); return [...document.querySelectorAll('.num, .v-num')].some((el) => el.textContent.trim().replace('%', '') === String(hp)); }));
+    }
+    // ---- creatures (worlds that have them): an animal wanders and can be hunted for meat that heals; a monster comes and hurts
+    if (await page.evaluate(() => !!(window.__game && window.__game.life))) {
+      const r = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, life = g.life, v = g.vitals.values, out = {};
+        const sim = (n) => { for (let i = 0; i < n; i++) p.advance(1 / 60); };
+        const keep = () => { for (const k of Object.keys(v)) v[k] = Math.max(v[k], 80); };
+        p.setFlying(false); s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); window.__GAME_LIFE.setMonsters(true);
+        life.kinds.forEach((k) => { if (k.max0 != null) k.max = k.max0; });
+        while (life.ents.length) { life.ents[0].hp = 0; life.ents[0].dead = 2; sim(1); }
+        keep(); sim(5);
+        // find open ground a few blocks away for the test animals
+        const spot = (d) => { for (let a = 0; a < 6.28; a += 0.4) { const e = life.spawnAt(life.kinds.find((k) => k.kind === 'animal').key, s.pos.x + Math.sin(a) * d, s.pos.z + Math.cos(a) * d); if (e) return e; } return null; };
+        const a = spot(5);
+        if (!a) return { error: 'no ground for an animal' };
+        const a0 = [a.x, a.z]; let moved = 0;
+        for (let i = 0; i < 40 && moved < 0.5; i++) { sim(30); keep(); moved = Math.hypot(a.x - a0[0], a.z - a0[1]); }
+        out.animalMoved = moved;
+        // hunt it: stand next to it, face it, hold the hit
+        const face = (e) => { const ex = s.pos.x, ey = s.pos.y + p.tuning.eye, ez = s.pos.z, tx = e.x, ty = e.y + e.k.height * 0.5, tz = e.z; s.yaw = Math.atan2(-(tx - ex), -(tz - ez)); s.pitch = Math.atan2(ty - ey, Math.hypot(tx - ex, tz - ez)); };
+        const meat0 = (s.slots.find((q) => q && q.id === 200) || { n: 0 }).n;
+        p.input.dig = true;
+        let hits = 0;
+        for (let i = 0; i < 900 && a.hp > 0; i++) { if (Math.hypot(a.x - s.pos.x, a.z - s.pos.z) > 2.2) { s.pos.x = a.x + 1.4; s.pos.z = a.z; s.pos.y = a.y; s.vel.set(0, 0, 0); } face(a); p.advance(1 / 60); keep(); if (life.aimed === a) hits++; }
+        p.input.dig = false; sim(80);
+        out.animalDead = a.hp <= 0; out.aimedFrames = hits;
+        const meat = s.slots.find((q) => q && q.id === 200);
+        out.meat = meat ? meat.n - meat0 : 0;
+        // eat: the place button on the meat square
+        if (meat) { p.select(s.slots.indexOf(meat)); v.hp = 40; const n0 = meat.n; p.placeNow(); out.ate = { hp: v.hp, used: n0 - meat.n }; }
+        // a monster comes and hurts
+        keep(); v.hp = 100;
+        const mk = life.kinds.find((k) => k.kind === 'monster');
+        let m = null; for (let a2 = 0; a2 < 6.28 && !m; a2 += 0.4) m = life.spawnAt(mk.key, s.pos.x + Math.sin(a2) * 7, s.pos.z + Math.cos(a2) * 7);
+        if (!m) return { ...out, error: 'no ground for a monster' };
+        const d0 = Math.hypot(m.x - s.pos.x, m.z - s.pos.z);
+        let closest = d0;
+        for (let i = 0; i < 1200 && v.hp > 95; i++) { p.advance(1 / 60); for (const k of Object.keys(v)) if (k !== 'hp') v[k] = 80; closest = Math.min(closest, Math.hypot(m.x - s.pos.x, m.z - s.pos.z)); }
+        out.monster = { d0, closest, hp: v.hp };
+        // with monsters switched off they leave and do no harm
+        window.__GAME_LIFE.setMonsters(false); v.hp = 100; sim(300);
+        out.off = { monsters: life.ents.filter((e) => e.k.kind === 'monster' && e.hp > 0).length, hp: v.hp };
+        window.__GAME_LIFE.setMonsters(true);
+        return out;
+      });
+      check('an animal wanders on its own', !r.error && r.animalMoved >= 0.5, r);
+      check('striking an animal kills it and gives meat', r.animalDead === true && r.meat > 0 && r.aimedFrames > 0, r);
+      check('eating the meat restores health', !!r.ate && r.ate.used === 1 && r.ate.hp > 60, r.ate);
+      check('a monster closes in and hurts the player', !!r.monster && r.monster.closest < r.monster.d0 - 2 && r.monster.hp < 100, r.monster);
+      check('with monsters switched off none remain and nothing hurts', !!r.off && r.off.monsters === 0 && r.off.hp === 100, r.off);
+      await page.evaluate(() => { const g = window.__game, p = g.play, s = p.state; const a = g.life.spawnAt(g.life.kinds[0].key, s.pos.x, s.pos.z - 3) || g.life.spawnAt(g.life.kinds[0].key, s.pos.x + 3, s.pos.z); const m = g.life.spawnAt(g.life.kinds.find((k) => k.kind === 'monster').key, s.pos.x + 2.5, s.pos.z - 4); const t = a || m; if (t) { s.yaw = Math.atan2(-(t.x - s.pos.x), -(t.z - s.pos.z)); s.pitch = -0.12; } for (const k of Object.keys(g.vitals.values)) g.vitals.values[k] = 90; p.advance(1 / 60); p.tick(1); });
+      await shot('7-creatures');
     }
     const snd = await page.evaluate(() => { const s = window.__GAME_SOUND; return s ? { played: s.stats.played, muted: s.muted } : null; });
     check('sounds were played for digging, placing and walking', !!snd && snd.played >= 6, snd);

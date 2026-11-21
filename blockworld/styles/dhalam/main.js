@@ -5,6 +5,7 @@ import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
 import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
 import { createVitals, bars } from '../../shared/vitals.js';
+import { createLife, simpleBeast } from '../../shared/life.js';
 import { buildTiles, buildDetailTextures, buildSpriteTextures, buildBoughTexture, buildVoxelDetail, buildCardTextures } from './texgen.js';
 import { buildForest } from './trees.js';
 import { buildShelterProps, makeTorch } from './props.js';
@@ -865,6 +866,7 @@ async function startGame() {
     else { U.uFogColor.value.copy(air.fog); U.uFogSunColor.value.copy(air.sun); U.uFogParams.value.copy(air.params); U.uFogMisc.value.copy(air.misc); }
   }
 
+  let life = null;
   let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
     camera, canvas: stage.canvas, world, blocks: BLOCKS, terrain,
@@ -904,6 +906,7 @@ async function startGame() {
       holdBlock(t === 'hand' ? list[sel] : null);
     },
     onBag() { bag.toggle(); },
+    onUse: (item) => (life ? life.use(item) : false),
     onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
     onFirstLook() { hud.els.look.hidden = true; },
@@ -915,6 +918,7 @@ async function startGame() {
       // glow here (world.js), so the real lights burn at half strength: the two nearest lamps do not outshine the rest
       kit.update(p, dt, st.time);
       if (vitals) vitals.update(dt);
+      if (life) life.update(dt);
       for (const l of kit.lights) l.intensity = (l.userData.flicker ? l.intensity : l.userData.base || 0) * KIT_LIGHT;
       // cracks spread over the face being dug
       if (d.on && h && kindOf(h.id) !== 'cross') {
@@ -1038,7 +1042,7 @@ async function startGame() {
   const panel = createPlayPanel({
     title: 'ظلام', tagline: 'احفر واجمع وحصّن ملجأك قبل أن يهبط الليل على الأطلال.',
     fontFamily: "'Plex Arabic', system-ui, sans-serif", accent: '#e9853a', line: 'rgba(233, 133, 58, .4)', touch: hud.touch,
-    note: 'نسخة تجريبية: الصحة والدفء يتغيّرون الحين. المخلوقات لسا ما تتحرك، والوقت ثابت، والمشعل واللحم والضمادة للحمل فقط.',
+    note: 'نسخة تجريبية: الحيوانات والوحوش تتحرك الحين، والصيد يعطي لحم. الوقت ثابت، والمشعل والضمادة للحمل فقط.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   panel.show('start');
@@ -1053,7 +1057,16 @@ async function startGame() {
     needs: [{ key: 'warm', start: 46, drain: 0.3, wet: 3, how: 'fire', gain: 9, range: 4.5, heat, low: 'بردت. اقرب من نار المأوى أو مشعل، أو ولّع نار من الحقيبة.' }],
     render(v) { write.hp(v.hp); write.warm(v.warm); },
   });
-  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera: stage.camera, vitals };
+  // creatures: mountain ibex can be hunted; the stalker and the bone hound come for the player
+  life = createLife({
+    scene, camera: stage.camera, play, world, vitals: () => vitals,
+    kinds: [
+      { key: 'ibex', name: 'الوعل', kind: 'animal', make: () => simpleBeast({ body: 0x5d5147, belly: 0x80746a, horn: 0xcfc8b8 }), hp: 12, speed: 2.1, radius: 0.75, height: 1.5, max: 3, meat: 2 },
+      { key: 'stalker', name: 'المتربّص', kind: 'monster', make: () => makeStalker(SPR), hp: 20, speed: 2.4, radius: 0.7, height: 3.0, max: 1, dmg: 11 },
+      { key: 'bonehound', name: 'ذئب العظم', kind: 'monster', make: () => makeBoneHound(SPR), hp: 12, speed: 3.4, radius: 0.8, height: 1.1, max: 2, dmg: 7 },
+    ],
+  });
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera: stage.camera, vitals, life };
 }
 
 installShotApi(stage);

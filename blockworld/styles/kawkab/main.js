@@ -11,6 +11,7 @@ import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../s
 import { createBag } from '../../shared/bag.js';
 import { createHeld } from '../../shared/held.js';
 import { createVitals, bars } from '../../shared/vitals.js';
+import { createLife } from '../../shared/life.js';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
 import { B, BLOCKS } from './blocks.js';
 import { tileMaterial, setGlow, tileSpan } from './tiles.js';
@@ -512,6 +513,7 @@ async function startGame() {
   const isCrystal = (id) => id === B.CRYSTAL_C || id === B.CRYSTAL_V;
   let aimed = null, hintTimer = 0;
 
+  let life = null;
   let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
     camera, canvas: stage.canvas, world, blocks: BLOCKS, terrain,
@@ -525,10 +527,11 @@ async function startGame() {
     onPlace(x, y, z, id) { kit.placed(x, y, z, id, play.state.yaw); if (isCrystal(id) || isCrystal(world.get(x, y - 1, z))) buildTips(); },
     onInventory(list, sel) {
       hud.setSlots(list, sel); showGoal(list);
-      const it = list[sel], block = it && !it.tool && it.id ? it.id : 0;          // a block in the selected square is what the hand shows
+      const it = list[sel], block = it && it.id && (!it.tool || it.weapon) && (BLOCKS[it.id] || it.weapon) ? it.id : 0;   // a block, or the sword, is what the hand shows
       heldBlock.show(block); toolInHand = !block; fp.visible = toolInHand;
     },
     onBag() { bag.toggle(); },
+    onUse: (item) => (life ? life.use(item) : false),
     onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
     onFirstLook() { hud.els.lookzone.hidden = true; },
@@ -537,6 +540,7 @@ async function startGame() {
       hud.setProgress(d.on ? d.progress : 0);
       kit.update(p, dt, st.time);
       if (vitals) vitals.update(dt);
+      if (life) life.update(dt);
       // the mining beam, from the emitter to the point where the view ray meets the block
       if (d.on && st.hit && toolInHand) {
         const h = st.hit, a = fp.localToWorld(v1.set(0, 0, -0.262));
@@ -577,7 +581,7 @@ async function startGame() {
   const panel = createPlayPanel({
     title: 'كوكب', tagline: 'احفر، اجمع البلّور، وابنِ قاعدتك على كوكب غريب.',
     fontFamily: "'Plex Arabic', sans-serif", accent: '#7df1ff', line: 'rgba(125, 241, 255, .4)', touch: hud.touch,
-    note: 'نسخة تجريبية: الصحة والأكسجين والطاقة تتغيّر الحين. الوحوش لسا ما تتحرك، والوقت ثابت، والتقدّم ما ينحفظ.',
+    note: 'نسخة تجريبية: الحيوانات والوحوش تتحرك الحين، والصيد يعطي لحم. الوقت ثابت، والتقدّم ما ينحفظ.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   panel.show('start');
@@ -593,8 +597,17 @@ async function startGame() {
     ],
     render(v) { write.hp(v.hp); write.o2(v.o2); write.pw(v.pw); vq('pw').classList.toggle('warn', v.pw < 40); vq('o2').classList.toggle('warn', v.o2 < 25); },
   });
+  // creatures: the pack beast grazes and can be hunted; crawlers and stingers come for the player
+  life = createLife({
+    scene, camera, play, world, vitals: () => vitals,
+    kinds: [
+      { key: 'beast', name: 'الحمّال', kind: 'animal', make: () => bake(makePackBeast()), hp: 14, speed: 1.5, radius: 0.95, height: 1.7, max: 3, meat: 2 },
+      { key: 'crawler', name: 'الزاحف', kind: 'monster', make: () => bake(makeCrawler()), hp: 16, speed: 3.0, radius: 0.95, height: 1.0, max: 2, dmg: 9 },
+      { key: 'stinger', name: 'الطيف', kind: 'monster', make: () => bake(makeWraith()), hp: 10, speed: 2.3, radius: 0.8, height: 2.0, max: 1, dmg: 7, fly: 1.6 },
+    ],
+  });
   window.__play = play;
-  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera, vitals };
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera, vitals, life };
 }
 
 installShotApi(stage);
