@@ -80,6 +80,34 @@ function buildExplodedPrompt(promptText) {
   return head + (words ? ' Request: ' + words + '.' : '') + EXPLODED_TAIL;
 }
 
+/* v-chat-ad-fx (المالك ٢١ نوفمبر بعد صور التأثيرات: «الي اريده فيديو مش صور فقط… فيديو في الدردشه يعني مال ثواني… فيديوهات متنوعه مش
+   نوع واحد»): فيديو المنتج في المحادثة كان نوعًا واحدًا (كاميرا بطيئة حوله، أو التفكيك وحده). الآن أسلوب لقطة من مجموعة — بالاسم إن
+   ذكره، وإلّا يتبدّل كلّ مرّة (العميل: omranAdVideoFx). صورته نفسها أوّل إطار كالتفكيك (بلا إطار مرسوم)، والحركة سطر إنجليزيّ إلزاميّ قبل
+   كلامه، والكلّ ≤ ١٠٠٠ حرف. المدّة كما طلب (٥ أو ١٠) بالسعر نفسه؛ التفكيك وحده ٥ث كما كان. */
+const FX_VIDEO_PRE = 'The opening frame is the user\'s own photo of this product: start exactly from it and keep the product looking exactly as in the photo (same shape, colours, materials, label and any text on it) in every frame. ';
+const FX_VIDEO = {
+  smoke: 'SMOKE REVEAL: in one continuous shot thick volumetric smoke swirls around the product and slowly drifts away to reveal it, a strong back light cutting through the moving smoke, the camera pushing in gently; premium dark studio.',
+  topdown: 'TOP-DOWN SHOT: the camera looks straight down from directly above the product resting on a styled surface with a few tasteful props, and slowly rotates and descends toward it; soft even light, clean flat-lay composition.',
+  orbit: 'ORBIT SHOT: the camera makes one smooth continuous orbit around the product while it stays perfectly still and centred, background parallax and light streaks wrapping around it, steady gimbal motion.',
+  lightsweep: 'LIGHT SWEEP: in a dark studio a bright beam of light sweeps slowly across the product, revealing its shape and details with glinting reflections, the camera dollying in slowly.',
+  splash: 'SPLASH: in slow motion a burst of clear liquid splashes around the product, droplets hanging in the air and catching the light, glossy highlights; the product itself stays sharp and unchanged.',
+  float: 'FLOAT: the product lifts off and floats in mid-air, rotating slowly, with soft glowing particles drifting around it, clean gradient background.',
+  macro: 'MACRO: extreme macro close-ups glide slowly across the product\'s surfaces and details, then the camera pulls back to reveal the whole product, shallow depth of field.',
+};
+const FX_VIDEO_TAIL = ' No added text, letters, logos or watermarks. SHOT (mandatory): the style above, with the same product from the photo throughout, unchanged.';
+function buildFxVideoPrompt(fx, promptText) {
+  const head = FX_VIDEO_PRE + FX_VIDEO[fx];
+  const room = Math.max(0, RUNWAY_PROMPT_MAX - head.length - FX_VIDEO_TAIL.length - 12);
+  const words = String(promptText || '').replace(/\s+/g, ' ').trim().slice(0, room);
+  return head + (words ? ' Request: ' + words + '.' : '') + FX_VIDEO_TAIL;
+}
+/* المفتاح من قائمة معروفة فقط (لا __proto__)؛ مع ترند أو بلا مفتاح = '' والمسار القديم حرفيًّا */
+function videoFxKind(body) {
+  const k = String((body && body.fx) || '');
+  if (!k || (body && body.trend)) return '';
+  return k === 'exploded' || Object.prototype.hasOwnProperty.call(FX_VIDEO, k) ? k : '';
+}
+
 function buildRunwayPrompt(promptText, style, useImage, framed, people, noPerson, asIs) {
   const anime = style === 'anime';
   if (useImage && asIs && !framed) { // v-photo-as-is
@@ -132,8 +160,8 @@ module.exports = async (req, res) => {
       return;
     }
     /* v-chat-exploded: التفكيك يحتاج صورته — بلاها لا فيديو نصّيّ لكلمة «فكّكه»، والرفض قبل أيّ حجز أو خصم */
-    const exploded = body.fx === 'exploded' && !body.trend;
-    if (exploded && !(imageBase64 && String(imageBase64).length > 50)) { res.status(400).json({ error: 'video_rejected', reason: 'exploded_needs_photo', retryable: false }); return; } /* رمز قائم: «غيّر الوصف أو الصورة» بالـ١٤ لغة (vidRejected) */
+    const fxKind = videoFxKind(body), exploded = fxKind === 'exploded'; // v-chat-ad-fx: التفكيك واحد من أساليب اللقطة
+    if (fxKind && !(imageBase64 && String(imageBase64).length > 50)) { res.status(400).json({ error: 'video_rejected', reason: exploded ? 'exploded_needs_photo' : 'fx_needs_photo', retryable: false }); return; } /* رمز قائم: «غيّر الوصف أو الصورة» بالـ١٤ لغة (vidRejected) */
 
     /* v-video-giveback: فحص المفتاح قبل أيّ حجز أو خصم (كـveo-create، v-video-stream) — كان بعد spendPoints وvideoLock
        ويردّ ٥٠٠ باسم المفتاح بلا ردّ ولا فكّ: النقاط تحترق وإعادة المحاولة ترجع video_cooldown. */
@@ -215,7 +243,7 @@ module.exports = async (req, res) => {
     let framed = false, framePeople = 0, noPerson = false;
     const tp = require('./trend-people.js');
     const asIs = useImage && !body.trend && (!!body.keepPhoto || !tp.freeFrameOn(body)); // v-photo-as-is: الصورة نفسها أوّل إطار
-    if (useImage && !body.trend && !body.keepPhoto && !exploded /* v-chat-exploded: لا إطار مرسوم ولا توليد صورة وسيط */ && tp.freeFrameOn(body) && process.env.GEMINI_API_KEY) {
+    if (useImage && !body.trend && !body.keepPhoto && !fxKind /* v-chat-exploded · v-chat-ad-fx: لا إطار مرسوم ولا توليد صورة وسيط */ && tp.freeFrameOn(body) && process.env.GEMINI_API_KEY) {
       /* v-ai-video-speed: needPerson — صورة بلا وجه (عطر، منتج) تبدأ الفيديو كما هي بلا إطار مرسوم (كان ١٥–٤٠ ث، حتّى ٩٠، قبل المحرّك) */
       const solo = await tp.soloFirstFrame(process.env.GEMINI_API_KEY, { data: String(imageBase64), mime: imageMime }, String(promptText), finalRatio, { style, budgetMs: 90000, needPerson: true });
       if (solo && solo.b64) {
@@ -232,7 +260,7 @@ module.exports = async (req, res) => {
       ? RUNWAY_API_BASE + '/v1/image_to_video'
       : RUNWAY_API_BASE + '/v1/text_to_video';
     // Runway hard limit: promptText <= 1000 chars TOTAL — مع صورة: مرساة هويّة أوّلًا وقفل أخيرًا (v-video-photo-identity)
-    const finalPrompt = exploded ? buildExplodedPrompt(promptText) : buildRunwayPrompt(promptText, style, useImage, framed, framePeople, noPerson, asIs);
+    const finalPrompt = exploded ? buildExplodedPrompt(promptText) : fxKind ? buildFxVideoPrompt(fxKind, promptText) : buildRunwayPrompt(promptText, style, useImage, framed, framePeople, noPerson, asIs);
 
     /* v-runway-model (لقطات المالك: «Validation of body failed … expected one of
        gen4.5 | kling3.0_pro | veo3.1 …»): Runway أوقف اسم gen4_turbo فصار كل
@@ -296,4 +324,7 @@ module.exports.buildRunwayPrompt = buildRunwayPrompt;
 module.exports.RUNWAY_PROMPT_MAX = RUNWAY_PROMPT_MAX;
 module.exports.buildExplodedPrompt = buildExplodedPrompt;
 module.exports.explodedKind = explodedKind;
+module.exports.buildFxVideoPrompt = buildFxVideoPrompt; // v-chat-ad-fx
+module.exports.videoFxKind = videoFxKind;
+module.exports.FX_VIDEO = FX_VIDEO;
 module.exports.EXPLODED_SECONDS = EXPLODED_SECONDS;
