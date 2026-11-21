@@ -320,6 +320,8 @@ function serve(root, prefix) {
       await page.evaluate((f) => { const p = window.__play, s = p.state; s.pos.set(f.bx + 0.5, f.by + 1, f.bz + 4.4); s.vel.set(0, 0, 0); s.yaw = 0; s.pitch = -0.42; p.advance(0); p.tick(1); }, floor);
       await shot('6-kit');
     }
+    const snd = await page.evaluate(() => { const s = window.__GAME_SOUND; return s ? { played: s.stats.played, muted: s.muted } : null; });
+    check('sounds were played for digging, placing and walking', !!snd && snd.played >= 6, snd);
     report.final = await snap();
     report.info = await page.evaluate(() => (typeof window.__info === 'function' ? window.__info() : null));
   } catch (e) {

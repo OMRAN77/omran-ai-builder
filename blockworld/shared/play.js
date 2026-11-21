@@ -20,6 +20,7 @@
 // reports what happened through the callbacks.
 
 import * as THREE from 'three';
+import { createSound } from './sound.js';
 
 const E = 1e-4;
 
@@ -45,6 +46,9 @@ export function createPlay(o) {
     flying: false, modal: false,
   };
   const inp = { fx: 0, fz: 0, jump: false, dig: false, sprint: false, place: false, down: false };
+  const sound = o.sound === false ? null : createSound();          // every world gets the same sounds; M mutes
+  window.__GAME_SOUND = sound;
+  const snd = { stride: 0, dig: 0, ground: true, water: false, vy: 0, air: 0 };
   const keys = new Set();
 
   // ------------------------------------------------------------------ collision
@@ -72,6 +76,7 @@ export function createPlay(o) {
   function setFlying(on) {
     if (st.flying === on) return;
     st.flying = on; st.vel.y = 0;
+    if (sound) sound.fly(on);
     if (o.onFly) o.onFly(on);
   }
   function step(dt) {
@@ -128,6 +133,9 @@ export function createPlay(o) {
       else p.y = Math.floor(p.y + P.height) - P.height - E;
       v.y = 0;
     }
+    // Resting on something: a very short step (a fast display, a burst of frames) moves the feet less than the
+    // collision tolerance, which must not read as "in the air" (no jump, a landing sound every frame).
+    if (!st.onGround && v.y <= 0 && !st.flying && hitTop(p.x, p.y - 0.03, p.z) > -Infinity) { st.onGround = true; v.y = Math.max(v.y, -1); }
     // step up one block on its own: the terrain is terraced and touch players have no spare thumb
     if (P.autoJump && blocked && wasGround && st.onGround && wl > 0.25 && !st.inWater && !st.flying) {
       const fy = Math.floor(p.y + E), tx = Math.floor(p.x + (wx / wl) * (P.hw + 0.45)), tz = Math.floor(p.z + (wz / wl) * (P.hw + 0.45));
@@ -186,6 +194,7 @@ export function createPlay(o) {
     const up = world.get(h.x, h.y + 1, h.z);
     if (up && kindOf(up) === 'cross') terrain.setBlock(h.x, h.y + 1, h.z, 0);     // a plant cannot stand on nothing
     st.broken++;
+    if (sound) sound.brk();
     collect(h.id);
     if (o.onBreak) o.onBreak(h);
   }
@@ -195,6 +204,7 @@ export function createPlay(o) {
     if (!can) { d.on = false; d.t = 0; d.progress = 0; return; }
     if (!d.on || d.x !== h.x || d.y !== h.y || d.z !== h.z) { d.on = true; d.x = h.x; d.y = h.y; d.z = h.z; d.t = 0; d.need = Math.max(0.01, hardness(h.id)); }
     d.t += dt; d.progress = Math.min(1, d.t / d.need);
+    if (sound && (snd.dig -= dt) <= 0) { snd.dig = 0.17; sound.dig(); }
     if (d.t >= d.need) { breakBlock(h); d.on = false; d.t = 0; d.progress = 0; aim(); }
   }
   function placeNow() {
@@ -212,14 +222,16 @@ export function createPlay(o) {
     }
     terrain.setBlock(x, y, z, s.id);
     s.n--; st.placed++;
+    if (sound) sound.place();
     inventoryChanged();
     if (o.onPlace) o.onPlace(x, y, z, s.id);
     aim();
     return true;
   }
   function select(i) {
-    const n = st.slots.length;
+    const n = st.slots.length, was = st.sel;
     st.sel = ((i % n) + n) % n;
+    if (sound && st.sel !== was && st.running) sound.pick();
     inventoryChanged();
   }
   /** Put an item in a hotbar slot (the bag does this). item: { id, n, name, ... } or { tool: true, ... }. */
@@ -256,7 +268,8 @@ export function createPlay(o) {
   const onKey = (e) => {
     if (!st.running) return;
     if (e.type === 'keydown') {
-      if (e.code === 'KeyE' && !e.repeat) { if (o.onBag) o.onBag(); e.preventDefault(); return; }
+      if (e.code === 'KeyE' && !e.repeat) { if (sound) sound.ui(); if (o.onBag) o.onBag(); e.preventDefault(); return; }
+      if (e.code === 'KeyM' && !e.repeat && sound) { sound.setMuted(!sound.muted); notice(sound.muted ? 'الصوت مطفي.' : 'الصوت شغّال.', false, 1600); return; }
       if (st.modal) return;
       if (!e.repeat) {
         const now = performance.now();
@@ -375,8 +388,18 @@ export function createPlay(o) {
   function advance(dt) {
     readKeys();
     let rem = dt;
-    while (rem > 1e-6) { const h = Math.min(rem, 1 / 60); step(h); rem -= h; }
+    while (rem > 1e-6) { const h = Math.min(rem, 1 / 60); snd.vy = st.vel.y; step(h); rem -= h; }
     st.time += dt;
+    if (sound && dt > 0) {
+      // steps by distance walked, a thump on landing, a puff on jumping, a splash on entering water
+      if (!st.onGround) snd.air += dt;
+      if (st.onGround && !snd.ground && snd.air > 0.12) sound.land(snd.vy < -13);
+      else if (!st.onGround && snd.ground && st.vel.y > 5 && !st.flying) sound.jump();
+      if (st.onGround) snd.air = 0;
+      if (st.inWater && !snd.water) sound.splash();
+      if ((st.onGround || st.inWater) && !st.flying && st.moving > 0.8) { snd.stride += st.moving * dt; if (snd.stride > (st.inWater ? 2.6 : 2.15)) { snd.stride = 0; sound.step(st.inWater); } }
+      snd.ground = st.onGround; snd.water = st.inWater;
+    }
     placeCamera();
     aim();
     digTick(dt);
@@ -485,10 +508,11 @@ export function createPlay(o) {
   unstick();
   placeCamera();
   return {
-    state: st, input: inp, tuning: P, res, isSolid, isLiquid, gpu, setSlot, setModal, setFlying, notice,
+    state: st, input: inp, tuning: P, res, isSolid, isLiquid, gpu, setSlot, setModal, setFlying, notice, sound,
     start() {
       if (st.running) return;
       st.running = true; initRes(); last = performance.now(); raf = requestAnimationFrame(frame);
+      if (sound) sound.start();                       // start() runs inside the start button's click, which is what lets the browser play sound
     },
     stop() { st.running = false; cancelAnimationFrame(raf); inp.dig = false; keys.clear(); if (sync) { gl.deleteSync(sync); sync = null; } },
     /** Call from a click handler: capture the mouse on desktop. */
@@ -539,7 +563,7 @@ export function createPlayPanel(o) {
   if (o.line) el.style.setProperty('--pp-line', o.line);
   const rows = o.touch
     ? [['العصا اليسار', 'المشي، وادفعها للآخر تركض'], ['اسحب على الشاشة', 'النظر'], ['زر الحفر', 'اضغط مطوّلًا لتكسر المكعب'], ['زر البناء', 'يضع المكعب المختار'], ['زر القفز', 'قفز، ومرّتين تطير'], ['زر الحقيبة', 'كل المكعبات والأغراض']]
-    : [['W A S D', 'المشي'], ['W مرّتين', 'ركض'], ['الفأرة', 'النظر'], ['Space', 'قفز وسباحة'], ['Space مرّتين', 'طيران'], ['E', 'الحقيبة'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب المختار'], ['1 – 9 أو العجلة', 'اختيار الخانة'], ['Esc', 'إيقاف مؤقت']];
+    : [['W A S D', 'المشي'], ['W مرّتين', 'ركض'], ['الفأرة', 'النظر'], ['Space', 'قفز وسباحة'], ['Space مرّتين', 'طيران'], ['E', 'الحقيبة'], ['M', 'الصوت'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب المختار'], ['1 – 9 أو العجلة', 'اختيار الخانة'], ['Esc', 'إيقاف مؤقت']];
   const h1 = document.createElement('h1'), p = document.createElement('p'), ul = document.createElement('ul'), b = document.createElement('button'), note = document.createElement('div');
   h1.textContent = o.title; p.textContent = o.tagline || '';
   for (const [k, v] of rows) { const li = document.createElement('li'), kb = document.createElement('b'), s = document.createElement('span'); kb.textContent = k; kb.dir = 'auto'; s.textContent = v; li.append(kb, s); ul.appendChild(li); }
@@ -550,6 +574,11 @@ export function createPlayPanel(o) {
   // when the page was opened from the world picker, offer the way back
   const toMenu = o.onMenu || (window.__GAME && window.__GAME.onMenu);
   if (toMenu) { const m = document.createElement('button'); m.type = 'button'; m.className = 'menu'; m.textContent = 'العوالم'; m.addEventListener('click', toMenu); box.appendChild(m); }
+  const snd = document.createElement('button');
+  snd.type = 'button'; snd.className = 'menu';
+  const sndText = () => { const s = window.__GAME_SOUND; snd.hidden = !s; snd.textContent = s && s.muted ? 'الصوت: مطفي' : 'الصوت: شغّال'; };
+  snd.addEventListener('click', () => { const s = window.__GAME_SOUND; if (s) { s.setMuted(!s.muted); if (!s.muted) { s.start(); s.ui(); } } sndText(); });
+  box.appendChild(snd);
   box.appendChild(note);
   const gpuEl = document.createElement('div'); gpuEl.className = 'gpu';
   box.appendChild(gpuEl);
@@ -561,7 +590,7 @@ export function createPlayPanel(o) {
   b.addEventListener('click', () => { el.hidden = true; o.onStart(); });
   return {
     el,
-    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; el.hidden = false; },
+    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; sndText(); el.hidden = false; },
     hide() { el.hidden = true; },
   };
 }

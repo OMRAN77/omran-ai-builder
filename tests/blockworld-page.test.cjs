@@ -192,3 +192,14 @@ test('v-blockworld-kit: الركض والطيران والحقيبة وعدّة 
   }
 });
 
+test('v-blockworld-sound: أصوات مولَّدة في المتصفّح بلا ملفّات، تبدأ بضغطة البدء وتُكتم', () => {
+  const snd = read('shared/sound.js'), play = read('shared/play.js');
+  assert.match(snd, /AudioContext/);
+  assert.ok(!/\.(mp3|ogg|wav|m4a)\b/.test(snd + play), 'لا ملفّ صوت');
+  for (const fn of ['step', 'dig', 'brk', 'place', 'jump', 'land', 'splash', 'fly']) assert.match(play, new RegExp('sound\\.' + fn + '\\('), 'يُنادى: ' + fn);
+  assert.match(play, /if \(sound\) sound\.start\(\);/, 'الصوت يبدأ داخل ضغطة البدء');
+  assert.match(play, /KeyM/);
+  assert.match(play, /hitTop\(p\.x, p\.y - 0\.03, p\.z\)/, 'الواقف على الأرض لا يُعدّ طائرًا في إطار قصير');
+  assert.ok(!OWN.some((f) => /\.(mp3|ogg|wav|m4a)$/.test(f)));
+});
+
