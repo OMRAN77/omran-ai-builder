@@ -119,14 +119,18 @@ html.introOn .goMark { display: none; }
     document.documentElement.className += ' introOn';
   }
 
+  // v-ref-stores (مراجعة النقض): داخل تطبيقنا المثبّت لا متجر — جسر هواوي OmranRender (فلتر autoVerify يفتح روابط الموقع فيه) أو
+  // تطبيق الويب المثبّت. كان رابط المالك يرمي من عنده التطبيق إلى صفحته في AppGallery ويترك الشاشة على الشعار النابض.
+  var inApp = false;
+  try { inApp = !!window.OmranRender || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
+  catch(e){ inApp = false; /* guard-ok — تعذّر الكشف = متصفّح عاديّ */ }
   var dest = '/';
-  try { dest = goDest(navigator.userAgent || '', navigator.maxTouchPoints || 0, location.search, STORES); }
+  try { dest = goDest(navigator.userAgent || '', navigator.maxTouchPoints || 0, location.search, inApp ? null : STORES); }
   catch(e){ dest = '/'; /* guard-ok — أيّ خطأ في الكشف يفتح التطبيق نفسه */ }
   var intro = false;
   try {
-    var standalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
     var returning = localStorage.getItem('aiapp_privacy_ack') === '1';
-    intro = wantsIntro(navigator.userAgent || '', dest, standalone, returning);
+    intro = wantsIntro(navigator.userAgent || '', dest, inApp, returning);
     if(intro) showIntro(dest);
   } catch(e){ intro = false; /* guard-ok — تعذّر التعريف (تخزين محجوب مثلًا) لا يحبس الزائر: يكمل إلى وجهته */ }
   if(!intro) location.replace(dest);

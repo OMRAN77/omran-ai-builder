@@ -31480,12 +31480,15 @@ window.addEventListener('appinstalled', () => {
 /* v-qr-one: الباركود الواحد (/app ← download.html) يفتح التطبيق بـ?install=1 على أيّ جهاز: زرّ «تثبيت التطبيق» عائم
    أعلى الشاشة بنصّ install الموجود في الـ١٤ لغة، ونقره = زرّ التثبيت نفسه (نافذة المتصفّح أو خطوات جهازه).
    لا يظهر داخل التطبيق المثبّت ولا داخل تطبيق هواوي (الرابط يفتح فيه بفلتر autoVerify، وWebView ليس standalone —
-   جسره OmranRender أو علم المتجر يدلّان عليه)، ويُحذف install من الرابط كي لا يعود مع التحديث (ref يبقى لمن يقرؤه). */
+   جسره OmranRender أو علم المتجر يدلّان عليه)، ويُحذف install من الرابط كي لا يعود مع التحديث.
+   v-ref-stores: وref معه — حفظه app-01 قبله في aiapp_pending_ref ولا شيء آخر يقرؤه من الرابط، وبقاء ‎/?ref=omran‎ كان يعيد
+   تحويل رابط المالك إلى صفحة المتاجر مع كلّ تحديث (سحب الصفحة، وإعادة التحميل بعد كلّ نشر) فيعود هذا الزرّ والتعريف. */
 (function(){
   try {
     const here = new URL(location.href);
     if(here.searchParams.get('install') !== '1') return;
     here.searchParams.delete('install');
+    here.searchParams.delete('ref');
     history.replaceState(history.state, '', here.pathname + here.search + here.hash);
     const root = document.documentElement;
     if(isStandalone() || window.OmranRender || (root && root.classList.contains('store-safe'))) return;

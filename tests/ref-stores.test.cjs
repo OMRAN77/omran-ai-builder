@@ -81,6 +81,59 @@ test('٣. لا حلقة: كلّ جهاز بلا متجر ترجعه صفحة ا�
   assert.match(read('download.html'), /el\('introGo'\)\.setAttribute\('href', to\);/);
 });
 
+// رابط التطبيق بعد أن ينظّفه app-10 (الكتلة الحقيقيّة: ‎?install=1‎ يُحذف ومعه ref)
+function afterAppStrip(dest) {
+  const src = read('js/app-10-features.js');
+  const m = /\/\* v-qr-one:[\s\S]*?\n\(function\(\)\{[\s\S]*?\n\}\)\(\);/.exec(src);
+  assert.ok(m, 'كتلة زرّ التثبيت موجودة');
+  const out = { replaced: null };
+  vm.runInNewContext(m[0].slice(m[0].indexOf('(function(){')), {
+    URL, location: { href: 'https://omran-ai-builder.vercel.app' + dest },
+    history: { state: null, replaceState: (st, t, u) => { out.replaced = u; } },
+    isStandalone: () => true, window: {}, document: { documentElement: null }, __swallow: (e) => { throw e; },
+  });
+  return out.replaced;
+}
+
+test('٣ب. ولا حلقة مع التحديث: التطبيق يحذف install وref من الرابط فلا يبقى ‎/?ref=omran‎ يعيد التحويل (سحب الصفحة، إعادة التحميل بعد النشر)', () => {
+  const f = goDestFn();
+  const dest = f('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36', 5, '?ref=omran', { ios: '', android: '', huawei: '', windows: '' });
+  assert.equal(dest, '/?ref=omran&install=1');
+  const left = afterAppStrip(dest);
+  assert.equal(left, '/', 'ما يبقى في شريط العنوان');
+  assert.equal(redirectFor(left), null, 'تحديث الصفحة يبقى في التطبيق');
+  assert.equal(afterAppStrip('/?ref=omran&install=1&tools=1'), '/?tools=1', 'غير ref وinstall يبقى');
+  // الدعوة محفوظة قبل الحذف: app-01 (يسبق app-10 في الحزمة) يكتبها في aiapp_pending_ref
+  assert.match(read('js/app-01-boot-auth.js'), /localStorage\.setItem\('aiapp_pending_ref', ref\);/);
+});
+
+// سكربت download.html الحقيقيّ على هويّة جهاز، داخل تطبيقنا أو خارجه
+function runHub({ ua, search, bridge = false, standalone = false, touch = 5 }) {
+  const m = /<script>\n([\s\S]*?)<\/script>/.exec(read('download.html'));
+  const out = { replaced: null };
+  const els = {};
+  const el = (id) => els[id] || (els[id] = { id, hidden: true, textContent: '', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } });
+  vm.runInNewContext(m[1], {
+    navigator: { userAgent: ua, maxTouchPoints: touch, language: 'ar' },
+    location: { search, replace: (u) => { out.replaced = u; } },
+    window: Object.assign({ matchMedia: () => ({ matches: standalone }) }, bridge ? { OmranRender: { mode: () => 'cpu' } } : {}),
+    localStorage: { getItem: (k) => (k === 'aiapp_privacy_ack' ? '1' : null) },
+    document: { documentElement: { lang: 'ar', dir: 'rtl', className: '' }, getElementById: el },
+  });
+  return out.replaced;
+}
+
+test('٣ج. داخل تطبيق هواوي المثبّت (رابط الموقع يفتح فيه بـautoVerify) أو تطبيق الويب المثبّت: التطبيق نفسه لا صفحة المتجر', () => {
+  const HW_WV = 'Mozilla/5.0 (Linux; Android 12; ALT-L29 Build/HUAWEIALT-L29; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/114.0.5735.196 Mobile Safari/537.36';
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+  assert.match(String(runHub({ ua: HW_WV, search: '?ref=omran' })), /^https:\/\/appgallery\.huawei\.com\//, 'متصفّح هواوي عاديّ ← AppGallery كما كان');
+  const inside = runHub({ ua: HW_WV, search: '?ref=omran', bridge: true });
+  assert.equal(inside, '/?ref=omran&install=1', 'داخل التطبيق ← التطبيق');
+  assert.equal(redirectFor(inside), null);
+  assert.equal(runHub({ ua: IPHONE, search: '?ref=omran', standalone: true }), '/?ref=omran&install=1', 'تطبيق الويب المثبّت ← التطبيق');
+  assert.match(String(runHub({ ua: IPHONE, search: '?ref=omran' })), /^https:\/\/apps\.apple\.com\//, 'آيفون في المتصفّح ← App Store');
+});
+
 function jpegSize(buf) {
   assert.equal(buf.readUInt16BE(0), 0xffd8, 'JPEG');
   let i = 2;
