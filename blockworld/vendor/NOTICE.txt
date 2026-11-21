@@ -1,0 +1,7 @@
+Third-party files in this folder
+
+three.module.js, three.core.js, addons/   three.js r187 (npm three@0.187.0), MIT License, (c) three.js authors
+fonts/ibm-plex-sans-arabic/               IBM Plex Sans Arabic, SIL Open Font License 1.1 (via @fontsource)
+fonts/tajawal/                            Tajawal, SIL Open Font License 1.1 (via @fontsource)
+fonts/reem-kufi/                          Reem Kufi, SIL Open Font License 1.1 (via @fontsource)
+fonts/rajdhani/                           Rajdhani, SIL Open Font License 1.1 (via @fontsource)
