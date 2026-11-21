@@ -150,7 +150,8 @@ const DEV = {
 test('٣د. رابط المالك يعرض البوستر ولا يحوّل وحده: الصورة كلّها رابط إلى متجر الجهاز، والضغطة هي التي تحوّل', () => {
   const html = read('download.html');
   // الصورة داخل الرابط نفسه، وهي الأصل بلا إعادة ضغط وبمقاسها المعلن
-  assert.match(html, /<a class="poster" id="poster" href="\/\?install=1" hidden><img src="\/icons\/om-ai-poster\.webp" alt="[^"]+" width="1424" height="752"><\/a>/);
+  assert.match(html, /<a class="poster" id="poster" href="\/\?install=1" hidden><img src="\/icons\/om-ai-poster\.webp" alt="[^"]+" width="1424" height="752" loading="lazy"><\/a>/, 'lazy: المخفيّة لا تُحمَّل لزائر الباركود (٣٠٣ ك.ب)');
+  assert.match(html, /html\.posterOn \.poster \{ max-width: min\(712px, calc\(100vh \* 1424 \/ 752\)\); max-width: min\(712px, calc\(100dvh \* 1424 \/ 752\)\); \}/, 'جوّال بالعرض: البوستر كامل بلا قصّ');
   assert.match(html, /\.poster \{[^}]*max-width: 712px;/, 'تُعرض بنصف عرض الأصل على الأكثر (2x بلا تكبير)');
   const webp = fs.readFileSync(path.join(ROOT, 'icons/om-ai-poster.webp'));
   assert.equal(webp.toString('latin1', 0, 4) + webp.toString('latin1', 8, 12), 'RIFFWEBP');

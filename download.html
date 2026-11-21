@@ -53,6 +53,8 @@ html.posterOn body { -webkit-tap-highlight-color: transparent; }
 html.posterOn .goMark { display: none; }
 /* ٧١٢ = نصف عرض الأصل (١٤٢٤): الصورة تبقى بضعف مقاس عرضها فلا تُكبَّر على شاشة ‎2x‎ */
 .poster { display: block; width: 100%; max-width: 712px; line-height: 0; cursor: pointer; }
+/* مراجعة النقض: جوّال بالعرض أقصر من البوستر، وتوسيط flex كان يقصّ أعلاه بلا تمرير — العرض يُحدّ بما يُظهره كاملًا (vh احتياط لمن لا يعرف dvh) */
+html.posterOn .poster { max-width: min(712px, calc(100vh * 1424 / 752)); max-width: min(712px, calc(100dvh * 1424 / 752)); }
 .poster[hidden] { display: none; }
 .poster img { display: block; width: 100%; height: auto; }
 .poster:focus-visible { outline: 3px solid #f5df88; outline-offset: -3px; }
@@ -60,7 +62,7 @@ html.posterOn .goMark { display: none; }
 </head>
 <body>
 <div class="goMark"><img src="/icons/ai-hub-mark-256.png" alt="om ai"></div>
-<a class="poster" id="poster" href="/?install=1" hidden><img src="/icons/om-ai-poster.webp" alt="om ai — كل أدوات الذكاء الاصطناعي في مكان واحد. حمّل التطبيق الآن" width="1424" height="752"></a>
+<a class="poster" id="poster" href="/?install=1" hidden><img src="/icons/om-ai-poster.webp" alt="om ai — كل أدوات الذكاء الاصطناعي في مكان واحد. حمّل التطبيق الآن" width="1424" height="752" loading="lazy"></a>
 <main class="intro" id="intro" hidden>
   <img class="introLogo" src="/icons/ai-hub-mark-256.png" alt="" width="64" height="64">
   <p class="introName">om ai</p>
