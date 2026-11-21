@@ -258,21 +258,27 @@ async function navRoutes() {
   sweepR.status === 405 ? ok('/api/email-sweep [POST] → 405 (الجرد موصول ولم يُشغَّل)') : no('/api/email-sweep [POST] → ' + (sweepR.status || sweepR.err) + ' (المتوقّع ٤٠٥)');
 }
 
-// ⑧ v-ref-stores: رابط المالك ‎/?ref=omran‎ يُحوَّل إلى صفحة المتاجر (‎/app?ref=omran‎ — vercel.json redirects) لا إلى التطبيق؛
-// و‎&install=1‎ (عودة أندرويد وماك من الصفحة نفسها) يفتح التطبيق وإلّا دار الزائر في حلقة؛ ودعوة غيره كما هي؛ ومعاينة الرابط بوستر المالك.
+// ⑧ v-ref-stores: رابط المالك ‎/?ref=omran‎ يُحوَّل إلى صفحة البوستر (‎/app?ref=omran&poster=1‎ — vercel.json redirects) لا إلى التطبيق:
+// الزائر يرى بوستر المالك والضغطة عليه تحوّله إلى متجر جهازه؛ و‎&install=1‎ (ضغطة أندرويد وماك) يفتح التطبيق وإلّا دار الزائر في حلقة؛
+// ودعوة غيره كما هي؛ والبوستر نفسه في الصفحة يُحمَّل؛ ومعاينة الرابط بوستر المالك.
 async function refStores() {
   console.log('⑧ رابط المالك ← المتاجر');
   const r = await get('/?ref=omran', { redirect: 'manual' });
   const loc = head(r, 'location');
-  ([301, 302, 307, 308].includes(r.status) && /\/app\?ref=omran(&|$)/.test(loc))
-    ? ok('/?ref=omran → ' + r.status + ' ' + loc) : no('/?ref=omran → ' + (r.status || r.err) + ' ' + loc + ' (المتوقّع تحويل إلى /app?ref=omran)');
+  ([301, 302, 307, 308].includes(r.status) && /\/app\?ref=omran&poster=1(&|$)/.test(loc))
+    ? ok('/?ref=omran → ' + r.status + ' ' + loc) : no('/?ref=omran → ' + (r.status || r.err) + ' ' + loc + ' (المتوقّع تحويل إلى /app?ref=omran&poster=1)');
   for (const p of ['/?ref=omran&install=1', '/?ref=smoke_probe']) {
     const x = await get(p, { redirect: 'manual' });
     x.status === 200 ? ok(p + ' → 200 (التطبيق)') : no(p + ' → ' + (x.status || x.err) + ' ' + head(x, 'location') + ' (المتوقّع ٢٠٠)');
   }
-  const hub = await get('/app?ref=omran');
-  const img = ((/<meta property="og:image" content="([^"]+)"/.exec(hub.status === 200 ? await hub.text() : '') || [])[1]) || '';
-  if (!img) { no('/app?ref=omran بلا og:image (' + (hub.status || hub.err) + ')'); return; }
+  const hub = await get('/app?ref=omran&poster=1');
+  const html = hub.status === 200 ? await hub.text() : '';
+  const shown = ((/<a class="poster" id="poster"[^>]*><img src="([^"]+)"/.exec(html) || [])[1]) || '';
+  const sp = shown ? await get(shown) : { status: 0, headers: new Map() };
+  (sp.status === 200 && /^image\//.test(head(sp, 'content-type')))
+    ? ok('البوستر في الصفحة ' + shown + ' → 200 ' + head(sp, 'content-type')) : no('البوستر في الصفحة ' + (shown || '(غائب)') + ' → ' + (sp.status || sp.err || hub.status || hub.err));
+  const img = ((/<meta property="og:image" content="([^"]+)"/.exec(html) || [])[1]) || '';
+  if (!img) { no('/app?ref=omran&poster=1 بلا og:image (' + (hub.status || hub.err) + ')'); return; }
   let p = '';
   try { p = new URL(img).pathname; } catch (e) { p = ''; } // رابط غير صالح = ✗ أدناه
   const pic = p ? await get(p) : { status: 0, headers: new Map() };

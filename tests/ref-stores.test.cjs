@@ -2,6 +2,7 @@
 // سو اياها اي واحد يضغط على الصور يحوله الي المتاجر»، ثمّ اختار: «رابطك نفسه ← المتاجر» ومعاينته البوستر، ودعوات غيره كما هي).
 // كان ‎/?ref=omran‎ يفتح التطبيق؛ صفحة المتاجر (download.html: آيفون ← App Store، هواوي ← AppGallery، ويندوز ← Microsoft Store،
 // أندرويد وماك ← التطبيق) على ‎/app‎ وحده. الآن تحويل في vercel.json لرابط المالك وحده، والمعاينة بوستره.
+// ثمّ رفض التحويل التلقائيّ: «الي اريده فقط تضغط علة الصوره ونحولك الي الرابط» — رابطه يعرض البوستر، والضغطة عليه تحوّل.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,14 +38,14 @@ function goDestFn() {
   return ctx.f;
 }
 
-test('١. تحويل واحد مؤقّت: ‎/?ref=omran‎ ← ‎/app?ref=omran‎، إلّا ومعه install', () => {
+test('١. تحويل واحد مؤقّت: ‎/?ref=omran‎ ← صفحة البوستر ‎/app?ref=omran&poster=1‎، إلّا ومعه install', () => {
   const rs = (VJ.redirects || []).filter((r) => r.source === '/');
   assert.equal(rs.length, 1, 'قاعدة واحدة على الجذر');
   assert.deepEqual(rs[0], {
     source: '/',
     has: [{ type: 'query', key: 'ref', value: '^omran$' }],
     missing: [{ type: 'query', key: 'install' }],
-    destination: '/app?ref=omran',
+    destination: '/app?ref=omran&poster=1',
     permanent: false, // ٣٠٧ لا ٣٠٨: المتصفّح لا يحفظه، فإلغاؤه يعيد الرابط للتطبيق فورًا
   });
   assert.ok(VJ.rewrites.some((r) => r.source === '/app' && r.destination === '/download.html'), '/app صفحة المتاجر');
@@ -52,7 +53,7 @@ test('١. تحويل واحد مؤقّت: ‎/?ref=omran‎ ← ‎/app?ref=omra
 
 test('٢. رابط المالك وحده: دعوات غيره والجذر والقيم القريبة تفتح التطبيق كما كانت', () => {
   for (const u of ['/?ref=omran', '/?x=1&ref=omran', '/?ref=omran&utm_source=tiktok']) {
-    assert.equal((redirectFor(u) || {}).destination, '/app?ref=omran', u);
+    assert.equal((redirectFor(u) || {}).destination, '/app?ref=omran&poster=1', u);
   }
   for (const u of ['/', '/?ref=ali', '/?ref=omran2', '/?ref=xomran', '/?ref=Omran', '/?ref=omran&install=1', '/?install=1&ref=omran', '/app?ref=omran', '/index.html?ref=omran']) {
     assert.equal(redirectFor(u), null, u);
@@ -108,30 +109,72 @@ test('٣ب. ولا حلقة مع التحديث: التطبيق يحذف install
 });
 
 // سكربت download.html الحقيقيّ على هويّة جهاز، داخل تطبيقنا أو خارجه
-function runHub({ ua, search, bridge = false, standalone = false, touch = 5 }) {
+function runHub({ ua, search, bridge = false, standalone = false, touch = 5, ack = '1' }) {
   const m = /<script>\n([\s\S]*?)<\/script>/.exec(read('download.html'));
   const out = { replaced: null };
   const els = {};
+  const root = { lang: 'ar', dir: 'rtl', className: '' };
   const el = (id) => els[id] || (els[id] = { id, hidden: true, textContent: '', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } });
   vm.runInNewContext(m[1], {
     navigator: { userAgent: ua, maxTouchPoints: touch, language: 'ar' },
     location: { search, replace: (u) => { out.replaced = u; } },
     window: Object.assign({ matchMedia: () => ({ matches: standalone }) }, bridge ? { OmranRender: { mode: () => 'cpu' } } : {}),
-    localStorage: { getItem: (k) => (k === 'aiapp_privacy_ack' ? '1' : null) },
-    document: { documentElement: { lang: 'ar', dir: 'rtl', className: '' }, getElementById: el },
+    localStorage: { getItem: (k) => (k === 'aiapp_privacy_ack' ? ack : null) },
+    document: { documentElement: root, getElementById: el },
   });
-  return out.replaced;
+  return { replaced: out.replaced, poster: els.poster || null, intro: els.intro || null, root };
 }
 
 test('٣ج. داخل تطبيق هواوي المثبّت (رابط الموقع يفتح فيه بـautoVerify) أو تطبيق الويب المثبّت: التطبيق نفسه لا صفحة المتجر', () => {
   const HW_WV = 'Mozilla/5.0 (Linux; Android 12; ALT-L29 Build/HUAWEIALT-L29; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/114.0.5735.196 Mobile Safari/537.36';
   const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
-  assert.match(String(runHub({ ua: HW_WV, search: '?ref=omran' })), /^https:\/\/appgallery\.huawei\.com\//, 'متصفّح هواوي عاديّ ← AppGallery كما كان');
-  const inside = runHub({ ua: HW_WV, search: '?ref=omran', bridge: true });
-  assert.equal(inside, '/?ref=omran&install=1', 'داخل التطبيق ← التطبيق');
-  assert.equal(redirectFor(inside), null);
-  assert.equal(runHub({ ua: IPHONE, search: '?ref=omran', standalone: true }), '/?ref=omran&install=1', 'تطبيق الويب المثبّت ← التطبيق');
-  assert.match(String(runHub({ ua: IPHONE, search: '?ref=omran' })), /^https:\/\/apps\.apple\.com\//, 'آيفون في المتصفّح ← App Store');
+  assert.match(String(runHub({ ua: HW_WV, search: '?ref=omran' }).replaced), /^https:\/\/appgallery\.huawei\.com\//, 'متصفّح هواوي عاديّ ← AppGallery كما كان');
+  for (const search of ['?ref=omran', '?ref=omran&poster=1']) {
+    const inside = runHub({ ua: HW_WV, search, bridge: true });
+    assert.equal(inside.replaced, '/?ref=omran&install=1', 'داخل التطبيق ← التطبيق: ' + search);
+    assert.equal(redirectFor(inside.replaced), null);
+    assert.ok(!inside.poster || inside.poster.hidden, 'لا بوستر داخل التطبيق');
+    assert.equal(runHub({ ua: IPHONE, search, standalone: true }).replaced, '/?ref=omran&install=1', 'تطبيق الويب المثبّت ← التطبيق: ' + search);
+  }
+  assert.match(String(runHub({ ua: IPHONE, search: '?ref=omran' }).replaced), /^https:\/\/apps\.apple\.com\//, 'آيفون في المتصفّح ← App Store');
+});
+
+const DEV = {
+  iphone: ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1', 5, 'https://apps.apple.com/app/id6795795451'],
+  huawei: ['Mozilla/5.0 (Linux; Android 12; HarmonyOS; ELS-NX9; HMSCore 6.13.0.302) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.196 HuaweiBrowser/15.0.4.312 Mobile Safari/537.36', 5, 'https://appgallery.huawei.com/app/C118703501'],
+  windows: ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0', 0, 'https://apps.microsoft.com/detail/9NZLQM4G1X3D'],
+  android: ['Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36', 5, '/?ref=omran&install=1'],
+  mac: ['Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15', 0, '/?ref=omran&install=1'],
+};
+
+test('٣د. رابط المالك يعرض البوستر ولا يحوّل وحده: الصورة كلّها رابط إلى متجر الجهاز، والضغطة هي التي تحوّل', () => {
+  const html = read('download.html');
+  // الصورة داخل الرابط نفسه، وهي الأصل بلا إعادة ضغط وبمقاسها المعلن
+  assert.match(html, /<a class="poster" id="poster" href="\/\?install=1" hidden><img src="\/icons\/om-ai-poster\.webp" alt="[^"]+" width="1424" height="752"><\/a>/);
+  assert.match(html, /\.poster \{[^}]*max-width: 712px;/, 'تُعرض بنصف عرض الأصل على الأكثر (2x بلا تكبير)');
+  const webp = fs.readFileSync(path.join(ROOT, 'icons/om-ai-poster.webp'));
+  assert.equal(webp.toString('latin1', 0, 4) + webp.toString('latin1', 8, 12), 'RIFFWEBP');
+  for (const k of Object.keys(DEV)) {
+    const [ua, touch, want] = DEV[k];
+    // زائر جديد (لم يوافق على الخصوصيّة): على أندرويد كان يظهر التعريف — رابط المالك يعرض البوستر بدله
+    const r = runHub({ ua, touch, search: '?ref=omran&poster=1', ack: null });
+    assert.equal(r.replaced, null, k + ': لا تحويل تلقائيّ');
+    assert.equal(r.poster.hidden, false, k + ': البوستر ظاهر');
+    assert.equal(r.poster.attrs.href, want, k + ': الضغطة ← ' + want);
+    assert.match(r.root.className, /\bposterOn\b/, k + ': علامة التحميل تختفي');
+    assert.ok(!r.intro || r.intro.hidden, k + ': لا تعريف فوق البوستر');
+    if (want.charAt(0) === '/') assert.equal(redirectFor(want), null, k + ': الضغطة لا ترجع إلى البوستر');
+  }
+});
+
+test('٣هـ. بلا poster=1 لا بوستر: باركود «حسابي» والمطبوع (‎/app?ref=omran‎) ودعوة غيره يحوّلان مباشرة كما كانا', () => {
+  for (const search of ['?ref=omran', '', '?ref=ali', '?ref=omran&poster=0', '?ref=omran&xposter=1', '?ref=omran&poster=11']) {
+    const r = runHub({ ua: DEV.iphone[0], touch: 5, search });
+    assert.equal(r.replaced, DEV.iphone[2], 'تحويل مباشر: ' + search);
+    assert.ok(!r.poster || r.poster.hidden, 'لا بوستر: ' + search);
+  }
+  // الباركود في «حسابي» وبوت التسويق بلا poster
+  assert.ok(!/poster=/.test(read('js/partials-settings.js')) && !/poster=/.test(read('scripts/social-bot.mjs')));
 });
 
 function jpegSize(buf) {
@@ -174,6 +217,7 @@ function serve(withRedirect) {
       if (u.pathname === '/') { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<!doctype html>'); return; }
       if (u.pathname === '/app') { res.writeHead(200, { 'content-type': 'text/html' }); res.end(read('download.html')); return; }
       if (u.pathname === '/icons/om-ai-poster.jpg') { res.writeHead(200, { 'content-type': 'image/jpeg' }); res.end(fs.readFileSync(path.join(ROOT, 'icons/om-ai-poster.jpg'))); return; }
+      if (u.pathname === '/icons/om-ai-poster.webp') { res.writeHead(200, { 'content-type': 'image/webp' }); res.end(fs.readFileSync(path.join(ROOT, 'icons/om-ai-poster.webp'))); return; }
       res.writeHead(404); res.end('');
     });
     srv.listen(0, '127.0.0.1', () => resolve(srv));
@@ -192,13 +236,14 @@ function smokeSection(base) {
   });
 }
 
-test('٥. الدخان بعد كلّ نشر يثبته على الموقع نفسه: التحويل، ولا حلقة، ودعوة غيره، والمعاينة', async () => {
+test('٥. الدخان بعد كلّ نشر يثبته على الموقع نفسه: التحويل، ولا حلقة، ودعوة غيره، والبوستر في الصفحة، والمعاينة', async () => {
   const good = await serve(true);
   const ok = await smokeSection('http://127.0.0.1:' + good.address().port);
   good.close();
-  assert.equal(ok.length, 4, ok.join(' | '));
+  assert.equal(ok.length, 5, ok.join(' | '));
   assert.ok(ok.every((l) => l.startsWith('✓')), ok.join(' | '));
-  assert.match(ok[0], /\/\?ref=omran → 307 \/app\?ref=omran/);
+  assert.match(ok[0], /\/\?ref=omran → 307 \/app\?ref=omran&poster=1/);
+  assert.match(ok[3], /البوستر في الصفحة.*\/icons\/om-ai-poster\.webp → 200 image\/webp/);
   const bad = await serve(false);
   const no = await smokeSection('http://127.0.0.1:' + bad.address().port);
   bad.close();
