@@ -412,21 +412,38 @@ export function createPlay(o) {
     terrain.flush();
     if (o.onFrame) o.onFrame(st, dt);
   }
-  // dynamic resolution: keep the frame time in budget on whatever device this runs on
-  const res = { base: 1, pr: 1, cap: 1, acc: 0, n: 0, hold: 0, good: 0, min: 0.5 };
+  // Picture sharpness against speed. The resolution may drop when the device cannot keep up, but a blurry
+  // picture is worse than a slightly slower one, so by default it only drops when the game falls under about
+  // 25 frames a second, and never below three quarters. The player can choose otherwise on the start panel:
+  //   sharp     always full resolution
+  //   balanced  the default described above
+  //   fast      drops sooner (under ~38 fps) and as low as half
+  const QUALITY = { sharp: { min: 1, slow: Infinity }, balanced: { min: 0.75, slow: 40 }, fast: { min: 0.5, slow: 26 } };
+  const res = { base: 1, pr: 1, cap: 1, acc: 0, n: 0, hold: 0, good: 0, min: 0.75, slow: 40, mode: 'balanced' };
+  try { const m = window.localStorage.getItem('bw-quality'); if (QUALITY[m]) res.mode = m; } catch (e) { /* storage may be closed to this page */ }
+  function setQuality(mode) {
+    if (!QUALITY[mode]) return;
+    res.mode = mode; res.min = QUALITY[mode].min; res.slow = QUALITY[mode].slow;
+    try { window.localStorage.setItem('bw-quality', mode); } catch (e) { /* not kept, that is all */ }
+    res.pr = res.cap = res.base; res.acc = 0; res.n = 0; res.good = 0;       // start again from full resolution
+    if (st.running && o.setPixelRatio) o.setPixelRatio(res.pr);
+  }
+  window.__GAME_QUALITY = { get mode() { return res.mode; }, set: setQuality, get scale() { return res.base ? res.pr / res.base : 1; } };
   function initRes() {
     res.base = Math.min(window.devicePixelRatio || 1, o.maxPixelRatio ?? 2);
+    res.min = QUALITY[res.mode].min; res.slow = QUALITY[res.mode].slow;
     res.pr = res.cap = res.base;
     if (o.setPixelRatio) o.setPixelRatio(res.pr);
   }
   function tuneRes(ms) {
-    if (!o.setPixelRatio) return;
+    if (!o.setPixelRatio || res.slow === Infinity) return;
     res.acc += ms; res.n++;
     if (res.n < 40 && !(res.n >= 3 && res.acc > 2500)) return;       // judge 40 frames, or 2.5 s on a very slow device
     const avg = res.acc / res.n; res.acc = 0; res.n = 0;
     if (res.hold > 0) { res.hold--; return; }
+    const floor = res.base * res.min;
     let pr = res.pr;
-    if (avg > 26 && pr > res.min) { res.cap = pr * 0.94; pr = Math.max(res.min, pr * (avg > 60 ? 0.7 : 0.85)); res.good = 0; }
+    if (avg > res.slow && pr > floor) { res.cap = pr * 0.94; pr = Math.max(floor, pr * (avg > res.slow * 2.2 ? 0.75 : 0.88)); res.good = 0; }
     else if (avg < 19) {
       if (++res.good % 15 === 0) res.cap = Math.min(res.base, res.cap * 1.1);      // after a long smooth stretch, try a little more
       const top = Math.min(res.base, res.cap);
@@ -541,7 +558,7 @@ const PANEL_CSS = `
 #playPanel li { display: flex; gap: 8px; align-items: baseline; }
 #playPanel li b { flex: none; min-width: 74px; font-weight: 700; color: var(--pp-accent, #fff); }
 #playPanel button { font: inherit; font-size: 17px; font-weight: 700; color: #0b0f14; background: var(--pp-accent, #fff); border: 0; border-radius: 10px; padding: 11px 44px; min-height: 46px; cursor: pointer; }
-#playPanel .menu { display: block; margin: 10px auto 0; padding: 6px 18px; min-height: 0; font-size: 13.5px; font-weight: 500; color: inherit; background: none; border: 1px solid var(--pp-line, rgba(255, 255, 255, .3)); opacity: .85; }
+#playPanel .menu { display: inline-block; margin: 10px 4px 0; padding: 6px 18px; min-height: 0; font-size: 13.5px; font-weight: 500; color: inherit; background: none; border: 1px solid var(--pp-line, rgba(255, 255, 255, .3)); opacity: .85; }
 #playPanel .note { margin: 12px 0 0; font-size: 12px; opacity: .6; }
 #playPanel .gpu { margin: 6px 0 0; font: 400 10.5px/1.4 system-ui, sans-serif; opacity: .38; direction: ltr; word-break: break-word; }
 #playRotate { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; direction: rtl; text-align: center; padding: 24px;
@@ -584,6 +601,12 @@ export function createPlayPanel(o) {
   const sndText = () => { const s = window.__GAME_SOUND; snd.hidden = !s; snd.textContent = s && s.muted ? 'الصوت: مطفي' : 'الصوت: شغّال'; };
   snd.addEventListener('click', () => { const s = window.__GAME_SOUND; if (s) { s.setMuted(!s.muted); if (!s.muted) { s.start(); s.ui(); } } sndText(); });
   box.appendChild(snd);
+  const qual = document.createElement('button');
+  qual.type = 'button'; qual.className = 'menu';
+  const QN = { sharp: 'الصورة: واضحة دايم', balanced: 'الصورة: متوازنة', fast: 'الصورة: أسرع (تغبّش أكثر)' }, QO = ['balanced', 'sharp', 'fast'];
+  const qualText = () => { const q = window.__GAME_QUALITY; qual.hidden = !q; if (q) qual.textContent = QN[q.mode]; };
+  qual.addEventListener('click', () => { const q = window.__GAME_QUALITY; if (q) q.set(QO[(QO.indexOf(q.mode) + 1) % QO.length]); qualText(); });
+  box.appendChild(qual);
   box.appendChild(note);
   const gpuEl = document.createElement('div'); gpuEl.className = 'gpu';
   box.appendChild(gpuEl);
@@ -595,7 +618,7 @@ export function createPlayPanel(o) {
   b.addEventListener('click', () => { el.hidden = true; o.onStart(); });
   return {
     el,
-    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; sndText(); el.hidden = false; },
+    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; sndText(); qualText(); el.hidden = false; },
     hide() { el.hidden = true; },
   };
 }

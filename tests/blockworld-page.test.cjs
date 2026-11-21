@@ -217,3 +217,14 @@ test('v-blockworld-held: اليد تمسك ما في المربّع المختا
   assert.match(read('shared/sound.js'), /createDynamicsCompressor/);
 });
 
+test('v-blockworld-sharp: الصورة لا تُغبَّش للسرعة إلّا بحدّ، واللاعب يختار', () => {
+  const play = read('shared/play.js');
+  const q = /const QUALITY = \{ sharp: \{ min: ([\d.]+), slow: Infinity \}, balanced: \{ min: ([\d.]+), slow: (\d+) \}, fast: \{ min: ([\d.]+), slow: (\d+) \} \};/.exec(play);
+  assert.ok(q, 'جدول الجودة');
+  assert.equal(+q[1], 1, 'الواضحة: دقّة كاملة دائمًا');
+  assert.ok(+q[2] >= 0.75, 'المتوازنة لا تنزل تحت ثلاثة أرباع');
+  assert.ok(+q[3] >= 40, 'المتوازنة تنزل تحت ٢٥ إطارًا في الثانية فقط');
+  assert.match(play, /mode: 'balanced'/, 'الافتراضيّ متوازن');
+  assert.match(play, /const floor = res\.base \* res\.min;/, 'الحدّ نسبة من دقّة الشاشة لا رقمًا مطلقًا');
+});
+
