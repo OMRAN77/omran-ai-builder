@@ -12,6 +12,8 @@ import { createBag } from '../../shared/bag.js';
 import { createHeld } from '../../shared/held.js';
 import { createVitals, bars } from '../../shared/vitals.js';
 import { createLife } from '../../shared/life.js';
+import { createWeather } from '../../shared/weather.js';
+import { createStatus } from '../../shared/status.js';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
 import { B, BLOCKS } from './blocks.js';
 import { tileMaterial, setGlow, tileSpan } from './tiles.js';
@@ -329,6 +331,17 @@ const MOODS = {
     glow: { flora: 1.0, moss: 1.0, ore: 1.0, lake: 1.0, tech: 1.0, hostile: 1.0, visor: 1.0 }, ridge: '#2a2244',
     fx: { halo: 0.5, beam: 0.05, spores: 0.6, lamps: 1.25, floodLight: 0, mist: 0.35, glowAir: 1 },
   },
+  day: {
+    sky: { zenith: '#155a78', mid: '#3f93ad', horizon: '#b5ddd2', glow: '#fff1c2', below: '#16242c', cloud: '#d6ecec' },
+    stars: 0.06, glowAmt: 0.8, planetGain: 0.5, cloud: 0.6,
+    sunDirSky: dirFrom(44, 30), planet: dirFrom(10, 10.8), planetR: 0.098, moon: dirFrom(52, 15), moonR: 0.014,
+    fog: '#86bcc0', fogNear: 60, fogFar: 340,
+    hemiSky: '#bfe2f2', hemiGround: '#4a6a5c', hemi: 2.5,
+    sun: '#fff2d8', sunI: 3.1, sunDir: dirFrom(44, 40),
+    env: 1.15, exposure: 1.0, bloom: [0.32, 0.5, 1.0], vig: 0.3, sat: 1.02,
+    glow: { flora: 0.7, moss: 0.8, ore: 0.8, lake: 0.8, tech: 1.0, hostile: 0.9, visor: 1.0 }, ridge: '#3f6274',
+    fx: { halo: 0.25, beam: 0.0, spores: 0.3, lamps: 0.5, floodLight: 0, mist: 0.3, glowAir: 1 },
+  },
   night: {
     sky: { zenith: '#030711', mid: '#0b1736', horizon: '#1a3a52', glow: '#1f6a70', below: '#04070c', cloud: '#101c30' },
     stars: 1.3, glowAmt: 0.5, planetGain: 0.42, cloud: 0.3,
@@ -513,7 +526,7 @@ async function startGame() {
   const isCrystal = (id) => id === B.CRYSTAL_C || id === B.CRYSTAL_V;
   let aimed = null, hintTimer = 0;
 
-  let life = null;
+  let life = null, weather = null, status = null;
   let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
     camera, canvas: stage.canvas, world, blocks: BLOCKS, terrain,
@@ -531,6 +544,7 @@ async function startGame() {
       heldBlock.show(block); toolInHand = !block; fp.visible = toolInHand;
     },
     onBag() { bag.toggle(); },
+    onMenu() { if (weather) weather.toggle(); },
     onUse: (item) => (life ? life.use(item) : false),
     onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
@@ -541,6 +555,8 @@ async function startGame() {
       kit.update(p, dt, st.time);
       if (vitals) vitals.update(dt);
       if (life) life.update(dt);
+      if (weather) weather.update(dt);
+      if (status) status.update();
       // the mining beam, from the emitter to the point where the view ray meets the block
       if (d.on && st.hit && toolInHand) {
         const h = st.hit, a = fp.localToWorld(v1.set(0, 0, -0.262));
@@ -571,6 +587,7 @@ async function startGame() {
     groups: [{ title: 'عدّة كوكب', items: SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })) }, ...KIT_GROUPS],
     iconOf: (it) => (it.kit ? kitIcon(it.id) : hud.icon(it.icon)),
     fontFamily: "'Plex Arabic', sans-serif", accent: '#7df1ff', line: 'rgba(125, 241, 255, .4)',
+    extra: { label: 'الوقت والجو', onClick: () => weather && weather.open() },
   });
   hud.els.bag.addEventListener('pointerdown', (e) => { if (play.state.running) { bag.toggle(); e.preventDefault(); } });
   hud.setSlots(slots, 0);
@@ -581,7 +598,7 @@ async function startGame() {
   const panel = createPlayPanel({
     title: 'كوكب', tagline: 'احفر، اجمع البلّور، وابنِ قاعدتك على كوكب غريب.',
     fontFamily: "'Plex Arabic', sans-serif", accent: '#7df1ff', line: 'rgba(125, 241, 255, .4)', touch: hud.touch,
-    note: 'نسخة تجريبية: الحيوانات والوحوش تتحرك الحين، والصيد يعطي لحم. الوقت ثابت، والتقدّم ما ينحفظ.',
+    note: 'نسخة تجريبية: الوقت والمطر والوحوش تختارها من لوحة Q (وعلى الجوال من زر داخل الحقيبة). التقدّم ما ينحفظ.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   panel.show('start');
@@ -606,8 +623,30 @@ async function startGame() {
       { key: 'stinger', name: 'الطيف', kind: 'monster', make: () => bake(makeWraith()), hp: 10, speed: 2.3, radius: 0.8, height: 2.0, max: 1, dmg: 7, fly: 1.6 },
     ],
   });
+  // hearts, food, armour and experience over the hotbar; the old health bar gives way to the hearts
+  status = createStatus({ play, mount: document.querySelector('#hud .bar-wrap'), vitals: () => vitals, life: () => life, accent: '#7df1ff', hide: [vq('hp')] });
+  // the world panel (Q): morning, sunset or night, clear or rain
+  const MOOD_OF = { morning: 'day', sunset: 'dusk', night: 'night' }, CLOCK = { morning: ['07:10', 'الصبح'], sunset: ['19:42', 'الغسق'], night: ['23:30', 'الليل'] };
+  weather = createWeather({
+    play, scene, camera, time: 'sunset', fontFamily: "'Plex Arabic', sans-serif", accent: '#7df1ff', line: 'rgba(125, 241, 255, .4)',
+    apply(time, rain) {
+      setMood(MOOD_OF[time]);
+      if (rain) {
+        sun.intensity *= 0.45; hemi.intensity *= 0.8; scene.fog.near *= 0.45; scene.fog.far *= 0.5;
+        sky.uniforms.uCloud.value = Math.min(1, mood.cloud + 0.4); sky.uniforms.uStars.value *= 0.25;
+        for (const k of ['uZenith', 'uMid', 'uHorizon', 'uGlow', 'uCloudCol']) sky.uniforms[k].value.multiplyScalar(0.62);   // a heavy sky
+        scene.fog.color.multiplyScalar(0.6); renderer.toneMappingExposure = mood.exposure * 0.88;
+        spores.material.uniforms.uFog.value.set(scene.fog.near, scene.fog.far * 0.8);
+        water.userData.setFog('#' + scene.fog.color.getHexString(), scene.fog.near, scene.fog.far);
+      }
+      aimed = null;                                  // the sun moved: aim the shadow map again on the next frame
+      const c = CLOCK[time];
+      document.querySelector('#hud .clock .big').textContent = c[0];
+      document.querySelector('#hud .clock .ct .lbl').firstChild.textContent = (rain ? 'مطر · ' : '') + c[1] + ' · اليوم ';
+    },
+  });
   window.__play = play;
-  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera, vitals, life };
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera, vitals, life, weather, status };
 }
 
 installShotApi(stage);

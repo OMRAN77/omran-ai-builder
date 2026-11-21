@@ -9,7 +9,7 @@
 const LEVEL = 1.7;
 
 export function createSound() {
-  let ctx = null, master = null, noiseBuf = null, bed = null, muted = false;
+  let ctx = null, master = null, noiseBuf = null, bed = null, muted = false, rainG = null, raining = false;
   const stats = { played: 0 };
   try { muted = window.localStorage.getItem('bw-mute') === '1'; } catch (e) { /* storage may be closed to this page */ }
 
@@ -61,6 +61,21 @@ export function createSound() {
     src.start(); lfo.start();
     bed = { g };
   }
+  /** Rain: a steady hiss that fades in and out. */
+  function setRain(on) {
+    raining = !!on;
+    if (!ctx) return;                                // not allowed to play yet: start() picks it up
+    if (!rainG) {
+      if (!raining) return;
+      const src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter();
+      rainG = ctx.createGain(); rainG.gain.value = 0.0001;
+      src.buffer = noiseBuf; src.loop = true; src.playbackRate.value = 1.3;
+      hp.type = 'highpass'; hp.frequency.value = 1100; lp.type = 'lowpass'; lp.frequency.value = 6500;
+      src.connect(hp); hp.connect(lp); lp.connect(rainG); rainG.connect(master);
+      src.start();
+    }
+    rainG.gain.setTargetAtTime(raining ? 0.085 : 0.0001, ctx.currentTime, 0.6);
+  }
   const r = (a, b) => a + Math.random() * (b - a);
   return {
     stats,
@@ -68,7 +83,9 @@ export function createSound() {
     /** 'running' once the browser lets the page play; 'none' before the first sound. */
     get state() { return ctx ? ctx.state : 'none'; },
     get bed() { return !!bed; },
-    start() { if (ensure()) startBed(); },
+    start() { if (ensure()) { startBed(); if (raining) setRain(true); } },
+    rain: setRain,
+    get raining() { return raining; },
     setMuted(v) {
       muted = !!v;
       try { window.localStorage.setItem('bw-mute', muted ? '1' : '0'); } catch (e) { /* not kept, that is all */ }
@@ -87,6 +104,8 @@ export function createSound() {
     fly(on) { noise(0.38, { f: on ? 300 : 1100, f2: on ? 1300 : 260, q: 1.6, gain: 0.14 }); },
     hurt() { tone(0.16, { type: 'sawtooth', f: 190, f2: 90, gain: 0.2 }); noise(0.1, { type: 'lowpass', f: 600, f2: 150, gain: 0.22 }); },
     ui() { tone(0.05, { f: 720, f2: 860, gain: 0.08 }); },
+    level() { tone(0.12, { type: 'triangle', f: 520, f2: 540, gain: 0.14 }); tone(0.14, { type: 'triangle', f: 660, f2: 680, gain: 0.14, when: 0.11 }); tone(0.22, { type: 'triangle', f: 880, f2: 900, gain: 0.15, when: 0.22 }); },
+    eat() { noise(0.07, { type: 'lowpass', f: 900, f2: 300, gain: 0.2 }); noise(0.07, { type: 'lowpass', f: 800, f2: 280, gain: 0.2, when: 0.16 }); noise(0.08, { type: 'lowpass', f: 700, f2: 240, gain: 0.2, when: 0.32 }); },
     pick() { tone(0.045, { type: 'triangle', f: 540, f2: 500, gain: 0.07 }); },
   };
 }

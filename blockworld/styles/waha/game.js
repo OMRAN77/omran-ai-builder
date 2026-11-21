@@ -8,6 +8,9 @@ import { createBag } from '../../shared/bag.js';
 import { createHeld } from '../../shared/held.js';
 import { createVitals, bars } from '../../shared/vitals.js';
 import { createLife } from '../../shared/life.js';
+import { createWeather } from '../../shared/weather.js';
+import { createStatus } from '../../shared/status.js';
+import { ATM } from './atmo.js';
 import { buildOryx, buildWraith, buildScorpion } from './actors.js';
 import { B, BLOCKS, X0, X1, Z0, Z1, SX, SY, SZ, colIndex, cornerIndex } from './world.js';
 import { SLOTS } from './hud.js';
@@ -34,7 +37,7 @@ const EYE = 1.62;
 const ease = (t) => t * t * (3 - 2 * t);
 
 export async function startGame(ctx) {
-  const { GID, stage, W, terrain, hud, held, targetBox, actors, place, aimShadow, rig, lanterns, lightLantern, merlons, beams, flag, campProps } = ctx;
+  const { GID, stage, W, terrain, hud, held, targetBox, actors, place, aimShadow, setTime, rig, lanterns, lightLantern, merlons, beams, flag, campProps } = ctx;
   const { scene, camera, renderer } = stage, { world } = W, A = W.anchors;
   const OBSTACLE = GID.OBSTACLE, LANTERN = GID.LANTERN;
   // Two blocks exist only while playing; the mesher draws neither.
@@ -309,7 +312,7 @@ export async function startGame(ctx) {
   const sun0 = rig.sun.target.position;              // where the play shot centred the shadow map
   let swing = 0, push = 0, stride = 0, sway = 0, hintT = 0, shadowAt = { x: sun0.x, y: sun0.y, z: sun0.z };
 
-  let life = null;
+  let life = null, weather = null, status = null;
   let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
     camera: eyes, canvas: stage.canvas, world: pworld, blocks: BLOCKS, terrain: pterrain,
@@ -366,6 +369,7 @@ export async function startGame(ctx) {
       arm.visible = !heldBlock.show(block);
     },
     onBag() { bag.toggle(); },
+    onMenu() { if (weather) weather.toggle(); },
     onUse: (item) => (life ? life.use(item) : false),
     onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
@@ -379,6 +383,8 @@ export async function startGame(ctx) {
       kit.update(p, dt, st.time);
       if (vitals) vitals.update(dt);
       if (life) life.update(dt);
+      if (weather) weather.update(dt);
+      if (status) status.update();
       hud.setHeading(((Math.round(-st.yaw * 360 / Math.PI) / 2) % 360 + 360) % 360);
       // the mattock: raised, brought down on the block, and back, for as long as the dig is held; a short
       // dip when a block goes down. `a` turns the forearm about the elbow: + up and back, - forward and down.
@@ -452,15 +458,16 @@ export async function startGame(ctx) {
     groups: [{ title: 'عدّة الواحة', items: ownItems() }, ...KIT_GROUPS],
     iconOf: hud.icon,
     fontFamily: BODY, accent: '#efd9a0', line: 'rgba(201, 163, 90, .85)',
+    extra: { label: 'الوقت والجو', onClick: () => weather && weather.open() },
   });
-  for (const el of bag.el.querySelectorAll('h2, h3, .x')) el.style.fontFamily = KUFI;
+  for (const el of bag.el.querySelectorAll('h2, h3, .x, .extra')) el.style.fontFamily = KUFI;
   // a tap, not a press: the finger is up again before the bag is under it, so the same touch cannot pick an item
   hud.els.bag.addEventListener('click', () => { if (play.state.running) bag.toggle(); });
 
   const panel = createPlayPanel({
     title: 'واحة', tagline: 'احفر الرمل، ابنِ بالطوب، وعمّر حصنك عند الواحة.',
     fontFamily: BODY, accent: '#efd9a0', line: 'rgba(201, 163, 90, .85)', touch: hud.touch,
-    note: 'نسخة تجريبية: الحيوانات والوحوش تتحرك الحين، والصيد يعطي لحم. الوقت ثابت، والتقدّم ما ينحفظ.',
+    note: 'نسخة تجريبية: الوقت والمطر والوحوش تختارها من لوحة Q (وعلى الجوال من زر داخل الحقيبة). التقدّم ما ينحفظ.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   for (const el of panel.el.querySelectorAll('h1, button')) el.style.fontFamily = KUFI;      // headings in the HUD's kufi
@@ -472,7 +479,7 @@ export async function startGame(ctx) {
   const write = { hp: bars.segments([...vq('hp').querySelectorAll('.v-bar i')], vq('hp .v-num')), wt: bars.segments([...vq('wt').querySelectorAll('.v-bar i')], vq('wt .v-num')) };
   vitals = createVitals({
     play, kit, world: pworld, hp: 82,
-    needs: [{ key: 'wt', start: 57, drain: 0.28, run: 1.9, how: 'water', gain: 14, low: 'عطشت. انزل بركة الواحة أو أي ماي واشرب.' }],
+    needs: [{ key: 'wt', start: 57, drain: 0.28, run: 1.9, how: 'water', gain: 14, rain: 3, nightDrain: 0.5, low: 'عطشت. انزل بركة الواحة أو أي ماي واشرب.' }],
     render(v) { write.hp(v.hp); write.wt(v.wt); },
   });
   // creatures: oryx graze and can be hunted; sand wraiths and rock scorpions come for the player
@@ -484,5 +491,28 @@ export async function startGame(ctx) {
       { key: 'scorpion', name: 'عقرب الصخر', kind: 'monster', make: () => buildScorpion(), hp: 18, speed: 2.2, radius: 1.1, height: 1.0, max: 1, dmg: 10 },
     ],
   });
-  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, origin: [OX, OZ], bag, kit, camera: stage.camera, vitals, life };
+  // hearts, food, armour and experience over the belt; the old health row gives way to the hearts
+  status = createStatus({ play, mount: document.querySelector('#hud .belt-wrap'), vitals: () => vitals, life: () => life, accent: '#efd9a0', hide: [vq('hp')] });
+  // the world panel (Q): the hour of the day, clear or rain. In rain the water skin fills by itself; the night is cooler
+  const TIME_OF = { morning: ['afternoon', { sunAz: 124, sunEl: 24, sunColor: '#ffe9cc' }], noon: ['afternoon', { sunAz: -141, sunEl: 31 }], sunset: ['golden', {}], night: ['night', {}] };
+  const CLOCK = { morning: 'الصبح · 7:30', noon: 'العصر · 4:40', sunset: 'المغرب · 6:20', night: 'الليل · 11:00' };
+  weather = createWeather({
+    play, scene: stage.scene, camera: stage.camera, time: 'noon', times: [['morning', 'الصبح'], ['noon', 'العصر'], ['sunset', 'المغرب'], ['night', 'الليل']],
+    fontFamily: BODY, accent: '#efd9a0', line: 'rgba(201, 163, 90, .85)',
+    apply(time, rain) {
+      const [name, over] = TIME_OF[time];
+      setTime(name, over);
+      if (rain) {
+        rig.sun.intensity *= 0.4; rig.hemi.intensity *= 0.85;
+        ATM.uFog.value.x *= 2.6; ATM.uCloud.value.x = 0.95; ATM.uSunDisc.value.z = 0;
+        ATM.uSkyGain.value *= 0.6;                     // a grey lid over the desert
+        rig.post.final.uniforms.uExposure.value *= 0.86;
+      }
+      aimShadow(shadowAt.x, shadowAt.y, shadowAt.z, 60, 300);
+      redrawShadows();
+      document.querySelector('#hud .day .d-txt span').textContent = (rain ? 'مطر · ' : '') + CLOCK[time];
+    },
+  });
+  weather.el.querySelector('h2').style.fontFamily = KUFI;
+  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, origin: [OX, OZ], bag, kit, camera: stage.camera, vitals, life, weather, status };
 }

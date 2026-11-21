@@ -13,12 +13,18 @@
 //      'water' rises while standing in water
 //      'home'  rises within `range` of the point `home`
 //      'rest'  rises whenever it is not being used (`use(state)` returns the drain per second)
+//      'eat'   never rises on its own (food: the creatures module adds to it when the player eats)
+// rain: gain per second while it rains; rainDrain / nightDrain: the drain is multiplied by these in rain / at night.
 // hurts: false marks a need that does not cost health at zero (power).
 
 import { K } from './kit.js';
 
 export function createVitals(o) {
   const { play, kit, world } = o, st = play.state;
+  // food is the same in every world: it runs down with time (faster running), and only eating brings it back.
+  // While it is low, health does not come back; at zero it costs health like any other need.
+  if (o.food !== false) o.needs.push({ key: 'food', start: o.food ?? 80, drain: 0.14, run: 2.2, how: 'eat', respawn: 60, low: 'جعت. صيد حيوان وكل لحمه (اختر اللحم واضغط زر البناء).' });
+  const sky = () => window.__GAME_SKY || {};
   const v = { hp: o.hp ?? 100 };
   for (const n of o.needs) v[n.key] = n.start ?? 100;
   const spawn = { x: st.pos.x, y: st.pos.y, z: st.pos.z, yaw: st.yaw, pitch: st.pitch };
@@ -70,10 +76,12 @@ export function createVitals(o) {
     // standing in fire
     if (cellAt(p.x, p.y + 0.3, p.z) === K.FIRE) hurt(14 * dt);
     let starving = false, comfy = true;
+    const w = sky();
     for (const n of o.needs) {
       let d;
       if (n.how === 'rest') { const use = n.use ? n.use(st) : 0; d = use > 0 ? -use : n.gain; }
-      else d = rising(n) ? n.gain : -(n.drain * (st.inWater && n.wet ? n.wet : 1) * (play.input.sprint && n.run ? n.run : 1));
+      else d = rising(n) ? n.gain : -(n.drain * (st.inWater && n.wet ? n.wet : 1) * (play.input.sprint && n.run ? n.run : 1) * (w.rain && n.rainDrain ? n.rainDrain : 1) * (w.night && n.nightDrain ? n.nightDrain : 1));
+      if (w.rain && n.rain && !st.flying) d = Math.max(d, n.rain);        // rain fills what it fills (water in the desert)
       v[n.key] = Math.max(0, Math.min(100, v[n.key] + d * dt));
       if (n.hurts !== false) { if (v[n.key] <= 0) starving = true; if (v[n.key] < 40) comfy = false; }
       if (v[n.key] < 20 && !warned[n.key]) { warned[n.key] = true; if (n.low) play.notice(n.low, false, 5000); } else if (v[n.key] > 35) warned[n.key] = false;

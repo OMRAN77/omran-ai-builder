@@ -264,3 +264,47 @@ test('v-blockworld-life: حيوانات تُصاد ووحوش تهاجم، بم�
   assert.ok(!/zombie|creeper|enderman|زومبي/i.test(life + kit), 'لا أسماء منقولة من لعبة أخرى');
 });
 
+test('v-blockworld-sky: لوحة Q تختار الوقت والمطر والوحوش، وكلّ عالم يضيء أوقاته بنفسه', () => {
+  const sky = read('shared/weather.js'), play = read('shared/play.js'), bag = read('shared/bag.js'), snd = read('shared/sound.js');
+  assert.match(play, /e\.code === 'KeyQ' && !e\.repeat && o\.onMenu/, 'Q يفتح اللوحة');
+  for (const t of ['الصبح', 'المغرب', 'الليل', 'صافي', 'مطر', 'موجودة', 'بدون']) assert.ok(sky.includes(t), t);
+  assert.match(sky, /window\.__GAME_SKY = state/, 'الصحّة والمخلوقات تقرآن الوقت والمطر');
+  assert.match(sky, /if \(v === open \|\| \(v && st\.modal\)\) return/, 'لوحة واحدة في المرّة');
+  assert.match(bag, /if \(v === open \|\| \(v && play\.state\.modal\)\) return/);
+  assert.match(bag, /class="extra"/, 'على الجوّال: زرّ داخل الحقيبة يفتح اللوحة');
+  assert.ok(!/class="x extra"/.test(bag), 'زرّ اللوحة ليس زرّ الإغلاق (كان يُغلق الحقيبة ويفتح اللوحة بدلها)');
+  // خطوط المطر: لا pow ولا normalize على متّجه قد يكون صفرًا (غير معرّف على العتاد الحقيقيّ)
+  const shader = sky.slice(sky.indexOf('vertexShader'), sky.indexOf('const mesh'));
+  assert.ok(!/\bpow\(|\bnormalize\(/.test(shader), 'ظلّل المطر بلا pow ولا normalize');
+  assert.match(shader, /max\(length\(side\), 0\.0001\)/);
+  assert.match(snd, /rain: setRain/);
+  for (const k of WORLDS) {
+    const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
+    assert.match(src, /weather = createWeather\(/, k);
+    assert.match(src, /onMenu\(\) \{ if \(weather\) weather\.toggle\(\); \}/, k);
+    assert.match(src, /if \(weather\) weather\.update\(dt\);/, k);
+    assert.match(src, /extra: \{ label: 'الوقت والجو'/, k);
+    assert.ok(!src.includes('الوقت ثابت'), k + ': الملاحظة القديمة أزيلت');
+  }
+  assert.match(read('styles/kawkab/main.js'), /\n  day: \{/, 'كوكب: نهار جديد');
+  assert.match(read('styles/waha/game.js'), /rain: 3, nightDrain: 0\.5/, 'واحة: المطر يملأ الماء والليل أبرد');
+  assert.match(read('styles/dhalam/main.js'), /rainDrain: 1\.8, nightDrain: 1\.4/, 'ظلام: المطر والليل أبرد');
+  assert.match(read('shared/life.js'), /k\.kind === 'monster' && night \? 2 : 1/, 'الليل: الوحوش ضعف العدد');
+});
+
+test('v-blockworld-status: قلوب وأكل ودرع وخبرة فوق المربّعات، والجوع يُشبعه اللحم', () => {
+  const st = read('shared/status.js'), vit = read('shared/vitals.js'), life = read('shared/life.js'), play = read('shared/play.js');
+  assert.match(st, /cell\(HEART\)\.repeat\(10\)/);
+  assert.match(st, /cell\(FOOD\)\.repeat\(10\)/);
+  assert.match(st, /Math\.ceil\(Math\.max\(0, Math\.min\(100, val\)\) \/ 5\)/, 'أنصاف: كلّ قلب عشر نقاط');
+  assert.match(vit, /key: 'food', start: o\.food \?\? 80, drain: 0\.14, run: 2\.2, how: 'eat'/);
+  assert.match(life, /v\.values\.food = Math\.min\(100, v\.values\.food \+ 40\)/, 'اللحم يُشبع');
+  assert.match(play, /st\.xp \+= 1;/, 'كسر مكعب = نقطة خبرة');
+  assert.match(life, /st\.xp = \(st\.xp \|\| 0\) \+ gain/, 'الصيد = خبرة');
+  for (const k of WORLDS) {
+    const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
+    assert.match(src, /status = createStatus\(\{[^\n]*hide: \[vq\('[a-z-]*(hp|health)'\)\]/, k + ': شريط الصحّة القديم يُخفى فلا يتكرّر');
+    assert.match(src, /if \(status\) status\.update\(\);/, k);
+  }
+});
+

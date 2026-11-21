@@ -69,7 +69,8 @@ export function createLife(o) {
     return e;
   }
   function trySpawn() {
-    const open = o.kinds.filter((k) => counts[k.key] < k.max && (k.kind !== 'monster' || monsters));
+    const night = !!(window.__GAME_SKY && window.__GAME_SKY.night);                 // the night belongs to the monsters: twice as many
+    const open = o.kinds.filter((k) => counts[k.key] < k.max * (k.kind === 'monster' && night ? 2 : 1) && (k.kind !== 'monster' || monsters));
     if (!open.length) return;
     const k = open[Math.floor(Math.random() * open.length)], a = Math.random() * 6.283, d = (k.kind === 'monster' ? 20 : 13) + Math.random() * 12;
     spawnAt(k.key, st.pos.x + Math.sin(a) * d, st.pos.z + Math.cos(a) * d);
@@ -84,16 +85,18 @@ export function createLife(o) {
     if (i < 0) for (let j = slots.length - 1; j >= 0; j--) if (j !== st.sel && !(slots[j] && slots[j].tool)) { i = j; break; }
     if (i < 0) i = slots.length - 1;
     play.setSlot(i, { id: MEAT, kit: true, name: 'لحم', n, use: 'eat' });
-    play.notice('حصلت لحم في المربع ' + (i + 1) + '. اختره واضغط زر البناء (الزر الأيمن) عشان تاكل.', false, 5000);
+    play.notice('حصلت لحم في المربع ' + (i + 1) + '. اختره واضغط زر البناء (الزر الأيمن) عشان تاكل وتشبع.', false, 5000);
   }
   /** The selected item was used (the place button on something that is not a block). */
   function use(item) {
     const v = o.vitals && o.vitals();
     if (item.use === 'eat') {
       if (!(item.n > 0) || !v) return false;
-      if (v.values.hp >= 100) { play.notice('صحتك كاملة.', false, 1600); return false; }
-      v.values.hp = Math.min(100, v.values.hp + 30); item.n--; play.setSlot(st.sel, item);
-      if (play.sound) play.sound.place();
+      const hungry = v.values.food != null && v.values.food < 95;
+      if (v.values.hp >= 100 && !hungry) { play.notice('شبعان وصحتك كاملة.', false, 1600); return false; }
+      if (v.values.food != null) v.values.food = Math.min(100, v.values.food + 40);
+      v.values.hp = Math.min(100, v.values.hp + (v.values.food != null ? 10 : 30)); item.n--; play.setSlot(st.sel, item);
+      if (play.sound) (play.sound.eat || play.sound.place)();
       return true;
     }
     if (item.use === 'wear') { armor = armor ? 0 : 0.45; play.notice(armor ? 'لبست درع الألماس: الضربات تأذيك أقل.' : 'شلت الدرع.', false, 2600); if (play.sound) play.sound.ui(); return true; }
@@ -120,7 +123,7 @@ export function createLife(o) {
     const dx = e.x - st.pos.x, dz = e.z - st.pos.z, l = Math.hypot(dx, dz) || 1, nx = e.x + dx / l * 0.7, nz = e.z + dz / l * 0.7;
     if (groundAt(nx, nz, e.y + 1) !== null) { e.x = nx; e.z = nz; }
     if (play.sound) { play.sound.dig(); if (e.hp <= 0) play.sound.brk(); }
-    if (e.hp <= 0) { e.dead = 0.0001; xp += e.k.kind === 'monster' ? 5 : 2; if (e.k.meat) giveMeat(e.k.meat); }
+    if (e.hp <= 0) { e.dead = 0.0001; { const gain = e.k.kind === 'monster' ? 5 : 2; xp += gain; st.xp = (st.xp || 0) + gain; } if (e.k.meat) giveMeat(e.k.meat); }
   }
   function update(dt) {
     if (dt <= 0 || st.modal) return;

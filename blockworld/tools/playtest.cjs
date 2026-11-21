@@ -376,7 +376,7 @@ function serve(root, prefix) {
         return { deaths: g.vitals.deaths - d0, hp: g.vitals.values.hp, back: Math.hypot(s.pos.x - g.vitals.spawn.x, s.pos.z - g.vitals.spawn.z) < 0.6 };
       }, need.key);
       check('at zero health the player returns to the start with health restored', death.deaths === 1 && death.hp > 90 && death.back, death);
-      check('the HUD shows the live numbers', await page.evaluate(() => { const hp = Math.round(window.__game.vitals.values.hp); return [...document.querySelectorAll('.num, .v-num')].some((el) => el.textContent.trim().replace('%', '') === String(hp)); }));
+      check('the HUD shows the live numbers', await page.evaluate(() => { const g = window.__game, k = g.vitals.needs[0].key, n = Math.round(g.vitals.values[k]); return [...document.querySelectorAll('.num, .v-num')].some((el) => el.offsetParent !== null && el.textContent.trim().replace('%', '') === String(n)); }));
     }
     // ---- creatures (worlds that have them): an animal wanders and can be hunted for meat that heals; a monster comes and hurts
     if (await page.evaluate(() => !!(window.__game && window.__game.life))) {
@@ -406,7 +406,7 @@ function serve(root, prefix) {
         const meat = s.slots.find((q) => q && q.id === 200);
         out.meat = meat ? meat.n - meat0 : 0;
         // eat: the place button on the meat square
-        if (meat) { p.select(s.slots.indexOf(meat)); v.hp = 40; const n0 = meat.n; p.placeNow(); out.ate = { hp: v.hp, used: n0 - meat.n }; }
+        if (meat) { p.select(s.slots.indexOf(meat)); v.hp = 40; if (v.food != null) v.food = 30; const n0 = meat.n; p.placeNow(); out.ate = { hp: v.hp, food: v.food ?? null, used: n0 - meat.n }; }
         // a monster comes and hurts
         keep(); v.hp = 100;
         const mk = life.kinds.find((k) => k.kind === 'monster');
@@ -424,11 +424,95 @@ function serve(root, prefix) {
       });
       check('an animal wanders on its own', !r.error && r.animalMoved >= 0.5, r);
       check('striking an animal kills it and gives meat', r.animalDead === true && r.meat > 0 && r.aimedFrames > 0, r);
-      check('eating the meat restores health', !!r.ate && r.ate.used === 1 && r.ate.hp > 60, r.ate);
+      check('eating the meat feeds and restores some health', !!r.ate && r.ate.used === 1 && r.ate.hp > 45 && (r.ate.food === null || r.ate.food >= 65), r.ate);
       check('a monster closes in and hurts the player', !!r.monster && r.monster.closest < r.monster.d0 - 2 && r.monster.hp < 100, r.monster);
       check('with monsters switched off none remain and nothing hurts', !!r.off && r.off.monsters === 0 && r.off.hp === 100, r.off);
       await page.evaluate(() => { const g = window.__game, p = g.play, s = p.state; const a = g.life.spawnAt(g.life.kinds[0].key, s.pos.x, s.pos.z - 3) || g.life.spawnAt(g.life.kinds[0].key, s.pos.x + 3, s.pos.z); const m = g.life.spawnAt(g.life.kinds.find((k) => k.kind === 'monster').key, s.pos.x + 2.5, s.pos.z - 4); const t = a || m; if (t) { s.yaw = Math.atan2(-(t.x - s.pos.x), -(t.z - s.pos.z)); s.pitch = -0.12; } for (const k of Object.keys(g.vitals.values)) g.vitals.values[k] = 90; p.advance(1 / 60); p.tick(1); });
       await shot('7-creatures');
+    }
+    // ---- hearts, food, armour and experience over the hotbar (worlds that have the strip)
+    if (await page.evaluate(() => !!(window.__game && window.__game.status))) {
+      const s1 = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, v = g.vitals.values;
+        window.__GAME_LIFE.setMonsters(false);
+        g.life.kinds.forEach((k) => { k.max0 = k.max; k.max = 0; });
+        for (let i = 0; i < 400 && g.life.ents.length; i++) { g.life.ents[0].hp = 0; g.life.ents[0].dead = 2; p.advance(1 / 60); }
+        p.setFlying(false); s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0);
+        for (const k of Object.keys(v)) v[k] = 80;
+        const count = (sel) => ({ full: document.querySelectorAll('#statusStrip ' + sel + ' .cell.full').length, half: document.querySelectorAll('#statusStrip ' + sel + ' .cell.half').length });
+        v.hp = 55; v.food = 30; p.tick(1);
+        const out = { hearts: count('.hearts'), food: count('.food'), strip: document.getElementById('statusStrip').getBoundingClientRect().width > 200 };
+        // food runs down by itself, and an empty stomach costs health
+        const f0 = v.food; for (let i = 0; i < 900; i++) { p.advance(1 / 60); for (const k of Object.keys(v)) if (k !== 'food' && k !== 'hp') v[k] = 80; }
+        out.drain = f0 - v.food;
+        v.food = 0; v.hp = 50; for (let i = 0; i < 120; i++) { p.advance(1 / 60); v.food = 0; for (const k of Object.keys(v)) if (k !== 'food' && k !== 'hp') v[k] = 80; }
+        out.starve = v.hp;
+        for (const k of Object.keys(v)) v[k] = 90;
+        // experience: a broken block is a point, ten points are the first level
+        s.xp = 9; p.tick(1); const l0 = document.querySelector('#statusStrip .lvl').textContent;
+        s.xp = 10; p.tick(1);
+        out.level = [l0, document.querySelector('#statusStrip .lvl').textContent, g.status.level];
+        // armour: wearing it shows on the strip
+        const arm0 = !document.querySelector('#statusStrip .armor').hidden;
+        g.life.use({ use: 'wear' }); p.tick(1);
+        out.armor = [arm0, !document.querySelector('#statusStrip .armor').hidden, g.life.armor];
+        g.life.use({ use: 'wear' }); p.tick(1);
+        return out;
+      });
+      check('ten hearts and ten portions show health and food by halves', s1.strip && s1.hearts.full === 5 && s1.hearts.half === 1 && s1.food.full === 3 && s1.food.half === 0, s1);
+      check('food runs down, and with none left health falls', s1.drain > 1.5 && s1.starve < 48, { drain: s1.drain, hp: s1.starve });
+      check('ten points of experience make level 1', s1.level[0] === '0' && s1.level[1] === '1' && s1.level[2] === 1, s1.level);
+      check('worn armour shows on the strip', s1.armor[0] === false && s1.armor[1] === true && s1.armor[2] > 0, s1.armor);
+      const xp = await page.evaluate(() => window.__play.state.xp);
+      check('breaking blocks and hunting earned experience', xp >= 10, { xp });
+    }
+    // ---- the world panel (worlds that have it): Q opens it; the time of day and the rain change the picture
+    if (await page.evaluate(() => !!(window.__game && window.__game.weather))) {
+      const tapOn = async (sel) => { const r = await (await page.$(sel)).boundingBox(); if (touch) await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2); else await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2); };
+      await page.evaluate(() => { const g = window.__game, p = g.play, s = p.state; p.setFlying(false); s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); s.yaw = g.vitals.spawn.yaw; s.pitch = 0.12; for (const k of Object.keys(g.vitals.values)) g.vitals.values[k] = 90; p.tick(30); });
+      if (touch) { const b = await (await page.$('[data-act="bag"]')).boundingBox(); await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2); await page.waitForTimeout(450); await tapOn('#bag .extra'); } else await page.keyboard.press('KeyQ');
+      await page.waitForTimeout(450);
+      const open = await page.evaluate(() => ({ visible: !document.getElementById('skyPanel').hidden, modal: window.__play.state.modal, bag: !document.getElementById('bag').hidden, times: [...document.querySelectorAll('#skyPanel [data-time]')].map((b) => b.dataset.time), on: (document.querySelector('#skyPanel [data-time].on') || {}).textContent }));
+      check('the world panel opens (Q, or the button in the bag) and the game stops taking input', open.visible && open.modal && !open.bag && open.times.length >= 3, open);
+      // mean brightness of the drawn picture, read back right after a draw
+      const lum = () => page.evaluate(() => {
+        const p = window.__play; p.tick(2);
+        const src = document.querySelector('canvas'), c = document.createElement('canvas'); c.width = 64; c.height = 36;
+        const x = c.getContext('2d'); x.drawImage(src, 0, 0, 64, 36);
+        const d = x.getImageData(0, 0, 64, 20).data; let s = 0;                  // the upper part: sky and far ground, clear of the hand
+        for (let i = 0; i < d.length; i += 4) s += d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+        return s / (d.length / 4);
+      });
+      const seen = {};
+      for (const t of open.times) {
+        await tapOn('#skyPanel [data-time="' + t + '"]');
+        await page.waitForTimeout(60);
+        seen[t] = { lum: await lum(), state: await page.evaluate(() => window.__GAME_SKY.time) };
+        await page.evaluate(() => { document.getElementById('skyPanel').style.visibility = 'hidden'; window.__play.tick(1); });
+        await shot('8-' + t);
+        await page.evaluate(() => { document.getElementById('skyPanel').style.visibility = ''; });
+      }
+      const day = open.times.find((t) => t !== 'night' && t !== 'sunset');
+      check('each time of day is applied, and the night is darker than the day', open.times.every((t) => seen[t].state === t && Number.isFinite(seen[t].lum) && seen[t].lum > 1) && seen.night.lum < seen[day].lum * 0.8, seen);
+      await tapOn('#skyPanel [data-time="' + day + '"]');
+      await tapOn('#skyPanel [data-rain="1"]');
+      await page.waitForTimeout(60);
+      const rain = await page.evaluate(() => { const g = window.__game, p = g.play; for (let i = 0; i < 240; i++) g.weather.update(1 / 60); p.tick(2); return { state: window.__GAME_SKY.rain, visible: g.weather.rain.visible, amt: g.weather.rain.material.uniforms.uAmt.value, sound: window.__GAME_SOUND ? window.__GAME_SOUND.raining : null }; });
+      const rainLum = await lum();
+      check('rain falls, sounds, and dims the day', rain.state === true && rain.visible && rain.amt > 0.9 && rain.sound !== false && rainLum < seen[day].lum, { rain, rainLum, day: seen[day].lum });
+      await page.evaluate(() => { document.getElementById('skyPanel').style.visibility = 'hidden'; window.__play.tick(1); });
+      await shot('8-rain');
+      await page.evaluate(() => { document.getElementById('skyPanel').style.visibility = ''; });
+      await tapOn('#skyPanel [data-mon="0"]');
+      const monOff = await page.evaluate(() => window.__GAME_LIFE.monsters);
+      await tapOn('#skyPanel [data-mon="1"]');
+      check('the panel switches the monsters off and on', monOff === false && (await page.evaluate(() => window.__GAME_LIFE.monsters)) === true, { monOff });
+      await page.evaluate(() => window.__play.tick(1));
+      await shot('9-panel');
+      await tapOn('#skyPanel [data-rain="0"]');
+      await tapOn('#skyPanel .x');
+      await page.waitForTimeout(120);
+      check('closing the panel gives the controls back', await page.evaluate(() => document.getElementById('skyPanel').hidden && !window.__play.state.modal));
     }
     const snd = await page.evaluate(() => { const s = window.__GAME_SOUND; return s ? { played: s.stats.played, muted: s.muted } : null; });
     check('sounds were played for digging, placing and walking', !!snd && snd.played >= 6, snd);

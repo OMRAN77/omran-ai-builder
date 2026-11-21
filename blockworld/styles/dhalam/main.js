@@ -6,6 +6,8 @@ import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../s
 import { createBag } from '../../shared/bag.js';
 import { createVitals, bars } from '../../shared/vitals.js';
 import { createLife, simpleBeast } from '../../shared/life.js';
+import { createWeather } from '../../shared/weather.js';
+import { createStatus } from '../../shared/status.js';
 import { buildTiles, buildDetailTextures, buildSpriteTextures, buildBoughTexture, buildVoxelDetail, buildCardTextures } from './texgen.js';
 import { buildForest } from './trees.js';
 import { buildShelterProps, makeTorch } from './props.js';
@@ -866,7 +868,7 @@ async function startGame() {
     else { U.uFogColor.value.copy(air.fog); U.uFogSunColor.value.copy(air.sun); U.uFogParams.value.copy(air.params); U.uFogMisc.value.copy(air.misc); }
   }
 
-  let life = null;
+  let life = null, weather = null, status = null;
   let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
     camera, canvas: stage.canvas, world, blocks: BLOCKS, terrain,
@@ -906,6 +908,7 @@ async function startGame() {
       holdBlock(t === 'hand' ? list[sel] : null);
     },
     onBag() { bag.toggle(); },
+    onMenu() { if (weather) weather.toggle(); },
     onUse: (item) => (life ? life.use(item) : false),
     onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
@@ -919,6 +922,8 @@ async function startGame() {
       kit.update(p, dt, st.time);
       if (vitals) vitals.update(dt);
       if (life) life.update(dt);
+      if (weather) weather.update(dt);
+      if (status) status.update();
       for (const l of kit.lights) l.intensity = (l.userData.flicker ? l.intensity : l.userData.base || 0) * KIT_LIGHT;
       // cracks spread over the face being dug
       if (d.on && h && kindOf(h.id) !== 'cross') {
@@ -1023,6 +1028,7 @@ async function startGame() {
     iconOf: (it) => (it.kit ? kitIcon(it.id) : hud.icon(it.icon)),
     fontFamily: "'Plex Arabic', system-ui, sans-serif", accent: '#e9853a', line: 'rgba(233, 133, 58, .4)',
     onToggle: (v) => { if (v) bagRow(); },
+    extra: { label: 'الوقت والجو', onClick: () => weather && weather.open() },
   });
   // The bag draws a picture in its row of squares only for blocks and tools, so the things this world only carries
   // (torch, meat, bandage) would sit there as empty squares. They are filled in each time the bag has drawn its row.
@@ -1042,7 +1048,7 @@ async function startGame() {
   const panel = createPlayPanel({
     title: 'ظلام', tagline: 'احفر واجمع وحصّن ملجأك قبل أن يهبط الليل على الأطلال.',
     fontFamily: "'Plex Arabic', system-ui, sans-serif", accent: '#e9853a', line: 'rgba(233, 133, 58, .4)', touch: hud.touch,
-    note: 'نسخة تجريبية: الحيوانات والوحوش تتحرك الحين، والصيد يعطي لحم. الوقت ثابت، والمشعل والضمادة للحمل فقط.',
+    note: 'نسخة تجريبية: الوقت والمطر والوحوش تختارها من لوحة Q (وعلى الجوال من زر داخل الحقيبة). المشعل والضمادة للحمل فقط.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   panel.show('start');
@@ -1054,7 +1060,7 @@ async function startGame() {
   const heat = [...camp.torches.map((t) => ({ x: t.x, y: t.y, z: t.z })), { x: camp.fire.x, y: camp.fire.y, z: camp.fire.z }];
   vitals = createVitals({
     play, kit, world, hp: 82,
-    needs: [{ key: 'warm', start: 46, drain: 0.3, wet: 3, how: 'fire', gain: 9, range: 4.5, heat, low: 'بردت. اقرب من نار المأوى أو مشعل، أو ولّع نار من الحقيبة.' }],
+    needs: [{ key: 'warm', start: 46, drain: 0.3, wet: 3, rainDrain: 1.8, nightDrain: 1.4, how: 'fire', gain: 9, range: 4.5, heat, low: 'بردت. اقرب من نار المأوى أو مشعل، أو ولّع نار من الحقيبة.' }],
     render(v) { write.hp(v.hp); write.warm(v.warm); },
   });
   // creatures: mountain ibex can be hunted; the stalker and the bone hound come for the player
@@ -1066,7 +1072,29 @@ async function startGame() {
       { key: 'bonehound', name: 'ذئب العظم', kind: 'monster', make: () => makeBoneHound(SPR), hp: 12, speed: 3.4, radius: 0.8, height: 1.1, max: 2, dmg: 7 },
     ],
   });
-  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera: stage.camera, vitals, life };
+  // hearts, food, armour and experience over the hotbar; the old health row gives way to the hearts
+  status = createStatus({ play, mount: document.querySelector('.bar-wrap'), vitals: () => vitals, life: () => life, accent: '#e9853a', hide: [vq('v-health')] });
+  // the world panel (Q): morning, sunset or night, clear or rain. Rain and night are colder
+  const CLOCK = { morning: ['08:20', 'الصبح'], sunset: ['18:42', 'الغسق'], night: ['23:10', 'الليل'] };
+  weather = createWeather({
+    play, scene, camera: stage.camera, time: 'sunset', fontFamily: "'Plex Arabic', system-ui, sans-serif", accent: '#e9853a', line: 'rgba(233, 133, 58, .4)',
+    apply(time, rain) {
+      if (time === 'night') setTime('night', 62, 26); else setTime(time === 'morning' ? 'grey' : 'dusk');
+      if (rain) {
+        sun.intensity *= 0.4; hemi.intensity *= 0.8; skyRim.intensity *= 0.4;
+        U.uFogParams.value.x *= 2.4; SKY.uCloud.value.x = Math.min(0.95, SKY.uCloud.value.x + 0.35); SKY.uGlowAmt.value *= 0.4;
+        U.uFogColor.value.multiplyScalar(0.58); U.uFogSunColor.value.multiplyScalar(0.5); SKY.uZenith.value.multiplyScalar(0.6); SKY.uHorizon.value.multiplyScalar(0.6);
+        post.grade.uExposure.value *= 0.9;
+      }
+      // the air as it is now is what the lake gives back when the head comes out of the water
+      air.fog.copy(U.uFogColor.value); air.sun.copy(U.uFogSunColor.value); air.params.copy(U.uFogParams.value); air.misc.copy(U.uFogMisc.value);
+      if (under) setUnder(true);
+      aimed = null;                                  // the sun moved: fit the shadow map again on the next frame
+      const c = CLOCK[time];
+      document.querySelector('.clock .c-time').innerHTML = `<span class="num">${c[0]}</span> · ${(rain ? 'مطر · ' : '') + c[1]}`;
+    },
+  });
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera: stage.camera, vitals, life, weather, status };
 }
 
 installShotApi(stage);

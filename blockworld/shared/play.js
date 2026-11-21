@@ -9,7 +9,7 @@
 //     isLiquid(id), pickable(id), canBreak(id, x, y, z), canPlace(x, y, z, id), hardness(id), dropOf(id),
 //     heightOf(id),                                   // collision height of a block, 0..1 (half blocks, beds); default 1
 //     onUse(item, slot),                              // the place button on an item with `use` (food, clothing)
-//     onBag(), onFly(on),                             // E was pressed; flying was switched on or off
+//     onBag(), onMenu(), onFly(on),                   // E was pressed; Q was pressed; flying was switched on or off
 //     onTarget(hit | null), onBreak(hit), onPlace(x, y, z, id), onInventory(slots, sel),
 //     onFrame(state, dt), render(), setPixelRatio(pr),
 //     stage,                                          // createStage() result: lets the loop pace itself on the GPU and
@@ -44,7 +44,7 @@ export function createPlay(o) {
     onGround: false, inWater: false, moving: 0, hit: null,
     dig: { on: false, x: 0, y: 0, z: 0, t: 0, need: 1, progress: 0 },
     slots: o.slots, sel: 0, running: false, locked: false, time: 0, broken: 0, placed: 0,
-    flying: false, modal: false,
+    flying: false, modal: false, xp: 0,
   };
   const inp = { fx: 0, fz: 0, jump: false, dig: false, sprint: false, place: false, down: false };
   const sound = o.sound === false ? null : createSound();          // every world gets the same sounds; M mutes
@@ -197,6 +197,7 @@ export function createPlay(o) {
     st.broken++;
     if (sound) sound.brk();
     collect(h.id);
+    st.xp += 1;
     if (o.onBreak) o.onBreak(h);
   }
   function digTick(dt) {
@@ -277,6 +278,7 @@ export function createPlay(o) {
     if (!st.running) return;
     if (e.type === 'keydown') {
       if (e.code === 'KeyE' && !e.repeat) { if (sound) sound.ui(); if (o.onBag) o.onBag(); e.preventDefault(); return; }
+      if (e.code === 'KeyQ' && !e.repeat && o.onMenu) { if (sound) sound.ui(); o.onMenu(); e.preventDefault(); return; }
       if (e.code === 'KeyM' && !e.repeat && sound) { sound.setMuted(!sound.muted); notice(sound.muted ? 'الصوت مطفي.' : 'الصوت شغّال.', false, 1600); return; }
       if (st.modal) return;
       if (!e.repeat) {
@@ -588,7 +590,7 @@ export function createPlayPanel(o) {
   if (o.line) el.style.setProperty('--pp-line', o.line);
   const rows = o.touch
     ? [['العصا اليسار', 'المشي، وادفعها للآخر تركض'], ['اسحب على الشاشة', 'النظر'], ['زر الحفر', 'اضغط مطوّلًا لتكسر المكعب'], ['زر البناء', 'يضع المكعب المختار'], ['زر القفز', 'قفز، ومرّتين تطير'], ['زر الحقيبة', 'كل المكعبات والأغراض']]
-    : [['W A S D', 'المشي'], ['W مرّتين', 'ركض'], ['الفأرة', 'النظر'], ['Space', 'قفز وسباحة'], ['Space مرّتين', 'طيران'], ['E', 'الحقيبة'], ['M', 'الصوت'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب المختار'], ['1 – 9 أو العجلة', 'اختيار الخانة'], ['Esc', 'إيقاف مؤقت']];
+    : [['W A S D', 'المشي'], ['W مرّتين', 'ركض'], ['الفأرة', 'النظر'], ['Space', 'قفز وسباحة'], ['Space مرّتين', 'طيران'], ['E', 'الحقيبة'], ['Q', 'الوقت والجو'], ['M', 'الصوت'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب المختار'], ['1 – 9 أو العجلة', 'اختيار الخانة'], ['Esc', 'إيقاف مؤقت']];
   const h1 = document.createElement('h1'), p = document.createElement('p'), ul = document.createElement('ul'), b = document.createElement('button'), note = document.createElement('div');
   h1.textContent = o.title; p.textContent = o.tagline || '';
   for (const [k, v] of rows) { const li = document.createElement('li'), kb = document.createElement('b'), s = document.createElement('span'); kb.textContent = k; kb.dir = 'auto'; s.textContent = v; li.append(kb, s); ul.appendChild(li); }

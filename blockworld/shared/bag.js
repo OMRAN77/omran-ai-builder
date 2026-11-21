@@ -2,7 +2,7 @@
 // Pick a square at the bottom, then pick an item: it lands in that square. Arabic, built in HTML,
 // works with a mouse and with a finger.
 //
-//   const bag = createBag({ play, groups, iconOf, shown, fontFamily, accent, line });
+//   const bag = createBag({ play, groups, iconOf, shown, fontFamily, accent, line, extra: { label, onClick } });
 //   createPlay({ onBag: () => bag.toggle(), ... })
 //
 // groups: [{ title, items: [{ id | tool, name, n, ... }] }]   an item is copied into the slot as it is
@@ -17,7 +17,7 @@ const CSS = `
 #bag header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
 #bag h2 { margin: 0; font-size: 20px; font-weight: 700; color: var(--bg-accent, #fff); }
 #bag header p { margin: 0; flex: 1; font-size: 13px; line-height: 1.5; opacity: .75; }
-#bag .x { font: inherit; font-size: 14px; font-weight: 700; min-width: 44px; min-height: 40px; padding: 4px 14px; border-radius: 9px; border: 1px solid var(--bg-line, rgba(255, 255, 255, .3)); background: none; color: inherit; cursor: pointer; }
+#bag .x, #bag .extra { font: inherit; font-size: 14px; font-weight: 700; min-width: 44px; min-height: 40px; padding: 4px 14px; border-radius: 9px; border: 1px solid var(--bg-line, rgba(255, 255, 255, .3)); background: none; color: inherit; cursor: pointer; }
 #bag .list { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 6px 14px 10px; -webkit-overflow-scrolling: touch; }
 #bag h3 { margin: 10px 2px 6px; font-size: 13.5px; font-weight: 700; opacity: .8; }
 #bag .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
@@ -48,9 +48,10 @@ export function createBag(o) {
   el.style.fontFamily = o.fontFamily || 'sans-serif';
   if (o.accent) el.style.setProperty('--bg-accent', o.accent);
   if (o.line) el.style.setProperty('--bg-line', o.line);
-  el.innerHTML = '<div class="box" role="dialog" aria-label="الحقيبة"><header><h2>الحقيبة</h2><p>اختر مربعًا من تحت، ثم اختر الغرض اللي تبيه فيه.</p><button type="button" class="x">إغلاق</button></header><div class="list"></div><footer><p>مربعاتك</p><div class="bar"></div></footer></div>';
+  el.innerHTML = '<div class="box" role="dialog" aria-label="الحقيبة"><header><h2>الحقيبة</h2><p>اختر مربعًا من تحت، ثم اختر الغرض اللي تبيه فيه.</p>' + (o.extra ? '<button type="button" class="extra"></button>' : '') + '<button type="button" class="x">إغلاق</button></header><div class="list"></div><footer><p>مربعاتك</p><div class="bar"></div></footer></div>';
   document.body.appendChild(el);
   const list = el.querySelector('.list'), bar = el.querySelector('.bar');
+  if (o.extra) el.querySelector('.extra').textContent = o.extra.label;
   const items = [];
   for (const g of o.groups) {
     if (!g.items.length) continue;
@@ -72,7 +73,7 @@ export function createBag(o) {
   }
   let open = false, openedAt = 0;
   function show(v) {
-    if (v === open) return;
+    if (v === open || (v && play.state.modal)) return;      // one panel at a time
     open = v; el.hidden = !v;
     if (v) openedAt = performance.now();
     play.setModal(v);
@@ -84,6 +85,7 @@ export function createBag(o) {
     const sq = e.target.closest('[data-sq]'), it = e.target.closest('[data-item]');
     if (sq) { play.select(+sq.dataset.sq); drawBar(); }
     else if (it) { play.setSlot(play.state.sel, { ...items[+it.dataset.item] }); drawBar(); }
+    else if (o.extra && e.target.closest('.extra')) { show(false); o.extra.onClick(); }
     else if (e.target.closest('.x') || e.target === el) show(false);
   });
   window.addEventListener('keydown', (e) => { if (open && e.code === 'Escape') { show(false); e.preventDefault(); } });
