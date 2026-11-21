@@ -23,6 +23,9 @@ test('١. ورك فلو Play: يدويّ، يبني AAB ويوقّعه بأسر�
   assert.ok(w.includes('rm -f "$RUNNER_TEMP/release.keystore"'), 'المخزن يُحذف بعد التوقيع');
   assert.match(w, /Number\(process\.env\.VERSION_CODE\)>15/, 'versionCode أكبر من آخر إصدار في Play (15)');
   assert.ok(!/gh release|git push|softprops/.test(w), 'لا نشر');
+  // v-play-min24: Play رفض رفع 1.4.0 — «الحماية التلقائيّة» تطلب minSdkVersion ≥ 24. لجوجل وحده، وهواوي يبقى 21
+  assert.ok(w.includes('sed -i -E "s/minSdkVersion [0-9]+/minSdkVersion 24/" app/build.gradle') && w.includes('grep -q "minSdkVersion 24" app/build.gradle'));
+  assert.match(read('store/huawei/twa/app/build.gradle'), /minSdkVersion 21\n/, 'هواوي كما هو');
 });
 
 test('٢. التبديل يعمل على نسخة المشغّل وحدها، وينتج حزمة جوجل من «/» بأندرويد 36 واسم om ai — والمشروع في المستودع لهواوي كما هو', () => {
@@ -67,4 +70,7 @@ test('٣. assetlinks: عبارة هواوي أوّلًا كما هي، وعبا�
   const FP = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
   assert.ok(play.target.sha256_cert_fingerprints.length >= 1 && play.target.sha256_cert_fingerprints.every((f) => FP.test(f)));
   assert.ok(play.target.sha256_cert_fingerprints.includes(al[0].target.sha256_cert_fingerprints.find((f) => f.startsWith('D1:80'))), 'مفتاح الرفع نفسه');
+  // v-play-signing-fp: بصمة «مفتاح توقيع التطبيق» من Play Console (لصقها المالك من «ملف Digital Asset Links» ٢١ نوفمبر) — Play يعيد
+  // توقيع الحزمة بها، فبدونها يبقى إنذار «رابط عميق لا يعمل»
+  assert.ok(play.target.sha256_cert_fingerprints.includes('E8:5B:EC:8C:DF:14:A4:1E:AA:BF:12:A9:CD:4A:62:F7:85:1F:A2:FF:30:56:32:5F:41:2A:F9:A7:6B:62:2D:00'), 'بصمة توقيع Play');
 });
