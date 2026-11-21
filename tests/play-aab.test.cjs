@@ -70,4 +70,7 @@ test('٣. assetlinks: عبارة هواوي أوّلًا كما هي، وعبا�
   const FP = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
   assert.ok(play.target.sha256_cert_fingerprints.length >= 1 && play.target.sha256_cert_fingerprints.every((f) => FP.test(f)));
   assert.ok(play.target.sha256_cert_fingerprints.includes(al[0].target.sha256_cert_fingerprints.find((f) => f.startsWith('D1:80'))), 'مفتاح الرفع نفسه');
+  // v-play-signing-fp: بصمة «مفتاح توقيع التطبيق» من Play Console (لصقها المالك من «ملف Digital Asset Links» ٢١ نوفمبر) — Play يعيد
+  // توقيع الحزمة بها، فبدونها يبقى إنذار «رابط عميق لا يعمل»
+  assert.ok(play.target.sha256_cert_fingerprints.includes('E8:5B:EC:8C:DF:14:A4:1E:AA:BF:12:A9:CD:4A:62:F7:85:1F:A2:FF:30:56:32:5F:41:2A:F9:A7:6B:62:2D:00'), 'بصمة توقيع Play');
 });
