@@ -1040,7 +1040,7 @@ async function startGame() {
   });
   panel.show('start');
   window.__play = play;
-  window.__game = { play, panel, terrain, world, B, slots, bag, kit };
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera: stage.camera };
 }
 
 installShotApi(stage);

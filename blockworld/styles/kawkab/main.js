@@ -9,6 +9,7 @@ import { createVoxelTerrain } from '../../shared/voxel.js';
 import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
 import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
+import { createHeld } from '../../shared/held.js';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
 import { B, BLOCKS } from './blocks.js';
 import { tileMaterial, setGlow, tileSpan } from './tiles.js';
@@ -504,6 +505,8 @@ async function startGame() {
   const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
   const slots = SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })).slice(0, hud.shown);
   const kit = createKit({ scene, world, terrain });
+  const heldBlock = createHeld({ camera, blocks: BLOCKS, materialFor: (tile) => kitMaterial(tile) || tileMaterial(tile) });
+  let toolInHand = true;
   const fpHome = fp.position.clone(), drone = actors.drone, v1 = new THREE.Vector3(), v2 = new THREE.Vector3();
   const isCrystal = (id) => id === B.CRYSTAL_C || id === B.CRYSTAL_V;
   let aimed = null, hintTimer = 0;
@@ -518,7 +521,11 @@ async function startGame() {
     onTarget(h) { pickBox.visible = !!h; if (h) pickBox.position.set(h.x + 0.5, h.y + 0.5, h.z + 0.5); hud.setTarget(h ? NAMES[h.id] || kit.nameOf(h.id) || 'مكعب' : null); },
     onBreak(h) { kit.broke(h); if (isCrystal(h.id)) buildTips(); },
     onPlace(x, y, z, id) { kit.placed(x, y, z, id, play.state.yaw); if (isCrystal(id) || isCrystal(world.get(x, y - 1, z))) buildTips(); },
-    onInventory(list, sel) { hud.setSlots(list, sel); showGoal(list); },
+    onInventory(list, sel) {
+      hud.setSlots(list, sel); showGoal(list);
+      const it = list[sel], block = it && !it.tool && it.id ? it.id : 0;          // a block in the selected square is what the hand shows
+      heldBlock.show(block); toolInHand = !block; fp.visible = toolInHand;
+    },
     onBag() { bag.toggle(); },
     onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
@@ -528,7 +535,7 @@ async function startGame() {
       hud.setProgress(d.on ? d.progress : 0);
       kit.update(p, dt, st.time);
       // the mining beam, from the emitter to the point where the view ray meets the block
-      if (d.on && st.hit) {
+      if (d.on && st.hit && toolInHand) {
         const h = st.hit, a = fp.localToWorld(v1.set(0, 0, -0.262));
         v2.set(h.px, h.py, h.pz).sub(camera.position).multiplyScalar(1 - 0.03 / Math.max(0.2, h.t)).add(camera.position);
         laser.userData.set(a, v2); laser.visible = true;
@@ -572,7 +579,7 @@ async function startGame() {
   });
   panel.show('start');
   window.__play = play;
-  window.__game = { play, panel, terrain, world, B, slots, bag, kit };
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera };
 }
 
 installShotApi(stage);

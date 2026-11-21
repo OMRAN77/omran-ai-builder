@@ -6,6 +6,8 @@
 //   sound.step(); sound.dig(); sound.brk(); sound.place(); ...
 //   sound.setMuted(true)
 
+const LEVEL = 1.7;
+
 export function createSound() {
   let ctx = null, master = null, noiseBuf = null, bed = null, muted = false;
   const stats = { played: 0 };
@@ -16,7 +18,10 @@ export function createSound() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
     try { ctx = new AC(); } catch (e) { ctx = null; return false; }
-    master = ctx.createGain(); master.gain.value = muted ? 0 : 0.85; master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = muted ? 0 : LEVEL;
+    const comp = ctx.createDynamicsCompressor();      // lets everything be loud without clipping when sounds pile up
+    comp.threshold.value = -16; comp.knee.value = 18; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.18;
+    master.connect(comp); comp.connect(ctx.destination);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0); let s = 22222;
     for (let i = 0; i < d.length; i++) { s = (s * 16807) % 2147483647; d[i] = (s / 2147483647) * 2 - 1; }
@@ -67,11 +72,14 @@ export function createSound() {
     setMuted(v) {
       muted = !!v;
       try { window.localStorage.setItem('bw-mute', muted ? '1' : '0'); } catch (e) { /* not kept, that is all */ }
-      if (master) master.gain.setTargetAtTime(muted ? 0 : 0.85, ctx.currentTime, 0.03);
+      if (master) master.gain.setTargetAtTime(muted ? 0 : LEVEL, ctx.currentTime, 0.03);
     },
     step(wet) { if (wet) noise(0.22, { f: r(500, 800), f2: 250, q: 0.7, gain: 0.13 }); else noise(0.085, { type: 'lowpass', f: r(520, 760), f2: 180, gain: 0.2 }); },
-    dig() { noise(0.07, { f: r(1300, 1900), f2: 600, q: 1.4, gain: 0.2 }); tone(0.05, { type: 'triangle', f: r(170, 210), f2: 110, gain: 0.1 }); },
-    brk() { noise(0.2, { type: 'lowpass', f: 1500, f2: 180, gain: 0.34 }); noise(0.12, { f: 2600, f2: 900, q: 1.2, gain: 0.14, when: 0.02 }); tone(0.12, { type: 'triangle', f: 150, f2: 70, gain: 0.16 }); },
+    /** One hit on a block. */
+    dig() { noise(0.1, { f: r(1500, 2300), f2: 500, q: 1.2, gain: 0.34 }); noise(0.07, { type: 'lowpass', f: 700, f2: 160, gain: 0.3 }); tone(0.09, { type: 'triangle', f: r(180, 230), f2: 85, gain: 0.26 }); },
+    /** A swing that meets nothing. */
+    swing() { noise(0.16, { f: 500, f2: 1500, q: 1.1, gain: 0.13 }); },
+    brk() { noise(0.24, { type: 'lowpass', f: 1700, f2: 160, gain: 0.42 }); noise(0.14, { f: 2800, f2: 800, q: 1.1, gain: 0.2, when: 0.02 }); tone(0.14, { type: 'triangle', f: 150, f2: 60, gain: 0.26 }); },
     place() { tone(0.07, { type: 'triangle', f: 250, f2: 150, gain: 0.2 }); noise(0.05, { type: 'lowpass', f: 950, f2: 300, gain: 0.16 }); },
     jump() { noise(0.1, { f: 380, f2: 780, q: 0.8, gain: 0.08 }); },
     land(hard) { noise(0.13, { type: 'lowpass', f: 480, f2: 110, gain: hard ? 0.36 : 0.22 }); tone(0.09, { f: 95, f2: 55, gain: hard ? 0.24 : 0.13 }); },

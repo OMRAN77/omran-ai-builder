@@ -384,7 +384,7 @@ if (GAME) {
   await Promise.all(["700 20px 'Reem Kufi'", "500 14px 'Reem Kufi'", '500 14px Tajawal', '700 14px Tajawal']
     .map((f) => document.fonts.load(f, 'واحة 0123').catch(() => null)));      // a font that cannot be fetched must not stop the game
   await startGame({
-    GID, stage, W, terrain, hud, held, targetBox, actors, place, aimShadow, rig, lanterns, lightLantern,
+    GID, stage, W, terrain, hud, held, targetBox, materialFor, actors, place, aimShadow, rig, lanterns, lightLantern,
     merlons, beams, flag, campProps,
   });
   markReady();

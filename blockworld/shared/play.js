@@ -201,10 +201,15 @@ export function createPlay(o) {
   function digTick(dt) {
     const d = st.dig, h = st.hit;
     const can = inp.dig && h && h.y > 0 && (!o.canBreak || o.canBreak(h.id, h.x, h.y, h.z) !== false);
-    if (!can) { d.on = false; d.t = 0; d.progress = 0; return; }
+    if (!can) {
+      // hitting the air, or something that cannot be dug: the swing is still heard
+      if (sound && inp.dig && !st.modal && (snd.dig -= dt) <= 0) { snd.dig = 0.34; sound.swing(); }
+      if (!inp.dig) snd.dig = 0;
+      d.on = false; d.t = 0; d.progress = 0; return;
+    }
     if (!d.on || d.x !== h.x || d.y !== h.y || d.z !== h.z) { d.on = true; d.x = h.x; d.y = h.y; d.z = h.z; d.t = 0; d.need = Math.max(0.01, hardness(h.id)); }
     d.t += dt; d.progress = Math.min(1, d.t / d.need);
-    if (sound && (snd.dig -= dt) <= 0) { snd.dig = 0.17; sound.dig(); }
+    if (sound && (snd.dig -= dt) <= 0) { snd.dig = 0.2; sound.dig(); }
     if (d.t >= d.need) { breakBlock(h); d.on = false; d.t = 0; d.progress = 0; aim(); }
   }
   function placeNow() {
@@ -277,7 +282,7 @@ export function createPlay(o) {
         if (e.code === 'Space') { if (doubled(now, lastJump)) { setFlying(!st.flying); lastJump = -1e9; } else lastJump = now; }    // double Space: fly / stop flying
       }
       keys.add(e.code);
-      if (/^Digit[1-9]$/.test(e.code)) { const i = +e.code.slice(5) - 1; if (i < st.slots.length) select(i); }
+      if (/^(Digit|Numpad)[1-9]$/.test(e.code)) { const i = +e.code.slice(-1) - 1; if (i < st.slots.length) select(i); }
       if (e.code === 'KeyF') inp.place = true;
       if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
     } else keys.delete(e.code);

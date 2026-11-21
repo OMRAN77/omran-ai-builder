@@ -278,6 +278,18 @@ function serve(root, prefix) {
       await page.waitForTimeout(120);
       check('closing the bag gives the controls back', await page.evaluate(() => document.getElementById('bag').hidden && !window.__play.state.modal));
       check('the hotbar shows the new item', await page.evaluate(() => { const el = document.querySelector('[data-i="1"]'); return !!el && !!el.querySelector('img'); }));
+      // the hand holds what the selected square holds: a block here, the tool again on the tool's square
+      const hand = await page.evaluate(() => {
+        const p = window.__play;
+        const find = () => { let g = null; window.__game.camera.traverse((o) => { if (o.isMesh && o.geometry && o.geometry.type === 'BoxGeometry' && Array.isArray(o.material) && o.parent && o.parent.visible && o.visible) g = o; }); return !!g; };
+        const withBlock = find();
+        const tool = p.state.slots.findIndex((q) => q && q.tool);
+        if (tool >= 0) p.select(tool);
+        const withTool = find();
+        p.select(1);
+        return { withBlock, withTool, tool };
+      }).catch((e) => ({ error: String(e).slice(0, 200) }));
+      if (!hand.error) check('the hand shows the selected block, and the tool on the tool square', hand.withBlock === true && hand.withTool === false, hand);
 
       // kit blocks in the world. The test lays its own flat floor in the air and stands on it, so every world
       // gives the same open ground; each block is then placed by aiming at a chosen floor cell.

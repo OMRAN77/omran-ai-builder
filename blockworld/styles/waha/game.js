@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
 import { KIT_GROUPS, createKit } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
+import { createHeld } from '../../shared/held.js';
 import { B, BLOCKS, X0, X1, Z0, Z1, SX, SY, SZ, colIndex, cornerIndex } from './world.js';
 import { SLOTS } from './hud.js';
 import { buildLantern } from './props.js';
@@ -301,6 +302,7 @@ export async function startGame(ctx) {
   held.position.copy(ELBOW).negate();
   camera.add(arm); arm.add(held);
   const armHome = arm.position.clone();
+  const heldBlock = createHeld({ camera, blocks: BLOCKS, materialFor: ctx.materialFor });
   const sun0 = rig.sun.target.position;              // where the play shot centred the shadow map
   let swing = 0, push = 0, stride = 0, sway = 0, hintT = 0, shadowAt = { x: sun0.x, y: sun0.y, z: sun0.z };
 
@@ -353,7 +355,11 @@ export async function startGame(ctx) {
       filled(x, y, z);
       push = 1;
     },
-    onInventory(list, sel) { hud.setSlots(list, sel); },
+    onInventory(list, sel) {
+      hud.setSlots(list, sel);
+      const it = list[sel], block = it && !it.tool && it.id && BLOCKS[it.id] ? it.id : 0;      // a block in the selected square is what the hand shows
+      arm.visible = !heldBlock.show(block);
+    },
     onBag() { bag.toggle(); },
     onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
@@ -453,5 +459,5 @@ export async function startGame(ctx) {
   panel.show('start');
   window.__play = play;
   // world and terrain are the controller's (zero-based) view; W is the world itself and origin the shift between them
-  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, origin: [OX, OZ], bag, kit };
+  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, origin: [OX, OZ], bag, kit, camera: stage.camera };
 }

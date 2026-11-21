@@ -203,3 +203,17 @@ test('v-blockworld-sound: أصوات مولَّدة في المتصفّح بلا
   assert.ok(!OWN.some((f) => /\.(mp3|ogg|wav|m4a)$/.test(f)));
 });
 
+test('v-blockworld-held: اليد تمسك ما في المربّع المختار، والضربة تُسمع حتّى في الهواء', () => {
+  assert.ok(exists('shared/held.js'));
+  for (const k of ['kawkab', 'waha']) {
+    const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
+    assert.match(src, /createHeld\(/, k + ': مجسّم المكعب في اليد');
+    assert.match(src, /heldBlock\.show\(block\)/, k + ': يتبع المربّع المختار');
+  }
+  assert.match(read('styles/dhalam/main.js'), /heldBox/, 'ظلام: مجسّمه الخاصّ');
+  const play = read('shared/play.js');
+  assert.match(play, /sound\.swing\(\)/, 'ضربة في الهواء لها صوت');
+  assert.match(play, /\(Digit\|Numpad\)\[1-9\]/, 'أرقام اللوحة الجانبيّة تختار المربّع');
+  assert.match(read('shared/sound.js'), /createDynamicsCompressor/);
+});
+
