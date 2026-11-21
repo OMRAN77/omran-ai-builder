@@ -1,8 +1,9 @@
 // "dhalam" art direction: scene assembly and the four shots.
 import * as THREE from 'three';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
-import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
-import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../shared/kit.js';
+import { createPlay, createPlayPanel, goImmersive, EMPTY } from '../../shared/play.js';
+import { createHeld } from '../../shared/held.js';
+import { K, KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
 import { createVitals, bars } from '../../shared/vitals.js';
 import { createLife, simpleBeast } from '../../shared/life.js';
@@ -705,7 +706,7 @@ const SLOT_ID = { log: B.TRUNK, stone: B.ROCK, plank: B.PLANKS };
 /** What digging a block puts in the bag: the bar has one slot per family (and none yet for earth or plants). */
 const DROP = {
   [B.TRUNK]: B.TRUNK, [B.PLANKS]: B.PLANKS,
-  [B.ROCK]: B.ROCK, [B.ROCK_MOSS]: B.ROCK, [B.SNOW]: B.ROCK, [B.GRAVEL]: B.ROCK, [B.BRICK]: B.ROCK, [B.BRICK_MOSS]: B.ROCK, [B.ORE_IRON]: B.ROCK, [B.ORE_GLOW]: B.ROCK,
+  [B.ROCK]: B.ROCK, [B.ROCK_MOSS]: B.ROCK, [B.SNOW]: B.ROCK, [B.GRAVEL]: B.ROCK, [B.BRICK]: B.ROCK, [B.BRICK_MOSS]: B.ROCK, [B.ORE_IRON]: K.ORE, [B.ORE_GLOW]: K.ORE,            // ore comes out as ore: the workbench turns it into gold
 };
 
 async function startGame() {
@@ -724,10 +725,11 @@ async function startGame() {
 
   const hud = initHud();
   const slots = SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 }));
+  if (!hud.touch) slots.push(EMPTY);                          // nine squares on a desktop, the ninth empty
   const cell = (x, y, z) => x + SX * (z + SZ * y);
   const isLiquid = (id) => id === B.WATER || kit.isLiquid(id);
   // what stops a body: every block but water and plants (the palisade cells, drawn as a prop, and the kit's blocks too)
-  const isSolid = (id) => id !== 0 && !isLiquid(id) && kindOf(id) !== 'cross';
+  const isSolid = (id) => id !== 0 && !isLiquid(id) && kindOf(id) !== 'cross' && !(BLOCKS[id] && BLOCKS[id].solid === false);     // an open door lets the player through
   const solidCell = (x, y, z) => isSolid(world.get(x, y, z));
 
   // ---- what may not be dug: the camp stands on its yard, and the props there cannot move
@@ -868,7 +870,8 @@ async function startGame() {
     else { U.uFogColor.value.copy(air.fog); U.uFogSunColor.value.copy(air.sun); U.uFogParams.value.copy(air.params); U.uFogMisc.value.copy(air.misc); }
   }
 
-  let life = null, weather = null, status = null;
+  let life = null, weather = null, status = null, toolShown = false;
+  const heldTool = createHeld({ camera, blocks: {}, materialFor });
   let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
     camera, canvas: stage.canvas, world, blocks: BLOCKS, terrain,
@@ -904,10 +907,13 @@ async function startGame() {
     onInventory(list, sel) {
       hud.setSlots(list, sel);
       const t = ARM[list[sel].tool] ? list[sel].tool : 'hand';
-      if (t !== tool) { tool = t; for (const k in ARM) ARM[k].visible = k === tool; }
-      holdBlock(t === 'hand' ? list[sel] : null);
+      // a sword, an axe or a pick from the bag has its own model, shown in place of the arm
+      const kitTool = heldTool.show(list[sel].model ? list[sel].id : 0);
+      if (t !== tool || kitTool !== toolShown) { tool = t; toolShown = kitTool; for (const k in ARM) ARM[k].visible = !kitTool && k === tool; }
+      holdBlock(t === 'hand' && !kitTool ? list[sel] : null);
     },
     onBag() { bag.toggle(); },
+    onInteract: (h) => bag.interact(h),
     onMenu() { if (weather) weather.toggle(); },
     onUse: (item) => (life ? life.use(item) : false),
     onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
@@ -1023,7 +1029,8 @@ async function startGame() {
   });
   // the bag (E, or its button on a phone): this world's own things first, then the shared building kit
   const bag = createBag({
-    play, shown: slots.length,
+    play, kit, shown: slots.length, onMenu: () => { play.stop(); panel.show('pause'); },
+    mats: { wood: { ids: [B.TRUNK, B.PLANKS], name: 'خشب' }, stone: { ids: [B.ROCK], name: 'حجر' }, ore: { ids: [], name: 'خام معدن' } },
     groups: [{ title: 'عدّة ظلام', items: SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })) }, ...KIT_GROUPS],
     iconOf: (it) => (it.kit ? kitIcon(it.id) : hud.icon(it.icon)),
     fontFamily: "'Plex Arabic', system-ui, sans-serif", accent: '#e9853a', line: 'rgba(233, 133, 58, .4)',

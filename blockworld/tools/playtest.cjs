@@ -270,6 +270,8 @@ function serve(root, prefix) {
       await shot('5-bag');
       const want = await page.evaluate(() => window.__game.bag.items.findIndex((it) => it.id === 104));
       const tapOn = async (sel) => { const r = await (await page.$(sel)).boundingBox(); if (touch) await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2); else await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2); };
+      await tapOn('#bag [data-tab="all"]');                   // the catalogue page
+      await page.waitForTimeout(60);
       await page.evaluate((n) => document.querySelector('#bag [data-item="' + n + '"]').scrollIntoView({ block: 'center' }), want);
       await tapOn('#bag [data-sq="1"]');
       await tapOn('#bag [data-item="' + want + '"]');
@@ -385,7 +387,7 @@ function serve(root, prefix) {
         const sim = (n) => { for (let i = 0; i < n; i++) p.advance(1 / 60); };
         const keep = () => { for (const k of Object.keys(v)) v[k] = Math.max(v[k], 80); };
         p.setFlying(false); s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); window.__GAME_LIFE.setMonsters(true);
-        life.kinds.forEach((k) => { if (k.max0 != null) k.max = k.max0; });
+        // nothing spawns by itself during these checks (a second monster arriving by chance would end them early); the test puts in what it needs
         while (life.ents.length) { life.ents[0].hp = 0; life.ents[0].dead = 2; sim(1); }
         keep(); sim(5);
         // find open ground a few blocks away for the test animals
@@ -397,29 +399,40 @@ function serve(root, prefix) {
         out.animalMoved = moved;
         // hunt it: stand next to it, face it, hold the hit
         const face = (e) => { const ex = s.pos.x, ey = s.pos.y + p.tuning.eye, ez = s.pos.z, tx = e.x, ty = e.y + e.k.height * 0.5, tz = e.z; s.yaw = Math.atan2(-(tx - ex), -(tz - ez)); s.pitch = Math.atan2(ty - ey, Math.hypot(tx - ex, tz - ez)); };
-        const meat0 = (s.slots.find((q) => q && q.id === 200) || { n: 0 }).n;
+        const carried = () => [...s.slots, ...s.pack].find((q) => q && q.id === 200);
+        const meat0 = (carried() || { n: 0 }).n;
         p.input.dig = true;
         let hits = 0;
         for (let i = 0; i < 900 && a.hp > 0; i++) { if (Math.hypot(a.x - s.pos.x, a.z - s.pos.z) > 2.2) { s.pos.x = a.x + 1.4; s.pos.z = a.z; s.pos.y = a.y; s.vel.set(0, 0, 0); } face(a); p.advance(1 / 60); keep(); if (life.aimed === a) hits++; }
         p.input.dig = false; sim(80);
         out.animalDead = a.hp <= 0; out.aimedFrames = hits;
-        const meat = s.slots.find((q) => q && q.id === 200);
+        const meat = carried();
         out.meat = meat ? meat.n - meat0 : 0;
+        out.meatIn = meat ? (s.slots.includes(meat) ? 'bar' : 'pack') : null;
+        // with a full hotbar the meat is in the backpack: the player moves it to a square (the bag does this) before eating
+        if (meat && !s.slots.includes(meat)) { const k = s.slots.length - 1, i = s.pack.indexOf(meat); s.pack[i] = s.slots[k]; s.slots[k] = meat; p.changed(); }
         // eat: the place button on the meat square
         if (meat) { p.select(s.slots.indexOf(meat)); v.hp = 40; if (v.food != null) v.food = 30; const n0 = meat.n; p.placeNow(); out.ate = { hp: v.hp, food: v.food ?? null, used: n0 - meat.n }; }
         // a monster comes and hurts
         keep(); v.hp = 100;
         const mk = life.kinds.find((k) => k.kind === 'monster');
-        let m = null; for (let a2 = 0; a2 < 6.28 && !m; a2 += 0.4) m = life.spawnAt(mk.key, s.pos.x + Math.sin(a2) * 7, s.pos.z + Math.cos(a2) * 7);
-        if (!m) return { ...out, error: 'no ground for a monster' };
-        const d0 = Math.hypot(m.x - s.pos.x, m.z - s.pos.z);
-        let closest = d0;
-        for (let i = 0; i < 1200 && v.hp > 95; i++) { p.advance(1 / 60); for (const k of Object.keys(v)) if (k !== 'hp') v[k] = 80; closest = Math.min(closest, Math.hypot(m.x - s.pos.x, m.z - s.pos.z)); }
-        out.monster = { d0, closest, hp: v.hp };
+        // from the start point, where the ground is open; a monster put down behind a wall or a prop stays there, so other sides are tried
+        s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); sim(5);
+        let m = null, d0 = 0, closest = 0, tries = 0;
+        for (let a2 = 0; a2 < 6.28 && v.hp > 95; a2 += 0.7) {
+          m = life.spawnAt(mk.key, s.pos.x + Math.sin(a2) * 7, s.pos.z + Math.cos(a2) * 7);
+          if (!m) continue;
+          tries++; d0 = Math.hypot(m.x - s.pos.x, m.z - s.pos.z); closest = d0;
+          for (let i = 0; i < 600 && v.hp > 95; i++) { p.advance(1 / 60); for (const k of Object.keys(v)) if (k !== 'hp') v[k] = 80; closest = Math.min(closest, Math.hypot(m.x - s.pos.x, m.z - s.pos.z)); }
+          if (v.hp > 95) { m.hp = 0; m.dead = 2; sim(2); }
+        }
+        if (!tries) return { ...out, error: 'no ground for a monster' };
+        out.monster = { d0, closest, hp: v.hp, tries };
         // with monsters switched off they leave and do no harm
         window.__GAME_LIFE.setMonsters(false); v.hp = 100; sim(300);
         out.off = { monsters: life.ents.filter((e) => e.k.kind === 'monster' && e.hp > 0).length, hp: v.hp };
         window.__GAME_LIFE.setMonsters(true);
+        life.kinds.forEach((k) => { if (k.max0 != null) k.max = k.max0; });
         return out;
       });
       check('an animal wanders on its own', !r.error && r.animalMoved >= 0.5, r);
@@ -454,17 +467,115 @@ function serve(root, prefix) {
         out.level = [l0, document.querySelector('#statusStrip .lvl').textContent, g.status.level];
         // armour: wearing it shows on the strip
         const arm0 = !document.querySelector('#statusStrip .armor').hidden;
-        g.life.use({ use: 'wear' }); p.tick(1);
-        out.armor = [arm0, !document.querySelector('#statusStrip .armor').hidden, g.life.armor];
-        g.life.use({ use: 'wear' }); p.tick(1);
+        const keep = s.slots[s.sel];
+        s.slots[s.sel] = { id: 220, kit: true, name: 'خوذة ألماس', n: 1, tool: true, use: 'wear', wear: 'head', prot: 0.08 };
+        g.life.use(s.slots[s.sel]); p.tick(1);
+        out.armor = [arm0, !document.querySelector('#statusStrip .armor').hidden, g.life.armor, !!s.gear.head && s.gear.head.id === 220];
+        s.gear.head = null; s.slots[s.sel] = keep; p.changed(); p.tick(1);
         return out;
       });
       check('ten hearts and ten portions show health and food by halves', s1.strip && s1.hearts.full === 5 && s1.hearts.half === 1 && s1.food.full === 3 && s1.food.half === 0, s1);
       check('food runs down, and with none left health falls', s1.drain > 1.5 && s1.starve < 48, { drain: s1.drain, hp: s1.starve });
       check('ten points of experience make level 1', s1.level[0] === '0' && s1.level[1] === '1' && s1.level[2] === 1, s1.level);
-      check('worn armour shows on the strip', s1.armor[0] === false && s1.armor[1] === true && s1.armor[2] > 0, s1.armor);
+      check('a worn piece of armour goes to its place and shows on the strip', s1.armor[0] === false && s1.armor[1] === true && s1.armor[2] > 0 && s1.armor[3] === true, s1.armor);
       const xp = await page.evaluate(() => window.__play.state.xp);
       check('breaking blocks and hunting earned experience', xp >= 10, { xp });
+    }
+    // ---- the backpack, clothing, crafting, the chest and the door (worlds whose bag has them)
+    if (await page.evaluate(() => !!(window.__game && window.__game.bag && window.__game.bag.craft))) {
+      const tapOn = async (sel) => { const r = await (await page.$(sel)).boundingBox(); if (touch) await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2); else await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2); };
+      const prep = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, kitItem = (id, n) => { const it = g.bag.items.find((q) => q.id === id); return { ...it, n: n ?? it.n }; };
+        p.setFlying(false); s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); p.tick(5);
+        s.pack.fill(null); for (const k of Object.keys(s.gear)) s.gear[k] = null;
+        s.pack[0] = kitItem(140, 5); s.pack[1] = kitItem(220, 1);
+        const woodId = g.bag.craft.mats.wood.ids[0];
+        for (const list of [s.slots, s.pack]) for (const q of list) if (q && g.bag.craft.idsOf('wood').includes(q.id)) q.n = 0;      // only the pile the test puts in counts
+        s.pack[2] = kitItem(woodId, 10);
+        p.changed();
+        return { bar: s.slots.length, woodId, wood: g.bag.craft.count('wood'), pile: !!p.itemOf && !!p.itemOf(woodId) };
+      });
+      check('the hotbar has nine squares on a desktop, and what is dug can start a new pile', (touch ? prep.bar >= 5 : prep.bar === 9) && prep.pile && prep.wood === 10, prep);
+      if (touch) { const b = await (await page.$('[data-act="bag"]')).boundingBox(); await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2); } else await page.keyboard.press('KeyE');
+      await page.waitForTimeout(450);
+      await tapOn('#bag [data-tab="mine"]');
+      await page.waitForTimeout(60);
+      const mine = await page.evaluate(() => ({ pack: document.querySelectorAll('#bag [data-z="pack"]').length, gear: document.querySelectorAll('#bag [data-z="gear"]').length, bar: document.querySelectorAll('#bag [data-z="bar"]').length, fits: document.querySelector('#bag .box').getBoundingClientRect().bottom <= window.innerHeight + 1 }));
+      check('my things: 27 places, four for clothing and the other hand, and the hotbar', mine.pack === 27 && mine.gear === 5 && mine.bar >= 5 && mine.fits, mine);
+      await tapOn('#bag [data-z="pack"][data-k="0"]'); await tapOn('#bag [data-z="pack"][data-k="12"]');
+      await tapOn('#bag [data-z="pack"][data-k="1"]'); await tapOn('#bag [data-z="gear"][data-k="head"]');
+      await tapOn('#bag [data-z="pack"][data-k="12"]'); await tapOn('#bag [data-z="gear"][data-k="chest"]');       // gold is not clothing: refused
+      await tapOn('#bag [data-z="pack"][data-k="12"]');                                                             // (lets go of it again if it is still held)
+      const moved = await page.evaluate(() => { const s = window.__play.state; return { from: s.pack[0], to: s.pack[12] && s.pack[12].id, n: s.pack[12] && s.pack[12].n, head: s.gear.head && s.gear.head.id, chest: s.gear.chest, armor: window.__game.life.armor }; });
+      check('tap a thing, then a place: it moves; clothing goes on, and only where it fits', moved.from === null && moved.to === 140 && moved.n === 5 && moved.head === 220 && moved.chest === null && moved.armor > 0, moved);
+      await page.evaluate(() => window.__play.tick(1));
+      await shot('10-mine');
+      // crafting: the workbench by hand, the chest only beside a workbench
+      await tapOn('#bag [data-tab="craft"]');
+      await page.waitForTimeout(60);
+      await tapOn('#bag [data-rec="0"]');
+      const made = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, all = [...s.slots, ...s.pack];
+        const out = { table: all.filter((q) => q && q.id === 171).reduce((a, q) => a + q.n, 0), wood: g.bag.craft.count('wood'), crafted: s.crafted, far: g.bag.craft.make(5) };
+        const x = Math.floor(s.pos.x) + 1, y = Math.floor(s.pos.y + 0.01), z = Math.floor(s.pos.z);
+        out.was = g.world.get(x, y, z); g.terrain.setBlock(x, y, z, 171); g.terrain.flush();
+        out.near = g.bag.craft.tableNear(); out.chest = g.bag.craft.make(5);
+        out.has = [...s.slots, ...s.pack].some((q) => q && q.id === 170); out.woodLeft = g.bag.craft.count('wood');
+        g.terrain.setBlock(x, y, z, out.was); g.terrain.flush();
+        return out;
+      });
+      check('a workbench is made by hand from four wood', made.table === 1 && made.wood === 6 && made.crafted === 1, made);
+      check('a chest needs a workbench nearby, and is made beside one', typeof made.far === 'string' && made.near === true && made.chest === true && made.has && made.woodLeft === 0, made);
+      await page.evaluate(() => window.__play.tick(1));
+      await shot('11-craft');
+      await tapOn('#bag .x');
+      await page.waitForTimeout(120);
+      // the chest keeps things; the door opens and shuts
+      const home = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, w = g.world, out = {};
+        const y = Math.floor(s.pos.y + 0.01), fx = -Math.sin(s.yaw), fz = -Math.cos(s.yaw);
+        const cx = Math.floor(s.pos.x + fx * 2.5), cz = Math.floor(s.pos.z + fz * 2.5);
+        const keep = [[cx, y, cz], [cx, y + 1, cz], [cx + 1, y, cz]].map(([x, yy, z]) => [x, yy, z, w.get(x, yy, z)]);
+        for (const [x, yy, z] of keep) g.terrain.setBlock(x, yy, z, 0);
+        g.terrain.setBlock(cx, y, cz, 173); g.kit.placed(cx, y, cz, 173, s.yaw); g.terrain.flush();
+        out.door = [w.get(cx, y, cz), w.get(cx, y + 1, cz), g.kit.doors.size, p.isSolid(w.get(cx, y, cz))];
+        out.used = g.bag.interact({ x: cx, y: y + 1, z: cz, id: w.get(cx, y + 1, cz) });
+        g.terrain.flush();
+        out.open = [w.get(cx, y, cz), w.get(cx, y + 1, cz), p.isSolid(w.get(cx, y, cz)), s.modal];
+        g.terrain.setBlock(cx + 1, y, cz, 170); g.terrain.flush();
+        out.spot = [cx, y, cz];
+        return out;
+      });
+      check('a door is two cells tall, shut it is solid, and the button opens it', home.door[0] === 173 && home.door[1] === 174 && home.door[2] === 1 && home.door[3] === true && home.used === true && home.open[0] === 175 && home.open[1] === 176 && home.open[2] === false && home.open[3] === false, home);
+      await page.evaluate(() => { const s = window.__play.state; s.pitch = -0.1; window.__play.tick(2); });
+      await shot('12-door');
+      const chest = await page.evaluate((spot) => {
+        const g = window.__game, s = g.play.state, [cx, y, cz] = spot;
+        const opened = g.bag.interact({ x: cx + 1, y, z: cz, id: 170 });
+        return { opened, modal: s.modal, cells: document.querySelectorAll('#bag [data-z="chest"]').length, count: s.opened };
+      }, home.spot);
+      await page.waitForTimeout(450);
+      await tapOn('#bag [data-z="pack"][data-k="12"]'); await tapOn('#bag [data-z="chest"][data-k="0"]');
+      await page.evaluate(() => window.__play.tick(1));
+      await shot('13-chest');
+      const stored = await page.evaluate((spot) => { const g = window.__game, s = g.play.state, [cx, y, cz] = spot, c = g.kit.chestAt(cx + 1, y, cz); return { inChest: c[0] && c[0].id, n: c[0] && c[0].n, pack: s.pack[12] }; }, home.spot);
+      await tapOn('#bag .x');
+      await page.waitForTimeout(120);
+      const back = await page.evaluate((spot) => {
+        const g = window.__game, p = g.play, s = p.state, [cx, y, cz] = spot;
+        g.terrain.setBlock(cx + 1, y, cz, 0); g.kit.broke({ x: cx + 1, y, z: cz, id: 170 });           // breaking the chest gives back what was in it
+        const gold = [...s.slots, ...s.pack].filter((q) => q && q.id === 140).reduce((a, q) => a + q.n, 0);
+        g.bag.interact({ x: cx, y, z: cz, id: g.world.get(cx, y, cz) });                                 // shut the door again
+        const shut = g.world.get(cx, y, cz);
+        g.terrain.setBlock(cx, y, cz, 0); g.kit.broke({ x: cx, y, z: cz, id: 173 }); g.terrain.flush();
+        const feats = window.__GAME_FEATS.list();
+        return { gold, shut, gone: [g.world.get(cx, y, cz), g.world.get(cx, y + 1, cz), g.kit.doors.size], modal: s.modal, feats: feats.length, done: feats.filter((q) => q.done).map((q) => q.key) };
+      }, home.spot);
+      check('a chest opens, takes a thing, and gives it back when broken', chest.opened === true && chest.modal === true && chest.cells === 27 && chest.count >= 1 && stored.inChest === 140 && stored.n === 5 && stored.pack === null && back.gold === 5, { chest, stored, back });
+      check('the door shuts again, and breaking it removes both halves', back.shut === 173 && back.gone[0] === 0 && back.gone[1] === 0 && back.gone[2] === 0 && back.modal === false, back);
+      await page.evaluate(() => { const p = window.__play; for (let i = 0; i < 200; i++) p.advance(1 / 60); p.tick(1); });
+      const feats = await page.evaluate(() => { const l = window.__GAME_FEATS.list(); return { n: l.length, done: l.filter((q) => q.done).map((q) => q.key) }; });
+      check('achievements are earned from what was done (digging, making, the chest)', feats.n >= 12 && ['dig1', 'craft', 'chest'].every((k) => feats.done.includes(k)), feats);
     }
     // ---- the world panel (worlds that have it): Q opens it; the time of day and the rain change the picture
     if (await page.evaluate(() => !!(window.__game && window.__game.weather))) {

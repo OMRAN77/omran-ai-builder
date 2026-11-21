@@ -191,6 +191,7 @@ body.touch .slot .ic { width: 23px; height: 23px; stroke-width: 1.700; }
 body.touch .slot em { display: none; }
 body.touch .slot .n { font-size: 11.5px; bottom: 2px; inset-inline-end: 4px; }
 body.touch .slot.x6, body.touch .slot.x7, body.touch .slot.x8 { display: none; }
+body.touch .slot.x9, body.touch .bar.p2 .slot.x9 { display: none; }       /* the ninth square is for desktops */
 body.touch .more { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 22px; height: 44px; color: var(--ink-dim); border-inline-start: 1px solid var(--line-soft); }
 body.touch .more .ic { width: 9px; height: 18px; stroke-width: 2; }
 body.touch .more .dots { display: flex; gap: 2px; direction: ltr; }

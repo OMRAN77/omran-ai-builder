@@ -6,6 +6,8 @@
 //
 // Experience is play.state.xp (the controller adds to it when a block breaks, the creatures when one falls).
 
+import { createFeats } from './feats.js';
+
 const HEART = 'M8 14.2 2.3 8.6C.5 6.8.6 4 2.5 2.6 4.3 1.2 6.7 1.7 8 3.6 9.3 1.7 11.700 1.2 13.500 2.6c1.900 1.400 2 4.200.200 6z';
 const FOOD = 'M9.6 1.800c2.700-.500 5 1.800 4.600 4.500-.400 2.400-2.800 3.900-5.200 3.300L6.400 12.200c.600 1.300-.900 2.600-2.100 1.700-.300-.200-.500-.500-.600-.900-.400-.100-.700-.300-.900-.600-.900-1.200.400-2.700 1.700-2.100L7.100 7.700C6.400 5.200 7.500 2.300 9.600 1.800z';
 const SHIELD = 'M8 1.300 13.700 3.200v4.300c0 3.400-2.300 6-5.700 7.200-3.400-1.200-5.700-3.800-5.700-7.200V3.200z';
@@ -42,6 +44,9 @@ const CSS = `
 export const xpFor = (n) => 10 + n * 6;
 export function levelOf(xp) { let n = 0; while (xp >= xpFor(n)) { xp -= xpFor(n); n++; } return { level: n, into: xp, need: xpFor(n) }; }
 
+/** The share of every blow that the worn clothing takes away. */
+export const protection = (st) => ['head', 'chest', 'legs', 'feet'].reduce((s, k) => s + ((st.gear && st.gear[k] && st.gear[k].prot) || 0), 0);
+
 export function createStatus(o) {
   const { play } = o, st = play.state;
   const css = document.createElement('style');
@@ -51,29 +56,33 @@ export function createStatus(o) {
   el.id = 'statusStrip';
   if (o.accent) el.style.setProperty('--st-accent', o.accent);
   const cell = (d) => `<span class="cell"><svg class="bg" viewBox="0 0 16 16"><path d="${d}"/></svg><svg class="fg" viewBox="0 0 16 16"><path d="${d}"/></svg></span>`;
-  el.innerHTML = `<div class="armor" hidden><svg viewBox="0 0 16 16"><path d="${SHIELD}"/></svg><span>درع ألماس</span></div>
+  el.innerHTML = `<div class="armor" hidden><svg viewBox="0 0 16 16"><path d="${SHIELD}"/></svg><span></span></div>
     <div class="row hearts" aria-label="الصحة">${cell(HEART).repeat(10)}</div><div class="lvl">0</div><div class="row food" aria-label="الأكل">${cell(FOOD).repeat(10)}</div>
     <div class="xp"><i></i></div>`;
   o.mount.insertBefore(el, o.mount.firstChild);
   for (const h of o.hide || []) if (h) h.style.display = 'none';
   const hearts = [...el.querySelectorAll('.hearts .cell')], food = [...el.querySelectorAll('.food .cell')];
-  const lvl = el.querySelector('.lvl'), xpFill = el.querySelector('.xp i'), armorEl = el.querySelector('.armor');
+  const lvl = el.querySelector('.lvl'), xpFill = el.querySelector('.xp i'), armorEl = el.querySelector('.armor'), armorTxt = armorEl.querySelector('span');
+  const feats = createFeats({ play });
   const paint = (cells, val) => { const halves = Math.ceil(Math.max(0, Math.min(100, val)) / 5); cells.forEach((c, i) => { c.classList.toggle('full', halves >= i * 2 + 2); c.classList.toggle('half', halves === i * 2 + 1); }); };
   let shown = '', level = 0;
   function update() {
-    const v = o.vitals && o.vitals(), l = o.life && o.life();
-    const hp = v ? v.values.hp : 100, fd = v && v.values.food != null ? v.values.food : 100, xp = st.xp || 0, ar = l ? l.armor : 0;
+    feats.check();
+    const v = o.vitals && o.vitals();
+    const hp = v ? v.values.hp : 100, fd = v && v.values.food != null ? v.values.food : 100, xp = st.xp || 0;
+    const worn = ['head', 'chest', 'legs', 'feet'].filter((k) => st.gear && st.gear[k]), ar = worn.length ? worn.length + ':' + Math.round(protection(st) * 100) : 0;
     const key = Math.ceil(hp / 5) + '|' + Math.ceil(fd / 5) + '|' + xp + '|' + ar;
     if (key === shown) return;
     shown = key;
     paint(hearts, hp); paint(food, fd);
     el.classList.toggle('low', hp <= 25);
     armorEl.hidden = !ar;
+    if (ar) armorTxt.textContent = 'درع ' + worn.length + '/4 · يصدّ ' + Math.round(protection(st) * 100) + '%';
     const q = levelOf(xp);
     lvl.textContent = String(q.level);
     xpFill.style.width = (q.into / q.need * 100).toFixed(1) + '%';
     if (q.level > level) { if (level || xp) { play.notice('وصلت المستوى ' + q.level + '.', false, 2600); if (play.sound && play.sound.level) play.sound.level(); } level = q.level; }
   }
   update();
-  return { el, update, get level() { return level; } };
+  return { el, update, feats, get level() { return level; } };
 }

@@ -319,9 +319,9 @@ export async function startGame(ctx) {
     spawn: { x: sx - OX, y: fy, z: sz - OZ, yaw: Math.atan2(-ax, -az), pitch: Math.atan2(ay, Math.hypot(ax, az)) },
     slots, touch: hud.touch ? hud.els : null, maxPixelRatio: 2,
     isLiquid: (id) => id === B.WATER || kit.isLiquid(id),
-    isSolid: (id) => id === OBSTACLE || built(id),
+    isSolid: (id) => id === OBSTACLE || (BLOCKS[id] && BLOCKS[id].solid != null ? BLOCKS[id].solid : built(id)),      // a door says for itself (shut: solid, open: not)
     heightOf: kit.heightOf,
-    pickable: (id) => id === LANTERN || built(id) || kindOf(id) === 'cross',
+    pickable: (id) => id === LANTERN || built(id) || kindOf(id) === 'cross' || !!(BLOCKS[id] && BLOCKS[id].pick),
     // The item in the selected square decides, wherever the bag has put it: the spade is quick in loose
     // ground and slow in rock; the mattock, and anything else in the hand, is the all-rounder. Kit blocks
     // come away the same in every world.
@@ -365,10 +365,11 @@ export async function startGame(ctx) {
     },
     onInventory(list, sel) {
       hud.setSlots(list, sel);
-      const it = list[sel], block = it && it.id && ((!it.tool && BLOCKS[it.id]) || it.weapon) ? it.id : 0;      // a block in the selected square is what the hand shows
+      const it = list[sel], block = it && it.id && ((!it.tool && BLOCKS[it.id]) || it.model) ? it.id : 0;      // a block in the selected square is what the hand shows
       arm.visible = !heldBlock.show(block);
     },
     onBag() { bag.toggle(); },
+    onInteract: (h) => bag.interact(h),
     onMenu() { if (weather) weather.toggle(); },
     onUse: (item) => (life ? life.use(item) : false),
     onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
@@ -454,13 +455,13 @@ export async function startGame(ctx) {
   // the bag (E, or its button on a phone): this world's own things first, then the building kit
   const KUFI = "'Reem Kufi', 'Tajawal', sans-serif", BODY = "'Tajawal', sans-serif";
   const bag = createBag({
-    play, shown: hud.shown,
+    play, kit, shown: hud.shown, onMenu: () => { play.stop(); panel.show('pause'); },
+    mats: { wood: { ids: [B.WOOD], name: 'خشب' }, stone: { ids: [B.ROCK_A, B.BRICK], name: 'حجر أو طوب' }, ore: { ids: [B.SAND], name: 'رمل (يصفّى منه الذهب)' } },
     groups: [{ title: 'عدّة الواحة', items: ownItems() }, ...KIT_GROUPS],
     iconOf: hud.icon,
     fontFamily: BODY, accent: '#efd9a0', line: 'rgba(201, 163, 90, .85)',
     extra: { label: 'الوقت والجو', onClick: () => weather && weather.open() },
   });
-  for (const el of bag.el.querySelectorAll('h2, h3, .x, .extra')) el.style.fontFamily = KUFI;
   // a tap, not a press: the finger is up again before the bag is under it, so the same touch cannot pick an item
   hud.els.bag.addEventListener('click', () => { if (play.state.running) bag.toggle(); });
 

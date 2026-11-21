@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { createVoxelTerrain } from '../../shared/voxel.js';
-import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
+import { createPlay, createPlayPanel, goImmersive, EMPTY } from '../../shared/play.js';
 import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
 import { createHeld } from '../../shared/held.js';
@@ -518,7 +518,7 @@ async function startGame() {
   stage.live = true;
   laser.visible = false;
   const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
-  const slots = SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })).slice(0, hud.shown);
+  const slots = [...SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })), EMPTY].slice(0, hud.shown);    // nine squares on a desktop, the ninth empty
   const kit = createKit({ scene, world, terrain });
   const heldBlock = createHeld({ camera, blocks: BLOCKS, materialFor: (tile) => kitMaterial(tile) || tileMaterial(tile) });
   let toolInHand = true;
@@ -540,10 +540,11 @@ async function startGame() {
     onPlace(x, y, z, id) { kit.placed(x, y, z, id, play.state.yaw); if (isCrystal(id) || isCrystal(world.get(x, y - 1, z))) buildTips(); },
     onInventory(list, sel) {
       hud.setSlots(list, sel); showGoal(list);
-      const it = list[sel], block = it && it.id && (!it.tool || it.weapon) && (BLOCKS[it.id] || it.weapon) ? it.id : 0;   // a block, or the sword, is what the hand shows
+      const it = list[sel], block = it && it.id && (!it.tool || it.model) && (BLOCKS[it.id] || it.model) ? it.id : 0;   // a block, or the sword, is what the hand shows
       heldBlock.show(block); toolInHand = !block; fp.visible = toolInHand;
     },
     onBag() { bag.toggle(); },
+    onInteract: (h) => bag.interact(h),
     onMenu() { if (weather) weather.toggle(); },
     onUse: (item) => (life ? life.use(item) : false),
     onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
@@ -583,7 +584,8 @@ async function startGame() {
   /** The crystal count of the goal is whatever the hotbar holds now (the player may have moved things around). */
   function showGoal(list) { const c = list.find((q) => q.id === B.CRYSTAL_C); if (c) hud.setGoal(Math.min(GOAL, c.n), GOAL); }
   const bag = createBag({
-    play, shown: hud.shown,
+    play, kit, shown: hud.shown, onMenu: () => { play.stop(); panel.show('pause'); },
+    mats: { wood: { ids: [B.HULL_W, B.CAP], name: 'لوح هيكل أو فطر' }, stone: { ids: [B.BASALT, B.SOIL], name: 'بازلت أو تربة' }, ore: { ids: [B.ORE, B.CRYSTAL_C], name: 'خام أو بلّور' } },
     groups: [{ title: 'عدّة كوكب', items: SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })) }, ...KIT_GROUPS],
     iconOf: (it) => (it.kit ? kitIcon(it.id) : hud.icon(it.icon)),
     fontFamily: "'Plex Arabic', sans-serif", accent: '#7df1ff', line: 'rgba(125, 241, 255, .4)',

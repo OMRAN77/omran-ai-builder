@@ -12,6 +12,9 @@
 // Models are made once per slot and reused. They face +z at rotation 0 and stand on their origin.
 
 import * as THREE from 'three';
+import { kitItem } from './kit.js';
+import { EMPTY } from './play.js';
+import { protection } from './status.js';
 
 export const MEAT = 200, SWORD = 210, ARMOR = 211;
 
@@ -32,7 +35,8 @@ export function simpleBeast({ body = 0x6d5a47, belly = 0x8a7660, horn = 0xd8d2c0
 export function createLife(o) {
   const { scene, camera, play, world } = o, st = play.state, off = o.offset || { x: 0, z: 0 };
   const ents = [], pool = {}, counts = {};
-  let monsters = true, spawnT = 1, atkCool = 0, armor = 0, aimed = null, xp = 0;
+  let monsters = true, spawnT = 1, atkCool = 0, aimed = null, xp = 0;
+  const armor = () => Math.min(0.8, protection(st));
   try { monsters = window.localStorage.getItem('bw-monsters') !== '0'; } catch (e) { /* storage may be closed */ }
   for (const k of o.kinds) { pool[k.key] = []; counts[k.key] = 0; }
   window.__GAME_LIFE = {
@@ -76,16 +80,11 @@ export function createLife(o) {
     spawnAt(k.key, st.pos.x + Math.sin(a) * d, st.pos.z + Math.cos(a) * d);
   }
   function giveMeat(n) {
-    const slots = st.slots;
-    let i = slots.findIndex((s) => s && s.id === MEAT);
-    if (i >= 0) { slots[i].n += n; play.setSlot(i, slots[i]); return; }
-    // a free square if there is one; otherwise the last square that is not a tool and not the one in hand
-    // (whatever was there can be taken from the bag again)
-    i = slots.findIndex((s) => !s || (!s.tool && !s.use && !(s.n > 0)));
-    if (i < 0) for (let j = slots.length - 1; j >= 0; j--) if (j !== st.sel && !(slots[j] && slots[j].tool)) { i = j; break; }
-    if (i < 0) i = slots.length - 1;
-    play.setSlot(i, { id: MEAT, kit: true, name: 'لحم', n, use: 'eat' });
-    play.notice('حصلت لحم في المربع ' + (i + 1) + '. اختره واضغط زر البناء (الزر الأيمن) عشان تاكل وتشبع.', false, 5000);
+    const had = [...st.slots, ...st.pack].some((q) => q && q.id === MEAT && q.n > 0);
+    const where = play.give(kitItem(MEAT, n));
+    if (!where) { play.notice('حقيبتك مليانة، ما في مكان للحم.', false, 3000); return; }
+    if (where === 'pack') play.notice('اللحم راح حقيبتك (E). انقله لمربع من مربعاتك تحت عشان تاكله.', false, 6000);
+    else if (!had) play.notice('حصلت لحم. اختره واضغط زر البناء (الزر الأيمن) عشان تاكل وتشبع.', false, 5000);
   }
   /** The selected item was used (the place button on something that is not a block). */
   function use(item) {
@@ -95,14 +94,21 @@ export function createLife(o) {
       const hungry = v.values.food != null && v.values.food < 95;
       if (v.values.hp >= 100 && !hungry) { play.notice('شبعان وصحتك كاملة.', false, 1600); return false; }
       if (v.values.food != null) v.values.food = Math.min(100, v.values.food + 40);
-      v.values.hp = Math.min(100, v.values.hp + (v.values.food != null ? 10 : 30)); item.n--; play.setSlot(st.sel, item);
+      v.values.hp = Math.min(100, v.values.hp + (v.values.food != null ? 10 : 30)); item.n--; st.eaten++; play.setSlot(st.sel, item.n > 0 ? item : EMPTY);
       if (play.sound) (play.sound.eat || play.sound.place)();
       return true;
     }
-    if (item.use === 'wear') { armor = armor ? 0 : 0.45; play.notice(armor ? 'لبست درع الألماس: الضربات تأذيك أقل.' : 'شلت الدرع.', false, 2600); if (play.sound) play.sound.ui(); return true; }
+    if (item.use === 'wear' && item.wear) {
+      // the piece in the hand goes on, and what was worn there comes back to the hand
+      const was = st.gear[item.wear];
+      st.gear[item.wear] = item; st.slots[st.sel] = was || EMPTY;
+      play.changed();
+      play.notice('لبست ' + item.name + '.', false, 2200); if (play.sound) play.sound.ui();
+      return true;
+    }
     return false;
   }
-  const power = () => { const s = st.slots[st.sel]; return s && s.id === SWORD ? 7 : s && s.tool ? 4 : 2; };
+  const power = () => { const s = st.slots[st.sel]; return s && s.weapon ? +s.weapon || 7 : s && s.tool && !s.empty ? 3 : 2; };   // a weapon by its own strength, a digging tool 3, the bare hand 2
   const _d = new THREE.Vector3(), _c = new THREE.Vector3(), _p = new THREE.Vector3();
   function findAimed() {
     const cp = Math.cos(st.pitch); _d.set(-Math.sin(st.yaw) * cp, Math.sin(st.pitch), -Math.cos(st.yaw) * cp);
@@ -123,7 +129,7 @@ export function createLife(o) {
     const dx = e.x - st.pos.x, dz = e.z - st.pos.z, l = Math.hypot(dx, dz) || 1, nx = e.x + dx / l * 0.7, nz = e.z + dz / l * 0.7;
     if (groundAt(nx, nz, e.y + 1) !== null) { e.x = nx; e.z = nz; }
     if (play.sound) { play.sound.dig(); if (e.hp <= 0) play.sound.brk(); }
-    if (e.hp <= 0) { e.dead = 0.0001; { const gain = e.k.kind === 'monster' ? 5 : 2; xp += gain; st.xp = (st.xp || 0) + gain; } if (e.k.meat) giveMeat(e.k.meat); }
+    if (e.hp <= 0) { e.dead = 0.0001; { const gain = e.k.kind === 'monster' ? 5 : 2; xp += gain; st.xp = (st.xp || 0) + gain; st.kills[e.k.kind]++; } if (e.k.meat) giveMeat(e.k.meat); }
   }
   function update(dt) {
     if (dt <= 0 || st.modal) return;
@@ -144,7 +150,7 @@ export function createLife(o) {
       if (k.kind === 'monster' && monsters && dist < 20 && Math.abs(p.y - e.y) < 6) {
         const reach = k.radius + 1.25;
         if (dist > reach) { mx = dx / dist; mz = dz / dist; speed = k.speed; }
-        else if (e.cool <= 0) { e.cool = 1.15; const v = o.vitals && o.vitals(); if (v) v.hurt(k.dmg * (1 - armor)); }
+        else if (e.cool <= 0) { e.cool = 1.15; const v = o.vitals && o.vitals(); if (v) v.hurt(k.dmg * (1 - armor())); }
       } else if (e.flee > 0 && dist > 0.01) { mx = -dx / dist; mz = -dz / dist; speed = k.speed * 2.1; }
       else {
         if ((e.until -= dt) <= 0) { e.until = 2 + Math.random() * 5; if (Math.random() < 0.65) { const a = Math.random() * 6.283, d = 2 + Math.random() * 5; e.tx = e.x + Math.sin(a) * d; e.tz = e.z + Math.cos(a) * d; e.mode = 'walk'; } else e.mode = 'idle'; }
@@ -170,5 +176,5 @@ export function createLife(o) {
       tag.style.transform = `translate(${((_p.x * 0.5 + 0.5) * window.innerWidth).toFixed(1)}px, ${((-_p.y * 0.5 + 0.5) * window.innerHeight).toFixed(1)}px) translate(-50%, -100%)`;
     } else tag.hidden = true;
   }
-  return { update, use, spawnAt, ents, kinds: o.kinds, get armor() { return armor; }, get xp() { return xp; }, get aimed() { return aimed; } };
+  return { update, use, spawnAt, ents, kinds: o.kinds, get armor() { return armor(); }, get xp() { return xp; }, get aimed() { return aimed; } };
 }

@@ -245,13 +245,14 @@ test('v-blockworld-vitals: الصحّة وحاجة كلّ عالم أرقام ح
 test('v-blockworld-life: حيوانات تُصاد ووحوش تهاجم، بمجسّمات وأسماء كلّ عالم', () => {
   const life = read('shared/life.js'), play = read('shared/play.js'), kit = read('shared/kit.js');
   assert.match(life, /kind === 'monster' && monsters && dist < 20/, 'الوحش يطارد حين يقترب اللاعب');
-  assert.match(life, /v\.hurt\(k\.dmg \* \(1 - armor\)\)/, 'ضربته تنقص الصحّة، والدرع يخفّفها');
+  assert.match(life, /v\.hurt\(k\.dmg \* \(1 - armor\(\)\)\)/, 'ضربته تنقص الصحّة، والدرع الملبوس يخفّفها');
   assert.match(life, /if \(e\.k\.meat\) giveMeat\(e\.k\.meat\)/, 'الصيد يعطي لحمًا');
+  assert.match(life, /play\.give\(kitItem\(MEAT, n\)\)/, 'واللحم يدخل الأغراض بالطريق العامّ');
   assert.match(life, /item\.use === 'eat'/);
   assert.match(life, /st\.noDig = !!aimed/, 'المخلوق تحت المؤشّر يُضرب بدل المكعب خلفه');
   assert.match(play, /if \(st\.noDig\)/);
   assert.match(play, /if \(s && s\.use\) return o\.onUse/);
-  for (const name of ['لحم', 'سيف ألماس', 'درع ألماس']) assert.ok(kit.includes(name), name);
+  for (const name of ['لحم', 'سيف ألماس', 'صدرية']) assert.ok(kit.includes(name), name);
   const want = { kawkab: ['الحمّال', 'الزاحف', 'الطيف'], waha: ['المها', 'غول الرمال', 'عقرب الصخر'], dhalam: ['الوعل', 'المتربّص', 'ذئب العظم'] };
   for (const k of WORLDS) {
     const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
@@ -270,7 +271,7 @@ test('v-blockworld-sky: لوحة Q تختار الوقت والمطر والوح
   for (const t of ['الصبح', 'المغرب', 'الليل', 'صافي', 'مطر', 'موجودة', 'بدون']) assert.ok(sky.includes(t), t);
   assert.match(sky, /window\.__GAME_SKY = state/, 'الصحّة والمخلوقات تقرآن الوقت والمطر');
   assert.match(sky, /if \(v === open \|\| \(v && st\.modal\)\) return/, 'لوحة واحدة في المرّة');
-  assert.match(bag, /if \(v === open \|\| \(v && play\.state\.modal\)\) return/);
+  assert.match(bag, /if \(v === open \|\| \(v && st\.modal\)\) return/);
   assert.match(bag, /class="extra"/, 'على الجوّال: زرّ داخل الحقيبة يفتح اللوحة');
   assert.ok(!/class="x extra"/.test(bag), 'زرّ اللوحة ليس زرّ الإغلاق (كان يُغلق الحقيبة ويفتح اللوحة بدلها)');
   // خطوط المطر: لا pow ولا normalize على متّجه قد يكون صفرًا (غير معرّف على العتاد الحقيقيّ)
@@ -306,5 +307,53 @@ test('v-blockworld-status: قلوب وأكل ودرع وخبرة فوق المر
     assert.match(src, /status = createStatus\(\{[^\n]*hide: \[vq\('[a-z-]*(hp|health)'\)\]/, k + ': شريط الصحّة القديم يُخفى فلا يتكرّر');
     assert.match(src, /if \(status\) status\.update\(\);/, k);
   }
+});
+
+test('v-blockworld-inv: حقيبة بثلاث صفحات، ٢٧ خانة ولبس ويد ثانية، وتصنيع وصندوق وباب وإنجازات', () => {
+  const play = read('shared/play.js'), bag = read('shared/bag.js'), kit = read('shared/kit.js'), craft = read('shared/craft.js');
+  const feats = read('shared/feats.js'), life = read('shared/life.js'), status = read('shared/status.js'), held = read('shared/held.js');
+  // الأغراض: حقيبة ٢٧، أربع خانات لبس ويد ثانية، ومربّع فارغ يُرسم كأيّ غرض
+  assert.match(play, /pack: new Array\(27\)\.fill\(null\)/);
+  assert.match(play, /gear: \{ head: null, chest: null, legs: null, feet: null, off: null \}/);
+  assert.match(play, /export const EMPTY = Object\.freeze\(\{ empty: true, kit: true, id: 0, name: '', tool: 'none' \}\)/);
+  assert.match(play, /const it = itemOf \? itemOf\(want\) : null;/, 'ما يُحفر يبدأ كومة جديدة إن عُرف الغرض (كان يضيع)');
+  assert.match(play, /return 'pack';/, 'give يقول أين ذهب الغرض');
+  assert.match(play, /o\.onInteract && !keys\.has\('ShiftLeft'\)/, 'زرّ البناء يشغّل الباب والصندوق، وShift يبني بجانبهما');
+  assert.match(play, /blocks\[s\.id\]\.tall && \(y \+ 2 >= sy \|\| world\.get\(x, y \+ 1, z\) !== 0\)/, 'الباب يحتاج الخانة فوقه');
+  assert.match(play, /hardness\(h\.id\) \/ \(\(tool && tool\.speed\) \|\| 1\)/, 'المعول والفأس أسرع');
+  assert.match(play, /e\.code === 'Escape' && !st\.locked && o\.onUnlock/, 'Esc يفتح القائمة حتّى بلا التقاط الفأرة');
+  for (const t of ['أغراضي', 'التصنيع', 'كل البلوكات', 'اليد الثانية', 'خوذة', 'صدرية', 'سروال', 'حذاء']) assert.ok(bag.includes(t), t);
+  assert.match(bag, /fits = \(z, k, it\) => !has\(it\) \|\| z === 'bar' \|\| z === 'pack' \|\| z === 'chest' \|\| k === 'off' \|\| it\.wear === k/, 'خانة اللبس لا تقبل إلّا قطعتها');
+  // البلوكات الجديدة
+  assert.match(kit, /CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176/);
+  assert.match(kit, /kind: 'none', solid: true, pick: true, tall: true, door: 1/, 'الباب المغلق صلب ويُصوَّب عليه ولا يُرسم مكعبًا');
+  assert.match(kit, /\[K\.DOOR_OPEN\] = \{[^}]*solid: false/, 'والمفتوح يُعبَر');
+  assert.match(kit, /if \(c && play\) for \(const it of c\) if \(it\) play\.give\(it\);/, 'كسر الصندوق يردّ ما فيه');
+  assert.match(kit, /never shut a door on the player/);
+  for (const n of ['سيف حجر', 'سيف ذهب', 'فأس حجر', 'فأس ألماس', 'معول حجر', 'معول ألماس', 'طاولة تصنيع', 'صندوق', 'مشعل', 'باب']) assert.ok(kit.includes(n), n);
+  assert.match(craft, /\{ out: K\.TABLE, n: 1, needs: \[\['wood', 4\]\] \}/, 'الطاولة تُصنع باليد');
+  assert.match(craft, /\{ out: K\.CHEST, n: 1, needs: \[\['wood', 6\]\], table: true \}/);
+  assert.match(craft, /if \(r\.table && !tableNear\(\)\) return/);
+  assert.match(life, /s\.weapon \? \+s\.weapon/, 'قوّة السلاح من السلاح نفسه');
+  assert.match(status, /export const protection = \(st\) => \['head', 'chest', 'legs', 'feet'\]\.reduce/);
+  assert.match(held, /const tools = \{ sword: new THREE\.Group\(\), axe: new THREE\.Group\(\), pick: new THREE\.Group\(\) \}/);
+  assert.ok((feats.match(/^  \['/gm) || []).length >= 12, '١٢ إنجازًا على الأقلّ');
+  assert.ok(!/[٠-٩]/.test(feats + status), 'أرقام لاتينيّة كباقي الواجهة');
+  assert.match(play, /الإنجازات /);
+  assert.match(play, /سرعة النظر: عادية/);
+  // الإشعار فوق اللوحات المفتوحة لا خلفها
+  assert.match(play, /z-index:48;/);
+  for (const k of WORLDS) {
+    const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
+    assert.match(src, /onInteract: \(h\) => bag\.interact\(h\),/, k);
+    assert.match(src, /play, kit, shown: [a-z.]+, onMenu: \(\) => \{ play\.stop\(\); panel\.show\('pause'\); \},/, k);
+    assert.match(src, /mats: \{ wood: \{ ids: \[/, k);
+    assert.ok(!/it\.weapon\) \? it\.id/.test(src), k + ': اليد تتبع نموذج الأداة لا السيف وحده');
+  }
+  assert.match(read('styles/kawkab/hud.js'), /const shown = touch \? 5 : 9,/);
+  assert.match(read('styles/dhalam/index.html'), /class="slot x9" data-i="8"/);
+  assert.match(read('styles/dhalam/main.js'), /solid === false\)/, 'ظلام: الباب المفتوح يُعبَر');
+  assert.match(read('styles/waha/game.js'), /BLOCKS\[id\]\.solid != null \? BLOCKS\[id\]\.solid : built\(id\)/);
+  assert.ok(!/creeper|enderman|minecraft|ماين ?كرافت/i.test(bag + kit + craft + feats), 'لا أسماء منقولة من لعبة أخرى');
 });
 

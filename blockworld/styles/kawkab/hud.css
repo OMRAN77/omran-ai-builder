@@ -91,6 +91,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #05060a; }
 .target .pips i.off { background: rgba(var(--cy2), .25); box-shadow: none; }
 
 /* vitals (bottom left: the held tool owns the bottom right) */
+@media (max-width: 1500px) { #hud:not(.touch) .vitals { bottom: 112px; } }     /* nine squares reach the corner on a laptop: the bars step up over them */
 .vitals { left: 24px; bottom: 24px; display: flex; flex-direction: column; gap: 8px; background: linear-gradient(270deg, rgba(5, 16, 24, .3), rgba(5, 16, 24, .62)); }
 .vit { display: flex; align-items: center; gap: 9px; }
 .vit .lbl { width: 62px; font-size: 13.5px; }

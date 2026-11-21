@@ -25,14 +25,21 @@ import { createSound } from './sound.js';
 
 const E = 1e-4;
 
+/** An empty hotbar square. It is an item like any other to the HUDs: no picture, no count, nothing to place. */
+export const EMPTY = Object.freeze({ empty: true, kit: true, id: 0, name: '', tool: 'none' });
+/** Can something new be put in this square? (nothing there, or a pile that ran out) */
+export const isFree = (s) => !s || !!s.empty || (!s.tool && !s.use && !(s.n > 0));
+const LOOK = { slow: 0.65, normal: 1, fast: 1.5 };
+
 export function createPlay(o) {
   const { camera, canvas, world, blocks, terrain } = o;
   const { sx, sy, sz } = world;
   const kindOf = (id) => (id && blocks[id] ? (blocks[id].kind ?? 'solid') : 'air');
   const CUBE = { solid: 1, cutout: 1, translucent: 1, slab: 1 };
   const isLiquid = o.isLiquid ?? ((id) => kindOf(id) === 'liquid');
-  const isSolid = o.isSolid ?? ((id) => !!CUBE[kindOf(id)] && !isLiquid(id));
-  const pickable = o.pickable ?? ((id) => id !== 0 && !isLiquid(id) && kindOf(id) !== 'none' && kindOf(id) !== 'air');
+  // a block may say for itself whether it is solid and whether it can be aimed at (a door is a model, not a meshed cube)
+  const isSolid = o.isSolid ?? ((id) => (blocks[id] && blocks[id].solid != null ? blocks[id].solid : !!CUBE[kindOf(id)] && !isLiquid(id)));
+  const pickable = o.pickable ?? ((id) => id !== 0 && !isLiquid(id) && kindOf(id) !== 'air' && (kindOf(id) !== 'none' || !!blocks[id].pick));
   const hardness = o.hardness ?? ((id) => (kindOf(id) === 'cross' ? 0.08 : 0.45));
   const hOf = o.heightOf ?? (() => 1);
   const P = { hw: 0.3, height: 1.8, eye: 1.62, walk: 4.4, sprint: 6.8, jump: 8.7, gravity: 27, reach: 5.5, swim: 3.4, autoJump: true, mouse: 0.0022, touchLook: 0.0052,
@@ -45,7 +52,11 @@ export function createPlay(o) {
     dig: { on: false, x: 0, y: 0, z: 0, t: 0, need: 1, progress: 0 },
     slots: o.slots, sel: 0, running: false, locked: false, time: 0, broken: 0, placed: 0,
     flying: false, modal: false, xp: 0,
+    pack: new Array(27).fill(null),                                  // the backpack: 27 places behind the hotbar
+    gear: { head: null, chest: null, legs: null, feet: null, off: null },   // what is worn, and the other hand
+    kills: { animal: 0, monster: 0 }, eaten: 0, crafted: 0, opened: 0, flown: 0, swum: 0,   // counted for the achievements
   };
+  let itemOf = o.itemOf || null;                                     // id -> a fresh item object (the bag knows every item)
   const inp = { fx: 0, fz: 0, jump: false, dig: false, sprint: false, place: false, down: false };
   const sound = o.sound === false ? null : createSound();          // every world gets the same sounds; M mutes
   window.__GAME_SOUND = sound;
@@ -184,11 +195,28 @@ export function createPlay(o) {
 
   // ------------------------------------------------------------------ digging and placing
   const inventoryChanged = () => { if (o.onInventory) o.onInventory(st.slots, st.sel); };
+  /**
+   * Put an item among the player's things: on a pile of the same thing (hotbar first, then the backpack), else in an
+   * empty hotbar square, else an empty place in the backpack, else a hotbar square whose pile ran out. Returns 'bar' or 'pack' (where it went), or false when full.
+   */
+  function give(item) {
+    if (!item || !item.id) return false;
+    const n = item.n == null ? 1 : item.n, piles = !item.tool;
+    if (piles) for (const [where, list] of [['bar', st.slots], ['pack', st.pack]]) { const s = list.find((q) => q && q.id === item.id && !q.tool); if (s) { s.n = Math.min(999, (s.n || 0) + n); inventoryChanged(); return where; } }
+    let i = st.slots.findIndex((q) => !q || q.empty);
+    if (i >= 0) { st.slots[i] = { ...item }; inventoryChanged(); return 'bar'; }
+    i = st.pack.findIndex((q) => !q);
+    if (i >= 0) { st.pack[i] = { ...item }; inventoryChanged(); return 'pack'; }
+    for (let j = st.slots.length - 1; j >= 0; j--) if (j !== st.sel && isFree(st.slots[j])) { st.slots[j] = { ...item }; inventoryChanged(); return 'bar'; }
+    return false;
+  }
   function collect(id) {
     const want = o.dropOf ? o.dropOf(id) : id;
     if (!want) return;
-    const s = st.slots.find((q) => q.id === want);
-    if (s) { s.n = Math.min(999, (s.n || 0) + 1); inventoryChanged(); }
+    const s = st.slots.find((q) => q && q.id === want && !q.tool) || st.pack.find((q) => q && q.id === want && !q.tool);
+    if (s) { s.n = Math.min(999, (s.n || 0) + 1); inventoryChanged(); return; }
+    const it = itemOf ? itemOf(want) : null;                         // nothing of the kind is carried yet: a new pile, if the item is known
+    if (it) give({ ...it, n: 1 });
   }
   function breakBlock(h) {
     terrain.setBlock(h.x, h.y, h.z, 0);
@@ -210,13 +238,15 @@ export function createPlay(o) {
       if (!inp.dig) snd.dig = 0;
       d.on = false; d.t = 0; d.progress = 0; return;
     }
-    if (!d.on || d.x !== h.x || d.y !== h.y || d.z !== h.z) { d.on = true; d.x = h.x; d.y = h.y; d.z = h.z; d.t = 0; d.need = Math.max(0.01, hardness(h.id)); }
+    if (!d.on || d.x !== h.x || d.y !== h.y || d.z !== h.z) { d.on = true; d.x = h.x; d.y = h.y; d.z = h.z; d.t = 0; const tool = st.slots[st.sel]; d.need = Math.max(0.01, hardness(h.id) / ((tool && tool.speed) || 1)); }   // a pick or an axe from the bag digs faster
     d.t += dt; d.progress = Math.min(1, d.t / d.need);
     if (sound && (snd.dig -= dt) <= 0) { snd.dig = 0.2; sound.dig(); }
     if (d.t >= d.need) { breakBlock(h); d.on = false; d.t = 0; d.progress = 0; aim(); }
   }
   function placeNow() {
     const h = st.hit, s = st.slots[st.sel];
+    // a door, a chest, a workbench: the button works it (hold Shift to build against it instead)
+    if (h && o.onInteract && !keys.has('ShiftLeft') && !keys.has('ShiftRight') && o.onInteract(h)) return true;
     if (s && s.use) return o.onUse ? !!o.onUse(s, st.sel) : false;          // food, clothing: used, not placed
     if (!h || !s || !s.id || !(s.n > 0) || !blocks[s.id]) return false;
     const onPlant = kindOf(h.id) === 'cross';
@@ -225,6 +255,7 @@ export function createPlay(o) {
     const cur = world.get(x, y, z);
     if (cur && !isLiquid(cur) && kindOf(cur) !== 'cross') return false;
     if (o.canPlace && o.canPlace(x, y, z, s.id) === false) return false;        // the world may keep blocks out of some places
+    if (blocks[s.id].tall && (y + 2 >= sy || world.get(x, y + 1, z) !== 0)) return false;     // a door needs the cell above it too
     if (isSolid(s.id)) {      // never wall the player in
       const p = st.pos;
       if (x + 1 > p.x - P.hw && x < p.x + P.hw && z + 1 > p.z - P.hw && z < p.z + P.hw && y + 1 > p.y && y < p.y + P.height) return false;
@@ -281,6 +312,7 @@ export function createPlay(o) {
       if (e.code === 'KeyQ' && !e.repeat && o.onMenu) { if (sound) sound.ui(); o.onMenu(); e.preventDefault(); return; }
       if (e.code === 'KeyM' && !e.repeat && sound) { sound.setMuted(!sound.muted); notice(sound.muted ? 'الصوت مطفي.' : 'الصوت شغّال.', false, 1600); return; }
       if (st.modal) return;
+      if (e.code === 'Escape' && !st.locked && o.onUnlock) { o.onUnlock(); return; }     // without a captured mouse Esc arrives here: the same pause menu
       if (!e.repeat) {
         const now = performance.now();
         if (e.code === 'KeyW' || e.code === 'ArrowUp') { if (doubled(now, lastFwd)) sprintLatch = true; lastFwd = now; }          // double W: run until W is released
@@ -410,6 +442,8 @@ export function createPlay(o) {
       if ((st.onGround || st.inWater) && !st.flying && st.moving > 0.8) { snd.stride += st.moving * dt; if (snd.stride > (st.inWater ? 2.6 : 2.15)) { snd.stride = 0; sound.step(st.inWater); } }
       snd.ground = st.onGround; snd.water = st.inWater;
     }
+    if (st.flying) st.flown += dt;
+    if (st.inWater) st.swum += dt;
     placeCamera();
     aim();
     digTick(dt);
@@ -433,6 +467,12 @@ export function createPlay(o) {
     res.pr = res.cap = res.base; res.acc = 0; res.n = 0; res.good = 0;       // start again from full resolution
     if (st.running && o.setPixelRatio) o.setPixelRatio(res.pr);
   }
+  // how fast the view turns, for mouse and finger alike
+  const look0 = { mouse: P.mouse, touch: P.touchLook };
+  let lookMode = 'normal';
+  const setLook = (m) => { if (!LOOK[m]) return; lookMode = m; P.mouse = look0.mouse * LOOK[m]; P.touchLook = look0.touch * LOOK[m]; try { window.localStorage.setItem('bw-look', m); } catch (e) { /* not kept */ } };
+  try { const m = window.localStorage.getItem('bw-look'); if (LOOK[m]) setLook(m); } catch (e) { /* storage may be closed */ }
+  window.__GAME_LOOK = { get mode() { return lookMode; }, set: setLook };
   window.__GAME_QUALITY = { get mode() { return res.mode; }, set: setQuality, get scale() { return res.base ? res.pr / res.base : 1; } };
   function initRes() {
     res.base = Math.min(window.devicePixelRatio || 1, o.maxPixelRatio ?? 2);
@@ -475,10 +515,12 @@ export function createPlay(o) {
   function notice(text, keep, ms = 9000) {
     if (!noteEl) {
       noteEl = document.createElement('div');
-      noteEl.style.cssText = 'position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:40;max-width:min(560px,calc(100vw - 32px));padding:10px 16px;border-radius:10px;'
+      noteEl.style.cssText = 'position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:48;max-width:min(560px,calc(100vw - 32px));padding:10px 16px;border-radius:10px;'
         + 'background:rgba(8,11,16,.9);border:1px solid rgba(255,255,255,.28);color:#f1f4f8;font:500 14px/1.7 system-ui,sans-serif;direction:rtl;text-align:center;white-space:pre-line;pointer-events:none;';
       document.body.appendChild(noteEl);
     }
+    // over an open panel (the bag, the world panel) the note sits at the bottom edge, where it hides the least; clicks pass through it
+    noteEl.style.top = st.modal ? 'auto' : '22%'; noteEl.style.bottom = st.modal ? '6px' : 'auto';
     noteEl.textContent = text; noteEl.hidden = false;
     clearTimeout(noteTimer);
     if (!keep) noteTimer = setTimeout(() => { noteEl.hidden = true; }, ms);
@@ -535,7 +577,9 @@ export function createPlay(o) {
   unstick();
   placeCamera();
   return {
-    state: st, input: inp, tuning: P, res, isSolid, isLiquid, gpu, setSlot, setModal, setFlying, notice, sound,
+    state: st, input: inp, tuning: P, res, isSolid, isLiquid, gpu, setSlot, setModal, setFlying, notice, sound, give, changed: inventoryChanged,
+    /** The bag tells the controller how to make an item from an id, so that what is dug can start a new pile. */
+    set itemOf(f) { itemOf = f; }, get itemOf() { return itemOf; },
     start() {
       if (st.running) return;
       st.running = true; initRes(); last = performance.now(); raf = requestAnimationFrame(frame);
@@ -554,7 +598,7 @@ export function createPlay(o) {
 const PANEL_CSS = `
 #playPanel { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; direction: rtl;
   background: radial-gradient(ellipse at center, rgba(4, 8, 14, .58), rgba(2, 4, 8, .86)); color: #f1f4f8; -webkit-user-select: none; user-select: none; }
-#playPanel[hidden] { display: none; }
+#playPanel[hidden], #playPanel .box[hidden] { display: none; }
 #playPanel .box { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 24px); overflow: auto; padding: 22px 26px 20px; border-radius: 14px;
   background: rgba(10, 14, 20, .82); border: 1px solid var(--pp-line, rgba(255, 255, 255, .22)); box-shadow: 0 18px 60px rgba(0, 0, 0, .55); text-align: center; }
 #playPanel h1 { margin: 0 0 4px; font-size: 30px; line-height: 1.2; font-weight: 700; color: var(--pp-accent, #fff); }
@@ -565,6 +609,13 @@ const PANEL_CSS = `
 #playPanel button { font: inherit; font-size: 17px; font-weight: 700; color: #0b0f14; background: var(--pp-accent, #fff); border: 0; border-radius: 10px; padding: 11px 44px; min-height: 46px; cursor: pointer; }
 #playPanel .menu { display: inline-block; margin: 10px 4px 0; padding: 6px 18px; min-height: 0; font-size: 13.5px; font-weight: 500; color: inherit; background: none; border: 1px solid var(--pp-line, rgba(255, 255, 255, .3)); opacity: .85; }
 #playPanel .note { margin: 12px 0 0; font-size: 12px; opacity: .6; }
+#playPanel .feats[hidden] { display: none; }
+#playPanel .feats h2 { margin: 0 0 10px; font-size: 22px; color: var(--pp-accent, #fff); }
+#playPanel .feats ol { list-style: none; margin: 0 0 14px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; text-align: right; }
+#playPanel .feats li { display: block; padding: 7px 10px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, .14); font-size: 12.5px; line-height: 1.45; opacity: .55; }
+#playPanel .feats li.done { opacity: 1; border-color: var(--pp-accent, #fff); background: rgba(255, 255, 255, .07); }
+#playPanel .feats li b { display: block; min-width: 0; font-size: 14px; }
+#playPanel .feats li.done b::after { content: ' ✓'; }
 #playPanel .gpu { margin: 6px 0 0; font: 400 10.5px/1.4 system-ui, sans-serif; opacity: .38; direction: ltr; word-break: break-word; }
 #playRotate { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; direction: rtl; text-align: center; padding: 24px;
   background: #06090e; color: #f1f4f8; font-size: 18px; line-height: 1.7; }
@@ -589,8 +640,8 @@ export function createPlayPanel(o) {
   if (o.accent) el.style.setProperty('--pp-accent', o.accent);
   if (o.line) el.style.setProperty('--pp-line', o.line);
   const rows = o.touch
-    ? [['العصا اليسار', 'المشي، وادفعها للآخر تركض'], ['اسحب على الشاشة', 'النظر'], ['زر الحفر', 'اضغط مطوّلًا لتكسر المكعب'], ['زر البناء', 'يضع المكعب المختار'], ['زر القفز', 'قفز، ومرّتين تطير'], ['زر الحقيبة', 'كل المكعبات والأغراض']]
-    : [['W A S D', 'المشي'], ['W مرّتين', 'ركض'], ['الفأرة', 'النظر'], ['Space', 'قفز وسباحة'], ['Space مرّتين', 'طيران'], ['E', 'الحقيبة'], ['Q', 'الوقت والجو'], ['M', 'الصوت'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب المختار'], ['1 – 9 أو العجلة', 'اختيار الخانة'], ['Esc', 'إيقاف مؤقت']];
+    ? [['العصا اليسار', 'المشي، وادفعها للآخر تركض'], ['اسحب على الشاشة', 'النظر'], ['زر الحفر', 'اضغط مطوّلًا لتكسر المكعب'], ['زر البناء', 'يضع المكعب، ويفتح الباب والصندوق'], ['زر القفز', 'قفز، ومرّتين تطير'], ['زر الحقيبة', 'كل المكعبات والأغراض']]
+    : [['W A S D', 'المشي'], ['W مرّتين', 'ركض'], ['الفأرة', 'النظر'], ['Space', 'قفز وسباحة'], ['Space مرّتين', 'طيران'], ['E', 'الحقيبة'], ['Q', 'الوقت والجو'], ['Esc', 'القائمة والإنجازات'], ['M', 'الصوت'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب، ويفتح الباب والصندوق'], ['1 – 9 أو العجلة', 'اختيار الخانة'], ['Esc', 'إيقاف مؤقت']];
   const h1 = document.createElement('h1'), p = document.createElement('p'), ul = document.createElement('ul'), b = document.createElement('button'), note = document.createElement('div');
   h1.textContent = o.title; p.textContent = o.tagline || '';
   for (const [k, v] of rows) { const li = document.createElement('li'), kb = document.createElement('b'), s = document.createElement('span'); kb.textContent = k; kb.dir = 'auto'; s.textContent = v; li.append(kb, s); ul.appendChild(li); }
@@ -617,10 +668,29 @@ export function createPlayPanel(o) {
   const monText = () => { const l = window.__GAME_LIFE; mon.hidden = !l; if (l) mon.textContent = l.monsters ? 'الوحوش: موجودة' : 'الوحوش: بدون'; };
   mon.addEventListener('click', () => { const l = window.__GAME_LIFE; if (l) l.setMonsters(!l.monsters); monText(); });
   box.appendChild(mon);
+  const look = document.createElement('button');
+  look.type = 'button'; look.className = 'menu';
+  const LN = { slow: 'سرعة النظر: بطيئة', normal: 'سرعة النظر: عادية', fast: 'سرعة النظر: سريعة' }, LO = ['normal', 'fast', 'slow'];
+  const lookText = () => { const l = window.__GAME_LOOK; look.hidden = !l; if (l) look.textContent = LN[l.mode]; };
+  look.addEventListener('click', () => { const l = window.__GAME_LOOK; if (l) l.set(LO[(LO.indexOf(l.mode) + 1) % LO.length]); lookText(); });
+  box.appendChild(look);
+  // achievements: a second face of the same panel
+  const feat = document.createElement('button');
+  feat.type = 'button'; feat.className = 'menu';
+  const featText = () => { const f = window.__GAME_FEATS; feat.hidden = !f; if (f) { const l = f.list(); feat.textContent = 'الإنجازات ' + l.filter((q) => q.done).length + '/' + l.length; } };
+  const feats = document.createElement('div'); feats.className = 'box feats'; feats.hidden = true;
+  feat.addEventListener('click', () => {
+    const f = window.__GAME_FEATS; if (!f) return;
+    feats.innerHTML = '<h2>الإنجازات</h2><ol>' + f.list().map((q) => `<li class="${q.done ? 'done' : ''}"><b>${q.name}</b>${q.how}</li>`).join('') + '</ol><button type="button" class="menu back">رجوع</button>';
+    box.hidden = true; feats.hidden = false;
+  });
+  feats.addEventListener('click', (e) => { if (e.target.closest('.back')) { feats.hidden = true; box.hidden = false; } });
+  box.appendChild(feat);
   box.appendChild(note);
   const gpuEl = document.createElement('div'); gpuEl.className = 'gpu';
   box.appendChild(gpuEl);
   el.appendChild(box);
+  el.appendChild(feats);
   document.body.appendChild(el);
   const rot = document.createElement('div');
   rot.id = 'playRotate'; rot.style.fontFamily = el.style.fontFamily; rot.textContent = 'دوّر الجوال بالعرض عشان تلعب';
@@ -628,7 +698,7 @@ export function createPlayPanel(o) {
   b.addEventListener('click', () => { el.hidden = true; o.onStart(); });
   return {
     el,
-    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; sndText(); qualText(); monText(); el.hidden = false; },
+    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; sndText(); qualText(); monText(); lookText(); featText(); feats.hidden = true; box.hidden = false; el.hidden = false; },
     hide() { el.hidden = true; },
   };
 }

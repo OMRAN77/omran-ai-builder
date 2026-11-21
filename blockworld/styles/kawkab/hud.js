@@ -63,7 +63,7 @@ function compass(heading, wpBearing, wpText, span) {
 export function buildHud(root) {
   const touch = window.matchMedia('(pointer: coarse)').matches || window.innerHeight < 500;
   root.classList.toggle('touch', touch);
-  const shown = touch ? 5 : 8, span = touch ? 96 : 120;
+  const shown = touch ? 5 : 9, span = touch ? 96 : 120;
   const slotHtml = (s, i, sel) => `
     <div class="slot${i === sel ? ' sel' : ''}" data-i="${i}">${hex}${s.kit ? kitIcon(s.id) : ic(s.icon)}${s.tool ? '' : `<span class="cnt num" dir="ltr">${s.n}</span>`}<span class="key num" dir="ltr">${i + 1}</span></div>`;
   const slotsHtml = (list, sel) => list.slice(0, shown).map((s, i) => slotHtml(s, i, sel)).join('');
