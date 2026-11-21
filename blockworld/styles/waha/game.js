@@ -329,7 +329,7 @@ export async function startGame(ctx) {
       }
       if (hud.touch && hintT >= 0 && (hintT += dt) > 7) { hud.els.look.hidden = true; hintT = -1; }
     },
-    render: () => stage.render(),
+    stage, render: () => stage.render(),
     setPixelRatio: (pr) => { stage.pixelRatio = pr; stage.resize(); },
   });
   // The moment the mouse is captured, a browser can report one move with a huge jump (the headless one

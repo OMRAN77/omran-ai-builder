@@ -56,7 +56,7 @@ function waterMaterial(pool) {
           rip = vec2(a.r - 0.5 + (b.g - 0.5) * 0.7, a.g - 0.5 + (b.b - 0.5) * 0.7);
           n = normalize(vec3(rip.x * 0.13, 1.0, rip.y * 0.13));
         }
-        float fres = 0.04 + 0.96 * pow(1.0 - max(dot(n, V), 0.0), 3.4);
+        float fres = 0.04 + 0.96 * pow(abs(1.0 - max(dot(n, V), 0.0)), 3.4);
         vec3 R = reflect(-V, n); R.y = abs(R.y);
         vec3 sky = wahaSky(R);
         float occ = smoothstep(0.12, 0.55, R.y);

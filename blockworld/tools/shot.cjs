@@ -8,6 +8,7 @@
 //                       [--device "iPhone 14 Pro landscape"]    emulate a phone instead of --w/--h/--scale
 //                       [--suffix -mobile]                      appended to each file name
 //                       [--settle 400] [--timeout 120000]
+//                       [--strict 1]                            undefined shader maths gives NaN, as on real GPUs
 //
 // Without --shots a single PNG named "page" is taken without calling window.__shot.
 // Prints a JSON summary (files, console errors, page errors, failed requests, renderer info).
@@ -81,6 +82,14 @@ function serve() {
   let failed = false;
   try {
     const ctx = await browser.newContext(contextOpts);
+    // --strict 1: make undefined shader maths return NaN, as real GPU drivers do (see tools/strict-gl.js)
+    if (args.strict) {
+      const cfg = {};
+      if (args['strict-fns']) cfg.fns = String(args['strict-fns']).split(',');
+      if (args['strict-only']) cfg.only = String(args['strict-only']);
+      await ctx.addInitScript({ content: 'window.__STRICT_CFG = ' + JSON.stringify(cfg) + ';' });
+      await ctx.addInitScript({ path: path.join(__dirname, 'strict-gl.js') });
+    }
     const page = await ctx.newPage();
     summary.viewport = { ...page.viewportSize(), scale: contextOpts.deviceScaleFactor || 1 };
     page.on('console', (m) => { if (m.type() === 'error') summary.consoleErrors.push(m.text().slice(0, 400)); });

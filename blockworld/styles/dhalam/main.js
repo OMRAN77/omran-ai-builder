@@ -884,7 +884,7 @@ async function startGame() {
       }
       if (hud.touch && hintTimer >= 0 && (hintTimer += dt) > 7) { hud.els.look.hidden = true; hintTimer = -1; }
     },
-    render: () => stage.render(),
+    stage, render: () => stage.render(),
     setPixelRatio: (pr) => { stage.pixelRatio = pr; stage.resize(); },
   });
   cracks.visible = false;                                      // nothing is being dug yet

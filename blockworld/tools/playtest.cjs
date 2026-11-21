@@ -6,6 +6,7 @@
 //                           [--device "iPhone 14 Pro landscape"]   touch run instead of desktop
 //                           [--root dist --prefix /a/b]            serve another folder under a sub-path
 //                           [--w 960 --h 540]
+//                           [--strict 1]                           undefined shader maths gives NaN, as on real GPUs
 //
 // The page must expose window.__play (createPlay result) and window.__game = { world, ... }.
 // Prints a JSON report; exit code 1 if any check failed or the page logged an error.
@@ -71,6 +72,8 @@ function serve(root, prefix) {
   let failed = false;
   try {
     const ctx = await browser.newContext(contextOpts);
+    // --strict 1: undefined shader maths gives NaN, as on real GPUs (see tools/strict-gl.js)
+    if (args.strict) await ctx.addInitScript({ path: path.join(__dirname, 'strict-gl.js') });
     const page = await ctx.newPage();
     page.on('console', (m) => { if (m.type() === 'error') report.consoleErrors.push(m.text().slice(0, 400)); });
     page.on('pageerror', (e) => report.pageErrors.push(String((e && e.stack) || e).slice(0, 700)));

@@ -119,3 +119,60 @@ test('لا اسم مزوّد أو نموذج في ما يراه اللاعب، �
   const ignore = fs.readFileSync(path.join(ROOT, '.vercelignore'), 'utf8').split('\n').map((l) => l.trim());
   assert.ok(ignore.includes('blockworld/tools/'), '.vercelignore: blockworld/tools/');
 });
+
+// v-blockworld-black: `pow(x, y)` بأساس سالب غير معرَّف في GLSL. المتصفّح البرمجيّ الذي بُنيت به المشاهد يحسب ‎|x|^y‎،
+// وكروت الشاشة الحقيقيّة تعيد NaN؛ بكسل واحد منه يمسحه توهّج الصورة على الإطار كلّه فيسودّ العالم. كلّ أساس يُحصَّن.
+function powBases(src) {
+  const out = [];
+  for (const m of src.matchAll(/(?<![\w.])pow\s*\(/g)) {
+    let depth = 0, j = m.index + m[0].length;
+    const start = j;
+    for (; j < src.length; j++) {
+      const c = src[j];
+      if (c === '(') depth++;
+      else if (c === ')') { if (depth === 0) break; depth--; } else if (c === ',' && depth === 0) { out.push(src.slice(start, j).trim()); break; }
+    }
+  }
+  return out;
+}
+function safeBase(arg) {
+  if (/^\d+(\.\d+)?$/.test(arg)) return true;                                  // ثابت موجب
+  const head = /^(abs|exp|saturate|max|clamp)\s*\(/.exec(arg);
+  if (!head) return false;
+  let depth = 0;
+  for (let i = head[0].length - 1; i < arg.length; i++) {                      // نداء واحد يغطّي الوسيط كلّه
+    if (arg[i] === '(') depth++;
+    else if (arg[i] === ')' && --depth === 0) { if (i !== arg.length - 1) return false; break; }
+  }
+  if (head[1] === 'max') return /,\s*(0\.0|vec[234]\(\s*0\.0\s*\))\s*\)$/.test(arg);
+  if (head[1] === 'clamp') return /,\s*0\.0\s*,[^,]*\)$/.test(arg);
+  return true;
+}
+
+test('لا pow بأساس قد يكون سالبًا في شيدرات اللعبة: كروت الشاشة تعيد NaN فيسودّ العالم', () => {
+  assert.equal(safeBase('abs(1.0 - vT)'), true);
+  assert.equal(safeBase('max(dot(n, l), 0.0)'), true);
+  assert.equal(safeBase('1.0 - max(dot(N, V), 0.0)'), false, 'قريب من الصفر قد ينزل تحته');
+  assert.equal(safeBase('abs(a) - abs(b)'), false);
+  assert.equal(safeBase('sd'), false);
+  const bad = [];
+  let seen = 0;
+  for (const f of OWN.filter((x) => x.endsWith('.js'))) {
+    for (const arg of powBases(read(f))) { seen++; if (!safeBase(arg)) bad.push(`${f}: pow(${arg.slice(0, 60)}, …)`); }
+  }
+  assert.ok(seen >= 30, 'الاختبار يرى نداءات pow في الشيدرات');
+  assert.deepEqual(bad, []);
+});
+
+test('حلقة اللعب تنتظر كرت الشاشة وتنتبه للصورة السوداء وتذكر اسم الكرت', () => {
+  const play = read('shared/play.js');
+  assert.match(play, /fenceSync\(/, 'لا يُصفّ إطار جديد والسابق لم يكتمل');
+  assert.match(play, /function pictureIsBlack\(\)/);
+  assert.match(play, /st\.safeMode = true/);
+  assert.match(play, /WEBGL_debug_renderer_info/);
+  for (const k of WORLDS) {
+    const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
+    assert.match(src, /\bstage, render: \(\) => stage\.render\(\)/, k + ': يسلّم المشهد للمتحكّم');
+  }
+});
+

@@ -47,7 +47,7 @@ void main() {
   // glow where the star went down
   vec3 sd = normalize(vec3(uSunDir.x, 0.0, uSunDir.z));
   float az = max(dot(normalize(vec3(d.x, 0.0001, d.z)), sd), 0.0);
-  col += uGlow * (pow(az, 5.0) * exp(-abs(h) * 6.5) + 0.35 * pow(az, 2.0) * exp(-abs(h) * 12.0)) * uGlowAmt;
+  col += uGlow * (pow(abs(az), 5.0) * exp(-abs(h) * 6.5) + 0.35 * pow(abs(az), 2.0) * exp(-abs(h) * 12.0)) * uGlowAmt;
 
   // stars (fade towards the horizon haze)
   float sv = smoothstep(0.08, 0.5, h) * uStars;
@@ -81,7 +81,7 @@ void main() {
     float bands = 0.5 + 0.5 * sin(lat * 15.0 + 2.5 * fbm(vec2(lat * 5.0, dot(n, cross(uRingN, vec3(1.0, 0.0, 0.0))) * 1.5)));
     vec3 pcol = mix(vec3(0.98, 0.80, 0.72), vec3(0.66, 0.70, 0.96), bands);
     pcol = mix(pcol, vec3(0.52, 0.90, 0.92), smoothstep(0.45, 1.0, abs(lat)) * 0.8);
-    float limb = pow(1.0 - max(dot(n, -d), 0.0), 2.5);
+    float limb = pow(abs(1.0 - max(dot(n, -d), 0.0)), 2.5);
     float edge = smoothstep(0.0, 0.0009, disc);
     pc = pcol * (lit * 1.05 + 0.03) + vec3(0.55, 0.75, 1.0) * limb * 0.22 * lit;
     pa = edge * (lit * 0.9 + 0.1 + limb * 0.14);
@@ -123,7 +123,7 @@ void main() {
   float ang = atan(d.z, d.x);
   float cn = fbm(vec2(ang * 5.0, h * 26.0 + 1.7)) * 0.65 + fbm(vec2(ang * 13.0 + 4.0, h * 60.0)) * 0.35;
   float cm = smoothstep(0.50, 0.74, cn) * smoothstep(0.015, 0.07, h) * smoothstep(0.42, 0.14, h);
-  col = mix(col, uCloudCol + uGlow * pow(az, 3.0) * 0.5 * uGlowAmt, cm * uCloud);
+  col = mix(col, uCloudCol + uGlow * pow(abs(az), 3.0) * 0.5 * uGlowAmt, cm * uCloud);
 
   gl_FragColor = vec4(col, 1.0);
 }`;

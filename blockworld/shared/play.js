@@ -9,6 +9,8 @@
 //     isLiquid(id), pickable(id), canBreak(id, x, y, z), canPlace(x, y, z, id), hardness(id), dropOf(id),
 //     onTarget(hit | null), onBreak(hit), onPlace(x, y, z, id), onInventory(slots, sel),
 //     onFrame(state, dt), render(), setPixelRatio(pr),
+//     stage,                                          // createStage() result: lets the loop pace itself on the GPU and
+//                                                     // fall back to plain drawing if the picture comes out black
 //   });
 //   play.start();
 //
@@ -312,47 +314,116 @@ export function createPlay(o) {
     if (o.onFrame) o.onFrame(st, dt);
   }
   // dynamic resolution: keep the frame time in budget on whatever device this runs on
-  const res = { base: 1, pr: 1, acc: 0, n: 0, hold: 0 };
+  const res = { base: 1, pr: 1, cap: 1, acc: 0, n: 0, hold: 0, good: 0, min: 0.5 };
   function initRes() {
     res.base = Math.min(window.devicePixelRatio || 1, o.maxPixelRatio ?? 2);
-    res.pr = res.base;
+    res.pr = res.cap = res.base;
     if (o.setPixelRatio) o.setPixelRatio(res.pr);
   }
   function tuneRes(ms) {
     if (!o.setPixelRatio) return;
     res.acc += ms; res.n++;
-    if (res.n < 40) return;
+    if (res.n < 40 && !(res.n >= 3 && res.acc > 2500)) return;       // judge 40 frames, or 2.5 s on a very slow device
     const avg = res.acc / res.n; res.acc = 0; res.n = 0;
     if (res.hold > 0) { res.hold--; return; }
     let pr = res.pr;
-    if (avg > 26 && pr > 0.6) pr = Math.max(0.6, pr * 0.85);
-    else if (avg < 13 && pr < res.base) pr = Math.min(res.base, pr * 1.12);
+    if (avg > 26 && pr > res.min) { res.cap = pr * 0.94; pr = Math.max(res.min, pr * (avg > 60 ? 0.7 : 0.85)); res.good = 0; }
+    else if (avg < 19) {
+      if (++res.good % 15 === 0) res.cap = Math.min(res.base, res.cap * 1.1);      // after a long smooth stretch, try a little more
+      const top = Math.min(res.base, res.cap);
+      if (pr < top) pr = Math.min(top, pr * 1.1);
+    }
     if (pr !== res.pr) { res.pr = pr; res.hold = 2; o.setPixelRatio(pr); }
   }
+
+  // ------------------------------------------------------------------ drawing
+  // With o.stage ({ renderer, scene, camera }) the loop can
+  //  - wait for the GPU: never queue a frame while the last one is still being drawn. A slow or software GPU
+  //    otherwise falls seconds behind, the picture freezes, and frame intervals stop telling how busy it is;
+  //  - notice a black picture right after the start and draw the scene directly, without the world's
+  //    post-processing, on hardware that cannot run it;
+  //  - say which graphics device this is, so a screenshot of a problem is enough to act on.
+  const S = o.stage && o.stage.renderer ? o.stage : null;
+  const gl = S ? S.renderer.getContext() : null;
+  let gpu = '';
+  if (gl) { try { const d = gl.getExtension('WEBGL_debug_renderer_info'); gpu = String((d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) || ''); } catch (e) { gpu = ''; } }
+  window.__GAME_GPU = gpu;
+  st.safeMode = false; st.pictureOk = false; st.contextLost = false; st.drawn = 0;
+  let sync = null, syncAt = 0, gpuMs = 0, noteEl = null, noteTimer = 0;
+  function notice(text, keep) {
+    if (!noteEl) {
+      noteEl = document.createElement('div');
+      noteEl.style.cssText = 'position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:55;max-width:min(560px,calc(100vw - 32px));padding:10px 16px;border-radius:10px;'
+        + 'background:rgba(8,11,16,.9);border:1px solid rgba(255,255,255,.28);color:#f1f4f8;font:500 14px/1.7 system-ui,sans-serif;direction:rtl;text-align:center;white-space:pre-line;pointer-events:none;';
+      document.body.appendChild(noteEl);
+    }
+    noteEl.textContent = text; noteEl.hidden = false;
+    clearTimeout(noteTimer);
+    if (!keep) noteTimer = setTimeout(() => { noteEl.hidden = true; }, 9000);
+  }
+  function draw() {
+    if (st.safeMode && S) { S.renderer.setRenderTarget(null); S.renderer.render(S.scene, S.camera); } else o.render();
+    st.drawn++;
+  }
+  function pictureIsBlack() {
+    S.renderer.setRenderTarget(null);
+    const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight, px = new Uint8Array(4);
+    for (let j = 1; j <= 5; j++) for (let i = 1; i <= 7; i++) {
+      gl.readPixels((w * i / 8) | 0, (h * j / 6) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      if (px[0] > 6 || px[1] > 6 || px[2] > 6) return false;
+    }
+    return true;
+  }
+  /** The game opens on a lit view, so an all-black picture in the first frames means the drawing failed. */
+  function checkPicture() {
+    if (!S || st.pictureOk || !(st.drawn === 2 || st.drawn === 30)) return;
+    if (!pictureIsBlack()) { if (st.drawn >= 30) st.pictureOk = true; return; }
+    if (!st.safeMode) {
+      st.safeMode = true; st.drawn = 27;                           // look again three frames from now
+      notice('شغّلنا الرسم المبسّط، لأن جهازك ما عرض مؤثرات الصورة.', false);
+      if (o.onSafeMode) o.onSafeMode();
+    } else {
+      st.pictureOk = true;
+      notice('جهازك ما قدر يرسم العالم. صوّر الشاشة وأرسلها.\n' + (gpu || 'كرت الشاشة غير معروف'), true);
+    }
+  }
+  if (S) {
+    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); st.contextLost = true; sync = null; notice('انقطع الرسم على جهازك. جاري الاستعادة…\n' + gpu, true); });
+    canvas.addEventListener('webglcontextrestored', () => { st.contextLost = false; notice('رجع الرسم.', false); });
+  }
+
   let raf = 0, last = 0;
   function frame(now) {
     if (!st.running) return;
     raf = requestAnimationFrame(frame);
     const ms = now - last; last = now;
     advance(Math.min(0.1, Math.max(0, ms / 1000)));
-    o.render();
-    tuneRes(ms);
+    if (st.contextLost) return;
+    if (sync) {
+      const r = gl.clientWaitSync(sync, 0, 0);
+      if (r === gl.TIMEOUT_EXPIRED && now - syncAt < 3000) return;          // the GPU is still on the last frame
+      gl.deleteSync(sync); sync = null; gpuMs = now - syncAt;
+    }
+    draw();
+    if (gl && gl.fenceSync) { sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); gl.flush(); syncAt = now; }
+    checkPicture();
+    tuneRes(Math.max(ms, gpuMs));
   }
 
   unstick();
   placeCamera();
   return {
-    state: st, input: inp, tuning: P, res, isSolid, isLiquid,
+    state: st, input: inp, tuning: P, res, isSolid, isLiquid, gpu,
     start() {
       if (st.running) return;
       st.running = true; initRes(); last = performance.now(); raf = requestAnimationFrame(frame);
     },
-    stop() { st.running = false; cancelAnimationFrame(raf); inp.dig = false; keys.clear(); },
+    stop() { st.running = false; cancelAnimationFrame(raf); inp.dig = false; keys.clear(); if (sync) { gl.deleteSync(sync); sync = null; } },
     /** Call from a click handler: capture the mouse on desktop. */
     lock: tryLock,
     select, advance, raycast, placeNow,
     /** For tests: run n fixed steps without waiting for frames, then draw once. */
-    tick(n = 1, dt = 1 / 60) { for (let i = 0; i < n; i++) advance(dt); o.render(); },
+    tick(n = 1, dt = 1 / 60) { for (let i = 0; i < n; i++) advance(dt); draw(); },
   };
 }
 
@@ -371,6 +442,7 @@ const PANEL_CSS = `
 #playPanel button { font: inherit; font-size: 17px; font-weight: 700; color: #0b0f14; background: var(--pp-accent, #fff); border: 0; border-radius: 10px; padding: 11px 44px; min-height: 46px; cursor: pointer; }
 #playPanel .menu { display: block; margin: 10px auto 0; padding: 6px 18px; min-height: 0; font-size: 13.5px; font-weight: 500; color: inherit; background: none; border: 1px solid var(--pp-line, rgba(255, 255, 255, .3)); opacity: .85; }
 #playPanel .note { margin: 12px 0 0; font-size: 12px; opacity: .6; }
+#playPanel .gpu { margin: 6px 0 0; font: 400 10.5px/1.4 system-ui, sans-serif; opacity: .38; direction: ltr; word-break: break-word; }
 #playRotate { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; direction: rtl; text-align: center; padding: 24px;
   background: #06090e; color: #f1f4f8; font-size: 18px; line-height: 1.7; }
 @media (pointer: coarse) and (orientation: portrait) { #playRotate { display: flex; } }
@@ -407,6 +479,8 @@ export function createPlayPanel(o) {
   const toMenu = o.onMenu || (window.__GAME && window.__GAME.onMenu);
   if (toMenu) { const m = document.createElement('button'); m.type = 'button'; m.className = 'menu'; m.textContent = 'العوالم'; m.addEventListener('click', toMenu); box.appendChild(m); }
   box.appendChild(note);
+  const gpuEl = document.createElement('div'); gpuEl.className = 'gpu';
+  box.appendChild(gpuEl);
   el.appendChild(box);
   document.body.appendChild(el);
   const rot = document.createElement('div');
@@ -415,7 +489,7 @@ export function createPlayPanel(o) {
   b.addEventListener('click', () => { el.hidden = true; o.onStart(); });
   return {
     el,
-    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; el.hidden = false; },
+    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; el.hidden = false; },
     hide() { el.hidden = true; },
   };
 }

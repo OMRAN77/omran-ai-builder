@@ -541,7 +541,7 @@ async function startGame() {
       if (!aimed || Math.hypot(p.x - aimed.x, p.z - aimed.z) > 14) { aimed = { x: Math.round(p.x / 4) * 4, z: Math.round(p.z / 4) * 4 }; aimSun(mood.sunDir, aimed.x, p.y, aimed.z, 60); }
       if (hud.touch && hintTimer >= 0 && (hintTimer += dt) > 7) { hud.els.lookzone.hidden = true; hintTimer = -1; }
     },
-    render: () => stage.render(),
+    stage, render: () => stage.render(),
     setPixelRatio: (pr) => { stage.pixelRatio = pr; stage.resize(); },
   });
   hud.setSlots(slots, 0);

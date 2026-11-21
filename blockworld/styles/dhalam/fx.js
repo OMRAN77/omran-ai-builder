@@ -141,7 +141,7 @@ export function patch(mat, opts = {}) {
         .replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps.replace('mapN.xy *= normalScale;', 'mapN.xy *= normalScale;\n\tmapN.xy = mapN.xy * dhNrmKeep + dhNrmAdd;'));
     }
     if (fuzz) {
-      fs = fs.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * uFuzz * (uFuzzK * pow(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0), 2.0));');
+      fs = fs.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * uFuzz * (uFuzzK * pow(abs(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0)), 2.0));');
     }
     shader.fragmentShader = fs;
   };
@@ -189,12 +189,12 @@ float fbm(vec2 p) {
 void main() {
   vec3 d = normalize(vDir);
   float h = max(d.y, 0.0);
-  vec3 col = mix(uHorizon, uZenith, pow(h, 0.5));
+  vec3 col = mix(uHorizon, uZenith, pow(abs(h), 0.5));
   float sd = max(dot(d, uSunDir), 0.0);
   float flat_sd = max(dot(normalize(vec3(d.x, 0.0, d.z)), normalize(vec3(uSunDir.x, 0.0, uSunDir.z))), 0.0);
   // a pale break in the overcast, low on the horizon toward the light
-  float band = exp(-pow((d.y - uSunDir.y) * 5.5, 2.0));
-  col += uGlowColor * uGlowAmt * (pow(flat_sd, 5.0) * band * 0.9 + pow(sd, 60.0) * 0.8);
+  float band = exp(-pow(abs((d.y - uSunDir.y) * 5.5), 2.0));
+  col += uGlowColor * uGlowAmt * (pow(abs(flat_sd), 5.0) * band * 0.9 + pow(abs(sd), 60.0) * 0.8);
   // cloud deck
   vec2 cp = d.xz / (d.y + 0.16) * 1.1 + uCloud.zw;
   float c1 = fbm(cp * 0.8);
@@ -205,14 +205,14 @@ void main() {
   // the deck thins toward the horizon and glows on the side of the low sun
   float low = exp(-h * 4.5);
   cc = mix(cc, uHorizon * 1.25, low * 0.75);
-  cc += uGlowColor * uGlowAmt * (pow(flat_sd, 2.0) * (0.25 + 0.75 * low) * (1.0 - belly * 0.6) * 0.5 + pow(flat_sd, 3.0) * band * (1.0 - belly) * 0.55);
+  cc += uGlowColor * uGlowAmt * (pow(abs(flat_sd), 2.0) * (0.25 + 0.75 * low) * (1.0 - belly * 0.6) * 0.5 + pow(abs(flat_sd), 3.0) * band * (1.0 - belly) * 0.55);
   // moon behind / through the clouds
   float md = max(dot(d, uMoonDir), 0.0);
   float disc = smoothstep(cos(uMoon.y) - 0.00025, cos(uMoon.y) + 0.00012, md);
   vec3 moon = uMoonColor * uMoon.x * (disc * (0.75 + 0.25 * vn(d.xy * 90.0)));
-  vec3 halo = uMoonColor * uMoon.z * (pow(md, 900.0) * 1.2 + pow(md, 120.0) * 0.38 + pow(md, 14.0) * 0.1);
+  vec3 halo = uMoonColor * uMoon.z * (pow(abs(md), 900.0) * 1.2 + pow(abs(md), 120.0) * 0.38 + pow(abs(md), 14.0) * 0.1);
   col += moon + halo * 0.6;
-  cc += uMoonColor * uMoon.z * (pow(md, 60.0) * 0.5 + pow(md, 8.0) * 0.12) * (1.0 - belly * 0.7);
+  cc += uMoonColor * uMoon.z * (pow(abs(md), 60.0) * 0.5 + pow(abs(md), 8.0) * 0.12) * (1.0 - belly * 0.7);
   // faint stars in the gaps
   vec2 sp = d.xz / (d.y + 0.4) * 140.0;
   float st = step(0.9965, h21(floor(sp))) * smoothstep(0.35, 0.0, length(fract(sp) - 0.5));
@@ -222,8 +222,8 @@ void main() {
   col = mix(col, cc + moon * 0.12, cover * veil * uCloud.y * smoothstep(0.0, 0.1, d.y + 0.02));
   // horizon haze matches the scene fog so distant ridges melt into the sky
   float hz = exp(-h * uHaze.x);
-  vec3 fc = mix(uFogColor, uFogSunColor, pow(sd, uFogMisc.x));
-  fc += uGlowColor * uGlowAmt * pow(flat_sd, 6.0) * exp(-h * 14.0) * 0.25;
+  vec3 fc = mix(uFogColor, uFogSunColor, pow(abs(sd), uFogMisc.x));
+  fc += uGlowColor * uGlowAmt * pow(abs(flat_sd), 6.0) * exp(-h * 14.0) * 0.25;
   col = mix(col, fc, clamp(hz, 0.0, 1.0));
   if (d.y < 0.0) col = fc;
   // dark hills band, only used when baking the reflection map for the lake
@@ -306,7 +306,7 @@ void main() {
   c += (hash(vUv * vec2(1931.0, 1087.0)) - 0.5) * uGrain;
   c = clamp(c, 0.0, 1.0);
   // linear -> sRGB
-  c = mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
+  c = mix(c * 12.92, 1.055 * pow(abs(c), vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
   gl_FragColor = vec4(c, 1.0);
 }
 `,
@@ -386,7 +386,7 @@ void main() {
          + (texture2D(tNormal, p * 0.029 - vec2(uTime * 0.006, -uTime * 0.004)).xy - 0.5);
   n *= uWater.x;
   vec3 N = normalize(vec3(n.x, 1.0, n.y));
-  float fres = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 4.0);
+  float fres = pow(abs(1.0 - clamp(dot(N, V), 0.0, 1.0)), 4.0);
   vec4 uvp = vUvP;
   uvp.xy += n * uWater.y * uvp.w / (1.0 + dist * 0.02);
   vec3 refl = texture2DProj(tDiffuse, uvp).rgb * uWater.w;

@@ -81,7 +81,7 @@ vec3 wahaSky(vec3 d) {
   float t = 1.0 - exp(-y * 5.0);
   vec3 c = mix(hor, uZenith, t);
   float sd = max(dot(normalize(d), uSunDir), 0.0);
-  c += uGlow * (uGlowParams.y * pow(sd, uGlowParams.x) + uGlowParams.w * pow(sd, uGlowParams.z));
+  c += uGlow * (uGlowParams.y * pow(abs(sd), uGlowParams.x) + uGlowParams.w * pow(abs(sd), uGlowParams.z));
   return c * uSkyGain;
 }
 float wahaFogAmount(vec3 ro, vec3 rd, float dist) {
@@ -223,7 +223,7 @@ export function patchMaterial(mat, flags = {}) {
     if (flags.rim) {
       fs = fs.replace('#include <envmap_fragment>', `
         {
-          float rimF = pow(1.0 - max(dot(normal, normalize(vViewPosition)), 0.0), 3.0);
+          float rimF = pow(abs(1.0 - max(dot(normal, normalize(vViewPosition)), 0.0)), 3.0);
           vec3 sunV = normalize((viewMatrix * vec4(uSunDir, 0.0)).xyz);
           float side = smoothstep(-0.45, 0.55, dot(normal, sunV));
           outgoingLight += uRim.rgb * uRim.a * ${Number(flags.rim).toFixed(2)} * rimF * (0.25 + 0.75 * side) * (0.35 + 0.65 * diffuseColor.rgb);
@@ -289,10 +289,10 @@ export function createSky() {
           vec3 bb = cross(pole, ba);
           float v = dot(d, pole);
           float u = atan(dot(d, bb), dot(d, ba)) / 6.2831853;
-          float band = exp(-pow(v * 3.6, 2.0));
-          float core = exp(-pow(v * 9.0, 2.0));
+          float band = exp(-pow(abs(v * 3.6), 2.0));
+          float core = exp(-pow(abs(v * 9.0), 2.0));
           float cl = texture2D(uNoise, vec2(u * 5.0, v * 1.9 + 0.2)).r * 0.55 + texture2D(uNoise, vec2(u * 13.0, v * 4.5)).g * 0.45;
-          float lane = smoothstep(0.42, 0.70, texture2D(uNoise, vec2(u * 9.0 + 0.3, v * 5.5 + 0.5)).b) * exp(-pow((v + 0.03) * 7.0, 2.0));
+          float lane = smoothstep(0.42, 0.70, texture2D(uNoise, vec2(u * 9.0 + 0.3, v * 5.5 + 0.5)).b) * exp(-pow(abs((v + 0.03) * 7.0), 2.0));
           float along = 0.55 + 0.45 * sin(u * 6.2831853 + 0.9);
           vec3 mw = vec3(0.060, 0.085, 0.160) * band * (0.25 + 1.5 * cl * cl) + vec3(0.150, 0.135, 0.150) * core * (0.2 + 1.6 * cl * cl) * along;
           mw *= 1.0 - 0.55 * lane;
@@ -421,7 +421,7 @@ const FinalShader = {
       vec2 q = (vUv - 0.5) * vec2(1.0, 0.82);
       c *= 1.0 - uVig * smoothstep(0.28, 0.80, length(q));
       c = filmic(c);
-      c = pow(c, vec3(1.0 / 2.2));
+      c = pow(abs(c), vec3(1.0 / 2.2));
       float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
       c = mix(vec3(l), c, uSat);
       c += uShadowTint * (1.0 - l) * (1.0 - l) + uHighTint * l * l;

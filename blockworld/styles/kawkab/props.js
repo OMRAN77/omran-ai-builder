@@ -117,7 +117,7 @@ export function beam(color, length, radius, strength = 1, group = 'beam') {
     vertexShader: `varying vec3 vN, vV; varying float vT; uniform float uLen;
       void main(){ vT = -position.y / uLen; vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(-mv.xyz); vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * mv; }`,
     fragmentShader: `varying vec3 vN, vV; varying float vT; uniform vec3 uColor; uniform float uI;
-      void main(){ float f = pow(abs(dot(normalize(vN), normalize(vV))), 2.2); float a = f * pow(1.0 - vT, 1.6) * smoothstep(0.0, 0.04, vT);
+      void main(){ float f = pow(abs(dot(normalize(vN), normalize(vV))), 2.2); float a = f * pow(abs(1.0 - vT), 1.6) * smoothstep(0.0, 0.04, vT);
         gl_FragColor = vec4(uColor * a * uI, 1.0); }`,
     blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, side: THREE.DoubleSide, fog: false,
   });
@@ -176,7 +176,7 @@ export function makeWater(L, y, depth) {
         vec2 nn = n1 * 0.55 + n2 * 0.45;
         vec3 toCam = cameraPosition - vW; float dist = length(toCam); vec3 V = toCam / dist;
         vec3 N = normalize(vec3(nn.x * uRipple, 1.0, nn.y * uRipple));
-        float fres = 0.04 + 0.96 * pow(1.0 - max(dot(N, V), 0.0), 4.5);
+        float fres = 0.04 + 0.96 * pow(abs(1.0 - max(dot(N, V), 0.0)), 4.5);
         // reflections smear along the line of sight (vertical streaks), hardly sideways
         vec2 rb = vR.xy + vec2(nn.x * 0.3, nn.y) * uDistort * vR.w; float sm = 0.011 * vR.w;
         vec3 refl = (texture2DProj(tDiffuse, vec4(rb, vR.zw)).rgb * 0.34 + texture2DProj(tDiffuse, vec4(rb + vec2(0.0, sm), vR.zw)).rgb * 0.26
