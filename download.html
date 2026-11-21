@@ -17,10 +17,41 @@ body { display: flex; align-items: center; justify-content: center; }
 .goMark { width: 84px; height: 84px; border-radius: 24px; border: 1.5px solid #d4af37; box-shadow: 0 0 36px rgba(212,175,55,.25); overflow: hidden; animation: goPulse 1.2s ease-in-out infinite alternate; }
 .goMark img { width: 100%; height: 100%; display: block; object-fit: cover; }
 @keyframes goPulse { from { opacity: .55; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+/* v-app-intro: تعريف قصير لجوّال بلا متجر منشور قبل أن يدخل التطبيق. مخفيّ حتى يقرّر السكربت، فبقيّة الأجهزة لا تراه. */
+html.introOn, html.introOn body { height: auto; min-height: 100%; }
+html.introOn body { display: block; color: #f4f1e8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+html.introOn .goMark { display: none; }
+.intro { box-sizing: border-box; max-width: 480px; margin: 0 auto; padding: 28px 20px calc(104px + env(safe-area-inset-bottom, 0px)); text-align: center; }
+.intro[hidden] { display: none; }
+.introLogo { width: 64px; height: 64px; border-radius: 18px; border: 1.5px solid #d4af37; box-shadow: 0 0 30px rgba(212,175,55,.22); display: block; margin: 0 auto 8px; object-fit: cover; }
+.introName { font-size: 15px; letter-spacing: .5px; color: #d4af37; margin: 0 0 18px; font-weight: 700; }
+.intro h1 { font-size: 26px; line-height: 1.45; margin: 0 0 10px; font-weight: 800; text-wrap: balance; }
+.introSub { font-size: 16px; line-height: 1.7; color: #b9b3a3; margin: 0 0 22px; text-wrap: balance; }
+.introTry { font-size: 14px; color: #d4af37; margin: 0 0 10px; font-weight: 700; }
+.introList { list-style: none; margin: 0 0 24px; padding: 0; }
+.introList li { border: 1px solid rgba(212,175,55,.35); background: rgba(212,175,55,.06); border-radius: 14px; padding: 13px 14px; margin: 0 0 9px; font-size: 16px; line-height: 1.5; }
+.introShot { display: block; width: 100%; height: auto; border-radius: 18px; border: 1px solid rgba(212,175,55,.3); }
+.introBar { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 20px calc(16px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(180deg, rgba(9,10,13,0), #090a0d 38%); }
+.introGo { display: block; max-width: 440px; margin: 0 auto; padding: 16px 20px; border-radius: 999px; background: linear-gradient(180deg, #f5df88, #d4af37); color: #1c1304; font-size: 19px; font-weight: 800; text-align: center; text-decoration: none; box-shadow: 0 10px 30px rgba(0,0,0,.55); }
+.introGo:focus-visible { outline: 3px solid #f5df88; outline-offset: 3px; }
 </style>
 </head>
 <body>
 <div class="goMark"><img src="/icons/ai-hub-mark-256.png" alt="om ai"></div>
+<main class="intro" id="intro" hidden>
+  <img class="introLogo" src="/icons/ai-hub-mark-256.png" alt="" width="64" height="64">
+  <p class="introName">om ai</p>
+  <h1 id="introTitle">اكتب جملة وحدة… وom ai يسوّي الباقي</h1>
+  <p class="introSub" id="introSub">ذكاء اصطناعي بالعربي — كل الأدوات في تطبيق واحد.</p>
+  <p class="introTry" id="introTry">جرّب تكتب:</p>
+  <ul class="introList">
+    <li id="introEx1">«سوّ لي موقع لمطعمي»</li>
+    <li id="introEx2">«سوّ لي دعاية فيديو لمنتجي»</li>
+    <li id="introEx3">«حوّل صورتي لنمط كرتوني»</li>
+  </ul>
+  <img class="introShot" id="introShot" src="/assets/screenshots/narrow-tools-1.webp" alt="من داخل التطبيق" width="540" height="960" loading="lazy">
+  <div class="introBar"><a class="introGo" id="introGo" href="/?install=1">جرّب الآن</a></div>
+</main>
 <script>
 (function(){
   'use strict';
@@ -42,10 +73,49 @@ body { display: flex; align-items: center; justify-content: center; }
     return '/?' + (ref ? 'ref=' + ref + '&' : '') + 'install=1';
   }
 
+  // v-app-intro (٢١ نوفمبر ٢٠٢٦): جوّال بلا متجر منشور (أندرويد اليوم) كان يُرمى داخل التطبيق على نافذة الموافقة مباشرة،
+  // فزائر تيك توك وإنستغرام لا يعرف ما الذي فتحه. يرى الآن تعريفًا قصيرًا وزرًّا واحدًا يحمل الوجهة نفسها.
+  // لا يظهر لمن له متجر (وجهته خارجيّة)، ولا داخل التطبيق المثبّت، ولا لمن وافق على الخصوصيّة سابقًا (زائر عائد).
+  // حين يُملأ STORES.android يختفي التعريف وحده.
+  function wantsIntro(ua, dest, standalone, returning){
+    if(standalone || returning) return false;
+    return /Android|iPhone|iPod/i.test(ua) && dest.charAt(0) === '/';
+  }
+
+  var INTRO_EN = {
+    introTitle: 'Write one sentence… om ai does the rest',
+    introSub: 'AI chat and tools together in one app.',
+    introTry: 'Try writing:',
+    introEx1: '“Build a website for my restaurant”',
+    introEx2: '“Make a video ad for my product”',
+    introEx3: '“Turn my photo into a cartoon style”',
+    introGo: 'Try it now'
+  };
+
+  function showIntro(to){
+    var el = function(id){ return document.getElementById(id); };
+    if(!/^ar\b/i.test(navigator.language || 'ar')){
+      document.documentElement.lang = 'en';
+      document.documentElement.dir = 'ltr';
+      for(var k in INTRO_EN) el(k).textContent = INTRO_EN[k];
+      el('introShot').setAttribute('alt', 'Inside the app');
+    }
+    el('introGo').setAttribute('href', to);
+    el('intro').hidden = false;
+    document.documentElement.className += ' introOn';
+  }
+
   var dest = '/';
   try { dest = goDest(navigator.userAgent || '', navigator.maxTouchPoints || 0, location.search, STORES); }
   catch(e){ dest = '/'; /* guard-ok — أيّ خطأ في الكشف يفتح التطبيق نفسه */ }
-  location.replace(dest);
+  var intro = false;
+  try {
+    var standalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+    var returning = localStorage.getItem('aiapp_privacy_ack') === '1';
+    intro = wantsIntro(navigator.userAgent || '', dest, standalone, returning);
+    if(intro) showIntro(dest);
+  } catch(e){ intro = false; /* guard-ok — تعذّر التعريف (تخزين محجوب مثلًا) لا يحبس الزائر: يكمل إلى وجهته */ }
+  if(!intro) location.replace(dest);
 })();
 </script>
 </body>
