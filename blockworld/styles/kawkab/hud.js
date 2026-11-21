@@ -1,3 +1,5 @@
+import { kitIcon } from '../../shared/kit.js';
+
 // Suit HUD for "kawkab": thin-line holographic overlay, all HTML/SVG over the canvas.
 // Icons are drawn here as small inline SVGs (no emoji, no bitmap fonts).
 const svg = (body, vb = '0 0 32 32', cls = '') => `<svg class="${cls}" viewBox="${vb}" aria-hidden="true">${body}</svg>`;
@@ -23,6 +25,7 @@ const ICON = {
   jump: '<path d="M7 17l9-9 9 9"/><path d="M7 25l9-9 9 9"/>',
   place: '<path d="M14 9l9 5v10l-9 5-9-5V14z"/><path d="M5 14l9 5 9-5M14 19v10"/><path d="M25 3v8M21 7h8"/>',
   swipe: '<path d="M5 16h22M9 11l-5 5 5 5M23 11l5 5-5 5"/>',
+  bag: '<path d="M7 12h18l-1.500 14h-15z"/><path d="M12 12V9a4 4 0 0 1 8 0v3"/><path d="M12.500 17h7"/>',
 };
 const ic = (name, cls = 'ic') => svg(ICON[name], '0 0 32 32', cls);
 const hex = '<svg class="hx" viewBox="0 0 60 68" aria-hidden="true"><polygon points="30,2.500 56.500,17.800 56.500,50.200 30,65.500 3.500,50.200 3.500,17.800"/><path class="nt" d="M30 2.500l8 4.600M30 2.500l-8 4.600M30 65.500l8-4.600M30 65.500l-8-4.600"/></svg>';
@@ -62,7 +65,7 @@ export function buildHud(root) {
   root.classList.toggle('touch', touch);
   const shown = touch ? 5 : 8, span = touch ? 96 : 120;
   const slotHtml = (s, i, sel) => `
-    <div class="slot${i === sel ? ' sel' : ''}" data-i="${i}">${hex}${ic(s.icon)}${s.tool ? '' : `<span class="cnt num" dir="ltr">${s.n}</span>`}<span class="key num" dir="ltr">${i + 1}</span></div>`;
+    <div class="slot${i === sel ? ' sel' : ''}" data-i="${i}">${hex}${s.kit ? kitIcon(s.id) : ic(s.icon)}${s.tool ? '' : `<span class="cnt num" dir="ltr">${s.n}</span>`}<span class="key num" dir="ltr">${i + 1}</span></div>`;
   const slotsHtml = (list, sel) => list.slice(0, shown).map((s, i) => slotHtml(s, i, sel)).join('');
   const vit = (k, icon, label, v, unit = '') => `
     <div class="vit ${k}">${ic(icon)}<span class="lbl">${label}</span><div class="bar"><i style="width:${v}%"></i></div><span class="num" dir="ltr">${v}${unit}</span></div>`;
@@ -88,6 +91,7 @@ export function buildHud(root) {
       <div class="hotbar">${slotsHtml(SLOTS, 0)}</div>
     </div>
     <div class="stick" data-act="stick"><div class="ring"></div><div class="knob"></div>${svg('<path d="M24 6l5 6H19zM24 42l5-6H19zM6 24l6-5v10zM42 24l-6-5v10z"/>', '0 0 48 48', 'arrows')}</div>
+    <div class="bagbtn" data-act="bag">${ic('bag')}<span class="lbl">حقيبة</span><span class="key num" dir="ltr">E</span></div>
     <div class="lookzone">${ic('swipe')}<span class="lbl">اسحب هنا للنظر</span></div>
     <div class="btns">
       <div class="btn place" data-act="place">${hex}${ic('place')}<span class="lbl">بناء</span></div>
@@ -99,7 +103,9 @@ export function buildHud(root) {
   let navKey = '', pipN = -1;
   return {
     show(v) { root.hidden = !v; }, touch, shown,
-    els: { stick: q('.stick'), knob: q('.knob'), jump: q('.btn.jump'), dig: q('.btn.dig'), place: q('.btn.place'), lookzone: q('.lookzone'), hotbar },
+    els: { stick: q('.stick'), knob: q('.knob'), jump: q('.btn.jump'), dig: q('.btn.dig'), place: q('.btn.place'), lookzone: q('.lookzone'), hotbar, bag: q('.bagbtn') },
+    /** Markup of one of this HUD's own icons (the bag draws them too). */
+    icon: (name) => ic(name),
     /** Redraw the hotbar from the game's slots. */
     setSlots(list, sel) { hotbar.innerHTML = slotsHtml(list, sel); selname.textContent = list[sel] ? list[sel].name : ''; },
     /** heading / bearing in degrees (0 = north, 90 = east), distance in metres. */

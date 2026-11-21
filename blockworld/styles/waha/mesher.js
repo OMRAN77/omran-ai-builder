@@ -8,6 +8,12 @@
 // keep their slopes; the walls between them are cut where the sloped surface meets them (see `cut`
 // in meshColumns), so a hole in a dune has straight sides up to the sand and nothing else moves.
 //
+// The shared building kit (shared/kit.js) brings block kinds this world has none of: 'slab' (a box
+// `height` tall: half blocks, beds), 'translucent' (glass), a liquid and a 'cross' of its own (water,
+// fire). `opts.kit(id)` names those blocks. They are always drawn plain: flat faces, never sloped,
+// never turned or resized like the plants; and where one stands beside sloped sand, the sand's
+// surface (not its cell) decides which of the block's sides show.
+//
 // The terrain is editable (same pattern as createVoxelTerrain in /shared/voxel.js): the world is meshed
 // column by column into one static mesh per tile, and the index range every chunk owns inside every
 // static mesh is remembered. The first edit in a chunk collapses those ranges and from then on the
@@ -55,10 +61,12 @@ function tileOf(def, faceName) {
  * @param opts.onMesh    (mesh, isStatic) => void, called for every mesh created (static and rebuilt chunks)
  * @param opts.notGround (id) => true for blocks that stand on the ground without being part of it
  *                       (plants, water). Default: the plant and water ids of world.js.
+ * @param opts.kit       (id) => true for the blocks of the shared building kit (drawn plain, see above)
  */
 export function createTerrain(W, blocks, opts = {}) {
   const { materialFor, aoCurve = [0.5, 0.68, 0.85, 1.0], liquidDrop = 0.12, regionOf = () => 0, skipLiquid = () => false, chunk = 16, onMesh } = opts;
   const notGround = opts.notGround ?? ((id) => id >= B.WATER && id <= B.SHRUB);
+  const isKit = opts.kit ?? (() => false);
   const { world, top, nat, colMax, hc, smooth, firm, surfaceY } = W;
   const kindOf = (id) => (id && blocks[id] ? (blocks[id].kind ?? 'solid') : 'air');
   const occ = (x, y, z) => {
@@ -86,6 +94,20 @@ export function createTerrain(W, blocks, opts = {}) {
   };
   const nrm = [0, 0, 0];
   const ys = [0, 0, 0, 0], ao = [3, 3, 3, 3];
+  const edge = [0, 0];
+  /**
+   * The untouched sloped ground of column `bi` along the edge it shares with side face `f` of cell (x, z):
+   * fills `edge` with its two heights (a corner that is not sloped sits on the block top). False when
+   * that edge is not sloped at all.
+   */
+  const slopedEdge = (f, x, z, bi) => {
+    const ca = f.corners[f.tops[0]], cb = f.corners[f.tops[1]];
+    const ka = cornerIndex(x + ca.pos[0], z + ca.pos[2]), kb = cornerIndex(x + cb.pos[0], z + cb.pos[2]);
+    if (!smooth[ka] && !smooth[kb]) return false;
+    const S = top[bi] + 1;
+    edge[0] = smooth[ka] ? hc[ka] : S; edge[1] = smooth[kb] ? hc[kb] : S;
+    return true;
+  };
 
   /** Append the faces of every column with x0 <= x < x1 and z0 <= z < z1 to the buckets `bk`. */
   function meshColumns(bk, x0, x1, z0, z1) {
@@ -107,10 +129,12 @@ export function createTerrain(W, blocks, opts = {}) {
           const h = def.height ?? 1;
           const s = aoCurve[3] * shade;
           const y0 = (isNat && y === SA) ? surfaceY(x + 0.5, z + 0.5) - 0.06 : y;
-          // slight per-plant turn and size so tufts do not line up on the grid
+          // slight per-plant turn and size so tufts do not line up on the grid; a kit block (fire) is
+          // the same two diagonals in every world
+          const plainX = isKit(id);
           const hsh = ((x * 73856093) ^ (z * 19349663)) >>> 0;
-          const rot = (hsh % 628) / 100, sc = 0.85 + ((hsh >>> 8) % 100) / 220;
-          const cs = Math.cos(rot) * 0.46 * sc, sn = Math.sin(rot) * 0.46 * sc;
+          const rot = (hsh % 628) / 100, sc = plainX ? 1 : 0.85 + ((hsh >>> 8) % 100) / 220;
+          const cs = plainX ? 0.42 : Math.cos(rot) * 0.46 * sc, sn = plainX ? 0.42 : Math.sin(rot) * 0.46 * sc;
           const quads = [[[-cs, -sn], [cs, sn]], [[sn, -cs], [-sn, cs]]];
           for (const [a, c] of quads) {
             const base = b.positions.length / 3;
@@ -125,8 +149,41 @@ export function createTerrain(W, blocks, opts = {}) {
           }
           continue;
         }
-        if (kind === 'liquid' && skipLiquid(x, y, z)) continue;
-        const soft = isNat && y < SA && kind === 'solid';
+        const kb = isKit(id);
+        if (kind === 'slab') {
+          // a box of the cell's footprint and `height` tall (half blocks, beds): flat faces, drawn with the opaque blocks
+          const h = def.height ?? 0.5;
+          for (const f of FACES) {
+            const d = f.dir, nx = x + d[0], ny = y + d[1], nz = z + d[2];
+            if (d[1] <= 0) {                                 // sides and underside can hide behind a full cube or a twin
+              if (!inCols(nx, nz) || ny < 0) continue;       // never the underside or the border of the world
+              const nid = world.get(nx, ny, nz);
+              let hidden = nid !== 0 && (kindOf(nid) === 'solid' || (nid === id && d[1] === 0));
+              if (d[1] === 0) {
+                // beside untouched sloped ground the sand's surface decides, not its cell
+                const bi = colIndex(nx, nz);
+                if (nat[bi] === 1 && y <= top[bi] && slopedEdge(f, x, z, bi)) hidden = y + h <= Math.min(edge[0], edge[1]) + 1e-4;
+              }
+              if (hidden) continue;
+            }
+            const b = bucket(bk, tileOf(def, f.name), 'solid', region);
+            const base = b.positions.length / 3;
+            const s = aoCurve[3] * shade * (d[1] === 0 ? 0.9 : 1);
+            for (let i = 0; i < 4; i++) {
+              const c = f.corners[i];
+              b.positions.push(x + c.pos[0], y + c.pos[1] * h, z + c.pos[2]);
+              b.normals.push(d[0], d[1], d[2]);
+              b.uvs.push(c.uv[0], d[1] === 0 ? c.uv[1] * h : c.uv[1]);
+              b.colors.push(s, s, s);
+              b.mixes.push(0);
+            }
+            b.indices.push(base, base + 1, base + 2, base + 2, base + 1, base + 3);
+            b.quads++;
+          }
+          continue;
+        }
+        if (kind === 'liquid' && !kb && skipLiquid(x, y, z)) continue;      // the pool sheet stands in for this world's own water only
+        const soft = isNat && y < SA && kind === 'solid' && !kb;
 
         for (const f of FACES) {
           const d = f.dir;
@@ -134,20 +191,25 @@ export function createTerrain(W, blocks, opts = {}) {
           let nid = 0;
           if (inCols(nx, nz) && ny >= 0 && ny < SY) nid = world.get(nx, ny, nz);
           else if (ny < 0 || ny < SY) continue;                     // never draw the underside or the world border
-          // A wall between untouched sloped ground and a column the player has edited (this never
-          // happens in the static build: there, corners beside a touched column are not sloped).
-          // cut 1: this block is the sloped ground, 2: this block is in the edited column.
+          // A wall between untouched sloped ground and a block that is not (this never happens in the
+          // static build: there, corners beside a touched column are not sloped, and nothing is built
+          // over untouched ground).
+          // cut 1: this block is the sloped ground and the column beside it was edited.
+          // cut 2: this block is a plain one (in an edited column, built clear of the ground, or a kit
+          //        block) and the ground beside it is sloped. A cell beside it that holds a block of its
+          //        own, above that ground, hides the face by the usual rules instead.
           let cut = 0, ea = 0, eb = 0, plain = true, capFrom = -1;
-          if (d[1] === 0 && kind === 'solid') {
-            const bi = colIndex(nx, nz);
-            if ((nat[bi] === 1) !== isNat) {
+          if (d[1] === 0 && (kind === 'solid' || kb)) {
+            const bi = colIndex(nx, nz), nb = nat[bi] === 1;
+            const own = nb && y > top[bi] && nid !== 0 && (kindOf(nid) === 'solid' || nid === id || (kind === 'liquid' && kindOf(nid) === 'liquid'));
+            if (soft ? !nb : (nb && !own)) {
               const ca = f.corners[f.tops[0]], cb = f.corners[f.tops[1]];
-              const ka = cornerIndex(x + ca.pos[0], z + ca.pos[2]), kb = cornerIndex(x + cb.pos[0], z + cb.pos[2]);
-              if (smooth[ka] || smooth[kb]) {
+              const ka = cornerIndex(x + ca.pos[0], z + ca.pos[2]), kc = cornerIndex(x + cb.pos[0], z + cb.pos[2]);
+              if (smooth[ka] || smooth[kc]) {
                 // the sloped surface along the shared edge (a corner that is not sloped sits on the block top)
-                const S = isNat ? SA : top[bi] + 1;
-                ea = smooth[ka] ? hc[ka] : S; eb = smooth[kb] ? hc[kb] : S;
-                cut = isNat ? (y < SA ? 1 : 0) : 2;
+                const S = soft ? SA : top[bi] + 1;
+                ea = smooth[ka] ? hc[ka] : S; eb = smooth[kc] ? hc[kc] : S;
+                cut = soft ? 1 : 2;
               }
             }
           }

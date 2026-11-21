@@ -174,11 +174,11 @@ button { font: inherit; color: inherit; margin: 0; padding: 0; border: 0; backgr
 .t-btn.place { width: 56px; height: 56px; right: 80px; bottom: 2px; }
 .t-btn.jump { width: 56px; height: 56px; right: 6px; bottom: 82px; }
 
-/* ---- belt in groups: two tools, an engraved divider, five materials; provisions ride in a pouch beside it ---- */
+/* ---- the belt: seven niches on the strap and two round ones in a pouch beside it. The engraved divider is
+        moved by the HUD to wherever the digging tools end and the things to put down begin ---- */
 #hud svg.defs { position: absolute; width: 0; height: 0; }
 .belt-row { position: relative; }
 .belt { align-items: flex-end; }
-.grp { display: flex; gap: 7px; direction: rtl; }
 .belt-div { align-self: stretch; width: 18px; display: grid; justify-items: center; align-content: center; gap: 5px; color: var(--brass); }
 .belt-div i { width: 1px; height: 17px; background: linear-gradient(180deg, rgba(201, 163, 90, 0), var(--brass) 50%, rgba(201, 163, 90, 0)); }
 .belt-div svg { width: 12px !important; height: 13px !important; }
@@ -190,16 +190,12 @@ button { font: inherit; color: inherit; margin: 0; padding: 0; border: 0; backgr
 .pslot .s-ico { width: 36px; height: 36px; bottom: 8px; }
 .pslot .s-n { left: 2px; bottom: -2px; }
 .pslot .s-key { right: 2px; bottom: -2px; }
-.t-badge { display: none; }
 
-/* phones: finger-sized targets, a quiet look hint, provisions behind the bag */
+/* phones: finger-sized targets, a quiet look hint, the pouch put away (everything is in the bag) */
 #hud.touch .pouch { display: none; }
 #hud.touch .t-mini { position: relative; width: 44px; height: 44px; }
 #hud.touch .t-mini svg { width: 22px !important; height: 22px !important; }
-#hud.touch .t-badge { display: block; position: absolute; right: -4px; bottom: -3px; min-width: 18px; padding: 2px 3px 1px; border-radius: 9px; box-sizing: border-box;
-  font: 700 10.5px/1.2 var(--kufi); text-align: center; direction: ltr; color: #2a1c12; background: linear-gradient(180deg, #fff1c4, var(--brass)); box-shadow: 0 0 0 1.5px rgba(24, 15, 9, .8); }
 #hud.touch .day { left: calc(116px + var(--sl)); }
-#hud.touch .grp { gap: 4px; }
 #hud.touch .belt-div { width: 12px; gap: 3px; }
 #hud.touch .belt-div i { height: 11px; }
 #hud.touch .belt-div svg { width: 9px !important; height: 10px !important; }
@@ -241,3 +237,18 @@ body #playPanel .box { border-radius: 4px; background: linear-gradient(180deg, r
 body #playPanel button { border-radius: 4px; }
 body #playPanel button:not(.menu) { color: #2a1c12; background: linear-gradient(180deg, #fff1c4, var(--brass)); }
 body #playRotate { background: #150d07; color: var(--sand); }
+
+/* ================= the building kit and the bag ================= */
+/* a kit block in a niche: its picture is an image, sized like the drawn items around it */
+.s-ico img { display: block; width: 100%; height: 100%; -webkit-user-drag: none; }
+/* the bag in the HUD's leather and brass */
+body #bag { background: rgba(12, 7, 3, .64); color: var(--sand); }
+body #bag .box { border-radius: 4px; background: linear-gradient(180deg, rgba(64, 44, 27, .97), rgba(33, 21, 13, .98));
+  box-shadow: 0 0 0 3px rgba(24, 15, 9, .55), 0 0 0 4px rgba(201, 163, 90, .28), inset 0 0 0 1px rgba(239, 217, 160, .14), 0 18px 60px rgba(0, 0, 0, .55); }
+body #bag header, body #bag footer { border-color: rgba(201, 163, 90, .3); }
+body #bag .x { border-radius: 4px; color: var(--brass-hi); }
+body #bag h3 { color: var(--brass-hi); opacity: 1; }
+body #bag .it, body #bag .sq { border-radius: 4px; background: rgba(24, 15, 9, .46); border-color: rgba(201, 163, 90, .34); }
+body #bag .it:hover, body #bag .it:focus-visible { background: rgba(150, 104, 54, .4); border-color: var(--brass-hi); }
+body #bag .sq.on { border-color: var(--brass-hi); background: rgba(150, 104, 54, .5); box-shadow: 0 0 9px rgba(255, 196, 104, .45); }
+body #bag .sq i { font-family: var(--kufi); color: #fff6dc; text-shadow: 0 0 3px #000; }

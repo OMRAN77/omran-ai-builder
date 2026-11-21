@@ -2,8 +2,9 @@
 import * as THREE from 'three';
 import { createTerrain } from './mesher.js';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
-import { ATM, TIMES, applyTime, createSky, createStars, createMoon, createPipeline, makeNoiseTexture } from './atmo.js';
-import { buildTiles } from './tiles.js';
+import { KIT_BLOCKS, K, kitMaterial, isKit } from '../../shared/kit.js';
+import { ATM, TIMES, applyTime, createSky, createStars, createMoon, createPipeline, makeNoiseTexture, patchMaterial } from './atmo.js';
+import { buildTiles, PAL } from './tiles.js';
 import { buildWorld, BLOCKS, B, FORT, POOL, CAMP, GROUND, POOL_LEVEL, WATER_Y, terrainAt, heroCrestX, colIndex } from './world.js';
 import { makeMaterialFor, buildBackdrop, buildPool, createReflection, WATER_U } from './scenery.js';
 import { buildRanger, buildCamel, buildOryx, buildWraith, buildScorpion, buildFalcon, buildHeldTool } from './actors.js';
@@ -27,7 +28,57 @@ const T = buildTiles();
 const W = buildWorld();
 ATM.uNoise.value = makeNoiseTexture();
 ATM.uPoolLevel.value = POOL_LEVEL;
-const materialFor = makeMaterialFor(T);
+// The shared building kit (painted blocks, half blocks, lamps, glass, water, fire, beds): ids 100 and up.
+// Its materials are its own in every world. Here they only join this world's air (the same distance haze
+// as everything around them), and the two polished ones are given something to mirror.
+Object.assign(BLOCKS, KIT_BLOCKS);
+const ownMaterialFor = makeMaterialFor(T);
+const kitTuned = new Set();
+function kitMaterialFor(tile) {
+  const m = kitMaterial(tile);
+  if (m && !kitTuned.has(m)) {
+    kitTuned.add(m);
+    if (m.isMeshStandardMaterial) patchMaterial(m, {});
+    if (tile === 'x:gold' || tile === 'x:diamond') { m.envMap = kitSurroundings(); m.envMapIntensity = tile === 'x:gold' ? 1 : 0.5; }
+  }
+  return m;
+}
+// Polished gold and diamond need something to mirror, and nothing else in this world is glossy, so it has
+// no environment map. A small one is made, once, the first time such a block is drawn: this world's own sky
+// as it stands, over sand lit by its sun. Without it gold shows as dark wood.
+let kitEnv = null;
+function kitSurroundings() {
+  if (kitEnv) return kitEnv;
+  const w = 128, h = 64, data = new Uint16Array(w * h * 4), half = THREE.DataUtils.toHalfFloat;
+  const sd = ATM.uSunDir.value, zen = ATM.uZenith.value, hor = ATM.uHorizon.value, warm = ATM.uSunHorizon.value, glow = ATM.uGlow.value, gp = ATM.uGlowParams.value;
+  const sl = Math.hypot(sd.x, sd.z) || 1, gain = ATM.uSkyGain.value;
+  const sand = new THREE.Color().setRGB(PAL.sand[0], PAL.sand[1], PAL.sand[2], THREE.SRGBColorSpace);
+  const ks = Math.max(sd.y, 0) * sun.intensity / Math.PI, kh = hemi.intensity / Math.PI;
+  const ground = [sand.r * (sun.color.r * ks + hemi.color.r * kh), sand.g * (sun.color.g * ks + hemi.color.g * kh), sand.b * (sun.color.b * ks + hemi.color.b * kh)];
+  const c = [0, 0, 0];
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    // the same directions three.js reads an equirectangular map in
+    const lat = ((j + 0.5) / h - 0.5) * Math.PI, lon = ((i + 0.5) / w - 0.5) * Math.PI * 2;
+    const dy = Math.sin(lat), dx = Math.cos(lon) * Math.cos(lat), dz = Math.sin(lon) * Math.cos(lat), dl = Math.hypot(dx, dz) || 1;
+    // the sky of atmo.js (wahaSky), without the sun's disc: the sun itself is a light
+    const az = ((dx * sd.x + dz * sd.z) / (dl * sl)) * 0.5 + 0.5, a3 = az * az * az, t = 1 - Math.exp(-Math.max(dy, 0) * 5);
+    const s = Math.max(dx * sd.x + dy * sd.y + dz * sd.z, 0), g = gp.y * Math.pow(s, gp.x) + gp.w * Math.pow(s, gp.z);
+    c[0] = ((hor.r + (warm.r - hor.r) * a3) * (1 - t) + zen.r * t + glow.r * g) * gain;
+    c[1] = ((hor.g + (warm.g - hor.g) * a3) * (1 - t) + zen.g * t + glow.g * g) * gain;
+    c[2] = ((hor.b + (warm.b - hor.b) * a3) * (1 - t) + zen.b * t + glow.b * g) * gain;
+    const k = Math.min(1, Math.max(0, -dy / 0.12)), q = k * k * (3 - 2 * k), o = (j * w + i) * 4;      // below the horizon: the sand
+    for (let n = 0; n < 3; n++) data[o + n] = half(Math.min(60, c[n] + (ground[n] - c[n]) * q));
+    data[o + 3] = half(1);
+  }
+  const tex = new THREE.DataTexture(data, w, h, THREE.RGBAFormat, THREE.HalfFloatType);
+  tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.LinearSRGBColorSpace;
+  tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.needsUpdate = true;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  kitEnv = pmrem.fromEquirectangular(tex).texture;
+  pmrem.dispose(); tex.dispose();
+  return kitEnv;
+}
+const materialFor = (tile, kind) => kitMaterialFor(tile) || ownMaterialFor(tile, kind);
 // the oasis (fort, palms, near cliffs) is its own set of meshes: it is what the pool reflects
 const inOasis = (x, z) => (x >= 34 && x < 152 && z >= 4 && z < 130 ? 1 : 0);
 // The pool's water is drawn by one sheet (buildPool), so the mesher leaves those columns' water alone.
@@ -36,7 +87,9 @@ const poolCol = W.nat.map((n, i) => (n === 1 && W.top[i] < WATER_Y ? 1 : 0));
 const isPool = (x, y, z) => poolCol[colIndex(x, z)] === 1;
 const terrain = createTerrain(W, BLOCKS, {
   materialFor, aoCurve: [0.50, 0.68, 0.85, 1.0], regionOf: inOasis, skipLiquid: isPool,
-  notGround: (id) => (id >= B.WATER && id <= B.SHRUB) || id === GID.OBSTACLE || id === GID.LANTERN,
+  // a kit fire stands on the ground as a plant does; every other kit block is something built
+  notGround: (id) => (id >= B.WATER && id <= B.SHRUB) || id === GID.OBSTACLE || id === GID.LANTERN || id === K.FIRE,
+  kit: isKit,
   onMesh: (m) => { if (m.userData.region === 1) m.layers.enable(1); },
 });
 const voxels = terrain.group, stats = terrain.stats;

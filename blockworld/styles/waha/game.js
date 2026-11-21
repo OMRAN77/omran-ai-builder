@@ -3,6 +3,8 @@
 // controller only reports what happened.
 import * as THREE from 'three';
 import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
+import { KIT_GROUPS, createKit } from '../../shared/kit.js';
+import { createBag } from '../../shared/bag.js';
 import { B, BLOCKS, X0, X1, Z0, Z1, SX, SY, SZ, colIndex, cornerIndex } from './world.js';
 import { SLOTS } from './hud.js';
 import { buildLantern } from './props.js';
@@ -38,6 +40,28 @@ export async function startGame(ctx) {
   BLOCKS[LANTERN] = { tiles: 'beam', kind: 'none' };
   NAMES[LANTERN] = 'فانوس'; DROP[LANTERN] = LANTERN;
 
+  // ------------------------------------------------------------------ the controller's view of the world
+  // shared/play.js walls the world in at x = 0 and z = 0, but this world's grid starts at (X0, Z0) < 0.
+  // So the controller runs in its own coordinates, shifted to start at zero, and everything it reports
+  // is shifted back here.
+  const OX = X0, OZ = Z0;
+  const pworld = { sx: SX, sy: SY, sz: SZ, get: (x, y, z) => world.get(x + OX, y, z + OZ), inb: (x, y, z) => world.inb(x + OX, y, z + OZ) };
+
+  // The shared building kit lives in the controller's coordinates as well: it is told where blocks go in
+  // those, and it puts its lamp and fire lights at the places it was told. The lights hang from a group
+  // that carries the shift, so they shine where the blocks really are. Made before the first frame is
+  // drawn: the number of lights in the scene never changes after that.
+  const kitRoot = new THREE.Group();
+  kitRoot.name = 'kitLights';
+  kitRoot.position.set(OX, 0, OZ);
+  scene.add(kitRoot);
+  const kit = createKit({
+    scene: kitRoot, world: pworld,
+    // the kit lays and lifts the second half of a bed itself; whatever stands on or in that cell hears of it as for any other block
+    terrain: { setBlock: (x, y, z, id) => { const done = pterrain.setBlock(x, y, z, id); if (done) { if (id) filled(x + OX, y, z + OZ); else gone(x + OX, y, z + OZ); } return done; } },
+  });
+  for (const l of kit.lights) l.layers.enable(1);   // the pool's mirror image is lit by the same set of lights
+
   await window.__shot('play');                       // afternoon light, the HUD and the mattock in hand, standing at the worksite
   stage.live = true;
   // Nothing in the scene moves on its own yet, so the shadow map is drawn again only when something
@@ -48,6 +72,8 @@ export async function startGame(ctx) {
 
   const kindOf = (id) => (id && BLOCKS[id] ? (BLOCKS[id].kind ?? 'solid') : 'air');
   const cube = (id) => kindOf(id) === 'solid';
+  /** Anything that fills its cell for the player: a cube, or the kit's half blocks, beds and glass. */
+  const built = (id) => { const k = kindOf(id); return k === 'solid' || k === 'slab' || k === 'translucent'; };
   const inCols = (x, z) => x >= X0 && x < X1 && z >= Z0 && z < Z1;
   const key = (x, y, z) => (y * SZ + (z - Z0)) * SX + (x - X0);
 
@@ -136,12 +162,9 @@ export async function startGame(ctx) {
     for (const o of seated) { const s = o.userData.seat; if (Math.abs(s[0] - x) < 5 && Math.abs(s[1] - z) < 5) place(o, s[0], s[1], s[2], s[3], s[4]); }
   };
 
-  // ------------------------------------------------------------------ the controller's view of the world
-  // shared/play.js walls the world in at x = 0 and z = 0, but this world's grid starts at (X0, Z0) < 0.
-  // So the controller runs in its own coordinates, shifted to start at zero, and everything it reports
-  // is shifted back here.
-  const OX = X0, OZ = Z0;
-  const pworld = { sx: SX, sy: SY, sz: SZ, get: (x, y, z) => world.get(x + OX, y, z + OZ), inb: (x, y, z) => world.inb(x + OX, y, z + OZ) };
+  // ------------------------------------------------------------------ edits, as the controller makes them
+  // This world's own water (the pool, the falaj) is the only water that moves. The kit's water is a block
+  // like any other: it stays where it is put and never sets this rule off.
   const wet = (x, y, z) => world.get(x, y, z) === B.WATER;
   const SPREAD = [[0, -1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
   /** Water at (x, y, z) runs into the open cells it can reach without rising, a bounded number of them. */
@@ -162,7 +185,7 @@ export async function startGame(ctx) {
       x += OX; z += OZ;
       // A hole dug beside or under water fills up, and the water runs on into whatever dry digging it
       // now reaches. There is no other water simulation: it never drains and nothing flows by itself.
-      const fill = id === 0 && cube(world.get(x, y, z)) && (wet(x, y + 1, z) || wet(x + 1, y, z) || wet(x - 1, y, z) || wet(x, y, z + 1) || wet(x, y, z - 1));
+      const fill = id === 0 && built(world.get(x, y, z)) && (wet(x, y + 1, z) || wet(x + 1, y, z) || wet(x - 1, y, z) || wet(x, y, z + 1) || wet(x, y, z - 1));
       const done = terrain.setBlock(x, y, z, fill ? B.WATER : id);
       if (done && fill) flood(x, y, z);
       return done;
@@ -181,35 +204,43 @@ export async function startGame(ctx) {
   const ax = wt[0] + 0.5 - sx, ay = wt[1] + 0.5 - (fy + EYE), az = wt[2] + 1.0 - sz;
 
   const SLOT_ID = { sand: B.SAND, stone: B.ROCK_A, brick: B.BRICK, wood: B.WOOD, lantern: LANTERN };
-  const slots = SLOTS.slice(0, hud.shown).map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 }));
-  const lanternSlot = slots.find((q) => q.id === LANTERN);
+  const ownItems = () => SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 }));
+  // The belt. The bag may put any item in any square, so nothing below goes by a square's number:
+  // what a square does follows the item that is in it now.
+  const slots = ownItems().slice(0, hud.shown);
 
   // ------------------------------------------------------------------ the highlight on the targeted block
   // On untouched sand the block's top is the sloped dune surface, so the frame follows it.
   const boxPos = targetBox.geometry.attributes.position, boxHome = boxPos.array.slice();
   targetBox.frustumCulled = false;
-  function frameBlock(x, y, z) {
-    targetBox.position.set(x + 0.5, y + 0.5, z + 0.5);
-    const ci = colIndex(x, z), sloped = W.nat[ci] === 1 && W.top[ci] === y, a = boxPos.array;
+  // A half block or a bed is framed at its own height, and a lantern standing on one is framed where it stands.
+  function frameBlock(x, y, z, id) {
+    const lamp = id === LANTERN ? lamps.get(key(x, y, z)) : null;
+    targetBox.position.set(x + 0.5, y + 0.5 - (lamp ? lamp.sunk : 0), z + 0.5);
+    const ci = colIndex(x, z), sloped = W.nat[ci] === 1 && W.top[ci] === y, a = boxPos.array, tall = kit.heightOf(id);
     for (let i = 0; i < a.length; i += 3) {
       let py = boxHome[i + 1];
-      if (sloped && py > 0) { const k = cornerIndex(x + (boxHome[i] > 0 ? 1 : 0), z + (boxHome[i + 2] > 0 ? 1 : 0)); if (W.smooth[k]) py = W.hc[k] - (y + 0.5) + 0.006; }
+      if (py > 0) {
+        if (tall < 1) py = tall - 0.5 + 0.006;
+        else if (sloped) { const k = cornerIndex(x + (boxHome[i] > 0 ? 1 : 0), z + (boxHome[i + 2] > 0 ? 1 : 0)); if (W.smooth[k]) py = W.hc[k] - (y + 0.5) + 0.006; }
+      }
       a[i + 1] = py;
     }
     boxPos.needsUpdate = true;
   }
 
   // ------------------------------------------------------------------ lanterns the player puts down
-  const lamps = new Map();          // cell -> { l, x, y, z, hold }
+  const lamps = new Map();          // cell -> { l, x, y, z, hold, sunk }   sunk: how far below its cell's floor it stands (on a half block or a bed)
   const lampsOn = new Map();        // the block that carries them -> [cells]
   function putLantern(x, y, z, h) {
     // h: the face it was put against, in the controller's coordinates
-    let nx = 0, ny = 1, nz = 0, hold = key(x, y - 1, z);
+    let nx = 0, ny = 1, nz = 0, hold = key(x, y - 1, z), sunk = 0;
     if (h && !(h.x + OX === x && h.y === y && h.z + OZ === z)) { nx = h.nx; ny = h.ny; nz = h.nz; hold = key(h.x + OX, h.y, h.z + OZ); }
     let l;
-    if (ny > 0) {                                    // standing on the ground (on the dune surface where the sand is untouched)
-      const ci = colIndex(x, z), base = W.nat[ci] === 1 && W.top[ci] === y - 1 ? W.surfaceY(x + 0.5, z + 0.5) : y;
-      l = buildLantern({ x: x + 0.5, y: base + 0.21, z: z + 0.5 });
+    if (ny > 0) {                                    // standing on the ground (on the dune surface where the sand is untouched, on the real top of a half block or a bed)
+      const ci = colIndex(x, z), dune = W.nat[ci] === 1 && W.top[ci] === y - 1;
+      if (!dune) sunk = 1 - kit.heightOf(world.get(x, y - 1, z));
+      l = buildLantern({ x: x + 0.5, y: (dune ? W.surfaceY(x + 0.5, z + 0.5) : y - sunk) + 0.21, z: z + 0.5 });
     } else if (ny < 0) {                             // hanging under a block on a short chain
       l = buildLantern({ x: x + 0.5, y: y + 0.45, z: z + 0.5 });
       const chain = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.03), l.group.children[1].material);
@@ -221,7 +252,7 @@ export async function startGame(ctx) {
     lightLantern(l, rig.lamp ?? 0);
     scene.add(l.group);
     const k = key(x, y, z);
-    lamps.set(k, { l, x, y, z, hold });
+    lamps.set(k, { l, x, y, z, hold, sunk });
     hook(lampsOn, hold, k);
     redrawShadows();
   }
@@ -235,13 +266,31 @@ export async function startGame(ctx) {
     if (a) a.splice(a.indexOf(k), 1);
     redrawShadows();
   }
-  /** The block that carried lanterns is gone: they go back on the belt. */
+  /** The block that carried lanterns is gone: they go back on the belt, into whichever square holds lanterns now. */
   function lanternsOff(k) {
     const a = lampsOn.get(k);
     if (!a) return;
     lampsOn.delete(k);
-    for (const lk of a) { const e = lamps.get(lk); if (!e) continue; terrain.setBlock(e.x, e.y, e.z, 0); takeLantern(lk); if (lanternSlot) lanternSlot.n++; }
+    for (const lk of a) {
+      const e = lamps.get(lk);
+      if (!e) continue;
+      terrain.setBlock(e.x, e.y, e.z, 0); takeLantern(lk);
+      const q = slots.find((s) => s.id === LANTERN);
+      if (q) q.n = Math.min(999, (q.n || 0) + 1);
+    }
     hud.setSlots(slots, play.state.sel);
+  }
+  /** What every prop is told when the block at (x, y, z) goes, whoever took it away. */
+  function gone(x, y, z) {
+    const k = key(x, y, z);
+    run(onGone, k);
+    lanternsOff(k);
+    reseat(x, z);
+  }
+  /** ... and when a block is put there. */
+  function filled(x, y, z) {
+    run(onFill, key(x, y, z));
+    reseat(x, z);
   }
 
   // ------------------------------------------------------------------ the arm and the mattock
@@ -259,44 +308,54 @@ export async function startGame(ctx) {
     camera: eyes, canvas: stage.canvas, world: pworld, blocks: BLOCKS, terrain: pterrain,
     spawn: { x: sx - OX, y: fy, z: sz - OZ, yaw: Math.atan2(-ax, -az), pitch: Math.atan2(ay, Math.hypot(ax, az)) },
     slots, touch: hud.touch ? hud.els : null, maxPixelRatio: 2,
-    isLiquid: (id) => id === B.WATER,
-    isSolid: (id) => id === OBSTACLE || cube(id),
-    pickable: (id) => id === LANTERN || cube(id) || kindOf(id) === 'cross',
-    // the spade is quick in loose ground and slow in rock; the mattock (and a bare hand on a material slot) is the all-rounder
+    isLiquid: (id) => id === B.WATER || kit.isLiquid(id),
+    isSolid: (id) => id === OBSTACLE || built(id),
+    heightOf: kit.heightOf,
+    pickable: (id) => id === LANTERN || built(id) || kindOf(id) === 'cross',
+    // The item in the selected square decides, wherever the bag has put it: the spade is quick in loose
+    // ground and slow in rock; the mattock, and anything else in the hand, is the all-rounder. Kit blocks
+    // come away the same in every world.
     hardness: (id) => {
+      const k = kit.hardness(id);
+      if (k !== null) return k;
       if (kindOf(id) === 'cross') return 0.08;
       if (id === LANTERN) return 0.15;
-      const spade = slots[play.state.sel] && slots[play.state.sel].key === 'spade';
+      const item = slots[play.state.sel], spade = !!item && item.key === 'spade';
       if (LOOSE.has(id)) return spade ? 0.16 : 0.32;
       if (ROCK.has(id)) return spade ? 1.3 : 0.75;
       if (id === B.THATCH) return 0.25;
       return spade ? 0.8 : 0.5;
     },
-    dropOf: (id) => DROP[id] || 0,
+    dropOf: (id) => DROP[id] || kit.dropOf(id),
     // not under something that cannot move, and not in the outermost rows (the far-terrain sheet starts under them)
     canBreak: (id, x, y, z) => { x += OX; z += OZ; return !guard.has(key(x, y, z)) && x >= X0 + 6 && x < X1 - 6 && z >= Z0 + 6 && z < Z1 - 6; },
     onTarget(h) {
       targetBox.visible = !!h;
       if (!h) { hud.setTarget(null); return; }
       const x = h.x + OX, z = h.z + OZ;
-      frameBlock(x, h.y, z);
-      hud.setTarget(guard.get(key(x, h.y, z)) ?? NAMES[h.id] ?? 'مكعب');
+      frameBlock(x, h.y, z, h.id);
+      hud.setTarget(guard.get(key(x, h.y, z)) ?? NAMES[h.id] ?? (kit.nameOf(h.id) || 'مكعب'));
     },
     onBreak(h) {
-      const x = h.x + OX, z = h.z + OZ, k = key(x, h.y, z);
-      if (h.id === LANTERN) takeLantern(k);
-      run(onGone, k);
-      lanternsOff(k);
-      reseat(x, z);
+      const x = h.x + OX, z = h.z + OZ;
+      if (h.id === LANTERN) takeLantern(key(x, h.y, z));
+      kit.broke(h);
+      // a fire that burned on the block went with it (the controller clears a plant off a dug block without a word): its light goes too
+      const up = h.x + ',' + (h.y + 1) + ',' + h.z;
+      if (kit.glow.has(up) && pworld.get(h.x, h.y + 1, h.z) === 0) kit.broke({ x: h.x, y: h.y + 1, z: h.z, id: kit.glow.get(up) });
+      gone(x, h.y, z);
     },
     onPlace(px, y, pz, id) {
-      const x = px + OX, z = pz + OZ;
+      const x = px + OX, z = pz + OZ, was = px + ',' + y + ',' + pz;
+      if (kit.glow.has(was)) kit.broke({ x: px, y, z: pz, id: kit.glow.get(was) });      // the block took the place of a fire
       if (id === LANTERN) putLantern(x, y, z, play.state.hit);
-      run(onFill, key(x, y, z));
-      reseat(x, z);
+      kit.placed(px, y, pz, id, play.state.yaw);
+      filled(x, y, z);
       push = 1;
     },
     onInventory(list, sel) { hud.setSlots(list, sel); },
+    onBag() { bag.toggle(); },
+    onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
     onFirstLook() { hud.els.look.hidden = true; },
     onFrame(st, dt) {
@@ -305,6 +364,7 @@ export async function startGame(ctx) {
       camera.quaternion.copy(eyes.quaternion);
       camera.updateMatrixWorld(true);
       hud.setProgress(st.dig.on ? st.dig.progress : 0);
+      kit.update(p, dt, st.time);
       hud.setHeading(((Math.round(-st.yaw * 360 / Math.PI) / 2) % 360 + 360) % 360);
       // the mattock: raised, brought down on the block, and back, for as long as the dig is held; a short
       // dip when a block goes down. `a` turns the forearm about the elbow: + up and back, - forward and down.
@@ -343,7 +403,23 @@ export async function startGame(ctx) {
     if (lockedAt < 0) lockedAt = now;
     if (now - lockedAt < 90) e.stopImmediatePropagation();
   }, true);
-  document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement !== stage.canvas) lockedAt = -1; });
+  document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement !== stage.canvas) lockedAt = -1; else everLocked = true; });
+  // Closing the bag captures the mouse again, and a browser refuses a burst of such requests (Chrome: a
+  // fifth one within a few seconds, "too many pointer lock requests"). The controller reads any refusal as
+  // "this browser cannot capture the mouse" and falls back to drag-to-look for good. Once the mouse has
+  // been captured in this session that is not what a refusal means, so it is kept from the controller:
+  // the mouse stays free, and the next click on the game captures it, as the first one did.
+  let everLocked = false;
+  {
+    const canvas = stage.canvas, ask = canvas.requestPointerLock ? canvas.requestPointerLock.bind(canvas) : null;
+    const refused = () => play.notice('انقر مرّة على اللعبة عشان ترجع الفأرة.', false, 5000);
+    if (ask) canvas.requestPointerLock = (...a) => {
+      let r;
+      try { r = ask(...a); } catch (e) { if (!everLocked) throw e; refused(); return undefined; }
+      return r && r.catch ? r.catch((e) => { if (!everLocked) throw e; refused(); }) : r;
+    };
+    window.addEventListener('pointerlockerror', (e) => { if (everLocked) { e.stopImmediatePropagation(); refused(); } }, true);
+  }
 
   hud.setSlots(slots, 0);
   hud.setTarget(null);
@@ -355,15 +431,27 @@ export async function startGame(ctx) {
   });
   hud.els.pause.addEventListener('click', () => { if (play.state.running) { play.stop(); panel.show('pause'); } });
 
+  // the bag (E, or its button on a phone): this world's own things first, then the building kit
+  const KUFI = "'Reem Kufi', 'Tajawal', sans-serif", BODY = "'Tajawal', sans-serif";
+  const bag = createBag({
+    play, shown: hud.shown,
+    groups: [{ title: 'عدّة الواحة', items: ownItems() }, ...KIT_GROUPS],
+    iconOf: hud.icon,
+    fontFamily: BODY, accent: '#efd9a0', line: 'rgba(201, 163, 90, .85)',
+  });
+  for (const el of bag.el.querySelectorAll('h2, h3, .x')) el.style.fontFamily = KUFI;
+  // a tap, not a press: the finger is up again before the bag is under it, so the same touch cannot pick an item
+  hud.els.bag.addEventListener('click', () => { if (play.state.running) bag.toggle(); });
+
   const panel = createPlayPanel({
     title: 'واحة', tagline: 'احفر الرمل، ابنِ بالطوب، وعمّر حصنك عند الواحة.',
-    fontFamily: "'Tajawal', sans-serif", accent: '#efd9a0', line: 'rgba(201, 163, 90, .85)', touch: hud.touch,
-    note: 'نسخة تجريبية: المشي والحفر والبناء شغّالة. الحيوانات ما تتحرك، والصحة والماء والوقت لسا ما تتغيّر' + (hud.touch ? '، والحقيبة لسا ما تفتح.' : '.'),
+    fontFamily: BODY, accent: '#efd9a0', line: 'rgba(201, 163, 90, .85)', touch: hud.touch,
+    note: 'نسخة تجريبية: المشي والحفر والبناء والحقيبة شغّالة. الحيوانات ما تتحرك، والصحة والماء والوقت لسا ما تتغيّر.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
-  for (const el of panel.el.querySelectorAll('h1, button')) el.style.fontFamily = "'Reem Kufi', 'Tajawal', sans-serif";      // headings in the HUD's kufi
+  for (const el of panel.el.querySelectorAll('h1, button')) el.style.fontFamily = KUFI;      // headings in the HUD's kufi
   panel.show('start');
   window.__play = play;
   // world and terrain are the controller's (zero-based) view; W is the world itself and origin the shift between them
-  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, origin: [OX, OZ] };
+  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, origin: [OX, OZ], bag, kit };
 }

@@ -1,5 +1,6 @@
 // HUD and name tags: plain HTML/CSS over the canvas, all text Arabic (RTL), icons drawn as inline SVG.
 import * as THREE from 'three';
+import { kitIcon, isKit } from '../../shared/kit.js';
 
 const svg = (inner, vb = '0 0 48 48') => `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${inner}</svg>`;
 
@@ -115,12 +116,17 @@ const FOOD = [
 ];
 
 /** The starting belt, in key order: two tools, five materials, two provisions. `id` (the block a slot
- *  places) is filled in by the world. */
+ *  places) is filled in by the world. `tool` means "carried, not placed": the bag draws such an item
+ *  without asking for a block, so the provisions carry it too; `food` tells them from the digging tools. */
 export const SLOTS = [
   ...TOOLS.map((b) => ({ key: b.id, name: b.name, tool: true })),
   ...MATS.map((b) => ({ key: b.id, name: b.name, n: b.n })),
-  ...FOOD.map((b) => ({ key: b.id, name: b.name, food: true, ...(b.n === '' ? {} : { n: b.n }) })),
+  ...FOOD.map((b) => ({ key: b.id, name: b.name, tool: true, food: true, ...(b.n === '' ? {} : { n: b.n }) })),
 ];
+const BELT = TOOLS.length + MATS.length;          // squares on the strap; the rest ride in the pouch
+const isTool = (s) => !!s && s.tool === true && !s.food;
+/** Picture of whatever a square holds: this world's own drawings, or the building kit's. */
+const iconOf = (s) => (!s ? '' : s.kit || isKit(s.id) ? kitIcon(s.id) : ICON[s.key] || '');
 
 const seg = (n, filled) => Array.from({ length: n }, (_, i) => `<i class="${i < filled ? 'on' : ''}"></i>`).join('');
 
@@ -142,8 +148,8 @@ function compassStrip(heading) {
 export function buildHud(root) {
   const touch = matchMedia('(pointer: coarse)').matches || innerHeight < 480;
   root.classList.toggle('touch', touch);
-  let key = 0;
-  const slot = (b, sel, cls = 'slot') => `<div class="${cls}${sel ? ' sel' : ''}" data-i="${key}"><span class="s-ico">${ICON[b.id]}</span>${b.n !== '' ? `<span class="s-n">${b.n}</span>` : ''}${!touch ? `<span class="s-key">${++key}</span>` : (++key, '')}</div>`;
+  // Every square is the same empty niche; setSlots fills it with whatever the game put there.
+  const square = (i, cls) => `<div class="${cls}" data-i="${i}"><span class="s-ico"></span><span class="s-n"></span>${touch ? '' : `<span class="s-key">${i + 1}</span>`}</div>`;
   root.innerHTML = `${DEFS}
     <div class="vitals plate">
       <div class="vital hp"><span class="v-ico">${ICON.health}</span><span class="v-lbl">الصحة</span><span class="v-bar">${seg(10, 8)}</span><span class="v-num">82</span></div>
@@ -166,15 +172,14 @@ export function buildHud(root) {
       <div class="belt-name"><span class="orn">${ICON.star}</span><span class="belt-txt">${TOOLS[0].name}</span><span class="orn">${ICON.star}</span></div>
       <div class="belt-row">
         <div class="belt">
-          <div class="grp">${TOOLS.map((b, i) => slot(b, i === 0)).join('')}</div>
+          ${SLOTS.slice(0, BELT).map((b, i) => square(i, 'slot')).join('')}
           <div class="belt-div"><i></i>${ICON.star}<i></i></div>
-          <div class="grp">${MATS.map((b) => slot(b, false)).join('')}</div>
         </div>
-        <div class="pouch">${FOOD.map((b) => slot(b, false, 'pslot')).join('')}</div>
+        <div class="pouch">${SLOTS.slice(BELT).map((b, i) => square(BELT + i, 'pslot')).join('')}</div>
       </div>
     </div>
     <div class="t-top">
-      <button class="t-mini" data-act="bag" aria-label="الحقيبة">${ICON.bag}<span class="t-badge">+${FOOD.length}</span></button>
+      <button class="t-mini" data-act="bag" aria-label="الحقيبة">${ICON.bag}</button>
       <button class="t-mini" data-act="pause" aria-label="إيقاف">${ICON.pause}</button>
     </div>
     <div class="t-stick" data-act="stick"><span class="t-knob"></span><i></i><i></i><i></i><i></i></div>
@@ -186,12 +191,42 @@ export function buildHud(root) {
     </div>`;
   const q = (sel) => root.querySelector(sel);
   const cstrip = q('#cstrip'), beltTxt = q('.belt-txt'), aim = q('.aim'), aimName = q('.aim-name'), pips = [...root.querySelectorAll('.aim-bar i')];
-  const cells = [...root.querySelectorAll('[data-i]')];
-  // on phones the provisions ride behind the bag, so only the belt itself can be selected
-  const shown = touch ? TOOLS.length + MATS.length : cells.length;
-  let headKey = -1, pipN = -1, aimText = null;
+  const cells = [...root.querySelectorAll('[data-i]')], belt = q('.belt'), divider = q('.belt-div');
+  const pics = cells.map((el) => el.querySelector('.s-ico')), counts = cells.map((el) => el.querySelector('.s-n'));
+  const held = cells.map(() => null);             // what each square shows now, so a square is redrawn only when its item changes
+  // on phones the pouch is put away, so only the belt itself can be selected (the bag holds everything else)
+  const shown = touch ? BELT : cells.length;
+  let headKey = -1, pipN = -1, aimText = null, divAt = -1;
+  /** Show the game's belt: any item in any square, counts, the selected square and its name. */
+  function setSlots(list, sel) {
+    for (let i = 0; i < cells.length; i++) {
+      const el = cells[i], s = list[i];
+      el.classList.toggle('sel', i === sel);
+      if (!s) continue;
+      const sig = s.kit || isKit(s.id) ? 'kit' + s.id : s.key || '';
+      if (held[i] !== sig) { held[i] = sig; pics[i].innerHTML = iconOf(s); }
+      const n = s.n === undefined ? '' : String(s.n);
+      if (counts[i].textContent !== n) counts[i].textContent = n;
+      el.classList.toggle('empty', s.n === 0);
+    }
+    // The engraved divider stands between the digging tools and the things to put down, wherever that
+    // line falls now; when the two are mixed, or the strap holds only one kind, there is no line to draw.
+    let k = 0;
+    while (k < BELT && isTool(list[k])) k++;
+    let at = k > 0 && k < BELT ? k : 0;
+    for (let i = k; i < BELT; i++) if (isTool(list[i])) at = 0;
+    if (at !== divAt) {
+      divAt = at;
+      divider.hidden = !at;
+      if (at) belt.insertBefore(divider, cells[at]);
+    }
+    beltTxt.textContent = list[sel] ? list[sel].name : '';
+  }
+  setSlots(SLOTS, 0);
   return {
-    touch, shown,
+    touch, shown, setSlots,
+    /** Picture of an item of this HUD or of the building kit (the bag draws them too). */
+    icon: iconOf,
     els: { stick: q('[data-act="stick"]'), knob: q('.t-knob'), jump: q('[data-act="jump"]'), dig: q('[data-act="dig"]'), place: q('[data-act="place"]'),
       pause: q('[data-act="pause"]'), bag: q('[data-act="bag"]'), look: q('.t-look'), belt: q('.belt-row') },
     /** heading: degrees clockwise from north. */
@@ -199,18 +234,6 @@ export function buildHud(root) {
       if (deg === headKey) return;
       headKey = deg;
       cstrip.innerHTML = compassStrip(deg);
-    },
-    /** Show the game's belt: counts, the selected slot and its name. */
-    setSlots(list, sel) {
-      for (let i = 0; i < cells.length; i++) {
-        const el = cells[i], s = list[i];
-        el.classList.toggle('sel', i === sel);
-        if (!s) continue;
-        const n = el.querySelector('.s-n');
-        if (n && s.n !== undefined && n.textContent !== String(s.n)) n.textContent = s.n;
-        el.classList.toggle('empty', s.n === 0);
-      }
-      beltTxt.textContent = list[sel] ? list[sel].name : '';
     },
     /** Name of the block under the crosshair, or null for none. */
     setTarget(name) {

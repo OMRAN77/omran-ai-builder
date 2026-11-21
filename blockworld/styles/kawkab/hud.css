@@ -195,3 +195,17 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #05060a; }
 .btn.dig.down .hx polygon { fill: rgba(var(--am2), .4); }
 .stick, .btn, .slot { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 html, body { overscroll-behavior: none; }
+
+/* ---- bag button + kit items */
+.slot img.xi { filter: drop-shadow(0 0 3px rgba(0, 12, 20, .9)); }
+#hud:not(.touch) .bagbtn { display: none; }                  /* with a keyboard the bag is the E key */
+.bagbtn { right: calc(50% + 300px); bottom: 26px; display: flex; align-items: center; gap: 7px; padding: 7px 11px; border: 1px solid rgba(var(--cy2), .55); background: rgba(5, 18, 26, .5);
+  pointer-events: auto; touch-action: none; cursor: pointer; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.bagbtn .key { font-size: 12px; opacity: .7; border: 1px solid rgba(var(--cy2), .5); padding: 0 5px; }
+#hud.touch .bagbtn { right: auto; left: calc(var(--sl) + 8px); bottom: calc(var(--sb) + 128px); padding: 0; width: 46px; height: 44px; justify-content: center; flex-direction: column; gap: 1px; }
+#hud.touch .bagbtn .ic { width: 20px; height: 20px; }
+#hud.touch .bagbtn .lbl { font-size: 9.5px; line-height: 1; }
+#hud.touch .bagbtn .key { display: none; }
+#bag .pic svg { fill: none; stroke: #d6f6ff; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+#bag .pic svg .fill { fill: #d6f6ff; stroke: none; }
+#bag .pic svg .hot { stroke: var(--am); }

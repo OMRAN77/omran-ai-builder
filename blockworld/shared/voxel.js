@@ -12,6 +12,7 @@
 //         'cutout'      cube with alpha-tested holes (leaves, grates)
 //         'translucent' see-through cube (glass, ice, crystal)
 //         'liquid'      see-through cube whose surface sits a little lower
+//         'slab'        a box `height` tall (default 0.5) on the cell's floor: half blocks, beds
 //         'cross'       two crossed quads (grass tufts, flowers, reeds); `height` optional.
 //                       Emitted with both windings and up-facing normals, and the material is
 //                       forced to FrontSide, so plants are lit evenly from every side.
@@ -132,6 +133,31 @@ function makeMesher(world, blocks, opts) {
               b.indices.push(base, base + 1, base + 2, base + 2, base + 1, base + 3);
               b.indices.push(base, base + 2, base + 1, base + 2, base + 3, base + 1);
               b.quads += 2;
+            }
+            continue;
+          }
+
+          if (kind === 'slab') {
+            // a box of the cell's footprint and `height` tall (half blocks, beds); drawn with the opaque blocks
+            const h = def.height ?? 0.5;
+            for (const f of FACES) {
+              const d = f.dir, nx = x + d[0], ny = y + d[1], nz = z + d[2];
+              if (d[1] <= 0) {                               // sides and underside can hide behind a full cube or a twin
+                if (!world.inb(nx, ny, nz)) { if (ny < 0 || !edgeFaces) continue; }
+                else { const nid = world.get(nx, ny, nz); if (nid && (kindOf(nid) === 'solid' || (nid === id && d[1] === 0))) continue; }
+              }
+              const b = bucket(buckets, tileOf(def, f.name), 'solid');
+              const base = b.positions.length / 3;
+              const s = aoCurve[3] * shade * (d[1] === 0 ? 0.9 : 1);
+              for (let i = 0; i < 4; i++) {
+                const c = f.corners[i];
+                b.positions.push(x + c.pos[0], y + c.pos[1] * h, z + c.pos[2]);
+                b.normals.push(d[0], d[1], d[2]);
+                b.uvs.push(c.uv[0], d[1] === 0 ? c.uv[1] * h : c.uv[1]);
+                b.colors.push(s, s, s);
+              }
+              b.indices.push(base, base + 1, base + 2, base + 2, base + 1, base + 3);
+              b.quads++;
             }
             continue;
           }

@@ -7,6 +7,8 @@
 //     slots: [{ tool: true }, { id: B.STONE, n: 20 }, ...],   // hotbar; the world owns icons / names
 //     touch: { stick, knob, jump, dig, place } | null,        // HUD elements for touch play
 //     isLiquid(id), pickable(id), canBreak(id, x, y, z), canPlace(x, y, z, id), hardness(id), dropOf(id),
+//     heightOf(id),                                   // collision height of a block, 0..1 (half blocks, beds); default 1
+//     onBag(), onFly(on),                             // E was pressed; flying was switched on or off
 //     onTarget(hit | null), onBreak(hit), onPlace(x, y, z, id), onInventory(slots, sel),
 //     onFrame(state, dt), render(), setPixelRatio(pr),
 //     stage,                                          // createStage() result: lets the loop pace itself on the GPU and
@@ -25,12 +27,14 @@ export function createPlay(o) {
   const { camera, canvas, world, blocks, terrain } = o;
   const { sx, sy, sz } = world;
   const kindOf = (id) => (id && blocks[id] ? (blocks[id].kind ?? 'solid') : 'air');
-  const CUBE = { solid: 1, cutout: 1, translucent: 1 };
+  const CUBE = { solid: 1, cutout: 1, translucent: 1, slab: 1 };
   const isLiquid = o.isLiquid ?? ((id) => kindOf(id) === 'liquid');
   const isSolid = o.isSolid ?? ((id) => !!CUBE[kindOf(id)] && !isLiquid(id));
   const pickable = o.pickable ?? ((id) => id !== 0 && !isLiquid(id) && kindOf(id) !== 'none' && kindOf(id) !== 'air');
   const hardness = o.hardness ?? ((id) => (kindOf(id) === 'cross' ? 0.08 : 0.45));
-  const P = { hw: 0.3, height: 1.8, eye: 1.62, walk: 4.4, sprint: 6.8, jump: 8.7, gravity: 27, reach: 5.5, swim: 3.4, autoJump: true, mouse: 0.0022, touchLook: 0.0052, ...(o.tuning || {}) };
+  const hOf = o.heightOf ?? (() => 1);
+  const P = { hw: 0.3, height: 1.8, eye: 1.62, walk: 4.4, sprint: 6.8, jump: 8.7, gravity: 27, reach: 5.5, swim: 3.4, autoJump: true, mouse: 0.0022, touchLook: 0.0052,
+    stepUp: 0.6, fly: 10.5, flyFast: 19, flyRise: 7.5, doubleTap: 300, ...(o.tuning || {}) };
 
   const st = {
     pos: new THREE.Vector3(o.spawn.x, o.spawn.y, o.spawn.z), vel: new THREE.Vector3(),
@@ -38,25 +42,38 @@ export function createPlay(o) {
     onGround: false, inWater: false, moving: 0, hit: null,
     dig: { on: false, x: 0, y: 0, z: 0, t: 0, need: 1, progress: 0 },
     slots: o.slots, sel: 0, running: false, locked: false, time: 0, broken: 0, placed: 0,
+    flying: false, modal: false,
   };
-  const inp = { fx: 0, fz: 0, jump: false, dig: false, sprint: false, place: false };
+  const inp = { fx: 0, fz: 0, jump: false, dig: false, sprint: false, place: false, down: false };
   const keys = new Set();
 
   // ------------------------------------------------------------------ collision
-  const solid = (x, y, z) => {
-    if (x < 0 || z < 0 || x >= sx || z >= sz || y < 0) return true;      // the world is a walled box with a floor
-    if (y >= sy) return false;
-    return isSolid(world.get(x, y, z));
+  // Every solid block is a box that fills its cell sideways and reaches up to y + heightOf(id).
+  /** Top of the solid box in cell (x, y, z); -Infinity when the cell holds nothing solid. */
+  const topOf = (x, y, z) => {
+    if (x < 0 || z < 0 || x >= sx || z >= sz || y < 0) return y + 1;      // the world is a walled box with a floor
+    if (y >= sy) return -Infinity;
+    const id = world.get(x, y, z);
+    return isSolid(id) ? y + hOf(id) : -Infinity;
   };
-  function collides(px, py, pz) {
+  const solid = (x, y, z) => topOf(x, y, z) > y;
+  /** Highest box top the body standing at (px, py, pz) pokes into; -Infinity when it is free. */
+  function hitTop(px, py, pz) {
     const x0 = Math.floor(px - P.hw + E), x1 = Math.floor(px + P.hw - E);
     const y0 = Math.floor(py + E), y1 = Math.floor(py + P.height - E);
     const z0 = Math.floor(pz - P.hw + E), z1 = Math.floor(pz + P.hw - E);
-    for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) if (solid(x, y, z)) return true;
-    return false;
+    let top = -Infinity;
+    for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) { const t = topOf(x, y, z); if (t > py + E && t > top) top = t; }
+    return top;
   }
+  const collides = (px, py, pz) => hitTop(px, py, pz) > -Infinity;
   function unstick() { let n = 0; while (collides(st.pos.x, st.pos.y, st.pos.z) && n++ < sy) st.pos.y = Math.floor(st.pos.y) + 1; }
 
+  function setFlying(on) {
+    if (st.flying === on) return;
+    st.flying = on; st.vel.y = 0;
+    if (o.onFly) o.onFly(on);
+  }
   function step(dt) {
     const p = st.pos, v = st.vel;
     const sin = Math.sin(st.yaw), cos = Math.cos(st.yaw);
@@ -66,41 +83,63 @@ export function createPlay(o) {
     if (wl > 1) { wx /= wl; wz /= wl; }
     st.inWater = isLiquid(world.get(Math.floor(p.x), Math.floor(p.y + 0.9), Math.floor(p.z)));
     const wading = !st.inWater && isLiquid(world.get(Math.floor(p.x), Math.floor(p.y + 0.2), Math.floor(p.z)));   // at the surface: feet wet, chest out
-    const speed = (inp.sprint ? P.sprint : P.walk) * (st.inWater ? 0.6 : 1);
-    const k = Math.min(1, (st.onGround || st.inWater ? 14 : 4) * dt);
-    v.x += (wx * speed - v.x) * k; v.z += (wz * speed - v.z) * k;
     const wasGround = st.onGround;
-    if (st.inWater) {
-      v.y -= 7 * dt; v.y *= 1 - Math.min(1, 3 * dt);
-      if (inp.jump) v.y = P.swim;
+    if (st.flying) {
+      const speed = inp.sprint ? P.flyFast : P.fly, k = Math.min(1, 8 * dt);
+      v.x += (wx * speed - v.x) * k; v.z += (wz * speed - v.z) * k;
+      // keys: jump rises, the down key sinks. On touch there is no down key: pushing the stick flies where you look.
+      let vy = ((inp.jump ? 1 : 0) - (inp.down ? 1 : 0)) * P.flyRise;
+      if (stick.id !== null && !inp.jump) vy += Math.sin(st.pitch) * speed * Math.max(0, inp.fz);
+      v.y += (vy - v.y) * k;
     } else {
-      v.y -= P.gravity * dt;
-      if (inp.jump && (st.onGround || wading)) { v.y = P.jump; st.onGround = false; }       // from the surface a jump clears the bank
+      const speed = (inp.sprint ? P.sprint : P.walk) * (st.inWater ? 0.6 : 1);
+      const k = Math.min(1, (st.onGround || st.inWater ? 14 : 4) * dt);
+      v.x += (wx * speed - v.x) * k; v.z += (wz * speed - v.z) * k;
+      if (st.inWater) {
+        v.y -= 7 * dt; v.y *= 1 - Math.min(1, 3 * dt);
+        if (inp.jump) v.y = P.swim;
+      } else {
+        v.y -= P.gravity * dt;
+        if (inp.jump && (st.onGround || wading)) { v.y = P.jump; st.onGround = false; }       // from the surface a jump clears the bank
+      }
+      if (v.y < -40) v.y = -40;
     }
-    if (v.y < -40) v.y = -40;
 
     let blocked = false;
-    p.x += v.x * dt;
-    if (collides(p.x, p.y, p.z)) { p.x = v.x > 0 ? Math.floor(p.x + P.hw) - P.hw - E : Math.floor(p.x - P.hw) + 1 + P.hw + E; v.x = 0; blocked = true; }
-    p.z += v.z * dt;
-    if (collides(p.x, p.y, p.z)) { p.z = v.z > 0 ? Math.floor(p.z + P.hw) - P.hw - E : Math.floor(p.z - P.hw) + 1 + P.hw + E; v.z = 0; blocked = true; }
+    // sideways, one axis at a time; a low step (half block, bed) is walked up instead of blocking
+    const canStep = wasGround && !st.inWater && !st.flying;
+    const nx = p.x + v.x * dt;
+    if (collides(nx, p.y, p.z)) {
+      const top = canStep ? hitTop(nx, p.y, p.z) : Infinity;
+      if (top - p.y <= P.stepUp + E && !collides(nx, top, p.z)) { p.x = nx; p.y = top; }
+      else { p.x = v.x > 0 ? Math.floor(nx + P.hw) - P.hw - E : Math.floor(nx - P.hw) + 1 + P.hw + E; v.x = 0; blocked = true; }
+    } else p.x = nx;
+    const nz = p.z + v.z * dt;
+    if (collides(p.x, p.y, nz)) {
+      const top = canStep ? hitTop(p.x, p.y, nz) : Infinity;
+      if (top - p.y <= P.stepUp + E && !collides(p.x, top, nz)) { p.z = nz; p.y = top; }
+      else { p.z = v.z > 0 ? Math.floor(nz + P.hw) - P.hw - E : Math.floor(nz - P.hw) + 1 + P.hw + E; v.z = 0; blocked = true; }
+    } else p.z = nz;
     p.y += v.y * dt;
     st.onGround = false;
-    if (collides(p.x, p.y, p.z)) {
-      if (v.y <= 0) { p.y = Math.floor(p.y + E) + 1; st.onGround = true; } else p.y = Math.floor(p.y + P.height) - P.height - E;
+    const top = hitTop(p.x, p.y, p.z);
+    if (top > -Infinity) {
+      if (v.y <= 0) { p.y = top; st.onGround = true; if (st.flying && inp.down) setFlying(false); }     // land on whatever is highest under the feet
+      else p.y = Math.floor(p.y + P.height) - P.height - E;
       v.y = 0;
     }
     // step up one block on its own: the terrain is terraced and touch players have no spare thumb
-    if (P.autoJump && blocked && wasGround && st.onGround && wl > 0.25 && !st.inWater) {
+    if (P.autoJump && blocked && wasGround && st.onGround && wl > 0.25 && !st.inWater && !st.flying) {
       const fy = Math.floor(p.y + E), tx = Math.floor(p.x + (wx / wl) * (P.hw + 0.45)), tz = Math.floor(p.z + (wz / wl) * (P.hw + 0.45));
       if (solid(tx, fy, tz) && !solid(tx, fy + 1, tz) && !solid(tx, fy + 2, tz) && !solid(Math.floor(p.x), fy + 2, Math.floor(p.z))) { v.y = P.jump; st.onGround = false; }
     }
     // swimming into a bank climbs out of the water instead of getting stuck against it
-    if (P.autoJump && blocked && (st.inWater || wading) && wl > 0.25) {
+    if (P.autoJump && blocked && (st.inWater || wading) && wl > 0.25 && !st.flying) {
       const fy = Math.floor(p.y + 0.9), tx = Math.floor(p.x + (wx / wl) * (P.hw + 0.45)), tz = Math.floor(p.z + (wz / wl) * (P.hw + 0.45));
       for (let up = 0; up <= 1; up++) if (solid(tx, fy + up, tz) && !solid(tx, fy + up + 1, tz) && !solid(tx, fy + up + 2, tz)) { v.y = Math.max(v.y, 6.4); break; }
     }
     if (p.y < -20) { p.set(o.spawn.x, o.spawn.y, o.spawn.z); v.set(0, 0, 0); unstick(); }
+    if (p.y > sy + 40) { p.y = sy + 40; if (v.y > 0) v.y = 0; }            // flying has a ceiling
     st.moving = Math.hypot(v.x, v.z);
   }
 
@@ -183,32 +222,60 @@ export function createPlay(o) {
     st.sel = ((i % n) + n) % n;
     inventoryChanged();
   }
+  /** Put an item in a hotbar slot (the bag does this). item: { id, n, name, ... } or { tool: true, ... }. */
+  function setSlot(i, item) {
+    if (i < 0 || i >= st.slots.length) return;
+    st.slots[i] = item;
+    inventoryChanged();
+  }
+  /** While a panel (the bag) is open: the mouse is released and the player does not act. */
+  function setModal(on) {
+    st.modal = on;
+    keys.clear(); inp.dig = false; inp.place = false; inp.fx = inp.fz = 0; btn.jump = false; sprintLatch = false;
+    if (on) { if (document.pointerLockElement === canvas) document.exitPointerLock(); } else if (!T) tryLock();
+  }
 
   // ------------------------------------------------------------------ input: keyboard + mouse
   const clampPitch = () => { st.pitch = Math.max(-1.5, Math.min(1.5, st.pitch)); };
   const lookBy = (dx, dy, k) => { st.yaw -= dx * k; st.pitch -= dy * k; clampPitch(); };
+  let sprintLatch = false, lastFwd = -1e9, lastJump = -1e9, stickSprint = false;
   function readKeys() {
-    const f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
+    if (st.modal) { inp.fx = inp.fz = 0; inp.jump = inp.sprint = inp.down = false; return; }
+    const fwd = keys.has('KeyW') || keys.has('ArrowUp');
+    const f = (fwd ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
     const r = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
-    if (!stick.id) { inp.fx = r; inp.fz = f; }
+    if (stick.id === null) { inp.fx = r; inp.fz = f; }
+    if (!fwd && stick.id === null) sprintLatch = false;
+    const shift = keys.has('ShiftLeft') || keys.has('ShiftRight');
     inp.jump = keys.has('Space') || btn.jump;
-    inp.sprint = keys.has('ShiftLeft') || keys.has('ShiftRight');
+    inp.down = st.flying && shift;                                   // while flying, Shift sinks
+    inp.sprint = sprintLatch || stickSprint || keys.has('ControlLeft') || (!st.flying && shift);
   }
+  /** Second press within the double-tap window? (times in ms) */
+  const doubled = (now, last) => now - last < P.doubleTap;
   const onKey = (e) => {
     if (!st.running) return;
     if (e.type === 'keydown') {
+      if (e.code === 'KeyE' && !e.repeat) { if (o.onBag) o.onBag(); e.preventDefault(); return; }
+      if (st.modal) return;
+      if (!e.repeat) {
+        const now = performance.now();
+        if (e.code === 'KeyW' || e.code === 'ArrowUp') { if (doubled(now, lastFwd)) sprintLatch = true; lastFwd = now; }          // double W: run until W is released
+        if (e.code === 'Space') { if (doubled(now, lastJump)) { setFlying(!st.flying); lastJump = -1e9; } else lastJump = now; }    // double Space: fly / stop flying
+      }
       keys.add(e.code);
       if (/^Digit[1-9]$/.test(e.code)) { const i = +e.code.slice(5) - 1; if (i < st.slots.length) select(i); }
       if (e.code === 'KeyF') inp.place = true;
       if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
     } else keys.delete(e.code);
   };
-  let lockFailed = false, mouseDrag = false, lockAt = 0;
+  let lockFailed = false, mouseDrag = false, lockAt = 0, everLocked = false, refusals = 0;
+  const refused = () => { if (!everLocked && ++refusals >= 2) lockFailed = true; };
   const tryLock = () => {
     if (lockFailed || !canvas.requestPointerLock) { lockFailed = true; return; }
-    try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { lockFailed = true; }); } catch (e) { lockFailed = true; }
+    try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(refused); } catch (e) { refused(); }
   };
-  const onLockChange = () => { st.locked = document.pointerLockElement === canvas; if (st.locked) lockAt = performance.now(); if (!st.locked) { inp.dig = false; if (o.onUnlock && st.running && !lockFailed) o.onUnlock(); } };
+  const onLockChange = () => { st.locked = document.pointerLockElement === canvas; if (st.locked) { lockAt = performance.now(); everLocked = true; } if (!st.locked) { inp.dig = false; if (o.onUnlock && st.running && !lockFailed && !st.modal) o.onUnlock(); } };
   const onMouseMove = (e) => {
     if (!st.running || !(st.locked || mouseDrag)) return;
     if (st.locked && performance.now() - lockAt < 100) return;      // browsers can report one large stray move right after capture
@@ -227,7 +294,7 @@ export function createPlay(o) {
     const l = Math.hypot(dx, dy);
     if (l > 1) { dx /= l; dy /= l; }
     inp.fx = Math.abs(dx) < 0.12 ? 0 : dx; inp.fz = Math.abs(dy) < 0.12 ? 0 : -dy;
-    inp.sprint = l > 0.96;
+    stickSprint = l > 0.96;
     if (T.knob) T.knob.style.transform = `translate(${(dx * stick.r).toFixed(1)}px, ${(dy * stick.r).toFixed(1)}px)`;
   }
   function bind(el, type, fn) { el.addEventListener(type, fn, { passive: false }); }
@@ -241,7 +308,7 @@ export function createPlay(o) {
         T.stick.setPointerCapture(e.pointerId); stickSet(e); e.preventDefault();
       });
       bind(T.stick, 'pointermove', (e) => { if (e.pointerId === stick.id) { stickSet(e); e.preventDefault(); } });
-      const end = (e) => { if (e.pointerId !== stick.id) return; stick.id = null; inp.fx = inp.fz = 0; inp.sprint = false; if (T.knob) T.knob.style.transform = ''; };
+      const end = (e) => { if (e.pointerId !== stick.id) return; stick.id = null; inp.fx = inp.fz = 0; stickSprint = false; if (T.knob) T.knob.style.transform = ''; };
       bind(T.stick, 'pointerup', end); bind(T.stick, 'pointercancel', end);
     }
     // jump / dig / place: press to act, and keep turning the view with the same thumb
@@ -252,14 +319,18 @@ export function createPlay(o) {
       const end = (e) => { if (!looks.delete(e.pointerId)) return; el.classList.remove('down'); up(); };
       bind(el, 'pointerup', end); bind(el, 'pointercancel', end);
     };
-    press(T.jump, () => { btn.jump = true; }, () => { btn.jump = false; });
+    press(T.jump, () => {
+      const now = performance.now();
+      if (doubled(now, lastJump)) { setFlying(!st.flying); lastJump = -1e9; } else lastJump = now;     // double tap: fly / stop flying
+      btn.jump = true;
+    }, () => { btn.jump = false; });
     press(T.dig, () => { digPointers++; inp.dig = true; }, () => { digPointers = Math.max(0, digPointers - 1); inp.dig = digPointers > 0; });
     press(T.place, () => { inp.place = true; }, () => {});
   }
   function wireCanvas() {
     canvas.style.touchAction = 'none';
     bind(canvas, 'pointerdown', (e) => {
-      if (!st.running) return;
+      if (!st.running || st.modal) return;
       if (e.pointerType === 'mouse') {
         if (!st.locked && !lockFailed) { tryLock(); return; }        // the first click only captures the mouse
         if (!st.locked) { mouseDrag = true; canvas.setPointerCapture(e.pointerId); }
@@ -288,7 +359,7 @@ export function createPlay(o) {
   window.addEventListener('keyup', onKey);
   window.addEventListener('blur', () => { keys.clear(); inp.dig = false; });
   document.addEventListener('pointerlockchange', onLockChange);
-  document.addEventListener('pointerlockerror', () => { lockFailed = true; });
+  document.addEventListener('pointerlockerror', refused);
   document.addEventListener('mousemove', onMouseMove);
   canvas.addEventListener('wheel', onWheel, { passive: false });
   for (const t of ['gesturestart', 'gesturechange']) document.addEventListener(t, (e) => e.preventDefault(), { passive: false });   // no pinch-zoom of the page on iOS
@@ -350,16 +421,17 @@ export function createPlay(o) {
   window.__GAME_GPU = gpu;
   st.safeMode = false; st.pictureOk = false; st.contextLost = false; st.drawn = 0;
   let sync = null, syncAt = 0, gpuMs = 0, noteEl = null, noteTimer = 0;
-  function notice(text, keep) {
+  /** A short message over the game. keep = true: stays until replaced; otherwise it leaves after ms. */
+  function notice(text, keep, ms = 9000) {
     if (!noteEl) {
       noteEl = document.createElement('div');
-      noteEl.style.cssText = 'position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:55;max-width:min(560px,calc(100vw - 32px));padding:10px 16px;border-radius:10px;'
+      noteEl.style.cssText = 'position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:40;max-width:min(560px,calc(100vw - 32px));padding:10px 16px;border-radius:10px;'
         + 'background:rgba(8,11,16,.9);border:1px solid rgba(255,255,255,.28);color:#f1f4f8;font:500 14px/1.7 system-ui,sans-serif;direction:rtl;text-align:center;white-space:pre-line;pointer-events:none;';
       document.body.appendChild(noteEl);
     }
     noteEl.textContent = text; noteEl.hidden = false;
     clearTimeout(noteTimer);
-    if (!keep) noteTimer = setTimeout(() => { noteEl.hidden = true; }, 9000);
+    if (!keep) noteTimer = setTimeout(() => { noteEl.hidden = true; }, ms);
   }
   function draw() {
     if (st.safeMode && S) { S.renderer.setRenderTarget(null); S.renderer.render(S.scene, S.camera); } else o.render();
@@ -413,7 +485,7 @@ export function createPlay(o) {
   unstick();
   placeCamera();
   return {
-    state: st, input: inp, tuning: P, res, isSolid, isLiquid, gpu,
+    state: st, input: inp, tuning: P, res, isSolid, isLiquid, gpu, setSlot, setModal, setFlying, notice,
     start() {
       if (st.running) return;
       st.running = true; initRes(); last = performance.now(); raf = requestAnimationFrame(frame);
@@ -466,8 +538,8 @@ export function createPlayPanel(o) {
   if (o.accent) el.style.setProperty('--pp-accent', o.accent);
   if (o.line) el.style.setProperty('--pp-line', o.line);
   const rows = o.touch
-    ? [['العصا اليسار', 'المشي'], ['اسحب على الشاشة', 'النظر'], ['زر الحفر', 'اضغط مطوّلًا لتكسر المكعب'], ['زر البناء', 'يضع المكعب المختار'], ['زر القفز', 'قفز وسباحة'], ['الشريط', 'اضغط خانة لتختارها']]
-    : [['W A S D', 'المشي'], ['الفأرة', 'النظر'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب المختار'], ['Space', 'قفز وسباحة'], ['Shift', 'ركض'], ['1 – 9 أو العجلة', 'اختيار الخانة'], ['Esc', 'إيقاف مؤقت']];
+    ? [['العصا اليسار', 'المشي، وادفعها للآخر تركض'], ['اسحب على الشاشة', 'النظر'], ['زر الحفر', 'اضغط مطوّلًا لتكسر المكعب'], ['زر البناء', 'يضع المكعب المختار'], ['زر القفز', 'قفز، ومرّتين تطير'], ['زر الحقيبة', 'كل المكعبات والأغراض']]
+    : [['W A S D', 'المشي'], ['W مرّتين', 'ركض'], ['الفأرة', 'النظر'], ['Space', 'قفز وسباحة'], ['Space مرّتين', 'طيران'], ['E', 'الحقيبة'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب المختار'], ['1 – 9 أو العجلة', 'اختيار الخانة'], ['Esc', 'إيقاف مؤقت']];
   const h1 = document.createElement('h1'), p = document.createElement('p'), ul = document.createElement('ul'), b = document.createElement('button'), note = document.createElement('div');
   h1.textContent = o.title; p.textContent = o.tagline || '';
   for (const [k, v] of rows) { const li = document.createElement('li'), kb = document.createElement('b'), s = document.createElement('span'); kb.textContent = k; kb.dir = 'auto'; s.textContent = v; li.append(kb, s); ul.appendChild(li); }

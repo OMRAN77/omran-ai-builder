@@ -94,7 +94,7 @@ function serve(root, prefix) {
     if (args.pick) await page.click(String(args.pick), { timeout: 60000 });          // e.g. a world card in the launcher
     await page.waitForFunction(() => window.__READY === true && !!window.__play, null, { timeout: 240000 });
     report.loadMs = Date.now() - t0;
-    const shot = async (name) => { const f = path.join(outdir, name + (touch ? '-touch' : '') + '.png'); await page.screenshot({ path: f }); report.files.push(path.relative(PROJECT, f)); };
+    const shot = async (name) => { const f = path.join(outdir, name + (touch ? '-touch' : '') + '.png'); await page.screenshot({ path: f, timeout: 120000 }); report.files.push(path.relative(PROJECT, f)); };
 
     check('start panel is shown', await page.isVisible('#playPanel'), await page.textContent('#playPanel h1'));
     await shot('1-start');
@@ -223,6 +223,103 @@ function serve(root, prefix) {
     const inside = await page.evaluate(() => { const p = window.__play, s = p.state, T = p.tuning, w = window.__game.world; let bad = 0; for (let y = Math.floor(s.pos.y + 0.01); y <= Math.floor(s.pos.y + T.height - 0.01); y++) { const id = w.get(Math.floor(s.pos.x), y, Math.floor(s.pos.z)); if (id && p.isSolid(id)) bad++; } return bad; });
     check('the player is not stuck inside a block', inside === 0, { inside });
     await shot('4-walked');
+
+    // ---- running, flying, the bag and the building kit (worlds that have them)
+    if (await page.evaluate(() => !!(window.__game && window.__game.bag && window.__game.kit))) {
+      // simulate without drawing: every drawn frame costs seconds in software rendering and they queue up
+      // a wide double-tap window: on a loaded machine two scripted presses can be far apart
+      await page.evaluate(() => { window.__play.tuning.doubleTap = 900; window.__sim = (n) => { const p = window.__play; for (let i = 0; i < n; i++) p.advance(1 / 60); }; });
+      const sim = (n) => page.evaluate((k) => window.__sim(k), n);
+      const tap = async (code) => { await page.keyboard.down(code); await page.keyboard.up(code); };
+      const jumpBox = touch ? await (await page.$('[data-act="jump"], .btn.jump')).boundingBox() : null;
+      const holdJump = (on) => cdp.send('Input.dispatchTouchEvent', on ? { type: 'touchStart', touchPoints: [{ x: jumpBox.x + jumpBox.width / 2, y: jumpBox.y + jumpBox.height / 2, id: 9 }] } : { type: 'touchEnd', touchPoints: [] });
+      const tapJump = async () => { await holdJump(true); await holdJump(false); };
+      if (!touch) {
+        await tap('KeyW'); await page.keyboard.down('KeyW');
+        await sim(20);
+        const run = await page.evaluate(() => window.__play.input.sprint);
+        await page.keyboard.up('KeyW');
+        await sim(10);
+        check('double W runs, and stops when W is released', run === true && (await page.evaluate(() => window.__play.input.sprint)) === false, { run });
+      }
+      // fly: double Space (double tap on the jump button on a phone)
+      if (touch) { await tapJump(); await tapJump(); } else { await tap('Space'); await tap('Space'); }
+      await page.waitForTimeout(60);
+      const f0 = await page.evaluate(() => { window.__sim(2); const s = window.__play.state; return { flying: s.flying, y: s.pos.y }; });
+      if (touch) await holdJump(true); else await page.keyboard.down('Space');
+      await page.waitForTimeout(1100);                                  // long enough that the next presses are not read as a double tap with this one
+      const f1 = await page.evaluate(() => { window.__sim(50); return window.__play.state.pos.y; });
+      if (touch) await holdJump(false); else await page.keyboard.up('Space');
+      await page.waitForTimeout(60);
+      const f2 = await page.evaluate(() => { window.__sim(60); const a = window.__play.state.pos.y; window.__sim(60); return { settled: a, later: window.__play.state.pos.y, flying: window.__play.state.flying }; });
+      check('double Space flies: rises while held, hovers when released', f0.flying === true && f1 - f0.y > 2 && Math.abs(f2.later - f2.settled) < 0.05 && f2.flying === true, { f0, f1, f2 });
+      await page.waitForTimeout(1100);
+      if (touch) { await tapJump(); await tapJump(); } else { await tap('Space'); await tap('Space'); }
+      await page.waitForTimeout(60);
+      const f3 = await page.evaluate(() => { window.__sim(150); const s = window.__play.state; return { flying: s.flying, onGround: s.onGround }; });
+      check('double Space again stops flying and the player comes down', f3.flying === false && f3.onGround === true, f3);
+
+      // the bag: open, choose a square, choose an item
+      if (touch) { const b = await (await page.$('[data-act="bag"]')).boundingBox(); await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2); } else await page.keyboard.press('KeyE');
+      await page.waitForTimeout(450);
+      const bagOpen = await page.evaluate(() => ({ visible: !document.getElementById('bag').hidden, modal: window.__play.state.modal }));
+      check('the bag opens and the game stops taking input', bagOpen.visible && bagOpen.modal, bagOpen);
+      await page.evaluate(() => window.__play.tick(1));
+      await shot('5-bag');
+      const want = await page.evaluate(() => window.__game.bag.items.findIndex((it) => it.id === 104));
+      const tapOn = async (sel) => { const r = await (await page.$(sel)).boundingBox(); if (touch) await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2); else await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2); };
+      await page.evaluate((n) => document.querySelector('#bag [data-item="' + n + '"]').scrollIntoView({ block: 'center' }), want);
+      await tapOn('#bag [data-sq="1"]');
+      await tapOn('#bag [data-item="' + want + '"]');
+      await page.waitForTimeout(80);
+      const got = await page.evaluate(() => { const s = window.__play.state; return { sel: s.sel, id: s.slots[1].id, n: s.slots[1].n }; });
+      check('a square is chosen, then the item lands in it', got.sel === 1 && got.id === 104 && got.n === 64, got);
+      await tapOn('#bag .x');
+      await page.waitForTimeout(120);
+      check('closing the bag gives the controls back', await page.evaluate(() => document.getElementById('bag').hidden && !window.__play.state.modal));
+      check('the hotbar shows the new item', await page.evaluate(() => { const el = document.querySelector('[data-i="1"]'); return !!el && !!el.querySelector('img'); }));
+
+      // kit blocks in the world. The test lays its own flat floor in the air and stands on it, so every world
+      // gives the same open ground; each block is then placed by aiming at a chosen floor cell.
+      const floor = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, w = g.world;
+        const bx = Math.floor(s.pos.x), bz = Math.floor(s.pos.z), by = Math.min(w.sy - 8, Math.floor(s.pos.y) + 7);
+        for (let dz = -4; dz <= 4; dz++) for (let dx = -4; dx <= 4; dx++) { g.terrain.setBlock(bx + dx, by, bz + dz, 101); for (let h = 1; h <= 4; h++) g.terrain.setBlock(bx + dx, by + h, bz + dz, 0); }
+        g.terrain.flush();
+        p.setFlying(false); s.pos.set(bx + 0.5, by + 1, bz + 0.5); s.vel.set(0, 0, 0); window.__sim(20);
+        return { bx, by, bz, standing: s.onGround, y: s.pos.y };
+      });
+      check('the player stands on a floor of kit blocks', floor.standing && Math.abs(floor.y - (floor.by + 1)) < 0.01, floor);
+      const put = (id, dx, dz) => page.evaluate(([id, dx, dz, f]) => {
+        const g = window.__game, p = g.play, s = p.state;
+        p.setSlot(s.sel, { id, n: 64, name: g.kit.nameOf(id), kit: true });
+        const tx = f.bx + dx + 0.5, ty = f.by + 1, tz = f.bz + dz + 0.5, ex = s.pos.x, ey = s.pos.y + p.tuning.eye, ez = s.pos.z;
+        s.yaw = Math.atan2(-(tx - ex), -(tz - ez)); s.pitch = Math.atan2(ty - ey, Math.hypot(tx - ex, tz - ez)); p.advance(0);
+        const h = s.hit, c = { x: f.bx + dx, y: f.by + 1, z: f.bz + dz };
+        if (!h || h.x !== c.x || h.y !== f.by || h.z !== c.z || h.ny !== 1) return { ok: false, why: 'aim missed', hit: h && [h.x, h.y, h.z, h.ny] };
+        const ok = p.placeNow(); p.advance(0);
+        return { ok, c, id: g.world.get(c.x, c.y, c.z) };
+      }, [id, dx, dz, floor]);
+      const paint = await put(104, 2, 0);
+      check('a painted block is placed', paint.ok && paint.id === 104, paint);
+      const slab = await put(120, -2, 0);
+      const onSlab = slab.ok ? await page.evaluate((c) => { const s = window.__play.state, keep = s.pos.clone(); s.pos.set(c.x + 0.5, c.y + 2, c.z + 0.5); s.vel.set(0, 0, 0); window.__sim(90); const dy = s.pos.y - c.y; s.pos.copy(keep); s.vel.set(0, 0, 0); window.__sim(30); return dy; }, slab.c) : null;
+      check('a half block is half a block high to stand on', slab.ok && Math.abs(onSlab - 0.5) < 0.02, { slab, onSlab });
+      const lamp = await put(130, 0, 2);
+      const lit = await page.evaluate(() => { const g = window.__game; window.__sim(30); return { tracked: g.kit.glow.size, on: g.kit.lights.filter((l) => l.intensity > 0).length }; });
+      check('a lamp lights up', lamp.ok && lit.tracked >= 1 && lit.on >= 1, { lamp, lit });
+      const bed = await put(160, 0, -2);
+      const mate = bed.ok ? await page.evaluate((c) => { const w = window.__game.world; return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dz]) => w.get(c.x + dx, c.y, c.z + dz) === 161); }, bed.c) : false;
+      check('a bed is two blocks long', bed.ok && mate, { bed, mate });
+      const fire = await put(151, 2, 2);
+      check('fire is placed', fire.ok && fire.id === 151, fire);
+      const water = await put(150, -2, -2);
+      const wet = water.ok ? await page.evaluate((c) => { const p = window.__play, s = p.state, keep = s.pos.clone(); s.pos.set(c.x + 0.5, c.y, c.z + 0.5); s.vel.set(0, 0, 0); p.advance(1 / 60); const w = s.inWater; s.pos.copy(keep); s.vel.set(0, 0, 0); window.__sim(20); return w; }, water.c) : false;
+      check('placed water is water you swim in', water.ok && wet, { water, wet });
+      // step back and look at what was built
+      await page.evaluate((f) => { const p = window.__play, s = p.state; s.pos.set(f.bx + 0.5, f.by + 1, f.bz + 4.4); s.vel.set(0, 0, 0); s.yaw = 0; s.pitch = -0.42; p.advance(0); p.tick(1); }, floor);
+      await shot('6-kit');
+    }
     report.final = await snap();
     report.info = await page.evaluate(() => (typeof window.__info === 'function' ? window.__info() : null));
   } catch (e) {

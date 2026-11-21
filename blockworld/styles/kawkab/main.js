@@ -7,6 +7,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { createVoxelTerrain } from '../../shared/voxel.js';
 import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
+import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../shared/kit.js';
+import { createBag } from '../../shared/bag.js';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
 import { B, BLOCKS } from './blocks.js';
 import { tileMaterial, setGlow, tileSpan } from './tiles.js';
@@ -43,7 +45,8 @@ function worldSpaceUv(mesh) {
   }
   uv.needsUpdate = true;
 }
-const terrain = createVoxelTerrain(world, BLOCKS, { materialFor: (tile) => tileMaterial(tile), aoCurve: [0.42, 0.62, 0.82, 1.0], onMesh: worldSpaceUv });
+Object.assign(BLOCKS, KIT_BLOCKS);                           // the shared building kit (painted blocks, lamps, beds, ...): ids 100 and up
+const terrain = createVoxelTerrain(world, BLOCKS, { materialFor: (tile) => kitMaterial(tile) || tileMaterial(tile), aoCurve: [0.42, 0.62, 0.82, 1.0], onMesh: worldSpaceUv });
 const voxels = terrain.group, stats = terrain.stats;
 scene.add(voxels);
 window.__stats = stats;
@@ -500,7 +503,7 @@ async function startGame() {
   laser.visible = false;
   const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
   const slots = SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })).slice(0, hud.shown);
-  const crystal = slots.find((q) => q.key === 'crystal');
+  const kit = createKit({ scene, world, terrain });
   const fpHome = fp.position.clone(), drone = actors.drone, v1 = new THREE.Vector3(), v2 = new THREE.Vector3();
   const isCrystal = (id) => id === B.CRYSTAL_C || id === B.CRYSTAL_V;
   let aimed = null, hintTimer = 0;
@@ -509,18 +512,21 @@ async function startGame() {
     camera, canvas: stage.canvas, world, blocks: BLOCKS, terrain,
     spawn: { x: camera.position.x, y: camera.position.y - 1.62, z: camera.position.z, yaw: eu.y, pitch: eu.x },
     slots, touch: hud.touch ? hud.els : null, maxPixelRatio: 2,
-    isLiquid: (id) => id === B.WATER,
-    hardness: (id) => ((BLOCKS[id].kind === 'cross') ? 0.08 : SOFT.has(id) ? 0.3 : HARD.has(id) ? 0.7 : 0.45),
-    dropOf: (id) => DROP[id] || 0,
-    onTarget(h) { pickBox.visible = !!h; if (h) pickBox.position.set(h.x + 0.5, h.y + 0.5, h.z + 0.5); hud.setTarget(h ? NAMES[h.id] || 'مكعب' : null); },
-    onBreak(h) { if (isCrystal(h.id)) buildTips(); },
-    onPlace(x, y, z, id) { if (isCrystal(id) || isCrystal(world.get(x, y - 1, z))) buildTips(); },
-    onInventory(list, sel) { hud.setSlots(list, sel); if (crystal) hud.setGoal(Math.min(GOAL, crystal.n), GOAL); },
+    isLiquid: (id) => id === B.WATER || kit.isLiquid(id), heightOf: kit.heightOf,
+    hardness: (id) => kit.hardness(id) ?? ((BLOCKS[id].kind === 'cross') ? 0.08 : SOFT.has(id) ? 0.3 : HARD.has(id) ? 0.7 : 0.45),
+    dropOf: (id) => DROP[id] || kit.dropOf(id),
+    onTarget(h) { pickBox.visible = !!h; if (h) pickBox.position.set(h.x + 0.5, h.y + 0.5, h.z + 0.5); hud.setTarget(h ? NAMES[h.id] || kit.nameOf(h.id) || 'مكعب' : null); },
+    onBreak(h) { kit.broke(h); if (isCrystal(h.id)) buildTips(); },
+    onPlace(x, y, z, id) { kit.placed(x, y, z, id, play.state.yaw); if (isCrystal(id) || isCrystal(world.get(x, y - 1, z))) buildTips(); },
+    onInventory(list, sel) { hud.setSlots(list, sel); showGoal(list); },
+    onBag() { bag.toggle(); },
+    onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
     onFirstLook() { hud.els.lookzone.hidden = true; },
     onFrame(st, dt) {
       const d = st.dig, p = st.pos;
       hud.setProgress(d.on ? d.progress : 0);
+      kit.update(p, dt, st.time);
       // the mining beam, from the emitter to the point where the view ray meets the block
       if (d.on && st.hit) {
         const h = st.hit, a = fp.localToWorld(v1.set(0, 0, -0.262));
@@ -544,8 +550,17 @@ async function startGame() {
     stage, render: () => stage.render(),
     setPixelRatio: (pr) => { stage.pixelRatio = pr; stage.resize(); },
   });
+  /** The crystal count of the goal is whatever the hotbar holds now (the player may have moved things around). */
+  function showGoal(list) { const c = list.find((q) => q.id === B.CRYSTAL_C); if (c) hud.setGoal(Math.min(GOAL, c.n), GOAL); }
+  const bag = createBag({
+    play, shown: hud.shown,
+    groups: [{ title: 'عدّة كوكب', items: SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })) }, ...KIT_GROUPS],
+    iconOf: (it) => (it.kit ? kitIcon(it.id) : hud.icon(it.icon)),
+    fontFamily: "'Plex Arabic', sans-serif", accent: '#7df1ff', line: 'rgba(125, 241, 255, .4)',
+  });
+  hud.els.bag.addEventListener('pointerdown', (e) => { if (play.state.running) { bag.toggle(); e.preventDefault(); } });
   hud.setSlots(slots, 0);
-  hud.setGoal(crystal ? crystal.n : 0, GOAL);
+  showGoal(slots);
   hud.setTarget(null);
   pickBox.visible = false;
   hud.els.hotbar.addEventListener('pointerdown', (e) => { const el = e.target.closest('.slot'); if (el && play.state.running) { play.select(+el.dataset.i); e.preventDefault(); } });
@@ -557,7 +572,7 @@ async function startGame() {
   });
   panel.show('start');
   window.__play = play;
-  window.__game = { play, panel, terrain, world, B, slots };
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit };
 }
 
 installShotApi(stage);

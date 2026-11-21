@@ -1,6 +1,7 @@
 // Live HUD for "dhalam". The markup lives in index.html, where the play shot shows it as designed;
 // this module finds its parts and keeps them up to date while the game runs. Health, warmth and
 // the day clock are not simulated yet, so they are left exactly as drawn.
+import { kitIcon } from '../../shared/kit.js';
 
 /** The starting bar. `id` (the block a slot places) is filled in by the world; slots without one are carried, not placed. */
 export const SLOTS = [
@@ -41,8 +42,21 @@ export function initHud(root = document.getElementById('hud')) {
   const q = (sel) => root.querySelector(sel);
   const touch = document.body.classList.contains('touch');
   const bar = q('.bar'), label = q('.bar-label b'), more = q('.more');
-  const slotEls = [...bar.querySelectorAll('.slot')].map((el) => ({ el, use: el.querySelector('use'), n: el.querySelector('.n'), icon: null, count: null, on: null }));
-  const target = q('.target'), tUse = q('.target use'), tName = q('.t-name'), tBar = q('.t-bar i'), tNum = q('.t-num');
+  const slotEls = [...bar.querySelectorAll('.slot')].map((el) => ({ el, svg: el.querySelector('svg'), img: null, n: el.querySelector('.n'), icon: null, count: null, on: null }));
+  const target = q('.target'), tPic = { svg: q('.target svg'), img: null, icon: null }, tName = q('.t-name'), tBar = q('.t-bar i'), tNum = q('.t-num');
+  /**
+   * Draw an item's picture in a holder ({ svg, img, icon }): one of this HUD's own line icons (item.icon), or, for a
+   * block of the shared building kit (item.kit, item.id), the kit's own picture. Any square can hold either.
+   */
+  const paint = (h, item) => {
+    const kit = item.kit ? kitIcon(item.id, 'ic') : '', key = kit ? 'x' + item.id : item.icon;
+    if (h.icon === key) return;
+    h.icon = key;
+    if (h.img) { h.img.remove(); h.img = null; }
+    h.svg.style.display = kit ? 'none' : '';
+    if (kit) { h.svg.insertAdjacentHTML('afterend', kit); h.img = h.svg.nextElementSibling; }
+    else h.svg.firstElementChild.setAttribute('href', '#i-' + item.icon);
+  };
   let navH = -1, navB = 0, navD = -1, pct = -1, locked = false, tKey = '', lastSel = -1;
 
   // small desktop windows: the panels were laid out for a wide screen, so scale the whole overlay down a little
@@ -53,13 +67,15 @@ export function initHud(root = document.getElementById('hud')) {
   const showProgress = () => { tBar.style.setProperty('--v', pct + '%'); tNum.textContent = locked ? 'محمي' : (pct > 0 ? pct + '%' : ''); };
   return {
     touch,
-    els: { stick: q('.stick'), knob: q('.s-knob'), jump: q('.tb-jump'), dig: q('.tb-break'), place: q('.tb-place'), look: q('.look'), bar, more },
-    /** Update the bar from the game's slots: icons, counts, the chosen slot and its name. */
+    els: { stick: q('.stick'), knob: q('.s-knob'), jump: q('.tb-jump'), dig: q('.tb-break'), place: q('.tb-place'), look: q('.look'), bar, more, bag: q('.tb-bag') },
+    /** Markup of one of this HUD's own icons (the bag draws them too). */
+    icon: (name) => '<svg class="ic"><use href="#i-' + name + '"/></svg>',
+    /** Update the bar from the game's slots, whatever each one holds: pictures, counts, the chosen slot and its name. */
     setSlots(list, sel) {
       slotEls.forEach((s, i) => {
         const d = list[i];
         if (!d) return;
-        if (s.icon !== d.icon) { s.icon = d.icon; s.use.setAttribute('href', '#i-' + d.icon); }
+        paint(s, d);
         const count = d.tool ? null : d.n;
         if (s.count !== count) {
           s.count = count;
@@ -83,15 +99,15 @@ export function initHud(root = document.getElementById('hud')) {
       navH = h; navB = b; navD = d;
       drawCompass(h, b, d);
     },
-    /** What the crosshair is on: null, or { name, icon, locked } (locked = it cannot be broken). */
+    /** What the crosshair is on: null, or { name, icon, kit, locked } (kit = id of a kit block, whose own picture is shown; locked = it cannot be broken). */
     setTarget(t) {
       target.hidden = !t;
       if (!t) { tKey = ''; return; }
-      const key = t.name + '|' + t.icon + '|' + (t.locked ? 1 : 0);
+      const key = t.name + '|' + t.icon + '|' + (t.kit || 0) + '|' + (t.locked ? 1 : 0);
       if (key === tKey) return;
       tKey = key;
       tName.textContent = t.name;
-      tUse.setAttribute('href', '#i-' + t.icon);
+      paint(tPic, t.kit ? { kit: true, id: t.kit } : t);
       locked = !!t.locked;
       showProgress();
     },

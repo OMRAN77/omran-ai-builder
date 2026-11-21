@@ -213,3 +213,9 @@ body.touch .bar.p2 .slot:nth-of-type(4) { border-inline-start: 0; }
 body.touch .bar.p2 .slot.x6, body.touch .bar.p2 .slot.x7, body.touch .bar.p2 .slot.x8 { display: grid; }
 body.touch .bar.p2 .more .ic { transform: scaleX(-1); }
 body.game.touch .t-num { min-width: 28px; }
+
+/* ---- the bag and the shared building kit (live game only: the play picture stays as drawn) */
+.slot img.ic, .target img.ic { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55)); -webkit-user-drag: none; }
+.tb-bag { display: none; }
+/* phones: the bag button sits above the stick, clear of the bar, its pager and the three action buttons. With a keyboard the bag is the E key */
+body.game.touch .tb-bag { display: grid; left: calc(26px + var(--sal)); bottom: calc(134px + var(--sab)); width: 50px; height: 50px; pointer-events: auto; touch-action: none; }

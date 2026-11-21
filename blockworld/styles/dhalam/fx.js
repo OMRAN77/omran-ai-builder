@@ -70,6 +70,9 @@ const WPOS_VERT = /* glsl */`
 }
 `;
 
+/** Strength of the baked lamp light (`tint`) next to the baked fire light. */
+const TINT_GAIN = 0.6;
+
 /** Uniforms shared by the optional shader extras below. */
 export const EXTRA = {
   uDetail: { value: null },                                   // grey grain (g) + its normal (r, b), tiling
@@ -79,6 +82,12 @@ export const EXTRA = {
 /**
  * Patch a built-in material: height fog always; `voxel` adds the baked light attribute
  * (aLit.x = sky occlusion for ambient, aLit.y = flood-filled fire light).
+ *   tint:   with `voxel`, in the playable game only: a second baked light with a colour of its own per vertex
+ *           (aTint.rgb = colour, aTint.a = level), for the lamps and fires the player sets down. The shots
+ *           never ask for it, so their shaders are the ones they always had.
+ *   soft:   roll the brightest light off (a shoulder above 0.55) so the surface never burns out. For the pale
+ *           blocks of the building kit: the lights of this world are set for dark rock, and a white wall in the
+ *           low sun or under the lantern would otherwise be a flat white patch with a bloom halo.
  *   detail: multiply a small tiling grain texture in at 4x / 13x the tile frequency (and bend the
  *           normal with it) so block faces keep texture when the camera is right in front of them
  *   moss:   { map, p: [threshold, softness, crackBias] } blend a moss texture in by a world-space
@@ -87,6 +96,7 @@ export const EXTRA = {
  */
 export function patch(mat, opts = {}) {
   const { voxel = false, additive = false, detail = false, moss = null, fuzz = 0 } = opts;
+  const tint = voxel && !!opts.tint, soft = !!opts.soft;
   mat.onBeforeCompile = (shader) => {
     for (const k in U) shader.uniforms[k] = U[k];
     if (detail) shader.uniforms.uDetail = EXTRA.uDetail;
@@ -98,11 +108,12 @@ export function patch(mat, opts = {}) {
         .replace('#include <fog_vertex>', '#include <fog_vertex>\nvWPos = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;');
     } else {
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\n' + (voxel ? 'attribute vec2 aLit;\nvarying vec2 vLit;\n' : ''))
-        .replace('#include <project_vertex>', '#include <project_vertex>\n' + WPOS_VERT + (voxel ? 'vLit = aLit;\n' : ''));
+        .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\n' + (voxel ? 'attribute vec2 aLit;\nvarying vec2 vLit;\n' : '') + (tint ? 'attribute vec4 aTint;\nvarying vec4 vTint;\n' : ''))
+        .replace('#include <project_vertex>', '#include <project_vertex>\n' + WPOS_VERT + (voxel ? 'vLit = aLit;\n' : '') + (tint ? 'vTint = aTint;\n' : ''));
     }
     let fs = shader.fragmentShader.replace('#include <common>', '#include <common>\n' + FOG_PARS
       + (voxel ? 'varying vec2 vLit;\nuniform vec3 uBlockColor;\nuniform float uBlockGain;\nuniform vec2 uSkyOcc;\n' : '')
+      + (tint ? 'varying vec4 vTint;\n' : '')
       + (detail ? 'uniform sampler2D uDetail;\n' : '')
       + (moss ? 'uniform sampler2D uMossMap;\nuniform vec3 uMossP;\n' : '')
       + (fuzz ? 'uniform vec3 uFuzz;\nuniform float uFuzzK;\n' : ''));
@@ -113,7 +124,11 @@ export function patch(mat, opts = {}) {
     }
     if (voxel) {
       fs = fs.replace('#include <lights_fragment_maps>', 'irradiance *= mix(uSkyOcc.x, uSkyOcc.y, vLit.x);\n#include <lights_fragment_maps>')
-        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * uBlockColor * (uBlockGain * vLit.y * vLit.y * (0.35 + 0.65 * vLit.y));');
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * uBlockColor * (uBlockGain * vLit.y * vLit.y * (0.35 + 0.65 * vLit.y));'
+          // lamp light: the same falloff as the fire light. It mostly falls on the pale blocks built around a lamp, in a
+          // picture exposed for dark rock, so it is eased off as it gets strong (a soft knee) instead of burning them out
+          + (tint ? '\n{ vec3 dhLamp = diffuseColor.rgb * vTint.rgb * (' + TINT_GAIN.toFixed(2) + ' * uBlockGain * vTint.a * vTint.a * (0.35 + 0.65 * vTint.a));'
+            + ' totalEmissiveRadiance += dhLamp / (1.0 + 0.8 * max(dhLamp.r, max(dhLamp.g, dhLamp.b))); }' : ''));
     }
     if (detail || moss) {
       let add = 'vec2 dhNrmAdd = vec2(0.0);\nfloat dhNrmKeep = 1.0;\n';
@@ -140,12 +155,15 @@ export function patch(mat, opts = {}) {
       fs = fs.replace('#include <map_fragment>', '#include <map_fragment>\n' + add)
         .replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps.replace('mapN.xy *= normalScale;', 'mapN.xy *= normalScale;\n\tmapN.xy = mapN.xy * dhNrmKeep + dhNrmAdd;'));
     }
+    if (soft) {
+      fs = fs.replace('#include <opaque_fragment>', '{ float dhM = max(outgoingLight.r, max(outgoingLight.g, outgoingLight.b)); if (dhM > 0.55) outgoingLight *= (0.55 + (dhM - 0.55) / (1.0 + (dhM - 0.55))) / dhM; }\n#include <opaque_fragment>');
+    }
     if (fuzz) {
       fs = fs.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * uFuzz * (uFuzzK * pow(abs(1.0 - clamp(abs(dot(normal, normalize(vViewPosition))), 0.0, 1.0)), 2.0));');
     }
     shader.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => 'dh|' + (voxel ? 1 : 0) + '|' + (additive ? 1 : 0) + '|' + (mat.isSpriteMaterial ? 1 : 0) + '|' + (detail ? 1 : 0) + '|' + (moss ? 1 : 0) + '|' + (fuzz ? 1 : 0);
+  mat.customProgramCacheKey = () => 'dh|' + (voxel ? 1 : 0) + '|' + (additive ? 1 : 0) + '|' + (mat.isSpriteMaterial ? 1 : 0) + '|' + (detail ? 1 : 0) + '|' + (moss ? 1 : 0) + '|' + (fuzz ? 1 : 0) + (tint ? '|t' : '') + (soft ? '|s' : '');
   return mat;
 }
 

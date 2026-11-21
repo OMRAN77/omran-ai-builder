@@ -176,3 +176,19 @@ test('حلقة اللعب تنتظر كرت الشاشة وتنتبه للصور
   }
 });
 
+test('v-blockworld-kit: الركض والطيران والحقيبة وعدّة البناء في العوالم الثلاثة', () => {
+  const play = read('shared/play.js'), kit = read('shared/kit.js');
+  assert.match(play, /doubled\(now, lastFwd\)/, 'W مرّتين يركض');
+  assert.match(play, /setFlying\(!st\.flying\)/, 'المسافة مرّتين تطير');
+  assert.match(play, /slab: 1/, 'نصف المكعب صلب');
+  assert.match(play, /function setSlot\(/);
+  assert.match(read('shared/voxel.js'), /kind === 'slab'/);
+  for (const name of ['مكعب ', 'نصف مكعب ', 'ليت ', 'مكعب ذهب', 'مكعب ألماس', 'زجاج', 'ماء', 'نار', 'سرير ']) assert.ok(kit.includes(name), 'في العدّة: ' + name);
+  for (const k of WORLDS) {
+    const src = ['main.js', 'game.js', 'world.js', 'mesher.js', 'hud.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
+    for (const need of ['KIT_BLOCKS', 'kitMaterial(', 'createKit(', 'createBag(', 'kitIcon(', 'heightOf', 'onBag', 'onFly']) assert.ok(src.includes(need), `${k}: ${need}`);
+    const page = read(`styles/${k}/index.html`) + src;
+    assert.match(page, /data-act="bag"/, k + ': زرّ الحقيبة للّمس');
+  }
+});
+

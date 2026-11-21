@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
 import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
+import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../shared/kit.js';
+import { createBag } from '../../shared/bag.js';
 import { buildTiles, buildDetailTextures, buildSpriteTextures, buildBoughTexture, buildVoxelDetail, buildCardTextures } from './texgen.js';
 import { buildForest } from './trees.js';
 import { buildShelterProps, makeTorch } from './props.js';
@@ -32,6 +34,23 @@ EXTRA.uDetail.value = buildVoxelDetail();
 const NSCALE = { litter: 1.3, heath: 1.2 };
 const mats = new Map();
 function materialFor(tile, kind) {
+  // the shared building kit brings its own materials; here they only get this world's fog and baked light
+  // (no grain, no moss), so a painted block keeps its colour, and a soft shoulder so a pale one never burns out
+  // (lamps and flames are meant to burn)
+  const km = kitMaterial(tile);
+  if (km) {
+    if (!km.userData.dhalam) {
+      km.userData.dhalam = true;
+      km.vertexColors = true;                                    // as the mesher sets it; set here because the hand may show the block first
+      patch(km, { voxel: true, tint: true, soft: !tile.startsWith('x:lamp') && tile !== 'x:fire' });
+      // this world has no sky reflections for a metal to mirror, so gold would come out as dull brown: here it is
+      // mostly paint, with a sheen. Diamond and still water get a softer glint from the lantern at the hip.
+      if (tile === 'x:gold') { km.metalness = 0.3; km.roughness = 0.42; }
+      if (tile === 'x:diamond') km.roughness = 0.3;
+      if (tile === 'x:water') km.roughness = 0.4;
+    }
+    return km;
+  }
   const key = tile + '|' + kind;
   let m = mats.get(key);
   if (m) return m;
@@ -49,16 +68,19 @@ function materialFor(tile, kind) {
     if (t.emissiveMap) { m.emissiveMap = t.emissiveMap; m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 1.15; }
   }
   const solid = kind !== 'liquid' && kind !== 'cutout' && kind !== 'cross';
-  patch(m, { voxel: true, detail: solid, moss: tile === 'rockTop' ? { map: T.moss.map, p: [0.5, 0.07, 0.5] } : null });
+  // tint: the game also bakes the light of lamps the player sets down (see kitLight in world.js); the shots do not
+  patch(m, { voxel: true, tint: !!GAME, detail: solid, moss: tile === 'rockTop' ? { map: T.moss.map, p: [0.5, 0.07, 0.5] } : null });
   mats.set(key, m);
   return m;
 }
 
 // ----------------------------------------------------------------------------------------- world
+Object.assign(BLOCKS, KIT_BLOCKS);                           // the shared building kit (painted blocks, lamps, beds, ...): ids 100 and up
 const { world, meta } = generateWorld();
-const light = bakeLight(world, meta.lights);
-// the lake is one mirror plane (below), so voxel water is never drawn: not at first, not in a re-meshed chunk
-const hideLiquid = (mesh) => { if (mesh.userData.kind === 'liquid') mesh.visible = false; };
+const light = bakeLight(world, meta.lights);                 // after the kit is in BLOCKS: half blocks, beds, glass, water and fire let light through
+// the lake is one mirror plane (below), so the lake's voxel water is never drawn: not at first, not in a re-meshed chunk.
+// Water from the kit is a block of its own and is drawn.
+const hideLiquid = (mesh) => { if (mesh.userData.kind === 'liquid' && mesh.userData.tile === 'water') mesh.visible = false; };
 // the game needs terrain it can edit; the shots keep the plain static meshes
 const terrain = GAME ? buildWorldTerrain(world, light, meta.lights, materialFor, { onMesh: hideLiquid }) : null;
 const { root: worldRoot, tris: worldTris } = terrain ? { root: terrain.group, tris: terrain.tris } : buildWorldMeshes(world, light, materialFor);
@@ -73,7 +95,7 @@ scene.add(sky);
 // the lake: hide the voxel water surface and lay one mirror plane over it
 let wx0 = SX, wx1 = 0, wz0 = SZ, wz1 = 0;
 for (let z = 0; z < SZ; z++) for (let x = 0; x < SX; x++) if (world.get(x, WL, z) === 18) { wx0 = Math.min(wx0, x); wx1 = Math.max(wx1, x + 1); wz0 = Math.min(wz0, z); wz1 = Math.max(wz1, z + 1); }
-worldRoot.traverse((o) => { if (o.isMesh && o.userData.kind === 'liquid') o.visible = false; });
+worldRoot.traverse((o) => { if (o.isMesh) hideLiquid(o); });
 const lake = makeWater(wx0, wz0, wx1, wz1, WL + 0.82, T.water.normalMap, renderer, { div: LITE ? 3 : 2 });
 scene.add(lake);
 const shelter = buildShelterProps(meta, SPR, T);
@@ -684,6 +706,10 @@ const DROP = {
 
 async function startGame() {
   await Promise.all(['400', '500', '700'].map((w) => document.fonts.load(w + " 14px 'Plex Arabic'", 'ظلام').catch(() => null)));   // a font that cannot be fetched must not stop the page
+  // the shared building kit. Its two lights join the scene before the first picture is drawn, so every shader is
+  // built once for the final number of lights. Whatever the kit clears below the lake's level fills with the lake.
+  const inLake = (x, y, z) => y <= WL && x >= wx0 && x < wx1 && z >= wz0 && z < wz1;
+  const kit = createKit({ scene, world, terrain: { setBlock: (x, y, z, id) => terrain.setBlock(x, y, z, id === 0 && inLake(x, y, z) ? B.WATER : id) } });
   await window.__shot('play');                       // dusk, the HUD and the pick in hand, a few steps outside the gate
   stage.live = true;
   document.body.classList.add('game');
@@ -695,7 +721,10 @@ async function startGame() {
   const hud = initHud();
   const slots = SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 }));
   const cell = (x, y, z) => x + SX * (z + SZ * y);
-  const solidCell = (x, y, z) => { const id = world.get(x, y, z); return id !== 0 && id < B.WATER; };
+  const isLiquid = (id) => id === B.WATER || kit.isLiquid(id);
+  // what stops a body: every block but water and plants (the palisade cells, drawn as a prop, and the kit's blocks too)
+  const isSolid = (id) => id !== 0 && !isLiquid(id) && kindOf(id) !== 'cross';
+  const solidCell = (x, y, z) => isSolid(world.get(x, y, z));
 
   // ---- what may not be dug: the camp stands on its yard, and the props there cannot move
   const guard = new Set();
@@ -712,7 +741,22 @@ async function startGame() {
     }
   }
   // the outermost columns stay too: the world has no wall faces along its border
-  const canBreak = (id, x, y, z) => id !== B.STAKE && x > 0 && z > 0 && x < SX - 1 && z < SZ - 1 && !guard.has(cell(x, y, z));
+  const inRing = (x, z) => x > 0 && z > 0 && x < SX - 1 && z < SZ - 1;
+  const canBreak = (id, x, y, z) => id !== B.STAKE && inRing(x, z) && !guard.has(cell(x, y, z));
+  // ---- where nothing may be built: the outermost columns (a block set there could never be taken back), and the
+  // cells the camp's fire, torches and lantern stand in. Water from the kit is not poured into the lake either:
+  // the two waters are different blocks, and the lake stays the lake
+  const keepOut = new Set();
+  {
+    const sh = meta.shelter;
+    for (let y = 0; y <= 1; y++) keepOut.add(cell(Math.floor(sh.fire.x), Math.floor(sh.fire.y) + y, Math.floor(sh.fire.z)));
+    for (const t of sh.torches) for (let y = Math.floor(t.y); y <= Math.floor(t.y + t.h); y++) keepOut.add(cell(Math.floor(t.x), y, Math.floor(t.z)));
+  }
+  const canPlace = (x, y, z, id) => {
+    if (!inRing(x, z) || keepOut.has(cell(x, y, z)) || (kit.isLiquid(id) && world.get(x, y, z) === B.WATER)) return false;
+    const t = playTorch.position;                                // the staked torch by the path, wherever it has settled
+    return !(x === Math.floor(t.x) && z === Math.floor(t.z) && y >= Math.floor(t.y) && y <= Math.floor(t.y + 2.3));
+  };
 
   // ---- things that stand on the ground near the spawn come down with it
   const stakeLight = pool[playLights.findIndex((l) => l.kind === 'stake')], hipLight = pool[playLights.findIndex((l) => l.kind === 'hip')];
@@ -720,7 +764,7 @@ async function startGame() {
   playPieces.push({ obj: playTorch, pts: [[playTorch.position.x, playTorch.position.z]], light: stakeLight });
   for (const o of [playHound, playStalker]) playPieces.push({ obj: o, pts: [[o.position.x, o.position.z]] });
   /** Feet height for something that stood at height y in column (x, z): down to the first solid block. */
-  const restY = (x, z, y) => { const fx = Math.floor(x), fz = Math.floor(z); while (y > 1 && !solidCell(fx, y - 1, fz)) y--; return y; };
+  const restY = (x, z, y) => { const fx = Math.floor(x), fz = Math.floor(z); while (y > 1 && !solidCell(fx, y - 1, fz)) y--; return y - 1 + kit.heightOf(world.get(fx, y - 1, fz)); };   // a half block holds it half a block lower
   for (const pc of playPieces) {
     for (const pt of pc.pts) pt[2] = restY(pt[0], pt[1], groundAt(pt[0], pt[1]));
     pc.y0 = pc.obj.position.y; pc.drop = 0;
@@ -744,11 +788,51 @@ async function startGame() {
     shadowsChanged();
   }
 
-  // ---- the tool in hand: the pick, or the axe when its slot is chosen
-  const armAxe = makeViewArm(makeAxe(0.86));
-  armAxe.position.copy(viewArm.position); armAxe.scale.copy(viewArm.scale); armAxe.visible = false;
-  camera.add(armAxe);
-  const ARM = { pick: viewArm, axe: armAxe }, armHome = viewArm.position.clone(), armScale = viewArm.scale.x;
+  // ---- what the hand holds follows the item in the chosen square, whichever square that is: the pick, the axe,
+  // or the bare hand for anything that is not a tool (blocks, and the things that are only carried)
+  const armAxe = makeViewArm(makeAxe(0.86)), armHand = makeViewArm(new THREE.Group());
+  for (const a of [armAxe, armHand]) { a.position.copy(viewArm.position); a.scale.copy(viewArm.scale); a.visible = false; camera.add(a); }
+  const ARM = { pick: viewArm, axe: armAxe, hand: armHand }, armHome = viewArm.position.clone(), armScale = viewArm.scale.x;
+  // the bare hand carries a small copy of the block its square places (nothing for the things that are only carried)
+  const heldBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), []), heldCross = new THREE.Mesh(new THREE.BufferGeometry());
+  {
+    // the terrain's materials read the mesher's extra attributes: plain white, open sky, no fire or lamp light
+    const dress = (geo) => {
+      const n = geo.attributes.position.count;
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
+      geo.setAttribute('aLit', new THREE.BufferAttribute(Float32Array.from({ length: n * 2 }, (v, i) => 1 - (i % 2)), 2));
+      geo.setAttribute('aTint', new THREE.BufferAttribute(new Uint8Array(n * 4), 4, true));
+    };
+    dress(heldBox.geometry);
+    const g = heldCross.geometry;                               // a flame: two crossed cards, both sides drawn
+    g.setAttribute('position', new THREE.Float32BufferAttribute([-0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5], 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(8).fill([0, 1, 0]).flat(), 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1], 2));
+    g.setIndex([0, 1, 2, 2, 1, 3, 0, 2, 1, 2, 3, 1, 4, 5, 6, 6, 5, 7, 4, 6, 5, 6, 7, 5]);
+    dress(g);
+    // receiveShadow as the terrain has it: the same shader programs serve both, and the block darkens in the shade
+    for (const m of [heldBox, heldCross]) { m.visible = false; m.frustumCulled = false; m.receiveShadow = true; m.rotation.set(0.42, 0.62, 0.1); armHand.add(m); }
+  }
+  const HELD = 0.17, heldAt = new THREE.Vector3(-0.03, 0.095, -0.33);     // size and place in the arm's space: resting on the fist
+  let heldId = -1;
+  function holdBlock(item) {
+    const id = item && item.id && BLOCKS[item.id] ? item.id : 0;
+    if (id === heldId) return;
+    heldId = id;
+    heldBox.visible = heldCross.visible = false;
+    if (!id) return;
+    const d = BLOCKS[id], kind = d.kind ?? 'solid', tile = (f) => (typeof d.tiles === 'string' ? d.tiles : d.tiles[f] ?? d.tiles.side);
+    const h = kind === 'cross' ? 1 : d.height ?? 1, m = kind === 'cross' ? heldCross : heldBox;
+    if (kind === 'cross') m.material = materialFor(tile('side'), kind);
+    else {
+      // the rock's top grows its moss by place in the world, which would crawl over a block that is carried about
+      const side = materialFor(tile('side'), kind), top = tile('top') === 'rockTop' ? side : materialFor(tile('top'), kind);
+      m.material = [side, side, top, materialFor(tile('bottom'), kind), side, side];
+    }
+    m.scale.set(HELD, HELD * h, HELD);
+    m.position.copy(heldAt); m.position.y -= HELD * (1 - h) / 2;
+    m.visible = true;
+  }
   const PIVOT = new THREE.Vector3(0.4, -0.72, 0.08);          // about the elbow, in the arm's own space
   const STROKE = 0.44;                                         // seconds per blow
   const ease = (t) => t * t * (3 - 2 * t);
@@ -757,9 +841,11 @@ async function startGame() {
   let tool = 'pick', swing = 0, swingK = 0, kick = 0, bobK = 0, aimed = LITE ? null : { x: camera.position.x, z: camera.position.z }, hintTimer = 0;
   let throwD = 1.7, throwY = -0.55, throwK = 1, throwSnap = false, grounded = false, jumpWas = false, pushV = 0, under = false;
   const THROW_H = 1.07, throwI = throwLight.intensity;         // the lantern's throw hangs this far above the ground, as in the play shot
+  const KIT_LIGHT = 0.5;                                       // strength of the kit's two real lights here (see onFrame)
   const SWIM = 3.4, SURGE = 6.4;                               // the controller's own steady swimming speed; the burst of one stroke
   const _e = new THREE.Euler(), _q = new THREE.Quaternion(), _v = new THREE.Vector3();
-  const hardness = (id) => (kindOf(id) === 'cross' ? 0.08 : id === B.NEEDLES ? 0.15 : EARTH.has(id) ? 0.35
+  // the axe is quick on wood, the pick on stone and ore; the bare hand is slow on all three. Kit blocks have their own times
+  const hardness = (id) => kit.hardness(id) ?? (kindOf(id) === 'cross' ? 0.08 : id === B.NEEDLES ? 0.15 : EARTH.has(id) ? 0.35
     : WOOD.has(id) ? (tool === 'axe' ? 0.5 : 1.0) : ORE.has(id) ? (tool === 'pick' ? 1.0 : 2.0) : (tool === 'pick' ? 0.7 : 1.4));
   const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
   const half = LITE ? 46 : 70, home = SITE.shelter;
@@ -782,38 +868,56 @@ async function startGame() {
     camera, canvas: stage.canvas, world, blocks: BLOCKS, terrain,
     spawn: { x: camera.position.x, y: camera.position.y - 1.62, z: camera.position.z, yaw: eu.y, pitch: eu.x },
     slots, touch: hud.touch ? hud.els : null, maxPixelRatio: LITE ? 1.5 : 2,
-    isLiquid: (id) => id === B.WATER,
-    isSolid: (id) => id !== 0 && id !== B.WATER && kindOf(id) !== 'cross',          // the palisade cells (drawn as a prop) stop you too
-    pickable: (id) => id !== 0 && id !== B.WATER,
-    canBreak, hardness,
-    dropOf: (id) => DROP[id] || 0,
+    isLiquid, isSolid, heightOf: kit.heightOf,                  // kit water is water to swim in; half blocks and beds are low
+    pickable: (id) => id !== 0 && !isLiquid(id),
+    canBreak, canPlace, hardness,
+    dropOf: (id) => DROP[id] || kit.dropOf(id),
     onTarget(h) {
       outline.visible = !!h;
-      if (h) outline.position.set(h.x + 0.5, h.y + 0.5, h.z + 0.5);
-      hud.setTarget(h ? { name: NAMES[h.id] || 'مكعب', icon: iconOf(h.id), locked: h.y === 0 || !canBreak(h.id, h.x, h.y, h.z) } : null);
+      if (h) { const hh = kit.heightOf(h.id); outline.scale.y = hh; outline.position.set(h.x + 0.5, h.y + hh / 2, h.z + 0.5); }   // the box fits a half block too
+      hud.setTarget(h ? { name: NAMES[h.id] || kit.nameOf(h.id) || 'مكعب', icon: iconOf(h.id), kit: KIT_BLOCKS[h.id] ? kit.dropOf(h.id) : 0, locked: h.y === 0 || !canBreak(h.id, h.x, h.y, h.z) } : null);
     },
     onBreak(h) {
       // dug below the lake's level under its mirror plane: the water comes in, so the picture and the world agree
-      if (h.y <= WL && h.x >= wx0 && h.x < wx1 && h.z >= wz0 && h.z < wz1) terrain.setBlock(h.x, h.y, h.z, B.WATER);
+      if (inLake(h.x, h.y, h.z)) terrain.setBlock(h.x, h.y, h.z, B.WATER);
       // a pine keeps its boughs as long as the log they grow from is there
       if (h.id === B.TRUNK) { const tr = treeAt.get(h.x + SX * h.z); if (tr && h.y === tr.trunkTop - 1) forest.fell(tr); }
+      kit.broke(h);
+      // a plant or a flame that stood on the block went with it (the controller clears it without a word):
+      // a flame's light goes out too, and under the lake's level the water closes over the gap
+      const up = world.get(h.x, h.y + 1, h.z), lit = kit.glow.get(h.x + ',' + (h.y + 1) + ',' + h.z);
+      if (lit && up !== lit) kit.broke({ x: h.x, y: h.y + 1, z: h.z, id: lit });
+      if (up === 0 && inLake(h.x, h.y + 1, h.z)) terrain.setBlock(h.x, h.y + 1, h.z, B.WATER);
       edited();
     },
-    onPlace() { kick = 1; throwSnap = true; edited(); },
+    onPlace(x, y, z, id) {
+      kit.glow.delete(x + ',' + y + ',' + z);                    // a block set into a flame takes its place: that flame's light is gone
+      kit.placed(x, y, z, id, play.state.yaw);
+      kick = 1; throwSnap = true; edited();
+    },
     onInventory(list, sel) {
       hud.setSlots(list, sel);
-      const t = list[sel].tool;
-      if (t && t !== tool) { tool = t; for (const k in ARM) ARM[k].visible = k === tool; }
+      const t = ARM[list[sel].tool] ? list[sel].tool : 'hand';
+      if (t !== tool) { tool = t; for (const k in ARM) ARM[k].visible = k === tool; }
+      holdBlock(t === 'hand' ? list[sel] : null);
     },
+    onBag() { bag.toggle(); },
+    onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
     onFirstLook() { hud.els.look.hidden = true; },
     onFrame(st, dt) {
       const d = st.dig, p = st.pos, c = camera.position, h = st.hit;
       const sin = Math.sin(st.yaw), cos = Math.cos(st.yaw);       // forward = (-sin, 0, -cos), right = (cos, 0, -sin)
       hud.setProgress(d.on ? d.progress : 0);
+      // the nearest lamps and fires get the kit's two real lights; flames flicker. Every lamp also has its baked
+      // glow here (world.js), so the real lights burn at half strength: the two nearest lamps do not outshine the rest
+      kit.update(p, dt, st.time);
+      for (const l of kit.lights) l.intensity = (l.userData.flicker ? l.intensity : l.userData.base || 0) * KIT_LIGHT;
       // cracks spread over the face being dug
       if (d.on && h && kindOf(h.id) !== 'cross') {
-        cracks.position.set(h.x + 0.5 + h.nx * 0.503, h.y + 0.5 + h.ny * 0.503, h.z + 0.5 + h.nz * 0.503);
+        const hh = kit.heightOf(h.id);                             // on a half block or a bed the cracks keep to its own faces
+        cracks.position.set(h.x + 0.5 + h.nx * 0.503, h.ny > 0 ? h.y + hh + 0.003 : h.ny < 0 ? h.y - 0.003 : h.y + hh / 2, h.z + 0.5 + h.nz * 0.503);
+        cracks.scale.y = h.ny ? 1 : hh;
         cracks.rotation.set(-h.ny * Math.PI / 2, h.nx ? h.nx * Math.PI / 2 : h.nz < 0 ? Math.PI : 0, 0);
         cracks.material.opacity = 0.3 + 0.7 * d.progress;
         cracks.visible = true;
@@ -854,20 +958,26 @@ async function startGame() {
       // water: the shared controller only rises slowly while jump is held, which lifts a tap by less than half a
       // block and leaves no way back onto a bank. Here every press is a stroke worth about a block (a full jump
       // when you stand on the bottom), and swimming against a bank one block high carries you over its edge.
+      // The controller has since learned to leave the water by itself (a jump from the surface, a lift against a
+      // bank); both only ever raise the upward speed, as this does, so the stronger of the two wins and they never
+      // pull against each other. While flying none of it applies: the height is the controller's alone.
       {
         const inp = play.input, T = play.tuning;
-        const burst = !st.inWater || !inp.jump ? 0 : grounded && !st.onGround ? T.jump : !jumpWas ? SURGE : 0;
-        if (burst) { pushV = burst; if (st.vel.y < pushV) st.vel.y = pushV; }
-        else pushV = Math.max(0, pushV - T.gravity * dt);
-        jumpWas = inp.jump;
-        const mx = cos * inp.fx - sin * inp.fz, mz = -sin * inp.fx - cos * inp.fz, ml = Math.hypot(mx, mz);
-        let climb = false;
-        if (st.inWater && ml > 0.25) {
-          const fy = Math.floor(p.y + 0.5), px = Math.floor(p.x), pz = Math.floor(p.z), tx = Math.floor(p.x + mx / ml * 0.75), tz = Math.floor(p.z + mz / ml * 0.75);
-          climb = (tx !== px || tz !== pz) && solidCell(tx, fy, tz) && !solidCell(tx, fy + 1, tz) && !solidCell(tx, fy + 2, tz) && !solidCell(px, fy + 2, pz);
+        if (st.flying) { pushV = 0; T.swim = SWIM; }
+        else {
+          const burst = !st.inWater || !inp.jump ? 0 : grounded && !st.onGround ? T.jump : !jumpWas ? SURGE : 0;
+          if (burst) { pushV = burst; if (st.vel.y < pushV) st.vel.y = pushV; }
+          else pushV = Math.max(0, pushV - T.gravity * dt);
+          const mx = cos * inp.fx - sin * inp.fz, mz = -sin * inp.fx - cos * inp.fz, ml = Math.hypot(mx, mz);
+          let climb = false;
+          if (st.inWater && ml > 0.25) {
+            const fy = Math.floor(p.y + 0.5), px = Math.floor(p.x), pz = Math.floor(p.z), tx = Math.floor(p.x + mx / ml * 0.75), tz = Math.floor(p.z + mz / ml * 0.75);
+            climb = (tx !== px || tz !== pz) && solidCell(tx, fy, tz) && !solidCell(tx, fy + 1, tz) && !solidCell(tx, fy + 2, tz) && !solidCell(px, fy + 2, pz);
+          }
+          if (climb && !inp.jump && st.vel.y < T.jump) st.vel.y = T.jump;          // no jump key needed, like the step-up on land
+          T.swim = climb ? T.jump : Math.max(SWIM, pushV);
         }
-        if (climb && !inp.jump && st.vel.y < T.jump) st.vel.y = T.jump;          // no jump key needed, like the step-up on land
-        T.swim = climb ? T.jump : Math.max(SWIM, pushV);
+        jumpWas = inp.jump;
         grounded = st.onGround;
       }
       WATER.uTime.value = st.time;                               // the lake's ripples drift
@@ -878,7 +988,7 @@ async function startGame() {
       // keep the shadow map around the player
       if (!aimed || Math.hypot(p.x - aimed.x, p.z - aimed.z) > 14) {
         aimed = { x: Math.round(p.x / 4) * 4, z: Math.round(p.z / 4) * 4 };
-        fitShadow(aimed.x, p.y, aimed.z, half);
+        fitShadow(aimed.x, Math.min(p.y, groundAt(p.x, p.z)), aimed.z, half);   // on the ground below when flying high over it
         sun.shadow.normalBias = Math.max(0.08, (half * 2 / sun.shadow.mapSize.x) * 1.17);
         shadowsChanged();
       }
@@ -899,6 +1009,29 @@ async function startGame() {
     if (el) play.select(+el.dataset.i); else if (e.target.closest('.more')) hud.page();
     e.preventDefault();
   });
+  // the bag (E, or its button on a phone): this world's own things first, then the shared building kit
+  const bag = createBag({
+    play, shown: slots.length,
+    groups: [{ title: 'عدّة ظلام', items: SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })) }, ...KIT_GROUPS],
+    iconOf: (it) => (it.kit ? kitIcon(it.id) : hud.icon(it.icon)),
+    fontFamily: "'Plex Arabic', system-ui, sans-serif", accent: '#e9853a', line: 'rgba(233, 133, 58, .4)',
+    onToggle: (v) => { if (v) bagRow(); },
+  });
+  // The bag draws a picture in its row of squares only for blocks and tools, so the things this world only carries
+  // (torch, meat, bandage) would sit there as empty squares. They are filled in each time the bag has drawn its row.
+  function bagRow() {
+    play.state.slots.forEach((q, i) => {
+      if (q.id || q.tool || !q.icon) return;
+      const sq = bag.el.querySelector('[data-sq="' + i + '"]');
+      if (!sq || sq.querySelector('i')) return;
+      sq.querySelector('.pic').innerHTML = hud.icon(q.icon);
+      const n = document.createElement('i');
+      n.textContent = q.n;
+      sq.appendChild(n);
+    });
+  }
+  bag.el.addEventListener('click', bagRow);                    // added after the bag's own handler, so it runs after each redraw
+  hud.els.bag.addEventListener('pointerdown', (e) => { if (play.state.running) { bag.toggle(); e.preventDefault(); } });
   const panel = createPlayPanel({
     title: 'ظلام', tagline: 'احفر واجمع وحصّن ملجأك قبل أن يهبط الليل على الأطلال.',
     fontFamily: "'Plex Arabic', system-ui, sans-serif", accent: '#e9853a', line: 'rgba(233, 133, 58, .4)', touch: hud.touch,
@@ -907,7 +1040,7 @@ async function startGame() {
   });
   panel.show('start');
   window.__play = play;
-  window.__game = { play, panel, terrain, world, B, slots };
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit };
 }
 
 installShotApi(stage);

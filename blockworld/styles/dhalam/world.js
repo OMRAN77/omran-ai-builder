@@ -760,6 +760,7 @@ function makeDresser(world, light) {
   const { sky, blk, pass } = light;
   const { sx, sy, sz } = world;
   const data = world.data;
+  const K = light.kit || null;                                 // the game's lamp light (see kitLight); the shots have none
   const sample = (arr, x, y, z) => {
     if (x < 0 || z < 0 || x >= sx || z >= sz || y < 0) return -1;
     if (y >= sy) return arr === sky ? 15 : 0;
@@ -769,32 +770,47 @@ function makeDresser(world, light) {
   };
   const tint = makeNoise(4242);
   return function dress(mesh, cx, cz) {
-    const [tile, kind] = mesh.name.split(':');
+    // mesh.name is "<tile>:<kind>"; the tiles of the shared building kit have colons of their own ("x:paint:#c33d2e")
+    const cut = mesh.name.lastIndexOf(':');
+    const tile = mesh.name.slice(0, cut), kind = mesh.name.slice(cut + 1);
+    // kit blocks keep the mesher's own UVs (one picture per face) and their own colours: no world-space mapping, no drift
+    const own = !tile.startsWith('x:');
     const geo = mesh.geometry;
     const pos = geo.attributes.position, nor = geo.attributes.normal, uv = geo.attributes.uv, col = geo.attributes.color;
     const lit = new Float32Array(pos.count * 2);
+    // lamp light: colour and level per vertex, one byte each (all zero until the first lamp or fire is set down)
+    const tin = K ? new Uint8Array(pos.count * 4) : null, lamps = K && K.any;
     const s = UV_SCALE[tile] ?? 0.5;
     for (let i = 0; i < pos.count; i++) {
       const px = pos.getX(i) + cx, py = pos.getY(i), pz = pos.getZ(i) + cz;
       const nx = nor.getX(i), ny = nor.getY(i), nz = nor.getZ(i);
-      let sSum = 0, bSum = 0, n = 0;
+      let sSum = 0, bSum = 0, n = 0, kSum = 0, kr = 0, kg = 0, kb = 0;
       if (kind === 'cross') {
         const sv = sample(sky, Math.floor(px), Math.floor(py + 0.01), Math.floor(pz));
         const bv = sample(blk, Math.floor(px), Math.floor(py + 0.01), Math.floor(pz));
         sSum = Math.max(0, sv); bSum = Math.max(0, bv); n = 1;
+        if (lamps && sv >= 0 && py + 0.01 < sy) {
+          const j = Math.floor(px) + sx * (Math.floor(pz) + sz * Math.floor(py + 0.01)), lv = K.lv[j];
+          if (lv) { const c = K.pal[K.col[j]]; kSum = lv; kr = c[0] * lv; kg = c[1] * lv; kb = c[2] * lv; }
+        }
       } else {
         // the four air cells that meet at this corner, in the layer in front of the face
         const rx = Math.round(px), ry = Math.round(py), rz = Math.round(pz);
         for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
           let x, y, z;
           if (nx !== 0) { x = nx > 0 ? rx : rx - 1; y = ry - a; z = rz - b; }
-          else if (ny !== 0) { y = ny > 0 ? ry : ry - 1; x = rx - a; z = rz - b; }
+          // the top of a half block or a bed lies inside its own cell: it takes that cell's light, whatever stands above it
+          else if (ny !== 0) { y = ny < 0 ? ry - 1 : own || py === ry ? ry : Math.floor(py); x = rx - a; z = rz - b; }
           else { z = nz > 0 ? rz : rz - 1; x = rx - a; y = ry - b; }
           const sv = sample(sky, x, y, z);
           if (sv < 0) continue;
           sSum += sv; bSum += sample(blk, x, y, z); n++;
+          if (lamps && y < sy) {
+            const j = x + sx * (z + sz * y), lv = K.lv[j];
+            if (lv) { const c = K.pal[K.col[j]]; kSum += lv; kr += c[0] * lv; kg += c[1] * lv; kb += c[2] * lv; }
+          }
         }
-        if (kind !== 'cross') {
+        if (own) {
           if (ny !== 0) uv.setXY(i, px * s, pz * s);
           else if (nx !== 0) uv.setXY(i, pz * s, py * s);
           else uv.setXY(i, px * s, py * s);
@@ -802,8 +818,9 @@ function makeDresser(world, light) {
       }
       lit[i * 2] = n ? sSum / n / 15 : 0;
       lit[i * 2 + 1] = n ? Math.min(1, bSum / n / 15) : 0;
+      if (kSum) { const q = 255 / kSum; tin[i * 4] = kr * q; tin[i * 4 + 1] = kg * q; tin[i * 4 + 2] = kb * q; tin[i * 4 + 3] = Math.min(255, kSum / n * (255 / LAMP)); }
       // slow brightness / warmth drift so large surfaces never look stamped
-      if (kind !== 'liquid') {
+      if (kind !== 'liquid' && own) {
         const t1 = tint.n3(px / 13, py / 9, pz / 13), t2 = tint.n3(px / 31 + 5, py / 23, pz / 31 - 3);
         const k = 1 + t1 * 0.13 + t2 * 0.1;
         const w = t2 * 0.05;
@@ -811,8 +828,9 @@ function makeDresser(world, light) {
       }
     }
     geo.setAttribute('aLit', new THREE.BufferAttribute(lit, 2));
+    if (tin) geo.setAttribute('aTint', new THREE.BufferAttribute(tin, 4, true));
     uv.needsUpdate = true; col.needsUpdate = true;
-    mesh.userData.kind = kind;
+    mesh.userData.kind = kind; mesh.userData.tile = tile;
     if (kind === 'cross') mesh.castShadow = false;
   };
 }
@@ -843,6 +861,7 @@ export function buildWorldTerrain(world, light, lights, materialFor, { onMesh } 
   const root = new THREE.Group();
   root.name = 'world';
   const SUB = 16;
+  const K = light.kit = kitLight(world);
   const dress = makeDresser(world, light);
   const relight = makeRelight(world, light, lights);
   const { sx, sz, sy } = world;
@@ -878,6 +897,12 @@ export function buildWorldTerrain(world, light, lights, materialFor, { onMesh } 
       if (!world.inb(x, y, z)) return false;
       const old = world.get(x, y, z);
       if (old === id) return false;
+      // a lamp or a fire of the building kit (a block with `light`) is a source for the baked lamp light, whoever sets or clears it
+      const was = BLOCKS[old] && BLOCKS[old].light, now = BLOCKS[id] && BLOCKS[id].light;
+      if (was || now) {
+        const i = x + sx * (z + sz * y);
+        if (now) { K.src.set(i, { x, z, i, level: BLOCKS[id].flicker ? LAMP - 1 : LAMP, c: K.colour(now) }); K.any = true; } else K.src.delete(i);
+      }
       // every chunk within one cell of the edit must hear about it: faces and AO reach across the seam
       const x0 = Math.floor(Math.max(0, x - 1) / CH), x1 = Math.floor(Math.min(sx - 1, x + 1) / CH), z0 = Math.floor(Math.max(0, z - 1) / CH), z1 = Math.floor(Math.min(sz - 1, z + 1) / CH);
       for (let pz = z0; pz <= z1; pz++) for (let px = x0; px <= x1; px++) {
@@ -908,6 +933,30 @@ export function buildWorldTerrain(world, light, lights, materialFor, { onMesh } 
 }
 
 /**
+ * Light of the building kit's lamps and fires (the game only): a flood-filled volume of its own beside the fire
+ * light, because each lamp has a colour. lv = level 0..LAMP; col = which colour reached the cell with the most
+ * light (an index into pal); src = the lamps and fires now standing, by cell index.
+ * A lamp starts at LAMP and loses one level per block, so its glow is full beside it and gone six blocks away.
+ * The reach is short on purpose: with the two cells a face reads around itself, setting or taking a lamp never
+ * re-meshes more than the four 16 x 16 pieces any other edit can touch. (The nearest lamps also get the kit's
+ * real lights, which carry further.)
+ */
+const LAMP = 7;
+function kitLight(world) {
+  const N = world.sx * world.sy * world.sz;
+  const pal = [[0, 0, 0]], index = new Map();
+  return {
+    lv: new Uint8Array(N), col: new Uint8Array(N), pal, src: new Map(), any: false,
+    /** Palette index of a light colour ('#rrggbb'), brought to full strength so every lamp carries as far as its level says. */
+    colour(hex) {
+      let i = index.get(hex);
+      if (i === undefined) { const c = new THREE.Color(hex), m = Math.max(c.r, c.g, c.b, 1e-3); i = pal.length; pal.push([c.r / m, c.g / m, c.b / m]); index.set(hex, i); }
+      return i;
+    },
+  };
+}
+
+/**
  * Local re-bake of the light volume after one block changed in column (ex, ez). Light never
  * travels further than its level (fire starts at 19), so everything the edit can change lies in
  * a box of that radius; the box is cleared and filled again from the open sky above it, the fires
@@ -919,21 +968,25 @@ function makeRelight(world, light, lights) {
   const { sx, sy, sz } = world;
   const data = world.data;
   const { sky, blk, pass } = light;
+  const K = light.kit;                                         // lamp light: re-baked the same way once there is any
   const W = 2 * R + 1;
-  const oldSky = new Uint8Array(W * W * sy), oldBlk = new Uint8Array(W * W * sy);
+  const oldSky = new Uint8Array(W * W * sy), oldBlk = new Uint8Array(W * W * sy), oldLv = new Uint8Array(W * W * sy), oldCol = new Uint8Array(W * W * sy);
   const q = [];
   const bounds = { x0: 0, x1: 0, z0: 0, z1: 0 };
   let x0 = 0, x1 = 0, z0 = 0, z1 = 0;
-  const flood = (arr) => {
+  /** tag: a second volume whose value travels with the light (the lamp's colour). */
+  const flood = (arr, tag = null) => {
+    let from = 0;
     const spread = (j, lv) => {
       const p = pass[data[j]];
       if (p === 0) return;
       const nl = lv - (p === 2 ? 2 : 1);
-      if (arr[j] < nl) { arr[j] = nl; q.push(j); }
+      if (arr[j] < nl) { arr[j] = nl; if (tag) tag[j] = tag[from]; q.push(j); }
     };
     for (let h = 0; h < q.length; h++) {
       const i = q[h], lv = arr[i];
       if (lv <= 1) continue;
+      from = i;
       const x = i % sx, r = (i - x) / sx, z = r % sz, y = (r - z) / sz;
       // only cells inside the box are written; the ring around it only feeds light in
       if (z >= z0 && z <= z1) { if (x < x1) spread(i + 1, lv); if (x > x0) spread(i - 1, lv); }
@@ -978,12 +1031,28 @@ function makeRelight(world, light, lights) {
     }
     ring(blk);
     flood(blk);
+    // lamp light: a lamp is a solid block, so its own cell holds the light and only its neighbours carry it on
+    const lamps = K && K.any;
+    if (lamps) {
+      const lv = K.lv, col = K.col;
+      k = 0;
+      for (let y = 0; y < sy; y++) for (let z = z0; z <= z1; z++) {
+        let i = x0 + sx * (z + sz * y);
+        for (let x = x0; x <= x1; x++, i++, k++) { oldLv[k] = lv[i]; oldCol[k] = col[i]; lv[i] = 0; col[i] = 0; }
+      }
+      for (const l of K.src.values()) {
+        if (l.x < x0 || l.x > x1 || l.z < z0 || l.z > z1) continue;
+        lv[l.i] = l.level; col[l.i] = l.c; q.push(l.i);
+      }
+      ring(lv);
+      flood(lv, col);
+    }
     let bx0 = sx, bx1 = -1, bz0 = sz, bz1 = -1;
     k = 0;
     for (let y = 0; y < sy; y++) for (let z = z0; z <= z1; z++) {
       let i = x0 + sx * (z + sz * y);
       for (let x = x0; x <= x1; x++, i++, k++) {
-        if (oldSky[k] === sky[i] && oldBlk[k] === blk[i]) continue;
+        if (oldSky[k] === sky[i] && oldBlk[k] === blk[i] && (!lamps || (oldLv[k] === K.lv[i] && oldCol[k] === K.col[i]))) continue;
         if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (z < bz0) bz0 = z; if (z > bz1) bz1 = z;
       }
     }

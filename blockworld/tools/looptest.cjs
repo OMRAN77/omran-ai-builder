@@ -43,7 +43,7 @@ for (let i = 2; i < process.argv.length; i++) if (process.argv[i].startsWith('--
   }
   report.seconds = (Date.now() - t0) / 1000;
   report.state = st;
-  report.notice = await page.evaluate(() => { const el = [...document.body.children].find((e) => e.style && e.style.zIndex === '55'); return el && !el.hidden ? el.textContent : null; });
+  report.notice = await page.evaluate(() => { const el = [...document.body.children].find((e) => e.style && e.style.zIndex === '40'); return el && !el.hidden ? el.textContent : null; });
   const out = path.resolve(ROOT, String(args.out || 'out/_loop.png'));
   fs.mkdirSync(path.dirname(out), { recursive: true });
   const t1 = Date.now();
