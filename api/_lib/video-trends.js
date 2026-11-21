@@ -860,6 +860,54 @@ const TRENDS = {
      "frame": "photorealistic vertical still from a fixed camera in an ordinary open-air parking lot by day: a young man in casual streetwear striding in from the left in slow motion, mid-step, with a calm, natural face",
      "gender": "m"
    }
+ },
+ "lonelywalk": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Vertical comedy shot in a cold village lane at dusk: warmly dressed couples sit close together around small fires on both sides, sharing blankets and tea. The person from the reference image walks alone down the middle toward the camera in a worn, torn grey coat, hugging themselves and shivering, glancing left and right at the cosy couples. Reaching the foreground, they look straight into the lens with a dry, resigned expression, breathe out a small cloud of cold air, and keep walking. Face, hair and any headwear exactly as in the reference. One continuous shot, bouncy playful folk comedy tune, wind and crackling fire, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical still in a cold village lane at dusk: a young man in a worn, torn grey coat walking alone toward the camera, hugging himself and shivering with a dry, resigned look into the lens, warmly dressed couples sitting close around small fires on both sides",
+     "gender": "m"
+   }
+ },
+ "chestroll": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Locked vertical phone camera at chest height in a clean bright room. The person from the reference image, in their own clothes, faces the camera with the whole body and both feet in frame and dances one catchy routine on the beat: rolls both hands over each other in front of the chest, rolls the arms out to each side, raises both hands up beside the head, then sways the hips lightly from side to side with a confident smile, and repeats the sequence. Natural full-body motion, the camera never moves. Face, hair and any headwear exactly as in the reference. Upbeat Latin-pop dance beat, one continuous shot, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical full-body still of a smiling young man in casual clothes dancing in a clean bright room, both hands rolling over each other in front of his chest, feet in frame",
+     "gender": "m"
+   }
+ },
+ "babysway": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Transform the person from the reference image into an adorable toddler version of themselves with the same facial features, standing in a cosy living room in a tiny bright-yellow puffer jacket and a chunky gold chain necklace, small sunglasses pushed up on the forehead. Locked vertical camera, whole body in frame. The toddler performs a cute wobbling sway dance on the beat: knees bouncing, shoulders rocking from side to side, little arms swinging and pointing, one small spin, then a confident final pose with arms crossed and a big grin. One continuous shot, catchy upbeat pop-dance tune, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical full-body still of an adorable toddler in a tiny bright-yellow puffer jacket and a chunky gold chain necklace, small sunglasses pushed up on the forehead, mid-dance with arms out in a cosy living room, big grin",
+     "gender": "m"
+   }
+ },
+ "panelcut": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Two-part vertical transition. Part one: a handheld selfie in a bedroom at home, the person from the reference image in their own top lip-syncs to the beat, then raises both index fingers beside the top of the head like little horns. On the beat they push two plain white panels shut in front of the lens like double doors. Then the video cuts to part two and their outfit changes: the same person on a windy city street at night, glass towers and traffic lights behind, in an oversized black leather jacket over modest clothes, walking toward the camera with a confident look, one hand on the jacket collar. Same face, hair and any headwear in both parts. Punchy electronic beat, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical night still on a windy city street with glass towers and traffic lights: a confident young woman in a headscarf and an oversized black leather jacket over modest clothes walking toward the camera, one hand on the jacket collar",
+     "gender": "w"
+   }
  }
 };
 /* v-trend-extra: الحدّ ٢٤٠ ← ٤٠٠ — المالك يكتب أكثر من جملة («دمج الكلمات») */
