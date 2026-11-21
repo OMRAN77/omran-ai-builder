@@ -127,3 +127,6 @@ store/
 
 # v-inspire: مصادر تجارب «الإلهام» (النواة والقوالب) — المنشور هو inspire/city/*.html المبنيّ منها.
 inspire/src/
+
+# v-blockworld: أدوات التحقّق من لعبة «عالم المكعبات» (لقطات واختبار لعب بـPlaywright) للمستودع لا للـCDN.
+blockworld/tools/
