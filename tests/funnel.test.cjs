@@ -456,6 +456,23 @@ test('١٥. الموجّه الحقيقيّ (api/system.js): طلب sendBeacon �
       assert.match(last[0][1], /^funnel\/day\/\d{4}-\d\d-\d\d$/);
     }
     assert.equal(calls.length, 2);
+    /* ما يفحصه الدخان على كلّ نشرة (scripts/smoke.mjs) بلا كتابة: الجسم النصّيّ نفسه — تقرير بلا رمز ← 403، وحدث خارج القائمة ← 204 */
+    const beacon = async (body) => {
+      const out = { status: 0, ended: false };
+      const res = { headersSent: false, setHeader() { return this; }, status(c) { out.status = c; return this; }, json(v) { out.json = v; return this; }, end() { out.ended = true; return this; } };
+      await system({ method: 'POST', query: { action: 'funnel' }, body, headers: { host: HOST, 'user-agent': 'node', 'content-type': 'text/plain;charset=UTF-8' } }, res);
+      return out;
+    };
+    const rep = await beacon('{"op":"report"}'), junk = await beacon('{"e":"smoke"}');
+    assert.equal(rep.status, 403, 'التقرير بجسم نصّيّ بلا رمز');
+    assert.deepEqual(rep.json, { error: 'forbidden' });
+    assert.equal(junk.status, 204, 'حدث خارج القائمة');
+    assert.ok(junk.ended && junk.json === undefined);
+    assert.equal(calls.length, 2, 'فحص الدخان لا يكتب ولا يقرأ');
+    const smoke = read('scripts/smoke.mjs');
+    assert.ok(smoke.includes("const funnelPost = (body) => get('/api/system?action=funnel', { method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body });"), 'الدخان يرسل كما يرسل sendBeacon');
+    assert.ok(smoke.includes(`const fnRep = await funnelPost('{"op":"report"}'), fnEv = await funnelPost('{"e":"smoke"}');`), 'الدخان: الجسمان');
+    assert.ok(smoke.includes("fnRep.status === 403 ? ok(") && smoke.includes("fnEv.status === 204 ? ok("), 'الدخان: ٤٠٣ و٢٠٤');
     assert.deepEqual(other, [], 'لا قراءة ولا كتابة أخرى في التخزين لطلب بلا رمز');
   } finally {
     if (saved) require.cache[kvPath] = saved; else delete require.cache[kvPath];

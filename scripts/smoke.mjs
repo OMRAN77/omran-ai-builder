@@ -256,6 +256,12 @@ async function navRoutes() {
   // v-unverified-email: الجرد اليوميّ موصول (إعادة الكتابة ← system) — POST يُرفض ٤٠٥ بلا جرد؛ ٤٠٤ = غير موصول، والجدول يفشل بصمت.
   const sweepR = await get('/api/email-sweep', { method: 'POST', redirect: 'manual' });
   sweepR.status === 405 ? ok('/api/email-sweep [POST] → 405 (الجرد موصول ولم يُشغَّل)') : no('/api/email-sweep [POST] → ' + (sweepR.status || sweepR.err) + ' (المتوقّع ٤٠٥)');
+  // v-funnel: عدّاد الزوّار موصول — بلا كتابة. الجسم نصّيّ كما يرسله sendBeacon: تقرير بلا رمز مالك ← ٤٠٣ (فالجسم قُرئ والباب مقفل)،
+  // وحدث خارج القائمة ← ٢٠٤ بصمت. المسار يردّ ٢٠٤ حتّى عند العطل، فجسم لا يُقرأ يُسكت العدّ كلّه بلا أثر — و٤٠٣ هنا هو الدليل الوحيد من الخارج.
+  const funnelPost = (body) => get('/api/system?action=funnel', { method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body });
+  const fnRep = await funnelPost('{"op":"report"}'), fnEv = await funnelPost('{"e":"smoke"}');
+  fnRep.status === 403 ? ok('funnel [تقرير بلا رمز] → 403 (الجسم النصّيّ قُرئ، والتقرير للمالك وحده)') : no('funnel [تقرير بلا رمز] → ' + (fnRep.status || fnRep.err) + ' (المتوقّع ٤٠٣)');
+  fnEv.status === 204 ? ok('funnel [حدث مجهول] → 204 (موصول، ولم يُكتب شيء)') : no('funnel [حدث مجهول] → ' + (fnEv.status || fnEv.err) + ' (المتوقّع ٢٠٤)');
 }
 
 const vHash = await page();
