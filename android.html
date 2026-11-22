@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>om ai — Android</title>
+<!-- v-android-join (المالك ٢٢ نوفمبر: «اريد رابط واحد فقط عشان يدخل»): رابط واحد للمختبرين بدل ثلاثة. التطبيق في الاختبار المغلق، ورابط
+     المتجر يعطي «لم يتم العثور على عنوان URL» لمن لم ينضمّ — فالترتيب إلزاميّ: المجموعة ← الموافقة ← التنزيل. عربيّ وإنجليزيّ حسب لغة الجهاز
+     (?lang=en يفرض الإنجليزيّة). الروابط نفسها في بطاقة الدعوة داخل التطبيق (PLAY_TEST في app-10). -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="om ai">
+<meta property="og:title" content="جرّب om ai على أندرويد قبل الكلّ">
+<meta property="og:description" content="٣ خطوات: انضمّ ← فعّل الاختبار ← نزّل من Google Play">
+<meta property="og:image" content="https://omran-ai-builder.vercel.app/icons/om-ai-poster.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/icons/favicon-32-v2.png?icon=black-20261022">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=black-20261022">
+<style>
+:root { --bg: #090a0d; --card: #121318; --gold: #d4af37; --text: #f4f1e8; --muted: #a9a59a; --done: #3ddc84; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+main { max-width: 460px; margin: 0 auto; padding: 32px 16px calc(32px + env(safe-area-inset-bottom, 0px)); text-align: center; }
+.logo { width: 72px; height: 72px; border-radius: 20px; border: 1.5px solid var(--gold); box-shadow: 0 0 30px rgba(212,175,55,.22); display: block; margin: 0 auto 14px; object-fit: cover; }
+h1 { font-size: 24px; margin: 0 0 6px; }
+.sub { color: var(--muted); font-size: 15px; margin: 0 0 26px; line-height: 1.6; }
+ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; text-align: start; }
+li { background: var(--card); border: 1px solid rgba(212,175,55,.28); border-radius: 18px; padding: 16px; display: flex; gap: 14px; align-items: flex-start; }
+li.done { border-color: rgba(61,220,132,.55); }
+.num { flex: none; width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; background: rgba(212,175,55,.14); color: var(--gold); border: 1px solid rgba(212,175,55,.45); }
+li.done .num { background: rgba(61,220,132,.15); color: var(--done); border-color: rgba(61,220,132,.6); }
+.body { flex: 1; min-width: 0; }
+.body p { margin: 0 0 10px; font-size: 15px; line-height: 1.55; }
+.body small { display: block; color: var(--muted); font-size: 13px; margin: -4px 0 10px; line-height: 1.5; }
+.btn { display: block; width: 100%; text-align: center; text-decoration: none; font-weight: 800; font-size: 16px; padding: 13px 14px; border-radius: 14px; background: var(--gold); color: #111; }
+.btn:active { transform: scale(.98); }
+li.done .btn { background: transparent; color: var(--done); border: 1px solid rgba(61,220,132,.6); }
+.note { color: var(--muted); font-size: 13.5px; line-height: 1.6; margin: 22px 0 0; }
+.note b { color: var(--text); }
+.lang { margin-top: 18px; display: inline-block; color: var(--muted); font-size: 13px; text-decoration: underline; }
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="/icons/icon-192-v2.png" alt="om ai" width="72" height="72">
+  <h1 data-t="title">جرّب om ai قبل الكلّ</h1>
+  <p class="sub" data-t="sub">٣ خطوات بس، بالترتيب، من جوّالك الأندرويد</p>
+  <ol>
+    <li id="s1">
+      <span class="num">1</span>
+      <div class="body">
+        <p data-t="s1">انضمّ لمجموعة المختبرين</p>
+        <small data-t="s1h">اضغط «الانضمام إلى المجموعة» في الصفحة اللي تفتح، وارجع هنا</small>
+        <a class="btn" id="b1" href="https://groups.google.com/g/om-ai-testers" target="_blank" rel="noopener" data-t="b1">انضمّ للمختبرين</a>
+      </div>
+    </li>
+    <li id="s2">
+      <span class="num">2</span>
+      <div class="body">
+        <p data-t="s2">فعّل الاختبار</p>
+        <small data-t="s2h">اضغط «أصبح مختبِرًا»</small>
+        <a class="btn" id="b2" href="https://play.google.com/apps/testing/com.omran.aibuilder" target="_blank" rel="noopener" data-t="b2">فعّل الاختبار</a>
+      </div>
+    </li>
+    <li id="s3">
+      <span class="num">3</span>
+      <div class="body">
+        <p data-t="s3">نزّل التطبيق</p>
+        <small data-t="s3h">إذا قال «غير موجود»، انتظر دقيقتين بعد الخطوة ٢ وجرّب مرّة ثانية</small>
+        <a class="btn" id="b3" href="https://play.google.com/store/apps/details?id=com.omran.aibuilder" target="_blank" rel="noopener" data-t="b3">نزّل من Google Play</a>
+      </div>
+    </li>
+  </ol>
+  <p class="note" data-t="note"><b>مهمّ:</b> استعمل نفس حساب Gmail اللي في جوّالك في الخطوات الثلاث، وخلّ التطبيق عندك ١٤ يومًا. الآيفون ما ينفع: هذا لأندرويد فقط.</p>
+  <a class="lang" id="langSwitch" href="?lang=en">English</a>
+</main>
+<script>
+(function () {
+  var EN = {
+    title: 'Try om ai before everyone',
+    sub: 'Just 3 steps, in order, on your Android phone',
+    s1: 'Join the testers group', s1h: 'Tap “Join group” on the page that opens, then come back here', b1: 'Join the testers',
+    s2: 'Turn on testing', s2h: 'Tap “Become a tester”', b2: 'Turn on testing',
+    s3: 'Install the app', s3h: 'If it says “not found”, wait two minutes after step 2 and try again', b3: 'Get it on Google Play',
+    note: '<b>Important:</b> use the same Gmail account that is on your phone for all three steps, and keep the app for 14 days. iPhone will not work: Android only.'
+  };
+  var q = (location.search.match(/[?&]lang=(\w+)/) || [])[1];
+  var en = q ? q === 'en' : !/^ar\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || 'ar');
+  if (en) {
+    document.documentElement.lang = 'en';
+    document.documentElement.dir = 'ltr';
+    document.title = 'om ai — Android testing';
+    Array.prototype.forEach.call(document.querySelectorAll('[data-t]'), function (el) {
+      var k = el.getAttribute('data-t');
+      if (EN[k]) { if (k === 'note') el.innerHTML = EN[k]; else el.textContent = EN[k]; }
+    });
+    var sw = document.getElementById('langSwitch');
+    sw.textContent = 'العربية';
+    sw.setAttribute('href', '?lang=ar');
+  }
+  // خطوة ضغطها يرجع لها لونًا أخضر عند العودة (تذكير بالترتيب، لا إثبات انضمام)
+  function mark(n) { var li = document.getElementById('s' + n); if (li) li.className = 'done'; }
+  [1, 2, 3].forEach(function (n) {
+    try { if (localStorage.getItem('omAndroidStep' + n) === '1') mark(n); } catch (e) { /* guard-ok — بلا تخزين تبقى الخطوات بلونها */ }
+    document.getElementById('b' + n).addEventListener('click', function () {
+      try { localStorage.setItem('omAndroidStep' + n, '1'); } catch (e) { /* guard-ok — العلامة تذكير فقط */ }
+      setTimeout(function () { mark(n); }, 400);
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -361,6 +361,19 @@ module.exports = async (req, res) => {
     /* v-trend-hair-lock (المالك: «فعّلته وأعدت النشر» والوجه تغيّر): كلّ تخطٍّ للتبديل كان سطرًا في سجلّ Vercel وحده — الآن سطر في سجلّ
        المالك (log-error، كما fal-fallback). منتظَر بسقف ١٫٥ث ولا يرمي؛ الرسالة بلا توقيت فيجمع _errors.js تكرارها عدًّا وتنبيهًا واحدًا لكلّ سبب. */
     const ownerNote = (scope, msg) => require('./log-error.js').logErrorAndFlush(scope, new Error(msg));
+    /* v-face-lock-out (المالك ٢١ نوفمبر: «الترندات تغير ملامح الوجه… كلهم» ثمّ «عدلها»): تركيب الوجه مفعّل لهذا الطلب ومزوّده متوقّف
+       (رصيده خلص) — كانت الخطوة تُتخطّى بصمت ويُصنع فيديو مدفوع بوجه مرسوم. الآن كقاعدته لرصيد الصور والفيديو (v-credit-out):
+       لا فيديو، والنقاط والقفل يُردّان هنا، ورمز unavailable («الخدمة متوقّفة مؤقّتًا» بلغة الواجهة)، وسطر في سجلّ المالك.
+       اللبس والعطب العابر والسقف اليوميّ كما كانت: الفيديو يُصنع بالإطار نفسه. */
+    const faceLockOut = (fr) => !!(swapOpt && fr && !fr.swapped && require('./face-swap.js').providerOut(fr.swapWhy));
+    const faceLockStop = async (where, why) => {
+      await ownerNote('face-swap/' + where, 'trend=' + trendId + ' stopped why=' + String(why || '?').slice(0, 80));
+      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.veo_video, chargedPay);
+      if (videoLocked) await require('./abuse-guard.js').releaseVideoLock(videoLocked);
+      chargedUser = null; videoLocked = null; /* رُدّ هنا — catch لا يردّ ثانيةً */
+      const fail = require('./_videoFail.js').startFail(403, '');
+      res.status(fail.code).json(fail.body);
+    };
     if (swapTrend && gate.allowed && !swapOpt && (soloWanted || (body.trend && trendPeople.length > 1))) {
       await ownerNote('face-swap/gate', 'trend=' + trendId + ' swap=' + require('./face-swap.js').gateWhy(true));
     }
@@ -378,6 +391,7 @@ module.exports = async (req, res) => {
       if (swapOpt) gOpt.swap = swapOpt; // v-trend-face-swap: مطفأ = الخيارات كما كانت
       if (tp.PRESENT_SELF_TRENDS.has(trendId)) gOpt.presentSelf = true; // v-trends-identity-audit: نسخة كلّ واحد بعمره الحاليّ مقفلة (مع ageShift وحده)
       const frame = await require('./trend-people.js').groupFirstFrame(apiKey, trendPeople, tp.trendScene(promptText), ratio, Object.keys(gOpt).length ? gOpt : undefined);
+      if (frame && frame.b64 && faceLockOut(frame)) { await faceLockStop('group', frame.swapWhy); return; } // v-face-lock-out
       if (frame && frame.b64) {
         imageBase64 = frame.b64; imageMime = frame.mime; groupFramed = true;
         groupRefs = Array.isArray(frame.refs) && frame.refs.length ? frame.refs : null;
@@ -418,6 +432,7 @@ module.exports = async (req, res) => {
           detail: (omniTrend && !tp.SOLO_FRAME_TOY_TRENDS.has(trendId)) || cinemaOmni, hiRes: omniTrend || cinemaOmni }, swapOpt ? { swap: swapOpt } : {},
           /* v-trends-identity-audit: نسخته بعمره الحاليّ بشعرها ولحيتها ووضعيّتها من الصورة (احضن نفسك الصغير، كبسولة الزمن) */
           omniTrend && tp.PRESENT_SELF_TRENDS.has(trendId) ? { presentSelf: true } : {}));
+      if (solo && solo.b64 && faceLockOut(solo)) { await faceLockStop('solo', solo.swapWhy); return; } // v-face-lock-out
       if (solo && solo.b64) {
         imageBase64 = solo.b64; imageMime = solo.mime;
         /* v-two-people: الإطار كشف شخصين في الصورة الواحدة — الأمر بصيغة الجمع (كلّ واحد بوجهه) قبل القفل */

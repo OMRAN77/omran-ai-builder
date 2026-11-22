@@ -878,7 +878,7 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Locked vertical phone camera at chest height in a clean bright room. The person from the reference image, in their own clothes, faces the camera with the whole body and both feet in frame and dances one catchy routine on the beat: rolls both hands over each other in front of the chest, rolls the arms out to each side, raises both hands up beside the head, then sways the hips lightly from side to side with a confident smile, and repeats the sequence. Natural full-body motion, the camera never moves. Face, hair and any headwear exactly as in the reference. Upbeat Latin-pop dance beat, one continuous shot, photorealistic.",
+   "prompt": "Locked vertical phone camera at chest height in a clean bright room. The person from the reference image, in their own clothes, is framed from the knees up, faces the camera the whole time and dances one catchy routine on the beat: rolls both hands over each other in front of the chest, rolls the arms out to each side, raises both hands up beside the head, then sways the hips lightly from side to side with a confident smile, and repeats the sequence. Natural motion, the camera never moves. Face, hair and any headwear exactly as in the reference, face clearly visible throughout. Upbeat Latin-pop dance beat, one continuous shot, photorealistic.",
    "scenes": null,
    "preview": {
      "frame": "photorealistic vertical full-body still of a smiling young man in casual clothes dancing in a clean bright room, both hands rolling over each other in front of his chest, feet in frame",
@@ -890,10 +890,10 @@ const TRENDS = {
    "ratio": "720:1280",
    "photo": "req",
    "kind": "none",
-   "prompt": "Transform the person from the reference image into an adorable toddler version of themselves with the same facial features, standing in a cosy living room in a tiny bright-yellow puffer jacket and a chunky gold chain necklace, small sunglasses pushed up on the forehead. Locked vertical camera, whole body in frame. The toddler performs a cute wobbling sway dance on the beat: knees bouncing, shoulders rocking from side to side, little arms swinging and pointing, one small spin, then a confident final pose with arms crossed and a big grin. One continuous shot, catchy upbeat pop-dance tune, photorealistic.",
+   "prompt": "Locked vertical phone camera in a cosy living room. The person from the reference image, exactly as they are, same face, same age and in their own clothes, is framed from the knees up and faces the camera the whole time, performing the cute wobbling sway dance on the beat: knees bouncing, shoulders rocking from side to side, arms swinging and pointing, then a confident final pose with arms crossed and a big grin. Face, hair and any headwear exactly as in the reference, face clearly visible throughout. One continuous shot, catchy upbeat pop-dance tune, photorealistic.",
    "scenes": null,
    "preview": {
-     "frame": "photorealistic vertical full-body still of an adorable toddler in a tiny bright-yellow puffer jacket and a chunky gold chain necklace, small sunglasses pushed up on the forehead, mid-dance with arms out in a cosy living room, big grin",
+     "frame": "photorealistic vertical still of a smiling young man in casual clothes framed from the knees up in a cosy living room, mid sway dance with shoulders tilted and arms out, facing the camera",
      "gender": "m"
    }
  },

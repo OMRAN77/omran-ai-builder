@@ -194,16 +194,20 @@ test('١٠. ترندات نوفمبر الأربعة: آخر القائمة، ١
     assert.doesNotMatch(c.title.ml + c.sub.ml, /(^|\s)നീ(\s|$)|നിന്റെ|നിന്നെ/);
   }
   /* الماشي والراقص = إطار شخص في مشهد بعمره؛ الأزواج حول النار من المشهد فـ«الأعزب» ليس مشهد شخص وحده */
-  for (const k of ['lonelywalk', 'chestroll']) assert.ok(TP.SOLO_FRAME_TRENDS.has(k), k);
-  assert.ok(!TP.ALONE_SCENE_TRENDS.has('lonelywalk') && TP.ALONE_SCENE_TRENDS.has('chestroll') && TP.ALONE_SCENE_TRENDS.has('panelcut'));
-  /* البيبي = عمر آخر يبقى عليه (إطار مبنيّ، بلا مرجع البالغ ولا تبديل الوجه) */
-  assert.ok(TP.OMNI_FRAME_TRENDS.has('babysway') && TP.AGE_SHIFT_TRENDS.has('babysway') && !TP.SOLO_FRAME_TRENDS.has('babysway'));
+  for (const k of ['lonelywalk', 'chestroll', 'babysway']) assert.ok(TP.SOLO_FRAME_TRENDS.has(k), k);
+  assert.ok(!TP.ALONE_SCENE_TRENDS.has('lonelywalk') && TP.ALONE_SCENE_TRENDS.has('chestroll') && TP.ALONE_SCENE_TRENDS.has('panelcut') && TP.ALONE_SCENE_TRENDS.has('babysway'));
+  /* v-babysway-asis (المالك بعد أوّل تجربة: «الترندات تغير ملامح الوجه»): «رقصة البيبي» كانت تحوّل صاحب الصورة طفلًا — عمر آخر = وجه يُرسم
+     من جديد بلا مرجع ولا تبديل وجه. الأصل أنّ من في الصورة نفسه يرقص، فصار بعمره ووجهه ولبسه: قفل الإطار ومرجع الوجه يعملان له. */
+  assert.ok(!TP.AGE_SHIFT_TRENDS.has('babysway') && !TP.OMNI_FRAME_TRENDS.has('babysway'), 'babysway: ليس عمرًا آخر');
+  assert.doesNotMatch(TRENDS.babysway.prompt + ' ' + TRENDS.babysway.preview.frame, /toddler|baby|Transform|younger|sunglasses|spin/i, 'babysway: لا تحويل ولا ما يخفي الوجه أو يديره عن العدسة');
   /* الغرفة ← الشارع = اللبس والمكان يتبدّلان أثناء الفيديو بقطع مقصود (بلا قفل الإطار، ولا يُطلب «بلا قطع») */
   assert.ok(TP.OMNI_MORPH_TRENDS.has('panelcut') && TP.MULTI_SHOT_TRENDS.has('panelcut') && !TP.SOLO_FRAME_TRENDS.has('panelcut'));
   /* كلّ قالب على وصف مصادره */
   for (const re of [/cold village lane/, /couples sit close together around small fires/, /worn, torn grey coat/, /shivering/, /dry, resigned expression/, /keep walking/]) assert.match(TRENDS.lonelywalk.prompt, re);
-  for (const re of [/rolls both hands over each other in front of the chest/, /rolls the arms out to each side/, /raises both hands up beside the head/, /sways the hips lightly/]) assert.match(TRENDS.chestroll.prompt, re);
-  for (const re of [/toddler version of themselves with the same facial features/, /bright-yellow puffer jacket/, /gold chain necklace/, /wobbling sway dance/, /sunglasses pushed up on the forehead/]) assert.match(TRENDS.babysway.prompt, re);
+  for (const re of [/rolls both hands over each other in front of the chest/, /rolls the arms out to each side/, /raises both hands up beside the head/, /sways the hips lightly/, /framed from the knees up, faces the camera the whole time/]) assert.match(TRENDS.chestroll.prompt, re); // v-babysway-asis: الوجه كبير في الإطار
+  for (const re of [/exactly as they are, same face, same age and in their own clothes/, /framed from the knees up/, /faces the camera the whole time/, /wobbling sway dance/, /Face, hair and any headwear exactly as in the reference/]) assert.match(TRENDS.babysway.prompt, re);
+  const bs = D.trends.find((t) => t.key === 'babysway');
+  assert.equal(bs.title.ar, 'رقصة البيبي'); assert.doesNotMatch(bs.sub.ar + bs.sub.en, /نسختك وأنت بيبي|toddler/);
   for (const re of [/selfie in a bedroom at home/, /lip-syncs/, /both index fingers beside the top of the head/, /two plain white panels shut/, /cuts to part two and their outfit changes/, /windy city street at night/, /oversized black leather jacket over modest clothes/]) assert.match(TRENDS.panelcut.prompt, re);
   /* عيد الاتحاد قائم ولم يُكرَّر */
   assert.ok(TRENDS.nationalday && keys.filter((k) => /national/i.test(k)).length === 1);
