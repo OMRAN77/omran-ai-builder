@@ -471,12 +471,22 @@ export function createPlay(o) {
       if (doubled(now, lastJump)) { setFlying(!st.flying); lastJump = -1e9; } else lastJump = now;     // double tap: fly / stop flying
       btn.jump = true;
     }, () => { btn.jump = false; });
-    // the way down while flying: the same look as the jump button, just above it
+    // the way down while flying: a button of its own, put in the first free place beside the jump button
     if (T.jump) {
       downBtn = document.createElement('button');
-      downBtn.type = 'button'; downBtn.className = T.jump.className; downBtn.dataset.act = 'down'; downBtn.textContent = 'نزول'; downBtn.hidden = true;
-      downBtn.style.cssText = 'position:fixed;z-index:30;pointer-events:auto;touch-action:none;';
-      const seat = () => { const r = T.jump.getBoundingClientRect(); downBtn.style.left = r.left + 'px'; downBtn.style.top = Math.max(4, r.top - r.height - 10) + 'px'; downBtn.style.width = r.width + 'px'; downBtn.style.height = r.height + 'px'; };
+      downBtn.type = 'button'; downBtn.dataset.act = 'down'; downBtn.textContent = 'نزول'; downBtn.hidden = true;
+      downBtn.style.cssText = 'position:fixed;z-index:30;width:64px;height:46px;padding:0;border-radius:12px;border:2px solid rgba(255,255,255,.7);background:rgba(10,14,20,.62);color:#fff;font:700 16px/1 system-ui,sans-serif;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;';
+      const css = document.createElement('style'); css.textContent = 'button[data-act="down"][hidden]{display:none}button[data-act="down"].down{background:rgba(255,255,255,.35)}'; document.head.appendChild(css);
+      const seat = () => {
+        const j = T.jump.getBoundingClientRect(), w = 64, h = 46, gap = 8;
+        const others = [T.stick, T.dig, T.place, ...document.querySelectorAll('[data-act="bag"], [data-act="pause"]')].filter((e) => e && e.offsetParent).map((e) => e.getBoundingClientRect());
+        const free = (x, y) => x >= 4 && y >= 4 && x + w <= innerWidth - 4 && y + h <= innerHeight - 4 && others.every((r) => x + w + 4 < r.left || x > r.right + 4 || y + h + 4 < r.top || y > r.bottom + 4);
+        const cx = j.left + j.width / 2 - w / 2, cy = j.top + j.height / 2 - h / 2;
+        const spots = [[cx, j.top - h - gap], [j.left - w - gap, cy], [cx, j.top - 2 * h - 2 * gap], [j.left - w - gap, j.top - h - gap], [j.right - w, j.top - h - gap], [j.left - 2 * w - 2 * gap, cy]];
+        let at = spots.find(([x, y]) => free(x, y));
+        if (!at) at = [Math.min(innerWidth - w - 4, Math.max(4, cx)), Math.max(4, j.top - h - gap)];
+        downBtn.style.left = at[0] + 'px'; downBtn.style.top = at[1] + 'px';
+      };
       document.body.appendChild(downBtn);
       new MutationObserver(() => { if (!downBtn.hidden) seat(); }).observe(downBtn, { attributes: true, attributeFilter: ['hidden'] });
       window.addEventListener('resize', () => { if (!downBtn.hidden) seat(); });
