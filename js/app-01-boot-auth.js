@@ -1325,6 +1325,20 @@ try{
     } catch(e){ __swallow(e, 'auth:google-login-hint'); }
   }
 
+  /* v-google-inapp (٢٢ نوفمبر ٢٠٢٦، مسبار رحلة الزائر: متابع تيك توك يضغط «المتابعة عبر Google» ← يعلق):
+     متصفّحات تطبيقات التواصل (تيك توك، إنستغرام، فيسبوك، سناب، X، لينكدإن) ويب-فيو، وجوجل ترفض الدخول منها
+     (403 disallowed_useragent). الدالّة تعيد رابطًا يفتح الصفحة نفسها في المتصفّح الخارجيّ، أو '' لغيرها:
+     أندرويد intent:// (النظام يختار المتصفّح الافتراضيّ)، آيفون x-safari-https:// (iOS 17+). لا تنقّل داخل الويب-فيو. */
+  function googleInAppBrowser(ua, absUrl){
+    const u = String(ua || '');
+    if(!/musical_ly|BytedanceWebview|TikTok|trill_|Instagram|Snapchat|FBAN|FBAV|FB_IAB|FB4A|Twitter|LinkedInApp/i.test(u)) return '';
+    const rest = String(absUrl || '').replace(/^https?:\/\//i, '');
+    if(!rest) return '';
+    if(/Android/i.test(u)) return 'intent://' + rest + '#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end';
+    if(/iPhone|iPad|iPod/i.test(u)) return 'x-safari-https://' + rest;
+    return '';
+  }
+
   const googleBtnEl = $('#authGoogleBtn');
   if(googleBtnEl){
     googleBtnEl.onclick = () => {
@@ -1372,6 +1386,23 @@ try{
             bx.textContent = authMsg('axBootGoogleInBrowser', 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.', 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.'); // v-audit-boot (cli-boot-6)
           }
         } catch(e){ __swallow(e, 'auth:google-hint'); }
+        return;
+      }
+      /* v-google-inapp: متصفّح تطبيق تواصل ← جوجل في المتصفّح الخارجيّ بـ&app=1 (صفحة «ارجع للتطبيق» هناك)، وهذا التبويب
+         يبقى مكانه فيستلم جسر oauth-claim أدناه الجلسة عند العودة. يسبق فحص «; wv)» التالي: ويب-فيو هذه التطبيقات على
+         أندرويد يحمل العلامة نفسها، فكان يحمّل جوجل داخله ويُرفض. */
+      let inAppOut = '';
+      try { inAppOut = googleInAppBrowser(navigator.userAgent || '', location.origin + gStartUrl + '&app=1'); } catch(e){ __swallow(e, 'auth:google-inapp-detect'); }
+      if (inAppOut) {
+        try {
+          const bx = $('#authError');
+          if (bx) {
+            bx.style.color = 'var(--accent, #7c6cff)';
+            bx.textContent = authMsg('axBootGoogleInBrowser', 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.', 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.');
+          }
+        } catch(e){ __swallow(e, 'auth:google-hint-inapp'); }
+        noteSession('جوجل-متصفّح-تواصل');
+        try { window.location.href = inAppOut; } catch(e){ __swallow(e, 'auth:google-inapp-open'); }
         return;
       }
       /* v-google-login-help: غلاف أندرويد الخام (WebView — MahaWebViewFallbackActivity، «; wv)» في هويّته) يفتح جوجل في
