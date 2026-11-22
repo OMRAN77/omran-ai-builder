@@ -140,6 +140,8 @@ function beast4(o) {
   add(bw, bh, bl, 0, by, 0, o.wool ? mat(o.wool) : mc);
   if (o.belly != null && !o.wool) add(bw * 0.86, bh * 0.3, bl * 0.84, 0, by - bh * 0.38, 0, mb);
   if (o.patch != null) { const mp = mat(o.patch); add(bw * 1.02, bh * 0.5, bl * 0.28, 0, by + bh * 0.12, bl * 0.12, mp); add(bw * 1.02, bh * 0.4, bl * 0.2, 0, by - bh * 0.05, -bl * 0.3, mp); }
+  if (o.stripes != null) { const mk = mat(o.stripes); for (let i = 0; i < 6; i++) add(bw * 1.02, bh * 0.9, 0.05, 0, by + bh * 0.04, -bl / 2 + bl * (i + 0.7) / 6.4, mk); }
+  if (o.spots != null) { const mk = mat(o.spots); for (let i = 0; i < 9; i++) { const sx = i % 2 ? 1 : -1; add(0.02, 0.07, 0.07, sx * (bw / 2 + 0.005), by + ((i * 37) % 5 - 2) * bh * 0.14, -bl / 2 + bl * (i + 0.5) / 9, mk); } }
   if (o.hump) { add(bw * 0.7, bh * 0.55, bl * 0.34, 0, by + bh * 0.68, -bl * 0.05, mc); add(bw * 0.5, bh * 0.25, bl * 0.24, 0, by + bh * 1.02, -bl * 0.05, mc); }
   // neck and head at the front (+z)
   let hx = bl / 2, hy = by + bh * 0.25;
@@ -182,6 +184,75 @@ export const cat = (coat = 0xd39a52) => beast4({ body: [0.28, 0.28, 0.66], leg: 
 export const dog = (coat = 0xc9a070) => beast4({ body: [0.36, 0.38, 0.8], leg: [0.12, 0.38], head: [0.32, 0.3, 0.32], snout: [0.18, 0.14, 0.16], ears: 'droop', tail: 'up', coat, belly: 0xefe2cc, snoutCol: 0xefe2cc, dark: 0x1e1915 });
 export const fox = () => beast4({ body: [0.3, 0.3, 0.72], leg: [0.09, 0.3], head: [0.3, 0.26, 0.28], snout: [0.14, 0.1, 0.16], ears: 'up', tail: 'fluff', coat: 0xd8662a, belly: 0xf6ecdc, snoutCol: 0xf6ecdc, legCol: 0x2a201a, dark: 0x1a1512 });
 export const polarBear = () => bear({ coat: 0xeef0ec, snout: 0xd9d6cc });
+
+export const llama = () => beast4({ body: [0.5, 0.56, 0.92], leg: [0.14, 0.7], neck: [0.24, 0.62, 0.05], head: [0.26, 0.28, 0.34], snout: [0.18, 0.14, 0.12], ears: 'up', tail: 'short', coat: 0xe6dcc8, wool: 0xefe6d4, face: 0xe6dcc8, belly: 0xd8ccb4, dark: 0x5a4a3a });
+export const zebra = () => beast4({ body: [0.56, 0.62, 1.3], leg: [0.15, 0.86], neck: [0.28, 0.66, 0.55], head: [0.28, 0.32, 0.56], ears: 'up', mane: 0x1a1a1c, tail: 'long', coat: 0xf2f0ea, stripes: 0x1e1e22, dark: 0x1a1a1c });
+export const leopard = () => beast4({ body: [0.36, 0.38, 0.95], leg: [0.11, 0.42], head: [0.32, 0.28, 0.3], snout: [0.16, 0.1, 0.08], ears: 'round', tail: 'up', coat: 0xd9a845, belly: 0xf3e2b8, snoutCol: 0xf3e2b8, spots: 0x3a2a16, dark: 0x2a1f12 });
+export const wolf = () => beast4({ body: [0.38, 0.4, 0.86], leg: [0.12, 0.44], head: [0.32, 0.3, 0.32], snout: [0.16, 0.14, 0.18], ears: 'up', tail: 'fluff', coat: 0x9aa0a6, belly: 0xdfe2e4, snoutCol: 0xdfe2e4, dark: 0x1e2024 });
+export const blackSheep = () => beast4({ body: [0.72, 0.64, 1.0], leg: [0.15, 0.46], head: [0.32, 0.36, 0.38], ears: 'droop', tail: 'puff', coat: 0x2a2420, wool: 0x3a3430, face: 0x1e1a17, legCol: 0x1e1a17, dark: 0x141210 });
+/** A panda. */
+export function panda() {
+  const { g, add, limb } = kit(), mw = mat(0xf2f0ea), mb = mat(0x1f1f22), e = mat(0x14110e);
+  add(0.82, 0.7, 1.2, 0, 0.82, 0, mw); add(0.84, 0.4, 0.4, 0, 0.92, 0.32, mb);
+  add(0.54, 0.5, 0.46, 0, 1.0, 0.82, mw); add(0.24, 0.16, 0.14, 0, 0.92, 1.1, mw); add(0.1, 0.07, 0.04, 0, 0.97, 1.18, mb);
+  for (const sx of [-1, 1]) { add(0.15, 0.13, 0.04, sx * 0.13, 1.04, 1.06, mb); add(0.05, 0.05, 0.02, sx * 0.13, 1.05, 1.085, e); add(0.16, 0.16, 0.08, sx * 0.21, 1.3, 0.78, mb); }
+  const legs = []; for (const sx of [-1, 1]) for (const sz of [1, -1]) legs.push(limb(0.26, 0.5, 0.28, sx * 0.26, 0.5, sz * 0.4, mb));
+  g.userData.anim = walk4(legs);
+  return g;
+}
+/** A bee: a small striped flyer with beating wings. */
+export function bee() {
+  const { g, add } = kit(), my = mat(0xf0c030), mb = mat(0x2a2016), mw = new THREE.MeshStandardMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0.55, depthWrite: false });
+  add(0.24, 0.22, 0.32, 0, 0.2, 0, my); for (const z of [-0.06, 0.06]) add(0.25, 0.23, 0.04, 0, 0.2, z, mb); add(0.02, 0.02, 0.06, 0, 0.18, -0.18, mb);
+  for (const sx of [-1, 1]) add(0.05, 0.05, 0.02, sx * 0.07, 0.24, 0.161, mb);
+  const wings = [-1, 1].map((sx) => { const p = new THREE.Group(); p.position.set(sx * 0.06, 0.32, 0); const w = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.01, 0.14), mw); w.position.set(sx * 0.1, 0, 0); p.add(w); g.add(p); return p; });
+  g.userData.anim = (t) => { const a = Math.sin(t * 40) * 0.6; wings[0].rotation.z = -a; wings[1].rotation.z = a; };
+  return g;
+}
+/** A bat. */
+export function bat() {
+  const { g, add } = kit(), mb = mat(0x3a2e2a), mw = mat(0x2a201e);
+  add(0.16, 0.2, 0.16, 0, 0.2, 0, mb); add(0.14, 0.12, 0.12, 0, 0.34, 0.02, mb);
+  for (const sx of [-1, 1]) { add(0.04, 0.08, 0.03, sx * 0.05, 0.43, 0.02, mb); add(0.03, 0.03, 0.02, sx * 0.04, 0.35, 0.085, mat(0xff5a3a)); }
+  const wings = [-1, 1].map((sx) => { const p = new THREE.Group(); p.position.set(sx * 0.08, 0.24, 0); const w = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.02, 0.2), mw); w.position.set(sx * 0.16, 0, 0); p.add(w); g.add(p); return p; });
+  g.userData.anim = (t) => { const a = Math.sin(t * 18) * 0.8; wings[0].rotation.z = -a; wings[1].rotation.z = a; };
+  return g;
+}
+/** A cave spider: eight legs, red eyes. A monster. */
+export function spider() {
+  const { g, add } = kit(), mb = mat(0x3a2e28), md = mat(0x241c18), me = new THREE.MeshStandardMaterial({ color: 0xff3020, emissive: 0xff3020, emissiveIntensity: 0.9 });
+  add(0.7, 0.42, 0.8, 0, 0.5, -0.2, mb); add(0.5, 0.36, 0.42, 0, 0.48, 0.38, md);
+  for (const [x, y] of [[-0.12, 0.56], [0.12, 0.56], [-0.06, 0.48], [0.06, 0.48]]) add(0.07, 0.07, 0.02, x, y, 0.595, me);
+  const legs = [];
+  for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) { const p = new THREE.Group(); p.position.set(sx * 0.25, 0.5, 0.36 - i * 0.2); const up = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.07, 0.07), md); up.position.set(sx * 0.3, 0.12, 0); up.rotation.z = sx * 0.45; p.add(up); const lo = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.06), md); lo.position.set(sx * 0.6, -0.12, 0); p.add(lo); g.add(p); legs.push([p, i, sx]); }
+  g.userData.anim = (t, moving) => { for (const [p, i] of legs) p.rotation.y = moving ? Math.sin(t * 12 + i * 1.6) * 0.3 : 0; };
+  return g;
+}
+/** A puffer fish, round and spiny. */
+export function puffer() {
+  const { g, add } = kit(), my = mat(0xe8c040, { roughness: 0.5 }), mb = mat(0xf6ecc8), ms = mat(0xb08a2a);
+  add(0.4, 0.4, 0.4, 0, 0.3, 0, my); add(0.36, 0.12, 0.36, 0, 0.13, 0, mb);
+  for (const [x, y, z] of [[0.22, 0.36, 0], [-0.22, 0.36, 0], [0, 0.52, 0], [0, 0.36, -0.22], [0.16, 0.46, 0.12], [-0.16, 0.46, 0.12], [0.16, 0.2, -0.14], [-0.16, 0.2, -0.14]]) add(0.06, 0.06, 0.06, x, y, z, ms);
+  for (const sx of [-1, 1]) add(0.06, 0.06, 0.02, sx * 0.1, 0.36, 0.205, mat(0x14110e));
+  g.userData.anim = (t) => { g.children[0].scale.setScalar(1 + Math.sin(t * 2) * 0.05); };
+  return g;
+}
+/** A squid; with glow, the luminous one of the alien sea. */
+export function squid(glow) {
+  const { g, add } = kit(), ms = glow ? new THREE.MeshStandardMaterial({ color: glow, emissive: glow, emissiveIntensity: 0.45, roughness: 0.4 }) : mat(0x6a7a96, { roughness: 0.5 }), mt = glow ? ms : mat(0x55647e);
+  add(0.36, 0.36, 0.7, 0, 0.5, 0.1, ms); add(0.5, 0.06, 0.24, 0, 0.5, 0.42, ms);
+  for (const sx of [-1, 1]) add(0.06, 0.08, 0.02, sx * 0.19, 0.52, -0.1, mat(0x101418));
+  const arms = []; for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2, p = new THREE.Group(); p.position.set(Math.sin(a) * 0.12, 0.5 + Math.cos(a) * 0.12, -0.25); const m = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.5), mt); m.position.set(0, 0, -0.25); p.add(m); g.add(p); arms.push([p, i]); }
+  g.userData.anim = (t) => { for (const [p, i] of arms) { p.rotation.x = Math.sin(t * 3 + i) * 0.25; p.rotation.y = Math.cos(t * 3 + i) * 0.2; } };
+  return g;
+}
+/** An axolotl: a small pink salamander of the ponds with frilly gills. */
+export function axolotl(skin = 0xf3a0b8) {
+  const { g, add } = kit(), mp = mat(skin), mg = mat(0xd25a82);
+  add(0.22, 0.16, 0.5, 0, 0.12, 0, mp); add(0.26, 0.18, 0.22, 0, 0.14, 0.34, mp); add(0.04, 0.12, 0.3, 0, 0.14, -0.38, mp);
+  for (const sx of [-1, 1]) { add(0.03, 0.03, 0.02, sx * 0.08, 0.18, 0.455, mat(0x14110e)); for (const y of [0.08, 0.16, 0.24]) add(0.1, 0.04, 0.04, sx * 0.17, y + 0.02, 0.3, mg); add(0.06, 0.08, 0.06, sx * 0.13, 0.04, 0.16, mp); add(0.06, 0.08, 0.06, sx * 0.13, 0.04, -0.14, mp); }
+  return g;
+}
 
 /** A penguin: it waddles. */
 export function penguin() {
@@ -250,6 +321,10 @@ export function extraKinds(world) {
     { key: 'fish', name: 'سمكة', kind: 'animal', make: () => fish(tint), hp: 3, speed: 1.9, radius: 0.4, height: 0.4, max: 5, swim: true, tame: false, drops: [[K.FISH, 1]] },
     { key: 'shrimp', name: 'ربيان', kind: 'animal', make: () => shrimp(), hp: 2, speed: 1.2, radius: 0.32, height: 0.3, max: 3, swim: true, tame: false, drops: [[K.SHRIMP, 2]] },
     { key: 'octopus', name: 'أخطبوط', kind: 'animal', make: () => octopus(world === 'kawkab' ? { skin: 0x7a5ad6, spot: 0xc9b8ff } : {}), hp: 8, speed: 1.1, radius: 0.55, height: 0.9, max: 1, swim: true, tame: false, drops: [[K.PEARL, 1]] },
+    { key: 'puffer', name: 'سمكة منفوخة', kind: 'animal', make: puffer, hp: 3, speed: 1.0, radius: 0.35, height: 0.5, max: 1, swim: true, tame: false, drops: [[K.FISH, 1]] },
+    { key: 'reef', name: 'سمكة ملوّنة', kind: 'animal', make: () => fish(world === 'kawkab' ? { body: 0xff6ad0, belly: 0xfff0fa, fin: 0x7df1ff } : { body: 0x3a8adf, belly: 0xf6e04a, fin: 0xf6e04a }), hp: 2, speed: 2.2, radius: 0.35, height: 0.4, max: 3, swim: true, tame: false, drops: [[K.FISH, 1]] },
+    { key: 'squid', name: world === 'kawkab' ? 'حبّار الفضاء' : 'حبّار', kind: 'animal', make: () => squid(world === 'kawkab' ? 0x5ff0e0 : 0), hp: 6, speed: 1.4, radius: 0.5, height: 0.8, max: 1, swim: true, tame: false, drops: [[K.SHRIMP, 1]] },
+    { key: 'axolotl', name: 'أكسولوتل', kind: 'animal', make: () => axolotl(), hp: 3, speed: 1.2, radius: 0.3, height: 0.3, max: 1, swim: true, likes: 'meat', drops: [] },
     { key: 'seaweed', name: 'طحالب', kind: 'animal', make: () => seaweed(world === 'kawkab' ? { leaf: 0x2a8f9a, tip: 0x6fe6d8 } : {}), hp: 1, speed: 0, radius: 0.42, height: 1.0, max: 5, swim: true, still: true, drops: [[K.SEAWEED, 2]] },
   ];
   if (world === 'waha') return [
@@ -266,6 +341,8 @@ export function extraKinds(world) {
     { key: 'deer', name: 'غزال', kind: 'animal', make: deer, hp: 9, speed: 3.2, radius: 0.6, height: 1.8, max: 2, drops: [[K.MEAT, 2], [K.FUR, 1]] },
     { key: 'fox', name: 'ثعلب', kind: 'animal', make: fox, hp: 6, speed: 3.0, radius: 0.4, height: 0.7, max: 1, likes: 'meat', drops: [[K.FUR, 1]] },
     { key: 'rabbit', name: 'أرنب', kind: 'animal', make: () => rabbit(0x8a7a6a), hp: 3, speed: 3.0, radius: 0.3, height: 0.6, max: 2, drops: [[K.MEAT, 1], [K.FUR, 1]] },
+    { key: 'spider', name: 'عنكبوت الكهف', kind: 'monster', make: spider, hp: 12, speed: 2.8, radius: 0.8, height: 0.9, max: 1, dmg: 6 },
+    { key: 'bat', name: 'خفّاش', kind: 'animal', make: bat, hp: 2, speed: 3.0, radius: 0.35, height: 0.45, max: 2, fly: 3.8, tame: false, drops: [] },
     { key: 'crow', name: 'غراب', kind: 'animal', make: () => bird({ body: 0x23262b, belly: 0x33373d, beak: 0x4a4d52 }), hp: 2, speed: 2.8, radius: 0.4, height: 0.45, max: 3, fly: 3.6, perch: true, drops: [[K.FEATHER, 1]] },
     ...sea,
   ];
@@ -291,6 +368,14 @@ export function landKinds(world, landAt) {
     { key: 'sheep', name: 'خروف', kind: 'animal', make: sheep, hp: 9, speed: 1.6, radius: 0.65, height: 1.2, max: 3, drops: [[K.MEAT, 1], [K.WOOL, 2]], where: in_('plains', 'mountain', 'forest') },
     { key: 'goat', name: 'عنز', kind: 'animal', make: () => goat(), hp: 8, speed: 2.0, radius: 0.55, height: 1.05, max: 2, drops: [[K.MEAT, 1], [K.FUR, 1]], where: in_('desert', 'plains', 'mountain') },
     { key: 'hen', name: 'دياية', kind: 'animal', make: () => hen(), hp: 4, speed: 1.7, radius: 0.4, height: 0.9, max: 3, drops: [[K.CHICKEN, 1], [K.FEATHER, 2]], where: in_('plains', 'forest', 'desert') },
+    { key: 'blacksheep', name: 'خروف أسود', kind: 'animal', make: blackSheep, hp: 9, speed: 1.6, radius: 0.65, height: 1.2, max: 1, drops: [[K.MEAT, 1], [K.WOOL, 2]], where: in_('plains', 'mountain') },
+    { key: 'llama', name: 'لاما', kind: 'animal', make: llama, hp: 14, speed: 2.0, radius: 0.7, height: 2.0, max: 2, likes: PLANT, drops: [[K.WOOL, 2]], where: in_('mountain', 'plains') },
+    { key: 'zebra', name: 'حمار وحشي', kind: 'animal', make: zebra, hp: 14, speed: 3.2, radius: 0.8, height: 1.8, max: 2, likes: PLANT, drops: [], where: in_('plains', 'desert') },
+    { key: 'panda', name: 'باندا', kind: 'animal', make: panda, hp: 20, speed: 1.2, radius: 0.85, height: 1.4, max: 1, likes: PLANT, drops: [], where: in_('forest') },
+    { key: 'leopard', name: 'فهد', kind: 'animal', make: leopard, hp: 12, speed: 3.6, radius: 0.55, height: 0.9, max: 1, likes: MEAT, fights: true, dmg: 6, drops: [[K.FUR, 1]], where: in_('plains', 'desert') },
+    { key: 'wolf', name: 'ذيب', kind: 'animal', make: wolf, hp: 12, speed: 3.2, radius: 0.55, height: 0.95, max: 2, likes: MEAT, fights: true, dmg: 5, drops: [[K.FUR, 1]], where: in_('snow', 'forest', 'mountain') },
+    { key: 'bee', name: 'نحلة', kind: 'animal', make: bee, hp: 1, speed: 2.4, radius: 0.25, height: 0.35, max: 2, fly: 1.8, tame: false, drops: [], where: in_('plains', 'forest') },
+    { key: 'bat', name: 'خفّاش', kind: 'animal', make: bat, hp: 2, speed: 3.0, radius: 0.35, height: 0.45, max: 1, fly: 3.8, tame: false, drops: [], where: in_('mountain', 'forest', 'snow') },
     { key: 'duck', name: 'بطة', kind: 'animal', make: duck, hp: 3, speed: 1.5, radius: 0.4, height: 0.7, max: 2, drops: [[K.CHICKEN, 1], [K.FEATHER, 1]], where: in_('plains', 'beach', 'forest') },
     // the ones that are befriended, not hunted: fed from the hand they follow (nothing is gained by striking them)
     { key: 'horse', name: 'حصان', kind: 'animal', make: () => horse(), hp: 16, speed: 3.0, radius: 0.85, height: 1.9, max: 2, likes: PLANT, drops: [], where: in_('plains') },

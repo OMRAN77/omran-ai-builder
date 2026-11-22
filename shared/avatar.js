@@ -44,6 +44,22 @@ export function makeAvatar() {
   for (const sx of [-1, 1]) box(0.13, 0.13, 0.04, M2.goggle, sx * 0.11, 1.61, 0.25, faces.mask);
   faces.bubble = new THREE.Group(); group.add(faces.bubble);
   box(0.62, 0.62, 0.62, M2.glass, 0, 1.6, 0, faces.bubble); box(0.64, 0.08, 0.64, M2.collar, 0, 1.3, 0, faces.bubble);
+  // more faces: a dark screen with two lit eyes, a band of goggles, a closed helmet with a visor, a machine's lit eyes
+  faces.screen = new THREE.Group(); group.add(faces.screen);
+  box(0.44, 0.4, 0.02, M2.screen, 0, 1.57, 0.236, faces.screen);
+  for (const sx of [-1, 1]) box(0.12, 0.05, 0.02, M2.heart, sx * 0.1, 1.6, 0.249, faces.screen);
+  box(0.2, 0.03, 0.02, M2.heart, 0, 1.48, 0.249, faces.screen);
+  faces.goggles = new THREE.Group(); group.add(faces.goggles);
+  box(0.5, 0.13, 0.08, M2.visor, 0, 1.61, 0.24, faces.goggles); box(0.52, 0.05, 0.5, M2.screen, 0, 1.61, 0, faces.goggles);
+  faces.helm = new THREE.Group(); group.add(faces.helm);
+  { const shell = new THREE.MeshStandardMaterial({ color: 0xf1f1ee, roughness: 0.45, metalness: 0.15 }); M2.shell = shell;
+    box(0.56, 0.12, 0.56, shell, 0, 1.86, 0, faces.helm); box(0.56, 0.56, 0.08, shell, 0, 1.6, -0.25, faces.helm);
+    for (const sx of [-1, 1]) box(0.08, 0.56, 0.56, shell, sx * 0.25, 1.6, 0, faces.helm);
+    box(0.56, 0.1, 0.56, shell, 0, 1.34, 0, faces.helm);
+    M2.helmVisor = new THREE.MeshStandardMaterial({ color: 0x2a3440, transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0.3, depthWrite: false });
+    box(0.44, 0.34, 0.02, M2.helmVisor, 0, 1.6, 0.28, faces.helm); }
+  faces.bot = new THREE.Group(); group.add(faces.bot);
+  for (const sx of [-1, 1]) box(0.09, 0.06, 0.02, M2.visor, sx * 0.1, 1.6, 0.238, faces.bot);
   const tentacles = new THREE.Group(); group.add(tentacles);
   for (const [x, z, h] of [[-0.18, -0.12, 0.5], [0.18, -0.12, 0.5], [-0.24, 0.05, 0.36], [0.24, 0.05, 0.36], [-0.12, 0.2, 0.34], [0, 0.22, 0.4], [0.12, 0.2, 0.34]]) { const t = box(0.07, h, 0.07, M2.tent, x, 1.38 - h / 2 + 0.06, z, tentacles); t.rotation.z = x * 0.6; }
   const wings = new THREE.Group(); group.add(wings);
@@ -55,9 +71,38 @@ export function makeAvatar() {
   for (const sx of [-1, 1]) box(0.26, 0.12, 0.3, M2.pad, sx * 0.34, 1.38, 0, pads);
   const strips = new THREE.Group(); group.add(strips);
   for (const sx of [-1, 1]) box(0.05, 0.32, 0.02, M2.strip, sx * 0.12, 1.06, 0.14, strips);                       // two lights down the chest
+  // crystals on the shoulders, a hood, a long open coat, a glowing core in the chest
+  const crystals = new THREE.Group(); group.add(crystals);
+  M2.crystal = new THREE.MeshStandardMaterial({ color: 0xb06aff, emissive: 0xb06aff, emissiveIntensity: 0.5, transparent: true, opacity: 0.85, roughness: 0.2 });
+  for (const sx of [-1, 1]) for (const [dx, h, r] of [[0, 0.34, 0.15], [0.09, 0.24, -0.25], [-0.08, 0.2, 0.35]]) { const c = box(0.08, h, 0.08, M2.crystal, sx * (0.36 + dx), 1.4 + h / 2, 0, crystals); c.rotation.z = sx * -r; c.rotation.y = 0.785; }
+  const hood = new THREE.Group(); group.add(hood);
+  M2.hood = mat();
+  box(0.56, 0.1, 0.56, M2.hood, 0, 1.85, -0.01, hood); box(0.56, 0.58, 0.07, M2.hood, 0, 1.57, -0.26, hood);
+  for (const sx of [-1, 1]) box(0.07, 0.58, 0.5, M2.hood, sx * 0.27, 1.57, -0.02, hood);
+  const coat = new THREE.Group(); group.add(coat);
+  M2.coat = mat();
+  box(0.54, 0.7, 0.06, M2.coat, 0, 0.92, -0.16, coat);
+  for (const sx of [-1, 1]) { box(0.06, 0.7, 0.3, M2.coat, sx * 0.27, 0.92, 0, coat); box(0.14, 0.7, 0.04, M2.coat, sx * 0.2, 0.92, 0.15, coat); box(0.2, 0.62, 0.22, M2.coat, sx * 0.34, 1.03, 0, coat); }
+  const core = new THREE.Group(); group.add(core);
+  M2.core = glowMat(0x5fd0ff);
+  box(0.17, 0.17, 0.03, M2.core, 0, 1.12, 0.145, core).rotation.z = 0.785;                                   // a lit diamond in the chest
+  for (const [x, y, z] of [[-0.5, 1.7, 0.1], [0.52, 1.5, -0.1], [0.45, 2.0, 0.15]]) box(0.12, 0.12, 0.12, M2.core, x, y, z, core);
+  // what the character holds in the right hand, as in the owner's pictures
+  const held = {}, hand = new THREE.Group(); hand.position.set(0, -0.68, 0.06);              // joined to the right arm once the arms are made
+  const H = (name) => { const g = new THREE.Group(); g.visible = false; hand.add(g); held[name] = g; return g; };
+  const steel = new THREE.MeshStandardMaterial({ color: 0xc9d2dc, roughness: 0.3, metalness: 0.6 }), grip = mat(), dark2 = new THREE.MeshStandardMaterial({ color: 0x2a2e36, roughness: 0.5 });
+  M2.heldGlow = glowMat(0x5ff0ff); M2.heldBody = mat();
+  { const g = H('sword'); box(0.06, 0.12, 0.06, grip, 0, 0, 0.04, g); box(0.2, 0.04, 0.06, dark2, 0, 0.06, 0.04, g); box(0.05, 0.62, 0.1, M2.heldGlow, 0, 0.38, 0.04, g); g.rotation.x = 1.2; }
+  { const g = H('blade'); box(0.06, 0.12, 0.06, dark2, 0, 0, 0.04, g); box(0.07, 0.42, 0.04, M2.heldGlow, 0, 0.27, 0.04, g); g.rotation.x = 1.2; }
+  { const g = H('cannon'); box(0.16, 0.16, 0.62, M2.heldBody, 0, 0.02, 0.22, g); box(0.1, 0.1, 0.16, M2.heldGlow, 0, 0.02, 0.58, g); box(0.06, 0.16, 0.08, dark2, 0, -0.1, 0.02, g); box(0.18, 0.06, 0.3, dark2, 0, 0.12, 0.2, g); }
+  { const g = H('book'); box(0.24, 0.3, 0.06, M2.heldBody, 0.02, 0.06, 0.12, g); box(0.2, 0.26, 0.02, M2.heldGlow, 0.02, 0.06, 0.155, g); g.rotation.x = -0.4; }
+  { const g = H('tablet'); box(0.3, 0.2, 0.04, dark2, -0.1, 0.06, 0.14, g); box(0.24, 0.14, 0.01, M2.heldGlow, -0.1, 0.06, 0.162, g); g.rotation.x = -0.9; }
+  { const g = H('jar'); box(0.16, 0.22, 0.16, M2.glass, 0, 0.08, 0.1, g); box(0.18, 0.04, 0.18, dark2, 0, 0.21, 0.1, g); box(0.04, 0.14, 0.04, M2.heldGlow, 0, 0.05, 0.1, g); box(0.1, 0.04, 0.04, M2.heldGlow, 0, 0.1, 0.1, g); }
+  { const g = H('drill'); box(0.16, 0.16, 0.26, dark2, 0, 0, 0.1, g); box(0.12, 0.12, 0.16, steel, 0, 0, 0.3, g); box(0.07, 0.07, 0.14, steel, 0, 0, 0.44, g); box(0.03, 0.03, 0.1, steel, 0, 0, 0.55, g); }
   const crown = new THREE.Group(); group.add(crown);
   for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; box(0.11, 0.11, 0.11, i % 2 ? M.leaf : M.flower, Math.sin(a) * 0.27, 1.9, Math.cos(a) * 0.27, crown); }
   const armL = limb(-0.34, 1.32), armR = limb(0.34, 1.32), legL = limb(-0.13, 0.72), legR = limb(0.13, 0.72);
+  armR.add(hand);
   const sleeves = [box(0.18, 0.62, 0.2, M.shirt, 0, -0.29, 0, armL), box(0.18, 0.62, 0.2, M.shirt, 0, -0.29, 0, armR)];
   box(0.18, 0.14, 0.2, M.skin, 0, -0.66, 0, armL); box(0.18, 0.14, 0.2, M.skin, 0, -0.66, 0, armR);
   const legs = [box(0.23, 0.56, 0.25, M.pants, 0, -0.28, 0, legL), box(0.23, 0.56, 0.25, M.pants, 0, -0.28, 0, legR)];
@@ -79,7 +124,18 @@ export function makeAvatar() {
       skirt.visible = !!c.skirt && !idOf(g.legs); if (c.skirt) M.skirt.color.set(c.skirt);
       crown.visible = !!c.flowers && !idOf(g.head); if (c.flowers) { M.flower.color.set(c.flowers); M.leaf.color.set('#5f9e4a'); }
       for (const [k, f] of Object.entries(faces)) f.visible = c.face === k && !(k !== 'bubble' && idOf(g.head) && k === 'visor');
-      for (const e of eyes) e.visible = !c.face || c.face === 'bubble';
+      for (const e of eyes) e.visible = !c.face || c.face === 'bubble' || (c.face === 'helm' && !c.visor);
+      if (c.face === 'screen' || c.face === 'heart') { const col = c.face === 'screen' && c.glow ? c.glow : '#ff3048'; M2.heart.color.set(col); M2.heart.emissive.set(col); }
+      if (c.face === 'goggles' || c.face === 'bot') { const col = c.glow || '#5ff0ff'; M2.visor.color.set(col); M2.visor.emissive.set(col); }
+      if (c.face === 'helm') { M2.shell.color.set(c.helm || '#f1f1ee'); M2.helmVisor.color.set(c.visor || '#cfeefa'); M2.helmVisor.opacity = c.visor ? 0.92 : 0.3; }
+      for (const [k, h] of Object.entries(held)) h.visible = c.holds === k;
+      if (c.holds) { const gc = c.heldGlow || '#5ff0ff'; M2.heldGlow.color.set(gc); M2.heldGlow.emissive.set(gc); M2.heldBody.color.set(c.heldCol || '#5a6068'); grip.color.set('#3a2a1c'); }
+      crystals.visible = !!c.crystals; if (c.crystals) { M2.crystal.color.set(c.crystals); M2.crystal.emissive.set(c.crystals); }
+      hood.visible = !!c.hood && !idOf(g.head); if (c.hood) M2.hood.color.set(c.hood);
+      coat.visible = !!c.coat && !idOf(g.chest); if (c.coat) M2.coat.color.set(c.coat);
+      core.visible = !!c.core; if (c.core) { M2.core.color.set(c.core); M2.core.emissive.set(c.core); }
+      // a figure made of light: every part glows and lets the world show through
+      for (const m of [M.skin, M.hat, M.shirt, M.pants, M.shoes]) { m.transparent = !!c.ghost; m.opacity = c.ghost ? 0.62 : 1; m.emissive = m.emissive || new THREE.Color(0); m.emissive.set(c.ghost ? c.ghost : '#000000'); m.emissiveIntensity = c.ghost ? 0.55 : 0; m.depthWrite = !c.ghost; m.needsUpdate = true; }
       if (c.face === 'visor' && c.glow) M2.visor.color.set(c.glow), M2.visor.emissive.set(c.glow);
       if (c.face === 'mask') M2.mask.color.set(c.maskCol || '#3b3f2c');
       tentacles.visible = !!c.tentacles; if (c.tentacles) M2.tent.color.set(c.tentacles);
@@ -87,7 +143,7 @@ export function makeAvatar() {
       pack.visible = !!c.pack; if (c.pack) M2.pack.color.set(c.pack);
       pads.visible = !!c.pads; if (c.pads) M2.pad.color.set(c.pads); else if (c.face === 'bubble') M2.pad.color.set('#d8dde4');
       M2.strap.color.set('#4a3424');
-      strips.visible = !!c.glow && c.face !== 'visor' || (!!c.glow && !!c.pads); if (c.glow) { M2.strip.color.set(c.glow); M2.strip.emissive.set(c.glow); }
+      strips.visible = !c.core && (!!c.glow && c.face !== 'visor' || (!!c.glow && !!c.pads)); if (c.glow) { M2.strip.color.set(c.glow); M2.strip.emissive.set(c.glow); }
       brim.visible = !!c.brim && !idOf(g.head);
       for (const m of [M.hat, M.shirt, M.pants, M.shoes]) { m.metalness = 0; m.roughness = 0.85; }
       for (const [id, m] of [[idOf(g.head), M.hat], [idOf(g.chest), M.shirt], [idOf(g.legs), M.pants], [idOf(g.feet), M.shoes]]) if (TINT[id]) { m.metalness = 0.5; m.roughness = 0.35; }
@@ -111,9 +167,17 @@ export function outfitPicture(c, size = 44) {
     : c.face === 'visor' ? `<rect x="13" y="9.500" width="14" height="3" fill="${c.glow || '#5ff0ff'}"/>`
     : c.face === 'alien' ? '<rect x="15" y="9" width="4" height="4" fill="#1b1b20"/><rect x="21" y="9" width="4" height="4" fill="#1b1b20"/>'
     : c.face === 'mask' ? `<rect x="13" y="12" width="14" height="4" fill="${c.maskCol || '#3b3f2c'}"/><rect x="15" y="9" width="4" height="3" fill="#5fe07a"/><rect x="21" y="9" width="4" height="3" fill="#5fe07a"/>`
+    : c.face === 'screen' ? `<rect x="13" y="7" width="14" height="9" fill="#15171c"/><rect x="15" y="10" width="4" height="1.500" fill="${c.glow || '#ff3048'}"/><rect x="21" y="10" width="4" height="1.500" fill="${c.glow || '#ff3048'}"/>`
+    : c.face === 'goggles' ? `<rect x="12" y="9" width="16" height="3.500" fill="${c.glow || '#5ff0ff'}"/>`
+    : c.face === 'helm' ? `<rect x="11" y="1" width="18" height="17" fill="${c.helm || '#f1f1ee'}"/><rect x="14" y="5" width="12" height="9" fill="${c.visor || '#e0b088'}"/>${c.visor ? '' : '<rect x="16" y="9" width="2" height="2" fill="#1b1b20"/><rect x="22" y="9" width="2" height="2" fill="#1b1b20"/>'}`
+    : c.face === 'bot' ? `<rect x="15" y="10" width="3" height="2" fill="${c.glow || '#5ff0ff'}"/><rect x="22" y="10" width="3" height="2" fill="${c.glow || '#5ff0ff'}"/>`
     : c.face === 'bubble' ? '<rect x="11" y="1" width="18" height="17" fill="#cfeefa" fill-opacity=".35" stroke="#eaf8ff" stroke-width=".8"/>' : '';
   const extra = (c.tentacles ? `<rect x="12" y="15" width="2" height="7" fill="${c.tentacles}"/><rect x="26" y="15" width="2" height="7" fill="${c.tentacles}"/>` : '')
     + (c.pads ? `<rect x="6" y="15" width="7" height="3" fill="${c.pads}"/><rect x="27" y="15" width="7" height="3" fill="${c.pads}"/>` : '')
+    + (c.crystals ? `<rect x="6" y="11" width="3" height="5" fill="${c.crystals}"/><rect x="31" y="11" width="3" height="5" fill="${c.crystals}"/>` : '')
+    + (c.coat ? `<rect x="10" y="16" width="4" height="20" fill="${c.coat}"/><rect x="26" y="16" width="4" height="20" fill="${c.coat}"/>` : '')
+    + (c.core ? `<rect x="18" y="20" width="4" height="4" fill="${c.core}"/>` : '')
+    + (c.hood ? `<rect x="11" y="1" width="2" height="16" fill="${c.hood}"/><rect x="27" y="1" width="2" height="16" fill="${c.hood}"/><rect x="11" y="1" width="18" height="2" fill="${c.hood}"/>` : '')
     + (c.glow && c.face !== 'visor' ? `<rect x="19" y="17" width="2" height="11" fill="${c.glow}"/>` : '');
   const wingsSvg = c.wings ? `<rect x="2" y="13" width="9" height="14" fill="${c.wings}" fill-opacity=".5"/><rect x="29" y="13" width="9" height="14" fill="${c.wings}" fill-opacity=".5"/>` : '';
   const packSvg = c.pack ? `<rect x="10" y="17" width="2" height="12" fill="${c.pack}"/><rect x="28" y="17" width="2" height="12" fill="${c.pack}"/>` : '';

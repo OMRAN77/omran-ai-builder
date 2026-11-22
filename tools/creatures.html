@@ -12,9 +12,10 @@ const scene = new THREE.Scene(); scene.background = new THREE.Color(0x8fb7d6);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x556655, 1.6)); const sun = new THREE.DirectionalLight(0xfff2d8, 2.2); sun.position.set(3, 6, 4); scene.add(sun);
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 30), new THREE.MeshStandardMaterial({ color: 0x8aa66a })); ground.rotation.x = -Math.PI / 2; scene.add(ground);
 const list = [['cow', B.cow()], ['sheep', B.sheep()], ['horse', B.horse()], ['horse2', B.horse(0xe9e4dc, 0x9a948c)], ['donkey', B.donkey()], ['camel', B.camel()], ['deer', B.deer()], ['goat', B.goat()], ['bear', B.bear()], ['polar', B.polarBear()],
-  ['dog', B.dog()], ['cat', B.cat()], ['fox', B.fox()], ['rabbit', B.rabbit()], ['hen', B.hen()], ['duck', B.duck()], ['penguin', B.penguin()], ['frog', B.frog()], ['turtle', B.turtle()], ['crab', B.crab()], ['dolphin', B.dolphin()], ['octopus', B.octopus()]];
+  ['dog', B.dog()], ['cat', B.cat()], ['fox', B.fox()], ['rabbit', B.rabbit()], ['hen', B.hen()], ['duck', B.duck()], ['penguin', B.penguin()], ['frog', B.frog()], ['turtle', B.turtle()], ['crab', B.crab()], ['dolphin', B.dolphin()], ['octopus', B.octopus()],
+  ['llama', B.llama()], ['zebra', B.zebra()], ['panda', B.panda()], ['leopard', B.leopard()], ['wolf', B.wolf()], ['blacksheep', B.blackSheep()], ['bee', B.bee()], ['bat', B.bat()], ['spider', B.spider()], ['puffer', B.puffer()], ['squid', B.squid()], ['squid2', B.squid(0x5ff0e0)], ['axolotl', B.axolotl()]];
 const t = +(new URLSearchParams(location.search).get('t') || 0.4);
-const per = 11; list.forEach(([name, m], i) => { const r = Math.floor(i / per), c = i % per; m.position.set((c - (per - 1) / 2) * 2.0, name === "dolphin" ? 0.3 : 0, -r * 4.5); m.rotation.y = 0.75; if (m.userData.anim) m.userData.anim(t, true, name === 'bird-air' ? 1 : 0); scene.add(m); });
-const cam = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 100); cam.position.set(0, 9, 13); cam.lookAt(0, 0.2, -2.2);
+const per = 12; list.forEach(([name, m], i) => { const r = Math.floor(i / per), c = i % per; m.position.set((c - (per - 1) / 2) * 2.0, name === "dolphin" ? 0.3 : 0, -r * 4.5); m.rotation.y = 0.75; if (m.userData.anim) m.userData.anim(t, true, name === 'bird-air' ? 1 : 0); scene.add(m); });
+const cam = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 100); cam.position.set(0, 13, 14); cam.lookAt(0, 0, -4.5);
 r.render(scene, cam); window.__READY = true;
 </script></body></html>

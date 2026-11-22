@@ -597,11 +597,12 @@ test('v-blockworld-rules: طلبات مزون — وضع اللعب والسرع
 
 test('v-blockworld-zoo: حيوانات أكثر (بقرة، خروف، حصان، جمل، قطوة، كلب، غزال، أرنب، ثعلب، بطريق، سلحفاة، دلفين…) وشخصيات صور المالك', () => {
   const beasts = read('shared/beasts.js'), out = read('shared/outfits.js'), av = read('shared/avatar.js');
-  for (const n of ['بقرة', 'خروف', 'حصان', 'حمار', 'جمل', 'قطوة', 'كلب', 'غزال', 'أرنب', 'ثعلب', 'ضفدع', 'دب أبيض', 'بطريق', 'سلحفاة', 'سرطان', 'ببغاء', 'دلفين', 'بطة']) assert.ok(beasts.includes(`name: '${n}'`), n);
+  for (const n of ['بقرة', 'خروف', 'حصان', 'حمار', 'جمل', 'قطوة', 'كلب', 'غزال', 'أرنب', 'ثعلب', 'ضفدع', 'دب أبيض', 'بطريق', 'سلحفاة', 'سرطان', 'ببغاء', 'دلفين', 'بطة', 'لاما', 'حمار وحشي', 'باندا', 'فهد', 'ذيب', 'نحلة', 'خفّاش', 'عنكبوت الكهف', 'سمكة منفوخة', 'أكسولوتل']) assert.ok(beasts.includes(`name: '${n}'`), n);
+  for (const k of ['heartbot', 'sage', 'chrono', 'nebula', 'oracle', 'envoy', 'titan', 'weaver', 'scavenger', 'biologist', 'prospector', 'aicore']) { assert.ok(out.includes(`pic: '${k}'`), k); assert.ok(exists(`previews/heroes/${k}.webp`), 'صورة ' + k); }
   assert.match(beasts, /export function landKinds\(world, landAt\)/, 'كل حيوان في الأرض اللي تناسبه');
   assert.match(beasts, /drops: \[\[K\.MEAT, 1\], \[K\.WOOL, 2\]\]/, 'الخروف يعطي صوف');
-  for (const n of ['القلب الآلي', 'حكيم المجرّة', 'جندي البر', 'رائد الفضاء', 'قائد العملاق', 'جنّية الغابة', 'فارس الجليد', 'المغامرة']) assert.ok(out.includes(`name: '${n}'`), n);
+  for (const n of ['القلب الآلي', 'حكيم المجرّة', 'جندي البر', 'رائد الفضاء', 'قائد العملاق', 'جنّية الغابة', 'فارس الجليد', 'المغامرة', 'صيّاد الزمن', 'حارسة السديم', 'عرّافة الشبكة', 'سفير المجرّة', 'قائدة العملاق', 'نسّاج الضوء', 'عالم الكائنات', 'منقّب الكويكبات', 'الآلي الفضّي', 'كاسح القفار']) assert.ok(out.includes(`name: '${n}'`), n);
   for (const part of ['faces.heart', 'faces.visor', 'faces.mask', 'faces.bubble', 'tentacles', 'wings', 'pack', 'pads']) assert.ok(av.includes(part), part);
-  assert.match(out, /\['heart', 'visor', 'alien', 'mask', 'bubble'\]\.includes\(c\.face\)/, 'الشكل اللي يجي من لاعب ثاني ينفحص');
+  assert.match(out, /\['heart', 'visor', 'alien', 'mask', 'bubble', 'screen', 'goggles', 'helm', 'bot'\]\.includes\(c\.face\)/, 'الشكل اللي يجي من لاعب ثاني ينفحص');
   assert.ok(!/creeper|enderman|steve|alex|mooshroom|llama|axolotl|كريبر|إندرمان/i.test(beasts + out), 'لا أسماء ولا مخلوقات منقولة من لعبة ثانية');
 });

@@ -80,6 +80,7 @@ const CSS = `
 #bag .look.on { border: 2px solid var(--bg-accent, #fff); background: rgba(255, 255, 255, .12); }
 #bag .look.locked { opacity: .55; }
 #bag .look span { font-size: 11.5px; font-weight: 700; }
+#bag .look img.hero { width: 64px; height: 76px; object-fit: cover; border-radius: 7px; display: block; }
 #bag .look small { font-size: 10px; opacity: .8; text-align: center; line-height: 1.3; }
 #bag .design { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 #bag .design label { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; }
