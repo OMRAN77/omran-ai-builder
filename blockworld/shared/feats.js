@@ -26,6 +26,7 @@ export function createFeats({ play }) {
   let last = st.time, wait = 0;
   const api = {
     done,
+    level: () => levelOf(st.xp || 0).level,
     list: () => FEATS.map(([key, name, how]) => ({ key, name, how, done: done.has(key) })),
     /** Called every frame; looks once in a while. */
     check() {

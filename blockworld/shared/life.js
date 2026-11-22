@@ -78,7 +78,7 @@ export function createLife(o) {
   }
   function trySpawn() {
     const night = !!(window.__GAME_SKY && window.__GAME_SKY.night);                 // the night belongs to the monsters: twice as many
-    const open = o.kinds.filter((k) => counts[k.key] < k.max * (k.kind === 'monster' && night ? 2 : 1) && (k.kind !== 'monster' || monsters));
+    const open = o.kinds.filter((k) => counts[k.key] < Math.ceil(k.max * (k.kind === 'monster' ? (night ? 2 : 1) * (window.__GAME_DIFF ? window.__GAME_DIFF.mobs : 1) : 1)) && (k.kind !== 'monster' || monsters));
     if (!open.length) return;
     const k = open[Math.floor(Math.random() * open.length)], a = Math.random() * 6.283, d = (k.kind === 'monster' ? 20 : 13) + Math.random() * 12;
     spawnAt(k.key, st.pos.x + Math.sin(a) * d, st.pos.z + Math.cos(a) * d);
@@ -210,8 +210,9 @@ export function createLife(o) {
         if (dist > reach) { mx = dx / dist; mz = dz / dist; speed = k.speed; }
         else if (e.cool <= 0) {
           e.cool = 1.15;
-          if (who !== null) { if (share.send) share.send(who, { t: 'hurt', d: k.dmg }); }
-          else { const v = o.vitals && o.vitals(); if (v) v.hurt(k.dmg * (1 - armor())); }
+          const dmg = k.dmg * (window.__GAME_DIFF ? window.__GAME_DIFF.dmg : 1);      // how hard the world is, by the host's choice
+          if (who !== null) { if (share.send) share.send(who, { t: 'hurt', d: dmg }); }
+          else { const v = o.vitals && o.vitals(); if (v) v.hurt(dmg * (1 - armor())); }
         }
       } else if (e.flee > 0 && dist > 0.01) { mx = -dx / dist; mz = -dz / dist; speed = k.speed * 2.1; }
       else {

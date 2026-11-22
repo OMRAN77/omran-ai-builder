@@ -40,6 +40,8 @@ test('لا مسار يبدأ من جذر الموقع: المجلّد يعمل �
     for (const m of text.matchAll(/(['"(=]\s*)\/(shared|vendor|styles|previews|icons|blockworld|js|css|api)\//g)) {
       // استثناء واحد مقصود (v-blockworld-net): وسيط تعارف اللعب الجماعيّ من خادم الموقع نفسه، ومكانه جذر الموقع لا المجلّد
       if (f === 'shared/net.js' && text.slice(m.index + m[1].length).startsWith('/api/system?action=play-room')) continue;
+      // والثاني (v-blockworld-esc): ملاحظات اللاعبين وبلاغاتهم تذهب إلى قائمة آراء الموقع نفسها
+      if (f === 'shared/play.js' && text.slice(m.index + m[1].length).startsWith('/api/system?action=feedback')) continue;
       bad.push(f + ': ' + text.slice(Math.max(0, m.index - 25), m.index + 45).replace(/\s+/g, ' '));
     }
   }
@@ -249,7 +251,7 @@ test('v-blockworld-vitals: الصحّة وحاجة كلّ عالم أرقام ح
 test('v-blockworld-life: حيوانات تُصاد ووحوش تهاجم، بمجسّمات وأسماء كلّ عالم', () => {
   const life = read('shared/life.js'), play = read('shared/play.js'), kit = read('shared/kit.js');
   assert.match(life, /kind === 'monster' && monsters && dist < 20/, 'الوحش يطارد حين يقترب اللاعب');
-  assert.match(life, /v\.hurt\(k\.dmg \* \(1 - armor\(\)\)\)/, 'ضربته تنقص الصحّة، والدرع الملبوس يخفّفها');
+  assert.match(life, /v\.hurt\(dmg \* \(1 - armor\(\)\)\)/, 'ضربته تنقص الصحّة، والدرع الملبوس يخفّفها');
   assert.match(life, /if \(e\.hp <= 0\) \{ felled\(e\); credit\(e\.k\.kind, e\.k\.meat\); \}/, 'الصيد يعطي لحمًا');
   assert.match(life, /if \(meat\) giveMeat\(meat\);/);
   assert.match(life, /play\.give\(kitItem\(MEAT, n\)\)/, 'واللحم يدخل الأغراض بالطريق العامّ');
@@ -272,7 +274,7 @@ test('v-blockworld-life: حيوانات تُصاد ووحوش تهاجم، بم�
 
 test('v-blockworld-sky: لوحة Q تختار الوقت والمطر والوحوش، وكلّ عالم يضيء أوقاته بنفسه', () => {
   const sky = read('shared/weather.js'), play = read('shared/play.js'), bag = read('shared/bag.js'), snd = read('shared/sound.js');
-  assert.match(play, /e\.code === 'KeyQ' && !e\.repeat && o\.onMenu/, 'Q يفتح اللوحة');
+  assert.match(play, /e\.code === KM\.menu && !e\.repeat && o\.onMenu/, 'Q يفتح اللوحة (والمفتاح يتغيّر من الإعدادات)');
   for (const t of ['الصبح', 'المغرب', 'الليل', 'صافي', 'مطر', 'موجودة', 'بدون']) assert.ok(sky.includes(t), t);
   assert.match(sky, /window\.__GAME_SKY = state/, 'الصحّة والمخلوقات تقرآن الوقت والمطر');
   assert.match(sky, /if \(v === open \|\| \(v && st\.modal\)\) return/, 'لوحة واحدة في المرّة');
@@ -295,7 +297,7 @@ test('v-blockworld-sky: لوحة Q تختار الوقت والمطر والوح
   assert.match(read('styles/kawkab/main.js'), /\n  day: \{/, 'كوكب: نهار جديد');
   assert.match(read('styles/waha/game.js'), /rain: 3, nightDrain: 0\.5/, 'واحة: المطر يملأ الماء والليل أبرد');
   assert.match(read('styles/dhalam/main.js'), /rainDrain: 1\.8, nightDrain: 1\.4/, 'ظلام: المطر والليل أبرد');
-  assert.match(read('shared/life.js'), /k\.kind === 'monster' && night \? 2 : 1/, 'الليل: الوحوش ضعف العدد');
+  assert.match(read('shared/life.js'), /k\.kind === 'monster' \? \(night \? 2 : 1\) \* \(window\.__GAME_DIFF \? window\.__GAME_DIFF\.mobs : 1\) : 1/, 'الليل: الوحوش ضعف العدد');
 });
 
 test('v-blockworld-status: قلوب وأكل ودرع وخبرة فوق المربّعات، والجوع يُشبعه اللحم', () => {
@@ -344,8 +346,8 @@ test('v-blockworld-inv: حقيبة بثلاث صفحات، ٢٧ خانة ولب�
   assert.match(held, /const tools = \{ sword: new THREE\.Group\(\), axe: new THREE\.Group\(\), pick: new THREE\.Group\(\) \}/);
   assert.ok((feats.match(/^  \['/gm) || []).length >= 12, '١٢ إنجازًا على الأقلّ');
   assert.ok(!/[٠-٩]/.test(feats + status), 'أرقام لاتينيّة كباقي الواجهة');
-  assert.match(play, /الإنجازات /);
-  assert.match(play, /سرعة النظر: عادية/);
+  assert.match(play, /'الإنجازات ' \+/);
+  assert.match(play, /سرعة النظر \(الماوس واللمس\): عادية/);
   // الإشعار فوق اللوحات المفتوحة لا خلفها
   assert.match(play, /z-index:48;/);
   for (const k of WORLDS) {
@@ -380,7 +382,7 @@ test('v-blockworld-adv: مهام ظاهرة وسرّيّة، كنز يتغيّر
   assert.match(outfits, /owned\.add\(key\); current = key; keep\(\);/);
   assert.match(avatar, /export function makeAvatar\(\)/);
   // المنظور من الخلف: الكاميرا ترجع وتقف قبل الجدار، وما على الكاميرا يُخفى بالطبقات لا بـvisible
-  assert.match(play, /e\.code === 'KeyV' && !e\.repeat && !st\.modal/);
+  assert.match(play, /e\.code === KM\.view && !e\.repeat && !st\.modal/);
   assert.match(play, /if \(st\.third\) \{/);
   assert.match(adv, /o\.userData\.bwMask = o\.layers\.mask; o\.layers\.set\(30\);/, 'لا يُمسّ visible الذي تديره العوالم');
   // التاجر: زرّ البناء أمامه يفتح صفحته، وعباءته بأربع ألماسات
@@ -400,7 +402,7 @@ test('v-blockworld-net: لعب جماعيّ بكود من أربعة أرقام 
   assert.match(net, /const API = '\/api\/system\?action=play-room';/, 'التعارف من خادم الموقع نفسه');
   assert.match(net, /const MAX_PLAYERS = 4/);
   assert.match(bag, /createNet\(\{ play, kit, camera: o\.camera, world: o\.world, adv,/);
-  assert.match(play, /'العب مع ربعك \(الغرفة ' \+ n\.code \+ '\)'/, 'زرّ في قائمة Esc');
+  assert.match(play, /'العب مع ربعك \(الغرفة ' \+ net\.code \+ '\)'/, 'زرّ في قائمة Esc');
   // صاحب الغرفة: يُسأل عن كلّ داخل، يقبل أو يرفض، ويُخرج
   for (const t of ['دخّله', 'ارفض', 'طلّعه', 'سكّر الغرفة', 'افتح غرفة', 'ادخل']) assert.ok(net.includes(t), t);
   assert.match(net, /if \(kicked\) send\(p\.dc, \{ t: 'kick' \}\);/);
@@ -420,12 +422,72 @@ test('v-blockworld-net: لعب جماعيّ بكود من أربعة أرقام 
   // مخلوقات صاحب الغرفة هي الحقيقيّة: الضيف يراها ويرسل ضرباته
   assert.match(life, /if \(share\.mode === 'guest'\) \{ if \(share\.send\) share\.send\(null, \{ t: 'hit', e: e\.nid, pow: power\(\) \}\); return; \}/);
   assert.match(life, /function applySnapshot\(list\) \{/);
-  assert.match(life, /if \(who !== null\) \{ if \(share\.send\) share\.send\(who, \{ t: 'hurt', d: k\.dmg \}\); \}/, 'الوحش يلاحق أقرب لاعب');
+  assert.match(life, /if \(who !== null\) \{ if \(share\.send\) share\.send\(who, \{ t: 'hurt', d: dmg \}\); \}/, 'الوحش يلاحق أقرب لاعب');
   // قائمة التوقّف لا توقف العالم على الباقين
   assert.match(play, /if \(shared && st\.running\) \{ held = true; setModal\(true\); return; \}/);
   // بداية نظيفة للداخل الذي غيّر عالمه
-  assert.match(net, /window\.sessionStorage\.setItem\('bw-join'/);
+  assert.match(net, /if \(log\.length > 0 && !join\.fresh\) \{ try \{ window\.sessionStorage\.setItem\('bw-join'/);
   assert.ok(!/console\.(log|error|warn)/.test(net), 'لا طباعة لعرض الاتّصال (فيه عناوين اللاعبين)');
   assert.ok(exists('tools/nettest.cjs'), 'فحص متصفّحين يتّصلان فعلًا');
+});
+
+test('v-blockworld-esc: قائمة Esc بخياراتها الثمانية، والحفظ يحفظ فعلًا', () => {
+  const play = read('shared/play.js'), save = read('shared/save.js'), bag = read('shared/bag.js'), net = read('shared/net.js');
+  const life = read('shared/life.js'), vit = read('shared/vitals.js'), kit = read('shared/kit.js');
+  // الخيارات بترتيب طلب المالك
+  const order = ["'الرجوع للعبة'", "'الإنجازات '", "'الإحصائيات'", "'أرسل ملاحظة'", "'بلّغ عن خطأ'", "'الإعدادات'", "'العب مع ربعك'", "'احفظ واطلع للقائمة'"];
+  const at = order.map((t) => play.indexOf(t, play.indexOf("btn('go', 'الرجوع للعبة', 'go')")));
+  assert.ok(at.every((n) => n > 0) && at.every((n, i) => i === 0 || n > at[i - 1]), 'الثمانية موجودة وبالترتيب: ' + at.join(','));
+  // الإحصائيات من عدّادات اللعب الحقيقيّة
+  for (const k of ['st.played', 'st.walked', 'st.swumDist', 'st.broken', 'st.placed', 'st.jumps', 'st.deaths']) assert.ok(play.includes(k), k);
+  assert.match(play, /st\.played \+= dt;/);
+  assert.match(vit, /deaths\+\+; st\.deaths = \(st\.deaths \|\| 0\) \+ 1;/);
+  // الملاحظة والبلاغ: إلى قائمة آراء الموقع، بعلامة اللعبة، وبحدّ الطول الذي يقبله الخادم
+  assert.match(play, /const FEEDBACK_API = '\/api\/system\?action=feedback';/);
+  assert.match(play, /rating: bug \? 3 : stars, chips: bug \? \['fbChipBug'\] : \[\]/);
+  assert.match(play, /\.slice\(0, 1000\), lang: 'ar'/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'api/_lib/feedback.js'), 'utf8'), /'fbChipBug'/, 'الشريحة معروفة عند الخادم');
+  // الإعدادات: صوت، سرعة النظر، الصورة، الصعوبة، الوحوش، أزرار التحكّم
+  for (const a of ["btn('sound'", "btn('look'", "btn('video'", "btn('diff'", "btn('mon'", "btn('keys'"]) assert.ok(play.includes(a), a);
+  assert.match(play, /const KEYS0 = \{ fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'Space', run: 'ControlLeft', bag: 'KeyE', menu: 'KeyQ', view: 'KeyV', place: 'KeyF', mute: 'KeyM' \};/);
+  assert.match(play, /for \(const a of Object\.keys\(KM\)\) if \(KM\[a\] === code && a !== action\) KM\[a\] = KM\[action\];/, 'مفتاح مستعمل يتبادل مع صاحبه');
+  assert.ok(!/keys\.has\('Key[WASD]'\)|e\.code === 'Key[EQVMF]'/.test(play), 'لا مفتاح ثابت بقي في مسار اللعب');
+  assert.match(play, /const DIFFS = \{ easy: \{ dmg: 0\.5, hunger: 0\.6, mobs: 1 \}, normal: \{ dmg: 1, hunger: 1, mobs: 1 \}, hard: \{ dmg: 1\.6, hunger: 1\.4, mobs: 1\.5 \} \};/);
+  assert.match(life, /const dmg = k\.dmg \* \(window\.__GAME_DIFF \? window\.__GAME_DIFF\.dmg : 1\);/);
+  assert.match(vit, /n\.key === 'food' && window\.__GAME_DIFF \? window\.__GAME_DIFF\.hunger : 1/);
+  assert.ok(play.includes('اللغات الثانية ما انضافت للعبة للحين'), 'اللغة مذكورة بصدق لا بزرّ لا يعمل');
+  // الحفظ: سجلّ ما فُعل بالعالم + اللاعب + الصناديق + السماء، كلّ ٢٠ ثانية وعند ترك الصفحة، ويُقرأ عند العودة
+  assert.match(bag, /createSave\(\{ play, kit, net, world: o\.world, fresh: joining \}\)/);
+  assert.match(save, /KEY = 'bw-save-' \+ world/);
+  assert.match(save, /if \(\(wait \+= dt\) >= 20\) \{ wait = 0; if \(!api\.disabled && net\.role !== 'guest'\) api\.save\(\); \}/);
+  assert.match(save, /window\.addEventListener\('pagehide', leaving\);/);
+  assert.match(save, /for \(const a of d\.log\) \{ if \(Array\.isArray\(a\)\) \{ net\.apply\(a\); net\.log\.push\(a\); \} \}/);
+  assert.match(save, /api\.disabled = 'broken'/, 'حفظ لا يُقرأ لا يُكتب فوقه');
+  assert.match(net, /window\.__GAME_SAVE\.disabled = 'guest';/, 'الضيف لا يكتب عالم غيره فوق عالمه');
+  assert.match(kit, /if \(play && play\.sound && !remote\) play\.sound\.place\(\);/, 'تحميل الحفظ لا يشغّل صوتًا قبل أوّل نقرة');
+});
+
+test('v-blockworld-esc: تقصير سجلّ الحفظ يعطي العالم نفسه', async () => {
+  const src = read('shared/save.js');
+  const body = src.slice(src.indexOf('export function compact'), src.indexOf('export function createSave')).replace('export ', '');
+  const compact = new Function(body + '; return compact;')();
+  const key = (a) => a[1] + ',' + a[2] + ',' + a[3];
+  const run = (log) => { const w = new Map(), open = new Map(); for (const a of log) { if (a[0] === 'put') { w.set(key(a), a[4]); open.set(key(a), false); } else if (a[0] === 'dig') { w.set(key(a), 0); open.delete(key(a)); } else if (open.has(key(a))) open.set(key(a), !open.get(key(a))); } return [w, open]; };
+  let seed = 7; const r = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  for (let t = 0; t < 300; t++) {
+    const log = [], placed = new Set(), natural = new Set();
+    for (let i = 0; i < 60; i++) {
+      const x = Math.floor(r() * 4), y = Math.floor(r() * 2), z = Math.floor(r() * 2), k = x + ',' + y + ',' + z, c = r();
+      if (c < 0.45) { if (!placed.has(k)) { log.push(['put', x, y, z, 100 + Math.floor(r() * 3), 0]); placed.add(k); } }
+      else if (c < 0.85) { if (placed.has(k)) { log.push(['dig', x, y, z]); placed.delete(k); } else if (!natural.has(k) && y === 0) { log.push(['dig', x, y, z]); natural.add(k); } }
+      else if (placed.has(k)) log.push(['door', x, y, z]);
+    }
+    const short = compact(log), [w1, o1] = run(log), [w2, o2] = run(short);
+    assert.ok(short.length <= log.length);
+    // خانة وُضع فيها مكعب ثمّ حُفر قد تغيب من القصير: المعنى واحد ما لم تكن أرضًا أصليّة حُفرت
+    const cells = (w) => JSON.stringify([...w].filter(([k, v]) => v !== 0 || natural.has(k)).sort());
+    assert.equal(cells(w2), cells(w1), 'المكعبات نفسها');
+    assert.equal(JSON.stringify([...o2].filter(([, v]) => v).sort()), JSON.stringify([...o1].filter(([, v]) => v).sort()), 'الأبواب المفتوحة نفسها');
+  }
 });
 

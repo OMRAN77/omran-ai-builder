@@ -110,6 +110,10 @@ function memoryKV() {
     check('the host sees who asks to come in', asked && ask.asks[0] === 'فاطمة' && ask.row === 'فاطمة', ask);
     await shot(A, 'n3-ask');
     await A.click('#netPanel li.ask [data-admit]');
+    // while they connect: what each side's link says (kept in the report, so a failure here explains itself)
+    await both(4);
+    const diag = async (page) => page.evaluate(() => { const n = window.__GAME_NET; return { role: n.role, busy: n.busy, error: n.error, href: location.pathname + location.hash, links: [...n.peers.values()].map((p) => ({ state: p.pc.connectionState, ice: p.pc.iceConnectionState, gather: p.pc.iceGatheringState, signal: p.pc.signalingState, dc: p.dc ? p.dc.readyState : null, local: ((p.pc.localDescription || {}).sdp || '').split('\n').filter((l) => l.startsWith('a=candidate')).map((l) => l.split(' ').slice(4, 8).join(' ')), remote: ((p.pc.remoteDescription || {}).sdp || '').split('\n').filter((l) => l.startsWith('a=candidate')).length })) }; });
+    report.linking = { host: await diag(A), guest: await diag(B) };
     const joined = await until(B, () => window.__GAME_NET.role === 'guest', 40000);
     await both(10);
     const link = await A.evaluate(() => { const n = window.__GAME_NET; return { peers: n.peers.size, open: [...n.peers.values()].every((p) => p.dc && p.dc.readyState === 'open'), others: n.others.size }; });

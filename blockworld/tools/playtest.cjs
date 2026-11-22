@@ -412,7 +412,8 @@ function serve(root, prefix) {
         // with a full hotbar the meat is in the backpack: the player moves it to a square (the bag does this) before eating
         if (meat && !s.slots.includes(meat)) { const k = s.slots.length - 1, i = s.pack.indexOf(meat); s.pack[i] = s.slots[k]; s.slots[k] = meat; p.changed(); }
         // eat: the place button on the meat square
-        if (meat) { p.select(s.slots.indexOf(meat)); v.hp = 40; if (v.food != null) v.food = 30; const n0 = meat.n; p.placeNow(); out.ate = { hp: v.hp, food: v.food ?? null, used: n0 - meat.n }; }
+        // look at the ground while eating: with the trader under the crosshair the same button would open his page instead
+        if (meat) { p.select(s.slots.indexOf(meat)); v.hp = 40; if (v.food != null) v.food = 30; const n0 = meat.n; s.pitch = -1.45; p.advance(1 / 60); p.placeNow(); out.ate = { hp: v.hp, food: v.food ?? null, used: n0 - meat.n }; }
         // a monster comes and hurts
         keep(); v.hp = 100;
         const mk = life.kinds.find((k) => k.kind === 'monster');
@@ -722,6 +723,89 @@ function serve(root, prefix) {
     }
     const snd = await page.evaluate(() => { const s = window.__GAME_SOUND; return s ? { played: s.stats.played, muted: s.muted } : null; });
     check('sounds were played for digging, placing and walking', !!snd && snd.played >= 6, snd);
+    // ---- the pause menu: its eight choices, statistics, notes, settings, keys; then saving and coming back
+    if (await page.evaluate(() => !!window.__GAME_SAVE)) {
+      const tapOn = async (sel) => { const h = await page.$(sel); if (!h) throw new Error('not in the page: ' + sel); await h.scrollIntoViewIfNeeded(); const r = await h.boundingBox(); if (!r) throw new Error('not shown: ' + sel); if (touch) await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2); else await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2); };
+      const posted = [];
+      await page.route(/\/api\/system\?action=feedback/, (route) => { let b = null; try { b = JSON.parse(route.request().postData() || 'null'); } catch (e) { b = null; } posted.push(b); return route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }); });
+      await page.evaluate(() => { const g = window.__game, p = g.play, s = p.state; p.setFlying(false); s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); for (const k of Object.keys(g.vitals.values)) g.vitals.values[k] = 90; p.tick(5); if (document.pointerLockElement) document.exitPointerLock(); g.panel.show('pause'); });      // (Esc itself lets the mouse go, in a real browser)
+      await page.waitForTimeout(150);
+      const menu = await page.evaluate(() => ({ labels: [...document.querySelectorAll('#playPanel .box:not(.sub) button')].map((b) => b.textContent.trim()), fits: document.querySelector('#playPanel .box:not(.sub)').getBoundingClientRect().height <= window.innerHeight }));
+      const wants = ['الرجوع للعبة', 'الإنجازات', 'الإحصائيات', 'أرسل ملاحظة', 'بلّغ عن خطأ', 'الإعدادات', 'العب مع ربعك', 'احفظ'];
+      check('Esc shows the eight choices, in order', menu.labels.length === 8 && wants.every((w, i) => menu.labels[i].startsWith(w)) && menu.fits, menu);
+      await shot('19-esc');
+      await tapOn('#playPanel [data-act="stats"]');
+      const stats = await page.evaluate(() => { const s = window.__GAME_STATE; return { rows: document.querySelectorAll('#playPanel .cards.stats li').length, text: document.querySelector('#playPanel .cards.stats').textContent, broken: s.broken, walked: Math.round(s.walked) }; });
+      check('statistics show what was really done (blocks broken, distance walked, time played)', stats.rows >= 15 && stats.broken > 0 && stats.text.includes(String(stats.broken)) && stats.text.includes(stats.walked + ' مكعب') && stats.text.includes('الوقت اللي لعبته'), { rows: stats.rows, broken: stats.broken, walked: stats.walked });
+      await shot('20-stats');
+      await tapOn('#playPanel .sub [data-act="back"]');
+      await tapOn('#playPanel [data-act="feats"]');
+      const feats = await page.evaluate(() => ({ all: document.querySelectorAll('#playPanel .cards li').length, done: document.querySelectorAll('#playPanel .cards li.done').length }));
+      check('achievements list what is earned and what is still to do, each with its condition', feats.all >= 12 && feats.done >= 1 && feats.done < feats.all, feats);
+      await tapOn('#playPanel .sub [data-act="back"]');
+      // a note with stars, and a bug report: both go to the site's feedback list
+      await tapOn('#playPanel [data-act="note"]');
+      await page.fill('#playPanel textarea', 'اللعبة حلوة ونبي خيول');
+      await tapOn('#playPanel [data-star="4"]');
+      await tapOn('#playPanel [data-act="send"]');
+      await page.waitForFunction(() => window.__game.panel.view === 'main', null, { timeout: 8000 }).catch(() => {});
+      await tapOn('#playPanel [data-act="bug"]');
+      await page.fill('#playPanel textarea', 'الباب ما ينفتح');
+      await tapOn('#playPanel [data-act="send"]');
+      await page.waitForFunction(() => window.__game.panel.view === 'main', null, { timeout: 8000 }).catch(() => {});
+      const thanks = await page.evaluate(() => document.querySelector('#playPanel .box:not(.sub) .note').textContent);
+      check('a note (with stars) and a bug report are sent to the site, marked as coming from this game', posted.length === 2 && posted[0].rating === 4 && posted[0].note.startsWith('[عالم المكعبات · ') && posted[0].note.includes('نبي خيول') && posted[1].chips[0] === 'fbChipBug' && posted[1].note.includes('خطأ') && posted[1].note.includes('الباب ما ينفتح') && posted[1].note.length <= 1000 && thanks.includes('وصل'), { posted, thanks });
+      // settings: difficulty changes what a blow costs; a key is changed and the game obeys the new one
+      await tapOn('#playPanel [data-act="options"]');
+      await shot('21-options');
+      const d0 = await page.evaluate(() => window.__GAME_DIFF.mode);
+      await tapOn('#playPanel [data-act="diff"]');
+      const d1 = await page.evaluate(() => ({ mode: window.__GAME_DIFF.mode, dmg: window.__GAME_DIFF.dmg, text: document.querySelector('#playPanel [data-act="diff"]').textContent }));
+      await page.evaluate(() => window.__GAME_DIFF.set('normal'));
+      check('settings: the difficulty changes, and with it what a monster\'s blow costs', d0 === 'normal' && d1.mode === 'hard' && d1.dmg > 1 && d1.text.includes('صعبة'), { d0, d1 });
+      if (!touch) {
+        await tapOn('#playPanel [data-act="keys"]');
+        await tapOn('#playPanel [data-key="bag"]');
+        await page.keyboard.press('KeyB');
+        const k1 = await page.evaluate(() => ({ bag: window.__GAME_KEYS.map.bag, shown: document.querySelector('#playPanel [data-key="bag"]').textContent }));
+        await shot('22-keys');
+        await page.evaluate(() => { window.__game.panel.hide(); window.__play.state.running = true; });
+        await page.keyboard.press('KeyE'); await page.waitForTimeout(120);
+        const oldKey = await page.evaluate(() => !document.getElementById('bag').hidden);
+        await page.keyboard.press('KeyB'); await page.waitForTimeout(450);
+        const newKey = await page.evaluate(() => !document.getElementById('bag').hidden);
+        await page.keyboard.press('Escape'); await page.waitForTimeout(120);
+        await page.evaluate(() => { window.__GAME_KEYS.reset(); });
+        check('settings: a key is changed in the menu and the game obeys the new key, not the old', k1.bag === 'KeyB' && k1.shown === 'B' && oldKey === false && newKey === true && (await page.evaluate(() => window.__GAME_KEYS.map.bag)) === 'KeyE', { k1, oldKey, newKey });
+      } else await page.evaluate(() => { window.__game.panel.hide(); });
+      // save, leave, come back: the world and the player are as they were
+      const before = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, kitItem = (id, n) => { const it = g.bag.items.find((q) => q.id === id); return { ...it, n: n ?? it.n }; };
+        g.panel.hide(); s.running = true;
+        const x = Math.floor(s.pos.x) + 3, y = Math.floor(s.pos.y + 0.01) + 5, z = Math.floor(s.pos.z) + 1;
+        g.terrain.setBlock(x, y, z, 141); p.net.place(x, y, z, 141, 0);                      // a diamond block hung in the air: nothing natural is there
+        g.terrain.setBlock(x + 1, y, z, 170); p.net.place(x + 1, y, z, 170, 0); g.kit.chestAt(x + 1, y, z)[4] = kitItem(140, 3);
+        s.pack[26] = kitItem(131, 7); s.gear.feet = kitItem(223, 1);
+        g.vitals.values.hp = 61; g.terrain.flush();
+        const ok = window.__GAME_SAVE.save();
+        return { ok, cell: [x, y, z], pos: [s.pos.x, s.pos.y, s.pos.z], broken: s.broken, xp: s.xp, played: s.played, log: g.bag.net.log.length, bytes: (window.localStorage.getItem(Object.keys(window.localStorage).find((k) => k.startsWith('bw-save-'))) || '').length };
+      });
+      await page.reload({ waitUntil: 'load', timeout: 180000 });
+      // from the world picker the page may open the same world again by itself; if it shows the picker, choose the world as before
+      if (args.pick) { await page.waitForFunction((sel) => !!window.__play || !!document.querySelector(sel), String(args.pick), { timeout: 120000 }); const b = await page.$(String(args.pick)); if (b && await b.isVisible() && !(await page.evaluate(() => !!window.__play))) await b.click(); }
+      await page.waitForFunction(() => window.__READY === true && !!window.__play && !!window.__GAME_SAVE, null, { timeout: 240000 });
+      await page.waitForTimeout(500);
+      const after = await page.evaluate(([x, y, z]) => {
+        const g = window.__game, s = g.play.state, c = g.kit.chestAt(x + 1, y, z);
+        return { loaded: window.__GAME_SAVE.loaded, block: g.world.get(x, y, z), chestBlock: g.world.get(x + 1, y, z), chest: c[4] && [c[4].id, c[4].n], pack: s.pack[26] && [s.pack[26].id, s.pack[26].n], feet: s.gear.feet && s.gear.feet.id,
+          pos: [s.pos.x, s.pos.y, s.pos.z], broken: s.broken, xp: s.xp, played: s.played, hp: Math.round(g.vitals.values.hp), start: (document.querySelector('#playPanel .go') || {}).textContent };
+      }, before.cell);
+      await shot('23-back');
+      // (a quest or secret whose reward was still waiting is paid on the first frame back, so the experience may be higher, never lower)
+      const near = Math.hypot(after.pos[0] - before.pos[0], after.pos[1] - before.pos[1], after.pos[2] - before.pos[2]) < 0.5;
+      check('saving and coming back restores the world, the chest, what is carried and worn, the place, health and counts', before.ok === true && after.loaded === true && after.block === 141 && after.chestBlock === 170 && !!after.chest && after.chest[0] === 140 && after.chest[1] === 3 && !!after.pack && after.pack[0] === 131 && after.pack[1] === 7 && after.feet === 223 && near && after.broken === before.broken && after.xp >= before.xp && after.played >= before.played && after.hp === 61 && String(after.start).includes('كمّل عالمك'), { before, after });
+      await page.evaluate(() => { window.__GAME_SAVE.clear(); });
+    }
     report.final = await snap();
     report.info = await page.evaluate(() => (typeof window.__info === 'function' ? window.__info() : null));
   } catch (e) {

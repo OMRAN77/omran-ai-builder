@@ -236,6 +236,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
       if (window.__GAME_LIFE) window.__GAME_LIFE.setMonsters(!!m.mon, true);
       if (l) l.setShare('guest', (to, msg) => toHost(msg), null);
       play.shared = true;
+      if (window.__GAME_SAVE) window.__GAME_SAVE.disabled = 'guest';      // from here on the world on screen is the host's: this player's own save is left as it is
       play.notice('دخلت الغرفة ' + code + '. صاحب الغرفة يتحكم بالوقت والجو والوحوش.', false, 6000);
       draw();
     } else if (m.t === 'ps' && Array.isArray(m.list)) {
@@ -270,7 +271,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     myName = cleanName(name);
     try { window.localStorage.setItem('bw-name', myName); } catch (e) { /* not kept */ }
     // what this player already changed in their own world would not be in the shared one: start the world afresh, then join
-    if (st.broken + st.placed > 0 && !join.fresh) { try { window.sessionStorage.setItem('bw-join', JSON.stringify({ code: c, name: myName, world })); } catch (e) { /* no storage: join as things are */ } if (window.sessionStorage.getItem('bw-join')) { window.location.reload(); return false; } }
+    if (log.length > 0 && !join.fresh) { try { window.sessionStorage.setItem('bw-join', JSON.stringify({ code: c, name: myName, world })); } catch (e) { /* no storage: join as things are */ } if (window.sessionStorage.getItem('bw-join')) { window.location.reload(); return false; } }
     error = ''; busy = 'أطلب الدخول…'; code = c; draw();
     const pc = new RTCPeerConnection(rtc), dc = pc.createDataChannel('bw');
     peers.set('host', { pc, dc });
@@ -378,7 +379,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   el.addEventListener('keydown', (e) => e.stopPropagation());
 
   const net = {
-    el, peers, others, asks, log,
+    el, peers, others, asks, log, apply,
     get role() { return role; }, get code() { return code; }, get accepting() { return accepting; }, get error() { return error; }, get busy() { return busy; }, get name() { return myName; },
     host, join, admit, deny, leave, listen, poll,
     kick: (id) => drop(id, true),

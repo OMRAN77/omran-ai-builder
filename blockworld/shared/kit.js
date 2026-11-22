@@ -294,7 +294,7 @@ export function createKit({ scene, world, terrain, lights = 2 }) {
     terrain.setBlock(x, by, z, open ? K.DOOR_OPEN : K.DOOR);
     terrain.setBlock(x, by + 1, z, open ? K.DOOR_OPEN_TOP : K.DOOR_TOP);
     if (d) { d.open = open; d.group.rotation.y = d.group.userData.shut + (open ? d.group.userData.swing : 0); }
-    if (play && play.sound) play.sound.place();
+    if (play && play.sound && !remote) play.sound.place();
     if (!remote && api.onDoor) api.onDoor(x, by, z);
     return true;
   }

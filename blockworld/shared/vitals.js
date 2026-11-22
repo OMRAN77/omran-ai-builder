@@ -56,7 +56,7 @@ export function createVitals(o) {
     return false;
   }
   function die() {
-    deaths++;
+    deaths++; st.deaths = (st.deaths || 0) + 1;
     v.hp = 100; for (const n of o.needs) v[n.key] = Math.max(v[n.key], n.respawn ?? 70);
     play.setFlying(false);
     st.pos.set(spawn.x, spawn.y, spawn.z); st.vel.set(0, 0, 0); st.yaw = spawn.yaw; st.pitch = spawn.pitch;
@@ -80,7 +80,7 @@ export function createVitals(o) {
     for (const n of o.needs) {
       let d;
       if (n.how === 'rest') { const use = n.use ? n.use(st) : 0; d = use > 0 ? -use : n.gain; }
-      else d = rising(n) ? n.gain : -(n.drain * (st.inWater && n.wet ? n.wet : 1) * (play.input.sprint && n.run ? n.run : 1) * (w.rain && n.rainDrain ? n.rainDrain : 1) * (w.night && n.nightDrain ? n.nightDrain : 1));
+      else d = rising(n) ? n.gain : -(n.drain * (st.inWater && n.wet ? n.wet : 1) * (play.input.sprint && n.run ? n.run : 1) * (w.rain && n.rainDrain ? n.rainDrain : 1) * (w.night && n.nightDrain ? n.nightDrain : 1) * (n.key === 'food' && window.__GAME_DIFF ? window.__GAME_DIFF.hunger : 1));
       if (w.rain && n.rain && !st.flying) d = Math.max(d, n.rain);        // rain fills what it fills (water in the desert)
       v[n.key] = Math.max(0, Math.min(100, v[n.key] + d * dt));
       if (n.hurts !== false) { if (v[n.key] <= 0) starving = true; if (v[n.key] < 40) comfy = false; }
@@ -95,7 +95,9 @@ export function createVitals(o) {
     if (key !== shown) { shown = key; o.render(v); }
   }
   o.render(v);
-  return { values: v, needs: o.needs, update, hurt, get deaths() { return deaths; }, spawn };
+  const api = { values: v, needs: o.needs, update, hurt, get deaths() { return deaths; }, spawn };
+  window.__GAME_VITALS = api;
+  return api;
 }
 
 /** Bar writers for the three HUD styles, so each world wires its bars in a line. */

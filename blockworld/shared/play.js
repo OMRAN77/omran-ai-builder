@@ -30,6 +30,33 @@ export const EMPTY = Object.freeze({ empty: true, kit: true, id: 0, name: '', to
 /** Can something new be put in this square? (nothing there, or a pile that ran out) */
 export const isFree = (s) => !s || !!s.empty || (!s.tool && !s.use && !(s.n > 0));
 const LOOK = { slow: 0.65, normal: 1, fast: 1.5 };
+const FEEDBACK_API = '/api/system?action=feedback';      // the site's own list of what people say (the owner reads it in the app)
+// The keyboard: every action has a key the player may change (the pause menu does it). Arrows always walk too.
+export const KEY_ACTIONS = [['fwd', 'قدّام'], ['back', 'ورا'], ['left', 'يسار'], ['right', 'يمين'], ['jump', 'قفز وسباحة'], ['run', 'ركض'], ['bag', 'الحقيبة'], ['menu', 'الوقت والجو'], ['view', 'المنظور من ورا'], ['place', 'بناء (بديل الزر الأيمن)'], ['mute', 'كتم الصوت']];
+const KEYS0 = { fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'Space', run: 'ControlLeft', bag: 'KeyE', menu: 'KeyQ', view: 'KeyV', place: 'KeyF', mute: 'KeyM' };
+const KM = { ...KEYS0 };
+try { const k = JSON.parse(window.localStorage.getItem('bw-keys') || 'null'); if (k && typeof k === 'object') for (const a of Object.keys(KEYS0)) if (typeof k[a] === 'string' && /^[A-Za-z0-9]{1,20}$/.test(k[a])) KM[a] = k[a]; } catch (e) { /* storage may be closed or hold something else */ }
+const keepKeys = () => { try { window.localStorage.setItem('bw-keys', JSON.stringify(KM)); } catch (e) { /* not kept */ } };
+/** A short name for a key code, for the menus. */
+export const keyName = (code) => String(code).replace(/^Key/, '').replace(/^Digit/, '').replace('ControlLeft', 'Ctrl').replace('ControlRight', 'Ctrl يمين').replace('ShiftLeft', 'Shift').replace('ShiftRight', 'Shift يمين').replace('AltLeft', 'Alt').replace('Space', 'Space');
+if (typeof window !== 'undefined') window.__GAME_KEYS = {
+  map: KM,
+  /** Give an action a new key. A key that was another action's is swapped with it. Esc, digits and arrows stay as they are. */
+  set(action, code) {
+    if (!(action in KEYS0) || typeof code !== 'string' || code === 'Escape' || /^(Digit|Numpad|Arrow|F\d)/.test(code) || /^(Meta|OS)/.test(code)) return false;
+    for (const a of Object.keys(KM)) if (KM[a] === code && a !== action) KM[a] = KM[action];
+    KM[action] = code; keepKeys();
+    return true;
+  },
+  reset() { Object.assign(KM, KEYS0); keepKeys(); },
+};
+// How hard the world is: what a monster's blow costs, how fast hunger comes, how many monsters there may be.
+const DIFFS = { easy: { dmg: 0.5, hunger: 0.6, mobs: 1 }, normal: { dmg: 1, hunger: 1, mobs: 1 }, hard: { dmg: 1.6, hunger: 1.4, mobs: 1.5 } };
+if (typeof window !== 'undefined') {
+  let mode = 'normal';
+  try { const m = window.localStorage.getItem('bw-diff'); if (DIFFS[m]) mode = m; } catch (e) { /* storage may be closed */ }
+  window.__GAME_DIFF = { get mode() { return mode; }, get dmg() { return DIFFS[mode].dmg; }, get hunger() { return DIFFS[mode].hunger; }, get mobs() { return DIFFS[mode].mobs; }, set(m) { if (!DIFFS[m]) return; mode = m; try { window.localStorage.setItem('bw-diff', m); } catch (e) { /* not kept */ } } };
+}
 
 export function createPlay(o) {
   const { camera, canvas, world, blocks, terrain } = o;
@@ -54,7 +81,7 @@ export function createPlay(o) {
     flying: false, modal: false, xp: 0,
     pack: new Array(27).fill(null),                                  // the backpack: 27 places behind the hotbar
     gear: { head: null, chest: null, legs: null, feet: null, off: null },   // what is worn, and the other hand
-    kills: { animal: 0, monster: 0 }, eaten: 0, crafted: 0, opened: 0, flown: 0, swum: 0, walked: 0, slept: 0,   // counted for the achievements and quests
+    kills: { animal: 0, monster: 0 }, eaten: 0, crafted: 0, opened: 0, flown: 0, swum: 0, swumDist: 0, walked: 0, slept: 0, played: 0, deaths: 0, jumps: 0,   // counted for the achievements and quests
     made: {}, put: {},                                                // how many of each thing were crafted / put down (by id)
     third: false,                                                    // the view from behind the player (V)
   };
@@ -65,6 +92,7 @@ export function createPlay(o) {
   const inp = { fx: 0, fz: 0, jump: false, dig: false, sprint: false, place: false, down: false };
   const sound = o.sound === false ? null : createSound();          // every world gets the same sounds; M mutes
   window.__GAME_SOUND = sound;
+  window.__GAME_STATE = st;
   const snd = { stride: 0, dig: 0, ground: true, water: false, vy: 0, air: 0 };
   const keys = new Set();
 
@@ -302,36 +330,36 @@ export function createPlay(o) {
   let sprintLatch = false, lastFwd = -1e9, lastJump = -1e9, stickSprint = false;
   function readKeys() {
     if (st.modal) { inp.fx = inp.fz = 0; inp.jump = inp.sprint = inp.down = false; return; }
-    const fwd = keys.has('KeyW') || keys.has('ArrowUp');
-    const f = (fwd ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-    const r = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+    const fwd = keys.has(KM.fwd) || keys.has('ArrowUp');
+    const f = (fwd ? 1 : 0) - (keys.has(KM.back) || keys.has('ArrowDown') ? 1 : 0);
+    const r = (keys.has(KM.right) || keys.has('ArrowRight') ? 1 : 0) - (keys.has(KM.left) || keys.has('ArrowLeft') ? 1 : 0);
     if (stick.id === null) { inp.fx = r; inp.fz = f; }
     if (!fwd && stick.id === null) sprintLatch = false;
     const shift = keys.has('ShiftLeft') || keys.has('ShiftRight');
-    inp.jump = keys.has('Space') || btn.jump;
+    inp.jump = keys.has(KM.jump) || btn.jump;
     inp.down = st.flying && shift;                                   // while flying, Shift sinks
-    inp.sprint = sprintLatch || stickSprint || keys.has('ControlLeft') || (!st.flying && shift);
+    inp.sprint = sprintLatch || stickSprint || keys.has(KM.run) || (!st.flying && shift);
   }
   /** Second press within the double-tap window? (times in ms) */
   const doubled = (now, last) => now - last < P.doubleTap;
   const onKey = (e) => {
     if (!st.running) return;
     if (e.type === 'keydown') {
-      if (e.code === 'KeyE' && !e.repeat) { if (sound) sound.ui(); if (o.onBag) o.onBag(); e.preventDefault(); return; }
-      if (e.code === 'KeyV' && !e.repeat && !st.modal) { st.third = !st.third; if (sound) sound.ui(); return; }
-      if (e.code === 'KeyQ' && !e.repeat && o.onMenu) { if (sound) sound.ui(); o.onMenu(); e.preventDefault(); return; }
-      if (e.code === 'KeyM' && !e.repeat && sound) { sound.setMuted(!sound.muted); notice(sound.muted ? 'الصوت مطفي.' : 'الصوت شغّال.', false, 1600); return; }
+      if (e.code === KM.bag && !e.repeat) { if (sound) sound.ui(); if (o.onBag) o.onBag(); e.preventDefault(); return; }
+      if (e.code === KM.view && !e.repeat && !st.modal) { st.third = !st.third; if (sound) sound.ui(); return; }
+      if (e.code === KM.menu && !e.repeat && o.onMenu) { if (sound) sound.ui(); o.onMenu(); e.preventDefault(); return; }
+      if (e.code === KM.mute && !e.repeat && sound) { sound.setMuted(!sound.muted); notice(sound.muted ? 'الصوت مطفي.' : 'الصوت شغّال.', false, 1600); return; }
       if (st.modal) return;
       if (e.code === 'Escape' && !st.locked && o.onUnlock) { o.onUnlock(); return; }     // without a captured mouse Esc arrives here: the same pause menu
       if (!e.repeat) {
         const now = performance.now();
-        if (e.code === 'KeyW' || e.code === 'ArrowUp') { if (doubled(now, lastFwd)) sprintLatch = true; lastFwd = now; }          // double W: run until W is released
-        if (e.code === 'Space') { if (doubled(now, lastJump)) { setFlying(!st.flying); lastJump = -1e9; } else lastJump = now; }    // double Space: fly / stop flying
+        if (e.code === KM.fwd || e.code === 'ArrowUp') { if (doubled(now, lastFwd)) sprintLatch = true; lastFwd = now; }          // double W: run until W is released
+        if (e.code === KM.jump) { if (doubled(now, lastJump)) { setFlying(!st.flying); lastJump = -1e9; } else lastJump = now; }    // double Space: fly / stop flying
       }
       keys.add(e.code);
       if (/^(Digit|Numpad)[1-9]$/.test(e.code)) { const i = +e.code.slice(-1) - 1; if (i < st.slots.length) select(i); }
-      if (e.code === 'KeyF') inp.place = true;
-      if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+      if (e.code === KM.place) inp.place = true;
+      if (e.code === KM.jump || e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
     } else keys.delete(e.code);
   };
   let lockFailed = false, mouseDrag = false, lockAt = 0, everLocked = false, refusals = 0;
@@ -454,14 +482,15 @@ export function createPlay(o) {
       // steps by distance walked, a thump on landing, a puff on jumping, a splash on entering water
       if (!st.onGround) snd.air += dt;
       if (st.onGround && !snd.ground && snd.air > 0.12) sound.land(snd.vy < -13);
-      else if (!st.onGround && snd.ground && st.vel.y > 5 && !st.flying) sound.jump();
+      else if (!st.onGround && snd.ground && st.vel.y > 5 && !st.flying) { sound.jump(); st.jumps++; }
       if (st.onGround) snd.air = 0;
       if (st.inWater && !snd.water) sound.splash();
       if ((st.onGround || st.inWater) && !st.flying && st.moving > 0.8) { snd.stride += st.moving * dt; if (snd.stride > (st.inWater ? 2.6 : 2.15)) { snd.stride = 0; sound.step(st.inWater); } }
       snd.ground = st.onGround; snd.water = st.inWater;
     }
     if (st.flying) st.flown += dt;
-    if (st.inWater) st.swum += dt;
+    if (st.inWater) { st.swum += dt; st.swumDist += st.moving * dt; }
+    st.played += dt;
     if (st.onGround) st.walked += st.moving * dt;
     placeCamera();
     aim();
@@ -650,7 +679,7 @@ const PANEL_CSS = `
 #playPanel { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; direction: rtl;
   background: radial-gradient(ellipse at center, rgba(4, 8, 14, .58), rgba(2, 4, 8, .86)); color: #f1f4f8; -webkit-user-select: none; user-select: none; }
 #playPanel[hidden], #playPanel .box[hidden] { display: none; }
-#playPanel .box { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 24px); overflow: auto; padding: 22px 26px 20px; border-radius: 14px;
+#playPanel .box { box-sizing: border-box; width: min(600px, calc(100vw - 32px)); max-height: calc(100vh - 16px); overflow: auto; overscroll-behavior: contain; padding: 22px 26px 20px; border-radius: 14px;
   background: rgba(10, 14, 20, .82); border: 1px solid var(--pp-line, rgba(255, 255, 255, .22)); box-shadow: 0 18px 60px rgba(0, 0, 0, .55); text-align: center; }
 #playPanel h1 { margin: 0 0 4px; font-size: 30px; line-height: 1.2; font-weight: 700; color: var(--pp-accent, #fff); }
 #playPanel p { margin: 0 0 14px; font-size: 14px; line-height: 1.6; opacity: .82; }
@@ -660,18 +689,28 @@ const PANEL_CSS = `
 #playPanel button { font: inherit; font-size: 17px; font-weight: 700; color: #0b0f14; background: var(--pp-accent, #fff); border: 0; border-radius: 10px; padding: 11px 44px; min-height: 46px; cursor: pointer; }
 #playPanel .menu { display: inline-block; margin: 10px 4px 0; padding: 6px 18px; min-height: 0; font-size: 13.5px; font-weight: 500; color: inherit; background: none; border: 1px solid var(--pp-line, rgba(255, 255, 255, .3)); opacity: .85; }
 #playPanel .note { margin: 12px 0 0; font-size: 12px; opacity: .6; }
-#playPanel .feats[hidden] { display: none; }
-#playPanel .feats h2 { margin: 0 0 10px; font-size: 22px; color: var(--pp-accent, #fff); }
-#playPanel .feats ol { list-style: none; margin: 0 0 14px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; text-align: right; }
-#playPanel .feats li { display: block; padding: 7px 10px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, .14); font-size: 12.5px; line-height: 1.45; opacity: .55; }
-#playPanel .feats li.done { opacity: 1; border-color: var(--pp-accent, #fff); background: rgba(255, 255, 255, .07); }
-#playPanel .feats li b { display: block; min-width: 0; font-size: 14px; }
-#playPanel .feats li.done b::after { content: ' ✓'; }
 #playPanel .gpu { margin: 6px 0 0; font: 400 10.5px/1.4 system-ui, sans-serif; opacity: .38; direction: ltr; word-break: break-word; }
+#playPanel .go { display: inline-block; }
+#playPanel .esc { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 4px; }
+#playPanel .esc .go { grid-column: 1 / -1; }
+#playPanel .esc .menu { margin: 0; padding: 10px 12px; min-height: 44px; font-size: 14.5px; opacity: 1; }
+#playPanel .sub h2 { margin: 0 0 10px; font-size: 22px; color: var(--pp-accent, #fff); }
+#playPanel .cards { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; text-align: right; }
+#playPanel .cards li { display: block; padding: 7px 10px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, .14); font-size: 12.5px; line-height: 1.45; opacity: .55; }
+#playPanel .cards li.done { opacity: 1; border-color: var(--pp-line, rgba(255, 255, 255, .3)); background: rgba(255, 255, 255, .06); }
+#playPanel .cards li b { display: block; min-width: 0; font-size: 14px; color: var(--pp-accent, #fff); }
+#playPanel .cards.keys li { display: flex; align-items: center; gap: 10px; font-size: 13.5px; }
+#playPanel .cards.keys .key { margin: 0; min-width: 76px; padding: 6px 10px; font-weight: 700; opacity: 1; }
+#playPanel .cards.keys .key.wait { color: #0b0f14; background: var(--pp-accent, #fff); }
+#playPanel textarea { box-sizing: border-box; width: 100%; height: 110px; margin: 6px 0; padding: 9px 11px; font: inherit; font-size: 15px; line-height: 1.6; color: #f1f4f8; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .3); border-radius: 10px; resize: none; -webkit-user-select: text; user-select: text; }
+#playPanel .stars { direction: ltr; margin: 4px 0; }
+#playPanel .star { padding: 2px 6px; min-height: 0; font-size: 30px; line-height: 1; color: rgba(255, 255, 255, .28); background: none; }
+#playPanel .star.on { color: #ffd76a; }
 #playRotate { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; direction: rtl; text-align: center; padding: 24px;
   background: #06090e; color: #f1f4f8; font-size: 18px; line-height: 1.7; }
 @media (pointer: coarse) and (orientation: portrait) { #playRotate { display: flex; } }
-@media (max-height: 430px) { #playPanel .box { padding: 12px 18px 12px; } #playPanel h1 { font-size: 22px; } #playPanel p { margin-bottom: 8px; font-size: 12.5px; }
+@media (max-height: 430px) { #playPanel .esc { gap: 5px; margin: 6px 0 2px; } #playPanel .esc .menu { padding: 6px 8px; min-height: 40px; font-size: 13px; } #playPanel textarea { height: 64px; } #playPanel .cards { gap: 4px; } #playPanel .cards li { padding: 4px 8px; }
+  #playPanel .box { padding: 12px 18px 12px; } #playPanel h1 { font-size: 22px; } #playPanel p { margin-bottom: 8px; font-size: 12.5px; }
   #playPanel ul { gap: 3px 12px; font-size: 12px; margin-bottom: 10px; } #playPanel button { padding: 8px 36px; min-height: 44px; font-size: 15px; } #playPanel .note { margin-top: 6px; font-size: 11px; } }
 `;
 
@@ -690,72 +729,129 @@ export function createPlayPanel(o) {
   el.style.fontFamily = o.fontFamily || 'sans-serif';
   if (o.accent) el.style.setProperty('--pp-accent', o.accent);
   if (o.line) el.style.setProperty('--pp-line', o.line);
-  const rows = o.touch
-    ? [['العصا اليسار', 'المشي، وادفعها للآخر تركض'], ['اسحب على الشاشة', 'النظر'], ['زر الحفر', 'اضغط مطوّلًا لتكسر المكعب'], ['زر البناء', 'يضع المكعب، ويفتح الباب والصندوق'], ['زر القفز', 'قفز، ومرّتين تطير'], ['زر الحقيبة', 'كل المكعبات والأغراض']]
-    : [['W A S D', 'المشي'], ['W مرّتين', 'ركض'], ['الفأرة', 'النظر'], ['Space', 'قفز وسباحة'], ['Space مرّتين', 'طيران'], ['E', 'الحقيبة والمهام'], ['V', 'شوف شكلك من ورا'], ['Q', 'الوقت والجو'], ['Esc', 'القائمة والإنجازات'], ['M', 'الصوت'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب، ويفتح الباب والصندوق'], ['1 – 9 أو العجلة', 'اختيار الخانة'], ['Esc', 'إيقاف مؤقت']];
-  const h1 = document.createElement('h1'), p = document.createElement('p'), ul = document.createElement('ul'), b = document.createElement('button'), note = document.createElement('div');
-  h1.textContent = o.title; p.textContent = o.tagline || '';
-  for (const [k, v] of rows) { const li = document.createElement('li'), kb = document.createElement('b'), s = document.createElement('span'); kb.textContent = k; kb.dir = 'auto'; s.textContent = v; li.append(kb, s); ul.appendChild(li); }
-  note.className = 'note'; note.textContent = o.note || '';
-  b.type = 'button';
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const K = () => (window.__GAME_KEYS ? window.__GAME_KEYS.map : {});
+  const kn = (a) => keyName(K()[a] || '');
+  const rows = () => (o.touch
+    ? [['العصا اليسار', 'المشي، وادفعها للآخر تركض'], ['اسحب على الشاشة', 'النظر'], ['زر الحفر', 'اضغط مطوّلًا لتكسر المكعب'], ['زر البناء', 'يضع المكعب، ويفتح الباب والصندوق'], ['زر القفز', 'قفز، ومرّتين تطير'], ['زر الحقيبة', 'أغراضك والتصنيع والمهام']]
+    : [[[kn('fwd'), kn('left'), kn('back'), kn('right')].join(' '), 'المشي'], [kn('fwd') + ' مرّتين', 'ركض'], ['الفأرة', 'النظر'], [kn('jump'), 'قفز وسباحة'], [kn('jump') + ' مرّتين', 'طيران'], [kn('bag'), 'الحقيبة والمهام'], [kn('view'), 'شوف شكلك من ورا'], [kn('menu'), 'الوقت والجو'], ['Esc', 'القائمة'], [kn('mute'), 'الصوت'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب، ويفتح الباب والصندوق'], ['1 … 9 أو العجلة', 'اختيار المربع']]);
+  const toMenu = o.onMenu || (window.__GAME && window.__GAME.onMenu);      // back to the world picker, when the page was opened from it
   const box = document.createElement('div'); box.className = 'box';
-  box.append(h1, p, ul, b);
-  // when the page was opened from the world picker, offer the way back
-  const toMenu = o.onMenu || (window.__GAME && window.__GAME.onMenu);
-  if (toMenu) { const m = document.createElement('button'); m.type = 'button'; m.className = 'menu'; m.textContent = 'العوالم'; m.addEventListener('click', toMenu); box.appendChild(m); }
-  const snd = document.createElement('button');
-  snd.type = 'button'; snd.className = 'menu';
-  const sndText = () => { const s = window.__GAME_SOUND; snd.hidden = !s; snd.textContent = s && s.muted ? 'الصوت: مطفي' : 'الصوت: شغّال'; };
-  snd.addEventListener('click', () => { const s = window.__GAME_SOUND; if (s) { s.setMuted(!s.muted); if (!s.muted) { s.start(); s.ui(); } } sndText(); });
-  box.appendChild(snd);
-  const qual = document.createElement('button');
-  qual.type = 'button'; qual.className = 'menu';
-  const QN = { sharp: 'الصورة: واضحة دايم', balanced: 'الصورة: متوازنة', fast: 'الصورة: أسرع (تغبّش أكثر)' }, QO = ['balanced', 'sharp', 'fast'];
-  const qualText = () => { const q = window.__GAME_QUALITY; qual.hidden = !q; if (q) qual.textContent = QN[q.mode]; };
-  qual.addEventListener('click', () => { const q = window.__GAME_QUALITY; if (q) q.set(QO[(QO.indexOf(q.mode) + 1) % QO.length]); qualText(); });
-  box.appendChild(qual);
-  const mon = document.createElement('button');
-  mon.type = 'button'; mon.className = 'menu';
-  const monText = () => { const l = window.__GAME_LIFE; mon.hidden = !l; if (l) mon.textContent = l.monsters ? 'الوحوش: موجودة' : 'الوحوش: بدون'; };
-  mon.addEventListener('click', () => { const l = window.__GAME_LIFE; if (l) l.setMonsters(!l.monsters); monText(); });
-  box.appendChild(mon);
-  const look = document.createElement('button');
-  look.type = 'button'; look.className = 'menu';
-  const LN = { slow: 'سرعة النظر: بطيئة', normal: 'سرعة النظر: عادية', fast: 'سرعة النظر: سريعة' }, LO = ['normal', 'fast', 'slow'];
-  const lookText = () => { const l = window.__GAME_LOOK; look.hidden = !l; if (l) look.textContent = LN[l.mode]; };
-  look.addEventListener('click', () => { const l = window.__GAME_LOOK; if (l) l.set(LO[(LO.indexOf(l.mode) + 1) % LO.length]); lookText(); });
-  box.appendChild(look);
-  // achievements: a second face of the same panel
-  const feat = document.createElement('button');
-  feat.type = 'button'; feat.className = 'menu';
-  const featText = () => { const f = window.__GAME_FEATS; feat.hidden = !f; if (f) { const l = f.list(); feat.textContent = 'الإنجازات ' + l.filter((q) => q.done).length + '/' + l.length; } };
-  const feats = document.createElement('div'); feats.className = 'box feats'; feats.hidden = true;
-  feat.addEventListener('click', () => {
-    const f = window.__GAME_FEATS; if (!f) return;
-    feats.innerHTML = '<h2>الإنجازات</h2><ol>' + f.list().map((q) => `<li class="${q.done ? 'done' : ''}"><b>${q.name}</b>${q.how}</li>`).join('') + '</ol><button type="button" class="menu back">رجوع</button>';
-    box.hidden = true; feats.hidden = false;
-  });
-  feats.addEventListener('click', (e) => { if (e.target.closest('.back')) { feats.hidden = true; box.hidden = false; } });
-  box.appendChild(feat);
-  const together = document.createElement('button');
-  together.type = 'button'; together.className = 'menu';
-  const togetherText = () => { const n = window.__GAME_NET; together.hidden = !n; if (n) together.textContent = n.role ? 'العب مع ربعك (الغرفة ' + n.code + ')' : 'العب مع ربعك'; };
-  together.addEventListener('click', () => { const n = window.__GAME_NET; if (!n) return; el.hidden = true; n.open(() => { togetherText(); el.hidden = false; }); });
-  box.appendChild(together);
-  box.appendChild(note);
-  const gpuEl = document.createElement('div'); gpuEl.className = 'gpu';
-  box.appendChild(gpuEl);
-  el.appendChild(box);
-  el.appendChild(feats);
+  const sub = document.createElement('div'); sub.className = 'box sub'; sub.hidden = true;
+  el.append(box, sub);
   document.body.appendChild(el);
   const rot = document.createElement('div');
   rot.id = 'playRotate'; rot.style.fontFamily = el.style.fontFamily; rot.textContent = 'دوّر الجوال بالعرض عشان تلعب';
   document.body.appendChild(rot);
-  b.addEventListener('click', () => { el.hidden = true; o.onStart(); });
+
+  let mode = 'start', view = 'main', waitKey = null, stars = 0, sent = '', confirmNew = false;
+  const NAMES = { sound: () => { const s = window.__GAME_SOUND; return s ? (s.muted ? 'الصوت: مطفي' : 'الصوت: شغّال') : ''; },
+    look: () => ({ slow: 'سرعة النظر (الماوس واللمس): بطيئة', normal: 'سرعة النظر (الماوس واللمس): عادية', fast: 'سرعة النظر (الماوس واللمس): سريعة' }[(window.__GAME_LOOK || {}).mode] || ''),
+    video: () => ({ sharp: 'الصورة: واضحة دايم', balanced: 'الصورة: متوازنة', fast: 'الصورة: أسرع (تغبّش أكثر)' }[(window.__GAME_QUALITY || {}).mode] || ''),
+    diff: () => ({ easy: 'الصعوبة: سهلة', normal: 'الصعوبة: عادية', hard: 'الصعوبة: صعبة' }[(window.__GAME_DIFF || {}).mode] || ''),
+    mon: () => { const l = window.__GAME_LIFE; return l ? (l.monsters ? 'الوحوش: موجودة' : 'الوحوش: بدون') : ''; } };
+  const cycle = (obj, list) => { if (obj) obj.set(list[(list.indexOf(obj.mode) + 1) % list.length]); };
+  const btn = (act, text, cls = 'menu') => (text ? `<button type="button" class="${cls}" data-act="${act}">${text}</button>` : '');
+  const clock = (sec) => { const m = Math.floor(sec / 60), h = Math.floor(m / 60); return h ? h + ' س ' + (m % 60) + ' د' : m + ' د ' + Math.floor(sec % 60) + ' ث'; };
+
+  function drawMain() {
+    const net = window.__GAME_NET, f = window.__GAME_FEATS, save = window.__GAME_SAVE;
+    if (mode === 'start') {
+      box.innerHTML = `<h1>${esc(o.title)}</h1><p>${esc(o.tagline || '')}</p><ul>${rows().map(([k, v]) => `<li><b dir="auto">${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`
+        + btn('go', save && save.loaded ? 'كمّل عالمك' : 'ابدأ اللعب', 'go')
+        + '<div>' + btn('options', 'الإعدادات') + (net ? btn('net', 'العب مع ربعك') : '') + (toMenu ? btn('worlds', 'العوالم') : '') + '</div>'
+        + `<div class="note">${esc(save && save.loaded ? 'عالمك محفوظ في هذا المتصفح: تكمل من وين وقفت.' : o.note || '')}</div><div class="gpu">${esc(window.__GAME_GPU || '')}</div>`;
+      return;
+    }
+    const fl = f ? f.list() : [];
+    box.innerHTML = `<h1>${esc(o.title)}</h1><div class="esc">`
+      + btn('go', 'الرجوع للعبة', 'go')
+      + btn('feats', 'الإنجازات ' + fl.filter((q) => q.done).length + '/' + fl.length)
+      + btn('stats', 'الإحصائيات')
+      + btn('note', 'أرسل ملاحظة')
+      + btn('bug', 'بلّغ عن خطأ')
+      + btn('options', 'الإعدادات')
+      + (net ? btn('net', net.role ? 'العب مع ربعك (الغرفة ' + net.code + ')' : 'العب مع ربعك') : '')
+      + btn('quit', toMenu ? 'احفظ واطلع للقائمة' : 'احفظ')
+      + `</div><div class="note">${esc(sent)}</div><div class="gpu">${esc(window.__GAME_GPU || '')}</div>`;
+  }
+  function drawSub() {
+    let h = '';
+    if (view === 'feats') {
+      const f = window.__GAME_FEATS;
+      h = '<h2>الإنجازات</h2><ol class="cards">' + (f ? f.list() : []).map((q) => `<li class="${q.done ? 'done' : ''}"><b>${esc(q.name)}</b>${esc(q.how)}</li>`).join('') + '</ol>';
+    } else if (view === 'stats') {
+      const st = window.__GAME_STATE || {}, adv = window.__GAME_ADV, lv = window.__GAME_FEATS && window.__GAME_FEATS.level ? window.__GAME_FEATS.level() : null;
+      const made = Object.values(st.made || {}).reduce((a, n) => a + n, 0);
+      const list = [['الوقت اللي لعبته', clock(st.played || 0)], ['مشيت', Math.round(st.walked || 0) + ' مكعب'], ['سبحت', Math.round(st.swumDist || 0) + ' مكعب'], ['طرت', clock(st.flown || 0)], ['قفزت', (st.jumps || 0) + ' مرة'],
+        ['مكعبات كسرتها', st.broken || 0], ['مكعبات حطيتها', st.placed || 0], ['أغراض صنعتها', made], ['حيوانات صدتها', (st.kills || {}).animal || 0], ['وحوش قضيت عليها', (st.kills || {}).monster || 0],
+        ['وجبات أكلتها', st.eaten || 0], ['صناديق فتحتها', st.opened || 0], ['صفقات مع التاجر', st.traded || 0], ['كنوز لقيتها', adv ? adv.found : 0], ['مرات نمت', st.slept || 0], ['مرات طحت للصفر', st.deaths || 0], ['الخبرة', (st.xp || 0) + (lv != null ? ' (المستوى ' + lv + ')' : '')]];
+      h = '<h2>الإحصائيات</h2><ol class="cards stats">' + list.map(([k, v]) => `<li class="done"><b dir="auto">${esc(v)}</b>${esc(k)}</li>`).join('') + '</ol>';
+    } else if (view === 'note' || view === 'bug') {
+      h = `<h2>${view === 'bug' ? 'بلّغ عن خطأ' : 'أرسل ملاحظة'}</h2><p>${view === 'bug' ? 'اكتب وش صار، ووين، ووش كنت تسوي قبلها. يروح البلاغ لصاحب الموقع مع نوع الجهاز والعالم.' : 'قل رأيك في اللعبة أو اللي تبي ينضاف. يروح لصاحب الموقع.'}</p>`
+        + (view === 'note' ? '<div class="stars">' + [1, 2, 3, 4, 5].map((n) => `<button type="button" class="star${n <= stars ? ' on' : ''}" data-star="${n}" aria-label="${n} من 5">★</button>`).join('') + '</div>' : '')
+        + '<textarea maxlength="700" placeholder="اكتب هني…"></textarea><div class="note"></div>' + btn('send', 'أرسل', 'go');
+    } else if (view === 'options') {
+      const save = window.__GAME_SAVE;
+      h = '<h2>الإعدادات</h2><div class="esc">' + btn('sound', NAMES.sound()) + btn('look', NAMES.look()) + btn('video', NAMES.video()) + btn('diff', NAMES.diff()) + btn('mon', NAMES.mon())
+        + (o.touch ? '' : btn('keys', 'أزرار التحكم')) + (save && save.has() ? btn('new', confirmNew ? 'متأكد؟ اضغط مرة ثانية يمسح عالمك المحفوظ' : 'عالم جديد (يمسح المحفوظ)') : '') + '</div>'
+        + `<div class="note">${o.touch ? 'أزرار اللمس ثابتة في مكانها. ' : ''}اللغة: العربية. اللغات الثانية ما انضافت للعبة للحين.</div>`;
+    } else if (view === 'keys') {
+      h = '<h2>أزرار التحكم</h2><p>اضغط على الزر اللي تبي تغيّره، بعدين اضغط المفتاح الجديد. Esc يلغي. الأسهم تمشي دايم، والأرقام للمربعات.</p><ol class="cards keys">'
+        + KEY_ACTIONS.map(([a, name]) => `<li class="done"><button type="button" class="menu key${waitKey === a ? ' wait' : ''}" data-key="${a}" dir="ltr">${waitKey === a ? '…' : esc(kn(a))}</button>${esc(name)}</li>`).join('') + '</ol>' + btn('keys0', 'رجّع الأزرار الأصلية');
+    }
+    sub.innerHTML = h + '<div>' + btn('back', 'رجوع') + '</div>';
+  }
+  function draw() { box.hidden = view !== 'main'; sub.hidden = view === 'main'; if (view === 'main') drawMain(); else drawSub(); }
+  function go(v) { view = v; waitKey = null; confirmNew = false; draw(); }
+
+  async function send() {
+    const ta = sub.querySelector('textarea'), out = sub.querySelector('.note'), text = ta ? ta.value.trim() : '';
+    if (text.length < 3) { out.textContent = 'اكتب شي أول.'; return; }
+    if (view === 'note' && !stars) { out.textContent = 'اختر كم نجمة.'; return; }
+    const bug = view === 'bug';
+    const tech = bug ? '\n(' + [o.touch ? 'لمس' : 'حاسوب', window.innerWidth + 'x' + window.innerHeight, String(window.__GAME_GPU || '').slice(0, 70)].join('؛ ') + ')' : '';
+    out.textContent = 'أرسل…';
+    try {
+      const r = await fetch(FEEDBACK_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rating: bug ? 3 : stars, chips: bug ? ['fbChipBug'] : [], note: ('[عالم المكعبات · ' + o.title + (bug ? ' · خطأ' : '') + '] ' + text + tech).slice(0, 1000), lang: 'ar' }) });
+      if (!r.ok) throw new Error('refused');
+      sent = bug ? 'وصل بلاغك. مشكور.' : 'وصلت ملاحظتك. مشكور.'; stars = 0;
+      go('main');
+    } catch (e) { out.textContent = 'ما قدرت أرسل. تأكد من النت وجرّب مرة ثانية. (الإرسال يشتغل من الموقع نفسه)'; }
+  }
+  el.addEventListener('click', (e) => {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if (t.dataset.star) { stars = +t.dataset.star; for (const b of sub.querySelectorAll('.star')) b.classList.toggle('on', +b.dataset.star <= stars); return; }
+    if (t.dataset.key) { waitKey = t.dataset.key; drawSub(); return; }
+    const act = t.dataset.act;
+    if (act === 'go') { el.hidden = true; sent = ''; o.onStart(); }
+    else if (act === 'back') go(view === 'keys' ? 'options' : 'main');
+    else if (['feats', 'stats', 'note', 'bug', 'options', 'keys'].includes(act)) go(act);
+    else if (act === 'send') send();
+    else if (act === 'net') { const n = window.__GAME_NET; if (n) { el.hidden = true; n.open(() => { el.hidden = false; draw(); }); } }
+    else if (act === 'worlds') toMenu();
+    else if (act === 'quit') { const s = window.__GAME_SAVE, ok = s ? s.save() : false; sent = ok ? 'انحفظ عالمك في هذا المتصفح ✓' : (s && s.why ? s.why : 'ما قدرت أحفظ.'); if (toMenu && (ok || !s)) toMenu(); else draw(); }
+    else if (act === 'sound') { const s = window.__GAME_SOUND; if (s) { s.setMuted(!s.muted); if (!s.muted) { s.start(); s.ui(); } } drawSub(); }
+    else if (act === 'look') { cycle(window.__GAME_LOOK, ['normal', 'fast', 'slow']); drawSub(); }
+    else if (act === 'video') { cycle(window.__GAME_QUALITY, ['balanced', 'sharp', 'fast']); drawSub(); }
+    else if (act === 'diff') { cycle(window.__GAME_DIFF, ['normal', 'hard', 'easy']); drawSub(); }
+    else if (act === 'mon') { const l = window.__GAME_LIFE; if (l) l.setMonsters(!l.monsters); drawSub(); }
+    else if (act === 'keys0') { if (window.__GAME_KEYS) window.__GAME_KEYS.reset(); drawSub(); }
+    else if (act === 'new') { if (!confirmNew) { confirmNew = true; drawSub(); } else { const s = window.__GAME_SAVE; if (s) s.clear(); window.location.reload(); } }
+  });
+  // while the panel is up the keyboard is the panel's: a key waited for is taken, and typing in the note box is not the game's
+  el.addEventListener('keydown', (e) => {
+    if (waitKey) { e.preventDefault(); e.stopPropagation(); if (e.code !== 'Escape' && window.__GAME_KEYS) window.__GAME_KEYS.set(waitKey, e.code); waitKey = null; drawSub(); return; }
+    if (e.target && e.target.tagName === 'TEXTAREA') e.stopPropagation();
+  });
+  window.addEventListener('keydown', (e) => { if (!el.hidden && waitKey) { e.preventDefault(); e.stopImmediatePropagation(); if (e.code !== 'Escape' && window.__GAME_KEYS) window.__GAME_KEYS.set(waitKey, e.code); waitKey = null; drawSub(); } }, true);
+  window.__GAME_PANEL = () => { if (!el.hidden && view === 'main') draw(); };      // something the panel shows changed (a save was read)
   return {
     el,
-    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; sndText(); qualText(); monText(); lookText(); featText(); togetherText(); feats.hidden = true; box.hidden = false; el.hidden = false; },
+    show(m = 'start') { mode = m; view = 'main'; waitKey = null; confirmNew = false; el.hidden = false; draw(); },
     hide() { el.hidden = true; },
+    get view() { return view; }, go,
   };
 }
 
