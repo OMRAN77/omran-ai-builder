@@ -5,6 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>om ai</title>
+<!-- v-ref-stores (المالك ٢١ نوفمبر بلقطة بوستره: «هذا الرابط سو اياها اي واحد يضغط على الصور يحوله الي المتاجر»): ‎/?ref=omran‎
+     يُحوَّل هنا (vercel.json redirects)، فمعاينة الرابط في واتساب وغيره بوستر المالك نفسه — والزاحف لا يشغّل السكربت فيقرأ هذه الوسوم.
+     بلا og:url: كلّ رابط يبقى بدعوته (‎/app?ref=اسمه‎ لكلّ مستخدم). -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="om ai">
+<meta property="og:title" content="om ai — كل أدوات الذكاء الاصطناعي في مكان واحد">
+<meta property="og:description" content="وفّر وقتك واشتراكاتك.. واحد يغنيك عن الكل! حمّل التطبيق الآن.">
+<meta property="og:image" content="https://omran-ai-builder.vercel.app/icons/om-ai-poster.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1424">
+<meta property="og:image:height" content="752">
+<meta property="og:image:alt" content="om ai — أدوات الذكاء الاصطناعي في تطبيق واحد">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://omran-ai-builder.vercel.app/icons/om-ai-poster.jpg">
 <link rel="icon" type="image/png" href="/icons/favicon-32-v2.png?icon=black-20261022">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=black-20261022">
 <noscript><meta http-equiv="refresh" content="0;url=/"></noscript>
@@ -169,17 +183,21 @@ html.introOn .goMark { display: none; }
     if(store) send('store');
   }
 
+  // v-ref-stores (مراجعة النقض): داخل تطبيقنا المثبّت لا متجر — جسر هواوي OmranRender (فلتر autoVerify يفتح روابط الموقع فيه) أو
+  // تطبيق الويب المثبّت. كان رابط المالك يرمي من عنده التطبيق إلى صفحته في AppGallery ويترك الشاشة على الشعار النابض.
+  var inApp = false;
+  try { inApp = !!window.OmranRender || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
+  catch(e){ inApp = false; /* guard-ok — تعذّر الكشف = متصفّح عاديّ */ }
   var dest = '/';
-  try { dest = goDest(navigator.userAgent || '', navigator.maxTouchPoints || 0, location.search, STORES); }
+  try { dest = goDest(navigator.userAgent || '', navigator.maxTouchPoints || 0, location.search, inApp ? null : STORES); }
   catch(e){ dest = '/'; /* guard-ok — أيّ خطأ في الكشف يفتح التطبيق نفسه */ }
   var intro = false;
   try {
-    var standalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
     var returning = localStorage.getItem('aiapp_privacy_ack') === '1';
-    intro = wantsIntro(navigator.userAgent || '', dest, standalone, returning);
+    intro = wantsIntro(navigator.userAgent || '', dest, inApp, returning);
     if(intro) showIntro(dest);
   } catch(e){ intro = false; /* guard-ok — تعذّر التعريف (تخزين محجوب مثلًا) لا يحبس الزائر: يكمل إلى وجهته */ }
-  try { funnelLanding(dest, standalone, returning); } catch(e){ /* guard-ok — العدّ لا يحبس الزائر: يكمل إلى وجهته */ }
+  try { funnelLanding(dest, inApp, returning); } catch(e){ /* guard-ok — العدّ لا يحبس الزائر: يكمل إلى وجهته */ }
   if(!intro) location.replace(dest);
 })();
 </script>

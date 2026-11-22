@@ -120,6 +120,26 @@
       "schedule": "23 3 * * *"
     }
   ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "ref",
+          "value": "^omran$"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "install"
+        }
+      ],
+      "destination": "/app?ref=omran",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/deploy-probe.txt",
