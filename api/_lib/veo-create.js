@@ -619,6 +619,7 @@ module.exports.OMNI_EXTEND_MAX = OMNI_EXTEND_MAX;
 module.exports.omniOpKey = omniOpKey;
 module.exports.FAL_OP_PREFIX = FAL_OP_PREFIX; // v-fal-backup
 module.exports.falOpKey = falOpKey;
+module.exports.OMNI_OP_TTL_SEC = OMNI_OP_TTL_SEC; // v-lock-vid (srv-video-5): omni-create يحفظ ناتجه بالمدّة نفسها
 module.exports.trendEngine = trendEngine;
 module.exports.cinemaEngine = cinemaEngine;
 module.exports.TREND_NO_CUTS = TREND_NO_CUTS;

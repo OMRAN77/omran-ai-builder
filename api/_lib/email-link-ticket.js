@@ -32,6 +32,24 @@ async function takeTicket(state, req, out) {
   return rec.u;
 }
 
+/* v-audit-main-b (userdata-4 × v-owner-reset-records): صندوق Gmail المربوط صار إثبات استرجاع «قويًّا» عند المالك (owner-lookup: رابط تلقائيّ)، وسكّ
+   تذكرة ربطه كان بالجلسة وحدها — رمز جلسة مسروق يربط Gmail المهاجم ثمّ «نسيت كلمتي، بريدي …» فيأخذ رابط حساب الضحيّة ويضع كلمته ويحذفه بها
+   (يسقط شرط الحذف «الجلسة والاسم لا يكفيان»). كالبريد والهاتف (recoveryPasswordOk): من وضع كلمته بنفسه (needsPassword، معيار الحذف) يكتبها هنا،
+   وحساب Google/رمز البريد بلا كلمة يعرفها كما كان. التخمين من هنا ٥ في ربع ساعة لكلّ حساب، وعطل قراءة السجلّ يرمي (لا يُقرأ «لا كلمة»).
+   يعيد { status, body } للرفض أو null. */
+async function passwordGate(u, body) {
+  const auth = require('./auth.js');
+  const user = await auth.getUserSure(u);
+  if (!user || user.deleted) return { status: 401, body: { error: 'session_expired' } };
+  if (!require('./account-delete.js').needsPassword(user)) return null;
+  const pw = body && typeof body.password === 'string' ? body.password : '';
+  if (!pw) return { status: 401, body: { error: 'password_required', code: 'password_required' } };
+  const wait = await auth.rateWait('gmail-link-pw', u, 5, 15 * 60 * 1000);
+  if (wait) return { status: 429, body: { error: 'too_many', code: 'too_many', minutes: wait } };
+  if (!auth.verifyPassword(pw, user.salt, user.hash)) return { status: 401, body: { error: 'wrong_password', code: 'wrong_password' } };
+  return null;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return; }
   try {
@@ -39,6 +57,8 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     const u = sessionUser(tokenOf({ body, query: req.query, headers: req.headers }));
     if (!u) { res.status(401).json({ error: 'session_expired' }); return; }
+    const gate = await passwordGate(u, body); // v-audit-main-b (userdata-4)
+    if (gate) { res.status(gate.status).json(gate.body); return; }
     const ticket = crypto.randomBytes(16).toString('hex');
     const { kvSetRaw } = require('./kv.js');
     await kvSetRaw(keyOf(ticket), JSON.stringify({ u, net: netOf(req), ts: Date.now() }), TTL_SEC);

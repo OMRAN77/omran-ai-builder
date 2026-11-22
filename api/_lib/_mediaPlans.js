@@ -6,7 +6,7 @@
 // صارا باقة واحدة (media_*، خانة 'mix') برصيد واحد يصرف منه أيّ صورة أو فيديو بتكلفته في UNIT_COST. الرصيد = ثلث السعر بالدرهم
 // (قاعدة «كلّ خدمة ٣ أضعاف تكلفتها»): ١٢٥٠ · ٢٥٠٠ · ١٢٥٠٠ فلس. img_*/vid_* توقّف بيعها (retired) — لا جلسة دفع جديدة لها — لكنّها
 // تبقى هنا: تجديد اشتراك قائم أو جلسة بدأت قبل النشر يُمنح كما كان (لا مال بلا منح)، والقائمة تكمل نافذتها ويُصرف منها أوّلًا.
-const { kvGetRaw, kvSetRaw, kvIncrBy, kvDecrBy } = require('./kv.js');
+const { kvGetRaw, kvSetRaw, kvIncrBy, kvDecrBy, kvDel, kvPipeline } = require('./kv.js');
 
 const MEDIA_WINDOW_DAYS = 35;
 const MEDIA_WINDOW_MS = MEDIA_WINDOW_DAYS * 86400000;
@@ -93,6 +93,116 @@ async function grantMedia(user, username, planKey, now) {
   return { media: p.media, budget: p.budget };
 }
 
+/* v-r3 (r3-2 · r3-3): دفعة وسائط أدنى تصل وفي خانتها أعلى سارية برصيد (التقاط PayPal معلَّق، جلسة قديمة، تجديد اشتراك أدنى أقدم) — كانت
+   تُضاف إلى رصيد الأعلى (v-lock-r2 r2-4) فتنتهي بنهاية الأعلى (٣ أيّام بدل شهر) وتُمحى مع استرداده (dropPeriod يحذف عدّاده). الآن تُؤجَّل
+   كفترات المحادثة (planNext): user.mediaNext = [{ media, plan, budget, payId, paidAt, cut }] برصيدها كاملًا، وتسري بنافذتها كاملة (٣٥ يومًا)
+   من لحظة سريانها حين تخلو خانتها: انتهت نافذة الأعلى، أو نفد رصيدها، أو سُحبت باسترداد أو اعتراض. cut = ما استُردّ منها قبل سريانها
+   (نسبة تراكميّة؛ تكرار السحب بالنسبة نفسها لا يأخذ مرّتين). */
+function pendingNext(user) {
+  return (user && Array.isArray(user.mediaNext) ? user.mediaNext : []).filter((x) => x && MEDIA_PLANS[x.plan] && MEDIA_PLANS[x.plan].media === x.media);
+}
+// يضيف الدفعة إلى المؤجَّلة (مرّة واحدة برقمها — إعادة المنح أو إكماله لا تكرّرها).
+function deferNext(user, planKey, payId, paidAt) {
+  const p = MEDIA_PLANS[planKey];
+  if (!p) return;
+  const id = payId ? String(payId) : null;
+  const list = pendingNext(user).filter((x) => !id || String(x.payId || '') !== id);
+  list.push({ media: p.media, plan: planKey, budget: p.budget, payId: id, paidAt: Number(paidAt) || Date.now() });
+  user.mediaNext = list;
+}
+/* v-r3 (r3-rv1 · r3-rv2 · r3-rv4): رصيدٌ يُكتب قبل سجلّ الحساب — سريان مؤجَّلة (activateDue)، أو عودة الفترة السابقة باسترداد (pay-refund
+   dropPeriod) — كان يُملأ ثانيةً كلّما أُعيد: فشلُ كتابة السجلّ بعده (أو ضياع ردّها) يترك الحالة القديمة، فيُصرف الرصيد تحت الفترة القديمة ثمّ
+   تُعيد الإعادةُ (القراءة التالية، إعادة حدث السحب) الملء: دفعة media_basic واحدة = ٢٥٠٠ فلس، وما بقي من فترة عائدة = ضعفه. الآن مرّة واحدة لكلّ
+   أثر مسمّى: علامة بوقت الملء تُكتب مع الرصيد في طلب واحد (pipeline، كنقل العدّادات r3-4)، والإعادة تجدها فلا تملأ. يرجع وقت الملء الأوّل إن
+   سبق (ولا يكتب شيئًا)، وإلّا 0 بعد الملء. يرمي عطب القراءة، وأمرَ رصيد لم يقع (بعد محو علامته) — المستدعي يُعيد. */
+const FILL_MARK_TTL_SEC = 400 * 86400; // كسجلّ المنح: الإكمال والاسترداد قد يصلان بعد أشهر
+async function fillOnce(mark, key, value, ttlSec, now, tag) { /* v-r3 (r3-rv6): tag قيمة العلامة بدل وقت الملء — رقم الفترة التي أعادها السحب (pay-refund dropPeriod) */
+  const m = String(mark).slice(0, 220);
+  const was = await kvGetRaw(m, { strict: true });
+  if (was !== null && was !== undefined && String(was) !== '') return Number(was) || 1;
+  const t = typeof now === 'number' ? now : Date.now();
+  const r = await kvPipeline([['SET', key, String(value), 'EX', String(Math.max(1, Math.trunc(ttlSec)))], ['SET', m, tag ? String(tag) : String(t), 'EX', String(FILL_MARK_TTL_SEC)]]);
+  if (!Array.isArray(r) || r[0] !== 'OK') { // الأوامر بالترتيب لا ذرّيًّا: الرصيد لم يُكتب والعلامة ربّما كُتبت — تُمحى فتملأ الإعادة
+    await kvDel(m, { strict: true });
+    throw new Error('budget fill not applied: ' + m.slice(0, 60));
+  }
+  return 0;
+}
+const activatedKey = (payId) => 'media-on:' + String(payId).slice(0, 200);
+// v-r3 (r3-rv1 · r3-rv3): وقت سريان المؤجَّلة برقم دفعتها إن سرت قبلُ، وإلّا 0. قراءة صارمة: العطل يرمي.
+async function activatedAt(payId) {
+  if (!payId) return 0;
+  const v = await kvGetRaw(activatedKey(payId), { strict: true });
+  return v !== null && v !== undefined && String(v) !== '' ? (Number(v) || 1) : 0;
+}
+// خانات فيها مؤجَّلة وقد خلت: لا فترة سارية، أو رصيدها نفد. يرمي عطب قراءة الرصيد (لا سريان على تخمين).
+// v-r3 (r3-rv1): أو سرت أولاها قبلُ ولم يصل سجلّها (فشلت كتابته بعد الرصيد) — تُكمَل الآن بلا ملء، لا تبقى تحت الفترة القديمة حتّى ينفد رصيدها.
+// onlyOn (v-r3 r3-rv2-stale): ما سرى قبلُ وحده (علامته قائمة) — إكمال سجلّه بلا سريان جديد، لكلّ كاتب تحت قفل الحساب (completeActivated).
+async function dueKinds(user, username, now, onlyOn) {
+  const out = [];
+  const pend = pendingNext(user);
+  for (const kind of [...new Set(pend.map((x) => x.media))]) {
+    if ((await activatedAt(pend.find((x) => x.media === kind).payId)) || (!onlyOn && (!mediaActive(user, kind, now)
+      || !(Number(await kvGetRaw(budgetKey(username, kind), { strict: true })) > 0)))) out.push(kind);
+  }
+  return out;
+}
+/** تحت قفل الحساب وعلى نسخته الطازجة: أوّل مؤجَّلة في كلّ خانة خلت تسري الآن برصيدها (ناقصًا ما استُردّ). الرصيد قبل السجلّ — المستدعي يكتب السجلّ. */
+async function activateDue(user, username, now, onlyOn) {
+  const kinds = await dueKinds(user, username, now, onlyOn);
+  if (!kinds.length) return false;
+  const t = typeof now === 'number' ? now : Date.now();
+  const pend = pendingNext(user);
+  const done = [];
+  for (const kind of kinds) {
+    const x = pend.find((y) => y.media === kind);
+    const cut = Math.min(1, Math.max(0, Number(x.cut) || 0));
+    const v = Math.max(0, Math.round((Number(x.budget) || 0) * (1 - cut)));
+    // v-r3 (r3-rv1 · r3-rv2): مرّة واحدة لكلّ دفعة — سريانٌ سبق ولم يصل سجلّه يُكمَل بوقته الأوّل (نافذته كمدّة رصيده) ولا يُعاد ملء رصيده
+    const on = x.payId ? await fillOnce(activatedKey(x.payId), budgetKey(username, kind), v, MEDIA_WINDOW_DAYS * 86400, t) : 0;
+    if (!x.payId) await kvSetRaw(budgetKey(username, kind), v, MEDIA_WINDOW_DAYS * 86400);
+    const at = on > 1 ? on : t;
+    user.media = Object.assign({}, user.media || {});
+    /* v-r3 (r3-rv7): وما قُصّ منها قبل السريان (cut) يبقى على الفترة — سحبٌ معاد بعدها يقرؤه (pay-refund applyRevoke) فلا يأخذه من عدّادها ثانيةً */
+    user.media[kind] = Object.assign({ plan: x.plan, at }, x.payId ? { payId: String(x.payId) } : {}, cut > 0 ? { cut } : {});
+    done.push(x);
+  }
+  const rest = pend.filter((x) => !done.includes(x));
+  if (rest.length) user.mediaNext = rest; else delete user.mediaNext;
+  return true;
+}
+/* v-r3 (r3-rv2-stale): سريانٌ كُتب رصيده وعلامته ثمّ فشلت كتابة السجلّ كان يُكمَل عند قراءة الوسائط التالية وحدها (settleNext) — وكلّ كاتب
+   يأخذ قفل الحساب قبلها (منح، استرداد، اعتراض، تغيير اسم، مرآة النقاط) يرى الفترة الأعلى القديمة والمؤجَّلة في الانتظار ورصيدُ المؤجَّلة في
+   العدّاد: استرداد media_basic كاملًا يخرجها من الانتظار ويبقى رصيدها يُصرف، واسترداد نصف media_max يأخذ من رصيد media_basic، ومنحُ media_max
+   جديدة ثمّ القراءة تكتب media_basic فوق فترتها المدفوعة (فلا يطابقها استردادها)، وتغيير الاسم يترك رصيدها تحت الاسم القديم. الآن يُكمَل مرّة
+   واحدة مركزيًّا عند أخذ القفل (create-checkout-session withAccount)، قبل أن يقرأ الكاتب السجلّ: ما سرى قبلُ (علامته قائمة) يصير الفترة بوقته
+   الأوّل بلا ملء ثانٍ (fillOnce يجد العلامة). لا سريان جديد هنا — يبقى عند القراءة وفي سحب الأعلى. يرجع هل تغيّر السجلّ (فيُكتب). يرمي عطب القراءة. */
+async function completeActivated(user, username) {
+  if (!user || user.deleted || !pendingNext(user).length) return false;
+  return activateDue(user, username, undefined, true);
+}
+// قراءة الحساب لمسارات الوسائط: مؤجَّلة حلّ وقتها تسري أوّلًا (قفل الحساب بانتظار قصير؛ مشغول أو عطب ⇒ كما هو، والقراءة التالية تُسريها).
+const NEXT_LOCK_WAIT_MS = 2000;
+async function settleNext(username, user, now) {
+  if (!pendingNext(user).length) return user;
+  try {
+    if (!(await dueKinds(user, username, now)).length) return user;
+    return await require('./create-checkout-session.js').withAccount(username, async (name, fresh) => {
+      if (!fresh || fresh.deleted) return user;
+      if (await activateDue(fresh, name, now)) await require('./auth.js').putUser(name, fresh);
+      return fresh;
+    }, NEXT_LOCK_WAIT_MS);
+  } catch (e) {
+    console.warn('[media] deferred plan not activated yet:', e && e.message);
+    return user;
+  }
+}
+async function readMediaUser(username, o) {
+  let user = null;
+  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  return settleNext(username, user, o.now);
+}
+
 async function readTickets(username) {
   try {
     const raw = await kvGetRaw(ticketsKey(username));
@@ -129,8 +239,7 @@ async function trySpendMedia(username, pts, reason, opts) {
   const kind = mediaOf(reason);
   if (!kind || !username) return null;
   const o = opts || {};
-  let user = null;
-  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  const user = await readMediaUser(username, o); // v-r3 (r3-3): مؤجَّلة حلّ وقتها تسري قبل القراءة
   const fils = UNIT_COST[reason];
   for (const pool of SPEND_POOLS[kind]) {
     if (!mediaActive(user, pool, o.now)) continue;
@@ -189,8 +298,7 @@ async function refundMedia(username, pts, pool) {
    بترتيب SPEND_POOLS، والرصيد ينقص بما غُطّي قبله) بلا خصم ولا تذكرة. ما لا يُغطّى يُدفع نقاطًا. دقيقة مها لا تغطّي صورة ولا فيديو. */
 async function coverage(username, reasons, opts) {
   const o = opts || {};
-  let user = null;
-  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  const user = await readMediaUser(username, o); // v-r3 (r3-3): مؤجَّلة حلّ وقتها تسري قبل القراءة
   const left = {};
   const out = [];
   for (const reason of reasons || []) {
@@ -222,8 +330,7 @@ const imageSlots = (user, now) => SPEND_POOLS.image.filter((k) => mediaActive(us
 /** جودة صورة مشترك الصور: «عاديّة» افتراضيًّا، و«جودة عالية» في الطلب أو الإعداد تجعلها عالية. null = ليس مشتركًا. */
 async function imageQuality(username, text, opts) {
   const o = opts || {};
-  let user = null;
-  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  const user = await readMediaUser(username, o); // v-r3 (r3-3): مؤجَّلة حلّ وقتها تسري قبل القراءة
   const slot = imageSlots(user, o.now)[0];
   if (!slot) return null;
   if (HIGH_ASK_RE.test(String(text || '')) || TEXT_ASK_RE.test(String(text || ''))) return 'high';
@@ -244,8 +351,7 @@ async function setImageQuality(username, quality) {
 /** الرصيد المتبقّي وعدد ما يكفيه من كلّ نوع — للواجهة. */
 async function mediaStatus(username, opts) {
   const o = opts || {};
-  let user = null;
-  try { user = await (o.getUser || require('./auth.js').getUser)(username); } catch (e) { user = null; }
+  const user = await readMediaUser(username, o); // v-r3 (r3-3): مؤجَّلة حلّ وقتها تسري قبل القراءة
   const out = {};
   for (const kind of MEDIA_KINDS) {
     if (!mediaActive(user, kind, o.now)) continue;
@@ -262,4 +368,7 @@ async function mediaStatus(username, opts) {
 module.exports = {
   MEDIA_PLANS, UNIT_COST, MEDIA_WINDOW_DAYS, MAHA_CALL_CAP_MIN, MEDIA_KINDS, SPEND_POOLS,
   mediaOf, mediaActive, grantMedia, trySpendMedia, refundMedia, refundMahaMinute, mediaStatus, imageQuality, setImageQuality, coverage,
+  deferNext, activateDue, // v-r3 (r3-2 · r3-3): المنح يؤجّل الأدنى تحت أعلى سارية، والسحب يُسري المؤجَّلة حين يُسقط الأعلى
+  fillOnce, activatedAt, // v-r3 (r3-rv1..4): رصيدٌ قبل السجلّ يُملأ مرّة لكلّ أثر، وإكمال المنح لا يعيد مؤجَّلة سرت
+  completeActivated, // v-r3 (r3-rv2-stale): قفل الحساب يكمل سريانًا لم يصل سجلّه قبل أيّ كاتب
 };

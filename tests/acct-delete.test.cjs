@@ -20,13 +20,14 @@ function world(o) {
   const opt = o || {};
   const kv = new Map();
   const users = new Map();
-  const sara = Object.assign({ username: 'Sara', email: 'sara@x.com', phone: '+971500000000', avatar: 'data:x', media: { image: { plan: 'img1', at: 1 } } }, opt.google ? { googleAuth: true } : hashPw('secret-pass-1'));
+  const sara = Object.assign({ username: 'Sara', email: 'sara@x.com', phone: '+971500000000', avatar: 'data:x', media: { image: { plan: 'img1', at: 1 } } }, opt.google ? Object.assign({ googleAuth: true }, hashPw(crypto.randomBytes(16).toString('hex'))) : hashPw('secret-pass-1')); // v-lock-acct (srv-auth-3): الكولباك يكتب salt/hash عشوائيّين
   users.set('sara', sara);
   for (const k of singleKeys('sara')) kv.set(k, '1');
   kv.set('planvid:sara:111', '1'); kv.set('planvid:sara:222', '1'); kv.set('emaildraft:sara:m1', 'enc');
   kv.set('chats:noor', 'keep'); kv.set('points:noor', '50'); kv.set('planvid:sarah:1', 'keep'); // أسماء قريبة لا تُمسّ
-  kv.set('db/explore/1_a.json', JSON.stringify({ id: 'a', username: 'Sara' })); kv.set('db/shares/a.json', '{}');
-  kv.set('db/explore/2_b.json', JSON.stringify({ id: 'b', username: 'noor' })); kv.set('db/shares/b.json', '{}');
+  // v-lock-acct (srv-auth-1): سجلّ المشاركة بشكل createShare الحقيقيّ — المطابقة بمالكه owner لا بالاسم المعروض في الفهرس
+  kv.set('db/explore/1_a.json', JSON.stringify({ id: 'a', username: 'Sara' })); kv.set('db/shares/a.json', JSON.stringify({ id: 'a', owner: 'sara', username: 'Sara', createdAt: 1, public: true }));
+  kv.set('db/explore/2_b.json', JSON.stringify({ id: 'b', username: 'noor' })); kv.set('db/shares/b.json', JSON.stringify({ id: 'b', owner: 'noor', username: 'noor', createdAt: 2, public: true }));
   kv.set('db/email-index/sara@x.com', JSON.stringify({ username: 'sara' }));
   kv.set('db/phone-index/+971500000000', JSON.stringify({ username: 'someone_else' })); // هاتف صار لغيره — لا يُمسّ
   kv.set('db/alias/g_sara@x.com', JSON.stringify({ primary: 'sara' }));

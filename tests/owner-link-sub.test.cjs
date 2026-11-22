@@ -62,7 +62,12 @@ global.fetch = async (url, init) => {
     }
     return reply(404, { error: { message: 'No such subscription' } });
   }
+  if (method === 'DELETE' && (m = p.match(/^subscriptions\/([^/]+)$/)) && net.subs[m[1]]) { net.subs[m[1]].status = 'canceled'; return reply(200, net.subs[m[1]]); } // v-audit-main-b: supersedeLinked
   if (net.failGet && net.failGet.test(p)) return reply(500, { error: { type: 'api_error', message: 'An unknown error occurred' } });
+  if (p === 'subscriptions/search') { // v-audit-main-b: supersedeLinked يبحث عن اشتراكات الحساب الحيّة باسمه (اشتراك حيّ واحد لكلّ خانة)
+    const nm = (q('query') || '').match(/metadata\['username'\]:'((?:[^'\\]|\\.)*)'/);
+    return reply(200, { data: Object.values(net.subs).filter((s) => nm && s.metadata && s.metadata.username === nm[1]), has_more: false, next_page: null });
+  }
   if ((m = p.match(/^subscriptions\/([^/]+)$/))) return net.subs[m[1]] ? reply(200, net.subs[m[1]]) : reply(404, { error: { message: 'No such subscription' } });
   if ((m = p.match(/^customers\/([^/]+)$/))) return net.customers[m[1]] ? reply(200, net.customers[m[1]]) : reply(404, {});
   if (p === 'checkout/sessions') return reply(200, { data: net.sessions.filter((s) => s.subscription === q('subscription')), has_more: false });
@@ -580,4 +585,22 @@ test('١٧. الواجهة: التحذيرات (إيميلان مختلفان ل
   assert.equal(sk.said.filter((x) => x[0] === 'confirm').length, 0);
   const skm = sk.said.find((x) => x[0] === 'alert')[1];
   assert.ok(!skm.includes(D.ownerLinkSubNothing) && skm.includes('1'), 'لا «كلّها مضافة» وفيها مستردّة');
+});
+
+// v-audit-main-b: إلغاء الاشتراك الزائد (اشتراك حيّ واحد لكلّ خانة) فشل في ضغطة سابقة بعد منحٍ تمّ — الفحص بلا دفعات جديدة لكنّه يعدّ ما سيُلغى
+// (supersede)، فالواجهة تطلب التأكيد ولا تقول «لا جديد» (كان الاشتراكان يبقيان يُخصمان).
+test('١٨. الواجهة: مربوط بلا دفعات جديدة وفيه اشتراك زائد يُلغى ⇒ تأكيد ثمّ تنفيذ، وبلا زائد «لا جديد» كما كان', async () => {
+  const left = Object.assign({}, DRY, { linkedTo: GKEY, toGrant: 0, points: 0, payments: [{ state: 'already' }], supersede: 1 });
+  const e = uiEnv('ar', [true], [[200, left], [200, Object.assign({}, left, { dryRun: undefined, granted: 0, pointsAdded: 0, superseded: 1 })]]);
+  e.field('adminLinkUserInput', ALYA); e.field('adminLinkSubInput', 'sub_ALYA0001');
+  await e.ctx.adminLinkSubscription();
+  assert.equal(e.said.filter((x) => x[0] === 'confirm').length, 1, 'تأكيد لا «لا جديد»');
+  assert.equal(e.sent.length, 2);
+  assert.equal(e.sent[1].confirm, true);
+  const D = dictFor('ar');
+  const none = uiEnv('ar', [], [[200, Object.assign({}, left, { supersede: 0 })]]);
+  none.field('adminLinkUserInput', ALYA); none.field('adminLinkSubInput', 'sub_ALYA0001');
+  await none.ctx.adminLinkSubscription();
+  assert.equal(none.said.filter((x) => x[0] === 'confirm').length, 0);
+  assert.ok(none.said.find((x) => x[0] === 'alert')[1].includes(D.ownerLinkSubNothing.slice(0, 12)), 'بلا زائد: «لا جديد» كما كان');
 });

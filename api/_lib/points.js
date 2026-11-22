@@ -122,12 +122,21 @@ async function ensureBalance(username) {
 }
 
 /** Keeps the user record in step with the counter. Best-effort by design. */
+/* v-lock-credit (x-build-1، باب المال بموافقة المالك ٢٧ أكتوبر): المرآة كانت تقرأ السجلّ ثمّ تكتبه كاملًا خارج قفل الحساب، فقراءةٌ سبقت
+   سحب باقة (استرداد أو اعتراض) تصل كتابتها بعده فتعود الباقة المسحوبة. مهلة (د) في pay-refund (٣٠٠ms) تضيّق النافذة ولا تسدّها،
+   وبها كان اختبار pay-refund ٢٥ يتقلّب تحت الحمل. الآن تحت قفل الحساب نفسه (withAccount) على نسخة طازجة، والرقم من العدّاد الحيّ
+   لحظتها. قفلٌ بيد عمليّة دفع أكثر من MIRROR_WAIT_MS ⇒ تُترك المرآة (العدّاد هو المرجع في readPoints) ولا ينتظر الصرف ٨ ثوانٍ. */
+const MIRROR_WAIT_MS = 2000;
 async function mirrorToUser(username, points) {
   try {
-    const rec = await readPoints(username);
-    if (!rec) return;
-    rec.user.points = Math.max(0, Math.floor(points));
-    await putUser(username, rec.user);
+    await require('./create-checkout-session.js').withAccount(username, async (name, user) => {
+      if (!user || user.deleted) return;
+      const raw = await kvGetRaw(balanceKey(name));
+      const live = (raw !== null && raw !== undefined && String(raw) !== '') ? Number(raw) : Number(points);
+      if (!Number.isFinite(live)) return;
+      user.points = Math.max(0, Math.floor(live));
+      await putUser(name, user);
+    }, MIRROR_WAIT_MS);
   } catch (e) {
     console.warn('[points] mirror failed for ' + username + ':', e && e.message);
   }
@@ -206,12 +215,24 @@ async function meterOp(username, reason) {
   try { await require('./cost-meter.js').meterOp(username, reason); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/points:206'); /* guard-ok — القياس لا يوقف خدمة */ }
 }
 
+/* v-lock-r2 (money-invariants-9): الردّ يأتي باسم وقت الخصم (تذكرة الفيديو job.u، حجز صورة مها، تذكرة الباقة) — وبعد تغيير الاسم كان
+   ensureBalance يبذر عدّادًا يتيمًا للاسم الميّت من شاهده (0) ويزيده، والمرآة تتبع movedTo فلا يتغيّر رصيد الحساب: النقاط والفيديو
+   (علامة الردّ نهائيّة) يضيعان معًا. الردّ يتبع الشاهد إلى الحساب الحيّ (٣٢ قفزة كالشحن)؛ تعذّر القراءة = الاسم كما جاء (كما كان). */
+async function liveName(username) {
+  try {
+    const { name, user } = await require('./create-checkout-session.js').liveAccount(username);
+    return (user && !user.deleted && name) ? String(name) : username;
+  } catch (e) { return username; } // guard-ok — القراءة تحسين؛ الردّ إلى الاسم كما جاء كما كان
+}
+
 // يعيد نقاطًا للمستخدم (استرجاع عند فشل توليد بعد الخصم).
 // v-refund-kind (مراجعة باب المال ١٦ أكتوبر): how اختياريّ = نتيجة spendPoints نفسها، فيعود الردّ بنوع الخصم: صلاحيّة الباقة لها
 // (ضياع تذكرتها = نقاطًا كي لا يخرج بلا شيء)، ورصيد الاشتراك له ثمّ النقاط، والنقاط للنقاط وحدها. بلا how يُطابَق بالمبلغ كما كان —
 // وهناك كانت تذكرة صلاحيّة قديمة بالمبلغ نفسه (فيديو ترند نجح قبل ساعة) تبتلع ردّ فيديو دُفع نقاطًا، فتبقى النقاط مخصومة.
 async function refundPoints(username, amount, how) {
   if (!username || isOwner(username)) return;
+  username = await liveName(username);
+  if (isOwner(username)) return;
   if (await isVip(username)) return; // لم يُخصم منه شيء، فلا شيء يُعاد.
   let amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (!amt) return;
@@ -264,6 +285,8 @@ async function canAfford(username, steps) {
    الجواب»: المتّصل يقرأ ختمه قبل أن يعيد. المالك وVIP والمبلغ صفر لا يصلون النداء، فالختم لا يُكتب لهم هنا. */
 async function refundPointsOnly(username, amount, mark) {
   if (!username || isOwner(username)) return true;
+  username = await liveName(username); // v-lock-r2 (money-invariants-9)
+  if (isOwner(username)) return true;
   if (await isVip(username)) return true; // لم يُخصم منه شيء، فلا شيء يُعاد.
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (!amt) return true;
@@ -302,7 +325,9 @@ function subsOf(user, now) {
     out.push({ kind, plan, endsAt, active: t <= endsAt });
   };
   const plan = String(user.plan || '').toLowerCase();
-  if (tier.PLAN_KEYS.includes(plan)) add('chat', plan, user.planUpdatedAt, tier.SUB_WINDOW_DAYS);
+  const cp = tier.chatPeriod(user, t); // v-lock-subs (srv-money-4): الفعليّة — بعد انتهاء الأعلى تسري الأدنى المدفوعة تحتها، فلا «انتهى» وهو مشترك
+  if (cp) add('chat', cp.plan, cp.at, tier.SUB_WINDOW_DAYS);
+  else if (tier.PLAN_KEYS.includes(plan)) add('chat', plan, user.planUpdatedAt, tier.SUB_WINDOW_DAYS);
   for (const kind of media.MEDIA_KINDS) { // v-media-merge: والمدموجة ('mix')
     const m = user.media && user.media[kind];
     if (m && media.MEDIA_PLANS[m.plan] && media.MEDIA_PLANS[m.plan].media === kind) add(kind, m.plan, m.at, media.MEDIA_WINDOW_DAYS);
