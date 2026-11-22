@@ -594,3 +594,14 @@ test('v-blockworld-rules: طلبات مزون — وضع اللعب والسرع
   assert.match(life, /function feed\(e, s\)/, 'نأكّل الحيوانات فتحبنا');
   for (const n of ['فروة', 'ريش', 'لحم دجاج', 'سمكة', 'ربيان', 'فحم', 'طحالب']) assert.ok(kit.includes("'" + n + "'"), n);
 });
+
+test('v-blockworld-zoo: حيوانات أكثر (بقرة، خروف، حصان، جمل، قطوة، كلب، غزال، أرنب، ثعلب، بطريق، سلحفاة، دلفين…) وشخصيات صور المالك', () => {
+  const beasts = read('shared/beasts.js'), out = read('shared/outfits.js'), av = read('shared/avatar.js');
+  for (const n of ['بقرة', 'خروف', 'حصان', 'حمار', 'جمل', 'قطوة', 'كلب', 'غزال', 'أرنب', 'ثعلب', 'ضفدع', 'دب أبيض', 'بطريق', 'سلحفاة', 'سرطان', 'ببغاء', 'دلفين', 'بطة']) assert.ok(beasts.includes(`name: '${n}'`), n);
+  assert.match(beasts, /export function landKinds\(world, landAt\)/, 'كل حيوان في الأرض اللي تناسبه');
+  assert.match(beasts, /drops: \[\[K\.MEAT, 1\], \[K\.WOOL, 2\]\]/, 'الخروف يعطي صوف');
+  for (const n of ['القلب الآلي', 'حكيم المجرّة', 'جندي البر', 'رائد الفضاء', 'قائد العملاق', 'جنّية الغابة', 'فارس الجليد', 'المغامرة']) assert.ok(out.includes(`name: '${n}'`), n);
+  for (const part of ['faces.heart', 'faces.visor', 'faces.mask', 'faces.bubble', 'tentacles', 'wings', 'pack', 'pads']) assert.ok(av.includes(part), part);
+  assert.match(out, /\['heart', 'visor', 'alien', 'mask', 'bubble'\]\.includes\(c\.face\)/, 'الشكل اللي يجي من لاعب ثاني ينفحص');
+  assert.ok(!/creeper|enderman|steve|alex|mooshroom|llama|axolotl|كريبر|إندرمان/i.test(beasts + out), 'لا أسماء ولا مخلوقات منقولة من لعبة ثانية');
+});

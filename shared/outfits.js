@@ -11,6 +11,17 @@ export const OUTFITS = [
   { key: 'cap', name: 'ولد الكاب', how: 'متاح من البداية', free: true, c: { hat: '#c33d2e', skin: '#e0b088', shirt: '#2d5abf', pants: '#7a5a3a', shoes: '#25282d', brim: true } },
   { key: 'robo', name: 'الآلي', how: 'متاح من البداية', free: true, c: { hat: '#5a6068', skin: '#9aa0a8', shirt: '#6c737c', pants: '#4a5058', shoes: '#2a2e34' } },
   { key: 'space', name: 'رائدة الفضاء', how: 'متاحة من البداية', free: true, c: { hat: '#f4f4f2', skin: '#e0b088', shirt: '#f1f1ee', pants: '#e6e6e2', shoes: '#c33d2e', cape: '#e86a2a' } },
+  // the space crew and the adventurers, from the owner's pictures (our own figures, our own names)
+  { key: 'heartbot', name: 'القلب الآلي', how: 'متاح من البداية', free: true, c: { hat: '#5a6068', skin: '#7a8088', shirt: '#4a5058', pants: '#3a3f46', shoes: '#22252a', face: 'heart', pads: '#6c737c' } },
+  { key: 'sage', name: 'حكيم المجرّة', how: 'متاح من البداية', free: true, c: { hat: '#8a5ad6', skin: '#9a6ae0', shirt: '#5a2f9a', pants: '#4a2580', shoes: '#2a1a4a', face: 'alien', tentacles: '#9a6ae0', skirt: '#5a2f9a', cape: '#d8b04a' } },
+  { key: 'ranger', name: 'جندي البر', how: 'متاح من البداية', free: true, c: { hat: '#7a6a3a', skin: '#c99870', shirt: '#8a7440', pants: '#5a5030', shoes: '#3a2e1c', face: 'mask', maskCol: '#6a5a2a', pads: '#a08a4a', pack: '#5a4a2a' } },
+  { key: 'astro', name: 'رائد الفضاء', how: 'متاح من البداية', free: true, c: { hat: '#5a3a24', skin: '#e0b088', shirt: '#f1f1ee', pants: '#e6e6e2', shoes: '#c33d2e', face: 'bubble', pack: '#d8dde4' } },
+  { key: 'mech', name: 'قائد العملاق', how: 'متاح من البداية', free: true, c: { hat: '#f1f1ee', skin: '#e0b088', shirt: '#e8e8e4', pants: '#8a9098', shoes: '#e86a2a', face: 'visor', glow: '#5ff0ff', pads: '#e86a2a' } },
+  { key: 'fairy', name: 'جنّية الغابة', how: 'متاحة من البداية', free: true, c: { hat: '#4a9a4a', skin: '#7ac06a', shirt: '#3f8a3f', pants: '#2f6a2f', shoes: '#2a4a2a', face: 'alien', wings: '#bff5d6' } },
+  { key: 'nightsuit', name: 'الظلّ البنفسجي', how: 'متاح من البداية', free: true, c: { hat: '#2a2050', skin: '#3a2a6a', shirt: '#3a2a7a', pants: '#2a2058', shoes: '#18143a', face: 'visor', glow: '#b06aff' } },
+  { key: 'iceknight', name: 'فارس الجليد', how: 'متاح من البداية', free: true, c: { hat: '#bcd8ec', skin: '#e0b088', shirt: '#9cc4e4', pants: '#7aa4c8', shoes: '#5a84a8', face: 'visor', glow: '#dff6ff', pads: '#cfe6f6' } },
+  { key: 'scout', name: 'صيّاد القفار', how: 'متاح من البداية', free: true, c: { hat: '#5a3a24', skin: '#e0b088', shirt: '#9a2f2a', pants: '#6a4a2a', shoes: '#3a2a1a', pads: '#c9a070', pack: '#7a5a3a' } },
+  { key: 'backpacker', name: 'المغامرة', how: 'متاحة من البداية', free: true, c: { hat: '#7a4a2a', skin: '#e8b890', shirt: '#9a3a2a', pants: '#f1ece0', shoes: '#4a3020', long: true, pack: '#3f6a8a' } },
   { key: 'worker', name: 'العامل', how: 'مهمة: اصنع أداة', c: { hat: '#e0a52e', skin: '#e0b088', shirt: '#c96a2b', pants: '#4a4f5c', shoes: '#3b2a1c', brim: true } },
   { key: 'miner', name: 'المنقّب', how: 'مهمة: اجمع 4 ألماسات من الكهف', c: { hat: '#e3c038', skin: '#e0b088', shirt: '#5a6a7a', pants: '#3b4250', shoes: '#22252c', brim: true } },
   { key: 'hunter', name: 'الصيّاد', how: 'مهمة: صيد حيوانين', c: { hat: '#4d5a2c', skin: '#d6a57c', shirt: '#5f7036', pants: '#5a4630', shoes: '#33261a', brim: true } },
@@ -35,7 +46,8 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 export function cleanLook(c) {
   if (!c || typeof c !== 'object') return null;
   const out = {};
-  for (const k of ['hat', 'skin', 'shirt', 'pants', 'shoes', 'cape', 'skirt', 'flowers']) if (typeof c[k] === 'string' && HEX.test(c[k])) out[k] = c[k];
+  for (const k of ['hat', 'skin', 'shirt', 'pants', 'shoes', 'cape', 'skirt', 'flowers', 'tentacles', 'wings', 'pack', 'pads', 'glow', 'maskCol']) if (typeof c[k] === 'string' && HEX.test(c[k])) out[k] = c[k];
+  if (['heart', 'visor', 'alien', 'mask', 'bubble'].includes(c.face)) out.face = c.face;
   if (c.brim) out.brim = true;
   if (c.long) out.long = true;
   return out.shirt && out.pants ? out : null;

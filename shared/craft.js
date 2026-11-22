@@ -34,7 +34,9 @@ export const RECIPES = [
     { out: gold, n: 1, needs: [[GOLD, n]], table: true }, { out: dia, n: 1, needs: [[DIAMOND, n]], table: true },
   ]),
   { out: K.TORCH, n: 8, needs: [['wood', 1], [K.COAL, 1]] },           // coal from the cave burns longer: more torches from less wood
-  { out: K.FURCOAT, n: 1, needs: [[K.FUR, 4]] },                       // four hides make a warm coat
+  { out: K.FURCOAT, n: 1, needs: [[K.FUR, 4]] },
+  { out: 160, n: 1, needs: [[K.WOOL, 3], ['wood', 3]], table: true },           // a bed from wool off the sheep
+  { out: K.FURCOAT, n: 1, needs: [[K.WOOL, 5]] },                       // four hides make a warm coat
   { out: K.GLASS, n: 4, needs: [[K.COAL, 1], ['ore', 2]], table: true },
 ];
 

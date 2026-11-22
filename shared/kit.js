@@ -26,7 +26,7 @@ const hexOf = Object.fromEntries(COLORS.map(([k, , h]) => [k, h]));
 const nameOfColor = Object.fromEntries(COLORS.map(([k, n]) => [k, n]));
 
 /** Block ids of the kit. */
-export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, ROCK_COAL: 177, ROCK_GOLD: 178, ROCK_DIAMOND: 179, MEAT: 200, FUR: 201, FEATHER: 202, CHICKEN: 203, FISH: 204, SHRIMP: 205, COAL: 206, PEARL: 207, SEAWEED: 208, SEEDS: 209, FURCOAT: 228, ORE: 230, GEM: 231, DATES: 232 };
+export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, ROCK_COAL: 177, ROCK_GOLD: 178, ROCK_DIAMOND: 179, MEAT: 200, FUR: 201, FEATHER: 202, CHICKEN: 203, FISH: 204, SHRIMP: 205, COAL: 206, PEARL: 207, SEAWEED: 208, SEEDS: 209, FURCOAT: 228, ORE: 230, GEM: 231, DATES: 232, WOOL: 233 };
 /** Block definitions, in the same shape the worlds use (see voxel.js). */
 export const KIT_BLOCKS = {};
 const INFO = {};                                 // id -> { name, key, group, icon }
@@ -61,6 +61,7 @@ good(K.DATES, 'dates', 'تمر', 'dates', '#7a3f1d', { use: 'eat', eat: 20, feed
 good(K.SEEDS, 'seeds', 'حبوب', 'seeds', '#d8b660', { feed: 'plants' });
 good(K.FUR, 'fur', 'فروة', 'fur', '#b08a62');
 good(K.FEATHER, 'feather', 'ريش', 'feather', '#eef0f2');
+good(K.WOOL, 'wool', 'صوف', 'fur', '#f1ede4');
 good(K.COAL, 'coal', 'فحم', 'ore', '#17181b');
 good(K.PEARL, 'pearl', 'لؤلؤة', 'pearl', '#f3ecf7');
 INFO[K.ORE] = { id: K.ORE, key: 'ore', name: 'خام معدن', group: 'gem', icon: ['ore', '#b9a27a'], item: {} };
