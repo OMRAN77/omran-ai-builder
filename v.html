@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title id="docTitle">om ai — شاهد ثم نزّل التطبيق</title>
+<meta name="description" content="om ai — ذكاء اصطناعي بالعربي: كل الأدوات في تطبيق واحد. اضغط على الفيديو لتنزيل النسخة المناسبة لجهازك.">
+<meta name="theme-color" content="#090a0d">
+<link rel="icon" type="image/png" href="/icons/favicon-32-v2.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png">
+<link rel="canonical" href="https://omran-ai-builder.vercel.app/v">
+<meta property="og:type" content="video.other">
+<meta property="og:title" content="om ai — ذكاء اصطناعي بالعربي">
+<meta property="og:description" content="كل الأدوات في تطبيق واحد. اضغط للتنزيل على جهازك.">
+<meta property="og:url" content="https://omran-ai-builder.vercel.app/v">
+<meta property="og:image" content="https://omran-ai-builder.vercel.app/assets/promo/om-ai-promo-poster.jpg">
+<style>
+:root { --bg: #090a0d; --gold: #d4af37; --gold-light: #f5df88; --ink: #1c1304; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0; height: 100%; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% -10%, #2a2109 0%, var(--bg) 60%), var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #fff;
+}
+/* الصفحة كلّها زرّ واحد: أيّ ضغطة على الفيديو تذهب للتنزيل */
+#tapArea {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; text-decoration: none; color: inherit;
+}
+#promo {
+  width: 100%; height: 100%; max-height: 100dvh;
+  object-fit: contain; display: block; /* يملأ الشاشة دون قصّ في أيّ مقاس */
+}
+#cta {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  padding: 15px 34px; border-radius: 999px; white-space: nowrap;
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+  color: var(--ink); font-size: 19px; font-weight: 800;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(255, 255, 255, 0.25) inset;
+  pointer-events: none; /* الضغطة تمرّ إلى الرابط الذي تحتها */
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.05); } }
+@media (prefers-reduced-motion: reduce) { #cta { animation: none; } }
+#soundBtn {
+  position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); inset-inline-start: 14px;
+  width: 46px; height: 46px; border-radius: 50%; border: 1px solid rgba(212, 175, 55, 0.6);
+  background: rgba(9, 10, 13, 0.65); color: var(--gold-light); font-size: 20px; line-height: 1;
+  cursor: pointer; z-index: 2;
+}
+#soundBtn:focus-visible, #tapArea:focus-visible { outline: 3px solid var(--gold-light); outline-offset: 3px; }
+</style>
+</head>
+<body>
+
+<a id="tapArea" href="/download" aria-label="نزّل التطبيق المناسب لجهازك">
+  <video id="promo" src="/assets/promo/om-ai-promo.mp4" poster="/assets/promo/om-ai-promo-poster.jpg"
+         autoplay muted loop playsinline preload="auto"></video>
+</a>
+<div id="cta"><span id="txtCta">اضغط للتنزيل ⬇</span></div>
+<button id="soundBtn" type="button" aria-label="تشغيل الصوت">🔇</button>
+
+<script>
+(function(){
+  'use strict';
+  var el = function(id){ return document.getElementById(id); };
+
+  // ١) اللغة: عربي افتراضيًّا، وإنجليزي لمن متصفّحه غير عربي (كما في download.html)
+  var isAr = /^ar\b/i.test(navigator.language || 'ar');
+  var S = isAr
+    ? { title: 'om ai — شاهد ثم نزّل التطبيق', cta: 'اضغط للتنزيل ⬇', tap: 'نزّل التطبيق المناسب لجهازك', soundOn: 'تشغيل الصوت', soundOff: 'كتم الصوت' }
+    : { title: 'om ai — Watch, then get the app', cta: 'Tap to download ⬇', tap: 'Get the app for your device', soundOn: 'Unmute', soundOff: 'Mute' };
+  if(!isAr){ document.documentElement.lang = 'en'; document.documentElement.dir = 'ltr'; }
+  document.title = S.title;
+  el('txtCta').textContent = S.cta;
+  el('tapArea').setAttribute('aria-label', S.tap);
+
+  // ٢) الوجهة: /download وحده — هو الذي يكشف الجهاز ويحوّل إلى متجره (STORES في download.html)،
+  //    فلا تتكرّر روابط المتاجر هنا. رمز الدعوة ?ref= يُحمل معه إن وُجد.
+  var m = /[?&]ref=([^&#]*)/.exec(location.search || '');
+  var ref = '';
+  try { ref = m ? decodeURIComponent(m[1]) : ''; }
+  catch(e){ ref = ''; /* guard-ok — ترميز تالف في الرابط: نكمل بلا رمز دعوة */ }
+  if(/^[a-zA-Z0-9_-]{3,64}$/.test(ref)) el('tapArea').setAttribute('href', '/download?ref=' + ref);
+
+  // ٣) الصوت: المتصفّحات تمنع التشغيل التلقائي بصوت، فيبدأ مكتومًا وزرّ صغير يفتحه
+  var video = el('promo');
+  var soundBtn = el('soundBtn');
+  function paintSound(){
+    soundBtn.textContent = video.muted ? '🔇' : '🔊';
+    soundBtn.setAttribute('aria-label', video.muted ? S.soundOn : S.soundOff);
+  }
+  soundBtn.addEventListener('click', function(ev){
+    ev.preventDefault();
+    ev.stopPropagation();
+    video.muted = !video.muted;
+    if(video.paused){
+      var p = video.play();
+      if(p && p.catch){ p.catch(function(){ /* المتصفّح رفض التشغيل؛ الملصق يبقى ظاهرًا والضغط يعمل */ }); }
+    }
+    paintSound();
+  });
+  paintSound();
+
+  var started = video.play();
+  if(started && started.catch){ started.catch(function(){ /* وضع توفير البيانات: يبقى الملصق والزرّ */ }); }
+})();
+</script>
+</body>
+</html>

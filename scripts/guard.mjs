@@ -55,7 +55,7 @@ const seen = new Set();   // js/app.bundle.js يظهر في القائمة وف�
 // .vercelignore ولا تُنشر — الحزمة وحدها تُنشر، فهي المقياس.
 const CLIENT = [
   'js/app.bundle.js', 'sw.js', 'legal-strings.js', 'templates-data.js',
-  'index.html', 'explore.html', 'privacy.html', 'terms.html', 'p.html', 'download.html',
+  'index.html', 'explore.html', 'privacy.html', 'terms.html', 'p.html', 'download.html', 'v.html', 's.html',
 ];
 
 const SECRETS = [

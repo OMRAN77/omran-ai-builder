@@ -406,6 +406,14 @@
       "destination": "/download.html"
     },
     {
+      "source": "/v",
+      "destination": "/v.html"
+    },
+    {
+      "source": "/s",
+      "destination": "/s.html"
+    },
+    {
       "source": "/android",
       "destination": "/android.html"
     },

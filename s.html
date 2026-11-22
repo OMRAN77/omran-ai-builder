@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>OM AI — كل أدوات الذكاء الاصطناعي في تطبيق واحد</title>
+<meta name="description" content="OM AI: محادثة ذكيّة، أنماط الصور، صانع الفيديو، الديكور، الأزياء واستوديو الإعلانات في تطبيق واحد بالعربي.">
+<meta name="theme-color" content="#07080b">
+<link rel="icon" type="image/png" href="/icons/favicon-32-v2.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png">
+<link rel="canonical" href="https://omran-ai-builder.vercel.app/s">
+<!-- بطاقة الرابط: هذه الصورة هي التي تظهر حين يُشارَك الرابط في واتساب وفيسبوك ولينكدإن وغيرها -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OM AI">
+<meta property="og:title" content="OM AI — كل أدوات الذكاء الاصطناعي في تطبيق واحد">
+<meta property="og:description" content="محادثة، صور، فيديو، ديكور، أزياء وإعلانات بالعربي. اضغط وادخل.">
+<meta property="og:url" content="https://omran-ai-builder.vercel.app/s">
+<meta property="og:image" content="https://omran-ai-builder.vercel.app/assets/promo/om-ai-card.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="OM AI — كل أدوات الذكاء الاصطناعي في تطبيق واحد">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="OM AI — كل أدوات الذكاء الاصطناعي في تطبيق واحد">
+<meta name="twitter:description" content="محادثة، صور، فيديو، ديكور، أزياء وإعلانات بالعربي.">
+<meta name="twitter:image" content="https://omran-ai-builder.vercel.app/assets/promo/om-ai-card.jpg">
+<style>
+:root { --bg: #07080b; --gold: #d4af37; --gold-light: #f5df88; --ink: #1c1304; --muted: #c9c2ac; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0; min-height: 100%;
+  background: radial-gradient(120% 60% at 50% -10%, #2a2109 0%, var(--bg) 60%), var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #f4f1e6; line-height: 1.6;
+}
+/* الصفحة كلّها رابط واحد: أيّ ضغطة على أيّ صورة تدخل التطبيق مباشرة */
+#enter { display: block; text-decoration: none; color: inherit; max-width: 560px; margin: 0 auto;
+         padding: 14px 14px calc(104px + env(safe-area-inset-bottom, 0px)); }
+#enter img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 5; border-radius: 22px; margin: 0 0 14px;
+             background: #0d0f14; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6); }
+.about { margin: 4px 6px 18px; text-align: center; }
+.about h1 { margin: 0 0 6px; font-size: 22px; font-weight: 800; color: var(--gold-light); }
+.about p { margin: 0; font-size: 16px; color: var(--muted); }
+#cta {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  padding: 15px 40px; border-radius: 999px; white-space: nowrap;
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
+  color: var(--ink); font-size: 19px; font-weight: 800;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.65), 0 0 0 2px rgba(255, 255, 255, 0.25) inset;
+  pointer-events: none; /* الضغطة تمرّ إلى الرابط الذي تحتها */
+}
+#enter:focus-visible { outline: 3px solid var(--gold-light); outline-offset: 3px; }
+</style>
+</head>
+<body>
+
+<a id="enter" href="/" aria-label="ادخل تطبيق OM AI">
+  <img src="/assets/promo/om-ai-post-1.jpg" width="1080" height="1350" alt="OM AI — كل أدوات الذكاء الاصطناعي في تطبيق واحد">
+  <div class="about">
+    <h1>OM AI — كل أدوات الذكاء الاصطناعي في تطبيق واحد</h1>
+    <p>محادثة ذكيّة، أنماط الصور، صانع الفيديو، الديكور، الأزياء واستوديو الإعلانات — كلّها بالعربي.</p>
+  </div>
+  <img src="/assets/promo/om-ai-post-2.jpg" width="1080" height="1350" loading="lazy" alt="اصنع وأبدع: أنماط الصور، صانع الفيديو، الديكور، الأزياء">
+  <img src="/assets/promo/om-ai-post-3.jpg" width="1080" height="1350" loading="lazy" alt="لشغلك ويومك: استوديو الإعلانات، مساعد المستندات، التعليم، القبلة والمواقيت">
+  <img src="/assets/promo/om-ai-post-4.jpg" width="1080" height="1350" loading="lazy" alt="حمّل التطبيق الآن">
+</a>
+<div id="cta">ادخل التطبيق ←</div>
+
+<script>
+(function(){
+  'use strict';
+  // رمز الدعوة ?ref= يُحمل إلى التطبيق إن وُجد؛ بلا سكربت يبقى الرابط الخام «/» يعمل.
+  var m = /[?&]ref=([^&#]*)/.exec(location.search || '');
+  var ref = '';
+  try { ref = m ? decodeURIComponent(m[1]) : ''; }
+  catch(e){ ref = ''; /* guard-ok — ترميز تالف في الرابط: ندخل بلا رمز دعوة */ }
+  if(/^[a-zA-Z0-9_-]{3,64}$/.test(ref)) document.getElementById('enter').setAttribute('href', '/?ref=' + ref);
+})();
+</script>
+</body>
+</html>
