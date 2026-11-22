@@ -421,7 +421,7 @@ export function miraCaption(ep, nextEp) {
   const top = [head, ep.caption];
   const cta = 'جرّب التطبيق السحري ببلاش';
   const ig = [...top, '', cta + ' 👈 الرابط في البايو 🔗', ...next, '', tags.join(' ')].join('\n');
-  const fb = [...top, '', cta + ' 👈 https://' + SITE + '/?ref=fb', ...next, '', tags.join(' ')].join('\n');
+  const fb = [...top, '', cta + ' 👈 https://' + SITE + '/?src=facebook', ...next, '', tags.join(' ')].join('\n');
   return { ig, fb, head: story + ' · الحلقة ' + ep.k + ': ' + ep.title, ...shortCaptions(top, cta, next, tags) };
 }
 

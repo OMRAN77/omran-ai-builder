@@ -74,7 +74,7 @@ test('٦) النصّ: القصّة ورقم الحلقة وموعد الجاية
   const c = m.miraCaption(ep('app', 3, { title: 'ميرا تصمّم بطاقة عيد ميلاد ليدّوه', caption: 'ميرا تبي تفاجئ يدّوه ببطاقة حلوة… والتطبيق السحري عنده فكرة! تابعوا وشوفوا شو صار' }), ep('uae', 3));
   assert.match(c.ig, /ميرا والتطبيق السحري · الحلقة 3/); assert.match(c.ig, /باچر «ميرا تكتشف الإمارات» الحلقة 3/); assert.match(c.ig, /#مسلسل_ميرا/);
   assert.ok(bot.xLen(c.x) <= 280); assert.doesNotMatch(c.x, /https?:|vercel\.app/);
-  assert.ok(bot.threadsLen(c.threads) <= 500); assert.match(c.threads, /\?ref=threads/); assert.equal((c.threads.match(/#/g) || []).length, 1);
+  assert.ok(bot.threadsLen(c.threads) <= 500); assert.match(c.threads, /\?src=threads/); assert.equal((c.threads.match(/#/g) || []).length, 1);
   assert.ok(c.head.length + 8 <= 100, 'عنوان يوتيوب');
   assert.doesNotMatch(Object.values(c).join(' '), /gemini|veo|openai|claude|gpt|جيمناي|كلاود/i);
 });
