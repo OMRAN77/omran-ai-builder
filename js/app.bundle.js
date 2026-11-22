@@ -613,7 +613,7 @@ try{
   window.memoryTopicUpdate = memoryTopicUpdate;
 
   function onAuthed(username, avatar){
-    authSet('aiapp_username', username);
+    authSet('aiapp_username', username); if(typeof omranFunnelMark === 'function') omranFunnelMark('account'); // v-funnel: أوّل دخول بحساب لزائر جديد — عدّاد مجهول، لا اسم الحساب
     if(avatar){ localStorage.setItem('aiapp_avatar', avatar); }
     else if(avatar === null){ localStorage.removeItem('aiapp_avatar'); }
     // ☁️ v306: استرجاع/دمج المحادثات من السيرفر (عند الإقلاع وعند تسجيل الدخول).
@@ -765,7 +765,7 @@ try{
       }
       lines.push('');
       lines.push(ownT('ownerStatsUpdated', { t: ownLtr(new Date(data.generatedAt).toLocaleString('en-GB')) }));
-      box.textContent = lines.join('\n');
+      box.textContent = lines.join('\n'); if(typeof omranFunnelPanel === 'function') omranFunnelPanel(box, ownT, ownLtr, token); // v-funnel: مسار الزوّار الجدد تحت الإحصائيات
       window.__adminUsersCache = data.manageableUsers || [];
       renderAdminUserTable();
       try{ loadKnowledgeFacts(); }catch(e){ __swallow(e, 'owner:knowledge-load'); }
@@ -5640,6 +5640,7 @@ const I18N = {
     ownerStatsMsgCount: "{n} رسالة",
     ownerStatsRecent: "🆕 آخر الحسابات نشاطًا:",
     ownerStatsUpdated: "🕐 آخر تحديث: {t}",
+    ownerFunnelTitle: "📈 مسار الزوّار الجدد — آخر {n} يومًا:\nزيارة ← وافق ← كتب رسالة ← دخل بحساب (للمتجر)", ownerFunnelRow: "{src}: {v} ← {c} ← {m} ← {a} ({t})", ownerFunnelAll: "الكل", ownerFunnelEmpty: "📈 مسار الزوّار الجدد: لا أرقام بعد — العدّ يبدأ من أوّل زائر جديد.", // v-funnel
     ownerSvcChat: "المحادثة",
     ownerSvcPlan: "محادثة الباقة",
     ownerSvcAgent: "الوكيل",
@@ -6316,6 +6317,7 @@ const I18N = {
     ownerStatsMsgCount: "{n} messages",
     ownerStatsRecent: "🆕 Recently active accounts:",
     ownerStatsUpdated: "🕐 Last update: {t}",
+    ownerFunnelTitle: "📈 New-visitor funnel — last {n} days:\nvisit → agreed → message → signed in (to store)", ownerFunnelRow: "{src}: {v} → {c} → {m} → {a} ({t})", ownerFunnelAll: "All", ownerFunnelEmpty: "📈 New-visitor funnel: no numbers yet — counting starts with the first new visitor.", // v-funnel
     ownerSvcChat: "Chat",
     ownerSvcPlan: "Plan chat",
     ownerSvcAgent: "Agent",
@@ -7447,7 +7449,7 @@ function loadLangFile(lg){
     /* v-video-dialogue-clips (800): الحوار كامل على مقاطع متتالية — سطر التوليد وتنبيه «أطول من أقصى مدّة» (١٤ لغة) */
     /* v-video-dialogue-fit (799): تنبيه «الحوار أطول من مدّة الفيديو» في «سريع» و«سينمائي» (١٤ لغة) */
     /* v-i18n-14 (798): ترجمات فحص اللغات الـ١٤ (bT وقوائم الساعة والشعر والمعاملات وآلة الزمن ومفاتيح التلفزيون) */
-    sc.src = 'i18n/' + lg + '.js?v=805'; /* v-hw-resubmit-2 (774): أسطر «أفكار بلا صورة» في الديكور (١٤ لغة) · v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج · v-director-story (778): نوع «قصة» في «مخرج التطبيق» — تسعة نصوص (١٤ لغة) · v-reply-dialect (779): «لهجة الصوت العربي» وأسماء اللهجات الستّ (١٤ لغة) · v-hw-1316 (781): نائب صندوق الكتابة «اكتب رسالتك هنا» في ١٢ لغة كان «ابنِ تطبيقًا أو لعبة» · v-google-retry (782): نصّ access_denied «أُلغي أو لم تسمح به» لا اتّهام المستخدم بالإلغاء (١٢ لغة) · v-play-invite (783): بطاقة دعوة مختبري Google Play (١٤ لغة) */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */ /* v-audit-fixes (775): نصوص إصلاحات الفحص الشامل — رسائل الدخول والأخطاء الودّيّة والاستوديوهات والتعليم والأدوات والتصدير والمحادثة والصوت (١٤ لغة)؛ ٧٧٤ نشره main بنصوص هواوي فارتفع الوسم مرّة أخرى · v-video-modes-by-result (776): أسماء الأوضاع بالنتيجة ومربّع «مقدّمة وخاتمة بتوقيعك» (١٤ لغة) · v-video-durations (777): «فيلم متكامل» بلا «سريع» (١٤ لغة) · v-office-files (784): كرت ملفّ Excel/PowerPoint في المحادثة (١٤ لغة) · v-director-timed (785): ثلاثة وعشرون نصًّا لـ«بتوقيتي» في مخرج التطبيق (١٤ لغة) · v-share-next (786): أمثلة خانة الكتابة ونافذة المشاركة و«مشاركة» بجانب كلّ تحميل (١٤ لغة) · v-owner-reset-link (787): «رابط استرجاع الحساب» للمالك (١٤ لغة) · v-owner-reset-find (788): رسالتا حساب Google والحساب الغائب (١٤ لغة) · v-director-publish (789): «انشر في حساباتي» في مخرج التطبيق (١٤ لغة) · v-bridge-disk (790): «مساحة قرص الجسر» في المخرج (١٤ لغة) · v-owner-reset-records (792): «حسابات محتملة» و«أين بحثت» و«ما اكتمل البحث» و«بحث PayPal الكامل مقفل» لرابط الاسترجاع (١٤ لغة) · v-owner-link-sub (793): ١٣ نصًّا لـ«ربط اشتراك Stripe» في لوحة المالك (١٤ لغة) — ٧٩٢ أخذه main لـv-owner-reset-records قبل الدمج · v-director-upload (795): «ارفع فيديو جاهز» في مخرج التطبيق (١٤ لغة) · v-director-endcard (796): «باركود التطبيق في آخر الفيديو» في مخرج التطبيق — ٦ نصوص (١٤ لغة) · v-director-erase (797): «امسح اسم أو كتابة» في مخرج التطبيق (١٤ لغة) */
+    sc.src = 'i18n/' + lg + '.js?v=806'; /* v-hw-resubmit-2 (774): أسطر «أفكار بلا صورة» في الديكور (١٤ لغة) · v-video-subs (771): «الفيديو بالذكاء الاصطناعي للمشتركين» — سطر الباقات وردّ الميزة (١٤ لغة) · v-rest-fixes (769): سقف الصور في الساعة وبدء الفيديو (زحام · رفض) — ١٤ لغة · v-app-director-watchdog (768): نصّا «تعذّر تصويره» و«صورة ثابتة» لمخرج التطبيق بعد دمج main (١٤ لغة) · v-misc (767): الدفعة ٦ — المتفرّقات من حزم ten-a (ملاحظة القدرات، رفض سلّة ستايل AI، نصوص الطوابع والتعديل، وغيرها) — ١٤ لغة · v-en-ui (766): الدفعة ٥ — ردّ الحدّ وتأكيد النقاط وصفحة المالك والإحالة ومراجعة الكود والبورصة ولوحة الطوابع وأزرار لوحة العمل واسم أنماط الصور (١٤ لغة) · v-acct-delete (765): ١٢ نصًّا لحذف الحساب من «حسابي» + v-logout-wipe: تأكيدا الخروج + v-about-truth: «عن البرنامج» بلا مزوّدين (١٤ لغة) · v-plans-real-balance (764): نصّان لسطر الباقات بالرصيد الحقيقيّ — «رصيدك وتحتاج» و«رصيدك وما يكفي» (١٤ لغة) · v-owner-inbox (763): خمسة مفاتيح لصندوق المالك (١٤ لغة) · v-ai-video-speed (749): خمس حالات جديدة لـ«فيديو AI فقط» في القاموس الثنائيّ · v-rich-reply (744): زرّ بطاقة الأسئلة «اعرض التفاصيل» (١٤ لغة) · v-work-log (743): ستّة نصوص لصندوق العمل — «عمل لمدّة» و«الطلب/النتيجة» والوقت (١٤ لغة) · v-read-panel (742): «الكود المقروء» ونصّ رقم الموضع (١٤ لغة) · v-cards (741): بطاقات الخيارات — أربعة مفاتيح (١٤ لغة) · v-app-director-bridge-check (740): نصّ «الجسر بنسخة قديمة» (١٤ لغة) · v-app-director-voice (739): أربعة نصوص «مع صوت/بدون صوت» والصوت الاحتياطيّ (١٤ لغة) · v-app-director (738): ٢٦ نصًّا لقسم «مخرج التطبيق» للمالك (١٤ لغة) · v-img-format (737): خمسة نصوص تحويل الصيغة · v-video-enhance-pro (736): ١٦ نصًّا لزرّ «تحسين احترافي» (١٤ لغة) · v-owner-claude-all (735): ثمانية نصوص لمنتقي المالك — «الجهد» ومستوياته الستّة و«نماذج أخرى» (١٤ لغة) · v-no-provider-names (734): أسماء المزوّدين خرجت من خيارات صانع الفيديو (١٤ لغة) · v-no-recovery-code (733): حُذفت سبعة مفاتيح رمز الاسترجاع (١٤ لغة) · v-vmk-clean-video (732): ١٩ نصًّا لقسم «تحسين فيديو» (١٤ لغة) · v-video-write/v-vmk-sections (730): نصوص مساعد الكتابة والأقسام والشخصيّات (١٤ لغة) · v-themes-ten (729): أسماء الثيمات العشرة · v-chat-edit (728): ثلاثة نصوص لتعديل التصميم الكبير بالمقاطع — طُبّق / لم يُطبَّق / انقطع (١٤ لغة). قبله v-inspire (727): ستّة نصوص لشاشة «اقتراحات» — «الإلهام» و«اقتراحات سريعة» و«مدينتك الحقيقيّة» (١٤ لغة). قبله v-formal-account (726): نصوص «حسابي» و«الباقات والنقاط» بلا رموز تعبيريّة (١٤ لغة). v-media-merge (725): قسم «صور وفيديو» ونصوص الباقات بلا أعداد صور/فيديو (١٤ لغة). v-google-login-help (724): نصّ «سجّلت بحساب Google؟» تحت خطأ الدخول بإيميل (١٤ لغة). قبله v-plans-gate (723): ٧ نصوص — سطر سبب فتح الباقات، تنبيه انتهاء الاشتراك وقربه، و«تحليل الفيديو متوقّف مؤقّتًا». قبله v-video-watch (722) + v-paypal-honest + v-fair-video: «وصلنا دفعك» وPro بلا «أولوية» وأسعار الفيديو (١٤ لغة). قبله v-pdf-docs: ٤ نصوص (تحويل Word والنصوص إلى PDF). قبله v-living-all: «ذاكرتي الحيّة» لكلّ مسجَّل (٨ نصوص) + v-redis-capacity (لا نصوص). قبله v-themes (٢): حذف «المحادثات الجديدة» مع «بيت» الخشبيّ (بعد دمج v-living-memory على ٧١٧). قبله v-living-memory: نصوص «الذاكرة الحيّة». قبله v-themes: أسماء الثيمات الثلاثة عشر. قبله v-frame-design: نصوص التصميم الجديد. قبله v-skin-wood: «خشبي» و«المحادثات الجديدة». قبله v-phone-link: نصوص ربط الهاتف والاسترجاع به. قبله v-actor-lipsync: صوت الممثل (رجل/امرأة) وحذف «(Veo 3)» من اسم الوضع. قبله v-video-seq-cooldown + v-film-mode-gate: مفتاحا انتظار المشهد التالي وبوّابة «فيلم متكامل». قبله v-agent-log: agThought وagExplored وagNoOutput. قبله v-fashion-variety: ثلاثة مفاتيح للأزياء (رقم التصميم، ١٠٠+ تصميم، شرح الإضافات). قبله v-account-tidy: نصّ خانة الإيميل، ودمجه مع v-browser-install. قبله v-browser-install: خطوات التثبيت لكلّ متصفّح. قبله دمج v-free-first-day وv-simple-login وv-settings-groups. قبله v-settings-groups: مجموعات الإعدادات ورأس الحساب، وv-simple-login: مفاتيح شاشة الدخول البسيطة. قبله v-checkout-login: مفتاحا التسجيل أوّلًا والتجديد التلقائيّ. قبله v-maha-plans: قسم مها ودقائقها. قبله v-price-tabs: أقسام الأسعار. قبله v-media-plans: مفاتيح اشتراكات الصور والفيديو وجودة الصور. قبله v-reply-export: مفتاح fileReadyTitle. قبله v-img-honest: مفتاح imgUnchanged. قبله v-settings-tidy: عنوان «مشاريعي والنسخ الاحتياطي». قبله v-owner-page. قبله v-img-undo: مفاتيح الرجوع لنسخة الصورة. قبله v-tv-no-youtube: حُذف مفتاح زرّ يوتيوب من الـ14 لغة (وقبله v-tv-matches)  · v-lighting-3d (745): ألوان الإضاءة السبعة الجديدة (١٤ لغة) · v-plan-models (746): «الوكيل الذكي» خرج من بطاقة Pro بالـ١٤ لغة · v-video-write-ask (747): نصّ «الكتابة على الفيديو غير متاحة بعد» (١٤ لغة) · v-decor-18 (748): أسماء ٦٥ خيار ديكور جديدًا (١٤ لغة) — ٧٤٧ أخذه main لـv-video-write-ask قبل الدمج · v-call-agent (750): ٥١ نصًّا لبطاقة «اتّصل بالنيابة عنّي» ونافذة التجربة والنتيجة (١٤ لغة) · v-name-no-at (751): nameNoAt بالـ١٤ لغة · v-google-cards (752): «السعر في الموقع» على البطاقة بلا سعر (١٤ لغة) — ٧٥١ أخذه main لـv-name-no-at قبل الدمج · v-vip-verified (753): خمسة نصوص لتأكيد الإيميل برمز في «حسابي» (١٤ لغة) — ٧٥٢ أخذه main لـv-google-cards قبل الدمج · v-director-story (778): نوع «قصة» في «مخرج التطبيق» — تسعة نصوص (١٤ لغة) · v-reply-dialect (779): «لهجة الصوت العربي» وأسماء اللهجات الستّ (١٤ لغة) · v-hw-1316 (781): نائب صندوق الكتابة «اكتب رسالتك هنا» في ١٢ لغة كان «ابنِ تطبيقًا أو لعبة» · v-google-retry (782): نصّ access_denied «أُلغي أو لم تسمح به» لا اتّهام المستخدم بالإلغاء (١٢ لغة) · v-play-invite (783): بطاقة دعوة مختبري Google Play (١٤ لغة) */ /* v-fx-mukhawara (755): اسم «مخورة إماراتية» في __BI بالـ١٢ لغة — ٧٥٣ و٧٥٤ أخذهما main قبل الدمج */ /* v-email-safe (756): ثلاثة نصوص لمساعد البريد — مفتاح الكتابة ناقص / مشغول / تعذّرت المسوّدة (١٤ لغة) */ /* v-email-cache (757): أربعة نصوص لمساعد البريد — إعادة توليد / المزيد / جارٍ كتابة المسوّدة / الاحتياط للمالك (١٤ لغة) */ /* v-email-thread (758): «الترجمة» و«معنى الردّ» لمساعد البريد (١٤ لغة) */ /* v-unverified-email (759): رسالة «هذا الإيميل غير مؤكَّد…» وتنبيه «أكّد إيميلك» وزرّه «أرسل الكود» (١٤ لغة) — ٧٥٦–٧٥٨ أخذها main قبل الدمج */ /* v-call-agent-paid (760): أربعة نصوص لاتّصال المشترك بالنقاط — الباقة والرصيد والحجز وتأكيد التجربة (١٤ لغة؛ ٧٥٥ و٧٥٩ أخذهما main قبل الدمج) */ /* v-provider-fail (761): svcPaused «الخدمة متوقّفة مؤقّتًا» لأدوات القراءة والاقتراح (١٤ لغة) */ /* v-ready-sheet (772): ٦ نصوص صندوق «الملفّ جاهز» (نسخ الصورة، نسخ الرابط، تمّ النسخ، تعذّر النسخ، تعذّرت المشاركة، تمّ التحميل) — ١٤ لغة */ /* v-fx-dedupe (773): «خليجي تقليدي» لباسًا لا بحرًا/خليجًا (١٠ لغات)، و«لون واحد» بالصينيّة 单色同色系 لا «أبيض وأسود» */ /* v-audit-fixes (775): نصوص إصلاحات الفحص الشامل — رسائل الدخول والأخطاء الودّيّة والاستوديوهات والتعليم والأدوات والتصدير والمحادثة والصوت (١٤ لغة)؛ ٧٧٤ نشره main بنصوص هواوي فارتفع الوسم مرّة أخرى · v-video-modes-by-result (776): أسماء الأوضاع بالنتيجة ومربّع «مقدّمة وخاتمة بتوقيعك» (١٤ لغة) · v-video-durations (777): «فيلم متكامل» بلا «سريع» (١٤ لغة) · v-office-files (784): كرت ملفّ Excel/PowerPoint في المحادثة (١٤ لغة) · v-director-timed (785): ثلاثة وعشرون نصًّا لـ«بتوقيتي» في مخرج التطبيق (١٤ لغة) · v-share-next (786): أمثلة خانة الكتابة ونافذة المشاركة و«مشاركة» بجانب كلّ تحميل (١٤ لغة) · v-owner-reset-link (787): «رابط استرجاع الحساب» للمالك (١٤ لغة) · v-owner-reset-find (788): رسالتا حساب Google والحساب الغائب (١٤ لغة) · v-director-publish (789): «انشر في حساباتي» في مخرج التطبيق (١٤ لغة) · v-bridge-disk (790): «مساحة قرص الجسر» في المخرج (١٤ لغة) · v-owner-reset-records (792): «حسابات محتملة» و«أين بحثت» و«ما اكتمل البحث» و«بحث PayPal الكامل مقفل» لرابط الاسترجاع (١٤ لغة) · v-owner-link-sub (793): ١٣ نصًّا لـ«ربط اشتراك Stripe» في لوحة المالك (١٤ لغة) — ٧٩٢ أخذه main لـv-owner-reset-records قبل الدمج · v-director-upload (795): «ارفع فيديو جاهز» في مخرج التطبيق (١٤ لغة) · v-director-endcard (796): «باركود التطبيق في آخر الفيديو» في مخرج التطبيق — ٦ نصوص (١٤ لغة) · v-director-erase (797): «امسح اسم أو كتابة» في مخرج التطبيق (١٤ لغة) */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -26935,7 +26937,7 @@ try{
 async function sendPrompt(){
   /* v-proj-vault: آخر صورة معدّلة ومصدرها وطبقة النصّ قد تكون في المخزن (مشروع عاد إليه المستخدم أو إقلاع) — تُستعاد قبل أن يقرأها الإرسال */
   try{ const __cb = getCurrent(); const __bp = (__cb && window.__vaultProjBlobs) ? window.__vaultProjBlobs(__cb) : null; if(__bp) await __bp; }catch(e){ __swallow(e, 'vault:blobs-send'); }
-  try{ return await __sendPromptCore.apply(this, arguments); }
+  try{ if(typeof omranFunnelMark === 'function' && String(($('#prompt') || {}).value || '').trim()) omranFunnelMark('msg'); }catch(e){ __swallow(e, 'funnel:msg'); } /* v-funnel: أوّل رسالة يكتبها زائر جديد — عدّاد مجهول، لا نصّ الرسالة */ try{ return await __sendPromptCore.apply(this, arguments); }
   catch(e){
     try{
       var __c = (typeof getCurrent === 'function') ? getCurrent() : null;
@@ -31327,7 +31329,7 @@ window.postWithConfirm = postWithConfirm;
 
 // --- AppGallery 7.5: طلب قراءة سياسة الخصوصية صراحةً عند أول إطلاق ---
 // نافذة سفلية مرة واحدة في العمر: رابط السياسة + زر موافقة. الموافقة تُحفظ
-// محليًا فلا تُعرض ثانية. لا تحجب شيئًا سواها ولا تجمع أي بيانات.
+// محليًا فلا تُعرض ثانية. لا تحجب شيئًا سواها ولا تجمع أي بيانات شخصيّة (v-funnel: الموافقة تزيد عدّادًا مجهولًا).
 (function privacyFirstLaunch(){
   var KEY = 'aiapp_privacy_ack';
   try { if (localStorage.getItem(KEY) === '1') return; } catch(e){ return; }
@@ -31350,7 +31352,7 @@ window.postWithConfirm = postWithConfirm;
   wrap.addEventListener('click', function(ev){
     if (ev.target && ev.target.id === 'privacyAgreeBtn') {
       try { localStorage.setItem(KEY, '1'); } catch(e){ __swallow(e, 'ui:privacy-ack'); }
-      wrap.remove();
+      if(typeof omranFunnelMark === 'function') omranFunnelMark('consent'); wrap.remove(); // v-funnel: عدّاد مجهول واحد عند الموافقة — لا هويّة ولا محتوى
     }
   });
 })();
@@ -31480,12 +31482,15 @@ window.addEventListener('appinstalled', () => {
 /* v-qr-one: الباركود الواحد (/app ← download.html) يفتح التطبيق بـ?install=1 على أيّ جهاز: زرّ «تثبيت التطبيق» عائم
    أعلى الشاشة بنصّ install الموجود في الـ١٤ لغة، ونقره = زرّ التثبيت نفسه (نافذة المتصفّح أو خطوات جهازه).
    لا يظهر داخل التطبيق المثبّت ولا داخل تطبيق هواوي (الرابط يفتح فيه بفلتر autoVerify، وWebView ليس standalone —
-   جسره OmranRender أو علم المتجر يدلّان عليه)، ويُحذف install من الرابط كي لا يعود مع التحديث (ref يبقى لمن يقرؤه). */
+   جسره OmranRender أو علم المتجر يدلّان عليه)، ويُحذف install من الرابط كي لا يعود مع التحديث.
+   v-ref-stores: وref معه — حفظه app-01 قبله في aiapp_pending_ref ولا شيء آخر يقرؤه من الرابط، وبقاء ‎/?ref=omran‎ كان يعيد
+   تحويل رابط المالك إلى صفحة المتاجر مع كلّ تحديث (سحب الصفحة، وإعادة التحميل بعد كلّ نشر) فيعود هذا الزرّ والتعريف. */
 (function(){
   try {
     const here = new URL(location.href);
     if(here.searchParams.get('install') !== '1') return;
     here.searchParams.delete('install');
+    here.searchParams.delete('ref');
     history.replaceState(history.state, '', here.pathname + here.search + here.hash);
     const root = document.documentElement;
     if(isStandalone() || window.OmranRender || (root && root.classList.contains('store-safe'))) return;
@@ -33041,6 +33046,116 @@ function openShareModal(project){
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ arm(); setTimeout(arm, 1200); });
   else { arm(); setTimeout(arm, 1200); }
 })();
+/* v-funnel (المالك ٢١ نوفمبر ٢٠٢٦، على أرقامه «١٠ آلاف متابع ← ١٥٠ دخول ← ٨ مشتركين»: «نجرب، ركّب» عن قياس يبيّن المسار من المتابع إلى
+   التسجيل): عدّاد داخليّ مجهول للزائر الجديد — زيارة ← موافقة ← أوّل رسالة ← دخول بحساب — حسب المصدر ونوع الجهاز. يُرسل كلّ حدث مرّة واحدة
+   في عمر المتصفّح إلى /api/system?action=funnel (api/_lib/funnel.js): أعداد فقط، بلا هويّة ولا كوكيز ولا طرف ثالث.
+   لا يُعدّ: من وافق أو دخل قبل اليوم (متصفّح قديم)، والتطبيق المثبّت وأغلفة المتاجر (إفصاحها لا يتغيّر)، والزواحف والمتصفّحات الآليّة،
+   ومن فعّل «عدم التتبّع». المصدر يُحفظ في المتصفّح عند أوّل زيارة (aiapp_src) فتُنسب المراحل التالية إليه.
+   الدالّتان omranFunnelSource وomranFunnelPlatform نسخة حرفيّة في download.html (صفحة /app تعدّ الزائر قبل أن يغادر إلى متجره) —
+   اختبار funnel يثبت التطابق. مُلحق بآخر هذا الجزء: الخريطة عند سقفها فلا جزء جديد، والأسطر قبله لا تنزاح. */
+function omranFunnelSource(search, ua, referrer, host){
+  var q = String(search || ''), u = String(ua || '');
+  var m = /[?&](?:src|utm_source)=([^&#]*)/i.exec(q);
+  if(m){
+    var named = '';
+    try{ named = decodeURIComponent(m[1]).toLowerCase(); }catch(e){ named = ''; /* guard-ok — ترميز مكسور = مصدر غير معروف */ }
+    var alias = { tt: 'tiktok', tiktok: 'tiktok', ig: 'instagram', insta: 'instagram', instagram: 'instagram', snap: 'snapchat', snapchat: 'snapchat', yt: 'youtube', youtube: 'youtube', fb: 'facebook', facebook: 'facebook', meta: 'facebook', x: 'x', twitter: 'x', wa: 'whatsapp', whatsapp: 'whatsapp', tg: 'telegram', telegram: 'telegram', linkedin: 'linkedin', google: 'google' };
+    return Object.prototype.hasOwnProperty.call(alias, named) ? alias[named] : 'other';
+  }
+  if(/musical_ly|BytedanceWebview|TikTok|trill_/i.test(u)) return 'tiktok';
+  if(/Instagram/i.test(u)) return 'instagram';
+  if(/Snapchat/i.test(u)) return 'snapchat';
+  if(/FBAN|FBAV|FB_IAB|FB4A/.test(u)) return 'facebook';
+  if(/Twitter/i.test(u)) return 'x';
+  if(/LinkedInApp/i.test(u)) return 'linkedin';
+  var r = /^https?:\/\/([^\/?#:]+)/i.exec(String(referrer || ''));
+  var h = r ? r[1].toLowerCase().replace(/^www\./, '') : '';
+  if(h && h !== String(host || '').toLowerCase().replace(/^www\./, '')){
+    if(/(^|\.)tiktok\.com$/.test(h)) return 'tiktok';
+    if(/(^|\.)instagram\.com$/.test(h)) return 'instagram';
+    if(/(^|\.)snapchat\.com$/.test(h)) return 'snapchat';
+    if(/(^|\.)(youtube\.com|youtu\.be)$/.test(h)) return 'youtube';
+    if(/(^|\.)(facebook\.com|fb\.com|messenger\.com)$/.test(h)) return 'facebook';
+    if(/(^|\.)(twitter\.com|x\.com)$|^t\.co$/.test(h)) return 'x';
+    if(/(^|\.)(whatsapp\.com|wa\.me)$/.test(h)) return 'whatsapp';
+    if(/(^|\.)(t\.me|telegram\.org|telegram\.me)$/.test(h)) return 'telegram';
+    if(/(^|\.)(linkedin\.com|lnkd\.in)$/.test(h)) return 'linkedin';
+    if(/(^|\.)google\.[a-z.]+$/.test(h)) return 'google';
+    if(/(^|\.)(bing\.com|duckduckgo\.com|yahoo\.com|yandex\.[a-z.]+|baidu\.com|ecosia\.org|brave\.com)$/.test(h)) return 'search';
+    return 'other';
+  }
+  if(h) return 'site';
+  if(/[?&]ref=[a-zA-Z0-9_-]{3,64}(?:[&#]|$)/.test(q)) return 'invite';
+  return 'direct';
+}
+function omranFunnelPlatform(ua, touch){
+  var u = String(ua || '');
+  if(/iPhone|iPad|iPod/i.test(u) || (/Macintosh/.test(u) && touch > 1)) return 'ios';
+  if(/Android|HarmonyOS/i.test(u)) return 'android';
+  return 'desktop';
+}
+/* من لا يُعدّ إطلاقًا: زاحف أو متصفّح آليّ، «عدم التتبّع»، التطبيق المثبّت وأغلفة المتاجر. أيّ خطأ في الكشف = لا عدّ. */
+function omranFunnelQuiet(ua, search){
+  try{
+    if(/bot|crawl|spider|slurp|headless|lighthouse|pagespeed|prerender|preview/i.test(String(ua || ''))) return true;
+    if(navigator.webdriver === true || navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true) return true;
+    if(/[?&]store=/.test(String(search || ''))) return true;
+    if((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true) return true;
+    return typeof omranLikelyApp === 'function' && !!omranLikelyApp();
+  }catch(e){ __swallow(e, 'funnel:quiet'); return true; }
+}
+function omranFunnelSend(ev, src, plat){
+  var body = JSON.stringify({ e: ev, s: src, p: plat });
+  try{ if(navigator.sendBeacon && navigator.sendBeacon('/api/system?action=funnel', body)) return; }catch(e){ __swallow(e, 'funnel:beacon'); }
+  try{ fetch('/api/system?action=funnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(function(e){ __swallow(e, 'funnel:fetch'); }); }
+  catch(e){ __swallow(e, 'funnel:send'); }
+}
+/* حالة المتصفّح في aiapp_fn: غائبة = لم يُفحص بعد؛ «-» = لا يُعدّ أبدًا؛ «v» ثمّ حرف لكلّ مرحلة أُرسلت (t متجر، c موافقة، m رسالة، a حساب).
+   المراحل تُحسب لمن عُدّ زائرًا جديدًا وحده، فلا تزيد مرحلة على الزيارات. العلامة تُكتب قبل الإرسال: تخزين لا يُكتب = لا عدّ متكرّر. */
+function omranFunnelMark(ev){
+  try{
+    var code = { store: 't', consent: 'c', msg: 'm', account: 'a' }[ev];
+    var st = localStorage.getItem('aiapp_fn');
+    if(!code || !st || st.charAt(0) !== 'v' || st.indexOf(code) !== -1) return false;
+    var sp = String(localStorage.getItem('aiapp_src') || '').split('|');
+    localStorage.setItem('aiapp_fn', st + code);
+    omranFunnelSend(ev, sp[0] || 'direct', sp[1] || 'desktop');
+    return true;
+  }catch(e){ __swallow(e, 'funnel:mark'); return false; }
+}
+(function omranFunnelBoot(){
+  try{
+    if(localStorage.getItem('aiapp_fn') !== null) return;
+    var ua = navigator.userAgent || '';
+    var old = localStorage.getItem('aiapp_privacy_ack') === '1' || !!localStorage.getItem('aiapp_auth_token') || !!localStorage.getItem('aiapp_username');
+    if(old || omranFunnelQuiet(ua, location.search || '')){ localStorage.setItem('aiapp_fn', '-'); return; }
+    var src = omranFunnelSource(location.search || '', ua, document.referrer || '', location.hostname || '');
+    var plat = omranFunnelPlatform(ua, navigator.maxTouchPoints || 0);
+    localStorage.setItem('aiapp_src', src + '|' + plat);
+    localStorage.setItem('aiapp_fn', 'v');
+    omranFunnelSend('visit', src, plat);
+  }catch(e){ __swallow(e, 'funnel:boot'); }
+})();
+/* لوحة المالك: أسطر المسار تُلحق بصندوق الإحصائيات بعد رسمه — طلب منفصل (admin-stats كما هو)، والرمز في الجسم لا في العنوان.
+   T وltr دالّتا ترجمة اللوحة وعزل الاتّجاه (ownT وownLtr في app-01-boot-auth). تحديث ثانٍ قبل وصول الأوّل = يُهمَل الأوّل. */
+function omranFunnelLines(d, T, ltr){
+  var row = function(label, o){ return '  • ' + T('ownerFunnelRow', { src: label, v: o.visit || 0, t: o.store || 0, c: o.consent || 0, m: o.msg || 0, a: o.account || 0 }); };
+  if(!d || !d.total || !d.total.visit) return [T('ownerFunnelEmpty')];
+  var lines = [T('ownerFunnelTitle', { n: d.days })];
+  lines.push(row(T('ownerFunnelAll'), d.total));
+  (d.bySource || []).forEach(function(s){ lines.push(row(ltr(s.src), s)); });
+  if((d.byPlatform || []).length) lines.push('');
+  (d.byPlatform || []).forEach(function(p){ lines.push(row('📱 ' + ltr(p.plat), p)); });
+  return lines;
+}
+function omranFunnelPanel(box, T, ltr, token){
+  if(!box) return null;
+  var seq = box.__fnSeq = (box.__fnSeq || 0) + 1;
+  return fetch('/api/system?action=funnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'report', days: 30, token: token || '' }) })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ if(d && box.__fnSeq === seq) box.textContent = box.textContent + '\n\n' + omranFunnelLines(d, T, ltr).join('\n'); })
+    .catch(function(e){ __swallow(e, 'funnel:panel'); });
+}
 /* v-video-trends (طلب المالك ٤ سبتمبر): ترندات فيديو بلمسة واحدة — العناوين بـ14 لغة. الأوامر على الخادم (api/_lib/video-trends.js).
  * v-trends-more-2 (طلب المالك ٢٩ سبتمبر «أريد أزيد في الفيديوهات — الترندات»): +١٠ ترندات — أشكال شخصيّات وأساليب جديدة.
  * لا تكرار لموضوع قائم؛ عربيّ/إنجليزيّ وباقي الـ١٢ لغة كاملة (لا سقوط لـT() الاحتياطيّ) كبقيّة الملفّ.

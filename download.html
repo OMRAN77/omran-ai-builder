@@ -5,6 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <title>om ai</title>
+<!-- v-ref-stores (المالك ٢١ نوفمبر بلقطة بوستره: «هذا الرابط سو اياها اي واحد يضغط على الصور يحوله الي المتاجر»): ‎/?ref=omran‎
+     يُحوَّل هنا (vercel.json redirects)، فمعاينة الرابط في واتساب وغيره بوستر المالك نفسه — والزاحف لا يشغّل السكربت فيقرأ هذه الوسوم.
+     بلا og:url: كلّ رابط يبقى بدعوته (‎/app?ref=اسمه‎ لكلّ مستخدم). -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="om ai">
+<meta property="og:title" content="om ai — كل أدوات الذكاء الاصطناعي في مكان واحد">
+<meta property="og:description" content="وفّر وقتك واشتراكاتك.. واحد يغنيك عن الكل! حمّل التطبيق الآن.">
+<meta property="og:image" content="https://omran-ai-builder.vercel.app/icons/om-ai-poster.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1424">
+<meta property="og:image:height" content="752">
+<meta property="og:image:alt" content="om ai — أدوات الذكاء الاصطناعي في تطبيق واحد">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://omran-ai-builder.vercel.app/icons/om-ai-poster.jpg">
 <link rel="icon" type="image/png" href="/icons/favicon-32-v2.png?icon=black-20261022">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=black-20261022">
 <noscript><meta http-equiv="refresh" content="0;url=/"></noscript>
@@ -105,16 +119,85 @@ html.introOn .goMark { display: none; }
     document.documentElement.className += ' introOn';
   }
 
+  // v-funnel (٢١ نوفمبر ٢٠٢٦، المالك: «نجرب، ركّب» عن قياس المسار من المتابع إلى التسجيل): زائر جديد يُعدّ هنا قبل أن يغادر — «visit» دائمًا،
+  // و«store» إن كانت وجهته متجرًا (آيفون وهواوي وويندوز لا يصلون الموقع بعدها). عدّاد مجهول: مصدر الزيارة ونوع الجهاز فقط، بلا هويّة ولا كوكيز.
+  // الدالّتان التاليتان نسخة حرفيّة من js/app-10-features.js (اختبار funnel يثبت التطابق)، والتطبيق يكمل المراحل من العلامة نفسها (aiapp_fn).
+  function omranFunnelSource(search, ua, referrer, host){
+    var q = String(search || ''), u = String(ua || '');
+    var m = /[?&](?:src|utm_source)=([^&#]*)/i.exec(q);
+    if(m){
+      var named = '';
+      try{ named = decodeURIComponent(m[1]).toLowerCase(); }catch(e){ named = ''; /* guard-ok — ترميز مكسور = مصدر غير معروف */ }
+      var alias = { tt: 'tiktok', tiktok: 'tiktok', ig: 'instagram', insta: 'instagram', instagram: 'instagram', snap: 'snapchat', snapchat: 'snapchat', yt: 'youtube', youtube: 'youtube', fb: 'facebook', facebook: 'facebook', meta: 'facebook', x: 'x', twitter: 'x', wa: 'whatsapp', whatsapp: 'whatsapp', tg: 'telegram', telegram: 'telegram', linkedin: 'linkedin', google: 'google' };
+      return Object.prototype.hasOwnProperty.call(alias, named) ? alias[named] : 'other';
+    }
+    if(/musical_ly|BytedanceWebview|TikTok|trill_/i.test(u)) return 'tiktok';
+    if(/Instagram/i.test(u)) return 'instagram';
+    if(/Snapchat/i.test(u)) return 'snapchat';
+    if(/FBAN|FBAV|FB_IAB|FB4A/.test(u)) return 'facebook';
+    if(/Twitter/i.test(u)) return 'x';
+    if(/LinkedInApp/i.test(u)) return 'linkedin';
+    var r = /^https?:\/\/([^\/?#:]+)/i.exec(String(referrer || ''));
+    var h = r ? r[1].toLowerCase().replace(/^www\./, '') : '';
+    if(h && h !== String(host || '').toLowerCase().replace(/^www\./, '')){
+      if(/(^|\.)tiktok\.com$/.test(h)) return 'tiktok';
+      if(/(^|\.)instagram\.com$/.test(h)) return 'instagram';
+      if(/(^|\.)snapchat\.com$/.test(h)) return 'snapchat';
+      if(/(^|\.)(youtube\.com|youtu\.be)$/.test(h)) return 'youtube';
+      if(/(^|\.)(facebook\.com|fb\.com|messenger\.com)$/.test(h)) return 'facebook';
+      if(/(^|\.)(twitter\.com|x\.com)$|^t\.co$/.test(h)) return 'x';
+      if(/(^|\.)(whatsapp\.com|wa\.me)$/.test(h)) return 'whatsapp';
+      if(/(^|\.)(t\.me|telegram\.org|telegram\.me)$/.test(h)) return 'telegram';
+      if(/(^|\.)(linkedin\.com|lnkd\.in)$/.test(h)) return 'linkedin';
+      if(/(^|\.)google\.[a-z.]+$/.test(h)) return 'google';
+      if(/(^|\.)(bing\.com|duckduckgo\.com|yahoo\.com|yandex\.[a-z.]+|baidu\.com|ecosia\.org|brave\.com)$/.test(h)) return 'search';
+      return 'other';
+    }
+    if(h) return 'site';
+    if(/[?&]ref=[a-zA-Z0-9_-]{3,64}(?:[&#]|$)/.test(q)) return 'invite';
+    return 'direct';
+  }
+  function omranFunnelPlatform(ua, touch){
+    var u = String(ua || '');
+    if(/iPhone|iPad|iPod/i.test(u) || (/Macintosh/.test(u) && touch > 1)) return 'ios';
+    if(/Android|HarmonyOS/i.test(u)) return 'android';
+    return 'desktop';
+  }
+  function funnelLanding(to, standalone, returning){
+    var ua = navigator.userAgent || '';
+    if(localStorage.getItem('aiapp_fn') !== null) return;
+    var quiet = standalone || returning || !!localStorage.getItem('aiapp_auth_token') || !!localStorage.getItem('aiapp_username') || localStorage.getItem('aiapp_twa') === '1'
+      || /bot|crawl|spider|slurp|headless|lighthouse|pagespeed|prerender|preview/i.test(ua) || navigator.webdriver === true || navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true;
+    if(quiet){ localStorage.setItem('aiapp_fn', '-'); return; }
+    var src = omranFunnelSource(location.search, ua, document.referrer || '', location.hostname || '');
+    var plat = omranFunnelPlatform(ua, navigator.maxTouchPoints || 0);
+    var store = to.charAt(0) !== '/';
+    localStorage.setItem('aiapp_src', src + '|' + plat);
+    localStorage.setItem('aiapp_fn', store ? 'vt' : 'v');
+    var send = function(ev){
+      var body = JSON.stringify({ e: ev, s: src, p: plat });
+      if(navigator.sendBeacon && navigator.sendBeacon('/api/system?action=funnel', body)) return;
+      fetch('/api/system?action=funnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(function(){ /* guard-ok — العدّ أفضل جهد */ });
+    };
+    send('visit');
+    if(store) send('store');
+  }
+
+  // v-ref-stores (مراجعة النقض): داخل تطبيقنا المثبّت لا متجر — جسر هواوي OmranRender (فلتر autoVerify يفتح روابط الموقع فيه) أو
+  // تطبيق الويب المثبّت. كان رابط المالك يرمي من عنده التطبيق إلى صفحته في AppGallery ويترك الشاشة على الشعار النابض.
+  var inApp = false;
+  try { inApp = !!window.OmranRender || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
+  catch(e){ inApp = false; /* guard-ok — تعذّر الكشف = متصفّح عاديّ */ }
   var dest = '/';
-  try { dest = goDest(navigator.userAgent || '', navigator.maxTouchPoints || 0, location.search, STORES); }
+  try { dest = goDest(navigator.userAgent || '', navigator.maxTouchPoints || 0, location.search, inApp ? null : STORES); }
   catch(e){ dest = '/'; /* guard-ok — أيّ خطأ في الكشف يفتح التطبيق نفسه */ }
   var intro = false;
   try {
-    var standalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
     var returning = localStorage.getItem('aiapp_privacy_ack') === '1';
-    intro = wantsIntro(navigator.userAgent || '', dest, standalone, returning);
+    intro = wantsIntro(navigator.userAgent || '', dest, inApp, returning);
     if(intro) showIntro(dest);
   } catch(e){ intro = false; /* guard-ok — تعذّر التعريف (تخزين محجوب مثلًا) لا يحبس الزائر: يكمل إلى وجهته */ }
+  try { funnelLanding(dest, inApp, returning); } catch(e){ /* guard-ok — العدّ لا يحبس الزائر: يكمل إلى وجهته */ }
   if(!intro) location.replace(dest);
 })();
 </script>

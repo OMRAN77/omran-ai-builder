@@ -1376,6 +1376,7 @@ const I18N = {
     ownerStatsMsgCount: "{n} رسالة",
     ownerStatsRecent: "🆕 آخر الحسابات نشاطًا:",
     ownerStatsUpdated: "🕐 آخر تحديث: {t}",
+    ownerFunnelTitle: "📈 مسار الزوّار الجدد — آخر {n} يومًا:\nزيارة ← وافق ← كتب رسالة ← دخل بحساب (للمتجر)", ownerFunnelRow: "{src}: {v} ← {c} ← {m} ← {a} ({t})", ownerFunnelAll: "الكل", ownerFunnelEmpty: "📈 مسار الزوّار الجدد: لا أرقام بعد — العدّ يبدأ من أوّل زائر جديد.", // v-funnel
     ownerSvcChat: "المحادثة",
     ownerSvcPlan: "محادثة الباقة",
     ownerSvcAgent: "الوكيل",
@@ -2052,6 +2053,7 @@ const I18N = {
     ownerStatsMsgCount: "{n} messages",
     ownerStatsRecent: "🆕 Recently active accounts:",
     ownerStatsUpdated: "🕐 Last update: {t}",
+    ownerFunnelTitle: "📈 New-visitor funnel — last {n} days:\nvisit → agreed → message → signed in (to store)", ownerFunnelRow: "{src}: {v} → {c} → {m} → {a} ({t})", ownerFunnelAll: "All", ownerFunnelEmpty: "📈 New-visitor funnel: no numbers yet — counting starts with the first new visitor.", // v-funnel
     ownerSvcChat: "Chat",
     ownerSvcPlan: "Plan chat",
     ownerSvcAgent: "Agent",

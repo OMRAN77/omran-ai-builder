@@ -178,7 +178,7 @@ window.postWithConfirm = postWithConfirm;
 
 // --- AppGallery 7.5: طلب قراءة سياسة الخصوصية صراحةً عند أول إطلاق ---
 // نافذة سفلية مرة واحدة في العمر: رابط السياسة + زر موافقة. الموافقة تُحفظ
-// محليًا فلا تُعرض ثانية. لا تحجب شيئًا سواها ولا تجمع أي بيانات.
+// محليًا فلا تُعرض ثانية. لا تحجب شيئًا سواها ولا تجمع أي بيانات شخصيّة (v-funnel: الموافقة تزيد عدّادًا مجهولًا).
 (function privacyFirstLaunch(){
   var KEY = 'aiapp_privacy_ack';
   try { if (localStorage.getItem(KEY) === '1') return; } catch(e){ return; }
@@ -201,7 +201,7 @@ window.postWithConfirm = postWithConfirm;
   wrap.addEventListener('click', function(ev){
     if (ev.target && ev.target.id === 'privacyAgreeBtn') {
       try { localStorage.setItem(KEY, '1'); } catch(e){ __swallow(e, 'ui:privacy-ack'); }
-      wrap.remove();
+      if(typeof omranFunnelMark === 'function') omranFunnelMark('consent'); wrap.remove(); // v-funnel: عدّاد مجهول واحد عند الموافقة — لا هويّة ولا محتوى
     }
   });
 })();
@@ -331,12 +331,15 @@ window.addEventListener('appinstalled', () => {
 /* v-qr-one: الباركود الواحد (/app ← download.html) يفتح التطبيق بـ?install=1 على أيّ جهاز: زرّ «تثبيت التطبيق» عائم
    أعلى الشاشة بنصّ install الموجود في الـ١٤ لغة، ونقره = زرّ التثبيت نفسه (نافذة المتصفّح أو خطوات جهازه).
    لا يظهر داخل التطبيق المثبّت ولا داخل تطبيق هواوي (الرابط يفتح فيه بفلتر autoVerify، وWebView ليس standalone —
-   جسره OmranRender أو علم المتجر يدلّان عليه)، ويُحذف install من الرابط كي لا يعود مع التحديث (ref يبقى لمن يقرؤه). */
+   جسره OmranRender أو علم المتجر يدلّان عليه)، ويُحذف install من الرابط كي لا يعود مع التحديث.
+   v-ref-stores: وref معه — حفظه app-01 قبله في aiapp_pending_ref ولا شيء آخر يقرؤه من الرابط، وبقاء ‎/?ref=omran‎ كان يعيد
+   تحويل رابط المالك إلى صفحة المتاجر مع كلّ تحديث (سحب الصفحة، وإعادة التحميل بعد كلّ نشر) فيعود هذا الزرّ والتعريف. */
 (function(){
   try {
     const here = new URL(location.href);
     if(here.searchParams.get('install') !== '1') return;
     here.searchParams.delete('install');
+    here.searchParams.delete('ref');
     history.replaceState(history.state, '', here.pathname + here.search + here.hash);
     const root = document.documentElement;
     if(isStandalone() || window.OmranRender || (root && root.classList.contains('store-safe'))) return;
@@ -1892,3 +1895,113 @@ function openShareModal(project){
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ arm(); setTimeout(arm, 1200); });
   else { arm(); setTimeout(arm, 1200); }
 })();
+/* v-funnel (المالك ٢١ نوفمبر ٢٠٢٦، على أرقامه «١٠ آلاف متابع ← ١٥٠ دخول ← ٨ مشتركين»: «نجرب، ركّب» عن قياس يبيّن المسار من المتابع إلى
+   التسجيل): عدّاد داخليّ مجهول للزائر الجديد — زيارة ← موافقة ← أوّل رسالة ← دخول بحساب — حسب المصدر ونوع الجهاز. يُرسل كلّ حدث مرّة واحدة
+   في عمر المتصفّح إلى /api/system?action=funnel (api/_lib/funnel.js): أعداد فقط، بلا هويّة ولا كوكيز ولا طرف ثالث.
+   لا يُعدّ: من وافق أو دخل قبل اليوم (متصفّح قديم)، والتطبيق المثبّت وأغلفة المتاجر (إفصاحها لا يتغيّر)، والزواحف والمتصفّحات الآليّة،
+   ومن فعّل «عدم التتبّع». المصدر يُحفظ في المتصفّح عند أوّل زيارة (aiapp_src) فتُنسب المراحل التالية إليه.
+   الدالّتان omranFunnelSource وomranFunnelPlatform نسخة حرفيّة في download.html (صفحة /app تعدّ الزائر قبل أن يغادر إلى متجره) —
+   اختبار funnel يثبت التطابق. مُلحق بآخر هذا الجزء: الخريطة عند سقفها فلا جزء جديد، والأسطر قبله لا تنزاح. */
+function omranFunnelSource(search, ua, referrer, host){
+  var q = String(search || ''), u = String(ua || '');
+  var m = /[?&](?:src|utm_source)=([^&#]*)/i.exec(q);
+  if(m){
+    var named = '';
+    try{ named = decodeURIComponent(m[1]).toLowerCase(); }catch(e){ named = ''; /* guard-ok — ترميز مكسور = مصدر غير معروف */ }
+    var alias = { tt: 'tiktok', tiktok: 'tiktok', ig: 'instagram', insta: 'instagram', instagram: 'instagram', snap: 'snapchat', snapchat: 'snapchat', yt: 'youtube', youtube: 'youtube', fb: 'facebook', facebook: 'facebook', meta: 'facebook', x: 'x', twitter: 'x', wa: 'whatsapp', whatsapp: 'whatsapp', tg: 'telegram', telegram: 'telegram', linkedin: 'linkedin', google: 'google' };
+    return Object.prototype.hasOwnProperty.call(alias, named) ? alias[named] : 'other';
+  }
+  if(/musical_ly|BytedanceWebview|TikTok|trill_/i.test(u)) return 'tiktok';
+  if(/Instagram/i.test(u)) return 'instagram';
+  if(/Snapchat/i.test(u)) return 'snapchat';
+  if(/FBAN|FBAV|FB_IAB|FB4A/.test(u)) return 'facebook';
+  if(/Twitter/i.test(u)) return 'x';
+  if(/LinkedInApp/i.test(u)) return 'linkedin';
+  var r = /^https?:\/\/([^\/?#:]+)/i.exec(String(referrer || ''));
+  var h = r ? r[1].toLowerCase().replace(/^www\./, '') : '';
+  if(h && h !== String(host || '').toLowerCase().replace(/^www\./, '')){
+    if(/(^|\.)tiktok\.com$/.test(h)) return 'tiktok';
+    if(/(^|\.)instagram\.com$/.test(h)) return 'instagram';
+    if(/(^|\.)snapchat\.com$/.test(h)) return 'snapchat';
+    if(/(^|\.)(youtube\.com|youtu\.be)$/.test(h)) return 'youtube';
+    if(/(^|\.)(facebook\.com|fb\.com|messenger\.com)$/.test(h)) return 'facebook';
+    if(/(^|\.)(twitter\.com|x\.com)$|^t\.co$/.test(h)) return 'x';
+    if(/(^|\.)(whatsapp\.com|wa\.me)$/.test(h)) return 'whatsapp';
+    if(/(^|\.)(t\.me|telegram\.org|telegram\.me)$/.test(h)) return 'telegram';
+    if(/(^|\.)(linkedin\.com|lnkd\.in)$/.test(h)) return 'linkedin';
+    if(/(^|\.)google\.[a-z.]+$/.test(h)) return 'google';
+    if(/(^|\.)(bing\.com|duckduckgo\.com|yahoo\.com|yandex\.[a-z.]+|baidu\.com|ecosia\.org|brave\.com)$/.test(h)) return 'search';
+    return 'other';
+  }
+  if(h) return 'site';
+  if(/[?&]ref=[a-zA-Z0-9_-]{3,64}(?:[&#]|$)/.test(q)) return 'invite';
+  return 'direct';
+}
+function omranFunnelPlatform(ua, touch){
+  var u = String(ua || '');
+  if(/iPhone|iPad|iPod/i.test(u) || (/Macintosh/.test(u) && touch > 1)) return 'ios';
+  if(/Android|HarmonyOS/i.test(u)) return 'android';
+  return 'desktop';
+}
+/* من لا يُعدّ إطلاقًا: زاحف أو متصفّح آليّ، «عدم التتبّع»، التطبيق المثبّت وأغلفة المتاجر. أيّ خطأ في الكشف = لا عدّ. */
+function omranFunnelQuiet(ua, search){
+  try{
+    if(/bot|crawl|spider|slurp|headless|lighthouse|pagespeed|prerender|preview/i.test(String(ua || ''))) return true;
+    if(navigator.webdriver === true || navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true) return true;
+    if(/[?&]store=/.test(String(search || ''))) return true;
+    if((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true) return true;
+    return typeof omranLikelyApp === 'function' && !!omranLikelyApp();
+  }catch(e){ __swallow(e, 'funnel:quiet'); return true; }
+}
+function omranFunnelSend(ev, src, plat){
+  var body = JSON.stringify({ e: ev, s: src, p: plat });
+  try{ if(navigator.sendBeacon && navigator.sendBeacon('/api/system?action=funnel', body)) return; }catch(e){ __swallow(e, 'funnel:beacon'); }
+  try{ fetch('/api/system?action=funnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(function(e){ __swallow(e, 'funnel:fetch'); }); }
+  catch(e){ __swallow(e, 'funnel:send'); }
+}
+/* حالة المتصفّح في aiapp_fn: غائبة = لم يُفحص بعد؛ «-» = لا يُعدّ أبدًا؛ «v» ثمّ حرف لكلّ مرحلة أُرسلت (t متجر، c موافقة، m رسالة، a حساب).
+   المراحل تُحسب لمن عُدّ زائرًا جديدًا وحده، فلا تزيد مرحلة على الزيارات. العلامة تُكتب قبل الإرسال: تخزين لا يُكتب = لا عدّ متكرّر. */
+function omranFunnelMark(ev){
+  try{
+    var code = { store: 't', consent: 'c', msg: 'm', account: 'a' }[ev];
+    var st = localStorage.getItem('aiapp_fn');
+    if(!code || !st || st.charAt(0) !== 'v' || st.indexOf(code) !== -1) return false;
+    var sp = String(localStorage.getItem('aiapp_src') || '').split('|');
+    localStorage.setItem('aiapp_fn', st + code);
+    omranFunnelSend(ev, sp[0] || 'direct', sp[1] || 'desktop');
+    return true;
+  }catch(e){ __swallow(e, 'funnel:mark'); return false; }
+}
+(function omranFunnelBoot(){
+  try{
+    if(localStorage.getItem('aiapp_fn') !== null) return;
+    var ua = navigator.userAgent || '';
+    var old = localStorage.getItem('aiapp_privacy_ack') === '1' || !!localStorage.getItem('aiapp_auth_token') || !!localStorage.getItem('aiapp_username');
+    if(old || omranFunnelQuiet(ua, location.search || '')){ localStorage.setItem('aiapp_fn', '-'); return; }
+    var src = omranFunnelSource(location.search || '', ua, document.referrer || '', location.hostname || '');
+    var plat = omranFunnelPlatform(ua, navigator.maxTouchPoints || 0);
+    localStorage.setItem('aiapp_src', src + '|' + plat);
+    localStorage.setItem('aiapp_fn', 'v');
+    omranFunnelSend('visit', src, plat);
+  }catch(e){ __swallow(e, 'funnel:boot'); }
+})();
+/* لوحة المالك: أسطر المسار تُلحق بصندوق الإحصائيات بعد رسمه — طلب منفصل (admin-stats كما هو)، والرمز في الجسم لا في العنوان.
+   T وltr دالّتا ترجمة اللوحة وعزل الاتّجاه (ownT وownLtr في app-01-boot-auth). تحديث ثانٍ قبل وصول الأوّل = يُهمَل الأوّل. */
+function omranFunnelLines(d, T, ltr){
+  var row = function(label, o){ return '  • ' + T('ownerFunnelRow', { src: label, v: o.visit || 0, t: o.store || 0, c: o.consent || 0, m: o.msg || 0, a: o.account || 0 }); };
+  if(!d || !d.total || !d.total.visit) return [T('ownerFunnelEmpty')];
+  var lines = [T('ownerFunnelTitle', { n: d.days })];
+  lines.push(row(T('ownerFunnelAll'), d.total));
+  (d.bySource || []).forEach(function(s){ lines.push(row(ltr(s.src), s)); });
+  if((d.byPlatform || []).length) lines.push('');
+  (d.byPlatform || []).forEach(function(p){ lines.push(row('📱 ' + ltr(p.plat), p)); });
+  return lines;
+}
+function omranFunnelPanel(box, T, ltr, token){
+  if(!box) return null;
+  var seq = box.__fnSeq = (box.__fnSeq || 0) + 1;
+  return fetch('/api/system?action=funnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'report', days: 30, token: token || '' }) })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ if(d && box.__fnSeq === seq) box.textContent = box.textContent + '\n\n' + omranFunnelLines(d, T, ltr).join('\n'); })
+    .catch(function(e){ __swallow(e, 'funnel:panel'); });
+}
