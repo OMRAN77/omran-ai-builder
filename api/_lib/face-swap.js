@@ -74,6 +74,12 @@ function enabledFor(owner) {
   if (m === 'off' || !falKey()) return false;
   return m === 'on' || !!owner;
 }
+/** v-face-lock-out: سبب التخطّي يقول إنّ مزوّد التبديل نفسه متوقّف عندنا (رصيده خلص، أو مفتاحه مرفوض أو محظور) — لا لبس ربط ولا عطب
+ *  عابر ولا سقفنا اليوميّ. التصنيف نفسه الذي يوقف الصور والفيديو عند نفاد رصيد مزوّدهما (_videoFail.isOutage، v-credit-out). */
+function providerOut(reason) {
+  const { isOutage } = require('./_videoFail.js');
+  return String(reason || '').split(',').some((w) => { const m = /^fal-(\d{3})(?: (.*))?$/.exec(w.trim()); return !!m && isOutage(Number(m[1]), m[2] || ''); });
+}
 function capCents() {
   const raw = process.env.FACE_SWAP_CAP_CENTS === undefined ? '' : String(process.env.FACE_SWAP_CAP_CENTS).trim();
   return raw === '' ? CAP_CENTS_DEFAULT : (Number.isFinite(+raw) && +raw >= 0 ? +raw : CAP_CENTS_DEFAULT);
@@ -446,4 +452,4 @@ async function lockFaces(frame, refs, opts) {
   }
 }
 
-module.exports = { lockFaces, enabledFor, mode, gateWhy, capCents, modelId, loraPath, PROMPT, HAT_KEEP, FACE_ONLY, FACE_ONLY_SMOOTH, COST_CENTS, CAP_CENTS_DEFAULT, LORA_DEFAULT, MODEL_LORA, MODEL_PLAIN, spentKey, MIN_LEFT_MS };
+module.exports = { lockFaces, enabledFor, mode, gateWhy, providerOut, capCents, modelId, loraPath, PROMPT, HAT_KEEP, FACE_ONLY, FACE_ONLY_SMOOTH, COST_CENTS, CAP_CENTS_DEFAULT, LORA_DEFAULT, MODEL_LORA, MODEL_PLAIN, spentKey, MIN_LEFT_MS };

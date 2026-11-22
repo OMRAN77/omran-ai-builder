@@ -242,7 +242,8 @@ const SOLO_FRAME_TRENDS = new Set(['heritagesing', 'tencountries', 'dance', 'cel
   /* v-trends-oct-12 (المالك ٢٥ أكتوبر «ضيف كلهم»): شخص في مشهد جديد بعمره ومظهره */
   'saveyourself', 'jetflyover', 'lostfilm80s', 'zombielove', 'standstill', 'spanishrap', 'orangebooth', 'gamechar',
   'bbywow', 'invisiblebike', 'slowmoentry', // v-trends-oct-4
-  'lonelywalk', 'chestroll']); // v-trends-nov-4: الماشي وحده بين الأزواج، والراقص في مكانه
+  'lonelywalk', 'chestroll', // v-trends-nov-4: الماشي وحده بين الأزواج، والراقص في مكانه
+  'babysway']); // v-babysway-asis: صاحب الصورة كما هو يرقص — كان يُحوَّل طفلًا فيُرسم له وجه جديد
 /* منها بأسلوب فنّيّ صريح في قالبها (لعبة، ليغو) */
 const SOLO_FRAME_ART_TRENDS = new Set(['actionfigure', 'legofy', 'gamechar']);
 /* منها لعبة صغيرة في عبوتها (دمية، ليغو): إطار 2K بلا سطر «الوجه سدس الارتفاع» (يخرج العبوة من الإطار) — اللعبة المرسومة وجهها كبير */
@@ -251,7 +252,7 @@ const SOLO_FRAME_TOY_TRENDS = new Set(['actionfigure', 'legofy']);
 const SINGLE_SUBJECT_TRENDS = new Set(['sorryreveal', 'saveyourself', 'spanishrap', 'bbywow', 'invisiblebike', 'ceilingfan', 'slowmoentry', 'lonelywalk', 'chestroll', 'babysway', 'panelcut']); // v-trends-faithful: المؤدّي واحد ومغنّي الشارع من المشهد
 /* v-trend-hair-lock: تبديل الرأس (face-swap) — مشهد قالبه لا يذكر إلّا الشخص وحده: الوجه الوحيد في الإطار هو صاحب الصورة (alone).
    قائمة صريحة لا SINGLE_SUBJECT_TRENDS: فيها مغنّي الشارع (spanishrap) والضيوف (bbywow) والشرطيّ (invisiblebike) من المشهد. */
-const ALONE_SCENE_TRENDS = new Set(['sorryreveal', 'ceilingfan', 'slowmoentry', 'chestroll', 'panelcut']); // v-trends-nov-4: الأزواج في «الأعزب» من المشهد، فليس هنا
+const ALONE_SCENE_TRENDS = new Set(['sorryreveal', 'ceilingfan', 'slowmoentry', 'chestroll', 'panelcut', 'babysway']); // v-trends-nov-4: الأزواج في «الأعزب» من المشهد، فليس هنا
 /* v-trend-hair-lock: قالب يضع على الرأس قبّعة من المشهد (قبّعة التخرّج تُرمى، قبّعة المخادع) — تبديل الرأس كلّه يمحوها فيُطلب إبقاؤها (hat) */
 const HAT_SCENE_TRENDS = new Set(['graduation', 'lostfilm80s']);
 /* v-trends-identity-audit: «احضن نفسك الصغير» و«كبسولة الزمن» — البالغ نفسه بعمره الحاليّ في الإطار بجانب نسخته الأخرى (طفلًا أو في ٢٠٥٠).
@@ -275,7 +276,7 @@ function presentSelfLock(many, src) {
    - OMNI_REF_TRENDS: الصورة مرجع شكل لا لقطة أولى (شخصيّة بيكسار عبر المشاهد، تهنئة رمضان بلا شخص في القالب).
    - AGE_SHIFT_TRENDS: منها بعمر آخر — مهمّة الإطار بلا «نفس العمر»، ولا لقطة وجه البالغ مرجعًا للمحرّك (تشدّ الطفل إلى عمره).
    الباقي (منتجات، أماكن، حيوانات، «حرّك الصورة كما هي») الصورة نفسها أوّل إطار كما هي — هذا المقصود منها. */
-const OMNI_FRAME_TRENDS = new Set(['underwater', 'vhsflashback', 'ghibli', 'claymation', 'animeaction', 'babyversion', 'hugyounger', 'timecapsule', 'babysway']); // v-trends-nov-4: نسخته طفلًا يرقص
+const OMNI_FRAME_TRENDS = new Set(['underwater', 'vhsflashback', 'ghibli', 'claymation', 'animeaction', 'babyversion', 'hugyounger', 'timecapsule']);
 const OMNI_MORPH_TRENDS = new Set(['superhero', 'outfitswap', 'agejourney', 'ceilingfan', 'panelcut']); // v-trends-oct-4: اللبس يتبدّل خلف شفرة المروحة أثناء الفيديو
 const OMNI_REF_TRENDS = new Set(['pixarstory', 'ramadan']);
 /* v-trends-oct-12: «سامحوني.. هذي الحقيقة» — يبدأ بإطار مبنيّ لنسخة أسطوريّة منه وينتهي بصورته نفسها: <FIRST_FRAME> الإطار
@@ -285,7 +286,7 @@ const OMNI_REVEAL_TRENDS = new Set(['sorryreveal']);
    (selfRef) كفجوة الوضعيّة في v-video-identity-pose — كانت أوّل إطار وحده، فأيّ زاوية لم تُظهرها الصورة يُرسم لها وجه آخر. خارجها عمدًا:
    paintingalive (تحويل إلى لوحة — «احفظ الأسلوب» يناقضه)، وparallaxpop (لا التفات)، وnewborn (رضيع نائم بلا التفات). */
 const OMNI_SELFREF_PHOTO_TRENDS = new Set(['oldphoto', 'familywave', 'tears', 'orbit360', 'bullettime']);
-const AGE_SHIFT_TRENDS = new Set(['babyversion', 'hugyounger', 'timecapsule', 'agejourney', 'babysway']);
+const AGE_SHIFT_TRENDS = new Set(['babyversion', 'hugyounger', 'timecapsule', 'agejourney']);
 /* قوالب مونتاج أو عدّة لقطات بنصّها (عشر دول، يوم في الحياة، إعلان المنتج، الاسكتش) — لا يُطلب لها «بلا قطع» */
 const MULTI_SHOT_TRENDS = new Set(['tencountries', 'dayinlife', 'productad', 'pixarsketch', 'sorryreveal', 'panelcut']); // v-trends-nov-4: القطع بين الغرفة والشارع هو الترند
 /** ترند فيه شخص يُنقل إلى مشهد (لا «حرّك الصورة») — صورته الخام لا تكون أوّل إطار على Omni. وترند بلا خانة صورة
