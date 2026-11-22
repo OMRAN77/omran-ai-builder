@@ -26,7 +26,7 @@ const hexOf = Object.fromEntries(COLORS.map(([k, , h]) => [k, h]));
 const nameOfColor = Object.fromEntries(COLORS.map(([k, n]) => [k, n]));
 
 /** Block ids of the kit. */
-export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, MEAT: 200, ORE: 230 };
+export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, ROCK_GOLD: 178, ROCK_DIAMOND: 179, MEAT: 200, ORE: 230, GEM: 231 };
 /** Block definitions, in the same shape the worlds use (see voxel.js). */
 export const KIT_BLOCKS = {};
 const INFO = {};                                 // id -> { name, key, group, icon }
@@ -51,6 +51,10 @@ BEDS.forEach(([key, name, hex], i) => {
 // Things that are carried and used, not placed (no block definition): the world gives or uses them.
 INFO[200] = { id: 200, key: 'meat', name: 'لحم', group: null, icon: ['meat', '#b5523d'], item: { use: 'eat' } };   // n comes from the hunt
 INFO[K.ORE] = { id: K.ORE, key: 'ore', name: 'خام معدن', group: 'gem', icon: ['ore', '#b9a27a'], item: {} };
+INFO[K.GEM] = { id: K.GEM, key: 'gem', name: 'ألماسة', group: 'gem', icon: ['gem', '#7fe6f5'], item: {} };
+// the cave's rock: a vein of gold gives a block of gold, a vein of diamond gives one gem
+add(K.ROCK_GOLD, { tiles: 'x:rock:#f0bd3f', drop: K.GOLD, hard: 0.9 }, { key: 'rock-gold', name: 'صخر فيه ذهب', group: 'gem', icon: ['ore', '#f0bd3f'] });
+add(K.ROCK_DIAMOND, { tiles: 'x:rock:#7fe6f5', drop: K.GEM, hard: 1.1 }, { key: 'rock-diamond', name: 'صخر فيه ألماس', group: 'gem', icon: ['ore', '#7fe6f5'] });
 const STONE = '#9aa0a6', GOLD = '#f0bd3f', DIAM = '#7fe6f5';
 const gear = (id, key, name, icon, hex, item) => { INFO[id] = { id, key, name, group: 'gear', icon: [icon, hex], item: { n: 1, tool: true, ...item } }; };
 // weapon: what one blow takes from a creature. speed: how much faster the tool digs. tier: the colour of its model in the hand
@@ -143,6 +147,12 @@ const tableSideTex = () => T('tableside', 128, (c, s) => {
   c.fillStyle = '#c9ced4'; c.beginPath(); c.moveTo(84, 44); c.lineTo(110, 44); c.lineTo(110, 98); c.closePath(); c.fill(); c.fillStyle = '#5a3a22'; c.fillRect(80, 34, 34, 12);
   bevel(c, s, 6, 0.22);
 });
+const rockTex = (hex) => T('rock' + hex, 128, (c, s) => {
+  c.fillStyle = '#6f6a66'; c.fillRect(0, 0, s, s); grain(c, s, 41, 320, 40, 190);
+  const r = rnd(hex.charCodeAt(1) * 7 + hex.charCodeAt(3));
+  for (let i = 0; i < 9; i++) { const x = 14 + r() * (s - 28), y = 14 + r() * (s - 28), q = 5 + r() * 7; c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.moveTo(x, y - q - 2); c.lineTo(x + q + 2, y); c.lineTo(x, y + q + 2); c.lineTo(x - q - 2, y); c.closePath(); c.fill(); c.fillStyle = hex; c.beginPath(); c.moveTo(x, y - q); c.lineTo(x + q, y); c.lineTo(x, y + q); c.lineTo(x - q, y); c.closePath(); c.fill(); c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(x - q * 0.35, y - q * 0.45, q * 0.35, q * 0.3); }
+  bevel(c, s, 7, 0.22);
+});
 const doorTex = () => T('door', 128, (c, s) => {
   planks(c, s, '#8a5a30', 35);
   c.strokeStyle = 'rgba(30,18,8,.7)'; c.lineWidth = 4; c.strokeRect(6, 4, s - 12, s - 8);
@@ -190,6 +200,7 @@ export function kitMaterial(tile) {
   else if (kind === 'tabletop') m = std({ map: tableTopTex() });
   else if (kind === 'tableside') m = std({ map: tableSideTex() });
   else if (kind === 'door') m = std({ map: doorTex() });
+  else if (kind === 'rock') m = std({ map: rockTex(arg), emissive: new THREE.Color(arg), emissiveMap: rockTex(arg), emissiveIntensity: 0.16, roughness: 0.8 });
   else if (kind === 'torch') m = new THREE.MeshBasicMaterial({ map: torchTex(), alphaTest: 0.3, toneMapped: false, fog: false, color: 0xfff0dc });
   else if (kind === 'pillow') m = std({ map: pillowTex() });
   else if (kind === 'quilt') m = std({ map: quiltTex(), color: arg });
@@ -224,6 +235,7 @@ function svgIcon([shape, hex, extra]) {
   else if (shape === 'table') body = cube(6) + '<path d="M10 9.500l6 3.300 6-3.300M13 8l6 3.300M19 8l-6 3.300" fill="none" stroke="rgba(30,18,8,.6)" stroke-width="1"/><path d="M8 19l5 2.700" stroke="#d7d2c8" stroke-width="1.800" stroke-linecap="round"/>';
   else if (shape === 'door') body = `<path d="M9 3h14v26H9z" fill="${hex}" stroke="${line}" stroke-width=".9"/><path d="M11.500 6h9v9h-9zM11.500 17.500h9v9h-9z" fill="${left}" stroke="rgba(0,0,0,.3)" stroke-width=".7"/><circle cx="20" cy="16.300" r="1.500" fill="#e2c27a"/>`;
   else if (shape === 'torch') body = `<path d="M16 15v13" stroke="#6a4629" stroke-width="3.400" stroke-linecap="round"/><path d="M16 3c1 4 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-5 .500 1.500 1 2 1.500 2 0-2 .500-4 1.500-6z" fill="${hex}" stroke="${line}" stroke-width=".7"/><path d="M16 9c.500 1.500 2 2 2 3.500a2 2 0 0 1-4 0c0-1.500 1.500-2 2-3.500z" fill="#ffe28a"/>`;
+  else if (shape === 'gem') body = `<path d="M16 4l9 8-9 16-9-16z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M7 12h18M16 4l-4 8 4 16 4-16z" fill="none" stroke="rgba(0,0,0,.28)" stroke-width=".8"/><path d="M11 11l3-4" stroke="#fff" stroke-opacity=".85" stroke-width="1.400" stroke-linecap="round"/>`;
   else if (shape === 'ore') body = `<path d="M6 20l3-9 7-4 8 3 3 8-5 7H10z" fill="#77706a" stroke="${line}" stroke-width=".8"/><path d="M12 13l2.500-1.500L17 13l-2.500 1.500zM18 19l2-1.300 2 1.300-2 1.300zM10.500 19.500l1.500-1 1.500 1-1.500 1z" fill="${hex}" stroke="rgba(0,0,0,.3)" stroke-width=".5"/>`;
   else body = cube(4);
   if (extra === 'shine') body += '<path d="M9 13.500l5-2.700M8.500 16.500l2.500-1.300" stroke="#fff" stroke-opacity=".8" stroke-width="1.5" stroke-linecap="round"/>';
@@ -309,6 +321,8 @@ export function createKit({ scene, world, terrain, lights = 2 }) {
     remoteDoor(x, y, z) { const id = world.get(x, y, z); if (KIT_BLOCKS[id] && KIT_BLOCKS[id].door) toggleDoor(x, y, z, id, true); },
     onDoor: null,
     doors, chests, chestAt, carry,
+    /** A block that gives light was put in the world by something other than the player (the cave's torches). */
+    lit(x, y, z, id) { glow.set(key(x, y, z), id); since = 1; },
     /**
      * The place button on a block that does something. Returns null for any other block, 'door' when a door
      * was opened or shut, or { chest: Array(27) } / { table: true } for the bag to open.
@@ -331,7 +345,7 @@ export function createKit({ scene, world, terrain, lights = 2 }) {
     heightOf: (id) => (KIT_BLOCKS[id] && KIT_BLOCKS[id].height) || 1,
     isLiquid: (id) => id === K.WATER,
     nameOf: kitName,
-    hardness: (id) => (id === K.FIRE ? 0.05 : id === K.GOLD || id === K.DIAMOND ? 0.8 : KIT_BLOCKS[id] ? 0.35 : null),
+    hardness: (id) => (id === K.FIRE ? 0.05 : id === K.GOLD || id === K.DIAMOND ? 0.8 : KIT_BLOCKS[id] ? KIT_BLOCKS[id].hard || 0.35 : null),
     /** What breaking a kit block gives back (the foot of a bed counts as its head). */
     dropOf: (id) => { const d = KIT_BLOCKS[id]; return d ? (d.drop || (d.part ? d.mate : id)) : 0; },
     /** Call after the player placed block id at (x, y, z); yaw is the player's heading. */

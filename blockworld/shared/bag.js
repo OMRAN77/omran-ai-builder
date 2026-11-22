@@ -77,6 +77,10 @@ const CSS = `
 #bag .look.locked { opacity: .55; }
 #bag .look span { font-size: 11.5px; font-weight: 700; }
 #bag .look small { font-size: 10px; opacity: .8; text-align: center; line-height: 1.3; }
+#bag .design { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+#bag .design label { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; }
+#bag .design input { width: 46px; height: 38px; padding: 0; border: 1px solid rgba(255, 255, 255, .3); border-radius: 8px; background: none; cursor: pointer; }
+#bag .design .pv { margin-inline-start: auto; }
 #bag .view { font: inherit; font-size: 13px; font-weight: 700; min-height: 40px; padding: 5px 16px; border-radius: 9px; border: 1px solid var(--bg-line, rgba(255, 255, 255, .3)); background: none; color: inherit; cursor: pointer; }
 @media (max-height: 500px), (max-width: 560px) { #bag { --c: 36px; } #bag header { padding: 4px 10px; gap: 5px; } #bag h2 { display: none; } #bag .tabs button { min-height: 36px; padding: 3px 9px; font-size: 12.5px; } #bag .x, #bag .extra, #bag .menu { min-height: 36px; padding: 3px 8px; font-size: 12px; }
   #bag .page { padding: 2px 10px 5px; } #bag h3 { margin: 4px 2px 3px; font-size: 11.5px; } #bag .hint { font-size: 11px; margin-top: 3px; min-height: 16px; }

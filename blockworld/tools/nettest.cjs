@@ -115,6 +115,7 @@ function memoryKV() {
     const diag = async (page) => page.evaluate(() => { const n = window.__GAME_NET; return { role: n.role, busy: n.busy, error: n.error, href: location.pathname + location.hash, links: [...n.peers.values()].map((p) => ({ state: p.pc.connectionState, ice: p.pc.iceConnectionState, gather: p.pc.iceGatheringState, signal: p.pc.signalingState, dc: p.dc ? p.dc.readyState : null, local: ((p.pc.localDescription || {}).sdp || '').split('\n').filter((l) => l.startsWith('a=candidate')).map((l) => l.split(' ').slice(4, 8).join(' ')), remote: ((p.pc.remoteDescription || {}).sdp || '').split('\n').filter((l) => l.startsWith('a=candidate')).length })) }; });
     report.linking = { host: await diag(A), guest: await diag(B) };
     const joined = await until(B, () => window.__GAME_NET.role === 'guest', 40000);
+    if (!joined) report.linkingAfter = { host: await diag(A), guest: await diag(B), calls: calls.slice() };
     await both(10);
     const link = await A.evaluate(() => { const n = window.__GAME_NET; return { peers: n.peers.size, open: [...n.peers.values()].every((p) => p.dc && p.dc.readyState === 'open'), others: n.others.size }; });
     check('the guest is let in and the two are linked directly', joined && link.peers === 1 && link.open, { joined, link, calls: calls.slice(-12) });
@@ -129,6 +130,22 @@ function memoryKV() {
     check('each sees the other where they stand, with the name', !!sa && !!sb && sa.shown && sb.shown && sa.name === 'فاطمة' && near(sa.p, sb.mine) && near(sb.p, sa.mine), { sa, sb });
     await A.evaluate(() => { const g = window.__game, s = g.play.state, o = [...window.__GAME_NET.others.values()][0]; s.yaw = Math.atan2(-(o.s.p[0] - s.pos.x), -(o.s.p[2] - s.pos.z)); s.pitch = -0.1; g.play.tick(8); });
     await shot(A, 'n4-host-sees-guest');
+    // ---- the guest's own design and a new name reach the host; the host makes the guest a helper, who may turn people away
+    await B.evaluate(() => { const g = window.__game; g.bag.adv.wardrobe.design('shirt', '#ff0044'); window.__GAME_NET.setName('نورة'); });
+    await both(10);
+    const lookA = await A.evaluate(() => { const o = [...window.__GAME_NET.others.values()][0]; return { name: o.name, look: o.s && o.s.look, row: [...window.__GAME_NET.peers.values()][0].name }; });
+    check('a guest\'s own colours and new name are seen by the host', lookA.name === 'نورة' && lookA.row === 'نورة' && !!lookA.look && !!lookA.look.c && lookA.look.c.shirt === '#ff0044', lookA);
+    await A.evaluate(() => { const n = window.__GAME_NET; n.setAdmin([...n.peers.keys()][0], true); n.asks.push({ id: 'aaaaaaaaaaaa', name: 'زائر', offer: 'v=0' }); });
+    await A.evaluate(() => { const n = window.__GAME_NET; n.setAdmin([...n.peers.keys()][0], true); });      // (tells the helper who is waiting)
+    await both(8);
+    const helper = await B.evaluate(() => { const n = window.__GAME_NET; return { admin: n.admin, asks: n.hostAsks.map((a) => a.name) }; });
+    await B.evaluate(() => { const n = window.__GAME_NET; n.open(); const b = document.querySelector('#netPanel li.ask [data-deny]'); if (b) b.click(); n.close(); });
+    await both(8);
+    const afterDeny = await A.evaluate(() => window.__GAME_NET.asks.length);
+    await A.evaluate(() => { const n = window.__GAME_NET; n.setAdmin([...n.peers.keys()][0], false); });
+    await both(6);
+    const plain = await B.evaluate(() => window.__GAME_NET.admin);
+    check('the host makes a guest a helper, who sees who is waiting and may turn them away; made ordinary again, they may not', helper.admin === true && helper.asks[0] === 'زائر' && afterDeny === 0 && plain === false, { helper, afterDeny, plain });
     // ---- blocks: what one puts down or digs, the other gets
     const put = await B.evaluate(() => { const g = window.__game, p = g.play, s = p.state, x = Math.floor(s.pos.x) + 2, y = Math.floor(s.pos.y + 0.01) + 3, z = Math.floor(s.pos.z); g.terrain.setBlock(x, y, z, 104); p.net.place(x, y, z, 104, s.yaw); g.terrain.flush(); return [x, y, z]; });
     await both(10);

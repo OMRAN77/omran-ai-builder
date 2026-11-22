@@ -200,6 +200,8 @@ export function createLife(o) {
         pose(e, dt);
         continue;
       }
+      // fire burns creatures too: an animal that dies in it is roasted for whoever lit it
+      if (cell(e.x, e.y + 0.2, e.z) === 151) { e.hp -= 9 * dt; e.hurt = 0.2; e.flee = 2; if (e.hp <= 0) { felled(e); credit(k.kind, k.meat); continue; } }
       let p = st.pos, who = null, dx = p.x - e.x, dz = p.z - e.z, dist = Math.hypot(dx, dz);
       for (const q of others) { const d = Math.hypot(q.x - e.x, q.z - e.z); if (d < dist) { dist = d; p = q; who = q.id; dx = q.x - e.x; dz = q.z - e.z; } }
       if (dist > 64) { retire(e); continue; }

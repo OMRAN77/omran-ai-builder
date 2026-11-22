@@ -12,6 +12,7 @@
 
 import * as THREE from 'three';
 import { makeAvatar } from './avatar.js';
+import { cleanLook } from './outfits.js';
 
 const API = '/api/system?action=play-room';
 const RTC = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
@@ -61,6 +62,8 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   const peers = new Map();          // host: guest id -> { pc, dc, name, s }. guest: 'host' -> { pc, dc }
   const others = new Map();         // every other player this one sees: id -> { name, s: { p, yw, pt, mv, look, gear }, av, tag, x, y, z }
   const asks = [];                  // host: people waiting to be let in: { id, name, offer }
+  let admin = false;                // guest: the host made this player a helper, who may let people in and put them out
+  const hostAsks = [];              // guest helper: who is waiting, as the host tells it: { id, name }
   const log = [];                   // everything done to the world since this game began: ['put', x, y, z, id, yaw] | ['dig', x, y, z] | ['door', x, y, z]
   const life = () => (window.__GAME_LIFE && window.__GAME_LIFE.life) || null;
   const sky = () => window.__GAME_SKY || null;
@@ -87,7 +90,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   const send = (dc, msg) => { if (dc && dc.readyState === 'open') { try { dc.send(JSON.stringify(msg)); } catch (e) { /* the line dropped: the close handler tidies up */ } } };
   const toHost = (msg) => { const h = peers.get('host'); if (h) send(h.dc, msg); };
   const toAll = (msg, except) => { for (const [id, p] of peers) if (id !== except) send(p.dc, msg); };
-  const mine = () => ({ p: [+st.pos.x.toFixed(2), +st.pos.y.toFixed(2), +st.pos.z.toFixed(2)], yw: +st.yaw.toFixed(3), pt: +st.pitch.toFixed(2), mv: st.onGround ? +st.moving.toFixed(1) : 0, look: adv ? adv.wardrobe.current : 'explorer', gear: ['head', 'chest', 'legs', 'feet'].map((k) => (st.gear[k] ? st.gear[k].id : 0)) });
+  const mine = () => ({ p: [+st.pos.x.toFixed(2), +st.pos.y.toFixed(2), +st.pos.z.toFixed(2)], yw: +st.yaw.toFixed(3), pt: +st.pitch.toFixed(2), mv: st.onGround ? +st.moving.toFixed(1) : 0, look: adv ? (adv.wardrobe.current === 'custom' ? { c: adv.wardrobe.look } : adv.wardrobe.current) : 'explorer', gear: ['head', 'chest', 'legs', 'feet'].map((k) => (st.gear[k] ? st.gear[k].id : 0)) });
 
   // ---- the other players' figures
   function seen(id, name) {
@@ -115,7 +118,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
       const [x, y, z] = o.s.p;
       if (o.fresh || Math.hypot(x - o.x, z - o.z) > 8) { o.x = x; o.y = y; o.z = z; o.yaw = o.s.yw; o.fresh = false; }
       o.x += (x - o.x) * f; o.y += (y - o.y) * f; o.z += (z - o.z) * f; o.yaw += (((o.s.yw - o.yaw + 9.4248) % 6.2832) - 3.1416) * f;
-      const look = all.find((q) => q.key === o.s.look), g = o.s.gear || [];
+      const own = o.s.look && typeof o.s.look === 'object' ? cleanLook(o.s.look.c) : null, look = own ? { c: own } : all.find((q) => q.key === o.s.look), g = o.s.gear || [];
       o.av.dress(look ? look.c : null, { head: g[0], chest: g[1], legs: g[2], feet: g[3] });
       o.av.place(o.x, o.y, o.z, o.yaw); o.av.walk(st.time, o.s.mv || 0); o.av.nod(o.s.pt || 0);
       o.av.group.visible = true;
@@ -146,19 +149,28 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   kit.onDoor = (x, y, z) => did(['door', x, y, z]);
 
   // ---- the host's side
-  function roster() { return [{ id: 'host', name: myName || 'صاحب الغرفة', s: mine() }, ...[...peers].filter(([, p]) => p.s).map(([id, p]) => ({ id, name: p.name, s: p.s }))]; }
+  function roster() { return [{ id: 'host', name: myName || 'صاحب الغرفة', s: mine() }, ...[...peers].filter(([, p]) => p.s).map(([id, p]) => ({ id, name: p.name, s: p.s, admin: !!p.admin }))]; }
+  const tellHelpers = () => { for (const p of peers.values()) if (p.admin) send(p.dc, { t: 'asks', list: asks.map((a) => ({ id: a.id, name: cleanName(a.name) })) }); };
   function fromGuest(id, m) {
     const p = peers.get(id);
     if (!p || !m || typeof m !== 'object') return;
-    if (m.t === 'me' && m.s && Array.isArray(m.s.p) && m.s.p.length === 3 && m.s.p.every(Number.isFinite)) { p.s = { p: m.s.p, yw: +m.s.yw || 0, pt: +m.s.pt || 0, mv: +m.s.mv || 0, look: String(m.s.look || '').slice(0, 20), gear: Array.isArray(m.s.gear) ? m.s.gear.slice(0, 4).map((n) => n | 0) : [] }; seen(id, p.name).s = p.s; }
+    if (m.t === 'me' && m.s && Array.isArray(m.s.p) && m.s.p.length === 3 && m.s.p.every(Number.isFinite)) { p.s = { p: m.s.p, yw: +m.s.yw || 0, pt: +m.s.pt || 0, mv: +m.s.mv || 0, look: m.s.look && typeof m.s.look === 'object' ? { c: cleanLook(m.s.look.c) } : String(m.s.look || '').slice(0, 20), gear: Array.isArray(m.s.gear) ? m.s.gear.slice(0, 4).map((n) => n | 0) : [] }; seen(id, p.name).s = p.s; }
     else if (m.t === 'do' && Array.isArray(m.a) && ['put', 'dig', 'door'].includes(m.a[0]) && okCell(m.a)) { const a = m.a.slice(0, 6); note(a); apply(a); toAll({ t: 'do', a }, id); }
     else if (m.t === 'hit') { const l = life(); if (l) l.remoteHit(m.e | 0, +m.pow || 0, id); }
+    else if (m.t === 'name') { p.name = cleanName(m.name); seen(id, p.name); draw(); }
+    else if (m.t === 'admin' && p.admin && typeof m.id === 'string') {      // a helper lets someone in, turns them away, or puts a player out (never the host, never another helper)
+      if (m.do === 'admit') admit(m.id);
+      else if (m.do === 'deny') deny(m.id);
+      else if (m.do === 'kick' && peers.has(m.id) && m.id !== id && !peers.get(m.id).admin) drop(m.id, true);
+    }
   }
+  /** Host: make a player a helper, or an ordinary player again. */
+  function setAdmin(id, on) { const p = peers.get(id); if (!p || role !== 'host') return; p.admin = !!on; send(p.dc, { t: 'role', admin: p.admin }); tellHelpers(); play.notice(p.name + (p.admin ? ' صار مشرف: يقدر يدخّل ويطلّع.' : ' رجع لاعب عادي.'), false, 3000); draw(); }
   async function admit(id) {
     const i = asks.findIndex((q) => q.id === id);
     if (i < 0) return false;
     const ask = asks.splice(i, 1)[0];
-    drawAsk();
+    drawAsk(); tellHelpers();
     if (peers.size >= MAX_PLAYERS - 1) { call({ op: 'deny', code, key, id }).catch(() => {}); play.notice('الغرفة مليانة (4 لاعبين).', false, 3000); draw(); return false; }
     const pc = new RTCPeerConnection(rtc), p = { pc, dc: null, name: cleanName(ask.name), s: null };
     peers.set(id, p);
@@ -182,7 +194,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     draw();
     return true;
   }
-  function deny(id) { const i = asks.findIndex((q) => q.id === id); if (i < 0) return; asks.splice(i, 1); call({ op: 'deny', code, key, id }).catch(() => {}); drawAsk(); draw(); }
+  function deny(id) { const i = asks.findIndex((q) => q.id === id); if (i < 0) return; asks.splice(i, 1); call({ op: 'deny', code, key, id }).catch(() => {}); drawAsk(); tellHelpers(); draw(); }
   function drop(id, kicked) {
     const p = peers.get(id);
     if (!p) return;
@@ -199,7 +211,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
       const r = await call({ op: 'pending', code, key, keep: quietPolls % 5 === 0 ? 1 : 0 });
       if (r.error) { if (r.error === 'no-room') { accepting = false; error = 'انتهى وقت الكود. افتح الاستقبال من جديد وتاخذ كود جديد.'; code = ''; draw(); } return; }
       for (const j of r.joins || []) if (!asks.some((q) => q.id === j.id)) asks.push(j);
-      if ((r.joins || []).length) { quietPolls = 0; if (play.sound) play.sound.ui(); play.notice(cleanName(r.joins[0].name) + ' يبي يدخل غرفتك. ' + (document.pointerLockElement ? 'اضغط Esc وافتح «العب مع ربعك».' : 'اضغط «دخّله» فوق.'), false, 7000); drawAsk(); draw(); }
+      if ((r.joins || []).length) { quietPolls = 0; if (play.sound) play.sound.ui(); play.notice(cleanName(r.joins[0].name) + ' يبي يدخل غرفتك. ' + (document.pointerLockElement ? 'اضغط Esc وافتح «العب مع ربعك».' : 'اضغط «دخّله» فوق.'), false, 7000); drawAsk(); tellHelpers(); draw(); }
       else if (++quietPolls > 75) { accepting = false; play.notice('وقّفت استقبال لاعبين جدد (5 دقايق بدون طلبات). تقدر تفتحه من «العب مع ربعك».', false, 6000); draw(); }      // about five minutes: stop asking the site
     } catch (e) { /* the site did not answer this time: the next poll tries again */ }
   }
@@ -241,7 +253,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
       draw();
     } else if (m.t === 'ps' && Array.isArray(m.list)) {
       const ids = new Set();
-      for (const q of m.list) { if (!q || q.id === myId || !q.s || !Array.isArray(q.s.p)) continue; ids.add(q.id); seen(q.id, cleanName(q.name)).s = q.s; }
+      for (const q of m.list) { if (!q || q.id === myId || !q.s || !Array.isArray(q.s.p)) continue; ids.add(q.id); const o = seen(q.id, cleanName(q.name)); o.s = q.s; o.admin = !!q.admin; }
       for (const id of [...others.keys()]) if (!ids.has(id)) gone(id);
     } else if (m.t === 'do' && Array.isArray(m.a)) apply(m.a);
     else if (m.t === 'sky') { const s = sky(); if (s && s.set) s.set(m.time, !!m.rain, true); }
@@ -250,6 +262,8 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     else if (m.t === 'hurt') { const l = life(); if (l) l.hurtPlayer(+m.d || 0); }
     else if (m.t === 'kill') { const l = life(); if (l) l.credit(m.kind === 'monster' ? 'monster' : 'animal', Math.min(4, m.meat | 0)); }
     else if (m.t === 'bye') gone(m.id);
+    else if (m.t === 'role') { admin = !!m.admin; if (!admin) hostAsks.length = 0; play.notice(admin ? 'صاحب الغرفة خلّاك مشرف: تقدر تدخّل لاعبين وتطلّعهم.' : 'رجعت لاعب عادي.', false, 4500); draw(); }
+    else if (m.t === 'asks' && Array.isArray(m.list)) { const had = hostAsks.length; hostAsks.length = 0; for (const a of m.list.slice(0, 8)) if (a && typeof a.id === 'string') hostAsks.push({ id: a.id.slice(0, 12), name: cleanName(a.name) }); if (hostAsks.length > had && play.sound) play.sound.ui(); draw(); }
     else if (m.t === 'kick') { left('صاحب الغرفة طلّعك.'); }
   }
   function left(text) {
@@ -260,7 +274,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     const s = sky(), l = life();
     if (s) s.locked = false;
     if (l) l.setShare(null);
-    role = null; code = ''; busy = ''; play.shared = false;
+    role = null; code = ''; busy = ''; play.shared = false; admin = false; hostAsks.length = 0;
     if (text) play.notice(text, false, 5000);
     draw();
   }
@@ -301,6 +315,14 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     else if (role === 'guest' || peers.size) left('طلعت من الغرفة.');
   }
 
+  /** A new name for this player, kept in this browser and told to the room. */
+  function setName(name) {
+    myName = cleanName(name);
+    try { window.localStorage.setItem('bw-name', myName); } catch (e) { /* not kept */ }
+    if (role === 'guest') toHost({ t: 'name', name: myName });
+    draw();
+    return myName;
+  }
   // ---- every frame: say where this player is; the host also passes everyone and the creatures on
   let tMe = 0, tEnts = 0;
   play.onTick((s, dt) => {
@@ -333,7 +355,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   askBar.id = 'netAsk'; askBar.hidden = true;
   document.body.appendChild(askBar);
   function drawAsk() {
-    const a = asks[0];
+    const a = role === 'host' ? asks[0] : admin ? hostAsks[0] : null;
     askBar.hidden = !a || !el.hidden;
     if (a) askBar.innerHTML = `<span>${esc(cleanName(a.name))} يبي يدخل</span><button type="button" data-admit="${a.id}">دخّله</button><button type="button" class="no" data-deny="${a.id}">ارفض</button>`;
   }
@@ -344,11 +366,13 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
       h += code ? `<p>عط ربعك هذا الكود. يفتحون نفس العالم («${WORLD_NAMES[world] || world}») ويكتبونه في «العب مع ربعك».</p><div class="code">${code}</div>` : '';
       h += `<p>${accepting ? 'الاستقبال مفتوح: اللي يكتب الكود يطلع لك اسمه هني وأنت تدخّله.' : 'الاستقبال مسكّر: ما حد جديد يقدر يطلب الدخول.'}</p>`;
       h += '<ul>' + asks.map((a) => `<li class="ask"><span>${esc(cleanName(a.name))}</span><small>يبي يدخل</small><button type="button" data-admit="${a.id}">دخّله</button><button type="button" class="no" data-deny="${a.id}">ارفض</button></li>`).join('')
-        + [...peers].map(([id, p]) => `<li><span>${esc(p.name)}</span><small>${p.dc && p.dc.readyState === 'open' ? 'في الغرفة' : 'يتصل…'}</small><button type="button" class="no" data-kick="${id}">طلّعه</button></li>`).join('') + '</ul>';
+        + [...peers].map(([id, p]) => `<li><span>${esc(p.name)}</span><small>${p.dc && p.dc.readyState === 'open' ? (p.admin ? 'مشرف' : 'لاعب عادي') : 'يتصل…'}</small><button type="button" class="soft" data-admin="${id}" data-on="${p.admin ? 0 : 1}">${p.admin ? 'خلّه عادي' : 'خلّه مشرف'}</button><button type="button" class="no" data-kick="${id}">طلّعه</button></li>`).join('') + '</ul>';
       if (!asks.length && !peers.size) h += '<p>ما حد في الغرفة للحين.</p>';
       h += `<button type="button" class="soft" data-listen="${accepting ? 0 : 1}">${accepting ? 'سكّر الاستقبال' : 'افتح الاستقبال'}</button><button type="button" class="no" data-leave="1">سكّر الغرفة</button>`;
     } else if (role === 'guest') {
-      h += `<p>أنت في الغرفة <b dir="ltr">${code}</b>. صاحب الغرفة يتحكم بالوقت والجو والوحوش، ويقدر يطلّع أي لاعب.</p><ul>` + [...others.values()].map((o) => `<li><span>${esc(o.name)}</span><small>في الغرفة</small></li>`).join('') + '</ul><button type="button" class="no" data-leave="1">اطلع من الغرفة</button>';
+      h += `<p>أنت في الغرفة <b dir="ltr">${code}</b>${admin ? '، وأنت <b>مشرف</b>: تقدر تدخّل لاعبين وتطلّعهم' : ''}. صاحب الغرفة يتحكم بالوقت والجو والوحوش.</p><ul>`
+        + (admin ? hostAsks.map((a) => `<li class="ask"><span>${esc(a.name)}</span><small>يبي يدخل</small><button type="button" data-admit="${a.id}">دخّله</button><button type="button" class="no" data-deny="${a.id}">ارفض</button></li>`).join('') : '')
+        + [...others].map(([id, o]) => `<li><span>${esc(o.name)}</span><small>${id === 'host' ? 'صاحب الغرفة' : o.admin ? 'مشرف' : 'لاعب عادي'}</small>${admin && id !== 'host' && !o.admin ? `<button type="button" class="no" data-kick="${id}">طلّعه</button>` : ''}</li>`).join('') + '</ul><button type="button" class="no" data-leave="1">اطلع من الغرفة</button>';
     } else if (busy) {
       h += `<p>${busy}</p>` + (peers.size ? '<button type="button" class="soft" data-leave="1">إلغاء</button>' : '');
     } else {
@@ -364,8 +388,10 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   function onClick(e) {
     const t = e.target.closest('button');
     if (!t) return;
-    if (t.dataset.admit) admit(t.dataset.admit);
+    if (role === 'guest' && (t.dataset.admit || t.dataset.deny || t.dataset.kick)) { toHost({ t: 'admin', do: t.dataset.admit ? 'admit' : t.dataset.deny ? 'deny' : 'kick', id: t.dataset.admit || t.dataset.deny || t.dataset.kick }); const i = hostAsks.findIndex((a) => a.id === (t.dataset.admit || t.dataset.deny)); if (i >= 0) hostAsks.splice(i, 1); draw(); }
+    else if (t.dataset.admit) admit(t.dataset.admit);
     else if (t.dataset.deny) deny(t.dataset.deny);
+    else if (t.dataset.admin) setAdmin(t.dataset.admin, t.dataset.on === '1');
     else if (t.dataset.kick) drop(t.dataset.kick, true);
     else if (t.dataset.listen) { if (t.dataset.listen === '1' && !code) { role = null; host(); } else { listen(t.dataset.listen === '1'); draw(); } }
     else if (t.dataset.leave) leave();
@@ -381,7 +407,8 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   const net = {
     el, peers, others, asks, log, apply,
     get role() { return role; }, get code() { return code; }, get accepting() { return accepting; }, get error() { return error; }, get busy() { return busy; }, get name() { return myName; },
-    host, join, admit, deny, leave, listen, poll,
+    host, join, admit, deny, leave, listen, poll, setAdmin, setName, hostAsks,
+    get admin() { return admin; },
     kick: (id) => drop(id, true),
     /** Open the panel; back() is called when the player leaves it. */
     open(back) { onBack = back || null; error = ''; el.hidden = false; draw(); },

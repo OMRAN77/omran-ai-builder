@@ -199,7 +199,7 @@ export function createPlay(o) {
   // ------------------------------------------------------------------ targeting
   const _dir = new THREE.Vector3(), _eye = new THREE.Vector3();
   /** Walk the grid along a ray (Amanatides & Woo). The cell the ray starts in is skipped. */
-  function raycast(org, dir, max) {
+  function raycast(org, dir, max, accept = pickable) {
     let x = Math.floor(org.x), y = Math.floor(org.y), z = Math.floor(org.z);
     const sxn = dir.x > 0 ? 1 : -1, syn = dir.y > 0 ? 1 : -1, szn = dir.z > 0 ? 1 : -1;
     const dx = dir.x !== 0 ? Math.abs(1 / dir.x) : Infinity, dy = dir.y !== 0 ? Math.abs(1 / dir.y) : Infinity, dz = dir.z !== 0 ? Math.abs(1 / dir.z) : Infinity;
@@ -212,7 +212,7 @@ export function createPlay(o) {
       if (t > max) return null;
       if (!world.inb(x, y, z)) continue;
       const id = world.get(x, y, z);
-      if (id && pickable(id)) return { x, y, z, id, nx, ny, nz, t, px: org.x + dir.x * t, py: org.y + dir.y * t, pz: org.z + dir.z * t };
+      if (id && accept(id)) return { x, y, z, id, nx, ny, nz, t, px: org.x + dir.x * t, py: org.y + dir.y * t, pz: org.z + dir.z * t };
     }
     return null;
   }
@@ -278,8 +278,15 @@ export function createPlay(o) {
     if (d.t >= d.need) { breakBlock(h); d.on = false; d.t = 0; d.progress = 0; aim(); }
   }
   function placeNow() {
-    const h = st.hit, s = st.slots[st.sel];
-    for (const f of firsts) if (f(h)) return true;                     // someone to talk to stands under the crosshair
+    let h = st.hit;
+    const s = st.slots[st.sel];
+    for (const f of firsts) if (f(h)) return true;
+    // building on water: the crosshair passes through a liquid, so with a block in hand the surface of the water counts as
+    // something to build against (not while the head is under it: there every side would be water)
+    if (s && s.id && blocks[s.id] && !isLiquid(world.get(Math.floor(_eye.x), Math.floor(_eye.y), Math.floor(_eye.z)))) {
+      const wet = raycast(_eye, _dir, P.reach, (id) => isLiquid(id) || pickable(id));
+      if (wet && isLiquid(wet.id) && (!h || wet.t < h.t - 0.01)) h = wet;
+    }                     // someone to talk to stands under the crosshair
     // a door, a chest, a workbench: the button works it (hold Shift to build against it instead)
     if (h && o.onInteract && !keys.has('ShiftLeft') && !keys.has('ShiftRight') && o.onInteract(h)) return true;
     if (s && s.use) return o.onUse ? !!o.onUse(s, st.sel) : false;          // food, clothing: used, not placed
@@ -703,6 +710,8 @@ const PANEL_CSS = `
 #playPanel .cards.keys .key { margin: 0; min-width: 76px; padding: 6px 10px; font-weight: 700; opacity: 1; }
 #playPanel .cards.keys .key.wait { color: #0b0f14; background: var(--pp-accent, #fff); }
 #playPanel textarea { box-sizing: border-box; width: 100%; height: 110px; margin: 6px 0; padding: 9px 11px; font: inherit; font-size: 15px; line-height: 1.6; color: #f1f4f8; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .3); border-radius: 10px; resize: none; -webkit-user-select: text; user-select: text; }
+#playPanel .nm { display: flex; align-items: center; gap: 8px; justify-content: center; font-size: 14px; }
+#playPanel .nm input { width: 130px; min-height: 40px; padding: 4px 10px; font: inherit; font-size: 15px; text-align: center; color: #f1f4f8; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .3); border-radius: 9px; -webkit-user-select: text; user-select: text; }
 #playPanel .stars { direction: ltr; margin: 4px 0; }
 #playPanel .star { padding: 2px 6px; min-height: 0; font-size: 30px; line-height: 1; color: rgba(255, 255, 255, .28); background: none; }
 #playPanel .star.on { color: #ffd76a; }
@@ -794,6 +803,7 @@ export function createPlayPanel(o) {
     } else if (view === 'options') {
       const save = window.__GAME_SAVE;
       h = '<h2>الإعدادات</h2><div class="esc">' + btn('sound', NAMES.sound()) + btn('look', NAMES.look()) + btn('video', NAMES.video()) + btn('diff', NAMES.diff()) + btn('mon', NAMES.mon())
+        + (window.__GAME_NET ? `<label class="nm">اسمك <input maxlength="16" value="${esc(window.__GAME_NET.name || '')}" placeholder="لاعب"></label>` + btn('name', 'احفظ الاسم') : '')
         + (o.touch ? '' : btn('keys', 'أزرار التحكم')) + (save && save.has() ? btn('new', confirmNew ? 'متأكد؟ اضغط مرة ثانية يمسح عالمك المحفوظ' : 'عالم جديد (يمسح المحفوظ)') : '') + '</div>'
         + `<div class="note">${o.touch ? 'أزرار اللمس ثابتة في مكانها. ' : ''}اللغة: العربية. اللغات الثانية ما انضافت للعبة للحين.</div>`;
     } else if (view === 'keys') {
@@ -837,13 +847,14 @@ export function createPlayPanel(o) {
     else if (act === 'video') { cycle(window.__GAME_QUALITY, ['balanced', 'sharp', 'fast']); drawSub(); }
     else if (act === 'diff') { cycle(window.__GAME_DIFF, ['normal', 'hard', 'easy']); drawSub(); }
     else if (act === 'mon') { const l = window.__GAME_LIFE; if (l) l.setMonsters(!l.monsters); drawSub(); }
+    else if (act === 'name') { const inp = sub.querySelector('.nm input'), n = window.__GAME_NET; if (inp && n) { n.setName(inp.value); drawSub(); const out = sub.querySelector('.note'); if (out) out.textContent = 'اسمك الحين: ' + n.name; } }
     else if (act === 'keys0') { if (window.__GAME_KEYS) window.__GAME_KEYS.reset(); drawSub(); }
     else if (act === 'new') { if (!confirmNew) { confirmNew = true; drawSub(); } else { const s = window.__GAME_SAVE; if (s) s.clear(); window.location.reload(); } }
   });
   // while the panel is up the keyboard is the panel's: a key waited for is taken, and typing in the note box is not the game's
   el.addEventListener('keydown', (e) => {
     if (waitKey) { e.preventDefault(); e.stopPropagation(); if (e.code !== 'Escape' && window.__GAME_KEYS) window.__GAME_KEYS.set(waitKey, e.code); waitKey = null; drawSub(); return; }
-    if (e.target && e.target.tagName === 'TEXTAREA') e.stopPropagation();
+    if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) e.stopPropagation();
   });
   window.addEventListener('keydown', (e) => { if (!el.hidden && waitKey) { e.preventDefault(); e.stopImmediatePropagation(); if (e.code !== 'Escape' && window.__GAME_KEYS) window.__GAME_KEYS.set(waitKey, e.code); waitKey = null; drawSub(); } }, true);
   window.__GAME_PANEL = () => { if (!el.hidden && view === 'main') draw(); };      // something the panel shows changed (a save was read)

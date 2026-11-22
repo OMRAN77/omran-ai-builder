@@ -723,6 +723,78 @@ function serve(root, prefix) {
     }
     const snd = await page.evaluate(() => { const s = window.__GAME_SOUND; return s ? { played: s.stats.played, muted: s.muted } : null; });
     check('sounds were played for digging, placing and walking', !!snd && snd.played >= 6, snd);
+    // ---- fire that burns on contact, building on water, the day's cave with its gems, the diamond set, the player's own design
+    if (await page.evaluate(() => !!(window.__game && window.__game.bag && window.__game.bag.adv && 'cave' in window.__game.bag.adv))) {
+      const fw = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, v = g.vitals.values, w = g.world, out = {};
+        window.__GAME_LIFE.setMonsters(false); g.life.kinds.forEach((k) => { if (k.max0 == null) k.max0 = k.max; k.max = 0; });
+        p.setFlying(false); s.third = false; s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); p.tick(20);
+        const x = Math.floor(s.pos.x), y = Math.floor(s.pos.y + 0.01), z = Math.floor(s.pos.z);
+        // a fire in the next cell: standing against it burns, a step away does not
+        const keep = [[x + 1, y, z], [x + 1, y + 1, z]].map(([a, b, c]) => [a, b, c, w.get(a, b, c)]);
+        for (const [a, b, c] of keep) g.terrain.setBlock(a, b, c, 0);
+        g.terrain.setBlock(x + 1, y, z, 151); g.terrain.flush();
+        for (const k of Object.keys(v)) v[k] = 100;
+        for (let i = 0; i < 90; i++) { s.pos.x = x + 0.2; s.pos.z = z + 0.5; p.advance(1 / 60); }
+        out.away = v.hp;
+        for (let i = 0; i < 90; i++) { s.pos.x = x + 0.66; s.pos.z = z + 0.5; p.advance(1 / 60); }
+        out.touching = v.hp;
+        for (const [a, b, c, id] of keep) g.terrain.setBlock(a, b, c, id);
+        g.terrain.flush(); for (const k of Object.keys(v)) v[k] = 100;
+        // water two blocks below eye level ahead: a block in hand is put on its surface
+        s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); p.tick(3);
+        const fx = -Math.sin(s.yaw), fz = -Math.cos(s.yaw), ax = Math.abs(fx) > Math.abs(fz) ? Math.sign(fx) : 0, az = ax ? 0 : Math.sign(fz);
+        const X = Math.floor(s.pos.x), Y = Math.floor(s.pos.y + 0.01), Z = Math.floor(s.pos.z), pool = [];
+        for (let d = 1; d <= 3; d++) for (const h of [0, 1, 2]) pool.push([X + ax * d, Y + h, Z + az * d]);
+        const was = pool.map(([a, b, c]) => w.get(a, b, c));
+        for (const [a, b, c] of pool) g.terrain.setBlock(a, b, c, 0);
+        g.terrain.setBlock(X + ax * 2, Y, Z + az * 2, 150); g.terrain.flush();
+        const paint = g.bag.items.find((q) => q.id === 104); s.slots[0] = { ...paint, n: 5 }; s.sel = 0; p.changed();
+        s.yaw = Math.atan2(-ax, -az); s.pitch = Math.atan2(Y + 0.9 - (s.pos.y + p.tuning.eye), 2); p.tick(2);
+        out.solidHit = s.hit && [s.hit.x, s.hit.y, s.hit.z, s.hit.id];
+        out.placed = p.placeNow();
+        out.onWater = w.get(X + ax * 2, Y + 1, Z + az * 2);
+        pool.forEach(([a, b, c], i) => g.terrain.setBlock(a, b, c, was[i])); g.terrain.flush();
+        return out;
+      });
+      check('fire burns whoever stands against it, not whoever stands a step away', fw.away === 100 && fw.touching < 90, { away: fw.away, touching: fw.touching });
+      check('a block is built on the surface of water', fw.placed === true && fw.onWater === 104, fw);
+      const cv = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, w = g.world, c = g.bag.adv.cave, kitItem = (id, n) => { const it = g.bag.items.find((q) => q.id === id); return { ...it, n: n ?? it.n }; };
+        if (!c) return null;
+        const out = { mouth: c.mouth, cells: c.cells, gold: c.gold.length, diamond: c.diamond.length, torches: c.torches, hall: w.get(c.hall.x, c.hall.y, c.hall.z), vein: w.get(c.diamond[0][0], c.diamond[0][1], c.diamond[0][2]) };
+        // stand in the hall and dig the first diamond vein for real
+        s.pos.set(c.hall.x + 0.5, c.hall.y - 2, c.hall.z + 0.5); s.vel.set(0, 0, 0); for (let i = 0; i < 40; i++) p.advance(1 / 60);
+        out.standing = [s.onGround, Math.round(s.pos.y)];
+        s.pack.fill(null);
+        const gems0 = g.bag.craft.count(231);
+        for (const d of c.diamond.slice(0, 4)) { const id = w.get(d[0], d[1], d[2]); g.terrain.setBlock(d[0], d[1], d[2], 0); p.give(kitItem(g.kit.dropOf(id), 1)); }
+        g.terrain.flush();
+        out.gems = g.bag.craft.count(231) - gems0;
+        // the set of four pieces from four gems, beside a workbench
+        const x = Math.floor(s.pos.x) + 1, y = Math.floor(s.pos.y + 0.01), z = Math.floor(s.pos.z), was = w.get(x, y, z);
+        g.terrain.setBlock(x, y, z, 171); g.terrain.flush();
+        const i = g.bag.craft.list().findIndex((r) => r.out === 220 && r.needs[0].what === 231);
+        out.recipe = g.bag.craft.list()[i] && g.bag.craft.list()[i].item.name;
+        out.made = g.bag.craft.make(i);
+        out.pieces = [220, 211, 222, 223].map((id) => [...s.slots, ...s.pack].some((q) => q && q.id === id));
+        out.gemsLeft = g.bag.craft.count(231);
+        g.terrain.setBlock(x, y, z, was); g.terrain.flush();
+        p.tick(2);
+        return out;
+      });
+      check('today\'s cave is dug into the ground, lit, with veins of gold and diamond', !!cv && cv.cells > 300 && cv.diamond >= 4 && cv.gold >= 4 && cv.torches >= 3 && cv.hall === 0 && cv.vein === 179 && cv.standing[0] === true, cv);
+      check('four gems dug in the cave make the set of four diamond pieces', !!cv && cv.gems === 4 && cv.made === true && cv.pieces.every(Boolean) && cv.gemsLeft === 0 && String(cv.recipe).includes('طقم'), cv);
+      await page.evaluate(() => { const g = window.__game, s = g.play.state, c = g.bag.adv.cave; if (!c) return; s.yaw += 0.6; s.pitch = 0.05; g.play.tick(3); });
+      await shot('24-cave');
+      const design = await page.evaluate(() => {
+        const g = window.__game, wd = g.bag.adv.wardrobe, n = g.bag.net;
+        const ok = wd.design('shirt', '#ff0044'), bad = wd.design('shirt', 'javascript:alert(1)'), cape = wd.design('cape', '#112233');
+        const name = n.setName('  نورة<b>  ');
+        return { ok, bad, cape, current: wd.current, shirt: wd.look.shirt, capeNow: wd.look.cape, listed: wd.list()[0].key, name, kept: window.localStorage.getItem('bw-name') };
+      });
+      check('the player designs their own look in colours, and changes their name', design.ok === true && design.bad === false && design.current === 'custom' && design.shirt === '#ff0044' && design.capeNow === '#112233' && design.listed === 'custom' && design.name === 'نورةb' && design.kept === 'نورةb', design);
+    }
     // ---- the pause menu: its eight choices, statistics, notes, settings, keys; then saving and coming back
     if (await page.evaluate(() => !!window.__GAME_SAVE)) {
       const tapOn = async (sel) => { const h = await page.$(sel); if (!h) throw new Error('not in the page: ' + sel); await h.scrollIntoViewIfNeeded(); const r = await h.boundingBox(); if (!r) throw new Error('not shown: ' + sel); if (touch) await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2); else await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2); };

@@ -74,7 +74,10 @@ export function createVitals(o) {
     // no air with the head under water
     if (play.isLiquid(cellAt(p.x, p.y + play.tuning.eye, p.z))) { breath += dt; if (breath > 12) hurt(7 * dt); } else breath = Math.max(0, breath - dt * 4);
     // standing in fire
-    if (cellAt(p.x, p.y + 0.3, p.z) === K.FIRE) hurt(14 * dt);
+    // fire burns whoever stands in it or brushes against it (any cell the body reaches into, a little beyond its sides)
+    { let burn = false; const r = play.tuning.hw + 0.14;
+      for (let y = Math.floor(p.y); y <= Math.floor(p.y + play.tuning.height - 0.05) && !burn; y++) for (const dx of [-r, 0, r]) for (const dz of [-r, 0, r]) if (cellAt(p.x + dx, y, p.z + dz) === K.FIRE) burn = true;
+      if (burn) { hurt(14 * dt); if (!warned.fire) { warned.fire = true; play.notice('النار تحرق! ابعد عنها.', false, 2400); } } else warned.fire = false; }
     let starving = false, comfy = true;
     const w = sky();
     for (const n of o.needs) {

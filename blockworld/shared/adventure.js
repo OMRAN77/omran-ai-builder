@@ -12,6 +12,7 @@ import { K, kitItem, kitIcon, kitName } from './kit.js';
 import { levelOf } from './status.js';
 import { makeAvatar, outfitPicture } from './avatar.js';
 import { createWardrobe, TRADER_LOOK } from './outfits.js';
+import { makeCave } from './cave.js';
 
 const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 const rng = (seed) => { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
@@ -22,6 +23,8 @@ const QUESTS = [
   ['wood', 'جمّع 8 خشب', (c) => c.craft.count('wood') >= 8, 10],
   ['table', 'اصنع طاولة تصنيع', (c) => c.st.made[K.TABLE] >= 1, 10],
   ['tool', 'اصنع فأس أو معول أو سيف', (c) => [212, 214, 216].some((id) => c.st.made[id] >= 1), 12, 'worker'],
+  ['cave', 'انزل الكهف (علامته على الخريطة) واجمع 4 ألماسات', (c) => c.craft.count(K.GEM) >= 4 || c.st.made[220] >= 1, 20, 'miner'],
+  ['dset', 'اصنع طقم لبس الألماس من 4 ألماسات', (c) => c.st.made[220] >= 1, 15],
   ['hunt', 'صيد حيوانين', (c) => c.st.kills.animal >= 2, 12, 'hunter'],
   ['home', 'ابنِ بيتك: حط 30 مكعب وركّب باب', (c) => c.st.placed >= 30 && c.st.put[K.DOOR] >= 1, 15, 'builder'],
   ['store', 'اصنع صندوق وافتحه', (c) => c.st.made[K.CHEST] >= 1 && c.st.opened >= 1, 12],
@@ -63,6 +66,9 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     return null;
   }
 
+  // ---- the day's cave, dug before anything else is placed
+  let cave = null;
+  try { cave = makeCave({ play, kit, rnd: rng(hash('cave|' + worldKey + '|' + today)), spawn }); } catch (e) { cave = null; }      // a world too shallow or too wet for one simply has none
   // ---- the day's treasure: a chest standing somewhere new each day, the same place for everyone in this world
   const r = rng(hash(worldKey + '|' + today));
   let treasure = null;
@@ -102,7 +108,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
   }
 
   const api = {
-    wardrobe, trader, me, treasure, deals,
+    wardrobe, trader, me, treasure, deals, cave,
     get found() { return found; }, get foundToday() { return foundToday; }, get traderAt() { return tPos; }, get traderNear() { return tNear; },
     done,
     onTrade: null,
@@ -149,14 +155,17 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     /** The quests page of the bag. */
     page() {
       const qs = api.quests(), next = qs.find((q) => !q.done), sec = api.secrets(), looks = wardrobe.list();
-      return `<h3>كنز اليوم</h3><div class="tmap"><canvas width="${w.sx}" height="${w.sz}"></canvas><p class="hint">${!treasure ? 'ما في كنز اليوم.' : foundToday ? 'لقيت كنز اليوم ✓ كنز جديد بكرة.' : 'علامة ✕ مكان الصندوق، والنقطة الحمرا أنت. الخريطة فوقها الشمال.'}<br>كنوز لقيتها: ${found}</p></div>`
+      return `<h3>كنز اليوم</h3><div class="tmap"><canvas width="${w.sx}" height="${w.sz}"></canvas><p class="hint">${!treasure ? 'ما في كنز اليوم.' : foundToday ? 'لقيت كنز اليوم ✓ كنز جديد بكرة.' : 'علامة ✕ مكان الصندوق، والنقطة الحمرا أنت. الخريطة فوقها الشمال.'}${cave ? ' المثلث الأسود مدخل كهف اليوم: فيه ذهب وألماس.' : ''}<br>كنوز لقيتها: ${found}</p></div>`
         + `<h3>المهام ${qs.filter((q) => q.done).length}/${qs.length}</h3><ol class="quests">${qs.map((q) => `<li class="${q.done ? 'done' : q === next ? 'now' : ''}">${q.name}<small>+${q.xp} خبرة${q.outfit ? ' · لبس «' + looks.find((o) => o.key === q.outfit).name + '»' : ''}</small></li>`).join('')}</ol>`
         + `<h3>مهام سرية لقيتها: ${sec.length} من ${SECRETS.length}</h3>${sec.length ? `<ol class="quests">${sec.map((q) => `<li class="done">${q.name}<small>${q.how}</small></li>`).join('')}</ol>` : '<p class="hint">ما تنكتب هني لين تلقاها بروحك. جرّب أشياء غريبة.</p>'}`
         + `<h3>ملابسي</h3><div class="looks">${looks.map((o) => `<button type="button" class="look${o.on ? ' on' : ''}${o.owned ? '' : ' locked'}" data-look="${o.key}">${outfitPicture(o.owned ? o.c : { hat: '#2a2d35', skin: '#3a3d46', shirt: '#2a2d35', pants: '#22252c', shoes: '#1a1c22' }, 34)}<span>${o.owned ? o.name : o.rare ? 'نادر: ؟' : o.name}</span><small>${o.owned ? (o.on ? 'لابسه' : 'البسه') : o.how}</small></button>`).join('')}</div>`
+        + `<h3>صمّم شكلك</h3><div class="design">${[['hat', 'الطاقية'], ['skin', 'البشرة'], ['shirt', 'القميص'], ['pants', 'السروال'], ['shoes', 'الحذاء']].map(([k, t]) => `<label>${t}<input type="color" data-part="${k}" value="${wardrobe.custom[k] || '#888888'}"></label>`).join('')}<label>العباءة<input type="color" data-part="cape" value="${wardrobe.custom.cape || '#7747bb'}"></label><button type="button" class="view" data-cape="${wardrobe.custom.cape ? 0 : 1}">${wardrobe.custom.cape ? 'بدون عباءة' : 'مع عباءة'}</button><button type="button" class="view" data-brim="${wardrobe.custom.brim ? 0 : 1}">${wardrobe.custom.brim ? 'طاقية بدون حافة' : 'طاقية بحافة'}</button><span class="pv">${outfitPicture(wardrobe.custom, 46)}</span></div>`
         + '<p class="hint"><button type="button" class="view" data-view="1">' + (st.third ? 'ارجع للمنظور الأول' : 'شوف شكلك من ورا (V)') + '</button></p>';
     },
     /** After page() is in the document: draw the map. */
     drawn(el) {
+      // the designer's colour boxes: each change dresses the figure at once
+      for (const inp of el.querySelectorAll('.design input[type="color"]')) inp.addEventListener('input', () => { if (inp.dataset.part === 'cape' && !wardrobe.custom.cape) return; wardrobe.design(inp.dataset.part, inp.value); const pv = el.querySelector('.design .pv'); if (pv) pv.innerHTML = outfitPicture(wardrobe.custom, 46); });
       const cv = el.querySelector('.tmap canvas');
       if (!cv) return;
       const g = cv.getContext('2d');
@@ -169,10 +178,14 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
       g.putImageData(api.mapImage, 0, 0);
       const s = Math.max(2, w.sx / 64);
       if (treasure && !foundToday) { g.strokeStyle = '#b3121b'; g.lineWidth = s * 0.9; g.lineCap = 'round'; g.beginPath(); g.moveTo(treasure.x - s * 1.6, treasure.z - s * 1.6); g.lineTo(treasure.x + s * 1.6, treasure.z + s * 1.6); g.moveTo(treasure.x + s * 1.6, treasure.z - s * 1.6); g.lineTo(treasure.x - s * 1.6, treasure.z + s * 1.6); g.stroke(); }
+      if (cave) { const m = cave.mouth; g.fillStyle = '#fff'; g.beginPath(); g.moveTo(m.x, m.z - s * 2.3); g.lineTo(m.x + s * 2.1, m.z + s * 1.7); g.lineTo(m.x - s * 2.1, m.z + s * 1.7); g.closePath(); g.fill(); g.fillStyle = '#16120c'; g.beginPath(); g.moveTo(m.x, m.z - s * 1.5); g.lineTo(m.x + s * 1.4, m.z + s * 1.2); g.lineTo(m.x - s * 1.4, m.z + s * 1.2); g.closePath(); g.fill(); }
       g.fillStyle = '#fff'; g.beginPath(); g.arc(st.pos.x, st.pos.z, s * 1.25, 0, 7); g.fill(); g.fillStyle = '#e02222'; g.beginPath(); g.arc(st.pos.x, st.pos.z, s * 0.85, 0, 7); g.fill();
     },
     /** A click inside the quests page or the trade page. True when it was handled (the bag draws again). */
     click(t) {
+      const cape = t.closest('[data-cape]'), brim = t.closest('[data-brim]');
+      if (cape) { wardrobe.design('cape', cape.dataset.cape === '1' ? '#7747bb' : false); return true; }
+      if (brim) { wardrobe.design('brim', brim.dataset.brim === '1'); return true; }
       const look = t.closest('[data-look]'), deal = t.closest('[data-deal]'), view = t.closest('[data-view]');
       if (look) { if (!wardrobe.wear(look.dataset.look)) play.notice('هذا اللبس للحين مقفول.', false, 2000); else if (play.sound) play.sound.ui(); return true; }
       if (deal) { const res = api.trade(+deal.dataset.deal); if (res !== true) play.notice(res, false, 2600); return true; }

@@ -379,6 +379,7 @@ test('v-blockworld-adv: مهام ظاهرة وسرّيّة، كنز يتغيّر
   assert.ok(adv.includes('ما تنكتب هني لين تلقاها بروحك'));
   // الملابس: تُمنح فتُلبس فورًا وتُحفظ
   assert.ok((outfits.match(/\{ key: '/g) || []).length >= 12);
+  assert.match(outfits, /key: 'custom', name: 'تصميمي'/, 'ولبس يصمّمه اللاعب');
   assert.match(outfits, /owned\.add\(key\); current = key; keep\(\);/);
   assert.match(avatar, /export function makeAvatar\(\)/);
   // المنظور من الخلف: الكاميرا ترجع وتقف قبل الجدار، وما على الكاميرا يُخفى بالطبقات لا بـvisible
@@ -489,5 +490,34 @@ test('v-blockworld-esc: تقصير سجلّ الحفظ يعطي العالم ن�
     assert.equal(cells(w2), cells(w1), 'المكعبات نفسها');
     assert.equal(JSON.stringify([...o2].filter(([, v]) => v).sort()), JSON.stringify([...o1].filter(([, v]) => v).sort()), 'الأبواب المفتوحة نفسها');
   }
+});
+
+test('v-blockworld-cave: نار تحرق باللمس، بناء فوق الماء، كهف اليوم وطقم الألماس، اسم ومشرف وتصميم', () => {
+  const play = read('shared/play.js'), vit = read('shared/vitals.js'), life = read('shared/life.js'), kit = read('shared/kit.js');
+  const cave = read('shared/cave.js'), craft = read('shared/craft.js'), adv = read('shared/adventure.js'), net = read('shared/net.js'), outfits = read('shared/outfits.js');
+  // بلاغ «النار ما يحرق»: كانت تحرق من يقف داخل خانتها فقط
+  assert.match(vit, /for \(const dx of \[-r, 0, r\]\) for \(const dz of \[-r, 0, r\]\) if \(cellAt\(p\.x \+ dx, y, p\.z \+ dz\) === K\.FIRE\) burn = true;/);
+  assert.match(life, /if \(cell\(e\.x, e\.y \+ 0\.2, e\.z\) === 151\) \{ e\.hp -= 9 \* dt;/, 'والمخلوقات تحترق أيضًا');
+  // بلاغ «الماي ما ينحط على كل بلوكه»: سطح الماء صار يُبنى عليه
+  assert.match(play, /const wet = raycast\(_eye, _dir, P\.reach, \(id\) => isLiquid\(id\) \|\| pickable\(id\)\);/);
+  assert.match(play, /if \(wet && isLiquid\(wet\.id\) && \(!h \|\| wet\.t < h\.t - 0\.01\)\) h = wet;/);
+  // الكهف: بذرته اليوم والعالم، لا يفتح بحيرة، عروقه في الجدران، ومشاعل في الطريق
+  assert.match(adv, /makeCave\(\{ play, kit, rnd: rng\(hash\('cave\|' \+ worldKey \+ '\|' \+ today\)\), spawn \}\)/);
+  assert.match(cave, /never open a lake into the cave/);
+  assert.match(cave, /vein\(veins\.diamond, K\.ROCK_DIAMOND, 6\);/);
+  assert.match(cave, /kit\.setBlock\(fx, fy, fz, K\.TORCH\); if \(kit\.lit\) kit\.lit\(fx, fy, fz, K\.TORCH\);/);
+  assert.match(kit, /add\(K\.ROCK_DIAMOND, \{ tiles: 'x:rock:#7fe6f5', drop: K\.GEM, hard: 1\.1 \}/, 'صخر الألماس يعطي ألماسة');
+  assert.match(craft, /\{ out: 220, n: 1, also: \[211, 222, 223\], name: 'طقم لبس الألماس \(4 قطع\)', needs: \[\[K\.GEM, 4\]\], table: true \}/, 'أربع ألماسات = الطقم كاملًا');
+  assert.match(adv, /\['cave', 'انزل الكهف \(علامته على الخريطة\) واجمع 4 ألماسات'/);
+  // الاسم يتغيّر من الإعدادات ويصل للغرفة؛ صاحب الغرفة يرفع لاعبًا مشرفًا
+  assert.match(net, /function setName\(name\) \{/);
+  assert.match(play, /btn\('name', 'احفظ الاسم'\)/);
+  assert.match(net, /else if \(m\.t === 'admin' && p\.admin && typeof m\.id === 'string'\) \{/, 'أوامر المشرف تُقبل ممّن رُفع فقط');
+  assert.match(net, /else if \(m\.do === 'kick' && peers\.has\(m\.id\) && m\.id !== id && !peers\.get\(m\.id\)\.admin\) drop\(m\.id, true\);/, 'المشرف لا يطرد نفسه ولا مشرفًا آخر');
+  for (const t of ['خلّه مشرف', 'خلّه عادي', 'لاعب عادي']) assert.ok(net.includes(t), t);
+  // تصميم الشخصية: ألوان فقط، وما يأتي من لاعب آخر يُنظَّف
+  assert.match(outfits, /const HEX = \/\^#\[0-9a-fA-F\]\{6\}\$\/;/);
+  assert.match(net, /cleanLook\(m\.s\.look\.c\)/);
+  assert.match(adv, /<h3>صمّم شكلك<\/h3>/);
 });
 
