@@ -136,7 +136,8 @@ function makeApp(fdb, o) {
     t: (k) => k, confirm: () => true, renderAll: () => {},
     chatsServerPull: (cb) => setTimeout(() => cb(true), 0), fetch: async () => ({ ok: true }),
   };
-  ctx.window = { indexedDB: fdb.indexedDB, __localChatsLoaded: true, addEventListener: (t, f) => { (wl[t] = wl[t] || []).push(f); } };
+  // تقرير v-freeze-why (main) يفكّ مستمع pagehide بعد إرساله بمهلة ثانيتين — النطاق الوهميّ يحتاج removeEventListener
+  ctx.window = { indexedDB: fdb.indexedDB, __localChatsLoaded: true, addEventListener: (t, f) => { (wl[t] = wl[t] || []).push(f); }, removeEventListener: (t, f) => { wl[t] = (wl[t] || []).filter((g) => g !== f); } };
   vm.createContext(ctx);
   if (opt.random) vm.runInContext('Math.random = () => ' + opt.random + ';', ctx); // معرّف تبويب ثابت (Math السياق نفسه كي لا يُبطئ Math.imul)
   const prelude = 'let __chatsLoadedFor = null; let __chatsSyncTimer = null;\n'
