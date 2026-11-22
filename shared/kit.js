@@ -26,11 +26,11 @@ const hexOf = Object.fromEntries(COLORS.map(([k, , h]) => [k, h]));
 const nameOfColor = Object.fromEntries(COLORS.map(([k, n]) => [k, n]));
 
 /** Block ids of the kit. */
-export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, ROCK_GOLD: 178, ROCK_DIAMOND: 179, MEAT: 200, ORE: 230, GEM: 231 };
+export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, ROCK_COAL: 177, ROCK_GOLD: 178, ROCK_DIAMOND: 179, MEAT: 200, FUR: 201, FEATHER: 202, CHICKEN: 203, FISH: 204, SHRIMP: 205, COAL: 206, PEARL: 207, SEAWEED: 208, SEEDS: 209, FURCOAT: 228, ORE: 230, GEM: 231, DATES: 232 };
 /** Block definitions, in the same shape the worlds use (see voxel.js). */
 export const KIT_BLOCKS = {};
 const INFO = {};                                 // id -> { name, key, group, icon }
-const GROUP_NAMES = { gear: 'سلاح وعدّة ولبس', gadget: 'أجهزة', home: 'بيت وتخزين', paint: 'مكعبات ملوّنة', slab: 'أنصاف مكعبات', light: 'إضاءة', gem: 'ذهب وجواهر', nature: 'ماء ونار', bed: 'أسرّة' };
+const GROUP_NAMES = { food: 'أكل وأشياء من الحيوانات', gear: 'سلاح وعدّة ولبس', gadget: 'أجهزة', home: 'بيت وتخزين', paint: 'مكعبات ملوّنة', slab: 'أنصاف مكعبات', light: 'إضاءة', gem: 'ذهب وجواهر', nature: 'ماء ونار', bed: 'أسرّة' };
 function add(id, def, info) { KIT_BLOCKS[id] = def; INFO[id] = { id, ...info }; }
 
 COLORS.forEach(([key, name, hex], i) => add(100 + i, { tiles: 'x:paint:' + hex }, { key: 'paint-' + key, name: 'مكعب ' + name, group: 'paint', icon: ['cube', hex] }));
@@ -50,11 +50,25 @@ BEDS.forEach(([key, name, hex], i) => {
 
 // Things that are carried and used, not placed (no block definition): the world gives or uses them.
 INFO[200] = { id: 200, key: 'meat', name: 'لحم', group: null, icon: ['meat', '#b5523d'], item: { use: 'eat' } };   // n comes from the hunt
+// what the animals leave, and what feeds them. `eat`: how much hunger it takes away (meat is the full 40). `feed`: who takes it from the hand
+const good = (id, key, name, icon, hex, item) => { INFO[id] = { id, key, name, group: 'food', icon: [icon, hex], item: item || {} }; };
+INFO[200].group = 'food'; INFO[200].item.feed = 'meat';
+good(K.CHICKEN, 'chicken', 'لحم دجاج', 'drum', '#d9a066', { use: 'eat', eat: 30, feed: 'meat' });
+good(K.FISH, 'fish', 'سمكة', 'fish', '#6fa8c9', { use: 'eat', eat: 28, feed: 'meat' });
+good(K.SHRIMP, 'shrimp', 'ربيان', 'shrimp', '#f08a6c', { use: 'eat', eat: 18, feed: 'meat' });
+good(K.SEAWEED, 'seaweed', 'طحالب', 'weed', '#3f9a5c', { use: 'eat', eat: 10, feed: 'plants' });
+good(K.DATES, 'dates', 'تمر', 'dates', '#7a3f1d', { use: 'eat', eat: 20, feed: 'plants' });
+good(K.SEEDS, 'seeds', 'حبوب', 'seeds', '#d8b660', { feed: 'plants' });
+good(K.FUR, 'fur', 'فروة', 'fur', '#b08a62');
+good(K.FEATHER, 'feather', 'ريش', 'feather', '#eef0f2');
+good(K.COAL, 'coal', 'فحم', 'ore', '#17181b');
+good(K.PEARL, 'pearl', 'لؤلؤة', 'pearl', '#f3ecf7');
 INFO[K.ORE] = { id: K.ORE, key: 'ore', name: 'خام معدن', group: 'gem', icon: ['ore', '#b9a27a'], item: {} };
 INFO[K.GEM] = { id: K.GEM, key: 'gem', name: 'ألماسة', group: 'gem', icon: ['gem', '#7fe6f5'], item: {} };
 // the cave's rock: a vein of gold gives a block of gold, a vein of diamond gives one gem
 add(K.ROCK_GOLD, { tiles: 'x:rock:#f0bd3f', drop: K.GOLD, hard: 0.9 }, { key: 'rock-gold', name: 'صخر فيه ذهب', group: 'gem', icon: ['ore', '#f0bd3f'] });
 add(K.ROCK_DIAMOND, { tiles: 'x:rock:#7fe6f5', drop: K.GEM, hard: 1.1 }, { key: 'rock-diamond', name: 'صخر فيه ألماس', group: 'gem', icon: ['ore', '#7fe6f5'] });
+add(K.ROCK_COAL, { tiles: 'x:rock:#1b1c20', drop: K.COAL, hard: 0.7 }, { key: 'rock-coal', name: 'صخر فيه فحم', group: 'gem', icon: ['ore', '#17181b'] });
 const STONE = '#9aa0a6', GOLD = '#f0bd3f', DIAM = '#7fe6f5';
 const gear = (id, key, name, icon, hex, item) => { INFO[id] = { id, key, name, group: 'gear', icon: [icon, hex], item: { n: 1, tool: true, ...item } }; };
 // weapon: what one blow takes from a creature. speed: how much faster the tool digs. tier: the colour of its model in the hand
@@ -70,6 +84,7 @@ gear(217, 'pick-diamond', 'معول ألماس', 'pick', DIAM, { speed: 2.4, mod
   gear(224 + i, 'gold-' + wear, name + ' ذهب', icon, GOLD, { use: 'wear', wear, prot: +(share * 0.3).toFixed(3) });
   gear(i === 1 ? 211 : 220 + i, 'diamond-' + wear, name + ' ألماس', icon, DIAM, { use: 'wear', wear, prot: +(share * 0.5).toFixed(3) });
 });
+gear(K.FURCOAT, 'fur-coat', 'معطف فرو', 'armor', '#b08a62', { use: 'wear', wear: 'chest', prot: 0.07, warm: true });
 // gadgets: carried things that do something. `gadget` works while the thing is in the hand (or the other hand); `use` works on the place button
 const gadget = (id, key, name, icon, hex, item) => { INFO[id] = { id, key, name, group: 'gadget', icon: [icon, hex], item: { n: 1, tool: true, ...item } }; };
 gadget(240, 'detector', 'كاشف الكنوز', 'detector', '#e3c038', { gadget: 'detector' });
@@ -233,6 +248,15 @@ function svgIcon([shape, hex, extra]) {
   else if (shape === 'flame') body = `<path d="M16 3c1 6 8 8 8 16a8 8 0 0 1-16 0c0-4 2-6 3-9 1 3 2 4 3 4 0-4 0-7 2-11z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M16 15c.500 3 4 4 4 7a4 4 0 0 1-8 0c0-2 1-3 1.500-4.500.500 1.500 1 2 1.500 2 0-2 0-3 1-4.500z" fill="#ffe28a"/>`;
   else if (shape === 'bed') body = `<path d="M3 21l9-5 17 9-9 5z" fill="${top}" stroke="${line}" stroke-width=".7"/><path d="M3 21v3l17 9v-3z" fill="${left}" stroke="${line}" stroke-width=".7"/><path d="M29 25v3l-9 5v-3z" fill="${right}" stroke="${line}" stroke-width=".7"/><path d="M4.500 20l6-3.300 5 2.600-6 3.300z" fill="#f6f4ee" stroke="${line}" stroke-width=".7"/><path d="M3 21v-6l9-5v6" fill="#6a4629" stroke="${line}" stroke-width=".7"/>`;
   else if (shape === 'meat') body = `<path d="M9 8c5-4 13-2 15 4s-2 12-8 13-10-3-10-8 1-7 3-9z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M13 12c3-2 7-1 8 2s-1 6-4 7" fill="none" stroke="#e9b9a6" stroke-width="1.6" stroke-linecap="round"/><path d="M8 22l-4 4M6.500 20.500l-3.500 1M9.500 23.500l-1 3.500" stroke="#efe7d8" stroke-width="2.4" stroke-linecap="round"/>`;
+  else if (shape === 'drum') body = `<path d="M19 5c5 0 8 4 8 8s-4 8-9 8c-2 0-3 0-4.500 1.500l-3 3-3-3 3-3C12 18 12 17 12 14c0-5 3-9 7-9z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M9 23l-3.500 3.500M5 23.500l2 2 2.500 0 0-2.500-2-2z" fill="#f4eee0" stroke="#f4eee0" stroke-width="2.200" stroke-linecap="round"/><path d="M17 9c3-1 5 1 5.500 3" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="1.400" stroke-linecap="round"/>`;
+  else if (shape === 'fish') body = `<path d="M4 16c4-7 13-8 19-1l5-4v10l-5-4c-6 7-15 6-19-1z" fill="${hex}" stroke="${line}" stroke-width=".8"/><circle cx="9.500" cy="14.500" r="1.400" fill="#10151c"/><path d="M14 12c1.500 2.500 1.500 5.500 0 8M18 13c1 2 1 4 0 6" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1"/><path d="M8 19c3 2 7 2 10 0" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1.200"/>`;
+  else if (shape === 'shrimp') body = `<path d="M8 9c8-5 17 0 17 8 0 6-5 10-11 9l1-4c4 0 6-2 6-5 0-4-5-6-10-4z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M13 10l-1 5M17 10l0 5M21 13l-3 3M22 18l-4 0" stroke="rgba(0,0,0,.25)" stroke-width="1"/><path d="M8 9L4 5M8 9L3 9" stroke="${hex}" stroke-width="1.200" stroke-linecap="round"/><circle cx="9.500" cy="10.500" r="1" fill="#10151c"/><path d="M14 26l-3 2M15 24l-4 0" stroke="${hex}" stroke-width="1.600" stroke-linecap="round"/>`;
+  else if (shape === 'weed') body = `<path d="M11 29c-3-6 3-9 0-15s2-8 1-11M17 29c3-7-2-10 1-16s-1-7 0-9M22 29c2-5-2-7 0-12" fill="none" stroke="${hex}" stroke-width="3.200" stroke-linecap="round"/><path d="M11 29c-3-6 3-9 0-15M17 29c3-7-2-10 1-16" fill="none" stroke="#bfe9c8" stroke-opacity=".5" stroke-width="1"/>`;
+  else if (shape === 'dates') body = `<path d="M16 4v9M16 8l-6 6M16 8l6 6" fill="none" stroke="#8a6a3a" stroke-width="1.600" stroke-linecap="round"/>` + [[10, 16], [16, 15], [22, 16], [13, 22], [19, 22], [16, 27]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="3" ry="4" fill="${hex}" stroke="${line}" stroke-width=".7"/><path d="M${x - 1} ${y - 2}v3" stroke="#d89a5a" stroke-width="1" stroke-linecap="round"/>`).join('');
+  else if (shape === 'seeds') body = [[9, 12, 20], [16, 9, -15], [23, 13, 40], [12, 20, -30], [20, 21, 10], [15, 26, 60]].map(([x, y, a]) => `<ellipse cx="${x}" cy="${y}" rx="2.300" ry="3.600" transform="rotate(${a} ${x} ${y})" fill="${hex}" stroke="${line}" stroke-width=".7"/>`).join('');
+  else if (shape === 'fur') body = `<path d="M7 6l4 2 5-2 5 2 4-2 1 6-2 3 2 4-1 7-5-2-4 3-4-3-5 2-1-7 2-4-2-3z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M11 12l1 3M16 11l0 4M21 12l-1 3M12 19l1 3M19 19l-1 3M16 20l0 3" stroke="rgba(0,0,0,.28)" stroke-width="1.200" stroke-linecap="round"/>`;
+  else if (shape === 'feather') body = `<path d="M26 4c-10 1-17 8-18 19l3 1c9-2 16-9 15-20z" fill="${hex}" stroke="rgba(0,0,0,.45)" stroke-width=".9"/><path d="M5 28L24 7" stroke="#8d949c" stroke-width="1.400" stroke-linecap="round"/><path d="M12 20l-3-3M16 16l-4-3M20 12l-4-2M13 20l5 1M17 16l5 0" stroke="rgba(0,0,0,.2)" stroke-width="1"/>`;
+  else if (shape === 'pearl') body = `<circle cx="16" cy="16" r="10" fill="${hex}" stroke="rgba(0,0,0,.4)" stroke-width=".9"/><path d="M10 14a7 7 0 0 1 5-5" fill="none" stroke="#fff" stroke-width="2.200" stroke-linecap="round"/><circle cx="20" cy="20" r="3" fill="#d9c8ea" opacity=".6"/>`;
   else if (shape === 'sword') body = `<path d="M25.500 3.500l3 3-13.500 13.500-4.500 1.500 1.500-4.500z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M24 5l3 3" stroke="#fff" stroke-opacity=".7" stroke-width="1.2"/><path d="M8.500 15.500l8 8" stroke="#c9a35a" stroke-width="2.600" stroke-linecap="round"/><path d="M10.500 21.500l-5 5" stroke="#6a4629" stroke-width="3" stroke-linecap="round"/>`;
   else if (shape === 'armor') body = `<path d="M10 5l6 3 6-3 5 4-3 5-2-1.500V27H10V12.500L8 14 5 9z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M16 8v19M11 16h10" stroke="rgba(0,0,0,.25)" stroke-width="1"/><path d="M12 10.500l3 1.500" stroke="#fff" stroke-opacity=".8" stroke-width="1.400" stroke-linecap="round"/>`;
   else if (shape === 'axe') body = `<path d="M9 27L23 9" stroke="#6a4629" stroke-width="3" stroke-linecap="round"/><path d="M17 6c4-3 9-2 11 2l-6 7c-1-3-4-5-8-5z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M20 7c2-1 4-.500 5.500 1" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.200" stroke-linecap="round"/>`;

@@ -164,6 +164,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     if (m.t === 'me' && m.s && Array.isArray(m.s.p) && m.s.p.length === 3 && m.s.p.every(Number.isFinite)) { p.s = { p: m.s.p, yw: +m.s.yw || 0, pt: +m.s.pt || 0, mv: +m.s.mv || 0, look: m.s.look && typeof m.s.look === 'object' ? { c: cleanLook(m.s.look.c) } : String(m.s.look || '').slice(0, 20), gear: Array.isArray(m.s.gear) ? m.s.gear.slice(0, 4).map((n) => n | 0) : [] }; seen(id, p.name).s = p.s; }
     else if (m.t === 'do' && Array.isArray(m.a) && ['put', 'dig', 'door'].includes(m.a[0]) && okCell(m.a)) { const a = m.a.slice(0, 6); note(a); apply(a); toAll({ t: 'do', a }, id); }
     else if (m.t === 'hit') { const l = life(); if (l) l.remoteHit(m.e | 0, +m.pow || 0, id); }
+    else if (m.t === 'feed') { const l = life(); if (l) l.remoteFeed(m.e | 0, id); }
     else if (m.t === 'name') { p.name = cleanName(m.name); seen(id, p.name); draw(); }
     else if (m.t === 'relay' && typeof m.to === 'string' && m.m && RELAYED.has(m.m.t) && handlers[m.m.t]) {      // a guest's message for one other player
       if (m.to === 'host') handlers[m.m.t](m.m, id);
@@ -275,7 +276,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     else if (m.t === 'mon') { if (window.__GAME_LIFE) window.__GAME_LIFE.setMonsters(!!m.on, true); }
     else if (m.t === 'ents' && Array.isArray(m.list)) { const l = life(); if (l) l.applySnapshot(m.list); }
     else if (m.t === 'hurt') { const l = life(); if (l) l.hurtPlayer(+m.d || 0); }
-    else if (m.t === 'kill') { const l = life(); if (l) l.credit(m.kind === 'monster' ? 'monster' : 'animal', Math.min(4, m.meat | 0)); }
+    else if (m.t === 'kill') { const l = life(); if (l) l.credit(m.kind === 'monster' ? 'monster' : m.kind === 'plant' ? 'plant' : 'animal', Array.isArray(m.drops) ? m.drops.slice(0, 4).filter((d) => Array.isArray(d)).map(([id, n]) => [id | 0, Math.min(4, n | 0)]) : Math.min(4, m.meat | 0)); }
     else if (m.t === 'bye') gone(m.id);
     else if (m.t === 'role') { admin = !!m.admin; if (!admin) hostAsks.length = 0; play.notice(admin ? 'صاحب الغرفة خلّاك مشرف: تقدر تدخّل لاعبين وتطلّعهم.' : 'رجعت لاعب عادي.', false, 4500); draw(); }
     else if (m.t === 'asks' && Array.isArray(m.list)) { const had = hostAsks.length; hostAsks.length = 0; for (const a of m.list.slice(0, 8)) if (a && typeof a.id === 'string') hostAsks.push({ id: a.id.slice(0, 12), name: cleanName(a.name) }); if (hostAsks.length > had && play.sound) play.sound.ui(); draw(); }

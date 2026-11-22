@@ -7,6 +7,7 @@ import { K, KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../.
 import { createBag } from '../../shared/bag.js';
 import { createVitals, bars } from '../../shared/vitals.js';
 import { createLife, simpleBeast } from '../../shared/life.js';
+import { extraKinds } from '../../shared/beasts.js';
 import { createWeather } from '../../shared/weather.js';
 import { createStatus } from '../../shared/status.js';
 import { buildTiles, buildDetailTextures, buildSpriteTextures, buildBoughTexture, buildVoxelDetail, buildCardTextures } from './texgen.js';
@@ -1074,7 +1075,8 @@ async function startGame() {
   life = createLife({
     scene, camera: stage.camera, play, world, vitals: () => vitals,
     kinds: [
-      { key: 'ibex', name: 'الوعل', kind: 'animal', make: () => simpleBeast({ body: 0x5d5147, belly: 0x80746a, horn: 0xcfc8b8 }), hp: 12, speed: 2.1, radius: 0.75, height: 1.5, max: 3, meat: 2 },
+      { key: 'ibex', name: 'الوعل', kind: 'animal', make: () => simpleBeast({ body: 0x5d5147, belly: 0x80746a, horn: 0xcfc8b8 }), hp: 12, speed: 2.1, radius: 0.75, height: 1.5, max: 3, drops: [[200, 2], [201, 1]] },
+      ...extraKinds('dhalam'),
       { key: 'stalker', name: 'المتربّص', kind: 'monster', make: () => makeStalker(SPR), hp: 20, speed: 2.4, radius: 0.7, height: 3.0, max: 1, dmg: 11 },
       { key: 'bonehound', name: 'ذئب العظم', kind: 'monster', make: () => makeBoneHound(SPR), hp: 12, speed: 3.4, radius: 0.8, height: 1.1, max: 2, dmg: 7 },
     ],

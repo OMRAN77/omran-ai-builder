@@ -87,7 +87,7 @@ export function createPlay(o) {
   };
   let itemOf = o.itemOf || null;
   let shared = false, held = false;
-  const ticks = [], firsts = [];                                     // shared modules hook in here: every frame, and before the place button does its usual thing
+  const ticks = [], firsts = [], breaks = [];                                     // shared modules hook in here: every frame, and before the place button does its usual thing
   const net = { place: null, dig: null };                            // the multiplayer link listens here for what the player changes in the world                                     // id -> a fresh item object (the bag knows every item)
   const inp = { fx: 0, fz: 0, jump: false, dig: false, sprint: false, place: false, down: false };
   const sound = o.sound === false ? null : createSound();          // every world gets the same sounds; M mutes
@@ -155,20 +155,20 @@ export function createPlay(o) {
       if (v.y < -40) v.y = -40;
     }
 
-    let blocked = false;
+    let blocked = false, bx = 0, bz = 0;                 // which way the body was stopped, per axis
     // sideways, one axis at a time; a low step (half block, bed) is walked up instead of blocking
     const canStep = wasGround && !st.inWater && !st.flying;
     const nx = p.x + v.x * dt;
     if (collides(nx, p.y, p.z)) {
       const top = canStep ? hitTop(nx, p.y, p.z) : Infinity;
       if (top - p.y <= P.stepUp + E && !collides(nx, top, p.z)) { p.x = nx; p.y = top; }
-      else { p.x = v.x > 0 ? Math.floor(nx + P.hw) - P.hw - E : Math.floor(nx - P.hw) + 1 + P.hw + E; v.x = 0; blocked = true; }
+      else { bx = v.x > 0 ? 1 : -1; p.x = v.x > 0 ? Math.floor(nx + P.hw) - P.hw - E : Math.floor(nx - P.hw) + 1 + P.hw + E; v.x = 0; blocked = true; }
     } else p.x = nx;
     const nz = p.z + v.z * dt;
     if (collides(p.x, p.y, nz)) {
       const top = canStep ? hitTop(p.x, p.y, nz) : Infinity;
       if (top - p.y <= P.stepUp + E && !collides(p.x, top, nz)) { p.z = nz; p.y = top; }
-      else { p.z = v.z > 0 ? Math.floor(nz + P.hw) - P.hw - E : Math.floor(nz - P.hw) + 1 + P.hw + E; v.z = 0; blocked = true; }
+      else { bz = v.z > 0 ? 1 : -1; p.z = v.z > 0 ? Math.floor(nz + P.hw) - P.hw - E : Math.floor(nz - P.hw) + 1 + P.hw + E; v.z = 0; blocked = true; }
     } else p.z = nz;
     p.y += v.y * dt;
     st.onGround = false;
@@ -181,16 +181,42 @@ export function createPlay(o) {
     // Resting on something: a very short step (a fast display, a burst of frames) moves the feet less than the
     // collision tolerance, which must not read as "in the air" (no jump, a landing sound every frame).
     if (!st.onGround && v.y <= 0 && !st.flying && hitTop(p.x, p.y - 0.03, p.z) > -Infinity) { st.onGround = true; v.y = Math.max(v.y, -1); }
-    // step up one block on its own: the terrain is terraced and touch players have no spare thumb
-    if (P.autoJump && blocked && wasGround && st.onGround && wl > 0.25 && !st.inWater && !st.flying) {
-      const fy = Math.floor(p.y + E), tx = Math.floor(p.x + (wx / wl) * (P.hw + 0.45)), tz = Math.floor(p.z + (wz / wl) * (P.hw + 0.45));
-      if (solid(tx, fy, tz) && !solid(tx, fy + 1, tz) && !solid(tx, fy + 2, tz) && !solid(Math.floor(p.x), fy + 2, Math.floor(p.z))) { v.y = P.jump; st.onGround = false; }
+    // Step up one block on its own: the terrain is terraced and touch players have no spare thumb. What is looked at
+    // is the cells that really stopped the body (it is 0.6 wide, so it can lean on two columns at once, and in a
+    // corner it is stopped on both axes), not the one cell along the heading: that one may be a taller neighbour,
+    // or free, while a single step beside it holds the player in place for good.
+    if (P.autoJump && blocked && wl > 0.25 && !st.flying) {
+      const fy = Math.floor(p.y + E), X0 = Math.floor(p.x - P.hw + E), X1 = Math.floor(p.x + P.hw - E), Z0 = Math.floor(p.z - P.hw + E), Z1 = Math.floor(p.z + P.hw - E);
+      const ahead = [];                                               // per blocked axis: the columns the body leans on
+      if (bx) ahead.push([[Math.floor(p.x + bx * (P.hw + 0.2)), Z0], [Math.floor(p.x + bx * (P.hw + 0.2)), Z1]]);
+      if (bz) ahead.push([[X0, Math.floor(p.z + bz * (P.hw + 0.2))], [X1, Math.floor(p.z + bz * (P.hw + 0.2))]]);
+      const wet = st.inWater || wading || st.wetT > 0;
+      if (wasGround && st.onGround && !st.inWater && !solid(Math.floor(p.x), fy + 2, Math.floor(p.z))) {
+        // an axis can be climbed when something stands in the way at foot level and nothing above it does
+        const ok = ahead.some((cols) => cols.some(([cx, cz]) => solid(cx, fy, cz)) && cols.every(([cx, cz]) => !solid(cx, fy + 1, cz) && !solid(cx, fy + 2, cz)));
+        if (ok) { v.y = P.jump; st.onGround = false; }
+        else {
+          // leaning on two columns of which only one is in the way for good (the end of a wall, a taller neighbour):
+          // slide toward the open one instead of standing against the edge
+          const tall = ([cx, cz]) => solid(cx, fy + 1, cz) || solid(cx, fy + 2, cz) || (solid(cx, fy, cz) && solid(Math.floor(p.x), fy + 2, Math.floor(p.z)));
+          for (const cols of ahead) {
+            const a = tall(cols[0]), b = tall(cols[1]);
+            if (a === b) continue;
+            const open = a ? cols[1] : cols[0];
+            if (cols[0][0] === cols[1][0]) v.z += Math.sign(open[1] + 0.5 - p.z) * 14 * dt; else v.x += Math.sign(open[0] + 0.5 - p.x) * 14 * dt;
+          }
+        }
+      }
+      // out of the water: a bank is climbed hand over hand while the player keeps pushing against it (a hop from the
+      // bottom of a shallow pool, or a kick from the surface, does not reach the top of a full block)
+      if (wet) {
+        const reach = st.inWater || wading ? 2.1 : 1.2;
+        let top = Infinity;
+        for (const cols of ahead) for (const [cx, cz] of cols) for (let cy = Math.floor(p.y); cy <= Math.floor(p.y + reach); cy++) if (solid(cx, cy, cz) && !solid(cx, cy + 1, cz) && !solid(cx, cy + 2, cz)) { top = Math.min(top, cy + 1); break; }
+        if (top - p.y <= reach) v.y = Math.max(v.y, 5.6);
+      }
     }
-    // swimming into a bank climbs out of the water instead of getting stuck against it
-    if (P.autoJump && blocked && (st.inWater || wading) && wl > 0.25 && !st.flying) {
-      const fy = Math.floor(p.y + 0.9), tx = Math.floor(p.x + (wx / wl) * (P.hw + 0.45)), tz = Math.floor(p.z + (wz / wl) * (P.hw + 0.45));
-      for (let up = 0; up <= 1; up++) if (solid(tx, fy + up, tz) && !solid(tx, fy + up + 1, tz) && !solid(tx, fy + up + 2, tz)) { v.y = Math.max(v.y, 6.4); break; }
-    }
+    st.wetT = st.inWater || wading ? 0.5 : Math.max(0, (st.wetT || 0) - dt);
     if (p.y < -20) { p.set(o.spawn.x, o.spawn.y, o.spawn.z); v.set(0, 0, 0); unstick(); }
     if (p.y > sy + 40) { p.y = sy + 40; if (v.y > 0) v.y = 0; }            // flying has a ceiling
     st.moving = Math.hypot(v.x, v.z);
@@ -261,6 +287,7 @@ export function createPlay(o) {
     st.xp += 1;
     if (net.dig) net.dig(h.x, h.y, h.z);
     if (o.onBreak) o.onBreak(h);
+    for (const f of breaks) f(h);
   }
   function digTick(dt) {
     const d = st.dig, h = st.hit;
@@ -634,11 +661,13 @@ export function createPlay(o) {
   unstick();
   placeCamera();
   return {
-    state: st, input: inp, tuning: P, res, isSolid, isLiquid, gpu, setSlot, setModal, setFlying, notice, sound, give, changed: inventoryChanged,
+    state: st, input: inp, tuning: P, res, world, blocks, isSolid, isLiquid, gpu, setSlot, setModal, setFlying, notice, sound, give, changed: inventoryChanged,
     /** Call fn(state, dt) every frame, after the world's own onFrame. */
     onTick(fn) { ticks.push(fn); },
     /** Call fn(hit) when the place button is pressed, before anything else; returning true uses the press up. */
     onUseFirst(fn) { firsts.push(fn); },
+    /** Call fn(hit) after this player has dug a block away (hit.id is what it was). */
+    onBreakAny(fn) { breaks.push(fn); },
     /** Draw the world now and hand back the picture as a PNG blob (what the camera takes: the world without the menus). */
     capture(done) { draw(); canvas.toBlob((b) => done(b), 'image/png'); },
     net,

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>creatures</title>
+<script type="importmap">{ "imports": { "three": "../vendor/three.module.js", "three/addons/": "../vendor/addons/" } }</script>
+<style>html,body{margin:0;background:#8fb7d6}canvas{display:block}</style></head><body>
+<script type="module">
+// A plain stage for looking at the shared creature models (tools/probe.cjs --page tools/creatures.html --nostart 1).
+import * as THREE from 'three';
+import * as B from '../shared/beasts.js';
+import { simpleBeast } from '../shared/life.js';
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(innerWidth, innerHeight); document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x8fb7d6);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x556655, 1.6)); const sun = new THREE.DirectionalLight(0xfff2d8, 2.2); sun.position.set(3, 6, 4); scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 20), new THREE.MeshStandardMaterial({ color: 0x8aa66a })); ground.rotation.x = -Math.PI / 2; scene.add(ground);
+const list = [['goat', B.goat()], ['hen', B.hen()], ['bird', B.bird()], ['bird-air', B.bird()], ['bear', B.bear()], ['fish', B.fish()], ['shrimp', B.shrimp()], ['octopus', B.octopus()], ['seaweed', B.seaweed()], ['beast', simpleBeast()]];
+const t = +(new URLSearchParams(location.search).get('t') || 0.4);
+list.forEach(([name, m], i) => { m.position.set((i - (list.length - 1) / 2) * 1.55, name === 'bird-air' ? 1.2 : /fish|shrimp/.test(name) ? 0.5 : 0, 0); m.rotation.y = 0.75; if (m.userData.anim) m.userData.anim(t, true, name === 'bird-air' ? 1 : 0); scene.add(m); });
+const cam = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 100); cam.position.set(0, 2.6, 15.5); cam.lookAt(0, 0.8, 0);
+r.render(scene, cam); window.__READY = true;
+</script></body></html>

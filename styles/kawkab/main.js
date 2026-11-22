@@ -12,6 +12,7 @@ import { createBag } from '../../shared/bag.js';
 import { createHeld } from '../../shared/held.js';
 import { createVitals, bars } from '../../shared/vitals.js';
 import { createLife } from '../../shared/life.js';
+import { extraKinds } from '../../shared/beasts.js';
 import { createWeather } from '../../shared/weather.js';
 import { createStatus } from '../../shared/status.js';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
@@ -620,7 +621,8 @@ async function startGame() {
   life = createLife({
     scene, camera, play, world, vitals: () => vitals,
     kinds: [
-      { key: 'beast', name: 'الحمّال', kind: 'animal', make: () => bake(makePackBeast()), hp: 14, speed: 1.5, radius: 0.95, height: 1.7, max: 3, meat: 2 },
+      { key: 'beast', name: 'الحمّال', kind: 'animal', make: () => bake(makePackBeast()), hp: 14, speed: 1.5, radius: 0.95, height: 1.7, max: 3, drops: [[200, 2], [201, 1]] },
+      ...extraKinds('kawkab'),
       { key: 'crawler', name: 'الزاحف', kind: 'monster', make: () => bake(makeCrawler()), hp: 16, speed: 3.0, radius: 0.95, height: 1.0, max: 2, dmg: 9 },
       { key: 'stinger', name: 'الطيف', kind: 'monster', make: () => bake(makeWraith()), hp: 10, speed: 2.3, radius: 0.8, height: 2.0, max: 1, dmg: 7, fly: 1.6 },
     ],
