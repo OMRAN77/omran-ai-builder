@@ -154,3 +154,20 @@ export function extraKinds(world) {
   ];
   return sea;
 }
+
+/**
+ * The land animals of a world that has lands (البراري): each kind is made only in the lands that suit it.
+ * landAt(x, z) -> 'desert' | 'forest' | 'snow' | 'plains' | 'beach' | 'sea' | 'mountain' (play coordinates).
+ * Spread into createLife's kinds next to extraKinds(world) and the world's own monsters.
+ */
+export function landKinds(world, landAt) {
+  const in_ = (...lands) => (x, y, z) => lands.includes(landAt(x, z));
+  void world;
+  return [
+    { key: 'goat', name: 'عنز', kind: 'animal', make: () => goat(), hp: 8, speed: 2.0, radius: 0.55, height: 1.05, max: 3, drops: [[K.MEAT, 1], [K.FUR, 1]], where: in_('desert', 'plains', 'mountain') },
+    { key: 'hen', name: 'دياية', kind: 'animal', make: () => hen(), hp: 4, speed: 1.7, radius: 0.4, height: 0.9, max: 3, drops: [[K.CHICKEN, 1], [K.FEATHER, 2]], where: in_('plains', 'forest', 'desert') },
+    { key: 'sparrow', name: 'عصفور', kind: 'animal', make: () => bird({ body: 0x9a6a3e, belly: 0xf3e2c4, beak: 0xe2a03a }), hp: 2, speed: 2.6, radius: 0.4, height: 0.45, max: 3, fly: 3.0, perch: true, drops: [[K.FEATHER, 1]], where: in_('forest', 'plains', 'desert', 'snow', 'mountain') },
+    { key: 'gull', name: 'نورس', kind: 'animal', make: () => bird({ body: 0xe9edf1, belly: 0xffffff, beak: 0xf0a020 }), hp: 2, speed: 2.9, radius: 0.4, height: 0.45, max: 2, fly: 4.4, perch: true, drops: [[K.FEATHER, 1]], where: in_('beach') },
+    { key: 'bear', name: 'دب', kind: 'animal', make: () => bear(), hp: 26, speed: 2.3, radius: 0.9, height: 1.55, max: 1, likes: 'meat', fights: true, dmg: 9, drops: [[K.MEAT, 3], [K.FUR, 2]], where: in_('snow', 'forest') },
+  ];
+}
