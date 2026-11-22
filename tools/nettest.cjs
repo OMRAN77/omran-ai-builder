@@ -221,7 +221,8 @@ function memoryKV() {
     await shot(B, 'n5-guest-sees-animal');
     const meat0 = await B.evaluate(() => [...window.__play.state.slots, ...window.__play.state.pack].filter((q) => q && q.id === 200).reduce((a, q) => a + q.n, 0));
     for (let i = 0; i < 40; i++) {
-      await B.evaluate(() => { const g = window.__game, p = g.play, s = p.state, e = g.life.ents.find((q) => !q.dead); if (!e) return; if (Math.hypot(e.x - s.pos.x, e.z - s.pos.z) > 2.2) { s.pos.x = e.x + 1.3; s.pos.z = e.z; s.pos.y = e.y; s.vel.set(0, 0, 0); } const ex = s.pos.x, ey = s.pos.y + p.tuning.eye, ez = s.pos.z; s.yaw = Math.atan2(-(e.x - ex), -(e.z - ez)); s.pitch = Math.atan2(e.y + e.k.height * 0.5 - ey, Math.hypot(e.x - ex, e.z - ez)); p.input.dig = true; for (let k = 0; k < 30; k++) p.advance(1 / 60); p.input.dig = false; });
+      // stand beside the animal on its own level; a side where a block corner hides it is swapped for the next one
+      await B.evaluate((i) => { const g = window.__game, p = g.play, s = p.state, e = g.life.ents.find((q) => !q.dead); if (!e) return; if (Math.hypot(e.x - s.pos.x, e.z - s.pos.z) > 2.2 || !g.life.aimed) { const a = i * 1.1; s.pos.x = e.x + Math.sin(a) * 1.4; s.pos.z = e.z + Math.cos(a) * 1.4; s.pos.y = e.y; s.vel.set(0, 0, 0); } const ex = s.pos.x, ey = s.pos.y + p.tuning.eye, ez = s.pos.z; s.yaw = Math.atan2(-(e.x - ex), -(e.z - ez)); s.pitch = Math.atan2(e.y + e.k.height * 0.5 - ey, Math.hypot(e.x - ex, e.z - ez)); p.input.dig = true; for (let k = 0; k < 30; k++) p.advance(1 / 60); p.input.dig = false; }, i);
       await step(A, 12); await A.waitForTimeout(60); await step(B, 4);
       if (await B.evaluate((m) => [...window.__play.state.slots, ...window.__play.state.pack].filter((q) => q && q.id === 200).reduce((a, q) => a + q.n, 0) > m, meat0)) break;
     }
