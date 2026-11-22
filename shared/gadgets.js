@@ -20,7 +20,7 @@ const CSS = `
 `;
 
 export function createGadgets({ play, kit, adv, net, openStore, world }) {
-  const st = play.state, w = kit.world;
+  const st = play.state, w = kit.world, A = w.area || { x0: 0, z0: 0, x1: w.sx, z1: w.sz };      // the part of the world on the map (adventure.js mapOf)
   const css = document.createElement('style');
   css.textContent = CSS;
   document.head.appendChild(css);
@@ -73,11 +73,11 @@ export function createGadgets({ play, kit, adv, net, openStore, world }) {
   function drawMap() {
     const img = adv.mapOf ? adv.mapOf() : null;
     if (!img) return;
-    if (!api.mapCanvas) { api.mapCanvas = document.createElement('canvas'); api.mapCanvas.width = w.sx; api.mapCanvas.height = w.sz; api.mapCanvas.getContext('2d').putImageData(img, 0, 0); }
+    if (!api.mapCanvas) { api.mapCanvas = document.createElement('canvas'); api.mapCanvas.width = A.x1 - A.x0; api.mapCanvas.height = A.z1 - A.z0; api.mapCanvas.getContext('2d').putImageData(img, 0, 0); }
     const R = 34, s = cv.width / (R * 2);       // cells either side of the player, and pixels per cell
     g.fillStyle = '#4a3f2a'; g.fillRect(0, 0, cv.width, cv.height);
     g.imageSmoothingEnabled = false;
-    g.drawImage(api.mapCanvas, st.pos.x - R, st.pos.z - R, R * 2, R * 2, 0, 0, cv.width, cv.height);
+    g.drawImage(api.mapCanvas, st.pos.x - R - A.x0, st.pos.z - R - A.z0, R * 2, R * 2, 0, 0, cv.width, cv.height);
     const at = (x, z) => [(x - st.pos.x + R) * s, (z - st.pos.z + R) * s];
     const edge = ([x, y]) => { const c = cv.width / 2, dx = x - c, dy = y - c, d = Math.hypot(dx, dy), m = c - 7; return d > m ? [c + dx / d * m, c + dy / d * m] : [x, y]; };      // what is off the map sits on its rim, the way to go
     if (adv.treasure && !adv.foundToday) { const [x, y] = edge(at(adv.treasure.x, adv.treasure.z)); g.strokeStyle = '#b3121b'; g.lineWidth = 2.5; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - 4, y - 4); g.lineTo(x + 4, y + 4); g.moveTo(x + 4, y - 4); g.lineTo(x - 4, y + 4); g.stroke(); }

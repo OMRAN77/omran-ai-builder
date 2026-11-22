@@ -317,3 +317,60 @@ export function tileMaterial(name, kind) {
 /** The painted picture of a tile (for icons). */
 export function tileCanvas(name) { if (!canvases.has(name)) { baked.set(name, bake(name)); } return canvases.get(name); }
 export const tileNames = () => Object.keys(P);
+
+// ------------------------------------------------------------------ one texture array for the endless terrain
+// Every own tile but the water and the ice, stacked as layers of one texture (and their normal maps as layers of a
+// second), so a chunk draws all its solid blocks in one call, its leaves in another and its plants in a third.
+// The materials are the same standard material as tileMaterial gives each tile, reading the picture from the layer
+// the vertex names. Plants and leaves keep their holes in the shadows too (their own depth material).
+let arr = null;
+export function tileArray() {
+  if (arr) return arr;
+  const names = Object.keys(P).filter((n) => n !== 'water' && n !== 'ice');
+  const index = new Map(names.map((n, i) => [n, i]));
+  const L = S * S * 4, col = new Uint8Array(L * names.length), nrm = new Uint8Array(L * names.length);
+  const cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  // canvas textures are flipped on upload (flipY); the array is not, so its rows are laid in bottom first
+  const copy = (src, out, i) => { ctx.clearRect(0, 0, S, S); ctx.drawImage(src, 0, 0); const d = ctx.getImageData(0, 0, S, S).data; for (let y = 0; y < S; y++) out.set(d.subarray((S - 1 - y) * S * 4, (S - y) * S * 4), i * L + y * S * 4); };
+  names.forEach((n, i) => {
+    let b = baked.get(n);
+    if (!b) { b = bake(n); baked.set(n, b); }
+    copy(b.map.image, col, i);
+    if (b.normalMap) copy(b.normalMap.image, nrm, i);
+    else for (let k = i * L; k < (i + 1) * L; k += 4) { nrm[k] = 128; nrm[k + 1] = 128; nrm[k + 2] = 255; nrm[k + 3] = 255; }
+  });
+  const tex = (data, srgb) => {
+    const t = new THREE.DataArrayTexture(data, S, S, names.length);
+    t.format = THREE.RGBAFormat; t.type = THREE.UnsignedByteType; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
+    t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true;
+    return t;
+  };
+  const tiles = tex(col, true), norms = tex(nrm, false);
+  // a stand-in 2D map and normal map switch on the uv and normal-map code; the reads are then pointed at the arrays
+  const stand = baked.get(names[0]);
+  const hook = (m, key) => {
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.uTiles = { value: tiles }; sh.uniforms.uNorms = { value: norms };
+      sh.vertexShader = 'attribute float layer;\nvarying float vLayer;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\n  vLayer = layer;');
+      // (the chunks are still #includes here: they are put in already pointed at the arrays)
+      sh.fragmentShader = 'uniform highp sampler2DArray uTiles;\nuniform highp sampler2DArray uNorms;\nvarying float vLayer;\n' + sh.fragmentShader
+        .replace('#include <map_fragment>', THREE.ShaderChunk.map_fragment.replace('texture2D( map, vMapUv )', 'texture( uTiles, vec3( vMapUv, vLayer + 0.25 ) )'))
+        .replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps.replace('texture2D( normalMap, vNormalMapUv )', 'texture( uNorms, vec3( vNormalMapUv, vLayer + 0.25 ) )'));
+    };
+    m.customProgramCacheKey = () => 'barari-tiles-' + key;
+    return m;
+  };
+  const std = (o, key) => hook(new THREE.MeshStandardMaterial({ map: stand.map, normalMap: stand.normalMap || null, normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.92, metalness: 0, vertexColors: true, ...o }), key);
+  const mats = {
+    solid: std({}, 'solid'),
+    cutout: std({ alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 }, 'cutout'),
+    cross: std({ alphaTest: 0.4, roughness: 0.9, normalMap: null, side: THREE.FrontSide }, 'cross'),
+  };
+  for (const m of Object.values(mats)) m.name = 'tiles';
+  const depth = (alpha, key) => hook(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: stand.map, alphaTest: alpha }), 'depth-' + key);
+  const depths = { cutout: depth(0.5, 'cutout'), cross: depth(0.4, 'cross') };
+  arr = { layerOf: (n) => (index.has(n) ? index.get(n) : -1), material: (kind) => mats[kind], depth: (kind) => depths[kind] || null, names };
+  return arr;
+}

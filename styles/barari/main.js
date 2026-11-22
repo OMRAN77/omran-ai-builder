@@ -1,21 +1,23 @@
-// "barari" — desert, forest and snow side by side, with the sea along the east. Scene assembly, times of day,
-// shots for the tools, and the playable game (wired to the shared modules the same way as the other worlds).
+// "barari" — an endless land: plains, forests, deserts, snow country and mountains, beaches and seas, as far as
+// the eye can see. Scene assembly, the far view, times of day, shots for the tools, and the playable game (wired to
+// the shared modules the same way as the other worlds).
 import * as THREE from 'three';
-import { createVoxelTerrain } from '../../shared/voxel.js';
+import { createStreamTerrain } from '../../shared/stream.js';
 import { createPlay, createPlayPanel, goImmersive, EMPTY } from '../../shared/play.js';
 import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, createKit, kitItem, K } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
 import { createHeld } from '../../shared/held.js';
 import { createVitals, bars } from '../../shared/vitals.js';
 import { createLife } from '../../shared/life.js';
-import { extraKinds, goat, hen, bird, bear } from '../../shared/beasts.js';
+import { extraKinds, landKinds } from '../../shared/beasts.js';
 import { createWeather } from '../../shared/weather.js';
 import { createStatus } from '../../shared/status.js';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
 import { B, BLOCKS, NAMES, DROP, hardnessOf } from './blocks.js';
-import { tileMaterial } from './tiles.js';
+import { tileMaterial, tileArray } from './tiles.js';
 import { createSky, dirFrom } from './sky.js';
-import { generateWorld, SITE, SX, SY, SZ, SEA } from './world.js';
+import { generateWorld, SY } from './world.js';
+import { createFarView } from './far.js';
 import { asfoof, zamharir } from './monsters.js';
 import { buildHud, SLOTS, itemIcon } from './hud.js';
 
@@ -24,7 +26,7 @@ const GAME = window.__GAME || (new URLSearchParams(location.search).has('play') 
 const COARSE = window.matchMedia('(pointer: coarse)').matches;
 const FONT = "'Tajawal', sans-serif", ACCENT = '#ffb43a', LINE = 'rgba(255, 180, 58, .45)';
 
-const stage = createStage({ fov: 70, near: 0.1, far: 700, exposure: 1 });
+const stage = createStage({ fov: 70, near: 0.1, far: 1900, exposure: 1 });
 const { scene, camera, renderer } = stage;
 scene.add(camera);
 
@@ -33,29 +35,24 @@ const gen = generateWorld();
 const { world, anchors } = gen;
 Object.assign(BLOCKS, KIT_BLOCKS);                           // the shared building kit: ids 100 and up
 const materialFor = (tile, kind) => kitMaterial(tile) || tileMaterial(tile, kind);
+// how far the blocks reach round the player: less on a phone, and less again when the picture is set to fast
+const radiusFor = () => { const m = (window.__GAME_QUALITY || {}).mode, r = COARSE ? 64 : 88; return m === 'fast' ? r - 24 : m === 'sharp' ? r + 16 : r; };
 // ice is drawn after the water under it, so a frozen pond looks frozen
-const terrain = createVoxelTerrain(world, BLOCKS, { materialFor, aoCurve: [0.52, 0.7, 0.86, 1.0], onMesh: (m) => { if (m.name.startsWith('ice:')) m.renderOrder = 3; } });
+const TA = tileArray();                                      // the own tiles as one texture: a few draw calls a chunk
+const terrain = createStreamTerrain(world, BLOCKS, {
+  materialFor, layerOf: TA.layerOf, arrayMaterial: TA.material, arrayDepth: TA.depth,
+  aoCurve: [0.52, 0.7, 0.86, 1.0], radius: radiusFor(), budget: COARSE ? 4 : 6,
+  onMesh: (m) => { if (m.name.startsWith('ice:')) m.renderOrder = 3; },
+  onDrop: () => { if (dropped) dropped(); },
+});
+let dropped = null;
 scene.add(terrain.group);
 window.__stats = terrain.stats;
-
-// the sea goes on past the edge of the map: water and a sandy floor all round the land
-{
-  // (the shape is drawn in x / -z so that, laid flat, it faces up and its hole covers the map)
-  const R = 1400, outer = new THREE.Shape([new THREE.Vector2(-R, -R), new THREE.Vector2(R, -R), new THREE.Vector2(R, R), new THREE.Vector2(-R, R)]);
-  outer.holes.push(new THREE.Path([new THREE.Vector2(0, 0), new THREE.Vector2(0, -SZ), new THREE.Vector2(SX, -SZ), new THREE.Vector2(SX, 0)]));
-  const geo = new THREE.ShapeGeometry(outer);
-  geo.rotateX(-Math.PI / 2);                                 // shape y -> world -z, facing up
-  const n = geo.attributes.position.count;
-  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3));
-  const uv = geo.attributes.uv, pos = geo.attributes.position;
-  for (let i = 0; i < n; i++) uv.setXY(i, pos.getX(i), pos.getZ(i));
-  const sea = new THREE.Mesh(geo, tileMaterial('water', 'liquid'));
-  sea.position.y = SEA + 1 - 0.12; sea.renderOrder = 2; sea.name = 'sea-ring';
-  const bedM = new THREE.MeshStandardMaterial({ color: 0xb7a57c, roughness: 1 });
-  const bed = new THREE.Mesh(geo.clone(), bedM);
-  bed.position.y = SEA - 11; bed.name = 'seabed-ring';
-  scene.add(sea, bed);
-}
+// beyond the blocks: the far land, out to the horizon
+const far = createFarView({ sample: gen.farSample, chunk: world.C, isLoaded: terrain.isLoaded, rings: COARSE ? [{ step: 4, n: 96 }, { step: 16, n: 144 }] : undefined });      // a little lighter on a phone
+scene.add(far.group);
+/** Make the blocks and the far land round (x, z) at once (the start, a shot). */
+function around(x, z) { terrain.prime(x, z); far.prime(x, z); }
 
 // ------------------------------------------------------------------ first-person hand: a glove holding a hatchet
 const fp = new THREE.Group();
@@ -126,13 +123,13 @@ stage.resize();
 // ------------------------------------------------------------------ times of day
 const MOODS = {
   morning: {
-    top: '#3f93e4', horizon: '#cfeaf9', below: '#a9d0e6', sunCol: '#fff1cf', sunDir: dirFrom(118, 34), sunSize: 0.045, cloud: 0.48, stars: 0, haze: 1,
-    cloudCol: '#ffffff', cloudShade: '#c8d9ea', fog: '#cde6f6', fogNear: 70, fogFar: 300,
+    top: '#3f93e4', horizon: '#cfeaf9', below: '#cde6f6', sunCol: '#fff1cf', sunDir: dirFrom(118, 34), sunSize: 0.045, cloud: 0.48, stars: 0, haze: 1,
+    cloudCol: '#ffffff', cloudShade: '#c8d9ea', fog: '#cde6f6', fogNear: 120, fogFar: 1200,
     hemiSky: '#dcefff', hemiGround: '#8c7a58', hemi: 1.55, sun: '#fff0d8', sunI: 2.7, light: dirFrom(118, 40), exposure: 1.0,
   },
   sunset: {
     top: '#3b5fa8', horizon: '#ffb07a', below: '#c7896c', sunCol: '#ffa864', sunDir: dirFrom(262, 5), sunSize: 0.06, cloud: 0.55, stars: 0.05, haze: 2.2,
-    cloudCol: '#ffd2a8', cloudShade: '#8f6a86', fog: '#e6b08e', fogNear: 45, fogFar: 240,
+    cloudCol: '#ffd2a8', cloudShade: '#8f6a86', fog: '#e6b08e', fogNear: 80, fogFar: 900,
     hemiSky: '#ffd0ae', hemiGround: '#5c4a4e', hemi: 1.05, sun: '#ffb27a', sunI: 2.1, light: dirFrom(262, 14), exposure: 1.0,
   },
   night: {
@@ -149,8 +146,9 @@ function setMood(name, rain = false) {
   u.uTop.value.set(m.top).multiplyScalar(dim); u.uHorizon.value.set(m.horizon).multiplyScalar(dim); u.uBelow.value.set(m.below).multiplyScalar(dim);
   u.uSunCol.value.set(m.sunCol).multiplyScalar(rain ? 0.35 : 1); u.uSunDir.value.copy(m.sunDir); u.uSunSize.value = rain ? 0 : m.sunSize;
   u.uMoonDir.value.copy(dirFrom(200, 42)); u.uStars.value = m.stars * (rain ? 0.2 : 1); u.uHaze.value = m.haze;
-  u.uCloud.value = rain ? 1 : m.cloud; u.uCloudCol.value.set(m.cloudCol).multiplyScalar(rain ? 0.7 : 1); u.uCloudShade.value.set(m.cloudShade).multiplyScalar(rain ? 0.7 : 1);
-  scene.fog.color.set(m.fog).multiplyScalar(rain ? 0.72 : 1); scene.fog.near = m.fogNear * (rain ? 0.5 : 1); scene.fog.far = m.fogFar * (rain ? 0.55 : 1);
+  u.uCloud.value = rain ? 1 : m.cloud; u.uCloudCol.value.set(m.cloudCol).multiplyScalar(rain ? 0.58 : 1); u.uCloudShade.value.set(m.cloudShade).multiplyScalar(rain ? 0.58 : 1);
+  // under rain the far land goes grey and close (the view is wide on a clear day, so it closes in more than it used to)
+  scene.fog.color.set(m.fog).multiplyScalar(rain ? 0.66 : 1); scene.fog.near = m.fogNear * (rain ? 0.3 : 1); scene.fog.far = m.fogFar * (rain ? 0.3 : 1);
   hemi.color.set(m.hemiSky); hemi.groundColor.set(m.hemiGround); hemi.intensity = m.hemi * (rain ? 0.8 : 1);
   sun.color.set(m.sun); sun.intensity = m.sunI * (rain ? 0.45 : 1);
   renderer.toneMappingExposure = m.exposure * (rain ? 0.9 : 1);
@@ -173,6 +171,16 @@ function look(px, py, pz, tx, ty, tz, fov = 70) {
 }
 const solidAt = (x, y, z) => { const id = world.get(Math.floor(x), Math.floor(y), Math.floor(z)); return id && (BLOCKS[id].kind ?? 'solid') !== 'cross' && id !== B.WATER && BLOCKS[id].kind !== 'none'; };
 function standY(x, z, near = SY - 2) { let y = Math.floor(near); while (y > 1 && !solidAt(x, y - 1, z)) y--; return y; }
+void standY;
+/** The nearest place of a land round the start, searched ring by ring (for the shots). */
+function findLand(land, r0 = 40, r1 = 1400, test = null) {
+  const s = gen.spawn;
+  for (let r = r0; r <= r1; r += 16) for (let k = 0, n = Math.ceil(r / 6); k < n; k++) {
+    const a = k / n * Math.PI * 2, x = Math.round(s.x + Math.cos(a) * r), z = Math.round(s.z + Math.sin(a) * r);
+    if (gen.landOf(x, z) === land && (!test || test(x, z)) && gen.landOf(x + 12, z) === land && gen.landOf(x - 12, z) === land && gen.landOf(x, z + 12) === land && gen.landOf(x, z - 12) === land) return { x, z };
+  }
+  return { x: s.x, z: s.z };
+}
 
 const hud = buildHud(document.getElementById('hud'));
 
@@ -180,25 +188,75 @@ const hud = buildHud(document.getElementById('hud'));
 defineShot('hero', () => {
   hud.show(false); fp.visible = false; pickBox.visible = false;
   setMood('morning'); setUnder(false);
-  const px = 150, pz = 142, py = 54;
-  look(px, py, pz, 80, 26, 72, 60);
-  aimSun(mood.light, 100, 26, 90, 100);
+  const s = gen.spawn, fx = -Math.sin(s.yaw), fz = -Math.cos(s.yaw);
+  const px = s.x - fx * 50, pz = s.z - fz * 50, py = Math.max(gen.heightAt(px, pz), s.y) + 16;
+  around(px + fx * 40, pz + fz * 40);
+  look(px, py, pz, s.x + fx * 220, s.y + 12, s.z + fz * 220, 58);
+  aimSun(mood.light, s.x, s.y, s.z, 100);
 });
 defineShot('play', () => {
   hud.show(true); fp.visible = true; pickBox.visible = false;
   setMood('morning'); setUnder(false);
   const s = anchors.spawn, ey = s.y + 1.62;
+  around(s.x, s.z);
   camera.fov = 70; camera.position.set(s.x, ey, s.z);
   camera.rotation.set(-0.12, s.yaw, 0, 'YXZ'); camera.updateProjectionMatrix(); camera.updateMatrixWorld();
   aimSun(mood.light, s.x, s.y, s.z, 60);
 });
-// views of each land, for checking by eye (tools/shot.cjs --shots desert,forest,snow,sea)
-const view = (name, p, t, time = 'morning') => defineShot(name, () => { hud.show(false); fp.visible = false; pickBox.visible = false; setMood(time); setUnder(false); look(...p, ...t, 66); aimSun(mood.light, t[0], t[1], t[2], 80); });
-view('desert', [70, 40, 168], [86, 24, 132]);
-view('forest', [40, 36, 118], [80, 24, 86]);
-view('snow', [96, 48, 70], [70, 34, 26]);
-view('sea', [118, 34, 96], [160, 14, 70]);
-view('night', [40, 36, 118], [80, 24, 86], 'night');
+// views of each land, for checking by eye (tools/shot.cjs --shots desert,forest,snow,plains,mountain,beach,sea,high,night)
+const view = (name, land, opt = {}) => defineShot(name, () => {
+  hud.show(false); fp.visible = false; pickBox.visible = false; setMood(opt.time || 'morning'); setUnder(false);
+  const t = findLand(land, 40, 1400, opt.test), s = gen.spawn;
+  const dx = t.x - s.x, dz = t.z - s.z, d = Math.hypot(dx, dz) || 1, back = opt.back ?? 46;
+  const px = t.x - dx / d * back, pz = t.z - dz / d * back, ty = gen.heightAt(t.x, t.z) + 2;
+  const py = Math.max(gen.heightAt(px, pz), ty) + (opt.up ?? 22);
+  around(px, pz);
+  look(px, py, pz, t.x + dx / d * 30, ty, t.z + dz / d * 30, 66);
+  aimSun(mood.light, t.x, ty, t.z, 80);
+});
+view('desert', 'desert');
+view('forest', 'forest');
+view('snow', 'snow');
+view('plains', 'plains');
+view('mountain', 'mountain', { back: 90, up: 30 });
+view('beach', 'beach', { back: 30, up: 12 });
+view('sea', 'sea', { back: 70, up: 14, test: (x, z) => gen.column(x, z).s < -0.1 });      // the open sea, not a lake
+view('night', 'forest', { time: 'night' });
+// a snowy peak seen from its foot: the highest ground within 400 blocks of the start
+defineShot('peak', () => {
+  hud.show(false); fp.visible = false; pickBox.visible = false; setMood('morning'); setUnder(false);
+  const s = gen.spawn;
+  let top = { x: s.x, z: s.z, h: 0 };
+  for (let z = -400; z <= 400; z += 8) for (let x = -400; x <= 400; x += 8) { const h = gen.heightAt(s.x + x, s.z + z); if (h > top.h) top = { x: s.x + x, z: s.z + z, h }; }
+  const dx = s.x - top.x, dz = s.z - top.z, d = Math.hypot(dx, dz) || 1, px = top.x + dx / d * 80, pz = top.z + dz / d * 80;
+  const py = gen.heightAt(px, pz) + 14;
+  around(px, pz);
+  look(px, py, pz, top.x, top.h - 6, top.z, 60);
+  aimSun(mood.light, top.x, top.h - 20, top.z, 100);
+});
+// the picture for the world picker: a place near the start where many lands meet, seen from above
+defineShot('vista', () => {
+  hud.show(false); fp.visible = false; pickBox.visible = false; setMood('morning'); setUnder(false);
+  const s = gen.spawn;
+  let best = null;
+  for (let z = -1200; z <= 1200; z += 48) for (let x = -1200; x <= 1200; x += 48) {
+    const cx = s.x + x, cz = s.z + z, seen = new Set();
+    for (let k = 0; k < 12; k++) for (const r of [0, 30, 60]) { const l = gen.landOf(cx + Math.cos(k / 12 * 6.283) * r, cz + Math.sin(k / 12 * 6.283) * r); seen.add(l === 'beach' ? 'sea' : l === 'mountain' ? 'snow' : l); }
+    const score = seen.size - Math.hypot(x, z) / 3000;
+    if (!best || score > best.score) best = { x: cx, z: cz, score };
+  }
+  const px = best.x - 70, pz = best.z + 70, py = gen.heightAt(best.x, best.z) + 48;
+  around(best.x - 30, best.z + 30);
+  look(px, py, pz, best.x + 10, gen.heightAt(best.x, best.z), best.z - 10, 60);
+  aimSun(mood.light, best.x, gen.heightAt(best.x, best.z), best.z, 110);
+});
+defineShot('high', () => {
+  hud.show(false); fp.visible = false; pickBox.visible = false; setMood('morning'); setUnder(false);
+  const s = gen.spawn, fx = -Math.sin(s.yaw), fz = -Math.cos(s.yaw);
+  around(s.x, s.z);
+  look(s.x - fx * 30, 150, s.z - fz * 30, s.x + fx * 260, 40, s.z + fz * 260, 70);
+  aimSun(mood.light, s.x, s.y, s.z, 100);
+});
 
 // ------------------------------------------------------------------ the playable game
 const own = (id) => ({ key: 'b' + id, id, name: NAMES[id], n: 64 });
@@ -207,7 +265,7 @@ const CATALOGUE = [
   ...[B.OAK, B.PINE, B.PALM, B.PLANKS, B.OAK_LEAVES, B.PINE_NEEDLES, B.PALM_FROND, B.GRASS, B.DIRT, B.SAND, B.SANDSTONE, B.STONE, B.DEEPROCK, B.GRAVEL,
     B.SNOWBLOCK, B.ICE, B.TUFT, B.FLOWER_R, B.FLOWER_Y, B.FLOWER_B, B.SHRUB, B.REED].map(own),
 ];
-const LANDS = { snow: 'الثلج', forest: 'الغابة', desert: 'البر', sea: 'البحر' };
+const LANDS = { snow: 'الثلج', forest: 'الغابة', desert: 'البر', sea: 'البحر', plains: 'السهل', beach: 'السيف', mountain: 'الجبل' };
 const CLOCK = { morning: ['08:20', 'الصبح'], sunset: ['18:40', 'المغرب'], night: ['23:10', 'الليل'] };
 
 async function startGame() {
@@ -216,7 +274,13 @@ async function startGame() {
   const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
   const slots = [...SLOTS.map((q) => ({ ...q, id: q.block ? B[q.block] : 0 })), kitItem(K.TORCH, 8), EMPTY].slice(0, hud.shown);
   const kit = createKit({ scene, world, terrain });
-  for (const f of anchors.fires) kit.lit(f.x, f.y, f.z, K.FIRE);      // the fires deep in the caves give real light
+  // the fires deep in the caves give real light: those made so far, and those of every chunk made from now on
+  for (const f of gen.fires.values()) kit.lit(f.x, f.y, f.z, K.FIRE);
+  gen.onFire = (f) => kit.lit(f.x, f.y, f.z, K.FIRE);
+  // a chunk forgotten far away takes its fires' lights with it (made again, they light again)
+  dropped = () => {
+    for (const [k, f] of gen.fires) if (!world.has(Math.floor(f.x / world.C), Math.floor(f.z / world.C))) { gen.fires.delete(k); kit.glow.delete(k); }
+  };
   const heldBlock = createHeld({ camera, blocks: BLOCKS, materialFor });
   let toolInHand = true, aimed = null, hintTimer = 0, wasNight = false, digT = 0;
   const fpHome = fp.position.clone(), fpRot = fp.rotation.clone();
@@ -254,19 +318,24 @@ async function startGame() {
     onFirstLook() { hud.els.lookzone.hidden = true; },
     onFrame(st, dt) {
       const d = st.dig, p = st.pos;
+      // the blocks round the player and the far land beyond them
+      const r = radiusFor();
+      if (r !== terrain.radius) terrain.radius = r;
+      terrain.update(p.x, p.z);
+      far.update(camera.position.x, camera.position.z, terrain.takeChanged());
       hud.setProgress(d.on ? d.progress : 0);
       kit.update(p, dt, st.time);
       if (vitals) vitals.update(dt);
       if (life) life.update(dt);
       if (weather) weather.update(dt);
       if (status) status.update();
-      const land = gen.landOf(p.x, p.z);
+      const land = gen.landOf(p.x, p.z), cold = land === 'snow' || land === 'mountain';
       hud.setLand(LANDS[land], ((-st.yaw * 180 / Math.PI) % 360 + 360) % 360);
-      // what the needs do here: thirst comes fastest in the desert; the cold bites only in the snow (less in a fur coat)
+      // what the needs do here: thirst comes fastest in the desert; the cold bites only in the snow and up the mountains (less in a fur coat)
       if (vitals) {
         const [water, warm] = vitals.needs, coat = st.gear && st.gear.chest && st.gear.chest.warm;
-        water.drain = land === 'desert' ? 0.42 : land === 'snow' ? 0.16 : 0.22;
-        warm.drain = land === 'snow' ? (coat ? 0.14 : 0.5) : -3;
+        water.drain = land === 'desert' ? 0.42 : cold ? 0.16 : 0.22;
+        warm.drain = cold ? (coat ? 0.14 : 0.5) : -3;
       }
       const sk = window.__GAME_SKY || {};
       // the night's monsters go to dust when the sun comes up
@@ -274,7 +343,7 @@ async function startGame() {
       wasNight = !!sk.night;
       // rain over the snow falls as snow: white flakes, and the clock says so
       if (weather) {
-        const snowing = sk.rain && land === 'snow';
+        const snowing = sk.rain && cold;
         weather.rain.material.uniforms.uColor.value.set(snowing ? '#f4f8ff' : '#a6b8cc');
         clockLabel(sk.time, sk.rain, snowing);
       }
@@ -313,7 +382,7 @@ async function startGame() {
   hud.setTarget(null);
   hud.els.hotbar.addEventListener('pointerdown', (e) => { const el = e.target.closest('.slot'); if (el && play.state.running) { play.select(+el.dataset.i); e.preventDefault(); } });
   const panel = createPlayPanel({
-    title: 'براري', tagline: 'بر وغابة وثلج وبحر. اقطع الشجر، انزل الكهوف، وابنِ بيتك.',
+    title: 'براري', tagline: 'أرض ما لها آخر: سهول وغابات وبر وثلج وجبال وبحر. اقطع الشجر، انزل الكهوف، وابنِ بيتك.',
     fontFamily: FONT, accent: ACCENT, line: LINE, touch: hud.touch,
     note: 'نسخة تجريبية: الوقت والمطر والوحوش تختارها من لوحة Q (وعلى الجوال من زر داخل الحقيبة). الوحوش تطلع في الليل.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
@@ -330,9 +399,8 @@ async function startGame() {
     ],
     render(v) { write.hp(v.hp); write.water(v.water); write.warm(v.warm); vq('water').classList.toggle('warn', v.water < 25); vq('warm').classList.toggle('warn', v.warm < 30); },
   });
-  // creatures: each lives in its own land; the two monsters come out at night
+  // creatures: each lives in its own lands (the shared list knows which); the two monsters come out at night
   const L = (x, z) => gen.landOf(x, z);
-  const onLand = (x, z) => L(x, z) !== 'sea';
   const nightly = (k, n) => {
     let set = null;                                          // a test or a tool may pin the number
     Object.defineProperty(k, 'max', { enumerable: true, configurable: true, get: () => (set !== null ? set : window.__GAME_SKY && window.__GAME_SKY.night ? n : 0), set: (v) => { set = v; } });
@@ -341,14 +409,10 @@ async function startGame() {
   life = createLife({
     scene, camera, play, world, vitals: () => vitals,
     kinds: [
-      { key: 'goat', name: 'عنز', kind: 'animal', make: () => goat(), hp: 8, speed: 2.0, radius: 0.55, height: 1.05, max: 3, drops: [[K.MEAT, 1], [K.FUR, 1]], where: (x, y, z) => L(x, z) === 'desert' || L(x, z) === 'forest' },
-      { key: 'hen', name: 'دياية', kind: 'animal', make: () => hen(), hp: 4, speed: 1.7, radius: 0.4, height: 0.9, max: 3, drops: [[K.CHICKEN, 1], [K.FEATHER, 2]], where: (x, y, z) => L(x, z) === 'desert' || L(x, z) === 'forest' },
-      { key: 'sparrow', name: 'عصفور', kind: 'animal', make: () => bird({ body: 0x9a6a3e, belly: 0xf3e2c4, beak: 0xe2a03a }), hp: 2, speed: 2.6, radius: 0.4, height: 0.45, max: 3, fly: 3.0, perch: true, drops: [[K.FEATHER, 1]], where: (x, y, z) => onLand(x, z) },
-      { key: 'gull', name: 'نورس', kind: 'animal', make: () => bird({ body: 0xe9edf1, belly: 0xffffff, beak: 0xf0a020 }), hp: 2, speed: 2.9, radius: 0.4, height: 0.45, max: 2, fly: 4.4, perch: true, drops: [[K.FEATHER, 1]], where: (x, y, z) => gen.weights(x, z).sea > -18 },
-      { key: 'bear', name: 'دب', kind: 'animal', make: () => bear(), hp: 26, speed: 2.3, radius: 0.9, height: 1.55, max: 1, likes: 'meat', fights: true, dmg: 9, drops: [[K.MEAT, 3], [K.FUR, 2]], where: (x, y, z) => L(x, z) === 'snow' || (L(x, z) === 'forest' && z < 88) },
+      ...landKinds('barari', gen.landOf),
       ...extraKinds('barari'),
-      nightly({ key: 'asfoof', name: 'العاصوف', kind: 'monster', make: () => asfoof(), hp: 14, speed: 2.5, radius: 0.75, height: 1.7, dmg: 7, where: (x, y, z) => z > 92 && onLand(x, z) }, 1),
-      nightly({ key: 'zamharir', name: 'الزمهرير', kind: 'monster', make: () => zamharir(), hp: 18, speed: 2.2, radius: 0.6, height: 2.5, dmg: 9, where: (x, y, z) => z < 82 && onLand(x, z) }, 1),
+      nightly({ key: 'asfoof', name: 'العاصوف', kind: 'monster', make: () => asfoof(), hp: 14, speed: 2.5, radius: 0.75, height: 1.7, dmg: 7, where: (x, y, z) => ['desert', 'beach', 'plains'].includes(L(x, z)) }, 1),
+      nightly({ key: 'zamharir', name: 'الزمهرير', kind: 'monster', make: () => zamharir(), hp: 18, speed: 2.2, radius: 0.6, height: 2.5, dmg: 9, where: (x, y, z) => ['snow', 'mountain', 'forest'].includes(L(x, z)) }, 1),
     ],
   });
   status = createStatus({ play, mount: document.querySelector('#hud .bar-wrap'), vitals: () => vitals, life: () => life, accent: ACCENT, hide: [vq('hp')] });
@@ -359,7 +423,8 @@ async function startGame() {
       setMood(time, rain);
       aimed = null;                                          // the sun moved: aim the shadow map again
       lastClock = '';
-      clockLabel(time, rain, rain && gen.landOf(play.state.pos.x, play.state.pos.z) === 'snow');
+      const here = gen.landOf(play.state.pos.x, play.state.pos.z);
+      clockLabel(time, rain, rain && (here === 'snow' || here === 'mountain'));
     },
   });
   clockLabel('morning', false, false);

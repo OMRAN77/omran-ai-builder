@@ -8,11 +8,12 @@ import { K } from './kit.js';
 
 export function makeCave({ play, kit, rnd, spawn }) {
   const w = kit.world, solid = (x, y, z) => w.inb(x, y, z) && play.isSolid(w.get(x, y, z)), wet = (x, y, z) => w.inb(x, y, z) && play.isLiquid(w.get(x, y, z));
+  const A = w.area || { x0: 0, z0: 0, x1: w.sx, z1: w.sz };      // where the mouth may be: all of a small world, a square round the start of an endless one
   const top = (x, z) => { for (let y = w.sy - 3; y > 1; y--) if (solid(x, y - 1, z)) return w.get(x, y, z) === 0 ? y : null; return null; };
   // the mouth: open, fairly level ground with plenty of rock under it, not on top of the start
   let mouth = null, dir = null;
   for (let i = 0; i < 400 && !mouth; i++) {
-    const x = 16 + Math.floor(rnd() * (w.sx - 32)), z = 16 + Math.floor(rnd() * (w.sz - 32)), y = top(x, z), d = Math.hypot(x - spawn.x, z - spawn.z);
+    const x = A.x0 + 16 + Math.floor(rnd() * (A.x1 - A.x0 - 32)), z = A.z0 + 16 + Math.floor(rnd() * (A.z1 - A.z0 - 32)), y = top(x, z), d = Math.hypot(x - spawn.x, z - spawn.z);
     if (y === null || y < 13 || d < 16 || d > 90) continue;
     const a = Math.floor(rnd() * 4), dx = [1, -1, 0, 0][a], dz = [0, 0, 1, -1][a];
     let ok = true;

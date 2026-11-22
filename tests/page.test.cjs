@@ -261,14 +261,15 @@ test('v-blockworld-life: حيوانات تُصاد ووحوش تهاجم، بم�
   assert.match(play, /if \(st\.noDig\)/);
   assert.match(play, /if \(s && s\.use\) return o\.onUse/);
   for (const name of ['لحم', 'سيف ألماس', 'صدرية']) assert.ok(kit.includes(name), name);
-  const want = { kawkab: ['الحمّال', 'الزاحف', 'الطيف'], waha: ['المها', 'غول الرمال', 'عقرب الصخر'], dhalam: ['الوعل', 'المتربّص', 'ذئب العظم'], barari: ['عنز', 'دياية', 'دب', 'العاصوف', 'الزمهرير'] };
+  const want = { kawkab: ['الحمّال', 'الزاحف', 'الطيف'], waha: ['المها', 'غول الرمال', 'عقرب الصخر'], dhalam: ['الوعل', 'المتربّص', 'ذئب العظم'], barari: ['العاصوف', 'الزمهرير'] };
   for (const k of WORLDS) {
     const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
     assert.match(src, /life = createLife\(/, k);
     assert.match(src, /if \(life\) life\.update\(dt\);/, k);
     assert.match(src, /onUse: \(item\) => \(life \? life\.use\(item\) : false\)/, k);
     for (const n of want[k]) assert.ok(src.includes(`name: '${n}'`), `${k}: ${n}`);
-    assert.ok(/kind: 'animal'/.test(src) && /kind: 'monster'/.test(src), k + ': حيوان ووحش');
+    if (k === 'barari') assert.match(src, /\.\.\.landKinds\('barari', gen\.landOf\)/, 'حيوانات البراري حسب الأرض');
+    assert.ok((/kind: 'animal'/.test(src) || /\.\.\.landKinds\(/.test(src)) && /kind: 'monster'/.test(src), k + ': حيوان ووحش');
   }
   assert.ok(!/zombie|creeper|enderman|زومبي/i.test(life + kit), 'لا أسماء منقولة من لعبة أخرى');
 });

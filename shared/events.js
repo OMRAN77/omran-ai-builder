@@ -61,7 +61,8 @@ export function createEvents({ play, kit, adv, world, groundAt, openPage }) {
 
   // ---- the island in the sky: ten minutes of every half hour by the clock, so everyone sees it at the same time
   const ir = adv.rngFor('island');
-  const isle = { x: 24 + Math.floor(ir() * (w.sx - 48)), z: 24 + Math.floor(ir() * (w.sz - 48)), y: Math.max(8, w.sy - (w.sy > 44 ? 16 : 9)), up: false, cells: [], warned: false };
+  const A = w.area || { x0: 0, z0: 0, x1: w.sx, z1: w.sz };      // all of a small world, a square round the start of an endless one
+  const isle = { x: A.x0 + 24 + Math.floor(ir() * (A.x1 - A.x0 - 48)), z: A.z0 + 24 + Math.floor(ir() * (A.z1 - A.z0 - 48)), y: Math.max(8, w.sy - (w.sy > 44 ? 16 : 9)), up: false, cells: [], warned: false };
   const islandTime = () => Math.floor(Date.now() / 60000) % 30 < 10;
   function raiseIsland() {
     if (isle.up) return;                             // it is there already
@@ -90,7 +91,7 @@ export function createEvents({ play, kit, adv, world, groundAt, openPage }) {
   gate.visible = false; scene.add(gate);
   let gateIn = 150, gateLeft = 0, gPos = null;
   const N = 6, SIZE = N * 2 + 1, MAZE_TIME = 120;
-  const maze = { on: false, x0: w.sx - SIZE - 6, z0: w.sz - SIZE - 6, y: 0, left: 0, shift: 0, back: null, cells: new Map(), seed: 1 };
+  const maze = { on: false, x0: A.x1 - SIZE - 6, z0: A.z1 - SIZE - 6, y: 0, left: 0, shift: 0, back: null, cells: new Map(), seed: 1 };
   // the maze hangs in the air over a corner of the world, clear of whatever ground is there (it must never cut into a hill)
   { let top = 0; for (let z = 0; z < SIZE; z++) for (let x = 0; x < SIZE; x++) { let y = w.sy - 1; while (y > 0 && w.get(maze.x0 + x, y, maze.z0 + z) === 0) y--; if (y > top) top = y; } maze.y = Math.min(w.sy - 6, top + 5); maze.room = maze.y > top + 1; }
   function layout(seed) {      // a maze on an N x N grid: walls everywhere, then passages cut by a wandering path

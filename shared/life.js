@@ -204,6 +204,8 @@ export function createLife(o) {
   play.onUseFirst(() => {
     const s = st.slots[st.sel];
     if (!aimed || aimed.k.kind !== 'animal' || aimed.k.still || !s || !s.feed || !(s.n > 0)) return false;
+    // food the animal does not take is the player's own to eat: the press goes on to eating
+    if (aimed.k.tame === false || s.feed !== (aimed.k.likes || 'plants')) return false;
     return feed(aimed, s);
   });
   /** Host: a guest fed creature nid. */

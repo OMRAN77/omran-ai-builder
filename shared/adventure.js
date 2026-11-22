@@ -57,6 +57,8 @@ const OFFERS = [
 
 export function createAdventure({ play, kit, craft, camera, world: worldKey = 'world' }) {
   const st = play.state, w = kit.world, wardrobe = createWardrobe({ play });
+  // the part of the world the map shows and the treasure is hidden in: all of a small world, a square round the start of an endless one
+  const A = w.area || { x0: 0, z0: 0, x1: w.sx, z1: w.sz }, AW = A.x1 - A.x0, AH = A.z1 - A.z0;
   const load = (k, d) => { try { const v = JSON.parse(window.localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
   const save = (k, v) => { try { window.localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* not kept */ } };
   const done = new Set(load('bw-quests', [])), today = dayKey(), foundKey = 'bw-treasure-' + worldKey;
@@ -81,7 +83,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
   const r = rng(hash(worldKey + '|' + today));
   let treasure = null;
   for (let i = 0; i < 300 && !treasure; i++) {
-    const x = 10 + Math.floor(r() * (w.sx - 20)), z = 10 + Math.floor(r() * (w.sz - 20)), y = groundAt(x, z);
+    const x = A.x0 + 10 + Math.floor(r() * (AW - 20)), z = A.z0 + 10 + Math.floor(r() * (AH - 20)), y = groundAt(x, z);
     if (y === null || Math.hypot(x - spawn.x, z - spawn.z) < 24) continue;
     if (groundAt(x + 1, z) === null || groundAt(x - 1, z) === null || groundAt(x, z + 1) === null || groundAt(x, z - 1) === null) continue;   // open ground all round, not a ledge or a roof edge
     treasure = { x, y, z };
@@ -171,7 +173,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     page() {
       const qs = api.quests(), next = qs.find((q) => !q.done), sec = api.secrets(), looks = wardrobe.list();
       const ev = api.events;
-      return (ev ? `<h3>رسالة اليوم</h3><p class="hint msg">${ev.message()}</p>` : '') + `<h3>كنز اليوم</h3><div class="tmap"><canvas width="${w.sx}" height="${w.sz}"></canvas><p class="hint">${!treasure ? 'ما في كنز اليوم.' : foundToday ? 'لقيت كنز اليوم ✓ كنز جديد بكرة.' : 'علامة ✕ مكان الصندوق، والنقطة الحمرا أنت. الخريطة فوقها الشمال.'}${cave ? ' المثلث الأسود مدخل كهف اليوم: فيه ذهب وألماس.' : ''}${api.events && api.events.isle.up ? ' الدائرة البيضا جزيرة السما (طر لها قبل ما تختفي).' : ''}<br>كنوز لقيتها: ${found}</p></div>`
+      return (ev ? `<h3>رسالة اليوم</h3><p class="hint msg">${ev.message()}</p>` : '') + `<h3>كنز اليوم</h3><div class="tmap"><canvas width="${AW}" height="${AH}"></canvas><p class="hint">${!treasure ? 'ما في كنز اليوم.' : foundToday ? 'لقيت كنز اليوم ✓ كنز جديد بكرة.' : 'علامة ✕ مكان الصندوق، والنقطة الحمرا أنت. الخريطة فوقها الشمال.'}${cave ? ' المثلث الأسود مدخل كهف اليوم: فيه ذهب وألماس.' : ''}${api.events && api.events.isle.up ? ' الدائرة البيضا جزيرة السما (طر لها قبل ما تختفي).' : ''}<br>كنوز لقيتها: ${found}</p></div>`
         + `<h3>المهام ${qs.filter((q) => q.done).length}/${qs.length}</h3><ol class="quests">${qs.map((q) => `<li class="${q.done ? 'done' : q === next ? 'now' : ''}">${q.name}<small>+${q.xp} خبرة${q.outfit ? ' · لبس «' + looks.find((o) => o.key === q.outfit).name + '»' : ''}</small></li>`).join('')}</ol>`
         + `<h3>مهام سرية لقيتها: ${sec.length} من ${secretsHere.length}</h3>${sec.length ? `<ol class="quests">${sec.map((q) => `<li class="done">${q.name}<small>${q.how}</small></li>`).join('')}</ol>` : '<p class="hint">ما تنكتب هني لين تلقاها بروحك. جرّب أشياء غريبة.</p>'}`
         + `<h3>ملابسي</h3><div class="looks">${looks.map((o) => `<button type="button" class="look${o.on ? ' on' : ''}${o.owned ? '' : ' locked'}" data-look="${o.key}">${o.owned && o.pic ? `<img class="hero" src="${new URL('../previews/heroes/' + o.pic + '.webp', import.meta.url).href}" alt="" loading="lazy" draggable="false">` : outfitPicture(o.owned ? o.c : { hat: '#2a2d35', skin: '#3a3d46', shirt: '#2a2d35', pants: '#22252c', shoes: '#1a1c22' }, 34)}<span>${o.owned ? o.name : o.rare ? 'نادر: ؟' : o.name}</span><small>${o.owned ? (o.on ? 'لابسه' : 'البسه') : o.how}</small></button>`).join('')}</div>`
@@ -182,8 +184,8 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     mapOf(g) {
       if (!api.mapImage) {
         const ctx = g || document.createElement('canvas').getContext('2d');
-        const img = ctx.createImageData(w.sx, w.sz), top = new Int16Array(w.sx * w.sz); let lo = 1e9, hi = -1e9;
-        for (let z = 0; z < w.sz; z++) for (let x = 0; x < w.sx; x++) { let y = w.sy - 1; while (y > 0 && w.get(x, y, z) === 0) y--; const wet = play.isLiquid(w.get(x, y, z)); top[x + z * w.sx] = wet ? -1 : y; if (!wet) { if (y < lo) lo = y; if (y > hi) hi = y; } }
+        const img = ctx.createImageData(AW, AH), top = new Int16Array(AW * AH); let lo = 1e9, hi = -1e9;
+        for (let z = 0; z < AH; z++) for (let x = 0; x < AW; x++) { let y = w.sy - 1; while (y > 0 && w.get(A.x0 + x, y, A.z0 + z) === 0) y--; const wet = play.isLiquid(w.get(A.x0 + x, y, A.z0 + z)); top[x + z * AW] = wet ? -1 : y; if (!wet) { if (y < lo) lo = y; if (y > hi) hi = y; } }
         for (let i = 0; i < top.length; i++) { const k = top[i] < 0 ? -1 : (top[i] - lo) / Math.max(1, hi - lo), o = i * 4; if (k < 0) { img.data[o] = 70; img.data[o + 1] = 130; img.data[o + 2] = 170; } else { img.data[o] = 110 + k * 125; img.data[o + 1] = 92 + k * 120; img.data[o + 2] = 58 + k * 100; } img.data[o + 3] = 255; }
         api.mapImage = img;
       }
@@ -198,11 +200,13 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
       const g = cv.getContext('2d');
       api.mapOf(g);
       g.putImageData(api.mapImage, 0, 0);
-      const s = Math.max(2, w.sx / 64);
+      const s = Math.max(2, AW / 64);
+      g.save(); g.translate(-A.x0, -A.z0);      // world positions on the map's picture
       if (treasure && !foundToday) { g.strokeStyle = '#b3121b'; g.lineWidth = s * 0.9; g.lineCap = 'round'; g.beginPath(); g.moveTo(treasure.x - s * 1.6, treasure.z - s * 1.6); g.lineTo(treasure.x + s * 1.6, treasure.z + s * 1.6); g.moveTo(treasure.x + s * 1.6, treasure.z - s * 1.6); g.lineTo(treasure.x - s * 1.6, treasure.z + s * 1.6); g.stroke(); }
       if (api.events && api.events.isle.up) { const q = api.events.isle; g.fillStyle = '#fff'; g.strokeStyle = '#2d5abf'; g.lineWidth = s * 0.5; g.beginPath(); g.arc(q.x, q.z, s * 2.2, 0, 7); g.fill(); g.stroke(); }
       if (cave) { const m = cave.mouth; g.fillStyle = '#fff'; g.beginPath(); g.moveTo(m.x, m.z - s * 2.3); g.lineTo(m.x + s * 2.1, m.z + s * 1.7); g.lineTo(m.x - s * 2.1, m.z + s * 1.7); g.closePath(); g.fill(); g.fillStyle = '#16120c'; g.beginPath(); g.moveTo(m.x, m.z - s * 1.5); g.lineTo(m.x + s * 1.4, m.z + s * 1.2); g.lineTo(m.x - s * 1.4, m.z + s * 1.2); g.closePath(); g.fill(); }
       g.fillStyle = '#fff'; g.beginPath(); g.arc(st.pos.x, st.pos.z, s * 1.25, 0, 7); g.fill(); g.fillStyle = '#e02222'; g.beginPath(); g.arc(st.pos.x, st.pos.z, s * 0.85, 0, 7); g.fill();
+      g.restore();
     },
     /** A click inside the quests page or the trade page. True when it was handled (the bag draws again). */
     click(t) {

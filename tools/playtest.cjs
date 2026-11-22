@@ -443,7 +443,7 @@ function serve(root, prefix) {
       });
       check('an animal wanders on its own', !r.error && r.animalMoved >= 0.5, r);
       check('striking an animal kills it and gives meat', r.animalDead === true && r.meat > 0 && r.aimedFrames > 0, r);
-      check('eating the meat feeds and restores some health', !!r.ate && r.ate.used === 1 && r.ate.hp > 45 && (r.ate.food === null || r.ate.food >= 65), r.ate);
+      check('eating the meat feeds and restores some health', !!r.ate && r.ate.used === 1 && r.ate.hp > 45 && (r.ate.food === null || r.ate.food >= 65), { ...r.ate, modal: await page.evaluate(() => window.__play.state.modal), mode: await page.evaluate(() => window.__GAME_RULES.mode), bag: await page.evaluate(() => !document.getElementById('bag').hidden) });
       check('a monster closes in and hurts the player', !!r.monster && r.monster.closest < r.monster.d0 - 2 && r.monster.hp < 100, r.monster);
       check('with monsters switched off none remain and nothing hurts', !!r.off && r.off.monsters === 0 && r.off.hp === 100, r.off);
       await page.evaluate(() => { const g = window.__game, p = g.play, s = p.state; const a = g.life.spawnAt(g.life.kinds[0].key, s.pos.x, s.pos.z - 3) || g.life.spawnAt(g.life.kinds[0].key, s.pos.x + 3, s.pos.z); const m = g.life.spawnAt(g.life.kinds.find((k) => k.kind === 'monster').key, s.pos.x + 2.5, s.pos.z - 4); const t = a || m; if (t) { s.yaw = Math.atan2(-(t.x - s.pos.x), -(t.z - s.pos.z)); s.pitch = -0.12; } for (const k of Object.keys(g.vitals.values)) g.vitals.values[k] = 90; p.advance(1 / 60); p.tick(1); });
