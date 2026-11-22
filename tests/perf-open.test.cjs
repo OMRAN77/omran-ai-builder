@@ -75,14 +75,15 @@ test('٢. خطّيّ: ما يُسلسَل ≈ ضعف حجم القائمة (كا
 
 /* ── (٢) الحفظ مشروعًا مشروعًا بمهلة للرسم ── */
 function saveBox(projects, clockStep) {
-  const writes = []; let timers = 0; let now = 0;
+  const writes = []; let timers = 0; let now = 0; const recs = new Map();
   const sb = {
     state: { projects, currentId: 'none' }, JSON, Object, Array, String, Promise,
     Date: { now: () => (now += clockStep) },
     setTimeout: (f) => { timers++; return setTimeout(f, 0); },
     __swallow: () => {},
     __vaultAssign: () => [], idbImgPutAll: () => Promise.resolve(),
-    idbSet: (k, v) => { writes.push([k, v]); return Promise.resolve(); },
+    /* v-r3 (r3-f1): الحفظ سجلٌّ لكلّ مشروع ثمّ فهرس — «كتابة» = التزام فهرس، وقيمتها ما يقرؤه الإقلاع بترتيبه */
+    __projTx: (puts, man) => { puts.forEach((x) => recs.set(x[0], x[1])); if (man) writes.push(['aiapp_projects', man.keys.map((k) => recs.get(k))]); return Promise.resolve([]); },
     getCurrent: () => null, __vaultRelease: () => {}, __imgWindowStart: () => 0,
   };
   vm.createContext(sb);

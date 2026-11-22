@@ -45,13 +45,14 @@ function world() {
 const BOOT = 1000000;
 const AFTER_BOOT = BOOT + 20000;
 
-test('١. تجمّد حقيقيّ والصفحة ظاهرة (نبضتان متأخّرتان ٧ث) ← البانر كما كان، مع حفظ العمل', () => {
+test('١. تجمّد حقيقيّ والصفحة ظاهرة (نبضتان متأخّرتان ٧ث) ← البانر كما كان، بلا إعادة حفظ لحظة التجمّد (v-freeze-fix)', () => {
   const w = world();
   w.beat(AFTER_BOOT, AFTER_BOOT + 50);
   w.beat(AFTER_BOOT + 1000, AFTER_BOOT + 8000);
   w.beat(AFTER_BOOT + 2000, AFTER_BOOT + 8010);
   assert.equal(w.banner.style.display, 'flex');
-  assert.equal(w.saved, 1);
+  // v-freeze-fix: كان saveState() هنا يعيد الرفع والحفظ الكامل فوق التجمّد (تجمّد ثانٍ ١٤ث) — الحفظ المجمّع والخروج يحفظان العمل
+  assert.equal(w.saved, 0);
 });
 
 test('٢. الصفحة مخفيّة (خلف نافذة أخرى) والانشغال نفسه ← لا بانر', () => {
