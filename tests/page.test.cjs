@@ -454,7 +454,7 @@ test('v-blockworld-esc: قائمة Esc بخياراتها الثمانية، و�
   assert.match(play, /const KEYS0 = \{ fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'Space', run: 'ControlLeft', bag: 'KeyE', menu: 'KeyQ', view: 'KeyV', place: 'KeyF', mute: 'KeyM' \};/);
   assert.match(play, /for \(const a of Object\.keys\(KM\)\) if \(KM\[a\] === code && a !== action\) KM\[a\] = KM\[action\];/, 'مفتاح مستعمل يتبادل مع صاحبه');
   assert.ok(!/keys\.has\('Key[WASD]'\)|e\.code === 'Key[EQVMF]'/.test(play), 'لا مفتاح ثابت بقي في مسار اللعب');
-  assert.match(play, /const DIFFS = \{ easy: \{ dmg: 0\.5, hunger: 0\.6, mobs: 1 \}, normal: \{ dmg: 1, hunger: 1, mobs: 1 \}, hard: \{ dmg: 1\.6, hunger: 1\.4, mobs: 1\.5 \} \};/);
+  assert.match(play, /const DIFFS = \{ peaceful: \{ dmg: 0, hunger: 0\.4, mobs: 0 \}, easy: \{ dmg: 0\.5, hunger: 0\.6, mobs: 1 \}, normal: \{ dmg: 1, hunger: 1, mobs: 1 \}, hard: \{ dmg: 1\.6, hunger: 1\.4, mobs: 1\.5 \} \};/);
   assert.match(life, /const dmg = k\.dmg \* \(window\.__GAME_DIFF \? window\.__GAME_DIFF\.dmg : 1\);/);
   assert.match(vit, /n\.key === 'food' && window\.__GAME_DIFF \? window\.__GAME_DIFF\.hunger : 1/);
   assert.ok(play.includes('اللغات الثانية ما انضافت للعبة للحين'), 'اللغة مذكورة بصدق لا بزرّ لا يعمل');
@@ -506,7 +506,7 @@ test('v-blockworld-cave: نار تحرق باللمس، بناء فوق الما
   assert.match(adv, /makeCave\(\{ play, kit, rnd: rng\(hash\('cave\|' \+ worldKey \+ '\|' \+ today\)\), spawn \}\)/);
   assert.match(cave, /never open a lake into the cave/);
   assert.match(cave, /vein\(veins\.diamond, K\.ROCK_DIAMOND, 6\);/);
-  assert.match(cave, /kit\.setBlock\(fx, fy, fz, K\.TORCH\); if \(kit\.lit\) kit\.lit\(fx, fy, fz, K\.TORCH\);/);
+  assert.match(cave, /kit\.setBlock\(fx, fy, fz, fire \? K\.FIRE : K\.TORCH\); if \(kit\.lit\) kit\.lit\(fx, fy, fz, fire \? K\.FIRE : K\.TORCH\);/);
   assert.match(kit, /add\(K\.ROCK_DIAMOND, \{ tiles: 'x:rock:#7fe6f5', drop: K\.GEM, hard: 1\.1 \}/, 'صخر الألماس يعطي ألماسة');
   assert.match(craft, /\{ out: 220, n: 1, also: \[211, 222, 223\], name: 'طقم لبس الألماس \(4 قطع\)', needs: \[\[K\.GEM, 4\]\], table: true \}/, 'أربع ألماسات = الطقم كاملًا');
   assert.match(adv, /\['cave', 'انزل الكهف \(علامته على الخريطة\) واجمع 4 ألماسات'/);
@@ -574,3 +574,23 @@ test('v-blockworld-party: مايك، هدايا، مسابقة بناء، ومه
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8'), /microphone=\(self\)/, 'الموقع يسمح بالمايك لصفحاته');
 });
 
+
+test('v-blockworld-rules: طلبات مزون — وضع اللعب والسرعة والموت، الطيران ثابت، النخلة تنقطع، فحم ونار، شخصيات', () => {
+  const play = read('shared/play.js'), vit = read('shared/vitals.js'), bag = read('shared/bag.js'), cave = read('shared/cave.js'), out = read('shared/outfits.js'), idx = read('index.html'), waha = read('styles/waha/game.js'), life = read('shared/life.js'), kit = read('shared/kit.js');
+  assert.match(play, /export const RULES = \{ mode: \['survival', 'creative'\], speed: \['normal', 'fast', 'slow'\], death: \['keep', 'drop', 'lose'\] \}/);
+  assert.match(play, /const vy = \(\(inp\.jump \? 1 : 0\) - \(inp\.down \? 1 : 0\)\) \* P\.flyRise;/, 'الطيران ما يتبع ميلان النظر');
+  assert.ok(!/Math\.sin\(st\.pitch\) \* speed/.test(play), 'المشي وأنت طاير ما يطيّحك');
+  assert.match(play, /downBtn\.textContent = 'نزول'/, 'زر نزول باللمس');
+  assert.match(play, /\* pace\(\)/, 'السرعة المختارة');
+  assert.match(vit, /if \(d <= 0 \|\| creative\(\)\) return;/, 'الإبداعي ما شي يضرّه');
+  assert.match(vit, /play\.put\(x, y, z, K\.CHEST\)/, 'الأغراض تطيح في صندوق مكان الموت');
+  assert.match(bag, /if \(cat\) cat\.hidden = !creative\(\);/, 'كل البلوكات للإبداعي فقط');
+  assert.match(cave, /vein\(veins\.coal, K\.ROCK_COAL, 16\);/);
+  assert.match(cave, /fire \? K\.FIRE : K\.TORCH/);
+  assert.match(waha, /BLOCKS\[PALM\] = \{ tiles: 'beam', kind: 'none', solid: true, pick: true \};/, 'جذع النخلة ينضرب');
+  assert.match(waha, /function fellPalm\(p\)/);
+  assert.ok((out.match(/free: true/g) || []).length >= 7, 'شخصيات متاحة من البداية');
+  assert.match(idx, /data-rule="mode"/); assert.match(idx, /op: 'peek'/);
+  assert.match(life, /function feed\(e, s\)/, 'نأكّل الحيوانات فتحبنا');
+  for (const n of ['فروة', 'ريش', 'لحم دجاج', 'سمكة', 'ربيان', 'فحم', 'طحالب']) assert.ok(kit.includes("'" + n + "'"), n);
+});
