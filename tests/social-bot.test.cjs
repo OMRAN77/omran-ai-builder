@@ -36,7 +36,7 @@ test('٣) العدد بصيغة عربيّة صحيحة والنصّ يحمل ا
   const c = buildCaption(ideas[0], 45);
   assert.match(c.ig, /45 ثانية/);
   assert.match(c.ig, /الرابط في البايو/);
-  assert.match(c.fb, /https:\/\/omran-ai-builder\.vercel\.app\/\?ref=fb/);
+  assert.match(c.fb, /https:\/\/omran-ai-builder\.vercel\.app\/\?src=facebook/);
   assert.ok(c.ig.includes('#OMAi'));
   assert.ok((c.ig.match(/#/g) || []).length <= 30, 'إنستقرام يقبل 30 وسمًا كحدّ أقصى');
 });
@@ -162,7 +162,7 @@ test('١٢) فكرة فيديو الترند: موقف خليجيّ قصير ب�
   assert.match(c.ig, /^🎬 الحلقة 2 من سوّها بـ OM Ai/);
   assert.match(c.ig, /دقيقة و24 ثانية/);
   assert.match(c.ig, /🎭 الموقف: أم راشد/);
-  assert.match(c.fb, /\?ref=fb/);
+  assert.match(c.fb, /\?src=facebook/);
   assert.ok((c.ig.match(/#/g) || []).length <= 30);
 });
 
@@ -283,7 +283,7 @@ test('٢٠) X وThreads (v-social-xthreads): X ≤٢٨٠ موزونة بلا ر�
     assert.match(c.x, /الرابط في البايو/);
     assert.ok((c.x.match(/#/g) || []).length <= 3);
     assert.ok(c.threads && m.threadsLen(c.threads) <= 500, 'Threads: ' + m.threadsLen(c.threads));
-    assert.match(c.threads, /https:\/\/omran-ai-builder\.vercel\.app\/\?ref=threads/);
+    assert.match(c.threads, /https:\/\/omran-ai-builder\.vercel\.app\/\?src=threads/);
     assert.equal((c.threads.match(/#/g) || []).length, 1, 'وسم واحد يصير موضوعًا في Threads');
   }
   assert.equal(m.xLen('مرحبا'), 5); assert.equal(m.xLen('🤯'), 2); assert.equal(m.threadsLen('🤯'), 4);
@@ -292,4 +292,21 @@ test('٢٠) X وThreads (v-social-xthreads): X ≤٢٨٠ موزونة بلا ر�
   assert.match(src, /fd\.append\('x_title', cap\.x\)/);
   assert.match(src, /fd\.append\('threads_title', cap\.threads\)/);
   assert.match(src, /=== 'accounts'\) return accountsCheck\(\)/, 'فحص بلا تكلفة من خانة idea');
+});
+
+test('٢١) v-social-reconnect: حساب يطلب إعادة ربط يُسمّى ويُكتب تحذيرًا في السجلّ بدل السقوط بصمت؛ وروابط فيسبوك وثريدز بـ?src= لا ?ref=', async () => {
+  const m = await load();
+  const sa = { instagram: {}, facebook: { reauth_required: true }, twitter: { reauth_required: true }, tiktok: {}, youtube: 'x' };
+  assert.deepEqual(m.reconnectNeeded(sa), ['facebook', 'x'], 'المفكوك فقط، وX يُقرأ من مفتاح twitter أيضًا');
+  assert.deepEqual(m.connectedPlatforms(sa), ['instagram', 'tiktok'], 'والموصول كما كان');
+  assert.deepEqual(m.reconnectNeeded({ facebook: {} }), []);
+  assert.deepEqual(m.reconnectNeeded(null), []);
+  const body = src.slice(src.indexOf('export async function resolvePlatforms'), src.indexOf('// ───────── حساب البوت'));
+  assert.match(body, /reconnectNeeded\(sa\)/);
+  assert.match(body, /gh\('warning', [^)]*إعادة ربط[^)]*off\.join/, 'تحذير Actions يسمّي الحسابات');
+  // ?ref= في رابط منشور يعدّه العدّاد «دعوة» (invite) لا مصدر منصّة — المصدر بـ?src=
+  assert.doesNotMatch(src, /\?ref=(fb|threads|facebook)/);
+  const mira = fs.readFileSync(path.join(ROOT, 'scripts', 'social-bot-mira.mjs'), 'utf8');
+  assert.doesNotMatch(mira, /\?ref=(fb|threads|facebook)/);
+  assert.match(mira, /\?src=facebook/);
 });

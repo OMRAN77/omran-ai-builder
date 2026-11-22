@@ -136,7 +136,7 @@ function fitLines(core, extras, cta, next, tail, max, len) {
 export function shortCaptions(top, cta, next, tags) {
   const lines = top.filter(Boolean), core = lines.slice(0, 2), extras = lines.slice(2);
   const x = fitLines(core, extras, cta + ' 👈 الرابط في البايو', next, tags.slice(0, 3).join(' '), 280, xLen);
-  const threads = fitLines(core, extras, cta + ' 👈 https://' + SITE + '/?ref=threads', next, tags[0] || '', 500, threadsLen);
+  const threads = fitLines(core, extras, cta + ' 👈 https://' + SITE + '/?src=threads', next, tags[0] || '', 500, threadsLen);
   return { x, threads };
 }
 
@@ -148,7 +148,7 @@ export function buildCaption(idea, secs, epN) {
   const top = [ep ? '🎬 ' + ep.full : '', head, idea.label ? '🔥 الفكرة من ترند اليوم: ' + idea.label : '', 'كتبت جملة وحدة… وOM Ai سوّى الباقي ✨'].filter(Boolean);
   const next = ep ? ['تابعنا… ' + epLabel(epN + 1).short + ' بعد يومين 👀'] : [];
   const ig = [...top, '', 'جرّب تسوّي موقعك ببلاش 👈 الرابط في البايو 🔗', ...next, '', tags].join('\n');
-  const fb = [...top, '', 'جرّب تسوّي موقعك ببلاش 👈 https://' + SITE + '/?ref=fb', ...next, '', tags].join('\n');
+  const fb = [...top, '', 'جرّب تسوّي موقعك ببلاش 👈 https://' + SITE + '/?src=facebook', ...next, '', tags].join('\n');
   return { ig, fb, head, ...shortCaptions(top, 'جرّب تسوّي موقعك ببلاش', next, ['#OMAi', '#ذكاء_اصطناعي', '#تصميم_مواقع']) };
 }
 
@@ -159,7 +159,7 @@ function captionOf(epN, kind, top, cta, tags) {
   const head = top[0];
   const lines = [ep ? '🎬 ' + ep.full : '', ...top].filter(Boolean);
   const next = ep ? ['تابعنا… ' + epLabel(epN + 1).short + ' بعد يومين 👀'] : [];
-  return { ig: [...lines, '', cta + ' 👈 الرابط في البايو 🔗', ...next, '', t].join('\n'), fb: [...lines, '', cta + ' 👈 https://' + SITE + '/?ref=fb', ...next, '', t].join('\n'), head,
+  return { ig: [...lines, '', cta + ' 👈 الرابط في البايو 🔗', ...next, '', t].join('\n'), fb: [...lines, '', cta + ' 👈 https://' + SITE + '/?src=facebook', ...next, '', t].join('\n'), head,
     ...shortCaptions(lines, cta, next, ['#OMAi', ...[...new Set(tags)].filter((x) => x !== '#OMAi')]) };
 }
 
@@ -465,6 +465,12 @@ export function connectedPlatforms(sa, list = AUTO_PLATFORMS) {
   const acc = (p) => (sa && (sa[p] || (p === 'x' ? sa.twitter : null))) || null;
   return list.filter((p) => { const a = acc(p); return !!a && typeof a === 'object' && !a.reauth_required; });
 }
+/* v-social-reconnect (٢٢ نوفمبر ٢٠٢٦): حساب موجود عند Upload-Post لكنّه يطلب إعادة ربط كان يسقط من القائمة بصمت —
+   فيسبوك بقي مفكوكًا والحلقات تنزل ناقصة بلا علم المالك. هذه تسمّيه، وresolvePlatforms يكتبه تحذيرًا في السجلّ. */
+export function reconnectNeeded(sa, list = AUTO_PLATFORMS) {
+  const acc = (p) => (sa && (sa[p] || (p === 'x' ? sa.twitter : null))) || null;
+  return list.filter((p) => { const a = acc(p); return !!a && typeof a === 'object' && !!a.reauth_required; });
+}
 export async function resolvePlatforms() {
   if (PLATFORMS_RAW !== 'auto') return PLATFORMS_RAW.split(',').map((s) => s.trim()).filter(Boolean);
   const fallback = ['instagram', 'facebook'];
@@ -475,6 +481,11 @@ export async function resolvePlatforms() {
   const sa = (prof && prof.social_accounts) || {};
   const on = connectedPlatforms(sa);
   log('connected: ' + (on.join(',') || 'none') + ' · accounts keys: ' + (Object.keys(sa).join(',') || 'none') + (r.ok ? '' : ' (users ' + r.status + ')'));
+  const off = reconnectNeeded(sa);
+  if (off.length) {
+    log('needs reconnect (skipped): ' + off.join(','));
+    gh('warning', 'حسابات تحتاج إعادة ربط في Upload-Post ولن يُنشر عليها: ' + off.join(', '));
+  }
   return on.length ? on : fallback;
 }
 
