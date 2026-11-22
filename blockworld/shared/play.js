@@ -54,9 +54,13 @@ export function createPlay(o) {
     flying: false, modal: false, xp: 0,
     pack: new Array(27).fill(null),                                  // the backpack: 27 places behind the hotbar
     gear: { head: null, chest: null, legs: null, feet: null, off: null },   // what is worn, and the other hand
-    kills: { animal: 0, monster: 0 }, eaten: 0, crafted: 0, opened: 0, flown: 0, swum: 0,   // counted for the achievements
+    kills: { animal: 0, monster: 0 }, eaten: 0, crafted: 0, opened: 0, flown: 0, swum: 0, walked: 0, slept: 0,   // counted for the achievements and quests
+    made: {}, put: {},                                                // how many of each thing were crafted / put down (by id)
+    third: false,                                                    // the view from behind the player (V)
   };
-  let itemOf = o.itemOf || null;                                     // id -> a fresh item object (the bag knows every item)
+  let itemOf = o.itemOf || null;
+  const ticks = [], firsts = [];                                     // shared modules hook in here: every frame, and before the place button does its usual thing
+  const net = { place: null, dig: null };                            // the multiplayer link listens here for what the player changes in the world                                     // id -> a fresh item object (the bag knows every item)
   const inp = { fx: 0, fz: 0, jump: false, dig: false, sprint: false, place: false, down: false };
   const sound = o.sound === false ? null : createSound();          // every world gets the same sounds; M mutes
   window.__GAME_SOUND = sound;
@@ -226,6 +230,7 @@ export function createPlay(o) {
     if (sound) sound.brk();
     collect(h.id);
     st.xp += 1;
+    if (net.dig) net.dig(h.x, h.y, h.z);
     if (o.onBreak) o.onBreak(h);
   }
   function digTick(dt) {
@@ -245,6 +250,7 @@ export function createPlay(o) {
   }
   function placeNow() {
     const h = st.hit, s = st.slots[st.sel];
+    for (const f of firsts) if (f(h)) return true;                     // someone to talk to stands under the crosshair
     // a door, a chest, a workbench: the button works it (hold Shift to build against it instead)
     if (h && o.onInteract && !keys.has('ShiftLeft') && !keys.has('ShiftRight') && o.onInteract(h)) return true;
     if (s && s.use) return o.onUse ? !!o.onUse(s, st.sel) : false;          // food, clothing: used, not placed
@@ -261,7 +267,8 @@ export function createPlay(o) {
       if (x + 1 > p.x - P.hw && x < p.x + P.hw && z + 1 > p.z - P.hw && z < p.z + P.hw && y + 1 > p.y && y < p.y + P.height) return false;
     }
     terrain.setBlock(x, y, z, s.id);
-    s.n--; st.placed++;
+    s.n--; st.placed++; st.put[s.id] = (st.put[s.id] || 0) + 1;
+    if (net.place) net.place(x, y, z, s.id, st.yaw);
     if (sound) sound.place();
     inventoryChanged();
     if (o.onPlace) o.onPlace(x, y, z, s.id);
@@ -283,6 +290,7 @@ export function createPlay(o) {
   /** While a panel (the bag) is open: the mouse is released and the player does not act. */
   function setModal(on) {
     st.modal = on;
+    if (typeof seatNote === 'function') seatNote();              // a note already up moves out of the panel's way
     keys.clear(); inp.dig = false; inp.place = false; inp.fx = inp.fz = 0; btn.jump = false; sprintLatch = false;
     if (on) { if (document.pointerLockElement === canvas) document.exitPointerLock(); } else if (!T) tryLock();
   }
@@ -309,6 +317,7 @@ export function createPlay(o) {
     if (!st.running) return;
     if (e.type === 'keydown') {
       if (e.code === 'KeyE' && !e.repeat) { if (sound) sound.ui(); if (o.onBag) o.onBag(); e.preventDefault(); return; }
+      if (e.code === 'KeyV' && !e.repeat && !st.modal) { st.third = !st.third; if (sound) sound.ui(); return; }
       if (e.code === 'KeyQ' && !e.repeat && o.onMenu) { if (sound) sound.ui(); o.onMenu(); e.preventDefault(); return; }
       if (e.code === 'KeyM' && !e.repeat && sound) { sound.setMuted(!sound.muted); notice(sound.muted ? 'الصوت مطفي.' : 'الصوت شغّال.', false, 1600); return; }
       if (st.modal) return;
@@ -424,6 +433,14 @@ export function createPlay(o) {
     camera.rotation.order = 'YXZ';
     camera.rotation.set(st.pitch, st.yaw, 0);
     camera.position.set(st.pos.x, st.pos.y + P.eye, st.pos.z);
+    if (st.third) {
+      // over the shoulder: back along the view, a little up and to the right, stopping short of any wall
+      const cp = Math.cos(st.pitch), dx = -Math.sin(st.yaw) * cp, dy = Math.sin(st.pitch), dz = -Math.cos(st.yaw) * cp, rx = Math.cos(st.yaw), rz = -Math.sin(st.yaw);
+      const ox = -dx * 3.6 + rx * 0.7, oy = -dy * 3.6 + 0.45, oz = -dz * 3.6 + rz * 0.7, e = camera.position;
+      let k = 1;
+      for (let i = 1; i <= 12; i++) { const t = i / 12; if (solid(Math.floor(e.x + ox * t), Math.floor(e.y + oy * t), Math.floor(e.z + oz * t))) { k = Math.max(0, (i - 1.5) / 12); break; } }
+      e.set(e.x + ox * k, e.y + oy * k, e.z + oz * k);
+    }
     camera.updateMatrixWorld(true);
   }
   /** Advance the game by dt seconds (no rendering). */
@@ -444,12 +461,14 @@ export function createPlay(o) {
     }
     if (st.flying) st.flown += dt;
     if (st.inWater) st.swum += dt;
+    if (st.onGround) st.walked += st.moving * dt;
     placeCamera();
     aim();
     digTick(dt);
     if (inp.place) { inp.place = false; placeNow(); }
     terrain.flush();
     if (o.onFrame) o.onFrame(st, dt);
+    for (const f of ticks) f(st, dt);
   }
   // Picture sharpness against speed. The resolution may drop when the device cannot keep up, but a blurry
   // picture is worse than a slightly slower one, so by default it only drops when the game falls under about
@@ -512,6 +531,7 @@ export function createPlay(o) {
   st.safeMode = false; st.pictureOk = false; st.contextLost = false; st.drawn = 0;
   let sync = null, syncAt = 0, gpuMs = 0, noteEl = null, noteTimer = 0;
   /** A short message over the game. keep = true: stays until replaced; otherwise it leaves after ms. */
+  const seatNote = () => { if (noteEl) { noteEl.style.top = st.modal ? 'auto' : '22%'; noteEl.style.bottom = st.modal ? '6px' : 'auto'; } };
   function notice(text, keep, ms = 9000) {
     if (!noteEl) {
       noteEl = document.createElement('div');
@@ -520,7 +540,7 @@ export function createPlay(o) {
       document.body.appendChild(noteEl);
     }
     // over an open panel (the bag, the world panel) the note sits at the bottom edge, where it hides the least; clicks pass through it
-    noteEl.style.top = st.modal ? 'auto' : '22%'; noteEl.style.bottom = st.modal ? '6px' : 'auto';
+    seatNote();
     noteEl.textContent = text; noteEl.hidden = false;
     clearTimeout(noteTimer);
     if (!keep) noteTimer = setTimeout(() => { noteEl.hidden = true; }, ms);
@@ -578,6 +598,29 @@ export function createPlay(o) {
   placeCamera();
   return {
     state: st, input: inp, tuning: P, res, isSolid, isLiquid, gpu, setSlot, setModal, setFlying, notice, sound, give, changed: inventoryChanged,
+    /** Call fn(state, dt) every frame, after the world's own onFrame. */
+    onTick(fn) { ticks.push(fn); },
+    /** Call fn(hit) when the place button is pressed, before anything else; returning true uses the press up. */
+    onUseFirst(fn) { firsts.push(fn); },
+    net,
+    /** What another player did, applied here without counting it as this player's own: a block put down, a block dug. */
+    remotePlace(x, y, z, id, yaw) {
+      if (!world.inb(x, y, z) || !blocks[id]) return;
+      terrain.setBlock(x, y, z, id);
+      const y0 = st.yaw; st.yaw = yaw;                               // the world asks the kit to lay beds and hang doors by the heading of whoever placed them
+      try { if (o.onPlace) o.onPlace(x, y, z, id); } finally { st.yaw = y0; }
+      aim();
+    },
+    remoteDig(x, y, z) {
+      if (!world.inb(x, y, z)) return;
+      const id = world.get(x, y, z);
+      if (!id) return;
+      terrain.setBlock(x, y, z, 0);
+      const up = world.get(x, y + 1, z);
+      if (up && kindOf(up) === 'cross') terrain.setBlock(x, y + 1, z, 0);
+      if (o.onBreak) o.onBreak({ x, y, z, id, nx: 0, ny: 1, nz: 0, remote: true });
+      aim();
+    },
     /** The bag tells the controller how to make an item from an id, so that what is dug can start a new pile. */
     set itemOf(f) { itemOf = f; }, get itemOf() { return itemOf; },
     start() {
@@ -641,7 +684,7 @@ export function createPlayPanel(o) {
   if (o.line) el.style.setProperty('--pp-line', o.line);
   const rows = o.touch
     ? [['العصا اليسار', 'المشي، وادفعها للآخر تركض'], ['اسحب على الشاشة', 'النظر'], ['زر الحفر', 'اضغط مطوّلًا لتكسر المكعب'], ['زر البناء', 'يضع المكعب، ويفتح الباب والصندوق'], ['زر القفز', 'قفز، ومرّتين تطير'], ['زر الحقيبة', 'كل المكعبات والأغراض']]
-    : [['W A S D', 'المشي'], ['W مرّتين', 'ركض'], ['الفأرة', 'النظر'], ['Space', 'قفز وسباحة'], ['Space مرّتين', 'طيران'], ['E', 'الحقيبة'], ['Q', 'الوقت والجو'], ['Esc', 'القائمة والإنجازات'], ['M', 'الصوت'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب، ويفتح الباب والصندوق'], ['1 – 9 أو العجلة', 'اختيار الخانة'], ['Esc', 'إيقاف مؤقت']];
+    : [['W A S D', 'المشي'], ['W مرّتين', 'ركض'], ['الفأرة', 'النظر'], ['Space', 'قفز وسباحة'], ['Space مرّتين', 'طيران'], ['E', 'الحقيبة والمهام'], ['V', 'شوف شكلك من ورا'], ['Q', 'الوقت والجو'], ['Esc', 'القائمة والإنجازات'], ['M', 'الصوت'], ['الزر الأيسر', 'اضغط مطوّلًا لتكسر المكعب'], ['الزر الأيمن', 'يضع المكعب، ويفتح الباب والصندوق'], ['1 – 9 أو العجلة', 'اختيار الخانة'], ['Esc', 'إيقاف مؤقت']];
   const h1 = document.createElement('h1'), p = document.createElement('p'), ul = document.createElement('ul'), b = document.createElement('button'), note = document.createElement('div');
   h1.textContent = o.title; p.textContent = o.tagline || '';
   for (const [k, v] of rows) { const li = document.createElement('li'), kb = document.createElement('b'), s = document.createElement('span'); kb.textContent = k; kb.dir = 'auto'; s.textContent = v; li.append(kb, s); ul.appendChild(li); }

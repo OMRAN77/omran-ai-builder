@@ -36,7 +36,7 @@ export function createCraft({ play, kit, mats }) {
   const tableNear = () => !!(kit && kit.tableNear && kit.tableNear(st.pos));
   function take(what, n) { for (const q of piles(idsOf(what))) { const k = Math.min(q.n, n); q.n -= k; n -= k; if (!n) break; } for (let i = 0; i < st.pack.length; i++) if (st.pack[i] && !st.pack[i].tool && !(st.pack[i].n > 0)) st.pack[i] = null; }
   return {
-    tableNear, count, mats, idsOf,
+    tableNear, count, mats, idsOf, take, nameOf,
     /** Every recipe with what it needs, what is at hand, and whether it can be made now. */
     list() {
       const near = tableNear();
@@ -54,7 +54,7 @@ export function createCraft({ play, kit, mats }) {
       for (const [what, n] of r.needs) take(what, n);
       const item = kitItem(r.out, r.n);
       if (!play.give(item)) { play.notice('حقيبتك مليانة.', false, 2600); }
-      st.crafted++;
+      st.crafted++; st.made[r.out] = (st.made[r.out] || 0) + r.n;
       if (play.sound) (play.sound.level || play.sound.ui)();
       play.changed();
       return true;

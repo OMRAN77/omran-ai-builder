@@ -584,7 +584,7 @@ async function startGame() {
   /** The crystal count of the goal is whatever the hotbar holds now (the player may have moved things around). */
   function showGoal(list) { const c = list.find((q) => q.id === B.CRYSTAL_C); if (c) hud.setGoal(Math.min(GOAL, c.n), GOAL); }
   const bag = createBag({
-    play, kit, shown: hud.shown, onMenu: () => { play.stop(); panel.show('pause'); },
+    play, kit, camera, world: 'kawkab', shown: hud.shown, onMenu: () => { play.stop(); panel.show('pause'); },
     mats: { wood: { ids: [B.HULL_W, B.CAP], name: 'لوح هيكل أو فطر' }, stone: { ids: [B.BASALT, B.SOIL], name: 'بازلت أو تربة' }, ore: { ids: [B.ORE, B.CRYSTAL_C], name: 'خام أو بلّور' } },
     groups: [{ title: 'عدّة كوكب', items: SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })) }, ...KIT_GROUPS],
     iconOf: (it) => (it.kit ? kitIcon(it.id) : hud.icon(it.icon)),

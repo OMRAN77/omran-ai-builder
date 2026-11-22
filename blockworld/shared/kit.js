@@ -285,7 +285,7 @@ export function createKit({ scene, world, terrain, lights = 2 }) {
   function unhang(k) { const d = doors.get(k); if (!d) return; scene.remove(d.group); doors.delete(k); }
   /** The lower cell of the door that (x, y, z) belongs to. */
   const doorBase = (x, y, z, id) => (KIT_BLOCKS[id].door === 2 ? y - 1 : y);
-  function toggleDoor(x, y, z, id) {
+  function toggleDoor(x, y, z, id, remote) {
     const by = doorBase(x, y, z, id), d = doors.get(key(x, by, z)), open = !KIT_BLOCKS[id].open;
     if (!open && play) {      // never shut a door on the player standing in it
       const p = play.state.pos, hw = play.tuning.hw;
@@ -295,14 +295,19 @@ export function createKit({ scene, world, terrain, lights = 2 }) {
     terrain.setBlock(x, by + 1, z, open ? K.DOOR_OPEN_TOP : K.DOOR_TOP);
     if (d) { d.open = open; d.group.rotation.y = d.group.userData.shut + (open ? d.group.userData.swing : 0); }
     if (play && play.sound) play.sound.place();
+    if (!remote && api.onDoor) api.onDoor(x, by, z);
     return true;
   }
   // chests: what each one holds
   const chests = new Map();                        // key -> Array(27) of items
   const chestAt = (x, y, z) => { const k = key(x, y, z); let c = chests.get(k); if (!c) { c = new Array(27).fill(null); chests.set(k, c); } return c; };
-  return {
+  const api = {
     /** The controller, once it exists: the carried light and the doors ask it where the player is. */
     attach(p) { play = p; },
+    scene, world, setBlock: (x, y, z, id) => terrain.setBlock(x, y, z, id),
+    /** Open or shut the door at a cell because another player did (no sound of its own beyond the click). */
+    remoteDoor(x, y, z) { const id = world.get(x, y, z); if (KIT_BLOCKS[id] && KIT_BLOCKS[id].door) toggleDoor(x, y, z, id, true); },
+    onDoor: null,
     doors, chests, chestAt, carry,
     /**
      * The place button on a block that does something. Returns null for any other block, 'door' when a door
@@ -314,6 +319,7 @@ export function createKit({ scene, world, terrain, lights = 2 }) {
       if (d.door) { toggleDoor(h.x, h.y, h.z, h.id); return 'door'; }
       if (h.id === K.CHEST) return { chest: chestAt(h.x, h.y, h.z) };
       if (h.id === K.TABLE) return { table: true };
+      if (d.mate) return { bed: true };
       return null;
     },
     /** Is a workbench within reach of the player? */
@@ -389,4 +395,5 @@ export function createKit({ scene, world, terrain, lights = 2 }) {
     },
     lights: pool, glow,
   };
+  return api;
 }

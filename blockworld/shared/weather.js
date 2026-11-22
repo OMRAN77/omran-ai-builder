@@ -141,5 +141,6 @@ export function createWeather(o) {
     rain.material.uniforms.uTime.value = clock % 3600;
     rain.material.uniforms.uAmt.value = amt;
   }
+  state.set = set;
   return { el, state, set, update, rain, open: () => show(true), close: () => show(false), toggle: () => show(!open), isOpen: () => open };
 }

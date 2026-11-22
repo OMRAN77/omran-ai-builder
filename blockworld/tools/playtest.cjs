@@ -476,7 +476,7 @@ function serve(root, prefix) {
       });
       check('ten hearts and ten portions show health and food by halves', s1.strip && s1.hearts.full === 5 && s1.hearts.half === 1 && s1.food.full === 3 && s1.food.half === 0, s1);
       check('food runs down, and with none left health falls', s1.drain > 1.5 && s1.starve < 48, { drain: s1.drain, hp: s1.starve });
-      check('ten points of experience make level 1', s1.level[0] === '0' && s1.level[1] === '1' && s1.level[2] === 1, s1.level);
+      check('ten points of experience make level 1', s1.level[0] === '0' && s1.level[1] === '1' && s1.level[2] >= 1, s1.level);      // quests and achievements may add points of their own on the same frame
       check('a worn piece of armour goes to its place and shows on the strip', s1.armor[0] === false && s1.armor[1] === true && s1.armor[2] > 0 && s1.armor[3] === true, s1.armor);
       const xp = await page.evaluate(() => window.__play.state.xp);
       check('breaking blocks and hunting earned experience', xp >= 10, { xp });
@@ -576,6 +576,101 @@ function serve(root, prefix) {
       await page.evaluate(() => { const p = window.__play; for (let i = 0; i < 200; i++) p.advance(1 / 60); p.tick(1); });
       const feats = await page.evaluate(() => { const l = window.__GAME_FEATS.list(); return { n: l.length, done: l.filter((q) => q.done).map((q) => q.key) }; });
       check('achievements are earned from what was done (digging, making, the chest)', feats.n >= 12 && ['dig1', 'craft', 'chest'].every((k) => feats.done.includes(k)), feats);
+    }
+    // ---- quests, secrets, the day's treasure, outfits, the trader, the view from behind (worlds whose bag has the adventure)
+    if (await page.evaluate(() => !!(window.__game && window.__game.bag && window.__game.bag.adv))) {
+      const tapOn = async (sel) => { const r = await (await page.$(sel)).boundingBox(); if (touch) await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2); else await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2); };
+      const a0 = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, adv = g.bag.adv, kitItem = (id, n) => { const it = g.bag.items.find((q) => q.id === id); return { ...it, n: n ?? it.n }; };
+        p.setFlying(false); s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); for (const k of Object.keys(g.vitals.values)) g.vitals.values[k] = 90;
+        const t = adv.treasure, out = { treasure: t, block: t ? g.world.get(t.x, t.y, t.z) : -1, far: t ? Math.hypot(t.x - s.pos.x, t.z - s.pos.z) : 0, quests: adv.quests().length, secrets: adv.secrets().length, trader: adv.traderAt, deals: adv.deals.length };
+        s.pack[20] = kitItem(g.bag.craft.mats.wood.ids[0], 8);                      // the first quest: eight wood
+        for (let i = 0; i < 90; i++) p.advance(1 / 60);
+        out.first = adv.quests()[0].done; out.xp = s.xp;
+        return out;
+      });
+      check('a treasure chest stands somewhere away from the start, and there are quests and a trader', !!a0.treasure && a0.block === 170 && a0.far >= 24 && a0.quests >= 8 && !!a0.trader && a0.deals === 7, a0);
+      check('doing what a quest asks completes it', a0.first === true, { first: a0.first, xp: a0.xp });
+      if (touch) { const b = await (await page.$('[data-act="bag"]')).boundingBox(); await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2); } else await page.keyboard.press('KeyE');
+      await page.waitForTimeout(450);
+      await tapOn('#bag [data-tab="quests"]');
+      await page.waitForTimeout(80);
+      const qp = await page.evaluate(() => { const cv = document.querySelector('#bag .tmap canvas'); const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let lit = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 60) lit++; return { map: lit / (d.length / 4), items: document.querySelectorAll('#bag .quests li').length, looks: document.querySelectorAll('#bag .look').length, locked: document.querySelectorAll('#bag .look.locked').length }; });
+      check('the quests page shows the map, the quests and the outfits', qp.map > 0.9 && qp.items >= 9 && qp.looks >= 12 && qp.locked >= 10, qp);
+      await page.evaluate(() => window.__play.tick(1));
+      await shot('14-quests');
+      await tapOn('#bag .x');
+      await page.waitForTimeout(120);
+      // find the treasure: go to it, open it
+      const tr = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, adv = g.bag.adv, t = adv.treasure;
+        s.pos.set(t.x + 0.5, t.y, t.z + 2.2); s.vel.set(0, 0, 0); s.yaw = 0; s.pitch = -0.35; p.tick(3);
+        const hit = s.hit && { x: s.hit.x, y: s.hit.y, z: s.hit.z, id: s.hit.id };
+        const used = p.placeNow();
+        return { hit, used, foundToday: adv.foundToday, found: adv.found, modal: s.modal, gold: (g.kit.chestAt(t.x, t.y, t.z)[0] || {}).id };
+      });
+      await page.waitForTimeout(450);
+      await page.evaluate(() => window.__play.tick(1));
+      await shot('15-treasure');
+      check('the chest of the day is found by going to it and opening it', !!tr.hit && tr.hit.id === 170 && tr.used === true && tr.foundToday === true && tr.found === 1 && tr.modal === true && tr.gold === 140, tr);
+      await tapOn('#bag .x');
+      await page.waitForTimeout(120);
+      // a secret: the top of the world; its rare outfit is put on
+      const sec = await page.evaluate(() => { const g = window.__game, p = g.play, s = p.state; p.setFlying(true); s.pos.y = g.world.sy - 8; s.vel.set(0, 0, 0); for (let i = 0; i < 60; i++) { s.pos.y = g.world.sy - 8; p.advance(1 / 60); } return { secrets: g.bag.adv.secrets().map((q) => q.key) }; });
+      await page.waitForTimeout(2600);
+      const look = await page.evaluate(() => { const g = window.__game, p = g.play, s = p.state; p.setFlying(false); s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); s.yaw = g.vitals.spawn.yaw; s.pitch = 0; g.vitals.values.hp = 100; p.tick(3); return { current: g.bag.adv.wardrobe.current, owned: [...g.bag.adv.wardrobe.owned] }; });
+      check('a secret is found by doing it, and gives a rare outfit that is put on', sec.secrets.includes('sky') && look.owned.includes('pilot') && look.current !== 'explorer', { sec, look });      // (finding the treasure is a secret too, with an outfit of its own)
+      // the view from behind shows the figure and hides the hand
+      const third = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, cam = g.camera;
+        s.third = true; p.tick(2);
+        let handShown = 0; cam.traverse((o) => { if (o !== cam && o.isMesh && o.layers.test(cam.layers) && o.visible) handShown++; });
+        const out = { figure: g.bag.adv.me.group.visible, handShown };
+        return out;
+      });
+      await shot('16-behind');
+      const first = await page.evaluate(() => { const g = window.__game, p = g.play, s = p.state; s.third = false; p.tick(2); return { figure: g.bag.adv.me.group.visible }; });
+      check('V shows the player from behind in the outfit, without the first-person hand', third.figure === true && third.handShown === 0 && first.figure === false, { third, first });
+      // the trader: stand in front, press the place button, make a deal
+      const deal = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, adv = g.bag.adv, t = adv.traderAt, kitItem = (id, n) => { const it = g.bag.items.find((q) => q.id === id); return { ...it, n: n ?? it.n }; };
+        // stand a few steps away on whatever ground is there, then look at the trader's chest
+        s.pos.set(t.x, t.y + 1.5, t.z + 2.6); s.vel.set(0, 0, 0); for (let i = 0; i < 60; i++) p.advance(1 / 60);
+        const ex = s.pos.x, ey = s.pos.y + p.tuning.eye, ez = s.pos.z;
+        s.yaw = Math.atan2(-(t.x - ex), -(t.z - ez)); s.pitch = Math.atan2(t.y + 1.05 - ey, Math.hypot(t.x - ex, t.z - ez)); p.tick(3);
+        const near = adv.traderNear;
+        s.pack[21] = kitItem(140, 9); s.pack[22] = kitItem(141, 4);
+        const used = p.placeNow();
+        return { near, used, modal: s.modal, tab: g.bag.tab };
+      });
+      await page.waitForTimeout(450);
+      const offers = await page.evaluate(() => document.querySelectorAll('#bag [data-deal]').length);
+      await tapOn('#bag [data-deal="6"]');                      // the trader's cloak, for four diamonds
+      await page.evaluate(() => window.__play.tick(1));
+      await shot('17-trade');
+      const bought = await page.evaluate(() => { const g = window.__game, s = g.play.state; return { cloak: g.bag.adv.wardrobe.owned.has('merchant'), diamonds: g.bag.craft.count(141), traded: s.traded || 0 }; });
+      check('the trader is spoken to with the place button, and a deal changes hands', deal.near === true && deal.used === true && deal.modal === true && deal.tab === 'trade' && offers === 7 && bought.cloak === true && bought.diamonds === 0 && bought.traded === 1, { deal, offers, bought });
+      await tapOn('#bag .x');
+      await page.waitForTimeout(120);
+      await page.evaluate(() => { const g = window.__game, p = g.play, s = p.state, t = g.bag.adv.traderAt; s.pos.set(t.x + 1.2, t.y, t.z + 3.4); s.yaw = 0.35; s.pitch = -0.05; p.tick(2); });
+      await shot('18-trader');
+      // a bed at night: sleep till morning
+      const slept = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state;
+        if (!g.weather) return { skip: true };
+        s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); p.tick(2);
+        g.weather.set('night', false);
+        const day = g.bag.interact({ x: 0, y: 0, z: 0, id: 160 });
+        const t = window.__GAME_SKY.time;
+        g.weather.set(g.weather.state.time === 'morning' ? (window.__GAME_SKY.time) : 'morning', false);
+        g.weather.set('night', false);
+        const used = g.bag.interact({ x: 0, y: 0, z: 0, id: 160 });
+        const after = window.__GAME_SKY.time;
+        g.weather.set('morning', false);
+        const byDay = g.bag.interact({ x: 0, y: 0, z: 0, id: 160 });
+        return { day, t, used, after, byDay, slept: s.slept };
+      });
+      if (!slept.skip) check('a bed at night sleeps the player through to the morning; by day it is just a block', slept.used === true && slept.after === 'morning' && slept.byDay === false && slept.slept >= 1, slept);
     }
     // ---- the world panel (worlds that have it): Q opens it; the time of day and the rain change the picture
     if (await page.evaluate(() => !!(window.__game && window.__game.weather))) {

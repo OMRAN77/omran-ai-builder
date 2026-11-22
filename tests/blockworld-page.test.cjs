@@ -346,7 +346,7 @@ test('v-blockworld-inv: حقيبة بثلاث صفحات، ٢٧ خانة ولب�
   for (const k of WORLDS) {
     const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
     assert.match(src, /onInteract: \(h\) => bag\.interact\(h\),/, k);
-    assert.match(src, /play, kit, shown: [a-z.]+, onMenu: \(\) => \{ play\.stop\(\); panel\.show\('pause'\); \},/, k);
+    assert.match(src, new RegExp("play, kit, camera, world: '" + k + "', shown: [a-z.]+, onMenu: \\(\\) => \\{ play\\.stop\\(\\); panel\\.show\\('pause'\\); \\},"), k);
     assert.match(src, /mats: \{ wood: \{ ids: \[/, k);
     assert.ok(!/it\.weapon\) \? it\.id/.test(src), k + ': اليد تتبع نموذج الأداة لا السيف وحده');
   }
@@ -355,5 +355,37 @@ test('v-blockworld-inv: حقيبة بثلاث صفحات، ٢٧ خانة ولب�
   assert.match(read('styles/dhalam/main.js'), /solid === false\)/, 'ظلام: الباب المفتوح يُعبَر');
   assert.match(read('styles/waha/game.js'), /BLOCKS\[id\]\.solid != null \? BLOCKS\[id\]\.solid : built\(id\)/);
   assert.ok(!/creeper|enderman|minecraft|ماين ?كرافت/i.test(bag + kit + craft + feats), 'لا أسماء منقولة من لعبة أخرى');
+});
+
+test('v-blockworld-adv: مهام ظاهرة وسرّيّة، كنز يتغيّر كلّ يوم، ملابس، تاجر، ومنظور من الخلف', () => {
+  const adv = read('shared/adventure.js'), outfits = read('shared/outfits.js'), avatar = read('shared/avatar.js');
+  const bag = read('shared/bag.js'), play = read('shared/play.js'), kit = read('shared/kit.js');
+  assert.match(bag, /\['quests', 'المهام'\]/, 'صفحة رابعة في الحقيبة');
+  assert.match(bag, /createAdventure\(\{ play, kit, craft, camera: o\.camera, world: o\.world \}\)/);
+  // الكنز: بذرته اليوم والعالم، بعيد عن البداية، ويُحسب مرّة في اليوم
+  assert.match(adv, /rng\(hash\(worldKey \+ '\|' \+ today\)\)/);
+  assert.match(adv, /Math\.hypot\(x - spawn\.x, z - spawn\.z\) < 24\) continue;/);
+  assert.match(adv, /save\(foundKey, today\)/);
+  // المهام: الظاهرة بالترتيب، والسرّيّة لا تُكتب حتّى تُكتشف
+  assert.ok((adv.match(/^  \['[a-z0-9]+', '/gm) || []).length >= 15, 'تسع مهامّ وسبع أسرار');
+  assert.match(adv, /secrets: \(\) => SECRETS\.filter\(\(q\) => done\.has\('s:' \+ q\[0\]\)\)/, 'السرّيّة تظهر بعد اكتشافها فقط');
+  assert.ok(adv.includes('ما تنكتب هني لين تلقاها بروحك'));
+  // الملابس: تُمنح فتُلبس فورًا وتُحفظ
+  assert.ok((outfits.match(/\{ key: '/g) || []).length >= 12);
+  assert.match(outfits, /owned\.add\(key\); current = key; keep\(\);/);
+  assert.match(avatar, /export function makeAvatar\(\)/);
+  // المنظور من الخلف: الكاميرا ترجع وتقف قبل الجدار، وما على الكاميرا يُخفى بالطبقات لا بـvisible
+  assert.match(play, /e\.code === 'KeyV' && !e\.repeat && !st\.modal/);
+  assert.match(play, /if \(st\.third\) \{/);
+  assert.match(adv, /o\.userData\.bwMask = o\.layers\.mask; o\.layers\.set\(30\);/, 'لا يُمسّ visible الذي تديره العوالم');
+  // التاجر: زرّ البناء أمامه يفتح صفحته، وعباءته بأربع ألماسات
+  assert.match(adv, /play\.onUseFirst\(\(\) => \{ if \(!tNear \|\| !api\.onTrade\) return false; api\.onTrade\(\); return true; \}\);/);
+  assert.match(adv, /out\.push\(\[K\.DIAMOND, 4, 'outfit:merchant', 1\]\)/);
+  // السرير: في الليل نوم للصباح، وفي النهار مكعب عاديّ
+  assert.match(kit, /if \(d\.mate\) return \{ bed: true \};/);
+  assert.match(bag, /if \(r\.bed\) return adv \? adv\.sleep\(\) : false;/);
+  // الإشعار ينتقل حين تُفتح لوحة فوقه
+  assert.match(play, /if \(typeof seatNote === 'function'\) seatNote\(\);/);
+  assert.ok(!/[٠-٩]/.test(adv + outfits), 'أرقام لاتينيّة كباقي الواجهة');
 });
 

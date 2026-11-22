@@ -455,7 +455,7 @@ export async function startGame(ctx) {
   // the bag (E, or its button on a phone): this world's own things first, then the building kit
   const KUFI = "'Reem Kufi', 'Tajawal', sans-serif", BODY = "'Tajawal', sans-serif";
   const bag = createBag({
-    play, kit, shown: hud.shown, onMenu: () => { play.stop(); panel.show('pause'); },
+    play, kit, camera, world: 'waha', shown: hud.shown, onMenu: () => { play.stop(); panel.show('pause'); },
     mats: { wood: { ids: [B.WOOD], name: 'خشب' }, stone: { ids: [B.ROCK_A, B.BRICK], name: 'حجر أو طوب' }, ore: { ids: [B.SAND], name: 'رمل (يصفّى منه الذهب)' } },
     groups: [{ title: 'عدّة الواحة', items: ownItems() }, ...KIT_GROUPS],
     iconOf: hud.icon,

@@ -1029,7 +1029,7 @@ async function startGame() {
   });
   // the bag (E, or its button on a phone): this world's own things first, then the shared building kit
   const bag = createBag({
-    play, kit, shown: slots.length, onMenu: () => { play.stop(); panel.show('pause'); },
+    play, kit, camera, world: 'dhalam', shown: slots.length, onMenu: () => { play.stop(); panel.show('pause'); },
     mats: { wood: { ids: [B.TRUNK, B.PLANKS], name: 'خشب' }, stone: { ids: [B.ROCK], name: 'حجر' }, ore: { ids: [], name: 'خام معدن' } },
     groups: [{ title: 'عدّة ظلام', items: SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })) }, ...KIT_GROUPS],
     iconOf: (it) => (it.kit ? kitIcon(it.id) : hud.icon(it.icon)),
