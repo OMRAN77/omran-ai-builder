@@ -10,7 +10,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const G = ROOT;      // اللعبة هي المشروع كلّه
-const WORLDS = ['kawkab', 'waha', 'dhalam'];
+const WORLDS = ['kawkab', 'waha', 'dhalam', 'barari'];
 const read = (rel) => fs.readFileSync(path.join(G, rel), 'utf8');
 const exists = (rel) => fs.existsSync(path.join(G, rel)) && fs.statSync(path.join(G, rel)).isFile();
 
@@ -239,7 +239,7 @@ test('v-blockworld-vitals: الصحّة وحاجة كلّ عالم أرقام ح
   for (const how of ["'fire'", "'water'", "'home'", "'rest'"]) assert.ok(vit.includes('n.how === ' + how), 'قاعدة: ' + how);
   assert.match(vit, /fallV < -15/, 'السقوط الطويل يؤذي');
   assert.match(vit, /if \(v\.hp <= 0\) die\(\);/);
-  const need = { kawkab: ["key: 'o2'", "key: 'pw'"], waha: ["key: 'wt'"], dhalam: ["key: 'warm'"] };
+  const need = { kawkab: ["key: 'o2'", "key: 'pw'"], waha: ["key: 'wt'"], dhalam: ["key: 'warm'"], barari: ["key: 'water'", "key: 'warm'"] };
   for (const k of WORLDS) {
     const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
     assert.match(src, /vitals = createVitals\(/, k);
@@ -261,7 +261,7 @@ test('v-blockworld-life: حيوانات تُصاد ووحوش تهاجم، بم�
   assert.match(play, /if \(st\.noDig\)/);
   assert.match(play, /if \(s && s\.use\) return o\.onUse/);
   for (const name of ['لحم', 'سيف ألماس', 'صدرية']) assert.ok(kit.includes(name), name);
-  const want = { kawkab: ['الحمّال', 'الزاحف', 'الطيف'], waha: ['المها', 'غول الرمال', 'عقرب الصخر'], dhalam: ['الوعل', 'المتربّص', 'ذئب العظم'] };
+  const want = { kawkab: ['الحمّال', 'الزاحف', 'الطيف'], waha: ['المها', 'غول الرمال', 'عقرب الصخر'], dhalam: ['الوعل', 'المتربّص', 'ذئب العظم'], barari: ['عنز', 'دياية', 'دب', 'العاصوف', 'الزمهرير'] };
   for (const k of WORLDS) {
     const src = ['main.js', 'game.js'].filter((n) => exists(`styles/${k}/${n}`)).map((n) => read(`styles/${k}/${n}`)).join('\n');
     assert.match(src, /life = createLife\(/, k);

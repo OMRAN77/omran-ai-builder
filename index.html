@@ -39,7 +39,7 @@
   #menu { box-sizing: border-box; max-width: 1080px; margin: 0 auto; padding: max(28px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(30px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); }
   #menu h1 { text-wrap: balance; margin: 0; font-size: 34px; font-weight: 700; line-height: 1.25; }
   #menu .lead { margin: 6px 0 22px; font-size: 16px; line-height: 1.7; color: var(--muted); }
-  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
   .card { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; background: var(--panel); border: 1px solid var(--line); }
   .card img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; background: #0c1017; }
   .card .body { display: flex; flex-direction: column; flex: 1; gap: 8px; padding: 14px 16px 16px; }
@@ -67,7 +67,8 @@
   .join .msg { min-height: 20px; margin: 8px 0 0; font-size: 13px; color: #ffb4a6; }
   .card.barari { --acc: #9ee6a8; }
   @media (max-width: 820px) { .cards { grid-template-columns: 1fr; } #menu h1 { font-size: 28px; } .setup { grid-template-columns: 1fr; } }
-  @media (max-width: 820px) and (orientation: landscape) { .setup { grid-template-columns: 1fr 1fr; gap: 10px; } .row button { min-height: 34px; padding: 3px 10px; font-size: 13px; } .row > span { min-width: 64px; font-size: 13px; } .rules, .join { padding: 8px 12px 10px; } .rules h2, .join h2 { font-size: 15px; margin-bottom: 4px; } .row { margin: 3px 0; } .row small, .join p { display: none; } .cards { grid-template-columns: repeat(3, 1fr); gap: 10px; } .card p { display: none; } .card h2 { font-size: 18px; } #menu { padding: 12px 14px 16px; } #menu .lead { margin-bottom: 10px; font-size: 14px; } .card .body { padding: 8px 10px 10px; } }
+  @media (max-width: 1100px) and (min-width: 821px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 820px) and (orientation: landscape) { .setup { grid-template-columns: 1fr 1fr; gap: 10px; } .row button { min-height: 34px; padding: 3px 10px; font-size: 13px; } .row > span { min-width: 64px; font-size: 13px; } .rules, .join { padding: 8px 12px 10px; } .rules h2, .join h2 { font-size: 15px; margin-bottom: 4px; } .row { margin: 3px 0; } .row small, .join p { display: none; } .cards { grid-template-columns: repeat(4, 1fr); gap: 8px; } .card p { display: none; } .card h2 { font-size: 18px; } #menu { padding: 12px 14px 16px; } #menu .lead { margin-bottom: 10px; font-size: 14px; } .card .body { padding: 8px 10px 10px; } }
 </style>
 </head>
 <body>
@@ -92,6 +93,7 @@
   <section class="cards">
     <article class="card kawkab"><img src="./previews/kawkab.webp" alt="منظر عالم كوكب" width="800" height="450"><div class="body"><h2>كوكب</h2><p>كوكب غريب بنباتات مضيئة وبلّورات وقاعدة فضائية. تحفر بالمثقاب الليزري ويرافقك المسّاح الآلي.</p><button type="button" data-world="kawkab">العب</button></div></article>
     <article class="card waha"><img src="./previews/waha.webp" alt="منظر عالم واحة" width="800" height="450"><div class="body"><h2>واحة</h2><p>صحراء الجزيرة وقت الغروب: كثبان وواحة نخيل وحصن طين. تحفر بالمعول وتبني بالطوب.</p><button type="button" data-world="waha">العب</button></div></article>
+    <article class="card barari"><img src="./previews/barari.webp" alt="منظر عالم البراري" width="800" height="450"><div class="body"><h2>البراري</h2><p>بر وغابة وثلج على البحر: كهوف فيها فحم وذهب وألماس، نخل وأشجار تقطعها، عنز ودياي ودببة، وسمك وأخطبوط في البحر.</p><button type="button" data-world="barari">العب</button></div></article>
     <article class="card dhalam"><img src="./previews/dhalam.webp" alt="منظر عالم ظلام" width="800" height="450"><div class="body"><h2>ظلام</h2><p>مرتفعات باردة وغابة صنوبر وأطلال قلعة. مأواك هو النور الوحيد في الضباب.</p><button type="button" data-world="dhalam">العب</button></div></article>
   </section>
   <p class="foot">عالمك ينحفظ في هذا المتصفح وتكمل من وين وقفت. تقدر تغيّر هذي الخيارات بعدين من القائمة (الإعدادات). على الجوال العب والجهاز بالعرض.</p>
@@ -100,7 +102,7 @@
 <script type="module">
   // World picker + loader. Each world keeps its own page under styles/<key>/; the picker adopts that
   // page's styles and markup into this document and runs its main module in game mode.
-  const READY = ["kawkab","waha","dhalam"];
+  const READY = ["kawkab","waha","dhalam","barari"];
   const PAGE_JSON = false;
   const NAMES = { kawkab: 'كوكب', waha: 'واحة', dhalam: 'ظلام', barari: 'البراري' };
   // ---- the rules: the same keys the game reads (bw-rules, bw-diff)

@@ -2,12 +2,13 @@
   "name": "blockworld",
   "private": true,
   "version": "1.0.0",
-  "description": "عالم المكعبات — لعبة مكعبات أصليّة بثلاثة عوالم (كوكب، واحة، ظلام)",
+  "description": "عالم المكعبات — لعبة مكعبات أصليّة بأربعة عوالم (كوكب، واحة، ظلام، البراري)",
   "scripts": {
     "test": "node tests/page.test.cjs && node tests/play-room.test.cjs && node tests/feedback.test.cjs",
     "play:desktop": "node tools/playtest.cjs --page index.html --pick 'button[data-world=\"kawkab\"]' --strict 1",
     "play:touch": "node tools/playtest.cjs --page index.html --pick 'button[data-world=\"kawkab\"]' --device 'iPhone 14 Pro landscape' --strict 1",
-    "play:together": "node tools/nettest.cjs --page index.html --pick 'button[data-world=\"kawkab\"]' --world kawkab --strict 1"
+    "play:together": "node tools/nettest.cjs --page index.html --pick 'button[data-world=\"kawkab\"]' --world kawkab --strict 1",
+    "play:barari": "node tools/playtest.cjs --page index.html --pick 'button[data-world=\"barari\"]' --strict 1"
   },
   "engines": {
     "node": ">=18"
