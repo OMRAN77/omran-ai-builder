@@ -26,9 +26,11 @@ async function readUser(username, o) {
 }
 
 /** عدد فيديوهات الفترة الحاليّة لهذا الحساب: ٠ لغير المشترك أو المنتهي. */
+// v-lock-subs (srv-money-4): الفترة الفعليّة (tier.chatPeriod) — بعد انتهاء الأعلى تسري الأدنى المدفوعة تحتها بعددها وعدّاد فترتها
+const periodOf = (user, now) => require('./tier.js').chatPeriod(user, now);
 function allowanceOf(user, now) {
-  if (!require('./tier.js').planActive(user, now)) return 0;
-  return PLAN_VIDEOS[String(user.plan || '').toLowerCase()] || 0;
+  const cp = periodOf(user, now);
+  return cp ? (PLAN_VIDEOS[cp.plan] || 0) : 0;
 }
 
 /** { total, used, left } للفترة الحاليّة، أو null إن لا صلاحيّة. */
@@ -39,7 +41,7 @@ async function planVideoStatus(username, opts) {
   const total = allowanceOf(user, o.now);
   if (!total) return null;
   let used = 0;
-  try { used = Math.max(0, Number(await kvGetRaw(usedKey(username, user.planUpdatedAt))) || 0); } catch (e) { used = 0; }
+  try { used = Math.max(0, Number(await kvGetRaw(usedKey(username, periodOf(user, o.now).at))) || 0); } catch (e) { used = 0; }
   return { total, used: Math.min(used, total), left: Math.max(0, total - used) };
 }
 
@@ -70,7 +72,7 @@ async function trySpendPlanVideo(username, pts, opts) {
   const user = await readUser(username, o);
   const total = allowanceOf(user, o.now);
   if (!total) return null;
-  const key = usedKey(username, user.planUpdatedAt);
+  const key = usedKey(username, periodOf(user, o.now).at);
   let used;
   try { used = Number(await kvIncrBy(key, 1)); } catch (e) { return null; }
   if (!(used >= 1 && used <= total)) {

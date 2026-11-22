@@ -18,7 +18,8 @@ const REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 // characters never need extra escaping.
 async function command(args, strict) {
   if (!REST_URL || !REST_TOKEN) {
-    throw new Error('Server is missing UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN');
+    // v-lock-vid-r: رمز ثابت يميّز «لا تخزين أصلًا» (لا تذاكر فيديو ولا علامات تُحمى) عن عطل عابر — الرسالة كما هي
+    throw Object.assign(new Error('Server is missing UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN'), { code: 'kv_unconfigured' });
   }
   const res = await fetch(REST_URL, {
     method: 'POST',
@@ -64,11 +65,14 @@ async function kvPutJSON(key, obj) {
   await command(['SET', key, JSON.stringify(obj)]);
 }
 
-// DEL key
-async function kvDel(key) {
+// DEL key — أفضل جهد يبتلع فشله. v-lock-credit (المراجعة المعاكسة الثانية): `{ strict: true }` يرميه لمن يتوقّف عليه شيء
+// (فكّ حجز دفعة لم تُشحن: بقاؤه يجعل كلّ إعادة «سبق الشحن»).
+async function kvDel(key, opts) {
   try {
     await command(['DEL', key]);
-  } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/kv:71');
+  } catch (e) {
+    if (opts && opts.strict) throw e;
+    typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/kv:71');
     // best-effort
   }
 }
@@ -122,17 +126,21 @@ async function kvDecrBy(key, amount) {
 }
 
 /** SET only if the key does not exist. Returns true when this call created it. */
-async function kvSetIfAbsent(key, value, ttlSec) {
+// v-lock-r2 (money-invariants-7): `{ strict: true }` — ردّ 200 لا يُقرأ يرمي بدل false «مشغول» (حجز دفعة: false كاذبة تُجيب «سبق الشحن»
+// والحجز ربّما كُتب لنا). بلا الخيار كما كان.
+async function kvSetIfAbsent(key, value, ttlSec, opts) {
   // ‏TTL داخل نفس الأمر (NX EX) لا EXPIRE منفصل: انهيار بين الخطوتين كان
   // سيترك قفلًا أبديًا يعطّل الميزة المعتمدة عليه بصمت.
   const cmd = ['SET', key, String(value), 'NX'];
   if (ttlSec) cmd.push('EX', String(Math.max(1, Math.trunc(ttlSec))));
-  const res = await command(cmd);
+  const res = await command(cmd, !!(opts && opts.strict));
   return res === 'OK';
 }
 
-async function kvGetRaw(key) {
-  return await command(['GET', key]);
+// v-lock-credit (المراجعة المعاكسة الثانية): `{ strict: true }` كـkvGetJSON — ردّ 200 لا يُقرأ يرمي بدل أن يعود null «غير موجود»
+// (علامة إكمال دفعة أو حجزها: null كاذبة تُجيب «سبق الشحن» 200 فتقف الإعادات والباقة لم تُسلَّم). بلا الخيار كما كان.
+async function kvGetRaw(key, opts) {
+  return await command(['GET', key], !!(opts && opts.strict));
 }
 
 // SET a plain value, optionally with an expiry. Session markers must have a

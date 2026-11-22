@@ -135,7 +135,7 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
   const pp = read('api/_lib/paypal-order.js');
   assert.match(pp, /custom_id: String\(body\.plan\)/);
   assert.match(pp, /!PLANS\[p\]\.media\)/, 'مطابقة المبلغ وحدها لا تمنح اشتراك صور/فيديو');
-  assert.match(pp, /grantPlanToUser\(username, m\.plan, 'lastPaypalOrderId', order\.id\)/); // v-paypal-honest: المنح نفسه (grantMedia داخله)
+  assert.match(pp, /grantPlanToUser\(username, m\.plan, 'lastPaypalOrderId', order\.id(?:, \{ refs: \[m\.capture\], amount: m\.cents, currency: 'usd' \})?\)/); // v-paypal-honest: المنح نفسه (grantMedia داخله)
   assert.match(read('api/webhook.js'), /PLANS\[md\.plan\]/);
   const html = read('js/partials-settings.js');
   const box = html.slice(html.indexOf('id="mediaPlansBox"'), html.indexOf('pricingPointsTitle'));
@@ -152,7 +152,7 @@ test('٦. PayPal والويب هوك والواجهة: الخطّة في custom_
     assert.ok(keys.every((k) => s.includes('"' + k + '"')), l);
   }
   assert.ok(read('index.html').includes('/js/partials-settings.js?v=715'));
-  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=806'"));
+  assert.ok(read('js/app-04-i18n-state.js').includes(".js?v=807'"));
 });
 
 test('٧. الجودة: «عاديّة» افتراضيًّا بنصف الرصيد على المحرّك السريع، و«جودة عالية» في الطلب أو الإعداد = عالية', async () => {

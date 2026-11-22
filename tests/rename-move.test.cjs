@@ -95,7 +95,7 @@ test('٣. رصيد اشتراك الوسائط وفيديوهات الباقة �
 
 test('٤. الأسلاك: النقل بعد كتابة السجلّين، وفشله يُسجَّل ولا يُسقط تغيير الاسم', () => {
   const src = require('node:fs').readFileSync(path.join(root, 'api/_lib/auth.js'), 'utf8');
-  assert.match(src, /await putUser\(oldKey, \{ deleted: true, movedTo: newKey \}\);\n\s+try \{ await moveLiveCounters\(oldKey, newKey, movedUser\); \} catch \(e\) \{ logError\('auth:rename-move'/);
+  assert.match(src, /await putUser\(oldKey, \{ deleted: true, movedTo: newKey \}\);[^\n]*\n\s+try \{ await moveLiveCounters\(oldKey, newKey, movedUser\); \} catch \(e\) \{ logError\('auth:rename-move'/);
   assert.match(src, /movedUser\.prevUsernames = /);
 });
 

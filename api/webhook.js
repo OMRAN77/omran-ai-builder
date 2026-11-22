@@ -7,14 +7,32 @@
 // بأحداث checkout.session.completed وinvoice.paid، وينسخ «Signing secret»
 // (يبدأ بـ whsec_) إلى متغير بيئة STRIPE_WEBHOOK_SECRET في Vercel.
 // v-pay-refund: وأحداث charge.refunded وcharge.dispute.created (سحب ما منحته الدفعة — pay-refund.js) وcustomer.subscription.deleted
-// (لا سحب: الفترة المدفوعة تكمل). وPayPal على ‎/api/webhook?src=paypal‎ بأحداث PAYMENT.CAPTURE.REFUNDED وPAYMENT.CAPTURE.REVERSED
+// (لا سحب: الفترة المدفوعة تكمل). v-lock-gpay: وpayment_intent.succeeded (شحن Apple Pay / Google Pay إن تعثّر تحقّق المتصفّح). وPayPal على ‎/api/webhook?src=paypal‎ بأحداث PAYMENT.CAPTURE.REFUNDED وPAYMENT.CAPTURE.REVERSED
 // وCUSTOMER.DISPUTE.CREATED، ومعرّف ذلك الويب هوك في PAYPAL_WEBHOOK_ID (بلا المعرّف = رفض).
+// v-lock-credit: وPAYMENT.CAPTURE.COMPLETED (شحن التقاطٍ كان PENDING حين يكتمل — بلا متصفّح الدافع).
 //
 // التحقق من التوقيع يدويًا بـ HMAC (بلا مكتبة stripe — المشروع كله fetch خام)،
 // والمنح عبر grantPlanToUser نفسه: أمان التكرار مضمون (نفس الجلسة/الفاتورة
 // لا تضيف النقاط مرتين حتى لو وصل الحدث والتحقق اليدوي معًا).
 const crypto = require('crypto');
-const { grantPlanToUser, PLANS } = require('./_lib/create-checkout-session.js');
+const { grantPlanToUser, PLANS, supersedeSubs, cancelSub, subIdOf } = require('./_lib/create-checkout-session.js');
+
+/* v-lock-subs (srv-money-5، موافقة المالك ٢٧ أكتوبر): منحٌ يرجع خطأً (الحساب محذوف) كان سطرًا في السجلّ و200 — المال مأخوذ بلا خدمة
+   ولا يعرف أحد. الآن: تنبيه للمالك مرّة واحدة لكلّ دفعة (ليردّ المبلغ يدويًّا)، واشتراكها يُلغى فورًا فلا يتكرّر الخصم. تعذّر
+   الإلغاء يرمي ⇒ 500 فيعيد Stripe الحدث (والتنبيه لا يتكرّر بحجزه).
+   v-lock-r2 (r2-1 · r2-2): «محذوف» هنا شاهدٌ مؤكَّد وحده — عطل قراءة الحساب يرمي من المنح (non-2xx فيُعاد) فلا يصل هنا؛ ودفعة المحفظة
+   (payment_intent.succeeded) تمرّ به أيضًا بمبلغها (amount_received) وبلا اشتراك يُلغى. */
+async function orphanPaid(obj, md, kind) {
+  // v-r3 (r3-7): الحجز نفسه في PayPal — كان غير صارم فردٌّ لا يُقرأ يعني «سبق التنبيه» و200 بلا تنبيه. alertOnce صارم بمرحلتين (pay-refund.js)، وعطبه يرمي ⇒ 500 فيُعاد.
+  const amount = Number(obj.amount_total || obj.amount_paid || obj.amount_received || obj.amount) || 0;
+  /* v-audit-main (port-2): v-paid-ungranted في main ينبّه «دفعة وصلت ولم تُمنح» لكلّ g.error — هنا تنبيه واحد بالعنوان نفسه (ومعه «محذوف»)، مرّة
+     لكلّ دفعة بالحجز الصارم، مع إلغاء الاشتراك؛ لا تنبيهان للدفعة نفسها. الجلسة بلا اسم والباقة المجهولة والتجديد بلا اسم بـalertUngranted (main). */
+  await require('./_lib/pay-refund.js').alertOnce('payorphan:' + String(obj.id).slice(0, 200), '⚠️ دفعة وصلت ولم تُمنح — حساب محذوف، ردّ المبلغ',
+    String(md.username || '?') + ' · ' + String(md.plan || '?') + ' · ' + (amount > 0 ? (amount / 100).toFixed(2) + ' ' + String(obj.currency || '').toUpperCase() : '?')
+    + ' · ' + kind + ' ' + String(obj.id).slice(0, 60) + (obj.payment_intent ? ' · ' + String(obj.payment_intent).slice(0, 40) : ''));
+  const sub = subIdOf(obj);
+  if (sub) await cancelSub(sub);
+}
 
 // جسم خام — بدونه يتغير النص بعد التحليل ويفشل توقيع سترايب دائمًا.
 module.exports.config = { api: { bodyParser: false } };
@@ -91,7 +109,9 @@ async function paypalWebhook(req, res) {
   try { raw = (await rawBody(req)).toString('utf8'); event = JSON.parse(raw); } catch (e) { res.status(400).json({ error: 'bad payload' }); return; }
   if (!(await pr.verifyPaypalSig(raw, req.headers || {}, hookId))) { res.status(401).json({ error: 'signature verification failed' }); return; }
   try {
-    const r = await pr.paypalEvent(event);
+    // v-lock-credit (srv-money-6): اكتمال التقاطٍ كان PENDING يشحن الطلب من الخادم (paypal-order captureCompleted)؛ والباقي استرداد وانعكاس واعتراض.
+    const completed = String((event && event.event_type) || '') === 'PAYMENT.CAPTURE.COMPLETED';
+    const r = completed ? await require('./_lib/paypal-order.js').captureCompleted(event) : await pr.paypalEvent(event);
     if (r && r.retry) { res.status(503).json({ error: 'busy, retry' }); return; }
     res.status(200).json({ received: true });
   } catch (e) {
@@ -166,7 +186,9 @@ module.exports = async (req, res) => {
         const g = await grantPlanToUser(md.username, md.plan, 'lastStripeSessionId', obj.id,
           { refs: [obj.payment_intent, obj.invoice], amount: obj.amount_total, currency: obj.currency }); // v-pay-refund: سجلّ المنح
         console.log('[webhook] checkout ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
-        if (g.error) await alertUngranted('checkout', obj, md, g.error);
+        if (g.error) await orphanPaid(obj, md, 'جلسة'); // v-lock-subs (srv-money-5)
+        // v-lock-subs (srv-money-3): اشتراك جديد يلغي القديم من خانته — بعد المنح وبعد «سبق المنح» أيضًا (إعادة بعد إلغاء تعذّر). يرمي ⇒ 500 فيُعاد.
+        else if (obj.mode === 'subscription' && subIdOf(obj)) await supersedeSubs(md.username, md.plan, subIdOf(obj));
       } else if (obj.payment_status === 'paid') {
         await alertUngranted('checkout', obj, md, !md.username ? 'الجلسة بلا اسم مستخدم' : 'باقة غير معروفة');
       }
@@ -178,9 +200,26 @@ module.exports = async (req, res) => {
         const g = await grantPlanToUser(md.username, md.plan, 'lastStripeInvoiceId', obj.id, { // v-pay-refund: سجلّ المنح بأرقام دفعته
           refs: [obj.payment_intent, obj.charge].concat(pays.map((x) => x.payment_intent), pays.map((x) => x.charge)), amount: obj.amount_paid, currency: obj.currency });
         console.log('[webhook] renewal ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
-        if (g.error) await alertUngranted('renewal', obj, md, g.error);
+        if (g.error) await orphanPaid(obj, md, 'تجديد'); // v-lock-subs (srv-money-5)
       } else if (obj.billing_reason === 'subscription_cycle' && Number(obj.amount_paid) > 0) {
         await alertUngranted('renewal', obj, md, !md.username ? 'التجديد بلا اسم مستخدم' : 'باقة غير معروفة');
+      }
+    } else if (event.type === 'payment_intent.succeeded') {
+      /* v-lock-gpay (srv-money-1، موافقة المالك ٢٧ أكتوبر): Apple Pay / Google Pay كان يُشحن بطلب verify-payment-intent واحد من
+         المتصفّح — انقطاع الشبكة أو إغلاق التطبيق أو BUSY بعد ev.complete('success') = مبلغ مسحوب بلا نقاط ولا باقة. الآن الحدث
+         الموقَّع يشحن بالرقم نفسه والحقل نفسه (lastStripePaymentIntentId)، فالحجز الذرّيّ (v-pay-once) يمنع الازدواج مع التحقّق
+         من العميل، وحجز السحب قبل الشحن (v-pay-refund) يمنع الشحن بعد استرداد. الخطّة والاسم في metadata يضعهما
+         createPaymentIntent وحده — عمليّة صفحة Stripe وفواتير التجديد بلا metadata على الـPaymentIntent فلا تُشحن مرّتين. */
+      const md = obj.metadata || {};
+      if (obj.status === 'succeeded' && md.username && PLANS[md.plan]) {
+        const g = await grantPlanToUser(md.username, md.plan, 'lastStripePaymentIntentId', obj.id,
+          { refs: [obj.latest_charge], amount: obj.amount_received || obj.amount, currency: obj.currency }); // كما في verifyPaymentIntent
+        console.log('[webhook] wallet ' + obj.id + ' → ' + (g.error || (g.alreadyGranted ? 'already' : '+' + g.pointsAdded)));
+        /* v-lock-gpay (المراجعة المعاكسة): عطل قراءة الحساب لا يرمي — getUser يعيد null فيعود المنح {error, 404}، وكان 200 هنا
+           يوقف إعادة Stripe فيبقى المبلغ مسحوبًا بلا شحن. 2xx بعد أثرٍ تمّ أو سبق فقط؛ والحجز لم يُؤخذ فالإعادة تشحن مرّة.
+           v-lock-r2 (r2-1 · r2-2): عطل القراءة صار يرمي من المنح نفسه (500 أدناه، كما في الجلسة والتجديد)، فالخطأ هنا حساب محذوف يقينًا —
+           كان 500 ثلاثة أيّام ثمّ يُسقطه Stripe والمال مأخوذ بلا تنبيه. الآن قاعدة الجلسة والتجديد: تنبيه المالك مرّة ليردّ المبلغ، و200. */
+        if (g.error) await orphanPaid(obj, md, 'محفظة');
       }
     } else if (event.type === 'charge.refunded' || event.type === 'charge.dispute.created') {
       // v-pay-refund: الاسترداد (بنسبة المسترد) والاعتراض البنكيّ (مع تنبيه المالك) يسحبان ما منحته الدفعة، مرّة واحدة لكلّ حدث.

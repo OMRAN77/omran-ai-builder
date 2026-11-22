@@ -503,7 +503,9 @@ console.log('  ✓ v-lab-haiku: التجربة الحية تكتمل — نمو�
   assert.ok(eo.includes('id="uiLang"') && !eo.includes('id="btnBn"'), 'المنسدلة بدل أزرار اللغات');
   /* v-tv-hls: الصفحة على main صارت تستدعي الخلفية مرتين لا ثلاثًا والفحص بقي
      على العدّ القديم فاحمرّ — الجوهر أنّ الخلفية على النشر القديم، لا كم مرة. */
-  assert.ok(eo.split('omran-edu.vercel.app/api').length >= 2, 'الخلفية على النشر القديم الشغال');
+  /* v-lock-quotaa (pages-static-9، باب المال بموافقة المالك): الصوت والإملاء انتقلا من النشر القديم (بلا رمز ولا حدّ) إلى
+     /api/tts و/api/stt في التطبيق نفسه — الجوهر الباقي أنّ الصفحة تُستضاف هنا، والخلفية صارت خلفيّة التطبيق. */
+  assert.ok(!eo.includes('omran-edu.vercel.app') && eo.includes("fetch('/api/tts'") && eo.includes("fetch('/api/stt'"), 'الصوت والإملاء من خادم التطبيق نفسه');
   assert.ok(eo.includes("'/edu-old/ffmpeg-assets/"), 'أصول ffmpeg نفس النطاق (شرط الـWorkers)');
   const ft10 = fs.readFileSync(path.join(__dirname, '../js/app-10-features.js'), 'utf8');
   /* v-tv-hls: main أضافت ?v=14l على الرابط والفحص بقي على الحرف — يكفي البادئة. */

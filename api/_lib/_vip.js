@@ -123,4 +123,27 @@ async function promoteVerifiedEmail(email, username) {
   }
 }
 
-module.exports = { getVipList, addVip, removeVip, isVip, normalizeId, invalidateCache, promoteVerifiedEmail, promotedKey, VIP_KEY };
+// v-lock-acct (srv-auth-12، باب المال بموافقة المالك ٢٧ أكتوبر): تغيير الاسم (auth.js changeUsername) — مدخل الاسم القديم يصير
+// الجديد في كتابة واحدة، فلا يسقط الإعفاء ولا يبقى مدخلان لحساب واحد. القراءة صارمة: عطب Redis = لا كتابة فوق قائمة لم تُقرأ (المالك
+// قد يكون أضاف أحدًا للتوّ). مدخل فيه @ يبقى (قد يكون إيميلًا خامًا أضافه المالك لصاحبه — v-vip-verified) ويُضاف الاسم الجديد بجانبه.
+// v-lock-acct (srv-auth-12، المراجعة): ما عدا مفتاح Google ‏g_<البريد> — هو اسم حساب (vip.js يحوّل إيميل المالك إليه) لا إيميل خام؛
+// بقاؤه كان يُبقي الاسم الميّت، ويعيد VIP بالرجوع إليه (ownGoogleKey) بعد أن يزيل المالك الاسم الجديد.
+// يرمي العطب لمناديه الوحيد (moveVip في auth.js) فيسجّله ولا يُفشل التغيير — كان يُبتلع هنا فيسقط VIP بلا سطر في السجلّ.
+async function renameVip(oldId, newId) {
+  const o = normalizeId(oldId);
+  const nw = normalizeId(newId);
+  if (!o || !nw || o === nw) return false;
+  const raw = await kvGetJSON(VIP_KEY, { strict: true });
+  const list = Array.isArray(raw) ? raw.map(normalizeId).filter(Boolean) : [];
+  if (list.indexOf(o) === -1) return false;
+  const rawEmail = o.indexOf('@') !== -1 && !/^g_/.test(o);
+  const next = list.filter((x) => x !== o || rawEmail);
+  if (next.indexOf(nw) === -1) next.push(nw);
+  await kvPutJSON(VIP_KEY, next);
+  invalidateCache();
+  cache = next;
+  cacheAt = Date.now();
+  return true;
+}
+
+module.exports = { getVipList, addVip, removeVip, isVip, normalizeId, invalidateCache, promoteVerifiedEmail, promotedKey, renameVip, VIP_KEY };

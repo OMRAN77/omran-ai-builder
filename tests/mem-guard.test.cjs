@@ -244,7 +244,7 @@ test('١٤. base64 المشاريع الأخرى يُفرَج عنه عند فت
 
 test('١٥. الإرسال ينتظر الاستعادة قبل أن يقرأ آخر صورة معدّلة، ولا يتأخّر حين لا شيء في المخزن؛ والكتّاب يُسندون كائنًا جديدًا دائمًا', () => {
   const att = fs.readFileSync('js/app-09-attach.js', 'utf8');
-  assert.match(att, /async function sendPrompt\(\)\{\n[^\n]*\n  try\{ const __cb = getCurrent\(\); const __bp = \(__cb && window\.__vaultProjBlobs\) \? window\.__vaultProjBlobs\(__cb\) : null; if\(__bp\) await __bp; \}/);
+  assert.match(att, /async function sendPrompt\(\)\{\n(?:(?![^\n]*await )[^\n]*\n)+  try\{ const __cb = getCurrent\(\); const __bp = \(__cb && window\.__vaultProjBlobs\) \? window\.__vaultProjBlobs\(__cb\) : null; if\(__bp\) await __bp; \}/);
   assert.match(src, /if\(p\) __vaultProjBlobs\(p\);/, 'فتح المشروع يستعيدها');
   /* الحفظ يُبقي معرّف الكائن فإن عُدّلت الصورة في مكانها لا تُكتب وتُستعاد القديمة — الكاتب يجب أن يُسند كائنًا جديدًا */
   const inPlace = /(lastEditedImage|imageEditSource|imageTextLayer|guideShot)\s*\.\s*(b64|baseB64)\s*=[^=]|decorHistory\[[^\]]+\]\s*\.\s*b64\s*=[^=]/;

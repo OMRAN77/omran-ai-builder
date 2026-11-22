@@ -52,6 +52,17 @@ const kvApi = {
   kvGetJSON: async (k) => (kv.has(k) ? JSON.parse(kv.get(k)) : null),
   kvPutJSON: async (k, v) => { kv.set(k, JSON.stringify(v)); },
   kvExpire: async () => {}, kvIncr: async (k) => kvApi.kvIncrBy(k, 1), kvList: async () => [],
+  // v-r3 (r3-rv4): رصيد الفترة العائدة يُكتب مع علامته في طلب واحد (fillOnce) — عقد Upstash: SET ⇒ 'OK'؛ وحقن فشل الكتابة (fail.set) يُفشل الطلب كلّه قبل التنفيذ
+  kvPipeline: async (cmds) => {
+    await tick();
+    if (fail.set && fail.set.n > 0 && cmds.some(([op, k]) => op === 'SET' && fail.set.re.test(k))) { fail.set.n--; throw new Error('ERR DB capacity quota exceeded'); }
+    return cmds.map(([op, k, a]) => {
+      if (op === 'GET') return kv.has(k) ? String(kv.get(k)) : null;
+      if (op === 'SET') { kv.set(k, String(a)); return 'OK'; }
+      if (op === 'DEL') { kv.delete(k); return 1; }
+      return null;
+    });
+  },
 };
 mock('api/_lib/kv.js', kvApi);
 mock('api/_lib/auth.js', {
@@ -80,6 +91,7 @@ global.fetch = async (url, init) => {
       const pi = u.searchParams.get('payment_intent'), sub = u.searchParams.get('subscription');
       return reply(200, { data: net.sessions.filter((s) => (pi && s.payment_intent === pi) || (sub && s.subscription === sub)) });
     }
+    if (p === 'subscriptions/search') return reply(200, { data: [] }); // v-lock-subs (srv-money-3): اشتراك جديد يبحث عن القديم من خانته
     if ((m = p.match(/^invoices\/(.+)$/))) return net.invoices[m[1]] ? reply(200, net.invoices[m[1]]) : reply(404, { error: { message: 'No such invoice' } });
     if ((m = p.match(/^charges\/(.+)$/))) return net.charges[m[1]] ? reply(200, net.charges[m[1]]) : reply(404, { error: { message: 'No such charge' } });
     if (p === 'invoice_payments') {
@@ -705,15 +717,18 @@ test('٢٤. شراء جديد يُمنح مع سحب كامل لفترة حال�
   for (const u of V) assert.equal(Number(kv.get('media:video:' + u)), media.MEDIA_PLANS.vid_max.budget);
 });
 
-test('٢٥. صرف نقاط متزامن مع سحب كامل (مرآته تقرأ قبل السحب وتكتب بعده): (د) تسحب الفترة العائدة — المحادثة والوسائط', async () => {
-  // كان: كتابة المرآة القديمة تصل بعد (ج) فتعود الفترة المسحوبة والحدث «تمّ». تضييق لا سدّ: كتابةٌ أبطأ من مهلة (د) تبقى ممكنة
+test('٢٥. صرف نقاط متزامن مع سحب كامل (مرآته تقرأ قبل السحب وتكتب بعده): لا كتابة تعيد الفترة المسحوبة — المحادثة والوسائط', async () => {
+  // كان: كتابة المرآة القديمة تصل بعد (ج) فتعود الفترة المسحوبة والحدث «تمّ». (د) ضيّقت النافذة بمهلة ٣٠٠ms حقيقيّة والتأخير هنا بعدد
+  // الدورات، فكان الاختبار يتقلّب تحت الحمل (x-build-1). v-lock-credit: المرآة تحت قفل الحساب — الشاهد الكتابة المُعيدة لحظة وصولها
+  // (كـ٢٢–٢٣) لا الحال النهائيّة بعد إصلاح (د)، فلا يعتمد على سرعة الجهاز.
   const C = Array.from({ length: 200 }, (_, i) => 'xsc' + i);
   const V = Array.from({ length: 200 }, (_, i) => 'xsv' + i);
   for (const u of C) { fresh(u); await buy(u, 'pro', u + 'c', 2000); }
   for (const u of V) { fresh(u); await buy(u, 'vid_pro', u + 'v', 2042); }
-  const rs = await jittered(20261008, () => C.flatMap((u) => [hook(refundOf('ch_' + u + 'c', 'pi_' + u + 'c', 2000, 2000)), points.spendPoints(u, 10, 'chat')])
-    .concat(V.flatMap((u) => [hook(refundOf('ch_' + u + 'v', 'pi_' + u + 'v', 2042, 2042)), points.spendPoints(u, 10, 'chat')])));
+  const { out: rs, hits } = await resurrections(() => jittered(20261008, () => C.flatMap((u) => [hook(refundOf('ch_' + u + 'c', 'pi_' + u + 'c', 2000, 2000)), points.spendPoints(u, 10, 'chat')])
+    .concat(V.flatMap((u) => [hook(refundOf('ch_' + u + 'v', 'pi_' + u + 'v', 2042, 2042)), points.spendPoints(u, 10, 'chat')]))));
   assert.deepEqual(codesOf(rs), [200]);
+  assert.deepEqual(hits, [], 'كتابة أعادت فترة مسحوبة: ' + hits.length);
   const back = C.filter((u) => tier.planActive(users.get(u))).concat(V.filter((u) => media.mediaActive(users.get(u), 'video')));
   assert.deepEqual(back, [], 'حسابات عادت لها باقة مسحوبة: ' + back.length + ' من ' + (C.length + V.length)); // قبل: ٦٨
   for (const u of C.concat(V)) assert.equal(await bal(u), 60);

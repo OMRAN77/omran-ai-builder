@@ -9,6 +9,9 @@ const LANGN = { ar:'العربيّة', en:'English', fr:'French', hi:'Hindi', ur
 const pickLang = (b) => { const l = String((b && b.lang) || 'ar').slice(0, 3); return LANGN[l] ? l : 'ar'; };
 
 const DAILY = 30; // رسالة/يوم للمستخدم المسجَّل (المالك وVIP بلا حدّ)
+/* v-lock-quotab (srv-studios-2-13): مهلة النداء من بداية الطلب، أقصر من مهلة العميل (ad-studio.html يقطع عند ٢٨ث) — كان الخادم يكمل حتّى
+   مهلة أوّل بايت العامّة (٣٠ث) فيحتسب ردًّا تخلّى عنه العميل ورأى «الذكاء متوقّف». */
+const UPSTREAM_DEADLINE_MS = 25000;
 
 const SYS = `أنت خبير إعلانات إماراتيّ محترف داخل «استوديو الإعلانات». تتكلّم عربيّة فصيحة قصيرة بنكهة خليجيّة مهذّبة.
 
@@ -65,6 +68,8 @@ function sysFor(lg) {
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   if (req.method !== 'POST') { res.status(405).end('{"error":"POST only"}'); return; }
+  const t0 = Date.now();
+  let giveQuota = async () => {}; // v-lock-quotab (srv-studios-2-13): كـv-quota-giveback في adimage
   try {
     let b = req.body;
     if (typeof b === 'string') b = JSON.parse(b);
@@ -79,14 +84,7 @@ module.exports = async (req, res) => {
         message: lg === 'ar' ? undefined : 'Sign in first to use Ad Studio.' }));
       return;
     }
-    // ② سقف يوميّ لكل مستخدم (المالك وVIP معفيان داخل الدالّة).
-    const gate = await checkAndConsumePlanCustom(token, null, null, 'adchat', DAILY);
-    if (!gate.allowed) {
-      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' رسالة) في استوديو الإعلانات. جرّب غدًا.',
-        message: lg === 'ar' ? undefined : 'You have reached today\'s limit (' + gate.limit + ' messages) in Ad Studio. Try again tomorrow.' }));
-      return;
-    }
-
+    // v-lock-quotab (srv-studios-2-13): المفتاح والرسائل قبل الحجز — بلا مفتاح أو بلا رسالة مستخدم لا تُحسب رسالة من حصّة اليوم.
     const key = process.env.ANTHROPIC_API_KEY;
     if (!key) { res.status(500).end(JSON.stringify({ error: 'no key' })); return; }
 
@@ -97,16 +95,30 @@ module.exports = async (req, res) => {
     while (msgs.length && msgs[msgs.length - 1].role !== 'user') msgs.pop();
     if (!msgs.length) { res.status(400).end(JSON.stringify({ error: 'empty' })); return; }
 
+    // ② سقف يوميّ لكل مستخدم (المالك وVIP معفيان داخل الدالّة).
+    const gate = await checkAndConsumePlanCustom(token, null, null, 'adchat', DAILY);
+    if (!gate.allowed) {
+      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + gate.limit + ' رسالة) في استوديو الإعلانات. جرّب غدًا.',
+        message: lg === 'ar' ? undefined : 'You have reached today\'s limit (' + gate.limit + ' messages) in Ad Studio. Try again tomorrow.' }));
+      return;
+    }
+    /* v-lock-quotab (srv-studios-2-13) — قرار المالك v-quota-giveback (٢١ أكتوبر: «المحاولة الفاشلة ما تنحسب»): الحصّة تُحجز قبل النداء
+       (المتزامنان لا يتجاوزان السقف)، وكلّ فشل بعدها يردّها — refundCustom بالمدخلات نفسها، مرّة واحدة. */
+    giveQuota = async () => { giveQuota = async () => {}; await require('./_usage.js').refundCustom(token, null, null, 'adchat'); };
+
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 1300, system: sysFor(lg), messages: msgs }),
+      signal: AbortSignal.timeout(Math.max(1000, UPSTREAM_DEADLINE_MS - (Date.now() - t0))),
     });
     const j = await r.json();
-    if (!r.ok) { res.status(502).end(JSON.stringify({ error: (j && j.error && j.error.message) || 'upstream' })); return; }
+    if (!r.ok) { await giveQuota(); res.status(502).end(JSON.stringify({ error: (j && j.error && j.error.message) || 'upstream' })); return; }
     const text = (j.content || []).filter((p) => p && p.type === 'text').map((p) => p.text).join('').trim();
+    if (!text) await giveQuota(); // النصّ الفارغ فشلٌ عند العميل («الذكاء متوقّف») فلا يُحسب
     res.status(200).end(JSON.stringify({ text, remaining: Number.isFinite(gate.remaining) ? gate.remaining : null }));
   } catch (e) {
+    await giveQuota();
     res.status(500).end(JSON.stringify({ error: String((e && e.message) || e) }));
   }
 };
