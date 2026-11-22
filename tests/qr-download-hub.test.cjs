@@ -238,7 +238,8 @@ function runPill({ href, standalone, bridge, storeSafe }) {
 
 test('١٠. الوصول من الباركود (?install=1): زرّ «تثبيت التطبيق» بنصّ لغة الواجهة، ونقره = زرّ التثبيت نفسه', () => {
   const r = runPill({ href: 'https://omran-ai-builder.vercel.app/?ref=omran&install=1', standalone: false });
-  assert.equal(r.calls.replaced, '/?ref=omran', 'install يُحذف من الرابط وref يبقى');
+  // v-ref-stores: ref يُحذف معه (محفوظ في aiapp_pending_ref) — ‎/?ref=omran‎ الباقي كان يعيد التحويل إلى المتاجر مع كلّ تحديث
+  assert.equal(r.calls.replaced, '/', 'install وref يُحذفان من الرابط');
   const pill = r.els.installPill;
   assert.ok(pill, 'الزرّ ظهر');
   const [go, x] = pill.children;
@@ -265,7 +266,7 @@ test('١١. لا زرّ داخل التطبيق المثبّت ولا بلا ?in
   for (const o of [{ bridge: true }, { storeSafe: true }]) {
     const h = runPill(Object.assign({ href: 'https://omran-ai-builder.vercel.app/?ref=omran&install=1', standalone: false }, o));
     assert.equal(h.els.installPill, undefined, JSON.stringify(o));
-    assert.equal(h.calls.replaced, '/?ref=omran', 'الرابط يُنظَّف');
+    assert.equal(h.calls.replaced, '/', 'الرابط يُنظَّف (v-ref-stores: ref معه)');
   }
 });
 

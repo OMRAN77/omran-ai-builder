@@ -264,12 +264,35 @@ async function navRoutes() {
   fnEv.status === 204 ? ok('funnel [حدث مجهول] → 204 (موصول، ولم يُكتب شيء)') : no('funnel [حدث مجهول] → ' + (fnEv.status || fnEv.err) + ' (المتوقّع ٢٠٤)');
 }
 
+// ⑧ v-ref-stores: رابط المالك ‎/?ref=omran‎ يُحوَّل إلى صفحة المتاجر (‎/app?ref=omran‎ — vercel.json redirects) لا إلى التطبيق؛
+// و‎&install=1‎ (عودة أندرويد وماك من الصفحة نفسها) يفتح التطبيق وإلّا دار الزائر في حلقة؛ ودعوة غيره كما هي؛ ومعاينة الرابط بوستر المالك.
+async function refStores() {
+  console.log('⑧ رابط المالك ← المتاجر');
+  const r = await get('/?ref=omran', { redirect: 'manual' });
+  const loc = head(r, 'location');
+  ([301, 302, 307, 308].includes(r.status) && /\/app\?ref=omran(&|$)/.test(loc))
+    ? ok('/?ref=omran → ' + r.status + ' ' + loc) : no('/?ref=omran → ' + (r.status || r.err) + ' ' + loc + ' (المتوقّع تحويل إلى /app?ref=omran)');
+  for (const p of ['/?ref=omran&install=1', '/?ref=smoke_probe']) {
+    const x = await get(p, { redirect: 'manual' });
+    x.status === 200 ? ok(p + ' → 200 (التطبيق)') : no(p + ' → ' + (x.status || x.err) + ' ' + head(x, 'location') + ' (المتوقّع ٢٠٠)');
+  }
+  const hub = await get('/app?ref=omran');
+  const img = ((/<meta property="og:image" content="([^"]+)"/.exec(hub.status === 200 ? await hub.text() : '') || [])[1]) || '';
+  if (!img) { no('/app?ref=omran بلا og:image (' + (hub.status || hub.err) + ')'); return; }
+  let p = '';
+  try { p = new URL(img).pathname; } catch (e) { p = ''; } // رابط غير صالح = ✗ أدناه
+  const pic = p ? await get(p) : { status: 0, headers: new Map() };
+  (pic.status === 200 && /^image\/jpeg/.test(head(pic, 'content-type')))
+    ? ok('معاينة الرابط ' + p + ' → 200 ' + head(pic, 'content-type')) : no('معاينة الرابط ' + (p || img) + ' → ' + (pic.status || pic.err) + ' ' + head(pic, 'content-type'));
+}
+
 const vHash = await page();
 await sw(vHash);
 await login();
 await gates();
 await health();
 await navRoutes();
+await refStores();
 await oauthOrigin();
 await probe();
 await identity();
