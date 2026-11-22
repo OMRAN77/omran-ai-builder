@@ -105,6 +105,70 @@ html.introOn .goMark { display: none; }
     document.documentElement.className += ' introOn';
   }
 
+  // v-funnel (٢١ نوفمبر ٢٠٢٦، المالك: «نجرب، ركّب» عن قياس المسار من المتابع إلى التسجيل): زائر جديد يُعدّ هنا قبل أن يغادر — «visit» دائمًا،
+  // و«store» إن كانت وجهته متجرًا (آيفون وهواوي وويندوز لا يصلون الموقع بعدها). عدّاد مجهول: مصدر الزيارة ونوع الجهاز فقط، بلا هويّة ولا كوكيز.
+  // الدالّتان التاليتان نسخة حرفيّة من js/app-10-features.js (اختبار funnel يثبت التطابق)، والتطبيق يكمل المراحل من العلامة نفسها (aiapp_fn).
+  function omranFunnelSource(search, ua, referrer, host){
+    var q = String(search || ''), u = String(ua || '');
+    var m = /[?&](?:src|utm_source)=([^&#]*)/i.exec(q);
+    if(m){
+      var named = '';
+      try{ named = decodeURIComponent(m[1]).toLowerCase(); }catch(e){ named = ''; /* guard-ok — ترميز مكسور = مصدر غير معروف */ }
+      var alias = { tt: 'tiktok', tiktok: 'tiktok', ig: 'instagram', insta: 'instagram', instagram: 'instagram', snap: 'snapchat', snapchat: 'snapchat', yt: 'youtube', youtube: 'youtube', fb: 'facebook', facebook: 'facebook', meta: 'facebook', x: 'x', twitter: 'x', wa: 'whatsapp', whatsapp: 'whatsapp', tg: 'telegram', telegram: 'telegram', linkedin: 'linkedin', google: 'google' };
+      return Object.prototype.hasOwnProperty.call(alias, named) ? alias[named] : 'other';
+    }
+    if(/musical_ly|BytedanceWebview|TikTok|trill_/i.test(u)) return 'tiktok';
+    if(/Instagram/i.test(u)) return 'instagram';
+    if(/Snapchat/i.test(u)) return 'snapchat';
+    if(/FBAN|FBAV|FB_IAB|FB4A/.test(u)) return 'facebook';
+    if(/Twitter/i.test(u)) return 'x';
+    if(/LinkedInApp/i.test(u)) return 'linkedin';
+    var r = /^https?:\/\/([^\/?#:]+)/i.exec(String(referrer || ''));
+    var h = r ? r[1].toLowerCase().replace(/^www\./, '') : '';
+    if(h && h !== String(host || '').toLowerCase().replace(/^www\./, '')){
+      if(/(^|\.)tiktok\.com$/.test(h)) return 'tiktok';
+      if(/(^|\.)instagram\.com$/.test(h)) return 'instagram';
+      if(/(^|\.)snapchat\.com$/.test(h)) return 'snapchat';
+      if(/(^|\.)(youtube\.com|youtu\.be)$/.test(h)) return 'youtube';
+      if(/(^|\.)(facebook\.com|fb\.com|messenger\.com)$/.test(h)) return 'facebook';
+      if(/(^|\.)(twitter\.com|x\.com)$|^t\.co$/.test(h)) return 'x';
+      if(/(^|\.)(whatsapp\.com|wa\.me)$/.test(h)) return 'whatsapp';
+      if(/(^|\.)(t\.me|telegram\.org|telegram\.me)$/.test(h)) return 'telegram';
+      if(/(^|\.)(linkedin\.com|lnkd\.in)$/.test(h)) return 'linkedin';
+      if(/(^|\.)google\.[a-z.]+$/.test(h)) return 'google';
+      if(/(^|\.)(bing\.com|duckduckgo\.com|yahoo\.com|yandex\.[a-z.]+|baidu\.com|ecosia\.org|brave\.com)$/.test(h)) return 'search';
+      return 'other';
+    }
+    if(h) return 'site';
+    if(/[?&]ref=[a-zA-Z0-9_-]{3,64}(?:[&#]|$)/.test(q)) return 'invite';
+    return 'direct';
+  }
+  function omranFunnelPlatform(ua, touch){
+    var u = String(ua || '');
+    if(/iPhone|iPad|iPod/i.test(u) || (/Macintosh/.test(u) && touch > 1)) return 'ios';
+    if(/Android|HarmonyOS/i.test(u)) return 'android';
+    return 'desktop';
+  }
+  function funnelLanding(to, standalone, returning){
+    var ua = navigator.userAgent || '';
+    if(localStorage.getItem('aiapp_fn') !== null) return;
+    var quiet = standalone || returning || !!localStorage.getItem('aiapp_auth_token') || !!localStorage.getItem('aiapp_username') || localStorage.getItem('aiapp_twa') === '1'
+      || /bot|crawl|spider|slurp|headless|lighthouse|pagespeed|prerender|preview/i.test(ua) || navigator.webdriver === true || navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true;
+    if(quiet){ localStorage.setItem('aiapp_fn', '-'); return; }
+    var src = omranFunnelSource(location.search, ua, document.referrer || '', location.hostname || '');
+    var plat = omranFunnelPlatform(ua, navigator.maxTouchPoints || 0);
+    var store = to.charAt(0) !== '/';
+    localStorage.setItem('aiapp_src', src + '|' + plat);
+    localStorage.setItem('aiapp_fn', store ? 'vt' : 'v');
+    var send = function(ev){
+      var body = JSON.stringify({ e: ev, s: src, p: plat });
+      if(navigator.sendBeacon && navigator.sendBeacon('/api/system?action=funnel', body)) return;
+      fetch('/api/system?action=funnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(function(){ /* guard-ok — العدّ أفضل جهد */ });
+    };
+    send('visit');
+    if(store) send('store');
+  }
+
   var dest = '/';
   try { dest = goDest(navigator.userAgent || '', navigator.maxTouchPoints || 0, location.search, STORES); }
   catch(e){ dest = '/'; /* guard-ok — أيّ خطأ في الكشف يفتح التطبيق نفسه */ }
@@ -115,6 +179,7 @@ html.introOn .goMark { display: none; }
     intro = wantsIntro(navigator.userAgent || '', dest, standalone, returning);
     if(intro) showIntro(dest);
   } catch(e){ intro = false; /* guard-ok — تعذّر التعريف (تخزين محجوب مثلًا) لا يحبس الزائر: يكمل إلى وجهته */ }
+  try { funnelLanding(dest, standalone, returning); } catch(e){ /* guard-ok — العدّ لا يحبس الزائر: يكمل إلى وجهته */ }
   if(!intro) location.replace(dest);
 })();
 </script>

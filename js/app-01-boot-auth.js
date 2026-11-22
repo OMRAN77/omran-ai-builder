@@ -515,7 +515,7 @@ try{
   window.memoryTopicUpdate = memoryTopicUpdate;
 
   function onAuthed(username, avatar){
-    authSet('aiapp_username', username);
+    authSet('aiapp_username', username); if(typeof omranFunnelMark === 'function') omranFunnelMark('account'); // v-funnel: أوّل دخول بحساب لزائر جديد — عدّاد مجهول، لا اسم الحساب
     if(avatar){ localStorage.setItem('aiapp_avatar', avatar); }
     else if(avatar === null){ localStorage.removeItem('aiapp_avatar'); }
     // ☁️ v306: استرجاع/دمج المحادثات من السيرفر (عند الإقلاع وعند تسجيل الدخول).
@@ -667,7 +667,7 @@ try{
       }
       lines.push('');
       lines.push(ownT('ownerStatsUpdated', { t: ownLtr(new Date(data.generatedAt).toLocaleString('en-GB')) }));
-      box.textContent = lines.join('\n');
+      box.textContent = lines.join('\n'); if(typeof omranFunnelPanel === 'function') omranFunnelPanel(box, ownT, ownLtr, token); // v-funnel: مسار الزوّار الجدد تحت الإحصائيات
       window.__adminUsersCache = data.manageableUsers || [];
       renderAdminUserTable();
       try{ loadKnowledgeFacts(); }catch(e){ __swallow(e, 'owner:knowledge-load'); }

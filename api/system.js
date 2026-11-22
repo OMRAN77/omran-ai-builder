@@ -41,6 +41,7 @@ function load(action) {
     case 'secrets': return require('./_lib/secrets.js'); // v-secret-vault: خزنة أسرار المالك
     case 'cc': return require('./_lib/cc.js'); // v-cc-bridge: Claude Code الخام للمالك عبر جسره
     case 'call-session': case 'call-start': case 'call-status': case 'call-cancel': case 'call-trial-end': return require('./_lib/call-agent.js'); // v-call-agent: الوكيل يتّصل بالمحلّ (المالك مجّانًا، والمشترك بالنقاط — v-call-agent-paid)
+    case 'funnel': return require('./_lib/funnel.js'); // v-funnel: عدّاد مجهول لمسار الزائر الجديد (زيارة ← موافقة ← رسالة ← حساب)، وتقريره للمالك
     default: return null;
   }
 }

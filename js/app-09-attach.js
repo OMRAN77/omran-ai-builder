@@ -3874,7 +3874,7 @@ try{
 async function sendPrompt(){
   /* v-proj-vault: آخر صورة معدّلة ومصدرها وطبقة النصّ قد تكون في المخزن (مشروع عاد إليه المستخدم أو إقلاع) — تُستعاد قبل أن يقرأها الإرسال */
   try{ const __cb = getCurrent(); const __bp = (__cb && window.__vaultProjBlobs) ? window.__vaultProjBlobs(__cb) : null; if(__bp) await __bp; }catch(e){ __swallow(e, 'vault:blobs-send'); }
-  try{ return await __sendPromptCore.apply(this, arguments); }
+  try{ if(typeof omranFunnelMark === 'function' && String(($('#prompt') || {}).value || '').trim()) omranFunnelMark('msg'); }catch(e){ __swallow(e, 'funnel:msg'); } /* v-funnel: أوّل رسالة يكتبها زائر جديد — عدّاد مجهول، لا نصّ الرسالة */ try{ return await __sendPromptCore.apply(this, arguments); }
   catch(e){
     try{
       var __c = (typeof getCurrent === 'function') ? getCurrent() : null;
