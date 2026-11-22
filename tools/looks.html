@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>looks</title>
+<script type="importmap">{ "imports": { "three": "../vendor/three.module.js", "three/addons/": "../vendor/addons/" } }</script>
+<style>html,body{margin:0;background:#8fb7d6}canvas{display:block}</style></head><body>
+<script type="module">
+// The player figures in every outfit, side by side (tools/probe.cjs --page tools/looks.html --nostart 1).
+import * as THREE from 'three';
+import { makeAvatar } from '../shared/avatar.js';
+import { OUTFITS } from '../shared/outfits.js';
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setPixelRatio(2); r.setSize(innerWidth, innerHeight); document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x8fb7d6);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x556655, 1.7)); const sun = new THREE.DirectionalLight(0xfff2d8, 2.0); sun.position.set(2, 5, 6); scene.add(sun);
+const only = new URLSearchParams(location.search).get('free');
+const list = OUTFITS.filter((o) => !only || o.free);
+list.forEach((o, i) => { const a = makeAvatar(); a.dress(o.c, {}); a.place((i - (list.length - 1) / 2) * 1.0, 0, 0, Math.PI + 0.35); scene.add(a.group); });
+const cam = new THREE.PerspectiveCamera(28, innerWidth / innerHeight, 0.1, 100); cam.position.set(0, 1.4, list.length * 0.62 + 1.6); cam.lookAt(0, 1.0, 0);
+r.render(scene, cam); window.__READY = true;
+</script></body></html>

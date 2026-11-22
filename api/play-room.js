@@ -4,6 +4,7 @@
 //
 // POST /api/play-room   { op, ... }
 //   open    { world }                       -> { code, key }            key سرّ صاحب الغرفة
+//   peek    { code }                        -> { world } | { error: 'no-room' }   أيّ عالم فيه الغرفة (للصفحة الأولى)
 //   pending { code, key, keep? }            -> { joins: [{ id, name, offer }] }   (تُسحب مرّة واحدة)
 //   join    { code, world, name, offer }    -> { id } | { error: 'no-room' | 'world' (+world) | 'busy' }
 //   answer  { code, id }                    -> { wait: true } | { answer } | { denied: true }
@@ -17,7 +18,7 @@
 const crypto = require('crypto');
 
 const ROOM_TTL = 900, OUT_TTL = 180, MAX_SDP = 16000, MAX_PENDING = 8, PER_MINUTE = 12;
-const WORLDS = new Set(['kawkab', 'waha', 'dhalam']);
+const WORLDS = new Set(['kawkab', 'waha', 'dhalam', 'barari']);
 const roomKey = (code) => 'play/room/' + code;
 const inKey = (code) => 'play/room/' + code + '/in';
 const outKey = (code, id) => 'play/room/' + code + '/out/' + id;
@@ -70,6 +71,13 @@ async function act(body, ip, K) {
 
   if (!isCode(b.code)) return bad('code');
   const code = b.code;
+
+  // which world a room is in, so the first page can open the right one before asking to join
+  if (op === 'peek') {
+    if (await overRate(K, ip, 'peek')) return bad('slow-down', 429);
+    const room = await readRoom(K, code);
+    return room ? { status: 200, json: { world: room.w } } : bad('no-room', 404);
+  }
 
   if (op === 'answer') {
     if (!isId(b.id)) return bad('id');

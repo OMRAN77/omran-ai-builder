@@ -51,7 +51,24 @@ if (typeof window !== 'undefined') window.__GAME_KEYS = {
   reset() { Object.assign(KM, KEYS0); keepKeys(); },
 };
 // How hard the world is: what a monster's blow costs, how fast hunger comes, how many monsters there may be.
-const DIFFS = { easy: { dmg: 0.5, hunger: 0.6, mobs: 1 }, normal: { dmg: 1, hunger: 1, mobs: 1 }, hard: { dmg: 1.6, hunger: 1.4, mobs: 1.5 } };
+const DIFFS = { peaceful: { dmg: 0, hunger: 0.4, mobs: 0 }, easy: { dmg: 0.5, hunger: 0.6, mobs: 1 }, normal: { dmg: 1, hunger: 1, mobs: 1 }, hard: { dmg: 1.6, hunger: 1.4, mobs: 1.5 } };
+// The player's own rules for a world, chosen when it is made and changed in the settings (kept in this browser):
+//   mode   survival: everything is collected, dug, hunted and made; creative: the whole catalogue is in the bag and nothing hurts
+//   speed  how fast the player walks, runs and flies
+//   death  what happens to what is carried at zero health: kept, left where the player fell (in a chest), or lost
+export const RULES = { mode: ['survival', 'creative'], speed: ['normal', 'fast', 'slow'], death: ['keep', 'drop', 'lose'] };
+const SPEEDS = { slow: 0.65, normal: 1, fast: 1.4 };
+if (typeof window !== 'undefined') {
+  const r = { mode: 'survival', speed: 'normal', death: 'keep' };
+  try { const k = JSON.parse(window.localStorage.getItem('bw-rules') || 'null'); if (k && typeof k === 'object') for (const a of Object.keys(RULES)) if (RULES[a].includes(k[a])) r[a] = k[a]; } catch (e) { /* storage may be closed or hold something else */ }
+  const heard = [];
+  window.__GAME_RULES = {
+    get mode() { return r.mode; }, get speed() { return r.speed; }, get death() { return r.death; },
+    get creative() { return r.mode === 'creative'; }, get pace() { return SPEEDS[r.speed]; },
+    set(what, v) { if (!RULES[what] || !RULES[what].includes(v)) return; r[what] = v; try { window.localStorage.setItem('bw-rules', JSON.stringify(r)); } catch (e) { /* not kept */ } for (const f of heard) f(what, v); },
+    onChange(f) { heard.push(f); },
+  };
+}
 if (typeof window !== 'undefined') {
   let mode = 'normal';
   try { const m = window.localStorage.getItem('bw-diff'); if (DIFFS[m]) mode = m; } catch (e) { /* storage may be closed */ }
@@ -118,11 +135,13 @@ export function createPlay(o) {
   const collides = (px, py, pz) => hitTop(px, py, pz) > -Infinity;
   function unstick() { let n = 0; while (collides(st.pos.x, st.pos.y, st.pos.z) && n++ < sy) st.pos.y = Math.floor(st.pos.y) + 1; }
 
+  const pace = () => (window.__GAME_RULES ? window.__GAME_RULES.pace : 1);       // the player's chosen speed
   function setFlying(on) {
     if (st.flying === on) return;
     st.flying = on; st.vel.y = 0;
     if (sound) sound.fly(on);
     if (o.onFly) o.onFly(on);
+    if (downBtn) downBtn.hidden = !on;
   }
   function step(dt) {
     const p = st.pos, v = st.vel;
@@ -135,14 +154,14 @@ export function createPlay(o) {
     const wading = !st.inWater && isLiquid(world.get(Math.floor(p.x), Math.floor(p.y + 0.2), Math.floor(p.z)));   // at the surface: feet wet, chest out
     const wasGround = st.onGround;
     if (st.flying) {
-      const speed = inp.sprint ? P.flyFast : P.fly, k = Math.min(1, 8 * dt);
+      const speed = (inp.sprint ? P.flyFast : P.fly) * pace(), k = Math.min(1, 8 * dt);
       v.x += (wx * speed - v.x) * k; v.z += (wz * speed - v.z) * k;
-      // keys: jump rises, the down key sinks. On touch there is no down key: pushing the stick flies where you look.
-      let vy = ((inp.jump ? 1 : 0) - (inp.down ? 1 : 0)) * P.flyRise;
-      if (stick.id !== null && !inp.jump) vy += Math.sin(st.pitch) * speed * Math.max(0, inp.fz);
+      // Height changes only when the player asks: jump rises, the down key (Shift, or the touch «نزول» button) sinks.
+      // Walking while flying keeps the height, wherever the player looks (looking down must not drop them).
+      const vy = ((inp.jump ? 1 : 0) - (inp.down ? 1 : 0)) * P.flyRise;
       v.y += (vy - v.y) * k;
     } else {
-      const speed = (inp.sprint ? P.sprint : P.walk) * (st.inWater ? 0.6 : 1);
+      const speed = (inp.sprint ? P.sprint : P.walk) * (st.inWater ? 0.6 : 1) * pace();
       const k = Math.min(1, (st.onGround || st.inWater ? 14 : 4) * dt);
       v.x += (wx * speed - v.x) * k; v.z += (wz * speed - v.z) * k;
       if (st.inWater) {
@@ -354,7 +373,7 @@ export function createPlay(o) {
   function setModal(on) {
     st.modal = on;
     if (typeof seatNote === 'function') seatNote();              // a note already up moves out of the panel's way
-    keys.clear(); inp.dig = false; inp.place = false; inp.fx = inp.fz = 0; btn.jump = false; sprintLatch = false;
+    keys.clear(); inp.dig = false; inp.place = false; inp.fx = inp.fz = 0; btn.jump = false; btn.down = false; sprintLatch = false;
     if (on) { if (document.pointerLockElement === canvas) document.exitPointerLock(); } else if (!T) tryLock();
   }
 
@@ -371,7 +390,7 @@ export function createPlay(o) {
     if (!fwd && stick.id === null) sprintLatch = false;
     const shift = keys.has('ShiftLeft') || keys.has('ShiftRight');
     inp.jump = keys.has(KM.jump) || btn.jump;
-    inp.down = st.flying && shift;                                   // while flying, Shift sinks
+    inp.down = st.flying && (shift || btn.down);                     // while flying, Shift (or the touch «نزول» button) sinks
     inp.sprint = sprintLatch || stickSprint || keys.has(KM.run) || (!st.flying && shift);
   }
   /** Second press within the double-tap window? (times in ms) */
@@ -412,7 +431,8 @@ export function createPlay(o) {
 
   // ------------------------------------------------------------------ input: pointers (mouse buttons + touch)
   const stick = { id: null, cx: 0, cy: 0, r: 40 };
-  const btn = { jump: false };
+  const btn = { jump: false, down: false };
+  let downBtn = null;                            // touch: a «نزول» button beside jump, shown while flying
   const looks = new Map();                       // pointerId -> { x, y } for touches that turn the view
   let digPointers = 0;
   const T = o.touch || null;
@@ -451,6 +471,17 @@ export function createPlay(o) {
       if (doubled(now, lastJump)) { setFlying(!st.flying); lastJump = -1e9; } else lastJump = now;     // double tap: fly / stop flying
       btn.jump = true;
     }, () => { btn.jump = false; });
+    // the way down while flying: the same look as the jump button, just above it
+    if (T.jump) {
+      downBtn = document.createElement('button');
+      downBtn.type = 'button'; downBtn.className = T.jump.className; downBtn.dataset.act = 'down'; downBtn.textContent = 'نزول'; downBtn.hidden = true;
+      downBtn.style.cssText = 'position:fixed;z-index:30;pointer-events:auto;touch-action:none;';
+      const seat = () => { const r = T.jump.getBoundingClientRect(); downBtn.style.left = r.left + 'px'; downBtn.style.top = Math.max(4, r.top - r.height - 10) + 'px'; downBtn.style.width = r.width + 'px'; downBtn.style.height = r.height + 'px'; };
+      document.body.appendChild(downBtn);
+      new MutationObserver(() => { if (!downBtn.hidden) seat(); }).observe(downBtn, { attributes: true, attributeFilter: ['hidden'] });
+      window.addEventListener('resize', () => { if (!downBtn.hidden) seat(); });
+      press(downBtn, () => { btn.down = true; }, () => { btn.down = false; });
+    }
     press(T.dig, () => { digPointers++; inp.dig = true; }, () => { digPointers = Math.max(0, digPointers - 1); inp.dig = digPointers > 0; });
     press(T.place, () => { inp.place = true; }, () => {});
   }
@@ -679,6 +710,15 @@ export function createPlay(o) {
       try { if (o.onPlace) o.onPlace(x, y, z, id); } finally { st.yaw = y0; }
       aim();
     },
+    /** Put a block down for the game itself (not from the hand), and tell the others in a shared game. */
+    put(x, y, z, id) {
+      if (!world.inb(x, y, z) || !blocks[id]) return false;
+      terrain.setBlock(x, y, z, id);
+      if (o.onPlace) o.onPlace(x, y, z, id);
+      if (net.place) net.place(x, y, z, id, st.yaw);
+      aim();
+      return true;
+    },
     remoteDig(x, y, z) {
       if (!world.inb(x, y, z)) return;
       const id = world.get(x, y, z);
@@ -788,7 +828,10 @@ export function createPlayPanel(o) {
   const NAMES = { sound: () => { const s = window.__GAME_SOUND; return s ? (s.muted ? 'الصوت: مطفي' : 'الصوت: شغّال') : ''; },
     look: () => ({ slow: 'سرعة النظر (الماوس واللمس): بطيئة', normal: 'سرعة النظر (الماوس واللمس): عادية', fast: 'سرعة النظر (الماوس واللمس): سريعة' }[(window.__GAME_LOOK || {}).mode] || ''),
     video: () => ({ sharp: 'الصورة: واضحة دايم', balanced: 'الصورة: متوازنة', fast: 'الصورة: أسرع (تغبّش أكثر)' }[(window.__GAME_QUALITY || {}).mode] || ''),
-    diff: () => ({ easy: 'الصعوبة: سهلة', normal: 'الصعوبة: عادية', hard: 'الصعوبة: صعبة' }[(window.__GAME_DIFF || {}).mode] || ''),
+    diff: () => ({ peaceful: 'الصعوبة: مسالم (بدون وحوش)', easy: 'الصعوبة: سهلة', normal: 'الصعوبة: عادية', hard: 'الصعوبة: صعبة' }[(window.__GAME_DIFF || {}).mode] || ''),
+    mode: () => ({ survival: 'وضع اللعب: البقاء (تجمع أغراضك بنفسك)', creative: 'وضع اللعب: الإبداعي (كل البلوكات في الحقيبة وما شي يضرّك)' }[(window.__GAME_RULES || {}).mode] || ''),
+    speed: () => ({ slow: 'سرعة المشي: بطيئة', normal: 'سرعة المشي: عادية', fast: 'سرعة المشي: سريعة' }[(window.__GAME_RULES || {}).speed] || ''),
+    death: () => ({ keep: 'إذا متّ: أغراضك تبقى معك', drop: 'إذا متّ: أغراضك تطيح في صندوق مكان ما متّ', lose: 'إذا متّ: أغراضك تروح' }[(window.__GAME_RULES || {}).death] || ''),
     mon: () => { const l = window.__GAME_LIFE; return l ? (l.monsters ? 'الوحوش: موجودة' : 'الوحوش: بدون') : ''; } };
   const cycle = (obj, list) => { if (obj) obj.set(list[(list.indexOf(obj.mode) + 1) % list.length]); };
   const btn = (act, text, cls = 'menu') => (text ? `<button type="button" class="${cls}" data-act="${act}">${text}</button>` : '');
@@ -833,7 +876,7 @@ export function createPlayPanel(o) {
         + '<textarea maxlength="700" placeholder="اكتب هني…"></textarea><div class="note"></div>' + btn('send', 'أرسل', 'go');
     } else if (view === 'options') {
       const save = window.__GAME_SAVE;
-      h = '<h2>الإعدادات</h2><div class="esc">' + btn('sound', NAMES.sound()) + btn('look', NAMES.look()) + btn('video', NAMES.video()) + btn('diff', NAMES.diff()) + btn('mon', NAMES.mon())
+      h = '<h2>الإعدادات</h2><div class="esc">' + btn('mode', NAMES.mode()) + btn('speed', NAMES.speed()) + btn('death', NAMES.death()) + btn('sound', NAMES.sound()) + btn('look', NAMES.look()) + btn('video', NAMES.video()) + btn('diff', NAMES.diff()) + btn('mon', NAMES.mon())
         + (window.__GAME_NET ? `<label class="nm">اسمك <input maxlength="16" value="${esc(window.__GAME_NET.name || '')}" placeholder="لاعب"></label>` + btn('name', 'احفظ الاسم') : '')
         + (o.touch ? '' : btn('keys', 'أزرار التحكم')) + (save && save.has() ? btn('new', confirmNew ? 'متأكد؟ اضغط مرة ثانية يمسح عالمك المحفوظ' : 'عالم جديد (يمسح المحفوظ)') : '') + '</div>'
         + `<div class="note">${o.touch ? 'أزرار اللمس ثابتة في مكانها. ' : ''}اللغة: العربية. اللغات الثانية ما انضافت للعبة للحين.</div>`;
@@ -876,7 +919,8 @@ export function createPlayPanel(o) {
     else if (act === 'sound') { const s = window.__GAME_SOUND; if (s) { s.setMuted(!s.muted); if (!s.muted) { s.start(); s.ui(); } } drawSub(); }
     else if (act === 'look') { cycle(window.__GAME_LOOK, ['normal', 'fast', 'slow']); drawSub(); }
     else if (act === 'video') { cycle(window.__GAME_QUALITY, ['balanced', 'sharp', 'fast']); drawSub(); }
-    else if (act === 'diff') { cycle(window.__GAME_DIFF, ['normal', 'hard', 'easy']); drawSub(); }
+    else if (act === 'diff') { cycle(window.__GAME_DIFF, ['normal', 'hard', 'peaceful', 'easy']); drawSub(); }
+    else if (act === 'mode' || act === 'speed' || act === 'death') { const R = window.__GAME_RULES; if (R) { const l = RULES[act]; R.set(act, l[(l.indexOf(R[act]) + 1) % l.length]); } drawSub(); }
     else if (act === 'mon') { const l = window.__GAME_LIFE; if (l) l.setMonsters(!l.monsters); drawSub(); }
     else if (act === 'name') { const inp = sub.querySelector('.nm input'), n = window.__GAME_NET; if (inp && n) { n.setName(inp.value); drawSub(); const out = sub.querySelector('.note'); if (out) out.textContent = 'اسمك الحين: ' + n.name; } }
     else if (act === 'keys0') { if (window.__GAME_KEYS) window.__GAME_KEYS.reset(); drawSub(); }

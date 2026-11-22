@@ -917,7 +917,7 @@ async function startGame() {
     onInteract: (h) => bag.interact(h),
     onMenu() { if (weather) weather.toggle(); },
     onUse: (item) => (life ? life.use(item) : false),
-    onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
+    onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك وزر «نزول» ينزّلك، والمشي ما يطيّحك. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
     onFirstLook() { hud.els.look.hidden = true; },
     onFrame(st, dt) {

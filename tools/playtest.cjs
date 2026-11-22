@@ -270,6 +270,10 @@ function serve(root, prefix) {
       await shot('5-bag');
       const want = await page.evaluate(() => window.__game.bag.items.findIndex((it) => it.id === 104));
       const tapOn = async (sel) => { const r = await (await page.$(sel)).boundingBox(); if (touch) await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2); else await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2); };
+      // the survival mode (the default) has no catalogue page; the creative mode has it
+      check('in the survival mode the bag has no catalogue page', await page.evaluate(() => { const b = document.querySelector('#bag [data-tab="all"]'); return !!b && b.hidden; }));
+      await page.evaluate(() => { window.__GAME_RULES.set('mode', 'creative'); window.__game.bag.setTab('mine'); });
+      check('in the creative mode it does', await page.evaluate(() => !document.querySelector('#bag [data-tab="all"]').hidden));
       await tapOn('#bag [data-tab="all"]');                   // the catalogue page
       await page.waitForTimeout(60);
       await page.evaluate((n) => document.querySelector('#bag [data-item="' + n + '"]').scrollIntoView({ block: 'center' }), want);
@@ -278,6 +282,7 @@ function serve(root, prefix) {
       await page.waitForTimeout(80);
       const got = await page.evaluate(() => { const s = window.__play.state; return { sel: s.sel, id: s.slots[1].id, n: s.slots[1].n }; });
       check('a square is chosen, then the item lands in it', got.sel === 1 && got.id === 104 && got.n === 64, got);
+      await page.evaluate(() => window.__GAME_RULES.set('mode', 'survival'));        // the rest of the checks are about the survival rules (hurt, hunger)
       await tapOn('#bag .x');
       await page.waitForTimeout(120);
       check('closing the bag gives the controls back', await page.evaluate(() => document.getElementById('bag').hidden && !window.__play.state.modal));

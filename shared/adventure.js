@@ -175,7 +175,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
         + `<h3>المهام ${qs.filter((q) => q.done).length}/${qs.length}</h3><ol class="quests">${qs.map((q) => `<li class="${q.done ? 'done' : q === next ? 'now' : ''}">${q.name}<small>+${q.xp} خبرة${q.outfit ? ' · لبس «' + looks.find((o) => o.key === q.outfit).name + '»' : ''}</small></li>`).join('')}</ol>`
         + `<h3>مهام سرية لقيتها: ${sec.length} من ${secretsHere.length}</h3>${sec.length ? `<ol class="quests">${sec.map((q) => `<li class="done">${q.name}<small>${q.how}</small></li>`).join('')}</ol>` : '<p class="hint">ما تنكتب هني لين تلقاها بروحك. جرّب أشياء غريبة.</p>'}`
         + `<h3>ملابسي</h3><div class="looks">${looks.map((o) => `<button type="button" class="look${o.on ? ' on' : ''}${o.owned ? '' : ' locked'}" data-look="${o.key}">${outfitPicture(o.owned ? o.c : { hat: '#2a2d35', skin: '#3a3d46', shirt: '#2a2d35', pants: '#22252c', shoes: '#1a1c22' }, 34)}<span>${o.owned ? o.name : o.rare ? 'نادر: ؟' : o.name}</span><small>${o.owned ? (o.on ? 'لابسه' : 'البسه') : o.how}</small></button>`).join('')}</div>`
-        + `<h3>صمّم شكلك</h3><div class="design">${[['hat', 'الطاقية'], ['skin', 'البشرة'], ['shirt', 'القميص'], ['pants', 'السروال'], ['shoes', 'الحذاء']].map(([k, t]) => `<label>${t}<input type="color" data-part="${k}" value="${wardrobe.custom[k] || '#888888'}"></label>`).join('')}<label>العباءة<input type="color" data-part="cape" value="${wardrobe.custom.cape || '#7747bb'}"></label><button type="button" class="view" data-cape="${wardrobe.custom.cape ? 0 : 1}">${wardrobe.custom.cape ? 'بدون عباءة' : 'مع عباءة'}</button><button type="button" class="view" data-brim="${wardrobe.custom.brim ? 0 : 1}">${wardrobe.custom.brim ? 'طاقية بدون حافة' : 'طاقية بحافة'}</button><span class="pv">${outfitPicture(wardrobe.custom, 46)}</span></div>`
+        + `<h3>صمّم شكلك</h3><div class="design">${[['hat', 'الطاقية والشعر'], ['skin', 'البشرة'], ['shirt', 'القميص'], ['pants', 'السروال'], ['shoes', 'الحذاء']].map(([k, t]) => `<label>${t}<input type="color" data-part="${k}" value="${wardrobe.custom[k] || '#888888'}"></label>`).join('')}<label>العباءة<input type="color" data-part="cape" value="${wardrobe.custom.cape || '#7747bb'}"></label><button type="button" class="view" data-cape="${wardrobe.custom.cape ? 0 : 1}">${wardrobe.custom.cape ? 'بدون عباءة' : 'مع عباءة'}</button><button type="button" class="view" data-brim="${wardrobe.custom.brim ? 0 : 1}">${wardrobe.custom.brim ? 'طاقية بدون حافة' : 'طاقية بحافة'}</button><button type="button" class="view" data-long="${wardrobe.custom.long ? 0 : 1}">${wardrobe.custom.long ? 'شعر قصير' : 'شعر طويل'}</button><label>الفستان<input type="color" data-part="skirt" value="${wardrobe.custom.skirt || '#c9b6f2'}"></label><button type="button" class="view" data-skirt="${wardrobe.custom.skirt ? 0 : 1}">${wardrobe.custom.skirt ? 'بدون فستان' : 'مع فستان'}</button><button type="button" class="view" data-flowers="${wardrobe.custom.flowers ? 0 : 1}">${wardrobe.custom.flowers ? 'بدون ورد' : 'تاج ورد'}</button><span class="pv">${outfitPicture(wardrobe.custom, 46)}</span></div>`
         + '<p class="hint"><button type="button" class="view" data-view="1">' + (st.third ? 'ارجع للمنظور الأول' : 'شوف شكلك من ورا (V)') + '</button></p>';
     },
     /** The picture of the world from above (made once): ground by height, water blue. */
@@ -192,7 +192,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     /** After page() is in the document: draw the map. */
     drawn(el) {
       // the designer's colour boxes: each change dresses the figure at once
-      for (const inp of el.querySelectorAll('.design input[type="color"]')) inp.addEventListener('input', () => { if (inp.dataset.part === 'cape' && !wardrobe.custom.cape) return; wardrobe.design(inp.dataset.part, inp.value); const pv = el.querySelector('.design .pv'); if (pv) pv.innerHTML = outfitPicture(wardrobe.custom, 46); });
+      for (const inp of el.querySelectorAll('.design input[type="color"]')) inp.addEventListener('input', () => { if ((inp.dataset.part === 'cape' || inp.dataset.part === 'skirt') && !wardrobe.custom[inp.dataset.part]) return; wardrobe.design(inp.dataset.part, inp.value); const pv = el.querySelector('.design .pv'); if (pv) pv.innerHTML = outfitPicture(wardrobe.custom, 46); });
       const cv = el.querySelector('.tmap canvas');
       if (!cv) return;
       const g = cv.getContext('2d');
@@ -206,8 +206,11 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     },
     /** A click inside the quests page or the trade page. True when it was handled (the bag draws again). */
     click(t) {
-      const cape = t.closest('[data-cape]'), brim = t.closest('[data-brim]');
+      const cape = t.closest('[data-cape]'), brim = t.closest('[data-brim]'), long = t.closest('[data-long]'), skirt = t.closest('[data-skirt]'), flowers = t.closest('[data-flowers]');
       if (cape) { wardrobe.design('cape', cape.dataset.cape === '1' ? '#7747bb' : false); return true; }
+      if (long) { wardrobe.design('long', long.dataset.long === '1'); return true; }
+      if (skirt) { wardrobe.design('skirt', skirt.dataset.skirt === '1' ? '#c9b6f2' : false); return true; }
+      if (flowers) { wardrobe.design('flowers', flowers.dataset.flowers === '1' ? '#ff6f9c' : false); return true; }
       if (brim) { wardrobe.design('brim', brim.dataset.brim === '1'); return true; }
       const look = t.closest('[data-look]'), deal = t.closest('[data-deal]'), view = t.closest('[data-view]');
       if (look) { if (!wardrobe.wear(look.dataset.look)) play.notice('هذا اللبس للحين مقفول.', false, 2000); else if (play.sound) play.sound.ui(); return true; }

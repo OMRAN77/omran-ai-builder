@@ -16,7 +16,7 @@ import { buildMerlons, buildBeams, buildPalms, buildLantern, buildTent, buildRug
 const GAME = window.__GAME || (new URLSearchParams(location.search).has('play') ? {} : null);
 const COARSE = window.matchMedia('(pointer: coarse)').matches;
 // blocks that only the running game puts in the world; neither is meshed (see game.js)
-const GID = { OBSTACLE: 27, LANTERN: 28 };
+const GID = { OBSTACLE: 27, LANTERN: 28, PALM: 29 };
 
 const stage = createStage({ fov: 42, near: 0.3, far: 2600 });
 const { scene, camera, renderer } = stage;
@@ -88,7 +88,7 @@ const isPool = (x, y, z) => poolCol[colIndex(x, z)] === 1;
 const terrain = createTerrain(W, BLOCKS, {
   materialFor, aoCurve: [0.50, 0.68, 0.85, 1.0], regionOf: inOasis, skipLiquid: isPool,
   // a kit fire stands on the ground as a plant does; every other kit block is something built
-  notGround: (id) => (id >= B.WATER && id <= B.SHRUB) || id === GID.OBSTACLE || id === GID.LANTERN || id === K.FIRE,
+  notGround: (id) => (id >= B.WATER && id <= B.SHRUB) || id === GID.OBSTACLE || id === GID.PALM || id === GID.LANTERN || id === K.FIRE,
   kit: isKit,
   onMesh: (m) => { if (m.userData.region === 1) m.layers.enable(1); },
 });
@@ -385,7 +385,7 @@ if (GAME) {
     .map((f) => document.fonts.load(f, 'واحة 0123').catch(() => null)));      // a font that cannot be fetched must not stop the game
   await startGame({
     GID, stage, W, terrain, hud, held, targetBox, materialFor, actors, place, aimShadow, setTime, rig, lanterns, lightLantern,
-    merlons, beams, flag, campProps,
+    merlons, beams, flag, campProps, palms, buildPalms,
   });
   markReady();
 } else window.__shot('hero').then(markReady);

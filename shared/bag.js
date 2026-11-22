@@ -184,7 +184,11 @@ export function createBag(o) {
       + craft.list().map((r, i) => `<button type="button" class="rec${r.can ? ' can' : ''}" data-rec="${i}"><span class="pic">${o.iconOf(r.item)}</span><div><strong>${r.item.name}${r.n > 1 ? ' ×' + r.n : ''}</strong><small>${r.needs.map((q) => (q.have >= q.n ? `${q.n} ${q.name}` : `<u>${q.n} ${q.name} (عندك ${q.have})</u>`)).join(' + ')}${r.table && !near ? ' · <u>يبي طاولة</u>' : ''}</small></div></button>`).join('')
       + '</div>';
   }
+  // the catalogue is the creative mode's: in the survival mode everything is dug, hunted, found or made
+  const creative = () => !window.__GAME_RULES || window.__GAME_RULES.creative;
   function draw() {
+    if (tab === 'all' && !creative()) tab = 'mine';
+    const cat = el.querySelector('[data-tab="all"]'); if (cat) cat.hidden = !creative();
     for (const [k, p] of Object.entries(pages)) p.hidden = k !== tab;
     for (const b of el.querySelectorAll('[data-tab]')) b.classList.toggle('on', b.dataset.tab === tab);
     drawBar();
@@ -219,7 +223,7 @@ export function createBag(o) {
     else if (tab === 'all' && pl && pl.dataset.z === 'bar') { play.select(+pl.dataset.k); drawBar(); }
     else if (tab === 'craft' && pl && pl.dataset.z === 'bar') { play.select(+pl.dataset.k); drawBar(); }
     else if (pl) tapPlace(pl.dataset.z, pl.dataset.z === 'gear' ? pl.dataset.k : +pl.dataset.k);
-    else if (it) { play.setSlot(st.sel, { ...items[+it.dataset.item] }); drawBar(); }
+    else if (it && creative()) { play.setSlot(st.sel, { ...items[+it.dataset.item] }); drawBar(); }
     else if (rec) { const r = craft.make(+rec.dataset.rec); if (r !== true) play.notice(r, false, 2600); draw(); }
     else if (o.extra && t.closest('.extra')) { show(false); o.extra.onClick(); }
     else if (o.onMenu && t.closest('.menu')) { show(false); o.onMenu(); }

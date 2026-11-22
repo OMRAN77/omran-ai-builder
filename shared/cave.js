@@ -1,8 +1,8 @@
 // The cave: a way down into the ground, carved fresh for the day (a different cave tomorrow), with torches
-// along it and veins of gold and diamond in its walls. Everyone in the same world on the same day gets the
+// along it, a fire burning in its hall, and veins of coal, gold and diamond in its walls. Everyone in the same world on the same day gets the
 // same cave, so friends in a shared game walk the same tunnels.
 //
-//   const cave = makeCave({ play, kit, rnd, spawn });      -> { mouth: { x, y, z }, cells, gold, diamond } | null
+//   const cave = makeCave({ play, kit, rnd, spawn });      -> { mouth: { x, y, z }, cells, coal, gold, diamond, fires } | null
 
 import { K } from './kit.js';
 
@@ -58,12 +58,19 @@ export function makeCave({ play, kit, rnd, spawn }) {
   // veins in the walls: rock that borders the open cave, below the stair's upper half
   const walls = [];
   for (const [cx, cy, cz] of cells) { if (cy > mouth.y - 5) continue; for (const [ox, oy, oz] of [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, -1, 0]]) { const k = key(cx + ox, cy + oy, cz + oz); if (!open.has(k) && solid(cx + ox, cy + oy, cz + oz)) walls.push([cx + ox, cy + oy, cz + oz]); } }
-  const veins = { gold: [], diamond: [] }, used = new Set();
+  const veins = { coal: [], gold: [], diamond: [] }, used = new Set();
   const vein = (list, id, n) => { for (let i = 0; i < n * 30 && list.length < n && walls.length; i++) { const c = walls[Math.floor(rnd() * walls.length)], k = key(c[0], c[1], c[2]); if (used.has(k)) continue; used.add(k); kit.setBlock(c[0], c[1], c[2], id); list.push(c); } };
   vein(veins.diamond, K.ROCK_DIAMOND, 6);
   vein(veins.gold, K.ROCK_GOLD, 10);
-  // torches along the way, standing on the floor
+  vein(veins.coal, K.ROCK_COAL, 16);
+  // torches along the way, standing on the floor; in the middle of the hall a fire burns (it warms, and it burns whoever walks into it)
   let lit = 0;
-  for (const [fx, fy, fz] of floor) { if (!open.has(key(fx, fy, fz)) || !solid(fx, fy - 1, fz) || w.get(fx, fy, fz) !== 0) continue; kit.setBlock(fx, fy, fz, K.TORCH); if (kit.lit) kit.lit(fx, fy, fz, K.TORCH); lit++; }
-  return { mouth, hall, cells: cells.length, gold: veins.gold, diamond: veins.diamond, torches: lit };
+  const fires = [];
+  for (const [fx, fy, fz] of floor) {
+    if (!open.has(key(fx, fy, fz)) || !solid(fx, fy - 1, fz) || w.get(fx, fy, fz) !== 0) continue;
+    const fire = fx === hall.x && fz === hall.z;
+    kit.setBlock(fx, fy, fz, fire ? K.FIRE : K.TORCH); if (kit.lit) kit.lit(fx, fy, fz, fire ? K.FIRE : K.TORCH);
+    if (fire) fires.push([fx, fy, fz]); else lit++;
+  }
+  return { mouth, hall, cells: cells.length, coal: veins.coal, gold: veins.gold, diamond: veins.diamond, torches: lit, fires };
 }

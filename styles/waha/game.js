@@ -3,7 +3,7 @@
 // controller only reports what happened.
 import * as THREE from 'three';
 import { createPlay, createPlayPanel, goImmersive } from '../../shared/play.js';
-import { KIT_GROUPS, createKit } from '../../shared/kit.js';
+import { KIT_GROUPS, K, kitItem, createKit } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
 import { createHeld } from '../../shared/held.js';
 import { createVitals, bars } from '../../shared/vitals.js';
@@ -38,15 +38,18 @@ const EYE = 1.62;
 const ease = (t) => t * t * (3 - 2 * t);
 
 export async function startGame(ctx) {
-  const { GID, stage, W, terrain, hud, held, targetBox, actors, place, aimShadow, setTime, rig, lanterns, lightLantern, merlons, beams, flag, campProps } = ctx;
+  const { GID, stage, W, terrain, hud, held, targetBox, actors, place, aimShadow, setTime, rig, lanterns, lightLantern, merlons, beams, flag, campProps, palms, buildPalms } = ctx;
   const { scene, camera, renderer } = stage, { world } = W, A = W.anchors;
-  const OBSTACLE = GID.OBSTACLE, LANTERN = GID.LANTERN;
+  const OBSTACLE = GID.OBSTACLE, LANTERN = GID.LANTERN, PALM = GID.PALM;
   // Two blocks exist only while playing; the mesher draws neither.
   //   OBSTACLE  fills the space a prop takes (palm trunks, the camel, the falcon's perch) so the player cannot walk through it
   //   LANTERN   a lantern the player has put down; it is drawn as the same small prop as the fort's lanterns
   BLOCKS[OBSTACLE] = { tiles: 'beam', kind: 'none' };
   BLOCKS[LANTERN] = { tiles: 'beam', kind: 'none' };
   NAMES[LANTERN] = 'فانوس'; DROP[LANTERN] = LANTERN;
+  //   PALM      a palm's trunk: solid, aimed at and chopped like wood; the palm itself is the drawn prop
+  BLOCKS[PALM] = { tiles: 'beam', kind: 'none', solid: true, pick: true };
+  NAMES[PALM] = 'جذع نخلة'; DROP[PALM] = B.WOOD;
 
   // ------------------------------------------------------------------ the controller's view of the world
   // shared/play.js walls the world in at x = 0 and z = 0, but this world's grid starts at (X0, Z0) < 0.
@@ -139,16 +142,38 @@ export async function startGame(ctx) {
     const s = under(Math.floor(flag.position.x), Math.floor(flag.position.y) - 1, Math.floor(flag.position.z));
     if (s) hook(onGone, key(s[0], s[1], s[2]), () => { flag.visible = false; redrawShadows(); });
   }
-  // palms: the trunk is solid and the block under it stays
+  // palms: the trunk is solid and the block under it stays while the palm stands. A blow on any piece of the trunk
+  // fells the whole palm: it gives wood and dates, and its ground can be dug after it.
+  const palmOf = new Map();                          // trunk cell -> the palm
   for (const p of A.palms) {
     const x = Math.floor(p.x), z = Math.floor(p.z);
     if (!inCols(x, z)) continue;
     protect(p.x, p.z, 'جذور نخلة');
+    const t = W.top[colIndex(x, z)];
+    p.cells = []; p.root = t >= 0 ? key(x, t, z) : null;
     const [lx, lz] = p.lean || [0, 0];
-    for (let y = W.top[colIndex(x, z)] + 1; y < p.y + p.h - 0.2 && y < SY; y++) {
+    for (let y = t + 1; y < p.y + p.h - 0.2 && y < SY; y++) {
       const u = Math.max(0, (y + 0.5 - p.y) / p.h), cx = Math.floor(p.x + lx * u * u), cz = Math.floor(p.z + lz * u * u);
-      if (inCols(cx, cz) && !world.get(cx, y, cz)) world.set(cx, y, cz, OBSTACLE);
+      if (inCols(cx, cz) && !world.get(cx, y, cz)) { world.set(cx, y, cz, PALM); p.cells.push([cx, y, cz]); palmOf.set(key(cx, y, cz), p); }
     }
+  }
+  /** Fell palm p: the rest of its trunk goes, it is drawn no more, and its roots no longer hold the ground. */
+  function fellPalm(p) {
+    if (p.felled) return 0;
+    p.felled = true;
+    let n = 0;
+    for (const [x, y, z] of p.cells) { palmOf.delete(key(x, y, z)); if (world.get(x, y, z) === PALM) { pterrain.setBlock(x - OX, y, z - OZ, 0); n++; } }
+    if (p.root !== null) guard.delete(p.root);
+    const left = A.palms.filter((q) => !q.felled);
+    const [trunk, fronds] = palms.children;
+    if (left.length) {
+      const fresh = buildPalms(left);
+      trunk.geometry.dispose(); fronds.geometry.dispose();
+      trunk.geometry = fresh.children[0].geometry; fronds.geometry = fresh.children[1].geometry;
+      fresh.children[0].material.dispose(); fresh.children[1].material.dispose();
+    } else palms.visible = false;
+    redrawShadows();
+    return n;
   }
   // the camp: nobody digs the floor out from under the tent, the fire and the rugs
   for (const [obj, hw, hd] of campProps) {
@@ -205,7 +230,7 @@ export async function startGame(ctx) {
 
   // spawn: where the play shot stands, feet on the block grid, crosshair on the same block of the wall
   const wt = A.work.target, sx = camera.position.x, sz = camera.position.z;
-  const solidAt = (x, y, z) => { const id = world.get(Math.floor(x), y, Math.floor(z)); return id === OBSTACLE || cube(id); };
+  const solidAt = (x, y, z) => { const id = world.get(Math.floor(x), y, Math.floor(z)); return id === OBSTACLE || id === PALM || cube(id); };
   let fy = Math.round(camera.position.y - EYE);
   while (solidAt(sx, fy, sz)) fy++;
   while (fy > 1 && !solidAt(sx, fy - 1, sz)) fy--;
@@ -331,6 +356,7 @@ export async function startGame(ctx) {
       if (k !== null) return k;
       if (kindOf(id) === 'cross') return 0.08;
       if (id === LANTERN) return 0.15;
+      if (id === PALM) return 0.9;                   // a palm is hard wood: an axe from the bag is quicker
       const item = slots[play.state.sel], spade = !!item && item.key === 'spade';
       if (LOOSE.has(id)) return spade ? 0.16 : 0.32;
       if (ROCK.has(id)) return spade ? 1.3 : 0.75;
@@ -350,6 +376,18 @@ export async function startGame(ctx) {
     onBreak(h) {
       const x = h.x + OX, z = h.z + OZ;
       if (h.id === LANTERN) takeLantern(key(x, h.y, z));
+      if (h.id === PALM) {
+        const p = palmOf.get(key(x, h.y, z));
+        if (p) {
+          const rest = fellPalm(p);
+          if (!h.remote) {
+            // the piece that was struck came to the hand already; the rest of the trunk and a bunch of dates come with it
+            if (rest > 0) play.give({ ...(play.itemOf(B.WOOD) || { id: B.WOOD, name: NAMES[B.WOOD] }), n: Math.min(5, rest) });
+            play.give(kitItem(K.DATES, 3));
+            play.notice('طاحت النخلة: حصلت خشب وتمر. الخشب للتصنيع، والتمر تاكله أو تأكّله الحيوانات.', false, 4800);
+          }
+        }
+      }
       kit.broke(h);
       // a fire that burned on the block went with it (the controller clears a plant off a dug block without a word): its light goes too
       const up = h.x + ',' + (h.y + 1) + ',' + h.z;
@@ -373,7 +411,7 @@ export async function startGame(ctx) {
     onInteract: (h) => bag.interact(h),
     onMenu() { if (weather) weather.toggle(); },
     onUse: (item) => (life ? life.use(item) : false),
-    onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك، وادفع العصا تطير وين ما تطالع. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
+    onFly(on) { play.notice(on ? (hud.touch ? 'الطيران شغّال. زر القفز يطلّعك وزر «نزول» ينزّلك، والمشي ما يطيّحك. القفز مرّتين يوقفه.' : 'الطيران شغّال. المسافة تطلّعك وShift ينزّلك. المسافة مرّتين توقفه.') : 'وقف الطيران.', false, on ? 4500 : 1800); },
     onUnlock() { play.stop(); panel.show('pause'); },
     onFirstLook() { hud.els.look.hidden = true; },
     onFrame(st, dt) {

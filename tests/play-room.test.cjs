@@ -113,3 +113,15 @@ test('الملفّ لا يقرأ سرًّا في نطاق الوحدة ولا ي
   const kv = fs.readFileSync(path.join(__dirname, '..', 'api/_kv.js'), 'utf8');
   assert.ok(!/^const .*process\.env/m.test(kv), 'الأسرار تُقرأ داخل النداء');
 });
+
+test('الصفحة الأولى تعرف عالم الغرفة من كودها (peek) ولا ترى شيئًا غيره', async () => {
+  const K = memoryKV();
+  const { json: { code, key } } = await act({ op: 'open', world: 'waha' }, '1.1.1.1', K);
+  const r = await act({ op: 'peek', code }, '2.2.2.2', K);
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.json, { world: 'waha' }, 'العالم فقط: لا سرّ صاحب الغرفة ولا طلبات الدخول');
+  assert.ok(!JSON.stringify(r.json).includes(key));
+  assert.equal((await act({ op: 'peek', code: code === '9999' ? '9998' : '9999' }, '2.2.2.2', K)).status, 404);
+  assert.equal((await act({ op: 'peek', code: 'abcd' }, '2.2.2.2', K)).status, 400);
+  assert.equal((await act({ op: 'open', world: 'barari' }, '1.1.1.1', K)).status, 200, 'عالم البراري معروف');
+});

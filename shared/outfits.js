@@ -3,6 +3,14 @@
 
 export const OUTFITS = [
   { key: 'explorer', name: 'المستكشف', how: 'لبس البداية', c: { hat: '#3a3f4a', skin: '#e0b088', shirt: '#3f7ab8', pants: '#3a4152', shoes: '#2a2c33' } },
+  // characters anyone may wear from the start
+  { key: 'rose', name: 'بنت الورد', how: 'متاحة من البداية', free: true, c: { hat: '#f2a7c3', skin: '#f0c7a4', shirt: '#f7e3ef', pants: '#f0c7a4', shoes: '#f4f1f6', long: true, skirt: '#c9b6f2', flowers: '#ff6f9c' } },
+  { key: 'trail', name: 'المستكشفة', how: 'متاحة من البداية', free: true, c: { hat: '#6b4428', skin: '#e0b088', shirt: '#f4efe4', pants: '#4a78b8', shoes: '#7a4a2a', long: true } },
+  { key: 'dune', name: 'بنت البر', how: 'متاحة من البداية', free: true, c: { hat: '#1d1a1a', skin: '#d6a57c', shirt: '#7a2f3a', pants: '#3b2a2a', shoes: '#2a1c18', long: true, skirt: '#5a1f2a' } },
+  { key: 'frost', name: 'بنت الثلج', how: 'متاحة من البداية', free: true, c: { hat: '#e9eef6', skin: '#f0d0b8', shirt: '#9fc8f0', pants: '#dfeaf6', shoes: '#f4f8fc', long: true, skirt: '#6fa8e0', flowers: '#ffffff' } },
+  { key: 'cap', name: 'ولد الكاب', how: 'متاح من البداية', free: true, c: { hat: '#c33d2e', skin: '#e0b088', shirt: '#2d5abf', pants: '#7a5a3a', shoes: '#25282d', brim: true } },
+  { key: 'robo', name: 'الآلي', how: 'متاح من البداية', free: true, c: { hat: '#5a6068', skin: '#9aa0a8', shirt: '#6c737c', pants: '#4a5058', shoes: '#2a2e34' } },
+  { key: 'space', name: 'رائدة الفضاء', how: 'متاحة من البداية', free: true, c: { hat: '#f4f4f2', skin: '#e0b088', shirt: '#f1f1ee', pants: '#e6e6e2', shoes: '#c33d2e', cape: '#e86a2a' } },
   { key: 'worker', name: 'العامل', how: 'مهمة: اصنع أداة', c: { hat: '#e0a52e', skin: '#e0b088', shirt: '#c96a2b', pants: '#4a4f5c', shoes: '#3b2a1c', brim: true } },
   { key: 'miner', name: 'المنقّب', how: 'مهمة: اجمع 4 ألماسات من الكهف', c: { hat: '#e3c038', skin: '#e0b088', shirt: '#5a6a7a', pants: '#3b4250', shoes: '#22252c', brim: true } },
   { key: 'hunter', name: 'الصيّاد', how: 'مهمة: صيد حيوانين', c: { hat: '#4d5a2c', skin: '#d6a57c', shirt: '#5f7036', pants: '#5a4630', shoes: '#33261a', brim: true } },
@@ -27,14 +35,15 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 export function cleanLook(c) {
   if (!c || typeof c !== 'object') return null;
   const out = {};
-  for (const k of ['hat', 'skin', 'shirt', 'pants', 'shoes', 'cape']) if (typeof c[k] === 'string' && HEX.test(c[k])) out[k] = c[k];
+  for (const k of ['hat', 'skin', 'shirt', 'pants', 'shoes', 'cape', 'skirt', 'flowers']) if (typeof c[k] === 'string' && HEX.test(c[k])) out[k] = c[k];
   if (c.brim) out.brim = true;
+  if (c.long) out.long = true;
   return out.shirt && out.pants ? out : null;
 }
 const CUSTOM0 = { hat: '#c33d2e', skin: '#e0b088', shirt: '#2cabb3', pants: '#2d5abf', shoes: '#25282d' };
 
 export function createWardrobe({ play }) {
-  const owned = new Set(['explorer', 'custom']);
+  const owned = new Set(['explorer', 'custom', ...OUTFITS.filter((o) => o.free).map((o) => o.key)]);
   let custom = { ...CUSTOM0 };
   try { const c = cleanLook(JSON.parse(window.localStorage.getItem('bw-custom') || 'null')); if (c) custom = c; } catch (e) { /* storage may be closed or hold something else */ }
   const entry = () => ({ key: 'custom', name: 'تصميمي', how: 'صمّمه بنفسك', c: custom });
@@ -49,9 +58,9 @@ export function createWardrobe({ play }) {
     list: () => [entry(), ...OUTFITS].map((o) => ({ ...o, owned: owned.has(o.key), on: o.key === current })),
     /** Change one part of the player's own design: a colour for a part, or true / false for the cape and the brim. */
     design(part, value) {
-      if (part === 'brim') { if (value) custom.brim = true; else delete custom.brim; }
-      else if (part === 'cape' && (value === false || value === '')) delete custom.cape;
-      else if (['hat', 'skin', 'shirt', 'pants', 'shoes', 'cape'].includes(part) && HEX.test(String(value))) custom[part] = String(value);
+      if (part === 'brim' || part === 'long') { if (value) custom[part] = true; else delete custom[part]; }
+      else if ((part === 'cape' || part === 'skirt' || part === 'flowers') && (value === false || value === '')) delete custom[part];
+      else if (['hat', 'skin', 'shirt', 'pants', 'shoes', 'cape', 'skirt', 'flowers'].includes(part) && HEX.test(String(value))) custom[part] = String(value);
       else return false;
       current = 'custom'; keep();
       try { window.localStorage.setItem('bw-custom', JSON.stringify(custom)); } catch (e) { /* not kept */ }

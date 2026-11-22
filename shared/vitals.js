@@ -18,6 +18,7 @@
 // hurts: false marks a need that does not cost health at zero (power).
 
 import { K } from './kit.js';
+import { EMPTY } from './play.js';
 
 export function createVitals(o) {
   const { play, kit, world } = o, st = play.state;
@@ -34,8 +35,9 @@ export function createVitals(o) {
   const flash = document.createElement('div');
   flash.style.cssText = 'position:fixed;inset:0;z-index:30;pointer-events:none;opacity:0;transition:opacity .35s;box-shadow:inset 0 0 120px 30px rgba(200,20,10,.75);';
   document.body.appendChild(flash);
+  const creative = () => !!(window.__GAME_RULES && window.__GAME_RULES.creative);
   function hurt(d) {
-    if (d <= 0) return;
+    if (d <= 0 || creative()) return;
     v.hp -= d; calm = 0;
     flash.style.transition = 'none'; flash.style.opacity = String(Math.min(0.9, 0.35 + d / 30));
     requestAnimationFrame(() => { flash.style.transition = 'opacity .5s'; flash.style.opacity = '0'; });
@@ -55,13 +57,43 @@ export function createVitals(o) {
     if (n.how === 'home') return Math.hypot(n.home.x - p.x, n.home.z - p.z) < n.range;
     return false;
   }
+  // what the player starts with that belongs to the world (its own digging tools) is never taken away
+  const own = (it) => !!it && !it.empty && it.tool && !it.kit;
+  /** By the player's rule: keep what is carried, leave it in a chest where they fell, or lose it. */
+  function dropAll() {
+    const rule = window.__GAME_RULES ? window.__GAME_RULES.death : 'keep';
+    if (rule === 'keep') return '';
+    const taken = [];
+    st.slots.forEach((it, i) => { if (it && !it.empty && !own(it) && (it.n == null || it.n > 0)) { taken.push(it); st.slots[i] = EMPTY; } });
+    st.pack.forEach((it, i) => { if (it) { taken.push(it); st.pack[i] = null; } });
+    for (const k of Object.keys(st.gear)) if (st.gear[k]) { taken.push(st.gear[k]); st.gear[k] = null; }
+    play.changed();
+    if (!taken.length) return '';
+    if (rule === 'lose') return ' وأغراضك راحت.';
+    // one chest for every 27 things, side by side where the player fell (on the first free cells above the ground)
+    const x0 = Math.floor(st.pos.x), z0 = Math.floor(st.pos.z);
+    let put = 0;
+    for (let i = 0; put < taken.length && i < 9; i++) {
+      const x = x0 + [0, 1, -1, 0, 0, 1, -1, 1, -1][i], z = z0 + [0, 0, 0, 1, -1, 1, -1, -1, 1][i];
+      let y = Math.max(1, Math.floor(st.pos.y));
+      while (y < world.sy - 2 && world.get(x, y, z) !== 0 && !play.isLiquid(world.get(x, y, z))) y++;
+      while (y > 1 && (world.get(x, y - 1, z) === 0 || play.isLiquid(world.get(x, y - 1, z)))) y--;
+      if (!world.inb(x, y, z) || !play.put(x, y, z, K.CHEST)) continue;
+      const box = kit.chestAt(x, y, z);
+      for (let j = 0; j < 27 && put < taken.length; j++) if (!box[j]) box[j] = taken[put++];
+    }
+    st.grave = { x: x0, y: Math.floor(st.pos.y), z: z0 };
+    if (put < taken.length) return ' وأغراضك طاحت في صندوق مكان ما متّ (اللي ما وسعه الصندوق راح).';
+    return ' أغراضك طاحت في صندوق مكان ما متّ: ارجع له وافتحه.';
+  }
   function die() {
     deaths++; st.deaths = (st.deaths || 0) + 1;
+    const lost = dropAll();
     v.hp = 100; for (const n of o.needs) v[n.key] = Math.max(v[n.key], n.respawn ?? 70);
     play.setFlying(false);
     st.pos.set(spawn.x, spawn.y, spawn.z); st.vel.set(0, 0, 0); st.yaw = spawn.yaw; st.pitch = spawn.pitch;
     air = 0; fallV = 0; wasGround = true; breath = 0;
-    play.notice(o.deathText || 'طاحت صحتك للصفر. رجعت لنقطة البداية.', false, 4500);
+    play.notice((o.deathText || 'طاحت صحتك للصفر. رجعت لنقطة البداية.') + lost, false, lost ? 7000 : 4500);
     if (o.onDeath) o.onDeath();
   }
   function update(dt) {
@@ -83,8 +115,9 @@ export function createVitals(o) {
     for (const n of o.needs) {
       let d;
       if (n.how === 'rest') { const use = n.use ? n.use(st) : 0; d = use > 0 ? -use : n.gain; }
-      else d = rising(n) ? n.gain : -(n.drain * (st.inWater && n.wet ? n.wet : 1) * (play.input.sprint && n.run ? n.run : 1) * (w.rain && n.rainDrain ? n.rainDrain : 1) * (w.night && n.nightDrain ? n.nightDrain : 1) * (n.key === 'food' && window.__GAME_DIFF ? window.__GAME_DIFF.hunger : 1));
+      else d = rising(n) ? n.gain : -(n.drain * (st.inWater && n.wet ? n.wet : 1) * (play.input.sprint && n.run ? n.run : 1) * (w.rain && n.rainDrain ? n.rainDrain : 1) * (w.night && n.nightDrain ? n.nightDrain : 1) * (n.key === 'food' && window.__GAME_DIFF ? window.__GAME_DIFF.hunger : 1) * (n.key === 'warm' && st.gear && st.gear.chest && st.gear.chest.warm ? 0.45 : 1));      // a fur coat keeps the cold off
       if (w.rain && n.rain && !st.flying) d = Math.max(d, n.rain);        // rain fills what it fills (water in the desert)
+      if (creative() && d < 0) d = 0;                                    // in the creative mode nothing runs down
       v[n.key] = Math.max(0, Math.min(100, v[n.key] + d * dt));
       if (n.hurts !== false) { if (v[n.key] <= 0) starving = true; if (v[n.key] < 40) comfy = false; }
       if (v[n.key] < 20 && !warned[n.key]) { warned[n.key] = true; if (n.low) play.notice(n.low, false, 5000); } else if (v[n.key] > 35) warned[n.key] = false;

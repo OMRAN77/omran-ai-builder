@@ -11,6 +11,9 @@ const GOLD = K.GOLD, DIAMOND = K.DIAMOND;
 export const RECIPES = [
   { out: K.TABLE, n: 1, needs: [['wood', 4]] },
   { out: K.TORCH, n: 4, needs: [['wood', 2]] },
+  { out: K.TORCH, n: 8, needs: [['wood', 1], [K.COAL, 1]] },           // coal from the cave burns longer: more torches from less wood
+  { out: K.FURCOAT, n: 1, needs: [[K.FUR, 4]] },                       // four hides make a warm coat
+  { out: K.GLASS, n: 4, needs: [[K.COAL, 1], ['ore', 2]], table: true },
   { out: 212, n: 1, needs: [['wood', 1], ['stone', 2]] },            // stone sword
   { out: 214, n: 1, needs: [['wood', 2], ['stone', 3]] },            // stone axe
   { out: 216, n: 1, needs: [['wood', 2], ['stone', 3]] },            // stone pick
