@@ -39,6 +39,7 @@ function load(action) {
     case 'render-ai': return require('./_lib/render-ai.js'); // v-render-ai: لقطة المدينة ← صورة واقعيّة (المالك، بسقف)
     case 'osm': return require('./_lib/osm.js'); // v-city-life: شوارع وأرصفة للزحمة والمشاة (مخبّأة في الشبكة)
     case 'secrets': return require('./_lib/secrets.js'); // v-secret-vault: خزنة أسرار المالك
+    case 'play-room': return require('./_lib/play-room.js'); // v-blockworld-net: تعارف لاعبي «عالم المكعبات» بكود من أربعة أرقام (لا شيء من اللعب يمرّ من هنا)
     case 'cc': return require('./_lib/cc.js'); // v-cc-bridge: Claude Code الخام للمالك عبر جسره
     case 'call-session': case 'call-start': case 'call-status': case 'call-cancel': case 'call-trial-end': return require('./_lib/call-agent.js'); // v-call-agent: الوكيل يتّصل بالمحلّ (المالك مجّانًا، والمشترك بالنقاط — v-call-agent-paid)
     default: return null;

@@ -41,7 +41,11 @@ export function createLife(o) {
   for (const k of o.kinds) { pool[k.key] = []; counts[k.key] = 0; }
   window.__GAME_LIFE = {
     get monsters() { return monsters; },
-    setMonsters(v) { monsters = !!v; try { window.localStorage.setItem('bw-monsters', monsters ? '1' : '0'); } catch (e) { /* not kept */ } if (!monsters) for (const e of [...ents]) if (e.k.kind === 'monster') retire(e); },
+    onChange: null,
+    setMonsters(v, forced) {
+      if (share.mode === 'guest' && !forced) { play.notice('صاحب الغرفة هو اللي يتحكم بالوحوش.', false, 2600); return; }
+      monsters = !!v; if (window.__GAME_LIFE.onChange && !forced) window.__GAME_LIFE.onChange(monsters); try { window.localStorage.setItem('bw-monsters', monsters ? '1' : '0'); } catch (e) { /* not kept */ } if (!monsters && share.mode !== 'guest') for (const e of [...ents]) if (e.k.kind === 'monster') retire(e);
+    },
   };
   // name tag over the creature under the crosshair
   const tag = document.createElement('div');
@@ -68,7 +72,7 @@ export function createLife(o) {
   function spawnAt(key, x, z) {
     const k = o.kinds.find((q) => q.key === key), y = groundAt(x, z, st.pos.y + 8);
     if (!k || y === null) return null;
-    const e = { k, obj: take(k), x, y, z, yaw: Math.random() * 6.28, hp: k.hp, t: Math.random() * 10, mode: 'idle', until: 1 + Math.random() * 3, tx: x, tz: z, flee: 0, cool: 0, hurt: 0, dead: 0, moving: false };
+    const e = { nid: ++seq, k, obj: take(k), x, y, z, yaw: Math.random() * 6.28, hp: k.hp, t: Math.random() * 10, mode: 'idle', until: 1 + Math.random() * 3, tx: x, tz: z, flee: 0, cool: 0, hurt: 0, dead: 0, moving: false };
     ents.push(e); counts[key]++;
     return e;
   }
@@ -124,33 +128,91 @@ export function createLife(o) {
     }
     return best;
   }
+  // ---- a shared game. The host's creatures are the real ones: it moves them, and tells the guests where they are.
+  // A guest shows what it is told, and tells the host about its blows.
+  const share = { mode: null, send: null, players: null };       // mode: null | 'host' | 'guest'; send(toId | null, msg); players(): [{ id, x, y, z }]
+  let seq = 0;
+  function felled(e) { e.dead = 0.0001; if (play.sound) play.sound.brk(); }
+  function credit(kind, meat) { const gain = kind === 'monster' ? 5 : 2; xp += gain; st.xp = (st.xp || 0) + gain; st.kills[kind]++; if (meat) giveMeat(meat); }
   function strike(e) {
-    e.hp -= power(); e.hurt = 0.25; e.flee = e.k.kind === 'animal' ? 5 : 0;
+    e.hurt = 0.25;
+    if (play.sound) play.sound.dig();
+    if (share.mode === 'guest') { if (share.send) share.send(null, { t: 'hit', e: e.nid, pow: power() }); return; }      // the host decides what the blow did
+    e.hp -= power(); e.flee = e.k.kind === 'animal' ? 5 : 0;
     const dx = e.x - st.pos.x, dz = e.z - st.pos.z, l = Math.hypot(dx, dz) || 1, nx = e.x + dx / l * 0.7, nz = e.z + dz / l * 0.7;
     if (groundAt(nx, nz, e.y + 1) !== null) { e.x = nx; e.z = nz; }
-    if (play.sound) { play.sound.dig(); if (e.hp <= 0) play.sound.brk(); }
-    if (e.hp <= 0) { e.dead = 0.0001; { const gain = e.k.kind === 'monster' ? 5 : 2; xp += gain; st.xp = (st.xp || 0) + gain; st.kills[e.k.kind]++; } if (e.k.meat) giveMeat(e.k.meat); }
+    if (e.hp <= 0) { felled(e); credit(e.k.kind, e.k.meat); }
+  }
+  /** Host: a guest struck creature nid. */
+  function remoteHit(nid, pow, from) {
+    const e = ents.find((q) => q.nid === nid);
+    if (!e || e.dead || !(pow > 0)) return;
+    e.hp -= Math.min(10, pow); e.hurt = 0.25; e.flee = e.k.kind === 'animal' ? 5 : 0;
+    if (e.hp <= 0) { felled(e); if (share.send) share.send(from, { t: 'kill', kind: e.k.kind, meat: e.k.meat || 0 }); }
+  }
+  /** Host: where every creature is now, for the guests. */
+  const snapshot = () => ents.map((e) => [e.nid, o.kinds.indexOf(e.k), +e.x.toFixed(2), +e.y.toFixed(2), +e.z.toFixed(2), +e.yaw.toFixed(2), Math.max(0, Math.round(e.hp * 10) / 10), e.moving ? 1 : 0, e.dead ? 1 : 0]);
+  /** Guest: take the host's creatures as they are. */
+  function applySnapshot(list) {
+    const seen = new Set();
+    for (const [nid, ki, x, y, z, yaw, hp, moving, dead] of list) {
+      const k = o.kinds[ki];
+      if (!k) continue;
+      seen.add(nid);
+      let e = ents.find((q) => q.nid === nid);
+      if (!e) { e = { k, obj: take(k), nid, x, y, z, yaw, hp, t: 0, hurt: 0, dead: 0, moving: false, puppet: true }; ents.push(e); counts[k.key]++; }
+      e.gx = x; e.gy = y; e.gz = z; e.gyaw = yaw; e.hp = hp; e.moving = !!moving;
+      if (dead && !e.dead) felled(e);
+    }
+    for (const e of [...ents]) if (!seen.has(e.nid) && !e.dead) retire(e);
+  }
+  /** Take or leave a shared game. Entering as a guest clears this player's own creatures. */
+  function setShare(mode, send, players) {
+    share.mode = mode; share.send = send || null; share.players = players || null;
+    if (mode === 'guest') for (const e of [...ents]) retire(e);
+    if (!mode) for (const e of [...ents]) if (e.puppet) retire(e);
+  }
+  function pose(e, dt) {
+    const k = e.k;
+    const lift = k.fly ? k.fly + Math.sin(e.t * 1.6) * 0.25 : (e.moving ? Math.abs(Math.sin(e.t * 7)) * 0.07 : 0);
+    e.obj.position.set(e.x + off.x, e.y + lift, e.z + off.z);
+    e.obj.rotation.set(e.moving && !k.fly ? Math.sin(e.t * 7) * 0.04 : 0, e.yaw, 0);
+    e.obj.scale.setScalar(e.obj.userData.baseScale * (e.hurt > 0 ? 0.9 : 1));
+    void dt;
   }
   function update(dt) {
-    if (dt <= 0 || st.modal) return;
-    const p = st.pos;
-    if ((spawnT -= dt) <= 0) { spawnT = 2.2; trySpawn(); }
+    if (dt <= 0 || (st.modal && !share.mode)) return;
+    const guest = share.mode === 'guest';
+    if (!guest && (spawnT -= dt) <= 0) { spawnT = 2.2; trySpawn(); }
     atkCool -= dt;
-    aimed = findAimed();
+    aimed = st.modal ? null : findAimed();
     st.noDig = !!aimed;                                   // a creature under the crosshair is struck instead of the block behind it
     if (aimed && play.input.dig && atkCool <= 0) { atkCool = 0.4; strike(aimed); }
+    // everyone a monster may go for: this player, and in a shared game the others
+    const others = share.mode === 'host' && share.players ? share.players() : [];
     for (let i = ents.length - 1; i >= 0; i--) {
       const e = ents[i], k = e.k;
-      e.t += dt;
+      e.t += dt; e.hurt -= dt;
       if (e.dead) { e.dead += dt; e.obj.rotation.z = Math.min(1.45, e.dead * 5); e.obj.scale.setScalar(e.obj.userData.baseScale * Math.max(0.01, 1 - Math.max(0, e.dead - 0.5) * 2.2)); if (e.dead > 0.95) retire(e); continue; }
-      const dx = p.x - e.x, dz = p.z - e.z, dist = Math.hypot(dx, dz);
+      if (guest) {      // glide to where the host says it is
+        const f = Math.min(1, 10 * dt);
+        e.x += (e.gx - e.x) * f; e.y += (e.gy - e.y) * f; e.z += (e.gz - e.z) * f; e.yaw += (((e.gyaw - e.yaw + 9.4248) % 6.2832) - 3.1416) * f;
+        pose(e, dt);
+        continue;
+      }
+      let p = st.pos, who = null, dx = p.x - e.x, dz = p.z - e.z, dist = Math.hypot(dx, dz);
+      for (const q of others) { const d = Math.hypot(q.x - e.x, q.z - e.z); if (d < dist) { dist = d; p = q; who = q.id; dx = q.x - e.x; dz = q.z - e.z; } }
       if (dist > 64) { retire(e); continue; }
       let mx = 0, mz = 0, speed = k.speed;
-      e.cool -= dt; e.flee -= dt; e.hurt -= dt;
+      e.cool -= dt; e.flee -= dt;
       if (k.kind === 'monster' && monsters && dist < 20 && Math.abs(p.y - e.y) < 6) {
         const reach = k.radius + 1.25;
         if (dist > reach) { mx = dx / dist; mz = dz / dist; speed = k.speed; }
-        else if (e.cool <= 0) { e.cool = 1.15; const v = o.vitals && o.vitals(); if (v) v.hurt(k.dmg * (1 - armor())); }
+        else if (e.cool <= 0) {
+          e.cool = 1.15;
+          if (who !== null) { if (share.send) share.send(who, { t: 'hurt', d: k.dmg }); }
+          else { const v = o.vitals && o.vitals(); if (v) v.hurt(k.dmg * (1 - armor())); }
+        }
       } else if (e.flee > 0 && dist > 0.01) { mx = -dx / dist; mz = -dz / dist; speed = k.speed * 2.1; }
       else {
         if ((e.until -= dt) <= 0) { e.until = 2 + Math.random() * 5; if (Math.random() < 0.65) { const a = Math.random() * 6.283, d = 2 + Math.random() * 5; e.tx = e.x + Math.sin(a) * d; e.tz = e.z + Math.cos(a) * d; e.mode = 'walk'; } else e.mode = 'idle'; }
@@ -163,10 +225,7 @@ export function createLife(o) {
         if (g !== null && g - e.y <= 1.05 && e.y - g <= 3) { e.x = nx; e.z = nz; e.y += (g - e.y) * Math.min(1, 12 * dt); e.moving = true; e.yaw += (((Math.atan2(mx, mz) - e.yaw + 9.4248) % 6.2832) - 3.1416) * Math.min(1, 7 * dt); }
         else { e.mode = 'idle'; e.until = 0.4; if (e.flee > 0 || k.kind === 'monster') { const s = Math.random() < 0.5 ? 1 : -1, sx2 = -mz * s, sz2 = mx * s, g2 = groundAt(e.x + sx2 * 0.5, e.z + sz2 * 0.5, e.y + 1); if (g2 !== null && Math.abs(g2 - e.y) <= 1.05) { e.x += sx2 * speed * dt; e.z += sz2 * speed * dt; } } }
       } else { const g = groundAt(e.x, e.z, e.y + 1); if (g !== null) e.y += (g - e.y) * Math.min(1, 12 * dt); }
-      const lift = k.fly ? k.fly + Math.sin(e.t * 1.6) * 0.25 : (e.moving ? Math.abs(Math.sin(e.t * 7)) * 0.07 : 0);
-      e.obj.position.set(e.x + off.x, e.y + lift, e.z + off.z);
-      e.obj.rotation.set(e.moving && !k.fly ? Math.sin(e.t * 7) * 0.04 : 0, e.yaw, 0);
-      e.obj.scale.setScalar(e.obj.userData.baseScale * (e.hurt > 0 ? 0.9 : 1));
+      pose(e, dt);
     }
     // the tag follows the aimed creature
     if (aimed && camera) {
@@ -176,5 +235,9 @@ export function createLife(o) {
       tag.style.transform = `translate(${((_p.x * 0.5 + 0.5) * window.innerWidth).toFixed(1)}px, ${((-_p.y * 0.5 + 0.5) * window.innerHeight).toFixed(1)}px) translate(-50%, -100%)`;
     } else tag.hidden = true;
   }
-  return { update, use, spawnAt, ents, kinds: o.kinds, get armor() { return armor(); }, get xp() { return xp; }, get aimed() { return aimed; } };
+  /** A shared game: a blow from a monster the host moves lands on this player; a kill this player made is counted here. */
+  function hurtPlayer(d) { const v = o.vitals && o.vitals(); if (v && d > 0) v.hurt(Math.min(40, d) * (1 - armor())); }
+  const api = { update, use, spawnAt, ents, kinds: o.kinds, share, setShare, snapshot, applySnapshot, remoteHit, hurtPlayer, credit, get armor() { return armor(); }, get xp() { return xp; }, get aimed() { return aimed; } };
+  window.__GAME_LIFE.life = api;
+  return api;
 }

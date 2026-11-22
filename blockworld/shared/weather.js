@@ -80,7 +80,7 @@ function makeRain() {
 export function createWeather(o) {
   const { play } = o, st = play.state;
   const times = o.times || TIMES;
-  const state = { time: o.time || 'sunset', rain: false, get night() { return state.time === 'night'; } };
+  const state = { time: o.time || 'sunset', rain: false, locked: false, onChange: null, get night() { return state.time === 'night'; } };
   window.__GAME_SKY = state;
   const rain = makeRain();
   o.scene.add(rain);
@@ -107,13 +107,15 @@ export function createWeather(o) {
     for (const b of el.querySelectorAll('[data-rain]')) b.classList.toggle('on', (b.dataset.rain === '1') === state.rain);
     for (const b of el.querySelectorAll('[data-mon]')) b.classList.toggle('on', (b.dataset.mon === '1') === mons());
   }
-  function set(time, rainOn) {
+  function set(time, rainOn, forced) {
     if (!times.some((t) => t[0] === time)) return;
+    if (state.locked && !forced) { play.notice('صاحب الغرفة هو اللي يتحكم بالوقت والجو.', false, 2600); return; }      // a guest in a shared game
     state.time = time; state.rain = !!rainOn;
     o.apply(state.time, state.rain);
     rain.visible = state.rain || amt > 0.01;
     if (play.sound && play.sound.rain) play.sound.rain(state.rain);
     mark();
+    if (state.onChange && !forced) state.onChange(state.time, state.rain);
   }
   let open = false, openedAt = 0;
   function show(v) {

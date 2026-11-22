@@ -16,6 +16,7 @@
 import { EMPTY } from './play.js';
 import { createCraft } from './craft.js';
 import { createAdventure } from './adventure.js';
+import { createNet } from './net.js';
 
 const CSS = `
 #bag { position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center; direction: rtl; color: #f1f4f8; --c: 46px;
@@ -127,6 +128,7 @@ export function createBag(o) {
   if (kit && kit.attach) kit.attach(play);
   const craft = createCraft({ play, kit, mats: o.mats || {} });
   const adv = kit ? createAdventure({ play, kit, craft, camera: o.camera, world: o.world }) : null;
+  const net = kit && o.world ? createNet({ play, kit, camera: o.camera, world: o.world, adv, fontFamily: o.fontFamily, accent: o.accent, line: o.line }) : null;
   if (adv) adv.onTrade = () => { if (st.modal) return; tab = 'trade'; show(true); if (play.sound) play.sound.ui(); };
 
   // ---- places: the hotbar, the backpack, what is worn, the other hand, an open chest
@@ -205,7 +207,7 @@ export function createBag(o) {
   });
   window.addEventListener('keydown', (e) => { if (open && e.code === 'Escape') { show(false); e.preventDefault(); } });
   return {
-    el, items, craft, adv,
+    el, items, craft, adv, net,
     open: () => show(true), close: () => show(false), toggle: () => show(!open), isOpen: () => open,
     get tab() { return tab; }, setTab,
     /** The place button on a block: a door swings, a chest opens here, a workbench opens the recipes. True when it was one of those. */

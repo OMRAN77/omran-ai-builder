@@ -37,7 +37,11 @@ test('لا مسار يبدأ من جذر الموقع: المجلّد يعمل �
   const bad = [];
   for (const f of OWN_TEXT) {
     const text = read(f);
-    for (const m of text.matchAll(/(['"(=]\s*)\/(shared|vendor|styles|previews|icons|blockworld|js|css|api)\//g)) bad.push(f + ': ' + text.slice(Math.max(0, m.index - 25), m.index + 45).replace(/\s+/g, ' '));
+    for (const m of text.matchAll(/(['"(=]\s*)\/(shared|vendor|styles|previews|icons|blockworld|js|css|api)\//g)) {
+      // استثناء واحد مقصود (v-blockworld-net): وسيط تعارف اللعب الجماعيّ من خادم الموقع نفسه، ومكانه جذر الموقع لا المجلّد
+      if (f === 'shared/net.js' && text.slice(m.index + m[1].length).startsWith('/api/system?action=play-room')) continue;
+      bad.push(f + ': ' + text.slice(Math.max(0, m.index - 25), m.index + 45).replace(/\s+/g, ' '));
+    }
   }
   assert.deepEqual(bad, []);
 });
@@ -246,7 +250,8 @@ test('v-blockworld-life: حيوانات تُصاد ووحوش تهاجم، بم�
   const life = read('shared/life.js'), play = read('shared/play.js'), kit = read('shared/kit.js');
   assert.match(life, /kind === 'monster' && monsters && dist < 20/, 'الوحش يطارد حين يقترب اللاعب');
   assert.match(life, /v\.hurt\(k\.dmg \* \(1 - armor\(\)\)\)/, 'ضربته تنقص الصحّة، والدرع الملبوس يخفّفها');
-  assert.match(life, /if \(e\.k\.meat\) giveMeat\(e\.k\.meat\)/, 'الصيد يعطي لحمًا');
+  assert.match(life, /if \(e\.hp <= 0\) \{ felled\(e\); credit\(e\.k\.kind, e\.k\.meat\); \}/, 'الصيد يعطي لحمًا');
+  assert.match(life, /if \(meat\) giveMeat\(meat\);/);
   assert.match(life, /play\.give\(kitItem\(MEAT, n\)\)/, 'واللحم يدخل الأغراض بالطريق العامّ');
   assert.match(life, /item\.use === 'eat'/);
   assert.match(life, /st\.noDig = !!aimed/, 'المخلوق تحت المؤشّر يُضرب بدل المكعب خلفه');
@@ -387,5 +392,40 @@ test('v-blockworld-adv: مهام ظاهرة وسرّيّة، كنز يتغيّر
   // الإشعار ينتقل حين تُفتح لوحة فوقه
   assert.match(play, /if \(typeof seatNote === 'function'\) seatNote\(\);/);
   assert.ok(!/[٠-٩]/.test(adv + outfits), 'أرقام لاتينيّة كباقي الواجهة');
+});
+
+test('v-blockworld-net: لعب جماعيّ بكود من أربعة أرقام — صاحب الغرفة يُدخل ويُخرج ويتحكّم', () => {
+  const net = read('shared/net.js'), play = read('shared/play.js'), life = read('shared/life.js'), sky = read('shared/weather.js');
+  const bag = read('shared/bag.js'), kit = read('shared/kit.js');
+  assert.match(net, /const API = '\/api\/system\?action=play-room';/, 'التعارف من خادم الموقع نفسه');
+  assert.match(net, /const MAX_PLAYERS = 4/);
+  assert.match(bag, /createNet\(\{ play, kit, camera: o\.camera, world: o\.world, adv,/);
+  assert.match(play, /'العب مع ربعك \(الغرفة ' \+ n\.code \+ '\)'/, 'زرّ في قائمة Esc');
+  // صاحب الغرفة: يُسأل عن كلّ داخل، يقبل أو يرفض، ويُخرج
+  for (const t of ['دخّله', 'ارفض', 'طلّعه', 'سكّر الغرفة', 'افتح غرفة', 'ادخل']) assert.ok(net.includes(t), t);
+  assert.match(net, /if \(kicked\) send\(p\.dc, \{ t: 'kick' \}\);/);
+  // ما يُفعل بالعالم يُسجَّل ويُعاد على الداخل الجديد
+  assert.match(net, /send\(p\.dc, \{ t: 'welcome', id, world, log,/);
+  assert.match(net, /for \(const a of m\.log \|\| \[\]\) apply\(a\);/);
+  assert.match(play, /if \(net\.place\) net\.place\(x, y, z, s\.id, st\.yaw\);/);
+  assert.match(play, /if \(net\.dig\) net\.dig\(h\.x, h\.y, h\.z\);/);
+  assert.match(play, /remotePlace\(x, y, z, id, yaw\) \{/);
+  assert.match(kit, /if \(!remote && api\.onDoor\) api\.onDoor\(x, by, z\);/, 'الباب يُفتح للجميع');
+  // ما يأتي من لاعب آخر يُفحص قبل تطبيقه
+  assert.match(net, /\['put', 'dig', 'door'\]\.includes\(m\.a\[0\]\) && okCell\(m\.a\)/);
+  assert.match(net, /m\.s\.p\.every\(Number\.isFinite\)/);
+  // الوقت والجو والوحوش لصاحب الغرفة
+  assert.match(sky, /if \(state\.locked && !forced\) \{/);
+  assert.match(life, /if \(share\.mode === 'guest' && !forced\) \{/);
+  // مخلوقات صاحب الغرفة هي الحقيقيّة: الضيف يراها ويرسل ضرباته
+  assert.match(life, /if \(share\.mode === 'guest'\) \{ if \(share\.send\) share\.send\(null, \{ t: 'hit', e: e\.nid, pow: power\(\) \}\); return; \}/);
+  assert.match(life, /function applySnapshot\(list\) \{/);
+  assert.match(life, /if \(who !== null\) \{ if \(share\.send\) share\.send\(who, \{ t: 'hurt', d: k\.dmg \}\); \}/, 'الوحش يلاحق أقرب لاعب');
+  // قائمة التوقّف لا توقف العالم على الباقين
+  assert.match(play, /if \(shared && st\.running\) \{ held = true; setModal\(true\); return; \}/);
+  // بداية نظيفة للداخل الذي غيّر عالمه
+  assert.match(net, /window\.sessionStorage\.setItem\('bw-join'/);
+  assert.ok(!/console\.(log|error|warn)/.test(net), 'لا طباعة لعرض الاتّصال (فيه عناوين اللاعبين)');
+  assert.ok(exists('tools/nettest.cjs'), 'فحص متصفّحين يتّصلان فعلًا');
 });
 

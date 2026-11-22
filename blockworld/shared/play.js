@@ -59,6 +59,7 @@ export function createPlay(o) {
     third: false,                                                    // the view from behind the player (V)
   };
   let itemOf = o.itemOf || null;
+  let shared = false, held = false;
   const ticks = [], firsts = [];                                     // shared modules hook in here: every frame, and before the place button does its usual thing
   const net = { place: null, dig: null };                            // the multiplayer link listens here for what the player changes in the world                                     // id -> a fresh item object (the bag knows every item)
   const inp = { fx: 0, fz: 0, jump: false, dig: false, sprint: false, place: false, down: false };
@@ -624,11 +625,18 @@ export function createPlay(o) {
     /** The bag tells the controller how to make an item from an id, so that what is dug can start a new pile. */
     set itemOf(f) { itemOf = f; }, get itemOf() { return itemOf; },
     start() {
+      if (held) { held = false; setModal(false); return; }      // back from the pause menu of a shared game
       if (st.running) return;
       st.running = true; initRes(); last = performance.now(); raf = requestAnimationFrame(frame);
       if (sound) sound.start();                       // start() runs inside the start button's click, which is what lets the browser play sound
     },
-    stop() { st.running = false; cancelAnimationFrame(raf); inp.dig = false; keys.clear(); if (sync) { gl.deleteSync(sync); sync = null; } },
+    stop() {
+      // in a shared game the world must keep going for the others: the pause menu only takes the controls away
+      if (shared && st.running) { held = true; setModal(true); return; }
+      st.running = false; cancelAnimationFrame(raf); inp.dig = false; keys.clear(); if (sync) { gl.deleteSync(sync); sync = null; }
+    },
+    /** True while this player is in a shared game (the multiplayer link sets it). */
+    get shared() { return shared; }, set shared(v) { shared = !!v; },
     /** Call from a click handler: capture the mouse on desktop. */
     lock: tryLock,
     select, advance, raycast, placeNow,
@@ -729,6 +737,11 @@ export function createPlayPanel(o) {
   });
   feats.addEventListener('click', (e) => { if (e.target.closest('.back')) { feats.hidden = true; box.hidden = false; } });
   box.appendChild(feat);
+  const together = document.createElement('button');
+  together.type = 'button'; together.className = 'menu';
+  const togetherText = () => { const n = window.__GAME_NET; together.hidden = !n; if (n) together.textContent = n.role ? 'العب مع ربعك (الغرفة ' + n.code + ')' : 'العب مع ربعك'; };
+  together.addEventListener('click', () => { const n = window.__GAME_NET; if (!n) return; el.hidden = true; n.open(() => { togetherText(); el.hidden = false; }); });
+  box.appendChild(together);
   box.appendChild(note);
   const gpuEl = document.createElement('div'); gpuEl.className = 'gpu';
   box.appendChild(gpuEl);
@@ -741,7 +754,7 @@ export function createPlayPanel(o) {
   b.addEventListener('click', () => { el.hidden = true; o.onStart(); });
   return {
     el,
-    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; sndText(); qualText(); monText(); lookText(); featText(); feats.hidden = true; box.hidden = false; el.hidden = false; },
+    show(mode = 'start') { b.textContent = mode === 'pause' ? 'كمّل اللعب' : 'ابدأ اللعب'; gpuEl.textContent = window.__GAME_GPU || ''; sndText(); qualText(); monText(); lookText(); featText(); togetherText(); feats.hidden = true; box.hidden = false; el.hidden = false; },
     hide() { el.hidden = true; },
   };
 }
