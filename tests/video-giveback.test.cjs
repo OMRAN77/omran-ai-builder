@@ -275,3 +275,62 @@ test('٨. فيديو من رصيد الاشتراك يتعطّل عند الاس
   assert.equal(Number(kv.get('media:mix:med-a')), 2400, 'فلس الفيديو وحده عاد: ' + kv.get('media:mix:med-a'));
   assert.equal(bal('med-a'), 1000, 'بلا نقاط هديّة');
 });
+
+/* v-face-lock-out (المالك ٢١ نوفمبر: «الترندات تغير ملامح الوجه» ثمّ «كلهم مش واحد» ثمّ «عدلها»). سجلّ الإنتاج لتشغيله «رقصة لفّ اليدين»:
+   «[face-swap] 0/1 faces why=fal-403 User is locked. Reason: Exhausted balance…» ثمّ «trend chestroll ready on omni in 90s» — رصيد مزوّد
+   تركيب الوجه خلص، فتُخطّيت الخطوة بصمت وصُنع فيديو مدفوع بوجه مرسوم. قاعدته في v-credit-out: رصيد المزوّد خلصان = «الخدمة متوقّفة
+   مؤقّتًا» ولا تُخصم نقطة. اللبس والعطب العابر كما كانا: الفيديو يُصنع والسطر في سجلّ المالك. */
+test('٩. تركيب الوجه مفعّل ومزوّده رصيده خالص: لا فيديو ولا خصم ولا قفل ورمز unavailable؛ واللبس والعطب العابر كما كانا', async () => {
+  const TP = require(rp('api/_lib/trend-people.js'));
+  const realSolo = TP.soloFirstFrame;
+  const keep = { ff: process.env.VIDEO_FIRST_FRAME, sw: process.env.TREND_FACE_SWAP, fal: process.env.FAL_KEY, eng: process.env.TREND_ENGINE };
+  const LOG_WHY = 'fal-403 User is locked. Reason: Exhausted balance. Top up your balance at fal.ai/dashboa'; // نصّ سجلّ الإنتاج حرفيًّا
+  const run = async (u, why, trend) => {
+    reset(); user(u, 500); sent.length = 0;
+    TP.soloFirstFrame = async () => ({ b64: 'RlJBTUU=', mime: 'image/png', ref: null, people: 1, swapped: 0, swapWhy: why });
+    return vo(u, { promptText: undefined, trend: trend || 'chestroll', params: { sceneIndex: 0 }, ratio: '720:1280', imageBase64: 'AAAA', imageMime: 'image/png' });
+  };
+  const started = () => sent.some((u) => u.endsWith('/interactions') || u.includes(':predictLongRunning'));
+  try {
+    delete process.env.VIDEO_FIRST_FRAME; delete process.env.TREND_ENGINE;
+    process.env.TREND_FACE_SWAP = 'on'; process.env.FAL_KEY = 'fal-test-key';
+    /* رصيد المزوّد خالص (نصّ السجلّ)، ومفتاحه مرفوض، ووجهان أحدهما رُفض بالرصيد */
+    for (const [u, why] of [['lock-403', LOG_WHY], ['lock-401', 'fal-401'], ['lock-402', 'fal-402 Payment required'], ['lock-two', 'fal-error,' + LOG_WHY]]) {
+      const r = await run(u, why);
+      assert.equal(r.code, 503, u + ': ' + JSON.stringify(r.body));
+      assert.deepEqual(r.body, { error: 'unavailable', retryable: false }, u);
+      assert.equal(started(), false, u + ': لا نداء لمحرّك الفيديو');
+      assert.equal(bal(u), 500, u + ': النقاط احترقت: ' + bal(u));
+      assert.equal(locked(u), false, u + ': قفل الثلاث دقائق بقي');
+      assert.doesNotMatch(JSON.stringify(r.body), LEAK_RE, u);
+      assert.doesNotMatch(JSON.stringify(r.body), /fal|balance|locked|Exhausted|billing/i, u + ': لا نصّ المزوّد للمستخدم');
+    }
+    /* شخصان (إطار المجموعة): القاعدة نفسها */
+    const realGroup = TP.groupFirstFrame;
+    try {
+      reset(); user('lock-pair', 500); sent.length = 0;
+      TP.groupFirstFrame = async () => ({ b64: 'RlJBTUU=', mime: 'image/png', swapped: 0, swapWhy: LOG_WHY });
+      const g = await vo('lock-pair', { promptText: undefined, trend: 'heritagesing', params: { text: 'يا هلا', people: 2, sceneIndex: 0 }, ratio: '720:1280', imageBase64: 'AAAA', imageMime: 'image/png', imagesBase64: ['AAAA', 'BBBB'], imagesMime: ['image/png', 'image/png'] });
+      assert.equal(g.code, 503, JSON.stringify(g.body)); assert.deepEqual(g.body, { error: 'unavailable', retryable: false });
+      assert.equal(started(), false); assert.equal(bal('lock-pair'), 500); assert.equal(locked('lock-pair'), false);
+    } finally { TP.groupFirstFrame = realGroup; }
+    /* ما ليس توقّف المزوّد يبقى كما كان: الفيديو يُصنع ويُخصم مرّة */
+    for (const [u, why] of [['lock-unsure', 'unsure'], ['lock-422', 'fal-422 bad path'], ['lock-500', 'fal-500'], ['lock-cap', 'cap'], ['lock-time', 'timeout'], ['lock-nofaces', 'no-faces']]) {
+      const r = await run(u, why);
+      assert.equal(r.code, 200, u + ': ' + JSON.stringify(r.body));
+      assert.equal(started(), true, u + ': الفيديو بدأ');
+      assert.ok(bal(u) < 500, u + ': خُصم');
+    }
+    /* التبديل مطفأ = لا يُسأل عن سببه أصلًا (الإطار قد يحمل سببًا قديمًا من الذاكرة) */
+    process.env.TREND_FACE_SWAP = 'off';
+    const off = await run('lock-off', LOG_WHY);
+    assert.equal(off.code, 200, JSON.stringify(off.body)); assert.equal(started(), true);
+    /* ترند مستثنى من التبديل (عمر آخر) لا يوقفه رصيد مزوّد لا يستعمله */
+    process.env.TREND_FACE_SWAP = 'on';
+    const baby = await run('lock-baby', LOG_WHY, 'babyversion');
+    assert.equal(baby.code, 200, JSON.stringify(baby.body));
+  } finally {
+    TP.soloFirstFrame = realSolo;
+    for (const [k, v] of [['VIDEO_FIRST_FRAME', keep.ff], ['TREND_FACE_SWAP', keep.sw], ['FAL_KEY', keep.fal], ['TREND_ENGINE', keep.eng]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  }
+});
