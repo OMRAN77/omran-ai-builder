@@ -250,11 +250,12 @@ test('v-blockworld-vitals: الصحّة وحاجة كلّ عالم أرقام ح
 
 test('v-blockworld-life: حيوانات تُصاد ووحوش تهاجم، بمجسّمات وأسماء كلّ عالم', () => {
   const life = read('shared/life.js'), play = read('shared/play.js'), kit = read('shared/kit.js');
-  assert.match(life, /kind === 'monster' && monsters && dist < 20/, 'الوحش يطارد حين يقترب اللاعب');
+  assert.match(life, /k\.kind === 'monster' && monsters\) \|\| \(k\.fights && e\.flee > 0\)\) && dist < 20/, 'الوحش يطارد حين يقترب اللاعب (والحيوان اللي يدافع عن نفسه إذا انضرب)');
   assert.match(life, /v\.hurt\(dmg \* \(1 - armor\(\)\)\)/, 'ضربته تنقص الصحّة، والدرع الملبوس يخفّفها');
-  assert.match(life, /if \(e\.hp <= 0\) \{ felled\(e\); credit\(e\.k\.kind, e\.k\.meat\); \}/, 'الصيد يعطي لحمًا');
-  assert.match(life, /if \(meat\) giveMeat\(meat\);/);
-  assert.match(life, /play\.give\(kitItem\(MEAT, n\)\)/, 'واللحم يدخل الأغراض بالطريق العامّ');
+  assert.match(life, /play\.give\(it\)/, 'الصيد يعطي لحمًا');
+  assert.match(life, /const dropsOf = \(k\) => k\.drops \|\| \(k\.meat \? \[\[MEAT, k\.meat\]\] : \[\]\)/, 'كل حيوان يعطي ما يخصّه، والقديم (meat) يبقى يعمل');
+  assert.match(life, /if \(list\.length\) giveDrops\(list\);/);
+  assert.match(life, /const it = kitItem\(id \| 0/, 'واللحم يدخل الأغراض بالطريق العامّ');
   assert.match(life, /item\.use === 'eat'/);
   assert.match(life, /st\.noDig = !!aimed/, 'المخلوق تحت المؤشّر يُضرب بدل المكعب خلفه');
   assert.match(play, /if \(st\.noDig\)/);
@@ -306,7 +307,7 @@ test('v-blockworld-status: قلوب وأكل ودرع وخبرة فوق المر
   assert.match(st, /cell\(FOOD\)\.repeat\(10\)/);
   assert.match(st, /Math\.ceil\(Math\.max\(0, Math\.min\(100, val\)\) \/ 5\)/, 'أنصاف: كلّ قلب عشر نقاط');
   assert.match(vit, /key: 'food', start: o\.food \?\? 80, drain: 0\.14, run: 2\.2, how: 'eat'/);
-  assert.match(life, /v\.values\.food = Math\.min\(100, v\.values\.food \+ 40\)/, 'اللحم يُشبع');
+  assert.match(life, /v\.values\.food = Math\.min\(100, v\.values\.food \+ \(item\.eat \|\| 40\)\)/, 'اللحم يُشبع (وكل أكل بقدره)');
   assert.match(play, /st\.xp \+= 1;/, 'كسر مكعب = نقطة خبرة');
   assert.match(life, /st\.xp = \(st\.xp \|\| 0\) \+ gain/, 'الصيد = خبرة');
   for (const k of WORLDS) {
