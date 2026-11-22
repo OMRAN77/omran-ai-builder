@@ -35,7 +35,7 @@ async function chatVideo(reply, lg, extra) {
   const bodies = []; // ما أُرسل في كلّ محاولة (confirmed) — reply مصفوفة = ردّ لكلّ محاولة
   const sb = {
     lang: lg || 'ar', text: 'اكتب حياتي و قلب لون ابيض في الفيديو', localStorage: { getItem: () => lg || 'ar' },
-    cur: { messages: [] }, thinkingDiv: null, __vidSrc: null, __srcImg: null, __animateRe: /(?!)/, __wantsVideo: true,
+    cur: { messages: [] }, thinkingDiv: null, __vidSrc: null, __srcImg: null, __animateRe: /(?!)/, __wantsVideo: true, __explodedTurn: false /* v-chat-exploded: دوره في chat-exploded */,
     __runCtl: { signal: { aborted: false } }, chatPhase() {}, renderAll() {}, saveState() {}, authGet: () => 'tok', __swallow() {},
     setTimeout: (fn) => fn(), // إعادة المحاولة القائمة بلا انتظار ٦ث
     postWithConfirm: async (url, body) => { calls.push(url); bodies.push(Object.assign({}, body)); const rp = Array.isArray(reply) ? reply[Math.min(bodies.length - 1, reply.length - 1)] : reply; return Object.assign({ ok: rp.status === 200, status: rp.status, json: async () => rp.body }, rp.approved ? { __omApproved: true } : {}); }, // approved = رأى المستخدم السعر ووافق (postWithConfirm يعلّم ردّه)

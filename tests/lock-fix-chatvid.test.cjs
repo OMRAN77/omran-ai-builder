@@ -83,7 +83,7 @@ function videoEnv(c, o) {
     lang: 'ar', t: (k) => I18N[k] || k, authGet: () => 'tok', getGuestId: () => 'g-1',
     confirm: () => { log.confirms++; log.seq.push('confirm'); return o.approve !== false; },
     cur: { messages: [] }, thinkingDiv: null,
-    text: 'سوّ لي فيديو لصقر يطير فوق البحر وقت الغروب', __wantsVideo: true, __vidSrc: null, __srcImg: null, __animateRe: /(?!)/,
+    text: 'سوّ لي فيديو لصقر يطير فوق البحر وقت الغروب', __wantsVideo: true, __vidSrc: null, __srcImg: null, __animateRe: /(?!)/, __explodedTurn: false /* v-audit-main-2: متغيّر دور التفكيك من main (v-chat-exploded) — دوره في chat-exploded */,
     // الشخصيّة الناطقة: جاهزة من المكتبة (بلا كرتنة مدفوعة) — السعر سُئل قبلها (omranTalkPriceCheck)
     __wantsTalkChar: true, __alreadyCartoon: true, __charImg: { b64: 'iVBORw0KGgo=', mime: 'image/png' },
     omranTalkPriceCheck: async () => true,

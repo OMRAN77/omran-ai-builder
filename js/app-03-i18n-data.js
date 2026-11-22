@@ -1376,6 +1376,7 @@ const I18N = {
     ownerStatsMsgCount: "{n} رسالة",
     ownerStatsRecent: "🆕 آخر الحسابات نشاطًا:",
     ownerStatsUpdated: "🕐 آخر تحديث: {t}",
+    ownerFunnelTitle: "📈 مسار الزوّار الجدد — آخر {n} يومًا:\nزيارة ← وافق ← كتب رسالة ← دخل بحساب (للمتجر)", ownerFunnelRow: "{src}: {v} ← {c} ← {m} ← {a} ({t})", ownerFunnelAll: "الكل", ownerFunnelEmpty: "📈 مسار الزوّار الجدد: لا أرقام بعد — العدّ يبدأ من أوّل زائر جديد.", // v-funnel
     ownerSvcChat: "المحادثة",
     ownerSvcPlan: "محادثة الباقة",
     ownerSvcAgent: "الوكيل",
@@ -2052,6 +2053,7 @@ const I18N = {
     ownerStatsMsgCount: "{n} messages",
     ownerStatsRecent: "🆕 Recently active accounts:",
     ownerStatsUpdated: "🕐 Last update: {t}",
+    ownerFunnelTitle: "📈 New-visitor funnel — last {n} days:\nvisit → agreed → message → signed in (to store)", ownerFunnelRow: "{src}: {v} → {c} → {m} → {a} ({t})", ownerFunnelAll: "All", ownerFunnelEmpty: "📈 New-visitor funnel: no numbers yet — counting starts with the first new visitor.", // v-funnel
     ownerSvcChat: "Chat",
     ownerSvcPlan: "Plan chat",
     ownerSvcAgent: "Agent",
@@ -3136,6 +3138,9 @@ Object.assign(I18N.en, {"vmkDialogPart":"Finished {k} of {n} clips as one video 
 /* v-video-one-shot (803): «سينمائي» — الحوار فيديو واحد متّصل يمدّه المحرّك: سطر التقدّم وسطر ما وصل إليه عند التوقّف (١٤ لغة) */
 Object.assign(I18N.ar, {"vmkDialogOne":"🎬 فيديو واحد متّصل بالحوار كاملًا (~{s} ثانية) — يُبنى الجزء {i} من {n}...","vmkDialogOnePart":"الفيديو وصل إلى الجزء {k} من {n} — والباقي لم يُخصم. اضغط زرّ الإنشاء مرّة ثانية ليكمل الباقي وحده."});
 Object.assign(I18N.en, {"vmkDialogOne":"🎬 One continuous video with the full dialogue (~{s} seconds) — building part {i} of {n}...","vmkDialogOnePart":"The video reached part {k} of {n} — the rest was not charged. Press the create button again to finish only the rest."});
+/* v-video-real-person (805): المحرّك رفض الطلب لاسم شخص حقيقيّ أو ملامحه — السبب نفسه والكلام المرفوض بدل «غيّر الوصف أو الصورة» (١٤ لغة) */
+Object.assign(I18N.ar, {"vidRealPerson":"محرّك الفيديو لا يقبل أسماء الأشخاص الحقيقيّين ولا ملامحهم — غيّر الاسم في الوصف (أو الصورة) وأعد المحاولة.","vmkDialogRefused":"الكلام المرفوض: {lines}"});
+Object.assign(I18N.en, {"vidRealPerson":"The video engine does not accept real people's names or likenesses — change the name in the description (or the photo) and try again.","vmkDialogRefused":"Refused lines: {lines}"});
 /* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ typeof __swallow === 'function' && __swallow(_, 'app-03-i18n-data:3123'); /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
 /* v-opt-xl (طلب عمران: «في الديكور كلهم» بغير لغتهم): جدول __OPT_XL يترجم

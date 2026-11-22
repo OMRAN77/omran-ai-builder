@@ -860,6 +860,54 @@ const TRENDS = {
      "frame": "photorealistic vertical still from a fixed camera in an ordinary open-air parking lot by day: a young man in casual streetwear striding in from the left in slow motion, mid-step, with a calm, natural face",
      "gender": "m"
    }
+ },
+ "lonelywalk": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Vertical comedy shot in a cold village lane at dusk: warmly dressed couples sit close together around small fires on both sides, sharing blankets and tea. The person from the reference image walks alone down the middle toward the camera in a worn, torn grey coat, hugging themselves and shivering, glancing left and right at the cosy couples. Reaching the foreground, they look straight into the lens with a dry, resigned expression, breathe out a small cloud of cold air, and keep walking. Face, hair and any headwear exactly as in the reference. One continuous shot, bouncy playful folk comedy tune, wind and crackling fire, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical still in a cold village lane at dusk: a young man in a worn, torn grey coat walking alone toward the camera, hugging himself and shivering with a dry, resigned look into the lens, warmly dressed couples sitting close around small fires on both sides",
+     "gender": "m"
+   }
+ },
+ "chestroll": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Locked vertical phone camera at chest height in a clean bright room. The person from the reference image, in their own clothes, faces the camera with the whole body and both feet in frame and dances one catchy routine on the beat: rolls both hands over each other in front of the chest, rolls the arms out to each side, raises both hands up beside the head, then sways the hips lightly from side to side with a confident smile, and repeats the sequence. Natural full-body motion, the camera never moves. Face, hair and any headwear exactly as in the reference. Upbeat Latin-pop dance beat, one continuous shot, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical full-body still of a smiling young man in casual clothes dancing in a clean bright room, both hands rolling over each other in front of his chest, feet in frame",
+     "gender": "m"
+   }
+ },
+ "babysway": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Transform the person from the reference image into an adorable toddler version of themselves with the same facial features, standing in a cosy living room in a tiny bright-yellow puffer jacket and a chunky gold chain necklace, small sunglasses pushed up on the forehead. Locked vertical camera, whole body in frame. The toddler performs a cute wobbling sway dance on the beat: knees bouncing, shoulders rocking from side to side, little arms swinging and pointing, one small spin, then a confident final pose with arms crossed and a big grin. One continuous shot, catchy upbeat pop-dance tune, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical full-body still of an adorable toddler in a tiny bright-yellow puffer jacket and a chunky gold chain necklace, small sunglasses pushed up on the forehead, mid-dance with arms out in a cosy living room, big grin",
+     "gender": "m"
+   }
+ },
+ "panelcut": {
+   "engine": "veo",
+   "ratio": "720:1280",
+   "photo": "req",
+   "kind": "none",
+   "prompt": "Two-part vertical transition. Part one: a handheld selfie in a bedroom at home, the person from the reference image in their own top lip-syncs to the beat, then raises both index fingers beside the top of the head like little horns. On the beat they push two plain white panels shut in front of the lens like double doors. Then the video cuts to part two and their outfit changes: the same person on a windy city street at night, glass towers and traffic lights behind, in an oversized black leather jacket over modest clothes, walking toward the camera with a confident look, one hand on the jacket collar. Same face, hair and any headwear in both parts. Punchy electronic beat, photorealistic.",
+   "scenes": null,
+   "preview": {
+     "frame": "photorealistic vertical night still on a windy city street with glass towers and traffic lights: a confident young woman in a headscarf and an oversized black leather jacket over modest clothes walking toward the camera, one hand on the jacket collar",
+     "gender": "w"
+   }
  }
 };
 /* v-trend-extra: الحدّ ٢٤٠ ← ٤٠٠ — المالك يكتب أكثر من جملة («دمج الكلمات») */
@@ -1137,7 +1185,17 @@ function hasSpeech(desc) {
    (المقطع ٨ث اليوم: ثلاث جمل ١٣ كلمة لم تتّسع وقُطعت آخرها) */
 /* v-video-full-dialogue: lead = ثواني الصمت المحجوزة (ثانية للمقطع الجديد؛ تمديد فيديو جارٍ بلا افتتاح = EXTEND_SAY_LEAD: ١٦ كلمة في ١٠ث) */
 const EXTEND_SAY_LEAD = 0.5;
-function wordBudget(seconds, lead) { return Math.max(4, Math.floor((seconds - (lead > 0 ? lead : 1)) * 1.7)); }
+/* v-video-say-natural (المالك ١٩ نوفمبر عن فيديو «سريع» بحواره كاملًا: «التوقيت خل التوقيت على حسب الكلام مش محدد» — الكلمة تُمطّ قرابة
+   ثانية: ٤٤ كلمة في ٣٢ث): المحرّك يملأ المدّة التي نطلبها بالكلام، فمدّة أطول من حاجته = نطق ممطوط. الحساب بنطق طبيعيّ ووقفة بين
+   الأدوار: SAY_RATE كلمة في الثانية داخل الدور، و SAY_GAP ثانية بين كلّ دورين، و lead صمت الأوّل والآخر (كان ١٫٧ كلمة/ث للكلّ بلا
+   عدّ للأدوار). sayRoom = ما تتّسع له المدّة بوحدة «كلمات + وقفة لكلّ دور»؛ ودور بكلماته يأخذ منها w + SAY_GAP × SAY_RATE. */
+const SAY_RATE = 2.2, SAY_GAP = 0.4;
+function sayRoom(seconds, lead) { return (seconds - (lead > 0 ? lead : 1) + SAY_GAP) * SAY_RATE; }
+/* أقصى كلمات دور واحد تتّسع لها المدّة (للقاعدة في الأمر وللاختبارات) */
+function wordBudget(seconds, lead) { return Math.max(4, Math.floor(sayRoom(seconds, lead) - SAY_GAP * SAY_RATE + 1e-9)); }
+/* v-video-say-natural (المالك: «اللهجه مش امارتيه»): الكلام العربيّ بلكنة إماراتيّة ما لم يطلب الوصف لهجة أو لكنة بعينها */
+const HAS_ARABIC = /[ء-ي]/;
+const ASKS_ACCENT = /لهج|لكنة|فصح|accent|dialect/i;
 
 /* «ممثل يتكلم» (احتياطه يمرّ بـveo-create): كلامه بالحرف ومدّته كلامه — قالبه في app-11-video.js («saying exactly these Arabic words»)
    لا يمرّ بالقاعدة: «جمل أقلّ» تناقض «بالحرف»، ولا يُقصّ له شيء (video-photo-identity ٥ب) */
@@ -1150,8 +1208,9 @@ function speechPace(desc, seconds, lead) {
   const s = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
   return ' If anyone speaks in this ' + s + '-second clip: one voice at a time — each speaker finishes before the next starts,'
     + ' with a short pause (and any camera cut) between turns; no narrator or background voices over them.'
-    + ' Each line is spoken complete, clear and unhurried, as written, lip-synced to the speaker on screen.'
-    + ' All speech ends before the last second (about ' + wordBudget(s, lead) + ' words at most): if the lines do not fit, say fewer lines — never rush, overlap or cut one off.';
+    + ' Each line is spoken complete and clear at a natural pace, as written, lip-synced to the speaker on screen.'
+    + ((HAS_ARABIC.test(String(desc)) && !ASKS_ACCENT.test(speechPlain(desc))) ? ' Arabic in an Emirati Gulf accent, word for word.' : '')
+    + ' All speech ends before the last second: every line is said, in order — never overlap two voices or cut a line off.';
 }
 
 /* بلا صورة (لا قفل): الوصف ثمّ القاعدة داخل حدّ الوصف نفسه — يُقصّ الوصف لا هي (مع صورة تدخل القفل نفسه: withIdentityLock/withPhotoLock tail) */
@@ -1200,11 +1259,12 @@ function dialogueTurns(desc) {
 function fitDialogue(desc, seconds, lead) {
   const s = String(desc || '');
   const sec = Math.max(3, Math.min(15, Math.round(Number(seconds) || 8)));
-  const budget = Math.max(4, Math.floor((sec - (lead > 0 ? lead : 1)) * 1.7));
+  /* v-video-say-natural: نطق طبيعيّ (٢٫٢ كلمة/ث) ووقفة ٠٫٤ث بين الأدوار — budget بوحدة «كلمات + ٠٫٨٨ لكلّ دور» */
+  const budget = (sec - (lead > 0 ? lead : 1) + 0.4) * 2.2;
   const turns = dialogueTurns(s);
   const res = { text: s, budget, turns: turns.length, kept: 0, dropped: 0, words: turns.reduce((n, t) => n + t.w, 0), keptWords: 0, last: '' };
-  let used = 0, kept = 0;
-  for (const t of turns) { if (kept && used + t.w > budget) break; used += t.w; kept++; }
+  let used = 0, kept = 0, room = 0;
+  for (const t of turns) { if (kept && room + t.w + 0.4 * 2.2 > budget + 1e-9) break; room += t.w + 0.4 * 2.2; used += t.w; kept++; }
   res.kept = kept; res.keptWords = used; res.last = kept ? turns[kept - 1].said : '';
   if (kept === turns.length) return res;
   let out = s;
@@ -1215,4 +1275,4 @@ function fitDialogue(desc, seconds, lead) {
 }
 
 module.exports = { TRENDS, buildTrendPrompt, withIdentityLock, withPhotoLock, splitScenes, sceneParams, MAX_SCENES, SPEECH_LANGS,
-  hasSpeech, speechPace, wordBudget, EXTEND_SAY_LEAD, fitPace, fitDialogue, dialogueTurns }; // v-video-speech-pace · v-video-dialogue-fit · v-video-dialogue-clips
+  hasSpeech, speechPace, wordBudget, sayRoom, SAY_RATE, SAY_GAP, EXTEND_SAY_LEAD, fitPace, fitDialogue, dialogueTurns }; // v-video-speech-pace · v-video-dialogue-fit · v-video-dialogue-clips

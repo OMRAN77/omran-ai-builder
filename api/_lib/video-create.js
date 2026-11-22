@@ -39,6 +39,75 @@ const RW_PHOTO_TAIL = '. SUBJECT (mandatory): the same subject from the image th
 const RW_ID_PRE_FRAME_TWO = 'The opening frame already shows the real people from the user\'s photo in this scene. Keep each of them exactly — their own face shape, eyes, nose, lips, jawline, beard, skin tone, hair and body — in every frame; animate that frame as it is, never redraw, swap or replace anyone. ';
 const RW_ID_TAIL_TWO = '. IDENTITY (mandatory): they are these same people from the photo throughout, each with their own face, never different or generic faces.';
 
+/* v-chat-exploded (المالك ٢٠ نوفمبر: «كل الاشياء… السيارات والطيارات والساعات وجسم الانسان والاكترونيات… فيديو قصير اكثر شي 10 ثواني
+   يفكك المنتج الي مرفوعه صورته»): صورة مرفقة في المحادثة + طلب تفكيك (fx:'exploded' من omranExplodedAsk) = صورته نفسها أوّل إطار، ثمّ
+   تتباعد قطعه الحقيقيّة على محور واحد بترتيب التركيب وفراغات متساوية وتثبت. أمر إنجليزيّ واحد بروح FX.exploded في adimage.js، وتلميح فئة
+   من كلامه إن كان واضحًا (الصورة لا تُقرأ: قراءتها نداء مدفوع إضافيّ)، وكلامه نفسه في الذيل. الكلّ ≤ ١٠٠٠ حرف (حدّ المحرّك).
+   المدّة ٥ث = فيديو المحادثة العاديّ نفسه (لا كلفة زائدة علينا ولا سعر جديد)، وأيّ مدّة يرسلها العميل لا تتجاوزها. */
+const EXPLODED_SECONDS = 5;
+const EXPLODED_PRE = 'The opening frame is the user\'s own photo of this object: start exactly from it and keep every part looking exactly as in the photo (same colours, materials, text). ';
+const EXPLODED_MOVE = 'In one continuous steady shot it smoothly comes apart into a clean exploded view: its real components separate and float outward in precise assembly order along one axis, evenly spaced with equal gaps, perfectly aligned, then hold still. Photo held for the first half-second, parts separating for about three seconds, then a still final second. Steady camera, soft studio light, clean seamless background, no hands, no added text, labels, logos or watermarks.';
+const EXPLODED_KINDS = {
+  body: 'As an educational anatomical model (clean museum / medical-model style) the layers separate — skin, muscles, skeleton, organs — no blood, no gore, never a real person being cut.',
+  aircraft: 'Aircraft parts: fuselage sections, wings, tail, engines, landing gear, cockpit.',
+  vehicle: 'Vehicle parts: body panels, doors, hood, wheels and tyres, brakes, engine block, transmission, seats, chassis frame.',
+  watch: 'Watch parts: case, crystal, dial, hands, movement gears and springs, crown, strap.',
+  electronics: 'Device parts: front glass, display, frame, logic board, battery, camera modules, speakers, back cover.',
+};
+const EXPLODED_KIND_RE = [
+  ['body', /جسم\s*(?:ال)?(?:[اإ]نسان|بشري?)|تشريح|شر\u064E?\u0651\u064E?ح|[اأ]عضاء|هيكل\s*عظمي|عظام|القلب|الدماغ|human\s+body|anatom|skeleton|organs/i],
+  ['aircraft', /طيار(?:[ةه]|ات|ت)|طائر(?:[ةه]|ات|ت)|هليكوبتر|مروحي[ةه]|درون|\b(?:air)?planes?\b|aircraft|airliner|\bjets?\b|helicopter|drone/i],
+  ['vehicle', /سيار[ةه]|سيارات|موتر|دراج[ةه]|دباب[ةه]|شاحن[ةه]|باص|محرك|موتور|\bcars?\b|truck|motorcycle|motorbike|vehicle|\bengine\b/i],
+  ['watch', /ساع[ةه]|ساعات|(?<!\b(?:to|can|could|i|we|you|me|and)\s)\bwatch(?:es)?\b(?!\s+(?:it|this|that|them|how|me|us|as|while|the))|\bclock\b/i],
+  ['electronics', /جوال|هاتف|تلفون|موبايل|[اآ]يفون|سامسونج|لابتوب|كمبيوتر|حاسوب|تابلت|[اآ]يباد|سما?عة|سماعات|كاميرا|بلايستيشن|تلفزيون|[اإ]لكترون|phone|laptop|computer|tablet|ipad|headphones?|earbuds|camera|console|electronic/i],
+];
+/* v-chat-exploded (المراجعة): «طيار» بياء لازمة («الطارة» مقود و«إطارها» إطار، لا طيّارة)، و«watch» الفعل («to watch»، «watch how») ليس ساعة —
+   تلميح فئة خاطئ يخترع قطعًا. والأمر العامّ قد يكون صورة إنسان بلا كلمة «جسم» («فككه»، «فكك الجسم»): شرط السلامة فيه وحده (الفئات الأخرى لا
+   تحتاجه، والجسم له جملته، وإضافته للكلّ تأكل كلامه من حدّ ١٠٠٠). */
+const EXPLODED_SAFE = ' If it is a person or animal, show a clean educational model only: no blood, no gore, no injury.';
+const EXPLODED_TAIL = ' EXPLODED VIEW (mandatory): only the real parts of this exact object, unchanged; nothing invented, never a different or generic object.';
+function explodedKind(text) {
+  const t = String(text || '');
+  const hit = EXPLODED_KIND_RE.find((k) => k[1].test(t));
+  return hit ? hit[0] : '';
+}
+function buildExplodedPrompt(promptText) {
+  const kind = explodedKind(promptText);
+  const hint = kind ? ' ' + EXPLODED_KINDS[kind] : '';
+  const head = EXPLODED_PRE + EXPLODED_MOVE + (hint || EXPLODED_SAFE);
+  const room = Math.max(0, RUNWAY_PROMPT_MAX - head.length - EXPLODED_TAIL.length - 12);
+  const words = String(promptText || '').replace(/\s+/g, ' ').trim().slice(0, room);
+  return head + (words ? ' Request: ' + words + '.' : '') + EXPLODED_TAIL;
+}
+
+/* v-chat-ad-fx (المالك ٢١ نوفمبر بعد صور التأثيرات: «الي اريده فيديو مش صور فقط… فيديو في الدردشه يعني مال ثواني… فيديوهات متنوعه مش
+   نوع واحد»): فيديو المنتج في المحادثة كان نوعًا واحدًا (كاميرا بطيئة حوله، أو التفكيك وحده). الآن أسلوب لقطة من مجموعة — بالاسم إن
+   ذكره، وإلّا يتبدّل كلّ مرّة (العميل: omranAdVideoFx). صورته نفسها أوّل إطار كالتفكيك (بلا إطار مرسوم)، والحركة سطر إنجليزيّ إلزاميّ قبل
+   كلامه، والكلّ ≤ ١٠٠٠ حرف. المدّة كما طلب (٥ أو ١٠) بالسعر نفسه؛ التفكيك وحده ٥ث كما كان. */
+const FX_VIDEO_PRE = 'The opening frame is the user\'s own photo of this product: start exactly from it and keep the product looking exactly as in the photo (same shape, colours, materials, label and any text on it) in every frame. ';
+const FX_VIDEO = {
+  smoke: 'SMOKE REVEAL: in one continuous shot thick volumetric smoke swirls around the product and slowly drifts away to reveal it, a strong back light cutting through the moving smoke, the camera pushing in gently; premium dark studio.',
+  topdown: 'TOP-DOWN SHOT: the camera looks straight down from directly above the product resting on a styled surface with a few tasteful props, and slowly rotates and descends toward it; soft even light, clean flat-lay composition.',
+  orbit: 'ORBIT SHOT: the camera makes one smooth continuous orbit around the product while it stays perfectly still and centred, background parallax and light streaks wrapping around it, steady gimbal motion.',
+  lightsweep: 'LIGHT SWEEP: in a dark studio a bright beam of light sweeps slowly across the product, revealing its shape and details with glinting reflections, the camera dollying in slowly.',
+  splash: 'SPLASH: in slow motion a burst of clear liquid splashes around the product, droplets hanging in the air and catching the light, glossy highlights; the product itself stays sharp and unchanged.',
+  float: 'FLOAT: the product lifts off and floats in mid-air, rotating slowly, with soft glowing particles drifting around it, clean gradient background.',
+  macro: 'MACRO: extreme macro close-ups glide slowly across the product\'s surfaces and details, then the camera pulls back to reveal the whole product, shallow depth of field.',
+};
+const FX_VIDEO_TAIL = ' No added text, letters, logos or watermarks. SHOT (mandatory): the style above, with the same product from the photo throughout, unchanged.';
+function buildFxVideoPrompt(fx, promptText) {
+  const head = FX_VIDEO_PRE + FX_VIDEO[fx];
+  const room = Math.max(0, RUNWAY_PROMPT_MAX - head.length - FX_VIDEO_TAIL.length - 12);
+  const words = String(promptText || '').replace(/\s+/g, ' ').trim().slice(0, room);
+  return head + (words ? ' Request: ' + words + '.' : '') + FX_VIDEO_TAIL;
+}
+/* المفتاح من قائمة معروفة فقط (لا __proto__)؛ مع ترند أو بلا مفتاح = '' والمسار القديم حرفيًّا */
+function videoFxKind(body) {
+  const k = String((body && body.fx) || '');
+  if (!k || (body && body.trend)) return '';
+  return k === 'exploded' || Object.prototype.hasOwnProperty.call(FX_VIDEO, k) ? k : '';
+}
+
 function buildRunwayPrompt(promptText, style, useImage, framed, people, noPerson, asIs) {
   const anime = style === 'anime';
   if (useImage && asIs && !framed) { // v-photo-as-is
@@ -90,6 +159,9 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: 'Missing promptText' });
       return;
     }
+    /* v-chat-exploded: التفكيك يحتاج صورته — بلاها لا فيديو نصّيّ لكلمة «فكّكه»، والرفض قبل أيّ حجز أو خصم */
+    const fxKind = videoFxKind(body), exploded = fxKind === 'exploded'; // v-chat-ad-fx: التفكيك واحد من أساليب اللقطة
+    if (fxKind && !(imageBase64 && String(imageBase64).length > 50)) { res.status(400).json({ error: 'video_rejected', reason: exploded ? 'exploded_needs_photo' : 'fx_needs_photo', retryable: false }); return; } /* رمز قائم: «غيّر الوصف أو الصورة» بالـ١٤ لغة (vidRejected) */
 
     /* v-video-giveback: فحص المفتاح قبل أيّ حجز أو خصم (كـveo-create، v-video-stream) — كان بعد spendPoints وvideoLock
        ويردّ ٥٠٠ باسم المفتاح بلا ردّ ولا فكّ: النقاط تحترق وإعادة المحاولة ترجع video_cooldown. */
@@ -157,6 +229,7 @@ module.exports = async (req, res) => {
     /* v-video-durations (المالك ٢٧ أكتوبر: «شيل الازرار الي مافيها التوقيت»): gen4.5 يقبل أيّ عدد صحيح من ٢ إلى ١٠ ثوانٍ
        (Runway SDK 4.24: «Must be an integer from 2 to 10») — كان يُقرَّب إلى ٥ أو ١٠ فيصير زرّ «٨» عشر ثوانٍ. */
     finalDuration = Math.min(10, Math.max(2, finalDuration));
+    if (exploded) finalDuration = EXPLODED_SECONDS; // v-chat-exploded: قصير ثابت، ولا يتجاوز ١٠ لأحد ولو للمالك
 
     // Auto-cancel any previous stuck task on this key so it doesn't hog the
     // account's single concurrency slot forever (see runway-keys.js).
@@ -170,7 +243,7 @@ module.exports = async (req, res) => {
     let framed = false, framePeople = 0, noPerson = false;
     const tp = require('./trend-people.js');
     const asIs = useImage && !body.trend && (!!body.keepPhoto || !tp.freeFrameOn(body)); // v-photo-as-is: الصورة نفسها أوّل إطار
-    if (useImage && !body.trend && !body.keepPhoto && tp.freeFrameOn(body) && process.env.GEMINI_API_KEY) {
+    if (useImage && !body.trend && !body.keepPhoto && !fxKind /* v-chat-exploded · v-chat-ad-fx: لا إطار مرسوم ولا توليد صورة وسيط */ && tp.freeFrameOn(body) && process.env.GEMINI_API_KEY) {
       /* v-ai-video-speed: needPerson — صورة بلا وجه (عطر، منتج) تبدأ الفيديو كما هي بلا إطار مرسوم (كان ١٥–٤٠ ث، حتّى ٩٠، قبل المحرّك) */
       const solo = await tp.soloFirstFrame(process.env.GEMINI_API_KEY, { data: String(imageBase64), mime: imageMime }, String(promptText), finalRatio, { style, budgetMs: 90000, needPerson: true });
       if (solo && solo.b64) {
@@ -187,7 +260,7 @@ module.exports = async (req, res) => {
       ? RUNWAY_API_BASE + '/v1/image_to_video'
       : RUNWAY_API_BASE + '/v1/text_to_video';
     // Runway hard limit: promptText <= 1000 chars TOTAL — مع صورة: مرساة هويّة أوّلًا وقفل أخيرًا (v-video-photo-identity)
-    const finalPrompt = buildRunwayPrompt(promptText, style, useImage, framed, framePeople, noPerson, asIs);
+    const finalPrompt = exploded ? buildExplodedPrompt(promptText) : fxKind ? buildFxVideoPrompt(fxKind, promptText) : buildRunwayPrompt(promptText, style, useImage, framed, framePeople, noPerson, asIs);
 
     /* v-runway-model (لقطات المالك: «Validation of body failed … expected one of
        gen4.5 | kling3.0_pro | veo3.1 …»): Runway أوقف اسم gen4_turbo فصار كل
@@ -249,3 +322,9 @@ module.exports = async (req, res) => {
 };
 module.exports.buildRunwayPrompt = buildRunwayPrompt;
 module.exports.RUNWAY_PROMPT_MAX = RUNWAY_PROMPT_MAX;
+module.exports.buildExplodedPrompt = buildExplodedPrompt;
+module.exports.explodedKind = explodedKind;
+module.exports.buildFxVideoPrompt = buildFxVideoPrompt; // v-chat-ad-fx
+module.exports.videoFxKind = videoFxKind;
+module.exports.FX_VIDEO = FX_VIDEO;
+module.exports.EXPLODED_SECONDS = EXPLODED_SECONDS;

@@ -88,15 +88,26 @@ test('٢. القاعدة: صوت واحد ووقفة بين الأدوار، و�
   assert.match(p10, /^ If anyone speaks in this 10-second clip: one voice at a time/);
   assert.match(p10, /pause \(and any camera cut\) between turns/);
   assert.match(p10, /no narrator or background voices over them/);
-  assert.match(p10, /complete, clear and unhurried, as written, lip-synced to the speaker on screen/);
-  assert.match(p10, /ends before the last second \(about 15 words at most\): if the lines do not fit, say fewer lines — never rush, overlap or cut one off\.$/);
-  assert.match(SP.speechPace(DIALOGUE, 8), /8-second clip.*about 11 words/);
-  assert.match(SP.speechPace(DIALOGUE, 5), /5-second clip.*about 6 words/);
+  /* v-video-say-natural (المالك ١٩ نوفمبر: «التوقيت على حسب الكلام مش محدد» و«اللهجه مش امارتيه»): نطق طبيعيّ لا «على مهل» (كانت تمطّ
+     الكلمة قرابة ثانية)، وكلّ سطر يُقال (الخطّة تضمن الاتّساع فلا «جمل أقلّ»)، والعربيّ بلكنة إماراتيّة ما لم يطلب الوصف لهجة بعينها */
+  assert.match(p10, /spoken complete and clear at a natural pace, as written, lip-synced to the speaker on screen/);
+  assert.ok(!/unhurried|say fewer lines/.test(p10));
+  assert.match(p10, / Arabic in an Emirati Gulf accent, word for word\. All speech ends before the last second: every line is said, in order — never overlap two voices or cut a line off\.$/);
+  assert.match(SP.speechPace(DIALOGUE, 8), /8-second clip/);
+  assert.match(SP.speechPace(DIALOGUE, 5), /5-second clip/);
+  for (const asked of ['باللهجة المصرية\nالأم: إزيك يا حبيبتي', 'حوار بالفصحى\nالأم: مرحبًا يا ابنتي', 'بلكنة سعودية\nالأب: هلا والله', 'Mom: hello there\nKid: hi mom', 'in a British accent\nالأم: مرحبا']) {
+    assert.ok(SP.speechPace(asked, 8) && !/Emirati/.test(SP.speechPace(asked, 8)), 'لهجة مطلوبة أو كلام غير عربيّ: بلا لكنة مفروضة — ' + asked.slice(0, 20));
+  }
+  assert.match(SP.speechPace('الأم: لكنه قال لا يا بنتي', 8), /Emirati Gulf accent/, '«لكنه» ليست طلب لكنة');
   assert.match(SP.speechPace(DIALOGUE, undefined), /8-second clip/, 'بلا مدّة = ٨ كافتراضيّ المحرّك');
   assert.equal(SP.speechPace(SILENT, 10), '');
   for (const s of [3, 5, 8, 10, 15]) assert.ok(SP.speechPace(DIALOGUE, s).length < 480, 'قصيرة: تدخل حدّ الوصف نفسه فيُقصّ لها من وصف طويل');
-  /* المقطع ٨ث اليوم: ثلاث جمل (١٣ كلمة) لم تتّسع — الحدّ تحتها */
-  assert.ok(SP.wordBudget(8) < 13 && SP.wordBudget(10) < 24);
+  /* v-video-say-natural: المتّسع بنطق طبيعيّ (٢٫٢ كلمة/ث داخل الدور) ووقفة ٠٫٤ث بين كلّ دورين وثانية صمت — دور واحد: ١٥ كلمة في ٨ث و١٩ في
+     ١٠ث و٣٠ في ١٥ث؛ وحوار «سوق السمك» (٢٦ كلمة في ستّة أدوار) لا تتّسع له ١٠ث بل ١٥ */
+  assert.deepEqual([SP.wordBudget(4), SP.wordBudget(8), SP.wordBudget(10), SP.wordBudget(15), SP.wordBudget(10, SP.EXTEND_SAY_LEAD)], [6, 15, 19, 30, 20]);
+  assert.deepEqual([SP.SAY_RATE, SP.SAY_GAP], [2.2, 0.4]);
+  const market = ['سوق.'].concat(['كلمة كلمة كلمة كلمة كلمة', 'كلمة كلمة كلمة كلمة', 'كلمة كلمة كلمة كلمة كلمة', 'كلمة كلمة كلمة كلمة', 'كلمة كلمة كلمة كلمة', 'كلمة كلمة كلمة كلمة'].map((l, i) => (i % 2 ? 'الأم' : 'البنت') + ': ' + l)).join('\n');
+  assert.deepEqual([VT.fitDialogue(market, 10).words, VT.fitDialogue(market, 10).dropped > 0, VT.fitDialogue(market, 15).dropped], [26, true, 0]);
 });
 
 test('٣. «سينمائي» (Omni): الحوار يصل بقاعدة التوقيت بمدّة المقطع المختارة، والمشهد الصامت حرفيًّا كما كان', async () => {
