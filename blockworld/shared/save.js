@@ -8,7 +8,7 @@
 
 import { EMPTY } from './play.js';
 
-const COUNTS = ['broken', 'placed', 'eaten', 'crafted', 'opened', 'flown', 'swum', 'swumDist', 'walked', 'slept', 'played', 'deaths', 'jumps', 'traded', 'nightTime', 'stormTime', 'xp'];
+const COUNTS = ['photos', 'broken', 'placed', 'eaten', 'crafted', 'opened', 'flown', 'swum', 'swumDist', 'walked', 'slept', 'played', 'deaths', 'jumps', 'traded', 'nightTime', 'stormTime', 'xp'];
 
 /**
  * The same world from a shorter list: a block put down and dug again leaves nothing, and of several things
@@ -47,7 +47,7 @@ export function createSave({ play, kit, net, world, fresh = false }) {
     return {
       v: 1, world, at: Date.now(), log,
       chests: [...kit.chests].map(([k, c]) => [k, c.map(item)]).filter(([, c]) => c.some(Boolean)),
-      me: { pos: [st.pos.x, st.pos.y, st.pos.z], yaw: st.yaw, pitch: st.pitch, sel: st.sel, flying: st.flying, slots: st.slots.map(item), pack: st.pack.map(item), gear: Object.fromEntries(Object.entries(st.gear).map(([k, q]) => [k, item(q)])),
+      me: { pos: [st.pos.x, st.pos.y, st.pos.z], yaw: st.yaw, pitch: st.pitch, sel: st.sel, flying: st.flying, slots: st.slots.map(item), pack: st.pack.map(item), pouch: st.pouch.map(item), petBag: st.petBag.map(item), pet: !!st.pet, mark: st.mark, gear: Object.fromEntries(Object.entries(st.gear).map(([k, q]) => [k, item(q)])),
         counts: Object.fromEntries(COUNTS.map((k) => [k, st[k] || 0])), kills: { ...st.kills }, made: { ...st.made }, put: { ...st.put } },
       vit: v ? { ...v.values } : null, sky: sky ? { time: sky.time, rain: sky.rain } : null, monsters: life ? life.monsters : true,
     };
@@ -69,6 +69,10 @@ export function createSave({ play, kit, net, world, fresh = false }) {
     // everything goes back where it was. The hotbar may be shorter here (a phone shows fewer squares): what does not fit goes to free places in the backpack
     for (let i = 0; i < st.slots.length; i++) st.slots[i] = (m.slots && m.slots[i]) || EMPTY;
     for (let i = 0; i < st.pack.length; i++) st.pack[i] = (m.pack && m.pack[i]) || null;
+    for (let i = 0; i < st.pouch.length; i++) st.pouch[i] = (m.pouch && m.pouch[i]) || null;
+    for (let i = 0; i < st.petBag.length; i++) st.petBag[i] = (m.petBag && m.petBag[i]) || null;
+    st.pet = !!m.pet;
+    st.mark = m.mark && [m.mark.x, m.mark.y, m.mark.z].every(Number.isFinite) ? { x: m.mark.x, y: m.mark.y, z: m.mark.z } : null;
     for (const q of (m.slots || []).slice(st.slots.length)) { if (!q) continue; const i = st.pack.indexOf(null); if (i >= 0) st.pack[i] = q; }
     for (const k of Object.keys(st.gear)) st.gear[k] = (m.gear && m.gear[k]) || null;
     for (const k of COUNTS) if (Number.isFinite(m.counts && m.counts[k])) st[k] = m.counts[k];

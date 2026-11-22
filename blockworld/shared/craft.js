@@ -22,6 +22,12 @@ export const RECIPES = [
   { out: 210, n: 1, needs: [['wood', 1], [DIAMOND, 2]], table: true },
   { out: 215, n: 1, needs: [['wood', 2], [DIAMOND, 3]], table: true },
   { out: 217, n: 1, needs: [['wood', 2], [DIAMOND, 3]], table: true },
+  { out: 240, n: 1, needs: [['wood', 2], [GOLD, 2]], table: true },                 // treasure detector
+  { out: 242, n: 1, needs: [['wood', 4], [GOLD, 1]], table: true },                 // the magic map
+  { out: 243, n: 1, needs: [['wood', 6], [K.MEAT, 2]], table: true },               // an extra pouch
+  { out: 241, n: 1, needs: [[GOLD, 1], [K.GLASS, 1]], table: true },                // camera
+  { out: 244, n: 1, needs: [[GOLD, 2], [K.GEM, 1]], table: true },                  // the trader's caller
+  { out: 245, n: 1, needs: [[K.GEM, 2]], table: true },                             // the place crystal
   { out: 220, n: 1, also: [211, 222, 223], name: 'طقم لبس الألماس (4 قطع)', needs: [[K.GEM, 4]], table: true },     // four gems from the cave dress the player in diamond
   { out: DIAMOND, n: 1, needs: [[K.GEM, 2]], table: true },
   ...[[224, 220, 3], [225, 211, 5], [226, 222, 4], [227, 223, 2]].flatMap(([gold, dia, n]) => [

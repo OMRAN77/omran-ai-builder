@@ -82,7 +82,7 @@ export function createPlay(o) {
     pack: new Array(27).fill(null),                                  // the backpack: 27 places behind the hotbar
     gear: { head: null, chest: null, legs: null, feet: null, off: null },   // what is worn, and the other hand
     kills: { animal: 0, monster: 0 }, eaten: 0, crafted: 0, opened: 0, flown: 0, swum: 0, swumDist: 0, walked: 0, slept: 0, played: 0, deaths: 0, jumps: 0,   // counted for the achievements and quests
-    made: {}, put: {},                                                // how many of each thing were crafted / put down (by id)
+    made: {}, put: {}, pouch: new Array(27).fill(null), mark: null, photos: 0, pet: false, petBag: new Array(27).fill(null),                                                // how many of each thing were crafted / put down (by id)
     third: false,                                                    // the view from behind the player (V)
   };
   let itemOf = o.itemOf || null;
@@ -639,6 +639,8 @@ export function createPlay(o) {
     onTick(fn) { ticks.push(fn); },
     /** Call fn(hit) when the place button is pressed, before anything else; returning true uses the press up. */
     onUseFirst(fn) { firsts.push(fn); },
+    /** Draw the world now and hand back the picture as a PNG blob (what the camera takes: the world without the menus). */
+    capture(done) { draw(); canvas.toBlob((b) => done(b), 'image/png'); },
     net,
     /** What another player did, applied here without counting it as this player's own: a block put down, a block dug. */
     remotePlace(x, y, z, id, yaw) {

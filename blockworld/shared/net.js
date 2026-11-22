@@ -13,6 +13,8 @@
 import * as THREE from 'three';
 import { makeAvatar } from './avatar.js';
 import { cleanLook } from './outfits.js';
+import { createVoice } from './voice.js';
+import { createParty } from './party.js';
 
 const API = '/api/system?action=play-room';
 const RTC = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
@@ -65,6 +67,9 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   let admin = false;                // guest: the host made this player a helper, who may let people in and put them out
   const hostAsks = [];              // guest helper: who is waiting, as the host tells it: { id, name }
   const log = [];                   // everything done to the world since this game began: ['put', x, y, z, id, yaw] | ['dig', x, y, z] | ['door', x, y, z]
+  let party = null;                 // gifts, the contest, the team goal (made at the end, once the link exists)
+  const handlers = {};              // kinds of message other modules handle (gifts, the contest, the team goal): type -> fn(msg, fromId)
+  const RELAYED = new Set(['gift']);   // what one guest may send another through the host
   const life = () => (window.__GAME_LIFE && window.__GAME_LIFE.life) || null;
   const sky = () => window.__GAME_SKY || null;
 
@@ -92,6 +97,8 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   const toAll = (msg, except) => { for (const [id, p] of peers) if (id !== except) send(p.dc, msg); };
   const mine = () => ({ p: [+st.pos.x.toFixed(2), +st.pos.y.toFixed(2), +st.pos.z.toFixed(2)], yw: +st.yaw.toFixed(3), pt: +st.pitch.toFixed(2), mv: st.onGround ? +st.moving.toFixed(1) : 0, look: adv ? (adv.wardrobe.current === 'custom' ? { c: adv.wardrobe.look } : adv.wardrobe.current) : 'explorer', gear: ['head', 'chest', 'legs', 'feet'].map((k) => (st.gear[k] ? st.gear[k].id : 0)) });
 
+  // ---- voices: one silent line on every link from the start; the microphone is the player's to switch on
+  const voice = createVoice({ lines: () => [...peers].map(([id, p]) => ({ id, sender: p.tx ? p.tx.sender : null })), onChange: () => draw() });
   // ---- the other players' figures
   function seen(id, name) {
     let o = others.get(id);
@@ -158,6 +165,11 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     else if (m.t === 'do' && Array.isArray(m.a) && ['put', 'dig', 'door'].includes(m.a[0]) && okCell(m.a)) { const a = m.a.slice(0, 6); note(a); apply(a); toAll({ t: 'do', a }, id); }
     else if (m.t === 'hit') { const l = life(); if (l) l.remoteHit(m.e | 0, +m.pow || 0, id); }
     else if (m.t === 'name') { p.name = cleanName(m.name); seen(id, p.name); draw(); }
+    else if (m.t === 'relay' && typeof m.to === 'string' && m.m && RELAYED.has(m.m.t) && handlers[m.m.t]) {      // a guest's message for one other player
+      if (m.to === 'host') handlers[m.m.t](m.m, id);
+      else { const q = peers.get(m.to); if (q) send(q.dc, { t: m.m.t, item: m.m.item && { id: m.m.item.id | 0, n: 1 }, from: id }); }
+    }
+    else if (handlers[m.t] && !RELAYED.has(m.t)) handlers[m.t](m, id);
     else if (m.t === 'admin' && p.admin && typeof m.id === 'string') {      // a helper lets someone in, turns them away, or puts a player out (never the host, never another helper)
       if (m.do === 'admit') admit(m.id);
       else if (m.do === 'deny') deny(m.id);
@@ -172,8 +184,9 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     const ask = asks.splice(i, 1)[0];
     drawAsk(); tellHelpers();
     if (peers.size >= MAX_PLAYERS - 1) { call({ op: 'deny', code, key, id }).catch(() => {}); play.notice('الغرفة مليانة (4 لاعبين).', false, 3000); draw(); return false; }
-    const pc = new RTCPeerConnection(rtc), p = { pc, dc: null, name: cleanName(ask.name), s: null };
+    const pc = new RTCPeerConnection(rtc), p = { pc, dc: null, name: cleanName(ask.name), s: null, tx: null };
     peers.set(id, p);
+    pc.ontrack = (ev) => { if (ev.track.kind === 'audio') voice.hear(id, ev.streams[0] || new MediaStream([ev.track])); };
     pc.ondatachannel = (ev) => {
       p.dc = ev.channel;
       p.dc.onopen = () => {
@@ -187,6 +200,8 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed' || pc.connectionState === 'closed') drop(id, false); };
     try {
       await pc.setRemoteDescription({ type: 'offer', sdp: ask.offer });
+      p.tx = pc.getTransceivers().find((t) => t.receiver && t.receiver.track && t.receiver.track.kind === 'audio') || null;
+      if (p.tx) p.tx.direction = 'sendrecv';                       // the voice line both ways, silent for now
       await pc.setLocalDescription(await pc.createAnswer());
       await gathered(pc);
       await call({ op: 'admit', code, key, id, answer: pc.localDescription.sdp });
@@ -201,7 +216,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     peers.delete(id);
     if (kicked) send(p.dc, { t: 'kick' });
     setTimeout(() => { try { p.pc.close(); } catch (e) { /* already closed */ } }, kicked ? 300 : 0);
-    gone(id);
+    gone(id); voice.gone(id);
     if (role === 'host') { toAll({ t: 'bye', id }); play.notice(p.name + (kicked ? ' طلّعته من الغرفة.' : ' طلع من الغرفة.'), false, 3000); }
     draw();
   }
@@ -231,7 +246,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
       listen(true);
       const l = life();
       if (l) l.setShare('host', (to, msg) => { const p = peers.get(to); if (p) send(p.dc, msg); }, () => [...peers].filter(([, p]) => p.s).map(([id, p]) => ({ id, x: p.s.p[0], y: p.s.p[1], z: p.s.p[2] })));
-      play.shared = true;
+      play.shared = true; voice.host = true;
       draw();
       return code;
     } catch (e) { busy = ''; error = why('offline'); draw(); return null; }
@@ -265,12 +280,14 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     else if (m.t === 'role') { admin = !!m.admin; if (!admin) hostAsks.length = 0; play.notice(admin ? 'صاحب الغرفة خلّاك مشرف: تقدر تدخّل لاعبين وتطلّعهم.' : 'رجعت لاعب عادي.', false, 4500); draw(); }
     else if (m.t === 'asks' && Array.isArray(m.list)) { const had = hostAsks.length; hostAsks.length = 0; for (const a of m.list.slice(0, 8)) if (a && typeof a.id === 'string') hostAsks.push({ id: a.id.slice(0, 12), name: cleanName(a.name) }); if (hostAsks.length > had && play.sound) play.sound.ui(); draw(); }
     else if (m.t === 'kick') { left('صاحب الغرفة طلّعك.'); }
+    else if (handlers[m.t]) handlers[m.t](m, typeof m.from === 'string' ? m.from : 'host');
   }
   function left(text) {
     const h = peers.get('host');
     peers.clear();
     if (h) { try { h.pc.close(); } catch (e) { /* already closed */ } }
     for (const id of [...others.keys()]) gone(id);
+    voice.stop(); voice.host = false;
     const s = sky(), l = life();
     if (s) s.locked = false;
     if (l) l.setShare(null);
@@ -288,7 +305,10 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     if (log.length > 0 && !join.fresh) { try { window.sessionStorage.setItem('bw-join', JSON.stringify({ code: c, name: myName, world })); } catch (e) { /* no storage: join as things are */ } if (window.sessionStorage.getItem('bw-join')) { window.location.reload(); return false; } }
     error = ''; busy = 'أطلب الدخول…'; code = c; draw();
     const pc = new RTCPeerConnection(rtc), dc = pc.createDataChannel('bw');
-    peers.set('host', { pc, dc });
+    let tx = null;
+    try { tx = pc.addTransceiver('audio', { direction: 'sendrecv' }); } catch (e) { tx = null; }      // the voice line; a browser without one still plays, silently
+    pc.ontrack = (ev) => { if (ev.track.kind === 'audio') voice.hear('host', ev.streams[0] || new MediaStream([ev.track])); };
+    peers.set('host', { pc, dc, tx });
     dc.onmessage = (e) => { let m = null; try { m = JSON.parse(e.data); } catch (err) { m = null; } fromHost(m); };
     dc.onclose = () => { if (role === 'guest') left('انقطع الاتصال بالغرفة.'); };
     pc.onconnectionstatechange = () => { if ((pc.connectionState === 'failed' || pc.connectionState === 'closed') && peers.get('host') && peers.get('host').pc === pc) left(role === 'guest' ? 'انقطع الاتصال بالغرفة.' : ''); };
@@ -311,7 +331,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     } catch (e) { return fail(why('offline')); }
   }
   function leave() {
-    if (role === 'host') { for (const id of [...peers.keys()]) drop(id, false); listen(false); call({ op: 'close', code, key }).catch(() => {}); const l = life(); if (l) l.setShare(null); role = null; code = ''; asks.length = 0; play.shared = false; drawAsk(); draw(); }
+    if (role === 'host') { for (const id of [...peers.keys()]) drop(id, false); voice.stop(); voice.host = false; listen(false); call({ op: 'close', code, key }).catch(() => {}); const l = life(); if (l) l.setShare(null); role = null; code = ''; asks.length = 0; play.shared = false; drawAsk(); draw(); }
     else if (role === 'guest' || peers.size) left('طلعت من الغرفة.');
   }
 
@@ -368,11 +388,12 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
       h += '<ul>' + asks.map((a) => `<li class="ask"><span>${esc(cleanName(a.name))}</span><small>يبي يدخل</small><button type="button" data-admit="${a.id}">دخّله</button><button type="button" class="no" data-deny="${a.id}">ارفض</button></li>`).join('')
         + [...peers].map(([id, p]) => `<li><span>${esc(p.name)}</span><small>${p.dc && p.dc.readyState === 'open' ? (p.admin ? 'مشرف' : 'لاعب عادي') : 'يتصل…'}</small><button type="button" class="soft" data-admin="${id}" data-on="${p.admin ? 0 : 1}">${p.admin ? 'خلّه عادي' : 'خلّه مشرف'}</button><button type="button" class="no" data-kick="${id}">طلّعه</button></li>`).join('') + '</ul>';
       if (!asks.length && !peers.size) h += '<p>ما حد في الغرفة للحين.</p>';
+      h += talk() + (party ? `<button type="button" class="soft" data-contest="1">${party.contest.on || party.contest.voting ? 'المسابقة شغّالة' : 'ابدأ مسابقة بناء (5 دقايق)'}</button>` : '');
       h += `<button type="button" class="soft" data-listen="${accepting ? 0 : 1}">${accepting ? 'سكّر الاستقبال' : 'افتح الاستقبال'}</button><button type="button" class="no" data-leave="1">سكّر الغرفة</button>`;
     } else if (role === 'guest') {
       h += `<p>أنت في الغرفة <b dir="ltr">${code}</b>${admin ? '، وأنت <b>مشرف</b>: تقدر تدخّل لاعبين وتطلّعهم' : ''}. صاحب الغرفة يتحكم بالوقت والجو والوحوش.</p><ul>`
         + (admin ? hostAsks.map((a) => `<li class="ask"><span>${esc(a.name)}</span><small>يبي يدخل</small><button type="button" data-admit="${a.id}">دخّله</button><button type="button" class="no" data-deny="${a.id}">ارفض</button></li>`).join('') : '')
-        + [...others].map(([id, o]) => `<li><span>${esc(o.name)}</span><small>${id === 'host' ? 'صاحب الغرفة' : o.admin ? 'مشرف' : 'لاعب عادي'}</small>${admin && id !== 'host' && !o.admin ? `<button type="button" class="no" data-kick="${id}">طلّعه</button>` : ''}</li>`).join('') + '</ul><button type="button" class="no" data-leave="1">اطلع من الغرفة</button>';
+        + [...others].map(([id, o]) => `<li><span>${esc(o.name)}</span><small>${id === 'host' ? 'صاحب الغرفة' : o.admin ? 'مشرف' : 'لاعب عادي'}</small>${admin && id !== 'host' && !o.admin ? `<button type="button" class="no" data-kick="${id}">طلّعه</button>` : ''}</li>`).join('') + '</ul>' + talk() + '<button type="button" class="no" data-leave="1">اطلع من الغرفة</button>';
     } else if (busy) {
       h += `<p>${busy}</p>` + (peers.size ? '<button type="button" class="soft" data-leave="1">إلغاء</button>' : '');
     } else {
@@ -384,6 +405,8 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     box.innerHTML = h;
     drawAsk();
   }
+  /** The two voice buttons, with a word on what they do. */
+  function talk() { return `<p><button type="button" class="${voice.micOn ? '' : 'soft'}" data-mic="${voice.micOn ? 0 : 1}">${voice.micOn ? 'المايك شغّال (اضغط تطفيه)' : 'شغّل المايك'}</button><button type="button" class="soft" data-deaf="${voice.deaf ? 0 : 1}">${voice.deaf ? 'صوت الربع مكتوم' : 'صوت الربع شغّال'}</button></p>`; }
   let onBack = null;
   function onClick(e) {
     const t = e.target.closest('button');
@@ -392,6 +415,9 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     else if (t.dataset.admit) admit(t.dataset.admit);
     else if (t.dataset.deny) deny(t.dataset.deny);
     else if (t.dataset.admin) setAdmin(t.dataset.admin, t.dataset.on === '1');
+    else if (t.dataset.mic) { voice.setMic(t.dataset.mic === '1').then((r) => { error = r === true ? '' : r; if (r === true) play.notice(voice.micOn ? 'المايك شغّال: ربعك يسمعونك.' : 'المايك مطفي.', false, 2600); draw(); }); }
+    else if (t.dataset.deaf) voice.setDeaf(t.dataset.deaf === '1');
+    else if (t.dataset.contest) { if (party && party.startContest()) { el.hidden = true; drawAsk(); if (onBack) onBack(); } }
     else if (t.dataset.kick) drop(t.dataset.kick, true);
     else if (t.dataset.listen) { if (t.dataset.listen === '1' && !code) { role = null; host(); } else { listen(t.dataset.listen === '1'); draw(); } }
     else if (t.dataset.leave) leave();
@@ -407,13 +433,23 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   const net = {
     el, peers, others, asks, log, apply,
     get role() { return role; }, get code() { return code; }, get accepting() { return accepting; }, get error() { return error; }, get busy() { return busy; }, get name() { return myName; },
-    host, join, admit, deny, leave, listen, poll, setAdmin, setName, hostAsks,
+    host, join, admit, deny, leave, listen, poll, setAdmin, setName, hostAsks, voice,
+    get myId() { return myId; },
+    /** Listen for a kind of message other modules send (see party.js). fn(msg, fromId). */
+    on(type, fn) { handlers[type] = fn; },
+    /** Send a message: to everyone (null, the host only), to the host ('host'), or to one player by id. */
+    say(to, msg) {
+      if (role === 'host') { if (to === null) toAll({ ...msg, from: 'host' }); else { const p = peers.get(to); if (p) send(p.dc, { ...msg, from: 'host' }); } }
+      else if (role === 'guest') { if (to === 'host' || to === null) { if (RELAYED.has(msg.t)) toHost({ t: 'relay', to: 'host', m: msg }); else toHost(msg); } else toHost({ t: 'relay', to, m: msg }); }
+    },
     get admin() { return admin; },
     kick: (id) => drop(id, true),
     /** Open the panel; back() is called when the player leaves it. */
     open(back) { onBack = back || null; error = ''; el.hidden = false; draw(); },
     close() { el.hidden = true; drawAsk(); },
   };
+  party = adv ? createParty({ play, net, adv }) : null;
+  net.party = party;
   window.__GAME_NET = net;
   // a join that had to start the world afresh first
   try {

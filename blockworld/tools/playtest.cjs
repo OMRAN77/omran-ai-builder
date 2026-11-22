@@ -786,6 +786,7 @@ function serve(root, prefix) {
       check('today\'s cave is dug into the ground, lit, with veins of gold and diamond', !!cv && cv.cells > 300 && cv.diamond >= 4 && cv.gold >= 4 && cv.torches >= 3 && cv.hall === 0 && cv.vein === 179 && cv.standing[0] === true, cv);
       check('four gems dug in the cave make the set of four diamond pieces', !!cv && cv.gems === 4 && cv.made === true && cv.pieces.every(Boolean) && cv.gemsLeft === 0 && String(cv.recipe).includes('طقم'), cv);
       await page.evaluate(() => { const g = window.__game, s = g.play.state, c = g.bag.adv.cave; if (!c) return; s.yaw += 0.6; s.pitch = 0.05; g.play.tick(3); });
+      await page.evaluate(() => { window.__game.panel.hide(); window.__play.state.running = true; window.__play.tick(1); });
       await shot('24-cave');
       const design = await page.evaluate(() => {
         const g = window.__game, wd = g.bag.adv.wardrobe, n = g.bag.net;
@@ -794,6 +795,137 @@ function serve(root, prefix) {
         return { ok, bad, cape, current: wd.current, shirt: wd.look.shirt, capeNow: wd.look.cape, listed: wd.list()[0].key, name, kept: window.localStorage.getItem('bw-name') };
       });
       check('the player designs their own look in colours, and changes their name', design.ok === true && design.bad === false && design.current === 'custom' && design.shirt === '#ff0044' && design.capeNow === '#112233' && design.listed === 'custom' && design.name === 'نورةb' && design.kept === 'نورةb', design);
+    }
+    // ---- gadgets, friendly creatures and surprises (worlds whose bag has them)
+    if (await page.evaluate(() => !!(window.__GAME_GADGETS && window.__GAME_FRIENDS && window.__GAME_EVENTS))) {
+      const home = () => page.evaluate(() => { const g = window.__game, p = g.play, s = p.state; if (!s.modal) { /* as it is */ } p.setFlying(false); s.third = false; s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); s.yaw = g.vitals.spawn.yaw; s.pitch = 0; for (const k of Object.keys(g.vitals.values)) g.vitals.values[k] = 100; p.tick(5); });
+      await home();
+      const gad = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, G = window.__GAME_GADGETS, adv = g.bag.adv, it = (id) => ({ ...g.bag.items.find((q) => q.id === id) }), out = {};
+        out.catalogue = [240, 241, 242, 243, 244, 245, 246].every((id) => !!g.bag.items.find((q) => q.id === id));
+        // the detector reads the way to a treasure put down by the test (today's own may be found already)
+        s.slots[0] = it(240); s.sel = 0; p.changed(); p.tick(3);
+        out.detector = { shown: !G.detect.hidden, text: G.detect.textContent };
+        // the magic map
+        s.slots[0] = it(242); p.changed(); p.tick(3); G.drawMap();
+        const d = G.mapEl.querySelector('canvas').getContext('2d').getImageData(0, 0, 96, 96).data; let lit = 0, red = 0; for (let i = 0; i < d.length; i += 4) { if (d[i] + d[i + 1] + d[i + 2] > 80) lit++; if (d[i] > 190 && d[i + 1] < 80 && d[i + 2] < 80) red++; }
+        out.map = { shown: !G.mapEl.hidden, lit: lit / (96 * 96), red };
+        // the place crystal: remember here, walk off, come back
+        s.slots[0] = it(245); p.changed(); p.tick(2);
+        out.putAway = { detector: G.detect.hidden, map: G.mapEl.hidden };      // neither is in the hand now: both are gone from the screen
+        const here = [s.pos.x, s.pos.y, s.pos.z];
+        const u1 = p.placeNow(); const marked = !!s.mark;
+        s.pos.x += 9; s.pos.y += 6; p.tick(2);
+        const u2 = p.placeNow(); p.tick(2);
+        out.recall = { u1, marked, u2, back: Math.hypot(s.pos.x - here[0], s.pos.z - here[2]) < 0.2, cleared: s.mark === null };
+        // the trader's caller
+        s.slots[0] = it(244); p.changed();
+        const u3 = p.placeNow(); out.phone = { u3, tab: g.bag.tab, modal: s.modal }; g.bag.close();
+        // the extra pouch
+        s.slots[0] = it(243); p.changed();
+        const u4 = p.placeNow(); out.pouch = { u4, cells: document.querySelectorAll('#bag [data-z="chest"]').length, title: (document.querySelector('#bag .page:not([hidden]) h3') || {}).textContent }; g.bag.close();
+        s.slots[0] = it(241); p.changed();
+        return out;
+      });
+      const shotTaken = await page.evaluate(() => new Promise((res) => { const g = window.__game, p = g.play, G = window.__GAME_GADGETS; const used = p.placeNow(); let n = 0; const t = setInterval(() => { if (G.lastPhoto || ++n > 300) { clearInterval(t); res({ used, photo: G.lastPhoto, photos: p.state.photos }); } }, 100); }));      // (a phone-sized picture takes this headless browser a while to encode)
+      check('the detector and the magic map work while held, and leave the screen when put away', gad.catalogue && gad.detector.shown && (gad.detector.text.includes('الكنز') || gad.detector.text.includes('كنز')) && gad.map.shown && gad.map.lit > 0.5 && gad.map.red > 5 && gad.putAway.detector === true && gad.putAway.map === true, { detector: gad.detector, map: gad.map, putAway: gad.putAway });
+      check('the place crystal remembers a spot and brings the player back; the caller opens the trader; the pouch opens 27 places', gad.recall.u1 && gad.recall.marked && gad.recall.u2 && gad.recall.back && gad.recall.cleared && gad.phone.u3 === true && gad.phone.tab === 'trade' && gad.pouch.u4 === true && gad.pouch.cells === 27 && String(gad.pouch.title).includes('الشنطة'), gad);
+      check('the camera takes a picture of the world and saves it', shotTaken.used === true && !!shotTaken.photo && shotTaken.photo.size > 5000 && shotTaken.photo.name.endsWith('.png') && shotTaken.photos >= 1, shotTaken);
+      // the crystal fox leads to a treasure; the dragon hatches and carries
+      await home();
+      const fr = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, F = window.__GAME_FRIENDS, adv = g.bag.adv, it = (id) => ({ ...g.bag.items.find((q) => q.id === id) }), out = {};
+        const goal = F.fox.goal();
+        if (goal) {
+          let shown = false, d0 = null, best = 1e9;
+          for (let i = 0; i < 1500; i++) { p.advance(1 / 30); const e = F.fox.e; if (e.on) { if (!shown) { shown = true; d0 = Math.hypot(goal.x - e.x, goal.z - e.z); } best = Math.min(best, Math.hypot(goal.x - e.x, goal.z - e.z)); s.pos.x = e.x - 2; s.pos.z = e.z - 2; s.pos.y = e.y + 0.1; s.vel.set(0, 0, 0); } if (F.fox.arrived) break; }
+          out.fox = { shown, d0: Math.round(d0), best: Math.round(best), arrived: F.fox.arrived };
+        } else out.fox = { skip: true };
+        s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); p.tick(3);
+        s.slots[0] = it(246); s.sel = 0; p.changed();
+        const used = p.placeNow();
+        for (let i = 0; i < 90; i++) p.advance(1 / 60);
+        const e = F.dragon;
+        out.dragon = { used, pet: s.pet, on: e.on, near: Math.hypot(e.x - s.pos.x, e.z - s.pos.z) < 4, egg: s.slots[0] && s.slots[0].id };
+        // look at it and press the button: its bags
+        const ex = s.pos.x, ey = s.pos.y + p.tuning.eye, ez = s.pos.z;
+        s.yaw = Math.atan2(-(e.x - ex), -(e.z - ez)); s.pitch = Math.atan2(e.y + 0.35 - ey, Math.hypot(e.x - ex, e.z - ez)); p.tick(1);
+        // (the dragon keeps station by where the player looks, so it may drift: aim again on the frame the button is pressed)
+        s.yaw = Math.atan2(-(e.x - ex), -(e.z - ez)); s.pitch = Math.atan2(e.y + 0.35 - ey, Math.hypot(e.x - ex, e.z - ez)); p.advance(1 / 600);
+        out.bags = { near: F.dragonNear, used: F.dragonNear ? p.placeNow() : null, title: (document.querySelector('#bag .page:not([hidden]) h3') || {}).textContent };
+        g.bag.close();
+        return out;
+      });
+      check('the crystal fox comes and leads the player to the day\'s treasure', fr.fox.skip === true || (fr.fox.shown && fr.fox.arrived && fr.fox.best < fr.fox.d0), fr.fox);
+      check('a dragon egg hatches into a dragon that follows and carries things', fr.dragon.used === true && fr.dragon.pet === true && fr.dragon.on && fr.dragon.near && fr.dragon.egg === 0, fr);
+      await page.evaluate(() => { const g = window.__game, s = g.play.state, e = window.__GAME_FRIENDS.dragon; s.third = true; g.play.tick(3); void e; });
+      await page.evaluate(() => { window.__game.panel.hide(); window.__play.state.running = true; window.__play.tick(1); });
+      await shot('25-dragon');
+      await page.evaluate(() => { window.__play.state.third = false; window.__play.tick(2); });
+      // the stranger after sunset, the island, the gate and the maze
+      await home();
+      const ev = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, E = window.__GAME_EVENTS, w = g.world, it = (id, n) => { const q = { ...g.bag.items.find((x) => x.id === id) }; if (n != null) q.n = n; return q; }, out = {};
+        out.message = E.message();
+        if (g.weather) { g.weather.set('morning', false); p.tick(2); out.byDay = E.strangerHere(); g.weather.set('night', false); p.tick(2); out.byNight = E.strangerHere(); }
+        // give the stranger whatever today's task asks, then hand it over
+        const t = E.task; s.pack.fill(null);
+        if (t.ask) { const what = t.ask[0], id = typeof what === 'number' ? what : g.bag.craft.idsOf(what)[0]; s.pack[0] = it(id, t.ask[1]); }
+        p.changed();
+        const r1 = E.deliver(); if (t.photo) { s.photos = (s.photos || 0) + 1; out.afterPhoto = E.deliver(); }
+        out.task = { text: t.text, first: r1, done: s.strangerDone, again: E.deliver() };
+        // the island: raised, its chest is there, sunk without a trace
+        E.force = true; E.raiseIsland(); g.terrain.flush();
+        const q = E.isle; out.island = { up: q.up, ground: w.get(q.x, q.y, q.z), chest: w.get(q.x, q.y + 1, q.z), loot: !!g.kit.chestAt(q.x, q.y + 1, q.z)[0], cells: q.cells.length };
+        s.pos.set(q.x + 2.5, q.y + 1.2, q.z + 2.5); s.vel.set(0, 0, 0); for (let i = 0; i < 260; i++) p.advance(1 / 60);
+        out.island.stood = s.onGround; out.island.visits = s.islandVisits || 0;
+        return out;
+      });
+      await page.evaluate(() => { const s = window.__play.state, q = window.__GAME_EVENTS.isle; s.yaw = Math.atan2(-(q.x - s.pos.x), -(q.z - s.pos.z)); s.pitch = -0.25; window.__play.tick(3); });
+      await page.evaluate(() => { window.__game.panel.hide(); window.__play.state.running = true; window.__play.tick(1); });
+      await shot('26-island');
+      const ev2 = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, E = window.__GAME_EVENTS, w = g.world, out = {};
+        const q = E.isle; E.force = false; E.sinkIsland(); g.terrain.flush();
+        out.sunk = { up: q.up, ground: w.get(q.x, q.y, q.z), chest: w.get(q.x, q.y + 1, q.z) };
+        s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); p.tick(3);
+        // a gate two steps away: walk into it
+        const here = [s.pos.x, s.pos.y, s.pos.z];
+        E.openGate({ x: s.pos.x + 0.4, y: s.pos.y, z: s.pos.z + 0.4 }); p.advance(1 / 60); p.advance(1 / 60);
+        const m = E.maze;
+        out.maze = { on: m.on, at: [Math.floor(s.pos.x) - m.x0, Math.floor(s.pos.z) - m.z0], floor: w.get(m.x0 + 1, m.y - 1, m.z0 + 1), exit: w.get(m.x0 + 11, m.y - 1, m.z0 + 11), walls: m.cells.size };
+        for (let i = 0; i < 20; i++) p.advance(1 / 60);
+        out.maze.standing = s.onGround; out.maze.noDig = s.noDig; out.maze.chip = !!document.body.textContent.match(/المتاهة · باقي/);
+        // the walls move: after a shift the layout differs, and the player is never walled in
+        const snap = () => { let k = ''; for (let z = 1; z < 12; z++) for (let x = 1; x < 12; x++) k += w.get(m.x0 + x, m.y, m.z0 + z) ? '#' : '.'; return k; };
+        const a = snap(); for (let i = 0; i < 13 * 60; i++) p.advance(1 / 60); const b = snap();
+        out.maze.moved = a !== b; out.maze.free = w.get(Math.floor(s.pos.x), m.y, Math.floor(s.pos.z)) === 0;
+        out.maze.solvable = (() => { const lay = E.layout(77), seen = new Set(['1,1']), todo = [[1, 1]]; while (todo.length) { const [x, z] = todo.pop(); for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, nz = z + dz, k = nx + ',' + nz; if (nx > 0 && nz > 0 && nx < 12 && nz < 12 && !lay[nz][nx] && !seen.has(k)) { seen.add(k); todo.push([nx, nz]); } } } return seen.has('11,11'); })();
+        return out;
+      });
+      await page.evaluate(() => { const s = window.__play.state; s.pitch = -0.2; window.__play.tick(3); });
+      await page.evaluate(() => { window.__game.panel.hide(); window.__play.state.running = true; window.__play.tick(1); });
+      await shot('27-maze');
+      const ev3 = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, E = window.__GAME_EVENTS, m = E.maze, w = g.world;
+        const gems0 = g.bag.craft.count(231);
+        s.pos.set(m.x0 + 11.5, m.y + 0.05, m.z0 + 11.5); s.vel.set(0, 0, 0); p.advance(1 / 60); p.advance(1 / 60);
+        return { on: m.on, wins: s.mazeWins || 0, gems: g.bag.craft.count(231) - gems0, back: Math.hypot(s.pos.x - g.vitals.spawn.x, s.pos.z - g.vitals.spawn.z) < 1.5, cleared: w.get(m.x0 + 1, m.y - 1, m.z0 + 1) === 0 && m.cells.size === 0 };
+      });
+      check('the day\'s note says where to look, and the stranger is only there after the sun is low', ev.message.length > 30 && (ev.byDay === undefined || (ev.byDay === false && ev.byNight === true)), { message: ev.message, byDay: ev.byDay, byNight: ev.byNight });
+      check('the stranger\'s task of the day is done once and rewarded', (ev.task.first === true || ev.afterPhoto === true) && ev.task.done === 1 && typeof ev.task.again === 'string', ev.task);
+      check('the island rises with its chest, can be stood on, and sinks without a trace', ev.island.up && ev.island.ground === 108 && ev.island.chest === 170 && ev.island.loot && ev.island.stood === true && ev.island.visits >= 1 && ev2.sunk.up === false && ev2.sunk.ground === 0 && ev2.sunk.chest === 0, { island: ev.island, sunk: ev2.sunk });
+      check('stepping into the gate leads into the maze, whose walls move without ever shutting the player in', ev2.maze.on === true && ev2.maze.at[0] === 1 && ev2.maze.at[1] === 1 && ev2.maze.floor === 101 && ev2.maze.exit === 140 && ev2.maze.walls > 150 && ev2.maze.standing === true && ev2.maze.noDig === true && ev2.maze.chip && ev2.maze.moved === true && ev2.maze.free === true && ev2.maze.solvable === true, ev2.maze);
+      check('reaching the gold block wins the maze: a prize, back where the player was, and the maze is gone', ev3.on === false && ev3.wins === 1 && ev3.gems === 2 && ev3.back === true && ev3.cleared === true, ev3);
+      const local = await page.evaluate(() => {
+        const g = window.__game, p = g.play, s = p.state, F = window.__GAME_FRIENDS, out = { world: null };
+        if (F.deer) { out.world = 'dhalam'; g.weather.set('night', false); let on = false; for (let i = 0; i < 1200 && !on; i++) { p.advance(1 / 30); on = F.deer.on && Math.hypot(F.deer.x - s.pos.x, F.deer.z - s.pos.z) < 24; } out.deerAtNight = on; /* one that showed itself far away earlier is replaced by one near here */ if (on) { const e = F.deer; s.yaw = Math.atan2(-(e.x - s.pos.x), -(e.z - s.pos.z)); for (let i = 0; i < 90; i++) p.advance(1 / 60); out.seen = s.deerSeen || 0; s.pos.x = e.x + 2; s.pos.z = e.z; s.pos.y = e.y; for (let i = 0; i < 10; i++) p.advance(1 / 60); out.goneWhenNear = !e.on; } g.weather.set('morning', false); for (let i = 0; i < 10; i++) p.advance(1 / 60); out.goneByDay = !F.deer.on; }
+        if (F.turtle) { out.world = 'waha'; const o = F.oasis; out.oasis = o && { pool: g.world.get(o.x, o.y - 1, o.z), chest: g.world.get(o.x + 2, o.y, o.z + 2), far: Math.hypot(o.x - g.vitals.spawn.x, o.z - g.vitals.spawn.z) > 40 }; if (o) { s.pos.set(o.x + 2.5, o.y + 0.1, o.z - 0.5); s.vel.set(0, 0, 0); for (let i = 0; i < 20; i++) p.advance(1 / 60); out.found = s.oasisFound || 0; } }
+        s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); for (const k of Object.keys(g.vitals.values)) g.vitals.values[k] = 100; p.tick(3);
+        return out;
+      });
+      if (local.world === 'dhalam') check('the shadow deer stands off in the night, is seen, and is gone when approached or when day comes', local.deerAtNight === true && local.seen >= 1 && local.goneWhenNear === true && local.goneByDay === true, local);
+      if (local.world === 'waha') check('the desert has a hidden oasis with a pool and a chest, and reaching it is counted', !!local.oasis && local.oasis.pool === 150 && local.oasis.chest === 170 && local.oasis.far && local.found >= 1, local);
     }
     // ---- the pause menu: its eight choices, statistics, notes, settings, keys; then saving and coming back
     if (await page.evaluate(() => !!window.__GAME_SAVE)) {

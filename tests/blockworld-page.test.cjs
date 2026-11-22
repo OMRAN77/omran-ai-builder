@@ -375,7 +375,7 @@ test('v-blockworld-adv: مهام ظاهرة وسرّيّة، كنز يتغيّر
   assert.match(adv, /save\(foundKey, today\)/);
   // المهام: الظاهرة بالترتيب، والسرّيّة لا تُكتب حتّى تُكتشف
   assert.ok((adv.match(/^  \['[a-z0-9]+', '/gm) || []).length >= 15, 'تسع مهامّ وسبع أسرار');
-  assert.match(adv, /secrets: \(\) => SECRETS\.filter\(\(q\) => done\.has\('s:' \+ q\[0\]\)\)/, 'السرّيّة تظهر بعد اكتشافها فقط');
+  assert.match(adv, /secrets: \(\) => secretsHere\.filter\(\(q\) => done\.has\('s:' \+ q\[0\]\)\)/, 'السرّيّة تظهر بعد اكتشافها فقط');
   assert.ok(adv.includes('ما تنكتب هني لين تلقاها بروحك'));
   // الملابس: تُمنح فتُلبس فورًا وتُحفظ
   assert.ok((outfits.match(/\{ key: '/g) || []).length >= 12);
@@ -519,5 +519,57 @@ test('v-blockworld-cave: نار تحرق باللمس، بناء فوق الما
   assert.match(outfits, /const HEX = \/\^#\[0-9a-fA-F\]\{6\}\$\/;/);
   assert.match(net, /cleanLook\(m\.s\.look\.c\)/);
   assert.match(adv, /<h3>صمّم شكلك<\/h3>/);
+});
+
+test('v-blockworld-gadgets: أجهزة الحقيبة الستّة، والمخلوقات الأليفة، والمفاجآت', () => {
+  const kit = read('shared/kit.js'), gad = read('shared/gadgets.js'), fr = read('shared/friends.js'), ev = read('shared/events.js');
+  const adv = read('shared/adventure.js'), bag = read('shared/bag.js'), save = read('shared/save.js'), play = read('shared/play.js'), craft = read('shared/craft.js');
+  // الأجهزة: كلّها في القائمة ولها وصفة
+  for (const [id, name] of [[240, 'كاشف الكنوز'], [241, 'كاميرا'], [242, 'الخريطة السحرية'], [243, 'شنطة إضافية'], [244, 'جهاز التاجر'], [245, 'بلورة المكان'], [246, 'بيضة تنين']]) assert.ok(kit.includes("gadget(" + id + ",") && kit.includes(name), name);
+  for (const id of [240, 241, 242, 243, 244, 245]) assert.ok(craft.includes('{ out: ' + id + ', n: 1,'), 'وصفة ' + id);
+  for (const u of ['camera()', 'pouch()', 'phone()', 'recall()']) assert.ok(gad.includes('    ' + u + ' {'), u);
+  assert.match(play, /capture\(done\) \{ draw\(\); canvas\.toBlob\(\(b\) => done\(b\), 'image\/png'\); \}/, 'الصورة تؤخذ في إطار الرسم نفسه');
+  assert.match(gad, /const rel = Math\.atan2\(dx, -dz\) - \(-st\.yaw\);/, 'سهم الكاشف نسبةً لاتّجاه نظر اللاعب');
+  assert.match(gad, /return !!\(\(a && a\.gadget === what\) \|\| \(b && b\.gadget === what\)\);/, 'صحيح أو خطأ دائمًا: كان يرجع null فيبقى الكاشف والخريطة على الشاشة بعد وضعهما');
+  assert.match(save, /pouch: st\.pouch\.map\(item\), petBag: st\.petBag\.map\(item\), pet: !!st\.pet, mark: st\.mark/, 'الشنطة والتنين وبلورة المكان تُحفظ');
+  // المخلوقات: كلّ واحد بمهمّته
+  for (const n of ['ثعلب الكريستال', 'سلحفاة الرمال', 'غزال الظلال', 'التنين الصغير']) assert.ok(fr.includes(n), n);
+  assert.match(fr, /const turtle = world === 'waha' \?/, 'السلحفاة في واحة');
+  assert.match(fr, /const deer = world === 'dhalam' \? make\(makeDeer\) : null;/, 'الغزال في ظلام');
+  assert.match(fr, /if \(dNear\) return openStore\(st\.petBag, 'شنطة التنين'\);/);
+  assert.match(fr, /else if \(d < 6\.5\) \{ hide\(deer\);/, 'الغزال يختفي إن اقترب اللاعب');
+  // المفاجآت
+  assert.match(ev, /const islandTime = \(\) => Math\.floor\(Date\.now\(\) \/ 60000\) % 30 < 10;/, 'الجزيرة بالساعة: الكلّ يراها في الوقت نفسه');
+  assert.match(ev, /for \(const \[x, y, z, id\] of isle\.cells\) if \(w\.get\(x, y, z\) === id\) kit\.setBlock\(x, y, z, 0\);/, 'تختفي بلا أثر، وما بناه اللاعب مكانها يبقى');
+  assert.match(ev, /st\.noDig = true; if \(st\.flying\) play\.setFlying\(false\);/, 'لا حفر ولا طيران في المتاهة');
+  assert.match(ev, /const open = !wall\[z\]\[x\] \|\| \(Math\.abs\(x - px\) <= 0 && Math\.abs\(z - pz\) <= 0\) \|\| exit;/, 'الجدار لا يُغلق على اللاعب ولا على المخرج');
+  assert.match(ev, /if \(load\('bw-msg-' \+ world\) !== today\)/, 'رسالة اليوم مرّة في اليوم');
+  assert.match(ev, /window\.__GAME_SKY\.time !== 'morning' && window\.__GAME_SKY\.time !== 'noon'/, 'الغريب بعد مغيب الشمس');
+  assert.match(bag, /adv\.friends = createFriends\(/);
+  assert.match(bag, /adv\.events = createEvents\(/);
+  assert.match(adv, /const secretsHere = SECRETS\.filter\(\(q\) => !q\[6\] \|\| q\[6\] === worldKey\);/, 'أسرار كلّ عالم له');
+  assert.ok(!/[٠-٩]/.test(gad + fr + ev), 'أرقام لاتينيّة كباقي الواجهة');
+});
+
+test('v-blockworld-party: مايك، هدايا، مسابقة بناء، ومهمّة فريق', () => {
+  const net = read('shared/net.js'), voice = read('shared/voice.js'), party = read('shared/party.js');
+  // المايك: خطّ صوت صامت من البداية، يُشغَّل بيد اللاعب، وصاحب الغرفة يُسمع كلّ ضيف الباقين
+  assert.match(net, /tx = pc\.addTransceiver\('audio', \{ direction: 'sendrecv' \}\);/);
+  assert.match(net, /if \(p\.tx\) p\.tx\.direction = 'sendrecv';/);
+  assert.match(voice, /let mic = null, micOn = false,/, 'المايك مطفأ حتّى يُشغَّل');
+  assert.match(voice, /for \(const \[id, h\] of heard\) if \(id !== l\.id && h\.node\) h\.node\.connect\(dest\);/, 'كلّ ضيف يسمع الباقين لا نفسه');
+  assert.match(voice, /catch \(e\) \{ return 'ما في إذن للمايك/);
+  for (const t of ['شغّل المايك', 'صوت الربع مكتوم', 'ابدأ مسابقة بناء (5 دقايق)']) assert.ok(net.includes(t), t);
+  // الرسائل بين ضيفين تمرّ بصاحب الغرفة، ولنوع واحد معروف، ويُعاد بناؤها لا تُمرَّر كما هي
+  assert.match(net, /const RELAYED = new Set\(\['gift'\]\);/);
+  assert.match(net, /send\(q\.dc, \{ t: m\.m\.t, item: m\.m\.item && \{ id: m\.m\.item\.id \| 0, n: 1 \}, from: id \}\);/);
+  // الهديّة: غرض معروف، واحد في المرّة
+  assert.match(party, /const id = m\.item && \(m\.item\.id \| 0\), it = id \? \(play\.itemOf && play\.itemOf\(id\)\) \|\| adv\.item\(id, 1\) : null;/);
+  // المسابقة: لا أحد يصوّت لنفسه
+  assert.match(party, /typeof m\.for === 'string' && m\.for !== from/);
+  assert.match(party, /const ids = \[\.\.\.net\.others\.keys\(\)\];/);
+  // مهمّة الفريق: مجموع الجميع
+  assert.match(party, /for \(const \[id, p\] of net\.peers\) have \+= \(\(p\.share \|\| \[\]\)\[k\] \|\| 0\)/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8'), /microphone=\(self\)/, 'الموقع يسمح بالمايك لصفحاته');
 });
 

@@ -30,7 +30,7 @@ export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, C
 /** Block definitions, in the same shape the worlds use (see voxel.js). */
 export const KIT_BLOCKS = {};
 const INFO = {};                                 // id -> { name, key, group, icon }
-const GROUP_NAMES = { gear: 'سلاح وعدّة ولبس', home: 'بيت وتخزين', paint: 'مكعبات ملوّنة', slab: 'أنصاف مكعبات', light: 'إضاءة', gem: 'ذهب وجواهر', nature: 'ماء ونار', bed: 'أسرّة' };
+const GROUP_NAMES = { gear: 'سلاح وعدّة ولبس', gadget: 'أجهزة', home: 'بيت وتخزين', paint: 'مكعبات ملوّنة', slab: 'أنصاف مكعبات', light: 'إضاءة', gem: 'ذهب وجواهر', nature: 'ماء ونار', bed: 'أسرّة' };
 function add(id, def, info) { KIT_BLOCKS[id] = def; INFO[id] = { id, ...info }; }
 
 COLORS.forEach(([key, name, hex], i) => add(100 + i, { tiles: 'x:paint:' + hex }, { key: 'paint-' + key, name: 'مكعب ' + name, group: 'paint', icon: ['cube', hex] }));
@@ -70,6 +70,15 @@ gear(217, 'pick-diamond', 'معول ألماس', 'pick', DIAM, { speed: 2.4, mod
   gear(224 + i, 'gold-' + wear, name + ' ذهب', icon, GOLD, { use: 'wear', wear, prot: +(share * 0.3).toFixed(3) });
   gear(i === 1 ? 211 : 220 + i, 'diamond-' + wear, name + ' ألماس', icon, DIAM, { use: 'wear', wear, prot: +(share * 0.5).toFixed(3) });
 });
+// gadgets: carried things that do something. `gadget` works while the thing is in the hand (or the other hand); `use` works on the place button
+const gadget = (id, key, name, icon, hex, item) => { INFO[id] = { id, key, name, group: 'gadget', icon: [icon, hex], item: { n: 1, tool: true, ...item } }; };
+gadget(240, 'detector', 'كاشف الكنوز', 'detector', '#e3c038', { gadget: 'detector' });
+gadget(241, 'camera', 'كاميرا', 'camera', '#3a3f4a', { use: 'camera' });
+gadget(242, 'magicmap', 'الخريطة السحرية', 'map', '#d3be96', { gadget: 'map' });
+gadget(243, 'pouch', 'شنطة إضافية', 'pouch', '#8a5a30', { use: 'pouch' });
+gadget(244, 'phone', 'جهاز التاجر', 'phone', '#2f6b5a', { use: 'phone' });
+gadget(245, 'recall', 'بلورة المكان', 'gem', '#c06af5', { use: 'recall' });
+gadget(246, 'egg', 'بيضة تنين', 'egg', '#4fae6a', { use: 'egg' });
 // the home: a chest that keeps things, a workbench, a torch, and a door two cells tall (drawn as a model, not meshed)
 add(K.CHEST, { tiles: { top: 'x:chesttop', side: 'x:chest', bottom: 'x:wood' } }, { key: 'chest', name: 'صندوق', group: 'home', icon: ['chest', '#8a5a30'] });
 add(K.TABLE, { tiles: { top: 'x:tabletop', side: 'x:tableside', bottom: 'x:wood' } }, { key: 'table', name: 'طاولة تصنيع', group: 'home', icon: ['table', '#8a5a30'] });
@@ -235,6 +244,12 @@ function svgIcon([shape, hex, extra]) {
   else if (shape === 'table') body = cube(6) + '<path d="M10 9.500l6 3.300 6-3.300M13 8l6 3.300M19 8l-6 3.300" fill="none" stroke="rgba(30,18,8,.6)" stroke-width="1"/><path d="M8 19l5 2.700" stroke="#d7d2c8" stroke-width="1.800" stroke-linecap="round"/>';
   else if (shape === 'door') body = `<path d="M9 3h14v26H9z" fill="${hex}" stroke="${line}" stroke-width=".9"/><path d="M11.500 6h9v9h-9zM11.500 17.500h9v9h-9z" fill="${left}" stroke="rgba(0,0,0,.3)" stroke-width=".7"/><circle cx="20" cy="16.300" r="1.500" fill="#e2c27a"/>`;
   else if (shape === 'torch') body = `<path d="M16 15v13" stroke="#6a4629" stroke-width="3.400" stroke-linecap="round"/><path d="M16 3c1 4 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-5 .500 1.500 1 2 1.500 2 0-2 .500-4 1.500-6z" fill="${hex}" stroke="${line}" stroke-width=".7"/><path d="M16 9c.500 1.500 2 2 2 3.500a2 2 0 0 1-4 0c0-1.500 1.500-2 2-3.500z" fill="#ffe28a"/>`;
+  else if (shape === 'egg') body = `<path d="M16 4c5 0 9 8 9 14a9 9 0 0 1-18 0c0-6 4-14 9-14z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M11 15l3-2 2 2 3-2 2 2" fill="none" stroke="#e9d98a" stroke-width="1.600"/><circle cx="12" cy="21" r="1.500" fill="#7747bb"/><circle cx="19" cy="22" r="1.200" fill="#7747bb"/>`;
+  else if (shape === 'detector') body = `<path d="M9 5l14 14" stroke="#6a4629" stroke-width="3" stroke-linecap="round"/><circle cx="23" cy="22" r="6" fill="none" stroke="${hex}" stroke-width="3"/><circle cx="23" cy="22" r="1.800" fill="${hex}"/><path d="M5 9l5-5" stroke="#2f2a26" stroke-width="4" stroke-linecap="round"/>`;
+  else if (shape === 'camera') body = `<path d="M4 10h6l2-3h8l2 3h6v15H4z" fill="${hex}" stroke="${line}" stroke-width=".8"/><circle cx="16" cy="17" r="5.500" fill="#9fd4f5" stroke="#e8f6ff" stroke-width="1.400"/><circle cx="14.300" cy="15.300" r="1.400" fill="#fff"/><rect x="23" y="12" width="3" height="2" fill="#ffd76a"/>`;
+  else if (shape === 'map') body = `<path d="M4 7l8-2 8 2 8-2v20l-8 2-8-2-8 2z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M12 5v20M20 7v20" stroke="rgba(0,0,0,.25)" stroke-width=".8"/><path d="M8 12l3 3M11 12l-3 3" stroke="#b3121b" stroke-width="1.600" stroke-linecap="round"/><path d="M14 19c2-3 4 1 6-2s2-3 4-2" fill="none" stroke="#2d5abf" stroke-width="1.300" stroke-dasharray="2 1.500"/>`;
+  else if (shape === 'pouch') body = `<path d="M9 11c-4 4-5 10-3 14 1 2 3 3 10 3s9-1 10-3c2-4 1-10-3-14z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M9 11c2-3 3-5 3-7h8c0 2 1 4 3 7z" fill="${left}" stroke="${line}" stroke-width=".8"/><path d="M10 11h12" stroke="#e2c27a" stroke-width="2" stroke-linecap="round"/>`;
+  else if (shape === 'phone') body = `<rect x="10" y="6" width="12" height="22" rx="2" fill="${hex}" stroke="${line}" stroke-width=".8"/><rect x="12" y="9" width="8" height="9" fill="#bfeaff"/><path d="M13 22h6M13 25h6" stroke="#e2c27a" stroke-width="1.400" stroke-linecap="round"/><path d="M19 6V2" stroke="#2f2a26" stroke-width="1.600" stroke-linecap="round"/>`;
   else if (shape === 'gem') body = `<path d="M16 4l9 8-9 16-9-16z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M7 12h18M16 4l-4 8 4 16 4-16z" fill="none" stroke="rgba(0,0,0,.28)" stroke-width=".8"/><path d="M11 11l3-4" stroke="#fff" stroke-opacity=".85" stroke-width="1.400" stroke-linecap="round"/>`;
   else if (shape === 'ore') body = `<path d="M6 20l3-9 7-4 8 3 3 8-5 7H10z" fill="#77706a" stroke="${line}" stroke-width=".8"/><path d="M12 13l2.500-1.500L17 13l-2.500 1.500zM18 19l2-1.300 2 1.300-2 1.300zM10.500 19.500l1.500-1 1.500 1-1.500 1z" fill="${hex}" stroke="rgba(0,0,0,.3)" stroke-width=".5"/>`;
   else body = cube(4);

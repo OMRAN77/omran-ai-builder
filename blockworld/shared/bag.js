@@ -18,6 +18,9 @@ import { createCraft } from './craft.js';
 import { createAdventure } from './adventure.js';
 import { createNet } from './net.js';
 import { createSave } from './save.js';
+import { createGadgets } from './gadgets.js';
+import { createFriends } from './friends.js';
+import { createEvents } from './events.js';
 
 const CSS = `
 #bag { position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center; direction: rtl; color: #f1f4f8; --c: 46px;
@@ -63,6 +66,7 @@ const CSS = `
 #bag .rec strong { font-size: 13.5px; }
 #bag .rec small { font-size: 11.5px; line-height: 1.4; opacity: .85; }
 #bag .rec small u { text-decoration: none; color: #ff9a8a; }
+#bag .msg { padding: 8px 12px; border-radius: 9px; background: rgba(192, 106, 245, .12); border: 1px dashed rgba(192, 106, 245, .5); font-size: 13px; opacity: 1; }
 #bag .tmap { display: flex; gap: 12px; align-items: flex-start; }
 #bag .tmap canvas { width: 172px; height: 172px; flex: none; image-rendering: pixelated; border-radius: 8px; border: 2px solid rgba(120, 92, 50, .9); background: #6b5a3c; }
 #bag .quests { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 5px; }
@@ -137,10 +141,10 @@ export function createBag(o) {
   try { joining = !!window.sessionStorage.getItem('bw-join'); } catch (e) { joining = false; }      // about to enter a friend's room: start from the untouched world
   const net = kit && o.world ? createNet({ play, kit, camera: o.camera, world: o.world, adv, fontFamily: o.fontFamily, accent: o.accent, line: o.line }) : null;
   const saver = net ? createSave({ play, kit, net, world: o.world, fresh: joining }) : null;
-  if (adv) adv.onTrade = () => { if (st.modal) return; tab = 'trade'; show(true); if (play.sound) play.sound.ui(); };
+  if (adv) adv.onTrade = () => { if (st.modal) return; special = null; tab = 'trade'; show(true); if (play.sound) play.sound.ui(); };
 
   // ---- places: the hotbar, the backpack, what is worn, the other hand, an open chest
-  let tab = 'mine', chest = null, held = null, note = '';
+  let tab = 'mine', chest = null, chestTitle = 'الصندوق', held = null, note = '', special = null;      // special: a page someone else draws ({ title, html(), click(target) })
   try { const t = window.localStorage.getItem('bw-bag-tab'); if (TABS.some((q) => q[0] === t)) tab = t; } catch (e) { /* storage may be closed */ }
   const get = (z, k) => (z === 'bar' ? st.slots[k] : z === 'pack' ? st.pack[k] : z === 'chest' ? chest[k] : st.gear[k]);
   const put = (z, k, it) => { if (z === 'bar') st.slots[k] = has(it) ? it : EMPTY; else if (z === 'pack') st.pack[k] = has(it) ? it : null; else if (z === 'chest') chest[k] = has(it) ? it : null; else st.gear[k] = has(it) ? it : null; };
@@ -169,7 +173,7 @@ export function createBag(o) {
   }
   function drawMine() {
     const h = held ? get(held.z, held.k) : null;
-    pages.mine.innerHTML = (chest ? `<h3>الصندوق</h3>${cells('chest', chest)}<h3>حقيبتك</h3>` :
+    pages.mine.innerHTML = (chest ? `<h3>${chestTitle}</h3>${cells('chest', chest)}<h3>حقيبتك</h3>` :
       `<div class="worn">${WEAR.map(([k, t]) => `<label>${cell('gear', k, st.gear[k])}${t}</label>`).join('')}<span class="gap"></span><label>${cell('gear', 'off', st.gear.off)}اليد الثانية</label></div><h3>حقيبتك</h3>`)
       + cells('pack', st.pack)
       + `<p class="hint">${note || (has(h) ? 'اخترت «' + h.name + '». اضغط المكان اللي تبيه فيه.' : 'اضغط على غرض، بعدين اضغط المكان اللي تبي تنقله له.')}</p>`;
@@ -186,15 +190,22 @@ export function createBag(o) {
     drawBar();
     if (tab === 'mine') drawMine(); else if (tab === 'craft') drawCraft();
     else if (tab === 'quests' && adv) { pages.quests.innerHTML = adv.page(); adv.drawn(pages.quests); }
+    else if (tab === 'trade' && special) pages.trade.innerHTML = '<h3>' + special.title + '</h3>' + special.html();
     else if (tab === 'trade' && adv) pages.trade.innerHTML = '<h3>التاجر</h3>' + adv.tradePage();
   }
   function setTab(t) { tab = t; held = null; note = ''; if (t !== 'mine') chest = null; try { if (t !== 'trade') window.localStorage.setItem('bw-bag-tab', t); } catch (e) { /* not kept */ } draw(); }
 
   let open = false, openedAt = 0;
+  /** Open a store of places beside the player's own (the extra pouch, a pet's bags). */
+  function openStore(arr, title) { if (st.modal) return false; chest = arr; chestTitle = title || 'الصندوق'; tab = 'mine'; show(true); if (play.sound) play.sound.ui(); return true; }
+  const gadgets = adv ? createGadgets({ play, kit, adv, net: () => net, openStore, world: o.world }) : null;
+  /** Open a page drawn by someone else (the stranger's). */
+  function openPage(page) { if (st.modal) return false; special = page; tab = 'trade'; show(true); if (play.sound) play.sound.ui(); return true; }
+  if (adv) { adv.friends = createFriends({ play, kit, adv, world: o.world, groundAt: adv.groundAt, openStore }); adv.events = createEvents({ play, kit, adv, world: o.world, groundAt: adv.groundAt, openPage }); }
   function show(v) {
     if (v === open || (v && st.modal)) return;      // one panel at a time
     open = v; el.hidden = !v;
-    if (v) openedAt = performance.now(); else { chest = null; held = null; note = ''; if (tab === 'trade') tab = 'mine'; }
+    if (v) openedAt = performance.now(); else { chest = null; held = null; note = ''; special = null; if (tab === 'trade') tab = 'mine'; }
     play.setModal(v);
     if (v) draw();
     if (o.onToggle) o.onToggle(v);
@@ -203,6 +214,7 @@ export function createBag(o) {
     if (performance.now() - openedAt < 350) return;          // the tap that opened the bag must not also pick what appears under the finger
     const t = e.target, tb = t.closest('[data-tab]'), it = t.closest('[data-item]'), rec = t.closest('[data-rec]'), pl = t.closest('[data-z]');
     if (tb) setTab(tb.dataset.tab);
+    else if (tab === 'trade' && special && special.click(t)) draw();
     else if ((tab === 'quests' || tab === 'trade') && adv && adv.click(t)) draw();
     else if (tab === 'all' && pl && pl.dataset.z === 'bar') { play.select(+pl.dataset.k); drawBar(); }
     else if (tab === 'craft' && pl && pl.dataset.z === 'bar') { play.select(+pl.dataset.k); drawBar(); }
@@ -218,6 +230,7 @@ export function createBag(o) {
     el, items, craft, adv, net, saver,
     open: () => show(true), close: () => show(false), toggle: () => show(!open), isOpen: () => open,
     get tab() { return tab; }, setTab,
+    openStore, gadgets,
     /** The place button on a block: a door swings, a chest opens here, a workbench opens the recipes. True when it was one of those. */
     interact(h) {
       const r = kit && kit.interact ? kit.interact(h) : null;
@@ -225,7 +238,7 @@ export function createBag(o) {
       if (r === 'door') return true;
       if (st.modal) return true;
       if (r.bed) return adv ? adv.sleep() : false;                 // by day a bed is a block like any other
-      if (r.chest) { chest = r.chest; tab = 'mine'; st.opened++; show(true); if (play.sound) play.sound.ui(); if (adv) adv.opened(h); }
+      if (r.chest) { chest = r.chest; chestTitle = 'الصندوق'; tab = 'mine'; st.opened++; show(true); if (play.sound) play.sound.ui(); if (adv) adv.opened(h); }
       else if (r.table) { tab = 'craft'; show(true); if (play.sound) play.sound.ui(); }
       return true;
     },

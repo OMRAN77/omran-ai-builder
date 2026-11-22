@@ -56,7 +56,7 @@ function memoryKV() {
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const port = server.address().port;
-  const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-features=WebRtcHideLocalIpsWithMdns', '--allow-loopback-in-peer-connection'] });      // the two pages are on one machine with no network: let them link over loopback
+  const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-features=WebRtcHideLocalIpsWithMdns', '--allow-loopback-in-peer-connection', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--autoplay-policy=no-user-gesture-required'] });      // the two pages are on one machine with no network: let them link over loopback
   const report = { world: String(args.world), checks: [], pageErrors: [], files: [] };
   const check = (name, ok, detail) => { report.checks.push({ name, ok: !!ok, detail }); };
   let failed = false;
@@ -146,6 +146,50 @@ function memoryKV() {
     await both(6);
     const plain = await B.evaluate(() => window.__GAME_NET.admin);
     check('the host makes a guest a helper, who sees who is waiting and may turn them away; made ordinary again, they may not', helper.admin === true && helper.asks[0] === 'زائر' && afterDeny === 0 && plain === false, { helper, afterDeny, plain });
+    // ---- voices: the guest switches its microphone on and the host receives sound; then the other way
+    const inbound = (page) => page.evaluate(async () => { const n = window.__GAME_NET; let got = 0, level = 0; for (const p of n.peers.values()) { const st = await p.pc.getStats(); st.forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'audio') { got += r.packetsReceived || 0; level = Math.max(level, r.audioLevel || 0); } }); } return { got, level, heard: n.voice.heard.size, mic: n.voice.micOn }; });
+    const quiet = await inbound(A);
+    const micB = await B.evaluate(() => window.__GAME_NET.voice.setMic(true));
+    await both(14); await A.waitForTimeout(1200); await both(4);
+    const loudA = await inbound(A);
+    const micA = await A.evaluate(() => window.__GAME_NET.voice.setMic(true));
+    await both(14); await A.waitForTimeout(1200); await both(4);
+    const loudB = await inbound(B);
+    check('a guest\'s microphone is heard by the host, and the host\'s by the guest; both are off until switched on', micB === true && micA === true && loudA.heard === 1 && loudA.got > quiet.got + 20 && loudB.heard === 1 && loudB.got > 20 && quiet.mic === false, { quiet, loudA, loudB });
+    await A.evaluate(() => window.__GAME_NET.voice.setMic(false)); await B.evaluate(() => window.__GAME_NET.voice.setMic(false));
+    // ---- a gift: the guest looks at the host and hands over one of what it holds
+    const gift = await (async () => {
+      await B.evaluate(() => { const g = window.__game, p = g.play, s = p.state, o = [...window.__GAME_NET.others.values()][0]; s.slots[0] = { ...g.bag.items.find((q) => q.id === 140), n: 3 }; s.sel = 0; p.changed(); s.pos.set(o.s.p[0] + 1.6, o.s.p[1], o.s.p[2]); s.vel.set(0, 0, 0); });
+      await both(10);
+      const gold0 = await A.evaluate(() => window.__game.bag.craft.count(140));      // before the gift is sent: it arrives by itself, without waiting for the test
+      const sent = await B.evaluate(() => { const g = window.__game, p = g.play, s = p.state, o = [...window.__GAME_NET.others.values()][0]; const ex = s.pos.x, ey = s.pos.y + p.tuning.eye, ez = s.pos.z; s.yaw = Math.atan2(-(o.x - ex), -(o.z - ez)); s.pitch = Math.atan2(o.y + 1.0 - ey, Math.hypot(o.x - ex, o.z - ez)); p.advance(1 / 60); const aimed = window.__GAME_PARTY.aimed; const used = p.placeNow(); return { aimed, used, left: s.slots[0].n }; });
+      await both(10);
+      return { sent, got: (await A.evaluate(() => window.__game.bag.craft.count(140))) - gold0 };
+    })();
+    check('looking at a friend and pressing the place button gives them one of what is in the hand', !!gift.sent.aimed && gift.sent.used === true && gift.sent.left === 2 && gift.got === 1, gift);
+    // ---- the team goal counts everyone's share, and pays everyone
+    const team = await (async () => {
+      await both(12);
+      const before = { a: await A.evaluate(() => window.__play.state.xp), b: await B.evaluate(() => window.__play.state.xp), chip: await B.evaluate(() => document.querySelector('#partyChips div:nth-child(2)').textContent) };
+      await A.evaluate(() => { window.__play.state.broken += 25; }); await B.evaluate(() => { window.__play.state.broken += 40; });
+      for (let i = 0; i < 6; i++) { await step(A, 70); await step(B, 70); await A.waitForTimeout(80); }
+      return { before, a: await A.evaluate(() => ({ xp: window.__play.state.xp, wins: window.__play.state.teamWins || 0, done: window.__GAME_PARTY.team.done })), b: await B.evaluate(() => ({ xp: window.__play.state.xp, wins: window.__play.state.teamWins || 0 })) };
+    })();
+    check('the team goal adds up what everyone does, and rewards the whole room when it is met', team.before.chip.includes('مهمة الفريق') && team.a.done >= 1 && team.a.wins >= 1 && team.b.wins >= 1 && team.a.xp >= team.before.a + 20 && team.b.xp >= team.before.b + 20, team);
+    // ---- a building contest: a theme and a clock for everyone, then a vote, then a winner
+    const contest = await (async () => {
+      const started = await A.evaluate(() => window.__GAME_PARTY.startContest());
+      await both(8);
+      const onB = await B.evaluate(() => ({ on: window.__GAME_PARTY.contest.on, theme: window.__GAME_PARTY.contest.theme, chip: document.querySelector('#partyChips div').textContent }));
+      await A.evaluate(() => { window.__GAME_PARTY.contest.left = 0.05; }); await B.evaluate(() => { window.__GAME_PARTY.contest.left = 0.05; });
+      await both(8);
+      const voteB = await B.evaluate(() => ({ shown: !document.getElementById('partyVote').hidden, buttons: document.querySelectorAll('#partyVote [data-for]').length }));
+      await B.evaluate(() => document.querySelector('#partyVote [data-for]').click());
+      await A.evaluate(() => { const b = document.querySelector('#partyVote [data-for]'); if (b) b.click(); });
+      await both(12);
+      return { started, onB, voteB, a: await A.evaluate(() => ({ last: window.__GAME_PARTY.contest.last, wins: window.__play.state.contestWins || 0 })), b: await B.evaluate(() => ({ last: window.__GAME_PARTY.contest.last, wins: window.__play.state.contestWins || 0 })) };
+    })();
+    check('the host starts a building contest for the room; when the clock ends everyone votes and the winner is told to all', contest.started === true && contest.onB.on === true && contest.onB.theme.length > 1 && contest.onB.chip.includes('مسابقة بناء') && contest.voteB.shown && contest.voteB.buttons === 1 && !!contest.a.last && !!contest.b.last && contest.a.last.names.length === 2 && contest.a.wins === 1 && contest.b.wins === 1, contest);
     // ---- blocks: what one puts down or digs, the other gets
     const put = await B.evaluate(() => { const g = window.__game, p = g.play, s = p.state, x = Math.floor(s.pos.x) + 2, y = Math.floor(s.pos.y + 0.01) + 3, z = Math.floor(s.pos.z); g.terrain.setBlock(x, y, z, 104); p.net.place(x, y, z, 104, s.yaw); g.terrain.flush(); return [x, y, z]; });
     await both(10);
@@ -184,7 +228,8 @@ function memoryKV() {
     await both(8);
     const hunt = await B.evaluate((m) => { const s = window.__play.state; return { meat: [...s.slots, ...s.pack].filter((q) => q && q.id === 200).reduce((a, q) => a + q.n, 0) - m, kills: s.kills.animal }; }, meat0);
     const hostEnt = await A.evaluate((nid) => { const e = window.__game.life.ents.find((q) => q.nid === nid); return e ? { hp: e.hp, dead: !!e.dead } : 'gone'; }, beast ? beast.nid : -1);
-    check('the guest hunts the host\'s animal and gets the meat', hunt.meat > 0 && hunt.kills >= 1 && (hostEnt === 'gone' || hostEnt.dead), { hunt, hostEnt });
+    const why = await B.evaluate(() => { const g = window.__game, s = g.play.state, l = g.life; return { modal: s.modal, noDig: s.noDig, aimed: l.aimed ? l.aimed.nid : null, ents: l.ents.map((e) => [e.nid, e.hp, !!e.dead, Math.round(Math.hypot(e.x - s.pos.x, e.z - s.pos.z) * 10) / 10]), mode: l.share.mode, hit: s.hit ? [s.hit.id, Math.round(s.hit.t * 10) / 10] : null, vote: !document.getElementById('partyVote').hidden }; });
+    check('the guest hunts the host\'s animal and gets the meat', hunt.meat > 0 && hunt.kills >= 1 && (hostEnt === 'gone' || hostEnt.dead), { hunt, hostEnt, why });
     // ---- a monster of the host's goes for the guest and hurts it
     const hurt = await (async () => {
       await B.evaluate(() => { const v = window.__game.vitals.values; for (const k of Object.keys(v)) v[k] = 100; });

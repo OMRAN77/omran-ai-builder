@@ -15,6 +15,9 @@ export const OUTFITS = [
   { key: 'shadow', name: 'ظلّ الليل', how: 'سرّي', rare: true, c: { hat: '#15171d', skin: '#b98e6c', shirt: '#1d2029', pants: '#15171d', shoes: '#0c0d11', cape: '#3b1f5e' } },
   { key: 'pirate', name: 'صيّاد الكنوز', how: 'سرّي', rare: true, c: { hat: '#1d1a17', skin: '#d6a57c', shirt: '#f1ece0', pants: '#7a2f2a', shoes: '#2b1d12', brim: true, cape: '#1d1a17' } },
   { key: 'golden', name: 'الذهبي', how: 'سرّي', rare: true, c: { hat: '#f6d572', skin: '#e0b088', shirt: '#f0bd3f', pants: '#d79a22', shoes: '#a8730f', cape: '#fff3c4' } },
+  { key: 'architect', name: 'المهندس', how: 'فز في مسابقة بناء', rare: true, c: { hat: '#f4f1e6', skin: '#e0b088', shirt: '#2d5abf', pants: '#d8d2c0', shoes: '#3b2a1c', brim: true } },
+  { key: 'stranger', name: 'عباءة الغريب', how: 'سرّي', rare: true, c: { hat: '#1a1524', skin: '#d6a57c', shirt: '#2a2038', pants: '#191422', shoes: '#0e0b14', cape: '#3b1f5e' } },
+  { key: 'runner', name: 'عدّاء المتاهة', how: 'سرّي', rare: true, c: { hat: '#c06af5', skin: '#e0b088', shirt: '#f4f1e6', pants: '#7747bb', shoes: '#e3c038' } },
   { key: 'merchant', name: 'عباءة التاجر', how: 'يبيعها التاجر', rare: true, c: { hat: '#6b2f7a', skin: '#d6a57c', shirt: '#8a3fa0', pants: '#3a2a4a', shoes: '#241a2e', cape: '#e3c038' } },
 ];
 export const TRADER_LOOK = { hat: '#2f6b5a', skin: '#c99870', shirt: '#3f8a72', pants: '#5a4630', shoes: '#33261a', brim: true, cape: '#e3c038' };
