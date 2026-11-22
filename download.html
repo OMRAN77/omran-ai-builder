@@ -48,21 +48,10 @@ html.introOn .goMark { display: none; }
 .introBar { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 20px calc(16px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(180deg, rgba(9,10,13,0), #090a0d 38%); }
 .introGo { display: block; max-width: 440px; margin: 0 auto; padding: 16px 20px; border-radius: 999px; background: linear-gradient(180deg, #f5df88, #d4af37); color: #1c1304; font-size: 19px; font-weight: 800; text-align: center; text-decoration: none; box-shadow: 0 10px 30px rgba(0,0,0,.55); }
 .introGo:focus-visible { outline: 3px solid #f5df88; outline-offset: 3px; }
-/* v-ref-stores: بوستر المالك لمن فتح رابطه — الصورة كلّها رابط، والضغطة تحوّل إلى متجر الجهاز. مخفيّ حتّى يقرّر السكربت. */
-html.posterOn body { -webkit-tap-highlight-color: transparent; }
-html.posterOn .goMark { display: none; }
-/* ٧١٢ = نصف عرض الأصل (١٤٢٤): الصورة تبقى بضعف مقاس عرضها فلا تُكبَّر على شاشة ‎2x‎ */
-.poster { display: block; width: 100%; max-width: 712px; line-height: 0; cursor: pointer; }
-/* مراجعة النقض: جوّال بالعرض أقصر من البوستر، وتوسيط flex كان يقصّ أعلاه بلا تمرير — العرض يُحدّ بما يُظهره كاملًا (vh احتياط لمن لا يعرف dvh) */
-html.posterOn .poster { max-width: min(712px, calc(100vh * 1424 / 752)); max-width: min(712px, calc(100dvh * 1424 / 752)); }
-.poster[hidden] { display: none; }
-.poster img { display: block; width: 100%; height: auto; }
-.poster:focus-visible { outline: 3px solid #f5df88; outline-offset: -3px; }
 </style>
 </head>
 <body>
 <div class="goMark"><img src="/icons/ai-hub-mark-256.png" alt="om ai"></div>
-<a class="poster" id="poster" href="/?install=1" hidden><img src="/icons/om-ai-poster.webp" alt="om ai — كل أدوات الذكاء الاصطناعي في مكان واحد. حمّل التطبيق الآن" width="1424" height="752" loading="lazy"></a>
 <main class="intro" id="intro" hidden>
   <img class="introLogo" src="/icons/ai-hub-mark-256.png" alt="" width="64" height="64">
   <p class="introName">om ai</p>
@@ -107,20 +96,6 @@ html.posterOn .poster { max-width: min(712px, calc(100vh * 1424 / 752)); max-wid
     return /Android|iPhone|iPod/i.test(ua) && dest.charAt(0) === '/';
   }
 
-  // v-ref-stores (المالك ٢١ نوفمبر بلقطة بوستره: «الي اريده فقط تضغط علة الصوره ونحولك الي الرابط»): من فتح رابط المالك
-  // (‎/?ref=omran‎ — vercel.json يحوّله إلى هنا بـposter=1) يرى البوستر، وضغطة على أيّ مكان فيه تحوّله إلى متجر جهازه (أو التطبيق لمن
-  // لا متجر له) — لا تحويل تلقائيّ. بلا poster=1 (باركود «حسابي» والمطبوع، ‎/app‎، دعوات غيره) التحويل المباشر كما كان.
-  // داخل تطبيقنا المثبّت لا بوستر: يكمل إلى التطبيق.
-  function wantsPoster(search, inApp){
-    return !inApp && /[?&]poster=1(&|#|$)/.test(search || '');
-  }
-  function showPoster(to){
-    var a = document.getElementById('poster');
-    a.setAttribute('href', to);
-    a.hidden = false;
-    document.documentElement.className += ' posterOn';
-  }
-
   var INTRO_EN = {
     introTitle: 'Write one sentence… om ai does the rest',
     introSub: 'AI chat and tools together in one app.',
@@ -152,16 +127,13 @@ html.posterOn .poster { max-width: min(712px, calc(100vh * 1424 / 752)); max-wid
   var dest = '/';
   try { dest = goDest(navigator.userAgent || '', navigator.maxTouchPoints || 0, location.search, inApp ? null : STORES); }
   catch(e){ dest = '/'; /* guard-ok — أيّ خطأ في الكشف يفتح التطبيق نفسه */ }
-  var poster = false;
-  try { poster = wantsPoster(location.search, inApp); if(poster) showPoster(dest); }
-  catch(e){ poster = false; /* guard-ok — تعذّر عرض البوستر لا يحبس الزائر: يكمل إلى وجهته */ }
   var intro = false;
   try {
     var returning = localStorage.getItem('aiapp_privacy_ack') === '1';
-    intro = !poster && wantsIntro(navigator.userAgent || '', dest, inApp, returning);
+    intro = wantsIntro(navigator.userAgent || '', dest, inApp, returning);
     if(intro) showIntro(dest);
   } catch(e){ intro = false; /* guard-ok — تعذّر التعريف (تخزين محجوب مثلًا) لا يحبس الزائر: يكمل إلى وجهته */ }
-  if(!poster && !intro) location.replace(dest);
+  if(!intro) location.replace(dest);
 })();
 </script>
 </body>

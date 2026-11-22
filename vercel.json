@@ -136,7 +136,7 @@
           "key": "install"
         }
       ],
-      "destination": "/app?ref=omran&poster=1",
+      "destination": "/app?ref=omran",
       "permanent": false
     }
   ],
