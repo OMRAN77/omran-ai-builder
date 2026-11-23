@@ -1,6 +1,7 @@
 import { kitIcon } from '../../shared/kit.js';
 import { BLOCKS } from './blocks.js';
 import { tileCanvas } from './tiles.js';
+import { DINO } from './mode.js';
 
 // HUD for "barari": light rounded cards, warm colours. All HTML/SVG over the canvas; block icons are little
 // cubes drawn from the world's own tile pictures.
@@ -57,7 +58,16 @@ export function itemIcon(it, cls = 'ic') {
 }
 
 /** The starting hotbar; ids are filled in by main.js. */
-export const SLOTS = [
+const DINO_SLOTS = [
+  { key: 'axe', icon: 'axe', name: 'الفأس', tool: true },
+  { key: 'log', block: 'JUNGLE_LOG', name: 'جذع شجرة الغابة', n: 6 },
+  { key: 'planks', block: 'PLANKS', name: 'ألواح خشب', n: 32 },
+  { key: 'stone', block: 'STONE', name: 'صخر', n: 32 },
+  { key: 'dirt', block: 'DIRT', name: 'تراب', n: 24 },
+  { key: 'sand', block: 'SAND', name: 'رمل', n: 24 },
+  { key: 'basalt', block: 'BASALT', name: 'صخر بركاني', n: 16 },
+];
+export const SLOTS = DINO ? DINO_SLOTS : [
   { key: 'axe', icon: 'axe', name: 'الفأس', tool: true },
   { key: 'log', block: 'OAK', name: 'جذع شجرة', n: 6 },
   { key: 'planks', block: 'PLANKS', name: 'ألواح خشب', n: 32 },

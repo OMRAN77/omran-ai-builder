@@ -49,7 +49,7 @@ const CSS = `
 #netAsk button.no { color: #fff; background: #b3322b; }
 `;
 
-const WORLD_NAMES = { kawkab: 'كوكب', waha: 'واحة', dhalam: 'ظلام', barari: 'البراري' };
+const WORLD_NAMES = { kawkab: 'كوكب', waha: 'واحة', dhalam: 'ظلام', barari: 'البراري', dino: 'عالم الديناصورات' };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const cleanName = (v) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f<>&"'`]/g, '').trim().slice(0, 16) || 'لاعب';
 

@@ -18,7 +18,7 @@
 const crypto = require('crypto');
 
 const ROOM_TTL = 900, OUT_TTL = 180, MAX_SDP = 16000, MAX_PENDING = 8, PER_MINUTE = 12;
-const WORLDS = new Set(['kawkab', 'waha', 'dhalam', 'barari']);
+const WORLDS = new Set(['kawkab', 'waha', 'dhalam', 'barari', 'dino']);
 const roomKey = (code) => 'play/room/' + code;
 const inKey = (code) => 'play/room/' + code + '/in';
 const outKey = (code, id) => 'play/room/' + code + '/out/' + id;

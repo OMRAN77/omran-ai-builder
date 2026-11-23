@@ -30,7 +30,8 @@ test('الصفحة وعوالمها الثلاثة موجودة', () => {
   for (const k of WORLDS) for (const f of ['index.html', 'main.js', 'world.js']) assert.ok(exists(`styles/${k}/${f}`), `styles/${k}/${f}`);
   const ready = /const READY = (\[[^\]]*\]);/.exec(read('index.html'));
   assert.ok(ready, 'قائمة العوالم في صفحة الاختيار');
-  assert.deepEqual(JSON.parse(ready[1].replace(/'/g, '"')).sort(), [...WORLDS].sort());
+  assert.deepEqual(JSON.parse(ready[1].replace(/'/g, '"')).sort(), [...WORLDS, 'dino'].sort(), 'العوالم الأربعة، وعالم الديناصورات (وضع من البراري)');
+  for (const f of ['index.html', 'main.js']) assert.ok(exists(`styles/dino/${f}`), `styles/dino/${f}`);
 });
 
 test('لا مسار يبدأ من جذر الموقع: المجلّد يعمل تحت أيّ مسار', () => {
@@ -633,4 +634,14 @@ test('v-blockworld-wonders: صندوق الحظ، قرية تحت البحر، �
   assert.match(wd, /if \(play\.shared\)/, 'ما تروح من البوابة وانت في غرفة');
   assert.match(bag, /createWonders\(\{ play, kit, adv, world: o\.world, seaSpot: o\.seaSpot \}\)/);
   assert.ok(craft.includes('out: K.LUCKY'));
+});
+
+test('v-blockworld-dino: عالم الديناصورات وضع من محرّك البراري، ودخوله من الصفحة الأولى ومن البوابة', () => {
+  const idx = read('index.html'), dm = read('styles/dino/main.js'), mode = read('styles/barari/mode.js'), dinos = read('shared/dinos.js'), room = read('api/play-room.js');
+  assert.match(idx, /"dino"\]/); assert.match(idx, /data-world="dino"/);
+  assert.match(dm, /__BW_MODE = 'dino'/); assert.match(dm, /import\('\.\.\/barari\/main\.js'\)/);
+  assert.match(mode, /__BW_MODE/);
+  for (const n of ['العملاق أبو رقبة', 'أبو ثلاث قرون', 'ملك الأنياب', 'الطاير الجلدي', 'وحش البحر القديم']) assert.ok(dinos.includes(n), n);
+  assert.match(room, /'dino'/, 'الغرف تقبل عالم الديناصورات');
+  assert.ok(exists('previews/dino.webp'));
 });

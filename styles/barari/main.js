@@ -1,6 +1,8 @@
 // "barari" — an endless land: plains, forests, deserts, snow country and mountains, beaches and seas, as far as
 // the eye can see. Scene assembly, the far view, times of day, shots for the tools, and the playable game (wired to
 // the shared modules the same way as the other worlds).
+// The same engine draws the world of the dinosaurs (mode 'dino', see mode.js and styles/dino/): its own ground,
+// blocks, sky, words and creatures; everything below that says DINO is that world, the rest is shared.
 import * as THREE from 'three';
 import { createStreamTerrain } from '../../shared/stream.js';
 import { createPlay, createPlayPanel, goImmersive, EMPTY } from '../../shared/play.js';
@@ -20,6 +22,9 @@ import { generateWorld, SY } from './world.js';
 import { createFarView } from './far.js';
 import { asfoof, zamharir } from './monsters.js';
 import { buildHud, SLOTS, itemIcon } from './hud.js';
+import { DINO } from './mode.js';
+
+const D = DINO ? await import('../dino/look.js') : null;      // the dinosaur world's sky, words and bag
 
 // Game mode: the page is opened to be played (index.html?play, or the launcher sets window.__GAME).
 const GAME = window.__GAME || (new URLSearchParams(location.search).has('play') ? {} : null);
@@ -101,6 +106,18 @@ sun.shadow.mapSize.set(COARSE ? 1024 : 2048, COARSE ? 1024 : 2048);
 sun.shadow.bias = -0.0005;
 scene.add(sun, sun.target);
 scene.fog = new THREE.Fog(0xcfe6f5, 60, 260);
+// smoke over the volcanoes near the player (the dinosaur world)
+const smoke = D ? D.createSmoke() : null;
+if (smoke) scene.add(smoke.group);
+let vols = [], volsAt = null;
+/** The smoke follows the nearest volcanoes; the list is looked up again when the camera has gone 200 blocks. */
+function updateSmoke(t) {
+  if (!smoke) return;
+  const c = camera.position;
+  if (!volsAt || Math.hypot(c.x - volsAt.x, c.z - volsAt.z) > 200) { volsAt = { x: c.x, z: c.z }; vols = gen.volcanoesNear(c.x, c.z, 1400); }
+  const nite = mood === MOODS.night ? 1 : mood === MOODS.sunset ? 0.35 : 0;
+  smoke.update(vols, t, c, scene.fog.far, nite, nite);
+}
 function aimSun(dir, cx, cy, cz, half, depth = 400) {
   sun.position.set(cx + dir.x * depth * 0.5, cy + dir.y * depth * 0.5, cz + dir.z * depth * 0.5);
   sun.target.position.set(cx, cy, cz);
@@ -113,6 +130,7 @@ renderer.info.autoReset = false;
 const _px = new Uint8Array(4);
 stage.render = () => {
   renderer.info.reset();
+  if (smoke) updateSmoke(performance.now() / 1000);
   renderer.render(scene, camera);
   if (stage.live) return;                                    // the running game never waits for the GPU
   const gl = renderer.getContext();                          // a screenshot right after a shot must see the finished frame
@@ -138,15 +156,16 @@ const MOODS = {
     hemiSky: '#6077b5', hemiGround: '#1b2133', hemi: 0.6, sun: '#a9bcff', sunI: 0.55, light: dirFrom(200, 42), exposure: 1.0,
   },
 };
+if (D) Object.assign(MOODS, D.moods(dirFrom));                // warm and hazy over the jungle
 let mood = MOODS.morning, base = null;
 function setMood(name, rain = false) {
   const m = MOODS[name];
   mood = m;
-  const u = sky.uniforms, dim = rain ? 0.62 : 1;
+  const u = sky.uniforms, dim = rain ? m.rainDim ?? 0.62 : 1, cd = rain ? m.rainDim ?? 0.58 : 1;      // (a hazy sky says how dark its rain is)
   u.uTop.value.set(m.top).multiplyScalar(dim); u.uHorizon.value.set(m.horizon).multiplyScalar(dim); u.uBelow.value.set(m.below).multiplyScalar(dim);
   u.uSunCol.value.set(m.sunCol).multiplyScalar(rain ? 0.35 : 1); u.uSunDir.value.copy(m.sunDir); u.uSunSize.value = rain ? 0 : m.sunSize;
-  u.uMoonDir.value.copy(dirFrom(200, 42)); u.uStars.value = m.stars * (rain ? 0.2 : 1); u.uHaze.value = m.haze;
-  u.uCloud.value = rain ? 1 : m.cloud; u.uCloudCol.value.set(m.cloudCol).multiplyScalar(rain ? 0.58 : 1); u.uCloudShade.value.set(m.cloudShade).multiplyScalar(rain ? 0.58 : 1);
+  u.uMoonDir.value.copy(dirFrom(200, 42)); u.uStars.value = m.stars * (rain ? 0.2 : 1); u.uHaze.value = m.haze * (rain && m.rainDim ? 0.3 : 1);
+  u.uCloud.value = rain ? 1 : m.cloud; u.uCloudCol.value.set(m.cloudCol).multiplyScalar(cd); u.uCloudShade.value.set(m.cloudShade).multiplyScalar(cd);
   // under rain the far land goes grey and close (the view is wide on a clear day, so it closes in more than it used to)
   scene.fog.color.set(m.fog).multiplyScalar(rain ? 0.66 : 1); scene.fog.near = m.fogNear * (rain ? 0.3 : 1); scene.fog.far = m.fogFar * (rain ? 0.3 : 1);
   hemi.color.set(m.hemiSky); hemi.groundColor.set(m.hemiGround); hemi.intensity = m.hemi * (rain ? 0.8 : 1);
@@ -162,7 +181,9 @@ function setUnder(on) {
   if (on === under) return;
   under = on; underEl.hidden = !on;
   tileMaterial('water', 'liquid').side = on ? THREE.DoubleSide : THREE.FrontSide;      // from below, the surface is seen only from in the water
-  if (on) { scene.fog.color.set('#145a82').multiplyScalar(mood === MOODS.night ? 0.35 : 1); scene.fog.near = 0.5; scene.fog.far = 26; }
+  if (DINO) tileMaterial('swampWater', 'liquid').side = on ? THREE.DoubleSide : THREE.FrontSide;
+  if (DINO) underEl.style.background = on === 'swamp' ? 'radial-gradient(ellipse at 50% 40%, rgba(90, 110, 40, .3), rgba(30, 40, 12, .62))' : '';      // murky green in the swamp
+  if (on) { scene.fog.color.set(on === 'swamp' ? '#3c4a22' : '#145a82').multiplyScalar(mood === MOODS.night ? 0.35 : 1); scene.fog.near = 0.5; scene.fog.far = on === 'swamp' ? 9 : 26; }
   else if (base) { scene.fog.color.copy(base.fog); scene.fog.near = base.near; scene.fog.far = base.far; }
 }
 
@@ -173,11 +194,11 @@ const solidAt = (x, y, z) => { const id = world.get(Math.floor(x), Math.floor(y)
 function standY(x, z, near = SY - 2) { let y = Math.floor(near); while (y > 1 && !solidAt(x, y - 1, z)) y--; return y; }
 void standY;
 /** The nearest place of a land round the start, searched ring by ring (for the shots). */
-function findLand(land, r0 = 40, r1 = 1400, test = null) {
+function findLand(land, r0 = 40, r1 = 1400, test = null, landOf = gen.landOf) {
   const s = gen.spawn;
   for (let r = r0; r <= r1; r += 16) for (let k = 0, n = Math.ceil(r / 6); k < n; k++) {
     const a = k / n * Math.PI * 2, x = Math.round(s.x + Math.cos(a) * r), z = Math.round(s.z + Math.sin(a) * r);
-    if (gen.landOf(x, z) === land && (!test || test(x, z)) && gen.landOf(x + 12, z) === land && gen.landOf(x - 12, z) === land && gen.landOf(x, z + 12) === land && gen.landOf(x, z - 12) === land) return { x, z };
+    if (landOf(x, z) === land && (!test || test(x, z)) && landOf(x + 12, z) === land && landOf(x - 12, z) === land && landOf(x, z + 12) === land && landOf(x, z - 12) === land) return { x, z };
   }
   return { x: s.x, z: s.z };
 }
@@ -235,7 +256,17 @@ defineShot('peak', () => {
   aimSun(mood.light, top.x, top.h - 20, top.z, 100);
 });
 // the picture for the world picker: a place near the start where many lands meet, seen from above
-defineShot('vista', () => {
+if (DINO) defineShot('vista', () => {
+  // the picture for the world picker: the plain, the jungle and the smoking volcano from a little above the start
+  hud.show(false); fp.visible = false; pickBox.visible = false; setMood('morning'); setUnder(false);
+  const s = gen.spawn, fx = -Math.sin(s.yaw), fz = -Math.cos(s.yaw);
+  const px = s.x - fx * 70, pz = s.z - fz * 70, py = Math.max(gen.heightAt(px, pz), s.y) + 26;
+  terrain.radius = 176;                                      // a picture, not a frame of play: blocks far out (the game sets its own radius again)
+  around(s.x + fx * 60, s.z + fz * 60);
+  look(px, py, pz, s.x + fx * 260, s.y + 22, s.z + fz * 260, 60);
+  aimSun(mood.light, s.x, s.y, s.z, 110);
+});
+else defineShot('vista', () => {
   hud.show(false); fp.visible = false; pickBox.visible = false; setMood('morning'); setUnder(false);
   const s = gen.spawn;
   let best = null;
@@ -250,6 +281,36 @@ defineShot('vista', () => {
   look(px, py, pz, best.x + 10, gen.heightAt(best.x, best.z), best.z - 10, 60);
   aimSun(mood.light, best.x, gen.heightAt(best.x, best.z), best.z, 110);
 });
+// the dinosaur world's own views (tools/shot.cjs --shots jungle,ferns,swamp,volcano,lava,sea,island,high,vista)
+if (DINO) {
+  const zone = (name, z, opt = {}) => defineShot(name, () => {
+    hud.show(false); fp.visible = false; pickBox.visible = false; setMood(opt.time || 'morning'); setUnder(false);
+    const t = findLand(z, opt.r0 ?? 40, 1600, opt.test, gen.zoneOf), s = gen.spawn;
+    const dx = t.x - s.x, dz = t.z - s.z, d = Math.hypot(dx, dz) || 1, back = opt.back ?? 40;
+    const px = t.x - dx / d * back, pz = t.z - dz / d * back, ty = gen.heightAt(t.x, t.z) + 2;
+    const py = Math.max(gen.heightAt(px, pz), ty) + (opt.up ?? 16);
+    around(px, pz);
+    look(px, py, pz, t.x + dx / d * 30, ty, t.z + dz / d * 30, 66);
+    aimSun(mood.light, t.x, ty, t.z, 80);
+  });
+  zone('jungle', 'jungle', { up: 10, back: 30 });
+  zone('ferns', 'ferns', { up: 12 });
+  zone('swamp', 'swamp', { up: 7, back: 22, test: (x, z) => { const c = gen.column(x, z); return c.wsw > 0.8 && Math.floor(c.hf) >= c.wl; } });
+  zone('island', 'island', { r0: 100, up: 18, back: 70 });
+  zone('sea', 'sea', { back: 70, up: 14, test: (x, z) => gen.column(x, z).s < -0.1 });
+  // the nearest volcano, from its foot by day; its crater and streams of lava from the rim at night
+  const volcano = (name, time, near) => defineShot(name, () => {
+    hud.show(false); fp.visible = false; pickBox.visible = false; setMood(time); setUnder(false);
+    const s = gen.spawn, v = gen.volcanoesNear(s.x, s.z, 1600)[0] || { x: s.x + 200, z: s.z, top: 70, R: 120 };
+    const dx = s.x - v.x, dz = s.z - v.z, d = Math.hypot(dx, dz) || 1, back = near ? v.R * 0.2 : v.R * 1.7;
+    const px = v.x + dx / d * back, pz = v.z + dz / d * back, py = near ? v.top + 14 : gen.heightAt(px, pz) + 12;
+    around(px, pz);
+    look(px, py, pz, v.x - dx / d * (near ? 10 : 0), near ? v.top - 14 : v.top - 10, v.z - dz / d * (near ? 10 : 0), near ? 75 : 60);
+    aimSun(mood.light, v.x, v.top - 20, v.z, 110);
+  });
+  volcano('volcano', 'morning', false);
+  volcano('lava', 'night', true);
+}
 defineShot('high', () => {
   hud.show(false); fp.visible = false; pickBox.visible = false; setMood('morning'); setUnder(false);
   const s = gen.spawn, fx = -Math.sin(s.yaw), fz = -Math.cos(s.yaw);
@@ -262,10 +323,11 @@ defineShot('high', () => {
 const own = (id) => ({ key: 'b' + id, id, name: NAMES[id], n: 64 });
 const CATALOGUE = [
   { key: 'axe', icon: 'axe', name: 'الفأس', tool: true },
-  ...[B.OAK, B.PINE, B.PALM, B.PLANKS, B.OAK_LEAVES, B.PINE_NEEDLES, B.PALM_FROND, B.GRASS, B.DIRT, B.SAND, B.SANDSTONE, B.STONE, B.DEEPROCK, B.GRAVEL,
-    B.SNOWBLOCK, B.ICE, B.TUFT, B.FLOWER_R, B.FLOWER_Y, B.FLOWER_B, B.SHRUB, B.REED].map(own),
+  ...(D ? D.catalogue(B) : [B.OAK, B.PINE, B.PALM, B.PLANKS, B.OAK_LEAVES, B.PINE_NEEDLES, B.PALM_FROND, B.GRASS, B.DIRT, B.SAND, B.SANDSTONE, B.STONE, B.DEEPROCK, B.GRAVEL,
+    B.SNOWBLOCK, B.ICE, B.TUFT, B.FLOWER_R, B.FLOWER_Y, B.FLOWER_B, B.SHRUB, B.REED]).map(own),
 ];
 const LANDS = { snow: 'الثلج', forest: 'الغابة', desert: 'البر', sea: 'البحر', plains: 'السهل', beach: 'السيف', mountain: 'الجبل' };
+const WORLD = D ? D.KEY : 'barari';                         // the key of saves, quests and shared games
 const CLOCK = { morning: ['08:20', 'الصبح'], sunset: ['18:40', 'المغرب'], night: ['23:10', 'الليل'] };
 
 async function startGame() {
@@ -281,15 +343,27 @@ async function startGame() {
   dropped = () => {
     for (const [k, f] of gen.fires) if (!world.has(Math.floor(f.x / world.C), Math.floor(f.z / world.C))) { gen.fires.delete(k); kit.glow.delete(k); }
   };
+  const dinos = DINO ? await import('../../shared/dinos.js') : null;
   const heldBlock = createHeld({ camera, blocks: BLOCKS, materialFor });
   let toolInHand = true, aimed = null, hintTimer = 0, wasNight = false, digT = 0;
   const fpHome = fp.position.clone(), fpRot = fp.rotation.clone();
-  const isLiquid = (id) => id === B.WATER || kit.isLiquid(id);
+  const isLiquid = (id) => id === B.WATER || id === B.SWAMPWATER || kit.isLiquid(id);
   /** A block dug next to water lets the water in (no dry holes in the sea or a pond). */
   function letWaterIn(x, y, z) {
     if (world.get(x, y, z) !== 0) return;
-    const wet = world.get(x, y + 1, z) === B.WATER || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => world.get(x + a, y, z + b) === B.WATER);
-    if (wet) terrain.setBlock(x, y, z, B.WATER);
+    for (const w of DINO ? [B.WATER, B.SWAMPWATER] : [B.WATER]) {
+      const wet = world.get(x, y + 1, z) === w || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => world.get(x + a, y, z + b) === w);
+      if (wet) { terrain.setBlock(x, y, z, w); return; }
+    }
+  }
+  /** Lava burns whoever stands on it or walks into it (the dinosaur world). */
+  let burnt = false;
+  function lava(p, dt) {
+    if (!vitals || play.state.flying) return;
+    const hw = play.tuning.hw, at = (x, y, z) => world.get(Math.floor(x), Math.floor(y), Math.floor(z)) === B.LAVA;
+    let hot = play.state.onGround && [[0, 0], [hw, hw], [-hw, -hw], [hw, -hw], [-hw, hw]].some(([a, b]) => at(p.x + a, p.y - 0.2, p.z + b));
+    for (let y = Math.floor(p.y); y <= Math.floor(p.y + play.tuning.height - 0.05) && !hot; y++) hot = at(p.x, y, p.z);
+    if (hot) { vitals.hurt(18 * dt); if (!burnt) { burnt = true; play.notice('الحمم تحرق! اطلع منها بسرعة.', false, 2600); } } else burnt = false;
   }
 
   let life = null, weather = null, status = null, vitals = null;
@@ -298,7 +372,7 @@ async function startGame() {
     spawn: { x: anchors.spawn.x, y: anchors.spawn.y, z: anchors.spawn.z, yaw: eu.y, pitch: eu.x },
     slots, touch: hud.touch ? hud.els : null, maxPixelRatio: 2,
     isLiquid, heightOf: kit.heightOf,
-    canBreak: (id, x, y) => y > 0,
+    canBreak: (id, x, y) => y > 0 && id !== B.LAVA,
     hardness: (id) => kit.hardness(id) ?? hardnessOf(id, BLOCKS[id] && BLOCKS[id].kind),
     dropOf: (id) => (id in DROP ? DROP[id] : kit.dropOf(id)),
     onTarget(h) { pickBox.visible = !!h; if (h) pickBox.position.set(h.x + 0.5, h.y + 0.5, h.z + 0.5); hud.setTarget(h ? NAMES[h.id] || kit.nameOf(h.id) || 'مكعب' : null); },
@@ -329,17 +403,19 @@ async function startGame() {
       if (life) life.update(dt);
       if (weather) weather.update(dt);
       if (status) status.update();
-      const land = gen.landOf(p.x, p.z), cold = land === 'snow' || land === 'mountain';
-      hud.setLand(LANDS[land], ((-st.yaw * 180 / Math.PI) % 360 + 360) % 360);
+      const land = gen.landOf(p.x, p.z), cold = !DINO && (land === 'snow' || land === 'mountain');
+      hud.setLand(D ? D.ZONES[gen.zoneOf(p.x, p.z)] : LANDS[land], ((-st.yaw * 180 / Math.PI) % 360 + 360) % 360);
+      if (DINO) lava(p, dt);
       // what the needs do here: thirst comes fastest in the desert; the cold bites only in the snow and up the mountains (less in a fur coat)
       if (vitals) {
         const [water, warm] = vitals.needs, coat = st.gear && st.gear.chest && st.gear.chest.warm;
-        water.drain = land === 'desert' ? 0.42 : cold ? 0.16 : 0.22;
+        water.drain = land === 'desert' || (DINO && land === 'mountain') ? 0.42 : cold ? 0.16 : 0.22;
         warm.drain = cold ? (coat ? 0.14 : 0.5) : -3;
       }
       const sk = window.__GAME_SKY || {};
       // the night's monsters go to dust when the sun comes up
-      if (wasNight && !sk.night && life && life.share.mode !== 'guest') for (const e of life.ents) if (e.k.kind === 'monster' && !e.dead) { e.hp = 0; e.dead = 0.0001; }
+      // (the hunters of the dinosaur world are about by day too)
+      if (!DINO && wasNight && !sk.night && life && life.share.mode !== 'guest') for (const e of life.ents) if (e.k.kind === 'monster' && !e.dead) { e.hp = 0; e.dead = 0.0001; }
       wasNight = !!sk.night;
       // rain over the snow falls as snow: white flakes, and the clock says so
       if (weather) {
@@ -350,8 +426,9 @@ async function startGame() {
       sky.uniforms.uTime.value = st.time;
       const wm = tileMaterial('water', 'liquid');
       if (wm.map) { wm.map.offset.set(st.time * 0.02, st.time * 0.013); if (wm.normalMap) wm.normalMap.offset.copy(wm.map.offset); }
-      const c = camera.position;
-      setUnder(world.get(Math.floor(c.x), Math.floor(c.y), Math.floor(c.z)) === B.WATER);
+      if (DINO) { const sm = tileMaterial('swampWater', 'liquid'); if (sm.map) sm.map.offset.set(st.time * 0.006, st.time * 0.004); }
+      const c = camera.position, cid = world.get(Math.floor(c.x), Math.floor(c.y), Math.floor(c.z));
+      setUnder(cid === B.WATER ? 'water' : cid === B.SWAMPWATER ? 'swamp' : false);
       // the hand: sways with each step, swings while digging
       const bob = st.onGround ? Math.min(1, st.moving / 4) : 0;
       digT = d.on && toolInHand ? digT + dt : 0;
@@ -372,19 +449,21 @@ async function startGame() {
   const bag = createBag({
     play, kit, camera, world: 'barari', shown: hud.shown, onMenu: () => { play.stop(); panel.show('pause'); },
     mats: { wood: { ids: [B.OAK, B.PINE, B.PALM, B.PLANKS], name: 'خشب' }, stone: { ids: [B.STONE, B.SANDSTONE, B.DEEPROCK], name: 'صخر' }, ore: { ids: [], name: 'خام معدن' } },
-    groups: [{ title: 'براري', items: CATALOGUE }, ...KIT_GROUPS],
+    groups: [{ title: D ? D.TITLE : 'براري', items: CATALOGUE }, ...KIT_GROUPS],
+    seaSpot: gen.seaSpot,                                    // the nearest deep open sea to the start (an underwater village, an island)
     iconOf: (it) => itemIcon(it),
     fontFamily: FONT, accent: ACCENT, line: LINE,
     extra: { label: 'الوقت والجو', onClick: () => weather && weather.open() },
+    ...(D ? { world: WORLD, mats: D.mats(B) } : {}),            // the dinosaur world keeps its own saves, quests and rooms, and its own wood and stone
   });
   hud.els.bag.addEventListener('pointerdown', (e) => { if (play.state.running) { bag.toggle(); e.preventDefault(); } });
   hud.setSlots(slots, 0);
   hud.setTarget(null);
   hud.els.hotbar.addEventListener('pointerdown', (e) => { const el = e.target.closest('.slot'); if (el && play.state.running) { play.select(+el.dataset.i); e.preventDefault(); } });
   const panel = createPlayPanel({
-    title: 'براري', tagline: 'أرض ما لها آخر: سهول وغابات وبر وثلج وجبال وبحر. اقطع الشجر، انزل الكهوف، وابنِ بيتك.',
+    title: D ? D.TITLE : 'براري', tagline: D ? D.TAGLINE : 'أرض ما لها آخر: سهول وغابات وبر وثلج وجبال وبحر. اقطع الشجر، انزل الكهوف، وابنِ بيتك.',
     fontFamily: FONT, accent: ACCENT, line: LINE, touch: hud.touch,
-    note: 'نسخة تجريبية: الوقت والمطر والوحوش تختارها من لوحة Q (وعلى الجوال من زر داخل الحقيبة). الوحوش تطلع في الليل.',
+    note: D ? D.NOTE : 'نسخة تجريبية: الوقت والمطر والوحوش تختارها من لوحة Q (وعلى الجوال من زر داخل الحقيبة). الوحوش تطلع في الليل.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   panel.show('start');
@@ -399,6 +478,7 @@ async function startGame() {
     ],
     render(v) { write.hp(v.hp); write.water(v.water); write.warm(v.warm); vq('water').classList.toggle('warn', v.water < 25); vq('warm').classList.toggle('warn', v.warm < 30); },
   });
+  if (DINO) vq('warm').hidden = true;                        // no cold in the world of the dinosaurs: its warmth never runs down
   // creatures: each lives in its own lands (the shared list knows which); the two monsters come out at night
   const L = (x, z) => gen.landOf(x, z);
   const nightly = (k, n) => {
@@ -408,7 +488,7 @@ async function startGame() {
   };
   life = createLife({
     scene, camera, play, world, vitals: () => vitals,
-    kinds: [
+    kinds: dinos ? [...dinos.dinoKinds(gen.landOf), ...extraKinds(WORLD)] : [
       ...landKinds('barari', gen.landOf),
       ...extraKinds('barari'),
       nightly({ key: 'asfoof', name: 'العاصوف', kind: 'monster', make: () => asfoof(), hp: 14, speed: 2.5, radius: 0.75, height: 1.7, dmg: 7, where: (x, y, z) => ['desert', 'beach', 'plains'].includes(L(x, z)) }, 1),
@@ -424,7 +504,7 @@ async function startGame() {
       aimed = null;                                          // the sun moved: aim the shadow map again
       lastClock = '';
       const here = gen.landOf(play.state.pos.x, play.state.pos.z);
-      clockLabel(time, rain, rain && (here === 'snow' || here === 'mountain'));
+      clockLabel(time, rain, !DINO && rain && (here === 'snow' || here === 'mountain'));
     },
   });
   clockLabel('morning', false, false);

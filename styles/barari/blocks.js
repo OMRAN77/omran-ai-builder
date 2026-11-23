@@ -1,9 +1,14 @@
 // Block ids and definitions for "barari" (desert, forest, snow and the sea). Own ids stay below 100;
-// 100 and up belong to the shared building kit.
+// 100 and up belong to the shared building kit. The world of the dinosaurs (mode 'dino') adds its own from 28 up.
+import { DINO } from './mode.js';
+
 export const B = {
   GRASS: 1, DIRT: 2, SAND: 3, SANDSTONE: 4, STONE: 5, DEEPROCK: 6, SNOW: 7, SNOWBLOCK: 8, ICE: 9, WATER: 10,
   SEABED: 11, GRAVEL: 12, OAK: 13, OAK_LEAVES: 14, PINE: 15, PINE_NEEDLES: 16, PINE_SNOWY: 17, PALM: 18,
   PALM_FROND: 19, PLANKS: 20, TUFT: 21, FLOWER_R: 22, FLOWER_Y: 23, FLOWER_B: 24, SHRUB: 25, REED: 26, SNOWROCK: 27,
+  // the world of the dinosaurs (defined only in that mode: styles/dino/blocks.js)
+  JUNGLE_GRASS: 28, FERN_GRASS: 29, MUD: 30, SWAMPWATER: 31, BASALT: 32, ASH: 33, LAVA: 34, RED_ROCK: 35, JUNGLE_LOG: 36,
+  JUNGLE_LEAVES: 37, FERN_TRUNK: 38, FERN_FROND: 39, VINE: 40, FERN: 41, BIGLEAF: 42, AMBER: 43, NEST: 44, HORSETAIL: 45,
 };
 
 export const BLOCKS = {
@@ -53,9 +58,21 @@ export const DROP = {
   [B.OAK_LEAVES]: 0, [B.PINE_NEEDLES]: 0, [B.PINE_SNOWY]: 0, [B.PALM_FROND]: 0,
 };
 
+if (DINO) {
+  const d = (await import('../dino/blocks.js')).dinoBlocks(B);
+  Object.assign(BLOCKS, d.BLOCKS); Object.assign(NAMES, d.NAMES); Object.assign(DROP, d.DROP);
+}
+
 /** How long a block takes to dig (the kit answers for its own blocks first). */
 export function hardnessOf(id, kind) {
   if (kind === 'cross') return 0.08;
+  if (id >= B.JUNGLE_GRASS && id < 100) {                                  // the dinosaur world's own
+    if (id === B.JUNGLE_LEAVES || id === B.FERN_FROND) return 0.15;
+    if (id === B.MUD || id === B.ASH || id === B.JUNGLE_GRASS || id === B.FERN_GRASS) return 0.3;
+    if (id === B.JUNGLE_LOG || id === B.FERN_TRUNK) return 0.5;
+    if (id === B.BASALT || id === B.AMBER) return 0.95;
+    return 0.7;
+  }
   if (id === B.OAK_LEAVES || id === B.PINE_NEEDLES || id === B.PINE_SNOWY || id === B.PALM_FROND) return 0.15;
   if (id === B.SAND || id === B.DIRT || id === B.GRASS || id === B.SNOW || id === B.SNOWBLOCK || id === B.SEABED || id === B.GRAVEL) return 0.3;
   if (id === B.ICE) return 0.35;

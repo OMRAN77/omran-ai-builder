@@ -2,6 +2,7 @@
 // start-up on a canvas (per pixel, or with canvas paths for the plants), so no image files are needed.
 // Each tile keeps its canvas: the HUD draws its little block icons from the same pictures.
 import * as THREE from 'three';
+import { DINO } from './mode.js';
 
 const S = 128;
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -248,6 +249,9 @@ D('reed', {}, (ctx) => {
   for (const x of [36, 64, 92]) { ctx.fillStyle = '#7a4f2a'; ctx.beginPath(); ctx.ellipse(x, S * 0.1 + rnd() * 10, 4.5, 11, 0, 0, Math.PI * 2); ctx.fill(); }
 });
 
+// the world of the dinosaurs paints its own tiles with the same brushes
+if (DINO) (await import('../dino/tiles.js')).dinoTiles({ T, D, S, clamp, mix, smooth, mod, hex, mix3, mul, h2, fbm, cells, rock, dirtAt, leafy, barkV, rings, blades, R });
+
 // ------------------------------------------------------------------ baking
 const canvases = new Map();
 const baked = new Map();
@@ -306,6 +310,8 @@ export function tileMaterial(name, kind) {
   const o = { map: b.map, roughness: 0.92, metalness: 0 };
   if (b.normalMap) { o.normalMap = b.normalMap; o.normalScale = new THREE.Vector2(0.8, 0.8); }
   if (name === 'water') Object.assign(o, { color: 0xd8ecff, transparent: true, opacity: 0.84, roughness: 0.1, depthWrite: false, side: THREE.FrontSide });
+  else if (name === 'swampWater') Object.assign(o, { color: 0xe8f0d8, transparent: true, opacity: 0.9, roughness: 0.2, depthWrite: false, side: THREE.FrontSide });
+  else if (name === 'lava') Object.assign(o, { emissive: 0xffffff, emissiveMap: b.map, emissiveIntensity: 1.0, roughness: 0.6 });
   else if (name === 'ice') Object.assign(o, { transparent: true, roughness: 0.15, depthWrite: false });
   else if (b.opts.cutout) Object.assign(o, { alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 });
   else if (P[name].draw) Object.assign(o, { alphaTest: 0.4, roughness: 0.9 });
@@ -326,7 +332,7 @@ export const tileNames = () => Object.keys(P);
 let arr = null;
 export function tileArray() {
   if (arr) return arr;
-  const names = Object.keys(P).filter((n) => n !== 'water' && n !== 'ice');
+  const names = Object.keys(P).filter((n) => n !== 'water' && n !== 'ice' && n !== 'swampWater' && n !== 'lava');      // (the last two: the dinosaur world's, drawn with materials of their own)
   const index = new Map(names.map((n, i) => [n, i]));
   const L = S * S * 4, col = new Uint8Array(L * names.length), nrm = new Uint8Array(L * names.length);
   const cv = document.createElement('canvas'); cv.width = cv.height = S;
