@@ -94,6 +94,32 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     c[0] = kitItem(K.GOLD, 2 + Math.floor(r() * 3)); c[1] = kitItem(K.DIAMOND, 1); c[2] = kitItem(K.TORCH, 8); c[3] = kitItem(bonus, 1);
   }
 
+  // ---- chests buried under the ground: four new ones each day, found with the treasure detector and dug out
+  const buriedKey = 'bw-buried-' + worldKey + '-' + today, dugUp = new Set(load(buriedKey, []));
+  const hidden = [], LOOT = [[K.GOLD, 2], [K.GEM, 1], [K.EMERALD, 2], [K.RUBY, 1], [K.AMETHYST, 2], [K.PEARL, 1], [K.GOLDFISH, 1], [K.DIAMOND, 1], [K.COAL, 4], [K.BREAD, 3]];
+  const rockAt = (x, y, z) => w.inb(x, y, z) && play.isSolid(w.get(x, y, z)) && !play.isLiquid(w.get(x, y, z));
+  for (let i = 0; i < 400 && hidden.length < 4; i++) {
+    const x = A.x0 + 8 + Math.floor(r() * (AW - 16)), z = A.z0 + 8 + Math.floor(r() * (AH - 16)), g = groundAt(x, z);
+    if (g === null || Math.hypot(x - spawn.x, z - spawn.z) < 18) continue;
+    const y = g - 3 - Math.floor(r() * 3);
+    let ok = y > 2;
+    for (let dy = -1; dy <= 2 && ok; dy++) for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) if (!rockAt(x + dx, y + dy, z + dz) && !(dx === 0 && dz === 0 && dy === 0)) { ok = false; break; }
+    if (!ok || hidden.some((q) => Math.hypot(q.x - x, q.z - z) < 10)) continue;
+    const spot = { x, y, z, k: x + ',' + y + ',' + z };
+    if (!dugUp.has(spot.k)) {
+      kit.setBlock(x, y, z, K.CHEST);
+      const c = kit.chestAt(x, y, z);
+      for (let j = 0; j < 3 + Math.floor(r() * 2); j++) { const [id, n] = LOOT[Math.floor(r() * LOOT.length)]; c[j * 3] = kitItem(id, n + Math.floor(r() * n)); }
+    }
+    hidden.push(spot);
+  }
+
+  // a short darkness while the time passes in bed
+  const fade = document.createElement('div');
+  fade.style.cssText = 'position:fixed;inset:0;z-index:44;background:#000;opacity:0;pointer-events:none;transition:opacity .45s;';
+  document.body.appendChild(fade);
+  function sleepFade() { fade.style.transition = 'none'; fade.style.opacity = '1'; requestAnimationFrame(() => requestAnimationFrame(() => { fade.style.transition = 'opacity 1.2s'; fade.style.opacity = '0'; })); }
+
   // ---- the trader: stands near where the game starts
   const trader = makeAvatar();
   trader.dress(TRADER_LOOK, null);
@@ -118,7 +144,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
   }
 
   const api = {
-    wardrobe, trader, me, treasure, deals, cave,
+    wardrobe, trader, me, treasure, deals, cave, hidden, get buriedLeft() { return hidden.filter((q) => !dugUp.has(q.k)); },
     get found() { return found; }, get foundToday() { return foundToday; }, get traderAt() { return tPos; }, get traderNear() { return tNear; },
     done,
     onTrade: null,
@@ -133,6 +159,13 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     events: null, friends: null,
     /** A chest was opened: the day's treasure, if it is that one. */
     opened(h) {
+      const b = hidden.find((q) => q.x === h.x && q.y === h.y && q.z === h.z);
+      if (b && !dugUp.has(b.k)) {
+        dugUp.add(b.k); save(buriedKey, [...dugUp]); st.xp = (st.xp || 0) + 10; st.dugTreasure = (st.dugTreasure || 0) + 1;
+        play.notice('لقيت صندوق كنز مدفون! (+10 خبرة) باقي اليوم ' + hidden.filter((q) => !dugUp.has(q.k)).length + ' تحت الأرض. الكاشف يدلّك.', false, 6000);
+        if (play.sound && play.sound.level) play.sound.level();
+        return true;
+      }
       if (!treasure || foundToday || h.x !== treasure.x || h.y !== treasure.y || h.z !== treasure.z) return false;
       foundToday = true; found++; save(foundKey, today); save('bw-treasures', found);
       st.xp = (st.xp || 0) + 20;
@@ -146,7 +179,17 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
       if (!sky || !sky.night || !sky.set) return false;
       if (sky.locked) { play.notice('صاحب الغرفة هو اللي يغيّر الوقت.', false, 2600); return true; }
       sky.set('morning', sky.rain); st.slept++;
+      sleepFade();
       play.notice('نمت لين الصبح.', false, 2600);
+      return true;
+    },
+    /** A bed by day: rest until night. */
+    nap() {
+      const sky = window.__GAME_SKY;
+      if (!sky || sky.night || !sky.set) return false;
+      if (sky.locked) { play.notice('صاحب الغرفة هو اللي يغيّر الوقت.', false, 2600); return true; }
+      sky.set('night', sky.rain); sleepFade();
+      play.notice('ريّحت لين الليل. نم مرة ثانية ترجع الصبح.', false, 3200);
       return true;
     },
     /** Make deal i with the trader. Returns true or the reason it cannot be made. */
@@ -173,12 +216,13 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     page() {
       const qs = api.quests(), next = qs.find((q) => !q.done), sec = api.secrets(), looks = wardrobe.list();
       const ev = api.events;
+      const farmHtml = window.__GAME_FARM ? window.__GAME_FARM.page() : '';
       return (ev ? `<h3>رسالة اليوم</h3><p class="hint msg">${ev.message()}</p>` : '') + `<h3>كنز اليوم</h3><div class="tmap"><canvas width="${AW}" height="${AH}"></canvas><p class="hint">${!treasure ? 'ما في كنز اليوم.' : foundToday ? 'لقيت كنز اليوم ✓ كنز جديد بكرة.' : 'علامة ✕ مكان الصندوق، والنقطة الحمرا أنت. الخريطة فوقها الشمال.'}${cave ? ' المثلث الأسود مدخل كهف اليوم: فيه ذهب وألماس.' : ''}${api.events && api.events.isle.up ? ' الدائرة البيضا جزيرة السما (طر لها قبل ما تختفي).' : ''}<br>كنوز لقيتها: ${found}</p></div>`
         + `<h3>المهام ${qs.filter((q) => q.done).length}/${qs.length}</h3><ol class="quests">${qs.map((q) => `<li class="${q.done ? 'done' : q === next ? 'now' : ''}">${q.name}<small>+${q.xp} خبرة${q.outfit ? ' · لبس «' + looks.find((o) => o.key === q.outfit).name + '»' : ''}</small></li>`).join('')}</ol>`
         + `<h3>مهام سرية لقيتها: ${sec.length} من ${secretsHere.length}</h3>${sec.length ? `<ol class="quests">${sec.map((q) => `<li class="done">${q.name}<small>${q.how}</small></li>`).join('')}</ol>` : '<p class="hint">ما تنكتب هني لين تلقاها بروحك. جرّب أشياء غريبة.</p>'}`
         + `<h3>ملابسي</h3><div class="looks">${looks.map((o) => `<button type="button" class="look${o.on ? ' on' : ''}${o.owned ? '' : ' locked'}" data-look="${o.key}">${o.owned && o.pic ? `<img class="hero" src="${new URL('../previews/heroes/' + o.pic + '.webp', import.meta.url).href}" alt="" loading="lazy" draggable="false">` : outfitPicture(o.owned ? o.c : { hat: '#2a2d35', skin: '#3a3d46', shirt: '#2a2d35', pants: '#22252c', shoes: '#1a1c22' }, 34)}<span>${o.owned ? o.name : o.rare ? 'نادر: ؟' : o.name}</span><small>${o.owned ? (o.on ? 'لابسه' : 'البسه') : o.how}</small></button>`).join('')}</div>`
         + `<h3>صمّم شكلك</h3><div class="design">${[['hat', 'الطاقية والشعر'], ['skin', 'البشرة'], ['shirt', 'القميص'], ['pants', 'السروال'], ['shoes', 'الحذاء']].map(([k, t]) => `<label>${t}<input type="color" data-part="${k}" value="${wardrobe.custom[k] || '#888888'}"></label>`).join('')}<label>العباءة<input type="color" data-part="cape" value="${wardrobe.custom.cape || '#7747bb'}"></label><button type="button" class="view" data-cape="${wardrobe.custom.cape ? 0 : 1}">${wardrobe.custom.cape ? 'بدون عباءة' : 'مع عباءة'}</button><button type="button" class="view" data-brim="${wardrobe.custom.brim ? 0 : 1}">${wardrobe.custom.brim ? 'طاقية بدون حافة' : 'طاقية بحافة'}</button><button type="button" class="view" data-long="${wardrobe.custom.long ? 0 : 1}">${wardrobe.custom.long ? 'شعر قصير' : 'شعر طويل'}</button><label>الفستان<input type="color" data-part="skirt" value="${wardrobe.custom.skirt || '#c9b6f2'}"></label><button type="button" class="view" data-skirt="${wardrobe.custom.skirt ? 0 : 1}">${wardrobe.custom.skirt ? 'بدون فستان' : 'مع فستان'}</button><button type="button" class="view" data-flowers="${wardrobe.custom.flowers ? 0 : 1}">${wardrobe.custom.flowers ? 'بدون ورد' : 'تاج ورد'}</button><span class="pv">${outfitPicture(wardrobe.custom, 46)}</span></div>`
-        + '<p class="hint"><button type="button" class="view" data-view="1">' + (st.third ? 'ارجع للمنظور الأول' : 'شوف شكلك من ورا (V)') + '</button></p>';
+        + '<p class="hint"><button type="button" class="view" data-view="1">' + (st.third ? 'ارجع للمنظور الأول' : 'شوف شكلك من ورا (V)') + '</button></p>' + farmHtml;
     },
     /** The picture of the world from above (made once): ground by height, water blue. */
     mapOf(g) {
@@ -210,6 +254,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     },
     /** A click inside the quests page or the trade page. True when it was handled (the bag draws again). */
     click(t) {
+      if (window.__GAME_FARM && window.__GAME_FARM.click(t)) return true;
       const cape = t.closest('[data-cape]'), brim = t.closest('[data-brim]'), long = t.closest('[data-long]'), skirt = t.closest('[data-skirt]'), flowers = t.closest('[data-flowers]');
       if (cape) { wardrobe.design('cape', cape.dataset.cape === '1' ? '#7747bb' : false); return true; }
       if (long) { wardrobe.design('long', long.dataset.long === '1'); return true; }

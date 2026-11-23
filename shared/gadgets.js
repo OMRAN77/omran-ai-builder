@@ -82,6 +82,8 @@ export function createGadgets({ play, kit, adv, net, openStore, world }) {
     const edge = ([x, y]) => { const c = cv.width / 2, dx = x - c, dy = y - c, d = Math.hypot(dx, dy), m = c - 7; return d > m ? [c + dx / d * m, c + dy / d * m] : [x, y]; };      // what is off the map sits on its rim, the way to go
     if (adv.treasure && !adv.foundToday) { const [x, y] = edge(at(adv.treasure.x, adv.treasure.z)); g.strokeStyle = '#b3121b'; g.lineWidth = 2.5; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - 4, y - 4); g.lineTo(x + 4, y + 4); g.moveTo(x + 4, y - 4); g.lineTo(x - 4, y + 4); g.stroke(); }
     if (adv.cave) { const [x, y] = edge(at(adv.cave.mouth.x, adv.cave.mouth.z)); g.fillStyle = '#16120c'; g.strokeStyle = '#fff'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 4.500, y + 4); g.lineTo(x - 4.500, y + 4); g.closePath(); g.fill(); g.stroke(); }
+    const fm = window.__GAME_FARM;
+    if (fm) for (const m of fm.marks) { const [x, y] = edge(at(m.x + 0.5, m.z + 0.5)); g.fillStyle = m.c; g.strokeStyle = '#111'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 4, y); g.lineTo(x, y + 5); g.lineTo(x - 4, y); g.closePath(); g.fill(); g.stroke(); }
     if (adv.traderAt) { const [x, y] = edge(at(adv.traderAt.x, adv.traderAt.z)); g.fillStyle = '#3f8a72'; g.strokeStyle = '#fff'; g.beginPath(); g.arc(x, y, 3.200, 0, 7); g.fill(); g.stroke(); }
     const n = net && net();
     if (n) for (const o of n.others.values()) if (o.s) { const [x, y] = edge(at(o.s.p[0], o.s.p[2])); g.fillStyle = '#55a0e0'; g.strokeStyle = '#fff'; g.beginPath(); g.arc(x, y, 3, 0, 7); g.fill(); g.stroke(); }
@@ -93,14 +95,18 @@ export function createGadgets({ play, kit, adv, net, openStore, world }) {
     if (detect.hidden === det) detect.hidden = !det;
     if (mapEl.hidden === map) mapEl.hidden = !map;
     if (det) {
-      const t = adv.treasure;
-      if (!t || adv.foundToday) { dText.textContent = adv.foundToday ? 'لقيت كنز اليوم. كنز جديد بكرة.' : 'ما في كنز اليوم.'; arrow.style.visibility = 'hidden'; }
+      // the nearest treasure not found yet: the day's chest, or one of the chests buried under the ground
+      const left = [...(adv.treasure && !adv.foundToday ? [{ ...adv.treasure, top: true }] : []), ...(adv.buriedLeft || [])];
+      let t = null, best = Infinity;
+      for (const q of left) { const d0 = Math.hypot(q.x + 0.5 - st.pos.x, q.z + 0.5 - st.pos.z); if (d0 < best) { best = d0; t = q; } }
+      if (!t) { dText.textContent = 'لقيت كل كنوز اليوم. كنوز جديدة بكرة.'; arrow.style.visibility = 'hidden'; }
       else {
         const dx = t.x + 0.5 - st.pos.x, dz = t.z + 0.5 - st.pos.z, d = Math.hypot(dx, dz);
         // which way to turn: the angle between where the player looks and where the treasure lies
         const rel = Math.atan2(dx, -dz) - (-st.yaw);
         arrow.style.visibility = ''; arrow.style.transform = 'rotate(' + rel.toFixed(2) + 'rad)';
-        dText.textContent = d < 2.5 ? 'الكنز هني!' : 'الكنز على ' + Math.round(d) + ' مكعب';
+        const deep = !t.top ? Math.max(0, Math.round(st.pos.y - t.y)) : 0;
+        dText.textContent = d < 2.5 ? (t.top ? 'الكنز هني!' : 'الكنز مدفون تحتك ' + deep + ' مكعب. احفر!') : (t.top ? 'الكنز على ' : 'كنز مدفون على ') + Math.round(d) + ' مكعب';
         api.reading = { d, rel };
         if ((beep -= dt) <= 0) { beep = Math.max(0.18, Math.min(2.2, d / 28)); if (play.sound) play.sound.pick(); }
       }

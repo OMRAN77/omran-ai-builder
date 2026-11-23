@@ -272,6 +272,8 @@ export function makeGen(K) {
           if (cell < 0.07 && y < SEA + 22) { if (hash3(x, y, z, 92) < 0.55) id = K.ROCK_COAL; }
           else if (cell < 0.085 && y < SEA - 8) { if (hash3(x, y, z, 93) < 0.5) id = K.ROCK_GOLD; }
           else if (y < 12 && hash3(x, y, z, 79) < 0.0018) id = K.ROCK_DIAMOND;
+          else if (y < 10 && hash3(x, y, z, 81) < 0.0009) id = K.ROCK_EMERALD;
+          else if (y < 8 && hash3(x, y, z, 83) < 0.0006) id = K.ROCK_RUBY;
         }
         d[base + (y << CS2)] = id;
       }
@@ -326,7 +328,10 @@ export function makeGen(K) {
           if (id !== B.STONE && id !== B.DEEPROCK && id !== B.SANDSTONE) continue;
           const y = b2 >> CS2, x = X0 + (b2 & 31), z = Z0 + ((b2 >> CS) & 31);
           const r = hash3(x, y, z, 301);
-          if (y < 13 && r < 0.022) d[b2] = K.ROCK_DIAMOND;
+          if (y < 10 && r < 0.012) d[b2] = K.ROCK_RUBY;                     // the rare stones, deepest and fewest
+          else if (y < 14 && r < 0.026) d[b2] = K.ROCK_EMERALD;
+          else if (y < 18 && r < 0.04) d[b2] = K.ROCK_AMETHYST;
+          else if (y < 13 && r < 0.058) d[b2] = K.ROCK_DIAMOND;
           else if (y < SEA - 6 && r < 0.055) d[b2] = K.ROCK_GOLD;
           else if (y < SEA + 16 && r < 0.14) d[b2] = K.ROCK_COAL;
         }

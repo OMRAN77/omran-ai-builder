@@ -21,6 +21,7 @@ import { createSave } from './save.js';
 import { createGadgets } from './gadgets.js';
 import { createFriends } from './friends.js';
 import { createEvents } from './events.js';
+import { createFarm } from './farm.js';
 
 const CSS = `
 #bag { position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center; direction: rtl; color: #f1f4f8; --c: 46px;
@@ -204,6 +205,7 @@ export function createBag(o) {
   /** Open a store of places beside the player's own (the extra pouch, a pet's bags). */
   function openStore(arr, title) { if (st.modal) return false; chest = arr; chestTitle = title || 'الصندوق'; tab = 'mine'; show(true); if (play.sound) play.sound.ui(); return true; }
   const gadgets = adv ? createGadgets({ play, kit, adv, net: () => net, openStore, world: o.world }) : null;
+  const farm = kit && o.world ? createFarm({ play, kit, world: o.world }) : null;
   /** Open a page drawn by someone else (the stranger's). */
   function openPage(page) { if (st.modal) return false; special = page; tab = 'trade'; show(true); if (play.sound) play.sound.ui(); return true; }
   if (adv) { adv.friends = createFriends({ play, kit, adv, world: o.world, groundAt: adv.groundAt, openStore }); adv.events = createEvents({ play, kit, adv, world: o.world, groundAt: adv.groundAt, openPage }); }
@@ -235,14 +237,14 @@ export function createBag(o) {
     el, items, craft, adv, net, saver,
     open: () => show(true), close: () => show(false), toggle: () => show(!open), isOpen: () => open,
     get tab() { return tab; }, setTab,
-    openStore, gadgets,
+    openStore, gadgets, farm,
     /** The place button on a block: a door swings, a chest opens here, a workbench opens the recipes. True when it was one of those. */
     interact(h) {
       const r = kit && kit.interact ? kit.interact(h) : null;
       if (!r) return false;
       if (r === 'door') return true;
       if (st.modal) return true;
-      if (r.bed) return adv ? adv.sleep() : false;                 // by day a bed is a block like any other
+      if (r.bed) return adv ? adv.sleep() || adv.nap() : false;      // at night a bed sleeps until morning; by day it rests until night (Shift builds on it)
       if (r.chest) { chest = r.chest; chestTitle = 'الصندوق'; tab = 'mine'; st.opened++; show(true); if (play.sound) play.sound.ui(); if (adv) adv.opened(h); }
       else if (r.table) { tab = 'craft'; show(true); if (play.sound) play.sound.ui(); }
       return true;

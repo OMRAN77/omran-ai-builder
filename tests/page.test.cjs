@@ -393,7 +393,7 @@ test('v-blockworld-adv: مهام ظاهرة وسرّيّة، كنز يتغيّر
   assert.match(adv, /out\.push\(\[K\.DIAMOND, 4, 'outfit:merchant', 1\]\)/);
   // السرير: في الليل نوم للصباح، وفي النهار مكعب عاديّ
   assert.match(kit, /if \(d\.mate\) return \{ bed: true \};/);
-  assert.match(bag, /if \(r\.bed\) return adv \? adv\.sleep\(\) : false;/);
+  assert.match(bag, /if \(r\.bed\) return adv \? adv\.sleep\(\) \|\| adv\.nap\(\) : false;/);
   // الإشعار ينتقل حين تُفتح لوحة فوقه
   assert.match(play, /if \(typeof seatNote === 'function'\) seatNote\(\);/);
   assert.ok(!/[٠-٩]/.test(adv + outfits), 'أرقام لاتينيّة كباقي الواجهة');
@@ -606,4 +606,19 @@ test('v-blockworld-zoo: حيوانات أكثر (بقرة، خروف، حصان�
   for (const part of ['faces.heart', 'faces.visor', 'faces.mask', 'faces.bubble', 'tentacles', 'wings', 'pack', 'pads']) assert.ok(av.includes(part), part);
   assert.match(out, /\['heart', 'visor', 'alien', 'mask', 'bubble', 'screen', 'goggles', 'helm', 'bot'\]\.includes\(c\.face\)/, 'الشكل اللي يجي من لاعب ثاني ينفحص');
   assert.ok(!/creeper|enderman|steve|mooshroom|sniffer|golem|كريبر|إندرمان|غولم/i.test(beasts + out), 'لا أسماء ولا مخلوقات منقولة من لعبة ثانية');
+});
+
+test('v-blockworld-farm: السرير يغيّر الليل والنهار، صيد بأنواع سمك، زراعة وسقي، قارب، علامات، معادن نادرة، كنوز مدفونة', () => {
+  const farm = read('shared/farm.js'), kit = read('shared/kit.js'), play = read('shared/play.js'), adv = read('shared/adventure.js'), cave = read('shared/cave.js'), craft = read('shared/craft.js'), gad = read('shared/gadgets.js');
+  assert.match(adv, /sky\.set\('night', sky\.rain\)/, 'نوم النهار يودّي لليل');
+  for (const n of ['هامور', 'صافي', 'كنعد', 'شعري', 'سمكة ذهبية', 'محارة', 'قمح', 'خبز', 'زمرّد', 'ياقوت', 'جمشت', 'سنارة', 'مرشّة ماء', 'قارب']) assert.ok(kit.includes(`'${n}'`), n);
+  assert.match(farm, /const GROW = 28;/); assert.match(farm, /c\.grow \+= step \* \(wet \? 1 : 1 \/ 3\)/, 'السقي يكبّر الزرع أسرع');
+  assert.match(farm, /if \(guest\(\)\) return|guest\(\)\) return/, 'صاحب الغرفة اللي يكبّر الزرع');
+  assert.match(farm, /cast\.biting = 1\.4/, 'العوّامة تغطس ولها وقت');
+  assert.match(play, /function enterBoat\(x, z, y\)/); assert.match(play, /function leaveBoat\(force\)/);
+  assert.match(farm, /marks\.length >= 9/, 'لين 9 علامات');
+  assert.match(cave, /vein\(veins\.ruby, K\.ROCK_RUBY, 4\)/);
+  assert.match(adv, /hidden\.length < 4/, 'أربعة كنوز مدفونة كل يوم');
+  assert.match(gad, /buriedLeft/, 'الكاشف يدلّ على المدفون');
+  for (const id of ['K.ROD', 'K.CAN', 'K.BOAT', 'K.BREAD']) assert.ok(craft.includes(`out: ${id}`), id);
 });

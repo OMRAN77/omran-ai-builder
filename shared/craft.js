@@ -38,6 +38,14 @@ export const RECIPES = [
   { out: 160, n: 1, needs: [[K.WOOL, 3], ['wood', 3]], table: true },           // a bed from wool off the sheep
   { out: K.FURCOAT, n: 1, needs: [[K.WOOL, 5]] },                       // four hides make a warm coat
   { out: K.GLASS, n: 4, needs: [[K.COAL, 1], ['ore', 2]], table: true },
+  { out: K.ROD, n: 1, needs: [['wood', 3], [K.FEATHER, 1]] },                    // a rod: sticks and a feather for the float
+  { out: K.ROD, n: 1, needs: [['wood', 4]] },
+  { out: K.CAN, n: 1, needs: [['stone', 3]] },
+  { out: K.BOAT, n: 1, needs: [['wood', 6]], table: true },
+  { out: K.BREAD, n: 1, needs: [[K.WHEAT, 3]] },
+  { out: K.EMERALD_BLOCK, n: 1, needs: [[K.EMERALD, 4]], table: true },
+  { out: K.RUBY_BLOCK, n: 1, needs: [[K.RUBY, 4]], table: true },
+  { out: K.AMETHYST_BLOCK, n: 1, needs: [[K.AMETHYST, 4]], table: true },
 ];
 
 export function createCraft({ play, kit, mats }) {

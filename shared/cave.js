@@ -64,6 +64,12 @@ export function makeCave({ play, kit, rnd, spawn }) {
   vein(veins.diamond, K.ROCK_DIAMOND, 6);
   vein(veins.gold, K.ROCK_GOLD, 10);
   vein(veins.coal, K.ROCK_COAL, 16);
+  // the rare stones, fewer and deeper in: emerald, ruby, and amethyst that glows in the dark
+  veins.emerald = []; veins.ruby = []; veins.amethyst = [];
+  vein(veins.emerald, K.ROCK_EMERALD, 5);
+  vein(veins.ruby, K.ROCK_RUBY, 4);
+  vein(veins.amethyst, K.ROCK_AMETHYST, 6);
+  for (const [x, y, z] of veins.amethyst) if (kit.lit) kit.lit(x, y, z, K.ROCK_AMETHYST);
   // torches along the way, standing on the floor; in the middle of the hall a fire burns (it warms, and it burns whoever walks into it)
   let lit = 0;
   const fires = [];

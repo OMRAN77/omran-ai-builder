@@ -136,7 +136,39 @@ export function createPlay(o) {
   function unstick() { let n = 0; while (collides(st.pos.x, st.pos.y, st.pos.z) && n++ < sy) st.pos.y = Math.floor(st.pos.y) + 1; }
 
   const pace = () => (window.__GAME_RULES ? window.__GAME_RULES.pace : 1);       // the player's chosen speed
+  /** Where the feet of someone sitting in a boat on the water of column (x, z) are, near height y; null: no water there. */
+  function surfaceAt(x, z, y) {
+    const cx = Math.floor(x), cz = Math.floor(z);
+    for (let cy = Math.floor(y) + 1; cy >= Math.floor(y) - 2; cy--) if (isLiquid(world.get(cx, cy, cz)) && !isLiquid(world.get(cx, cy + 1, cz))) return cy + 0.92;      // sitting a little above the water's top
+    return null;
+  }
+  /** Get into a boat on the water at column (x, z). */
+  function enterBoat(x, z, y) {
+    const sf = surfaceAt(x, z, y);
+    if (sf === null) return false;
+    setFlying(false);
+    st.pos.set(Math.floor(x) + 0.5, sf, Math.floor(z) + 0.5); st.vel.set(0, 0, 0);
+    st.boat = { since: st.time }; st.boatJumpHeld = true;
+    if (o.onBoat) o.onBoat(true);
+    return true;
+  }
+  /** Step out of the boat onto the nearest land beside it; false (and a word) when there is none. */
+  function leaveBoat(force) {
+    if (!st.boat) return false;
+    const fx = Math.floor(st.pos.x), fz = Math.floor(st.pos.z), base = Math.floor(st.pos.y);
+    let best = null;
+    for (let r = 1; r <= 2 && !best; r++) for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+      if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+      for (let y = base - 1; y <= base + 2; y++) { const id = world.get(fx + dx, y - 1, fz + dz); if (isSolid(id) && !isLiquid(world.get(fx + dx, y, fz + dz)) && !collides(fx + dx + 0.5, y, fz + dz + 0.5)) { const d = Math.hypot(dx, dz); if (!best || d < best.d) best = { x: fx + dx + 0.5, y, z: fz + dz + 0.5, d }; break; } }
+    }
+    if (!best && !force) { notice('ما في بر جنبك. قرّب من الشاطئ وانزل.', false, 2200); return false; }
+    st.boat = null; st.vel.set(0, 0, 0);
+    if (best) st.pos.set(best.x, best.y, best.z);
+    if (o.onBoat) o.onBoat(false);
+    return true;
+  }
   function setFlying(on) {
+    if (on && st.boat) return;
     if (st.flying === on) return;
     st.flying = on; st.vel.y = 0;
     if (sound) sound.fly(on);
@@ -153,6 +185,19 @@ export function createPlay(o) {
     st.inWater = isLiquid(world.get(Math.floor(p.x), Math.floor(p.y + 0.9), Math.floor(p.z)));
     const wading = !st.inWater && isLiquid(world.get(Math.floor(p.x), Math.floor(p.y + 0.2), Math.floor(p.z)));   // at the surface: feet wet, chest out
     const wasGround = st.onGround;
+    if (st.boat) {
+      // in a boat: it floats on the surface, goes where the player steers, and cannot leave the water
+      const speed = (inp.sprint ? 10.5 : 6.8) * pace(), k = Math.min(1, 3 * dt);
+      v.x += (wx * speed - v.x) * k; v.z += (wz * speed - v.z) * k; v.y = 0;
+      const sx0 = surfaceAt(p.x + v.x * dt, p.z, p.y), sz0 = surfaceAt(p.x, p.z + v.z * dt, p.y);
+      if (sx0 === null || collides(p.x + v.x * dt, sx0, p.z)) v.x = 0; else p.x += v.x * dt;
+      if (sz0 === null || collides(p.x, sz0, p.z + v.z * dt)) v.z = 0; else p.z += v.z * dt;
+      const sf = surfaceAt(p.x, p.z, p.y); if (sf !== null) p.y = sf;
+      st.onGround = false; st.inWater = false; st.moving = Math.hypot(v.x, v.z);
+      if (inp.jump && !st.boatJumpHeld) leaveBoat();
+      st.boatJumpHeld = inp.jump;
+      return;
+    }
     if (st.flying) {
       const speed = (inp.sprint ? P.flyFast : P.fly) * pace(), k = Math.min(1, 8 * dt);
       v.x += (wx * speed - v.x) * k; v.z += (wz * speed - v.z) * k;
@@ -720,6 +765,7 @@ export function createPlay(o) {
       try { if (o.onPlace) o.onPlace(x, y, z, id); } finally { st.yaw = y0; }
       aim();
     },
+    enterBoat, leaveBoat, surfaceAt,
     /** Put a block down for the game itself (not from the hand), and tell the others in a shared game. */
     put(x, y, z, id) {
       if (!world.inb(x, y, z) || !blocks[id]) return false;
@@ -878,7 +924,7 @@ export function createPlayPanel(o) {
       const made = Object.values(st.made || {}).reduce((a, n) => a + n, 0);
       const list = [['الوقت اللي لعبته', clock(st.played || 0)], ['مشيت', Math.round(st.walked || 0) + ' مكعب'], ['سبحت', Math.round(st.swumDist || 0) + ' مكعب'], ['طرت', clock(st.flown || 0)], ['قفزت', (st.jumps || 0) + ' مرة'],
         ['مكعبات كسرتها', st.broken || 0], ['مكعبات حطيتها', st.placed || 0], ['أغراض صنعتها', made], ['حيوانات صدتها', (st.kills || {}).animal || 0], ['وحوش قضيت عليها', (st.kills || {}).monster || 0],
-        ['وجبات أكلتها', st.eaten || 0], ['صناديق فتحتها', st.opened || 0], ['صفقات مع التاجر', st.traded || 0], ['كنوز لقيتها', adv ? adv.found : 0], ['مرات نمت', st.slept || 0], ['مرات طحت للصفر', st.deaths || 0], ['الخبرة', (st.xp || 0) + (lv != null ? ' (المستوى ' + lv + ')' : '')]];
+        ['وجبات أكلتها', st.eaten || 0], ['صناديق فتحتها', st.opened || 0], ['صفقات مع التاجر', st.traded || 0], ['كنوز لقيتها', adv ? adv.found : 0], ['مرات نمت', st.slept || 0], ['سمك صدته', st.caught || 0], ['زرع حصدته', st.harvested || 0], ['أبحرت', Math.round(st.sailedDist || 0) + ' مكعب'], ['كنوز مدفونة لقيتها', st.dugTreasure || 0], ['مرات طحت للصفر', st.deaths || 0], ['الخبرة', (st.xp || 0) + (lv != null ? ' (المستوى ' + lv + ')' : '')]];
       h = '<h2>الإحصائيات</h2><ol class="cards stats">' + list.map(([k, v]) => `<li class="done"><b dir="auto">${esc(v)}</b>${esc(k)}</li>`).join('') + '</ol>';
     } else if (view === 'note' || view === 'bug') {
       h = `<h2>${view === 'bug' ? 'بلّغ عن خطأ' : 'أرسل ملاحظة'}</h2><p>${view === 'bug' ? 'اكتب وش صار، ووين، ووش كنت تسوي قبلها. يروح البلاغ لصاحب الموقع مع نوع الجهاز والعالم.' : 'قل رأيك في اللعبة أو اللي تبي ينضاف. يروح لصاحب الموقع.'}</p>`

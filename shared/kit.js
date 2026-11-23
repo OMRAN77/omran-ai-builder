@@ -26,11 +26,13 @@ const hexOf = Object.fromEntries(COLORS.map(([k, , h]) => [k, h]));
 const nameOfColor = Object.fromEntries(COLORS.map(([k, n]) => [k, n]));
 
 /** Block ids of the kit. */
-export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, ROCK_COAL: 177, ROCK_GOLD: 178, ROCK_DIAMOND: 179, MEAT: 200, FUR: 201, FEATHER: 202, CHICKEN: 203, FISH: 204, SHRIMP: 205, COAL: 206, PEARL: 207, SEAWEED: 208, SEEDS: 209, FURCOAT: 228, ORE: 230, GEM: 231, DATES: 232, WOOL: 233 };
+export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, ROCK_COAL: 177, ROCK_GOLD: 178, ROCK_DIAMOND: 179, MEAT: 200, FUR: 201, FEATHER: 202, CHICKEN: 203, FISH: 204, SHRIMP: 205, COAL: 206, PEARL: 207, SEAWEED: 208, SEEDS: 209, FURCOAT: 228, ORE: 230, GEM: 231, DATES: 232, WOOL: 233, WHEAT: 234, BREAD: 235, EMERALD: 236, RUBY: 237, AMETHYST: 238,
+  CROP0: 180, CROP1: 181, CROP2: 182, CROP3: 183, ROCK_EMERALD: 184, ROCK_RUBY: 185, ROCK_AMETHYST: 186, EMERALD_BLOCK: 187, RUBY_BLOCK: 188, AMETHYST_BLOCK: 189,
+  ROD: 247, CAN: 248, BOAT: 249, HAMOUR: 250, SAFI: 251, KANAD: 252, SHERI: 253, GOLDFISH: 254, SHELL: 255 };
 /** Block definitions, in the same shape the worlds use (see voxel.js). */
 export const KIT_BLOCKS = {};
 const INFO = {};                                 // id -> { name, key, group, icon }
-const GROUP_NAMES = { food: 'أكل وأشياء من الحيوانات', gear: 'سلاح وعدّة ولبس', gadget: 'أجهزة', home: 'بيت وتخزين', paint: 'مكعبات ملوّنة', slab: 'أنصاف مكعبات', light: 'إضاءة', gem: 'ذهب وجواهر', nature: 'ماء ونار', bed: 'أسرّة' };
+const GROUP_NAMES = { food: 'أكل وأشياء من الحيوانات', farm: 'زراعة وصيد وبحر', gear: 'سلاح وعدّة ولبس', gadget: 'أجهزة', home: 'بيت وتخزين', paint: 'مكعبات ملوّنة', slab: 'أنصاف مكعبات', light: 'إضاءة', gem: 'ذهب وجواهر', nature: 'ماء ونار', bed: 'أسرّة' };
 function add(id, def, info) { KIT_BLOCKS[id] = def; INFO[id] = { id, ...info }; }
 
 COLORS.forEach(([key, name, hex], i) => add(100 + i, { tiles: 'x:paint:' + hex }, { key: 'paint-' + key, name: 'مكعب ' + name, group: 'paint', icon: ['cube', hex] }));
@@ -59,16 +61,39 @@ good(K.SHRIMP, 'shrimp', 'ربيان', 'shrimp', '#f08a6c', { use: 'eat', eat: 1
 good(K.SEAWEED, 'seaweed', 'طحالب', 'weed', '#3f9a5c', { use: 'eat', eat: 10, feed: 'plants' });
 good(K.DATES, 'dates', 'تمر', 'dates', '#7a3f1d', { use: 'eat', eat: 20, feed: 'plants' });
 good(K.SEEDS, 'seeds', 'حبوب', 'seeds', '#d8b660', { feed: 'plants' });
+INFO[K.SEEDS].group = 'farm';
 good(K.FUR, 'fur', 'فروة', 'fur', '#b08a62');
 good(K.FEATHER, 'feather', 'ريش', 'feather', '#eef0f2');
 good(K.WOOL, 'wool', 'صوف', 'fur', '#f1ede4');
 good(K.COAL, 'coal', 'فحم', 'ore', '#17181b');
 good(K.PEARL, 'pearl', 'لؤلؤة', 'pearl', '#f3ecf7');
+// the catch of the rod: each fish its own colour and worth
+good(K.HAMOUR, 'hamour', 'هامور', 'fish', '#a0603a', { use: 'eat', eat: 34, feed: 'meat' });
+good(K.SAFI, 'safi', 'صافي', 'fish', '#8a9a6a', { use: 'eat', eat: 26, feed: 'meat' });
+good(K.KANAD, 'kanad', 'كنعد', 'fish', '#6a8aa8', { use: 'eat', eat: 32, feed: 'meat' });
+good(K.SHERI, 'sheri', 'شعري', 'fish', '#c98a6a', { use: 'eat', eat: 24, feed: 'meat' });
+good(K.GOLDFISH, 'goldfish', 'سمكة ذهبية', 'fish', '#f0bd3f', {});
+good(K.SHELL, 'shell', 'محارة', 'pearl', '#e8c9b0');
+// the farm: wheat from the field, bread from the wheat
+good(K.WHEAT, 'wheat', 'قمح', 'wheat', '#e3c058', { feed: 'plants' });
+good(K.BREAD, 'bread', 'خبز', 'bread', '#c98a3a', { use: 'eat', eat: 45 });
+// the rare stones deep in the caves
+good(K.EMERALD, 'emerald', 'زمرّد', 'gem', '#3fd07a');
+good(K.RUBY, 'ruby', 'ياقوت', 'gem', '#e0344a');
+good(K.AMETHYST, 'amethyst', 'جمشت', 'gem', '#a86ae8');
 INFO[K.ORE] = { id: K.ORE, key: 'ore', name: 'خام معدن', group: 'gem', icon: ['ore', '#b9a27a'], item: {} };
 INFO[K.GEM] = { id: K.GEM, key: 'gem', name: 'ألماسة', group: 'gem', icon: ['gem', '#7fe6f5'], item: {} };
 // the cave's rock: a vein of gold gives a block of gold, a vein of diamond gives one gem
 add(K.ROCK_GOLD, { tiles: 'x:rock:#f0bd3f', drop: K.GOLD, hard: 0.9 }, { key: 'rock-gold', name: 'صخر فيه ذهب', group: 'gem', icon: ['ore', '#f0bd3f'] });
 add(K.ROCK_DIAMOND, { tiles: 'x:rock:#7fe6f5', drop: K.GEM, hard: 1.1 }, { key: 'rock-diamond', name: 'صخر فيه ألماس', group: 'gem', icon: ['ore', '#7fe6f5'] });
+add(K.ROCK_EMERALD, { tiles: 'x:rock:#3fd07a', drop: K.EMERALD, hard: 1.2 }, { key: 'rock-emerald', name: 'صخر فيه زمرّد', group: 'gem', icon: ['ore', '#3fd07a'] });
+add(K.ROCK_RUBY, { tiles: 'x:rock:#e0344a', drop: K.RUBY, hard: 1.2 }, { key: 'rock-ruby', name: 'صخر فيه ياقوت', group: 'gem', icon: ['ore', '#e0344a'] });
+add(K.ROCK_AMETHYST, { tiles: 'x:rock:#a86ae8', drop: K.AMETHYST, hard: 1.0, light: '#a86ae8' }, { key: 'rock-amethyst', name: 'صخر فيه جمشت', group: 'gem', icon: ['ore', '#a86ae8'] });
+add(K.EMERALD_BLOCK, { tiles: 'x:gem:#3fd07a' }, { key: 'emerald-block', name: 'مكعب زمرّد', group: 'gem', icon: ['cube', '#3fd07a', 'shine'] });
+add(K.RUBY_BLOCK, { tiles: 'x:gem:#e0344a' }, { key: 'ruby-block', name: 'مكعب ياقوت', group: 'gem', icon: ['cube', '#e0344a', 'shine'] });
+add(K.AMETHYST_BLOCK, { tiles: 'x:gem:#a86ae8', light: '#a86ae8' }, { key: 'amethyst-block', name: 'مكعب جمشت', group: 'gem', icon: ['cube', '#a86ae8', 'shine'] });
+// the field: a crop grows in four steps; the last is ripe wheat
+for (let i = 0; i < 4; i++) { KIT_BLOCKS[K.CROP0 + i] = { tiles: 'x:crop:' + i, kind: 'cross', height: 0.3 + i * 0.22, drop: i === 3 ? K.WHEAT : K.SEEDS, crop: i }; INFO[K.CROP0 + i] = { id: K.CROP0 + i, key: 'crop-' + i, name: i === 3 ? 'قمح ناضج' : 'زرع', group: null }; }
 add(K.ROCK_COAL, { tiles: 'x:rock:#1b1c20', drop: K.COAL, hard: 0.7 }, { key: 'rock-coal', name: 'صخر فيه فحم', group: 'gem', icon: ['ore', '#17181b'] });
 const STONE = '#9aa0a6', GOLD = '#f0bd3f', DIAM = '#7fe6f5';
 const gear = (id, key, name, icon, hex, item) => { INFO[id] = { id, key, name, group: 'gear', icon: [icon, hex], item: { n: 1, tool: true, ...item } }; };
@@ -86,8 +111,12 @@ gear(217, 'pick-diamond', 'معول ألماس', 'pick', DIAM, { speed: 2.4, mod
   gear(i === 1 ? 211 : 220 + i, 'diamond-' + wear, name + ' ألماس', icon, DIAM, { use: 'wear', wear, prot: +(share * 0.5).toFixed(3) });
 });
 gear(K.FURCOAT, 'fur-coat', 'معطف فرو', 'armor', '#b08a62', { use: 'wear', wear: 'chest', prot: 0.07, warm: true });
+const gadget = (id, key, name, icon, hex, item) => { INFO[id] = { id, key, name, group: id >= 247 && id <= 249 ? 'farm' : 'gadget', icon: [icon, hex], item: { n: 1, tool: true, ...item } }; };
+// the rod, the watering can and the boat: the farm and the sea
+gadget(K.ROD, 'rod', 'سنارة', 'rod', '#8a5a30', { use: 'fish' });
+gadget(K.CAN, 'can', 'مرشّة ماء', 'can', '#5a8ab0', { use: 'water', water: 0 });
+gadget(K.BOAT, 'boat', 'قارب', 'boat', '#8a5a30', { use: 'boat' });
 // gadgets: carried things that do something. `gadget` works while the thing is in the hand (or the other hand); `use` works on the place button
-const gadget = (id, key, name, icon, hex, item) => { INFO[id] = { id, key, name, group: 'gadget', icon: [icon, hex], item: { n: 1, tool: true, ...item } }; };
 gadget(240, 'detector', 'كاشف الكنوز', 'detector', '#e3c038', { gadget: 'detector' });
 gadget(241, 'camera', 'كاميرا', 'camera', '#3a3f4a', { use: 'camera' });
 gadget(242, 'magicmap', 'الخريطة السحرية', 'map', '#d3be96', { gadget: 'map' });
@@ -185,6 +214,23 @@ const doorTex = () => T('door', 128, (c, s) => {
   c.strokeStyle = 'rgba(255,220,170,.22)'; c.lineWidth = 2; c.strokeRect(20, 12, s - 40, 44); c.strokeRect(20, 70, s - 40, 46);
   c.fillStyle = '#c9a35a'; c.beginPath(); c.arc(s - 22, 63, 6, 0, 7); c.fill(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.arc(s - 21, 65, 6, 0, 7); c.fill(); c.fillStyle = '#e2c27a'; c.beginPath(); c.arc(s - 23, 62, 4.5, 0, 7); c.fill();
 });
+const cropTex = (stage) => T('crop' + stage, 64, (c, s) => {
+  c.clearRect(0, 0, s, s);
+  const r = rnd(40 + stage), h = s * (0.35 + stage * 0.2), ripe = stage === 3;
+  for (let i = 0; i < 9; i++) {
+    const x = 4 + i * 7 + (r() - 0.5) * 3, top = s - h * (0.75 + r() * 0.25);
+    c.strokeStyle = ripe ? '#c9a03a' : stage === 2 ? '#8fb84a' : '#5fa83a'; c.lineWidth = 2.4;
+    c.beginPath(); c.moveTo(x, s); c.lineTo(x + (r() - 0.5) * 4, top); c.stroke();
+    if (stage >= 2) { c.fillStyle = ripe ? '#e8c45a' : '#a8c86a'; c.fillRect(x - 2.5, top - 2, 5, 9); c.fillStyle = ripe ? '#f4dc84' : '#c0dc84'; c.fillRect(x - 1, top - 1, 2, 7); }
+    else { c.fillStyle = '#6fbf4a'; c.beginPath(); c.ellipse(x + 3, top + 6, 4, 1.6, -0.6, 0, 7); c.fill(); }
+  }
+}, { alpha: true });
+const gemTex = (hex) => T('gem' + hex, 128, (c, s) => {
+  c.fillStyle = hex; c.fillRect(0, 0, s, s);
+  const r = rnd(hex.length * 13 + hex.charCodeAt(2));
+  for (let i = 0; i < 26; i++) { c.fillStyle = r() > 0.5 ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.2)'; const x = r() * s, y = r() * s, w = 10 + r() * 26; c.beginPath(); c.moveTo(x, y); c.lineTo(x + w, y + w * 0.4); c.lineTo(x + w * 0.4, y + w); c.closePath(); c.fill(); }
+  bevel(c, s, 9, 0.22);
+});
 const torchTex = () => T('torchk', 128, (c, s) => {
   c.clearRect(0, 0, s, s);
   c.fillStyle = '#5a3a22'; c.fillRect(s / 2 - 7, s * 0.42, 14, s * 0.58); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(s / 2 + 2, s * 0.42, 5, s * 0.58);
@@ -228,6 +274,8 @@ export function kitMaterial(tile) {
   else if (kind === 'rock') m = std({ map: rockTex(arg), emissive: new THREE.Color(arg), emissiveMap: rockTex(arg), emissiveIntensity: 0.16, roughness: 0.8 });
   else if (kind === 'torch') m = new THREE.MeshBasicMaterial({ map: torchTex(), alphaTest: 0.3, toneMapped: false, fog: false, color: 0xfff0dc });
   else if (kind === 'pillow') m = std({ map: pillowTex() });
+  else if (kind === 'crop') m = std({ map: cropTex(+arg), alphaTest: 0.4, side: THREE.DoubleSide, roughness: 1 });
+  else if (kind === 'gem') m = std({ map: gemTex(arg), color: 0xffffff, metalness: 0.2, roughness: 0.18, emissive: new THREE.Color(arg), emissiveIntensity: 0.25 });
   else if (kind === 'quilt') m = std({ map: quiltTex(), color: arg });
   else if (kind === 'bedside') m = std({ map: bedSideTex(arg) });
   else return null;
@@ -258,6 +306,11 @@ function svgIcon([shape, hex, extra]) {
   else if (shape === 'fur') body = `<path d="M7 6l4 2 5-2 5 2 4-2 1 6-2 3 2 4-1 7-5-2-4 3-4-3-5 2-1-7 2-4-2-3z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M11 12l1 3M16 11l0 4M21 12l-1 3M12 19l1 3M19 19l-1 3M16 20l0 3" stroke="rgba(0,0,0,.28)" stroke-width="1.200" stroke-linecap="round"/>`;
   else if (shape === 'feather') body = `<path d="M26 4c-10 1-17 8-18 19l3 1c9-2 16-9 15-20z" fill="${hex}" stroke="rgba(0,0,0,.45)" stroke-width=".9"/><path d="M5 28L24 7" stroke="#8d949c" stroke-width="1.400" stroke-linecap="round"/><path d="M12 20l-3-3M16 16l-4-3M20 12l-4-2M13 20l5 1M17 16l5 0" stroke="rgba(0,0,0,.2)" stroke-width="1"/>`;
   else if (shape === 'pearl') body = `<circle cx="16" cy="16" r="10" fill="${hex}" stroke="rgba(0,0,0,.4)" stroke-width=".9"/><path d="M10 14a7 7 0 0 1 5-5" fill="none" stroke="#fff" stroke-width="2.200" stroke-linecap="round"/><circle cx="20" cy="20" r="3" fill="#d9c8ea" opacity=".6"/>`;
+  else if (shape === 'wheat') body = [9, 15, 21].map((x) => `<path d="M${x + 1} 29V12" stroke="#a08a3a" stroke-width="1.4"/><ellipse cx="${x + 1}" cy="9" rx="2.600" ry="5" fill="${hex}" stroke="${line}" stroke-width=".7"/>`).join('');
+  else if (shape === 'bread') body = `<path d="M5 20c0-6 5-10 11-10s11 4 11 10v4H5z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M10 14l2 4M16 12v5M22 14l-2 4" stroke="#f4dca0" stroke-width="1.6" stroke-linecap="round"/>`;
+  else if (shape === 'rod') body = `<path d="M5 28L25 4" stroke="${hex}" stroke-width="2.400" stroke-linecap="round"/><path d="M25 4c3 6 3 12 1 18" fill="none" stroke="#d8d8d8" stroke-width=".8"/><circle cx="26" cy="23" r="2.200" fill="#e0344a" stroke="#fff" stroke-width=".7"/><circle cx="9" cy="23" r="2.600" fill="#3a3f46"/>`;
+  else if (shape === 'can') body = `<path d="M7 12h14v14H7z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M21 15l7-5v3l-6 5" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M9 12c0-4 10-4 10 0" fill="none" stroke="${line}" stroke-width="1.6"/><path d="M28 13l2 2M28 16l2 1M27 18l2 2" stroke="#8fd0ff" stroke-width="1.200" stroke-linecap="round"/>`;
+  else if (shape === 'boat') body = `<path d="M3 17h26l-4 8H7z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M3 17h26" stroke="#c9905a" stroke-width="1.6"/><path d="M15 17V4l8 10h-8" fill="#f1ece0" stroke="${line}" stroke-width=".7"/><path d="M2 27c4 2 8-2 14 0s10-2 14 0" fill="none" stroke="#5ab0e8" stroke-width="1.400"/>`;
   else if (shape === 'sword') body = `<path d="M25.500 3.500l3 3-13.500 13.500-4.500 1.500 1.500-4.500z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M24 5l3 3" stroke="#fff" stroke-opacity=".7" stroke-width="1.2"/><path d="M8.500 15.500l8 8" stroke="#c9a35a" stroke-width="2.600" stroke-linecap="round"/><path d="M10.500 21.500l-5 5" stroke="#6a4629" stroke-width="3" stroke-linecap="round"/>`;
   else if (shape === 'armor') body = `<path d="M10 5l6 3 6-3 5 4-3 5-2-1.500V27H10V12.500L8 14 5 9z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M16 8v19M11 16h10" stroke="rgba(0,0,0,.25)" stroke-width="1"/><path d="M12 10.500l3 1.500" stroke="#fff" stroke-opacity=".8" stroke-width="1.400" stroke-linecap="round"/>`;
   else if (shape === 'axe') body = `<path d="M9 27L23 9" stroke="#6a4629" stroke-width="3" stroke-linecap="round"/><path d="M17 6c4-3 9-2 11 2l-6 7c-1-3-4-5-8-5z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M20 7c2-1 4-.500 5.500 1" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.200" stroke-linecap="round"/>`;
