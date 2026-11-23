@@ -93,3 +93,11 @@ test('الصفحة ‎/room‎: الكلام يُعرض نصًّا لا HTML، �
   for (const l of ['bn', 'es', 'fil', 'fr', 'hi', 'id', 'ml', 'ne', 'ru', 'tr', 'ur', 'zh']) assert.match(fs.readFileSync(path.join(root, 'i18n', l + '.js'), 'utf8'), /talkRoomTitle: '/, l);
   assert.equal((fs.readFileSync(path.join(root, 'js/app-03-i18n-data.js'), 'utf8').match(/talkRoomTitle: '/g) || []).length, 2, 'العربيّة والإنجليزيّة');
 });
+
+test('بطاقة «غرفة الربع» بصورتين: الفاتحة في الوضع الفاتح والداكنة في الداكن، وتتبدّل مع تبديل الوضع', () => {
+  const root = path.join(__dirname, '..'), js = fs.readFileSync(path.join(root, 'js/tool-card-images.js'), 'utf8');
+  assert.match(js, /var THEMED = \{ btnTalkRoom: 1 \};/);
+  assert.match(js, /getAttribute\('data-mode'\) === 'light'\) return '\/assets\/tool-cards\/s\/' \+ id \+ '-light\.jpg\?v=' \+ CLEAN_V/);
+  assert.match(js, /attributeFilter:\['lang', 'data-mode'\]/, 'تبديل الوضع يعيد اختيار الصورة');
+  for (const f of ['s/btnTalkRoom.jpg', 's/btnTalkRoom-light.jpg', 'clean/btnTalkRoom.jpg', 'clean/btnTalkRoom-light.jpg']) assert.ok(fs.existsSync(path.join(root, 'assets/tool-cards', f)), f);
+});

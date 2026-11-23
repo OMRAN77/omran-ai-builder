@@ -352,7 +352,7 @@ try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ typeof __swallow ==
   }
   if(!document.querySelector('script[data-omran-tool-photos]')){
     var js = document.createElement('script');
-    js.src = '/js/tool-card-images.js?v=19';
+    js.src = '/js/tool-card-images.js?v=20';
     js.async = false;
     js.setAttribute('data-omran-tool-photos', '');
     document.head.appendChild(js);

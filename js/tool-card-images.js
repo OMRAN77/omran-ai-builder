@@ -12,7 +12,13 @@
   var TOOL_PHOTOS = {};
   IDS.forEach(function(id){ TOOL_PHOTOS[id] = '/assets/tool-cards/s/' + id + '.jpg?v=' + CLEAN_V; });
   function isAr(){ return String(document.documentElement.lang || 'ar').toLowerCase().indexOf('ar') === 0; }
-  function srcFor(id){ return TOOL_PHOTOS[id]; }
+  /* v-talk-room-themes (المالك: «الصورة البيضاء حق الخلفية البيضاء والسودة حق الخلفية السودة»): بطاقة بصورتين — الفاتحة
+     (‎<id>-light.jpg‎) في الوضع الفاتح (‎html[data-mode="light"]‎)، والأصل في الداكن؛ تتبدّل فور تبديل الوضع (المراقب تحت). */
+  var THEMED = { btnTalkRoom: 1 };
+  function srcFor(id){
+    if(THEMED[id] && document.documentElement.getAttribute('data-mode') === 'light') return '/assets/tool-cards/s/' + id + '-light.jpg?v=' + CLEAN_V;
+    return TOOL_PHOTOS[id];
+  }
 
   /* v-shelf-paint-throttle (فيديو المالك ٢٨ سبتمبر — بعد ١٫٣٫١٢: صفوف كاملة تفرغ عند تمرير لوحة
      الأدوات على هواوي، بينما السهمان (طبقة تركيب مستقلّة) يبقيان مرسومين — علامة «تأخّر رسم» الموثّقة
@@ -156,7 +162,7 @@
       else upgradeButton(id, srcFor(id));
     });
   }
-  try{ new MutationObserver(function(){ applyToolPhotos(); setTimeout(applyToolPhotos, 400); setTimeout(applyToolPhotos, 1600); setTimeout(applyToolPhotos, 3200); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'tool-card-images:159'); /* بلا مراقب: تُطبَّق عند التحميل فقط */ }
+  try{ new MutationObserver(function(){ applyToolPhotos(); setTimeout(applyToolPhotos, 400); setTimeout(applyToolPhotos, 1600); setTimeout(applyToolPhotos, 3200); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang', 'data-mode'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'tool-card-images:159'); /* بلا مراقب: تُطبَّق عند التحميل فقط */ }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyToolPhotos, { once:true });
   else applyToolPhotos();
