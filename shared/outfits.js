@@ -61,6 +61,7 @@ export const OUTFITS = [
   { key: 'silverknight', pack: 'heroes', name: 'الفارس الفضّي', how: 'متاح من البداية', free: true, c: { hat: '#c9ced6', skin: '#c9ced6', shirt: '#c9ced6', pants: '#aeb6c2', shoes: '#8a929e', face: 'visor', glow: '#2a2e36', pads: '#e0e4ea', holds: 'sword', heldGlow: '#e0e4ea' } },
   { key: 'dwarf', pack: 'heroes', name: 'القزم المحارب', how: 'متاح من البداية', free: true, c: { hat: '#8a929e', skin: '#e0a880', shirt: '#6a5a4a', pants: '#4a3a2a', shoes: '#2a2016', hatShape: 'viking', hat2: '#8a929e', hat3: '#6a6e76', beard: '#8a4a22', pads: '#8a929e', holds: 'sword' } },
   { key: 'redninja', pack: 'heroes', name: 'النينجا الأحمر', how: 'متاح من البداية', free: true, c: { hat: '#1a1a1e', skin: '#e0b088', shirt: '#1e1e24', pants: '#1a1a1e', shoes: '#141418', hatShape: 'ninja', hat2: '#1a1a1e', hat3: '#d8333a', sash: '#d8333a' } },
+  { key: 'greenelf', pack: 'heroes', name: 'رامية الغابة', how: 'متاحة من البداية', free: true, c: { hat: '#4f9a3f', skin: '#f0d0b0', shirt: '#3f7a3a', pants: '#5a4a2a', shoes: '#3a2a1a', long: true, ears: true, holds: 'bow', heldCol: '#8a5a30', sash: '#6a4a2a' } },
   { key: 'witch', pack: 'heroes', name: 'الساحرة الحمرا', how: 'متاحة من البداية', free: true, c: { hat: '#2a1a16', skin: '#f0d0b0', shirt: '#a82a3a', pants: '#3a2a4a', shoes: '#2a1a1e', long: true, hatShape: 'witch', hat2: '#8a1e2a', skirt: '#a82a3a', cape: '#6a1a22' } },
   { key: 'viking', pack: 'heroes', name: 'الفايكنج', how: 'متاح من البداية', free: true, c: { hat: '#aeb6c2', skin: '#e8b898', shirt: '#7a5a3a', pants: '#5a4a3a', shoes: '#3a2a1a', hatShape: 'viking', hat2: '#aeb6c2', hat3: '#8a6a3a', beard: '#d8a050', holds: 'sword' } },
   // old magic
@@ -69,6 +70,7 @@ export const OUTFITS = [
   { key: 'stoneguard', pack: 'magic', name: 'العملاق الحجري', how: 'متاح من البداية', free: true, c: { hat: '#7a7e84', skin: '#8a8e94', shirt: '#6a6e74', pants: '#5a5e64', shoes: '#4a4e54', face: 'bot', glow: '#5fe0d0', core: '#5fe0d0' } },
   { key: 'king', pack: 'magic', name: 'الملك', how: 'متاح من البداية', free: true, c: { hat: '#6a4a2a', skin: '#e0b088', shirt: '#a82a2a', pants: '#2a3a8a', shoes: '#3a2a1a', hatShape: 'crown', beard: '#6a4a2a', cape: '#a82a2a', sash: '#f0bd3f' } },
   { key: 'queen', pack: 'magic', name: 'الملكة المحاربة', how: 'متاحة من البداية', free: true, c: { hat: '#e8c060', skin: '#f0d0b0', shirt: '#d8a040', pants: '#6a4a2a', shoes: '#3a2a1a', long: true, hatShape: 'crown', skirt: '#a8702a', holds: 'sword', heldGlow: '#f0bd3f' } },
+  { key: 'wanderer', pack: 'magic', name: 'رحّالة البوصلة', how: 'متاحة من البداية', free: true, c: { hat: '#2a1c16', skin: '#8a5a3a', shirt: '#7a5a3a', pants: '#5a4a32', shoes: '#3a2a1a', hood: '#6a4a2a', coat: '#5a3e24', sash: '#3a2a16', holds: 'compass', heldCol: '#c9903a', heldGlow: '#d8333a' } },
   { key: 'traveler', pack: 'magic', name: 'الرحّالة', how: 'متاح من البداية', free: true, c: { hat: '#2a1c16', skin: '#8a5a3a', shirt: '#7a5a3a', pants: '#5a4a3a', shoes: '#3a2a1a', cape: '#5a4a32', sash: '#3a2a1a', pack: '#6a4a2a' } },
   { key: 'worker', name: 'العامل', how: 'مهمة: اصنع أداة', c: { hat: '#e0a52e', skin: '#e0b088', shirt: '#c96a2b', pants: '#4a4f5c', shoes: '#3b2a1c', brim: true } },
   { key: 'miner', name: 'المنقّب', how: 'مهمة: اجمع 4 ألماسات من الكهف', c: { hat: '#e3c038', skin: '#e0b088', shirt: '#5a6a7a', pants: '#3b4250', shoes: '#22252c', brim: true } },
@@ -98,7 +100,7 @@ export function cleanLook(c) {
   const out = {};
   for (const k of ['hat', 'skin', 'shirt', 'pants', 'shoes', 'cape', 'skirt', 'flowers', 'tentacles', 'wings', 'pack', 'pads', 'glow', 'maskCol', 'crystals', 'hood', 'coat', 'core', 'helm', 'visor', 'ghost', 'heldGlow', 'heldCol', 'hat2', 'hat3', 'beard', 'robe', 'sash']) if (typeof c[k] === 'string' && HEX.test(c[k])) out[k] = c[k];
   if (['heart', 'visor', 'alien', 'mask', 'bubble', 'screen', 'goggles', 'helm', 'bot'].includes(c.face)) out.face = c.face;
-  if (['sword', 'blade', 'cannon', 'book', 'tablet', 'jar', 'drill', 'staff', 'lute', 'spear', 'bow'].includes(c.holds)) out.holds = c.holds;
+  if (['sword', 'blade', 'cannon', 'book', 'tablet', 'jar', 'drill', 'staff', 'lute', 'spear', 'bow', 'compass'].includes(c.holds)) out.holds = c.holds;
   if (['wizard', 'witch', 'viking', 'crown', 'nemes', 'crest', 'mushroom', 'phones', 'leaves', 'diver', 'ninja'].includes(c.hatShape)) out.hatShape = c.hatShape;
   if (c.ears) out.ears = true;
   if (c.brim) out.brim = true;
