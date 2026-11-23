@@ -43,7 +43,7 @@
 
 ## خانة Remarks في AGC (حدّها ٣٠٠ حرف — الصق هذا كما هو)
 ```
-1.3.16: only the app name changed, to "om ai" (phone and listing). The Tools panel opens on every launch: 13 tools (photo styles, video, decor, fashion, style, ads, documents, email, construction, education, Qibla, religion, feedback). Also: bottom bar > Tools.
+1.3.16: only the app name changed, to "om ai" (phone and listing). The Tools panel opens on every launch: 14 tools (photo styles, video, decor, fashion, style, ads, documents, email, construction, education, Qibla, religion, friends room, feedback). Also: bottom bar > Tools.
 ```
 
 ## Notes for review (English — full text, for a reply to the reviewer or an attachment)
@@ -91,11 +91,13 @@ Rules 1.14 and 1.15 (app information, earlier reports):
   listing and the app itself.
 
 Rule 4.1 (the app offers several types of content):
-Every time the app is launched it opens on the Tools panel (no setting needed). It has 13 tools in three groups:
+Every time the app is launched it opens on the Tools panel (no setting needed). It has 14 tools in three groups:
   Creativity: Photo styles, Video Maker, Design AI (interior and exterior decor), Fashion AI, Style AI.
   Business: Ad Studio, Document Assistant, Smart Email Assistant, Construction & Contracting Design.
   Daily life: Qibla & Prayer (prayer times and Qibla compass), Education (curriculum lessons, lecture summaries,
-  homework help), Religious Insights (verse explanation and hadith search), We value your feedback.
+  homework help), Religious Insights (verse explanation and hadith search), Friends room (a private voice and text
+  room: a signed-in user opens it and shares a 4-digit code or link; a friend joins only when the room owner lets them in;
+  nothing is recorded or kept), We value your feedback.
 The home screen also has an AI chat by text or voice, with image and document attachments.
 Every tool runs inside the app, full screen, without a browser.
 This also holds on a phone that ran the app in an earlier review. After closing the panel,
@@ -112,6 +114,8 @@ How to test each feature quickly:
 - Construction: Tools > Construction & Contracting Design > describe the project in one line > Generate.
 - Education: Tools > Education > "Lesson from curriculum" or upload a lecture.
 - Qibla & Prayer: Tools > Qibla & Prayer (allow location).
+- Friends room: Tools > Friends room > Open a room (signed in), then open the link on a second phone, ask to join and let
+  it in from the first phone (allow the microphone to talk).
 
 Test account: (username) / (password)
 ```
@@ -132,9 +136,9 @@ om ai، الإصدار 1.3.16 — تحديث لـ1.3.15 التي وافقتم ع
 1.3.15 يفتح منتقي الملفّات في كلّ الأدوات (مساعد المستندات، الأزياء، الديكور، الستايل، أنماط الصور، التعليم، مرفقات المحادثة)،
 ويصغّر صور الكاميرا الكبيرة قبل إرسالها، ويطلب الموقع للقبلة والمواقيت، ويحفظ الملفّات في «التنزيلات».
 الحزمة نفسها، الإصدار 1.3.16: اسمها على الهاتف «om ai» كاسم المتجر واسمها داخل التطبيق.
-4.1: في كلّ تشغيل للتطبيق يفتح على مربّع الأدوات: ١٣ أداة في ثلاث مجموعات
+4.1: في كلّ تشغيل للتطبيق يفتح على مربّع الأدوات: ١٤ أداة في ثلاث مجموعات
 (إبداع: أنماط الصور، صانع الفيديو، ديكور AI، أزياء AI، ستايل AI · أعمال: استوديو الإعلانات، مساعد المستندات، مساعد البريد الذكي،
-تصاميم المقاولات والبناء · حياة يوميّة: القبلة والمواقيت، التعليم، التفسير الدينيّ، رأيك يهمّنا)، ومعها محادثة بالصوت والكتابة.
+تصاميم المقاولات والبناء · حياة يوميّة: القبلة والمواقيت، التعليم، التفسير الدينيّ، غرفة الربع (غرفة خاصّة بالصوت والكتابة يفتحها صاحبها بحسابه، ولا يدخلها أحد إلّا بموافقته، ولا شيء يُسجَّل)، رأيك يهمّنا)، ومعها محادثة بالصوت والكتابة.
 وكذلك على هاتف شغّله في مراجعة سابقة. بعد إغلاق المربّع يعيده زرّ «الأدوات» (أيقونة المربّعات في الشريط السفليّ).
 11.4: لا عملات رقميّة ولا صرف ولا أسواق أسهم في هذه الحزمة.
 ```

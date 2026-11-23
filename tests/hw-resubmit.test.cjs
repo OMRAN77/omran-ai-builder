@@ -30,11 +30,11 @@ function visibleHuaweiTools() {
 // الاسم الإنجليزيّ في الواجهة (en) كما تكتبه الملاحظات
 const EN = { btnPortraitStyle: 'Photo styles', btnVideoMaker: 'Video Maker', btnDesignAI: 'Design AI', btnFashionAI: 'Fashion AI', btnStudioAI: 'Style AI',
   btnAdStudio: 'Ad Studio', btnDocs: 'Document Assistant', btnEmailAssist: 'Smart Email Assistant', btnConstruction: 'Construction & Contracting Design',
-  btnQibla: 'Qibla & Prayer', btnOmranEdu: 'Education', btnReligion: 'Religious Insights', btnFeedback: 'We value your feedback' };
+  btnQibla: 'Qibla & Prayer', btnOmranEdu: 'Education', btnReligion: 'Religious Insights', btnTalkRoom: 'Friends room', btnFeedback: 'We value your feedback' };
 // ما يدلّ على أداة مخفيّة في نصّ المتجر
 // (v-hw-resubmit-2: والصينيّة — المراجع على هاتف صينيّ)
 const HIDDEN_WORDS = { btnOmranTV: /\bTV\b|تلفزيون|قنوات|电视/, btnCV: /\bCV\b|سيرة|简历/, btnExpense: /expense|مصاريف|开支|支出/i, btnQuickTemplates: /suggestion|اقتراحات|建议/i,
-  btnGov: /government|حكوم|政府/i, btnStocks: /stock|أسهم|股票|股市/i, btnTalkRoom: /friends room|غرفة الربع|好友房间/i };
+  btnGov: /government|حكوم|政府/i, btnStocks: /stock|أسهم|股票|股市/i };
 const BANNED = /official|trusted|preferred|featured|\bbest\b|\btop\b|#1|number one|رسمي|موثوق|مفضل|مفضّل|مميز|مميّز|الأفضل|官方|可靠|推荐|最佳|最好|精选|第一|最受欢迎/i;
 
 const notes = read('store/huawei/REVIEW-NOTES.md');
@@ -44,9 +44,9 @@ const arToolList = notes.slice(notes.indexOf('4.1: في كلّ تشغيل'), not
 
 test('١. الملاحظات تعدّ الأدوات الظاهرة في حزمة هواوي بعددها وأسمائها، ولا أداة مخفيّة', () => {
   const { visible, hidden } = visibleHuaweiTools();
-  assert.equal(visible.length, 13, 'الأدوات الظاهرة اليوم ١٣ — تغيّر العدد؟ حدّث REVIEW-NOTES واللقطات');
+  assert.equal(visible.length, 14, 'الأدوات الظاهرة اليوم ١٤ (v-talk-room: غرفة الربع) — تغيّر العدد؟ حدّث REVIEW-NOTES واللقطات');
   assert.ok(enToolList.includes('It has ' + visible.length + ' tools in three groups'), 'العدد في النصّ الإنجليزيّ');
-  assert.ok(arToolList.includes('١٣ أداة في ثلاث مجموعات'), 'العدد في النصّ العربيّ');
+  assert.ok(arToolList.includes('١٤ أداة في ثلاث مجموعات'), 'العدد في النصّ العربيّ');
   for (const id of visible) {
     assert.ok(EN[id], 'أداة ظاهرة جديدة بلا اسم في الملاحظات: ' + id);
     assert.ok(enToolList.includes(EN[id]), 'الملاحظات تذكر ' + EN[id]);
@@ -209,8 +209,8 @@ test('٧. المراجعة العدائيّة: أوّل شاشة صينيّة ب
   // خانة Remarks: ٣٠٠ حرف على الأكثر، الأدوات الـ١٣ بأسمائها، وأين زرّ الأدوات، وأنّ المربّع يُفتح في كلّ تشغيل (v-hw-tools-home)
   const r = (notes.match(/## خانة Remarks[^\n]*\n```\n([^\n]+)\n```/) || [])[1] || '';
   assert.ok(r.length > 200 && r.length <= 300, 'Remarks ≤ ٣٠٠: ' + r.length);
-  const list = (r.match(/13 tools \(([^)]*)\)/) || [])[1] || '';
-  assert.equal(list.split(',').length, 13, 'الأدوات الـ١٣ في القوس');
+  const list = (r.match(/14 tools \(([^)]*)\)/) || [])[1] || '';
+  assert.equal(list.split(',').length, 14, 'الأدوات الـ١٤ في القوس (v-talk-room)');
   assert.ok(r.includes('bottom bar > Tools'), 'مكان زرّ الأدوات');
   assert.ok(r.includes('opens on every launch'), 'العرض في كلّ تشغيل لا مرّة لكلّ جهاز');
   assert.ok(r.startsWith('1.3.16: only the app name changed, to "om ai" (phone and listing).'), 'v-hw-om-ai: Remarks تبدأ بالتغيير الوحيد في 1.3.16 — الاسم');
