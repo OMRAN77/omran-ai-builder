@@ -133,7 +133,7 @@ export function createLife(o) {
       const hungry = v.values.food != null && v.values.food < 95;
       if (v.values.hp >= 100 && !hungry) { play.notice('شبعان وصحتك كاملة.', false, 1600); return false; }
       if (v.values.food != null) v.values.food = Math.min(100, v.values.food + (item.eat || 40));
-      v.values.hp = Math.min(100, v.values.hp + (v.values.food != null ? 10 : 30)); item.n--; st.eaten++; play.setSlot(st.sel, item.n > 0 ? item : EMPTY);
+      v.values.hp = Math.min(100, v.values.hp + (item.heal || (v.values.food != null ? 10 : 30))); item.n--; st.eaten++; play.setSlot(st.sel, item.milk ? kitItem(K.BUCKET, 1) : item.n > 0 ? item : EMPTY);
       if (play.sound) (play.sound.eat || play.sound.place)();
       return true;
     }
@@ -226,6 +226,14 @@ export function createLife(o) {
     if (!e.k.still && (e.k.swim ? wet(nx, e.y, nz) : groundAt(nx, nz, e.y + 1) !== null)) { e.x = nx; e.z = nz; }
     if (e.hp <= 0) { felled(e); credit(kindOf(e.k), dropsOf(e.k)); }
   }
+  /** Something else than the hand struck creature e (an arrow): as a blow of `pow`, whoever moves the creatures decides. */
+  function hurtEntity(e, pow) {
+    if (!e || e.dead) return;
+    e.hurt = 0.25;
+    if (share.mode === 'guest') { if (share.send) share.send(null, { t: 'hit', e: e.nid, pow }); return; }
+    e.hp -= pow; e.flee = e.k.kind === 'animal' ? 5 : 0; e.love = 0; e.tamed = false; e.ridden = false;
+    if (e.hp <= 0) { felled(e); credit(kindOf(e.k), dropsOf(e.k)); }
+  }
   /** Host: a guest struck creature nid. */
   function remoteHit(nid, pow, from) {
     const e = ents.find((q) => q.nid === nid);
@@ -288,6 +296,7 @@ export function createLife(o) {
     for (let i = ents.length - 1; i >= 0; i--) {
       const e = ents[i], k = e.k;
       e.t += dt; e.hurt -= dt;
+      if (e.ridden) { e.x = st.pos.x; e.z = st.pos.z; e.y = st.pos.y; e.yaw = st.yaw + Math.PI; e.moving = st.moving > 0.5; e.flee = 0; pose(e, dt); continue; }     // carrying the player
       if (e.dead) { e.dead += dt; e.obj.rotation.z = Math.min(1.45, e.dead * 5); e.obj.scale.setScalar(e.obj.userData.baseScale * Math.max(0.01, 1 - Math.max(0, e.dead - 0.5) * 2.2)); if (e.dead > 0.95) retire(e); continue; }
       if (guest) {      // glide to where the host says it is
         const f = Math.min(1, 10 * dt);
@@ -353,13 +362,13 @@ export function createLife(o) {
     if (aimed && camera) {
       _p.set(aimed.x + off.x, aimed.y + aimed.k.height + (aimed.lift || 0) + (aimed.tamed ? 0.75 : 0.35), aimed.z + off.z).project(camera);
       tag.hidden = _p.z >= 1;
-      tagName.textContent = aimed.k.name + (aimed.love > 0 ? ' · يحبك' : aimed.tamed ? ' · جوعان' : ''); tagBar.style.width = Math.max(0, aimed.hp / aimed.k.hp * 100).toFixed(0) + '%';
+      tagName.textContent = (aimed.customName ? aimed.customName + ' · ' : '') + aimed.k.name + (aimed.love > 0 ? ' · يحبك' : aimed.tamed ? ' · جوعان' : ''); tagBar.style.width = Math.max(0, aimed.hp / aimed.k.hp * 100).toFixed(0) + '%';
       tag.style.transform = `translate(${((_p.x * 0.5 + 0.5) * window.innerWidth).toFixed(1)}px, ${((-_p.y * 0.5 + 0.5) * window.innerHeight).toFixed(1)}px) translate(-50%, -100%)`;
     } else tag.hidden = true;
   }
   /** A shared game: a blow from a monster the host moves lands on this player; a kill this player made is counted here. */
   function hurtPlayer(d) { const v = o.vitals && o.vitals(); if (v && d > 0) v.hurt(Math.min(40, d) * (1 - armor())); }
-  const api = { update, use, spawnAt, ents, kinds: o.kinds, share, setShare, snapshot, applySnapshot, remoteHit, remoteFeed, hurtPlayer, credit, waterAt, get armor() { return armor(); }, get xp() { return xp; }, get aimed() { return aimed; } };
+  const api = { update, use, spawnAt, ents, kinds: o.kinds, share, setShare, snapshot, applySnapshot, remoteHit, remoteFeed, hurtEntity, hurtPlayer, credit, waterAt, get armor() { return armor(); }, get xp() { return xp; }, get aimed() { return aimed; } };
   window.__GAME_LIFE.life = api;
   return api;
 }

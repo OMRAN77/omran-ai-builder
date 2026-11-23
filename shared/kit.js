@@ -27,7 +27,9 @@ const nameOfColor = Object.fromEntries(COLORS.map(([k, n]) => [k, n]));
 
 /** Block ids of the kit. */
 export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, ROCK_COAL: 177, ROCK_GOLD: 178, ROCK_DIAMOND: 179, MEAT: 200, FUR: 201, FEATHER: 202, CHICKEN: 203, FISH: 204, SHRIMP: 205, COAL: 206, PEARL: 207, SEAWEED: 208, SEEDS: 209, FURCOAT: 228, ORE: 230, GEM: 231, DATES: 232, WOOL: 233, WHEAT: 234, BREAD: 235, EMERALD: 236, RUBY: 237, AMETHYST: 238,
-  CROP0: 180, CROP1: 181, CROP2: 182, CROP3: 183, ROCK_EMERALD: 184, ROCK_RUBY: 185, ROCK_AMETHYST: 186, EMERALD_BLOCK: 187, RUBY_BLOCK: 188, AMETHYST_BLOCK: 189, LUCKY: 190, PORTAL_FRAME: 191, PORTAL: 192,
+  CROP0: 180, CROP1: 181, CROP2: 182, CROP3: 183, ROCK_EMERALD: 184, ROCK_RUBY: 185, ROCK_AMETHYST: 186, EMERALD_BLOCK: 187, RUBY_BLOCK: 188, AMETHYST_BLOCK: 189, LUCKY: 190, PORTAL_FRAME: 191, PORTAL: 192, FARMLAND: 193, CARROT0: 194, POTATO0: 198, FURNACE: 202,
+  IRON: 260, APPLE: 276, STEAK: 277, GOLDEN_APPLE: 278, CARROT: 279, POTATO: 280, BAKED_POTATO: 281, COOKED_FISH: 282, BUCKET: 283, BUCKET_WATER: 284, BUCKET_MILK: 285,
+  SHEARS: 286, LEAD: 287, SADDLE: 288, COMPASS: 289, CLOCK: 290, BOW: 291, ARROW: 292, PEARL_JUMP: 293, FLINT: 294, BOOK: 295, NAME_TAG: 296, SPYGLASS: 297, SHIELD: 274, WINGS: 275,
   ROD: 247, CAN: 248, BOAT: 249, HAMOUR: 250, SAFI: 251, KANAD: 252, SHERI: 253, GOLDFISH: 254, SHELL: 255 };
 /** Block definitions, in the same shape the worlds use (see voxel.js). */
 export const KIT_BLOCKS = {};
@@ -68,6 +70,16 @@ good(K.WOOL, 'wool', 'صوف', 'fur', '#f1ede4');
 good(K.COAL, 'coal', 'فحم', 'ore', '#17181b');
 good(K.PEARL, 'pearl', 'لؤلؤة', 'pearl', '#f3ecf7');
 // the catch of the rod: each fish its own colour and worth
+// food, more: from the trees, the furnace and the field
+good(K.APPLE, 'apple', 'تفاحة', 'apple', '#d8333a', { use: 'eat', eat: 18, feed: 'plants' });
+good(K.STEAK, 'steak', 'لحم مشوي', 'meat', '#7a3a1e', { use: 'eat', eat: 60, feed: 'meat' });
+good(K.GOLDEN_APPLE, 'golden-apple', 'تفاحة ذهبية', 'apple', '#f0bd3f', { use: 'eat', eat: 50, heal: 100 });
+good(K.CARROT, 'carrot', 'جزرة', 'carrot', '#ee8a2a', { use: 'eat', eat: 15, feed: 'plants', plant: K.CARROT0 });
+good(K.POTATO, 'potato', 'بطاطس', 'potato', '#c9a060', { use: 'eat', eat: 8, plant: K.POTATO0 });
+good(K.BAKED_POTATO, 'baked-potato', 'بطاطس مشوية', 'potato', '#a8702a', { use: 'eat', eat: 40 });
+good(K.COOKED_FISH, 'cooked-fish', 'سمك مشوي', 'fish', '#a8602a', { use: 'eat', eat: 45 });
+good(K.IRON, 'iron', 'سبيكة حديد', 'ingot', '#c9ced6');
+good(K.ARROW, 'arrow', 'سهم', 'arrow', '#8a5a30');
 good(K.HAMOUR, 'hamour', 'هامور', 'fish', '#a0603a', { use: 'eat', eat: 34, feed: 'meat' });
 good(K.SAFI, 'safi', 'صافي', 'fish', '#8a9a6a', { use: 'eat', eat: 26, feed: 'meat' });
 good(K.KANAD, 'kanad', 'كنعد', 'fish', '#6a8aa8', { use: 'eat', eat: 32, feed: 'meat' });
@@ -92,6 +104,13 @@ add(K.ROCK_AMETHYST, { tiles: 'x:rock:#a86ae8', drop: K.AMETHYST, hard: 1.0, lig
 add(K.EMERALD_BLOCK, { tiles: 'x:gem:#3fd07a' }, { key: 'emerald-block', name: 'مكعب زمرّد', group: 'gem', icon: ['cube', '#3fd07a', 'shine'] });
 add(K.RUBY_BLOCK, { tiles: 'x:gem:#e0344a' }, { key: 'ruby-block', name: 'مكعب ياقوت', group: 'gem', icon: ['cube', '#e0344a', 'shine'] });
 add(K.AMETHYST_BLOCK, { tiles: 'x:gem:#a86ae8', light: '#a86ae8' }, { key: 'amethyst-block', name: 'مكعب جمشت', group: 'gem', icon: ['cube', '#a86ae8', 'shine'] });
+// the farm, more: tilled soil, carrots and potatoes in four steps, and a furnace that smelts and cooks
+add(K.FARMLAND, { tiles: { top: 'x:farmland', side: 'x:soil', bottom: 'x:soil' }, kind: 'slab', height: 0.9375, hard: 0.3 }, { key: 'farmland', name: 'أرض محروثة', group: 'farm', icon: ['slab', '#6a4a2a'] });
+for (let i = 0; i < 4; i++) {
+  KIT_BLOCKS[K.CARROT0 + i] = { tiles: 'x:veg:c' + i, kind: 'cross', height: 0.3 + i * 0.16, drop: i === 3 ? K.CARROT : K.CARROT, crop: i, veg: 'carrot' }; INFO[K.CARROT0 + i] = { id: K.CARROT0 + i, key: 'carrot-crop-' + i, name: i === 3 ? 'جزر ناضج' : 'زرع جزر', group: null };
+  KIT_BLOCKS[K.POTATO0 + i] = { tiles: 'x:veg:p' + i, kind: 'cross', height: 0.3 + i * 0.16, drop: K.POTATO, crop: i, veg: 'potato' }; INFO[K.POTATO0 + i] = { id: K.POTATO0 + i, key: 'potato-crop-' + i, name: i === 3 ? 'بطاطس ناضجة' : 'زرع بطاطس', group: null };
+}
+add(K.FURNACE, { tiles: { top: 'x:furnace:top', side: 'x:furnace:side', bottom: 'x:furnace:top' }, light: '#ff8a3a' }, { key: 'furnace', name: 'فرن', group: 'home', icon: ['furnace', '#7a7a80'] });
 // wonders: a lucky box (opened, it gives one rare thing), and the frame and light of a portal to another world
 add(K.LUCKY, { tiles: { top: 'x:lucky:top', side: 'x:lucky:side', bottom: 'x:wood' }, light: '#ffd76a' }, { key: 'lucky', name: 'صندوق الحظ', group: 'home', icon: ['lucky', '#7a3fc0'] });
 add(K.PORTAL_FRAME, { tiles: 'x:rock:#2fe0c0', hard: 2.5 }, { key: 'portal-frame', name: 'حجر البوابة', group: 'gem', icon: ['ore', '#2fe0c0'] });
@@ -105,21 +124,50 @@ const gear = (id, key, name, icon, hex, item) => { INFO[id] = { id, key, name, g
 gear(212, 'sword-stone', 'سيف حجر', 'sword', STONE, { weapon: 4.5, model: 'sword', tier: STONE });
 gear(213, 'sword-gold', 'سيف ذهب', 'sword', GOLD, { weapon: 5.5, model: 'sword', tier: GOLD });
 gear(210, 'sword', 'سيف ألماس', 'sword', DIAM, { weapon: 7, model: 'sword', tier: DIAM });
-gear(214, 'axe-stone', 'فأس حجر', 'axe', STONE, { weapon: 4, speed: 1.3, model: 'axe', tier: STONE });
-gear(215, 'axe-diamond', 'فأس ألماس', 'axe', DIAM, { weapon: 6, speed: 1.6, model: 'axe', tier: DIAM });
-gear(216, 'pick-stone', 'معول حجر', 'pick', STONE, { speed: 1.6, model: 'pick', tier: STONE });
-gear(217, 'pick-diamond', 'معول ألماس', 'pick', DIAM, { speed: 2.4, model: 'pick', tier: DIAM });
+gear(214, 'axe-stone', 'فأس حجر', 'axe', STONE, { weapon: 4, speed: 1.3, dig: 'wood', model: 'axe', tier: STONE });
+gear(215, 'axe-diamond', 'فأس ألماس', 'axe', DIAM, { weapon: 6, speed: 2.2, dig: 'wood', model: 'axe', tier: DIAM });
+gear(216, 'pick-stone', 'معول حجر', 'pick', STONE, { speed: 1.6, dig: 'stone', model: 'pick', tier: STONE });
+gear(217, 'pick-diamond', 'معول ألماس', 'pick', DIAM, { speed: 2.6, dig: 'stone', model: 'pick', tier: DIAM });
 // clothing: `wear` is the place on the body, `prot` the share of every blow it takes away (the four pieces add up)
 [['head', 'خوذة', 'helmet', 0.16], ['chest', 'صدرية', 'armor', 0.4], ['legs', 'سروال', 'legs', 0.28], ['feet', 'حذاء', 'boots', 0.16]].forEach(([wear, name, icon, share], i) => {
   gear(224 + i, 'gold-' + wear, name + ' ذهب', icon, GOLD, { use: 'wear', wear, prot: +(share * 0.3).toFixed(3) });
   gear(i === 1 ? 211 : 220 + i, 'diamond-' + wear, name + ' ألماس', icon, DIAM, { use: 'wear', wear, prot: +(share * 0.5).toFixed(3) });
 });
 gear(K.FURCOAT, 'fur-coat', 'معطف فرو', 'armor', '#b08a62', { use: 'wear', wear: 'chest', prot: 0.07, warm: true });
-const gadget = (id, key, name, icon, hex, item) => { INFO[id] = { id, key, name, group: id >= 247 && id <= 249 ? 'farm' : 'gadget', icon: [icon, hex], item: { n: 1, tool: true, ...item } }; };
+const gadget = (id, key, name, icon, hex, item) => { INFO[id] = { id, key, name, group: (id >= 247 && id <= 249) || (id >= 283 && id <= 288) ? 'farm' : id === 291 || id === 293 ? 'gear' : 'gadget', icon: [icon, hex], item: { n: 1, tool: true, ...item } }; };
 // the rod, the watering can and the boat: the farm and the sea
 gadget(K.ROD, 'rod', 'سنارة', 'rod', '#8a5a30', { use: 'fish' });
 gadget(K.CAN, 'can', 'مرشّة ماء', 'can', '#5a8ab0', { use: 'water', water: 0 });
 gadget(K.BOAT, 'boat', 'قارب', 'boat', '#8a5a30', { use: 'boat' });
+// more things to carry: each does its own job with the place button
+gadget(K.BUCKET, 'bucket', 'دلو', 'bucket', '#9aa0a8', { use: 'bucket', model: 'bucket', tier: '#9aa0a8' });
+gadget(K.BUCKET_WATER, 'bucket-water', 'دلو ماي', 'bucket', '#3f97dc', { use: 'bucket', model: 'bucket', tier: '#3f97dc' });
+gadget(K.BUCKET_MILK, 'bucket-milk', 'دلو حليب', 'bucket', '#f4f4f0', { use: 'eat', eat: 20, milk: true, model: 'bucket', tier: '#f4f4f0' });
+gadget(K.SHEARS, 'shears', 'مقص', 'shears', '#c9ced6', { use: 'shears' });
+gadget(K.LEAD, 'lead', 'حبل قيادة', 'lead', '#c9a35a', { use: 'lead' });
+gadget(K.SADDLE, 'saddle', 'سرج', 'saddle', '#7a3f1e', { use: 'saddle' });
+gadget(K.COMPASS, 'compass', 'بوصلة', 'compass', '#c33d2e', { gadget: 'compass' });
+gadget(K.CLOCK, 'clock', 'ساعة', 'clock', '#f0bd3f', { gadget: 'clock' });
+gadget(K.BOW, 'bow', 'قوس', 'bow', '#8a5a30', { use: 'bow', model: 'bow', tier: '#8a5a30' });
+gadget(K.PEARL_JUMP, 'jump-pearl', 'لؤلؤة القفزة', 'pearl', '#3fd0b0', { use: 'pearl', tool: false, n: 4 });
+gadget(K.FLINT, 'flint', 'قدّاحة', 'flint', '#5a5a60', { use: 'flint' });
+gadget(K.BOOK, 'book', 'دفتر', 'book', '#7a3f2a', { use: 'book' });
+gadget(K.NAME_TAG, 'name-tag', 'بطاقة اسم', 'tag', '#e8d8b0', { use: 'name' });
+gadget(K.SPYGLASS, 'spyglass', 'منظار', 'spyglass', '#c9a35a', { use: 'zoom', model: 'spyglass', tier: '#c9a35a' });
+// the iron tier and the tools that were missing: each tool digs fast only what it is for (dig: what kind of block)
+const IRONC = '#c9ced6';
+gear(261, 'sword-iron', 'سيف حديد', 'sword', IRONC, { weapon: 6, model: 'sword', tier: IRONC });
+gear(262, 'pick-iron', 'معول حديد', 'pick', IRONC, { speed: 2, dig: 'stone', model: 'pick', tier: IRONC });
+gear(263, 'axe-iron', 'فأس حديد', 'axe', IRONC, { weapon: 5, speed: 1.6, dig: 'wood', model: 'axe', tier: IRONC });
+gear(264, 'shovel-stone', 'مجرفة حجر', 'shovel', STONE, { speed: 1.8, dig: 'soft', model: 'shovel', tier: STONE });
+gear(265, 'shovel-iron', 'مجرفة حديد', 'shovel', IRONC, { speed: 2.4, dig: 'soft', model: 'shovel', tier: IRONC });
+gear(266, 'shovel-diamond', 'مجرفة ألماس', 'shovel', DIAM, { speed: 3.2, dig: 'soft', model: 'shovel', tier: DIAM });
+gear(267, 'hoe-stone', 'معزقة حجر', 'hoe', STONE, { use: 'till', model: 'hoe', tier: STONE });
+gear(268, 'hoe-iron', 'معزقة حديد', 'hoe', IRONC, { use: 'till', model: 'hoe', tier: IRONC });
+gear(269, 'hoe-diamond', 'معزقة ألماس', 'hoe', DIAM, { use: 'till', model: 'hoe', tier: DIAM });
+[['head', 'خوذة', 'helmet', 0.16], ['chest', 'صدرية', 'armor', 0.4], ['legs', 'سروال', 'legs', 0.28], ['feet', 'حذاء', 'boots', 0.16]].forEach(([wear, name, icon, share], i) => gear(270 + i, 'iron-' + wear, name + ' حديد', icon, IRONC, { use: 'wear', wear, prot: +(share * 0.4).toFixed(3) }));
+gear(K.SHIELD, 'shield', 'درع يد', 'shield', '#8a5a30', { use: 'wear', wear: 'off', prot: 0.2, model: 'shield', tier: IRONC });
+gear(K.WINGS, 'wings', 'أجنحة', 'wings', '#b8c8e8', { use: 'wear', wear: 'chest', prot: 0.04, glide: true });
 // gadgets: carried things that do something. `gadget` works while the thing is in the hand (or the other hand); `use` works on the place button
 gadget(240, 'detector', 'كاشف الكنوز', 'detector', '#e3c038', { gadget: 'detector' });
 gadget(241, 'camera', 'كاميرا', 'camera', '#3a3f4a', { use: 'camera' });
@@ -247,6 +295,30 @@ const portalTex = () => T('portal', 128, (c, s) => {
   c.fillStyle = g; c.fillRect(0, 0, s, s); const r = rnd(77); c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 2;
   for (let i = 0; i < 8; i++) { c.beginPath(); c.arc(s / 2, s / 2, 10 + i * 8 + r() * 4, r() * 6, r() * 6 + 2); c.stroke(); }
 });
+const soilTex = (top) => T('soil' + (top ? 't' : ''), 128, (c, s) => {
+  c.fillStyle = '#6a4a2a'; c.fillRect(0, 0, s, s); grain(c, s, 21, 220, 30, 120);
+  if (top) { c.fillStyle = 'rgba(30,18,8,.55)'; for (let i = 0; i < 4; i++) c.fillRect(0, 10 + i * 32, s, 9); c.fillStyle = 'rgba(160,120,70,.35)'; for (let i = 0; i < 4; i++) c.fillRect(0, 20 + i * 32, s, 4); }
+  bevel(c, s, 6, 0.25);
+});
+const vegTex = (kind, stage) => T('veg' + kind + stage, 64, (c, s) => {
+  c.clearRect(0, 0, s, s);
+  const r = rnd(60 + stage + (kind === 'c' ? 0 : 9)), h = s * (0.25 + stage * 0.17);
+  for (let i = 0; i < 7; i++) {
+    const x = 6 + i * 8.5 + (r() - 0.5) * 3, top = s - h * (0.7 + r() * 0.3);
+    c.strokeStyle = kind === 'c' ? '#4fa83a' : '#3f8a3a'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x, s); c.lineTo(x, top); c.stroke();
+    c.fillStyle = kind === 'c' ? '#5fbf4a' : '#4a9a3f';
+    if (kind === 'c') { for (let k = 0; k < 3; k++) { c.beginPath(); c.ellipse(x + (k - 1) * 3, top + k * 3, 1.6, 4.5, (k - 1) * 0.5, 0, 7); c.fill(); } }
+    else { c.beginPath(); c.ellipse(x, top + 3, 4.5, 3.2, 0, 0, 7); c.fill(); }
+    if (stage === 3) { c.fillStyle = kind === 'c' ? '#ee8a2a' : '#c9a060'; if (kind === 'c') { c.beginPath(); c.moveTo(x - 2.5, s); c.lineTo(x + 2.5, s); c.lineTo(x, s - 9); c.closePath(); c.fill(); } else { c.beginPath(); c.ellipse(x, s - 3, 3.5, 2.6, 0, 0, 7); c.fill(); } }
+  }
+}, {});
+const furnaceTex = (top) => T('furnace' + (top ? 't' : 's'), 128, (c, s) => {
+  c.fillStyle = '#7a7a80'; c.fillRect(0, 0, s, s); grain(c, s, 33, 260, 60, 200);
+  c.strokeStyle = 'rgba(30,30,34,.6)'; c.lineWidth = 3; for (let y = 0; y < s; y += 32) { c.beginPath(); c.moveTo(0, y); c.lineTo(s, y); c.stroke(); for (let x = (y / 32) % 2 ? 16 : 0; x < s; x += 32) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + 32); c.stroke(); } }
+  if (!top) { c.fillStyle = '#1e1e22'; c.fillRect(s * 0.25, s * 0.45, s * 0.5, s * 0.38); const g = c.createLinearGradient(0, s * 0.83, 0, s * 0.55); g.addColorStop(0, '#ffb84a'); g.addColorStop(1, 'rgba(255,90,30,0)'); c.fillStyle = g; c.fillRect(s * 0.28, s * 0.5, s * 0.44, s * 0.32); }
+  bevel(c, s, 8, 0.3);
+});
 const torchTex = () => T('torchk', 128, (c, s) => {
   c.clearRect(0, 0, s, s);
   c.fillStyle = '#5a3a22'; c.fillRect(s / 2 - 7, s * 0.42, 14, s * 0.58); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(s / 2 + 2, s * 0.42, 5, s * 0.58);
@@ -292,6 +364,10 @@ export function kitMaterial(tile) {
   else if (kind === 'pillow') m = std({ map: pillowTex() });
   else if (kind === 'lucky') m = std({ map: luckyTex(arg === 'top'), emissive: 0x3a1a6a, emissiveIntensity: 0.4, roughness: 0.5 });
   else if (kind === 'portal') m = new THREE.MeshBasicMaterial({ map: portalTex(), transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, fog: false });
+  else if (kind === 'farmland') m = std({ map: soilTex(true) });
+  else if (kind === 'soil') m = std({ map: soilTex(false) });
+  else if (kind === 'veg') m = std({ map: vegTex(arg[0], +arg[1]), alphaTest: 0.4, side: THREE.DoubleSide, roughness: 1 });
+  else if (kind === 'furnace') m = std({ map: furnaceTex(arg === 'top'), emissive: arg === 'top' ? 0x000000 : 0x6a2a08, emissiveMap: arg === 'top' ? null : furnaceTex(false), emissiveIntensity: arg === 'top' ? 0 : 0.5 });
   else if (kind === 'crop') m = std({ map: cropTex(+arg), alphaTest: 0.4, side: THREE.DoubleSide, roughness: 1 });
   else if (kind === 'gem') m = std({ map: gemTex(arg), color: 0xffffff, metalness: 0.2, roughness: 0.18, emissive: new THREE.Color(arg), emissiveIntensity: 0.25 });
   else if (kind === 'quilt') m = std({ map: quiltTex(), color: arg });
@@ -325,6 +401,27 @@ function svgIcon([shape, hex, extra]) {
   else if (shape === 'feather') body = `<path d="M26 4c-10 1-17 8-18 19l3 1c9-2 16-9 15-20z" fill="${hex}" stroke="rgba(0,0,0,.45)" stroke-width=".9"/><path d="M5 28L24 7" stroke="#8d949c" stroke-width="1.400" stroke-linecap="round"/><path d="M12 20l-3-3M16 16l-4-3M20 12l-4-2M13 20l5 1M17 16l5 0" stroke="rgba(0,0,0,.2)" stroke-width="1"/>`;
   else if (shape === 'pearl') body = `<circle cx="16" cy="16" r="10" fill="${hex}" stroke="rgba(0,0,0,.4)" stroke-width=".9"/><path d="M10 14a7 7 0 0 1 5-5" fill="none" stroke="#fff" stroke-width="2.200" stroke-linecap="round"/><circle cx="20" cy="20" r="3" fill="#d9c8ea" opacity=".6"/>`;
   else if (shape === 'lucky') body = cube(6) + '<path d="M5 15l11 6 11-6M16 21v8" fill="none" stroke="#f0bd3f" stroke-width="2"/><path d="M16 4l1.400 3 3.200.400-2.300 2.200.600 3.200L16 11.300l-2.900 1.500.600-3.200-2.300-2.200 3.200-.400z" fill="#fff3c4"/>';
+  else if (shape === 'shovel') body = `<path d="M8 28L22 9" stroke="#6a4629" stroke-width="2.800" stroke-linecap="round"/><path d="M19 4l9 5-4 5c-3 1-6-1-7-4z" fill="${hex}" stroke="${line}" stroke-width=".8"/>`;
+  else if (shape === 'hoe') body = `<path d="M8 28L22 8" stroke="#6a4629" stroke-width="2.800" stroke-linecap="round"/><path d="M15 6h11v4l-3 1-1-2h-7z" fill="${hex}" stroke="${line}" stroke-width=".8"/>`;
+  else if (shape === 'shield') body = `<path d="M16 3l11 4v8c0 7-5 11-11 14C10 26 5 22 5 15V7z" fill="${hex}" stroke="${line}" stroke-width=".9"/><path d="M16 5.500l9 3.300v6.500c0 5.500-4 9-9 11.500-5-2.500-9-6-9-11.500V8.800z" fill="none" stroke="#c9ced6" stroke-width="1.600"/><circle cx="16" cy="15" r="3.200" fill="#c9ced6" stroke="rgba(0,0,0,.35)" stroke-width=".7"/>`;
+  else if (shape === 'wings') body = `<path d="M15 8C9 6 4 9 3 15c4-2 7-1 9 1-3 0-6 2-7 5 4-2 7-1 10 1z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M17 8c6-2 11 1 12 7-4-2-7-1-9 1 3 0 6 2 7 5-4-2-7-1-10 1z" fill="${hex}" stroke="${line}" stroke-width=".8"/>`;
+  else if (shape === 'apple') body = `<path d="M16 10c-5-4-12 0-11 7s6 11 11 9c5 2 10-2 11-9s-6-11-11-7z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M16 10c0-3 1-5 3-6" stroke="#6a4629" stroke-width="1.600" fill="none"/><path d="M18 7c2-2 5-2 6 0-2 2-4 2-6 0z" fill="#4fa83a"/><path d="M10 15c0-2 1-3 2-3" stroke="#fff" stroke-opacity=".6" stroke-width="1.400" fill="none"/>`;
+  else if (shape === 'carrot') body = `<path d="M7 26l14-14 3 3-14 14z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M21 12l3-7M22 13l7-2M23 11l4-5" stroke="#4fa83a" stroke-width="2" stroke-linecap="round"/>`;
+  else if (shape === 'potato') body = `<ellipse cx="16" cy="17" rx="11" ry="8" fill="${hex}" stroke="${line}" stroke-width=".8"/><circle cx="11" cy="15" r="1" fill="#6a4a2a"/><circle cx="18" cy="13" r="1" fill="#6a4a2a"/><circle cx="20" cy="20" r="1" fill="#6a4a2a"/>`;
+  else if (shape === 'ingot') body = `<path d="M4 20l6-8h16l2 8z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M4 20h24v4H4z" fill="${shadeHex(hex, 0.7)}" stroke="${line}" stroke-width=".8"/><path d="M11 14h12" stroke="#fff" stroke-opacity=".7" stroke-width="1.400"/>`;
+  else if (shape === 'arrow') body = `<path d="M5 27L25 7" stroke="${hex}" stroke-width="2"/><path d="M25 7l-6 1 5 5z" fill="#c9ced6" stroke="${line}" stroke-width=".7"/><path d="M5 27l1-6M5 27l6-1M8 24l1-5M8 24l5-1" stroke="#eef0f2" stroke-width="1.600"/>`;
+  else if (shape === 'bow') body = `<path d="M8 4c12 4 16 12 20 24" fill="none" stroke="${hex}" stroke-width="3" stroke-linecap="round"/><path d="M8 4l20 24" stroke="#e8e0d0" stroke-width="1"/>`;
+  else if (shape === 'bucket') body = `<path d="M7 11h18l-3 16H10z" fill="#9aa0a8" stroke="${line}" stroke-width=".8"/><path d="M8 11h16v3H8z" fill="${hex}"/><path d="M7 11c0-6 18-6 18 0" fill="none" stroke="${line}" stroke-width="1.400"/>`;
+  else if (shape === 'shears') body = `<path d="M9 23l13-15M23 23L10 8" stroke="${hex}" stroke-width="2.600" stroke-linecap="round"/><circle cx="8" cy="25" r="3.200" fill="none" stroke="#c33d2e" stroke-width="2"/><circle cx="24" cy="25" r="3.200" fill="none" stroke="#c33d2e" stroke-width="2"/>`;
+  else if (shape === 'lead') body = `<path d="M6 26c4-10 2-16 10-18s12 6 8 12-12 2-9-4" fill="none" stroke="${hex}" stroke-width="2.400" stroke-linecap="round"/><circle cx="6" cy="26" r="2.500" fill="#8a5a30"/>`;
+  else if (shape === 'saddle') body = `<path d="M5 14c4-4 18-4 22 0l-2 8H7z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M10 22v6M22 22v6" stroke="#2a2016" stroke-width="2"/><path d="M8 13c3-2 13-2 16 0" stroke="#c9a35a" stroke-width="1.400" fill="none"/>`;
+  else if (shape === 'compass') body = `<circle cx="16" cy="16" r="12" fill="#c9ced6" stroke="${line}" stroke-width=".9"/><circle cx="16" cy="16" r="9.500" fill="#f4f1e6"/><path d="M16 7l3 9h-6z" fill="${hex}"/><path d="M16 25l3-9h-6z" fill="#3a3f46"/>`;
+  else if (shape === 'clock') body = `<circle cx="16" cy="16" r="12" fill="${hex}" stroke="${line}" stroke-width=".9"/><circle cx="16" cy="16" r="9" fill="#2a3a6a"/><path d="M7 16a9 9 0 0 1 18 0z" fill="#8fd0ff"/><circle cx="12" cy="12" r="2.400" fill="#ffd76a"/><path d="M16 16V9M16 16l5 3" stroke="#fff" stroke-width="1.400" stroke-linecap="round"/>`;
+  else if (shape === 'flint') body = `<path d="M6 22l8-12 6 3-6 12z" fill="#3a3a40" stroke="${line}" stroke-width=".8"/><path d="M18 8c4 0 8 3 8 7h-3c0-2-2-4-5-4z" fill="#c9ced6" stroke="${line}" stroke-width=".8"/><path d="M22 20l3 3M24 18l4 1M20 22l1 4" stroke="#ffb84a" stroke-width="1.600" stroke-linecap="round"/>`;
+  else if (shape === 'book') body = `<path d="M6 6h18v20H6z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M8 6v20" stroke="rgba(0,0,0,.35)" stroke-width="1.600"/><path d="M24 8h2v18h-18v-2" fill="#f4efe0" stroke="${line}" stroke-width=".6"/><path d="M12 12h8M12 15h8" stroke="#f0bd3f" stroke-width="1.400"/>`;
+  else if (shape === 'tag') body = `<path d="M5 12h16l6 5-6 5H5z" fill="${hex}" stroke="${line}" stroke-width=".8"/><circle cx="22" cy="17" r="1.600" fill="#6a4629"/><path d="M9 15h8M9 19h6" stroke="#8a7a5a" stroke-width="1.200"/>`;
+  else if (shape === 'spyglass') body = `<path d="M5 22l16-10 3 4-16 10z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M19 11l7-4 3 5-7 4z" fill="#8a5a30" stroke="${line}" stroke-width=".8"/><circle cx="27.500" cy="9.500" r="2" fill="#8fd0ff"/>`;
+  else if (shape === 'furnace') body = cube(4) + '<path d="M9 18l6 3v6l-6-3z" fill="#1e1e22"/><path d="M10 22l4 2v2l-4-2z" fill="#ffb84a"/>';
   else if (shape === 'wheat') body = [9, 15, 21].map((x) => `<path d="M${x + 1} 29V12" stroke="#a08a3a" stroke-width="1.4"/><ellipse cx="${x + 1}" cy="9" rx="2.600" ry="5" fill="${hex}" stroke="${line}" stroke-width=".7"/>`).join('');
   else if (shape === 'bread') body = `<path d="M5 20c0-6 5-10 11-10s11 4 11 10v4H5z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M10 14l2 4M16 12v5M22 14l-2 4" stroke="#f4dca0" stroke-width="1.6" stroke-linecap="round"/>`;
   else if (shape === 'rod') body = `<path d="M5 28L25 4" stroke="${hex}" stroke-width="2.400" stroke-linecap="round"/><path d="M25 4c3 6 3 12 1 18" fill="none" stroke="#d8d8d8" stroke-width=".8"/><circle cx="26" cy="23" r="2.200" fill="#e0344a" stroke="#fff" stroke-width=".7"/><circle cx="9" cy="23" r="2.600" fill="#3a3f46"/>`;

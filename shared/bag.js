@@ -23,6 +23,7 @@ import { createFriends } from './friends.js';
 import { createEvents } from './events.js';
 import { createFarm } from './farm.js';
 import { createWonders } from './wonders.js';
+import { createGear } from './gear.js';
 
 const CSS = `
 #bag { position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center; direction: rtl; color: #f1f4f8; --c: 46px;
@@ -184,7 +185,7 @@ export function createBag(o) {
   function drawCraft() {
     const near = craft.tableNear();
     pages.craft.innerHTML = `<p class="hint">${near ? 'طاولة التصنيع قريبة: كل الوصفات مفتوحة.' : 'بدون طاولة تصنيع تقدر تسوي الأشياء البسيطة. اصنع طاولة وحطها قريب منك تفتح الباقي.'}</p><div class="recs">`
-      + craft.list().map((r, i) => `<button type="button" class="rec${r.can ? ' can' : ''}" data-rec="${i}"><span class="pic">${o.iconOf(r.item)}</span><div><strong>${r.item.name}${r.n > 1 ? ' ×' + r.n : ''}</strong><small>${r.needs.map((q) => (q.have >= q.n ? `${q.n} ${q.name}` : `<u>${q.n} ${q.name} (عندك ${q.have})</u>`)).join(' + ')}${r.table && !near ? ' · <u>يبي طاولة</u>' : ''}</small></div></button>`).join('')
+      + craft.list().map((r, i) => `<button type="button" class="rec${r.can ? ' can' : ''}" data-rec="${i}"><span class="pic">${o.iconOf(r.item)}</span><div><strong>${r.item.name}${r.n > 1 ? ' ×' + r.n : ''}</strong><small>${r.needs.map((q) => (q.have >= q.n ? `${q.n} ${q.name}` : `<u>${q.n} ${q.name} (عندك ${q.have})</u>`)).join(' + ')}${r.table && !near ? ' · <u>يبي طاولة</u>' : ''}${r.furnace && !craft.furnaceNear() ? ' · <u>يبي فرن</u>' : ''}</small></div></button>`).join('')
       + '</div>';
   }
   // the catalogue is the creative mode's: in the survival mode everything is dug, hunted, found or made
@@ -208,6 +209,10 @@ export function createBag(o) {
   const gadgets = adv ? createGadgets({ play, kit, adv, net: () => net, openStore, world: o.world }) : null;
   const farm = kit && o.world ? createFarm({ play, kit, world: o.world }) : null;
   const wonders = adv ? createWonders({ play, kit, adv, world: o.world, seaSpot: o.seaSpot }) : null;
+  const gear = kit && o.world ? createGear({ play, kit, world: o.world, adv, openPage }) : null;
+  // what kind of block each is, for the tools that dig one kind fast: the world's wood and stone, the kit's veins of ore
+  { const M = o.mats || {}, wood = new Set((M.wood && M.wood.ids) || []), stone = new Set([...((M.stone && M.stone.ids) || []), ...((M.ore && M.ore.ids) || [])]);
+    play.digClass = (id) => (wood.has(id) ? 'wood' : stone.has(id) || (id >= 177 && id <= 186) || id === 191 ? 'stone' : 'soft'); }
   /** Open a page drawn by someone else (the stranger's). */
   function openPage(page) { if (st.modal) return false; special = page; tab = 'trade'; show(true); if (play.sound) play.sound.ui(); return true; }
   if (adv) { adv.friends = createFriends({ play, kit, adv, world: o.world, groundAt: adv.groundAt, openStore }); adv.events = createEvents({ play, kit, adv, world: o.world, groundAt: adv.groundAt, openPage }); }
@@ -239,7 +244,7 @@ export function createBag(o) {
     el, items, craft, adv, net, saver,
     open: () => show(true), close: () => show(false), toggle: () => show(!open), isOpen: () => open,
     get tab() { return tab; }, setTab,
-    openStore, gadgets, farm, wonders,
+    openStore, openPage, gadgets, farm, wonders, gear,
     /** The place button on a block: a door swings, a chest opens here, a workbench opens the recipes. True when it was one of those. */
     interact(h) {
       const r = kit && kit.interact ? kit.interact(h) : null;

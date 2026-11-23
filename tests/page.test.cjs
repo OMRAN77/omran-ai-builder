@@ -330,7 +330,7 @@ test('v-blockworld-inv: حقيبة بثلاث صفحات، ٢٧ خانة ولب�
   assert.match(play, /return 'pack';/, 'give يقول أين ذهب الغرض');
   assert.match(play, /o\.onInteract && !keys\.has\('ShiftLeft'\)/, 'زرّ البناء يشغّل الباب والصندوق، وShift يبني بجانبهما');
   assert.match(play, /blocks\[s\.id\]\.tall && \(y \+ 2 >= sy \|\| world\.get\(x, y \+ 1, z\) !== 0\)/, 'الباب يحتاج الخانة فوقه');
-  assert.match(play, /hardness\(h\.id\) \/ \(\(tool && tool\.speed\) \|\| 1\)/, 'المعول والفأس أسرع');
+  assert.match(play, /let sp = \(tool && tool\.speed\) \|\| 1; if \(tool && tool\.dig && digClass && digClass\(h\.id\) !== tool\.dig\) sp = 1;/, 'المعول والفأس والمجرفة أسرع، كل واحد في اللي له');
   assert.match(play, /e\.code === 'Escape' && !st\.locked && o\.onUnlock/, 'Esc يفتح القائمة حتّى بلا التقاط الفأرة');
   for (const t of ['أغراضي', 'التصنيع', 'كل البلوكات', 'اليد الثانية', 'خوذة', 'صدرية', 'سروال', 'حذاء']) assert.ok(bag.includes(t), t);
   assert.match(bag, /fits = \(z, k, it\) => !has\(it\) \|\| z === 'bar' \|\| z === 'pack' \|\| z === 'chest' \|\| k === 'off' \|\| it\.wear === k/, 'خانة اللبس لا تقبل إلّا قطعتها');
@@ -345,8 +345,8 @@ test('v-blockworld-inv: حقيبة بثلاث صفحات، ٢٧ خانة ولب�
   assert.match(craft, /\{ out: K\.CHEST, n: 1, needs: \[\['wood', 6\]\], table: true \}/);
   assert.match(craft, /if \(r\.table && !tableNear\(\)\) return/);
   assert.match(life, /s\.weapon \? \+s\.weapon/, 'قوّة السلاح من السلاح نفسه');
-  assert.match(status, /export const protection = \(st\) => \['head', 'chest', 'legs', 'feet'\]\.reduce/);
-  assert.match(held, /const tools = \{ sword: new THREE\.Group\(\), axe: new THREE\.Group\(\), pick: new THREE\.Group\(\) \}/);
+  assert.match(status, /export const protection = \(st\) => \['head', 'chest', 'legs', 'feet', 'off'\]\.reduce/);
+  assert.match(held, /const tools = \{ sword: new THREE\.Group\(\), axe: new THREE\.Group\(\), pick: new THREE\.Group\(\),/);
   assert.ok((feats.match(/^  \['/gm) || []).length >= 12, '١٢ إنجازًا على الأقلّ');
   assert.ok(!/[٠-٩]/.test(feats + status), 'أرقام لاتينيّة كباقي الواجهة');
   assert.match(play, /'الإنجازات ' \+/);
@@ -644,4 +644,17 @@ test('v-blockworld-dino: عالم الديناصورات وضع من محرّك 
   for (const n of ['العملاق أبو رقبة', 'أبو ثلاث قرون', 'ملك الأنياب', 'الطاير الجلدي', 'وحش البحر القديم']) assert.ok(dinos.includes(n), n);
   assert.match(room, /'dino'/, 'الغرف تقبل عالم الديناصورات');
   assert.ok(exists('previews/dino.webp'));
+});
+
+test('v-blockworld-gear: أغراض الحقيبة كلها — معزقة ومجرفة ودرجات الحديد، درع يد وأجنحة، أكل وفرن، دلو ومقص وحبل وسرج، بوصلة وساعة وقوس وأسهم ولؤلؤة قفز وقدّاحة ودفتر وبطاقة اسم ومنظار', () => {
+  const kit = read('shared/kit.js'), gear = read('shared/gear.js'), craft = read('shared/craft.js'), play = read('shared/play.js'), held = read('shared/held.js');
+  for (const n of ['معول حديد', 'فأس حديد', 'سيف حديد', 'مجرفة حجر', 'مجرفة حديد', 'مجرفة ألماس', 'معزقة حجر', 'معزقة حديد', 'معزقة ألماس', 'درع يد', 'أجنحة',
+    'تفاحة', 'لحم مشوي', 'تفاحة ذهبية', 'جزرة', 'بطاطس', 'بطاطس مشوية', 'فرن', 'دلو', 'دلو ماي', 'دلو حليب', 'مقص', 'حبل قيادة', 'سرج', 'بوصلة', 'ساعة', 'قوس', 'سهم', 'لؤلؤة القفزة', 'قدّاحة', 'دفتر', 'بطاقة اسم', 'منظار', 'سبيكة حديد', 'أرض محروثة']) assert.ok(kit.includes(`'${n}'`), n);
+  assert.match(kit, /gear\(270 \+ i, 'iron-' \+ wear, name \+ ' حديد'/, 'لبس الحديد: خوذة وصدرية وسروال وحذاء');
+  assert.ok(!/ender|إندر/i.test(kit), 'اللؤلؤة باسم من عندنا');
+  assert.match(play, /st\.gliding = true/, 'الأجنحة تنزلق'); assert.match(play, /\* \(st\.ride \|\| 1\)/, 'الركوب أسرع');
+  assert.match(craft, /furnace: true/); assert.match(craft, /what === 'fuel'/, 'الفرن يبي فحم أو خشب');
+  for (const k of ['case K.BUCKET', 'case K.SHEARS', 'case K.LEAD', 'case K.SADDLE', 'case K.BOW', 'case K.PEARL_JUMP', 'case K.FLINT', 'case K.BOOK', 'case K.NAME_TAG', 'case K.SPYGLASS']) assert.ok(gear.includes(k), k);
+  assert.match(gear, /setHome\(\)/, 'السرير يصير مكان الرجوع');
+  for (const m of ['shovel', 'hoe', 'shield', 'bow', 'bucket', 'spyglass']) assert.ok(held.includes('tools.' + m), m);
 });

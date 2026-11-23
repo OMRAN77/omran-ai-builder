@@ -47,25 +47,58 @@ export const RECIPES = [
   { out: K.RUBY_BLOCK, n: 1, needs: [[K.RUBY, 4]], table: true },
   { out: K.AMETHYST_BLOCK, n: 1, needs: [[K.AMETHYST, 4]], table: true },
   { out: K.LUCKY, n: 1, needs: [[K.GOLD, 1], [K.EMERALD, 1]], table: true },          // a lucky box: gold and an emerald, and what it holds is luck
+  // the furnace: built from stone; it smelts ore into iron and cooks food (fuel: coal or wood)
+  { out: K.FURNACE, n: 1, needs: [['stone', 8]], table: true },
+  { out: K.IRON, n: 1, needs: [['ore', 1], ['fuel', 1]], furnace: true },
+  { out: K.STEAK, n: 1, needs: [[K.MEAT, 1], ['fuel', 1]], furnace: true },
+  { out: K.BAKED_POTATO, n: 1, needs: [[K.POTATO, 1], ['fuel', 1]], furnace: true },
+  { out: K.COOKED_FISH, n: 1, needs: [[[K.FISH, K.HAMOUR, K.SAFI, K.KANAD, K.SHERI], 1], ['fuel', 1]], furnace: true },
+  // iron things
+  { out: 261, n: 1, needs: [['wood', 1], [K.IRON, 2]], table: true },
+  { out: 262, n: 1, needs: [['wood', 2], [K.IRON, 3]], table: true },
+  { out: 263, n: 1, needs: [['wood', 2], [K.IRON, 3]], table: true },
+  { out: 270, n: 1, needs: [[K.IRON, 5]], table: true }, { out: 271, n: 1, needs: [[K.IRON, 8]], table: true }, { out: 272, n: 1, needs: [[K.IRON, 7]], table: true }, { out: 273, n: 1, needs: [[K.IRON, 4]], table: true },
+  // shovels and hoes
+  { out: 264, n: 1, needs: [['wood', 2], ['stone', 1]] }, { out: 265, n: 1, needs: [['wood', 2], [K.IRON, 1]], table: true }, { out: 266, n: 1, needs: [['wood', 2], [K.DIAMOND, 1]], table: true },
+  { out: 267, n: 1, needs: [['wood', 2], ['stone', 2]] }, { out: 268, n: 1, needs: [['wood', 2], [K.IRON, 2]], table: true }, { out: 269, n: 1, needs: [['wood', 2], [K.DIAMOND, 2]], table: true },
+  // protection, food, and the other things
+  { out: K.SHIELD, n: 1, needs: [['wood', 6], [K.IRON, 1]], table: true },
+  { out: K.WINGS, n: 1, needs: [[K.FEATHER, 8], [K.AMETHYST, 2]], table: true },
+  { out: K.GOLDEN_APPLE, n: 1, needs: [[K.APPLE, 1], [K.GOLD, 2]], table: true },
+  { out: K.BUCKET, n: 1, needs: [[K.IRON, 3]], table: true },
+  { out: K.SHEARS, n: 1, needs: [[K.IRON, 2]] },
+  { out: K.LEAD, n: 1, needs: [[K.FUR, 2]] },
+  { out: K.SADDLE, n: 1, needs: [[K.FUR, 4], [K.IRON, 1]], table: true },
+  { out: K.COMPASS, n: 1, needs: [[K.IRON, 4], [K.COAL, 1]], table: true },
+  { out: K.CLOCK, n: 1, needs: [[K.GOLD, 1], [K.COAL, 1]], table: true },
+  { out: K.BOW, n: 1, needs: [['wood', 3], [K.FUR, 1]], table: true },
+  { out: K.ARROW, n: 4, needs: [['wood', 1], [K.FEATHER, 1], ['stone', 1]] },
+  { out: K.PEARL_JUMP, n: 2, needs: [[K.PEARL, 1], [K.AMETHYST, 1]], table: true },
+  { out: K.FLINT, n: 1, needs: [[K.IRON, 1], ['stone', 1]] },
+  { out: K.BOOK, n: 1, needs: [[K.FUR, 1], [K.WHEAT, 3]] },
+  { out: K.NAME_TAG, n: 1, needs: [[K.FUR, 1], [K.IRON, 1]] },
+  { out: K.SPYGLASS, n: 1, needs: [[K.GLASS, 1], [K.IRON, 2]], table: true },
 ];
 
 export function createCraft({ play, kit, mats }) {
   const st = play.state;
-  const idsOf = (what) => (typeof what === 'number' ? [what] : [...((mats[what] && mats[what].ids) || []), ...(what === 'ore' ? [K.ORE] : [])]);
-  const nameOf = (what) => (typeof what === 'number' ? kitName(what) : (mats[what] && mats[what].name) || what);
+  const idsOf = (what) => (typeof what === 'number' ? [what] : Array.isArray(what) ? what : what === 'fuel' ? [K.COAL, ...((mats.wood && mats.wood.ids) || [])] : [...((mats[what] && mats[what].ids) || []), ...(what === 'ore' ? [K.ORE] : [])]);
+  const nameOf = (what) => (typeof what === 'number' ? kitName(what) : Array.isArray(what) ? kitName(what[0]) : what === 'fuel' ? 'فحم أو خشب' : (mats[what] && mats[what].name) || what);
   const piles = (ids) => [...st.pack, ...st.slots].filter((q) => q && !q.tool && ids.includes(q.id) && q.n > 0);
   const count = (what) => piles(idsOf(what)).reduce((s, q) => s + q.n, 0);
   const tableNear = () => !!(kit && kit.tableNear && kit.tableNear(st.pos));
+  /** A furnace within four blocks. */
+  const furnaceNear = () => { const w = kit && kit.world; if (!w) return false; const X = Math.floor(st.pos.x), Y = Math.floor(st.pos.y), Z = Math.floor(st.pos.z); for (let dx = -4; dx <= 4; dx++) for (let dz = -4; dz <= 4; dz++) for (let dy = -2; dy <= 2; dy++) if (w.get(X + dx, Y + dy, Z + dz) === K.FURNACE) return true; return false; };
   function take(what, n) { for (const q of piles(idsOf(what))) { const k = Math.min(q.n, n); q.n -= k; n -= k; if (!n) break; } for (let i = 0; i < st.pack.length; i++) if (st.pack[i] && !st.pack[i].tool && !(st.pack[i].n > 0)) st.pack[i] = null; }
   return {
-    tableNear, count, mats, idsOf, take, nameOf,
+    tableNear, furnaceNear, count, mats, idsOf, take, nameOf,
     /** Every recipe with what it needs, what is at hand, and whether it can be made now. */
     list() {
-      const near = tableNear();
+      const near = tableNear(), fire = furnaceNear();
       return RECIPES.map((r) => {
         const needs = r.needs.map(([what, n]) => ({ what, n, name: nameOf(what), have: count(what) }));
         const item = kitItem(r.out, r.n); if (r.name) item.name = r.name;
-        return { out: r.out, n: r.n, table: !!r.table, item, needs, can: needs.every((q) => q.have >= q.n) && (!r.table || near) };
+        return { out: r.out, n: r.n, table: !!r.table, furnace: !!r.furnace, item, needs, can: needs.every((q) => q.have >= q.n) && (!r.table || near) && (!r.furnace || fire) };
       });
     },
     /** Make recipe i. Returns true, or the reason it cannot be made (Arabic, for the player). */
@@ -73,6 +106,7 @@ export function createCraft({ play, kit, mats }) {
       const r = RECIPES[i];
       if (!r) return 'ما في وصفة.';
       if (r.table && !tableNear()) return 'هذي تبي طاولة تصنيع قريبة منك.';
+      if (r.furnace && !furnaceNear()) return 'هذي تنطبخ في فرن: حط فرن قريب منك.';
       for (const [what, n] of r.needs) if (count(what) < n) return 'ناقصك ' + nameOf(what) + '.';
       for (const [what, n] of r.needs) take(what, n);
       const item = kitItem(r.out, r.n);

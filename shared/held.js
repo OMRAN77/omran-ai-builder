@@ -26,10 +26,16 @@ export function createHeld({ camera, blocks, materialFor, at = [0.4, -0.34, -0.7
   const metal = new THREE.MeshStandardMaterial({ color: 0x8fe9f7, roughness: 0.3, metalness: 0.3, emissive: 0x1c6f80, emissiveIntensity: 0.35 });
   const woodM = new THREE.MeshStandardMaterial({ color: 0x5a3a22, roughness: 0.8 }), brass = new THREE.MeshStandardMaterial({ color: 0xc9a35a, roughness: 0.4, metalness: 0.4 });
   const part = (g, w, h, d, x, y, m, rz = 0) => { const q = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); q.position.set(x, y, 0); q.rotation.z = rz; q.frustumCulled = false; g.add(q); };
-  const tools = { sword: new THREE.Group(), axe: new THREE.Group(), pick: new THREE.Group() };
+  const tools = { sword: new THREE.Group(), axe: new THREE.Group(), pick: new THREE.Group(), shovel: new THREE.Group(), hoe: new THREE.Group(), shield: new THREE.Group(), bow: new THREE.Group(), bucket: new THREE.Group(), spyglass: new THREE.Group() };
   part(tools.sword, 0.05, 0.5, 0.012, 0, 0.33, metal); part(tools.sword, 0.03, 0.08, 0.012, 0, 0.61, metal); part(tools.sword, 0.17, 0.03, 0.035, 0, 0.07, brass); part(tools.sword, 0.032, 0.13, 0.032, 0, -0.01, woodM); part(tools.sword, 0.045, 0.03, 0.045, 0, -0.085, brass);
   part(tools.axe, 0.034, 0.6, 0.034, 0, 0.2, woodM); part(tools.axe, 0.17, 0.15, 0.02, 0.09, 0.42, metal); part(tools.axe, 0.05, 0.19, 0.02, 0.19, 0.42, metal);
   part(tools.pick, 0.034, 0.6, 0.034, 0, 0.2, woodM); part(tools.pick, 0.34, 0.045, 0.03, 0, 0.47, metal); part(tools.pick, 0.09, 0.04, 0.028, -0.19, 0.44, metal, 0.5); part(tools.pick, 0.09, 0.04, 0.028, 0.19, 0.44, metal, -0.5);
+  part(tools.shovel, 0.034, 0.6, 0.034, 0, 0.2, woodM); part(tools.shovel, 0.14, 0.17, 0.02, 0, 0.55, metal);
+  part(tools.hoe, 0.034, 0.6, 0.034, 0, 0.2, woodM); part(tools.hoe, 0.17, 0.045, 0.03, 0.07, 0.48, metal); part(tools.hoe, 0.045, 0.08, 0.028, 0.15, 0.44, metal);
+  part(tools.shield, 0.34, 0.42, 0.04, 0, 0.18, woodM); part(tools.shield, 0.38, 0.04, 0.05, 0, 0.39, metal); part(tools.shield, 0.38, 0.04, 0.05, 0, -0.03, metal); part(tools.shield, 0.11, 0.11, 0.06, 0, 0.18, metal);
+  part(tools.bow, 0.03, 0.62, 0.03, 0, 0.25, woodM, 0.12); part(tools.bow, 0.008, 0.58, 0.008, 0.06, 0.25, brass);
+  part(tools.bucket, 0.2, 0.2, 0.2, 0, 0.12, new THREE.MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.4, metalness: 0.5 })); part(tools.bucket, 0.17, 0.02, 0.17, 0, 0.22, metal);
+  part(tools.spyglass, 0.06, 0.34, 0.06, 0, 0.2, brass); part(tools.spyglass, 0.075, 0.12, 0.075, 0, 0.4, woodM);
   for (const g of Object.values(tools)) { g.position.set(0.02, -0.12, 0.04); g.rotation.set(-0.5, -0.5, -0.32); g.visible = false; group.add(g); }
   let shown = -1;
   const tile = (def, face) => (typeof def.tiles === 'string' ? def.tiles : def.tiles[face] ?? def.tiles.side ?? def.tiles.top);

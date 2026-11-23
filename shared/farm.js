@@ -30,9 +30,12 @@ export function createFarm({ play, kit, world }) {
 
   // ---------------------------------------------------------------- the fields
   const crops = new Map();               // cell -> { x, y, z, stage, grow, wet }
-  const isCrop = (id) => id >= K.CROP0 && id <= K.CROP3;
+  // three crops, four steps each: wheat, carrots, potatoes. base(id) is the crop's first step
+  const BASES = [K.CROP0, K.CARROT0, K.POTATO0];
+  const baseOf = (id) => BASES.find((b) => id >= b && id <= b + 3);
+  const isCrop = (id) => baseOf(id) !== undefined;
   const placed0 = kit.placed.bind(kit), broke0 = kit.broke.bind(kit);
-  kit.placed = (x, y, z, id, yaw) => { placed0(x, y, z, id, yaw); if (isCrop(id)) { const k = key(x, y, z), was = crops.get(k); crops.set(k, { x, y, z, stage: id - K.CROP0, grow: 0, wet: was ? was.wet : 0 }); } else crops.delete(key(x, y, z)); };
+  kit.placed = (x, y, z, id, yaw) => { placed0(x, y, z, id, yaw); if (isCrop(id)) { const k = key(x, y, z), was = crops.get(k); crops.set(k, { x, y, z, base: baseOf(id), stage: id - baseOf(id), grow: 0, wet: was ? was.wet : 0, tilled: w.get(x, y - 1, z) === K.FARMLAND }); } else crops.delete(key(x, y, z)); };
   kit.broke = (h) => { broke0(h); crops.delete(key(h.x, h.y, h.z)); };
   const nearWater = (c) => { for (let dx = -3; dx <= 3; dx++) for (let dz = -3; dz <= 3; dz++) for (let dy = -1; dy <= 0; dy++) if (play.isLiquid(w.get(c.x + dx, c.y + dy, c.z + dz))) return true; return false; };
   let farmT = 0;
@@ -43,16 +46,19 @@ export function createFarm({ play, kit, world }) {
     const rain = !!(window.__GAME_SKY && window.__GAME_SKY.rain);
     for (const c of [...crops.values()]) {
       if (c.stage >= 3) continue;
-      if (w.get(c.x, c.y, c.z) !== K.CROP0 + c.stage) { crops.delete(key(c.x, c.y, c.z)); continue; }
+      if (w.get(c.x, c.y, c.z) !== c.base + c.stage) { crops.delete(key(c.x, c.y, c.z)); continue; }
       const wet = c.wet > 0 || rain || (c.water ??= nearWater(c));
       if (c.wet > 0) c.wet -= step;
-      c.grow += step * (wet ? 1 : 1 / 3);
-      if (c.grow >= GROW) { c.grow = 0; play.put(c.x, c.y, c.z, K.CROP0 + c.stage + 1); }
+      c.grow += step * (wet ? 1 : 1 / 3) * (c.tilled ? 1.6 : 1);           // tilled soil (the hoe) grows it faster
+      if (c.grow >= GROW) { c.grow = 0; play.put(c.x, c.y, c.z, c.base + c.stage + 1); }
     }
   });
   // what the field gives: the ripe crop wheat (the dig itself) and seeds; a green one gives its seed back
   play.onBreakAny((h) => {
-    if (h.remote || h.id !== K.CROP3) return;
+    if (h.remote) return;
+    if (h.id === K.CARROT0 + 3) { play.give(kitItem(K.CARROT, 1 + Math.floor(Math.random() * 2))); st.harvested = (st.harvested || 0) + 1; return; }
+    if (h.id === K.POTATO0 + 3) { play.give(kitItem(K.POTATO, 1 + Math.floor(Math.random() * 2))); st.harvested = (st.harvested || 0) + 1; return; }
+    if (h.id !== K.CROP3) return;
     play.give(kitItem(K.SEEDS, 1 + Math.floor(Math.random() * 2)));
     if (Math.random() < 0.5) play.give(kitItem(K.WHEAT, 1));
     st.harvested = (st.harvested || 0) + 1;
@@ -61,7 +67,7 @@ export function createFarm({ play, kit, world }) {
     if (!h || h.ny !== 1 || !play.isSolid(h.id) || isCrop(h.id)) return false;
     const y = h.y + 1;
     if (!w.inb(h.x, y, h.z) || w.get(h.x, y, h.z) !== 0) return false;
-    if (!play.put(h.x, y, h.z, K.CROP0)) return false;
+    if (!play.put(h.x, y, h.z, s.plant || K.CROP0)) return false;
     s.n--; play.setSlot(st.sel, s.n > 0 ? s : EMPTY);
     if (play.sound) play.sound.place();
     if (!st.planted) play.notice('زرعت. اسقِ الزرع بالمرشّة (أو خلّه قريب من ماي) يكبر أسرع، ولما يصفرّ احصده.', false, 6000);
@@ -77,7 +83,7 @@ export function createFarm({ play, kit, world }) {
     for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) { const c = crops.get(key(h.x + dx, h.y, h.z + dz)); if (c) c.wet = 90; }
     st.watered = (st.watered || 0) + 1;
     if (play.sound) play.sound.splash();
-    play.notice(h.id === K.CROP3 ? 'هذا ناضج: احصده.' : 'سقيت الزرع. باقي في المرشّة ' + s.water + '.', false, 2000);
+    play.notice(h.id === K.CROP3 || h.id === K.CARROT0 + 3 || h.id === K.POTATO0 + 3 ? 'هذا ناضج: احصده.' : 'سقيت الزرع. باقي في المرشّة ' + s.water + '.', false, 2000);
     return true;
   }
 
@@ -189,7 +195,7 @@ export function createFarm({ play, kit, world }) {
   play.onUseFirst((h) => {
     const s = held();
     if (!s || !s.id) return false;
-    if (s.id === K.SEEDS && s.n > 0 && !(window.__GAME_LIFE && window.__GAME_LIFE.life && window.__GAME_LIFE.life.aimed)) return plant(h, s);
+    if ((s.id === K.SEEDS || s.plant) && s.n > 0 && !(window.__GAME_LIFE && window.__GAME_LIFE.life && window.__GAME_LIFE.life.aimed) && h && h.ny === 1 && !isCrop(h.id)) { if (plant(h, s)) return true; if (s.id === K.SEEDS) return false; }
     if (s.id === K.CAN) return water(h, s);
     if (s.id === K.ROD) return fish();
     if (s.id === K.BOAT) return useBoat();

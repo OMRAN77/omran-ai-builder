@@ -45,7 +45,7 @@ export const xpFor = (n) => 10 + n * 6;
 export function levelOf(xp) { let n = 0; while (xp >= xpFor(n)) { xp -= xpFor(n); n++; } return { level: n, into: xp, need: xpFor(n) }; }
 
 /** The share of every blow that the worn clothing takes away. */
-export const protection = (st) => ['head', 'chest', 'legs', 'feet'].reduce((s, k) => s + ((st.gear && st.gear[k] && st.gear[k].prot) || 0), 0);
+export const protection = (st) => ['head', 'chest', 'legs', 'feet', 'off'].reduce((s, k) => s + ((st.gear && st.gear[k] && st.gear[k].prot) || 0), 0);
 
 export function createStatus(o) {
   const { play } = o, st = play.state;

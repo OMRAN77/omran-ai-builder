@@ -102,7 +102,7 @@ export function createPlay(o) {
     made: {}, put: {}, pouch: new Array(27).fill(null), mark: null, photos: 0, pet: false, petBag: new Array(27).fill(null),                                                // how many of each thing were crafted / put down (by id)
     third: false,                                                    // the view from behind the player (V)
   };
-  let itemOf = o.itemOf || null;
+  let itemOf = o.itemOf || null, digClass = null;          // digClass(id) -> 'wood' | 'stone' | 'soft' (the bag knows the world's stuff)
   let shared = false, held = false;
   const ticks = [], firsts = [], breaks = [];                                     // shared modules hook in here: every frame, and before the place button does its usual thing
   const net = { place: null, dig: null };                            // the multiplayer link listens here for what the player changes in the world                                     // id -> a fresh item object (the bag knows every item)
@@ -206,7 +206,7 @@ export function createPlay(o) {
       const vy = ((inp.jump ? 1 : 0) - (inp.down ? 1 : 0)) * P.flyRise;
       v.y += (vy - v.y) * k;
     } else {
-      const speed = (inp.sprint ? P.sprint : P.walk) * (st.inWater ? 0.6 : 1) * pace();
+      const speed = (inp.sprint ? P.sprint : P.walk) * (st.inWater ? 0.6 : 1) * pace() * (st.ride || 1);
       const k = Math.min(1, (st.onGround || st.inWater ? 14 : 4) * dt);
       v.x += (wx * speed - v.x) * k; v.z += (wz * speed - v.z) * k;
       if (st.inWater) {
@@ -215,6 +215,14 @@ export function createPlay(o) {
       } else {
         v.y -= P.gravity * dt;
         if (inp.jump && (st.onGround || wading)) { v.y = P.jump; st.onGround = false; }       // from the surface a jump clears the bank
+        // wings: falling, a press of jump opens them; the player glides down slowly the way they look
+        const wings = st.gear && st.gear.chest && st.gear.chest.glide;
+        if (wings && !st.onGround && !wading && v.y < -2 && inp.jump && !st.jumpWas) st.gliding = true;
+        if (st.gliding) {
+          if (st.onGround || !wings) st.gliding = false;
+          else { const gs = 11 * pace(), fx = -Math.sin(st.yaw), fz = -Math.cos(st.yaw); v.x += (fx * gs - v.x) * Math.min(1, 2 * dt); v.z += (fz * gs - v.z) * Math.min(1, 2 * dt); v.y = Math.max(v.y, -2.4 + Math.min(0, Math.sin(st.pitch)) * 6); }
+        }
+        st.jumpWas = inp.jump;
       }
       if (v.y < -40) v.y = -40;
     }
@@ -363,7 +371,7 @@ export function createPlay(o) {
       if (!inp.dig) snd.dig = 0;
       d.on = false; d.t = 0; d.progress = 0; return;
     }
-    if (!d.on || d.x !== h.x || d.y !== h.y || d.z !== h.z) { d.on = true; d.x = h.x; d.y = h.y; d.z = h.z; d.t = 0; const tool = st.slots[st.sel]; d.need = Math.max(0.01, hardness(h.id) / ((tool && tool.speed) || 1)); }   // a pick or an axe from the bag digs faster
+    if (!d.on || d.x !== h.x || d.y !== h.y || d.z !== h.z) { d.on = true; d.x = h.x; d.y = h.y; d.z = h.z; d.t = 0; const tool = st.slots[st.sel]; let sp = (tool && tool.speed) || 1; if (tool && tool.dig && digClass && digClass(h.id) !== tool.dig) sp = 1; d.need = Math.max(0.01, hardness(h.id) / sp); }   // a pick, an axe or a shovel digs fast what it is for, and like a bare hand the rest   // a pick or an axe from the bag digs faster
     d.t += dt; d.progress = Math.min(1, d.t / d.need);
     if (sound && (snd.dig -= dt) <= 0) { snd.dig = 0.2; sound.dig(); }
     if (d.t >= d.need) { breakBlock(h); d.on = false; d.t = 0; d.progress = 0; aim(); }
@@ -787,6 +795,8 @@ export function createPlay(o) {
     },
     /** The bag tells the controller how to make an item from an id, so that what is dug can start a new pile. */
     set itemOf(f) { itemOf = f; }, get itemOf() { return itemOf; },
+    set digClass(f) { digClass = f; }, get digClass() { return digClass; },
+    camera,
     start() {
       if (held) { held = false; setModal(false); return; }      // back from the pause menu of a shared game
       if (st.running) return;
