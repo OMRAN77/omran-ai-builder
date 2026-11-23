@@ -674,9 +674,11 @@ function serve(root, prefix) {
         const after = window.__GAME_SKY.time;
         g.weather.set('morning', false);
         const byDay = g.bag.interact({ x: 0, y: 0, z: 0, id: 160 });
-        return { day, t, used, after, byDay, slept: s.slept };
+        const dayAfter = window.__GAME_SKY.time;
+        g.weather.set('morning', false);
+        return { day, t, used, after, byDay, dayAfter, slept: s.slept };
       });
-      if (!slept.skip) check('a bed at night sleeps the player through to the morning; by day it is just a block', slept.used === true && slept.after === 'morning' && slept.byDay === false && slept.slept >= 1, slept);
+      if (!slept.skip) check('a bed at night sleeps the player through to the morning; by day it rests until night', slept.used === true && slept.after === 'morning' && slept.byDay === true && slept.dayAfter === 'night' && slept.slept >= 1, slept);
     }
     // ---- the world panel (worlds that have it): Q opens it; the time of day and the rain change the picture
     if (await page.evaluate(() => !!(window.__game && window.__game.weather))) {
