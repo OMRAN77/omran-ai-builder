@@ -22,14 +22,14 @@ test('١. كلّ بطاقة أداة تُحمَّل من نسخة العرض 600
   const js = fs.readFileSync('js/tool-card-images.js', 'utf8');
   assert.match(js, /'\/assets\/tool-cards\/s\/' \+ id \+ '\.jpg\?v=' \+ CLEAN_V/);
   const ids = JSON.parse(js.match(/var IDS = (\[[^\]]+\]);/)[1].replace(/'/g, '"'));
-  assert.equal(ids.length, 18);
+  assert.equal(ids.length, 19); // v-talk-room: بطاقة «غرفة الربع» التاسعة عشرة
   for (const id of ids) {
     const [w, h] = dims('assets/tool-cards/s/' + id + '.jpg');
     assert.deepEqual([w, h], [600, 360], id);
     assert.ok(w * h * 4 / 1048576 < 0.9, id);
     assert.ok(fs.existsSync('assets/tool-cards/clean/' + id + '.jpg'), 'الأصل باقٍ: ' + id);
   }
-  assert.match(fs.readFileSync('js/ui-wiring.js', 'utf8'), /\/js\/tool-card-images\.js\?v=18/);
+  assert.match(fs.readFileSync('js/ui-wiring.js', 'utf8'), /\/js\/tool-card-images\.js\?v=19/);
 });
 
 test('٢. شعار «OM Ai» بنسخة 3× لارتفاع 42 في الصفحة (v-om-brand بدّل شعارات «عمران» لكلّ لغة)', () => {
@@ -39,5 +39,5 @@ test('٢. شعار «OM Ai» بنسخة 3× لارتفاع 42 في الصفحة 
   assert.doesNotMatch(html, /icons\/brand-(?:ar|en)(?:-s)?\.png/);
   const a10 = fs.readFileSync('js/app-10-features.js', 'utf8');
   assert.doesNotMatch(a10, /icons\/brand-/, 'لا تبديل صورة حسب اللغة');
-  assert.match(html, /\/js\/ui-wiring\.js\?v=670/); // v-hw-tools-grid
+  assert.match(html, /\/js\/ui-wiring\.js\?v=671/); // v-hw-tools-grid
 });

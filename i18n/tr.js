@@ -373,7 +373,7 @@ I18N['tr'] = {
     "homeLastImage": "🖼️ Son görsel", "homeLastVideo": "🎬 Son video", "homeCollection": "✨ Koleksiyon — son 3 çalışma", "homeNoImage": "Burada henüz bir şey yok", "homeTryNow": "Şimdi dene ›", "homeNoVideo": "Henüz video yok", "homeMakeVideo": "İlk videonu oluştur ›", "homeEmptyLib": "Kütüphanen boş", "homeStartCreating": "Üretmeye başla ›",
     "grpBusiness": "💼 İş", "grpLife": "🕌 Günlük yaşam",
     "psheetAll": "Tümü", "psheetGrpArt": "🎨 Sanatsal", "psheetBefore": "Önce", "psheetBeforeSub": "Tek fotoğraf → her stil", "psheetTry": "✨ Kendi fotoğrafında dene",
-    "tcSub_btnPortraitStyle": "Geniş bir portre stili yelpazesi", "tcSub_btnQuickTemplates": "Sonraki projeleriniz için fikir ve ilham", "tcSub_btnVideoMaker": "Profesyonel video oluşturma ve düzenleme", "tcSub_btnStudioAI": "Akıllı stiller ve efektler", "tcSub_btnFashionAI": "Yapay zekâ ile moda tasarımı", "tcSub_btnDesignAI": "İç ve dış mekân dekorasyon tasarımı", "tcSub_btnAdStudio": "Profesyonel reklam tasarımı", "tcSub_btnStocks": "Piyasa analizleri ve verileri", "tcSub_btnOmranTV": "Sınırsız içerik ve eğlence", "tcSub_btnQibla": "Namaz vakitleri ve kıble yönü", "tcSub_btnExpense": "Harcama ve bütçe yönetimi", "tcSub_btnOmranEdu": "Kurslar ve dersler", "tcSub_btnConstruction": "Mühendislik ve mimari tasarımlar", "tcSub_btnReligion": "Dini sorular, güvenilir cevaplar", "tcSub_btnCV": "Profesyonel CV oluşturun", "tcSub_btnDocs": "Belgeleri analiz edin ve özetleyin", "tcSub_btnFeedback": "Görüş ve önerilerinizi paylaşın", "tcSub_btnEmailAssist": "E-posta ve yanıt yazımı",
+    "tcSub_btnPortraitStyle": "Geniş bir portre stili yelpazesi", "tcSub_btnTalkRoom": "Arkadaşlarınla sesli ve yazılı konuş", "tcSub_btnQuickTemplates": "Sonraki projeleriniz için fikir ve ilham", "tcSub_btnVideoMaker": "Profesyonel video oluşturma ve düzenleme", "tcSub_btnStudioAI": "Akıllı stiller ve efektler", "tcSub_btnFashionAI": "Yapay zekâ ile moda tasarımı", "tcSub_btnDesignAI": "İç ve dış mekân dekorasyon tasarımı", "tcSub_btnAdStudio": "Profesyonel reklam tasarımı", "tcSub_btnStocks": "Piyasa analizleri ve verileri", "tcSub_btnOmranTV": "Sınırsız içerik ve eğlence", "tcSub_btnQibla": "Namaz vakitleri ve kıble yönü", "tcSub_btnExpense": "Harcama ve bütçe yönetimi", "tcSub_btnOmranEdu": "Kurslar ve dersler", "tcSub_btnConstruction": "Mühendislik ve mimari tasarımlar", "tcSub_btnReligion": "Dini sorular, güvenilir cevaplar", "tcSub_btnCV": "Profesyonel CV oluşturun", "tcSub_btnDocs": "Belgeleri analiz edin ve özetleyin", "tcSub_btnFeedback": "Görüş ve önerilerinizi paylaşın", "tcSub_btnEmailAssist": "E-posta ve yanıt yazımı",
     "msgShareReply": "Yanıtı paylaş",
     "msgShareCopied": "Yanıt kopyalandı — istediğiniz uygulamaya yapıştırın",
     "uploadCodeTitle": "Bir kod dosyası yükleyin (HTML veya Python)",
@@ -1079,7 +1079,7 @@ I18N['tr'] = {
     cvTitle: 'CV Oluşturucu',
     docsTitle: 'Belge Asistanı',
     expenseTitle: 'Harcama Analizi',
-    govTitle: 'Devlet Hizmetleri',
+    govTitle: 'Devlet Hizmetleri', talkRoomTitle: 'Arkadaş odası', /* v-talk-room */
     premiumToggleLabel: 'Profesyonel mod',
     snapBuildLabel: '📸 Çek ve inşa et',
     omranDisclaimerTxt: 'Bilgiler yanlış olabilir — önemli ayrıntıları doğrulayın.',

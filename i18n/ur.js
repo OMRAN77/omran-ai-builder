@@ -137,7 +137,7 @@ I18N['ur'] = {
     'homeLastImage': '🖼️ آخری تصویر', 'homeLastVideo': '🎬 آخری ویڈیو', 'homeCollection': '✨ مجموعہ — آخری 3 کام', 'homeNoImage': 'یہاں ابھی کچھ نہیں', 'homeTryNow': 'ابھی آزمائیں ›', 'homeNoVideo': 'ابھی کوئی ویڈیو نہیں', 'homeMakeVideo': 'اپنی پہلی ویڈیو بنائیں ›', 'homeEmptyLib': 'آپ کی لائبریری خالی ہے', 'homeStartCreating': 'تخلیق شروع کریں ›',
     'grpBusiness': '💼 کاروبار', 'grpLife': '🕌 روزمرہ زندگی',
     'psheetAll': 'سب', 'psheetGrpArt': '🎨 فنی', 'psheetBefore': 'پہلے', 'psheetBeforeSub': 'ایک تصویر → ہر اسٹائل', 'psheetTry': '✨ اپنی تصویر پر آزمائیں',
-    'tcSub_btnPortraitStyle': 'پورٹریٹ اسٹائلز کی وسیع رینج', 'tcSub_btnQuickTemplates': 'اگلے منصوبوں کے لیے خیالات اور تحریک', 'tcSub_btnVideoMaker': 'پیشہ ورانہ انداز میں ویڈیو بنائیں اور ایڈٹ کریں', 'tcSub_btnStudioAI': 'اسمارٹ اسٹائلز اور ایفیکٹس', 'tcSub_btnFashionAI': 'AI سے فیشن ڈیزائن', 'tcSub_btnDesignAI': 'اندرونی اور بیرونی ڈیکور ڈیزائن', 'tcSub_btnAdStudio': 'پیشہ ورانہ اشتہارات کا ڈیزائن', 'tcSub_btnStocks': 'مارکیٹ کے تجزیے اور ڈیٹا', 'tcSub_btnOmranTV': 'لامحدود مواد اور تفریح', 'tcSub_btnQibla': 'نماز کے اوقات اور قبلہ کی سمت', 'tcSub_btnExpense': 'اخراجات اور بجٹ کا انتظام', 'tcSub_btnOmranEdu': 'کورسز اور اسباق', 'tcSub_btnConstruction': 'انجینئرنگ اور تعمیراتی ڈیزائن', 'tcSub_btnReligion': 'دینی سوالات، قابلِ اعتماد جوابات', 'tcSub_btnCV': 'پیشہ ورانہ CV بنائیں', 'tcSub_btnDocs': 'دستاویزات کا تجزیہ اور خلاصہ', 'tcSub_btnFeedback': 'اپنی رائے اور تجاویز شیئر کریں', 'tcSub_btnEmailAssist': 'ای میلز اور جوابات لکھیں',
+    'tcSub_btnPortraitStyle': 'پورٹریٹ اسٹائلز کی وسیع رینج', 'tcSub_btnTalkRoom': 'دوستوں سے آواز اور تحریر میں بات کریں', 'tcSub_btnQuickTemplates': 'اگلے منصوبوں کے لیے خیالات اور تحریک', 'tcSub_btnVideoMaker': 'پیشہ ورانہ انداز میں ویڈیو بنائیں اور ایڈٹ کریں', 'tcSub_btnStudioAI': 'اسمارٹ اسٹائلز اور ایفیکٹس', 'tcSub_btnFashionAI': 'AI سے فیشن ڈیزائن', 'tcSub_btnDesignAI': 'اندرونی اور بیرونی ڈیکور ڈیزائن', 'tcSub_btnAdStudio': 'پیشہ ورانہ اشتہارات کا ڈیزائن', 'tcSub_btnStocks': 'مارکیٹ کے تجزیے اور ڈیٹا', 'tcSub_btnOmranTV': 'لامحدود مواد اور تفریح', 'tcSub_btnQibla': 'نماز کے اوقات اور قبلہ کی سمت', 'tcSub_btnExpense': 'اخراجات اور بجٹ کا انتظام', 'tcSub_btnOmranEdu': 'کورسز اور اسباق', 'tcSub_btnConstruction': 'انجینئرنگ اور تعمیراتی ڈیزائن', 'tcSub_btnReligion': 'دینی سوالات، قابلِ اعتماد جوابات', 'tcSub_btnCV': 'پیشہ ورانہ CV بنائیں', 'tcSub_btnDocs': 'دستاویزات کا تجزیہ اور خلاصہ', 'tcSub_btnFeedback': 'اپنی رائے اور تجاویز شیئر کریں', 'tcSub_btnEmailAssist': 'ای میلز اور جوابات لکھیں',
     msgShareReply: 'جواب شیئر کریں',
     msgShareCopied: 'جواب کاپی ہو گیا — جس ایپ میں چاہیں پیسٹ کریں',
     designAiNeedPick: 'پہلے جگہ کی قسم منتخب کریں یا تصویر اپ لوڈ کریں',
@@ -1028,7 +1028,7 @@ I18N['ur'] = {
     cvTitle: 'سی وی بنانے والا',
     docsTitle: 'دستاویزات معاون',
     expenseTitle: 'اخراجات کا تجزیہ',
-    govTitle: 'سرکاری خدمات',
+    govTitle: 'سرکاری خدمات', talkRoomTitle: 'دوستوں کا کمرہ', /* v-talk-room */
     premiumToggleLabel: 'پروفیشنل موڈ',
     snapBuildLabel: '📸 تصویر لیں اور بنائیں',
     omranDisclaimerTxt: 'معلومات غلط ہو سکتی ہیں — اہم تفصیلات کی تصدیق کریں۔',

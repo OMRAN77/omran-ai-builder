@@ -375,7 +375,7 @@ I18N['fil'] = {
     "homeLastImage": "🖼️ Huling larawan", "homeLastVideo": "🎬 Huling video", "homeCollection": "✨ Koleksyon — huling 3 gawa", "homeNoImage": "Wala pang laman dito", "homeTryNow": "Subukan ngayon ›", "homeNoVideo": "Wala pang video", "homeMakeVideo": "Gumawa ng unang video ›", "homeEmptyLib": "Walang laman ang library mo", "homeStartCreating": "Magsimulang lumikha ›",
     "grpBusiness": "💼 Negosyo", "grpLife": "🕌 Pang-araw-araw na buhay",
     "psheetAll": "Lahat", "psheetGrpArt": "🎨 Artistiko", "psheetBefore": "Bago", "psheetBeforeSub": "Isang larawan → bawat estilo", "psheetTry": "✨ Subukan sa iyong larawan",
-    "tcSub_btnPortraitStyle": "Iba’t ibang estilo ng portrait", "tcSub_btnQuickTemplates": "Mga ideya at inspirasyon para sa susunod mong proyekto", "tcSub_btnVideoMaker": "Gumawa at mag-edit ng video nang propesyonal", "tcSub_btnStudioAI": "Matatalinong estilo at effects", "tcSub_btnFashionAI": "Disenyo ng fashion gamit ang AI", "tcSub_btnDesignAI": "Disenyo ng interior at exterior", "tcSub_btnAdStudio": "Propesyonal na disenyo ng ad", "tcSub_btnStocks": "Pagsusuri at datos ng merkado", "tcSub_btnOmranTV": "Walang hanggang content at libangan", "tcSub_btnQibla": "Oras ng dasal at direksiyon ng Qibla", "tcSub_btnExpense": "Pamahalaan ang gastos at badyet", "tcSub_btnOmranEdu": "Mga kurso at aralin", "tcSub_btnConstruction": "Mga disenyong pang-inhinyero at arkitektura", "tcSub_btnReligion": "Mga tanong sa relihiyon, mapagkakatiwalaang sagot", "tcSub_btnCV": "Gumawa ng propesyonal na CV", "tcSub_btnDocs": "Suriin at ibuod ang mga dokumento", "tcSub_btnFeedback": "Ibahagi ang iyong opinyon at mungkahi", "tcSub_btnEmailAssist": "Bumuo ng email at mga tugon",
+    "tcSub_btnPortraitStyle": "Iba’t ibang estilo ng portrait", "tcSub_btnTalkRoom": "Kausapin ang barkada sa boses at text", "tcSub_btnQuickTemplates": "Mga ideya at inspirasyon para sa susunod mong proyekto", "tcSub_btnVideoMaker": "Gumawa at mag-edit ng video nang propesyonal", "tcSub_btnStudioAI": "Matatalinong estilo at effects", "tcSub_btnFashionAI": "Disenyo ng fashion gamit ang AI", "tcSub_btnDesignAI": "Disenyo ng interior at exterior", "tcSub_btnAdStudio": "Propesyonal na disenyo ng ad", "tcSub_btnStocks": "Pagsusuri at datos ng merkado", "tcSub_btnOmranTV": "Walang hanggang content at libangan", "tcSub_btnQibla": "Oras ng dasal at direksiyon ng Qibla", "tcSub_btnExpense": "Pamahalaan ang gastos at badyet", "tcSub_btnOmranEdu": "Mga kurso at aralin", "tcSub_btnConstruction": "Mga disenyong pang-inhinyero at arkitektura", "tcSub_btnReligion": "Mga tanong sa relihiyon, mapagkakatiwalaang sagot", "tcSub_btnCV": "Gumawa ng propesyonal na CV", "tcSub_btnDocs": "Suriin at ibuod ang mga dokumento", "tcSub_btnFeedback": "Ibahagi ang iyong opinyon at mungkahi", "tcSub_btnEmailAssist": "Bumuo ng email at mga tugon",
     "msgShareReply": "Ibahagi ang sagot",
     "msgShareCopied": "Nakopya ang sagot — i-paste sa app na gusto mo",
     "uploadCodeTitle": "Mag-upload ng code file (HTML o Python)",
@@ -1081,7 +1081,7 @@ I18N['fil'] = {
     cvTitle: 'Tagagawa ng CV',
     docsTitle: 'Katulong sa mga dokumento',
     expenseTitle: 'Pagsusuri ng gastos',
-    govTitle: 'Serbisyong pampamahalaan',
+    govTitle: 'Serbisyong pampamahalaan', talkRoomTitle: 'Silid ng barkada', /* v-talk-room */
     premiumToggleLabel: 'Professional mode',
     snapBuildLabel: '📸 Kuhanan at buuin',
     omranDisclaimerTxt: 'Maaaring hindi tumpak ang impormasyon — i-verify ang mahahalagang detalye.',

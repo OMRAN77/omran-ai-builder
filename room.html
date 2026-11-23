@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>om ai — غرفة الربع</title>
+<!-- v-talk-room (المالك ٢٣ نوفمبر: «اريده اتصال نفس الي في اللعبه… مافيها اي تكلفه»): «غرفة الربع» — صوت وكتابة ووجوه بين الناس.
+     طريقة «عالم المكعبات» نفسها: المتصفّحات تتّصل ببعض مباشرة (WebRTC)، والموقع (/api/system?action=room) يعرّفهم فقط.
+     صاحب الغرفة (بحسابه) يأخذ كودًا ورابطًا (‎/room?c=1234‎)، والضيف بلا حساب يطلب الدخول وصاحب الغرفة يدخّله أو يرفضه.
+     حتّى ٤ (صاحب الغرفة يوزّع الصوت). لا شيء يُسجَّل ولا يُحفظ. عربيّ وإنجليزيّ حسب لغة الجهاز (‎?lang=en). -->
+<link rel="icon" type="image/png" href="/icons/favicon-32-v2.png?icon=black-20261022">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=black-20261022">
+<style>
+:root { --bg: #090a0d; --card: #121318; --line: rgba(212,175,55,.28); --gold: #d4af37; --text: #f4f1e8; --muted: #a9a59a; --live: #3ddc84; --stop: #dc2626; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+main { max-width: 520px; margin: 0 auto; padding: 26px 16px calc(26px + env(safe-area-inset-bottom, 0px)); }
+h1 { font-size: 24px; margin: 0 0 4px; text-align: center; }
+.sub { color: var(--muted); font-size: 14.5px; margin: 0 0 18px; line-height: 1.6; text-align: center; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin: 0 0 12px; display: flex; flex-direction: column; gap: 10px; }
+.card h2 { margin: 0; font-size: 16px; }
+.code { font: 700 52px/1.1 system-ui, sans-serif; letter-spacing: 10px; direction: ltr; text-align: center; color: var(--gold); -webkit-user-select: text; user-select: text; }
+button { font: inherit; font-size: 15px; font-weight: 700; min-height: 44px; padding: 8px 16px; border-radius: 11px; border: 0; cursor: pointer; color: #0b0c10; background: var(--gold); }
+button.soft { color: var(--text); background: none; border: 1px solid var(--line); font-weight: 600; }
+button.no { color: #fff; background: var(--stop); }
+button.on { background: var(--live); }
+input { font: inherit; font-size: 17px; min-height: 46px; padding: 6px 12px; border-radius: 11px; border: 1px solid var(--line); background: #0c0d11; color: var(--text); width: 100%; -webkit-user-select: text; user-select: text; }
+input.c { text-align: center; letter-spacing: 8px; direction: ltr; font-weight: 700; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row > * { flex: 1; }
+ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.1); }
+li span { flex: 1; font-weight: 700; overflow-wrap: anywhere; }
+li small { color: var(--muted); font-size: 12px; }
+li button { min-height: 36px; padding: 4px 12px; font-size: 13.5px; }
+li.ask { border-color: var(--gold); }
+.log { display: flex; flex-direction: column; gap: 4px; max-height: 40vh; overflow-y: auto; padding: 2px; }
+.log div { align-self: flex-start; max-width: 92%; padding: 5px 10px 6px; border-radius: 10px; background: #1b1d24; line-height: 1.5; overflow-wrap: anywhere; }
+.log div b { color: var(--gold); margin-inline-end: 6px; }
+.log div.me { align-self: flex-end; background: #23281f; }
+.log div.me b { color: var(--live); }
+.log div.sys { align-self: center; background: none; color: var(--muted); font-size: 13px; }
+.faces { display: flex; flex-wrap: wrap; gap: 4px; }
+.faces button { font-size: 22px; padding: 0 9px; min-height: 40px; background: #1b1d24; color: inherit; }
+.err { color: #ffb0a6; min-height: 20px; font-size: 14px; text-align: center; margin: 0; }
+.note { color: var(--muted); font-size: 12.5px; line-height: 1.6; text-align: center; margin: 6px 0 0; }
+.lang { display: block; margin: 14px auto 0; color: var(--muted); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title"></h1>
+  <p class="sub" id="sub"></p>
+  <section id="view"></section>
+  <p class="err" id="err" role="status"></p>
+  <p class="note" id="note"></p>
+  <a class="lang" id="langSwitch" href="?lang=en"></a>
+</main>
+<script>
+(function () {
+  'use strict';
+  var API = '/api/system?action=room', RTC = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }, MAX = 4, MAX_LINE = 300;
+  var search = location.search;
+  var q = (search.match(/[?&]lang=(\w+)/) || [])[1];
+  var en = q ? q === 'en' : !/^ar\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || 'ar');
+  var T = en ? {
+    title: 'Friends room', sub: 'Talk with your friends by voice and text. Open a room and send them the link.',
+    open: 'Open a room', needLogin: 'Sign in to the app first to open a room. Friends join without an account.', joinCode: 'Or join with a code:', name: 'Your name', join: 'Join',
+    hostIs: 'Room of {n}', ask: 'Ask to join', asking: 'Waiting for {n} to let you in…', denied: 'The room owner did not let you in.', noAnswer: 'No answer from the room owner.',
+    shareIt: 'Send this code or link to your friends:', share: 'Send the link', copied: 'Link copied.', wa: 'WhatsApp',
+    wants: 'wants to join', admit: 'Let in', deny: 'Refuse', kick: 'Remove', you: 'you', owner: 'room owner', guest: 'guest', connecting: 'connecting…',
+    nobody: 'Nobody here yet.', micOn: 'Microphone on (tap to mute)', micOff: 'Turn on microphone', deafOn: 'Friends muted', deafOff: 'Friends audible',
+    type: 'Write to your friends…', send: 'Send', leave: 'Leave', closeRoom: 'Close the room', full: 'The room is full (4).',
+    joined: '{n} joined.', left: '{n} left.', kicked: 'The room owner removed you.', lost: 'The connection to the room dropped.', inRoom: 'You are in the room of {n}.',
+    noRoom: 'No room with this code. Check the digits, or ask your friend to open the room again.', busy: 'Too many requests on this room. Try again shortly.', slow: 'Too many tries. Wait a minute.',
+    store: 'Rooms are paused on the site right now.', offline: 'Could not reach the site.', code4: 'The code is four digits.', failed: 'Could not connect. Some networks block direct links: try the same Wi‑Fi or another network.',
+    noMic: 'This browser has no microphone here.', micDenied: 'No permission for the microphone. Allow it in the browser settings and try again.',
+    privacy: 'Your voice and messages go straight between you and your friends. Nothing is recorded or kept.', lang: 'العربية'
+  } : {
+    title: 'غرفة الربع', sub: 'كلّم ربعك بالصوت والكتابة. افتح غرفة وأرسل لهم الرابط.',
+    open: 'افتح غرفة', needLogin: 'سجّل دخولك في التطبيق أوّل عشان تفتح غرفة. ربعك يدخلون بدون حساب.', joinCode: 'أو ادخل بكود:', name: 'اسمك', join: 'ادخل',
+    hostIs: 'غرفة {n}', ask: 'اطلب الدخول', asking: 'ننتظر {n} يدخّلك…', denied: 'صاحب الغرفة ما دخّلك.', noAnswer: 'صاحب الغرفة ما ردّ.',
+    shareIt: 'أرسل هذا الكود أو الرابط لربعك:', share: 'أرسل الرابط', copied: 'انتسخ الرابط.', wa: 'واتساب',
+    wants: 'يبي يدخل', admit: 'دخّله', deny: 'ارفض', kick: 'طلّعه', you: 'أنت', owner: 'صاحب الغرفة', guest: 'ضيف', connecting: 'يتّصل…',
+    nobody: 'ما حد في الغرفة للحين.', micOn: 'المايك شغّال (اضغط تطفيه)', micOff: 'شغّل المايك', deafOn: 'صوت الربع مكتوم', deafOff: 'صوت الربع شغّال',
+    type: 'اكتب لربعك…', send: 'أرسل', leave: 'اطلع', closeRoom: 'سكّر الغرفة', full: 'الغرفة مليانة (4).',
+    joined: '{n} دخل.', left: '{n} طلع.', kicked: 'صاحب الغرفة طلّعك.', lost: 'انقطع الاتصال بالغرفة.', inRoom: 'أنت في غرفة {n}.',
+    noRoom: 'ما في غرفة بهذا الكود. تأكد من الأرقام، أو خل صاحبك يفتح الغرفة من جديد.', busy: 'الغرفة عليها زحمة. جرّب بعد شوي.', slow: 'محاولات كثيرة. انتظر دقيقة.',
+    store: 'الغرف متوقفة الحين من جهة الموقع.', offline: 'ما قدرت أوصل للموقع.', code4: 'الكود أربع أرقام.', failed: 'ما قدرت أتصل. بعض الشبكات تمنع الاتصال المباشر: جرّبوا نفس الواي فاي أو شبكة ثانية.',
+    noMic: 'هذا المتصفح ما يدعم المايك هني.', micDenied: 'ما في إذن للمايك. اسمح له من إعدادات المتصفح وجرّب مرة ثانية.',
+    privacy: 'صوتك وكلامك يروحون مباشرة بينك وبين ربعك. ما شي يتسجّل ولا ينحفظ.', lang: 'English'
+  };
+  var FACES = ['👋', '😂', '❤️', '👍', '😮', '😢', '👏', '🎉'];
+  var WHY = { 'no-room': T.noRoom, busy: T.busy, 'slow-down': T.slow, store: T.store, offline: T.offline, login: T.needLogin, full: T.busy };
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (s, n) { return s.replace('{n}', n); };
+  var cleanName = function (v, d) { return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069<>&"'`]/g, '').trim().slice(0, 24) || d || T.guest; };
+  var cleanLine = function (v) { return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, MAX_LINE); };
+  document.documentElement.lang = en ? 'en' : 'ar'; document.documentElement.dir = en ? 'ltr' : 'rtl';
+  $('title').textContent = T.title; $('sub').textContent = T.sub; $('note').textContent = T.privacy;
+  $('langSwitch').textContent = T.lang; $('langSwitch').href = '?' + (/[?&]c=(\d{4})/.test(search) ? 'c=' + search.match(/[?&]c=(\d{4})/)[1] + '&' : '') + 'lang=' + (en ? 'ar' : 'en');
+  var token = ''; try { token = localStorage.getItem('aiapp_auth_token') || ''; } catch (e) { token = ''; }
+  var myName = ''; try { myName = cleanName(localStorage.getItem('room-name') || '', ''); } catch (e) { myName = ''; }
+  var linkCode = (search.match(/[?&]c=(\d{4})/) || [])[1] || '';
+
+  // ---- state
+  var role = null, code = '', key = '', myId = 'host', hostName = '', busy = '', error = '', pollT = null, quiet = 0;
+  var peers = new Map();      // host: id -> { pc, dc, name, tx }; guest: 'host' -> { pc, dc, tx }
+  var members = [];           // guest: [{ id, name }] as the host tells
+  var asks = [];              // host: [{ id, name, offer }]
+  var lines = [];             // the chat on screen: { who, text, me, sys }
+  var heard = new Map(), outs = new Map(), mic = null, micOn = false, deaf = false, actx = null, micNode = null;
+  var stamps = new Map();     // host: guest id -> recent message times (5 in 4 seconds at most)
+
+  function call(body) {
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().catch(function () { return null; }); })
+      .then(function (j) { if (!j) throw new Error('offline'); return j; });
+  }
+  var send = function (dc, m) { if (dc && dc.readyState === 'open') { try { dc.send(JSON.stringify(m)); } catch (e) { /* dropped: the close handler tidies up */ } } };
+  var toAll = function (m, except) { peers.forEach(function (p, id) { if (id !== except) send(p.dc, m); }); };
+  var toHost = function (m) { var h = peers.get('host'); if (h) send(h.dc, m); };
+  function gathered(pc) { return new Promise(function (res) { if (pc.iceGatheringState === 'complete') { res(); return; } var t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); }); }
+
+  // ---- voices (as in the game: every link carries a silent voice line; the host sends each guest a mix without that guest)
+  function hear(id, stream) {
+    gone(id);
+    var el = document.createElement('audio'); el.autoplay = true; el.playsInline = true; el.srcObject = stream; el.muted = deaf; el.style.display = 'none';
+    document.body.appendChild(el); var p = el.play(); if (p && p.catch) p.catch(function () {});
+    heard.set(id, { stream: stream, el: el, node: null }); remix();
+  }
+  function gone(id) { var h = heard.get(id); if (!h) return; h.el.srcObject = null; h.el.remove(); if (h.node) { try { h.node.disconnect(); } catch (e) { /* apart */ } } heard.delete(id); outs.delete(id); remix(); }
+  function remix() {
+    var all = []; peers.forEach(function (p, id) { if (p.tx && p.tx.sender) all.push({ id: id, sender: p.tx.sender }); });
+    var track = micOn && mic ? mic.getAudioTracks()[0] : null;
+    if (role !== 'host' || all.length <= 1) { all.forEach(function (l) { l.sender.replaceTrack(track).catch(function () {}); }); return; }
+    var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    if (!actx) actx = new AC(); if (actx.state === 'suspended') actx.resume().catch(function () {});
+    if (micOn && mic && !micNode) micNode = actx.createMediaStreamSource(mic);
+    heard.forEach(function (h) { if (!h.node) { try { h.node = actx.createMediaStreamSource(h.stream); } catch (e) { h.node = null; } } });
+    all.forEach(function (l) {
+      var old = outs.get(l.id); if (old) { try { old.disconnect(); } catch (e) { /* apart */ } }
+      var dest = actx.createMediaStreamDestination(); outs.set(l.id, dest);
+      if (micNode) micNode.connect(dest);
+      heard.forEach(function (h, id) { if (id !== l.id && h.node) h.node.connect(dest); });
+      l.sender.replaceTrack(dest.stream.getAudioTracks()[0]).catch(function () {});
+    });
+  }
+  function setMic(on) {
+    if (!on) { if (mic) mic.getTracks().forEach(function (t) { t.stop(); }); mic = null; micOn = false; micNode = null; remix(); draw(); return Promise.resolve(true); }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.resolve(T.noMic);
+    return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+      .then(function (s) { mic = s; micOn = true; micNode = null; remix(); draw(); return true; })
+      .catch(function () { return T.micDenied; });
+  }
+
+  // ---- the chat
+  function say(who, text, me, sys) { lines.push({ who: who, text: text, me: !!me, sys: !!sys }); if (lines.length > 60) lines.shift(); drawLog(); }
+  function allowed(id) { var now = Date.now(), t = (stamps.get(id) || []).filter(function (x) { return now - x < 4000; }); if (t.length >= 5) { stamps.set(id, t); return false; } t.push(now); stamps.set(id, t); return true; }
+  var lastSent = 0;
+  function speak(text, face) {
+    if (Date.now() - lastSent < 600) return false;
+    if (face) { if (FACES.indexOf(face) < 0) return false; } else { text = cleanLine(text); if (!text) return false; }
+    lastSent = Date.now();
+    var m = face ? { t: 'emo', e: face } : { t: 'chat', s: text };
+    say(myName || T.you, face || text, true);
+    if (role === 'host') { m.who = 'host'; m.n = myName || T.owner; toAll(m); } else toHost(m);
+    return true;
+  }
+  function fromAnyone(m, from) {      // a line or a face: at the host from a guest (passed on with the name), at a guest from the host
+    var isFace = m.t === 'emo', body = isFace ? (FACES.indexOf(m.e) >= 0 ? m.e : '') : cleanLine(m.s);
+    if (!body) return;
+    if (role === 'host') {
+      if (!allowed(from)) return;
+      var n = (peers.get(from) || {}).name || T.guest;
+      say(n, body, false);
+      var out = isFace ? { t: 'emo', e: body } : { t: 'chat', s: body }; out.who = from; out.n = n;
+      toAll(out, from);
+    } else {
+      say(cleanName(m.n, T.owner), body, false);
+    }
+  }
+
+  // ---- the host
+  function roster() { var l = [{ id: 'host', name: myName || T.owner }]; peers.forEach(function (p, id) { if (p.dc && p.dc.readyState === 'open') l.push({ id: id, name: p.name }); }); return l; }
+  function tellRoster() { toAll({ t: 'ps', list: roster() }); }
+  function host() {
+    error = ''; busy = '…'; draw();
+    return call({ op: 'open', token: token, name: myName }).then(function (r) {
+      busy = '';
+      if (r.error) { error = WHY[r.error] || T.offline; draw(); return; }
+      code = r.code; key = r.key; role = 'host'; myId = 'host';
+      clearInterval(pollT); pollT = setInterval(poll, 3500); quiet = 0;
+      history.replaceState(null, '', location.pathname + '?c=' + code + (q ? '&lang=' + q : ''));
+      draw();
+    }).catch(function () { busy = ''; error = T.offline; draw(); });
+  }
+  function poll() {
+    if (role !== 'host') return;
+    call({ op: 'pending', code: code, key: key, keep: quiet % 4 === 0 ? 1 : 0 }).then(function (r) {
+      quiet++;
+      if (r.error === 'no-room') { clearInterval(pollT); error = T.noRoom; draw(); return; }
+      (r.joins || []).forEach(function (j) { if (!asks.some(function (a) { return a.id === j.id; })) asks.push(j); });
+      if ((r.joins || []).length) draw();
+    }).catch(function () { /* the next poll tries again */ });
+  }
+  function admit(id) {
+    var i = asks.findIndex(function (a) { return a.id === id; }); if (i < 0) return;
+    var ask = asks.splice(i, 1)[0];
+    if (peers.size >= MAX - 1) { call({ op: 'deny', code: code, key: key, id: id }).catch(function () {}); error = T.full; draw(); return; }
+    var pc = new RTCPeerConnection(RTC), p = { pc: pc, dc: null, name: cleanName(ask.name), tx: null };
+    peers.set(id, p);
+    pc.ontrack = function (ev) { if (ev.track.kind === 'audio') hear(id, ev.streams[0] || new MediaStream([ev.track])); };
+    pc.ondatachannel = function (ev) {
+      p.dc = ev.channel;
+      p.dc.onopen = function () { send(p.dc, { t: 'welcome', id: id, host: myName || T.owner }); tellRoster(); say('', fmt(T.joined, p.name), false, true); draw(); };
+      p.dc.onmessage = function (e) { var m = null; try { m = JSON.parse(e.data); } catch (err) { m = null; } if (!m) return; if (m.t === 'chat' || m.t === 'emo') fromAnyone(m, id); };
+      p.dc.onclose = function () { drop(id, false); };
+    };
+    pc.onconnectionstatechange = function () { if (pc.connectionState === 'failed' || pc.connectionState === 'closed') drop(id, false); };
+    pc.setRemoteDescription({ type: 'offer', sdp: ask.offer }).then(function () {
+      p.tx = pc.getTransceivers().find(function (t) { return t.receiver && t.receiver.track && t.receiver.track.kind === 'audio'; }) || null;
+      if (p.tx) p.tx.direction = 'sendrecv';
+      return pc.createAnswer();
+    }).then(function (a) { return pc.setLocalDescription(a); }).then(function () { return gathered(pc); })
+      .then(function () { return call({ op: 'admit', code: code, key: key, id: id, answer: pc.localDescription.sdp }); })
+      .then(function () { remix(); draw(); })
+      .catch(function () { drop(id, false); error = T.failed; draw(); });
+    draw();
+  }
+  function deny(id) { var i = asks.findIndex(function (a) { return a.id === id; }); if (i < 0) return; asks.splice(i, 1); call({ op: 'deny', code: code, key: key, id: id }).catch(function () {}); draw(); }
+  function drop(id, kicked) {
+    var p = peers.get(id); if (!p) return;
+    peers.delete(id);
+    if (kicked) send(p.dc, { t: 'kick' });
+    setTimeout(function () { try { p.pc.close(); } catch (e) { /* closed */ } }, kicked ? 300 : 0);
+    gone(id);
+    if (role === 'host') { tellRoster(); say('', fmt(T.left, p.name), false, true); }
+    draw();
+  }
+  function closeRoom() {
+    peers.forEach(function (p, id) { drop(id, false); });
+    clearInterval(pollT); if (code) call({ op: 'close', code: code, key: key }).catch(function () {});
+    setMic(false); role = null; code = ''; key = ''; asks = []; lines = [];
+    history.replaceState(null, '', location.pathname + (q ? '?lang=' + q : '')); draw();
+  }
+
+  // ---- the guest
+  function peek(c) {
+    call({ op: 'peek', code: c }).then(function (r) { if (r.error) { error = WHY[r.error] || T.offline; linkCode = ''; } else hostName = cleanName(r.name, T.owner); draw(); }).catch(function () { error = T.offline; draw(); });
+  }
+  function join(c, name) {
+    c = String(c || '').replace(/\D/g, '').slice(0, 4);
+    if (c.length !== 4) { error = T.code4; draw(); return; }
+    myName = cleanName(name, ''); try { localStorage.setItem('room-name', myName); } catch (e) { /* not kept */ }
+    error = ''; code = c; busy = fmt(T.asking, hostName || T.owner); draw();
+    var pc = new RTCPeerConnection(RTC), dc = pc.createDataChannel('room'), tx = null;
+    try { tx = pc.addTransceiver('audio', { direction: 'sendrecv' }); } catch (e) { tx = null; }
+    pc.ontrack = function (ev) { if (ev.track.kind === 'audio') hear('host', ev.streams[0] || new MediaStream([ev.track])); };
+    peers.set('host', { pc: pc, dc: dc, tx: tx });
+    dc.onmessage = function (e) { var m = null; try { m = JSON.parse(e.data); } catch (err) { m = null; } fromHost(m); };
+    dc.onclose = function () { if (role === 'guest') left(T.lost); };
+    var fail = function (text) { peers.delete('host'); try { pc.close(); } catch (e) { /* closed */ } busy = ''; code = ''; error = text; draw(); };
+    pc.createOffer().then(function (o) { return pc.setLocalDescription(o); }).then(function () { return gathered(pc); })
+      .then(function () { return call({ op: 'join', code: c, name: myName || T.guest, offer: pc.localDescription.sdp }); })
+      .then(function (r) {
+        if (r.error) { fail(WHY[r.error] || T.offline); return; }
+        var tries = 0;
+        (function wait() {
+          if (!peers.get('host') || peers.get('host').pc !== pc) return;
+          if (++tries > 40) { fail(T.noAnswer); return; }
+          call({ op: 'answer', code: c, id: r.id }).catch(function () { return { wait: true }; }).then(function (a) {
+            if (a.denied) { fail(T.denied); return; }
+            if (a.answer) { pc.setRemoteDescription({ type: 'answer', sdp: a.answer }).then(function () { busy = T.connecting; draw(); setTimeout(function () { if (role !== 'guest' && peers.get('host') && peers.get('host').pc === pc) fail(T.failed); }, 20000); }).catch(function () { fail(T.failed); }); return; }
+            setTimeout(wait, 2500);
+          });
+        })();
+      }).catch(function () { fail(T.offline); });
+  }
+  function fromHost(m) {
+    if (!m || typeof m !== 'object') return;
+    if (m.t === 'welcome') { role = 'guest'; myId = String(m.id || ''); busy = ''; hostName = cleanName(m.host, T.owner); say('', fmt(T.inRoom, hostName), false, true); draw(); }
+    else if (m.t === 'ps' && Array.isArray(m.list)) { members = m.list.slice(0, MAX).map(function (x) { return { id: String(x.id || ''), name: cleanName(x.name) }; }); draw(); }
+    else if (m.t === 'chat' || m.t === 'emo') fromAnyone(m, 'host');
+    else if (m.t === 'kick') left(T.kicked);
+  }
+  function left(text) {
+    var h = peers.get('host'); peers.clear(); if (h) { try { h.pc.close(); } catch (e) { /* closed */ } }
+    heard.forEach(function (v, id) { gone(id); }); setMic(false);
+    role = null; code = ''; members = []; busy = ''; error = text || ''; draw();
+  }
+
+  // ---- the screen
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var view = $('view');
+  function link() { return location.origin + location.pathname + '?c=' + code; }
+  function talkBox() {
+    return '<div class="card"><div class="row"><button type="button" class="' + (micOn ? 'on' : 'soft') + '" data-mic="' + (micOn ? 0 : 1) + '">' + (micOn ? T.micOn : T.micOff) + '</button>'
+      + '<button type="button" class="soft" data-deaf="' + (deaf ? 0 : 1) + '">' + (deaf ? T.deafOn : T.deafOff) + '</button></div>'
+      + '<div class="log" id="log"></div>'
+      + '<form class="row" id="say"><input id="line" maxlength="' + MAX_LINE + '" placeholder="' + esc(T.type) + '" autocomplete="off"><button type="submit" style="flex:none">' + T.send + '</button></form>'
+      + '<div class="faces">' + FACES.map(function (f) { return '<button type="button" data-face="' + f + '">' + f + '</button>'; }).join('') + '</div></div>';
+  }
+  function draw() {
+    $('err').textContent = error;
+    var h = '';
+    if (role === 'host') {
+      h += '<div class="card"><h2>' + T.shareIt + '</h2><div class="code">' + code + '</div><div class="row"><button type="button" data-share="1">' + T.share + '</button><button type="button" class="soft" data-wa="1">' + T.wa + '</button></div></div>';
+      h += '<div class="card"><ul>' + asks.map(function (a) { return '<li class="ask"><span>' + esc(cleanName(a.name)) + '</span><small>' + T.wants + '</small><button type="button" data-admit="' + a.id + '">' + T.admit + '</button><button type="button" class="no" data-deny="' + a.id + '">' + T.deny + '</button></li>'; }).join('')
+        + '<li><span>' + esc(myName || T.owner) + '</span><small>' + T.you + ' · ' + T.owner + '</small></li>'
+        + Array.from(peers).map(function (e) { var p = e[1]; return '<li><span>' + esc(p.name) + '</span><small>' + (p.dc && p.dc.readyState === 'open' ? T.guest : T.connecting) + '</small><button type="button" class="no" data-kick="' + e[0] + '">' + T.kick + '</button></li>'; }).join('') + '</ul>'
+        + (!asks.length && !peers.size ? '<p class="note" style="margin:0">' + T.nobody + '</p>' : '') + '</div>';
+      h += talkBox() + '<button type="button" class="no" data-close="1" style="width:100%">' + T.closeRoom + '</button>';
+    } else if (role === 'guest') {
+      h += '<div class="card"><ul>' + members.map(function (m) { return '<li><span>' + esc(m.name) + '</span><small>' + (m.id === myId ? T.you : m.id === 'host' ? T.owner : T.guest) + '</small></li>'; }).join('') + '</ul></div>';
+      h += talkBox() + '<button type="button" class="no" data-leave="1" style="width:100%">' + T.leave + '</button>';
+    } else if (busy) {
+      h += '<div class="card"><p style="text-align:center;margin:6px 0">' + esc(busy) + '</p>' + (peers.size ? '<button type="button" class="soft" data-leave="1">' + T.leave + '</button>' : '') + '</div>';
+    } else if (linkCode) {
+      h += '<div class="card"><h2>' + esc(fmt(T.hostIs, hostName || '…')) + '</h2><input class="n" id="nm" maxlength="24" placeholder="' + esc(T.name) + '" value="' + esc(myName) + '"><button type="button" data-ask="1">' + T.ask + '</button></div>';
+    } else {
+      h += '<div class="card"><button type="button" data-host="1"' + (token ? '' : ' disabled style="opacity:.5"') + '>' + T.open + '</button>' + (token ? '' : '<p class="note" style="margin:0">' + T.needLogin + '</p>') + '</div>'
+        + '<div class="card"><h2>' + T.joinCode + '</h2><input class="c" id="cd" inputmode="numeric" maxlength="4" placeholder="0000"><input id="nm" maxlength="24" placeholder="' + esc(T.name) + '" value="' + esc(myName) + '"><button type="button" data-join="1">' + T.join + '</button></div>';
+    }
+    view.innerHTML = h;
+    drawLog();
+  }
+  function drawLog() {
+    var el = $('log'); if (!el) return;
+    el.innerHTML = '';
+    lines.forEach(function (l) {
+      var d = document.createElement('div'); d.className = l.sys ? 'sys' : l.me ? 'me' : '';
+      if (!l.sys) { var b = document.createElement('b'); b.textContent = l.who; d.appendChild(b); }
+      d.appendChild(document.createTextNode(l.text)); el.appendChild(d);
+    });
+    el.scrollTop = el.scrollHeight;
+  }
+  view.addEventListener('click', function (e) {
+    var t = e.target.closest('button'); if (!t || t.disabled) return;
+    var d = t.dataset;
+    if (d.host) { var nm = $('nm'); if (nm && nm.value) myName = cleanName(nm.value, ''); host(); }
+    else if (d.join) join($('cd').value, $('nm').value);
+    else if (d.ask) join(linkCode, $('nm').value);
+    else if (d.admit) admit(d.admit);
+    else if (d.deny) deny(d.deny);
+    else if (d.kick) drop(d.kick, true);
+    else if (d.close) closeRoom();
+    else if (d.leave) { if (role === 'host') closeRoom(); else left(''); }
+    else if (d.mic) setMic(d.mic === '1').then(function (r) { error = r === true ? '' : r; draw(); });
+    else if (d.deaf) { deaf = d.deaf === '1'; heard.forEach(function (h) { h.el.muted = deaf; }); draw(); }
+    else if (d.face) speak('', d.face);
+    else if (d.share) { var u = link(); if (navigator.share) navigator.share({ title: T.title, text: T.shareIt + ' ' + code, url: u }).catch(function () {}); else if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { error = T.copied; draw(); }).catch(function () {}); }
+    else if (d.wa) window.open('https://wa.me/?text=' + encodeURIComponent(T.title + ' — ' + code + '\n' + link()), '_blank', 'noopener');
+  });
+  view.addEventListener('submit', function (e) { e.preventDefault(); var inp = $('line'); if (inp && speak(inp.value)) { inp.value = ''; inp.focus(); } });
+  window.addEventListener('pagehide', function () { if (role === 'host' && code) { try { navigator.sendBeacon(API, new Blob([JSON.stringify({ op: 'close', code: code, key: key })], { type: 'application/json' })); } catch (e) { /* the room ends by itself in a quarter of an hour */ } } });
+  if (linkCode) peek(linkCode);
+  draw();
+  window.__ROOM = { get role() { return role; }, get code() { return code; }, get peers() { return peers; }, get asks() { return asks; }, get members() { return members; }, get lines() { return lines; }, poll: poll, setMic: setMic, speak: speak };
+})();
+</script>
+</body>
+</html>

@@ -22,7 +22,8 @@ function visibleHuaweiTools() {
   const paused = read('js/app-05-ui.js').match(/var OMRAN_PAUSED_TOOLS = \[([^\]]*)\]/)[1].match(/'([A-Za-z]+)'/g).map((s) => s.slice(1, -1));
   const v473 = read('index.html').match(/\n(#btnTemplates[^{]*)\{ display: none !important; \}/)[1].match(/#(\w+)/g).map((s) => s.slice(1));
   const noMarkets = read('js/selfdiag.js').includes('html.store-nomarkets #btnStocks') ? ['btnStocks'] : [];
-  const hidden = new Set([...paused, ...v473, ...noMarkets]);
+  const storeSafe = [...read('index.html').matchAll(/\nhtml\.store-safe #(\w+) \{ display: none !important; \}/g)].map((m) => m[1]); // v-talk-room: أدوات مخفيّة في حزمة هواوي
+  const hidden = new Set([...paused, ...v473, ...noMarkets, ...storeSafe]);
   return { visible: ids.filter((id) => !hidden.has(id)), hidden: [...hidden].filter((id) => ids.includes(id)) };
 }
 
@@ -33,7 +34,7 @@ const EN = { btnPortraitStyle: 'Photo styles', btnVideoMaker: 'Video Maker', btn
 // ما يدلّ على أداة مخفيّة في نصّ المتجر
 // (v-hw-resubmit-2: والصينيّة — المراجع على هاتف صينيّ)
 const HIDDEN_WORDS = { btnOmranTV: /\bTV\b|تلفزيون|قنوات|电视/, btnCV: /\bCV\b|سيرة|简历/, btnExpense: /expense|مصاريف|开支|支出/i, btnQuickTemplates: /suggestion|اقتراحات|建议/i,
-  btnGov: /government|حكوم|政府/i, btnStocks: /stock|أسهم|股票|股市/i };
+  btnGov: /government|حكوم|政府/i, btnStocks: /stock|أسهم|股票|股市/i, btnTalkRoom: /friends room|غرفة الربع|好友房间/i };
 const BANNED = /official|trusted|preferred|featured|\bbest\b|\btop\b|#1|number one|رسمي|موثوق|مفضل|مفضّل|مميز|مميّز|الأفضل|官方|可靠|推荐|最佳|最好|精选|第一|最受欢迎/i;
 
 const notes = read('store/huawei/REVIEW-NOTES.md');

@@ -42,6 +42,7 @@ function load(action) {
     case 'cc': return require('./_lib/cc.js'); // v-cc-bridge: Claude Code الخام للمالك عبر جسره
     case 'call-session': case 'call-start': case 'call-status': case 'call-cancel': case 'call-trial-end': return require('./_lib/call-agent.js'); // v-call-agent: الوكيل يتّصل بالمحلّ (المالك مجّانًا، والمشترك بالنقاط — v-call-agent-paid)
     case 'call-link': case 'call-link-status': case 'call-guest-info': case 'call-guest-session': case 'call-guest-end': return require('./_lib/call-agent.js'); // v-call-link: رابط يفتحه الطرف الآخر ويكلّم الوكيل من متصفّحه (الضيف بلا حساب)
+    case 'room': return require('./_lib/talk-room.js'); // v-talk-room: «غرفة الربع» — تعارف WebRTC فقط (صوت وكتابة بين الناس مباشرة)، مثل غرف «عالم المكعبات»
     case 'funnel': return require('./_lib/funnel.js'); // v-funnel: عدّاد مجهول لمسار الزائر الجديد (زيارة ← موافقة ← رسالة ← حساب)، وتقريره للمالك
     default: return null;
   }

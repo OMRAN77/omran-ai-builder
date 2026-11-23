@@ -8,7 +8,7 @@
      والأصل 1200×720 يكلّف 3.3MB من ذاكرة الرسم لكلّ واحدة — ثماني عشرة = ~60MB، فتمتلئ ذاكرة معالج الرسوم في
      أندرويد وتظهر مستطيلات سوداء فوق البطاقات. نسخة عرض 600×360 في assets/tool-cards/s (الأصول باقية في clean/). */
   var CLEAN_V = '4';
-  var IDS = ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnStocks','btnOmranTV','btnQibla','btnExpense','btnOmranEdu','btnConstruction','btnReligion','btnCV','btnDocs','btnFeedback','btnEmailAssist'];
+  var IDS = ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnStocks','btnOmranTV','btnQibla','btnExpense','btnOmranEdu','btnConstruction','btnReligion','btnCV','btnDocs','btnFeedback','btnEmailAssist','btnTalkRoom'];
   var TOOL_PHOTOS = {};
   IDS.forEach(function(id){ TOOL_PHOTOS[id] = '/assets/tool-cards/s/' + id + '.jpg?v=' + CLEAN_V; });
   function isAr(){ return String(document.documentElement.lang || 'ar').toLowerCase().indexOf('ar') === 0; }
@@ -89,7 +89,7 @@
     btnPortraitStyle: '#d4af37', btnQuickTemplates: '#f2b94a', btnVideoMaker: '#e0555b', btnDesignAI: '#f28c5a',
     btnFashionAI: '#ff6fae', btnStudioAI: '#5ad1ff', btnAdStudio: '#ff5fa2', btnStocks: '#34d399', btnExpense: '#22c55e',
     btnCV: '#60a5fa', btnDocs: '#a78bfa', btnEmailAssist: '#fb923c', btnConstruction: '#fbbf24', btnQibla: '#d4af37',
-    btnOmranTV: '#ef4444', btnOmranEdu: '#38bdf8', btnReligion: '#10b981', btnGov: '#94a3b8', btnFeedback: '#f472b6'
+    btnOmranTV: '#ef4444', btnOmranEdu: '#38bdf8', btnReligion: '#10b981', btnGov: '#94a3b8', btnTalkRoom: '#d4af37', btnFeedback: '#f472b6'
   };
   function decorate(id){
     var b = document.getElementById(id); if(!b) return;

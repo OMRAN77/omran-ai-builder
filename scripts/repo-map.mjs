@@ -47,7 +47,7 @@ const LIB_PURPOSE = {
   '_knowledge': 'ملخّص معرفة المالك الثابت (BRIEF)',
   'safe-url': 'جلب آمن (منع SSRF)',
   'log-error': 'تسجيل الأخطاء',
-  'cost-meter': 'أسعار الموديلات وحساب الكلفة',
+  'cost-meter': 'أسعار الموديلات والكلفة',
   'analyze-zip': 'فكّ الأرشيفات',
   'repo-map': 'هذه الخريطة',
 };
