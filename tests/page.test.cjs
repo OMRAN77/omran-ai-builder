@@ -677,3 +677,12 @@ test('v-blockworld-looks: مكان واضح لتغيير الشخصية — صف
   assert.match(play, /btn\('looks', 'غيّر شخصيتك'\)/);
   assert.match(idx, /<section class="who">/); assert.match(idx, /localStorage\.setItem\('bw-outfit', cur\)/, 'اللي ينختار في الصفحة الأولى تلبسه اللعبة');
 });
+
+test('v-blockworld-skins: مجموعات شخصيات (العائلة، أبطال اليوم، الخيال، الأساطير، السحر) بقطع جديدة وشكل ثلاثي يدور', () => {
+  const out = read('shared/outfits.js'), av = read('shared/avatar.js'), adv = read('shared/adventure.js');
+  for (const n of ['البنوتة', 'الساحر الأزرق', 'الرامية الجنّية', 'الفارس الفضّي', 'القزم المحارب', 'النينجا', 'الفايكنج', 'الفرعون', 'الملك', 'الملكة المحاربة', 'الغوّاص', 'رجل الفطر', 'حارس الغابة', 'التنّين الصغير']) assert.ok(out.includes(`name: '${n}'`), n);
+  assert.match(out, /export const PACKS = \[/);
+  for (const h of ['wizard', 'witch', 'viking', 'crown', 'nemes', 'crest', 'mushroom', 'phones', 'leaves', 'diver', 'ninja']) assert.ok(av.includes(`HG('${h}')`), h);
+  assert.match(adv, /function mountPreview\(slot\)/, 'شكل الشخصية يدور في صفحة الشخصيات'); assert.match(adv, /data-thumb/, 'كل بطاقة صورتها من شكلها');
+  assert.ok(!/previews\/family|\.jpg|\.jpeg/.test(out), 'صورة البنت نفسها ما تنحط في اللعبة: شخصية مستوحاة منها بس');
+});

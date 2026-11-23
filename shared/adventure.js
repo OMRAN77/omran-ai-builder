@@ -8,11 +8,12 @@
 //   adv.sleep()           a bed was used; true when the night was slept through
 //   adv.onTrade = fn      called when the player presses the place button on the trader
 
+import * as THREE from 'three';
 import { K, kitItem, kitIcon, kitName } from './kit.js';
 import { EMPTY } from './play.js';
 import { levelOf } from './status.js';
 import { makeAvatar, outfitPicture } from './avatar.js';
-import { createWardrobe, TRADER_LOOK } from './outfits.js';
+import { createWardrobe, TRADER_LOOK, PACKS } from './outfits.js';
 import { makeCave } from './cave.js';
 
 const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
@@ -112,6 +113,38 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
       for (let j = 0; j < 3 + Math.floor(r() * 2); j++) { const [id, n] = LOOT[Math.floor(r() * LOOT.length)]; c[j * 3] = kitItem(id, n + Math.floor(r() * n)); }
     }
     hidden.push(spot);
+  }
+
+  // the characters page: the player's figure, turning slowly, in a little picture of its own
+  let pv = null;
+  const thumbs = new Map();
+  function mountPreview(slot) {
+    try {
+      if (!pv) {
+        const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: false });
+        r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); r.setSize(120, 150);
+        const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.8)); const sun = new THREE.DirectionalLight(0xfff2d8, 1.8); sun.position.set(2, 4, 5); sc.add(sun);
+        const cam = new THREE.PerspectiveCamera(30, 120 / 150, 0.1, 50); cam.position.set(0, 1.2, 4.6); cam.lookAt(0, 0.95, 0);
+        const fig = makeAvatar(); sc.add(fig.group);
+        pv = { r, sc, cam, fig, t: 0, key: '' };
+        const loop = () => { if (!pv.r.domElement.isConnected) { pv.running = false; return; } pv.t += 0.016; pv.fig.group.rotation.y = pv.t * 0.8; pv.fig.walk(pv.t, 1.2); pv.r.render(pv.sc, pv.cam); requestAnimationFrame(loop); };
+        pv.start = () => { if (!pv.running) { pv.running = true; requestAnimationFrame(loop); } };
+      }
+      // a picture of every character on the page drawn from its own figure (made once, kept)
+      const imgs = slot.closest('.page') ? slot.closest('.page').querySelectorAll('img[data-thumb]') : [];
+      if (imgs.length) {
+        const all = wardrobe.list(), rot = pv.fig.group.rotation.y;
+        pv.fig.group.rotation.y = 0.45;
+        for (const im of imgs) {
+          const k = im.dataset.thumb;
+          if (!thumbs.has(k)) { const o = all.find((q) => q.key === k); if (!o) continue; pv.fig.dress(o.c, null); pv.fig.walk(0, 0); pv.r.render(pv.sc, pv.cam); thumbs.set(k, pv.r.domElement.toDataURL('image/png')); }
+          im.src = thumbs.get(k);
+        }
+        pv.fig.group.rotation.y = rot;
+      }
+      pv.fig.dress(wardrobe.look, st.gear);
+      slot.appendChild(pv.r.domElement); pv.start();
+    } catch (e) { slot.remove(); /* no WebGL left for a second picture: the still portrait beside it is enough */ }
   }
 
   // a short darkness while the time passes in bed
@@ -226,8 +259,8 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     looksPage() {
       const looks = wardrobe.list(), now = looks.find((o) => o.on) || looks[0];
       const big = now && now.pic ? `<img class="hero big" src="${new URL('../previews/heroes/' + now.pic + '.webp', import.meta.url).href}" alt="" draggable="false">` : now ? outfitPicture(now.c, 64) : '';
-      return `<div class="me"><span class="pv">${big}</span><div><h3>شخصيتك الحين: ${now ? now.name : ''}</h3><p class="hint">اضغط على أي شخصية تلبسها على طول. اللي عليها قفل تفتحها بالمهام والأسرار.</p>` + '<p class="hint"><button type="button" class="view" data-view="1">' + (st.third ? 'ارجع للمنظور الأول' : 'شوف شكلك من ورا (V)') + '</button></p>' + `</div></div>`
-        + `<h3>الشخصيات</h3><div class="looks">${looks.map((o) => `<button type="button" class="look${o.on ? ' on' : ''}${o.owned ? '' : ' locked'}" data-look="${o.key}">${o.owned && o.pic ? `<img class="hero" src="${new URL('../previews/heroes/' + o.pic + '.webp', import.meta.url).href}" alt="" loading="lazy" draggable="false">` : outfitPicture(o.owned ? o.c : { hat: '#2a2d35', skin: '#3a3d46', shirt: '#2a2d35', pants: '#22252c', shoes: '#1a1c22' }, 34)}<span>${o.owned ? o.name : o.rare ? 'نادر: ؟' : o.name}</span><small>${o.owned ? (o.on ? 'لابسه' : 'البسه') : o.how}</small></button>`).join('')}</div>`
+      return `<div class="me"><span class="pv">${big}</span><div class="pv3d" title="شكلك"></div><div><h3>شخصيتك الحين: ${now ? now.name : ''}</h3><p class="hint">اضغط على أي شخصية تلبسها على طول. اللي عليها قفل تفتحها بالمهام والأسرار.</p>` + '<p class="hint"><button type="button" class="view" data-view="1">' + (st.third ? 'ارجع للمنظور الأول' : 'شوف شكلك من ورا (V)') + '</button></p>' + `</div></div>`
+        + PACKS.map(([pk, title]) => { const inPack = looks.filter((o) => (o.pack || (o.key === 'custom' ? 'start' : 'quests')) === pk); return inPack.length ? `<h3>${title}</h3><div class="looks">${inPack.map((o) => `<button type="button" class="look${o.on ? ' on' : ''}${o.owned ? '' : ' locked'}" data-look="${o.key}">${o.owned && o.pic ? `<img class="hero" src="${new URL('../previews/heroes/' + o.pic + '.webp', import.meta.url).href}" alt="" loading="lazy" draggable="false">` : o.owned ? `<img class="hero thumb" data-thumb="${o.key}" alt="" draggable="false">` : outfitPicture(o.owned ? o.c : { hat: '#2a2d35', skin: '#3a3d46', shirt: '#2a2d35', pants: '#22252c', shoes: '#1a1c22' }, 34)}<span>${o.owned ? o.name : o.rare ? 'نادر: ؟' : o.name}</span><small>${o.owned ? (o.on ? 'لابسه' : 'البسه') : o.how}</small></button>`).join('')}</div>` : ''; }).join('')
         + `<h3>صمّم شكلك</h3><div class="design">${[['hat', 'الطاقية والشعر'], ['skin', 'البشرة'], ['shirt', 'القميص'], ['pants', 'السروال'], ['shoes', 'الحذاء']].map(([k, t]) => `<label>${t}<input type="color" data-part="${k}" value="${wardrobe.custom[k] || '#888888'}"></label>`).join('')}<label>العباءة<input type="color" data-part="cape" value="${wardrobe.custom.cape || '#7747bb'}"></label><button type="button" class="view" data-cape="${wardrobe.custom.cape ? 0 : 1}">${wardrobe.custom.cape ? 'بدون عباءة' : 'مع عباءة'}</button><button type="button" class="view" data-brim="${wardrobe.custom.brim ? 0 : 1}">${wardrobe.custom.brim ? 'طاقية بدون حافة' : 'طاقية بحافة'}</button><button type="button" class="view" data-long="${wardrobe.custom.long ? 0 : 1}">${wardrobe.custom.long ? 'شعر قصير' : 'شعر طويل'}</button><label>الفستان<input type="color" data-part="skirt" value="${wardrobe.custom.skirt || '#c9b6f2'}"></label><button type="button" class="view" data-skirt="${wardrobe.custom.skirt ? 0 : 1}">${wardrobe.custom.skirt ? 'بدون فستان' : 'مع فستان'}</button><button type="button" class="view" data-flowers="${wardrobe.custom.flowers ? 0 : 1}">${wardrobe.custom.flowers ? 'بدون ورد' : 'تاج ورد'}</button><span class="pv">${outfitPicture(wardrobe.custom, 46)}</span></div>`
         ;
     },
@@ -244,6 +277,8 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     },
     /** After page() is in the document: draw the map. */
     drawn(el) {
+      const slot = el.querySelector('.pv3d');
+      if (slot) mountPreview(slot);
       // the designer's colour boxes: each change dresses the figure at once
       for (const inp of el.querySelectorAll('.design input[type="color"]')) inp.addEventListener('input', () => { if ((inp.dataset.part === 'cape' || inp.dataset.part === 'skirt') && !wardrobe.custom[inp.dataset.part]) return; wardrobe.design(inp.dataset.part, inp.value); const pv = el.querySelector('.design .pv'); if (pv) pv.innerHTML = outfitPicture(wardrobe.custom, 46); });
       const cv = el.querySelector('.tmap canvas');

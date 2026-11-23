@@ -86,9 +86,13 @@ const CSS = `
 #bag .look.locked { opacity: .55; }
 #bag .look span { font-size: 11.5px; font-weight: 700; }
 #bag .look img.hero { width: 64px; height: 76px; object-fit: cover; border-radius: 7px; display: block; }
+#bag .look img.hero.thumb { object-fit: contain; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.14), rgba(255,255,255,.02)); }
 #bag .me { display: flex; gap: 14px; align-items: center; margin: 6px 0 4px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); }
 #bag .me .pv img.hero.big { width: 96px; height: 116px; object-fit: cover; border-radius: 10px; display: block; }
 #bag .me h3 { margin: 0 0 4px; font-size: 16px; opacity: 1; }
+#bag .me .pv3d { flex: none; width: 120px; height: 150px; border-radius: 10px; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.16), rgba(255,255,255,.02)); }
+#bag .me .pv3d canvas { display: block; }
+@media (max-height: 500px), (max-width: 560px) { #bag .me .pv3d { width: 90px; height: 112px; } #bag .me .pv3d canvas { width: 90px !important; height: 112px !important; } }
 #bag .look small { font-size: 10px; opacity: .8; text-align: center; line-height: 1.3; }
 #bag .design { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 #bag .design label { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; }

@@ -88,6 +88,7 @@ export function makeAvatar() {
   box(0.17, 0.17, 0.03, M2.core, 0, 1.12, 0.145, core).rotation.z = 0.785;                                   // a lit diamond in the chest
   for (const [x, y, z] of [[-0.5, 1.7, 0.1], [0.52, 1.5, -0.1], [0.45, 2.0, 0.15]]) box(0.12, 0.12, 0.12, M2.core, x, y, z, core);
   // what the character holds in the right hand, as in the owner's pictures
+  const M3a = () => new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.6 });
   const held = {}, hand = new THREE.Group(); hand.position.set(0, -0.68, 0.06);              // joined to the right arm once the arms are made
   const H = (name) => { const g = new THREE.Group(); g.visible = false; hand.add(g); held[name] = g; return g; };
   const steel = new THREE.MeshStandardMaterial({ color: 0xc9d2dc, roughness: 0.3, metalness: 0.6 }), grip = mat(), dark2 = new THREE.MeshStandardMaterial({ color: 0x2a2e36, roughness: 0.5 });
@@ -99,6 +100,29 @@ export function makeAvatar() {
   { const g = H('tablet'); box(0.3, 0.2, 0.04, dark2, -0.1, 0.06, 0.14, g); box(0.24, 0.14, 0.01, M2.heldGlow, -0.1, 0.06, 0.162, g); g.rotation.x = -0.9; }
   { const g = H('jar'); box(0.16, 0.22, 0.16, M2.glass, 0, 0.08, 0.1, g); box(0.18, 0.04, 0.18, dark2, 0, 0.21, 0.1, g); box(0.04, 0.14, 0.04, M2.heldGlow, 0, 0.05, 0.1, g); box(0.1, 0.04, 0.04, M2.heldGlow, 0, 0.1, 0.1, g); }
   { const g = H('drill'); box(0.16, 0.16, 0.26, dark2, 0, 0, 0.1, g); box(0.12, 0.12, 0.16, steel, 0, 0, 0.3, g); box(0.07, 0.07, 0.14, steel, 0, 0, 0.44, g); box(0.03, 0.03, 0.1, steel, 0, 0, 0.55, g); }
+  // more held things: a staff with a glowing tip, a lute, a spear
+  { const g = H('staff'); box(0.05, 1.3, 0.05, grip, 0, 0.35, 0.08, g); box(0.12, 0.12, 0.12, M2.heldGlow, 0, 1.02, 0.08, g); g.rotation.x = 0.15; }
+  { const g = H('lute'); box(0.26, 0.3, 0.08, M2.heldBody, -0.12, 0.05, 0.16, g); box(0.05, 0.36, 0.04, grip, -0.12, 0.36, 0.16, g); box(0.1, 0.1, 0.02, dark2, -0.12, 0.05, 0.205, g); g.rotation.z = 0.7; }
+  { const g = H('bow'); const b1 = box(0.04, 0.5, 0.04, grip, 0, 0.3, 0.12, g); b1.rotation.x = 0.15; const b2 = box(0.04, 0.5, 0.04, grip, 0, -0.18, 0.12, g); b2.rotation.x = -0.15; box(0.01, 0.95, 0.01, M3a(), 0, 0.06, 0.05, g); }
+  { const g = H('spear'); box(0.04, 1.4, 0.04, grip, 0, 0.4, 0.08, g); box(0.08, 0.2, 0.03, steel, 0, 1.16, 0.08, g); }
+  // hats and heads of every kind (shape in c.hatShape, colour c.hat2 or the hat colour)
+  const hats = {}, M3 = { a: mat(), b: mat(), gold: new THREE.MeshStandardMaterial({ color: 0xf0bd3f, roughness: 0.35, metalness: 0.6 }), white: mat(), horn: mat(), leaf: mat(), beard: mat(), ear: mat(), cloth: mat() };
+  const HG = (n) => { const g = new THREE.Group(); g.visible = false; group.add(g); hats[n] = g; return g; };
+  { const g = HG('wizard'); box(0.7, 0.05, 0.7, M3.a, 0, 1.82, 0, g); box(0.42, 0.18, 0.42, M3.a, 0, 1.93, 0, g); box(0.3, 0.18, 0.3, M3.a, 0.02, 2.1, -0.02, g); box(0.18, 0.16, 0.18, M3.a, 0.05, 2.26, -0.05, g); box(0.08, 0.12, 0.08, M3.a, 0.09, 2.38, -0.08, g); box(0.44, 0.05, 0.44, M3.b, 0, 1.86, 0, g); }
+  { const g = HG('witch'); box(0.8, 0.04, 0.8, M3.a, 0, 1.82, 0, g); box(0.38, 0.2, 0.38, M3.a, 0, 1.94, 0, g); box(0.24, 0.2, 0.24, M3.a, -0.03, 2.13, 0.03, g); box(0.1, 0.16, 0.1, M3.a, -0.08, 2.3, 0.08, g); box(0.4, 0.05, 0.4, M3.gold, 0, 1.86, 0, g); }
+  { const g = HG('viking'); box(0.52, 0.18, 0.52, M3.a, 0, 1.86, 0, g); box(0.08, 0.2, 0.52, M3.b, 0, 1.86, 0, g); for (const sx of [-1, 1]) { const hh = box(0.08, 0.26, 0.08, M3.horn, sx * 0.34, 1.98, 0, g); hh.rotation.z = sx * -0.5; } box(0.06, 0.2, 0.04, M3.a, 0, 1.68, 0.25, g); }
+  { const g = HG('crown'); for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; box(0.1, i % 2 ? 0.16 : 0.1, 0.1, M3.gold, Math.sin(a) * 0.24, 1.86 + (i % 2 ? 0.03 : 0), Math.cos(a) * 0.24, g); } box(0.06, 0.06, 0.02, new THREE.MeshStandardMaterial({ color: 0xe0344a, emissive: 0x6a0a14, emissiveIntensity: 0.6 }), 0, 1.88, 0.27, g); }
+  { const g = HG('nemes'); box(0.54, 0.14, 0.54, M3.a, 0, 1.86, 0, g); for (const sx of [-1, 1]) box(0.08, 0.66, 0.3, M3.a, sx * 0.29, 1.5, 0.04, g); box(0.5, 0.5, 0.08, M3.a, 0, 1.5, -0.27, g); for (let i = 0; i < 4; i++) for (const sx of [-1, 1]) box(0.09, 0.04, 0.31, M3.b, sx * 0.29, 1.72 - i * 0.14, 0.04, g); box(0.08, 0.1, 0.05, M3.gold, 0, 1.84, 0.27, g); }
+  { const g = HG('crest'); box(0.54, 0.16, 0.54, M3.a, 0, 1.86, 0, g); box(0.08, 0.22, 0.56, M3.b, 0, 2.02, -0.02, g); for (const sx of [-1, 1]) box(0.06, 0.3, 0.2, M3.a, sx * 0.27, 1.66, 0.12, g); }
+  { const g = HG('mushroom'); box(0.9, 0.3, 0.9, M3.a, 0, 2.0, 0, g); box(0.7, 0.12, 0.7, M3.a, 0, 2.2, 0, g); for (const [x, z] of [[0.3, 0.3], [-0.32, 0.1], [0.05, -0.34], [-0.15, 0.36], [0.36, -0.2]]) box(0.14, 0.04, 0.14, M3.white, x, 2.27, z, g); box(0.92, 0.04, 0.92, M3.b, 0, 1.84, 0, g); }
+  { const g = HG('phones'); box(0.54, 0.06, 0.12, M3.a, 0, 1.84, 0, g); for (const sx of [-1, 1]) box(0.08, 0.2, 0.18, M3.b, sx * 0.27, 1.6, 0, g); }
+  { const g = HG('leaves'); for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2, r = 0.22 + (i % 3) * 0.06; box(0.14, 0.14, 0.14, M3.leaf, Math.sin(a) * r, 1.86 + (i % 2) * 0.1, Math.cos(a) * r, g); } box(0.36, 0.16, 0.36, M3.leaf, 0, 2.0, 0, g); }
+  { const g = HG('diver'); const brass = new THREE.MeshStandardMaterial({ color: 0xc9903a, roughness: 0.35, metalness: 0.7 }); box(0.62, 0.62, 0.62, brass, 0, 1.6, 0, g); box(0.34, 0.34, 0.03, new THREE.MeshStandardMaterial({ color: 0x5fb0e8, transparent: true, opacity: 0.55, roughness: 0.1 }), 0, 1.6, 0.315, g); for (const sx of [-1, 1]) box(0.03, 0.2, 0.2, M3.a, sx * 0.32, 1.6, 0, g); box(0.7, 0.1, 0.7, brass, 0, 1.28, 0, g); }
+  { const g = HG('ninja'); box(0.5, 0.2, 0.5, M3.a, 0, 1.47, 0, g); box(0.5, 0.18, 0.5, M3.a, 0, 1.75, 0, g); box(0.1, 0.3, 0.06, M3.b, 0.12, 1.7, -0.27, g); }
+  const beard = new THREE.Group(); group.add(beard); box(0.42, 0.2, 0.06, M3.beard, 0, 1.4, 0.25, beard); box(0.3, 0.18, 0.06, M3.beard, 0, 1.24, 0.25, beard); box(0.16, 0.12, 0.05, M3.beard, 0, 1.11, 0.25, beard);
+  const ears = new THREE.Group(); group.add(ears); for (const sx of [-1, 1]) { const e = box(0.06, 0.18, 0.08, M3.ear, sx * 0.27, 1.62, -0.02, ears); e.rotation.z = sx * -0.6; }
+  const robe = new THREE.Group(); group.add(robe); box(0.62, 0.72, 0.4, M3.cloth, 0, 0.42, 0, robe); box(0.66, 0.1, 0.44, M3.b, 0, 0.1, 0, robe);
+  const sash = new THREE.Group(); group.add(sash); { const sb = box(0.08, 0.8, 0.02, M3.white, 0, 1.03, 0.14, sash); sb.rotation.z = 0.6; }
   const crown = new THREE.Group(); group.add(crown);
   for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; box(0.11, 0.11, 0.11, i % 2 ? M.leaf : M.flower, Math.sin(a) * 0.27, 1.9, Math.cos(a) * 0.27, crown); }
   const armL = limb(-0.34, 1.32), armR = limb(0.34, 1.32), legL = limb(-0.13, 0.72), legR = limb(0.13, 0.72);
@@ -120,7 +144,15 @@ export function makeAvatar() {
       M.skin.color.set(c.skin || '#e0b088'); M.hat.color.set(TINT[idOf(g.head)] || c.hat || '#3a3f4a'); M.shirt.color.set(TINT[idOf(g.chest)] || c.shirt || '#3f7ab8');
       M.pants.color.set(TINT[idOf(g.legs)] || c.pants || '#3a4152'); M.shoes.color.set(TINT[idOf(g.feet)] || c.shoes || '#2a2c33');
       cape.visible = !!c.cape; if (c.cape) M.cape.color.set(c.cape);
-      hair.visible = !!c.long && !idOf(g.head);
+      hair.visible = !!c.long && !idOf(g.head) && c.hatShape !== 'nemes' && c.hatShape !== 'diver' && c.hatShape !== 'ninja';
+      for (const [k, h] of Object.entries(hats)) h.visible = c.hatShape === k && !idOf(g.head);
+      if (c.hatShape) { M3.a.color.set(c.hat2 || c.hat || '#3a3f4a'); M3.b.color.set(c.hat3 || '#d8d2c0'); M3.horn.color.set('#e8e0cc'); M3.white.color.set('#f4f4f0'); M3.leaf.color.set(c.hat2 || '#3f8a3f'); }
+      hat.visible = !(c.hatShape === 'mushroom' || c.hatShape === 'diver'); brim.visible = brim.visible && !c.hatShape;
+      beard.visible = !!c.beard; if (c.beard) M3.beard.color.set(c.beard);
+      ears.visible = !!c.ears; M3.ear.color.set(c.skin || '#e0b088');
+      robe.visible = !!c.robe; if (c.robe) { M3.cloth.color.set(c.robe); M3.b.color.set(c.hat3 || '#d8b04a'); }
+      sash.visible = !!c.sash; if (c.sash) M3.white.color.set(c.sash);
+      for (const l of legs) l.visible = !c.robe; for (const f of feet) f.visible = !c.robe;
       skirt.visible = !!c.skirt && !idOf(g.legs); if (c.skirt) M.skirt.color.set(c.skirt);
       crown.visible = !!c.flowers && !idOf(g.head); if (c.flowers) { M.flower.color.set(c.flowers); M.leaf.color.set('#5f9e4a'); }
       for (const [k, f] of Object.entries(faces)) f.visible = c.face === k && !(k !== 'bubble' && idOf(g.head) && k === 'visor');

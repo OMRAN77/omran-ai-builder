@@ -11,7 +11,7 @@ const r = new THREE.WebGLRenderer({ antialias: true }); r.setPixelRatio(2); r.se
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x8fb7d6);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x556655, 1.7)); const sun = new THREE.DirectionalLight(0xfff2d8, 2.0); sun.position.set(2, 5, 6); scene.add(sun);
 const only = new URLSearchParams(location.search).get('free'), from = new URLSearchParams(location.search).get('from');
-const list0 = OUTFITS.filter((o) => !only || o.free), list = from ? list0.slice(list0.findIndex((o) => o.key === from)) : list0;
+const pk = new URLSearchParams(location.search).get('pack'); const list0 = OUTFITS.filter((o) => (!only || o.free) && (!pk || pk.split(',').includes(o.pack))), list = from ? list0.slice(list0.findIndex((o) => o.key === from)) : list0;
 list.forEach((o, i) => { const a = makeAvatar(); a.dress(o.c, {}); a.place((i - (list.length - 1) / 2) * 1.0, 0, 0, Math.PI + 0.35); scene.add(a.group); });
 const cam = new THREE.PerspectiveCamera(28, innerWidth / innerHeight, 0.1, 100); cam.position.set(0, 1.4, list.length * 0.62 + 1.6); cam.lookAt(0, 1.0, 0);
 r.render(scene, cam); window.__READY = true;
