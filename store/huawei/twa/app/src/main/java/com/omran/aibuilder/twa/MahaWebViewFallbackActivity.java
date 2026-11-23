@@ -295,11 +295,24 @@ public class MahaWebViewFallbackActivity extends Activity {
         }
         PermissionRequest request = mPendingMicRequest;
         mPendingMicRequest = null;
-        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
-        } else {
-            request.deny();
+        grantWhatIsAllowed(request);
+    }
+
+    // v-talk-room-cam (المالك: «في بوتم يستوي الكاميرات ليش انته مش قادر»): غرفة الربع تطلب الكاميرا مع المايك. نمنح من
+    // الطلب ما أذن به المستخدم في أندرويد فقط: الصوت إن كانت RECORD_AUDIO ممنوحة، والصورة إن كانت CAMERA ممنوحة، وإلّا نرفض.
+    private void grantWhatIsAllowed(PermissionRequest request) {
+        java.util.List<String> ok = new java.util.ArrayList<>();
+        for (String resource : request.getResources()) {
+            if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)
+                    && ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                ok.add(resource);
+            } else if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)
+                    && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                ok.add(resource);
+            }
         }
+        if (ok.isEmpty()) request.deny();
+        else request.grant(ok.toArray(new String[0]));
     }
 
     // v-hw-file-chooser: منتقي الملفّات يعود هنا. النداء يُستدعى دائمًا (null عند الإلغاء) — بلا ذلك
@@ -501,27 +514,34 @@ public class MahaWebViewFallbackActivity extends Activity {
             // إطلاقًا فيرفض أندرويد getUserMedia(audio) صامتًا وفورًا. نمنح صوت الميكروفون
             // فقط (لا كاميرا — غير مُستعمَلة عبر getUserMedia في مها) وفقط بعد صلاحية
             // RECORD_AUDIO الحقيقيّة (مُعلَنة في AndroidManifest.xml ومطلوبة هنا وقت التشغيل).
+            // v-talk-room-cam: والكاميرا لغرفة الربع — الصورة فقط بعد صلاحية CAMERA الحقيقيّة، والصوت كما كان بعد RECORD_AUDIO.
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
-                boolean wantsAudio = false;
+                boolean wantsAudio = false, wantsVideo = false;
                 for (String resource : request.getResources()) {
-                    if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) {
-                        wantsAudio = true;
-                        break;
-                    }
+                    if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) wantsAudio = true;
+                    else if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) wantsVideo = true;
                 }
-                if (!wantsAudio) {
+                if (!wantsAudio && !wantsVideo) {
                     request.deny();
                     return;
                 }
-                if (ContextCompat.checkSelfPermission(MahaWebViewFallbackActivity.this,
-                        Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                    request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+                java.util.List<String> missing = new java.util.ArrayList<>();
+                if (wantsAudio && ContextCompat.checkSelfPermission(MahaWebViewFallbackActivity.this,
+                        Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    missing.add(Manifest.permission.RECORD_AUDIO);
+                }
+                if (wantsVideo && ContextCompat.checkSelfPermission(MahaWebViewFallbackActivity.this,
+                        Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                    missing.add(Manifest.permission.CAMERA);
+                }
+                if (missing.isEmpty()) {
+                    grantWhatIsAllowed(request);
                     return;
                 }
                 mPendingMicRequest = request;
                 ActivityCompat.requestPermissions(MahaWebViewFallbackActivity.this,
-                        new String[]{Manifest.permission.RECORD_AUDIO}, RC_RECORD_AUDIO);
+                        missing.toArray(new String[0]), RC_RECORD_AUDIO);
             }
 
             // v-hw-file-chooser: بلا هذي الدالّة يتجاهل WebView كلّ <input type=file>. true = سنستدعي
