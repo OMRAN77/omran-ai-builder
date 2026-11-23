@@ -34,7 +34,9 @@ const CSS = `
   border-radius: 14px; background: rgba(10, 14, 20, .93); border: 1px solid var(--bg-line, rgba(255, 255, 255, .24)); box-shadow: 0 18px 60px rgba(0, 0, 0, .55); overflow: hidden; }
 #bag header { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
 #bag h2 { margin: 0; font-size: 19px; font-weight: 700; color: var(--bg-accent, #fff); }
-#bag .tabs { display: flex; gap: 4px; flex: 1; justify-content: center; }
+#bag .tabs { display: flex; gap: 4px; flex: 1; min-width: 0; justify-content: safe center; overflow-x: auto; scrollbar-width: none; }
+#bag .tabs::-webkit-scrollbar { display: none; }
+#bag .tabs button { flex: none; }
 #bag .tabs button { font: inherit; font-size: 14px; font-weight: 700; min-height: 40px; padding: 4px 13px; border-radius: 9px; color: inherit; cursor: pointer; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); }
 #bag .tabs button.on { color: #0b0f14; background: var(--bg-accent, #fff); border-color: var(--bg-accent, #fff); }
 #bag .x, #bag .extra, #bag .menu { font: inherit; font-size: 13px; font-weight: 700; min-width: 44px; min-height: 40px; padding: 4px 11px; border-radius: 9px; border: 1px solid var(--bg-line, rgba(255, 255, 255, .3)); background: none; color: inherit; cursor: pointer; }
@@ -84,20 +86,23 @@ const CSS = `
 #bag .look.locked { opacity: .55; }
 #bag .look span { font-size: 11.5px; font-weight: 700; }
 #bag .look img.hero { width: 64px; height: 76px; object-fit: cover; border-radius: 7px; display: block; }
+#bag .me { display: flex; gap: 14px; align-items: center; margin: 6px 0 4px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); }
+#bag .me .pv img.hero.big { width: 96px; height: 116px; object-fit: cover; border-radius: 10px; display: block; }
+#bag .me h3 { margin: 0 0 4px; font-size: 16px; opacity: 1; }
 #bag .look small { font-size: 10px; opacity: .8; text-align: center; line-height: 1.3; }
 #bag .design { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 #bag .design label { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; }
 #bag .design input { width: 46px; height: 38px; padding: 0; border: 1px solid rgba(255, 255, 255, .3); border-radius: 8px; background: none; cursor: pointer; }
 #bag .design .pv { margin-inline-start: auto; }
 #bag .view { font: inherit; font-size: 13px; font-weight: 700; min-height: 40px; padding: 5px 16px; border-radius: 9px; border: 1px solid var(--bg-line, rgba(255, 255, 255, .3)); background: none; color: inherit; cursor: pointer; }
-@media (max-height: 500px), (max-width: 560px) { #bag { --c: 36px; } #bag header { padding: 4px 10px; gap: 5px; } #bag h2 { display: none; } #bag .tabs button { min-height: 36px; padding: 3px 9px; font-size: 12.5px; } #bag .x, #bag .extra, #bag .menu { min-height: 36px; padding: 3px 8px; font-size: 12px; }
+@media (max-height: 500px), (max-width: 560px) { #bag { --c: 36px; } #bag header { padding: 4px 8px; gap: 4px; } #bag h2 { display: none; } #bag .tabs { gap: 3px; } #bag .tabs button { min-height: 36px; padding: 3px 7px; font-size: 12px; } #bag .me .pv img.hero.big { width: 64px; height: 78px; } #bag .x, #bag .extra, #bag .menu { min-height: 36px; padding: 3px 8px; font-size: 12px; }
   #bag .page { padding: 2px 10px 5px; } #bag h3 { margin: 4px 2px 3px; font-size: 11.5px; } #bag .hint { font-size: 11px; margin-top: 3px; min-height: 16px; }
   #bag .it { min-height: 56px; padding: 4px 2px 3px; } #bag .it .pic, #bag .sq .pic, #bag .rec .pic { width: 26px; height: 26px; } #bag .it span { font-size: 10px; } #bag footer { padding: 4px 10px 6px; } #bag footer p { display: none; }
   #bag .rec { min-height: 48px; padding: 4px 7px; } #bag .worn label { font-size: 9.5px; } }
 `;
 
 const WEAR = [['head', 'خوذة'], ['chest', 'صدرية'], ['legs', 'سروال'], ['feet', 'حذاء']];
-const TABS = [['mine', 'أغراضي'], ['craft', 'التصنيع'], ['all', 'كل البلوكات'], ['quests', 'المهام']];
+const TABS = [['mine', 'أغراضي'], ['looks', 'الشخصيات'], ['craft', 'التصنيع'], ['all', 'كل البلوكات'], ['quests', 'المهام']];
 const has = (it) => !!it && !it.empty;
 
 export function createBag(o) {
@@ -114,7 +119,7 @@ export function createBag(o) {
     + TABS.map(([k, t]) => `<button type="button" data-tab="${k}">${t}</button>`).join('') + '</div>'
     + (o.extra ? '<button type="button" class="extra"></button>' : '') + (o.onMenu ? '<button type="button" class="menu">القائمة</button>' : '')
     + '<button type="button" class="x">إغلاق</button></header>'
-    + '<div class="page" data-page="mine"></div><div class="page" data-page="craft"></div><div class="page" data-page="all"><div class="list"></div></div><div class="page" data-page="quests"></div><div class="page" data-page="trade"></div>'
+    + '<div class="page" data-page="mine"></div><div class="page" data-page="craft"></div><div class="page" data-page="all"><div class="list"></div></div><div class="page" data-page="quests"></div><div class="page" data-page="looks"></div><div class="page" data-page="trade"></div>'
     + '<footer><p>مربعاتك</p><div class="bar"></div></footer></div>';
   document.body.appendChild(el);
   const pages = Object.fromEntries([...el.querySelectorAll('.page')].map((p) => [p.dataset.page, p]));
@@ -198,6 +203,7 @@ export function createBag(o) {
     drawBar();
     if (tab === 'mine') drawMine(); else if (tab === 'craft') drawCraft();
     else if (tab === 'quests' && adv) { pages.quests.innerHTML = adv.page(); adv.drawn(pages.quests); }
+    else if (tab === 'looks' && adv) { pages.looks.innerHTML = adv.looksPage(); adv.drawn(pages.looks); }
     else if (tab === 'trade' && special) pages.trade.innerHTML = '<h3>' + special.title + '</h3>' + special.html();
     else if (tab === 'trade' && adv) pages.trade.innerHTML = '<h3>التاجر</h3>' + adv.tradePage();
   }
@@ -229,7 +235,7 @@ export function createBag(o) {
     const t = e.target, tb = t.closest('[data-tab]'), it = t.closest('[data-item]'), rec = t.closest('[data-rec]'), pl = t.closest('[data-z]');
     if (tb) setTab(tb.dataset.tab);
     else if (tab === 'trade' && special && special.click(t)) draw();
-    else if ((tab === 'quests' || tab === 'trade') && adv && adv.click(t)) draw();
+    else if ((tab === 'quests' || tab === 'trade' || tab === 'looks') && adv && adv.click(t)) draw();
     else if (tab === 'all' && pl && pl.dataset.z === 'bar') { play.select(+pl.dataset.k); drawBar(); }
     else if (tab === 'craft' && pl && pl.dataset.z === 'bar') { play.select(+pl.dataset.k); drawBar(); }
     else if (pl) tapPlace(pl.dataset.z, pl.dataset.z === 'gear' ? pl.dataset.k : +pl.dataset.k);
@@ -240,6 +246,7 @@ export function createBag(o) {
     else if (t.closest('.x') || t === el) show(false);
   });
   window.addEventListener('keydown', (e) => { if (open && e.code === 'Escape') { show(false); e.preventDefault(); } });
+  window.__GAME_LOOKS = () => { if (st.modal && !open) return false; tab = 'looks'; held = null; note = ''; if (open) draw(); else show(true); return true; };
   return {
     el, items, craft, adv, net, saver,
     open: () => show(true), close: () => show(false), toggle: () => show(!open), isOpen: () => open,

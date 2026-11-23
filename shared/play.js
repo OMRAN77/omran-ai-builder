@@ -908,7 +908,7 @@ export function createPlayPanel(o) {
     if (mode === 'start') {
       box.innerHTML = `<h1>${esc(o.title)}</h1><p>${esc(o.tagline || '')}</p><ul>${rows().map(([k, v]) => `<li><b dir="auto">${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`
         + btn('go', save && save.loaded ? 'كمّل عالمك' : 'ابدأ اللعب', 'go')
-        + '<div>' + btn('options', 'الإعدادات') + (net ? btn('net', 'العب مع ربعك') : '') + (toMenu ? btn('worlds', 'العوالم') : '') + '</div>'
+        + '<div>' + btn('looks', 'غيّر شخصيتك') + btn('options', 'الإعدادات') + (net ? btn('net', 'العب مع ربعك') : '') + (toMenu ? btn('worlds', 'العوالم') : '') + '</div>'
         + `<div class="note">${esc(save && save.loaded ? 'عالمك محفوظ في هذا المتصفح: تكمل من وين وقفت.' : o.note || '')}</div><div class="gpu">${esc(window.__GAME_GPU || '')}</div>`;
       return;
     }
@@ -919,6 +919,7 @@ export function createPlayPanel(o) {
       + btn('stats', 'الإحصائيات')
       + btn('note', 'أرسل ملاحظة')
       + btn('bug', 'بلّغ عن خطأ')
+      + btn('looks', 'غيّر شخصيتك')
       + btn('options', 'الإعدادات')
       + (net ? btn('net', net.role ? 'العب مع ربعك (الغرفة ' + net.code + ')' : 'العب مع ربعك') : '')
       + btn('quit', toMenu ? 'احفظ واطلع للقائمة' : 'احفظ')
@@ -979,6 +980,7 @@ export function createPlayPanel(o) {
     else if (act === 'back') go(view === 'keys' ? 'options' : 'main');
     else if (['feats', 'stats', 'note', 'bug', 'options', 'keys'].includes(act)) go(act);
     else if (act === 'send') send();
+    else if (act === 'looks') { el.hidden = true; sent = ''; o.onStart(); setTimeout(() => { if (window.__GAME_LOOKS) window.__GAME_LOOKS(); }, 120); }
     else if (act === 'net') { const n = window.__GAME_NET; if (n) { el.hidden = true; n.open(() => { el.hidden = false; draw(); }); } }
     else if (act === 'worlds') toMenu();
     else if (act === 'quit') { const s = window.__GAME_SAVE, ok = s ? s.save() : false; sent = ok ? 'انحفظ عالمك في هذا المتصفح ✓' : (s && s.why ? s.why : 'ما قدرت أحفظ.'); if (toMenu && (ok || !s)) toMenu(); else draw(); }

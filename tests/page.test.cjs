@@ -669,3 +669,11 @@ test('أرقام العدّة ما تتكرّر: كل مكعب وكل غرض ل�
   for (const base of ['CROP0', 'CARROT0', 'POTATO0']) { const b = pairs.find((q) => q[0] === base)[1]; for (let i = 1; i < 4; i++) assert.ok(!seen.has(b + i) || seen.get(b + i) === base.slice(0, -1) + i, base + '+' + i + ' يطيح على ' + seen.get(b + i)); assert.ok(b + 3 < 200, base + ' مكعب تحت 200'); }
   assert.ok(pairs.find((q) => q[0] === 'FURNACE')[1] < 200);
 });
+
+test('v-blockworld-looks: مكان واضح لتغيير الشخصية — صفحة «الشخصيات» في الحقيبة، زر في القائمة، واختيار من الصفحة الأولى', () => {
+  const bag = read('shared/bag.js'), adv = read('shared/adventure.js'), play = read('shared/play.js'), idx = read('index.html');
+  assert.match(bag, /\['looks', 'الشخصيات'\]/); assert.match(bag, /adv\.looksPage\(\)/); assert.match(bag, /window\.__GAME_LOOKS = /);
+  assert.match(adv, /looksPage\(\) \{/); assert.match(adv, /شخصيتك الحين/);
+  assert.match(play, /btn\('looks', 'غيّر شخصيتك'\)/);
+  assert.match(idx, /<section class="who">/); assert.match(idx, /localStorage\.setItem\('bw-outfit', cur\)/, 'اللي ينختار في الصفحة الأولى تلبسه اللعبة');
+});
