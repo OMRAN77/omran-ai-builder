@@ -37,6 +37,9 @@
          androidbrowserhelper:2.6.2 للتحقّق أو بيئة بناء/جهاز لاختبار حيّ (راجع knowledge/DECISIONS.md). -->
 
         <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- v-talk-room-cam: الكاميرا لغرفة الربع داخل العارض الاحتياطيّ (تُطلب وقت التشغيل عند أوّل «شغّل الكاميرا»)؛ ليست شرطًا للتثبيت. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
 
     <!-- v-maha-webview-mic-4: صلاحيّة RECORD_AUDIO وحدها لا تكفي لالتقاط صوت فعليّ داخل
          WebView أندرويد — مصادر متعدّدة (Chromium/WebRTC، ومكتبات WebView أخرى كـCapacitor)

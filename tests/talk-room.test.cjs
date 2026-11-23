@@ -101,3 +101,13 @@ test('بطاقة «غرفة الربع» بصورتين: الفاتحة في ا�
   assert.match(js, /attributeFilter:\['lang', 'data-mode'\]/, 'تبديل الوضع يعيد اختيار الصورة');
   for (const f of ['s/btnTalkRoom.jpg', 's/btnTalkRoom-light.jpg', 'clean/btnTalkRoom.jpg', 'clean/btnTalkRoom-light.jpg']) assert.ok(fs.existsSync(path.join(root, 'assets/tool-cards', f)), f);
 });
+
+test('الكاميرا: خطوط فيديو من البداية (كاميرا الضيف ↔ صاحب الغرفة + ضيفان عبره)، ووصف الاتّصال الأكبر يمرّ', async () => {
+  const root = path.join(__dirname, '..'), html = fs.readFileSync(path.join(root, 'room.html'), 'utf8');
+  assert.match(html, /gv\.push\(pc\.addTransceiver\('video', \{ direction: 'sendrecv' \}\)\); gv\.push\(pc\.addTransceiver\('video', \{ direction: 'recvonly' \}\)\); gv\.push\(pc\.addTransceiver\('video', \{ direction: 'recvonly' \}\)\);/);
+  assert.match(html, /t\.sender\.replaceTrack\(o && o\.p\.cam && o\.p\.vtrack \? o\.p\.vtrack : null\)/, 'صاحب الغرفة يمرّر صورة الضيف للباقين');
+  assert.match(html, /v\.muted = true;\s*\/\/ the sound comes on the voice line/, 'الصوت من خطّ الصوت وحده: لا صدى من الفيديو');
+  const K = memoryKV(), { code } = (await act({ op: 'open' }, 'h', K, 'omran')).json;
+  const big = 'v=0\r\n' + 'a=x\r\n'.repeat(5000);      // ~30 ألف حرف: وصف بخطوط فيديو
+  assert.equal((await act({ op: 'join', code, name: 'n', offer: big }, 'g', K, null)).status, 200);
+});

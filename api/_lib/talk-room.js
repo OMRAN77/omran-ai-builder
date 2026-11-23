@@ -18,7 +18,7 @@
    الطرفين (هكذا يعمل WebRTC)، فيُمحيان بانتهاء العمر ولا يُطبعان أبدًا. الأوامر قليلة عمدًا (حدّ الباقة المجانيّة). */
 const crypto = require('crypto');
 
-const ROOM_TTL = 900, OUT_TTL = 180, MAX_SDP = 16000, MAX_PENDING = 8, PER_MINUTE = 12;
+const ROOM_TTL = 900, OUT_TTL = 180, MAX_SDP = 48000, MAX_PENDING = 8, PER_MINUTE = 12;
 const roomKey = (code) => 'talk/room/' + code;
 const inKey = (code) => 'talk/room/' + code + '/in';
 const outKey = (code, id) => 'talk/room/' + code + '/out/' + id;
@@ -123,7 +123,7 @@ async function act(body, ip, K, who) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ error: 'method' }); return; }
   let body = req.body;
-  if (typeof body === 'string') { if (body.length > 40000) { res.status(413).json({ error: 'too-big' }); return; } try { body = JSON.parse(body); } catch (e) { body = null; } }
+  if (typeof body === 'string') { if (body.length > 120000) { res.status(413).json({ error: 'too-big' }); return; } try { body = JSON.parse(body); } catch (e) { body = null; } }
   const ip = String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || '').split(',')[0].trim().slice(0, 64);
   res.setHeader('Cache-Control', 'no-store');
   try {
