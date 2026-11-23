@@ -658,3 +658,14 @@ test('v-blockworld-gear: أغراض الحقيبة كلها — معزقة وم�
   assert.match(gear, /setHome\(\)/, 'السرير يصير مكان الرجوع');
   for (const m of ['shovel', 'hoe', 'shield', 'bow', 'bucket', 'spyglass']) assert.ok(held.includes('tools.' + m), m);
 });
+
+test('أرقام العدّة ما تتكرّر: كل مكعب وكل غرض له رقمه، والمكعبات تحت 200', () => {
+  const kit = read('shared/kit.js');
+  const body = /export const K = \{([^}]*)\}/.exec(kit)[1];
+  const pairs = [...body.matchAll(/([A-Z_0-9]+): (\d+)/g)].map((m) => [m[1], +m[2]]);
+  const seen = new Map();
+  for (const [k, v] of pairs) { assert.ok(!seen.has(v), k + ' و ' + seen.get(v) + ' نفس الرقم ' + v); seen.set(v, k); }
+  // crops take four ids from their first: they must not run into another id
+  for (const base of ['CROP0', 'CARROT0', 'POTATO0']) { const b = pairs.find((q) => q[0] === base)[1]; for (let i = 1; i < 4; i++) assert.ok(!seen.has(b + i) || seen.get(b + i) === base.slice(0, -1) + i, base + '+' + i + ' يطيح على ' + seen.get(b + i)); assert.ok(b + 3 < 200, base + ' مكعب تحت 200'); }
+  assert.ok(pairs.find((q) => q[0] === 'FURNACE')[1] < 200);
+});

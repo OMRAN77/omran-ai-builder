@@ -27,11 +27,11 @@ const nameOfColor = Object.fromEntries(COLORS.map(([k, n]) => [k, n]));
 
 /** Block ids of the kit. */
 export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, ROCK_COAL: 177, ROCK_GOLD: 178, ROCK_DIAMOND: 179, MEAT: 200, FUR: 201, FEATHER: 202, CHICKEN: 203, FISH: 204, SHRIMP: 205, COAL: 206, PEARL: 207, SEAWEED: 208, SEEDS: 209, FURCOAT: 228, ORE: 230, GEM: 231, DATES: 232, WOOL: 233, WHEAT: 234, BREAD: 235, EMERALD: 236, RUBY: 237, AMETHYST: 238,
-  CROP0: 180, CROP1: 181, CROP2: 182, CROP3: 183, ROCK_EMERALD: 184, ROCK_RUBY: 185, ROCK_AMETHYST: 186, EMERALD_BLOCK: 187, RUBY_BLOCK: 188, AMETHYST_BLOCK: 189, LUCKY: 190, PORTAL_FRAME: 191, PORTAL: 192, FARMLAND: 193, CARROT0: 194, POTATO0: 198, FURNACE: 202,
+  CROP0: 180, CROP1: 181, CROP2: 182, CROP3: 183, ROCK_EMERALD: 184, ROCK_RUBY: 185, ROCK_AMETHYST: 186, EMERALD_BLOCK: 187, RUBY_BLOCK: 188, AMETHYST_BLOCK: 189, LUCKY: 190, PORTAL_FRAME: 191, PORTAL: 192, FARMLAND: 193, CARROT0: 194, POTATO0: 143, FURNACE: 147,
   IRON: 260, APPLE: 276, STEAK: 277, GOLDEN_APPLE: 278, CARROT: 279, POTATO: 280, BAKED_POTATO: 281, COOKED_FISH: 282, BUCKET: 283, BUCKET_WATER: 284, BUCKET_MILK: 285,
   SHEARS: 286, LEAD: 287, SADDLE: 288, COMPASS: 289, CLOCK: 290, BOW: 291, ARROW: 292, PEARL_JUMP: 293, FLINT: 294, BOOK: 295, NAME_TAG: 296, SPYGLASS: 297, SHIELD: 274, WINGS: 275,
   ROD: 247, CAN: 248, BOAT: 249, HAMOUR: 250, SAFI: 251, KANAD: 252, SHERI: 253, GOLDFISH: 254, SHELL: 255 };
-/** Block definitions, in the same shape the worlds use (see voxel.js). */
+/** Block definitions, in the same shape the worlds use (see voxel.js). Blocks live under 200 (the world stores a byte); 200 and up are carried things. */
 export const KIT_BLOCKS = {};
 const INFO = {};                                 // id -> { name, key, group, icon }
 const GROUP_NAMES = { food: 'أكل وأشياء من الحيوانات', farm: 'زراعة وصيد وبحر', gear: 'سلاح وعدّة ولبس', gadget: 'أجهزة', home: 'بيت وتخزين', paint: 'مكعبات ملوّنة', slab: 'أنصاف مكعبات', light: 'إضاءة', gem: 'ذهب وجواهر', nature: 'ماء ونار', bed: 'أسرّة' };
