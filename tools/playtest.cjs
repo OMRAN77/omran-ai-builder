@@ -602,7 +602,13 @@ function serve(root, prefix) {
       await tapOn('#bag [data-tab="quests"]');
       await page.waitForTimeout(80);
       const qp = await page.evaluate(() => { const cv = document.querySelector('#bag .tmap canvas'); const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let lit = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 60) lit++; return { map: lit / (d.length / 4), items: document.querySelectorAll('#bag .quests li').length, looks: document.querySelectorAll('#bag .look').length, locked: document.querySelectorAll('#bag .look.locked').length }; });
-      check('the quests page shows the map, the quests and the outfits', qp.map > 0.9 && qp.items >= 9 && qp.looks >= 12 && qp.locked >= 10, qp);
+      // the characters have their own page in the bag
+      await tapOn('#bag [data-tab="looks"]');
+      await page.waitForTimeout(80);
+      const lp = await page.evaluate(() => ({ looks: document.querySelectorAll('#bag .look').length, locked: document.querySelectorAll('#bag .look.locked').length, me: !!document.querySelector('#bag .me') }));
+      await tapOn('#bag [data-tab="quests"]');
+      await page.waitForTimeout(80);
+      check('the quests page shows the map and the quests, and the characters page every character', qp.map > 0.9 && qp.items >= 9 && lp.looks >= 12 && lp.locked >= 10 && lp.me, { ...qp, ...lp });
       await page.evaluate(() => window.__play.tick(1));
       await shot('14-quests');
       await tapOn('#bag .x');
@@ -942,8 +948,8 @@ function serve(root, prefix) {
       await page.evaluate(() => { const g = window.__game, p = g.play, s = p.state; p.setFlying(false); s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); for (const k of Object.keys(g.vitals.values)) g.vitals.values[k] = 90; p.tick(5); if (document.pointerLockElement) document.exitPointerLock(); g.panel.show('pause'); });      // (Esc itself lets the mouse go, in a real browser)
       await page.waitForTimeout(150);
       const menu = await page.evaluate(() => ({ labels: [...document.querySelectorAll('#playPanel .box:not(.sub) button')].map((b) => b.textContent.trim()), fits: document.querySelector('#playPanel .box:not(.sub)').getBoundingClientRect().height <= window.innerHeight }));
-      const wants = ['الرجوع للعبة', 'الإنجازات', 'الإحصائيات', 'أرسل ملاحظة', 'بلّغ عن خطأ', 'الإعدادات', 'العب مع ربعك', 'احفظ'];
-      check('Esc shows the eight choices, in order', menu.labels.length === 8 && wants.every((w, i) => menu.labels[i].startsWith(w)) && menu.fits, menu);
+      const wants = ['الرجوع للعبة', 'الإنجازات', 'الإحصائيات', 'أرسل ملاحظة', 'بلّغ عن خطأ', 'غيّر شخصيتك', 'الإعدادات', 'العب مع ربعك', 'احفظ'];
+      check('Esc shows its choices, in order (the eight asked for, and the place to change the character)', menu.labels.length === 9 && wants.every((w, i) => menu.labels[i].startsWith(w)) && menu.fits, menu);
       await shot('19-esc');
       await tapOn('#playPanel [data-act="stats"]');
       const stats = await page.evaluate(() => { const s = window.__GAME_STATE; return { rows: document.querySelectorAll('#playPanel .cards.stats li').length, text: document.querySelector('#playPanel .cards.stats').textContent, broken: s.broken, walked: Math.round(s.walked) }; });

@@ -142,7 +142,9 @@
       const list = OUTFITS.filter((o) => o.free || owned.has(o.key) || o.key === 'explorer');
       let cur = 'explorer'; try { cur = localStorage.getItem('bw-outfit') || 'explorer'; } catch (e) { /* the first one */ }
       const strip = document.querySelector('.who .strip');
-      const draw = () => { strip.innerHTML = list.map((o) => `<button type="button" role="option" class="${o.key === cur ? 'on' : ''}" data-look="${o.key}" aria-selected="${o.key === cur}">${o.pic ? `<img src="./previews/heroes/${o.pic}.webp" alt="" loading="lazy">` : outfitPicture(o.c, 64)}<span>${o.name}</span></button>`).join(''); };
+      if (!strip) return;                        // a world was opened meanwhile: the first page is gone
+      const heroPic = (k) => './previews/heroes/' + k + '.webp';
+      const draw = () => { strip.innerHTML = list.map((o) => `<button type="button" role="option" class="${o.key === cur ? 'on' : ''}" data-look="${o.key}" aria-selected="${o.key === cur}">${o.pic ? `<img data-pic="${o.pic}" alt="" loading="lazy">` : outfitPicture(o.c, 64)}<span>${o.name}</span></button>`).join(''); for (const im of strip.querySelectorAll('img[data-pic]')) im.src = heroPic(im.dataset.pic); };
       draw();
       strip.addEventListener('click', (e) => {
         const b = e.target.closest('[data-look]'); if (!b) return;
@@ -151,7 +153,7 @@
         draw();
       });
       const on = strip.querySelector('.on'); if (on) on.scrollIntoView({ inline: 'center', block: 'nearest' });
-    } catch (e) { document.querySelector('.who').hidden = true; /* the picker is a help, not a need: the game still picks in its bag */ }
+    } catch (e) { const who = document.querySelector('.who'); if (who) who.hidden = true; /* the picker is a help, not a need: the game still picks in its bag */ }
   })();
   // ---- joining: ask which world the room is in, open that world, and let it join once the player presses start
   const jf = document.querySelector('.join form'), jmsg = document.querySelector('.join .msg');
