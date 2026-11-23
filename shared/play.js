@@ -890,7 +890,7 @@ export function createPlayPanel(o) {
   rot.id = 'playRotate'; rot.style.fontFamily = el.style.fontFamily; rot.textContent = 'دوّر الجوال بالعرض عشان تلعب';
   document.body.appendChild(rot);
 
-  let mode = 'start', view = 'main', waitKey = null, stars = 0, sent = '', confirmNew = false;
+  let mode = 'start', view = 'main', waitKey = null, stars = 0, sent = '', confirmNew = false, cloudNote = '';
   const NAMES = { sound: () => { const s = window.__GAME_SOUND; return s ? (s.muted ? 'الصوت: مطفي' : 'الصوت: شغّال') : ''; },
     look: () => ({ slow: 'سرعة النظر (الماوس واللمس): بطيئة', normal: 'سرعة النظر (الماوس واللمس): عادية', fast: 'سرعة النظر (الماوس واللمس): سريعة' }[(window.__GAME_LOOK || {}).mode] || ''),
     video: () => ({ sharp: 'الصورة: واضحة دايم', balanced: 'الصورة: متوازنة', fast: 'الصورة: أسرع (تغبّش أكثر)' }[(window.__GAME_QUALITY || {}).mode] || ''),
@@ -908,8 +908,8 @@ export function createPlayPanel(o) {
     if (mode === 'start') {
       box.innerHTML = `<h1>${esc(o.title)}</h1><p>${esc(o.tagline || '')}</p><ul>${rows().map(([k, v]) => `<li><b dir="auto">${esc(k)}</b><span>${esc(v)}</span></li>`).join('')}</ul>`
         + btn('go', save && save.loaded ? 'كمّل عالمك' : 'ابدأ اللعب', 'go')
-        + '<div>' + btn('looks', 'غيّر شخصيتك') + btn('options', 'الإعدادات') + (net ? btn('net', 'العب مع ربعك') : '') + (toMenu ? btn('worlds', 'العوالم') : '') + '</div>'
-        + `<div class="note">${esc(save && save.loaded ? 'عالمك محفوظ في هذا المتصفح: تكمل من وين وقفت.' : o.note || '')}</div><div class="gpu">${esc(window.__GAME_GPU || '')}</div>`;
+        + '<div>' + btn('looks', 'غيّر شخصيتك') + btn('options', 'الإعدادات') + (window.__GAME_CLOUD ? btn('cloud', window.__GAME_CLOUD.code ? 'حسابي ✓' : 'حسابي') : '') + (net ? btn('net', 'العب مع ربعك') : '') + (toMenu ? btn('worlds', 'العوالم') : '') + '</div>'
+        + `<div class="note">${esc(save && save.loaded ? (save.fromCloud ? 'جبت عالمك من حسابك: تكمل من وين وقفت.' : 'عالمك محفوظ في هذا المتصفح: تكمل من وين وقفت.') : o.note || '')}</div><div class="gpu">${esc(window.__GAME_GPU || '')}</div>`;
       return;
     }
     const fl = f ? f.list() : [];
@@ -921,6 +921,7 @@ export function createPlayPanel(o) {
       + btn('bug', 'بلّغ عن خطأ')
       + btn('looks', 'غيّر شخصيتك')
       + btn('options', 'الإعدادات')
+      + (window.__GAME_CLOUD ? btn('cloud', window.__GAME_CLOUD.code ? 'حسابي ✓' : 'حسابي (احفظ عالمك في الموقع)') : '')
       + (net ? btn('net', net.role ? 'العب مع ربعك (الغرفة ' + net.code + ')' : 'العب مع ربعك') : '')
       + btn('quit', toMenu ? 'احفظ واطلع للقائمة' : 'احفظ')
       + `</div><div class="note">${esc(sent)}</div><div class="gpu">${esc(window.__GAME_GPU || '')}</div>`;
@@ -947,6 +948,13 @@ export function createPlayPanel(o) {
         + (window.__GAME_NET ? `<label class="nm">اسمك <input maxlength="16" value="${esc(window.__GAME_NET.name || '')}" placeholder="لاعب"></label>` + btn('name', 'احفظ الاسم') : '')
         + (o.touch ? '' : btn('keys', 'أزرار التحكم')) + (save && save.has() ? btn('new', confirmNew ? 'متأكد؟ اضغط مرة ثانية يمسح عالمك المحفوظ' : 'عالم جديد (يمسح المحفوظ)') : '') + '</div>'
         + `<div class="note">${o.touch ? 'أزرار اللمس ثابتة في مكانها. ' : ''}اللغة: العربية. اللغات الثانية ما انضافت للعبة للحين.</div>`;
+    } else if (view === 'cloud') {
+      const c = window.__GAME_CLOUD;
+      h = '<h2>حسابي (الحفظ السحابي)</h2>' + (!c ? '<p>الحساب ما يشتغل في هذي اللعبة.</p>' : c.code
+        ? `<p>عالمك ينحفظ في حسابك كل دقيقة ونص وانت تلعب، وعند «احفظ واطلع». من متصفح أو جهاز ثاني افتح «حسابي» واكتب هذا الرمز:</p><div class="cc"><b dir="ltr" style="font-size:26px;letter-spacing:3px">${esc(c.code)}</b></div><p>الرمز هو حسابك: لا تعطيه أحد ما تثق فيه.${c.last ? ' آخر رفع: قبل ' + Math.max(1, Math.round((Date.now() - c.last) / 60000)) + ' دقيقة.' : ''}</p>` + btn('cloudPush', 'ارفع عالمي الحين', 'go') + btn('cloudOff', 'افصل الحساب عن هذا المتصفح')
+        : '<p>عالمك محفوظ في هذا المتصفح بس: إذا غيّرت المتصفح أو الجهاز تبدأ من جديد. سوّ حساب وينحفظ عالمك في الموقع وتكمل من أي جهاز. ما نحتاج اسمك ولا إيميلك: الحساب رمز واحد تكتبه عندك.</p>'
+          + btn('cloudNew', 'سوّ حساب جديد', 'go') + '<p style="margin-top:12px">عندك حساب؟ اكتب رمزه:</p><div class="cc"><input maxlength="14" dir="ltr" placeholder="XXXX-XXXX-XXXX" aria-label="رمز الحساب" style="font-size:20px;text-align:center;letter-spacing:2px"></div>' + btn('cloudLink', 'اربط'))
+        + `<div class="note">${esc(cloudNote)}</div>`;
     } else if (view === 'keys') {
       h = '<h2>أزرار التحكم</h2><p>اضغط على الزر اللي تبي تغيّره، بعدين اضغط المفتاح الجديد. Esc يلغي. الأسهم تمشي دايم، والأرقام للمربعات.</p><ol class="cards keys">'
         + KEY_ACTIONS.map(([a, name]) => `<li class="done"><button type="button" class="menu key${waitKey === a ? ' wait' : ''}" data-key="${a}" dir="ltr">${waitKey === a ? '…' : esc(kn(a))}</button>${esc(name)}</li>`).join('') + '</ol>' + btn('keys0', 'رجّع الأزرار الأصلية');
@@ -954,7 +962,7 @@ export function createPlayPanel(o) {
     sub.innerHTML = h + '<div>' + btn('back', 'رجوع') + '</div>';
   }
   function draw() { box.hidden = view !== 'main'; sub.hidden = view === 'main'; if (view === 'main') drawMain(); else drawSub(); }
-  function go(v) { view = v; waitKey = null; confirmNew = false; draw(); }
+  function go(v) { view = v; waitKey = null; confirmNew = false; cloudNote = ''; draw(); }
 
   async function send() {
     const ta = sub.querySelector('textarea'), out = sub.querySelector('.note'), text = ta ? ta.value.trim() : '';
@@ -983,7 +991,27 @@ export function createPlayPanel(o) {
     else if (act === 'looks') { el.hidden = true; sent = ''; o.onStart(); setTimeout(() => { if (window.__GAME_LOOKS) window.__GAME_LOOKS(); }, 120); }
     else if (act === 'net') { const n = window.__GAME_NET; if (n) { el.hidden = true; n.open(() => { el.hidden = false; draw(); }); } }
     else if (act === 'worlds') toMenu();
-    else if (act === 'quit') { const s = window.__GAME_SAVE, ok = s ? s.save() : false; sent = ok ? 'انحفظ عالمك في هذا المتصفح ✓' : (s && s.why ? s.why : 'ما قدرت أحفظ.'); if (toMenu && (ok || !s)) toMenu(); else draw(); }
+    else if (act === 'quit') {
+      const s = window.__GAME_SAVE, ok = s ? s.save() : false, linked = !!(ok && s.cloud && s.cloud.code);
+      sent = ok ? (linked ? 'انحفظ عالمك. أرفعه لحسابك…' : 'انحفظ عالمك في هذا المتصفح ✓') : (s && s.why ? s.why : 'ما قدرت أحفظ.');
+      if (!linked) { if (toMenu && (ok || !s)) toMenu(); else draw(); return; }
+      draw();
+      Promise.race([s.pushNow(), new Promise((res) => setTimeout(() => res(false), 8000))]).then((up) => { sent = up ? 'انحفظ عالمك هني وفي حسابك ✓' : 'انحفظ في هذا المتصفح، وما وصل للحساب: ' + (s.cloud.why || 'جرّب بعدين.'); if (toMenu && up) toMenu(); else draw(); });
+    }
+    else if (act === 'cloud') go('cloud');
+    else if (act === 'cloudNew' || act === 'cloudLink' || act === 'cloudPush') {
+      const c = window.__GAME_CLOUD, s = window.__GAME_SAVE, out = () => sub.querySelector('.note');
+      if (!c) return;
+      if (out()) out().textContent = 'لحظة…';
+      const job = act === 'cloudNew' ? c.create() : act === 'cloudLink' ? c.link((sub.querySelector('.cc input') || {}).value) : (s ? s.pushNow() : Promise.resolve(false));
+      job.then(async (ok) => {
+        const up = ok && act !== 'cloudPush' && s ? await s.pushNow() : ok;
+        const later = up ? '' : ' (عالمك ما ارتفع الحين: ' + (c.why || (s && s.why) || 'ينرفع وانت تلعب') + ')';
+        cloudNote = ok ? (act === 'cloudNew' ? 'سوّيت حسابك' + (up ? ' ورفعت عالمك' : '') + ' ✓ اكتب الرمز في مكان آمن.' + later : act === 'cloudLink' ? 'ربطت حسابك ✓ إذا كان فيه عالم أحدث بيفتح المرة الجاية اللي تدخل فيها هذا العالم.' : 'رفعت عالمك لحسابك ✓') : (c.why || 'ما قدرت.');
+        drawSub();
+      });
+    }
+    else if (act === 'cloudOff') { const c = window.__GAME_CLOUD; if (c) c.unlink(); cloudNote = 'فصلت الحساب عن هذا المتصفح. عالمك باقي في الحساب، وتقدر تربطه بالرمز.'; drawSub(); }
     else if (act === 'sound') { const s = window.__GAME_SOUND; if (s) { s.setMuted(!s.muted); if (!s.muted) { s.start(); s.ui(); } } drawSub(); }
     else if (act === 'look') { cycle(window.__GAME_LOOK, ['normal', 'fast', 'slow']); drawSub(); }
     else if (act === 'video') { cycle(window.__GAME_QUALITY, ['balanced', 'sharp', 'fast']); drawSub(); }

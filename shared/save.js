@@ -5,8 +5,10 @@
 //
 //   const saver = createSave({ play, kit, net, world, fresh });      (the bag does this; fresh: start clean, do not load)
 //   saver.save() -> true | false (saver.why says why not)      saver.clear()      saver.has()
+//   saver.cloud: the account («حسابي», cloud.js) the save is also sent to when one is linked;  saver.pushNow() -> Promise<bool>
 
 import { EMPTY } from './play.js';
+import { createCloud, PUSH_EVERY } from './cloud.js';
 
 const COUNTS = ['photos', 'broken', 'placed', 'eaten', 'crafted', 'opened', 'flown', 'swum', 'swumDist', 'walked', 'slept', 'played', 'deaths', 'jumps', 'traded', 'nightTime', 'stormTime', 'xp'];
 
@@ -39,7 +41,7 @@ export function compact(log) {
 
 export function createSave({ play, kit, net, world, fresh = false }) {
   const st = play.state, KEY = 'bw-save-' + world;
-  const api = { loaded: false, disabled: fresh ? 'guest' : '', why: '', at: 0 };
+  const api = { loaded: false, disabled: fresh ? 'guest' : '', why: '', at: 0, cloud: createCloud({ world }), fromCloud: false };
   const item = (q) => (q && !q.empty ? { ...q } : null);
   function snapshot() {
     const log = net.log.length > 6000 ? compact(net.log) : net.log;
@@ -56,6 +58,14 @@ export function createSave({ play, kit, net, world, fresh = false }) {
     if (api.disabled) { api.why = 'أنت ضيف في غرفة: العالم عالم صاحب الغرفة، وعالمك المحفوظ ما تغيّر.'; return false; }
     try { window.localStorage.setItem(KEY, JSON.stringify(snapshot())); api.at = Date.now(); api.why = ''; return true; }
     catch (e) { api.why = 'ما قدرت أحفظ: مساحة المتصفح مليانة أو مقفولة.'; return false; }
+  };
+  /** Save here, then send the same save to the account (when one is linked). */
+  api.pushNow = async () => {
+    if (!api.cloud.code || api.disabled || net.role === 'guest') return false;
+    if (!api.save()) return false;
+    let text = null;
+    try { text = window.localStorage.getItem(KEY); } catch (e) { text = null; }
+    return text ? api.cloud.push(text, api.at) : false;
   };
   api.has = () => { try { return !!window.localStorage.getItem(KEY); } catch (e) { return false; } };
   api.clear = () => { api.disabled = api.disabled || 'cleared'; try { window.localStorage.removeItem(KEY); } catch (e) { /* nothing to remove */ } };
@@ -89,13 +99,31 @@ export function createSave({ play, kit, net, world, fresh = false }) {
     return true;
   }
   // read the save once everything else in the world exists (health, the sky, the creatures are made after the bag)
-  setTimeout(() => {
+  setTimeout(async () => {
+    // a linked account: its save is taken instead of this browser's when it is newer (played on another device since)
+    if (!fresh && api.cloud.code) {
+      api.disabled = 'pulling';
+      try {
+        const got = await Promise.race([api.cloud.pull(), new Promise((res) => setTimeout(() => res(null), 6000))]);
+        let mine = 0;
+        try { mine = (JSON.parse(window.localStorage.getItem(KEY) || 'null') || {}).at || 0; } catch (e) { mine = 0; }
+        const d = got && got.at > mine ? JSON.parse(got.text) : null;
+        if (d && d.v === 1 && d.world === world) { window.localStorage.setItem(KEY, got.text); api.fromCloud = true; }
+      } catch (e) { /* the account did not answer or its save did not read: this browser's save is used */ }
+      if (api.disabled === 'pulling') api.disabled = '';
+    }
     if (!fresh) { try { api.loaded = load(); } catch (e) { api.loaded = false; api.disabled = 'broken'; api.why = 'الحفظ القديم ما انقرأ، وما راح أكتب فوقه. من الإعدادات تقدر تبدأ عالم جديد.'; } }
     if (api.loaded && window.__GAME_PANEL) window.__GAME_PANEL();
   }, 0);
   // write it every little while, and when the page is left
-  let wait = 0;
-  play.onTick((s, dt) => { if ((wait += dt) >= 20) { wait = 0; if (!api.disabled && net.role !== 'guest') api.save(); } });
+  let wait = 0, sent = 0;
+  play.onTick((s, dt) => {
+    sent += dt;
+    if ((wait += dt) >= 20) {
+      wait = 0;
+      if (!api.disabled && net.role !== 'guest') { if (api.cloud.code && sent >= PUSH_EVERY) { sent = 0; api.pushNow(); } else api.save(); }
+    }
+  });
   const leaving = () => { if (st.running && !api.disabled && net.role !== 'guest') api.save(); };
   window.addEventListener('pagehide', leaving);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') leaving(); });

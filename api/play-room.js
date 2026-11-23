@@ -3,7 +3,8 @@
 // أربعة أرقام، والضيف يرسل «عرضه» بالكود، وصاحب الغرفة يقبله بـ«جواب» أو يرفضه. لا شيء من اللعب يمرّ من هنا.
 //
 // POST /api/play-room   { op, ... }
-//   open    { world }                       -> { code, key }            key سرّ صاحب الغرفة
+//   open    { world, pub?, name? }          -> { code, key }            key سرّ صاحب الغرفة؛ pub: غرفة عامّة تظهر في القائمة
+//   list    { world }                       -> { rooms: [{ code, name }] }   الغرف العامّة المفتوحة في هذا العالم
 //   peek    { code }                        -> { world } | { error: 'no-room' }   أيّ عالم فيه الغرفة (للصفحة الأولى)
 //   pending { code, key, keep? }            -> { joins: [{ id, name, offer }] }   (تُسحب مرّة واحدة)
 //   join    { code, world, name, offer }    -> { id } | { error: 'no-room' | 'world' (+world) | 'busy' }
@@ -22,6 +23,7 @@ const WORLDS = new Set(['kawkab', 'waha', 'dhalam', 'barari', 'dino']);
 const roomKey = (code) => 'play/room/' + code;
 const inKey = (code) => 'play/room/' + code + '/in';
 const outKey = (code, id) => 'play/room/' + code + '/out/' + id;
+const PUB_KEY = 'play/pub', MAX_LIST = 12;       // الغرف العامّة: مجموعة مرتّبة بوقت آخر تجديد، والعضو هو الكود
 
 const isCode = (v) => typeof v === 'string' && /^\d{4}$/.test(v);
 const isId = (v) => typeof v === 'string' && /^[0-9a-f]{12}$/.test(v);
@@ -64,9 +66,27 @@ async function act(body, ip, K) {
     const key = crypto.randomBytes(12).toString('hex');
     for (let i = 0; i < 8; i++) {
       const code = String(1000 + crypto.randomInt(9000));
-      if (await K.kvSetIfAbsent(roomKey(code), JSON.stringify({ k: key, w: b.world, t: Date.now() }), ROOM_TTL)) return { status: 200, json: { code, key } };
+      const pub = !!b.pub, room = { k: key, w: b.world, t: Date.now(), ...(pub ? { p: 1, n: cleanName(b.name) } : {}) };
+      if (await K.kvSetIfAbsent(roomKey(code), JSON.stringify(room), ROOM_TTL)) {
+        if (pub) await K.kvPipeline([['ZADD', PUB_KEY, String(Date.now()), code], ['ZREMRANGEBYSCORE', PUB_KEY, '-inf', String(Date.now() - ROOM_TTL * 1000)]]);
+        return { status: 200, json: { code, key } };
+      }
     }
     return bad('full', 503);
+  }
+
+  // the public rooms of one world: those renewed within a room's life, whose room still exists
+  if (op === 'list') {
+    if (!WORLDS.has(b.world)) return bad('world');
+    if (await overRate(K, ip, 'list')) return bad('slow-down', 429);
+    const since = Date.now() - ROOM_TTL * 1000;
+    const [, codes] = await K.kvPipeline([['ZREMRANGEBYSCORE', PUB_KEY, '-inf', String(since)], ['ZRANGE', PUB_KEY, '+inf', String(since), 'BYSCORE', 'REV', 'LIMIT', '0', '40']]);
+    const list = (Array.isArray(codes) ? codes : []).filter(isCode);
+    if (!list.length) return { status: 200, json: { rooms: [] } };
+    const raws = await K.kvPipeline(list.map((c) => ['GET', roomKey(c)]));
+    const rooms = [];
+    list.forEach((c, i) => { try { const r = JSON.parse(raws[i] || 'null'); if (r && r.p && r.w === b.world && rooms.length < MAX_LIST) rooms.push({ code: c, name: cleanName(r.n) }); } catch (e) { /* سطر تالف يُتجاوز */ } });
+    return { status: 200, json: { rooms } };
   }
 
   if (!isCode(b.code)) return bad('code');
@@ -105,7 +125,7 @@ async function act(body, ip, K) {
 
   if (op === 'pending') {
     const cmds = [['LPOP', inKey(code), String(MAX_PENDING)]];
-    if (b.keep) cmds.push(['EXPIRE', roomKey(code), String(ROOM_TTL)]);
+    if (b.keep) { cmds.push(['EXPIRE', roomKey(code), String(ROOM_TTL)]); if (room.p) cmds.push(['ZADD', PUB_KEY, String(Date.now()), code]); }
     const out = await K.kvPipeline(cmds);
     const joins = [];
     for (const raw of Array.isArray(out && out[0]) ? out[0] : []) { try { const j = JSON.parse(raw); if (j && isId(j.id) && isSdp(j.offer)) joins.push({ id: j.id, name: cleanName(j.name), offer: j.offer }); } catch (e) { /* سطر تالف يُتجاوز؛ لا تُطبع رسالة الخطأ: قد تقتبس من السطر، وفيه عناوين اللاعب */ } }
@@ -123,7 +143,7 @@ async function act(body, ip, K) {
     return { status: 200, json: { ok: true } };
   }
   if (op === 'close') {
-    await K.kvPipeline([['DEL', roomKey(code)], ['DEL', inKey(code)]]);
+    await K.kvPipeline([['DEL', roomKey(code)], ['DEL', inKey(code)], ...(room.p ? [['ZREM', PUB_KEY, code]] : [])]);
     return { status: 200, json: { ok: true } };
   }
   return bad('op');

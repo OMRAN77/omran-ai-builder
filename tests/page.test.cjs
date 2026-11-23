@@ -43,6 +43,8 @@ test('لا مسار يبدأ من جذر الموقع: المجلّد يعمل �
       if (f === 'shared/net.js' && text.slice(m.index + m[1].length).startsWith('/api/play-room')) continue;
       // والثاني (v-blockworld-esc): ملاحظات اللاعبين وبلاغاتهم تذهب إلى قائمة آراء الموقع نفسها
       if (f === 'shared/play.js' && text.slice(m.index + m[1].length).startsWith('/api/feedback')) continue;
+      // والثالث (v-blockworld-cloud): الحفظ في الحساب من خادم الموقع نفسه
+      if (f === 'shared/cloud.js' && text.slice(m.index + m[1].length).startsWith('/api/cloud-save')) continue;
       bad.push(f + ': ' + text.slice(Math.max(0, m.index - 25), m.index + 45).replace(/\s+/g, ' '));
     }
   }
@@ -463,7 +465,7 @@ test('v-blockworld-esc: قائمة Esc بخياراتها الثمانية، و�
   // الحفظ: سجلّ ما فُعل بالعالم + اللاعب + الصناديق + السماء، كلّ ٢٠ ثانية وعند ترك الصفحة، ويُقرأ عند العودة
   assert.match(bag, /createSave\(\{ play, kit, net, world: o\.world, fresh: joining \}\)/);
   assert.match(save, /KEY = 'bw-save-' \+ world/);
-  assert.match(save, /if \(\(wait \+= dt\) >= 20\) \{ wait = 0; if \(!api\.disabled && net\.role !== 'guest'\) api\.save\(\); \}/);
+  assert.match(save, /if \(\(wait \+= dt\) >= 20\) \{\s*wait = 0;\s*if \(!api\.disabled && net\.role !== 'guest'\) \{ if \(api\.cloud\.code && sent >= PUSH_EVERY\) \{ sent = 0; api\.pushNow\(\); \} else api\.save\(\); \}/, 'كل ٢٠ ثانية (ومع الحساب: الرفع يحفظ هنا أوّلًا)');
   assert.match(save, /window\.addEventListener\('pagehide', leaving\);/);
   assert.match(save, /for \(const a of d\.log\) \{ if \(Array\.isArray\(a\)\) \{ net\.apply\(a\); net\.log\.push\(a\); \} \}/);
   assert.match(save, /api\.disabled = 'broken'/, 'حفظ لا يُقرأ لا يُكتب فوقه');
