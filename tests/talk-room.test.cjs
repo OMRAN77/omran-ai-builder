@@ -111,3 +111,40 @@ test('الكاميرا: خطوط فيديو من البداية (كاميرا ا
   const big = 'v=0\r\n' + 'a=x\r\n'.repeat(5000);      // ~30 ألف حرف: وصف بخطوط فيديو
   assert.equal((await act({ op: 'join', code, name: 'n', offer: big }, 'g', K, null)).status, 200);
 });
+
+test('خوادم الترحيل (TURN): لغرفة قائمة فقط، والمفتاح في الخادم، والبيانات قصيرة العمر، وحدّ يوميّ، وبلا مفتاح STUN وحده', async () => {
+  const { iceServers, STUN, TTL } = require('../api/_lib/turn-ice.js');
+  const K = memoryKV();
+  const saved = { id: process.env.CLOUDFLARE_TURN_KEY_ID, tok: process.env.CLOUDFLARE_TURN_API_TOKEN, cap: process.env.TURN_DAILY_CAP, fetch: global.fetch };
+  try {
+    delete process.env.CLOUDFLARE_TURN_KEY_ID; delete process.env.CLOUDFLARE_TURN_API_TOKEN;
+    assert.deepEqual((await iceServers(K)).iceServers, STUN, 'بلا مفتاح: كما كان');
+    process.env.CLOUDFLARE_TURN_KEY_ID = 'abcdef1234567890'; process.env.CLOUDFLARE_TURN_API_TOKEN = 'tok'; process.env.TURN_DAILY_CAP = '2';
+    let asked = null;
+    global.fetch = async (url, o) => { asked = { url, auth: o.headers.Authorization, body: JSON.parse(o.body) }; return { ok: true, json: async () => ({ iceServers: [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.cloudflare.com:53'] }, { urls: ['turn:turn.cloudflare.com:3478?transport=udp', 'turn:turn.cloudflare.com:53?transport=udp', 'turns:turn.cloudflare.com:443?transport=tcp'], username: 'u1', credential: 'c1' }] }) }; };
+    const r = await iceServers(K);
+    assert.equal(asked.url, 'https://rtc.live.cloudflare.com/v1/turn/keys/abcdef1234567890/credentials/generate-ice-servers');
+    assert.equal(asked.auth, 'Bearer tok'); assert.equal(asked.body.ttl, TTL); assert.equal(TTL, 4 * 3600);
+    const turn = r.iceServers.find((s) => s.username);
+    assert.deepEqual(turn.urls, ['turn:turn.cloudflare.com:3478?transport=udp', 'turns:turn.cloudflare.com:443?transport=tcp'], 'المنفذ ٥٣ محجوب في المتصفّحات فيُسقط');
+    assert.equal(turn.credential, 'c1');
+    assert.ok(!JSON.stringify(r).includes('tok"'), 'رمز المفتاح لا يخرج');
+    await iceServers(K);
+    const third = await iceServers(K);
+    assert.equal(third.capped, true, 'بعد الحدّ اليوميّ STUN وحده'); assert.deepEqual(third.iceServers, STUN);
+    process.env.TURN_DAILY_CAP = '100';
+    global.fetch = async () => { throw new Error('down'); };
+    assert.deepEqual((await iceServers(memoryKV())).iceServers, STUN, 'Cloudflare ما ردّ: STUN بلا خطأ');
+  } finally {
+    for (const [k, v] of [['CLOUDFLARE_TURN_KEY_ID', saved.id], ['CLOUDFLARE_TURN_API_TOKEN', saved.tok], ['TURN_DAILY_CAP', saved.cap]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    global.fetch = saved.fetch;
+  }
+  // through the room server: a room that exists, or nothing
+  const K2 = memoryKV(), fake = async () => ({ iceServers: [{ urls: 'turn:x', username: 'a', credential: 'b' }] });
+  assert.equal((await act({ op: 'ice', code: '1234' }, 'g', K2, null, fake)).status, 404, 'بلا غرفة: لا بيانات ترحيل');
+  const { code } = (await act({ op: 'open' }, 'h', K2, 'omran')).json;
+  assert.deepEqual((await act({ op: 'ice', code }, 'g', K2, null, fake)).json, { iceServers: [{ urls: 'turn:x', username: 'a', credential: 'b' }] });
+  const html = fs.readFileSync(path.join(__dirname, '..', 'room.html'), 'utf8');
+  assert.match(html, /if \(!\(iceFor === code && icePromise\)\) \{ ice\(code\)\.then\(function \(\) \{ admit\(id\); \}\); return; \}/, 'صاحب الغرفة يأخذ الخوادم قبل أوّل وصلة');
+  assert.match(html, /if \(!\(iceFor === c && icePromise\)\) \{ ice\(c\)\.then\(function \(\) \{ join\(c, name\); \}\); return; \}/, 'والضيف كذلك');
+});
