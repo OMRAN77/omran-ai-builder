@@ -47,6 +47,12 @@ li.ask { border-color: var(--gold); }
 .faces button { font-size: 22px; padding: 0 9px; min-height: 40px; background: #1b1d24; color: inherit; }
 .err { color: #ffb0a6; min-height: 20px; font-size: 14px; text-align: center; margin: 0; }
 .note { color: var(--muted); font-size: 12.5px; line-height: 1.6; text-align: center; margin: 6px 0 0; }
+.vids { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 0 0 12px; }
+.vids[hidden] { display: none !important; }
+.tile { position: relative; border-radius: 14px; overflow: hidden; background: #000; border: 1px solid var(--line); aspect-ratio: 4 / 3; }
+.tile video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tile.me video { transform: scaleX(-1); }
+.tile span { position: absolute; bottom: 6px; inset-inline-start: 8px; padding: 2px 8px; border-radius: 8px; background: rgba(0,0,0,.6); font-size: 13px; font-weight: 700; }
 .lang { display: block; margin: 14px auto 0; color: var(--muted); font-size: 13px; text-align: center; }
 </style>
 </head>
@@ -54,6 +60,7 @@ li.ask { border-color: var(--gold); }
 <main>
   <h1 id="title"></h1>
   <p class="sub" id="sub"></p>
+  <section class="vids" id="vids" hidden></section>
   <section id="view"></section>
   <p class="err" id="err" role="status"></p>
   <p class="note" id="note"></p>
@@ -72,7 +79,7 @@ li.ask { border-color: var(--gold); }
     hostIs: 'Room of {n}', ask: 'Ask to join', asking: 'Waiting for {n} to let you in…', denied: 'The room owner did not let you in.', noAnswer: 'No answer from the room owner.',
     shareIt: 'Send this code or link to your friends:', share: 'Send the link', copied: 'Link copied.', wa: 'WhatsApp',
     wants: 'wants to join', admit: 'Let in', deny: 'Refuse', kick: 'Remove', you: 'you', owner: 'room owner', guest: 'guest', connecting: 'connecting…',
-    nobody: 'Nobody here yet.', micOn: 'Microphone on (tap to mute)', micOff: 'Turn on microphone', deafOn: 'Friends muted', deafOff: 'Friends audible',
+    nobody: 'Nobody here yet.', micOn: 'Microphone on (tap to mute)', micOff: 'Turn on microphone', camOn: 'Camera on (tap to stop)', camOff: 'Turn on camera', camDenied: 'No permission for the camera. Allow it in the browser settings and try again.', noCam: 'This browser has no camera here.', me: 'Me', deafOn: 'Friends muted', deafOff: 'Friends audible',
     type: 'Write to your friends…', send: 'Send', leave: 'Leave', closeRoom: 'Close the room', full: 'The room is full (4).',
     joined: '{n} joined.', left: '{n} left.', kicked: 'The room owner removed you.', lost: 'The connection to the room dropped.', inRoom: 'You are in the room of {n}.',
     noRoom: 'No room with this code. Check the digits, or ask your friend to open the room again.', busy: 'Too many requests on this room. Try again shortly.', slow: 'Too many tries. Wait a minute.',
@@ -85,7 +92,7 @@ li.ask { border-color: var(--gold); }
     hostIs: 'غرفة {n}', ask: 'اطلب الدخول', asking: 'ننتظر {n} يدخّلك…', denied: 'صاحب الغرفة ما دخّلك.', noAnswer: 'صاحب الغرفة ما ردّ.',
     shareIt: 'أرسل هذا الكود أو الرابط لربعك:', share: 'أرسل الرابط', copied: 'انتسخ الرابط.', wa: 'واتساب',
     wants: 'يبي يدخل', admit: 'دخّله', deny: 'ارفض', kick: 'طلّعه', you: 'أنت', owner: 'صاحب الغرفة', guest: 'ضيف', connecting: 'يتّصل…',
-    nobody: 'ما حد في الغرفة للحين.', micOn: 'المايك شغّال (اضغط تطفيه)', micOff: 'شغّل المايك', deafOn: 'صوت الربع مكتوم', deafOff: 'صوت الربع شغّال',
+    nobody: 'ما حد في الغرفة للحين.', micOn: 'المايك شغّال (اضغط تطفيه)', micOff: 'شغّل المايك', camOn: 'الكاميرا شغّالة (اضغط تطفيها)', camOff: 'شغّل الكاميرا', camDenied: 'ما في إذن للكاميرا. اسمح لها من إعدادات المتصفح وجرّب مرة ثانية.', noCam: 'هذا المتصفح ما يدعم الكاميرا هني.', me: 'أنا', deafOn: 'صوت الربع مكتوم', deafOff: 'صوت الربع شغّال',
     type: 'اكتب لربعك…', send: 'أرسل', leave: 'اطلع', closeRoom: 'سكّر الغرفة', full: 'الغرفة مليانة (4).',
     joined: '{n} دخل.', left: '{n} طلع.', kicked: 'صاحب الغرفة طلّعك.', lost: 'انقطع الاتصال بالغرفة.', inRoom: 'أنت في غرفة {n}.',
     noRoom: 'ما في غرفة بهذا الكود. تأكد من الأرقام، أو خل صاحبك يفتح الغرفة من جديد.', busy: 'الغرفة عليها زحمة. جرّب بعد شوي.', slow: 'محاولات كثيرة. انتظر دقيقة.',
@@ -113,6 +120,8 @@ li.ask { border-color: var(--gold); }
   var asks = [];              // host: [{ id, name, offer }]
   var lines = [];             // the chat on screen: { who, text, me, sys }
   var heard = new Map(), outs = new Map(), mic = null, micOn = false, deaf = false, actx = null, micNode = null;
+  var cam = null, camOn = false;   // this person's camera
+  var gv = [], gstreams = [], slots = [];   // guest: its three video lines (0: own camera ↔ the owner's, 1-2: the other guests through the owner), what arrives on each, and who is on which
   var stamps = new Map();     // host: guest id -> recent message times (5 in 4 seconds at most)
 
   function call(body) {
@@ -155,6 +164,61 @@ li.ask { border-color: var(--gold); }
     return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
       .then(function (s) { mic = s; micOn = true; micNode = null; remix(); draw(); return true; })
       .catch(function () { return T.micDenied; });
+  }
+
+  // ---- cameras. Every link carries video lines from the start (no new handshake to switch a camera on):
+  // a guest has three — its own camera to the owner and the owner's back, then up to two other guests, passed on by the owner
+  function camTrack() { return camOn && cam ? cam.getVideoTracks()[0] : null; }
+  function setCam(on) {
+    if (!on) { if (cam) cam.getTracks().forEach(function (t) { t.stop(); }); cam = null; camOn = false; afterCam(); return Promise.resolve(true); }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.resolve(T.noCam);
+    return navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 }, facingMode: 'user' } })
+      .then(function (s) { cam = s; camOn = true; afterCam(); return true; })
+      .catch(function () { return T.camDenied; });
+  }
+  function afterCam() {
+    if (role === 'host') revideo();
+    else if (role === 'guest' || gv.length) { if (gv[0]) gv[0].sender.replaceTrack(camTrack()).catch(function () {}); toHost({ t: 'cam', on: camOn }); }
+    draw(); drawVids();
+  }
+  /** Owner: put the right picture on every guest's lines, and tell each guest who is on which. */
+  function revideo() {
+    if (role !== 'host') return;
+    var guests = []; peers.forEach(function (p, id) { if (p.vtx && p.vtx.length) guests.push({ id: id, p: p }); });
+    guests.forEach(function (g) {
+      var others = guests.filter(function (o) { return o.id !== g.id; }).slice(0, 2);
+      var list = [{ id: 'host', name: myName || T.owner, on: camOn }];
+      g.p.vtx[0].sender.replaceTrack(camTrack()).catch(function () {});
+      for (var i = 0; i < 2; i++) {
+        var o = others[i], t = g.p.vtx[i + 1];
+        if (t) t.sender.replaceTrack(o && o.p.cam && o.p.vtrack ? o.p.vtrack : null).catch(function () {});
+        list.push(o ? { id: o.id, name: o.p.name, on: !!(o.p.cam && o.p.vtrack) } : null);
+      }
+      send(g.p.dc, { t: 'vslots', list: list });
+    });
+    drawVids();
+  }
+  var tiles = new Map();   // key -> { el, video }
+  function tile(key, name, stream, mine) {
+    var t = tiles.get(key);
+    if (!t) {
+      var el = document.createElement('div'); el.className = 'tile' + (mine ? ' me' : '');
+      var v = document.createElement('video'); v.autoplay = true; v.playsInline = true; v.muted = true;      // the sound comes on the voice line
+      var n = document.createElement('span'); el.appendChild(v); el.appendChild(n);
+      t = { el: el, video: v, name: n }; tiles.set(key, t);
+    }
+    if (t.video.srcObject !== stream) { t.video.srcObject = stream; var pl = t.video.play(); if (pl && pl.catch) pl.catch(function () {}); }
+    t.name.textContent = name;
+    return t.el;
+  }
+  function drawVids() {
+    var box = $('vids'), want = [];
+    if (camOn && cam) want.push(tile('me', T.me, cam, true));
+    if (role === 'host') peers.forEach(function (p, id) { if (p.cam && p.vstream) want.push(tile(id, p.name, p.vstream)); });
+    else if (role === 'guest') slots.forEach(function (sl, i) { if (sl && sl.on && gstreams[i]) want.push(tile('s' + i + ':' + sl.id, cleanName(sl.name), gstreams[i])); });
+    tiles.forEach(function (t, k) { if (want.indexOf(t.el) < 0) { t.video.srcObject = null; t.el.remove(); tiles.delete(k); } });
+    want.forEach(function (el) { if (el.parentNode !== box) box.appendChild(el); });
+    box.hidden = !want.length;
   }
 
   // ---- the chat
@@ -213,17 +277,22 @@ li.ask { border-color: var(--gold); }
     if (peers.size >= MAX - 1) { call({ op: 'deny', code: code, key: key, id: id }).catch(function () {}); error = T.full; draw(); return; }
     var pc = new RTCPeerConnection(RTC), p = { pc: pc, dc: null, name: cleanName(ask.name), tx: null };
     peers.set(id, p);
-    pc.ontrack = function (ev) { if (ev.track.kind === 'audio') hear(id, ev.streams[0] || new MediaStream([ev.track])); };
+    pc.ontrack = function (ev) {
+      if (ev.track.kind === 'audio') hear(id, ev.streams[0] || new MediaStream([ev.track]));
+      else { var vts = pc.getTransceivers().filter(function (t) { return t.receiver && t.receiver.track && t.receiver.track.kind === 'video'; }); if (ev.transceiver === vts[0]) { p.vtrack = ev.track; p.vstream = ev.streams[0] || new MediaStream([ev.track]); revideo(); } }      // (arrives while the offer is read, before p.vtx is kept)
+    };
     pc.ondatachannel = function (ev) {
       p.dc = ev.channel;
-      p.dc.onopen = function () { send(p.dc, { t: 'welcome', id: id, host: myName || T.owner }); tellRoster(); say('', fmt(T.joined, p.name), false, true); draw(); };
-      p.dc.onmessage = function (e) { var m = null; try { m = JSON.parse(e.data); } catch (err) { m = null; } if (!m) return; if (m.t === 'chat' || m.t === 'emo') fromAnyone(m, id); };
+      p.dc.onopen = function () { send(p.dc, { t: 'welcome', id: id, host: myName || T.owner }); tellRoster(); revideo(); say('', fmt(T.joined, p.name), false, true); draw(); };
+      p.dc.onmessage = function (e) { var m = null; try { m = JSON.parse(e.data); } catch (err) { m = null; } if (!m) return; if (m.t === 'chat' || m.t === 'emo') fromAnyone(m, id); else if (m.t === 'cam') { p.cam = !!m.on; revideo(); } };
       p.dc.onclose = function () { drop(id, false); };
     };
     pc.onconnectionstatechange = function () { if (pc.connectionState === 'failed' || pc.connectionState === 'closed') drop(id, false); };
     pc.setRemoteDescription({ type: 'offer', sdp: ask.offer }).then(function () {
       p.tx = pc.getTransceivers().find(function (t) { return t.receiver && t.receiver.track && t.receiver.track.kind === 'audio'; }) || null;
       if (p.tx) p.tx.direction = 'sendrecv';
+      p.vtx = pc.getTransceivers().filter(function (t) { return t.receiver && t.receiver.track && t.receiver.track.kind === 'video'; }).slice(0, 3);
+      p.vtx.forEach(function (t, i) { t.direction = i === 0 ? 'sendrecv' : 'sendonly'; });
       return pc.createAnswer();
     }).then(function (a) { return pc.setLocalDescription(a); }).then(function () { return gathered(pc); })
       .then(function () { return call({ op: 'admit', code: code, key: key, id: id, answer: pc.localDescription.sdp }); })
@@ -238,13 +307,13 @@ li.ask { border-color: var(--gold); }
     if (kicked) send(p.dc, { t: 'kick' });
     setTimeout(function () { try { p.pc.close(); } catch (e) { /* closed */ } }, kicked ? 300 : 0);
     gone(id);
-    if (role === 'host') { tellRoster(); say('', fmt(T.left, p.name), false, true); }
-    draw();
+    if (role === 'host') { tellRoster(); say('', fmt(T.left, p.name), false, true); revideo(); }
+    draw(); drawVids();
   }
   function closeRoom() {
     peers.forEach(function (p, id) { drop(id, false); });
     clearInterval(pollT); if (code) call({ op: 'close', code: code, key: key }).catch(function () {});
-    setMic(false); role = null; code = ''; key = ''; asks = []; lines = [];
+    setMic(false); setCam(false); role = null; code = ''; key = ''; asks = []; lines = [];
     history.replaceState(null, '', location.pathname + (q ? '?lang=' + q : '')); draw();
   }
 
@@ -259,7 +328,13 @@ li.ask { border-color: var(--gold); }
     error = ''; code = c; busy = fmt(T.asking, hostName || T.owner); draw();
     var pc = new RTCPeerConnection(RTC), dc = pc.createDataChannel('room'), tx = null;
     try { tx = pc.addTransceiver('audio', { direction: 'sendrecv' }); } catch (e) { tx = null; }
-    pc.ontrack = function (ev) { if (ev.track.kind === 'audio') hear('host', ev.streams[0] || new MediaStream([ev.track])); };
+    gv = []; gstreams = []; slots = [];
+    try { gv.push(pc.addTransceiver('video', { direction: 'sendrecv' })); gv.push(pc.addTransceiver('video', { direction: 'recvonly' })); gv.push(pc.addTransceiver('video', { direction: 'recvonly' })); } catch (e) { gv = []; }      // a browser without video still talks
+    if (gv[0] && camOn) gv[0].sender.replaceTrack(camTrack()).catch(function () {});
+    pc.ontrack = function (ev) {
+      if (ev.track.kind === 'audio') { hear('host', ev.streams[0] || new MediaStream([ev.track])); return; }
+      var i = gv.indexOf(ev.transceiver); if (i >= 0) { gstreams[i] = ev.streams[0] || new MediaStream([ev.track]); drawVids(); }
+    };
     peers.set('host', { pc: pc, dc: dc, tx: tx });
     dc.onmessage = function (e) { var m = null; try { m = JSON.parse(e.data); } catch (err) { m = null; } fromHost(m); };
     dc.onclose = function () { if (role === 'guest') left(T.lost); };
@@ -282,15 +357,17 @@ li.ask { border-color: var(--gold); }
   }
   function fromHost(m) {
     if (!m || typeof m !== 'object') return;
-    if (m.t === 'welcome') { role = 'guest'; myId = String(m.id || ''); busy = ''; hostName = cleanName(m.host, T.owner); say('', fmt(T.inRoom, hostName), false, true); draw(); }
+    if (m.t === 'welcome') { role = 'guest'; myId = String(m.id || ''); busy = ''; hostName = cleanName(m.host, T.owner); say('', fmt(T.inRoom, hostName), false, true); if (camOn) toHost({ t: 'cam', on: true }); draw(); }
     else if (m.t === 'ps' && Array.isArray(m.list)) { members = m.list.slice(0, MAX).map(function (x) { return { id: String(x.id || ''), name: cleanName(x.name) }; }); draw(); }
     else if (m.t === 'chat' || m.t === 'emo') fromAnyone(m, 'host');
+    else if (m.t === 'vslots' && Array.isArray(m.list)) { slots = m.list.slice(0, 3).map(function (x) { return x && typeof x === 'object' ? { id: String(x.id || ''), name: cleanName(x.name), on: !!x.on } : null; }); drawVids(); }
     else if (m.t === 'kick') left(T.kicked);
   }
   function left(text) {
     var h = peers.get('host'); peers.clear(); if (h) { try { h.pc.close(); } catch (e) { /* closed */ } }
     heard.forEach(function (v, id) { gone(id); }); setMic(false);
-    role = null; code = ''; members = []; busy = ''; error = text || ''; draw();
+    gv = []; gstreams = []; slots = []; setCam(false);
+    role = null; code = ''; members = []; busy = ''; error = text || ''; draw(); drawVids();
   }
 
   // ---- the screen
@@ -300,6 +377,7 @@ li.ask { border-color: var(--gold); }
   function talkBox() {
     return '<div class="card"><div class="row"><button type="button" class="' + (micOn ? 'on' : 'soft') + '" data-mic="' + (micOn ? 0 : 1) + '">' + (micOn ? T.micOn : T.micOff) + '</button>'
       + '<button type="button" class="soft" data-deaf="' + (deaf ? 0 : 1) + '">' + (deaf ? T.deafOn : T.deafOff) + '</button></div>'
+      + '<div class="row"><button type="button" class="' + (camOn ? 'on' : 'soft') + '" data-cam="' + (camOn ? 0 : 1) + '">' + (camOn ? T.camOn : T.camOff) + '</button></div>'
       + '<div class="log" id="log"></div>'
       + '<form class="row" id="say"><input id="line" maxlength="' + MAX_LINE + '" placeholder="' + esc(T.type) + '" autocomplete="off"><button type="submit" style="flex:none">' + T.send + '</button></form>'
       + '<div class="faces">' + FACES.map(function (f) { return '<button type="button" data-face="' + f + '">' + f + '</button>'; }).join('') + '</div></div>';
@@ -350,6 +428,7 @@ li.ask { border-color: var(--gold); }
     else if (d.close) closeRoom();
     else if (d.leave) { if (role === 'host') closeRoom(); else left(''); }
     else if (d.mic) setMic(d.mic === '1').then(function (r) { error = r === true ? '' : r; draw(); });
+    else if (d.cam) setCam(d.cam === '1').then(function (r) { error = r === true ? '' : r; draw(); });
     else if (d.deaf) { deaf = d.deaf === '1'; heard.forEach(function (h) { h.el.muted = deaf; }); draw(); }
     else if (d.face) speak('', d.face);
     else if (d.share) { var u = link(); if (navigator.share) navigator.share({ title: T.title, text: T.shareIt + ' ' + code, url: u }).catch(function () {}); else if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { error = T.copied; draw(); }).catch(function () {}); }
@@ -359,7 +438,7 @@ li.ask { border-color: var(--gold); }
   window.addEventListener('pagehide', function () { if (role === 'host' && code) { try { navigator.sendBeacon(API, new Blob([JSON.stringify({ op: 'close', code: code, key: key })], { type: 'application/json' })); } catch (e) { /* the room ends by itself in a quarter of an hour */ } } });
   if (linkCode) peek(linkCode);
   draw();
-  window.__ROOM = { get role() { return role; }, get code() { return code; }, get peers() { return peers; }, get asks() { return asks; }, get members() { return members; }, get lines() { return lines; }, poll: poll, setMic: setMic, speak: speak };
+  window.__ROOM = { get role() { return role; }, get code() { return code; }, get peers() { return peers; }, get asks() { return asks; }, get members() { return members; }, get lines() { return lines; }, poll: poll, setMic: setMic, setCam: setCam, speak: speak, get tiles() { return tiles; } };
 })();
 </script>
 </body>
