@@ -23,7 +23,11 @@
  * تأكيد الخادم العربيّ ٤٢٨)، والتجربة ترسل نهايتها call-trial-end (keepalive، ويُعاد إرسالها حتّى يقبلها الخادم) ليُرجع ما زاد عن
  * الدقائق المبدوءة. plan_required وpoints_insufficient برسالتين بالـ١٤ لغة. المراجعة: معرّف التجربة يولّده العميل ويحفظه في الكرت قبل
  * الطلب (c.trialEnds لكلّ تجربة على حدة)، والتحميل يمرّ على كلّ الكروت (sweep) لنهايات معلّقة ومكالمات لم تُحسم تسويتها، والاستطلاع
- * يكمل بعد «انتهت» ما دامت التسوية لم تُحسم (billing: null). */
+ * يكمل بعد «انتهت» ما دامت التسوية لم تُحسم (billing: null).
+ * v-call-link (المالك ٢٣ نوفمبر: «كيف من داخل التطبيق بي النت» ← «ابدأ»): زرّ ثالث للمالك «🔗 أرسل رابط» — call-link ينشئ رابطًا، والواتساب
+ * يُفتح برسالة جاهزة فيها الرابط (النافذة تُفتح داخل الضغطة ثمّ تُوجَّه؛ وإن حُجبت فزرّ «افتح واتساب» على الكرت). الطرف الآخر يفتحه
+ * ويكلّم المساعد من متصفّحه (talk.html) بلا خطّ هاتف، والكرت يتابع call-link-status (٥ ث عشر دقائق ثمّ كلّ دقيقة، يومًا) حتّى تصل
+ * النتيجة رسالةً واحدة. الكرت يحفظ linkId وحده؛ رابط الواتساب (فيه السرّ والرقم) في ذاكرة الصفحة فقط. */
 (function(){
   'use strict';
   var PTS_LAND = 50, PTS_MOB = 45;           // سعر الدقيقة لغير المالك (المالك مجّانًا) — من العقد؛ الكرت يحمل ptsPerMin من الخادم
@@ -34,24 +38,28 @@
   var END_GRACE_MS = 1200, END_MAX_MS = 8000; // end_call: ننتظر انتهاء جملة الوداع، وبحدّ أقصى
   var LINES_MAX = 40, LINE_CHARS = 400;
   var CUT_MARK = ' …', TRACE_HEAD = 30, TRACE_TAIL = 50, RTP_MS = 5000; // v-call-agent-cut: علامة السطر المقطوع، وسقف الأثر، وفترة قراءة إحصاءات الصوت الوارد
+  var LINK_POLL_MS = 5000, LINK_SLOW_MS = 60000, LINK_FAST_MS = 10 * 60 * 1000, LINK_KEEP_MS = 24 * 3600 * 1000; // v-call-link: متابعة الرابط — سريعة أوّلًا ثمّ كلّ دقيقة حتّى عمره
+  var LINK_STATES = { sent: 1, opened: 1, live: 1 };
   var RT_URL = 'https://api.openai.com/v1/realtime/calls'; // تبادل SDP كمسار مها نفسه — عنوان شبكة لا نصّ ظاهر
   var ACTIVE = { mic: 1, connecting: 1, live: 1, queued: 1, ringing: 1, 'in-progress': 1 };
   var PHONE_STATES = { queued: 1, ringing: 1, 'in-progress': 1, completed: 1, busy: 1, 'no-answer': 1, failed: 1, canceled: 1 };
   var ST = { mic: 'callAgentStMic', connecting: 'callAgentStConnecting', live: 'callAgentStLive', queued: 'callAgentStQueued',
     ringing: 'callAgentStRinging', 'in-progress': 'callAgentStLive', completed: 'callAgentStCompleted', busy: 'callAgentStBusy',
     'no-answer': 'callAgentStNoAnswer', failed: 'callAgentStFailed', canceled: 'callAgentStCanceled', dropped: 'callAgentStDropped',
-    timeout: 'callAgentStTimeout' };
+    timeout: 'callAgentStTimeout', sent: 'callAgentStSent', opened: 'callAgentStOpened', expired: 'callAgentStExpired' };
   var OC = { booked: 'callAgentOcBooked', not_available: 'callAgentOcNotAvailable', needs_user: 'callAgentOcNeedsUser',
     declined: 'callAgentOcDeclined', no_answer: 'callAgentStNoAnswer', failed: 'callAgentOcFailed' };
   var ERR = { owner_only: 'callAgentErrOwner', proposal_not_found: 'callAgentErrExpired', no_key: 'callAgentErrNoKey',
     relay_not_configured: 'callAgentErrRelay', no_phone: 'callAgentErrNoPhone', bad_phone: 'callAgentErrBadPhone',
-    busy: 'callAgentErrBusy', outside_hours: 'callAgentErrHours', plan_required: 'callAgentErrPlan', points_insufficient: 'callAgentErrPoints' };
+    busy: 'callAgentErrBusy', outside_hours: 'callAgentErrHours', plan_required: 'callAgentErrPlan', points_insufficient: 'callAgentErrPoints', link_limit: 'callAgentErrLinkLimit' };
 
   var trial = null;   // جلسة التجربة الحيّة الوحيدة في هذا التبويب
   var polls = {};     // callId ← متابعة الاتّصال الفعليّ
   var mounted = {};   // id ← آخر غلاف بطاقة مرسوم (السطر الحيّ يُحدَّث في مكانه بلا renderAll لكلّ سطر)
   var notes = {};     // id ← ملاحظة عابرة على البطاقة (خطأ أو رفض) — لا تُحفظ
-  var starting = {};  // id ← بدء اتّصال فعليّ جارٍ (ضغطتان سريعتان = طلب واحد)
+  var starting = {};  // id ← بدء اتّصال فعليّ (أو تجهيز رابط) جارٍ (ضغطتان سريعتان = طلب واحد)
+  var links = {};     // id ← رابط الواتساب الجاهز لهذه الصفحة (v-call-link) — لا يُحفظ: فيه سرّ الرابط والرقم كاملًا
+  var lpolls = {};    // linkId ← متابعة رابط أُرسل
   var settling = {};  // id ← حسم تجربة معلّقة بعد إعادة التحميل مجدول (مرّة واحدة)
   var ending = {};    // معرّف التجربة ← إرسال نهايتها جارٍ (لا طلبان معًا)
   var tried = {};     // معرّف التجربة ← محاولات إرسال نهايتها في هذه الصفحة (ثانية بعد مهلة، والباقي في التحميل التالي)
@@ -139,9 +147,11 @@
   }
   function stateLabel(s){ return tt(ST[s] || 'callAgentStCompleted'); }
   function ocLabel(s){ return tt(OC[s] || 'callAgentOcFailed'); }
+  /* v-call-link: مكالمة الرابط سؤال لشخص لا حجز عند محلّ — نتيجتها الواضحة «وصل الردّ» لا «تمّ الحجز» */
+  function ocLabelOf(c, s){ return (c && c.transport === 'link' && s === 'booked') ? tt('callAgentOcAnswered') : ocLabel(s); }
   function resultText(c){
     var o = c.outcome ? cleanOutcome(c.outcome) : null;
-    var lines = [fill(tt('callAgentResultHead'), { b: clip(c.business, 80), s: o ? ocLabel(o.status) : stateLabel(c.state) })];
+    var lines = [fill(tt('callAgentResultHead'), { b: clip(c.business, 80), s: o ? ocLabelOf(c, o.status) : stateLabel(c.state) })];
     if(o){
       if(o.summary) lines.push(o.summary);
       if(o.confirmed_details) lines.push(tt('callAgentDetails') + ': ' + o.confirmed_details);
@@ -209,6 +219,7 @@
       + '.msg .omCallDial{background:#059669 !important;border-color:transparent !important;color:#fff !important;}'
       + '.msg .omCallStop{background:#dc2626 !important;border-color:transparent !important;color:#fff !important;}'
       + '.msg .omCallBtn:disabled{opacity:.5;cursor:default;}'
+      + '.msg a.omCallBtn{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;}'
       + '.msg .omCallLegal{font-size:11px;line-height:1.5;color:var(--muted,#9aa3b2) !important;}'
       + 'html.mobile-ui .omCallWrap{max-width:100%;}'
       + 'html.mobile-ui .omCallBtns .omCallBtn{flex:1 1 auto;}'
@@ -361,9 +372,9 @@
     var tl = part(v, 'lines', lines.length ? 'on' : '', function(){ return el('div', 'omCallLines'); });
     if(tl) syncLines(tl, lines, lineRow('omCallLine'));
     var o = c.outcome ? cleanOutcome(c.outcome) : null;
-    part(v, 'outcome', o ? JSON.stringify([o, ocLabel(o.status), tt('callAgentDetails'), tt('callAgentFollowUp')]) : '', function(){
+    part(v, 'outcome', o ? JSON.stringify([o, ocLabelOf(c, o.status), tt('callAgentDetails'), tt('callAgentFollowUp')]) : '', function(){
       var ob = el('div', 'omCallOutcome omCallOc-' + o.status);
-      ob.appendChild(el('div', 'omCallOcHead', ocLabel(o.status)));
+      ob.appendChild(el('div', 'omCallOcHead', ocLabelOf(c, o.status)));
       if(o.summary) ob.appendChild(el('div', 'omCallOcText', o.summary));
       if(o.confirmed_details) ob.appendChild(el('div', 'omCallOcText', tt('callAgentDetails') + ': ' + o.confirmed_details));
       if(o.follow_up) ob.appendChild(el('div', 'omCallOcText', tt('callAgentFollowUp') + ': ' + o.follow_up));
@@ -375,8 +386,9 @@
     var id = c.id;
     var livePhone = c.transport === 'phone' && !!c.callId && !!ACTIVE[vs];
     var busy = !!(id && starting[id]);
-    var mode = liveTrial ? 'trial' : livePhone ? 'phone' : id ? ('idle' + (c.phoneReady === true ? '+dial' : '') + (busy ? '+busy' : '')) : '';
-    part(v, 'btns', mode && JSON.stringify([mode, tt('callAgentEnd'), tt('callAgentCancel'), tt('callAgentTry'), tt('callAgentDial')]), function(){
+    var wa = (id && links[id]) || ''; // v-call-link: الرابط جاهز في هذه الصفحة ← زرّ يفتح الواتساب به (إن حجب المتصفّح الفتح التلقائيّ، أو لإعادة الإرسال)
+    var mode = liveTrial ? 'trial' : livePhone ? 'phone' : id ? ('idle' + (c.phoneReady === true ? '+dial' : '') + (busy ? '+busy' : '') + (owner ? '+link' : '') + (wa ? '+wa' : '')) : '';
+    part(v, 'btns', mode && JSON.stringify([mode, tt('callAgentEnd'), tt('callAgentCancel'), tt('callAgentTry'), tt('callAgentDial'), tt('callAgentLink'), tt('callAgentLinkWa'), wa]), function(){
       var btns = el('div', 'omCallBtns');
       if(liveTrial) btns.appendChild(btn('omCallBtn omCallStop', tt('callAgentEnd'), function(){ if(trial && trial.id === id) finish(trial, 'canceled'); }));
       else if(livePhone) btns.appendChild(btn('omCallBtn omCallStop', tt('callAgentCancel'), function(){ cancelPhone(id); }));
@@ -389,6 +401,16 @@
           var dl = btn('omCallBtn omCallDial', tt('callAgentDial'), function(){ startPhone(id); });
           if(busy) dl.disabled = true;
           btns.appendChild(dl);
+        }
+        if(owner){ // v-call-link: للمالك وحده الآن (الخادم يرفض غيره owner_only)
+          var lk = btn('omCallBtn omCallLink', tt('callAgentLink'), function(){ startLink(id); });
+          if(busy) lk.disabled = true;
+          btns.appendChild(lk);
+        }
+        if(wa){
+          var wb = el('a', 'omCallBtn omCallWa', tt('callAgentLinkWa'));
+          wb.href = wa; wb.target = '_blank'; wb.rel = 'noopener noreferrer';
+          btns.appendChild(wb);
         }
       }
       return btns;
@@ -429,6 +451,7 @@
     if(c.id) mounted[c.id] = wrap;
     fillCard(wrap, c);
     resume(c);
+    resumeLink(c);
     settleTrial(c);
     if(c.id && c.trialEnds && Object.keys(c.trialEnds).length) setTimeout(function(){ trialEnd(c.id, true); }, 0); // v-call-agent-paid: نهايات لم يؤكّدها الخادم بعد
     return wrap;
@@ -966,6 +989,78 @@
     refresh(id);
   }
 
+
+  /* ── v-call-link: رابط يفتحه الطرف الآخر ويكلّم المساعد من متصفّحه (بلا خطّ هاتف) ── */
+  function waUrl(c, d){
+    var msg = fill(tt('callAgentLinkMsg'), { n: clip(d.callerName || c.callerName, 40), u: String(d.url) });
+    return 'https://wa.me/' + String(d.wa || '').replace(/\D/g, '') + '?text=' + encodeURIComponent(msg);
+  }
+  function scheduleLink(id, linkId, ms){
+    if(lpolls[linkId]) return;
+    var p = lpolls[linkId] = { id: id, t0: now(), timer: null };
+    p.timer = setTimeout(function(){ pollLink(p, linkId); }, ms);
+  }
+  function stopLink(linkId){ var p = lpolls[linkId]; if(p){ clearTimeout(p.timer); delete lpolls[linkId]; } }
+  function expireLink(p, linkId){
+    stopLink(linkId);
+    patch(p.id, { state: 'expired', endedAt: now() });
+    delete links[p.id];
+    persist(); refresh(p.id);
+  }
+  async function pollLink(p, linkId){
+    if(lpolls[linkId] !== p) return;
+    var r = await post('call-link-status', { linkId: linkId });
+    if(lpolls[linkId] !== p) return;
+    var c = find(p.id);
+    if(!c || c.transport !== 'link' || c.linkId !== linkId){ stopLink(linkId); return; } // الكرت انتقل لتجربة أو اتّصال أو رابط أحدث — لا يُكتب فوقه
+    if(r.ok){
+      var d = r.data;
+      if(d.ended){
+        stopLink(linkId);
+        patch(p.id, { state: 'completed', outcome: cleanOutcome(d.outcome), durationSec: Math.max(0, Math.round(Number(d.durationSec) || 0)), endedAt: now() });
+        delete links[p.id];
+        var pushed = pushResult(p.id); // رسالة نتيجة واحدة في محادثة الكرت، ولو كانت غير المفتوحة
+        persist(); refresh(p.id);
+        if(pushed) rerender();
+        return;
+      }
+      if(LINK_STATES[d.state] && d.state !== c.state){ patch(p.id, { state: d.state }); persist(); refresh(p.id); }
+    } else if(r.status === 404 || r.status === 403){ expireLink(p, linkId); return; } // انتهى عمر الرابط عند الخادم (يوم)، أو الحساب تغيّر
+    if(now() - (Number(c.startedAt) || p.t0) >= LINK_KEEP_MS){ expireLink(p, linkId); return; }
+    var cur = find(p.id);
+    p.timer = setTimeout(function(){ pollLink(p, linkId); }, (now() - p.t0 < LINK_FAST_MS || (cur && cur.state === 'live')) ? LINK_POLL_MS : LINK_SLOW_MS);
+  }
+  /* رابط «بانتظار» محفوظ بلا متابعة في هذا التبويب (إعادة تحميل، أو محادثة أخرى) ← تُستأنف */
+  function resumeLink(c){
+    if(c.transport !== 'link' || !c.linkId || !LINK_STATES[String(c.state)] || lpolls[c.linkId] || !token()) return;
+    scheduleLink(c.id, String(c.linkId), 1500);
+  }
+  async function startLink(id){
+    var c = find(id);
+    // تدفّق واحد لكلّ بطاقة: لا رابط وتجربتها جارية أو اتّصالها الفعليّ يبدأ أو جارٍ
+    if(!c || !isOwner() || starting[id] || (trial && trial.id === id) || (c.transport === 'phone' && c.callId && ACTIVE[String(c.state)])) return;
+    // النافذة تُفتح داخل الضغطة نفسها (بعد انتظار الخادم يحجبها المتصفّح)، ثمّ تُوجَّه إلى الواتساب حين يصل الرابط
+    var w = null;
+    try{ w = window.open('about:blank', '_blank'); }catch(e){ w = null; __swallow(e, 'call-agent:link-open'); }
+    starting[id] = true; notes[id] = ''; refresh(id);
+    var r;
+    try{ r = await post('call-link', { id: id, linkId: (c.transport === 'link' && c.linkId) ? String(c.linkId) : '' }); }
+    finally{ starting[id] = false; }
+    var d = r.data || {}, linkId = String(d.linkId || '');
+    if(!r.ok || !/^lk[a-f0-9]{18}$/.test(linkId) || !/^https?:\/\/[^\s]+$/.test(String(d.url || ''))){
+      try{ if(w) w.close(); }catch(e){ __swallow(e, 'call-agent:link-close'); }
+      notes[id] = errText(r); refresh(id); return;
+    }
+    var url = links[id] = waUrl(c, d);
+    var cur = find(id) || c;
+    // رابط جديد يبدأ صفحة جديدة على الكرت؛ الرابط القائم نفسه (إعادة إرسال) يبقى بحالته
+    if(!(cur.transport === 'link' && cur.linkId === linkId)) patch(id, { transport: 'link', linkId: linkId, callId: '', state: LINK_STATES[d.state] ? d.state : 'sent',
+      outcome: null, transcript: [], startedAt: now(), endedAt: 0, durationSec: 0, resultPushed: false });
+    persist(); refresh(id);
+    try{ if(w){ w.opener = null; w.location.replace(url); } }catch(e){ __swallow(e, 'call-agent:link-go'); }
+    scheduleLink(id, linkId, LINK_POLL_MS);
+  }
+
   /* v-call-agent-paid (المراجعة): بعد التحميل يُمرّ على كلّ كروت الاتّصال في كلّ المحادثات — لا المفتوحة وحدها: نهايات تجارب لم يقبلها
    * الخادم، ومكالمات حقيقيّة انتهت ولم تُحسم تسويتها (سؤال حالة واحد يسوّيها عند الخادم)، وجارية تُستأنف متابعتها. */
   async function settlePhone(c){
@@ -979,6 +1074,7 @@
       if(!token()) return;
       eachCallCard(function(c){
         if(c.trialEnds && Object.keys(c.trialEnds).length) trialEnd(c.id, true);
+        resumeLink(c); // v-call-link: رابط ينتظر في محادثة غير المفتوحة — نتيجته تصلها
         if(c.transport !== 'phone' || !c.callId || polls[c.callId]) return;
         if(ACTIVE[String(c.state)]) resume(c);
         else if(!c.billed && !isOwner()) settlePhone(c).catch(function(e){ __swallow(e, 'call-agent:sweep-phone'); });

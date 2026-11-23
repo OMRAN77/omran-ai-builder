@@ -418,6 +418,10 @@
       "destination": "/android.html"
     },
     {
+      "source": "/talk",
+      "destination": "/talk.html"
+    },
+    {
       "source": "/tools",
       "destination": "/tools/index.html"
     },
