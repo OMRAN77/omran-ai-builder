@@ -50,7 +50,7 @@
   .card.kawkab { --acc: #7df1ff; } .card.waha { --acc: #e9b765; } .card.dhalam { --acc: #f08a4b; }
   #menu .foot { margin: 20px 0 0; font-size: 13px; line-height: 1.8; color: var(--faint); }
   /* the player's own rules for the world, and joining a friend by their room's code */
-  .setup { display: grid; grid-template-columns: 1fr minmax(260px, 340px); gap: 16px; margin: 0 0 18px; }
+  .setup { display: grid; grid-template-columns: 1fr minmax(260px, 340px); gap: 16px; margin: 18px 0 0; }
   .rules, .join { border-radius: 14px; background: var(--panel); border: 1px solid var(--line); padding: 12px 16px 14px; }
   .rules h2, .join h2 { margin: 0 0 8px; font-size: 18px; font-weight: 700; }
   .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
@@ -66,7 +66,7 @@
   .join button { font: inherit; font-size: 15px; font-weight: 700; min-height: 42px; padding: 4px 20px; border: 0; border-radius: 9px; color: #0a0d12; background: #9ee6a8; cursor: pointer; }
   .join .msg { min-height: 20px; margin: 8px 0 0; font-size: 13px; color: #ffb4a6; }
   .card.barari { --acc: #9ee6a8; } .card.dino { --acc: #f0a050; }
-  @media (max-width: 820px) { .cards { grid-template-columns: 1fr; } #menu h1 { font-size: 28px; } .setup { grid-template-columns: 1fr; } }
+  @media (max-width: 820px) { .cards { grid-template-columns: 1fr 1fr; gap: 10px; } .card p { display: none; } .card h2 { font-size: 18px; } .card .body { padding: 8px 10px 10px; } #menu h1 { font-size: 28px; } .setup { grid-template-columns: 1fr; } }
   @media (max-width: 1100px) and (min-width: 821px) { .cards { grid-template-columns: repeat(3, 1fr); } }
   @media (max-width: 820px) and (orientation: landscape) { .setup { grid-template-columns: 1fr 1fr; gap: 10px; } .row button { min-height: 34px; padding: 3px 10px; font-size: 13px; } .row > span { min-width: 64px; font-size: 13px; } .rules, .join { padding: 8px 12px 10px; } .rules h2, .join h2 { font-size: 15px; margin-bottom: 4px; } .row { margin: 3px 0; } .row small, .join p { display: none; } .cards { grid-template-columns: repeat(5, 1fr); gap: 6px; } .card p { display: none; } .card h2 { font-size: 15px; } .card h2 { font-size: 18px; } #menu { padding: 12px 14px 16px; } #menu .lead { margin-bottom: 10px; font-size: 14px; } .card .body { padding: 8px 10px 10px; } }
 </style>
@@ -74,7 +74,14 @@
 <body>
 <main id="menu">
   <h1>عالم المكعبات</h1>
-  <p class="lead">عوالم تحفر فيها وتبني وتصيد وتلعب فيها مع ربعك. اختر كيف تبي تلعب، بعدين اختر عالمك.</p>
+  <p class="lead">عوالم تحفر فيها وتبني وتصيد وتلعب فيها مع ربعك. اختر عالمك، وتحت تختار كيف تبي تلعب.</p>
+  <section class="cards">
+    <article class="card kawkab"><img src="./previews/kawkab.webp" alt="منظر عالم كوكب" width="800" height="450"><div class="body"><h2>كوكب</h2><p>كوكب غريب بنباتات مضيئة وبلّورات وقاعدة فضائية. تحفر بالمثقاب الليزري ويرافقك المسّاح الآلي.</p><button type="button" data-world="kawkab">العب</button></div></article>
+    <article class="card waha"><img src="./previews/waha.webp" alt="منظر عالم واحة" width="800" height="450"><div class="body"><h2>واحة</h2><p>صحراء الجزيرة وقت الغروب: كثبان وواحة نخيل وحصن طين. تحفر بالمعول وتبني بالطوب.</p><button type="button" data-world="waha">العب</button></div></article>
+    <article class="card barari"><img src="./previews/barari.webp" alt="منظر عالم البراري" width="800" height="450"><div class="body"><h2>البراري</h2><p>بر وغابة وثلج على البحر: كهوف فيها فحم وذهب وألماس، نخل وأشجار تقطعها، عنز ودياي ودببة، وسمك وأخطبوط في البحر.</p><button type="button" data-world="barari">العب</button></div></article>
+    <article class="card dino"><img src="./previews/dino.webp" alt="منظر عالم الديناصورات" width="800" height="450"><div class="body"><h2>عالم الديناصورات</h2><p>غابات حارّة ومستنقعات وبراكين تدخّن، وديناصورات: عمالقة طوال الرقبة تصادقهم، وأبو ثلاث قرون، وملك الأنياب. توصل له كذلك من البوابة في أي عالم.</p><button type="button" data-world="dino">العب</button></div></article>
+    <article class="card dhalam"><img src="./previews/dhalam.webp" alt="منظر عالم ظلام" width="800" height="450"><div class="body"><h2>ظلام</h2><p>مرتفعات باردة وغابة صنوبر وأطلال قلعة. مأواك هو النور الوحيد في الضباب.</p><button type="button" data-world="dhalam">العب</button></div></article>
+  </section>
   <section class="setup">
     <div class="rules">
       <h2>كيف تبي تلعب</h2>
@@ -89,13 +96,6 @@
       <form><input name="code" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="off" aria-label="كود الغرفة"><input name="name" maxlength="16" placeholder="اسمك" aria-label="اسمك"><button type="submit">ادخل</button></form>
       <div class="msg" role="status"></div>
     </div>
-  </section>
-  <section class="cards">
-    <article class="card kawkab"><img src="./previews/kawkab.webp" alt="منظر عالم كوكب" width="800" height="450"><div class="body"><h2>كوكب</h2><p>كوكب غريب بنباتات مضيئة وبلّورات وقاعدة فضائية. تحفر بالمثقاب الليزري ويرافقك المسّاح الآلي.</p><button type="button" data-world="kawkab">العب</button></div></article>
-    <article class="card waha"><img src="./previews/waha.webp" alt="منظر عالم واحة" width="800" height="450"><div class="body"><h2>واحة</h2><p>صحراء الجزيرة وقت الغروب: كثبان وواحة نخيل وحصن طين. تحفر بالمعول وتبني بالطوب.</p><button type="button" data-world="waha">العب</button></div></article>
-    <article class="card barari"><img src="./previews/barari.webp" alt="منظر عالم البراري" width="800" height="450"><div class="body"><h2>البراري</h2><p>بر وغابة وثلج على البحر: كهوف فيها فحم وذهب وألماس، نخل وأشجار تقطعها، عنز ودياي ودببة، وسمك وأخطبوط في البحر.</p><button type="button" data-world="barari">العب</button></div></article>
-    <article class="card dino"><img src="./previews/dino.webp" alt="منظر عالم الديناصورات" width="800" height="450"><div class="body"><h2>عالم الديناصورات</h2><p>غابات حارّة ومستنقعات وبراكين تدخّن، وديناصورات: عمالقة طوال الرقبة تصادقهم، وأبو ثلاث قرون، وملك الأنياب. توصل له كذلك من البوابة في أي عالم.</p><button type="button" data-world="dino">العب</button></div></article>
-    <article class="card dhalam"><img src="./previews/dhalam.webp" alt="منظر عالم ظلام" width="800" height="450"><div class="body"><h2>ظلام</h2><p>مرتفعات باردة وغابة صنوبر وأطلال قلعة. مأواك هو النور الوحيد في الضباب.</p><button type="button" data-world="dhalam">العب</button></div></article>
   </section>
   <p class="foot">عالمك ينحفظ في هذا المتصفح وتكمل من وين وقفت. تقدر تغيّر هذي الخيارات بعدين من القائمة (الإعدادات). على الجوال العب والجهاز بالعرض.</p>
 </main>
