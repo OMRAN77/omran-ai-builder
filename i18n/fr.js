@@ -139,7 +139,7 @@ I18N['fr'] = {
     'homeLastImage': '🖼️ Dernière image', 'homeLastVideo': '🎬 Dernière vidéo', 'homeCollection': '✨ Collection — 3 derniers travaux', 'homeNoImage': 'Rien ici pour l’instant', 'homeTryNow': 'Essayer ›', 'homeNoVideo': 'Aucune vidéo pour l’instant', 'homeMakeVideo': 'Créer votre première vidéo ›', 'homeEmptyLib': 'Votre bibliothèque est vide', 'homeStartCreating': 'Commencer à créer ›',
     'grpBusiness': '💼 Affaires', 'grpLife': '🕌 Vie quotidienne',
     'psheetAll': 'Tout', 'psheetGrpArt': '🎨 Artistiques', 'psheetBefore': 'Avant', 'psheetBeforeSub': 'Une photo → tous les styles', 'psheetTry': '✨ Essayez sur votre photo',
-    'tcSub_btnPortraitStyle': 'Une large gamme de styles de portrait', 'tcSub_btnQuickTemplates': 'Idées et inspiration pour vos prochains projets', 'tcSub_btnVideoMaker': 'Créez et montez des vidéos comme un pro', 'tcSub_btnStudioAI': 'Styles et effets intelligents', 'tcSub_btnFashionAI': 'Création de mode par IA', 'tcSub_btnDesignAI': 'Design de décoration intérieure et extérieure', 'tcSub_btnAdStudio': 'Création de publicités professionnelles', 'tcSub_btnStocks': 'Analyses et données des marchés', 'tcSub_btnOmranTV': 'Contenu et divertissement sans limites', 'tcSub_btnQibla': 'Horaires de prière et direction de la Qibla', 'tcSub_btnExpense': 'Gérez dépenses et budgets', 'tcSub_btnOmranEdu': 'Cours et leçons', 'tcSub_btnConstruction': 'Conceptions d’ingénierie et d’architecture', 'tcSub_btnReligion': 'Questions religieuses, réponses fiables', 'tcSub_btnCV': 'Créez un CV professionnel', 'tcSub_btnDocs': 'Analysez et résumez des documents', 'tcSub_btnFeedback': 'Partagez votre avis et vos idées', 'tcSub_btnEmailAssist': 'Rédigez e-mails et réponses',
+    'tcSub_btnPortraitStyle': 'Une large gamme de styles de portrait', 'tcSub_btnTalkRoom': 'Parlez avec vos amis par la voix et par écrit', 'tcSub_btnQuickTemplates': 'Idées et inspiration pour vos prochains projets', 'tcSub_btnVideoMaker': 'Créez et montez des vidéos comme un pro', 'tcSub_btnStudioAI': 'Styles et effets intelligents', 'tcSub_btnFashionAI': 'Création de mode par IA', 'tcSub_btnDesignAI': 'Design de décoration intérieure et extérieure', 'tcSub_btnAdStudio': 'Création de publicités professionnelles', 'tcSub_btnStocks': 'Analyses et données des marchés', 'tcSub_btnOmranTV': 'Contenu et divertissement sans limites', 'tcSub_btnQibla': 'Horaires de prière et direction de la Qibla', 'tcSub_btnExpense': 'Gérez dépenses et budgets', 'tcSub_btnOmranEdu': 'Cours et leçons', 'tcSub_btnConstruction': 'Conceptions d’ingénierie et d’architecture', 'tcSub_btnReligion': 'Questions religieuses, réponses fiables', 'tcSub_btnCV': 'Créez un CV professionnel', 'tcSub_btnDocs': 'Analysez et résumez des documents', 'tcSub_btnFeedback': 'Partagez votre avis et vos idées', 'tcSub_btnEmailAssist': 'Rédigez e-mails et réponses',
     msgShareReply: 'Partager la réponse',
     msgShareCopied: 'Réponse copiée — collez-la dans l’app de votre choix',
     designAiNeedPick: 'Choisissez d\'abord un type de lieu ou téléchargez une photo',
@@ -1030,7 +1030,7 @@ I18N['fr'] = {
     cvTitle: 'Créateur de CV',
     docsTitle: 'Assistant documents',
     expenseTitle: 'Analyseur de dépenses',
-    govTitle: 'Services gouvernementaux',
+    govTitle: 'Services gouvernementaux', talkRoomTitle: 'Salon entre amis', /* v-talk-room */
     premiumToggleLabel: 'Mode professionnel',
     snapBuildLabel: '📸 Photographie et construis',
     omranDisclaimerTxt: 'Les informations peuvent être inexactes — vérifiez les détails importants.',

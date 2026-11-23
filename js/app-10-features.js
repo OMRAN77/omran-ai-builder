@@ -582,6 +582,9 @@ window.addEventListener('appinstalled', () => {
 })();
 
 /* ---------- Share App button ---------- */
+/* v-talk-room (المالك ٢٣ نوفمبر: «اتصال نفس الي في اللعبه»): «غرفة الربع» صفحة مستقلّة ‎/room‎ — صوت وكتابة بين الناس مباشرة (WebRTC) */
+const btnTalkRoom = $('#btnTalkRoom');
+if(btnTalkRoom){ btnTalkRoom.onclick = () => { window.location.href = '/room'; }; }
 const btnShareApp = $('#btnShareApp');
 if(btnShareApp){
   btnShareApp.onclick = async () => {
@@ -826,7 +829,7 @@ btnToggleHistory.onclick = () => {
     /* v-tools-groups3 (المالك ٥ سبتمبر): تجميع منطقي بثلاثة عناوين — إنشاء / أعمال / حياة يومية — بدل شبكة مكدّسة */
     { title: 'grpCreate', ids: ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI'] },
     { title: 'grpBusiness', ids: ['btnAdStudio','btnStocks','btnExpense','btnCV','btnDocs','btnEmailAssist','btnConstruction'] },
-    { title: 'grpLife', ids: ['btnQibla','btnOmranTV','btnOmranEdu','btnReligion','btnGov','btnFeedback'] }
+    { title: 'grpLife', ids: ['btnQibla','btnOmranTV','btnOmranEdu','btnReligion','btnGov','btnTalkRoom','btnFeedback'] }
   ];
   // v433: مجموعات الإبداع/الأقسام/الأدوات في مربع الأدوات المنفصل (تبويب الأدوات)
   const ptPopup = document.getElementById('sectionsToolsPopup');
@@ -877,7 +880,8 @@ btnToggleHistory.onclick = () => {
     btnAgentMode:   'Robot/3D/robot_3d.png',
     btnInstall:     'Mobile%20phone/3D/mobile_phone_3d.png',
     btnShareApp:    'Outbox%20tray/3D/outbox_tray_3d.png',
-    btnFeedback:    'Speech%20balloon/3D/speech_balloon_3d.png'
+    btnFeedback:    'Speech%20balloon/3D/speech_balloon_3d.png',
+    btnTalkRoom:    'Speaking%20head/3D/speaking_head_3d.png' // v-talk-room
   };
   function stpApply3d(b, id){
     const path = STP_ICONS[id];

@@ -8,11 +8,17 @@
      والأصل 1200×720 يكلّف 3.3MB من ذاكرة الرسم لكلّ واحدة — ثماني عشرة = ~60MB، فتمتلئ ذاكرة معالج الرسوم في
      أندرويد وتظهر مستطيلات سوداء فوق البطاقات. نسخة عرض 600×360 في assets/tool-cards/s (الأصول باقية في clean/). */
   var CLEAN_V = '4';
-  var IDS = ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnStocks','btnOmranTV','btnQibla','btnExpense','btnOmranEdu','btnConstruction','btnReligion','btnCV','btnDocs','btnFeedback','btnEmailAssist'];
+  var IDS = ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnStocks','btnOmranTV','btnQibla','btnExpense','btnOmranEdu','btnConstruction','btnReligion','btnCV','btnDocs','btnFeedback','btnEmailAssist','btnTalkRoom'];
   var TOOL_PHOTOS = {};
   IDS.forEach(function(id){ TOOL_PHOTOS[id] = '/assets/tool-cards/s/' + id + '.jpg?v=' + CLEAN_V; });
   function isAr(){ return String(document.documentElement.lang || 'ar').toLowerCase().indexOf('ar') === 0; }
-  function srcFor(id){ return TOOL_PHOTOS[id]; }
+  /* v-talk-room-themes (المالك: «الصورة البيضاء حق الخلفية البيضاء والسودة حق الخلفية السودة»): بطاقة بصورتين — الفاتحة
+     (‎<id>-light.jpg‎) في الوضع الفاتح (‎html[data-mode="light"]‎)، والأصل في الداكن؛ تتبدّل فور تبديل الوضع (المراقب تحت). */
+  var THEMED = { btnTalkRoom: 1 };
+  function srcFor(id){
+    if(THEMED[id] && document.documentElement.getAttribute('data-mode') === 'light') return '/assets/tool-cards/s/' + id + '-light.jpg?v=' + CLEAN_V;
+    return TOOL_PHOTOS[id];
+  }
 
   /* v-shelf-paint-throttle (فيديو المالك ٢٨ سبتمبر — بعد ١٫٣٫١٢: صفوف كاملة تفرغ عند تمرير لوحة
      الأدوات على هواوي، بينما السهمان (طبقة تركيب مستقلّة) يبقيان مرسومين — علامة «تأخّر رسم» الموثّقة
@@ -89,7 +95,7 @@
     btnPortraitStyle: '#d4af37', btnQuickTemplates: '#f2b94a', btnVideoMaker: '#e0555b', btnDesignAI: '#f28c5a',
     btnFashionAI: '#ff6fae', btnStudioAI: '#5ad1ff', btnAdStudio: '#ff5fa2', btnStocks: '#34d399', btnExpense: '#22c55e',
     btnCV: '#60a5fa', btnDocs: '#a78bfa', btnEmailAssist: '#fb923c', btnConstruction: '#fbbf24', btnQibla: '#d4af37',
-    btnOmranTV: '#ef4444', btnOmranEdu: '#38bdf8', btnReligion: '#10b981', btnGov: '#94a3b8', btnFeedback: '#f472b6'
+    btnOmranTV: '#ef4444', btnOmranEdu: '#38bdf8', btnReligion: '#10b981', btnGov: '#94a3b8', btnTalkRoom: '#d4af37', btnFeedback: '#f472b6'
   };
   function decorate(id){
     var b = document.getElementById(id); if(!b) return;
@@ -156,7 +162,7 @@
       else upgradeButton(id, srcFor(id));
     });
   }
-  try{ new MutationObserver(function(){ applyToolPhotos(); setTimeout(applyToolPhotos, 400); setTimeout(applyToolPhotos, 1600); setTimeout(applyToolPhotos, 3200); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'tool-card-images:159'); /* بلا مراقب: تُطبَّق عند التحميل فقط */ }
+  try{ new MutationObserver(function(){ applyToolPhotos(); setTimeout(applyToolPhotos, 400); setTimeout(applyToolPhotos, 1600); setTimeout(applyToolPhotos, 3200); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang', 'data-mode'] }); }catch(e){ typeof __swallow === 'function' && __swallow(e, 'tool-card-images:159'); /* بلا مراقب: تُطبَّق عند التحميل فقط */ }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyToolPhotos, { once:true });
   else applyToolPhotos();

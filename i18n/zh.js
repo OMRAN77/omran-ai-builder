@@ -368,7 +368,7 @@ I18N['zh'] = {
     "homeLastImage": "🖼️ 最新图片", "homeLastVideo": "🎬 最新视频", "homeCollection": "✨ 作品集 — 最近 3 件", "homeNoImage": "这里还没有内容", "homeTryNow": "立即尝试 ›", "homeNoVideo": "还没有视频", "homeMakeVideo": "创建你的第一个视频 ›", "homeEmptyLib": "你的作品库是空的", "homeStartCreating": "开始创作 ›",
     "grpBusiness": "💼 商务", "grpLife": "🕌 日常生活",
     "psheetAll": "全部", "psheetGrpArt": "🎨 艺术风格", "psheetBefore": "原图", "psheetBeforeSub": "一张照片 → 所有风格", "psheetTry": "✨ 用你的照片试试",
-    "tcSub_btnPortraitStyle": "多种人像风格", "tcSub_btnQuickTemplates": "为下一个项目提供灵感与创意", "tcSub_btnVideoMaker": "专业创作与剪辑视频", "tcSub_btnStudioAI": "智能风格与特效", "tcSub_btnFashionAI": "AI 时装设计", "tcSub_btnDesignAI": "室内与室外装饰设计", "tcSub_btnAdStudio": "专业广告设计", "tcSub_btnStocks": "市场分析与数据", "tcSub_btnOmranTV": "无限内容与娱乐", "tcSub_btnQibla": "礼拜时间与朝拜方向", "tcSub_btnExpense": "管理支出与预算", "tcSub_btnOmranEdu": "课程与教学", "tcSub_btnConstruction": "工程与建筑设计", "tcSub_btnReligion": "宗教问题，可靠解答", "tcSub_btnCV": "制作专业简历", "tcSub_btnDocs": "分析并总结文档", "tcSub_btnFeedback": "分享你的意见与建议", "tcSub_btnEmailAssist": "撰写邮件与回复",
+    "tcSub_btnPortraitStyle": "多种人像风格", "tcSub_btnTalkRoom": "与好友语音和文字聊天", "tcSub_btnQuickTemplates": "为下一个项目提供灵感与创意", "tcSub_btnVideoMaker": "专业创作与剪辑视频", "tcSub_btnStudioAI": "智能风格与特效", "tcSub_btnFashionAI": "AI 时装设计", "tcSub_btnDesignAI": "室内与室外装饰设计", "tcSub_btnAdStudio": "专业广告设计", "tcSub_btnStocks": "市场分析与数据", "tcSub_btnOmranTV": "无限内容与娱乐", "tcSub_btnQibla": "礼拜时间与朝拜方向", "tcSub_btnExpense": "管理支出与预算", "tcSub_btnOmranEdu": "课程与教学", "tcSub_btnConstruction": "工程与建筑设计", "tcSub_btnReligion": "宗教问题，可靠解答", "tcSub_btnCV": "制作专业简历", "tcSub_btnDocs": "分析并总结文档", "tcSub_btnFeedback": "分享你的意见与建议", "tcSub_btnEmailAssist": "撰写邮件与回复",
     "msgShareReply": "分享回复",
     "msgShareCopied": "回复已复制，请粘贴到你想用的应用中",
     "uploadCodeTitle": "上传代码文件(HTML 或 Python)",
@@ -1074,7 +1074,7 @@ I18N['zh'] = {
     cvTitle: '简历生成器',
     docsTitle: '文档助手',
     expenseTitle: '消费分析',
-    govTitle: '政府服务',
+    govTitle: '政府服务', talkRoomTitle: '好友房间', /* v-talk-room */
     premiumToggleLabel: '专业模式',
     snapBuildLabel: '📸 拍照即建',
     omranDisclaimerTxt: '信息可能不准确，请核实重要内容。',

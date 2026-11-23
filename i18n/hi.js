@@ -138,7 +138,7 @@ I18N['hi'] = {
     'homeLastImage': '🖼️ आख़िरी तस्वीर', 'homeLastVideo': '🎬 आख़िरी वीडियो', 'homeCollection': '✨ संग्रह — आख़िरी 3 काम', 'homeNoImage': 'यहाँ अभी कुछ नहीं है', 'homeTryNow': 'अभी आज़माएँ ›', 'homeNoVideo': 'अभी कोई वीडियो नहीं', 'homeMakeVideo': 'अपना पहला वीडियो बनाएँ ›', 'homeEmptyLib': 'आपकी लाइब्रेरी खाली है', 'homeStartCreating': 'बनाना शुरू करें ›',
     'grpBusiness': '💼 व्यवसाय', 'grpLife': '🕌 दैनिक जीवन',
     'psheetAll': 'सभी', 'psheetGrpArt': '🎨 कलात्मक', 'psheetBefore': 'पहले', 'psheetBeforeSub': 'एक फ़ोटो → हर स्टाइल', 'psheetTry': '✨ अपनी फ़ोटो पर आज़माएँ',
-    'tcSub_btnPortraitStyle': 'पोर्ट्रेट स्टाइल की विस्तृत श्रृंखला', 'tcSub_btnQuickTemplates': 'अगले प्रोजेक्ट के लिए विचार और प्रेरणा', 'tcSub_btnVideoMaker': 'पेशेवर तरीके से वीडियो बनाएं और संपादित करें', 'tcSub_btnStudioAI': 'स्मार्ट स्टाइल और इफ़ेक्ट', 'tcSub_btnFashionAI': 'AI से फ़ैशन डिज़ाइन', 'tcSub_btnDesignAI': 'इंटीरियर और एक्सटीरियर डेकोर डिज़ाइन', 'tcSub_btnAdStudio': 'पेशेवर विज्ञापन डिज़ाइन', 'tcSub_btnStocks': 'बाज़ार विश्लेषण और डेटा', 'tcSub_btnOmranTV': 'असीमित सामग्री और मनोरंजन', 'tcSub_btnQibla': 'नमाज़ के समय और क़िबला दिशा', 'tcSub_btnExpense': 'खर्च और बजट प्रबंधन', 'tcSub_btnOmranEdu': 'कोर्स और पाठ', 'tcSub_btnConstruction': 'इंजीनियरिंग और वास्तु डिज़ाइन', 'tcSub_btnReligion': 'धार्मिक प्रश्न, विश्वसनीय उत्तर', 'tcSub_btnCV': 'पेशेवर CV बनाएं', 'tcSub_btnDocs': 'दस्तावेज़ों का विश्लेषण और सारांश', 'tcSub_btnFeedback': 'अपनी राय और सुझाव साझा करें', 'tcSub_btnEmailAssist': 'ईमेल और जवाब लिखें',
+    'tcSub_btnPortraitStyle': 'पोर्ट्रेट स्टाइल की विस्तृत श्रृंखला', 'tcSub_btnTalkRoom': 'दोस्तों से आवाज़ और टेक्स्ट में बात करें', 'tcSub_btnQuickTemplates': 'अगले प्रोजेक्ट के लिए विचार और प्रेरणा', 'tcSub_btnVideoMaker': 'पेशेवर तरीके से वीडियो बनाएं और संपादित करें', 'tcSub_btnStudioAI': 'स्मार्ट स्टाइल और इफ़ेक्ट', 'tcSub_btnFashionAI': 'AI से फ़ैशन डिज़ाइन', 'tcSub_btnDesignAI': 'इंटीरियर और एक्सटीरियर डेकोर डिज़ाइन', 'tcSub_btnAdStudio': 'पेशेवर विज्ञापन डिज़ाइन', 'tcSub_btnStocks': 'बाज़ार विश्लेषण और डेटा', 'tcSub_btnOmranTV': 'असीमित सामग्री और मनोरंजन', 'tcSub_btnQibla': 'नमाज़ के समय और क़िबला दिशा', 'tcSub_btnExpense': 'खर्च और बजट प्रबंधन', 'tcSub_btnOmranEdu': 'कोर्स और पाठ', 'tcSub_btnConstruction': 'इंजीनियरिंग और वास्तु डिज़ाइन', 'tcSub_btnReligion': 'धार्मिक प्रश्न, विश्वसनीय उत्तर', 'tcSub_btnCV': 'पेशेवर CV बनाएं', 'tcSub_btnDocs': 'दस्तावेज़ों का विश्लेषण और सारांश', 'tcSub_btnFeedback': 'अपनी राय और सुझाव साझा करें', 'tcSub_btnEmailAssist': 'ईमेल और जवाब लिखें',
     msgShareReply: 'जवाब साझा करें',
     msgShareCopied: 'जवाब कॉपी हो गया — अपनी पसंद के ऐप में पेस्ट करें',
     designAiNeedPick: 'पहले जगह का प्रकार चुनें या फ़ोटो अपलोड करें',
@@ -1029,7 +1029,7 @@ I18N['hi'] = {
     cvTitle: 'सीवी निर्माता',
     docsTitle: 'दस्तावेज़ सहायक',
     expenseTitle: 'खर्च विश्लेषक',
-    govTitle: 'सरकारी सेवाएं',
+    govTitle: 'सरकारी सेवाएं', talkRoomTitle: 'दोस्तों का कमरा', /* v-talk-room */
     premiumToggleLabel: 'प्रोफेशनल मोड',
     snapBuildLabel: '📸 फोटो लें और बनाएं',
     omranDisclaimerTxt: 'जानकारी गलत हो सकती है — महत्वपूर्ण विवरण की पुष्टि करें।',

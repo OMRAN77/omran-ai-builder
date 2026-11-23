@@ -422,6 +422,10 @@
       "destination": "/talk.html"
     },
     {
+      "source": "/room",
+      "destination": "/room.html"
+    },
+    {
       "source": "/tools",
       "destination": "/tools/index.html"
     },

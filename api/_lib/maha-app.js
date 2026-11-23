@@ -16,6 +16,7 @@ const CAT = require('./app-catalog.js');
 /* أدوات شاشة الأدوات (مجموعات js/app-10-features.js) غير الموجودة في SCREENS — وصف قصير لمها. */
 const EXTRA_TOOLS = {
   btnFeedback: { name: { ar: 'رأيك يهمنا', en: 'Feedback' }, what: 'send your opinion, suggestions or a problem report to the app team' },
+  btnTalkRoom: { name: { ar: 'غرفة الربع', en: 'Friends room' }, what: 'a room to talk with friends by voice and text: open a room, send them the link, and let them in' }, // v-talk-room
 };
 /* وصف يعلو على الكتالوج حيث يختلف ما يراه المستخدم: وصف صانع الفيديو في الكتالوج كُتب للمخرج (المالك) قبل v-owner-modes ويذكر
    أوضاعًا صارت للمالك وحده (الاقتصاديّ، Omni، الدمج). */
@@ -32,6 +33,7 @@ const CONTROL_TOOLS = {
 const NO_CONTROL = {
   btnAdStudio: 'it opens as a separate page, which would end this call',
   btnEmailAssist: 'opening it reads the inbox and drafts replies right away, so the user opens it himself',
+  btnTalkRoom: 'it opens as a separate page, which would end this call',
 };
 /* مخفيّة لكلّ أحد بالـCSS ولا تظهر في الشاشة (index.html: display:none !important) */
 const HIDDEN = ['btnGov'];
