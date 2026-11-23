@@ -140,3 +140,13 @@ test('تحديات اليوم: ثلاثة مختلفة، نفسها للكل ف�
   assert.match(adv, /if \(!daily\.base && played > 3\)/, 'بداية اليوم تنحسب بعد ما يرجع الحفظ، مو قبله');
   assert.match(adv, /play\.give\(kitItem\(K\.LUCKY, 1\)\)/, 'الثلاثة كلها = صندوق حظ');
 });
+
+test('بطاقات الشخصيات ما تتأثر بقواعد العوالم: عالم «ظلام» عنده .look (تلميح النظر) بموضع مطلق، فالبطاقات كانت فوق بعض', () => {
+  const bag = read('shared/bag.js');
+  assert.match(bag, /#bag \.look \{ position: relative; right: auto; bottom: auto; text-shadow: none;/);
+  assert.match(read('styles/dhalam/hud.css'), /^\.look \{ position: absolute;/m, 'السبب ما زال موجود هناك: لذلك البطاقة تحدّد موضعها بنفسها');
+  const out = read('shared/outfits.js');
+  for (const k of ['greenelf', 'wanderer']) assert.match(out, new RegExp("key: '" + k + "'"), k);
+  assert.match(out, /'bow', 'compass'\]\.includes\(c\.holds\)/, 'البوصلة تمرّ للاعبين الثانيين في الغرفة');
+  assert.match(read('shared/avatar.js'), /H\('compass'\)/);
+});
