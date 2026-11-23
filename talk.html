@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>om ai — سؤال سريع لك</title>
+<!-- v-call-link (المالك ٢٣ نوفمبر: «كيف من داخل التطبيق بي النت» ← «ابدأ»): الصفحة التي يفتحها الطرف الآخر من رابط الواتساب ليكلّم
+     المساعد الآليّ بصوته من متصفّحه — بلا خطّ هاتف ولا حساب: الرابط (‎?t=المعرّف.السرّ) هو الإذن. تسأل الخادم call-guest-info (اسم
+     من أرسل الرابط وحده)، ثمّ بضغطة: المايك ← call-guest-session ← جلسة صوت حيّة مباشرة من المتصفّح، والنتيجة ترجع لصاحب الرابط
+     بـcall-guest-end (حين تُعرف، ثمّ عند النهاية). عربيّ وإنجليزيّ حسب لغة الجهاز (‎?lang=en يفرض الإنجليزيّة). لا يُسجَّل صوت. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="om ai">
+<meta property="og:title" content="سؤال سريع لك — om ai">
+<meta property="og:description" content="افتح الرابط وردّ بصوتك على المساعد الآليّ">
+<meta property="og:image" content="https://omran-ai-builder.vercel.app/icons/om-ai-poster.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="/icons/favicon-32-v2.png?icon=black-20261022">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=black-20261022">
+<style>
+:root { --bg: #090a0d; --card: #121318; --gold: #d4af37; --text: #f4f1e8; --muted: #a9a59a; --live: #3ddc84; --stop: #dc2626; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+main { max-width: 460px; margin: 0 auto; padding: 32px 16px calc(32px + env(safe-area-inset-bottom, 0px)); text-align: center; }
+.logo { width: 72px; height: 72px; border-radius: 20px; border: 1.5px solid var(--gold); box-shadow: 0 0 30px rgba(212,175,55,.22); display: block; margin: 0 auto 14px; object-fit: cover; }
+h1 { font-size: 24px; line-height: 1.4; margin: 0 0 6px; overflow-wrap: anywhere; }
+.sub { color: var(--muted); font-size: 15px; margin: 0 0 22px; line-height: 1.6; }
+.card { background: var(--card); border: 1px solid rgba(212,175,55,.28); border-radius: 18px; padding: 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+.card.live { border-color: rgba(61,220,132,.55); }
+.status { font-size: 16px; line-height: 1.6; min-height: 26px; }
+.card.live .status { color: var(--live); font-weight: 700; }
+.timer { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.btn { display: block; width: 100%; -webkit-appearance: none; appearance: none; border: 0; cursor: pointer; text-align: center; font: inherit; font-weight: 800; font-size: 17px; padding: 15px 14px; border-radius: 14px; background: var(--gold); color: #111; }
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn.stop { background: var(--stop); color: #fff; }
+.note { color: var(--muted); font-size: 13.5px; line-height: 1.6; margin: 20px 0 0; }
+.lang { margin-top: 18px; display: inline-block; color: var(--muted); font-size: 13px; text-decoration: underline; }
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="/icons/icon-192-v2.png" alt="om ai" width="72" height="72">
+  <h1 id="title">سؤال سريع لك</h1>
+  <p class="sub" id="sub">مساعد آليّ من تطبيق om ai يكلّمك بالصوت ويوصل ردّك لمن أرسل لك الرابط.</p>
+  <div class="card" id="card">
+    <div class="status" id="status" role="status" aria-live="polite">لحظة…</div>
+    <div class="timer" id="timer" dir="ltr" hidden></div>
+    <button class="btn" id="go" type="button" hidden>🎙️ ردّ بصوتك</button>
+    <button class="btn stop" id="end" type="button" hidden>إنهاء المكالمة</button>
+  </div>
+  <p class="note" id="note">الذي يكلّمك مساعد آليّ وليس شخصًا، ولا يُسجَّل الصوت. يحتاج إذن المايك.</p>
+  <a class="lang" id="langSwitch" href="?lang=en">English</a>
+  <audio id="aud" autoplay playsinline></audio>
+</main>
+<script>
+(function () {
+  var AR = {
+    doc: 'om ai — سؤال سريع لك',
+    title: 'سؤال سريع لك', titleNamed: '{n} يسألك سؤالًا سريعًا',
+    sub: 'مساعد آليّ من تطبيق om ai يكلّمك بالصوت ويوصل ردّك لمن أرسل لك الرابط.',
+    subNamed: 'مساعده الآليّ في تطبيق om ai يكلّمك بالصوت ويوصل ردّك له.',
+    go: '🎙️ ردّ بصوتك', retry: '🎙️ جرّب مرّة ثانية', end: 'إنهاء المكالمة',
+    note: 'الذي يكلّمك مساعد آليّ وليس شخصًا، ولا يُسجَّل الصوت. يحتاج إذن المايك.',
+    stLoading: 'لحظة…', stReady: 'اضغط الزرّ وتكلّم مع المساعد. دقيقة أو دقيقتان وتنتهي.',
+    stMic: 'اسمح للمايك…', stConnecting: 'يجهّز المكالمة…', stLive: 'المساعد معك الآن — تكلّم',
+    stDone: 'وصل ردّك، شكرًا لك. يمكنك إغلاق الصفحة.', stEnded: 'انتهت المكالمة. يمكنك إغلاق الصفحة.',
+    stUsed: 'هذا الرابط استُعمل أو انتهى. اطلب رابطًا جديدًا ممّن أرسله.',
+    stBad: 'الرابط غير صحيح أو انتهت صلاحيّته.',
+    errMic: 'تعذّر فتح المايك. اسمح له من إعدادات المتصفّح ثمّ جرّب مرّة ثانية.',
+    errNet: 'تعذّر الاتّصال. تأكّد من الإنترنت ثمّ جرّب مرّة ثانية.',
+    errNoRtc: 'هذا المتصفّح لا يدعم المكالمات الصوتيّة. افتح الرابط في Chrome أو Safari.',
+    lang: 'English'
+  };
+  var EN = {
+    doc: 'om ai — a quick question for you',
+    title: 'A quick question for you', titleNamed: '{n} has a quick question for you',
+    sub: 'An automated assistant from the om ai app will talk with you and pass your answer to whoever sent you this link.',
+    subNamed: 'Their automated assistant in the om ai app will talk with you and pass on your answer.',
+    go: '🎙️ Answer by voice', retry: '🎙️ Try again', end: 'End call',
+    note: 'You will be talking to an automated assistant, not a person. The audio is not recorded. Microphone permission is needed.',
+    stLoading: 'One moment…', stReady: 'Tap the button and talk with the assistant. It takes a minute or two.',
+    stMic: 'Allow the microphone…', stConnecting: 'Getting the call ready…', stLive: 'The assistant is with you now — go ahead',
+    stDone: 'Your answer was delivered. Thank you — you can close this page.', stEnded: 'The call has ended. You can close this page.',
+    stUsed: 'This link was already used or has expired. Ask the sender for a new one.',
+    stBad: 'This link is invalid or has expired.',
+    errMic: 'Could not open the microphone. Allow it in the browser settings, then try again.',
+    errNet: 'Could not connect. Check your internet, then try again.',
+    errNoRtc: 'This browser does not support voice calls. Open the link in Chrome or Safari.',
+    lang: 'العربية'
+  };
+  var RT_URL = 'https://api.openai.com/v1/realtime/calls'; // تبادل SDP كمسار التطبيق نفسه — عنوان شبكة لا نصّ ظاهر
+  var SETUP_MAX_MS = 25000, OPEN_MS = 1200, END_GRACE_MS = 1200, END_MAX_MS = 8000;
+  var search = String(location.search || '');
+  var q = (search.match(/[?&]lang=(\w+)/) || [])[1];
+  var en = q ? q === 'en' : !/^ar\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || 'ar');
+  var L = en ? EN : AR;
+  var tok = (search.match(/[?&]t=(lk[a-f0-9]{18}\.[a-f0-9]{32})(?:&|$)/) || [])[1]
+    || (String(location.hash || '').match(/(lk[a-f0-9]{18}\.[a-f0-9]{32})/) || [])[1] || '';
+  function $(id) { return document.getElementById(id); }
+  var ui = { title: $('title'), sub: $('sub'), card: $('card'), status: $('status'), timer: $('timer'), go: $('go'), end: $('end'), note: $('note'), lang: $('langSwitch'), aud: $('aud') };
+  var who = '';      // اسم من أرسل الرابط (من الخادم) — يدخل textContent فقط
+  var s = null;      // الجلسة الجارية
+  var busy = false;  // ضغطتان سريعتان = جلسة واحدة
+
+  document.documentElement.lang = en ? 'en' : 'ar';
+  document.documentElement.dir = en ? 'ltr' : 'rtl';
+  document.title = L.doc;
+  ui.go.textContent = L.go; ui.end.textContent = L.end; ui.note.textContent = L.note;
+  ui.lang.textContent = L.lang;
+  ui.lang.setAttribute('href', '?' + (tok ? 't=' + tok + '&' : '') + 'lang=' + (en ? 'ar' : 'en'));
+  function head() {
+    ui.title.textContent = who ? L.titleNamed.split('{n}').join(who) : L.title;
+    ui.sub.textContent = who ? L.subNamed : L.sub;
+  }
+  function status(key, live) { ui.status.textContent = L[key] || ''; ui.card.className = live ? 'card live' : 'card'; }
+  function show(go, end, label) { ui.go.hidden = !go; ui.end.hidden = !end; if (label) ui.go.textContent = L[label]; }
+  function mmss(sec) { sec = Math.max(0, Math.round(sec)); var m = Math.floor(sec / 60), x = sec % 60; return m + ':' + (x < 10 ? '0' : '') + x; }
+  head();
+
+  function api(action, body, keep) {
+    return fetch('/api/system?action=' + action, {
+      method: 'POST', keepalive: !!keep, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ t: tok }, body || {}))
+    }).then(function (r) {
+      return r.json().then(function (d) { return d; }, function () { return {}; /* جسم غير JSON = خطأ بحالته */ })
+        .then(function (d) { return { ok: !!r.ok, status: r.status, data: (d && typeof d === 'object') ? d : {} }; });
+    }, function () { return { ok: false, status: 0, data: {} }; /* شبكة */ });
+  }
+
+  /* ── أوّل فتح: هل الرابط صالح، ومن أرسله ── */
+  function load() {
+    if (!tok) { status('stBad'); show(false, false); return; }
+    status('stLoading'); show(false, false);
+    api('call-guest-info').then(function (r) {
+      if (r.ok && r.data.state === 'ready') {
+        who = String(r.data.callerName || '').slice(0, 40); head();
+        status('stReady'); show(true, false, 'go');
+      } else if (r.ok) { who = String(r.data.callerName || '').slice(0, 40); head(); status('stUsed'); }
+      else if (r.status === 404) status('stBad');
+      else { status('errNet'); show(true, false, 'retry'); ui.go.__reload = true; }
+    });
+  }
+
+  /* ── الجلسة ── */
+  function later(x, fn, ms) { var h = setTimeout(function () { if (!x.ended) fn(); }, ms); x.timers.push(h); return h; }
+  function send(x, obj) { try { if (x.dc && x.dc.readyState === 'open') x.dc.send(JSON.stringify(obj)); } catch (e) { /* guard-ok — قناة أُغلقت: النهاية تتكفّل */ } }
+  function create(x) { send(x, { type: 'response.create' }); }
+  function output(x, callId, obj) {
+    if (callId) send(x, { type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(obj) } });
+  }
+  function stopStream(st) { try { if (st && st.getTracks) st.getTracks().forEach(function (tr) { tr.stop(); }); } catch (e) { /* guard-ok — المايك أُطفئ أصلًا */ } }
+  function armEnd(x, ms) {
+    if (x.endTimer) clearTimeout(x.endTimer);
+    x.endTimer = later(x, function () { x.endTimer = null; if (!x.speaking) finish(x, true); }, ms);
+  }
+  function onTool(x, name, callId, raw) {
+    if (callId) { if (x.fnSeen[callId]) return; x.fnSeen[callId] = 1; }
+    var args = {};
+    try { args = (typeof raw === 'string') ? JSON.parse(raw || '{}') : (raw || {}); } catch (e) { args = {}; /* guard-ok — وسائط تالفة = نتيجة فارغة ينظّفها الخادم */ }
+    if (name === 'report_outcome') {
+      // النتيجة تُرسل حين تُعرف، قبل الوداع: قد تُغلق الصفحة بعدها مباشرةً
+      x.outcome = { status: String(args.status || ''), summary: String(args.summary || ''), confirmed_details: String(args.confirmed_details || ''), follow_up: String(args.follow_up || '') };
+      api('call-guest-end', { outcome: x.outcome, final: false }, true);
+      output(x, callId, { ok: true });
+      create(x);
+      return;
+    }
+    if (name === 'end_call') {
+      output(x, callId, { ok: true });
+      x.endPending = true;
+      later(x, function () { finish(x, true); }, END_MAX_MS);
+      if (!x.speaking) armEnd(x, END_GRACE_MS);
+      return;
+    }
+    output(x, callId, { ok: false, error: 'unknown_tool' });
+    create(x);
+  }
+  function onEvent(x, e, ready) {
+    if (x.ended) return;
+    var ev;
+    try { ev = JSON.parse(e.data); } catch (err) { return; /* guard-ok — رسالة قناة غير JSON لا تخصّنا */ }
+    var ty = ev && ev.type;
+    if (ty === 'session.created' || ty === 'session.updated') { ready(); return; }
+    if (ty === 'input_audio_buffer.speech_started') { x.heard = true; return; }
+    if (ty === 'output_audio_buffer.started' || ty === 'response.output_audio.delta' || ty === 'response.audio.delta') { x.speaking = true; return; }
+    if (ty === 'output_audio_buffer.stopped' || ty === 'output_audio_buffer.cleared') { x.speaking = false; if (x.endPending) armEnd(x, 400); return; }
+    if (ty === 'response.output_item.added' || ty === 'response.output_item.done') {
+      var it = ev.item;
+      if (it && it.type === 'function_call' && it.call_id) {
+        x.fnNames[it.call_id] = it.name;
+        if (ty === 'response.output_item.done' && it.arguments != null) onTool(x, it.name, it.call_id, it.arguments);
+      }
+      return;
+    }
+    if (ty === 'response.function_call_arguments.done') { onTool(x, ev.name || x.fnNames[ev.call_id], ev.call_id, ev.arguments); return; }
+    if (ty === 'response.done') {
+      var out = ev.response && Array.isArray(ev.response.output) ? ev.response.output : [];
+      out.forEach(function (o) { if (o && o.type === 'function_call') onTool(x, o.name, o.call_id, o.arguments); });
+      if (x.endPending && !x.speaking) armEnd(x, END_GRACE_MS);
+    }
+  }
+  function tick(x) {
+    if (x.ended) return;
+    ui.timer.textContent = mmss((Date.now() - x.readyAt) / 1000) + ' / ' + mmss(x.maxSec);
+    later(x, function () { tick(x); }, 1000);
+  }
+  /* done = المكالمة بدأت فعلًا وانتهت (نتيجتها عند صاحب الرابط)؛ غيره = تعثّر التجهيز برسالته، والرابط يقبل محاولة ثانية */
+  function finish(x, done, errKey, used) {
+    if (x.ended) return;
+    x.ended = true;
+    x.timers.forEach(function (h) { clearTimeout(h); });
+    x.timers = [];
+    try { if (x.dc) x.dc.close(); } catch (e) { /* guard-ok — مغلقة أصلًا */ }
+    try { if (x.pc) x.pc.close(); } catch (e) { /* guard-ok — مغلق أصلًا */ }
+    stopStream(x.stream); x.stream = null;
+    try { ui.aud.srcObject = null; } catch (e) { /* guard-ok — لا صوت موصول */ }
+    if (s === x) s = null;
+    busy = false;
+    ui.timer.hidden = true;
+    if (x.readyAt) {
+      var body = { final: true, durationSec: Math.round((Date.now() - x.readyAt) / 1000) };
+      if (x.outcome) body.outcome = x.outcome;
+      api('call-guest-end', body, true).then(function (r) { // محاولة ثانية واحدة إن ضاعت الأولى والصفحة ما زالت مفتوحة
+        if (!r.ok && r.status !== 409 && r.status !== 404) setTimeout(function () { api('call-guest-end', body, true); }, 3000);
+      });
+      status(x.outcome ? 'stDone' : 'stEnded'); show(false, false); // «وصل ردّك» فقط إن سُجّلت نتيجة
+      return;
+    }
+    if (used) { status('stUsed'); show(false, false); return; }
+    status(errKey || 'errNet'); show(true, false, 'retry');
+  }
+  function waitOpen(x, dc, ms) {
+    return new Promise(function (res, rej) {
+      if (dc.readyState === 'open') return res();
+      var h = later(x, function () { rej(new Error('channel timeout')); }, ms);
+      dc.addEventListener('open', function () { clearTimeout(h); res(); });
+      dc.addEventListener('close', function () { clearTimeout(h); rej(new Error('channel closed')); });
+    });
+  }
+  function watch(x) {
+    var pc = x.pc, h = null;
+    pc.addEventListener('connectionstatechange', function () {
+      if (x.ended) return;
+      var cs = pc.connectionState;
+      if (cs === 'connected') { if (h) { clearTimeout(h); h = null; } return; }
+      if (cs === 'failed' || cs === 'closed') { finish(x, true); return; }
+      if (cs === 'disconnected' && !h) h = later(x, function () { h = null; if (pc.connectionState !== 'connected') finish(x, true); }, 2500);
+    });
+  }
+  async function run(x) {
+    var stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    catch (e) { finish(x, false, 'errMic'); return; }
+    if (x.ended) { stopStream(stream); return; }
+    x.stream = stream;
+    status('stConnecting');
+    later(x, function () { if (!x.readyAt) finish(x, false, 'errNet'); }, SETUP_MAX_MS);
+    var r = await api('call-guest-session');
+    if (x.ended) return;
+    if (!r.ok || !r.data.clientSecret) { finish(x, false, 'errNet', r.status === 410); return; }
+    var srvMax = Number(r.data.maxSec);
+    if (srvMax > 0) x.maxSec = Math.min(x.maxSec, srvMax);
+    var track = stream.getAudioTracks ? stream.getAudioTracks()[0] : null;
+    if (track) track.enabled = false; // لا يخرج صوت قبل جاهزيّة الجلسة
+    var pc = x.pc = new RTCPeerConnection();
+    pc.ontrack = function (e) { if (e.streams && e.streams[0]) ui.aud.srcObject = e.streams[0]; };
+    if (track) pc.addTrack(track, stream);
+    var dc = x.dc = pc.createDataChannel('oai-events');
+    var ready = null, readyP = new Promise(function (res) { ready = res; });
+    dc.addEventListener('message', function (e) { onEvent(x, e, ready); });
+    var offer = await pc.createOffer();
+    if (x.ended) return;
+    await pc.setLocalDescription(offer);
+    if (x.ended) return;
+    var sdp = await fetch(RT_URL, { method: 'POST', body: offer.sdp, headers: { Authorization: 'Bearer ' + r.data.clientSecret, 'Content-Type': 'application/sdp' } });
+    if (x.ended) return;
+    if (!sdp.ok) throw new Error('sdp ' + sdp.status);
+    var answer = await sdp.text();
+    if (x.ended) return;
+    await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+    if (x.ended) return;
+    await Promise.all([waitOpen(x, dc, 12000), Promise.race([readyP, new Promise(function (res) { later(x, res, 5000); })])]);
+    if (x.ended) return;
+    if (track) track.enabled = true;
+    x.readyAt = Date.now();
+    status('stLive', true); show(false, true);
+    ui.timer.hidden = false;
+    watch(x); tick(x);
+    // فتح الرابط موافقة على الكلام: المساعد يبدأ بجملة التعريف بعد لحظة إن لم يسبقه الطرف الآخر
+    later(x, function () { if (!x.heard && !x.speaking) create(x); }, OPEN_MS);
+    if (x.maxSec > 40) later(x, function () {
+      send(x, { type: 'conversation.item.create', item: { type: 'message', role: 'system', content: [{ type: 'input_text',
+        text: 'Time is almost up. Wrap up now in one or two short sentences: call report_outcome with what you know, say a polite goodbye, then call end_call.' }] } });
+      create(x);
+    }, (x.maxSec - 20) * 1000);
+    later(x, function () { finish(x, true); }, x.maxSec * 1000);
+  }
+  function start() {
+    if (ui.go.__reload) { ui.go.__reload = false; load(); return; }
+    if (busy || s) return;
+    if (typeof RTCPeerConnection !== 'function' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { status('errNoRtc'); show(false, false); return; }
+    busy = true;
+    // داخل الضغطة نفسها: فتح الصوت لسياسة التشغيل التلقائيّ في الجوّال
+    try { var p = ui.aud.play(); if (p && p.catch) p.catch(function () { /* لا مصدر بعد — المقصود فتح القفل فقط */ }); } catch (e) { /* guard-ok — المتصفّح يشغّل الصوت مع المايك */ }
+    var x = s = { ended: false, pc: null, dc: null, stream: null, timers: [], outcome: null, heard: false, speaking: false, endPending: false, endTimer: null, readyAt: 0, maxSec: 240, fnSeen: {}, fnNames: {} };
+    status('stMic'); show(false, false);
+    run(x).catch(function () { finish(x, !!x.readyAt, 'errNet'); });
+  }
+  ui.go.addEventListener('click', start);
+  ui.end.addEventListener('click', function () { if (s) finish(s, true); });
+  try { window.addEventListener('pagehide', function () { if (s) finish(s, !!s.readyAt); }); } catch (e) { /* guard-ok — بلا الحدث تنتهي الجلسة بسقفها عند الخادم */ }
+  load();
+})();
+</script>
+</body>
+</html>
