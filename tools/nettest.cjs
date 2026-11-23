@@ -25,6 +25,12 @@ function memoryKV() {
     if (cmd === 'LPOP') { const l = data.get(key) || []; const out = l.splice(0, Number(a[0])); return out.length ? out : null; }
     if (cmd === 'EXPIRE') return 1;
     if (cmd === 'DEL') return data.delete(key) ? 1 : 0;
+    if (cmd === 'GET') return typeof data.get(key) === 'string' ? data.get(key) : null;
+    // the public rooms (a sorted set): member -> score
+    if (cmd === 'ZADD') { const z = data.get(key) || new Map(); z.set(a[1], Number(a[0])); data.set(key, z); return 1; }
+    if (cmd === 'ZREM') { const z = data.get(key); return z && z.delete(a[0]) ? 1 : 0; }
+    if (cmd === 'ZREMRANGEBYSCORE') { const z = data.get(key); if (!z) return 0; for (const [m, sc] of [...z]) if (sc <= Number(a[1])) z.delete(m); return 1; }
+    if (cmd === 'ZRANGE') { const z = data.get(key) || new Map(); return [...z].filter(([, sc]) => sc >= Number(a[1])).sort((p, q) => q[1] - p[1]).slice(0, Number(a[6])).map(([m]) => m); }
     throw new Error('unexpected command ' + cmd);
   };
   const one = (f) => async (...a) => { stats.commands++; return f(...a); };
@@ -130,6 +136,38 @@ function memoryKV() {
     check('each sees the other where they stand, with the name', !!sa && !!sb && sa.shown && sb.shown && sa.name === 'فاطمة' && near(sa.p, sb.mine) && near(sb.p, sa.mine), { sa, sb });
     await A.evaluate(() => { const g = window.__game, s = g.play.state, o = [...window.__GAME_NET.others.values()][0]; s.yaw = Math.atan2(-(o.s.p[0] - s.pos.x), -(o.s.p[2] - s.pos.z)); s.pitch = -0.1; g.play.tick(8); });
     await shot(A, 'n4-host-sees-guest');
+    // ---- written lines and faces: the guest's reach the host with its name, the host's reach the guest
+    const talkRes = await (async () => {
+      const c0 = await A.evaluate(() => window.__GAME_CHAT.count);
+      const sentB = await B.evaluate(() => window.__GAME_CHAT.say('هلا <b>والله</b>'));
+      await both(8);
+      const lineA = await A.evaluate(() => [...document.querySelectorAll('#chatLog div')].map((d) => d.textContent).pop() || '');
+      const lineAHtml = await A.evaluate(() => document.querySelectorAll('#chatLog div > :not(b)').length);      // what was typed is text: no element made from it
+      await A.waitForTimeout(800);
+      const sentA = await A.evaluate(() => window.__GAME_CHAT.say('أهلين'));
+      await both(8);
+      const lineB = await B.evaluate(() => [...document.querySelectorAll('#chatLog div')].map((d) => d.textContent).pop() || '');
+      await B.waitForTimeout(800);
+      const faceB = await B.evaluate(() => window.__GAME_CHAT.emote('wave'));
+      await both(4);
+      const faceA = await A.evaluate(() => { const o = [...window.__GAME_NET.others.values()][0]; const f = o && o.tag.querySelector('.face'); return f ? f.textContent : ''; });
+      // the box opens with T and keys typed in it are not the game's
+      await A.evaluate(() => { const b = document.querySelector('#netPanel [data-back]'); if (b) b.click(); });
+      await A.keyboard.press('KeyT');
+      const opened = await A.evaluate(() => ({ open: window.__GAME_CHAT.isOpen, modal: window.__play.state.modal, focus: document.activeElement && document.activeElement.closest('#chatBox') !== null }));
+      await A.keyboard.type('wasd');
+      const typed = await A.evaluate(() => ({ value: document.querySelector('#chatBox input').value, moving: window.__play.input.fx !== 0 || window.__play.input.fz !== 0 }));
+      await A.keyboard.press('Escape');
+      const closed = await A.evaluate(() => ({ open: window.__GAME_CHAT.isOpen, modal: window.__play.state.modal }));
+      return { c0, sentB, lineA, lineAHtml, sentA, lineB, faceB, faceA, opened, typed, closed };
+    })();
+    check('a written line from the guest reaches the host with its name (as text), the host\'s reaches the guest, and a face shows over the head', talkRes.sentB && talkRes.lineA.includes('فاطمة') && talkRes.lineA.includes('هلا <b>والله</b>') && talkRes.lineAHtml === 0 && talkRes.sentA && talkRes.lineB.includes('أهلين') && talkRes.faceB && talkRes.faceA === '👋', talkRes);
+    check('T opens the line to write in, typing there does not move the player, and Esc closes it', talkRes.opened.open && talkRes.opened.modal && talkRes.opened.focus && talkRes.typed.value === 'wasd' && !talkRes.typed.moving && !talkRes.closed.open && !talkRes.closed.modal, talkRes);
+    await A.evaluate(() => { window.__game.panel.hide(); window.__play.state.running = true; });
+    await B.evaluate(() => { window.__game.panel.hide(); window.__play.state.running = true; });
+    await A.evaluate(() => window.__GAME_CHAT.say('شوفوا'));
+    await both(4);
+    await shot(B, 'n4b-chat');
     // ---- the guest's own design and a new name reach the host; the host makes the guest a helper, who may turn people away
     await B.evaluate(() => { const g = window.__game; g.bag.adv.wardrobe.design('shirt', '#ff0044'); window.__GAME_NET.setName('نورة'); });
     await both(10);
@@ -252,6 +290,24 @@ function memoryKV() {
     await both(6);
     const after = { guest: await B.evaluate(() => ({ role: window.__GAME_NET.role, others: window.__GAME_NET.others.size, locked: window.__GAME_SKY ? window.__GAME_SKY.locked : false, mode: window.__game.life.share.mode, shared: window.__play.shared })), host: await A.evaluate(() => ({ peers: window.__GAME_NET.peers.size, others: window.__GAME_NET.others.size })) };
     check('the host puts the guest out: the guest is alone again and free to set its own world', out && after.guest.role === null && after.guest.others === 0 && after.guest.locked === false && after.guest.mode === null && after.guest.shared === false && after.host.peers === 0 && after.host.others === 0, after);
+    // ---- a public room: opened by the host, it shows in the guest's list of public rooms, and joining from the list asks the host
+    const pubRes = await (async () => {
+      await A.evaluate(() => window.__GAME_NET.leave());
+      await A.evaluate(() => window.__GAME_NET.host(true));
+      await A.waitForFunction(() => !!window.__GAME_NET.code, null, { timeout: 15000 });
+      const codeA = await A.evaluate(() => ({ code: window.__GAME_NET.code, pub: window.__GAME_NET.isPublic }));
+      await B.evaluate(() => window.__GAME_NET.open());
+      await B.waitForFunction(() => Array.isArray(window.__GAME_NET.rooms) && window.__GAME_NET.rooms.length > 0, null, { timeout: 15000 }).catch(() => {});
+      const listB = await B.evaluate(() => ({ rooms: window.__GAME_NET.rooms, rows: [...document.querySelectorAll('#netPanel [data-pick]')].map((b) => b.dataset.pick) }));
+      await shot(B, 'n6-public-rooms');
+      // (a player who changed their own world starts it afresh before joining — a page reload, checked elsewhere; here the guest's world is left unchanged)
+      await B.evaluate(() => { window.__GAME_NET.log.length = 0; });
+      await B.click('#netPanel [data-pick]');
+      await A.evaluate(() => window.__GAME_NET.poll());
+      const askedPub = await until(A, () => window.__GAME_NET.asks.length > 0, 20000);
+      return { codeA, listB, askedPub };
+    })();
+    check('a public room shows in the list of the same world, and a player joins from the list without the code (the host still lets them in)', pubRes.codeA.pub && pubRes.listB.rooms.some((q) => q.code === pubRes.codeA.code) && pubRes.listB.rows.includes(pubRes.codeA.code) && pubRes.askedPub, pubRes);
     report.siteCalls = { total: calls.length, storeCommands: K.stats.commands, byOp: calls.reduce((m, c) => { const k = c.split(':')[0]; m[k] = (m[k] || 0) + 1; return m; }, {}) };
   } catch (e) {
     failed = true;

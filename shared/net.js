@@ -15,6 +15,7 @@ import { makeAvatar } from './avatar.js';
 import { cleanLook } from './outfits.js';
 import { createVoice } from './voice.js';
 import { createParty } from './party.js';
+import { createChat } from './chat.js';
 
 const API = '/api/play-room';
 const RTC = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
@@ -59,6 +60,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   css.textContent = CSS;
   document.head.appendChild(css);
 
+  let pub = false, rooms = null, roomsBusy = false;          // a public room shows in everyone's list; rooms: the public rooms last fetched
   let role = null, code = '', key = '', myId = 'host', myName = '', accepting = false, pollT = null, quietPolls = 0, error = '', busy = '';
   try { myName = cleanName(window.localStorage.getItem('bw-name') || ''); if (myName === 'لاعب') myName = ''; } catch (e) { /* storage may be closed */ }
   const peers = new Map();          // host: guest id -> { pc, dc, name, s }. guest: 'host' -> { pc, dc }
@@ -236,14 +238,14 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     clearInterval(pollT);
     if (on) pollT = setInterval(poll, 4000);
   }
-  async function host() {
+  async function host(open = false) {
     if (role === 'guest') return null;
     error = ''; busy = 'أفتح الغرفة…'; draw();
     try {
-      const r = await call({ op: 'open', world });
+      const r = await call({ op: 'open', world, pub: open ? 1 : 0, name: myName });
       busy = '';
       if (r.error) { error = why(r.error); draw(); return null; }
-      code = r.code; key = r.key; role = 'host'; myId = 'host';
+      code = r.code; key = r.key; role = 'host'; myId = 'host'; pub = !!open;
       listen(true);
       const l = life();
       if (l) l.setShare('host', (to, msg) => { const p = peers.get(to); if (p) send(p.dc, msg); }, () => [...peers].filter(([, p]) => p.s).map(([id, p]) => ({ id, x: p.s.p[0], y: p.s.p[1], z: p.s.p[2] })));
@@ -332,10 +334,18 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     } catch (e) { return fail(why('offline')); }
   }
   function leave() {
-    if (role === 'host') { for (const id of [...peers.keys()]) drop(id, false); voice.stop(); voice.host = false; listen(false); call({ op: 'close', code, key }).catch(() => {}); const l = life(); if (l) l.setShare(null); role = null; code = ''; asks.length = 0; play.shared = false; drawAsk(); draw(); }
+    if (role === 'host') { for (const id of [...peers.keys()]) drop(id, false); voice.stop(); voice.host = false; listen(false); call({ op: 'close', code, key }).catch(() => {}); const l = life(); if (l) l.setShare(null); role = null; code = ''; pub = false; asks.length = 0; play.shared = false; drawAsk(); draw(); }
     else if (role === 'guest' || peers.size) left('طلعت من الغرفة.');
   }
 
+  /** The public rooms open in this world right now (for the list in the panel). */
+  async function listRooms() {
+    roomsBusy = true; draw();
+    try { const r = await call({ op: 'list', world }); rooms = Array.isArray(r.rooms) ? r.rooms.filter((q) => q && /^\d{4}$/.test(q.code)).slice(0, 12) : []; if (r.error) error = why(r.error); }
+    catch (e) { rooms = []; error = why('offline'); }
+    roomsBusy = false; draw();
+    return rooms;
+  }
   /** A new name for this player, kept in this browser and told to the room. */
   function setName(name) {
     myName = cleanName(name);
@@ -384,22 +394,26 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     if (el.hidden) { drawAsk(); return; }
     let h = '<h2>العب مع ربعك</h2>';
     if (role === 'host') {
+      h += pub && code ? '<p><b>غرفة عامة:</b> تطلع في قائمة «الغرف العامة» عند أي لاعب في نفس العالم، وأنت تختار منو يدخل.</p>' : '';
       h += code ? `<p>عط ربعك هذا الكود. يفتحون نفس العالم («${WORLD_NAMES[world] || world}») ويكتبونه في «العب مع ربعك».</p><div class="code">${code}</div>` : '';
       h += `<p>${accepting ? 'الاستقبال مفتوح: اللي يكتب الكود يطلع لك اسمه هني وأنت تدخّله.' : 'الاستقبال مسكّر: ما حد جديد يقدر يطلب الدخول.'}</p>`;
       h += '<ul>' + asks.map((a) => `<li class="ask"><span>${esc(cleanName(a.name))}</span><small>يبي يدخل</small><button type="button" data-admit="${a.id}">دخّله</button><button type="button" class="no" data-deny="${a.id}">ارفض</button></li>`).join('')
         + [...peers].map(([id, p]) => `<li><span>${esc(p.name)}</span><small>${p.dc && p.dc.readyState === 'open' ? (p.admin ? 'مشرف' : 'لاعب عادي') : 'يتصل…'}</small><button type="button" class="soft" data-admin="${id}" data-on="${p.admin ? 0 : 1}">${p.admin ? 'خلّه عادي' : 'خلّه مشرف'}</button><button type="button" class="no" data-kick="${id}">طلّعه</button></li>`).join('') + '</ul>';
       if (!asks.length && !peers.size) h += '<p>ما حد في الغرفة للحين.</p>';
-      h += talk() + (party ? `<button type="button" class="soft" data-contest="1">${party.contest.on || party.contest.voting ? 'المسابقة شغّالة' : 'ابدأ مسابقة بناء (5 دقايق)'}</button>` : '');
+      h += talk() + chatBtn() + (party ? `<button type="button" class="soft" data-contest="1">${party.contest.on || party.contest.voting ? 'المسابقة شغّالة' : 'ابدأ مسابقة بناء (5 دقايق)'}</button>` : '');
       h += `<button type="button" class="soft" data-listen="${accepting ? 0 : 1}">${accepting ? 'سكّر الاستقبال' : 'افتح الاستقبال'}</button><button type="button" class="no" data-leave="1">سكّر الغرفة</button>`;
     } else if (role === 'guest') {
       h += `<p>أنت في الغرفة <b dir="ltr">${code}</b>${admin ? '، وأنت <b>مشرف</b>: تقدر تدخّل لاعبين وتطلّعهم' : ''}. صاحب الغرفة يتحكم بالوقت والجو والوحوش.</p><ul>`
         + (admin ? hostAsks.map((a) => `<li class="ask"><span>${esc(a.name)}</span><small>يبي يدخل</small><button type="button" data-admit="${a.id}">دخّله</button><button type="button" class="no" data-deny="${a.id}">ارفض</button></li>`).join('') : '')
-        + [...others].map(([id, o]) => `<li><span>${esc(o.name)}</span><small>${id === 'host' ? 'صاحب الغرفة' : o.admin ? 'مشرف' : 'لاعب عادي'}</small>${admin && id !== 'host' && !o.admin ? `<button type="button" class="no" data-kick="${id}">طلّعه</button>` : ''}</li>`).join('') + '</ul>' + talk() + '<button type="button" class="no" data-leave="1">اطلع من الغرفة</button>';
+        + [...others].map(([id, o]) => `<li><span>${esc(o.name)}</span><small>${id === 'host' ? 'صاحب الغرفة' : o.admin ? 'مشرف' : 'لاعب عادي'}</small>${admin && id !== 'host' && !o.admin ? `<button type="button" class="no" data-kick="${id}">طلّعه</button>` : ''}</li>`).join('') + '</ul>' + talk() + chatBtn() + '<button type="button" class="no" data-leave="1">اطلع من الغرفة</button>';
     } else if (busy) {
       h += `<p>${busy}</p>` + (peers.size ? '<button type="button" class="soft" data-leave="1">إلغاء</button>' : '');
     } else {
       h += `<p>افتح غرفة وعط ربعك الكود، أو ادخل غرفة صاحبك بكوده. لازم الكل يكون في نفس العالم («${WORLD_NAMES[world] || world}»). لين 4 لاعبين.</p>`
-        + '<button type="button" data-host="1">افتح غرفة</button>'
+        + '<button type="button" data-host="1">افتح غرفة بكود</button><button type="button" class="soft" data-host="2">افتح غرفة عامة</button>'
+        + `<p style="margin-top:14px"><b>الغرف العامة</b> في «${WORLD_NAMES[world] || world}» — اطلب الدخول بدون كود، وصاحب الغرفة يدخّلك:</p>`
+        + (roomsBusy ? '<p>أدوّر…</p>' : rooms == null ? '' : rooms.length ? '<ul class="rooms">' + rooms.map((q) => `<li><span>${esc(cleanName(q.name))}</span><small>غرفة عامة</small><button type="button" data-pick="${q.code}">اطلب الدخول</button></li>`).join('') + '</ul>' : '<p>ما في غرف عامة الحين. افتح وحدة وخل الناس يدخلون.</p>')
+        + '<button type="button" class="soft" data-rooms="1">حدّث القائمة</button>'
         + `<p style="margin-top:14px">أو ادخل بكود:</p><input class="c" inputmode="numeric" maxlength="4" placeholder="0000" aria-label="الكود"><input class="n" maxlength="16" placeholder="اسمك" aria-label="اسمك" value="${esc(myName)}"><br><button type="button" data-join="1">ادخل</button>`;
     }
     h += `<p class="err">${esc(error)}</p><button type="button" class="soft" data-back="1">رجوع</button>`;
@@ -407,6 +421,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     drawAsk();
   }
   /** The two voice buttons, with a word on what they do. */
+  function chatBtn() { return '<p><button type="button" class="soft" data-chat="1">💬 اكتب لربعك أو أرسل وجه (T)</button></p>'; }
   function talk() { return `<p><button type="button" class="${voice.micOn ? '' : 'soft'}" data-mic="${voice.micOn ? 0 : 1}">${voice.micOn ? 'المايك شغّال (اضغط تطفيه)' : 'شغّل المايك'}</button><button type="button" class="soft" data-deaf="${voice.deaf ? 0 : 1}">${voice.deaf ? 'صوت الربع مكتوم' : 'صوت الربع شغّال'}</button></p>`; }
   let onBack = null;
   function onClick(e) {
@@ -422,7 +437,10 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     else if (t.dataset.kick) drop(t.dataset.kick, true);
     else if (t.dataset.listen) { if (t.dataset.listen === '1' && !code) { role = null; host(); } else { listen(t.dataset.listen === '1'); draw(); } }
     else if (t.dataset.leave) leave();
-    else if (t.dataset.host) host();
+    else if (t.dataset.host) host(t.dataset.host === '2');
+    else if (t.dataset.rooms) listRooms();
+    else if (t.dataset.pick) join(t.dataset.pick, (box.querySelector('input.n') || {}).value || myName);
+    else if (t.dataset.chat) { el.hidden = true; drawAsk(); if (onBack) onBack(); setTimeout(() => { if (net.chat) net.chat.open(); }, 60); }
     else if (t.dataset.join) join(box.querySelector('input.c').value, box.querySelector('input.n').value);
     else if (t.dataset.back) { el.hidden = true; drawAsk(); if (onBack) onBack(); }
   }
@@ -446,11 +464,13 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     get admin() { return admin; },
     kick: (id) => drop(id, true),
     /** Open the panel; back() is called when the player leaves it. */
-    open(back) { onBack = back || null; error = ''; el.hidden = false; draw(); },
+    open(back) { onBack = back || null; error = ''; el.hidden = false; draw(); if (!role && !busy) listRooms(); },
+    listRooms, get isPublic() { return pub; }, get rooms() { return rooms; },
     close() { el.hidden = true; drawAsk(); },
   };
   party = adv ? createParty({ play, net, adv }) : null;
   net.party = party;
+  net.chat = createChat({ play, net });
   window.__GAME_NET = net;
   // a join that had to start the world afresh first
   try {
