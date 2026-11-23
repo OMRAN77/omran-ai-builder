@@ -150,3 +150,13 @@ test('بطاقات الشخصيات ما تتأثر بقواعد العوالم:
   assert.match(out, /'bow', 'compass'\]\.includes\(c\.holds\)/, 'البوصلة تمرّ للاعبين الثانيين في الغرفة');
   assert.match(read('shared/avatar.js'), /H\('compass'\)/);
 });
+
+test('الصفحة الأولى: «عالمك اللانهائي المتجدد» بأربع بطاقات نصًّا (لا صورة فيها كتابة ولا شخصيات من لعبة ثانية)', () => {
+  const html = read('index.html');
+  const g = /<section class="guide"[\s\S]*?<\/section>/.exec(html);
+  assert.ok(g, 'القسم موجود');
+  assert.equal((g[0].match(/<li>/g) || []).length, 4);
+  for (const t of ['عالم لا ينتهي', 'تضاريس تتجدّد', 'استكشاف بلا حدود', 'كنوز ومفاجآت']) assert.ok(g[0].includes(t), t);
+  assert.ok(!/<img/.test(g[0]), 'نص وأيقونات بس، بلا صورة');
+  assert.ok(html.indexOf('class="guide"') > html.indexOf('class="cards"') && html.indexOf('class="guide"') < html.indexOf('class="who"'), 'تحت العوالم وفوق الشخصيات');
+});
