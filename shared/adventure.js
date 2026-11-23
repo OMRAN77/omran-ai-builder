@@ -96,7 +96,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
 
   // ---- chests buried under the ground: four new ones each day, found with the treasure detector and dug out
   const buriedKey = 'bw-buried-' + worldKey + '-' + today, dugUp = new Set(load(buriedKey, []));
-  const hidden = [], LOOT = [[K.GOLD, 2], [K.GEM, 1], [K.EMERALD, 2], [K.RUBY, 1], [K.AMETHYST, 2], [K.PEARL, 1], [K.GOLDFISH, 1], [K.DIAMOND, 1], [K.COAL, 4], [K.BREAD, 3]];
+  const hidden = [], LOOT = [[K.GOLD, 2], [K.GEM, 1], [K.EMERALD, 2], [K.RUBY, 1], [K.AMETHYST, 2], [K.PEARL, 1], [K.GOLDFISH, 1], [K.DIAMOND, 1], [K.COAL, 4], [K.BREAD, 3], [K.LUCKY, 1]];
   const rockAt = (x, y, z) => w.inb(x, y, z) && play.isSolid(w.get(x, y, z)) && !play.isLiquid(w.get(x, y, z));
   for (let i = 0; i < 400 && hidden.length < 4; i++) {
     const x = A.x0 + 8 + Math.floor(r() * (AW - 16)), z = A.z0 + 8 + Math.floor(r() * (AH - 16)), g = groundAt(x, z);
@@ -216,7 +216,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     page() {
       const qs = api.quests(), next = qs.find((q) => !q.done), sec = api.secrets(), looks = wardrobe.list();
       const ev = api.events;
-      const farmHtml = window.__GAME_FARM ? window.__GAME_FARM.page() : '';
+      const farmHtml = (window.__GAME_WONDERS ? window.__GAME_WONDERS.page() : '') + (window.__GAME_FARM ? window.__GAME_FARM.page() : '');
       return (ev ? `<h3>رسالة اليوم</h3><p class="hint msg">${ev.message()}</p>` : '') + `<h3>كنز اليوم</h3><div class="tmap"><canvas width="${AW}" height="${AH}"></canvas><p class="hint">${!treasure ? 'ما في كنز اليوم.' : foundToday ? 'لقيت كنز اليوم ✓ كنز جديد بكرة.' : 'علامة ✕ مكان الصندوق، والنقطة الحمرا أنت. الخريطة فوقها الشمال.'}${cave ? ' المثلث الأسود مدخل كهف اليوم: فيه ذهب وألماس.' : ''}${api.events && api.events.isle.up ? ' الدائرة البيضا جزيرة السما (طر لها قبل ما تختفي).' : ''}<br>كنوز لقيتها: ${found}</p></div>`
         + `<h3>المهام ${qs.filter((q) => q.done).length}/${qs.length}</h3><ol class="quests">${qs.map((q) => `<li class="${q.done ? 'done' : q === next ? 'now' : ''}">${q.name}<small>+${q.xp} خبرة${q.outfit ? ' · لبس «' + looks.find((o) => o.key === q.outfit).name + '»' : ''}</small></li>`).join('')}</ol>`
         + `<h3>مهام سرية لقيتها: ${sec.length} من ${secretsHere.length}</h3>${sec.length ? `<ol class="quests">${sec.map((q) => `<li class="done">${q.name}<small>${q.how}</small></li>`).join('')}</ol>` : '<p class="hint">ما تنكتب هني لين تلقاها بروحك. جرّب أشياء غريبة.</p>'}`

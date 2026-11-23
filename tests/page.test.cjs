@@ -622,3 +622,15 @@ test('v-blockworld-farm: السرير يغيّر الليل والنهار، ص�
   assert.match(gad, /buriedLeft/, 'الكاشف يدلّ على المدفون');
   for (const id of ['K.ROD', 'K.CAN', 'K.BOAT', 'K.BREAD']) assert.ok(craft.includes(`out: ${id}`), id);
 });
+
+test('v-blockworld-wonders: صندوق الحظ، قرية تحت البحر، جزيرة الجمعة، بوابة عالم الديناصورات', () => {
+  const wd = read('shared/wonders.js'), kit = read('shared/kit.js'), bag = read('shared/bag.js'), craft = read('shared/craft.js');
+  for (const n of ['صندوق الحظ', 'حجر البوابة']) assert.ok(kit.includes(`'${n}'`), n);
+  assert.match(wd, /const LUCK = \[/, 'جدول الأشياء النادرة'); assert.match(wd, /'أسطوري'/);
+  assert.match(wd, /function buildVillage\(\)/); assert.match(wd, /function deepLake\(size, depth, seed, avoid\)/, 'عالم بدون بحر عميق: البحيرة تنحفر');
+  assert.match(wd, /const FRIDAY = 5;/, 'الجزيرة يوم الجمعة');
+  assert.match(wd, /world === 'dino' \? \(sessionStorage\.getItem\(HOME\) \|\| 'barari'\) : 'dino'/, 'البوابة تودّي للديناصورات وترجّع');
+  assert.match(wd, /if \(play\.shared\)/, 'ما تروح من البوابة وانت في غرفة');
+  assert.match(bag, /createWonders\(\{ play, kit, adv, world: o\.world, seaSpot: o\.seaSpot \}\)/);
+  assert.ok(craft.includes('out: K.LUCKY'));
+});

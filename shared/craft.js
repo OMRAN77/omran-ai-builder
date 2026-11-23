@@ -46,6 +46,7 @@ export const RECIPES = [
   { out: K.EMERALD_BLOCK, n: 1, needs: [[K.EMERALD, 4]], table: true },
   { out: K.RUBY_BLOCK, n: 1, needs: [[K.RUBY, 4]], table: true },
   { out: K.AMETHYST_BLOCK, n: 1, needs: [[K.AMETHYST, 4]], table: true },
+  { out: K.LUCKY, n: 1, needs: [[K.GOLD, 1], [K.EMERALD, 1]], table: true },          // a lucky box: gold and an emerald, and what it holds is luck
 ];
 
 export function createCraft({ play, kit, mats }) {

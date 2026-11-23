@@ -27,7 +27,7 @@ const nameOfColor = Object.fromEntries(COLORS.map(([k, n]) => [k, n]));
 
 /** Block ids of the kit. */
 export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, ROCK_COAL: 177, ROCK_GOLD: 178, ROCK_DIAMOND: 179, MEAT: 200, FUR: 201, FEATHER: 202, CHICKEN: 203, FISH: 204, SHRIMP: 205, COAL: 206, PEARL: 207, SEAWEED: 208, SEEDS: 209, FURCOAT: 228, ORE: 230, GEM: 231, DATES: 232, WOOL: 233, WHEAT: 234, BREAD: 235, EMERALD: 236, RUBY: 237, AMETHYST: 238,
-  CROP0: 180, CROP1: 181, CROP2: 182, CROP3: 183, ROCK_EMERALD: 184, ROCK_RUBY: 185, ROCK_AMETHYST: 186, EMERALD_BLOCK: 187, RUBY_BLOCK: 188, AMETHYST_BLOCK: 189,
+  CROP0: 180, CROP1: 181, CROP2: 182, CROP3: 183, ROCK_EMERALD: 184, ROCK_RUBY: 185, ROCK_AMETHYST: 186, EMERALD_BLOCK: 187, RUBY_BLOCK: 188, AMETHYST_BLOCK: 189, LUCKY: 190, PORTAL_FRAME: 191, PORTAL: 192,
   ROD: 247, CAN: 248, BOAT: 249, HAMOUR: 250, SAFI: 251, KANAD: 252, SHERI: 253, GOLDFISH: 254, SHELL: 255 };
 /** Block definitions, in the same shape the worlds use (see voxel.js). */
 export const KIT_BLOCKS = {};
@@ -92,6 +92,10 @@ add(K.ROCK_AMETHYST, { tiles: 'x:rock:#a86ae8', drop: K.AMETHYST, hard: 1.0, lig
 add(K.EMERALD_BLOCK, { tiles: 'x:gem:#3fd07a' }, { key: 'emerald-block', name: 'مكعب زمرّد', group: 'gem', icon: ['cube', '#3fd07a', 'shine'] });
 add(K.RUBY_BLOCK, { tiles: 'x:gem:#e0344a' }, { key: 'ruby-block', name: 'مكعب ياقوت', group: 'gem', icon: ['cube', '#e0344a', 'shine'] });
 add(K.AMETHYST_BLOCK, { tiles: 'x:gem:#a86ae8', light: '#a86ae8' }, { key: 'amethyst-block', name: 'مكعب جمشت', group: 'gem', icon: ['cube', '#a86ae8', 'shine'] });
+// wonders: a lucky box (opened, it gives one rare thing), and the frame and light of a portal to another world
+add(K.LUCKY, { tiles: { top: 'x:lucky:top', side: 'x:lucky:side', bottom: 'x:wood' }, light: '#ffd76a' }, { key: 'lucky', name: 'صندوق الحظ', group: 'home', icon: ['lucky', '#7a3fc0'] });
+add(K.PORTAL_FRAME, { tiles: 'x:rock:#2fe0c0', hard: 2.5 }, { key: 'portal-frame', name: 'حجر البوابة', group: 'gem', icon: ['ore', '#2fe0c0'] });
+KIT_BLOCKS[K.PORTAL] = { tiles: 'x:portal', kind: 'translucent', solid: false, pick: true, light: '#2fe0c0' }; INFO[K.PORTAL] = { id: K.PORTAL, key: 'portal', name: 'بوابة', group: null };
 // the field: a crop grows in four steps; the last is ripe wheat
 for (let i = 0; i < 4; i++) { KIT_BLOCKS[K.CROP0 + i] = { tiles: 'x:crop:' + i, kind: 'cross', height: 0.3 + i * 0.22, drop: i === 3 ? K.WHEAT : K.SEEDS, crop: i }; INFO[K.CROP0 + i] = { id: K.CROP0 + i, key: 'crop-' + i, name: i === 3 ? 'قمح ناضج' : 'زرع', group: null }; }
 add(K.ROCK_COAL, { tiles: 'x:rock:#1b1c20', drop: K.COAL, hard: 0.7 }, { key: 'rock-coal', name: 'صخر فيه فحم', group: 'gem', icon: ['ore', '#17181b'] });
@@ -231,6 +235,18 @@ const gemTex = (hex) => T('gem' + hex, 128, (c, s) => {
   for (let i = 0; i < 26; i++) { c.fillStyle = r() > 0.5 ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.2)'; const x = r() * s, y = r() * s, w = 10 + r() * 26; c.beginPath(); c.moveTo(x, y); c.lineTo(x + w, y + w * 0.4); c.lineTo(x + w * 0.4, y + w); c.closePath(); c.fill(); }
   bevel(c, s, 9, 0.22);
 });
+const luckyTex = (top) => T('lucky' + (top ? 't' : 's'), 128, (c, s) => {
+  const g = c.createLinearGradient(0, 0, s, s); g.addColorStop(0, '#8a4fd6'); g.addColorStop(1, '#4a2290'); c.fillStyle = g; c.fillRect(0, 0, s, s);
+  c.fillStyle = '#f0bd3f'; c.fillRect(0, s * 0.44, s, s * 0.12); if (top) c.fillRect(s * 0.44, 0, s * 0.12, s);       // a gold ribbon round it
+  const star = (x, y, r) => { c.beginPath(); for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2, rr = i % 2 ? r * 0.45 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); c.fill(); };
+  c.fillStyle = '#fff3c4'; for (const [x, y, r] of [[0.22, 0.24, 11], [0.78, 0.26, 8], [0.24, 0.78, 8], [0.76, 0.76, 11]]) star(x * s, y * s, r);
+  bevel(c, s, 8, 0.28);
+});
+const portalTex = () => T('portal', 128, (c, s) => {
+  const g = c.createRadialGradient(s / 2, s / 2, 4, s / 2, s / 2, s * 0.7); g.addColorStop(0, 'rgba(220,255,250,.95)'); g.addColorStop(0.5, 'rgba(47,224,192,.75)'); g.addColorStop(1, 'rgba(40,80,160,.6)');
+  c.fillStyle = g; c.fillRect(0, 0, s, s); const r = rnd(77); c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 2;
+  for (let i = 0; i < 8; i++) { c.beginPath(); c.arc(s / 2, s / 2, 10 + i * 8 + r() * 4, r() * 6, r() * 6 + 2); c.stroke(); }
+});
 const torchTex = () => T('torchk', 128, (c, s) => {
   c.clearRect(0, 0, s, s);
   c.fillStyle = '#5a3a22'; c.fillRect(s / 2 - 7, s * 0.42, 14, s * 0.58); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(s / 2 + 2, s * 0.42, 5, s * 0.58);
@@ -274,6 +290,8 @@ export function kitMaterial(tile) {
   else if (kind === 'rock') m = std({ map: rockTex(arg), emissive: new THREE.Color(arg), emissiveMap: rockTex(arg), emissiveIntensity: 0.16, roughness: 0.8 });
   else if (kind === 'torch') m = new THREE.MeshBasicMaterial({ map: torchTex(), alphaTest: 0.3, toneMapped: false, fog: false, color: 0xfff0dc });
   else if (kind === 'pillow') m = std({ map: pillowTex() });
+  else if (kind === 'lucky') m = std({ map: luckyTex(arg === 'top'), emissive: 0x3a1a6a, emissiveIntensity: 0.4, roughness: 0.5 });
+  else if (kind === 'portal') m = new THREE.MeshBasicMaterial({ map: portalTex(), transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, fog: false });
   else if (kind === 'crop') m = std({ map: cropTex(+arg), alphaTest: 0.4, side: THREE.DoubleSide, roughness: 1 });
   else if (kind === 'gem') m = std({ map: gemTex(arg), color: 0xffffff, metalness: 0.2, roughness: 0.18, emissive: new THREE.Color(arg), emissiveIntensity: 0.25 });
   else if (kind === 'quilt') m = std({ map: quiltTex(), color: arg });
@@ -306,6 +324,7 @@ function svgIcon([shape, hex, extra]) {
   else if (shape === 'fur') body = `<path d="M7 6l4 2 5-2 5 2 4-2 1 6-2 3 2 4-1 7-5-2-4 3-4-3-5 2-1-7 2-4-2-3z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M11 12l1 3M16 11l0 4M21 12l-1 3M12 19l1 3M19 19l-1 3M16 20l0 3" stroke="rgba(0,0,0,.28)" stroke-width="1.200" stroke-linecap="round"/>`;
   else if (shape === 'feather') body = `<path d="M26 4c-10 1-17 8-18 19l3 1c9-2 16-9 15-20z" fill="${hex}" stroke="rgba(0,0,0,.45)" stroke-width=".9"/><path d="M5 28L24 7" stroke="#8d949c" stroke-width="1.400" stroke-linecap="round"/><path d="M12 20l-3-3M16 16l-4-3M20 12l-4-2M13 20l5 1M17 16l5 0" stroke="rgba(0,0,0,.2)" stroke-width="1"/>`;
   else if (shape === 'pearl') body = `<circle cx="16" cy="16" r="10" fill="${hex}" stroke="rgba(0,0,0,.4)" stroke-width=".9"/><path d="M10 14a7 7 0 0 1 5-5" fill="none" stroke="#fff" stroke-width="2.200" stroke-linecap="round"/><circle cx="20" cy="20" r="3" fill="#d9c8ea" opacity=".6"/>`;
+  else if (shape === 'lucky') body = cube(6) + '<path d="M5 15l11 6 11-6M16 21v8" fill="none" stroke="#f0bd3f" stroke-width="2"/><path d="M16 4l1.400 3 3.200.400-2.300 2.200.600 3.200L16 11.300l-2.900 1.500.600-3.200-2.300-2.200 3.200-.400z" fill="#fff3c4"/>';
   else if (shape === 'wheat') body = [9, 15, 21].map((x) => `<path d="M${x + 1} 29V12" stroke="#a08a3a" stroke-width="1.4"/><ellipse cx="${x + 1}" cy="9" rx="2.600" ry="5" fill="${hex}" stroke="${line}" stroke-width=".7"/>`).join('');
   else if (shape === 'bread') body = `<path d="M5 20c0-6 5-10 11-10s11 4 11 10v4H5z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M10 14l2 4M16 12v5M22 14l-2 4" stroke="#f4dca0" stroke-width="1.6" stroke-linecap="round"/>`;
   else if (shape === 'rod') body = `<path d="M5 28L25 4" stroke="${hex}" stroke-width="2.400" stroke-linecap="round"/><path d="M25 4c3 6 3 12 1 18" fill="none" stroke="#d8d8d8" stroke-width=".8"/><circle cx="26" cy="23" r="2.200" fill="#e0344a" stroke="#fff" stroke-width=".7"/><circle cx="9" cy="23" r="2.600" fill="#3a3f46"/>`;
