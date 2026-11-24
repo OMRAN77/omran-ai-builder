@@ -36,7 +36,7 @@ function page(reply, init) {
     draw: () => { ctx.draws++; }, $: () => null, ice: (c) => { ctx.iceFor = c; ctx.icePromise = Promise.resolve(); return ctx.icePromise; },
     setInterval: () => 1, clearInterval: () => {}, setTimeout: () => 0,
     history: { replaceState: () => {} }, location: { pathname: '/room' },
-    setMic: () => Promise.resolve(true), setCam: () => Promise.resolve(true), drop: (id) => { ctx.peers.delete(id); },
+    setMic: () => Promise.resolve(true), setCam: () => Promise.resolve(true), drop: (id) => { ctx.peers.delete(id); }, revideo: () => {},
     cleanName: (v) => String(v || 'guest'), send: () => {}, remix: () => {}, say: () => {},
     RTCPeerConnection: class { constructor() { this.created = true; } setRemoteDescription() { return new Promise(() => {}); } getTransceivers() { return []; } },
   };
