@@ -155,20 +155,31 @@ li.ask { border-color: var(--gold); }
     document.body.appendChild(el); var p = el.play(); if (p && p.catch) p.catch(function () {});
     heard.set(id, { stream: stream, el: el, node: null }); remix();
   }
-  function gone(id) { var h = heard.get(id); if (!h) return; h.el.srcObject = null; h.el.remove(); if (h.node) { try { h.node.disconnect(); } catch (e) { /* apart */ } } heard.delete(id); outs.delete(id); remix(); }
+  function gone(id) { var h = heard.get(id); if (!h) return; h.el.srcObject = null; h.el.remove(); if (h.node) { try { h.node.disconnect(); } catch (e) { /* apart */ } } heard.delete(id); unmix(id); remix(); }
+  /** Unwire one guest's mix (v-talk-room-10): disconnect() on the destination does nothing (it has no outputs), so every source has to be
+   *  disconnected from it — otherwise each remix() left the old mixes wired and rendering, about 90 of them once ten are in. */
+  function unmix(id) {
+    var o = outs.get(id); if (!o) return;
+    o.srcs.forEach(function (s) { try { s.disconnect(o.dest); } catch (e) { /* already apart (a guest who left was disconnected whole) */ } });
+    o.dest.stream.getTracks().forEach(function (t) { t.stop(); });
+    outs.delete(id);
+  }
   function remix() {
     var all = []; peers.forEach(function (p, id) { if (p.tx && p.tx.sender) all.push({ id: id, sender: p.tx.sender }); });
     var track = micOn && mic ? mic.getAudioTracks()[0] : null;
-    if (role !== 'host' || all.length <= 1) { all.forEach(function (l) { l.sender.replaceTrack(track).catch(function () {}); }); return; }
+    if (role !== 'host' || all.length <= 1) { Array.from(outs.keys()).forEach(function (id) { unmix(id); }); all.forEach(function (l) { l.sender.replaceTrack(track).catch(function () {}); }); return; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     if (!actx) actx = new AC(); if (actx.state === 'suspended') actx.resume().catch(function () {});
     if (micOn && mic && !micNode) micNode = actx.createMediaStreamSource(mic);
     heard.forEach(function (h) { if (!h.node) { try { h.node = actx.createMediaStreamSource(h.stream); } catch (e) { h.node = null; } } });
+    // two phases: unwire every old mix, then build the new ones — old Safari (webkitAudioContext, before 14.1) has no disconnect(dest), so
+    // disconnect(dest) there cuts the source from every mix, and unwiring inside the build loop would strip the mixes built just before
+    Array.from(outs.keys()).forEach(function (id) { unmix(id); });
     all.forEach(function (l) {
-      var old = outs.get(l.id); if (old) { try { old.disconnect(); } catch (e) { /* apart */ } }
-      var dest = actx.createMediaStreamDestination(); outs.set(l.id, dest);
-      if (micNode) micNode.connect(dest);
-      heard.forEach(function (h, id) { if (id !== l.id && h.node) h.node.connect(dest); });
+      var dest = actx.createMediaStreamDestination(), srcs = [];
+      if (micNode) { micNode.connect(dest); srcs.push(micNode); }
+      heard.forEach(function (h, id) { if (id !== l.id && h.node) { h.node.connect(dest); srcs.push(h.node); } });
+      outs.set(l.id, { dest: dest, srcs: srcs });
       l.sender.replaceTrack(dest.stream.getAudioTracks()[0]).catch(function () {});
     });
   }
@@ -195,13 +206,21 @@ li.ask { border-color: var(--gold); }
     else if (role === 'guest' || gv.length) { if (gv[0]) gv[0].sender.replaceTrack(camTrack()).catch(function () {}); toHost({ t: 'cam', on: camOn }); }
     draw(); drawVids();
   }
+  /** Owner: the two other guests that guest gid sees — the camera-on guests that come after it in join order, wrapping round, so every
+   *  camera reaches about two others (a global "cameras first" order showed all nine the same first two); camera-off guests fill the rest. */
+  function pickOthers(gid, ids, isOn) {
+    var at = ids.indexOf(gid), on = [], off = [];
+    for (var k = 1; k < ids.length; k++) { var id = ids[(at + k) % ids.length]; (isOn(id) ? on : off).push(id); }
+    return on.concat(off).slice(0, 2);
+  }
   /** Owner: put the right picture on every guest's lines, and tell each guest who is on which. */
   function revideo() {
     if (role !== 'host') return;
-    var guests = []; peers.forEach(function (p, id) { if (p.vtx && p.vtx.length) guests.push({ id: id, p: p }); });
+    var guests = [], byId = new Map(); peers.forEach(function (p, id) { if (p.vtx && p.vtx.length) { guests.push({ id: id, p: p }); byId.set(id, p); } });
+    var ids = guests.map(function (g) { return g.id; }), camIsOn = function (id) { var p = byId.get(id); return !!(p.cam && p.vtrack); };
     guests.forEach(function (g) {
-      // with many guests, each sees the two others whose cameras are on (the owner's own picture always comes first)
-      var others = guests.filter(function (o) { return o.id !== g.id; }).sort(function (x, y) { return (y.p.cam && y.p.vtrack ? 1 : 0) - (x.p.cam && x.p.vtrack ? 1 : 0); }).slice(0, 2);
+      // the owner's own picture always comes first; then two others, taken in turn (v-talk-room-10)
+      var others = pickOthers(g.id, ids, camIsOn).map(function (id) { return { id: id, p: byId.get(id) }; });
       var list = [{ id: 'host', name: myName || T.owner, on: camOn }];
       g.p.vtx[0].sender.replaceTrack(camTrack()).catch(function () {});
       for (var i = 0; i < 2; i++) {
@@ -241,7 +260,7 @@ li.ask { border-color: var(--gold); }
     var box = $('vids'), want = [];
     if (camOn && cam) want.push(tile('me', T.me, cam, true));
     if (role === 'host') peers.forEach(function (p, id) { if (p.cam && p.vstream) want.push(tile(id, p.name, p.vstream)); });
-    else if (role === 'guest') slots.forEach(function (sl, i) { if (sl && sl.on && gstreams[i]) want.push(tile('s' + i + ':' + sl.id, cleanName(sl.name), gstreams[i])); });
+    else if (role === 'guest') slots.forEach(function (sl, i) { if (sl && sl.on && gstreams[i]) want.push(tile('s' + i, cleanName(sl.name), gstreams[i])); });      // keyed by the line, not the person: a turn that changes who is on it keeps the same video (no black flash), only the name changes
     tiles.forEach(function (t, k) { if (want.indexOf(t.el) < 0) { t.video.srcObject = null; t.el.remove(); tiles.delete(k); } });
     want.forEach(function (el) { if (el.parentNode !== box) box.appendChild(el); });
     box.hidden = !want.length;
