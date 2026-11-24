@@ -50,10 +50,14 @@ async function readRoom(K, code) {
 }
 
 /** One operation. K: the KV module; who: the signed-in user or null. Returns { status, json }. */
-async function act(body, ip, K, who, ice) {
+async function act(body, ip, K, who, ice, cOpts) {
   const b = body && typeof body === 'object' ? body : {};
   const op = String(b.op || '');
   const bad = (error, status = 400) => ({ status, json: { error } });
+
+  // جهات الاتّصال والمكالمات (v-talk-contacts — api/_lib/talk-contacts.js)
+  const cr = await require('./talk-contacts.js').contactsAct(b, ip, K, who, Object.assign({ ownsRoom: async (c, k) => { const r = /^\d{4}$/.test(c) ? await readRoom(K, c) : null; return !!(r && sameKey(r.k, k)); } }, cOpts || {}));
+  if (cr) return cr;
 
   if (op === 'open') {
     if (!who) return bad('login', 401);
@@ -94,7 +98,8 @@ async function act(body, ip, K, who, ice) {
     const room = await readRoom(K, code);
     if (!room) return bad('no-room', 404);
     const id = crypto.randomBytes(6).toString('hex');
-    const out = await K.kvPipeline([['RPUSH', inKey(code), JSON.stringify({ id, name: cleanName(b.name), offer: b.offer })], ['EXPIRE', inKey(code), String(ROOM_TTL)]]);
+    const inv = await require('./talk-contacts.js').invited(K, who, code);      // من تتّصل به هذه الغرفة يدخل بلا انتظار
+    const out = await K.kvPipeline([['RPUSH', inKey(code), JSON.stringify({ id, name: cleanName(b.name), offer: b.offer, ...(inv ? { inv: 1 } : {}) })], ['EXPIRE', inKey(code), String(ROOM_TTL)]]);
     if (Number(out && out[0]) > MAX_PENDING) { await K.kvPipeline([['RPOP', inKey(code)]]); return bad('busy', 429); }
     return { status: 200, json: { id } };
   }
@@ -108,7 +113,7 @@ async function act(body, ip, K, who, ice) {
     if (b.keep) cmds.push(['EXPIRE', roomKey(code), String(ROOM_TTL)]);
     const out = await K.kvPipeline(cmds);
     const joins = [];
-    for (const raw of Array.isArray(out && out[0]) ? out[0] : []) { try { const j = JSON.parse(raw); if (j && isId(j.id) && isSdp(j.offer)) joins.push({ id: j.id, name: cleanName(j.name), offer: j.offer }); } catch (e) { require('./_swallow.js').swallow({ message: 'bad pending line' }, 'talk-room:pending'); /* سطر تالف يُتجاوز؛ رسالته لا تُطبع: قد تقتبس العرض وفيه عناوين شبكة الضيف */ } }
+    for (const raw of Array.isArray(out && out[0]) ? out[0] : []) { try { const j = JSON.parse(raw); if (j && isId(j.id) && isSdp(j.offer)) joins.push({ id: j.id, name: cleanName(j.name), offer: j.offer, ...(j.inv ? { inv: 1 } : {}) }); } catch (e) { require('./_swallow.js').swallow({ message: 'bad pending line' }, 'talk-room:pending'); /* سطر تالف يُتجاوز؛ رسالته لا تُطبع: قد تقتبس العرض وفيه عناوين شبكة الضيف */ } }
     return { status: 200, json: { joins } };
   }
   if (op === 'admit') {
@@ -137,7 +142,7 @@ module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
     const { sessionUser } = require('./_session.js');
-    const who = body && body.op === 'open' ? sessionUser(body.token) : null;
+    const who = body && body.token ? sessionUser(body.token) : null;      // open وجهات الاتّصال تحتاجها، وjoin يعرف بها المدعوّ
     const out = await act(body, ip, require('./kv.js'), who);
     res.status(out.status).json(out.json);
   } catch (e) {

@@ -85,6 +85,7 @@ li.ask { border-color: var(--gold); }
     noRoom: 'No room with this code. Check the digits, or ask your friend to open the room again.', busy: 'Too many requests on this room. Try again shortly.', slow: 'Too many tries. Wait a minute.',
     store: 'Rooms are paused on the site right now.', offline: 'Could not reach the site.', code4: 'The code is four digits.', failed: 'Could not connect. Some networks block direct links: try the same Wi‑Fi or another network.',
     noMic: 'This browser has no microphone here.', micDenied: 'No permission for the microphone. Allow it in the browser settings and try again.',
+    contactsTitle: 'Contacts', contactsNote: 'Add your friends\' numbers. Those on the app can be called straight away; invite the others on WhatsApp.', phonePh: '+971501234567', labelPh: 'Name', addContact: 'Add number', onApp: 'on the app', notOnApp: 'not on the app', callBtn: 'Call', inviteBtn: 'Invite', noContacts: 'No numbers yet.', myPhoneNone: 'Your number is not linked to your account, so friends cannot call you. Link it in the app: Settings > My account > Phone number.', myPhone: 'Your number: {n}', calling: 'Calling {n}…', ringIn: '{n} is calling you', answer: 'Answer', decline: 'Decline', callMore: 'Call someone from your contacts', badPhone: 'That number is not valid. Write it with the country code (+971…).', selfPhone: 'That is your own number.', notOnAppErr: 'This number is not on the app. Invite them on WhatsApp.', pushOff: '{n} has notifications off: send them the room link on WhatsApp.', inviteText: 'Come talk with me in the Friends room on om ai: ', del: 'Remove',
     privacy: 'Your voice and messages go straight between you and your friends. Nothing is recorded or kept.', lang: 'العربية'
   } : {
     title: 'غرفة الربع', sub: 'كلّم ربعك بالصوت والكتابة. افتح غرفة وأرسل لهم الرابط.',
@@ -98,13 +99,14 @@ li.ask { border-color: var(--gold); }
     noRoom: 'ما في غرفة بهذا الكود. تأكد من الأرقام، أو خل صاحبك يفتح الغرفة من جديد.', busy: 'الغرفة عليها زحمة. جرّب بعد شوي.', slow: 'محاولات كثيرة. انتظر دقيقة.',
     store: 'الغرف متوقفة الحين من جهة الموقع.', offline: 'ما قدرت أوصل للموقع.', code4: 'الكود أربع أرقام.', failed: 'ما قدرت أتصل. بعض الشبكات تمنع الاتصال المباشر: جرّبوا نفس الواي فاي أو شبكة ثانية.',
     noMic: 'هذا المتصفح ما يدعم المايك هني.', micDenied: 'ما في إذن للمايك. اسمح له من إعدادات المتصفح وجرّب مرة ثانية.',
+    contactsTitle: 'جهات الاتصال', contactsNote: 'أضف أرقام ربعك. اللي على التطبيق تتصل فيهم على طول، والباقين ادعهم بالواتساب.', phonePh: '+971501234567', labelPh: 'الاسم', addContact: 'أضف الرقم', onApp: 'على التطبيق', notOnApp: 'مو على التطبيق', callBtn: 'اتصل', inviteBtn: 'ادعه', noContacts: 'ما عندك أرقام للحين.', myPhoneNone: 'رقمك مو مربوط بحسابك، فربعك ما يقدرون يتصلون فيك. اربطه من التطبيق: الإعدادات ← حسابي ← رقم الهاتف.', myPhone: 'رقمك: {n}', calling: 'أتصل في {n}…', ringIn: '{n} يتصل فيك', answer: 'رد', decline: 'لا', callMore: 'اتصل بأحد من جهاتك', badPhone: 'الرقم مو صحيح. اكتبه بمفتاح الدولة (+971…).', selfPhone: 'هذا رقمك أنت.', notOnAppErr: 'هذا الرقم مو على التطبيق. ادعه بالواتساب.', pushOff: '{n} ما فعّل الإشعارات: أرسل له رابط الغرفة بالواتساب.', inviteText: 'تعال كلمني في غرفة الربع على om ai: ', del: 'شيله',
     privacy: 'صوتك وكلامك يروحون مباشرة بينك وبين ربعك. ما شي يتسجّل ولا ينحفظ.', lang: 'English'
   };
   var FACES = ['👋', '😂', '❤️', '👍', '😮', '😢', '👏', '🎉'];
-  var WHY = { 'no-room': T.noRoom, busy: T.busy, 'slow-down': T.slow, store: T.store, offline: T.offline, login: T.needLogin, full: T.busy };
+  var WHY = { 'bad-phone': T.badPhone, self: T.selfPhone, 'not-on-app': T.notOnAppErr, 'no-room': T.noRoom, busy: T.busy, 'slow-down': T.slow, store: T.store, offline: T.offline, login: T.needLogin, full: T.busy };
   var $ = function (id) { return document.getElementById(id); };
   var fmt = function (s, n) { return s.replace('{n}', n); };
-  var cleanName = function (v, d) { return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069<>&"'`]/g, '').trim().slice(0, 24) || d || T.guest; };
+  var cleanName = function (v, d) { return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069<>&"'`]/g, '').trim().slice(0, 24) || (d == null ? T.guest : d); };
   var cleanLine = function (v) { return String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, MAX_LINE); };
   document.documentElement.lang = en ? 'en' : 'ar'; document.documentElement.dir = en ? 'ltr' : 'rtl';
   $('title').textContent = T.title; $('sub').textContent = T.sub; $('note').textContent = T.privacy;
@@ -112,6 +114,9 @@ li.ask { border-color: var(--gold); }
   var token = ''; try { token = localStorage.getItem('aiapp_auth_token') || ''; } catch (e) { token = ''; }
   var myName = ''; try { myName = cleanName(localStorage.getItem('room-name') || '', ''); } catch (e) { myName = ''; }
   var linkCode = (search.match(/[?&]c=(\d{4})/) || [])[1] || '';
+  var ringLink = /[?&]ring=1/.test(search);      // opened from a call notification: answer straight away
+  var clearTyped = null;
+  var contacts = null, myPhone = null, ringIn = null, ringPollT = null, ringStop = '';
 
   // ---- state
   var role = null, code = '', key = '', myId = 'host', hostName = '', busy = '', error = '', pollT = null, quiet = 0;
@@ -276,7 +281,7 @@ li.ask { border-color: var(--gold); }
     call({ op: 'pending', code: code, key: key, keep: quiet % 4 === 0 ? 1 : 0 }).then(function (r) {
       quiet++;
       if (r.error === 'no-room') { clearInterval(pollT); error = T.noRoom; draw(); return; }
-      (r.joins || []).forEach(function (j) { if (!asks.some(function (a) { return a.id === j.id; })) asks.push(j); });
+      (r.joins || []).forEach(function (j) { if (!asks.some(function (a) { return a.id === j.id; })) { asks.push(j); if (j.inv) admit(j.id); } });      // the person this room called comes straight in
       if ((r.joins || []).length) draw();
     }).catch(function () { /* the next poll tries again */ });
   }
@@ -351,7 +356,7 @@ li.ask { border-color: var(--gold); }
     dc.onclose = function () { if (role === 'guest') left(T.lost); };
     var fail = function (text) { peers.delete('host'); try { pc.close(); } catch (e) { /* closed */ } busy = ''; code = ''; error = text; draw(); };
     pc.createOffer().then(function (o) { return pc.setLocalDescription(o); }).then(function () { return gathered(pc); })
-      .then(function () { return call({ op: 'join', code: c, name: myName || T.guest, offer: pc.localDescription.sdp }); })
+      .then(function () { return call({ op: 'join', code: c, name: myName || T.guest, offer: pc.localDescription.sdp, token: token || undefined }); })
       .then(function (r) {
         if (r.error) { fail(WHY[r.error] || T.offline); return; }
         var tries = 0;
@@ -368,7 +373,7 @@ li.ask { border-color: var(--gold); }
   }
   function fromHost(m) {
     if (!m || typeof m !== 'object') return;
-    if (m.t === 'welcome') { role = 'guest'; myId = String(m.id || ''); busy = ''; hostName = cleanName(m.host, T.owner); say('', fmt(T.inRoom, hostName), false, true); if (camOn) toHost({ t: 'cam', on: true }); draw(); }
+    if (m.t === 'welcome') { role = 'guest'; myId = String(m.id || ''); busy = ''; hostName = cleanName(m.host, T.owner); say('', fmt(T.inRoom, hostName), false, true); if (camOn) toHost({ t: 'cam', on: true }); if (token) call({ op: 'ring-end', token: token }).catch(function () {}); draw(); }
     else if (m.t === 'ps' && Array.isArray(m.list)) { members = m.list.slice(0, MAX).map(function (x) { return { id: String(x.id || ''), name: cleanName(x.name) }; }); draw(); }
     else if (m.t === 'chat' || m.t === 'emo') fromAnyone(m, 'host');
     else if (m.t === 'vslots' && Array.isArray(m.list)) { slots = m.list.slice(0, 3).map(function (x) { return x && typeof x === 'object' ? { id: String(x.id || ''), name: cleanName(x.name), on: !!x.on } : null; }); drawVids(); }
@@ -380,6 +385,60 @@ li.ask { border-color: var(--gold); }
     gv = []; gstreams = []; slots = []; setCam(false);
     role = null; code = ''; members = []; busy = ''; error = text || ''; draw(); drawVids();
   }
+
+  // ---- contacts (v-talk-contacts): numbers kept on the account; those on the app are called straight away
+  function loadContacts() {
+    if (!token) return;
+    call({ op: 'contacts', token: token }).then(function (r) { if (r.error) return; contacts = r.list || []; myPhone = r.me ? r.me.phone : null; if (!myName && r.me && r.me.name) myName = cleanName(r.me.name, ''); draw(); }).catch(function () { /* offline: the list comes next time */ });
+  }
+  function addContact(phone, name) {
+    var sent = { cname: name, cphone: phone };
+    call({ op: 'contact-add', token: token, phone: phone, name: name }).then(function (r) {
+      if (r.error) { error = WHY[r.error] || T.offline; draw(); return; }
+      contacts = (contacts || []).filter(function (c) { return c.phone !== r.contact.phone; }); contacts.unshift(r.contact); error = ''; clearTyped = sent; draw();
+    }).catch(function () { error = T.offline; draw(); });
+  }
+  function delContact(phone) { contacts = (contacts || []).filter(function (c) { return c.phone !== phone; }); draw(); call({ op: 'contact-del', token: token, phone: phone }).catch(function () {}); }
+  function ring(phone) {
+    var c = (contacts || []).find(function (x) { return x.phone === phone; }); if (!c) return;
+    var go = function () {
+      say('', fmt(T.calling, c.name), false, true);
+      call({ op: 'ring', token: token, code: code, key: key, phone: phone }).then(function (r) {
+        if (r.error) { error = WHY[r.error] || T.offline; draw(); return; }
+        if (!r.pushed) { error = fmt(T.pushOff, c.name); draw(); }
+      }).catch(function () { error = T.offline; draw(); });
+    };
+    if (role === 'host') go(); else if (!role) host().then(function () { if (role === 'host') go(); });
+  }
+  function invite(phone) { window.open('https://wa.me/' + phone.replace(/\D/g, '') + '?text=' + encodeURIComponent(T.inviteText + location.origin + '/room'), '_blank', 'noopener'); }
+  function pollRings() {
+    if (!token || role || busy) return;
+    call({ op: 'rings', token: token }).then(function (r) {
+      var rg = r && r.ring && r.ring.code !== ringStop ? r.ring : null;
+      if (JSON.stringify(rg) !== JSON.stringify(ringIn)) { ringIn = rg; if (!role && !busy) draw(); }
+    }).catch(function () { /* next time */ });
+  }
+  function answer() {
+    if (!ringIn) return;
+    var c = ringIn.code; hostName = ringIn.from; ringIn = null; linkCode = c;
+    join(c, myName || T.guest);
+  }
+  function decline() { if (!ringIn) return; ringStop = ringIn.code; ringIn = null; call({ op: 'ring-end', token: token }).catch(function () {}); draw(); }
+  function contactsCard(hostMode) {
+    if (!token) return '';
+    var list = (contacts || []).filter(function (c) { return !hostMode || c.onApp; });
+    var h = '<div class="card"><h2>' + (hostMode ? T.callMore : T.contactsTitle) + '</h2>';
+    if (!hostMode) h += '<p class="note" style="margin:0;text-align:start">' + esc(T.contactsNote) + '</p>' + (contacts && !myPhone ? '<p class="err" style="text-align:start;margin:0">' + esc(T.myPhoneNone) + '</p>' : myPhone ? '<p class="note" style="margin:0;text-align:start" dir="auto">' + esc(fmt(T.myPhone, myPhone)) + '</p>' : '');
+    h += '<ul>' + list.map(function (c) {
+      return '<li><span>' + esc(c.name) + ' <small dir="ltr">' + esc(c.phone) + '</small></span><small>' + (c.onApp ? T.onApp : T.notOnApp) + '</small>'
+        + (c.onApp ? '<button type="button" data-ring="' + esc(c.phone) + '">' + T.callBtn + '</button>' : '<button type="button" class="soft" data-invite="' + esc(c.phone) + '">' + T.inviteBtn + '</button>')
+        + (hostMode ? '' : '<button type="button" class="soft" data-delc="' + esc(c.phone) + '" aria-label="' + esc(T.del) + '">✕</button>') + '</li>';
+    }).join('') + '</ul>';
+    if (contacts && !list.length) h += '<p class="note" style="margin:0">' + T.noContacts + '</p>';
+    if (!hostMode) h += '<div class="row"><input id="cname" maxlength="30" placeholder="' + esc(T.labelPh) + '"><input id="cphone" inputmode="tel" dir="ltr" maxlength="20" placeholder="' + esc(T.phonePh) + '"></div><button type="button" class="soft" data-addc="1">' + T.addContact + '</button>';
+    return h + '</div>';
+  }
+  function ringCard() { return ringIn ? '<div class="card" style="border-color:var(--live)"><h2>📞 ' + esc(fmt(T.ringIn, ringIn.from)) + '</h2><div class="row"><button type="button" class="on" data-answer="1">' + T.answer + '</button><button type="button" class="no" data-decline="1">' + T.decline + '</button></div></div>' : ''; }
 
   // ---- the screen
   var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
@@ -402,7 +461,7 @@ li.ask { border-color: var(--gold); }
         + '<li><span>' + esc(myName || T.owner) + '</span><small>' + T.you + ' · ' + T.owner + '</small></li>'
         + Array.from(peers).map(function (e) { var p = e[1]; return '<li><span>' + esc(p.name) + '</span><small>' + (p.dc && p.dc.readyState === 'open' ? T.guest : T.connecting) + '</small><button type="button" class="no" data-kick="' + e[0] + '">' + T.kick + '</button></li>'; }).join('') + '</ul>'
         + (!asks.length && !peers.size ? '<p class="note" style="margin:0">' + T.nobody + '</p>' : '') + '</div>';
-      h += talkBox() + '<button type="button" class="no" data-close="1" style="width:100%">' + T.closeRoom + '</button>';
+      h += talkBox() + contactsCard(true) + '<button type="button" class="no" data-close="1" style="width:100%">' + T.closeRoom + '</button>';
     } else if (role === 'guest') {
       h += '<div class="card"><ul>' + members.map(function (m) { return '<li><span>' + esc(m.name) + '</span><small>' + (m.id === myId ? T.you : m.id === 'host' ? T.owner : T.guest) + '</small></li>'; }).join('') + '</ul></div>';
       h += talkBox() + '<button type="button" class="no" data-leave="1" style="width:100%">' + T.leave + '</button>';
@@ -411,10 +470,17 @@ li.ask { border-color: var(--gold); }
     } else if (linkCode) {
       h += '<div class="card"><h2>' + esc(fmt(T.hostIs, hostName || '…')) + '</h2><input class="n" id="nm" maxlength="24" placeholder="' + esc(T.name) + '" value="' + esc(myName) + '"><button type="button" data-ask="1">' + T.ask + '</button></div>';
     } else {
+      h += ringCard();
       h += '<div class="card"><button type="button" data-host="1"' + (token ? '' : ' disabled style="opacity:.5"') + '>' + T.open + '</button>' + (token ? '' : '<p class="note" style="margin:0">' + T.needLogin + '</p>') + '</div>'
-        + '<div class="card"><h2>' + T.joinCode + '</h2><input class="c" id="cd" inputmode="numeric" maxlength="4" placeholder="0000"><input id="nm" maxlength="24" placeholder="' + esc(T.name) + '" value="' + esc(myName) + '"><button type="button" data-join="1">' + T.join + '</button></div>';
+        + '<div class="card"><h2>' + T.joinCode + '</h2><input class="c" id="cd" inputmode="numeric" maxlength="4" placeholder="0000"><input id="nm" maxlength="24" placeholder="' + esc(T.name) + '" value="' + esc(myName) + '"><button type="button" data-join="1">' + T.join + '</button></div>' + contactsCard(false);
     }
+    // what is being typed survives a redraw (a reply or an incoming call can redraw mid-typing); a saved contact clears its boxes
+    var typed = {}; view.querySelectorAll('input[id]').forEach(function (i) { if (i.value) typed[i.id] = i.value; });
+    var focused = document.activeElement && document.activeElement.id;
+    if (clearTyped) { Object.keys(clearTyped).forEach(function (id) { if (typed[id] === clearTyped[id]) delete typed[id]; }); clearTyped = null; }      // only if the box still holds what was saved
     view.innerHTML = h;
+    Object.keys(typed).forEach(function (id) { var i = document.getElementById(id); if (i && view.contains(i)) i.value = typed[id]; });
+    if (focused) { var f = document.getElementById(focused); if (f && view.contains(f)) f.focus(); }
     drawLog();
   }
   function drawLog() {
@@ -432,6 +498,12 @@ li.ask { border-color: var(--gold); }
     var d = t.dataset;
     if (d.host) { var nm = $('nm'); if (nm && nm.value) myName = cleanName(nm.value, ''); host(); }
     else if (d.join) join($('cd').value, $('nm').value);
+    else if (d.addc) addContact($('cphone').value, $('cname').value);
+    else if (d.delc) delContact(d.delc);
+    else if (d.ring) ring(d.ring);
+    else if (d.invite) invite(d.invite);
+    else if (d.answer) answer();
+    else if (d.decline) decline();
     else if (d.ask) join(linkCode, $('nm').value);
     else if (d.admit) admit(d.admit);
     else if (d.deny) deny(d.deny);
@@ -447,9 +519,11 @@ li.ask { border-color: var(--gold); }
   });
   view.addEventListener('submit', function (e) { e.preventDefault(); var inp = $('line'); if (inp && speak(inp.value)) { inp.value = ''; inp.focus(); } });
   window.addEventListener('pagehide', function () { if (role === 'host' && code) { try { navigator.sendBeacon(API, new Blob([JSON.stringify({ op: 'close', code: code, key: key })], { type: 'application/json' })); } catch (e) { /* the room ends by itself in a quarter of an hour */ } } });
-  if (linkCode) peek(linkCode);
+  if (linkCode) { peek(linkCode); if (ringLink && token) setTimeout(function () { if (!role && !busy) join(linkCode, myName || T.guest); }, 600); }
+  loadContacts();
+  if (token) { pollRings(); ringPollT = setInterval(pollRings, 4000); }
   draw();
-  window.__ROOM = { get role() { return role; }, get code() { return code; }, get peers() { return peers; }, get asks() { return asks; }, get members() { return members; }, get lines() { return lines; }, poll: poll, setMic: setMic, setCam: setCam, speak: speak, get tiles() { return tiles; } };
+  window.__ROOM = { get role() { return role; }, get code() { return code; }, get peers() { return peers; }, get asks() { return asks; }, get members() { return members; }, get lines() { return lines; }, poll: poll, setMic: setMic, setCam: setCam, speak: speak, pollRings: pollRings, get contacts() { return contacts; }, get ringIn() { return ringIn; }, get tiles() { return tiles; } };
 })();
 </script>
 </body>

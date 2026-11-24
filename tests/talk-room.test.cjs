@@ -148,3 +148,55 @@ test('خوادم الترحيل (TURN): لغرفة قائمة فقط، والم�
   assert.match(html, /if \(!\(iceFor === code && icePromise\)\) \{ ice\(code\)\.then\(function \(\) \{ admit\(id\); \}\); return; \}/, 'صاحب الغرفة يأخذ الخوادم قبل أوّل وصلة');
   assert.match(html, /if \(!\(iceFor === c && icePromise\)\) \{ ice\(c\)\.then\(function \(\) \{ join\(c, name\); \}\); return; \}/, 'والضيف كذلك');
 });
+
+// ---- v-talk-contacts
+function contactsKV() {
+  const K = memoryKV();
+  K.kvGetJSON = async (k) => { const v = await K.kvGetRaw(k); return v ? JSON.parse(v) : null; };
+  return K;
+}
+const PHONES = { '+971500000001': 'omran', '+971500000002': 'fatima' };
+const fakes = (pushed) => ({
+  phoneLink: { normalizePhone: require('../api/_lib/phone-link.js').normalizePhone, maskPhone: require('../api/_lib/phone-link.js').maskPhone, phoneOwner: async (p) => (PHONES[p] ? { key: PHONES[p], user: {} } : null) },
+  auth: { getUser: async (u) => ({ phone: Object.keys(PHONES).find((p) => PHONES[p] === u) || null, displayName: u === 'omran' ? 'عمران' : u }) },
+  push: async (K, user, payload) => { pushed.push({ user, payload }); return true; },
+});
+
+test('جهات الاتّصال: تحتاج حسابًا، والرقم يُنظَّف، و«على التطبيق» من رقم موثَّق، ورقمك ما ينضاف، والإضافة محدودة', async () => {
+  const K = contactsKV(), pushed = [], o = fakes(pushed);
+  assert.equal((await act({ op: 'contacts' }, 'ip', K, null, null, o)).status, 401);
+  const a = await act({ op: 'contact-add', phone: '00971 50-000-0002', name: 'فاطمة<x>' }, 'ip', K, 'omran', null, o);
+  assert.deepEqual(a.json, { ok: true, contact: { phone: '+971500000002', name: 'فاطمةx', onApp: true } });
+  assert.equal((await act({ op: 'contact-add', phone: '+971 55 123 4567', name: 'علي' }, 'ip', K, 'omran', null, o)).json.contact.onApp, false);
+  assert.equal((await act({ op: 'contact-add', phone: '123', name: 'x' }, 'ip', K, 'omran', null, o)).json.error, 'bad-phone');
+  assert.equal((await act({ op: 'contact-add', phone: '+971500000001', name: 'أنا' }, 'ip', K, 'omran', null, o)).json.error, 'self');
+  const l = (await act({ op: 'contacts' }, 'ip', K, 'omran', null, o)).json;
+  assert.equal(l.me.phone, '+971•••••01', 'رقمك مخفيّ الوسط'); assert.equal(l.me.name, 'عمران', 'اسمه في الحساب يصير اسمه في الغرفة');
+  assert.deepEqual(l.list.map((c) => [c.name, c.onApp]), [['علي', false], ['فاطمةx', true]]);
+  assert.ok(!JSON.stringify(l).includes('fatima'), 'اسم حساب الآخر لا يُكشف');
+  await act({ op: 'contact-del', phone: '+971551234567' }, 'ip', K, 'omran', null, o);
+  assert.equal((await act({ op: 'contacts' }, 'ip', K, 'omran', null, o)).json.list.length, 1);
+  let slow = 0;
+  for (let i = 0; i < 45; i++) if ((await act({ op: 'contact-add', phone: '+9715600000' + String(i).padStart(2, '0'), name: 'n' }, 'ip', K, 'fatima', null, o)).status === 429) slow++;
+  assert.ok(slow >= 5, 'الإضافة محدودة في اليوم (منع مسح الأرقام): ' + slow);
+});
+
+test('المكالمة: صاحب الغرفة يتّصل بجهة على التطبيق، يصلها إشعار ومكالمة واردة، وحين تدخل تمرّ بلا انتظار', async () => {
+  const K = contactsKV(), pushed = [], o = fakes(pushed);
+  await act({ op: 'contact-add', phone: '+971500000002', name: 'فاطمة' }, 'ip', K, 'omran', null, o);
+  const { code, key } = (await act({ op: 'open' }, 'h', K, 'omran')).json;
+  assert.equal((await act({ op: 'ring', code, key: 'x'.repeat(24), phone: '+971500000002' }, 'h', K, 'omran', null, o)).status, 403, 'غرفته وبسرّها');
+  assert.equal((await act({ op: 'ring', code, key, phone: '+971550000009' }, 'h', K, 'omran', null, o)).json.error, 'not-contact', 'من في جهاته فقط');
+  const r = await act({ op: 'ring', code, key, phone: '+971500000002' }, 'h', K, 'omran', null, o);
+  assert.deepEqual(r.json, { ok: true, pushed: true });
+  assert.equal(pushed[0].user, 'fatima'); assert.equal(pushed[0].payload.url, '/room?c=' + code + '&ring=1'); assert.match(pushed[0].payload.title, /عمران/);
+  assert.deepEqual((await act({ op: 'rings' }, 'g', K, 'fatima', null, o)).json, { ring: { code, from: 'عمران' } });
+  assert.deepEqual((await act({ op: 'rings' }, 'g', K, 'someone', null, o)).json, { ring: null });
+  const SDPx = 'v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\ns=-\r\n';
+  await act({ op: 'join', code, name: 'فاطمة', offer: SDPx }, 'g', K, 'fatima');
+  await act({ op: 'join', code, name: 'غريب', offer: SDPx }, 'g2', K, 'stranger');
+  const p = (await act({ op: 'pending', code, key }, 'h', K, null)).json.joins;
+  assert.deepEqual(p.map((j) => [j.name, !!j.inv]), [['فاطمة', true], ['غريب', false]], 'المدعوّة تُعلَّم، والباقون ينتظرون الموافقة');
+  await act({ op: 'ring-end' }, 'g', K, 'fatima', null, o);
+  assert.deepEqual((await act({ op: 'rings' }, 'g', K, 'fatima', null, o)).json, { ring: null });
+});
