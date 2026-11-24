@@ -14,6 +14,7 @@
      admit   { code, key, id, answer }       -> { ok }
      deny    { code, key, id }               -> { ok }
      close   { code, key }                   -> { ok }
+     (وجهات الاتّصال والمكالمات في talk-contacts.js، ومزامنة جهات الهاتف في talk-sync.js)
 
    التخزين: مفاتيح قصيرة العمر (ربع ساعة للغرفة تتجدّد مع الاستقبال، ثلاث دقائق للجواب). العرض والجواب يحملان عناوين شبكة
    الطرفين (هكذا يعمل WebRTC)، فيُمحيان بانتهاء العمر ولا يُطبعان أبدًا. الأوامر قليلة عمدًا (حدّ الباقة المجانيّة). */
@@ -58,6 +59,9 @@ async function act(body, ip, K, who, ice, cOpts) {
   // جهات الاتّصال والمكالمات (v-talk-contacts — api/_lib/talk-contacts.js)
   const cr = await require('./talk-contacts.js').contactsAct(b, ip, K, who, Object.assign({ ownsRoom: async (c, k) => { const r = /^\d{4}$/.test(c) ? await readRoom(K, c) : null; return !!(r && sameKey(r.k, k)); } }, cOpts || {}));
   if (cr) return cr;
+  // مزامنة جهات الهاتف (v-talk-contacts-sync — api/_lib/talk-sync.js): تذكرة الرفع المشفّر، ومطابقة البصمات
+  const sr = await require('./talk-sync.js').syncAct(b, ip, K, who, Object.assign({ overRate: (what) => overRate(K, ip, what) }, cOpts || {}));
+  if (sr) return sr;
 
   if (op === 'open') {
     if (!who) return bad('login', 401);
@@ -141,8 +145,9 @@ module.exports = async (req, res) => {
   const ip = String((req.headers && (req.headers['x-forwarded-for'] || req.headers['x-real-ip'])) || '').split(',')[0].trim().slice(0, 64);
   res.setHeader('Cache-Control', 'no-store');
   try {
-    const { sessionUser } = require('./_session.js');
-    const who = body && body.token ? sessionUser(body.token) : null;      // open وجهات الاتّصال تحتاجها، وjoin يعرف بها المدعوّ
+    const { sessionUser, sessionRevoked } = require('./_session.js');
+    // open وجهات الاتّصال تحتاجها، وjoin يعرف بها المدعوّ. رمز أقدم من تغيير كلمة المرور لا يُقبل (v-talk-contacts-sync: المطابقة والمزامنة بجلسة حيّة فقط)
+    const who = body && body.token && !(await sessionRevoked(body.token)) ? sessionUser(body.token) : null;
     const out = await act(body, ip, require('./kv.js'), who);
     res.status(out.status).json(out.json);
   } catch (e) {

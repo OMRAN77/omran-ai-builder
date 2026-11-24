@@ -8886,7 +8886,8 @@ var __chatsLastPull = 0;
    (٣) مسح المحادثات (الذاكرة وlocalStorage وIndexedDB كلّها بمخزن صورها) ومفضّلة الاستوديو والأزياء وصورة بطل الفيلم.
    الإعدادات والتعليمات والثيم تبقى (ليست محادثات ولا صورًا). يرجع false إن ألغى. */
 const LOGOUT_WIPE_KEYS = ['aiapp_projects', 'aiapp_projects_slim', 'aiapp_current_id', 'aiapp_provider_projects', 'aiapp_deleted_chats',
-  'aiapp_studio_favorites', 'aiapp_fashion_favorites', 'omran_hero_b64', 'omran_hero_mime'];
+  'aiapp_studio_favorites', 'aiapp_fashion_favorites', 'omran_hero_b64', 'omran_hero_mime',
+  'room-book', 'room-sync-ok', 'room-sync-pend']; // v-talk-contacts-sync: جهات الهاتف في «غرفة الربع» وموافقتها — في الآخر (‎.slice(5)‎ تعدّ ما بعد الخامس بيانات جهاز)
 /* v-audit-boot (cli-boot-5): صاحب بيانات الجهاز (اسمه بحروف صغيرة) — يُكتب حين تُحمَّل بيانات حساب، ويُزال بالخروج. خارج LOGOUT_WIPE_KEYS
    لأنّ وجوده وحده ليس «بيانات على الجهاز» تستدعي سؤال الخروج. */
 const DATA_OWNER_KEY = 'aiapp_data_owner';

@@ -34,6 +34,9 @@ function normalizePhone(raw) {
   return /^\+[1-9]\d{7,14}$/.test(s) ? s : null;
 }
 const maskPhone = (p) => String(p || '').replace(/^(\+\d{3})\d+(\d{2})$/, '$1•••••$2');
+/* v-talk-contacts-sync: بصمة الرقم (SHA-256 بالهيكس الصغير لنصّ E.164 كما يرجعه normalizePhone) — الدالّة نفسها في صفحة الغرفة
+   (crypto.subtle). فهرس db/phone-hash/<بصمة> = { username } يُكتب ويُمحى مع db/phone-index، ومطابقة جهات الهاتف تقرؤه وحده. */
+const phoneHash = (p) => crypto.createHash('sha256').update(String(p), 'utf8').digest('hex');
 
 const botName = () => String(process.env.TELEGRAM_BOT_USERNAME || 'OmranAIBuilder_bot').replace(/^@/, '').trim();
 const waNumber = () => String(process.env.WHATSAPP_NUMBER || '').replace(/\D/g, '');
@@ -117,7 +120,10 @@ async function complete(code, rawPhone, channel, o) {
     user.phone = phone;
     await auth.putUser(rec.username, user);
     await kvOf(o).kvPutJSON('db/phone-index/' + phone, { username: rec.username, at: Date.now() });
+    // v-talk-contacts-sync: فهرس البصمة بجانبه — أفضل جهد: فتح «جهات الاتّصال» يرمّمه (SETNX)، والمطابقة تشترط user.phone نفسه
+    try { await kvOf(o).kvPutJSON('db/phone-hash/' + phoneHash(phone), { username: rec.username }); } catch (e) { require('./_swallow.js').swallow({ message: 'hash index write failed' }, '_lib/phone-link:hash'); /* رسالة ثابتة: لا بصمة في السجلّ */ }
     if (old && old !== phone) { try { await kvOf(o).kvDel('db/phone-index/' + old); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/phone-link:120'); /* القديم يسقط وحده: phoneOwner يشترط user.phone نفسه */ } }
+    if (old && old !== phone) { try { await kvOf(o).kvDel('db/phone-hash/' + phoneHash(old)); } catch (e) { require('./_swallow.js').swallow({ message: 'old hash delete failed' }, '_lib/phone-link:hash-old'); /* بصمة القديم تسقط وحدها: المطابقة تشترط user.phone نفسه */ } }
     rec.status = 'linked'; await writeRec(c, rec, o);
     return { ok: true, purpose: 'link', status: 'linked' };
   }
@@ -186,4 +192,4 @@ function waMessages(payload) {
   return out;
 }
 
-module.exports = { CODE_TTL_SEC, CODE_RE, newCode, normalizePhone, maskPhone, channelReady, linkFor, prefill, start, complete, status, replyText, waSend, phoneOwner, verifyMetaSig, waMessages };
+module.exports = { CODE_TTL_SEC, CODE_RE, newCode, normalizePhone, maskPhone, phoneHash, channelReady, linkFor, prefill, start, complete, status, replyText, waSend, phoneOwner, verifyMetaSig, waMessages };

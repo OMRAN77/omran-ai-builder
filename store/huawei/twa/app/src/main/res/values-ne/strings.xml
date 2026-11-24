@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v-talk-contacts-sync: الإفصاح الأصليّ وبطاقة التقدّم (ContactsSyncActivity وجسر OmranContacts). -->
+<resources>
+    <string name="sync_title">तपाईंको फोनका सम्पर्कहरू</string>
+    <string name="sync_disclose">तपाईंका फोन सम्पर्कहरूमध्ये को-को एपमा हुनुहुन्छ भनेर देखाउन, om ai ले तपाईंको फोनका सम्पर्कहरूमा भएका नाम र नम्बरहरू पढ्छ। हरेक नम्बर फोनबाट एकतर्फी कोड (hash) का रूपमा मात्र बाहिर जान्छ, र त्यसलाई एपमा साथीहरू खोज्न प्रयोग गरिन्छ; यो न सेभ गरिन्छ न लगमा राखिन्छ। नामहरू तपाईंकै फोनमा रहन्छन्। तपाईं जुनसुकै बेला फोनको सेटिङमा गएर एपको सम्पर्क (Contacts) अनुमति हटाएर यो बन्द गर्न सक्नुहुन्छ।</string>
+    <string name="sync_allow">अनुमति दिनुहोस्</string>
+    <string name="sync_later">अहिले होइन</string>
+    <string name="sync_progress">तपाईंका सम्पर्कहरू पढ्दै…</string>
+</resources>

@@ -38,6 +38,8 @@ function singleKeys(key) {
     'db/stocks/pf/' + k + '.json', 'db/agentrun/' + k + '.json',
     'imghold:' + k, 'points:' + k,
     'media:image:' + k, 'media:video:' + k, 'media:maha:' + k, 'media:mix:' + k,
+    // v-talk-contacts-sync (ثغرة وجدتها المراجعة): جهات «غرفة الربع» (أرقام ناس آخرين) ومكالمته الواردة — بمفتاح talk-contacts.js نفسه
+    'talk/contacts/' + k, 'talk/ring/' + k,
   ];
 }
 /** بادئات مفاتيح متعدّدة باسمه (فيديوهات الباقة لكلّ فترة، مسوّدات البريد لكلّ رسالة). */
@@ -192,7 +194,7 @@ async function deleteAccount(input, o) {
      الاسم وقت كتابتها — فحذف حساب غيّر اسمه كان يترك محادثاته وذاكرته وتذكيراته (تصل إشعاراتها جهازه بعد الحذف) واشتراك إشعاراته تحت اسمه
      السابق، وفهرسَي بريده وهاتفه (وفيهما البريد والرقم). الآن لكلّ مفاتيحه المثبتة بشواهدها (ownerKeys أعلاه، الاسم المتروك لا يُعطى لغيره). */
   const removed = [];
-  const del = async (k) => { try { await kv.kvDel(k); removed.push(k); } catch (e) { console.error('[account-delete] del failed: ' + k.split(':')[0]); } };
+  const del = async (k) => { try { await kv.kvDel(k); removed.push(k); } catch (e) { console.error('[account-delete] del failed: ' + k.split(/[:/]/).slice(0, k.startsWith('db/') ? 2 : 1).join('/')); } }; // نوع المفتاح وحده: db/phone-index/<رقم> وdb/email-index/<بريد> كانا يُطبعان كاملين (v-talk-contacts-sync)
   for (const owner of keys) {
     for (const k of singleKeys(owner)) await del(k);
     for (const p of prefixKeys(owner)) {
@@ -213,6 +215,9 @@ async function deleteAccount(input, o) {
   const phone = String(user.phone || '').trim();
   if (phone) {
     try { const idx = await kv.kvGetJSON('db/phone-index/' + phone); if (idx && mine(idx.username)) await del('db/phone-index/' + phone); } catch (e) { typeof require === 'function' && require('./_swallow.js').swallow(e, '_lib/account-delete:111'); /* guard-ok — كما أعلاه */ }
+    // v-talk-contacts-sync: فهرس بصمة الرقم كفهرسه (المطابقة تشترط الحساب حيًّا، فالباقي بعطب لا يطابق أحدًا)
+    const hk = 'db/phone-hash/' + require('./phone-link.js').phoneHash(phone);
+    try { const hx = await kv.kvGetJSON(hk); if (hx && mine(hx.username)) { await kv.kvDel(hk); removed.push(hk); } /* لا del(): سجلّ فشله يطبع المفتاح وفيه البصمة */ } catch (e) { require('./_swallow.js').swallow({ message: 'hash index delete failed' }, '_lib/account-delete:hash'); /* guard-ok — رسالة ثابتة: لا بصمة في السجلّ */ }
   }
   // السجلّ: شاهد بلا بيانات — والاسم محجوز (v-name-reuse)
   await auth.putUser(key, { deleted: true, deletedAt: Number(opt.now) || Date.now(), selfDeleted: true });

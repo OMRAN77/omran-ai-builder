@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v-talk-contacts-sync: الإفصاح الأصليّ وبطاقة التقدّم (ContactsSyncActivity وجسر OmranContacts). -->
+<resources>
+    <string name="sync_title">Mga contact sa phone mo</string>
+    <string name="sync_disclose">Para makita kung sino sa mga contact sa phone mo ang nasa app, binabasa ng om ai ang mga pangalan at numero sa mga contact ng phone mo. Umaalis lang sa phone mo ang bawat numero bilang one-way code (isang hash) na ginagamit para mahanap ang barkada mo sa app; hindi ito sine-save o nire-record. Nananatili sa phone mo ang mga pangalan. Puwede mo itong i-off anumang oras sa pamamagitan ng pag-alis ng pahintulot ng app sa Mga Contact sa settings ng phone mo.</string>
+    <string name="sync_allow">Payagan</string>
+    <string name="sync_later">Hindi muna</string>
+    <string name="sync_progress">Binabasa ang mga contact mo…</string>
+</resources>

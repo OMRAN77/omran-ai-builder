@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v-talk-contacts-sync: الإفصاح الأصليّ وبطاقة التقدّم (ContactsSyncActivity وجسر OmranContacts). -->
+<resources>
+    <string name="sync_title">Telefonundaki kişiler</string>
+    <string name="sync_disclose">Telefon rehberindeki kişilerden hangilerinin uygulamada olduğunu göstermek için om ai, rehberindeki adları ve numaraları okur. Her numara telefondan yalnızca tek yönlü bir kod (hash) olarak çıkar ve arkadaşlarını uygulamada bulmak için kullanılır; saklanmaz ve günlüklere kaydedilmez. Adlar telefonunda kalır. Bunu istediğin zaman kapatabilirsin: telefonunun ayarlarından uygulamanın Kişiler iznini kaldırman yeterli.</string>
+    <string name="sync_allow">İzin ver</string>
+    <string name="sync_later">Şimdi değil</string>
+    <string name="sync_progress">Kişiler okunuyor…</string>
+</resources>
