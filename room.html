@@ -157,6 +157,11 @@ li.ask { border-color: var(--gold); }
   var facing = 'user', camCount = 0, flipping = false;   // v-talk-room-flip: front ('user') or back ('environment'); how many cameras the device has
   var gv = [], gstreams = [], slots = [];   // guest: its three video lines (0: own camera ↔ the owner's, 1-2: the other guests through the owner), what arrives on each, and who is on which
   var stamps = new Map();     // host: guest id -> recent message times (5 in 4 seconds at most)
+  // v-talk-room-sfu: a paid room (sub/own) shows every camera to everyone through the SFU — two links per person (out: its own camera, in: everyone
+  // else's); the voices stay on the owner's mix over the star links. sfu is null on the star relay, and any SFU failure brings this person back to it.
+  var sfu = null, sfuS = '', sfuMap = [];   // this person's SFU state; guest: its pass from the owner (admit's s) and the owner's last camera map
+  var sfuGen = 0;             // this person's next push generation (g): every push gets a new track name, never the old one again on the same SFU session
+  var vmap = new Map();       // host: id -> { sid, tn, on } — who sends which picture to the SFU ('host' too)
   // v-talk-room-plan: the owner's plan, as the server says (free: an hour a day and 4 people; subscribed with points: 10 and no limit).
   // cap: how many may be in this room (MAX stays the ceiling); roomLeft: the free seconds left when open/plan answered, at roomLeftAt
   var plan = null, cap = MAX, roomPlan = '', roomLeft = null, roomLeftAt = 0, timeUp = false, quote = null, noPoints = false, planBusy = false;
@@ -178,7 +183,7 @@ li.ask { border-color: var(--gold); }
     }
     return icePromise;
   }
-  function gathered(pc) { return new Promise(function (res) { if (pc.iceGatheringState === 'complete') { res(); return; } var t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); }); }
+  function gathered(pc, ms) { return new Promise(function (res) { if (pc.iceGatheringState === 'complete') { res(); return; } var t = setTimeout(res, ms || 2500); pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); }); }
 
   // ---- voices (as in the game: every link carries a silent voice line; the host sends each guest a mix without that guest)
   function hear(id, stream) {
@@ -260,8 +265,10 @@ li.ask { border-color: var(--gold); }
       .then(function (r) { flipping = false; draw(); return r; });
   }
   function afterCam() {
+    var viaSfu = typeof sfu === 'object' && !!sfu && sfu.live;      // (typeof: the camera code also runs alone in tests/room-flip)
     if (role === 'host') revideo();
-    else if (role === 'guest' || gv.length) { if (gv[0]) gv[0].sender.replaceTrack(camTrack()).catch(function () {}); toHost({ t: 'cam', on: camOn }); }
+    else if (role === 'guest' || gv.length) { if (gv[0]) gv[0].sender.replaceTrack(viaSfu ? null : camTrack()).catch(function () {}); toHost({ t: 'cam', on: camOn }); }
+    if (viaSfu) sfuCam();
     draw(); drawVids();
   }
   /** Owner: the two other guests that guest gid sees — the camera-on guests that come after it in join order, wrapping round, so every
@@ -274,7 +281,12 @@ li.ask { border-color: var(--gold); }
   /** Owner: put the right picture on every guest's lines, and tell each guest who is on which. */
   function revideo() {
     if (role !== 'host') return;
-    var guests = [], byId = new Map(); peers.forEach(function (p, id) { if (p.vtx && p.vtx.length) { guests.push({ id: id, p: p }); byId.set(id, p); } });
+    var viaSfu = !!(sfu && sfu.live), guests = [], byId = new Map();
+    peers.forEach(function (p, id) {
+      if (!(p.vtx && p.vtx.length)) return;
+      if (viaSfu && p.sfuLive) { p.vtx.forEach(function (t) { t.sender.replaceTrack(null).catch(function () {}); }); return; }      // this guest sees everyone through the SFU: its star video lines stay negotiated (the way back), empty
+      guests.push({ id: id, p: p }); byId.set(id, p);
+    });
     var ids = guests.map(function (g) { return g.id; }), camIsOn = function (id) { var p = byId.get(id); return !!(p.cam && p.vtrack); };
     guests.forEach(function (g) {
       // the owner's own picture always comes first; then two others, taken in turn (v-talk-room-10)
@@ -315,13 +327,201 @@ li.ask { border-color: var(--gold); }
     return t.el;
   }
   function drawVids() {
-    var box = $('vids'), want = [];
+    var box = $('vids'), want = [], viaSfu = typeof sfu === 'object' && !!sfu && sfu.live;      // (typeof: as in afterCam)
     if (camOn && cam) { want.push(tile('me', T.me, cam, true)); tiles.get('me').el.classList.toggle('back', facing === 'environment'); }      // own picture mirrored for the front camera only
-    if (role === 'host') peers.forEach(function (p, id) { if (p.cam && p.vstream) want.push(tile(id, p.name, p.vstream)); });
-    else if (role === 'guest') slots.forEach(function (sl, i) { if (sl && sl.on && gstreams[i]) want.push(tile('s' + i, cleanName(sl.name), gstreams[i])); });      // keyed by the line, not the person: a turn that changes who is on it keeps the same video (no black flash), only the name changes
+    if (viaSfu) Object.keys(sfu.streams).forEach(function (id) { want.push(tile('f' + id, cleanName(sfu.names[id], id === 'host' ? T.owner : T.guest), sfu.streams[id])); });      // keyed by the person: one SFU picture each
+    if (role === 'host') peers.forEach(function (p, id) { if (p.cam && p.vstream && !(viaSfu && p.sfuLive)) want.push(tile(id, p.name, p.vstream)); });
+    else if (role === 'guest' && !viaSfu) slots.forEach(function (sl, i) { if (sl && sl.on && gstreams[i]) want.push(tile('s' + i, cleanName(sl.name), gstreams[i])); });      // keyed by the line, not the person: a turn that changes who is on it keeps the same video (no black flash), only the name changes
     tiles.forEach(function (t, k) { if (want.indexOf(t.el) < 0) { t.video.srcObject = null; t.el.remove(); tiles.delete(k); } });
     want.forEach(function (el) { if (el.parentNode !== box) box.appendChild(el); });
     box.hidden = !want.length;
+  }
+
+  // ---- the SFU (v-talk-room-sfu): the site drives the SFU sessions (sfu-* ops, its secret never leaves it); the page does the WebRTC part.
+  // Out: one sendonly line with this person's camera. In: everyone else's pictures, pulled by the owner's camera map. No trickle: the
+  // description goes once its candidates are gathered (2 s at most). Every step on a link waits for the one before (sfuDo).
+  var SFU_SID = /^[0-9a-zA-Z_-]{8,64}$/, SFU_S = /^[0-9a-f]{32}$/;
+  function paidRoom() { return roomPlan === 'sub' || roomPlan === 'own'; }
+  function sfuSdp(x) { return typeof x === 'string' && x.slice(0, 3) === 'v=0' && x.length <= 48000; }
+  /** A picture in the map is that member's own: its track name is the room's stamp, '-' + its id, '-' + the push generation (the site forces
+   *  the name so). g given: that generation exactly (the name of this person's own push). */
+  function sfuTnOk(tn, id, g) {
+    var m = typeof tn === 'string' && tn.length <= 80 ? /^([a-z0-9]+)-([a-z0-9]+)-(\d{1,4})$/i.exec(tn) : null;
+    return !!m && !!id && m[2] === String(id) && (g == null || m[3] === String(g));
+  }
+  function sfuCall(op, extra) {
+    var b = role === 'host' ? { op: op, code: code, key: key } : { op: op, code: code, id: myId, s: sfuS };
+    for (var k in extra) b[k] = extra[k];
+    return call(b).then(function (r) { if (r.error) throw new Error('sfu'); return r; });
+  }
+  function sfuDo(l, fn) { var p = l.q.then(fn); l.q = p.catch(function () { /* the step's own caller falls back to the relay */ }); return p; }
+  function sfuLink(s, ice) {
+    var l = { pc: new RTCPeerConnection({ bundlePolicy: 'max-bundle', iceServers: ice }), sid: '', st: '', q: Promise.resolve() };
+    l.pc.onconnectionstatechange = function () { if (l.pc.connectionState === 'failed') sfuFail(s); };
+    return l;
+  }
+  /** The link is up (or failed, or ms passed): the SFU knows a pushed picture only once its link is connected, so the others are told then. */
+  function sfuUp(pc, ms) { return new Promise(function (res) { if (pc.connectionState === 'connected') { res(); return; } var t = setTimeout(res, ms); pc.addEventListener('connectionstatechange', function () { if (pc.connectionState === 'connected' || pc.connectionState === 'failed') { clearTimeout(t); res(); } }); }); }
+  function sfuNew(l) { return sfuCall('sfu-new', {}).then(function (r) { if (typeof r.sid !== 'string' || !SFU_SID.test(r.sid) || typeof r.st !== 'string' || !r.st) throw new Error('sfu'); l.sid = r.sid; l.st = r.st; }); }
+  /** Into SFU mode: the owner after opening a paid room, a guest after the owner's {t:'sfu', s}. Off on the site, or anything failing: the relay. */
+  function sfuStart() {
+    if (sfu || !(role === 'host' ? paidRoom() : role === 'guest' && sfuS)) return;
+    var s = sfu = { live: false, out: null, inn: null, tx: null, tn: '', got: Object.create(null), byMid: Object.create(null), streams: Object.create(null), names: Object.create(null), list: [], tries: 0, againT: null };
+    sfuCall('sfu-on', {}).then(function (r) {
+      if (sfu !== s) return null;
+      if (!r.on) { sfu = null; return null; }      // no SFU on the site: the relay, as before
+      var ice = Array.isArray(r.ice) && r.ice.length ? r.ice : [{ urls: 'stun:stun.cloudflare.com:3478' }];
+      s.out = sfuLink(s, ice); s.inn = sfuLink(s, ice);
+      s.inn.pc.ontrack = function (ev) { sfuTrack(s, ev); };
+      return Promise.all([sfuNew(s.out), sfuNew(s.inn)]).then(function () {
+        if (sfu !== s) return;
+        s.live = true;
+        if (role === 'host') { revideo(); peers.forEach(function (p, id) { sfuGive(id); }); }
+        else if (gv[0]) gv[0].sender.replaceTrack(null).catch(function () {});      // the star line stays negotiated (the way back), empty
+        sfuTell(s);
+        if (role !== 'host') sfuSync(sfuMap);
+        sfuCam(); drawVids();
+      });
+    }).catch(function () { sfuFail(s); });
+  }
+  function sfuFail(s) { if (sfu === s) sfuStop(true, false); }      // silent: the room goes on over the relay
+  /** Back to the relay: the SFU links closed, the star video lines fed again. tell: the owner sends every guest back too, a guest tells the
+   *  owner it is on the relay. bye: also ask the SFU to drop this person's pictures (leaving; not waited for). Voices are not touched. */
+  function sfuStop(tell, bye) {
+    var s = sfu; if (!s) return;
+    sfu = null;
+    if (s.againT) { clearTimeout(s.againT); s.againT = null; }
+    if (bye && s.out && s.out.sid && s.tx && s.tx.mid) sfuCall('sfu-close', { sid: s.out.sid, st: s.out.st, mids: [s.tx.mid] }).catch(function () { /* the SFU ends it with the link */ });
+    if (bye && s.inn && s.inn.sid && Object.keys(s.byMid).length) sfuCall('sfu-close', { sid: s.inn.sid, st: s.inn.st, mids: Object.keys(s.byMid).slice(0, 12) }).catch(function () { /* the same */ });
+    [s.out, s.inn].forEach(function (l) { if (l) { try { l.pc.close(); } catch (e) { /* already closed */ } } });
+    if (role === 'host') { vmap.clear(); peers.forEach(function (p) { p.sfuLive = false; }); if (tell) toAll({ t: 'sfu', on: false }); revideo(); }
+    else { if (gv[0]) gv[0].sender.replaceTrack(camTrack()).catch(function () {}); if (tell) toHost({ t: 'sfu', on: false, relay: true }); }
+    drawVids();
+  }
+  /** Own camera news: the owner puts it in its map, a guest tells the owner ({tn, sid, on:true} pushed, {on:false} on the SFU without one). */
+  function sfuTell(s) {
+    if (role === 'host') { vmap.set('host', { sid: s.tx ? s.out.sid : '', tn: s.tx ? s.tn : '', on: !!s.tx }); sfuMapOut(); }
+    else toHost(s.tx ? { t: 'sfu', tn: s.tn, sid: s.out.sid, on: true } : { t: 'sfu', on: false });
+  }
+  /** This person's camera on the SFU as it is now: pushed once (sendonly, 300 kbps at most); a flip only swaps the picture on the same line;
+   *  off closes it (the SFU drops a track with no packets after 30 s, so on again is a new push, under the next generation's name). */
+  function sfuCam() {
+    var s = sfu; if (!s || !s.live) return;
+    sfuDo(s.out, function () {
+      if (sfu !== s) return null;
+      var tr = camTrack();
+      if (tr && s.tx) return s.tx.sender.replaceTrack(tr);
+      if (tr) return sfuPush(s, tr);
+      if (!s.tx) return null;
+      var mid = s.tx.mid;
+      s.tx.sender.replaceTrack(null).catch(function () {});
+      try { s.tx.stop(); } catch (e) { /* an older browser: the empty sender is enough */ }
+      s.tx = null; s.tn = ''; sfuTell(s);
+      return sfuCall('sfu-close', { sid: s.out.sid, st: s.out.st, mids: [mid] });
+    }).catch(function () { sfuFail(s); });
+  }
+  /** A push under a new generation (camera on again, or a push after one that failed): a track name used before on the same SFU session is
+   *  not pushed again (Cloudflare's own rooms name each push participant-generation-kind). */
+  function sfuPush(s, tr) {
+    var pc = s.out.pc, tx = pc.addTransceiver(tr, { direction: 'sendonly', sendEncodings: [{ maxBitrate: 300000 }] }), g = sfuGen;
+    sfuGen = (sfuGen + 1) % 10000;
+    return pc.createOffer().then(function (o) { return pc.setLocalDescription(o); }).then(function () { return gathered(pc, 2000); })
+      .then(function () { return sfuCall('sfu-push', { sid: s.out.sid, st: s.out.st, offer: pc.localDescription.sdp, mid: tx.mid, g: g }); })
+      .then(function (r) {
+        if (sfu !== s) return null;
+        if (!sfuSdp(r.answer) || !sfuTnOk(r.tn, myId, g)) throw new Error('sfu');
+        return pc.setRemoteDescription({ type: 'answer', sdp: r.answer }).then(function () { s.tx = tx; s.tn = r.tn; return sfuUp(pc, 5000); })
+          .then(function () { if (sfu === s && s.tx === tx) sfuTell(s); });      // pulled before its link is up, the picture fails for everyone
+      });
+  }
+  /** Everyone: the owner's camera map against what this person pulls already — new pictures in one pull, the ones gone or off closed. */
+  function sfuSync(list) {
+    var s = sfu; if (!s || !s.live) return;
+    var want = Object.create(null), add = [], gone = [];
+    s.list = list;
+    list.forEach(function (e) { s.names[e.id] = e.name; if (e.on && e.id !== myId && SFU_SID.test(e.sid) && sfuTnOk(e.tn, e.id)) want[e.id] = e; });
+    Object.keys(s.got).forEach(function (id) {
+      var g = s.got[id], w = want[id];
+      if (w && w.sid === g.sid && w.tn === g.tn) return;
+      if (g.mid) { gone.push(g.mid); delete s.byMid[g.mid]; }
+      delete s.got[id]; delete s.streams[id];
+    });
+    Object.keys(want).forEach(function (id) { if (!s.got[id] && add.length < 12) { add.push(want[id]); s.got[id] = { sid: want[id].sid, tn: want[id].tn, mid: '' }; } });
+    if (gone.length) sfuDo(s.inn, function () { return sfu === s ? sfuCall('sfu-close', { sid: s.inn.sid, st: s.inn.st, mids: gone.slice(0, 12) }) : null; }).catch(function () { sfuFail(s); });
+    if (add.length) sfuDo(s.inn, function () { return sfu === s ? sfuPull(s, add) : null; }).catch(function () { sfuFail(s); });
+    drawVids();
+  }
+  /** One pull for the new pictures; the SFU's offer is answered through sfu-reneg. Each answer's mid says whose picture comes on it. */
+  function sfuPull(s, add) {
+    var pc = s.inn.pc;
+    return sfuCall('sfu-pull', { sid: s.inn.sid, st: s.inn.st, tracks: add.map(function (e) { return { sid: e.sid, tn: e.tn }; }) }).then(function (r) {
+      if (sfu !== s) return null;
+      var stray = [], missed = false;
+      add.forEach(function (e) {
+        var t = (Array.isArray(r.tracks) ? r.tracks : []).filter(function (x) { return x && x.tn === e.tn && x.sid === e.sid; })[0];
+        var mid = t && !t.error && typeof t.mid === 'string' && t.mid.length <= 16 ? t.mid : '', g = s.got[e.id], mine = !!g && g.sid === e.sid && g.tn === e.tn && !g.mid;
+        if (!mid) { if (mine) { delete s.got[e.id]; missed = true; } return; }      // this picture failed (or is missing): asked again (sfuAgain, and on the next map)
+        if (mine) { g.mid = mid; s.byMid[mid] = e.id; } else stray.push(mid);      // left the map while the pull was out
+      });
+      if (missed) sfuAgain(s); else s.tries = 0;
+      var done = function () { sfuBind(s); return stray.length && sfu === s ? sfuCall('sfu-close', { sid: s.inn.sid, st: s.inn.st, mids: stray.slice(0, 12) }) : null; };
+      if (!r.renegotiate) return done();
+      if (!sfuSdp(r.offer)) throw new Error('sfu');
+      return pc.setRemoteDescription({ type: 'offer', sdp: r.offer }).then(function () { return pc.createAnswer(); }).then(function (a) { return pc.setLocalDescription(a); })
+        .then(function () { return gathered(pc, 2000); })
+        .then(function () { return sfu === s ? sfuCall('sfu-reneg', { sid: s.inn.sid, st: s.inn.st, answer: pc.localDescription.sdp }) : null; })
+        .then(done);
+    });
+  }
+  /** A failed picture is asked again after 3 s (three times in a row at most; a pull that works resets the count). */
+  function sfuAgain(s) {
+    if (s.againT || s.tries >= 3) return;
+    s.tries++;
+    s.againT = setTimeout(function () { s.againT = null; if (sfu === s) sfuSync(s.list); }, 3000);
+  }
+  /** Every pulled mid to its member's tile from the line itself: a line the SFU used before gets no new ontrack when it carries a new picture. */
+  function sfuBind(s) {
+    if (sfu !== s) return;
+    s.inn.pc.getTransceivers().forEach(function (t) {
+      var id = t.mid != null ? s.byMid[t.mid] : null, tr = t.receiver && t.receiver.track;
+      if (id && !s.streams[id] && tr && tr.kind === 'video') s.streams[id] = new MediaStream([tr]);
+    });
+    drawVids();
+  }
+  function sfuTrack(s, ev) {
+    var id = ev.transceiver ? s.byMid[ev.transceiver.mid] : null;
+    if (sfu !== s || !id || !ev.track || ev.track.kind !== 'video') return;
+    s.streams[id] = new MediaStream([ev.track]); drawVids();
+  }
+  /** Owner: a guest's SFU pass (admit's answer) goes to it over the room link, once the owner is on the SFU and the link is open. */
+  function sfuGive(id) { var p = peers.get(id); if (role === 'host' && sfu && sfu.live && p && p.sfuS) send(p.dc, { t: 'sfu', s: p.sfuS, on: true }); }
+  /** Owner: a guest's SFU news — {tn, sid, on:true} its camera is on the SFU, {on:false} it is on the SFU without one, {relay:true} it went back
+   *  to the relay. The track name must end with '-' + that guest's own id + '-' + its push generation, so nobody can put its picture under
+   *  another's name; a new generation from the same guest replaces its entry (everyone pulls the new name, closes the old line, same tile). */
+  function sfuFrom(id, m) {
+    var p = peers.get(id); if (role !== 'host' || !sfu || !sfu.live || !p) return;
+    var was = vmap.get(id);
+    if (!m.relay && was && p.sfuLive && was.on === !!m.on && (!m.on || (was.sid === m.sid && was.tn === m.tn))) return;      // nothing new: no map, no pulls (a guest repeating itself cannot make everyone pull)
+    if (m.relay) { p.sfuLive = false; vmap.delete(id); }
+    else if (m.on) { if (typeof m.sid !== 'string' || !SFU_SID.test(m.sid) || !sfuTnOk(m.tn, id)) return; p.sfuLive = true; vmap.set(id, { sid: m.sid, tn: m.tn, on: true }); }
+    else { p.sfuLive = true; vmap.set(id, { sid: '', tn: '', on: false }); }
+    revideo(); sfuMapOut();
+  }
+  /** Owner: the camera map to every guest (and to itself) — who sends which picture, with the names. */
+  function sfuMapOut() {
+    if (role !== 'host' || !sfu || !sfu.live) return;
+    var list = [];
+    vmap.forEach(function (e, id) { var p = peers.get(id); if (id === 'host' || p) list.push({ id: id, name: id === 'host' ? myName || T.owner : p.name, sid: e.sid, tn: e.tn, on: e.on }); });
+    toAll({ t: 'vmap', list: list }); sfuSync(list);
+  }
+  /** Guest: the owner's word — {s, on:true} this room shows every camera through the SFU (with this guest's pass); {on:false} back to the relay. */
+  function sfuHost(m) {
+    if (m.on && typeof m.s === 'string' && SFU_S.test(m.s)) { sfuS = m.s; sfuStart(); }
+    else if (!m.on) { sfuS = ''; sfuMap = []; sfuStop(false, false); }
+  }
+  function sfuClean(list) {
+    return list.slice(0, MAX).filter(function (x) { return x && typeof x === 'object'; })
+      .map(function (x) { return { id: String(x.id || ''), name: cleanName(x.name), sid: String(x.sid || ''), tn: String(x.tn || ''), on: !!x.on }; });
   }
 
   // ---- the chat
@@ -365,6 +565,7 @@ li.ask { border-color: var(--gold); }
       clearInterval(pollT); pollT = setInterval(poll, 3500); quiet = 0;
       history.replaceState(null, '', location.pathname + '?c=' + code + (q ? '&lang=' + q : ''));
       draw();
+      if (typeof sfuStart === 'function') sfuStart();      // a paid room: every camera through the SFU (typeof: tests/room-plan runs this alone)
     }).catch(function () { busy = ''; error = T.offline; draw(); });
   }
   function poll() {
@@ -374,7 +575,7 @@ li.ask { border-color: var(--gold); }
       if (r.error === 'no-room') { clearInterval(pollT); error = T.noRoom; draw(); return; }
       if (r.timeUp) { endFree(); return; }
       var lapsed = role === 'host' && r.plan === 'free' && roomPlan !== 'free';      // the subscription lapsed mid-room: the free cap for new admits only (nobody is removed); not from a late answer after the room closed
-      if (lapsed) { roomPlan = 'free'; if (r.cap) cap = capOf(r.cap); }
+      if (lapsed) { roomPlan = 'free'; if (r.cap) cap = capOf(r.cap); if (typeof sfuStop === 'function') sfuStop(true, false); }      // a free room: everyone back on the relay
       if (roomPlan === 'free' && typeof r.left === 'number') { roomLeft = Math.max(0, r.left); roomLeftAt = Date.now(); }      // keep ticks carry today's free seconds left
       else if (lapsed) loadPlan();
       if (lapsed) draw();
@@ -396,8 +597,8 @@ li.ask { border-color: var(--gold); }
     };
     pc.ondatachannel = function (ev) {
       p.dc = ev.channel;
-      p.dc.onopen = function () { send(p.dc, { t: 'welcome', id: id, host: myName || T.owner }); tellRoster(); revideo(); say('', fmt(T.joined, p.name), false, true); draw(); };
-      p.dc.onmessage = function (e) { var m = null; try { m = JSON.parse(e.data); } catch (err) { m = null; } if (!m) return; if (m.t === 'chat' || m.t === 'emo') fromAnyone(m, id); else if (m.t === 'cam') { p.cam = !!m.on; revideo(); } };
+      p.dc.onopen = function () { send(p.dc, { t: 'welcome', id: id, host: myName || T.owner }); tellRoster(); revideo(); sfuGive(id); sfuMapOut(); say('', fmt(T.joined, p.name), false, true); draw(); };
+      p.dc.onmessage = function (e) { var m = null; try { m = JSON.parse(e.data); } catch (err) { m = null; } if (!m) return; if (m.t === 'chat' || m.t === 'emo') fromAnyone(m, id); else if (m.t === 'cam') { p.cam = !!m.on; revideo(); } else if (m.t === 'sfu') sfuFrom(id, m); };
       p.dc.onclose = function () { drop(id, false); };
     };
     pc.onconnectionstatechange = function () { if (pc.connectionState === 'failed' || pc.connectionState === 'closed') drop(id, false); };
@@ -409,7 +610,7 @@ li.ask { border-color: var(--gold); }
       return pc.createAnswer();
     }).then(function (a) { return pc.setLocalDescription(a); }).then(function () { return gathered(pc); })
       .then(function () { return call({ op: 'admit', code: code, key: key, id: id, answer: pc.localDescription.sdp }); })
-      .then(function () { remix(); draw(); })
+      .then(function (r) { p.sfuS = r && typeof r.s === 'string' && SFU_S.test(r.s) ? r.s : ''; sfuGive(id); remix(); draw(); })      // s: this guest's SFU pass (paid rooms only)
       .catch(function () { drop(id, false); error = T.failed; draw(); });
     draw();
   }
@@ -418,12 +619,15 @@ li.ask { border-color: var(--gold); }
     var p = peers.get(id); if (!p) return;
     peers.delete(id);
     if (kicked) send(p.dc, { t: 'kick' });
+    if (kicked && p.sfuS) sfuCall('sfu-gone', { id: id }).catch(function () { /* the pass ends with the room (a quarter of an hour at most) */ });      // the removed guest's SFU pass stops working
+    vmap.delete(id);
     setTimeout(function () { try { p.pc.close(); } catch (e) { /* closed */ } }, kicked ? 300 : 0);
     gone(id);
-    if (role === 'host') { tellRoster(); say('', fmt(T.left, p.name), false, true); revideo(); }
+    if (role === 'host') { tellRoster(); say('', fmt(T.left, p.name), false, true); revideo(); sfuMapOut(); }
     draw(); drawVids();
   }
   function closeRoom() {
+    if (typeof sfuStop === 'function') sfuStop(false, false);      // the SFU links go with the room (typeof: as in host)
     peers.forEach(function (p, id) { drop(id, false); });
     clearInterval(pollT); if (code) call({ op: 'close', code: code, key: key }).catch(function () {});
     setMic(false); setCam(false); role = null; code = ''; key = ''; asks = []; lines = [];
@@ -562,8 +766,11 @@ li.ask { border-color: var(--gold); }
     else if (m.t === 'chat' || m.t === 'emo') fromAnyone(m, 'host');
     else if (m.t === 'vslots' && Array.isArray(m.list)) { slots = m.list.slice(0, 3).map(function (x) { return x && typeof x === 'object' ? { id: String(x.id || ''), name: cleanName(x.name), on: !!x.on } : null; }); drawVids(); }
     else if (m.t === 'kick') left(T.kicked);
+    else if (m.t === 'sfu') sfuHost(m);
+    else if (m.t === 'vmap' && Array.isArray(m.list)) { sfuMap = sfuClean(m.list); sfuSync(sfuMap); }
   }
   function left(text) {
+    sfuStop(false, true); sfuS = ''; sfuMap = [];      // own SFU links closed (and the SFU asked to drop them)
     var h = peers.get('host'); peers.clear(); if (h) { try { h.pc.close(); } catch (e) { /* closed */ } }
     heard.forEach(function (v, id) { gone(id); }); setMic(false);
     gv = []; gstreams = []; slots = []; setCam(false);
