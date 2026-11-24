@@ -40,11 +40,12 @@ function singleKeys(key) {
     'media:image:' + k, 'media:video:' + k, 'media:maha:' + k, 'media:mix:' + k,
     // v-talk-contacts-sync (ثغرة وجدتها المراجعة): جهات «غرفة الربع» (أرقام ناس آخرين) ومكالمته الواردة — بمفتاح talk-contacts.js نفسه
     'talk/contacts/' + k, 'talk/ring/' + k,
+    'talk/sub/' + k, // v-talk-room-plan: اشتراك الغرفة (بمفتاح talk-plan.js نفسه)
   ];
 }
-/** بادئات مفاتيح متعدّدة باسمه (فيديوهات الباقة لكلّ فترة، مسوّدات البريد لكلّ رسالة). */
+/** بادئات مفاتيح متعدّدة باسمه (فيديوهات الباقة لكلّ فترة، مسوّدات البريد لكلّ رسالة، ثواني الغرفة المجّانيّة لكلّ يوم). */
 function prefixKeys(key) {
-  return ['planvid:' + n(key) + ':', 'emaildraft:' + String(key).trim().toLowerCase() + ':'];
+  return ['planvid:' + n(key) + ':', 'emaildraft:' + String(key).trim().toLowerCase() + ':', 'talk/free/' + n(key) + '/'];
 }
 /* v-lock-r2 (userdata-6): بادئة المسوّدات بالاسم خامًا و«:» مسموحة في الاسم — فحذف «bob» كان يسرد emaildraft:bob:work:<رسالة> ويمحو مسوّدات
    الحساب الحيّ «bob:work». معرّف الرسالة بلا «:» (MSG_ID في email-list.js)، فما بقي بعد البادئة وفيه «:» ليس لهذا الاسم. */

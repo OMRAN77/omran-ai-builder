@@ -8,8 +8,10 @@
 const STUN = [{ urls: 'stun:stun.l.google.com:19302' }];
 const TTL = 4 * 3600;
 
-/** ICE servers for one room: Cloudflare TURN when configured and under today's cap, else STUN only. Never throws. */
-async function iceServers(K) {
+/** ICE servers for one room: Cloudflare TURN when configured and under today's cap, else STUN only. Never throws.
+    ttlSec اختياريّ (v-talk-room-plan): عمر أقصر للبيانات — غرفة مجّانيّة تعطي ما بقي من ساعة يومها؛ لا يتجاوز TTL. */
+async function iceServers(K, ttlSec) {
+  const ttl = Number.isFinite(ttlSec) && ttlSec > 0 ? Math.max(60, Math.min(TTL, Math.trunc(ttlSec))) : TTL;
   const keyId = String(process.env.CLOUDFLARE_TURN_KEY_ID || '').trim(), token = String(process.env.CLOUDFLARE_TURN_API_TOKEN || '').trim();
   if (!keyId || !token || !/^[A-Za-z0-9_-]{8,80}$/.test(keyId)) return { iceServers: STUN, relay: false };
   try {
@@ -19,7 +21,7 @@ async function iceServers(K) {
     if (n === 1) await K.kvExpire(dayKey, 2 * 86400);
     if (n > cap) return { iceServers: STUN, relay: false, capped: true };
     const r = await fetch('https://rtc.live.cloudflare.com/v1/turn/keys/' + keyId + '/credentials/generate-ice-servers', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: TTL }),
+      method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl }),
     });
     if (!r.ok) return { iceServers: STUN, relay: false };
     const j = await r.json().catch(() => null);
