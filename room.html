@@ -9,7 +9,7 @@
 <!-- v-talk-room (المالك ٢٣ نوفمبر: «اريده اتصال نفس الي في اللعبه… مافيها اي تكلفه»): «غرفة الربع» — صوت وكتابة ووجوه بين الناس.
      طريقة «عالم المكعبات» نفسها: المتصفّحات تتّصل ببعض مباشرة (WebRTC)، والموقع (/api/system?action=room) يعرّفهم فقط.
      صاحب الغرفة (بحسابه) يأخذ كودًا ورابطًا (‎/room?c=1234‎)، والضيف بلا حساب يطلب الدخول وصاحب الغرفة يدخّله أو يرفضه.
-     حتّى ٤ (صاحب الغرفة يوزّع الصوت). لا شيء يُسجَّل ولا يُحفظ. عربيّ وإنجليزيّ حسب لغة الجهاز (‎?lang=en). -->
+     حتّى ١٠ (صاحب الغرفة يوزّع الصوت، ويمرّر لكلّ ضيف صورتين غير صورته — v-talk-room-10). لا شيء يُسجَّل ولا يُحفظ. عربيّ وإنجليزيّ حسب لغة الجهاز (‎?lang=en). -->
 <link rel="icon" type="image/png" href="/icons/favicon-32-v2.png?icon=black-20261022">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=black-20261022">
 <style>
@@ -47,7 +47,7 @@ li.ask { border-color: var(--gold); }
 .faces button { font-size: 22px; padding: 0 9px; min-height: 40px; background: #1b1d24; color: inherit; }
 .err { color: #ffb0a6; min-height: 20px; font-size: 14px; text-align: center; margin: 0; }
 .note { color: var(--muted); font-size: 12.5px; line-height: 1.6; text-align: center; margin: 6px 0 0; }
-.vids { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 0 0 12px; }
+.vids { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 0 0 12px; }
 .vids[hidden] { display: none !important; }
 .tile { position: relative; border-radius: 14px; overflow: hidden; background: #000; border: 1px solid var(--line); aspect-ratio: 4 / 3; }
 .tile video { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -69,7 +69,7 @@ li.ask { border-color: var(--gold); }
 <script>
 (function () {
   'use strict';
-  var API = '/api/system?action=room', RTC = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }, MAX = 4, MAX_LINE = 300;
+  var API = '/api/system?action=room', RTC = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }, MAX = 10, MAX_LINE = 300;      // v-talk-room-10: عشرة في الغرفة
   var search = location.search;
   var q = (search.match(/[?&]lang=(\w+)/) || [])[1];
   var en = q ? q === 'en' : !/^ar\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || 'ar');
@@ -80,7 +80,7 @@ li.ask { border-color: var(--gold); }
     shareIt: 'Send this code or link to your friends:', share: 'Send the link', copied: 'Link copied.', wa: 'WhatsApp',
     wants: 'wants to join', admit: 'Let in', deny: 'Refuse', kick: 'Remove', you: 'you', owner: 'room owner', guest: 'guest', connecting: 'connecting…',
     nobody: 'Nobody here yet.', micOn: 'Microphone on (tap to mute)', micOff: 'Turn on microphone', camOn: 'Camera on (tap to stop)', camOff: 'Turn on camera', camDenied: 'No permission for the camera. Allow it in the browser settings and try again.', noCam: 'This browser has no camera here.', me: 'Me', deafOn: 'Friends muted', deafOff: 'Friends audible',
-    type: 'Write to your friends…', send: 'Send', leave: 'Leave', closeRoom: 'Close the room', full: 'The room is full (4).',
+    type: 'Write to your friends…', send: 'Send', leave: 'Leave', closeRoom: 'Close the room', full: 'The room is full (10).',
     joined: '{n} joined.', left: '{n} left.', kicked: 'The room owner removed you.', lost: 'The connection to the room dropped.', inRoom: 'You are in the room of {n}.',
     noRoom: 'No room with this code. Check the digits, or ask your friend to open the room again.', busy: 'Too many requests on this room. Try again shortly.', slow: 'Too many tries. Wait a minute.',
     store: 'Rooms are paused on the site right now.', offline: 'Could not reach the site.', code4: 'The code is four digits.', failed: 'Could not connect. Some networks block direct links: try the same Wi‑Fi or another network.',
@@ -94,7 +94,7 @@ li.ask { border-color: var(--gold); }
     shareIt: 'أرسل هذا الكود أو الرابط لربعك:', share: 'أرسل الرابط', copied: 'انتسخ الرابط.', wa: 'واتساب',
     wants: 'يبي يدخل', admit: 'دخّله', deny: 'ارفض', kick: 'طلّعه', you: 'أنت', owner: 'صاحب الغرفة', guest: 'ضيف', connecting: 'يتّصل…',
     nobody: 'ما حد في الغرفة للحين.', micOn: 'المايك شغّال (اضغط تطفيه)', micOff: 'شغّل المايك', camOn: 'الكاميرا شغّالة (اضغط تطفيها)', camOff: 'شغّل الكاميرا', camDenied: 'ما في إذن للكاميرا. اسمح لها من إعدادات المتصفح وجرّب مرة ثانية.', noCam: 'هذا المتصفح ما يدعم الكاميرا هني.', me: 'أنا', deafOn: 'صوت الربع مكتوم', deafOff: 'صوت الربع شغّال',
-    type: 'اكتب لربعك…', send: 'أرسل', leave: 'اطلع', closeRoom: 'سكّر الغرفة', full: 'الغرفة مليانة (4).',
+    type: 'اكتب لربعك…', send: 'أرسل', leave: 'اطلع', closeRoom: 'سكّر الغرفة', full: 'الغرفة مليانة (10).',
     joined: '{n} دخل.', left: '{n} طلع.', kicked: 'صاحب الغرفة طلّعك.', lost: 'انقطع الاتصال بالغرفة.', inRoom: 'أنت في غرفة {n}.',
     noRoom: 'ما في غرفة بهذا الكود. تأكد من الأرقام، أو خل صاحبك يفتح الغرفة من جديد.', busy: 'الغرفة عليها زحمة. جرّب بعد شوي.', slow: 'محاولات كثيرة. انتظر دقيقة.',
     store: 'الغرف متوقفة الحين من جهة الموقع.', offline: 'ما قدرت أوصل للموقع.', code4: 'الكود أربع أرقام.', failed: 'ما قدرت أتصل. بعض الشبكات تمنع الاتصال المباشر: جرّبوا نفس الواي فاي أو شبكة ثانية.',
@@ -200,7 +200,8 @@ li.ask { border-color: var(--gold); }
     if (role !== 'host') return;
     var guests = []; peers.forEach(function (p, id) { if (p.vtx && p.vtx.length) guests.push({ id: id, p: p }); });
     guests.forEach(function (g) {
-      var others = guests.filter(function (o) { return o.id !== g.id; }).slice(0, 2);
+      // with many guests, each sees the two others whose cameras are on (the owner's own picture always comes first)
+      var others = guests.filter(function (o) { return o.id !== g.id; }).sort(function (x, y) { return (y.p.cam && y.p.vtrack ? 1 : 0) - (x.p.cam && x.p.vtrack ? 1 : 0); }).slice(0, 2);
       var list = [{ id: 'host', name: myName || T.owner, on: camOn }];
       g.p.vtx[0].sender.replaceTrack(camTrack()).catch(function () {});
       for (var i = 0; i < 2; i++) {
@@ -208,9 +209,20 @@ li.ask { border-color: var(--gold); }
         if (t) t.sender.replaceTrack(o && o.p.cam && o.p.vtrack ? o.p.vtrack : null).catch(function () {});
         list.push(o ? { id: o.id, name: o.p.name, on: !!(o.p.cam && o.p.vtrack) } : null);
       }
+      g.p.vtx.forEach(function (t) { capRate(t.sender, guests.length); });
       send(g.p.dc, { t: 'vslots', list: list });
     });
     drawVids();
+  }
+  /** Owner's upload grows with the room (up to three pictures for each guest): each picture gets less as more join. */
+  function capRate(sender, n) {
+    try {
+      var max = n <= 3 ? 450000 : n <= 6 ? 180000 : 110000, prm = sender.getParameters();
+      if (!prm.encodings || !prm.encodings.length) prm.encodings = [{}];
+      if (prm.encodings[0].maxBitrate === max) return;
+      prm.encodings[0].maxBitrate = max;
+      sender.setParameters(prm).catch(function () { /* a browser without it sends at its own rate */ });
+    } catch (e) { /* the same */ }
   }
   var tiles = new Map();   // key -> { el, video }
   function tile(key, name, stream, mine) {

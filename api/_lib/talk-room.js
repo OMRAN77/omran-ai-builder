@@ -19,7 +19,7 @@
    الطرفين (هكذا يعمل WebRTC)، فيُمحيان بانتهاء العمر ولا يُطبعان أبدًا. الأوامر قليلة عمدًا (حدّ الباقة المجانيّة). */
 const crypto = require('crypto');
 
-const ROOM_TTL = 900, OUT_TTL = 180, MAX_SDP = 48000, MAX_PENDING = 8, PER_MINUTE = 12;
+const ROOM_TTL = 900, OUT_TTL = 180, MAX_SDP = 48000, MAX_PENDING = 12, PER_MINUTE = 12;
 const roomKey = (code) => 'talk/room/' + code;
 const inKey = (code) => 'talk/room/' + code + '/in';
 const outKey = (code, id) => 'talk/room/' + code + '/out/' + id;

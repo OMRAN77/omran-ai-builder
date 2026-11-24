@@ -200,3 +200,11 @@ test('المكالمة: صاحب الغرفة يتّصل بجهة على الت�
   await act({ op: 'ring-end' }, 'g', K, 'fatima', null, o);
   assert.deepEqual((await act({ op: 'rings' }, 'g', K, 'fatima', null, o)).json, { ring: null });
 });
+
+test('عشرة في الغرفة: الحدّ ١٠، وطابور الطلبات يتّسع لهم، وصورة كلّ ضيف تُخفَّض كلّما زاد العدد', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'room.html'), 'utf8');
+  assert.match(html, /MAX = 10, MAX_LINE = 300;/);
+  assert.match(html, /var max = n <= 3 \? 450000 : n <= 6 \? 180000 : 110000/, 'رفع صاحب الغرفة يبقى صغيرًا مع تسعة ضيوف');
+  assert.match(html, /\.sort\(function \(x, y\) \{ return \(y\.p\.cam && y\.p\.vtrack \? 1 : 0\) - \(x\.p\.cam && x\.p\.vtrack \? 1 : 0\); \}\)\.slice\(0, 2\)/, 'كلّ ضيف يرى من كاميراتهم شغّالة');
+  assert.ok(MAX_PENDING >= 9, 'تسعة يطلبون معًا بلا «زحمة»');
+});
