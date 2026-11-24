@@ -511,7 +511,7 @@ test('v-blockworld-cave: نار تحرق باللمس، بناء فوق الما
   assert.match(cave, /kit\.setBlock\(fx, fy, fz, fire \? K\.FIRE : K\.TORCH\); if \(kit\.lit\) kit\.lit\(fx, fy, fz, fire \? K\.FIRE : K\.TORCH\);/);
   assert.match(kit, /add\(K\.ROCK_DIAMOND, \{ tiles: 'x:rock:#7fe6f5', drop: K\.GEM, hard: 1\.1 \}/, 'صخر الألماس يعطي ألماسة');
   assert.match(craft, /\{ out: 220, n: 1, also: \[211, 222, 223\], name: 'طقم لبس الألماس \(4 قطع\)', needs: \[\[K\.GEM, 4\]\], table: true \}/, 'أربع ألماسات = الطقم كاملًا');
-  assert.match(adv, /\['cave', 'انزل الكهف \(علامته على الخريطة\) واجمع 4 ألماسات'/);
+  assert.match(adv, /\['cave', 'انزل الكهف \(علامته على الخريطة\) وطلّع منه أي حجر ثمين'/);
   // الاسم يتغيّر من الإعدادات ويصل للغرفة؛ صاحب الغرفة يرفع لاعبًا مشرفًا
   assert.match(net, /function setName\(name\) \{/);
   assert.match(play, /btn\('name', 'احفظ الاسم'\)/);
@@ -685,4 +685,14 @@ test('v-blockworld-skins: مجموعات شخصيات (العائلة، أبطا
   for (const h of ['wizard', 'witch', 'viking', 'crown', 'nemes', 'crest', 'mushroom', 'phones', 'leaves', 'diver', 'ninja']) assert.ok(av.includes(`HG('${h}')`), h);
   assert.match(adv, /function mountPreview\(slot\)/, 'شكل الشخصية يدور في صفحة الشخصيات'); assert.match(adv, /data-thumb/, 'كل بطاقة صورتها من شكلها');
   assert.ok(!/previews\/family|\.jpg|\.jpeg/.test(out), 'صورة البنت نفسها ما تنحط في اللعبة: شخصية مستوحاة منها بس');
+});
+
+test('v-blockworld-cars: سيارة لكل عالم، والسيارة الرياضية جايزة المهام، والمهام أسهل', () => {
+  const kit = read('shared/kit.js'), cars = read('shared/cars.js'), craft = read('shared/craft.js'), adv = read('shared/adventure.js');
+  for (const n of ['الروفر الكريستالي', 'عربة الصحراء', 'جيب المغامرات', 'متتبع الديناصورات', 'عربة الأشباح القوطية', 'لمسة ذهبية']) assert.ok(kit.includes(`'${n}'`), n);
+  assert.match(cars, /export const CAR_OF_WORLD = \{ kawkab: K\.CAR_ROVER, waha: K\.CAR_BUGGY, barari: K\.CAR_JEEP, dino: K\.CAR_DINO, dhalam: K\.CAR_GHOST \}/);
+  assert.match(craft, /unlock: \(\) => sportsEarned\(\)/, 'الرياضية ما تنصنع إلا بعد ما تنكسب');
+  assert.match(adv, /if \(QUESTS\.every\(\(q\) => done\.has\(q\[0\]\)\)\) earnSports\(play\);/, 'تخلّص كل المهام تحصل الرياضية');
+  assert.match(adv, /'جمّع 4 خشب'/); assert.match(adv, /'صيد حيوان واحد'/); assert.match(adv, /'وصّل المستوى 3'/);
+  assert.match(cars, /if \(st\.inWater\)/, 'السيارة ما تمشي في الماي');
 });

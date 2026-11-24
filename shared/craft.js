@@ -6,6 +6,7 @@
 // its blocks count: mats = { wood: { ids, name }, ... }), a number is the id of a kit block.
 
 import { K, kitItem, kitName } from './kit.js';
+import { CAR_OF_WORLD, sportsEarned } from './cars.js';
 
 const GOLD = K.GOLD, DIAMOND = K.DIAMOND;
 export const RECIPES = [
@@ -78,9 +79,12 @@ export const RECIPES = [
   { out: K.BOOK, n: 1, needs: [[K.FUR, 1], [K.WHEAT, 3]] },
   { out: K.NAME_TAG, n: 1, needs: [[K.FUR, 1], [K.IRON, 1]] },
   { out: K.SPYGLASS, n: 1, needs: [[K.GLASS, 1], [K.IRON, 2]], table: true },
+  // the vehicles: this world's car at a workbench, and the sports car once it is earned
+  ...Object.entries(CAR_OF_WORLD).map(([w, id]) => ({ out: id, n: 1, needs: [['wood', 4], ['stone', 2]], table: true, world: w })),
+  { out: K.CAR_SPORT, n: 1, needs: [['wood', 4], [K.GOLD, 1]], table: true, unlock: () => sportsEarned() },
 ];
 
-export function createCraft({ play, kit, mats }) {
+export function createCraft({ play, kit, mats, world }) {
   const st = play.state;
   const idsOf = (what) => (typeof what === 'number' ? [what] : Array.isArray(what) ? what : what === 'fuel' ? [K.COAL, ...((mats.wood && mats.wood.ids) || [])] : [...((mats[what] && mats[what].ids) || []), ...(what === 'ore' ? [K.ORE] : [])]);
   const nameOf = (what) => (typeof what === 'number' ? kitName(what) : Array.isArray(what) ? kitName(what[0]) : what === 'fuel' ? 'فحم أو خشب' : (mats[what] && mats[what].name) || what);
@@ -95,7 +99,7 @@ export function createCraft({ play, kit, mats }) {
     /** Every recipe with what it needs, what is at hand, and whether it can be made now. */
     list() {
       const near = tableNear(), fire = furnaceNear();
-      return RECIPES.map((r) => {
+      return RECIPES.filter((r) => (!r.world || r.world === world) && (!r.unlock || r.unlock())).map((r) => {
         const needs = r.needs.map(([what, n]) => ({ what, n, name: nameOf(what), have: count(what) }));
         const item = kitItem(r.out, r.n); if (r.name) item.name = r.name;
         return { out: r.out, n: r.n, table: !!r.table, furnace: !!r.furnace, item, needs, can: needs.every((q) => q.have >= q.n) && (!r.table || near) && (!r.furnace || fire) };
@@ -103,7 +107,7 @@ export function createCraft({ play, kit, mats }) {
     },
     /** Make recipe i. Returns true, or the reason it cannot be made (Arabic, for the player). */
     make(i) {
-      const r = RECIPES[i];
+      const r = RECIPES.filter((q) => (!q.world || q.world === world) && (!q.unlock || q.unlock()))[i];
       if (!r) return 'ما في وصفة.';
       if (r.table && !tableNear()) return 'هذي تبي طاولة تصنيع قريبة منك.';
       if (r.furnace && !furnaceNear()) return 'هذي تنطبخ في فرن: حط فرن قريب منك.';

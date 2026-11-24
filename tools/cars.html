@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>cars</title>
+<script type="importmap">{ "imports": { "three": "../vendor/three.module.js", "three/addons/": "../vendor/addons/" } }</script>
+<style>html,body{margin:0;background:#efe6d6}canvas{display:block}</style></head><body>
+<script type="module">
+// The six vehicles side by side (tools/probe.cjs --page tools/cars.html --nostart 1).
+import * as THREE from 'three';
+import { makeCar } from '../shared/cars.js';
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setPixelRatio(2); r.setSize(innerWidth, innerHeight); document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xefe6d6);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a6a, 1.6)); const sun = new THREE.DirectionalLight(0xfff2d8, 2.2); sun.position.set(4, 7, 5); scene.add(sun);
+['rover', 'buggy', 'jeep', 'dino', 'ghost', 'sport'].forEach((k, i) => { const { g } = makeCar(k); g.position.set((i % 3 - 1) * 4.2, 0, Math.floor(i / 3) * -4.6); g.rotation.y = 0.7; scene.add(g); const pad = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.12, 3.6), new THREE.MeshStandardMaterial({ color: k === 'ghost' ? 0x3a3044 : k === 'rover' ? 0xdfefff : 0xf4ead4 })); pad.position.set(g.position.x, -0.06, g.position.z); scene.add(pad); });
+const cam = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 100); cam.position.set(0, 9, 13); cam.lookAt(0, 0.5, -2.3);
+r.render(scene, cam); window.__READY = true;
+</script></body></html>

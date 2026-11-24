@@ -29,12 +29,12 @@ const nameOfColor = Object.fromEntries(COLORS.map(([k, n]) => [k, n]));
 export const K = { GOLD: 140, DIAMOND: 141, GLASS: 142, WATER: 150, FIRE: 151, CHEST: 170, TABLE: 171, TORCH: 172, DOOR: 173, DOOR_TOP: 174, DOOR_OPEN: 175, DOOR_OPEN_TOP: 176, ROCK_COAL: 177, ROCK_GOLD: 178, ROCK_DIAMOND: 179, MEAT: 200, FUR: 201, FEATHER: 202, CHICKEN: 203, FISH: 204, SHRIMP: 205, COAL: 206, PEARL: 207, SEAWEED: 208, SEEDS: 209, FURCOAT: 228, ORE: 230, GEM: 231, DATES: 232, WOOL: 233, WHEAT: 234, BREAD: 235, EMERALD: 236, RUBY: 237, AMETHYST: 238,
   CROP0: 180, CROP1: 181, CROP2: 182, CROP3: 183, ROCK_EMERALD: 184, ROCK_RUBY: 185, ROCK_AMETHYST: 186, EMERALD_BLOCK: 187, RUBY_BLOCK: 188, AMETHYST_BLOCK: 189, LUCKY: 190, PORTAL_FRAME: 191, PORTAL: 192, FARMLAND: 193, CARROT0: 194, POTATO0: 143, FURNACE: 147,
   IRON: 260, APPLE: 276, STEAK: 277, GOLDEN_APPLE: 278, CARROT: 279, POTATO: 280, BAKED_POTATO: 281, COOKED_FISH: 282, BUCKET: 283, BUCKET_WATER: 284, BUCKET_MILK: 285,
-  SHEARS: 286, LEAD: 287, SADDLE: 288, COMPASS: 289, CLOCK: 290, BOW: 291, ARROW: 292, PEARL_JUMP: 293, FLINT: 294, BOOK: 295, NAME_TAG: 296, SPYGLASS: 297, SHIELD: 274, WINGS: 275,
+  SHEARS: 286, LEAD: 287, SADDLE: 288, COMPASS: 289, CLOCK: 290, BOW: 291, ARROW: 292, PEARL_JUMP: 293, FLINT: 294, BOOK: 295, NAME_TAG: 296, SPYGLASS: 297, SHIELD: 274, WINGS: 275, CAR_ROVER: 298, CAR_BUGGY: 299, CAR_JEEP: 300, CAR_DINO: 301, CAR_GHOST: 302, CAR_SPORT: 303,
   ROD: 247, CAN: 248, BOAT: 249, HAMOUR: 250, SAFI: 251, KANAD: 252, SHERI: 253, GOLDFISH: 254, SHELL: 255 };
 /** Block definitions, in the same shape the worlds use (see voxel.js). Blocks live under 200 (the world stores a byte); 200 and up are carried things. */
 export const KIT_BLOCKS = {};
 const INFO = {};                                 // id -> { name, key, group, icon }
-const GROUP_NAMES = { food: 'أكل وأشياء من الحيوانات', farm: 'زراعة وصيد وبحر', gear: 'سلاح وعدّة ولبس', gadget: 'أجهزة', home: 'بيت وتخزين', paint: 'مكعبات ملوّنة', slab: 'أنصاف مكعبات', light: 'إضاءة', gem: 'ذهب وجواهر', nature: 'ماء ونار', bed: 'أسرّة' };
+const GROUP_NAMES = { cars: 'سيارات', food: 'أكل وأشياء من الحيوانات', farm: 'زراعة وصيد وبحر', gear: 'سلاح وعدّة ولبس', gadget: 'أجهزة', home: 'بيت وتخزين', paint: 'مكعبات ملوّنة', slab: 'أنصاف مكعبات', light: 'إضاءة', gem: 'ذهب وجواهر', nature: 'ماء ونار', bed: 'أسرّة' };
 function add(id, def, info) { KIT_BLOCKS[id] = def; INFO[id] = { id, ...info }; }
 
 COLORS.forEach(([key, name, hex], i) => add(100 + i, { tiles: 'x:paint:' + hex }, { key: 'paint-' + key, name: 'مكعب ' + name, group: 'paint', icon: ['cube', hex] }));
@@ -153,6 +153,14 @@ gadget(K.PEARL_JUMP, 'jump-pearl', 'لؤلؤة القفزة', 'pearl', '#3fd0b0'
 gadget(K.FLINT, 'flint', 'قدّاحة', 'flint', '#5a5a60', { use: 'flint' });
 gadget(K.BOOK, 'book', 'دفتر', 'book', '#7a3f2a', { use: 'book' });
 gadget(K.NAME_TAG, 'name-tag', 'بطاقة اسم', 'tag', '#e8d8b0', { use: 'name' });
+// the vehicles: one for each world, and the sports car for whoever has done every quest
+const car = (id, key, name, hex, world) => { INFO[id] = { id, key, name, group: 'cars', icon: ['car', hex], item: { n: 1, tool: true, use: 'drive', car: key, world } }; };
+car(K.CAR_ROVER, 'rover', 'الروفر الكريستالي', '#5ff0ff', 'kawkab');
+car(K.CAR_BUGGY, 'buggy', 'عربة الصحراء', '#d8c08a', 'waha');
+car(K.CAR_JEEP, 'jeep', 'جيب المغامرات', '#3f7a3a', 'barari');
+car(K.CAR_DINO, 'dino', 'متتبع الديناصورات', '#8a7a5a', 'dino');
+car(K.CAR_GHOST, 'ghost', 'عربة الأشباح القوطية', '#2a2030', 'dhalam');
+car(K.CAR_SPORT, 'sport', 'لمسة ذهبية', '#f0bd3f', null);
 gadget(K.SPYGLASS, 'spyglass', 'منظار', 'spyglass', '#c9a35a', { use: 'zoom', model: 'spyglass', tier: '#c9a35a' });
 // the iron tier and the tools that were missing: each tool digs fast only what it is for (dig: what kind of block)
 const IRONC = '#c9ced6';
@@ -401,6 +409,7 @@ function svgIcon([shape, hex, extra]) {
   else if (shape === 'feather') body = `<path d="M26 4c-10 1-17 8-18 19l3 1c9-2 16-9 15-20z" fill="${hex}" stroke="rgba(0,0,0,.45)" stroke-width=".9"/><path d="M5 28L24 7" stroke="#8d949c" stroke-width="1.400" stroke-linecap="round"/><path d="M12 20l-3-3M16 16l-4-3M20 12l-4-2M13 20l5 1M17 16l5 0" stroke="rgba(0,0,0,.2)" stroke-width="1"/>`;
   else if (shape === 'pearl') body = `<circle cx="16" cy="16" r="10" fill="${hex}" stroke="rgba(0,0,0,.4)" stroke-width=".9"/><path d="M10 14a7 7 0 0 1 5-5" fill="none" stroke="#fff" stroke-width="2.200" stroke-linecap="round"/><circle cx="20" cy="20" r="3" fill="#d9c8ea" opacity=".6"/>`;
   else if (shape === 'lucky') body = cube(6) + '<path d="M5 15l11 6 11-6M16 21v8" fill="none" stroke="#f0bd3f" stroke-width="2"/><path d="M16 4l1.400 3 3.200.400-2.300 2.200.600 3.200L16 11.300l-2.900 1.500.600-3.200-2.300-2.200 3.200-.400z" fill="#fff3c4"/>';
+  else if (shape === 'car') body = `<path d="M3 20h26v5H3z" fill="${hex}" stroke="${line}" stroke-width=".8"/><path d="M7 20l3-7h12l4 7z" fill="${shadeHex(hex, 1.15)}" stroke="${line}" stroke-width=".8"/><path d="M11 14h4v5h-6zM17 14h4l3 5h-7z" fill="#bfeaff" opacity=".85"/><circle cx="9" cy="26" r="3.200" fill="#1e1e22" stroke="#888" stroke-width="1"/><circle cx="23" cy="26" r="3.200" fill="#1e1e22" stroke="#888" stroke-width="1"/><path d="M27 21h2" stroke="#ffe28a" stroke-width="1.600"/>`;
   else if (shape === 'shovel') body = `<path d="M8 28L22 9" stroke="#6a4629" stroke-width="2.800" stroke-linecap="round"/><path d="M19 4l9 5-4 5c-3 1-6-1-7-4z" fill="${hex}" stroke="${line}" stroke-width=".8"/>`;
   else if (shape === 'hoe') body = `<path d="M8 28L22 8" stroke="#6a4629" stroke-width="2.800" stroke-linecap="round"/><path d="M15 6h11v4l-3 1-1-2h-7z" fill="${hex}" stroke="${line}" stroke-width=".8"/>`;
   else if (shape === 'shield') body = `<path d="M16 3l11 4v8c0 7-5 11-11 14C10 26 5 22 5 15V7z" fill="${hex}" stroke="${line}" stroke-width=".9"/><path d="M16 5.500l9 3.300v6.500c0 5.500-4 9-9 11.500-5-2.500-9-6-9-11.500V8.800z" fill="none" stroke="#c9ced6" stroke-width="1.600"/><circle cx="16" cy="15" r="3.200" fill="#c9ced6" stroke="rgba(0,0,0,.35)" stroke-width=".7"/>`;

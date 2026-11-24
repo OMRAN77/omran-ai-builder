@@ -15,6 +15,7 @@ import { levelOf } from './status.js';
 import { makeAvatar, outfitPicture } from './avatar.js';
 import { createWardrobe, TRADER_LOOK, PACKS } from './outfits.js';
 import { makeCave } from './cave.js';
+import { earnSports } from './cars.js';
 
 const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 const rng = (seed) => { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
@@ -22,17 +23,18 @@ export const dayKey = (d = new Date()) => d.getFullYear() + '-' + (d.getMonth() 
 
 // Quests in the open, in order. test(c) reads what the game counts; give: xp and maybe an outfit.
 const QUESTS = [
-  ['wood', 'جمّع 8 خشب', (c) => c.craft.count('wood') >= 8, 10],
+  // easy on purpose (the owner asked for easier quests in every world); the last one gives the sports car
+  ['wood', 'جمّع 4 خشب', (c) => c.craft.count('wood') >= 4, 10],
   ['table', 'اصنع طاولة تصنيع', (c) => c.st.made[K.TABLE] >= 1, 10],
-  ['tool', 'اصنع فأس أو معول أو سيف', (c) => [212, 214, 216].some((id) => c.st.made[id] >= 1), 12, 'worker'],
-  ['cave', 'انزل الكهف (علامته على الخريطة) واجمع 4 ألماسات', (c) => c.craft.count(K.GEM) >= 4 || c.st.made[220] >= 1, 20, 'miner'],
-  ['dset', 'اصنع طقم لبس الألماس من 4 ألماسات', (c) => c.st.made[220] >= 1, 15],
-  ['hunt', 'صيد حيوانين', (c) => c.st.kills.animal >= 2, 12, 'hunter'],
-  ['home', 'ابنِ بيتك: حط 30 مكعب وركّب باب', (c) => c.st.placed >= 30 && c.st.put[K.DOOR] >= 1, 15, 'builder'],
-  ['store', 'اصنع صندوق وافتحه', (c) => c.st.made[K.CHEST] >= 1 && c.st.opened >= 1, 12],
-  ['slay', 'اقضِ على 3 وحوش', (c) => c.st.kills.monster >= 3, 18, 'guard'],
-  ['armor', 'البس درع كامل (4 قطع)', (c) => !!(c.st.gear.head && c.st.gear.chest && c.st.gear.legs && c.st.gear.feet), 20, 'knight'],
-  ['level5', 'وصّل المستوى 5', (c) => levelOf(c.st.xp || 0).level >= 5, 25, 'hero'],
+  ['tool', 'اصنع أي أداة (فأس، معول، سيف، مجرفة أو معزقة)', (c) => [212, 214, 216, 261, 262, 263, 264, 267].some((id) => c.st.made[id] >= 1), 12, 'worker'],
+  ['eat', 'كُل أي أكل', (c) => c.st.eaten >= 1, 10],
+  ['cave', 'انزل الكهف (علامته على الخريطة) وطلّع منه أي حجر ثمين', (c) => [K.GEM, K.GOLD, K.EMERALD, K.RUBY, K.AMETHYST, K.COAL].some((id) => c.craft.count(id) >= 1) || c.st.made[220] >= 1, 15, 'miner'],
+  ['hunt', 'صيد حيوان واحد', (c) => c.st.kills.animal >= 1, 10, 'hunter'],
+  ['home', 'ابنِ: حط 10 مكعبات', (c) => c.st.placed >= 10, 12, 'builder'],
+  ['store', 'افتح أي صندوق', (c) => c.st.opened >= 1, 10],
+  ['slay', 'اقضِ على وحش واحد (أو صيد 3 حيوانات إذا الوحوش مطفية)', (c) => c.st.kills.monster >= 1 || c.st.kills.animal >= 3, 14, 'guard'],
+  ['armor', 'البس أي قطعة لبس حماية', (c) => !!(c.st.gear.head || c.st.gear.chest || c.st.gear.legs || c.st.gear.feet), 14, 'knight'],
+  ['level5', 'وصّل المستوى 3', (c) => levelOf(c.st.xp || 0).level >= 3, 20, 'hero'],
 ];
 // Secrets: never listed until found.
 const SECRETS = [
@@ -336,6 +338,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     wait = 0.5;
     const next = QUESTS.find((q) => !done.has(q[0]));
     if (next && next[2](ctx)) { done.add(next[0]); st.xp = (st.xp || 0) + next[3]; save('bw-quests', [...done]); play.notice('خلّصت المهمة: ' + next[1] + ' (+' + next[3] + ' خبرة)', false, 4500); if (play.sound && play.sound.level) play.sound.level(); if (next[4]) setTimeout(() => wardrobe.grant(next[4]), 1800); return; }
+    if (QUESTS.every((q) => done.has(q[0]))) earnSports(play);           // every quest done: the sports car (once)
     for (const q of secretsHere) {
       if (done.has('s:' + q[0]) || !q[3](ctx)) continue;
       done.add('s:' + q[0]); st.xp = (st.xp || 0) + q[4]; save('bw-quests', [...done]);

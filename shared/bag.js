@@ -24,6 +24,7 @@ import { createEvents } from './events.js';
 import { createFarm } from './farm.js';
 import { createWonders } from './wonders.js';
 import { createGear } from './gear.js';
+import { createCars } from './cars.js';
 
 const CSS = `
 #bag { position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center; direction: rtl; color: #f1f4f8; --c: 46px;
@@ -148,7 +149,7 @@ export function createBag(o) {
   // what is dug starts a new pile when the catalogue knows the item
   play.itemOf = (id) => { const it = items.find((q) => q.id === id && !q.tool); return it ? { ...it } : null; };
   if (kit && kit.attach) kit.attach(play);
-  const craft = createCraft({ play, kit, mats: o.mats || {} });
+  const craft = createCraft({ play, kit, mats: o.mats || {}, world: o.world });
   const adv = kit ? createAdventure({ play, kit, craft, camera: o.camera, world: o.world }) : null;
   let joining = false;
   try { joining = !!window.sessionStorage.getItem('bw-join'); } catch (e) { joining = false; }      // about to enter a friend's room: start from the untouched world
@@ -220,6 +221,7 @@ export function createBag(o) {
   const farm = kit && o.world ? createFarm({ play, kit, world: o.world }) : null;
   const wonders = adv ? createWonders({ play, kit, adv, world: o.world, seaSpot: o.seaSpot }) : null;
   const gear = kit && o.world ? createGear({ play, kit, world: o.world, adv, openPage }) : null;
+  const cars = kit && o.world ? createCars({ play, kit, world: o.world }) : null;
   // what kind of block each is, for the tools that dig one kind fast: the world's wood and stone, the kit's veins of ore
   { const M = o.mats || {}, wood = new Set((M.wood && M.wood.ids) || []), stone = new Set([...((M.stone && M.stone.ids) || []), ...((M.ore && M.ore.ids) || [])]);
     play.digClass = (id) => (wood.has(id) ? 'wood' : stone.has(id) || (id >= 177 && id <= 186) || id === 191 ? 'stone' : 'soft'); }
@@ -255,7 +257,7 @@ export function createBag(o) {
     el, items, craft, adv, net, saver,
     open: () => show(true), close: () => show(false), toggle: () => show(!open), isOpen: () => open,
     get tab() { return tab; }, setTab,
-    openStore, openPage, gadgets, farm, wonders, gear,
+    openStore, openPage, gadgets, farm, wonders, gear, cars,
     /** The place button on a block: a door swings, a chest opens here, a workbench opens the recipes. True when it was one of those. */
     interact(h) {
       const r = kit && kit.interact ? kit.interact(h) : null;
