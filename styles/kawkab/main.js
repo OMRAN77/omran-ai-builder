@@ -1,11 +1,13 @@
-// "kawkab" — an alien planet being settled. Scene assembly, moods (dusk / night), post and shots.
+// "kawkab" — an alien planet being settled, endless in every direction. Scene assembly, moods (dusk / night), post
+// and shots; the planet is made and drawn piece by piece round the player (gen.js, shared/stream.js), the
+// hand-made home with the outpost lies in the middle of it (world.js), and its wonders play in wonders.js.
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { createVoxelTerrain } from '../../shared/voxel.js';
+import { createStreamTerrain } from '../../shared/stream.js';
 import { createPlay, createPlayPanel, goImmersive, EMPTY } from '../../shared/play.js';
 import { KIT_BLOCKS, KIT_GROUPS, kitMaterial, kitIcon, createKit } from '../../shared/kit.js';
 import { createBag } from '../../shared/bag.js';
@@ -17,10 +19,12 @@ import { createWeather } from '../../shared/weather.js';
 import { createStatus } from '../../shared/status.js';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
 import { B, BLOCKS } from './blocks.js';
-import { tileMaterial, setGlow, tileSpan } from './tiles.js';
+import { tileMaterial, setGlow, tileSpan, tileArray } from './tiles.js';
 import { createSky, bakeEnvironment, dirFrom } from './sky.js';
-import { generateWorld, SITE, SX, SY, SZ, SEA } from './world.js';
-import { makeWater, makeRidges, makeSpores, makeDropship, makeRover, makeMast, makeSolarArray, makeFlood, makeMist, halo, setPropGlow, bake, MAT, put, rbox, strut } from './props.js';
+import { generateWorld, SITE, SPOTS, HOME, SEA } from './world.js';
+import { createFarView } from './far.js';
+import { createWonders, FIXED } from './wonders.js';
+import { makeWater, makeRidges, makeSpores, makeDropship, makeRover, makeMast, makeSolarArray, makeFlood, makeMist, halo, beam, setPropGlow, bake, MAT, put, rbox, strut } from './props.js';
 import { makeAstronaut, makeDrone, makePackBeast, makeCrawler, makeWraith, makeSentry, makeMultitool } from './cast.js';
 import { buildHud, SLOTS } from './hud.js';
 
@@ -30,6 +34,7 @@ const GAME = window.__GAME || (new URLSearchParams(location.search).has('play') 
 const COARSE = window.matchMedia('(pointer: coarse)').matches;
 
 const stage = createStage({ fov: 50, near: 0.1, far: 900, exposure: 1 });
+const OX = HOME.x0, OZ = HOME.z0;                           // the corner of the home square: the shots below are framed in its own coordinates
 const { scene, camera, renderer } = stage;
 scene.add(camera);
 
@@ -37,13 +42,17 @@ scene.add(camera);
 const gen = generateWorld();
 const { world, anchors } = gen;
 BLOCKS[B.WATER].kind = 'none';                              // the lake surface is one shared plane (see props.js)
+const TA = tileArray();                                      // the own tiles as texture arrays: two or three draw calls a chunk
 // Some tiles are mapped in world space so their pattern runs across blocks (big crystal facets,
-// lake-bed veins, lichen patches) instead of repeating on every face.
+// lake-bed veins, lichen patches) instead of repeating on every face. A chunk's vertices are counted from its corner,
+// a multiple of 32 blocks, and every span divides 32, so the pattern runs on across chunks too.
 function worldSpaceUv(mesh) {
-  const span = tileSpan(mesh.name.split(':')[0]);
-  if (!span) return;
-  const pos = mesh.geometry.attributes.position, nrm = mesh.geometry.attributes.normal, uv = mesh.geometry.attributes.uv;
+  const pos = mesh.geometry.attributes.position, nrm = mesh.geometry.attributes.normal, uv = mesh.geometry.attributes.uv, lay = mesh.geometry.attributes.layer;
+  const one = lay ? null : tileSpan(mesh.name.split(':')[0]);
+  if (!lay && !one) return;
   for (let i = 0; i < pos.count; i++) {
+    const span = lay ? TA.spanOf(lay.getX(i)) : one;
+    if (!span) continue;
     const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
     if (nrm.getY(i) !== 0) uv.setXY(i, x / span[0], z / span[0]);
     else if (nrm.getX(i) !== 0) uv.setXY(i, z / span[0], y / span[1]);
@@ -52,18 +61,34 @@ function worldSpaceUv(mesh) {
   uv.needsUpdate = true;
 }
 Object.assign(BLOCKS, KIT_BLOCKS);                           // the shared building kit (painted blocks, lamps, beds, ...): ids 100 and up
-const terrain = createVoxelTerrain(world, BLOCKS, { materialFor: (tile) => kitMaterial(tile) || tileMaterial(tile), aoCurve: [0.42, 0.62, 0.82, 1.0], onMesh: worldSpaceUv });
+// how far the blocks reach round the player: less on a phone, and less again when the picture is set to fast
+const radiusFor = () => { const m = (window.__GAME_QUALITY || {}).mode, r = COARSE ? 52 : 72; return m === 'fast' ? r - 24 : m === 'sharp' ? r + 16 : r; };
+let tipsDirty = true;
+const terrain = createStreamTerrain(world, BLOCKS, {
+  materialFor: (tile) => kitMaterial(tile) || tileMaterial(tile), layerOf: TA.layerOf, arrayMaterial: TA.material,
+  aoCurve: [0.42, 0.62, 0.82, 1.0], radius: radiusFor(), budget: COARSE ? 4 : 6, onMesh: worldSpaceUv,
+  onDrop: () => { gen.forget(); tipsDirty = true; },
+});
+tileMaterial('water').color.set('#7f9ca6');                 // the seas out on the planet: a little deeper than the tile's own colour
 const voxels = terrain.group, stats = terrain.stats;
 scene.add(voxels);
 window.__stats = stats;
+// beyond the blocks: the planet out to the fog, as low height fields
+const far = createFarView({ sample: gen.farSample, chunk: world.C, isLoaded: terrain.isLoaded, rings: COARSE ? [{ step: 4, n: 96 }, { step: 16, n: 56 }] : [{ step: 4, n: 128 }, { step: 16, n: 72 }] });
+scene.add(far.group);
+/** Make the blocks and the far land round (x, z) at once (the start, a shot). */
+function around(x, z, r) { if (r) terrain.radius = r; terrain.prime(x, z); far.prime(x, z); tipsDirty = true; buildTips(); }
 
-// pointed tips on the crystal spires: one merged mesh per crystal kind
+// pointed tips on the crystal spires of the chunks that are drawn: one merged mesh per crystal kind
 const tipMeshes = [];
 function buildTips() {
+  tipsDirty = false;
   for (const m of tipMeshes.splice(0)) { scene.remove(m); m.geometry.dispose(); }
+  const drawn = [];
+  for (const [k, list] of gen.tips) if (terrain.isLoaded(Math.floor(k / world.ncz), k % world.ncz)) drawn.push(...list);
   for (const [id, tile] of [[B.CRYSTAL_C, 'crystalC'], [B.CRYSTAL_V, 'crystalV']]) {
   const pos = [], nor = [], uvs = [], col = [], span = tileSpan(tile);
-  for (const t of anchors.tips) {
+  for (const t of drawn) {
     if (t.id !== id || world.get(t.x, t.y - 1, t.z) !== id || world.get(t.x, t.y, t.z) !== 0) continue;
     const ax = t.x + 0.5 + t.lx * t.h * 1.6, az = t.z + 0.5 + t.lz * t.h * 1.6, ay = t.y + t.h;
     const c = [[t.x, t.z], [t.x + 1, t.z], [t.x + 1, t.z + 1], [t.x, t.z + 1]];
@@ -107,12 +132,11 @@ const lakeDepth = (() => {
 })();
 const water = makeWater(SITE.lake, SEA + 0.88, lakeDepth);
 scene.add(water);
-const ridges = makeRidges(SX / 2, SZ / 2);
+// the far ranges ring the horizon wherever the player is (they follow the camera), beyond the fog of the planet
+const ridges = makeRidges(0, 0);
 scene.add(ridges.group);
-const spores = makeSpores(2400, (rnd) => {
-  const x = 14 + rnd() * 148, z = 14 + rnd() * 148;
-  return [x, gen.surfaceY(x, z) + 0.4 + Math.pow(rnd(), 1.6) * 22, z];
-});
+// spores drift in a box that follows the camera
+const spores = makeSpores(2400, (rnd) => [rnd() * 150, rnd() * 30, rnd() * 150], 150);
 scene.add(spores);
 
 // ---- outpost hardware
@@ -213,6 +237,8 @@ pickBox.visible = false;
 scene.add(pickBox);
 
 // mining beam for the play shot: a thin additive shaft from the emitter to the block, plus a hot spot
+// (the surveyor's own beam is another one of these: makeLaser())
+function makeLaser() {
 const laser = new THREE.Group();
 {
   const core = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 1, 6, 1, true), new THREE.MeshBasicMaterial({ color: 0xd8fbff, fog: false }));
@@ -229,6 +255,9 @@ const laser = new THREE.Group();
 }
 laser.visible = false;
 scene.add(laser);
+return laser;
+}
+const laser = makeLaser();
 
 // ------------------------------------------------------------------ sky + lights
 const sky = createSky();
@@ -305,6 +334,8 @@ function updateTags() {
 }
 stage.render = () => {
   renderer.info.reset();
+  ridges.group.position.set(camera.position.x, 0, camera.position.z);
+  water.visible = Math.hypot(camera.position.x - SITE.lake.x, camera.position.z - SITE.lake.z) < 300;      // its reflection is a second picture: only when it can be seen
   const u = spores.material.uniforms;
   u.uScale.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
   u.uMax.value = renderer.domElement.height * 0.03;
@@ -406,13 +437,14 @@ const shot = defineShot;
 shot('hero', () => {
   common();
   setMood('dusk', { sunDir: dirFrom(-42, 26), sunI: 2.3 });      // three-quarter back light: rims plus some modelling on the slopes
-  aimSun(mood.sunDir, 92, 24, 86, 95);
-  look(57, 32, 38, 100, 27, 112, 44);
+  around(OX + 84, OZ + 84, 150);                             // a picture, not a frame of play: the whole home in blocks
+  aimSun(mood.sunDir, OX + 92, 24, OZ + 86, 95);
+  look(OX + 57, 32, OZ + 38, OX + 100, 27, OZ + 112, 44);
   // the engineer on the tip of the causeway, looking across the lake at the outpost
-  const gx = 65.5, gz = 60.5, gy = standY(gx, gz, 24), ry = Math.atan2(SITE.hab.x - gx, SITE.hab.z - gz);
+  const gx = OX + 65.5, gz = OZ + 60.5, gy = standY(gx, gz, 24), ry = Math.atan2(SITE.hab.x - gx, SITE.hab.z - gz);
   cast([
     [actors.player, gx, gy, gz, ry + 0.15], [actors.drone, gx + 1.0, gy + 2.05, gz + 0.9, ry - 0.4, 0.08, 0],
-    [actors.beast, 73.5, standY(73.5, 96.5, 21), 96.5, 2.3],
+    [actors.beast, OX + 73.5, standY(OX + 73.5, OZ + 96.5, 21), OZ + 96.5, 2.3],
   ]);
   borrowLamp(6, 0xffb469, 9, 9, anchors.camp.x + 0.12, anchors.camp.y + 0.45, anchors.camp.z - 0.1);    // the field lantern at the engineer's kit
 });
@@ -422,8 +454,9 @@ shot('night', () => {
   setMood('night');
   // From the lake shore outside the perimeter: the floodlights rake down the slope from the right,
   // the lake and its stinger glow on the dark side.
-  const cam = new THREE.Vector3(66, 22.4, 92.5), tgt = new THREE.Vector3(92, 27.4, 101.5);
-  aimSun(mood.sunDir, 80, 24, 98, 44);
+  const cam = new THREE.Vector3(OX + 66, 22.4, OZ + 92.5), tgt = new THREE.Vector3(OX + 92, 27.4, OZ + 101.5);
+  around(cam.x + 20, cam.z, 120);
+  aimSun(mood.sunDir, OX + 80, 24, OZ + 98, 44);
   look(cam.x, cam.y, cam.z, tgt.x, tgt.y, tgt.z, 56);
   const f = new THREE.Vector3(tgt.x - cam.x, 0, tgt.z - cam.z).normalize(), r = new THREE.Vector3(-f.z, 0, f.x);
   const yawToCam = Math.atan2(-f.x, -f.z);
@@ -437,7 +470,7 @@ shot('night', () => {
     on(actors.sentry, 12.5, 7.4, 0.3, 0, 24),
   ]);
   // floodlight pools: one on the sand ahead, one further along the shore
-  const pool = [[...at(12.2, 0.5)], [101, 93]];
+  const pool = [[...at(12.2, 0.5)], [OX + 101, OZ + 93]];
   pool.forEach(([x, z], i) => {
     const y = standY(x, z, 22), h = floods[i].userData.aimAt(x, y, z, i ? 0.3 : 0.26);
     floods[i].userData.shaft(i ? 1.2 : 2.4);
@@ -453,6 +486,7 @@ shot('cast', () => {
   const g0 = standY(S.x, S.z, SITE.cast.y);
   const gy = (dx, dz) => standY(S.x + dx, S.z + dz, g0);
   setMood('dusk', { sun: '#ffcfa6', sunDir: dirFrom(34, 21), sunI: 3.3, hemi: 1.35, exposure: 1.08, fog: '#232a57', fogNear: 13, fogFar: 108 });
+  around(S.x, S.z, 96);
   aimSun(mood.sunDir, S.x, g0, S.z, 16, 200);
   look(S.x - 0.32, g0 + 1.42, S.z + 9.9, S.x - 0.27, g0 + 2.12, S.z, 34);
   const at = (o, dx, dz, ry, up = 0) => [o, S.x + dx, gy(dx, dz) + up, S.z + dz, ry];
@@ -476,8 +510,10 @@ shot('cast', () => {
 shot('play', () => {
   common({ hudOn: true, fpOn: true });
   setMood('dusk');
-  const px = 62.0, pz = 60.5, py = standY(62.5, pz, 24) + 1.62;
-  const tx = 64, tz = 64, ty = standY(tx + 0.5, tz + 0.5, 23) - 1;          // the flat-topped block of the sky-crystal outcrop
+  const px = OX + 62.0, pz = OZ + 60.5;
+  around(px, pz, GAME ? radiusFor() : 120);
+  const py = standY(px + 0.5, pz, 24) + 1.62;
+  const tx = OX + 64, tz = OZ + 64, ty = standY(tx + 0.5, tz + 0.5, 23) - 1;          // the flat-topped block of the sky-crystal outcrop
   aimSun(mood.sunDir, px + 14, py, pz + 30, 70);
   look(px, py, pz, tx + 0.5, ty + 0.62, tz + 0.5, 70);
   pickBox.position.set(tx + 0.5, ty + 0.5, tz + 0.5); pickBox.visible = true;
@@ -492,6 +528,44 @@ shot('play', () => {
   laser.visible = true;
 });
 
+// the planet beyond the home, for checking by eye (tools/shot.cjs --shots vista,glow,crystal,basalt,mountain,sea,asteroid,meteor)
+defineShot('vista', () => {
+  common(); setMood('dusk', { fogNear: 90, fogFar: 420 });
+  const cx = OX + 88, cz = OZ + 88;
+  around(cx - 40, cz - 60, 176);                             // a picture, not a frame of play: blocks far out (the game sets its own radius again)
+  look(cx - 150, 92, cz - 190, cx + 10, 22, cz + 10, 55);
+  aimSun(mood.sunDir, cx - 40, 30, cz - 60, 150);
+});
+function findLand(land, r0 = 120, r1 = 1600) {
+  const cx = OX + 88, cz = OZ + 88;
+  for (let r = r0; r <= r1; r += 16) for (let k = 0, n = Math.ceil(r / 6); k < n; k++) {
+    const a = k / n * Math.PI * 2, x = Math.round(cx + Math.cos(a) * r), z = Math.round(cz + Math.sin(a) * r);
+    if ([[0, 0], [14, 0], [-14, 0], [0, 14], [0, -14]].every(([dx, dz]) => gen.landOf(x + dx, z + dz) === land)) return { x, z };
+  }
+  return { x: cx + r0, z: cz };
+}
+const landView = (name, land, opt = {}) => defineShot(name, () => {
+  common(); setMood(opt.mood || 'dusk');
+  const t = opt.at ? opt.at() : findLand(land), back = opt.back ?? 34, ty = gen.heightAt(t.x, t.z) + 1;
+  const px = t.x - back, pz = t.z + back * 0.6, py = Math.max(gen.heightAt(px, pz), ty) + (opt.up ?? 14);
+  around(px, pz, 96);
+  look(px, py, pz, t.x + 20, ty + (opt.ty ?? 0), t.z - 12, 62);
+  aimSun(mood.sunDir, t.x, ty, t.z, 80);
+});
+landView('glow', 'glow');
+landView('crystal', 'crystal');
+landView('basalt', 'basalt', { up: 18 });
+landView('mountain', 'mountain', { back: 70, up: 10, ty: 10 });
+landView('sea', 'sea', { back: 40, up: 10 });
+landView('asteroid', '', { up: 6, back: 30, ty: 22, at: () => { const c = { x: OX + 88, z: OZ + 88 }; const a = gen.gen.asteroidsIn(c.x - 600, c.x + 600, c.z - 600, c.z + 600).sort((p, q) => Math.hypot(p.x - c.x, p.z - c.z) - Math.hypot(q.x - c.x, q.z - c.z))[0]; return a ? { x: Math.round(a.x), z: Math.round(a.z) } : c; } });
+defineShot('meteor', () => {                                 // the landing stone on the shore, and the sea where the bridge goes out
+  common(); setMood('dusk');
+  const L = SPOTS.landing, I = SPOTS.island, y = gen.heightAt(L.x, L.z);
+  around(L.x, L.z - 20, 96);
+  look(L.x - 7, y + 7, L.z + 13, I.x, SEA + 1, I.z, 62);
+  aimSun(mood.sunDir, L.x, y, L.z - 20, 80);
+});
+
 // ------------------------------------------------------------------ the playable game
 const NAMES = {
   [B.LICHEN_A]: 'أشنة', [B.LICHEN_B]: 'أشنة', [B.LICHEN_G]: 'أشنة متوهّجة', [B.SOIL]: 'تربة', [B.SLATE]: 'أردواز', [B.ORE]: 'خام متوهّج', [B.ORE_V]: 'خام بنفسجي',
@@ -499,6 +573,8 @@ const NAMES = {
   [B.CAP]: 'قبعة فطر', [B.CAP_RIM]: 'قبعة فطر', [B.BARK]: 'لحاء', [B.TENDRIL]: 'محلاق', [B.FERN]: 'سرخس', [B.BULB]: 'بصيلة مضيئة', [B.REED]: 'قصب', [B.FRINGE]: 'هدب',
   [B.HULL_W]: 'لوح هيكل', [B.HULL_W2]: 'لوح هيكل', [B.HULL_S]: 'لوح هيكل', [B.HULL_G]: 'لوح هيكل داكن', [B.HAZARD]: 'لوح تحذير', [B.WINDOW]: 'نافذة', [B.PAD]: 'منصّة هبوط',
   [B.SOLAR]: 'لوح شمسي', [B.LAMP]: 'مصباح', [B.GLASS]: 'زجاج', [B.BEAM]: 'عارضة', [B.CARGO]: 'صندوق شحن', [B.GROW]: 'ضوء زراعة', [B.AMBER]: 'لوح إضاءة', [B.CYAN]: 'لوح إضاءة',
+  [B.SEA]: 'ماء', [B.VENT]: 'فوهة أكسجين', [B.CHIME0]: 'بلّورة تغنّي', [B.CHIME1]: 'بلّورة تغنّي', [B.CHIME2]: 'بلّورة تغنّي', [B.CHIME3]: 'بلّورة تغنّي', [B.CHIME4]: 'بلّورة تغنّي',
+  [B.SEAL]: 'فتحة مقفولة', [B.GRAV]: 'مكعب جاذبية', [B.FLOAT]: 'صخر طاير', [B.METEOR]: 'حجر نيزك', [B.STAR]: 'حجر النجوم', [B.CHARGER]: 'شاحن المسّاح', [B.SOCKET]: 'خانة الشاحن', [B.SOCKET_LIT]: 'خانة مشحونة',
 };
 const SLOT_ID = { hull: B.HULL_W, basalt: B.BASALT, soil: B.SOIL, crystal: B.CRYSTAL_C, ore: B.ORE, lamp: B.LAMP, cap: B.CAP };
 /** What digging a block puts in the bag (the hotbar has one slot per family). */
@@ -509,9 +585,12 @@ const DROP = {
   [B.STALK]: B.CAP, [B.CAP]: B.CAP, [B.CAP_RIM]: B.CAP,
   [B.HULL_W]: B.HULL_W, [B.HULL_W2]: B.HULL_W, [B.HULL_S]: B.HULL_W, [B.HULL_G]: B.HULL_W, [B.HAZARD]: B.HULL_W, [B.PAD]: B.HULL_W, [B.BEAM]: B.HULL_W, [B.CARGO]: B.HULL_W, [B.SOLAR]: B.HULL_W,
   [B.LAMP]: B.LAMP, [B.AMBER]: B.LAMP, [B.CYAN]: B.LAMP, [B.GROW]: B.LAMP,
+  [B.VENT]: B.BASALT, [B.FLOAT]: B.BASALT, [B.METEOR]: B.METEOR, [B.STAR]: B.STAR,
 };
 const SOFT = new Set([B.LICHEN_A, B.LICHEN_B, B.LICHEN_G, B.SOIL, B.SHORE, B.LAKEBED, B.CAP, B.CAP_RIM, B.STALK]);
-const HARD = new Set([B.CRYSTAL_C, B.CRYSTAL_V, B.ORE, B.ORE_V, B.HULL_W, B.HULL_W2, B.HULL_S, B.HULL_G, B.HAZARD, B.PAD, B.BEAM]);
+const HARD = new Set([B.CRYSTAL_C, B.CRYSTAL_V, B.ORE, B.ORE_V, B.HULL_W, B.HULL_W2, B.HULL_S, B.HULL_G, B.HAZARD, B.PAD, B.BEAM, B.METEOR, B.STAR, B.FLOAT]);
+/** Rare blocks of the planet the bag knows (what the meteor bridge and its island give). */
+const RARE = [{ key: 'meteor', icon: 'ore', name: 'حجر نيزك', id: B.METEOR }, { key: 'star', icon: 'diamond', name: 'حجر النجوم', id: B.STAR }];
 const GOAL = 12;
 
 async function startGame() {
@@ -525,7 +604,29 @@ async function startGame() {
   let toolInHand = true;
   const fpHome = fp.position.clone(), drone = actors.drone, v1 = new THREE.Vector3(), v2 = new THREE.Vector3();
   const isCrystal = (id) => id === B.CRYSTAL_C || id === B.CRYSTAL_V;
-  let aimed = null, hintTimer = 0;
+  let aimed = null, hintTimer = 0, tipsT = 0, wonders = null;
+  /** A block dug next to the sea lets the sea in (no dry holes in the water out on the planet). */
+  function letSeaIn(x, y, z) {
+    if (world.get(x, y, z) !== 0 || y > SEA) return;
+    if (world.get(x, y + 1, z) === B.SEA || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, c]) => world.get(x + a, y, z + c) === B.SEA)) terrain.setBlock(x, y, z, B.SEA);
+  }
+  // the oxygen vents out on the planet: a column of light over each one near the player, and air for the suit
+  const plumePool = [], ventNear = [];
+  for (let i = 0; i < 10; i++) {
+    const g = new THREE.Group(), b = beam(0x7ff6ff, 7, 0.9, 0.55, 'halo'), h = halo(0x8ff8ff, 3.2, 0.7);
+    b.rotation.x = Math.PI; h.position.y = 0.6; g.add(b, h); g.visible = false; scene.add(g); plumePool.push(g);
+  }
+  let plumeT = 0;
+  function plumes(p, dt) {
+    if ((plumeT -= dt) > 0) return;
+    plumeT = 0.7;
+    ventNear.length = 0;
+    for (const list of gen.vents.values()) for (const v of list) { const dd = Math.hypot(v.x + 0.5 - p.x, v.z + 0.5 - p.z); if (dd < 110 && world.get(v.x, v.y - 1, v.z) === B.VENT) ventNear.push({ v, dd }); }
+    ventNear.sort((a, b) => a.dd - b.dd);
+    plumePool.forEach((g, i) => { const n = ventNear[i]; g.visible = !!n; if (n) g.position.set(n.v.x + 0.5, n.v.y, n.v.z + 0.5); });
+  }
+  /** Where the suit takes in air: the habitat, or the nearest vent if the player stands by one. */
+  const airAt = () => { const p = play.state.pos, n = ventNear[0]; return n && Math.hypot(n.v.x + 0.5 - p.x, n.v.z + 0.5 - p.z) < 4.5 && Math.abs(n.v.y - p.y) < 4 ? { x: n.v.x + 0.5, z: n.v.z + 0.5, r: 4.5 } : { x: SITE.hab.x, z: SITE.hab.z, r: 18 }; };
 
   let life = null, weather = null, status = null;
   let vitals = null;                                 // made once the HUD is up; the first frames run without it
@@ -533,11 +634,12 @@ async function startGame() {
     camera, canvas: stage.canvas, world, blocks: BLOCKS, terrain,
     spawn: { x: camera.position.x, y: camera.position.y - 1.62, z: camera.position.z, yaw: eu.y, pitch: eu.x },
     slots, touch: hud.touch ? hud.els : null, maxPixelRatio: 2,
-    isLiquid: (id) => id === B.WATER || kit.isLiquid(id), heightOf: kit.heightOf,
+    isLiquid: (id) => id === B.WATER || id === B.SEA || kit.isLiquid(id), heightOf: kit.heightOf,
+    canBreak: (id, x, y, z) => y > 0 && !FIXED.has(id) && !(wonders && wonders.locked(x, y, z)),
     hardness: (id) => kit.hardness(id) ?? ((BLOCKS[id].kind === 'cross') ? 0.08 : SOFT.has(id) ? 0.3 : HARD.has(id) ? 0.7 : 0.45),
     dropOf: (id) => DROP[id] || kit.dropOf(id),
     onTarget(h) { pickBox.visible = !!h; if (h) pickBox.position.set(h.x + 0.5, h.y + 0.5, h.z + 0.5); hud.setTarget(h ? NAMES[h.id] || kit.nameOf(h.id) || 'مكعب' : null); },
-    onBreak(h) { kit.broke(h); if (isCrystal(h.id)) buildTips(); },
+    onBreak(h) { kit.broke(h); if (isCrystal(h.id)) buildTips(); if (!h.remote) letSeaIn(h.x, h.y, h.z); },
     onPlace(x, y, z, id) { kit.placed(x, y, z, id, play.state.yaw); if (isCrystal(id) || isCrystal(world.get(x, y - 1, z))) buildTips(); },
     onInventory(list, sel) {
       hud.setSlots(list, sel); showGoal(list);
@@ -553,6 +655,16 @@ async function startGame() {
     onFirstLook() { hud.els.lookzone.hidden = true; },
     onFrame(st, dt) {
       const d = st.dig, p = st.pos;
+      // the blocks round the player and the far planet beyond them
+      const r = radiusFor();
+      if (r !== terrain.radius) terrain.radius = r;
+      terrain.update(p.x, p.z);
+      const changed = terrain.takeChanged();
+      far.update(camera.position.x, camera.position.z, changed);
+      if (changed) tipsDirty = true;
+      if (tipsDirty && (tipsT -= dt) <= 0) { tipsT = 0.5; buildTips(); }
+      plumes(p, dt);
+      if (wonders) wonders.update(dt);
       hud.setProgress(d.on ? d.progress : 0);
       kit.update(p, dt, st.time);
       if (vitals) vitals.update(dt);
@@ -568,13 +680,16 @@ async function startGame() {
       // the held tool sways a little with each step
       const bob = st.onGround ? Math.min(1, st.moving / 4) : 0;
       fp.position.set(fpHome.x + Math.sin(st.time * 4.6) * 0.008 * bob, fpHome.y + Math.abs(Math.sin(st.time * 9.2)) * 0.012 * bob, fpHome.z);
-      // the survey drone keeps station ahead and to the left
-      const sin = Math.sin(st.yaw), cos = Math.cos(st.yaw);
-      v1.set(p.x - sin * 4.6 - cos * 2.8, p.y + 2.25 + Math.sin(st.time * 1.7) * 0.14, p.z - cos * 4.6 + sin * 2.8);
-      drone.position.lerp(v1, 1 - Math.exp(-2.2 * dt));
-      drone.rotation.set(0.05, Math.atan2(p.x - drone.position.x, p.z - drone.position.z), 0);
-      // compass + distance to the habitat
-      hud.setNav(-st.yaw * 180 / Math.PI, Math.atan2(SITE.hab.x - p.x, -(SITE.hab.z - p.z)) * 180 / Math.PI, Math.hypot(SITE.hab.x - p.x, SITE.hab.z - p.z));
+      // the survey drone keeps station ahead and to the left (once charged with crystal it flies and digs: wonders.js)
+      if (!wonders || !wonders.droneOwned()) {
+        const sin = Math.sin(st.yaw), cos = Math.cos(st.yaw);
+        v1.set(p.x - sin * 4.6 - cos * 2.8, p.y + 2.25 + Math.sin(st.time * 1.7) * 0.14, p.z - cos * 4.6 + sin * 2.8);
+        drone.position.lerp(v1, 1 - Math.exp(-2.2 * dt));
+        drone.rotation.set(0.05, Math.atan2(p.x - drone.position.x, p.z - drone.position.z), 0);
+      }
+      // compass + distance to the habitat (or to what the wonders point at just now)
+      const wp = (wonders && wonders.nav) || { x: SITE.hab.x, z: SITE.hab.z, label: 'القاعدة' };
+      hud.setNav(-st.yaw * 180 / Math.PI, Math.atan2(wp.x - p.x, -(wp.z - p.z)) * 180 / Math.PI, Math.hypot(wp.x - p.x, wp.z - p.z), wp.label);
       // keep the shadow map centred near the player
       if (!aimed || Math.hypot(p.x - aimed.x, p.z - aimed.z) > 14) { aimed = { x: Math.round(p.x / 4) * 4, z: Math.round(p.z / 4) * 4 }; aimSun(mood.sunDir, aimed.x, p.y, aimed.z, 60); }
       if (hud.touch && hintTimer >= 0 && (hintTimer += dt) > 7) { hud.els.lookzone.hidden = true; hintTimer = -1; }
@@ -587,7 +702,7 @@ async function startGame() {
   const bag = createBag({
     play, kit, camera, world: 'kawkab', shown: hud.shown, onMenu: () => { play.stop(); panel.show('pause'); },
     mats: { wood: { ids: [B.HULL_W, B.CAP], name: 'لوح هيكل أو فطر' }, stone: { ids: [B.BASALT, B.SOIL], name: 'بازلت أو تربة' }, ore: { ids: [B.ORE, B.CRYSTAL_C], name: 'خام أو بلّور' } },
-    groups: [{ title: 'عدّة كوكب', items: SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })) }, ...KIT_GROUPS],
+    groups: [{ title: 'عدّة كوكب', items: [...SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 })), ...RARE] }, ...KIT_GROUPS],
     iconOf: (it) => (it.kit ? kitIcon(it.id) : hud.icon(it.icon)),
     fontFamily: "'Plex Arabic', sans-serif", accent: '#7df1ff', line: 'rgba(125, 241, 255, .4)',
     extra: { label: 'الوقت والجو', onClick: () => weather && weather.open() },
@@ -599,9 +714,9 @@ async function startGame() {
   pickBox.visible = false;
   hud.els.hotbar.addEventListener('pointerdown', (e) => { const el = e.target.closest('.slot'); if (el && play.state.running) { play.select(+el.dataset.i); e.preventDefault(); } });
   const panel = createPlayPanel({
-    title: 'كوكب', tagline: 'احفر، اجمع البلّور، وابنِ قاعدتك على كوكب غريب.',
+    title: 'كوكب', tagline: 'كوكب غريب ما له آخر: احفر، اجمع البلّور، وابنِ قاعدتك. ودوّر أسراره: بلّورات تغنّي، صخور طايرة، ونيازك تطيح.',
     fontFamily: "'Plex Arabic', sans-serif", accent: '#7df1ff', line: 'rgba(125, 241, 255, .4)', touch: hud.touch,
-    note: 'نسخة تجريبية: الوقت والمطر والوحوش تختارها من لوحة Q (وعلى الجوال من زر داخل الحقيبة). التقدّم ما ينحفظ.',
+    note: 'نسخة تجريبية: الوقت والمطر والوحوش تختارها من لوحة Q (وعلى الجوال من زر داخل الحقيبة). بعيد عن القاعدة يخلص الأكسجين: فوهات الأكسجين (أعمدة نور زرقاء) تعبّيه.',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   panel.show('start');
@@ -612,7 +727,7 @@ async function startGame() {
   vitals = createVitals({
     play, kit, world, hp: 86,
     needs: [
-      { key: 'o2', start: 72, drain: 0.3, how: 'home', home: { x: SITE.hab.x, z: SITE.hab.z }, range: 18, gain: 12, low: 'الأكسجين قليل. ارجع صوب القاعدة يتعبّى.' },
+      { key: 'o2', start: 72, drain: 0.3, how: 'home', home: { get x() { return airAt().x; }, get z() { return airAt().z; } }, get range() { return airAt().r; }, gain: 12, low: 'الأكسجين قليل. ارجع صوب القاعدة، أو دوّر فوهة أكسجين (عمود نور أزرق) ووقف جنبها يتعبّى.' },
       { key: 'pw', start: 34, how: 'rest', gain: 1.6, hurts: false, use: (s) => (s.dig.on && toolInHand ? 3 : 0) + (s.flying ? 2.2 : 0), low: 'طاقة البدلة قليلة. وقّف الحفر والطيران شوي.', onEmpty: (s) => { if (s.flying) play.setFlying(false); } },
     ],
     render(v) { write.hp(v.hp); write.o2(v.o2); write.pw(v.pw); vq('pw').classList.toggle('warn', v.pw < 40); vq('o2').classList.toggle('warn', v.o2 < 25); },
@@ -649,8 +764,9 @@ async function startGame() {
       document.querySelector('#hud .clock .ct .lbl').firstChild.textContent = (rain ? 'مطر · ' : '') + c[1] + ' · اليوم ';
     },
   });
+  wonders = createWonders({ play, kit, world, terrain, anchors, scene, hud, drone, laserOf: makeLaser, dropOf: (id) => DROP[id] || kit.dropOf(id) });
   window.__play = play;
-  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera, vitals, life, weather, status };
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera, vitals, life, weather, status, gen, wonders, far, anchors };
 }
 
 installShotApi(stage);

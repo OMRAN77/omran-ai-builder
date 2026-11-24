@@ -25,6 +25,8 @@ import { buildHud, SLOTS, itemIcon } from './hud.js';
 import { DINO } from './mode.js';
 
 const D = DINO ? await import('../dino/look.js') : null;      // the dinosaur world's sky, words and bag
+// each world's wonders (lighthouses and tides, seasons, totems, cloud islands; or hatchery, resonance towers, balloons, amber bridges)
+const IDEAS = DINO ? await import('../dino/ideas.js') : await import('./ideas.js');
 
 // Game mode: the page is opened to be played (index.html?play, or the launcher sets window.__GAME).
 const GAME = window.__GAME || (new URLSearchParams(location.search).has('play') ? {} : null);
@@ -320,11 +322,12 @@ defineShot('high', () => {
 });
 
 // ------------------------------------------------------------------ the playable game
-const own = (id) => ({ key: 'b' + id, id, name: NAMES[id], n: 64 });
+const own = (id) => ({ key: 'b' + id, id, name: NAMES[id], n: 64, ...(id === B.SKY_BERRY && !DINO ? { use: 'eat', eat: 25, heal: 30, feed: 'plants' } : {}) });      // the berries of the cloud islands are eaten, not planted
 const CATALOGUE = [
   { key: 'axe', icon: 'axe', name: 'الفأس', tool: true },
   ...(D ? D.catalogue(B) : [B.OAK, B.PINE, B.PALM, B.PLANKS, B.OAK_LEAVES, B.PINE_NEEDLES, B.PALM_FROND, B.GRASS, B.DIRT, B.SAND, B.SANDSTONE, B.STONE, B.DEEPROCK, B.GRAVEL,
-    B.SNOWBLOCK, B.ICE, B.TUFT, B.FLOWER_R, B.FLOWER_Y, B.FLOWER_B, B.SHRUB, B.REED]).map(own),
+    B.SNOWBLOCK, B.ICE, B.TUFT, B.FLOWER_R, B.FLOWER_Y, B.FLOWER_B, B.SHRUB, B.REED,
+    B.LH_WHITE, B.LH_RED, B.CORAL_BRICK, B.CLOUD, B.SKY_FLOWER, B.SKY_BERRY, B.TOTEM, B.TOTEM_TOP]).map(own),
 ];
 const LANDS = { snow: 'الثلج', forest: 'الغابة', desert: 'البر', sea: 'البحر', plains: 'السهل', beach: 'السيف', mountain: 'الجبل' };
 const WORLD = D ? D.KEY : 'barari';                         // the key of saves, quests and shared games
@@ -337,8 +340,8 @@ async function startGame() {
   const slots = [...SLOTS.map((q) => ({ ...q, id: q.block ? B[q.block] : 0 })), kitItem(K.TORCH, 8), EMPTY].slice(0, hud.shown);
   const kit = createKit({ scene, world, terrain });
   // the fires deep in the caves give real light: those made so far, and those of every chunk made from now on
-  for (const f of gen.fires.values()) kit.lit(f.x, f.y, f.z, K.FIRE);
-  gen.onFire = (f) => kit.lit(f.x, f.y, f.z, K.FIRE);
+  for (const f of gen.fires.values()) kit.lit(f.x, f.y, f.z, f.id || K.FIRE);
+  gen.onFire = (f) => kit.lit(f.x, f.y, f.z, f.id || K.FIRE);      // (and the lamps at the top of the lighthouses)
   // a chunk forgotten far away takes its fires' lights with it (made again, they light again)
   dropped = () => {
     for (const [k, f] of gen.fires) if (!world.has(Math.floor(f.x / world.C), Math.floor(f.z / world.C))) { gen.fires.delete(k); kit.glow.delete(k); }
@@ -363,21 +366,21 @@ async function startGame() {
     const hw = play.tuning.hw, at = (x, y, z) => world.get(Math.floor(x), Math.floor(y), Math.floor(z)) === B.LAVA;
     let hot = play.state.onGround && [[0, 0], [hw, hw], [-hw, -hw], [hw, -hw], [-hw, hw]].some(([a, b]) => at(p.x + a, p.y - 0.2, p.z + b));
     for (let y = Math.floor(p.y); y <= Math.floor(p.y + play.tuning.height - 0.05) && !hot; y++) hot = at(p.x, y, p.z);
-    if (hot) { vitals.hurt(18 * dt); if (!burnt) { burnt = true; play.notice('الحمم تحرق! اطلع منها بسرعة.', false, 2600); } } else burnt = false;
+    if (hot) { vitals.hurt(18 * dt * (ideas ? ideas.lavaFactor : 1)); if (!burnt) { burnt = true; play.notice('الحمم تحرق! اطلع منها بسرعة.', false, 2600); } } else burnt = false;
   }
 
-  let life = null, weather = null, status = null, vitals = null;
+  let life = null, weather = null, status = null, vitals = null, ideas = null;
   const play = createPlay({
     camera, canvas: stage.canvas, world, blocks: BLOCKS, terrain,
     spawn: { x: anchors.spawn.x, y: anchors.spawn.y, z: anchors.spawn.z, yaw: eu.y, pitch: eu.x },
     slots, touch: hud.touch ? hud.els : null, maxPixelRatio: 2,
     isLiquid, heightOf: kit.heightOf,
-    canBreak: (id, x, y) => y > 0 && id !== B.LAVA,
-    hardness: (id) => kit.hardness(id) ?? hardnessOf(id, BLOCKS[id] && BLOCKS[id].kind),
+    canBreak: (id, x, y) => y > 0 && id !== B.LAVA && id !== B.TIDE_STONE && id !== B.RESO_BELL,
+    hardness: (id) => (kit.hardness(id) ?? hardnessOf(id, BLOCKS[id] && BLOCKS[id].kind)) * (ideas ? ideas.digFactor : 1),      // (a bear that is a friend helps dig)
     dropOf: (id) => (id in DROP ? DROP[id] : kit.dropOf(id)),
     onTarget(h) { pickBox.visible = !!h; if (h) pickBox.position.set(h.x + 0.5, h.y + 0.5, h.z + 0.5); hud.setTarget(h ? NAMES[h.id] || kit.nameOf(h.id) || 'مكعب' : null); },
     onBreak(h) { kit.broke(h); if (!h.remote) letWaterIn(h.x, h.y, h.z); },
-    onPlace(x, y, z, id) { kit.placed(x, y, z, id, play.state.yaw); },
+    onPlace(x, y, z, id) { kit.placed(x, y, z, id, play.state.yaw); if (ideas) ideas.placed(x, y, z, id); },
     onInventory(list, sel) {
       hud.setSlots(list, sel);
       const it = list[sel], block = it && it.id && (!it.tool || it.model) && (BLOCKS[it.id] || it.model) ? it.id : 0;
@@ -403,14 +406,14 @@ async function startGame() {
       if (life) life.update(dt);
       if (weather) weather.update(dt);
       if (status) status.update();
-      const land = gen.landOf(p.x, p.z), cold = !DINO && (land === 'snow' || land === 'mountain');
-      hud.setLand(D ? D.ZONES[gen.zoneOf(p.x, p.z)] : LANDS[land], ((-st.yaw * 180 / Math.PI) % 360 + 360) % 360);
+      const land = gen.landOf(p.x, p.z), cold = !DINO && (land === 'snow' || land === 'mountain'), sn = !DINO && ideas ? ideas.season : null, winter = !!(sn && sn.winter);
+      hud.setLand(D ? D.ZONES[gen.zoneOf(p.x, p.z)] : LANDS[land] + (sn ? ' · ' + sn.name : ''), ((-st.yaw * 180 / Math.PI) % 360 + 360) % 360);
       if (DINO) lava(p, dt);
       // what the needs do here: thirst comes fastest in the desert; the cold bites only in the snow and up the mountains (less in a fur coat)
       if (vitals) {
         const [water, warm] = vitals.needs, coat = st.gear && st.gear.chest && st.gear.chest.warm;
         water.drain = land === 'desert' || (DINO && land === 'mountain') ? 0.42 : cold ? 0.16 : 0.22;
-        warm.drain = cold ? (coat ? 0.14 : 0.5) : -3;
+        warm.drain = cold ? (coat ? 0.14 : 0.5) * (winter ? 1.3 : 1) : winter ? (coat ? 0.04 : 0.15) : -3;      // in barari's winter the cold is everywhere
       }
       const sk = window.__GAME_SKY || {};
       // the night's monsters go to dust when the sun comes up
@@ -419,7 +422,7 @@ async function startGame() {
       wasNight = !!sk.night;
       // rain over the snow falls as snow: white flakes, and the clock says so
       if (weather) {
-        const snowing = sk.rain && cold;
+        const snowing = sk.rain && (cold || winter);
         weather.rain.material.uniforms.uColor.value.set(snowing ? '#f4f8ff' : '#a6b8cc');
         clockLabel(sk.time, sk.rain, snowing);
       }
@@ -488,7 +491,7 @@ async function startGame() {
   };
   life = createLife({
     scene, camera, play, world, vitals: () => vitals,
-    kinds: dinos ? [...dinos.dinoKinds(gen.landOf), ...extraKinds(WORLD)] : [
+    kinds: dinos ? [...dinos.dinoKinds(gen.landOf), ...extraKinds(WORLD), ...dinos.hatchKinds()] : [
       ...landKinds('barari', gen.landOf),
       ...extraKinds('barari'),
       nightly({ key: 'asfoof', name: 'العاصوف', kind: 'monster', make: () => asfoof(), hp: 14, speed: 2.5, radius: 0.75, height: 1.7, dmg: 7, where: (x, y, z) => ['desert', 'beach', 'plains'].includes(L(x, z)) }, 1),
@@ -504,12 +507,15 @@ async function startGame() {
       aimed = null;                                          // the sun moved: aim the shadow map again
       lastClock = '';
       const here = gen.landOf(play.state.pos.x, play.state.pos.z);
-      clockLabel(time, rain, !DINO && rain && (here === 'snow' || here === 'mountain'));
+      clockLabel(time, rain, !DINO && rain && (here === 'snow' || here === 'mountain' || !!(ideas && ideas.season && ideas.season.winter)));
     },
   });
   clockLabel('morning', false, false);
+  // the wonders of this world, and their part of the quests page (after the shared wonders)
+  ideas = IDEAS.createIdeas({ play, kit, life, gen, world, terrain, scene, far, vitals: () => vitals });
+  if (bag.wonders) { const page0 = bag.wonders.page; bag.wonders.page = () => page0() + ideas.page(); }
   window.__play = play;
-  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera, vitals, life, weather, status, gen };
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera, vitals, life, weather, status, gen, ideas };
 }
 
 installShotApi(stage);

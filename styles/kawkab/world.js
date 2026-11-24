@@ -1,12 +1,28 @@
-// World generation for "kawkab": a crater basin with a shallow glowing lake, basalt organ
-// pipes, crystal spires, giant cap plants, tendril trees and a modular outpost built from blocks.
-import { VoxelWorld } from '../../shared/voxel.js';
+// The home of "kawkab": a crater basin with a shallow glowing lake, basalt organ pipes, crystal spires, giant cap
+// plants, tendril trees and a modular outpost built from blocks. It is built by hand (below) in a 176 x 176 square
+// of its own, and that square is laid into the endless planet (gen.js) at HOME: the chunks that cover it copy its
+// cells, and the land round it grows out of its crater rim. Pure JS (node can run it for measuring).
 import { makeNoise, hash3 } from '../../shared/noise.js';
+import { PagedWorld } from '../../shared/stream.js';
+import { K } from '../../shared/kit.js';
 import { B } from './blocks.js';
+import { makeGen, SIZE, C } from './gen.js';
 
+/** The home square's own size; SY is the height of the whole planet. */
 export const SX = 176, SY = 84, SZ = 176, SEA = 20;
+/** Where the home square lies in the endless world (its corner): the middle of a 16384-block planet. */
+export const HOME = { x0: SIZE / 2 - SX / 2, z0: SIZE / 2 - SZ / 2, sx: SX, sz: SZ };
 
-export const SITE = {
+/** A small box of cells (the same layout as VoxelWorld, without three.js). */
+class Grid {
+  constructor(sx, sy, sz) { this.sx = sx; this.sy = sy; this.sz = sz; this.data = new Uint8Array(sx * sy * sz); }
+  inb(x, y, z) { return x >= 0 && y >= 0 && z >= 0 && x < this.sx && y < this.sy && z < this.sz; }
+  get(x, y, z) { return this.inb(x, y, z) ? this.data[x + this.sx * (z + this.sz * y)] : 0; }
+  set(x, y, z, id) { if (this.inb(x, y, z)) this.data[x + this.sx * (z + this.sz * y)] = id; }
+}
+
+/** Places in the home, in its own coordinates (LOCAL) and in the world's (SITE, exported). */
+const LOCAL = {
   lake: { x: 84, z: 70, rx: 31, rz: 23 },
   plateau: { x: 108, z: 117, rx: 40, rz: 20, y: 26 },
   hab: { x: 96, z: 120 },
@@ -19,14 +35,21 @@ export const SITE = {
   jetty: { x: 86, z: 98 },
   hero: { x: 69, z: 19, y: 31 },
   cast: { x: 70, z: 100, y: 21 },
+  garden: { x: 68, z: 20 },                       // the singing crystals (on the flat of the hero view)
+  charger: { x: 112, z: 104 },                    // the surveyor's charging station
+  room: { x0: 103, z0: 107, x1: 112, z1: 115 },   // the secret room under the plateau
+  hatch: { x: 108, z: 110 },                      // its hatch (2 x 2)
+  rock: { x: 29, z: 51, y: 64, r: 6 },            // the floating asteroid of the home
+  rockPad: { x: 36, z: 57 },                      // and the gravity pad beside it
 };
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const mix = (a, b, t) => a + (b - a) * t;
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 
-export function generateWorld() {
-  const world = new VoxelWorld(SX, SY, SZ);
+export function buildHome() {
+  const SITE = LOCAL;
+  const world = new Grid(SX, SY, SZ);
   const N = makeNoise(2187);
   const H = new Int16Array(SX * SZ);          // terrain surface (top solid block) before flora/buildings
   const anchors = { pylons: [], floods: [], lights: [], crystals: [], caps: [], tips: [] };
@@ -471,6 +494,81 @@ export function generateWorld() {
   ].map((p) => ({ ...p, y: topH(p.x, p.z) + 1 }));
   anchors.rover = { x: ga.x + 0.5, y: topH(ga.x, ga.z - 7) + 1, z: ga.z - 6.5 };
 
+  // ------------------------------------------------------------------ the wonders of the home (their play is in wonders.js)
+  const clearUp = (x, y0, z) => { for (let y = y0; y < SY; y++) { const id = world.get(x, y, z); if (id === B.FERN || id === B.BULB || id === B.REED || id === B.FRINGE || id === B.TENDRIL) put(x, y, z, 0); } };
+  // the garden of the singing crystals, on the flat of the rim above the lake: five crystals round a stone, the
+  // taller the higher the note; touched in the order they sing, the base opens its secret hatch
+  {
+    const g = SITE.garden, y = topH(g.x, g.z);
+    for (let dz = -6; dz <= 6; dz++) for (let dx = -6; dx <= 6; dx++) if (dx * dx + dz * dz <= 40) clearUp(g.x + dx, y + 1, g.z + dz);
+    put(g.x, y, g.z, B.BASALT); put(g.x, y + 1, g.z, B.BASALT);           // the stone in the middle
+    anchors.garden = { x: g.x + 0.5, y: y + 1, z: g.z + 0.5, chimes: [] };
+    for (let k = 0; k < 5; k++) {
+      const a = -Math.PI / 2 + k * (Math.PI * 2 / 5) + 0.3, x = Math.round(g.x + Math.cos(a) * 4.2), z = Math.round(g.z + Math.sin(a) * 4.2);
+      const t = topH(x, z), id = B.CHIME0 + k, hgt = 1 + Math.ceil(k / 2) + 1;
+      put(x, t, z, B.BASALT);
+      for (let i = 1; i <= hgt; i++) put(x, t + i, z, id);
+      for (let i = hgt + 1; i < hgt + 4; i++) put(x, t + i, z, 0);
+      anchors.garden.chimes.push({ x, y: t + 1, z, top: t + hgt, id, k });
+    }
+  }
+  // the charging station of the surveyor, on the open plateau east of the greenhouse: a dark pad, the charger in
+  // the middle and four sockets at its corners that take sky crystals
+  {
+    const c = SITE.charger;
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { put(c.x + dx, G0 - 1, c.z + dz, B.HULL_G); for (let y = G0; y < G0 + 4; y++) put(c.x + dx, y, c.z + dz, 0); }
+    put(c.x, G0, c.z, B.CHARGER);
+    anchors.charger = { x: c.x, y: G0, z: c.z, sockets: [] };
+    for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { put(c.x + dx, G0, c.z + dz, B.SOCKET); anchors.charger.sockets.push({ x: c.x + dx, y: G0, z: c.z + dz }); }
+  }
+  // the secret room under the plateau, shut by a hatch in the ground: a lit room with a chest, crystal in its walls
+  // and steps up to the hatch
+  {
+    const r = SITE.room, top = G0 - 1, ceil = top - 1, fl = top - 5;    // under the plateau's top layer (left as it is) a ceiling, the floor four lower
+    for (let z = r.z0; z <= r.z1; z++) for (let x = r.x0; x <= r.x1; x++) {
+      const edge = x === r.x0 || x === r.x1 || z === r.z0 || z === r.z1;
+      put(x, fl, z, edge ? B.HULL_G : B.PAD);
+      for (let y = fl + 1; y < ceil; y++) put(x, y, z, edge ? (y === fl + 3 && (x + z) % 3 === 0 ? B.LAMP : B.HULL_W) : 0);
+      put(x, ceil, z, edge ? B.HULL_G : B.HULL_S);
+    }
+    for (const [x, z] of [[r.x0 + 1, r.z0 + 1], [r.x1 - 1, r.z0 + 1], [r.x0 + 1, r.z1 - 1], [r.x1 - 1, r.z1 - 1]]) put(x, ceil, z, B.AMBER);      // lights in the corners of the ceiling
+    for (const [x, z, hh] of [[r.x0, r.z0 + 2, 2], [r.x0, r.z0 + 3, 1], [r.x1, r.z1 - 2, 2], [r.x1, r.z1 - 3, 1]]) for (let i = 1; i <= hh; i++) put(x, fl + i, z, B.CRYSTAL_C);    // crystal grown into the walls
+    const h = SITE.hatch;
+    for (let dz = 0; dz <= 2; dz++) for (let dx = -1; dx <= 1; dx++) put(h.x + dx, ceil, h.z + dz, 0);      // the ceiling is open over the steps
+    // steps from the floor up to the hatch: one under the open ceiling, the other four under the hatch itself
+    // (from each step the head has room to rise onto the next)
+    put(h.x - 1, fl + 1, h.z + 1, B.HULL_G);
+    for (const [dx, dz, n] of [[0, 1, 2], [0, 0, 3], [1, 0, 4], [1, 1, 3]]) for (let i = 1; i <= n; i++) put(h.x + dx, fl + i, h.z + dz, B.HULL_G);
+    anchors.hatch = [];
+    for (const [dx, dz] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { put(h.x + dx, top, h.z + dz, B.SEAL); clearUp(h.x + dx, top + 1, h.z + dz); anchors.hatch.push({ x: h.x + dx, y: top, z: h.z + dz }); }
+    put(r.x0 + 2, fl + 1, r.z1 - 1, K.CHEST);
+    anchors.room = { chest: { x: r.x0 + 2, y: fl + 1, z: r.z1 - 1 }, floor: fl, x: (r.x0 + r.x1) / 2 + 0.5, z: (r.z0 + r.z1) / 2 + 0.5 };
+  }
+  // a floating asteroid over the west lowland, with a gravity pad on the ground beside it and a chest on its crown
+  {
+    const a = SITE.rock, R = a.r;
+    let crown = -1;
+    for (let dz = -R - 2; dz <= R + 2; dz++) for (let dx = -R - 2; dx <= R + 2; dx++) {
+      const d2 = dx * dx + dz * dz, wob = 1 + (hash3(Math.floor(Math.atan2(dz, dx) * 3), 1, 77, 713) - 0.5) * 0.3, Rw = R * wob;
+      let topY = -1;
+      for (let y = Math.floor(a.y - R * 1.5); y <= Math.ceil(a.y + R * 0.6); y++) {
+        const dy = y + 0.5 - a.y, inside = dy >= 0 ? d2 + (dy * 2.2) ** 2 < Rw * Rw : Math.sqrt(d2) < Rw * (1 + dy / (R * 1.4));
+        if (!inside) continue;
+        const q = hash3(a.x + dx, y, a.z + dz, 721);
+        put(a.x + dx, y, a.z + dz, q < 0.06 ? K.ROCK_AMETHYST : q < 0.09 ? K.ROCK_DIAMOND : q < 0.14 ? B.ORE_V : B.FLOAT);
+        topY = y;
+      }
+      if (topY >= 0) { put(a.x + dx, topY, a.z + dz, B.LICHEN_B); if (dx === 0 && dz === 0) crown = topY; else if (hash3(dx, 3, dz, 725) < 0.12) put(a.x + dx, topY + 1, a.z + dz, B.BULB); }
+    }
+    put(a.x, crown + 1, a.z, K.CHEST);
+    { const x = a.x + 2, z = a.z - 1; let t = crown + 2; while (t > a.y - 4 && world.get(x, t, z) === 0) t--;      // a crystal on the crown
+      for (let i = 1; i <= 3; i++) put(x, t + i, z, B.CRYSTAL_V);
+      anchors.tips.push({ x, y: t + 4, z, id: B.CRYSTAL_V, h: 1.6, lx: 0.04, lz: -0.03 }); }
+    const p = SITE.rockPad, pt = topH(p.x, p.z);
+    put(p.x, pt, p.z, B.GRAV); clearUp(p.x, pt + 1, p.z);
+    anchors.rock = { x: a.x + 0.5, y: crown + 1, z: a.z + 0.5, chest: { x: a.x, y: crown + 1, z: a.z }, marker: { x: a.x, y: crown - 2, z: a.z }, pad: { x: p.x, y: pt, z: p.z } };
+  }
+
   const surfaceY = (x, z) => {
     const X = clamp(Math.floor(x), 0, SX - 1), Z = clamp(Math.floor(z), 0, SZ - 1);
     for (let y = SY - 1; y >= 0; y--) {
@@ -480,5 +578,58 @@ export function generateWorld() {
     return 0;
   };
   const groundY = (x, z) => topH(Math.floor(x), Math.floor(z)) + 1;
-  return { world, anchors, surfaceY, groundY, heightF, lakeD };
+  /** The top block the home's ground rule gives a dry column (for the land just outside, so the rim carries on). */
+  const topRule = (x, z, h, slope) => {
+    const nA = N.fbm2(x / 21 + 40, z / 21 + 11, 3), nB = N.n2(x / 7 + 3, z / 7 + 8);
+    if (slope > 1.25 || h > 49 + nA * 6) return B.SLATE;
+    return (nB > 0.34 || (lakeD(x, z) < 1.35 && nB > -0.1)) ? B.LICHEN_G : nA > 0.12 ? B.LICHEN_B : B.LICHEN_A;
+  };
+  return { world, anchors, surfaceY, groundY, heightF, lakeD, basaltTop: basaltAt, topRule };
+}
+
+// ------------------------------------------------------------------ the endless planet with the home in it
+const shiftKeys = { x: 'x', x0: 'x', x1: 'x', z: 'z', z0: 'z', z1: 'z' };
+/** A copy of o (anchors, places) with every x / z moved from the home's own coordinates into the world's. */
+function toWorld(o) {
+  if (Array.isArray(o)) return o.map(toWorld);
+  if (!o || typeof o !== 'object') return o;
+  const out = {};
+  for (const [k, v] of Object.entries(o)) out[k] = typeof v === 'number' && shiftKeys[k] ? v + (shiftKeys[k] === 'x' ? HOME.x0 : HOME.z0) : toWorld(v);
+  return out;
+}
+/** The places of the home, in world coordinates. */
+export const SITE = toWorld(LOCAL);
+/** The sea of the meteors north of the home, the stone on its shore where they fall, and the island they reveal. */
+export const SPOTS = toWorld({ meteorSea: { x: 88, z: -126, r: 50 }, landing: { x: 88, z: -70 }, island: { x: 88, z: -126, r: 8 } });
+for (const k of ['meteorSea', 'island']) SPOTS[k].r = { meteorSea: 50, island: 8 }[k];
+
+export function generateWorld() {
+  const t0 = performance.now();
+  const home = buildHome();
+  const OX = HOME.x0, OZ = HOME.z0;
+  const anchors = toWorld(home.anchors);
+  anchors.ground = home.anchors.ground;
+  const g = makeGen(K, { x0: OX, z0: OZ, sx: SX, sz: SZ, cell: (lx, y, lz) => home.world.get(lx, y, lz), heightF: home.heightF, basaltTop: home.basaltTop, topRule: home.topRule, tips: anchors.tips }, SPOTS);
+  // what each chunk made holds besides its cells: the crystal tips and the oxygen vents in it
+  const tips = new Map(), vents = new Map();
+  const world = new PagedWorld({
+    sx: SIZE, sy: SY, sz: SIZE, chunk: C,
+    generate: (cx, cz, d) => g.fillChunk(cx, cz, d),
+    onChunk: (cx, cz, extra) => { const k = cx * world.ncz + cz; if (extra.tips.length) tips.set(k, extra.tips); if (extra.vents.length) vents.set(k, extra.vents); },
+  });
+  // the part of the world the shared pages look at (the quest map, the day's treasure and cave, the sky island,
+  // the maze): a square round the home, a little bigger than the home itself
+  const A = 224, cx = OX + SX / 2, cz = OZ + SZ / 2;
+  world.area = { x0: cx - A / 2, z0: cz - A / 2, x1: cx + A / 2, z1: cz + A / 2 };
+  const inHome = (x, z) => x >= OX && z >= OZ && x < OX + SX && z < OZ + SZ;
+  /** Feet height on the ground as made (the home's terrain, else the planet's), for props and mist. */
+  const groundY = (x, z) => (inHome(x, z) ? home.groundY(x - OX, z - OZ) : g.heightAt(x, z) + 1);
+  const surfaceY = (x, z) => (inHome(x, z) ? home.surfaceY(x - OX, z - OZ) : Math.max(SEA + 1, g.heightAt(x, z) + 1));
+  /** Forget what the dropped chunks held (made again, they bring it back). */
+  const forget = () => { for (const m of [tips, vents]) for (const k of m.keys()) if (!world.chunks.has(k)) m.delete(k); };
+  return {
+    world, anchors, tips, vents, forget, groundY, surfaceY, gen: g, home: { x0: OX, z0: OZ, sx: SX, sz: SZ },
+    landOf: g.landOf, heightAt: g.heightAt, farSample: g.farSample, cavesIn: g.cavesIn,
+    ms: performance.now() - t0,
+  };
 }

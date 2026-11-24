@@ -9,7 +9,14 @@ export const B = {
   // the world of the dinosaurs (defined only in that mode: styles/dino/blocks.js)
   JUNGLE_GRASS: 28, FERN_GRASS: 29, MUD: 30, SWAMPWATER: 31, BASALT: 32, ASH: 33, LAVA: 34, RED_ROCK: 35, JUNGLE_LOG: 36,
   JUNGLE_LEAVES: 37, FERN_TRUNK: 38, FERN_FROND: 39, VINE: 40, FERN: 41, BIGLEAF: 42, AMBER: 43, NEST: 44, HORSETAIL: 45,
+  // barari's wonders (ideas.js): the lighthouse and its tide stone, the sunken houses, the cloud islands and their vents, the totem
+  LH_WHITE: 46, LH_RED: 47, TIDE_STONE: 48, CORAL_BRICK: 49, CLOUD: 50, SKY_FLOWER: 51, SKY_BERRY: 52, VENT: 53, TOTEM: 54, TOTEM_TOP: 55,
+  // the dinosaur world's wonders (styles/dino/ideas.js): the resonance towers, the warm nests and their eggs, amber bridges, fossils
+  RESO_STONE: 60, RESO_CARVED: 61, RESO_CRYSTAL: 62, RESO_BELL: 63, WARM_NEST: 64, EGG_NEST: 65, /* 65..68: an egg of each colour in a warm nest */
+  AMBER_PATH: 69, FOSSIL: 70,
 };
+/** Things carried that are not blocks (no definition, so they are never placed): eggs of four colours, resin, the balloon. */
+export const ITEM = { EGG: 90, /* 90..93 */ RESIN: 94, BALLOON: 95 };
 
 export const BLOCKS = {
   [B.GRASS]: { tiles: { top: 'grassTop', side: 'grassSide', bottom: 'dirt' } },
@@ -58,6 +65,19 @@ export const DROP = {
   [B.OAK_LEAVES]: 0, [B.PINE_NEEDLES]: 0, [B.PINE_SNOWY]: 0, [B.PALM_FROND]: 0,
 };
 
+if (!DINO) {
+  Object.assign(BLOCKS, {
+    [B.LH_WHITE]: { tiles: 'lhWhite' }, [B.LH_RED]: { tiles: 'lhRed' }, [B.TIDE_STONE]: { tiles: { top: 'tideStone', side: 'tideStone', bottom: 'stone' } },
+    [B.CORAL_BRICK]: { tiles: 'coralBrick' }, [B.CLOUD]: { tiles: 'cloud' }, [B.VENT]: { tiles: { top: 'vent', side: 'stone', bottom: 'stone' } },
+    [B.SKY_FLOWER]: { tiles: 'skyFlower', kind: 'cross', height: 0.8 }, [B.SKY_BERRY]: { tiles: 'skyBerry', kind: 'cross', height: 0.85 },
+    [B.TOTEM]: { tiles: { top: 'totemCap', side: 'totemFace', bottom: 'totemCap' } }, [B.TOTEM_TOP]: { tiles: { top: 'totemCap', side: 'totemHead', bottom: 'totemCap' } },
+  });
+  Object.assign(NAMES, {
+    [B.LH_WHITE]: 'حجر المنارة الأبيض', [B.LH_RED]: 'حجر المنارة الأحمر', [B.TIDE_STONE]: 'حجر المد', [B.CORAL_BRICK]: 'طابوق مرجاني', [B.CLOUD]: 'غيمة',
+    [B.SKY_FLOWER]: 'زهرة السحاب', [B.SKY_BERRY]: 'توت السما', [B.VENT]: 'فتحة الهوا الدافي', [B.TOTEM]: 'طوطم خشب', [B.TOTEM_TOP]: 'راس الطوطم',
+  });
+  Object.assign(DROP, { [B.LH_WHITE]: B.LH_WHITE, [B.LH_RED]: B.LH_RED, [B.TIDE_STONE]: 0, [B.CORAL_BRICK]: B.CORAL_BRICK, [B.CLOUD]: B.CLOUD, [B.VENT]: 0, [B.TOTEM]: B.OAK, [B.TOTEM_TOP]: B.OAK });
+}
 if (DINO) {
   const d = (await import('../dino/blocks.js')).dinoBlocks(B);
   Object.assign(BLOCKS, d.BLOCKS); Object.assign(NAMES, d.NAMES); Object.assign(DROP, d.DROP);
@@ -66,6 +86,8 @@ if (DINO) {
 /** How long a block takes to dig (the kit answers for its own blocks first). */
 export function hardnessOf(id, kind) {
   if (kind === 'cross') return 0.08;
+  if (id >= B.LH_WHITE && id <= B.TOTEM_TOP) return id === B.CLOUD ? 0.25 : id === B.TOTEM || id === B.TOTEM_TOP ? 0.5 : 0.8;      // barari's wonders
+  if (id >= B.RESO_STONE && id <= B.FOSSIL) return id === B.AMBER_PATH || id === B.FOSSIL ? 0.9 : 1.2;
   if (id >= B.JUNGLE_GRASS && id < 100) {                                  // the dinosaur world's own
     if (id === B.JUNGLE_LEAVES || id === B.FERN_FROND) return 0.15;
     if (id === B.MUD || id === B.ASH || id === B.JUNGLE_GRASS || id === B.FERN_GRASS) return 0.3;

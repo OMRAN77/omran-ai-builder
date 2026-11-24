@@ -249,6 +249,83 @@ D('reed', {}, (ctx) => {
   for (const x of [36, 64, 92]) { ctx.fillStyle = '#7a4f2a'; ctx.beginPath(); ctx.ellipse(x, S * 0.1 + rnd() * 10, 4.5, 11, 0, 0, Math.PI * 2); ctx.fill(); }
 });
 
+// ------------------------------------------------------------------ barari's wonders: lighthouses, the sunken places, cloud islands, totems
+// (opts.glow: the tile shines by itself, drawn with its own material outside the texture array)
+if (!DINO) {
+  const brick = (u, v, rows, cols, seed) => {
+    const r = Math.floor(v * rows), t = mod(v * rows, 1), off = r % 2 ? 0.5 / cols : 0, s = mod((u + off) * cols, 1);
+    const mortar = Math.min(smooth(0, 0.07, t) * smooth(1, 0.93, t), smooth(0, 0.05, s) * smooth(1, 0.95, s));
+    return { mortar, id: h2(r, Math.floor((u + off) * cols), seed) };
+  };
+  const painted = (u, v, p, a, b, seed) => {
+    const k = brick(u, v, 4, 2, seed), n = fbm(u, v, 5, 3, seed + 1);
+    p.c = mul(mix3(hex(a), hex(b), n * 0.6 + k.id * 0.4), 0.7 + k.mortar * 0.3); p.h = k.mortar * (0.7 + n * 0.3); p.r = 0.8;
+  };
+  T('lhWhite', { nrm: 0.9 }, (u, v, p) => painted(u, v, p, '#e9e6de', '#fbf9f3', 1601));
+  T('lhRed', { nrm: 0.9 }, (u, v, p) => painted(u, v, p, '#b8372c', '#d6513e', 1603));
+  // the stone of the tide: deep blue, with rings of light like ripples spreading on water
+  T('tideStone', { nrm: 0.8, glow: 0.9 }, (u, v, p) => {
+    const r = rock(u, v, 1611, '#1c3550', '#2c4d6e'), d = Math.hypot(u - 0.5, v - 0.5);
+    const ring = 1 - smooth(0.0, 0.035, Math.abs(mod(d * 7 + 0.15, 1) - 0.5) * 0.5 * (1 + fbm(u, v, 6, 2, 1613) * 0.6));
+    p.c = mix3(r.c, hex('#7fe8ff'), ring * (d < 0.47 ? 1 : 0) * 0.9); p.h = r.h; p.r = 0.6;
+  });
+  // the bricks of the sunken houses: old stone with coral and weed growing on it
+  T('coralBrick', { nrm: 1.1 }, (u, v, p) => {
+    const k = brick(u, v, 4, 2, 1621), n = fbm(u, v, 5, 3, 1623), c0 = cells(u, v, 6, 1625);
+    let c = mul(mix3(hex('#7d8a86'), hex('#a3aea6'), n * 0.6 + k.id * 0.4), 0.66 + k.mortar * 0.34);
+    const spot = 1 - smooth(0.1, 0.28, c0.d1);
+    if (c0.id > 0.7) c = mix3(c, c0.id > 0.86 ? hex('#ef8a8a') : hex('#4fae9a'), spot * 0.85);
+    c = mix3(c, hex('#3f6a3a'), smooth(0.62, 0.78, fbm(u, v, 3, 2, 1627)) * 0.55);
+    p.c = c; p.h = k.mortar * 0.8 + spot * 0.3; p.r = 0.9;
+  });
+  // a cloud: soft white puffs with blue-grey hollows
+  T('cloud', { nrm: 0.5 }, (u, v, p) => {
+    const c0 = cells(u, v, 5, 1631, 0.9), c1 = cells(u + 0.31, v + 0.17, 9, 1633, 0.9), puff = 1 - Math.min(c0.d1 * 1.1, c1.d1 * 1.5);
+    p.c = mix3(hex('#c8d6e8'), hex('#ffffff'), clamp(puff * 1.2 + fbm(u, v, 4, 2, 1635) * 0.3)); p.h = puff; p.r = 0.95;
+  });
+  // the warm vent under a cloud island: hot pale stone breathing out through glowing cracks
+  T('vent', { nrm: 1.0, glow: 0.75 }, (u, v, p) => {
+    const r = rock(u, v, 1641, '#a8927a', '#cbb79c'), c0 = cells(u, v, 4, 1643, 0.95), crack = 1 - smooth(0.0, 0.05, c0.d2 - c0.d1);
+    const hole = 1 - smooth(0.05, 0.16, Math.hypot(u - 0.5, v - 0.5));
+    p.c = mix3(mul(r.c, 0.55), hex('#ffd9a0'), clamp(crack * 0.9 + hole)); p.h = r.h * (1 - crack); p.r = 0.8;
+  });
+  // the carved totem: a wooden face painted in red, teal and white, and the head on top with big eyes and a beak
+  const carvedWood = (u, v, seed) => { const b = barkV(u * 0.6 + 0.2, v, seed, '#8a5a32', '#a87a4a'); return { c: mul(b.c, 1.05), h: b.h }; };
+  T('totemFace', { nrm: 1.2 }, (u, v, p) => {
+    const w = carvedWood(u, v, 1651); let c = w.c, h = w.h * 0.5;
+    const eye = (cx) => Math.hypot((u - cx) / 1.2, v - 0.34);
+    for (const cx of [0.3, 0.7]) { const e = eye(cx); if (e < 0.12) { c = e < 0.05 ? hex('#1a1410') : e < 0.085 ? hex('#f3efe2') : hex('#2aa198'); h = 1; } }
+    if (Math.abs(u - 0.5) < 0.07 && v > 0.42 && v < 0.62) { c = hex('#c8402e'); h = 0.9; }                      // the nose
+    if (Math.abs(v - 0.76) < 0.05 && Math.abs(u - 0.5) < 0.28) { c = hex('#1a1410'); h = 0.1; }                 // the mouth
+    if (v < 0.08 || v > 0.94) { c = hex('#c8402e'); h = 0.8; }                                                   // bands top and bottom
+    p.c = c; p.h = h; p.r = 0.85;
+  });
+  T('totemHead', { nrm: 1.2 }, (u, v, p) => {
+    const w = carvedWood(u, v, 1661); let c = mix3(w.c, hex('#2aa198'), 0.35), h = w.h * 0.5;
+    for (const cx of [0.28, 0.72]) { const e = Math.hypot(u - cx, (v - 0.4) * 0.9); if (e < 0.16) { c = e < 0.07 ? hex('#1a1410') : e < 0.11 ? hex('#ffd34a') : hex('#f3efe2'); h = 1; } }
+    if (v > 0.52 && v < 0.9 && Math.abs(u - 0.5) < 0.16 * (1 - (v - 0.52) / 0.38) + 0.02) { c = hex('#e09a2a'); h = 1; }   // the beak
+    if (v < 0.12) { c = hex('#c8402e'); h = 0.8; }
+    p.c = c; p.h = h; p.r = 0.85;
+  });
+  T('totemCap', { nrm: 1.0 }, (u, v, p) => { const r = rings(u, v, 1671, '#b98a55', '#d9aa6e', '#c8402e'); p.c = r.c; p.h = r.h; p.r = 0.9; });
+  // the rare plants of the cloud islands
+  D('skyFlower', { glow: 0.55 }, (ctx) => {
+    const rnd = R(1681);
+    blades(ctx, rnd, 7, ['#7fc8a8', '#a6e0c4'], 0.2, 0.45, 2.5);
+    for (const [x, top] of [[46, 0.3], [84, 0.2]]) {
+      const y = S * top;
+      ctx.strokeStyle = '#6fb89a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 3, S); ctx.quadraticCurveTo(x - 5, (S + y) / 2, x, y); ctx.stroke();
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; ctx.fillStyle = k % 2 ? '#dff4ff' : '#bfe6ff'; ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * 10, y + Math.sin(a) * 10, 10, 5, a, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = '#fff7c8'; ctx.beginPath(); ctx.arc(x, y, 5.5, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+  D('skyBerry', {}, (ctx) => {
+    const rnd = R(1691);
+    for (let i = 0; i < 16; i++) { const x = 20 + rnd() * 88, y = 40 + rnd() * 80; ctx.fillStyle = i % 3 ? '#3f8a52' : '#5aa86a'; ctx.beginPath(); ctx.ellipse(x, y, 16, 9, rnd() * 3, 0, Math.PI * 2); ctx.fill(); }
+    for (let i = 0; i < 14; i++) { const x = 24 + rnd() * 80, y = 44 + rnd() * 66; ctx.fillStyle = '#7a3fc0'; ctx.beginPath(); ctx.arc(x, y, 5.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#c9a6ff'; ctx.beginPath(); ctx.arc(x - 1.5, y - 1.5, 1.8, 0, Math.PI * 2); ctx.fill(); }
+  });
+}
+
 // the world of the dinosaurs paints its own tiles with the same brushes
 if (DINO) (await import('../dino/tiles.js')).dinoTiles({ T, D, S, clamp, mix, smooth, mod, hex, mix3, mul, h2, fbm, cells, rock, dirtAt, leafy, barkV, rings, blades, R });
 
@@ -315,6 +392,7 @@ export function tileMaterial(name, kind) {
   else if (name === 'ice') Object.assign(o, { transparent: true, roughness: 0.15, depthWrite: false });
   else if (b.opts.cutout) Object.assign(o, { alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 });
   else if (P[name].draw) Object.assign(o, { alphaTest: 0.4, roughness: 0.9 });
+  if (b.opts.glow) Object.assign(o, { emissive: 0xffffff, emissiveMap: b.map, emissiveIntensity: b.opts.glow });      // it shines by itself, at night too
   m = new THREE.MeshStandardMaterial(o);
   m.name = name;
   mats.set(key, m);
@@ -330,9 +408,44 @@ export const tileNames = () => Object.keys(P);
 // The materials are the same standard material as tileMaterial gives each tile, reading the picture from the layer
 // the vertex names. Plants and leaves keep their holes in the shadows too (their own depth material).
 let arr = null;
+// The seasons of barari: which tiles change (1 grass, 2 the leaves of the broad trees, 3 flowers, 4 pine needles) and how
+// much of each season shows now (uSeasonW: spring, autumn, winter; they add up to 1). Plain mixes only (no pow, no
+// normalize): the same picture on every graphics card.
+export const SEASON = { cls: { value: new Float32Array(64) }, w: { value: new THREE.Vector3(1, 0, 0) } };
+const SEASON_CLASS = { grassTop: 1, grassSide: 1, tuft: 1, reed: 1, shrub: 1, oakLeaves: 2, flowerR: 3, flowerY: 3, flowerB: 3, pineNeedles: 4, pineSnowSide: 4, pineSnowTop: 4 };
+const SEASON_HEAD = 'uniform float uSeasonCls[64];\nuniform vec3 uSeasonW;\n';
+const SEASON_TINT = `
+  {
+    float cls = uSeasonCls[int(clamp(vLayer + 0.25, 0.0, 63.0))];
+    if (cls > 0.5) {
+      vec3 c = diffuseColor.rgb;
+      float g = clamp((c.g - max(c.r, c.b)) * 6.0, 0.0, 1.0);                    // how green this bit of the picture is
+      float lum = dot(c, vec3(0.3, 0.59, 0.11));
+      float speck = fract(sin(dot(floor(vMapUv * 16.0), vec2(12.9898, 78.233))) * 43758.5453);
+      vec3 spring = c * vec3(0.96, 1.1, 0.88);
+      vec3 autumn = c, winter = c;
+      if (cls < 1.5) {                                                            // grass: fresh green, gold and straw, under snow
+        autumn = mix(c, vec3(lum * 2.2, lum * 1.65, lum * 0.42), g);
+        winter = mix(c, vec3(0.84, 0.89, 0.95), g * 0.96);
+      } else if (cls < 2.5) {                                                     // broad leaves: blossom, red and orange, frost
+        spring = mix(spring, vec3(0.98, 0.62, 0.74), step(0.86, speck) * g);
+        autumn = mix(c, mix(vec3(lum * 4.2, lum * 1.3, lum * 0.25), vec3(lum * 3.8, lum * 2.6, lum * 0.35), step(0.5, speck)), g);
+        winter = mix(c * 0.8, vec3(0.86, 0.9, 0.95), g * 0.72);
+      } else if (cls < 3.5) {                                                     // flowers: bright in spring, dry later
+        spring = c * 1.12;
+        autumn = mix(c, vec3(lum * 1.1, lum * 0.85, lum * 0.5), 0.55);
+        winter = mix(c, vec3(0.8, 0.84, 0.9), 0.55);
+      } else {                                                                    // pines stay green; snow settles on them in winter
+        spring = c; autumn = c;
+        winter = mix(c, vec3(0.86, 0.9, 0.95), g * 0.42);
+      }
+      diffuseColor.rgb = spring * uSeasonW.x + autumn * uSeasonW.y + winter * uSeasonW.z;
+    }
+  }
+`;
 export function tileArray() {
   if (arr) return arr;
-  const names = Object.keys(P).filter((n) => n !== 'water' && n !== 'ice' && n !== 'swampWater' && n !== 'lava');      // (the last two: the dinosaur world's, drawn with materials of their own)
+  const names = Object.keys(P).filter((n) => n !== 'water' && n !== 'ice' && n !== 'swampWater' && n !== 'lava' && !P[n].opts.glow);      // (the dinosaur world's water and lava, and every tile that shines, are drawn with materials of their own)
   const index = new Map(names.map((n, i) => [n, i]));
   const L = S * S * 4, col = new Uint8Array(L * names.length), nrm = new Uint8Array(L * names.length);
   const cv = document.createElement('canvas'); cv.width = cv.height = S;
@@ -356,16 +469,21 @@ export function tileArray() {
   const tiles = tex(col, true), norms = tex(nrm, false);
   // a stand-in 2D map and normal map switch on the uv and normal-map code; the reads are then pointed at the arrays
   const stand = baked.get(names[0]);
+  // barari's seasons (seasons.js): the grass, the leaves and the flowers of the lands take the colours of the season
+  if (!DINO) names.forEach((n, i) => { if (i < 64 && SEASON_CLASS[n]) SEASON.cls.value[i] = SEASON_CLASS[n]; });
+  const seasonal = !DINO;
   const hook = (m, key) => {
     m.onBeforeCompile = (sh) => {
       sh.uniforms.uTiles = { value: tiles }; sh.uniforms.uNorms = { value: norms };
+      const tint = seasonal && !key.startsWith('depth');
+      if (tint) { sh.uniforms.uSeasonCls = SEASON.cls; sh.uniforms.uSeasonW = SEASON.w; }
       sh.vertexShader = 'attribute float layer;\nvarying float vLayer;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\n  vLayer = layer;');
       // (the chunks are still #includes here: they are put in already pointed at the arrays)
-      sh.fragmentShader = 'uniform highp sampler2DArray uTiles;\nuniform highp sampler2DArray uNorms;\nvarying float vLayer;\n' + sh.fragmentShader
-        .replace('#include <map_fragment>', THREE.ShaderChunk.map_fragment.replace('texture2D( map, vMapUv )', 'texture( uTiles, vec3( vMapUv, vLayer + 0.25 ) )'))
+      sh.fragmentShader = 'uniform highp sampler2DArray uTiles;\nuniform highp sampler2DArray uNorms;\nvarying float vLayer;\n' + (tint ? SEASON_HEAD : '') + sh.fragmentShader
+        .replace('#include <map_fragment>', THREE.ShaderChunk.map_fragment.replace('texture2D( map, vMapUv )', 'texture( uTiles, vec3( vMapUv, vLayer + 0.25 ) )') + (tint ? SEASON_TINT : ''))
         .replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps.replace('texture2D( normalMap, vNormalMapUv )', 'texture( uNorms, vec3( vNormalMapUv, vLayer + 0.25 ) )'));
     };
-    m.customProgramCacheKey = () => 'barari-tiles-' + key;
+    m.customProgramCacheKey = () => 'barari-tiles-' + key + (seasonal ? '-s' : '');
     return m;
   };
   const std = (o, key) => hook(new THREE.MeshStandardMaterial({ map: stand.map, normalMap: stand.normalMap || null, normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.92, metalness: 0, vertexColors: true, ...o }), key);

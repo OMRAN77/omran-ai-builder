@@ -7,6 +7,8 @@
 //   sides; rivers and lakes; a warm sea with islands. No snow anywhere.
 //   under the ground: the same caves as barari (tunnels from a hill side to halls with fires), coal, gold and
 //   diamond by depth, and amber: rare drops in the rock, a few showing on cliff faces.
+//   wonders (ideas.js makes them work): ancient stone towers of resonance with a glowing crystal on top and a stone
+//   that rings at their foot; on the flank of each volcano a fossil cave in a mound of black rock behind a moat of lava.
 //
 // No three.js here (node can run it for measuring):  const g = makeGen(K);  g.fillChunk(cx, cz, data);
 import { makeNoise, hash3 } from '../../shared/noise.js';
@@ -219,6 +221,75 @@ export function makeGen(K) {
   }
   const _cv = [];
   const carvedAt = (x, y, z) => { for (const c of cavesIn(x, x + 1, z, z + 1, _cv)) if (c.inside(x, y, z)) return true; return false; };
+
+
+  // ------------------------------------------------------------------ the towers of resonance
+  // At most one in each 384-block cell, on firm level ground away from the volcanoes: { x, z, y (its foot), H, bell }.
+  const TC = 384, towerCache = new Map();
+  function towerOf(gx, gz) {
+    const key = gx * 4096 + gz;
+    let T = towerCache.get(key);
+    if (T !== undefined) return T;
+    T = null;
+    if (hash3(gx, 41, gz, 2301) < 0.8) {
+      for (let t = 0; t < 12 && !T; t++) {
+        const x = gx * TC + 40 + Math.floor(hash3(gx, t, gz, 2303) * (TC - 80)), z = gz * TC + 40 + Math.floor(hash3(gx, t, gz, 2305) * (TC - 80));
+        const c = column(x, z), h = hInt(c.hf);
+        if (h < c.wl || c.lava || c.flow || c.vd < 1.3 || c.wv > 0.3 || c.s < 0.06 || c.swamp || c.wj > 0.45 || h > SEA + 28 || h < SEA + 2) continue;      // (in the open: the jungle would hide it)
+        if (spawn && Math.hypot(x - spawn.x, z - spawn.z) < 30) continue;
+        let level = true;
+        for (const [dx, dz] of [[-3, -3], [3, -3], [-3, 3], [3, 3], [0, 3]]) { const q = column(x + dx, z + dz), qh = hInt(q.hf); if (qh < q.wl || Math.abs(qh - h) > 2) { level = false; break; } }
+        if (!level) continue;
+        T = { x, z, y: h + 1, H: 21 + Math.floor(hash3(gx, t, gz, 2307) * 6), bell: { x, y: h + 1, z: z + 3 }, key: gx + ',' + gz };
+      }
+    }
+    if (towerCache.size > 2000) towerCache.clear();
+    towerCache.set(key, T);
+    return T;
+  }
+  function towersIn(x0, x1, z0, z1) {
+    const out = [];
+    for (let gz = Math.floor((z0 - 8) / TC); gz <= Math.floor((z1 + 8) / TC); gz++) for (let gx = Math.floor((x0 - 8) / TC); gx <= Math.floor((x1 + 8) / TC); gx++) {
+      const T = towerOf(gx, gz);
+      if (T && T.x - 4 < x1 && T.x + 4 >= x0 && T.z - 4 < z1 && T.z + 4 >= z0) out.push(T);
+    }
+    return out;
+  }
+  function towersNear(x, z, r) { return towersIn(x - r, x + r, z - r, z + r).filter((T) => Math.hypot(T.x - x, T.z - z) <= r).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z)); }
+
+  // ------------------------------------------------------------------ the fossil caves: one on the flank of each volcano
+  // { x, z, y (its floor), ox, oz (its mouth faces out, away from the volcano), chest, fires, key }
+  const fossilCache = new Map();
+  function fossilOf(gx, gz) {
+    const key = gx * 4096 + gz;
+    let F = fossilCache.get(key);
+    if (F !== undefined) return F;
+    F = null;
+    const v = volcanoOf(gx, gz);
+    if (v) {
+      for (let t = 0; t < 6 && !F; t++) {
+        const a = v.ph + Math.PI / 3 + (t % 2 ? 1 : -1) * Math.floor((t + 1) / 2) * 0.35 + (t >= 4 ? Math.PI : 0), d = v.R * 0.84;
+        const x = Math.round(v.x + Math.cos(a) * d), z = Math.round(v.z + Math.sin(a) * d);
+        const c = column(x, z), h = hInt(c.hf);
+        if (c.lava || c.flow || h < c.wl || h > SEA + 36) continue;
+        const ox = Math.cos(a), oz = Math.sin(a), px = -oz, pz = ox;
+        F = { x, z, y: h + 1, ox, oz, chest: { x: Math.round(x - ox * 3), y: h + 1, z: Math.round(z - oz * 3) },
+          fires: [{ x: Math.round(x + px * 3), y: h + 1, z: Math.round(z + pz * 3) }, { x: Math.round(x - px * 3), y: h + 1, z: Math.round(z - pz * 3) }], key: gx + ',' + gz };
+      }
+    }
+    if (fossilCache.size > 2000) fossilCache.clear();
+    fossilCache.set(key, F);
+    return F;
+  }
+  function fossilsIn(x0, x1, z0, z1) {
+    const out = [];
+    for (let gz = Math.floor((z0 - 200) / VC); gz <= Math.floor((z1 + 200) / VC); gz++) for (let gx = Math.floor((x0 - 200) / VC); gx <= Math.floor((x1 + 200) / VC); gx++) {
+      const F = fossilOf(gx, gz);
+      if (F && F.x - 13 < x1 && F.x + 13 >= x0 && F.z - 13 < z1 && F.z + 13 >= z0) out.push(F);
+    }
+    return out;
+  }
+  function fossilsNear(x, z, r) { return fossilsIn(x - r, x + r, z - r, z + r).filter((F) => Math.hypot(F.x - x, F.z - z) <= r).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z)); }
 
   // ------------------------------------------------------------------ one chunk
   const W = C + 2, HF = new Float32Array(W * W), HI = new Int16Array(W * W), WL = new Int16Array(W * W);
@@ -456,6 +527,74 @@ export function makeGen(K) {
       else if (t.kind === 'swamp') swampTree(t);
       else snag(t);
     }
+    // ---- the wonders, after the trees (they stand clear of them)
+    const soft2 = (id) => soft(id) || id === B.FERN_TRUNK || id === B.JUNGLE_LOG || id === B.SHRUB;
+    const colTop = (x, z) => { const i = x - X0 + 1, j = z - Z0 + 1; return i >= 0 && j >= 0 && i < W && j < W ? HI[i + j * W] : hInt(column(x, z).hf); };
+    for (const T of towersIn(X0, X0 + C, Z0, Z0 + C)) {
+      for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 4; dx++) {
+        const cx = T.x + dx, cz = T.z + dz;
+        if (!inC(cx, T.y, cz)) continue;
+        for (let y = T.y; y <= T.y + T.H + 4 && y < SY; y++) if (soft2(d[at(cx, y, cz)]) || (Math.abs(dx) <= 2 && Math.abs(dz) <= 2)) d[at(cx, y, cz)] = 0;
+        if (Math.abs(dx) > 2 || Math.abs(dz) > 2) continue;
+        for (let y = T.y - 5; y < T.y; y++) if (y > 0) d[at(cx, y, cz)] = B.RESO_STONE;
+        const edge = Math.abs(dx) === 2 || Math.abs(dz) === 2, corner = Math.abs(dx) === 2 && Math.abs(dz) === 2;
+        for (let y = T.y; y < T.y + T.H; y++) {
+          const lv = y - T.y, top = T.H - lv <= 4;
+          if (top && edge && (corner || hash3(cx, y, cz, 2311) < 0.35)) continue;      // the old top has fallen in places
+          d[at(cx, y, cz)] = edge && lv % 4 === 2 ? B.RESO_CARVED : B.RESO_STONE;
+        }
+        if (dx === 0 && dz === 0) { d[at(cx, T.y + T.H, cz)] = B.RESO_CRYSTAL; d[at(cx, T.y + T.H + 1, cz)] = B.RESO_CRYSTAL; }
+        else if (Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && (dx === 0 || dz === 0)) d[at(cx, T.y + T.H, cz)] = B.RESO_CARVED;
+      }
+      const b = T.bell;
+      if (inC(b.x, b.y, b.z)) { for (let y = b.y - 4; y < b.y; y++) if (y > 0) d[at(b.x, y, b.z)] = B.RESO_STONE; d[at(b.x, b.y, b.z)] = B.RESO_BELL; d[at(b.x, b.y + 1, b.z)] = 0; }
+    }
+    for (const F of fossilsIn(X0, X0 + C, Z0, Z0 + C)) {
+      const y0 = F.y, px = -F.oz, pz = F.ox;
+      for (let dz = -12; dz <= 12; dz++) for (let dx = -12; dx <= 12; dx++) {
+        const cx = F.x + dx, cz = F.z + dz, dd = Math.hypot(dx, dz);
+        if (!inC(cx, y0, cz) || dd >= 11.5) continue;
+        const g = colTop(cx, cz);
+        if (dd < 8.5) {
+          const top = y0 + Math.round(6.5 * Math.sqrt(1 - (dd / 8.5) * (dd / 8.5)));
+          for (let y = Math.min(g, y0 - 1); y <= Math.max(top, g); y++) {
+            if (y <= 0 || y >= SY) continue;
+            const inner = dd < 5.5 && y >= y0 && y <= y0 + (dd < 3.5 ? 4 : 3);
+            if (inner) { d[at(cx, y, cz)] = 0; continue; }
+            if (y > top) { if (y > g) d[at(cx, y, cz)] = 0; continue; }
+            const r = hash3(cx, y, cz, 2321), shell = dd < 7.2 && y < y0 + 5;
+            d[at(cx, y, cz)] = y === y0 - 1 && dd < 5.5 ? B.ASH : shell && r < 0.16 ? B.FOSSIL : shell && r < 0.21 ? B.AMBER : B.BASALT;
+          }
+          for (let y = Math.max(top, g) + 1; y < Math.min(SY, Math.max(top, g) + 6); y++) if (soft2(d[at(cx, y, cz)])) d[at(cx, y, cz)] = 0;
+        } else {
+          // the moat: a level ring of lava round the mound, one below the cave's floor (cut into the slope, or held up by black rock)
+          for (let y = Math.min(g, y0 - 4); y <= Math.max(g, y0 + 2) + 5 && y < SY; y++) {
+            if (y <= 0) continue;
+            const a = at(cx, y, cz);
+            if (y < y0 - 1) { if (y >= y0 - 4 || !d[a] || d[a] === B.WATER) d[a] = B.BASALT; }
+            else if (y === y0 - 1) d[a] = B.LAVA;
+            else if (y <= Math.max(g, y0 + 2) || soft2(d[a])) d[a] = 0;
+          }
+        }
+      }
+      // a landing of black rock outside the moat in front of the mouth, level with the cave's floor
+      for (let s2 = 11.5; s2 <= 15; s2 += 0.5) for (const w of [-2, -1, 0, 1, 2]) {
+        const cx = Math.round(F.x + F.ox * s2 + px * w), cz = Math.round(F.z + F.oz * s2 + pz * w);
+        if (!inC(cx, y0, cz) || Math.hypot(cx - F.x, cz - F.z) < 11.5) continue;
+        const g = colTop(cx, cz);
+        for (let y = Math.min(g, y0 - 4); y <= Math.max(g, y0 + 2) + 3 && y < SY; y++) { if (y <= 0) continue; const a = at(cx, y, cz); if (y < y0) { if (y >= y0 - 4 || !d[a]) d[a] = B.BASALT; } else d[a] = 0; }
+      }
+      // the mouth, out toward the low ground; the chest at the back, two fires for light
+      for (let s2 = 3; s2 <= 9; s2 += 0.5) for (const w of [-1, 0, 1]) {
+        const cx = Math.round(F.x + F.ox * s2 + px * w), cz = Math.round(F.z + F.oz * s2 + pz * w);
+        if (!inC(cx, y0, cz)) continue;
+        for (let y = y0; y <= y0 + 2; y++) if (d[at(cx, y, cz)] !== B.LAVA) d[at(cx, y, cz)] = 0;
+        if (d[at(cx, y0 - 1, cz)] !== B.LAVA) d[at(cx, y0 - 1, cz)] = B.BASALT;
+      }
+      const c = F.chest;
+      if (inC(c.x, c.y, c.z)) d[at(c.x, c.y, c.z)] = K.CHEST;
+      for (const f of F.fires) if (inC(f.x, f.y, f.z)) { d[at(f.x, f.y, f.z)] = K.FIRE; fires.push(f); }
+    }
     return fires;
   }
 
@@ -597,5 +736,6 @@ export function makeGen(K) {
   findSpawn();
   return {
     SY, SEA, C, SIZE, spawn, fillChunk, column, landOf, zoneOf, heightAt, baseHeight, farSample, cavesIn, treesIn, volcanoesNear,
+    towersNear, fossilsNear, towerOf, TC,
   };
 }

@@ -61,6 +61,7 @@ export const PAL = {
   rockA: hex(0xb07e58), rockB: hex(0x9c6a4a), rockC: hex(0xc9a781), rockD: hex(0x7e5440),
   adobe: hex(0xcaa377), adobeDark: hex(0xa97f56), plaster: hex(0xe6dcc6), stone: hex(0x8d7964),
   wood: hex(0x5a3c26), woodDark: hex(0x3e2a1b), thatch: hex(0xa98a56), falaj: hex(0xb5a58b),
+  salt: hex(0xeae4d6),
 };
 
 export function buildTiles() {
@@ -281,6 +282,44 @@ export function buildTiles() {
   T.reed = strokes(16, '#6f8140', '#8a9550', { seed: 3, w: 4.5, minH: 0.6, varH: 0.38, lean: 0.35, spread: 0.7, heads: '#6b4a2c' });
   T.tuft = strokes(18, '#8c8a4a', '#a39a58', { seed: 7, w: 4, minH: 0.3, varH: 0.4, lean: 1.1, spread: 0.5 });
   T.shrub = strokes(26, '#8a7350', '#6f6a44', { seed: 9, w: 3.2, minH: 0.35, varH: 0.5, lean: 1.5, spread: 0.3 });
+
+  // --- the open desert: a salt flat's white crust, broken into plates by low ridges
+  T.salt = paint(S, (u, t) => {
+    let c = base(PAL.salt, u, t, { seed: 101, blotch: 0.035, grain: 0.03, grad: 0, edge: 0.0, streakX: 2, streakY: 2 });
+    const n = pfbm(u, t, 3, 3, 2, 103), m = pfbm(u + 0.37, t + 0.11, 5, 5, 2, 107);
+    const ridge = Math.min(Math.abs(n - 0.5), Math.abs(m - 0.5) * 1.4);
+    c = mul(c, 1.03 - 0.10 * sstep(0.03, 0.0, ridge));
+    if (pv(u, t, 40, 40, 109) > 0.9) c = mul(c, 0.96);
+    return c;
+  });
+  T.saltSide = paint(S, (u, t) => {
+    const crust = sstep(0.12, 0.2, t);
+    let c = base(mix3(PAL.salt, PAL.packed, crust * 0.85), u, t, { seed: 111, blotch: 0.05, grain: 0.035, grad: 0.06, edge: 0.02, streakX: 2, streakY: 6 });
+    return c;
+  });
+  // the head of a wind tower: a clay drum with four dark vents, the cap the sails turn on
+  T.windhead = paint(S, (u, t) => {
+    let c = base(mul(PAL.adobe, 0.96), u, t, { seed: 113, blotch: 0.08, grain: 0.035, grad: 0.05, edge: 0.04, streakX: 2, streakY: 6 });
+    const dx = Math.abs(u - 0.5);
+    if (dx < 0.18 && t > 0.3 && t < 0.72) c = [0.13, 0.09, 0.07];
+    else if (dx < 0.24 && t > 0.24 && t < 0.78) c = mul(c, 0.78);
+    if (Math.abs(t - 0.12) < 0.03 || Math.abs(t - 0.9) < 0.03) c = mul(PAL.woodDark, 1.3);
+    return c;
+  });
+  // the stone of the sun vault: dressed blocks with a carved sun disc and rays
+  T.vault = paint(S, (u, t) => {
+    let c = base(mul(PAL.stone, 1.12), u, t, { seed: 121, blotch: 0.07, grain: 0.04, grad: 0, edge: 0.07 });
+    const dx = u - 0.5, dy = t - 0.5, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+    const ray = r > 0.22 && r < 0.42 && Math.abs(((a / (Math.PI / 6)) % 1 + 1) % 1 - 0.5) < 0.12;
+    if (r < 0.16) c = mul(c, r > 0.12 ? 0.68 : 1.08);
+    else if (ray) c = mul(c, 0.74);
+    return c;
+  });
+  T.vaultSide = paint(S, (u, t) => {
+    const rows = 2, row = Math.floor(t * rows), ft = t * rows - row, fu = ((u + row * 0.5) * 2) % 1;
+    const c = base(mul(PAL.stone, 1.06), u, t, { seed: 123, blotch: 0.08, grain: 0.05, grad: 0.02, edge: 0.0 });
+    return mul(c, 0.66 + 0.34 * Math.min(sstep(0, 0.1, Math.min(ft, 1 - ft)), sstep(0, 0.06, Math.min(fu, 1 - fu))));
+  });
 
   return T;
 }

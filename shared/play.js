@@ -532,7 +532,7 @@ export function createPlay(o) {
       const css = document.createElement('style'); css.textContent = 'button[data-act="down"][hidden]{display:none}button[data-act="down"].down{background:rgba(255,255,255,.35)}'; document.head.appendChild(css);
       const seat = () => {
         const j = T.jump.getBoundingClientRect(), w = 64, h = 46, gap = 8;
-        const others = [T.stick, T.dig, T.place, ...document.querySelectorAll('[data-act="bag"], [data-act="pause"]')].filter((e) => e && e.offsetParent).map((e) => e.getBoundingClientRect());
+        const others = [T.stick, T.dig, T.place, ...document.querySelectorAll('[data-act="bag"], [data-act="pause"], #bwCorner button')].filter((e) => e && e.offsetParent).map((e) => e.getBoundingClientRect());
         const free = (x, y) => x >= 4 && y >= 4 && x + w <= innerWidth - 4 && y + h <= innerHeight - 4 && others.every((r) => x + w + 4 < r.left || x > r.right + 4 || y + h + 4 < r.top || y > r.bottom + 4);
         const cx = j.left + j.width / 2 - w / 2, cy = j.top + j.height / 2 - h / 2;
         const spots = [[cx, j.top - h - gap], [j.left - w - gap, cy], [cx, j.top - 2 * h - 2 * gap], [j.left - w - gap, j.top - h - gap], [j.right - w, j.top - h - gap], [j.left - 2 * w - 2 * gap, cy]];
@@ -754,7 +754,7 @@ export function createPlay(o) {
 
   unstick();
   placeCamera();
-  return {
+  return (window.__GAME_PLAY = {                     // the world switcher pauses the game through this
     state: st, input: inp, tuning: P, res, world, blocks, isSolid, isLiquid, gpu, setSlot, setModal, setFlying, notice, sound, give, changed: inventoryChanged,
     /** Call fn(state, dt) every frame, after the world's own onFrame. */
     onTick(fn) { ticks.push(fn); },
@@ -815,7 +815,7 @@ export function createPlay(o) {
     select, advance, raycast, placeNow,
     /** For tests: run n fixed steps without waiting for frames, then draw once. */
     tick(n = 1, dt = 1 / 60) { for (let i = 0; i < n; i++) advance(dt); draw(); },
-  };
+  });
 }
 
 // ---------------------------------------------------------------------- start / pause panel
@@ -923,6 +923,7 @@ export function createPlayPanel(o) {
       + btn('options', 'الإعدادات')
       + (window.__GAME_CLOUD ? btn('cloud', window.__GAME_CLOUD.code ? 'حسابي ✓' : 'حسابي (احفظ عالمك في الموقع)') : '')
       + (net ? btn('net', net.role ? 'العب مع ربعك (الغرفة ' + net.code + ')' : 'العب مع ربعك') : '')
+      + (window.__GAME_SWITCH ? btn('switch', 'تبديل العالم') : '')
       + btn('quit', toMenu ? 'احفظ واطلع للقائمة' : 'احفظ')
       + `</div><div class="note">${esc(sent)}</div><div class="gpu">${esc(window.__GAME_GPU || '')}</div>`;
   }
@@ -991,6 +992,7 @@ export function createPlayPanel(o) {
     else if (act === 'looks') { el.hidden = true; sent = ''; o.onStart(); setTimeout(() => { if (window.__GAME_LOOKS) window.__GAME_LOOKS(); }, 120); }
     else if (act === 'net') { const n = window.__GAME_NET; if (n) { el.hidden = true; n.open(() => { el.hidden = false; draw(); }); } }
     else if (act === 'worlds') toMenu();
+    else if (act === 'switch') { if (window.__GAME_SWITCH) window.__GAME_SWITCH.open(); }
     else if (act === 'quit') {
       const s = window.__GAME_SAVE, ok = s ? s.save() : false, linked = !!(ok && s.cloud && s.cloud.code);
       sent = ok ? (linked ? 'انحفظ عالمك. أرفعه لحسابك…' : 'انحفظ عالمك في هذا المتصفح ✓') : (s && s.why ? s.why : 'ما قدرت أحفظ.');
@@ -1029,12 +1031,15 @@ export function createPlayPanel(o) {
   });
   window.addEventListener('keydown', (e) => { if (!el.hidden && waitKey) { e.preventDefault(); e.stopImmediatePropagation(); if (e.code !== 'Escape' && window.__GAME_KEYS) window.__GAME_KEYS.set(waitKey, e.code); waitKey = null; drawSub(); } }, true);
   window.__GAME_PANEL = () => { if (!el.hidden && view === 'main') draw(); };      // something the panel shows changed (a save was read)
-  return {
+  const api = {
     el,
     show(m = 'start') { mode = m; view = 'main'; waitKey = null; confirmNew = false; el.hidden = false; draw(); },
     hide() { el.hidden = true; },
     get view() { return view; }, go,
   };
+  // opened from the first page: the corner buttons «تبديل العالم» and «الإعدادات», and the window that moves to another world
+  if (window.__GAME && window.__GAME.key) import('./switcher.js').then((m) => { m.mountSwitcher({ panel: api, onStart: o.onStart, fontFamily: el.style.fontFamily }); if (!el.hidden && view === 'main') draw(); }).catch((e) => { console.warn('world switcher', e); });
+  return api;
 }
 
 /** Ask for full screen + landscape on phones. Must run inside a click; every refusal is fine. */

@@ -18,6 +18,11 @@ const ICON = {
   swipe: '<path d="M5 16h22M9 11l-5 5 5 5M23 11l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
   sun: '<circle cx="16" cy="16" r="6" fill="#ffc83a"/><path d="M16 3v4M16 25v4M3 16h4M25 16h4M7 7l3 3M22 22l3 3M25 7l-3 3M10 22l-3 3" stroke="#ffb020" stroke-width="2" stroke-linecap="round"/>',
   moon: '<path d="M21 4a11 11 0 1 0 7 17A9 9 0 0 1 21 4z" fill="#dfe7ff" stroke="#8a97c4" stroke-width="1.2"/>',
+  // the dinosaur world's things that are carried (styles/dino/ideas.js): eggs of four colours, resin, the amber balloon
+  ...Object.fromEntries([['#5fbf4a', '#2f7a2a'], ['#4aa8e8', '#1f5f9c'], ['#e8503a', '#8a1f14'], ['#ffd34a', '#c8901a']].map(([a, b], i) => ['egg' + i,
+    `<ellipse cx="16" cy="17.5" rx="9" ry="12" fill="${a}" stroke="${b}" stroke-width="1.3"/><circle cx="12.5" cy="15" r="1.6" fill="${b}"/><circle cx="19" cy="20" r="1.8" fill="${b}"/><circle cx="17" cy="11" r="1.2" fill="${b}"/><ellipse cx="12.5" cy="11" rx="2.2" ry="3.4" fill="#fff" opacity=".55"/>`])),
+  resin: '<path d="M16 4c4 6 8 10 8 15a8 8 0 0 1-16 0c0-5 4-9 8-15z" fill="#e8962a" stroke="#8a4a10" stroke-width="1.3"/><path d="M12 19a4 4 0 0 0 3 4" fill="none" stroke="#fff1c8" stroke-width="1.8" stroke-linecap="round"/>',
+  balloon: '<ellipse cx="16" cy="11" rx="9" ry="9.5" fill="#f0a030" stroke="#8a4a10" stroke-width="1.3"/><path d="M10 7c2-2 4-3 6-3" fill="none" stroke="#fff1c8" stroke-width="1.6" stroke-linecap="round"/><path d="M10 18l2.5 6M22 18l-2.5 6" stroke="#5a3a1e" stroke-width="1.2"/><rect x="11.5" y="24" width="9" height="5" rx="1" fill="#8a5a30" stroke="#4a2a10" stroke-width="1.1"/>',
 };
 const ic = (name, cls = 'ic') => svg(ICON[name] || '', cls);
 

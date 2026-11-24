@@ -1,12 +1,16 @@
-// "waha" art direction: scene assembly and the named shots.
+// "waha" art direction: scene assembly and the named shots. The desert goes on for ever (gen.js): the hand-made
+// home map (the fort, the oasis, the camp) is drawn as blocks near the player like the rest, and the far view
+// (far.js) carries the land to the horizon.
 import * as THREE from 'three';
 import { createTerrain } from './mesher.js';
+import { createDesert } from './gen.js';
+import { createFarView } from './far.js';
 import { createStage, defineShot, installShotApi, markReady } from '../../shared/stage.js';
 import { KIT_BLOCKS, K, kitMaterial, isKit } from '../../shared/kit.js';
 import { ATM, TIMES, applyTime, createSky, createStars, createMoon, createPipeline, makeNoiseTexture, patchMaterial } from './atmo.js';
 import { buildTiles, PAL } from './tiles.js';
-import { buildWorld, BLOCKS, B, FORT, POOL, CAMP, GROUND, POOL_LEVEL, WATER_Y, terrainAt, heroCrestX, colIndex } from './world.js';
-import { makeMaterialFor, buildBackdrop, buildPool, createReflection, WATER_U } from './scenery.js';
+import { buildWorld, BLOCKS, B, FORT, POOL, CAMP, GROUND, POOL_LEVEL, WATER_Y, terrainAt, heroCrestX, colIndex, X0, X1, Z0, Z1, OXC, OZC } from './world.js';
+import { makeMaterialFor, buildPool, createReflection, WATER_U } from './scenery.js';
 import { buildRanger, buildCamel, buildOryx, buildWraith, buildScorpion, buildFalcon, buildHeldTool } from './actors.js';
 import { buildHud, createTags } from './hud.js';
 import { buildMerlons, buildBeams, buildPalms, buildLantern, buildTent, buildRug, buildCushion, buildFire, buildFlag } from './props.js';
@@ -26,6 +30,7 @@ const post = createPipeline(stage, { samples: GAME && COARSE ? 2 : 4 });
 // ---- world ----
 const T = buildTiles();
 const W = buildWorld();
+const D = createDesert(W);
 ATM.uNoise.value = makeNoiseTexture();
 ATM.uPoolLevel.value = POOL_LEVEL;
 // The shared building kit (painted blocks, half blocks, lamps, glass, water, fire, beds): ids 100 and up.
@@ -84,27 +89,48 @@ const inOasis = (x, z) => (x >= 34 && x < 152 && z >= 4 && z < 130 ? 1 : 0);
 // The pool's water is drawn by one sheet (buildPool), so the mesher leaves those columns' water alone.
 // The set is fixed here: a column the player digs in must not start drawing its water a second time.
 const poolCol = W.nat.map((n, i) => (n === 1 && W.top[i] < WATER_Y ? 1 : 0));
-const isPool = (x, y, z) => poolCol[colIndex(x, z)] === 1;
-const terrain = createTerrain(W, BLOCKS, {
+const isPool = (x, y, z) => x >= X0 && x < X1 && z >= Z0 && z < Z1 && poolCol[colIndex(x, z)] === 1;
+// how far the blocks reach round the player: less on a phone, and less again when the picture is set to fast
+const radiusFor = () => { const m = (window.__GAME_QUALITY || {}).mode, r = COARSE ? 60 : 88; return m === 'fast' ? r - 20 : m === 'sharp' ? r + 16 : r; };
+let regionProps = null;                                      // the palms of a region of the open desert (set below)
+const terrain = createTerrain(D, BLOCKS, {
   materialFor, aoCurve: [0.50, 0.68, 0.85, 1.0], regionOf: inOasis, skipLiquid: isPool,
   // a kit fire stands on the ground as a plant does; every other kit block is something built
   notGround: (id) => (id >= B.WATER && id <= B.SHRUB) || id === GID.OBSTACLE || id === GID.PALM || id === GID.LANTERN || id === K.FIRE,
-  kit: isKit,
+  kit: isKit, radius: radiusFor(), budget: GAME && COARSE ? 4 : 6,
   onMesh: (m) => { if (m.userData.region === 1) m.layers.enable(1); },
+  onLoad: (reg) => { if (regionProps) regionProps(reg); },
+  onUnload: (reg) => { for (const o of [...reg.props.children]) { o.traverse((c) => { if (c.isMesh) { c.geometry.dispose(); if (c.userData.own) c.material.dispose(); } }); reg.props.remove(o); } },
 });
 const voxels = terrain.group, stats = terrain.stats;
 scene.add(voxels);
 const pool = buildPool(W);
 scene.add(pool);
-const backdrop = buildBackdrop();
-backdrop.layers.enable(1);
-scene.add(backdrop);
+// beyond the blocks: the desert out to the horizon (lighter on a phone)
+const far = createFarView({ isLoaded: terrain.isLoaded, region: terrain.REGION, rings: GAME && COARSE ? [{ step: 4, n: 96 }, { step: 16, n: 144 }] : undefined });
+scene.add(far.group);
+/** Draw the blocks within r (default: the game's reach) and the far land round (wx, wz) at once: the start, a shot. */
+function around(wx, wz, r) {
+  terrain.radius = r ?? radiusFor();
+  terrain.prime(wx - OXC, wz - OZC);
+  far.prime(wx, wz);
+}
 window.__stats = stats;
 
 // ---- props ----
 const A = W.anchors;
 const merlons = buildMerlons(A.merlons), beams = buildBeams(A.beams), palms = buildPalms(A.palms);
 scene.add(merlons, beams, palms);
+// the palms out in the desert are drawn with the region of blocks they stand in, and go with it
+regionProps = (reg) => {
+  const list = [];
+  for (let cj = reg.gz0 >> 5; cj < (reg.gz0 + terrain.REGION) >> 5; cj++) for (let ci = reg.gx0 >> 5; ci < (reg.gx0 + terrain.REGION) >> 5; ci++) for (const p of D.chunk(ci, cj).palms) if (!p.felled) list.push(p);
+  for (const o of [...reg.props.children]) { o.traverse((c) => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } }); reg.props.remove(o); }
+  if (!list.length) return;
+  const g = buildPalms(list);
+  g.traverse((c) => { if (c.isMesh) c.userData.own = true; });
+  reg.props.add(g);
+};
 // things lying or standing on the camp ground, with the half size of their footprint (for the game)
 const campProps = [];
 const flag = buildFlag(); flag.position.set(A.flags[0].x, A.flags[0].y, A.flags[0].z); scene.add(flag);
@@ -234,12 +260,12 @@ function setTime(name, over = {}) {
   fire.flames.visible = lamp > 0;
   fire.glow.visible = lamp > 0;
   fire.glow.scale.setScalar(2.4 + 1.2 * lamp);
-  for (const m of voxels.children) if (m.material && m.material.userData.lit) m.material.emissiveIntensity = p.windows ?? 1;
+  materialFor('slitLit', 'solid').emissiveIntensity = p.windows ?? 1;
   return p;
 }
 
-function groundY(x, z) { return W.surfaceY(x, z); }
-window.__dbg = { W, groundY, terrainAt, camera, scene, rig };
+function groundY(x, z) { return D.surfaceY(x - OXC, z - OZC); }
+window.__dbg = { W, D, groundY, terrainAt, camera, scene, rig, terrain, far };
 
 function look(px, py, pz, tx, ty, tz, fov) {
   camera.position.set(px, py, pz);
@@ -252,6 +278,7 @@ function look(px, py, pz, tx, ty, tz, fov) {
 // ---- shots ----
 defineShot('hero', () => {
   overlays('none'); hideActors(); reflection.enabled = true;
+  around(105, 115, 175);
   const cz = 185, cx = heroCrestX(cz) + 0.5;
   look(cx, groundY(cx, cz) + 4.2, cz, 99, 31, 80, 46);
   setTime('golden');
@@ -266,6 +293,7 @@ defineShot('hero', () => {
 
 defineShot('night', () => {
   overlays('none'); hideActors(); reflection.enabled = true;
+  around(105, 115, 175);
   const cz = 185, cx = heroCrestX(cz) + 0.5;
   look(cx, groundY(cx, cz) + 4.2, cz, 99, 31, 80, 46);
   const nq = new URLSearchParams(location.search), nOver = {};
@@ -284,6 +312,18 @@ defineShot('night', () => {
   place(actors.scorpion, c(163) - 4.4, 163, Math.PI / 2 + 0.45);             // below the crest line, against the pool
   place(horde.scorpions[0], 133, 112.5, -2.7, null, 1.2);
   place(actors.falcon, CAMP.x - 0.5, CAMP.z - 2.4, 0.4);
+});
+
+// the picture for the world picker: the oasis and the fort from high over the dunes, and the desert going on
+// beyond them to the horizon
+defineShot('vista', () => {
+  overlays('none'); hideActors(); reflection.enabled = true;
+  const q = new URLSearchParams(location.search), c = (q.get('vc') || '192,90,252,98,26,72,48').split(',').map(Number);
+  around(c[0] * 0.4 + c[3] * 0.6, c[2] * 0.4 + c[5] * 0.6, 200);
+  look(c[0], c[1], c[2], c[3], c[4], c[5], c[6]);
+  setTime('golden');
+  aimShadow(105, 24, 110, 160, 700);
+  place(actors.camel, CAMP.x + 6, CAMP.z + 7, 2.2);
 });
 
 // cast line-up: positions are (right, depth) in the camera's own ground frame
@@ -307,6 +347,7 @@ function stageCast(ox, oz, viewAz, dist, fov) {
 
 defineShot('cast', () => {
   overlays('tags'); hideActors(); reflection.enabled = false;
+  around(126, 105.5, 90);
   stageCast(126, 105.5, -35, 9.6, 40);
   setTime('afternoon', { sunAz: -152, sunEl: 31 });
   aimShadow(118, 22, 96, 50, 300);
@@ -328,6 +369,7 @@ defineShot('play', () => {
   overlays('hud'); hideActors(); reflection.enabled = false;
   // standing at the edge of the dig, mattock in hand, the next block of the wall under the crosshair
   const wk = A.work, px = wk.x + 0.5, pz = wk.z + 5.5;
+  around(px, pz);
   const t = wk.target;
   targetBox.position.set(t[0] + 0.5, t[1] + 0.5, t[2] + 0.5);
   targetBox.visible = true;
@@ -345,6 +387,7 @@ defineShot('play', () => {
 defineShot('dbg', () => {
   const q = new URLSearchParams(location.search);
   const c = (q.get('c') || '96,140,96,96,20,95.9,50').split(',').map(Number);
+  around(c[0], c[2], Number(q.get('r') || 160));
   look(c[0], c[1], c[2], c[3], c[4], c[5], c[6] || 45);
   const over = {};
   if (q.get('az')) over.sunAz = Number(q.get('az'));
@@ -384,7 +427,7 @@ if (GAME) {
   await Promise.all(["700 20px 'Reem Kufi'", "500 14px 'Reem Kufi'", '500 14px Tajawal', '700 14px Tajawal']
     .map((f) => document.fonts.load(f, 'واحة 0123').catch(() => null)));      // a font that cannot be fetched must not stop the game
   await startGame({
-    GID, stage, W, terrain, hud, held, targetBox, materialFor, actors, place, aimShadow, setTime, rig, lanterns, lightLantern,
+    GID, stage, W, D, terrain, far, around, radiusFor, regionProps, hud, held, targetBox, materialFor, actors, place, aimShadow, setTime, rig, lanterns, lightLantern,
     merlons, beams, flag, campProps, palms, buildPalms,
   });
   markReady();

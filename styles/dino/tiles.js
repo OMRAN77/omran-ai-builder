@@ -217,4 +217,62 @@ export function dinoTiles(t) {
       ctx.strokeStyle = rnd() < 0.5 ? '#6a4a26' : '#94703c'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x - 8, y); ctx.lineTo(x + 8, y + (rnd() - 0.5) * 5); ctx.stroke();
     }
   });
+
+  // ---------------------------------------------------------------- the wonders of this world: resonance towers, the volcanic hatchery,
+  // amber bridges and fossil caves (opts.glow: the tile shines by itself, drawn with its own material)
+  const ancient = (u, v, seed) => {
+    const r = Math.floor(v * 3), t = mod(v * 3, 1), off = r % 2 ? 0.25 : 0, s = mod((u + off) * 2, 1);
+    const seam = Math.min(smooth(0, 0.06, t) * smooth(1, 0.94, t), smooth(0, 0.05, s) * smooth(1, 0.95, s));
+    const st = rock(u, v, seed, '#6f7a70', '#929c8e');
+    let c = mul(st.c, 0.68 + seam * 0.32);
+    c = mix3(c, hex('#4f6a3a'), smooth(0.6, 0.76, fbm(u, v, 4, 2, seed + 9)) * 0.45);     // moss in the old joints
+    return { c, h: seam * st.h };
+  };
+  T('resoStone', { nrm: 1.3 }, (u, v, p) => { const a = ancient(u, v, 1501); p.c = a.c; p.h = a.h; p.r = 0.9; });
+  // carved bands: rings within rings, like the waves of a sound
+  T('resoCarved', { nrm: 1.4 }, (u, v, p) => {
+    const a = ancient(u, v, 1511), d = Math.hypot(u - 0.5, (v - 0.5) * 1.3), ring = 1 - smooth(0.02, 0.05, Math.abs(mod(d * 5, 1) - 0.5) * 0.4);
+    p.c = mix3(a.c, hex('#3d4a40'), ring * (d < 0.5 ? 0.8 : 0)); p.h = d < 0.5 ? 1 - ring : a.h; p.r = 0.9;
+  });
+  T('resoCrystal', { nrm: 0.8, glow: 1.0 }, (u, v, p) => {
+    const c0 = cells(u, v, 3, 1521, 0.9), facet = smooth(0.0, 0.12, c0.d2 - c0.d1);
+    p.c = mix3(hex('#2fbfb0'), hex('#c8fff6'), facet * 0.6 + c0.id * 0.4); p.h = facet; p.r = 0.2;
+  });
+  T('resoBell', { nrm: 1.2, glow: 0.6 }, (u, v, p) => {
+    const a = ancient(u, v, 1531), d = Math.hypot(u - 0.5, v - 0.5), ring = 1 - smooth(0.0, 0.04, Math.abs(mod(d * 6, 1) - 0.5) * 0.5);
+    p.c = d < 0.46 ? mix3(mul(a.c, 0.45), hex('#6ff0e0'), ring) : mul(a.c, 0.6); p.h = d < 0.46 ? ring : a.h; p.r = 0.6;
+  });
+  // the warm nest on volcanic rock: twigs over glowing embers; with an egg of each colour in it
+  const nestBase = (ctx, rnd) => {
+    const cy = S * 0.84;
+    for (let i = 0; i < 26; i++) { const x = S * 0.2 + rnd() * S * 0.6, y = cy + rnd() * 10 - 2; ctx.fillStyle = rnd() < 0.5 ? '#ff7a1a' : '#ffc040'; ctx.beginPath(); ctx.arc(x, y, 2.5 + rnd() * 2.5, 0, Math.PI * 2); ctx.fill(); }
+    for (let i = 0; i < 70; i++) {
+      const a = rnd() * Math.PI, r = S * (0.28 + rnd() * 0.16), x = S / 2 + Math.cos(a) * r * (rnd() < 0.5 ? 1 : -1), y = cy + Math.sin(a) * 9 - rnd() * 12;
+      ctx.strokeStyle = rnd() < 0.5 ? '#5a3a1e' : '#8a6030'; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(x - 9, y + (rnd() - 0.5) * 6); ctx.lineTo(x + 9, y + (rnd() - 0.5) * 6); ctx.stroke();
+    }
+    return cy;
+  };
+  D('warmNest', { glow: 0.45 }, (ctx) => { nestBase(ctx, R(1541)); });
+  const EGG = [['#5fbf4a', '#2f7a2a'], ['#4aa8e8', '#1f5f9c'], ['#e8503a', '#8a1f14'], ['#ffd34a', '#c8901a']];
+  EGG.forEach(([shell, spot], i) => D('eggNest' + i, { glow: 0.4 }, (ctx) => {
+    const rnd = R(1551 + i), cy = nestBase(ctx, rnd), ex = S / 2, ey = cy - 30;
+    ctx.fillStyle = shell; ctx.beginPath(); ctx.ellipse(ex, ey, 20, 28, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = spot; for (let k = 0; k < 9; k++) { ctx.beginPath(); ctx.arc(ex + (rnd() - 0.5) * 26, ey + (rnd() - 0.4) * 36, 2.6, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.ellipse(ex - 7, ey - 10, 5, 8, -0.3, 0, Math.PI * 2); ctx.fill();
+  }));
+  // amber that hardened on the lava: clear gold with bubbles, the path over the fire
+  T('amberPath', { nrm: 0.7, glow: 0.35 }, (u, v, p) => {
+    const n = fbm(u, v, 3, 3, 1561), c0 = cells(u, v, 6, 1563), bub = 1 - smooth(0.05, 0.1, c0.d1);
+    const tile = Math.min(smooth(0, 0.04, u) * smooth(1, 0.96, u), smooth(0, 0.04, v) * smooth(1, 0.96, v));
+    p.c = mul(mix3(mix3(hex('#c86a12'), hex('#ffc24a'), n), hex('#fff0b0'), bub * (c0.id > 0.5 ? 0.7 : 0)), 0.75 + tile * 0.25); p.h = tile * 0.6 + n * 0.4; p.r = 0.25;
+  });
+  // rock with the bones of an animal of long ago in it
+  T('fossil', { nrm: 1.3 }, (u, v, p) => {
+    const r = rock(u, v, 1571, '#5f5a52', '#7f786c');
+    let c = r.c, h = r.h;
+    const bone = (x0, y0, x1, y1, w) => { const dx = x1 - x0, dy = y1 - y0, t = clamp(((u - x0) * dx + (v - y0) * dy) / (dx * dx + dy * dy)); return Math.hypot(u - x0 - dx * t, v - y0 - dy * t) < w; };
+    const ribs = [0.3, 0.42, 0.54, 0.66].some((x) => bone(x, 0.28, x + 0.04, 0.62, 0.025)) || bone(0.22, 0.24, 0.78, 0.26, 0.03);
+    if (ribs || bone(0.62, 0.72, 0.84, 0.8, 0.035)) { c = mix3(hex('#e6dcc0'), hex('#c9b994'), fbm(u, v, 8, 2, 1573)); h = 1; }
+    p.c = c; p.h = h; p.r = 0.9;
+  });
 }

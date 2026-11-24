@@ -13,10 +13,11 @@ import { createWeather } from '../../shared/weather.js';
 import { createStatus } from '../../shared/status.js';
 import { ATM } from './atmo.js';
 import { buildOryx, buildWraith, buildScorpion } from './actors.js';
-import { B, BLOCKS, X0, X1, Z0, Z1, SX, SY, SZ, colIndex, cornerIndex } from './world.js';
+import { B, BLOCKS, SY, SIZE, OXC, OZC, SHIFT, isMirror } from './world.js';
 import { SLOTS } from './hud.js';
 import { buildLantern } from './props.js';
 import { WATER_U } from './scenery.js';
+import { createWonders } from './wonders.js';
 
 const NAMES = {
   [B.SAND]: 'رمل', [B.PACKED]: 'رمل متماسك', [B.HARDPAN]: 'أرض صلبة', [B.DAMP]: 'تراب رطب', [B.GRAVEL]: 'حصى', [B.RUBBLE]: 'ركام صخري',
@@ -24,6 +25,7 @@ const NAMES = {
   [B.ADOBE]: 'جدار طين', [B.ADOBE_DARK]: 'جدار طين', [B.BRICK]: 'طوب طين', [B.BAND]: 'إفريز طين', [B.PLASTER]: 'جص', [B.STONE]: 'حجر بناء', [B.FALAJ]: 'حجر الفلج',
   [B.WOOD]: 'جذع نخل', [B.BEAM]: 'عمود خشب', [B.THATCH]: 'سعف نخل', [B.SLIT]: 'كوّة', [B.SLIT_LIT]: 'كوّة مضيئة',
   [B.REED]: 'قصب', [B.TUFT]: 'عشب', [B.SHRUB]: 'شجيرة',
+  [B.SALT]: 'سبخة ملح', [B.WINDHEAD]: 'رأس برج الريح', [B.VAULT]: 'حجر الخزنة',
 };
 /** What digging a block puts on the belt (one slot per family of materials). */
 const DROP = {
@@ -31,15 +33,37 @@ const DROP = {
   [B.GRAVEL]: B.ROCK_A, [B.RUBBLE]: B.ROCK_A, [B.ROCK_A]: B.ROCK_A, [B.ROCK_B]: B.ROCK_A, [B.ROCK_C]: B.ROCK_A, [B.ROCK_D]: B.ROCK_A, [B.STONE]: B.ROCK_A, [B.FALAJ]: B.ROCK_A,
   [B.ADOBE]: B.BRICK, [B.ADOBE_DARK]: B.BRICK, [B.BRICK]: B.BRICK, [B.BAND]: B.BRICK, [B.PLASTER]: B.BRICK, [B.SLIT]: B.BRICK, [B.SLIT_LIT]: B.BRICK,
   [B.WOOD]: B.WOOD, [B.BEAM]: B.WOOD, [B.THATCH]: B.WOOD,
+  [B.SALT]: B.SAND, [B.WINDHEAD]: B.BRICK,
 };
-const LOOSE = new Set([B.SAND, B.PACKED, B.HARDPAN, B.DAMP, B.GRAVEL]);
+const LOOSE = new Set([B.SAND, B.PACKED, B.HARDPAN, B.DAMP, B.GRAVEL, B.SALT]);
 const ROCK = new Set([B.RUBBLE, B.ROCK_A, B.ROCK_B, B.ROCK_C, B.ROCK_D, B.STONE, B.FALAJ]);
 const EYE = 1.62;
 const ease = (t) => t * t * (3 - 2 * t);
 
+/**
+ * A save made before the desert was endless counted the controller's coordinates from the home map's corner; now
+ * they count from the desert's, SHIFT blocks further out. Such a save (everything in it within the old map) is moved
+ * over once, before the bag reads it.
+ */
+function migrateSave() {
+  const KEY = 'bw-save-waha';
+  try {
+    const text = window.localStorage.getItem(KEY);
+    if (!text) return;
+    const d = JSON.parse(text);
+    if (!d || !d.me || !Array.isArray(d.me.pos) || !(d.me.pos[0] < 4096 && d.me.pos[2] < 4096)) return;
+    const S = SHIFT;
+    for (const a of d.log || []) if (Array.isArray(a) && a.length >= 4) { a[1] += S; a[3] += S; }
+    d.me.pos[0] += S; d.me.pos[2] += S;
+    if (d.me.mark && Number.isFinite(d.me.mark.x)) { d.me.mark.x += S; d.me.mark.z += S; }
+    d.chests = (d.chests || []).map(([k, c]) => { const [x, y, z] = String(k).split(',').map(Number); return [(x + S) + ',' + y + ',' + (z + S), c]; });
+    window.localStorage.setItem(KEY, JSON.stringify(d));
+  } catch (e) { /* a save that does not read is left as it is: the bag says so itself */ }
+}
+
 export async function startGame(ctx) {
-  const { GID, stage, W, terrain, hud, held, targetBox, actors, place, aimShadow, setTime, rig, lanterns, lightLantern, merlons, beams, flag, campProps, palms, buildPalms } = ctx;
-  const { scene, camera, renderer } = stage, { world } = W, A = W.anchors;
+  const { GID, stage, W, D, terrain, far, radiusFor, regionProps, hud, held, targetBox, actors, place, aimShadow, setTime, rig, lanterns, lightLantern, merlons, beams, flag, campProps, palms, buildPalms } = ctx;
+  const { scene, camera, renderer } = stage, A = W.anchors;
   const OBSTACLE = GID.OBSTACLE, LANTERN = GID.LANTERN, PALM = GID.PALM;
   // Two blocks exist only while playing; the mesher draws neither.
   //   OBSTACLE  fills the space a prop takes (palm trunks, the camel, the falcon's perch) so the player cannot walk through it
@@ -50,13 +74,19 @@ export async function startGame(ctx) {
   //   PALM      a palm's trunk: solid, aimed at and chopped like wood; the palm itself is the drawn prop
   BLOCKS[PALM] = { tiles: 'beam', kind: 'none', solid: true, pick: true };
   NAMES[PALM] = 'جذع نخلة'; DROP[PALM] = B.WOOD;
+  for (let i = 0; i < 8; i++) NAMES[B.MIRROR + i] = 'مراية برونز';
 
   // ------------------------------------------------------------------ the controller's view of the world
-  // shared/play.js walls the world in at x = 0 and z = 0, but this world's grid starts at (X0, Z0) < 0.
-  // So the controller runs in its own coordinates, shifted to start at zero, and everything it reports
-  // is shifted back here.
-  const OX = X0, OZ = Z0;
-  const pworld = { sx: SX, sy: SY, sz: SZ, get: (x, y, z) => world.get(x + OX, y, z + OZ), inb: (x, y, z) => world.inb(x + OX, y, z + OZ) };
+  // shared/play.js walls the world in at x = 0 and z = 0, and the desert (gen.js) goes on for thousands of blocks
+  // round the home map, whose own coordinates start below zero. So the controller runs in the desert's grid
+  // (which starts at zero, with the home map in its middle), and everything it reports is shifted back here.
+  const OX = OXC, OZ = OZC;
+  /** The world in its own coordinates (the home map's). */
+  const world = { get: (x, y, z) => D.get(x - OX, y, z - OZ), set: (x, y, z, id) => D.set(x - OX, y, z - OZ, id), inb: (x, y, z) => D.inb(x - OX, y, z - OZ) };
+  const pworld = { sx: SIZE, sy: SY, sz: SIZE, get: D.get, inb: D.inb };
+  const tset = (x, y, z, id) => terrain.setBlock(x - OX, y, z - OZ, id);       // an edit, in the world's own coordinates
+  const topAt = (x, z) => D.topAt(x - OX, z - OZ), natAt = (x, z) => D.natAt(x - OX, z - OZ);
+  const CO = { hc: 0, smooth: 0, firm: 0 };
 
   // The shared building kit lives in the controller's coordinates as well: it is told where blocks go in
   // those, and it puts its lamp and fire lights at the places it was told. The lights hang from a group
@@ -85,8 +115,7 @@ export async function startGame(ctx) {
   const cube = (id) => kindOf(id) === 'solid';
   /** Anything that fills its cell for the player: a cube, or the kit's half blocks, beds and glass. */
   const built = (id) => { const k = kindOf(id); return k === 'solid' || k === 'slab' || k === 'translucent'; };
-  const inCols = (x, z) => x >= X0 && x < X1 && z >= Z0 && z < Z1;
-  const key = (x, y, z) => (y * SZ + (z - Z0)) * SX + (x - X0);
+  const key = (x, y, z) => (y * SIZE + (z - OZ)) * SIZE + (x - OX);
 
   // ------------------------------------------------------------------ props that depend on blocks
   const guard = new Map();          // ground that cannot be dug (something that cannot move stands on it) -> what the HUD calls it
@@ -97,8 +126,7 @@ export async function startGame(ctx) {
   /** Guard the ground block of column (xf, zf); with `tall`, also fill that many cells above it. */
   const protect = (xf, zf, label, tall = 0) => {
     const x = Math.floor(xf), z = Math.floor(zf);
-    if (!inCols(x, z)) return;
-    const t = W.top[colIndex(x, z)];
+    const t = topAt(x, z);
     if (t < 0) return;
     guard.set(key(x, t, z), label);
     for (let k = 1; k <= tall; k++) if (!world.get(x, t + k, z)) world.set(x, t + k, z, OBSTACLE);
@@ -147,14 +175,13 @@ export async function startGame(ctx) {
   const palmOf = new Map();                          // trunk cell -> the palm
   for (const p of A.palms) {
     const x = Math.floor(p.x), z = Math.floor(p.z);
-    if (!inCols(x, z)) continue;
     protect(p.x, p.z, 'جذور نخلة');
-    const t = W.top[colIndex(x, z)];
+    const t = topAt(x, z);
     p.cells = []; p.root = t >= 0 ? key(x, t, z) : null;
     const [lx, lz] = p.lean || [0, 0];
     for (let y = t + 1; y < p.y + p.h - 0.2 && y < SY; y++) {
       const u = Math.max(0, (y + 0.5 - p.y) / p.h), cx = Math.floor(p.x + lx * u * u), cz = Math.floor(p.z + lz * u * u);
-      if (inCols(cx, cz) && !world.get(cx, y, cz)) { world.set(cx, y, cz, PALM); p.cells.push([cx, y, cz]); palmOf.set(key(cx, y, cz), p); }
+      if (!world.get(cx, y, cz)) { world.set(cx, y, cz, PALM); p.cells.push([cx, y, cz]); palmOf.set(key(cx, y, cz), p); }
     }
   }
   /** Fell palm p: the rest of its trunk goes, it is drawn no more, and its roots no longer hold the ground. */
@@ -172,6 +199,18 @@ export async function startGame(ctx) {
       trunk.geometry = fresh.children[0].geometry; fronds.geometry = fresh.children[1].geometry;
       fresh.children[0].material.dispose(); fresh.children[1].material.dispose();
     } else palms.visible = false;
+    redrawShadows();
+    return n;
+  }
+  /** Fell palm p of the open desert (gen.js keeps it, its trunk cells in grid coordinates); its region draws its palms again. */
+  function fellDesertPalm(p) {
+    if (p.felled) return 0;
+    p.felled = true;
+    let n = 0;
+    for (const [x, y, z] of p.cells) if (D.get(x, y, z) === PALM) { pterrain.setBlock(x, y, z, 0); n++; }
+    D.colRec(p.root[0], p.root[2]).edited = true;      // its chunk keeps that the palm is down
+    const R = terrain.REGION;
+    for (const reg of terrain.regions()) if (p.root[0] >= reg.gx0 && p.root[0] < reg.gx0 + R && p.root[2] >= reg.gz0 && p.root[2] < reg.gz0 + R) regionProps(reg);
     redrawShadows();
     return n;
   }
@@ -198,7 +237,8 @@ export async function startGame(ctx) {
   // ------------------------------------------------------------------ edits, as the controller makes them
   // This world's own water (the pool, the falaj) is the only water that moves. The kit's water is a block
   // like any other: it stays where it is put and never sets this rule off.
-  const wet = (x, y, z) => world.get(x, y, z) === B.WATER;
+  // (in the grid's coordinates, as the controller reports them)
+  const wet = (x, y, z) => D.get(x, y, z) === B.WATER;
   const SPREAD = [[0, -1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
   /** Water at (x, y, z) runs into the open cells it can reach without rising, a bounded number of them. */
   function flood(x, y, z) {
@@ -206,7 +246,7 @@ export async function startGame(ctx) {
     for (let i = 0, n = 0; i < todo.length && n < 96; i += 3) {
       for (const [dx, dy, dz] of SPREAD) {
         const qx = todo[i] + dx, qy = todo[i + 1] + dy, qz = todo[i + 2] + dz;
-        if (qy < 1 || !world.inb(qx, qy, qz) || world.get(qx, qy, qz) !== 0) continue;
+        if (qy < 1 || !D.inb(qx, qy, qz) || D.get(qx, qy, qz) !== 0) continue;
         terrain.setBlock(qx, qy, qz, B.WATER);
         todo.push(qx, qy, qz);
         if (++n >= 96) break;
@@ -215,10 +255,9 @@ export async function startGame(ctx) {
   }
   const pterrain = {
     setBlock(x, y, z, id) {
-      x += OX; z += OZ;
       // A hole dug beside or under water fills up, and the water runs on into whatever dry digging it
       // now reaches. There is no other water simulation: it never drains and nothing flows by itself.
-      const fill = id === 0 && built(world.get(x, y, z)) && (wet(x, y + 1, z) || wet(x + 1, y, z) || wet(x - 1, y, z) || wet(x, y, z + 1) || wet(x, y, z - 1));
+      const fill = id === 0 && built(D.get(x, y, z)) && (wet(x, y + 1, z) || wet(x + 1, y, z) || wet(x - 1, y, z) || wet(x, y, z + 1) || wet(x, y, z - 1));
       const done = terrain.setBlock(x, y, z, fill ? B.WATER : id);
       if (done && fill) flood(x, y, z);
       return done;
@@ -235,6 +274,11 @@ export async function startGame(ctx) {
   while (solidAt(sx, fy, sz)) fy++;
   while (fy > 1 && !solidAt(sx, fy - 1, sz)) fy--;
   const ax = wt[0] + 0.5 - sx, ay = wt[1] + 0.5 - (fy + EYE), az = wt[2] + 1.0 - sz;
+  // the part of the desert the shared pages look at (the quest map, the day's treasure and cave, the sky island,
+  // the maze, the hidden oasis): a square round the start, the size of a whole small world
+  const AREA = 224;
+  pworld.area = { x0: Math.round(sx - OX) - AREA / 2, z0: Math.round(sz - OZ) - AREA / 2, x1: Math.round(sx - OX) + AREA / 2, z1: Math.round(sz - OZ) + AREA / 2 };
+  migrateSave();
 
   const SLOT_ID = { sand: B.SAND, stone: B.ROCK_A, brick: B.BRICK, wood: B.WOOD, lantern: LANTERN };
   const ownItems = () => SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 }));
@@ -250,12 +294,12 @@ export async function startGame(ctx) {
   function frameBlock(x, y, z, id) {
     const lamp = id === LANTERN ? lamps.get(key(x, y, z)) : null;
     targetBox.position.set(x + 0.5, y + 0.5 - (lamp ? lamp.sunk : 0), z + 0.5);
-    const ci = colIndex(x, z), sloped = W.nat[ci] === 1 && W.top[ci] === y, a = boxPos.array, tall = kit.heightOf(id);
+    const sloped = natAt(x, z) === 1 && topAt(x, z) === y, a = boxPos.array, tall = kit.heightOf(id);
     for (let i = 0; i < a.length; i += 3) {
       let py = boxHome[i + 1];
       if (py > 0) {
         if (tall < 1) py = tall - 0.5 + 0.006;
-        else if (sloped) { const k = cornerIndex(x + (boxHome[i] > 0 ? 1 : 0), z + (boxHome[i + 2] > 0 ? 1 : 0)); if (W.smooth[k]) py = W.hc[k] - (y + 0.5) + 0.006; }
+        else if (sloped) { D.corner(x - OX + (boxHome[i] > 0 ? 1 : 0), z - OZ + (boxHome[i + 2] > 0 ? 1 : 0), CO); if (CO.smooth) py = CO.hc - (y + 0.5) + 0.006; }
       }
       a[i + 1] = py;
     }
@@ -271,9 +315,9 @@ export async function startGame(ctx) {
     if (h && !(h.x + OX === x && h.y === y && h.z + OZ === z)) { nx = h.nx; ny = h.ny; nz = h.nz; hold = key(h.x + OX, h.y, h.z + OZ); }
     let l;
     if (ny > 0) {                                    // standing on the ground (on the dune surface where the sand is untouched, on the real top of a half block or a bed)
-      const ci = colIndex(x, z), dune = W.nat[ci] === 1 && W.top[ci] === y - 1;
+      const dune = natAt(x, z) === 1 && topAt(x, z) === y - 1;
       if (!dune) sunk = 1 - kit.heightOf(world.get(x, y - 1, z));
-      l = buildLantern({ x: x + 0.5, y: (dune ? W.surfaceY(x + 0.5, z + 0.5) : y - sunk) + 0.21, z: z + 0.5 });
+      l = buildLantern({ x: x + 0.5, y: (dune ? D.surfaceY(x - OX + 0.5, z - OZ + 0.5) : y - sunk) + 0.21, z: z + 0.5 });
     } else if (ny < 0) {                             // hanging under a block on a short chain
       l = buildLantern({ x: x + 0.5, y: y + 0.45, z: z + 0.5 });
       const chain = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.03), l.group.children[1].material);
@@ -307,7 +351,7 @@ export async function startGame(ctx) {
     for (const lk of a) {
       const e = lamps.get(lk);
       if (!e) continue;
-      terrain.setBlock(e.x, e.y, e.z, 0); takeLantern(lk);
+      tset(e.x, e.y, e.z, 0); takeLantern(lk);
       const q = slots.find((s) => s.id === LANTERN);
       if (q) q.n = Math.min(999, (q.n || 0) + 1);
     }
@@ -338,7 +382,14 @@ export async function startGame(ctx) {
   const sun0 = rig.sun.target.position;              // where the play shot centred the shadow map
   let swing = 0, push = 0, stride = 0, sway = 0, hintT = 0, shadowAt = { x: sun0.x, y: sun0.y, z: sun0.z };
 
-  let life = null, weather = null, status = null;
+  let life = null, weather = null, status = null, wonders = null;
+  // not under something that cannot move (a palm out in the desert holds the block under its trunk too), not the
+  // sun vault's carved stone, and not the courtyard's mirrors (they turn; they do not come away)
+  const canBreak = (id, x, y, z) => id !== B.VAULT && !isMirror(id) && !guard.has(key(x + OX, y, z + OZ)) && (id === PALM || D.get(x, y + 1, z) !== PALM);
+  // blocks the game itself puts down or digs (the wonders), heard by a shared game and kept in the save like the player's own
+  let quiet = false;
+  const gput = (x, y, z, id) => { quiet = true; try { return play.put(x, y, z, id); } finally { quiet = false; } };
+  const gdig = (x, y, z) => { if (!D.get(x, y, z)) return; play.remoteDig(x, y, z); if (play.net.dig) play.net.dig(x, y, z); };
   let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
     camera: eyes, canvas: stage.canvas, world: pworld, blocks: BLOCKS, terrain: pterrain,
@@ -364,22 +415,22 @@ export async function startGame(ctx) {
       return spade ? 0.8 : 0.5;
     },
     dropOf: (id) => DROP[id] || kit.dropOf(id),
-    // not under something that cannot move, and not in the outermost rows (the far-terrain sheet starts under them)
-    canBreak: (id, x, y, z) => { x += OX; z += OZ; return !guard.has(key(x, y, z)) && x >= X0 + 6 && x < X1 - 6 && z >= Z0 + 6 && z < Z1 - 6; },
+    // not under something that cannot move (a palm out in the desert holds the block under its trunk too), and not the vault's stone
+    canBreak,
     onTarget(h) {
       targetBox.visible = !!h;
       if (!h) { hud.setTarget(null); return; }
       const x = h.x + OX, z = h.z + OZ;
       frameBlock(x, h.y, z, h.id);
-      hud.setTarget(guard.get(key(x, h.y, z)) ?? NAMES[h.id] ?? (kit.nameOf(h.id) || 'مكعب'));
+      hud.setTarget(guard.get(key(x, h.y, z)) ?? (D.get(h.x, h.y + 1, h.z) === PALM ? 'جذور نخلة' : null) ?? NAMES[h.id] ?? (kit.nameOf(h.id) || 'مكعب'));
     },
     onBreak(h) {
       const x = h.x + OX, z = h.z + OZ;
       if (h.id === LANTERN) takeLantern(key(x, h.y, z));
       if (h.id === PALM) {
-        const p = palmOf.get(key(x, h.y, z));
+        const p = palmOf.get(key(x, h.y, z)) || D.palmAt(h.x, h.y, h.z);
         if (p) {
-          const rest = fellPalm(p);
+          const rest = p.gen ? fellDesertPalm(p) : fellPalm(p);
           if (!h.remote) {
             // the piece that was struck came to the hand already; the rest of the trunk and a bunch of dates come with it
             if (rest > 0) play.give({ ...(play.itemOf(B.WOOD) || { id: B.WOOD, name: NAMES[B.WOOD] }), n: Math.min(5, rest) });
@@ -397,10 +448,11 @@ export async function startGame(ctx) {
     onPlace(px, y, pz, id) {
       const x = px + OX, z = pz + OZ, was = px + ',' + y + ',' + pz;
       if (kit.glow.has(was)) kit.broke({ x: px, y, z: pz, id: kit.glow.get(was) });      // the block took the place of a fire
-      if (id === LANTERN) putLantern(x, y, z, play.state.hit);
+      if (id === LANTERN) putLantern(x, y, z, quiet ? null : play.state.hit);
       kit.placed(px, y, pz, id, play.state.yaw);
       filled(x, y, z);
-      push = 1;
+      if (wonders) wonders.placed(px, y, pz, id);
+      if (!quiet) push = 1;
     },
     onInventory(list, sel) {
       hud.setSlots(list, sel);
@@ -419,6 +471,13 @@ export async function startGame(ctx) {
       camera.position.set(eyes.position.x + OX, eyes.position.y, eyes.position.z + OZ);
       camera.quaternion.copy(eyes.quaternion);
       camera.updateMatrixWorld(true);
+      // the blocks round the player, and the far desert beyond them
+      const rr = radiusFor();
+      if (rr !== terrain.radius) terrain.radius = rr;
+      terrain.update(p.x, p.z);
+      const fresh = terrain.takeChanged();
+      far.update(camera.position.x, camera.position.z, fresh);
+      if (fresh) redrawShadows();                    // a region came or went: the shadows are drawn again with it
       hud.setProgress(st.dig.on ? st.dig.progress : 0);
       kit.update(p, dt, st.time);
       if (vitals) vitals.update(dt);
@@ -501,13 +560,43 @@ export async function startGame(ctx) {
     fontFamily: BODY, accent: '#efd9a0', line: 'rgba(201, 163, 90, .85)',
     extra: { label: 'الوقت والجو', onClick: () => weather && weather.open() },
   });
+  // the four wonders of the desert (wonders.js): made before the save is read back, which happens once this turn is over
+  wonders = createWonders({
+    play, kit, bag, D, scene, touch: hud.touch, put: gput, dig: gdig, canDig: canBreak,
+    dropOf: (id) => DROP[id] || kit.dropOf(id),
+    setQuiet: (x, y, z, id) => terrain.setBlock(x, y, z, id),
+    obstacle: (x, y, z) => { if (!D.get(x, y, z)) D.set(x, y, z, OBSTACLE); },
+    lantern: (x, y, z, logged) => { if (logged) gput(x, y, z, LANTERN); else { terrain.setBlock(x, y, z, LANTERN); putLantern(x + OX, y, z + OZ, null); } },
+  });
+  // The hidden oasis the sand turtle leads to (shared/friends.js) is put anywhere on the whole map, which in an endless
+  // desert is thousands of blocks away. It is brought into the start's area (the same place all day), chest and all.
+  {
+    const adv = bag.adv, o = adv && adv.friends && adv.friends.oasis, A2 = pworld.area;
+    if (o && !(o.x >= A2.x0 && o.x < A2.x1 && o.z >= A2.z0 && o.z < A2.z1)) {
+      const r = adv.rngFor('oasis-near'), gx0 = Math.round(sx - OX), gz0 = Math.round(sz - OZ);
+      for (let i = 0; i < 200; i++) {
+        const a = r() * Math.PI * 2, d = 48 + r() * 50, x = Math.round(gx0 + Math.cos(a) * d), z = Math.round(gz0 + Math.sin(a) * d), y = adv.groundAt(x, z);
+        if (y === null) continue;
+        let flat = true; for (let dx = -2; dx <= 2 && flat; dx++) for (let dz = -2; dz <= 2 && flat; dz++) if (adv.groundAt(x + dx, z + dz) !== y) flat = false;
+        if (!flat) continue;
+        const old = kit.chestAt(o.x + 2, o.y, o.z + 2).slice();
+        kit.chests.delete((o.x + 2) + ',' + o.y + ',' + (o.z + 2));
+        for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) kit.setBlock(x + dx, y - 1, z + dz, K.WATER);
+        for (const [dx, dz, h] of [[-2, -2, 3], [2, -2, 2], [-2, 2, 2]]) { for (let k = 0; k < h; k++) kit.setBlock(x + dx, y + k, z + dz, 114); kit.setBlock(x + dx, y + h, z + dz, 108); }
+        kit.setBlock(x + 2, y, z + 2, K.CHEST);
+        const c = kit.chestAt(x + 2, y, z + 2); old.forEach((q, j) => { c[j] = q; });
+        o.x = x; o.y = y; o.z = z;
+        break;
+      }
+    }
+  }
   // a tap, not a press: the finger is up again before the bag is under it, so the same touch cannot pick an item
   hud.els.bag.addEventListener('click', () => { if (play.state.running) bag.toggle(); });
 
   const panel = createPlayPanel({
-    title: 'واحة', tagline: 'احفر الرمل، ابنِ بالطوب، وعمّر حصنك عند الواحة.',
+    title: 'واحة', tagline: 'صحرا ما لها آخر: احفر الرمل، ابنِ بالطوب، وعمّر حصنك عند الواحة. وفي البر أسرار تنتظرك.',
     fontFamily: BODY, accent: '#efd9a0', line: 'rgba(201, 163, 90, .85)', touch: hud.touch,
-    note: 'نسخة تجريبية: الوقت والمطر والوحوش تختارها من لوحة Q (وعلى الجوال من زر داخل الحقيبة). التقدّم ما ينحفظ.',
+    note: 'نسخة تجريبية: الوقت والمطر والوحوش تختارها من لوحة Q (وعلى الجوال من زر داخل الحقيبة).',
     onStart() { if (hud.touch) goImmersive(); else play.lock(); play.start(); },
   });
   for (const el of panel.el.querySelectorAll('h1, button')) el.style.fontFamily = KUFI;      // headings in the HUD's kufi
@@ -555,5 +644,5 @@ export async function startGame(ctx) {
     },
   });
   weather.el.querySelector('h2').style.fontFamily = KUFI;
-  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, origin: [OX, OZ], bag, kit, camera: stage.camera, vitals, life, weather, status };
+  window.__game = { play, panel, terrain: pterrain, world: pworld, B, slots, W, D, origin: [OX, OZ], bag, kit, camera: stage.camera, vitals, life, weather, status, mesh: terrain, far, wonders };
 }

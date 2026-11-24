@@ -109,14 +109,21 @@ export function buildHud(root) {
     /** Redraw the hotbar from the game's slots. */
     setSlots(list, sel) { hotbar.innerHTML = slotsHtml(list, sel); selname.textContent = list[sel] ? list[sel].name : ''; },
     /** heading / bearing in degrees (0 = north, 90 = east), distance in metres. */
-    setNav(heading, bearing, dist) {
+    setNav(heading, bearing, dist, label = 'القاعدة') {
       const h = ((Math.round(heading) % 360) + 360) % 360, d = Math.round(dist);
       let rel = ((bearing - h + 540) % 360) - 180;
       rel = Math.max(-span * 0.46, Math.min(span * 0.46, rel));
-      const key = h + '|' + Math.round(rel) + '|' + d;
+      const key = h + '|' + Math.round(rel) + '|' + d + '|' + label;
       if (key === navKey) return;
       navKey = key;
-      q('.compass').outerHTML = compass(h, h + rel, `القاعدة <span class="num" dir="ltr">${d}</span> م`, span);
+      const box = document.createElement('span'); box.textContent = label;      // the label is plain text
+      q('.compass').outerHTML = compass(h, h + rel, `${box.innerHTML} <span class="num" dir="ltr">${d}</span> م`, span);
+    },
+    /** The two lines of the objective box: the goal of crystals and the surveyor's state. */
+    setObjective(goalText, droneText, droneNum) {
+      q('.obj .row .lbl').textContent = goalText;
+      const r2 = root.querySelectorAll('.obj .row')[1];
+      r2.querySelector('.lbl').textContent = droneText; r2.querySelector('.num').textContent = droneNum;
     },
     /** Name of the block under the crosshair, or null for none. */
     setTarget(name) { target.hidden = !name; if (name) tlbl.textContent = name; },

@@ -1,10 +1,8 @@
-// Materials for the voxel tiles, the water (channel blocks + the pool surface with a planar
-// reflection), and the far-terrain backdrop (a cheap smooth height-field LOD that continues the same
-// terrain function beyond the voxel world).
+// Materials for the voxel tiles, and the water (channel blocks + the pool surface with a planar
+// reflection). The land beyond the blocks is far.js.
 import * as THREE from 'three';
 import { ATM, ATMO_PARS, patchMaterial } from './atmo.js';
-import { PAL } from './tiles.js';
-import { X0, X1, Z0, Z1, POOL, POOL_LEVEL, terrainAt, strataRaw, strataDip, B } from './world.js';
+import { POOL, POOL_LEVEL } from './world.js';
 
 export const WATER_U = {
   uDeep: { value: new THREE.Color(0.02, 0.06, 0.06) },
@@ -95,14 +93,14 @@ export function makeMaterialFor(T) {
     else if (kind === 'cross') {
       m = patchMaterial(new THREE.MeshLambertMaterial({ map: T[tile], alphaTest: 0.5, alphaToCoverage: true }), {});
     } else {
-      const loose = tile === 'sand' || tile === 'hardpan' || tile === 'gravel' || tile === 'damp';
+      const loose = tile === 'sand' || tile === 'hardpan' || tile === 'gravel' || tile === 'damp' || tile === 'salt';
       m = new THREE.MeshLambertMaterial({ map: T[tile] });
       if (tile === 'slitLit') { m.emissiveMap = T.slitGlow; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = 2.0; m.userData.lit = true; }
       patchMaterial(m, {
         voxel: true,
-        sand: loose ? (tile === 'sand' ? 1.0 : tile === 'hardpan' ? 0.45 : tile === 'gravel' ? 0.12 : 0.0) : undefined,
+        sand: loose ? (tile === 'sand' ? 1.0 : tile === 'hardpan' ? 0.45 : tile === 'gravel' ? 0.12 : tile === 'salt' ? 0.05 : 0.0) : undefined,
         wet: tile === 'damp',
-        firm: tile === 'sand' || tile === 'hardpan',
+        firm: tile === 'sand' || tile === 'hardpan' || tile === 'salt',
         rock: tile.startsWith('rock') || tile === 'rubble',
         variation: loose ? 0.012 : (tile.startsWith('rock') ? 0.04 : tile === 'sandSide' || tile.startsWith('packed') ? 0.025 : 0.055),
       });
@@ -173,59 +171,4 @@ export function createReflection(renderer, scene, camera, lights) {
       lights.forEach((l, i) => { l.castShadow = shadowFlags[i]; });
     },
   };
-}
-
-/** Far terrain: two nested grids (4 m and 16 m cells) with a hole where the voxel world sits. */
-export function buildBackdrop() {
-  const positions = [], normals = [], rocks = [], dips = [], indices = [];
-  const lin = (c) => new THREE.Color().setRGB(c[0], c[1], c[2], THREE.SRGBColorSpace);
-  const addGrid = (minX, maxX, minZ, maxZ, step, hole, drop) => {
-    const nx = Math.round((maxX - minX) / step), nz = Math.round((maxZ - minZ) / step);
-    const base = positions.length / 3;
-    for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
-      const x = minX + i * step, z = minZ + j * step;
-      const t = terrainAt(x, z);
-      const e = step * 0.5;
-      const hx = terrainAt(x + e, z).h - terrainAt(x - e, z).h, hz = terrainAt(x, z + e).h - terrainAt(x, z - e).h;
-      const nxx = -hx / (2 * e), nzz = -hz / (2 * e), l = Math.hypot(nxx, 1, nzz);
-      positions.push(x, t.h + 0.5 - drop, z);
-      normals.push(nxx / l, 1 / l, nzz / l);
-      rocks.push(t.surf === 'rock' ? 1 : 0);
-      dips.push(strataDip(x, z));
-    }
-    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-      const xa = minX + i * step, za = minZ + j * step, xb = xa + step, zb = za + step;
-      if (xa >= hole[0] && xb <= hole[1] && za >= hole[2] && zb <= hole[3]) continue;
-      const a = base + i + j * (nx + 1), b = a + 1, c = a + (nx + 1), d = c + 1;
-      indices.push(a, c, b, b, c, d);
-    }
-  };
-  addGrid(X0 - 128, X1 + 128, Z0 - 128, Z1 + 128, 4, [X0 + 4, X1 - 4, Z0 + 4, Z1 - 4], 0.7);
-  addGrid(-1264, 1456, -1264, 1456, 16, [X0 - 112, X1 + 112, Z0 - 112, Z1 + 112], 2.2);
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geo.setAttribute('aRock', new THREE.Float32BufferAttribute(rocks, 1));
-  geo.setAttribute('aDip', new THREE.Float32BufferAttribute(dips, 1));
-  geo.setIndex(indices);
-  // strata lookup (one texel per block of height), the same beds as the voxel cliffs
-  const NS = 160;
-  const data = new Uint8Array(NS * 4);
-  const cols = { [B.ROCK_A]: PAL.rockA, [B.ROCK_B]: PAL.rockB, [B.ROCK_C]: PAL.rockC, [B.ROCK_D]: PAL.rockD };
-  for (let y = 0; y < NS; y++) {
-    const c = cols[strataRaw(y)] || PAL.rockA;
-    data[y * 4] = c[0] * 255; data[y * 4 + 1] = c[1] * 255; data[y * 4 + 2] = c[2] * 255; data[y * 4 + 3] = 255;
-  }
-  const strata = new THREE.DataTexture(data, 1, NS, THREE.RGBAFormat);
-  strata.colorSpace = THREE.SRGBColorSpace; strata.magFilter = THREE.NearestFilter; strata.minFilter = THREE.NearestFilter;
-  strata.wrapT = THREE.RepeatWrapping; strata.needsUpdate = true;
-  const mat = patchMaterial(new THREE.MeshLambertMaterial({ color: 0xffffff }), {
-    backdrop: true,
-    uniforms: { uStrata: { value: strata }, uSandCol: { value: lin(PAL.sand).multiplyScalar(0.97) } },
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.name = 'backdrop';
-  mesh.castShadow = false; mesh.receiveShadow = false;
-  mesh.frustumCulled = false;
-  return mesh;
 }

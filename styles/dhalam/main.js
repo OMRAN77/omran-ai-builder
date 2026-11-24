@@ -10,13 +10,17 @@ import { createLife, simpleBeast } from '../../shared/life.js';
 import { extraKinds } from '../../shared/beasts.js';
 import { createWeather } from '../../shared/weather.js';
 import { createStatus } from '../../shared/status.js';
-import { buildTiles, buildDetailTextures, buildSpriteTextures, buildBoughTexture, buildVoxelDetail, buildCardTextures } from './texgen.js';
-import { buildForest } from './trees.js';
+import { buildTiles, buildDetailTextures, buildSpriteTextures, buildBoughTexture, buildVoxelDetail, buildCardTextures, buildGameTiles } from './texgen.js';
+import { buildForest, makeForestKit } from './trees.js';
 import { buildShelterProps, makeTorch } from './props.js';
 import { makeSurvivor, makeHound, makeRaven, makeStalker, makeBoneHound, makeGolem, makePick, makeAxe, makeViewArm, makeLantern } from './actors.js';
 import { setDetail, mat, box, at, strut, bake, blobShadow } from './kit.js';
 import { U, SKY, WATER, EXTRA, patch, makeSky, makePost, makeWater, resizeHooks } from './fx.js';
-import { generateWorld, bakeLight, buildWorldMeshes, buildWorldTerrain, buildFarTerrain, B, BLOCKS, SITE, SX, SZ, WL, fromUV, VAL, WATCH, watchRel, gateRel, HERO_CAM } from './world.js';
+import { generateWorld, bakeLight, buildWorldMeshes, buildFarTerrain, B, BLOCKS, SITE_W as SITE, SX, SZ, WL, fromUVw as fromUV, toUVw, VAL, WATCH, watchRel, gateRelW as gateRel, HERO_CAM, shiftHome, UV_SCALE, PIC_TILES } from './world.js';
+import { createEndless, OX, OZ } from './endless.js';
+import { createLitTerrain } from './litterrain.js';
+import { createFarView } from './farview.js';
+import { createMysteries } from './mysteries.js';
 import { initHud, drawCompass, SLOTS } from './hud.js';
 
 const Q = new URLSearchParams(location.search);
@@ -32,6 +36,7 @@ scene.add(camera);
 
 // ------------------------------------------------------------------------------------- materials
 const T = buildTiles();
+if (GAME) buildGameTiles(T);                                   // the endless game's own blocks (gears, dials, crystal, ...)
 const D = buildDetailTextures();
 setDetail(D);
 const SPR = buildSpriteTextures();
@@ -61,12 +66,16 @@ function materialFor(tile, kind) {
   let m = mats.get(key);
   if (m) return m;
   const t = T[tile];
-  if (kind === 'liquid') {
+  if (kind === 'liquid' && tile === 'mere') {
+    // the lakes out in the highlands: dark, still, a cold sheen off the sky (the home lake is the mirror plane)
+    m = new THREE.MeshPhongMaterial({ color: 0x16242c, specular: 0x4a5a66, shininess: 60, normalMap: T.water.normalMap, normalScale: new THREE.Vector2(0.35, 0.35), transparent: true, opacity: 0.9, depthWrite: false });
+  } else if (kind === 'liquid') {
     m = new THREE.MeshLambertMaterial({ color: 0x0b1319 });            // replaced by the mirror plane below
   } else if (kind === 'cutout') {
     m = new THREE.MeshLambertMaterial({ map: t.map, normalMap: t.normalMap, alphaTest: 0.5, alphaToCoverage: true, side: THREE.DoubleSide });
   } else if (kind === 'cross') {
     m = new THREE.MeshLambertMaterial({ map: t.map, alphaTest: 0.45, alphaToCoverage: true });
+    if (t.emissiveMap) { m.emissiveMap = t.emissiveMap; m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = 1.4; }
   } else {
     // Lambert + normal map: cheap enough for phones and no grazing-angle sparkle on block edges
     m = new THREE.MeshLambertMaterial({ map: t.map, normalMap: t.normalMap });
@@ -82,25 +91,56 @@ function materialFor(tile, kind) {
 
 // ----------------------------------------------------------------------------------------- world
 Object.assign(BLOCKS, KIT_BLOCKS);                           // the shared building kit (painted blocks, lamps, beds, ...): ids 100 and up
-const { world, meta } = generateWorld();
-const light = bakeLight(world, meta.lights);                 // after the kit is in BLOCKS: half blocks, beds, glass, water and fire let light through
+const home = generateWorld();
+const meta = home.meta;
 // the lake is one mirror plane (below), so the lake's voxel water is never drawn: not at first, not in a re-meshed chunk.
-// Water from the kit is a block of its own and is drawn.
+// Water from the kit is a block of its own and is drawn, and so are the highlands' meres.
 const hideLiquid = (mesh) => { if (mesh.userData.kind === 'liquid' && mesh.userData.tile === 'water') mesh.visible = false; };
-// the game needs terrain it can edit; the shots keep the plain static meshes
-const terrain = GAME ? buildWorldTerrain(world, light, meta.lights, materialFor, { onMesh: hideLiquid }) : null;
-const { root: worldRoot, tris: worldTris } = terrain ? { root: terrain.group, tris: terrain.tris } : buildWorldMeshes(world, light, materialFor);
+// The game: the hand-made valley is the home in the middle of an endless world (endless.js), drawn chunk by chunk
+// round the player with its light baked per chunk (litterrain.js), and the far highlands to the horizon (farview.js).
+// The shots keep the valley on its own, with its plain static meshes, as they always were.
+let world = home.world, terrain = null, endless = null, far = null, worldRoot, worldTris = 0, forest, light = null;
+// how far the blocks reach round the player: less on a phone, less again when the picture is set to fast
+const radiusFor = () => { const m = (window.__GAME_QUALITY || {}).mode, r = LITE ? 44 : 80; return m === 'fast' ? r - 20 : m === 'sharp' ? r + 16 : r; };
+if (GAME) {
+  shiftHome(meta, OX, OZ);
+  endless = createEndless({ home: home.world, meta, K });
+  world = endless.world;
+  // the part of the world the shared pages look at (the quest map, the day's treasure and cave, the village and the
+  // island): a square round home, a little bigger than the valley
+  const S = SITE.shelter, A = 224;
+  world.area = { x0: S.x - A / 2, z0: S.z - A / 2, x1: S.x + A / 2, z1: S.z + A / 2 };
+  const boughs = buildBoughTexture();
+  // a pine keeps its boughs as long as the log they grow from is there: the chunk is drawn again after every edit
+  const kitF = makeForestKit(boughs, (tr) => world.get(tr.x, tr.trunkTop - 1, tr.z) === B.TRUNK, { lite: LITE });
+  terrain = createLitTerrain(world, BLOCKS, {
+    materialFor, uvScale: UV_SCALE, picTiles: PIC_TILES, homeLights: meta.lights, radius: radiusFor(), budget: LITE ? 4 : 6,
+    onMesh: hideLiquid, decorate: (cx, cz) => kitF.build(endless.treesOf(cx, cz), cx * endless.C, cz * endless.C),
+    onDrop: () => endless.prune(),
+  });
+  worldRoot = terrain.group;
+  forest = { root: new THREE.Group(), get tris() { return terrain.stats.props; }, fell: () => false };
+  far = createFarView({ sample: endless.farSample, chunk: endless.C, isLoaded: terrain.isLoaded, rings: LITE ? [{ step: 4, n: 72 }, { step: 16, n: 112 }] : undefined });
+  scene.add(far.group);
+} else {
+  light = bakeLight(world, meta.lights);                     // after the kit is in BLOCKS: half blocks, beds, glass, water and fire let light through
+  const r = buildWorldMeshes(world, light, materialFor);
+  worldRoot = r.root; worldTris = r.tris;
+  forest = buildForest(meta.trees, buildBoughTexture());
+  const farMat = patch(new THREE.MeshLambertMaterial({ vertexColors: true }));
+  scene.add(buildFarTerrain(farMat));
+}
 scene.add(worldRoot);
-const forest = buildForest(meta.trees, buildBoughTexture());
 scene.add(forest.root);
-const farMat = patch(new THREE.MeshLambertMaterial({ vertexColors: true }));
-scene.add(buildFarTerrain(farMat));
 const sky = makeSky();
 scene.add(sky);
+/** Make the blocks and the far land round (x, z) at once (the start of the game). */
+const around = (x, z) => { if (!terrain) return; terrain.prime(x, z); far.prime(x, z); };
 
 // the lake: hide the voxel water surface and lay one mirror plane over it
-let wx0 = SX, wx1 = 0, wz0 = SZ, wz1 = 0;
-for (let z = 0; z < SZ; z++) for (let x = 0; x < SX; x++) if (world.get(x, WL, z) === 18) { wx0 = Math.min(wx0, x); wx1 = Math.max(wx1, x + 1); wz0 = Math.min(wz0, z); wz1 = Math.max(wz1, z + 1); }
+const HX0 = GAME ? OX : 0, HZ0 = GAME ? OZ : 0;
+let wx0 = HX0 + SX, wx1 = HX0, wz0 = HZ0 + SZ, wz1 = HZ0;
+for (let z = HZ0; z < HZ0 + SZ; z++) for (let x = HX0; x < HX0 + SX; x++) if (world.get(x, WL, z) === 18) { wx0 = Math.min(wx0, x); wx1 = Math.max(wx1, x + 1); wz0 = Math.min(wz0, z); wz1 = Math.max(wz1, z + 1); }
 worldRoot.traverse((o) => { if (o.isMesh) hideLiquid(o); });
 const lake = makeWater(wx0, wz0, wx1, wz1, WL + 0.82, T.water.normalMap, renderer, { div: LITE ? 3 : 2 });
 scene.add(lake);
@@ -699,6 +739,10 @@ const NAMES = {
   [B.GRAVEL]: 'حصى', [B.PATH]: 'درب مدكوك', [B.ASH]: 'رماد', [B.TRUNK]: 'جذع صنوبر', [B.NEEDLES]: 'إبر صنوبر', [B.BRICK]: 'حجر الأطلال',
   [B.BRICK_MOSS]: 'حجر أطلال مطحلب', [B.PLANKS]: 'ألواح خشب', [B.STAKE]: 'وتد السور', [B.ORE_IRON]: 'خام حديد', [B.ORE_GLOW]: 'خام متوهّج',
   [B.FERN]: 'سرخس', [B.DRYGRASS]: 'عشب يابس', [B.REEDS]: 'قصب',
+  [B.MERE]: 'ماي البحيرة', [B.GLIM_ON]: 'حجر الظل والنور', [B.WARD]: 'حجر الأطلال القديم', [B.SECRET]: 'حجر الأطلال القديم',
+  [B.GEAR0]: 'ترس مضيء', [B.GEAR1]: 'ترس مضيء', [B.GEAR2]: 'ترس مضيء', [B.GEAR3]: 'ترس مضيء',
+  [B.DIAL0]: 'ساعة حجرية', [B.DIAL1]: 'ساعة حجرية', [B.DIAL2]: 'ساعة حجرية', [B.DIAL3]: 'ساعة حجرية',
+  [B.SOCKET]: 'مقبس بلّوري فاضي', [B.SOCKET_LIT]: 'مقبس بلّوري والع', [B.BEACON]: 'بلّورة المنارة', [B.BEACON_LIT]: 'بلّورة المنارة', [B.TIMEGATE]: 'ممر الزمن',
 };
 const EARTH = new Set([B.LITTER, B.HEATH, B.SOIL, B.GRAVEL, B.PATH, B.ASH]), WOOD = new Set([B.TRUNK, B.PLANKS, B.STAKE]), ORE = new Set([B.ORE_IRON, B.ORE_GLOW]);
 const kindOf = (id) => BLOCKS[id].kind ?? 'solid';
@@ -710,12 +754,40 @@ const DROP = {
   [B.ROCK]: B.ROCK, [B.ROCK_MOSS]: B.ROCK, [B.SNOW]: B.ROCK, [B.GRAVEL]: B.ROCK, [B.BRICK]: B.ROCK, [B.BRICK_MOSS]: B.ROCK, [B.ORE_IRON]: K.ORE, [B.ORE_GLOW]: K.ORE,            // ore comes out as ore: the workbench turns it into gold
 };
 
+/**
+ * Saves made when the valley was the whole world (its corner at 0, 0; nothing lay past 160) are moved to where the
+ * valley lies in the endless world: the list of edits, the chests, where the player stood, the map's marks and the bed.
+ * A save is old when the player stood inside the old map; a save of the endless world never is (the valley starts at 4000).
+ */
+function moveOldSave(dx, dz) {
+  const old = (x, z) => Number.isFinite(x) && Number.isFinite(z) && x < 1000 && z < 1000;
+  const read = (k) => { try { return JSON.parse(window.localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+  const write = (k, v) => { try { window.localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage closed: the old save stays as it was */ } };
+  const sv = read('bw-save-dhalam');
+  if (sv && sv.me && Array.isArray(sv.me.pos) && old(sv.me.pos[0], sv.me.pos[2])) {
+    if (Array.isArray(sv.log)) for (const a of sv.log) if (Array.isArray(a) && a.length >= 4) { a[1] += dx; a[3] += dz; }
+    if (Array.isArray(sv.chests)) sv.chests = sv.chests.map(([k, c]) => { const [x, y, z] = String(k).split(',').map(Number); return [(x + dx) + ',' + y + ',' + (z + dz), c]; });
+    sv.me.pos[0] += dx; sv.me.pos[2] += dz;
+    write('bw-save-dhalam', sv);
+  }
+  const marks = read('bw-marks-dhalam');
+  if (Array.isArray(marks) && marks.some((m) => m && old(m.x, m.z))) write('bw-marks-dhalam', marks.map((m) => (m && old(m.x, m.z) ? { ...m, x: m.x + dx, z: m.z + dz } : m)));
+  const bed = read('bw-home-dhalam');
+  if (bed && old(bed.x, bed.z)) write('bw-home-dhalam', { ...bed, x: bed.x + dx, z: bed.z + dz });
+}
+
 async function startGame() {
   await Promise.all(['400', '500', '700'].map((w) => document.fonts.load(w + " 14px 'Plex Arabic'", 'ظلام').catch(() => null)));   // a font that cannot be fetched must not stop the page
   // the shared building kit. Its two lights join the scene before the first picture is drawn, so every shader is
   // built once for the final number of lights. Whatever the kit clears below the lake's level fills with the lake.
   const inLake = (x, y, z) => y <= WL && x >= wx0 && x < wx1 && z >= wz0 && z < wz1;
   const kit = createKit({ scene, world, terrain: { setBlock: (x, y, z, id) => terrain.setBlock(x, y, z, id === 0 && inLake(x, y, z) ? B.WATER : id) } });
+  // a save made when the valley was the whole world is moved to where the valley lies now (once)
+  moveOldSave(OX, OZ);
+  // the mysteries' own light (a befriended lantern creature, a burning tower): in the scene before the first picture
+  const glowLight = new THREE.PointLight(0xffd59a, 0, 9, 1.6);
+  scene.add(glowLight);
+  { const [gx, gz] = gateRel(meta, 10.0, 2.2); around(gx, gz); }      // the blocks and the far land round the start
   await window.__shot('play');                       // dusk, the HUD and the pick in hand, a few steps outside the gate
   stage.live = true;
   document.body.classList.add('game');
@@ -727,8 +799,9 @@ async function startGame() {
   const hud = initHud();
   const slots = SLOTS.map((q) => ({ ...q, id: SLOT_ID[q.key] ?? 0 }));
   if (!hud.touch) slots.push(EMPTY);                          // nine squares on a desktop, the ninth empty
-  const cell = (x, y, z) => x + SX * (z + SZ * y);
-  const isLiquid = (id) => id === B.WATER || kit.isLiquid(id);
+  const WS = world.sx;
+  const cell = (x, y, z) => x + WS * (z + WS * y);
+  const isLiquid = (id) => id === B.WATER || id === B.MERE || kit.isLiquid(id);
   // what stops a body: every block but water and plants (the palisade cells, drawn as a prop, and the kit's blocks too)
   const isSolid = (id) => id !== 0 && !isLiquid(id) && kindOf(id) !== 'cross' && !(BLOCKS[id] && BLOCKS[id].solid === false);     // an open door lets the player through
   const solidCell = (x, y, z) => isSolid(world.get(x, y, z));
@@ -748,8 +821,11 @@ async function startGame() {
     }
   }
   // the outermost columns stay too: the world has no wall faces along its border
-  const inRing = (x, z) => x > 0 && z > 0 && x < SX - 1 && z < SZ - 1;
-  const canBreak = (id, x, y, z) => id !== B.STAKE && inRing(x, z) && !guard.has(cell(x, y, z));
+  const inRing = (x, z) => x > 0 && z > 0 && x < world.sx - 1 && z < world.sz - 1;
+  // the mysteries' stones do not give way: the clock rooms' masonry, gears and dials, the towers' socket and crystal,
+  // the shadow-and-light stones and the passage of time (the gears turn, they are not dug)
+  const LOCKED = new Set([B.WARD, B.SECRET, B.GLIM_OFF, B.GLIM_ON, B.GEAR0, B.GEAR1, B.GEAR2, B.GEAR3, B.DIAL0, B.DIAL1, B.DIAL2, B.DIAL3, B.SOCKET, B.SOCKET_LIT, B.BEACON, B.BEACON_LIT, B.TIMEGATE]);
+  const canBreak = (id, x, y, z) => id !== B.STAKE && !LOCKED.has(id) && inRing(x, z) && !guard.has(cell(x, y, z));
   // ---- where nothing may be built: the outermost columns (a block set there could never be taken back), and the
   // cells the camp's fire, torches and lantern stand in. Water from the kit is not poured into the lake either:
   // the two waters are different blocks, and the lake stays the lake
@@ -760,7 +836,7 @@ async function startGame() {
     for (const t of sh.torches) for (let y = Math.floor(t.y); y <= Math.floor(t.y + t.h); y++) keepOut.add(cell(Math.floor(t.x), y, Math.floor(t.z)));
   }
   const canPlace = (x, y, z, id) => {
-    if (!inRing(x, z) || keepOut.has(cell(x, y, z)) || (kit.isLiquid(id) && world.get(x, y, z) === B.WATER)) return false;
+    if (!inRing(x, z) || keepOut.has(cell(x, y, z)) || (kit.isLiquid(id) && world.get(x, y, z) === B.WATER) || world.get(x, y, z) === B.TIMEGATE) return false;
     const t = playTorch.position;                                // the staked torch by the path, wherever it has settled
     return !(x === Math.floor(t.x) && z === Math.floor(t.z) && y >= Math.floor(t.y) && y <= Math.floor(t.y + 2.3));
   };
@@ -778,7 +854,7 @@ async function startGame() {
     if (pc.light) pc.ly0 = pc.light.position.y;
   }
   const treeAt = new Map();
-  for (const tr of meta.trees) if (!tr.snag) treeAt.set(tr.x + SX * tr.z, tr);
+  for (const tr of meta.trees) if (!tr.snag) treeAt.set(tr.x + WS * tr.z, tr);
   /** After any edit: props near the spawn settle, the crystal nubs go with their block, the shadows are redrawn. */
   function edited() {
     for (const pc of playPieces) {
@@ -871,7 +947,12 @@ async function startGame() {
     else { U.uFogColor.value.copy(air.fog); U.uFogSunColor.value.copy(air.sun); U.uFogParams.value.copy(air.params); U.uFogMisc.value.copy(air.misc); }
   }
 
-  let life = null, weather = null, status = null, toolShown = false;
+  let life = null, weather = null, status = null, toolShown = false, mysteries = null;
+  /** A block dug next to a mere lets its water in (no dry holes in a lake). */
+  function letWaterIn(x, y, z) {
+    if (world.get(x, y, z) !== 0 || y > WL) return;
+    if (world.get(x, y + 1, z) === B.MERE || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => world.get(x + a, y, z + b) === B.MERE)) terrain.setBlock(x, y, z, B.MERE);
+  }
   const heldTool = createHeld({ camera, blocks: {}, materialFor });
   let vitals = null;                                 // made once the HUD is up; the first frames run without it
   const play = createPlay({
@@ -879,7 +960,7 @@ async function startGame() {
     spawn: { x: camera.position.x, y: camera.position.y - 1.62, z: camera.position.z, yaw: eu.y, pitch: eu.x },
     slots, touch: hud.touch ? hud.els : null, maxPixelRatio: LITE ? 1.5 : 2,
     isLiquid, isSolid, heightOf: kit.heightOf,                  // kit water is water to swim in; half blocks and beds are low
-    pickable: (id) => id !== 0 && !isLiquid(id),
+    pickable: (id) => id !== 0 && !isLiquid(id) && id !== B.GLIM_OFF,
     canBreak, canPlace, hardness,
     dropOf: (id) => DROP[id] || kit.dropOf(id),
     onTarget(h) {
@@ -891,7 +972,9 @@ async function startGame() {
       // dug below the lake's level under its mirror plane: the water comes in, so the picture and the world agree
       if (inLake(h.x, h.y, h.z)) terrain.setBlock(h.x, h.y, h.z, B.WATER);
       // a pine keeps its boughs as long as the log they grow from is there
-      if (h.id === B.TRUNK) { const tr = treeAt.get(h.x + SX * h.z); if (tr && h.y === tr.trunkTop - 1) forest.fell(tr); }
+      if (h.id === B.TRUNK) { const tr = treeAt.get(h.x + WS * h.z); if (tr && h.y === tr.trunkTop - 1) forest.fell(tr); }
+      // dug beside a mere out in the highlands: its water comes in
+      if (!h.remote) letWaterIn(h.x, h.y, h.z);
       kit.broke(h);
       // a plant or a flame that stood on the block went with it (the controller clears it without a word):
       // a flame's light goes out too, and under the lake's level the water closes over the gap
@@ -922,6 +1005,20 @@ async function startGame() {
     onFirstLook() { hud.els.look.hidden = true; },
     onFrame(st, dt) {
       const d = st.dig, p = st.pos, c = camera.position, h = st.hit;
+      // the blocks round the player and the far highlands beyond them
+      {
+        const r = radiusFor();
+        if (r !== terrain.radius) terrain.radius = r;
+        terrain.update(p.x, p.z);
+        const ch = terrain.takeChanged();
+        far.update(c.x, c.z, ch);
+        if (ch) shadowsChanged();
+      }
+      if (mysteries) {
+        mysteries.update(dt, st.time);
+        // a burning fog tower thins the mist round it
+        if (!under) { const k = mysteries.fog; U.uFogParams.value.x = air.params.x * k; U.uFogParams.value.y = air.params.y * k; }
+      }
       const sin = Math.sin(st.yaw), cos = Math.cos(st.yaw);       // forward = (-sin, 0, -cos), right = (cos, 0, -sin)
       hud.setProgress(d.on ? d.progress : 0);
       // the nearest lamps and fires get the kit's two real lights; flames flicker. Every lamp also has its baked
@@ -1000,7 +1097,7 @@ async function startGame() {
         grounded = st.onGround;
       }
       WATER.uTime.value = st.time;                               // the lake's ripples drift
-      if ((c.y < WL + 0.82 && world.get(Math.floor(c.x), Math.floor(c.y), Math.floor(c.z)) === B.WATER) !== under) setUnder(!under);
+      { const cid = world.get(Math.floor(c.x), Math.floor(c.y), Math.floor(c.z)); if (((c.y < WL + 0.82 && cid === B.WATER) || cid === B.MERE) !== under) setUnder(!under); }
       // compass: heading, and the bearing and distance of the shelter
       const hx = home.x + 0.5 - p.x, hz = home.z + 0.5 - p.z;
       hud.setNav(-st.yaw * 180 / Math.PI, Math.atan2(hx, -hz) * 180 / Math.PI, Math.hypot(hx, hz));
@@ -1103,13 +1200,16 @@ async function startGame() {
       document.querySelector('.clock .c-time').innerHTML = `<span class="num">${c[0]}</span> · ${(rain ? 'مطر · ' : '') + c[1]}`;
     },
   });
-  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera: stage.camera, vitals, life, weather, status };
+  // the four mysteries of the highlands: shadow-and-light bridges, fog towers, lantern creatures, clock rooms
+  mysteries = createMysteries({ play, world, terrain, kit, scene, camera: stage.camera, endless, B, sprites: SPR, tiles: T, weather, adv: bag.adv, light: glowLight, hudTouch: hud.touch });
+  window.__game = { play, panel, terrain, world, B, slots, bag, kit, camera: stage.camera, vitals, life, weather, status, endless, mysteries, far };
 }
 
 installShotApi(stage);
-window.__stats = { worldTris, forestTris: forest.tris, trees: meta.trees.length, ms: Math.round(performance.now() - T0) };
+window.__stats = GAME ? terrain.stats : { worldTris, forestTris: forest.tris, trees: meta.trees.length, ms: Math.round(performance.now() - T0) };
+if (GAME) { window.__stats.genMs = () => world.genMs; window.__stats.made = () => world.made; window.__stats.startMs = Math.round(performance.now() - T0); }
 if (Q.has('dev')) {
-  window.__dbg = { meta, world, SITE, fromUV, groundAt, stage, camera, scene, actors, nightActors, heroActors, U, SKY, hemi, sun, skyRim, post, setTime, setRim, setSun, fitShadow, useLights, shelter, THREE, light, forest, terrain, materialFor, bakeLight, buildWorldMeshes, playPieces, toUV: (x, z) => [(x - VAL.ox) * VAL.dx + (z - VAL.oz) * VAL.dz, (x - VAL.ox) * VAL.rx + (z - VAL.oz) * VAL.rz] };
+  window.__dbg = { meta, world, SITE, fromUV, groundAt, stage, camera, scene, actors, nightActors, heroActors, U, SKY, hemi, sun, skyRim, post, setTime, setRim, setSun, fitShadow, useLights, shelter, THREE, light, forest, terrain, materialFor, bakeLight, buildWorldMeshes, playPieces, toUV: toUVw, endless };
   const pre = document.createElement('pre');
   pre.style.cssText = 'position:fixed;left:6px;top:6px;margin:0;color:#fff;font:11px monospace;background:#0008;padding:3px;direction:ltr';
   pre.textContent = JSON.stringify(window.__stats);

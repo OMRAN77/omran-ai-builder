@@ -429,6 +429,87 @@ function stripLight(colHex, seed) {
 T('amber', { glow: 'tech', ei: 2.0 }, stripLight('#ffad42', 167));
 T('cyan', { glow: 'tech', ei: 2.0 }, stripLight('#5cf2ff', 169));
 
+
+// ------------------------------------------------------------------ the endless planet and its wonders
+T('vent', { glow: 'lake', ei: 2.0, nrm: 1.0 }, (u, v, p) => {
+  P.basaltTop.fn(u, v, p);
+  const d = Math.hypot(u - 0.5, v - 0.5), n = fbm(u, v, 6, 3, 171);
+  const hole = 1 - smooth(0.2, 0.24, d), rim = (1 - smooth(0.0, 0.05, Math.abs(d - 0.27))) * (0.6 + 0.4 * n);
+  p.c = mix3(p.c, hex('#071a22'), hole); p.c = mix3(p.c, hex('#3ac6d8'), rim * 0.5);
+  p.e = mix3(mul(hex('#1fb8d2'), rim * 0.7), hex('#bff8ff'), hole * (1 - smooth(0.0, 0.2, d)));
+  p.h = p.h * (1 - hole) + rim * 0.4;
+});
+// the singing crystals: each its own colour, with a bright ring round its middle
+const CHIME_COL = [['#06474a', '#42f0cf', '#d4fff6'], ['#174a10', '#93ef58', '#efffd8'], ['#5a3c06', '#ffcf45', '#fff5d0'], ['#5c0f30', '#ff69a8', '#ffe1ef'], ['#2a1270', '#b48cff', '#f1e6ff']];
+CHIME_COL.forEach(([lo, hi, hot], i) => T('chime' + i, { glow: 'ore', ei: 1.7 }, (u, v, p) => {
+  crystal(201 + i * 7, lo, hi, hot)(u, v, p);
+  const ring = 1 - smooth(0.0, 0.05, Math.abs(v - 0.5));
+  p.c = mix3(p.c, hex(hot), ring * 0.7); p.e = mix3(p.e, hex(hot), ring * 0.8);
+}));
+T('seal', { glow: 'tech', ei: 1.6, nrm: 0.8 }, (u, v, p) => {
+  hullPanel(u, v, p, '#1f232b', '#353a45', '#0c0e12', 181, 0.5, 0.4);
+  const d = Math.hypot(u - 0.5, v - 0.5), a = Math.atan2(v - 0.5, u - 0.5);
+  const rings = (1 - smooth(0.0, 0.012, Math.abs(d - 0.18))) + (1 - smooth(0.0, 0.012, Math.abs(d - 0.32))) * (fract(a / TAU * 6) < 0.7 ? 1 : 0);
+  const dot = 1 - smooth(0.04, 0.06, d);
+  const g = clamp(rings + dot);
+  p.c = mix3(p.c, hex('#5cf2ff'), g * 0.8); p.e = mul(hex('#4be6ff'), g);
+});
+T('grav', { glow: 'tech', ei: 2.0, nrm: 0.9 }, (u, v, p) => {
+  P.basaltTop.fn(u, v, p);
+  const d = Math.hypot(u - 0.5, v - 0.5);
+  const disc = 1 - smooth(0.4, 0.43, d);
+  const ring = disc * (0.5 + 0.5 * Math.sin(d * TAU * 5));
+  const chev = (Math.abs(u - 0.5) < 0.22 ? 1 : 0) * (1 - smooth(0.0, 0.03, Math.abs(fract((v + Math.abs(u - 0.5)) * 3) - 0.5) - 0.38)) * disc;   // three marks pointing up the face
+  const g = clamp(ring * 0.55 + chev);
+  p.c = mix3(mix3(p.c, hex('#1a1033'), disc * 0.8), hex('#c08bff'), g * 0.7);
+  p.e = mix3(mul(hex('#7d4dff'), ring * 0.6), hex('#e8d8ff'), chev);
+  p.h = p.h * (1 - disc) + ring * 0.3;
+});
+T('float', { glow: 'ore', ei: 1.3, nrm: 1.2 }, (u, v, p) => {
+  const c = voro(u, v, 5, 5, 191, 0.9), n = fbm(u, v, 6, 4, 193);
+  const pit = (c.id > 0.55 ? 1 : 0) * (1 - smooth(0.15, 0.36, c.d1));
+  let col = mix3(hex('#2b2430'), hex('#57485a'), n * 0.8 + c.id * 0.2);
+  col = mul(col, 1 - pit * 0.45);
+  const g = voro(u, v, 16, 16, 195, 0.95), spark = (fract(g.id * 5.13) < 0.05 ? 1 : 0) * (1 - smooth(0.03, 0.12, g.d1));
+  p.c = mix3(col, hex('#ffb46a'), spark * 0.6); p.e = mul(hex('#ff9a4a'), spark);
+  p.h = n * 0.6 + (1 - pit) * 0.4; p.r = 0.85;
+});
+T('meteor', { glow: 'ore', ei: 2.2, nrm: 1.1 }, (u, v, p) => {
+  const c = voro(u, v, 4, 4, 201, 0.95), n = fbm(u, v, 5, 3, 203);
+  const crack = 1 - smooth(0.0, 0.06 + n * 0.04, c.d2 - c.d1);
+  const hot = clamp(crack * (0.6 + 0.6 * n));
+  p.c = mix3(mix3(hex('#16121c'), hex('#3a2a3c'), n), hex('#ff8a3a'), hot * 0.8);
+  p.e = mix3(mul(hex('#ff4f6e'), hot * 0.8), hex('#ffd08a'), hot * hot);
+  p.h = 1 - crack * 0.8; p.r = mix(0.7, 0.3, hot);
+});
+T('star', { glow: 'ore', ei: 1.8, nrm: 0.7 }, (u, v, p) => {
+  const n = fbm(u, v, 3, 4, 211), c = voro(u, v, 3, 3, 213, 0.9);
+  const edge = 1 - smooth(0.0, 0.04, c.d2 - c.d1);
+  const g = voro(u, v, 20, 20, 215, 0.95), star = (fract(g.id * 3.71) < 0.09 ? 1 : 0) * (1 - smooth(0.0, 0.1, g.d1));
+  p.c = mix3(mix3(hex('#0b1240'), hex('#2d3fa0'), n * 0.7 + c.id * 0.3), hex('#cfe6ff'), clamp(star + edge * 0.3));
+  p.e = mix3(mul(hex('#3a5cff'), 0.15 + edge * 0.4), hex('#ffffff'), star);
+  p.h = 1 - edge * 0.6; p.r = 0.2; p.m = 0.1;
+});
+T('charger', { glow: 'tech', ei: 1.8, nrm: 0.9 }, (u, v, p) => {
+  hullPanel(u, v, p, '#262a32', '#3d434e', '#101216', 221, 0.45, 0.42);
+  const d = Math.hypot(u - 0.5, v - 0.5);
+  const ring = 1 - smooth(0.0, 0.03, Math.abs(d - 0.3)), core = 1 - smooth(0.1, 0.14, d);
+  const spokes = (1 - smooth(0.0, 0.02, Math.min(Math.abs(u - 0.5), Math.abs(v - 0.5)))) * smooth(0.14, 0.16, d) * (1 - smooth(0.28, 0.3, d));
+  const g = clamp(ring + core * 0.8 + spokes * 0.6);
+  p.c = mix3(p.c, hex('#7df1ff'), g * 0.8); p.e = mul(hex('#5ff0ff'), g);
+});
+const socket = (lit) => (u, v, p) => {
+  hullPanel(u, v, p, '#262a32', '#3d434e', '#101216', 231, 0.45, 0.42);
+  const e = Math.max(Math.abs(u - 0.5), Math.abs(v - 0.5)) + Math.abs(u - 0.5 + v - 0.5) * 0.0, oct = Math.max(e, (Math.abs(u - 0.5) + Math.abs(v - 0.5)) * 0.72);
+  const well = 1 - smooth(0.26, 0.29, oct), lip = 1 - smooth(0.0, 0.02, Math.abs(oct - 0.3));
+  p.c = mix3(p.c, hex('#0a0c10'), well * 0.85); p.c = mix3(p.c, hex('#59606e'), lip * 0.6);
+  p.h = p.h * (1 - well) + lip * 0.4;
+  if (lit) { const c = voro(u, v, 3, 3, 233, 1.0), g = clamp(0.5 + c.cx * 0.8) * well; p.c = mix3(p.c, mix3(hex('#1d6ea8'), hex('#bff4ff'), g), well); p.e = mul(mix3(hex('#2fb8ff'), hex('#e2fbff'), g), well); p.r = mix(p.r, 0.2, well); }
+  else p.e = mul(hex('#2a8fa8'), lip * 0.35);
+};
+T('socket', { glow: 'tech', ei: 1.4, nrm: 0.9 }, socket(false));
+T('socketLit', { glow: 'tech', ei: 2.0, nrm: 0.9 }, socket(true));
+
 // ------------------------------------------------------------------ baking
 function dataTex0(arr, srgb, mip = true, size = TILE, repeat = false) {
   const t = new THREE.DataTexture(arr, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
@@ -442,14 +523,12 @@ function dataTex0(arr, srgb, mip = true, size = TILE, repeat = false) {
   return t;
 }
 
-function bake(name) {
+/** The pixels of a tile at its own size (or `size`): colour, roughness/metalness, normal and glow, as byte arrays. */
+function raw(name, size) {
   const { opts, fn } = P[name];
-  const TILE = opts.size || 128, rep = !!opts.span;       // world-mapped tiles repeat across blocks
-  const dataTex = (arr, srgb, mip = true) => dataTex0(arr, srgb, mip, TILE, rep);
-  const n = TILE * TILE;
-  const col = new Uint8Array(n * 4), orm = new Uint8Array(n * 4), hgt = new Float32Array(n);
-  let em = null, anyE = false, anyM = false, nrmBuf = null;
-  const emBuf = new Uint8Array(n * 4);
+  const S0 = opts.size || 128, TILE = size || S0, n = TILE * TILE;
+  const col = new Uint8Array(n * 4), orm = new Uint8Array(n * 4), hgt = new Float32Array(n), emBuf = new Uint8Array(n * 4);
+  let anyE = false, anyM = false, nrmBuf = null;
   const p = {};
   for (let y = 0; y < TILE; y++) {
     for (let x = 0; x < TILE; x++) {
@@ -472,39 +551,46 @@ function bake(name) {
       }
     }
   }
-  if (anyE) em = emBuf;
   const kind = opts.kind || 'opaque';
-  const params = { roughness: 1, metalness: anyM ? 1 : 0 };
-  params.map = dataTex(col, true);
+  let nrm = nrmBuf;
+  const k = opts.nrm ?? 1;
+  if (!nrm && kind !== 'cutout' && k > 0) {
+    nrm = new Uint8Array(n * 4);
+    const s = k * 2.2 * (TILE / S0);                   // the same slope at any size
+    for (let y = 0; y < TILE; y++) {
+      for (let x = 0; x < TILE; x++) {
+        const i = y * TILE + x;
+        const dx = hgt[y * TILE + ((x + 1) % TILE)] - hgt[y * TILE + ((x + TILE - 1) % TILE)];
+        const dy = hgt[((y + 1) % TILE) * TILE + x] - hgt[((y + TILE - 1) % TILE) * TILE + x];
+        let nx = -dx * s, ny = -dy * s, nz = 1;
+        const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
+        nrm[i * 4] = (nx * 0.5 + 0.5) * 255; nrm[i * 4 + 1] = (ny * 0.5 + 0.5) * 255; nrm[i * 4 + 2] = (nz * 0.5 + 0.5) * 255; nrm[i * 4 + 3] = 255;
+      }
+    }
+  }
+  return { size: TILE, col, orm, nrm, em: anyE ? emBuf : null, anyM, kind, opts };
+}
+const raws = new Map();
+const rawOf = (name) => { let r = raws.get(name); if (!r) { r = raw(name); raws.set(name, r); } return r; };
+
+function bake(name) {
+  const r = rawOf(name), { opts, kind } = r;
+  const dataTex = (arr, srgb, mip = true) => dataTex0(arr, srgb, mip, r.size, !!opts.span);      // world-mapped tiles repeat across blocks
+  const params = { roughness: 1, metalness: r.anyM ? 1 : 0 };
+  params.map = dataTex(r.col, true);
   if (kind === 'cutout') {
     // plants: no gloss maps, keep them cheap. Mip-mapped so distant fringes fade instead of sparkling.
     params.roughness = 0.8;
     params.alphaTest = 0.3;
     params.side = THREE.DoubleSide;
   } else {
-    const ormT = dataTex(orm, false);
+    const ormT = dataTex(r.orm, false);
     params.roughnessMap = ormT;
-    if (anyM) params.metalnessMap = ormT;
-    const k = opts.nrm ?? 1;
-    if (nrmBuf) params.normalMap = dataTex(nrmBuf, false);
-    else if (k > 0) {
-      const nm = new Uint8Array(n * 4);
-      const s = k * 2.2;
-      for (let y = 0; y < TILE; y++) {
-        for (let x = 0; x < TILE; x++) {
-          const i = y * TILE + x;
-          const dx = hgt[y * TILE + ((x + 1) % TILE)] - hgt[y * TILE + ((x + TILE - 1) % TILE)];
-          const dy = hgt[((y + 1) % TILE) * TILE + x] - hgt[((y + TILE - 1) % TILE) * TILE + x];
-          let nx = -dx * s, ny = -dy * s, nz = 1;
-          const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
-          nm[i * 4] = (nx * 0.5 + 0.5) * 255; nm[i * 4 + 1] = (ny * 0.5 + 0.5) * 255; nm[i * 4 + 2] = (nz * 0.5 + 0.5) * 255; nm[i * 4 + 3] = 255;
-        }
-      }
-      params.normalMap = dataTex(nm, false);
-    }
+    if (r.anyM) params.metalnessMap = ormT;
+    if (r.nrm) params.normalMap = dataTex(r.nrm, false);
   }
-  if (em) {
-    params.emissiveMap = dataTex(em, true);
+  if (r.em) {
+    params.emissiveMap = dataTex(r.em, true);
     params.emissive = new THREE.Color(0xffffff);
     params.emissiveIntensity = opts.ei ?? 1;
   }
@@ -516,7 +602,7 @@ function bake(name) {
   const mat = new THREE.MeshStandardMaterial(params);
   mat.name = name;
   mat.userData.glow = opts.glow || null;
-  mat.userData.baseEI = em ? (opts.ei ?? 1) : 0;
+  mat.userData.baseEI = r.em ? (opts.ei ?? 1) : 0;
   return mat;
 }
 
@@ -537,9 +623,92 @@ export function tileNames() { return Object.keys(P); }
 
 /** Scale emissive strength per glow group, e.g. { flora: 1.6, ore: 1.4, tech: 1, lake: 1.2 }. */
 export function setGlow(levels) {
+  glowLevels = levels;
+  if (arr) arr.glow(levels);
   for (const m of cache.values()) {
     const g = m.userData.glow;
     if (!g || !m.userData.baseEI) continue;
     m.emissiveIntensity = m.userData.baseEI * (levels[g] ?? 1);
   }
+}
+
+// ------------------------------------------------------------------ the tiles as texture arrays (for the endless planet's chunks)
+// Every opaque and plant tile is one layer of four arrays (colour at 256, roughness/metalness, normal and glow at 128),
+// so a chunk draws its ground in two or three draw calls instead of one per tile. The glow strength of each layer
+// (its group's level times its own) is a uniform the moods set, as they do for the separate materials.
+let arr = null, glowLevels = {};
+export function tileArray() {
+  if (arr) return arr;
+  const names = Object.keys(P).filter((n) => !P[n].opts.kind || P[n].opts.kind === 'cutout');
+  const index = new Map(names.map((n, i) => [n, i]));
+  const S = 256, H = 128, N = names.length;
+  const col = new Uint8Array(S * S * 4 * N), orm = new Uint8Array(H * H * 4 * N), nrm = new Uint8Array(H * H * 4 * N), em = new Uint8Array(H * H * 4 * N);
+  /** Copy a size x size RGBA picture into layer i of an out-size array, scaled (bilinear up, box down). */
+  function put(src, size, out, osz, i) {
+    const base = i * osz * osz * 4;
+    if (size === osz) { out.set(src, base); return; }
+    if (size > osz) {
+      const f = size / osz;
+      for (let y = 0; y < osz; y++) for (let x = 0; x < osz; x++) for (let c = 0; c < 4; c++) {
+        let sum = 0;
+        for (let j = 0; j < f; j++) for (let k = 0; k < f; k++) sum += src[((y * f + j) * size + x * f + k) * 4 + c];
+        out[base + (y * osz + x) * 4 + c] = sum / (f * f);
+      }
+      return;
+    }
+    const f = size / osz;
+    for (let y = 0; y < osz; y++) for (let x = 0; x < osz; x++) {
+      const sx = (x + 0.5) * f - 0.5, sy = (y + 0.5) * f - 0.5, x0 = Math.floor(sx), y0 = Math.floor(sy), fx = sx - x0, fy = sy - y0;
+      const at = (xx, yy) => ((mod(yy, size)) * size + mod(xx, size)) * 4;
+      const a = at(x0, y0), b = at(x0 + 1, y0), c2 = at(x0, y0 + 1), d = at(x0 + 1, y0 + 1);
+      for (let c = 0; c < 4; c++) out[base + (y * osz + x) * 4 + c] = mix(mix(src[a + c], src[b + c], fx), mix(src[c2 + c], src[d + c], fx), fy);
+    }
+  }
+  const ei = new Float32Array(N), group = [];
+  names.forEach((n, i) => {
+    const r = rawOf(n);
+    put(r.col, r.size, col, S, i);
+    put(r.orm, r.size, orm, H, i);
+    if (r.kind === 'cutout') for (let k = i * H * H * 4; k < (i + 1) * H * H * 4; k += 4) { orm[k] = 255; orm[k + 1] = 204; orm[k + 2] = 0; orm[k + 3] = 255; }
+    if (r.nrm && r.kind !== 'cutout') put(r.nrm, r.size, nrm, H, i);
+    else for (let k = i * H * H * 4; k < (i + 1) * H * H * 4; k += 4) { nrm[k] = 128; nrm[k + 1] = 128; nrm[k + 2] = 255; nrm[k + 3] = 255; }
+    if (r.em) put(r.em, r.size, em, H, i);
+    ei[i] = r.em ? (r.opts.ei ?? 1) : 0;
+    group.push(r.opts.glow || null);
+  });
+  const tex = (data, size, srgb) => {
+    const t = new THREE.DataArrayTexture(data, size, size, N);
+    t.format = THREE.RGBAFormat; t.type = THREE.UnsignedByteType; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
+    t.generateMipmaps = true; t.anisotropy = 8; t.needsUpdate = true;
+    return t;
+  };
+  const uniforms = { uTiles: { value: tex(col, S, true) }, uOrm: { value: tex(orm, H, false) }, uNorms: { value: tex(nrm, H, false) }, uEmis: { value: tex(em, H, true) }, uEI: { value: new Float32Array(N) } };
+  // stand-in maps switch on the code for each map; the reads are then pointed at the arrays
+  const one = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); one.needsUpdate = true;
+  const hook = (m, key) => {
+    m.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, uniforms);
+      sh.vertexShader = 'attribute float layer;\nvarying float vLayer;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\n  vLayer = layer;');
+      const L = 'vLayer + 0.25';
+      sh.fragmentShader = 'uniform highp sampler2DArray uTiles, uOrm, uNorms, uEmis;\nuniform float uEI[' + N + '];\nvarying float vLayer;\n' + sh.fragmentShader
+        .replace('#include <map_fragment>', THREE.ShaderChunk.map_fragment.replace('texture2D( map, vMapUv )', 'texture( uTiles, vec3( vMapUv, ' + L + ' ) )'))
+        .replace('#include <roughnessmap_fragment>', THREE.ShaderChunk.roughnessmap_fragment.replace('texture2D( roughnessMap, vRoughnessMapUv )', 'texture( uOrm, vec3( vRoughnessMapUv, ' + L + ' ) )'))
+        .replace('#include <metalnessmap_fragment>', THREE.ShaderChunk.metalnessmap_fragment.replace('texture2D( metalnessMap, vMetalnessMapUv )', 'texture( uOrm, vec3( vMetalnessMapUv, ' + L + ' ) )'))
+        .replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps.replace('texture2D( normalMap, vNormalMapUv )', 'texture( uNorms, vec3( vNormalMapUv, ' + L + ' ) )'))
+        .replace('#include <emissivemap_fragment>', THREE.ShaderChunk.emissivemap_fragment.replace('texture2D( emissiveMap, vEmissiveMapUv )', '( texture( uEmis, vec3( vEmissiveMapUv, ' + L + ' ) ) * vec4( vec3( uEI[ int( ' + L + ' ) ] ), 1.0 ) )'));
+    };
+    m.customProgramCacheKey = () => 'kawkab-tiles-' + key;
+    return m;
+  };
+  const std = (o, key) => hook(new THREE.MeshStandardMaterial({ map: one, roughnessMap: one, metalnessMap: one, normalMap: one, emissiveMap: one, emissive: new THREE.Color(0xffffff), roughness: 1, metalness: 1, vertexColors: true, ...o }), key);
+  const mats = { solid: std({}, 'solid'), cutout: std({ alphaTest: 0.3, side: THREE.DoubleSide }, 'cutout'), cross: std({ alphaTest: 0.3, side: THREE.FrontSide }, 'cross') };
+  for (const m of Object.values(mats)) m.name = 'tiles';
+  const spans = names.map((n) => P[n].opts.span || null);
+  arr = {
+    names, layerOf: (n) => (index.has(n) ? index.get(n) : -1), material: (kind) => mats[kind] || null, spanOf: (layer) => spans[layer],
+    glow(levels) { for (let i = 0; i < N; i++) uniforms.uEI.value[i] = ei[i] * (group[i] ? levels[group[i]] ?? 1 : 1); },
+  };
+  arr.glow(glowLevels);
+  return arr;
 }

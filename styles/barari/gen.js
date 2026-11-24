@@ -6,6 +6,9 @@
 //   reeds, frozen ponds in the snow and water holes with palms in the desert.
 //   under the ground: caves (tunnels that enter from a hill side and wind down to halls with fires), coal, gold
 //   and diamond by depth, more of them in the cave walls.
+//   wonders (ideas.js makes them work): a lighthouse on a beach now and then, with a sunken village or a sea cave
+//   off its shore under the water; islands of earth and cloud high over the forests and the snow, each with a warm
+//   vent on the ground beside it whose rising air carries the player up.
 //
 // No three.js here (node can run it for measuring):  const g = makeGen(K);  g.fillChunk(cx, cz, data);
 import { makeNoise, hash3 } from '../../shared/noise.js';
@@ -17,6 +20,7 @@ const CS = 5, CS2 = 10;                         // a chunk is 32 x 32 columns: x
 const clamp = (x, a = 0, b = 1) => (x < a ? a : x > b ? b : x);
 const mix = (a, b, t) => a + (b - a) * t;
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
 
 export function makeGen(K) {
   const N = makeNoise(7319), M = makeNoise(4421), Q = makeNoise(9133);
@@ -201,6 +205,123 @@ export function makeGen(K) {
   const carvedAt = (x, y, z) => { for (const c of cavesIn(x, x + 1, z, z + 1, _cv)) if (c.inside(x, y, z)) return true; return false; };
   const _cv = [];
 
+
+  // ------------------------------------------------------------------ lighthouses, and what lies under the sea off their shore
+  // At most one in each 320-block cell, on a sandy beach with open sea in front, decided by a hash:
+  // { x, z, y (floor of the tower), dx, dz (toward the sea), site: { x, z, kind: 'village' | 'cave', houses, chests, lucky } }.
+  const LC = 320, lhCache = new Map();
+  const deepSea = (x, z, d) => { const c = column(x, z); return c.s < 0 && c.wl - hInt(c.hf) >= d; };
+  function lighthouseOf(gx, gz) {
+    const key = gx * 4096 + gz;
+    let L = lhCache.get(key);
+    if (L !== undefined) return L;
+    L = null;
+    if (hash3(gx, 21, gz, 1401) < 0.85) {
+      // the beach is a thin band: look along a grid over the cell, starting from a corner picked by the hash
+      const G2 = 30, o = Math.floor(hash3(gx, 22, gz, 1403) * G2 * G2);
+      for (let t = 0; t < G2 * G2 && !L; t++) {
+        const k = (t * 7 + o) % (G2 * G2), x = gx * LC + 40 + (k % G2) * 8, z = gz * LC + 40 + Math.floor(k / G2) * 8;
+        climate(x, z);
+        if (col.s < 0 || col.s > 0.032) continue;
+        const c = column(x, z), h = hInt(c.hf);
+        if (c.s < 0 || c.s > 0.032 || h < SEA + 1 || h > SEA + 2 || c.pond || c.ws > 0.45) continue;      // a sandy beach (not the gravel of the snow)
+        if (spawn && Math.hypot(x - spawn.x, z - spawn.z) < 40) continue;
+        let flat = true;
+        for (let dz = -3; dz <= 3 && flat; dz++) for (let dx = -3; dx <= 3; dx++) { const q = column(x + dx, z + dz), qh = hInt(q.hf); if (qh < q.wl || Math.abs(qh - h) > 1) { flat = false; break; } }
+        if (!flat) continue;
+        climate(x + 8, z); const sx1 = col.s; climate(x - 8, z); const sx0 = col.s; climate(x, z + 8); const sz1 = col.s; climate(x, z - 8); const sz0 = col.s;
+        let dx = sx0 - sx1, dz = sz0 - sz1; const dl = Math.hypot(dx, dz);
+        if (dl < 1e-6) continue;
+        dx /= dl; dz /= dl;                                                     // toward the sea
+        // out to sea along the slope of the coast: the sunken place where the water is deep enough, the lighthouse 18
+        // blocks before it (on the beach, or at the end of a stone pier when the shallows are wide)
+        let dS = 0;
+        for (let d = 6; d <= 160 && !dS; d += 2) if (deepSea(Math.round(x + dx * d), Math.round(z + dz * d), 5)) dS = d + 6;
+        if (!dS) continue;
+        const px = Math.round(x + dx * dS), pz = Math.round(z + dz * dS);
+        let ok = deepSea(px, pz, 5);
+        for (let k = 0; k < 10 && ok; k++) { const a = k / 10 * TAU; if (!deepSea(Math.round(px + Math.cos(a) * 9), Math.round(pz + Math.sin(a) * 9), 3)) ok = false; }
+        if (!ok) continue;
+        const dL = dS > 26 ? dS - 18 : 0, lx = Math.round(x + dx * dL), lz = Math.round(z + dz * dL);
+        if (!dL) {
+          let flat = true;
+          for (let qz = -3; qz <= 3 && flat; qz++) for (let qx = -3; qx <= 3; qx++) { const q = column(x + qx, z + qz), qh = hInt(q.hf); if (qh < q.wl || Math.abs(qh - h) > 1) { flat = false; break; } }
+          if (!flat) continue;
+        }
+        const kind = hash3(gx, 5, gz, 1407) < 0.6 ? 'village' : 'cave';
+        const site = { x: px, z: pz, floor: hInt(column(px, pz).hf) + 1, kind, R: 11, houses: [], chests: [], lucky: null, mouth: Math.abs(dx) >= Math.abs(dz) ? [-Math.sign(dx), 0] : [0, -Math.sign(dz)] };
+        if (kind === 'village') {
+          // three little houses round a square, turned by a hash; two keep a chest, one a lucky box
+          const rot = hash3(gx, 6, gz, 1409) * TAU;
+          [[-5.5, -1.5], [3.5, -4.5], [1, 5]].forEach(([ox, oz], i) => {
+            const hx = Math.round(px + ox * Math.cos(rot) - oz * Math.sin(rot)), hz = Math.round(pz + ox * Math.sin(rot) + oz * Math.cos(rot));
+            const y = hInt(column(hx, hz).hf) + 1, house = { x0: hx - 2, z0: hz - 2, y, door: i };
+            site.houses.push(house);
+            if (i < 2) site.chests.push({ x: hx, y, z: hz }); else site.lucky = { x: hx, y, z: hz };
+          });
+        } else site.chests.push({ x: Math.round(px + dx * 2.5), y: site.floor, z: Math.round(pz + dz * 2.5) });      // at the back of the cave, away from the shore
+        L = { x: lx, z: lz, y: dL ? SEA + 2 : h + 1, dx, dz, H: 14, site, pier: dL ? { x0: x, z0: z, len: dL } : null, key: gx + ',' + gz };
+      }
+    }
+    if (lhCache.size > 2000) lhCache.clear();
+    lhCache.set(key, L);
+    return L;
+  }
+  /** The lighthouses whose tower or sunken place may reach into [x0, x1) x [z0, z1). */
+  function lighthousesIn(x0, x1, z0, z1) {
+    const out = [];
+    for (let gz = Math.floor((z0 - 200) / LC); gz <= Math.floor((z1 + 200) / LC); gz++) for (let gx = Math.floor((x0 - 200) / LC); gx <= Math.floor((x1 + 200) / LC); gx++) {
+      const L = lighthouseOf(gx, gz);
+      if (!L) continue;
+      const ax = L.pier ? L.pier.x0 : L.x, az = L.pier ? L.pier.z0 : L.z;
+      if (Math.min(ax, L.site.x) - 16 < x1 && Math.max(ax, L.site.x) + 16 >= x0 && Math.min(az, L.site.z) - 16 < z1 && Math.max(az, L.site.z) + 16 >= z0) out.push(L);
+    }
+    return out;
+  }
+  /** The lighthouses within r of (x, z), nearest first. */
+  function lighthousesNear(x, z, r) { return lighthousesIn(x - r, x + r, z - r, z + r).filter((L) => Math.hypot(L.x - x, L.z - z) <= r).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z)); }
+
+  // ------------------------------------------------------------------ cloud islands over the forests and the snow
+  // At most one in each 304-block cell: { x, z, top (its grass), R, snow, vent: { x, y (the vent block), z, dx, dz }, chest }.
+  const IC = 304, isleCache = new Map();
+  function isleOf(gx, gz) {
+    const key = gx * 4096 + gz;
+    let I = isleCache.get(key);
+    if (I !== undefined) return I;
+    I = null;
+    if (hash3(gx, 31, gz, 1501) < 0.8) {
+      for (let t = 0; t < 10 && !I; t++) {
+        const x = gx * IC + 50 + Math.floor(hash3(gx, t, gz, 1503) * (IC - 100)), z = gz * IC + 50 + Math.floor(hash3(gx, t, gz, 1505) * (IC - 100));
+        climate(x, z);
+        const snow = col.ws > 0.55, forest = col.wf > 0.55;
+        if ((!snow && !forest) || col.s < 0.1 || col.mm > 0.4) continue;
+        if (spawn && Math.hypot(x - spawn.x, z - spawn.z) < 60) continue;
+        const g = baseHeight(x, z), top = Math.max(Math.floor(g) + 30, SEA + 46), R = 8 + Math.floor(hash3(gx, t, gz, 1507) * 5);
+        if (top > SY - 14) continue;
+        let clear = true;
+        for (let k = 0; k < 12 && clear; k++) { const a = k / 12 * TAU; if (baseHeight(x + Math.cos(a) * R * 1.3, z + Math.sin(a) * R * 1.3) > top - 16) clear = false; }
+        if (!clear) continue;
+        // the vent: on dry ground a little way off the island's rim, toward a side picked by the hash
+        const a = hash3(gx, t, gz, 1509) * TAU, vd = R + 6, vx = Math.round(x + Math.cos(a) * vd), vz = Math.round(z + Math.sin(a) * vd);
+        const vc = column(vx, vz), vy = hInt(vc.hf);
+        if (vy < vc.wl || vc.pond) continue;
+        I = { x, z, top, R, snow, seed: Math.floor(hash3(gx, 7, gz, 1511) * 1e6), vent: { x: vx, y: vy, z: vz, dx: Math.cos(a), dz: Math.sin(a), d: vd }, chest: { x: x + 1, y: top + 1, z: z + 1 }, key: gx + ',' + gz };
+      }
+    }
+    if (isleCache.size > 2000) isleCache.clear();
+    isleCache.set(key, I);
+    return I;
+  }
+  function islesIn(x0, x1, z0, z1) {
+    const out = [];
+    for (let gz = Math.floor((z0 - 40) / IC); gz <= Math.floor((z1 + 40) / IC); gz++) for (let gx = Math.floor((x0 - 40) / IC); gx <= Math.floor((x1 + 40) / IC); gx++) {
+      const I = isleOf(gx, gz);
+      if (I && I.x - I.vent.d - 4 < x1 && I.x + I.vent.d + 4 >= x0 && I.z - I.vent.d - 4 < z1 && I.z + I.vent.d + 4 >= z0) out.push(I);
+    }
+    return out;
+  }
+  function islesNear(x, z, r) { return islesIn(x - r, x + r, z - r, z + r).filter((I) => Math.hypot(I.x - x, I.z - z) <= r).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z)); }
+
   // ------------------------------------------------------------------ one chunk
   const W = C + 2, HF = new Float32Array(W * W), HI = new Int16Array(W * W), WL = new Int16Array(W * W);
   const ICE = new Uint8Array(W * W), POND = new Array(W * W), LANDS = new Uint8Array(W * W), S = new Float32Array(W * W);
@@ -237,6 +358,7 @@ export function makeGen(K) {
   /** Fill one chunk (32 x SY x 32, x + (z << 5) + (y << 10)) of the world. Returns the fires lit in it. */
   function fillChunk(cx, cz, d) {
     const X0 = cx * C, Z0 = cz * C;
+    dataRef = d;
     for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) {
       const x = X0 + i - 1, z = Z0 + j - 1, k = i + j * W;
       const c = column(x, z);
@@ -420,8 +542,136 @@ export function makeGen(K) {
       else if (t.kind === 'pine') pine(t.x, t.z, t.y, 41, t.snowy);
       else palm(t.x, t.z, t.y, 51);
     }
+    // ---- the wonders: lighthouses with their sunken places, and the cloud islands (after the trees: they stand clear of them)
+    const isTree = (id) => id === B.PALM || id === B.PALM_FROND || id === B.OAK || id === B.OAK_LEAVES || id === B.PINE || id === B.PINE_NEEDLES || id === B.PINE_SNOWY || plantId(id);
+    for (const L of lighthousesIn(X0, X0 + C, Z0, Z0 + C)) buildLighthouse(L, put, inC, at, isTree, fires);
+    for (const I of islesIn(X0, X0 + C, Z0, Z0 + C)) {
+      buildIsle(I, put, inC, at);
+      // a small tree in the middle (a pine on the snowy ones)
+      const tx = I.x - 2, tz = I.z - 1;
+      if (I.snow) pine(tx, tz, I.top + 1, 41, true); else oak(tx, tz, I.top + 1, 33, false);
+    }
     return fires;
   }
+  const plantId = (id) => id === B.TUFT || id === B.FLOWER_R || id === B.FLOWER_Y || id === B.FLOWER_B || id === B.SHRUB || id === B.REED;
+  /** The tower: red and white bands, a lamp at the top behind glass, a door toward the land and the stone of the tide inside. */
+  function buildLighthouse(L, put, inC, at, isTree, fires) {
+    const { x, z, y: y0, H } = L, ddx = Math.round(-L.dx * 2), ddz = Math.round(-L.dz * 2);
+    const door = Math.abs(ddx) >= Math.abs(ddz) ? [Math.sign(ddx) * 2, 0] : [0, Math.sign(ddz) * 2];
+    for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) {
+      const r2 = dx * dx + dz * dz, cx = x + dx, cz = z + dz;
+      if (!inC(cx, y0, cz)) continue;
+      for (let y = y0; y <= y0 + H + 6; y++) { const a = at(cx, y, cz); if (isTree(dataRef[a])) dataRef[a] = 0; }      // palms and plants out of its way
+      if (r2 > 5) continue;
+      for (let y = L.pier ? 2 : y0 - 6; y < y0; y++) { const a = at(cx, y, cz); if (y > 0 && (y >= y0 - 6 || dataRef[a] === B.WATER || dataRef[a] === 0)) dataRef[a] = y === y0 - 1 && r2 <= 1 ? B.PLANKS : B.STONE; }      // footing (in the sea: down to its floor)
+      for (let y = y0; y < y0 + H; y++) {
+        const wall = r2 >= 2, isDoor = dx === door[0] && dz === door[1] && y < y0 + 2;
+        dataRef[at(cx, y, cz)] = wall && !isDoor ? (Math.floor((y - y0) / 3) % 2 ? B.LH_RED : B.LH_WHITE) : 0;
+      }
+      if (dx === 0 && dz === 0) dataRef[at(cx, y0, cz)] = B.TIDE_STONE;
+    }
+    // the pier from the beach: planks on stone posts, three wide, over the shallows
+    if (L.pier) {
+      const P0 = L.pier;
+      for (let s = 0; s <= P0.len - 2; s += 0.5) for (const w of [-1, 0, 1]) {
+        const cx = Math.round(P0.x0 + L.dx * s - L.dz * w), cz = Math.round(P0.z0 + L.dz * s + L.dx * w);
+        if (!inC(cx, y0, cz)) continue;
+        for (let y = y0; y <= y0 + 3; y++) { const a = at(cx, y, cz); if (isTree(dataRef[a])) dataRef[a] = 0; }
+        dataRef[at(cx, y0 - 1, cz)] = B.PLANKS;
+        if (Math.round(s) % 4 === 0 && w !== 0) for (let y = y0 - 2; y > 1; y--) { const a = at(cx, y, cz); if (dataRef[a] !== B.WATER && dataRef[a] !== 0) break; dataRef[a] = B.STONE; }
+      }
+    }
+    // the gallery, the lantern and the roof
+    for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) {
+      const r2 = dx * dx + dz * dz, cx = x + dx, cz = z + dz;
+      if (!inC(cx, y0, cz)) continue;
+      if (r2 <= 8) dataRef[at(cx, y0 + H, cz)] = r2 <= 1 ? B.LH_RED : B.PLANKS;
+      if (r2 === 1 || r2 === 2) { put(cx, y0 + H + 1, cz, 142); put(cx, y0 + H + 2, cz, 142); }       // glass round the lamp (the kit's)
+      if (r2 <= 2) put(cx, y0 + H + 3, cz, B.LH_RED);
+      if (r2 === 0) {
+        put(cx, y0 + H + 1, cz, 130); put(cx, y0 + H + 4, cz, B.LH_RED);                                   // the kit's warm lamp
+        fires.push({ x: cx, y: y0 + H + 1, z: cz, id: 130 });
+      }
+    }
+    buildSite(L.site, inC, at);
+  }
+  /** Under the water off the lighthouse: three ruined houses with chests, or a sea cave of rock with a chest at the back. */
+  function buildSite(S2, inC, at) {
+    const { x, z, floor } = S2;
+    if (S2.kind === 'cave') {
+      for (let dz = -7; dz <= 7; dz++) for (let dx = -7; dx <= 7; dx++) {
+        const cx = x + dx, cz = z + dz;
+        if (!inC(cx, floor, cz)) continue;
+        for (let dy = -1; dy <= 6; dy++) {
+          const y = floor + dy, q = (dx * dx + dz * dz) / 36 + (dy * dy) / 30, qi = (dx * dx + dz * dz) / 16 + (dy * dy) / 12;
+          if (q >= 1 || y >= SEA) continue;
+          const a = at(cx, y, cz);
+          if (qi < 1 && dy >= 0) { dataRef[a] = B.WATER; continue; }                // the hollow (water at high tide)
+          const r = hash3(cx, y, cz, 1421);
+          dataRef[a] = r < 0.05 ? K.ROCK_GOLD : r < 0.075 ? K.ROCK_EMERALD : r < 0.09 ? K.ROCK_AMETHYST : r < 0.3 ? B.CORAL_BRICK : B.STONE;
+        }
+      }
+      // the mouth, toward the shore
+      const [mx, mz] = S2.mouth;
+      for (let s = 2; s <= 7; s++) for (let w = -1; w <= 1; w++) for (let dy = 0; dy <= 2; dy++) {
+        const cx = x + mx * s + (mz ? w : 0), cz = z + mz * s + (mx ? w : 0), y = floor + dy;
+        if (inC(cx, y, cz) && y < SEA) dataRef[at(cx, y, cz)] = B.WATER;
+      }
+    } else for (const hs of S2.houses) {
+      for (let dz = 0; dz < 5; dz++) for (let dx = 0; dx < 5; dx++) {
+        const cx = hs.x0 + dx, cz = hs.z0 + dz;
+        if (!inC(cx, hs.y, cz)) continue;
+        const edge = dx === 0 || dz === 0 || dx === 4 || dz === 4;
+        for (let y = hs.y - 4; y < hs.y; y++) { const a = at(cx, y, cz); if (y > 0 && (dataRef[a] === B.WATER || dataRef[a] === 0)) dataRef[a] = B.CORAL_BRICK; }      // footing on the sea floor
+        dataRef[at(cx, hs.y - 1, cz)] = edge ? B.CORAL_BRICK : B.PLANKS;
+        for (let dy = 0; dy < 4; dy++) {
+          const y = hs.y + dy;
+          if (y >= SEA) break;
+          const a = at(cx, y, cz), r = hash3(cx, y, cz, 1431);
+          if (dy === 3) { if (r > 0.35) dataRef[a] = B.PLANKS; else dataRef[a] = B.WATER; continue; }      // a roof with holes
+          const door = (hs.door === 0 && dx === 2 && dz === 0) || (hs.door === 1 && dx === 4 && dz === 2) || (hs.door === 2 && dx === 0 && dz === 2);
+          dataRef[a] = edge && !(door && dy < 2) && !(dy === 1 && (dx === 2 || dz === 2) && !door && r < 0.7) && r > 0.12 ? B.CORAL_BRICK : B.WATER;      // windows, and a few stones gone
+        }
+      }
+    }
+    for (const c of S2.chests) if (inC(c.x, c.y, c.z)) dataRef[at(c.x, c.y, c.z)] = K.CHEST;
+    if (S2.lucky && inC(S2.lucky.x, S2.lucky.y, S2.lucky.z)) dataRef[at(S2.lucky.x, S2.lucky.y, S2.lucky.z)] = K.LUCKY;
+  }
+  /** An island: grass (or snow) on earth on a belly of cloud, rare plants, a chest, and a path of cloud to the column of warm air. */
+  function buildIsle(I, put, inC, at) {
+    const { x, z, top, R } = I, ri = Math.ceil(R * 1.3);
+    for (let dz = -ri; dz <= ri; dz++) for (let dx = -ri; dx <= ri; dx++) {
+      const cx = x + dx, cz = z + dz;
+      if (!inC(cx, top, cz)) continue;
+      const dd = Math.hypot(dx, dz) / R * (1 + N.fbm2(cx / 6, cz / 6, 2) * 0.22);
+      if (dd < 1) {
+        const thick = Math.round((1 - dd * dd) * (4 + R * 0.45)) + 1;
+        for (let y = top - thick; y <= top; y++) dataRef[at(cx, y, cz)] = y === top ? (I.snow ? B.SNOW : B.GRASS) : y >= top - 2 ? B.DIRT : B.CLOUD;
+        dataRef[at(cx, top - thick - 1, cz)] = B.CLOUD;
+        if (dd < 0.82 && top + 1 < SY) {
+          const r = hash3(cx, 3, cz, 1521);
+          const plant = r < 0.07 ? B.SKY_FLOWER : r < 0.12 && !I.snow ? B.SKY_BERRY : r < 0.3 && !I.snow ? B.TUFT : 0;
+          if (plant) dataRef[at(cx, top + 1, cz)] = plant;
+        }
+      } else if (dd < 1.28 && hash3(cx, 5, cz, 1523) < 0.55) { dataRef[at(cx, top - 1, cz)] = B.CLOUD; if (hash3(cx, 6, cz, 1525) < 0.5) dataRef[at(cx, top - 2, cz)] = B.CLOUD; }      // puffs round the rim
+    }
+    // the path of cloud from the rim to the column of warm air, two wide
+    const v = I.vent;
+    for (let s = R - 2; s <= v.d - 2; s += 0.5) for (const w of [0, 1]) {
+      const cx = Math.round(x + v.dx * s - v.dz * w * 0.9), cz = Math.round(z + v.dz * s + v.dx * w * 0.9);
+      if (inC(cx, top, cz) && Math.hypot(cx - v.x, cz - v.z) > 1.6) dataRef[at(cx, top, cz)] = B.CLOUD;
+    }
+    // the column of warm air: three wide, from the vent up past the island; the vent stones on the ground
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+      const cx = v.x + dx, cz = v.z + dz;
+      if (!inC(cx, v.y, cz)) continue;
+      for (let y = v.y + 1; y <= Math.min(SY - 2, top + 5); y++) dataRef[at(cx, y, cz)] = 0;
+      dataRef[at(cx, v.y, cz)] = B.VENT;
+    }
+    const c = I.chest;
+    if (inC(c.x, c.y, c.z)) { dataRef[at(c.x, c.y, c.z)] = K.CHEST; dataRef[at(c.x, c.y - 1, c.z)] = I.snow ? B.SNOW : B.GRASS; }
+  }
+  let dataRef = null;
 
   // ------------------------------------------------------------------ trees
   const G = 5;                                   // the tree grid: one candidate in each 5 x 5 cell
@@ -490,6 +740,11 @@ export function makeGen(K) {
     grass: [0.3, 0.53, 0.2], plains: [0.36, 0.57, 0.22], forest: [0.17, 0.34, 0.13], sand: [0.86, 0.76, 0.52], snow: [0.88, 0.91, 0.95],
     rock: [0.46, 0.45, 0.43], water: [0.46, 0.71, 0.81], deep: [0.36, 0.6, 0.75], ice: [0.8, 0.9, 0.95], pine: [0.2, 0.33, 0.24],
   };
+  // the seasons (ideas.js): the far land takes the colours of the season too. w = { x: spring, y: autumn, z: winter }
+  const GREEN = { grass: COL.grass, plains: COL.plains, forest: COL.forest, pine: COL.pine };
+  const FALL = { grass: [0.62, 0.52, 0.2], plains: [0.7, 0.58, 0.22], forest: [0.55, 0.26, 0.08], pine: GREEN.pine };
+  const WINTER = { grass: [0.85, 0.89, 0.94], plains: [0.86, 0.9, 0.95], forest: [0.66, 0.7, 0.74], pine: [0.42, 0.5, 0.48] };
+  function setSeason(w) { for (const k of Object.keys(GREEN)) COL[k] = GREEN[k].map((v, i) => v * w.x + FALL[k][i] * w.y + WINTER[k][i] * w.z); }
   function farSample(x, z, out) {
     const c = column(x, z), h = c.hf;
     let y = h, rgb;
@@ -551,5 +806,6 @@ export function makeGen(K) {
   findSpawn();
   return {
     SY, SEA, C, SIZE, spawn, fillChunk, column, landOf, heightAt, baseHeight, farSample, cavesIn, treesIn,
+    lighthousesNear, lighthouseOf, LC, islesNear, setSeason,
   };
 }

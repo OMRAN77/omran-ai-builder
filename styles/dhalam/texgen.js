@@ -1060,3 +1060,105 @@ export function buildSpriteTextures() {
   });
   return R;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Tiles of the endless game only: the clock rooms' gears and dials, the fog towers' socket and crystal, the
+// shadow-and-light stones, and the passage of time. Pictures, no writing.
+// ---------------------------------------------------------------------------------------------
+export function buildGameTiles(T) {
+  const S = 128, N = makePNoise(611), tmp = [0, 0, 0];
+  const plate = (u, v, o, dark = hex(0x2c2a28), light = hex(0x4e4a45)) => {
+    const n = N.fbm(u, v, 6, 4, 0.55) * 0.5 + 0.5, f = N.fbm(u + 0.3, v + 0.7, 30, 2) * 0.5 + 0.5;
+    mix3(dark, light, clamp01(n * 0.9 + (f - 0.5) * 0.4), o.c);
+    o.h = n * 0.3 + f * 0.1;
+    const e = Math.min(u, v, 1 - u, 1 - v);                    // a bevelled rim, so each block reads as one plate
+    if (e < 0.06) { const k = sstep(0.0, 0.06, e); o.c[0] *= 0.55 + 0.45 * k; o.c[1] *= 0.55 + 0.45 * k; o.c[2] *= 0.55 + 0.45 * k; o.h -= (1 - k) * 0.3; }
+  };
+  const bronze0 = hex(0x5a3d1e), bronze1 = hex(0xb4823f), glowC = hex(0xffc26a);
+  // a gear with ten teeth; one tooth carries a glowing notch that says which way it points (0 up, 1 right, 2 down, 3 left)
+  for (let k = 0; k < 4; k++) {
+    const aim = Math.PI / 2 - k * Math.PI / 2;
+    T['gear' + k] = pixelTile(S, (u, v, o) => {
+      plate(u, v, o);
+      const x = u - 0.5, y = v - 0.5, r = Math.hypot(x, y), a = Math.atan2(y, x);
+      const rel = a - aim, teeth = 10;
+      const tooth = Math.cos(rel * teeth) > 0.2 ? 1 : 0;
+      const R = 0.34 + tooth * 0.08;
+      if (r < R) {
+        const ring = r > 0.26 || r < 0.12;
+        const spoke = Math.abs(Math.sin(rel * 2)) < 0.22;
+        if (ring || spoke) {
+          const sh = clamp01(0.55 + 0.45 * Math.cos(a - 2.2) * sstep(0.0, 0.4, r) + (N.fbm(u, v, 20, 2) * 0.2));
+          mix3(bronze0, bronze1, sh, tmp);
+          o.c[0] = tmp[0]; o.c[1] = tmp[1]; o.c[2] = tmp[2];
+          o.h = 0.7 + (r > 0.26 ? 0.1 : 0) - (r < 0.05 ? 0.4 : 0);
+          o.e = 0.12;
+          if (r < 0.05) { o.c[0] *= 0.3; o.c[1] *= 0.3; o.c[2] *= 0.3; o.e = 0; }
+        } else { o.c[0] *= 0.4; o.c[1] *= 0.4; o.c[2] *= 0.4; o.h = 0.05; }
+      }
+      // the notch: a bright wedge on the tooth that points the way
+      const ad = Math.abs(Math.atan2(Math.sin(rel), Math.cos(rel)));
+      if (ad < 0.2 && r > 0.2 && r < 0.43) { mix3(o.c, glowC, 0.9, o.c); o.e = 1; o.h = 0.9; }
+    }, { normal: 2.4, cavity: 0.6, emissiveColor: hex(0xffb45e) });
+  }
+  // a dial: a bronze ring with four marks and one hand
+  for (let k = 0; k < 4; k++) {
+    const aim = Math.PI / 2 - k * Math.PI / 2, ax = Math.cos(aim), ay = Math.sin(aim);
+    T['dial' + k] = pixelTile(S, (u, v, o) => {
+      plate(u, v, o, hex(0x34302b), hex(0x585248));
+      const x = u - 0.5, y = v - 0.5, r = Math.hypot(x, y), a = Math.atan2(y, x);
+      if (r > 0.33 && r < 0.4) { mix3(bronze0, bronze1, 0.6 + 0.4 * Math.cos(a - 2.2), o.c); o.h = 0.7; o.e = 0.08; }
+      const mark = r > 0.25 && r < 0.33 && Math.abs(Math.sin(a * 2)) < 0.09;
+      if (mark) { mix3(o.c, bronze1, 0.8, o.c); o.h = 0.6; }
+      // the hand: from the middle toward the aim, ending in a point
+      const along = x * ax + y * ay, side = Math.abs(-x * ay + y * ax);
+      const wd = along < 0.2 ? 0.035 : 0.035 * (0.3 - along) / 0.1;
+      if (along > -0.06 && along < 0.3 && side < Math.max(0, wd)) { mix3(o.c, glowC, 0.85, o.c); o.e = 0.85; o.h = 0.85; }
+      if (r < 0.05) { mix3(o.c, bronze1, 0.9, o.c); o.h = 0.9; }
+    }, { normal: 2.2, cavity: 0.6, emissiveColor: hex(0xffb45e) });
+  }
+  const tealD = hex(0x123c40), tealL = hex(0x8ff0e6), white = hex(0xe6fffb);
+  // the socket at the foot of a fog tower: a six-sided hollow in a stone slab; lit, a crystal burns in it
+  const socket = (lit) => pixelTile(S, (u, v, o) => {
+    plate(u, v, o);
+    const x = u - 0.5, y = v - 0.5, a = Math.atan2(y, x), r = Math.hypot(x, y);
+    const hexR = 0.3 / Math.cos(((a % (Math.PI / 3)) + Math.PI / 3) % (Math.PI / 3) - Math.PI / 6);
+    if (r < hexR) {
+      o.h = 0.0; o.c[0] *= 0.25; o.c[1] *= 0.25; o.c[2] *= 0.28;
+      if (lit) { const f = N.fbm(u * 3, v * 3, 3, 2) * 0.5 + 0.5, w = Math.abs(Math.sin(a * 3 + r * 20)); mix3(tealD, tealL, clamp01(0.4 + f * 0.5 + w * 0.2), o.c); if (r < 0.12) mix3(o.c, white, 0.7, o.c); o.e = clamp01(0.55 + 0.45 * (1 - r / 0.3)); o.h = 0.6; }
+    } else if (r < hexR + 0.04) { o.c[0] *= 0.6; o.c[1] *= 0.6; o.c[2] *= 0.6; o.h = 0.2; }
+  }, { normal: 2.2, cavity: 0.6, emissiveColor: hex(0x9ff6ee) });
+  T.socket = socket(false);
+  T.socketLit = socket(true);
+  // the crystal at the top of a tower: facets; dull grey-green until it is lit
+  const crystal = (lit) => pixelTile(S, (u, v, o) => {
+    const w = [0, 0, 0, 0, 0];
+    N.worley(u, v, 3, w, 0.9);
+    const f = clamp01(0.25 + w[2] * 0.6 - w[4] * 0.8), edge = 1 - sstep(0.0, 0.04, w[1] - w[0]);
+    if (lit) { mix3(tealD, tealL, f, o.c); mix3(o.c, white, edge * 0.7, o.c); o.e = clamp01(0.45 + f * 0.5 + edge * 0.4); }
+    else { mix3(hex(0x2a3434), hex(0x6d7f7d), f, o.c); mix3(o.c, hex(0x9aa8a6), edge * 0.4, o.c); o.e = 0.03; }
+    o.h = f * 0.6 - edge * 0.3;
+  }, { normal: 2.6, cavity: 0.5, emissiveColor: hex(0x9ff6ee) });
+  T.crystal = crystal(false);
+  T.crystalLit = crystal(true);
+  // the shadow-and-light stone: pale stone threaded with runes of light (the picture is all glow: it is drawn unlit)
+  T.glimmer = pixelTile(S, (u, v, o) => {
+    const n = N.fbm(u + 3, v + 1, 5, 3) * 0.5 + 0.5, w = [0, 0, 0, 0, 0];
+    N.worley(u, v, 3, w, 1.0);
+    const line = 1 - sstep(0.0, 0.035, w[1] - w[0]);
+    const e = Math.min(u, v, 1 - u, 1 - v), rim = 1 - sstep(0.0, 0.07, e);
+    mix3(hex(0x1c4a4e), hex(0x3e7f80), n, o.c);
+    mix3(o.c, white, Math.max(line * 0.85, rim * 0.6), o.c);
+    o.h = n * 0.3 + line * 0.3;
+  }, { normal: 1.5 });
+  // the passage of time: a ring of drifting violet light, open in the middle (cross quads, alpha)
+  T.timegate = pixelTile(S, (u, v, o) => {
+    const x = (u - 0.5) * 1.15, y = (v - 0.5), r = Math.hypot(x, y * 0.8), a = Math.atan2(y, x);
+    const sw = Math.sin(a * 5 + r * 26) * 0.5 + 0.5;
+    const ring = sstep(0.18, 0.3, r) * (1 - sstep(0.4, 0.48, r));
+    const k = clamp01(ring * (0.55 + 0.45 * sw) + (1 - sstep(0.0, 0.2, r)) * 0.35);
+    mix3(hex(0x3b1e6a), hex(0xd9b8ff), clamp01(k * 1.1), o.c);
+    o.a = k > 0.12 ? 1 : 0; o.e = k; o.h = k * 0.4;
+  }, { normal: 0.6, alpha: true, emissiveColor: hex(0xc9a2ff) });
+  return T;
+}

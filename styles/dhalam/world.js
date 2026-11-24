@@ -12,6 +12,9 @@ export const B = {
   ROCK: 1, ROCK_MOSS: 2, SNOW: 3, LITTER: 4, HEATH: 5, SOIL: 6, GRAVEL: 7, PATH: 8, ASH: 9,
   TRUNK: 10, NEEDLES: 11, BRICK: 12, BRICK_MOSS: 13, PLANKS: 14, STAKE: 15, ORE_IRON: 16, ORE_GLOW: 17,
   WATER: 18, FERN: 19, DRYGRASS: 20, REEDS: 21,
+  // the endless highlands of the game (endless.js) and the four mysteries (mysteries.js)
+  MERE: 22, GLIM_OFF: 23, GLIM_ON: 24, WARD: 25, GEAR0: 26, GEAR1: 27, GEAR2: 28, GEAR3: 29,
+  DIAL0: 30, DIAL1: 31, DIAL2: 32, DIAL3: 33, SOCKET: 34, SOCKET_LIT: 35, BEACON: 36, BEACON_LIT: 37, TIMEGATE: 38, SECRET: 39,
 };
 
 export const BLOCKS = {
@@ -40,10 +43,33 @@ export const BLOCKS = {
   [B.FERN]: { tiles: 'fern', kind: 'cross', height: 0.95, shade: 0.55 },
   [B.DRYGRASS]: { tiles: 'dryGrass', kind: 'cross', height: 0.9, shade: 0.5 },
   [B.REEDS]: { tiles: 'reeds', kind: 'cross', height: 1.5, shade: 0.55 },
+  // water of the lakes out in the highlands: drawn as blocks (the home lake is one mirror plane)
+  [B.MERE]: { tiles: 'mere', kind: 'liquid' },
+  // shadow-and-light stones: drawn by mysteries.js, never by the mesher. Dark: nothing to stand on; in lantern light: solid
+  [B.GLIM_OFF]: { tiles: 'glimmer', kind: 'none', solid: false },
+  [B.GLIM_ON]: { tiles: 'glimmer', kind: 'none' },
+  // the old masonry of the clock rooms: it looks like the ruins' stone and does not give way to a pick
+  [B.WARD]: { tiles: { top: 'brickTop', side: 'brick', bottom: 'brick' } },
+  [B.SECRET]: { tiles: { top: 'brickTop', side: 'brick', bottom: 'brick' } },
+  [B.GEAR0]: { tiles: { top: 'brickTop', side: 'gear0', bottom: 'brick' }, light: '#ffb45e', lightLevel: 4 },
+  [B.GEAR1]: { tiles: { top: 'brickTop', side: 'gear1', bottom: 'brick' }, light: '#ffb45e', lightLevel: 4 },
+  [B.GEAR2]: { tiles: { top: 'brickTop', side: 'gear2', bottom: 'brick' }, light: '#ffb45e', lightLevel: 4 },
+  [B.GEAR3]: { tiles: { top: 'brickTop', side: 'gear3', bottom: 'brick' }, light: '#ffb45e', lightLevel: 4 },
+  [B.DIAL0]: { tiles: { top: 'brickTop', side: 'dial0', bottom: 'brick' } },
+  [B.DIAL1]: { tiles: { top: 'brickTop', side: 'dial1', bottom: 'brick' } },
+  [B.DIAL2]: { tiles: { top: 'brickTop', side: 'dial2', bottom: 'brick' } },
+  [B.DIAL3]: { tiles: { top: 'brickTop', side: 'dial3', bottom: 'brick' } },
+  [B.SOCKET]: { tiles: { top: 'socket', side: 'brick', bottom: 'brick' } },
+  [B.SOCKET_LIT]: { tiles: { top: 'socketLit', side: 'brick', bottom: 'brick' }, light: '#8ff0e6', lightLevel: 6 },
+  [B.BEACON]: { tiles: { top: 'crystal', side: 'crystal', bottom: 'brick' } },
+  [B.BEACON_LIT]: { tiles: { top: 'crystalLit', side: 'crystalLit', bottom: 'brick' }, light: '#8ff0e6', lightLevel: 13 },
+  [B.TIMEGATE]: { tiles: 'timegate', kind: 'cross', height: 1.9, light: '#b98cff', lightLevel: 6 },
 };
 
 /** World-space UV scale per tile: 0.5 = one texture spans two blocks. */
-export const UV_SCALE = { bark: 1, barkTop: 1, water: 0.2 };
+export const UV_SCALE = { bark: 1, barkTop: 1, water: 0.2, mere: 0.2 };
+/** Tiles that are one picture per block face, the right way up from outside (the mesher's own UVs, as the kit's). */
+export const PIC_TILES = new Set(['gear0', 'gear1', 'gear2', 'gear3', 'dial0', 'dial1', 'dial2', 'dial3', 'socket', 'socketLit', 'crystal', 'crystalLit']);
 
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -163,24 +189,54 @@ function rockiness(x, z, h) {
   return sstep(0.1, 0.5, n + (h - 40) / 40 + (v > 30 ? 0.12 : 0));
 }
 
+/** The height of column (x, z) in the map's own coordinates, before rounding: also outside the map (the endless land blends into it). */
+export function columnH(x, z) {
+  let h = terrainH(x, z);
+  const rk = rockiness(x, z, h);
+  const kdd = Math.hypot((x - SITE.keep.x) / 21, (z - SITE.keep.z) / 15);
+  if (rk > 0 && h > WL + 3 && kdd > 1.5) {
+    const step = 6;
+    const f = h / step, fl = Math.floor(f), fr = f - fl;
+    const terr = (fl + sstep(0.55, 0.95, fr)) * step;
+    h = lerp(h, terr, rk * 0.75);
+  }
+  return h;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The game puts the hand-made map far from the world's corner (the world goes on forever round it). The generator
+// keeps working in the map's own coordinates; these give the same places in the game's world.
+// ---------------------------------------------------------------------------------------------
+export const HOME = { x: 0, z: 0 };
+const cloneSite = () => JSON.parse(JSON.stringify(SITE));
+/** SITE in the game's world (SITE itself stays in the map's coordinates for the generator). */
+export const SITE_W = cloneSite();
+export const fromUVw = (u, v) => { const [x, z] = fromUV(u, v); return [x + HOME.x, z + HOME.z]; };
+export const toUVw = (x, z) => toUV(x - HOME.x, z - HOME.z);
+export const gateRelW = (meta, out, right) => { const [x, z] = gateRel(meta, out, right); return [x + HOME.x, z + HOME.z]; };
+/**
+ * Move the generated map (and everything meta says about it) to (dx, dz) in the game's world. Call once, after
+ * generateWorld and before the map is used; gateRel and the generator keep the map's own coordinates.
+ */
+export function shiftHome(meta, dx, dz) {
+  HOME.x = dx; HOME.z = dz;
+  for (const k of ['keep', 'shelter', 'ledge']) { SITE_W[k].x = SITE[k].x + dx; SITE_W[k].z = SITE[k].z + dz; }
+  const mv = (p) => { if (p) { p.x += dx; p.z += dz; } };
+  meta.trees.forEach(mv); meta.stumps.forEach(mv); meta.lights.forEach(mv);
+  const sh = meta.shelter;
+  sh.stakes.forEach(mv); sh.torches.forEach(mv); sh.logs.forEach(mv); mv(sh.fire); mv(sh.hut); mv(sh.jettyEnd);
+  if (meta.keep) { meta.keep.tx0 += dx; meta.keep.tz0 += dz; }
+  mv(meta.outcrop);
+  meta.shifted = { dx, dz };
+}
+
 export function generateWorld() {
   const world = new VoxelWorld(SX, SY, SZ);
   const H = new Int16Array(SX * SZ);
   const hf = (x, z) => H[Math.min(SX - 1, Math.max(0, x)) + SX * Math.min(SZ - 1, Math.max(0, z))];
 
   // heights, with terraced cliffs where the ground is rocky
-  for (let z = 0; z < SZ; z++) for (let x = 0; x < SX; x++) {
-    let h = terrainH(x, z);
-    let rk = rockiness(x, z, h);
-    const kdd = Math.hypot((x - SITE.keep.x) / 21, (z - SITE.keep.z) / 15);
-    if (rk > 0 && h > WL + 3 && kdd > 1.5) {
-      const step = 6;
-      const f = h / step, fl = Math.floor(f), fr = f - fl;
-      const terr = (fl + sstep(0.55, 0.95, fr)) * step;
-      h = lerp(h, terr, rk * 0.75);
-    }
-    H[x + SX * z] = Math.max(2, Math.min(SY - 26, Math.round(h)));
-  }
+  for (let z = 0; z < SZ; z++) for (let x = 0; x < SX; x++) H[x + SX * z] = Math.max(2, Math.min(SY - 26, Math.round(columnH(x, z))));
 
   const meta = { H, hf, trees: [], stumps: [], lights: [] };
   const K = SITE.keep, S = SITE.shelter;

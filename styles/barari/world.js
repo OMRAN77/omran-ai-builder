@@ -57,7 +57,10 @@ export function generateWorld() {
   const api = {
     world, anchors, fires, onFire: null,
     landOf: g.landOf, heightAt: g.heightAt, farSample: g.farSample, column: g.column, groundY, spawn: sp,
-    cavesIn: g.cavesIn, seaSpot, zoneOf: g.zoneOf || null, volcanoesNear: g.volcanoesNear || null,
+    cavesIn: g.cavesIn, seaSpot, zoneOf: g.zoneOf || null, volcanoesNear: g.volcanoesNear || null, SEA,
+    // the wonders of each world (ideas.js): barari's lighthouses, cloud islands and seasons; the dinosaur world's towers and fossil caves
+    lighthousesNear: g.lighthousesNear || null, lighthouseOf: g.lighthouseOf || null, LC: g.LC || 0, islesNear: g.islesNear || null, setSeason: g.setSeason || null,
+    towersNear: g.towersNear || null, fossilsNear: g.fossilsNear || null,
     ms: performance.now() - t0,
   };
   return api;

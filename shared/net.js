@@ -147,7 +147,8 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     else if (a[0] === 'dig') play.remoteDig(a[1], a[2], a[3]);
     else if (a[0] === 'door') kit.remoteDoor(a[1], a[2], a[3]);
   }
-  const okCell = (a) => a.slice(1, 4).every((n) => Number.isInteger(n) && n >= 0 && n < 4096);
+  // inside this world's own walls: the endless worlds are 16384 a side with the start near 8192, so a fixed 4096 dropped every guest's dig there
+  const okCell = (a) => { const W = play.world || {}, lim = [W.sx || 16384, W.sy || 256, W.sz || 16384]; return a.slice(1, 4).every((n, i) => Number.isInteger(n) && n >= 0 && n < lim[i]); };
   function did(a) {      // this player did it
     note(a);
     if (role === 'host') toAll({ t: 'do', a });

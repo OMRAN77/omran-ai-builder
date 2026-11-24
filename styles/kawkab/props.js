@@ -210,9 +210,9 @@ export function makeRidges(cx, cz) {
   const group = new THREE.Group();
   group.name = 'ridges';
   const defs = [
-    { r: 205, base: 22, amp: 30, seed: 3, t: 0.34, spires: 0.035 },
-    { r: 290, base: 30, amp: 62, seed: 7, t: 0.6, spires: 0.02 },
-    { r: 420, base: 40, amp: 120, seed: 11, t: 0.8, spires: 0.008 },
+    { r: 360, base: 28, amp: 40, seed: 3, t: 0.34, spires: 0.035 },      // (beyond the fog of the planet: the group follows the camera)
+    { r: 460, base: 34, amp: 80, seed: 7, t: 0.6, spires: 0.02 },
+    { r: 600, base: 44, amp: 140, seed: 11, t: 0.8, spires: 0.008 },
   ];
   for (const d of defs) {
     const rnd = mulberry32(d.seed * 977);
@@ -266,7 +266,8 @@ export function makeRidges(cx, cz) {
 }
 
 // ------------------------------------------------------------------ spores
-export function makeSpores(count, sample) {
+/** box: when given, the spores fill a box of that size round the camera (sample gives points in [0, box)). */
+export function makeSpores(count, sample, box = 0) {
   const rnd = mulberry32(4242);
   const pos = new Float32Array(count * 3), col = new Float32Array(count * 3), size = new Float32Array(count);
   const pal = [[0.35, 1.0, 0.86], [0.35, 1.0, 0.86], [0.72, 0.5, 1.0], [1.0, 0.86, 0.7], [0.45, 0.85, 1.0]];
@@ -282,9 +283,11 @@ export function makeSpores(count, sample) {
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
   const mat = new THREE.ShaderMaterial({
-    uniforms: { uScale: { value: 800 }, uI: { value: 1 }, uFog: { value: new THREE.Vector2(60, 300) }, uMax: { value: 30 } },
-    vertexShader: `attribute float aSize; attribute vec3 color; varying vec3 vC; uniform float uScale, uMax; uniform vec2 uFog;
-      void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; float d = -mv.z;
+    uniforms: { uScale: { value: 800 }, uI: { value: 1 }, uFog: { value: new THREE.Vector2(60, 300) }, uMax: { value: 30 }, uBox: { value: box } },
+    vertexShader: `attribute float aSize; attribute vec3 color; varying vec3 vC; uniform float uScale, uMax, uBox; uniform vec2 uFog;
+      void main(){ vec3 q = position;
+        if (uBox > 0.0) { q.xz = cameraPosition.xz + mod(q.xz - cameraPosition.xz + uBox * 0.5, uBox) - uBox * 0.5; q.y = cameraPosition.y - 8.0 + mod(q.y - cameraPosition.y + 8.0, 30.0); }
+        vec4 mv = modelViewMatrix * vec4(q, 1.0); gl_Position = projectionMatrix * mv; float d = -mv.z;
         float s = aSize * uScale / d; gl_PointSize = min(s, uMax);
         vC = color * (1.0 - smoothstep(uFog.x, uFog.y, d)) * smoothstep(0.6, 2.5, d) * min(1.0, (uMax * uMax) / (s * s) + 0.35); }`,
     fragmentShader: `varying vec3 vC; uniform float uI;

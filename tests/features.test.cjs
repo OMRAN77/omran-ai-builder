@@ -160,3 +160,26 @@ test('الصفحة الأولى: «عالمك اللانهائي المتجدد�
   assert.ok(!/<img/.test(g[0]), 'نص وأيقونات بس، بلا صورة');
   assert.ok(html.indexOf('class="guide"') > html.indexOf('class="cards"') && html.indexOf('class="guide"') < html.indexOf('class="who"'), 'تحت العوالم وفوق الشخصيات');
 });
+
+test('تبديل العالم: زرّان في الزاوية، ونافذة توقف اللعب وتعرض العوالم الأربعة الثانية بصورها', async () => {
+  const { WORLDS } = await esm('shared/switcher.js');
+  const html = read('index.html');
+  const ready = JSON.parse(/const READY = (\[[^\]]*\])/.exec(html)[1]);
+  assert.deepEqual(WORLDS.map((w) => w.key).sort(), [...ready].sort(), 'نفس عوالم الصفحة الأولى');
+  for (const w of WORLDS) assert.ok(fs.existsSync(path.join(ROOT, 'previews', w.key + '.webp')), 'صورة ' + w.key);
+  const sw = read('shared/switcher.js');
+  for (const t of ['تبديل العالم', 'الإعدادات', 'الانتقال إلى عالم آخر', 'أنت الآن في:', 'انتقل الآن', 'استكمال اللعب', 'العودة للقائمة الرئيسية']) assert.ok(sw.includes(t), t);
+  assert.match(sw, /WORLDS\.filter\(\(w\) => w\.key !== G\.key\)/, 'العالم الحالي ما يطلع بين البطاقات');
+  assert.match(sw, /play\.stop\(\)/, 'النافذة توقف اللعب');
+  assert.match(sw, /const ok = save\(\);[\s\S]*?location\.reload\(\)/, 'يحفظ قبل ما ينتقل');
+  const play = read('shared/play.js');
+  assert.match(play, /return \(window\.__GAME_PLAY = \{/, 'اللعبة توصل للمتحكّم');
+  assert.match(play, /import\('\.\/switcher\.js'\)\.then/, 'الزاوية تنركّب لما العالم انفتح من الصفحة الأولى');
+  assert.match(play, /btn\('switch', 'تبديل العالم'\)/, 'وفي قائمة الإيقاف بعد');
+});
+
+test('الغرف في العوالم اللانهائية: صاحب الغرفة يقبل حفر الضيف وبناه داخل حدود العالم (16384) لا 4096', () => {
+  const net = read('shared/net.js');
+  assert.ok(!/n < 4096/.test(net), 'الحدّ الثابت القديم راح');
+  assert.match(net, /lim = \[W\.sx \|\| 16384, W\.sy \|\| 256, W\.sz \|\| 16384\]/);
+});

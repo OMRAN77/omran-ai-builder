@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { patch } from './fx.js';
 import { mulberry32 } from './texgen.js';
 
-function addPine(buf, tr) {
+function addPine(buf, tr, lite = false) {
   const rnd = mulberry32(tr.seed * 7919 + 13);
   const cx = tr.x + 0.5 + (rnd() - 0.5) * 0.2, cz = tr.z + 0.5 + (rnd() - 0.5) * 0.2;
   const h = tr.h;
@@ -15,7 +15,7 @@ function addPine(buf, tr) {
   const dead = tr.dead ?? (rnd() < 0.13);
   // lower branches have died off: bare trunk below, so you can see (and be seen) between the trees
   const crown = tr.g + 1 + Math.max(3.3, h * (0.33 + rnd() * 0.1));
-  const n = Math.max(5, Math.round(h / 1.75));
+  const n = lite ? Math.max(4, Math.round(h / 2.6)) : Math.max(5, Math.round(h / 1.75));          // a phone draws fewer whorls
   const Rmax = (1.25 + h * 0.135) * (0.8 + rnd() * 0.4);
   const tint = 0.8 + rnd() * 0.36;
   const warm = (rnd() - 0.5) * 0.14;
@@ -29,7 +29,7 @@ function addPine(buf, tr) {
     const t0 = t; t += gaps[i] / acc;
     const skip = i > 1 && i < n - 1 && rnd() < 0.1;                 // a whorl is missing here and there
     const low = i < 2;
-    const lobes = low ? 3 + Math.floor(rnd() * 2) : 5 + Math.floor(rnd() * 3);
+    const lobes = lite ? 3 + Math.floor(rnd() * 2) : low ? 3 + Math.floor(rnd() * 2) : 5 + Math.floor(rnd() * 3);
     const jit = 0.76 + rnd() * 0.48;
     const ox = (rnd() - 0.5) * 0.34, oz = (rnd() - 0.5) * 0.34;
     const tw = rnd() * Math.PI * 2;
@@ -97,6 +97,42 @@ function addPine(buf, tr) {
     buf.tnor.push(Math.cos(a), 0.1, Math.sin(a), Math.cos(a), 0.1, Math.sin(a));
   }
   for (let k = 0; k < 4; k++) { const b = base + k * 2, c = base + ((k + 1) % 4) * 2; buf.tidx.push(b, b + 1, c, c, b + 1, c + 1); }
+}
+
+/**
+ * The pines of the endless game, a chunk at a time: build(trees, ox, oz) -> [boughs, trunks] meshes for the pines
+ * standing in one chunk, placed relative to (ox, oz) (the chunk's corner, where its group stands), or [] if none.
+ * standing(tr) says whether a pine still has the log its boughs grow from.
+ */
+export function makeForestKit(bough, standing, { lite = false } = {}) {
+  const mat = patch(new THREE.MeshLambertMaterial({ map: bough.map, alphaTest: 0.5, alphaToCoverage: true, side: THREE.DoubleSide, vertexColors: true }));
+  const tmat = patch(new THREE.MeshLambertMaterial({ color: 0x241d18 }));
+  return {
+    mat, tmat,
+    build(trees, ox, oz) {
+      const buf = { pos: [], nor: [], uv: [], col: [], idx: [], tpos: [], tnor: [], tidx: [] };
+      for (const tr of trees) if (!tr.snag && standing(tr)) addPine(buf, tr, lite);
+      if (!buf.idx.length) return [];
+      for (let i = 0; i < buf.pos.length; i += 3) { buf.pos[i] -= ox; buf.pos[i + 2] -= oz; }
+      for (let i = 0; i < buf.tpos.length; i += 3) { buf.tpos[i] -= ox; buf.tpos[i + 2] -= oz; }
+      const bg = new THREE.BufferGeometry();
+      bg.setAttribute('position', new THREE.Float32BufferAttribute(buf.pos, 3));
+      bg.setAttribute('normal', new THREE.Float32BufferAttribute(buf.nor, 3));
+      bg.setAttribute('uv', new THREE.Float32BufferAttribute(buf.uv, 2));
+      bg.setAttribute('color', new THREE.Float32BufferAttribute(buf.col, 3));
+      bg.setIndex(buf.idx);
+      const tg = new THREE.BufferGeometry();
+      tg.setAttribute('position', new THREE.Float32BufferAttribute(buf.tpos, 3));
+      tg.setAttribute('normal', new THREE.Float32BufferAttribute(buf.tnor, 3));
+      tg.setIndex(buf.tidx);
+      const boughs = new THREE.Mesh(bg, mat), trunks = new THREE.Mesh(tg, tmat);
+      boughs.name = 'boughs'; trunks.name = 'trunks';
+      boughs.castShadow = true; boughs.receiveShadow = false;
+      trunks.castShadow = false; trunks.receiveShadow = true;
+      boughs.userData.tris = buf.idx.length / 3; trunks.userData.tris = buf.tidx.length / 3;
+      return [boughs, trunks];
+    },
+  };
 }
 
 export function buildForest(trees, bough, { region = 54 } = {}) {

@@ -33,6 +33,7 @@ export function moods(dirFrom) {
 
 /** The own blocks the bag offers. */
 export const catalogue = (B) => [B.JUNGLE_LOG, B.FERN_TRUNK, B.PLANKS, B.JUNGLE_LEAVES, B.FERN_FROND, B.JUNGLE_GRASS, B.FERN_GRASS, B.DIRT, B.MUD, B.SAND, B.SANDSTONE,
-  B.STONE, B.DEEPROCK, B.GRAVEL, B.BASALT, B.ASH, B.RED_ROCK, B.AMBER, B.NEST, B.FERN, B.BIGLEAF, B.VINE, B.HORSETAIL, B.REED, B.TUFT];
+  B.STONE, B.DEEPROCK, B.GRAVEL, B.BASALT, B.ASH, B.RED_ROCK, B.AMBER, B.NEST, B.FERN, B.BIGLEAF, B.VINE, B.HORSETAIL, B.REED, B.TUFT,
+  B.RESO_STONE, B.RESO_CARVED, B.RESO_CRYSTAL, B.FOSSIL];
 /** What the workbench counts as wood and as stone. */
 export const mats = (B) => ({ wood: { ids: [B.JUNGLE_LOG, B.FERN_TRUNK, B.PLANKS], name: 'خشب' }, stone: { ids: [B.STONE, B.SANDSTONE, B.DEEPROCK, B.BASALT, B.RED_ROCK], name: 'صخر' }, ore: { ids: [], name: 'خام معدن' } });

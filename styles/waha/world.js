@@ -19,6 +19,8 @@ export const B = {
   ADOBE: 9, BRICK: 10, BAND: 11, PLASTER: 12, STONE: 13, FALAJ: 14, WOOD: 15, THATCH: 16,
   SLIT: 17, SLIT_LIT: 18, WATER: 19, REED: 20, TUFT: 21, SHRUB: 22, BEAM: 23, ADOBE_DARK: 24,
   PACKED: 25, RUBBLE: 26,
+  // the endless desert and the four wonders (27, 28 and 29 are the game's own: obstacle, lantern, palm trunk)
+  SALT: 30, WINDHEAD: 31, MIRROR: 32, /* 32..39: a mirror facing each of eight ways */ VAULT: 40,
 };
 export const BLOCKS = {
   [B.SAND]: { tiles: { top: 'sand', side: 'sandSide', bottom: 'sand' } },
@@ -47,8 +49,15 @@ export const BLOCKS = {
   [B.REED]: { tiles: 'reed', kind: 'cross', height: 1.5 },
   [B.TUFT]: { tiles: 'tuft', kind: 'cross', height: 0.75 },
   [B.SHRUB]: { tiles: 'shrub', kind: 'cross', height: 0.95 },
+  [B.SALT]: { tiles: { top: 'salt', side: 'saltSide', bottom: 'salt' } },
+  [B.WINDHEAD]: { tiles: { top: 'adobeTop', side: 'windhead', bottom: 'adobeTop' } },
+  [B.VAULT]: { tiles: { top: 'vault', side: 'vaultSide', bottom: 'vaultSide' } },
 };
-const SOFT = new Set([B.SAND, B.HARDPAN, B.DAMP, B.GRAVEL]);
+// the bronze mirrors are drawn as props; in the world they are solid cells the player aims at
+for (let i = 0; i < 8; i++) BLOCKS[B.MIRROR + i] = { tiles: 'beam', kind: 'none', solid: true, pick: true, mirror: i };
+export const isMirror = (id) => id >= B.MIRROR && id < B.MIRROR + 8;
+const SOFT = new Set([B.SAND, B.HARDPAN, B.DAMP, B.GRAVEL, B.SALT]);
+export { SOFT };
 const isPlantOrWater = (id) => id >= B.WATER && id <= B.SHRUB;
 
 export const FORT = { x0: 100, x1: 128, z0: 60, z1: 82, y: 24 };   // y: first wall course
@@ -166,8 +175,17 @@ function duneField(x, z) {
 }
 
 const SD = { r: 0, dW: 0, half: 0, wx: 0 };
-/** Continuous terrain description at any (x, z), also far outside the voxel world. */
+/**
+ * Continuous terrain description at any (x, z), anywhere in the endless desert. On the hand-made home map and a
+ * little round it this is exactly the home terrain (homeTerrain); further out the home's own features (the
+ * escarpment, the wadi, the basin, the designed dune) fade into the endless desert of endlessFields: dune seas and
+ * gravel plains, rocky mesas cut by wadis, salt flats, small oases and, far off, the sea.
+ */
 export function terrainAt(x, z) {
+  const w = homeWeight(x, z);
+  return w === 1 ? homeTerrain(x, z) : blendTerrain(x, z, w);
+}
+function homeTerrain(x, z) {
   const far = Math.hypot(x - 96, z - 96);
   // --- escarpment + wadi
   const sd = rockSdf(x, z, SD);
@@ -218,7 +236,125 @@ export function terrainAt(x, z) {
   else if (cpWall > 0.9) surf = N.fbm2(x * 0.05 + 21, z * 0.05 + 4, 2) > -0.12 ? 'sand' : 'gravel';      // drifts on the debris slopes
   else if (cpTal > 0.45 || crop > 0.1 || (dW < 3.5 && z < cliffZ(x) + 30)) surf = 'gravel';
   else if (dm < 0.06) surf = 'hardpan';
-  return { h, surf, dm, pr, rock: Math.max(cpWall, crop), tw, be, r };
+  return { h, surf, dm, pr, rock: Math.max(cpWall, crop), tw, be, r, cliffH: cpH, oasis: null };
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// The endless desert. The voxel world is SIZE blocks a side in the controller's coordinates (which start at
+// zero); the home map sits in the middle of it, SHIFT blocks in from the corner. Controller coordinates are
+// world coordinates minus (OXC, OZC).
+export const SIZE = 16384, CHUNK = 32, SHIFT = 8064;
+export const OXC = X0 - SHIFT, OZC = Z0 - SHIFT;
+const N2 = makeNoise(77017);
+const HM0 = 12, HM1 = 150;                      // the home terrain holds to HM0 beyond the map, and is gone by HM1
+/** Distance from (x, z) to the home map (0 on it). */
+export function homeDist(x, z) {
+  const dx = Math.max(X0 - x, 0, x - X1), dz = Math.max(Z0 - z, 0, z - Z1);
+  return dx === 0 && dz === 0 ? 0 : Math.hypot(dx, dz);
+}
+/** 1 where the home terrain rules, 0 where the endless desert does. */
+export function homeWeight(x, z) {
+  const d = homeDist(x, z);
+  return d <= HM0 ? 1 : 1 - sm(HM0, HM1, d);
+}
+// small oases: at most one in each OASIS_CELL square, well inside it, never on rock, salt or sea, never near home
+const OASIS_CELL = 150, oasisCells = new Map();
+/** The oasis of cell (i, j), or null. { x, z, rx, rz, seed } */
+export function oasisOfCell(i, j) {
+  const k = i * 100003 + j;
+  if (oasisCells.has(k)) return oasisCells.get(k);
+  let o = null;
+  if (hash3(i, 91, j, 4401) < 0.55) {
+    const x = (i + 0.25 + 0.5 * hash3(i, 92, j, 4402)) * OASIS_CELL, z = (j + 0.25 + 0.5 * hash3(i, 93, j, 4403)) * OASIS_CELL;
+    const E = endlessFields(x, z, {}, homeDist(x, z));
+    if (homeDist(x, z) > HM1 + 30 && E.r < -34 && E.salt < 0.05 && E.sea < 0.01 && E.wadi < 0.2) {
+      o = { x, z, rx: 5 + 4 * hash3(i, 94, j, 4404), rz: 4.5 + 3.5 * hash3(i, 95, j, 4405), seed: (i * 7919 + j * 104729) | 0, i, j };
+    }
+  }
+  oasisCells.set(k, o);
+  return o;
+}
+/** The oasis whose basin (x, z) lies in, with how far into it: pr < 1 is the pool. Null when none is near. */
+export function oasisAt(x, z) {
+  const o = oasisOfCell(Math.floor(x / OASIS_CELL), Math.floor(z / OASIS_CELL));
+  if (!o) return null;
+  const pr = Math.hypot((x - o.x) / o.rx, (z - o.z) / o.rz) + 0.16 * N.n2(x * 0.11, z * 0.11);
+  return pr < 5.5 ? { o, pr } : null;
+}
+/**
+ * The endless desert's large-scale fields at (x, z): r (metres into a rock mass, as for the home escarpment: the
+ * mesas, cut by wadis), dW (metres from a wadi's edge, negative inside), erg (0..1: open gravel plain .. dune sea),
+ * big (the deep middle of a dune sea, where the dunes grow), salt (a salt flat), sea (0..1, only far from home).
+ */
+function endlessFields(x, z, o, dHome) {
+  const m = N2.fbm2(x * 0.0028 + 3.3, z * 0.0028 + 8.1, 3);
+  const rM = (m - 0.13) * 190;
+  // wadis: dry riverbeds in some parts of the desert, cutting through the mesas
+  const zone = sm(0.0, 0.2, N2.n2(x * 0.0011 + 6.1, z * 0.0011 + 2.9));
+  const wd = Math.abs(N2.n2(x * 0.0016 + 1.1, z * 0.0016 + 5.5));
+  const dW = zone > 0 ? lerp(240, wd / 0.0024 - (9 + 4 * N2.n2(x * 0.011 + 2, z * 0.011 + 7)), zone) : 240;
+  const e = N2.fbm2(x * 0.0021 + 7.7, z * 0.0021 + 1.3, 2);
+  o.erg = sm(-0.18, 0.22, e); o.big = sm(0.12, 0.45, e);
+  o.dW = dW; o.wadi = 1 - sm(-2, 10, dW);
+  o.sea = sm(0.40, 0.56, N2.n2(x * 0.0009 + 4.4, z * 0.0009 + 9.9)) * sm(520, 820, dHome);
+  o.r = Math.min(rM, dW) - o.sea * 80;
+  o.salt = sm(0.30, 0.40, N2.fbm2(x * 0.0032 + 11.2, z * 0.0032 + 4.7, 2)) * (1 - sm(-40, -14, o.r)) * (1 - o.sea);
+  return o;
+}
+const EF = { r: 0, dW: 0, erg: 0, big: 0, wadi: 0, sea: 0, salt: 0 };
+function blendTerrain(x, z, w) {
+  const far = Math.hypot(x - 96, z - 96), dHome = homeDist(x, z);
+  const E = endlessFields(x, z, EF, dHome);
+  // --- rock: the home escarpment and wadi melt into the mesas
+  let r = E.r, half = 0, wx = 0, dWh = 99;
+  if (w > 0) { const sd = rockSdf(x, z, SD); r = lerp(E.r, sd.r, w); half = sd.half; wx = sd.wx; dWh = sd.dW; }
+  const cp = r < -13 ? cliffEval(null, -99) : cliffEval(cliffParams(x, z), r);
+  const cpH = cp.h, cpWall = cp.wall, cpTal = cp.tal, cpBench = cp.bench;
+  // --- oases
+  const oa = oasisAt(x, z), opr = oa ? oa.pr : 99;
+  const oasisK = 1 - sm(2.4, 5.2, opr);
+  // --- dunes
+  let dm = (0.16 + 0.84 * E.erg) * (1 - sm(-16, 1, r)) * (1 - E.wadi) * (1 - E.salt) * (1 - oasisK) * (1 - E.sea);
+  let grow = 1 + 0.75 * E.big, hero = 0, hmask = 0, be = 9;
+  if (w > 0) {
+    be = Math.hypot((x - 97) / 50, (z - 90) / 30) + 0.10 * N.n2(x * 0.03 + 5, z * 0.03);
+    const inWadi = z < 70 ? sm(half + 16, half + 2, Math.abs(x - wx)) : 0;
+    const dmH = (0.55 * sm(0.92, 1.45, be) + 0.45 * sm(1.2, 2.3, be)) * (1 - sm(-16, 1, r)) * (1 - inWadi);
+    dm = lerp(dm, dmH, w);
+    grow = lerp(grow, 1 + 0.9 * sm(300, 900, far), w);
+    hmask = sm(70, 26, Math.abs(x - heroCrestX(z))) * sm(108, 128, z) * w;
+    hero = heroDune(x, z) * w;
+  }
+  const dune = dm > 0.002 ? dm * duneField(x, z) * grow * (1 - 0.92 * hmask) + hero : hero;
+  // --- isolated rock knobs in the sand sea
+  let crop = 0;
+  const cn = N.n2(x * 0.03 + 40.5, z * 0.03 + 7.25);
+  if (cn > 0.50 && dm > 0.4 && hmask < 0.05) {
+    crop = 13 * Math.pow(sm(0.50, 0.86, cn), 0.8) * (0.8 + 0.3 * N.n2(x * 0.13, z * 0.13)) - 1.5;
+    if (crop < 0) crop = 0;
+  }
+  // --- floor: the basin's bumps near home, a gentle swell elsewhere
+  let bump = 0.5 * (1 - w) * Math.max(0, N2.fbm2(x * 0.02 + 5, z * 0.02 + 2, 2) + 0.1);
+  if (w > 0 && be < 9) bump += w * Math.max(0, N.fbm2(x * 0.05 + 3, z * 0.05 + 8, 2) - 0.30) * 4 * sm(0.55, 0.9, be);
+  let h = GROUND + 0.5 + bump + dune + Math.max(cpH, crop);
+  // --- salt flats lie dead level; an oasis sits in a hollow round its pool; the sea floor goes down
+  if (E.salt > 0) h = lerp(h, GROUND + 0.55 + 0.12 * N.n2(x * 0.07, z * 0.07), E.salt);
+  if (oa && opr < 4.6) {
+    h = lerp(GROUND + 0.5 + bump, h, sm(1.7, 4.6, opr));
+    if (opr < 1.7) { const hp = opr < 1 ? 20.5 - 3.0 * (1 - sm(0.35, 1.0, opr)) : 20.5; h = lerp(hp, h, sm(1.0, 1.7, opr)); }
+  }
+  if (E.sea > 0) h = lerp(h, 12.5 + 2 * N.n2(x * 0.02, z * 0.02), E.sea);
+  h = Math.min(SY - 4, h);
+  const isRock = (cpWall > 0.9 && cpBench < 0.5) || crop > 1.4;
+  let surf = 'sand';
+  if (isRock && E.sea < 0.5) surf = 'rock';
+  else if (opr < 1.45) surf = 'damp';
+  else if (E.sea > 0.05) surf = 'sand';
+  else if (E.salt > 0.5) surf = 'salt';
+  else if (cpWall > 0.9) surf = N.fbm2(x * 0.05 + 21, z * 0.05 + 4, 2) > -0.12 ? 'sand' : 'gravel';
+  else if (cpTal > 0.45 || crop > 0.1 || E.dW < 2.5 || (w > 0.5 && dWh < 3.5 && z < cliffZ(x) + 30)) surf = 'gravel';
+  else if (dm < 0.06) surf = 'hardpan';
+  return { h, surf, dm, pr: opr, rock: Math.max(cpWall, crop), tw: 0, be, r, cliffH: cpH, oasis: oa ? oa.o : null, salt: E.salt, sea: E.sea, w };
 }
 
 // sandstone beds, bottom to top: thick warm beds (A), red beds (B), soft pale beds that weather back (C)
@@ -235,6 +371,49 @@ export function strataRaw(y) { return STRATA[Math.max(0, y) % STRATA.length]; }
 export function strataAt(x, y, z) {
   return STRATA[Math.max(0, Math.floor(y + strataDip(x, z))) % STRATA.length];
 }
+
+// ---- helpers the endless desert's chunks are made with (gen.js): the same rules as buildWorld below
+const BED_OFF_ = { [B.ROCK_A]: 0, [B.ROCK_B]: 0.55, [B.ROCK_C]: 1.5, [B.ROCK_D]: -0.95 };
+/**
+ * The cliff faces in 3D for one column (buildWorld's second pass): t = terrainAt(x + 0.5, z + 0.5), top = the
+ * column's first top block. get(y) / set(y, id) read and write the column.
+ */
+export function weatherColumn(x, z, t, top, get, set) {
+  if (t.r < -1 || t.r < -13) return;
+  const P = cliffParams(x + 0.5, z + 0.5);
+  if (t.r > P.e3 + P.w3 + 5) return;
+  const base = t.h - t.cliffH;
+  const dip = strataDip(x, z);
+  const isRock = t.surf === 'rock';
+  const yMax = Math.min(SY - 3, Math.floor(base + P.talH + P.c1 + P.c2 + P.c3 + P.s1 + P.s2 + 4));
+  const capFade = 1 - 0.85 * sm(P.e3 + P.w3 + 0.5, P.e3 + P.w3 + 3.5, t.r);
+  for (let y = GROUND + 2; y <= yMax; y++) {
+    const bi = Math.max(0, Math.floor(y + dip));
+    const bed = STRATA[bi % STRATA.length];
+    const delta = (BED_OFF_[bed] + (hash3(bi, 7, 0, 55) - 0.5) * 0.9 + 1.1 * N.n3(x * 0.034, y * 0.07, z * 0.034)) * capFade;
+    const hh = Math.floor(base + cliffEval(P, t.r - delta).h);
+    const solid = y <= hh;
+    if (y <= top) {
+      if (!solid && isRock && y > GROUND + 2) set(y, 0);
+    } else if (solid && t.r < P.e3 + P.w3 + 0.5) set(y, bed);
+  }
+}
+/** A corner's smooth height (before it is held within reach of its columns) and how firm the sand is there. */
+export function cornerSample(x, z, out) {
+  const t = terrainAt(x, z);
+  out.hc = t.h + 0.5;
+  out.firm = (1 - sm(0.03, 0.40, t.dm)) * sm(-0.22, 0.20, N.fbm2(x * 0.04 + 7, z * 0.04 + 3, 3)) * (1 - sm(1.0, 3.0, t.h - GROUND - 0.5) * 0.7);
+  return out;
+}
+/** Scrub on open ground, as buildWorld sows it: 0 for none, else the plant's id. */
+export function scrubAt(x, z, surf) {
+  const r = hash3(x, 21, z, 23);
+  const clump = sm(0.05, 0.45, N.fbm2(x * 0.07 + 31, z * 0.07 + 17, 2));
+  const p = (surf === 'gravel' ? 0.07 : surf === 'hardpan' ? 0.035 : surf === 'sand' ? 0.006 : surf === 'salt' ? 0.004 : 0) * clump;
+  if (r >= p) return 0;
+  return hash3(x, 22, z, 29) < 0.6 ? B.SHRUB : B.TUFT;
+}
+export const sandDrift = (x, z) => N.fbm2(x * 0.06 + 1, z * 0.06 + 6, 2) > 0.16;
 
 class World extends VoxelWorld {
   constructor() { super(SX, SY, SZ); }

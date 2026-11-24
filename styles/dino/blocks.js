@@ -22,16 +22,26 @@ export function dinoBlocks(B) {
     [B.AMBER]: { tiles: 'amber' },
     [B.NEST]: { tiles: 'nest', kind: 'cross', height: 0.6 },
     [B.HORSETAIL]: { tiles: 'horsetail', kind: 'cross', height: 1.3 },
+    // the wonders (ideas.js)
+    [B.RESO_STONE]: { tiles: 'resoStone' }, [B.RESO_CARVED]: { tiles: 'resoCarved' }, [B.RESO_CRYSTAL]: { tiles: 'resoCrystal' },
+    [B.RESO_BELL]: { tiles: { top: 'resoStone', side: 'resoBell', bottom: 'resoStone' } },
+    [B.WARM_NEST]: { tiles: 'warmNest', kind: 'cross', height: 0.6 },
+    ...Object.fromEntries([0, 1, 2, 3].map((i) => [B.EGG_NEST + i, { tiles: 'eggNest' + i, kind: 'cross', height: 0.75 }])),
+    [B.AMBER_PATH]: { tiles: 'amberPath' }, [B.FOSSIL]: { tiles: 'fossil' },
   };
   const NAMES = {
     [B.JUNGLE_GRASS]: 'أرض الغابة الحارة', [B.FERN_GRASS]: 'أرض السرخس', [B.MUD]: 'طين', [B.SWAMPWATER]: 'ماي المستنقع', [B.BASALT]: 'صخر بركاني',
     [B.ASH]: 'رماد', [B.LAVA]: 'حمم', [B.RED_ROCK]: 'صخر أحمر', [B.JUNGLE_LOG]: 'جذع شجرة الغابة', [B.JUNGLE_LEAVES]: 'ورق الغابة',
     [B.FERN_TRUNK]: 'جذع سرخس عملاق', [B.FERN_FROND]: 'سعف السرخس', [B.VINE]: 'لبلاب', [B.FERN]: 'سرخس', [B.BIGLEAF]: 'ورق عريض',
     [B.AMBER]: 'كهرمان', [B.NEST]: 'عش بيض', [B.HORSETAIL]: 'ذيل الحصان',
+    [B.RESO_STONE]: 'حجر قديم', [B.RESO_CARVED]: 'حجر منقوش', [B.RESO_CRYSTAL]: 'بلورة الرنين', [B.RESO_BELL]: 'حجر الرنين', [B.WARM_NEST]: 'عش دافي',
+    ...Object.fromEntries([0, 1, 2, 3].map((i) => [B.EGG_NEST + i, 'بيضة في العش'])), [B.AMBER_PATH]: 'كهرمان متصلّب', [B.FOSSIL]: 'صخر فيه أحفورة',
   };
   const DROP = {
     [B.JUNGLE_GRASS]: B.DIRT, [B.FERN_GRASS]: B.DIRT, [B.MUD]: B.MUD, [B.BASALT]: B.BASALT, [B.ASH]: B.ASH, [B.LAVA]: 0, [B.RED_ROCK]: B.RED_ROCK,
     [B.JUNGLE_LOG]: B.JUNGLE_LOG, [B.JUNGLE_LEAVES]: 0, [B.FERN_TRUNK]: B.FERN_TRUNK, [B.FERN_FROND]: 0, [B.AMBER]: B.AMBER, [B.NEST]: B.NEST,
+    [B.RESO_STONE]: B.RESO_STONE, [B.RESO_CARVED]: B.RESO_CARVED, [B.RESO_CRYSTAL]: B.RESO_CRYSTAL, [B.RESO_BELL]: 0, [B.WARM_NEST]: B.NEST,
+    ...Object.fromEntries([0, 1, 2, 3].map((i) => [B.EGG_NEST + i, B.NEST])), [B.AMBER_PATH]: 0, [B.FOSSIL]: B.FOSSIL,
   };
   return { BLOCKS, NAMES, DROP };
 }

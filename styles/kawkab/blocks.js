@@ -4,6 +4,9 @@ export const B = {
   WATER: 11, CRYSTAL_C: 12, CRYSTAL_V: 13, STALK: 14, CAP: 15, CAP_RIM: 16, BARK: 17, TENDRIL: 18, FERN: 19,
   BULB: 20, REED: 21, FRINGE: 22, HULL_W: 23, HULL_W2: 24, HULL_S: 25, HULL_G: 26, HAZARD: 27, WINDOW: 28,
   PAD: 29, SOLAR: 30, LAMP: 31, GLASS: 32, BEAM: 33, CARGO: 34, GROW: 35, AMBER: 36, CYAN: 37,
+  // the endless planet and its wonders
+  SEA: 38, VENT: 39, CHIME0: 40, CHIME1: 41, CHIME2: 42, CHIME3: 43, CHIME4: 44, SEAL: 45, GRAV: 46, FLOAT: 47,
+  METEOR: 48, STAR: 49, CHARGER: 50, SOCKET: 51, SOCKET_LIT: 52,
 };
 
 export const BLOCKS = {
@@ -44,4 +47,21 @@ export const BLOCKS = {
   [B.GROW]: { tiles: { top: 'hullG', side: 'hullG', bottom: 'grow' } },
   [B.AMBER]: { tiles: { top: 'hullG', side: 'amber', bottom: 'hullG' } },
   [B.CYAN]: { tiles: { top: 'cyan', side: 'cyan', bottom: 'hullG' } },
+  [B.SEA]: { tiles: 'water', kind: 'liquid' },                        // the seas and lakes out on the planet (the home lake is a shaded plane)
+  [B.VENT]: { tiles: { top: 'vent', side: 'basaltSide', bottom: 'basaltTop' } },
+  [B.CHIME0]: { tiles: { top: 'chime0', side: 'chime0', bottom: 'basaltTop' } },
+  [B.CHIME1]: { tiles: { top: 'chime1', side: 'chime1', bottom: 'basaltTop' } },
+  [B.CHIME2]: { tiles: { top: 'chime2', side: 'chime2', bottom: 'basaltTop' } },
+  [B.CHIME3]: { tiles: { top: 'chime3', side: 'chime3', bottom: 'basaltTop' } },
+  [B.CHIME4]: { tiles: { top: 'chime4', side: 'chime4', bottom: 'basaltTop' } },
+  [B.SEAL]: { tiles: { top: 'seal', side: 'hullG', bottom: 'hullG' } },
+  [B.GRAV]: { tiles: { top: 'grav', side: 'basaltSide', bottom: 'basaltTop' } },
+  [B.FLOAT]: { tiles: 'float' },
+  [B.METEOR]: { tiles: 'meteor' },
+  [B.STAR]: { tiles: 'star' },
+  [B.CHARGER]: { tiles: { top: 'charger', side: 'hullS', bottom: 'hullG' } },
+  [B.SOCKET]: { tiles: { top: 'socket', side: 'hullG', bottom: 'hullG' } },
+  [B.SOCKET_LIT]: { tiles: { top: 'socketLit', side: 'hullG', bottom: 'hullG' } },
 };
+/** The singing crystals of the garden, in the order of their notes (low to high). */
+export const CHIMES = [B.CHIME0, B.CHIME1, B.CHIME2, B.CHIME3, B.CHIME4];

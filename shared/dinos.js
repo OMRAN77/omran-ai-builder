@@ -10,8 +10,10 @@
 //   وحش البحر القديم   a sea reptile with four flippers and a long neck
 //   المخلب السريع      a small fast hunter with a crest of quills; they come in numbers (a monster)
 //   ملك الأنياب        a huge two-legged meat eater with a great jaw (a monster, rare and strong)
+//   الصغار            hatchlings of the volcanic hatchery (styles/dino/ideas.js): a big head, big eyes, a stubby tail,
+//                     the colour of the egg they came from; never made on their own, they follow whoever hatched them
 //
-//   kinds: [...dinoKinds(gen.landOf), ...extraKinds('dino')]
+//   kinds: [...dinoKinds(gen.landOf), ...extraKinds('dino'), ...hatchKinds()]
 
 import * as THREE from 'three';
 import { K } from './kit.js';
@@ -331,4 +333,36 @@ export function dinoKinds(landAt) {
     byTime({ key: 'quickclaw', name: 'المخلب السريع', kind: 'monster', make: quickClaw, hp: 12, speed: 4.4, radius: 0.5, height: 1.3, dmg: 6, where: in_('forest', 'plains', 'desert') }, 1, 2),
     byTime({ key: 'fangking', name: 'ملك الأنياب', kind: 'monster', make: fangKing, hp: 90, speed: 3.1, radius: 1.7, height: 5.4, dmg: 16, where: (x, y, z) => Math.random() < 0.03 && in_('forest', 'plains')(x, y, z) }, 1, 1),
   ];
+}
+
+/** The hatchlings: [colour key, name, skin, belly] in the order of the eggs (green, blue, red, gold). */
+export const HATCH = [
+  ['green', 'ديناصور صغير أخضر', 0x5fbf4a, 0xd8f0a0], ['blue', 'ديناصور صغير أزرق', 0x3f9ae0, 0xc8e8ff],
+  ['red', 'ديناصور صغير أحمر', 0xe0503a, 0xffd0a0], ['gold', 'ديناصور صغير ذهبي', 0xf0c040, 0xfff2c0],
+];
+/** A hatchling: round body, a head too big for it, big shiny eyes, little arms, a stubby tail; it bounces as it runs. */
+export function hatchling(color, light) {
+  const { g, add, pivot } = kit();
+  const skin = mat(color), belly = mat(light), foot = mat(0x4a3a2a), white = mat(0xffffff, { roughness: 0.3 });
+  const body = pivot(0, 0.36, 0);
+  add(0.36, 0.34, 0.44, 0, 0.04, 0, skin, body); add(0.3, 0.16, 0.36, 0, -0.08, 0.04, belly, body);
+  for (let i = 0; i < 3; i++) add(0.06, 0.07, 0.07, 0, 0.24, 0.12 - i * 0.13, belly, body);      // little bumps down the back
+  const head = pivot(0, 0.2, 0.2, body);
+  add(0.36, 0.32, 0.36, 0, 0.12, 0.08, skin, head); add(0.3, 0.12, 0.2, 0, 0.0, 0.26, belly, head);
+  for (const sx of [-1, 1]) { add(0.1, 0.11, 0.04, sx * 0.12, 0.18, 0.26, white, head); add(0.05, 0.07, 0.03, sx * 0.12, 0.17, 0.285, EYE, head); }
+  for (const sx of [-1, 1]) { const a = pivot(sx * 0.15, 0.0, 0.18, body); add(0.05, 0.12, 0.05, 0, -0.06, 0.02, skin, a).rotation.x = 0.6; }
+  const legs = [-1, 1].map((sx) => leg(add, pivot, body, sx * 0.11, -0.08, -0.04, 0.11, 0.15, 0.14, skin, foot));
+  const tl = tail(add, pivot, body, 0, 0.02, -0.22, 3, 0.18, 0.16, 0.16, skin, 0.1);
+  g.userData.anim = (t, moving) => {
+    walk2(legs, t, moving, 16, 0.7);
+    body.position.y = 0.36 + (moving ? Math.abs(Math.sin(t * 16)) * 0.06 : Math.abs(Math.sin(t * 2.4)) * 0.015);
+    head.rotation.x = moving ? 0.1 : Math.sin(t * 1.1) * 0.12;
+    head.rotation.z = moving ? 0 : Math.sin(t * 0.7) * 0.15;
+    swing(tl, t, moving ? 16 : 3, 0.2);
+  };
+  return g;
+}
+/** Their kinds for life.js: never made on their own (max 0); the hatchery makes them and they follow. */
+export function hatchKinds() {
+  return HATCH.map(([c, name, a, b]) => ({ key: 'hatch-' + c, name, kind: 'animal', make: () => hatchling(a, b), hp: 30, speed: 3.4, radius: 0.35, height: 0.8, max: 0, tame: false, drops: [] }));
 }
