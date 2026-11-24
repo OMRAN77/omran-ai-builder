@@ -449,6 +449,7 @@ li.ask { border-color: var(--gold); }
   function subAnswer(r) {
     if (r.error === 'points_insufficient') { noPoints = true; return; }
     if (r.error === 'active') { loadPlan(); return; }      // already subscribed (another tab): show it, charge nothing
+    if (r.error === 'busy' || r.error === 'retry' || r.error === 'store') { loadPlan(); return; }      // another tab's purchase was running (nothing charged here): show the plan as it now is
     if (r.error) { error = r.error === 'login' ? T.needLogin : T.planFailed; return; }
     setPlan(r);
   }
@@ -475,7 +476,7 @@ li.ask { border-color: var(--gold); }
       return h + '</div>';
     }
     if (plan.plan !== 'free') return '';
-    if (timeUp) h += '<p class="err" style="margin:0">' + esc(T.timeUp) + '</p>';
+    if (timeUp || !(plan.left > 0)) h += '<p class="err" style="margin:0">' + esc(T.timeUp) + '</p>';      // also on a fresh load with nothing left today
     h += '<p style="margin:0">' + esc(fmt(T.planFree, Math.ceil((plan.left || 0) / 60))) + ' · ' + esc(fmt(T.upTo, plan.cap)) + '</p>';
     if (noPoints) h += '<p class="err" style="margin:0">' + esc(T.noPoints) + ' <a href="/" style="color:var(--gold)">' + esc(T.buyPoints) + '</a></p>';      // the points packs are in the app's pricing section (#pricingSection, tab pts); the app has no link that opens them straight away
     if (quote) {

@@ -251,9 +251,24 @@ test('402: «نقاطك ما تكفي» مع رابط شراء النقاط في
   const before = p.ops().filter((o) => o === 'plan').length;
   p.ctx.subscribe(); await tick(); p.ctx.confirmBuy(); await tick();
   assert.equal(p.ops().filter((o) => o === 'plan').length, before + 1, '409 active: تُقرأ الخطّة');
-  confirmReply = { error: 'busy' };
+  for (const e of ['busy', 'retry', 'store']) {
+    confirmReply = { error: e };
+    const n = p.ops().filter((o) => o === 'plan').length;
+    p.ctx.error = '';
+    p.ctx.subscribe(); await tick(); p.ctx.confirmBuy(); await tick();
+    assert.equal(p.ops().filter((o) => o === 'plan').length, n + 1, e + ': شراء تبويب ثاني كان شغّالًا — تُقرأ الخطّة وتظهر كما هي (لا «ما قدرت»)');
+    assert.notEqual(p.ctx.error, T.planFailed, e);
+  }
+  confirmReply = { error: 'weird' };
   p.ctx.subscribe(); await tick(); p.ctx.confirmBuy(); await tick();
-  assert.equal(p.ctx.error, T.planFailed, 'مشغول: جرّب بعد شوي');
+  assert.equal(p.ctx.error, T.planFailed, 'خطأ آخر: جرّب بعد شوي');
+
+  // صفحة جديدة وما بقي من الساعة شي: البطاقة تقول إنّ الساعة خلصت قبل أيّ ضغطة
+  p.ctx.timeUp = false; p.ctx.quote = null; p.ctx.noPoints = false;
+  p.ctx.plan = { plan: 'free', cap: 4, left: 0, sub: null, cost: 37 };
+  assert.ok(p.ctx.planCard().includes(T.timeUp), 'left 0 = «الساعة المجانية خلصت»');
+  p.ctx.plan = { plan: 'free', cap: 4, left: 1200, sub: null, cost: 37 };
+  assert.ok(!p.ctx.planCard().includes(T.timeUp), 'باقي وقت = بلا رسالة الانتهاء');
 });
 
 test('التجديد التلقائي: الزرّ يرسل sub-auto بـon، ولا شراء', async () => {
