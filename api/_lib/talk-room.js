@@ -5,16 +5,16 @@
    بالكود، وصاحب الغرفة يقبله بـ«جواب» أو يرفضه. لا صوت ولا كتابة تمرّ من هنا، فلا كلفة غير أوامر تخزين قليلة.
 
    POST /api/system?action=room   { op, ... }
-     open    { token, name? }                -> { code, key }                 فتح غرفة يحتاج حسابًا (key سرّ صاحب الغرفة)
+     open    { token, name? }                -> { code, key, plan, cap, left } فتح غرفة يحتاج حسابًا (key سرّ صاحب الغرفة)؛ 403 free-time
      ice     { code }                        -> { iceServers }                خوادم الاتّصال (STUN + ترحيل TURN إن ضُبط) لغرفة قائمة
      peek    { code }                        -> { name } | 404 no-room        اسم صاحب الغرفة لصفحة الضيف
      join    { code, name, offer }           -> { id } | no-room | busy       الضيف بلا حساب: الكود هو الدعوة، وصاحب الغرفة يقرّر
      answer  { code, id }                    -> { wait } | { answer } | { denied }
-     pending { code, key, keep? }            -> { joins: [{ id, name, offer }] }   (تُسحب مرّة واحدة)
+     pending { code, key, keep? }            -> { joins: [{ id, name, offer }] }   (تُسحب مرّة واحدة؛ ومع keep: left/timeUp للمجّانيّة، plan/cap إن انتهى الاشتراك)
      admit   { code, key, id, answer }       -> { ok }
      deny    { code, key, id }               -> { ok }
      close   { code, key }                   -> { ok }
-     (وجهات الاتّصال والمكالمات في talk-contacts.js، ومزامنة جهات الهاتف في talk-sync.js)
+     (وجهات الاتّصال والمكالمات في talk-contacts.js، ومزامنة جهات الهاتف في talk-sync.js، وخطّة الغرفة plan/sub-buy/sub-auto في talk-plan.js)
 
    التخزين: مفاتيح قصيرة العمر (ربع ساعة للغرفة تتجدّد مع الاستقبال، ثلاث دقائق للجواب). العرض والجواب يحملان عناوين شبكة
    الطرفين (هكذا يعمل WebRTC)، فيُمحيان بانتهاء العمر ولا يُطبعان أبدًا. الأوامر قليلة عمدًا (حدّ الباقة المجانيّة). */
@@ -62,14 +62,23 @@ async function act(body, ip, K, who, ice, cOpts) {
   // مزامنة جهات الهاتف (v-talk-contacts-sync — api/_lib/talk-sync.js): تذكرة الرفع المشفّر، ومطابقة البصمات
   const sr = await require('./talk-sync.js').syncAct(b, ip, K, who, Object.assign({ overRate: (what) => overRate(K, ip, what) }, cOpts || {}));
   if (sr) return sr;
+  // خطّة الغرفة (v-talk-room-plan — api/_lib/talk-plan.js): ساعة مجّانيّة في اليوم وأربعة، أو اشتراك ٣٧ نقطة لثلاثين يومًا
+  const plan = require('./talk-plan.js');
+  const pr = await plan.planAct(b, ip, K, who, cOpts);
+  if (pr) return pr;
+  const now = plan.nowOf(cOpts);
 
   if (op === 'open') {
     if (!who) return bad('login', 401);
     if (await overRate(K, ip, 'open')) return bad('slow-down', 429);
-    const key = crypto.randomBytes(12).toString('hex');
+    const pl = await plan.evaluate(K, who, cOpts, now);      // المالك وVIP: بلا أيّ أمر تخزين
+    if (pl.plan === 'free' && pl.left <= 0) return bad('free-time', 403);
+    const rec = { k: crypto.randomBytes(12).toString('hex'), n: cleanName(b.name, cleanName(who, 'صاحب الغرفة')), t: Date.now(), u: plan.norm(who), p: pl.plan, c: pl.cap };
+    if (pl.plan === 'free') rec.m = now;      // آخر لحظة عُدّت فيها ثواني اليوم
+    if (pl.plan === 'sub') rec.e = pl.until;      // بعده تجديد كسول في نبضة keep
     for (let i = 0; i < 8; i++) {
       const code = String(1000 + crypto.randomInt(9000));
-      if (await K.kvSetIfAbsent(roomKey(code), JSON.stringify({ k: key, n: cleanName(b.name, cleanName(who, 'صاحب الغرفة')), t: Date.now() }), ROOM_TTL)) return { status: 200, json: { code, key } };
+      if (await K.kvSetIfAbsent(roomKey(code), JSON.stringify(rec), ROOM_TTL)) return { status: 200, json: { code, key: rec.k, plan: pl.plan, cap: pl.cap, left: pl.left } };
     }
     return bad('full', 503);
   }
@@ -80,8 +89,11 @@ async function act(body, ip, K, who, ice, cOpts) {
   // خوادم الاتّصال للغرفة (v-talk-room-turn): لغرفة قائمة فقط — بيانات الترحيل لا تُعطى لأيّ زائر بلا غرفة
   if (op === 'ice') {
     if (await overRate(K, ip, 'ice')) return bad('slow-down', 429);
-    if (!(await readRoom(K, code))) return bad('no-room', 404);
-    const out = await (ice || require('./turn-ice.js').iceServers)(K);
+    const room = await readRoom(K, code);
+    if (!room) return bad('no-room', 404);
+    // غرفة مجّانيّة: عمر بيانات الترحيل = ما بقي من ساعة اليوم (والحدّ الأعلى ٤ ساعات في turn-ice.js)
+    const ttl = room.p === 'free' && room.u ? Math.max(60, await plan.freeLeft(K, room.u, now)) : undefined;
+    const out = await (ice || require('./turn-ice.js').iceServers)(K, ttl);
     return { status: 200, json: { iceServers: out.iceServers } };
   }
 
@@ -114,11 +126,24 @@ async function act(body, ip, K, who, ice, cOpts) {
   if (!sameKey(room.k, b.key)) return bad('key', 403);
   if (op === 'pending') {
     const cmds = [['LPOP', inKey(code), String(MAX_PENDING)]];
-    if (b.keep) cmds.push(['EXPIRE', roomKey(code), String(ROOM_TTL)]);
+    // نبضة keep: غرفة مجّانيّة تعدّ ثوانيها، واشتراك انتهى يُجدَّد كسولًا أو يصير مجّانيًّا — والمالك وVIP كما كان (EXPIRE وحده)
+    const kp = b.keep ? await plan.keepPlan(K, room, cOpts, now) : null;
+    if (kp) cmds.push(['SET', roomKey(code), JSON.stringify(kp.room), 'EX', String(ROOM_TTL), 'XX']);      // XX: غرفة أُغلقت لا تُبعث
+    else if (b.keep) cmds.push(['EXPIRE', roomKey(code), String(ROOM_TTL)]);
+    if (kp && kp.day) cmds.push(['INCRBY', kp.day, String(kp.delta)]);
     const out = await K.kvPipeline(cmds);
     const joins = [];
     for (const raw of Array.isArray(out && out[0]) ? out[0] : []) { try { const j = JSON.parse(raw); if (j && isId(j.id) && isSdp(j.offer)) joins.push({ id: j.id, name: cleanName(j.name), offer: j.offer, ...(j.inv ? { inv: 1 } : {}) }); } catch (e) { require('./_swallow.js').swallow({ message: 'bad pending line' }, 'talk-room:pending'); /* سطر تالف يُتجاوز؛ رسالته لا تُطبع: قد تقتبس العرض وفيه عناوين شبكة الضيف */ } }
-    return { status: 200, json: { joins } };
+    const extra = kp ? Object.assign({}, kp.reply) : {};
+    if (kp && kp.day) {
+      const used = Number(out && out[2]);
+      if (Number.isFinite(used)) {
+        if (used === kp.delta) await K.kvExpire(kp.day, plan.FREE_TTL);      // أوّل كتابة لليوم: عمر يومين
+        extra.left = Math.max(0, plan.FREE_SECONDS - used);
+        if (used >= plan.FREE_SECONDS) extra.timeUp = true;      // ساعة اليوم انتهت: صفحة صاحب الغرفة تغلقها للكلّ
+      }
+    }
+    return { status: 200, json: Object.assign({ joins }, extra) };
   }
   if (op === 'admit') {
     if (!isId(b.id)) return bad('id');

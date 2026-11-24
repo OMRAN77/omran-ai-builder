@@ -298,6 +298,7 @@ async function moveLiveCounters(oldKey, newKey, user) {
   await step('image-giveback', () => require('./image-giveback.js').moveToday(oldKey, newKey)); // ردود الحارس و«لم يُنفَّذ» اليوم — كانت تتجدّد مع كلّ اسم
   await step('cost-meter', () => require('./cost-meter.js').moveMonthCosts(oldKey, newKey));
   await step('office-month', () => require('./office.js').moveMonth(oldKey, newKey, require('./kv.js'))); // v-office-files: ملفّ الشهر المجّانيّ لا يتجدّد بتغيير الاسم
+  await step('talk-plan', () => require('./talk-plan.js').moveOnRename(oldKey, newKey, require('./kv.js'))); // v-talk-room-plan: اشتراك «غرفة الربع» (نقاط مدفوعة) وثواني اليوم المجّانيّة تتبع الحساب
   if (failed.length) throw new Error('counters not moved — ' + failed.join(' · ')); // v-r3 (r3-4): القديم باقٍ مكانه (لم يُحذف) فيُنقل يدويًّا
 }
 
