@@ -132,6 +132,15 @@ li.ask { border-color: var(--gold); }
   var send = function (dc, m) { if (dc && dc.readyState === 'open') { try { dc.send(JSON.stringify(m)); } catch (e) { /* dropped: the close handler tidies up */ } } };
   var toAll = function (m, except) { peers.forEach(function (p, id) { if (id !== except) send(p.dc, m); }); };
   var toHost = function (m) { var h = peers.get('host'); if (h) send(h.dc, m); };
+  // the room's connection servers (STUN, and relays where the site has them) — asked once per room, before the first link
+  var iceFor = '', icePromise = null;
+  function ice(c) {
+    if (iceFor !== c || !icePromise) {
+      iceFor = c;
+      icePromise = call({ op: 'ice', code: c }).then(function (r) { if (Array.isArray(r.iceServers) && r.iceServers.length) RTC = { iceServers: r.iceServers }; return RTC; }).catch(function () { return RTC; });
+    }
+    return icePromise;
+  }
   function gathered(pc) { return new Promise(function (res) { if (pc.iceGatheringState === 'complete') { res(); return; } var t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); }); }
 
   // ---- voices (as in the game: every link carries a silent voice line; the host sends each guest a mix without that guest)
@@ -256,7 +265,7 @@ li.ask { border-color: var(--gold); }
     return call({ op: 'open', token: token, name: myName }).then(function (r) {
       busy = '';
       if (r.error) { error = WHY[r.error] || T.offline; draw(); return; }
-      code = r.code; key = r.key; role = 'host'; myId = 'host';
+      code = r.code; key = r.key; role = 'host'; myId = 'host'; ice(code);
       clearInterval(pollT); pollT = setInterval(poll, 3500); quiet = 0;
       history.replaceState(null, '', location.pathname + '?c=' + code + (q ? '&lang=' + q : ''));
       draw();
@@ -272,6 +281,7 @@ li.ask { border-color: var(--gold); }
     }).catch(function () { /* the next poll tries again */ });
   }
   function admit(id) {
+    if (!(iceFor === code && icePromise)) { ice(code).then(function () { admit(id); }); return; }
     var i = asks.findIndex(function (a) { return a.id === id; }); if (i < 0) return;
     var ask = asks.splice(i, 1)[0];
     if (peers.size >= MAX - 1) { call({ op: 'deny', code: code, key: key, id: id }).catch(function () {}); error = T.full; draw(); return; }
@@ -326,6 +336,7 @@ li.ask { border-color: var(--gold); }
     if (c.length !== 4) { error = T.code4; draw(); return; }
     myName = cleanName(name, ''); try { localStorage.setItem('room-name', myName); } catch (e) { /* not kept */ }
     error = ''; code = c; busy = fmt(T.asking, hostName || T.owner); draw();
+    if (!(iceFor === c && icePromise)) { ice(c).then(function () { join(c, name); }); return; }
     var pc = new RTCPeerConnection(RTC), dc = pc.createDataChannel('room'), tx = null;
     try { tx = pc.addTransceiver('audio', { direction: 'sendrecv' }); } catch (e) { tx = null; }
     gv = []; gstreams = []; slots = [];

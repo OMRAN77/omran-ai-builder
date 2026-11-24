@@ -6,6 +6,7 @@
 
    POST /api/system?action=room   { op, ... }
      open    { token, name? }                -> { code, key }                 فتح غرفة يحتاج حسابًا (key سرّ صاحب الغرفة)
+     ice     { code }                        -> { iceServers }                خوادم الاتّصال (STUN + ترحيل TURN إن ضُبط) لغرفة قائمة
      peek    { code }                        -> { name } | 404 no-room        اسم صاحب الغرفة لصفحة الضيف
      join    { code, name, offer }           -> { id } | no-room | busy       الضيف بلا حساب: الكود هو الدعوة، وصاحب الغرفة يقرّر
      answer  { code, id }                    -> { wait } | { answer } | { denied }
@@ -49,7 +50,7 @@ async function readRoom(K, code) {
 }
 
 /** One operation. K: the KV module; who: the signed-in user or null. Returns { status, json }. */
-async function act(body, ip, K, who) {
+async function act(body, ip, K, who, ice) {
   const b = body && typeof body === 'object' ? body : {};
   const op = String(b.op || '');
   const bad = (error, status = 400) => ({ status, json: { error } });
@@ -67,6 +68,14 @@ async function act(body, ip, K, who) {
 
   if (!isCode(b.code)) return bad('code');
   const code = b.code;
+
+  // خوادم الاتّصال للغرفة (v-talk-room-turn): لغرفة قائمة فقط — بيانات الترحيل لا تُعطى لأيّ زائر بلا غرفة
+  if (op === 'ice') {
+    if (await overRate(K, ip, 'ice')) return bad('slow-down', 429);
+    if (!(await readRoom(K, code))) return bad('no-room', 404);
+    const out = await (ice || require('./turn-ice.js').iceServers)(K);
+    return { status: 200, json: { iceServers: out.iceServers } };
+  }
 
   if (op === 'peek') {
     if (await overRate(K, ip, 'peek')) return bad('slow-down', 429);
