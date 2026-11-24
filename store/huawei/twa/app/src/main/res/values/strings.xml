@@ -37,6 +37,14 @@
             \"site\": \"https://omran-ai-builder.vercel.app\"
         }
     }]
-    
-  </string>  
+
+  </string>
+
+  <!-- v-talk-contacts-sync: الإفصاح الأصليّ وبطاقة التقدّم (ContactsSyncActivity وجسر OmranContacts). الإنجليزيّة هنا افتراضًا،
+       والعربيّة و١٢ لغة في res/values-<lang>/strings.xml (values-in للإندونيسيّة، values-fil وvalues-tl للفلبّينيّة). -->
+    <string name="sync_title">Contacts on your phone</string>
+    <string name="sync_disclose">To show which of your phone contacts are on the app, om ai reads the names and numbers in your phone\'s contacts. Each number leaves the phone only as a one-way code (a hash) used to find friends on the app; it is not stored or logged. Names stay on your phone. You can turn this off any time by removing the app\'s Contacts permission in your phone settings.</string>
+    <string name="sync_allow">Allow</string>
+    <string name="sync_later">Not now</string>
+    <string name="sync_progress">Reading your contacts…</string>
 </resources>

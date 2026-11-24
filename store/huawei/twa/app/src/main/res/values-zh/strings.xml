@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v-talk-contacts-sync: الإفصاح الأصليّ وبطاقة التقدّم (ContactsSyncActivity وجسر OmranContacts). -->
+<resources>
+    <string name="sync_title">手机里的联系人</string>
+    <string name="sync_disclose">为了显示你手机通讯录里有哪些联系人也在用这个应用，om ai 会读取手机通讯录中的姓名和号码。每个号码只会以单向代码（哈希值）的形式离开手机，仅用于在应用中查找好友，不会被保存或记录。姓名只会留在你的手机上。你可以随时关闭此功能：在手机设置里取消本应用的通讯录权限即可。</string>
+    <string name="sync_allow">允许</string>
+    <string name="sync_later">以后再说</string>
+    <string name="sync_progress">正在读取你的联系人…</string>
+</resources>

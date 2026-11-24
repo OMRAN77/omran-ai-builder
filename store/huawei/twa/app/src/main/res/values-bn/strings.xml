@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v-talk-contacts-sync: الإفصاح الأصليّ وبطاقة التقدّم (ContactsSyncActivity وجسر OmranContacts). -->
+<resources>
+    <string name="sync_title">তোমার ফোনের কন্টাক্ট</string>
+    <string name="sync_disclose">তোমার ফোনের কন্টাক্টদের মধ্যে কারা অ্যাপে আছে তা দেখাতে, om ai তোমার ফোনের কন্টাক্টে থাকা নাম আর নম্বরগুলো পড়ে। প্রতিটা নম্বর শুধু একটা একমুখী কোড (হ্যাশ) হিসেবে ফোনের বাইরে যায়, যা দিয়ে অ্যাপে বন্ধুদের খুঁজে বের করা হয়; এটা সংরক্ষণ বা লগ করা হয় না। নামগুলো তোমার ফোনেই থাকে। যেকোনো সময় এটা বন্ধ করতে পারো: ফোনের সেটিংসে গিয়ে অ্যাপের কন্টাক্টের অনুমতি সরিয়ে দাও।</string>
+    <string name="sync_allow">অনুমতি দাও</string>
+    <string name="sync_later">এখন না</string>
+    <string name="sync_progress">তোমার কন্টাক্ট পড়া হচ্ছে…</string>
+</resources>

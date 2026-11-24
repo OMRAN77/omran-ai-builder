@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v-talk-contacts-sync: الإفصاح الأصليّ وبطاقة التقدّم (ContactsSyncActivity وجسر OmranContacts). -->
+<resources>
+    <string name="sync_title">Kontak di ponselmu</string>
+    <string name="sync_disclose">Untuk menunjukkan kontak di ponselmu yang sudah memakai aplikasi ini, om ai membaca nama dan nomor di kontak ponselmu. Setiap nomor hanya keluar dari ponselmu dalam bentuk kode satu arah (hash) yang dipakai untuk menemukan teman di aplikasi; nomor itu tidak disimpan dan tidak dicatat. Nama tetap ada di ponselmu. Kamu bisa mematikan fitur ini kapan saja dengan mencabut izin Kontak untuk aplikasi ini di pengaturan ponselmu.</string>
+    <string name="sync_allow">Izinkan</string>
+    <string name="sync_later">Nanti saja</string>
+    <string name="sync_progress">Membaca kontakmu…</string>
+</resources>

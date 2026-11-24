@@ -10,6 +10,8 @@
      contact-add  { phone, name }           -> { ok, contact }       | bad-phone | self | full | slow-down
      contact-del  { phone }                 -> { ok }
      ring         { code, key, phone }      -> { ok, pushed }        صاحب الغرفة يتّصل بجهة على التطبيق (غرفته وبسرّها)
+                  { code, key, callee }     -> { ok, pushed }        أو برمز المتّصَل به من مطابقة جهات الهاتف (v-talk-contacts-sync، talk-sync.js):
+                                                                     الرمز مربوط بالمتّصل، وصاحب الرقم يُعاد فحصه — وإلّا not-on-app
      rings        {}                        -> { ring: { code, from } | null }   مكالمة واردة لهذا الحساب (تُقرأ والصفحة مفتوحة)
      ring-end     { code }                  -> { ok }                رفض/انتهى: تُمحى المكالمة الواردة */
 const MAX_CONTACTS = 200, ADDS_PER_DAY = 40, RING_TTL = 60;
@@ -60,7 +62,10 @@ async function contactsAct(b, ip, K, who, opts) {
   if (op === 'contacts') {
     const list = await readList(K, me);
     let myPhone = null, myName = me;
-    try { const u = await d.auth.getUser(me); myPhone = u && u.phone ? d.pl.maskPhone(u.phone) : null; myName = cleanLabel((u && (u.displayName || u.name)) || me) || me; } catch (e) { myPhone = null; }
+    let heal = null;
+    try { const u = await d.auth.getUser(me); myPhone = u && u.phone ? d.pl.maskPhone(u.phone) : null; myName = cleanLabel((u && (u.displayName || u.name)) || me) || me; heal = u && u.phone ? u.phone : null; } catch (e) { myPhone = null; }
+    // v-talk-contacts-sync: ترميم ذاتيّ لفهرس بصمة رقمه (من ربط رقمه قبل الفهرس) — SETNX لا يكتب فوق شيء
+    if (heal) { try { await K.kvSetIfAbsent('db/phone-hash/' + require('./phone-link.js').phoneHash(heal), JSON.stringify({ username: me })); } catch (e) { require('./_swallow.js').swallow({ message: 'hash self-heal failed' }, 'talk-contacts:heal'); /* رسالة ثابتة: لا بصمة في السجلّ */ } }
     const out = [];
     for (const c of list) out.push({ phone: c.phone, name: cleanLabel(c.name) || c.phone, onApp: !!(await ownerOf(d, c.phone)) });
     return { status: 200, json: { me: { phone: myPhone, name: myName }, list: out } };
@@ -87,14 +92,23 @@ async function contactsAct(b, ip, K, who, opts) {
     return { status: 200, json: { ok: true } };
   }
   if (op === 'ring') {
-    const phone = d.pl.normalizePhone(b.phone);
-    if (!phone || !/^\d{4}$/.test(String(b.code || ''))) return bad('bad-phone');
-    if (!(await opts.ownsRoom(String(b.code), b.key))) return bad('key', 403);
-    const list = await readList(K, me);
-    const c = list.find((x) => x.phone === phone);
-    if (!c) return bad('not-contact', 404);           // يتّصل فقط بمن في جهاته
-    const callee = await ownerOf(d, phone);
-    if (!callee) return bad('not-on-app', 404);
+    let callee = null;
+    if (b.callee) {      // v-talk-contacts-sync: برمز المطابقة — لا قائمة في الخادم، والرمز نفسه دليل أنّ الرقم في هاتفه
+      if (!/^\d{4}$/.test(String(b.code || ''))) return bad('bad-phone');
+      if (!(await opts.ownsRoom(String(b.code), b.key))) return bad('key', 403);
+      callee = await require('./talk-sync.js').calleeFor(b.callee, me, d.auth);
+      if (!callee) return bad('not-on-app', 404);      // رمز لغيره أو منتهٍ، أو غيّر صاحبه رقمه أو حذف حسابه
+      if (callee === me) return bad('self');
+    } else {
+      const phone = d.pl.normalizePhone(b.phone);
+      if (!phone || !/^\d{4}$/.test(String(b.code || ''))) return bad('bad-phone');
+      if (!(await opts.ownsRoom(String(b.code), b.key))) return bad('key', 403);
+      const list = await readList(K, me);
+      const c = list.find((x) => x.phone === phone);
+      if (!c) return bad('not-contact', 404);           // يتّصل فقط بمن في جهاته
+      callee = await ownerOf(d, phone);
+      if (!callee) return bad('not-on-app', 404);
+    }
     const rl = 'rl:talk-contacts:ring:' + me + ':' + Math.floor(Date.now() / 60000);
     const n = Number(await K.kvIncr(rl)); if (n === 1) await K.kvExpire(rl, 120);
     if (n > 6) return bad('slow-down', 429);

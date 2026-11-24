@@ -4,6 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const { act, MAX_PENDING } = require('../api/_lib/talk-room.js');
 
 function memoryKV() {
@@ -199,4 +200,145 @@ test('المكالمة: صاحب الغرفة يتّصل بجهة على الت�
   assert.deepEqual(p.map((j) => [j.name, !!j.inv]), [['فاطمة', true], ['غريب', false]], 'المدعوّة تُعلَّم، والباقون ينتظرون الموافقة');
   await act({ op: 'ring-end' }, 'g', K, 'fatima', null, o);
   assert.deepEqual((await act({ op: 'rings' }, 'g', K, 'fatima', null, o)).json, { ring: null });
+});
+
+test('عشرة في الغرفة: الحدّ ١٠، وطابور الطلبات يتّسع لهم، وصورة كلّ ضيف تُخفَّض كلّما زاد العدد', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'room.html'), 'utf8');
+  assert.match(html, /MAX = 10, MAX_LINE = 300;/);
+  assert.match(html, /var max = n <= 3 \? 450000 : n <= 6 \? 180000 : 110000/, 'رفع صاحب الغرفة يبقى صغيرًا مع تسعة ضيوف');
+  assert.match(html, /var others = pickOthers\(g\.id, ids, camIsOn\)/, 'revideo يختار بالدور لا بترتيب واحد للكلّ');
+  assert.match(html, /tile\('s' \+ i, cleanName\(sl\.name\), gstreams\[i\]\)/, 'مربّع الضيف مربوط بالخطّ لا بالشخص: تغيّر الدور لا يومض أسود');
+  assert.ok(MAX_PENDING >= 9, 'تسعة يطلبون معًا بلا «زحمة»');
+});
+
+// استخراج دالّة من room.html لتشغيلها كما هي (طريقة tests/del-stick.test.cjs)
+function fnSrc(src, head) {
+  const a = src.indexOf(head);
+  assert.ok(a >= 0, head);
+  let d = 0, i = src.indexOf('{', a);
+  for (; i < src.length; i++) { if (src[i] === '{') d++; else if (src[i] === '}') { d--; if (!d) break; } }
+  return src.slice(a, i + 1);
+}
+const roomHtml = () => fs.readFileSync(path.join(__dirname, '..', 'room.html'), 'utf8');
+
+test('الكاميرات بالدور: مع تسعة ضيوف كاميراتهم شغّالة كلّ كاميرا تصل ضيفين، لا يرى الكلّ أوّل اثنين دخلوا', () => {
+  const ctx = {};
+  vm.runInNewContext(fnSrc(roomHtml(), 'function pickOthers('), ctx);
+  const ids = ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9'];
+  const seen = (isOn) => {
+    const n = new Map(ids.map((id) => [id, 0])), picks = {};
+    ids.forEach((g) => { const p = Array.from(ctx.pickOthers(g, ids, isOn)); picks[g] = p; p.forEach((x) => n.set(x, n.get(x) + 1)); });
+    return { n, picks };
+  };
+
+  const all = seen(() => true);
+  ids.forEach((g) => {
+    assert.equal(all.picks[g].length, 2, g + ' يرى اثنين');
+    assert.ok(!all.picks[g].includes(g), g + ' لا يرى نفسه');
+    assert.equal(all.n.get(g), 2, 'كاميرا ' + g + ' تصل ضيفين بالضبط');
+  });
+  assert.deepEqual(all.picks.g9, ['g1', 'g2'], 'الدور يلفّ من الآخر إلى الأوّل');
+
+  const on = new Set(['g3', 'g5', 'g7', 'g8']);
+  const mixed = seen((id) => on.has(id));
+  on.forEach((g) => assert.ok(mixed.n.get(g) >= 1, 'كاميرا ' + g + ' تصل ضيفًا واحدًا على الأقلّ'));
+  ids.forEach((g) => mixed.picks[g].forEach((x) => assert.ok(on.has(x), g + ': الكاميرات الشغّالة أوّلًا ما دام فيها من يُرى')));
+
+  assert.deepEqual(Array.from(ctx.pickOthers('g1', ['g1', 'g2'], () => false)), ['g2'], 'ضيفان: كلّ واحد يرى الثاني ولو كاميرته مطفأة (كما كان)');
+});
+
+// المتصفّحات الحديثة تفصل وصلة واحدة بـdisconnect(dest)؛ Safari قبل 14.1 (webkitAudioContext) ليس عنده إلّا disconnect(output)،
+// فالوجهة تُقرأ رقم ٠ ويُفصل المصدر عن كلّ شيء بلا خطأ — الاختبار يمرّ على الاثنين
+for (const engine of ['حديث', 'Safari قديم']) test('مزج الصوت عند صاحب الغرفة لا يتراكم ولا ينقطع (' + engine + '): بعد دخول تسعة وإطفاء المايك وخروج ضيف يبقى لكلّ ضيف مزج واحد كامل', () => {
+  const oldSafari = engine !== 'حديث';
+  const edges = new Set();
+  let nodeN = 0;
+  const node = (kind) => {
+    const n = { id: kind + (++nodeN) };
+    n.connect = (dest) => { edges.add(n.id + '>' + dest.id); };
+    n.disconnect = (dest) => {
+      if (!dest || oldSafari) { [...edges].forEach((e) => { if (e.startsWith(n.id + '>')) edges.delete(e); }); return; }
+      if (!edges.delete(n.id + '>' + dest.id)) throw new Error('InvalidAccessError');      // كما في المتصفّح: فصل ما ليس موصولًا يرمي
+    };
+    return n;
+  };
+  // كلّ مزج قائم: المايك (إن كان) + كلّ الضيوف الآخرين — لا أقلّ (انقطاع) ولا مزوج زائدة (تسرّب)
+  const full = (mic) => { ctx.outs.forEach((o, id) => assert.equal([...edges].filter((e) => e.endsWith('>' + o.dest.id)).length, (mic ? 1 : 0) + ctx.outs.size - 1, 'مزج ' + id + ' كامل')); };
+  class FakeAC {
+    constructor() { this.state = 'running'; }
+    resume() { return Promise.resolve(); }
+    createMediaStreamSource() { return node('src'); }
+    createMediaStreamDestination() {
+      const d = node('dest'), tr = { stop() { this.stopped = true; } };
+      d.disconnect = () => {};      // بلا مخارج: الفصل منه لا يفعل شيئًا — هذا أصل التسرّب القديم
+      d.stream = { getAudioTracks: () => [tr], getTracks: () => [tr] };
+      return d;
+    }
+  }
+  const html = roomHtml();
+  const ctx = {
+    role: 'host', peers: new Map(), heard: new Map(), outs: new Map(),
+    micOn: true, mic: { getAudioTracks: () => [{}] }, actx: null, micNode: null,
+    window: { AudioContext: FakeAC },
+  };
+  vm.runInNewContext(fnSrc(html, 'function unmix(') + '\n' + fnSrc(html, 'function remix('), ctx);
+  const sender = () => ({ replaceTrack: () => Promise.resolve() });
+  const destsWithInputs = () => new Set([...edges].map((e) => e.split('>')[1])).size;
+
+  for (let k = 1; k <= 9; k++) {
+    ctx.peers.set('g' + k, { tx: { sender: sender() } });
+    ctx.heard.set('g' + k, { stream: {}, node: null });
+    vm.runInNewContext('remix(); remix();', ctx);      // كما في admit: مرّة مع وصول الصوت ومرّة بعد الجواب
+  }
+  assert.equal(destsWithInputs(), 9, 'تسعة مزوج حيّة فقط (كانت عشرات)');
+  assert.equal(edges.size, 9 * 9, 'كلّ مزج: المايك + الثمانية الآخرين');
+  full(true);
+
+  vm.runInNewContext('micOn = false; micNode = null; remix();', ctx);
+  assert.equal(edges.size, 9 * 8, 'إطفاء المايك يفصله عن كلّ المزوج');
+  full(false);
+
+  ctx.peers.delete('g1'); ctx.heard.get('g1').node.disconnect(); ctx.heard.delete('g1');
+  vm.runInNewContext("unmix('g1'); remix();", ctx);
+  assert.equal(edges.size, 8 * 7, 'خروج ضيف: مزجه يُفكّ ولا يبقى منه شيء');
+  assert.ok(!ctx.outs.has('g1'));
+  full(false);
+
+  for (let k = 2; k <= 8; k++) { ctx.peers.delete('g' + k); ctx.heard.get('g' + k).node.disconnect(); ctx.heard.delete('g' + k); }
+  vm.runInNewContext('remix();', ctx);
+  assert.equal(edges.size, 0, 'ضيف واحد باقٍ: يأخذ المايك مباشرة وكلّ المزوج تُفكّ');
+  assert.equal(ctx.outs.size, 0);
+});
+
+test('الغرفة بلغات التطبيق الـ١٤ (v-talk-room-langs): كلّ لغة فيها كلّ النصوص بعلاماتها، والصفحة تتبع لغة التطبيق ثمّ الجهاز', () => {
+  const html = roomHtml();
+  const a = html.indexOf('var I18N = '), b = html.indexOf('\n  };\n', a);
+  assert.ok(a > 0 && b > a, 'جدول اللغات موجود');
+  const I18N = new Function('return ' + html.slice(a + 'var I18N = '.length, b + 4))();
+  const APP = ['ar', 'en', 'fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil'];
+  assert.deepEqual(Object.keys(I18N).sort(), APP.slice().sort(), 'لغات الغرفة = لغات التطبيق');
+  const appList = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-43-maha-app.js'), 'utf8').match(/LANGS = (\[[^\]]+\])/);
+  assert.ok(appList, 'قائمة لغات التطبيق');
+  assert.deepEqual(JSON.parse(appList[1].replace(/'/g, '"')).sort(), APP.slice().sort(), 'إن تغيّرت لغات التطبيق تتغيّر الغرفة معها');
+  const n = (s) => (String(s).match(/\{n\}/g) || []).length;
+  for (const L of APP) {
+    for (const k of Object.keys(I18N.en)) {
+      if (k === 'phonePh') continue;      // رقم مثال واحد لكلّ اللغات (يأتي من الإنجليزيّة)
+      assert.equal(typeof I18N[L][k], 'string', L + '.' + k);
+      assert.ok(I18N[L][k].trim(), L + '.' + k + ' فارغ');
+      assert.equal(n(I18N[L][k]), n(I18N.en[k]), L + '.' + k + ': علامة {n}');
+      assert.ok(!/&(gt|lt|amp);|</.test(I18N[L][k]), L + '.' + k + ': بلا HTML');
+    }
+    assert.match(I18N[L].inviteText, /: ?$/, L + ': نصّ الدعوة يُلحق به الرابط');
+  }
+  const pick = html.match(/var pickLang = (function \(v\) \{[^\n]+\});/);
+  assert.ok(pick, 'pickLang');
+  const pickLang = new Function('var LANGS = ' + JSON.stringify(APP) + '; return ' + pick[1])();
+  assert.equal(pickLang('ur'), 'ur');
+  assert.equal(pickLang('fr-CA'), 'fr', 'لهجة البلد تأخذ اللغة');
+  assert.equal(pickLang('tl-PH'), 'fil', 'التاغالوغيّة = الفلبينيّة');
+  assert.equal(pickLang('de'), '', 'لغة ليست في التطبيق لا تُختار');
+  assert.match(html, /var L = q \|\| pickLang\(appLang\) \|\| pickLang\(devLang\)/, 'الترتيب: الرابط ثمّ لغة التطبيق ثمّ الجهاز');
+  assert.match(html, /localStorage\.getItem\('aiapp_lang'\)/, 'لغة التطبيق تُقرأ من مفتاحه');
+  assert.match(html, /dir = L === 'ar' \|\| L === 'ur' \? 'rtl' : 'ltr'/, 'العربيّة والأردو من اليمين');
 });

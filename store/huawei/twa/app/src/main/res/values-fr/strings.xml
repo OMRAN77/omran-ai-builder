@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v-talk-contacts-sync: الإفصاح الأصليّ وبطاقة التقدّم (ContactsSyncActivity وجسر OmranContacts). -->
+<resources>
+    <string name="sync_title">Contacts de ton téléphone</string>
+    <string name="sync_disclose">Pour afficher lesquels de tes contacts sont sur l\'app, om ai lit les noms et les numéros enregistrés dans les contacts de ton téléphone. Chaque numéro ne quitte le téléphone que sous la forme d\'un code à sens unique (un hash), utilisé pour retrouver tes amis sur l\'app ; il n\'est ni stocké ni enregistré dans des journaux. Les noms restent sur ton téléphone. Tu peux désactiver cette fonction à tout moment en retirant à l\'app l\'autorisation Contacts dans les réglages de ton téléphone.</string>
+    <string name="sync_allow">Autoriser</string>
+    <string name="sync_later">Plus tard</string>
+    <string name="sync_progress">Lecture de tes contacts…</string>
+</resources>

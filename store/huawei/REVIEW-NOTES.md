@@ -41,6 +41,26 @@
 > لا تُضِف أداة مخفيّة (التلفزيون، السيرة الذاتيّة، المصاريف، الاقتراحات، الخدمات الحكوميّة) ولا كلمة مثل «رسمي/موثوق/مفضّل/مميّز/الأفضل»
 > في أيّ خانة. حساب التجربة في خانتيه في AGC، لا في الملاحظة، وليس حساب «omran».
 
+## Contacts permission (READ_CONTACTS) — v-talk-contacts-sync
+مع أوّل حزمة بعد 1.3.16 تحمل صلاحيّة جهات الاتّصال (التفاصيل وإجابات المتجرين في `README.md`): الصق هذه الفقرة في ملاحظات المراجع
+مع تلك الحزمة، وأضف «Friends room: contacts sync» إلى خطوات الاختبار. لا تُرفق بحزمة لا تحملها.
+الإفصاح الأصليّ يظهر الآن قبل حوار صلاحيّة أندرويد في المسارين (والنصّ أدناه يقول ذلك). الحدّ الباقي — تطبيق آخر قد يدّعي `omranai://`
+فيدفع قائمة مزيّفة (أسماء فقط، والخادم لا يطابق إلّا مستخدمين حقيقيّين) — وقرار عدم استعمال App Link له: في `README.md`، لا يُلصق للمراجع.
+```
+Contacts permission (READ_CONTACTS), used only by the Friends room:
+- Purpose: show which of the user's phone contacts also use om ai, so the user can call them in the Friends room.
+- When: only after the user taps "Find friends from my phone" in the Friends room, reads the in-app notice and taps "Allow". The app then
+  shows its own notice with the same text ("Contacts on your phone", Allow / Not now), and the Android permission dialog comes only after
+  "Allow" there. When the app runs in Chrome, that app notice appears before every contacts read. "Not now" or "Deny" changes nothing
+  else; adding a number by hand still works.
+- What leaves the phone: the contact list is read on the phone. Phone numbers are sent only as one-way hashes, to find matches,
+  and the server does not store them. Contact names stay on the phone. (When the app runs in Chrome, the list passes once
+  through our server encrypted with a key that stays on the phone; the server cannot read it and deletes it when the app reads it back, or after 3 minutes.)
+  Nothing is shared with third parties or used for ads.
+- How to test: sign in > Tools > Friends room > Find friends from my phone > Allow > Allow > Allow (in-app notice, app notice,
+  Android dialog). Contacts who use the app are listed first, the others under "Invite N friends".
+```
+
 ## خانة Remarks في AGC (حدّها ٣٠٠ حرف — الصق هذا كما هو)
 ```
 1.3.16: only the app name changed, to "om ai" (phone and listing). The Tools panel opens on every launch: 14 tools (photo styles, video, decor, fashion, style, ads, documents, email, construction, education, Qibla, religion, friends room, feedback). Also: bottom bar > Tools.

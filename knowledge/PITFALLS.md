@@ -3,6 +3,20 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **`scripts/twa-generate.mjs` يمسح مشروع الأندرويد كلّه:** يبدأ بـ`rmSync(store/huawei/twa)` ثمّ يولّد قالب Bubblewrap من جديد — فيضيع
+  `MahaWebViewFallbackActivity` وجسوره (`OmranRender`، `OmranBlobSave`، `OmranContacts`)، و`ContactsSyncActivity`، والصلاحيّات المضافة يدويًّا.
+  المشروع يُصان باليد الآن؛ لا تشغّله. (v-talk-contacts-sync)
+- **روابط `intent:` لا تعمل في WebView هواوي:** `MahaWebViewFallbackActivity.shouldOverrideUrlLoading` يرسل كلّ أصل آخر إلى Custom Tab،
+  فـ`intent://…` = ERR_UNKNOWN_URL_SCHEME. الصفحة تكلّم الأصليّ هناك بجسر JavaScript، ومخطّط `omranai://` لـChrome TWA وحده. وفي
+  Chrome TWA الـlocalStorage مشترك مع Chrome العاديّ، فلا تجعله علامة «داخل التطبيق». (v-talk-contacts-sync)
+- **`normalizePhone` لا يفهم دفتر الهاتف:** لا مفتاح دولة افتراضيّ: `0501234567` = null، و`501234567` يصير `+501…` (بليز). أرقام
+  الدفتر تُطبَّع في الصفحة (`toE164`) بدولة الشريحة قبل البصمة. (v-talk-contacts-sync)
+
+- **`disconnect()` على وجهة Web Audio لا يفكّ شيئًا:** `MediaStreamAudioDestinationNode` بلا مخارج، و`disconnect()` بلا معامل يفكّ
+  المخارج فقط — فالمصادر الموصولة به تبقى، والمزج القديم يُحسب في كلّ دورة صوت. الفكّ يكون من المصدر: `src.disconnect(dest)` لكلّ مصدر
+  (احفظ قائمة المصادر مع الوجهة). في «غرفة الربع» كان يتراكم نحو ٨٠ مزجًا بعد دخول تسعة. **وفي Safari قبل 14.1** لا يوجد `disconnect(dest)`:
+  الوجهة تُقرأ رقم مخرج ٠ فيُفصل المصدر عن **كلّ** شيء بلا خطأ — ففُكّ كلّ القديم أوّلًا ثمّ ابنِ الجديد، لا فكّ وبناء في حلقة واحدة. (v-talk-room-10)
+
 - **محرّك الفيديو يملأ المدّة المطلوبة بالكلام:** مدّة أطول من حاجة الكلام = نطق ممطوط (الكلمة قرابة ثانية)، وأقصر = نطق مشوَّش أو سطر
   مقطوع. فلا تُقاس «سرعة النطق» من مقطع ولّده المحرّك بمدّة فرضناها (قياس يثبت نفسه) — تُحسب المدّة من الكلام: كلمات ÷ `SAY_RATE` + وقفة
   لكلّ دور، وتُعدَّل بالثابت نفسه في الخادم والعميل (`video-trends.js` و`app-11-video.js`). (v-video-say-natural)

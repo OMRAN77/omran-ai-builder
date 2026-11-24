@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v-talk-contacts-sync: الإفصاح الأصليّ وبطاقة التقدّم (ContactsSyncActivity وجسر OmranContacts). -->
+<resources>
+    <string name="sync_title">جهات هاتفك</string>
+    <string name="sync_disclose">عشان نعرف مين من جهات هاتفك على التطبيق، om ai يقرأ الأسماء والأرقام من جهات الاتصال في هاتفك. كل رقم يطلع من الهاتف بس كرمز باتجاه واحد (hash) عشان نلقى ربعك على التطبيق، وما ينحفظ ولا يتسجّل. الأسماء تبقى في هاتفك. تقدر توقفها متى ما بغيت: شيل إذن جهات الاتصال عن التطبيق من إعدادات الهاتف.</string>
+    <string name="sync_allow">اسمح</string>
+    <string name="sync_later">مو الحين</string>
+    <string name="sync_progress">أقرأ جهاتك…</string>
+</resources>

@@ -63,6 +63,11 @@
 
         <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
+    <!-- v-talk-contacts-sync: غرفة الربع تعرض أيّ جهات الاتّصال على التطبيق. تُطلب وقت التشغيل فقط بعد إفصاح الصفحة
+         وموافقة المستخدم (OmranContacts.read في MahaWebViewFallbackActivity، أو ContactsSyncActivity في Chrome TWA).
+         الأسماء تبقى على الجهاز، والأرقام تخرج بصمات SHA-256 للمطابقة ولا تُخزَّن. البيان مشترك: تصل حزمتي هواوي وPlay معًا. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
+
 
 
     
@@ -218,6 +223,21 @@
         <activity android:name=".MahaWebViewFallbackActivity"
             android:theme="@style/OmranWebViewTheme"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|keyboardHidden|uiMode" />
+
+        <!-- v-talk-contacts-sync (المسار B): الصفحة داخل Chrome TWA تفتح omranai://contacts-sync?t=…&n=… بضغطة المستخدم.
+             مخطّط خاصّ لا intent: لأنّ للتطبيق اسمي حزمة (هواوي وPlay) والاسم النسبيّ يصلح للاثنين. نشاط شفّاف بلا واجهة:
+             يطلب الصلاحيّة، يرفع القائمة مشفَّرة، ثمّ يفتح LauncherActivity على room.html وينتهي. -->
+        <activity android:name=".ContactsSyncActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="omranai" android:host="contacts-sync"/>
+            </intent-filter>
+        </activity>
 
         <provider
             android:name="androidx.core.content.FileProvider"

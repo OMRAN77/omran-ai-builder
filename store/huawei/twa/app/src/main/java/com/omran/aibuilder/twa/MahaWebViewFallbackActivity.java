@@ -86,6 +86,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class MahaWebViewFallbackActivity extends Activity {
     private static final String TAG = MahaWebViewFallbackActivity.class.getSimpleName();
@@ -102,6 +106,8 @@ public class MahaWebViewFallbackActivity extends Activity {
     private static final int RC_RECORD_AUDIO = 8421;
     private static final int RC_FILE_CHOOSER = 8422;
     private static final int RC_LOCATION = 8423;
+    // v-talk-contacts-sync: صلاحيّة جهات الاتّصال لجسر OmranContacts (غرفة الربع).
+    private static final int RC_CONTACTS = 8424;
     // v-hw-blob-save: سقف ملفّ واحد يُحفظ عبر الجسر (الفيديو المجمَّع على الجهاز أكبر ما يمرّ هنا).
     private static final long BLOB_MAX_BYTES = 300L * 1024 * 1024;
 
@@ -152,7 +158,120 @@ public class MahaWebViewFallbackActivity extends Activity {
 
     private void attachRenderBridge(WebView webView) {
         webView.addJavascriptInterface(new RenderBridge(), "OmranRender");
+        // v-talk-contacts-sync: هنا لأنّ هذا الاستدعاء في مساري إنشاء WebView (الإقلاع والتعافي) وقبل تحميل الصفحة.
+        webView.addJavascriptInterface(new ContactsBridge(), "OmranContacts");
         applyRenderMode(webView);
+    }
+
+    /* v-talk-contacts-sync (المسار A في العقد): غرفة الربع تعرض أيّ جهات الاتّصال على التطبيق. الصفحة تُظهر الإفصاح
+     * أوّلًا (مترجَمًا)، وبعد «سماح» تنادي read(nonce)؛ إن لم تكن الصلاحيّة ممنوحة يظهر الإفصاح الأصليّ نفسه قبل حوار
+     * أندرويد (ContactsSyncActivity.showDisclosure). الجواب يعود بـevaluateJavascript إلى window.__omranContacts
+     * بلا رابط ولا خادم. addJavascriptInterface يصل كلّ إطار (حتّى iframe من نطاق آخر)، فكلّ دالّة تتحقّق أوّلًا أنّ
+     * الصفحة الظاهرة https على نطاق التطبيق، والردّ نفسه يتحقّق مرّة ثانية لحظة التسليم. لا رقم ولا اسم في أيّ Log. */
+    private final class ContactsBridge {
+        @JavascriptInterface
+        public String granted() {
+            // getUrl() على خيط الواجهة وحده؛ الجسر يعمل على خيط JavaBridge، فننتظر الجواب بمهلة قصيرة.
+            FutureTask<Boolean> onHost = new FutureTask<>(MahaWebViewFallbackActivity.this::pageOnAppHost);
+            runOnUiThread(onHost);
+            try {
+                if (!onHost.get(2, TimeUnit.SECONDS)) {
+                    return "0";
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return "0";
+            } catch (ExecutionException | TimeoutException e) {
+                // خيط الواجهة مشغول أو WebView يُهدم: الجواب الآمن «لا».
+                return "0";
+            }
+            return ContactsSyncActivity.hasContactsPermission(MahaWebViewFallbackActivity.this) ? "1" : "0";
+        }
+
+        @JavascriptInterface
+        public void read(final String nonce) {
+            if (!ContactsSyncActivity.validNonce(nonce)) {
+                return;
+            }
+            runOnUiThread(() -> startContactsRead(nonce));
+        }
+    }
+
+    /** خيط الواجهة فقط: الصفحة الظاهرة https على نطاق التطبيق الثابت. */
+    private boolean pageOnAppHost() {
+        WebView wv = mWebView;
+        String url = wv == null ? null : wv.getUrl();
+        if (url == null) {
+            return false;
+        }
+        Uri u = Uri.parse(url);
+        return "https".equalsIgnoreCase(u.getScheme())
+                && ContactsSyncActivity.APP_HOST.equalsIgnoreCase(u.getHost());
+    }
+
+    private void startContactsRead(final String nonce) {
+        if (!pageOnAppHost()) {
+            return;
+        }
+        // أوّل طلب جارٍ يكسب (إفصاح أو حوار صلاحيّة أو قراءة): نداءات read بعده تُتجاهل، فلا يأخذ إطار آخر الـnonce منه.
+        if (mContactsNonce != null || mContactsReadNonce != null) {
+            return;
+        }
+        if (ContactsSyncActivity.hasContactsPermission(this)) {
+            // ممنوحة: قراءة صامتة (التحديث اليوميّ التلقائيّ الذي أراده المالك).
+            readContactsAsync(nonce);
+            return;
+        }
+        // غير ممنوحة: الإفصاح الأصليّ قبل حوار أندرويد — إفصاح الصفحة قد يتخطّاه إطار فيها (تطبيق مستخدم في p.html).
+        mContactsNonce = nonce;
+        ContactsSyncActivity.showDisclosure(this, () -> {
+            if (nonce.equals(mContactsNonce) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestPermissions(new String[]{Manifest.permission.READ_CONTACTS}, RC_CONTACTS);
+            }
+        }, () -> {
+            if (nonce.equals(mContactsNonce)) {
+                mContactsNonce = null;
+                deliverContacts(nonce, null, "denied");
+            }
+        });
+    }
+
+    private void readContactsAsync(final String nonce) {
+        // قراءة واحدة في كلّ مرّة (خيط الواجهة وحده يلمس mContactsReadNonce): أوّل nonce يكسب، ونداءات بعده أثناء القراءة
+        // لا تفتح خيطًا ولا تغيّر من يستلم الجواب.
+        if (mContactsReadNonce != null) {
+            return;
+        }
+        mContactsReadNonce = nonce;
+        final Context app = getApplicationContext();
+        new Thread(() -> {
+            String payload = null;
+            String err = "error";
+            try {
+                List<String[]> list = ContactsSyncActivity.readContacts(app);
+                payload = ContactsSyncActivity.payloadJson(ContactsSyncActivity.countryIso(app), list, list.size());
+                err = "";
+            } catch (RuntimeException e) {
+                // نوع الخطأ وحده — لا رسالته ولا أيّ رقم أو اسم.
+                Log.w(TAG, "contacts read failed: " + e.getClass().getSimpleName());
+            }
+            final String p = payload;
+            final String er = err;
+            runOnUiThread(() -> {
+                mContactsReadNonce = null;
+                deliverContacts(nonce, p, er);
+            });
+        }, "contacts-read").start();
+    }
+
+    /** err: "" نجاح، "denied" رفض المستخدم، "error" غير ذلك. payload نصّ JSON مبنيّ بـjsonString أو null. */
+    private void deliverContacts(String nonce, String payload, String err) {
+        WebView wv = mWebView;
+        if (wv == null || !pageOnAppHost()) {
+            return;
+        }
+        wv.evaluateJavascript("window.__omranContacts&&window.__omranContacts(" + JSONObject.quote(nonce) + ","
+                + (payload == null ? "null" : payload) + "," + JSONObject.quote(err) + ")", null);
     }
     private List<Uri> mExtraOrigins = new ArrayList<>();
     private PermissionRequest mPendingMicRequest;
@@ -161,6 +280,10 @@ public class MahaWebViewFallbackActivity extends Activity {
     // v-hw-geo: طلب الموقع المعلَّق حتّى يجيب المستخدم على صلاحيّة أندرويد.
     private String mGeoOrigin;
     private GeolocationPermissions.Callback mGeoCallback;
+    // v-talk-contacts-sync: nonce طلب جهات الاتّصال المعلَّق حتّى يجيب المستخدم على صلاحيّة أندرويد.
+    private String mContactsNonce;
+    // v-talk-contacts-sync: nonce القراءة الجارية الآن على خيط خلفيّ (null = لا قراءة).
+    private String mContactsReadNonce;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -287,6 +410,20 @@ public class MahaWebViewFallbackActivity extends Activity {
             if (geo != null) {
                 geo.invoke(origin, grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED, false);
+            }
+            return;
+        }
+        // v-talk-contacts-sync: جواب صلاحيّة جهات الاتّصال — قراءة على خيط خلفيّ، أو «denied» للصفحة.
+        if (requestCode == RC_CONTACTS) {
+            String nonce = mContactsNonce;
+            mContactsNonce = null;
+            if (nonce != null) {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    readContactsAsync(nonce);
+                } else {
+                    deliverContacts(nonce, null, "denied");
+                }
             }
             return;
         }
