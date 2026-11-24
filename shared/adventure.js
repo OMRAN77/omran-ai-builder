@@ -16,6 +16,7 @@ import { makeAvatar, outfitPicture } from './avatar.js';
 import { createWardrobe, TRADER_LOOK, PACKS } from './outfits.js';
 import { makeCave } from './cave.js';
 import { earnSports } from './cars.js';
+import { dailyFor, DAILY, DAILY_PRIZE, DAILY_BONUS_XP } from './daily.js';
 
 const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 const rng = (seed) => { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
@@ -68,6 +69,10 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
   const secretsHere = SECRETS.filter((q) => !q[6] || q[6] === worldKey);
   let found = load('bw-treasures', 0), foundToday = load(foundKey, '') === today;
   st.stormTime = 0;
+  // ---- today's challenges: where the counts stood when the day began here, and which are done
+  const dailyKey = 'bw-daily-' + worldKey + '-' + today, todays = dailyFor(today);
+  const daily = load(dailyKey, null) || { base: null, done: [], bonus: false };
+  const dailyLeft = (q) => Math.max(0, q[3] - (q[2](st) - ((daily.base && daily.base[q[0]]) || 0)));
   const ctx = { st, craft, sy: w.sy, get found() { return found; } };
   const spawn = { x: st.pos.x, y: st.pos.y, z: st.pos.z };
 
@@ -183,6 +188,8 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     get found() { return found; }, get foundToday() { return foundToday; }, get traderAt() { return tPos; }, get traderNear() { return tNear; },
     done,
     onTrade: null,
+    /** Today's challenges with how far along each one is. */
+    daily: () => todays.map((q) => ({ key: q[0], name: q[1].replace('{n}', q[3]), n: q[3], got: daily.base ? q[3] - dailyLeft(q) : 0, xp: q[4], done: daily.done.includes(q[0]) })),
     quests: () => QUESTS.map(([key, name, test, xp, outfit]) => ({ key, name, xp, outfit, done: done.has(key) })),
     secrets: () => secretsHere.filter((q) => done.has('s:' + q[0])).map(([key, name, how]) => ({ key, name, how })),
     secretCount: secretsHere.length,
@@ -253,6 +260,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
       const ev = api.events;
       const farmHtml = (window.__GAME_WONDERS ? window.__GAME_WONDERS.page() : '') + (window.__GAME_FARM ? window.__GAME_FARM.page() : '');
       return (ev ? `<h3>رسالة اليوم</h3><p class="hint msg">${ev.message()}</p>` : '') + `<h3>كنز اليوم</h3><div class="tmap"><canvas width="${AW}" height="${AH}"></canvas><p class="hint">${!treasure ? 'ما في كنز اليوم.' : foundToday ? 'لقيت كنز اليوم ✓ كنز جديد بكرة.' : 'علامة ✕ مكان الصندوق، والنقطة الحمرا أنت. الخريطة فوقها الشمال.'}${cave ? ' المثلث الأسود مدخل كهف اليوم: فيه ذهب وألماس.' : ''}${api.events && api.events.isle.up ? ' الدائرة البيضا جزيرة السما (طر لها قبل ما تختفي).' : ''}<br>كنوز لقيتها: ${found}</p></div>`
+        + (() => { const ds = api.daily(); return `<h3>تحديات اليوم ${ds.filter((q) => q.done).length}/${ds.length}</h3><ol class="quests daily">${ds.map((q) => `<li class="${q.done ? 'done' : ''}">${q.name}<small>${q.got}/${q.n} · +${q.xp} خبرة · ذهب ×${DAILY_PRIZE}</small></li>`).join('')}</ol><p class="hint">${daily.bonus ? 'خلّصت تحديات اليوم كلها ✓ تحديات جديدة بكرة.' : 'خلّص الثلاثة وتاخذ صندوق حظ و' + DAILY_BONUS_XP + ' خبرة زيادة. تتغيّر كل يوم.'}</p>`; })()
         + `<h3>المهام ${qs.filter((q) => q.done).length}/${qs.length}</h3><ol class="quests">${qs.map((q) => `<li class="${q.done ? 'done' : q === next ? 'now' : ''}">${q.name}<small>+${q.xp} خبرة${q.outfit ? ' · لبس «' + looks.find((o) => o.key === q.outfit).name + '»' : ''}</small></li>`).join('')}</ol>`
         + `<h3>مهام سرية لقيتها: ${sec.length} من ${secretsHere.length}</h3>${sec.length ? `<ol class="quests">${sec.map((q) => `<li class="done">${q.name}<small>${q.how}</small></li>`).join('')}</ol>` : '<p class="hint">ما تنكتب هني لين تلقاها بروحك. جرّب أشياء غريبة.</p>'}`
         + farmHtml;
@@ -314,7 +322,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
   };
 
   // ---- every frame
-  let wait = 0;
+  let wait = 0, played = 0;
   play.onTick((s, dt) => {
     const sky = window.__GAME_SKY;
     if (sky && sky.night && sky.rain) st.stormTime += dt;
@@ -334,8 +342,23 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     }
     if (tag.hidden === tNear) tag.hidden = !tNear;
     // quests and secrets, looked at twice a second
+    played += dt;
     if ((wait -= dt) > 0) return;
     wait = 0.5;
+    // today's challenges. The day's starting point is taken once the saved world has been read back (a few seconds in)
+    if (!daily.base && played > 3) { daily.base = Object.fromEntries(DAILY.map((q) => [q[0], q[2](st)])); save(dailyKey, daily); }
+    if (daily.base) {
+      const q = todays.find((d) => !daily.done.includes(d[0]) && dailyLeft(d) === 0);
+      if (q) {
+        daily.done.push(q[0]); st.xp = (st.xp || 0) + q[4];
+        if (!play.give(kitItem(K.GOLD, DAILY_PRIZE))) play.notice('حقيبتك مليانة: الذهب ما انحط.', false, 2600);
+        let text = 'خلّصت تحدي اليوم: ' + q[1].replace('{n}', q[3]) + ' (+' + q[4] + ' خبرة و' + DAILY_PRIZE + ' ذهب)';
+        if (!daily.bonus && todays.every((d) => daily.done.includes(d[0]))) { daily.bonus = true; st.xp += DAILY_BONUS_XP; play.give(kitItem(K.LUCKY, 1)); text = 'خلّصت تحديات اليوم كلها! صندوق حظ و' + DAILY_BONUS_XP + ' خبرة زيادة. تحديات جديدة بكرة.'; }
+        save(dailyKey, daily);
+        play.notice(text, false, 5000); if (play.sound && play.sound.level) play.sound.level();
+        return;
+      }
+    }
     const next = QUESTS.find((q) => !done.has(q[0]));
     if (next && next[2](ctx)) { done.add(next[0]); st.xp = (st.xp || 0) + next[3]; save('bw-quests', [...done]); play.notice('خلّصت المهمة: ' + next[1] + ' (+' + next[3] + ' خبرة)', false, 4500); if (play.sound && play.sound.level) play.sound.level(); if (next[4]) setTimeout(() => wardrobe.grant(next[4]), 1800); return; }
     if (QUESTS.every((q) => done.has(q[0]))) earnSports(play);           // every quest done: the sports car (once)

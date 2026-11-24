@@ -16,6 +16,16 @@ function memoryKV() {
     if (cmd === 'LPOP') { const l = data.get(key) || []; const out = l.splice(0, Number(a[0])); return out.length ? out : null; }
     if (cmd === 'EXPIRE') { ttl.set(key, Number(a[0])); return 1; }
     if (cmd === 'DEL') { return data.delete(key) ? 1 : 0; }
+    if (cmd === 'GET') { const v = data.get(key); return typeof v === 'string' ? v : null; }
+    // sorted sets, as a Map member -> score
+    if (cmd === 'ZADD') { const z = data.get(key) || new Map(); z.set(a[1], Number(a[0])); data.set(key, z); return 1; }
+    if (cmd === 'ZREM') { const z = data.get(key); return z && z.delete(a[0]) ? 1 : 0; }
+    if (cmd === 'ZREMRANGEBYSCORE') { const z = data.get(key); if (!z) return 0; const lo = a[0] === '-inf' ? -Infinity : Number(a[0]), hi = Number(a[1]); let n = 0; for (const [m, sc] of [...z]) if (sc >= lo && sc <= hi) { z.delete(m); n++; } return n; }
+    if (cmd === 'ZRANGE') {      // only the form the server uses: ZRANGE key max min BYSCORE REV LIMIT off count
+      assert.deepEqual([a[2], a[3], a[4]], ['BYSCORE', 'REV', 'LIMIT']);
+      const z = data.get(key) || new Map(), hi = a[0] === '+inf' ? Infinity : Number(a[0]), lo = Number(a[1]);
+      return [...z].filter(([, sc]) => sc >= lo && sc <= hi).sort((p, q) => q[1] - p[1]).slice(Number(a[5]), Number(a[5]) + Number(a[6])).map(([m]) => m);
+    }
     throw new Error('unexpected command ' + cmd);
   };
   return {
@@ -124,4 +134,31 @@ test('الصفحة الأولى تعرف عالم الغرفة من كودها (
   assert.equal((await act({ op: 'peek', code: code === '9999' ? '9998' : '9999' }, '2.2.2.2', K)).status, 404);
   assert.equal((await act({ op: 'peek', code: 'abcd' }, '2.2.2.2', K)).status, 400);
   assert.equal((await act({ op: 'open', world: 'barari' }, '1.1.1.1', K)).status, 200, 'عالم البراري معروف');
+});
+
+test('الغرفة العامّة تطلع في قائمة عالمها فقط، بلا سرّ، وتختفي إذا انسكّرت', async () => {
+  const K = memoryKV();
+  const pubW = await act({ op: 'open', world: 'kawkab', pub: 1, name: 'فاطمة<b>' }, 'a', K);
+  const priv = await act({ op: 'open', world: 'kawkab' }, 'b', K);
+  await act({ op: 'open', world: 'waha', pub: 1, name: 'علي' }, 'c', K);
+  const r = await act({ op: 'list', world: 'kawkab' }, 'd', K);
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.json.rooms, [{ code: pubW.json.code, name: 'فاطمةb' }], 'العامّة في كوكب فقط، والاسم منظَّف');
+  assert.ok(!JSON.stringify(r.json).includes(pubW.json.key), 'لا سرّ صاحب الغرفة');
+  assert.ok(!r.json.rooms.some((q) => q.code === priv.json.code), 'الغرفة بكود ما تطلع');
+  assert.equal((await act({ op: 'list', world: 'mars' }, 'd', K)).status, 400);
+  // the guest joins from the list exactly as with a code, and the host still lets them in
+  const j = await act({ op: 'join', code: pubW.json.code, world: 'kawkab', name: 'زائر', offer: SDP }, 'e', K);
+  assert.equal(j.status, 200);
+  assert.equal((await act({ op: 'pending', code: pubW.json.code, key: pubW.json.key, keep: 1 }, 'a', K)).json.joins.length, 1);
+  await act({ op: 'close', code: pubW.json.code, key: pubW.json.key }, 'a', K);
+  assert.deepEqual((await act({ op: 'list', world: 'kawkab' }, 'd', K)).json.rooms, [], 'المسكّرة ما تطلع');
+});
+
+test('الغرفة العامّة اللي ما تجدّدت ربع ساعة تنشال من القائمة', async () => {
+  const K = memoryKV();
+  const { json } = await act({ op: 'open', world: 'dino', pub: 1, name: 'قديمة' }, 'a', K);
+  K.data.get('play/pub').set(json.code, Date.now() - 901 * 1000);
+  assert.deepEqual((await act({ op: 'list', world: 'dino' }, 'd', K)).json.rooms, []);
+  assert.equal(K.data.get('play/pub').size, 0);
 });

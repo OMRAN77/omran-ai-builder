@@ -104,6 +104,7 @@ export function makeAvatar() {
   { const g = H('staff'); box(0.05, 1.3, 0.05, grip, 0, 0.35, 0.08, g); box(0.12, 0.12, 0.12, M2.heldGlow, 0, 1.02, 0.08, g); g.rotation.x = 0.15; }
   { const g = H('lute'); box(0.26, 0.3, 0.08, M2.heldBody, -0.12, 0.05, 0.16, g); box(0.05, 0.36, 0.04, grip, -0.12, 0.36, 0.16, g); box(0.1, 0.1, 0.02, dark2, -0.12, 0.05, 0.205, g); g.rotation.z = 0.7; }
   { const g = H('bow'); const b1 = box(0.04, 0.5, 0.04, grip, 0, 0.3, 0.12, g); b1.rotation.x = 0.15; const b2 = box(0.04, 0.5, 0.04, grip, 0, -0.18, 0.12, g); b2.rotation.x = -0.15; box(0.01, 0.95, 0.01, M3a(), 0, 0.06, 0.05, g); }
+  { const g = H('compass'); box(0.2, 0.2, 0.05, M2.heldBody, 0, 0.06, 0.14, g); box(0.15, 0.15, 0.01, M3a(), 0, 0.06, 0.168, g); box(0.02, 0.12, 0.01, M2.heldGlow, 0, 0.06, 0.176, g); box(0.05, 0.04, 0.04, M2.heldBody, 0, 0.18, 0.14, g); g.rotation.x = -0.7; }
   { const g = H('spear'); box(0.04, 1.4, 0.04, grip, 0, 0.4, 0.08, g); box(0.08, 0.2, 0.03, steel, 0, 1.16, 0.08, g); }
   // hats and heads of every kind (shape in c.hatShape, colour c.hat2 or the hat colour)
   const hats = {}, M3 = { a: mat(), b: mat(), gold: new THREE.MeshStandardMaterial({ color: 0xf0bd3f, roughness: 0.35, metalness: 0.6 }), white: mat(), horn: mat(), leaf: mat(), beard: mat(), ear: mat(), cloth: mat() };

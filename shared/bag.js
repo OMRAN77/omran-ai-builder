@@ -82,10 +82,10 @@ const CSS = `
 #bag .quests li.done { opacity: .85; text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .4); }
 #bag .quests li.done small { text-decoration: none; }
 #bag .looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 6px; }
-#bag .look { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 3px 5px; font: inherit; color: inherit; cursor: pointer; border-radius: 10px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .12); }
+#bag .look { position: relative; right: auto; bottom: auto; text-shadow: none; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 3px 5px; font: inherit; color: inherit; cursor: pointer; border-radius: 10px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .12); }
 #bag .look.on { border: 2px solid var(--bg-accent, #fff); background: rgba(255, 255, 255, .12); }
 #bag .look.locked { opacity: .55; }
-#bag .look span { font-size: 11.5px; font-weight: 700; }
+#bag .look span { font-size: 11.5px; font-weight: 700; line-height: 1.3; }
 #bag .look img.hero { width: 64px; height: 76px; object-fit: cover; border-radius: 7px; display: block; }
 #bag .look img.hero.thumb { object-fit: contain; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.14), rgba(255,255,255,.02)); }
 #bag .me { display: flex; gap: 14px; align-items: center; margin: 6px 0 4px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); }
