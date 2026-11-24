@@ -309,3 +309,36 @@ for (const engine of ['حديث', 'Safari قديم']) test('مزج الصوت ع
   assert.equal(edges.size, 0, 'ضيف واحد باقٍ: يأخذ المايك مباشرة وكلّ المزوج تُفكّ');
   assert.equal(ctx.outs.size, 0);
 });
+
+test('الغرفة بلغات التطبيق الـ١٤ (v-talk-room-langs): كلّ لغة فيها كلّ النصوص بعلاماتها، والصفحة تتبع لغة التطبيق ثمّ الجهاز', () => {
+  const html = roomHtml();
+  const a = html.indexOf('var I18N = '), b = html.indexOf('\n  };\n', a);
+  assert.ok(a > 0 && b > a, 'جدول اللغات موجود');
+  const I18N = new Function('return ' + html.slice(a + 'var I18N = '.length, b + 4))();
+  const APP = ['ar', 'en', 'fr', 'es', 'tr', 'ru', 'zh', 'hi', 'ur', 'bn', 'ne', 'ml', 'id', 'fil'];
+  assert.deepEqual(Object.keys(I18N).sort(), APP.slice().sort(), 'لغات الغرفة = لغات التطبيق');
+  const appList = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-43-maha-app.js'), 'utf8').match(/LANGS = (\[[^\]]+\])/);
+  assert.ok(appList, 'قائمة لغات التطبيق');
+  assert.deepEqual(JSON.parse(appList[1].replace(/'/g, '"')).sort(), APP.slice().sort(), 'إن تغيّرت لغات التطبيق تتغيّر الغرفة معها');
+  const n = (s) => (String(s).match(/\{n\}/g) || []).length;
+  for (const L of APP) {
+    for (const k of Object.keys(I18N.en)) {
+      if (k === 'phonePh') continue;      // رقم مثال واحد لكلّ اللغات (يأتي من الإنجليزيّة)
+      assert.equal(typeof I18N[L][k], 'string', L + '.' + k);
+      assert.ok(I18N[L][k].trim(), L + '.' + k + ' فارغ');
+      assert.equal(n(I18N[L][k]), n(I18N.en[k]), L + '.' + k + ': علامة {n}');
+      assert.ok(!/&(gt|lt|amp);|</.test(I18N[L][k]), L + '.' + k + ': بلا HTML');
+    }
+    assert.match(I18N[L].inviteText, /: ?$/, L + ': نصّ الدعوة يُلحق به الرابط');
+  }
+  const pick = html.match(/var pickLang = (function \(v\) \{[^\n]+\});/);
+  assert.ok(pick, 'pickLang');
+  const pickLang = new Function('var LANGS = ' + JSON.stringify(APP) + '; return ' + pick[1])();
+  assert.equal(pickLang('ur'), 'ur');
+  assert.equal(pickLang('fr-CA'), 'fr', 'لهجة البلد تأخذ اللغة');
+  assert.equal(pickLang('tl-PH'), 'fil', 'التاغالوغيّة = الفلبينيّة');
+  assert.equal(pickLang('de'), '', 'لغة ليست في التطبيق لا تُختار');
+  assert.match(html, /var L = q \|\| pickLang\(appLang\) \|\| pickLang\(devLang\)/, 'الترتيب: الرابط ثمّ لغة التطبيق ثمّ الجهاز');
+  assert.match(html, /localStorage\.getItem\('aiapp_lang'\)/, 'لغة التطبيق تُقرأ من مفتاحه');
+  assert.match(html, /dir = L === 'ar' \|\| L === 'ur' \? 'rtl' : 'ltr'/, 'العربيّة والأردو من اليمين');
+});
