@@ -616,7 +616,13 @@ function serve(root, prefix) {
       // find the treasure: go to it, open it
       const tr = await page.evaluate(() => {
         const g = window.__game, p = g.play, s = p.state, adv = g.bag.adv, t = adv.treasure;
-        s.pos.set(t.x + 0.5, t.y, t.z + 2.2); s.vel.set(0, 0, 0); s.yaw = 0; s.pitch = -0.35; p.tick(3);
+        // the chest stands on open ground somewhere different each day: try each side, and look straight at it
+        for (const [dx, dz] of [[0, 2.2], [0, -2.2], [2.2, 0], [-2.2, 0], [1.6, 1.6], [-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6]]) {
+          s.pos.set(t.x + 0.5 + dx, t.y + 1.2, t.z + 0.5 + dz); s.vel.set(0, 0, 0); p.advance(1 / 60); for (let i = 0; i < 40 && !s.onGround; i++) p.advance(1 / 60);
+          const ex = t.x + 0.5 - s.pos.x, ez = t.z + 0.5 - s.pos.z, ey = t.y + 0.5 - (s.pos.y + p.tuning.eye);
+          s.yaw = Math.atan2(-ex, -ez); s.pitch = Math.atan2(ey, Math.hypot(ex, ez)); p.tick(1);
+          if (s.hit && s.hit.id === 170) break;
+        }
         const hit = s.hit && { x: s.hit.x, y: s.hit.y, z: s.hit.z, id: s.hit.id };
         const used = p.placeNow();
         return { hit, used, foundToday: adv.foundToday, found: adv.found, modal: s.modal, gold: (g.kit.chestAt(t.x, t.y, t.z)[0] || {}).id };
