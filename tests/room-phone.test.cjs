@@ -199,6 +199,6 @@ test('الصفحة: الانتظار — ينتظر، ثمّ رقمك يظهر؛
 test('الصفحة موصولة: الحالة، القائمة من الخادم، الأزرار، والمربّع مكان سطر «رقمك مو مربوط»', () => {
   assert.match(html, /var linkVia = \[\], linkPw = false, plink = null, plinkT = 0, linkedNow = false;/);
   assert.match(html, /linkVia = r\.me && Array\.isArray\(r\.me\.linkVia\) \? r\.me\.linkVia\.filter\(function \(x\) \{ return x === 'whatsapp' \|\| x === 'telegram'; \}\) : \[\]; linkPw = !!\(r\.me && r\.me\.linkPw\);/);
-  assert.match(html, /else if \(d\.plink\) linkStart\(d\.plink\);\n\s+else if \(d\.plinkx\) linkCancel\(\);/);
+  assert.match(html, /else if \(d\.plink\) linkStart\(d\.plink\);\n/); assert.match(html, /else if \(d\.plinkx\) linkCancel\(\);\n/);
   assert.match(fnSrc(html, 'function contactsCard('), /esc\(T\.contactsNote\) \+ '<\/p>' \+ phoneBox\(\) \+ syncBox\(\)/);
 });

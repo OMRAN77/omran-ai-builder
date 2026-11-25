@@ -338,9 +338,10 @@ test('جسر الـWebView: الجواب يُقبل بالـnonce نفسه فق�
   assert.deepEqual(calls[2], ['done', ''], 'المزامنة الهادئة لا تُظهر خطأً');
 });
 
-test('الشاشة: المزامنة لأندرويد والحساب فقط، والإفصاح قبل أيّ شيء أصليّ، ولا رقم في رابط، والدعوات مطويّة ومحدودة بالبحث', () => {
+test('الشاشة: المزامنة بالحساب فقط (أندرويد بالتطبيق، وغيره بالملفّ)، والإفصاح قبل أيّ شيء أصليّ، ولا رقم في رابط، والدعوات مطويّة ومحدودة بالبحث', () => {
   assert.match(html, /var bridge = !!\(window\.OmranContacts && typeof window\.OmranContacts\.read === 'function'\), androidUA = \/Android\/i\.test/);
-  assert.match(fnSrc(html, 'function syncBox('), /if \(!\(bridge \|\| androidUA\)\) return '';/, 'iPhone والحاسوب: كما كان');
+  assert.match(fnSrc(html, 'function syncBox('), /var fileWay = !\(bridge \|\| androidUA\);/, 'iPhone والحاسوب: طريق الملفّ (v-talk-room-file، tests/room-file.test.cjs)');
+  assert.match(fnSrc(html, 'function startSync('), /if \(bridge\) syncNative\(false\); else if \(androidUA\) syncViaApp\(\); else \{ fileCC = guessCC\(\); fileOpen = true; draw\(\); \}/);
   assert.match(fnSrc(html, 'function contactsCard('), /if \(!token\) return '';/, 'بلا حساب لا شيء');
   assert.match(html, /else if \(d\.sync\) \{ if \(syncOk\(\)\) startSync\(\); else \{ syncAsk = true; draw\(\); \} \}/, 'أوّل مرّة لهذا الحساب: الإفصاح');
   assert.match(html, /else if \(d\.syncok\) \{ lsSet\('room-sync-ok', bookUser\(\)\); startSync\(\); \}/);
