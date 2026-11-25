@@ -64,7 +64,7 @@ function page(plan, init) {
   const vids = el('div'); vids.hidden = true;
   const ctx = {
     T, MAX_LINE: 300, FACES: ['😀'], role: 'host', myName: 'Omran', cam: null, camOn: false, facing: 'user', camCount: 0, flipping: false,
-    micOn: false, deaf: false, gv: [], gstreams: [], slots: [], peers: new Map(), tiles: new Map(), draws: 0,
+    micOn: false, deaf: false, gv: [], gstreams: [], slots: [], peers: new Map(), tiles: new Map(), draws: 0, dv: null,
     draw() { ctx.draws++; }, $: (id) => (id === 'vids' ? vids : null), cleanName: (v) => String(v || 'guest'),
     revideo() { revideos.push(ctx.camTrack()); },
     toHost(m) { toHost.push(JSON.parse(JSON.stringify(m))); },

@@ -11,10 +11,10 @@
      join    { code, name, offer }           -> { id } | no-room | busy       الضيف بلا حساب: الكود هو الدعوة، وصاحب الغرفة يقرّر
      answer  { code, id }                    -> { wait } | { answer } | { denied }
      pending { code, key, keep? }            -> { joins: [{ id, name, offer }] }   (تُسحب مرّة واحدة؛ ومع keep: left/timeUp للمجّانيّة، plan/cap إن انتهى الاشتراك)
-     admit   { code, key, id, answer }       -> { ok, s? }   (s سرّ الضيف لنداءات SFU — غرفة مدفوعة والميزة مفعّلة فقط)
+     admit   { code, key, id, answer }       -> { ok }
      deny    { code, key, id }               -> { ok }
      close   { code, key }                   -> { ok }
-     (وجهات الاتّصال والمكالمات في talk-contacts.js، ومزامنة جهات الهاتف في talk-sync.js، وخطّة الغرفة plan/sub-buy/sub-auto في talk-plan.js، وكاميرات الغرفة المدفوعة sfu-* في talk-sfu.js)
+     (وجهات الاتّصال والمكالمات في talk-contacts.js، ومزامنة جهات الهاتف في talk-sync.js، وخطّة الغرفة plan/sub-buy/sub-auto في talk-plan.js)
 
    التخزين: مفاتيح قصيرة العمر (ربع ساعة للغرفة تتجدّد مع الاستقبال، ثلاث دقائق للجواب). العرض والجواب يحملان عناوين شبكة
    الطرفين (هكذا يعمل WebRTC)، فيُمحيان بانتهاء العمر ولا يُطبعان أبدًا. الأوامر قليلة عمدًا (حدّ الباقة المجانيّة). */
@@ -66,9 +66,6 @@ async function act(body, ip, K, who, ice, cOpts) {
   const plan = require('./talk-plan.js');
   const pr = await plan.planAct(b, ip, K, who, cOpts);
   if (pr) return pr;
-  // كاميرات الغرفة المدفوعة عبر Cloudflare SFU (v-talk-room-sfu — api/_lib/talk-sfu.js): sfu-on/new/push/pull/reneg/close/gone
-  const fr = await require('./talk-sfu.js').sfuAct(b, ip, K, who, Object.assign({}, cOpts || {}, { ice, lib: { sameKey, isSdp, isId, overRate: (what) => overRate(K, ip, what) } }));
-  if (fr) return fr;
   const now = plan.nowOf(cOpts);
 
   if (op === 'open') {
@@ -152,8 +149,7 @@ async function act(body, ip, K, who, ice, cOpts) {
     if (!isId(b.id)) return bad('id');
     if (!isSdp(b.answer)) return bad('answer');
     await K.kvSetRaw(outKey(code, b.id), JSON.stringify({ answer: b.answer }), OUT_TTL);
-    const s = require('./talk-sfu.js').admitSecret(room, code, b.id, cOpts);      // سرّ الضيف لنداءات SFU: غرفة مدفوعة والميزة مفعّلة فقط
-    return { status: 200, json: s ? { ok: true, s } : { ok: true } };
+    return { status: 200, json: { ok: true } };
   }
   if (op === 'deny') {
     if (!isId(b.id)) return bad('id');
