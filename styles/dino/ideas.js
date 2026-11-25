@@ -70,9 +70,12 @@ export function createIdeas(o) {
   const incub = load('bw-dino-eggs', []).filter((q) => q && [q.x, q.y, q.z, q.i, q.t0].every(Number.isFinite));
   const babies = load('bw-dino-babies', []).filter((q) => q && Number.isFinite(q.c)).slice(0, 8);
   const keepEggs = () => save('bw-dino-eggs', incub), keepBabies = () => save('bw-dino-babies', babies.map((b) => ({ c: b.c })));
+  // warm: volcanic rock under it, lava near, or warm blocks put right around it (fire, a torch, a furnace, lava, volcanic rock)
+  const WARM = new Set([B.LAVA, B.BASALT, B.ASH, K.FIRE, K.FURNACE, K.TORCH]);
+  const warmAround = (x, y, z) => { for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) if ((dx || dy || dz) && WARM.has(world.get(x + dx, y + dy, z + dz))) return true; return false; };
   const warmRock = (x, y, z) => {
     const under = world.get(x, y - 1, z);
-    if (under === B.BASALT || under === B.ASH) return true;
+    if (under === B.BASALT || under === B.ASH || warmAround(x, y, z)) return true;
     for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) for (let dy = -2; dy <= 1; dy++) if (world.get(x + dx, y + dy, z + dz) === B.LAVA) return true;
     return false;
   };
@@ -300,8 +303,14 @@ export function createIdeas(o) {
     if (!local) return;
     if (id === B.NEST) {
       if (warmRock(x, y, z)) { play.put(x, y, z, B.WARM_NEST); play.notice('صار عش دافي على الصخر البركاني! حط فيه بيضة ديناصور (اختارها واضغط زر البناء على العش).', false, 5200); }
-      else if (!nestSaid) { nestSaid = true; play.notice('العش يبي صخر بركاني دافي تحته عشان يفقّس: الصخر الأسود قرب البركان أو جنب الحمم.', false, 4600); }
+      else if (!nestSaid) { nestSaid = true; play.notice('العش يبي دفا عشان يفقّس: حطه على الصخر الأسود قرب البركان، أو حط جنبه نار أو مشعل أو فرن أو حمم.', false, 5000); }
     } else if (id === B.AMBER) harden(x, y, z);
+    if (WARM.has(id)) {          // a warm block put beside a nest: the nest warms
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        const nx = x + dx, ny = y + dy, nz = z + dz;
+        if (world.get(nx, ny, nz) === B.NEST) { play.put(nx, ny, nz, B.WARM_NEST); play.notice('دفّيت العش! صار عش دافي: حط فيه بيضة ديناصور (اختارها واضغط زر البناء على العش) وتفقس بعد دقيقة.', false, 5200); }
+      }
+    }
   };
   let slow = 0;
   play.onTick((s, dt) => {

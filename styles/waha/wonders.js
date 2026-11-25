@@ -153,7 +153,8 @@ function buildBeam() {
   return m;
 }
 
-/** The cloud camel: an original creature of soft puffs, two cumulus humps, wisps for legs, saddle bags of sadu weave. */
+/** The cloud camel: an original creature built of cubes of cloud (the owner asked for camels of cubes), two cumulus humps,
+ *  legs that thin out above the sand, saddle bags of sadu weave. */
 function buildCloudCamel() {
   const g = new THREE.Group(), body = new THREE.Group();
   const cloud = lambert({ color: new THREE.Color(1.0, 0.98, 1.04) }, { rim: 0.9 }), shade = lambert({ color: new THREE.Color(0.82, 0.84, 0.98) }, { rim: 0.9 });
@@ -162,7 +163,7 @@ function buildCloudCamel() {
   const tex = saduTexture(2); tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   const bag = lambert({ map: tex });
   const rnd = mulberry32(4242);
-  const puff = (r, x, y, z, m = cloud) => { const s = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), m); s.position.set(x, y, z); s.rotation.set(rnd() * 3, rnd() * 3, 0); body.add(s); return s; };
+  const puff = (r, x, y, z, m = cloud) => { const e = r * 1.7, s = new THREE.Mesh(new THREE.BoxGeometry(e, e, e), m); s.position.set(x, y, z); s.rotation.y = (rnd() - 0.5) * 0.25; body.add(s); return s; };
   // body: a long soft barrel of puffs
   for (let i = 0; i < 7; i++) { const t = i / 6; puff(0.42 + 0.08 * Math.sin(t * Math.PI), (rnd() - 0.5) * 0.1, 1.15 + Math.sin(t * Math.PI) * 0.06, -0.75 + t * 1.5, i % 2 ? shade : cloud); }
   // two humps like towering cumulus
@@ -172,7 +173,7 @@ function buildCloudCamel() {
   for (const [x, y, z, r] of neck) puff(r, x, y, z);
   puff(0.26, 0, 2.38, 1.25); puff(0.18, 0, 2.3, 1.5, shade);
   for (const s of [-1, 1]) {
-    const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), eye); e.position.set(s * 0.17, 2.46, 1.38); body.add(e);
+    const e = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.04), eye); e.position.set(s * 0.17, 2.46, 1.47); body.add(e);
     puff(0.08, s * 0.15, 2.62, 1.18, shade);                                                          // ears
   }
   // tail: a trailing wisp
@@ -180,7 +181,7 @@ function buildCloudCamel() {
   // legs: wisps that thin out into nothing above the ground
   const legs = [];
   for (const [x, z] of [[-0.24, 0.55], [0.24, 0.55], [-0.24, -0.55], [0.24, -0.55]]) {
-    const l = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.03, 0.85, 7, 1, true), wisp); l.position.set(x, 0.62, z); body.add(l); legs.push(l);
+    const l = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.85, 0.17), wisp); l.position.set(x, 0.62, z); body.add(l); legs.push(l);
     puff(0.13, x, 0.98, z);
   }
   // saddle bags hanging either side of the humps, and a red cord
@@ -537,6 +538,9 @@ export function createWonders(ctx) {
   const SAVEKEY = 'bw-waha-caravan';
   const camel = { obj: buildCloudCamel(), on: false, tame: false, dig: false, x: 0, y: 0, z: 0, yaw: 0, t: 0, tx: 0, tz: 0, wait: 0, bag: new Array(27).fill(null), spawnT: 8, aimed: false };
   camel.obj.visible = false; scene.add(camel.obj);
+  // a caravan: two more walk in a line behind the first while they are wild. The one the player reaches for is the one
+  // that can be befriended (it changes places with the first), and only one goes with each player (one saddle bag kept)
+  const trail = [0, 1].map(() => { const obj = buildCloudCamel(); obj.visible = false; obj.scale.setScalar(0.92); scene.add(obj); return { obj, x: 0, y: 0, z: 0, yaw: 0, t: Math.random() * 6, moving: false }; });
   try {
     const s = JSON.parse(window.localStorage.getItem(SAVEKEY) || 'null');
     if (s && s.tame) { camel.tame = true; camel.dig = !!s.dig; (s.bag || []).forEach((q, i) => { if (i < 27) camel.bag[i] = q || null; }); }
@@ -549,6 +553,33 @@ export function createWonders(ctx) {
   tag.hidden = true; document.body.appendChild(tag);
   function showCamel(gx, gz) {
     camel.x = gx; camel.z = gz; camel.y = ground(gx, gz); camel.on = true; camel.obj.visible = true; camel.tx = gx; camel.tz = gz;
+    if (!camel.tame) trail.forEach((f, i) => { f.x = gx - Math.sin(camel.yaw) * 2.9 * (i + 1); f.z = gz - Math.cos(camel.yaw) * 2.9 * (i + 1); f.y = ground(f.x, f.z); f.yaw = camel.yaw; f.obj.visible = true; });
+  }
+  function tickTrail(dt) {
+    const px = st.pos.x, pz = st.pos.z;
+    let ahead = camel;
+    for (const f of trail) {
+      if (!f.obj.visible) { ahead = f; continue; }
+      if (!camel.on || Math.hypot(f.x - px, f.z - pz) > (camel.tame ? 60 : 90)) { f.obj.visible = false; continue; }
+      f.t += dt;
+      if (!camel.tame) {      // each walks in the steps of the one ahead
+        const tx = ahead.x - Math.sin(ahead.yaw) * 2.9, tz = ahead.z - Math.cos(ahead.yaw) * 2.9, dx = tx - f.x, dz = tz - f.z, d = Math.hypot(dx, dz);
+        f.moving = d > 0.4;
+        if (f.moving) { const v = Math.min(d, Math.max(0.9, d * 1.2) * dt); f.x += dx / d * v; f.z += dz / d * v; f.yaw += ((((Math.atan2(dx, dz) - f.yaw) + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * Math.min(1, dt * 4); }
+      } else f.moving = false;          // the leader went with the player: the others stay and graze
+      f.y += (ground(f.x, f.z) - f.y) * Math.min(1, dt * 6);
+      const o = f.obj, u = o.userData;
+      o.position.set(f.x + OX, f.y + 0.25 + Math.sin(f.t * 1.6) * 0.08, f.z + OZ); o.rotation.y = f.yaw;
+      u.legs.forEach((l, i) => { l.rotation.x = f.moving ? Math.sin(f.t * 7 + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI : 0)) * 0.35 : 0; });
+      ahead = f;
+    }
+    // reaching for another camel of a wild caravan: it changes places with the first, so it is the one spoken to
+    if (camel.on && !camel.tame && !camel.aimed && !st.modal) for (const f of trail) {
+      if (!f.obj.visible || !aimAt(f.x + OX, f.y + 1.5, f.z + OZ, 5, 1.1)) continue;
+      for (const k of ['x', 'y', 'z', 'yaw']) { const t = camel[k]; camel[k] = f[k]; f[k] = t; }
+      camel.tx = camel.x; camel.tz = camel.z; camel.wait = 2; camel.aimed = true;
+      break;
+    }
   }
   function stepCamel(tx, tz, speed, dt) {
     const dx = tx - camel.x, dz = tz - camel.z, d = Math.hypot(dx, dz);
@@ -621,11 +652,11 @@ export function createWonders(ctx) {
     camel.t += dt;
     const d = Math.hypot(camel.x - px, camel.z - pz);
     if (!camel.tame) {
-      if (d > 90 || (!daylight() && d > 20)) { camel.on = false; camel.obj.visible = false; return; }
+      if (d > 90 || (!daylight() && d > 20)) { camel.on = false; camel.obj.visible = false; for (const f of trail) f.obj.visible = false; return; }
       // it drifts about, slowly, stopping to look
       if ((camel.wait -= dt) <= 0) { camel.wait = 3 + Math.random() * 4; const a = Math.random() * 6.28; camel.tx = camel.x + Math.sin(a) * 6; camel.tz = camel.z + Math.cos(a) * 6; }
       camel.moving = stepCamel(camel.tx, camel.tz, 0.9, dt);
-      if (d < 18) tell('camelSeen', 'جمل سحابي! ناعم مثل الغيم ويطوف فوق الرمل. ' + (touch ? 'وجّه عليه التمر واضغط زر البناء' : 'امسك تمر واضغط عليه بالزر الأيمن') + ' ويصير صاحبك.', 7000, 120);
+      if (d < 18) tell('camelSeen', 'قافلة جمال سحابية تمشي في الرمل! ' + (touch ? 'وجّه التمر على وحدة منهم واضغط زر البناء' : 'امسك تمر واضغط على وحدة منهم بالزر الأيمن') + ' وتصير صاحبتك، وعلى ظهرها خرج تخزّن فيه 27 غرض.', 7000, 120);
     } else {
       if (d > 40) { camel.x = px - Math.sin(st.yaw) * -2.5; camel.z = pz - Math.cos(st.yaw) * -2.5; camel.y = ground(camel.x, camel.z); }
       // it keeps a few steps behind the player's shoulder
@@ -653,6 +684,7 @@ export function createWonders(ctx) {
     tickTowers(dt);
     tickMirage(dt);
     tickCamel(dt);
+    tickTrail(dt);
   });
   const api = { mirage, towers, camel, dial, mirrors: MIRRORS, want, facing, hatchOpen, placed, openVault, openMirage, saveCamel, VAULT };
   window.__WAHA = api;

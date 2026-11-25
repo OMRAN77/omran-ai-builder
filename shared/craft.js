@@ -82,6 +82,9 @@ export const RECIPES = [
   // the vehicles: this world's car at a workbench, and the sports car once it is earned
   ...Object.entries(CAR_OF_WORLD).map(([w, id]) => ({ out: id, n: 1, needs: [['wood', 4], ['stone', 2]], table: true, world: w })),
   { out: K.CAR_SPORT, n: 1, needs: [['wood', 4], [K.GOLD, 1]], table: true, unlock: () => sportsEarned() },
+  // (new recipes go at the end: tools/playtest.cjs makes the chest by its place in this list)
+  { out: 134, n: 1, needs: [[K.TORCH, 1], [K.GLASS, 1]] },                    // the glowing lantern (فانوس مضيء): held, it shows the shadow bridges in the dark world
+  { out: 55, n: 1, needs: [['wood', 3]], world: 'barari' },                   // البراري: a wooden totem (block 55 there): put down, the tame animals gather round it
 ];
 
 export function createCraft({ play, kit, mats, world }) {
@@ -94,26 +97,30 @@ export function createCraft({ play, kit, mats, world }) {
   /** A furnace within four blocks. */
   const furnaceNear = () => { const w = kit && kit.world; if (!w) return false; const X = Math.floor(st.pos.x), Y = Math.floor(st.pos.y), Z = Math.floor(st.pos.z); for (let dx = -4; dx <= 4; dx++) for (let dz = -4; dz <= 4; dz++) for (let dy = -2; dy <= 2; dy++) if (w.get(X + dx, Y + dy, Z + dz) === K.FURNACE) return true; return false; };
   function take(what, n) { for (const q of piles(idsOf(what))) { const k = Math.min(q.n, n); q.n -= k; n -= k; if (!n) break; } for (let i = 0; i < st.pack.length; i++) if (st.pack[i] && !st.pack[i].tool && !(st.pack[i].n > 0)) st.pack[i] = null; }
+  // what a recipe makes: a thing of the kit, or one of this world's own blocks (made by the bag from the world's list,
+  // e.g. the wooden totem of البراري); a recipe whose thing this world does not have is left out
+  const outItem = (r) => { const it = kitItem(r.out, r.n) || (play.itemOf ? play.itemOf(r.out) : null); if (it) it.n = r.n; return it; };
+  const avail = () => RECIPES.filter((q) => (!q.world || q.world === world) && (!q.unlock || q.unlock()) && !!outItem(q));
   return {
     tableNear, furnaceNear, count, mats, idsOf, take, nameOf,
     /** Every recipe with what it needs, what is at hand, and whether it can be made now. */
     list() {
       const near = tableNear(), fire = furnaceNear();
-      return RECIPES.filter((r) => (!r.world || r.world === world) && (!r.unlock || r.unlock())).map((r) => {
+      return avail().map((r) => {
         const needs = r.needs.map(([what, n]) => ({ what, n, name: nameOf(what), have: count(what) }));
-        const item = kitItem(r.out, r.n); if (r.name) item.name = r.name;
+        const item = outItem(r); if (r.name) item.name = r.name;
         return { out: r.out, n: r.n, table: !!r.table, furnace: !!r.furnace, item, needs, can: needs.every((q) => q.have >= q.n) && (!r.table || near) && (!r.furnace || fire) };
       });
     },
     /** Make recipe i. Returns true, or the reason it cannot be made (Arabic, for the player). */
     make(i) {
-      const r = RECIPES.filter((q) => (!q.world || q.world === world) && (!q.unlock || q.unlock()))[i];
+      const r = avail()[i];
       if (!r) return 'ما في وصفة.';
       if (r.table && !tableNear()) return 'هذي تبي طاولة تصنيع قريبة منك.';
       if (r.furnace && !furnaceNear()) return 'هذي تنطبخ في فرن: حط فرن قريب منك.';
       for (const [what, n] of r.needs) if (count(what) < n) return 'ناقصك ' + nameOf(what) + '.';
       for (const [what, n] of r.needs) take(what, n);
-      const item = kitItem(r.out, r.n);
+      const item = outItem(r);
       if (!play.give(item)) { play.notice('حقيبتك مليانة.', false, 2600); }
       for (const id of r.also || []) { if (!play.give(kitItem(id, 1))) play.notice('حقيبتك مليانة.', false, 2600); st.made[id] = (st.made[id] || 0) + 1; }
       st.crafted++; st.made[r.out] = (st.made[r.out] || 0) + r.n;

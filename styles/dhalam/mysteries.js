@@ -150,7 +150,7 @@ export function createMysteries({ play, world, terrain, kit, scene, camera, endl
         else if (!on && nGhost < MAXG && Math.hypot(c.x - p.x, c.z - p.z) < 12) glimGhost.setMatrixAt(nGhost++, _m);
       }
       const dh = Math.hypot(f.head.x - p.x, f.head.z - p.z);
-      if (dh < 13) say('glim:' + f.key, 'هالجسر ما يبان إلا في النور. امسك المشعل (أو حط مشعل جنبه) وامشِ عليه. وفي الظلام يختفي!', 6500, 120);
+      if (dh < 13) say('glim:' + f.key, 'هالجسر ما يبان إلا في النور. امسك «الفانوس المضيء» أو المشعل وقرّب منه، أو حط نور جنبه، وامشِ عليه. وفي الظلام يختفي! (الفانوس: مشعل وزجاج من «التصنيع»)', 6500, 120);
       if (Math.hypot(f.x - p.x, f.z - p.z) < 30) stock('chasm:' + f.key, f.chest, [[K.GOLD, 3], [K.EMERALD, 2], [K.AMETHYST, 3], [K.LUCKY, 1], [K.TORCH, 6]]);
     }
     glimOn.count = nOn; glimOn.instanceMatrix.needsUpdate = true;

@@ -220,3 +220,25 @@ test('غرفة بدون نت: كود الاتصال يتغلّف ويرجع نف
   assert.match(net, /m\.t === 'rtc' && m\.type === 'offer' && typeof m\.sdp === 'string' && local\) addVoice/, 'وصاحب الغرفة يرد عليه من نفس الخط، بدون كود ثاني');
   assert.ok(!/الصوت ما يشتغل في الغرفة بدون نت/.test(net), 'أزرار المايك موجودة في الغرفة بدون نت');
 });
+
+test('عناصر العوالم الخمسة كما طلبها المالك: الفانوس، الطوطم الخشبي، الجاذبية، القافلة، تدفئة العش', () => {
+  const kit = read('shared/kit.js'), craft = read('shared/craft.js');
+  assert.match(kit, /\['lantern', 'فانوس مضيء', '#ffcf6a'\]\]/, 'الفانوس المضيء ليت (130+4=134)، فيضوّي جسور الظلام في اليد');
+  assert.match(craft, /\{ out: 134, n: 1, needs: \[\[K\.TORCH, 1\], \[K\.GLASS, 1\]\] \}/, 'يتصنع من مشعل وزجاج');
+  assert.match(craft, /\{ out: 55, n: 1, needs: \[\['wood', 3\]\], world: 'barari' \}/, 'الطوطم الخشبي يتصنع في البراري');
+  assert.ok(craft.indexOf('out: 134') > craft.indexOf('K.CAR_SPORT'), 'الوصفات الجديدة في آخر القائمة (الفحص يصنع الصندوق برقمه)');
+  assert.match(craft, /const outItem = \(r\) => \{ const it = kitItem\(r\.out, r\.n\) \|\| \(play\.itemOf \? play\.itemOf\(r\.out\) : null\)/, 'وصفة تطلع مكعب من مكعبات العالم نفسه (مو من الكت) ما تكسر صفحة التصنيع');
+  assert.equal((craft.match(/RECIPES\.filter/g) || []).length, 1, 'القائمة والصنع من نفس الفلتر، فالأرقام ما تختلف');
+  assert.match(read('styles/barari/blocks.js'), /\[B\.TOTEM_TOP\]: 'طوطم خشبي'/);
+  assert.match(read('styles/barari/ideas.js'), /if \(id === B\.TOTEM_TOP\) addTotem\(x, y, z\);/, 'وضعه وحده يكفي: الحيوانات تتجمّع حوله');
+  assert.match(read('styles/dhalam/mysteries.js'), /KIT_BLOCKS\[q\.id\]\.light/, 'أي ليت في اليد (ومنها الفانوس) يضوّي الجسر');
+  assert.match(read('styles/kawkab/wonders.js'), /under === B\.GRAV && st\.onGround/, 'مكعب الجاذبية البنفسجي يرمي اللاعب فوق');
+  const waha = read('styles/waha/wonders.js');
+  assert.match(waha, /const trail = \[0, 1\]\.map/, 'قافلة: جملين ورا الأول');
+  assert.match(waha, /new THREE\.BoxGeometry\(e, e, e\)/, 'الجمال مكعبات');
+  assert.match(waha, /for \(const k of \['x', 'y', 'z', 'yaw'\]\)/, 'اللي توصله يتبدّل مكان الأول ويصير هو اللي يصاحبك');
+  const dino = read('styles/dino/ideas.js');
+  assert.match(dino, /const WARM = new Set\(\[B\.LAVA, B\.BASALT, B\.ASH, K\.FIRE, K\.FURNACE, K\.TORCH\]\);/);
+  assert.match(dino, /if \(WARM\.has\(id\)\) \{/, 'مكعب دافي جنب العش يدفّيه');
+  assert.match(read('styles/dino/gen.js'), /id === B\.ASH && r > 0\.995\) put = B\.NEST/, 'أعشاش قرب البراكين بعد');
+});

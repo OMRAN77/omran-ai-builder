@@ -20,7 +20,7 @@ const COLORS = [
   ['purple', 'بنفسجي', '#7747bb'], ['pink', 'وردي', '#d9649f'], ['brown', 'بنّي', '#775033'], ['sand', 'بيج', '#d3be96'],
 ];
 const SLABS = ['white', 'grey', 'black', 'brown', 'sand', 'red'];
-const LAMPS = [['warm', 'ليت دافئ', '#ffc27a'], ['white', 'ليت أبيض', '#eaf4ff'], ['cyan', 'ليت سماوي', '#5ff0ff'], ['pink', 'ليت وردي', '#ff6ad0']];
+const LAMPS = [['warm', 'ليت دافئ', '#ffc27a'], ['white', 'ليت أبيض', '#eaf4ff'], ['cyan', 'ليت سماوي', '#5ff0ff'], ['pink', 'ليت وردي', '#ff6ad0'], ['lantern', 'فانوس مضيء', '#ffcf6a']];      // 130..134; the lantern lights the shadow bridges of the dark world in the hand
 const BEDS = [['red', 'سرير أحمر', '#b8392f'], ['blue', 'سرير أزرق', '#2f58b4'], ['green', 'سرير أخضر', '#3b8748'], ['white', 'سرير أبيض', '#e4e6e4']];
 const hexOf = Object.fromEntries(COLORS.map(([k, , h]) => [k, h]));
 const nameOfColor = Object.fromEntries(COLORS.map(([k, n]) => [k, n]));

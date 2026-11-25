@@ -108,7 +108,12 @@ export function mountSwitcher({ panel, onStart, fontFamily }) {
   place(); sync(); setTimeout(() => { place(); sync(); }, 600);
   new MutationObserver(sync).observe(panel.el, { attributes: true, attributeFilter: ['hidden'], childList: true, subtree: true });
   window.addEventListener('resize', () => setTimeout(() => { place(); sync(); }, 120));
-  setInterval(() => { if (box.hidden) { place(); sync(); } }, 1000);
+  // the windows that cover the game (the bag, the room panel, the chat) are made later than this: watch each once it is there,
+  // so the buttons step aside the moment one opens (the interval below is only the fallback)
+  const watched = new Set();
+  const watch = () => { for (const id of ['netPanel', 'bag', 'chatBox']) { const e = document.getElementById(id); if (e && !watched.has(e)) { watched.add(e); new MutationObserver(sync).observe(e, { attributes: true, attributeFilter: ['hidden'] }); } } };
+  watch();
+  setInterval(() => { watch(); if (box.hidden) { place(); sync(); } }, 1000);
 
   // pause: stop the game first so that letting the mouse go does not open the pause panel on top of this window
   function pause() {

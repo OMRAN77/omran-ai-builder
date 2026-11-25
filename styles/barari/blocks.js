@@ -74,7 +74,7 @@ if (!DINO) {
   });
   Object.assign(NAMES, {
     [B.LH_WHITE]: 'حجر المنارة الأبيض', [B.LH_RED]: 'حجر المنارة الأحمر', [B.TIDE_STONE]: 'حجر المد', [B.CORAL_BRICK]: 'طابوق مرجاني', [B.CLOUD]: 'غيمة',
-    [B.SKY_FLOWER]: 'زهرة السحاب', [B.SKY_BERRY]: 'توت السما', [B.VENT]: 'فتحة الهوا الدافي', [B.TOTEM]: 'طوطم خشب', [B.TOTEM_TOP]: 'راس الطوطم',
+    [B.SKY_FLOWER]: 'زهرة السحاب', [B.SKY_BERRY]: 'توت السما', [B.VENT]: 'فتحة الهوا الدافي', [B.TOTEM]: 'جذع طوطم', [B.TOTEM_TOP]: 'طوطم خشبي',
   });
   Object.assign(DROP, { [B.LH_WHITE]: B.LH_WHITE, [B.LH_RED]: B.LH_RED, [B.TIDE_STONE]: 0, [B.CORAL_BRICK]: B.CORAL_BRICK, [B.CLOUD]: B.CLOUD, [B.VENT]: 0, [B.TOTEM]: B.OAK, [B.TOTEM_TOP]: B.OAK });
 }

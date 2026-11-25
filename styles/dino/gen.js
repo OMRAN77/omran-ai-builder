@@ -442,6 +442,7 @@ export function makeGen(K) {
         const byWater = HI[k + 1] < WL[k + 1] || HI[k - 1] < WL[k - 1] || HI[k + W] < WL[k + W] || HI[k - W] < WL[k - W];
         put = byWater && r < 0.4 ? B.REED : r < 0.12 ? B.HORSETAIL : r < 0.16 ? B.REED : 0;
       } else if (id === B.ASH && WV[k] < 0.3 && r < 0.012) put = B.SHRUB;
+      else if (id === B.ASH && r > 0.995) put = B.NEST;          // nests by the volcanoes too: eggs near the hot ground
       else if (id === B.SAND && S[k] > 0.02 && r < 0.01) put = B.FERN;
       if (put) d[base + ((t + 1) << CS2)] = put;
     }
