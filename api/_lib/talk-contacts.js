@@ -7,6 +7,7 @@
 
    عبر act في talk-room.js (POST /api/system?action=room) — كلّها تحتاج جلسة (who):
      contacts     {}                        -> { me: { phone: '+971•••••12' | null, name }, list: [{ phone, name, onApp }] }   (name: اسمه في الحساب ليكون اسمه في الغرفة)
+                                               (no number: me.linkVia = the channels the room can link it through — v-talk-room-phone)
      contact-add  { phone, name }           -> { ok, contact }       | bad-phone | self | full | slow-down
      contact-del  { phone }                 -> { ok }
      ring         { code, key, phone }      -> { ok, pushed }        صاحب الغرفة يتّصل بجهة على التطبيق (غرفته وبسرّها)
@@ -62,13 +63,20 @@ async function contactsAct(b, ip, K, who, opts) {
   if (op === 'contacts') {
     const list = await readList(K, me);
     let myPhone = null, myName = me;
-    let heal = null;
-    try { const u = await d.auth.getUser(me); myPhone = u && u.phone ? d.pl.maskPhone(u.phone) : null; myName = cleanLabel((u && (u.displayName || u.name)) || me) || me; heal = u && u.phone ? u.phone : null; } catch (e) { myPhone = null; }
+    let heal = null, uRec = null;
+    try { const u = await d.auth.getUser(me); uRec = u; myPhone = u && u.phone ? d.pl.maskPhone(u.phone) : null; myName = cleanLabel((u && (u.displayName || u.name)) || me) || me; heal = u && u.phone ? u.phone : null; } catch (e) { myPhone = null; }
     // v-talk-contacts-sync: ترميم ذاتيّ لفهرس بصمة رقمه (من ربط رقمه قبل الفهرس) — SETNX لا يكتب فوق شيء
     if (heal) { try { await K.kvSetIfAbsent('db/phone-hash/' + require('./phone-link.js').phoneHash(heal), JSON.stringify({ username: me })); } catch (e) { require('./_swallow.js').swallow({ message: 'hash self-heal failed' }, 'talk-contacts:heal'); /* رسالة ثابتة: لا بصمة في السجلّ */ } }
     const out = [];
     for (const c of list) out.push({ phone: c.phone, name: cleanLabel(c.name) || c.phone, onApp: !!(await ownerOf(d, c.phone)) });
-    return { status: 200, json: { me: { phone: myPhone, name: myName }, list: out } };
+    // v-talk-room-phone: no number yet — the free channels the room can link it through right there (one tap, like WhatsApp's first step)
+    const meOut = { phone: myPhone, name: myName };
+    if (!myPhone) {
+      meOut.linkVia = ['whatsapp', 'telegram'].filter((ch) => { try { return !!(d.pl.channelReady && d.pl.channelReady(ch, 'link')); } catch (e) { return false; } });
+      // the number becomes a way back into the account, so linking asks for the password (auth.js recoveryPasswordOk) — the box shows up front
+      try { meOut.linkPw = !!(uRec && require('./account-delete.js').needsPassword(uRec)); } catch (e) { meOut.linkPw = true; }
+    }
+    return { status: 200, json: { me: meOut, list: out } };
   }
   if (op === 'contact-add') {
     const phone = d.pl.normalizePhone(b.phone);
