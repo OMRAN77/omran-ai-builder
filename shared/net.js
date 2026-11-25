@@ -178,6 +178,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     if (!p || !m || typeof m !== 'object') return;
     if (m.t === 'me' && m.s && Array.isArray(m.s.p) && m.s.p.length === 3 && m.s.p.every(Number.isFinite)) { p.s = { p: m.s.p, yw: +m.s.yw || 0, pt: +m.s.pt || 0, mv: +m.s.mv || 0, look: m.s.look && typeof m.s.look === 'object' ? { c: cleanLook(m.s.look.c) } : String(m.s.look || '').slice(0, 20), gear: Array.isArray(m.s.gear) ? m.s.gear.slice(0, 4).map((n) => n | 0) : [] }; seen(id, p.name).s = p.s; }
     else if (m.t === 'do' && Array.isArray(m.a) && ['put', 'dig', 'door'].includes(m.a[0]) && okCell(m.a)) { const a = m.a.slice(0, 6); note(a); apply(a); toAll({ t: 'do', a }, id); }
+    else if (m.t === 'rtc' && m.type === 'offer' && typeof m.sdp === 'string' && local) addVoice(id, p, m.sdp);
     else if (m.t === 'hit') { const l = life(); if (l) l.remoteHit(m.e | 0, +m.pow || 0, id); }
     else if (m.t === 'feed') { const l = life(); if (l) l.remoteFeed(m.e | 0, id); }
     else if (m.t === 'name') { p.name = cleanName(m.name); seen(id, p.name); draw(); }
@@ -273,12 +274,33 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
   /** A room with no internet: no code from the site; each friend shows a QR code that the host photographs. */
   function hostLocal() {
     if (role) return false;
-    error = ''; busy = ''; role = 'host'; local = true; code = ''; myId = 'host'; pub = false; accepting = false;
+    error = ''; busy = ''; role = 'host'; local = true; code = ''; myId = 'host'; pub = false; accepting = false; voice.host = true;
     const l = life();
     if (l) l.setShare('host', (to, msg) => { const p = peers.get(to); if (p) send(p.dc, msg); }, () => [...peers].filter(([, p]) => p.s).map(([id, p]) => ({ id, x: p.s.p[0], y: p.s.p[1], z: p.s.p[2] })));
     play.shared = true;
     draw();
     return true;
+  }
+  // ---- the voice line of a room with no internet: not in the codes (it would double them), but added once the link is up,
+  // through the link itself: the guest asks with a new offer over the data channel, the host answers the same way
+  async function addVoice(id, p, sdp) {
+    try {
+      await p.pc.setRemoteDescription({ type: 'offer', sdp });
+      p.tx = p.pc.getTransceivers().find((t) => t.receiver && t.receiver.track && t.receiver.track.kind === 'audio') || null;
+      if (p.tx) p.tx.direction = 'sendrecv';
+      await p.pc.setLocalDescription(await p.pc.createAnswer());
+      send(p.dc, { t: 'rtc', type: 'answer', sdp: p.pc.localDescription.sdp });
+      voice.remix(); draw();
+    } catch (e) { /* no voice line on this link: the game still plays, and the chat still talks */ }
+  }
+  async function askVoice() {      // guest
+    const h = peers.get('host');
+    if (!h || h.tx) return;
+    try {
+      h.tx = h.pc.addTransceiver('audio', { direction: 'sendrecv' });
+      await h.pc.setLocalDescription(await h.pc.createOffer());
+      toHost({ t: 'rtc', type: 'offer', sdp: h.pc.localDescription.sdp });
+    } catch (e) { h.tx = null; /* no voice line on this link: the game still plays */ }
   }
   /** Host: a friend's code was read (photographed or pasted). True, or what was wrong with it. */
   async function takeOffer(text) {
@@ -307,6 +329,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
       play.shared = true;
       if (window.__GAME_SAVE) window.__GAME_SAVE.disabled = 'guest';      // from here on the world on screen is the host's: this player's own save is left as it is
       myCode = '';
+      if (local) askVoice();
       play.notice((local ? 'دخلت الغرفة بدون نت' : 'دخلت الغرفة ' + code) + '. صاحب الغرفة يتحكم بالوقت والجو والوحوش.', false, 6000);
       draw();
     } else if (m.t === 'ps' && Array.isArray(m.list)) {
@@ -319,6 +342,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     else if (m.t === 'ents' && Array.isArray(m.list)) { const l = life(); if (l) l.applySnapshot(m.list); }
     else if (m.t === 'hurt') { const l = life(); if (l) l.hurtPlayer(+m.d || 0); }
     else if (m.t === 'kill') { const l = life(); if (l) l.credit(m.kind === 'monster' ? 'monster' : m.kind === 'plant' ? 'plant' : 'animal', Array.isArray(m.drops) ? m.drops.slice(0, 4).filter((d) => Array.isArray(d)).map(([id, n]) => [id | 0, Math.min(4, n | 0)]) : Math.min(4, m.meat | 0)); }
+    else if (m.t === 'rtc' && m.type === 'answer' && typeof m.sdp === 'string' && local) { const h = peers.get('host'); if (h) h.pc.setRemoteDescription({ type: 'answer', sdp: m.sdp }).then(() => { voice.remix(); draw(); }).catch(() => { /* the answer did not fit: no voice line, the game still plays */ }); }
     else if (m.t === 'bye') gone(m.id);
     else if (m.t === 'role') { admin = !!m.admin; if (!admin) hostAsks.length = 0; play.notice(admin ? 'صاحب الغرفة خلّاك مشرف: تقدر تدخّل لاعبين وتطلّعهم.' : 'رجعت لاعب عادي.', false, 4500); draw(); }
     else if (m.t === 'asks' && Array.isArray(m.list)) { const had = hostAsks.length; hostAsks.length = 0; for (const a of m.list.slice(0, 8)) if (a && typeof a.id === 'string') hostAsks.push({ id: a.id.slice(0, 12), name: cleanName(a.name) }); if (hostAsks.length > had && play.sound) play.sound.ui(); draw(); }
@@ -380,7 +404,8 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     try { window.localStorage.setItem('bw-name', myName); } catch (e) { /* not kept */ }
     if (log.length > 0 && !join.fresh) { try { window.sessionStorage.setItem('bw-join', JSON.stringify({ local: 1, name: myName, world })); } catch (e) { /* no storage: join as things are */ } if (window.sessionStorage.getItem('bw-join')) { window.location.reload(); return false; } }
     error = ''; busy = 'أجهّز كودك…'; local = true; code = ''; draw();
-    const pc = new RTCPeerConnection(RTC_LOCAL), dc = pc.createDataChannel('bw');      // no voice line: it would make the code too big to photograph
+    const pc = new RTCPeerConnection(RTC_LOCAL), dc = pc.createDataChannel('bw');      // no voice line yet: it would make the code too big to photograph (askVoice adds it once linked)
+    pc.ontrack = (ev) => { if (ev.track.kind === 'audio') voice.hear('host', ev.streams[0] || new MediaStream([ev.track])); };
     peers.set('host', { pc, dc, tx: null });
     dc.onmessage = (e) => { let m = null; try { m = JSON.parse(e.data); } catch (err) { m = null; } fromHost(m); };
     dc.onclose = () => { if (role === 'guest') left('انقطع الاتصال بالغرفة.'); };
@@ -481,7 +506,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
       h += busy ? `<p>${esc(busy)}</p>` : `<button type="button" data-scan="offer">📷 صوّر كود صاحبك</button>`;
       h += '<ul>' + [...peers].filter(([, p]) => !p.reply).map(([id, p]) => `<li><span>${esc(p.name)}</span><small>${p.dc && p.dc.readyState === 'open' ? (p.admin ? 'مشرف' : 'لاعب عادي') : 'يتصل…'}</small><button type="button" class="soft" data-admin="${id}" data-on="${p.admin ? 0 : 1}">${p.admin ? 'خلّه عادي' : 'خلّه مشرف'}</button><button type="button" class="no" data-kick="${id}">طلّعه</button></li>`).join('') + '</ul>';
       if (!peers.size) h += '<p>ما حد في الغرفة للحين.</p>';
-      h += '<p style="font-size:12px;opacity:.7">الصوت ما يشتغل في الغرفة بدون نت، بس الكتابة والوجوه تشتغل.</p>' + chatBtn() + (party ? `<button type="button" class="soft" data-contest="1">${party.contest.on || party.contest.voting ? 'المسابقة شغّالة' : 'ابدأ مسابقة بناء (5 دقايق)'}</button>` : '');
+      h += talk() + chatBtn() + (party ? `<button type="button" class="soft" data-contest="1">${party.contest.on || party.contest.voting ? 'المسابقة شغّالة' : 'ابدأ مسابقة بناء (5 دقايق)'}</button>` : '');
       h += '<button type="button" class="no" data-leave="1">سكّر الغرفة</button>';
     } else if (role === 'host') {
       h += pub && code ? '<p><b>غرفة عامة:</b> تطلع في قائمة «الغرف العامة» عند أي لاعب في نفس العالم، وأنت تختار منو يدخل.</p>' : '';
@@ -495,7 +520,7 @@ export function createNet({ play, kit, camera, world, adv, fontFamily, accent, l
     } else if (role === 'guest') {
       h += `<p>${local ? 'أنت في <b>غرفة بدون نت</b>' : `أنت في الغرفة <b dir="ltr">${code}</b>`}${admin ? '، وأنت <b>مشرف</b>: تقدر تدخّل لاعبين وتطلّعهم' : ''}. صاحب الغرفة يتحكم بالوقت والجو والوحوش.</p><ul>`
         + (admin ? hostAsks.map((a) => `<li class="ask"><span>${esc(a.name)}</span><small>يبي يدخل</small><button type="button" data-admit="${a.id}">دخّله</button><button type="button" class="no" data-deny="${a.id}">ارفض</button></li>`).join('') : '')
-        + [...others].map(([id, o]) => `<li><span>${esc(o.name)}</span><small>${id === 'host' ? 'صاحب الغرفة' : o.admin ? 'مشرف' : 'لاعب عادي'}</small>${admin && id !== 'host' && !o.admin ? `<button type="button" class="no" data-kick="${id}">طلّعه</button>` : ''}</li>`).join('') + '</ul>' + (local ? '' : talk()) + chatBtn() + '<button type="button" class="no" data-leave="1">اطلع من الغرفة</button>';
+        + [...others].map(([id, o]) => `<li><span>${esc(o.name)}</span><small>${id === 'host' ? 'صاحب الغرفة' : o.admin ? 'مشرف' : 'لاعب عادي'}</small>${admin && id !== 'host' && !o.admin ? `<button type="button" class="no" data-kick="${id}">طلّعه</button>` : ''}</li>`).join('') + '</ul>' + talk() + chatBtn() + '<button type="button" class="no" data-leave="1">اطلع من الغرفة</button>';
     } else if (local && myCode) {
       h += codeBox(myCode, 'الكود', '<p>خل صاحب الغرفة يصوّر هذا الكود (عنده: «العب مع ربعك» ← «صوّر كود صاحبك»). لازم تكونون على نفس الواي فاي أو الهوتسبوت.</p>',
         '<button type="button" data-scan="answer">📷 صوّر رد صاحب الغرفة</button><button type="button" class="soft" data-leave="1">إلغاء</button>');

@@ -216,4 +216,7 @@ test('غرفة بدون نت: كود الاتصال يتغلّف ويرجع نف
   assert.match(net, /const RTC_LOCAL = \{ iceServers: \[\] \}/, 'بدون نت: ما يدوّر خادم STUN');
   assert.match(net, /if \(local\) p\.reply = await packCode\('answer'/, 'صاحب الغرفة يرد بكود يتصوّر، مو من الموقع');
   assert.match(net, /if \(!local\) call\(\{ op: 'close'/, 'سكّر الغرفة بدون نت ما يكلّم الموقع');
+  assert.match(net, /if \(local\) askVoice\(\);/, 'الصوت: الضيف يطلب خط الصوت أول ما يدخل');
+  assert.match(net, /m\.t === 'rtc' && m\.type === 'offer' && typeof m\.sdp === 'string' && local\) addVoice/, 'وصاحب الغرفة يرد عليه من نفس الخط، بدون كود ثاني');
+  assert.ok(!/الصوت ما يشتغل في الغرفة بدون نت/.test(net), 'أزرار المايك موجودة في الغرفة بدون نت');
 });

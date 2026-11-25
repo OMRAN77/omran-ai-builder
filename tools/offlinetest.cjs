@@ -101,7 +101,16 @@ fs.mkdirSync(outdir, { recursive: true });
     await panelOf(B.page);
     await B.page.fill('#netPanel input.n', 'مزون');
     await B.page.click('#netPanel [data-ljoin]');
-    const coded = await until(B.page, () => !!window.__GAME_NET.myCode, 15000);
+    // a guest whose world already changed starts it afresh first (as with a code over the internet): the page opens again,
+    // the player presses start, and the code shows by itself
+    await B.page.waitForTimeout(1500);
+    if (!(await B.page.evaluate(() => !!(window.__GAME_NET && window.__GAME_NET.myCode)).catch(() => false))) {
+      await B.page.waitForFunction(() => window.__READY === true && !!window.__play, null, { timeout: 240000 });
+      report.guestStartedAfresh = true;
+      await B.page.evaluate(() => { const p = window.__play; p.start = () => { p.state.running = true; }; if (window.__GAME_LIFE) window.__GAME_LIFE.setMonsters(false); });
+      await B.page.click('#playPanel button');
+    }
+    const coded = await until(B.page, () => !!(window.__GAME_NET && window.__GAME_NET.myCode), 20000);
     const gcode = await B.page.evaluate(async () => {
       const n = window.__GAME_NET, img = document.querySelector('#netPanel img.qr'), { readQR } = await import('./shared/localroom.js');
       await img.decode();
@@ -136,6 +145,16 @@ fs.mkdirSync(outdir, { recursive: true });
     const gText = await B.page.evaluate(() => document.querySelector('#netPanel .box').textContent);
     check('the guest is in the room, linked straight to the host over the local network (the site answering nothing)', joined && link.peers === 1 && link.open && gText.includes('غرفة بدون نت') && report.siteStillDown, { joined, link, siteDown: report.siteStillDown });
     await shot(B.page, 'o6-guest-in');
+
+    // ---- the voice line: added through the room's own link once it is up (it is not in the codes), then sound both ways
+    const lined = await until(B.page, () => { const h = window.__GAME_NET.peers.get('host'); return !!(h && h.tx && h.tx.currentDirection === 'sendrecv'); }, 15000);
+    const hostLine = await A.page.evaluate(() => { const p = [...window.__GAME_NET.peers.values()][0]; return !!(p && p.tx && p.tx.currentDirection === 'sendrecv'); });
+    const mics = [await B.page.evaluate(() => window.__GAME_NET.voice.setMic(true)), await A.page.evaluate(() => window.__GAME_NET.voice.setMic(true))];
+    const got = (page) => page.evaluate(async () => { let n = 0; for (const p of window.__GAME_NET.peers.values()) { const st = await p.pc.getStats(); st.forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'audio') n += r.bytesReceived || 0; }); } return n; });
+    let hostHears = 0, guestHears = 0;
+    for (let t0 = Date.now(); (hostHears < 2000 || guestHears < 2000) && Date.now() - t0 < 15000;) { await both(3); hostHears = await got(A.page); guestHears = await got(B.page); }
+    const panelMic = await B.page.evaluate(() => { const b = document.querySelector('#netPanel [data-mic]'); return b ? b.textContent : null; });
+    check('the voice line is added once linked, with no new code, and each hears the other', lined && hostLine && mics[0] === true && mics[1] === true && hostHears >= 2000 && guestHears >= 2000 && !!panelMic, { lined, hostLine, mics, hostHears, guestHears, panelMic });
 
     // ---- what one does, the other sees
     for (const x of [A, B]) await x.page.evaluate(() => { const b = document.querySelector('#netPanel [data-back]'); if (b) b.click(); window.__game.panel.hide(); window.__play.state.running = true; });
