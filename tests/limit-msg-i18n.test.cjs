@@ -63,14 +63,26 @@ test('١. المفاتيح الثمانية بالـ١٤ لغة: مترجمة ف
     ['Free reply', 'Free messages used up for today', 'Trial messages used up', 'Upgrade to Pro', 'Sign up free']);
 });
 
-function helper(l) {
+// كاشف اللغة الحقيقيّ من app-02 (السكربت أوّلًا ثمّ اللاتينيّ) — نفسه المستعمَل للصوت
+function detectSrc() {
+  const a2 = read('js/app-02-tts.js');
+  const s = a2.indexOf('function detectSpeechLang(');
+  assert.ok(s > 0, 'detectSpeechLang غير موجودة في app-02');
+  return a2.slice(s, a2.indexOf('\n}\n', s) + 3);
+}
+// يحمّل omranTierLimitLang + omranTierLimitText معًا، مع I18N وgetCurrent وكاشف اللغة.
+// userText = آخر ما كتبه المستخدم (يحدّد اللغة)؛ فارغ = لا رسائل، فترجع للغة الواجهة l.
+function helper(l, userText) {
   const a4 = read('js/app-04-i18n-state.js');
-  const s = a4.indexOf('function omranTierLimitText(');
-  assert.ok(s > 0, 'omranTierLimitText غير موجودة في app-04');
-  const src = a4.slice(s, a4.indexOf('\n}\n', s) + 3);
-  const ctx = { lang: l, t: tFor(l), String };
+  const s = a4.indexOf('function omranTierLimitLang(');
+  assert.ok(s > 0, 'omranTierLimitLang غير موجودة في app-04');
+  const e = a4.indexOf('\n}\n', a4.indexOf('function omranTierLimitText(', s)) + 3;
+  const src = a4.slice(s, e);
+  const msgs = userText ? [{ role: 'user', content: userText }] : [];
+  const ctx = { lang: l, String, Array, I18N: {}, getCurrent: () => ({ messages: msgs }), __swallow() {} };
+  for (const lg of ALL) ctx.I18N[lg] = D[lg];
   vm.createContext(ctx);
-  vm.runInContext(src, ctx);
+  vm.runInContext(detectSrc() + '\n' + src, ctx);
   return ctx.omranTierLimitText;
 }
 
@@ -89,6 +101,21 @@ test('٢. omranTierLimitText: العربيّة بنصّ الخادم، وكلّ 
     assert.equal(f({ role: 'assistant', tier: 'free', content: 'Hi there' }), 'Hi there', l + ': ردّ عاديّ');
     assert.equal(f({ role: 'assistant', content: 'plain' }), 'plain', l + ': بلا طبقة');
   }
+});
+
+test('٢-ب. v-limit-msg-lang: الرسالة تتبع لغة كتابة المستخدم لا الواجهة («الاثنين»)', () => {
+  // لقطة المالك: الواجهة عربيّة والمستخدم يكتب إنجليزيًّا → الرسالة إنجليزيّة لا عربيّة
+  const arUiEnUser = helper('ar', 'How many free messages do I get per day?');
+  assert.equal(arUiEnUser({ role: 'assistant', tier: 'free-limit', content: SERVER_FREE }), D.en.chatFreeLimitMsg, 'واجهة عربيّة + كتابة إنجليزيّة → إنجليزيّ');
+  assert.doesNotMatch(arUiEnUser({ role: 'assistant', tier: 'free-limit', content: SERVER_FREE }), ARABIC, 'لا عربيّ للمستخدم الإنجليزيّ');
+  // والعكس: الواجهة إنجليزيّة والمستخدم يكتب عربيًّا → نصّ الخادم العربيّ بأرقامه
+  const enUiArUser = helper('en', 'كم رسالة مجانية لي في اليوم؟');
+  assert.equal(enUiArUser({ role: 'assistant', tier: 'guest-limit', content: SERVER_GUEST }), SERVER_GUEST, 'واجهة إنجليزيّة + كتابة عربيّة → نصّ الخادم');
+  // لغات أخرى بالكتابة تتجاوز واجهة عربيّة
+  assert.equal(helper('ar', 'Bonjour, combien de messages par jour ?')({ role: 'assistant', tier: 'free-limit', content: SERVER_FREE }), D.fr.chatFreeLimitMsg, 'كتابة فرنسيّة → فرنسيّ');
+  assert.equal(helper('ar', 'मुझे प्रतिदिन कितने संदेश मिलते हैं?')({ role: 'assistant', tier: 'free-limit', content: SERVER_FREE }), D.hi.chatFreeLimitMsg, 'كتابة هنديّة → هنديّ');
+  // بلا رسائل مستخدم: ترجع للغة الواجهة
+  assert.equal(helper('tr')({ role: 'assistant', tier: 'free-limit', content: SERVER_FREE }), D.tr.chatFreeLimitMsg, 'بلا كتابة → لغة الواجهة');
 });
 
 // الشارة فوق الردّ في DOM مزيّف: العنوان والزرّ من t() لكلّ لغة

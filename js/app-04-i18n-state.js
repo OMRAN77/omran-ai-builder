@@ -2012,10 +2012,35 @@ function omranRenderOptions(host, blocks){
 /* v-limit-msg-i18n (تدقيق ١٨–١٩ أكتوبر): ردّ نفاد الرسائل المجّانيّة/التجربة نصّ عربيّ ثابت من الخادم (tier.js FREE_TEXT) يُحفظ
    محتوى الرسالة كما هو، فظهر عربيًّا في الإنجليزيّ وبقيّة اللغات. الترجمة عند العرض وحده: العربيّة بنصّ الخادم بأرقامه، وغيرها
    بمفتاح بلا أرقام (السقوف من الخادم وحده). أيّ ردّ آخر يُعرض كما هو. */
+/* v-limit-msg-lang (طلب المالك ٢٥ نوفمبر، من لقطة: الواجهة عربيّة والمستخدم يكتب إنجليزيًّا فطلعت رسالة الحدّ عربيّة — «الاثنين»):
+   اللغة تتبع ما يكتبه المستخدم فعلًا (كشف detectSpeechLang نفسه المستعمَل للصوت: السكربت أوّلًا ثمّ اللاتينيّ)، وترجع للغة
+   الواجهة حين لا يتبيّن نصّ المستخدم. العربيّة تبقى بنصّ الخادم بأرقامه، وبقيّة اللغات بمفتاحها. */
+function omranTierLimitLang(){
+  var lc = (typeof lang === 'string' && lang) ? lang : 'ar';
+  try{
+    var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+    var msgs = (cur && Array.isArray(cur.messages)) ? cur.messages : [];
+    var txt = '';
+    for(var i = msgs.length - 1; i >= 0; i--){
+      var mm = msgs[i];
+      if(mm && mm.role === 'user' && typeof mm.content === 'string' && mm.content.trim()){ txt = mm.content; break; }
+    }
+    if(txt && typeof detectSpeechLang === 'function'){
+      var d = detectSpeechLang(txt);
+      if(d && typeof I18N !== 'undefined' && I18N[d]) lc = d;
+    }
+  }catch(e){ if(typeof __swallow === 'function') __swallow(e, 'tierLimit:lang'); }
+  return lc;
+}
 function omranTierLimitText(m){
   const tier = m && m.tier;
-  if((tier !== 'free-limit' && tier !== 'guest-limit') || typeof lang === 'undefined' || lang === 'ar') return m ? m.content : '';
-  return t(tier === 'guest-limit' ? 'chatGuestLimitMsg' : 'chatFreeLimitMsg');
+  if(tier !== 'free-limit' && tier !== 'guest-limit') return m ? m.content : '';
+  const lc = omranTierLimitLang();
+  if(lc === 'ar') return m ? m.content : ''; // العربيّة: نصّ الخادم بأرقامه (٥٠–٢٥٠)
+  const key = tier === 'guest-limit' ? 'chatGuestLimitMsg' : 'chatFreeLimitMsg';
+  const dict = (typeof I18N !== 'undefined') ? (I18N[lc] || I18N.en) : null;
+  const s = dict && dict[key];
+  return (typeof s === 'string' && s) ? s : (m ? m.content : '');
 }
 /* v-long-reply-off (طلب المالك ١٨ سبتمبر): الردّ الطويل يُعرض كاملًا في المحادثة بلا قصّ ولا
    أزرار — أُزيل القناع وزرّا القراءة والطيّ ولوحة القراءة التي كانت هنا (v-long-reply). */
