@@ -1037,6 +1037,7 @@ export function createPlayPanel(o) {
     hide() { el.hidden = true; },
     get view() { return view; }, go,
   };
+  window.__GAME_PAUSE = () => api.show('pause');      // something outside the panel (a room with no internet) hands the player back to it
   // opened from the first page: the corner buttons «تبديل العالم» and «الإعدادات», and the window that moves to another world
   if (window.__GAME && window.__GAME.key) import('./switcher.js').then((m) => { m.mountSwitcher({ panel: api, onStart: o.onStart, fontFamily: el.style.fontFamily }); if (!el.hidden && view === 'main') draw(); }).catch((e) => { console.warn('world switcher', e); });
   return api;

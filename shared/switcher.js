@@ -95,7 +95,9 @@ export function mountSwitcher({ panel, onStart, fontFamily }) {
   }
   // over the start / pause panel the buttons stay only where they do not cover it (that panel has «تبديل العالم» too)
   function sync() {
-    let hide = !box.hidden;
+    const play = window.__GAME_PLAY, playing = !!(play && play.state.running && !play.state.modal);
+    const over = ['netPanel', 'bag', 'chatBox'].some((id) => { const e = document.getElementById(id); return e && !e.hidden; });
+    let hide = !box.hidden || over || (panel.el.hidden && !playing);      // another window (the room panel, the bag) is up or has the game paused: keep out of its way
     if (!hide && !panel.el.hidden) {
       corner.hidden = false;
       const p = panel.el.querySelector('.box:not([hidden])'), a = p && p.getBoundingClientRect(), c = corner.getBoundingClientRect();
@@ -106,7 +108,7 @@ export function mountSwitcher({ panel, onStart, fontFamily }) {
   place(); sync(); setTimeout(() => { place(); sync(); }, 600);
   new MutationObserver(sync).observe(panel.el, { attributes: true, attributeFilter: ['hidden'], childList: true, subtree: true });
   window.addEventListener('resize', () => setTimeout(() => { place(); sync(); }, 120));
-  setInterval(() => { if (box.hidden) { place(); sync(); } }, 2500);
+  setInterval(() => { if (box.hidden) { place(); sync(); } }, 1000);
 
   // pause: stop the game first so that letting the mouse go does not open the pause panel on top of this window
   function pause() {

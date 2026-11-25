@@ -5,3 +5,5 @@ fonts/ibm-plex-sans-arabic/               IBM Plex Sans Arabic, SIL Open Font Li
 fonts/tajawal/                            Tajawal, SIL Open Font License 1.1 (via @fontsource)
 fonts/reem-kufi/                          Reem Kufi, SIL Open Font License 1.1 (via @fontsource)
 fonts/rajdhani/                           Rajdhani, SIL Open Font License 1.1 (via @fontsource)
+qr/qrcode.module.js                       qrcode-generator 2.0.4 (npm), MIT License, (c) 2009 Kazuhiko Arase
+qr/jsQR.js                                jsQR 1.4.0 (npm), Apache License 2.0, (c) Cosmo Wolfe — full text in qr/LICENSE-jsQR.txt

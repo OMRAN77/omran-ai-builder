@@ -49,6 +49,8 @@
   .card button[disabled] { background: var(--line); color: var(--faint); cursor: default; }
   .card.kawkab { --acc: #f39a52; } .card.waha { --acc: #9ee6a8; } .card.dhalam { --acc: #a8aeb6; }
   #menu .foot { margin: 20px 0 0; font-size: 13px; line-height: 1.8; color: var(--faint); }
+  #menu .offline { margin: -4px 0 10px; font-size: 13.5px; line-height: 1.7; color: #9ee6a8; font-weight: 700; }
+  #menu .offline[hidden] { display: none; }
   /* the player's own rules for the world, and joining a friend by their room's code */
   .setup { display: grid; grid-template-columns: 1fr minmax(260px, 340px); gap: 16px; margin: 18px 0 0; }
   .rules, .join { border-radius: 14px; background: var(--panel); border: 1px solid var(--line); padding: 12px 16px 14px; }
@@ -126,6 +128,7 @@
     <h1>عالم المكعبات</h1>
   </header>
   <h2 class="pick">اختر عالمك للعب</h2>
+  <p class="offline" hidden></p>
   <section class="cards">
     <article class="card dhalam"><span class="badge" aria-hidden="true">👻</span><img src="./previews/dhalam.webp" alt="منظر عالم ظلام" width="800" height="450"><div class="body"><h2>ظلام</h2><p>مرتفعات باردة ما لها آخر، وغابة صنوبر وأطلال قلعة: جسور ما تبين إلا بالنور، وأبراج ضباب، و«نوّور» يدلّك على الكنوز، وغرف ساعات.</p><button type="button" data-world="dhalam">العب</button></div></article>
     <article class="card dino"><span class="badge" aria-hidden="true">🦖</span><img src="./previews/dino.webp" alt="منظر عالم الديناصورات" width="800" height="450"><div class="body"><h2>عالم الديناصورات</h2><p>غابات حارّة ومستنقعات وبراكين تدخّن، وديناصورات: عمالقة طوال الرقبة تصادقهم، وأبو ثلاث قرون، وملك الأنياب. توصل له كذلك من البوابة في أي عالم.</p><button type="button" data-world="dino">العب</button></div></article>
@@ -222,7 +225,7 @@
       sessionStorage.setItem('bw-join', JSON.stringify({ code, name, world: j.world }));
       jmsg.textContent = '';
       launch(j.world);
-    } catch (err) { jmsg.textContent = 'ما قدرت أوصل للغرف. تأكد من النت.'; }
+    } catch (err) { jmsg.textContent = 'ما قدرت أوصل للغرف. بدون نت؟ افتحوا نفس العالم، ومن «العب مع ربعك» اختاروا «بدون نت».'; }
   });
   const loading = document.getElementById('loading');
 
@@ -279,6 +282,27 @@
       await import(new URL(page.module, base).href);
       loading.hidden = true;
     } catch (err) { fail(err); }
+  }
+
+  // ---- no internet: the service worker keeps every file of the game on this device (sw.js, written by tools/offline.cjs)
+  const offline = document.querySelector('#menu .offline');
+  async function showOffline() {
+    if (!offline || !window.caches) return;
+    let kept = false;
+    try { kept = !!(await caches.match(new URL('__bw_ready', location.href).href)); } catch (e) { kept = false; }
+    if (kept) { offline.hidden = false; offline.textContent = navigator.onLine === false ? '✓ أنت بدون نت، واللعبة شغّالة من جهازك. تلعبون مع بعض بدون نت من «العب مع ربعك» ← «بدون نت».' : '✓ اللعبة محفوظة في جهازك: تشتغل بدون نت، وتلعبون مع بعض على نفس الواي فاي أو هوتسبوت الجوال.'; }
+  }
+  if ('serviceWorker' in navigator && /^https:|^http:\/\/(localhost|127\.0\.0\.1)/.test(location.href)) {
+    // a few seconds after the page has loaded, so that keeping the game (6.5 MB) does not slow a world that is opening
+    const later = (f) => { const go = () => setTimeout(f, 4000); if (document.readyState === 'complete') go(); else window.addEventListener('load', go, { once: true }); };
+    later(() => navigator.serviceWorker.register('./sw.js').then((reg) => {
+      showOffline();
+      const done = () => setTimeout(showOffline, 300);
+      if (reg.installing) reg.installing.addEventListener('statechange', (e) => { if (e.target.state === 'activated' || e.target.state === 'installed') done(); });
+      reg.addEventListener('updatefound', () => { if (reg.installing) reg.installing.addEventListener('statechange', (e) => { if (e.target.state === 'installed') done(); }); });
+    }).catch((e) => { console.warn('offline', e); }));
+    showOffline();
+    window.addEventListener('online', showOffline); window.addEventListener('offline', showOffline);
   }
 
   const want = location.hash.slice(1);

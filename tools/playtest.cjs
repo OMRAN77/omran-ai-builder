@@ -172,9 +172,12 @@ function serve(root, prefix) {
       const lx = vw.width * 0.62, ly = vw.height * 0.45;
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: st.x, y: st.y - st.h * 0.4, id: 1 }, { x: lx, y: ly, id: 2 }] });
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: st.x, y: st.y - st.h * 0.4, id: 1 }, { x: lx + 80, y: ly, id: 2 }] });
-      await page.waitForTimeout(100);
-      const yaw1 = (await snap()).yaw;
-      check('touch: dragging on the screen turns the view', Math.abs(yaw1 - yaw0) > 0.2, { yaw0, yaw1 });
+      // a move is handed to the page with the next drawn frame, and a software-drawn frame can take longer than 100 ms
+      // (more so while the game is being kept for no internet): wait for it, up to a second and a half
+      let yaw1 = yaw0;
+      for (let t0 = Date.now(); Math.abs(yaw1 - yaw0) <= 0.2 && Date.now() - t0 < 1500;) { await page.waitForTimeout(50); yaw1 = (await snap()).yaw; }
+      const why = await page.evaluate(([x, y]) => { const s = window.__play.state, e = document.elementFromPoint(x, y); return { running: s.running, modal: s.modal, at: e ? e.tagName + '#' + e.id : null }; }, [lx, ly]);
+      check('touch: dragging on the screen turns the view', Math.abs(yaw1 - yaw0) > 0.2, { yaw0, yaw1, ...why });
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
       await page.waitForTimeout(100);
       check('touch: releasing the stick stops', (await page.evaluate(() => window.__play.input.fz)) === 0);
@@ -417,8 +420,9 @@ function serve(root, prefix) {
         // with a full hotbar the meat is in the backpack: the player moves it to a square (the bag does this) before eating
         if (meat && !s.slots.includes(meat)) { const k = s.slots.length - 1, i = s.pack.indexOf(meat); s.pack[i] = s.slots[k]; s.slots[k] = meat; p.changed(); }
         // eat: the place button on the meat square
-        // look at the ground while eating: with the trader under the crosshair the same button would open his page instead
-        if (meat) { p.select(s.slots.indexOf(meat)); v.hp = 40; if (v.food != null) v.food = 30; const n0 = meat.n; s.pitch = -1.45; p.advance(1 / 60); p.placeNow(); out.ate = { hp: v.hp, food: v.food ?? null, used: n0 - meat.n }; }
+        // look up at the sky while eating: with the trader under the crosshair the same button would open his page instead,
+        // and after the hunt the player may stand right beside him, where even looking down at the ground finds him
+        if (meat) { p.select(s.slots.indexOf(meat)); v.hp = 40; if (v.food != null) v.food = 30; const n0 = meat.n; s.pitch = 1.45; p.advance(1 / 60); p.placeNow(); out.ate = { hp: v.hp, food: v.food ?? null, used: n0 - meat.n }; }
         // a monster comes and hurts
         keep(); v.hp = 100;
         const mk = life.kinds.find((k) => k.kind === 'monster');

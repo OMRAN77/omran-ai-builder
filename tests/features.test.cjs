@@ -183,3 +183,37 @@ test('الغرف في العوالم اللانهائية: صاحب الغرفة
   assert.ok(!/n < 4096/.test(net), 'الحدّ الثابت القديم راح');
   assert.match(net, /lim = \[W\.sx \|\| 16384, W\.sy \|\| 256, W\.sz \|\| 16384\]/);
 });
+
+test('بدون نت: اللعبة كلها محفوظة في الجهاز (sw.js محدّث بكل ملفات اللعبة)، والـapi ما ينحفظ', () => {
+  const { build, list } = require('../tools/offline.cjs');
+  assert.equal(read('sw.js'), build(), 'sw.js قديم: شغّل «node tools/offline.cjs»');
+  const files = list().map((f) => f[0]);
+  for (const f of ['', 'manifest.webmanifest', 'shared/play.js', 'shared/net.js', 'shared/localroom.js', 'vendor/three.module.js', 'vendor/qr/jsQR.js', 'vendor/qr/qrcode.module.js', 'styles/barari/index.html', 'styles/dino/main.js', 'previews/kawkab.webp'])
+    assert.ok(files.includes(f), 'محفوظ: ' + (f || 'الصفحة الأولى'));
+  assert.ok(!files.some((f) => /^(api|tests|tools|knowledge)\//.test(f)), 'ما ينحفظ إلا ملفات اللعبة');
+  const sw = read('sw.js');
+  assert.match(sw, /rel\.startsWith\('api\/'\)[^\n]*return;/, 'الغرف والحفظ السحابي يروحون للشبكة دايم');
+  const html = read('index.html');
+  assert.match(html, /navigator\.serviceWorker\.register\('\.\/sw\.js'\)/);
+  assert.match(html, /اللعبة محفوظة في جهازك/);
+  assert.match(read('vercel.json'), /camera=\(self\)/, 'الكاميرا مسموحة عشان تصوير كود الغرفة');
+});
+
+test('غرفة بدون نت: كود الاتصال يتغلّف ويرجع نفسه، والكود الغلط ينرفض', async () => {
+  const { packCode, unpackCode, trimSdp } = await esm('shared/localroom.js');
+  const sdp = 'v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=candidate:1 1 udp 2113937151 0b5c9f1e-1111-2222-3333-444455556666.local 50000 typ host generation 0 network-cost 999\r\na=ice-ufrag:abcd\r\na=ice-pwd:0123456789abcdefghijklmn\r\na=fingerprint:sha-256 33:EC:75:CD:C4:F1:6D:14:CA:A7:E5:C4:57:EE:11:9E:6E:E2:CB:16:B6:FF:DC:DE:C3:00:DA:35:E4:52:82:90\r\na=setup:actpass\r\na=mid:0\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n';
+  const t = trimSdp(sdp);
+  assert.ok(!/extmap-allow-mixed|msid-semantic|generation|network-cost/.test(t) && /a=fingerprint/.test(t) && t.endsWith('\r\n'));
+  const offer = await packCode('offer', { world: 'barari', name: 'مزون' }, sdp);
+  assert.match(offer, /^BWO1\.barari\./);
+  assert.ok(offer.length < 700, 'صغير يكفي لصورة QR تنقرا من شاشة جوال: ' + offer.length);
+  const back = await unpackCode(offer);
+  assert.deepEqual([back.kind, back.world, back.name, back.sdp], ['offer', 'barari', 'مزون', t]);
+  const ans = await unpackCode(await packCode('answer', { id: 'l3' }, sdp));
+  assert.deepEqual([ans.kind, ans.id], ['answer', 'l3']);
+  for (const bad of ['', 'hello', 'BWO1.barari.x', 'BWA1.l1.zAAAA', 'BWO1.barari.' + 'eA.' + 'r' + Buffer.from('not sdp').toString('base64')]) assert.equal(await unpackCode(bad), null, bad);
+  const net = read('shared/net.js');
+  assert.match(net, /const RTC_LOCAL = \{ iceServers: \[\] \}/, 'بدون نت: ما يدوّر خادم STUN');
+  assert.match(net, /if \(local\) p\.reply = await packCode\('answer'/, 'صاحب الغرفة يرد بكود يتصوّر، مو من الموقع');
+  assert.match(net, /if \(!local\) call\(\{ op: 'close'/, 'سكّر الغرفة بدون نت ما يكلّم الموقع');
+});
