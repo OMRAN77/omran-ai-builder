@@ -325,6 +325,8 @@ I18N['id'] = {
     "emailConfirmSend": "Kirim kode",
     "recoveryHintTitle": "Tambahkan email Anda agar akun dan langganan bisa dipulihkan jika Anda lupa kata sandi",
     "recoveryHintAdd": "Tambah email",
+    "friendsHintTitle": "Biar temanmu bisa menemukan dan meneleponmu di Ruang teman",
+    "friendsHintGo": "Atur",
     "acctNetError": "Tidak dapat terhubung ke server, periksa koneksi Anda",
     "acctAvatarTooBig": "Gambar terlalu besar, pilih yang lebih kecil",
     "providerColorsLabel": "🤖 Warna setiap penyedia AI (ditampilkan di samping namanya dalam obrolan)",

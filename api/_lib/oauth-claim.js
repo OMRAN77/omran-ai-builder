@@ -56,7 +56,7 @@ module.exports = async (req, res) => {
       return;
     }
     await kvDel(key); // استلام واحد — لا يُعاد تسليم الجلسة مرتين
-    res.status(200).json({ token: rec.token, user: rec.user, avatar: rec.avatar || '' });
+    res.status(200).json({ token: rec.token, user: rec.user, avatar: rec.avatar || '', isNew: rec.isNew === true });      // v-talk-room-simple
   } catch (e) {
     res.status(500).json({ error: 'server' });
   }

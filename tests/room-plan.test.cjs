@@ -148,7 +148,8 @@ test('صاحب الغرفة المجّانيّة يرى الدقائق البا�
   assert.ok(!sc.includes('data-sub='), 'لا زرّ اشتراك للمشترك');
   c.ctx.setPlan({ plan: 'own', cap: 10, left: null, sub: null, cost: 37 });
   assert.equal(c.ctx.planCard(), '', 'صاحب التطبيق وVIP: لا بطاقة');
-  assert.match(fnSrc(html, 'function draw('), /\+ planCard\(\) \+ '<div class="card"><h2>' \+ T\.joinCode/, 'البطاقة في الشاشة الأولى');
+  assert.match(fnSrc(html, 'function homeView('), /if \(moreOpen\) h \+= planCard\(\) \+ '<div class="card"><h2>' \+ T\.joinCode/, 'البطاقة في الشاشة الأولى تحت «أكثر» (v-talk-room-simple)');
+  assert.match(fnSrc(html, 'function homeView('), /\+ setupCard\(\) \+ \(planNeed\(\) && !moreOpen \? planCard\(\) : ''\)/, 'وتطلع وحدها عند الحدّ');
 });
 
 test('{timeUp:true}: الغرفة تُسكَّر للكلّ (closeRoom) وتظهر «خلصت ساعتك المجانية» مع زرّ الاشتراك؛ وفتح غرفة بعدها يُرفض بالرسالة نفسها', async () => {

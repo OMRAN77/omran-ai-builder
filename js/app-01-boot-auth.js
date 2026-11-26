@@ -567,6 +567,7 @@ try{
     }
     emailConfirmAlert(null); // v-unverified-email: تنبيه الحساب لا يبقى بعد خروجه
     recoveryAlert(false); // v-recovery-hint
+    { const fb = $('#friendsHintBar'); if(fb) fb.remove(); } // v-talk-room-simple
     pushDropDevice(authGet('aiapp_auth_token')); // v-audit-boot (srv-maha-6): الرمز قبل مسحه
     authRemove('aiapp_auth_token');
     authRemove('aiapp_username');
@@ -1475,6 +1476,7 @@ try{
             authSet('aiapp_username', d.user);
             if(d.avatar) localStorage.setItem('aiapp_avatar', d.avatar);
             noteSession('جوجل-جسر-آيفون');
+            if(d.isNew === true && typeof freshHint === 'function') freshHint(); // v-talk-room-simple: حساب أُنشئ الآن
             onAuthed(d.user, d.avatar || null);
           } else if(d && d.error) claimFail(d.error, pk ? '' : st);
         }
@@ -1627,6 +1629,7 @@ try{
         if(mode === 'login' && res.status === 401 && username.indexOf('@') !== -1) googleLoginHint(); // v-google-login-help
         return;
       }
+      const freshAcct = mode === 'signup' && !window.__pendingCheckoutPlan; // v-talk-room-simple: حساب جديد، وليس في طريقه للدفع (onAuthed تصفّر الخطّة المعلّقة)
       authSet('aiapp_auth_token', data.token);
       if(mode === 'signup'){
         localStorage.removeItem('aiapp_pending_ref');
@@ -1634,6 +1637,7 @@ try{
       onAuthed(data.username, data.avatar);
       emailConfirmAlert(data.emailToConfirm); // v-unverified-email
       recoveryAlert(data.addRecovery); // v-recovery-hint
+      if(freshAcct) friendsAlert(); // v-talk-room-simple
     } catch(e){
       errBox.textContent = netErr();
     } finally {
@@ -1960,6 +1964,49 @@ try{
     document.body.appendChild(bar);
   }
   window.recoveryAlert = recoveryAlert;
+  /* v-talk-room-simple (المالك ٢٦ نوفمبر: «اذا الشخص سوى اشتراك يكون فيه جهة الاتصال ويشبك على طول»): حساب جديد على جوّال يرى مرّة واحدة
+     شريط «خل ربعك يلقونك» — ضغطة تأخذه لـ/room?welcome=1 (اسمح بجهاتك، اربط رقمك). لا تحويل تلقائيّ: التسجيل كثيرًا ما يكون في وسط
+     شيء آخر (شراء، رسالة، صورة) والتحويل يقطعه؛ ولا شريط فوق شريط البريد/الاسترجاع، ولا لمن سجّل ليدفع. */
+  function friendsAlert(){
+    const old = $('#friendsHintBar');
+    if(old) old.remove();
+    if(!/Android|iPhone|iPad|iPod|Mobile|Huawei|HarmonyOS/i.test(navigator.userAgent || '')) return;
+    if($('#emailConfirmBar') || $('#recoveryHintBar') || !authGet('aiapp_auth_token')) return;
+    const t2 = curT();
+    if(!t2.friendsHintTitle || !t2.friendsHintGo) return;
+    let top = 8;
+    try{ const h = document.querySelector('header'); if(h) top = Math.max(0, h.getBoundingClientRect().bottom) + 8; }catch(e){ __swallow(e, 'friends-hint:top'); }
+    const bar = document.createElement('div');
+    bar.id = 'friendsHintBar';
+    bar.setAttribute('role', 'alert');
+    bar.style.cssText = 'position:fixed; top:' + top + 'px; left:50%; transform:translateX(-50%); z-index:50; width:min(460px, calc(100vw - 24px)); box-sizing:border-box; display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--panel2, #1c2230); color:var(--text, #eee); border:1px solid rgba(201,162,39,.45); border-radius:var(--r-3, 14px); box-shadow:var(--sh-2, 0 8px 24px rgba(0,0,0,.45)); font-size:var(--fs-3, 14px);';
+    const txt = document.createElement('div');
+    txt.style.cssText = 'flex:1; min-width:0; line-height:1.5;';
+    txt.setAttribute('data-i18n', 'friendsHintTitle');
+    txt.textContent = t2.friendsHintTitle;
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'btn primary';
+    go.style.cssText = 'flex:none; white-space:nowrap;';
+    go.setAttribute('data-i18n', 'friendsHintGo');
+    go.textContent = t2.friendsHintGo;
+    go.onclick = () => { bar.remove(); window.location.href = '/room?welcome=1'; };
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '✕';
+    x.setAttribute('aria-label', '✕');
+    x.style.cssText = 'flex:none; background:none; border:none; color:var(--muted, #999); font-size:16px; line-height:1; cursor:pointer; padding:4px;';
+    x.onclick = () => { bar.remove(); };
+    bar.append(txt, go, x);
+    document.body.appendChild(bar);
+  }
+  window.friendsAlert = friendsAlert;
+  /* تُنادى قبل onAuthed لحساب أنشأه الدخول للتوّ (isNew من الخادم — Google): الشريط بعد أن تنتهي onAuthed، إلّا لمن سجّل ليدفع
+     (onAuthed تصفّر الخطّة المعلّقة، فتُقرأ هنا قبلها). */
+  function freshHint(){
+    if(window.__pendingCheckoutPlan) return;
+    setTimeout(friendsAlert, 0);
+  }
   // v-perf-boot-defer: كان يُستدعى أيضًا عند DOMContentLoaded — نداء fetch(getProfile) إضافيّ يتزاحم
   // مع verify الحرج عند كلّ إقلاع، لحقل بريد في لوحة إعدادات لا يراها أحد قبل فتحها فعليًّا. النداء
   // الوحيد الباقي (أدناه) يُحدَّث حين يُفتح فعلًا، وهو يكفي — لا فرق مرئيّ لأنّ اللوحة مخفيّة أصلًا.
@@ -2432,7 +2479,9 @@ try{
           window.authSet('aiapp_auth_token', d.token);
           otpEmailInput.value = '';
           otpCodeInput.value = '';
+          const freshAcct = d.isNew === true && !window.__pendingCheckoutPlan; // v-talk-room-simple
           window.onAuthed(d.username, d.avatar || null);
+          if(freshAcct && window.friendsAlert) window.friendsAlert();
         } else {
           otpError.textContent = (d.code === 'email_unverified' && window.curT && window.curT().authEmailUnverified) || d.error || msg('axBootBadCode', 'Invalid code', 'رمز غير صحيح'); // v-unverified-email
         }

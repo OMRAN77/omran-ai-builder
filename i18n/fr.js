@@ -356,6 +356,8 @@ I18N['fr'] = {
     emailConfirmSend: "Envoyer le code",
     recoveryHintTitle: "Ajoutez votre e-mail pour pouvoir récupérer votre compte et votre abonnement si vous oubliez votre mot de passe",
     recoveryHintAdd: "Ajouter l’e-mail",
+    friendsHintTitle: "Laissez vos amis vous trouver et vous appeler dans le Salon entre amis",
+    friendsHintGo: "Configurer",
     acctNetError: "Impossible de contacter le serveur, vérifiez votre connexion",
     acctAvatarTooBig: "L'image est trop grande, choisissez-en une plus petite",
     providerColorsLabel: "🤖 Couleur de chaque fournisseur IA (affichée à côté de son nom dans le chat)",

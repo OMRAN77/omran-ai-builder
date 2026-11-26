@@ -127,7 +127,7 @@ module.exports = async (req, res) => {
       console.warn('[auth] account unification lookup failed:', e && e.message);
     }
 
-    let user = null, reclaimed = false;
+    let user = null, reclaimed = false, isNew = false;      // isNew (v-talk-room-simple): حساب أُنشئ الآن — الصفحة تعرض «خل ربعك يلقونك» مرّة
     try { user = await getUserSure(key); } // v-auth-absent: الغياب = حساب جديد (المعتاد)، وعطب القراءة يرمي ← server_error لا حساب فوق قائم
     catch (e) {
       if (e && e.code === 'USER_RECORD_UNDECRYPTABLE') {
@@ -189,6 +189,7 @@ module.exports = async (req, res) => {
         giftCapped: giftOut.capped === true,
       };
       await putUser(key, user);
+      isNew = !reclaimed;
       if (!reclaimed) await notifyNewAccount({ key, user, method: 'google', req, note: wasDeleted ? 'over-deleted' : undefined }); // v-signup-notify
     }
 
@@ -228,7 +229,7 @@ module.exports = async (req, res) => {
     try {
       const { kvPutJSON, kvExpire } = require('./kv.js');
       await kvPutJSON('db/oauth-claim/' + stM[1].toLowerCase(), Object.assign({
-        token, user: user.username, avatar: user.avatar || '', ts: Date.now(), net: giftNet(clientIp(req)),
+        token, user: user.username, avatar: user.avatar || '', ts: Date.now(), net: giftNet(clientIp(req)), isNew,
       }, pick ? { claim: crypto.createHash('sha256').update(pick).digest('hex') } : {}));
       await kvExpire('db/oauth-claim/' + stM[1].toLowerCase(), 600);
     } catch (e) {

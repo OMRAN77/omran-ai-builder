@@ -320,6 +320,8 @@ I18N['zh'] = {
     "emailConfirmSend": "发送验证码",
     "recoveryHintTitle": "添加邮箱，忘记密码时可找回账号和订阅",
     "recoveryHintAdd": "添加邮箱",
+    "friendsHintTitle": "让好友在好友房间里找到你并呼叫你",
+    "friendsHintGo": "去设置",
     "acctNetError": "无法连接到服务器，请检查您的网络连接",
     "acctAvatarTooBig": "图片太大，请选择较小的图片",
     "providerColorsLabel": "🤖 各 AI 提供商的颜色(显示在聊天界面的名称旁)",
