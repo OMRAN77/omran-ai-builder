@@ -326,6 +326,8 @@ I18N['es'] = {
     "emailConfirmSend": "Enviar el código",
     "recoveryHintTitle": "Añade tu correo para poder recuperar tu cuenta y tu suscripción si olvidas la contraseña",
     "recoveryHintAdd": "Añadir correo",
+    "friendsHintTitle": "Deja que tus amigos te encuentren y te llamen en la Sala de amigos",
+    "friendsHintGo": "Configurar",
     "acctNetError": "No se pudo conectar con el servidor, verifica tu conexión",
     "acctAvatarTooBig": "La imagen es demasiado grande, elige una más pequeña",
     "providerColorsLabel": "🤖 Color de cada proveedor de IA (se muestra junto a su nombre en el chat)",

@@ -325,6 +325,8 @@ I18N['tr'] = {
     "emailConfirmSend": "Kodu gönder",
     "recoveryHintTitle": "Şifrenizi unutursanız hesabınızı ve aboneliğinizi kurtarabilmek için e-postanızı ekleyin",
     "recoveryHintAdd": "E-posta ekle",
+    "friendsHintTitle": "Arkadaşlarınız sizi Arkadaş odasında bulsun ve arasın",
+    "friendsHintGo": "Ayarlayın",
     "acctNetError": "Sunucuya ulaşılamadı, bağlantınızı kontrol edin",
     "acctAvatarTooBig": "Görsel çok büyük, daha küçük bir tane seçin",
     "providerColorsLabel": "🤖 Her AI sağlayıcısının rengi (sohbette adının yanında gösterilir)",

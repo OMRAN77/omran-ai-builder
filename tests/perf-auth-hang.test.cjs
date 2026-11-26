@@ -43,7 +43,7 @@ test('٣. زرّ الدخول يعرض نصّ انتظار ويعيد النصّ
 
 test('٤. جسر جوجل على آيفون: busy=false مضمونة حتّى مع تعليق الشبكة (مهلة على oauth-claim)', () => {
   const i = SRC.indexOf("action=oauth-claim");
-  const chunk = SRC.slice(i, i + 1000);
+  const chunk = SRC.slice(i, i + 1200); // v-talk-room-simple: سطر «حساب جديد» في فرع النجاح أطال المقطع — النافذة وُسّعت والفحص نفسه
   assert.match(chunk, /signal: AbortSignal\.timeout\(\d+\)/);
   assert.match(chunk, /\bbusy = false;\n\s*\}\n/, 'busy=false بعد try/catch — تصل دائمًا لأنّ الجلب يستقرّ الآن');
 });

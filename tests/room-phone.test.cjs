@@ -200,5 +200,5 @@ test('الصفحة موصولة: الحالة، القائمة من الخادم
   assert.match(html, /var linkVia = \[\], linkPw = false, plink = null, plinkT = 0, linkedNow = false;/);
   assert.match(html, /linkVia = r\.me && Array\.isArray\(r\.me\.linkVia\) \? r\.me\.linkVia\.filter\(function \(x\) \{ return x === 'whatsapp' \|\| x === 'telegram'; \}\) : \[\]; linkPw = !!\(r\.me && r\.me\.linkPw\);/);
   assert.match(html, /else if \(d\.plink\) linkStart\(d\.plink\);\n/); assert.match(html, /else if \(d\.plinkx\) linkCancel\(\);\n/);
-  assert.match(fnSrc(html, 'function contactsCard('), /esc\(T\.contactsNote\) \+ '<\/p>' \+ phoneBox\(\) \+ syncBox\(\)/);
+  assert.match(fnSrc(html, 'function contactsCard('), /esc\(T\.contactsNote\) \+ '<\/p>' \+ \(needPhone\(\) \? '' : phoneBox\(\)\) \+ \(needSync\(\) \? '' : syncBox\(\)\);/, 'مرّة واحدة: فوق في «خل ربعك يلقونك» ما دام ناقصًا (v-talk-room-simple)');
 });

@@ -473,8 +473,9 @@ test('الأسماء من الهاتف لا تُحقن في الصفحة، وس�
     token: 'tok', contacts: [], myPhone: '+971•••••99', inviteOpen: true, inviteQ: '',
     T: { contactsTitle: 'Contacts', callMore: 'Call', contactsNote: 'note', myPhoneNone: 'none', myPhone: 'Your number: {n}', onApp: 'on app', notOnApp: 'not', callBtn: 'Call', inviteBtn: 'Invite', del: 'Remove', noContacts: 'No', labelPh: 'Name', phonePh: '+971', addContact: 'Add', inviteMany: 'Invite {n} friends', searchPh: 'Search', moreHidden: '{n} more' },
     fmt: (s, n) => s.replace('{n}', n), syncBox: () => '', linkVia: [], linkPw: false, plink: null, linkedNow: false,      // v-talk-room-phone
+    bridge: false, androidUA: false, syncHome: false, book: null,      // v-talk-room-simple (needSync/needPhone)
   };
-  vm.runInNewContext(fns('function lsGet(', 'function bookUser(', 'function loadBook(', 'function manualPhones(', 'function inviteFilter(', 'function inviteRows(', 'function inviteBox(', 'function contactsCard(', 'function phoneBox(', 'var esc = function'), ctx);
+  vm.runInNewContext(fns('function lsGet(', 'function bookUser(', 'function loadBook(', 'function manualPhones(', 'function inviteFilter(', 'function inviteRows(', 'function inviteBox(', 'function contactsCard(', 'function needSync(', 'function needPhone(', 'function phoneBox(', 'var esc = function'), ctx);
   store.set('aiapp_username', 'someone-else');
   assert.equal(ctx.loadBook(), null, 'حساب آخر على الجوال نفسه لا يرى قائمة الأوّل');
   store.set('aiapp_username', 'Omran');

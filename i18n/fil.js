@@ -327,6 +327,8 @@ I18N['fil'] = {
     "emailConfirmSend": "Ipadala ang code",
     "recoveryHintTitle": "Idagdag ang email mo para mabawi ang account at subscription mo kung makalimutan mo ang password",
     "recoveryHintAdd": "Idagdag ang email",
+    "friendsHintTitle": "Hayaang mahanap at matawagan ka ng barkada sa Kwarto ng Barkada",
+    "friendsHintGo": "I-set up",
     "acctNetError": "Hindi ma-reach ang server, tingnan ang iyong koneksyon",
     "acctAvatarTooBig": "Masyadong malaki ang larawan, pumili ng mas maliit",
     "providerColorsLabel": "🤖 Kulay ng bawat AI provider (ipinapakita sa tabi ng pangalan nito sa chat)",
