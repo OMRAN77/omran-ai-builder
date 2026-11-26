@@ -113,20 +113,78 @@ test('٣. رجوع Meta: الحالة تُستهلك مرّة، الرفض وا�
   assert.ok(!con.join('\n').includes(PAGE_TOKEN));
 });
 
-test('٤. الحسابات: المربوط مباشرة أوّلًا، وما عند الوسيط لغير منصّاته، وغير المربوط «يحتاج ربط» قابل للضغط', async () => {
+test('٣-ب. رجوع Meta بقائمة صفحات فارغة (تطبيق «للأعمال» أو صفحة في حافظة أعمال): الصفحة من debug_token ثمّ من حافظات الأعمال، وخطأ Graph رمزه لا «لا صفحة»', async () => {
+  metaOn();
+  const saved = kv.get('socdir:meta'); kv.delete('socdir:meta');
+  const cb = async () => call('meta-cb', {}, 'GET', { state: new URL((await call('meta-connect', owner())).body.url).searchParams.get('state'), code: 'C2' });
+  const base = { [G + '/oauth/access_token']: (u) => ({ status: 200, body: { access_token: /fb_exchange_token/.test(u) ? 'LONG-user' : 'SHORT-user' } }) };
+  // ١) /me/accounts فارغ، والصفحة ممنوحة في granular_scopes
+  routes = Object.assign({}, base, {
+    [G + '/me/accounts']: { status: 200, body: { data: [] } },
+    [G + '/debug_token']: { status: 200, body: { data: { scopes: ['pages_show_list', 'instagram_basic'], granular_scopes: [{ scope: 'pages_show_list', target_ids: ['P1'] }, { scope: 'instagram_basic', target_ids: ['IG1'] }] } } },
+    [G + '/P1']: { status: 200, body: { id: 'P1', name: 'OM Ai', access_token: PAGE_TOKEN, instagram_business_account: { id: 'IG1', username: 'om.ai' } } },
+  });
+  calls.length = 0;
+  let r = await cb();
+  assert.equal(r.headers.Location, 'https://omran-ai-builder.vercel.app/?socpub=ok', 'الصفحة من الصلاحيّات الممنوحة');
+  const dbg = calls.find((c) => c.url.includes('/debug_token'));
+  assert.deepEqual([params(dbg).get('input_token'), params(dbg).get('access_token')], ['LONG-user', '1234567890|app-secret-x']);
+  assert.equal((await call('accounts', owner())).body.on.join(','), 'instagram,facebook');
+  // ٢) لا target_ids: صفحات حافظة الأعمال
+  kv.delete('socdir:meta');
+  routes = Object.assign({}, base, {
+    [G + '/me/accounts']: { status: 200, body: { data: [] } },
+    [G + '/debug_token']: { status: 200, body: { data: { scopes: ['pages_show_list'] } } },
+    [G + '/me/businesses']: { status: 200, body: { data: [{ id: 'B1', owned_pages: { data: [{ id: 'P1', name: 'OM Ai', access_token: PAGE_TOKEN, instagram_business_account: { id: 'IG1' } }] } }] } },
+  });
+  r = await cb();
+  assert.equal(r.headers.Location, 'https://omran-ai-builder.vercel.app/?socpub=ok', 'الصفحة من حافظة الأعمال');
+  // ٣) لا شيء في أيّ مصدر: no_page مع سبب في السجلّ (الصلاحيّات الممنوحة، بلا توكن)
+  kv.delete('socdir:meta'); con.length = 0;
+  routes[G + '/me/businesses'] = { status: 200, body: { data: [] } };
+  r = await cb();
+  assert.equal(r.headers.Location, 'https://omran-ai-builder.vercel.app/?socpub=no_page');
+  assert.match(con.join('\n'), /no pages; granted=pages_show_list/);
+  // ٤) خطأ Graph على الصفحات: رمزه في الرجوع لا «لا صفحة»
+  routes[G + '/me/accounts'] = { status: 400, body: { error: { code: 200, message: 'Permissions error' } } };
+  r = await cb();
+  assert.equal(r.headers.Location, 'https://omran-ai-builder.vercel.app/?socpub=fail-e200');
+  assert.ok(!con.join('\n').includes(PAGE_TOKEN) && !con.join('\n').includes('app-secret-x'), 'لا توكن ولا سرّ في السجلّ');
+  kv.set('socdir:meta', saved);
+});
+
+test('٤. الحسابات: المباشر لا يأخذ منصّة من الوسيط قبل أن ينربط — الموصول عند الوسيط يبقى موصولًا، و«يحتاج ربط» لما ليس موصولًا في أيّهما', async () => {
   metaOn();
   process.env.UPLOAD_POST_API_KEY = 'up-k';
-  routes = { '/uploadposts/users': { status: 200, body: { profiles: [{ username: 'omranaibuilder', social_accounts: { instagram: { u: 1 }, facebook: { u: 1 }, twitter: { u: 1 }, tiktok: { reauth_required: true } } }] } } };
+  // حال المالك: إنستغرام موصول عند الوسيط، فيسبوك يحتاج إعادة ربط عنده، وX موصول
+  routes = { '/uploadposts/users': { status: 200, body: { profiles: [{ username: 'omranaibuilder', social_accounts: { instagram: { u: 1 }, facebook: { u: 1, reauth_required: true }, twitter: { u: 1 }, tiktok: { reauth_required: true } } }] } } };
   let r = await call('accounts', owner());
-  assert.deepEqual([r.body.on, r.body.reauth, r.body.connect], [['instagram', 'facebook', 'x'], ['tiktok'], []]);
+  assert.deepEqual([r.body.on, r.body.reauth, r.body.connect], [['instagram', 'facebook', 'x'], ['tiktok'], []], 'Meta مربوط: المنصّتان مباشرتان');
   leaks(r.body);
   const saved = kv.get('socdir:meta'); kv.delete('socdir:meta');
   r = await call('accounts', owner());
-  assert.deepEqual([r.body.on, r.body.reauth, r.body.connect], [['x'], ['instagram', 'facebook', 'tiktok'], ['instagram', 'facebook']], 'الوسيط لا يغطّي منصّات Meta');
+  assert.deepEqual([r.body.on, r.body.reauth, r.body.connect], [['instagram', 'x'], ['facebook', 'tiktok'], ['facebook']],
+    'Meta غير مربوط: إنستغرام الموصول عند الوسيط يبقى ✓ (كان ينقلب «يحتاج إعادة ربط»)، وفيسبوك مدخل الربط المباشر');
+  // والنشر لإنستغرام يذهب بالطريق القديم حرفيًّا ما دام Meta غير مربوط
+  kv.set('socpub:file:' + 'e'.repeat(24), 'https://v3.fal.media/files/om-9.mp4');
+  routes['/api/upload'] = { status: 200, body: { success: true, request_id: 'upreq-legacy-1' } }; // أقصر من مسار الحسابات فلا يغلبه
+  calls.length = 0;
+  const pub = await call('publish', Object.assign(owner(), { id: 'e'.repeat(24), caption: 'نصّ', platforms: ['instagram', 'x'] }));
+  assert.deepEqual([pub.status, pub.body.request], [200, 'upreq-legacy-1'], 'طلب الوسيط نفسه لا sd-');
+  assert.deepEqual(calls.find((c) => c.url.endsWith('/api/upload')).body.getAll('platform[]'), ['instagram', 'x']);
+  assert.equal(calls.some((c) => /graph(-video)?\.facebook\.com/.test(c.url)), false, 'لا نداء Meta');
+  // الوسيط لا يعرف فيسبوك أصلًا: يبقى مدخلًا للربط المباشر
+  routes['/uploadposts/users'] = { status: 200, body: { profiles: [{ username: 'omranaibuilder', social_accounts: { instagram: { u: 1 }, facebook: '', twitter: { u: 1 } } }] } };
+  r = await call('accounts', owner());
+  assert.deepEqual([r.body.on, r.body.reauth, r.body.connect], [['instagram', 'x'], ['facebook'], ['facebook']]);
+  // سؤال الوسيط فشل: المباشر وحده، ولا ٥٠٢
+  routes['/uploadposts/users'] = { status: 500, body: {} };
+  r = await call('accounts', owner());
+  assert.deepEqual([r.status, r.body.on, r.body.connect], [200, [], ['instagram', 'facebook']]);
   kv.set('socdir:meta', saved);
   delete process.env.UPLOAD_POST_API_KEY;
   r = await call('accounts', owner());
-  assert.deepEqual([r.status, r.body.on], [200, ['instagram', 'facebook']], 'بلا وسيط يكفي المباشر');
+  assert.deepEqual([r.status, r.body.on, r.body.reauth], [200, ['instagram', 'facebook'], []], 'بلا وسيط يكفي المباشر');
 });
 
 const VID = 'a'.repeat(24);
@@ -216,4 +274,7 @@ test('٨. اللوحة: «يحتاج إعادة ربط» لمنصّات الرب
   assert.match(v, /if\(\(PB\.connect\|\|\[\]\)\.indexOf\(p\)>=0\)\{[^}]*s\.onclick=pbConnect;/);
   assert.match(v, /pbApi\('meta-connect'\)\.then\(function\(d\)\{ if\(d&&d\.ok&&\/\^https:\\\/\\\/www\\\.facebook\\\.com\\\/\/\.test\(String\(d\.url\|\|''\)\)\) location\.href=d\.url;/);
   assert.match(read('index.html'), /\/js\/video\.js\?v=(\d+)/, 'video.js بوسم في index.html');
+  // v-social-direct-keep: نتيجة رجوع الربط تُلتقط من العنوان وتُمحى، وتقال في اللوحة مرّة إن لم تكن ok — بنصّ «يحتاج إعادة ربط» نفسه
+  assert.match(v, /var pbBk=\(typeof location==='undefined'\)\?null:\/\[\?&\]socpub=\(\[a-z0-9_\.\\-\]\{1,40\}\)\/i\.exec\(location\.search\|\|''\); if\(pbBk\)\{ PB_BACK=pbBk\[1\]; history\.replaceState\(null,'',location\.pathname\+location\.hash\); \}/);
+  assert.match(v, /if\(d&&d\.ok&&PB_BACK\)\{ var bk=PB_BACK; PB_BACK=''; if\(bk!=='ok'&&!keep\) pbMsg\(drT\('vdPubReauth',\{p:'Instagram \/ Facebook'\}\),true,bk\); \}/);
 });

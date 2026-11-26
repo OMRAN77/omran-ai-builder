@@ -13,6 +13,7 @@ const crypto = require('node:crypto');
 const { kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
 
 const DIRECT = ['instagram', 'facebook'];
+const ORDER = ['instagram', 'facebook', 'tiktok', 'youtube', 'x', 'threads']; // ترتيب اللوحة كما في social-publish
 const SCOPES = 'pages_show_list,pages_read_engagement,pages_manage_posts,business_management,instagram_basic,instagram_content_publish';
 const SENT_TTL = 7 * 86400;
 const STATE_TTL = 600;
@@ -88,8 +89,28 @@ async function callback(req, res) {
     const l = await graph('GET', G() + '/oauth/access_token', { grant_type: 'fb_exchange_token', client_id: id, client_secret: secret, fb_exchange_token: a.j.access_token });
     const user = (l.ok && l.j.access_token) || a.j.access_token;
     // توكن الصفحة المأخوذ بتوكن مستخدم طويل لا ينتهي
-    const pg = await graph('GET', G() + '/me/accounts', { fields: 'id,name,access_token,instagram_business_account{id,username}', limit: '50', access_token: user });
+    const FIELDS = 'id,name,access_token,instagram_business_account{id,username}';
+    const pg = await graph('GET', G() + '/me/accounts', { fields: FIELDS, limit: '50', access_token: user });
+    if (!pg.ok) { logErr('callback', 'pages ' + errOf(pg)); return back('fail-' + errOf(pg)); } // خطأ Graph ليس «لا صفحة»
     const pages = ((pg.j && pg.j.data) || []).filter((x) => x && x.id && x.access_token);
+    /* v-social-direct-keep (مراجعة مستقلّة ٢٧ نوفمبر): في تطبيقات «تسجيل دخول فيسبوك للأعمال» وللصفحة المملوكة لحافظة أعمال يرجع
+       ‎/me/accounts فارغًا مع أنّ الصفحة مختارة — فالصفحات الممنوحة من debug_token (granular_scopes.target_ids)، ثمّ صفحات حافظات الأعمال. */
+    if (!pages.length) {
+      const dbg = await graph('GET', G() + '/debug_token', { input_token: user, access_token: id + '|' + secret });
+      const d = (dbg.j && dbg.j.data) || {};
+      const ids = [...new Set((d.granular_scopes || []).filter((x) => /^pages_/.test(String(x.scope || ''))).flatMap((x) => x.target_ids || []))].slice(0, 10);
+      for (const pid of ids) {
+        const one = await graph('GET', G() + '/' + encodeURIComponent(pid), { fields: FIELDS, access_token: user });
+        if (one.ok && one.j.id && one.j.access_token) pages.push(one.j);
+      }
+      if (!pages.length) {
+        const b = await graph('GET', G() + '/me/businesses', { fields: 'owned_pages{' + FIELDS + '},client_pages{' + FIELDS + '}', access_token: user });
+        for (const biz of (b.j && b.j.data) || []) for (const k of ['owned_pages', 'client_pages']) {
+          for (const x of ((biz[k] || {}).data) || []) if (x && x.id && x.access_token && !pages.some((y) => y.id === x.id)) pages.push(x);
+        }
+      }
+      if (!pages.length) logErr('callback', 'no pages; granted=' + (Array.isArray(d.scopes) ? d.scopes.join(',') : '?'));
+    }
     const om = (x) => /om\s*ai/i.test((x && x.name) || '');
     const igOf = (x) => x && x.instagram_business_account && x.instagram_business_account.id;
     const pick = pages.find((x) => igOf(x) && om(x)) || pages.find(igOf) || pages.find(om) || pages[0];
@@ -106,16 +127,14 @@ async function callback(req, res) {
 
 /** الحسابات: المباشر أوّلًا، ثمّ ما عند الوسيط لغير منصّاته (إن وُجد مفتاحه ونجح سؤاله). */
 async function accounts(res, upAccounts) {
+  // v-social-direct-keep (المالك ٢٧ نوفمبر: «أريد النشر نفس الأشياء الموجودة»): الربط المباشر لا يأخذ منصّة من الوسيط قبل أن ينربط فعلًا —
+  // كان ضبط مفاتيح Meta وحده يقلب إنستغرام الموصول عند الوسيط إلى «يحتاج إعادة ربط». الآن: الموصول مباشرة + كلّ الموصول عند الوسيط،
+  // و«يحتاج ربط» لما ليس موصولًا في أيّ منهما؛ وconnect لمنصّات Meta الظاهرة «يحتاج ربط» وحدها (مدخل الربط المباشر).
   const m = await metaState();
-  let on = m.on.slice(), reauth = m.reauth.slice();
-  if (upAccounts) {
-    const u = await upAccounts().catch((e) => { logErr('up-accounts', e); return null; });
-    if (u) {
-      for (const p of u.on || []) if (!DIRECT.includes(p) && !on.includes(p)) on.push(p);
-      for (const p of u.reauth || []) if (!DIRECT.includes(p) && !reauth.includes(p)) reauth.push(p);
-    }
-  }
-  return res.status(200).json({ ok: true, on, reauth, connect: m.connect });
+  const u = upAccounts ? await upAccounts().catch((e) => { logErr('up-accounts', e); return null; }) : null;
+  const on = ORDER.filter((p) => m.on.includes(p) || ((u && u.on) || []).includes(p));
+  const reauth = ORDER.filter((p) => !on.includes(p) && (DIRECT.includes(p) || ((u && u.reauth) || []).includes(p)));
+  return res.status(200).json({ ok: true, on, reauth, connect: DIRECT.filter((p) => reauth.includes(p)) });
 }
 
 /** يُنشئ منشور منصّة: فيسبوك فيديو صفحة، وإنستغرام حاوية ريلز (تُنشر في status حين تجهز). */

@@ -597,6 +597,9 @@
      في المخرج»، واختار «انشر في حساباتي»): زرّ تحت الفيديو الجاهز يفتح لوحة — النصّ المرافق (فارغ عمدًا: ملاحظات التوليد ليست وصفًا للعامّة)
      والمنصّات الموصولة كما يراها الخادم، ثمّ «انشر الآن» بموافقة صريحة لكلّ نشر (علنيّ ولا يُسحب). الفيديو يُرفع من الجهاز مباشرة إلى هدف مؤقّت
      يصدره الخادم (مرّة لكلّ فيديو)، والخادم ينشر بخدمة النشر نفسها التي يستعملها بوت التسويق، ثمّ استطلاع حتّى تقول كلّ منصّة كلمتها. ═══ */
+  /* v-social-direct-keep: رجوع الربط يحمل ?socpub=… — يُحفظ ويُمحى من العنوان، ويُقال في اللوحة عند أوّل فتح إن لم ينجح (السبب بين قوسين كعادة اللوحة) */
+  var PB_BACK='';
+  try{ var pbBk=(typeof location==='undefined')?null:/[?&]socpub=([a-z0-9_.\-]{1,40})/i.exec(location.search||''); if(pbBk){ PB_BACK=pbBk[1]; history.replaceState(null,'',location.pathname+location.hash); } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:socpub'); }
   var PB={busy:false,plats:null,reauth:[],loading:false,src:'',id:'',vid:'',at:0,reqs:{},rows:{},own:{},sent:{},poll:0,gen:0,ticking:false,xhr:null};
   var PB_NAMES={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',youtube:'YouTube',x:'X',threads:'Threads'};
   var PB_FRESH=5*3600*1000; /* v-director-publish-guard: الملفّ المرفوع يعيش ٦ ساعات عند الخادم وخدمة النشر تجلبه في الخلفيّة — بعد ٥ يُرفع من جديد */
@@ -637,6 +640,7 @@
     pbApi('accounts').then(function(d){
       PB.loading=false; var keep=pbKeep(); /* رسالة رفع أو نشر قائم أو منتهٍ لا تُمسح */
       if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; PB.connect=d.connect||[]; if(!keep) pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
+      if(d&&d.ok&&PB_BACK){ var bk=PB_BACK; PB_BACK=''; if(bk!=='ok'&&!keep) pbMsg(drT('vdPubReauth',{p:'Instagram / Facebook'}),true,bk); } /* الربط ما اكتمل: يقولها مرّة مع رمز السبب */
       else if(!keep) pbMsg(pbErr(d),true,pbWhy(d)); /* القائمة السابقة تبقى؛ وبلا قائمة يعيد الفتح التالي السؤال (مفتاح أُضيف بعدها) */
       pbPlats(); syncDirector();
     }).catch(function(e){ PB.loading=false; if(!pbKeep()) pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); syncDirector(); });
