@@ -636,7 +636,7 @@
     PB.loading=true; if(!PB.plats){ if(!pbKeep()) pbMsg(''); pbPlats(); } syncDirector();
     pbApi('accounts').then(function(d){
       PB.loading=false; var keep=pbKeep(); /* رسالة رفع أو نشر قائم أو منتهٍ لا تُمسح */
-      if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; if(!keep) pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
+      if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; PB.connect=d.connect||[]; if(!keep) pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
       else if(!keep) pbMsg(pbErr(d),true,pbWhy(d)); /* القائمة السابقة تبقى؛ وبلا قائمة يعيد الفتح التالي السؤال (مفتاح أُضيف بعدها) */
       pbPlats(); syncDirector();
     }).catch(function(e){ PB.loading=false; if(!pbKeep()) pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); syncDirector(); });
@@ -653,7 +653,16 @@
       if(st) l.className='is-sent';
       l.appendChild(c); l.appendChild(document.createTextNode((PB_NAMES[p]||p)+(st?' · '+L(st==='ok'?'vdPubOk':'vdPubWait'):''))); box.appendChild(l);
     });
-    (PB.reauth||[]).forEach(function(p){ var s=document.createElement('span'); s.className='off'; s.textContent=drT('vdPubReauth',{p:PB_NAMES[p]||p}); box.appendChild(s); });
+    (PB.reauth||[]).forEach(function(p){
+      var s=document.createElement('span'); s.className='off'; s.textContent=drT('vdPubReauth',{p:PB_NAMES[p]||p});
+      /* v-social-direct: المنصّة التي يربطها التطبيق بنفسه — الضغط يفتح ربطها (نصّ «يحتاج إعادة ربط» نفسه، فلا نصّ جديد) */
+      if((PB.connect||[]).indexOf(p)>=0){ s.setAttribute('role','button'); s.tabIndex=0; s.style.cursor='pointer'; s.style.textDecoration='underline'; s.onclick=pbConnect; }
+      box.appendChild(s);
+    });
+  }
+  function pbConnect(){
+    pbApi('meta-connect').then(function(d){ if(d&&d.ok&&/^https:\/\/www\.facebook\.com\//.test(String(d.url||''))) location.href=d.url; else pbMsg(pbErr(d),true,pbWhy(d)); })
+      .catch(function(e){ pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); });
   }
   function pbPut(url,mime,blob,at){
     return new Promise(function(res,rej){
