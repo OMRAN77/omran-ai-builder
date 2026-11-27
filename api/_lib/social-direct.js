@@ -158,6 +158,7 @@ async function accounts(res, upAccounts) {
   const why = connect.some((p) => DIRECT.includes(p)) ? await metaWhy() : '';
   const whyBy = {};
   for (const p of connect) { const w = DIRECT.includes(p) ? why : (n.whyBy[p] || ''); if (w) whyBy[p] = w; }
+  if (u && u.paused) for (const p of connect) if (!whyBy[p]) whyBy[p] = 'paused-402'; // v-socpub-paused: الوسيط موقوف — الربط المباشر مدخلها
   return res.status(200).json({ ok: true, on, reauth, connect, why, whyBy });
 }
 

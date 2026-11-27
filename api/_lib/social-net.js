@@ -20,6 +20,8 @@ const PROV = {
   },
   youtube: {
     id: 'YOUTUBE_CLIENT_ID', secret: 'YOUTUBE_CLIENT_SECRET', idParam: 'client_id',
+    alt: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], // v-socpub-paused: بلا مفتاحَي يوتيوب يُستعمل عميل «الدخول بحساب Google» القائم — لا عميل جديد ولا سرّ يُنسخ
+
     auth: 'https://accounts.google.com/o/oauth2/v2/auth', token: 'https://oauth2.googleapis.com/token',
     scope: 'https://www.googleapis.com/auth/youtube.upload', host: 'accounts.google.com',
     extra: { access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' },
@@ -41,7 +43,14 @@ const lastKey = (p) => 'socnet:last:' + p;
 const upKey = (r, p) => 'socnet:up:' + r + ':' + p;
 
 const env = (k) => String(process.env[k] || '').trim();
-const configured = (p) => !!(PROV[p] && env(PROV[p].id) && env(PROV[p].secret));
+/** مفتاحا المنصّة: زوجها الخاصّ إن اكتمل، وإلّا البديل المكتمل (`alt`) — لا خلط بين زوجين */
+const keys = (p) => {
+  const P = PROV[p];
+  if (!P) return null;
+  for (const [i, k] of [[P.id, P.secret]].concat(P.alt ? [P.alt] : [])) if (env(i) && env(k)) return { id: env(i), secret: env(k) };
+  return null;
+};
+const configured = (p) => !!keys(p);
 const any = () => PLATS.some(configured);
 const site = () => require('./_site.js').siteUrl();
 const redirectUri = () => site() + '/api/social-cb'; // مسار بلا استعلام (vercel.json يعيد كتابته إلى media?action=social-publish&op=net-cb)
@@ -76,11 +85,11 @@ async function token(p) {
   const c = await getCred(p);
   if (!c || !c.access) return null;
   if (!(Number(c.exp) > 0) || Date.now() < Number(c.exp) - 60000) return c;
-  if (p === 'linkedin' || !c.refresh) return null;
+  if (p === 'linkedin' || !c.refresh || !keys(p)) return null;
   const P = PROV[p];
   const body = p === 'tiktok'
-    ? { client_key: env(P.id), client_secret: env(P.secret), grant_type: 'refresh_token', refresh_token: c.refresh }
-    : { client_id: env(P.id), client_secret: env(P.secret), grant_type: 'refresh_token', refresh_token: c.refresh };
+    ? { client_key: keys(p).id, client_secret: keys(p).secret, grant_type: 'refresh_token', refresh_token: c.refresh }
+    : { client_id: keys(p).id, client_secret: keys(p).secret, grant_type: 'refresh_token', refresh_token: c.refresh };
   const r = await call('POST', P.token, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form(body) });
   if (!r.ok || !r.j.access_token) { logErr('refresh ' + p, codeOf(r)); if (r.status === 400 || r.status === 401) await kvSetRaw(badKey(p), '1'); return null; }
   const n = Object.assign({}, c, { access: r.j.access_token, refresh: r.j.refresh_token || c.refresh, exp: Date.now() + (Number(r.j.expires_in) || 3600) * 1000 });
@@ -109,7 +118,7 @@ async function connect(res, user, p) {
   const P = PROV[p];
   const s = crypto.randomBytes(16).toString('hex');
   await kvSetRaw(stateKey(s), JSON.stringify({ u: String(user), p }), 600);
-  const q = Object.assign({ [P.idParam]: env(P.id), redirect_uri: redirectUri(), response_type: 'code', scope: P.scope, state: s }, P.extra || {});
+  const q = Object.assign({ [P.idParam]: keys(p).id, redirect_uri: redirectUri(), response_type: 'code', scope: P.scope, state: s }, P.extra || {});
   return res.status(200).json({ ok: true, url: P.auth + '?' + form(q), host: new URL(P.auth).host });
 }
 
@@ -130,8 +139,8 @@ async function callback(req, res) {
   if (q.error || !q.code) return back(p, 'denied');
   try {
     const body = p === 'tiktok'
-      ? { client_key: env(P.id), client_secret: env(P.secret), code: String(q.code), grant_type: 'authorization_code', redirect_uri: redirectUri() }
-      : { client_id: env(P.id), client_secret: env(P.secret), code: String(q.code), grant_type: 'authorization_code', redirect_uri: redirectUri() };
+      ? { client_key: keys(p).id, client_secret: keys(p).secret, code: String(q.code), grant_type: 'authorization_code', redirect_uri: redirectUri() }
+      : { client_id: keys(p).id, client_secret: keys(p).secret, code: String(q.code), grant_type: 'authorization_code', redirect_uri: redirectUri() };
     const t = await call('POST', P.token, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form(body) });
     if (!t.ok || !t.j.access_token) { logErr('token ' + p, codeOf(t)); return back(p, 'fail-token-' + codeOf(t)); }
     const old = await getCred(p).catch(() => null);
