@@ -358,7 +358,7 @@ test('٨. اللوحة: «يحتاج إعادة ربط» لكلّ منصّة م�
   assert.equal(g.href, '', 'لا http');
 });
 
-test('٩. v-socpub-trace: كلّ ردّ للوحة سطر في سجلّ الخادم — الإجراء والحالة ورمز كلّ منصّة، بلا رابط ولا توكن ولا نصّ المنشور', async () => {
+test('٩. v-socpub-trace: كلّ ردّ للوحة سطر في سجلّ الخادم — الإجراء والحالة ورمز كلّ منصّة وهدف الرفع وبلاغ اللوحة، بلا رابط ولا توكن ولا نصّ المنشور', async () => {
   metaOn();
   con.length = 0;
   await call('accounts', owner());
@@ -369,7 +369,15 @@ test('٩. v-socpub-trace: كلّ ردّ للوحة سطر في سجلّ الخا
   assert.ok(lines.some((l) => /^\[socpub\] op=accounts code=200 ok=true .*on=/.test(l)), 'الحسابات');
   assert.ok(lines.some((l) => /^\[socpub\] op=publish code=404 ok=false error=no_file/.test(l)), 'فشل النشر برمزه');
   assert.ok(lines.some((l) => /^\[socpub\] op=status code=200 ok=true state=fail/.test(l)), 'الحالة');
-  assert.ok(!lines.some((l) => l.includes('op=target')), 'هدف الرفع لا يُسجَّل');
+  // v-socpub-note: هدف الرفع يُسجَّل برمزه (بلا رابطه)، واللوحة تبلّغ أين وقفت قبل الخادم
+  await call('note', Object.assign(owner(), { stage: 'fail<x>', why: 'upload 403 https://evil.example/put?sig=1' }));
+  const lines2 = con.filter((l) => l.startsWith('[socpub] '));
+  assert.ok(lines2.some((l) => /^\[socpub\] op=target code=\d+ ok=(true|false)/.test(l)), 'هدف الرفع برمزه');
+  assert.ok(lines2.some((l) => /^\[socpub\] op=note code=200 ok=true note=failx:upload 403 <url>$/.test(l)), 'بلاغ اللوحة: مرحلة ورمز');
+  lines.push(...lines2);
+  const v = read('js/video.js');
+  assert.match(v, /function pbNote\(stage,why\)\{ pbApi\('note',\{stage:stage,why:String\(why\|\|''\)\.slice\(0,120\)\}\)\.catch\(/);
+  for (const st of ['skip', 'nocap', 'nopick', 'cancel', 'slow', 'fail']) assert.ok(v.includes("pbNote('" + st + "'"), 'اللوحة تبلّغ: ' + st);
   const all = lines.join('\n');
   assert.doesNotMatch(all, /https?:\/\/|نصّ سرّيّ|EAAG|page-token-secret|app-secret-x/, 'بلا رابط ولا نصّ ولا سرّ');
 });

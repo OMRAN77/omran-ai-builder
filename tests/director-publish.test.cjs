@@ -387,7 +387,7 @@ function mkEl(tag) {
 function panel() {
   const els = { vdPubCap: mkEl('textarea'), vdPubPlats: mkEl('div'), vdPubMsg: mkEl('p'), vdPubRes: mkEl('ul'), vdPub: mkEl('div'),
     vdRes: mkEl('div'), vdVideo: mkEl('video'), vdDl: mkEl('a'), vdUpMsg: mkEl('p') }; /* v-director-upload */
-  const api = [], puts = [], timers = [], replies = {}, sent = [], blobFetches = [], urls = { made: [], revoked: [] };
+  const api = [], notes = [], puts = [], timers = [], replies = {}, sent = [], blobFetches = [], urls = { made: [], revoked: [] };
   const ctx = {
     id: (k) => els[k] || null, L: (k) => k, drT: (k, o) => k + (o ? ' ' + JSON.stringify(o) : ''),
     drTok: () => 'tok', drOwner: () => true, DR: { out: 'blob:v1' }, syncDirector() {}, __swallow() {}, drMsg() {},
@@ -398,6 +398,7 @@ function panel() {
       const u = String(url);
       if (u.startsWith('blob:')) { blobFetches.push(u); return { blob: async () => ({ size: 10, type: ctx.blobType || 'video/mp4' }) }; }
       const op = /[?&]op=(\w+)/.exec(u)[1], body = JSON.parse(o.body);
+      if (op === 'note') { notes.push([body.stage, body.why]); return { json: async () => ({ ok: true }) }; } // v-socpub-note: بلاغ الوقوف يُعدّ وحده — `api` نداءات النشر
       api.push({ op, body });
       const r = replies[op], out = typeof r === 'function' ? r(body) : r;
       return { json: async () => J(await out) }; // ردّ قد يكون وعدًا معلَّقًا (خادم بطيء)
@@ -416,16 +417,17 @@ function panel() {
   clientSlice('js/video.js', '  var PB={busy:false', '  function syncDirector(){', ctx);
   const boxes = () => els.vdPubPlats.children.filter((l) => l.tagName === 'label')
     .map((l) => ({ p: l.children[0].value, on: l.children[0].checked, off: l.children[0].disabled, text: l.textContent, box: l.children[0] }));
-  return { ctx, els, api, puts, timers, replies, boxes, sent, blobFetches, urls };
+  return { ctx, els, api, notes, puts, timers, replies, boxes, sent, blobFetches, urls };
 }
 const F24 = 'f'.repeat(24);
 
 test('٩. اللوحة تعمل: إلغاء الموافقة لا يرفع ولا ينشر، والموافقة = هدف ثمّ رفع ثمّ نشر، والفيديو نفسه لا يُرفع مرّتين ولا يُرسل لمنصّة أخذته، و«no_file» يرفع مرّة في الضغطة نفسها', async () => {
-  const { ctx, els, api, puts, timers, replies, boxes } = panel();
+  const { ctx, els, api, notes, puts, timers, replies, boxes } = panel();
   ctx.PB.plats = ['instagram', 'x']; ctx.pbPlats();
   els.vdPubCap.value = 'نصّ المنشور';
   ctx.answer = false; await ctx.pbGo();
   assert.deepEqual([api.length, puts.length, ctx.confirms.length], [0, 0, 1], 'إلغاء = لا شيء');
+  assert.deepEqual(notes, [['cancel', '']], 'v-socpub-note: الإلغاء يُبلَّغ للسجلّ');
   ctx.answer = true;
   replies.target = { ok: true, id: F24, up: 'https://up.example/put?sig=1', ctype: 'video/mp4' };
   replies.publish = { ok: true, request: 'r1', already: [] };
@@ -437,6 +439,7 @@ test('٩. اللوحة تعمل: إلغاء الموافقة لا يرفع ول�
   // ضغطة ثانية بلا منصّة متاحة = لا نداء
   api.length = 0; await ctx.pbGo();
   assert.deepEqual([api.length, els.vdPubMsg.textContent], [0, 'vdPubPick']);
+  assert.deepEqual(notes[notes.length - 1], ['nopick', ''], 'v-socpub-note');
   // الاستطلاع: إنستغرام نزل وX ما نزل ← X يُختار من جديد (غير مؤشَّر: الإعادة بقصد)
   replies.status = { ok: true, state: 'done', results: [{ platform: 'instagram', state: 'ok', url: '', error: '' }, { platform: 'x', state: 'fail', url: '', error: 'too long' }] };
   timers.pop()(); await flush();

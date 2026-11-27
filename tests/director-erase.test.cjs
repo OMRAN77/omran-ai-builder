@@ -37,21 +37,21 @@ const IDS = ['vdPubCap', 'vdPubPlats', 'vdPubMsg', 'vdPubRes', 'vdPub', 'vdRes',
 function panel(o = {}) {
   const els = {}; for (const k of IDS) els[k] = mkEl(k === 'vdErCv' ? 'canvas' : 'div');
   els.vdRes.classList.add('has');
-  const api = [], urls = { made: [], revoked: [] }, timers = [];
+  const api = [], notes = [], urls = { made: [], revoked: [] }, timers = [];
   const ctx = {
     id: (k) => els[k] || null, L: (k) => k, drT: (k, x) => k + (x ? ' ' + JSON.stringify(x) : ''),
     drTok: () => 'tok', drOwner: () => true, DR: { out: '' }, syncDirector() {}, __swallow() {}, drMsg() {},
     URL: { createObjectURL: (f) => { const u = 'blob:u' + (urls.made.length + 1); urls.made.push({ u, f }); return u; }, revokeObjectURL: (u) => { urls.revoked.push(u); } },
     setTimeout: o.realTimers ? (fn) => { setImmediate(fn); return 1; } : (fn) => { timers.push(fn); return timers.length; }, clearTimeout() {},
     document: { createElement: mkEl, createTextNode: (s) => ({ textContent: String(s) }), querySelector: () => null },
-    fetch: async (url, opt) => { api.push({ url: String(url), body: opt && opt.body ? JSON.parse(opt.body) : null }); return { json: async () => ({ ok: true }) }; },
+    fetch: async (url, opt) => { const b = opt && opt.body ? JSON.parse(opt.body) : null; (/[?&]op=note\b/.test(String(url)) ? notes : api).push({ url: String(url), body: b }); return { json: async () => ({ ok: true }) }; }, // v-socpub-note: بلاغ الوقوف يُعدّ وحده
     confirms: [], answer: true, ls: { aiapp_vd_endcard: '0' },
     localStorage: { getItem: (k) => (k in ctx.ls ? ctx.ls[k] : null), setItem: (k, v) => { ctx.ls[k] = String(v); } },
     navigator: { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }, Blob, File, TextDecoder, TextEncoder,
   };
   ctx.window = ctx; ctx.confirm = (q) => { ctx.confirms.push(q); return ctx.answer; };
   clientSlice('js/video.js', '  var PB={busy:false', '  function syncDirector(){', ctx);
-  return { ctx, els, api, urls, timers };
+  return { ctx, els, api, notes, urls, timers };
 }
 const vfile = (n, t, size) => new File([new Uint8Array(size || 64)], n, { type: t });
 const PLAIN = { v: { i: 0, color: {}, w: 1280, h: 720 }, a: { i: 1 }, w: 1280, h: 720, dw: 1280, dh: 720, ow: 1280, oh: 720, fps: '30', fast: false, dur: 13 };
@@ -321,6 +321,7 @@ test('٩. الأقفال: لا مسح بلا مربّع، ولا أثناء نش
   els.vdPubPlats.querySelectorAll = (sel) => (sel === 'input:checked' ? [{ value: 'x', checked: true }] : []); /* منصّة مؤشَّرة: بلا الحارس كان يصل الرفع (لا قائمة فارغة توقفه قبله) */
   await ctx.pbGo();
   assert.deepEqual([P.api.length, ctx.confirms.length], [0, 0], 'لا نشر أثناء المسح (ولا سؤال)');
+  assert.deepEqual(P.notes.map((n) => [n.body.stage, n.body.why]), [['skip', 'erase ']], 'v-socpub-note: الوقوف يُبلَّغ بسببه');
   ctx.ecToggle(true); assert.equal(calls.length, 1, 'الباركود لا يبدأ أثناء المسح (التفضيل وحده)'); assert.equal(ctx.ls.aiapp_vd_endcard, '1');
   const first = calls[0];
   ctx.upPick(vfile('b.mp4', 'video/mp4')); await flush();
