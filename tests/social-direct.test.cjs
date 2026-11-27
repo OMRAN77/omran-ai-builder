@@ -321,16 +321,39 @@ test('٧-ب. v-social-direct-why: سبب عدم الربط جنب المنصّة
   assert.deepEqual([r.body.on, r.body.connect, r.body.why], [['instagram', 'facebook'], [], '']);
 });
 
-test('٨. اللوحة: «يحتاج إعادة ربط» لمنصّات الربط المباشر قابل للضغط ويفتح رابط Meta وحده، بلا نصّ جديد، والوسم مرفوع', () => {
+test('٨. اللوحة: «يحتاج إعادة ربط» لكلّ منصّة مباشرة قابل للضغط ويفتح ربط منصّته وحدها، والسبب جنبها، ونتيجة الرجوع تُقال — بلا نصّ جديد', async () => {
   const v = read('js/video.js');
-  assert.match(v, /PB\.connect=d\.connect\|\|\[\];/);
-  assert.match(v, /if\(\(PB\.connect\|\|\[\]\)\.indexOf\(p\)>=0\)\{[^}]*s\.onclick=pbConnect;/);
-  assert.match(v, /pbApi\('meta-connect'\)\.then\(function\(d\)\{ if\(d&&d\.ok&&\/\^https:\\\/\\\/www\\\.facebook\\\.com\\\/\/\.test\(String\(d\.url\|\|''\)\)\) location\.href=d\.url;/);
   assert.match(read('index.html'), /\/js\/video\.js\?v=(\d+)/, 'video.js بوسم في index.html');
-  // v-social-direct-why: السبب رمزًا جنب المنصّة القابلة للربط
-  assert.match(v, /PB\.why=String\(d\.why\|\|''\);/);
-  assert.match(v, /s\.textContent=drT\('vdPubReauth',\{p:PB_NAMES\[p\]\|\|p\}\)\+\(\(PB\.why&&\(PB\.connect\|\|\[\]\)\.indexOf\(p\)>=0\)\?' \('\+PB\.why\+'\)':''\);/);
-  // v-social-direct-keep: نتيجة رجوع الربط تُلتقط من العنوان وتُمحى، وتقال في اللوحة مرّة إن لم تكن ok — بنصّ «يحتاج إعادة ربط» نفسه
-  assert.match(v, /var pbBk=\(typeof location==='undefined'\)\?null:\/\[\?&\]socpub=\(\[a-z0-9_\.\\-\]\{1,40\}\)\/i\.exec\(location\.search\|\|''\); if\(pbBk\)\{ PB_BACK=pbBk\[1\]; history\.replaceState\(null,'',location\.pathname\+location\.hash\); \}/);
-  assert.match(v, /if\(d&&d\.ok&&PB_BACK\)\{ var bk=PB_BACK; PB_BACK=''; if\(bk!=='ok'&&!keep\) pbMsg\(drT\('vdPubReauth',\{p:'Instagram \/ Facebook'\}\),true,bk\); \}/);
+  assert.match(v, /PB\.connect=d\.connect\|\|\[\]; PB\.why=String\(d\.why\|\|''\); PB\.whyBy=d\.whyBy\|\|\{\};/);
+  assert.match(v, /linkedin:'LinkedIn'/, 'اسم المنصّة');
+  assert.match(v, /var pw=\(PB\.connect\|\|\[\]\)\.indexOf\(p\)>=0\?String\(\(PB\.whyBy\|\|\{\}\)\[p\]\|\|''\):''; s\.textContent=drT\('vdPubReauth',\{p:PB_NAMES\[p\]\|\|p\}\)\+\(pw\?' \('\+pw\+'\)':''\);/);
+  assert.match(v, /s\.onclick=function\(\)\{ pbConnect\(p\); \};/);
+  assert.match(v, /var pbBk=\(typeof location==='undefined'\)\?null:\/\[\?&\]socpub=/);
+  // pbConnect في vm: كلّ منصّة بإجرائها، ولا يُتبع إلّا رابط صفحة ربطها
+  const i = v.indexOf('  function pbConnect(p){'), e = v.indexOf('\n  }\n', i) + 4;
+  assert.ok(i > 0 && e > i);
+  const go = async (p, url, host) => {
+    const seen = [];
+    const ctx = { location: { href: '' }, msgs: [], String, L: (k) => k, pbErr: () => 'err', pbWhy: () => 'why' };
+    ctx.pbMsg = (t) => ctx.msgs.push(t);
+    ctx.pbApi = (op, body) => { seen.push([op, body]); return Promise.resolve({ ok: true, url, host: host || new URL(url).host }); };
+    require('node:vm').createContext(ctx);
+    require('node:vm').runInContext(v.slice(i, e), ctx);
+    ctx.pbConnect(p); await new Promise((r) => setImmediate(r));
+    return { seen: J(seen), href: ctx.location.href, msgs: ctx.msgs }; // كائنات vm من عالم آخر: تُطبَّع
+  };
+  let g = await go('facebook', 'https://www.facebook.com/v23.0/dialog/oauth?x=1');
+  assert.deepEqual([g.seen[0][0], g.href], ['meta-connect', 'https://www.facebook.com/v23.0/dialog/oauth?x=1']);
+  g = await go('linkedin', 'https://www.linkedin.com/oauth/v2/authorization?x=1');
+  assert.deepEqual([g.seen[0], g.href], [['net-connect', { platform: 'linkedin' }], 'https://www.linkedin.com/oauth/v2/authorization?x=1']);
+  g = await go('youtube', 'https://accounts.google.com/o/oauth2/v2/auth?x=1');
+  assert.equal(g.href, 'https://accounts.google.com/o/oauth2/v2/auth?x=1');
+  g = await go('tiktok', 'https://www.tiktok.com/v2/auth/authorize/?x=1');
+  assert.equal(g.href, 'https://www.tiktok.com/v2/auth/authorize/?x=1');
+  g = await go('linkedin', 'https://evil.example/oauth', 'www.linkedin.com');
+  assert.deepEqual([g.href, g.msgs.length], ['', 1], 'رابط غير صفحة المنصّة لا يُتبع');
+  g = await go('youtube', 'https://www.facebook.com.evil.example/x', 'www.facebook.com');
+  assert.equal(g.href, '', 'موقع يشبهه لا يُتبع');
+  g = await go('tiktok', 'http://www.tiktok.com/x', 'www.tiktok.com');
+  assert.equal(g.href, '', 'لا http');
 });

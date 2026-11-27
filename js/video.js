@@ -601,7 +601,7 @@
   var PB_BACK='';
   try{ var pbBk=(typeof location==='undefined')?null:/[?&]socpub=([a-z0-9_.\-]{1,40})/i.exec(location.search||''); if(pbBk){ PB_BACK=pbBk[1]; history.replaceState(null,'',location.pathname+location.hash); } }catch(e){ typeof __swallow === 'function' && __swallow(e, 'video:socpub'); }
   var PB={busy:false,plats:null,reauth:[],loading:false,src:'',id:'',vid:'',at:0,reqs:{},rows:{},own:{},sent:{},poll:0,gen:0,ticking:false,xhr:null};
-  var PB_NAMES={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',youtube:'YouTube',x:'X',threads:'Threads'};
+  var PB_NAMES={instagram:'Instagram',facebook:'Facebook',tiktok:'TikTok',youtube:'YouTube',linkedin:'LinkedIn',x:'X',threads:'Threads'}; /* v-social-net: LinkedIn */
   var PB_FRESH=5*3600*1000; /* v-director-publish-guard: الملفّ المرفوع يعيش ٦ ساعات عند الخادم وخدمة النشر تجلبه في الخلفيّة — بعد ٥ يُرفع من جديد */
   function pbApi(op,body){
     return fetch('/api/media?action=social-publish&op='+op,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({token:drTok()},body||{}))})
@@ -639,8 +639,8 @@
     PB.loading=true; if(!PB.plats){ if(!pbKeep()) pbMsg(''); pbPlats(); } syncDirector();
     pbApi('accounts').then(function(d){
       PB.loading=false; var keep=pbKeep(); /* رسالة رفع أو نشر قائم أو منتهٍ لا تُمسح */
-      if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; PB.connect=d.connect||[]; PB.why=String(d.why||''); if(!keep) pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
-      if(d&&d.ok&&PB_BACK){ var bk=PB_BACK; PB_BACK=''; if(bk!=='ok'&&!keep) pbMsg(drT('vdPubReauth',{p:'Instagram / Facebook'}),true,bk); } /* الربط ما اكتمل: يقولها مرّة مع رمز السبب */
+      if(d&&d.ok){ PB.plats=d.on||[]; PB.reauth=d.reauth||[]; PB.connect=d.connect||[]; PB.why=String(d.why||''); PB.whyBy=d.whyBy||{}; if(!keep) pbMsg(PB.plats.length?'':L('vdPubNoAcc'),!PB.plats.length); }
+      if(d&&d.ok&&PB_BACK){ var bk=PB_BACK; PB_BACK=''; var bp=/^(linkedin|youtube|tiktok)-/.exec(bk); if(!/(^|-)ok$/.test(bk)&&!keep) pbMsg(drT('vdPubReauth',{p:bp?PB_NAMES[bp[1]]:'Instagram / Facebook'}),true,bp?bk.slice(bp[0].length):bk); } /* الربط ما اكتمل: يقولها مرّة مع رمز السبب */
       else if(!keep) pbMsg(pbErr(d),true,pbWhy(d)); /* القائمة السابقة تبقى؛ وبلا قائمة يعيد الفتح التالي السؤال (مفتاح أُضيف بعدها) */
       pbPlats(); syncDirector();
     }).catch(function(e){ PB.loading=false; if(!pbKeep()) pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); pbPlats(); syncDirector(); });
@@ -658,16 +658,19 @@
       l.appendChild(c); l.appendChild(document.createTextNode((PB_NAMES[p]||p)+(st?' · '+L(st==='ok'?'vdPubOk':'vdPubWait'):''))); box.appendChild(l);
     });
     (PB.reauth||[]).forEach(function(p){
-      var s=document.createElement('span'); s.className='off'; s.textContent=drT('vdPubReauth',{p:PB_NAMES[p]||p})+((PB.why&&(PB.connect||[]).indexOf(p)>=0)?' ('+PB.why+')':''); /* v-social-direct-why: السبب رمزًا جنب المنصّة دائمًا */
+      var s=document.createElement('span'); s.className='off'; var pw=(PB.connect||[]).indexOf(p)>=0?String((PB.whyBy||{})[p]||''):''; s.textContent=drT('vdPubReauth',{p:PB_NAMES[p]||p})+(pw?' ('+pw+')':''); /* v-social-direct-why: السبب رمزًا جنب المنصّة دائمًا */
       /* v-social-direct: المنصّة التي يربطها التطبيق بنفسه — الضغط يفتح ربطها (نصّ «يحتاج إعادة ربط» نفسه، فلا نصّ جديد) */
-      if((PB.connect||[]).indexOf(p)>=0){ s.setAttribute('role','button'); s.tabIndex=0; s.style.cursor='pointer'; s.style.textDecoration='underline'; s.onclick=pbConnect; }
+      if((PB.connect||[]).indexOf(p)>=0){ s.setAttribute('role','button'); s.tabIndex=0; s.style.cursor='pointer'; s.style.textDecoration='underline'; s.onclick=function(){ pbConnect(p); }; }
       box.appendChild(s);
     });
   }
-  function pbConnect(){
-    pbApi('meta-connect').then(function(d){ if(d&&d.ok&&/^https:\/\/www\.facebook\.com\//.test(String(d.url||''))) location.href=d.url; else pbMsg(pbErr(d),true,pbWhy(d)); })
+  /* v-social-net: كلّ منصّة تفتح ربطها — Meta لإنستغرام وفيسبوك، والباقي بمنصّته؛ لا يُتبع إلّا رابط https على الموقع الذي سمّاه الخادم لصفحة ربطها */
+  function pbConnect(p){
+    var meta=(p==='instagram'||p==='facebook');
+    pbApi(meta?'meta-connect':'net-connect',meta?{}:{platform:p}).then(function(d){ var u=String((d&&d.url)||''), h=String((d&&d.host)||''); if(d&&d.ok&&/^[a-z0-9.-]+$/.test(h)&&u.indexOf('https://'+h+'/')===0) location.href=u; else pbMsg(pbErr(d),true,pbWhy(d)); })
       .catch(function(e){ pbMsg(L('vdPubFail'),true,String((e&&e.message)||e)); });
   }
+
   function pbPut(url,mime,blob,at){
     return new Promise(function(res,rej){
       var x=new XMLHttpRequest(), bad=function(){ rej({error:'upload',status:x.status}); };

@@ -11,9 +11,10 @@
    لا اسم مزوّد ولا رابط ولا توكن في أيّ ردّ أو سجلّ؛ الأخطاء رموز (e190…). المفاتيح تُقرأ داخل الدوالّ لا في نطاق الوحدة. */
 const crypto = require('node:crypto');
 const { kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
+const net = require('./social-net.js'); // v-social-net: LinkedIn ويوتيوب وتيك توك بالنمط نفسه
 
 const DIRECT = ['instagram', 'facebook'];
-const ORDER = ['instagram', 'facebook', 'tiktok', 'youtube', 'x', 'threads']; // ترتيب اللوحة كما في social-publish
+const ORDER = ['instagram', 'facebook', 'tiktok', 'youtube', 'linkedin', 'x', 'threads']; // ترتيب اللوحة كما في social-publish
 const SCOPES = 'pages_show_list,pages_read_engagement,pages_manage_posts,business_management,instagram_basic,instagram_content_publish';
 const SENT_TTL = 7 * 86400;
 const STATE_TTL = 600;
@@ -26,6 +27,7 @@ const stateKey = (s) => 'socdir:state:' + s;
 const recKey = (r) => 'socdir:req:' + r;
 const sentKey = (v, p) => 'socdir:sent:' + v + ':' + p;
 const lockKey = (c) => 'socdir:igpub:' + c;
+const jobKey = (r, p) => 'socdir:job:' + r + ':' + p; // v-social-net: حالة منصّة مباشرة في مفتاحها — نداءان متزامنان لا يمحو أحدهما تقدّم الآخر
 const REQ = /^sd-[0-9a-f]{24}-[0-9a-f]{8}$/;
 
 const env = (k) => String(process.env[k] || '').trim();
@@ -33,6 +35,8 @@ const ver = () => env('META_GRAPH_VERSION') || 'v23.0';
 const G = () => 'https://graph.facebook.com/' + ver();
 const GV = () => 'https://graph-video.facebook.com/' + ver();
 const configured = () => !!(env('META_APP_ID') && env('META_APP_SECRET'));
+const active = () => configured() || net.any(); // أيّ منصّة مباشرة مضبوطة
+const metaPlats = () => (configured() ? DIRECT : []);
 const isReq = (r) => REQ.test(String(r || ''));
 const site = () => require('./_site.js').siteUrl();
 const redirectUri = () => site() + '/api/media?action=social-publish&op=meta-cb';
@@ -71,7 +75,7 @@ async function connect(res, user) {
   // تطبيقات «الأعمال» الجديدة عند Meta قد ترفض scope وتطلب تهيئة (config_id) من «تسجيل دخول فيسبوك للأعمال» — احتياط بمتغيّر واحد
   const cfg = env('META_CONFIG_ID');
   const q = new URLSearchParams(Object.assign({ client_id: env('META_APP_ID'), redirect_uri: redirectUri(), state, response_type: 'code' }, cfg ? { config_id: cfg } : { scope: SCOPES }));
-  return res.status(200).json({ ok: true, url: 'https://www.facebook.com/' + ver() + '/dialog/oauth?' + q });
+  return res.status(200).json({ ok: true, url: 'https://www.facebook.com/' + ver() + '/dialog/oauth?' + q, host: 'www.facebook.com' });
 }
 
 /** رجوع Meta (GET): الحالة من KV وحدها تثبت أنّ المالك بدأ الربط — لا جلسة في هذا الطلب. */
@@ -144,12 +148,17 @@ async function accounts(res, upAccounts) {
   // v-social-direct-keep (المالك ٢٧ نوفمبر: «أريد النشر نفس الأشياء الموجودة»): الربط المباشر لا يأخذ منصّة من الوسيط قبل أن ينربط فعلًا —
   // كان ضبط مفاتيح Meta وحده يقلب إنستغرام الموصول عند الوسيط إلى «يحتاج إعادة ربط». الآن: الموصول مباشرة + كلّ الموصول عند الوسيط،
   // و«يحتاج ربط» لما ليس موصولًا في أيّ منهما؛ وconnect لمنصّات Meta الظاهرة «يحتاج ربط» وحدها (مدخل الربط المباشر).
-  const m = await metaState();
+  const m = configured() ? await metaState() : { on: [] };
+  const n = await net.state();
+  const mine = metaPlats().concat(n.on, n.need); // كلّ منصّة مباشرة مضبوطة
   const u = upAccounts ? await upAccounts().catch((e) => { logErr('up-accounts', e); return null; }) : null;
-  const on = ORDER.filter((p) => m.on.includes(p) || ((u && u.on) || []).includes(p));
-  const reauth = ORDER.filter((p) => !on.includes(p) && (DIRECT.includes(p) || ((u && u.reauth) || []).includes(p)));
-  const connect = DIRECT.filter((p) => reauth.includes(p));
-  return res.status(200).json({ ok: true, on, reauth, connect, why: connect.length ? await metaWhy() : '' });
+  const on = ORDER.filter((p) => m.on.includes(p) || n.on.includes(p) || ((u && u.on) || []).includes(p));
+  const reauth = ORDER.filter((p) => !on.includes(p) && (mine.includes(p) || ((u && u.reauth) || []).includes(p)));
+  const connect = reauth.filter((p) => mine.includes(p));
+  const why = connect.some((p) => DIRECT.includes(p)) ? await metaWhy() : '';
+  const whyBy = {};
+  for (const p of connect) { const w = DIRECT.includes(p) ? why : (n.whyBy[p] || ''); if (w) whyBy[p] = w; }
+  return res.status(200).json({ ok: true, on, reauth, connect, why, whyBy });
 }
 
 /** لماذا منصّات Meta غير مربوطة: سرّ التطبيق يُفحص (رمز تطبيق = المعرّف|السرّ) ويُخزَّن عشر دقائق، ثمّ آخر نتيجة رجوع، ثمّ توكن منتهٍ. رموز لا نصوص. */
@@ -182,8 +191,9 @@ async function publish(res, body, d) {
   if (!/^[0-9a-f]{24}$/.test(id)) return fail(res, 400, 'bad_id');
   const vid = /^[0-9a-f]{24}$/.test(String(body.vid || '')) ? String(body.vid) : id;
   const plats = [...new Set((Array.isArray(body.platforms) ? body.platforms : []).map((p) => String(p).toLowerCase()))];
-  const m = await metaState();
-  const mine0 = plats.filter((p) => m.on.includes(p));
+  const m = configured() ? await metaState() : { on: [], c: null };
+  const n = await net.state();
+  const mine0 = plats.filter((p) => m.on.includes(p) || n.on.includes(p));
   const rest = plats.filter((p) => !mine0.includes(p));
   if (!mine0.length) return d.upPublish ? d.upPublish(body) : fail(res, 503, 'no_key'); // لا شيء مباشر: الطريق القديم كما هو
   const cap = d.captions(body.caption);
@@ -212,6 +222,7 @@ async function publish(res, body, d) {
     if (upErr && !upPlats.length) upPlats = rest;
   }
   for (const p of Object.keys(jobs)) {
+    if (net.PLATS.includes(p)) { jobs[p] = { state: 'wait', stage: 'queued', id, cap: { cap: cap.cap, yt: cap.yt } }; continue; } // الرفع في status — منصّة لكلّ نداء
     const j = await start(p, m.c, cap, file).catch((e) => { logErr('start ' + p, e); return { state: 'fail', error: 'retry' }; });
     if (j.code === 190) await kvSetRaw(BAD, '1');
     if (j.state === 'fail') await kvDel(sentKey(vid, p)); // ما نُشر يتحرّر فتصحّ محاولة ثانية
@@ -256,16 +267,18 @@ async function status(res, body, d) {
   const c = await creds();
   const results = [];
   let changed = false;
+  const ctx = { busy: false };
   for (const p of Object.keys(rec.jobs || {})) {
-    let j = rec.jobs[p] || { state: 'fail', error: 'lost' };
-    if (j.state === 'wait' && c) {
+    const isNet = net.PLATS.includes(p);
+    let j = (isNet && readJSON(await kvGetRaw(jobKey(reqId, p)))) || rec.jobs[p] || { state: 'fail', error: 'lost' };
+    if (j.state === 'wait' && (c || isNet)) {
       const before = JSON.stringify(j);
-      j = await poll(p, j, c).catch((e) => { logErr('poll ' + p, e); return j; });
+      j = await (isNet ? net.poll(p, j, reqId, d, ctx) : poll(p, j, c)).catch((e) => { logErr('poll ' + p, e); return j; });
       if (j.code === 190) await kvSetRaw(BAD, '1');
       if (j.state === 'fail' && (await kvGetRaw(sentKey(rec.vid, p))) === reqId) await kvDel(sentKey(rec.vid, p));
-      if (JSON.stringify(j) !== before) { rec.jobs[p] = j; changed = true; }
+      if (JSON.stringify(j) !== before) { rec.jobs[p] = j; changed = true; if (isNet) await kvSetRaw(jobKey(reqId, p), JSON.stringify(j), SENT_TTL); }
     }
-    results.push({ platform: p, state: j.state, url: j.url || '', error: j.state === 'fail' ? String(j.error || '') : '' });
+    results.push({ platform: p, state: j.state, url: j.url || '', error: j.state === 'wait' ? '' : String(j.error || '') }); // ok قد تحمل ملاحظة: private · inbox
   }
   let upWait = false;
   if (rec.upErr) for (const p of rec.upPlats || []) results.push({ platform: p, state: 'fail', url: '', error: rec.upErr });
@@ -282,4 +295,4 @@ async function status(res, body, d) {
   return res.status(200).json({ ok: true, state: wait ? 'wait' : 'done', results });
 }
 
-module.exports = { configured, isReq, connect, callback, accounts, publish, status, metaState, DIRECT, SCOPES, redirectUri };
+module.exports = { configured, active, isReq, connect, callback, accounts, publish, status, metaState, DIRECT, SCOPES, redirectUri, net };

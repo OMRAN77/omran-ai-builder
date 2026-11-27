@@ -142,6 +142,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/social-cb",
+      "destination": "/api/media?action=social-publish&op=net-cb"
+    },
+    {
       "source": "/deploy-probe.txt",
       "destination": "/api/system?action=deploy-probe"
     },

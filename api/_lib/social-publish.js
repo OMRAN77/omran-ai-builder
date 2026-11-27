@@ -296,6 +296,10 @@ module.exports = async (req, res) => {
   if (req.method === 'GET' && String((req.query && req.query.op) || '') === 'meta-cb' && direct.configured()) {
     try { return await direct.callback(req, res); } catch (e) { console.error('[social-publish] meta-cb: ' + String((e && e.message) || e).slice(0, 200)); return fail(res, 503, 'retry'); }
   }
+  // v-social-net: رجوع LinkedIn ويوتيوب وتيك توك (‎/api/social-cb يُعاد كتابته إلى هنا)
+  if (req.method === 'GET' && String((req.query && req.query.op) || '') === 'net-cb' && direct.net.any()) {
+    try { return await direct.net.callback(req, res); } catch (e) { console.error('[social-publish] net-cb: ' + String((e && e.message) || e).slice(0, 200)); return fail(res, 503, 'retry'); }
+  }
   if (req.method !== 'POST') return fail(res, 405, 'method');
   let body = req.body;
   if (!body || typeof body === 'string') { try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; } }
@@ -308,10 +312,11 @@ module.exports = async (req, res) => {
   try {
     if (op === 'target') return await target(res, body);
     const key = upKey();
-    if (direct.configured()) {
+    if (direct.active()) {
       // ردّ الطريق القديم يُلتقط بدل أن يُرسل، فيُضمّ إلى المباشر في ردّ واحد
       const cap = () => ({ code: 200, body: null, status(c) { this.code = c; return this; }, json(o) { this.body = o; return this; }, setHeader() {} });
-      if (op === 'meta-connect') return await direct.connect(res, user);
+      if (op === 'meta-connect' && direct.configured()) return await direct.connect(res, user);
+      if (op === 'net-connect') return await direct.net.connect(res, user, String(body.platform || '').toLowerCase());
       if (op === 'accounts') return await direct.accounts(res, key ? async () => { const r = cap(); await accounts(r, key); return r.body && r.body.ok ? r.body : null; } : null);
       if (op === 'publish') {
         return await direct.publish(res, body, {
@@ -320,7 +325,7 @@ module.exports = async (req, res) => {
           upCapture: key ? async (b) => { const r = cap(); await publish(r, b, key); return r; } : null,
         });
       }
-      if (op === 'status' && direct.isReq(body.request)) return await direct.status(res, body, { upStatus: key ? (r) => upStatus(key, r) : null, statusOf });
+      if (op === 'status' && direct.isReq(body.request)) return await direct.status(res, body, { upStatus: key ? (r) => upStatus(key, r) : null, statusOf, fileOf: (id) => kvGetRaw(fileKey(id)) });
     }
     if (!key) return fail(res, 503, 'no_key');
     if (op === 'accounts') return await accounts(res, key);
