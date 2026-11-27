@@ -18,7 +18,12 @@ export function makeCave({ play, kit, rnd, spawn }) {
     const a = Math.floor(rnd() * 4), dx = [1, -1, 0, 0][a], dz = [0, 0, 1, -1][a];
     let ok = true;
     for (let k = -2; k <= 26 && ok; k++) { const t = top(x + dx * k, z + dz * k); if (t === null || Math.abs(t - y) > (k < 4 ? 1 : 7)) ok = false; }
-    for (let yy = y - 11; yy < y && ok; yy++) if (!solid(x + dx * 14, yy, z + dz * 14)) ok = false;       // rock all the way down where the hall will be
+    // where the hall will really be: the stair goes 18 paces and down one step every two (8 in all), the hall 4 paces on.
+    // (This looked at pace 14 before, so a hall could fall under a lake and fill with water: the dark world, 27 November.)
+    const hx = x + dx * 22, hz = z + dz * 22, hy = y - 8 + 2;
+    for (let yy = hy - 3; yy <= hy + 4 && ok; yy++) if (!solid(hx, yy, hz)) ok = false;                     // rock all through the hall's middle
+    for (let oy = -4; oy <= 5 && ok; oy++) for (let oz = -8; oz <= 8 && ok; oz += 2) for (let ox = -8; ox <= 8 && ok; ox += 2) if (wet(hx + ox, hy + oy, hz + oz)) ok = false;      // and no water in or around it
+    for (let k = 0; k <= 22 && ok; k++) for (let yy = y - 9; yy <= y + 3 && ok; yy++) if (wet(x + dx * k, yy, z + dz * k)) ok = false;       // nor along the way down
     if (ok) { mouth = { x, y, z }; dir = [dx, dz]; }
   }
   if (!mouth) return null;

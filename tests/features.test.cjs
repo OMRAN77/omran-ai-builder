@@ -279,3 +279,10 @@ test('شاشة النوم: قمر و«جاري النوم… حتى الصباح
   assert.match(a, /#bwSleep \{ position: fixed; inset: 0; z-index: 62;/, 'فوق كل شي');
   assert.match(a, /let letGo = !!document\.pointerLockElement;/, 'القيام ينتظر المتصفح يفكّ الماوس (وإلا تنفتح قائمة الإيقاف بالغلط)');
 });
+
+test('كهف اليوم ما يطيح تحت بحيرة: مكانه يُفحص عند القاعة نفسها (الخطوة 22) مو الخطوة 14', () => {
+  const c = read('shared/cave.js');
+  assert.match(c, /const hx = x \+ dx \* 22, hz = z \+ dz \* 22, hy = y - 8 \+ 2;/, 'مكان القاعة الحقيقي');
+  assert.match(c, /if \(wet\(hx \+ ox, hy \+ oy, hz \+ oz\)\) ok = false;/, 'ما في ماي في القاعة ولا حولها');
+  assert.ok(!/solid\(x \+ dx \* 14, yy, z \+ dz \* 14\)/.test(c), 'الفحص القديم عند الخطوة 14 راح');
+});
