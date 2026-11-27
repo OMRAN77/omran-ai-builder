@@ -284,12 +284,52 @@ test('٧. الفشل: حاوية فاشلة تحرّر المنصّة فتُعا
   assert.deepEqual([acc.body.on, acc.body.connect], [[], ['instagram', 'facebook']], 'توكن منتهٍ = ربط من جديد');
 });
 
+test('٧-ب. v-social-direct-why: سبب عدم الربط جنب المنصّة — سرّ التطبيق يُفحص ويُخزَّن عشر دقائق، ثمّ آخر نتيجة رجوع للمالك وحده', async () => {
+  metaOn();
+  delete process.env.UPLOAD_POST_API_KEY;
+  kv.delete('socdir:meta'); kv.delete('socdir:meta:reauth'); kv.delete('socdir:meta:check'); kv.delete('socdir:meta:last');
+  // ١) السرّ مرفوض: الرمز مباشرة، بلا ضغط ولا لقطة
+  routes = { [G + '/1234567890']: { status: 400, body: { error: { code: 1, message: 'Error validating client secret.' } } } };
+  calls.length = 0;
+  let r = await call('accounts', owner());
+  assert.deepEqual([r.body.connect, r.body.why], [['instagram', 'facebook'], 'secret-e1']);
+  assert.equal(params(calls[0]).get('access_token'), '1234567890|app-secret-x', 'رمز التطبيق');
+  assert.deepEqual([kv.get('socdir:meta:check'), ttl.get('socdir:meta:check')], ['secret-e1', 600]);
+  leaks(r.body);
+  calls.length = 0;
+  await call('accounts', owner());
+  assert.equal(calls.length, 0, 'الفحص مخزَّن — لا نداء في كلّ فتح');
+  // ٢) السرّ سليم: آخر نتيجة رجوع (فشل الصفحات مثلًا)
+  kv.delete('socdir:meta:check');
+  routes = { [G + '/1234567890']: { status: 200, body: { id: '1234567890' } } };
+  kv.set('socdir:meta:last', JSON.stringify({ why: 'fail-pages-e10', at: 1 }));
+  assert.equal((await call('accounts', owner())).body.why, 'fail-pages-e10');
+  // ٣) رجوع بلا حالة المالك لا يكتب «آخر نتيجة»
+  await call('meta-cb', {}, 'GET', { state: 'c'.repeat(32), code: 'x' });
+  assert.equal(JSON.parse(kv.get('socdir:meta:last')).why, 'fail-pages-e10');
+  // ٤) رجوع المالك يكتبها، والربط الناجح يمسح الفحص المخزَّن ويُخفي السبب
+  routes = Object.assign({}, routes, {
+    [G + '/oauth/access_token']: (u) => ({ status: 200, body: { access_token: /fb_exchange_token/.test(u) ? 'LONG-user' : 'SHORT-user' } }),
+    [G + '/me/accounts']: { status: 200, body: { data: [{ id: 'P1', name: 'OM Ai', access_token: PAGE_TOKEN, instagram_business_account: { id: 'IG1' } }] } },
+  });
+  kv.set('socdir:meta:check', 'ok');
+  const st = new URL((await call('meta-connect', owner())).body.url).searchParams.get('state');
+  const cb = await call('meta-cb', {}, 'GET', { state: st, code: 'C9' });
+  assert.equal(cb.headers.Location, 'https://omran-ai-builder.vercel.app/?socpub=ok');
+  assert.deepEqual([JSON.parse(kv.get('socdir:meta:last')).why, kv.has('socdir:meta:check')], ['ok', false]);
+  r = await call('accounts', owner());
+  assert.deepEqual([r.body.on, r.body.connect, r.body.why], [['instagram', 'facebook'], [], '']);
+});
+
 test('٨. اللوحة: «يحتاج إعادة ربط» لمنصّات الربط المباشر قابل للضغط ويفتح رابط Meta وحده، بلا نصّ جديد، والوسم مرفوع', () => {
   const v = read('js/video.js');
   assert.match(v, /PB\.connect=d\.connect\|\|\[\];/);
   assert.match(v, /if\(\(PB\.connect\|\|\[\]\)\.indexOf\(p\)>=0\)\{[^}]*s\.onclick=pbConnect;/);
   assert.match(v, /pbApi\('meta-connect'\)\.then\(function\(d\)\{ if\(d&&d\.ok&&\/\^https:\\\/\\\/www\\\.facebook\\\.com\\\/\/\.test\(String\(d\.url\|\|''\)\)\) location\.href=d\.url;/);
   assert.match(read('index.html'), /\/js\/video\.js\?v=(\d+)/, 'video.js بوسم في index.html');
+  // v-social-direct-why: السبب رمزًا جنب المنصّة القابلة للربط
+  assert.match(v, /PB\.why=String\(d\.why\|\|''\);/);
+  assert.match(v, /s\.textContent=drT\('vdPubReauth',\{p:PB_NAMES\[p\]\|\|p\}\)\+\(\(PB\.why&&\(PB\.connect\|\|\[\]\)\.indexOf\(p\)>=0\)\?' \('\+PB\.why\+'\)':''\);/);
   // v-social-direct-keep: نتيجة رجوع الربط تُلتقط من العنوان وتُمحى، وتقال في اللوحة مرّة إن لم تكن ok — بنصّ «يحتاج إعادة ربط» نفسه
   assert.match(v, /var pbBk=\(typeof location==='undefined'\)\?null:\/\[\?&\]socpub=\(\[a-z0-9_\.\\-\]\{1,40\}\)\/i\.exec\(location\.search\|\|''\); if\(pbBk\)\{ PB_BACK=pbBk\[1\]; history\.replaceState\(null,'',location\.pathname\+location\.hash\); \}/);
   assert.match(v, /if\(d&&d\.ok&&PB_BACK\)\{ var bk=PB_BACK; PB_BACK=''; if\(bk!=='ok'&&!keep\) pbMsg\(drT\('vdPubReauth',\{p:'Instagram \/ Facebook'\}\),true,bk\); \}/);

@@ -20,6 +20,8 @@ const STATE_TTL = 600;
 const LOCK_TTL = 120; // نشر حاوية إنستغرام: سؤال واحد ينشر، وقفل يموت مع دالّة ماتت فتعيد التالية
 const CRED = 'socdir:meta';
 const BAD = 'socdir:meta:reauth';
+const LAST = 'socdir:meta:last'; // آخر نتيجة رجوع من Meta
+const CHECK = 'socdir:meta:check'; // فحص سرّ التطبيق (عشر دقائق)
 const stateKey = (s) => 'socdir:state:' + s;
 const recKey = (r) => 'socdir:req:' + r;
 const sentKey = (v, p) => 'socdir:sent:' + v + ':' + p;
@@ -75,18 +77,22 @@ async function connect(res, user) {
 /** رجوع Meta (GET): الحالة من KV وحدها تثبت أنّ المالك بدأ الربط — لا جلسة في هذا الطلب. */
 async function callback(req, res) {
   const q = req.query || {};
-  const back = (why) => { res.setHeader('Location', site() + '/?socpub=' + why); res.setHeader('Cache-Control', 'no-store'); return res.status(302).end(); };
+  const back = async (why, keep) => {
+    // v-social-direct-why: آخر نتيجة ربط تبقى أسبوعًا وتظهر جنب المنصّة في اللوحة — لا يعتمد السبب على لقطة شاشة في لحظتها
+    if (keep !== false) await kvSetRaw(LAST, JSON.stringify({ why: String(why).slice(0, 40), at: Date.now() }), 7 * 86400).catch((e) => logErr('last', e));
+    res.setHeader('Location', site() + '/?socpub=' + why); res.setHeader('Cache-Control', 'no-store'); return res.status(302).end();
+  };
   const st = String(q.state || '');
-  if (!/^[0-9a-f]{32}$/.test(st)) return back('fail');
+  if (!/^[0-9a-f]{32}$/.test(st)) return await back('fail', false); // طلب بلا حالة المالك لا يكتب «آخر نتيجة»
   const who = await kvGetRaw(stateKey(st));
   await kvDel(stateKey(st));
-  if (!who || !require('./_owner.js').isOwnerName(who)) return back('fail');
-  if (q.error || !q.code) return back('denied');
+  if (!who || !require('./_owner.js').isOwnerName(who)) return await back('fail', false);
+  if (q.error || !q.code) return await back('denied');
   try {
     const id = env('META_APP_ID'), secret = env('META_APP_SECRET');
     const a = await graph('GET', G() + '/oauth/access_token', { client_id: id, client_secret: secret, redirect_uri: redirectUri(), code: String(q.code) });
     // v-social-direct-step: الرمز يحمل الخطوة — «e1» وحده ما يقول أين (سرّ التطبيق الخاطئ يرجع code 1 عند تبديل الرمز)
-    if (!a.ok || !a.j.access_token) { logErr('callback', 'token ' + errOf(a)); return back('fail-token-' + errOf(a)); }
+    if (!a.ok || !a.j.access_token) { logErr('callback', 'token ' + errOf(a)); return await back('fail-token-' + errOf(a)); }
     const l = await graph('GET', G() + '/oauth/access_token', { grant_type: 'fb_exchange_token', client_id: id, client_secret: secret, fb_exchange_token: a.j.access_token });
     const user = (l.ok && l.j.access_token) || a.j.access_token;
     // توكن الصفحة المأخوذ بتوكن مستخدم طويل لا ينتهي
@@ -94,7 +100,7 @@ async function callback(req, res) {
     let pg = await graph('GET', G() + '/me/accounts', { fields: FIELDS, limit: '50', access_token: user });
     // الحقل المتداخل (إنستغرام) قد يُسقط القائمة كلّها: مرّة ثانية بلاه، وإنستغرام يُسأل لكلّ صفحة وحدها تحت
     if (!pg.ok) pg = await graph('GET', G() + '/me/accounts', { fields: 'id,name,access_token', limit: '50', access_token: user });
-    if (!pg.ok) { logErr('callback', 'pages ' + errOf(pg)); return back('fail-pages-' + errOf(pg)); } // خطأ Graph ليس «لا صفحة»
+    if (!pg.ok) { logErr('callback', 'pages ' + errOf(pg)); return await back('fail-pages-' + errOf(pg)); } // خطأ Graph ليس «لا صفحة»
     const pages = ((pg.j && pg.j.data) || []).filter((x) => x && x.id && x.access_token);
     /* v-social-direct-keep (مراجعة مستقلّة ٢٧ نوفمبر): في تطبيقات «تسجيل دخول فيسبوك للأعمال» وللصفحة المملوكة لحافظة أعمال يرجع
        ‎/me/accounts فارغًا مع أنّ الصفحة مختارة — فالصفحات الممنوحة من debug_token (granular_scopes.target_ids)، ثمّ صفحات حافظات الأعمال. */
@@ -122,14 +128,14 @@ async function callback(req, res) {
     const om = (x) => /om\s*ai/i.test((x && x.name) || '');
     const igOf = (x) => x && x.instagram_business_account && x.instagram_business_account.id;
     const pick = pages.find((x) => igOf(x) && om(x)) || pages.find(igOf) || pages.find(om) || pages[0];
-    if (!pick) return back('no_page');
+    if (!pick) return await back('no_page');
     const rec = { page: pick.id, pageName: pick.name || '', token: pick.access_token, ig: igOf(pick) || '', igName: (pick.instagram_business_account && pick.instagram_business_account.username) || '', at: Date.now() };
     await kvSetRaw(CRED, require('./_emailCrypto.js').encrypt(JSON.stringify(rec)));
-    await kvDel(BAD);
-    return back(rec.ig ? 'ok' : 'no_ig');
+    await kvDel(BAD); await kvDel(CHECK);
+    return await back(rec.ig ? 'ok' : 'no_ig');
   } catch (e) {
     logErr('callback', e);
-    return back('fail');
+    return await back('fail');
   }
 }
 
@@ -142,7 +148,23 @@ async function accounts(res, upAccounts) {
   const u = upAccounts ? await upAccounts().catch((e) => { logErr('up-accounts', e); return null; }) : null;
   const on = ORDER.filter((p) => m.on.includes(p) || ((u && u.on) || []).includes(p));
   const reauth = ORDER.filter((p) => !on.includes(p) && (DIRECT.includes(p) || ((u && u.reauth) || []).includes(p)));
-  return res.status(200).json({ ok: true, on, reauth, connect: DIRECT.filter((p) => reauth.includes(p)) });
+  const connect = DIRECT.filter((p) => reauth.includes(p));
+  return res.status(200).json({ ok: true, on, reauth, connect, why: connect.length ? await metaWhy() : '' });
+}
+
+/** لماذا منصّات Meta غير مربوطة: سرّ التطبيق يُفحص (رمز تطبيق = المعرّف|السرّ) ويُخزَّن عشر دقائق، ثمّ آخر نتيجة رجوع، ثمّ توكن منتهٍ. رموز لا نصوص. */
+async function metaWhy() {
+  let chk = await kvGetRaw(CHECK).catch(() => null);
+  if (!chk) {
+    const id = env('META_APP_ID'), secret = env('META_APP_SECRET');
+    const r = await graph('GET', G() + '/' + encodeURIComponent(id), { fields: 'id', access_token: id + '|' + secret }).catch(() => null);
+    chk = !r ? 'net' : (r.ok && String(r.j.id) === id ? 'ok' : 'secret-' + errOf(r));
+    if (chk !== 'net') await kvSetRaw(CHECK, chk, 600).catch(() => null);
+  }
+  if (chk !== 'ok' && chk !== 'net') return chk;
+  if (await kvGetRaw(BAD).catch(() => null)) return 'expired';
+  const last = readJSON(await kvGetRaw(LAST).catch(() => null));
+  return last && last.why && last.why !== 'ok' ? last.why : '';
 }
 
 /** يُنشئ منشور منصّة: فيسبوك فيديو صفحة، وإنستغرام حاوية ريلز (تُنشر في status حين تجهز). */
