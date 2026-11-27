@@ -3,6 +3,9 @@
 مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · النشر: `DEPLOY.md` · الحالة: `STATE.md`.
 **اقرأ هذا الملفّ قبل أي فحص أو تحقّق حيّ** — كل بند هنا وقع فعليًّا وكلّف وقتًا، لا احتراز نظريّ.
 
+- **بديل جديد يأخذ منصّة من القديم قبل اكتماله:** ضبط `META_APP_ID`/`META_APP_SECRET` وحده كان يقلب إنستغرام الموصول عند الوسيط إلى
+  «يحتاج إعادة ربط» — «المفتاح مضبوط» ليس «الحساب مربوط». البديل يأخذ المنصّة عند نجاح ربطها لا عند ضبط مفتاحه، والقديم يبقى
+  حتّى ذلك. (v-social-direct-keep)
 - **`scripts/twa-generate.mjs` يمسح مشروع الأندرويد كلّه:** يبدأ بـ`rmSync(store/huawei/twa)` ثمّ يولّد قالب Bubblewrap من جديد — فيضيع
   `MahaWebViewFallbackActivity` وجسوره (`OmranRender`، `OmranBlobSave`، `OmranContacts`)، و`ContactsSyncActivity`، والصلاحيّات المضافة يدويًّا.
   المشروع يُصان باليد الآن؛ لا تشغّله. (v-talk-contacts-sync)
