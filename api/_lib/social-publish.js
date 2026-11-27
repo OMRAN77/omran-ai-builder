@@ -289,6 +289,31 @@ async function status(res, body, key) {
   return res.status(200).json(Object.assign({ ok: true }, statusOf(r.j)));
 }
 
+/* v-socpub-trace (المالك ٢٧ نوفمبر: «ماينشر على المواقع… افحص»): سبب الفشل كان يذهب للوحة وحدها، فالسجلّ فارغ ولا يُفحص النشر إلّا بلقطة
+   شاشة. الآن كلّ ردّ للوحة يُسجَّل سطرًا: الإجراء والحالة والخطأ ونتيجة كلّ منصّة برمزها — بلا روابط ولا توكنات ولا نصّ المنشور. */
+const clip = (v) => String(v == null ? '' : v).replace(/https?:\/\/\S+/g, '<url>').replace(/[\r\n]+/g, ' ').slice(0, 80);
+function traceLine(op, code, b) {
+  const o = b && typeof b === 'object' ? b : {};
+  const parts = ['op=' + clip(op), 'code=' + code, 'ok=' + !!o.ok];
+  if (o.error) parts.push('error=' + clip(o.error), 'status=' + clip(o.status), 'detail=' + clip(o.detail));
+  if (Array.isArray(o.on)) parts.push('on=' + o.on.join(','), 'reauth=' + (o.reauth || []).join(','), 'why=' + clip(JSON.stringify(o.whyBy || {})));
+  if (o.request) parts.push('req=' + clip(o.request));
+  if (Array.isArray(o.already) && o.already.length) parts.push('already=' + o.already.join(','));
+  if (o.state) parts.push('state=' + clip(o.state));
+  if (Array.isArray(o.results)) parts.push('results=' + o.results.map((x) => clip(x.platform) + ':' + clip(x.state) + (x.error ? '(' + clip(x.error) + ')' : '')).join(','));
+  return '[socpub] ' + parts.join(' ');
+}
+function traceRes(res, op) {
+  if (op === 'target') return; // هدف الرفع يحمل روابط مؤقّتة — لا يُسجَّل
+  let code = 200;
+  const st = res.status, js = res.json;
+  res.status = function (c) { code = c; return st.call(this, c); };
+  res.json = function (b) {
+    try { console.log(traceLine(op, code, b)); } catch (e) { require('./_swallow.js').swallow(e, 'socpub:trace'); } // السجلّ لا يكسر الردّ
+    return js.call(this, b);
+  };
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
@@ -309,6 +334,7 @@ module.exports = async (req, res) => {
   if (!user) return fail(res, 401, 'auth');
   if (!isOwnerName(user)) return fail(res, 403, 'owner_only');
   const op = String((req.query && req.query.op) || body.op || '');
+  traceRes(res, op); // v-socpub-trace: كلّ ردّ للوحة يُسجَّل ملخّصًا — بلا رابط ولا مفتاح
   try {
     if (op === 'target') return await target(res, body);
     const key = upKey();
