@@ -97,8 +97,9 @@ export function mountSwitcher({ panel, onStart, fontFamily }) {
   function sync() {
     const play = window.__GAME_PLAY, playing = !!(play && play.state.running && !play.state.modal);
     const over = ['netPanel', 'bag', 'chatBox'].some((id) => { const e = document.getElementById(id); return e && !e.hidden; });
-    let hide = !box.hidden || over || (panel.el.hidden && !playing);      // another window (the room panel, the bag) is up or has the game paused: keep out of its way
-    if (!hide && !panel.el.hidden) {
+    const editing = !!(window.__GAME_LAYOUT && window.__GAME_LAYOUT.shown);      // «تخصيص أماكن الأزرار»: these two are placed too
+    let hide = !editing && (!box.hidden || over || (panel.el.hidden && !playing));      // another window (the room panel, the bag) is up or has the game paused: keep out of its way
+    if (!hide && !editing && !panel.el.hidden) {
       corner.hidden = false;
       const p = panel.el.querySelector('.box:not([hidden])'), a = p && p.getBoundingClientRect(), c = corner.getBoundingClientRect();
       hide = !!a && c.left < a.right && c.right > a.left && c.top < a.bottom && c.bottom > a.top;

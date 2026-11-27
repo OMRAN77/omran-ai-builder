@@ -242,3 +242,16 @@ test('عناصر العوالم الخمسة كما طلبها المالك: ا�
   assert.match(dino, /if \(WARM\.has\(id\)\) \{/, 'مكعب دافي جنب العش يدفّيه');
   assert.match(read('styles/dino/gen.js'), /id === B\.ASH && r > 0\.995\) put = B\.NEST/, 'أعشاش قرب البراكين بعد');
 });
+
+test('تخصيص أماكن الأزرار من الإعدادات: تحريك وحجم وشفافية لكل زر ولوحة، ينحفظ لكل عالم وجهاز', () => {
+  const lay = read('shared/layout.js'), play = read('shared/play.js');
+  for (const t of ['تخصيص أماكن الأزرار', 'الحجم', 'الشفافية', 'حفظ واستخدام', 'خروج', 'إعادة ضبط']) assert.ok(lay.includes(t), t);
+  assert.match(play, /btn\('layout', 'تخصيص أماكن الأزرار'\)/, 'الزر في الإعدادات');
+  assert.match(play, /import\('\.\/layout\.js'\)\.then/, 'ينركّب في كل العوالم');
+  assert.ok(!/أزرار اللمس ثابتة في مكانها/.test(play), 'الملاحظة القديمة راحت');
+  assert.match(lay, /el\.style\.translate = /, 'يتحرك بـtranslate (ما يخرب تمركز العناصر)');
+  assert.match(lay, /el\.style\.scale = /);
+  assert.match(lay, /const KEY = 'bw-layout:' \+ String\(name \|\| 'world'\) \+ ':' \+ \(touch \? 't' : 'd'\);/, 'لكل عالم ولكل نوع شاشة');
+  for (const a of ['stick', 'jump', 'dig', 'place', 'bag', 'pause', 'down']) assert.ok(lay.includes(`'${a}'`), a);
+  assert.match(read('shared/switcher.js'), /const editing = !!\(window\.__GAME_LAYOUT && window\.__GAME_LAYOUT\.shown\)/, 'زرّا الزاوية يبانون وقت التخصيص عشان يتحركون بعد');
+});

@@ -947,8 +947,8 @@ export function createPlayPanel(o) {
       const save = window.__GAME_SAVE;
       h = '<h2>الإعدادات</h2><div class="esc">' + btn('mode', NAMES.mode()) + btn('speed', NAMES.speed()) + btn('death', NAMES.death()) + btn('sound', NAMES.sound()) + btn('look', NAMES.look()) + btn('video', NAMES.video()) + btn('diff', NAMES.diff()) + btn('mon', NAMES.mon())
         + (window.__GAME_NET ? `<label class="nm">اسمك <input maxlength="16" value="${esc(window.__GAME_NET.name || '')}" placeholder="لاعب"></label>` + btn('name', 'احفظ الاسم') : '')
-        + (o.touch ? '' : btn('keys', 'أزرار التحكم')) + (save && save.has() ? btn('new', confirmNew ? 'متأكد؟ اضغط مرة ثانية يمسح عالمك المحفوظ' : 'عالم جديد (يمسح المحفوظ)') : '') + '</div>'
-        + `<div class="note">${o.touch ? 'أزرار اللمس ثابتة في مكانها. ' : ''}اللغة: العربية. اللغات الثانية ما انضافت للعبة للحين.</div>`;
+        + btn('layout', 'تخصيص أماكن الأزرار') + (o.touch ? '' : btn('keys', 'أزرار التحكم')) + (save && save.has() ? btn('new', confirmNew ? 'متأكد؟ اضغط مرة ثانية يمسح عالمك المحفوظ' : 'عالم جديد (يمسح المحفوظ)') : '') + '</div>'
+        + `<div class="note">${o.touch ? 'تقدر تحرّك أزرار اللمس وتكبّرها من «تخصيص أماكن الأزرار». ' : ''}اللغة: العربية. اللغات الثانية ما انضافت للعبة للحين.</div>`;
     } else if (view === 'cloud') {
       const c = window.__GAME_CLOUD;
       h = '<h2>حسابي (الحفظ السحابي)</h2>' + (!c ? '<p>الحساب ما يشتغل في هذي اللعبة.</p>' : c.code
@@ -993,6 +993,7 @@ export function createPlayPanel(o) {
     else if (act === 'net') { const n = window.__GAME_NET; if (n) { el.hidden = true; n.open(() => { el.hidden = false; draw(); }); } }
     else if (act === 'worlds') toMenu();
     else if (act === 'switch') { if (window.__GAME_SWITCH) window.__GAME_SWITCH.open(); }
+    else if (act === 'layout') { if (window.__GAME_LAYOUT) window.__GAME_LAYOUT.open(); }
     else if (act === 'quit') {
       const s = window.__GAME_SAVE, ok = s ? s.save() : false, linked = !!(ok && s.cloud && s.cloud.code);
       sent = ok ? (linked ? 'انحفظ عالمك. أرفعه لحسابك…' : 'انحفظ عالمك في هذا المتصفح ✓') : (s && s.why ? s.why : 'ما قدرت أحفظ.');
@@ -1038,6 +1039,8 @@ export function createPlayPanel(o) {
     get view() { return view; }, go,
   };
   window.__GAME_PAUSE = () => api.show('pause');      // something outside the panel (a room with no internet) hands the player back to it
+  // «تخصيص أماكن الأزرار»: where each button and panel stands, its size and how see-through, kept on this device
+  import('./layout.js').then((m) => { m.mountLayout({ panel: api, onStart: o.onStart, name: o.title, touch: !!o.touch, fontFamily: el.style.fontFamily }); }).catch((e) => { console.warn('layout', e); });
   // opened from the first page: the corner buttons «تبديل العالم» and «الإعدادات», and the window that moves to another world
   if (window.__GAME && window.__GAME.key) import('./switcher.js').then((m) => { m.mountSwitcher({ panel: api, onStart: o.onStart, fontFamily: el.style.fontFamily }); if (!el.hidden && view === 'main') draw(); }).catch((e) => { console.warn('world switcher', e); });
   return api;
