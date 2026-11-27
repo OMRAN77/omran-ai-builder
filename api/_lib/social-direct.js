@@ -85,13 +85,16 @@ async function callback(req, res) {
   try {
     const id = env('META_APP_ID'), secret = env('META_APP_SECRET');
     const a = await graph('GET', G() + '/oauth/access_token', { client_id: id, client_secret: secret, redirect_uri: redirectUri(), code: String(q.code) });
-    if (!a.ok || !a.j.access_token) return back('fail-' + errOf(a));
+    // v-social-direct-step: الرمز يحمل الخطوة — «e1» وحده ما يقول أين (سرّ التطبيق الخاطئ يرجع code 1 عند تبديل الرمز)
+    if (!a.ok || !a.j.access_token) { logErr('callback', 'token ' + errOf(a)); return back('fail-token-' + errOf(a)); }
     const l = await graph('GET', G() + '/oauth/access_token', { grant_type: 'fb_exchange_token', client_id: id, client_secret: secret, fb_exchange_token: a.j.access_token });
     const user = (l.ok && l.j.access_token) || a.j.access_token;
     // توكن الصفحة المأخوذ بتوكن مستخدم طويل لا ينتهي
     const FIELDS = 'id,name,access_token,instagram_business_account{id,username}';
-    const pg = await graph('GET', G() + '/me/accounts', { fields: FIELDS, limit: '50', access_token: user });
-    if (!pg.ok) { logErr('callback', 'pages ' + errOf(pg)); return back('fail-' + errOf(pg)); } // خطأ Graph ليس «لا صفحة»
+    let pg = await graph('GET', G() + '/me/accounts', { fields: FIELDS, limit: '50', access_token: user });
+    // الحقل المتداخل (إنستغرام) قد يُسقط القائمة كلّها: مرّة ثانية بلاه، وإنستغرام يُسأل لكلّ صفحة وحدها تحت
+    if (!pg.ok) pg = await graph('GET', G() + '/me/accounts', { fields: 'id,name,access_token', limit: '50', access_token: user });
+    if (!pg.ok) { logErr('callback', 'pages ' + errOf(pg)); return back('fail-pages-' + errOf(pg)); } // خطأ Graph ليس «لا صفحة»
     const pages = ((pg.j && pg.j.data) || []).filter((x) => x && x.id && x.access_token);
     /* v-social-direct-keep (مراجعة مستقلّة ٢٧ نوفمبر): في تطبيقات «تسجيل دخول فيسبوك للأعمال» وللصفحة المملوكة لحافظة أعمال يرجع
        ‎/me/accounts فارغًا مع أنّ الصفحة مختارة — فالصفحات الممنوحة من debug_token (granular_scopes.target_ids)، ثمّ صفحات حافظات الأعمال. */
@@ -110,6 +113,11 @@ async function callback(req, res) {
         }
       }
       if (!pages.length) logErr('callback', 'no pages; granted=' + (Array.isArray(d.scopes) ? d.scopes.join(',') : '?'));
+    }
+    for (const x of pages.slice(0, 10)) { // صفحة بلا حقل إنستغرام (القائمة الخفيفة): يُسأل عنه وحده، وفشله لا يُسقط الربط
+      if (x.instagram_business_account) continue;
+      const ig = await graph('GET', G() + '/' + encodeURIComponent(x.id), { fields: 'instagram_business_account{id,username}', access_token: x.access_token }).catch(() => null);
+      if (ig && ig.ok && ig.j.instagram_business_account) x.instagram_business_account = ig.j.instagram_business_account;
     }
     const om = (x) => /om\s*ai/i.test((x && x.name) || '');
     const igOf = (x) => x && x.instagram_business_account && x.instagram_business_account.id;

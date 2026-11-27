@@ -148,7 +148,23 @@ test('٣-ب. رجوع Meta بقائمة صفحات فارغة (تطبيق «لل
   // ٤) خطأ Graph على الصفحات: رمزه في الرجوع لا «لا صفحة»
   routes[G + '/me/accounts'] = { status: 400, body: { error: { code: 200, message: 'Permissions error' } } };
   r = await cb();
-  assert.equal(r.headers.Location, 'https://omran-ai-builder.vercel.app/?socpub=fail-e200');
+  assert.equal(r.headers.Location, 'https://omran-ai-builder.vercel.app/?socpub=fail-pages-e200', 'الخطوة في الرمز');
+  // v-social-direct-step: الحقل المتداخل يُسقط القائمة (code 1) ← قائمة خفيفة ثمّ إنستغرام لكلّ صفحة وحدها
+  kv.delete('socdir:meta');
+  routes[G + '/me/accounts'] = (u) => (/instagram_business_account/.test(decodeURIComponent(u))
+    ? { status: 500, body: { error: { code: 1, message: 'An unknown error has occurred.' } } }
+    : { status: 200, body: { data: [{ id: 'P1', name: 'OM Ai', access_token: PAGE_TOKEN }] } });
+  routes[G + '/P1'] = { status: 200, body: { id: 'P1', instagram_business_account: { id: 'IG1', username: 'om.ai' } } };
+  calls.length = 0;
+  r = await cb();
+  assert.equal(r.headers.Location, 'https://omran-ai-builder.vercel.app/?socpub=ok', 'القائمة الخفيفة تكفي');
+  assert.equal(params(calls.find((c) => c.url.includes('/P1?'))).get('access_token'), PAGE_TOKEN, 'إنستغرام بتوكن الصفحة');
+  assert.equal((await call('accounts', owner())).body.on.join(','), 'instagram,facebook');
+  // سرّ التطبيق الخاطئ: الخطوة «token» برمزها
+  kv.delete('socdir:meta');
+  routes[G + '/oauth/access_token'] = { status: 400, body: { error: { code: 1, message: 'Error validating client secret.' } } };
+  r = await cb();
+  assert.equal(r.headers.Location, 'https://omran-ai-builder.vercel.app/?socpub=fail-token-e1');
   assert.ok(!con.join('\n').includes(PAGE_TOKEN) && !con.join('\n').includes('app-secret-x'), 'لا توكن ولا سرّ في السجلّ');
   kv.set('socdir:meta', saved);
 });
