@@ -350,7 +350,7 @@ test('٧. لا نشر مرّتين في منصّة: المجموعة المتد�
 test('٨. الموجّه والواجهة: media يوزّع الإجراء، والزرّ للمالك تحت الفيديو، واللوحة تُصفَّر حيث يتغيّر الفيديو', () => {
   assert.match(read('api/media.js'), /case 'social-publish': return require\('\.\/_lib\/social-publish\.js'\);/);
   const src = read('api/_lib/social-publish.js');
-  assert.doesNotMatch(src.split('module.exports = async')[0].replace(/const (upKey|upUser|falKey) = \(\) => [^\n]+/g, ''), /process\.env/, 'المفاتيح تُقرأ داخل المعالج');
+  assert.doesNotMatch(src.split('module.exports = async')[0].replace(/const (upKey|upUser|falKey|brSecret|brBase) = \(\) => [^\n]+/g, ''), /process\.env/, 'المفاتيح تُقرأ داخل المعالج');
   const v = read('js/video.js');
   assert.match(v, /id="vdPubBtn"/); assert.match(v, /id="vdPub" hidden/);
   assert.match(v, /'\/api\/media\?action=social-publish&op='\+op/);
