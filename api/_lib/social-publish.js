@@ -34,6 +34,10 @@ const REQ_RE = /^[A-Za-z0-9_-]{6,80}$/;
 const PENDING = ['queued', 'pending', 'processing', 'retryable']; // retryable: فشل والخدمة تعيد المحاولة بنفسها — لم يُحسم
 const PRE_SEND = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH', 'UND_ERR_CONNECT_TIMEOUT']; // الطلب ما خرج أصلًا
 const fileKey = (id) => 'socpub:file:' + id;
+/* v-socpub-paused: خدمة النشر أوقفت الحساب (٤٠٢ — دفعة لم تمرّ): منصّاتها ليست «موصولة» يومًا كاملًا، فلا تُعرض ✓ على ما لن ينزل
+   ويظهر مدخل الربط المباشر لما له ربط مباشر. نشر تقبله الخدمة يمحو العلامة. */
+const PAUSED = 'socpub:paused';
+const PAUSED_TTL = 86400;
 const sentKey = (v, p) => 'socpub:sent:' + v + ':' + p; // المنصّة p أخذت الفيديو v بالطلب المخزَّن قيمةً
 const reqKey = (r) => 'socpub:req:' + r; // وقت الطلب وقبول الخدمة له: «لا طلب» في المهلة = ينتظر، وبعدها = ما وصل
 const seenKey = (r) => 'socpub:seen:' + r; // الخدمة أرت الطلب حيًّا مرّة: غيابه بعدها نسيان لا ضياع
@@ -149,7 +153,9 @@ async function accounts(res, key) {
   const profs = r.j.profiles || (r.j.profile ? [r.j.profile] : []);
   const prof = profs.find((p) => p && p.username === upUser()) || null;
   if (!prof) return fail(res, 404, 'no_profile');
-  return res.status(200).json(Object.assign({ ok: true }, accountsOf(prof.social_accounts || {})));
+  const a = accountsOf(prof.social_accounts || {});
+  if (await kvGetRaw(PAUSED)) return res.status(200).json({ ok: true, on: [], reauth: a.reauth.concat(a.on), paused: true });
+  return res.status(200).json(Object.assign({ ok: true }, a));
 }
 
 /* v-socpub-bridge: مزوّد التخزين المؤقّت رفض (٤٠٣ — حسابه موقوف) فلم يبلغ النشر أيّ منصّة. الاحتياط جسر المالك نفسه:
@@ -286,6 +292,7 @@ async function publish(res, body, key) {
     // الإرسال) و408/409 فقد يكون الطلب وصل وأُنشئ — وثائق الخدمة: لا تُعِد بعد مهلة — فلا تحرير: «غير متأكّد» والاستطلاع يحسم.
     if (r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 409) {
       await release();
+      if (r.status === 402) await kvSetRaw(PAUSED, '1', PAUSED_TTL).catch((e) => logErr('paused', e)); // v-socpub-paused
       return fail(res, 502, r.status === 429 ? 'limit' : 'publish', { status: r.status, detail: cut(String(r.j.message || r.j.error || ''), 160) });
     }
     return res.status(200).json({ ok: true, request: reqId, unsure: true, already, held: hold });
@@ -293,6 +300,7 @@ async function publish(res, body, key) {
   // قبلته الخدمة صراحةً: غيابه عندها لاحقًا (نسيان) لا يحرّر حجوزه أبدًا
   const accepted = JSON.stringify({ at, id, v: vid, p: send, ok: 1 });
   await kvSetRaw(reqKey(reqId), accepted, SENT_TTL);
+  await kvDel(PAUSED).catch((e) => logErr('paused', e)); // v-socpub-paused: قبلت = عادت
   const got = String(r.j.request_id || '');
   const request = REQ_RE.test(got) ? got : reqId;
   if (request !== reqId) {
