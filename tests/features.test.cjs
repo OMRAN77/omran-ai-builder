@@ -255,3 +255,27 @@ test('تخصيص أماكن الأزرار من الإعدادات: تحريك �
   for (const a of ['stick', 'jump', 'dig', 'place', 'bag', 'pause', 'down']) assert.ok(lay.includes(`'${a}'`), a);
   assert.match(read('shared/switcher.js'), /const editing = !!\(window\.__GAME_LAYOUT && window\.__GAME_LAYOUT\.shown\)/, 'زرّا الزاوية يبانون وقت التخصيص عشان يتحركون بعد');
 });
+
+test('سفينة الجزر: سفينة على رصيف عند بداية كل عالم، وخريطة الجزر الخمس، وتبحر للجزيرة اللي تختارها', async () => {
+  const v = read('shared/voyage.js');      // (it imports three, so it is read as text, not run)
+  const keys = [...v.slice(v.indexOf('export const ISLANDS'), v.indexOf('];', v.indexOf('export const ISLANDS'))).matchAll(/key: '([a-z]+)'/g)].map((m) => m[1]);
+  const ready = JSON.parse(/const READY = (\[[^\]]*\])/.exec(read('index.html'))[1]);
+  assert.deepEqual(keys.sort(), [...ready].sort(), 'الجزر الخمس نفس العوالم');
+  for (const t of ['خريطة الجزر الخمس', 'سفينة الجزر', 'أبحر إلى ', 'نبحر إلى ', 'أنت هني']) assert.ok(v.includes(t), t);
+  assert.match(v, /const r = sw\.goTo\(pick\)/, 'تبحر بنفس طريق «تبديل العالم» (يحفظ عالمك قبل)');
+  assert.match(v, /if \(net && net\.role\)/, 'في غرفة مع الربع: يطلع منها أول');
+  assert.match(v, /if \(bad <= 8 && score < best\)/, 'تلقى مكان حتى في قاعدة مزحومة');
+  assert.match(read('shared/adventure.js'), /import\('\.\/voyage\.js'\)\.then\(\(m\) => m\.createVoyage\(\{ play, kit, spawn, groundAt, avoid: tPos \}\)\)/, 'في كل العوالم، جنب التاجر');
+  assert.match(read('shared/switcher.js'), /const api = \{ open, close, goTo,/);
+});
+
+test('شاشة النوم: قمر و«جاري النوم… حتى الصباح» وعدّاد ثواني و«استيقظ الآن»', () => {
+  const a = read('shared/adventure.js');
+  for (const t of ['جاري النوم… حتى الصباح', 'جاري الراحة… حتى الليل', 'استيقظ الآن', ' ثانية']) assert.ok(a.includes(t), t);
+  assert.match(a, /const SLEEP_S = 10;/);
+  assert.match(a, /return rest\(false\);/, 'السرير في الليل');
+  assert.match(a, /return rest\(true\);/, 'السرير في النهار');
+  assert.match(a, /play\.setModal\(true\);/, 'اللعبة ما تاخذ أزرار وقت النوم');
+  assert.match(a, /#bwSleep \{ position: fixed; inset: 0; z-index: 62;/, 'فوق كل شي');
+  assert.match(a, /let letGo = !!document\.pointerLockElement;/, 'القيام ينتظر المتصفح يفكّ الماوس (وإلا تنفتح قائمة الإيقاف بالغلط)');
+});

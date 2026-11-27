@@ -133,10 +133,11 @@ export function mountSwitcher({ panel, onStart, fontFamily }) {
   function goTo(key) {
     msg.textContent = 'أحفظ عالمك وأفتح ' + (WORLDS.find((w) => w.key === key) || {}).name + '…';
     const ok = save();
-    if (!ok) { const s = window.__GAME_SAVE; msg.textContent = (s && s.why) || 'ما قدرت أحفظ عالمك. جرّب مرة ثانية.'; return; }
+    if (!ok) { const s = window.__GAME_SAVE; msg.textContent = (s && s.why) || 'ما قدرت أحفظ عالمك. جرّب مرة ثانية.'; return msg.textContent; }
     try { window.sessionStorage.removeItem('bw-join'); } catch (e) { /* no room to leave behind */ }
     try { window.history.replaceState(null, '', window.location.pathname + window.location.search + '#' + key); } catch (e) { window.location.hash = key; }
     window.location.reload();
+    return true;
   }
 
   corner.addEventListener('click', (e) => {
@@ -156,7 +157,7 @@ export function mountSwitcher({ panel, onStart, fontFamily }) {
     e.preventDefault(); e.stopImmediatePropagation();
     close(); panel.show('pause');
   }, true);
-  const api = { open, close, get shown() { return !box.hidden; }, corner, box };
+  const api = { open, close, goTo, get shown() { return !box.hidden; }, corner, box };      // goTo: the ship of the islands (voyage.js) sails with it
   window.__GAME_SWITCH = api;
   return api;
 }

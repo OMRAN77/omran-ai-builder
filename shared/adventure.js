@@ -160,6 +160,58 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
   document.body.appendChild(fade);
   function sleepFade() { fade.style.transition = 'none'; fade.style.opacity = '1'; requestAnimationFrame(() => requestAnimationFrame(() => { fade.style.transition = 'opacity 1.2s'; fade.style.opacity = '0'; })); }
 
+  // ---- in bed (the owner's picture): a moon, «جاري النوم… حتى الصباح», a ring counting the seconds down, «استيقظ الآن».
+  // The game takes no keys meanwhile; at the end the time is morning (or night, after a rest by day)
+  const SLEEP_S = 10;
+  const sleepCss = document.createElement('style');
+  sleepCss.textContent = `#bwSleep { position: fixed; inset: 0; z-index: 62; display: flex; align-items: center; justify-content: center; direction: rtl; background: radial-gradient(ellipse at center, rgba(6, 10, 30, .35), rgba(2, 4, 14, .72)); color: #f2f5ff; -webkit-user-select: none; user-select: none; }
+#bwSleep[hidden] { display: none; }
+#bwSleep .card { position: relative; box-sizing: border-box; width: min(360px, calc(100vw - 30px)); padding: 46px 22px 18px; border-radius: 18px; text-align: center; background: rgba(40, 46, 70, .42); border: 1.5px solid rgba(255, 255, 255, .55); box-shadow: 0 0 30px rgba(170, 200, 255, .25), 0 16px 50px rgba(0, 0, 0, .45); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+#bwSleep .moon { position: absolute; left: 50%; top: -38px; transform: translateX(-50%); width: 76px; height: 76px; filter: drop-shadow(0 0 12px rgba(200, 220, 255, .9)); }
+#bwSleep h3 { margin: 0 0 12px; font-size: 21px; font-weight: 800; text-shadow: 0 0 10px rgba(160, 190, 255, .6); }
+#bwSleep .ring { position: relative; width: 150px; height: 150px; margin: 0 auto 12px; }
+#bwSleep .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+#bwSleep .ring b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; }
+#bwSleep button { display: block; margin: 0 0 0 auto; min-height: 38px; padding: 0 16px; font: inherit; font-size: 14.5px; font-weight: 800; color: #f2f5ff; background: rgba(255, 255, 255, .14); border: 1.5px solid rgba(255, 255, 255, .6); border-radius: 9px; cursor: pointer; }
+@media (max-height: 430px) { #bwSleep .card { padding: 36px 18px 12px; } #bwSleep .ring { width: 112px; height: 112px; margin-bottom: 8px; } #bwSleep h3 { font-size: 18px; margin-bottom: 8px; } #bwSleep .moon { width: 60px; height: 60px; top: -30px; } }`;
+  document.head.appendChild(sleepCss);
+  const MOON = '<svg class="moon" viewBox="0 0 80 80" aria-hidden="true"><path d="M50 12a28 28 0 1 0 18 46A24 24 0 1 1 50 12z" fill="#eef3ff"/><circle cx="16" cy="18" r="1.8" fill="#fff"/><circle cx="66" cy="20" r="1.5" fill="#fff"/><circle cx="12" cy="52" r="1.3" fill="#fff"/><circle cx="70" cy="62" r="1.8" fill="#fff"/></svg>';
+  const SUN = '<svg class="moon" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="16" fill="#ffd36a"/><g stroke="#ffd36a" stroke-width="4" stroke-linecap="round">' + [0, 45, 90, 135, 180, 225, 270, 315].map((a) => { const r = a * Math.PI / 180; return `<line x1="${40 + Math.cos(r) * 23}" y1="${40 + Math.sin(r) * 23}" x2="${40 + Math.cos(r) * 31}" y2="${40 + Math.sin(r) * 31}"/>`; }).join('') + '</g></svg>';
+  const sleepEl = document.createElement('div');
+  sleepEl.id = 'bwSleep'; sleepEl.hidden = true;
+  document.body.appendChild(sleepEl);
+  let sleeping = null;
+  function rest(toNight) {
+    const sky = window.__GAME_SKY;
+    if (sleeping) return true;
+    const C = 2 * Math.PI * 46;
+    sleepEl.innerHTML = `<div class="card" role="dialog" aria-label="${toNight ? 'جاري الراحة' : 'جاري النوم'}">${toNight ? SUN : MOON}<h3>${toNight ? 'جاري الراحة… حتى الليل' : 'جاري النوم… حتى الصباح'}</h3><div class="ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="6"/><circle class="arc glow" cx="50" cy="50" r="46" fill="none" stroke="rgba(190,215,255,.35)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="0"/><circle class="arc" cx="50" cy="50" r="46" fill="none" stroke="#f2f6ff" stroke-width="6" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="0"/></svg><b>${SLEEP_S} ثانية</b></div><button type="button">استيقظ الآن</button></div>`;
+    const arcs = sleepEl.querySelectorAll('.arc'), num = sleepEl.querySelector('.ring b');
+    // the mouse is let go (setModal does it) so «استيقظ الآن» can be clicked; the browser says so a moment later. Getting up
+    // before it has said so would read as the player pressing Esc (the pause menu): so getting up waits for it, half a second at most
+    let letGo = !!document.pointerLockElement;
+    if (letGo) document.addEventListener('pointerlockchange', () => { letGo = false; }, { once: true });
+    play.setModal(true);
+    sleepEl.hidden = false;
+    const t0 = performance.now();
+    const release = () => { if (!letGo) { play.setModal(false); return; } const t1 = performance.now(); const wait = setInterval(() => { if (!letGo || performance.now() - t1 > 500) { clearInterval(wait); play.setModal(false); } }, 20); };
+    const done = (woke) => {
+      clearInterval(sleeping.timer); sleeping = null; sleepEl.hidden = true; release();
+      if (woke) { play.notice(toNight ? 'قمت قبل الليل.' : 'صحيت قبل الصبح.', false, 2400); return; }
+      sky.set(toNight ? 'night' : 'morning', sky.rain); sleepFade();
+      if (!toNight) st.slept++;
+      play.notice(toNight ? 'ريّحت لين الليل. نم مرة ثانية ترجع الصبح.' : 'نمت لين الصبح.', false, 3000);
+    };
+    sleeping = { timer: setInterval(() => {
+      const left = Math.max(0, SLEEP_S - (performance.now() - t0) / 1000);
+      for (const arc of arcs) arc.setAttribute('stroke-dashoffset', String(C * (1 - left / SLEEP_S)));
+      num.textContent = Math.ceil(left) + ' ثانية';
+      if (left <= 0) done(false);
+    }, 100) };
+    sleepEl.querySelector('button').onclick = () => done(true);
+    return true;
+  }
+
   // ---- the trader: stands near where the game starts
   const trader = makeAvatar();
   trader.dress(TRADER_LOOK, null);
@@ -167,6 +219,8 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
   for (let a = 0.6; a < 7 && !tPos; a += 0.5) for (const d of [6, 8, 5]) { const x = Math.floor(spawn.x + Math.sin(a) * d), z = Math.floor(spawn.z + Math.cos(a) * d), y = groundAt(x, z); if (y !== null && Math.abs(y - spawn.y) <= 3) { tPos = { x: x + 0.5, y, z: z + 0.5 }; break; } }
   trader.group.visible = !!tPos;
   if (tPos) { trader.place(tPos.x, tPos.y, tPos.z, 0); kit.scene.add(trader.group); }
+  // «سفينة الجزر» on its pier a little way from the start: the map of the five islands, and sailing to another
+  import('./voyage.js').then((m) => m.createVoyage({ play, kit, spawn, groundAt, avoid: tPos })).catch(() => { /* no ship: the world switcher still goes to the other worlds */ });
   const deals = (() => { const q = rng(hash('deal|' + worldKey + '|' + today)), pool = OFFERS.slice(), out = []; while (out.length < 6 && pool.length) out.push(pool.splice(Math.floor(q() * pool.length), 1)[0]); out.push([K.DIAMOND, 4, 'outfit:merchant', 1]); return out; })();
   const tag = document.createElement('div');
   tag.style.cssText = 'position:fixed;left:50%;top:58%;transform:translateX(-50%);z-index:20;pointer-events:none;direction:rtl;padding:5px 12px;border-radius:8px;background:rgba(8,11,16,.82);border:1px solid rgba(255,255,255,.28);color:#f1f4f8;font:700 13px/1.4 system-ui,sans-serif;white-space:nowrap;';
@@ -193,7 +247,7 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
     quests: () => QUESTS.map(([key, name, test, xp, outfit]) => ({ key, name, xp, outfit, done: done.has(key) })),
     secrets: () => secretsHere.filter((q) => done.has('s:' + q[0])).map(([key, name, how]) => ({ key, name, how })),
     secretCount: secretsHere.length,
-    day: today, craft, groundAt, empty: EMPTY,
+    day: today, craft, groundAt, empty: EMPTY, get sleeping() { return !!sleeping; },
     /** A fresh item of the building kit. */
     item: (id, n) => kitItem(id, n),
     /** A source of chance that is the same all day for everyone in this world (for things that should agree between players). */
@@ -220,19 +274,14 @@ export function createAdventure({ play, kit, craft, camera, world: worldKey = 'w
       const sky = window.__GAME_SKY;
       if (!sky || !sky.night || !sky.set) return false;
       if (sky.locked) { play.notice('صاحب الغرفة هو اللي يغيّر الوقت.', false, 2600); return true; }
-      sky.set('morning', sky.rain); st.slept++;
-      sleepFade();
-      play.notice('نمت لين الصبح.', false, 2600);
-      return true;
+      return rest(false);
     },
     /** A bed by day: rest until night. */
     nap() {
       const sky = window.__GAME_SKY;
       if (!sky || sky.night || !sky.set) return false;
       if (sky.locked) { play.notice('صاحب الغرفة هو اللي يغيّر الوقت.', false, 2600); return true; }
-      sky.set('night', sky.rain); sleepFade();
-      play.notice('ريّحت لين الليل. نم مرة ثانية ترجع الصبح.', false, 3200);
-      return true;
+      return rest(true);
     },
     /** Make deal i with the trader. Returns true or the reason it cannot be made. */
     trade(i) {

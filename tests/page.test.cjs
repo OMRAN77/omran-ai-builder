@@ -613,7 +613,7 @@ test('v-blockworld-zoo: حيوانات أكثر (بقرة، خروف، حصان�
 
 test('v-blockworld-farm: السرير يغيّر الليل والنهار، صيد بأنواع سمك، زراعة وسقي، قارب، علامات، معادن نادرة، كنوز مدفونة', () => {
   const farm = read('shared/farm.js'), kit = read('shared/kit.js'), play = read('shared/play.js'), adv = read('shared/adventure.js'), cave = read('shared/cave.js'), craft = read('shared/craft.js'), gad = read('shared/gadgets.js');
-  assert.match(adv, /sky\.set\('night', sky\.rain\)/, 'نوم النهار يودّي لليل');
+  assert.match(adv, /sky\.set\(toNight \? 'night' : 'morning', sky\.rain\)/, 'نوم النهار يودّي لليل (بعد شاشة النوم)');
   for (const n of ['هامور', 'صافي', 'كنعد', 'شعري', 'سمكة ذهبية', 'محارة', 'قمح', 'خبز', 'زمرّد', 'ياقوت', 'جمشت', 'سنارة', 'مرشّة ماء', 'قارب']) assert.ok(kit.includes(`'${n}'`), n);
   assert.match(farm, /const GROW = 28;/); assert.match(farm, /c\.grow \+= step \* \(wet \? 1 : 1 \/ 3\)/, 'السقي يكبّر الزرع أسرع');
   assert.match(farm, /if \(guest\(\)\) return|guest\(\)\) return/, 'صاحب الغرفة اللي يكبّر الزرع');

@@ -676,25 +676,35 @@ function serve(root, prefix) {
       await page.waitForTimeout(120);
       await page.evaluate(() => { const g = window.__game, p = g.play, s = p.state, t = g.bag.adv.traderAt; s.pos.set(t.x + 1.2, t.y, t.z + 3.4); s.yaw = 0.35; s.pitch = -0.05; p.tick(2); });
       await shot('18-trader');
-      // a bed at night: sleep till morning
-      const slept = await page.evaluate(() => {
-        const g = window.__game, p = g.play, s = p.state;
-        if (!g.weather) return { skip: true };
-        s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); p.tick(2);
-        g.weather.set('night', false);
-        const day = g.bag.interact({ x: 0, y: 0, z: 0, id: 160 });
-        const t = window.__GAME_SKY.time;
-        g.weather.set(g.weather.state.time === 'morning' ? (window.__GAME_SKY.time) : 'morning', false);
-        g.weather.set('night', false);
-        const used = g.bag.interact({ x: 0, y: 0, z: 0, id: 160 });
-        const after = window.__GAME_SKY.time;
-        g.weather.set('morning', false);
-        const byDay = g.bag.interact({ x: 0, y: 0, z: 0, id: 160 });
-        const dayAfter = window.__GAME_SKY.time;
-        g.weather.set('morning', false);
-        return { day, t, used, after, byDay, dayAfter, slept: s.slept };
-      });
-      if (!slept.skip) check('a bed at night sleeps the player through to the morning; by day it rests until night', slept.used === true && slept.after === 'morning' && slept.byDay === true && slept.dayAfter === 'night' && slept.slept >= 1, slept);
+      // a bed at night: the sleeping screen (moon, «جاري النوم… حتى الصباح», the seconds counting down), then morning;
+      // by day it rests until night, and «استيقظ الآن» gets up early with the time as it was
+      const slept = await (async () => {
+        const a = await page.evaluate(() => {
+          const g = window.__game, p = g.play, s = p.state;
+          if (!g.weather) return { skip: true };
+          s.pos.set(g.vitals.spawn.x, g.vitals.spawn.y, g.vitals.spawn.z); s.vel.set(0, 0, 0); p.tick(2);
+          g.weather.set('night', false);
+          const used = g.bag.interact({ x: 0, y: 0, z: 0, id: 160 });
+          const el = document.getElementById('bwSleep');
+          return { used, screen: !!el && !el.hidden, text: el ? el.textContent : '', modal: s.modal, during: window.__GAME_SKY.time };
+        });
+        if (a.skip) return a;
+        await shot('18b-sleep');
+        for (let t0 = Date.now(); Date.now() - t0 < 15000;) { if (await page.evaluate(() => document.getElementById('bwSleep').hidden)) break; await page.waitForTimeout(250); }
+        const b = await page.evaluate(() => {
+          const g = window.__game, s = g.play.state, after = window.__GAME_SKY.time, modalAfter = s.modal;
+          g.weather.set('morning', false);
+          const byDay = g.bag.interact({ x: 0, y: 0, z: 0, id: 160 });
+          const el = document.getElementById('bwSleep'), restText = el.textContent;
+          el.querySelector('button').click();                         // «استيقظ الآن»
+          return { after, modalAfter, byDay, restText, woke: el.hidden, dayAfter: window.__GAME_SKY.time, slept: s.slept };
+        });
+        await page.waitForTimeout(600);                                // getting up may wait for the browser to let the mouse go
+        b.modalWoke = await page.evaluate(() => window.__play.state.modal);
+        b.pausedByMistake = await page.evaluate(() => !document.getElementById('playPanel').hidden);
+        return { ...a, ...b };
+      })();
+      if (!slept.skip) check('a bed at night shows the sleeping screen and sleeps through to the morning; by day it rests, and «استيقظ الآن» gets up early', slept.used === true && slept.screen && slept.text.includes('جاري النوم') && slept.text.includes('ثانية') && slept.text.includes('استيقظ الآن') && slept.modal === true && slept.after === 'morning' && slept.modalAfter === false && slept.byDay === true && slept.restText.includes('جاري الراحة') && slept.woke && slept.dayAfter === 'morning' && slept.modalWoke === false && slept.pausedByMistake === false && slept.slept >= 1, slept);
     }
     // ---- the world panel (worlds that have it): Q opens it; the time of day and the rain change the picture
     if (await page.evaluate(() => !!(window.__game && window.__game.weather))) {
