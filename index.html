@@ -33,132 +33,158 @@
   @media (prefers-reduced-motion: reduce) { #loading .bar i { animation: none; width: 100%; } }
 </style>
 <style id="menuCss">
-  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); }
+  /* the first page, as the owner drew it: the five islands as one map over the whole screen, the name and «الملف الشخصي»
+     on top, «العب كـ:» and the ways to play below, and «العب الآن». The islands are the worlds' own pictures (no
+     writing in any picture): every word on the page is text. */
+  html, body { margin: 0; height: 100%; background: #0b3a66; color: #fff; overflow: hidden; }
   body { -webkit-text-size-adjust: 100%; }
-  #menu { font-family: 'Menu', system-ui, sans-serif; font-weight: 500; }
-  #menu { box-sizing: border-box; max-width: 1080px; margin: 0 auto; padding: max(28px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(30px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); }
-  #menu h1 { text-wrap: balance; margin: 0; font-size: 34px; font-weight: 700; line-height: 1.25; }
-  #menu .lead { margin: 6px 0 22px; font-size: 16px; line-height: 1.7; color: var(--muted); }
-  .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
-  .card { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; background: var(--panel); border: 1px solid var(--line); }
-  .card img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; background: #0c1017; }
-  .card .body { display: flex; flex-direction: column; flex: 1; gap: 8px; padding: 14px 16px 16px; }
-  .card h2 { margin: 0; font-size: 23px; font-weight: 700; }
-  .card p { margin: 0; flex: 1; font-size: 14.5px; line-height: 1.7; color: var(--muted); }
-  .card button { margin-top: 6px; font: inherit; font-size: 16px; font-weight: 700; min-height: 46px; border: 0; border-radius: 10px; color: #0a0d12; background: var(--acc); cursor: pointer; }
-  .card button[disabled] { background: var(--line); color: var(--faint); cursor: default; }
-  .card.kawkab { --acc: #f39a52; } .card.waha { --acc: #9ee6a8; } .card.dhalam { --acc: #a8aeb6; }
-  #menu .foot { margin: 20px 0 0; font-size: 13px; line-height: 1.8; color: var(--faint); }
-  #menu .offline { margin: -4px 0 10px; font-size: 13.5px; line-height: 1.7; color: #9ee6a8; font-weight: 700; }
+  #menu { position: fixed; inset: 0; overflow: hidden; font-family: 'Menu', system-ui, sans-serif; font-weight: 500; -webkit-user-select: none; user-select: none;
+    background: radial-gradient(ellipse 70% 60% at 50% 52%, #3aa0dc 0%, #1f78bb 40%, #135894 70%, #0b3a66 100%); }
+  #menu::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .3; background:
+    repeating-radial-gradient(ellipse at 30% 60%, transparent 0 22px, rgba(255, 255, 255, .22) 23px 24px, transparent 25px 46px),
+    repeating-radial-gradient(ellipse at 72% 40%, transparent 0 26px, rgba(255, 255, 255, .18) 27px 28px, transparent 29px 52px); }
+  #menu::after { content: ''; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px rgba(0, 10, 30, .65); }
+  .bridges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+  .cards { position: absolute; inset: 0; z-index: 2; }
+  .card { position: absolute; transform: translate(-50%, -50%); width: var(--w, 34vw); }
+  .card button[data-world] { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; aspect-ratio: 16 / 10; transition: transform .25s, filter .25s; }
+  .card button[data-world] img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none;
+    -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%); }
+  .card button[data-world]:hover, .card button[data-world]:focus-visible { transform: scale(1.04); filter: brightness(1.12) drop-shadow(0 0 18px rgba(255, 240, 180, .55)); outline: none; }
+  .card h2 { position: absolute; left: var(--lx, 50%); top: var(--ly, 50%); transform: translate(-50%, -50%); margin: 0; pointer-events: none; white-space: nowrap; font-size: clamp(18px, 3.1vw, 40px); font-weight: 700; color: #fff;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, .55), 0 0 14px rgba(0, 0, 0, .75), 0 0 3px #000; }
+  .card p { display: none; }
+  .card.kawkab { left: 25%; top: 28%; --w: 38vw; } .card.waha { left: 79%; top: 25%; --w: 36vw; } .card.barari { left: 52%; top: 49%; --w: 36vw; }
+  .card.dhalam { left: 39%; top: 74%; --w: 36vw; --lx: 60%; --ly: 36%; }      /* its middle (where a tap lands) and its name clear of «العب كـ:» */ .card.dino { left: 79%; top: 72%; --w: 36vw; }
+  .card button[data-world][disabled] { filter: grayscale(1) brightness(.6); cursor: default; }
+  .glass, #menu .who { background: linear-gradient(180deg, rgba(255, 255, 255, .28), rgba(255, 255, 255, .12)); border: 1.5px solid rgba(255, 255, 255, .6); box-shadow: 0 6px 20px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .5); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .top { position: absolute; z-index: 5; top: max(14px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); display: flex; align-items: stretch; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 8px 20px; border-radius: 14px; }
+  .brand svg { width: 38px; height: 38px; flex: none; } .brand h1 { margin: 0; font-size: clamp(22px, 3vw, 38px); font-weight: 700; color: #fff; text-shadow: 0 2px 4px rgba(0, 0, 0, .45); white-space: nowrap; }
+  .me-card { display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 8px; border-radius: 14px; cursor: pointer; color: #fff; font: inherit; }
+  .me-card .pic { width: 52px; height: 52px; border-radius: 10px; overflow: hidden; border: 2px solid #f6d27a; background: #0c1017; display: grid; place-items: center; flex: none; }
+  .me-card .pic img, .me-card .pic svg { width: 52px; height: 62px; object-fit: cover; object-position: top; }
+  .me-card small { display: block; font-size: 12px; opacity: .9; } .me-card b { display: block; font-size: 17px; font-weight: 700; } .me-card i { display: block; font-style: normal; font-size: 11.5px; opacity: .85; }
+  #menu .offline { position: absolute; z-index: 5; top: calc(max(14px, env(safe-area-inset-top)) + 72px); right: max(16px, env(safe-area-inset-right)); margin: 0; max-width: 46vw; padding: 3px 10px; border-radius: 8px; font-size: 12.5px; line-height: 1.5; font-weight: 700; color: #c9ffd1; background: rgba(6, 30, 18, .55); }
   #menu .offline[hidden] { display: none; }
-  /* the player's own rules for the world, and joining a friend by their room's code */
-  .setup { display: grid; grid-template-columns: 1fr minmax(260px, 340px); gap: 16px; margin: 18px 0 0; }
-  .rules, .join { border-radius: 14px; background: var(--panel); border: 1px solid var(--line); padding: 12px 16px 14px; }
-  .rules h2, .join h2 { margin: 0 0 8px; font-size: 18px; font-weight: 700; }
+  .who { box-sizing: border-box; position: absolute; z-index: 5; left: max(16px, env(safe-area-inset-left)); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 62px); width: min(330px, 34vw); padding: 8px 12px 10px; border-radius: 14px; }
+  .who h2 { margin: 0 0 6px; font-size: 15px; font-weight: 700; text-align: center; }
+  .strip { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .strip::-webkit-scrollbar { display: none; }
+  .strip button { flex: none; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 62px; padding: 3px; border-radius: 10px; background: rgba(0, 0, 0, .25); border: 2px solid rgba(255, 255, 255, .35); color: #fff; font: inherit; font-size: 10.5px; font-weight: 700; cursor: pointer; }
+  .strip button.on { border-color: #f6d27a; background: rgba(246, 210, 122, .25); box-shadow: 0 0 10px rgba(246, 210, 122, .6); }
+  .strip img, .strip svg { width: 52px; height: 58px; object-fit: cover; object-position: top; border-radius: 7px; display: block; }
+  .strip span { max-width: 58px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar { position: absolute; z-index: 5; left: max(16px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 10px; flex-direction: row-reverse; }
+  .bar button { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border-radius: 999px; color: #fff; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .bar button svg { width: 22px; height: 22px; flex: none; }
+  .bar button.on { border-color: #f6d27a; box-shadow: 0 0 0 2px rgba(246, 210, 122, .55), 0 6px 20px rgba(0, 0, 0, .35); background: linear-gradient(180deg, rgba(246, 210, 122, .55), rgba(190, 140, 40, .45)); }
+  .play-now { position: absolute; z-index: 5; right: max(18px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); min-width: min(320px, 30vw); min-height: 74px; padding: 0 34px; border-radius: 999px; cursor: pointer;
+    font: inherit; font-size: clamp(22px, 2.8vw, 34px); font-weight: 700; color: #fff; text-shadow: 0 2px 3px rgba(80, 40, 0, .6);
+    background: linear-gradient(180deg, #f9dc8e 0%, #e2a83e 55%, #b97a1f 100%); border: 3px solid #fff3cf; box-shadow: 0 0 0 4px rgba(190, 130, 40, .55), 0 10px 30px rgba(0, 0, 0, .45), inset 0 2px 0 rgba(255, 255, 255, .7); }
+  .play-now small { display: block; font-size: 12.5px; font-weight: 500; opacity: .95; text-shadow: none; }
+  .play-now:hover { filter: brightness(1.06); }
+  /* «الإعدادات»: the rules of the world, joining a friend's room, and what waits in the worlds */
+  .sheet { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 12px; background: rgba(2, 8, 18, .55); }
+  .sheet[hidden] { display: none; }
+  .sheet .box { box-sizing: border-box; width: min(760px, 100%); max-height: 100%; overflow: auto; padding: 14px 18px 16px; border-radius: 16px; background: rgba(14, 22, 34, .96); border: 1px solid rgba(255, 255, 255, .25); box-shadow: 0 20px 60px rgba(0, 0, 0, .6); -webkit-user-select: text; user-select: text; }
+  .sheet header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; } .sheet header h2 { margin: 0; font-size: 22px; }
+  .sheet .close { font: inherit; font-size: 15px; font-weight: 700; min-height: 38px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .4); background: none; color: #fff; cursor: pointer; }
+  .sheet h3 { margin: 14px 0 6px; font-size: 17px; }
   .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0; }
-  .row > span { min-width: 78px; font-size: 14px; color: var(--muted); }
-  .row button { font: inherit; font-size: 14px; font-weight: 700; min-height: 38px; padding: 4px 14px; border-radius: 9px; cursor: pointer; color: var(--text); background: #182030; border: 1px solid var(--line); }
-  .row button.on { color: #0a0d12; background: var(--text); border-color: var(--text); }
-  .row small { flex-basis: 100%; font-size: 12.5px; color: var(--faint); }
-  .join p { margin: 0 0 8px; font-size: 13.5px; line-height: 1.6; color: var(--muted); }
+  .row > span { min-width: 84px; font-size: 14px; color: #b8c3d2; }
+  .row button { font: inherit; font-size: 14px; font-weight: 700; min-height: 38px; padding: 4px 14px; border-radius: 9px; cursor: pointer; color: #eef1f5; background: #182030; border: 1px solid #2b3547; }
+  .row button.on { color: #0a0d12; background: #f6d27a; border-color: #f6d27a; }
+  .row small { flex-basis: 100%; font-size: 12.5px; color: #8f9aab; }
+  .join p { margin: 0 0 8px; font-size: 13.5px; line-height: 1.6; color: #b8c3d2; }
   .join form { display: flex; flex-wrap: wrap; gap: 8px; }
-  .join input { font: inherit; font-size: 16px; min-height: 42px; padding: 4px 12px; border-radius: 9px; border: 1px solid var(--line); background: #0c1017; color: var(--text); box-sizing: border-box; }
+  .join input { font: inherit; font-size: 16px; min-height: 42px; padding: 4px 12px; border-radius: 9px; border: 1px solid #2b3547; background: #0c1017; color: #eef1f5; box-sizing: border-box; }
   .join input[name="code"] { width: 110px; letter-spacing: 6px; text-align: center; direction: ltr; font-weight: 700; }
   .join input[name="name"] { flex: 1; min-width: 120px; }
   .join button { font: inherit; font-size: 15px; font-weight: 700; min-height: 42px; padding: 4px 20px; border: 0; border-radius: 9px; color: #0a0d12; background: #9ee6a8; cursor: pointer; }
   .join .msg { min-height: 20px; margin: 8px 0 0; font-size: 13px; color: #ffb4a6; }
-  .who { margin: 18px 0 0; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); padding: 12px 16px 12px; }
-  .who h2 { margin: 0 0 8px; font-size: 18px; font-weight: 700; } .who h2 small { font-size: 13px; font-weight: 500; color: var(--faint); margin-inline-start: 8px; }
-  .strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
-  .strip button { flex: none; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 84px; padding: 6px 4px 6px; border-radius: 10px; background: #182030; border: 1px solid var(--line); color: var(--text); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-  .strip button.on { border: 2px solid var(--text); background: #26314a; }
-  .strip img, .strip svg { width: 64px; height: 76px; object-fit: cover; border-radius: 7px; display: block; }
-  .card.barari { --acc: #7fe0f6; } .card.dino { --acc: #f2b24e; }
-  /* «عالمك اللانهائي المتجدد»: what waits in the worlds, in four short cards (the owner's picture, written as text) */
-  .guide { margin: 18px 0 0; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); padding: 12px 16px 14px; }
-  .guide h2 { margin: 0 0 10px; font-size: 18px; font-weight: 700; } .guide h2 small { font-size: 13px; font-weight: 500; color: var(--faint); margin-inline-start: 8px; }
-  .guide ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  .guide li { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px 12px; border-radius: 11px; background: #161d2a; border: 1px solid var(--line); border-top: 3px solid var(--g); }
-  .guide li b { display: flex; align-items: center; gap: 8px; font-size: 15.5px; font-weight: 700; }
-  .guide li b i { font-style: normal; font-size: 22px; line-height: 1; }
-  .guide li p { margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--muted); }
+  .guide ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .guide li { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px 10px; border-radius: 11px; background: #161d2a; border: 1px solid #2b3547; border-top: 3px solid var(--g); }
+  .guide li b { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; } .guide li b i { font-style: normal; font-size: 20px; line-height: 1; }
+  .guide li p { margin: 0; font-size: 13px; line-height: 1.6; color: #b8c3d2; }
   .guide li:nth-child(1) { --g: #7da8ff; } .guide li:nth-child(2) { --g: #9ee6a8; } .guide li:nth-child(3) { --g: #e9b765; } .guide li:nth-child(4) { --g: #c79bff; }
-  @media (max-width: 820px) { .guide ol { grid-template-columns: 1fr 1fr; gap: 8px; } .guide li { padding: 8px 10px 10px; } .guide li p { font-size: 12.5px; } }
-  @media (max-width: 820px) { .cards { grid-template-columns: 1fr 1fr; gap: 10px; } .card p { display: none; } .card h2 { font-size: 18px; } .card .body { padding: 8px 10px 10px; } #menu h1 { font-size: 28px; } .setup { grid-template-columns: 1fr; } }
-  @media (max-width: 1100px) and (min-width: 821px) { .cards { grid-template-columns: repeat(3, 1fr); } }
-  @media (max-width: 820px) and (orientation: landscape) { .setup { grid-template-columns: 1fr 1fr; gap: 10px; } .row button { min-height: 34px; padding: 3px 10px; font-size: 13px; } .row > span { min-width: 64px; font-size: 13px; } .rules, .join { padding: 8px 12px 10px; } .rules h2, .join h2 { font-size: 15px; margin-bottom: 4px; } .row { margin: 3px 0; } .row small, .join p { display: none; } .cards { grid-template-columns: repeat(5, 1fr); gap: 6px; } .card p { display: none; } .card h2 { font-size: 15px; } .card h2 { font-size: 18px; } #menu { padding: 12px 14px 16px; } #menu .lead { margin-bottom: 10px; font-size: 14px; } .card .body { padding: 8px 10px 10px; } }
-
-  /* the first page, laid out as the owner drew it: a bar on top (name, a friend's room, who you are), the worlds, and a dock below (characters, how to play) */
-  #menu { max-width: 1320px; padding-bottom: 12px; }
-  .top { display: flex; align-items: center; gap: 18px; padding: 10px 18px; margin: 0 0 14px; border-radius: 16px; background: linear-gradient(180deg, #161d2a, #10151f); border: 1px solid var(--line); box-shadow: 0 2px 0 #f0bd3f inset; }
-  .top h1 { flex: 1; margin: 0; font-size: 44px; letter-spacing: .5px; text-align: end; }
-  .top .join { display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: none; }
-  .top .join h2 { margin: 0; font-size: 15px; } .top .join form { flex-wrap: nowrap; } .top .join input[name="name"] { width: 110px; flex: none; } .top .join .msg { min-height: 0; margin: 0; }
-  .me-card { display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 12px; border-radius: 14px; background: #1a2232; border: 1px solid var(--line); }
-  .me-card .pic { width: 58px; height: 58px; border-radius: 50%; overflow: hidden; border: 3px solid #f0bd3f; background: #0c1017; display: grid; place-items: center; }
-  .me-card .pic img, .me-card .pic svg { width: 58px; height: 70px; object-fit: cover; object-position: top; }
-  .me-card small { display: block; font-size: 12px; color: var(--muted); } .me-card b { display: block; font-size: 16px; color: #f0bd3f; }
-  .me-btns { display: flex; flex-direction: column; gap: 4px; } .me-btns button { width: 34px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: #222c40; cursor: pointer; font-size: 15px; }
-  #menu h2.pick { margin: 6px 4px 10px; font-size: 24px; }
-  .card { position: relative; } .card .badge { position: absolute; top: calc((100% - 0px) * 0 + 8px); inset-inline-start: 8px; z-index: 1; width: 40px; height: 40px; display: grid; place-items: center; font-size: 22px; border-radius: 10px; background: rgba(10,14,20,.78); border: 2px solid var(--acc); }
-  .dock { position: sticky; bottom: 0; z-index: 5; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; margin: 16px 0 0; padding: 10px 14px; border-radius: 16px; background: rgba(16, 21, 31, .96); border: 1px solid var(--line); backdrop-filter: blur(6px); }
-  .dock .rules { border-inline-end: 1px solid var(--line); padding-inline-end: 16px; }
-  .dock .who { margin: 0; padding: 0; border: 0; background: none; display: flex; align-items: center; gap: 12px; min-width: 0; }
-  .dock .who h2 { margin: 0; flex: none; width: 60px; font-size: 17px; line-height: 1.3; } .dock .who .strip { flex: 1; min-width: 0; padding-bottom: 2px; }
-  .dock .rules { padding: 0; border: 0; background: none; } .dock .row { margin: 3px 0; } .dock .row button { min-height: 32px; padding: 3px 12px; font-size: 13px; } .dock .row > span { min-width: 74px; font-size: 13px; } .dock .row small { display: none; }
-  @media (max-width: 1100px) { .dock { grid-template-columns: 1fr; position: static; } .top { flex-wrap: wrap; } .top h1 { flex-basis: 100%; font-size: 32px; } }
-  @media (max-width: 820px) { .top { gap: 10px; padding: 8px 12px; } .top .join { flex: 1; min-width: 0; } .top .join h2 { font-size: 13px; } .top .join form { flex-wrap: nowrap; gap: 6px; } .top .join input { min-height: 36px; font-size: 14px; } .top .join input[name="code"] { width: 74px; letter-spacing: 3px; } .top .join input[name="name"] { width: 84px; flex: none; } .top .join { flex: none; } .top .join button { min-height: 36px; padding: 3px 12px; font-size: 14px; } .me-card { padding: 4px 8px; } .me-card b { font-size: 14px; } .me-card .pic { width: 46px; height: 46px; } .me-btns { display: none; } #menu h2.pick { font-size: 19px; } .dock .who { flex-direction: column; align-items: stretch; } .dock .who h2 { width: auto; } }
-  @media (max-width: 480px) { .top .join { flex-basis: 100%; order: 2; } .top h1 { order: 3; } }
-  @media (max-width: 820px) and (orientation: landscape) { .top { flex-wrap: nowrap; } .top h1 { flex-basis: auto; font-size: 24px; } .card .badge { width: 30px; height: 30px; font-size: 16px; } }
+  .sheet .foot { margin: 12px 0 0; font-size: 12.5px; line-height: 1.7; color: #8f9aab; }
+  @media (max-height: 520px) {
+    .brand { padding: 4px 12px; } .brand svg { width: 26px; height: 26px; } .me-card { padding: 3px 10px 3px 5px; } .me-card .pic { width: 38px; height: 38px; } .me-card .pic img, .me-card .pic svg { width: 38px; height: 46px; } .me-card b { font-size: 14px; } .me-card i { display: none; }
+    #menu .offline { top: 56px; font-size: 11px; }
+    .who { bottom: 56px; padding: 5px 8px 6px; width: min(260px, 31vw); } .who h2 { font-size: 12.5px; margin-bottom: 3px; } .strip button { width: 48px; font-size: 9px; } .strip img, .strip svg { width: 40px; height: 44px; } .strip span { max-width: 44px; }
+    .bar { gap: 6px; } .bar button { min-height: 36px; padding: 0 11px; font-size: 13px; } .bar button svg { width: 17px; height: 17px; }
+    .play-now { min-height: 54px; min-width: 0; padding: 0 26px; font-size: 22px; } .play-now small { font-size: 10.5px; }
+  }
+  @media (orientation: portrait) {
+    .card { --w: 58vw !important; --lx: 50% !important; --ly: 50% !important; } .card.kawkab { left: 30%; top: 25%; } .card.waha { left: 72%; top: 31%; } .card.barari { left: 36%; top: 39%; } .card.dhalam { left: 70%; top: 46%; } .card.dino { left: 32%; top: 50%; --ly: 30% !important; }
+    .top { left: 12px; right: 12px; flex-wrap: wrap; justify-content: space-between; } .brand h1 { font-size: 22px; }
+    #menu .offline { top: 128px; max-width: none; left: 12px; }
+    .who { left: 12px; right: 12px; width: auto; bottom: 186px; } .bar { left: 12px; right: 12px; bottom: 84px; justify-content: center; flex-wrap: wrap; row-gap: 8px; } .bar button { min-height: 40px; font-size: 14px; padding: 0 12px; }
+    .play-now { left: 12px; right: 12px; min-width: 0; min-height: 60px; }
+  }
 </style>
 </head>
 <body>
 <main id="menu">
+  <svg class="bridges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="bw-br" x1="0" x2="1"><stop offset="0" stop-color="#dff6ff"/><stop offset="1" stop-color="#9fe7ff"/></linearGradient></defs>
+    <g fill="none" stroke="url(#bw-br)" stroke-linecap="round" style="filter: drop-shadow(0 0 3px rgba(160, 230, 255, .9))">
+      <path d="M33 66 L44 55" stroke-width="1.1" vector-effect="non-scaling-stroke" style="stroke-width: 7px" stroke-dasharray="2 1.2"/>
+      <path d="M34 35 L44 44" stroke-width="1.1" vector-effect="non-scaling-stroke" style="stroke-width: 6px" stroke-dasharray="2 1.2"/>
+      <path d="M60 44 L70 31" stroke-width="1.1" vector-effect="non-scaling-stroke" style="stroke-width: 6px" stroke-dasharray="2 1.2"/>
+      <path d="M60 55 L70 66" stroke-width="1.1" vector-effect="non-scaling-stroke" style="stroke-width: 6px" stroke-dasharray="2 1.2"/>
+    </g>
+  </svg>
+  <section class="cards" aria-label="العوالم">
+    <article class="card kawkab"><button type="button" data-world="kawkab" aria-label="العب في كوكب"><img src="./previews/kawkab.webp" alt="" width="800" height="450"></button><h2>كوكب</h2><p>كوكب ما له آخر بنباتات مضيئة وبلّورات: حديقة بلّورات تغنّي، ومنصّات جاذبية لصخور طايرة، ونيزك يبني لك جسر لجزيرة.</p></article>
+    <article class="card waha"><button type="button" data-world="waha" aria-label="العب في واحة"><img src="./previews/waha.webp" alt="" width="800" height="450"></button><h2>واحة</h2><p>صحراء ما لها آخر: كثبان وهضاب وواحات نخيل وحصن طين، وسراب وقت الغروب، وأبراج رياح، وجمل سحابي يحفر وياك.</p></article>
+    <article class="card barari"><button type="button" data-world="barari" aria-label="العب في البراري"><img src="./previews/barari.webp" alt="" width="800" height="450"></button><h2>البراري</h2><p>بر وغابة وثلج على البحر: كهوف فيها فحم وذهب وألماس، نخل وأشجار تقطعها، عنز ودياي ودببة، وسمك وأخطبوط في البحر.</p></article>
+    <article class="card dhalam"><button type="button" data-world="dhalam" aria-label="العب في ظلام"><img src="./previews/dhalam.webp" alt="" width="800" height="450"></button><h2>ظلام</h2><p>مرتفعات باردة ما لها آخر، وغابة صنوبر وأطلال قلعة: جسور ما تبين إلا بالنور، وأبراج ضباب، و«نوّور» يدلّك على الكنوز، وغرف ساعات.</p></article>
+    <article class="card dino"><button type="button" data-world="dino" aria-label="العب في عالم الديناصورات"><img src="./previews/dino.webp" alt="" width="800" height="450"></button><h2>ديناصورات</h2><p>غابات حارّة ومستنقعات وبراكين تدخّن، وديناصورات: عمالقة طوال الرقبة تصادقهم، وأبو ثلاث قرون، وملك الأنياب. توصل له كذلك من البوابة في أي عالم.</p></article>
+  </section>
   <header class="top">
-    <div class="me-card">
-      <span class="pic" aria-hidden="true"></span>
-      <div><small>شخصيتك الحالية</small><b class="nm">المستكشف</b></div>
-      <div class="me-btns"><button type="button" data-go="who" aria-label="غيّر شخصيتك">👥</button><button type="button" data-go="rules" aria-label="كيف تبي تلعب">⚙️</button></div>
-    </div>
-    <div class="join">
-      <h2>انضم لغرفة ربعك</h2>
-      <form><input name="code" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="off" aria-label="كود الغرفة"><input name="name" maxlength="16" placeholder="اسمك" aria-label="اسمك"><button type="submit">ادخل</button></form>
-      <div class="msg" role="status"></div>
-    </div>
-    <h1>عالم المكعبات</h1>
+    <div class="brand glass"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 30 L24 14" stroke="#7a4a22" stroke-width="5" stroke-linecap="round"/><path d="M14 8 Q26 6 34 16 Q27 13 22 14 Q20 12 14 8z" fill="#cfd6df" stroke="#59616c" stroke-width="1.5"/></svg><h1>عالم المكعبات</h1></div>
+    <button type="button" class="me-card glass" data-go="who" aria-label="الملف الشخصي: غيّر شخصيتك"><span class="pic" aria-hidden="true"></span><span><small>الملف الشخصي</small><b class="pn">لاعب</b><i class="nm">المستكشف</i></span></button>
   </header>
-  <h2 class="pick">اختر عالمك للعب</h2>
   <p class="offline" hidden></p>
-  <section class="cards">
-    <article class="card dhalam"><span class="badge" aria-hidden="true">👻</span><img src="./previews/dhalam.webp" alt="منظر عالم ظلام" width="800" height="450"><div class="body"><h2>ظلام</h2><p>مرتفعات باردة ما لها آخر، وغابة صنوبر وأطلال قلعة: جسور ما تبين إلا بالنور، وأبراج ضباب، و«نوّور» يدلّك على الكنوز، وغرف ساعات.</p><button type="button" data-world="dhalam">العب</button></div></article>
-    <article class="card dino"><span class="badge" aria-hidden="true">🦖</span><img src="./previews/dino.webp" alt="منظر عالم الديناصورات" width="800" height="450"><div class="body"><h2>عالم الديناصورات</h2><p>غابات حارّة ومستنقعات وبراكين تدخّن، وديناصورات: عمالقة طوال الرقبة تصادقهم، وأبو ثلاث قرون، وملك الأنياب. توصل له كذلك من البوابة في أي عالم.</p><button type="button" data-world="dino">العب</button></div></article>
-    <article class="card barari"><span class="badge" aria-hidden="true">⛰️</span><img src="./previews/barari.webp" alt="منظر عالم البراري" width="800" height="450"><div class="body"><h2>البراري</h2><p>بر وغابة وثلج على البحر: كهوف فيها فحم وذهب وألماس، نخل وأشجار تقطعها، عنز ودياي ودببة، وسمك وأخطبوط في البحر.</p><button type="button" data-world="barari">العب</button></div></article>
-    <article class="card waha"><span class="badge" aria-hidden="true">🌴</span><img src="./previews/waha.webp" alt="منظر عالم واحة" width="800" height="450"><div class="body"><h2>واحة</h2><p>صحراء ما لها آخر: كثبان وهضاب وواحات نخيل وحصن طين، وسراب وقت الغروب، وأبراج رياح، وجمل سحابي يحفر وياك.</p><button type="button" data-world="waha">العب</button></div></article>
-    <article class="card kawkab"><span class="badge" aria-hidden="true">🌍</span><img src="./previews/kawkab.webp" alt="منظر عالم كوكب" width="800" height="450"><div class="body"><h2>كوكب</h2><p>كوكب ما له آخر بنباتات مضيئة وبلّورات: حديقة بلّورات تغنّي، ومنصّات جاذبية لصخور طايرة، ونيزك يبني لك جسر لجزيرة.</p><button type="button" data-world="kawkab">العب</button></div></article>
-  </section>
-  <section class="guide" aria-label="عالمك اللانهائي المتجدد">
-    <h2>🧭 عالمك اللانهائي المتجدد <small>وش ينتظرك في العوالم</small></h2>
-    <ol>
-      <li><b><i>♾️</i>عالم لا ينتهي</b><p>العوالم الخمسة كلها ما لها حدود: كل خطوة للأمام تفتح لك أرض جديدة.</p></li>
-      <li><b><i>🏔️</i>تضاريس تتجدّد</b><p>كل ما مشيت تتشكّل أرض جديدة: جبال وغابات وصحاري وبحور تتوالى لين الأفق.</p></li>
-      <li><b><i>🗺️</i>استكشاف بلا حدود</b><p>مو عالم واحد بس: خمسة عوالم، وبوابة تودّيك لعالم الديناصورات وترجّعك. استكشف كل الاتجاهات!</p></li>
-      <li><b><i>💎</i>كنوز ومفاجآت كل يوم</b><p>كنز اليوم، صناديق مدفونة، كهف فيه ألماس، قرية تحت البحر، وجزيرة تطلع يوم الجمعة.</p></li>
-    </ol>
-  </section>
-  <footer class="dock">
-    <div class="rules">
-      
-      <div class="row" data-rule="mode"><span>وضع اللعب</span><button type="button" data-v="survival">البقاء</button><button type="button" data-v="creative">الإبداعي</button><small data-for="mode"></small></div>
-      <div class="row" data-rule="diff"><span>الصعوبة</span><button type="button" data-v="peaceful">مسالم</button><button type="button" data-v="easy">سهل</button><button type="button" data-v="normal">عادي</button><button type="button" data-v="hard">صعب</button><small data-for="diff"></small></div>
-      <div class="row" data-rule="speed"><span>سرعة المشي</span><button type="button" data-v="slow">بطيئة</button><button type="button" data-v="normal">عادية</button><button type="button" data-v="fast">سريعة</button></div>
-      <div class="row" data-rule="death"><span>إذا متّ</span><button type="button" data-v="keep">أغراضي تبقى معي</button><button type="button" data-v="drop">تطيح مكاني في صندوق</button><button type="button" data-v="lose">تروح</button></div>
+  <div class="sheet" hidden role="dialog" aria-label="الإعدادات">
+    <div class="box">
+      <header><h2>الإعدادات</h2><button type="button" class="close" data-go="close">رجوع</button></header>
+      <div class="rules">
+        <div class="row" data-rule="mode"><span>وضع اللعب</span><button type="button" data-v="survival">البقاء</button><button type="button" data-v="creative">الإبداعي</button><small data-for="mode"></small></div>
+        <div class="row" data-rule="diff"><span>الصعوبة</span><button type="button" data-v="peaceful">مسالم</button><button type="button" data-v="easy">سهل</button><button type="button" data-v="normal">عادي</button><button type="button" data-v="hard">صعب</button><small data-for="diff"></small></div>
+        <div class="row" data-rule="speed"><span>سرعة المشي</span><button type="button" data-v="slow">بطيئة</button><button type="button" data-v="normal">عادية</button><button type="button" data-v="fast">سريعة</button></div>
+        <div class="row" data-rule="death"><span>إذا متّ</span><button type="button" data-v="keep">أغراضي تبقى معي</button><button type="button" data-v="drop">تطيح مكاني في صندوق</button><button type="button" data-v="lose">تروح</button></div>
+      </div>
+      <div class="join">
+        <h3>انضم لغرفة ربعك</h3>
+        <p>اكتب كود الغرفة (أربع أرقام) واسمك. بدون نت؟ افتحوا نفس العالم، ومن «العب مع ربعك» اختاروا «بدون نت».</p>
+        <form><input name="code" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="off" aria-label="كود الغرفة"><input name="name" maxlength="16" placeholder="اسمك" aria-label="اسمك"><button type="submit">ادخل</button></form>
+        <div class="msg" role="status"></div>
+      </div>
+      <section class="guide" aria-label="عالمك اللانهائي المتجدد">
+        <h3>🧭 عالمك اللانهائي المتجدد</h3>
+        <ol>
+          <li><b><i>♾️</i>عالم لا ينتهي</b><p>العوالم الخمسة كلها ما لها حدود: كل خطوة للأمام تفتح لك أرض جديدة.</p></li>
+          <li><b><i>🏔️</i>تضاريس تتجدّد</b><p>كل ما مشيت تتشكّل أرض جديدة: جبال وغابات وصحاري وبحور تتوالى لين الأفق.</p></li>
+          <li><b><i>🗺️</i>استكشاف بلا حدود</b><p>مو عالم واحد بس: خمسة عوالم، وسفينة الجزر تودّيك بينها، وبوابة لعالم الديناصورات. استكشف كل الاتجاهات!</p></li>
+          <li><b><i>💎</i>كنوز ومفاجآت كل يوم</b><p>كنز اليوم، صناديق مدفونة، كهف فيه ألماس، قرية تحت البحر، وجزيرة تطلع يوم الجمعة.</p></li>
+        </ol>
+      </section>
+      <p class="foot">عالمك ينحفظ في هذا المتصفح وتكمل من وين وقفت. تقدر تغيّر هذي الخيارات بعدين من القائمة (الإعدادات). على الجوال العب والجهاز بالعرض.</p>
     </div>
-    <section class="who">
-      <h2>اختر شخصية</h2>
-      <div class="strip" role="listbox" aria-label="الشخصيات"></div>
-    </section>
-  </footer>
-  <p class="foot">عالمك ينحفظ في هذا المتصفح وتكمل من وين وقفت. تقدر تغيّر هذي الخيارات بعدين من القائمة (الإعدادات). على الجوال العب والجهاز بالعرض.</p>
+  </div>
+  <section class="who">
+    <h2>العب كـ:</h2>
+    <div class="strip" role="listbox" aria-label="الشخصيات"></div>
+  </section>
+  <nav class="bar" aria-label="طريقة اللعب">
+    <button type="button" class="glass" data-mode="creative"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l8-8" stroke="#f6d27a" stroke-width="3" stroke-linecap="round"/><path d="M11 5l3-2 7 7-2 3z" fill="#f6d27a"/></svg>طريقة الإبداع</button>
+    <button type="button" class="glass" data-mode="survival"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="#f6d27a"/></svg>طريقة البقاء</button>
+    <button type="button" class="glass" data-go="rules"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="#f6d27a" stroke-width="2.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="#f6d27a" stroke-width="2.2" stroke-linecap="round"/></svg>الإعدادات</button>
+  </nav>
+  <button type="button" class="play-now" data-go="play">العب الآن<small></small></button>
 </main>
 <div id="loading" hidden><span class="msg">جاري تجهيز العالم…</span><div class="bar"><i></i></div></div>
 <script type="module">
@@ -174,6 +200,7 @@
   let diff = 'normal';
   try { const k = JSON.parse(localStorage.getItem('bw-rules') || 'null'); if (k) for (const a of Object.keys(RULES)) if (RULES[a].includes(k[a])) rules[a] = k[a]; const d = localStorage.getItem('bw-diff'); if (DIFFS.includes(d)) diff = d; } catch (e) { /* storage may be closed: the defaults stand */ }
   function showRules() {
+    for (const b of document.querySelectorAll('.bar [data-mode]')) b.classList.toggle('on', b.dataset.mode === rules.mode);      // «طريقة الإبداع» / «طريقة البقاء»
     for (const row of document.querySelectorAll('[data-rule]')) { const r = row.dataset.rule, v = r === 'diff' ? diff : rules[r]; for (const b of row.querySelectorAll('button')) b.classList.toggle('on', b.dataset.v === v); }
     for (const sm of document.querySelectorAll('[data-for]')) { const r = sm.dataset.for; sm.textContent = (HINT[r] || {})[r === 'diff' ? diff : rules[r]] || ''; }
   }
@@ -207,7 +234,22 @@
       const on = strip.querySelector('.on'); if (on) strip.scrollLeft = on.offsetLeft - (strip.clientWidth - on.clientWidth) / 2;     // only the strip moves, never the page
     } catch (e) { const who = document.querySelector('.who'); if (who) who.hidden = true; /* the picker is a help, not a need: the game still picks in its bag */ }
   })();
-  for (const b of document.querySelectorAll('.me-btns [data-go]')) b.addEventListener('click', () => { const t = document.querySelector(b.dataset.go === 'who' ? '.dock .who' : '.dock .rules'); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); t.animate([{ outline: '2px solid #f0bd3f' }, { outline: '2px solid transparent' }], { duration: 1400 }); } });
+  // ---- the buttons of the first page: the two ways to play, «الإعدادات», «العب الآن», and the profile (to the characters)
+  for (const b of document.querySelectorAll('.bar [data-mode]')) b.addEventListener('click', () => { rules.mode = b.dataset.mode; try { localStorage.setItem('bw-rules', JSON.stringify(rules)); } catch (err) { /* not kept */ } showRules(); });
+  const sheet = document.querySelector('#menu .sheet');
+  const NAMES_AR = { kawkab: 'كوكب', waha: 'واحة', dhalam: 'ظلام', barari: 'البراري', dino: 'الديناصورات' };
+  let last = 'barari'; try { const l = localStorage.getItem('bw-last'); if (["kawkab","waha","dhalam","barari","dino"].includes(l)) last = l; } catch (e) { /* the wilds first */ }
+  const nowSmall = document.querySelector('.play-now small'); if (nowSmall) nowSmall.textContent = 'تكمل في ' + NAMES_AR[last];
+  for (const b of document.querySelectorAll('#menu [data-go]')) b.addEventListener('click', () => {
+    const go = b.dataset.go;
+    if (go === 'rules') { sheet.hidden = false; const c = sheet.querySelector('.close'); if (c) c.focus({ preventScroll: true }); }
+    else if (go === 'close') sheet.hidden = true;
+    else if (go === 'play') launch(last);
+    else if (go === 'who') { const t = document.querySelector('#menu .who'); if (t) t.animate([{ boxShadow: '0 0 0 3px #f6d27a' }, { boxShadow: '0 0 0 3px transparent' }], { duration: 1400 }); }
+  });
+  if (sheet) sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.hidden = true; });
+  window.addEventListener('keydown', (e) => { if (e.code === 'Escape' && sheet && !sheet.hidden) sheet.hidden = true; });
+  try { const n = localStorage.getItem('bw-name'); const pn = document.querySelector('.me-card .pn'); if (n && pn) pn.textContent = n; } catch (e) { /* «لاعب» */ }
   // ---- joining: ask which world the room is in, open that world, and let it join once the player presses start
   const jf = document.querySelector('.join form'), jmsg = document.querySelector('.join .msg');
   try { jf.name.value = localStorage.getItem('bw-name') || ''; } catch (e) { /* storage may be closed */ }
@@ -262,6 +304,7 @@
 
   async function launch(key) {
     if (window.__GAME) return;
+    try { localStorage.setItem('bw-last', key); } catch (e) { /* the next visit starts from the wilds */ }
     window.__GAME = { key, onMenu: backToMenu };
     loading.hidden = false;
     loading.querySelector('.msg').textContent = 'جاري تجهيز عالم ' + NAMES[key] + '…';

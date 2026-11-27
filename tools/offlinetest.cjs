@@ -100,11 +100,19 @@ fs.mkdirSync(outdir, { recursive: true });
     // ---- the guest shows its code
     await panelOf(B.page);
     await B.page.fill('#netPanel input.n', 'مزون');
+    await B.page.evaluate(() => { window.__sameLoad = true; });
     await B.page.click('#netPanel [data-ljoin]');
     // a guest whose world already changed starts it afresh first (as with a code over the internet): the page opens again,
-    // the player presses start, and the code shows by itself
-    await B.page.waitForTimeout(1500);
-    if (!(await B.page.evaluate(() => !!(window.__GAME_NET && window.__GAME_NET.myCode)).catch(() => false))) {
+    // the player presses start, and the code shows by itself. Which of the two happened is told by a mark left on the page
+    // (a slow code is not a reload: gathering the addresses may take a few seconds)
+    let reloaded = false;
+    for (let t0 = Date.now(); Date.now() - t0 < 12000;) {
+      const st = await B.page.evaluate(() => ({ same: !!window.__sameLoad, code: !!(window.__GAME_NET && window.__GAME_NET.myCode) })).catch(() => ({ same: false, code: false }));
+      if (st.code) break;
+      if (!st.same) { reloaded = true; break; }
+      await B.page.waitForTimeout(250);
+    }
+    if (reloaded) {
       await B.page.waitForFunction(() => window.__READY === true && !!window.__play, null, { timeout: 240000 });
       report.guestStartedAfresh = true;
       await B.page.evaluate(() => { const p = window.__play; p.start = () => { p.state.running = true; }; if (window.__GAME_LIFE) window.__GAME_LIFE.setMonsters(false); });

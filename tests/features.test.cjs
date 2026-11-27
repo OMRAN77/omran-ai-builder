@@ -286,3 +286,15 @@ test('كهف اليوم ما يطيح تحت بحيرة: مكانه يُفحص �
   assert.match(c, /if \(wet\(hx \+ ox, hy \+ oy, hz \+ oz\)\) ok = false;/, 'ما في ماي في القاعة ولا حولها');
   assert.ok(!/solid\(x \+ dx \* 14, yy, z \+ dz \* 14\)/.test(c), 'الفحص القديم عند الخطوة 14 راح');
 });
+
+test('الصفحة الأولى بشكل صورة المالك: خريطة الجزر الخمس، الملف الشخصي، «العب كـ:»، طريقتا اللعب، الإعدادات، «العب الآن»', () => {
+  const html = read('index.html');
+  for (const t of ['عالم المكعبات', 'الملف الشخصي', 'العب كـ:', 'طريقة الإبداع', 'طريقة البقاء', 'الإعدادات', 'العب الآن']) assert.ok(html.includes(t), t);
+  for (const k of ['kawkab', 'waha', 'barari', 'dhalam', 'dino']) assert.match(html, new RegExp(`<article class="card ${k}"><button type="button" data-world="${k}"[^>]*><img src="\\./previews/${k}\\.webp"`), 'جزيرة ' + k + ' من صورة العالم نفسه، وتفتحه');
+  assert.match(html, /\.bar \[data-mode\]'\)\) b\.addEventListener\('click', \(\) => \{ rules\.mode = b\.dataset\.mode;/, 'طريقة الإبداع/البقاء تغيّر وضع اللعب');
+  assert.match(html, /else if \(go === 'play'\) launch\(last\);/, '«العب الآن» يفتح آخر عالم');
+  assert.match(html, /localStorage\.setItem\('bw-last', key\)/);
+  const sheet = /<div class="sheet"[\s\S]*?<\/section>\s*<p class="foot">/.exec(html);
+  assert.ok(sheet && /data-rule="diff"/.test(sheet[0]) && /<div class="join">/.test(sheet[0]) && /class="guide"/.test(sheet[0]), 'الإعدادات فيها الصعوبة والانضمام لغرفة و«عالمك اللانهائي المتجدد»');
+  assert.match(html, /\.who \{ box-sizing: border-box;/, 'عرض «العب كـ:» محسوب عشان ما يغطي وسط جزيرة الظلام');
+});
