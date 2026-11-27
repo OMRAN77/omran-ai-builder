@@ -34,6 +34,7 @@ const REQ_RE = /^[A-Za-z0-9_-]{6,80}$/;
 const PENDING = ['queued', 'pending', 'processing', 'retryable']; // retryable: فشل والخدمة تعيد المحاولة بنفسها — لم يُحسم
 const PRE_SEND = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH', 'UND_ERR_CONNECT_TIMEOUT']; // الطلب ما خرج أصلًا
 const fileKey = (id) => 'socpub:file:' + id;
+const fmetaKey = (id) => 'socpub:fmeta:' + id; // v-social-direct-sure: نوع الملفّ وحجمه — إنستغرام يرفض WebM وما فوق ٣٠٠ ميغا قبل أيّ حاوية
 const sentKey = (v, p) => 'socpub:sent:' + v + ':' + p; // المنصّة p أخذت الفيديو v بالطلب المخزَّن قيمةً
 const reqKey = (r) => 'socpub:req:' + r; // وقت الطلب وقبول الخدمة له: «لا طلب» في المهلة = ينتظر، وبعدها = ما وصل
 const seenKey = (r) => 'socpub:seen:' + r; // الخدمة أرت الطلب حيًّا مرّة: غيابه بعدها نسيان لا ضياع
@@ -170,6 +171,7 @@ async function target(res, body) {
   if (!d || !isHttps(d.upload_url) || !isHttps(d.file_url)) return fail(res, 502, 'storage', { status: r.status });
   const id = crypto.randomBytes(12).toString('hex');
   await kvSetRaw(fileKey(id), d.file_url, FILE_TTL);
+  await kvSetRaw(fmetaKey(id), JSON.stringify({ ctype, size }), FILE_TTL);
   return res.status(200).json({ ok: true, id, up: d.upload_url, ctype });
 }
 
@@ -315,12 +317,13 @@ module.exports = async (req, res) => {
       if (op === 'accounts') return await direct.accounts(res, key ? async () => { const r = cap(); await accounts(r, key); return r.body && r.body.ok ? r.body : null; } : null);
       if (op === 'publish') {
         return await direct.publish(res, body, {
-          captions, fileOf: (id) => kvGetRaw(fileKey(id)),
+          captions, fileOf: (id) => kvGetRaw(fileKey(id)), metaOf: (id) => kvGetRaw(fmetaKey(id)),
           upPublish: key ? (b) => publish(res, b, key) : null,
           upCapture: key ? async (b) => { const r = cap(); await publish(r, b, key); return r; } : null,
         });
       }
-      if (op === 'status' && direct.isReq(body.request)) return await direct.status(res, body, { upStatus: key ? (r) => upStatus(key, r) : null, statusOf });
+      // منصّات الوسيط في الطلب المدموج تُسأل بمعالج الحالة القديم نفسه — سلوكها مطابق للطريق القديم وحده
+      if (op === 'status' && direct.isReq(body.request)) return await direct.status(res, body, { upCheck: key ? async (r) => { const x = cap(); await status(x, { request: r }, key); return x.body; } : null });
     }
     if (!key) return fail(res, 503, 'no_key');
     if (op === 'accounts') return await accounts(res, key);
