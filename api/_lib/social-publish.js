@@ -300,11 +300,11 @@ function traceLine(op, code, b) {
   if (o.request) parts.push('req=' + clip(o.request));
   if (Array.isArray(o.already) && o.already.length) parts.push('already=' + o.already.join(','));
   if (o.state) parts.push('state=' + clip(o.state));
+  if (o.note) parts.push('note=' + clip(o.note)); // v-socpub-note: أين وقف المتصفّح قبل أن يصل النشر
   if (Array.isArray(o.results)) parts.push('results=' + o.results.map((x) => clip(x.platform) + ':' + clip(x.state) + (x.error ? '(' + clip(x.error) + ')' : '')).join(','));
   return '[socpub] ' + parts.join(' ');
 }
 function traceRes(res, op) {
-  if (op === 'target') return; // هدف الرفع يحمل روابط مؤقّتة — لا يُسجَّل
   let code = 200;
   const st = res.status, js = res.json;
   res.status = function (c) { code = c; return st.call(this, c); };
@@ -336,6 +336,8 @@ module.exports = async (req, res) => {
   const op = String((req.query && req.query.op) || body.op || '');
   traceRes(res, op); // v-socpub-trace: كلّ ردّ للوحة يُسجَّل ملخّصًا — بلا رابط ولا مفتاح
   try {
+    // v-socpub-note: اللوحة تبلّغ أين وقفت قبل الخادم (بلا نصّ، رفع ما اكتمل، إلغاء) — مرحلة ورمز، لا رابط ولا نصّ المنشور
+    if (op === 'note') return res.status(200).json({ ok: true, note: String(body.stage || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 24) + ':' + clip(body.why) });
     if (op === 'target') return await target(res, body);
     const key = upKey();
     if (direct.active()) {

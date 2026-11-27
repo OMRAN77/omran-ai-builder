@@ -607,6 +607,8 @@
     return fetch('/api/media?action=social-publish&op='+op,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({token:drTok()},body||{}))})
       .then(function(r){ return r.json().catch(function(){ return {ok:false,error:'http',status:r.status}; }); });
   }
+  /* v-socpub-note: أين وقفت اللوحة قبل أن يصل النشر الخادم — مرحلة ورمز في سجلّه، فيُعرف السبب بلا لقطة من المالك */
+  function pbNote(stage,why){ pbApi('note',{stage:stage,why:String(why||'').slice(0,120)}).catch(function(){ return null; }); }
   function pbMsg(t,err,why){
     var m=id('vdPubMsg'); if(!m) return;
     m.textContent=(t||'')+(why?' ('+String(why).slice(0,200)+')':''); /* السبب الحقيقيّ بين قوسين: اللوحة للمالك وحده */
@@ -695,12 +697,12 @@
     });
   }
   async function pbGo(){
-    if(PB.busy||EC.busy||ER.busy||!drOwner()||!DR.out) return; /* v-director-endcard: لا نشر أثناء إضافة الباركود (يُرفع الأصل بدلها) — ولا أثناء مسح الكتابة (v-director-erase) */
+    if(PB.busy||EC.busy||ER.busy||!drOwner()||!DR.out){ pbNote('skip',(PB.busy?'busy ':'')+(EC.busy?'endcard ':'')+(ER.busy?'erase ':'')+(DR.out?'':'novideo')); return; } /* v-director-endcard: لا نشر أثناء إضافة الباركود (يُرفع الأصل بدلها) — ولا أثناء مسح الكتابة (v-director-erase) */
     var capEl=id('vdPubCap'), cap=String((capEl||{}).value||'').trim();
     var picked=[].map.call((id('vdPubPlats')||document).querySelectorAll('input:checked'),function(c){ return c.value; }).filter(function(p){ return !PB.sent[p]; });
-    if(!cap){ pbMsg(L('vdPubNeedCap'),true); if(capEl) capEl.focus(); return; }
-    if(!picked.length){ pbMsg(L('vdPubPick'),true); return; }
-    if(!window.confirm(drT('vdPubConfirm',{p:pbNames(picked)}))) return; /* علنيّ ولا يُسحب: موافقة لكلّ نشر */
+    if(!cap){ pbNote('nocap'); pbMsg(L('vdPubNeedCap'),true); if(capEl) capEl.focus(); return; }
+    if(!picked.length){ pbNote('nopick'); pbMsg(L('vdPubPick'),true); return; }
+    if(!window.confirm(drT('vdPubConfirm',{p:pbNames(picked)}))){ pbNote('cancel'); return; } /* علنيّ ولا يُسحب: موافقة لكلّ نشر */
     var at=DR.out; /* الفيديو الذي وافق عليه: إن جاء فيديو جديد أثناء الرفع لا يُنشر القديم ولا تُرسم نتيجته تحت الجديد */
     PB.busy=true; syncDirector(); /* نتائج النشر السابق ومتابعته تبقى: النشر الجديد يضيف ولا يقطع */
     try{
@@ -729,7 +731,7 @@
         if(d&&d.error==='no_file'&&!up){ PB.id=''; continue; } /* انتهى عمر الملفّ عند الخادم ولم يُنشر شيء: رفع واحد من جديد في الضغطة نفسها */
         break;
       }
-      if(pbUnknown(d)){ pbMsg(L('vdPubSlow'),true,pbWhy(d)); return; } /* ما نعرف هل وصل: لا «ما قدر ينشر» ولا وعد بمتابعة بلا طلب — الضغطة التالية يحسمها حجز الخادم */
+      if(pbUnknown(d)){ pbNote('slow',pbWhy(d)); pbMsg(L('vdPubSlow'),true,pbWhy(d)); return; } /* ما نعرف هل وصل: لا «ما قدر ينشر» ولا وعد بمتابعة بلا طلب — الضغطة التالية يحسمها حجز الخادم */
       if(!d||!d.ok) throw (d||{error:'publish'});
       var already=d.already||[], sent=d.again?[]:picked.filter(function(p){ return already.indexOf(p)<0; }), hold=d.held||{};
       sent.concat(already).forEach(function(p){ if(!PB.sent[p]) PB.sent[p]='wait'; });
@@ -742,6 +744,7 @@
       if(!d.again) pbTrack(String(d.request||''),sent);
     }catch(e){
       if(at!==DR.out) return;
+      pbNote('fail',pbWhy(e)||String((e&&e.message)||e));
       pbMsg(pbErr(e),true,pbWhy(e)||String((e&&e.message)||e));
       try{ __swallow(e,'director:publish'); }catch(x){ typeof __swallow === 'function' && __swallow(x, 'video:714'); /* guard-ok — لا مسجّل */ }
     }finally{ PB.busy=false; syncDirector(); }
