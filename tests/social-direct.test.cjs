@@ -357,3 +357,19 @@ test('٨. اللوحة: «يحتاج إعادة ربط» لكلّ منصّة م�
   g = await go('tiktok', 'http://www.tiktok.com/x', 'www.tiktok.com');
   assert.equal(g.href, '', 'لا http');
 });
+
+test('٩. v-socpub-trace: كلّ ردّ للوحة سطر في سجلّ الخادم — الإجراء والحالة ورمز كلّ منصّة، بلا رابط ولا توكن ولا نصّ المنشور', async () => {
+  metaOn();
+  con.length = 0;
+  await call('accounts', owner());
+  await call('publish', Object.assign(owner(), { id: 'f'.repeat(24), caption: 'نصّ سرّيّ https://evil.example/x', platforms: ['instagram'] }));
+  await call('status', Object.assign(owner(), { request: 'sd-' + '9'.repeat(24) + '-00000000' }));
+  await call('target', Object.assign(owner(), { size: 10, type: 'video/mp4' }));
+  const lines = con.filter((l) => l.startsWith('[socpub] '));
+  assert.ok(lines.some((l) => /^\[socpub\] op=accounts code=200 ok=true .*on=/.test(l)), 'الحسابات');
+  assert.ok(lines.some((l) => /^\[socpub\] op=publish code=404 ok=false error=no_file/.test(l)), 'فشل النشر برمزه');
+  assert.ok(lines.some((l) => /^\[socpub\] op=status code=200 ok=true state=fail/.test(l)), 'الحالة');
+  assert.ok(!lines.some((l) => l.includes('op=target')), 'هدف الرفع لا يُسجَّل');
+  const all = lines.join('\n');
+  assert.doesNotMatch(all, /https?:\/\/|نصّ سرّيّ|EAAG|page-token-secret|app-secret-x/, 'بلا رابط ولا نصّ ولا سرّ');
+});
