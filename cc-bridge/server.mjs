@@ -19,6 +19,7 @@ import { ALLOWED_TOOLS, DENIED_TOOLS, RULES_APPEND, RunLog, briefTool, detailToo
 import { makeGit } from './git.mjs';
 import { makeWatcher, wakeMessage } from './watch.mjs';
 import { createRenderer } from './render.mjs'; // v-app-director: تصوير شاشات التطبيق ودمج فيديو «مخرج التطبيق»
+import { createPub } from './pub.mjs'; // v-socpub-bridge: تخزين مؤقّت لفيديو «انشر في حساباتي»
 
 const env = process.env;
 const PORT = Number(env.PORT) || 8787;
@@ -62,6 +63,9 @@ const renderer = createRenderer({
   ffprobe: env.FFPROBE_BIN || 'ffprobe',
   concurrency: Math.max(0, Number(env.DIRECTOR_CONCURRENCY) || 0), /* ٠ = تلقائيّ: أنوية الجهاز ناقص واحد وما تحتمله ذاكرة الحاوية (v-app-director-watchdog)، بسقف ٤ */
 });
+
+/* v-socpub-bridge: /pub/<اسم> — الرفع بتذكرة يصدرها Vercel للمالك (HMAC بالسرّ نفسه)، والقراءة عامّة للمنصّات حتّى ينتهي عمر الملفّ */
+const pub = createPub({ secret: SECRET, dir: env.PUB_DIR || join(tmpdir(), 'omran-pub'), corsAllowed: renderer.corsAllowed });
 
 /** بيئة Claude Code: بيئة الجسر بلا سرّه المشترك ولا مفتاح الكتابة على GitHub (v-audit-bridge: كان يمرّ باسم GH_TOKEN فيدمج
     ويدفع إلى main بأيّ صيغة تفوت السياج النصّيّ). gh يأخذ CC_AGENT_GH_TOKEN (قراءة + فتح طلبات) إن ضبطه المالك. */
@@ -254,6 +258,9 @@ const server = createServer(async (req, res) => {
   /* v-app-director: /render يتحقّق من رمز المهمّة بنفسه (لا السرّ الخام) ويردّ على CORS لأصل التطبيق */
   if (url.pathname === '/render' || url.pathname.startsWith('/render/')) {
     try { if (await renderer.handle(req, res, url)) return; } catch (e) { return json(res, 500, { error: redact(String((e && e.message) || e).slice(0, 300)) }); }
+  }
+  if (url.pathname.startsWith('/pub/')) {
+    try { if (await pub.handle(req, res, url)) return; } catch (e) { return json(res, 500, { error: redact(String((e && e.message) || e).slice(0, 300)) }); }
   }
   if (!authed(req)) return json(res, 401, { error: 'unauthorized' });
   if (!ENABLED && req.method === 'POST' && ['/chat', '/publish', '/merge', '/reset', '/watch'].includes(url.pathname)) return json(res, 403, { error: CC_OFF, off: true }); // v-cc-off

@@ -152,25 +152,50 @@ async function accounts(res, key) {
   return res.status(200).json(Object.assign({ ok: true }, accountsOf(prof.social_accounts || {})));
 }
 
+/* v-socpub-bridge: مزوّد التخزين المؤقّت رفض (٤٠٣ — حسابه موقوف) فلم يبلغ النشر أيّ منصّة. الاحتياط جسر المالك نفسه:
+   تذكرة رفع قصيرة العمر (HMAC بسرّ الجسر، لاسم عشوائيّ وحجم محدّد — نفس صيغة cc-bridge/pub.mjs)، والمنصّات تقرأ الملفّ من الاسم نفسه. */
+const brSecret = () => String(process.env.CC_BRIDGE_SECRET || '').trim();
+const brBase = () => String(process.env.DIRECTOR_BRIDGE_URL || process.env.CC_BRIDGE_URL || '').trim().replace(/\/+$/, '');
+const bridgeCfg = () => { const secret = brSecret(), base = brBase(); return secret && isHttps(base) ? { secret, base } : null; };
+const UP_TICKET_MS = 2 * 3600 * 1000;
+function upTicket(name, size, secret, exp) {
+  const p = Buffer.from(JSON.stringify({ n: name, s: size, exp: exp || (Date.now() + UP_TICKET_MS) })).toString('base64url');
+  return p + '.' + crypto.createHmac('sha256', String(secret)).update('pub.' + p).digest('base64url');
+}
+async function falTarget(fk, ctype, ext) {
+  const life = JSON.stringify({ expiration_duration_seconds: FILE_TTL });
+  let r = null, d = null;
+  try {
+    r = await fetch(INITIATE, {
+      method: 'POST',
+      headers: { Authorization: 'Key ' + fk, 'Content-Type': 'application/json', 'X-Fal-Object-Lifecycle': life, 'X-Fal-Object-Lifecycle-Preference': life },
+      body: JSON.stringify({ file_name: 'om-' + crypto.randomBytes(8).toString('hex') + '.' + ext, content_type: ctype }),
+    });
+    d = r.ok ? await r.json().catch(() => null) : null;
+  } catch (e) { require('./_swallow.js').swallow(e, 'socpub:storage'); } // انقطاع = كرفض: يجرَّب الاحتياط
+  if (!d || !isHttps(d.upload_url) || !isHttps(d.file_url)) return { ok: false, status: r ? r.status : 0 };
+  return { ok: true, up: d.upload_url, file: d.file_url };
+}
+
 async function target(res, body) {
-  const fk = falKey();
-  if (!fk) return fail(res, 503, 'no_storage');
+  const fk = falKey(), br = bridgeCfg();
+  if (!fk && !br) return fail(res, 503, 'no_storage');
   const ctype = String(body.type || '').toLowerCase().split(';')[0].trim();
   const ext = TYPES[ctype];
   const size = Number(body.size);
   if (!ext) return fail(res, 400, 'bad_type');
   if (!(size > 0) || size > MAX_BYTES) return fail(res, 413, 'too_big', { maxMB: MAX_BYTES / 1048576 });
-  const life = JSON.stringify({ expiration_duration_seconds: FILE_TTL });
-  const r = await fetch(INITIATE, {
-    method: 'POST',
-    headers: { Authorization: 'Key ' + fk, 'Content-Type': 'application/json', 'X-Fal-Object-Lifecycle': life, 'X-Fal-Object-Lifecycle-Preference': life },
-    body: JSON.stringify({ file_name: 'om-' + crypto.randomBytes(8).toString('hex') + '.' + ext, content_type: ctype }),
-  });
-  const d = r.ok ? await r.json().catch(() => null) : null;
-  if (!d || !isHttps(d.upload_url) || !isHttps(d.file_url)) return fail(res, 502, 'storage', { status: r.status });
+  let t = fk ? await falTarget(fk, ctype, ext) : { ok: false, status: 0 };
+  let via = '';
+  if (!t.ok && br) {
+    const name = crypto.randomBytes(16).toString('hex') + '.' + ext;
+    t = { ok: true, up: br.base + '/pub/' + name + '?t=' + upTicket(name, size, br.secret), file: br.base + '/pub/' + name };
+    via = 'bridge';
+  }
+  if (!t.ok) return fail(res, 502, 'storage', { status: t.status });
   const id = crypto.randomBytes(12).toString('hex');
-  await kvSetRaw(fileKey(id), d.file_url, FILE_TTL);
-  return res.status(200).json({ ok: true, id, up: d.upload_url, ctype });
+  await kvSetRaw(fileKey(id), t.file, FILE_TTL);
+  return res.status(200).json(Object.assign({ ok: true, id, up: t.up, ctype }, via ? { via } : {}));
 }
 
 async function publish(res, body, key) {
@@ -300,6 +325,7 @@ function traceLine(op, code, b) {
   if (o.request) parts.push('req=' + clip(o.request));
   if (Array.isArray(o.already) && o.already.length) parts.push('already=' + o.already.join(','));
   if (o.state) parts.push('state=' + clip(o.state));
+  if (o.via) parts.push('via=' + clip(o.via)); // v-socpub-bridge: أيّ تخزين أخذ الملفّ
   if (o.note) parts.push('note=' + clip(o.note)); // v-socpub-note: أين وقف المتصفّح قبل أن يصل النشر
   if (Array.isArray(o.results)) parts.push('results=' + o.results.map((x) => clip(x.platform) + ':' + clip(x.state) + (x.error ? '(' + clip(x.error) + ')' : '')).join(','));
   return '[socpub] ' + parts.join(' ');
