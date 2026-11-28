@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 const path = require('node:path');
 
 for (const k of ['OWNER_USERNAMES', 'OWNER_USERNAME', 'SITE_URL', 'META_APP_ID', 'META_APP_SECRET', 'UPLOAD_POST_API_KEY', 'LINKEDIN_VERSION',
-  'LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'YOUTUBE_CLIENT_ID', 'YOUTUBE_CLIENT_SECRET', 'TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET']) delete process.env[k];
+  'LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'YOUTUBE_CLIENT_ID', 'YOUTUBE_CLIENT_SECRET', 'TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET', 'TIKTOK_DIRECT_POST']) delete process.env[k];
 process.env.AUTH_SECRET = 'social-net-test-secret';
 const root = path.resolve(__dirname, '..');
 const rp = (f) => require.resolve(path.join(root, f));
@@ -83,7 +83,10 @@ test('٢. «اربط» لكلّ منصّة: المالك وحده، رابط ص�
   assert.deepEqual([yt.searchParams.get('scope'), yt.searchParams.get('access_type'), yt.searchParams.get('prompt')], ['https://www.googleapis.com/auth/youtube.upload', 'offline', 'consent']);
   const tt = new URL((await call('net-connect', Object.assign(owner(), { platform: 'tiktok' }))).body.url);
   assert.equal(tt.origin + tt.pathname, 'https://www.tiktok.com/v2/auth/authorize/');
-  assert.deepEqual([tt.searchParams.get('client_key'), tt.searchParams.get('scope'), tt.searchParams.get('client_id')], ['tt-key', 'user.info.basic,video.upload,video.publish', null]);
+  assert.deepEqual([tt.searchParams.get('client_key'), tt.searchParams.get('scope'), tt.searchParams.get('client_id')], ['tt-key', 'user.info.basic,video.upload', null], 'v-tiktok-scope: بلا موافقة تيك توك لا تُطلب video.publish (يرفض الصفحة كلّها)');
+  process.env.TIKTOK_DIRECT_POST = '1';
+  assert.equal(new URL((await call('net-connect', Object.assign(owner(), { platform: 'tiktok' }))).body.url).searchParams.get('scope'), 'user.info.basic,video.upload,video.publish', 'بعد الموافقة: TIKTOK_DIRECT_POST=1');
+  delete process.env.TIKTOK_DIRECT_POST;
   const st = stateOf(tt.toString());
   assert.deepEqual([JSON.parse(kv.get('socnet:state:' + st)), ttl.get('socnet:state:' + st)], [{ u: 'omran', p: 'tiktok' }, 600]);
   const v = JSON.parse(require('node:fs').readFileSync(path.join(root, 'vercel.json'), 'utf8'));
@@ -352,10 +355,15 @@ test('٩. v-tiktok-direct: نشر مباشر بلا صندوق — علنيّ ب
   assert.deepEqual(inits.map((x) => x.post_info.privacy_level), ['PUBLIC_TO_EVERYONE', 'SELF_ONLY']);
   assert.equal(r.body.results[0].state, 'ok');
   assert.equal(r.body.results[0].error, 'private');
-  // ربط قبل هذا التغيير (بلا scope): «يحتاج ربط» بسببه
+  // ربط بلا الصلاحيّة: v-tiktok-scope — يبقى موصولًا (ينشر للصندوق) ما لم يُفعَّل TIKTOK_DIRECT_POST، ومعه «يحتاج ربط» بسببه
   const old = JSON.parse(enc.decrypt(kv.get('socnet:cred:tiktok'))); delete old.scope;
   kv.set('socnet:cred:tiktok', enc.encrypt(JSON.stringify(old)));
-  const acc = (await call('accounts', owner())).body;
-  assert.ok(acc.connect.includes('tiktok'));
-  assert.equal(acc.whyBy.tiktok, 'need-publish');
+  let acc = (await call('accounts', owner())).body;
+  assert.ok(acc.on.includes('tiktok') && !acc.connect.includes('tiktok'), 'الربط القديم لا ينكسر');
+  process.env.TIKTOK_DIRECT_POST = '1';
+  try {
+    acc = (await call('accounts', owner())).body;
+    assert.ok(acc.connect.includes('tiktok'));
+    assert.equal(acc.whyBy.tiktok, 'need-publish');
+  } finally { delete process.env.TIKTOK_DIRECT_POST; }
 });

@@ -29,7 +29,7 @@ const PROV = {
   tiktok: {
     id: 'TIKTOK_CLIENT_KEY', secret: 'TIKTOK_CLIENT_SECRET', idParam: 'client_key',
     auth: 'https://www.tiktok.com/v2/auth/authorize/', token: 'https://open.tiktokapis.com/v2/oauth/token/',
-    scope: 'user.info.basic,video.upload,video.publish', host: 'www.tiktok.com', // v-tiktok-direct: video.publish = نشر مباشر بلا صندوق
+    scope: 'user.info.basic,video.upload', host: 'www.tiktok.com', // + video.publish حين TIKTOK_DIRECT_POST=1 (v-tiktok-scope)
   },
 };
 const PLATS = Object.keys(PROV);
@@ -37,6 +37,10 @@ const MAX = 256 * 1024 * 1024;
 const UP_LOCK = 300;
 const MB = 1024 * 1024;
 const TT_ONE = 64 * MB; // v-tiktok-init: حتّى ٦٤ م.ب يُرفع الفيديو قطعة واحدة (chunk_size = حجمه) — أبسط شكل موثّق؛ فوقها قطع ١٠ م.ب
+/* v-tiktok-scope: تيك توك يرفض صفحة الربط كلّها («scope») إن طُلبت video.publish قبل أن يمنحها للتطبيق — فلا تُطلب ولا يُشترط الربط بها
+   إلّا بعد موافقته، بمتغيّر يضعه المالك في Vercel. النشر المباشر يعمل متى حمل التوكن الصلاحيّة. */
+const ttDirect = () => /^(1|true|on|yes)$/i.test(env('TIKTOK_DIRECT_POST'));
+const scopeOf = (p) => PROV[p].scope + (p === 'tiktok' && ttDirect() ? ',video.publish' : '');
 const hasPub = (c) => String((c && c.scope) || '').split(/[\s,]+/).includes('video.publish');
 const ttHead = (c) => ({ Authorization: 'Bearer ' + c.access, 'Content-Type': 'application/json; charset=UTF-8' });
 // عنوان تيك توك حتّى ٢٢٠٠ وحدة UTF-16 (حدّ المنصّة)
@@ -113,7 +117,7 @@ async function state() {
     const c = await getCred(p).catch(() => null);
     const bad = !!(await kvGetRaw(badKey(p)).catch(() => null));
     const expired = c && p === 'linkedin' && Number(c.exp) > 0 && Date.now() > Number(c.exp);
-    const noPub = c && p === 'tiktok' && !hasPub(c); // v-tiktok-direct: ربط قديم بلا صلاحيّة النشر المباشر ← إعادة ربط مرّة
+    const noPub = c && p === 'tiktok' && ttDirect() && !hasPub(c); // v-tiktok-direct: ربط قديم بلا صلاحيّة النشر المباشر ← إعادة ربط مرّة
     if (c && c.access && !bad && !expired && !noPub) { on.push(p); continue; }
     need.push(p);
     const last = readJSON(await kvGetRaw(lastKey(p)).catch(() => null));
@@ -127,7 +131,7 @@ async function connect(res, user, p) {
   const P = PROV[p];
   const s = crypto.randomBytes(16).toString('hex');
   await kvSetRaw(stateKey(s), JSON.stringify({ u: String(user), p }), 600);
-  const q = Object.assign({ [P.idParam]: keys(p).id, redirect_uri: redirectUri(), response_type: 'code', scope: P.scope, state: s }, P.extra || {});
+  const q = Object.assign({ [P.idParam]: keys(p).id, redirect_uri: redirectUri(), response_type: 'code', scope: scopeOf(p), state: s }, P.extra || {});
   return res.status(200).json({ ok: true, url: P.auth + '?' + form(q), host: new URL(P.auth).host });
 }
 
