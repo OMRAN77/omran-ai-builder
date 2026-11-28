@@ -889,6 +889,8 @@ html[data-mode="light"]:not(.mobile-ui) #videoMakerModal .vmk-pub-plats input[ty
 #videoMakerModal .vmk-pub-plats .off{padding:7px 12px;border-radius:999px;border:1px dashed rgba(255,255,255,.22);color:var(--muted,#9a9a9e)}
 #videoMakerModal .vmk-pub-go{align-self:flex-start;font:inherit;font-weight:800;font-size:14px;padding:10px 22px;border-radius:12px;border:0;cursor:pointer;color:#1a1408;background:linear-gradient(135deg,#f6dca2,#c9964a)}
 #videoMakerModal .vmk-pub-go:disabled{opacity:.5;cursor:default}
+#videoMakerModal .vmk-pub-snap{align-self:flex-start;font:inherit;font-weight:700;font-size:13px;padding:8px 16px;border-radius:12px;cursor:pointer;color:#1a1408;background:#fffc00;border:1px solid #e6d800} /* v-pub-snap */
+#videoMakerModal .vmk-pub-snap:disabled{opacity:.5;cursor:default}
 #videoMakerModal .vmk-pub-msg{margin:0;font-size:12.5px;line-height:1.6;color:var(--muted,#9a9a9e)}
 #videoMakerModal .vmk-pub-msg:empty,#videoMakerModal .vmk-pub-res:empty{display:none}
 #videoMakerModal .vmk-pub-msg.err{color:#ff8a80}

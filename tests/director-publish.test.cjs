@@ -549,7 +549,7 @@ test('١٢. النصوص الخمسة والعشرون بالـ١٤ لغة بل�
   assert.equal(seenNew.size, 12, 'النصوص الثلاثة الجديدة مترجمة لا منسوخة');
   const v = read('js/video.js');
   /* المفاتيح = كلّ نصّ 'vdPub…' في الكود ما عدا معرّفات العناصر (id('…') و'#…') — L(r.state==='ok'?'vdPubOk':…) يُعدّ */
-  const used = new Set([...v.matchAll(/(?<!id\()'(vdPub\w+)'/g)].map((m) => m[1]));
+  const used = new Set([...v.matchAll(/(?<!id\()'(vdPub\w+)'/g)].map((m) => m[1]).filter((k) => !/^vdPubSnap/.test(k))); // v-pub-snap: نصّاه في كتلتهما (tests/pub-snap.test.cjs)
   for (const k of used) assert.ok(KEYS.includes(k), 'غير معرَّف: ' + k);
   for (const k of KEYS) assert.ok(used.has(k), 'غير مستعمل: ' + k);
   const tag = read('js/app-04-i18n-state.js').match(/\.js\?v=(\d+)';[^\n]* v-director-publish \((\d+)\): [^\n]*\*\//);
