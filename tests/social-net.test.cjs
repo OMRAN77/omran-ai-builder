@@ -146,7 +146,7 @@ test('٤. الحسابات: المربوط مباشرة ✓، وغير المر�
 
 const VID = 'd'.repeat(24);
 const FILE = 'https://v3.fal.media/files/om-net.mp4';
-const BYTES = Buffer.alloc(12 * 1024 * 1024 + 5, 7); // ١٢ م.ب: قطعتان لتيك توك (١٠ + الباقي)
+const BYTES = Buffer.alloc(12 * 1024 * 1024 + 5, 7); // ١٢ م.ب: قطعة واحدة لتيك توك (≤ ٦٤ م.ب)، وجزآن لLinkedIn
 test('٥. النشر ثمّ المتابعة: «في الطابور» عند النشر، رفع منصّة واحدة لكلّ سؤال وبقفل، LinkedIn بعد المعالجة، يوتيوب private، تيك توك inbox', async () => {
   keysOn();
   routes = tokenRoutes();
@@ -196,7 +196,7 @@ test('٥. النشر ثمّ المتابعة: «في الطابور» عند ا�
   assert.deepEqual(r.body.results.find((x) => x.platform === 'youtube'), { platform: 'youtube', state: 'ok', url: 'https://youtu.be/YTID1', error: 'private' });
   assert.equal(calls.filter((c) => c.url.includes('initializeUpload') || c.url.includes('upload.yt.example')).length, 0, 'لا إعادة رفع');
   const ttInit = JSON.parse(calls.find((c) => c.url.includes('inbox/video/init')).body);
-  assert.deepEqual(ttInit.source_info, { source: 'FILE_UPLOAD', video_size: BYTES.length, chunk_size: 10 * 1024 * 1024, total_chunk_count: 1 });
+  assert.deepEqual(ttInit.source_info, { source: 'FILE_UPLOAD', video_size: BYTES.length, chunk_size: BYTES.length, total_chunk_count: 1 }, 'v-tiktok-init: حتّى ٦٤ م.ب قطعة واحدة بحجم الفيديو');
   assert.equal(calls.find((c) => c.url.includes('upload.tt.example')).headers['Content-Range'], 'bytes 0-' + (BYTES.length - 1) + '/' + BYTES.length);
   // السؤال ٣: LinkedIn متاح ← منشور بنصّ مهرَّب؛ تيك توك في الصندوق ← inbox
   liStatus = 'AVAILABLE';
@@ -240,4 +240,44 @@ test('٦. التوكن: يوتيوب المنتهي يتجدّد قبل الرف
   assert.deepEqual(r.body.results, [{ platform: 'youtube', state: 'fail', url: '', error: 'too_big' }]);
   assert.equal(calls.some((c) => c.url.includes('googleapis.com/upload')), false);
   assert.equal(kv.has('socdir:sent:' + V2 + ':youtube'), false, 'الفشل يحرّر المنصّة');
+});
+
+test('٧. v-tiktok-init: رفض التهيئة يسجّل نصّ المنصّة والأحجام في سجلّ الخادم (بلا توكن)، وفوق ٦٤ م.ب قطع ١٠ م.ب والأخيرة تأخذ الباقي', async () => {
+  keysOn();
+  routes = tokenRoutes();
+  await link('tiktok');
+  const TT = (id, bytes, init) => {
+    kv.set('socpub:file:' + id, 'https://v3.fal.media/files/' + id + '.mp4');
+    routes['v3.fal.media/files/' + id + '.mp4'] = { status: 200, bytes };
+    routes['open.tiktokapis.com/v2/post/publish/inbox/video/init/'] = init;
+  };
+  const go = async (id) => {
+    const pub = await call('publish', Object.assign(owner(), { id, caption: 'x', platforms: ['tiktok'] }));
+    calls.length = 0; con.length = 0;
+    return call('status', Object.assign(owner(), { request: pub.body.request }));
+  };
+  // رفض: الرمز للّوحة كما كان، والنصّ والأحجام للسجلّ
+  const A = '1'.repeat(24), small = Buffer.alloc(3 * 1024 * 1024 + 1, 1);
+  TT(A, small, { status: 400, body: { data: {}, error: { code: 'invalid_params', message: 'The chunk size is invalid see https://developers.example/doc', log_id: 'L1' } } });
+  let r = await go(A);
+  assert.deepEqual(r.body.results, [{ platform: 'tiktok', state: 'fail', url: '', error: 'init-e400-invalid_params' }]);
+  const line = con.find((l) => l.startsWith('[social-net] init tiktok'));
+  assert.match(line, new RegExp('^\\[social-net\\] init tiktok: e400-invalid_params The chunk size is invalid see <url> size=' + small.length + ' chunk=' + small.length + ' n=1$'));
+  assert.ok(!/TT-ACCESS|tt-secret-x/.test(con.join('\n')), 'بلا توكن ولا سرّ');
+  assert.equal(calls.some((c) => c.url.includes('upload.tt.example')), false, 'لا رفع بعد رفض التهيئة');
+  // ٧٥ م.ب + ٧ بايت: ٧ قطع — ستّ بعشرة ميغا والأخيرة تأخذ الباقي
+  const B = '2'.repeat(24), big = Buffer.alloc(75 * 1024 * 1024 + 7, 2), C10 = 10 * 1024 * 1024;
+  TT(B, big, { status: 200, body: { data: { publish_id: 'PUB7', upload_url: 'https://upload.tt.example/u7' }, error: { code: 'ok' } } });
+  routes['upload.tt.example/u7'] = { status: 206 };
+  r = await go(B);
+  assert.equal(r.body.results[0].state, 'wait');
+  assert.deepEqual(JSON.parse(calls.find((c) => c.url.includes('inbox/video/init')).body).source_info, { source: 'FILE_UPLOAD', video_size: big.length, chunk_size: C10, total_chunk_count: 7 });
+  const puts = calls.filter((c) => c.url.includes('upload.tt.example/u7')).map((c) => c.headers['Content-Range']);
+  assert.equal(puts.length, 7);
+  assert.deepEqual([puts[0], puts[5], puts[6]], ['bytes 0-' + (C10 - 1) + '/' + big.length, 'bytes ' + 5 * C10 + '-' + (6 * C10 - 1) + '/' + big.length, 'bytes ' + 6 * C10 + '-' + (big.length - 1) + '/' + big.length]);
+  // ٦٤ م.ب بالضبط: قطعة واحدة
+  const C = '3'.repeat(24), edge = Buffer.alloc(64 * 1024 * 1024, 3);
+  TT(C, edge, { status: 200, body: { data: { publish_id: 'PUB8', upload_url: 'https://upload.tt.example/u7' }, error: { code: 'ok' } } });
+  await go(C);
+  assert.deepEqual(JSON.parse(calls.find((c) => c.url.includes('inbox/video/init')).body).source_info, { source: 'FILE_UPLOAD', video_size: edge.length, chunk_size: edge.length, total_chunk_count: 1 });
 });
