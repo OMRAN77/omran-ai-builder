@@ -224,7 +224,7 @@ async function publish(res, body, d) {
     if (upErr && !upPlats.length) upPlats = rest;
   }
   for (const p of Object.keys(jobs)) {
-    if (net.PLATS.includes(p)) { jobs[p] = { state: 'wait', stage: 'queued', id, cap: { cap: cap.cap, yt: cap.yt } }; continue; } // الرفع في خلفيّة هذا النداء وفي status (v-socnet-fast)
+    if (net.PLATS.includes(p)) { jobs[p] = { state: 'wait', stage: 'queued', id, cap: { cap: cap.cap, yt: cap.yt, x: cap.x } }; continue; } // الرفع في خلفيّة هذا النداء وفي status (v-socnet-fast)
     const j = await start(p, m.c, cap, file).catch((e) => { logErr('start ' + p, e); return { state: 'fail', error: 'retry' }; });
     if (j.code === 190) await kvSetRaw(BAD, '1');
     if (j.state === 'fail') await kvDel(sentKey(vid, p)); // ما نُشر يتحرّر فتصحّ محاولة ثانية

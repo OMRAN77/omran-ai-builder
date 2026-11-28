@@ -1,7 +1,7 @@
 'use strict';
 /* v-social-net (المالك ٢٧ نوفمبر: «سوهم كلهم الحين… linkedin زيد… الي اريدهم بالمجان»): نشر مباشر مجّانيّ إلى LinkedIn ويوتيوب
    وتيك توك بتطبيقات مطوّر يملكها المالك — بلا وسيط. يعمل تحت social-direct.js (اللوحة نفسها وردودها)، وكلّ منصّة ساكتة ما لم
-   تُضبط مفاتيحها: LINKEDIN_CLIENT_ID/SECRET · YOUTUBE_CLIENT_ID/SECRET · TIKTOK_CLIENT_KEY/SECRET.
+   تُضبط مفاتيحها: LINKEDIN_CLIENT_ID/SECRET · YOUTUBE_CLIENT_ID/SECRET · TIKTOK_CLIENT_KEY/SECRET · X_CLIENT_ID/SECRET (v-social-x).
      net-connect ← رابط الربط بحالة عشوائيّة في KV (عشر دقائق: المالك والمنصّة).
      net-cb      ← GET (عبر ‎/api/social-cb): رمز ← توكن (+ معرّف العضو في LinkedIn) مشفَّر في KV؛ آخر نتيجة تبقى أسبوعًا.
      النشر       ← publish يسجّل المنصّة «في الطابور» فقط؛ الرفع الثقيل يبدأ فورًا في خلفيّة نداء النشر (waitUntil)، والمتابعة status تكمل
@@ -31,11 +31,19 @@ const PROV = {
     auth: 'https://www.tiktok.com/v2/auth/authorize/', token: 'https://open.tiktokapis.com/v2/oauth/token/',
     scope: 'user.info.basic,video.upload', host: 'www.tiktok.com', // + video.publish حين TIKTOK_DIRECT_POST=1 (v-tiktok-scope)
   },
+  // v-social-x (المالك ٢٨ نوفمبر: «توصلي منصة X» ← «ابدا» بعد قبول الدفع بالاستخدام ~١٫٥ سنت للمنشور): OAuth 2.0 بـPKCE، والعميل السرّيّ
+  // يعرّف نفسه بترويسة Basic. النقاط والحقول من حزمة twitter-api-v2 ‏1.31.0 (وثائق X محجوبة عن جلسة العمل).
+  x: {
+    id: 'X_CLIENT_ID', secret: 'X_CLIENT_SECRET', idParam: 'client_id', pkce: true, basic: true,
+    auth: 'https://x.com/i/oauth2/authorize', token: 'https://api.x.com/2/oauth2/token',
+    scope: 'tweet.read tweet.write users.read media.write offline.access', host: 'x.com',
+  },
 };
 const PLATS = Object.keys(PROV);
 const MAX = 256 * 1024 * 1024;
 const UP_LOCK = 300;
 const MB = 1024 * 1024;
+const X_CHUNK = 4 * MB; // v-social-x: قطع رفع X (حدّ المنصّة أكبر؛ الحزمة تستعمل ١ م.ب)
 const TT_ONE = 64 * MB; // v-tiktok-init: حتّى ٦٤ م.ب يُرفع الفيديو قطعة واحدة (chunk_size = حجمه) — أبسط شكل موثّق؛ فوقها قطع ١٠ م.ب
 /* v-tiktok-scope: تيك توك يرفض صفحة الربط كلّها («scope») إن طُلبت video.publish قبل أن يمنحها للتطبيق — فلا تُطلب ولا يُشترط الربط بها
    إلّا بعد موافقته، بمتغيّر يضعه المالك في Vercel. النشر المباشر يعمل متى حمل التوكن الصلاحيّة. */
@@ -68,11 +76,11 @@ const logErr = (w, e) => console.error('[social-net] ' + w + ': ' + String((e &&
 const readJSON = (s) => { try { const o = JSON.parse(s); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } };
 const fail = (res, status, error, extra) => res.status(status).json(Object.assign({ ok: false, error }, extra || {}));
 /** نصّ خطأ المنصّة للسجلّ وحده (logErr يقصّه ويستبدل الروابط) */
-const msgOf = (r) => { const j = (r && r.j) || {}; return String((j.error && typeof j.error === 'object' ? j.error.message : '') || j.message || j.error_description || '').replace(/[\r\n]+/g, ' ').slice(0, 140); };
+const msgOf = (r) => { const j = (r && r.j) || {}; return String((j.error && typeof j.error === 'object' ? j.error.message : '') || j.message || j.error_description || j.detail || (Array.isArray(j.errors) && j.errors[0] && j.errors[0].message) || '').replace(/[\r\n]+/g, ' ').slice(0, 140); };
 /** رمز خطأ قصير بلا نصّ مزوّد: e<الحالة>[-<رمز آمن>] */
 function codeOf(r) {
   const j = (r && r.j) || {};
-  const e = j.error && typeof j.error === 'object' ? (j.error.code || '') : (j.error || j.serviceErrorCode || j.code || '');
+  const e = j.error && typeof j.error === 'object' ? (j.error.code || '') : (j.error || j.serviceErrorCode || j.code || j.title || '');
   const s = String(e).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24);
   return 'e' + ((r && r.status) || 0) + (s && s !== 'ok' ? '-' + s : '');
 }
@@ -86,6 +94,15 @@ async function call(method, url, opts) {
 }
 const form = (o) => new URLSearchParams(o);
 
+/** طلب توكن: تيك توك بـclient_key، X بترويسة Basic (عميل سرّيّ) ومعرّفه في الجسم، والباقي بالمعرّف والسرّ في الجسم. */
+function tokenCall(p, body) {
+  const k = keys(p), P = PROV[p], headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+  const b = p === 'tiktok' ? Object.assign({ client_key: k.id, client_secret: k.secret }, body)
+    : P.basic ? Object.assign({ client_id: k.id }, body) : Object.assign({ client_id: k.id, client_secret: k.secret }, body);
+  if (P.basic) headers.Authorization = 'Basic ' + Buffer.from(encodeURIComponent(k.id) + ':' + encodeURIComponent(k.secret)).toString('base64');
+  return call('POST', P.token, { headers, body: form(b) });
+}
+
 async function getCred(p) {
   const raw = await kvGetRaw(credKey(p));
   return raw ? readJSON(require('./_emailCrypto.js').decrypt(raw)) : null;
@@ -98,11 +115,7 @@ async function token(p) {
   if (!c || !c.access) return null;
   if (!(Number(c.exp) > 0) || Date.now() < Number(c.exp) - 60000) return c;
   if (p === 'linkedin' || !c.refresh || !keys(p)) return null;
-  const P = PROV[p];
-  const body = p === 'tiktok'
-    ? { client_key: keys(p).id, client_secret: keys(p).secret, grant_type: 'refresh_token', refresh_token: c.refresh }
-    : { client_id: keys(p).id, client_secret: keys(p).secret, grant_type: 'refresh_token', refresh_token: c.refresh };
-  const r = await call('POST', P.token, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form(body) });
+  const r = await tokenCall(p, { grant_type: 'refresh_token', refresh_token: c.refresh });
   if (!r.ok || !r.j.access_token) { logErr('refresh ' + p, codeOf(r)); if (r.status === 400 || r.status === 401) await kvSetRaw(badKey(p), '1'); return null; }
   const n = Object.assign({}, c, { access: r.j.access_token, refresh: r.j.refresh_token || c.refresh, exp: Date.now() + (Number(r.j.expires_in) || 3600) * 1000 });
   await putCred(p, n);
@@ -130,8 +143,13 @@ async function connect(res, user, p) {
   if (!configured(p)) return fail(res, 400, 'bad_platform');
   const P = PROV[p];
   const s = crypto.randomBytes(16).toString('hex');
-  await kvSetRaw(stateKey(s), JSON.stringify({ u: String(user), p }), 600);
-  const q = Object.assign({ [P.idParam]: keys(p).id, redirect_uri: redirectUri(), response_type: 'code', scope: scopeOf(p), state: s }, P.extra || {});
+  const rec = { u: String(user), p }, pk = {};
+  if (P.pkce) { // v-social-x: المتحقّق يبقى في KV مع الحالة (عشر دقائق)، والتحدّي SHA-256 في الرابط
+    rec.v = crypto.randomBytes(32).toString('base64url');
+    Object.assign(pk, { code_challenge: crypto.createHash('sha256').update(rec.v).digest('base64url'), code_challenge_method: 'S256' });
+  }
+  await kvSetRaw(stateKey(s), JSON.stringify(rec), 600);
+  const q = Object.assign({ [P.idParam]: keys(p).id, redirect_uri: redirectUri(), response_type: 'code', scope: scopeOf(p), state: s }, pk, P.extra || {});
   return res.status(200).json({ ok: true, url: P.auth + '?' + form(q), host: new URL(P.auth).host });
 }
 
@@ -151,10 +169,7 @@ async function callback(req, res) {
   const p = rec.p, P = PROV[p];
   if (q.error || !q.code) return back(p, 'denied');
   try {
-    const body = p === 'tiktok'
-      ? { client_key: keys(p).id, client_secret: keys(p).secret, code: String(q.code), grant_type: 'authorization_code', redirect_uri: redirectUri() }
-      : { client_id: keys(p).id, client_secret: keys(p).secret, code: String(q.code), grant_type: 'authorization_code', redirect_uri: redirectUri() };
-    const t = await call('POST', P.token, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form(body) });
+    const t = await tokenCall(p, Object.assign({ code: String(q.code), grant_type: 'authorization_code', redirect_uri: redirectUri() }, P.pkce ? { code_verifier: String(rec.v || '') } : {}));
     if (!t.ok || !t.j.access_token) { logErr('token ' + p, codeOf(t)); return back(p, 'fail-token-' + codeOf(t)); }
     const old = await getCred(p).catch(() => null);
     const cred = { access: t.j.access_token, refresh: t.j.refresh_token || (old && old.refresh) || '', exp: Date.now() + (Number(t.j.expires_in) || 3600) * 1000, at: Date.now() };
@@ -164,7 +179,7 @@ async function callback(req, res) {
       if (!me.ok || !me.j.sub) { logErr('me ' + p, codeOf(me)); return back(p, 'fail-me-' + codeOf(me)); }
       cred.sub = String(me.j.sub);
     }
-    if (p === 'youtube' && !cred.refresh) return back(p, 'fail-norefresh'); // بلا refresh يموت الربط بعد ساعة
+    if ((p === 'youtube' || p === 'x') && !cred.refresh) return back(p, 'fail-norefresh'); // X: توكن ساعتين بلا offline.access // بلا refresh يموت الربط بعد ساعة
     await putCred(p, cred);
     await kvDel(badKey(p));
     return back(p, 'ok');
@@ -246,6 +261,26 @@ async function upload(p, j, c, file, cap, ctx) {
     }
     return Object.assign({ state: 'wait', stage: 'sent', pid: String(d.publish_id) }, mode === 'direct' ? { direct: 1, user, priv } : {});
   }
+  if (p === 'x') {
+    // v-social-x: تهيئة ← قطع (multipart) ← إنهاء؛ التغريدة تُنشر حين تنتهي معالجة الفيديو (في السؤال التالي)
+    const H = { Authorization: 'Bearer ' + c.access };
+    const init = await call('POST', 'https://api.x.com/2/media/upload/initialize', {
+      headers: Object.assign({ 'Content-Type': 'application/json' }, H), body: JSON.stringify({ media_type: 'video/mp4', total_bytes: buf.length, media_category: 'tweet_video' }),
+    });
+    const mid = String((init.j && init.j.data && init.j.data.id) || '');
+    if (!init.ok || !mid) { logErr('init x', codeOf(init) + ' ' + msgOf(init) + ' size=' + buf.length); return { state: 'fail', error: 'init-' + codeOf(init) }; }
+    for (let i = 0, a = 0; a < buf.length; i++, a += X_CHUNK) {
+      const fd = new FormData();
+      fd.append('segment_index', String(i));
+      fd.append('media', new Blob([buf.subarray(a, Math.min(buf.length, a + X_CHUNK))], { type: 'application/octet-stream' }), 'chunk');
+      const put = await call('POST', 'https://api.x.com/2/media/upload/' + encodeURIComponent(mid) + '/append', { headers: H, body: fd, raw: true });
+      if (!put.ok) { logErr('up x', codeOf(put) + ' part=' + (i + 1)); return { state: 'fail', error: 'up-' + codeOf(put) }; }
+    }
+    const fin = await call('POST', 'https://api.x.com/2/media/upload/' + encodeURIComponent(mid) + '/finalize', { headers: H });
+    if (!fin.ok) { logErr('fin x', codeOf(fin) + ' ' + msgOf(fin)); return { state: 'fail', error: 'fin-' + codeOf(fin) }; }
+    const pi = fin.j && fin.j.data && fin.j.data.processing_info;
+    return { state: 'wait', stage: 'sent', media: mid, ready: !pi || pi.state === 'succeeded' ? 1 : 0 };
+  }
   // LinkedIn: تهيئة ← أجزاء ← إنهاء؛ المنشور يُنشأ حين يصير الفيديو AVAILABLE (في السؤال التالي)
   const owner = 'urn:li:person:' + c.sub;
   const init = await call('POST', 'https://api.linkedin.com/rest/videos?action=initializeUpload', {
@@ -293,6 +328,24 @@ async function poll(p, j, reqId, d, ctx) {
     if (s === 'FAILED') logErr('status tiktok', String((r.j.data && r.j.data.fail_reason) || 'failed'));
     if (s === 'FAILED') return Object.assign(j, { state: 'fail', error: 'e-' + String((r.j.data && r.j.data.fail_reason) || 'failed').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 30) });
     return j;
+  }
+  if (p === 'x' && j.media && !j.post) {
+    if (!j.ready) {
+      const r = await call('GET', 'https://api.x.com/2/media/upload?command=STATUS&media_id=' + encodeURIComponent(j.media), { headers: { Authorization: 'Bearer ' + c.access } });
+      const pi = (r.j && r.j.data && r.j.data.processing_info) || {};
+      if (pi.state === 'failed') { logErr('status x', String((pi.error && pi.error.message) || 'failed')); return Object.assign(j, { state: 'fail', error: 'e-processing' }); }
+      if (r.ok && pi.state && pi.state !== 'succeeded') return j; // pending / in_progress
+      if (!r.ok) return j;
+    }
+    if (!(await kvSetIfAbsent(upKey(reqId, p) + ':post', '1', UP_LOCK))) return j;
+    const cap = j.cap || {};
+    const tw = await call('POST', 'https://api.x.com/2/tweets', {
+      headers: { Authorization: 'Bearer ' + c.access, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: String(cap.x || cap.cap || ''), media: { media_ids: [j.media] } }),
+    });
+    const id = String((tw.j && tw.j.data && tw.j.data.id) || '').replace(/\D/g, '');
+    if (!tw.ok || !id) { logErr('post x', codeOf(tw) + ' ' + msgOf(tw)); return Object.assign(j, { state: 'fail', error: 'post-' + codeOf(tw) }); }
+    return Object.assign(j, { state: 'ok', post: id, url: 'https://x.com/i/web/status/' + id });
   }
   if (p === 'linkedin' && j.video && !j.post) {
     const v = await call('GET', 'https://api.linkedin.com/rest/videos/' + encodeURIComponent(j.video), { headers: liHeaders(c) });

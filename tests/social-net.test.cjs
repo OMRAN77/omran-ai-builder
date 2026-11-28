@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 const path = require('node:path');
 
 for (const k of ['OWNER_USERNAMES', 'OWNER_USERNAME', 'SITE_URL', 'META_APP_ID', 'META_APP_SECRET', 'UPLOAD_POST_API_KEY', 'LINKEDIN_VERSION',
-  'LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'YOUTUBE_CLIENT_ID', 'YOUTUBE_CLIENT_SECRET', 'TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET', 'TIKTOK_DIRECT_POST']) delete process.env[k];
+  'LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'YOUTUBE_CLIENT_ID', 'YOUTUBE_CLIENT_SECRET', 'TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET', 'TIKTOK_DIRECT_POST', 'X_CLIENT_ID', 'X_CLIENT_SECRET']) delete process.env[k];
 process.env.AUTH_SECRET = 'social-net-test-secret';
 const root = path.resolve(__dirname, '..');
 const rp = (f) => require.resolve(path.join(root, f));
@@ -366,4 +366,71 @@ test('٩. v-tiktok-direct: نشر مباشر بلا صندوق — علنيّ ب
     assert.ok(acc.connect.includes('tiktok'));
     assert.equal(acc.whyBy.tiktok, 'need-publish');
   } finally { delete process.env.TIKTOK_DIRECT_POST; }
+});
+
+test('١٠. v-social-x: X — ربط بـPKCE وBasic، رفع الفيديو قطعًا، ينتظر المعالجة، ثمّ تغريدة بنصّ X والفيديو ورابطها', async () => {
+  keysOn();
+  Object.assign(process.env, { X_CLIENT_ID: 'x-id', X_CLIENT_SECRET: 'x-secret-x' });
+  try {
+    routes = Object.assign(tokenRoutes(), {
+      'api.x.com/2/oauth2/token': { status: 200, body: { access_token: 'X-ACCESS', refresh_token: 'X-REFRESH', expires_in: 7200, token_type: 'bearer' } },
+    });
+    // الربط: رابط X بتحدّي S256، والمتحقّق في KV مع الحالة
+    const r0 = (await call('net-connect', Object.assign(owner(), { platform: 'x' }))).body;
+    const u = new URL(r0.url);
+    assert.equal(u.origin + u.pathname, 'https://x.com/i/oauth2/authorize');
+    assert.deepEqual([u.searchParams.get('client_id'), u.searchParams.get('scope'), u.searchParams.get('code_challenge_method')], ['x-id', 'tweet.read tweet.write users.read media.write offline.access', 'S256']);
+    const st = u.searchParams.get('state'), rec = JSON.parse(kv.get('socnet:state:' + st));
+    assert.equal(u.searchParams.get('code_challenge'), crypto.createHash('sha256').update(rec.v).digest('base64url'));
+    calls.length = 0;
+    const cb = await call('net-cb', {}, 'GET', { state: st, code: 'CODE-x' });
+    assert.equal(cb.headers.Location, SITE + '/?socpub=x-ok');
+    const tk = calls.find((c) => c.url.includes('api.x.com/2/oauth2/token'));
+    assert.equal(tk.headers.Authorization, 'Basic ' + Buffer.from('x-id:x-secret-x').toString('base64'), 'العميل السرّيّ بترويسة Basic');
+    assert.deepEqual([params(tk).get('code_verifier'), params(tk).get('client_secret'), params(tk).get('grant_type')], [rec.v, null, 'authorization_code'], 'المتحقّق نفسه، والسرّ ما ينرسل في الجسم');
+    assert.ok((await call('accounts', owner())).body.on.includes('x'));
+    // النشر
+    const id = '9'.repeat(24), big = Buffer.alloc(9 * 1024 * 1024 + 3, 9);
+    kv.set('socpub:file:' + id, 'https://v3.fal.media/files/' + id + '.mp4');
+    let proc = 'in_progress';
+    Object.assign(routes, {
+      ['v3.fal.media/files/' + id + '.mp4']: { status: 200, bytes: big },
+      'api.x.com/2/media/upload/initialize': { status: 200, body: { data: { id: '1880000000000000001', media_key: '7_1' } } },
+      'api.x.com/2/media/upload/1880000000000000001/append': { status: 204 },
+      'api.x.com/2/media/upload/1880000000000000001/finalize': { status: 200, body: { data: { id: '1880000000000000001', processing_info: { state: 'pending', check_after_secs: 1 } } } },
+      'api.x.com/2/media/upload?command=STATUS': () => ({ status: 200, body: { data: { processing_info: { state: proc } } } }),
+      'api.x.com/2/tweets': { status: 201, body: { data: { id: '1990000000000000002', text: 'x' } } },
+    });
+    const pub = await call('publish', Object.assign(owner(), { id, caption: 'فيديو جديد #omai', platforms: ['x'] }));
+    const s = () => call('status', Object.assign(owner(), { request: pub.body.request }));
+    calls.length = 0;
+    let r = await s();
+    const init = JSON.parse(calls.find((c) => c.url.includes('/initialize')).body);
+    assert.deepEqual(init, { media_type: 'video/mp4', total_bytes: big.length, media_category: 'tweet_video' });
+    const parts = calls.filter((c) => c.url.includes('/append'));
+    assert.equal(parts.length, 3, '٩ م.ب = ثلاث قطع ٤ م.ب');
+    assert.deepEqual(parts.map((c) => c.body.get('segment_index')), ['0', '1', '2']);
+    assert.equal(parts[2].body.get('media').size, big.length - 8 * 1024 * 1024);
+    assert.equal(r.body.results[0].state, 'wait');
+    // المعالجة ما خلصت ← لا تغريدة
+    calls.length = 0;
+    r = await s();
+    assert.equal(calls.some((c) => c.url.endsWith('/2/tweets')), false, 'ما يغرّد قبل ما تخلص المعالجة');
+    // خلصت ← تغريدة بنصّ X والفيديو
+    proc = 'succeeded'; calls.length = 0;
+    r = await s();
+    const tw = JSON.parse(calls.find((c) => c.url.endsWith('/2/tweets')).body);
+    assert.deepEqual(tw, { text: 'فيديو جديد #omai', media: { media_ids: ['1880000000000000001'] } });
+    assert.deepEqual(r.body.results, [{ platform: 'x', state: 'ok', url: 'https://x.com/i/web/status/1990000000000000002', error: '' }]);
+    calls.length = 0; await s();
+    assert.equal(calls.filter((c) => c.url.endsWith('/2/tweets')).length, 0, 'تغريدة وحدة');
+    leaks(r.body); assert.doesNotMatch(JSON.stringify(r.body), /X-ACCESS|x-secret-x/);
+    // رصيد X خلص: الرمز يقول السبب
+    const id2 = '8'.repeat(24);
+    kv.set('socpub:file:' + id2, 'https://v3.fal.media/files/' + id + '.mp4');
+    routes['api.x.com/2/media/upload/initialize'] = { status: 402, body: { title: 'CreditsDepleted', detail: 'Your enrolled account does not have any credits', type: 'https://api.x.com/2/problems/credits', status: 402 } };
+    const pub2 = await call('publish', Object.assign(owner(), { id: id2, caption: 'x', platforms: ['x'] }));
+    r = await call('status', Object.assign(owner(), { request: pub2.body.request }));
+    assert.deepEqual(r.body.results, [{ platform: 'x', state: 'fail', url: '', error: 'init-e402-creditsdepleted' }]);
+  } finally { delete process.env.X_CLIENT_ID; delete process.env.X_CLIENT_SECRET; }
 });
