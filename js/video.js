@@ -465,7 +465,7 @@
         +'<div class="vmk-dir-acts"><a class="vmk-dir-dl" id="vdDl" download="omran-app-director.mp4"></a><button type="button" class="vmk-dir-dl vmk-pub-btn" id="vdPubBtn"></button></div>'
         /* v-director-publish: لوحة «انشر في حساباتي» — النصّ والمنصّات الموصولة ثمّ «انشر الآن» */
         +'<div class="vmk-pub" id="vdPub" hidden><label class="vmk-pub-cap"><span></span><textarea id="vdPubCap" rows="3" maxlength="2200"></textarea></label>'
-        +'<div class="vmk-pub-plats" id="vdPubPlats"></div><button type="button" class="vmk-pub-go" id="vdPubGo"></button><p class="vmk-pub-msg" id="vdPubMsg"></p><ul class="vmk-pub-res" id="vdPubRes"></ul></div></div>';
+        +'<div class="vmk-pub-plats" id="vdPubPlats"></div><button type="button" class="vmk-pub-go" id="vdPubGo"></button><button type="button" class="vmk-pub-snap" id="vdPubSnap"></button><p class="vmk-pub-msg" id="vdPubMsg"></p><ul class="vmk-pub-res" id="vdPubRes"></ul></div></div>';
     var tabs=id('vmkTabs'); if(tabs&&tabs.parentNode===card) card.insertBefore(box,tabs.nextSibling); else card.appendChild(box);
     var ls=box.querySelector('#vdLang'); DR_LANGS.forEach(function(l){ var o=document.createElement('option'); o.value=l[0]; o.textContent=l[1]; ls.appendChild(o); });
     ls.value=DR_LANGS.some(function(l){ return l[0]===drUiLang(); })?drUiLang():'ar';
@@ -478,6 +478,7 @@
     var kT=document.createElement('option'); kT.value='timed'; box.querySelector('#vdKind').appendChild(kT); /* v-director-timed: النوع الثالث «بتوقيتي» */
     tlInit(box.querySelector('#vdTl'));
     box.querySelector('#vdPubBtn').addEventListener('click',pbToggle); box.querySelector('#vdPubGo').addEventListener('click',pbGo); /* v-director-publish */
+    box.querySelector('#vdPubSnap').addEventListener('click',pbSnap); /* v-pub-snap */
     upBind(box.querySelector('#vdUp'),box.querySelector('#vdUpFile')); /* v-director-upload */
     box.querySelector('#vdEc').addEventListener('change',function(e){ ecToggle(!!e.target.checked); }); /* v-director-endcard */
     erBind(box); /* v-director-erase */
@@ -683,6 +684,15 @@
       x.onerror=bad; x.ontimeout=bad; x.onabort=bad;
       PB.xhr=x; x.send(blob);
     });
+  }
+  /* v-pub-snap (المالك ٢٨ نوفمبر: «انا شغلي في الكمبوتر… يستوي من الكمبوتر من التطبيق بروحه»): سناب لا يسمح بالنشر من التطبيقات بلا موافقته
+     (Public Profile API بقائمة سماح)، فأقصى الممكن من الحاسوب: ينزّل الفيديو المعروض ويفتح صفحة رفع سناب في لسان جديد — المالك يسحب الملفّ
+     ويختار «قصّتي» أو Spotlight. الفتح داخل الضغطة نفسها فلا يحجبه المتصفّح. لا خادم ولا مفتاح. */
+  function pbSnap(){
+    if(!DR.out||EC.busy) return;
+    var a=document.createElement('a'); a.href=DR.out; a.download='om-ai-snapchat.mp4'; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove();
+    window.open('https://profile.snapchat.com/','_blank','noopener');
+    pbMsg(L('vdPubSnapMsg'));
   }
   function pbRes(list){
     var ul=id('vdPubRes'); if(!ul) return;
@@ -1623,7 +1633,7 @@
     if(timed) box.querySelector('.vmk-dir-head p').textContent=L('vdSubTimed');
     tlSync();
     box.querySelector('#vdPubBtn').textContent=L('vdPubBtn'); box.querySelector('.vmk-pub-cap>span').textContent=L('vdPubCap'); /* v-director-publish */
-    box.querySelector('#vdPubCap').placeholder=L('vdPubPh'); var pg=box.querySelector('#vdPubGo'); pg.textContent=L('vdPubGo'); pg.disabled=PB.busy||PB.loading||!(PB.plats&&PB.plats.length)||EC.busy;
+    box.querySelector('#vdPubCap').placeholder=L('vdPubPh'); var pg=box.querySelector('#vdPubGo'); var ps=box.querySelector('#vdPubSnap'); ps.textContent=L('vdPubSnap'); ps.disabled=!DR.out||EC.busy; pg.textContent=L('vdPubGo'); pg.disabled=PB.busy||PB.loading||!(PB.plats&&PB.plats.length)||EC.busy;
     var uz=box.querySelector('#vdUp'), uf=box.querySelector('#vdUpFile'); /* v-director-upload */
     if(uz&&uf){
       var um=upMine(); uz.classList.toggle('has',um); uz.querySelector('.vmk-cl-pick').textContent=um?String(DR.file.name||''):L('vdUpBtn'); uz.querySelector('.vmk-cl-lim').textContent=drT('vdUpHint',{n:UP_MAX_MB});
