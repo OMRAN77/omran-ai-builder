@@ -4,8 +4,8 @@
    تُضبط مفاتيحها: LINKEDIN_CLIENT_ID/SECRET · YOUTUBE_CLIENT_ID/SECRET · TIKTOK_CLIENT_KEY/SECRET.
      net-connect ← رابط الربط بحالة عشوائيّة في KV (عشر دقائق: المالك والمنصّة).
      net-cb      ← GET (عبر ‎/api/social-cb): رمز ← توكن (+ معرّف العضو في LinkedIn) مشفَّر في KV؛ آخر نتيجة تبقى أسبوعًا.
-     النشر       ← publish يسجّل المنصّة «في الطابور» فقط؛ الرفع الثقيل في status — منصّة واحدة لكلّ نداء وبقفل خمس دقائق، فلا يتجاوز
-                   عمر الدالّة (٣٠٠ ث) ولا يُرفع الفيديو مرّتين. الملفّ من الرابط العامّ المؤقّت نفسه (حتّى ٢٥٦ م.ب).
+     النشر       ← publish يسجّل المنصّة «في الطابور» فقط؛ الرفع الثقيل يبدأ فورًا في خلفيّة نداء النشر (waitUntil)، والمتابعة status تكمل
+                   ما بقي — المنصّات بالتوازي وبقفل خمس دقائق لكلّ منصّة، فلا يُرفع الفيديو مرّتين (v-socnet-fast). الملفّ من الرابط العامّ المؤقّت نفسه (حتّى ٢٥٦ م.ب).
    حدود معلنة للمالك: يوتيوب من مشروع غير مدقّق يقفل الفيديو «خاصًّا» (يظهر «private» تحت المنصّة) حتّى تدقيق Google؛ وتيك توك بلا
    تدقيق ينزل الفيديو في صندوقه («inbox») وينشره المالك من التطبيق؛ وLinkedIn بلا تجديد آليّ — ربط كلّ ٦٠ يومًا.
    لا توكن ولا رابط مزوّد في ردّ أو سجلّ؛ الأخطاء رموز. المفاتيح تُقرأ داخل الدوالّ. */
@@ -179,8 +179,10 @@ const liText = (s) => String(s || '').replace(/[\\|{}@[\]()<>#*_~]/g, (m) => '\\
 const ytText = (s, n) => String(s || '').replace(/[<>]/g, '').slice(0, n);
 
 /** الرفع الثقيل لمنصّة واحدة؛ يرجع حالة المهمّة الجديدة. */
-async function upload(p, j, c, file, cap) {
-  const buf = await bytes(file);
+async function upload(p, j, c, file, cap, ctx) {
+  // v-socnet-fast: المنصّات تُرفع معًا في نداء واحد — الفيديو يُحمَّل مرّة واحدة ويتشاركونه
+  const bufs = (ctx && (ctx.bufs || (ctx.bufs = {}))) || {};
+  const buf = await (bufs[file] || (bufs[file] = bytes(file)));
   if (p === 'youtube') {
     const meta = { snippet: { title: ytText(cap.yt, 100) || 'om ai', description: ytText(cap.cap, 4900), categoryId: '22' }, status: { privacyStatus: 'public', selfDeclaredMadeForKids: false } };
     const init = await call('POST', 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status', {
@@ -238,17 +240,16 @@ async function upload(p, j, c, file, cap) {
   return { state: 'wait', stage: 'sent', video: String(v.video) };
 }
 
-/** متابعة مهمّة منصّة: الرفع مرّة واحدة (قفل)، ثمّ المعالجة عند المنصّة. ctx.busy: رفع واحد لكلّ نداء. */
+/** متابعة مهمّة منصّة: الرفع مرّة واحدة (قفل)، ثمّ المعالجة عند المنصّة. v-socnet-fast: لا دور — كلّ منصّة في الطابور تُرفع
+    في أوّل نداء يصلها (المنصّات بالتوازي من status، والفيديو المحمَّل مشترك عبر ctx). */
 async function poll(p, j, reqId, d, ctx) {
   const c = await token(p);
   if (!c) return Object.assign(j, { state: 'fail', error: 'expired' });
   if (j.stage === 'queued') {
-    if (ctx.busy) return j; // نداء واحد يرفع منصّة واحدة — الباقي في السؤال التالي
-    if (!(await kvSetIfAbsent(upKey(reqId, p), '1', UP_LOCK))) return j; // سؤال آخر يرفعها الآن
-    ctx.busy = true;
+    if (!(await kvSetIfAbsent(upKey(reqId, p), '1', UP_LOCK))) return j; // نداء آخر يرفعها الآن
     const file = await d.fileOf(j.id || '');
     if (!(typeof file === 'string' && file.startsWith('https://'))) return Object.assign(j, { state: 'fail', error: 'no_file' });
-    const n = await upload(p, j, c, file, j.cap || {}).catch((e) => { logErr('upload ' + p, e); return { state: 'fail', error: e.code === 'too_big' ? 'too_big' : 'retry' }; });
+    const n = await upload(p, j, c, file, j.cap || {}, ctx).catch((e) => { logErr('upload ' + p, e); return { state: 'fail', error: e.code === 'too_big' ? 'too_big' : 'retry' }; });
     return Object.assign({ id: j.id, cap: j.cap }, n); // النصّ يبقى للمنشور (LinkedIn ينشره بعد المعالجة)
   }
   if (p === 'tiktok') {

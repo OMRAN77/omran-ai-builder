@@ -29,6 +29,7 @@ const sentKey = (v, p) => 'socdir:sent:' + v + ':' + p;
 const lockKey = (c) => 'socdir:igpub:' + c;
 const jobKey = (r, p) => 'socdir:job:' + r + ':' + p; // v-social-net: حالة منصّة مباشرة في مفتاحها — نداءان متزامنان لا يمحو أحدهما تقدّم الآخر
 const REQ = /^sd-[0-9a-f]{24}-[0-9a-f]{8}$/;
+const _seam = { waitUntil: null }; // للاختبارات وحدها
 
 const env = (k) => String(process.env[k] || '').trim();
 const ver = () => env('META_GRAPH_VERSION') || 'v23.0';
@@ -223,14 +224,21 @@ async function publish(res, body, d) {
     if (upErr && !upPlats.length) upPlats = rest;
   }
   for (const p of Object.keys(jobs)) {
-    if (net.PLATS.includes(p)) { jobs[p] = { state: 'wait', stage: 'queued', id, cap: { cap: cap.cap, yt: cap.yt } }; continue; } // الرفع في status — منصّة لكلّ نداء
+    if (net.PLATS.includes(p)) { jobs[p] = { state: 'wait', stage: 'queued', id, cap: { cap: cap.cap, yt: cap.yt } }; continue; } // الرفع في خلفيّة هذا النداء وفي status (v-socnet-fast)
     const j = await start(p, m.c, cap, file).catch((e) => { logErr('start ' + p, e); return { state: 'fail', error: 'retry' }; });
     if (j.code === 190) await kvSetRaw(BAD, '1');
     if (j.state === 'fail') await kvDel(sentKey(vid, p)); // ما نُشر يتحرّر فتصحّ محاولة ثانية
     jobs[p] = j;
   }
   if (!Object.keys(jobs).length && !up && !upErr) return res.status(200).json({ ok: true, again: true, already, held, request: Object.values(held).find(Boolean) || '' });
-  await kvSetRaw(recKey(reqId), JSON.stringify({ at: Date.now(), vid, jobs, up, upPlats, upErr }), SENT_TTL);
+  const rec = { at: Date.now(), vid, jobs, up, upPlats, upErr };
+  await kvSetRaw(recKey(reqId), JSON.stringify(rec), SENT_TTL);
+  // v-socnet-fast: رفع المنصّات المباشرة (تيك توك ويوتيوب وLinkedIn) يبدأ الآن في خلفيّة هذا النداء — لا ينتظر سؤال اللوحة ولا يقف لو سُكّرت.
+  // حالتها في مفاتيحها (jobKey)، فسجلّ الطلب لا يُعاد كتابته من هنا. بلا waitUntil (خارج Vercel) تكمل المتابعة كما كانت.
+  if (Object.keys(jobs).some((p) => net.PLATS.includes(p))) {
+    const w = _seam.waitUntil || require('./signup-notify.js').platformWaitUntil();
+    if (w) w(step(reqId, { vid, jobs: Object.fromEntries(Object.entries(jobs).filter(([p]) => net.PLATS.includes(p))) }, d).catch((e) => logErr('kick', e)));
+  }
   return res.status(200).json({ ok: true, request: reqId, already, held });
 }
 
@@ -261,15 +269,12 @@ async function poll(p, j, c) {
   return Object.assign(j, { state: 'ok', url: (m.ok && typeof m.j.permalink === 'string' && m.j.permalink.startsWith('https://')) ? m.j.permalink : '' });
 }
 
-async function status(res, body, d) {
-  const reqId = String(body.request || '');
-  const rec = readJSON(await kvGetRaw(recKey(reqId)));
-  if (!rec) return res.status(200).json({ ok: true, state: 'fail', lost: true, results: [] });
+/** v-socnet-fast: خطوة متابعة واحدة لكلّ منصّات الطلب — بالتوازي (كلّ منصّة مباشرة بقفل رفعها)؛ يشاركها status ونداء النشر في خلفيّته. */
+async function step(reqId, rec, d) {
   const c = await creds();
-  const results = [];
   let changed = false;
-  const ctx = { busy: false };
-  for (const p of Object.keys(rec.jobs || {})) {
+  const ctx = {};
+  const results = await Promise.all(Object.keys(rec.jobs || {}).map(async (p) => {
     const isNet = net.PLATS.includes(p);
     let j = (isNet && readJSON(await kvGetRaw(jobKey(reqId, p)))) || rec.jobs[p] || { state: 'fail', error: 'lost' };
     if (j.state === 'wait' && (c || isNet)) {
@@ -279,8 +284,16 @@ async function status(res, body, d) {
       if (j.state === 'fail' && (await kvGetRaw(sentKey(rec.vid, p))) === reqId) await kvDel(sentKey(rec.vid, p));
       if (JSON.stringify(j) !== before) { rec.jobs[p] = j; changed = true; if (isNet) await kvSetRaw(jobKey(reqId, p), JSON.stringify(j), SENT_TTL); }
     }
-    results.push({ platform: p, state: j.state, url: j.url || '', error: j.state === 'wait' ? '' : String(j.error || '') }); // ok قد تحمل ملاحظة: private · inbox
-  }
+    return { platform: p, state: j.state, url: j.url || '', error: j.state === 'wait' ? '' : String(j.error || '') }; // ok قد تحمل ملاحظة: private · inbox
+  }));
+  return { results, changed };
+}
+
+async function status(res, body, d) {
+  const reqId = String(body.request || '');
+  const rec = readJSON(await kvGetRaw(recKey(reqId)));
+  if (!rec) return res.status(200).json({ ok: true, state: 'fail', lost: true, results: [] });
+  const { results, changed } = await step(reqId, rec, d);
   let upWait = false;
   if (rec.upErr) for (const p of rec.upPlats || []) results.push({ platform: p, state: 'fail', url: '', error: rec.upErr });
   else if (rec.up && d.upStatus) {
@@ -296,4 +309,4 @@ async function status(res, body, d) {
   return res.status(200).json({ ok: true, state: wait ? 'wait' : 'done', results });
 }
 
-module.exports = { configured, active, isReq, connect, callback, accounts, publish, status, metaState, DIRECT, SCOPES, redirectUri, net };
+module.exports = { configured, active, isReq, connect, callback, accounts, publish, status, metaState, DIRECT, SCOPES, redirectUri, net, _seam };

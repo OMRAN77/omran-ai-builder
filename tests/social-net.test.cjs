@@ -1,6 +1,6 @@
 // tests/social-net.test.cjs — v-social-net (المالك ٢٧ نوفمبر: «سوهم كلهم الحين… linkedin زيد… بالمجان»): نشر مباشر مجّانيّ إلى LinkedIn
 // ويوتيوب وتيك توك تحت لوحة «انشر في حساباتي» نفسها. الشبكة وRedis محاكيان — لا ربط ولا رفع حقيقيّ: ساكت بلا مفاتيح، ربط بحالة
-// المالك، توكن مشفَّر، رفع منصّة واحدة لكلّ سؤال وبقفل، LinkedIn ينشر بعد المعالجة، يوتيوب «private» حين يقفله، تيك توك في صندوقه
+// المالك، توكن مشفَّر، رفع المنصّات معًا وبقفل (ومن خلفيّة نداء النشر)، LinkedIn ينشر بعد المعالجة، يوتيوب «private» حين يقفله، تيك توك في صندوقه
 // «inbox»، تجديد التوكن، وانتهاء LinkedIn ← «يحتاج ربط»؛ ولا توكن في ردّ.
 'use strict';
 const test = require('node:test');
@@ -147,7 +147,7 @@ test('٤. الحسابات: المربوط مباشرة ✓، وغير المر�
 const VID = 'd'.repeat(24);
 const FILE = 'https://v3.fal.media/files/om-net.mp4';
 const BYTES = Buffer.alloc(12 * 1024 * 1024 + 5, 7); // ١٢ م.ب: قطعة واحدة لتيك توك (≤ ٦٤ م.ب)، وجزآن لLinkedIn
-test('٥. النشر ثمّ المتابعة: «في الطابور» عند النشر، رفع منصّة واحدة لكلّ سؤال وبقفل، LinkedIn بعد المعالجة، يوتيوب private، تيك توك inbox', async () => {
+test('٥. النشر ثمّ المتابعة: «في الطابور» عند النشر، رفع المنصّات معًا في أوّل سؤال وبقفل، LinkedIn بعد المعالجة، يوتيوب private، تيك توك inbox', async () => {
   keysOn();
   routes = tokenRoutes();
   for (const p of ['linkedin', 'youtube', 'tiktok']) await link(p);
@@ -175,12 +175,17 @@ test('٥. النشر ثمّ المتابعة: «في الطابور» عند ا�
   assert.match(req, /^sd-d{24}-[0-9a-f]{8}$/);
   assert.equal(calls.length, 0, 'النشر لا يرفع شيئًا — الرفع في المتابعة');
   const st = () => call('status', Object.assign(owner(), { request: req }));
-  // السؤال ١: سؤالان متزامنان — كلّ نداء يرفع منصّة واحدة (LinkedIn ويوتيوب)، ولا منصّة تُرفع مرّتين، ولا يمحو أحدهما تقدّم الآخر
+  // السؤال ١: سؤالان متزامنان — v-socnet-fast: المنصّات الثلاث تُرفع معًا (تيك توك لا ينتظر دوره)، ولا منصّة تُرفع مرّتين،
+  // والفيديو يُحمَّل مرّة لكلّ نداء رافع لا مرّة لكلّ منصّة، ولا يمحو أحدهما تقدّم الآخر
   calls.length = 0;
   const [a, b] = await Promise.all([st(), st()]);
   assert.equal(calls.filter((c) => c.url.includes('initializeUpload')).length, 1, 'LinkedIn مرّة');
   assert.equal(ytPuts, 1, 'يوتيوب مرّة');
-  assert.equal(calls.filter((c) => c.url.includes('tiktokapis.com/v2/post')).length, 0, 'تيك توك ينتظر دوره');
+  assert.equal(calls.filter((c) => c.url.includes('inbox/video/init')).length, 1, 'تيك توك مرّة ومن أوّل سؤال');
+  assert.ok(calls.filter((c) => c.url.includes('om-net.mp4')).length <= 2, 'الفيديو مشترك بين المنصّات');
+  const ttInit = JSON.parse(calls.find((c) => c.url.includes('inbox/video/init')).body);
+  assert.deepEqual(ttInit.source_info, { source: 'FILE_UPLOAD', video_size: BYTES.length, chunk_size: BYTES.length, total_chunk_count: 1 }, 'v-tiktok-init: حتّى ٦٤ م.ب قطعة واحدة بحجم الفيديو');
+  assert.equal(calls.find((c) => c.url.includes('upload.tt.example')).headers['Content-Range'], 'bytes 0-' + (BYTES.length - 1) + '/' + BYTES.length);
   const p2 = calls.find((c) => c.url.endsWith('/p2'));
   assert.equal(p2.body.length, BYTES.length - 4194304, 'الجزء الثاني بحدوده');
   const fin = JSON.parse(calls.find((c) => c.url.includes('finalizeUpload')).body);
@@ -190,14 +195,12 @@ test('٥. النشر ثمّ المتابعة: «في الطابور» عند ا�
   assert.equal(init.headers['X-Upload-Content-Length'], String(BYTES.length));
   assert.deepEqual(JSON.parse(init.body).status, { privacyStatus: 'public', selfDeclaredMadeForKids: false });
   assert.ok([a, b].every((x) => x.body.state === 'wait'));
-  // السؤال ٢: التقدّم محفوظ رغم التزامن — يوتيوب private، LinkedIn يعالج، وتيك توك يُرفع الآن (قطعة واحدة تأخذ الباقي)
+  // السؤال ٢: التقدّم محفوظ رغم التزامن — يوتيوب private، LinkedIn يعالج، تيك توك في الصندوق، ولا إعادة رفع
   calls.length = 0;
   let r = await st();
   assert.deepEqual(r.body.results.find((x) => x.platform === 'youtube'), { platform: 'youtube', state: 'ok', url: 'https://youtu.be/YTID1', error: 'private' });
-  assert.equal(calls.filter((c) => c.url.includes('initializeUpload') || c.url.includes('upload.yt.example')).length, 0, 'لا إعادة رفع');
-  const ttInit = JSON.parse(calls.find((c) => c.url.includes('inbox/video/init')).body);
-  assert.deepEqual(ttInit.source_info, { source: 'FILE_UPLOAD', video_size: BYTES.length, chunk_size: BYTES.length, total_chunk_count: 1 }, 'v-tiktok-init: حتّى ٦٤ م.ب قطعة واحدة بحجم الفيديو');
-  assert.equal(calls.find((c) => c.url.includes('upload.tt.example')).headers['Content-Range'], 'bytes 0-' + (BYTES.length - 1) + '/' + BYTES.length);
+  assert.equal(calls.filter((c) => c.url.includes('initializeUpload') || c.url.includes('upload.yt.example') || c.url.includes('inbox/video/init')).length, 0, 'لا إعادة رفع');
+  assert.deepEqual(r.body.results.find((x) => x.platform === 'tiktok'), { platform: 'tiktok', state: 'ok', url: '', error: 'inbox' });
   // السؤال ٣: LinkedIn متاح ← منشور بنصّ مهرَّب؛ تيك توك في الصندوق ← inbox
   liStatus = 'AVAILABLE';
   calls.length = 0;
@@ -280,4 +283,34 @@ test('٧. v-tiktok-init: رفض التهيئة يسجّل نصّ المنصّة 
   TT(C, edge, { status: 200, body: { data: { publish_id: 'PUB8', upload_url: 'https://upload.tt.example/u7' }, error: { code: 'ok' } } });
   await go(C);
   assert.deepEqual(JSON.parse(calls.find((c) => c.url.includes('inbox/video/init')).body).source_info, { source: 'FILE_UPLOAD', video_size: edge.length, chunk_size: edge.length, total_chunk_count: 1 });
+});
+
+test('٨. v-socnet-fast: الرفع يبدأ في خلفيّة نداء النشر نفسه — قبل أيّ سؤال من اللوحة، ولو سُكّرت', async () => {
+  keysOn();
+  routes = tokenRoutes();
+  await link('tiktok');
+  const id = '4'.repeat(24);
+  kv.set('socpub:file:' + id, 'https://v3.fal.media/files/' + id + '.mp4');
+  Object.assign(routes, {
+    ['v3.fal.media/files/' + id + '.mp4']: { status: 200, bytes: Buffer.alloc(2 * 1024 * 1024, 4) },
+    'open.tiktokapis.com/v2/post/publish/inbox/video/init/': { status: 200, body: { data: { publish_id: 'PUB9', upload_url: 'https://upload.tt.example/u9' }, error: { code: 'ok' } } },
+    'upload.tt.example/u9': { status: 201 },
+    'open.tiktokapis.com/v2/post/publish/status/fetch/': { status: 200, body: { data: { status: 'SEND_TO_USER_INBOX' }, error: { code: 'ok' } } },
+  });
+  const sd = require(rp('api/_lib/social-direct.js'));
+  const bg = [];
+  sd._seam.waitUntil = (p) => bg.push(p);
+  try {
+    calls.length = 0;
+    const pub = await call('publish', Object.assign(owner(), { id, caption: 'x', platforms: ['tiktok'] }));
+    assert.equal(pub.status, 200); leaks(pub.body);
+    assert.equal(bg.length, 1, 'وعد واحد في الخلفيّة');
+    await Promise.all(bg);
+    assert.equal(calls.filter((c) => c.url.includes('inbox/video/init')).length, 1, 'رُفع بلا سؤال من اللوحة');
+    assert.equal(calls.filter((c) => c.url.includes('upload.tt.example/u9')).length, 1);
+    calls.length = 0;
+    const r = await call('status', Object.assign(owner(), { request: pub.body.request }));
+    assert.equal(calls.filter((c) => c.url.includes('inbox/video/init')).length, 0, 'السؤال لا يعيد الرفع');
+    assert.deepEqual(r.body.results, [{ platform: 'tiktok', state: 'ok', url: '', error: 'inbox' }]);
+  } finally { sd._seam.waitUntil = null; }
 });
