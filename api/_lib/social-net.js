@@ -36,6 +36,7 @@ const PLATS = Object.keys(PROV);
 const MAX = 256 * 1024 * 1024;
 const UP_LOCK = 300;
 const MB = 1024 * 1024;
+const TT_ONE = 64 * MB; // v-tiktok-init: حتّى ٦٤ م.ب يُرفع الفيديو قطعة واحدة (chunk_size = حجمه) — أبسط شكل موثّق؛ فوقها قطع ١٠ م.ب
 const stateKey = (s) => 'socnet:state:' + s;
 const credKey = (p) => 'socnet:cred:' + p;
 const badKey = (p) => 'socnet:bad:' + p;
@@ -58,6 +59,8 @@ const liVer = () => env('LINKEDIN_VERSION') || '202606';
 const logErr = (w, e) => console.error('[social-net] ' + w + ': ' + String((e && e.message) || e).replace(/https?:\/\/\S+/g, '<url>').slice(0, 200));
 const readJSON = (s) => { try { const o = JSON.parse(s); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } };
 const fail = (res, status, error, extra) => res.status(status).json(Object.assign({ ok: false, error }, extra || {}));
+/** نصّ خطأ المنصّة للسجلّ وحده (logErr يقصّه ويستبدل الروابط) */
+const msgOf = (r) => { const j = (r && r.j) || {}; return String((j.error && typeof j.error === 'object' ? j.error.message : '') || j.message || j.error_description || '').replace(/[\r\n]+/g, ' ').slice(0, 140); };
 /** رمز خطأ قصير بلا نصّ مزوّد: e<الحالة>[-<رمز آمن>] */
 function codeOf(r) {
   const j = (r && r.j) || {};
@@ -193,19 +196,23 @@ async function upload(p, j, c, file, cap) {
   }
   if (p === 'tiktok') {
     const size = buf.length;
-    const chunk = size < 5 * MB ? size : Math.min(10 * MB, size);
+    const chunk = size <= TT_ONE ? size : 10 * MB;
     const count = Math.max(1, Math.floor(size / chunk));
     const init = await call('POST', 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
       headers: { Authorization: 'Bearer ' + c.access, 'Content-Type': 'application/json; charset=UTF-8' },
       body: JSON.stringify({ source_info: { source: 'FILE_UPLOAD', video_size: size, chunk_size: chunk, total_chunk_count: count } }),
     });
     const d = (init.j && init.j.data) || {};
-    if (!init.ok || !d.publish_id || !d.upload_url) return { state: 'fail', error: 'init-' + codeOf(init) };
+    if (!init.ok || !d.publish_id || !d.upload_url) {
+      // v-tiktok-init: الرمز وحده («invalid_params») لا يقول أيّ حقل — نصّ المنصّة والأحجام في سجلّ الخادم (بلا توكن ولا رابط)
+      logErr('init tiktok', codeOf(init) + ' ' + msgOf(init) + ' size=' + size + ' chunk=' + chunk + ' n=' + count);
+      return { state: 'fail', error: 'init-' + codeOf(init) };
+    }
     for (let i = 0; i < count; i++) {
       const a = i * chunk, b = i === count - 1 ? size - 1 : a + chunk - 1; // القطعة الأخيرة تأخذ الباقي
       const part = buf.subarray(a, b + 1);
       const put = await call('PUT', d.upload_url, { headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(part.length), 'Content-Range': 'bytes ' + a + '-' + b + '/' + size }, body: part, raw: true });
-      if (!put.ok) return { state: 'fail', error: 'up-' + codeOf(put) };
+      if (!put.ok) { logErr('up tiktok', codeOf(put) + ' part=' + (i + 1) + '/' + count + ' bytes=' + a + '-' + b + '/' + size); return { state: 'fail', error: 'up-' + codeOf(put) }; }
     }
     return { state: 'wait', stage: 'sent', pid: String(d.publish_id) };
   }
@@ -250,6 +257,7 @@ async function poll(p, j, reqId, d, ctx) {
     });
     const s = String((r.j && r.j.data && r.j.data.status) || '').toUpperCase();
     if (s === 'SEND_TO_USER_INBOX' || s === 'PUBLISH_COMPLETE') return Object.assign(j, { state: 'ok', error: s === 'SEND_TO_USER_INBOX' ? 'inbox' : '' }); // في صندوق تيك توك: ينشره المالك من التطبيق
+    if (s === 'FAILED') logErr('status tiktok', String((r.j.data && r.j.data.fail_reason) || 'failed'));
     if (s === 'FAILED') return Object.assign(j, { state: 'fail', error: 'e-' + String((r.j.data && r.j.data.fail_reason) || 'failed').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 30) });
     return j;
   }
