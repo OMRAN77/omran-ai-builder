@@ -6,8 +6,8 @@
      net-cb      ← GET (عبر ‎/api/social-cb): رمز ← توكن (+ معرّف العضو في LinkedIn) مشفَّر في KV؛ آخر نتيجة تبقى أسبوعًا.
      النشر       ← publish يسجّل المنصّة «في الطابور» فقط؛ الرفع الثقيل يبدأ فورًا في خلفيّة نداء النشر (waitUntil)، والمتابعة status تكمل
                    ما بقي — المنصّات بالتوازي وبقفل خمس دقائق لكلّ منصّة، فلا يُرفع الفيديو مرّتين (v-socnet-fast). الملفّ من الرابط العامّ المؤقّت نفسه (حتّى ٢٥٦ م.ب).
-   حدود معلنة للمالك: يوتيوب من مشروع غير مدقّق يقفل الفيديو «خاصًّا» (يظهر «private» تحت المنصّة) حتّى تدقيق Google؛ وتيك توك بلا
-   تدقيق ينزل الفيديو في صندوقه («inbox») وينشره المالك من التطبيق؛ وLinkedIn بلا تجديد آليّ — ربط كلّ ٦٠ يومًا.
+   حدود معلنة للمالك: يوتيوب من مشروع غير مدقّق يقفل الفيديو «خاصًّا» (يظهر «private» تحت المنصّة) حتّى تدقيق Google؛ وتيك توك ينشر مباشرة
+   (v-tiktok-direct) — بلا تدقيق «أنا فقط» («private»)، وإن رُفض النشر المباشر نزل في صندوقه («inbox»)؛ وLinkedIn بلا تجديد آليّ — ربط كلّ ٦٠ يومًا.
    لا توكن ولا رابط مزوّد في ردّ أو سجلّ؛ الأخطاء رموز. المفاتيح تُقرأ داخل الدوالّ. */
 const crypto = require('node:crypto');
 const { kvGetRaw, kvSetRaw, kvSetIfAbsent, kvDel } = require('./kv.js');
@@ -29,7 +29,7 @@ const PROV = {
   tiktok: {
     id: 'TIKTOK_CLIENT_KEY', secret: 'TIKTOK_CLIENT_SECRET', idParam: 'client_key',
     auth: 'https://www.tiktok.com/v2/auth/authorize/', token: 'https://open.tiktokapis.com/v2/oauth/token/',
-    scope: 'user.info.basic,video.upload', host: 'www.tiktok.com',
+    scope: 'user.info.basic,video.upload,video.publish', host: 'www.tiktok.com', // v-tiktok-direct: video.publish = نشر مباشر بلا صندوق
   },
 };
 const PLATS = Object.keys(PROV);
@@ -37,6 +37,10 @@ const MAX = 256 * 1024 * 1024;
 const UP_LOCK = 300;
 const MB = 1024 * 1024;
 const TT_ONE = 64 * MB; // v-tiktok-init: حتّى ٦٤ م.ب يُرفع الفيديو قطعة واحدة (chunk_size = حجمه) — أبسط شكل موثّق؛ فوقها قطع ١٠ م.ب
+const hasPub = (c) => String((c && c.scope) || '').split(/[\s,]+/).includes('video.publish');
+const ttHead = (c) => ({ Authorization: 'Bearer ' + c.access, 'Content-Type': 'application/json; charset=UTF-8' });
+// عنوان تيك توك حتّى ٢٢٠٠ وحدة UTF-16 (حدّ المنصّة)
+const ttTitle = (s) => { let t = String(s || '').trim(); while (t.length > 2200) t = Array.from(t).slice(0, -1).join(''); return t; };
 const stateKey = (s) => 'socnet:state:' + s;
 const credKey = (p) => 'socnet:cred:' + p;
 const badKey = (p) => 'socnet:bad:' + p;
@@ -72,8 +76,9 @@ function codeOf(r) {
 async function call(method, url, opts) {
   const o = opts || {};
   const r = await fetch(url, { method, headers: o.headers || {}, body: o.body });
-  const j = o.raw ? {} : ((await r.json().catch(() => null)) || {});
-  return { ok: r.ok && !(j.error && (typeof j.error !== 'object' || (j.error.code && j.error.code !== 'ok'))), status: r.status, j, h: r.headers };
+  const t = o.text ? await r.text().catch(() => '') : '';
+  const j = o.raw ? {} : o.text ? (readJSON(t) || {}) : ((await r.json().catch(() => null)) || {});
+  return { t, ok: r.ok && !(j.error && (typeof j.error !== 'object' || (j.error.code && j.error.code !== 'ok'))), status: r.status, j, h: r.headers };
 }
 const form = (o) => new URLSearchParams(o);
 
@@ -108,10 +113,11 @@ async function state() {
     const c = await getCred(p).catch(() => null);
     const bad = !!(await kvGetRaw(badKey(p)).catch(() => null));
     const expired = c && p === 'linkedin' && Number(c.exp) > 0 && Date.now() > Number(c.exp);
-    if (c && c.access && !bad && !expired) { on.push(p); continue; }
+    const noPub = c && p === 'tiktok' && !hasPub(c); // v-tiktok-direct: ربط قديم بلا صلاحيّة النشر المباشر ← إعادة ربط مرّة
+    if (c && c.access && !bad && !expired && !noPub) { on.push(p); continue; }
     need.push(p);
     const last = readJSON(await kvGetRaw(lastKey(p)).catch(() => null));
-    whyBy[p] = (bad || expired) ? 'expired' : (last && last.why && last.why !== 'ok' ? last.why : '');
+    whyBy[p] = (bad || expired) ? 'expired' : noPub ? 'need-publish' : (last && last.why && last.why !== 'ok' ? last.why : '');
   }
   return { on, need, whyBy };
 }
@@ -148,7 +154,7 @@ async function callback(req, res) {
     if (!t.ok || !t.j.access_token) { logErr('token ' + p, codeOf(t)); return back(p, 'fail-token-' + codeOf(t)); }
     const old = await getCred(p).catch(() => null);
     const cred = { access: t.j.access_token, refresh: t.j.refresh_token || (old && old.refresh) || '', exp: Date.now() + (Number(t.j.expires_in) || 3600) * 1000, at: Date.now() };
-    if (p === 'tiktok') cred.sub = String(t.j.open_id || '');
+    if (p === 'tiktok') { cred.sub = String(t.j.open_id || ''); cred.scope = String(t.j.scope || ''); }
     if (p === 'linkedin') {
       const me = await call('GET', 'https://api.linkedin.com/v2/userinfo', { headers: { Authorization: 'Bearer ' + cred.access } });
       if (!me.ok || !me.j.sub) { logErr('me ' + p, codeOf(me)); return back(p, 'fail-me-' + codeOf(me)); }
@@ -200,10 +206,28 @@ async function upload(p, j, c, file, cap, ctx) {
     const size = buf.length;
     const chunk = size <= TT_ONE ? size : 10 * MB;
     const count = Math.max(1, Math.floor(size / chunk));
-    const init = await call('POST', 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
-      headers: { Authorization: 'Bearer ' + c.access, 'Content-Type': 'application/json; charset=UTF-8' },
-      body: JSON.stringify({ source_info: { source: 'FILE_UPLOAD', video_size: size, chunk_size: chunk, total_chunk_count: count } }),
-    });
+    const source_info = { source: 'FILE_UPLOAD', video_size: size, chunk_size: chunk, total_chunk_count: count };
+    let init = null, mode = 'inbox', user = '', priv = '';
+    if (hasPub(c)) {
+      /* v-tiktok-direct: نشر مباشر — إعدادات الحساب أوّلًا (المنصّة تشترطها: الخصوصيّة المتاحة وما أغلقه صاحب الحساب)؛ علنيّ إن أُتيح،
+         والتطبيق غير المدقّق تقصره المنصّة على «أنا فقط» فيُعاد بها. أيّ رفض آخر ← الصندوق كما كان، فلا يضيع الفيديو. */
+      const ci = await call('POST', 'https://open.tiktokapis.com/v2/post/publish/creator_info/query/', { headers: ttHead(c), body: '{}' });
+      const cd = (ci.j && ci.j.data) || {};
+      if (ci.ok) {
+        const opts = Array.isArray(cd.privacy_level_options) ? cd.privacy_level_options : [];
+        user = String(cd.creator_username || '').replace(/[^A-Za-z0-9._]/g, '');
+        const post = (lvl) => call('POST', 'https://open.tiktokapis.com/v2/post/publish/video/init/', {
+          headers: ttHead(c),
+          body: JSON.stringify({ post_info: { title: ttTitle(cap.cap), privacy_level: lvl, disable_duet: !!cd.duet_disabled, disable_comment: !!cd.comment_disabled, disable_stitch: !!cd.stitch_disabled, video_cover_timestamp_ms: 1000 }, source_info }),
+        });
+        let lvl = opts.includes('PUBLIC_TO_EVERYONE') ? 'PUBLIC_TO_EVERYONE' : (opts.includes('SELF_ONLY') ? 'SELF_ONLY' : String(opts[0] || 'SELF_ONLY'));
+        init = await post(lvl);
+        if (!init.ok && lvl !== 'SELF_ONLY' && /unaudited|private/.test(codeOf(init))) { lvl = 'SELF_ONLY'; init = await post(lvl); }
+        if (init.ok) { mode = 'direct'; priv = lvl === 'PUBLIC_TO_EVERYONE' ? '' : 'private'; }
+        else logErr('direct tiktok', codeOf(init) + ' ' + msgOf(init) + ' lvl=' + lvl);
+      } else logErr('creator tiktok', codeOf(ci) + ' ' + msgOf(ci));
+    }
+    if (mode !== 'direct') init = await call('POST', 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', { headers: ttHead(c), body: JSON.stringify({ source_info }) });
     const d = (init.j && init.j.data) || {};
     if (!init.ok || !d.publish_id || !d.upload_url) {
       // v-tiktok-init: الرمز وحده («invalid_params») لا يقول أيّ حقل — نصّ المنصّة والأحجام في سجلّ الخادم (بلا توكن ولا رابط)
@@ -216,7 +240,7 @@ async function upload(p, j, c, file, cap, ctx) {
       const put = await call('PUT', d.upload_url, { headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(part.length), 'Content-Range': 'bytes ' + a + '-' + b + '/' + size }, body: part, raw: true });
       if (!put.ok) { logErr('up tiktok', codeOf(put) + ' part=' + (i + 1) + '/' + count + ' bytes=' + a + '-' + b + '/' + size); return { state: 'fail', error: 'up-' + codeOf(put) }; }
     }
-    return { state: 'wait', stage: 'sent', pid: String(d.publish_id) };
+    return Object.assign({ state: 'wait', stage: 'sent', pid: String(d.publish_id) }, mode === 'direct' ? { direct: 1, user, priv } : {});
   }
   // LinkedIn: تهيئة ← أجزاء ← إنهاء؛ المنشور يُنشأ حين يصير الفيديو AVAILABLE (في السؤال التالي)
   const owner = 'urn:li:person:' + c.sub;
@@ -254,9 +278,13 @@ async function poll(p, j, reqId, d, ctx) {
   }
   if (p === 'tiktok') {
     const r = await call('POST', 'https://open.tiktokapis.com/v2/post/publish/status/fetch/', {
-      headers: { Authorization: 'Bearer ' + c.access, 'Content-Type': 'application/json; charset=UTF-8' }, body: JSON.stringify({ publish_id: j.pid }),
+      headers: ttHead(c), body: JSON.stringify({ publish_id: j.pid }), text: true, // النصّ الخام: معرّف المنشور رقم ٦٤ بت يفسده JSON.parse
     });
     const s = String((r.j && r.j.data && r.j.data.status) || '').toUpperCase();
+    if (s === 'PUBLISH_COMPLETE' && j.direct) { // v-tiktok-direct: نزل منشورًا — رابطه إن كان علنيًّا (اسم الحقل بتهجئة المنصّة)
+      const vid = (/"publicaly_available_post_id"\s*:\s*\[\s*"?(\d{5,25})/.exec(r.t || '') || [])[1] || '';
+      return Object.assign(j, { state: 'ok', url: vid && j.user ? 'https://www.tiktok.com/@' + j.user + '/video/' + vid : '', error: j.priv || '' });
+    }
     if (s === 'SEND_TO_USER_INBOX' || s === 'PUBLISH_COMPLETE') return Object.assign(j, { state: 'ok', error: s === 'SEND_TO_USER_INBOX' ? 'inbox' : '' }); // في صندوق تيك توك: ينشره المالك من التطبيق
     if (s === 'FAILED') logErr('status tiktok', String((r.j.data && r.j.data.fail_reason) || 'failed'));
     if (s === 'FAILED') return Object.assign(j, { state: 'fail', error: 'e-' + String((r.j.data && r.j.data.fail_reason) || 'failed').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 30) });

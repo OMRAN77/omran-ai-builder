@@ -34,7 +34,7 @@ global.fetch = async (url, opts) => {
   if (!hit) throw new Error('unexpected fetch ' + url);
   const r = typeof routes[hit] === 'function' ? routes[hit](String(url), o) : routes[hit];
   const h = r.headers || {};
-  return { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.body, headers: { get: (k) => h[String(k).toLowerCase()] || null },
+  return { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.body, text: async () => (r.raw || JSON.stringify(r.body === undefined ? null : r.body)), headers: { get: (k) => h[String(k).toLowerCase()] || null },
     arrayBuffer: async () => { const b = r.bytes || Buffer.alloc(0); return b.buffer.slice(b.byteOffset, b.byteOffset + b.length); } };
 };
 
@@ -83,7 +83,7 @@ test('٢. «اربط» لكلّ منصّة: المالك وحده، رابط ص�
   assert.deepEqual([yt.searchParams.get('scope'), yt.searchParams.get('access_type'), yt.searchParams.get('prompt')], ['https://www.googleapis.com/auth/youtube.upload', 'offline', 'consent']);
   const tt = new URL((await call('net-connect', Object.assign(owner(), { platform: 'tiktok' }))).body.url);
   assert.equal(tt.origin + tt.pathname, 'https://www.tiktok.com/v2/auth/authorize/');
-  assert.deepEqual([tt.searchParams.get('client_key'), tt.searchParams.get('scope'), tt.searchParams.get('client_id')], ['tt-key', 'user.info.basic,video.upload', null]);
+  assert.deepEqual([tt.searchParams.get('client_key'), tt.searchParams.get('scope'), tt.searchParams.get('client_id')], ['tt-key', 'user.info.basic,video.upload,video.publish', null]);
   const st = stateOf(tt.toString());
   assert.deepEqual([JSON.parse(kv.get('socnet:state:' + st)), ttl.get('socnet:state:' + st)], [{ u: 'omran', p: 'tiktok' }, 600]);
   const v = JSON.parse(require('node:fs').readFileSync(path.join(root, 'vercel.json'), 'utf8'));
@@ -96,7 +96,9 @@ const tokenRoutes = () => ({
   'oauth2.googleapis.com/token': (u, o) => (params({ method: 'POST', body: o.body }).get('grant_type') === 'refresh_token'
     ? { status: 200, body: { access_token: 'YT-ACCESS-2', expires_in: 3600 } }
     : { status: 200, body: { access_token: 'YT-ACCESS', refresh_token: 'YT-REFRESH', expires_in: 3600 } }),
-  'open.tiktokapis.com/v2/oauth/token/': { status: 200, body: { access_token: 'TT-ACCESS', refresh_token: 'TT-REFRESH', open_id: 'tt-open', expires_in: 86400 } },
+  'open.tiktokapis.com/v2/oauth/token/': { status: 200, body: { access_token: 'TT-ACCESS', refresh_token: 'TT-REFRESH', open_id: 'tt-open', expires_in: 86400, scope: 'user.info.basic,video.upload,video.publish' } },
+  // v-tiktok-direct: افتراضيًّا إعدادات الحساب مرفوضة ← الصندوق (الاحتياط)؛ اختبار ٩ يفتح النشر المباشر
+  'open.tiktokapis.com/v2/post/publish/creator_info/query/': { status: 403, body: { data: {}, error: { code: 'scope_not_authorized', message: 'no' } } },
 });
 async function link(p) {
   const st = stateOf((await call('net-connect', Object.assign(owner(), { platform: p }))).body.url);
@@ -313,4 +315,47 @@ test('٨. v-socnet-fast: الرفع يبدأ في خلفيّة نداء النش
     assert.equal(calls.filter((c) => c.url.includes('inbox/video/init')).length, 0, 'السؤال لا يعيد الرفع');
     assert.deepEqual(r.body.results, [{ platform: 'tiktok', state: 'ok', url: '', error: 'inbox' }]);
   } finally { sd._seam.waitUntil = null; }
+});
+
+test('٩. v-tiktok-direct: نشر مباشر بلا صندوق — علنيّ برابطه، وغير المدقّق يُعاد «أنا فقط» (private)، والربط القديم بلا الصلاحيّة يحتاج ربط', async () => {
+  keysOn();
+  routes = tokenRoutes();
+  await link('tiktok');
+  const enc = require(rp('api/_lib/_emailCrypto.js'));
+  const go = async (id, initFn) => {
+    kv.set('socpub:file:' + id, 'https://v3.fal.media/files/' + id + '.mp4');
+    Object.assign(routes, {
+      ['v3.fal.media/files/' + id + '.mp4']: { status: 200, bytes: Buffer.alloc(1024 * 1024, 5) },
+      'open.tiktokapis.com/v2/post/publish/creator_info/query/': { status: 200, body: { data: { creator_username: 'omran.ai', privacy_level_options: ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY'], comment_disabled: true, duet_disabled: false, stitch_disabled: false }, error: { code: 'ok' } } },
+      'open.tiktokapis.com/v2/post/publish/video/init/': initFn,
+      'upload.tt.example/d1': { status: 201 },
+      'open.tiktokapis.com/v2/post/publish/status/fetch/': { status: 200, raw: '{"data":{"status":"PUBLISH_COMPLETE","publicaly_available_post_id":[7300000000000000001]},"error":{"code":"ok"}}' }, // رقم ٦٤ بت كما ترسله المنصّة
+    });
+    const pub = await call('publish', Object.assign(owner(), { id, caption: 'فيديو جديد #omai', platforms: ['tiktok'] }));
+    calls.length = 0;
+    await call('status', Object.assign(owner(), { request: pub.body.request }));
+    const inits = calls.filter((c) => c.url.includes('/v2/post/publish/video/init/')).map((c) => JSON.parse(c.body));
+    const r = await call('status', Object.assign(owner(), { request: pub.body.request }));
+    return { inits, r };
+  };
+  const ok = { status: 200, body: { data: { publish_id: 'PD1', upload_url: 'https://upload.tt.example/d1' }, error: { code: 'ok' } } };
+  // علنيّ: إعدادات الحساب محترمة (التعليقات المقفلة تبقى مقفلة) والرابط باسم الحساب
+  let { inits, r } = await go('5'.repeat(24), ok);
+  assert.equal(inits.length, 1);
+  assert.deepEqual(inits[0].post_info, { title: 'فيديو جديد #omai', privacy_level: 'PUBLIC_TO_EVERYONE', disable_duet: false, disable_comment: true, disable_stitch: false, video_cover_timestamp_ms: 1000 });
+  assert.equal(calls.some((c) => c.url.includes('inbox/video/init')), false, 'لا صندوق');
+  assert.deepEqual(r.body.results, [{ platform: 'tiktok', state: 'ok', url: 'https://www.tiktok.com/@omran.ai/video/7300000000000000001', error: '' }]);
+  leaks(r.body);
+  // غير مدقّق: العلنيّ مرفوض ← «أنا فقط» ويظهر private
+  ({ inits, r } = await go('6'.repeat(24), (u, o) => (JSON.parse(o.body).post_info.privacy_level === 'SELF_ONLY' ? ok
+    : { status: 403, body: { data: {}, error: { code: 'unaudited_client_can_only_post_to_private_accounts', message: 'x' } } })));
+  assert.deepEqual(inits.map((x) => x.post_info.privacy_level), ['PUBLIC_TO_EVERYONE', 'SELF_ONLY']);
+  assert.equal(r.body.results[0].state, 'ok');
+  assert.equal(r.body.results[0].error, 'private');
+  // ربط قبل هذا التغيير (بلا scope): «يحتاج ربط» بسببه
+  const old = JSON.parse(enc.decrypt(kv.get('socnet:cred:tiktok'))); delete old.scope;
+  kv.set('socnet:cred:tiktok', enc.encrypt(JSON.stringify(old)));
+  const acc = (await call('accounts', owner())).body;
+  assert.ok(acc.connect.includes('tiktok'));
+  assert.equal(acc.whyBy.tiktok, 'need-publish');
 });
